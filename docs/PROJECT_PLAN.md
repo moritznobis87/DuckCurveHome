@@ -14,7 +14,10 @@ Home Assistant kann parallel weiterlaufen, wird aber weder gelesen noch geschrie
 Aktoren im Haus liegen, stellt Abschnitt 15 zwei Hosting-Profile gegenüber – **lokaler Mini-Rechner (empfohlen)**
 oder **Railway mit Bridge** – und bittet um eine Entscheidung vor Phase 2.
 
-**Stand Phase 1 (4. September 2026):** Demo-Modus umgesetzt (siehe README, ARCHITECTURE.md, HEMS_CONTROL.md).
+**Stand (4. September 2026):** Phase 1 (Demo-Modus) umgesetzt; Phase 2 (Read-only Live) im Code fertig: Bridge als
+HA-Add-on, PostgreSQL mit Alembic, Bridge-Ingest, Live-Runtime, Tibber, Open-Meteo, Kiosk-Anmeldung, Railway-Konfiguration
+(DEPLOYMENT.md). Ausstehend für die Abnahme von Phase 2: Deployment auf Railway, Entity-Mapping mit den echten
+Entity-IDs, Ausfalltests im Haus.
 **Entscheidung für Phase 2 (ADR-0001):** Railway für App und Datenbank, **Home Assistant als Geräteschicht**,
 Bridge als Home-Assistant-Add-on (kein Nabu Casa, HA OS). Damit gelten für die Geräteanbindung wieder die
 Home-Assistant-Abschnitte der Revision 1 (WebSocket-API, Entity-Mapping, HA-Dienste), während die direkten
