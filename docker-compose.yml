@@ -1,0 +1,31 @@
+# Duck Curve Home – lokaler Betrieb (Raspberry Pi 5 / NUC, arm64 oder amd64) und Entwicklung.
+# Phase 1: Demo-Modus ohne Geräte und ohne Datenbank. Phase 2 ergänzt postgres, worker, mosquitto, guardian.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: duckcurve-api:local
+    environment:
+      DCH_MODE: demo
+      DCH_ROLE: all
+      DCH_DEMO_SPEED: ${DCH_DEMO_SPEED:-1}
+      DCH_DEMO_SEED: ${DCH_DEMO_SEED:-7}
+      DCH_LOG_LEVEL: ${DCH_LOG_LEVEL:-INFO}
+      DCH_CORS_ORIGINS: '["http://localhost:3000"]'
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: apps/web
+    image: duckcurve-web:local
+    environment:
+      DCH_API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped

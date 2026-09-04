@@ -1,0 +1,2076 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Duck Curve Home API",
+    "description": "Home Energy Management System – Live-Zustand, Historie, Plan und Steuerung.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Gesundheitszustand",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/live/state": {
+      "get": {
+        "tags": [
+          "Live"
+        ],
+        "summary": "Aktueller Zustand",
+        "operationId": "state_api_v1_live_state_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveStateOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/live/stream": {
+      "get": {
+        "tags": [
+          "Live"
+        ],
+        "summary": "Server-Sent Events: snapshot, decision, plan, system",
+        "operationId": "stream_api_v1_live_stream_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/history": {
+      "get": {
+        "tags": [
+          "Historie"
+        ],
+        "summary": "Minutenmittel eines Zeitraums",
+        "operationId": "history_api_v1_history_get",
+        "parameters": [
+          {
+            "name": "range",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "today",
+                "yesterday",
+                "24h",
+                "custom"
+              ],
+              "type": "string",
+              "default": "today",
+              "title": "Range"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/plan": {
+      "get": {
+        "tags": [
+          "Planung"
+        ],
+        "summary": "Aktueller Energieplan (Fenster und 15-min-Raster)",
+        "operationId": "plan_api_v1_plan_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/control/actuators/{key}": {
+      "post": {
+        "tags": [
+          "Steuerung"
+        ],
+        "summary": "Aktor schalten",
+        "operationId": "switch_actuator_api_v1_control_actuators__key__post",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActuatorCommandIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActuatorCommandOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/control/heat-pump/mode": {
+      "post": {
+        "tags": [
+          "Steuerung"
+        ],
+        "summary": "Betriebsmodus der Wärmepumpe setzen",
+        "operationId": "set_mode_api_v1_control_heat_pump_mode_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeatPumpModeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatingMode"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/control/decisions": {
+      "get": {
+        "tags": [
+          "Steuerung"
+        ],
+        "summary": "Letzte Regler-Entscheidungen (Zustandswechsel)",
+        "operationId": "decisions_api_v1_control_decisions_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Decision"
+                  },
+                  "title": "Response Decisions Api V1 Control Decisions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/config": {
+      "get": {
+        "tags": [
+          "Konfiguration"
+        ],
+        "summary": "Aktive Regler- und Modellkonfiguration",
+        "operationId": "config_api_v1_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HemsConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/demo": {
+      "post": {
+        "tags": [
+          "Demo"
+        ],
+        "summary": "Demo steuern: Zeitraffer, Störungen, Szenarien",
+        "operationId": "control_api_v1_demo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoControlIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Control Api V1 Demo Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActuatorCommandIn": {
+        "properties": {
+          "state": {
+            "type": "boolean",
+            "title": "State"
+          },
+          "duration_min": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1440.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Min"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "title": "ActuatorCommandIn"
+      },
+      "ActuatorCommandOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "requested": {
+            "type": "boolean",
+            "title": "Requested"
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "message_de": {
+            "type": "string",
+            "title": "Message De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "requested",
+          "observed",
+          "ok",
+          "message_de"
+        ],
+        "title": "ActuatorCommandOut"
+      },
+      "AutoProfile": {
+        "type": "string",
+        "enum": [
+          "eco",
+          "pv",
+          "price",
+          "smart"
+        ],
+        "title": "AutoProfile"
+      },
+      "BalanceConfig": {
+        "properties": {
+          "tolerance_kw": {
+            "type": "number",
+            "title": "Tolerance Kw",
+            "default": 0.3
+          },
+          "min_flow_kw": {
+            "type": "number",
+            "title": "Min Flow Kw",
+            "default": 0.05
+          }
+        },
+        "type": "object",
+        "title": "BalanceConfig"
+      },
+      "BlockRuleConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "max_duration_min": {
+            "type": "integer",
+            "title": "Max Duration Min",
+            "default": 120
+          },
+          "max_per_day": {
+            "type": "integer",
+            "title": "Max Per Day",
+            "default": 2
+          },
+          "min_soc": {
+            "type": "number",
+            "title": "Min Soc",
+            "default": 0.6
+          },
+          "min_outdoor_temp_c": {
+            "type": "number",
+            "title": "Min Outdoor Temp C",
+            "default": 3.0
+          },
+          "block_ttl_min": {
+            "type": "integer",
+            "title": "Block Ttl Min",
+            "default": 15
+          }
+        },
+        "type": "object",
+        "title": "BlockRuleConfig"
+      },
+      "BufferConfig": {
+        "properties": {
+          "volume_liters": {
+            "type": "number",
+            "title": "Volume Liters",
+            "default": 800.0
+          },
+          "layers": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Layers"
+          },
+          "min_useful_temperature_c": {
+            "type": "number",
+            "title": "Min Useful Temperature C",
+            "default": 35.0
+          },
+          "target_temperature_c": {
+            "type": "number",
+            "title": "Target Temperature C",
+            "default": 50.0
+          },
+          "max_temperature_c": {
+            "type": "number",
+            "title": "Max Temperature C",
+            "default": 62.0
+          },
+          "comfort_min_top_c": {
+            "type": "number",
+            "title": "Comfort Min Top C",
+            "default": 42.0
+          },
+          "loss_kw_per_k": {
+            "type": "number",
+            "title": "Loss Kw Per K",
+            "default": 0.004
+          },
+          "soc_method": {
+            "type": "string",
+            "enum": [
+              "layered_energy_v1",
+              "weighted_mean_v1"
+            ],
+            "title": "Soc Method",
+            "default": "layered_energy_v1"
+          },
+          "weights": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Weights"
+          },
+          "status_thresholds": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Status Thresholds",
+            "default": [
+              0.2,
+              0.6,
+              0.9
+            ]
+          },
+          "soc_full": {
+            "type": "number",
+            "title": "Soc Full",
+            "default": 0.95
+          }
+        },
+        "type": "object",
+        "title": "BufferConfig"
+      },
+      "BufferState": {
+        "properties": {
+          "soc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soc"
+          },
+          "usable_energy_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usable Energy Kwh"
+          },
+          "capacity_kwh": {
+            "type": "number",
+            "title": "Capacity Kwh"
+          },
+          "mean_temp_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Temp C"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BufferStatus"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "headroom_soc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headroom Soc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "soc",
+          "usable_energy_kwh",
+          "capacity_kwh",
+          "mean_temp_c",
+          "status",
+          "method",
+          "headroom_soc"
+        ],
+        "title": "BufferState"
+      },
+      "BufferStatus": {
+        "type": "string",
+        "enum": [
+          "cold",
+          "partial",
+          "warm",
+          "full",
+          "unknown"
+        ],
+        "title": "BufferStatus"
+      },
+      "BufferTemperatures": {
+        "properties": {
+          "top": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "mid_top": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "mid_bottom": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "bottom": {
+            "$ref": "#/components/schemas/Measurement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "top",
+          "mid_top",
+          "mid_bottom",
+          "bottom"
+        ],
+        "title": "BufferTemperatures"
+      },
+      "ControlConfig": {
+        "properties": {
+          "tick_s": {
+            "type": "integer",
+            "title": "Tick S",
+            "default": 10
+          },
+          "ewma_seconds": {
+            "type": "number",
+            "title": "Ewma Seconds",
+            "default": 180.0
+          },
+          "sensor_grace_min": {
+            "type": "number",
+            "title": "Sensor Grace Min",
+            "default": 5.0
+          },
+          "max_toggles_per_hour": {
+            "type": "integer",
+            "title": "Max Toggles Per Hour",
+            "default": 4
+          },
+          "failsafe_hold_min": {
+            "type": "integer",
+            "title": "Failsafe Hold Min",
+            "default": 60
+          },
+          "pv": {
+            "$ref": "#/components/schemas/PvRuleConfig",
+            "default": {
+              "on_surplus_kw": 4.0,
+              "off_import_kw": 1.5,
+              "on_delay_min": 5.0,
+              "off_delay_min": 10.0,
+              "count_battery_charging_above_soc": 0.8,
+              "heat_pump_before_ev": false,
+              "min_buffer_headroom_soc": 0.1
+            }
+          },
+          "price": {
+            "$ref": "#/components/schemas/PriceRuleConfig",
+            "default": {
+              "negative_price_release": true,
+              "cheap_quantile": 0.1,
+              "min_window_min": 30,
+              "price_max_age_h": 30.0,
+              "expensive_quantile": 0.85
+            }
+          },
+          "block": {
+            "$ref": "#/components/schemas/BlockRuleConfig",
+            "default": {
+              "enabled": false,
+              "max_duration_min": 120,
+              "max_per_day": 2,
+              "min_soc": 0.6,
+              "min_outdoor_temp_c": 3.0,
+              "block_ttl_min": 15
+            }
+          }
+        },
+        "type": "object",
+        "title": "ControlConfig"
+      },
+      "ControllerState": {
+        "type": "string",
+        "enum": [
+          "off",
+          "idle",
+          "arming",
+          "released",
+          "running_released",
+          "cooldown",
+          "manual",
+          "failsafe"
+        ],
+        "title": "ControllerState"
+      },
+      "Decision": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "controller_state": {
+            "$ref": "#/components/schemas/ControllerState"
+          },
+          "k1_release": {
+            "type": "boolean",
+            "title": "K1 Release"
+          },
+          "k2_block": {
+            "type": "boolean",
+            "title": "K2 Block"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonCode"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "blocked_by": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonCode"
+            },
+            "type": "array",
+            "title": "Blocked By"
+          },
+          "inputs": {
+            "$ref": "#/components/schemas/DecisionInputs"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid Until"
+          },
+          "next_expected": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextExpected"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "explanation_de": {
+            "type": "string",
+            "title": "Explanation De"
+          },
+          "changed": {
+            "type": "boolean",
+            "title": "Changed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "controller_state",
+          "k1_release",
+          "k2_block",
+          "reasons",
+          "blocked_by",
+          "inputs",
+          "valid_until",
+          "next_expected",
+          "explanation_de"
+        ],
+        "title": "Decision"
+      },
+      "DecisionInputs": {
+        "properties": {
+          "surplus_ewma_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surplus Ewma Kw"
+          },
+          "import_ewma_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Import Ewma Kw"
+          },
+          "hp_running": {
+            "type": "boolean",
+            "title": "Hp Running"
+          },
+          "hp_power_kw": {
+            "type": "number",
+            "title": "Hp Power Kw"
+          },
+          "buffer_soc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Soc"
+          },
+          "buffer_top_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Top C"
+          },
+          "price_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Ct Kwh"
+          },
+          "price_rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Rank"
+          },
+          "outdoor_temp_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outdoor Temp C"
+          },
+          "starts_today": {
+            "type": "integer",
+            "title": "Starts Today"
+          },
+          "seconds_since_stop": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds Since Stop"
+          },
+          "seconds_since_start": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds Since Start"
+          }
+        },
+        "type": "object",
+        "required": [
+          "surplus_ewma_kw",
+          "import_ewma_kw",
+          "hp_running",
+          "hp_power_kw",
+          "buffer_soc",
+          "buffer_top_c",
+          "price_ct_kwh",
+          "price_rank",
+          "outdoor_temp_c",
+          "starts_today",
+          "seconds_since_stop",
+          "seconds_since_start"
+        ],
+        "title": "DecisionInputs"
+      },
+      "DemoControlIn": {
+        "properties": {
+          "speed": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 3600.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed"
+          },
+          "fault_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fault Key"
+          },
+          "fault_quality": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "stale",
+                  "unavailable",
+                  "unknown"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fault Quality"
+          },
+          "fault_duration_s": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 86400.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fault Duration S"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reset",
+                  "sunny_surplus",
+                  "cold_evening",
+                  "buffer_full",
+                  "sensor_outage"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          }
+        },
+        "type": "object",
+        "title": "DemoControlIn"
+      },
+      "EnergySnapshot": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "pv_power_kw": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "grid_power_kw": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "battery_power_kw": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "battery_soc": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "house_power_kw": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "base_load_kw": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "heat_pump_power_kw": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "ev_power_kw": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "electricity_price_ct_kwh": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "outdoor_temp_c": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "buffer_temps_c": {
+            "$ref": "#/components/schemas/BufferTemperatures"
+          },
+          "hp_release_contact": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "hp_block_contact": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "actuators": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "type": "object",
+            "title": "Actuators"
+          },
+          "balance_residual_kw": {
+            "type": "number",
+            "title": "Balance Residual Kw",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "pv_power_kw",
+          "grid_power_kw",
+          "battery_power_kw",
+          "battery_soc",
+          "house_power_kw",
+          "base_load_kw",
+          "heat_pump_power_kw",
+          "ev_power_kw",
+          "electricity_price_ct_kwh",
+          "outdoor_temp_c",
+          "buffer_temps_c",
+          "hp_release_contact",
+          "hp_block_contact"
+        ],
+        "title": "EnergySnapshot"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HeatPumpConfig": {
+        "properties": {
+          "minimum_electric_power_kw": {
+            "type": "number",
+            "title": "Minimum Electric Power Kw",
+            "default": 3.5
+          },
+          "nominal_electric_power_kw": {
+            "type": "number",
+            "title": "Nominal Electric Power Kw",
+            "default": 4.5
+          },
+          "nominal_thermal_power_kw": {
+            "type": "number",
+            "title": "Nominal Thermal Power Kw",
+            "default": 12.0
+          },
+          "running_threshold_kw": {
+            "type": "number",
+            "title": "Running Threshold Kw",
+            "default": 0.5
+          },
+          "running_debounce_s": {
+            "type": "integer",
+            "title": "Running Debounce S",
+            "default": 60
+          },
+          "min_runtime_min": {
+            "type": "integer",
+            "title": "Min Runtime Min",
+            "default": 30
+          },
+          "min_offtime_min": {
+            "type": "integer",
+            "title": "Min Offtime Min",
+            "default": 20
+          },
+          "start_timeout_min": {
+            "type": "integer",
+            "title": "Start Timeout Min",
+            "default": 10
+          },
+          "max_starts_per_day": {
+            "type": "integer",
+            "title": "Max Starts Per Day",
+            "default": 8
+          },
+          "release_ttl_min": {
+            "type": "integer",
+            "title": "Release Ttl Min",
+            "default": 20
+          },
+          "hw_auto_off_release_s": {
+            "type": "integer",
+            "title": "Hw Auto Off Release S",
+            "default": 1800
+          },
+          "hw_auto_off_block_s": {
+            "type": "integer",
+            "title": "Hw Auto Off Block S",
+            "default": 1200
+          }
+        },
+        "type": "object",
+        "title": "HeatPumpConfig"
+      },
+      "HeatPumpModeIn": {
+        "properties": {
+          "system_mode": {
+            "$ref": "#/components/schemas/SystemMode"
+          },
+          "auto_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AutoProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manual_state": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "on",
+                  "off"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual State"
+          },
+          "duration_min": {
+            "type": "integer",
+            "maximum": 720.0,
+            "minimum": 5.0,
+            "title": "Duration Min",
+            "default": 120
+          }
+        },
+        "type": "object",
+        "required": [
+          "system_mode"
+        ],
+        "title": "HeatPumpModeIn"
+      },
+      "HeatPumpState": {
+        "properties": {
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          },
+          "running_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running Since"
+          },
+          "stopped_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stopped Since"
+          },
+          "power_kw": {
+            "type": "number",
+            "title": "Power Kw"
+          },
+          "release_contact_on": {
+            "type": "boolean",
+            "title": "Release Contact On"
+          },
+          "block_contact_on": {
+            "type": "boolean",
+            "title": "Block Contact On"
+          },
+          "starts_today": {
+            "type": "integer",
+            "title": "Starts Today"
+          },
+          "power_known": {
+            "type": "boolean",
+            "title": "Power Known",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "running",
+          "running_since",
+          "stopped_since",
+          "power_kw",
+          "release_contact_on",
+          "block_contact_on",
+          "starts_today"
+        ],
+        "title": "HeatPumpState"
+      },
+      "HemsConfig": {
+        "properties": {
+          "heat_pump": {
+            "$ref": "#/components/schemas/HeatPumpConfig",
+            "default": {
+              "minimum_electric_power_kw": 3.5,
+              "nominal_electric_power_kw": 4.5,
+              "nominal_thermal_power_kw": 12.0,
+              "running_threshold_kw": 0.5,
+              "running_debounce_s": 60,
+              "min_runtime_min": 30,
+              "min_offtime_min": 20,
+              "start_timeout_min": 10,
+              "max_starts_per_day": 8,
+              "release_ttl_min": 20,
+              "hw_auto_off_release_s": 1800,
+              "hw_auto_off_block_s": 1200
+            }
+          },
+          "control": {
+            "$ref": "#/components/schemas/ControlConfig",
+            "default": {
+              "tick_s": 10,
+              "ewma_seconds": 180.0,
+              "sensor_grace_min": 5.0,
+              "max_toggles_per_hour": 4,
+              "failsafe_hold_min": 60,
+              "pv": {
+                "count_battery_charging_above_soc": 0.8,
+                "heat_pump_before_ev": false,
+                "min_buffer_headroom_soc": 0.1,
+                "off_delay_min": 10.0,
+                "off_import_kw": 1.5,
+                "on_delay_min": 5.0,
+                "on_surplus_kw": 4.0
+              },
+              "price": {
+                "cheap_quantile": 0.1,
+                "expensive_quantile": 0.85,
+                "min_window_min": 30,
+                "negative_price_release": true,
+                "price_max_age_h": 30.0
+              },
+              "block": {
+                "block_ttl_min": 15,
+                "enabled": false,
+                "max_duration_min": 120,
+                "max_per_day": 2,
+                "min_outdoor_temp_c": 3.0,
+                "min_soc": 0.6
+              }
+            }
+          },
+          "buffer": {
+            "$ref": "#/components/schemas/BufferConfig",
+            "default": {
+              "volume_liters": 800.0,
+              "layers": [
+                0.25,
+                0.25,
+                0.25,
+                0.25
+              ],
+              "min_useful_temperature_c": 35.0,
+              "target_temperature_c": 50.0,
+              "max_temperature_c": 62.0,
+              "comfort_min_top_c": 42.0,
+              "loss_kw_per_k": 0.004,
+              "soc_method": "layered_energy_v1",
+              "weights": [
+                0.25,
+                0.25,
+                0.25,
+                0.25
+              ],
+              "status_thresholds": [
+                0.2,
+                0.6,
+                0.9
+              ],
+              "soc_full": 0.95
+            }
+          },
+          "balance": {
+            "$ref": "#/components/schemas/BalanceConfig",
+            "default": {
+              "tolerance_kw": 0.3,
+              "min_flow_kw": 0.05
+            }
+          },
+          "timeouts": {
+            "$ref": "#/components/schemas/SensorTimeouts",
+            "default": {
+              "power_s": 60.0,
+              "battery_s": 60.0,
+              "temperature_s": 900.0,
+              "price_s": 7200.0
+            }
+          }
+        },
+        "type": "object",
+        "title": "HemsConfig"
+      },
+      "HistoryOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "resolution_s": {
+            "type": "integer",
+            "title": "Resolution S",
+            "default": 60
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "rows"
+        ],
+        "title": "HistoryOut"
+      },
+      "LiveStateOut": {
+        "properties": {
+          "snapshot": {
+            "$ref": "#/components/schemas/EnergySnapshot"
+          },
+          "buffer": {
+            "$ref": "#/components/schemas/BufferState"
+          },
+          "heat_pump": {
+            "$ref": "#/components/schemas/HeatPumpState"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Decision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "operating_mode": {
+            "$ref": "#/components/schemas/OperatingMode"
+          },
+          "price_rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Rank"
+          },
+          "today_kwh": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Today Kwh"
+          },
+          "system": {
+            "$ref": "#/components/schemas/SystemStatusOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "snapshot",
+          "buffer",
+          "heat_pump",
+          "decision",
+          "operating_mode",
+          "price_rank",
+          "today_kwh",
+          "system"
+        ],
+        "title": "LiveStateOut"
+      },
+      "Measurement": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observed At"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/Quality"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "observed_at",
+          "quality",
+          "source"
+        ],
+        "title": "Measurement"
+      },
+      "NextExpected": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "because": {
+            "$ref": "#/components/schemas/ReasonCode"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "at",
+          "because",
+          "text_de"
+        ],
+        "title": "NextExpected"
+      },
+      "OperatingMode": {
+        "properties": {
+          "system_mode": {
+            "$ref": "#/components/schemas/SystemMode",
+            "default": "auto"
+          },
+          "auto_profile": {
+            "$ref": "#/components/schemas/AutoProfile",
+            "default": "smart"
+          },
+          "override": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Override"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "OperatingMode"
+      },
+      "Override": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/OverrideKind"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At"
+          },
+          "set_by": {
+            "type": "string",
+            "title": "Set By",
+            "default": "dashboard"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "started_at",
+          "ends_at"
+        ],
+        "title": "Override"
+      },
+      "OverrideKind": {
+        "type": "string",
+        "enum": [
+          "force_release",
+          "force_off",
+          "force_block"
+        ],
+        "title": "OverrideKind"
+      },
+      "PlanIntervalOut": {
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "expected_pv_kw": {
+            "type": "number",
+            "title": "Expected Pv Kw"
+          },
+          "price_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Ct Kwh"
+          },
+          "planned_hp_state": {
+            "type": "string",
+            "enum": [
+              "off",
+              "release",
+              "free",
+              "avoid"
+            ],
+            "title": "Planned Hp State"
+          },
+          "reason_code": {
+            "type": "string",
+            "title": "Reason Code"
+          },
+          "note_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ts",
+          "expected_pv_kw",
+          "price_ct_kwh",
+          "planned_hp_state",
+          "reason_code"
+        ],
+        "title": "PlanIntervalOut"
+      },
+      "PlanOut": {
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "planner": {
+            "type": "string",
+            "title": "Planner"
+          },
+          "horizon_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Horizon Start"
+          },
+          "horizon_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Horizon End"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/PriceWindowOut"
+            },
+            "type": "array",
+            "title": "Windows"
+          },
+          "intervals": {
+            "items": {
+              "$ref": "#/components/schemas/PlanIntervalOut"
+            },
+            "type": "array",
+            "title": "Intervals"
+          },
+          "pv_forecast_today_kwh": {
+            "type": "number",
+            "title": "Pv Forecast Today Kwh"
+          },
+          "next_cheap_window": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriceWindowOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "created_at",
+          "planner",
+          "horizon_start",
+          "horizon_end",
+          "windows",
+          "intervals",
+          "pv_forecast_today_kwh",
+          "next_cheap_window"
+        ],
+        "title": "PlanOut"
+      },
+      "PriceRuleConfig": {
+        "properties": {
+          "negative_price_release": {
+            "type": "boolean",
+            "title": "Negative Price Release",
+            "default": true
+          },
+          "cheap_quantile": {
+            "type": "number",
+            "title": "Cheap Quantile",
+            "default": 0.1
+          },
+          "min_window_min": {
+            "type": "integer",
+            "title": "Min Window Min",
+            "default": 30
+          },
+          "price_max_age_h": {
+            "type": "number",
+            "title": "Price Max Age H",
+            "default": 30.0
+          },
+          "expensive_quantile": {
+            "type": "number",
+            "title": "Expensive Quantile",
+            "default": 0.85
+          }
+        },
+        "type": "object",
+        "title": "PriceRuleConfig"
+      },
+      "PriceWindowOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "cheap",
+              "expensive",
+              "negative",
+              "pv_surplus"
+            ],
+            "title": "Kind"
+          },
+          "avg_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Ct Kwh"
+          },
+          "label_de": {
+            "type": "string",
+            "title": "Label De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "kind",
+          "label_de"
+        ],
+        "title": "PriceWindowOut"
+      },
+      "PvRuleConfig": {
+        "properties": {
+          "on_surplus_kw": {
+            "type": "number",
+            "title": "On Surplus Kw",
+            "default": 4.0
+          },
+          "off_import_kw": {
+            "type": "number",
+            "title": "Off Import Kw",
+            "default": 1.5
+          },
+          "on_delay_min": {
+            "type": "number",
+            "title": "On Delay Min",
+            "default": 5.0
+          },
+          "off_delay_min": {
+            "type": "number",
+            "title": "Off Delay Min",
+            "default": 10.0
+          },
+          "count_battery_charging_above_soc": {
+            "type": "number",
+            "title": "Count Battery Charging Above Soc",
+            "default": 0.8
+          },
+          "heat_pump_before_ev": {
+            "type": "boolean",
+            "title": "Heat Pump Before Ev",
+            "default": false
+          },
+          "min_buffer_headroom_soc": {
+            "type": "number",
+            "title": "Min Buffer Headroom Soc",
+            "default": 0.1
+          }
+        },
+        "type": "object",
+        "title": "PvRuleConfig"
+      },
+      "Quality": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "stale",
+          "unavailable",
+          "unknown",
+          "derived",
+          "inconsistent"
+        ],
+        "title": "Quality"
+      },
+      "ReasonCode": {
+        "type": "string",
+        "enum": [
+          "pv_surplus",
+          "pv_surplus_fading",
+          "price_negative",
+          "price_cheap_window",
+          "planned_window",
+          "heat_demand_forced",
+          "hp_running_own_control",
+          "min_runtime_hold",
+          "min_offtime_pending",
+          "on_delay_pending",
+          "off_delay_pending",
+          "buffer_full",
+          "buffer_no_headroom",
+          "max_starts_reached",
+          "no_trigger",
+          "import_too_high",
+          "manual_override",
+          "mode_off",
+          "sensor_stale",
+          "sensor_unavailable",
+          "price_data_stale",
+          "hp_not_responding",
+          "failsafe",
+          "toggle_rate_exceeded"
+        ],
+        "title": "ReasonCode"
+      },
+      "SensorTimeouts": {
+        "properties": {
+          "power_s": {
+            "type": "number",
+            "title": "Power S",
+            "default": 60.0
+          },
+          "battery_s": {
+            "type": "number",
+            "title": "Battery S",
+            "default": 60.0
+          },
+          "temperature_s": {
+            "type": "number",
+            "title": "Temperature S",
+            "default": 900.0
+          },
+          "price_s": {
+            "type": "number",
+            "title": "Price S",
+            "default": 7200.0
+          }
+        },
+        "type": "object",
+        "title": "SensorTimeouts"
+      },
+      "SystemMode": {
+        "type": "string",
+        "enum": [
+          "off",
+          "manual",
+          "auto"
+        ],
+        "title": "SystemMode"
+      },
+      "SystemStatusOut": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "server_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Server Time"
+          },
+          "sim_speed": {
+            "type": "number",
+            "title": "Sim Speed"
+          },
+          "bridge_online": {
+            "type": "boolean",
+            "title": "Bridge Online"
+          },
+          "sse_clients": {
+            "type": "integer",
+            "title": "Sse Clients"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "connection_label_de": {
+            "type": "string",
+            "title": "Connection Label De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "server_time",
+          "sim_speed",
+          "bridge_online",
+          "sse_clients",
+          "version",
+          "connection_label_de"
+        ],
+        "title": "SystemStatusOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

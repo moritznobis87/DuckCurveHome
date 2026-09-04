@@ -1,0 +1,25 @@
+name: python
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths: ["packages/**", "apps/api/**", "pyproject.toml", "uv.lock", ".github/workflows/python.yml"]
+  pull_request:
+    paths: ["packages/**", "apps/api/**", "pyproject.toml", "uv.lock", ".github/workflows/python.yml"]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { version: "0.8.17", enable-cache: true }
+      - run: uv python install 3.12
+      - run: uv sync --frozen --all-packages
+      - run: uv run ruff check apps packages
+      - run: uv run ruff format --check apps packages
+      - run: uv run mypy apps/api/src packages/hems-core/src
+      - run: uv run lint-imports
+      - run: uv run pytest -q -p no:warnings
+      - name: OpenAPI-Schema aktuell?
+        run: |
+          uv run python -c "import json; from dch_api.main import create_app; from dch_api.settings import Settings; json.dump(create_app(Settings(demo_autostart=False)).openapi(), open('/tmp/openapi.json','w'), indent=2, ensure_ascii=False)"
+          diff -q /tmp/openapi.json docs/openapi.json || (echo "docs/openapi.json ist veraltet – bitte neu erzeugen (tools/gen-types.sh)"; exit 1)

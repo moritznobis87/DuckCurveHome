@@ -1,0 +1,13 @@
+[project]
+name = "hems-core"
+version = "0.1.0"
+description = "Duck Curve Home – reine Domäne: Modelle, Bilanz, Thermik, Regler, Planung, Simulation"
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.9"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hems_core"]

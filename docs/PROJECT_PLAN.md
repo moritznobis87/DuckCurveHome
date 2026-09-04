@@ -14,6 +14,12 @@ Home Assistant kann parallel weiterlaufen, wird aber weder gelesen noch geschrie
 Aktoren im Haus liegen, stellt Abschnitt 15 zwei Hosting-Profile gegenüber – **lokaler Mini-Rechner (empfohlen)**
 oder **Railway mit Bridge** – und bittet um eine Entscheidung vor Phase 2.
 
+**Stand Phase 1 (4. September 2026):** Demo-Modus umgesetzt (siehe README, ARCHITECTURE.md, HEMS_CONTROL.md).
+Die Hosting-Frage ist wieder offen: Neben Profil A (lokal) steht **Profil C – Railway für App und Datenbank,
+Home Assistant als Geräteschicht** zur Diskussion (Verbindung über Nabu Casa oder eine minimale Bridge auf dem
+HA-Host). Bewertung in `docs/decisions/ADR-0001-geraeteschicht-und-hosting.md`; Entscheidung vor Phase 2.
+Der bisher gebaute Code ist von dieser Entscheidung unabhängig.
+
 Dieses Dokument ist das Ergebnis von **Phase 0** und beantwortet die im Auftrag genannten Punkte in der
 angegebenen Reihenfolge. Es ist bewusst eine Entscheidungsgrundlage, kein Lastenheft: Wo Alternativen
 bestehen, wird die Wahl begründet und die verworfene Option benannt. Abschnitt 25 sammelt die offenen Fragen,

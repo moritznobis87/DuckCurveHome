@@ -1,8 +1,59 @@
 # Duck Curve Home
 
-Home-Energy-Management-System für ein Wohnhaus: Energieflüsse, Pufferspeicher und Strompreis auf einen Blick,
-später Optimierung der Wärmepumpe nach PV-Überschuss, Preis und Wärmebedarf. Primäres Gerät: ein iPad an der Wand.
+Home-Energy-Management-System (HEMS) für ein Wohnhaus in Geilenkirchen: Energieflüsse, Pufferspeicher,
+Strompreis und der Wärmepumpen-Plan auf einen Blick – auf einem iPad an der Wand. Ab Phase 4 optimiert
+Duck Curve Home die Wärmepumpe als flexible Last nach PV-Überschuss, Strompreis und Wärmebedarf, ohne die
+Anlage selbst zu verändern: gesteuert werden ausschließlich die beiden dafür vorgesehenen Kontakte.
 
-**Status:** Phase 0 (Analyse und Architektur), Revision 2: eigenständiges System ohne Home Assistant und InfluxDB, eigene PostgreSQL-Datenbank. Der vollständige Plan steht in [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
+**Status: Phase 1 – Demo-Modus.** Das komplette Dashboard läuft gegen eine Haus-Simulation, der regelbasierte
+Wärmepumpen-Regler entscheidet bereits „echt“ (gegen die Simulation), es werden aber keine realen Geräte gelesen
+oder geschaltet. Plan und Entscheidungen: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
 
-Design und Produktuniversum: Duck Curve (`Duckcurve_Website`, `valyze`). Dieses Repository ist technisch eigenständig.
+## Schnellstart
+
+```bash
+# Voraussetzungen: Docker (oder: uv ≥ 0.8, Node 22, pnpm 10)
+docker compose up --build          # Dashboard: http://localhost:3000, API: http://localhost:8000/docs
+DCH_DEMO_SPEED=288 docker compose up   # Zeitraffer: 24 Stunden in 5 Minuten
+```
+
+Ohne Docker:
+
+```bash
+uv sync --all-packages && (cd apps/web && pnpm install)
+tools/demo.sh                      # API mit Reload + Next.js Dev-Server
+```
+
+## Aufbau
+
+| Pfad | Inhalt |
+|---|---|
+| `packages/hems-core` | reine Domäne: Modelle, Vorzeichenkonvention, Bilanz, thermischer SOC, Regler-Zustandsmaschine, Preisfenster, Simulation |
+| `apps/api` | FastAPI: Live-Zustand, SSE-Stream, Historie, Plan, Steuerung, Demo-Steuerung |
+| `apps/web` | Next.js-Dashboard (iPad-Querformat, Dark Mode, Duck-Curve-Design-System) |
+| `docs/` | Projektplan, OpenAPI-Schema, Architekturentscheidungen |
+
+Weitere Dokumente: [ARCHITECTURE.md](ARCHITECTURE.md) · [CONFIGURATION.md](CONFIGURATION.md) ·
+[HEMS_CONTROL.md](HEMS_CONTROL.md)
+
+## Entwicklung
+
+```bash
+uv run pytest -q                         # Python-Tests (Kern + API)
+uv run ruff check apps packages && uv run mypy apps/api/src packages/hems-core/src && uv run lint-imports
+cd apps/web && pnpm lint && pnpm typecheck && pnpm test && pnpm build
+tools/gen-types.sh                       # OpenAPI → docs/openapi.json → apps/web/src/lib/api/types.ts
+```
+
+Demo steuern (Zeitraffer, Störungen, Szenarien):
+
+```bash
+curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '{"speed": 120}'
+curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '{"scenario": "sunny_surplus"}'
+curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '{"fault_key": "grid_power_kw", "fault_quality": "unavailable", "fault_duration_s": 300}'
+```
+
+## Phasen
+
+0 Analyse ✔ · **1 Demo-Modus (dieser Stand)** · 2 Read-only Live · 3 Manuelle Steuerung · 4 Rule-Based HEMS ·
+5 Smart Scheduler · 6 Optimizer – Details und Definition of Done in Abschnitt 14 des Projektplans.

@@ -1,0 +1,60 @@
+[project]
+name = "duckcurve-home"
+version = "0.1.0"
+description = "Duck Curve Home – Home Energy Management System (Monorepo-Wurzel)"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["packages/hems-core", "apps/api"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "hypothesis>=6.112",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "httpx>=0.27",
+    "import-linter>=2.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["packages/hems-core/src", "apps/api/src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "N", "RUF", "ANN"]
+ignore = ["ANN401", "RUF012", "RUF001", "RUF002", "RUF003"]  # deutsche Typografie in Docstrings ist gewollt
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*" = ["ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "packages/hems-core/src:apps/api/src"
+exclude = ["tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/hems-core/tests", "apps/api/tests"]
+asyncio_mode = "auto"
+addopts = "-q"
+
+[tool.importlinter]
+root_packages = ["hems_core", "dch_api"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "hems_core bleibt frei von I/O-Schichten"
+type = "forbidden"
+source_modules = ["hems_core"]
+forbidden_modules = ["dch_api", "fastapi", "sqlalchemy", "httpx", "aiomqtt", "starlette"]
+
+[[tool.importlinter.contracts]]
+name = "Router importieren keine Integrationen direkt"
+type = "forbidden"
+source_modules = ["dch_api.routers"]
+forbidden_modules = ["dch_api.integrations"]
