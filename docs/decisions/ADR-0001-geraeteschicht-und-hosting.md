@@ -1,6 +1,6 @@
 # ADR-0001 – Geräteschicht und Hosting (offen, Entscheidung vor Phase 2)
 
-**Status:** vorgeschlagen · **Datum:** 2026-09-04
+**Status:** angenommen (2026-09-04, Betreiber: kein Nabu Casa, Home Assistant OS) · **Datum:** 2026-09-04
 
 ## Kontext
 
@@ -29,14 +29,20 @@ unverändert: Shelly-Auto-Off als Geräteeinstellung (E0), HA-Automation als Wä
 Für Schaltbefehle setzt der HA-Adapter `switch.turn_on`; da HA den Shelly-Timer nicht mitgeben kann, muss der
 Auto-Off **im Shelly** konfiguriert sein (Phase 3 prüft das).
 
-## Offene Fragen an den Betreiber
+## Entscheidung
 
-1. Nabu Casa vorhanden? (dann Variante C ohne Komponente im Haus)
-2. HA OS oder HA in Docker? (bestimmt, wie eine Mini-Bridge liefe)
-3. Entity-IDs aller Sensoren/Relais (Discovery-Skript in Phase 2)
+**Option C mit Bridge als Home-Assistant-Add-on.** Antworten des Betreibers: kein Nabu Casa, Home Assistant OS.
+Ein Add-on ist ein vom Supervisor verwalteter Container: Es erhält den Zugang zur HA-API über den Supervisor-Proxy
+(`ws://supervisor/core/websocket`, `SUPERVISOR_TOKEN`), braucht keinen eigenen Docker-Host und darf ausgehende
+Verbindungen öffnen. Die Bridge liest Entitäten per WebSocket (`subscribe_entities`), schaltet über HA-Dienste und
+spricht ausgehend per WSS mit der API auf Railway (Protokoll: Plan Abschnitt 17.2). Wird später Nabu Casa
+abonniert, kann der Worker direkt auf die HA-WebSocket-API zugreifen; der Adapter ist identisch.
 
 ## Konsequenzen
 
-- Phase 2 implementiert `integrations/home_assistant` (WebSocket `subscribe_entities`, REST-Historie) im Worker
-  und den Postgres-Unterbau; Compose bleibt für lokale Entwicklung und als Profil A erhalten.
-- Die Bridge-Pakete aus Abschnitt 6 des Plans werden nur gebaut, wenn Nabu Casa fehlt.
+- Phase 2 baut: PostgreSQL mit Alembic auf Railway, `integrations/home_assistant` (Adapter, Entity-Mapping),
+  `apps/bridge` als HA-Add-on (Repository-Struktur für lokale Add-ons), Bridge-Ingest in der API mit
+  Device-Token, Tibber- und Wetter-Provider, PV-Forecast v1, Railway-Konfiguration.
+- Die Rückfallebenen bleiben: Shelly-Auto-Off als Geräteeinstellung (E0), HA-Automation als Wächter (E1) – sie
+  läuft auf demselben Host wie das Add-on und überwacht dessen Heartbeat-Entität –, TTL im Regler (E2/E3).
+- Docker Compose bleibt für Entwicklung und Demo; Profil A (alles lokal) bleibt technisch möglich.
