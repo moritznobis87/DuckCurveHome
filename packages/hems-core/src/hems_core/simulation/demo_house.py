@@ -286,7 +286,7 @@ class DemoHouse:
 
     def _hp_control(self, dt_s: float) -> None:
         """Eigene Regelung der Wärmepumpe + Reaktion auf K1/K2 (Näherung ELCO-Verhalten)."""
-        top, mid_top, mid_bottom, _ = self.temps
+        top, _, mid_bottom, _ = self.temps
         since_start = (self.now - self.hp_since).total_seconds() if self.hp_since else None
         since_stop = (self.now - self.hp_stopped_at).total_seconds() if self.hp_stopped_at else 1e9
         want = self.hp_running
