@@ -7,6 +7,13 @@ Duck Curve Home ist ein Home-Energy-Management-System (HEMS) für ein einzelnes 
 visualisiert Energieflüsse und Zustände, bedient ausgewählte Aktoren und optimiert in späteren Phasen die
 Wärmepumpe als flexible thermische Last. Der primäre Bildschirm ist ein wandmontiertes iPad im Querformat.
 
+**Revision 2 (4. September 2026):** Duck Curve Home ist ein **eigenständiges System**. Es hängt weder von Home
+Assistant noch von der bestehenden InfluxDB ab. Ein lokaler Agent („Bridge“) spricht direkt mit den Geräten (Shelly,
+MyEnergi, SolarEdge) und den Cloud-Diensten (Tibber, Wetter); alle Daten liegen in einer eigenen PostgreSQL-Datenbank.
+Home Assistant kann parallel weiterlaufen, wird aber weder gelesen noch geschrieben. Da damit alle Datenquellen und
+Aktoren im Haus liegen, stellt Abschnitt 15 zwei Hosting-Profile gegenüber – **lokaler Mini-Rechner (empfohlen)**
+oder **Railway mit Bridge** – und bittet um eine Entscheidung vor Phase 2.
+
 Dieses Dokument ist das Ergebnis von **Phase 0** und beantwortet die im Auftrag genannten Punkte in der
 angegebenen Reihenfolge. Es ist bewusst eine Entscheidungsgrundlage, kein Lastenheft: Wo Alternativen
 bestehen, wird die Wahl begründet und die verworfene Option benannt. Abschnitt 25 sammelt die offenen Fragen,
@@ -21,14 +28,14 @@ die vor oder während Phase 1/2 mit dem Betreiber zu klären sind.
 5. Technologieentscheidung
 6. Komponentenstruktur (Projektstruktur)
 7. Datenmodell und Vorzeichenkonvention
-8. Integrationsstrategie Home Assistant / InfluxDB
+8. Integrationsstrategie Geräte (Shelly, MyEnergi, SolarEdge, Tibber)
 9. Strategie für Live-Daten
 10. Wärmepumpen-Steuerungsarchitektur
 11. Safety-Konzept
 12. Optimierungs-Roadmap
 13. UI-/UX-Konzept
 14. Empfohlene Projektphasen
-15. Railway-Zielarchitektur
+15. Hosting-Zielarchitektur: lokal (empfohlen) oder Railway
 16. PostgreSQL-Datenmodell
 17. Sichere Verbindung Railway ↔ Haus
 18. Weather Forecast Provider
@@ -155,18 +162,20 @@ Amber = Hauptserie, Mist = Referenz, gestrichelt (7 7) = Vergleichsserie.
 
 ### 3.1 Leitgedanken
 
-1. **Das Haus bleibt ohne Duck Curve Home funktionsfähig.** Home Assistant, MyEnergi-HEMS und die
-   Wärmepumpen-Regelung arbeiten wie heute weiter. Duck Curve Home legt sich als Beobachter und Optimierer darüber
-   und greift nur über die zwei dafür vorgesehenen potenzialfreien Kontakte ein. Jeder Eingriff ist zeitlich
-   begrenzt (TTL) und fällt ohne Bestätigung von selbst zurück.
-2. **Verbindung nur von innen nach außen.** Ein kleiner lokaler Agent („Bridge“) baut eine ausgehende,
-   authentifizierte WSS-Verbindung zu Railway auf. Home Assistant und InfluxDB werden nicht ins Internet gestellt.
-3. **Hexagonale Architektur.** Domänenmodell, Regler und Planer sind reines Python ohne I/O. Integrationen
-   (Home Assistant, InfluxDB, Tibber, Open-Meteo, PV-Forecast, Shelly) sind austauschbare Adapter hinter
-   Protokollen. Dadurch kann der Regler später unverändert vom Cloud-Backend auf die Bridge (Edge) wandern.
-4. **Erklärbarkeit ist ein Datenmodell, kein UI-Text.** Jede Entscheidung wird als strukturierter Datensatz mit
+1. **Eigenständig.** Duck Curve Home hat eigene Geräteintegrationen, eine eigene Datenbank und eine eigene
+   Steuerlogik. Home Assistant und InfluxDB sind keine Abhängigkeiten – weder für Daten noch für Schaltbefehle. Sie
+   dürfen weiterlaufen; Abschnitt 8.7 beschreibt, worauf beim Parallelbetrieb zu achten ist.
+2. **Das Haus bleibt ohne Duck Curve Home funktionsfähig.** MyEnergi-HEMS und die Wärmepumpen-Regelung arbeiten wie
+   heute weiter. Duck Curve Home greift nur über die zwei dafür vorgesehenen potenzialfreien Kontakte ein. Jeder
+   Eingriff ist zeitlich begrenzt (TTL) und fällt ohne Bestätigung von selbst zurück.
+3. **Verbindung nur von innen nach außen.** Die Bridge im Haus baut eine ausgehende, authentifizierte WSS-Verbindung
+   zu Railway auf. Kein Gerät im Haus wird ins Internet gestellt.
+4. **Hexagonale Architektur.** Domänenmodell, Regler und Planer sind reines Python ohne I/O. Integrationen (Shelly,
+   MyEnergi, SolarEdge, Tibber, Open-Meteo, PV-Forecast) sind austauschbare Adapter hinter Protokollen. Der Regler
+   kann später unverändert vom Cloud-Backend auf die Bridge (Edge) wandern.
+5. **Erklärbarkeit ist ein Datenmodell, kein UI-Text.** Jede Entscheidung wird als strukturierter Datensatz mit
    Reason-Codes, Eingangsgrößen und Gültigkeit persistiert. Das Dashboard rendert daraus „Was / Warum / Was kommt“.
-5. **Stufenweise Intelligenz.** Regelbasiert → prognosebewusst → rollierende Optimierung; jede Stufe ist ein
+6. **Stufenweise Intelligenz.** Regelbasiert → prognosebewusst → rollierende Optimierung; jede Stufe ist ein
    `Planner`-Adapter hinter demselben Interface, der Regler-Kern und die Safety-Schicht bleiben gleich.
 
 ### 3.2 Systemübersicht
@@ -174,55 +183,65 @@ Amber = Hauptserie, Mist = Referenz, gestrichelt (7 7) = Vergleichsserie.
 ```
 ┌──────────────────────────────── Haus (LAN, Geilenkirchen) ────────────────────────────────┐
 │                                                                                            │
-│  SolarEdge  MyEnergi (Libbi/Zappi/Harvi)  Shelly 3EM  Shelly Temp ×4  Shelly Relais       │
-│      └──────────────┬─────────────────────────┴───────────────┴──────────────┘             │
-│                     ▼                                                                      │
-│              Home Assistant  ──────────►  InfluxDB (Rohmesswerte, Historie)                │
-│                     │ WebSocket API (lokal, Long-Lived Token)      ▲ Flux/InfluxQL (lokal) │
-│                     ▼                                              │                        │
-│           ┌──────────────────────────────────────────────────────────────┐                 │
-│           │  duckcurve-bridge (Python, Docker auf dem HA-Host)           │                 │
-│           │  • abonniert Entitäten, normalisiert, puffert (SQLite-Queue) │                 │
-│           │  • führt Aktor-Kommandos mit TTL aus, meldet Ist-Zustand     │                 │
-│           │  • lokaler Watchdog: Kontakte fallen ohne Cloud zurück       │                 │
-│           │  • Query-Proxy für InfluxDB-Backfill                         │                 │
-│           └──────────────────────────────┬───────────────────────────────┘                 │
-└──────────────────────────────────────────┼─────────────────────────────────────────────────┘
-                                           │ ausgehend WSS + Device-Token (mTLS optional)
-                                           ▼
+│  Shelly-Relais (K1, K2, Kaffee, Lichter)   Shelly 3EM (WP)   Shelly-Temperatur ×4 (Puffer) │
+│        │ MQTT (lokal, push) + RPC/HTTP (Befehle, Status)                                    │
+│        ▼                                                                                    │
+│  ┌── Mosquitto (lokaler MQTT-Broker, nur LAN) ──┐                                           │
+│  │                                              │                                           │
+│  │   ┌──────────────────────────────────────────▼──────────────────────────────┐            │
+│  │   │  duckcurve-bridge (Python, Docker-Compose auf einem Mini-Rechner)       │            │
+│  │   │  • integrations/shelly     MQTT-Abonnent, RPC-Client, Auto-Off-Timer     │            │
+│  │   │  • integrations/myenergi   Cloud-API (Zappi, Libbi, Harvi) alle 10–15 s  │◄── Cloud   │
+│  │   │  • integrations/solaredge  Modbus TCP (SunSpec) lokal, 1–2 s             │◄── Inverter│
+│  │   │  • Normalisierung, Vorzeichen, Qualität, lokaler Ringpuffer (SQLite)     │            │
+│  │   │  • Kommando-Ausführung mit TTL + Ack, lokaler Wächterprozess (Guardian)  │            │
+│  │   │  • Status-Seite http://bridge.local:8080 (nur LAN)                       │            │
+│  │   └──────────────────────────────┬──────────────────────────────────────────┘            │
+│  └─────────────────────────────────┼─────────────────────────────────────────────────────── │
+└────────────────────────────────────┼───────────────────────────────────────────────────────┘
+                                     │ ausgehend WSS + Device-Token
+                                     ▼
 ┌──────────────────────────────────── Railway Project ───────────────────────────────────────┐
 │                                                                                            │
 │  ┌───────────────┐   SSE (Live-State)   ┌──────────────────────────────────────────────┐   │
 │  │  web (Next.js)│◄─────────────────────│  api (FastAPI)                               │   │
-│  │  iPad-Kiosk   │──── REST (Befehle) ─►│  • /ingest (Bridge-WS)  • /stream (SSE)      │   │
+│  │  iPad-Kiosk   │──── REST (Befehle) ─►│  • /bridge/ws (Ingest)  • /live/stream (SSE) │   │
 │  └───────────────┘                      │  • REST /api/v1/*       • Auth (Kiosk-Token) │   │
 │                                         │  • LiveState (in-memory) • Persist-Batcher   │   │
 │                                         └───────────────┬──────────────────────────────┘   │
 │                                                         │ SQLAlchemy async                 │
 │  ┌──────────────────────────────────┐                   ▼                                  │
-│  │  worker (gleiches Python-Image)  │◄──────────► PostgreSQL (Railway)                     │
-│  │  • Control-Loop (10 s Takt)      │              Konfiguration, Entscheidungen,           │
-│  │  • Forecast-Jobs (Wetter/PV/Preis)│             Forecasts, Pläne, Events,               │
-│  │  • Planner (alle 15 min)         │              Messwerte (raw 14 d, 15-min lang)        │
-│  │  • Aggregation/Retention         │                                                      │
+│  │  worker (gleiches Python-Image)  │◄──────────► PostgreSQL (Railway) – EINZIGE Datenbank │
+│  │  • Control-Loop (10 s Takt)      │              Rohmesswerte (partitioniert, gestuft),   │
+│  │  • Forecast-Jobs (Wetter/PV/Preis)│             Aggregate, Konfiguration, Entscheidungen,│
+│  │  • Planner (alle 15 min)         │              Forecasts, Pläne, Events                 │
+│  │  • Aggregation/Retention/Backup  │                                                      │
 │  └──────────────┬───────────────────┘                                                      │
-│                 │ ausgehend HTTPS                                                           │
+│                 │ ausgehend HTTPS / WSS                                                     │
 └─────────────────┼──────────────────────────────────────────────────────────────────────────┘
                   ▼
-   Tibber GraphQL · Open-Meteo · Forecast.Solar/Solcast (optional)
+   Tibber GraphQL (+ Pulse-Live, falls vorhanden) · Open-Meteo · Forecast.Solar/Solcast (optional)
 ```
 
-**Warum Control-Loop in der Cloud und nicht auf der Bridge?** Deployment, Beobachtbarkeit, Tests und Konfiguration
-sind in der Cloud deutlich einfacher; Latenz spielt bei einem 10-Sekunden-Takt keine Rolle. Der Preis ist, dass bei
-Internet-Ausfall keine Optimierung stattfindet – das ist akzeptabel, weil die Wärmepumpe dann einfach in ihre
-eigene Regelung zurückfällt (siehe Safety-Konzept). Der Regler-Kern (`packages/hems-core`) ist I/O-frei und kann in
-einer späteren Phase optional auf der Bridge laufen, wenn Offline-Optimierung gewünscht wird.
+Das Bild zeigt **Profil B (Railway + Bridge)**. Im empfohlenen **Profil A (lokal)** laufen die Railway-Kästen
+ebenfalls auf dem Mini-Rechner im Haus, die Bridge wird zum Modul des Workers, und der WSS-Uplink entfällt; der
+Zugriff von außen erfolgt über einen Cloudflare Tunnel (Abschnitt 15).
 
-**Warum Worker und API getrennt?** Der Control-Loop und die Planer müssen genau einmal laufen. Railway kann die
-API horizontal skalieren oder bei Deploys kurzzeitig zwei Instanzen halten. Der Worker ist ein eigener Service mit
-genau einer Replika und sichert das zusätzlich per PostgreSQL-Advisory-Lock (Leader-Lock). In Phase 1 laufen API
-und Worker aus demselben Docker-Image, nur mit anderem Startkommando; lokal kann beides in einem Prozess laufen
-(`DCH_ROLE=all`).
+**Warum ein lokaler MQTT-Broker?** Shelly-Geräte aller Generationen können ihre Zustände per MQTT pushen; das ist
+der einzige Weg, batteriebetriebene Sensoren (schlafen, wachen periodisch auf) und Relais-Statusänderungen
+verzögerungsfrei zu erhalten, ohne zu pollen. Mosquitto läuft im selben Docker-Compose wie die Bridge, nur im LAN,
+mit Benutzer/Passwort. Für Befehle nutzt die Bridge die Shelly-RPC-/HTTP-Schnittstelle direkt (synchron, mit
+Antwort), MQTT dient dem Lesen.
+
+**Warum Control-Loop in der Cloud und nicht auf der Bridge?** Deployment, Beobachtbarkeit, Tests und Konfiguration
+sind in der Cloud einfacher; Latenz spielt bei einem 10-Sekunden-Takt keine Rolle. Bei Internet-Ausfall findet keine
+Optimierung statt – akzeptabel, weil die Wärmepumpe dann in ihre eigene Regelung zurückfällt (Safety-Konzept). Der
+Regler-Kern ist I/O-frei und kann in einer späteren Phase auf der Bridge laufen, wenn Offline-Optimierung gewünscht
+wird.
+
+**Warum Worker und API getrennt?** Control-Loop und Planer müssen genau einmal laufen. Der Worker ist ein Service
+mit genau einer Replika und sichert das per PostgreSQL-Advisory-Lock. In Phase 1 laufen API und Worker aus demselben
+Docker-Image mit anderem Startkommando; lokal kann beides in einem Prozess laufen (`DCH_ROLE=all`).
 
 ### 3.3 Schichten im Backend
 
@@ -230,7 +249,7 @@ und Worker aus demselben Docker-Image, nur mit anderem Startkommando; lokal kann
 apps/api, apps/worker (FastAPI / Prozess-Hülle)
    │
    ▼
-application/           Use-Cases: ingest_snapshot, switch_actuator, set_mode, run_control_tick, run_planner
+application/           Use-Cases: ingest_frame, switch_actuator, set_mode, run_control_tick, run_planner
    │
    ▼
 packages/hems-core/    Domäne (reines Python, keine I/O):
@@ -241,58 +260,57 @@ packages/hems-core/    Domäne (reines Python, keine I/O):
    forecasting/        Provider-Protokolle, Kalibrierung
    │
    ▼
-integrations/          Adapter: home_assistant, influxdb, tibber, open_meteo, forecast_solar, pvlib, shelly,
-                       bridge_protocol, demo (Simulation)
+integrations/          Cloud-Adapter: tibber, open_meteo, forecast_solar, pvlib_forecast, bridge_protocol, demo
 infrastructure/        Postgres-Repositories (SQLAlchemy), SSE-Broker, Settings, Logging, Scheduler
+
+apps/bridge/integrations/   Geräte-Adapter: shelly (MQTT + RPC), myenergi (Cloud-API), solaredge (Modbus TCP)
 ```
 
-Die Domänenschicht kennt keine Entity-IDs von Home Assistant und keine Tibber-Felder. Adapter übersetzen in
-Domänenobjekte; die Zuordnung (z. B. `sensor.solaredge_ac_power → pv_power_kw`) ist Konfiguration.
+Die Domänenschicht kennt keine Shelly-Topics und keine MyEnergi-Feldnamen. Adapter übersetzen in Domänenobjekte; die
+Zuordnung (z. B. `shellyplus1-abc/status/switch:0 → hp_release_contact`) ist Konfiguration.
 
 ## 4. Datenfluss
 
 ### 4.1 Live-Pfad (Ziel: 1–5 s Ende-zu-Ende)
 
 ```
-Shelly/MyEnergi/SolarEdge → Home Assistant (state_changed)
-  → Bridge: subscribe_entities (WS) → Normalisierung (Einheit, Vorzeichen, Qualität)
-  → Bridge: Telemetrie-Frame alle 1–2 s (nur geänderte Werte, Batch) → WSS → api:/ingest
-  → api: LiveState.apply(frame) → EnergySnapshot (vollständig, mit Qualitätsflags)
+Shelly (MQTT push ≈ 1 s) · SolarEdge (Modbus 1–2 s) · MyEnergi (Cloud-Poll 10–15 s)
+  → Bridge: Normalisierung (Einheit, Vorzeichen, Qualität, observed_at je Quelle)
+  → Bridge: Ringpuffer (SQLite, 7 Tage Rohwerte) + Telemetrie-Frame alle 1 s (nur Änderungen) → WSS → api
+  → api: LiveState.apply(frame) → EnergySnapshot (vollständig, mit Qualitätsflags, Bilanzprüfung)
   → api: SSE-Broker fan-out (max. 1 Frame/s pro Client, Koaleszierung)
   → web: Store aktualisiert → Energiefluss/Tank/KPIs rendern
-  → api: Persist-Batcher schreibt alle 5 s in measurements_raw (Postgres)
-  → worker: liest LiveState-Spiegel aus Postgres (`live_state`-Tabelle, 1 Zeile, alle 2 s) oder via
-    interner HTTP-Abfrage der API; entscheidet, schreibt control_decisions, sendet Kommandos
+  → api: Persist-Batcher schreibt alle 5 s in measurements_raw (Postgres, COPY-Batch)
+  → worker: liest live_state-Spiegel aus Postgres (alle 2 s); entscheidet; schreibt control_decisions;
+    stellt actuator_commands ein → api (LISTEN/NOTIFY) → Bridge → Shelly RPC → Ack zurück
 ```
 
-Der Worker bezieht den Live-Zustand nicht über die Bridge-Verbindung (die hält die API), sondern aus einem
-kleinen `live_state`-Spiegel in Postgres, den die API bei jedem Frame aktualisiert (UPSERT, eine Zeile pro
-Sensor). Das hält die Verantwortung klar: Die API besitzt die Bridge-Verbindung, der Worker besitzt die Regelung.
-Kommandos gehen vom Worker über eine `actuator_commands`-Tabelle plus `LISTEN/NOTIFY` an die API, die sie an die
-Bridge schickt und die Bestätigung zurückschreibt.
+Die API besitzt die Bridge-Verbindung, der Worker besitzt die Regelung; Kopplung ausschließlich über Postgres.
 
 ### 4.2 Historischer Pfad
 
 ```
-InfluxDB (lokal) ◄── Bridge Query-Proxy ◄── api (Backfill-Auftrag)
-  → 1-min-Mittelwerte für Lücken (z. B. nach Internet-Ausfall) → measurements_1min
-  → worker: Aggregation measurements_raw → measurements_15min (Energie in kWh, Mittel-/Min-/Max-Leistung)
-  → 24h-Chart: measurements_1min (heute/gestern) + Forecast-Reihen + Plan-Fenster aus Postgres
+measurements_raw (14 Tage)  ─► stündlicher Job ─► measurements_10s (180 Tage) ─► measurements_1min (3 Jahre)
+                                                 ─► measurements_15min (unbegrenzt) ─► energy_daily
+24h-Chart: measurements_1min (heute/gestern) + Live-Fortschreibung + Forecast-Reihen + Plan-Fenster
+Nachlieferung: Bridge sendet nach Verbindungsabbruch den Ringpuffer ab letzter bestätigter Sequenz;
+               länger als 1 h Rückstand → verdichtet auf 10-s-Mittel (Rohwerte bleiben 7 Tage auf der Bridge)
 ```
 
-Das Dashboard liest den Verlauf ausschließlich aus Postgres. InfluxDB bleibt hochaufgelöstes Archiv und Quelle für
-Backfill/Kalibrierung, ist aber **nicht** im Live-Pfad und **nicht** für den Heizbetrieb erforderlich.
+Es gibt keine zweite Zeitreihendatenbank. Alles, was das Dashboard und die Modelle brauchen, liegt in PostgreSQL.
+Optional (nicht Teil der Architektur): ein einmaliger CSV-Import historischer Daten aus dem bisherigen System für
+die Modellkalibrierung (`tools/import-history`), der danach nicht mehr benötigt wird.
 
 ### 4.3 Steuerpfad
 
 ```
 worker: ControlTick (10 s)
   Inputs: EnergySnapshot, BufferState, HeatPumpState, Preise, Plan, Modus, Override, Forecasts
-  → Planner-Empfehlung (was wäre jetzt sinnvoll) → HeatPumpController (Zustandsmaschine)
+  → Planner-Empfehlung → HeatPumpController (Zustandsmaschine)
   → Guards (Mindestlaufzeit, Mindestauszeit, Hysterese, max. Sperrdauer, Frostschutz, Sensorqualität)
   → Decision {k1_release, k2_block, reason_codes[], explanation, valid_until}
-  → nur bei Änderung: ActuatorCommand {target, state, ttl_s, decision_id} → api → Bridge → HA → Shelly
-  → Bridge meldet Ist-Zustand des Relais zurück → Command ack/failed → Event
+  → nur bei Änderung/Refresh: ActuatorCommand {target, state, ttl_s, decision_id} → api → Bridge
+  → Bridge: Shelly RPC `Switch.Set {on, toggle_after: ttl_s}` → liest Status zurück → Ack/Fail → Event
 ```
 
 ### 4.4 Planungspfad
@@ -301,7 +319,7 @@ worker: ControlTick (10 s)
 worker: alle 15 min + bei neuen Preisen/Forecasts/Modus-Wechsel
   → Forecast-Refresh (Wetter 1 h, PV 1 h, Preise 13:00–15:00 für morgen, danach stündlich)
   → HeatDemandModel (48 h, 15 min) → BufferModel-Simulation
-  → Planner erzeugt Plan[96 Intervalle] mit reason je Intervall → plans/plan_intervals
+  → Planner erzeugt Plan[96] mit reason je Intervall → plans/plan_intervals
   → Dashboard: Plan-Fenster im 24h-Chart, Intelligence Card „Nächste Aktion“
 ```
 
@@ -324,9 +342,13 @@ geprüft. Ergebnis: Sie passt, und sie ist mit valyze bereits erprobt. Die wicht
 | Scheduler/Control-Loop | **asyncio-Tasks im Worker** mit Postgres-Advisory-Lock; APScheduler nur für Cron-artige Jobs (Forecast-Refresh, Retention) | Celery/RQ brauchen Redis – unnötig für eine Handvoll Jobs; der 10-s-Regeltakt gehört in einen langlebigen Prozess, nicht in eine Job-Queue |
 | Live-Transport Dashboard | **Server-Sent Events** (HTTP, `EventSource`) | WebSocket wäre bidirektional, aber das Dashboard sendet Befehle selten (REST reicht). `EventSource` bringt Auto-Reconnect und `Last-Event-ID` mit, läuft problemlos durch Railway-Proxy und iPad-Safari, keine Ping/Pong-Logik nötig |
 | Transport Bridge ↔ Cloud | **ausgehende WebSocket-Verbindung (WSS)** mit JSON-Frames, Device-Token, Sequenznummern und Ack | MQTT-Broker (z. B. Mosquitto auf Railway) wäre Standard im IoT, aber ein zusätzlicher Dienst mit eigener Auth; Tailscale/VPN würde HA erreichbar machen, aber die Cloud muss dann in das Hausnetz „hinein“ – umgekehrt zur gewünschten Richtung. Das Transport-Protokoll ist gekapselt (`BridgeTransport`), MQTT kann später ergänzt werden |
-| Datenbank | **PostgreSQL 16 (Railway)**, native Partitionierung für Messwerte, Retention-Job | TimescaleDB ist auf Railways Standard-Postgres nicht als Extension verfügbar; bei ~1 Wert/s × 15 Sensoren ≈ 1,3 Mio. Zeilen/Tag ist natives Partitioning mit 14-Tage-Retention für Rohwerte ausreichend. Bewertung Timescale in 16.5 |
-| Historische Rohdaten | **InfluxDB bleibt** (lokal), Zugriff nur über Bridge-Proxy für Backfill | keine Migration in v1 |
+| Datenbank | **PostgreSQL 16 als einzige Datenbank** (lokal im Compose oder Railway-Managed, Abschnitt 15) – Rohmesswerte gestuft (14 Tage roh, 180 Tage 10 s, 3 Jahre 1 min, 15 min unbegrenzt), native Partitionierung, Retention-Job | keine zweite Zeitreihen-DB (kein InfluxDB, kein VictoriaMetrics): ein System, ein Backup, ein Abfragepfad. TimescaleDB ist auf Railways Standard-Postgres nicht verfügbar; natives Partitioning reicht für ~15 Sensoren. Bewertung Timescale in 16.5 |
+| Geräte-Integration Shelly | **MQTT (lokaler Mosquitto) zum Lesen, Shelly-RPC/HTTP zum Schalten** (`aiomqtt`, `httpx`) | Polling per HTTP verpasst Zustände und weckt keine Batteriesensoren; CoIoT (Gen1) ist proprietär und in Gen2 entfallen; Shelly-Cloud-API ist nicht lokal |
+| Geräte-Integration MyEnergi | **MyEnergi-Cloud-API** (Digest-Auth mit Hub-Seriennummer + API-Key, `cgi-jstatus-*`), Poll 10–15 s | es gibt keine offizielle lokale API des Hubs; die Cloud-API liefert Zappi, Libbi und Harvi in einem Aufruf |
+| Geräte-Integration SolarEdge | **Modbus TCP (SunSpec) am Wechselrichter**, 1–2 s, `pymodbus` | die SolarEdge-Monitoring-Cloud-API ist auf 300 Aufrufe/Tag und 15-min-Auflösung begrenzt – untauglich für Live; sie dient nur der täglichen Energie-Abstimmung. PV-Leistung ist zusätzlich über den MyEnergi-CT (`gen`) verfügbar |
+| Strompreise / Zählerlive | **Tibber GraphQL** (Preise) und optional **Tibber-Live-Subscription** (Pulse) aus dem Worker | – |
 | Auth | **Single-Tenant**: Admin-Passwort (Argon2id) + Kiosk-Pairing-Code → langlebiges Geräte-Session-Cookie (HttpOnly) über Next-BFF; Bridge mit eigenem Device-Token (rotierbar) | kein OAuth-Provider nötig; valyze-Muster (iron-session, Bearer bleibt serverseitig) wird übernommen |
+| Haus-Rechner | **Docker Compose** auf einem kleinen Always-on-Rechner im LAN (Raspberry Pi 5 / Intel NUC): Profil A das ganze System, Profil B nur bridge + mosquitto + guardian; Auto-Restart, Hardware-Watchdog | Betrieb als HA-Add-on entfällt bewusst (Eigenständigkeit); Details Abschnitt 15 |
 | Konfiguration | **`.env` für Secrets/Umgebung (pydantic-settings), YAML für Anlage/Haus/Regler (versioniert in Postgres, Datei als Seed)** | TOML ist gleichwertig; YAML deckt sich mit HA-Konventionen und dem Auftragsbeispiel |
 | Logging | **structlog → JSON** (Railway-Logs), Korrelation über `decision_id`/`command_id` | – |
 | Tests Backend | **pytest, pytest-asyncio, hypothesis (Guards), freezegun/time-machine (Mindestzeiten)**, Testcontainers-freie Postgres über GitHub-Service-Container | – |
@@ -386,16 +408,26 @@ DuckCurveHome/
 │   │       ├── infrastructure/      # db/ (models, repositories, migrations/), sse_broker.py, live_state.py, logging.py
 │   │       └── schemas/             # API-Schemas, wo sie von Domänenmodellen abweichen
 │   │
-│   ├── bridge/                      # lokaler Agent im Haus
+│   ├── bridge/                      # lokaler Agent im Haus (eigenständig, ohne Home Assistant)
 │   │   ├── Dockerfile
+│   │   ├── docker-compose.yml       # bridge + mosquitto + guardian
+│   │   ├── mosquitto/               # mosquitto.conf, ACL-Vorlage
+│   │   ├── devices.example.yaml     # Geräte-Mapping (IPs, Topics, Seriennummern → Domänenschlüssel)
 │   │   └── src/dch_bridge/
 │   │       ├── main.py
 │   │       ├── settings.py          # DCH_BRIDGE_*
-│   │       ├── home_assistant/      # ws_client.py (subscribe_entities), rest_client.py, entity_map.py
-│   │       ├── influxdb/            # query_proxy.py (v1 InfluxQL / v2 Flux)
-│   │       ├── uplink/              # ws_uplink.py, queue.py (SQLite), protocol.py
-│   │       ├── actuators/           # executor.py (TTL, Ack), watchdog.py
-│   │       └── discovery.py         # listet HA-Entitäten für die Konfiguration
+│   │       ├── integrations/
+│   │       │   ├── shelly/          # mqtt_listener.py, rpc_client.py (Gen2/Gen3), gen1_client.py, models.py
+│   │       │   ├── myenergi/        # client.py (Digest-Auth, Director-Redirect), parser.py, models.py
+│   │       │   ├── solaredge/       # modbus_client.py (SunSpec), registers.py
+│   │       │   └── protocol.py      # DeviceSource-Protocol (read stream), Actuator-Protocol (set/verify)
+│   │       ├── normalize/           # units.py, signs.py, quality.py, mapping.py
+│   │       ├── store/               # ring_buffer.py (SQLite WAL, 7 Tage), outbox.py (Sequenzen, Acks)
+│   │       ├── uplink/              # ws_uplink.py, protocol.py, backoff.py
+│   │       ├── actuators/           # executor.py (TTL via toggle_after, Ack), refresh.py
+│   │       ├── guardian.py          # eigener Prozess: Wächter, setzt Kontakte bei Ausfall zurück
+│   │       ├── status_page.py       # http://bridge:8080 (nur LAN)
+│   │       └── discovery.py         # scannt Shelly (mDNS/MQTT-Announce), listet MyEnergi-Geräte, Modbus-Test
 │   │
 │   └── web/                         # Next.js
 │       ├── Dockerfile
@@ -487,7 +519,7 @@ class Measurement(BaseModel):
     value: float | None
     observed_at: datetime      # Zeitpunkt der Messung (Quelle), nicht des Empfangs
     quality: Quality
-    source: str                # z. B. "ha:sensor.shelly_3em_total_power"
+    source: str                # z. B. "shelly:shellypro3em-a1b2c3/em:0" oder "myenergi:harvi/12345678"
 
 class EnergySnapshot(BaseModel):
     timestamp: datetime        # Zeitpunkt der Zusammenstellung (UTC)
@@ -503,7 +535,7 @@ class EnergySnapshot(BaseModel):
     buffer_temps_c: BufferTemperatures     # top, mid_top, mid_bottom, bottom (je Measurement)
     outdoor_temp_c: Measurement
     balance_residual_kw: float
-    # Stellgrößen-Ist (aus HA gelesen, nicht was wir gesendet haben):
+    # Stellgrößen-Ist (am Relais zurückgelesen, nicht was wir gesendet haben):
     hp_release_contact: Measurement        # K1 „PV-Überschuss“ (bool als 0/1)
     hp_block_contact: Measurement          # K2 „Netzbetreiber-Shutdown“ (bool als 0/1)
     actuators: dict[str, Measurement]      # coffee_machine, terrace_light, garden_fence_light …
@@ -538,90 +570,173 @@ Entscheidung, Plan, Forecast und Konfigurationsobjekte folgen in Abschnitten 10,
 - Geglättete Werte: exponentiell gewichteter Mittelwert (`ewma_seconds`, Default 180 s) für jede Regelgröße; die
   Guards arbeiten nur auf geglätteten Werten.
 
-## 8. Integrationsstrategie Home Assistant / InfluxDB
+## 8. Integrationsstrategie Geräte (Shelly, MyEnergi, SolarEdge, Tibber)
 
 ### 8.1 Grundsatz
 
-Home Assistant bleibt die Geräteschicht. Alle Sensoren (SolarEdge, MyEnergi, Shelly 3EM, Shelly-Temperaturen,
-Tibber-Preis, Wetter) und alle Aktoren (Shelly-Relais) sind bereits in HA integriert. Duck Curve Home spricht in v1
-deshalb **nur mit Home Assistant**, nicht direkt mit MyEnergi-Cloud, SolarEdge-API oder Shelly-Geräten. Das spart
-fünf Integrationen, vermeidet doppelte Polling-Lasten auf den Geräten und nutzt HA-Entitäten als stabile
-Abstraktion. Die Adapter-Ordner `integrations/myenergi`, `solaredge`, `shelly` werden angelegt, bleiben aber
-Platzhalter mit dokumentiertem Zweck (Direktzugriff nur, falls HA-Daten zu grob oder zu langsam sind – z. B. Shelly
-3EM liefert lokal 1-Hz-Werte, HA-Standard-Polling ggf. nur alle 10–30 s).
+Duck Curve Home liest und schaltet **direkt an den Geräten**. Es gibt keine Zwischenschicht (kein Home Assistant),
+keine Fremddatenbank (kein InfluxDB). Jede Geräteklasse hat einen Adapter in der Bridge, der ein gemeinsames
+Protokoll erfüllt:
 
-### 8.2 Home Assistant: Lesen
+```python
+class DeviceSource(Protocol):
+    name: str
+    async def stream(self) -> AsyncIterator[RawReading]: ...     # RawReading: source_ref, value, unit, observed_at, quality
+    async def health(self) -> SourceHealth: ...
 
-- **Transport:** HA WebSocket API (`ws://<ha>:8123/api/websocket`), Authentifizierung mit Long-Lived Access Token,
-  Kommando `subscribe_entities` mit expliziter `entity_ids`-Liste. Das liefert nur Änderungen (push), keine Polling-
-  Last, mit `last_changed`/`last_updated` je Entität.
-- **Backfill:** REST `GET /api/history/period/<start>?filter_entity_id=…&minimal_response` für die letzten Stunden
-  nach einem Bridge-Neustart; für längere Zeiträume InfluxDB (8.4).
-- **Entity-Mapping** als YAML in der Bridge (Beispiel, echte IDs sind offene Frage 25.1):
-
-```yaml
-home_assistant:
-  url: http://homeassistant.local:8123
-  token_env: DCH_BRIDGE_HA_TOKEN
-entities:
-  pv_power_kw:            { entity: sensor.solaredge_ac_power,              unit: W,  scale: 0.001 }
-  grid_power_kw:          { entity: sensor.myenergi_harvi_grid_power,        unit: W,  scale: 0.001, sign: import_positive }
-  battery_power_kw:       { entity: sensor.myenergi_libbi_power,            unit: W,  scale: 0.001, sign: discharge_positive }
-  battery_soc:            { entity: sensor.myenergi_libbi_soc,              unit: "%", scale: 0.01 }
-  ev_power_kw:            { entity: sensor.myenergi_zappi_power,            unit: W,  scale: 0.001 }
-  heat_pump_power_kw:     { entity: sensor.shelly_3em_wp_total_power,       unit: W,  scale: 0.001, stale_after_s: 60 }
-  buffer_temp_top_c:      { entity: sensor.shelly_temp_puffer_oben,         unit: "°C", stale_after_s: 900 }
-  buffer_temp_mid_top_c:  { entity: sensor.shelly_temp_puffer_mitte_oben }
-  buffer_temp_mid_bottom_c: { entity: sensor.shelly_temp_puffer_mitte_unten }
-  buffer_temp_bottom_c:   { entity: sensor.shelly_temp_puffer_unten }
-  electricity_price_ct_kwh: { entity: sensor.tibber_electricity_price,      unit: EUR/kWh, scale: 100 }
-  outdoor_temp_c:         { entity: sensor.outdoor_temperature }
-  hp_release_contact:     { entity: switch.shelly_wp_pv_freigabe,  kind: binary }
-  hp_block_contact:       { entity: switch.shelly_wp_evu_sperre,   kind: binary }
-actuators:
-  coffee_machine:         { entity: switch.shelly_kaffeemaschine, label: Kaffee }
-  terrace_light:          { entity: light.terrassenlicht,          label: Terrassenlicht }
-  garden_fence_light:     { entity: light.gartenzaun,              label: Gartenzaun }
-  hp_release_contact:     { entity: switch.shelly_wp_pv_freigabe,  label: WP PV-Freigabe, safety_class: heat_pump }
-  hp_block_contact:       { entity: switch.shelly_wp_evu_sperre,   label: WP Sperre,      safety_class: heat_pump }
+class Actuator(Protocol):
+    async def set(self, on: bool, ttl_s: int | None) -> ActuatorResult: ...   # setzt und verifiziert
+    async def read(self) -> bool | None: ...
 ```
 
-Die Vorzeichen-Übersetzung (`sign:`) passiert **ausschließlich** in der Bridge. Ab dem Uplink gilt die Konvention
-aus Abschnitt 7. Ein Discovery-Kommando (`dch-bridge discover --match "shelly|myenergi|solaredge|tibber"`) listet
-Entitäten mit Einheit und letztem Wert, um das Mapping zu erstellen.
+Das Mapping von Geräteschlüsseln auf Domänengrößen ist Konfiguration (`devices.yaml`, Beispiel in 8.6). Vorzeichen
+und Einheiten werden **ausschließlich** in der Bridge normalisiert; ab dem Uplink gilt die Konvention aus
+Abschnitt 7.
 
-**Zustände `unavailable`/`unknown`** werden nicht als 0 interpretiert, sondern als `Measurement(value=None,
-quality=UNAVAILABLE|UNKNOWN)` weitergegeben. Der letzte gute Wert wird nur für die Anzeige (ausgegraut, mit Alter)
-verwendet, nie für die Regelung.
+### 8.2 Shelly (Relais, 3EM, Temperatursensoren)
 
-### 8.3 Home Assistant: Schreiben (ab Phase 3)
+**Lesen über MQTT.** Ein lokaler Mosquitto-Broker (Docker, nur LAN, Benutzer/Passwort, ACL pro Gerät) empfängt die
+Zustände aller Shellys. In jedem Shelly wird MQTT auf den Broker konfiguriert (einmalig, Weboberfläche des Geräts).
 
-- `call_service` über WebSocket (`switch.turn_on/turn_off`, `light.turn_on/turn_off`) mit anschließender
-  Zustandsverifikation (Erwartung: Entität wechselt innerhalb `ack_timeout_s`, Default 5 s). Kein „fire and forget“.
-- Jedes Kommando trägt `command_id`, `decision_id`, `ttl_s`. Die Bridge führt eine lokale TTL-Tabelle: Läuft eine
-  TTL ohne Verlängerung ab, setzt die Bridge den Aktor auf seinen `safe_state` (Wärmepumpen-Kontakte: aus =
-  „kein Eingriff“; Licht/Kaffee: kein safe_state, TTL optional).
+| Gerätetyp | Generation | Topics / Verhalten | Rate |
+|---|---|---|---|
+| Relais (K1, K2, Kaffee, Lichter): Shelly 1/1PM/Plus 1/Plus 1PM/Pro | Gen1: `shellies/<id>/relay/0`, Gen2/3: `<id>/status/switch:0` (JSON mit `output`, `apower`, `temperature`) | Push bei Änderung + periodisch (Gen2 `status` alle 60 s konfigurierbar) | sofort |
+| Shelly 3EM (Wärmepumpe) | Gen1: `shellies/<id>/emeter/<0..2>/power`, `…/energy`; Pro 3EM (Gen2): `<id>/status/em:0` mit `total_act_power`, Phasen | Gen1 sendet Leistung jede Sekunde, Gen2 bei Änderung (Schwelle konfigurierbar) | ≈ 1 s |
+| Temperatursensoren Puffer | vermutlich **Shelly Plus 1 (PM) mit Plus Add-on und bis zu 5 DS18B20-Fühlern** (`<id>/status/temperature:100…104`) oder vier **Shelly H&T** (Batterie, `shellies/<id>/sensor/temperature`, meldet bei Änderung ≥ 0,5 K bzw. periodisch) | Add-on: Push bei Änderung (0,5 K Standard, einstellbar) plus Periodik; H&T: nur beim Aufwachen | 10 s – 10 min |
 
-### 8.4 InfluxDB
+Wichtige Gerätedetails werden in Phase 2 verifiziert (offene Frage 25.1): exakte Modelle, Firmware-Generation,
+Topic-Präfixe. Adapter für Gen1 und Gen2/3 sind getrennt implementiert, weil sich Topic-Struktur und RPC unterscheiden.
 
-- **Version klären** (25.2): InfluxDB 1.x (InfluxQL, HA-Integration mit `database`) oder 2.x (Flux, `bucket`/`org`).
-  Der Bridge-Proxy kapselt beide hinter `InfluxQueryProxy.range(entity, start, end, every="1m", agg="mean")`.
-- **Nutzung:** (a) Backfill von `measurements_1min` in Postgres nach Ausfällen, (b) initiale Historie beim
-  Erstbetrieb (z. B. letzte 12 Monate PV, Wärmepumpe, Außentemperatur für Kalibrierung von PV- und Wärmebedarfs-
-  Modell), (c) Ad-hoc-Analysen. **Nicht** im Live-Pfad, **nicht** für die Regelung.
-- **Zugriff:** Die Cloud stellt einen `history.backfill`-Auftrag in die Bridge-Queue; die Bridge fragt InfluxDB lokal
-  ab und liefert komprimierte Batches (max. 10.000 Punkte/Frame) zurück. Es gibt keinen freien Query-Durchgriff aus
-  der Cloud (kein beliebiges Flux/InfluxQL), sondern nur parametrisierte Abfragen auf gemappte Entitäten.
+**Schalten über RPC/HTTP** (nicht über MQTT, weil eine synchrone Antwort gebraucht wird):
+
+- Gen2/3: `POST http://<ip>/rpc/Switch.Set {"id":0,"on":true,"toggle_after":1200}` – `toggle_after` ist der
+  **hardwareseitige Auto-Off-Timer** (Rückfallebene E0, Abschnitt 11). Anschließend `Switch.GetStatus` zur
+  Verifikation. Authentifizierung: Digest (Gerätepasswort, nur in der Bridge).
+- Gen1: `GET http://<ip>/relay/0?turn=on&timer=1200` – gleiche Semantik über den `timer`-Parameter; Verifikation über
+  `GET /status`.
+- Für Wärmepumpen-Kontakte wird `toggle_after`/`timer` **immer** gesetzt (Default 1200 s bei K2, 1800 s bei K1) und vom
+  Regler alle 10 min aufgefrischt. Kaffee und Lichter erhalten optional einen Timer (Kaffeemaschine z. B. 2 h).
+- Statische IPs oder DHCP-Reservierungen für alle Shellys (Discovery per mDNS `_shelly._tcp` und MQTT-Announce
+  als Hilfe).
+
+### 8.3 MyEnergi (Zappi, Libbi, Harvi)
+
+- Es gibt keine offizielle lokale API; der Hub spricht nur mit der MyEnergi-Cloud. Die Bridge nutzt die inoffizielle,
+  aber seit Jahren stabile Cloud-API: Director `https://director.myenergi.net` liefert per Header den zuständigen
+  Server (`s18.myenergi.net` o. Ä.), Anmeldung per HTTP-Digest mit **Hub-Seriennummer** als Benutzer und dem in der
+  MyEnergi-App erzeugten **API-Key** als Passwort. Endpunkt `/cgi-jstatus-*` liefert alle Geräte in einem Aufruf.
+- Poll-Intervall 10–15 s (Community-Erfahrung: darunter drosselt der Dienst; Duck Curve Home hält sich an 10 s und
+  reduziert bei HTTP 429/5xx exponentiell). Jeder Wert erhält `observed_at` aus dem Antwort-Zeitstempel des Hubs,
+  nicht aus der Empfangszeit.
+- Gelesene Größen: Netzleistung (Harvi/Zappi `grd`, Vorzeichen: MyEnergi positiv = Import → passt zur Konvention),
+  PV-Erzeugung (`gen`), Zappi-Ladeleistung (`div`) und -Status (`sta`, `pst`), Libbi-Leistung, -SOC und -Modus.
+  Die exakten Libbi-Feldnamen werden in Phase 2 gegen die Antwort verifiziert und in `parser.py` dokumentiert.
+- Fällt die Cloud aus, werden Netz-/Batteriewerte `STALE`; die Wärmepumpen-Regelung nach PV-Überschuss pausiert dann
+  (Netzleistung ist Pflichtgröße), sofern nicht ein zweiter Netzmesser konfiguriert ist (Tibber Pulse, 8.5).
+- Die MyEnergi-App und der Hub sind vom Lesen nicht betroffen; Duck Curve Home schreibt in v1 nichts an MyEnergi.
+  Wenn Home Assistant parallel dieselbe API pollt, verdoppelt sich die Last – siehe 8.7.
+
+### 8.4 SolarEdge
+
+- **Primär: Modbus TCP (SunSpec)** am Wechselrichter, Port 1502 (in SetApp/Installer-Menü aktivieren). Register
+  `I_AC_Power` (+ Skalierungsfaktor), `I_AC_Energy_WH`, `I_DC_Power`, `I_Temp_Sink`, `I_Status`. Poll 2 s. Nur lesen.
+  Hinweis: Modbus TCP am SolarEdge lässt nur eine begrenzte Zahl gleichzeitiger Verbindungen zu (meist eine) – wenn
+  Home Assistant ebenfalls per Modbus liest, gewinnt einer (8.7).
+- **Sekundär: MyEnergi `gen`** (CT-Klemme) als redundante PV-Messung; bei Abweichung > 10 % dauerhaft → Event
+  (Kalibrierungshinweis).
+- **Cloud-Monitoring-API** (`monitoringapi.solaredge.com`, API-Key, 300 Aufrufe/Tag) nur für die Tagesenergie um
+  23:30 zur Abstimmung und als Fallback, wenn Modbus nicht aktivierbar ist (dann 15-min-Auflösung, kein Live).
 
 ### 8.5 Tibber
 
-- Direkt aus dem Backend per GraphQL (`viewer.homes[].currentSubscription.priceInfo { today tomorrow }` plus, sobald
-  verfügbar, 15-Minuten-Auflösung über `priceInfo(resolution: QUARTER_HOURLY)` – Feldname bei Umsetzung prüfen).
-  Abruf um 13:00, 13:30, 14:00, 15:00 UTC-lokal (Preise für morgen erscheinen meist zwischen 13 und 14 Uhr), sonst
-  stündlich als Kontrolle. Persistiert als `forecasts(kind="price")`.
-- Der HA-Preis-Sensor wird zusätzlich als Live-Wert übernommen (Plausibilitätsabgleich).
-- Fällt Tibber aus: letzte bekannte Preise gelten weiter (mit Kennzeichnung `stale`), preisbasierte Regeln pausieren
-  nach `price_max_age_h` (Default 30 h), PV-Regeln laufen weiter, Heizbetrieb ist nie betroffen (Abschnitt 11).
+- Preise per GraphQL aus dem Worker (`viewer.homes[].currentSubscription.priceInfo { today tomorrow }`, sobald
+  verfügbar 15-Minuten-Auflösung), Abruf 13:00–15:00 halbstündlich, sonst stündlich. Persistiert als
+  `forecasts(kind="price")`.
+- Falls ein **Tibber Pulse** vorhanden ist (25.4): `liveMeasurement`-Subscription (WebSocket
+  `wss://websocket-api.tibber.com/v1-beta/gql/subscriptions`) liefert Netzleistung und Zählerstände alle 2–10 s.
+  Das ist eine zweite, unabhängige Netzmessung und würde die Abhängigkeit von der MyEnergi-Cloud für die
+  PV-Überschuss-Regelung beseitigen. Der Adapter läuft im Worker (Cloud → Tibber), nicht in der Bridge.
+- Ausfall: letzte Preise bleiben mit `stale`-Kennzeichnung; preisbasierte Regeln pausieren nach `price_max_age_h`
+  (30 h), PV-Regeln laufen weiter, Heizbetrieb nie betroffen.
+
+### 8.6 Geräte-Mapping (`apps/bridge/devices.yaml`, Beispiel)
+
+```yaml
+mqtt:
+  host: mosquitto
+  username: dch
+  password_env: DCH_BRIDGE_MQTT_PASSWORD
+shelly:
+  devices:
+    - id: shellypro3em-a1b2c3         # Wärmepumpe
+      gen: 2
+      ip: 192.168.1.41
+      password_env: DCH_BRIDGE_SHELLY_PASSWORD
+      reads:
+        heat_pump_power_kw: { topic: status/em:0, field: total_act_power, unit: W, scale: 0.001, stale_after_s: 30 }
+    - id: shellyplus1-d4e5f6           # Puffer-Temperaturen (Add-on, 4× DS18B20)
+      gen: 2
+      ip: 192.168.1.42
+      reads:
+        buffer_temp_top_c:        { topic: status/temperature:100, field: tC, stale_after_s: 900 }
+        buffer_temp_mid_top_c:    { topic: status/temperature:101, field: tC, stale_after_s: 900 }
+        buffer_temp_mid_bottom_c: { topic: status/temperature:102, field: tC, stale_after_s: 900 }
+        buffer_temp_bottom_c:     { topic: status/temperature:103, field: tC, stale_after_s: 900 }
+    - id: shellyplus1-778899           # K1 PV-Freigabe
+      gen: 2
+      ip: 192.168.1.43
+      actuator: { key: hp_release_contact, channel: 0, safety_class: heat_pump, safe_state: off, hw_auto_off_s: 1800 }
+    - id: shellyplus1-aabbcc           # K2 EVU-Sperre
+      gen: 2
+      ip: 192.168.1.44
+      actuator: { key: hp_block_contact, channel: 0, safety_class: heat_pump, safe_state: off, hw_auto_off_s: 1200 }
+    - id: shelly1-112233               # Kaffeemaschine (Gen1)
+      gen: 1
+      ip: 192.168.1.50
+      actuator: { key: coffee_machine, channel: 0, safety_class: none, hw_auto_off_s: 7200 }
+    - id: shelly1-445566
+      gen: 1
+      ip: 192.168.1.51
+      actuator: { key: terrace_light, channel: 0, safety_class: none }
+    - id: shelly1-778800
+      gen: 1
+      ip: 192.168.1.52
+      actuator: { key: garden_fence_light, channel: 0, safety_class: none }
+myenergi:
+  hub_serial_env: DCH_BRIDGE_MYENERGI_SERIAL
+  api_key_env: DCH_BRIDGE_MYENERGI_API_KEY
+  poll_s: 10
+  reads:
+    grid_power_kw:    { device: harvi, serial: "12345678", field: ectp1+ectp2+ectp3, unit: W, scale: 0.001, sign: import_positive }
+    pv_power_kw_ct:   { device: zappi, field: gen, unit: W, scale: 0.001 }
+    ev_power_kw:      { device: zappi, field: div, unit: W, scale: 0.001 }
+    battery_power_kw: { device: libbi, field: TODO_verify, unit: W, scale: 0.001, sign: discharge_positive }
+    battery_soc:      { device: libbi, field: soc, unit: "%", scale: 0.01 }
+solaredge:
+  modbus: { host: 192.168.1.60, port: 1502, unit_id: 1, poll_s: 2 }
+  reads:
+    pv_power_kw: { register: I_AC_Power, unit: W, scale: 0.001, stale_after_s: 20 }
+  cloud: { site_id_env: DCH_BRIDGE_SOLAREDGE_SITE, api_key_env: DCH_BRIDGE_SOLAREDGE_KEY, daily_reconcile: true }
+priority:
+  pv_power_kw: [solaredge.pv_power_kw, myenergi.pv_power_kw_ct]   # erste frische Quelle gewinnt
+```
+
+`discover` (`dch-bridge discover`) scannt das LAN nach Shellys (mDNS, MQTT-Announce), listet MyEnergi-Geräte mit
+Seriennummern und prüft die Modbus-Verbindung, um diese Datei zu erstellen.
+
+### 8.7 Parallelbetrieb mit Home Assistant
+
+Home Assistant wird nicht benötigt und kann abgeschaltet werden. Läuft es weiter, gilt:
+
+- **Shelly Gen1 + MQTT:** Bei Gen1-Geräten schließen MQTT und Shelly-Cloud einander aus; HA liest Gen1 typischerweise
+  per CoIoT/REST, das bleibt parallel möglich. Gen2/3 können MQTT, RPC-WebSocket und Cloud gleichzeitig.
+- **MyEnergi:** zwei Poller verdoppeln die Cloud-Last; empfohlen, die HA-Integration zu deaktivieren oder ihr
+  Intervall zu verlängern.
+- **SolarEdge Modbus:** meist nur eine gleichzeitige Verbindung; entweder HA oder Duck Curve Home. Bis zur
+  Entscheidung liefert der MyEnergi-CT die PV-Leistung.
+- **Wärmepumpen-Kontakte:** Es darf nur **ein** System schalten. Die bestehende HA-Regel („WP Auto“) wird spätestens
+  in Phase 3 deaktiviert; bis dahin bleibt Duck Curve Home im Modus OFF (nur beobachten). Zwei Automatiken auf
+  denselben Relais sind ein Sicherheitsrisiko.
 
 ## 9. Strategie für Live-Daten
 
@@ -629,11 +744,10 @@ verwendet, nie für die Regelung.
 
 | Strecke | Ziel |
 |---|---|
-| Gerät → HA | geräteabhängig (Shelly lokal ≈ 1 s, MyEnergi-Cloud 10–30 s, SolarEdge-Cloud bis 5 min – siehe 25.3) |
-| HA → Bridge | < 100 ms (WebSocket-Push) |
+| Gerät → Bridge | Shelly per MQTT ≈ 1 s (3EM jede Sekunde), SolarEdge Modbus 2 s, MyEnergi-Cloud 10–15 s (Poll) |
 | Bridge → API | Frame alle 1 s (koalesziert), < 300 ms Laufzeit |
 | API → Dashboard | SSE, max. 1 Frame/s, < 200 ms |
-| **Ende-zu-Ende (Shelly-Werte)** | **≈ 1–2 s**; MyEnergi/SolarEdge-Werte tragen ihr eigenes `observed_at` und werden mit Alter angezeigt |
+| **Ende-zu-Ende (Shelly/Modbus-Werte)** | **≈ 1–3 s**; MyEnergi-Werte (Netz, Batterie, Wallbox) tragen ihr eigenes `observed_at` und werden mit Alter angezeigt; mit Tibber Pulse (8.5) käme die Netzleistung alle 2–10 s |
 
 Damit „live wirken“ nicht an der langsamsten Quelle hängt, zeigt das Dashboard je Knoten das Alter des Wertes an
 (dezent, erst ab 30 s sichtbar) und animiert Flüsse nur mit frischen Werten.
@@ -657,6 +771,7 @@ Damit „live wirken“ nicht an der langsamsten Quelle hängt, zeigt das Dashbo
 | WLAN-Unterbrechung | `EventSource` reconnectet; Store setzt `connection=reconnecting`; nach 15 s ohne Frame: Statusleiste „Verbindung unterbrochen – letzte Daten 00:42“ und alle Werte gedimmt; Flussanimation stoppt |
 | Backend-Neustart | Deploy-Rollover < 30 s; identisch zu WLAN-Fall; Client holt nach Reconnect `GET /live/state` + `GET /history/today` |
 | Bridge offline | Backend sendet `system{bridge: offline, since}`; Dashboard zeigt Banner „Haus nicht erreichbar“; Werte bleiben mit Alter stehen; Regler geht in `FAILSAFE_RELEASED` (Abschnitt 11) |
+| Einzelnes Gerät offline (Shelly ohne WLAN, MyEnergi-Cloud down, Modbus-Timeout) | Bridge meldet `SourceHealth` je Quelle; betroffene Werte `UNAVAILABLE`; Dashboard zeigt am Knoten ein Gerätesymbol mit „seit 12:41“ |
 | Sensor `unavailable`/`unknown` | Knoten zeigt „–“ mit Sensor-Symbol, Fluss ausgeblendet, Bilanz rechnet ohne den Wert und markiert `derived` |
 | Veraltete Werte | pro Sensor `stale_after_s`; stale → Quality `STALE`, UI grau + Alter; Regler behandelt stale wie fehlend |
 | Tibber/Wetter-API-Ausfall | Forecast-Reihen bleiben als „Stand 13:05“ stehen; Intelligence Card nennt die Einschränkung |
@@ -705,7 +820,7 @@ auto_profile: ECO | PV | PRICE | SMART        (nur relevant bei AUTO)
 override:     none | force_release | force_block | inhibit_release   (zeitlich begrenzt, max. 12 h Default)
 ```
 
-- **OFF:** Duck Curve Home beobachtet nur. Beide Kontakte aus. Bestehende HA-Automation darf laufen.
+- **OFF:** Duck Curve Home beobachtet nur und schaltet nichts. Beide Kontakte aus (bzw. so, wie ein anderes System sie hinterlassen hat – nur in der Übergangszeit vor Phase 3, siehe 8.7).
 - **MANUAL:** Nutzer schaltet K1 (und, wenn freigegeben, K2) direkt über das Dashboard; jede manuelle Schaltung hat
   eine Dauer (Default 2 h, wählbar), danach Rückfall nach `AUTO` bzw. `OFF`. Dashboard zeigt sichtbar „MANUELL bis
   16:30“.
@@ -852,14 +967,15 @@ Systems muss diesen Zustand ohne Mitwirkung der darüberliegenden Schichten erre
 
 | Ebene | Ort | Mechanismus | Greift wenn |
 |---|---|---|---|
-| **E0 Hardware** | Shelly-Relais | Shelly Gen2/Gen3 „Auto-Off-Timer“ pro Relais (Geräteeinstellung): K2-Relais `auto_off: 1200 s`, K1-Relais `auto_off: 1800 s`. Ein gesetzter Kontakt fällt also auch dann, wenn HA, Bridge, Netz und Cloud gleichzeitig ausfallen | alles oberhalb tot |
-| **E1 Home Assistant** | HA-Automation (vom Betreiber angelegt, von DCH dokumentiert) | Watchdog: Wenn `input_datetime.dch_heartbeat` älter als 30 min → beide Kontakte aus, Benachrichtigung. Die Bridge setzt den Heartbeat alle 60 s | Bridge tot oder abgeklemmt |
-| **E2 Bridge** | lokaler Agent | TTL-Tabelle je Aktor; ohne Verlängerung durch die Cloud → `safe_state`. Zusätzlich: Cloud-Verbindung > `offline_release_s` (Default 180 s) weg → alle Wärmepumpen-Kontakte sofort auf `safe_state`, Event lokal gepuffert | Cloud/Internet tot |
+| **E0 Hardware** | Shelly-Relais | Auto-Off-Timer im Relais, bei **jedem** Einschaltbefehl mitgegeben (Gen2/3 `Switch.Set … toggle_after`, Gen1 `?turn=on&timer=`): K2 1200 s, K1 1800 s. Zusätzlich als Geräteeinstellung „Auto-Off“ hinterlegt, falls ein Befehl ohne Timer käme. Ein gesetzter Kontakt fällt also auch dann, wenn Bridge, Broker, Netz und Cloud gleichzeitig ausfallen | alles oberhalb tot |
+| **E1 Guardian** | eigener Prozess/Container auf dem Bridge-Host (`dch-guardian`), unabhängig von der Bridge-Software | Liest eine Heartbeat-Datei/SQLite-Zeile, die die Bridge alle 30 s schreibt. Fehlt der Heartbeat > 5 min oder stürzt die Bridge ab → Guardian schaltet K1/K2 direkt per Shelly-RPC aus (eigene, minimale Implementierung, ~100 Zeilen, keine gemeinsamen Bibliotheken) und protokolliert. Optional: Hardware-Watchdog des Hosts (Raspberry Pi `bcm2835_wdt`) startet den Rechner bei Hängern neu | Bridge-Software tot, Broker tot |
+| **E2 Gateway** | Geräteschicht (Profil A: im Worker; Profil B: Bridge) | TTL-Tabelle je Aktor; ohne Verlängerung durch den Regler → `safe_state`. Profil B zusätzlich: Cloud-Verbindung > `offline_release_s` (Default 180 s) weg → alle Wärmepumpen-Kontakte sofort auf `safe_state`, Event lokal gepuffert | Regler tot (A) / Cloud oder Internet tot (B) |
 | **E3 Cloud-Regler** | Worker | Guards (Mindestzeiten, Max-Sperrdauer, Max-Starts, Plausibilität), Sensorqualitäts-Gate, Preisdaten-Alter, `FAILSAFE`-Zustand mit Auto-Recovery, Leader-Lock gegen doppelte Regler | Logikfehler, Datenfehler |
 
 Ebene E0 ist die wichtigste und kostet nichts. Sie erzwingt, dass der Regler K1/K2 regelmäßig „nachsetzt“ (Bridge
-sendet bei Bedarf alle 10 min ein Refresh-`turn_on`); das ist gewollt: Ein Zustand, der aktiv gehalten werden muss,
-kann nicht versehentlich ewig bleiben.
+sendet bei Bedarf alle 10 min ein Refresh mit neuem Timer); das ist gewollt: Ein Zustand, der aktiv gehalten werden
+muss, kann nicht versehentlich ewig bleiben. Elektrisch sollten K1/K2 als Schließer (NO) verdrahtet sein, sodass
+auch ein stromloses Relais „kein Eingriff“ bedeutet (25.10).
 
 ### 11.3 Regeln im Regler (Guards, alle testpflichtig)
 
@@ -886,10 +1002,11 @@ kann nicht versehentlich ewig bleiben.
 |---|---|---|
 | Tibber | keine | Preisregeln pausieren; PV-Regeln laufen; Anzeige „Preise Stand …“ |
 | Open-Meteo / PV-Forecast | keine | Planer fällt auf regelbasiert zurück; Card sagt es |
-| InfluxDB | keine | kein Backfill; Live und Regelung unberührt |
 | Postgres (Railway) | keine (E2 räumt auf) | API liefert 503, Worker geht in FAILSAFE, Dashboard zeigt Störung |
 | Railway komplett | keine (E2 nach 180 s) | Dashboard zeigt Störung, letzte Werte |
-| Bridge / HA-Host | keine (E0 nach ≤ 30 min) | wie oben |
+| Bridge-Host komplett (Strom, Defekt) | keine (E0 nach ≤ 30 min) | keine Live-Daten, Dashboard zeigt Störung; Ringpuffer geht ab Ausfall verloren |
+| Mosquitto / WLAN im Haus | keine (E1/E0) | Shelly-Werte `UNAVAILABLE`; Regler stoppt K1 nach `sensor_grace_min` |
+| MyEnergi-Cloud | keine | Netz/Batterie/Wallbox `STALE`; PV-Regel pausiert, außer Tibber Pulse liefert Netzleistung |
 | Duck Curve Home vollständig entfernt | keine | – |
 
 ### 11.5 Watchdog-Konzept zusammengefasst
@@ -898,9 +1015,9 @@ kann nicht versehentlich ewig bleiben.
 Cloud-Regler ──10 s──► Decision (valid_until = now + TTL)
       │
       ▼ Kommando/Refresh nur bei Änderung oder alle 10 min
-Bridge ──60 s──► HA heartbeat entity      ──► HA-Automation räumt nach 30 min auf
+Bridge ──30 s──► Heartbeat (lokal)        ──► Guardian schaltet nach 5 min ohne Heartbeat K1/K2 aus
       │
-      ▼ turn_on (Shelly auto_off läuft)  ──► Relais fällt nach 20–30 min selbst
+      ▼ Switch.Set on + toggle_after      ──► Relais fällt nach 20–30 min selbst
 Shelly-Relais
 ```
 
@@ -1059,9 +1176,10 @@ eine eigene Spalte statt eines Tooltips.
 | Phase | Inhalt | Definition of Done | Aufwand (grob) |
 |---|---|---|---|
 | **0 Analyse** | dieses Dokument | Freigabe der Architektur und der offenen Fragen | erledigt |
+| **Entscheidung Hosting** | Profil A (lokal) oder B (Railway), Abschnitt 15 | Entscheidung des Betreibers, spätestens vor Phase 2 | – |
 | **1 UI-Prototyp / Demo-Modus** | Monorepo-Skelett, Tokens/Design-System, `hems-core` mit Domänenmodell, Thermal-SOC, Bilanzierer, Simulation (`demo_house`), API mit In-Memory-Repositories und SSE, Dashboard mit Energiefluss, Tageschart, Puffer, Steuerkacheln (gegen Simulation), Intelligence Card mit simulierten Entscheidungen, Zeitraffer (24 h in 5 min), CI (Web + Python), Docker-Compose, README/ARCHITECTURE/CONFIGURATION/HEMS_CONTROL Erstfassung | `docker compose up` startet Demo ohne Haus; Playwright-Smoke grün; Tests für SOC, Bilanz, Simulation; Dashboard läuft 24 h stabil im Browser-Kiosk | 2–3 Wochen |
-| **2 Read-only Live** | Bridge (HA-WS, Entity-Map, Queue, Uplink), API-Ingest, Postgres + Alembic (Messwerte, Events, Konfiguration), Tibber-Preise, Wetter (Open-Meteo), PV-Forecast v1, History-API, Zeitraumwahl, Railway-Deploy (web, api, worker, postgres), Kiosk-Pairing | echte Werte auf dem iPad; Ausfallszenarien (WLAN, Bridge-Neustart, Backend-Deploy) getestet; Backfill aus InfluxDB für 24 h nachgewiesen | 3–4 Wochen |
-| **3 Manuelle Steuerung** | Aktor-Kommandos mit TTL/Ack über Bridge, Kacheln aktiv, Wärmepumpe MANUAL mit Dauer, Shelly-Auto-Off-Setup dokumentiert, HA-Watchdog-Automation dokumentiert, Verhalten der ELCO auf K1/K2 protokolliert | Kaffee/Licht/K1 schaltbar; Rückfall-Tests E0–E2 durchgeführt und dokumentiert | 2 Wochen |
+| **2 Read-only Live** | Bridge mit eigenen Geräteintegrationen (Shelly über Mosquitto/MQTT, MyEnergi-Cloud-API, SolarEdge Modbus), `devices.yaml` + Discovery, Ringpuffer, Uplink; API-Ingest; Postgres + Alembic (Messwerte gestuft, Events, Konfiguration); Tibber-Preise (+ Pulse, falls vorhanden); Wetter (Open-Meteo); PV-Forecast v1; History-API; Zeitraumwahl; Deployment nach gewähltem Profil (A: Compose auf dem Haus-Rechner + Cloudflare Tunnel; B: Railway + Bridge-Host); Kiosk-Pairing | echte Werte auf dem iPad ohne Home Assistant; Ausfallszenarien (WLAN, Bridge-Neustart, Backend-Deploy, MyEnergi-Cloud down) getestet; Nachlieferung aus dem Ringpuffer nach 1 h Offline nachgewiesen | 4–5 Wochen |
+| **3 Manuelle Steuerung** | Shelly-Kommandos mit `toggle_after`/TTL/Ack über Bridge, Kacheln aktiv, Wärmepumpe MANUAL mit Dauer, Guardian-Prozess, Auto-Off als Geräteeinstellung, bestehende HA-Automation für die Wärmepumpe deaktiviert, Verhalten der ELCO auf K1/K2 protokolliert | Kaffee/Licht/K1 schaltbar; Rückfall-Tests E0–E2 durchgeführt und dokumentiert | 2 Wochen |
 | **4 Rule-Based HEMS** | Controller-Zustandsmaschine, Guards, PV-/Preisregeln, Reason-Codes, Decision-Persistenz, Intelligence Card mit echten Begründungen, vollständige Unit-Tests der geforderten Fälle (Hysterese, Mindestzeiten, PV, negative Preise, Puffer voll, Override, Sensorausfall, Tibber-Ausfall) | mindestens 2 Wochen Betrieb AUTO/PV ohne Eingriff; Events zeigen keine Guard-Verletzung | 3 Wochen |
 | **5 Smart Scheduler** | Wärmebedarfsmodell, Puffermodell, Forecast-Aware-Planner, Plan-Persistenz, Plan-Bänder im Chart, Kalibrierungsjobs, optional K2 nach Validierung | Plan erklärt jedes Intervall; PV-Forecast-Fehler < 20 % Tages-kWh nach Kalibrierung; K2 nur mit dokumentiertem Freigabetest | 3–4 Wochen |
 | **6 Optimizer** | MILP-Planer (HiGHS), Gebäude-RC-Modell, Komfortgrenzen, Vergleich Regel vs. Optimum im Dashboard | Optimum-Plan im Schattenbetrieb 4 Wochen mit Kostenvergleich, dann aktiv | 4+ Wochen |
@@ -1069,7 +1187,70 @@ eine eigene Spalte statt eines Tooltips.
 Jede Phase beginnt mit einer kurzen Standortbestimmung (Was ist da, was hat sich geändert, Plan in 10 Zeilen), endet
 mit Tests, Doku-Update und einer ADR pro wesentlicher Entscheidung.
 
-## 15. Railway-Zielarchitektur
+## 15. Hosting-Zielarchitektur: lokal (empfohlen) oder Railway
+
+Der Auftrag nennt Railway als Zielplattform. Nach der Entscheidung, ohne Home Assistant direkt auf die Geräte
+zuzugreifen, verschiebt sich die Abwägung: Alle Datenquellen und alle Aktoren stehen im Haus, das Anzeigegerät auch.
+Deshalb werden **zwei Deployment-Profile** vorgesehen, die dieselben Docker-Images und denselben Code nutzen. Der
+einzige Unterschied ist, wo Datenbank, API, Worker und Geräteschicht laufen und ob die Geräteschicht als eigener
+Prozess mit Uplink („Bridge“) oder als Modul im Worker („in-process“) arbeitet.
+
+### 15.1 Vergleich
+
+| Kriterium | **Profil A: lokal auf einem Mini-Rechner** (Raspberry Pi 5 / Intel NUC, Docker Compose) | **Profil B: Railway + Bridge im Haus** |
+|---|---|---|
+| Geräte erreichen | direkt im LAN, kein Tunnel | nur über Bridge und ausgehende WSS-Verbindung (Abschnitt 17) |
+| Regelung bei Internetausfall | **läuft weiter** (PV-Regel, Guards, Plan mit zuletzt bekannten Preisen) | pausiert; Kontakte fallen nach 3 min zurück |
+| Dashboard auf dem iPad | über LAN, ~1 s Latenz, funktioniert ohne Internet | über Internet, abhängig von WLAN **und** Internet |
+| Externe Erreichbarkeit (unterwegs) | Cloudflare Tunnel (`cloudflared`, kostenlos, kein offener Port) + Cloudflare Access als Login davor; alternativ Tailscale | nativ öffentlich, eigene Auth |
+| Komponenten | 1 Host: postgres, api, worker (inkl. Geräteschicht), web, mosquitto, guardian, cloudflared | Railway: web, api, worker, postgres · Haus: bridge, mosquitto, guardian |
+| Protokolle zu bauen | keiner (Geräteschicht ruft Repositories direkt) | Bridge-Uplink-Protokoll mit Sequenzen, Acks, Ringpuffer, Token-Rotation (17.2) |
+| Deployment | GitHub Actions baut Images (arm64/amd64) → GHCR; Host aktualisiert per Watchtower oder `compose pull` nach Tag; Migrationen im Start-Container | Railway-GitHub-Integration, `preDeployCommand` |
+| Betrieb/Zuverlässigkeit | Hardware selbst verantwortet: SSD statt SD-Karte, USV empfehlenswert, Hardware-Watchdog; Postgres-Backups per Job in Objektspeicher | Managed Postgres mit Snapshots, Neustart durch Plattform; Bridge-Host bleibt trotzdem nötig |
+| Kosten | einmalig 100–250 € Hardware, Strom ~5 W | ~10–25 €/Monat |
+| Update-Komfort | gut mit Watchtower, aber ein Host, den man warten muss | sehr gut |
+| Rechenleistung | Pi 5 (8 GB) reicht für Postgres + FastAPI + Next.js + MILP (HiGHS, Sekundenbereich); NUC komfortabler | unbegrenzt |
+| Sicherheitsfläche | kein eingehender Port; Cloudflare Access/Tailscale vor dem Dashboard | ein öffentlicher API-Endpunkt für die Bridge |
+
+**Empfehlung: Profil A.** Ein HEMS, dessen Sensoren und Aktoren ausnahmslos im Haus stehen, gehört ins Haus. Die
+Regelung ist dann vom Internet unabhängig, die Architektur hat eine Schicht weniger, und der externe Zugriff ist über
+einen Tunnel ohne offenen Port lösbar. Railway bleibt als Profil B vollständig unterstützt (gleiche Images, gleiche
+Konfiguration, zusätzlich Bridge-Uplink) – zum Beispiel, wenn später mehrere Häuser oder ein Betrieb ohne eigene
+Hardware gewünscht sind. Die Entscheidung ist **vor Phase 2** zu treffen; Phase 1 (Demo-Modus) ist davon unabhängig,
+weil sie ohnehin per Docker Compose läuft.
+
+Damit beide Profile ohne Code-Duplikation funktionieren, ist die Geräteschicht (`apps/bridge`, intern
+`dch_gateway`) eine Bibliothek mit zwei Hüllen: `in-process` (Worker importiert sie und schreibt direkt in Postgres)
+und `uplink` (eigener Prozess mit Ringpuffer und WSS). Die Adapter für Shelly, MyEnergi und SolarEdge sind in beiden
+Fällen identisch.
+
+### 15.2 Profil A – lokaler Host
+
+```
+Mini-Rechner im LAN (Docker Compose, arm64 oder amd64)
+├── postgres     PostgreSQL 16, Volume auf SSD, tägliches pg_dump → Objektspeicher (R2/B2) + lokale Kopie
+├── api          FastAPI, Port 8000 (nur intern), SSE, REST
+├── worker       Control-Loop, Planer, Forecast-Jobs, Aggregation, Geräteschicht in-process
+├── web          Next.js, Port 3000 (nur intern)
+├── mosquitto    MQTT-Broker für Shellys, Port 1883 (nur LAN)
+├── guardian     unabhängiger Wächter (11.2 E1)
+├── caddy        Reverse-Proxy mit lokalem TLS (home.local / mDNS) für das iPad im LAN
+└── cloudflared  Tunnel → home.duckcurve.de, davor Cloudflare Access (E-Mail-OTP oder Google-Login)
+```
+
+- Das iPad spricht `https://home.local` (Caddy, internes Zertifikat, Root-CA einmal auf dem iPad installiert) oder
+  direkt `http://<ip>:3000` – kein Internet nötig.
+- Von außen: `https://home.duckcurve.de` → Cloudflare Access (Identität) → Tunnel → Caddy → web. Die Anwendung
+  behält zusätzlich ihre eigene Session (Kiosk-Pairing), Cloudflare Access ist die zweite Schranke.
+- Updates: GitHub Release-Tag → Images auf GHCR → Watchtower zieht in einem Wartungsfenster (03:30) oder manuell.
+  Migrationen laufen in einem `migrate`-Init-Container vor `api`/`worker` (`alembic upgrade head`), nur additiv
+  (23.4).
+- Health: `api`/`worker` exportieren `/health`; ein kleiner Uptime-Check (Cloudflare Health Check oder Healthchecks.io
+  Ping aus dem Worker) meldet Ausfälle aufs Handy.
+- Hardware: Pi 5 8 GB mit NVMe-HAT oder NUC, USV (z. B. kleine Line-Interactive-USV oder Pi-UPS-HAT), LAN-Kabel,
+  Hardware-Watchdog aktiviert.
+
+### 15.3 Profil B – Railway
 
 ```
 Railway Project „duckcurve-home“  (Region: EU-West, gleiche Region für alle Services)
@@ -1079,28 +1260,24 @@ Railway Project „duckcurve-home“  (Region: EU-West, gleiche Region für alle
 │              Env: DCH_API_URL=http://api.railway.internal:8000, DCH_SESSION_SECRET
 │              Healthcheck: GET /api/health (BFF prüft API-Erreichbarkeit)
 │
-├── api        FastAPI (Dockerfile apps/api, CMD uvicorn)   Root Directory: apps/api  (Build-Kontext Repo-Root*)
+├── api        FastAPI (Dockerfile apps/api, CMD uvicorn)   Build-Kontext Repo-Root*
 │              öffentlich NUR für den Bridge-Endpunkt wss://api-home.duckcurve.de/bridge/ws
 │              intern für web über *.railway.internal (IPv6 → uvicorn --host ::)
 │              Env: DATABASE_URL, DCH_ROLE=api, DCH_BRIDGE_TOKEN_PEPPER, DCH_TIBBER_TOKEN, …
-│              Healthcheck: GET /health  (DB-Ping, Bridge-Status, Version)
-│              Replicas: 1 (SSE-Broker und Bridge-Verbindung sind prozesslokal; siehe 15.2)
+│              Healthcheck: GET /health  (DB-Ping, Bridge-Status, Version)  ·  Replicas: 1
 │
-├── worker     gleiches Image wie api, CMD python -m dch_api.worker
-│              Env: DATABASE_URL, DCH_ROLE=worker, externe API-Keys
-│              Healthcheck: GET /health auf Port 8001 (Tick-Alter, Leader-Status)
-│              Replicas: genau 1 + Advisory-Lock
+├── worker     gleiches Image wie api, CMD python -m dch_api.worker, DCH_GATEWAY=remote
+│              Healthcheck: GET /health auf Port 8001 (Tick-Alter, Leader-Status)  ·  Replicas: genau 1 + Advisory-Lock
 │
-├── postgres   Railway PostgreSQL 16, tägliches Backup (Railway) + wöchentlicher pg_dump nach R2/S3 (Job)
+├── postgres   Railway PostgreSQL 16, tägliches Backup (Railway) + wöchentlicher pg_dump nach R2/B2 (Job)
 │
-└── (optional) cron  Railway Cron-Service für Retention/Backups, falls nicht im Worker
+└── Haus: bridge + mosquitto + guardian (Docker Compose auf einem Mini-Rechner)
 ```
 
-\* Weil `apps/api` und `apps/worker` das Workspace-Paket `packages/hems-core` brauchen, wird das Python-Image vom
-Repo-Root gebaut (`RAILWAY_DOCKERFILE_PATH=apps/api/Dockerfile`, Root Directory leer, Watch Paths
-`apps/api/**`, `packages/**`). valyze löst das gleiche Problem für `locales/` identisch.
+\* Weil `apps/api` das Workspace-Paket `packages/hems-core` braucht, wird das Python-Image vom Repo-Root gebaut
+(`RAILWAY_DOCKERFILE_PATH=apps/api/Dockerfile`, Root Directory leer, Watch Paths `apps/api/**`, `packages/**`).
 
-### 15.1 Konfiguration je Service (`railway.json`)
+`railway.json` je Service:
 
 ```json
 {
@@ -1118,26 +1295,17 @@ Repo-Root gebaut (`RAILWAY_DOCKERFILE_PATH=apps/api/Dockerfile`, Root Directory 
 }
 ```
 
-`preDeployCommand` läuft einmal pro Deploy vor dem Start der neuen Instanz; scheitert die Migration, wird nicht
-deployt und die alte Instanz läuft weiter. Nur additive Migrationen dürfen so laufen (23.4).
+Skalierung und Zustand: Die API hält die Bridge-WebSocket- und die SSE-Verbindungen prozesslokal; mit einer Replika
+unkritisch. Deploy-Rollover: Bridge reconnectet in < 5 s, Ringpuffer überbrückt, Dashboard reconnectet. Domains:
+`home.duckcurve.de` → web, `api-home.duckcurve.de` → api (nur `/health` und `/bridge/ws` öffentlich nutzbar).
 
-### 15.2 Skalierung und Zustand
+### 15.4 Gemeinsam für beide Profile
 
-- Die API hält zwei prozesslokale Dinge: die Bridge-WebSocket-Verbindung und die SSE-Verbindungen. Mit einer
-  Replika ist das unkritisch. Sollte je eine zweite Replika nötig sein, wird der Live-State über Postgres
-  `LISTEN/NOTIFY` (oder Redis) verteilt – die Abstraktion `LiveStateBus` ist dafür vorgesehen.
-- Deploy-Rollover: Railway startet die neue Instanz, wartet auf Healthcheck, dann Traffic-Wechsel. Die Bridge
-  verliert kurz die Verbindung (Reconnect < 5 s, Queue puffert), das Dashboard reconnectet.
-- Kosten: vier kleine Services; API/Worker mit 512 MB RAM ausreichend; Postgres wächst mit ~1 GB/Monat Rohdaten
-  bei 14-Tage-Retention nicht, 15-min-Aggregate ≈ 5 MB/Jahr.
-
-### 15.3 Domains und Zugriff
-
-- `home.duckcurve.de` → web (Kiosk, Login/Pairing).
-- `api-home.duckcurve.de` → api; alle Pfade außer `/health` und `/bridge/ws` verlangen Bearer (vom BFF) oder werden
-  gar nicht öffentlich benötigt. Alternative ohne zweite öffentliche Domain: Der BFF proxyt alles, und die Bridge
-  verbindet sich über `home.duckcurve.de/bridge/ws` (Next-Route mit WebSocket-Upgrade ist umständlich) – deshalb
-  die eigene API-Domain.
+- Ein Satz Images (`duckcurve-api`, `duckcurve-web`, `duckcurve-bridge`), Konfiguration über `DCH_*`-Variablen,
+  `DCH_GATEWAY=inprocess|remote` wählt das Profil.
+- Dieselbe Postgres-Struktur, dieselben Migrationen, dieselbe Retention.
+- Dieselbe Sicherheitsarchitektur für die Kontakte (Abschnitt 11) – der Guardian läuft in beiden Profilen auf dem
+  Haus-Rechner.
 
 ## 16. PostgreSQL-Datenmodell
 
@@ -1152,8 +1320,9 @@ bekommen Spalten; alles andere bleibt Payload (valyze-Regel).
 | Tabelle | Zweck | Wichtige Spalten |
 |---|---|---|
 | `devices` | Geräte (PV, Batterie, Wallbox, Wärmepumpe, Puffer, Relais, Sensoren) | `id, kind, name, vendor, model, location, meta jsonb` |
-| `sensors` | Messpunkte mit Quelle und Mapping | `id, device_id, key` (z. B. `pv_power_kw`), `source` (`ha`, `derived`, `bridge`), `source_ref` (Entity-ID), `unit, stale_after_s, sign_convention, enabled` |
-| `actuators` | steuerbare Ausgänge | `id, device_id, key, source_ref, label, safety_class` (`none`, `heat_pump`), `safe_state, default_ttl_s, auto_off_s_hardware` |
+| `sensors` | Messpunkte mit Quelle und Mapping (Spiegel der `devices.yaml`, von der Bridge beim Handshake gemeldet) | `id, device_id, key` (z. B. `pv_power_kw`), `source` (`shelly`, `myenergi`, `solaredge`, `tibber`, `derived`), `source_ref` (Topic/Register/Feld), `unit, stale_after_s, sign_convention, priority, enabled` |
+| `actuators` | steuerbare Ausgänge | `id, device_id, key, source_ref` (Shelly-ID + Kanal), `label, safety_class` (`none`, `heat_pump`), `safe_state, default_ttl_s, hw_auto_off_s` |
+| `device_health` | letzter Gesundheitszustand je Quelle (von der Bridge gemeldet) | `source pk, status, since, last_ok_at, error, details jsonb` |
 | `config_versions` | versionierte Gesamtkonfiguration (Haus, Anlage, Regler, Komfort) | `id, created_at, created_by, kind` (`site`, `control`, `comfort`, `dashboard`), `payload jsonb, comment, active bool` – genau eine aktive Version je `kind` |
 | `users` | Betreiberkonten | `id, email, password_hash (argon2id), role, created_at` |
 | `kiosk_devices` | gepaarte Anzeigegeräte | `id, name, paired_at, last_seen_at, session_token_hash, revoked_at` |
@@ -1176,9 +1345,11 @@ bekommen Spalten; alles andere bleibt Payload (valyze-Regel).
 
 | Tabelle | Zweck | Spalten / Besonderheit |
 |---|---|---|
-| `measurements_raw` | Rohwerte 1–10 s | `(sensor_key, observed_at) pk, value real, quality smallint`; **partitioniert nach Tag** (`PARTITION BY RANGE (observed_at)`), Retention 14 Tage (Partition droppen, nicht `DELETE`) |
-| `measurements_1min` | Minutenmittel (aus raw oder Backfill Influx) | `(sensor_key, bucket) pk, avg, min, max, samples, source` (`raw`, `influx`), Partition monatlich, Retention 400 Tage |
-| `measurements_15min` | Planungsraster | `(sensor_key, bucket) pk, avg_kw, energy_kwh, min, max, samples`; unbegrenzt |
+| `measurements_raw` | Rohwerte in Gerätetaktung (1–15 s) – **die einzige Rohdatenquelle des Systems** | `(sensor_key, observed_at) pk, value real, quality smallint`; **partitioniert nach Tag** (`PARTITION BY RANGE (observed_at)`), Retention 14 Tage (Partition droppen, nicht `DELETE`) |
+| `measurements_10s` | 10-Sekunden-Mittel (für Detailansichten und Regler-Nachanalyse) | `(sensor_key, bucket) pk, avg, min, max, samples`; Partition wöchentlich, Retention 180 Tage |
+| `measurements_1min` | Minutenmittel (Tages-/Wochencharts) | `(sensor_key, bucket) pk, avg, min, max, samples`; Partition monatlich, Retention 3 Jahre |
+| `measurements_15min` | Planungsraster, Kalibrierung | `(sensor_key, bucket) pk, avg_kw, energy_kwh, min, max, samples`; unbegrenzt |
+| `counters` | Zählerstände (Shelly-Energie, Zappi/Libbi-Energie, Wechselrichter-Gesamtertrag) für exakte Energiebilanzen | `(counter_key, observed_at) pk, value_kwh`; 15-min-Stützstellen, unbegrenzt |
 | `energy_daily` | Tagesbilanzen | `date, pv_kwh, import_kwh, export_kwh, battery_in_kwh, battery_out_kwh, hp_kwh, ev_kwh, base_kwh, cost_eur, revenue_eur, self_sufficiency` |
 
 **Forecasts und Pläne** (Details 21/22)
@@ -1202,40 +1373,53 @@ bekommen Spalten; alles andere bleibt Payload (valyze-Regel).
 
 ### 16.3 Retention und Aggregation
 
-Worker-Job stündlich: `raw → 1min` (für die letzte volle Stunde), `1min → 15min`, `15min → daily`, dann Partitionen
-älter als Retention droppen. Aggregation ist idempotent (`INSERT … ON CONFLICT DO UPDATE`), damit Backfill aus Influx
-dieselben Wege nutzt.
+Worker-Job alle 10 min: `raw → 10s → 1min` (für den letzten abgeschlossenen Zeitraum), stündlich `1min → 15min`,
+täglich `15min → daily`; danach Partitionen älter als Retention droppen. Aggregation ist idempotent
+(`INSERT … ON CONFLICT DO UPDATE`), damit die Nachlieferung aus dem Bridge-Ringpuffer dieselben Wege nutzt.
 
-### 16.4 Trennung InfluxDB / PostgreSQL
+Volumenabschätzung (≈ 15 Sensoren): Rohwerte ≈ 0,6–1,3 Mio. Zeilen/Tag → 14 Tage ≈ 15 Mio. Zeilen ≈ 1 GB;
+10-s-Stufe 180 Tage ≈ 23 Mio. Zeilen ≈ 1,2 GB; 1-min-Stufe 3 Jahre ≈ 24 Mio. Zeilen ≈ 1,3 GB; 15-min unbegrenzt
+≈ 0,5 Mio. Zeilen/Jahr. Gesamt stabil unter ~5 GB – im Railway-Rahmen unkritisch.
 
-| | InfluxDB (lokal) | PostgreSQL (Railway) |
+### 16.4 Eine Datenbank, klare Rollen
+
+| Datenart | Ort | Aufbewahrung |
 |---|---|---|
-| Rohmesswerte aller HA-Entitäten | ✔ Quelle der Wahrheit, lange Historie | ✘ (nur gemappte Sensoren, 14 Tage) |
-| Minuten-/15-min-Aggregate | – | ✔ |
-| Konfiguration, Modi, Overrides | – | ✔ |
-| Entscheidungen, Begründungen, Kommandos | – | ✔ |
-| Forecasts, Pläne, Kalibrierungen | – | ✔ |
-| Events, Fehler | – | ✔ |
+| Rohmesswerte aller gemappten Sensoren | `measurements_raw` (Postgres) | 14 Tage |
+| Verdichtete Zeitreihen | `measurements_10s/1min/15min`, `energy_daily`, `counters` | 180 Tage / 3 Jahre / unbegrenzt |
+| Lokale Reserve | Ringpuffer der Bridge (SQLite) | 7 Tage, nur für Nachlieferung |
+| Konfiguration, Modi, Overrides, Entscheidungen, Kommandos, Forecasts, Pläne, Events | Postgres | unbegrenzt bzw. gemäß Tabelle |
+
+Backups: Railway-Snapshots täglich; zusätzlich wöchentlicher `pg_dump` (komprimiert) in einen Objektspeicher
+(Cloudflare R2 oder Backblaze B2, Env-konfiguriert) als Worker-Job; Wiederherstellung ist dokumentierter Bestandteil
+von Phase 2 (Restore-Probe auf leere DB in CI).
 
 ### 16.5 TimescaleDB-Bewertung
 
-Timescale brächte automatische Chunking/Compression/Continuous Aggregates und würde 16.3 vereinfachen. Gegen v1:
-Railways Standard-Postgres-Template hat die Extension nicht; ein eigenes Timescale-Image ist möglich, aber dann
-liegt Backup/Upgrade in eigener Hand. Bei unserem Volumen (≈ 15 Sensoren × 0,2–1 Hz) reichen native Partitionen.
-**Entscheidung:** Postgres nativ; Repository-Schicht so schneiden, dass ein Wechsel zu Hypertables nur Migrationen
-und den Aggregationsjob betrifft. Re-Evaluation, wenn mehr als ~50 Sensoren oder > 1 Hz dauerhaft anfallen.
+Da Postgres nun **alle** Rohmesswerte trägt, ist der Nutzen von Timescale (Hypertables, Compression, Continuous
+Aggregates) größer als in Revision 1. Dagegen spricht weiterhin: Railways Standard-Postgres hat die Extension nicht;
+ein eigenes Timescale-Image bedeutet Backup/Upgrade in eigener Hand. Bei ~15 Sensoren bleiben native Partitionen
+mit gestufter Retention beherrschbar (16.3). **Entscheidung:** Postgres nativ in v1; Repository-Schicht und
+Aggregationsjob so schneiden, dass ein Wechsel zu Hypertables nur Migrationen betrifft. Re-Evaluation, wenn mehr als
+~50 Sensoren, dauerhaft > 1 Hz oder eine Rohdaten-Aufbewahrung > 30 Tage gewünscht wird.
 
 ## 17. Sichere Verbindung Railway ↔ Haus
 
 ### 17.1 Bewertete Optionen
 
+Ausgangslage: Die Shellys, der MyEnergi-Hub und der SolarEdge-Wechselrichter haben private LAN-Adressen und sind
+aus dem Internet **nicht erreichbar** – und sollen es auch nicht werden. Eine Cloud kann sie also nie direkt
+ansprechen. Dieser Abschnitt gilt für das Profil **B (Railway)** aus Abschnitt 15; im Profil **A (lokal)** entfällt
+der Tunnel, weil Anwendung und Geräte im selben LAN stehen.
+
 | Option | Richtung | Bewertung |
 |---|---|---|
-| HA per Port-Forwarding/Reverse-Proxy öffentlich | Cloud → Haus | **abgelehnt** (ausdrücklich unerwünscht; Angriffsfläche HA) |
-| HA über Nabu-Casa-Cloud-URL | Cloud → Haus | funktioniert, aber HA-Vollzugriff über Dritt-Cloud, Latenz, kein InfluxDB-Zugriff; höchstens Notfall-Fallback |
-| VPN/Tailscale zwischen Railway und Haus | beidseitig | Railway hat keinen nativen Tailscale-Sidecar; Userspace-Tailscale im Container ist möglich, aber fragil bei Deploys; HA bliebe „im Netz“ der Cloud erreichbar – mehr Zugriff als nötig |
-| MQTT-Broker in der Cloud, HA publisht/subscribed | Haus → Cloud | solide, Standard; zusätzlicher Dienst mit Auth/TLS-Pflege; HA-MQTT-Integration müsste jeden Sensor publizieren (Konfigurationsaufwand in HA) |
-| **Lokaler Agent (Bridge) mit ausgehender WSS-Verbindung** | **Haus → Cloud** | **gewählt**: minimale Angriffsfläche (kein offener Port im Haus), volle Kontrolle über Protokoll, Queue und Failsafe, InfluxDB-Proxy möglich, HA-Konfiguration bleibt unangetastet |
+| Geräte per Port-Forwarding öffentlich machen | Cloud → Haus | **abgelehnt**: Shelly-Weboberflächen und Modbus ohne TLS im Internet sind ein erhebliches Risiko |
+| Shelly-Cloud-API + MyEnergi-Cloud + SolarEdge-Cloud direkt aus Railway | Cloud → Hersteller-Clouds | für MyEnergi ohnehin nötig; Shelly-Cloud nur Gen2 mit eigenem Key, Latenz mehrere Sekunden, Batteriesensoren nur Cloud-seitig gecacht, SolarEdge-Cloud 15-min – kein Live, kein lokaler Betrieb, drei Fremdabhängigkeiten für Schaltbefehle: **abgelehnt** |
+| Home Assistant als Vermittler (REST/WebSocket, Nabu-Casa-URL) | Cloud → HA | technisch möglich, macht Duck Curve Home aber dauerhaft von HA abhängig – vom Betreiber ausgeschlossen |
+| VPN/Tailscale zwischen Railway und Haus | beidseitig | Railway hat keinen nativen Tailscale-Sidecar; Userspace-Tailscale im Container ist möglich, aber fragil bei Deploys; die Cloud bekäme Zugriff auf das ganze Hausnetz – mehr als nötig |
+| MQTT-Broker in der Cloud, Shellys publizieren direkt | Haus → Cloud | Shellys können nur einen Broker; TLS/Auth auf jedem Gerät pflegen; Gen1 ohne TLS-MQTT; Modbus/MyEnergi bräuchten trotzdem einen lokalen Vermittler |
+| **Lokaler Agent (Bridge) mit ausgehender WSS-Verbindung** | **Haus → Cloud** | **gewählt für Profil B**: minimale Angriffsfläche (kein offener Port im Haus), volle Kontrolle über Protokoll, Puffer und Failsafe, alle Gerätezugänge bleiben im LAN, ein einziger Tunnel nach außen |
 
 ### 17.2 Bridge-Protokoll (v1)
 
@@ -1250,11 +1434,11 @@ und den Aggregationsjob betrifft. Re-Evaluation, wenn mehr als ~50 Sensoren oder
   `hello {bridge_version, entity_map_hash, clock}` → `welcome {server_time, config_version, wanted_entities}`;
   `telemetry {seq, items:[{key, value, observed_at, quality}]}` → `ack {seq}`;
   `command {command_id, actuator_key, state, ttl_s}` → `command_result {command_id, ok, observed_state, error}`;
-  `heartbeat` beidseitig alle 15 s; `history.request {job_id, key, start, end, every}` → `history.chunk` …;
+  `heartbeat` beidseitig alle 15 s; `backlog {seq_from, items…}` (Nachlieferung aus dem Ringpuffer); `device_health {source, status, …}`;
   `event {code, message, context}`.
 - Sequenznummern und Ack: Die Bridge hält eine SQLite-Queue (`queue.db`, WAL). Frames werden erst nach `ack`
   gelöscht. Nach Reconnect sendet sie ab der letzten nicht bestätigten Sequenz (Backlog komprimiert auf 1-min-Bins,
-  wenn > 1 h Rückstand, Rohdaten bleiben in InfluxDB). Maximale Queue 7 Tage, danach älteste verwerfen.
+  wenn > 1 h Rückstand; Rohdaten bleiben 7 Tage im Ringpuffer der Bridge). Maximale Queue 7 Tage, danach älteste verwerfen.
 - Reconnect: exponentiell 1 s → 60 s mit Jitter, DNS neu auflösen, TLS-Fehler protokollieren.
 - Uhrzeit: Bridge nutzt NTP des Hosts; Server misst Offset im Handshake; > 60 s Offset → Event + FAILSAFE (11.3).
 - Replay-Schutz: `command_id` einmalig, Kommandos mit `issued_at` älter als 30 s werden von der Bridge verworfen.
@@ -1269,8 +1453,10 @@ und den Aggregationsjob betrifft. Re-Evaluation, wenn mehr als ~50 Sensoren oder
 | `DCH_SESSION_SECRET` (web) | Railway-Variable, ≥ 32 Byte | manuell, invalidiert Kiosk-Sessions |
 | `DCH_BRIDGE_TOKEN_PEPPER` (api) | Railway-Variable | praktisch nie (macht alle Bridge-Tokens ungültig) |
 | Bridge-Token | Bridge-Host `/etc/duckcurve/bridge.secret` (0600) oder Docker-Secret | über UI, Grace-Period |
-| HA Long-Lived Token | nur auf der Bridge (`DCH_BRIDGE_HA_TOKEN`), nie in der Cloud | in HA erzeugen, in Bridge-Env tauschen |
-| InfluxDB Token/Passwort | nur Bridge | – |
+| Shelly-Gerätepasswörter | nur Bridge (`DCH_BRIDGE_SHELLY_PASSWORD`, optional je Gerät) | am Gerät ändern, Bridge-Env tauschen |
+| Mosquitto-Zugang | nur Bridge-Compose (`DCH_BRIDGE_MQTT_PASSWORD`), Passwortdatei im Broker-Volume | lokal |
+| MyEnergi Hub-Seriennummer + API-Key | nur Bridge (`DCH_BRIDGE_MYENERGI_*`) | API-Key in der MyEnergi-App neu erzeugen |
+| SolarEdge Cloud-API-Key (optional) | nur Bridge | im Monitoring-Portal |
 | Tibber-Token, Solcast-Key | Railway-Variablen (worker) | Anbieter |
 | Kiosk-Session | HttpOnly-Cookie (iron-session-Muster), 180 Tage, widerrufbar | in UI |
 
@@ -1279,10 +1465,12 @@ Regeln: keine Secrets im Repo (`.env.example` enthält nur Namen), `gitleaks` in
 
 ### 17.4 Offline-Betrieb der Bridge
 
-Ohne Cloud: Bridge sammelt weiter in die Queue, hält den HA-Heartbeat, setzt nach `offline_release_s` alle
-Wärmepumpen-Kontakte auf `safe_state` und schreibt einen lokalen Event. Es gibt in v1 **keine** lokale Regelung –
-die Wärmepumpe läuft dann so, wie sie es auch ohne Duck Curve Home täte. Ein lokales Mini-Dashboard der Bridge
-(`http://bridge:8080/status`, nur LAN) zeigt Queue-Stand, Verbindung, Uhrzeitversatz, letzte Kommandos.
+Ohne Cloud: Die Bridge liest weiter alle Geräte und füllt den Ringpuffer (7 Tage), hält den lokalen Heartbeat für
+den Guardian, setzt nach `offline_release_s` alle Wärmepumpen-Kontakte auf `safe_state` und schreibt einen lokalen
+Event. Es gibt in Profil B **keine** lokale Regelung – die Wärmepumpe läuft dann so, wie sie es auch ohne Duck Curve
+Home täte. Die Status-Seite der Bridge (`http://bridge:8080`, nur LAN) zeigt Live-Werte, Gerätegesundheit,
+Puffer-Stand, Verbindung, Uhrzeitversatz und letzte Kommandos – ein Minimal-Dashboard für den Störfall. (Im Profil A
+läuft die Regelung lokal und ist vom Internet unabhängig – einer der Hauptgründe für die Empfehlung.)
 
 ## 18. Weather Forecast Provider
 
@@ -1610,7 +1798,9 @@ Gelöst mit `scipy.optimize.milp` (HiGHS), 96–144 binäre Variablen → Sekund
 ├── migrations.yml  push/PR auf apps/api/src/dch_api/infrastructure/db/**
 │                   leere Postgres → alembic upgrade head → alembic check → alembic downgrade -1 → upgrade head
 │                   → Schema-Dump als Artefakt (Diff im PR sichtbar)
-├── docker.yml      PR: docker build beider Images (ohne Push), Trivy-Scan (Warnstufe)
+├── docker.yml      PR: docker build aller drei Images (api/worker, web, bridge) ohne Push, Trivy-Scan (Warnstufe);
+│                   zusätzlich linux/arm64 (Raspberry Pi) per QEMU; Release-Tag → Push nach GHCR
+│                   (`ghcr.io/moritznobis87/duckcurve-*`); der lokale Host zieht per `docker compose pull` (Profil A)
 ├── secrets.yml     gitleaks auf jedem Push
 └── db-maintenance.yml   workflow_dispatch: backfill | retention-dry-run | destructive-migration
                     mit Bestätigungswort und environment: production (valyze-Muster)
@@ -1729,11 +1919,11 @@ diese Ableitungen nicht übertragbar (zu dunkel auf `--deep`), das Prinzip aber 
   /* Typografie */
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  --kicker: 400 13px/1.2 var(--font-mono);   /* + letter-spacing .13em, uppercase; Website: 11 px */
-  --kpi-xl: 400 64px/1 var(--font-mono);     /* letter-spacing -.03em */
-  --kpi-l:  400 40px/1 var(--font-mono);     /* letter-spacing -.03em */
-  --kpi-m:  400 28px/1 var(--font-mono);     /* letter-spacing -.02em */
-  --title:  600 22px/1.2 var(--font-sans);   /* letter-spacing -.02em */
+  --kicker: 400 13px/1.2 var(--font-mono);   letter-spacing: .13em; text-transform: uppercase;  /* Website: 11px */
+  --kpi-xl: 400 64px/1 var(--font-mono);     letter-spacing: -.03em;
+  --kpi-l:  400 40px/1 var(--font-mono);     letter-spacing: -.03em;
+  --kpi-m:  400 28px/1 var(--font-mono);     letter-spacing: -.02em;
+  --title:  600 22px/1.2 var(--font-sans);   letter-spacing: -.02em;
   --body:   400 15px/1.5 var(--font-sans);
   --label:  400 13px/1.3 var(--font-sans);
 
@@ -1790,24 +1980,25 @@ Vor Phase 2 zu klären (Phase 1 läuft komplett im Demo-Modus und ist davon unab
 
 | # | Frage | Warum wichtig | Vorschlag / Annahme bis zur Klärung |
 |---|---|---|---|
-| 25.1 | **Entity-IDs in Home Assistant** für alle Sensoren und Relais (SolarEdge, Harvi, Libbi, Zappi, Shelly 3EM, 4× Shelly-Temp, Tibber, K1/K2, Kaffee, Terrasse, Gartenzaun) und deren Einheiten/Vorzeichen | Entity-Map der Bridge | Discovery-Kommando in Phase 2 liefert Liste; Annahme in 8.2 |
-| 25.2 | **InfluxDB-Version** (1.x InfluxQL oder 2.x Flux), Datenbank-/Bucket-Name, Retention, Zugangsdaten, läuft sie auf dem HA-Host? | Query-Proxy, Backfill | Adapter für beide vorbereiten |
-| 25.3 | **Aktualisierungsraten der Quellen in HA**: MyEnergi-Integration (Cloud-Polling, typ. 10–30 s?), SolarEdge (Cloud 5–15 min oder Modbus/TCP lokal?), Shelly (lokal, ≈ 1 s) | „Live“-Anspruch; Bilanz mit unterschiedlich alten Werten | Alter je Wert anzeigen; ggf. SolarEdge-Modbus lokal aktivieren |
-| 25.4 | **Gibt es Tibber Pulse** (Echtzeit-Zählerwerte in HA)? Wenn ja, ist das die beste Netzmessung neben Harvi | Netzleistung 1 s, Abgleich mit Harvi | Harvi als primär |
-| 25.5 | **HA-Host für die Bridge**: HA OS (dann Bridge als Add-on/Container über Portainer/SSH) oder Docker-Host? Docker verfügbar? | Deployment der Bridge | Docker-Compose annehmen; Add-on-Verpackung später |
-| 25.6 | **Exakte Koordinaten, kWp, Ausrichtung, Neigung, Wechselrichterleistung, Anzahl Dachflächen**, evtl. Einspeisebegrenzung | PV-Forecast | Platzhalter in 19.1 |
-| 25.7 | **Innentemperatur verfügbar?** (Thermostat, Sensor) | Gebäudemodell, Komfortgrenzen, Kalibrierung τ | ohne: Gebäude-Vorheizen nur „blind“ mit engen Grenzen oder gar nicht (Phase 6 abhängig) |
-| 25.8 | **Verhalten der ELCO AERO auf K1/K2**: Was genau ändert K1 (Sollwertanhebung, WW-Beladung)? Zeigt K2 Frostschutz? Herstellerangabe zur max. Sperrdauer/Tag? Klemmenbelegung dokumentiert? | Regelparameter, Freigabe von K2 | Phase 3 protokolliert Versuche; K2 bleibt aus |
-| 25.9 | **Wie ist die bestehende HA-Regel für die Wärmepumpe** aufgebaut, und soll sie in Phase 4 abgeschaltet werden? („WP Auto“ auf dem heutigen Dashboard) | Doppelsteuerung vermeiden | in Phase 4 deaktivieren, Logik übernehmen |
-| 25.10 | **Shelly-Modelle der Relais** (Gen1/Gen2/Gen3, Plus 1/Pro) – unterstützen sie Auto-Off-Timer? | Rückfallebene E0 | E0 mit HA-Automation E1 kompensieren, falls nicht |
+| 25.1 | **Shelly-Inventar:** genaue Modelle und Generation (Gen1/Gen2/Gen3) von 3EM, Relais (K1, K2, Kaffee, Terrasse, Gartenzaun) und den vier Temperatursensoren (Plus Add-on mit DS18B20? H&T?), Firmware-Stand, feste IPs vorhanden? | Adapter-Auswahl (Gen1 vs. RPC), Auto-Off-Fähigkeit, MQTT-Konfiguration | Discovery in Phase 2; Annahmen in 8.2/8.6 |
+| 25.2 | **Bridge-Host:** Welcher Rechner steht dauerhaft im LAN (Raspberry Pi, NUC, vorhandener HA-Host mit Docker)? Architektur (arm64/amd64), Stromversorgung, LAN-Kabel? | Docker-Images, Zuverlässigkeit | Raspberry Pi 4/5 mit SSD oder NUC, Docker Compose |
+| 25.3 | **MyEnergi:** Hub-Seriennummer und API-Key aus der App verfügbar? Welche Geräte (Zappi, Libbi, Harvi – je Seriennummer)? Liefert der Harvi die Netzleistung oder ein Zappi-CT? | Netzmessung = Pflichtgröße der Regelung | Harvi als Netzmesser |
+| 25.4 | **Tibber Pulse vorhanden?** | zweite, cloud-unabhängige Netzmessung alle 2–10 s | ohne Pulse hängt die PV-Regel an der MyEnergi-Cloud |
+| 25.5 | **SolarEdge:** Modbus TCP aktivierbar (SetApp/Installer-Zugang)? Wechselrichtermodell? Nutzt Home Assistant heute schon Modbus? | Live-PV mit 2 s vs. nur CT-Wert | MyEnergi-CT als Start, Modbus in Phase 2 aktivieren |
+| 25.6 | **Koordinaten, kWp, Ausrichtung, Neigung, Wechselrichterleistung, Dachflächen**, evtl. Einspeisebegrenzung | PV-Forecast | Platzhalter in 19.1 |
+| 25.7 | **Innentemperatur verfügbar?** (Thermostat, Shelly H&T innen) | Gebäudemodell, Komfortgrenzen | ohne: Gebäude-Vorheizen nur mit engen Grenzen oder gar nicht |
+| 25.8 | **Verhalten der ELCO AERO auf K1/K2**: Was ändert K1 (Sollwertanhebung, WW-Beladung)? Zeigt K2 Frostschutz? Herstellergrenze für Sperrdauer/Tag? Klemmenbelegung dokumentiert? | Regelparameter, Freigabe von K2 | Phase 3 protokolliert Versuche; K2 bleibt aus |
+| 25.9 | **Bestehende HA-Regel für die Wärmepumpe** („WP Auto“): Logik, und wann darf sie abgeschaltet werden? Soll Home Assistant überhaupt weiterlaufen? | zwei Automatiken auf denselben Relais sind ein Risiko (8.7) | HA-Regel spätestens in Phase 3 aus; HA sonst frei |
+| 25.10 | **Verdrahtung K1/K2:** Schließer (NO) oder Öffner (NC)? | stromloses Relais muss „kein Eingriff“ bedeuten | NO annehmen, in Phase 3 prüfen |
 | 25.11 | **Puffervolumen, Sensorhöhen, Anschlusshöhen** (WP-Vorlauf, Pelletofen, Heizkreis, WW-Entnahme) | Schichtgewichte, SOC | gleiche Volumenanteile annehmen |
-| 25.12 | **Einspeisevergütung** (ct/kWh) und Tibber-Tarifdetails (Grundpreis, Netzentgelt fix/variabel) | Opportunitätskosten im Planer | 8 ct/kWh annehmen |
-| 25.13 | **Pelletofen**: gibt es irgendeinen Indikator (Steckdosen-Leistung, Abgastemperatur, Zeitplan)? | Fremdwärme erkennen | nur Residual-Erkennung |
-| 25.14 | **Domains**: `home.duckcurve.de` / `api-home.duckcurve.de` gewünscht? DNS bei wem? | Railway Custom Domains | Railway-Standarddomains bis dahin |
-| 25.15 | **Zugriff für weitere Personen/Handys** neben dem iPad? | Auth-Umfang | Single-User + mehrere Kiosk-Geräte |
-| 25.16 | **Wallbox-Steuerung später gewünscht** (MyEnergi-API schreibend)? | Architekturreserve | nur lesen in v1 |
-| 25.17 | **Wetter-Provider**: Open-Meteo genügt? DWD gewünscht? | 18.2 | Open-Meteo |
-| 25.18 | **Repository-Sichtbarkeit**: öffentlich (dann Log-Hygiene wie valyze) oder privat? | CI-Secrets, Doku | privat annehmen |
+| 25.12 | **Einspeisevergütung** und Tibber-Tarifdetails (Grundpreis, Netzentgelt fix/variabel) | Opportunitätskosten im Planer | 8 ct/kWh annehmen |
+| 25.13 | **Pelletofen:** irgendein Indikator (Steckdosen-Leistung über Shelly Plug, Abgastemperatur, Zeitplan)? | Fremdwärme erkennen | nur Residual-Erkennung |
+| 25.14 | **Außentemperatur:** eigener Sensor (Shelly H&T außen) oder nur Wetterdienst? | Regelgröße für Wärmebedarf | Open-Meteo `current` stündlich, Sensor optional |
+| 25.15 | **Domains**: `home.duckcurve.de` / `api-home.duckcurve.de` gewünscht? DNS bei wem? | Railway Custom Domains | Railway-Standarddomains bis dahin |
+| 25.16 | **Zugriff für weitere Personen/Handys** neben dem iPad? | Auth-Umfang | Single-User + mehrere Kiosk-Geräte |
+| 25.17 | **Wallbox-Steuerung später gewünscht** (MyEnergi-API schreibend)? | Architekturreserve | nur lesen in v1 |
+| 25.18 | **Historische Daten einmalig übernehmen?** (CSV-Export aus dem bisherigen System für die Kalibrierung von PV- und Wärmebedarfsmodell) | Modelle wären ab Tag 1 kalibrierbar statt nach 14+ Tagen | optionales Import-Tool, keine Laufzeitabhängigkeit |
+| 25.19 | **Repository-Sichtbarkeit**: öffentlich oder privat? | CI-Secrets, Log-Hygiene | privat annehmen |
 
 ## 26. Glossar und Konventionen
 
@@ -1815,7 +2006,9 @@ Vor Phase 2 zu klären (Phase 1 läuft komplett im Demo-Modus und ist davon unab
 |---|---|
 | **K1 / Release-Kontakt** | potenzialfreier Kontakt „PV-Überschuss“: Anforderung an die Wärmepumpe, mehr Wärme zu erzeugen |
 | **K2 / Block-Kontakt** | potenzialfreier Kontakt „Netzbetreiber-Shutdown“ (EVU-Sperre): Wärmepumpe darf nicht heizen |
-| **Bridge** | lokaler Duck-Curve-Home-Agent im Haus (Python), verbindet HA/InfluxDB ausgehend mit Railway |
+| **Bridge / Device Gateway** | Geräteschicht von Duck Curve Home (Python): liest Shelly/MyEnergi/SolarEdge direkt und schaltet Shelly-Relais. Läuft im Profil A im Worker-Prozess, im Profil B als eigener Agent im Haus mit ausgehender Verbindung zu Railway |
+| **Guardian** | unabhängiger Wächterprozess auf dem Haus-Rechner, der die Wärmepumpen-Kontakte zurücksetzt, wenn die Anwendung ausfällt |
+| **Ringpuffer** | lokale SQLite-Ablage des Gateways mit 7 Tagen Rohwerten für die Nachlieferung nach Verbindungsabbrüchen (nur Profil B) |
 | **LiveState** | letzter bekannter Wert je Sensor mit Qualität und Alter, im API-Prozess und als Spiegel in Postgres |
 | **Decision** | strukturierte Regler-Entscheidung mit Reason-Codes, Inputs, TTL und Ausblick |
 | **Plan / PlanInterval** | 15-min-Fahrplan über 24–36 h mit geplantem Wärmepumpenzustand und Begründung |
