@@ -1,0 +1,26 @@
+# Umgebungen und Secrets
+.env
+.env.*
+!.env.example
+*.secret
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+
+# Node
+node_modules/
+.next/
+coverage/
+playwright-report/
+test-results/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
