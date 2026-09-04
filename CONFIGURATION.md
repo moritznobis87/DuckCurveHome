@@ -1,8 +1,8 @@
 # Konfiguration
 
 Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Betrieb und Secrets,
-**HemsConfig** (Pydantic-Modell in `hems_core.domain.config`) für Regler und Modelle. In Phase 1 ist HemsConfig
-über `GET /api/v1/config` lesbar und noch nicht extern überschreibbar; Phase 2 lädt sie aus YAML/PostgreSQL.
+**HemsConfig** (Pydantic-Modell in `hems_core.domain.config`) für Regler und Modelle, ladbar aus einer YAML
+(`DCH_CONFIG_FILE`, Beispiel `config/hems.example.yaml`) und lesbar über `GET /api/v1/config`.
 
 ## Umgebungsvariablen
 
@@ -20,7 +20,30 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_DEMO_START` | jetzt | Startzeitpunkt der Simulation (ISO 8601) |
 | `DCH_DEMO_WARMUP_HOURS` | `30` | Vorlauf beim Start, damit Chart und Historie gefüllt sind |
 | `DCH_DEMO_AUTOSTART` | `true` | `false` in Tests |
-| `DCH_API_URL` (web) | `http://localhost:8000` | Ziel des Rewrites `/api/dch/*` |
+| `DCH_ACTUATION_ENABLED` | `false` | Schaltbefehle an die Bridge senden (Phase 3+) |
+| `DCH_PLAN_REFRESH_MIN` | `15` | Neuplanung |
+| `DATABASE_URL` | – | Live-Modus: `postgresql://…` (Railway) oder `sqlite+aiosqlite:///…` (Entwicklung) |
+| `DCH_DB_CREATE_ALL` | `false` | Schema ohne Alembic anlegen (nur SQLite/Tests) |
+| `DCH_BRIDGE_TOKENS` | `[]` | JSON-Liste erlaubter Bridge-Tokens (Secrets) |
+| `DCH_API_TOKEN` | – | Bearer-Token, das das Web-BFF mitschickt; leer = keine Prüfung |
+| `DCH_CONFIG_FILE` | – | YAML mit `site`, `pv_system`, `hems` (siehe `config/hems.example.yaml`) |
+| `DCH_TIBBER_TOKEN` / `DCH_TIBBER_HOME_ID` | – | Tibber-Preise; ohne Token pausieren Preisregeln |
+| `DCH_WEATHER_REFRESH_MIN` | `60` | Open-Meteo-Abruf; `0` deaktiviert Wetter |
+| `DCH_PRICE_REFRESH_MIN` | `30` | Tibber-Abruf (13–15 Uhr immer halbstündlich) |
+| `DCH_RAW_RETENTION_DAYS` | `14` | Aufbewahrung der Rohwerte |
+| `DCH_API_URL` (web) | `http://localhost:8000` | Ziel der BFF-Route `/api/dch/*` |
+| `DCH_API_TOKEN` (web) | – | wird als Bearer an die API weitergereicht |
+| `DCH_SESSION_SECRET` (web) | – | ≥ 32 Zeichen; aktiviert die Kiosk-Anmeldung |
+| `DCH_KIOSK_TOKEN` (web) | – | Pairing-Token für `/pair?token=…&name=…` |
+
+## Bridge (Home-Assistant-Add-on)
+
+Optionen des Add-ons (`addons/duckcurve_bridge/config.yaml`): `api_ws_url`, `api_token`, `bridge_id`,
+`entities_file`, `heartbeat_entity`, `offline_release_s`, `log_level`. Das Entity-Mapping steht in
+`/config/duckcurve/entities.yaml` (Vorlage `addons/duckcurve_bridge/entities.example.yaml`): je Sensor
+`key`, `entity`, `unit` (W, kW, %, °C, EUR/kWh), optional `scale`, `sign` (`import_positive`,
+`export_positive`, `discharge_positive`, `charge_positive`), `stale_after_s`; je Aktor `key`, `entity`,
+`label`, `safety_class` (`heat_pump` für K1/K2), `safe_state`.
 
 ## HemsConfig (Auszug, Defaults)
 

@@ -2,9 +2,9 @@ name: python
 on:
   push:
     branches: [main, "claude/**"]
-    paths: ["packages/**", "apps/api/**", "pyproject.toml", "uv.lock", ".github/workflows/python.yml"]
+    paths: ["packages/**", "apps/api/**", "apps/bridge/**", "pyproject.toml", "uv.lock", ".github/workflows/python.yml"]
   pull_request:
-    paths: ["packages/**", "apps/api/**", "pyproject.toml", "uv.lock", ".github/workflows/python.yml"]
+    paths: ["packages/**", "apps/api/**", "apps/bridge/**", "pyproject.toml", "uv.lock", ".github/workflows/python.yml"]
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -16,9 +16,15 @@ jobs:
       - run: uv sync --frozen --all-packages
       - run: uv run ruff check apps packages
       - run: uv run ruff format --check apps packages
-      - run: uv run mypy apps/api/src packages/hems-core/src
+      - run: uv run mypy apps/api/src apps/bridge/src packages/hems-core/src
       - run: uv run lint-imports
       - run: uv run pytest -q -p no:warnings
+      - name: Migrationen auf leerer Datenbank (SQLite) – upgrade, check, downgrade
+        run: |
+          export DATABASE_URL=sqlite+aiosqlite:////tmp/mig.sqlite
+          uv run --directory apps/api alembic upgrade head
+          uv run --directory apps/api alembic check
+          uv run --directory apps/api alembic downgrade base
       - name: OpenAPI-Schema aktuell?
         run: |
           uv run python -c "import json; from dch_api.main import create_app; from dch_api.settings import Settings; json.dump(create_app(Settings(demo_autostart=False)).openapi(), open('/tmp/openapi.json','w'), indent=2, ensure_ascii=False)"

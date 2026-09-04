@@ -1,6 +1,6 @@
 # ADR-0001 – Geräteschicht und Hosting (offen, Entscheidung vor Phase 2)
 
-**Status:** angenommen (2026-09-04, Betreiber: kein Nabu Casa, Home Assistant OS) · **Datum:** 2026-09-04
+**Status:** angenommen und bestätigt (2026-09-04: Railway als Hosting, kein Nabu Casa, Home Assistant OS) · **Datum:** 2026-09-04
 
 ## Kontext
 

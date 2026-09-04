@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 from dch_api.schemas import PlanIntervalOut, PlanOut, PriceWindowOut
@@ -14,7 +15,7 @@ from hems_core.planning import (
     negative_windows,
     next_window_after,
 )
-from hems_core.simulation import BERLIN, DemoHouse
+from hems_core.simulation import BERLIN
 
 LABELS = {
     "cheap": "günstiges Preisfenster",
@@ -33,8 +34,11 @@ def _out(w: PriceWindow | tuple[datetime, datetime, str]) -> PriceWindowOut:
     return PriceWindowOut(start=s, end=e, kind=kind, label_de=LABELS[kind])
 
 
+PvExpected = Callable[[datetime], float]
+
+
 def pv_surplus_windows(
-    house: DemoHouse, day_start: datetime, cfg: HemsConfig
+    pv_expected: PvExpected, day_start: datetime, cfg: HemsConfig
 ) -> list[tuple[datetime, datetime, str]]:
     """Erwartete PV-Überschussfenster (Prognose minus Grundlast ≥ Schwelle, mind. 30 min)."""
     windows: list[tuple[datetime, datetime, str]] = []
@@ -42,7 +46,7 @@ def pv_surplus_windows(
     t = day_start
     step = timedelta(minutes=15)
     while t < day_start + timedelta(hours=24):
-        exp = house.pv_expected_kw(t) - 0.6
+        exp = pv_expected(t) - 0.6
         if exp >= cfg.control.pv.on_surplus_kw:
             run_start = run_start or t
         elif run_start is not None:
@@ -56,7 +60,7 @@ def pv_surplus_windows(
 
 
 def build_plan(
-    house: DemoHouse, prices: list[PricePoint], now: datetime, cfg: HemsConfig
+    pv_expected: PvExpected, prices: list[PricePoint], now: datetime, cfg: HemsConfig
 ) -> PlanOut:
     local_day = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
     day_start = local_day.astimezone(UTC)
@@ -65,8 +69,8 @@ def build_plan(
     cheap = cheap_windows(prices, price_cfg.cheap_quantile, price_cfg.min_window_min)
     expensive = expensive_windows(prices, price_cfg.expensive_quantile, 60)
     negative = negative_windows(prices)
-    pv_win = pv_surplus_windows(house, day_start, cfg) + pv_surplus_windows(
-        house, day_start + timedelta(days=1), cfg
+    pv_win = pv_surplus_windows(pv_expected, day_start, cfg) + pv_surplus_windows(
+        pv_expected, day_start + timedelta(days=1), cfg
     )
     if len(prices) <= 24:  # ohne Morgenpreise keine PV-Fenster für morgen ausweisen
         pv_win = [w for w in pv_win if w[0] < day_start + timedelta(days=1)]
@@ -97,7 +101,7 @@ def build_plan(
         intervals.append(
             PlanIntervalOut(
                 ts=t,
-                expected_pv_kw=round(house.pv_expected_kw(t), 3),
+                expected_pv_kw=round(pv_expected(t), 3),
                 price_ct_kwh=price,
                 planned_hp_state=state,
                 reason_code=code,

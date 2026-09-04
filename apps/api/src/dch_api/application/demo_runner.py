@@ -171,23 +171,31 @@ class DemoRunner:
         ):
             from dch_api.application.plan_service import build_plan
 
-            self.plan = build_plan(self.house, self._prices(), now, self.hems)
+            self.plan = build_plan(self.house.pv_expected_kw, self._prices(), now, self.hems)
             self._plan_at = now
             self.broker.publish("plan", self.plan.model_dump(mode="json"))
 
     # ------------------------------------------------------------------ Kommandos
-    def set_actuator(
+    async def switch_actuator(
         self, key: str, state: bool, duration_min: int | None
-    ) -> tuple[bool, bool | None]:
+    ) -> tuple[bool, bool | None, str | None]:
         if key in ("hp_release_contact", "hp_block_contact"):
-            return False, None  # Wärmepumpen-Kontakte nur über den Modus
+            return False, None, "Wärmepumpen-Kontakte nur über den Betriebsmodus."
         ttl = duration_min * 60 if duration_min else None
         ok = self.house.set_actuator(key, state, ttl)
         observed = self.house.actuators.get(key)
         self._after_step_publish()
-        return ok, observed
+        return ok, observed, None if ok else "unbekannter Aktor"
 
-    def set_heat_pump_mode(
+    async def history_rows(
+        self, start: datetime, end: datetime
+    ) -> list[dict[str, float | str | None]]:
+        return self.history.series(start, end)
+
+    async def recent_decisions(self, limit: int) -> list[Decision]:
+        return list(self.decisions)[:limit]
+
+    async def set_heat_pump_mode(
         self,
         system_mode: SystemMode,
         profile: AutoProfile | None,

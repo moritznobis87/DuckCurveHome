@@ -1,0 +1,21 @@
+# Duck Curve Home – Entity-Mapping (nach /config/duckcurve/entities.yaml kopieren und anpassen).
+# Domänenkonvention: grid > 0 Bezug, battery > 0 Entladen; Leistungen in kW (unit W wird skaliert).
+sensors:
+  - { key: pv_power_kw,              entity: sensor.solaredge_ac_power,          unit: W }
+  - { key: grid_power_kw,            entity: sensor.myenergi_harvi_power,        unit: W, sign: import_positive }
+  - { key: battery_power_kw,         entity: sensor.myenergi_libbi_power,        unit: W, sign: discharge_positive }
+  - { key: battery_soc,              entity: sensor.myenergi_libbi_soc,          unit: "%" }
+  - { key: ev_power_kw,              entity: sensor.myenergi_zappi_power,        unit: W }
+  - { key: heat_pump_power_kw,       entity: sensor.shelly_3em_wp_total_power,   unit: W, stale_after_s: 60 }
+  - { key: buffer_temp_top_c,        entity: sensor.puffer_oben,                 unit: "°C", stale_after_s: 900 }
+  - { key: buffer_temp_mid_top_c,    entity: sensor.puffer_mitte_oben,           unit: "°C", stale_after_s: 900 }
+  - { key: buffer_temp_mid_bottom_c, entity: sensor.puffer_mitte_unten,          unit: "°C", stale_after_s: 900 }
+  - { key: buffer_temp_bottom_c,     entity: sensor.puffer_unten,                unit: "°C", stale_after_s: 900 }
+  - { key: electricity_price_ct_kwh, entity: sensor.tibber_electricity_price,    unit: EUR/kWh, stale_after_s: 7200 }
+  - { key: outdoor_temp_c,           entity: sensor.aussentemperatur,            unit: "°C", stale_after_s: 3600 }
+actuators:
+  - { key: hp_release_contact,  entity: switch.wp_pv_freigabe,     label: WP PV-Freigabe, safety_class: heat_pump, safe_state: false }
+  - { key: hp_block_contact,    entity: switch.wp_evu_sperre,      label: WP Sperre,      safety_class: heat_pump, safe_state: false }
+  - { key: coffee_machine,      entity: switch.kaffeemaschine,     label: Kaffeemaschine }
+  - { key: terrace_light,       entity: light.terrassenlicht,      label: Terrassenlicht }
+  - { key: garden_fence_light,  entity: light.gartenzaun,          label: Gartenzaun }

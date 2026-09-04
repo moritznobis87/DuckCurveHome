@@ -1,0 +1,324 @@
+"""Live-Runtime: Telemetrie der Bridge → LiveState + PostgreSQL; Regler-Tick; Planung; SSE.
+
+Phase 2 ist „read-only“: Entscheidungen werden berechnet, gespeichert und angezeigt, aber erst mit
+DCH_ACTUATION_ENABLED=true an die Bridge geschickt (Phase 3/4).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+from collections import deque
+from datetime import UTC, datetime, timedelta
+
+import structlog
+
+from dch_api.application.config_loader import AppConfig
+from dch_api.application.forecast_service import ForecastService
+from dch_api.application.plan_service import build_plan
+from dch_api.infrastructure.bridge_hub import BridgeHub
+from dch_api.infrastructure.db.repositories import SqlRepositories
+from dch_api.infrastructure.history import SERIES
+from dch_api.infrastructure.live_state import LiveState
+from dch_api.infrastructure.sse_broker import SseBroker
+from dch_api.schemas import LiveStateOut, PlanOut, SystemStatusOut
+from dch_api.settings import Settings
+from hems_core.control import ControlInputs, HeatPumpController, HeatPumpTracker
+from hems_core.domain import (
+    AutoProfile,
+    BufferState,
+    Decision,
+    EnergySnapshot,
+    HeatPumpState,
+    OperatingMode,
+    Override,
+    OverrideKind,
+    SystemMode,
+)
+from hems_core.planning import cheap_windows, next_window_after, price_rank
+from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
+from hems_core.simulation import BERLIN
+from hems_core.thermal import compute_buffer_state
+
+log = structlog.get_logger("live")
+VERSION = "0.1.0-phase2"
+HISTORY_KEYS = [k for k in SERIES if k != "hp_release_contact"] + ["actuator:hp_release_contact"]
+
+
+class LiveRuntime:
+    def __init__(
+        self,
+        settings: Settings,
+        config: AppConfig,
+        repos: SqlRepositories,
+        hub: BridgeHub,
+        forecasts: ForecastService,
+    ) -> None:
+        self.settings = settings
+        self.config = config
+        self.hems = config.hems
+        self.repos = repos
+        self.hub = hub
+        self.forecasts = forecasts
+        self.broker = SseBroker()
+        self.live = LiveState(self.hems)
+        self.tracker = HeatPumpTracker(self.hems.heat_pump)
+        self.controller = HeatPumpController(self.hems)
+        self.mode = OperatingMode(system_mode=SystemMode.AUTO, auto_profile=AutoProfile.SMART)
+        self.decision: Decision | None = None
+        self.decisions: deque[Decision] = deque(maxlen=100)
+        self.plan: PlanOut | None = None
+        self._plan_at: datetime | None = None
+        self._last_publish = 0.0
+        self._tasks: list[asyncio.Task[None]] = []
+        hub.on_telemetry = self.on_telemetry
+        hub.on_event = self.on_bridge_event
+
+    @property
+    def now(self) -> datetime:
+        return datetime.now(UTC)
+
+    # ------------------------------------------------------------------ Eingang
+    async def on_telemetry(self, items: list[RawReading], is_backlog: bool) -> None:
+        await self.repos.add_readings(items)
+        if is_backlog:
+            return
+        self.live.apply(items)
+        loop_time = asyncio.get_running_loop().time()
+        if loop_time - self._last_publish >= 1.0:
+            self._last_publish = loop_time
+            self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+
+    async def on_bridge_event(self, frame: EventFrame | DeviceHealthFrame) -> None:
+        if isinstance(frame, EventFrame):
+            await self.repos.add_event(
+                frame.severity, f"bridge.{frame.code}", frame.message, frame.context
+            )
+        else:
+            await self.repos.add_event(
+                "info" if frame.status == "ok" else "warning",
+                "bridge.device_health",
+                f"{frame.source}: {frame.status}",
+                frame.details,
+            )
+        self.broker.publish(
+            "system", {"bridge_online": self.hub.online, "health": frame.model_dump(mode="json")}
+        )
+
+    # ------------------------------------------------------------------ Regelung
+    def _states(self) -> tuple[EnergySnapshot, BufferState, HeatPumpState]:
+        snap = self.live.snapshot(self.now)
+        hp = self.tracker.update(
+            snap.heat_pump_power_kw,
+            snap.hp_release_contact.value_or(0.0) >= 0.5,
+            snap.hp_block_contact.value_or(0.0) >= 0.5,
+            snap.timestamp,
+        )
+        return snap, compute_buffer_state(snap.buffer_temps_c, self.hems.buffer), hp
+
+    async def control_tick(self) -> Decision:
+        snap, buffer, hp = self._states()
+        now = snap.timestamp
+        prices = self.forecasts.prices
+        rank = price_rank(prices, now)
+        cheap = cheap_windows(
+            prices, self.hems.control.price.cheap_quantile, self.hems.control.price.min_window_min
+        )
+        nxt = next_window_after(cheap, now)
+        planned = False
+        if self.plan is not None:
+            cur = next(
+                (i for i in self.plan.intervals if i.ts <= now < i.ts + timedelta(minutes=15)), None
+            )
+            planned = cur is not None and cur.planned_hp_state == "release"
+        inputs = ControlInputs(
+            now=now,
+            snapshot=snap,
+            buffer=buffer,
+            hp=hp,
+            mode=self._effective_mode(now),
+            price_rank=rank,
+            price_age_s=self.forecasts.price_age_s(now),
+            next_cheap_window_start=nxt.start if nxt else None,
+            planned_release=planned,
+        )
+        decision = self.controller.tick(inputs)
+        self.decision = decision
+        if decision.changed:
+            self.decisions.appendleft(decision)
+            await self.repos.add_decision(decision)
+            log.info(
+                "decision",
+                state=decision.controller_state,
+                k1=decision.k1_release,
+                text=decision.explanation_de,
+            )
+            self.broker.publish("decision", decision.model_dump(mode="json"))
+            if self.settings.actuation_enabled:
+                await self._apply_contacts(decision)
+        return decision
+
+    async def _apply_contacts(self, decision: Decision) -> None:
+        if not self.hub.online:
+            return
+        result = await self.hub.send_command(
+            "hp_release_contact",
+            decision.k1_release,
+            self.hems.heat_pump.hw_auto_off_release_s,
+            decision.id,
+        )
+        if not result.ok:
+            await self.repos.add_event(
+                "warning", "actuator.failed", f"K1 → {decision.k1_release}: {result.error}", {}
+            )
+
+    def _effective_mode(self, now: datetime) -> OperatingMode:
+        ov = self.mode.override
+        if ov is not None and not ov.active(now):
+            self.mode = OperatingMode(
+                system_mode=SystemMode.AUTO, auto_profile=self.mode.auto_profile, override=None
+            )
+        return self.mode
+
+    async def refresh_plan(self) -> None:
+        now = self.now
+        self.plan = build_plan(self.forecasts.pv_expected_kw, self.forecasts.prices, now, self.hems)
+        self._plan_at = now
+        self.broker.publish("plan", self.plan.model_dump(mode="json"))
+
+    # ------------------------------------------------------------------ Kommandos (Dashboard)
+    async def switch_actuator(
+        self, key: str, state: bool, duration_min: int | None
+    ) -> tuple[bool, bool | None, str | None]:
+        if key in ("hp_release_contact", "hp_block_contact"):
+            return False, None, "Wärmepumpen-Kontakte nur über den Betriebsmodus."
+        if not self.settings.actuation_enabled:
+            return False, None, "Steuerung ist in dieser Phase deaktiviert (nur lesen)."
+        if not self.hub.online:
+            return False, None, "Bridge nicht verbunden."
+        result = await self.hub.send_command(
+            key, state, duration_min * 60 if duration_min else None, None
+        )
+        return result.ok, result.observed_state, result.error
+
+    async def set_heat_pump_mode(
+        self,
+        system_mode: SystemMode,
+        profile: AutoProfile | None,
+        manual_state: str | None,
+        duration_min: int,
+    ) -> OperatingMode:
+        now = self.now
+        override: Override | None = None
+        if system_mode is SystemMode.MANUAL:
+            kind = OverrideKind.FORCE_RELEASE if manual_state == "on" else OverrideKind.FORCE_OFF
+            override = Override(
+                kind=kind, started_at=now, ends_at=now + timedelta(minutes=duration_min)
+            )
+        self.mode = OperatingMode(
+            system_mode=system_mode,
+            auto_profile=profile or self.mode.auto_profile,
+            override=override,
+        )
+        await self.repos.save_mode(self.mode)
+        await self.control_tick()
+        self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+        return self.mode
+
+    # ------------------------------------------------------------------ Ausgabe
+    def live_state(self) -> LiveStateOut:
+        snap, buffer, hp = self._states()
+        now = snap.timestamp
+        return LiveStateOut(
+            snapshot=snap,
+            buffer=buffer,
+            heat_pump=hp,
+            decision=self.decision,
+            operating_mode=self._effective_mode(now),
+            price_rank=price_rank(self.forecasts.prices, now),
+            today_kwh={},
+            system=SystemStatusOut(
+                mode="live",
+                server_time=now,
+                sim_speed=1.0,
+                bridge_online=self.hub.online,
+                sse_clients=self.broker.client_count,
+                version=VERSION,
+                connection_label_de="live" if self.hub.online else "Bridge offline",
+            ),
+        )
+
+    async def history_rows(
+        self, start: datetime, end: datetime
+    ) -> list[dict[str, float | str | None]]:
+        rows = await self.repos.minute_series(start, end, HISTORY_KEYS)
+        for row in rows:  # Schlüsselname wie im Demo-Modus
+            row["hp_release_contact"] = row.pop("actuator:hp_release_contact", None)
+        return rows
+
+    async def recent_decisions(self, limit: int) -> list[Decision]:
+        if self.decisions:
+            return list(self.decisions)[:limit]
+        return await self.repos.recent_decisions(limit)
+
+    # ------------------------------------------------------------------ Laufzeit
+    async def start(self) -> None:
+        self.live.apply(await self.repos.latest())
+        stored = await self.repos.load_mode()
+        if stored is not None:
+            self.mode = stored
+        await self.forecasts.refresh_prices(self.now)
+        await self.forecasts.refresh_weather(self.now)
+        await self.refresh_plan()
+        if self.settings.runs_worker:
+            self._tasks = [
+                asyncio.create_task(self._control_loop(), name="control"),
+                asyncio.create_task(self._forecast_loop(), name="forecast"),
+                asyncio.create_task(self._housekeeping_loop(), name="housekeeping"),
+            ]
+        log.info("live runtime started", actuation=self.settings.actuation_enabled)
+
+    async def stop(self) -> None:
+        for t in self._tasks:
+            t.cancel()
+        for t in self._tasks:
+            with contextlib.suppress(asyncio.CancelledError):
+                await t
+
+    async def _control_loop(self) -> None:
+        while True:
+            await asyncio.sleep(self.settings.tick_s)
+            try:
+                await self.control_tick()
+                if self._plan_at is None or self.now - self._plan_at >= timedelta(
+                    minutes=self.settings.plan_refresh_min
+                ):
+                    await self.refresh_plan()
+                self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+            except Exception as exc:
+                log.error("control tick failed", error=repr(exc)[:300])
+
+    async def _forecast_loop(self) -> None:
+        last_weather = self.now
+        last_prices = self.now
+        while True:
+            await asyncio.sleep(60)
+            now = self.now
+            local_h = now.astimezone(BERLIN).hour
+            price_every = 30 if 13 <= local_h <= 15 else self.settings.price_refresh_min
+            if now - last_prices >= timedelta(minutes=price_every):
+                await self.forecasts.refresh_prices(now)
+                last_prices = now
+            if now - last_weather >= timedelta(minutes=self.settings.weather_refresh_min):
+                await self.forecasts.refresh_weather(now)
+                last_weather = now
+                await self.refresh_plan()
+
+    async def _housekeeping_loop(self) -> None:
+        while True:
+            await asyncio.sleep(3600)
+            with contextlib.suppress(Exception):
+                deleted = await self.repos.prune_raw(
+                    timedelta(days=self.settings.raw_retention_days)
+                )
+                log.info("raw pruned", rows=deleted)

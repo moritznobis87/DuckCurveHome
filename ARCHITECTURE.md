@@ -35,8 +35,22 @@ httpx oder MQTT importieren; Router importieren keine Integrationen direkt.
 4. Alle 15 Simulationsminuten berechnet `PlanService` Preis- und PV-Überschussfenster und ein 15-min-Raster.
 5. Der `SseBroker` verteilt `snapshot`, `decision`, `plan` an alle Dashboards (Koaleszierung bei Rückstau).
 
-Im Live-Betrieb (Phase 2) bleiben Regler, Planung und Dashboard unverändert; die Simulation wird durch die
-Geräteschicht ersetzt (Home Assistant und/oder direkte Adapter), die In-Memory-Historie durch PostgreSQL.
+## Datenfluss im Live-Modus (Phase 2)
+
+1. Die Bridge (HA-Add-on, `apps/bridge`) liest Entitäten über die HA-WebSocket-API, normalisiert sie nach
+   `entities.yaml` (Einheit, Skalierung, Vorzeichen) und sendet `telemetry`-Frames über eine ausgehende
+   WSS-Verbindung an `/bridge/ws` (Bearer-Token). Eine SQLite-Outbox puffert bis zum `ack`.
+2. `BridgeHub` nimmt die Frames an, `LiveRuntime` schreibt Rohwerte und den Spiegel `live_state` in
+   PostgreSQL (`SqlRepositories`) und aktualisiert den `LiveState` im Prozess; SSE wie im Demo-Modus.
+3. Der Regler-Tick läuft alle 10 s auf dem Snapshot des `LiveState`; Entscheidungen werden in
+   `control_decisions` gespeichert. Schaltbefehle gehen erst mit `DCH_ACTUATION_ENABLED=true` als `command`
+   an die Bridge, die sie über HA-Dienste ausführt und den Zustand zurückmeldet.
+4. `ForecastService` holt Tibber-Preise und Open-Meteo-Wetter, `simple_pv_forecast` rechnet die PV-Erwartung;
+   daraus baut `PlanService` alle 15 min den Plan.
+5. Die Historie für das Chart kommt aus Minutenmitteln der Rohwerte (`minute_series`); Rohwerte werden nach
+   14 Tagen gelöscht.
+
+Regler, Planung und Dashboard sind in beiden Modi identisch; Router sprechen nur das `Runtime`-Protokoll.
 
 ## Vorzeichenkonvention
 
@@ -65,3 +79,5 @@ Jeder Wert trägt `observed_at`, `quality` (ok, stale, unavailable, unknown, der
 | 4 | Ist-Zustand der Wärmepumpe aus Leistung | K1 ist nur eine Anforderung, keine Garantie |
 | 5 | Hardware-Auto-Off in jedem Schaltbefehl | sicherer Grundzustand ohne Mitwirkung der Software |
 | 6 | In-Memory-Historie in Phase 1 | keine Datenbank nötig, PostgreSQL folgt mit Alembic in Phase 2 |
+| 7 | Home Assistant als Geräteschicht, Bridge als HA-Add-on, Railway als Hosting | ADR-0001: geringster Aufwand, HA bleibt geschlossen, Datenbank managed |
+| 8 | BFF-Route mit signiertem Kiosk-Cookie statt Auth in der API | Bearer bleibt serverseitig (valyze-Muster), Pairing per Link |

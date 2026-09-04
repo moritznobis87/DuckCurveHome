@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from sse_starlette.sse import EventSourceResponse
 
-from dch_api.application.demo_runner import DemoRunner
+from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
 from dch_api.schemas import LiveStateOut
 
@@ -15,13 +15,13 @@ router = APIRouter(prefix="/live", tags=["Live"])
 
 
 @router.get("/state", response_model=LiveStateOut, summary="Aktueller Zustand")
-def state(runner: Annotated[DemoRunner, Depends(get_runner)]) -> LiveStateOut:
+def state(runner: Annotated[Runtime, Depends(get_runner)]) -> LiveStateOut:
     return runner.live_state()
 
 
 @router.get("/stream", summary="Server-Sent Events: snapshot, decision, plan, system")
 async def stream(
-    request: Request, runner: Annotated[DemoRunner, Depends(get_runner)]
+    request: Request, runner: Annotated[Runtime, Depends(get_runner)]
 ) -> EventSourceResponse:
     sub = runner.broker.subscribe()
 

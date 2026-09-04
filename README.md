@@ -5,9 +5,10 @@ Strompreis und der Wärmepumpen-Plan auf einen Blick – auf einem iPad an der W
 Duck Curve Home die Wärmepumpe als flexible Last nach PV-Überschuss, Strompreis und Wärmebedarf, ohne die
 Anlage selbst zu verändern: gesteuert werden ausschließlich die beiden dafür vorgesehenen Kontakte.
 
-**Status: Phase 1 – Demo-Modus.** Das komplette Dashboard läuft gegen eine Haus-Simulation, der regelbasierte
-Wärmepumpen-Regler entscheidet bereits „echt“ (gegen die Simulation), es werden aber keine realen Geräte gelesen
-oder geschaltet. Plan und Entscheidungen: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
+**Status: Phase 2 – Read-only Live.** Demo-Modus (Simulation) und Live-Modus (Home Assistant über die Bridge
+als HA-Add-on, PostgreSQL auf Railway, Tibber, Open-Meteo). Der Regler entscheidet und erklärt, schaltet aber
+noch nichts (`DCH_ACTUATION_ENABLED=false`). Plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md),
+Betrieb: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Schnellstart
 
@@ -29,7 +30,8 @@ tools/demo.sh                      # API mit Reload + Next.js Dev-Server
 | Pfad | Inhalt |
 |---|---|
 | `packages/hems-core` | reine Domäne: Modelle, Vorzeichenkonvention, Bilanz, thermischer SOC, Regler-Zustandsmaschine, Preisfenster, Simulation |
-| `apps/api` | FastAPI: Live-Zustand, SSE-Stream, Historie, Plan, Steuerung, Demo-Steuerung |
+| `apps/api` | FastAPI: Live-Zustand, SSE-Stream, Historie, Plan, Steuerung, Bridge-Ingest, PostgreSQL (Alembic) |
+| `apps/bridge` + `addons/duckcurve_bridge` | Bridge als Home-Assistant-Add-on: liest Entitäten, schaltet mit TTL, ausgehende WSS-Verbindung |
 | `apps/web` | Next.js-Dashboard (iPad-Querformat, Dark Mode, Duck-Curve-Design-System) |
 | `docs/` | Projektplan, OpenAPI-Schema, Architekturentscheidungen |
 
@@ -55,5 +57,5 @@ curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '
 
 ## Phasen
 
-0 Analyse ✔ · **1 Demo-Modus (dieser Stand)** · 2 Read-only Live · 3 Manuelle Steuerung · 4 Rule-Based HEMS ·
+0 Analyse ✔ · 1 Demo-Modus ✔ · **2 Read-only Live (dieser Stand)** · 3 Manuelle Steuerung · 4 Rule-Based HEMS ·
 5 Smart Scheduler · 6 Optimizer – Details und Definition of Done in Abschnitt 14 des Projektplans.

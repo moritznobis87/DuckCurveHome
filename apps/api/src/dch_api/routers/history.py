@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 
-from dch_api.application.demo_runner import DemoRunner
+from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
 from dch_api.errors import DchError
 from dch_api.schemas import HistoryOut
@@ -15,8 +15,8 @@ router = APIRouter(prefix="/history", tags=["Historie"])
 
 
 @router.get("", response_model=HistoryOut, summary="Minutenmittel eines Zeitraums")
-def history(
-    runner: Annotated[DemoRunner, Depends(get_runner)],
+async def history(
+    runner: Annotated[Runtime, Depends(get_runner)],
     range_: Annotated[
         Literal["today", "yesterday", "24h", "custom"], Query(alias="range")
     ] = "today",
@@ -41,4 +41,4 @@ def history(
             raise DchError(
                 "invalid_range", "Zeitraum muss positiv und höchstens 7 Tage lang sein.", 422
             )
-    return HistoryOut(start=s, end=e, rows=runner.history.series(s, e))
+    return HistoryOut(start=s, end=e, rows=await runner.history_rows(s, e))

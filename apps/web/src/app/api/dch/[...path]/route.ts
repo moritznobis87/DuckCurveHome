@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { SESSION_COOKIE, authRequired, verifySession } from "@/lib/session";
 
 /**
  * BFF-Proxy zur API. Liest die Ziel-URL zur Laufzeit (nicht zur Build-Zeit wie Rewrites), reicht
@@ -10,9 +11,14 @@ export const runtime = "nodejs";
 const apiBase = (): string => (process.env.DCH_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }): Promise<Response> {
+  if (authRequired() && !verifySession(req.cookies.get(SESSION_COOKIE)?.value)) {
+    return Response.json({ error: { code: "unauthorized", message: "Nicht angemeldet.", details: null } }, { status: 401 });
+  }
   const { path } = await ctx.params;
   const target = `${apiBase()}/api/v1/${path.map(encodeURIComponent).join("/")}${req.nextUrl.search}`;
   const headers: Record<string, string> = { accept: req.headers.get("accept") ?? "*/*" };
+  const apiToken = process.env.DCH_API_TOKEN;
+  if (apiToken) headers["authorization"] = `Bearer ${apiToken}`;
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;
   let upstream: Response;

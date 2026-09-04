@@ -13,7 +13,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DCH_", env_file=".env", extra="ignore")
 
-    mode: Literal["demo"] = "demo"  # Phase 2: "live"
+    mode: Literal["demo", "live"] = "demo"
     role: Literal["all", "api", "worker"] = "all"
     host: str = "0.0.0.0"
     port: int = 8000
@@ -30,6 +30,22 @@ class Settings(BaseSettings):
     # Regelung
     tick_s: int = 10
     history_retention_hours: int = 72
+    actuation_enabled: bool = False  # Phase 2: nur lesen; Phase 3 schaltet frei
+    plan_refresh_min: int = 15
+
+    # Live-Modus
+    database_url: str = Field(default="", validation_alias="DATABASE_URL")
+    db_create_all: bool = False  # nur SQLite/Tests: Schema ohne Alembic anlegen
+    bridge_tokens: list[str] = Field(default_factory=list)  # Klartext-Tokens der Bridges (Secrets)
+    api_token: str = (
+        ""  # Bearer, den das Web-BFF mitschickt; leer = keine Prüfung (nur Entwicklung)
+    )
+    config_file: str = ""  # YAML mit site/pv_system/hems (config/hems.example.yaml)
+    tibber_token: str = ""
+    tibber_home_id: str = ""
+    weather_refresh_min: int = 60
+    price_refresh_min: int = 30
+    raw_retention_days: int = 14
 
     @property
     def runs_api(self) -> bool:

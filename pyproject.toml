@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["packages/hems-core", "apps/api"]
+members = ["packages/hems-core", "apps/api", "apps/bridge"]
 
 [tool.uv]
 dev-dependencies = [
@@ -17,16 +17,20 @@ dev-dependencies = [
     "mypy>=1.11",
     "httpx>=0.27",
     "import-linter>=2.1",
+    "types-PyYAML>=6.0",
 ]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["packages/hems-core/src", "apps/api/src"]
+src = ["packages/hems-core/src", "apps/api/src", "apps/bridge/src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "N", "RUF", "ANN"]
 ignore = ["ANN401", "RUF012", "RUF001", "RUF002", "RUF003"]  # deutsche Typografie in Docstrings ist gewollt
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120  # Format bei 100, harte Grenze 120 (Docstrings, Log-Zeilen)
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/*" = ["ANN"]
@@ -35,23 +39,29 @@ ignore = ["ANN401", "RUF012", "RUF001", "RUF002", "RUF003"]  # deutsche Typograf
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-mypy_path = "packages/hems-core/src:apps/api/src"
+mypy_path = "packages/hems-core/src:apps/api/src:apps/bridge/src"
 exclude = ["tests"]
 
 [tool.pytest.ini_options]
-testpaths = ["packages/hems-core/tests", "apps/api/tests"]
+testpaths = ["packages/hems-core/tests", "apps/api/tests", "apps/bridge/tests"]
 asyncio_mode = "auto"
 addopts = "-q"
 
 [tool.importlinter]
-root_packages = ["hems_core", "dch_api"]
+root_packages = ["hems_core", "dch_api", "dch_bridge"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "hems_core bleibt frei von I/O-Schichten"
 type = "forbidden"
 source_modules = ["hems_core"]
-forbidden_modules = ["dch_api", "fastapi", "sqlalchemy", "httpx", "aiomqtt", "starlette"]
+forbidden_modules = ["dch_api", "dch_bridge", "fastapi", "sqlalchemy", "httpx", "aiomqtt", "starlette", "websockets"]
+
+[[tool.importlinter.contracts]]
+name = "Bridge kennt die API nicht"
+type = "forbidden"
+source_modules = ["dch_bridge"]
+forbidden_modules = ["dch_api"]
 
 [[tool.importlinter.contracts]]
 name = "Router importieren keine Integrationen direkt"

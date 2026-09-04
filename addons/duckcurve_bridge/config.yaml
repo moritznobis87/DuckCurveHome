@@ -1,0 +1,29 @@
+name: Duck Curve Home Bridge
+version: "0.1.0"
+slug: duckcurve_bridge
+description: Verbindet Home Assistant ausgehend mit Duck Curve Home (Railway). Liest Entitäten, schaltet Aktoren mit TTL.
+url: https://github.com/moritznobis87/DuckCurveHome
+arch: [aarch64, amd64, armv7]
+startup: services
+boot: auto
+init: false
+homeassistant_api: true
+hassio_api: false
+map:
+  - config:rw
+options:
+  api_ws_url: "wss://api-home.duckcurve.de/bridge/ws"
+  api_token: ""
+  bridge_id: "haus"
+  entities_file: "/config/duckcurve/entities.yaml"
+  heartbeat_entity: "sensor.duckcurve_bridge_heartbeat"
+  offline_release_s: 180
+  log_level: "INFO"
+schema:
+  api_ws_url: url
+  api_token: password
+  bridge_id: str
+  entities_file: str
+  heartbeat_entity: str
+  offline_release_s: int(60,3600)
+  log_level: list(DEBUG|INFO|WARNING|ERROR)
