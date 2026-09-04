@@ -296,13 +296,13 @@ class DemoHouse:
             if self.k1:
                 want = not (top >= self.cfg.buffer.max_temperature_c or mid_bottom >= 56.0)
             else:
-                # eigene Regelung: lädt bis Kopf 55 °C und mittlere Schicht 48 °C
-                want = top < 55.0 or mid_top < 48.0
+                # eigene Regelung: lädt bis Kopf 56 °C und dritte Schicht 44 °C (Kombispeicher)
+                want = top < 56.0 or mid_bottom < 44.0
         else:
             if self.k1:
                 want = top < self.cfg.buffer.max_temperature_c - 2 and mid_bottom < 54.0
             else:
-                want = top < 48.0 or mid_top < 42.0
+                want = top < 48.0 or mid_bottom < 36.0
         if want and not self.hp_running and since_stop >= self.cfg.hp_min_offtime_s:
             self.hp_running = True
             self.hp_since = self.now
