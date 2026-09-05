@@ -24,6 +24,9 @@ class BridgeSettings(BaseSettings):
     entities_file: Path = Path("/config/duckcurve/entities.yaml")
     # Verhalten
     telemetry_interval_s: float = 1.0
+    state_refresh_s: float = (
+        30.0  # kompletter get_states-Refresh, damit unveränderte Werte frisch bleiben
+    )
     heartbeat_entity: str = "sensor.duckcurve_bridge_heartbeat"
     heartbeat_interval_s: int = 30
     offline_release_s: int = 180  # ohne Cloud: Wärmepumpen-Kontakte zurücksetzen

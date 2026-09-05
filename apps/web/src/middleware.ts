@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { publicUrl } from "@/lib/session";
 
 /**
  * Zugangsschutz für den Kiosk: Ohne gültiges Session-Cookie wird eine Hinweisseite gezeigt.
@@ -15,7 +16,7 @@ export function middleware(req: NextRequest): NextResponse {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: { code: "unauthorized", message: "Nicht angemeldet.", details: null } }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/locked", req.url));
+    return NextResponse.redirect(publicUrl(req, "/locked"));
   }
   return NextResponse.next();
 }

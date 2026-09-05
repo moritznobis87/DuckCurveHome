@@ -52,7 +52,7 @@ class Bridge:
         if m is None:
             return
         self.latest[st.entity_id] = st
-        reading = normalize(m, st.state, st.attributes, st.last_updated, datetime.now(UTC))
+        reading = normalize(m, st.state, st.attributes, st.observed_at, datetime.now(UTC))
         self._pending[reading.key] = reading
 
     async def _ha_loop(self) -> None:
@@ -75,6 +75,19 @@ class Bridge:
                 await self.ha.close()
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, 60.0)
+
+    async def _refresh_loop(self) -> None:
+        """Alle Zustände periodisch neu lesen: HA sendet state_changed nur bei Änderungen, ein konstanter Wert
+        (PV nachts, Puffertemperatur) würde sonst nie wieder gemeldet und in der API als veraltet gelten."""
+        while True:
+            await asyncio.sleep(self.settings.state_refresh_s)
+            if not self.ha.connected:
+                continue
+            try:
+                for st in await self.ha.get_states():
+                    self._ingest(st)
+            except Exception as exc:
+                log.warning("state refresh failed", error=repr(exc)[:200])
 
     async def _telemetry_loop(self) -> None:
         while True:
@@ -171,6 +184,7 @@ class Bridge:
         tasks = [
             asyncio.create_task(self._ha_loop(), name="ha"),
             asyncio.create_task(self._telemetry_loop(), name="telemetry"),
+            asyncio.create_task(self._refresh_loop(), name="refresh"),
             asyncio.create_task(self.uplink.run(), name="uplink"),
             asyncio.create_task(self._guardian_loop(), name="guardian"),
         ]

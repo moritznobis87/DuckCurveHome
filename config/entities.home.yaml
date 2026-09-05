@@ -28,10 +28,10 @@ sensors:
 
   # --- Pufferspeicher: Shelly Plus 1 mit Temperatur-Add-on (5 Fühler, Nr. 4 liefert "unknown") ---
   # ⚠ Reihenfolge angenommen: 1 = oben … 5 = unten. Bitte am Speicher prüfen und ggf. tauschen.
-  - { key: buffer_temp_top_c,        entity: sensor.speicher_1_temperature, unit: "°C", stale_after_s: 900 }
-  - { key: buffer_temp_mid_top_c,    entity: sensor.speicher_2_temperature, unit: "°C", stale_after_s: 900 }
-  - { key: buffer_temp_mid_bottom_c, entity: sensor.speicher_3_temperature, unit: "°C", stale_after_s: 900 }
-  - { key: buffer_temp_bottom_c,     entity: sensor.speicher_5_temperature, unit: "°C", stale_after_s: 900 }
+  - { key: buffer_temp_top_c,        entity: sensor.speicher_1_temperature, unit: "°C", stale_after_s: 3600 }
+  - { key: buffer_temp_mid_top_c,    entity: sensor.speicher_2_temperature, unit: "°C", stale_after_s: 3600 }
+  - { key: buffer_temp_mid_bottom_c, entity: sensor.speicher_3_temperature, unit: "°C", stale_after_s: 3600 }
+  - { key: buffer_temp_bottom_c,     entity: sensor.speicher_5_temperature, unit: "°C", stale_after_s: 3600 }
 
   # --- Umgebung ---
   - { key: outdoor_temp_c,     entity: sensor.geilenkirchen_air_base_temperatur,          unit: "°C", stale_after_s: 3600 }

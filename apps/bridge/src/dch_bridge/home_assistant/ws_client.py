@@ -27,6 +27,12 @@ class EntityState:
     attributes: dict[str, Any]
     last_updated: datetime | None
     last_changed: datetime | None
+    last_reported: datetime | None = None  # HA ≥ 2024.4: auch bei unverändertem Wert aktualisiert
+
+    @property
+    def observed_at(self) -> datetime | None:
+        """Zeitpunkt, zu dem die Integration den Wert zuletzt bestätigt hat (auch unverändert)."""
+        return self.last_reported or self.last_updated
 
 
 @dataclass
@@ -142,6 +148,7 @@ def _to_state(raw: dict[str, Any]) -> EntityState:
         attributes=dict(raw.get("attributes") or {}),
         last_updated=parse_ha_time(raw.get("last_updated")),
         last_changed=parse_ha_time(raw.get("last_changed")),
+        last_reported=parse_ha_time(raw.get("last_reported")),
     )
 
 
