@@ -9,9 +9,11 @@ FROM base AS deps
 COPY pyproject.toml uv.lock ./
 COPY packages/hems-core/pyproject.toml packages/hems-core/pyproject.toml
 COPY apps/api/pyproject.toml apps/api/pyproject.toml
-RUN mkdir -p packages/hems-core/src/hems_core apps/api/src/dch_api \
- && touch packages/hems-core/src/hems_core/__init__.py apps/api/src/dch_api/__init__.py \
- && uv sync --frozen --no-dev --all-packages
+COPY apps/bridge/pyproject.toml apps/bridge/pyproject.toml
+# Alle Workspace-Mitglieder als Stubs, damit uv das Lockfile auflösen kann; installiert wird nur dch-api.
+RUN mkdir -p packages/hems-core/src/hems_core apps/api/src/dch_api apps/bridge/src/dch_bridge \
+ && touch packages/hems-core/src/hems_core/__init__.py apps/api/src/dch_api/__init__.py apps/bridge/src/dch_bridge/__init__.py \
+ && uv sync --frozen --no-dev --package dch-api
 
 FROM base AS runtime
 RUN useradd --create-home --uid 10001 dch
