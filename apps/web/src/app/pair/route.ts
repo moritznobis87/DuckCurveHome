@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIE, authRequired, cookieOptions, issueSession, pairingTokenValid, publicUrl } from "@/lib/session";
+import { SESSION_COOKIE, authRequired, cookieOptions, issueSession, pairingTokenValid } from "@/lib/session";
+import { publicUrl } from "@/lib/publicUrl";
 
 export const dynamic = "force-dynamic";
 

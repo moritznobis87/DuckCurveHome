@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { publicUrl } from "@/lib/session";
+import { publicUrl } from "@/lib/publicUrl";
 
 /**
  * Zugangsschutz für den Kiosk: Ohne gültiges Session-Cookie wird eine Hinweisseite gezeigt.
