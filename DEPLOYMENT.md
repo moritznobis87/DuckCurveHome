@@ -27,7 +27,7 @@ Home Assistant OS (Haus)                          Railway
    | `PORT` | `8000` (fest setzen – sonst vergibt Railway einen zufälligen Port und die Web-App findet die API im privaten Netz nicht) |
    | `DCH_MODE` | `live` |
    | `DCH_ROLE` | `all` (API + Regler in einem Prozess; Worker-Trennung später) |
-   | `DCH_BRIDGE_TOKENS` | `["<zufälliges Token, z. B. openssl rand -hex 32>"]` |
+   | `DCH_BRIDGE_TOKENS` | `<zufälliges Token, z. B. openssl rand -hex 32>` (einzelnes Token; mehrere kommagetrennt oder als JSON-Liste) |
    | `DCH_API_TOKEN` | zweites zufälliges Token (nur Web ↔ API) |
    | `DCH_TIBBER_TOKEN` | Tibber-Developer-Token (optional; ohne Token keine Preisregeln) |
    | `DCH_CONFIG_FILE` | optional Pfad zu einer YAML wie `config/hems.example.yaml` (im Image mitgeliefert) |
