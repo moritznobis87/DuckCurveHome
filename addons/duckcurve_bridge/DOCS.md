@@ -40,6 +40,14 @@ action:
 Zusätzlich sollten die Shelly-Relais der Wärmepumpen-Kontakte einen **Auto-Off-Timer** im Gerät haben
 (K1 30 min, K2 20 min) – Rückfallebene E0, unabhängig von jeder Software.
 
+## Build-Hinweis
+
+Der Supervisor baut das Image auf dem HA-Rechner mit dem Add-on-Ordner als Kontext. Das Dockerfile installiert
+`hems-core` und `dch-bridge` deshalb per `pip` direkt aus diesem GitHub-Repository (Branch `main`, einstellbar über
+`DCH_REF` in `build.yaml`). Eine neue Bridge-Version erreicht Home Assistant, indem `version` in `config.yaml`
+erhöht wird; danach im Add-on-Store „Auf Updates prüfen“ bzw. das Repository neu laden und das Update installieren.
+Der erste Build dauert auf einem Raspberry Pi einige Minuten (Python-Pakete werden geladen).
+
 ## Verhalten ohne Internet
 
 Die Bridge liest weiter und speichert Telemetrie lokal (SQLite-Outbox, 7 Tage). Nach `offline_release_s`

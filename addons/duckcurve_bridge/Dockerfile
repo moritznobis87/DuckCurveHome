@@ -1,11 +1,15 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/aarch64-base-python:3.12-alpine3.20
 FROM ${BUILD_FROM}
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
-WORKDIR /opt/dch
-# Quellen: hems-core und die Bridge (Build-Kontext ist das Repo-Root, siehe build.yaml)
-COPY packages/hems-core /opt/dch/packages/hems-core
-COPY apps/bridge /opt/dch/apps/bridge
-RUN pip install --no-cache-dir /opt/dch/packages/hems-core /opt/dch/apps/bridge
-COPY addons/duckcurve_bridge/run.sh /run.sh
+# Der Supervisor baut mit dem Add-on-Ordner als Kontext, nicht mit dem Repo-Root. Deshalb werden
+# hems-core und die Bridge direkt aus dem öffentlichen GitHub-Repository installiert (Ref = Branch/Tag).
+ARG DCH_REPO=https://github.com/moritznobis87/DuckCurveHome
+ARG DCH_REF=main
+RUN apk add --no-cache git \
+    && pip install --no-cache-dir \
+        "hems-core @ git+${DCH_REPO}@${DCH_REF}#subdirectory=packages/hems-core" \
+        "dch-bridge @ git+${DCH_REPO}@${DCH_REF}#subdirectory=apps/bridge" \
+    && apk del git
+COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 CMD ["/run.sh"]
