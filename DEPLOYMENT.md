@@ -13,8 +13,11 @@ Home Assistant OS (Haus)                          Railway
 
 1. Neues Projekt, GitHub-Repository verbinden, **drei** Services anlegen:
    - **postgres**: Railway-PostgreSQL-Template.
-   - **api**: Root Directory leer lassen, `RAILWAY_DOCKERFILE_PATH=apps/api/Dockerfile`; Konfiguration aus
-     `apps/api/railway.json` (Start `uvicorn`, Pre-Deploy `alembic upgrade head`, Healthcheck `/health`).
+   - **api**: Root Directory **leer lassen**. Die Konfiguration liegt in `railway.json` im Repo-Root
+     (Dockerfile-Build `apps/api/Dockerfile`, Start `uvicorn`, Pre-Deploy `alembic upgrade head`, Healthcheck
+     `/health`). Wird sie nicht übernommen, in den Service-Einstellungen unter „Config-as-code“ den Pfad
+     `railway.json` eintragen oder den Builder manuell auf „Dockerfile“ mit Pfad `apps/api/Dockerfile` stellen.
+     Erscheint im Build „Railpack … No start command detected“, wurde die Datei nicht gelesen.
    - **web**: Root Directory `apps/web`; Konfiguration aus `apps/web/railway.json` (Healthcheck `/api/health`).
 2. Variablen **api**:
 
