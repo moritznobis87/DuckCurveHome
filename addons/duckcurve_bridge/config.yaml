@@ -1,5 +1,5 @@
 name: Duck Curve Home Bridge
-version: "0.1.3"
+version: "0.1.4"
 slug: duckcurve_bridge
 description: Verbindet Home Assistant ausgehend mit Duck Curve Home (Railway). Liest Entitäten, schaltet Aktoren mit TTL.
 url: https://github.com/moritznobis87/DuckCurveHome

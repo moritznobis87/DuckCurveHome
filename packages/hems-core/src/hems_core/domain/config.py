@@ -100,8 +100,8 @@ class BalanceConfig(BaseModel):
 class SensorTimeouts(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    power_s: float = 60.0
-    battery_s: float = 60.0
+    power_s: float = 180.0  # HA-Integrationen (myenergi, Shelly) melden teils nur alle 60–120 s
+    battery_s: float = 180.0
     temperature_s: float = 900.0
     price_s: float = 3600.0 * 2
 

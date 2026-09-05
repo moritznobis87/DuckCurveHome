@@ -28,7 +28,7 @@ def test_snapshot_derives_house_and_ages_values() -> None:
     snap = ls.snapshot(NOW)
     assert snap.house_power_kw.value == 2.0 and snap.house_power_kw.quality is Quality.DERIVED
     assert snap.buffer_temps_c.top.quality is Quality.UNAVAILABLE
-    later = ls.snapshot(NOW + timedelta(minutes=3))
+    later = ls.snapshot(NOW + timedelta(minutes=4))  # power_s = 180 s
     assert later.pv_power_kw.quality is Quality.STALE
     assert later.house_power_kw.quality is Quality.UNAVAILABLE
 

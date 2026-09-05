@@ -18,7 +18,7 @@ from dch_bridge.settings import BridgeSettings
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.1.0-phase2"
+VERSION = "0.1.4"
 log = structlog.get_logger("bridge")
 
 
