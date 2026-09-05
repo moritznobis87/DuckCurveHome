@@ -34,9 +34,10 @@ from hems_core.domain import (
     OperatingMode,
     Override,
     OverrideKind,
+    Quality,
     SystemMode,
 )
-from hems_core.planning import cheap_windows, next_window_after, price_rank
+from hems_core.planning import cheap_windows, current_price, next_window_after, price_rank
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
 from hems_core.simulation import BERLIN
 from hems_core.thermal import compute_buffer_state
@@ -71,6 +72,7 @@ class LiveRuntime:
         self.plan: PlanOut | None = None
         self._plan_at: datetime | None = None
         self._last_publish = 0.0
+        self._last_price_stored: datetime | None = None
         self._tasks: list[asyncio.Task[None]] = []
         loc = config.site.location
         self.evaluator = ForecastEvaluator(
@@ -125,7 +127,28 @@ class LiveRuntime:
         )
         return snap, compute_buffer_state(snap.buffer_temps_c, self.hems.buffer), hp
 
+    async def _ingest_price(self) -> None:
+        """Aktuellen Tibber-Preis als Messwert führen: so erscheint er im Live-Zustand und in der Historie
+        (Preiskurve im Chart), ohne dass Home Assistant einen Preissensor liefern muss."""
+        p = current_price(self.forecasts.prices, self.now)
+        if p is None:
+            return
+        reading = RawReading(
+            key="electricity_price_ct_kwh",
+            value=round(p.ct_kwh, 3),
+            observed_at=self.now,
+            quality=Quality.OK,
+            source="tibber:price",
+        )
+        self.live.apply([reading])
+        if self._last_price_stored is None or self.now - self._last_price_stored >= timedelta(
+            seconds=55
+        ):
+            self._last_price_stored = self.now
+            await self.repos.add_readings([reading])
+
     async def control_tick(self) -> Decision:
+        await self._ingest_price()
         snap, buffer, hp = self._states()
         now = snap.timestamp
         prices = self.forecasts.prices
