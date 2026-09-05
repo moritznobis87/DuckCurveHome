@@ -513,7 +513,7 @@
           "volume_liters": {
             "type": "number",
             "title": "Volume Liters",
-            "default": 800.0
+            "default": 1000.0
           },
           "layers": {
             "items": {
@@ -622,6 +622,10 @@
             "type": "number",
             "title": "Capacity Kwh"
           },
+          "volume_liters": {
+            "type": "number",
+            "title": "Volume Liters"
+          },
           "mean_temp_c": {
             "anyOf": [
               {
@@ -657,6 +661,7 @@
           "soc",
           "usable_energy_kwh",
           "capacity_kwh",
+          "volume_liters",
           "mean_temp_c",
           "status",
           "method",
@@ -1386,7 +1391,7 @@
           "buffer": {
             "$ref": "#/components/schemas/BufferConfig",
             "default": {
-              "volume_liters": 800.0,
+              "volume_liters": 1000.0,
               "layers": [
                 0.25,
                 0.25,

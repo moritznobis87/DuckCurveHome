@@ -14,8 +14,9 @@ router = APIRouter(prefix="/control", tags=["Steuerung"])
 
 ACTUATOR_LABELS = {
     "coffee_machine": "Kaffeemaschine",
-    "terrace_light": "Terrassenlicht",
-    "garden_fence_light": "Gartenzaun",
+    "terrace_light": "Licht Terrasse",
+    "courtyard_light": "Licht Innenhof",
+    "garden_fence_light": "Licht Gartenzaun",
 }
 
 

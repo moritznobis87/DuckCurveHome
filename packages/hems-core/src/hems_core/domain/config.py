@@ -76,7 +76,8 @@ class ControlConfig(BaseModel):
 class BufferConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    volume_liters: float = 800.0
+    # Kombipuffer: Wärmepumpe und Pelletofen speisen ein, Heizung und Warmwasser entnehmen
+    volume_liters: float = 1000.0
     layers: list[float] = Field(default_factory=lambda: [0.25, 0.25, 0.25, 0.25])
     min_useful_temperature_c: float = 35.0
     target_temperature_c: float = 50.0

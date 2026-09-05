@@ -253,7 +253,7 @@ export interface components {
         BufferConfig: {
             /**
              * Volume Liters
-             * @default 800
+             * @default 1000
              */
             volume_liters: number;
             /** Layers */
@@ -318,6 +318,8 @@ export interface components {
             usable_energy_kwh: number | null;
             /** Capacity Kwh */
             capacity_kwh: number;
+            /** Volume Liters */
+            volume_liters: number;
             /** Mean Temp C */
             mean_temp_c: number | null;
             status: components["schemas"]["BufferStatus"];
@@ -667,7 +669,7 @@ export interface components {
             control: components["schemas"]["ControlConfig"];
             /**
              * @default {
-             *       "volume_liters": 800,
+             *       "volume_liters": 1000,
              *       "layers": [
              *         0.25,
              *         0.25,

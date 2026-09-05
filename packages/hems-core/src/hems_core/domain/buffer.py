@@ -31,6 +31,7 @@ class BufferState(BaseModel):
     soc: float | None  # 0–1, None wenn Sensoren fehlen
     usable_energy_kwh: float | None
     capacity_kwh: float
+    volume_liters: float
     mean_temp_c: float | None
     status: BufferStatus
     method: str

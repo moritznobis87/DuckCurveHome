@@ -18,7 +18,7 @@ hems:
     price: { cheap_quantile: 0.10 }
     block: { enabled: false }
   buffer:
-    volume_liters: 800
+    volume_liters: 1000
     min_useful_temperature_c: 35
     target_temperature_c: 50
     max_temperature_c: 62

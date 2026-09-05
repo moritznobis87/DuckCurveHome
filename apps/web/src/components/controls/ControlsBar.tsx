@@ -8,8 +8,9 @@ import { Icon } from "@/components/ui/Icon";
 
 const TILES: Array<{ key: string; label: string; icon: string; durationMin?: number }> = [
   { key: "coffee_machine", label: "Kaffeemaschine", icon: "coffee", durationMin: 120 },
-  { key: "terrace_light", label: "Terrassenlicht", icon: "bulb" },
-  { key: "garden_fence_light", label: "Gartenzaun", icon: "fence" },
+  { key: "terrace_light", label: "Licht Terrasse", icon: "bulb" },
+  { key: "courtyard_light", label: "Licht Innenhof", icon: "lights" },
+  { key: "garden_fence_light", label: "Licht Gartenzaun", icon: "fence" },
 ];
 
 type TileStatus = "idle" | "pending" | "error";
@@ -114,7 +115,7 @@ function ModeSegment({ state }: { state: LiveState | null }) {
 export function ControlsBar({ state }: { state: LiveState | null }) {
   const act = state?.snapshot.actuators ?? {};
   return (
-    <div className="grid shrink-0 gap-4" style={{ gridTemplateColumns: "1.7fr 1fr 1fr 1fr" }}>
+    <div className="grid shrink-0 gap-4" style={{ gridTemplateColumns: "1.7fr 1fr 1fr 1fr 1fr" }}>
       <ModeSegment state={state} />
       {TILES.map((t) => {
         const m = act[t.key];

@@ -17,5 +17,6 @@ actuators:
   - { key: hp_release_contact,  entity: switch.wp_pv_freigabe,     label: WP PV-Freigabe, safety_class: heat_pump, safe_state: false }
   - { key: hp_block_contact,    entity: switch.wp_evu_sperre,      label: WP Sperre,      safety_class: heat_pump, safe_state: false }
   - { key: coffee_machine,      entity: switch.kaffeemaschine,     label: Kaffeemaschine }
-  - { key: terrace_light,       entity: light.terrassenlicht,      label: Terrassenlicht }
-  - { key: garden_fence_light,  entity: light.gartenzaun,          label: Gartenzaun }
+  - { key: terrace_light,       entity: light.terrassenlicht,      label: Licht Terrasse }
+  - { key: courtyard_light,     entity: light.innenhof,            label: Licht Innenhof }
+  - { key: garden_fence_light,  entity: light.gartenzaun,          label: Licht Gartenzaun }

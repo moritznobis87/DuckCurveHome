@@ -11,9 +11,9 @@ def temps(*t: float) -> BufferTemperatures:
     return BufferTemperatures(top=m(t[0]), mid_top=m(t[1]), mid_bottom=m(t[2]), bottom=m(t[3]))
 
 
-def test_capacity_800l_between_35_and_62() -> None:
+def test_capacity_1000l_between_35_and_62() -> None:
     cap = capacity_kwh(BufferConfig())
-    assert cap == pytest.approx(800 * 27 * 4.186 / 3600, rel=1e-6)
+    assert cap == pytest.approx(1000 * 27 * 4.186 / 3600, rel=1e-6)
 
 
 def test_full_and_empty_bounds() -> None:

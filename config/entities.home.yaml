@@ -15,7 +15,7 @@ sensors:
   # Netz: negativ = Einspeisung (power_export 2378 W bei power_grid −2378 W) → import_positive.
   - { key: grid_power_kw,      entity: sensor.myenergi_hub_14117600_power_grid,           unit: W, sign: import_positive, stale_after_s: 120 }
   # Batterie (libbi): interner Last-CT ist beim Laden positiv (445 W bei "Battery charge today" steigend).
-  # ⚠ Vorzeichen beim Entladen noch verifizieren (erwartet negativ) – siehe offene Punkte in DEPLOYMENT.md.
+  # ⚠ Vorzeichen beim Entladen noch verifizieren (erwartet negativ) – siehe docs/OPEN_QUESTIONS.md.
   - { key: battery_power_kw,   entity: sensor.myenergi_libbi_26244255_power_ct_internal_load, unit: W, sign: charge_positive, stale_after_s: 120 }
   - { key: battery_soc,        entity: sensor.myenergi_libbi_26244255_soc,                unit: "%", stale_after_s: 600 }
   # Wallbox (zappi): interner Last-CT = Ladeleistung des Autos.
@@ -41,8 +41,11 @@ sensors:
 actuators:
   # --- Komfort-Schalter (Shelly) ---
   - { key: coffee_machine,     entity: switch.shelly1pm_34945472c2c5, label: Kaffeemaschine }
-  - { key: terrace_light,      entity: switch.shellyterrassenlicht,   label: Terrassenlicht }
-  - { key: garden_fence_light, entity: switch.shellygartenzaun,       label: Gartenzaun }
+  # Drei Lichterketten: Terrasse, Innenhof, Gartenzaun – einheitlich „Licht <Ort>“.
+  - { key: terrace_light,      entity: switch.shellyterrassenlicht,   label: Licht Terrasse }
+  - { key: garden_fence_light, entity: switch.shellygartenzaun,       label: Licht Gartenzaun }
+  # Innenhof: Shelly noch nicht in HA eingerichtet – Entity-ID nachtragen, sobald vorhanden.
+  # - { key: courtyard_light,  entity: switch.shellyinnenhof,         label: Licht Innenhof }
 
   # --- Wärmepumpen-Kontakte K1 (PV-Freigabe) und K2 (EVU-Sperre) ---
   # ⚠ NOCH NICHT ZUGEORDNET. Kandidaten aus HA: switch.warmepumpe (aktuell AN), switch.heatpump_measurement

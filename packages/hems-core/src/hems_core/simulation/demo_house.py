@@ -81,6 +81,7 @@ class DemoHouse:
         default_factory=lambda: {
             "coffee_machine": False,
             "terrace_light": False,
+            "courtyard_light": False,
             "garden_fence_light": False,
         }
     )
@@ -186,6 +187,7 @@ class DemoHouse:
             spike = 1.8
         extra = 1.2 if self.actuators.get("coffee_machine") else 0.0
         extra += 0.03 if self.actuators.get("terrace_light") else 0.0
+        extra += 0.02 if self.actuators.get("courtyard_light") else 0.0
         extra += 0.02 if self.actuators.get("garden_fence_light") else 0.0
         return round(base * noise + spike + extra, 3)
 
