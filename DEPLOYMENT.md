@@ -32,6 +32,7 @@ Home Assistant OS (Haus)                          Railway
    | `DCH_TIBBER_TOKEN` | Tibber-Developer-Token (optional; ohne Token keine Preisregeln) |
    | `DCH_CONFIG_FILE` | optional Pfad zu einer YAML wie `config/hems.example.yaml` (im Image mitgeliefert) |
    | `DCH_ACTUATION_ENABLED` | `false` in Phase 2 |
+   | `DCH_MIGRATE_ON_START` | `true` (Standard): Alembic-Migration läuft beim Containerstart, bevor die API hochfährt |
    | `DCH_CORS_ORIGINS` | `[]` (Web spricht serverseitig über das BFF) |
 
 3. Variablen **web**:

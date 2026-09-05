@@ -21,10 +21,11 @@ COPY --from=deps /app/.venv /app/.venv
 COPY packages/hems-core /app/packages/hems-core
 COPY apps/api /app/apps/api
 COPY config /app/config
+COPY apps/api/docker-entrypoint.sh /app/docker-entrypoint.sh
 ENV PATH="/app/.venv/bin:$PATH" DCH_HOST=:: DCH_PORT=8000
+RUN chmod a+x /app/docker-entrypoint.sh
 USER dch
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s CMD python -c "import os,urllib.request,sys; sys.exit(0 if urllib.request.urlopen(f\"http://127.0.0.1:{os.environ.get('PORT','8000')}/health\", timeout=3).status==200 else 1)"
-# Dual-Stack (IPv4 + IPv6): Railways privates Netz spricht ausschließlich IPv6, der öffentliche Proxy IPv4.
-# Port aus $PORT (Railway) oder 8000 – identisch zum startCommand in railway.json, falls dieses nicht greift.
-CMD ["sh", "-c", "exec uvicorn dch_api.main:app --host :: --port ${PORT:-8000}"]
+# Entrypoint: Migration im Live-Modus, dann uvicorn Dual-Stack (::) auf $PORT bzw. 8000.
+CMD ["/app/docker-entrypoint.sh"]
