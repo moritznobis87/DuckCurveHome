@@ -55,8 +55,8 @@ Schritte manuell (Plan 23.4).
 ### Fehlersuche: Dashboard zeigt „Verbindung unterbrochen“
 
 Das Banner bedeutet: Die Web-App bekommt keinen SSE-Stream von der API. Die fehlende Bridge ist **nicht**
-die Ursache – ohne Bridge liefert die API trotzdem Snapshots (dann steht im Kopf „Bridge offline“ und die
-Werte sind Striche, aber der Punkt ist nicht rot). Prüfreihenfolge:
+die Ursache – ohne Bridge liefert die API trotzdem Snapshots (dann ist der Punkt im Kopf grün „live“, die
+Werte bleiben Striche, weil noch keine Messwerte vorliegen). Prüfreihenfolge:
 
 1. `https://<web-domain>/api/health` → erwartet `{"status":"ok","api":200}`.
    - `"api":"unreachable"`: `DCH_API_URL` falsch oder Port stimmt nicht. Im API-Service `PORT=8000` setzen
