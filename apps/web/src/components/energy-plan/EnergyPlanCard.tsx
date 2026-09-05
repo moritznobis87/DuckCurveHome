@@ -37,22 +37,24 @@ export function EnergyPlanCard({ state, plan }: { state: LiveState | null; plan:
   const override = state?.operating_mode.override;
   const running = state?.heat_pump.running;
   const nextCheap = plan?.next_cheap_window;
+  const batKw = s?.battery_power_kw.value != null && (s.battery_power_kw.quality === "ok" || s.battery_power_kw.quality === "derived") ? -s.battery_power_kw.value : 0;
   const nextPv = plan?.windows.find((w) => w.kind === "pv_surplus" && new Date(w.end).getTime() > Date.now());
   const decisionKicker = override ? `Manuell bis ${hhmm(override.ends_at)}` : "Entscheidung";
   return (
     <Card accent style={{ gridColumn: "span 4", minHeight: 0 }}>
       <CardHead title="Energy Plan" right={d ? `Entscheidung ${hhmm(d.at)}` : "–"} />
-      <div className="mt-2.5 flex min-h-0 flex-col gap-[9px] overflow-hidden">
+      <div className="plan-blocks mt-2.5 flex min-h-0 flex-col overflow-hidden">
         <Block title="Jetzt">
           <div className="flex gap-3 overflow-hidden text-[12px]">
             <Pair k="PV" v={`${kw(s?.pv_power_kw.value)} kW`} />
             <Pair k="Haus" v={`${kw(s?.house_power_kw.value)} kW`} />
             <Pair k="Netz" v={`${kw(s?.grid_power_kw.value)} kW`} />
             <Pair k="Batterie" v={s?.battery_soc.value != null ? `${Math.round(s.battery_soc.value * 100)} %` : "–"} />
+            <span className="hidden min-[1400px]:inline">{batKw >= 0.05 ? <Pair k="lädt" v={`${kw(batKw)} kW`} /> : batKw <= -0.05 ? <Pair k="entlädt" v={`${kw(-batKw)} kW`} /> : null}</span>
           </div>
         </Block>
         <Block title={decisionKicker}>
-          <div className="text-[19px] font-semibold leading-[1.2] tracking-[-.02em] text-text-1" style={{ color: override ? "var(--amber-soft)" : undefined }}>
+          <div className="plan-decision font-semibold leading-[1.2] tracking-[-.02em] text-text-1" style={{ color: override ? "var(--amber-soft)" : undefined }}>
             {d?.explanation_de ?? "Warte auf erste Entscheidung …"}
           </div>
           <div className="mono whitespace-nowrap text-[12px] text-text-3">

@@ -80,4 +80,4 @@ def explain(
         return "Preisregeln pausiert – Strompreise veraltet; PV-Regel bleibt aktiv."
     if main is ReasonCode.PV_SURPLUS_FADING:
         return "Wärmepumpe aus – PV-Überschuss reicht nicht mehr."
-    return "Wärmepumpe aus – kein Überschuss und kein günstiges Preisfenster."
+    return "Wärmepumpe aus – kein nutzbarer Überschuss und kein günstiges Preisfenster."

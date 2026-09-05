@@ -26,7 +26,7 @@ export function reasonLines(d: Decision, minOfftimeMin = 20, minRuntimeMin = 30)
     buffer_full: `Pufferspeicher voll (${soc})`,
     buffer_no_headroom: `Pufferspeicher fast voll (${soc}) – zu wenig Ladehub`,
     max_starts_reached: `Maximale Starts heute erreicht (${i.starts_today})`,
-    no_trigger: `Kein Überschuss (${surplus}) · Preis nicht günstig`,
+    no_trigger: `Kein nutzbarer Überschuss (${surplus}) · Preis nicht günstig`,
     import_too_high: `Netzbezug ${imp} über 1,5 kW`,
     manual_override: "Manuelle Übersteuerung aktiv",
     mode_off: "Modus AUS – nur beobachten",

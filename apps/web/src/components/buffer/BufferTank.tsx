@@ -44,7 +44,7 @@ export function BufferTank({ snapshot, buffer, targetSoc = 0.85 }: { snapshot: E
     <Card style={{ gridColumn: "span 3", minHeight: 0 }}>
       <CardHead title="Pufferspeicher" right="800 l" />
       <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
-        <svg viewBox={`0 0 200 ${TH + 16}`} width={200} height={TH + 16} style={{ display: "block", maxHeight: "100%" }} role="img" aria-label="Pufferspeicher mit vier Temperaturmesspunkten">
+        <svg viewBox={`0 0 200 ${TH + 16}`} width="100%" height="100%" style={{ display: "block", maxWidth: 320 }} role="img" aria-label="Pufferspeicher mit vier Temperaturmesspunkten">
           <defs>
             <linearGradient id="tank" x1="0" y1="0" x2="0" y2="1">
               {temps.map((m, i) => (

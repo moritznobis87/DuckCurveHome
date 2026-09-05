@@ -44,7 +44,7 @@ function Edge({ from, to, kwValue, color, minFlow = 0.05 }: { from: NodeKey; to:
   );
 }
 
-function Node({ k, value, unit, m, nowMs }: { k: NodeKey; value: string; unit: string; m: Measurement | null; nowMs: number }) {
+function Node({ k, value, unit, m, nowMs, sub }: { k: NodeKey; value: string; unit: string; m: Measurement | null; nowMs: number; sub?: string }) {
   const n = NODES[k];
   const dim = !m || m.quality === "stale" || m.quality === "unavailable" || m.quality === "unknown";
   const age = m ? ageLabel(m.observed_at, nowMs) : null;
@@ -65,7 +65,7 @@ function Node({ k, value, unit, m, nowMs }: { k: NodeKey; value: string; unit: s
         <tspan style={{ fontFamily: "var(--font-sans)", fontSize: 12 }} fill="var(--text-3)" dx={4}>{unit}</tspan>
       </text>
       <text x={tx} y={ty2} textAnchor={anchor} style={{ fontFamily: "var(--font-sans)", fontSize: 12 }} fill="var(--text-3)">
-        {n.label}{age ? ` · ${age}` : ""}
+        {n.label}{sub ? ` · ${sub}` : ""}{age ? ` · ${age}` : ""}
       </text>
     </g>
   );
@@ -119,7 +119,7 @@ export function EnergyFlow({ snapshot, nowMs }: { snapshot: EnergySnapshot | nul
           <Node k="pv" value={kw(s?.pv_power_kw.value)} unit="kW" m={s?.pv_power_kw ?? null} nowMs={nowMs} />
           <Node k="grid" value={kw(s?.grid_power_kw.value)} unit="kW" m={s?.grid_power_kw ?? null} nowMs={nowMs} />
           <Node k="house" value={kw(s?.house_power_kw.value)} unit="kW" m={s?.house_power_kw ?? null} nowMs={nowMs} />
-          <Node k="bat" value={s?.battery_soc.value != null ? String(Math.round(s.battery_soc.value * 100)) : "–"} unit="%" m={s?.battery_soc ?? null} nowMs={nowMs} />
+          <Node k="bat" value={s?.battery_soc.value != null ? String(Math.round(s.battery_soc.value * 100)) : "–"} unit="%" m={s?.battery_soc ?? null} nowMs={nowMs} sub={v.charge >= 0.05 ? `lädt ${kw(v.charge)} kW` : v.discharge >= 0.05 ? `entlädt ${kw(v.discharge)} kW` : undefined} />
           <Node k="hp" value={kw(s?.heat_pump_power_kw.value)} unit="kW" m={s?.heat_pump_power_kw ?? null} nowMs={nowMs} />
           <Node k="ev" value={kw(s?.ev_power_kw.value)} unit="kW" m={s?.ev_power_kw ?? null} nowMs={nowMs} />
         </svg>

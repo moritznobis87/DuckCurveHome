@@ -68,6 +68,14 @@ export function DayChart({ history, plan, nowMs, range, onRange }: { history: Hi
       });
     const priceBands = bands.filter((b) => ["GÜNSTIG", "NEGATIVER PREIS"].includes(String((b[0] as { label: { formatter: string } }).label.formatter)));
     const powerBands = bands.filter((b) => !priceBands.includes(b));
+    // Achsen skalieren mit den Daten: wenige, runde Schritte, damit der Verlauf ablesbar bleibt
+    const maxOf = (rows: Array<Array<number | null>>) => rows.reduce((m, p) => (typeof p[1] === "number" && Number.isFinite(p[1]) ? Math.max(m, p[1]) : m), 0);
+    const minOf = (rows: Array<Array<number | null>>) => rows.reduce((m, p) => (typeof p[1] === "number" && Number.isFinite(p[1]) ? Math.min(m, p[1]) : m), 0);
+    const powerMax = Math.max(4, Math.ceil((maxOf([...pv, ...hp, ...ev, ...pvForecast]) * 1.1) / 2) * 2);
+    const priceRows = [...priceHist, ...priceFuture];
+    const priceMin = Math.min(0, Math.floor(minOf(priceRows) / 5) * 5);
+    const priceStep = [5, 10, 15, 20, 30, 50].find((st) => priceMin + 3 * st >= Math.max(15, maxOf(priceRows) * 1.1)) ?? 50;
+    const priceMax = priceMin + 3 * priceStep;
     const axisCommon = {
       type: "value" as const,
       min: 0,
@@ -102,16 +110,16 @@ export function DayChart({ history, plan, nowMs, range, onRange }: { history: Hi
         },
       },
       grid: [
-        { left: 44, right: 16, top: 18, height: "52%" },
-        { left: 44, right: 16, top: "76%", height: "16%" },
+        { left: 48, right: 16, top: 22, height: "40%" },
+        { left: 48, right: 16, top: "66%", height: "26%" },
       ],
       xAxis: [
         { ...axisCommon, gridIndex: 0, axisLabel: { show: false } },
         { ...axisCommon, gridIndex: 1 },
       ],
       yAxis: [
-        { type: "value", gridIndex: 0, min: 0, max: 8, interval: 4, name: "kW", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.grid } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 } },
-        { type: "value", gridIndex: 1, min: -5, max: 45, interval: 25, name: "ct/kWh", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.grid } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 } },
+        { type: "value", gridIndex: 0, min: 0, max: powerMax, interval: powerMax / 2, name: "kW", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.grid } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 } },
+        { type: "value", gridIndex: 1, min: priceMin, max: priceMax, interval: priceStep, name: "ct/kWh", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.grid } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 } },
       ],
       series: [
         { name: "PV", type: "line", xAxisIndex: 0, yAxisIndex: 0, data: pv, showSymbol: false, lineStyle: { color: C.pv, width: 2.5 }, areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(242,169,0,.32)" }, { offset: 1, color: "rgba(242,169,0,.03)" }] } }, markArea: { silent: true, data: powerBands }, markLine: nowLine, z: 3 },
@@ -131,7 +139,7 @@ export function DayChart({ history, plan, nowMs, range, onRange }: { history: Hi
     </span>
   );
   const Seg = ({ v, label }: { v: "today" | "yesterday"; label: string }) => (
-    <button onClick={() => onRange(v)} className="mono px-3.5 py-2 text-[12px] uppercase tracking-[.08em]" style={{ background: range === v ? "var(--amber)" : "transparent", color: range === v ? "var(--petrol)" : "var(--text-3)" }}>
+    <button onClick={() => onRange(v)} className="mono px-4 py-2 text-[12px] uppercase tracking-[.08em]" style={{ background: range === v ? "var(--amber)" : "transparent", color: range === v ? "var(--petrol)" : "var(--text-3)" }}>
       {label}
     </button>
   );

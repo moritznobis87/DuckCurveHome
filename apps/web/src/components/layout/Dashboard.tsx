@@ -42,7 +42,7 @@ export function Dashboard() {
 
   const degraded = connection !== "live";
   return (
-    <main className="dashboard-bg flex h-[100dvh] flex-col gap-4 p-5" style={{ paddingTop: "max(20px, env(safe-area-inset-top))" }}>
+    <main className="dashboard-bg dash-main flex h-[100dvh] flex-col" style={{ paddingTop: "max(var(--dash-pad), env(safe-area-inset-top))" }}>
       <Header />
       {degraded ? (
         <div className="mono -mt-2 flex h-9 shrink-0 items-center justify-center rounded-[3px] border text-[12px] uppercase tracking-[.1em]" style={{ borderColor: "rgba(224,83,61,.4)", background: "rgba(224,83,61,.12)", color: "var(--alert)" }}>
@@ -54,7 +54,7 @@ export function Dashboard() {
         <EnergyPlanCard state={state} plan={plan} />
         <BufferTank snapshot={state?.snapshot ?? null} buffer={state?.buffer ?? null} />
       </div>
-      <div className="shrink-0" style={{ height: "clamp(230px, 30vh, 290px)", display: "flex", opacity: degraded ? 0.6 : 1 }}>
+      <div className="shrink-0" style={{ height: "clamp(270px, 35vh, 440px)", display: "flex", opacity: degraded ? 0.6 : 1 }}>
         <div className="flex min-h-0 w-full flex-col">
           <DayChart history={history} plan={plan} nowMs={nowMs} range={historyRange} onRange={(r) => void changeRange(r)} />
         </div>
