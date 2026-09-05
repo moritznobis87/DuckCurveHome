@@ -61,7 +61,8 @@ Werte bleiben Striche, weil noch keine Messwerte vorliegen). Prüfreihenfolge:
 
 1. `https://<web-domain>/api/health` → erwartet `{"status":"ok","api":200}`.
    - `"api":"unreachable"`: `DCH_API_URL` falsch, Port stimmt nicht oder die API lauscht nur auf IPv4.
-     Railways privates Netz ist **reines IPv6** – die API muss auf `::` binden (Image ab 2026-09 tut das).
+     Railways privates Netz ist **reines IPv6**, der öffentliche Proxy spricht IPv4 – die API bindet deshalb beide
+     Familien (uvicorn `--host ""`; `::` allein wäre IPv6-only und liefert öffentlich 502 „Application failed to respond“).
      Im API-Service `PORT=8000` setzen (bzw. `${{api.PORT}}` referenzieren), Service-Name in der Referenz
      prüfen (aufgelöster Wert in Railway sichtbar, z. B. `http://api.railway.internal:8000`), beide Services
      neu deployen.
