@@ -3,6 +3,11 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 
+def test_root_is_a_signpost(client: TestClient) -> None:
+    r = client.get("/")
+    assert r.status_code == 200 and r.json()["health"] == "/health"
+
+
 def test_health(client: TestClient) -> None:
     r = client.get("/health")
     assert r.status_code == 200
