@@ -81,7 +81,7 @@ Werte bleiben Striche, weil noch keine Messwerte vorliegen). Prüfreihenfolge:
 2. „Duck Curve Home Bridge“ installieren (Home Assistant baut das Image lokal aus dem Repository).
 3. `/config/duckcurve/entities.yaml` anlegen – Vorlage `addons/duckcurve_bridge/entities.example.yaml`.
    Entity-IDs findest du unter Entwicklerwerkzeuge → Zustände.
-4. Optionen: `api_ws_url = wss://api-home.duckcurve.de/bridge/ws`, `api_token = <DCH_BRIDGE_TOKENS-Eintrag>`.
+4. Optionen: `api_ws_url = wss://<öffentliche API-Domain>/bridge/ws` (ohne Port), `api_token = <DCH_BRIDGE_TOKENS-Eintrag>`.
 5. Starten, Protokoll prüfen („uplink connected“). In Home Assistant erscheint `sensor.duckcurve_bridge_heartbeat`.
 6. Wächter-Automation aus `addons/duckcurve_bridge/DOCS.md` anlegen; Auto-Off-Timer in den Shelly-Relais der
    Wärmepumpen-Kontakte setzen (K1 30 min, K2 20 min).
