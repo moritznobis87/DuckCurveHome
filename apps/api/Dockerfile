@@ -21,8 +21,10 @@ COPY --from=deps /app/.venv /app/.venv
 COPY packages/hems-core /app/packages/hems-core
 COPY apps/api /app/apps/api
 COPY config /app/config
-ENV PATH="/app/.venv/bin:$PATH" DCH_HOST=0.0.0.0 DCH_PORT=8000
+ENV PATH="/app/.venv/bin:$PATH" DCH_HOST=:: DCH_PORT=8000
 USER dch
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status==200 else 1)"
-CMD ["uvicorn", "dch_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s CMD python -c "import os,urllib.request,sys; sys.exit(0 if urllib.request.urlopen(f\"http://127.0.0.1:{os.environ.get('PORT','8000')}/health\", timeout=3).status==200 else 1)"
+# Dual-Stack (IPv4 + IPv6): Railways privates Netz spricht ausschließlich IPv6, der öffentliche Proxy IPv4.
+# Port aus $PORT (Railway) oder 8000 – identisch zum startCommand in railway.json, falls dieses nicht greift.
+CMD ["sh", "-c", "exec uvicorn dch_api.main:app --host :: --port ${PORT:-8000}"]

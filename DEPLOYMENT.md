@@ -59,8 +59,11 @@ die Ursache – ohne Bridge liefert die API trotzdem Snapshots (dann ist der Pun
 Werte bleiben Striche, weil noch keine Messwerte vorliegen). Prüfreihenfolge:
 
 1. `https://<web-domain>/api/health` → erwartet `{"status":"ok","api":200}`.
-   - `"api":"unreachable"`: `DCH_API_URL` falsch oder Port stimmt nicht. Im API-Service `PORT=8000` setzen
-     (bzw. `${{api.PORT}}` referenzieren), Service-Name in der Referenz prüfen, beide Services neu deployen.
+   - `"api":"unreachable"`: `DCH_API_URL` falsch, Port stimmt nicht oder die API lauscht nur auf IPv4.
+     Railways privates Netz ist **reines IPv6** – die API muss auf `::` binden (Image ab 2026-09 tut das).
+     Im API-Service `PORT=8000` setzen (bzw. `${{api.PORT}}` referenzieren), Service-Name in der Referenz
+     prüfen (aufgelöster Wert in Railway sichtbar, z. B. `http://api.railway.internal:8000`), beide Services
+     neu deployen.
    - `"api":401`/`403`: kommt hier nicht vor (`/health` ist offen) – dann ist ein Proxy dazwischen.
 2. `https://<api-domain>/health` → erwartet `"mode":"live"`, `"status":"ok"`.
 3. Im Browser die Konsole/Netzwerk-Tab öffnen: `GET /api/dch/live/stream`.
