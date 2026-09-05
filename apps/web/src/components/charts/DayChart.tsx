@@ -66,14 +66,14 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
       .filter((w) => new Date(w.start).getTime() < end && new Date(w.end).getTime() > start)
       .map((w) => {
         const color = w.kind === "pv_surplus" ? "rgba(242,169,0,.10)" : w.kind === "expensive" ? "rgba(224,83,61,.08)" : w.kind === "negative" ? "rgba(224,83,61,.14)" : "rgba(127,163,179,.12)";
-        const label = { pv_surplus: "PV-ÜBERSCHUSS NUTZEN", expensive: "WP VERMEIDEN", cheap: "GÜNSTIG", negative: "NEGATIVER PREIS" }[w.kind];
+        const label = { pv_surplus: "PV NUTZEN", expensive: "WP MEIDEN", cheap: "GÜNSTIG", negative: "NEGATIV" }[w.kind];
         const labelColor = w.kind === "pv_surplus" ? C.pv : w.kind === "expensive" || w.kind === "negative" ? C.ember : C.price;
         return [
           { xAxis: Math.max(0, hx(new Date(w.start).getTime())), itemStyle: { color }, label: { show: true, position: "insideTopLeft", formatter: label, color: labelColor, fontFamily: MONO, fontSize: 10, letterSpacing: 1 } },
           { xAxis: Math.min(24, hx(new Date(w.end).getTime())) },
         ];
       });
-    const priceBandsFull = bands.filter((b) => ["GÜNSTIG", "NEGATIVER PREIS"].includes(String((b[0] as { label: { formatter: string } }).label.formatter)));
+    const priceBandsFull = bands.filter((b) => ["GÜNSTIG", "NEGATIV"].includes(String((b[0] as { label: { formatter: string } }).label.formatter)));
     const powerBands = bands.filter((b) => !priceBandsFull.includes(b));
     const priceX = layout === "overlay" ? 0 : 1;
     // Achsen skalieren mit den Daten: wenige, runde Schritte, damit der Verlauf ablesbar bleibt

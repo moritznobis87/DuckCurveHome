@@ -55,12 +55,12 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 /* Entscheidungstext im Energy Plan: auf niedrigen Displays (iPad quer) etwas kompakter */
-.plan-decision { font-size: 19px; }
-.plan-blocks { gap: 9px; }
+.plan-body { gap: 10px; }
 .dash-main { --dash-pad: 20px; gap: 16px; padding: var(--dash-pad); }
 @media (max-height: 900px) {
-  .plan-decision { font-size: 17px; }
-  .plan-blocks { gap: 6px; }
+  .plan-body { gap: 6px; }
+  .plan-chips { display: none; }
+  .plan-next { max-height: 1.6em; }
   .dash-main { --dash-pad: 14px; gap: 12px; }
 }
 

@@ -115,7 +115,7 @@ function ModeSegment({ state }: { state: LiveState | null }) {
 export function ControlsBar({ state }: { state: LiveState | null }) {
   const act = state?.snapshot.actuators ?? {};
   return (
-    <div className="grid shrink-0 gap-4" style={{ gridTemplateColumns: "1.7fr 1fr 1fr 1fr 1fr" }}>
+    <div className="grid shrink-0 gap-4" style={{ gridTemplateColumns: "2.2fr 1fr 1fr 1fr 1fr" }}>
       <ModeSegment state={state} />
       {TILES.map((t) => {
         const m = act[t.key];
