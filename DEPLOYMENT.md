@@ -24,6 +24,7 @@ Home Assistant OS (Haus)                          Railway
    | Variable | Wert |
    |---|---|
    | `DATABASE_URL` | Referenz `${{Postgres.DATABASE_URL}}` |
+   | `PORT` | `8000` (fest setzen – sonst vergibt Railway einen zufälligen Port und die Web-App findet die API im privaten Netz nicht) |
    | `DCH_MODE` | `live` |
    | `DCH_ROLE` | `all` (API + Regler in einem Prozess; Worker-Trennung später) |
    | `DCH_BRIDGE_TOKENS` | `["<zufälliges Token, z. B. openssl rand -hex 32>"]` |
@@ -37,7 +38,7 @@ Home Assistant OS (Haus)                          Railway
 
    | Variable | Wert |
    |---|---|
-   | `DCH_API_URL` | `http://${{api.RAILWAY_PRIVATE_DOMAIN}}:8000` |
+   | `DCH_API_URL` | `http://${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}` (privates Netz, IPv6; `api` = Name des API-Services) |
    | `DCH_API_TOKEN` | gleicher Wert wie in api |
    | `DCH_SESSION_SECRET` | ≥ 32 zufällige Zeichen (signiert das Kiosk-Cookie) |
    | `DCH_KIOSK_TOKEN` | Pairing-Token für neue Geräte |
@@ -50,6 +51,24 @@ Home Assistant OS (Haus)                          Railway
 
 Migrationen laufen vor jedem Deploy (`preDeployCommand`). Nur additive Migrationen automatisch; destruktive
 Schritte manuell (Plan 23.4).
+
+### Fehlersuche: Dashboard zeigt „Verbindung unterbrochen“
+
+Das Banner bedeutet: Die Web-App bekommt keinen SSE-Stream von der API. Die fehlende Bridge ist **nicht**
+die Ursache – ohne Bridge liefert die API trotzdem Snapshots (dann steht im Kopf „Bridge offline“ und die
+Werte sind Striche, aber der Punkt ist nicht rot). Prüfreihenfolge:
+
+1. `https://<web-domain>/api/health` → erwartet `{"status":"ok","api":200}`.
+   - `"api":"unreachable"`: `DCH_API_URL` falsch oder Port stimmt nicht. Im API-Service `PORT=8000` setzen
+     (bzw. `${{api.PORT}}` referenzieren), Service-Name in der Referenz prüfen, beide Services neu deployen.
+   - `"api":401`/`403`: kommt hier nicht vor (`/health` ist offen) – dann ist ein Proxy dazwischen.
+2. `https://<api-domain>/health` → erwartet `"mode":"live"`, `"status":"ok"`.
+3. Im Browser die Konsole/Netzwerk-Tab öffnen: `GET /api/dch/live/stream`.
+   - Antwort `401` mit `unauthorized`: `DCH_API_TOKEN` in web und api ist nicht identisch (oder in web leer).
+   - Antwort `503` mit `upstream_unreachable`: wie Punkt 1.
+   - Antwort `200`, aber der Stream endet sofort: Logs des API-Services ansehen (`uvicorn`-Zeilen zu `/api/v1/live/stream`).
+4. Logs des Web-Services: `fetch failed` oder `ECONNREFUSED` deutet auf Port/Domain, `ENOTFOUND` auf einen
+   falschen Service-Namen in `${{api.RAILWAY_PRIVATE_DOMAIN}}`.
 
 ## 2. Home-Assistant-Add-on
 
