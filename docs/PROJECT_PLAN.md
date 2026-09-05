@@ -1536,6 +1536,9 @@ auf den „letzten Forecast vor Intervallbeginn“ verdichtet.
 
 ## 19. PV Forecast Provider
 
+> Weiterführend: [Prognoselernen und Wärmemodell](design/prognose-und-waermemodell.md) – Ensemble aus
+> forecast.solar, Solcast und eigener Prognose mit rollierender Korrektur, Einspeiseprognose, Begründung gegen RL.
+
 ### 19.1 Konfiguration
 
 ```yaml
@@ -1608,6 +1611,9 @@ Schneebedeckung).
 
 ## 20. Heat Demand Model
 
+> Weiterführend: [Prognoselernen und Wärmemodell](design/prognose-und-waermemodell.md), Abschnitt 3 – Bilanz um den
+> 1000-l-Kombipuffer, geplante Wärmestrommessung ins Haus, Pelletofen als zweite Quelle, pufferbewusste Planung.
+
 ### 20.1 Konfiguration
 
 ```yaml
@@ -1634,7 +1640,7 @@ heat_pump:
     - { outdoor_c: 15, cop: 4.2 }
   dhw_share_of_daily_kwh: 8.0                      # Warmwasser kWh_th/Tag, konstant
 buffer:
-  volume_liters: 800
+  volume_liters: 1000                              # Kombipuffer: WP + Pelletofen speisen ein, Heizung + WW entnehmen
   layers: [0.25, 0.25, 0.25, 0.25]                 # Volumenanteile zu den 4 Sensoren (oben→unten)
   min_useful_temperature_c: 35
   target_temperature_c: 50
@@ -1986,6 +1992,8 @@ Ein Light-Theme kann später allein durch Überschreiben der `--bg/--surface/--t
 
 ## 25. Offene technische Fragen
 
+> Aktuelle, konkrete Rückfragen mit Stand der Antworten: [docs/OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
+
 Vor Phase 2 zu klären (Phase 1 läuft komplett im Demo-Modus und ist davon unabhängig):
 
 | # | Frage | Warum wichtig | Vorschlag / Annahme bis zur Klärung |
@@ -2000,7 +2008,7 @@ Vor Phase 2 zu klären (Phase 1 läuft komplett im Demo-Modus und ist davon unab
 | 25.8 | **Verhalten der ELCO AERO auf K1/K2**: Was ändert K1 (Sollwertanhebung, WW-Beladung)? Zeigt K2 Frostschutz? Herstellergrenze für Sperrdauer/Tag? Klemmenbelegung dokumentiert? | Regelparameter, Freigabe von K2 | Phase 3 protokolliert Versuche; K2 bleibt aus |
 | 25.9 | **Bestehende HA-Regel für die Wärmepumpe** („WP Auto“): Logik, und wann darf sie abgeschaltet werden? Soll Home Assistant überhaupt weiterlaufen? | zwei Automatiken auf denselben Relais sind ein Risiko (8.7) | HA-Regel spätestens in Phase 3 aus; HA sonst frei |
 | 25.10 | **Verdrahtung K1/K2:** Schließer (NO) oder Öffner (NC)? | stromloses Relais muss „kein Eingriff“ bedeuten | NO annehmen, in Phase 3 prüfen |
-| 25.11 | **Puffervolumen, Sensorhöhen, Anschlusshöhen** (WP-Vorlauf, Pelletofen, Heizkreis, WW-Entnahme) | Schichtgewichte, SOC | gleiche Volumenanteile annehmen |
+| 25.11 | ~~Puffervolumen~~ **1000 l Kombipuffer (beantwortet 2026-09-05)**; offen: Sensorhöhen, Anschlusshöhen (WP-Vorlauf, Pelletofen, Heizkreis, WW-Entnahme) | Schichtgewichte, SOC | gleiche Volumenanteile annehmen |
 | 25.12 | **Einspeisevergütung** und Tibber-Tarifdetails (Grundpreis, Netzentgelt fix/variabel) | Opportunitätskosten im Planer | 8 ct/kWh annehmen |
 | 25.13 | **Pelletofen:** irgendein Indikator (Steckdosen-Leistung über Shelly Plug, Abgastemperatur, Zeitplan)? | Fremdwärme erkennen | nur Residual-Erkennung |
 | 25.14 | **Außentemperatur:** eigener Sensor (Shelly H&T außen) oder nur Wetterdienst? | Regelgröße für Wärmebedarf | Open-Meteo `current` stündlich, Sensor optional |

@@ -59,3 +59,8 @@ curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '
 
 0 Analyse ✔ · 1 Demo-Modus ✔ · **2 Read-only Live (dieser Stand)** · 3 Manuelle Steuerung · 4 Rule-Based HEMS ·
 5 Smart Scheduler · 6 Optimizer – Details und Definition of Done in Abschnitt 14 des Projektplans.
+
+## Weitere Dokumente
+
+- [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) – offene Rückfragen mit Annahmen
+- [docs/design/prognose-und-waermemodell.md](docs/design/prognose-und-waermemodell.md) – Prognoselernen, Einspeiseprognose, Wärmemodell
