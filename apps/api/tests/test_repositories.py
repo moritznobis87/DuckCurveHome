@@ -73,3 +73,11 @@ async def test_mode_config_events(repos: SqlRepositories) -> None:
     assert events[0].code == "test"
     await repos.add_bridge_credential("haus", "hash")
     assert await repos.bridge_token_valid("hash") and not await repos.bridge_token_valid("x")
+
+
+async def test_calibration_roundtrip(repos: SqlRepositories) -> None:
+    assert await repos.load_calibration("pv_forecast_v1") is None
+    await repos.save_calibration("pv_forecast_v1", {"days_learned": 3, "bins": [1.0, 0.9]})
+    await repos.save_calibration("pv_forecast_v1", {"days_learned": 4, "bins": [1.0, 0.88]})
+    state = await repos.load_calibration("pv_forecast_v1")
+    assert state == {"days_learned": 4, "bins": [1.0, 0.88]}

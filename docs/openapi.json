@@ -173,6 +173,27 @@
         }
       }
     },
+    "/api/v1/forecast/evaluation": {
+      "get": {
+        "tags": [
+          "Prognose"
+        ],
+        "summary": "Prognose gegen Ist, Tageskennzahlen, Korrekturfaktoren und was sich ändert",
+        "operationId": "evaluation_api_v1_forecast_evaluation_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastEvaluationOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/control/actuators/{key}": {
       "post": {
         "tags": [
@@ -471,6 +492,50 @@
         },
         "type": "object",
         "title": "BalanceConfig"
+      },
+      "BinCorrection": {
+        "properties": {
+          "bin": {
+            "type": "integer",
+            "title": "Bin"
+          },
+          "label_de": {
+            "type": "string",
+            "title": "Label De"
+          },
+          "factor": {
+            "type": "number",
+            "title": "Factor",
+            "default": 1.0
+          },
+          "previous": {
+            "type": "number",
+            "title": "Previous",
+            "default": 1.0
+          },
+          "last_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ratio"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "bin",
+          "label_de"
+        ],
+        "title": "BinCorrection"
       },
       "BlockRuleConfig": {
         "properties": {
@@ -781,6 +846,120 @@
           "failsafe"
         ],
         "title": "ControllerState"
+      },
+      "CorrectorState": {
+        "properties": {
+          "bins": {
+            "items": {
+              "$ref": "#/components/schemas/BinCorrection"
+            },
+            "type": "array",
+            "title": "Bins"
+          },
+          "k_global": {
+            "type": "number",
+            "title": "K Global",
+            "default": 1.0
+          },
+          "k_global_previous": {
+            "type": "number",
+            "title": "K Global Previous",
+            "default": 1.0
+          },
+          "days_learned": {
+            "type": "integer",
+            "title": "Days Learned",
+            "default": 0
+          },
+          "min_days": {
+            "type": "integer",
+            "title": "Min Days",
+            "default": 14
+          },
+          "half_life_days": {
+            "type": "number",
+            "title": "Half Life Days",
+            "default": 10.0
+          },
+          "updated_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated On"
+          }
+        },
+        "type": "object",
+        "title": "CorrectorState",
+        "description": "Serialisierbarer Zustand des Korrektors (Persistenz in der API)."
+      },
+      "DailyScoreOut": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "energy_forecast_kwh": {
+            "type": "number",
+            "title": "Energy Forecast Kwh"
+          },
+          "energy_actual_kwh": {
+            "type": "number",
+            "title": "Energy Actual Kwh"
+          },
+          "energy_error_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy Error Pct"
+          },
+          "mae_kw": {
+            "type": "number",
+            "title": "Mae Kw"
+          },
+          "bias_kw": {
+            "type": "number",
+            "title": "Bias Kw"
+          },
+          "k_global_after": {
+            "type": "number",
+            "title": "K Global After"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "energy_forecast_kwh",
+          "energy_actual_kwh",
+          "energy_error_pct",
+          "mae_kw",
+          "bias_kw",
+          "k_global_after"
+        ],
+        "title": "DailyScoreOut"
       },
       "Decision": {
         "properties": {
@@ -1148,6 +1327,245 @@
         ],
         "title": "EnergySnapshot"
       },
+      "ForecastDayOut": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForecastScore"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ForecastPointOut"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "issued_at",
+          "score",
+          "points"
+        ],
+        "title": "ForecastDayOut"
+      },
+      "ForecastEvaluationOut": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "stage_de": {
+            "type": "string",
+            "title": "Stage De"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceOut"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "today": {
+            "$ref": "#/components/schemas/ForecastDayOut"
+          },
+          "yesterday": {
+            "$ref": "#/components/schemas/ForecastDayOut"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DailyScoreOut"
+            },
+            "type": "array",
+            "title": "Daily"
+          },
+          "horizons": {
+            "items": {
+              "$ref": "#/components/schemas/HorizonScoreOut"
+            },
+            "type": "array",
+            "title": "Horizons"
+          },
+          "corrector": {
+            "$ref": "#/components/schemas/CorrectorState"
+          },
+          "correction_active": {
+            "type": "boolean",
+            "title": "Correction Active"
+          },
+          "next_changes_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Next Changes De"
+          },
+          "runs_kept": {
+            "type": "integer",
+            "title": "Runs Kept"
+          },
+          "notes_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at",
+          "stage_de",
+          "sources",
+          "today",
+          "yesterday",
+          "daily",
+          "horizons",
+          "corrector",
+          "correction_active",
+          "next_changes_de",
+          "runs_kept",
+          "notes_de"
+        ],
+        "title": "ForecastEvaluationOut"
+      },
+      "ForecastPointOut": {
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "actual_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Kw"
+          },
+          "day_ahead_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Ahead Kw"
+          },
+          "latest_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Kw"
+          },
+          "corrected_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrected Kw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ts",
+          "actual_kw",
+          "day_ahead_kw",
+          "latest_kw",
+          "corrected_kw"
+        ],
+        "title": "ForecastPointOut"
+      },
+      "ForecastScore": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "mae_kw": {
+            "type": "number",
+            "title": "Mae Kw"
+          },
+          "bias_kw": {
+            "type": "number",
+            "title": "Bias Kw"
+          },
+          "rmse_kw": {
+            "type": "number",
+            "title": "Rmse Kw"
+          },
+          "energy_forecast_kwh": {
+            "type": "number",
+            "title": "Energy Forecast Kwh"
+          },
+          "energy_actual_kwh": {
+            "type": "number",
+            "title": "Energy Actual Kwh"
+          },
+          "energy_error_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy Error Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "mae_kw",
+          "bias_kw",
+          "rmse_kw",
+          "energy_forecast_kwh",
+          "energy_actual_kwh",
+          "energy_error_pct"
+        ],
+        "title": "ForecastScore"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1483,6 +1901,28 @@
           "rows"
         ],
         "title": "HistoryOut"
+      },
+      "HorizonScoreOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label_de": {
+            "type": "string",
+            "title": "Label De"
+          },
+          "score": {
+            "$ref": "#/components/schemas/ForecastScore"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label_de",
+          "score"
+        ],
+        "title": "HorizonScoreOut"
       },
       "LiveStateOut": {
         "properties": {
@@ -1982,6 +2422,46 @@
         },
         "type": "object",
         "title": "SensorTimeouts"
+      },
+      "SourceOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "label_de": {
+            "type": "string",
+            "title": "Label De"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          },
+          "mae_7d_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mae 7D Kw"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "label_de",
+          "weight",
+          "mae_7d_kw",
+          "active"
+        ],
+        "title": "SourceOut"
       },
       "SystemMode": {
         "type": "string",

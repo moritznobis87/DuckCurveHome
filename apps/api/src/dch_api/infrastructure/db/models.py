@@ -177,6 +177,15 @@ class ForecastPoint(Base):
     value_hi: Mapped[float | None] = mapped_column(Float)
 
 
+class ModelCalibration(Base):
+    """Gelernter Zustand eines Modells (z. B. PV-Bias-Korrektor) als ein JSON-Dokument je Modell."""
+
+    __tablename__ = "model_calibrations"
+    model: Mapped[str] = mapped_column(String(32), primary_key=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    state: Mapped[dict[str, object]] = mapped_column(JsonType, default=dict)
+
+
 class KioskDevice(Base):
     __tablename__ = "kiosk_devices"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

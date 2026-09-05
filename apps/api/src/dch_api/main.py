@@ -13,7 +13,7 @@ from dch_api.application.config_loader import load_app_config
 from dch_api.dependencies import require_api_token
 from dch_api.errors import DchError, install_error_handlers
 from dch_api.infrastructure.logging import configure_logging
-from dch_api.routers import bridge, config, control, demo, health, history, live, plan
+from dch_api.routers import bridge, config, control, demo, forecast, health, history, live, plan
 from dch_api.settings import Settings, get_settings
 
 API_PREFIX = "/api/v1"
@@ -100,7 +100,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(bridge.router)
     protected = [Depends(require_api_token)]
-    for r in (live.router, history.router, plan.router, control.router, config.router, demo.router):
+    for r in (
+        live.router,
+        history.router,
+        plan.router,
+        forecast.router,
+        control.router,
+        config.router,
+        demo.router,
+    ):
         app.include_router(r, prefix=API_PREFIX, dependencies=protected)
     return app
 

@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Protocol
 
 from dch_api.infrastructure.sse_broker import SseBroker
-from dch_api.schemas import LiveStateOut, PlanOut
+from dch_api.schemas import ForecastEvaluationOut, LiveStateOut, PlanOut
 from dch_api.settings import Settings
 from hems_core.domain import AutoProfile, Decision, OperatingMode, SystemMode
 
@@ -23,6 +23,7 @@ class Runtime(Protocol):
         self, start: datetime, end: datetime
     ) -> list[dict[str, float | str | None]]: ...
     async def recent_decisions(self, limit: int) -> list[Decision]: ...
+    async def forecast_evaluation(self) -> ForecastEvaluationOut: ...
     async def switch_actuator(
         self, key: str, state: bool, duration_min: int | None
     ) -> tuple[bool, bool | None, str | None]: ...

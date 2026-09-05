@@ -125,3 +125,18 @@ def test_sse_broker_coalesces_snapshots_but_keeps_decisions() -> None:
     assert "decision" in events
     assert len(events) <= 8
     assert events[-1] == "snapshot"
+
+
+def test_forecast_evaluation(client: TestClient) -> None:
+    r = client.get("/api/v1/forecast/evaluation")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert len(body["today"]["points"]) == 96
+    assert len(body["daily"]) >= 14
+    assert body["correction_active"] is True
+    assert body["corrector"]["days_learned"] >= 14
+    assert any("Sonnenhöhe" in line for line in body["next_changes_de"])
+    assert {h["key"] for h in body["horizons"]} == {"0-3h", "3-12h", "12-36h"}
+    # Day-ahead-Lauf für heute vorhanden und bewertet
+    assert body["today"]["issued_at"] is not None
+    assert body["today"]["score"] is not None and body["today"]["score"]["n"] > 0

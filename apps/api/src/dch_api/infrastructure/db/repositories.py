@@ -282,6 +282,21 @@ class SqlRepositories:
             )
         return list(rows)
 
+    async def save_calibration(self, model: str, state: dict[str, object]) -> None:
+        async with self.maker() as s:
+            row = await s.get(m.ModelCalibration, model)
+            if row is None:
+                s.add(m.ModelCalibration(model=model, updated_at=datetime.now(UTC), state=state))
+            else:
+                row.state = state
+                row.updated_at = datetime.now(UTC)
+            await s.commit()
+
+    async def load_calibration(self, model: str) -> dict[str, object] | None:
+        async with self.maker() as s:
+            row = await s.get(m.ModelCalibration, model)
+        return None if row is None else dict(row.state)
+
     async def active_config(self, kind: str) -> dict[str, object] | None:
         async with self.maker() as s:
             row = (

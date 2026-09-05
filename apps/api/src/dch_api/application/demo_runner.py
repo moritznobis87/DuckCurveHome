@@ -9,13 +9,14 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections import deque
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import structlog
 
+from dch_api.application.forecast_evaluation import ForecastEvaluator
 from dch_api.infrastructure.history import HistoryStore
 from dch_api.infrastructure.sse_broker import SseBroker
-from dch_api.schemas import LiveStateOut, PlanOut, SystemStatusOut
+from dch_api.schemas import ForecastEvaluationOut, LiveStateOut, PlanOut, SystemStatusOut
 from dch_api.settings import Settings
 from hems_core.control import ControlInputs, HeatPumpController, HeatPumpTracker
 from hems_core.domain import (
@@ -70,11 +71,74 @@ class DemoRunner:
         self._task: asyncio.Task[None] | None = None
         self._lock = asyncio.Lock()
         self._warming_up = False
+        cfg = self.house.cfg
+        self.evaluator = ForecastEvaluator(
+            latitude=cfg.latitude,
+            longitude=cfg.longitude,
+            tz=BERLIN,
+            source="demo_clear_sky_v1",
+            source_label_de="Demo-Prognose (Klarhimmel × Tagesbewölkung)",
+        )
+        self._backfill_forecast_history(days=16)
 
     # ------------------------------------------------------------------ Zeit
     @property
     def now(self) -> datetime:
         return self.house.now
+
+    # ------------------------------------------------------------------ Prognosebewertung
+    def _backfill_forecast_history(self, days: int) -> None:
+        """Vergangene Tage aus den (deterministischen) Simulationsfunktionen bewerten, damit die Detailseite
+        im Demo sofort Lernhistorie zeigt. Day-ahead-Lauf um 05:30 Ortszeit, Ist als 15-min-Mittel."""
+        first_local = self.house.now.astimezone(BERLIN).date()
+        for offset in range(days, 0, -1):
+            d: date = first_local - timedelta(days=offset)
+            issued = datetime.combine(d, time(5, 30), tzinfo=BERLIN).astimezone(UTC)
+            start, end = self.evaluator.day_bounds(d)
+            slots = [
+                start + timedelta(minutes=15 * i)
+                for i in range(int((end - start) / timedelta(minutes=15)))
+            ]
+            self.evaluator.record_run(
+                issued,
+                [
+                    (t, self.house.pv_expected_kw(t + timedelta(minutes=7, seconds=30)))
+                    for t in slots
+                ],
+            )
+            rows = [
+                (t + timedelta(minutes=k), self.house.pv_actual_kw(t + timedelta(minutes=k)))
+                for t in slots
+                for k in (2, 7, 12)
+            ]
+            self.evaluator.close_day(d, rows)
+
+    def _pv_rows(self, start: datetime, end: datetime) -> list[tuple[datetime, float | None]]:
+        out: list[tuple[datetime, float | None]] = []
+        for row in self.history.series(start, end):
+            v = row.get("pv_power_kw")
+            out.append(
+                (datetime.fromisoformat(str(row["ts"])), v if isinstance(v, float) else None)
+            )
+        return out
+
+    def _record_forecast_run(self, now: datetime) -> None:
+        start = now - timedelta(hours=1)
+        slots = [start + timedelta(minutes=15 * i) for i in range(37 * 4)]
+        self.evaluator.record_run(
+            now,
+            [(t, self.house.pv_expected_kw(t + timedelta(minutes=7, seconds=30))) for t in slots],
+        )
+        for d in self.evaluator.days_to_close(now):
+            s, e = self.evaluator.day_bounds(d)
+            self.evaluator.close_day(d, self._pv_rows(s, e))
+
+    async def forecast_evaluation(self) -> ForecastEvaluationOut:
+        now = self.now
+        today = now.astimezone(BERLIN).date()
+        ts, te = self.evaluator.day_bounds(today)
+        ys, ye = self.evaluator.day_bounds(today - timedelta(days=1))
+        return self.evaluator.evaluation(now, self._pv_rows(ts, te), self._pv_rows(ys, ye))
 
     def warmup(self, hours: float) -> None:
         """Vorlauf im Zeitraffer, damit Historie und Regler-Zustand gefüllt sind."""
@@ -171,7 +235,13 @@ class DemoRunner:
         ):
             from dch_api.application.plan_service import build_plan
 
-            self.plan = build_plan(self.house.pv_expected_kw, self._prices(), now, self.hems)
+            self._record_forecast_run(now)
+            self.plan = build_plan(
+                self.evaluator.pv_expected_corrected(self.house.pv_expected_kw),
+                self._prices(),
+                now,
+                self.hems,
+            )
             self._plan_at = now
             self.broker.publish("plan", self.plan.model_dump(mode="json"))
 

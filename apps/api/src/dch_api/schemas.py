@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -16,6 +16,7 @@ from hems_core.domain import (
     OperatingMode,
     SystemMode,
 )
+from hems_core.forecasting import CorrectorState, ForecastScore
 
 
 class PriceWindowOut(BaseModel):
@@ -106,3 +107,61 @@ class DemoControlIn(BaseModel):
 
 class ErrorOut(BaseModel):
     error: dict[str, object]
+
+
+# ----------------------------------------------------------------------------- Prognose-Auswertung
+
+
+class ForecastPointOut(BaseModel):
+    ts: datetime
+    actual_kw: float | None
+    day_ahead_kw: float | None  # Prognose, die um 06:00 für den Tag vorlag
+    latest_kw: float | None  # jüngster Lauf, unkorrigiert
+    corrected_kw: float | None  # jüngster Lauf mit den heutigen Korrekturfaktoren
+
+
+class ForecastDayOut(BaseModel):
+    day: date
+    issued_at: datetime | None
+    score: ForecastScore | None  # Day-ahead gegen Ist, bis jetzt
+    points: list[ForecastPointOut]
+
+
+class DailyScoreOut(BaseModel):
+    day: date
+    energy_forecast_kwh: float
+    energy_actual_kwh: float
+    energy_error_pct: float | None
+    mae_kw: float
+    bias_kw: float
+    k_global_after: float
+    issued_at: datetime | None = None
+
+
+class HorizonScoreOut(BaseModel):
+    key: str
+    label_de: str
+    score: ForecastScore
+
+
+class SourceOut(BaseModel):
+    name: str
+    label_de: str
+    weight: float
+    mae_7d_kw: float | None
+    active: bool
+
+
+class ForecastEvaluationOut(BaseModel):
+    generated_at: datetime
+    stage_de: str
+    sources: list[SourceOut]
+    today: ForecastDayOut
+    yesterday: ForecastDayOut
+    daily: list[DailyScoreOut]
+    horizons: list[HorizonScoreOut]
+    corrector: CorrectorState
+    correction_active: bool
+    next_changes_de: list[str]
+    runs_kept: int
+    notes_de: list[str]

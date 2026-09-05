@@ -126,9 +126,18 @@ class DemoHouse:
         return min(self.cfg.inverter_ac_kw, self.cfg.pv_kwp * 0.88 * s * air)
 
     def pv_expected_kw(self, t: datetime) -> float:
-        """Erwartete PV (Prognose): Klarhimmel × mittlerer Bewölkungsfaktor des Tages."""
-        c = self.day_cloudiness(self.local(t).date())
-        return self.pv_clear_sky_kw(t) * (1.0 - 0.85 * c)
+        """Erwartete PV (Prognose des Vortags): Klarhimmel × prognostizierte Tagesbewölkung.
+
+        Enthält absichtlich typische Prognosefehler: Die Bewölkung wird je Tag um bis zu ±0,17 verfehlt und tiefe
+        Sonnenstände werden systematisch überschätzt (Horizontverschattung kennt die Prognose nicht). So hat das
+        Prognoselernen im Demo-Modus etwas zu korrigieren.
+        """
+        d = self.local(t).date()
+        c = self.day_cloudiness(d)
+        c_forecast = min(0.95, max(0.03, c + (self._hash("cerr", d) - 0.5) * 0.35))
+        el = self.solar_elevation(t)
+        low_sun_bias = 1.12 if 0 < el < 15 else 1.03
+        return self.pv_clear_sky_kw(t) * (1.0 - 0.85 * c_forecast) * low_sun_bias
 
     def pv_actual_kw(self, t: datetime) -> float:
         d = self.local(t).date()

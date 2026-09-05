@@ -14,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 import structlog
 
 from dch_api.application.config_loader import AppConfig
+from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
 from dch_api.application.forecast_service import ForecastService
 from dch_api.application.plan_service import build_plan
 from dch_api.infrastructure.bridge_hub import BridgeHub
@@ -21,7 +22,7 @@ from dch_api.infrastructure.db.repositories import SqlRepositories
 from dch_api.infrastructure.history import SERIES
 from dch_api.infrastructure.live_state import LiveState
 from dch_api.infrastructure.sse_broker import SseBroker
-from dch_api.schemas import LiveStateOut, PlanOut, SystemStatusOut
+from dch_api.schemas import ForecastEvaluationOut, LiveStateOut, PlanOut, SystemStatusOut
 from dch_api.settings import Settings
 from hems_core.control import ControlInputs, HeatPumpController, HeatPumpTracker
 from hems_core.domain import (
@@ -71,6 +72,14 @@ class LiveRuntime:
         self._plan_at: datetime | None = None
         self._last_publish = 0.0
         self._tasks: list[asyncio.Task[None]] = []
+        loc = config.site.location
+        self.evaluator = ForecastEvaluator(
+            latitude=loc.latitude,
+            longitude=loc.longitude,
+            tz=BERLIN,
+            source="simple_clear_sky_v1",
+            source_label_de="DCH-Prognose (Open-Meteo-Bewölkung × Klarhimmel)",
+        )
         hub.on_telemetry = self.on_telemetry
         hub.on_event = self.on_bridge_event
 
@@ -182,7 +191,12 @@ class LiveRuntime:
 
     async def refresh_plan(self) -> None:
         now = self.now
-        self.plan = build_plan(self.forecasts.pv_expected_kw, self.forecasts.prices, now, self.hems)
+        self.plan = build_plan(
+            self.evaluator.pv_expected_corrected(self.forecasts.pv_expected_kw),
+            self.forecasts.prices,
+            now,
+            self.hems,
+        )
         self._plan_at = now
         self.broker.publish("plan", self.plan.model_dump(mode="json"))
 
@@ -261,14 +275,73 @@ class LiveRuntime:
             return list(self.decisions)[:limit]
         return await self.repos.recent_decisions(limit)
 
+    # ------------------------------------------------------------------ Prognosebewertung
+    CALIBRATION_MODEL = "pv_forecast_v1"
+
+    async def _pv_rows(self, start: datetime, end: datetime) -> list[tuple[datetime, float | None]]:
+        rows = await self.repos.minute_series(start, end, ["pv_power_kw"])
+        out: list[tuple[datetime, float | None]] = []
+        for row in rows:
+            v = row.get("pv_power_kw")
+            out.append(
+                (datetime.fromisoformat(str(row["ts"])), v if isinstance(v, float) else None)
+            )
+        return out
+
+    async def _record_forecast_run(self) -> None:
+        pv = self.forecasts.pv
+        if pv is None or not pv.points:
+            return
+        self.evaluator.record_run(pv.issued_at, [(p.ts, p.ac_kw) for p in pv.points], pv.provider)
+        await self._close_forecast_days()
+        await self._save_calibration()
+
+    async def _close_forecast_days(self) -> None:
+        closed = False
+        for d in self.evaluator.days_to_close(self.now):
+            s, e = self.evaluator.day_bounds(d)
+            upd = self.evaluator.close_day(d, await self._pv_rows(s, e))
+            if upd is not None:
+                closed = True
+                log.info("forecast day closed", day=d.isoformat(), mae_kw=upd.score.mae_kw)
+        if closed:
+            await self._save_calibration()
+
+    async def _save_calibration(self) -> None:
+        try:
+            await self.repos.save_calibration(
+                self.CALIBRATION_MODEL, self.evaluator.to_state().model_dump(mode="json")
+            )
+        except Exception as exc:
+            log.warning("calibration save failed", error=repr(exc)[:200])
+
+    async def _load_calibration(self) -> None:
+        try:
+            raw = await self.repos.load_calibration(self.CALIBRATION_MODEL)
+            if raw:
+                self.evaluator.load_state(EvaluatorState.model_validate(raw))
+        except Exception as exc:
+            log.warning("calibration load failed", error=repr(exc)[:200])
+
+    async def forecast_evaluation(self) -> ForecastEvaluationOut:
+        now = self.now
+        today = now.astimezone(BERLIN).date()
+        ts, te = self.evaluator.day_bounds(today)
+        ys, ye = self.evaluator.day_bounds(today - timedelta(days=1))
+        return self.evaluator.evaluation(
+            now, await self._pv_rows(ts, te), await self._pv_rows(ys, ye)
+        )
+
     # ------------------------------------------------------------------ Laufzeit
     async def start(self) -> None:
         self.live.apply(await self.repos.latest())
         stored = await self.repos.load_mode()
         if stored is not None:
             self.mode = stored
+        await self._load_calibration()
         await self.forecasts.refresh_prices(self.now)
         await self.forecasts.refresh_weather(self.now)
+        await self._record_forecast_run()
         await self.refresh_plan()
         if self.settings.runs_worker:
             self._tasks = [
@@ -312,7 +385,10 @@ class LiveRuntime:
             if now - last_weather >= timedelta(minutes=self.settings.weather_refresh_min):
                 await self.forecasts.refresh_weather(now)
                 last_weather = now
+                await self._record_forecast_run()
                 await self.refresh_plan()
+            else:
+                await self._close_forecast_days()
 
     async def _housekeeping_loop(self) -> None:
         while True:

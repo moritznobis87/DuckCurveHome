@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/forecast/evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Prognose gegen Ist, Tageskennzahlen, Korrekturfaktoren und was sich ändert */
+        get: operations["evaluation_api_v1_forecast_evaluation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/control/actuators/{key}": {
         parameters: {
             query?: never;
@@ -215,6 +232,30 @@ export interface components {
              * @default 0.05
              */
             min_flow_kw: number;
+        };
+        /** BinCorrection */
+        BinCorrection: {
+            /** Bin */
+            bin: number;
+            /** Label De */
+            label_de: string;
+            /**
+             * Factor
+             * @default 1
+             */
+            factor: number;
+            /**
+             * Previous
+             * @default 1
+             */
+            previous: number;
+            /** Last Ratio */
+            last_ratio?: number | null;
+            /**
+             * Days
+             * @default 0
+             */
+            days: number;
         };
         /** BlockRuleConfig */
         BlockRuleConfig: {
@@ -406,6 +447,63 @@ export interface components {
          * @enum {string}
          */
         ControllerState: "off" | "idle" | "arming" | "released" | "running_released" | "cooldown" | "manual" | "failsafe";
+        /**
+         * CorrectorState
+         * @description Serialisierbarer Zustand des Korrektors (Persistenz in der API).
+         */
+        CorrectorState: {
+            /** Bins */
+            bins?: components["schemas"]["BinCorrection"][];
+            /**
+             * K Global
+             * @default 1
+             */
+            k_global: number;
+            /**
+             * K Global Previous
+             * @default 1
+             */
+            k_global_previous: number;
+            /**
+             * Days Learned
+             * @default 0
+             */
+            days_learned: number;
+            /**
+             * Min Days
+             * @default 14
+             */
+            min_days: number;
+            /**
+             * Half Life Days
+             * @default 10
+             */
+            half_life_days: number;
+            /** Updated On */
+            updated_on?: string | null;
+        };
+        /** DailyScoreOut */
+        DailyScoreOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Energy Forecast Kwh */
+            energy_forecast_kwh: number;
+            /** Energy Actual Kwh */
+            energy_actual_kwh: number;
+            /** Energy Error Pct */
+            energy_error_pct: number | null;
+            /** Mae Kw */
+            mae_kw: number;
+            /** Bias Kw */
+            bias_kw: number;
+            /** K Global After */
+            k_global_after: number;
+            /** Issued At */
+            issued_at?: string | null;
+        };
         /** Decision */
         Decision: {
             /**
@@ -511,6 +609,79 @@ export interface components {
              * @default 0
              */
             balance_residual_kw: number;
+        };
+        /** ForecastDayOut */
+        ForecastDayOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Issued At */
+            issued_at: string | null;
+            score: components["schemas"]["ForecastScore"] | null;
+            /** Points */
+            points: components["schemas"]["ForecastPointOut"][];
+        };
+        /** ForecastEvaluationOut */
+        ForecastEvaluationOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Stage De */
+            stage_de: string;
+            /** Sources */
+            sources: components["schemas"]["SourceOut"][];
+            today: components["schemas"]["ForecastDayOut"];
+            yesterday: components["schemas"]["ForecastDayOut"];
+            /** Daily */
+            daily: components["schemas"]["DailyScoreOut"][];
+            /** Horizons */
+            horizons: components["schemas"]["HorizonScoreOut"][];
+            corrector: components["schemas"]["CorrectorState"];
+            /** Correction Active */
+            correction_active: boolean;
+            /** Next Changes De */
+            next_changes_de: string[];
+            /** Runs Kept */
+            runs_kept: number;
+            /** Notes De */
+            notes_de: string[];
+        };
+        /** ForecastPointOut */
+        ForecastPointOut: {
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            /** Actual Kw */
+            actual_kw: number | null;
+            /** Day Ahead Kw */
+            day_ahead_kw: number | null;
+            /** Latest Kw */
+            latest_kw: number | null;
+            /** Corrected Kw */
+            corrected_kw: number | null;
+        };
+        /** ForecastScore */
+        ForecastScore: {
+            /** N */
+            n: number;
+            /** Mae Kw */
+            mae_kw: number;
+            /** Bias Kw */
+            bias_kw: number;
+            /** Rmse Kw */
+            rmse_kw: number;
+            /** Energy Forecast Kwh */
+            energy_forecast_kwh: number;
+            /** Energy Actual Kwh */
+            energy_actual_kwh: number;
+            /** Energy Error Pct */
+            energy_error_pct: number | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -735,6 +906,14 @@ export interface components {
             rows: {
                 [key: string]: number | string | null;
             }[];
+        };
+        /** HorizonScoreOut */
+        HorizonScoreOut: {
+            /** Key */
+            key: string;
+            /** Label De */
+            label_de: string;
+            score: components["schemas"]["ForecastScore"];
         };
         /** LiveStateOut */
         LiveStateOut: {
@@ -975,6 +1154,19 @@ export interface components {
              */
             price_s: number;
         };
+        /** SourceOut */
+        SourceOut: {
+            /** Name */
+            name: string;
+            /** Label De */
+            label_de: string;
+            /** Weight */
+            weight: number;
+            /** Mae 7D Kw */
+            mae_7d_kw: number | null;
+            /** Active */
+            active: boolean;
+        };
         /**
          * SystemMode
          * @enum {string}
@@ -1133,6 +1325,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanOut"];
+                };
+            };
+        };
+    };
+    evaluation_api_v1_forecast_evaluation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForecastEvaluationOut"];
                 };
             };
         };
