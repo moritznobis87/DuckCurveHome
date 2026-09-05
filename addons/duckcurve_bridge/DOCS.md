@@ -7,7 +7,7 @@ Verbindet Home Assistant **ausgehend** mit der Duck-Curve-Home-API. Kein offener
 1. Dieses Repository in Home Assistant als Add-on-Repository hinzufügen
    (Einstellungen → Add-ons → Add-on Store → ⋮ → Repositories → `https://github.com/moritznobis87/DuckCurveHome`).
 2. Add-on „Duck Curve Home Bridge“ installieren.
-3. Datei `/config/duckcurve/entities.yaml` anlegen (Vorlage: `addons/duckcurve_bridge/entities.example.yaml`).
+3. Datei `/config/duckcurve/entities.yaml` anlegen (Vorlage: `addons/duckcurve_bridge/entities.example.yaml`; für das Haus in Geilenkirchen fertig ausgefüllt in `config/entities.home.yaml`).
    Sie ordnet Home-Assistant-Entitäten den Duck-Curve-Größen zu und legt Einheit und Vorzeichen fest.
 4. Optionen setzen: `api_ws_url` (Railway-API) und `api_token` (in Duck Curve Home erzeugt).
 5. Starten. Im Protokoll erscheint „uplink connected“. In Home Assistant entsteht die Entität

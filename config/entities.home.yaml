@@ -1,0 +1,53 @@
+# Duck Curve Home – Entity-Mapping für das Haus in Geilenkirchen.
+# Nach Home Assistant kopieren als /config/duckcurve/entities.yaml (Option `entities_file` im Add-on).
+#
+# Quelle der Zuordnung: Entity-Liste aus HA vom 05.09.2026, aufgenommen bei PV 7,65 kW, Einspeisung 2,38 kW,
+# Batterie lädt 0,45 kW, Wärmepumpe 3,0 kW. Domänenkonvention: grid > 0 Bezug, battery > 0 Entladen; kW.
+#
+# Zusammenhang der myenergi-Werte zum Aufnahmezeitpunkt (Plausibilitätscheck):
+#   generation 7650 W + grid −2378 W − battery charging 445 W = home consumption 4827 W  ✓
+
+sensors:
+  # --- Elektrische Leistungen (myenergi Hub / harvi / libbi / zappi) ---
+  # PV gesamt: harvi-CTs an den drei PV-Phasen (2573 + 2542 + 2535 W). Der Hub-Wert ist identisch mit
+  # sensor.photovoltaic_total und sensor.myenergi_harvi_11546287_power_ct_generation.
+  - { key: pv_power_kw,        entity: sensor.myenergi_hub_14117600_power_generation,     unit: W, stale_after_s: 120 }
+  # Netz: negativ = Einspeisung (power_export 2378 W bei power_grid −2378 W) → import_positive.
+  - { key: grid_power_kw,      entity: sensor.myenergi_hub_14117600_power_grid,           unit: W, sign: import_positive, stale_after_s: 120 }
+  # Batterie (libbi): interner Last-CT ist beim Laden positiv (445 W bei "Battery charge today" steigend).
+  # ⚠ Vorzeichen beim Entladen noch verifizieren (erwartet negativ) – siehe offene Punkte in DEPLOYMENT.md.
+  - { key: battery_power_kw,   entity: sensor.myenergi_libbi_26244255_power_ct_internal_load, unit: W, sign: charge_positive, stale_after_s: 120 }
+  - { key: battery_soc,        entity: sensor.myenergi_libbi_26244255_soc,                unit: "%", stale_after_s: 600 }
+  # Wallbox (zappi): interner Last-CT = Ladeleistung des Autos.
+  - { key: ev_power_kw,        entity: sensor.myenergi_wallbox_power_ct_internal_load,    unit: W, stale_after_s: 120 }
+  # Hausverbrauch laut Hub – nur Plausibilitätsprüfung; die Bilanz rechnet DCH selbst.
+  - { key: house_power_kw,     entity: sensor.myenergi_hub_14117600_home_consumption,     unit: W, stale_after_s: 120 }
+
+  # --- Wärmepumpe: Shelly 3EM, Summe der drei Phasen (HA-Template-Sensor) ---
+  - { key: heat_pump_power_kw, entity: sensor.heatpump_total_power,                       unit: W, stale_after_s: 60 }
+
+  # --- Pufferspeicher: Shelly Plus 1 mit Temperatur-Add-on (5 Fühler, Nr. 4 liefert "unknown") ---
+  # ⚠ Reihenfolge angenommen: 1 = oben … 5 = unten. Bitte am Speicher prüfen und ggf. tauschen.
+  - { key: buffer_temp_top_c,        entity: sensor.speicher_1_temperature, unit: "°C", stale_after_s: 900 }
+  - { key: buffer_temp_mid_top_c,    entity: sensor.speicher_2_temperature, unit: "°C", stale_after_s: 900 }
+  - { key: buffer_temp_mid_bottom_c, entity: sensor.speicher_3_temperature, unit: "°C", stale_after_s: 900 }
+  - { key: buffer_temp_bottom_c,     entity: sensor.speicher_5_temperature, unit: "°C", stale_after_s: 900 }
+
+  # --- Umgebung ---
+  - { key: outdoor_temp_c,     entity: sensor.geilenkirchen_air_base_temperatur,          unit: "°C", stale_after_s: 3600 }
+
+  # Strompreis kommt serverseitig direkt von Tibber (DCH_TIBBER_TOKEN) – hier nichts mappen.
+
+actuators:
+  # --- Komfort-Schalter (Shelly) ---
+  - { key: coffee_machine,     entity: switch.shelly1pm_34945472c2c5, label: Kaffeemaschine }
+  - { key: terrace_light,      entity: switch.shellyterrassenlicht,   label: Terrassenlicht }
+  - { key: garden_fence_light, entity: switch.shellygartenzaun,       label: Gartenzaun }
+
+  # --- Wärmepumpen-Kontakte K1 (PV-Freigabe) und K2 (EVU-Sperre) ---
+  # ⚠ NOCH NICHT ZUGEORDNET. Kandidaten aus HA: switch.warmepumpe (aktuell AN), switch.heatpump_measurement
+  # (Relais des Shelly 3EM), switch.temperaturen_heizung (Relais des Shelly Plus 1 mit Temperaturfühlern).
+  # Erst eintragen, wenn die Verdrahtung zum ELCO-Regler bestätigt ist. Ein Shelly, der die WP-Versorgung
+  # schaltet, darf hier NIE stehen. Bis dahin bleibt die Steuerung reine Beobachtung.
+  # - { key: hp_release_contact, entity: switch.<K1>, label: WP PV-Freigabe, safety_class: heat_pump, safe_state: false }
+  # - { key: hp_block_contact,   entity: switch.<K2>, label: WP Sperre,      safety_class: heat_pump, safe_state: false }
