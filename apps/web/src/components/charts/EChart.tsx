@@ -29,7 +29,7 @@ export function EChart({ option, className }: { option: EChartsCoreOption; class
   }, []);
 
   useEffect(() => {
-    chart.current?.setOption(option, { replaceMerge: ["series"], lazyUpdate: true });
+    chart.current?.setOption(option, { replaceMerge: ["series", "grid", "xAxis", "yAxis"], lazyUpdate: true });
   }, [option]);
 
   return <div ref={ref} className={className} style={{ width: "100%", height: "100%" }} />;
