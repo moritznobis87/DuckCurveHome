@@ -10,7 +10,7 @@ import { Header } from "./Header";
 import { EnergyFlow } from "@/components/energy-flow/EnergyFlow";
 import { EnergyPlanCard } from "@/components/energy-plan/EnergyPlanCard";
 import { BufferTank } from "@/components/buffer/BufferTank";
-import { DayChart, type ChartLayout } from "@/components/charts/DayChart";
+import { DayChart, type ChartLayout, type ChartRange } from "@/components/charts/DayChart";
 import { ControlsBar } from "@/components/controls/ControlsBar";
 
 export function Dashboard() {
@@ -53,7 +53,11 @@ export function Dashboard() {
     };
   }, []);
 
-  const changeRange = async (r: "today" | "yesterday") => {
+  const changeRange = async (r: ChartRange) => {
+    if (r === "tomorrow") {
+      setHistory([], r); // morgen gibt es nur Prognose (PV) und Preise aus dem Plan
+      return;
+    }
     const h = await api.history(r);
     setHistory(h.rows.map(rowToPoint), r);
   };

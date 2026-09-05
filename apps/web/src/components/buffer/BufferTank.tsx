@@ -38,7 +38,8 @@ export function BufferTank({ snapshot, buffer, targetSoc = 0.85 }: { snapshot: E
   const x0 = 14;
   const y0 = 8;
   const ys = [0.12, 0.37, 0.63, 0.88].map((f) => y0 + TH * f);
-  const usable = temps.every((m) => m.value !== null && (m.quality === "ok" || m.quality === "derived"));
+  const haveValues = temps.length > 0 && temps.every((m) => m.value !== null);
+  const fresh = temps.every((m) => m.quality === "ok" || m.quality === "derived");
   const socPct = buffer?.soc != null ? Math.round(buffer.soc * 100) : null;
   return (
     <Card style={{ gridColumn: "span 3", minHeight: 0 }}>
@@ -48,11 +49,11 @@ export function BufferTank({ snapshot, buffer, targetSoc = 0.85 }: { snapshot: E
           <defs>
             <linearGradient id="tank" x1="0" y1="0" x2="0" y2="1">
               {temps.map((m, i) => (
-                <stop key={i} offset={((ys[i]! - y0) / TH).toFixed(3)} stopColor={usable ? heatColor(m.value ?? 20) : "var(--surface-3)"} />
+                <stop key={i} offset={((ys[i]! - y0) / TH).toFixed(3)} stopColor={haveValues ? heatColor(m.value ?? 20) : "var(--surface-3)"} />
               ))}
             </linearGradient>
           </defs>
-          <rect x={x0} y={y0} width={TW} height={TH} rx={6} fill="url(#tank)" />
+          <rect x={x0} y={y0} width={TW} height={TH} rx={6} fill="url(#tank)" opacity={fresh ? 1 : 0.55} />
           <rect x={x0} y={y0} width={TW} height={TH} rx={6} fill="none" stroke="var(--line-2)" strokeWidth={2} />
           <rect x={x0 + 8} y={y0 + 8} width={TW - 16} height={TH - 16} rx={3} fill="none" stroke="rgba(8,36,49,.35)" strokeWidth={1} />
           <line x1={x0 - 6} y1={y0 + TH * (1 - targetSoc)} x2={x0} y2={y0 + TH * (1 - targetSoc)} stroke="var(--amber)" strokeWidth={1.5} />

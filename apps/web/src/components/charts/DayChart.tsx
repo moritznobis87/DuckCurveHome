@@ -38,11 +38,14 @@ export function dayBounds(nowMs: number): [number, number] {
 
 /** Anordnung der beiden Zeitreihen: nebeneinander (Standard), untereinander oder in einem Plot mit zwei y-Achsen. Umschalten per ?chart=side|stacked|overlay, wird pro Gerät gemerkt. */
 export type ChartLayout = "stacked" | "side" | "overlay";
+export type ChartRange = "yesterday" | "today" | "tomorrow";
+const RANGE_LABEL: Record<ChartRange, string> = { yesterday: "Gestern", today: "Heute", tomorrow: "Morgen" };
 
-export function DayChart({ history, plan, nowMs, range, onRange, layout = "side" }: { history: HistoryPoint[]; plan: Plan | null; nowMs: number; range: "today" | "yesterday"; onRange: (r: "today" | "yesterday") => void; layout?: ChartLayout }) {
+export function DayChart({ history, plan, nowMs, range, onRange, layout = "side" }: { history: HistoryPoint[]; plan: Plan | null; nowMs: number; range: ChartRange; onRange: (r: ChartRange) => void; layout?: ChartLayout }) {
   const [start, end] = useMemo(() => {
     const [s, e] = dayBounds(nowMs);
-    return range === "today" ? [s, e] : [s - 86400000, e - 86400000];
+    const shift = range === "today" ? 0 : range === "yesterday" ? -86400000 : 86400000;
+    return [s + shift, e + shift];
   }, [nowMs, range]);
 
   const option = useMemo<EChartsCoreOption>(() => {
@@ -56,8 +59,9 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
       const t = new Date(i.ts).getTime();
       return t >= nowMs - 15 * 60000 && t >= start && t <= end;
     });
-    const pvForecast = range === "today" ? future.map((i) => [hx(new Date(i.ts).getTime()), i.expected_pv_kw]) : [];
-    const priceFuture = range === "today" ? future.map((i) => [hx(new Date(i.ts).getTime()), i.price_ct_kwh]) : [];
+    const showForecast = range !== "yesterday";
+    const pvForecast = showForecast ? future.map((i) => [hx(new Date(i.ts).getTime()), i.expected_pv_kw]) : [];
+    const priceFuture = showForecast ? future.map((i) => [hx(new Date(i.ts).getTime()), i.price_ct_kwh]) : [];
     const bands = (plan?.windows ?? [])
       .filter((w) => new Date(w.start).getTime() < end && new Date(w.end).getTime() > start)
       .map((w) => {
@@ -172,16 +176,16 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
       {label}
     </span>
   );
-  const Seg = ({ v, label }: { v: "today" | "yesterday"; label: string }) => (
-    <button onClick={() => onRange(v)} className="mono px-4 py-2 text-[12px] uppercase tracking-[.08em]" style={{ background: range === v ? "var(--amber)" : "transparent", color: range === v ? "var(--petrol)" : "var(--text-3)" }}>
-      {label}
+  const Seg = ({ v }: { v: ChartRange }) => (
+    <button onClick={() => onRange(v)} className="px-3.5 py-1.5 text-[12px] font-medium tracking-[.02em] transition-colors" style={{ background: range === v ? "var(--amber)" : "transparent", color: range === v ? "var(--petrol)" : "var(--text-2)", borderRadius: 2 }}>
+      {RANGE_LABEL[v]}
     </button>
   );
   return (
     <Card className="flex-1" style={{ padding: 16, minHeight: 0 }}>
       <div className="flex items-center justify-between">
         <div className="flex items-baseline gap-5">
-          <h2 className="kicker m-0">{range === "today" ? "Heute" : "Gestern"} · Leistung {layout === "side" ? "|" : "und"} Strompreis</h2>
+          <h2 className="kicker m-0">{RANGE_LABEL[range]} · Leistung {layout === "side" ? "|" : "und"} Strompreis</h2>
           <div className="flex gap-5">
             <Legend color={C.pv} label="PV" />
             <Legend color={C.hp} label="Wärmepumpe" />
@@ -190,9 +194,10 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
             <Legend color={C.pv} label="Prognose" dashed />
           </div>
         </div>
-        <div className="flex overflow-hidden rounded-[3px] border border-line-2">
-          <Seg v="today" label="Heute" />
-          <Seg v="yesterday" label="Gestern" />
+        <div className="flex shrink-0 gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Zeitraum">
+          <Seg v="yesterday" />
+          <Seg v="today" />
+          <Seg v="tomorrow" />
         </div>
       </div>
       <div className="mt-1 min-h-0 flex-1">

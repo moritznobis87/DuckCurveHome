@@ -22,12 +22,12 @@ interface LiveStore {
   lastFrameAt: number | null;
   serverOffsetMs: number; // serverTime - clientTime
   history: HistoryPoint[];
-  historyRange: "today" | "yesterday";
+  historyRange: "yesterday" | "today" | "tomorrow";
   setState: (s: LiveState) => void;
   setPlan: (p: Plan) => void;
   pushDecision: (d: Decision) => void;
   setConnection: (c: Connection) => void;
-  setHistory: (rows: HistoryPoint[], range: "today" | "yesterday") => void;
+  setHistory: (rows: HistoryPoint[], range: "yesterday" | "today" | "tomorrow") => void;
   nowMs: () => number;
 }
 
