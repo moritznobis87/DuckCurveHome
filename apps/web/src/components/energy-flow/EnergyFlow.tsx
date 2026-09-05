@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import type { EnergySnapshot, Measurement } from "@/lib/api/models";
 import { ageLabel, kw } from "@/lib/format";
@@ -10,13 +11,13 @@ type NodeKey = "pv" | "grid" | "house" | "bat" | "hp" | "ev";
 const R = 34;
 const W = 500;
 const H = 340;
-const NODES: Record<NodeKey, { x: number; y: number; label: string; icon: string; color: string }> = {
-  pv: { x: 250, y: 40, label: "PV", icon: "sun", color: "var(--pv)" },
-  grid: { x: 60, y: 160, label: "Netz", icon: "grid", color: "var(--grid-in)" },
-  house: { x: 250, y: 160, label: "Haus", icon: "home", color: "var(--text-1)" },
-  bat: { x: 440, y: 160, label: "Batterie", icon: "battery", color: "var(--battery)" },
-  hp: { x: 130, y: 270, label: "Wärmepumpe", icon: "pump", color: "var(--heat-pump)" },
-  ev: { x: 370, y: 270, label: "Wallbox", icon: "car", color: "var(--ev)" },
+const NODES: Record<NodeKey, { x: number; y: number; label: string; icon: string; color: string; href: string }> = {
+  pv: { x: 250, y: 40, label: "PV", icon: "sun", color: "var(--pv)", href: "/pv" },
+  grid: { x: 60, y: 160, label: "Netz", icon: "grid", color: "var(--grid-in)", href: "/haus" },
+  house: { x: 250, y: 160, label: "Haus", icon: "home", color: "var(--text-1)", href: "/haus" },
+  bat: { x: 440, y: 160, label: "Batterie", icon: "battery", color: "var(--battery)", href: "/batterie" },
+  hp: { x: 130, y: 270, label: "Wärmepumpe", icon: "pump", color: "var(--heat-pump)", href: "/waerme" },
+  ev: { x: 370, y: 270, label: "Wallbox", icon: "car", color: "var(--ev)", href: "/wallbox" },
 };
 
 function Edge({ from, to, kwValue, color, minFlow = 0.05 }: { from: NodeKey; to: NodeKey; kwValue: number; color: string; minFlow?: number }) {
@@ -44,7 +45,7 @@ function Edge({ from, to, kwValue, color, minFlow = 0.05 }: { from: NodeKey; to:
   );
 }
 
-function Node({ k, value, unit, m, nowMs, sub }: { k: NodeKey; value: string; unit: string; m: Measurement | null; nowMs: number; sub?: string }) {
+function Node({ k, value, unit, m, nowMs, sub, onOpen }: { k: NodeKey; value: string; unit: string; m: Measurement | null; nowMs: number; sub?: string; onOpen: (href: string) => void }) {
   const n = NODES[k];
   const dim = !m || m.quality === "stale" || m.quality === "unavailable" || m.quality === "unknown";
   const age = m ? ageLabel(m.observed_at, nowMs) : null;
@@ -55,7 +56,8 @@ function Node({ k, value, unit, m, nowMs, sub }: { k: NodeKey; value: string; un
   const ty1 = right ? n.y + 2 : n.y + R + 24;
   const ty2 = right ? n.y + 20 : n.y + R + 42;
   return (
-    <g>
+    <g className="flow-node" role="link" tabIndex={0} aria-label={`${n.label} – Details öffnen`} style={{ cursor: "pointer" }} onClick={() => onOpen(n.href)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(n.href); }}>
+      <circle cx={n.x} cy={n.y} r={R + 10} fill="transparent" />
       <circle cx={n.x} cy={n.y} r={R} fill="var(--petrol)" stroke={col} strokeOpacity={dim ? 0.35 : 0.55} strokeWidth={2} />
       <g transform={`translate(${n.x - 11},${n.y - 11})`}>
         <Icon name={n.icon} size={22} color={col} />
@@ -66,12 +68,15 @@ function Node({ k, value, unit, m, nowMs, sub }: { k: NodeKey; value: string; un
       </text>
       <text x={tx} y={ty2} textAnchor={anchor} style={{ fontFamily: "var(--font-sans)", fontSize: 12 }} fill="var(--text-3)">
         {n.label}{sub ? ` · ${sub}` : ""}{age ? ` · ${age}` : ""}
+        <tspan fill="var(--amber)" dx={4}>›</tspan>
       </text>
     </g>
   );
 }
 
 export function EnergyFlow({ snapshot, nowMs }: { snapshot: EnergySnapshot | null; nowMs: number }) {
+  const router = useRouter();
+  const open = (href: string) => router.push(href);
   const v = useMemo(() => {
     const s = snapshot;
     const num = (m?: Measurement | null) => (m && m.value !== null && (m.quality === "ok" || m.quality === "derived") ? m.value : 0);
@@ -116,12 +121,12 @@ export function EnergyFlow({ snapshot, nowMs }: { snapshot: EnergySnapshot | nul
           <text x={155} y={149} textAnchor="middle" className="mono" style={{ fontSize: 11, letterSpacing: ".1em" }} fill="var(--text-3)">
             {v.exportKw >= 0.05 && v.exportKw >= v.importKw ? "EINSPEISUNG" : v.importKw >= 0.05 ? "BEZUG" : ""}
           </text>
-          <Node k="pv" value={kw(s?.pv_power_kw.value)} unit="kW" m={s?.pv_power_kw ?? null} nowMs={nowMs} />
-          <Node k="grid" value={kw(s?.grid_power_kw.value)} unit="kW" m={s?.grid_power_kw ?? null} nowMs={nowMs} />
-          <Node k="house" value={kw(s?.house_power_kw.value)} unit="kW" m={s?.house_power_kw ?? null} nowMs={nowMs} />
-          <Node k="bat" value={s?.battery_soc.value != null ? String(Math.round(s.battery_soc.value * 100)) : "–"} unit="%" m={s?.battery_soc ?? null} nowMs={nowMs} sub={v.charge >= 0.05 ? `lädt ${kw(v.charge)} kW` : v.discharge >= 0.05 ? `entlädt ${kw(v.discharge)} kW` : undefined} />
-          <Node k="hp" value={kw(s?.heat_pump_power_kw.value)} unit="kW" m={s?.heat_pump_power_kw ?? null} nowMs={nowMs} />
-          <Node k="ev" value={kw(s?.ev_power_kw.value)} unit="kW" m={s?.ev_power_kw ?? null} nowMs={nowMs} />
+          <Node k="pv" value={kw(s?.pv_power_kw.value)} unit="kW" m={s?.pv_power_kw ?? null} nowMs={nowMs} onOpen={open} />
+          <Node k="grid" value={kw(s?.grid_power_kw.value)} unit="kW" m={s?.grid_power_kw ?? null} nowMs={nowMs} onOpen={open} />
+          <Node k="house" value={kw(s?.house_power_kw.value)} unit="kW" m={s?.house_power_kw ?? null} nowMs={nowMs} onOpen={open} />
+          <Node k="bat" value={s?.battery_soc.value != null ? String(Math.round(s.battery_soc.value * 100)) : "–"} unit="%" m={s?.battery_soc ?? null} nowMs={nowMs} sub={v.charge >= 0.05 ? `lädt ${kw(v.charge)} kW` : v.discharge >= 0.05 ? `entlädt ${kw(v.discharge)} kW` : undefined} onOpen={open} />
+          <Node k="hp" value={kw(s?.heat_pump_power_kw.value)} unit="kW" m={s?.heat_pump_power_kw ?? null} nowMs={nowMs} onOpen={open} />
+          <Node k="ev" value={kw(s?.ev_power_kw.value)} unit="kW" m={s?.ev_power_kw ?? null} nowMs={nowMs} onOpen={open} />
         </svg>
       </div>
     </Card>

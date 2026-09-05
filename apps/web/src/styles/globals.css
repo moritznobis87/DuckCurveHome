@@ -29,21 +29,24 @@
   --radius-3: var(--radius-3);
 }
 
-* { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
-body {
-  background: var(--bg);
-  color: var(--text-1);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  overscroll-behavior: none;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-user-select: none;
-  user-select: none;
+/* Basis-Resets in der base-Ebene: sonst schlagen sie (ungeschichtet) jede Tailwind-Utility wie px-3 oder text-[12px] auf Buttons. */
+@layer base {
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text-1);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; appearance: none; -webkit-appearance: none; }
+  :focus-visible { outline: 0; box-shadow: var(--focus-ring); }
 }
-a { color: inherit; text-decoration: none; }
-button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
-:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
 
 .kicker {
   font-family: var(--font-mono);
@@ -104,3 +107,11 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 @media (prefers-reduced-motion: reduce) {
   .flow-dots { animation: none; }
 }
+
+/* Anklickbare Knoten im Energiefluss und verlinkte Karten */
+.flow-node circle:nth-child(2) { transition: stroke-opacity .15s ease, filter .15s ease; }
+.flow-node:hover circle:nth-child(2),
+.flow-node:focus-visible circle:nth-child(2) { stroke-opacity: 1 !important; filter: drop-shadow(0 0 6px rgba(242, 169, 0, .35)); }
+.flow-node:focus-visible { outline: none; }
+.card-link { transition: border-color .15s ease; }
+.card-link:hover, .card-link:focus-visible { border-color: var(--line-2); outline: none; }

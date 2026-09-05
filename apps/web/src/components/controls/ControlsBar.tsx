@@ -40,12 +40,12 @@ function ControlTile({ tile, on, onToggle }: { tile: (typeof TILES)[number]; on:
   };
   const color = status === "error" ? "var(--alert)" : shown ? "var(--amber)" : "var(--text-3)";
   return (
-    <button onClick={click} aria-pressed={shown ?? undefined} className="flex h-20 items-center gap-4 rounded-[3px] border border-line-1 bg-surface-2 px-5 text-left transition-transform duration-[var(--dur)] active:scale-[.99]" style={{ borderRight: `3px solid ${status === "error" ? "var(--alert)" : shown ? "var(--amber)" : "transparent"}` }}>
+    <button onClick={click} aria-pressed={shown ?? undefined} className="flex h-20 min-w-0 items-center gap-3 rounded-[3px] border border-line-1 bg-surface-2 px-3 text-left transition-transform duration-[var(--dur)] active:scale-[.99]" style={{ borderRight: `3px solid ${status === "error" ? "var(--alert)" : shown ? "var(--amber)" : "transparent"}` }}>
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-2 bg-petrol">
         <Icon name={tile.icon} size={22} color={color} />
       </span>
       <span className="flex min-w-0 flex-col gap-[5px]">
-        <span className="truncate text-[15px] text-text-1">{tile.label}</span>
+        <span className="truncate text-[13px] text-text-1">{tile.label}</span>
         <span className="mono truncate text-[12px] uppercase tracking-[.1em]" style={{ color }}>
           {status === "pending" ? "schalte …" : status === "error" ? message ?? "Fehler" : shown === null ? "–" : shown ? "an" : "aus"}
         </span>
@@ -84,12 +84,12 @@ function ModeSegment({ state }: { state: LiveState | null }) {
     </button>
   );
   return (
-    <div className="relative flex h-20 items-center gap-4 overflow-visible rounded-[3px] border border-line-1 bg-surface-2 pl-5">
+    <div className="relative flex h-20 min-w-0 items-center gap-3 overflow-visible rounded-[3px] border border-line-1 bg-surface-2 pl-4">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-2 bg-petrol">
         <Icon name="pump" size={22} color={hp?.running ? "var(--heat-pump)" : "var(--text-3)"} />
       </span>
-      <span className="flex min-w-[132px] flex-col gap-[5px]">
-        <span className="text-[15px] text-text-1">Wärmepumpe</span>
+      <span className="flex min-w-[120px] flex-col gap-[5px]">
+        <span className="text-[14px] text-text-1">Wärmepumpe</span>
         <span className="mono truncate text-[12px] uppercase tracking-[.1em]" style={{ color: override ? "var(--amber-soft)" : hp?.running ? "var(--amber)" : "var(--text-3)" }}>{status}</span>
       </span>
       <div className="ml-2 flex h-full flex-1 overflow-hidden rounded-r-[3px]">
@@ -115,7 +115,7 @@ function ModeSegment({ state }: { state: LiveState | null }) {
 export function ControlsBar({ state }: { state: LiveState | null }) {
   const act = state?.snapshot.actuators ?? {};
   return (
-    <div className="grid shrink-0 gap-4" style={{ gridTemplateColumns: "2.2fr 1fr 1fr 1fr 1fr" }}>
+    <div className="grid shrink-0 gap-4" style={{ gridTemplateColumns: "1.8fr repeat(4, minmax(0, 1fr))" }}>
       <ModeSegment state={state} />
       {TILES.map((t) => {
         const m = act[t.key];

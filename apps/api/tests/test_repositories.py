@@ -99,7 +99,10 @@ async def test_energy_hours_roundtrip(repos: SqlRepositories) -> None:
     from hems_core.accounting import HourlyEnergy
 
     h0 = datetime(2026, 9, 6, 10, 0, tzinfo=UTC)
-    hours = [HourlyEnergy(hour_start=h0 + timedelta(hours=i), minutes=60, pv_kwh=1.0 + i) for i in range(3)]
+    hours = [
+        HourlyEnergy(hour_start=h0 + timedelta(hours=i), minutes=60, pv_kwh=1.0 + i)
+        for i in range(3)
+    ]
     await repos.upsert_energy_hours(hours, {h0: 12.5})
     # Upsert überschreibt die bestehende Stunde statt zu duplizieren
     await repos.upsert_energy_hours([HourlyEnergy(hour_start=h0, minutes=60, pv_kwh=9.0)], {})

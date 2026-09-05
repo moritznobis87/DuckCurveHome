@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, ForecastEvaluation, HeatPumpModeIn, History, LiveState, OperatingMode, Plan } from "./models";
+import type { ActuatorCommandOut, EnergySummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -46,6 +46,9 @@ export const api = {
   history: (range: "today" | "yesterday" | "24h") => request<History>(`/history?range=${range}`),
   plan: () => request<Plan>("/plan"),
   forecastEvaluation: () => request<ForecastEvaluation>("/forecast/evaluation"),
+  energySummary: (period: Period, anchor: string) => request<EnergySummary>(`/energy/summary?period=${period}&anchor=${anchor}`),
+  energyHeat: (period: Period, anchor: string) => request<HeatReport>(`/energy/heat?period=${period}&anchor=${anchor}`),
+  energyEv: (period: Period, anchor: string) => request<EvReport>(`/energy/ev?period=${period}&anchor=${anchor}`),
   switchActuator: (key: string, state: boolean, durationMin?: number) =>
     request<ActuatorCommandOut>(`/control/actuators/${key}`, {
       method: "POST",
