@@ -39,7 +39,10 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
 
     if not settings.database_url:
         raise DchError("config", "DATABASE_URL fehlt für den Live-Modus.", 500)
-    engine = make_engine(settings.database_url)
+    try:
+        engine = make_engine(settings.database_url)
+    except Exception as exc:  # klare Meldung statt Stacktrace-Kaskade
+        raise DchError("config", f"Datenbankverbindung nicht konfigurierbar: {exc}", 500) from exc
     if settings.db_create_all:
         await create_all_for_tests(engine)
     cfg = load_app_config(settings.config_file or None)

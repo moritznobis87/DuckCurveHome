@@ -16,7 +16,11 @@ from dch_api.infrastructure.db.models import Base
 
 
 def normalize_url(url: str) -> str:
-    """Railway liefert postgresql://…; asyncpg braucht postgresql+asyncpg://…"""
+    """Railway liefert postgresql://…; asyncpg braucht postgresql+asyncpg://…
+
+    Umschließende Anführungszeichen und Leerzeichen (Copy-and-paste in Railway) werden entfernt.
+    """
+    url = url.strip().strip("'\"").strip()
     if url.startswith("postgres://"):
         url = "postgresql://" + url[len("postgres://") :]
     if url.startswith("postgresql://"):
@@ -24,7 +28,28 @@ def normalize_url(url: str) -> str:
     return url
 
 
+def describe_url_problem(url: str) -> str | None:
+    """Verständliche Diagnose für eine unbrauchbare DATABASE_URL, ohne das Passwort zu verraten."""
+    u = normalize_url(url)
+    if not u:
+        return "DATABASE_URL ist leer."
+    if "${{" in u:
+        return (
+            "DATABASE_URL enthält eine nicht aufgelöste Railway-Referenz. Der Service-Name in "
+            "${{<Service>.DATABASE_URL}} muss exakt dem Namen des Postgres-Services entsprechen."
+        )
+    if "://" not in u:
+        return (
+            f"DATABASE_URL beginnt mit „{u[:12]}…“ und ist keine Verbindungs-URL. Erwartet wird "
+            "postgresql://benutzer:passwort@host:port/datenbank (Railway: ${{Postgres.DATABASE_URL}})."
+        )
+    return None
+
+
 def make_engine(url: str, echo: bool = False) -> AsyncEngine:
+    problem = describe_url_problem(url)
+    if problem:
+        raise ValueError(problem)
     url = normalize_url(url)
     kwargs: dict[str, object] = {"echo": echo, "pool_pre_ping": True}
     if url.startswith("postgresql+asyncpg"):

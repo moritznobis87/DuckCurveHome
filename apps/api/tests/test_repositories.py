@@ -81,3 +81,13 @@ async def test_calibration_roundtrip(repos: SqlRepositories) -> None:
     await repos.save_calibration("pv_forecast_v1", {"days_learned": 4, "bins": [1.0, 0.88]})
     state = await repos.load_calibration("pv_forecast_v1")
     assert state == {"days_learned": 4, "bins": [1.0, 0.88]}
+
+
+def test_normalize_url_strips_quotes_and_maps_driver() -> None:
+    from dch_api.infrastructure.db.engine import describe_url_problem, normalize_url
+
+    assert normalize_url(' "postgres://u:p@h:5432/db" ') == "postgresql+asyncpg://u:p@h:5432/db"
+    assert describe_url_problem("") == "DATABASE_URL ist leer."
+    assert "Referenz" in (describe_url_problem("${{Postgres.DATABASE_URL}}") or "")
+    assert "Verbindungs-URL" in (describe_url_problem("abc123") or "")
+    assert describe_url_problem("postgresql://u:p@h/db") is None
