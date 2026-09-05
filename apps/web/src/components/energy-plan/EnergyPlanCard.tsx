@@ -22,10 +22,17 @@ function Pair({ k, v }: { k: string; v: string }) {
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
+function Row({ k, v, href }: { k: string; v: string; href?: string }) {
+  const label = href ? (
+    <a href={href} className="text-[13px] text-text-3 underline decoration-line-2 underline-offset-[3px]">
+      {k} ›
+    </a>
+  ) : (
+    <span className="text-[13px] text-text-3">{k}</span>
+  );
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-line-1 pb-[2px]">
-      <span className="text-[13px] text-text-3">{k}</span>
+      {label}
       <span className="mono whitespace-nowrap text-[14px] text-text-1">{v}</span>
     </div>
   );
@@ -77,7 +84,7 @@ export function EnergyPlanCard({ state, plan }: { state: LiveState | null; plan:
             {d && nextExpectedLine(d) ? <Row k="Nächster Schritt" v={nextExpectedLine(d)!} /> : null}
             {nextPv ? <Row k="PV-Überschuss erwartet" v={`${hhmm(nextPv.start)}–${hhmm(nextPv.end)}`} /> : null}
             {nextCheap ? <Row k="Nächstes Preistief" v={`${hhmm(nextCheap.start)}–${hhmm(nextCheap.end)} · ${nextCheap.avg_ct_kwh?.toFixed(1).replace(".", ",")} ct`} /> : null}
-            <Row k="PV-Prognose heute · Außen" v={`${plan ? kwh(plan.pv_forecast_today_kwh) : "–"} · ${celsius(s?.outdoor_temp_c.value, 1)}`} />
+            <Row k="PV-Prognose heute · Außen" href="/prognose" v={`${plan ? kwh(plan.pv_forecast_today_kwh) : "–"} · ${celsius(s?.outdoor_temp_c.value, 1)}`} />
           </div>
         </Block>
       </div>

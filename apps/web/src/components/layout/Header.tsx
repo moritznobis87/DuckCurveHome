@@ -60,6 +60,9 @@ export function Header() {
           <span className="kicker" style={{ fontSize: 12, color: "var(--text-3)" }}>{conn[1]}</span>
         </div>
         <Pill tone={override ? "alert" : mode?.system_mode === "off" ? "neutral" : "amber"}>{modeLabel}</Pill>
+        <a href="/prognose" aria-label="Prognose-Auswertung" title="Prognose-Auswertung" className="flex h-9 w-9 items-center justify-center rounded-[3px] border border-line-2">
+          <Icon name="chart" size={18} color="var(--text-3)" />
+        </a>
         <a href="/settings" aria-label="Einstellungen" className="flex h-9 w-9 items-center justify-center rounded-[3px] border border-line-2">
           <Icon name="gear" size={18} color="var(--text-3)" />
         </a>

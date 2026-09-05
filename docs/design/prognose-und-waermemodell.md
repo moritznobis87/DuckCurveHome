@@ -1,6 +1,10 @@
 # Prognoselernen und Wärmemodell
 
-Status: Entwurf, 2026-09-05. Ergänzt die Abschnitte 19 (PV Forecast), 20 (Heat Demand) und 22 (Planungsmodell)
+Status: Entwurf, 2026-09-05. **Umsetzungsstand:** Stufe 1 (Bias-Korrektur je Sonnenhöhe) ist implementiert und auf der
+Detailseite `/prognose` sichtbar (Prognose gegen Ist, Tagesenergie, Fehler nach Horizont, Korrekturfaktoren, Änderungsliste).
+Der Planer nutzt die korrigierte Prognose. Im Live-Betrieb wird der Lernzustand in `model_calibrations` gespeichert.
+
+Ergänzt die Abschnitte 19 (PV Forecast), 20 (Heat Demand) und 22 (Planungsmodell)
 des [Projektplans](../PROJECT_PLAN.md). Umsetzung ab Phase 5, Datensammlung ab Phase 2.
 
 ## 1. Ausgangslage

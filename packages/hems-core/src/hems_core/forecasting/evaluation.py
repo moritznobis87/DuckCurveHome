@@ -275,6 +275,10 @@ class BiasCorrector:
         )
 
 
+def _de(x: float, digits: int = 2) -> str:
+    return f"{x:.{digits}f}".replace(".", ",")
+
+
 def explain_corrections_de(state: CorrectorState) -> list[str]:
     """Was sich für die nächste Prognose ändert, in Sätzen für die Detailseite."""
     lines: list[str] = []
@@ -290,19 +294,22 @@ def explain_corrections_de(state: CorrectorState) -> list[str]:
         delta = (b.factor - b.previous) * 100.0
         direction = "gesenkt" if pct < 0 else "angehoben"
         if abs(pct) < 0.5:
-            lines.append(f"Sonnenhöhe {b.label_de}: keine Korrektur nötig (Faktor {b.factor:.2f}).")
+            lines.append(
+                f"Sonnenhöhe {b.label_de}: keine Korrektur nötig (Faktor {_de(b.factor)})."
+            )
             continue
         trend = ""
         if abs(delta) >= 0.5:
-            trend = f", zuletzt {'weiter ' if delta * pct > 0 else 'wieder etwas zurück '}um {abs(delta):.1f} Punkte"
+            richtung = "weiter" if delta * pct > 0 else "wieder etwas zurück"
+            trend = f", zuletzt {richtung} um {_de(abs(delta), 1)} Punkte"
         lines.append(
             f"Sonnenhöhe {b.label_de}: Prognose wird um {abs(pct):.0f} % {direction} "
-            f"(Faktor {b.factor:.2f}{trend})."
+            f"(Faktor {_de(b.factor)}{trend})."
         )
     kg = (state.k_global - 1.0) * 100.0
     if state.days_learned:
         lines.append(
-            f"Tagesenergie im Mittel {'unter' if kg < 0 else 'über'}schätzt: Ist/Prognose {state.k_global:.2f} "
+            f"Tagesenergie im Mittel {'über' if kg < 0 else 'unter'}schätzt: Ist/Prognose {_de(state.k_global)} "
             f"(exponentiell gewichtet, Halbwertszeit {state.half_life_days:g} Tage)."
         )
     return lines

@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
-import { LineChart } from "echarts/charts";
+import { BarChart, LineChart, ScatterChart } from "echarts/charts";
 import { GridComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent, AxisPointerComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import type { EChartsCoreOption } from "echarts/core";
 
-echarts.use([LineChart, GridComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent, AxisPointerComponent, CanvasRenderer]);
+echarts.use([LineChart, BarChart, ScatterChart, GridComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent, AxisPointerComponent, CanvasRenderer]);
 
 /** Der eine Chart-Baustein: Thema an einer Stelle, setOption auf lebender Instanz (Live-Daten), Resize, Dispose. */
 export function EChart({ option, className }: { option: EChartsCoreOption; className?: string }) {

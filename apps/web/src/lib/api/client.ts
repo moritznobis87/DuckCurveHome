@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, HeatPumpModeIn, History, LiveState, OperatingMode, Plan } from "./models";
+import type { ActuatorCommandOut, ForecastEvaluation, HeatPumpModeIn, History, LiveState, OperatingMode, Plan } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -45,6 +45,7 @@ export const api = {
   liveState: () => request<LiveState>("/live/state"),
   history: (range: "today" | "yesterday" | "24h") => request<History>(`/history?range=${range}`),
   plan: () => request<Plan>("/plan"),
+  forecastEvaluation: () => request<ForecastEvaluation>("/forecast/evaluation"),
   switchActuator: (key: string, state: boolean, durationMin?: number) =>
     request<ActuatorCommandOut>(`/control/actuators/${key}`, {
       method: "POST",
