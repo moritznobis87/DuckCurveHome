@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from hems_core.accounting import EnergyTotals, HeatForecastPoint
 from hems_core.domain import (
     AutoProfile,
     BufferState,
@@ -165,3 +166,79 @@ class ForecastEvaluationOut(BaseModel):
     next_changes_de: list[str]
     runs_kept: int
     notes_de: list[str]
+
+
+# ----------------------------------------------------------------------------- Energiebilanz
+
+Period = Literal["day", "week", "month", "year"]
+
+
+class EnergyTotalsOut(EnergyTotals):
+    """Summen plus abgeleitete Kennzahlen als normale Felder (für JSON)."""
+
+    autarky: float | None = None
+    self_consumption_share: float | None = None
+    avg_import_price_ct: float | None = None
+
+    @classmethod
+    def from_totals(cls, t: EnergyTotals) -> EnergyTotalsOut:
+        return cls(
+            **t.model_dump(),
+            autarky=t.autarky,
+            self_consumption_share=t.self_consumption_share,
+            avg_import_price_ct=t.avg_import_price_ct,
+        )
+
+
+class EnergyBucketOut(BaseModel):
+    start: datetime
+    end: datetime
+    label: str  # z. B. "14:00", "Mo 02.09.", "Sep"
+    totals: EnergyTotalsOut
+
+
+class EnergyMetaOut(BaseModel):
+    battery_capacity_kwh: float
+    feed_in_ct_kwh: float
+    data_since: datetime | None
+    coverage: float | None  # bewertete Minuten / Minuten des Zeitraums (bis jetzt)
+    estimated_note_de: str
+
+
+class EnergySummaryOut(BaseModel):
+    period: Period
+    anchor: date
+    start: datetime
+    end: datetime
+    totals: EnergyTotalsOut
+    buckets: list[EnergyBucketOut]
+    meta: EnergyMetaOut
+
+
+class HeatReportOut(BaseModel):
+    summary: EnergySummaryOut
+    thermal_kwh_est: float  # gelieferte Wärme aus Strom × COP (Schätzung)
+    cop_est: float
+    forecast: list[HeatForecastPoint]  # nächste 48 h
+    forecast_electric_kwh_24h: float
+    forecast_thermal_kwh_24h: float
+    buffer_series: list[
+        dict[str, float | str | None]
+    ]  # Puffertemperaturen des Ankertags (Minutenmittel)
+    heat_loss_kw_per_k: float
+    model_note_de: str
+
+
+class EvSessionOut(BaseModel):
+    start: datetime
+    end: datetime
+    kwh: float
+    pv_share: float | None  # Anteil aus PV (direkt) am Ladevorgang
+    grid_kwh: float
+    cost_eur: float
+    avg_kw: float
+
+
+class EvReportOut(BaseModel):
+    summary: EnergySummaryOut
+    sessions: list[EvSessionOut]  # Ladevorgänge im Zeitraum (nur Tag/Woche)

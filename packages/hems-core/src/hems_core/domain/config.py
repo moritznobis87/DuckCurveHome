@@ -106,6 +106,67 @@ class SensorTimeouts(BaseModel):
     price_s: float = 3600.0 * 2
 
 
+class TariffConfig(BaseModel):
+    """Geldseite: Einspeisevergütung und Ersatzpreis, falls kein Tibber-Preis vorliegt."""
+
+    model_config = ConfigDict(frozen=True)
+
+    feed_in_ct_kwh: float = 8.0  # Einspeisevergütung (Plan 25.12: 8 ct annehmen)
+    fallback_import_ct_kwh: float = 30.0  # Ersatzpreis für Minuten ohne Preisdaten
+
+
+class HeatDemandConfig(BaseModel):
+    """Wärmebedarfsmodell v1 (Plan 20.2): Heizgradstunden, Warmwasserprofil, COP-Kennlinie."""
+
+    model_config = ConfigDict(frozen=True)
+
+    heat_loss_kw_per_k: float = 0.22  # H: Verlustkoeffizient des Hauses (Schätzung bis zur Messung)
+    indoor_target_c: float = 21.0
+    heating_limit_c: float = 15.0  # darüber keine Heizung
+    internal_gains_kw: float = 0.4  # Personen, Geräte, Sonne
+    dhw_kwh_per_day: float = 8.0  # Warmwasser thermisch je Tag
+    # Gewichte je Stunde (0–23) für die Warmwasserentnahme, morgens und abends erhöht
+    dhw_profile: list[float] = Field(
+        default_factory=lambda: [
+            0.2,
+            0.1,
+            0.1,
+            0.1,
+            0.2,
+            0.6,
+            1.6,
+            2.2,
+            1.8,
+            1.0,
+            0.8,
+            0.8,
+            0.9,
+            0.7,
+            0.6,
+            0.6,
+            0.8,
+            1.2,
+            1.8,
+            2.0,
+            1.6,
+            1.0,
+            0.6,
+            0.3,
+        ]
+    )
+    # COP über Außentemperatur bei Puffer-Zieltemperatur (Plan 20.1)
+    cop_curve: list[tuple[float, float]] = Field(
+        default_factory=lambda: [(-7.0, 2.4), (2.0, 3.0), (7.0, 3.5), (15.0, 4.2)]
+    )
+
+
+class BatteryConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    capacity_kwh: float = 5.1  # myenergi libbi
+    max_power_kw: float = 3.7
+
+
 class HemsConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -114,3 +175,6 @@ class HemsConfig(BaseModel):
     buffer: BufferConfig = BufferConfig()
     balance: BalanceConfig = BalanceConfig()
     timeouts: SensorTimeouts = SensorTimeouts()
+    tariff: TariffConfig = TariffConfig()
+    heat_demand: HeatDemandConfig = HeatDemandConfig()
+    battery: BatteryConfig = BatteryConfig()

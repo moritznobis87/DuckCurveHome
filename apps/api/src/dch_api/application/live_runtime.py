@@ -9,11 +9,12 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections import deque
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import structlog
 
 from dch_api.application.config_loader import AppConfig
+from dch_api.application.energy_accounting import ENERGY_KEYS, EnergyAccounting
 from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
 from dch_api.application.forecast_service import ForecastService
 from dch_api.application.plan_service import build_plan
@@ -22,7 +23,16 @@ from dch_api.infrastructure.db.repositories import SqlRepositories
 from dch_api.infrastructure.history import SERIES
 from dch_api.infrastructure.live_state import LiveState
 from dch_api.infrastructure.sse_broker import SseBroker
-from dch_api.schemas import ForecastEvaluationOut, LiveStateOut, PlanOut, SystemStatusOut
+from dch_api.schemas import (
+    EnergySummaryOut,
+    EvReportOut,
+    ForecastEvaluationOut,
+    HeatReportOut,
+    LiveStateOut,
+    Period,
+    PlanOut,
+    SystemStatusOut,
+)
 from dch_api.settings import Settings
 from hems_core.control import ControlInputs, HeatPumpController, HeatPumpTracker
 from hems_core.domain import (
@@ -81,6 +91,13 @@ class LiveRuntime:
             tz=BERLIN,
             source="simple_clear_sky_v1",
             source_label_de="DCH-Prognose (Open-Meteo-Bewölkung × Klarhimmel)",
+        )
+        self.accounting = EnergyAccounting(
+            self.hems,
+            BERLIN,
+            lambda s, e: repos.minute_series(s, e, ENERGY_KEYS),
+            store=(repos.energy_hours, repos.upsert_energy_hours, repos.last_energy_hour),
+            data_since=repos.first_measurement_at,
         )
         hub.on_telemetry = self.on_telemetry
         hub.on_event = self.on_bridge_event
@@ -346,6 +363,33 @@ class LiveRuntime:
         except Exception as exc:
             log.warning("calibration load failed", error=repr(exc)[:200])
 
+    # ------------------------------------------------------------------ Energiebilanz
+    async def energy_summary(self, period: Period, anchor: date) -> EnergySummaryOut:
+        return await self.accounting.summary(period, anchor, self.now)
+
+    async def heat_report(self, period: Period, anchor: date) -> HeatReportOut:
+        temps: list[tuple[datetime, float]] = []
+        w = self.forecasts.weather
+        if w is not None:
+            temps = [
+                (p.ts, p.temp_c)
+                for p in w.points
+                if p.temp_c is not None and p.ts >= self.now - timedelta(hours=1)
+            ][:48]
+        return await self.accounting.heat_report(period, anchor, self.now, temps)
+
+    async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
+        return await self.accounting.ev_report(period, anchor, self.now)
+
+    async def _accounting_loop(self) -> None:
+        while True:
+            try:
+                n = await self.accounting.refresh(self.now)
+                log.info("energy hours refreshed", hours=n)
+            except Exception as exc:
+                log.warning("energy refresh failed", error=repr(exc)[:200])
+            await asyncio.sleep(300)
+
     async def forecast_evaluation(self) -> ForecastEvaluationOut:
         now = self.now
         today = now.astimezone(BERLIN).date()
@@ -371,6 +415,7 @@ class LiveRuntime:
                 asyncio.create_task(self._control_loop(), name="control"),
                 asyncio.create_task(self._forecast_loop(), name="forecast"),
                 asyncio.create_task(self._housekeeping_loop(), name="housekeeping"),
+                asyncio.create_task(self._accounting_loop(), name="accounting"),
             ]
         log.info("live runtime started", actuation=self.settings.actuation_enabled)
 

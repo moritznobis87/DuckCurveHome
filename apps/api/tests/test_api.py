@@ -140,3 +140,36 @@ def test_forecast_evaluation(client: TestClient) -> None:
     # Day-ahead-Lauf für heute vorhanden und bewertet
     assert body["today"]["issued_at"] is not None
     assert body["today"]["score"] is not None and body["today"]["score"]["n"] > 0
+
+
+def test_energy_summary_day_and_buckets(client: TestClient) -> None:
+    r = client.get("/api/v1/energy/summary?period=day")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["period"] == "day" and len(body["buckets"]) == 24
+    t = body["totals"]
+    assert t["minutes"] > 0 and t["pv_kwh"] >= 0 and t["house_kwh"] > 0
+    # Herkunft summiert sich zum Hausverbrauch (numerisch, Toleranz durch Rundung)
+    assert (
+        abs(
+            (t["pv_direct_kwh"] + t["battery_to_house_kwh"] + t["grid_to_house_kwh"])
+            - t["house_kwh"]
+        )
+        < 0.05
+    )
+    assert body["meta"]["battery_capacity_kwh"] > 0
+    for period, n in (("week", 7), ("year", 12)):
+        r = client.get(f"/api/v1/energy/summary?period={period}")
+        assert r.status_code == 200 and len(r.json()["buckets"]) == n
+
+
+def test_energy_heat_and_ev_reports(client: TestClient) -> None:
+    r = client.get("/api/v1/energy/heat?period=day")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert len(body["forecast"]) == 48
+    assert body["forecast_electric_kwh_24h"] >= 0 and body["cop_est"] >= 0
+    assert body["buffer_series"] and "buffer_temp_top_c" in body["buffer_series"][0]
+    r = client.get("/api/v1/energy/ev?period=day")
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json()["sessions"], list)

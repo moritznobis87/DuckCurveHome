@@ -186,6 +186,46 @@ class ModelCalibration(Base):
     state: Mapped[dict[str, object]] = mapped_column(JsonType, default=dict)
 
 
+class EnergyHour(Base):
+    """Energiebilanz je Stunde (Quellen, Verbraucher, Geld) – Grundlage der Detailseiten."""
+
+    __tablename__ = "energy_hourly"
+    hour_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    minutes: Mapped[int] = mapped_column(Integer, default=0)
+    price_missing_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    pv_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    import_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    export_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    battery_charge_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    battery_discharge_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    house_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    heat_pump_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    ev_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    base_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    pv_direct_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    battery_to_house_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    grid_to_house_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    pv_to_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    grid_to_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    heat_pump_pv_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    heat_pump_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    heat_pump_grid_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    ev_pv_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    ev_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    ev_grid_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    import_cost_eur: Mapped[float] = mapped_column(Float, default=0.0)
+    export_revenue_eur: Mapped[float] = mapped_column(Float, default=0.0)
+    heat_pump_cost_eur: Mapped[float] = mapped_column(Float, default=0.0)
+    heat_pump_opportunity_eur: Mapped[float] = mapped_column(Float, default=0.0)
+    ev_cost_eur: Mapped[float] = mapped_column(Float, default=0.0)
+    ev_opportunity_eur: Mapped[float] = mapped_column(Float, default=0.0)
+    battery_savings_eur: Mapped[float] = mapped_column(Float, default=0.0)
+    pv_direct_savings_eur: Mapped[float] = mapped_column(Float, default=0.0)
+    price_weighted_ct: Mapped[float] = mapped_column(Float, default=0.0)
+    outdoor_temp_c: Mapped[float | None] = mapped_column(Float)  # Stundenmittel, für COP-Schätzung
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class KioskDevice(Base):
     __tablename__ = "kiosk_devices"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

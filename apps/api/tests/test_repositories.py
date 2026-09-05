@@ -91,3 +91,18 @@ def test_normalize_url_strips_quotes_and_maps_driver() -> None:
     assert "Referenz" in (describe_url_problem("${{Postgres.DATABASE_URL}}") or "")
     assert "Verbindungs-URL" in (describe_url_problem("abc123") or "")
     assert describe_url_problem("postgresql://u:p@h/db") is None
+
+
+async def test_energy_hours_roundtrip(repos: SqlRepositories) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from hems_core.accounting import HourlyEnergy
+
+    h0 = datetime(2026, 9, 6, 10, 0, tzinfo=UTC)
+    hours = [HourlyEnergy(hour_start=h0 + timedelta(hours=i), minutes=60, pv_kwh=1.0 + i) for i in range(3)]
+    await repos.upsert_energy_hours(hours, {h0: 12.5})
+    # Upsert überschreibt die bestehende Stunde statt zu duplizieren
+    await repos.upsert_energy_hours([HourlyEnergy(hour_start=h0, minutes=60, pv_kwh=9.0)], {})
+    rows = await repos.energy_hours(h0, h0 + timedelta(hours=3))
+    assert [round(h.pv_kwh, 1) for h, _ in rows] == [9.0, 2.0, 3.0]
+    assert rows[0][1] is None and (await repos.last_energy_hour()) == h0 + timedelta(hours=2)

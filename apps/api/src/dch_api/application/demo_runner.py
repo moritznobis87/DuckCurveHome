@@ -13,10 +13,20 @@ from datetime import UTC, date, datetime, time, timedelta
 
 import structlog
 
+from dch_api.application.energy_accounting import EnergyAccounting
 from dch_api.application.forecast_evaluation import ForecastEvaluator
 from dch_api.infrastructure.history import HistoryStore
 from dch_api.infrastructure.sse_broker import SseBroker
-from dch_api.schemas import ForecastEvaluationOut, LiveStateOut, PlanOut, SystemStatusOut
+from dch_api.schemas import (
+    EnergySummaryOut,
+    EvReportOut,
+    ForecastEvaluationOut,
+    HeatReportOut,
+    LiveStateOut,
+    Period,
+    PlanOut,
+    SystemStatusOut,
+)
 from dch_api.settings import Settings
 from hems_core.control import ControlInputs, HeatPumpController, HeatPumpTracker
 from hems_core.domain import (
@@ -80,6 +90,14 @@ class DemoRunner:
             source_label_de="Demo-Prognose (Klarhimmel × Tagesbewölkung)",
         )
         self._backfill_forecast_history(days=16)
+        self.hems = self.hems.model_copy(
+            update={
+                "battery": self.hems.battery.model_copy(update={"capacity_kwh": cfg.battery_kwh})
+            }
+        )
+        self.accounting = EnergyAccounting(
+            self.hems, BERLIN, self._minute_rows, store=None, data_since=self._data_since
+        )
 
     # ------------------------------------------------------------------ Zeit
     @property
@@ -132,6 +150,29 @@ class DemoRunner:
         for d in self.evaluator.days_to_close(now):
             s, e = self.evaluator.day_bounds(d)
             self.evaluator.close_day(d, self._pv_rows(s, e))
+
+    async def _minute_rows(
+        self, start: datetime, end: datetime
+    ) -> list[dict[str, float | str | None]]:
+        return self.history.series(start, end)
+
+    async def _data_since(self) -> datetime | None:
+        rows = self.history.series(self.now - timedelta(days=30), self.now)
+        return datetime.fromisoformat(str(rows[0]["ts"])) if rows else None
+
+    async def energy_summary(self, period: Period, anchor: date) -> EnergySummaryOut:
+        return await self.accounting.summary(period, anchor, self.now)
+
+    async def heat_report(self, period: Period, anchor: date) -> HeatReportOut:
+        base = self.now.replace(minute=0, second=0, microsecond=0)
+        temps = [
+            (base + timedelta(hours=i), self.house.outdoor_temp_c(base + timedelta(hours=i)))
+            for i in range(48)
+        ]
+        return await self.accounting.heat_report(period, anchor, self.now, temps)
+
+    async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
+        return await self.accounting.ev_report(period, anchor, self.now)
 
     async def forecast_evaluation(self) -> ForecastEvaluationOut:
         now = self.now

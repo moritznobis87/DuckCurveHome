@@ -194,6 +194,204 @@
         }
       }
     },
+    "/api/v1/energy/summary": {
+      "get": {
+        "tags": [
+          "Energiebilanz"
+        ],
+        "summary": "Energiebilanz eines Zeitraums",
+        "operationId": "summary_api_v1_energy_summary_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string",
+              "default": "day",
+              "title": "Period"
+            }
+          },
+          {
+            "name": "anchor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anchor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnergySummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/energy/heat": {
+      "get": {
+        "tags": [
+          "Energiebilanz"
+        ],
+        "summary": "Wärme: WP-Strom, Kosten, Wärmebedarfsprognose",
+        "operationId": "heat_api_v1_energy_heat_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string",
+              "default": "day",
+              "title": "Period"
+            }
+          },
+          {
+            "name": "anchor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anchor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeatReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/energy/ev": {
+      "get": {
+        "tags": [
+          "Energiebilanz"
+        ],
+        "summary": "Wallbox: Ladeenergie, Herkunft, Kosten, Ladevorgänge",
+        "operationId": "ev_api_v1_energy_ev_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string",
+              "default": "day",
+              "title": "Period"
+            }
+          },
+          {
+            "name": "anchor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anchor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/control/actuators/{key}": {
       "post": {
         "tags": [
@@ -492,6 +690,22 @@
         },
         "type": "object",
         "title": "BalanceConfig"
+      },
+      "BatteryConfig": {
+        "properties": {
+          "capacity_kwh": {
+            "type": "number",
+            "title": "Capacity Kwh",
+            "default": 5.1
+          },
+          "max_power_kw": {
+            "type": "number",
+            "title": "Max Power Kw",
+            "default": 3.7
+          }
+        },
+        "type": "object",
+        "title": "BatteryConfig"
       },
       "BinCorrection": {
         "properties": {
@@ -1249,6 +1463,83 @@
         "type": "object",
         "title": "DemoControlIn"
       },
+      "EnergyBucketOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/EnergyTotalsOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "label",
+          "totals"
+        ],
+        "title": "EnergyBucketOut"
+      },
+      "EnergyMetaOut": {
+        "properties": {
+          "battery_capacity_kwh": {
+            "type": "number",
+            "title": "Battery Capacity Kwh"
+          },
+          "feed_in_ct_kwh": {
+            "type": "number",
+            "title": "Feed In Ct Kwh"
+          },
+          "data_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Since"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "estimated_note_de": {
+            "type": "string",
+            "title": "Estimated Note De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "battery_capacity_kwh",
+          "feed_in_ct_kwh",
+          "data_since",
+          "coverage",
+          "estimated_note_de"
+        ],
+        "title": "EnergyMetaOut"
+      },
       "EnergySnapshot": {
         "properties": {
           "timestamp": {
@@ -1326,6 +1617,326 @@
           "hp_block_contact"
         ],
         "title": "EnergySnapshot"
+      },
+      "EnergySummaryOut": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "year"
+            ],
+            "title": "Period"
+          },
+          "anchor": {
+            "type": "string",
+            "format": "date",
+            "title": "Anchor"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/EnergyTotalsOut"
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/EnergyBucketOut"
+            },
+            "type": "array",
+            "title": "Buckets"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/EnergyMetaOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period",
+          "anchor",
+          "start",
+          "end",
+          "totals",
+          "buckets",
+          "meta"
+        ],
+        "title": "EnergySummaryOut"
+      },
+      "EnergyTotalsOut": {
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "title": "Minutes",
+            "default": 0
+          },
+          "pv_kwh": {
+            "type": "number",
+            "title": "Pv Kwh",
+            "default": 0.0
+          },
+          "import_kwh": {
+            "type": "number",
+            "title": "Import Kwh",
+            "default": 0.0
+          },
+          "export_kwh": {
+            "type": "number",
+            "title": "Export Kwh",
+            "default": 0.0
+          },
+          "battery_charge_kwh": {
+            "type": "number",
+            "title": "Battery Charge Kwh",
+            "default": 0.0
+          },
+          "battery_discharge_kwh": {
+            "type": "number",
+            "title": "Battery Discharge Kwh",
+            "default": 0.0
+          },
+          "house_kwh": {
+            "type": "number",
+            "title": "House Kwh",
+            "default": 0.0
+          },
+          "heat_pump_kwh": {
+            "type": "number",
+            "title": "Heat Pump Kwh",
+            "default": 0.0
+          },
+          "ev_kwh": {
+            "type": "number",
+            "title": "Ev Kwh",
+            "default": 0.0
+          },
+          "base_kwh": {
+            "type": "number",
+            "title": "Base Kwh",
+            "default": 0.0
+          },
+          "pv_direct_kwh": {
+            "type": "number",
+            "title": "Pv Direct Kwh",
+            "default": 0.0
+          },
+          "battery_to_house_kwh": {
+            "type": "number",
+            "title": "Battery To House Kwh",
+            "default": 0.0
+          },
+          "grid_to_house_kwh": {
+            "type": "number",
+            "title": "Grid To House Kwh",
+            "default": 0.0
+          },
+          "pv_to_battery_kwh": {
+            "type": "number",
+            "title": "Pv To Battery Kwh",
+            "default": 0.0
+          },
+          "grid_to_battery_kwh": {
+            "type": "number",
+            "title": "Grid To Battery Kwh",
+            "default": 0.0
+          },
+          "heat_pump_pv_kwh": {
+            "type": "number",
+            "title": "Heat Pump Pv Kwh",
+            "default": 0.0
+          },
+          "heat_pump_battery_kwh": {
+            "type": "number",
+            "title": "Heat Pump Battery Kwh",
+            "default": 0.0
+          },
+          "heat_pump_grid_kwh": {
+            "type": "number",
+            "title": "Heat Pump Grid Kwh",
+            "default": 0.0
+          },
+          "ev_pv_kwh": {
+            "type": "number",
+            "title": "Ev Pv Kwh",
+            "default": 0.0
+          },
+          "ev_battery_kwh": {
+            "type": "number",
+            "title": "Ev Battery Kwh",
+            "default": 0.0
+          },
+          "ev_grid_kwh": {
+            "type": "number",
+            "title": "Ev Grid Kwh",
+            "default": 0.0
+          },
+          "import_cost_eur": {
+            "type": "number",
+            "title": "Import Cost Eur",
+            "default": 0.0
+          },
+          "export_revenue_eur": {
+            "type": "number",
+            "title": "Export Revenue Eur",
+            "default": 0.0
+          },
+          "heat_pump_cost_eur": {
+            "type": "number",
+            "title": "Heat Pump Cost Eur",
+            "default": 0.0
+          },
+          "heat_pump_opportunity_eur": {
+            "type": "number",
+            "title": "Heat Pump Opportunity Eur",
+            "default": 0.0
+          },
+          "ev_cost_eur": {
+            "type": "number",
+            "title": "Ev Cost Eur",
+            "default": 0.0
+          },
+          "ev_opportunity_eur": {
+            "type": "number",
+            "title": "Ev Opportunity Eur",
+            "default": 0.0
+          },
+          "battery_savings_eur": {
+            "type": "number",
+            "title": "Battery Savings Eur",
+            "default": 0.0
+          },
+          "pv_direct_savings_eur": {
+            "type": "number",
+            "title": "Pv Direct Savings Eur",
+            "default": 0.0
+          },
+          "price_weighted_ct": {
+            "type": "number",
+            "title": "Price Weighted Ct",
+            "default": 0.0
+          },
+          "price_missing_minutes": {
+            "type": "integer",
+            "title": "Price Missing Minutes",
+            "default": 0
+          },
+          "autarky": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autarky"
+          },
+          "self_consumption_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Self Consumption Share"
+          },
+          "avg_import_price_ct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Import Price Ct"
+          }
+        },
+        "type": "object",
+        "title": "EnergyTotalsOut",
+        "description": "Summen plus abgeleitete Kennzahlen als normale Felder (für JSON)."
+      },
+      "EvReportOut": {
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/EnergySummaryOut"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/EvSessionOut"
+            },
+            "type": "array",
+            "title": "Sessions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "sessions"
+        ],
+        "title": "EvReportOut"
+      },
+      "EvSessionOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "kwh": {
+            "type": "number",
+            "title": "Kwh"
+          },
+          "pv_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pv Share"
+          },
+          "grid_kwh": {
+            "type": "number",
+            "title": "Grid Kwh"
+          },
+          "cost_eur": {
+            "type": "number",
+            "title": "Cost Eur"
+          },
+          "avg_kw": {
+            "type": "number",
+            "title": "Avg Kw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "kwh",
+          "pv_share",
+          "grid_kwh",
+          "cost_eur",
+          "avg_kw"
+        ],
+        "title": "EvSessionOut"
       },
       "ForecastDayOut": {
         "properties": {
@@ -1579,6 +2190,101 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HeatDemandConfig": {
+        "properties": {
+          "heat_loss_kw_per_k": {
+            "type": "number",
+            "title": "Heat Loss Kw Per K",
+            "default": 0.22
+          },
+          "indoor_target_c": {
+            "type": "number",
+            "title": "Indoor Target C",
+            "default": 21.0
+          },
+          "heating_limit_c": {
+            "type": "number",
+            "title": "Heating Limit C",
+            "default": 15.0
+          },
+          "internal_gains_kw": {
+            "type": "number",
+            "title": "Internal Gains Kw",
+            "default": 0.4
+          },
+          "dhw_kwh_per_day": {
+            "type": "number",
+            "title": "Dhw Kwh Per Day",
+            "default": 8.0
+          },
+          "dhw_profile": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Dhw Profile"
+          },
+          "cop_curve": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Cop Curve"
+          }
+        },
+        "type": "object",
+        "title": "HeatDemandConfig",
+        "description": "Wärmebedarfsmodell v1 (Plan 20.2): Heizgradstunden, Warmwasserprofil, COP-Kennlinie."
+      },
+      "HeatForecastPoint": {
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "outdoor_c": {
+            "type": "number",
+            "title": "Outdoor C"
+          },
+          "heating_kw": {
+            "type": "number",
+            "title": "Heating Kw"
+          },
+          "dhw_kw": {
+            "type": "number",
+            "title": "Dhw Kw"
+          },
+          "cop": {
+            "type": "number",
+            "title": "Cop"
+          },
+          "electric_kw": {
+            "type": "number",
+            "title": "Electric Kw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ts",
+          "outdoor_c",
+          "heating_kw",
+          "dhw_kw",
+          "cop",
+          "electric_kw"
+        ],
+        "title": "HeatForecastPoint"
+      },
       "HeatPumpConfig": {
         "properties": {
           "minimum_electric_power_kw": {
@@ -1753,6 +2459,77 @@
         ],
         "title": "HeatPumpState"
       },
+      "HeatReportOut": {
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/EnergySummaryOut"
+          },
+          "thermal_kwh_est": {
+            "type": "number",
+            "title": "Thermal Kwh Est"
+          },
+          "cop_est": {
+            "type": "number",
+            "title": "Cop Est"
+          },
+          "forecast": {
+            "items": {
+              "$ref": "#/components/schemas/HeatForecastPoint"
+            },
+            "type": "array",
+            "title": "Forecast"
+          },
+          "forecast_electric_kwh_24h": {
+            "type": "number",
+            "title": "Forecast Electric Kwh 24H"
+          },
+          "forecast_thermal_kwh_24h": {
+            "type": "number",
+            "title": "Forecast Thermal Kwh 24H"
+          },
+          "buffer_series": {
+            "items": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Buffer Series"
+          },
+          "heat_loss_kw_per_k": {
+            "type": "number",
+            "title": "Heat Loss Kw Per K"
+          },
+          "model_note_de": {
+            "type": "string",
+            "title": "Model Note De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "thermal_kwh_est",
+          "cop_est",
+          "forecast",
+          "forecast_electric_kwh_24h",
+          "forecast_thermal_kwh_24h",
+          "buffer_series",
+          "heat_loss_kw_per_k",
+          "model_note_de"
+        ],
+        "title": "HeatReportOut"
+      },
       "HemsConfig": {
         "properties": {
           "heat_pump": {
@@ -1846,10 +2623,78 @@
           "timeouts": {
             "$ref": "#/components/schemas/SensorTimeouts",
             "default": {
-              "power_s": 60.0,
-              "battery_s": 60.0,
+              "power_s": 180.0,
+              "battery_s": 180.0,
               "temperature_s": 900.0,
               "price_s": 7200.0
+            }
+          },
+          "tariff": {
+            "$ref": "#/components/schemas/TariffConfig",
+            "default": {
+              "feed_in_ct_kwh": 8.0,
+              "fallback_import_ct_kwh": 30.0
+            }
+          },
+          "heat_demand": {
+            "$ref": "#/components/schemas/HeatDemandConfig",
+            "default": {
+              "heat_loss_kw_per_k": 0.22,
+              "indoor_target_c": 21.0,
+              "heating_limit_c": 15.0,
+              "internal_gains_kw": 0.4,
+              "dhw_kwh_per_day": 8.0,
+              "dhw_profile": [
+                0.2,
+                0.1,
+                0.1,
+                0.1,
+                0.2,
+                0.6,
+                1.6,
+                2.2,
+                1.8,
+                1.0,
+                0.8,
+                0.8,
+                0.9,
+                0.7,
+                0.6,
+                0.6,
+                0.8,
+                1.2,
+                1.8,
+                2.0,
+                1.6,
+                1.0,
+                0.6,
+                0.3
+              ],
+              "cop_curve": [
+                [
+                  -7.0,
+                  2.4
+                ],
+                [
+                  2.0,
+                  3.0
+                ],
+                [
+                  7.0,
+                  3.5
+                ],
+                [
+                  15.0,
+                  4.2
+                ]
+              ]
+            }
+          },
+          "battery": {
+            "$ref": "#/components/schemas/BatteryConfig",
+            "default": {
+              "capacity_kwh": 5.1,
+              "max_power_kw": 3.7
             }
           }
         },
@@ -2402,12 +3247,12 @@
           "power_s": {
             "type": "number",
             "title": "Power S",
-            "default": 60.0
+            "default": 180.0
           },
           "battery_s": {
             "type": "number",
             "title": "Battery S",
-            "default": 60.0
+            "default": 180.0
           },
           "temperature_s": {
             "type": "number",
@@ -2515,6 +3360,23 @@
           "connection_label_de"
         ],
         "title": "SystemStatusOut"
+      },
+      "TariffConfig": {
+        "properties": {
+          "feed_in_ct_kwh": {
+            "type": "number",
+            "title": "Feed In Ct Kwh",
+            "default": 8.0
+          },
+          "fallback_import_ct_kwh": {
+            "type": "number",
+            "title": "Fallback Import Ct Kwh",
+            "default": 30.0
+          }
+        },
+        "type": "object",
+        "title": "TariffConfig",
+        "description": "Geldseite: Einspeisevergütung und Ersatzpreis, falls kein Tibber-Preis vorliegt."
       },
       "ValidationError": {
         "properties": {

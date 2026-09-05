@@ -3,14 +3,17 @@
 from hems_core.domain.buffer import BufferState, BufferStatus
 from hems_core.domain.config import (
     BalanceConfig,
+    BatteryConfig,
     BlockRuleConfig,
     BufferConfig,
     ControlConfig,
+    HeatDemandConfig,
     HeatPumpConfig,
     HemsConfig,
     PriceRuleConfig,
     PvRuleConfig,
     SensorTimeouts,
+    TariffConfig,
 )
 from hems_core.domain.decision import (
     ControllerState,
@@ -28,6 +31,7 @@ from hems_core.domain.snapshot import BufferTemperatures, EnergySnapshot
 __all__ = [
     "AutoProfile",
     "BalanceConfig",
+    "BatteryConfig",
     "BlockRuleConfig",
     "BufferConfig",
     "BufferState",
@@ -38,6 +42,7 @@ __all__ = [
     "Decision",
     "DecisionInputs",
     "EnergySnapshot",
+    "HeatDemandConfig",
     "HeatPumpConfig",
     "HeatPumpState",
     "HemsConfig",
@@ -52,4 +57,5 @@ __all__ = [
     "ReasonCode",
     "SensorTimeouts",
     "SystemMode",
+    "TariffConfig",
 ]

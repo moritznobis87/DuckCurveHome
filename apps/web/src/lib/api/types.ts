@@ -106,6 +106,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/energy/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Energiebilanz eines Zeitraums */
+        get: operations["summary_api_v1_energy_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/energy/heat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wärme: WP-Strom, Kosten, Wärmebedarfsprognose */
+        get: operations["heat_api_v1_energy_heat_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/energy/ev": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wallbox: Ladeenergie, Herkunft, Kosten, Ladevorgänge */
+        get: operations["ev_api_v1_energy_ev_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/control/actuators/{key}": {
         parameters: {
             query?: never;
@@ -232,6 +283,19 @@ export interface components {
              * @default 0.05
              */
             min_flow_kw: number;
+        };
+        /** BatteryConfig */
+        BatteryConfig: {
+            /**
+             * Capacity Kwh
+             * @default 5.1
+             */
+            capacity_kwh: number;
+            /**
+             * Max Power Kw
+             * @default 3.7
+             */
+            max_power_kw: number;
         };
         /** BinCorrection */
         BinCorrection: {
@@ -580,6 +644,35 @@ export interface components {
             /** Scenario */
             scenario?: ("reset" | "sunny_surplus" | "cold_evening" | "buffer_full" | "sensor_outage") | null;
         };
+        /** EnergyBucketOut */
+        EnergyBucketOut: {
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Label */
+            label: string;
+            totals: components["schemas"]["EnergyTotalsOut"];
+        };
+        /** EnergyMetaOut */
+        EnergyMetaOut: {
+            /** Battery Capacity Kwh */
+            battery_capacity_kwh: number;
+            /** Feed In Ct Kwh */
+            feed_in_ct_kwh: number;
+            /** Data Since */
+            data_since: string | null;
+            /** Coverage */
+            coverage: number | null;
+            /** Estimated Note De */
+            estimated_note_de: string;
+        };
         /** EnergySnapshot */
         EnergySnapshot: {
             /**
@@ -609,6 +702,229 @@ export interface components {
              * @default 0
              */
             balance_residual_kw: number;
+        };
+        /** EnergySummaryOut */
+        EnergySummaryOut: {
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "week" | "month" | "year";
+            /**
+             * Anchor
+             * Format: date
+             */
+            anchor: string;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            totals: components["schemas"]["EnergyTotalsOut"];
+            /** Buckets */
+            buckets: components["schemas"]["EnergyBucketOut"][];
+            meta: components["schemas"]["EnergyMetaOut"];
+        };
+        /**
+         * EnergyTotalsOut
+         * @description Summen plus abgeleitete Kennzahlen als normale Felder (für JSON).
+         */
+        EnergyTotalsOut: {
+            /**
+             * Minutes
+             * @default 0
+             */
+            minutes: number;
+            /**
+             * Pv Kwh
+             * @default 0
+             */
+            pv_kwh: number;
+            /**
+             * Import Kwh
+             * @default 0
+             */
+            import_kwh: number;
+            /**
+             * Export Kwh
+             * @default 0
+             */
+            export_kwh: number;
+            /**
+             * Battery Charge Kwh
+             * @default 0
+             */
+            battery_charge_kwh: number;
+            /**
+             * Battery Discharge Kwh
+             * @default 0
+             */
+            battery_discharge_kwh: number;
+            /**
+             * House Kwh
+             * @default 0
+             */
+            house_kwh: number;
+            /**
+             * Heat Pump Kwh
+             * @default 0
+             */
+            heat_pump_kwh: number;
+            /**
+             * Ev Kwh
+             * @default 0
+             */
+            ev_kwh: number;
+            /**
+             * Base Kwh
+             * @default 0
+             */
+            base_kwh: number;
+            /**
+             * Pv Direct Kwh
+             * @default 0
+             */
+            pv_direct_kwh: number;
+            /**
+             * Battery To House Kwh
+             * @default 0
+             */
+            battery_to_house_kwh: number;
+            /**
+             * Grid To House Kwh
+             * @default 0
+             */
+            grid_to_house_kwh: number;
+            /**
+             * Pv To Battery Kwh
+             * @default 0
+             */
+            pv_to_battery_kwh: number;
+            /**
+             * Grid To Battery Kwh
+             * @default 0
+             */
+            grid_to_battery_kwh: number;
+            /**
+             * Heat Pump Pv Kwh
+             * @default 0
+             */
+            heat_pump_pv_kwh: number;
+            /**
+             * Heat Pump Battery Kwh
+             * @default 0
+             */
+            heat_pump_battery_kwh: number;
+            /**
+             * Heat Pump Grid Kwh
+             * @default 0
+             */
+            heat_pump_grid_kwh: number;
+            /**
+             * Ev Pv Kwh
+             * @default 0
+             */
+            ev_pv_kwh: number;
+            /**
+             * Ev Battery Kwh
+             * @default 0
+             */
+            ev_battery_kwh: number;
+            /**
+             * Ev Grid Kwh
+             * @default 0
+             */
+            ev_grid_kwh: number;
+            /**
+             * Import Cost Eur
+             * @default 0
+             */
+            import_cost_eur: number;
+            /**
+             * Export Revenue Eur
+             * @default 0
+             */
+            export_revenue_eur: number;
+            /**
+             * Heat Pump Cost Eur
+             * @default 0
+             */
+            heat_pump_cost_eur: number;
+            /**
+             * Heat Pump Opportunity Eur
+             * @default 0
+             */
+            heat_pump_opportunity_eur: number;
+            /**
+             * Ev Cost Eur
+             * @default 0
+             */
+            ev_cost_eur: number;
+            /**
+             * Ev Opportunity Eur
+             * @default 0
+             */
+            ev_opportunity_eur: number;
+            /**
+             * Battery Savings Eur
+             * @default 0
+             */
+            battery_savings_eur: number;
+            /**
+             * Pv Direct Savings Eur
+             * @default 0
+             */
+            pv_direct_savings_eur: number;
+            /**
+             * Price Weighted Ct
+             * @default 0
+             */
+            price_weighted_ct: number;
+            /**
+             * Price Missing Minutes
+             * @default 0
+             */
+            price_missing_minutes: number;
+            /** Autarky */
+            autarky?: number | null;
+            /** Self Consumption Share */
+            self_consumption_share?: number | null;
+            /** Avg Import Price Ct */
+            avg_import_price_ct?: number | null;
+        };
+        /** EvReportOut */
+        EvReportOut: {
+            summary: components["schemas"]["EnergySummaryOut"];
+            /** Sessions */
+            sessions: components["schemas"]["EvSessionOut"][];
+        };
+        /** EvSessionOut */
+        EvSessionOut: {
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Kwh */
+            kwh: number;
+            /** Pv Share */
+            pv_share: number | null;
+            /** Grid Kwh */
+            grid_kwh: number;
+            /** Cost Eur */
+            cost_eur: number;
+            /** Avg Kw */
+            avg_kw: number;
         };
         /** ForecastDayOut */
         ForecastDayOut: {
@@ -687,6 +1003,62 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HeatDemandConfig
+         * @description Wärmebedarfsmodell v1 (Plan 20.2): Heizgradstunden, Warmwasserprofil, COP-Kennlinie.
+         */
+        HeatDemandConfig: {
+            /**
+             * Heat Loss Kw Per K
+             * @default 0.22
+             */
+            heat_loss_kw_per_k: number;
+            /**
+             * Indoor Target C
+             * @default 21
+             */
+            indoor_target_c: number;
+            /**
+             * Heating Limit C
+             * @default 15
+             */
+            heating_limit_c: number;
+            /**
+             * Internal Gains Kw
+             * @default 0.4
+             */
+            internal_gains_kw: number;
+            /**
+             * Dhw Kwh Per Day
+             * @default 8
+             */
+            dhw_kwh_per_day: number;
+            /** Dhw Profile */
+            dhw_profile?: number[];
+            /** Cop Curve */
+            cop_curve?: [
+                number,
+                number
+            ][];
+        };
+        /** HeatForecastPoint */
+        HeatForecastPoint: {
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            /** Outdoor C */
+            outdoor_c: number;
+            /** Heating Kw */
+            heating_kw: number;
+            /** Dhw Kw */
+            dhw_kw: number;
+            /** Cop */
+            cop: number;
+            /** Electric Kw */
+            electric_kw: number;
         };
         /** HeatPumpConfig */
         HeatPumpConfig: {
@@ -785,6 +1157,28 @@ export interface components {
              */
             power_known: boolean;
         };
+        /** HeatReportOut */
+        HeatReportOut: {
+            summary: components["schemas"]["EnergySummaryOut"];
+            /** Thermal Kwh Est */
+            thermal_kwh_est: number;
+            /** Cop Est */
+            cop_est: number;
+            /** Forecast */
+            forecast: components["schemas"]["HeatForecastPoint"][];
+            /** Forecast Electric Kwh 24H */
+            forecast_electric_kwh_24h: number;
+            /** Forecast Thermal Kwh 24H */
+            forecast_thermal_kwh_24h: number;
+            /** Buffer Series */
+            buffer_series: {
+                [key: string]: number | string | null;
+            }[];
+            /** Heat Loss Kw Per K */
+            heat_loss_kw_per_k: number;
+            /** Model Note De */
+            model_note_de: string;
+        };
         /** HemsConfig */
         HemsConfig: {
             /**
@@ -877,13 +1271,81 @@ export interface components {
             balance: components["schemas"]["BalanceConfig"];
             /**
              * @default {
-             *       "power_s": 60,
-             *       "battery_s": 60,
+             *       "power_s": 180,
+             *       "battery_s": 180,
              *       "temperature_s": 900,
              *       "price_s": 7200
              *     }
              */
             timeouts: components["schemas"]["SensorTimeouts"];
+            /**
+             * @default {
+             *       "feed_in_ct_kwh": 8,
+             *       "fallback_import_ct_kwh": 30
+             *     }
+             */
+            tariff: components["schemas"]["TariffConfig"];
+            /**
+             * @default {
+             *       "heat_loss_kw_per_k": 0.22,
+             *       "indoor_target_c": 21,
+             *       "heating_limit_c": 15,
+             *       "internal_gains_kw": 0.4,
+             *       "dhw_kwh_per_day": 8,
+             *       "dhw_profile": [
+             *         0.2,
+             *         0.1,
+             *         0.1,
+             *         0.1,
+             *         0.2,
+             *         0.6,
+             *         1.6,
+             *         2.2,
+             *         1.8,
+             *         1,
+             *         0.8,
+             *         0.8,
+             *         0.9,
+             *         0.7,
+             *         0.6,
+             *         0.6,
+             *         0.8,
+             *         1.2,
+             *         1.8,
+             *         2,
+             *         1.6,
+             *         1,
+             *         0.6,
+             *         0.3
+             *       ],
+             *       "cop_curve": [
+             *         [
+             *           -7,
+             *           2.4
+             *         ],
+             *         [
+             *           2,
+             *           3
+             *         ],
+             *         [
+             *           7,
+             *           3.5
+             *         ],
+             *         [
+             *           15,
+             *           4.2
+             *         ]
+             *       ]
+             *     }
+             */
+            heat_demand: components["schemas"]["HeatDemandConfig"];
+            /**
+             * @default {
+             *       "capacity_kwh": 5.1,
+             *       "max_power_kw": 3.7
+             *     }
+             */
+            battery: components["schemas"]["BatteryConfig"];
         };
         /** HistoryOut */
         HistoryOut: {
@@ -1135,12 +1597,12 @@ export interface components {
         SensorTimeouts: {
             /**
              * Power S
-             * @default 60
+             * @default 180
              */
             power_s: number;
             /**
              * Battery S
-             * @default 60
+             * @default 180
              */
             battery_s: number;
             /**
@@ -1191,6 +1653,22 @@ export interface components {
             version: string;
             /** Connection Label De */
             connection_label_de: string;
+        };
+        /**
+         * TariffConfig
+         * @description Geldseite: Einspeisevergütung und Ersatzpreis, falls kein Tibber-Preis vorliegt.
+         */
+        TariffConfig: {
+            /**
+             * Feed In Ct Kwh
+             * @default 8
+             */
+            feed_in_ct_kwh: number;
+            /**
+             * Fallback Import Ct Kwh
+             * @default 30
+             */
+            fallback_import_ct_kwh: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -1345,6 +1823,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForecastEvaluationOut"];
+                };
+            };
+        };
+    };
+    summary_api_v1_energy_summary_get: {
+        parameters: {
+            query?: {
+                period?: "day" | "week" | "month" | "year";
+                anchor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnergySummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    heat_api_v1_energy_heat_get: {
+        parameters: {
+            query?: {
+                period?: "day" | "week" | "month" | "year";
+                anchor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeatReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ev_api_v1_energy_ev_get: {
+        parameters: {
+            query?: {
+                period?: "day" | "week" | "month" | "year";
+                anchor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

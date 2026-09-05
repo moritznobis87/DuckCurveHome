@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 from sqlalchemy.sql import Executable
 
 from dch_api.infrastructure.db import models as m
+from hems_core.accounting import HourlyEnergy
 from hems_core.domain import Decision, OperatingMode, Quality
 from hems_core.protocol import RawReading
 
@@ -281,6 +282,62 @@ class SqlRepositories:
                 .all()
             )
         return list(rows)
+
+    # ------------------------------------------------------------------ Energiebilanz
+    async def upsert_energy_hours(
+        self, hours: list[HourlyEnergy], outdoor: dict[datetime, float | None] | None = None
+    ) -> None:
+        if not hours:
+            return
+        now = datetime.now(UTC)
+        async with self.maker() as s:
+            for h in hours:
+                data = h.model_dump()
+                data["outdoor_temp_c"] = (outdoor or {}).get(h.hour_start)
+                data["updated_at"] = now
+                row = await s.get(m.EnergyHour, h.hour_start)
+                if row is None:
+                    s.add(m.EnergyHour(**data))
+                else:
+                    for k, v in data.items():
+                        setattr(row, k, v)
+            await s.commit()
+
+    async def energy_hours(
+        self, start: datetime, end: datetime
+    ) -> list[tuple[HourlyEnergy, float | None]]:
+        async with self.maker() as s:
+            rows = (
+                (
+                    await s.execute(
+                        select(m.EnergyHour)
+                        .where(m.EnergyHour.hour_start >= start, m.EnergyHour.hour_start < end)
+                        .order_by(m.EnergyHour.hour_start)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        out: list[tuple[HourlyEnergy, float | None]] = []
+        fields = set(HourlyEnergy.model_fields)
+        for r in rows:
+            data = {k: getattr(r, k) for k in fields if k != "hour_start"}
+            out.append(
+                (HourlyEnergy(hour_start=self._aware(r.hour_start), **data), r.outdoor_temp_c)
+            )
+        return out
+
+    async def last_energy_hour(self) -> datetime | None:
+        async with self.maker() as s:
+            v = (await s.execute(select(func.max(m.EnergyHour.hour_start)))).scalar_one_or_none()
+        return None if v is None else self._aware(v)
+
+    async def first_measurement_at(self) -> datetime | None:
+        async with self.maker() as s:
+            v = (
+                await s.execute(select(func.min(m.MeasurementRaw.observed_at)))
+            ).scalar_one_or_none()
+        return None if v is None else self._aware(v)
 
     async def save_calibration(self, model: str, state: dict[str, object]) -> None:
         async with self.maker() as s:

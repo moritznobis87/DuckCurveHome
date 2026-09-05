@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol
 
 from dch_api.infrastructure.sse_broker import SseBroker
-from dch_api.schemas import ForecastEvaluationOut, LiveStateOut, PlanOut
+from dch_api.schemas import (
+    EnergySummaryOut,
+    EvReportOut,
+    ForecastEvaluationOut,
+    HeatReportOut,
+    LiveStateOut,
+    Period,
+    PlanOut,
+)
 from dch_api.settings import Settings
 from hems_core.domain import AutoProfile, Decision, OperatingMode, SystemMode
 
@@ -24,6 +32,9 @@ class Runtime(Protocol):
     ) -> list[dict[str, float | str | None]]: ...
     async def recent_decisions(self, limit: int) -> list[Decision]: ...
     async def forecast_evaluation(self) -> ForecastEvaluationOut: ...
+    async def energy_summary(self, period: Period, anchor: date) -> EnergySummaryOut: ...
+    async def heat_report(self, period: Period, anchor: date) -> HeatReportOut: ...
+    async def ev_report(self, period: Period, anchor: date) -> EvReportOut: ...
     async def switch_actuator(
         self, key: str, state: bool, duration_min: int | None
     ) -> tuple[bool, bool | None, str | None]: ...
