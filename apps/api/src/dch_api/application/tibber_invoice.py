@@ -16,7 +16,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 VAT_RATE = 0.19
 Severity = Literal["ok", "info", "warning", "error"]
@@ -139,8 +139,10 @@ class InvoiceFinding(BaseModel):
     actual: float | None = None
     unit: str = ""
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def delta(self) -> float | None:
+        """Abweichung der Rechnung von der Erwartung – im Web direkt anzeigbar."""
         if self.expected is None or self.actual is None:
             return None
         return round(self.actual - self.expected, 4)
@@ -543,6 +545,18 @@ def compare_with_measurement(
         )
     # Unter der Hälfte wird nicht hochgerechnet – daraus ließe sich kein belastbarer Vergleich bilden.
     scaled = measured.import_kwh / cov if cov and cov >= 0.5 else measured.import_kwh
+    if scaled <= 0:
+        out.append(
+            InvoiceFinding(
+                code="no_measurement",
+                severity="info",
+                title_de="Kein eigener Vergleichswert",
+                detail_de=(
+                    f"Für {inv.period_start:%d.%m.%Y} bis {inv.period_end:%d.%m.%Y} liegen keine eigenen "
+                    "Messwerte vor. Die Rechnung wurde nur rechnerisch geprüft."
+                ),
+            )
+        )
     if scaled > 0:
         deviation = abs(inv.kwh - scaled) / scaled * 100.0
         out.append(

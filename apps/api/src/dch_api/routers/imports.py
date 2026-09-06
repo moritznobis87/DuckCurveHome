@@ -10,8 +10,15 @@ from fastapi import APIRouter, Depends, Query, Request
 
 from dch_api.application.ha_import import ImportResult
 from dch_api.application.runtime import Runtime
+from dch_api.application.tibber_invoice import InvoiceParseError
 from dch_api.dependencies import get_runner
-from dch_api.schemas import BackfillResultOut, SystemEventOut
+from dch_api.errors import DchError
+from dch_api.schemas import (
+    BackfillResultOut,
+    InvoiceReportOut,
+    InvoiceSummaryOut,
+    SystemEventOut,
+)
 
 router = APIRouter(prefix="/import", tags=["Import"])
 
@@ -64,3 +71,56 @@ async def events(
     limit: Annotated[int, Query(ge=1, le=500)] = 50,
 ) -> list[SystemEventOut]:
     return await runner.recent_events(limit)
+
+
+@router.post(
+    "/tibber-invoice",
+    response_model=InvoiceReportOut,
+    summary="Tibber-Rechnung (PDF) prüfen und ablegen",
+    description=(
+        "Nimmt das PDF einer Tibber-Rechnung im Rumpf entgegen, liest die Positionen, rechnet sie nach und "
+        "vergleicht Menge und Preis mit den eigenen Messwerten. Dieselbe Rechnungsnummer ersetzt den "
+        "bisherigen Stand, mehrfaches Hochladen ist also unschädlich. Für Automatisierungen: "
+        "`curl -X POST <api>/api/v1/import/tibber-invoice?file_name=Rechnung.pdf "
+        "-H 'authorization: Bearer <DCH_API_TOKEN>' -H 'content-type: application/pdf' "
+        "--data-binary @Rechnung.pdf`"
+    ),
+)
+async def check_tibber_invoice(
+    request: Request,
+    runner: Annotated[Runtime, Depends(get_runner)],
+    file_name: Annotated[str | None, Query(description="Dateiname für den Verlauf")] = None,
+) -> InvoiceReportOut:
+    payload = await request.body()
+    if not payload:
+        raise DchError("validation", "Kein PDF im Rumpf der Anfrage.", 400)
+    try:
+        return await runner.check_invoice(payload, file_name)
+    except InvoiceParseError as exc:
+        raise DchError("invoice_unreadable", str(exc), 422) from exc
+
+
+@router.get(
+    "/tibber-invoices",
+    response_model=list[InvoiceSummaryOut],
+    summary="Geprüfte Tibber-Rechnungen, neueste zuerst",
+)
+async def tibber_invoices(
+    runner: Annotated[Runtime, Depends(get_runner)],
+) -> list[InvoiceSummaryOut]:
+    return await runner.invoices()
+
+
+@router.get(
+    "/tibber-invoices/{number}",
+    response_model=InvoiceReportOut,
+    summary="Eine geprüfte Rechnung mit allen Befunden",
+)
+async def tibber_invoice(
+    number: str,
+    runner: Annotated[Runtime, Depends(get_runner)],
+) -> InvoiceReportOut:
+    report = await runner.invoice(number)
+    if report is None:
+        raise DchError("not_found", f"Rechnung {number} ist nicht gespeichert.", 404)
+    return report

@@ -224,6 +224,8 @@ def test_comparison_with_own_measurement() -> None:
     }
     assert partial["coverage"].severity == "info"
     assert partial["measured_kwh"].expected == pytest.approx(248.0)
+    none = {f.code: f for f in compare_with_measurement(inv, MeasuredPeriod(import_kwh=0.0))}
+    assert none["no_measurement"].severity == "info" and "measured_kwh" not in none
     priced = {
         f.code: f
         for f in compare_with_measurement(
@@ -236,3 +238,55 @@ def test_comparison_with_own_measurement() -> None:
 def test_foreign_pdf_text_is_rejected() -> None:
     with pytest.raises(InvoiceParseError):
         parse_invoice("Rechnung der Stadtwerke\nBetrag 100 €")
+
+
+def minimal_pdf(lines: list[str]) -> bytes:
+    """Kleinstes PDF, aus dem pypdf denselben Text liest wie aus einer echten Rechnung."""
+
+    def esc(text: str) -> str:
+        return text.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
+
+    body = (
+        "BT /F1 9 Tf 40 800 Td 11 TL\n"
+        + "\n".join(f"({esc(line)}) Tj T*" for line in lines)
+        + "\nET"
+    )
+    stream = body.encode("cp1252", "replace")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources "
+        b"<< /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets: list[int] = []
+    for i, obj in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += f"{i} 0 obj\n".encode() + obj + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
+    for off in offsets:
+        out += f"{off:010d} 00000 n \n".encode()
+    out += (
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    )
+    return bytes(out)
+
+
+def test_pdf_roundtrip() -> None:
+    from dch_api.application.tibber_invoice import parse_pdf
+
+    inv = parse_pdf(minimal_pdf(build_invoice().splitlines()))
+    assert inv.number == "5085697" and inv.kwh == pytest.approx(251.40)
+    assert len(inv.positions) == 8
+
+
+def test_pdf_without_text_is_rejected() -> None:
+    from dch_api.application.tibber_invoice import parse_pdf
+
+    with pytest.raises(InvoiceParseError):
+        parse_pdf(b"kein pdf")
+    with pytest.raises(InvoiceParseError):
+        parse_pdf(minimal_pdf(["Stadtwerke Musterstadt", "Betrag 100 EUR"]))

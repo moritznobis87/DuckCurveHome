@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from dch_api.application.tibber_invoice import InvoiceFinding, MeasuredPeriod, TibberInvoice
 from hems_core.accounting import EnergyTotals, HeatForecastPoint
 from hems_core.domain import (
     AutoProfile,
@@ -46,6 +47,39 @@ class PlanOut(BaseModel):
     intervals: list[PlanIntervalOut]
     pv_forecast_today_kwh: float
     next_cheap_window: PriceWindowOut | None
+
+
+class InvoiceReportOut(BaseModel):
+    """Ergebnis einer Rechnungsprüfung: gelesene Rechnung, Befunde, Ampel und der Vergleichswert."""
+
+    invoice: TibberInvoice
+    findings: list[InvoiceFinding]
+    verdict: str
+    measured: MeasuredPeriod | None = None
+    checked_at: datetime
+    file_name: str | None = None
+    already_known: bool = False
+
+
+class InvoiceSummaryOut(BaseModel):
+    """Eine Zeile im Rechnungsverlauf."""
+
+    number: str
+    period_label: str
+    period_start: date
+    period_end: date
+    issued_on: date
+    kwh: float
+    measured_kwh: float | None = None
+    coverage: float | None = None
+    total_net_eur: float
+    total_gross_eur: float
+    avg_ct_kwh_gross: float
+    energy_net_eur: float
+    fees_net_eur: float
+    verdict: str
+    problems: int
+    checked_at: datetime
 
 
 class SystemEventOut(BaseModel):

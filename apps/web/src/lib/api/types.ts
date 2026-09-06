@@ -208,6 +208,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/import/tibber-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tibber-Rechnung (PDF) prüfen und ablegen
+         * @description Nimmt das PDF einer Tibber-Rechnung im Rumpf entgegen, liest die Positionen, rechnet sie nach und vergleicht Menge und Preis mit den eigenen Messwerten. Dieselbe Rechnungsnummer ersetzt den bisherigen Stand, mehrfaches Hochladen ist also unschädlich. Für Automatisierungen: `curl -X POST <api>/api/v1/import/tibber-invoice?file_name=Rechnung.pdf -H 'authorization: Bearer <DCH_API_TOKEN>' -H 'content-type: application/pdf' --data-binary @Rechnung.pdf`
+         */
+        post: operations["check_tibber_invoice_api_v1_import_tibber_invoice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/import/tibber-invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Geprüfte Tibber-Rechnungen, neueste zuerst */
+        get: operations["tibber_invoices_api_v1_import_tibber_invoices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/import/tibber-invoices/{number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Eine geprüfte Rechnung mit allen Befunden */
+        get: operations["tibber_invoice_api_v1_import_tibber_invoices__number__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/control/actuators/{key}": {
         parameters: {
             query?: never;
@@ -1485,6 +1539,134 @@ export interface components {
             /** Note De */
             note_de: string;
         };
+        /** InvoiceFee */
+        InvoiceFee: {
+            /** Label */
+            label: string;
+            /** Amount Eur */
+            amount_eur: number;
+            /** Rate Eur */
+            rate_eur?: number | null;
+            /** Per */
+            per?: ("month" | "day") | null;
+            /** Days */
+            days?: number | null;
+        };
+        /** InvoiceFinding */
+        InvoiceFinding: {
+            /** Code */
+            code: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "ok" | "info" | "warning" | "error";
+            /** Title De */
+            title_de: string;
+            /** Detail De */
+            detail_de: string;
+            /** Expected */
+            expected?: number | null;
+            /** Actual */
+            actual?: number | null;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /**
+             * Delta
+             * @description Abweichung der Rechnung von der Erwartung – im Web direkt anzeigbar.
+             */
+            readonly delta: number | null;
+        };
+        /** InvoicePosition */
+        InvoicePosition: {
+            /** Label */
+            label: string;
+            /** Group */
+            group: string;
+            /** Ct Per Kwh */
+            ct_per_kwh: number;
+            /** Ct Decimals */
+            ct_decimals: number;
+            /** Amount Eur */
+            amount_eur: number;
+        };
+        /**
+         * InvoiceReportOut
+         * @description Ergebnis einer Rechnungsprüfung: gelesene Rechnung, Befunde, Ampel und der Vergleichswert.
+         */
+        InvoiceReportOut: {
+            invoice: components["schemas"]["TibberInvoice"];
+            /** Findings */
+            findings: components["schemas"]["InvoiceFinding"][];
+            /** Verdict */
+            verdict: string;
+            measured?: components["schemas"]["MeasuredPeriod"] | null;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /** File Name */
+            file_name?: string | null;
+            /**
+             * Already Known
+             * @default false
+             */
+            already_known: boolean;
+        };
+        /**
+         * InvoiceSummaryOut
+         * @description Eine Zeile im Rechnungsverlauf.
+         */
+        InvoiceSummaryOut: {
+            /** Number */
+            number: string;
+            /** Period Label */
+            period_label: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Issued On
+             * Format: date
+             */
+            issued_on: string;
+            /** Kwh */
+            kwh: number;
+            /** Measured Kwh */
+            measured_kwh?: number | null;
+            /** Coverage */
+            coverage?: number | null;
+            /** Total Net Eur */
+            total_net_eur: number;
+            /** Total Gross Eur */
+            total_gross_eur: number;
+            /** Avg Ct Kwh Gross */
+            avg_ct_kwh_gross: number;
+            /** Energy Net Eur */
+            energy_net_eur: number;
+            /** Fees Net Eur */
+            fees_net_eur: number;
+            /** Verdict */
+            verdict: string;
+            /** Problems */
+            problems: number;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+        };
         /** LiveStateOut */
         LiveStateOut: {
             snapshot: components["schemas"]["EnergySnapshot"];
@@ -1499,6 +1681,18 @@ export interface components {
                 [key: string]: number;
             };
             system: components["schemas"]["SystemStatusOut"];
+        };
+        /**
+         * MeasuredPeriod
+         * @description Was wir für den Abrechnungszeitraum selbst gemessen haben.
+         */
+        MeasuredPeriod: {
+            /** Import Kwh */
+            import_kwh: number;
+            /** Coverage */
+            coverage?: number | null;
+            /** Avg Price Ct Kwh */
+            avg_price_ct_kwh?: number | null;
         };
         /** Measurement */
         Measurement: {
@@ -1814,6 +2008,61 @@ export interface components {
              * @default 30
              */
             fallback_import_ct_kwh: number;
+        };
+        /** TibberInvoice */
+        TibberInvoice: {
+            /** Number */
+            number: string;
+            /**
+             * Issued On
+             * Format: date
+             */
+            issued_on: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /** Period Label */
+            period_label: string;
+            /** Kwh */
+            kwh: number;
+            /** Meter Start */
+            meter_start?: number | null;
+            /** Meter End */
+            meter_end?: number | null;
+            /**
+             * Meter Estimated
+             * @default false
+             */
+            meter_estimated: boolean;
+            /** Positions */
+            positions?: components["schemas"]["InvoicePosition"][];
+            /** Fees */
+            fees?: components["schemas"]["InvoiceFee"][];
+            /** Energy Net Eur */
+            energy_net_eur: number;
+            /** Energy Gross Eur */
+            energy_gross_eur: number;
+            /** Fees Net Eur */
+            fees_net_eur: number;
+            /** Fees Gross Eur */
+            fees_gross_eur: number;
+            /** Total Net Eur */
+            total_net_eur: number;
+            /** Total Gross Eur */
+            total_gross_eur: number;
+            /** Vat Eur */
+            vat_eur: number;
+            /** Avg Ct Kwh */
+            avg_ct_kwh: number;
+            /** Avg Ct Kwh Gross */
+            avg_ct_kwh_gross: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -2156,6 +2405,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemEventOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_tibber_invoice_api_v1_import_tibber_invoice_post: {
+        parameters: {
+            query?: {
+                /** @description Dateiname für den Verlauf */
+                file_name?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tibber_invoices_api_v1_import_tibber_invoices_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSummaryOut"][];
+                };
+            };
+        };
+    };
+    tibber_invoice_api_v1_import_tibber_invoices__number__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                number: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceReportOut"];
                 };
             };
             /** @description Validation Error */

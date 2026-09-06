@@ -617,6 +617,125 @@
         }
       }
     },
+    "/api/v1/import/tibber-invoice": {
+      "post": {
+        "tags": [
+          "Import"
+        ],
+        "summary": "Tibber-Rechnung (PDF) prüfen und ablegen",
+        "description": "Nimmt das PDF einer Tibber-Rechnung im Rumpf entgegen, liest die Positionen, rechnet sie nach und vergleicht Menge und Preis mit den eigenen Messwerten. Dieselbe Rechnungsnummer ersetzt den bisherigen Stand, mehrfaches Hochladen ist also unschädlich. Für Automatisierungen: `curl -X POST <api>/api/v1/import/tibber-invoice?file_name=Rechnung.pdf -H 'authorization: Bearer <DCH_API_TOKEN>' -H 'content-type: application/pdf' --data-binary @Rechnung.pdf`",
+        "operationId": "check_tibber_invoice_api_v1_import_tibber_invoice_post",
+        "parameters": [
+          {
+            "name": "file_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Dateiname für den Verlauf",
+              "title": "File Name"
+            },
+            "description": "Dateiname für den Verlauf"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/import/tibber-invoices": {
+      "get": {
+        "tags": [
+          "Import"
+        ],
+        "summary": "Geprüfte Tibber-Rechnungen, neueste zuerst",
+        "operationId": "tibber_invoices_api_v1_import_tibber_invoices_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InvoiceSummaryOut"
+                  },
+                  "type": "array",
+                  "title": "Response Tibber Invoices Api V1 Import Tibber Invoices Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/import/tibber-invoices/{number}": {
+      "get": {
+        "tags": [
+          "Import"
+        ],
+        "summary": "Eine geprüfte Rechnung mit allen Befunden",
+        "operationId": "tibber_invoice_api_v1_import_tibber_invoices__number__get",
+        "parameters": [
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/control/actuators/{key}": {
       "post": {
         "tags": [
@@ -3164,6 +3283,332 @@
         ],
         "title": "ImportResult"
       },
+      "InvoiceFee": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "amount_eur": {
+            "type": "number",
+            "title": "Amount Eur"
+          },
+          "rate_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Eur"
+          },
+          "per": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "month",
+                  "day"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "amount_eur"
+        ],
+        "title": "InvoiceFee"
+      },
+      "InvoiceFinding": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "info",
+              "warning",
+              "error"
+            ],
+            "title": "Severity"
+          },
+          "title_de": {
+            "type": "string",
+            "title": "Title De"
+          },
+          "detail_de": {
+            "type": "string",
+            "title": "Detail De"
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
+          "actual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "default": ""
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta",
+            "description": "Abweichung der Rechnung von der Erwartung – im Web direkt anzeigbar.",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "severity",
+          "title_de",
+          "detail_de",
+          "delta"
+        ],
+        "title": "InvoiceFinding"
+      },
+      "InvoicePosition": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "ct_per_kwh": {
+            "type": "number",
+            "title": "Ct Per Kwh"
+          },
+          "ct_decimals": {
+            "type": "integer",
+            "title": "Ct Decimals"
+          },
+          "amount_eur": {
+            "type": "number",
+            "title": "Amount Eur"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "group",
+          "ct_per_kwh",
+          "ct_decimals",
+          "amount_eur"
+        ],
+        "title": "InvoicePosition"
+      },
+      "InvoiceReportOut": {
+        "properties": {
+          "invoice": {
+            "$ref": "#/components/schemas/TibberInvoice"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceFinding"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "verdict": {
+            "type": "string",
+            "title": "Verdict"
+          },
+          "measured": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasuredPeriod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Name"
+          },
+          "already_known": {
+            "type": "boolean",
+            "title": "Already Known",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "invoice",
+          "findings",
+          "verdict",
+          "checked_at"
+        ],
+        "title": "InvoiceReportOut",
+        "description": "Ergebnis einer Rechnungsprüfung: gelesene Rechnung, Befunde, Ampel und der Vergleichswert."
+      },
+      "InvoiceSummaryOut": {
+        "properties": {
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "period_label": {
+            "type": "string",
+            "title": "Period Label"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Period End"
+          },
+          "issued_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Issued On"
+          },
+          "kwh": {
+            "type": "number",
+            "title": "Kwh"
+          },
+          "measured_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Kwh"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "total_net_eur": {
+            "type": "number",
+            "title": "Total Net Eur"
+          },
+          "total_gross_eur": {
+            "type": "number",
+            "title": "Total Gross Eur"
+          },
+          "avg_ct_kwh_gross": {
+            "type": "number",
+            "title": "Avg Ct Kwh Gross"
+          },
+          "energy_net_eur": {
+            "type": "number",
+            "title": "Energy Net Eur"
+          },
+          "fees_net_eur": {
+            "type": "number",
+            "title": "Fees Net Eur"
+          },
+          "verdict": {
+            "type": "string",
+            "title": "Verdict"
+          },
+          "problems": {
+            "type": "integer",
+            "title": "Problems"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "period_label",
+          "period_start",
+          "period_end",
+          "issued_on",
+          "kwh",
+          "total_net_eur",
+          "total_gross_eur",
+          "avg_ct_kwh_gross",
+          "energy_net_eur",
+          "fees_net_eur",
+          "verdict",
+          "problems",
+          "checked_at"
+        ],
+        "title": "InvoiceSummaryOut",
+        "description": "Eine Zeile im Rechnungsverlauf."
+      },
       "LiveStateOut": {
         "properties": {
           "snapshot": {
@@ -3222,6 +3667,42 @@
           "system"
         ],
         "title": "LiveStateOut"
+      },
+      "MeasuredPeriod": {
+        "properties": {
+          "import_kwh": {
+            "type": "number",
+            "title": "Import Kwh"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "avg_price_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Price Ct Kwh"
+          }
+        },
+        "type": "object",
+        "required": [
+          "import_kwh"
+        ],
+        "title": "MeasuredPeriod",
+        "description": "Was wir für den Abrechnungszeitraum selbst gemessen haben."
       },
       "Measurement": {
         "properties": {
@@ -3849,6 +4330,133 @@
         "type": "object",
         "title": "TariffConfig",
         "description": "Geldseite: Einspeisevergütung und Ersatzpreis, falls kein Tibber-Preis vorliegt."
+      },
+      "TibberInvoice": {
+        "properties": {
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "issued_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Issued On"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Period End"
+          },
+          "period_label": {
+            "type": "string",
+            "title": "Period Label"
+          },
+          "kwh": {
+            "type": "number",
+            "title": "Kwh"
+          },
+          "meter_start": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meter Start"
+          },
+          "meter_end": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meter End"
+          },
+          "meter_estimated": {
+            "type": "boolean",
+            "title": "Meter Estimated",
+            "default": false
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/InvoicePosition"
+            },
+            "type": "array",
+            "title": "Positions"
+          },
+          "fees": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceFee"
+            },
+            "type": "array",
+            "title": "Fees"
+          },
+          "energy_net_eur": {
+            "type": "number",
+            "title": "Energy Net Eur"
+          },
+          "energy_gross_eur": {
+            "type": "number",
+            "title": "Energy Gross Eur"
+          },
+          "fees_net_eur": {
+            "type": "number",
+            "title": "Fees Net Eur"
+          },
+          "fees_gross_eur": {
+            "type": "number",
+            "title": "Fees Gross Eur"
+          },
+          "total_net_eur": {
+            "type": "number",
+            "title": "Total Net Eur"
+          },
+          "total_gross_eur": {
+            "type": "number",
+            "title": "Total Gross Eur"
+          },
+          "vat_eur": {
+            "type": "number",
+            "title": "Vat Eur"
+          },
+          "avg_ct_kwh": {
+            "type": "number",
+            "title": "Avg Ct Kwh"
+          },
+          "avg_ct_kwh_gross": {
+            "type": "number",
+            "title": "Avg Ct Kwh Gross"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "issued_on",
+          "period_start",
+          "period_end",
+          "period_label",
+          "kwh",
+          "energy_net_eur",
+          "energy_gross_eur",
+          "fees_net_eur",
+          "fees_gross_eur",
+          "total_net_eur",
+          "total_gross_eur",
+          "vat_eur",
+          "avg_ct_kwh",
+          "avg_ct_kwh_gross"
+        ],
+        "title": "TibberInvoice"
       },
       "ValidationError": {
         "properties": {

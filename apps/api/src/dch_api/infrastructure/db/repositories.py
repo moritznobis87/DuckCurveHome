@@ -270,6 +270,32 @@ class SqlRepositories:
             )
             await s.commit()
 
+    # ------------------------------------------------------------------ Rechnungen
+    async def upsert_tibber_invoice(self, data: dict[str, Any]) -> None:
+        """Eine geprüfte Rechnung ablegen; dieselbe Rechnungsnummer ersetzt den bisherigen Stand."""
+        async with self.maker() as s:
+            row = await s.get(m.TibberInvoice, data["number"])
+            if row is None:
+                s.add(m.TibberInvoice(**data))
+            else:
+                for k, v in data.items():
+                    if k != "uploaded_at":  # der erste Eingang bleibt erhalten
+                        setattr(row, k, v)
+            await s.commit()
+
+    async def tibber_invoices(self) -> list[m.TibberInvoice]:
+        async with self.maker() as s:
+            rows = (
+                (
+                    await s.execute(
+                        select(m.TibberInvoice).order_by(m.TibberInvoice.period_start.desc())
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        return list(rows)
+
     async def recent_events(self, limit: int = 50) -> list[m.SystemEvent]:
         async with self.maker() as s:
             rows = (

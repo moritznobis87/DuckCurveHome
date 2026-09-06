@@ -7,12 +7,13 @@ verlangt (Plan 16.5).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -224,6 +225,31 @@ class EnergyHour(Base):
     price_weighted_ct: Mapped[float] = mapped_column(Float, default=0.0)
     outdoor_temp_c: Mapped[float | None] = mapped_column(Float)  # Stundenmittel, für COP-Schätzung
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class TibberInvoice(Base):
+    """Geprüfte Tibber-Rechnung. Die Rechnung selbst wird nicht gespeichert, nur die gelesenen Werte,
+    die Befunde der Prüfung und eine Prüfsumme, damit dieselbe Datei nicht doppelt ausgewertet wird."""
+
+    __tablename__ = "tibber_invoices"
+    number: Mapped[str] = mapped_column(String(32), primary_key=True)
+    issued_on: Mapped[date] = mapped_column(Date)
+    period_start: Mapped[date] = mapped_column(Date)
+    period_end: Mapped[date] = mapped_column(Date)
+    period_label: Mapped[str] = mapped_column(String(32))
+    kwh: Mapped[float] = mapped_column(Float)
+    total_net_eur: Mapped[float] = mapped_column(Float)
+    total_gross_eur: Mapped[float] = mapped_column(Float)
+    avg_ct_kwh_gross: Mapped[float] = mapped_column(Float)
+    verdict: Mapped[str] = mapped_column(String(16))  # ok | info | warning | error
+    invoice: Mapped[dict[str, object]] = mapped_column(JsonType, default=dict)
+    findings: Mapped[list[dict[str, object]]] = mapped_column(JsonType, default=list)
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    file_name: Mapped[str | None] = mapped_column(String(255))
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_tibber_invoices_period_start", "period_start"),)
 
 
 class KioskDevice(Base):

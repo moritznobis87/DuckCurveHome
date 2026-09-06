@@ -19,12 +19,14 @@ from dch_api.application.energy_accounting import ENERGY_KEYS, EnergyAccounting
 from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
 from dch_api.application.forecast_service import ForecastService
 from dch_api.application.ha_import import HaImporter, ImportResult, Kind, load_entity_rules
+from dch_api.application.invoice_service import InvoiceService
 from dch_api.application.myenergi_source import (
     MyenergiSource,
     StatusClient,
     price_readings_for_gaps,
 )
 from dch_api.application.plan_service import build_plan
+from dch_api.application.tibber_invoice import MeasuredPeriod
 from dch_api.errors import DchError
 from dch_api.infrastructure.bridge_hub import BridgeHub
 from dch_api.infrastructure.db.repositories import SqlRepositories
@@ -37,6 +39,8 @@ from dch_api.schemas import (
     EvReportOut,
     ForecastEvaluationOut,
     HeatReportOut,
+    InvoiceReportOut,
+    InvoiceSummaryOut,
     LiveStateOut,
     Period,
     PlanOut,
@@ -45,6 +49,7 @@ from dch_api.schemas import (
     SystemStatusOut,
 )
 from dch_api.settings import Settings
+from hems_core.accounting import summarize
 from hems_core.control import ControlInputs, HeatPumpController, HeatPumpTracker
 from hems_core.domain import (
     AutoProfile,
@@ -104,6 +109,12 @@ class LiveRuntime:
             tz=BERLIN,
             source="simple_clear_sky_v1",
             source_label_de="DCH-Prognose (Open-Meteo-Bewölkung × Klarhimmel)",
+        )
+        self.invoice_service = InvoiceService(
+            BERLIN,
+            load_all=self._load_invoices,
+            save=self._save_invoice,
+            measure=self._measure_period,
         )
         self.accounting = EnergyAccounting(
             self.hems,
@@ -466,6 +477,57 @@ class LiveRuntime:
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
         return await self.accounting.ev_report(period, anchor, self.now)
+
+    async def check_invoice(self, payload: bytes, file_name: str | None) -> InvoiceReportOut:
+        return await self.invoice_service.check(payload, file_name)
+
+    async def invoices(self) -> list[InvoiceSummaryOut]:
+        return await self.invoice_service.history()
+
+    async def invoice(self, number: str) -> InvoiceReportOut | None:
+        return await self.invoice_service.detail(number)
+
+    async def _measure_period(self, start: datetime, end: datetime) -> MeasuredPeriod:
+        """Netzbezug, Datenabdeckung und bezugsgewichteter Preis eines Abrechnungszeitraums."""
+        hours = await self.accounting.hours(start, end)
+        totals = summarize(h for h, _ in hours)
+        minutes = (end - start).total_seconds() / 60.0
+        return MeasuredPeriod(
+            import_kwh=round(totals.import_kwh, 2),
+            coverage=round(min(1.0, totals.minutes / minutes), 3) if minutes > 0 else None,
+            avg_price_ct_kwh=totals.avg_import_price_ct,
+        )
+
+    async def _load_invoices(self) -> list[InvoiceReportOut]:
+        return [
+            InvoiceReportOut.model_validate(row.invoice | {"findings": row.findings})
+            for row in await self.repos.tibber_invoices()
+        ]
+
+    async def _save_invoice(
+        self, report: InvoiceReportOut, sha256: str, file_name: str | None
+    ) -> None:
+        inv = report.invoice
+        await self.repos.upsert_tibber_invoice(
+            {
+                "number": inv.number,
+                "issued_on": inv.issued_on,
+                "period_start": inv.period_start,
+                "period_end": inv.period_end,
+                "period_label": inv.period_label,
+                "kwh": inv.kwh,
+                "total_net_eur": inv.total_net_eur,
+                "total_gross_eur": inv.total_gross_eur,
+                "avg_ct_kwh_gross": inv.avg_ct_kwh_gross,
+                "verdict": report.verdict,
+                "invoice": report.model_dump(mode="json", exclude={"findings"}),
+                "findings": [f.model_dump(mode="json") for f in report.findings],
+                "file_sha256": sha256,
+                "file_name": file_name,
+                "uploaded_at": datetime.now(UTC),
+                "checked_at": report.checked_at,
+            }
+        )
 
     async def import_history(
         self,

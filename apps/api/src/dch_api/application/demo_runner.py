@@ -17,6 +17,8 @@ import structlog
 from dch_api.application.energy_accounting import EnergyAccounting
 from dch_api.application.forecast_evaluation import ForecastEvaluator
 from dch_api.application.ha_import import ImportResult
+from dch_api.application.invoice_service import InvoiceService
+from dch_api.application.tibber_invoice import MeasuredPeriod
 from dch_api.errors import DchError
 from dch_api.infrastructure.history import HistoryStore
 from dch_api.infrastructure.sse_broker import SseBroker
@@ -26,6 +28,8 @@ from dch_api.schemas import (
     EvReportOut,
     ForecastEvaluationOut,
     HeatReportOut,
+    InvoiceReportOut,
+    InvoiceSummaryOut,
     LiveStateOut,
     Period,
     PlanOut,
@@ -33,6 +37,7 @@ from dch_api.schemas import (
     SystemStatusOut,
 )
 from dch_api.settings import Settings
+from hems_core.accounting import summarize
 from hems_core.control import ControlInputs, HeatPumpController, HeatPumpTracker
 from hems_core.domain import (
     AutoProfile,
@@ -102,6 +107,33 @@ class DemoRunner:
         )
         self.accounting = EnergyAccounting(
             self.hems, BERLIN, self._minute_rows, store=None, data_since=self._data_since
+        )
+        # Rechnungen liegen im Demo-Modus nur im Speicher – zum Ausprobieren der Seite ohne Datenbank
+        self._invoices: dict[str, InvoiceReportOut] = {}
+        self.invoice_service = InvoiceService(
+            BERLIN,
+            load_all=self._load_invoices,
+            save=self._save_invoice,
+            measure=self._measure_period,
+        )
+
+    async def _load_invoices(self) -> list[InvoiceReportOut]:
+        return list(self._invoices.values())
+
+    async def _save_invoice(
+        self, report: InvoiceReportOut, sha256: str, file_name: str | None
+    ) -> None:
+        self._invoices[report.invoice.number] = report
+
+    async def _measure_period(self, start: datetime, end: datetime) -> MeasuredPeriod:
+        """Netzbezug, Datenabdeckung und bezugsgewichteter Preis eines Abrechnungszeitraums."""
+        hours = await self.accounting.hours(start, end)
+        totals = summarize(h for h, _ in hours)
+        minutes = (end - start).total_seconds() / 60.0
+        return MeasuredPeriod(
+            import_kwh=round(totals.import_kwh, 2),
+            coverage=round(min(1.0, totals.minutes / minutes), 3) if minutes > 0 else None,
+            avg_price_ct_kwh=totals.avg_import_price_ct,
         )
 
     # ------------------------------------------------------------------ Zeit
@@ -196,6 +228,15 @@ class DemoRunner:
 
     async def recent_events(self, limit: int) -> list[SystemEventOut]:
         return []
+
+    async def check_invoice(self, payload: bytes, file_name: str | None) -> InvoiceReportOut:
+        return await self.invoice_service.check(payload, file_name)
+
+    async def invoices(self) -> list[InvoiceSummaryOut]:
+        return await self.invoice_service.history()
+
+    async def invoice(self, number: str) -> InvoiceReportOut | None:
+        return await self.invoice_service.detail(number)
 
     async def forecast_evaluation(self) -> ForecastEvaluationOut:
         now = self.now
