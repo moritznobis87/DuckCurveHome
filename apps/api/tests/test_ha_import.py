@@ -245,4 +245,4 @@ def test_concatenated_sections_merge_into_one_dump() -> None:
     dump = parse_dump((a + "\n" + b).encode(), RULES)
     assert dump.kind == "statistics"
     hours = compute_hours(dump, HemsConfig())
-    assert len(hours) == 1 and hours[0][1] == 18.5  # Außentemperatur aus dem zweiten Abschnitt
+    assert len(hours) == 1 and hours[0][1] == 15.5  # Mittel aus 12,5 °C (1. Abschnitt) und 18,5 °C (2.)
