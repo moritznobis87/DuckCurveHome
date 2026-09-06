@@ -28,6 +28,30 @@ function berlinOffsetMs(at: number): number {
 }
 
 /** Mitternacht in Europe/Berlin als UTC-Zeitstempel – unabhängig von der Zeitzone des Browsers. */
+/** Skalierung der Preisachse.
+ *
+ * Der Strompreis schwankt an einem Tag oft nur zwischen 18 und 45 ct. Eine Achse, die bei 0 beginnt,
+ * drückt den Verlauf dann in das obere Drittel und macht ihn flach – deshalb spannt sie hier zwischen
+ * dem tatsächlichen Minimum und Maximum auf, gerundet auf runde Schritte und mit etwas Luft, damit die
+ * Kurve die Ränder nicht berührt. Negative Preise kommen vor und werden mit erfasst.
+ */
+export function priceBounds(rows: Array<Array<number | null>>): { min: number; max: number; step: number } {
+  const values = rows.map((p) => p[1]).filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  if (values.length === 0) return { min: 0, max: 45, step: 15 };
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const pad = Math.max(1, (hi - lo) * 0.12); // Luft, damit die Kurve die Ränder nicht berührt
+  // Der feinste runde Schritt, der mit höchstens fünf Abschnitten auskommt. Ein gröberer Schritt würde
+  // die Achse beim Runden wieder zu weit aufreißen – genau das drückte den Verlauf bisher nach oben.
+  // Bei 18–47 ct etwa ergibt Schritt 10 die Spanne 10–60, Schritt 20 dagegen erneut 0–60.
+  for (const step of [0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100]) {
+    const min = Math.floor((lo - pad) / step) * step;
+    const max = Math.ceil((hi + pad) / step) * step;
+    if ((max - min) / step <= 5) return { min, max: Math.max(max, min + 2 * step), step };
+  }
+  return { min: Math.floor(lo - pad), max: Math.ceil(hi + pad), step: Math.max(1, Math.round((hi - lo) / 3)) };
+}
+
 export function dayBounds(nowMs: number): [number, number] {
   const off = berlinOffsetMs(nowMs);
   const local = new Date(nowMs + off);
@@ -78,12 +102,9 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
     const priceX = layout === "overlay" ? 0 : 1;
     // Achsen skalieren mit den Daten: wenige, runde Schritte, damit der Verlauf ablesbar bleibt
     const maxOf = (rows: Array<Array<number | null>>) => rows.reduce((m, p) => (typeof p[1] === "number" && Number.isFinite(p[1]) ? Math.max(m, p[1]) : m), 0);
-    const minOf = (rows: Array<Array<number | null>>) => rows.reduce((m, p) => (typeof p[1] === "number" && Number.isFinite(p[1]) ? Math.min(m, p[1]) : m), 0);
     const powerMax = Math.max(4, Math.ceil((maxOf([...pv, ...hp, ...ev, ...pvForecast]) * 1.1) / 2) * 2);
     const priceRows = [...priceHist, ...priceFuture];
-    const priceMin = Math.min(0, Math.floor(minOf(priceRows) / 5) * 5);
-    const priceStep = [5, 10, 15, 20, 30, 50].find((st) => priceMin + 3 * st >= Math.max(15, maxOf(priceRows) * 1.1)) ?? 50;
-    const priceMax = priceMin + 3 * priceStep;
+    const { min: priceMin, max: priceMax, step: priceStep } = priceBounds(priceRows);
     // Im Overlay teilen sich beide Reihen die Fläche: Preisfenster nur als Streifen am unteren Rand zeigen
     const priceBands =
       layout === "overlay"
