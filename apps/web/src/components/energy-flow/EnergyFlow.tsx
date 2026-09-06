@@ -8,16 +8,20 @@ import { Card, CardHead } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 
 type NodeKey = "pv" | "grid" | "house" | "bat" | "hp" | "ev";
-const R = 34;
+// Die Zeichenfläche wird auf die verfügbare Höhe skaliert. Je kleiner die Einheiten gegenüber der
+// Zeichenfläche, desto kleiner die Schrift auf dem Schirm – deshalb sind Knoten und Beschriftung
+// bewusst groß gegenüber W/H gehalten, und die Zeilen liegen weit genug auseinander dafür.
+const R = 40;
 const W = 500;
-const H = 340;
+const H = 410;
+const ICON = 26;
 const NODES: Record<NodeKey, { x: number; y: number; label: string; icon: string; color: string; href: string }> = {
-  pv: { x: 250, y: 40, label: "PV", icon: "sun", color: "var(--pv)", href: "/pv" },
-  grid: { x: 60, y: 160, label: "Netz", icon: "grid", color: "var(--grid-in)", href: "/haus" },
-  house: { x: 250, y: 160, label: "Haus", icon: "home", color: "var(--text-1)", href: "/haus" },
-  bat: { x: 440, y: 160, label: "Batterie", icon: "battery", color: "var(--battery)", href: "/batterie" },
-  hp: { x: 130, y: 270, label: "Wärmepumpe", icon: "pump", color: "var(--heat-pump)", href: "/waerme" },
-  ev: { x: 370, y: 270, label: "Wallbox", icon: "car", color: "var(--ev)", href: "/wallbox" },
+  pv: { x: 250, y: 48, label: "PV", icon: "sun", color: "var(--pv)", href: "/pv" },
+  grid: { x: 60, y: 170, label: "Netz", icon: "grid", color: "var(--grid-in)", href: "/haus" },
+  house: { x: 250, y: 170, label: "Haus", icon: "home", color: "var(--text-1)", href: "/haus" },
+  bat: { x: 440, y: 170, label: "Batterie", icon: "battery", color: "var(--battery)", href: "/batterie" },
+  hp: { x: 130, y: 310, label: "Wärmepumpe", icon: "pump", color: "var(--heat-pump)", href: "/waerme" },
+  ev: { x: 370, y: 310, label: "Wallbox", icon: "car", color: "var(--ev)", href: "/wallbox" },
 };
 
 function Edge({ from, to, kwValue, color, minFlow = 0.05 }: { from: NodeKey; to: NodeKey; kwValue: number; color: string; minFlow?: number }) {
@@ -33,7 +37,7 @@ function Edge({ from, to, kwValue, color, minFlow = 0.05 }: { from: NodeKey; to:
   const x2 = b.x - ux * (R + 2);
   const y2 = b.y - uy * (R + 2);
   const active = kwValue >= minFlow;
-  const width = active ? Math.min(5, 2 + kwValue * 0.5) : 2;
+  const width = active ? Math.min(6, 2.5 + kwValue * 0.5) : 2.5;
   const dur = kwValue > 3 ? "1.8s" : kwValue > 0.5 ? "2.8s" : "4s";
   return (
     <g>
@@ -51,22 +55,22 @@ function Node({ k, value, unit, m, nowMs, sub, onOpen }: { k: NodeKey; value: st
   const age = m ? ageLabel(m.observed_at, nowMs) : null;
   const col = dim ? "var(--text-3)" : n.color;
   const right = k === "pv";
-  const tx = right ? n.x + R + 14 : n.x;
+  const tx = right ? n.x + R + 16 : n.x;
   const anchor = right ? "start" : "middle";
-  const ty1 = right ? n.y + 2 : n.y + R + 24;
-  const ty2 = right ? n.y + 20 : n.y + R + 42;
+  const ty1 = right ? n.y - 2 : n.y + R + 28;
+  const ty2 = right ? n.y + 22 : n.y + R + 52;
   return (
     <g className="flow-node" role="link" tabIndex={0} aria-label={`${n.label} – Details öffnen`} style={{ cursor: "pointer" }} onClick={() => onOpen(n.href)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(n.href); }}>
       <circle cx={n.x} cy={n.y} r={R + 10} fill="transparent" />
       <circle cx={n.x} cy={n.y} r={R} fill="var(--petrol)" stroke={col} strokeOpacity={dim ? 0.35 : 0.55} strokeWidth={2} />
-      <g transform={`translate(${n.x - 11},${n.y - 11})`}>
-        <Icon name={n.icon} size={22} color={col} />
+      <g transform={`translate(${n.x - ICON / 2},${n.y - ICON / 2})`}>
+        <Icon name={n.icon} size={ICON} color={col} />
       </g>
-      <text x={tx} y={ty1} textAnchor={anchor} className="mono" style={{ fontSize: 22, letterSpacing: "-.02em" }} fill={dim ? "var(--text-3)" : "var(--text-1)"}>
+      <text x={tx} y={ty1} textAnchor={anchor} className="mono" style={{ fontSize: 28, letterSpacing: "-.02em" }} fill={dim ? "var(--text-3)" : "var(--text-1)"}>
         {m && m.value === null ? "–" : value}
-        <tspan style={{ fontFamily: "var(--font-sans)", fontSize: 12 }} fill="var(--text-3)" dx={4}>{unit}</tspan>
+        <tspan style={{ fontFamily: "var(--font-sans)", fontSize: 15 }} fill="var(--text-3)" dx={5}>{unit}</tspan>
       </text>
-      <text x={tx} y={ty2} textAnchor={anchor} style={{ fontFamily: "var(--font-sans)", fontSize: 12 }} fill="var(--text-3)">
+      <text x={tx} y={ty2} textAnchor={anchor} style={{ fontFamily: "var(--font-sans)", fontSize: 15 }} fill="var(--text-3)">
         {n.label}{sub ? ` · ${sub}` : ""}{age ? ` · ${age}` : ""}
         <tspan fill="var(--amber)" dx={4}>›</tspan>
       </text>
@@ -104,7 +108,7 @@ export function EnergyFlow({ snapshot, nowMs }: { snapshot: EnergySnapshot | nul
     <Card className="dash-flow" style={{ gridColumn: "span 5", minHeight: 0 }}>
       <CardHead title="Energiefluss" right={consistent ? `Bilanz konsistent · ±${kw(Math.abs(residual))} kW` : `Messabweichung ${kw(residual)} kW`} />
       <div className="mt-1.5 flex min-h-0 flex-1 items-center justify-center">
-        <svg viewBox={`0 0 ${W} ${H}`} height="100%" style={{ display: "block", maxWidth: "100%", overflow: "visible" }} role="img" aria-label="Energiefluss zwischen PV, Netz, Haus, Batterie, Wärmepumpe und Wallbox">
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block", overflow: "visible" }} role="img" aria-label="Energiefluss zwischen PV, Netz, Haus, Batterie, Wärmepumpe und Wallbox">
           <Edge from="pv" to="house" kwValue={v.pvToHouse} color="var(--pv)" />
           {v.exportKw >= v.importKw ? (
             <Edge from="house" to="grid" kwValue={v.exportKw} color="var(--grid-out)" />
@@ -118,7 +122,7 @@ export function EnergyFlow({ snapshot, nowMs }: { snapshot: EnergySnapshot | nul
           )}
           <Edge from="house" to="hp" kwValue={v.hp} color="var(--heat-pump)" />
           <Edge from="house" to="ev" kwValue={v.ev} color="var(--ev)" />
-          <text x={155} y={149} textAnchor="middle" className="mono" style={{ fontSize: 11, letterSpacing: ".1em" }} fill="var(--text-3)">
+          <text x={155} y={157} textAnchor="middle" className="mono" style={{ fontSize: 13, letterSpacing: ".1em" }} fill="var(--text-3)">
             {v.exportKw >= 0.05 && v.exportKw >= v.importKw ? "EINSPEISUNG" : v.importKw >= 0.05 ? "BEZUG" : ""}
           </text>
           <Node k="pv" value={kw(s?.pv_power_kw.value)} unit="kW" m={s?.pv_power_kw ?? null} nowMs={nowMs} onOpen={open} />

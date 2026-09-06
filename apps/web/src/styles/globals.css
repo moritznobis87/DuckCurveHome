@@ -131,7 +131,7 @@
   .dash-header-actions { flex-basis: 100%; justify-content: space-between; gap: 10px; }
   .dash-top { flex: none; gap: 12px; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: auto; }
   .dash-top > * { grid-column: 1 / -1 !important; }
-  .dash-flow { height: min(400px, 100vw); }
+  .dash-flow { height: min(460px, 118vw); }
   .dash-buffer { height: 340px; }
   .dash-plan { height: auto; min-height: 320px; }
   .plan-chips { display: flex; }
