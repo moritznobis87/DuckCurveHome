@@ -379,13 +379,24 @@ class Gen2State:
     messages: int = 0
     rejected: int = 0
 
+    @property
+    def answer_topic(self) -> str:
+        """Eigenes Antwort-Topic je Gerät: so ist zuzuordnen, wer geantwortet hat."""
+        return f"{RPC_SRC}/{self.topic_prefix}"
+
     def topics(self) -> list[str]:
-        return [f"{self.topic_prefix}/events/rpc", f"{self.topic_prefix}/status/#"]
+        return [
+            f"{self.topic_prefix}/events/rpc",
+            f"{self.topic_prefix}/status/#",
+            f"{self.answer_topic}/rpc",
+        ]
 
     def apply(self, topic: str, payload: bytes | str, now: datetime) -> bool:
-        self.messages += 1
+        if topic == f"{self.answer_topic}/rpc":
+            return self._answer(payload, now)
         if not topic.startswith(self.topic_prefix + "/"):
             return False
+        self.messages += 1
         rest = topic[len(self.topic_prefix) + 1 :]
         text = payload.decode("utf-8", errors="replace") if isinstance(payload, bytes) else payload
         try:
@@ -414,6 +425,27 @@ class Gen2State:
             self.last_message_at = now
             return True
         return False
+
+    def _answer(self, payload: bytes | str, now: datetime) -> bool:
+        """Antwort auf Shelly.GetStatus: `result` enthält alle Komponenten in einer Nachricht."""
+        self.messages += 1
+        text = payload.decode("utf-8", errors="replace") if isinstance(payload, bytes) else payload
+        try:
+            data = json.loads(text)
+        except ValueError:
+            self.rejected += 1
+            return False
+        result = data.get("result") if isinstance(data, dict) else None
+        if not isinstance(result, dict):
+            self.rejected += 1
+            return False
+        touched = False
+        for component, state in result.items():
+            if isinstance(state, dict) and self._component(component, state, now):
+                touched = True
+        if touched:
+            self.last_message_at = now
+        return touched
 
     def _component(self, component: str, state: dict[str, Any], now: datetime) -> bool:
         target = self.components.get(component)
@@ -551,6 +583,10 @@ class Device(Protocol):
         """Topic und Nutzdaten, um `key` zu schalten – None, wenn das Gerät das nicht kann."""
         ...
 
+    def poll(self) -> tuple[str, str] | None:
+        """Topic und Nutzdaten, um den vollständigen Zustand abzufragen – None, wenn nicht nötig."""
+        ...
+
     def observed(self, key: str) -> bool | None:
         """Zuletzt empfangener Schaltzustand zu `key`, None wenn unbekannt."""
         ...
@@ -581,6 +617,9 @@ class Em3Device:
 
     def command(self, key: str, state: bool, ttl_s: float | None) -> tuple[str, str] | None:
         return None  # ein Zähler schaltet nichts
+
+    def poll(self) -> tuple[str, str] | None:
+        return None  # Generation 1 sendet von sich aus laufend
 
     def observed(self, key: str) -> bool | None:
         return None
@@ -697,9 +736,19 @@ class Gen2Device:
             params["toggle_after"] = int(ttl_s)
         payload = {
             "id": next(self._rpc_ids),
-            "src": RPC_SRC,
+            "src": self.state.answer_topic,
             "method": f"{kind.capitalize()}.Set",
             "params": params,
+        }
+        return f"{self.topic_prefix}/rpc", json.dumps(payload)
+
+    def poll(self) -> tuple[str, str] | None:
+        """Shelly.GetStatus. Nötig, weil NotifyStatus nur bei Änderung kommt: nach einem Neustart
+        wüsste die Bridge sonst nichts, und ein ruhender Fühler bliebe für immer unbekannt."""
+        payload = {
+            "id": next(self._rpc_ids),
+            "src": self.state.answer_topic,
+            "method": "Shelly.GetStatus",
         }
         return f"{self.topic_prefix}/rpc", json.dumps(payload)
 
@@ -729,11 +778,13 @@ class MqttHub:
     devices: list[Device]
     on_readings: ReadingsSink
     publish_interval_s: float = 10.0
+    poll_interval_s: float = 120.0  # Vollstand abrufen; 0 schaltet den Abruf ab
     qos: int = 1
     forward: bool = True  # False im Vergleichsmodus: nur messen, nicht senden
     connected: bool = False
     reconnects: int = 0
     commands: int = 0
+    polls: int = 0
     _session: MqttSession | None = field(default=None, init=False)
 
     @property
@@ -774,7 +825,31 @@ class MqttHub:
         raise LookupError(f"kein MQTT-Gerät für {key}")
 
     async def run(self) -> None:
-        await asyncio.gather(self._connect_loop(), self._emit_loop())
+        await asyncio.gather(self._connect_loop(), self._emit_loop(), self._poll_loop())
+
+    async def _poll_loop(self) -> None:
+        while True:
+            if self.poll_interval_s <= 0:
+                await asyncio.sleep(60.0)
+                continue
+            await asyncio.sleep(self.poll_interval_s)
+            with contextlib.suppress(Exception):
+                await self.poll_once()
+
+    async def poll_once(self) -> int:
+        """Alle Geräte nach ihrem vollständigen Zustand fragen. Antworten laufen als Nachrichten ein."""
+        session = self._session
+        if session is None:
+            return 0
+        sent = 0
+        for dev in self.devices:
+            built = dev.poll()
+            if built is None:
+                continue
+            await session.publish(built[0], built[1], qos=self.qos)
+            sent += 1
+        self.polls += sent
+        return sent
 
     async def _connect_loop(self) -> None:
         backoff = 1.0
@@ -787,6 +862,9 @@ class MqttHub:
                     self.connected = True
                     backoff = 1.0
                     log.info("mqtt connected", devices=len(self.devices), qos=self.qos)
+                    # Sofort den Ist-Zustand holen, statt auf die erste Änderung zu warten.
+                    with contextlib.suppress(Exception):
+                        await self.poll_once()
                     async for msg in session.messages:
                         now = datetime.now(UTC)
                         topic = str(msg.topic)
@@ -824,6 +902,7 @@ class MqttHub:
             "connected": self.connected,
             "reconnects": self.reconnects,
             "commands": self.commands,
+            "polls": self.polls,
             "devices": [dev.status() for dev in self.devices],
         }
 

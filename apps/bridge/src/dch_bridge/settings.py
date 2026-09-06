@@ -45,6 +45,7 @@ class BridgeSettings(BaseSettings):
     mqtt_publish_interval_s: float = 10.0  # Takt für konsistente Datensätze an die API
     mqtt_stale_s: float = 90.0  # ohne Nachricht so lange → nicht verfügbar
     mqtt_qos: int = 1
+    mqtt_poll_interval_s: float = 120.0  # Vollstand der Gen-2-Geräte abrufen; 0 = aus
     mqtt_key_prefix: str = (
         "heat_pump"  # Domänenschlüssel: heat_pump_power_kw, heat_pump_energy_kwh, …
     )

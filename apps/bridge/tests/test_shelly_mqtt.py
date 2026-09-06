@@ -311,7 +311,11 @@ def notify(components: dict[str, object], method: str = "NotifyStatus") -> bytes
 
 def test_gen2_reads_temperatures_from_rpc_notification() -> None:
     dev = Gen2Device(topic_prefix=G2, components=BUFFER)
-    assert dev.topics() == [f"{G2}/events/rpc", f"{G2}/status/#"]
+    assert dev.topics() == [
+        f"{G2}/events/rpc",
+        f"{G2}/status/#",
+        f"dch-bridge/{G2}/rpc",
+    ]
     assert dev.owned_keys == set(BUFFER.values())
     assert dev.apply(
         f"{G2}/events/rpc", notify({"temperature:100": {"id": 100, "tC": 58.2, "tF": 136.8}}), T0
@@ -414,6 +418,7 @@ async def test_hub_serves_two_generations_over_one_connection() -> None:
             if received:
                 break
         assert sorted(t for t, _ in session.subscribed) == [
+            f"dch-bridge/{G2}/rpc",
             f"{P}/#",
             f"{G2}/events/rpc",
             f"{G2}/status/#",
@@ -444,7 +449,7 @@ def test_gen2_builds_switch_set_command() -> None:
     body = json.loads(payload)
     assert body["method"] == "Switch.Set"
     assert body["params"] == {"id": 0, "on": True, "toggle_after": 1800}
-    assert body["src"] == "dch-bridge"
+    assert body["src"] == f"dch-bridge/{PLUG}"
     # Ohne Laufzeit kein toggle_after; fortlaufende Kennungen je Kommando
     second = dev.command("actuator:courtyard_light", False, None)
     assert second is not None
@@ -544,3 +549,68 @@ async def test_switch_without_connection_raises() -> None:
     )
     with pytest.raises(RuntimeError):
         await hub.switch("actuator:courtyard_light", True, None)
+
+
+@pytest.mark.asyncio
+async def test_status_is_polled_on_connect_so_nothing_stays_unknown() -> None:
+    """NotifyStatus kommt nur bei Änderung – ohne Abruf wüsste die Bridge nach einem Neustart nichts."""
+    received: list[RawReading] = []
+
+    async def sink(items: list[RawReading]) -> None:
+        received.extend(items)
+
+    dev = Gen2Device(topic_prefix=G2, components=BUFFER)
+    session = FakeSession([])
+
+    def answer(topic: str, payload: str) -> FakeMessage:
+        assert json.loads(payload)["method"] == "Shelly.GetStatus"
+        body = json.dumps(
+            {
+                "id": 1,
+                "src": G2,
+                "dst": f"dch-bridge/{G2}",
+                "result": {
+                    "temperature:100": {"tC": 55.0},
+                    "temperature:101": {"tC": 47.0},
+                    "temperature:102": {"tC": 36.0},
+                    "temperature:103": {"tC": 35.0},
+                    "switch:0": {"output": True},  # nicht gemappt, wird übergangen
+                },
+            }
+        ).encode()
+        return FakeMessage(f"dch-bridge/{G2}/rpc", body)
+
+    session.echo = answer
+    hub = MqttHub(
+        session_factory=lambda: session,
+        devices=[dev],
+        on_readings=sink,
+        publish_interval_s=0.05,
+    )
+    task = asyncio.create_task(hub.run())
+    try:
+        for _ in range(100):
+            await asyncio.sleep(0.05)
+            if received:
+                break
+        assert session.published and session.published[0][0] == f"{G2}/rpc"
+        keys = {r.key: r.value for r in received}
+        # Alle vier Fühler auf einmal, statt auf vier einzelne Änderungen zu warten
+        assert keys["buffer_temp_top_c"] == pytest.approx(55.0)
+        assert keys["buffer_temp_mid_top_c"] == pytest.approx(47.0)
+        assert keys["buffer_temp_mid_bottom_c"] == pytest.approx(36.0)
+        assert keys["buffer_temp_bottom_c"] == pytest.approx(35.0)
+        assert hub.polls == 1 and hub.status()["polls"] == 1
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+
+def test_malformed_answer_is_counted_not_crashing() -> None:
+    dev = Gen2Device(topic_prefix=G2, components=BUFFER)
+    answer = f"dch-bridge/{G2}/rpc"
+    assert not dev.apply(answer, b"kein json", T0)
+    assert not dev.apply(answer, b'{"error": {"code": -105}}', T0)  # Antwort ohne result
+    assert not dev.apply(answer, b'{"result": 5}', T0)
+    assert dev.state.rejected == 3 and dev.state.values == {}

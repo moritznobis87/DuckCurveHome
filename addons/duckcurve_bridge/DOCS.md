@@ -75,6 +75,7 @@ Optionen des Add-ons:
 | `mqtt_publish_interval_s` | Takt, in dem die Bridge aus den zuletzt empfangenen Werten einen konsistenten Datensatz an die API schickt (Standard 10 s) |
 | `mqtt_stale_s` | Funkstille, nach der ein Gerät als nicht verfügbar gilt (Standard 90 s) |
 | `mqtt_qos` | Dienstgüte der Abonnements, Standard 1 (mindestens einmal) |
+| `mqtt_poll_interval_s` | Takt, in dem die Bridge Gen-2-Geräte nach ihrem vollständigen Zustand fragt (Standard 120 s, `0` schaltet den Abruf ab) |
 | `api_ws_url` / `api_token` | Railway-Endpunkt und Bridge-Token (unverändert) |
 | `log_level` | `INFO` genügt; `DEBUG` zeigt verworfene Nachrichten |
 
@@ -97,6 +98,13 @@ Passwort aus Schritt 2, „Enable MQTT Control“ nach Belieben, **„RPC status
 (sonst kommt nichts). „Generic status update over MQTT“ ist optional und schickt zusätzlich die
 `status/…`-Topics. Das MQTT-Präfix (Standard: der Gerätename, z. B. `shellyplus1-b8d61a86e20c`) unverändert
 lassen und genauso ins Mapping eintragen.
+
+**Warum die Bridge zusätzlich fragt.** `NotifyStatus` schickt ein Gen-2-Gerät nur bei **Änderung**, und
+zwar je Komponente einzeln. Nach einem Neustart wüsste die Bridge deshalb nichts, und ein ruhender
+Temperaturfühler bliebe stundenlang unbekannt. Sie ruft darum beim Verbinden und danach alle
+`mqtt_poll_interval_s` Sekunden `Shelly.GetStatus` ab; die Antwort enthält alle Komponenten auf einmal.
+Damit klar ist, wer geantwortet hat, bekommt jedes Gerät ein eigenes Antwort-Topic
+`dch-bridge/<präfix>/rpc`, das die Bridge mit abonniert.
 
 **Achtung, häufigste Fehlerquelle:** Das Präfix ist frei überschreibbar und in vielen Installationen auf
 einen sprechenden Namen gesetzt. Es ist dann **nicht** die Gerätekennung. Ein Gerät mit der Kennung
