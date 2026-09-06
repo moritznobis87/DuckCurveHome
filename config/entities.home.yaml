@@ -44,10 +44,9 @@ actuators:
   # Drei Lichterketten: Terrasse, Innenhof, Gartenzaun – einheitlich „Licht <Ort>“.
   - { key: terrace_light,      entity: switch.shellyterrassenlicht,   label: Licht Terrasse }
   - { key: garden_fence_light, entity: switch.shellygartenzaun,       label: Licht Gartenzaun }
-  # Innenhof: Shelly Plus Plug S „Lichterkette_Innenhof“ (Kennung shellyplusplugs-64b7080cc70c) sendet
-  # schon an den Broker, ist aber noch nicht in HA eingerichtet. In HA über die Shelly-Integration hinzufügen
-  # (Einstellungen → Geräte & Dienste → Shelly → Gerät hinzufügen, IP des Plugs), dann Entity-ID hier eintragen.
-  # - { key: courtyard_light,  entity: switch.shellyinnenhof,         label: Licht Innenhof }
+  # Innenhof: Shelly Plus Plug S „Lichterkette_Innenhof“ (Kennung shellyplusplugs-64b7080cc70c),
+  # am 06.09.2026 in HA eingerichtet. HA slugifiziert den Gerätenamen, daher Unterstriche statt Bindestriche.
+  - { key: courtyard_light,    entity: switch.shellyplusplugs_64b7080cc70c, label: Licht Innenhof }
 
   # --- Wärmepumpen-Kontakte K1 (PV-Freigabe) und K2 (EVU-Sperre) ---
   # ⚠ NOCH NICHT ZUGEORDNET. Kandidaten aus HA: switch.warmepumpe (aktuell AN), switch.heatpump_measurement
@@ -91,23 +90,12 @@ mqtt:
       "temperature:102": buffer_temp_mid_bottom_c
       "temperature:104": buffer_temp_bottom_c
 
-  # --- Licht Innenhof: Shelly Plus Plug S (Generation 2) ---
-  # Dieser Plug ist als einziger nicht in Home Assistant eingerichtet; sein Zustand käme sonst nirgendwoher.
-  # Über MQTT wird er gelesen – geschaltet wird über Home Assistant, sobald er dort eingerichtet ist
-  # (bis dahin ohnehin ohne Belang: die Steuerung ist serverseitig deaktiviert, actuation_enabled=false).
-  - prefix: "Lichterkette_Innenhof"
-    generation: 2
-    label: "Licht Innenhof"
-    components:
-      "switch:0":
-        output: "actuator:courtyard_light"
-
   # --- Bekannte Shelly-Plus-Steckdosen am Broker (Stand 06.09.2026) ---
   # Sie senden bereits, sind hier aber noch nicht eingebunden: Schalten läuft weiter über Home Assistant
   # (Aktoren unten), und die Bridge schickt über MQTT bislang nur Messwerte.
   #   Kennung                       Topic-Präfix (= Gerätename)  HA-Entität
   #   shellyplusplugs-d4d4daf36370  Lichterkette_Terassenlicht   switch.shellyterrassenlicht
   #   shellyplusplugs-d4d4daf36158  Licht_Gartenzaun             switch.shellygartenzaun
-  #   shellyplusplugs-64b7080cc70c  Lichterkette_Innenhof        noch nicht in HA (siehe Aktoren unten)
+  #   shellyplusplugs-64b7080cc70c  Lichterkette_Innenhof        switch.shellyplusplugs_64b7080cc70c
   # Alle drei am 06.09.2026 am Broker bestätigt. Sie liefern je switch:0 mit apower (W) und
   # aenergy.total (Wh) – einbindbar, sobald die Leistungsschlüssel serverseitig vorgesehen sind.

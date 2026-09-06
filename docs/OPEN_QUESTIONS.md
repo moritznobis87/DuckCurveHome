@@ -30,7 +30,7 @@ Weitere, ältere Fragen mit Standardannahmen: Abschnitt 25 im [Projektplan](PROJ
 | Datum | Frage | Antwort |
 |---|---|---|
 | 2026-09-06 | K1/K2-Zuordnung (Q1) | `switch.warmepumpe` ist K1 „PV-Überschuss“: er fordert den Überschussbetrieb an und schaltet die Wärmepumpe **nicht** stromlos. Als Aktor gemappt, sicherer Zustand „aus“. Der Abschaltkontakt K2 an der Wärmepumpe ist noch nicht verdrahtet – nichts zu mappen |
-| 2026-09-06 | Innenhof-Licht (Q6) | Der Plug ist nicht in Home Assistant, sendet aber unter `Lichterkette_Innenhof` an den Broker. Sein Zustand kommt jetzt über MQTT; zum Schalten muss er noch in HA eingerichtet werden |
+| 2026-09-06 | Innenhof-Licht (Q6) | In HA eingerichtet als `switch.shellyplusplugs_64b7080cc70c`, als Aktor `courtyard_light` gemappt. Der Plug sendet zwar auch an den Broker, wird aber wie die beiden anderen Lichter über HA gelesen und geschaltet |
 | 2026-09-06 | Pufferfühler-Reihenfolge (Q2) | Bestätigt am MQTT-Vollstand: aufsteigende Komponenten-ID = absteigende Temperatur, also `temperature:100` oben bis `:104` unten. `:103` ist der defekte vierte Fühler und bleibt unbelegt; `:104` gilt als „unten“ |
 | 2026-09-06 | MQTT-Topic-Präfix der Gen-2-Shellys | Nicht die Gerätekennung, sondern der im Gerät gesetzte Name: `Pufferspeicher_Temperaturen`, `Lichterkette_Terassenlicht`, `Licht_Gartenzaun`, `Lichterkette_Innenhof`. Steht in jeder Nachricht im Feld `dst` |
 | 2026-09-05 | Puffervolumen | 1000 l Kombipuffer; WP und Pelletofen speisen ein, Heizung und Warmwasser entnehmen |
