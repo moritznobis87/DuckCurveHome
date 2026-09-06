@@ -256,3 +256,15 @@ def test_compare_ignores_old_ha_values() -> None:
     comp = Comparator()
     comp.note_ha(1.0, T0 - timedelta(minutes=10))
     assert comp.compare(1.5, T0) is None and comp.samples == 0
+
+
+@pytest.mark.asyncio
+async def test_real_client_factory_builds_expected_connection() -> None:
+    """Schützt vor stillen Änderungen der aiomqtt-Signatur: MQTT 3.1.1, Sitzung bleibt bestehen."""
+    from dch_bridge.sources.shelly_mqtt import aiomqtt_session_factory
+
+    client = aiomqtt_session_factory("core-mosquitto", 1883, "u", "p", "dch-bridge-haus")()
+    assert client._client._protocol == 4  # MQTTv311 – der Shelly 3EM Gen1 spricht kein MQTT 5
+    assert client._client._clean_session is False  # Abonnement überlebt einen Verbindungsabbruch
+    # ohne Zugangsdaten (anonymer Broker) muss der Aufbau ebenfalls gelingen
+    assert aiomqtt_session_factory("h", 1883, "", "", "id")() is not None
