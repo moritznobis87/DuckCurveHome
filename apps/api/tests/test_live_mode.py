@@ -106,3 +106,30 @@ def test_bridge_telemetry_reaches_live_state(live_client: TestClient) -> None:
         "/api/v1/history", params={"range": "24h"}, headers={"authorization": "Bearer api-geheim"}
     ).json()
     assert any(row["pv_power_kw"] == 5.5 for row in hist["rows"])
+
+
+def test_duplicate_telemetry_is_idempotent(live_client: TestClient) -> None:
+    """Dieselbe Messung zweimal (Nachlieferung aus der Outbox): ein Rohwert, kein Doppel."""
+    from hems_core.protocol import BacklogFrame
+
+    now = datetime.now(UTC).replace(microsecond=0)
+    reading = RawReading(
+        key="heat_pump_power_kw", value=2.5, observed_at=now, source="mqtt:shellyem3-X"
+    )
+    with live_client.websocket_connect(
+        "/bridge/ws", headers={"authorization": "Bearer geheim"}
+    ) as ws:
+        ws.send_text(hello())
+        ws.receive_text()
+        ws.send_text(TelemetryFrame(seq=1, sent_at=now, items=[reading]).model_dump_json())
+        assert json.loads(ws.receive_text())["seq"] == 1
+        ws.send_text(BacklogFrame(seq=1, items=[reading], remaining=0).model_dump_json())
+        assert json.loads(ws.receive_text())["seq"] == 1
+        ws.send_text(TelemetryFrame(seq=1, sent_at=now, items=[reading]).model_dump_json())
+        assert json.loads(ws.receive_text())["seq"] == 1
+    r = live_client.get("/api/v1/history?range=24h", headers={"authorization": "Bearer api-geheim"})
+    assert r.status_code == 200
+    rows = [
+        row for row in r.json()["rows"] if isinstance(row.get("heat_pump_power_kw"), int | float)
+    ]
+    assert len(rows) == 1 and rows[0]["heat_pump_power_kw"] == 2.5

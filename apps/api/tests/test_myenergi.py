@@ -345,3 +345,29 @@ async def test_recompute_keeps_fuller_stored_hours() -> None:
     acc = EnergyAccounting(HemsConfig(), BERLIN, minute_rows, store=(read, write, last))
     n = await acc.recompute(hour, hour + timedelta(hours=1))
     assert n == 0 and not written  # 5 Minuten ersetzen keine volle Stunde
+
+
+def test_three_phase_zappi_sums_internal_load_cts() -> None:
+    groups = [
+        {
+            "zappi": [
+                {
+                    "sno": 18025859,
+                    "ectp1": 2350,
+                    "ectt1": "Internal Load",
+                    "ectp2": 2340,
+                    "ectt2": "Internal Load",
+                    "ectp3": 2330,
+                    "ectt3": "Internal Load",
+                    "ectp4": 100,
+                    "ectt4": "Grid",
+                    "ectt5": "None",
+                    "ectt6": "None",
+                    "div": 7020,
+                }
+            ]
+        }
+    ]
+    r = by_key(readings_from_status(groups, NOW))
+    assert r["ev_power_kw"].value == pytest.approx(7.02)  # 3 × 2,3 kW, nicht nur die erste Phase
+    assert r["grid_power_kw"].value == pytest.approx(0.1)

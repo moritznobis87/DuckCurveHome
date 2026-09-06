@@ -49,7 +49,7 @@ def readings_from_status(groups: list[dict[str, Any]], now: datetime) -> list[Ra
     - pv_power_kw: Summe aller „Generation“-CTs (bei Bedarf `gen` eines Geräts)
     - grid_power_kw: Summe aller „Grid“-CTs (bei Bedarf `grd`), Bezug positiv
     - battery_power_kw / battery_soc: Libbi (interner Last-CT negiert, soc in %)
-    - ev_power_kw: Zappi, interner Last-CT (bei Bedarf `div`)
+    - ev_power_kw: Zappi, Summe der internen Last-CTs aller Phasen (bei Bedarf `div`)
     """
     devices: list[tuple[str, dict[str, Any]]] = []
     for grp in groups:
@@ -87,9 +87,10 @@ def readings_from_status(groups: list[dict[str, Any]], now: datetime) -> list[Ra
             if grid_fallback is None and _num(d.get("grd")) is not None:
                 grid_fallback = _num(d.get("grd"))
         if kind == "libbi":
-            load = next((p for n, p in cts if "internal load" in n), None)
-            if load is None:
-                load = next((p for n, p in cts if "battery" in n), None)
+            loads = [p for n, p in cts if "internal load" in n] or [
+                p for n, p in cts if "battery" in n
+            ]
+            load = sum(loads) if loads else None
             if load is not None:
                 out.append(
                     RawReading(
@@ -112,9 +113,9 @@ def readings_from_status(groups: list[dict[str, Any]], now: datetime) -> list[Ra
                     )
                 )
         if kind == "zappi":
-            load = next((p for n, p in cts if "internal load" in n), None)
-            if load is None:
-                load = _num(d.get("div"))
+            # dreiphasige Zappi: ein „Internal Load“-CT je Phase → Ladeleistung ist die Summe
+            loads = [p for n, p in cts if "internal load" in n]
+            load = sum(loads) if loads else _num(d.get("div"))
             if load is not None:
                 out.append(
                     RawReading(
