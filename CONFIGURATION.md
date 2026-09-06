@@ -42,7 +42,11 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 ## Bridge (Home-Assistant-Add-on)
 
 Optionen des Add-ons (`addons/duckcurve_bridge/config.yaml`): `api_ws_url`, `api_token`, `bridge_id`,
-`entities_file`, `heartbeat_entity`, `offline_release_s`, `log_level`. Das Entity-Mapping steht in
+`entities_file`, `heartbeat_entity`, `offline_release_s`, `log_level`, sowie für den Shelly 3EM über MQTT
+`source_mode` (`mqtt` Standard, `home_assistant`, `compare`), `mqtt_host`, `mqtt_port`, `mqtt_username`,
+`mqtt_password`, `shelly_device_id` bzw. `mqtt_topic_prefix`, `mqtt_publish_interval_s` (Details in
+`addons/duckcurve_bridge/DOCS.md`). Als Umgebungsvariablen heißen sie `DCH_BRIDGE_SOURCE_MODE`,
+`DCH_BRIDGE_MQTT_HOST` usw. Das Entity-Mapping steht in
 `/config/duckcurve/entities.yaml` (Vorlage `addons/duckcurve_bridge/entities.example.yaml`): je Sensor
 `key`, `entity`, `unit` (W, kW, %, °C, EUR/kWh), optional `scale`, `sign` (`import_positive`,
 `export_positive`, `discharge_positive`, `charge_positive`), `stale_after_s`; je Aktor `key`, `entity`,

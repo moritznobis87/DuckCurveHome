@@ -4,6 +4,7 @@ Umgebungsvariablen DCH_BRIDGE_*), lokal aus .env."""
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -33,3 +34,21 @@ class BridgeSettings(BaseSettings):
     outbox_path: Path = Path("/data/outbox.sqlite")
     outbox_max_age_h: int = 24 * 7
     log_level: str = "INFO"
+    # Datenquelle für den Shelly 3EM (Wärmepumpenzähler): HA-Entitäten, MQTT direkt oder beides vergleichen
+    source_mode: Literal["home_assistant", "mqtt", "compare"] = "mqtt"
+    mqtt_host: str = "core-mosquitto"  # offizielles Mosquitto-Add-on im HA-Netz
+    mqtt_port: int = 1883
+    mqtt_username: str = ""
+    mqtt_password: str = ""
+    shelly_device_id: str = ""  # z. B. 485519DB56D2 (Hostname shellyem3-<id>)
+    mqtt_topic_prefix: str = ""  # leer = shellies/shellyem3-<shelly_device_id>
+    mqtt_publish_interval_s: float = 10.0  # Takt für konsistente Datensätze an die API
+    mqtt_stale_s: float = 90.0  # ohne Nachricht so lange → nicht verfügbar
+    mqtt_qos: int = 1
+    mqtt_key_prefix: str = (
+        "heat_pump"  # Domänenschlüssel: heat_pump_power_kw, heat_pump_energy_kwh, …
+    )
+
+    @property
+    def shelly_topic_prefix(self) -> str:
+        return self.mqtt_topic_prefix.rstrip("/") or f"shellies/shellyem3-{self.shelly_device_id}"

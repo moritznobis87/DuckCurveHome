@@ -15,10 +15,15 @@ from dch_bridge.home_assistant.ws_client import EntityState, HaWsClient
 from dch_bridge.mapping import ActuatorMap, EntityMap, normalize
 from dch_bridge.outbox import Outbox
 from dch_bridge.settings import BridgeSettings
+from dch_bridge.sources.shelly_mqtt import (
+    Comparator,
+    ShellyMqttSource,
+    aiomqtt_session_factory,
+)
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.1.4"
+VERSION = "0.2.0"
 log = structlog.get_logger("bridge")
 
 
@@ -45,6 +50,33 @@ class Bridge:
         self.latest: dict[str, EntityState] = {}
         self._pending: dict[str, RawReading] = {}
         self._released_contacts_after_offline = False
+        # Shelly 3EM über MQTT (Modus mqtt/compare); im Modus mqtt liefert HA diese Schlüssel nicht mehr
+        self.mqtt: ShellyMqttSource | None = None
+        self.comparator: Comparator | None = None
+        self._mqtt_owned: set[str] = set()
+        if settings.source_mode != "home_assistant":
+            self.comparator = Comparator() if settings.source_mode == "compare" else None
+            self.mqtt = ShellyMqttSource(
+                session_factory=aiomqtt_session_factory(
+                    settings.mqtt_host,
+                    settings.mqtt_port,
+                    settings.mqtt_username,
+                    settings.mqtt_password,
+                    client_id=f"dch-bridge-{settings.bridge_id}",
+                ),
+                topic_prefix=settings.shelly_topic_prefix,
+                device_id=settings.shelly_device_id
+                or settings.shelly_topic_prefix.rsplit("-", 1)[-1],
+                key_prefix=settings.mqtt_key_prefix,
+                on_readings=self._ingest_readings,
+                publish_interval_s=settings.mqtt_publish_interval_s,
+                stale_s=settings.mqtt_stale_s,
+                qos=settings.mqtt_qos,
+                comparator=self.comparator,
+                forward=settings.source_mode == "mqtt",
+            )
+            if settings.source_mode == "mqtt":
+                self._mqtt_owned = self.mqtt.owned_keys
 
     # ------------------------------------------------------------------ Lesen
     def _ingest(self, st: EntityState) -> None:
@@ -53,7 +85,19 @@ class Bridge:
             return
         self.latest[st.entity_id] = st
         reading = normalize(m, st.state, st.attributes, st.observed_at, datetime.now(UTC))
+        if (
+            self.comparator is not None
+            and reading.key == f"{self.settings.mqtt_key_prefix}_power_kw"
+        ):
+            self.comparator.note_ha(reading.value, reading.observed_at)
+        if reading.key in self._mqtt_owned:
+            return  # Modus mqtt: der Shelly kommt direkt über den Broker, HA-Wert nicht doppelt senden
         self._pending[reading.key] = reading
+
+    async def _ingest_readings(self, items: list[RawReading]) -> None:
+        """Messwerte einer Nicht-HA-Quelle (MQTT) in denselben Sammelpuffer."""
+        for r in items:
+            self._pending[r.key] = r
 
     async def _ha_loop(self) -> None:
         backoff = 1.0
@@ -174,12 +218,23 @@ class Bridge:
             if connected:
                 self._released_contacts_after_offline = False
 
+    async def _mqtt_status_loop(self) -> None:
+        """Alle 5 Minuten Kennzahlen der MQTT-Quelle ins Protokoll (Nachrichten, verworfen, Reconnects)."""
+        while True:
+            await asyncio.sleep(300)
+            if self.mqtt is not None:
+                log.info("mqtt status", **self.mqtt.status())
+
     async def run(self) -> None:
         log.info(
             "bridge starting",
             version=VERSION,
             sensors=len(self.map.sensors),
             actuators=len(self.map.actuators),
+            source_mode=self.settings.source_mode,
+            mqtt=f"{self.settings.mqtt_host}:{self.settings.mqtt_port} {self.settings.shelly_topic_prefix}"
+            if self.mqtt is not None
+            else None,
         )
         tasks = [
             asyncio.create_task(self._ha_loop(), name="ha"),
@@ -188,6 +243,9 @@ class Bridge:
             asyncio.create_task(self.uplink.run(), name="uplink"),
             asyncio.create_task(self._guardian_loop(), name="guardian"),
         ]
+        if self.mqtt is not None:
+            tasks.append(asyncio.create_task(self.mqtt.run(), name="mqtt"))
+            tasks.append(asyncio.create_task(self._mqtt_status_loop(), name="mqtt-status"))
         try:
             await asyncio.gather(*tasks)
         finally:
@@ -217,6 +275,14 @@ def run() -> None:
     if not settings.api_token:
         log.error("DCH_BRIDGE_API_TOKEN fehlt – Bridge startet nicht")
         sys.exit(2)
+    if settings.source_mode != "home_assistant" and not (
+        settings.mqtt_host and (settings.shelly_device_id or settings.mqtt_topic_prefix)
+    ):
+        log.error(
+            "MQTT-Modus ohne Broker oder Shelly-ID – Rückfall auf home_assistant",
+            source_mode=settings.source_mode,
+        )
+        settings = settings.model_copy(update={"source_mode": "home_assistant"})
     entity_map = EntityMap.load(settings.entities_file)
     bridge = Bridge(settings, entity_map)
     with contextlib.suppress(KeyboardInterrupt):
