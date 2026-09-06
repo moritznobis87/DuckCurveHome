@@ -5,6 +5,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Zur Build-Zeit eingebrannt; /api/build liefert dieselbe Kennung zur Laufzeit. Der Vergleich beider
+  // sagt dem Dashboard, ob im Browser noch eine alte Fassung läuft.
+  env: { NEXT_PUBLIC_BUILD_ID: process.env.RAILWAY_GIT_COMMIT_SHA ?? "dev" },
   reactStrictMode: true,
   poweredByHeader: false,
   async headers() {
