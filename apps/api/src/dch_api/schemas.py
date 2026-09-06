@@ -48,6 +48,24 @@ class PlanOut(BaseModel):
     next_cheap_window: PriceWindowOut | None
 
 
+class SystemEventOut(BaseModel):
+    at: datetime
+    severity: str
+    code: str
+    message: str
+    context: dict[str, object] = Field(default_factory=dict)
+
+
+class BackfillResultOut(BaseModel):
+    """Ergebnis eines manuell angestoßenen myenergi-Historienabrufs."""
+
+    ok: bool
+    readings: int = 0
+    start: datetime | None = None
+    end: datetime | None = None
+    error_de: str | None = None
+
+
 class SourceStatusOut(BaseModel):
     """Zustand einer Messquelle (Bridge, myenergi, …)."""
 

@@ -65,6 +65,8 @@ class MyenergiSource:
         self.last_error: str | None = None
         self.polls_ok = 0
         self.backfilled_readings = 0
+        self.last_backfill_at: datetime | None = None
+        self.last_backfill_error: str | None = None
         self._groups: list[dict[str, Any]] = []
         self._tasks: list[asyncio.Task[None]] = []
 
@@ -115,10 +117,21 @@ class MyenergiSource:
         if not devices:
             return 0
         start = start.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
-        minutes_total = max(60, int((end - start).total_seconds() // 60) + 1)
+        end = end.astimezone(UTC)
         rows_by_device: dict[str, list[dict[str, Any]]] = {}
+        # je Gerät und UTC-Tag höchstens 1440 Minuten – längere Fenster liefert die Cloud nicht zuverlässig
         for kind, prefix, sno in devices:
-            rows = await self.client.history_minutes(prefix, sno, start, minutes_total)
+            rows: list[dict[str, Any]] = []
+            day = start.replace(hour=0)
+            while day < end:
+                day_end = min(end, day + timedelta(days=1))
+                first = max(day, start)
+                minutes = int((day_end - first).total_seconds() // 60) + 1
+                if minutes > 0:
+                    rows.extend(
+                        await self.client.history_minutes(prefix, sno, first, min(1440, minutes))
+                    )
+                day += timedelta(days=1)
             rows_by_device[f"{kind}:{sno}"] = rows
         # Schlüssel „zappi:123“ → Art fürs Zusammenführen
         merged = history_minutes({k.split(":")[0]: v for k, v in rows_by_device.items()})
@@ -143,10 +156,13 @@ class MyenergiSource:
             }
         readings = readings_from_history(merged, missing)
         if readings:
-            await self.on_readings(readings)
+            for i in range(0, len(readings), 2000):
+                await self.on_readings(readings[i : i + 2000])
             self.backfilled_readings += len(readings)
             if self.on_backfilled:
                 await self.on_backfilled(start, end)
+        self.last_backfill_at = datetime.now(UTC)
+        self.last_backfill_error = None
         log.info("myenergi backfill", minutes=len(merged), readings=len(readings))
         return len(readings)
 
@@ -157,10 +173,17 @@ class MyenergiSource:
             hours = self.backfill_hours if first else 3
             try:
                 await self.backfill(now - timedelta(hours=hours), now - timedelta(minutes=2))
+                first = False
+                await asyncio.sleep(3600)
             except Exception as exc:
-                log.warning("myenergi backfill failed", error=repr(exc)[:200])
-            first = False
-            await asyncio.sleep(3600)
+                self.last_backfill_error = repr(exc)[:200]
+                log.warning("myenergi backfill failed", error=self.last_backfill_error)
+                if self.on_state_change:
+                    with contextlib.suppress(Exception):
+                        await self.on_state_change(
+                            self.online, f"Historie: {self.last_backfill_error}"
+                        )
+                await asyncio.sleep(600)  # in 10 min erneut, Startfenster bleibt
 
     # ------------------------------------------------------------------ Lebenszyklus
     def start(self) -> None:
@@ -177,10 +200,19 @@ class MyenergiSource:
         self._tasks = []
 
     def status_out(self) -> dict[str, Any]:
+        live = self.last_error or (f"{self.polls_ok} Abfragen" if self.polls_ok else "wartet")
+        if self.last_backfill_error:
+            hist = f"Historie fehlgeschlagen: {self.last_backfill_error}"
+        elif self.last_backfill_at:
+            hist = (
+                f"Historie {self.backfilled_readings} Werte, "
+                f"zuletzt {self.last_backfill_at.strftime('%H:%M')} UTC"
+            )
+        else:
+            hist = "Historie ausstehend"
         return {
             "name": self.name,
             "online": self.online,
             "last_ok": self.last_ok,
-            "detail_de": self.last_error
-            or (f"{self.polls_ok} Abfragen" if self.polls_ok else "wartet"),
+            "detail_de": f"{live} · {hist}",
         }

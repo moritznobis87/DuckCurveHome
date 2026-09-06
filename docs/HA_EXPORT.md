@@ -73,9 +73,46 @@ ORDER BY s.last_updated_ts;
 Danach `gzip /config/duckcurve/*.csv`. Dateien per Samba/File-Editor herunterladen. Sie enthalten keine
 Zugangsdaten, nur Messwerte.
 
+## 5b. Alternative: Historie liegt in InfluxDB (HA-Integration `influxdb`)
+
+Wer die `influxdb`-Integration nutzt, hat dort die vollständige Historie in Rohauflösung. Die HA-Integration
+schreibt je **Einheit** eine Measurement (`W`, `%`, `°C`, …) mit Tag `entity_id` (ohne `sensor.`) und Feld
+`value`. Abfragesprache ist InfluxQL, kein SQL – daher scheitern die Recorder-Abfragen dort mit
+„error parsing query“.
+
+Inventar:
+
+```sql
+SHOW MEASUREMENTS
+SHOW TAG VALUES FROM "W" WITH KEY = "entity_id"
+```
+
+Export als CSV über die HTTP-API (von einem PC im Heimnetz; `<ha-ip>`, Datenbankname und Zugang wie im Add-on
+konfiguriert, meist `homeassistant`). Minutenmittel, ein Aufruf je Einheit:
+
+```bash
+curl -sG "http://<ha-ip>:8086/query" -u "<user>:<passwort>" -H "Accept: application/csv" \
+  --data-urlencode "db=homeassistant" --data-urlencode "epoch=s" \
+  --data-urlencode "q=SELECT mean(\"value\") FROM \"W\" WHERE (\"entity_id\"='myenergi_hub_14117600_power_generation' OR \"entity_id\"='myenergi_hub_14117600_power_grid' OR \"entity_id\"='myenergi_libbi_26244255_power_ct_internal_load' OR \"entity_id\"='myenergi_wallbox_power_ct_internal_load' OR \"entity_id\"='heatpump_total_power') AND time > now() - 400d GROUP BY time(1m), \"entity_id\" fill(none)" \
+  > influx_W.csv
+curl -sG "http://<ha-ip>:8086/query" -u "<user>:<passwort>" -H "Accept: application/csv" \
+  --data-urlencode "db=homeassistant" --data-urlencode "epoch=s" \
+  --data-urlencode "q=SELECT mean(\"value\") FROM \"%\" WHERE \"entity_id\"='myenergi_libbi_26244255_soc' AND time > now() - 400d GROUP BY time(1m), \"entity_id\" fill(none)" \
+  > influx_soc.csv
+curl -sG "http://<ha-ip>:8086/query" -u "<user>:<passwort>" -H "Accept: application/csv" \
+  --data-urlencode "db=homeassistant" --data-urlencode "epoch=s" \
+  --data-urlencode "q=SELECT mean(\"value\") FROM \"°C\" WHERE \"entity_id\"='geilenkirchen_air_base_temperatur' AND time > now() - 400d GROUP BY time(5m), \"entity_id\" fill(none)" \
+  > influx_temp.csv
+```
+
+Ergebnisspalten: `name,tags,time,mean` (tags = `entity_id=…`). Genau dieses Format versteht der Import; die
+Schrittweite (1, 5 oder 60 min) erkennt er selbst. Bei sehr großen Datenmengen `time > now() - 400d` in
+Monatsfenster teilen und die Dateien nacheinander importieren – der Import ist idempotent. Mit dem Add-on
+InfluxDB (Chronograf) geht dasselbe über *Explore → CSV*, nur unbequemer bei großen Ergebnissen.
+
 ## 6. Import in Duck Curve Home
 
-Endpunkt `POST /api/v1/import/ha` (API-Token, Body = CSV oder gzip). Parameter: `kind=auto|statistics|states`,
+Endpunkt `POST /api/v1/import/ha` (API-Token, Body = CSV oder gzip; Recorder- und Influx-Format). Zusätzlich `POST /api/v1/import/myenergi-backfill?hours=48` lädt die myenergi-Minutenhistorie nach und `GET /api/v1/import/events` zeigt die letzten Systemereignisse. Parameter: `kind=auto|statistics|states`,
 `dry_run=true` zum Prüfen, `extra_map` (JSON) für Entitäten, die nicht im Bridge-Mapping stehen, z. B. ein
 Tibber-Preissensor:
 

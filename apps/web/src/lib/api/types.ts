@@ -174,6 +174,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/import/myenergi-backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** myenergi-Minutenhistorie der letzten Stunden nachladen (Lücken füllen) */
+        post: operations["myenergi_backfill_api_v1_import_myenergi_backfill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/import/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Letzte Systemereignisse */
+        get: operations["events_api_v1_import_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/control/actuators/{key}": {
         parameters: {
             query?: never;
@@ -288,6 +322,25 @@ export interface components {
          * @enum {string}
          */
         AutoProfile: "eco" | "pv" | "price" | "smart";
+        /**
+         * BackfillResultOut
+         * @description Ergebnis eines manuell angestoßenen myenergi-Historienabrufs.
+         */
+        BackfillResultOut: {
+            /** Ok */
+            ok: boolean;
+            /**
+             * Readings
+             * @default 0
+             */
+            readings: number;
+            /** Start */
+            start?: string | null;
+            /** End */
+            end?: string | null;
+            /** Error De */
+            error_de?: string | null;
+        };
         /** BalanceConfig */
         BalanceConfig: {
             /**
@@ -1694,6 +1747,24 @@ export interface components {
              */
             detail_de: string;
         };
+        /** SystemEventOut */
+        SystemEventOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Severity */
+            severity: string;
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Context */
+            context?: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * SystemMode
          * @enum {string}
@@ -2011,6 +2082,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    myenergi_backfill_api_v1_import_myenergi_backfill_post: {
+        parameters: {
+            query?: {
+                hours?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackfillResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    events_api_v1_import_events_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemEventOut"][];
                 };
             };
             /** @description Validation Error */

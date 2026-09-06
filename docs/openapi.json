@@ -468,6 +468,100 @@
         }
       }
     },
+    "/api/v1/import/myenergi-backfill": {
+      "post": {
+        "tags": [
+          "Import"
+        ],
+        "summary": "myenergi-Minutenhistorie der letzten Stunden nachladen (Lücken füllen)",
+        "operationId": "myenergi_backfill_api_v1_import_myenergi_backfill_post",
+        "parameters": [
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 336,
+              "minimum": 1,
+              "default": 48,
+              "title": "Hours"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackfillResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/import/events": {
+      "get": {
+        "tags": [
+          "Import"
+        ],
+        "summary": "Letzte Systemereignisse",
+        "operationId": "events_api_v1_import_events_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SystemEventOut"
+                  },
+                  "title": "Response Events Api V1 Import Events Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/control/actuators/{key}": {
       "post": {
         "tags": [
@@ -750,6 +844,60 @@
           "smart"
         ],
         "title": "AutoProfile"
+      },
+      "BackfillResultOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "readings": {
+            "type": "integer",
+            "title": "Readings",
+            "default": 0
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "error_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "BackfillResultOut",
+        "description": "Ergebnis eines manuell angestoßenen myenergi-Historienabrufs."
       },
       "BalanceConfig": {
         "properties": {
@@ -3519,6 +3667,40 @@
         ],
         "title": "SourceStatusOut",
         "description": "Zustand einer Messquelle (Bridge, myenergi, …)."
+      },
+      "SystemEventOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "context": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "severity",
+          "code",
+          "message"
+        ],
+        "title": "SystemEventOut"
       },
       "SystemMode": {
         "type": "string",

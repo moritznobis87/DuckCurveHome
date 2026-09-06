@@ -146,3 +146,25 @@ async def test_importer_merges_with_existing_hours() -> None:
 def test_unknown_format_is_rejected() -> None:
     with pytest.raises(ValueError):
         parse_dump(b"a,b\n1,2\n", {"x": EntityRule(key="pv_power_kw", entity="x")})
+
+
+def test_influx_csv_minute_means() -> None:
+    lines = ["name,tags,time,mean"]
+    for i in range(120):
+        ts = int((T0 + timedelta(minutes=i)).timestamp())
+        lines.append(f"W,entity_id=myenergi_hub_14117600_power_generation,{ts},3000")
+        lines.append(f"W,entity_id=myenergi_hub_14117600_power_grid,{ts},-1500")
+    dump = parse_dump("\n".join(lines).encode(), RULES)
+    assert dump.kind == "statistics" and not dump.unmapped
+    assert "sensor.myenergi_hub_14117600_power_generation" in dump.entities
+    hours = compute_hours(dump, HemsConfig())
+    assert len(hours) == 2 and hours[0][0].minutes == 60
+    assert hours[0][0].pv_kwh == pytest.approx(3.0) and hours[0][0].export_kwh == pytest.approx(1.5)
+
+    # Nanosekunden-Zeitstempel (Influx-Standard) werden erkannt
+    ns = [
+        "name,tags,time,mean",
+        f"W,entity_id=myenergi_hub_14117600_power_generation,{int(T0.timestamp()) * 10**9},1000",
+    ]
+    d2 = parse_dump("\n".join(ns).encode(), RULES)
+    assert T0 in d2.minutes["pv_power_kw"]

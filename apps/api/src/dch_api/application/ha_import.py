@@ -146,14 +146,14 @@ def parse_dump(payload: bytes, rules: dict[str, EntityRule], kind: Kind = "auto"
     reader = csv.DictReader(io.StringIO(text))
     header = [h.strip().lower() for h in (reader.fieldnames or [])]
     if kind == "auto":
-        if "start_ts" in header and "mean" in header:
+        if ("start_ts" in header or "time" in header) and "mean" in header:
             kind = "statistics"
         elif "last_updated_ts" in header and "state" in header:
             kind = "states"
         else:
             raise ValueError(
                 "Unbekanntes Format: erwartet Spalten statistic_id,unit_of_measurement,start_ts,mean,… "
-                "oder entity_id,state,last_updated_ts"
+                "(Recorder), name,tags,time,mean (InfluxDB) oder entity_id,state,last_updated_ts"
             )
     out = ParsedDump(kind=kind)
     if kind == "statistics":
@@ -163,6 +163,23 @@ def parse_dump(payload: bytes, rules: dict[str, EntityRule], kind: Kind = "auto"
     return out
 
 
+def _identify(row: dict[str, str | None], rules: dict[str, EntityRule]) -> tuple[str, str | None]:
+    """Entität und Einheit einer Zeile: Recorder (statistic_id, unit_of_measurement) oder InfluxDB
+    (name = Einheit, tags = "entity_id=…[,domain=…]")."""
+    ent = (row.get("statistic_id") or row.get("entity_id") or "").strip()
+    unit = (row.get("unit_of_measurement") or "").strip() or None
+    if not ent and row.get("tags") is not None:
+        tags = dict(
+            part.split("=", 1) for part in str(row.get("tags") or "").split(",") if "=" in part
+        )
+        obj = tags.get("entity_id", "").strip()
+        domain = tags.get("domain", "sensor").strip() or "sensor"
+        if obj:
+            ent = obj if obj in rules or "." in obj else f"{domain}.{obj}"
+        unit = unit or (str(row.get("name") or "").strip() or None)
+    return ent, unit
+
+
 def _parse_statistics(
     reader: csv.DictReader[str], rules: dict[str, EntityRule], out: ParsedDump
 ) -> None:
@@ -170,7 +187,7 @@ def _parse_statistics(
     units: dict[str, str | None] = {}
     for row in reader:
         row = {(k or "").strip().lower(): v for k, v in row.items()}
-        ent = (row.get("statistic_id") or row.get("entity_id") or "").strip()
+        ent, unit = _identify(row, rules)
         if not ent:
             continue
         out.rows += 1
@@ -178,12 +195,14 @@ def _parse_statistics(
         if ent not in rules:
             out.unmapped.add(ent)
             continue
-        ts = _f(row.get("start_ts"))
+        ts = _f(row.get("start_ts") if "start_ts" in row else row.get("time"))
+        if ts is not None and ts > 1e11:  # InfluxDB liefert ns (oder ms) statt Sekunden
+            ts = ts / 1e9 if ts > 1e14 else ts / 1e3
         mean = _f(row.get("mean"))
         if ts is None or mean is None:
             continue
         per_entity.setdefault(ent, []).append((ts, mean))
-        units.setdefault(ent, (row.get("unit_of_measurement") or "").strip() or None)
+        units.setdefault(ent, unit)
     for ent, pts in per_entity.items():
         rule = rules[ent]
         if rule.key not in out.minutes:
@@ -192,7 +211,7 @@ def _parse_statistics(
         # Intervallbreite aus dem typischen Abstand (300 s Kurzzeit, 3600 s Langzeit)
         deltas = sorted(b - a for (a, _), (b, _) in pairwise(pts) if b > a)
         step = deltas[len(deltas) // 2] if deltas else 3600.0
-        step_min = 5 if step <= 600 else 60
+        step_min = max(1, min(60, round(step / 60)))  # 1 min (Influx), 5 min oder 60 min (Recorder)
         target = out.minutes[rule.key]
         for ts, mean in pts:
             start = _minute(ts)

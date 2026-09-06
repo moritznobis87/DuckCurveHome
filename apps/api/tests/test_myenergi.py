@@ -233,6 +233,7 @@ async def test_backfill_only_fills_missing_minutes() -> None:
     n = await src.backfill(start, end)
     # Libbi (L) und Zappi (Z) werden abgefragt, Harvi nicht
     assert sorted(p for p, *_ in client.history_calls) == ["L", "Z"]
+    assert all(m <= 1440 for *_, m in client.history_calls)
     pv = [r for r in got if r.key == "pv_power_kw"]
     bat = [r for r in got if r.key == "battery_power_kw"]
     assert [r.observed_at.minute for r in pv] == [0, 2]  # 8:01 übersprungen
@@ -240,3 +241,20 @@ async def test_backfill_only_fills_missing_minutes() -> None:
     ev = [r for r in got if r.key == "ev_power_kw"]
     assert len(ev) == 3 and all(r.value == 0.0 for r in ev)  # Zappi-Zeilen ohne h1d/h1b = 0 kW
     assert n == len(got) == 8 and recomputed == [(start, end)]
+
+
+@pytest.mark.asyncio
+async def test_backfill_is_chunked_per_utc_day() -> None:
+    client = FakeClient()
+
+    async def on_readings(items: list[RawReading]) -> None:
+        pass
+
+    src = MyenergiSource(client, on_readings)
+    start = datetime(2026, 9, 4, 20, 0, tzinfo=UTC)
+    end = datetime(2026, 9, 6, 8, 30, tzinfo=UTC)
+    await src.backfill(start, end)
+    libbi_calls = [c for c in client.history_calls if c[0] == "L"]
+    assert [c[2].day for c in libbi_calls] == [4, 5, 6]
+    assert libbi_calls[0][2].hour == 20 and libbi_calls[1][3] == 1440
+    assert "Historie" in src.status_out()["detail_de"] and src.last_backfill_at is not None

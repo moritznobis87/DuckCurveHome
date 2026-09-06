@@ -21,6 +21,7 @@ from dch_api.errors import DchError
 from dch_api.infrastructure.history import HistoryStore
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
+    BackfillResultOut,
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
@@ -28,6 +29,7 @@ from dch_api.schemas import (
     LiveStateOut,
     Period,
     PlanOut,
+    SystemEventOut,
     SystemStatusOut,
 )
 from dch_api.settings import Settings
@@ -181,6 +183,12 @@ class DemoRunner:
         self, payload: bytes, kind: str, dry_run: bool, extra_map: dict[str, dict[str, Any]] | None
     ) -> ImportResult:
         raise DchError("not_supported", "Import nur im Live-Modus.", 400)
+
+    async def myenergi_backfill(self, hours: int) -> BackfillResultOut:
+        raise DchError("not_supported", "myenergi nur im Live-Modus.", 400)
+
+    async def recent_events(self, limit: int) -> list[SystemEventOut]:
+        return []
 
     async def forecast_evaluation(self) -> ForecastEvaluationOut:
         now = self.now

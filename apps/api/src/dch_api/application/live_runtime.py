@@ -28,6 +28,7 @@ from dch_api.infrastructure.history import SERIES
 from dch_api.infrastructure.live_state import LiveState
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
+    BackfillResultOut,
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
@@ -36,6 +37,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     SourceStatusOut,
+    SystemEventOut,
     SystemStatusOut,
 )
 from dch_api.settings import Settings
@@ -462,6 +464,34 @@ class LiveRuntime:
         result = await importer.run(payload, cast(Kind, kind), dry_run)
         log.info("ha import", **result.model_dump(exclude={"entities", "unmapped"}, mode="json"))
         return result
+
+    async def myenergi_backfill(self, hours: int) -> BackfillResultOut:
+        if self.myenergi is None:
+            raise DchError(
+                "config", "myenergi ist nicht konfiguriert (DCH_MYENERGI_SERIAL/_API_KEY).", 400
+            )
+        now = self.now
+        start = now - timedelta(hours=max(1, min(hours, 24 * 14)))
+        end = now - timedelta(minutes=2)
+        try:
+            n = await self.myenergi.backfill(start, end)
+        except Exception as exc:
+            self.myenergi.last_backfill_error = repr(exc)[:200]
+            return BackfillResultOut(ok=False, start=start, end=end, error_de=repr(exc)[:300])
+        return BackfillResultOut(ok=True, readings=n, start=start, end=end)
+
+    async def recent_events(self, limit: int) -> list[SystemEventOut]:
+        rows = await self.repos.recent_events(limit)
+        return [
+            SystemEventOut(
+                at=r.at if r.at.tzinfo else r.at.replace(tzinfo=UTC),
+                severity=r.severity,
+                code=r.code,
+                message=r.message,
+                context=dict(r.context or {}),
+            )
+            for r in rows
+        ]
 
     async def _accounting_loop(self) -> None:
         while True:
