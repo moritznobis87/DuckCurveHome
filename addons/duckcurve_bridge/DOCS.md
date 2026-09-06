@@ -218,10 +218,23 @@ keine Doppel. Die MQTT-Verbindung selbst verbindet sich ebenfalls mit Backoff ne
 
 ## Wächter-Automation (empfohlen, Rückfallebene E1)
 
-Legt die Wärmepumpen-Kontakte in den sicheren Zustand, wenn die Bridge 30 Minuten keinen Heartbeat setzt:
+Gibt Duck Curve Home die Wärmepumpe frei und reißt danach die Verbindung ab, bliebe der Kontakt stehen, wo
+er zuletzt gesetzt wurde. Drei Ebenen fangen das unabhängig voneinander ab:
+
+| Ebene | Wer | Greift |
+|---|---|---|
+| E0 | Auto-Off-Timer im schaltenden Gerät | 30 min nach dem letzten Kommando |
+| E1 | Diese Automation in Home Assistant | wenn die Bridge 30 min keinen Heartbeat mehr setzt |
+| E2 | Die Bridge selbst (`offline_release_s`) | wenn die Cloud einige Minuten nicht erreichbar ist |
+
+E1 ist die Ebene, die auch dann noch greift, wenn die Bridge selbst steht und E2 deshalb nicht mehr
+ausführen kann. Einstellungen → Automatisierungen & Szenen → „Automatisierung erstellen“ → ⋮ →
+„In YAML bearbeiten“, dann diesen Block einfügen (`switch.warmepumpe` ist der K1-Kontakt im Haus in
+Geilenkirchen; in anderen Installationen den eigenen eintragen, K2 ergänzen, sofern verdrahtet):
 
 ```yaml
 alias: Duck Curve Home – Wächter
+description: Setzt die Wärmepumpen-Freigabe zurück, wenn die Bridge nicht mehr meldet.
 trigger:
   - platform: time_pattern
     minutes: "/5"
@@ -232,16 +245,25 @@ condition:
 action:
   - service: switch.turn_off
     target:
-      entity_id:
-        - switch.wp_pv_freigabe
-        - switch.wp_evu_sperre
+      entity_id: switch.warmepumpe
   - service: persistent_notification.create
     data:
-      message: Duck Curve Home Bridge meldet sich nicht – Wärmepumpen-Kontakte zurückgesetzt.
+      title: Duck Curve Home
+      message: Die Bridge meldet sich seit 30 Minuten nicht – die Wärmepumpen-Freigabe wurde zurückgesetzt.
+mode: single
 ```
 
-Zusätzlich sollten die Shelly-Relais der Wärmepumpen-Kontakte einen **Auto-Off-Timer** im Gerät haben
-(K1 30 min, K2 20 min) – Rückfallebene E0, unabhängig von jeder Software.
+Der Wächter schaltet nur **ab**, nie ein: der sichere Zustand ist „keine Freigabe“, die Wärmepumpe läuft
+dann in ihrer eigenen Regelung weiter. Die Bedingung ist so gebaut, dass ein fehlender oder unlesbarer
+Heartbeat als „gerade eben“ gilt und die Automation nicht auslöst, solange die Entität noch gar nicht
+existiert.
+
+Zusätzlich sollte das Gerät, das den Kontakt schaltet, einen **Auto-Off-Timer** haben (30 min) –
+Rückfallebene E0, unabhängig von jeder Software. Duck Curve Home sendet Freigaben ohnehin nur mit
+begrenzter Laufzeit; der Timer im Gerät ist die Absicherung für den Fall, dass gar nichts mehr kommt.
+
+Erst wenn E0 und E1 stehen, lohnt es sich, in der API `DCH_HEAT_PUMP_ACTUATION_ENABLED=true` zu setzen –
+bis dahin liest Duck Curve Home den Kontakt nur mit.
 
 ## Build-Hinweis
 
