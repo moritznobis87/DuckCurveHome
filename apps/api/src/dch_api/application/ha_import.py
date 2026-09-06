@@ -141,34 +141,71 @@ def _minute(ts: float) -> datetime:
     return datetime.fromtimestamp(ts, UTC).replace(second=0, microsecond=0)
 
 
+HEADER_MARKERS = ("time", "start_ts", "last_updated_ts")
+
+
+def _is_header(line: str) -> bool:
+    cols = [c.strip().strip('"').lower() for c in line.split(",")]
+    return any(c in HEADER_MARKERS for c in cols)
+
+
+def _sections(text: str) -> list[str]:
+    """Aneinandergehängte Exporte (mehrere Kopfzeilen) in einzelne CSV-Texte zerlegen."""
+    out: list[list[str]] = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        if _is_header(line):
+            out.append([line])
+        elif out:
+            out[-1].append(line)
+    return ["\n".join(sec) for sec in out]
+
+
 def parse_dump(payload: bytes, rules: dict[str, EntityRule], kind: Kind = "auto") -> ParsedDump:
     text = _open_text(payload)
-    reader = csv.DictReader(io.StringIO(text))
-    header = [h.strip().lower() for h in (reader.fieldnames or [])]
-    if kind == "auto":
-        if ("start_ts" in header or "time" in header) and "mean" in header:
-            kind = "statistics"
-        elif "last_updated_ts" in header and "state" in header:
-            kind = "states"
+    sections = _sections(text) or [text]
+    out: ParsedDump | None = None
+    for sec in sections:
+        reader = csv.DictReader(io.StringIO(sec))
+        header = [h.strip().lower() for h in (reader.fieldnames or [])]
+        sec_kind: Kind = kind
+        if sec_kind == "auto":
+            if ("start_ts" in header or "time" in header) and (
+                "mean" in header or any(h.endswith(".mean") for h in header)
+            ):
+                sec_kind = "statistics"
+            elif "last_updated_ts" in header and "state" in header:
+                sec_kind = "states"
+            else:
+                raise ValueError(
+                    "Unbekanntes Format: erwartet Spalten statistic_id,unit_of_measurement,start_ts,"
+                    "mean,… (Recorder), name,tags,time,mean (InfluxDB), time,<Einheit>.mean,entity_id "
+                    "(Chronograf) oder entity_id,state,last_updated_ts"
+                )
+        if out is None:
+            out = ParsedDump(kind=sec_kind)
+        elif out.kind != sec_kind:
+            out.kind = "mixed"
+        if sec_kind == "statistics":
+            _parse_statistics(reader, rules, out)
         else:
-            raise ValueError(
-                "Unbekanntes Format: erwartet Spalten statistic_id,unit_of_measurement,start_ts,mean,… "
-                "(Recorder), name,tags,time,mean (InfluxDB) oder entity_id,state,last_updated_ts"
-            )
-    out = ParsedDump(kind=kind)
-    if kind == "statistics":
-        _parse_statistics(reader, rules, out)
-    else:
-        _parse_states(reader, rules, out)
+            _parse_states(reader, rules, out)
+    assert out is not None
     return out
 
 
-def _identify(row: dict[str, str | None], rules: dict[str, EntityRule]) -> tuple[str, str | None]:
-    """Entität und Einheit einer Zeile: Recorder (statistic_id, unit_of_measurement) oder InfluxDB
-    (name = Einheit, tags = "entity_id=…[,domain=…]")."""
-    ent = (row.get("statistic_id") or row.get("entity_id") or "").strip()
+def _identify(
+    row: dict[str, str | None], rules: dict[str, EntityRule]
+) -> tuple[str, str | None, str | None]:
+    """Entität, Einheit und Mittelwert einer Zeile in drei Formaten:
+    Recorder (statistic_id, unit_of_measurement, mean), InfluxDB-HTTP (name = Einheit, tags =
+    "entity_id=…", mean) und Chronograf (Spalten "<Einheit>.mean", entity_id, entity_id_2, …; leere
+    Zellen als "-")."""
+    ent = (row.get("statistic_id") or "").strip()
     unit = (row.get("unit_of_measurement") or "").strip() or None
-    if not ent and row.get("tags") is not None:
+    mean = row.get("mean")
+    if not ent and row.get("tags") is not None:  # InfluxDB-HTTP
         tags = dict(
             part.split("=", 1) for part in str(row.get("tags") or "").split(",") if "=" in part
         )
@@ -177,7 +214,62 @@ def _identify(row: dict[str, str | None], rules: dict[str, EntityRule]) -> tuple
         if obj:
             ent = obj if obj in rules or "." in obj else f"{domain}.{obj}"
         unit = unit or (str(row.get("name") or "").strip() or None)
-    return ent, unit
+    elif not ent:
+        obj = ""
+        for col, val in row.items():
+            if col.startswith("entity_id") and val and val.strip() not in ("-", ""):
+                obj = val.strip()
+                break
+        if obj:
+            ent = obj if obj in rules or "." in obj else f"sensor.{obj}"
+        if mean is None or mean.strip() in ("-", ""):  # Chronograf: "<Einheit>.mean"
+            mean = None
+            for col, val in row.items():
+                if col.endswith(".mean") and val and val.strip() not in ("-", ""):
+                    unit = unit or col[: -len(".mean")].strip() or None
+                    mean = val
+                    break
+    return ent, unit, mean
+
+
+def _ts(row: dict[str, str | None]) -> float | None:
+    """Zeitstempel: start_ts/time als Sekunden, ns/ms (InfluxDB) oder ISO-8601 mit Zeitzone (Chronograf)."""
+    raw = row.get("start_ts") if "start_ts" in row else row.get("time")
+    if raw is None:
+        return None
+    ts = _f(raw)
+    if ts is not None:
+        if ts > 1e11:
+            ts = ts / 1e9 if ts > 1e14 else ts / 1e3
+        return ts
+    try:
+        d = datetime.fromisoformat(raw.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=UTC)
+    return d.timestamp()
+
+
+# Fortschreiben eines Werts über Lücken: HA schreibt nur bei Änderung, deshalb fehlen Zeilen, solange ein
+# Wert steht. Ein Wert nahe 0 (PV nachts, Wallbox/Batterie ohne Fluss) gilt lange weiter; andere Werte nur
+# kurz, damit ein Ausfall der Quelle keine erfundene Leistung erzeugt.
+IDLE_KW = 0.05
+IDLE_FILL = timedelta(hours=24)
+FILL_LIMIT: dict[str, timedelta] = {
+    "electricity_price_ct_kwh": timedelta(hours=3),
+    "outdoor_temp_c": timedelta(hours=3),
+    "battery_soc": timedelta(hours=6),
+}
+DEFAULT_FILL = timedelta(hours=1)
+
+
+def _fill_span(key: str, value: float, step: timedelta) -> timedelta:
+    if key in FILL_LIMIT:
+        return max(step, FILL_LIMIT[key])
+    if key.endswith("_kw") and abs(value) < IDLE_KW:
+        return max(step, IDLE_FILL)
+    return max(step, DEFAULT_FILL)
 
 
 def _parse_statistics(
@@ -187,7 +279,7 @@ def _parse_statistics(
     units: dict[str, str | None] = {}
     for row in reader:
         row = {(k or "").strip().lower(): v for k, v in row.items()}
-        ent, unit = _identify(row, rules)
+        ent, unit, mean_raw = _identify(row, rules)
         if not ent:
             continue
         out.rows += 1
@@ -195,10 +287,8 @@ def _parse_statistics(
         if ent not in rules:
             out.unmapped.add(ent)
             continue
-        ts = _f(row.get("start_ts") if "start_ts" in row else row.get("time"))
-        if ts is not None and ts > 1e11:  # InfluxDB liefert ns (oder ms) statt Sekunden
-            ts = ts / 1e9 if ts > 1e14 else ts / 1e3
-        mean = _f(row.get("mean"))
+        ts = _ts(row)
+        mean = _f(mean_raw)
         if ts is None or mean is None:
             continue
         per_entity.setdefault(ent, []).append((ts, mean))
@@ -208,18 +298,26 @@ def _parse_statistics(
         if rule.key not in out.minutes:
             continue
         pts.sort()
-        # Intervallbreite aus dem typischen Abstand (300 s Kurzzeit, 3600 s Langzeit)
+        # Intervallbreite aus dem typischen Abstand (60 s Influx, 300/900 s, 3600 s Recorder)
         deltas = sorted(b - a for (a, _), (b, _) in pairwise(pts) if b > a)
-        step = deltas[len(deltas) // 2] if deltas else 3600.0
-        step_min = max(1, min(60, round(step / 60)))  # 1 min (Influx), 5 min oder 60 min (Recorder)
+        step_s = deltas[len(deltas) // 2] if deltas else 3600.0
+        step = timedelta(minutes=max(1, min(60, round(step_s / 60))))
         target = out.minutes[rule.key]
-        for ts, mean in pts:
+        for (ts, mean), nxt in zip(pts, [*pts[1:], (None, None)], strict=False):
             start = _minute(ts)
             value = round(rule.convert(mean, units.get(ent)), 4)
-            for i in range(step_min):
-                target[start + timedelta(minutes=i)] = value
+            # letzter Punkt: nur die Intervallbreite, kein Fortschreiben über das Datenende hinaus
+            stop = (
+                min(start + _fill_span(rule.key, value, step), _minute(nxt[0]))
+                if nxt[0] is not None
+                else start + step
+            )
+            m = start
+            while m < stop:
+                target[m] = value
+                m += timedelta(minutes=1)
             out.span(start)
-            out.span(start + timedelta(minutes=step_min - 1))
+            out.span(stop - timedelta(minutes=1))
 
 
 def _parse_states(
@@ -334,6 +432,17 @@ def compute_hours(dump: ParsedDump, hems: HemsConfig) -> list[tuple[HourlyEnergy
     return out
 
 
+# Eine gespeicherte Stunde mit mindestens so vielen direkt gemessenen Minuten bleibt: Import ersetzt nur,
+# was nicht über Bridge, myenergi oder Tibber selbst erfasst wurde.
+DIRECT_MINUTES_KEEP = 30
+
+
+def _replaces(imported: HourlyEnergy, existing: HourlyEnergy | None) -> bool:
+    if existing is None:
+        return imported.minutes > 0
+    return existing.minutes < DIRECT_MINUTES_KEEP and imported.minutes > existing.minutes
+
+
 class ImportResult(BaseModel):
     kind: str
     rows: int
@@ -388,12 +497,7 @@ class HaImporter:
                     hours[0][0].hour_start, hours[-1][0].hour_start + timedelta(hours=1)
                 )
             }
-            to_write = [
-                (h, t)
-                for h, t in hours
-                if h.minutes
-                > existing.get(h.hour_start, HourlyEnergy(hour_start=h.hour_start)).minutes
-            ]
+            to_write = [(h, t) for h, t in hours if _replaces(h, existing.get(h.hour_start))]
             kept = len(hours) - len(to_write)
             for i in range(0, len(to_write), 500):
                 chunk = to_write[i : i + 500]

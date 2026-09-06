@@ -112,7 +112,7 @@ def test_apply_prices_fills_only_missing_minutes() -> None:
 async def test_importer_merges_with_existing_hours() -> None:
     written: list[HourlyEnergy] = []
     readings: list[RawReading] = []
-    existing_full = HourlyEnergy(hour_start=T0, minutes=60, pv_kwh=9.9)
+    existing_full = HourlyEnergy(hour_start=T0, minutes=40, pv_kwh=9.9)  # direkt gemessen → bleibt
     existing_sparse = HourlyEnergy(hour_start=T0 + timedelta(hours=1), minutes=3)
 
     async def read_hours(s: datetime, e: datetime) -> list[tuple[HourlyEnergy, float | None]]:
@@ -168,3 +168,81 @@ def test_influx_csv_minute_means() -> None:
     ]
     d2 = parse_dump("\n".join(ns).encode(), RULES)
     assert T0 in d2.minutes["pv_power_kw"]
+
+
+def test_chronograf_csv_with_price_and_night_fill() -> None:
+    """Chronograf-Export: ISO-Zeit mit Zeitzone, Spalten je Einheit, „-“ für leer; PV fehlt nachts (0 W bleibt)."""
+    rules = load_entity_rules(
+        ROOT / "config" / "entities.home.yaml",
+        {
+            "sensor.electricity_price_waldstrasse_48": {
+                "key": "electricity_price_ct_kwh",
+                "unit": "EUR/kWh",
+            }
+        },
+    )
+    lines = ['"time","EUR/kWh.mean","W.mean","entity_id","entity_id_2"']
+    # 15-min-Raster ab 20:00 lokal (+02:00): Netz jede Viertelstunde, PV nur bis 20:15 (danach 0 W → keine Zeilen)
+    for i in range(8):
+        hh, mm = 20 + i // 4, (i % 4) * 15
+        t = f"2026-08-10T{hh:02d}:{mm:02d}:00.000+02:00"
+        lines.append(f'"{t}","-","500","myenergi_hub_14117600_power_grid","-"')
+        if i < 2:
+            lines.append(
+                f'"{t}","-","{1200 if i == 0 else 0}","myenergi_hub_14117600_power_generation","-"'
+            )
+    # nächster PV-Punkt erst am Morgen: dazwischen bleibt 0 W stehen
+    lines.append(
+        '"2026-08-11T06:30:00.000+02:00","-","800","myenergi_hub_14117600_power_generation","-"'
+    )
+    lines.append(
+        '"2026-08-10T20:00:00.000+02:00","0.25","-","-","electricity_price_waldstrasse_48"'
+    )
+    lines.append(
+        '"2026-08-10T21:00:00.000+02:00","0.30","-","-","electricity_price_waldstrasse_48"'
+    )
+    dump = parse_dump("\n".join(lines).encode(), rules)
+    assert dump.kind == "statistics" and not dump.unmapped
+    t_utc = datetime(2026, 8, 10, 18, 0, tzinfo=UTC)
+    pv = dump.minutes["pv_power_kw"]
+    assert pv[t_utc] == pytest.approx(1.2)
+    assert pv[t_utc + timedelta(minutes=14)] == pytest.approx(1.2)
+    assert pv[t_utc + timedelta(minutes=15)] == 0.0
+    assert (
+        pv[t_utc + timedelta(hours=1, minutes=59)] == 0.0
+    )  # 0 W wird über Stunden fortgeschrieben
+    assert dump.minutes["electricity_price_ct_kwh"][t_utc + timedelta(minutes=59)] == pytest.approx(
+        25.0
+    )
+    assert dump.minutes["electricity_price_ct_kwh"][t_utc + timedelta(hours=1)] == pytest.approx(
+        30.0
+    )
+    hours = compute_hours(dump, HemsConfig())
+    assert len(hours) == 2 and all(h.minutes == 60 for h, _ in hours)
+    h0, _ = hours[0]
+    assert h0.import_kwh == pytest.approx(0.5) and h0.price_missing_minutes == 0
+    assert h0.import_cost_eur == pytest.approx(0.125)
+
+
+def test_nonzero_value_is_not_carried_far() -> None:
+    lines = ["statistic_id,unit_of_measurement,start_ts,mean,min,max,state,sum"]
+    ts = T0.timestamp()
+    lines.append(f"sensor.myenergi_hub_14117600_power_generation,W,{ts},3000,,,,")
+    lines.append(f"sensor.myenergi_hub_14117600_power_generation,W,{ts + 4 * 3600},3000,,,,")
+    dump = parse_dump("\n".join(lines).encode(), RULES)
+    pv = dump.minutes["pv_power_kw"]
+    assert (T0 + timedelta(minutes=59)) in pv and (
+        T0 + timedelta(hours=1)
+    ) not in pv  # 3 kW höchstens 1 h
+
+
+def test_concatenated_sections_merge_into_one_dump() -> None:
+    a = _stats_csv(3600, 1).decode()
+    b = (
+        '"time","entity_id","°C.mean"\n'
+        '"2026-08-20T12:30:00.000+02:00","geilenkirchen_air_base_temperatur","18.5"\n'
+    )
+    dump = parse_dump((a + "\n" + b).encode(), RULES)
+    assert dump.kind == "statistics"
+    hours = compute_hours(dump, HemsConfig())
+    assert len(hours) == 1 and hours[0][1] == 18.5  # Außentemperatur aus dem zweiten Abschnitt
