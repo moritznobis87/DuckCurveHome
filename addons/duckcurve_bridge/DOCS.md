@@ -148,6 +148,26 @@ stehen. Alle Geräte teilen sich eine einzige Broker-Verbindung.
 
 **Hinweis:** Bei Gen 2/3 bleibt die Shelly-Cloud neben MQTT nutzbar (anders als bei Gen 1, siehe Schritt 3).
 
+### 4c. Wenn nichts ankommt: das Mosquitto-Protokoll lesen
+
+Einstellungen → Add-ons → Mosquitto broker → Reiter **Protokoll**. Es sagt für jedes Gerät genau, woran es
+liegt – Raten erübrigt sich:
+
+| Zeile im Protokoll | Bedeutung | Abhilfe |
+|---|---|---|
+| `New client connected … as <gerät> … u'<benutzer>'` | alles in Ordnung | – |
+| `received null username or password` | Der Shelly schickt kein Passwort. Ein gespeichertes Passwort zeigt Shelly nie wieder an, ein leeres und ein gefülltes Feld sehen deshalb gleich aus | Passwort im Gerät neu eintippen, speichern, **Gerät neu starten** |
+| `disconnected: not authorised` | Benutzer oder Passwort falsch (Groß-/Kleinschreibung zählt) | Benutzer muss ein echter HA-Benutzer sein; nach dem Anlegen das Mosquitto-Add-on neu starten |
+| Das Gerät kommt gar nicht vor | Es versucht es nicht einmal | „Enable“ im Gerät gesetzt? Server-IP und Port 1883 richtig? Nach dem Speichern neu gestartet? Gerät im Netz? |
+| `disconnected: session taken over` | Zwei Verbindungen mit derselben Kennung – beim Wiederverbinden normal, dauerhaft ein Zeichen für doppelt vergebene Client-IDs | – |
+
+Verbindungen von `172.30.32.x`, die sofort wieder schließen, sind die Erreichbarkeitsprüfung des
+Supervisors und harmlos.
+
+Zum Port: `1883` ist Klartext, `8883` TLS. Solange „SSL connectivity“ im Gerät **nicht** angehakt ist, ist
+1883 richtig. Bei falschem Port käme keine Verbindung zustande und das Gerät meldete „disconnected“ – ein
+Gerät, das „connected“ zeigt, hat Adresse, Port und Zugangsdaten also bereits bestätigt.
+
 ### 5. MQTT-Empfang testen
 
 Im Add-on-Protokoll erscheint `mqtt connected` und alle 5 Minuten `mqtt status` mit `messages`, `rejected`,
