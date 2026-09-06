@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import structlog
 
+from dch_bridge.entities_source import load_entity_map
 from dch_bridge.home_assistant.rest_client import HaRestClient
 from dch_bridge.home_assistant.ws_client import EntityState, HaWsClient
 from dch_bridge.mapping import ActuatorMap, EntityMap, normalize
@@ -26,7 +27,7 @@ from dch_bridge.sources.shelly_mqtt import (
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.4.1"
+VERSION = "0.5.0"
 log = structlog.get_logger("bridge")
 
 
@@ -338,7 +339,14 @@ def run() -> None:
     if not settings.api_token:
         log.error("DCH_BRIDGE_API_TOKEN fehlt – Bridge startet nicht")
         sys.exit(2)
-    entity_map = EntityMap.load(settings.entities_file)
+    try:
+        entity_map, origin = load_entity_map(
+            settings.entities_file, settings.entities_url, settings.entities_cache
+        )
+    except Exception as exc:
+        log.error("Entity-Mapping nicht ladbar – Bridge startet nicht", error=str(exc)[:300])
+        sys.exit(2)
+    log.info("entity map loaded", origin=origin, digest=entity_map.digest())
     has_device = bool(entity_map.mqtt) or bool(settings.shelly_topic_prefix)
     if settings.source_mode != "home_assistant" and not (settings.mqtt_host and has_device):
         log.error(

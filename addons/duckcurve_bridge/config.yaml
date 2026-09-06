@@ -1,5 +1,5 @@
 name: Duck Curve Home Bridge
-version: "0.4.1"
+version: "0.5.0"
 slug: duckcurve_bridge
 description: Verbindet das Haus ausgehend mit Duck Curve Home (Railway). Shellys direkt über MQTT, übrige Entitäten und Aktoren über Home Assistant.
 url: https://github.com/moritznobis87/DuckCurveHome
@@ -16,6 +16,7 @@ options:
   api_token: ""
   bridge_id: "haus"
   entities_file: "/config/duckcurve/entities.yaml"
+  entities_url: "https://raw.githubusercontent.com/moritznobis87/DuckCurveHome/main/config/entities.home.yaml"
   heartbeat_entity: "sensor.duckcurve_bridge_heartbeat"
   offline_release_s: 180
   log_level: "INFO"
@@ -35,6 +36,7 @@ schema:
   api_token: password
   bridge_id: str
   entities_file: str
+  entities_url: str?
   heartbeat_entity: str
   offline_release_s: int(60,3600)
   log_level: list(DEBUG|INFO|WARNING|ERROR)

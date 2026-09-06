@@ -4,6 +4,7 @@ export DCH_BRIDGE_API_WS_URL="$(bashio::config 'api_ws_url')"
 export DCH_BRIDGE_API_TOKEN="$(bashio::config 'api_token')"
 export DCH_BRIDGE_BRIDGE_ID="$(bashio::config 'bridge_id')"
 export DCH_BRIDGE_ENTITIES_FILE="$(bashio::config 'entities_file')"
+export DCH_BRIDGE_ENTITIES_URL="$(bashio::config 'entities_url' '')"
 export DCH_BRIDGE_HEARTBEAT_ENTITY="$(bashio::config 'heartbeat_entity')"
 export DCH_BRIDGE_OFFLINE_RELEASE_S="$(bashio::config 'offline_release_s')"
 export DCH_BRIDGE_LOG_LEVEL="$(bashio::config 'log_level')"
@@ -32,10 +33,14 @@ if [ -z "${DCH_BRIDGE_API_WS_URL}" ]; then
   sleep 60
   exit 1
 fi
+# Das Mapping kommt aus dem Repository; die Datei in /config übersteuert es, wenn sie existiert.
 if ! bashio::fs.file_exists "${DCH_BRIDGE_ENTITIES_FILE}"; then
-  bashio::log.fatal "Entity-Mapping ${DCH_BRIDGE_ENTITIES_FILE} nicht gefunden. Datei anlegen (Vorlage: config/entities.home.yaml im Repository)."
-  sleep 60
-  exit 1
+  if [ -z "${DCH_BRIDGE_ENTITIES_URL}" ]; then
+    bashio::log.fatal "Weder ${DCH_BRIDGE_ENTITIES_FILE} noch die Option 'entities_url' vorhanden – die Bridge weiß nicht, welche Entitäten sie lesen soll."
+    sleep 60
+    exit 1
+  fi
+  bashio::log.info "Kein ${DCH_BRIDGE_ENTITIES_FILE} – das Mapping wird aus dem Repository geladen."
 fi
 # Geräte kommen entweder aus dem Abschnitt `mqtt:` des Mappings oder ersatzweise aus den Add-on-Optionen.
 if [ "${DCH_BRIDGE_SOURCE_MODE}" != "home_assistant" ] \

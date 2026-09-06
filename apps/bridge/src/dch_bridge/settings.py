@@ -22,7 +22,9 @@ class BridgeSettings(BaseSettings):
     api_ws_url: str = "wss://api-home.duckcurve.de/bridge/ws"
     api_token: str = ""
     # Mapping
-    entities_file: Path = Path("/config/duckcurve/entities.yaml")
+    entities_file: Path = Path("/config/duckcurve/entities.yaml")  # übersteuert das Repository
+    entities_url: str = "https://raw.githubusercontent.com/moritznobis87/DuckCurveHome/main/config/entities.home.yaml"
+    entities_cache: Path = Path("/data/entities.cache.yaml")
     # Verhalten
     telemetry_interval_s: float = 1.0
     state_refresh_s: float = (
