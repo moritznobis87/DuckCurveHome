@@ -37,11 +37,15 @@ erscheint nicht in Protokollen.
 
 ### 3. Shelly 3EM konfigurieren
 
-Weboberfläche des Shelly → Internet & Security → Advanced – Developer settings → „Enable action execution
-via MQTT“: Server `<IP von Home Assistant>:1883`, Benutzer und Passwort aus Schritt 2, „Retain“ aus,
-„Clean Session“ an, Update-Periode 30 s (der Shelly sendet Leistungen zusätzlich bei Änderung). Die Geräte-ID
-steht in der Topic-Vorschau (`shellies/shellyem3-<ID>`) und auf dem Gerät; im Haus Geilenkirchen
-`485519DB56D2` (HA-Gerät `shellyem3_485519db56d2`).
+**Zuerst das richtige Gerät bestimmen.** Im Haus stehen zwei Shelly 3EM: der Wärmepumpenzähler
+(HA-Gerät `heatpump_measurement`, aus dem der Template-Sensor `sensor.heatpump_total_power` gebildet wird) und
+ein zweiter (`shellyem3_485519db56d2`). Gebraucht wird die Geräte-ID des **Wärmepumpen**-Zählers. Sie steht in
+dessen Weboberfläche unter Settings → Device Info („Device ID“ bzw. Hostname `shellyem3-<ID>`) und in der
+Topic-Vorschau der MQTT-Einstellungen. Die ID des zweiten Geräts (`485519DB56D2`) ist hier **nicht** gemeint.
+
+Weboberfläche des Wärmepumpen-Shelly → Internet & Security → Advanced – Developer settings → „Enable action
+execution via MQTT“: Server `<IP von Home Assistant>:1883`, Benutzer und Passwort aus Schritt 2, „Retain“ aus,
+„Clean Session“ an, Update-Periode 30 s (der Shelly sendet Leistungen zusätzlich bei Änderung).
 
 **Hinweis:** Beim Shelly 3EM Gen1 schaltet aktiviertes MQTT die Shelly-Cloud ab. Die Shelly-App funktioniert
 dann nur noch im lokalen Netz.

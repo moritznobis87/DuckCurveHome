@@ -5,6 +5,13 @@ Beantwortete Punkte wandern mit Datum und Antwort nach unten in „Erledigt“.
 
 > Stand 06.09.: myenergi wird jetzt direkt aus der Cloud gelesen (`DCH_MYENERGI_SERIAL`/`_API_KEY`); die HA-Sensoren für PV, Netz, Batterie und Wallbox sind nur noch Rückfall. Q3 (Batterievorzeichen) ist damit fest im Code: interner Libbi-CT negiert, Entladen positiv.
 
+> **Q9 (offen, 06.09.): Geräte-ID des Wärmepumpen-Shelly-3EM für MQTT.** Es gibt zwei 3EM im Haus:
+> `heatpump_measurement` (Wärmepumpe, Grundlage von `sensor.heatpump_total_power`) und
+> `shellyem3_485519db56d2`. Für `shelly_device_id` im Bridge-Add-on wird die ID des **ersten** gebraucht;
+> sie lässt sich aus den umbenannten HA-Entitäten nicht ableiten und muss aus der Weboberfläche des Geräts
+> abgelesen werden (Settings → Device Info, Hostname `shellyem3-<ID>`). Bis dahin bleibt `source_mode` auf
+> `home_assistant` bzw. `compare`.
+
 ## Offen
 
 | Nr. | Frage | Hängt davon ab | Annahme bis zur Antwort |
