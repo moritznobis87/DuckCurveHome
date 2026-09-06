@@ -73,7 +73,7 @@ Optionen des Add-ons:
 | `mqtt_username` / `mqtt_password` | Zugangsdaten aus Schritt 2 |
 | `shelly_device_id` | Kennung des Geräts, z. B. `485519DB56D2` oder `shellyem3-485519DB56D2`. Wer lieber den ganzen Pfad einträgt, nimmt `mqtt_topic_prefix`, z. B. `shellies/shellyem3-485519DB56D2`. Beide Schreibweisen führen zum selben Ergebnis |
 | `mqtt_publish_interval_s` | Takt, in dem die Bridge aus den zuletzt empfangenen Werten einen konsistenten Datensatz an die API schickt (Standard 10 s) |
-| `mqtt_stale_s` | Funkstille, nach der ein Gerät als nicht verfügbar gilt (Standard 120 s) |
+| `mqtt_stale_s` | Funkstille, nach der ein Gerät als nicht verfügbar gilt (Standard 90 s) |
 | `mqtt_qos` | Dienstgüte der Abonnements, Standard 1 (mindestens einmal) |
 | `api_ws_url` / `api_token` | Railway-Endpunkt und Bridge-Token (unverändert) |
 | `log_level` | `INFO` genügt; `DEBUG` zeigt verworfene Nachrichten |

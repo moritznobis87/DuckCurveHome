@@ -15,6 +15,8 @@ export DCH_BRIDGE_MQTT_PASSWORD="$(bashio::config 'mqtt_password' '')"
 export DCH_BRIDGE_SHELLY_DEVICE_ID="$(bashio::config 'shelly_device_id' '')"
 export DCH_BRIDGE_MQTT_TOPIC_PREFIX="$(bashio::config 'mqtt_topic_prefix' '')"
 export DCH_BRIDGE_MQTT_PUBLISH_INTERVAL_S="$(bashio::config 'mqtt_publish_interval_s')"
+export DCH_BRIDGE_MQTT_STALE_S="$(bashio::config 'mqtt_stale_s')"
+export DCH_BRIDGE_MQTT_QOS="$(bashio::config 'mqtt_qos')"
 export DCH_BRIDGE_HA_WS_URL="ws://supervisor/core/websocket"
 export DCH_BRIDGE_HA_REST_URL="http://supervisor/core/api"
 export DCH_BRIDGE_OUTBOX_PATH="/data/outbox.sqlite"
@@ -34,8 +36,12 @@ if ! bashio::fs.file_exists "${DCH_BRIDGE_ENTITIES_FILE}"; then
   sleep 60
   exit 1
 fi
-if [ "${DCH_BRIDGE_SOURCE_MODE}" != "home_assistant" ] && [ -z "${DCH_BRIDGE_SHELLY_DEVICE_ID}" ] && [ -z "${DCH_BRIDGE_MQTT_TOPIC_PREFIX}" ]; then
-  bashio::log.warning "Modus ${DCH_BRIDGE_SOURCE_MODE}, aber weder shelly_device_id noch mqtt_topic_prefix gesetzt – die Bridge fällt auf home_assistant zurück."
+# Geräte kommen entweder aus dem Abschnitt `mqtt:` des Mappings oder ersatzweise aus den Add-on-Optionen.
+if [ "${DCH_BRIDGE_SOURCE_MODE}" != "home_assistant" ] \
+  && [ -z "${DCH_BRIDGE_SHELLY_DEVICE_ID}" ] \
+  && [ -z "${DCH_BRIDGE_MQTT_TOPIC_PREFIX}" ] \
+  && ! grep -qE '^mqtt:[[:space:]]*$' "${DCH_BRIDGE_ENTITIES_FILE}"; then
+  bashio::log.warning "Modus ${DCH_BRIDGE_SOURCE_MODE}, aber kein MQTT-Gerät: weder ein Abschnitt 'mqtt:' in ${DCH_BRIDGE_ENTITIES_FILE} noch shelly_device_id/mqtt_topic_prefix in den Optionen. Die Bridge fällt auf home_assistant zurück."
 fi
 # Zugangsdaten und Tokens erscheinen nicht im Protokoll
 bashio::log.info "Duck Curve Home Bridge startet (Ziel: ${DCH_BRIDGE_API_WS_URL}, Mapping: ${DCH_BRIDGE_ENTITIES_FILE}, Quelle: ${DCH_BRIDGE_SOURCE_MODE}, MQTT: ${DCH_BRIDGE_MQTT_HOST}:${DCH_BRIDGE_MQTT_PORT})"
