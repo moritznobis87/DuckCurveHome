@@ -8,11 +8,13 @@ from typing import Any
 import pytest
 
 from dch_api.application.myenergi_source import MyenergiSource, price_readings_for_gaps
+from dch_api.infrastructure.live_state import LiveState
 from dch_api.integrations.myenergi.mapping import (
     history_minutes,
     readings_from_history,
     readings_from_status,
 )
+from hems_core.domain import HemsConfig, Quality
 from hems_core.planning import PricePoint
 from hems_core.protocol import RawReading
 
@@ -281,3 +283,31 @@ def test_price_readings_only_for_missing_minutes() -> None:
     assert len(out) == 69  # 70 Minuten, eine schon vorhanden
     assert out[0].observed_at == start.replace(second=30) and out[0].value == 25.5
     assert out[-1].value == 30.0 and out[-1].source == "tibber:history"
+
+
+def test_unavailable_from_other_source_does_not_hide_good_value() -> None:
+    live = LiveState(HemsConfig())
+    good = RawReading(key="pv_power_kw", value=6.9, observed_at=NOW, source="myenergi:generation")
+    live.apply([good])
+    ha_gone = RawReading(
+        key="pv_power_kw",
+        value=None,
+        observed_at=NOW + timedelta(seconds=5),
+        quality=Quality.UNAVAILABLE,
+        source="ha:sensor.myenergi_hub_14117600_power_generation",
+    )
+    live.apply([ha_gone])
+    assert live.readings["pv_power_kw"].value == 6.9
+    # dieselbe Quelle darf ihren eigenen Wert auf „nicht verfügbar“ setzen
+    live.apply(
+        [
+            RawReading(
+                key="pv_power_kw",
+                value=None,
+                observed_at=NOW + timedelta(seconds=9),
+                quality=Quality.UNAVAILABLE,
+                source="myenergi:generation",
+            )
+        ]
+    )
+    assert live.readings["pv_power_kw"].value is None

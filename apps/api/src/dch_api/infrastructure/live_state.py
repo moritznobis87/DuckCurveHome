@@ -26,6 +26,15 @@ class LiveState:
     def apply(self, items: list[RawReading]) -> None:
         for r in items:
             cur = self.readings.get(r.key)
+            # Eine leere Meldung (unavailable/unknown) einer anderen Quelle verdrängt keinen gültigen Wert:
+            # liefert myenergi PV direkt, darf der ausgefallene HA-Sensor ihn nicht auf „–“ setzen.
+            if (
+                r.value is None
+                and cur is not None
+                and cur.value is not None
+                and (cur.source or "") != (r.source or "")
+            ):
+                continue
             if cur is None or r.observed_at >= cur.observed_at:
                 self.readings[r.key] = r
         self.updated_at = datetime.now(UTC)
