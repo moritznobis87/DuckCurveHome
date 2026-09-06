@@ -17,6 +17,7 @@ from dch_api.application.config_loader import AppConfig
 from dch_api.application.energy_accounting import ENERGY_KEYS, EnergyAccounting
 from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
 from dch_api.application.forecast_service import ForecastService
+from dch_api.application.myenergi_source import MyenergiSource, StatusClient
 from dch_api.application.plan_service import build_plan
 from dch_api.infrastructure.bridge_hub import BridgeHub
 from dch_api.infrastructure.db.repositories import SqlRepositories
@@ -31,6 +32,7 @@ from dch_api.schemas import (
     LiveStateOut,
     Period,
     PlanOut,
+    SourceStatusOut,
     SystemStatusOut,
 )
 from dch_api.settings import Settings
@@ -65,6 +67,7 @@ class LiveRuntime:
         repos: SqlRepositories,
         hub: BridgeHub,
         forecasts: ForecastService,
+        myenergi: StatusClient | None = None,
     ) -> None:
         self.settings = settings
         self.config = config
@@ -101,6 +104,17 @@ class LiveRuntime:
         )
         hub.on_telemetry = self.on_telemetry
         hub.on_event = self.on_bridge_event
+        self.myenergi: MyenergiSource | None = None
+        if myenergi is not None:
+            self.myenergi = MyenergiSource(
+                myenergi,
+                self.on_source_readings,
+                poll_s=settings.myenergi_poll_s,
+                backfill_hours=settings.myenergi_backfill_hours,
+                minute_rows=repos.minute_series,
+                on_backfilled=self.accounting.recompute,
+                on_state_change=self._on_source_state,
+            )
 
     @property
     def now(self) -> datetime:
@@ -116,6 +130,35 @@ class LiveRuntime:
         if loop_time - self._last_publish >= 1.0:
             self._last_publish = loop_time
             self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+
+    async def on_source_readings(self, items: list[RawReading]) -> None:
+        """Messwerte einer serverseitigen Quelle (myenergi): speichern, Live-Zustand, Stream."""
+        await self.repos.add_readings(items)
+        self.live.apply(items)
+        loop_time = asyncio.get_running_loop().time()
+        if loop_time - self._last_publish >= 1.0:
+            self._last_publish = loop_time
+            self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+
+    async def _on_source_state(self, online: bool, error: str) -> None:
+        await self.repos.add_event(
+            "info" if online else "warning",
+            "myenergi.connection",
+            "myenergi erreichbar" if online else f"myenergi nicht erreichbar: {error}",
+        )
+        self.broker.publish("system", {"sources": self._sources()})
+
+    def _sources(self) -> list[SourceStatusOut]:
+        out = [
+            SourceStatusOut(
+                name="bridge",
+                online=self.hub.online,
+                detail_de="Home-Assistant-Bridge" if self.hub.online else "Bridge offline",
+            )
+        ]
+        if self.myenergi is not None:
+            out.append(SourceStatusOut(**self.myenergi.status_out()))
+        return out
 
     async def on_bridge_event(self, frame: EventFrame | DeviceHealthFrame) -> None:
         if isinstance(frame, EventFrame):
@@ -298,9 +341,20 @@ class LiveRuntime:
                 bridge_online=self.hub.online,
                 sse_clients=self.broker.client_count,
                 version=VERSION,
-                connection_label_de="live" if self.hub.online else "Bridge offline",
+                connection_label_de=self._connection_label(),
+                sources=self._sources(),
             ),
         )
+
+    def _connection_label(self) -> str:
+        me = self.myenergi is not None and self.myenergi.online
+        if self.hub.online and me:
+            return "live"
+        if self.hub.online:
+            return "live" if self.myenergi is None else "live · myenergi offline"
+        if me:
+            return "live · Bridge offline"
+        return "Bridge offline"
 
     async def history_rows(
         self, start: datetime, end: datetime
@@ -417,9 +471,13 @@ class LiveRuntime:
                 asyncio.create_task(self._housekeeping_loop(), name="housekeeping"),
                 asyncio.create_task(self._accounting_loop(), name="accounting"),
             ]
+            if self.myenergi is not None:
+                self.myenergi.start()
         log.info("live runtime started", actuation=self.settings.actuation_enabled)
 
     async def stop(self) -> None:
+        if self.myenergi is not None:
+            await self.myenergi.stop()
         for t in self._tasks:
             t.cancel()
         for t in self._tasks:

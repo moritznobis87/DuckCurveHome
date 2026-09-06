@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     config_file: str = ""  # YAML mit site/pv_system/hems (config/hems.example.yaml)
     tibber_token: str = ""
     tibber_home_id: str = ""
+    # myenergi-Cloud direkt (ohne Home Assistant): Hub-Seriennummer + API-Key aus der myenergi-App
+    myenergi_serial: str = ""
+    myenergi_api_key: str = ""
+    myenergi_poll_s: float = 30.0
+    myenergi_backfill_hours: int = 48  # Minutenhistorie beim Start nachladen; 0 = aus
     weather_refresh_min: int = 60
     price_refresh_min: int = 30
     raw_retention_days: int = 14

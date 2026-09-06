@@ -28,6 +28,9 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_API_TOKEN` | – | Bearer-Token, das das Web-BFF mitschickt; leer = keine Prüfung |
 | `DCH_CONFIG_FILE` | – | YAML mit `site`, `pv_system`, `hems` (siehe `config/hems.example.yaml`) |
 | `DCH_TIBBER_TOKEN` / `DCH_TIBBER_HOME_ID` | – | Tibber-Preise; ohne Token pausieren Preisregeln |
+| `DCH_MYENERGI_SERIAL` / `DCH_MYENERGI_API_KEY` | – | myenergi-Cloud direkt: Hub-Seriennummer und API-Key (App → Konto → Erweitert). Liefert PV, Netz, Batterie, SOC, Wallbox ohne Home Assistant |
+| `DCH_MYENERGI_POLL_S` | `30` | Abfragetakt der myenergi-Cloud |
+| `DCH_MYENERGI_BACKFILL_HOURS` | `48` | Minutenhistorie beim Start nachladen (Lücken füllen); danach stündlich die letzten 3 h; `0` = aus |
 | `DCH_WEATHER_REFRESH_MIN` | `60` | Open-Meteo-Abruf; `0` deaktiviert Wetter |
 | `DCH_PRICE_REFRESH_MIN` | `30` | Tibber-Abruf (13–15 Uhr immer halbstündlich) |
 | `DCH_RAW_RETENTION_DAYS` | `14` | Aufbewahrung der Rohwerte |

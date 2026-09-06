@@ -67,7 +67,12 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
         if settings.tibber_token
         else None,
     )
-    runtime = LiveRuntime(settings, cfg, repos, hub, forecasts)
+    myenergi = None
+    if settings.myenergi_serial and settings.myenergi_api_key:
+        from dch_api.integrations.myenergi import MyenergiClient
+
+        myenergi = MyenergiClient(settings.myenergi_serial, settings.myenergi_api_key)
+    runtime = LiveRuntime(settings, cfg, repos, hub, forecasts, myenergi=myenergi)
     app.state.engine = engine
     app.state.bridge_hub = hub
     app.state.runner = runtime

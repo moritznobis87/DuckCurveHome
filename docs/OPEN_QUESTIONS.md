@@ -3,6 +3,8 @@
 Lebende Liste. Jede Frage nennt, was davon abhängt und mit welcher Annahme das System bis zur Antwort läuft.
 Beantwortete Punkte wandern mit Datum und Antwort nach unten in „Erledigt“.
 
+> Stand 06.09.: myenergi wird jetzt direkt aus der Cloud gelesen (`DCH_MYENERGI_SERIAL`/`_API_KEY`); die HA-Sensoren für PV, Netz, Batterie und Wallbox sind nur noch Rückfall. Q3 (Batterievorzeichen) ist damit fest im Code: interner Libbi-CT negiert, Entladen positiv.
+
 ## Offen
 
 | Nr. | Frage | Hängt davon ab | Annahme bis zur Antwort |

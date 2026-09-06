@@ -1630,6 +1630,23 @@ export interface components {
             active: boolean;
         };
         /**
+         * SourceStatusOut
+         * @description Zustand einer Messquelle (Bridge, myenergi, …).
+         */
+        SourceStatusOut: {
+            /** Name */
+            name: string;
+            /** Online */
+            online: boolean;
+            /** Last Ok */
+            last_ok?: string | null;
+            /**
+             * Detail De
+             * @default
+             */
+            detail_de: string;
+        };
+        /**
          * SystemMode
          * @enum {string}
          */
@@ -1653,6 +1670,8 @@ export interface components {
             version: string;
             /** Connection Label De */
             connection_label_de: string;
+            /** Sources */
+            sources?: components["schemas"]["SourceStatusOut"][];
         };
         /**
          * TariffConfig

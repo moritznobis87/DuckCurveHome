@@ -48,6 +48,15 @@ class PlanOut(BaseModel):
     next_cheap_window: PriceWindowOut | None
 
 
+class SourceStatusOut(BaseModel):
+    """Zustand einer Messquelle (Bridge, myenergi, …)."""
+
+    name: str
+    online: bool
+    last_ok: datetime | None = None
+    detail_de: str = ""
+
+
 class SystemStatusOut(BaseModel):
     mode: str
     server_time: datetime
@@ -56,6 +65,7 @@ class SystemStatusOut(BaseModel):
     sse_clients: int
     version: str
     connection_label_de: str
+    sources: list[SourceStatusOut] = Field(default_factory=list)
 
 
 class LiveStateOut(BaseModel):

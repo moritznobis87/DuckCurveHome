@@ -30,6 +30,8 @@ Home Assistant OS (Haus)                          Railway
    | `DCH_BRIDGE_TOKENS` | `<zufälliges Token, z. B. openssl rand -hex 32>` (einzelnes Token; mehrere kommagetrennt oder als JSON-Liste) |
    | `DCH_API_TOKEN` | zweites zufälliges Token (nur Web ↔ API) |
    | `DCH_TIBBER_TOKEN` | Tibber-Developer-Token (optional; ohne Token keine Preisregeln) |
+   | `DCH_MYENERGI_SERIAL` | Seriennummer des myenergi-Hubs (myenergi-App → Konto → Erweitert → API) |
+   | `DCH_MYENERGI_API_KEY` | API-Key aus derselben Ansicht. Mit beiden Werten liest die API PV, Netz, Batterie und Wallbox direkt aus der myenergi-Cloud; Home Assistant liefert dann nur noch Wärmepumpe, Puffer und Schalter |
    | `DCH_CONFIG_FILE` | optional Pfad zu einer YAML wie `config/hems.example.yaml` (im Image mitgeliefert) |
    | `DCH_ACTUATION_ENABLED` | `false` in Phase 2 |
    | `DCH_MIGRATE_ON_START` | `true` (Standard): Alembic-Migration läuft beim Containerstart, bevor die API hochfährt |

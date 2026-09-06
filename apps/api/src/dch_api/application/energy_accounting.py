@@ -169,6 +169,18 @@ class EnergyAccounting:
         self._last_refresh_hour = current
         return len(hours)
 
+    async def recompute(self, start: datetime, end: datetime) -> int:
+        """Stunden eines Zeitraums neu berechnen (nach nachgetragenen Messwerten)."""
+        if self.store is None:
+            return 0
+        _read, write, _last = self.store
+        begin = start.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+        stop = end.astimezone(UTC).replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        hours = await self._compute_hours(begin, stop)
+        if hours:
+            await write([h for h, _ in hours], {h.hour_start: t for h, t in hours})
+        return len(hours)
+
     async def hours(
         self, start: datetime, end: datetime
     ) -> list[tuple[HourlyEnergy, float | None]]:

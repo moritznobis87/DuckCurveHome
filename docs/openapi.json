@@ -3308,6 +3308,42 @@
         ],
         "title": "SourceOut"
       },
+      "SourceStatusOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "online": {
+            "type": "boolean",
+            "title": "Online"
+          },
+          "last_ok": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ok"
+          },
+          "detail_de": {
+            "type": "string",
+            "title": "Detail De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "online"
+        ],
+        "title": "SourceStatusOut",
+        "description": "Zustand einer Messquelle (Bridge, myenergi, …)."
+      },
       "SystemMode": {
         "type": "string",
         "enum": [
@@ -3347,6 +3383,13 @@
           "connection_label_de": {
             "type": "string",
             "title": "Connection Label De"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatusOut"
+            },
+            "type": "array",
+            "title": "Sources"
           }
         },
         "type": "object",
