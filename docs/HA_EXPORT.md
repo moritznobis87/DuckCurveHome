@@ -88,19 +88,19 @@ SHOW TAG VALUES FROM "W" WITH KEY = "entity_id"
 ```
 
 Export als CSV über die HTTP-API (von einem PC im Heimnetz; `<ha-ip>`, Datenbankname und Zugang wie im Add-on
-konfiguriert, meist `homeassistant`). Minutenmittel, ein Aufruf je Einheit:
+konfiguriert; `SHOW DATABASES` zeigt den Namen, im Haus Geilenkirchen `energy`). Minutenmittel, ein Aufruf je Einheit:
 
 ```bash
 curl -sG "http://<ha-ip>:8086/query" -u "<user>:<passwort>" -H "Accept: application/csv" \
-  --data-urlencode "db=homeassistant" --data-urlencode "epoch=s" \
+  --data-urlencode "db=energy" --data-urlencode "epoch=s" \
   --data-urlencode "q=SELECT mean(\"value\") FROM \"W\" WHERE (\"entity_id\"='myenergi_hub_14117600_power_generation' OR \"entity_id\"='myenergi_hub_14117600_power_grid' OR \"entity_id\"='myenergi_libbi_26244255_power_ct_internal_load' OR \"entity_id\"='myenergi_wallbox_power_ct_internal_load' OR \"entity_id\"='heatpump_total_power') AND time > now() - 400d GROUP BY time(1m), \"entity_id\" fill(none)" \
   > influx_W.csv
 curl -sG "http://<ha-ip>:8086/query" -u "<user>:<passwort>" -H "Accept: application/csv" \
-  --data-urlencode "db=homeassistant" --data-urlencode "epoch=s" \
+  --data-urlencode "db=energy" --data-urlencode "epoch=s" \
   --data-urlencode "q=SELECT mean(\"value\") FROM \"%\" WHERE \"entity_id\"='myenergi_libbi_26244255_soc' AND time > now() - 400d GROUP BY time(1m), \"entity_id\" fill(none)" \
   > influx_soc.csv
 curl -sG "http://<ha-ip>:8086/query" -u "<user>:<passwort>" -H "Accept: application/csv" \
-  --data-urlencode "db=homeassistant" --data-urlencode "epoch=s" \
+  --data-urlencode "db=energy" --data-urlencode "epoch=s" \
   --data-urlencode "q=SELECT mean(\"value\") FROM \"°C\" WHERE \"entity_id\"='geilenkirchen_air_base_temperatur' AND time > now() - 400d GROUP BY time(5m), \"entity_id\" fill(none)" \
   > influx_temp.csv
 ```
