@@ -50,7 +50,12 @@ class Settings(BaseSettings):
     # Regelung
     tick_s: int = 10
     history_retention_hours: int = 72
-    actuation_enabled: bool = False  # Phase 2: nur lesen; Phase 3 schaltet frei
+    # Zwei getrennte Schalter, weil zwei verschiedene Risiken: eine Lichterkette anzutippen ist harmlos,
+    # den Wärmepumpen-Kontakt selbsttätig zu stellen nicht.
+    actuation_enabled: bool = True  # vom Bedienenden ausgelöstes Schalten (Lichter, Kaffeemaschine)
+    heat_pump_actuation_enabled: bool = (
+        False  # selbsttätiges Stellen von K1 aus der Regelentscheidung
+    )
     plan_refresh_min: int = 15
 
     # Live-Modus

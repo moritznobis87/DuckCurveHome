@@ -54,7 +54,10 @@ actuators:
   # (Relais des Shelly 3EM), switch.temperaturen_heizung (Relais des Shelly Plus 1 mit Temperaturfühlern).
   # Erst eintragen, wenn die Verdrahtung zum ELCO-Regler bestätigt ist. Ein Shelly, der die WP-Versorgung
   # schaltet, darf hier NIE stehen. Bis dahin bleibt die Steuerung reine Beobachtung.
-  # - { key: hp_release_contact, entity: switch.<K1>, label: WP PV-Freigabe, safety_class: heat_pump, safe_state: false }
+  # K1 „PV-Überschuss“: bestätigt am 06.09.2026 – switch.warmepumpe fordert den Überschussbetrieb an und
+  # schaltet die Wärmepumpe NICHT stromlos. Sicherer Zustand ist „aus“ (WP läuft dann in eigener Regelung).
+  - { key: hp_release_contact, entity: switch.warmepumpe, label: WP PV-Freigabe, safety_class: heat_pump, safe_state: false }
+  # K2 „EVU-Sperre“: der Abschaltkontakt an der Wärmepumpe ist noch nicht belegt – nichts zu mappen.
   # - { key: hp_block_contact,   entity: switch.<K2>, label: WP Sperre,      safety_class: heat_pump, safe_state: false }
 
 # ---------------------------------------------------------------------------
@@ -87,6 +90,17 @@ mqtt:
       "temperature:101": buffer_temp_mid_top_c
       "temperature:102": buffer_temp_mid_bottom_c
       "temperature:104": buffer_temp_bottom_c
+
+  # --- Licht Innenhof: Shelly Plus Plug S (Generation 2) ---
+  # Dieser Plug ist als einziger nicht in Home Assistant eingerichtet; sein Zustand käme sonst nirgendwoher.
+  # Über MQTT wird er gelesen – geschaltet wird über Home Assistant, sobald er dort eingerichtet ist
+  # (bis dahin ohnehin ohne Belang: die Steuerung ist serverseitig deaktiviert, actuation_enabled=false).
+  - prefix: "Lichterkette_Innenhof"
+    generation: 2
+    label: "Licht Innenhof"
+    components:
+      "switch:0":
+        output: "actuator:courtyard_light"
 
   # --- Bekannte Shelly-Plus-Steckdosen am Broker (Stand 06.09.2026) ---
   # Sie senden bereits, sind hier aber noch nicht eingebunden: Schalten läuft weiter über Home Assistant

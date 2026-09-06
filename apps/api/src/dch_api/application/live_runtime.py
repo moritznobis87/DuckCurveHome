@@ -289,7 +289,7 @@ class LiveRuntime:
                 text=decision.explanation_de,
             )
             self.broker.publish("decision", decision.model_dump(mode="json"))
-            if self.settings.actuation_enabled:
+            if self.settings.heat_pump_actuation_enabled:
                 await self._apply_contacts(decision)
         return decision
 
@@ -640,7 +640,11 @@ class LiveRuntime:
             ]
             if self.myenergi is not None:
                 self.myenergi.start()
-        log.info("live runtime started", actuation=self.settings.actuation_enabled)
+        log.info(
+            "live runtime started",
+            actuation=self.settings.actuation_enabled,
+            heat_pump_actuation=self.settings.heat_pump_actuation_enabled,
+        )
 
     async def stop(self) -> None:
         if self.myenergi is not None:

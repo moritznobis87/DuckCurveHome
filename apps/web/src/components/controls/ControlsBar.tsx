@@ -9,8 +9,8 @@ import { Icon } from "@/components/ui/Icon";
 const TILES: Array<{ key: string; label: string; icon: string; durationMin?: number }> = [
   { key: "coffee_machine", label: "Kaffeemaschine", icon: "coffee", durationMin: 120 },
   { key: "terrace_light", label: "Licht Terrasse", icon: "bulb" },
-  { key: "courtyard_light", label: "Licht Innenhof", icon: "lights" },
-  { key: "garden_fence_light", label: "Licht Gartenzaun", icon: "fence" },
+  { key: "courtyard_light", label: "Licht Innenhof", icon: "bulb" },
+  { key: "garden_fence_light", label: "Licht Gartenzaun", icon: "bulb" },
 ];
 
 type TileStatus = "idle" | "pending" | "error";

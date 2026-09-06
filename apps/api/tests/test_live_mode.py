@@ -91,21 +91,45 @@ def test_bridge_telemetry_reaches_live_state(live_client: TestClient) -> None:
         assert state["snapshot"]["house_power_kw"]["value"] == 3.5
         assert state["snapshot"]["actuators"]["coffee_machine"]["value"] == 1.0
         assert state["system"]["mode"] == "live" and state["system"]["bridge_online"] is True
-        # Steuerung ist in Phase 2 deaktiviert
+        # Gewöhnliche Aktoren werden geschaltet: das Kommando geht an die Bridge und wartet auf
+        # ihre Bestätigung. Die Testbridge antwortet nicht, das Ergebnis ist also „keine Antwort“ –
+        # entscheidend ist, dass es nicht mehr an einer Phasensperre scheitert.
         r = live_client.post(
             "/api/v1/control/actuators/coffee_machine",
             json={"state": False},
             headers={"authorization": "Bearer api-geheim"},
         )
-        assert (
-            r.status_code == 200
-            and r.json()["ok"] is False
-            and "deaktiviert" in r.json()["message_de"]
-        )
+        assert r.status_code == 200 and r.json()["ok"] is False
+        assert "deaktiviert" not in r.json()["message_de"]
     hist = live_client.get(
         "/api/v1/history", params={"range": "24h"}, headers={"authorization": "Bearer api-geheim"}
     ).json()
     assert any(row["pv_power_kw"] == 5.5 for row in hist["rows"])
+
+
+def test_actuation_gates_are_independent(tmp_path: Path) -> None:
+    """Lichter schalten und der Wärmepumpen-Kontakt hängen an zwei getrennten Schaltern."""
+    settings = Settings(
+        mode="live",
+        database_url=f"sqlite+aiosqlite:///{tmp_path / 'gate.sqlite'}",
+        db_create_all=True,
+        bridge_tokens=["geheim"],
+        api_token="api-geheim",
+        weather_refresh_min=0,
+        role="api",
+        actuation_enabled=False,
+    )
+    # Vorgabe: bedienen ja, selbsttätig an der Wärmepumpe nein
+    assert Settings().actuation_enabled is True
+    assert Settings().heat_pump_actuation_enabled is False
+    with TestClient(create_app(settings)) as c:
+        r = c.post(
+            "/api/v1/control/actuators/terrace_light",
+            json={"state": True},
+            headers={"authorization": "Bearer api-geheim"},
+        )
+        assert r.status_code == 200 and r.json()["ok"] is False
+        assert "deaktiviert" in r.json()["message_de"]
 
 
 def test_duplicate_telemetry_is_idempotent(live_client: TestClient) -> None:

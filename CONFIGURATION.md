@@ -20,7 +20,8 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_DEMO_START` | jetzt | Startzeitpunkt der Simulation (ISO 8601) |
 | `DCH_DEMO_WARMUP_HOURS` | `30` | Vorlauf beim Start, damit Chart und Historie gefüllt sind |
 | `DCH_DEMO_AUTOSTART` | `true` | `false` in Tests |
-| `DCH_ACTUATION_ENABLED` | `false` | Schaltbefehle an die Bridge senden (Phase 3+) |
+| `DCH_ACTUATION_ENABLED` | `true` | Vom Bedienenden ausgelöstes Schalten (Lichter, Kaffeemaschine) |
+| `DCH_HEAT_PUMP_ACTUATION_ENABLED` | `false` | Selbsttätiges Stellen des WP-Kontakts K1 aus der Regelentscheidung. Erst einschalten, wenn die Wächter-Automation in Home Assistant steht und der Kontakt im Gerät einen Auto-Off-Timer hat |
 | `DCH_PLAN_REFRESH_MIN` | `15` | Neuplanung |
 | `DATABASE_URL` | – | Live-Modus: `postgresql://…` (Railway) oder `sqlite+aiosqlite:///…` (Entwicklung) |
 | `DCH_DB_CREATE_ALL` | `false` | Schema ohne Alembic anlegen (nur SQLite/Tests) |

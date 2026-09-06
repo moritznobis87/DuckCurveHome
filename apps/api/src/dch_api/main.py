@@ -94,7 +94,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         else:
             await _start_demo(app, settings)
         log.info(
-            "started", mode=settings.mode, role=settings.role, actuation=settings.actuation_enabled
+            "started",
+            mode=settings.mode,
+            role=settings.role,
+            actuation=settings.actuation_enabled,
+            heat_pump_actuation=settings.heat_pump_actuation_enabled,
         )
         try:
             yield
