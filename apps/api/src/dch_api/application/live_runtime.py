@@ -152,7 +152,7 @@ class LiveRuntime:
 
     async def _after_backfill(self, start: datetime, end: datetime) -> None:
         """Nachgetragene Minuten brauchen einen Preis: Tibber-Historie für Lücken, dann Stunden neu rechnen."""
-        prices = self.forecasts.prices
+        prices = self.forecasts.price_provider
         if prices is None or not hasattr(prices, "fetch_range"):
             self.price_fill_note = "kein Tibber-Token konfiguriert"
         else:
@@ -477,7 +477,7 @@ class LiveRuntime:
                 f"Kein Entity-Mapping gefunden ({self.settings.import_entities_file}).",
                 500,
             )
-        prices = self.forecasts.prices
+        prices = self.forecasts.price_provider
         importer = HaImporter(
             self.hems,
             rules,

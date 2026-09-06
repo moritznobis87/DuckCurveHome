@@ -248,6 +248,9 @@ async def test_backfill_only_fills_missing_minutes() -> None:
     grid = [r for r in got if r.key == "grid_power_kw"]
     assert len(grid) == 3 and all(r.value == 0.0 for r in grid)  # keine imp/exp-Felder = 0 kW
     assert n == len(got) == 11 and recomputed == [(start, end)]
+    # zweiter Lauf ohne neue Werte ruft den Nachlauf trotzdem (Preise, Stunden)
+    await src.backfill(start, end)
+    assert len(recomputed) == 2
 
 
 @pytest.mark.asyncio

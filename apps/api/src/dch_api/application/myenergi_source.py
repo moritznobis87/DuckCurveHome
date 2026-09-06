@@ -161,8 +161,10 @@ class MyenergiSource:
             for i in range(0, len(readings), 2000):
                 await self.on_readings(readings[i : i + 2000])
             self.backfilled_readings += len(readings)
-            if self.on_backfilled:
-                await self.on_backfilled(start, end)
+        if self.on_backfilled and merged:
+            await self.on_backfilled(
+                start, end
+            )  # auch ohne neue Werte: Preise ergänzen, Stunden neu rechnen
         self.last_backfill_at = datetime.now(UTC)
         self.last_backfill_error = None
         log.info("myenergi backfill", minutes=len(merged), readings=len(readings))
