@@ -63,5 +63,6 @@ curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '
 ## Weitere Dokumente
 
 - [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) – offene Rückfragen mit Annahmen
+- [docs/RECHNUNGSPRUEFUNG.md](docs/RECHNUNGSPRUEFUNG.md) – Tibber-Rechnungen prüfen (`/haus/rechnungen`, Endpunkt für Automatisierungen)
 - [docs/HA_EXPORT.md](docs/HA_EXPORT.md) – Historie aus dem Home-Assistant-Recorder exportieren und importieren (`POST /api/v1/import/ha`)
 - [docs/design/prognose-und-waermemodell.md](docs/design/prognose-und-waermemodell.md) – Prognoselernen, Einspeiseprognose, Wärmemodell

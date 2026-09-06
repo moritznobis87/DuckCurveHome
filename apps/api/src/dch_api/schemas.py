@@ -71,6 +71,7 @@ class InvoiceSummaryOut(BaseModel):
     issued_on: date
     kwh: float
     measured_kwh: float | None = None
+    measured_avg_ct_kwh: float | None = None  # aus unseren Tibber-Preisen und dem eigenen Bezug
     coverage: float | None = None
     total_net_eur: float
     total_gross_eur: float

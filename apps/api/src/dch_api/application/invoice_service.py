@@ -86,6 +86,7 @@ class InvoiceService:
                 issued_on=r.invoice.issued_on,
                 kwh=r.invoice.kwh,
                 measured_kwh=r.measured.import_kwh if r.measured else None,
+                measured_avg_ct_kwh=r.measured.avg_price_ct_kwh if r.measured else None,
                 coverage=r.measured.coverage if r.measured else None,
                 total_net_eur=r.invoice.total_net_eur,
                 total_gross_eur=r.invoice.total_gross_eur,

@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, EnergySummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan } from "./models";
+import type { ActuatorCommandOut, EnergySummary, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -56,5 +56,13 @@ export const api = {
     }),
   setHeatPumpMode: (cmd: HeatPumpModeIn) =>
     request<OperatingMode>("/control/heat-pump/mode", { method: "POST", body: JSON.stringify(cmd) }),
+  tibberInvoices: () => request<InvoiceSummary[]>("/import/tibber-invoices"),
+  tibberInvoice: (number: string) => request<InvoiceReport>(`/import/tibber-invoices/${encodeURIComponent(number)}`),
+  checkTibberInvoice: (file: File) =>
+    request<InvoiceReport>(`/import/tibber-invoice?file_name=${encodeURIComponent(file.name)}`, {
+      method: "POST",
+      body: file,
+      headers: { "content-type": "application/pdf" },
+    }),
   demo: (body: Record<string, unknown>) => request<Record<string, unknown>>("/demo", { method: "POST", body: JSON.stringify(body) }),
 };

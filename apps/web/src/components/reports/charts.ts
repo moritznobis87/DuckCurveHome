@@ -245,3 +245,89 @@ export function batteryDayChart(rows: Array<Record<string, number | string | nul
     ],
   };
 }
+
+/** Abgerechnete Menge gegen die eigene Messung, je Abrechnungszeitraum. */
+export function invoiceVsMeasured(items: Array<{ label: string; invoice: number; measured: number | null }>): EChartsCoreOption {
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    textStyle: { fontFamily: MONO },
+    tooltip: { ...tooltip, trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v: unknown) => `${de1(Number(v))} kWh` },
+    legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8 },
+    grid: { left: 52, right: 12, top: 24, bottom: 52 },
+    xAxis: { type: "category", data: items.map((i) => i.label), axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, hideOverlap: true } },
+    yAxis: { type: "value", name: "kWh", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 3 },
+    series: [
+      { name: "Rechnung", type: "bar", data: items.map((i) => i.invoice), itemStyle: { color: C.grid, borderRadius: [2, 2, 0, 0] }, barGap: "10%" },
+      { name: "Eigene Messung", type: "bar", data: items.map((i) => i.measured), itemStyle: { color: C.mist, borderRadius: [2, 2, 0, 0] } },
+    ],
+  };
+}
+
+/** Rechnungsbetrag je Zeitraum, aufgeteilt in Arbeitspreis, Grundgebühr und Mehrwertsteuer. */
+export function invoiceCostStack(items: Array<{ label: string; energy: number; fees: number; vat: number }>): EChartsCoreOption {
+  const series: Array<[string, string, (i: (typeof items)[number]) => number]> = [
+    ["Arbeitspreis netto", C.pv, (i) => i.energy],
+    ["Grundgebühr netto", C.base, (i) => i.fees],
+    ["Mehrwertsteuer", C.export, (i) => i.vat],
+  ];
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    textStyle: { fontFamily: MONO },
+    tooltip: { ...tooltip, trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v: unknown) => `${de1(Number(v), 2)} €` },
+    legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8 },
+    grid: { left: 52, right: 12, top: 24, bottom: 52 },
+    xAxis: { type: "category", data: items.map((i) => i.label), axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, hideOverlap: true } },
+    yAxis: { type: "value", name: "€", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 3 },
+    series: series.map(([name, color, pick], i) => ({
+      name,
+      type: "bar",
+      stack: "eur",
+      data: items.map(pick),
+      itemStyle: { color, borderRadius: i === series.length - 1 ? [2, 2, 0, 0] : 0 },
+      barCategoryGap: "35%",
+    })),
+  };
+}
+
+/** Durchschnittspreis der Rechnung gegen den aus unseren Preisdaten errechneten Wert. */
+export function invoicePriceLine(items: Array<{ label: string; invoice: number; measured: number | null }>): EChartsCoreOption {
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    textStyle: { fontFamily: MONO },
+    tooltip: { ...tooltip, trigger: "axis", valueFormatter: (v: unknown) => (v == null ? "–" : `${de1(Number(v), 2)} ct/kWh`) },
+    legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8 },
+    grid: { left: 52, right: 12, top: 24, bottom: 52 },
+    xAxis: { type: "category", data: items.map((i) => i.label), axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, hideOverlap: true } },
+    yAxis: { type: "value", name: "ct/kWh", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 3, scale: true },
+    series: [
+      { name: "Rechnung (brutto)", type: "line", data: items.map((i) => i.invoice), showSymbol: true, symbolSize: 6, lineStyle: { color: C.pv, width: 2.5 }, itemStyle: { color: C.pv } },
+      { name: "Eigene Preisreihe", type: "line", data: items.map((i) => i.measured), showSymbol: true, symbolSize: 5, connectNulls: true, lineStyle: { color: C.mist, width: 1.5, type: [5, 4] }, itemStyle: { color: C.mist } },
+    ],
+  };
+}
+
+/** Preisbestandteile einer Rechnung als liegende Balken (ct/kWh). */
+export function invoicePositions(positions: Array<{ label: string; group: string; ct: number }>): EChartsCoreOption {
+  const color: Record<string, string> = { Stromeinkauf: C.pv, Netz: C.mist, "Steuern, Abgaben & Umlagen": C.base };
+  const rows = [...positions].reverse();
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    textStyle: { fontFamily: MONO },
+    tooltip: { ...tooltip, trigger: "item", formatter: (p: unknown) => { const q = p as { name: string; value: number; data: { group?: string } }; return `${q.name}<br/>${de1(q.value, 3)} ct/kWh<br/><span style="color:${C.text}">${q.data.group ?? ""}</span>`; } },
+    grid: { left: 168, right: 56, top: 8, bottom: 26 },
+    xAxis: { type: "value", name: "ct/kWh", nameLocation: "middle", nameGap: 20, nameTextStyle: { color: C.text, fontSize: 10 }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText },
+    yAxis: { type: "category", data: rows.map((r) => r.label), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, width: 160, overflow: "truncate" } },
+    series: [
+      {
+        type: "bar",
+        data: rows.map((r) => ({ value: r.ct, group: r.group, itemStyle: { color: color[r.group] ?? C.base, borderRadius: [0, 2, 2, 0] } })),
+        barWidth: "58%",
+        label: { show: true, position: "right", color: C.text, fontFamily: MONO, fontSize: 10, formatter: (p: unknown) => de1((p as { value: number }).value, 3) },
+      },
+    ],
+  };
+}

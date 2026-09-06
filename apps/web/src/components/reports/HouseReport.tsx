@@ -43,7 +43,7 @@ export function HouseReport() {
         <Stat label="Wallbox" value={de1(t?.ev_kwh)} unit="kWh" tone="mist" hint={share(t?.ev_kwh, t?.house_kwh)} />
         <Stat label="Haushalt (Rest)" value={de1(t?.base_kwh)} unit="kWh" tone="muted" hint={share(t?.base_kwh, t?.house_kwh)} />
         <Stat label="Autarkie" value={pct(t?.autarky)} tone="amber" hint={t ? `${de1(t.pv_direct_kwh + t.battery_to_house_kwh)} kWh ohne Netz` : undefined} />
-        <Stat label="Netzbezug" value={eur(t?.import_cost_eur)} tone="ember" hint={t ? `${de1(t.import_kwh)} kWh · Ø ${t.avg_import_price_ct != null ? de1(t.avg_import_price_ct, 1) : "–"} ct/kWh` : undefined} />
+        <Stat label="Netzbezug" value={eur(t?.import_cost_eur)} tone="ember" href="/haus/rechnungen" ariaLabel="Netzbezug – zur Rechnungsprüfung" hint={t ? `${de1(t.import_kwh)} kWh · Rechnungen prüfen` : "Rechnungen prüfen"} />
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>

@@ -3544,6 +3544,17 @@
             ],
             "title": "Measured Kwh"
           },
+          "measured_avg_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Avg Ct Kwh"
+          },
           "coverage": {
             "anyOf": [
               {

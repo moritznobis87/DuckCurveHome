@@ -309,7 +309,12 @@ def _cmp(
 
 
 def _euro(v: float) -> str:
-    return f"{v:.2f}".replace(".", ",") + " €"
+    return _de(v, 2) + " €"
+
+
+def _de(v: float, digits: int = 2) -> str:
+    """Zahl in deutscher Schreibweise – die Befunde werden unverändert angezeigt."""
+    return f"{v:,.{digits}f}".replace(",", "@").replace(".", ",").replace("@", ".")
 
 
 def _price_tolerance(pos: InvoicePosition, kwh: float) -> float:
@@ -485,7 +490,7 @@ def check_invoice(inv: TibberInvoice) -> list[InvoiceFinding]:
             _cmp(
                 "meter_delta",
                 "Zählerstandsdifferenz",
-                f"{inv.meter_end:.2f} − {inv.meter_start:.2f} kWh",
+                f"{_de(inv.meter_end)} − {_de(inv.meter_start)} kWh",
                 inv.meter_end - inv.meter_start,
                 inv.kwh,
                 0.02,
@@ -528,7 +533,7 @@ def compare_with_measurement(
     """Abgleich mit der eigenen Messung. Hinweise, keine harten Fehler: unser Netzwert ist eine CT-Messung."""
     out: list[InvoiceFinding] = []
     cov = measured.coverage
-    if cov is not None and cov < 0.98:
+    if cov is not None and 0.0 < cov < 0.98 and measured.import_kwh > 0:
         out.append(
             InvoiceFinding(
                 code="coverage",
@@ -606,7 +611,7 @@ def check_meter_chain(inv: TibberInvoice, previous: TibberInvoice | None) -> lis
         _cmp(
             "meter_chain",
             "Anschluss an die Vorrechnung",
-            f"Endstand {previous.period_label} ({previous.meter_end:.2f} kWh) gegen Anfangsstand dieser Rechnung.",
+            f"Endstand {previous.period_label} ({_de(previous.meter_end)} kWh) gegen den Anfangsstand dieser Rechnung.",
             previous.meter_end,
             inv.meter_start,
             0.02,

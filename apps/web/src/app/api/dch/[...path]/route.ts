@@ -26,7 +26,8 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     upstream = await fetch(target, {
       method: req.method,
       headers,
-      body: req.method === "GET" || req.method === "HEAD" ? undefined : await req.text(),
+      // Rumpf als Bytes weiterreichen: Rechnungs-PDFs dürfen nicht durch eine Textdekodierung laufen
+      body: req.method === "GET" || req.method === "HEAD" ? undefined : await req.arrayBuffer(),
       cache: "no-store",
       signal: req.signal,
     });

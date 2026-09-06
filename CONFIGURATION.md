@@ -33,7 +33,7 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_MYENERGI_BACKFILL_HOURS` | `48` | Minutenhistorie beim Start nachladen (Lücken füllen); danach stündlich die letzten 3 h; `0` = aus |
 | `DCH_WEATHER_REFRESH_MIN` | `60` | Open-Meteo-Abruf; `0` deaktiviert Wetter |
 | `DCH_PRICE_REFRESH_MIN` | `30` | Tibber-Abruf (13–15 Uhr immer halbstündlich) |
-| `DCH_RAW_RETENTION_DAYS` | `14` | Aufbewahrung der Rohwerte |
+| `DCH_RAW_RETENTION_DAYS` | `14` | Aufbewahrung der Rohwerte (Stundenbilanzen und geprüfte Rechnungen bleiben dauerhaft) |
 | `DCH_API_URL` (web) | `http://localhost:8000` | Ziel der BFF-Route `/api/dch/*` |
 | `DCH_API_TOKEN` (web) | – | wird als Bearer an die API weitergereicht |
 | `DCH_SESSION_SECRET` (web) | – | ≥ 32 Zeichen; aktiviert die Kiosk-Anmeldung |

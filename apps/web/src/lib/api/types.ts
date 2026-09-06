@@ -1645,6 +1645,8 @@ export interface components {
             kwh: number;
             /** Measured Kwh */
             measured_kwh?: number | null;
+            /** Measured Avg Ct Kwh */
+            measured_avg_ct_kwh?: number | null;
             /** Coverage */
             coverage?: number | null;
             /** Total Net Eur */
