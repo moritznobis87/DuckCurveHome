@@ -45,7 +45,7 @@ export function HouseReport() {
         <Stat label="Autarkie" value={pct(t?.autarky)} tone="amber" hint={t ? `${de1(t.pv_direct_kwh + t.battery_to_house_kwh)} kWh ohne Netz` : undefined} />
         <Stat label="Netzbezug" value={eur(t?.import_cost_eur)} tone="ember" hint={t ? `${de1(t.import_kwh)} kWh · Ø ${t.avg_import_price_ct != null ? de1(t.avg_import_price_ct, 1) : "–"} ct/kWh` : undefined} />
       </KpiGrid>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "8fr 4fr" }}>
+      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Wer hat verbraucht?" right="Wärmepumpe · Wallbox · Haushalt" />
           <div className="min-h-0 flex-1"><EChart option={consOpt} /></div>
@@ -55,7 +55,7 @@ export function HouseReport() {
           <div className="min-h-0 flex-1"><EChart option={consDonut} /></div>
         </Card>
       </div>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "8fr 4fr" }}>
+      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Woher kam der Strom?" right="PV direkt · Batterie · Netz" />
           <div className="min-h-0 flex-1"><EChart option={srcOpt} /></div>

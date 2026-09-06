@@ -115,3 +115,40 @@
 .flow-node:focus-visible { outline: none; }
 .card-link { transition: border-color .15s ease; }
 .card-link:hover, .card-link:focus-visible { border-color: var(--line-2); outline: none; }
+
+/* ---------- Dashboard-Raster (iPad quer als Standard) ---------- */
+.dash-main { height: 100dvh; }
+.dash-top { display: grid; min-height: 0; flex: 1; gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
+.dash-chart { display: flex; flex-shrink: 0; height: clamp(270px, 35vh, 440px); }
+.controls-grid { grid-template-columns: 1.8fr repeat(4, minmax(0, 1fr)); }
+.kpi-grid { display: grid; gap: 16px; grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr)); }
+.report-row { display: grid; gap: 16px; grid-template-columns: var(--cols, 1fr); }
+
+/* ---------- Telefon (Hochformat, schmaler Viewport): eine Spalte, Seite scrollt ---------- */
+@media (max-width: 720px) {
+  .dash-main { height: auto; min-height: 100dvh; --dash-pad: 12px; gap: 12px; }
+  .dash-header { height: auto; flex-wrap: wrap; gap: 8px 12px; padding: 10px 14px; }
+  .dash-header-actions { flex-basis: 100%; justify-content: space-between; gap: 10px; }
+  .dash-top { flex: none; gap: 12px; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: auto; }
+  .dash-top > * { grid-column: 1 / -1 !important; }
+  .dash-flow { height: min(400px, 100vw); }
+  .dash-buffer { height: 340px; }
+  .dash-plan { height: auto; min-height: 320px; }
+  .plan-chips { display: flex; }
+  .plan-next { max-height: none; }
+  .dash-chart { height: 620px; }
+  .chart-head { flex-wrap: wrap; gap: 8px; }
+  .chart-legend { display: none; }
+  .controls-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .controls-hp { grid-column: 1 / -1; }
+  .card { padding: 14px; }
+
+  .report-main { padding: 12px; gap: 12px; }
+  .report-header { height: auto; flex-wrap: wrap; gap: 8px 12px; padding: 10px 14px; }
+  .report-header-right { flex-basis: 100%; justify-content: space-between; gap: 8px; }
+  .report-nav { flex: 1; min-width: 0; }
+  .report-anchor { min-width: 0; flex: 1; font-size: 11px; }
+  .report-periods button { padding: 6px 8px; }
+  .kpi-grid { gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-row { gap: 12px; grid-template-columns: minmax(0, 1fr); }
+}

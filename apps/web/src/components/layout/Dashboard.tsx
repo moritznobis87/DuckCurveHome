@@ -12,6 +12,7 @@ import { EnergyPlanCard } from "@/components/energy-plan/EnergyPlanCard";
 import { BufferTank } from "@/components/buffer/BufferTank";
 import { DayChart, type ChartLayout, type ChartRange } from "@/components/charts/DayChart";
 import { ControlsBar } from "@/components/controls/ControlsBar";
+import { useIsMobile } from "@/lib/useIsMobile";
 
 export function Dashboard() {
   const state = useLiveStore((s) => s.state);
@@ -24,6 +25,7 @@ export function Dashboard() {
   const setHistory = useLiveStore((s) => s.setHistory);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [chartLayout, setChartLayout] = useState<ChartLayout>("side");
+  const isMobile = useIsMobile();
 
   // Chart-Anordnung: ?chart=stacked|side|overlay setzt sie und merkt sie sich pro Gerät
   useEffect(() => {
@@ -64,21 +66,21 @@ export function Dashboard() {
 
   const degraded = connection !== "live";
   return (
-    <main className="dashboard-bg dash-main flex h-[100dvh] flex-col" style={{ paddingTop: "max(var(--dash-pad), env(safe-area-inset-top))" }}>
+    <main className="dashboard-bg dash-main flex flex-col" style={{ paddingTop: "max(var(--dash-pad), env(safe-area-inset-top))", paddingBottom: "max(var(--dash-pad), env(safe-area-inset-bottom))" }}>
       <Header />
       {degraded ? (
         <div className="mono -mt-2 flex h-9 shrink-0 items-center justify-center rounded-[3px] border text-[12px] uppercase tracking-[.1em]" style={{ borderColor: "rgba(224,83,61,.4)", background: "rgba(224,83,61,.12)", color: "var(--alert)" }}>
           Verbindung unterbrochen{lastFrameAt ? ` · letzte Daten ${hhmm(new Date(lastFrameAt + offset))}` : ""} – Anzeige wird fortgesetzt, sobald das Backend erreichbar ist
         </div>
       ) : null}
-      <div className="grid min-h-0 flex-1 gap-4" style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gridTemplateRows: "minmax(0, 1fr)", opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>
+      <div className="dash-top" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>
         <EnergyFlow snapshot={state?.snapshot ?? null} nowMs={nowMs} />
         <EnergyPlanCard state={state} plan={plan} />
         <BufferTank snapshot={state?.snapshot ?? null} buffer={state?.buffer ?? null} />
       </div>
-      <div className="shrink-0" style={{ height: "clamp(270px, 35vh, 440px)", display: "flex", opacity: degraded ? 0.6 : 1 }}>
+      <div className="dash-chart" style={{ opacity: degraded ? 0.6 : 1 }}>
         <div className="flex min-h-0 w-full flex-col">
-          <DayChart history={history} plan={plan} nowMs={nowMs} range={historyRange} onRange={(r) => void changeRange(r)} layout={chartLayout} />
+          <DayChart history={history} plan={plan} nowMs={nowMs} range={historyRange} onRange={(r) => void changeRange(r)} layout={isMobile ? "stacked" : chartLayout} />
         </div>
       </div>
       <ControlsBar state={state} />

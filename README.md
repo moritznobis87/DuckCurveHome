@@ -32,7 +32,7 @@ tools/demo.sh                      # API mit Reload + Next.js Dev-Server
 | `packages/hems-core` | reine Domäne: Modelle, Vorzeichenkonvention, Bilanz, thermischer SOC, Regler-Zustandsmaschine, Preisfenster, Simulation |
 | `apps/api` | FastAPI: Live-Zustand, SSE-Stream, Historie, Plan, Steuerung, Bridge-Ingest, PostgreSQL (Alembic) |
 | `apps/bridge` + `addons/duckcurve_bridge` | Bridge als Home-Assistant-Add-on: liest Entitäten, schaltet mit TTL, ausgehende WSS-Verbindung |
-| `apps/web` | Next.js-Dashboard (iPad-Querformat, Dark Mode, Duck-Curve-Design-System) mit Detailseiten `/pv`, `/haus`, `/batterie`, `/wallbox`, `/waerme` (Energiebilanz Tag/Woche/Monat/Jahr) und `/prognose` |
+| `apps/web` | Next.js-Dashboard (iPad-Querformat, Dark Mode, Duck-Curve-Design-System) mit Detailseiten `/pv`, `/haus`, `/batterie`, `/wallbox`, `/waerme` (Energiebilanz Tag/Woche/Monat/Jahr) und `/prognose`; unter 720 px Breite Hochformat-Ansicht für Telefone |
 | `docs/` | Projektplan, OpenAPI-Schema, Architekturentscheidungen |
 
 Weitere Dokumente: [ARCHITECTURE.md](ARCHITECTURE.md) · [CONFIGURATION.md](CONFIGURATION.md) ·

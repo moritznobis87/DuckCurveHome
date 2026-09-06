@@ -95,9 +95,9 @@ export function heatForecastChart(points: HeatForecastPoint[]): EChartsCoreOptio
     backgroundColor: "transparent",
     textStyle: { fontFamily: MONO },
     tooltip: { ...tooltip, trigger: "axis" },
-    legend: { bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14 },
-    grid: { left: 48, right: 48, top: 26, bottom: 54 },
-    xAxis: { type: "category", data: labels, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, interval: 5 } },
+    legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14, pageIconColor: C.text, pageIconInactiveColor: "rgba(255,255,255,.15)", pageTextStyle: { color: C.text, fontFamily: MONO, fontSize: 10 } },
+    grid: { left: 48, right: 48, top: 26, bottom: 56 },
+    xAxis: { type: "category", data: labels, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, interval: "auto", hideOverlap: true } },
     yAxis: [
       { type: "value", name: "kW", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 3, min: 0 },
       { type: "value", name: "°C", position: "right", nameTextStyle: { color: C.text, fontSize: 10, align: "left", padding: [0, 0, 0, 6] }, splitLine: { show: false }, axisLabel: axisText, splitNumber: 3 },
@@ -126,9 +126,9 @@ export function bufferChart(rows: Array<Record<string, number | string | null>>)
     backgroundColor: "transparent",
     textStyle: { fontFamily: MONO },
     tooltip: { ...tooltip, trigger: "axis" },
-    legend: { bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14 },
-    grid: { left: 48, right: 48, top: 26, bottom: 54 },
-    xAxis: { type: "category", data: labels, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, interval: Math.max(1, Math.floor(rows.length / 8)) } },
+    legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14, pageIconColor: C.text, pageIconInactiveColor: "rgba(255,255,255,.15)", pageTextStyle: { color: C.text, fontFamily: MONO, fontSize: 10 } },
+    grid: { left: 48, right: 48, top: 26, bottom: 56 },
+    xAxis: { type: "category", data: labels, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, interval: "auto", hideOverlap: true } },
     yAxis: [
       { type: "value", name: "°C", min: 20, max: 70, interval: 10, nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText },
       { type: "value", name: "kW", position: "right", min: 0, nameTextStyle: { color: C.text, fontSize: 10, align: "left", padding: [0, 0, 0, 6] }, splitLine: { show: false }, axisLabel: axisText, splitNumber: 3 },
@@ -173,8 +173,8 @@ export function pvForecastChart(actual: Array<{ ts: number; kw: number | null }>
         return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${t}</div>${rows}`;
       },
     },
-    legend: { bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14 },
-    grid: { left: 48, right: 16, top: 26, bottom: 54 },
+    legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14, pageIconColor: C.text, pageIconInactiveColor: "rgba(255,255,255,.15)", pageTextStyle: { color: C.text, fontFamily: MONO, fontSize: 10 } },
+    grid: { left: 48, right: 16, top: 26, bottom: 56 },
     xAxis: {
       type: "time",
       min: dayStartMs,
@@ -232,8 +232,8 @@ export function batteryDayChart(rows: Array<Record<string, number | string | nul
         return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${t}</div>${rows2}`;
       },
     },
-    legend: { bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14 },
-    grid: { left: 48, right: 48, top: 26, bottom: 54 },
+    legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14, pageIconColor: C.text, pageIconInactiveColor: "rgba(255,255,255,.15)", pageTextStyle: { color: C.text, fontFamily: MONO, fontSize: 10 } },
+    grid: { left: 48, right: 48, top: 26, bottom: 56 },
     xAxis: { type: "time", axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { ...axisText, fontSize: 10, formatter: (v: number) => new Date(v).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) } },
     yAxis: [
       { type: "value", min: 0, max: 100, interval: 25, name: "%", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText },

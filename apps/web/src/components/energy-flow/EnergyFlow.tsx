@@ -101,7 +101,7 @@ export function EnergyFlow({ snapshot, nowMs }: { snapshot: EnergySnapshot | nul
   const residual = s?.balance_residual_kw ?? 0;
   const consistent = Math.abs(residual) <= 0.3;
   return (
-    <Card style={{ gridColumn: "span 5", minHeight: 0 }}>
+    <Card className="dash-flow" style={{ gridColumn: "span 5", minHeight: 0 }}>
       <CardHead title="Energiefluss" right={consistent ? `Bilanz konsistent · ±${kw(Math.abs(residual))} kW` : `Messabweichung ${kw(residual)} kW`} />
       <div className="mt-1.5 flex min-h-0 flex-1 items-center justify-center">
         <svg viewBox={`0 0 ${W} ${H}`} height="100%" style={{ display: "block", maxWidth: "100%", overflow: "visible" }} role="img" aria-label="Energiefluss zwischen PV, Netz, Haus, Batterie, Wärmepumpe und Wallbox">

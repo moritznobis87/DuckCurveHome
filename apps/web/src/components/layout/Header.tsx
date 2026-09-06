@@ -6,6 +6,7 @@ import { hhmm, longDate } from "@/lib/format";
 import { Pill } from "@/components/ui/Pill";
 import { Dot } from "@/components/ui/Dot";
 import { Icon } from "@/components/ui/Icon";
+import { useIsMobile } from "@/lib/useIsMobile";
 
 function Mark({ height = 26 }: { height?: number }) {
   const bars: Array<[number, number]> = [[54,202],[76,196],[98,195],[120,198],[142,204],[164,211],[186,216],[208,218],[230,216],[252,211],[274,201],[296,188],[318,171],[340,151],[362,130],[384,113],[406,101],[428,111],[450,124],[472,136],[494,123],[516,109],[538,119],[560,126]];
@@ -25,6 +26,7 @@ export function Header() {
   const connection = useLiveStore((s) => s.connection);
   const offset = useLiveStore((s) => s.serverOffsetMs);
   const [now, setNow] = useState<Date | null>(null);
+  const isMobile = useIsMobile();
   useEffect(() => {
     const t = setInterval(() => setNow(new Date(Date.now() + offset)), 1000);
     setNow(new Date(Date.now() + offset));
@@ -42,7 +44,7 @@ export function Header() {
   const speed = state?.system.sim_speed ?? 1;
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between rounded-[3px] border border-line-2 px-5" style={{ background: "var(--surface-glass)", backdropFilter: "blur(18px)" }}>
+    <header className="dash-header flex h-14 shrink-0 items-center justify-between rounded-[3px] border border-line-2 px-5" style={{ background: "var(--surface-glass)", backdropFilter: "blur(18px)" }}>
       <div className="flex items-center gap-3.5">
         <Mark />
         <div className="flex items-baseline gap-2.5">
@@ -51,10 +53,10 @@ export function Header() {
         </div>
       </div>
       <div className="mono text-[15px] text-text-2 tracking-[.02em]" suppressHydrationWarning>
-        {now ? `${longDate(now)} · ${hhmm(now)}` : ""}
+        {now ? (isMobile ? hhmm(now) : `${longDate(now)} · ${hhmm(now)}`) : ""}
         {state?.system.mode === "demo" ? <span className="ml-3 text-text-3 text-[12px] uppercase tracking-[.1em]">Demo{speed !== 1 ? ` · ${speed}×` : ""}</span> : null}
       </div>
-      <div className="flex items-center gap-4">
+      <div className="dash-header-actions flex items-center gap-4">
         <div className="flex items-center gap-2.5">
           <Dot tone={conn[0]} pulse={connection === "live"} />
           <span className="kicker" style={{ fontSize: 12, color: "var(--text-3)" }}>{conn[1]}</span>

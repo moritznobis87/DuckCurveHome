@@ -44,7 +44,7 @@ export function EvReport() {
         <Stat label="Entgangene Vergütung" value={eur(t?.ev_opportunity_eur)} tone="muted" hint="nicht eingespeister PV-Strom" />
         <Stat label="Effektiv je kWh" value={effCt != null ? de1(effCt, 1) : "–"} unit="ct" hint="bezahlt + entgangen" />
       </KpiGrid>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "8fr 4fr" }}>
+      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Geladene Energie nach Herkunft" right="PV · Batterie · Netz" />
           <div className="min-h-0 flex-1"><EChart option={barsOpt} /></div>
@@ -54,11 +54,11 @@ export function EvReport() {
           <div className="min-h-0 flex-1"><EChart option={donutOpt} /></div>
         </Card>
       </div>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "8fr 4fr" }}>
+      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, maxHeight: 320 }}>
           <CardHead title="Ladevorgänge" right={sessions.length ? `${sessions.length} im Zeitraum` : "keine im Zeitraum"} />
           {sessions.length ? (
-            <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
+            <div className="mt-2 min-h-0 flex-1 overflow-auto">
               <table className="w-full border-collapse text-[12px]">
                 <thead className="sticky top-0" style={{ background: "var(--surface-2)" }}>
                   <tr className="kicker text-left" style={{ fontSize: 10 }}>

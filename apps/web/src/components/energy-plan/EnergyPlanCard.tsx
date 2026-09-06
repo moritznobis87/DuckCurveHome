@@ -110,7 +110,7 @@ export function EnergyPlanCard({ state, plan }: { state: LiveState | null; plan:
   const nextStep = d ? nextExpectedLine(d) : null;
 
   return (
-    <Card accent style={{ gridColumn: "span 4", minHeight: 0 }}>
+    <Card accent className="dash-plan" style={{ gridColumn: "span 4", minHeight: 0 }}>
       <CardHead title="Energy Plan" right={d ? `Entscheidung ${hhmm(d.at)}` : "–"} />
       <div className="plan-body mt-2 flex min-h-0 flex-1 flex-col overflow-hidden">
         {/* Status: was passiert, warum – in einem Blick */}

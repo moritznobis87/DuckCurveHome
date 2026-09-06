@@ -84,7 +84,7 @@ export function PvReport() {
         <Stat label="Prognose heute" value={de1(fc.today)} unit="kWh" hint={isToday && t ? `${de1(t.pv_kwh)} kWh bisher erzeugt` : "Tagesprognose"} />
         <Stat label="Prognose morgen" value={fc.tomorrow > 0 ? de1(fc.tomorrow) : "–"} unit="kWh" hint={fc.tomorrow > 0 ? "aus Wetterprognose" : "noch nicht verfügbar"} />
       </KpiGrid>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "8fr 4fr" }}>
+      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 300 }}>
           <CardHead title="Erzeugung und Verwendung" right="direkt genutzt · in Batterie · eingespeist" />
           <div className="min-h-0 flex-1"><EChart option={barsOpt} /></div>
@@ -94,7 +94,7 @@ export function PvReport() {
           <div className="min-h-0 flex-1"><EChart option={donutOpt} /></div>
         </Card>
       </div>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "8fr 4fr" }}>
+      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Heute und morgen" right={<Link href="/prognose" className="text-amber">Prognosegüte →</Link>} />
           <div className="min-h-0 flex-1"><EChart option={fcOpt} /></div>

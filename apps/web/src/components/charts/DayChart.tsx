@@ -183,10 +183,10 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
   );
   return (
     <Card className="flex-1" style={{ padding: 16, minHeight: 0 }}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-baseline gap-5">
+      <div className="chart-head flex items-center justify-between">
+        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
           <h2 className="kicker m-0">{RANGE_LABEL[range]} · Leistung {layout === "side" ? "|" : "und"} Strompreis</h2>
-          <div className="flex gap-5">
+          <div className="chart-legend flex flex-wrap gap-x-5 gap-y-1">
             <Legend color={C.pv} label="PV" />
             <Legend color={C.hp} label="Wärmepumpe" />
             <Legend color={C.ev} label="Wallbox" />

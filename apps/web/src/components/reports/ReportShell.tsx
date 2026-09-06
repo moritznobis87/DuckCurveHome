@@ -96,8 +96,8 @@ export function usePeriod(): { period: Period; anchor: string; setPeriod: (p: Pe
 export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, onToday, right, children }: { title: string; kicker: string; period: Period; anchor: string; onPeriod: (p: Period) => void; onMove: (dir: -1 | 1) => void; onToday: () => void; right?: React.ReactNode; children: React.ReactNode }) {
   const isToday = !anchor || anchor === isoToday();
   return (
-    <main className="dashboard-bg flex min-h-[100dvh] flex-col gap-4 p-5 text-text-1">
-      <header className="flex h-14 shrink-0 items-center justify-between rounded-[3px] border border-line-2 px-5" style={{ background: "var(--surface-glass)", backdropFilter: "blur(18px)" }}>
+    <main className="dashboard-bg report-main flex min-h-[100dvh] flex-col gap-4 p-5 text-text-1">
+      <header className="report-header flex h-14 shrink-0 items-center justify-between rounded-[3px] border border-line-2 px-5" style={{ background: "var(--surface-glass)", backdropFilter: "blur(18px)" }}>
         <div className="flex min-w-0 items-center gap-5">
           <Link href="/" className="kicker whitespace-nowrap" style={{ fontSize: 12 }}>← Dashboard</Link>
           <div className="flex min-w-0 items-baseline gap-2.5">
@@ -105,15 +105,15 @@ export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, o
             <span className="kicker truncate" style={{ fontSize: 12 }}>{kicker}</span>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-4">
+        <div className="report-header-right flex shrink-0 items-center gap-4">
           {right}
-          <div className="flex items-center gap-1 rounded-[3px] border border-line-2 p-1">
+          <div className="report-nav flex items-center gap-1 rounded-[3px] border border-line-2 p-1">
             <button onClick={() => onMove(-1)} aria-label="Zurück" className="mono px-2.5 py-1 text-[13px] text-text-2 hover:text-text-1">‹</button>
-            <span className="mono min-w-[190px] text-center text-[12px] text-text-1">{anchor ? anchorLabel(anchor, period) : "…"}</span>
+            <span className="report-anchor mono min-w-[190px] text-center text-[12px] text-text-1">{anchor ? anchorLabel(anchor, period) : "…"}</span>
             <button onClick={() => onMove(1)} aria-label="Weiter" className="mono px-2.5 py-1 text-[13px] text-text-2 hover:text-text-1">›</button>
             {!isToday ? <button onClick={onToday} className="mono px-2 py-1 text-[11px] uppercase tracking-[.08em] text-amber">heute</button> : null}
           </div>
-          <div className="flex gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Zeitraum">
+          <div className="report-periods flex gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Zeitraum">
             {PERIODS.map((p) => (
               <button key={p} onClick={() => onPeriod(p)} className="px-3 py-1.5 text-[12px] font-medium" style={{ background: period === p ? "var(--amber)" : "transparent", color: period === p ? "var(--petrol)" : "var(--text-2)", borderRadius: 2 }}>
                 {PERIOD_LABEL[p]}
@@ -157,7 +157,7 @@ export function CoverageNote({ meta, extra }: { meta: { coverage: number | null;
 
 export function KpiGrid({ children, cols }: { children: React.ReactNode; cols: number }) {
   return (
-    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+    <div className="kpi-grid" style={{ "--cols": cols } as React.CSSProperties}>
       {children}
     </div>
   );

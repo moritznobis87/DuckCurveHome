@@ -73,7 +73,7 @@ export function BatteryReport() {
         <Stat label="PV-Anteil Ladung" value={pct(pvShare)} hint={t && t.grid_to_battery_kwh > 0.05 ? `${de1(t.grid_to_battery_kwh)} kWh aus dem Netz geladen` : "keine Netzladung"} />
         <Stat label="Wirkungsgrad" value={pct(eff)} tone="muted" hint="Entladen ÷ Geladen" />
       </KpiGrid>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "5fr 3fr 4fr" }}>
+      <div className="report-row" style={{ "--cols": "5fr 3fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Ladung nach Herkunft" right="PV · Netz" />
           <div className="min-h-0 flex-1"><EChart option={chargeOpt} /></div>
@@ -87,7 +87,7 @@ export function BatteryReport() {
           <div className="min-h-0 flex-1"><EChart option={donutOpt} /></div>
         </Card>
       </div>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "8fr 4fr" }}>
+      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Ladezustand über den Tag" right={dayRange ? "Minutenwerte · + Entladen, − Laden" : "nur für heute und gestern verfügbar"} />
           {dayRange && rows.length > 0 ? <div className="min-h-0 flex-1"><EChart option={dayOpt} /></div> : <div className="flex flex-1 items-center justify-center"><Note>{dayRange ? "Noch keine Minutenwerte für diesen Tag." : "Der Ladezustandsverlauf wird für heute und gestern gezeigt; für andere Zeiträume gelten die Stundenbilanzen oben."}</Note></div>}

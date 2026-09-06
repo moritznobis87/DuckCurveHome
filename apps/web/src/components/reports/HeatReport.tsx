@@ -42,7 +42,7 @@ export function HeatReport() {
         <Stat label="Wärmepreis" value={thermalCt != null ? de1(thermalCt, 1) : "–"} unit="ct/kWh" hint="je kWh Wärme, geschätzt" />
         <Stat label="Prognose 24 h" value={de1(data?.forecast_electric_kwh_24h)} unit="kWh" tone="mist" hint={data ? `Strom für ${de1(data.forecast_thermal_kwh_24h, 0)} kWh Wärme` : undefined} />
       </KpiGrid>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "7fr 5fr" }}>
+      <div className="report-row" style={{ "--cols": "7fr 5fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Wärmelastprognose 48 h" right="Heizung + Warmwasser thermisch · Strombedarf · Außentemperatur" />
           {data?.forecast.length ? <div className="min-h-0 flex-1"><EChart option={fcOpt} /></div> : <div className="flex flex-1 items-center justify-center"><Note>Keine Wetterprognose verfügbar.</Note></div>}
@@ -52,7 +52,7 @@ export function HeatReport() {
           <div className="min-h-0 flex-1"><EChart option={barsOpt} /></div>
         </Card>
       </div>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "7fr 5fr" }}>
+      <div className="report-row" style={{ "--cols": "7fr 5fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Pufferspeicher und Wärmepumpe" right={period === "day" ? "Temperaturen in vier Höhen · WP-Leistung" : "Verlauf nur in der Tagesansicht"} />
           {period === "day" && hasBuffer ? <div className="min-h-0 flex-1"><EChart option={bufOpt} /></div> : <div className="flex flex-1 items-center justify-center"><Note>{period === "day" ? "Keine Puffertemperaturen für diesen Tag aufgezeichnet." : "Wechseln Sie auf „Tag“, um Temperaturen und Leistung im Verlauf zu sehen."}</Note></div>}

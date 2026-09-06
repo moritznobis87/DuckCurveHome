@@ -19,9 +19,9 @@ export function Card({ children, accent = false, className = "", style, href, ar
 
 export function CardHead({ title, right }: { title: string; right?: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
+    <div className="card-head flex items-baseline justify-between gap-4">
       <h2 className="kicker m-0">{title}</h2>
-      {right ? <div className="text-[12px] text-text-3">{right}</div> : null}
+      {right ? <div className="card-head-right min-w-0 truncate text-[12px] text-text-3">{right}</div> : null}
     </div>
   );
 }
