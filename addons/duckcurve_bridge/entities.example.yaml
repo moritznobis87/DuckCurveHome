@@ -20,3 +20,17 @@ actuators:
   - { key: terrace_light,       entity: light.terrassenlicht,      label: Licht Terrasse }
   - { key: courtyard_light,     entity: light.innenhof,            label: Licht Innenhof }
   - { key: garden_fence_light,  entity: light.gartenzaun,          label: Licht Gartenzaun }
+# Shellys, die die Bridge direkt am lokalen Mosquitto liest (source_mode: mqtt oder compare).
+# Diese Schlüssel kommen dann nicht mehr aus Home Assistant. Siehe DOCS.md, Abschnitte 3 und 4b.
+mqtt:
+  # Generation 1: dreiphasiger Zähler (Shelly 3EM) – ein Schlüssel-Präfix genügt.
+  - { prefix: "shellies/shellyem3-XXXXXXXXXXXX", generation: 1, kind: em3, key_prefix: heat_pump, label: "WP-Zähler" }
+  # Generation 2/3 (Plus, Pro): Komponenten ausdrücklich zuordnen.
+  - prefix: "shellyplus1-XXXXXXXXXXXX"
+    generation: 2
+    label: Pufferspeicher
+    components:
+      "temperature:100": buffer_temp_top_c
+      "temperature:101": buffer_temp_mid_top_c
+      "temperature:102": buffer_temp_mid_bottom_c
+      "temperature:103": buffer_temp_bottom_c

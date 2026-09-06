@@ -43,11 +43,41 @@ class ActuatorMap(BaseModel):
     safe_state: bool = False
 
 
+class MqttDeviceMap(BaseModel):
+    """Ein Shelly, den die Bridge direkt über MQTT liest.
+
+    Generation 1 (Shelly 3EM): jede Größe kommt als eigene Nachricht unter
+    `shellies/<gerät>/emeter/<phase>/<feld>`. Es genügt `prefix` und `key_prefix`.
+
+    Generation 2/3 (Plus, Pro): das Gerät meldet JSON unter `<präfix>/events/rpc` und – falls in der
+    Geräteoberfläche aktiviert – `<präfix>/status/<komponente>`. Hier muss `components` sagen, welche
+    Komponente welchem Domänenschlüssel entspricht:
+
+    ```yaml
+    components:
+      "temperature:100": buffer_temp_top_c        # natürlicher Wert der Komponente (°C)
+      "switch:0":                                  # oder mehrere Felder ausdrücklich
+        apower: coffee_power_kw
+        output: "actuator:coffee_machine"
+    ```
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    prefix: str  # shellies/shellyem3-XXXX (Gen 1) oder shellyplus1-XXXX (Gen 2)
+    generation: Literal[1, 2] = 2
+    kind: Literal["em3", "generic"] = "generic"  # em3 = dreiphasiger Zähler der ersten Generation
+    key_prefix: str = ""  # nur für kind em3: heat_pump → heat_pump_power_kw, …
+    components: dict[str, str | dict[str, str]] = Field(default_factory=dict)
+    label: str = ""
+
+
 class EntityMap(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     sensors: list[SensorMap] = Field(default_factory=list)
     actuators: list[ActuatorMap] = Field(default_factory=list)
+    mqtt: list[MqttDeviceMap] = Field(default_factory=list)
 
     @classmethod
     def load(cls, path: Path) -> EntityMap:
@@ -64,6 +94,16 @@ class EntityMap(BaseModel):
 
     def keys(self) -> list[str]:
         return [s.key for s in self.sensors] + [f"actuator:{a.key}" for a in self.actuators]
+
+    def mqtt_keys(self) -> set[str]:
+        """Domänenschlüssel, die über MQTT kommen – Home Assistant liefert sie dann nicht mehr."""
+        out: set[str] = set()
+        for dev in self.mqtt:
+            if dev.kind == "em3" and dev.key_prefix:
+                out |= {f"{dev.key_prefix}_power_kw", f"{dev.key_prefix}_energy_kwh"}
+            for target in dev.components.values():
+                out |= {target} if isinstance(target, str) else set(target.values())
+        return out
 
 
 UNIT_SCALE: dict[str, float] = {

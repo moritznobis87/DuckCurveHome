@@ -13,13 +13,14 @@ Verbindet Home Assistant **ausgehend** mit der Duck-Curve-Home-API. Kein offener
 5. Starten. Im Protokoll erscheint „uplink connected“. In Home Assistant entsteht die Entität
    `sensor.duckcurve_bridge_heartbeat` (Zeitstempel, Attribut `cloud_connected`).
 
-## Shelly 3EM direkt über MQTT (Standard ab 0.2.0)
+## Shellys direkt über MQTT (Standard ab 0.2.0, Gen 2 ab 0.3.0)
 
-Der Wärmepumpen-Zähler (Shelly 3EM Gen1) liefert seine Werte direkt an den lokalen Mosquitto-Broker; die
-Bridge liest sie dort ab, ohne den Umweg über Home-Assistant-Integration und -Entitäten. Home Assistant bleibt
-für Puffertemperaturen, Außentemperatur und die Schalter zuständig und hört am Broker nur noch mit.
+Die Shellys liefern ihre Werte direkt an den lokalen Mosquitto-Broker; die Bridge liest sie dort ab, ohne den
+Umweg über Home-Assistant-Integration und -Entitäten. Unterstützt werden die erste Generation (Shelly 3EM,
+Abschnitt 3) und die Generationen 2/3 – Plus und Pro (Abschnitt 4b). Home Assistant bleibt für die übrigen
+Entitäten und die Schalter zuständig und hört am Broker nur noch mit.
 
-Datenfluss neu: `Shelly 3EM → Mosquitto (LAN) → Bridge → Duck-Curve-API`. Der Broker bleibt im Heimnetz, kein
+Datenfluss neu: `Shelly → Mosquitto (LAN) → Bridge → Duck-Curve-API`. Der Broker bleibt im Heimnetz, kein
 Port ins Internet. Der Shelly 3EM Gen1 kann kein verschlüsseltes MQTT, deshalb Klartext nur im LAN.
 
 ### 1. Mosquitto installieren
@@ -60,7 +61,9 @@ Optionen des Add-ons:
 | `mqtt_host` / `mqtt_port` | Broker, im HA-Netz `core-mosquitto` und `1883` |
 | `mqtt_username` / `mqtt_password` | Zugangsdaten aus Schritt 2 |
 | `shelly_device_id` | Kennung des Geräts, z. B. `485519DB56D2` oder `shellyem3-485519DB56D2`. Wer lieber den ganzen Pfad einträgt, nimmt `mqtt_topic_prefix`, z. B. `shellies/shellyem3-485519DB56D2`. Beide Schreibweisen führen zum selben Ergebnis |
-| `mqtt_publish_interval_s` | Takt, in dem die Bridge aus den zuletzt empfangenen Werten aller drei Phasen einen konsistenten Datensatz an die API schickt (Standard 10 s) |
+| `mqtt_publish_interval_s` | Takt, in dem die Bridge aus den zuletzt empfangenen Werten einen konsistenten Datensatz an die API schickt (Standard 10 s) |
+| `mqtt_stale_s` | Funkstille, nach der ein Gerät als nicht verfügbar gilt (Standard 120 s) |
+| `mqtt_qos` | Dienstgüte der Abonnements, Standard 1 (mindestens einmal) |
 | `api_ws_url` / `api_token` | Railway-Endpunkt und Bridge-Token (unverändert) |
 | `log_level` | `INFO` genügt; `DEBUG` zeigt verworfene Nachrichten |
 
@@ -71,12 +74,67 @@ der jüngsten enthaltenen Nachricht. `energy`/`returned_energy` (flüchtig) werd
 Unplausible Werte (Bereich, fallende Zählerstände, unlesbare Nutzdaten) werden verworfen und gezählt; ein
 `online: false` des Shelly oder 90 s Funkstille melden den Zähler als nicht verfügbar.
 
-### 4b. Nur Gen 1
+### 4b. Shelly Plus / Pro (Generation 2 und 3)
 
-Diese Anbindung liest das Topic-Schema der **ersten** Shelly-Generation (`shellies/<gerät>/emeter/<phase>/…`).
-Der Shelly 3EM gehört dazu. Geräte der Reihe **Plus** oder **Pro** (Gen 2/3, z. B. Plus Plug S, Plus 1PM)
-veröffentlichen stattdessen JSON unter `<präfix>/status/switch:0` – sie lassen sich hier noch nicht einbinden
-und bleiben vorerst bei Home Assistant.
+Geräte der Reihen **Plus** und **Pro** sprechen ein anderes Topic-Schema: statt einzelner Zahlen unter
+`shellies/…` senden sie JSON-RPC-Nachrichten unter `<präfix>/events/rpc` (Meldungen `NotifyStatus` und
+`NotifyFullStatus`) und – falls in der Geräteoberfläche eingeschaltet – zusätzlich einen Vollstand je
+Komponente unter `<präfix>/status/<komponente>`. Die Bridge abonniert beides und wertet aus, was ankommt.
+
+**Im Gerät einstellen** (Weboberfläche → Networks → MQTT): Server `<IP von Home Assistant>:1883`, Benutzer und
+Passwort aus Schritt 2, „Enable MQTT Control“ nach Belieben, **„RPC status notifications over MQTT“ ein**
+(sonst kommt nichts). „Generic status update over MQTT“ ist optional und schickt zusätzlich die
+`status/…`-Topics. Das MQTT-Präfix (Standard: der Gerätename, z. B. `shellyplus1-b8d61a86e20c`) unverändert
+lassen und genauso ins Mapping eintragen.
+
+**Im Mapping eintragen.** In `/config/duckcurve/entities.yaml` gibt es dafür den Abschnitt `mqtt:`. Er sagt,
+welche Komponente des Geräts welchem Duck-Curve-Schlüssel entspricht:
+
+```yaml
+mqtt:
+  # Generation 1 – dreiphasiger Zähler, braucht nur ein Schlüssel-Präfix
+  - { prefix: "shellies/shellyem3-XXXXXXXXXXXX", generation: 1, kind: em3, key_prefix: heat_pump, label: "WP-Zähler" }
+
+  # Generation 2 – Pufferspeicher, Shelly Plus 1 mit Temperatur-Add-on
+  - prefix: "shellyplus1-b8d61a86e20c"
+    generation: 2
+    label: "Pufferspeicher"
+    components:
+      "temperature:100": buffer_temp_top_c     # natürlicher Wert der Komponente (°C)
+      "temperature:101": buffer_temp_mid_top_c
+      "temperature:102": buffer_temp_mid_bottom_c
+      "temperature:104": buffer_temp_bottom_c
+
+  # Mehrere Felder einer Komponente ausdrücklich zuordnen
+  - prefix: "shellyplusplugs-d4d4daf36370"
+    generation: 2
+    label: "Licht Terrasse"
+    components:
+      "switch:0":
+        apower: terrace_light_power_kw          # W → kW
+        output: "actuator:terrace_light"        # true/false → 1/0
+```
+
+Je Komponententyp nimmt die Kurzform (`"temperature:100": buffer_temp_top_c`) das natürliche Feld:
+`temperature` → `tC` (°C), `switch`/`cover`/`pm1` → `apower` (W → kW), `em1` → `act_power` (W → kW),
+`humidity` → `rh` (%), `voltmeter` → `voltage` (V), `input` → `state` (an/aus → 1/0). Alles andere per
+Langform mit dem Feldnamen aus dem JSON, verschachtelte Felder mit Punkt (`aenergy.total`, Wh → kWh).
+
+**Komponenten-IDs herausfinden.** Die Nummern (100, 101, …) vergibt das Gerät in der Reihenfolge, in der die
+Fühler angelernt wurden – sie sagen nichts über die Einbaulage. Am Broker mitlesen und zuordnen:
+
+```
+mosquitto_sub -h core-mosquitto -u <benutzer> -P <passwort> -t 'shellyplus1-b8d61a86e20c/#' -v
+```
+
+(oder in Home Assistant unter Einstellungen → Geräte & Dienste → MQTT → Konfigurieren → „Auf ein Thema
+lauschen“). Ein Fühler, der `unknown` bzw. `null` liefert, ist nicht angeschlossen und bleibt unbelegt.
+
+Schlüssel, die im Abschnitt `mqtt:` vorkommen, holt die Bridge bei `source_mode: mqtt` **nicht mehr** aus Home
+Assistant; die entsprechenden `sensors:`-Einträge bleiben als Rückfallebene für `source_mode: home_assistant`
+stehen. Alle Geräte teilen sich eine einzige Broker-Verbindung.
+
+**Hinweis:** Bei Gen 2/3 bleibt die Shelly-Cloud neben MQTT nutzbar (anders als bei Gen 1, siehe Schritt 3).
 
 ### 5. MQTT-Empfang testen
 
@@ -84,7 +142,8 @@ Im Add-on-Protokoll erscheint `mqtt connected` und alle 5 Minuten `mqtt status` 
 `reconnects`, `emitted`. Auf der Wärmeseite von Duck Curve Home muss die Wärmepumpenleistung mit Quelle
 `mqtt:shellyem3-…` erscheinen (Live-Zustand, Feld `source`). Alternativ mit dem MQTT-Werkzeug von Home
 Assistant (Einstellungen → Geräte & Dienste → MQTT → Konfigurieren → „Auf ein Thema lauschen“)
-`shellies/shellyem3-<ID>/#` beobachten.
+`shellies/shellyem3-<ID>/#` beobachten. `mqtt status` führt jedes Gerät einzeln auf, Gen-2-Geräte mit der
+Anzahl erkannter Komponenten.
 
 ### 6. Kontrollierter Wechsel
 
@@ -94,6 +153,9 @@ Assistant (Einstellungen → Geräte & Dienste → MQTT → Konfigurieren → �
 2. Nach ein bis zwei Tagen ohne systematische Abweichung `source_mode: mqtt` setzen. Ab dann kommt
    `heat_pump_power_kw` nur noch aus MQTT; der HA-Sensor `sensor.heatpump_total_power` wird für diesen
    Schlüssel ignoriert (das Mapping in `entities.yaml` kann unverändert bleiben).
+
+Der Vergleich (`compare`) betrifft nur den dreiphasigen Zähler. Gen-2-Geräte liefern in `compare` nichts an
+die API; ihre Schlüssel kommen dort weiter aus Home Assistant.
 
 ### 7. Rollback
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
@@ -11,8 +12,10 @@ import pytest
 from dch_bridge.sources.shelly_mqtt import (
     COUNTER_RESET_AFTER,
     Comparator,
+    Em3Device,
+    Gen2Device,
+    MqttHub,
     Shelly3EmState,
-    ShellyMqttSource,
     readings_from_snapshot,
 )
 from hems_core.domain.quality import Quality
@@ -159,11 +162,9 @@ async def test_reconnect_after_failed_connection_then_emits(
     async def sink(items: list[RawReading]) -> None:
         received.append(items)
 
-    src = ShellyMqttSource(
+    src = MqttHub(
         session_factory=lambda: next(calls),
-        topic_prefix=P,
-        device_id="485519DB56D2",
-        key_prefix="heat_pump",
+        devices=[Em3Device(topic_prefix=P, device_id="485519DB56D2", key_prefix="heat_pump")],
         on_readings=sink,
         publish_interval_s=0.05,
         qos=1,
@@ -192,28 +193,22 @@ async def test_emit_only_on_new_data_and_offline_marks_unavailable() -> None:
     async def sink(items: list[RawReading]) -> None:
         received.append(items)
 
-    src = ShellyMqttSource(
-        session_factory=lambda: FakeSession([]),
-        topic_prefix=P,
-        device_id="X",
-        key_prefix="heat_pump",
-        on_readings=sink,
-        stale_s=90,
-    )
+    device = Em3Device(topic_prefix=P, device_id="X", key_prefix="heat_pump", stale_s=90)
+    src = MqttHub(session_factory=lambda: FakeSession([]), devices=[device], on_readings=sink)
     for m in sample_messages():
-        src.state.apply(m.topic, m.payload, T0)
+        device.apply(m.topic, m.payload, T0)
     assert (
         len(await src.emit_once(T0 + timedelta(seconds=10))) == 2 + 3 * 2
     )  # Summen + je Phase Leistung/Zähler
     assert await src.emit_once(T0 + timedelta(seconds=20)) == []  # nichts Neues → kein Datensatz
-    src.state.apply(f"{P}/online", b"false", T0 + timedelta(seconds=25))
+    device.apply(f"{P}/online", b"false", T0 + timedelta(seconds=25))
     items = await src.emit_once(T0 + timedelta(seconds=30))
     assert {r.key for r in items} == {"heat_pump_power_kw", "heat_pump_energy_kwh"}
     assert all(r.value is None and r.quality == Quality.UNAVAILABLE for r in items)
     assert await src.emit_once(T0 + timedelta(seconds=40)) == []  # Offline wird nur einmal gemeldet
     # zurück online mit frischen Werten
     for m in sample_messages((10, 10, 10)):
-        src.state.apply(m.topic, m.payload, T0 + timedelta(seconds=50))
+        device.apply(m.topic, m.payload, T0 + timedelta(seconds=50))
     items = await src.emit_once(T0 + timedelta(seconds=55))
     assert {r.key: r.value for r in items}["heat_pump_power_kw"] == pytest.approx(0.03)
     # ohne Nachrichten länger als stale_s → erneut nicht verfügbar
@@ -230,24 +225,22 @@ async def test_compare_mode_measures_but_does_not_forward() -> None:
         received.append(items)
 
     comp = Comparator(summary_every=1)
-    src = ShellyMqttSource(
+    device = Em3Device(topic_prefix=P, device_id="X", key_prefix="heat_pump", comparator=comp)
+    src = MqttHub(
         session_factory=lambda: FakeSession([]),
-        topic_prefix=P,
-        device_id="X",
-        key_prefix="heat_pump",
+        devices=[device],
         on_readings=sink,
-        comparator=comp,
         forward=False,
     )
     comp.note_ha(0.5, T0)
     for m in sample_messages((300, 200, 100)):  # 0,6 kW gegen 0,5 kW aus HA
-        src.state.apply(m.topic, m.payload, T0)
+        device.apply(m.topic, m.payload, T0)
     items = await src.emit_once(T0 + timedelta(seconds=5))
     assert items and not received  # gemessen, aber nichts an die API
     assert comp.samples == 1 and comp.deviations == 1 and comp.max_delta_kw == pytest.approx(0.1)
     comp.note_ha(0.6, T0)
     for m in sample_messages((300, 200, 100)):
-        src.state.apply(m.topic, m.payload, T0 + timedelta(seconds=6))
+        device.apply(m.topic, m.payload, T0 + timedelta(seconds=6))
     await src.emit_once(T0 + timedelta(seconds=8))
     assert comp.samples == 2 and comp.deviations == 1  # innerhalb der Toleranz
 
@@ -287,3 +280,138 @@ def test_topic_prefix_accepts_every_spelling() -> None:
     # ein selbst gesetztes Präfix mit eigenem Pfad bleibt unangetastet
     assert prefix(mqtt_topic_prefix="haus/waermepumpe") == "haus/waermepumpe"
     assert prefix() == ""
+
+
+# ---------------------------------------------------------------------- Generation 2 (Plus/Pro)
+G2 = "shellyplus1-b8d61a86e20c"
+BUFFER = {
+    "temperature:100": "buffer_temp_top_c",
+    "temperature:101": "buffer_temp_mid_top_c",
+    "temperature:102": "buffer_temp_mid_bottom_c",
+    "temperature:103": "buffer_temp_bottom_c",
+}
+
+
+def notify(components: dict[str, object], method: str = "NotifyStatus") -> bytes:
+    body = {"src": G2, "dst": f"{G2}/events", "method": method, "params": {"ts": 1.0, **components}}
+    return json.dumps(body).encode()
+
+
+def test_gen2_reads_temperatures_from_rpc_notification() -> None:
+    dev = Gen2Device(topic_prefix=G2, components=BUFFER)
+    assert dev.topics() == [f"{G2}/events/rpc", f"{G2}/status/#"]
+    assert dev.owned_keys == set(BUFFER.values())
+    assert dev.apply(
+        f"{G2}/events/rpc", notify({"temperature:100": {"id": 100, "tC": 58.2, "tF": 136.8}}), T0
+    )
+    assert dev.apply(
+        f"{G2}/events/rpc",
+        notify(
+            {
+                "temperature:101": {"id": 101, "tC": 51.0},
+                "temperature:103": {"id": 103, "tC": 33.4},
+            },
+            method="NotifyFullStatus",
+        ),
+        T0,
+    )
+    items = {r.key: r.value for r in dev.emit(T0 + timedelta(seconds=1))}
+    assert items == {
+        "buffer_temp_top_c": 58.2,
+        "buffer_temp_mid_top_c": 51.0,
+        "buffer_temp_bottom_c": 33.4,
+    }
+    assert all(
+        r.source == f"mqtt:{G2}"
+        for r in dev.emit(T0) or [RawReading(key="x", value=1, observed_at=T0, source=f"mqtt:{G2}")]
+    )
+
+
+def test_gen2_reads_status_topic_and_switch_fields() -> None:
+    dev = Gen2Device(
+        topic_prefix="shellyplus1pm-aabb",
+        components={
+            "switch:0": {
+                "apower": "coffee_power_kw",
+                "aenergy.total": "coffee_energy_kwh",
+                "output": "actuator:coffee_machine",
+            }
+        },
+    )
+    payload = json.dumps(
+        {"id": 0, "output": True, "apower": 1450.0, "voltage": 231.1, "aenergy": {"total": 12345.0}}
+    ).encode()
+    assert dev.apply("shellyplus1pm-aabb/status/switch:0", payload, T0)
+    items = {r.key: r.value for r in dev.emit(T0)}
+    assert items["coffee_power_kw"] == pytest.approx(1.45)  # W → kW
+    assert items["coffee_energy_kwh"] == pytest.approx(12.345)  # Wh → kWh
+    assert items["actuator:coffee_machine"] == 1.0  # Schalterzustand als 0/1
+
+
+def test_gen2_ignores_unknown_and_invalid_messages() -> None:
+    dev = Gen2Device(topic_prefix=G2, components=BUFFER)
+    assert not dev.apply(f"{G2}/events/rpc", b"kein json", T0)
+    assert not dev.apply(f"{G2}/events/rpc", notify({}, method="NotifyEvent"), T0)
+    assert not dev.apply(
+        f"{G2}/events/rpc", notify({"temperature:199": {"tC": 20.0}}), T0
+    )  # nicht gemappt
+    assert not dev.apply("anderes-geraet/events/rpc", notify({"temperature:100": {"tC": 20.0}}), T0)
+    assert not dev.apply(
+        f"{G2}/events/rpc", notify({"temperature:100": {"tC": 900.0}}), T0
+    )  # außerhalb
+    assert not dev.apply(f"{G2}/events/rpc", notify({"temperature:100": {"tC": "warm"}}), T0)
+    assert dev.emit(T0) == [] and dev.state.rejected >= 3
+
+
+def test_gen2_values_expire_and_only_new_data_is_emitted() -> None:
+    dev = Gen2Device(topic_prefix=G2, components=BUFFER, stale_s=300)
+    dev.apply(f"{G2}/events/rpc", notify({"temperature:100": {"tC": 58.2}}), T0)
+    assert len(dev.emit(T0)) == 1
+    assert dev.emit(T0 + timedelta(seconds=10)) == []  # nichts Neues
+    dev.apply(
+        f"{G2}/events/rpc", notify({"temperature:101": {"tC": 50.0}}), T0 + timedelta(minutes=10)
+    )
+    fresh = {r.key for r in dev.emit(T0 + timedelta(minutes=10))}
+    assert fresh == {"buffer_temp_mid_top_c"}  # der alte Wert von 100 ist zu alt
+
+
+@pytest.mark.asyncio
+async def test_hub_serves_two_generations_over_one_connection() -> None:
+    received: list[RawReading] = []
+
+    async def sink(items: list[RawReading]) -> None:
+        received.extend(items)
+
+    em3 = Em3Device(topic_prefix=P, device_id="X", key_prefix="heat_pump")
+    gen2 = Gen2Device(topic_prefix=G2, components=BUFFER)
+    messages = [
+        *sample_messages(),
+        FakeMessage(f"{G2}/events/rpc", notify({"temperature:100": {"tC": 57.5}})),
+    ]
+    session = FakeSession(messages)
+    hub = MqttHub(
+        session_factory=lambda: session,
+        devices=[em3, gen2],
+        on_readings=sink,
+        publish_interval_s=0.05,
+    )
+    task = asyncio.create_task(hub.run())
+    try:
+        for _ in range(100):
+            await asyncio.sleep(0.05)
+            if received:
+                break
+        assert sorted(t for t, _ in session.subscribed) == [
+            f"{P}/#",
+            f"{G2}/events/rpc",
+            f"{G2}/status/#",
+        ]
+        keys = {r.key: r.value for r in received}
+        assert keys["heat_pump_power_kw"] == pytest.approx(0.6)
+        assert keys["buffer_temp_top_c"] == pytest.approx(57.5)
+        status = hub.status()
+        assert status["connected"] is True and len(status["devices"]) == 2
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task

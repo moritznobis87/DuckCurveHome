@@ -17,13 +17,16 @@ from dch_bridge.outbox import Outbox
 from dch_bridge.settings import BridgeSettings
 from dch_bridge.sources.shelly_mqtt import (
     Comparator,
-    ShellyMqttSource,
+    Device,
+    Em3Device,
+    Gen2Device,
+    MqttHub,
     aiomqtt_session_factory,
 )
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 log = structlog.get_logger("bridge")
 
 
@@ -50,13 +53,14 @@ class Bridge:
         self.latest: dict[str, EntityState] = {}
         self._pending: dict[str, RawReading] = {}
         self._released_contacts_after_offline = False
-        # Shelly 3EM über MQTT (Modus mqtt/compare); im Modus mqtt liefert HA diese Schlüssel nicht mehr
-        self.mqtt: ShellyMqttSource | None = None
+        # Geräte, die direkt über MQTT gelesen werden (Modus mqtt/compare). Im Modus mqtt liefert Home
+        # Assistant die dort abgedeckten Schlüssel nicht mehr – sie kämen sonst doppelt und älter.
+        self.mqtt: MqttHub | None = None
         self.comparator: Comparator | None = None
         self._mqtt_owned: set[str] = set()
-        if settings.source_mode != "home_assistant":
-            self.comparator = Comparator() if settings.source_mode == "compare" else None
-            self.mqtt = ShellyMqttSource(
+        devices = self._mqtt_devices()
+        if devices:
+            self.mqtt = MqttHub(
                 session_factory=aiomqtt_session_factory(
                     settings.mqtt_host,
                     settings.mqtt_port,
@@ -64,19 +68,54 @@ class Bridge:
                     settings.mqtt_password,
                     client_id=f"dch-bridge-{settings.bridge_id}",
                 ),
-                topic_prefix=settings.shelly_topic_prefix,
-                device_id=settings.shelly_device_id
-                or settings.shelly_topic_prefix.rsplit("-", 1)[-1],
-                key_prefix=settings.mqtt_key_prefix,
+                devices=devices,
                 on_readings=self._ingest_readings,
                 publish_interval_s=settings.mqtt_publish_interval_s,
-                stale_s=settings.mqtt_stale_s,
                 qos=settings.mqtt_qos,
-                comparator=self.comparator,
                 forward=settings.source_mode == "mqtt",
             )
             if settings.source_mode == "mqtt":
                 self._mqtt_owned = self.mqtt.owned_keys
+
+    def _mqtt_devices(self) -> list[Device]:
+        """Geräteliste aus dem Entity-Mapping; der Shelly 3EM geht ersatzweise auch über die Add-on-Optionen."""
+        settings = self.settings
+        if settings.source_mode == "home_assistant":
+            return []
+        out: list[Device] = []
+        for dev in self.map.mqtt:
+            if dev.kind == "em3":
+                self.comparator = Comparator() if settings.source_mode == "compare" else None
+                out.append(
+                    Em3Device(
+                        topic_prefix=dev.prefix,
+                        device_id=dev.prefix.rsplit("-", 1)[-1],
+                        key_prefix=dev.key_prefix or settings.mqtt_key_prefix,
+                        stale_s=settings.mqtt_stale_s,
+                        comparator=self.comparator,
+                        label=dev.label or "Shelly 3EM",
+                    )
+                )
+            elif dev.components:
+                out.append(
+                    Gen2Device(
+                        topic_prefix=dev.prefix,
+                        components=dev.components,
+                        label=dev.label or "Shelly Plus",
+                    )
+                )
+        if not out and settings.shelly_topic_prefix:
+            self.comparator = Comparator() if settings.source_mode == "compare" else None
+            out.append(
+                Em3Device(
+                    topic_prefix=settings.shelly_topic_prefix,
+                    device_id=settings.shelly_topic_prefix.rsplit("-", 1)[-1],
+                    key_prefix=settings.mqtt_key_prefix,
+                    stale_s=settings.mqtt_stale_s,
+                    comparator=self.comparator,
+                )
+            )
+        return out
 
     # ------------------------------------------------------------------ Lesen
     def _ingest(self, st: EntityState) -> None:
@@ -232,9 +271,8 @@ class Bridge:
             sensors=len(self.map.sensors),
             actuators=len(self.map.actuators),
             source_mode=self.settings.source_mode,
-            mqtt=f"{self.settings.mqtt_host}:{self.settings.mqtt_port} {self.settings.shelly_topic_prefix}"
-            if self.mqtt is not None
-            else None,
+            mqtt=f"{self.settings.mqtt_host}:{self.settings.mqtt_port}" if self.mqtt else None,
+            mqtt_devices=[d.label for d in self.mqtt.devices] if self.mqtt else [],
         )
         tasks = [
             asyncio.create_task(self._ha_loop(), name="ha"),
@@ -275,15 +313,15 @@ def run() -> None:
     if not settings.api_token:
         log.error("DCH_BRIDGE_API_TOKEN fehlt – Bridge startet nicht")
         sys.exit(2)
-    if settings.source_mode != "home_assistant" and not (
-        settings.mqtt_host and (settings.shelly_device_id or settings.mqtt_topic_prefix)
-    ):
+    entity_map = EntityMap.load(settings.entities_file)
+    has_device = bool(entity_map.mqtt) or bool(settings.shelly_topic_prefix)
+    if settings.source_mode != "home_assistant" and not (settings.mqtt_host and has_device):
         log.error(
-            "MQTT-Modus ohne Broker oder Shelly-ID – Rückfall auf home_assistant",
+            "MQTT-Modus ohne Broker oder Gerät – Rückfall auf home_assistant",
             source_mode=settings.source_mode,
+            hint="shelly_device_id in den Add-on-Optionen oder ein Abschnitt mqtt: im Entity-Mapping",
         )
         settings = settings.model_copy(update={"source_mode": "home_assistant"})
-    entity_map = EntityMap.load(settings.entities_file)
     bridge = Bridge(settings, entity_map)
     with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(bridge.run())

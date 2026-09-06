@@ -44,7 +44,9 @@ actuators:
   # Drei Lichterketten: Terrasse, Innenhof, Gartenzaun – einheitlich „Licht <Ort>“.
   - { key: terrace_light,      entity: switch.shellyterrassenlicht,   label: Licht Terrasse }
   - { key: garden_fence_light, entity: switch.shellygartenzaun,       label: Licht Gartenzaun }
-  # Innenhof: Shelly noch nicht in HA eingerichtet – Entity-ID nachtragen, sobald vorhanden.
+  # Innenhof: Shelly Plus Plug S „Lichterkette_Innenhof“ (MQTT-Kennung shellyplusplugs-64b7080cc70c) sendet
+  # schon an den Broker, ist aber noch nicht in HA eingerichtet. In HA über die Shelly-Integration hinzufügen
+  # (Einstellungen → Geräte & Dienste → Shelly → Gerät hinzufügen, IP des Plugs), dann Entity-ID hier eintragen.
   # - { key: courtyard_light,  entity: switch.shellyinnenhof,         label: Licht Innenhof }
 
   # --- Wärmepumpen-Kontakte K1 (PV-Freigabe) und K2 (EVU-Sperre) ---
@@ -54,3 +56,39 @@ actuators:
   # schaltet, darf hier NIE stehen. Bis dahin bleibt die Steuerung reine Beobachtung.
   # - { key: hp_release_contact, entity: switch.<K1>, label: WP PV-Freigabe, safety_class: heat_pump, safe_state: false }
   # - { key: hp_block_contact,   entity: switch.<K2>, label: WP Sperre,      safety_class: heat_pump, safe_state: false }
+
+# ---------------------------------------------------------------------------
+# Shellys, die die Bridge direkt über den lokalen Mosquitto liest (ohne Umweg über HA).
+# Aktiv nur bei source_mode: mqtt oder compare. Schlüssel, die hier auftauchen, kommen dann
+# NICHT mehr aus Home Assistant – die passenden `sensors:`-Einträge oben bleiben als Fallback
+# für source_mode: home_assistant stehen.
+mqtt:
+  # --- Wärmepumpe: Shelly 3EM (Generation 1) ---
+  # ⚠ Geräte-ID noch eintragen. In HA: Einstellungen → Geräte → „heatpump_measurement“ → MAC ablesen,
+  # oder am Broker mitlesen:  mosquitto_sub -h core-mosquitto -u <user> -P <pw> -t 'shellies/#' -v
+  # Prefix ist dann shellies/shellyem3-<MAC ohne Doppelpunkte, Großbuchstaben>.
+  # Liefert heat_pump_power_kw (Summe der drei Phasen) und heat_pump_energy_kwh (Summe der drei
+  # `total`-Zähler; die flüchtigen `energy`-Werte bleiben ungenutzt).
+  # - { prefix: "shellies/shellyem3-XXXXXXXXXXXX", generation: 1, kind: em3, key_prefix: heat_pump, label: "WP-Zähler" }
+
+  # --- Pufferspeicher: Shelly Plus 1 mit Temperatur-Add-on (Generation 2) ---
+  # ⚠ Zuordnung der Komponenten-IDs zu den Fühlern noch bestätigen. Am Broker mitlesen:
+  #   mosquitto_sub -h core-mosquitto -u <user> -P <pw> -t 'shellyplus1-b8d61a86e20c/#' -v
+  # Die IDs 100…104 stehen in der Reihenfolge, in der die Fühler angelernt wurden – nicht zwingend
+  # von oben nach unten. Fühler 4 (temperature:103) liefert „unknown“ und bleibt daher unbelegt.
+  # Voraussetzung im Gerät: MQTT aktiv und „RPC status notifications over MQTT“ eingeschaltet.
+  - prefix: "shellyplus1-b8d61a86e20c"
+    generation: 2
+    label: "Pufferspeicher"
+    components:
+      "temperature:100": buffer_temp_top_c
+      "temperature:101": buffer_temp_mid_top_c
+      "temperature:102": buffer_temp_mid_bottom_c
+      "temperature:104": buffer_temp_bottom_c
+
+  # --- Bekannte MQTT-Kennungen der Shelly-Plus-Steckdosen (Stand 06.09.2026) ---
+  # Sie senden bereits an den Broker, sind hier aber noch nicht eingebunden: Schalten läuft weiter über
+  # Home Assistant (Aktoren unten), und die Bridge schickt über MQTT bislang nur Messwerte.
+  #   shellyplusplugs-d4d4daf36370  Schalter_Terassenlicht  → switch.shellyterrassenlicht
+  #   shellyplusplugs-d4d4daf36158  Licht_Gartenzaun        → switch.shellygartenzaun
+  #   shellyplusplugs-64b7080cc70c  Lichterkette_Innenhof   → noch nicht in HA (siehe Aktoren unten)
