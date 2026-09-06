@@ -105,6 +105,15 @@ curl -sG "http://<ha-ip>:8086/query" -u "<user>:<passwort>" -H "Accept: applicat
   > influx_temp.csv
 ```
 
+Inventar des Hauses (Chronograf-Export vom 06.09.2026): Leistungen in `W` (`myenergi_hub_14117600_power_generation`,
+`…_power_grid`, `…_home_consumption`, `myenergi_libbi_26244255_power_ct_internal_load`, `…_power_ct_dcpv`,
+`myenergi_wallbox_power_ct_internal_load`, `heatpump_total_power`, `power_heatpumo`, `photovoltaic_total`),
+SOC in `%` (`myenergi_libbi_26244255_soc`), Temperaturen in `°C` (`speicher_1/2/3/4/5/11_temperature`,
+`vorlauf_temperature`, `geilenkirchen_air_base_temperatur`), Strompreis in `EUR/kWh`
+(`electricity_price_waldstrasse_48`), zweiter Wechselrichter in `kW` (`nobis_solar_network_111_current_power`).
+Der Preissensor steht nicht im Bridge-Mapping und wird beim Import per `extra_map` zugeordnet:
+`{"sensor.electricity_price_waldstrasse_48":{"key":"electricity_price_ct_kwh","unit":"EUR/kWh"}}`.
+
 Ergebnisspalten: `name,tags,time,mean` (tags = `entity_id=…`). Genau dieses Format versteht der Import; die
 Schrittweite (1, 5 oder 60 min) erkennt er selbst. Bei sehr großen Datenmengen `time > now() - 400d` in
 Monatsfenster teilen und die Dateien nacheinander importieren – der Import ist idempotent. Mit dem Add-on
