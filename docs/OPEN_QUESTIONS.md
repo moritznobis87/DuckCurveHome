@@ -3,6 +3,12 @@
 Lebende Liste. Jede Frage nennt, was davon abhängt und mit welcher Annahme das System bis zur Antwort läuft.
 Beantwortete Punkte wandern mit Datum und Antwort nach unten in „Erledigt“.
 
+> **Stand 06.09., abends: die Steuerung ist scharf.** `DCH_HEAT_PUMP_ACTUATION_ENABLED=true`; Duck Curve
+> Home stellt K1 („PV-Überschuss“, `switch.warmepumpe`) selbsttätig. Alle drei Rückfallebenen stehen:
+> E0 Auto-OFF im Shelly 1 (1800 s), E1 Wächter-Automation in Home Assistant (30 min ohne Heartbeat),
+> E2 `offline_release_s` in der Bridge. Zurücknehmen jederzeit über dieselbe Variable oder „Aus“ im
+> Wärmepumpen-Segment des Dashboards.
+
 > Stand 06.09.: myenergi wird jetzt direkt aus der Cloud gelesen (`DCH_MYENERGI_SERIAL`/`_API_KEY`); die HA-Sensoren für PV, Netz, Batterie und Wallbox sind nur noch Rückfall. Q3 (Batterievorzeichen) ist damit fest im Code: interner Libbi-CT negiert, Entladen positiv.
 
 > **Q9 erledigt (06.09.): Die Shellys der ersten Generation bleiben bei Home Assistant.** Beim Gen-1-Shelly
