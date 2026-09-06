@@ -75,13 +75,11 @@ mqtt:
   # ⚠ WICHTIG: `prefix` ist der im Gerät eingestellte MQTT-Name, NICHT die Gerätekennung
   # (shellyplus1-b8d61a86e20c). Bestätigt am 06.09.2026 an der Terrassensteckdose, die unter
   # „Lichterkette_Terassenlicht/events“ sendet, obwohl ihre Kennung shellyplusplugs-d4d4daf36370 lautet.
-  # Präfix am 06.09.2026 am Broker bestätigt (NotifyStatus mit dst „Pufferspeicher_Temperaturen/events“).
-  # ⚠ Zuordnung der Komponenten-IDs zu den Fühlern noch offen; bestätigt ist bisher nur, dass
-  #   temperature:102 existiert (56,38 °C am 06.09.2026 um 16:44).
-  # Die IDs 100…104 stehen in der Reihenfolge, in der die Fühler angelernt wurden – nicht zwingend
-  # von oben nach unten. Fühler 4 (temperature:103) liefert „unknown“ und bleibt daher unbelegt.
-  # Voraussetzung im Gerät: MQTT aktiv und „RPC status notifications over MQTT“ eingeschaltet;
-  # „Generic status update over MQTT“ zusätzlich schickt auch ohne Änderung regelmäßig einen Vollstand.
+  # Präfix und Fühlerreihenfolge am 06.09.2026 am Broker bestätigt: aufsteigende Komponenten-ID =
+  # absteigende Temperatur, also 100 oben … 104 unten. Fühler 4 (temperature:103) ist defekt
+  # („unknown“) und bleibt unbelegt; 104 ist damit der unterste belegte Fühler.
+  # Voraussetzung im Gerät: MQTT aktiv, „RPC status notifications over MQTT“ ein und (seit 06.09.2026
+  # gesetzt) „Generic status update over MQTT“, das auch ohne Änderung regelmäßig einen Vollstand schickt.
   - prefix: "Pufferspeicher_Temperaturen"
     generation: 2
     label: "Pufferspeicher"
