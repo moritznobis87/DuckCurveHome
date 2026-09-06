@@ -7,12 +7,13 @@ from typing import Any
 
 import pytest
 
-from dch_api.application.myenergi_source import MyenergiSource
+from dch_api.application.myenergi_source import MyenergiSource, price_readings_for_gaps
 from dch_api.integrations.myenergi.mapping import (
     history_minutes,
     readings_from_history,
     readings_from_status,
 )
+from hems_core.planning import PricePoint
 from hems_core.protocol import RawReading
 
 NOW = datetime(2026, 9, 5, 10, 0, tzinfo=UTC)
@@ -149,7 +150,11 @@ def test_history_minutes_merge_devices() -> None:
     assert m0.ev_kw == pytest.approx(1.5)
     assert m1.grid_kw == pytest.approx(-1.0)  # Einspeisung
     assert m1.battery_kw == pytest.approx(0.5)  # Entladen
-    assert m1.ev_kw is None
+    assert m1.ev_kw is None  # keine Zappi-Zeile in dieser Minute
+
+    # Zeile ohne Energiefelder (Nacht, Batterie ruht) → 0 statt fehlend
+    quiet = history_minutes({"libbi": [{"yr": 2026, "mon": 9, "dom": 5, "hr": 2, "min": 0}]})
+    assert quiet[0].pv_kw == 0.0 and quiet[0].grid_kw == 0.0 and quiet[0].battery_kw == 0.0
 
     readings = readings_from_history(out, missing={(m0.ts, "pv_power_kw")})
     assert [(r.key, r.value) for r in readings] == [("pv_power_kw", 2.0)]
@@ -240,7 +245,9 @@ async def test_backfill_only_fills_missing_minutes() -> None:
     assert len(bat) == 3 and bat[0].value == pytest.approx(0.1)
     ev = [r for r in got if r.key == "ev_power_kw"]
     assert len(ev) == 3 and all(r.value == 0.0 for r in ev)  # Zappi-Zeilen ohne h1d/h1b = 0 kW
-    assert n == len(got) == 8 and recomputed == [(start, end)]
+    grid = [r for r in got if r.key == "grid_power_kw"]
+    assert len(grid) == 3 and all(r.value == 0.0 for r in grid)  # keine imp/exp-Felder = 0 kW
+    assert n == len(got) == 11 and recomputed == [(start, end)]
 
 
 @pytest.mark.asyncio
@@ -258,3 +265,16 @@ async def test_backfill_is_chunked_per_utc_day() -> None:
     assert [c[2].day for c in libbi_calls] == [4, 5, 6]
     assert libbi_calls[0][2].hour == 20 and libbi_calls[1][3] == 1440
     assert "Historie" in src.status_out()["detail_de"] and src.last_backfill_at is not None
+
+
+def test_price_readings_only_for_missing_minutes() -> None:
+    start = datetime(2026, 9, 5, 10, 0, tzinfo=UTC)
+    prices = [
+        PricePoint(start=start, end=start + timedelta(hours=1), ct_kwh=25.5),
+        PricePoint(start=start + timedelta(hours=1), end=start + timedelta(hours=2), ct_kwh=30.0),
+    ]
+    existing = [{"ts": "2026-09-05T10:05:00Z", "electricity_price_ct_kwh": 25.5}]
+    out = price_readings_for_gaps(prices, existing, start, start + timedelta(minutes=70))
+    assert len(out) == 69  # 70 Minuten, eine schon vorhanden
+    assert out[0].observed_at == start.replace(second=30) and out[0].value == 25.5
+    assert out[-1].value == 30.0 and out[-1].source == "tibber:history"

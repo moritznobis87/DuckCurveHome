@@ -22,6 +22,8 @@ from dch_api.integrations.myenergi.mapping import (
     readings_from_history,
     readings_from_status,
 )
+from hems_core.domain import Quality
+from hems_core.planning import PricePoint
 from hems_core.protocol import RawReading
 
 log = structlog.get_logger("myenergi")
@@ -216,3 +218,34 @@ class MyenergiSource:
             "last_ok": self.last_ok,
             "detail_de": f"{live} · {hist}",
         }
+
+
+def price_readings_for_gaps(
+    prices: list[PricePoint], existing: MinuteRows, start: datetime, end: datetime
+) -> list[RawReading]:
+    """Strompreis je Minute (Tibber-Historie) für Minuten ohne gespeicherten Preis, damit nachgetragene
+    Leistungen nicht mit dem Ersatzpreis bewertet werden."""
+    have: set[datetime] = set()
+    for row in existing:
+        ts_raw = row.get("ts")
+        if isinstance(ts_raw, str) and isinstance(row.get("electricity_price_ct_kwh"), int | float):
+            have.add(datetime.fromisoformat(ts_raw.replace("Z", "+00:00")).astimezone(UTC))
+    start = start.astimezone(UTC).replace(second=0, microsecond=0)
+    end = end.astimezone(UTC)
+    out: list[RawReading] = []
+    for p in prices:
+        m = max(start, p.start.astimezone(UTC).replace(second=0, microsecond=0))
+        stop = min(end, p.end.astimezone(UTC))
+        while m < stop:
+            if m not in have:
+                out.append(
+                    RawReading(
+                        key="electricity_price_ct_kwh",
+                        value=round(p.ct_kwh, 3),
+                        observed_at=m.replace(second=30),
+                        quality=Quality.OK,
+                        source="tibber:history",
+                    )
+                )
+            m += timedelta(minutes=1)
+    return out

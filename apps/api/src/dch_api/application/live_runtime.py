@@ -19,7 +19,11 @@ from dch_api.application.energy_accounting import ENERGY_KEYS, EnergyAccounting
 from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
 from dch_api.application.forecast_service import ForecastService
 from dch_api.application.ha_import import HaImporter, ImportResult, Kind, load_entity_rules
-from dch_api.application.myenergi_source import MyenergiSource, StatusClient
+from dch_api.application.myenergi_source import (
+    MyenergiSource,
+    StatusClient,
+    price_readings_for_gaps,
+)
 from dch_api.application.plan_service import build_plan
 from dch_api.errors import DchError
 from dch_api.infrastructure.bridge_hub import BridgeHub
@@ -117,7 +121,7 @@ class LiveRuntime:
                 poll_s=settings.myenergi_poll_s,
                 backfill_hours=settings.myenergi_backfill_hours,
                 minute_rows=repos.minute_series,
-                on_backfilled=self.accounting.recompute,
+                on_backfilled=self._after_backfill,
                 on_state_change=self._on_source_state,
             )
 
@@ -144,6 +148,22 @@ class LiveRuntime:
         if loop_time - self._last_publish >= 1.0:
             self._last_publish = loop_time
             self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+
+    async def _after_backfill(self, start: datetime, end: datetime) -> None:
+        """Nachgetragene Minuten brauchen einen Preis: Tibber-Historie für Lücken, dann Stunden neu rechnen."""
+        prices = self.forecasts.prices
+        if prices is not None and hasattr(prices, "fetch_range"):
+            try:
+                points = await prices.fetch_range(start, end)
+                existing = await self.repos.minute_series(start, end, ["electricity_price_ct_kwh"])
+                readings = price_readings_for_gaps(points, existing, start, end)
+                for i in range(0, len(readings), 2000):
+                    await self.repos.add_readings(readings[i : i + 2000])
+                if readings:
+                    log.info("price gaps filled", readings=len(readings))
+            except Exception as exc:
+                log.warning("tibber history failed", error=repr(exc)[:200])
+        await self.accounting.recompute(start, end)
 
     async def _on_source_state(self, online: bool, error: str) -> None:
         await self.repos.add_event(

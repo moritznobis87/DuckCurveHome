@@ -198,6 +198,7 @@ def history_minutes(rows_by_device: dict[str, list[dict[str, Any]]]) -> list[His
 
     Netz (`imp`/`exp`) und Erzeugung (`gep`) meldet jedes Gerät für den Standort – es zählt der größte Wert
     statt der Summe. Wallbox: `h1d`+`h1b` der Zappi(s). Batterie: `bdp1`−`bcp1` der Libbi (Entladen positiv).
+    Fehlende Felder einer vorhandenen Minutenzeile bedeuten 0 (myenergi überträgt Nullen nicht).
     """
     by_ts: dict[datetime, HistoryMinute] = {}
     for kind, rows in rows_by_device.items():
@@ -206,18 +207,15 @@ def history_minutes(rows_by_device: dict[str, list[dict[str, Any]]]) -> list[His
             if ts is None:
                 continue
             hm = by_ts.setdefault(ts, HistoryMinute(ts=ts))
-            if "gep" in row or "gen" in row:
-                pv = _j_to_kw(row.get("gep"))
-                hm.pv_kw = pv if hm.pv_kw is None else max(hm.pv_kw, pv)
-            if "imp" in row or "exp" in row:
-                grid = _j_to_kw(row.get("imp")) - _j_to_kw(row.get("exp"))
-                hm.grid_kw = (
-                    grid if hm.grid_kw is None or abs(grid) > abs(hm.grid_kw) else hm.grid_kw
-                )
+            # myenergi lässt Felder mit 0 weg: eine vorhandene Zeile ohne gep/imp/exp bedeutet 0 kW
+            pv = _j_to_kw(row.get("gep"))
+            hm.pv_kw = pv if hm.pv_kw is None else max(hm.pv_kw, pv)
+            grid = _j_to_kw(row.get("imp")) - _j_to_kw(row.get("exp"))
+            hm.grid_kw = grid if hm.grid_kw is None or abs(grid) > abs(hm.grid_kw) else hm.grid_kw
             if kind == "zappi":
                 ev = _j_to_kw(row.get("h1d")) + _j_to_kw(row.get("h1b"))
                 hm.ev_kw = (hm.ev_kw or 0.0) + ev
-            if kind == "libbi" and ("bdp1" in row or "bcp1" in row):
+            if kind == "libbi":
                 hm.battery_kw = _j_to_kw(row.get("bdp1")) - _j_to_kw(row.get("bcp1"))
     out = sorted(by_ts.values(), key=lambda h: h.ts)
     for h in out:
