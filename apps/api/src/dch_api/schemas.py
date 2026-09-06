@@ -64,6 +64,9 @@ class BackfillResultOut(BaseModel):
     start: datetime | None = None
     end: datetime | None = None
     error_de: str | None = None
+    price_note_de: str | None = (
+        None  # Ergebnis des Tibber-Preisabgleichs für die nachgetragenen Minuten
+    )
 
 
 class SourceStatusOut(BaseModel):

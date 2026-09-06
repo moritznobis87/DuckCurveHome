@@ -340,6 +340,8 @@ export interface components {
             end?: string | null;
             /** Error De */
             error_de?: string | null;
+            /** Price Note De */
+            price_note_de?: string | null;
         };
         /** BalanceConfig */
         BalanceConfig: {

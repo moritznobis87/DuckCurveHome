@@ -43,7 +43,12 @@ class TibberPriceProvider:
                     headers={"authorization": f"Bearer {self.token}"},
                 )
                 r.raise_for_status()
-                homes = r.json().get("data", {}).get("viewer", {}).get("homes", [])
+                body = r.json()
+                if body.get("errors"):
+                    raise RuntimeError(
+                        f"Tibber: {body['errors'][0].get('message', 'GraphQL-Fehler')}"
+                    )
+                homes = (body.get("data") or {}).get("viewer", {}).get("homes", [])
                 if not homes:
                     break
                 home = next((h for h in homes if h.get("id") == self.home_id), homes[0])

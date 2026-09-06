@@ -890,6 +890,17 @@
               }
             ],
             "title": "Error De"
+          },
+          "price_note_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Note De"
           }
         },
         "type": "object",
