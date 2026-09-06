@@ -35,18 +35,23 @@ function ControlTile({ tile, on, onToggle }: { tile: (typeof TILES)[number]; on:
       setOptimistic(null);
       setStatus("error");
       setMessage(e instanceof ApiError ? e.message : "Schaltung nicht bestätigt.");
-      setTimeout(() => setStatus("idle"), 4000);
+      setTimeout(() => setStatus("idle"), 12000);
     }
   };
   const color = status === "error" ? "var(--alert)" : shown ? "var(--amber)" : "var(--text-3)";
   return (
-    <button onClick={click} aria-pressed={shown ?? undefined} className="flex h-20 min-w-0 items-center gap-3 rounded-[3px] border border-line-1 bg-surface-2 px-3 text-left transition-transform duration-[var(--dur)] active:scale-[.99]" style={{ borderRight: `3px solid ${status === "error" ? "var(--alert)" : shown ? "var(--amber)" : "transparent"}` }}>
+    <button onClick={click} aria-pressed={shown ?? undefined} className="flex min-h-20 min-w-0 items-center gap-3 rounded-[3px] border border-line-1 bg-surface-2 px-3 py-2 text-left transition-transform duration-[var(--dur)] active:scale-[.99]" style={{ borderRight: `3px solid ${status === "error" ? "var(--alert)" : shown ? "var(--amber)" : "transparent"}` }}>
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-2 bg-petrol">
         <Icon name={tile.icon} size={22} color={color} />
       </span>
       <span className="flex min-w-0 flex-col gap-[5px]">
         <span className="truncate text-[13px] text-text-1">{tile.label}</span>
-        <span className="mono truncate text-[12px] uppercase tracking-[.1em]" style={{ color }}>
+        {/* Im Fehlerfall zählt der Grund: bis zu drei Zeilen, vollständig im title-Attribut. */}
+        <span
+          className={`mono text-[12px] uppercase tracking-[.1em] ${status === "error" ? "line-clamp-3 leading-[1.25]" : "truncate"}`}
+          style={{ color }}
+          title={status === "error" ? message ?? "Fehler" : undefined}
+        >
           {status === "pending" ? "schalte …" : status === "error" ? message ?? "Fehler" : shown === null ? "–" : shown ? "an" : "aus"}
         </span>
       </span>
