@@ -30,6 +30,8 @@ Einstellungen → Geräte & Dienste → unten rechts „+ Integration hinzufüge
 Port 1883, Benutzer und Passwort aus Schritt 2). Add-on und Integration sind zwei verschiedene Dinge – das
 Add-on ist der Broker, die Integration ist der Zugang von Home Assistant dorthin. Erst mit der Integration
 sieht Home Assistant weiterhin die Shelly-Werte und es gibt die Seite `/config/mqtt` zum Mitlesen.
+Gen-2-Shellys melden sich dort **nicht** selbst an (kein HA-Discovery); „0 Geräte“ ist also normal und für
+die Bridge ohne Belang – sie abonniert die Topics direkt.
 
 ### 2. Eigene MQTT-Zugangsdaten anlegen
 
@@ -129,9 +131,13 @@ Fühler angelernt wurden – sie sagen nichts über die Einbaulage. Am Broker mi
 mosquitto_sub -h core-mosquitto -u <benutzer> -P <passwort> -t 'shellyplus1-b8d61a86e20c/#' -v
 ```
 
-oder in Home Assistant über die Seite **`/config/mqtt`** („Auf ein Thema lauschen“). Den Knopf
-„Konfigurieren“ gibt es in neueren HA-Versionen nicht mehr an der Integrationskachel; die URL direkt
-aufrufen, z. B. `http://homeassistant.local:8123/config/mqtt`. Steht dort „Integration nicht eingerichtet“,
+oder in Home Assistant über die Seite **`/config/mqtt`**, ganz unten der Abschnitt **„Ein Topic
+abonnieren“** (früher „Auf ein Thema lauschen“). Dorthin führt das Zahnrad an der Integrationskachel; den
+Knopf „Konfigurieren“ gibt es in neueren HA-Versionen nicht mehr, notfalls die URL direkt aufrufen, z. B.
+`http://homeassistant.local:8123/config/mqtt`. „JSON-Inhalt formatieren“ einschalten, sonst kommt die
+Gen-2-Nachricht als eine unlesbare Zeile. Meldet sich das Gerät nicht von selbst, im Abschnitt „Ein Paket
+veröffentlichen“ eine Vollmeldung anfordern: Topic `<präfix>/rpc`, Payload
+`{"id":1,"src":"ha","method":"Shelly.GetStatus"}`. Steht auf der Seite „Integration nicht eingerichtet“,
 fehlt die MQTT-**Integration** (das Mosquitto-**Add-on** allein genügt nicht) – siehe Schritt 1.
 Bequemer für mehrere Werte gleichzeitig ist der [MQTT Explorer](http://mqtt-explorer.com) vom PC aus.
 Ein Fühler, der `unknown` bzw. `null` liefert, ist nicht angeschlossen und bleibt unbelegt.
@@ -147,7 +153,7 @@ stehen. Alle Geräte teilen sich eine einzige Broker-Verbindung.
 Im Add-on-Protokoll erscheint `mqtt connected` und alle 5 Minuten `mqtt status` mit `messages`, `rejected`,
 `reconnects`, `emitted`. Auf der Wärmeseite von Duck Curve Home muss die Wärmepumpenleistung mit Quelle
 `mqtt:shellyem3-…` erscheinen (Live-Zustand, Feld `source`). Alternativ mit dem MQTT-Werkzeug von Home
-Assistant auf der Seite `/config/mqtt` („Auf ein Thema lauschen“)
+Assistant auf der Seite `/config/mqtt` („Ein Topic abonnieren“)
 `shellies/shellyem3-<ID>/#` beobachten. `mqtt status` führt jedes Gerät einzeln auf, Gen-2-Geräte mit der
 Anzahl erkannter Komponenten.
 
