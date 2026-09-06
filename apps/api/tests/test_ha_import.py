@@ -248,3 +248,40 @@ def test_concatenated_sections_merge_into_one_dump() -> None:
     assert (
         len(hours) == 1 and hours[0][1] == 15.5
     )  # Mittel aus 12,5 °C (1. Abschnitt) und 18,5 °C (2.)
+
+
+def test_two_pv_entities_combine_by_max() -> None:
+    rules = load_entity_rules(
+        ROOT / "config" / "entities.home.yaml",
+        {"sensor.photovoltaic_total": {"key": "pv_power_kw", "unit": "W"}},
+    )
+    ts = T0.timestamp()
+    lines = ["statistic_id,unit_of_measurement,start_ts,mean,min,max,state,sum"]
+    lines.append(f"sensor.myenergi_hub_14117600_power_generation,W,{ts},0,,,,")
+    lines.append(f"sensor.photovoltaic_total,W,{ts},4200,,,,")
+    lines.append(f"sensor.myenergi_hub_14117600_power_grid,W,{ts},-3000,,,,")
+    dump = parse_dump("\n".join(lines).encode(), rules)
+    assert dump.minutes["pv_power_kw"][T0] == pytest.approx(4.2)
+    h, _ = compute_hours(dump, HemsConfig())[0]
+    assert h.pv_kwh == pytest.approx(4.2) and h.house_kwh == pytest.approx(1.2)
+
+
+@pytest.mark.asyncio
+async def test_replace_until_overrides_full_imported_hours() -> None:
+    written: list[HourlyEnergy] = []
+    full = HourlyEnergy(hour_start=T0, minutes=60, pv_kwh=0.0)
+
+    async def read_hours(s: datetime, e: datetime) -> list[tuple[HourlyEnergy, float | None]]:
+        return [(full, None)]
+
+    async def write_hours(hours: list[HourlyEnergy], temps: dict[datetime, float | None]) -> None:
+        written.extend(hours)
+
+    async def add_readings(items: list[RawReading]) -> None:
+        pass
+
+    imp = HaImporter(HemsConfig(), RULES, read_hours, write_hours, add_readings)
+    res = await imp.run(_stats_csv(3600, 1))
+    assert res.hours_written == 0 and res.hours_kept_existing == 1  # volle Stunde bleibt
+    res = await imp.run(_stats_csv(3600, 1), replace_until=T0 + timedelta(days=1))
+    assert res.hours_written == 1 and written[0].pv_kwh == pytest.approx(4.0)

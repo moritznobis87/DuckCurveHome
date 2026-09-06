@@ -2070,6 +2070,8 @@ export interface operations {
                 dry_run?: boolean;
                 /** @description JSON {entity: {key, unit?, sign?, scale?}} */
                 extra_map?: string | null;
+                /** @description Stunden vor diesem Zeitpunkt auch dann ersetzen, wenn sie schon voll sind */
+                replace_until?: string | null;
             };
             header?: never;
             path?: never;

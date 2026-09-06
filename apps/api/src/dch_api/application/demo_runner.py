@@ -180,7 +180,12 @@ class DemoRunner:
         return await self.accounting.ev_report(period, anchor, self.now)
 
     async def import_history(
-        self, payload: bytes, kind: str, dry_run: bool, extra_map: dict[str, dict[str, Any]] | None
+        self,
+        payload: bytes,
+        kind: str,
+        dry_run: bool,
+        extra_map: dict[str, dict[str, Any]] | None,
+        replace_until: datetime | None = None,
     ) -> ImportResult:
         raise DchError("not_supported", "Import nur im Live-Modus.", 400)
 

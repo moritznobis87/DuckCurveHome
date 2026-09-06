@@ -262,6 +262,9 @@ FILL_LIMIT: dict[str, timedelta] = {
     "battery_soc": timedelta(hours=6),
 }
 DEFAULT_FILL = timedelta(hours=1)
+# Mehrere Entitäten für dieselbe Größe (z. B. Hub-Erzeugung und photovoltaic_total): der größere Wert zählt,
+# weil ein fehlender/abgeschalteter Sensor 0 liefert, nie zu viel.
+COMBINE_MAX = {"pv_power_kw"}
 
 
 def _fill_span(key: str, value: float, step: timedelta) -> timedelta:
@@ -314,7 +317,10 @@ def _parse_statistics(
             )
             m = start
             while m < stop:
-                target[m] = value
+                if rule.key in COMBINE_MAX and m in target:
+                    target[m] = max(target[m], value)
+                else:
+                    target[m] = value
                 m += timedelta(minutes=1)
             out.span(start)
             out.span(stop - timedelta(minutes=1))
@@ -437,9 +443,13 @@ def compute_hours(dump: ParsedDump, hems: HemsConfig) -> list[tuple[HourlyEnergy
 DIRECT_MINUTES_KEEP = 30
 
 
-def _replaces(imported: HourlyEnergy, existing: HourlyEnergy | None) -> bool:
+def _replaces(
+    imported: HourlyEnergy, existing: HourlyEnergy | None, replace_until: datetime | None = None
+) -> bool:
     if existing is None:
         return imported.minutes > 0
+    if replace_until is not None and imported.hour_start < replace_until:
+        return imported.minutes > 0  # erneuter Import älterer Stunden (z. B. korrigierte Zuordnung)
     return existing.minutes < DIRECT_MINUTES_KEEP and imported.minutes > existing.minutes
 
 
@@ -479,7 +489,13 @@ class HaImporter:
         self.add_readings = add_readings
         self.price_history = price_history
 
-    async def run(self, payload: bytes, kind: Kind = "auto", dry_run: bool = False) -> ImportResult:
+    async def run(
+        self,
+        payload: bytes,
+        kind: Kind = "auto",
+        dry_run: bool = False,
+        replace_until: datetime | None = None,
+    ) -> ImportResult:
         dump = parse_dump(payload, self.rules, kind)
         tibber_minutes = 0
         if dump.first and dump.last and self.price_history is not None:
@@ -497,7 +513,9 @@ class HaImporter:
                     hours[0][0].hour_start, hours[-1][0].hour_start + timedelta(hours=1)
                 )
             }
-            to_write = [(h, t) for h, t in hours if _replaces(h, existing.get(h.hour_start))]
+            to_write = [
+                (h, t) for h, t in hours if _replaces(h, existing.get(h.hour_start), replace_until)
+            ]
             kept = len(hours) - len(to_write)
             for i in range(0, len(to_write), 500):
                 chunk = to_write[i : i + 500]

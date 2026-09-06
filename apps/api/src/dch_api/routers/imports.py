@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -28,10 +29,16 @@ async def import_ha(
     extra_map: Annotated[
         str | None, Query(description="JSON {entity: {key, unit?, sign?, scale?}}")
     ] = None,
+    replace_until: Annotated[
+        datetime | None,
+        Query(
+            description="Stunden vor diesem Zeitpunkt auch dann ersetzen, wenn sie schon voll sind"
+        ),
+    ] = None,
 ) -> ImportResult:
     payload = await request.body()
     extra = json.loads(extra_map) if extra_map else None
-    return await runner.import_history(payload, kind, dry_run, extra)
+    return await runner.import_history(payload, kind, dry_run, extra, replace_until)
 
 
 @router.post(

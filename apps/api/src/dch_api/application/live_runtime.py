@@ -468,7 +468,12 @@ class LiveRuntime:
         return await self.accounting.ev_report(period, anchor, self.now)
 
     async def import_history(
-        self, payload: bytes, kind: str, dry_run: bool, extra_map: dict[str, dict[str, Any]] | None
+        self,
+        payload: bytes,
+        kind: str,
+        dry_run: bool,
+        extra_map: dict[str, dict[str, Any]] | None,
+        replace_until: datetime | None = None,
     ) -> ImportResult:
         rules = load_entity_rules(self.settings.import_entities_file, extra_map)
         if not rules:
@@ -488,7 +493,7 @@ class LiveRuntime:
             if prices is not None and hasattr(prices, "fetch_range")
             else None,
         )
-        result = await importer.run(payload, cast(Kind, kind), dry_run)
+        result = await importer.run(payload, cast(Kind, kind), dry_run, replace_until)
         log.info("ha import", **result.model_dump(exclude={"entities", "unmapped"}, mode="json"))
         return result
 

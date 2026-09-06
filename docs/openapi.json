@@ -442,6 +442,25 @@
               "title": "Extra Map"
             },
             "description": "JSON {entity: {key, unit?, sign?, scale?}}"
+          },
+          {
+            "name": "replace_until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Stunden vor diesem Zeitpunkt auch dann ersetzen, wenn sie schon voll sind",
+              "title": "Replace Until"
+            },
+            "description": "Stunden vor diesem Zeitpunkt auch dann ersetzen, wenn sie schon voll sind"
           }
         ],
         "responses": {
