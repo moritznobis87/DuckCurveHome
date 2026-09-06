@@ -52,8 +52,15 @@ Weboberfläche des Wärmepumpen-Shelly → Internet & Security → Advanced – 
 execution via MQTT“: Server `<IP von Home Assistant>:1883`, Benutzer und Passwort aus Schritt 2, „Retain“ aus,
 „Clean Session“ an, Update-Periode 30 s (der Shelly sendet Leistungen zusätzlich bei Änderung).
 
-**Hinweis:** Beim Shelly 3EM Gen1 schaltet aktiviertes MQTT die Shelly-Cloud ab. Die Shelly-App funktioniert
-dann nur noch im lokalen Netz.
+**Hinweis:** Beim Shelly der ersten Generation schaltet aktiviertes MQTT die Shelly-Cloud ab **und** den
+CoIoT-Kanal, über den die HA-Shelly-Integration arbeitet. Ein Gen-1-Gerät, dessen Relais in Home Assistant
+schaltbar bleiben soll – etwa ein Wärmepumpen-Kontakt oder eine Schaltsteckdose –, gehört deshalb nicht auf
+MQTT. Im Haus in Geilenkirchen bleiben aus diesem Grund der Wärmepumpen-Zähler, der Wärmepumpenschalter und
+die Kaffeemaschine bei Home Assistant; nur die Gen-2-Geräte laufen über den Broker.
+
+Beides gleichzeitig ist ausdrücklich vorgesehen: bei `source_mode: mqtt` übergeht die Bridge in Home
+Assistant nur die Schlüssel, die im Abschnitt `mqtt:` des Mappings stehen. Jeder andere Sensor und alle
+Aktoren kommen unverändert über Home Assistant.
 
 ### 4. Bridge konfigurieren
 

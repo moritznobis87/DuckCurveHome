@@ -5,12 +5,13 @@ Beantwortete Punkte wandern mit Datum und Antwort nach unten in „Erledigt“.
 
 > Stand 06.09.: myenergi wird jetzt direkt aus der Cloud gelesen (`DCH_MYENERGI_SERIAL`/`_API_KEY`); die HA-Sensoren für PV, Netz, Batterie und Wallbox sind nur noch Rückfall. Q3 (Batterievorzeichen) ist damit fest im Code: interner Libbi-CT negiert, Entladen positiv.
 
-> **Q9 (offen, 06.09.): Geräte-ID des Wärmepumpen-Shelly-3EM für MQTT.** Es gibt zwei 3EM im Haus:
-> `heatpump_measurement` (Wärmepumpe, Grundlage von `sensor.heatpump_total_power`) und
-> `shellyem3_485519db56d2`. Für `shelly_device_id` im Bridge-Add-on wird die ID des **ersten** gebraucht;
-> sie lässt sich aus den umbenannten HA-Entitäten nicht ableiten und muss aus der Weboberfläche des Geräts
-> abgelesen werden (Settings → Device Info, Hostname `shellyem3-<ID>`). Bis dahin bleibt `source_mode` auf
-> `home_assistant` bzw. `compare`.
+> **Q9 erledigt (06.09.): Die Shellys der ersten Generation bleiben bei Home Assistant.** Beim Gen-1-Shelly
+> schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die HA-Shelly-Integration arbeitet – die Schalter
+> in HA gingen also verloren. Das ist beim Wärmepumpen-Kontakt und bei der Kaffeemaschine nicht hinnehmbar.
+> Deshalb: `heat_pump_power_kw` (Shelly 3EM), der Wärmepumpenschalter und `coffee_machine` laufen dauerhaft
+> über Home Assistant, die Gen-2-Geräte (Pufferspeicher, Lichter) über MQTT. Die Bridge kann beides
+> gleichzeitig: bei `source_mode: mqtt` übergeht sie in HA nur die Schlüssel, die im Abschnitt `mqtt:` des
+> Mappings stehen; alles andere kommt weiter aus HA. Die Geräte-ID des 3EM wird damit nicht mehr gebraucht.
 
 ## Offen
 

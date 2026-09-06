@@ -61,15 +61,14 @@ actuators:
 # Shellys, die die Bridge direkt über den lokalen Mosquitto liest (ohne Umweg über HA).
 # Aktiv nur bei source_mode: mqtt oder compare. Schlüssel, die hier auftauchen, kommen dann
 # NICHT mehr aus Home Assistant – die passenden `sensors:`-Einträge oben bleiben als Fallback
-# für source_mode: home_assistant stehen.
+# für source_mode: home_assistant stehen. Alles, was hier NICHT steht, läuft unverändert über HA.
 mqtt:
-  # --- Wärmepumpe: Shelly 3EM (Generation 1) ---
-  # ⚠ Geräte-ID noch eintragen. In HA: Einstellungen → Geräte → „heatpump_measurement“ → MAC ablesen,
-  # oder am Broker mitlesen:  mosquitto_sub -h core-mosquitto -u <user> -P <pw> -t 'shellies/#' -v
-  # Prefix ist dann shellies/shellyem3-<MAC ohne Doppelpunkte, Großbuchstaben>.
-  # Liefert heat_pump_power_kw (Summe der drei Phasen) und heat_pump_energy_kwh (Summe der drei
-  # `total`-Zähler; die flüchtigen `energy`-Werte bleiben ungenutzt).
-  # - { prefix: "shellies/shellyem3-XXXXXXXXXXXX", generation: 1, kind: em3, key_prefix: heat_pump, label: "WP-Zähler" }
+  # --- Nicht über MQTT: die Geräte der ersten Generation ---
+  # Der Wärmepumpen-Zähler (Shelly 3EM), der Wärmepumpenschalter und die Kaffeemaschine bleiben bei
+  # Home Assistant. Grund: beim Gen-1-Shelly schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die
+  # HA-Shelly-Integration arbeitet – die Schalter in HA gingen verloren. Das ist beim WP-Kontakt nicht
+  # hinnehmbar. Die Bridge mischt problemlos: bei source_mode mqtt übergeht sie in HA nur die Schlüssel,
+  # die hier unten stehen; heat_pump_power_kw und die Aktoren kommen weiter über Home Assistant.
 
   # --- Pufferspeicher: Shelly Plus 1 mit Temperatur-Add-on (Generation 2) ---
   # ⚠ WICHTIG: `prefix` ist der im Gerät eingestellte MQTT-Name, NICHT die Gerätekennung
