@@ -189,7 +189,9 @@ class DemoRunner:
     ) -> ImportResult:
         raise DchError("not_supported", "Import nur im Live-Modus.", 400)
 
-    async def myenergi_backfill(self, hours: int) -> BackfillResultOut:
+    async def myenergi_backfill(
+        self, hours: int, start: datetime | None = None, end: datetime | None = None
+    ) -> BackfillResultOut:
         raise DchError("not_supported", "myenergi nur im Live-Modus.", 400)
 
     async def recent_events(self, limit: int) -> list[SystemEventOut]:

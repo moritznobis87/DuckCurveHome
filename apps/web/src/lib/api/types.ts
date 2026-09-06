@@ -2103,6 +2103,9 @@ export interface operations {
         parameters: {
             query?: {
                 hours?: number;
+                /** @description Beginn (UTC); dann gilt end bzw. start+hours, höchstens 62 Tage */
+                start?: string | null;
+                end?: string | null;
             };
             header?: never;
             path?: never;

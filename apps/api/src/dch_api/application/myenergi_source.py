@@ -63,6 +63,7 @@ class MyenergiSource:
         self.on_backfilled = on_backfilled
         self.on_state_change = on_state_change
         self.online = False
+        self.request_gap_s = 0.25
         self.last_ok: datetime | None = None
         self.last_error: str | None = None
         self.polls_ok = 0
@@ -133,6 +134,7 @@ class MyenergiSource:
                     rows.extend(
                         await self.client.history_minutes(prefix, sno, first, min(1440, minutes))
                     )
+                    await asyncio.sleep(self.request_gap_s)  # Cloud schonen
                 day += timedelta(days=1)
             rows_by_device[f"{kind}:{sno}"] = rows
         # Schlüssel „zappi:123“ → Art fürs Zusammenführen

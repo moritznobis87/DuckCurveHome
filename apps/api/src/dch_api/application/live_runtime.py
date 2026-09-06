@@ -497,14 +497,27 @@ class LiveRuntime:
         log.info("ha import", **result.model_dump(exclude={"entities", "unmapped"}, mode="json"))
         return result
 
-    async def myenergi_backfill(self, hours: int) -> BackfillResultOut:
+    async def myenergi_backfill(
+        self, hours: int, start: datetime | None = None, end: datetime | None = None
+    ) -> BackfillResultOut:
         if self.myenergi is None:
             raise DchError(
                 "config", "myenergi ist nicht konfiguriert (DCH_MYENERGI_SERIAL/_API_KEY).", 400
             )
         now = self.now
-        start = now - timedelta(hours=max(1, min(hours, 24 * 14)))
-        end = now - timedelta(minutes=2)
+        if start is not None:
+            start = start.astimezone(UTC) if start.tzinfo else start.replace(tzinfo=UTC)
+            end = (
+                (end.astimezone(UTC) if end.tzinfo else end.replace(tzinfo=UTC))
+                if end is not None
+                else start + timedelta(hours=hours)
+            )
+            end = min(end, now - timedelta(minutes=2), start + timedelta(days=62))
+        else:
+            start = now - timedelta(hours=max(1, min(hours, 24 * 14)))
+            end = now - timedelta(minutes=2)
+        if end <= start:
+            raise DchError("validation", "Zeitraum leer.", 400)
         try:
             n = await self.myenergi.backfill(start, end)
         except Exception as exc:

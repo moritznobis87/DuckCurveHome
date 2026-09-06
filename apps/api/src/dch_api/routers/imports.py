@@ -49,8 +49,13 @@ async def import_ha(
 async def myenergi_backfill(
     runner: Annotated[Runtime, Depends(get_runner)],
     hours: Annotated[int, Query(ge=1, le=336)] = 48,
+    start: Annotated[
+        datetime | None,
+        Query(description="Beginn (UTC); dann gilt end bzw. start+hours, höchstens 62 Tage"),
+    ] = None,
+    end: Annotated[datetime | None, Query()] = None,
 ) -> BackfillResultOut:
-    return await runner.myenergi_backfill(hours)
+    return await runner.myenergi_backfill(hours, start, end)
 
 
 @router.get("/events", response_model=list[SystemEventOut], summary="Letzte Systemereignisse")

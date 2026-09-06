@@ -506,6 +506,42 @@
               "default": 48,
               "title": "Hours"
             }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Beginn (UTC); dann gilt end bzw. start+hours, höchstens 62 Tage",
+              "title": "Start"
+            },
+            "description": "Beginn (UTC); dann gilt end bzw. start+hours, höchstens 62 Tage"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
           }
         ],
         "responses": {

@@ -170,16 +170,23 @@ class EnergyAccounting:
         return len(hours)
 
     async def recompute(self, start: datetime, end: datetime) -> int:
-        """Stunden eines Zeitraums neu berechnen (nach nachgetragenen Messwerten)."""
+        """Stunden eines Zeitraums aus Minutenwerten neu berechnen (nach nachgetragenen Messwerten).
+
+        Eine gespeicherte Stunde mit mehr bewerteten Minuten (z. B. aus einem Historienimport) bleibt stehen –
+        Teildaten aus der Cloud dürfen eine vollständige Stunde nicht ersetzen."""
         if self.store is None:
             return 0
-        _read, write, _last = self.store
+        read, write, _last = self.store
         begin = start.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
         stop = end.astimezone(UTC).replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
         hours = await self._compute_hours(begin, stop)
-        if hours:
-            await write([h for h, _ in hours], {h.hour_start: t for h, t in hours})
-        return len(hours)
+        if not hours:
+            return 0
+        existing = {h.hour_start: h.minutes for h, _ in await read(begin, stop)}
+        keep = [(h, t) for h, t in hours if h.minutes >= existing.get(h.hour_start, 0)]
+        if keep:
+            await write([h for h, _ in keep], {h.hour_start: t for h, t in keep})
+        return len(keep)
 
     async def hours(
         self, start: datetime, end: datetime

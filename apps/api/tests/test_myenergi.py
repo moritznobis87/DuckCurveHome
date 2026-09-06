@@ -311,3 +311,37 @@ def test_unavailable_from_other_source_does_not_hide_good_value() -> None:
         ]
     )
     assert live.readings["pv_power_kw"].value is None
+
+
+@pytest.mark.asyncio
+async def test_recompute_keeps_fuller_stored_hours() -> None:
+    from dch_api.application.energy_accounting import EnergyAccounting
+    from hems_core.accounting import HourlyEnergy
+    from hems_core.simulation import BERLIN
+
+    hour = datetime(2026, 3, 10, 12, 0, tzinfo=UTC)
+    written: list[HourlyEnergy] = []
+
+    async def minute_rows(s: datetime, e: datetime) -> list[dict[str, float | str | None]]:
+        # nur 5 Minuten Rohdaten aus der Cloud
+        return [
+            {
+                "ts": (hour + timedelta(minutes=i)).isoformat().replace("+00:00", "Z"),
+                "pv_power_kw": 1.0,
+                "grid_power_kw": 0.2,
+            }
+            for i in range(5)
+        ]
+
+    async def read(s: datetime, e: datetime) -> list[tuple[HourlyEnergy, float | None]]:
+        return [(HourlyEnergy(hour_start=hour, minutes=60, pv_kwh=3.3), None)]
+
+    async def write(hours: list[HourlyEnergy], temps: dict[datetime, float | None]) -> None:
+        written.extend(hours)
+
+    async def last() -> datetime | None:
+        return None
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, minute_rows, store=(read, write, last))
+    n = await acc.recompute(hour, hour + timedelta(hours=1))
+    assert n == 0 and not written  # 5 Minuten ersetzen keine volle Stunde
