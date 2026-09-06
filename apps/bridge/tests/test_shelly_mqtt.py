@@ -268,3 +268,22 @@ async def test_real_client_factory_builds_expected_connection() -> None:
     assert client._client._clean_session is False  # Abonnement überlebt einen Verbindungsabbruch
     # ohne Zugangsdaten (anonymer Broker) muss der Aufbau ebenfalls gelingen
     assert aiomqtt_session_factory("h", 1883, "", "", "id")() is not None
+
+
+def test_topic_prefix_accepts_every_spelling() -> None:
+    """Die Geräteoberfläche zeigt die Kennung mal als MAC, mal mit Typ, mal als vollen Pfad."""
+    from dch_bridge.settings import BridgeSettings
+
+    def prefix(**kw: object) -> str:
+        return BridgeSettings(api_token="t", **kw).shelly_topic_prefix  # type: ignore[arg-type]
+
+    assert prefix(shelly_device_id="485519DB56D2") == "shellies/shellyem3-485519DB56D2"
+    assert prefix(shelly_device_id="shellyem3-485519DB56D2") == "shellies/shellyem3-485519DB56D2"
+    assert (
+        prefix(mqtt_topic_prefix="shellies/shellyem3-485519DB56D2/")
+        == "shellies/shellyem3-485519DB56D2"
+    )
+    assert prefix(mqtt_topic_prefix="shellyem3-485519DB56D2") == "shellies/shellyem3-485519DB56D2"
+    # ein selbst gesetztes Präfix mit eigenem Pfad bleibt unangetastet
+    assert prefix(mqtt_topic_prefix="haus/waermepumpe") == "haus/waermepumpe"
+    assert prefix() == ""

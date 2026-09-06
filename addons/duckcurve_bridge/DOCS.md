@@ -59,7 +59,7 @@ Optionen des Add-ons:
 | `source_mode` | `mqtt` (Standard), `home_assistant` (bisheriger Weg) oder `compare` (beide, siehe unten) |
 | `mqtt_host` / `mqtt_port` | Broker, im HA-Netz `core-mosquitto` und `1883` |
 | `mqtt_username` / `mqtt_password` | Zugangsdaten aus Schritt 2 |
-| `shelly_device_id` | z. B. `485519DB56D2`; alternativ `mqtt_topic_prefix` komplett, z. B. `shellies/shellyem3-485519DB56D2` |
+| `shelly_device_id` | Kennung des Geräts, z. B. `485519DB56D2` oder `shellyem3-485519DB56D2`. Wer lieber den ganzen Pfad einträgt, nimmt `mqtt_topic_prefix`, z. B. `shellies/shellyem3-485519DB56D2`. Beide Schreibweisen führen zum selben Ergebnis |
 | `mqtt_publish_interval_s` | Takt, in dem die Bridge aus den zuletzt empfangenen Werten aller drei Phasen einen konsistenten Datensatz an die API schickt (Standard 10 s) |
 | `api_ws_url` / `api_token` | Railway-Endpunkt und Bridge-Token (unverändert) |
 | `log_level` | `INFO` genügt; `DEBUG` zeigt verworfene Nachrichten |
@@ -70,6 +70,13 @@ und Zählerstände. Jeder Messwert trägt die Geräte-ID (`source: mqtt:shellyem
 der jüngsten enthaltenen Nachricht. `energy`/`returned_energy` (flüchtig) werden bewusst nicht verwendet.
 Unplausible Werte (Bereich, fallende Zählerstände, unlesbare Nutzdaten) werden verworfen und gezählt; ein
 `online: false` des Shelly oder 90 s Funkstille melden den Zähler als nicht verfügbar.
+
+### 4b. Nur Gen 1
+
+Diese Anbindung liest das Topic-Schema der **ersten** Shelly-Generation (`shellies/<gerät>/emeter/<phase>/…`).
+Der Shelly 3EM gehört dazu. Geräte der Reihe **Plus** oder **Pro** (Gen 2/3, z. B. Plus Plug S, Plus 1PM)
+veröffentlichen stattdessen JSON unter `<präfix>/status/switch:0` – sie lassen sich hier noch nicht einbinden
+und bleiben vorerst bei Home Assistant.
 
 ### 5. MQTT-Empfang testen
 

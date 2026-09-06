@@ -51,4 +51,15 @@ class BridgeSettings(BaseSettings):
 
     @property
     def shelly_topic_prefix(self) -> str:
-        return self.mqtt_topic_prefix.rstrip("/") or f"shellies/shellyem3-{self.shelly_device_id}"
+        """Topic-Präfix des Shelly, tolerant gegenüber der Schreibweise in der Geräteoberfläche.
+
+        Gen-1-Geräte veröffentlichen unter `shellies/<geräte-id>/…`. In der Shelly-App steht je nach Ansicht
+        die vollständige Kennung (`shellyem3-485519db56d2`), nur die MAC oder bereits der Pfad mit
+        `shellies/`. Alle drei Schreibweisen führen hier zum selben Präfix."""
+        raw = (self.mqtt_topic_prefix or self.shelly_device_id).strip().strip("/")
+        if not raw:
+            return ""
+        if "/" in raw:
+            return raw  # bereits ein Pfad, z. B. shellies/shellyem3-485519db56d2
+        device = raw if raw.startswith("shellyem3-") else f"shellyem3-{raw}"
+        return f"shellies/{device}"
