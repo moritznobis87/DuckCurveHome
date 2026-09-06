@@ -44,7 +44,7 @@ actuators:
   # Drei Lichterketten: Terrasse, Innenhof, Gartenzaun – einheitlich „Licht <Ort>“.
   - { key: terrace_light,      entity: switch.shellyterrassenlicht,   label: Licht Terrasse }
   - { key: garden_fence_light, entity: switch.shellygartenzaun,       label: Licht Gartenzaun }
-  # Innenhof: Shelly Plus Plug S „Lichterkette_Innenhof“ (MQTT-Kennung shellyplusplugs-64b7080cc70c) sendet
+  # Innenhof: Shelly Plus Plug S „Lichterkette_Innenhof“ (Kennung shellyplusplugs-64b7080cc70c) sendet
   # schon an den Broker, ist aber noch nicht in HA eingerichtet. In HA über die Shelly-Integration hinzufügen
   # (Einstellungen → Geräte & Dienste → Shelly → Gerät hinzufügen, IP des Plugs), dann Entity-ID hier eintragen.
   # - { key: courtyard_light,  entity: switch.shellyinnenhof,         label: Licht Innenhof }
@@ -72,12 +72,17 @@ mqtt:
   # - { prefix: "shellies/shellyem3-XXXXXXXXXXXX", generation: 1, kind: em3, key_prefix: heat_pump, label: "WP-Zähler" }
 
   # --- Pufferspeicher: Shelly Plus 1 mit Temperatur-Add-on (Generation 2) ---
-  # ⚠ Zuordnung der Komponenten-IDs zu den Fühlern noch bestätigen. Am Broker mitlesen:
-  #   mosquitto_sub -h core-mosquitto -u <user> -P <pw> -t 'shellyplus1-b8d61a86e20c/#' -v
+  # ⚠ WICHTIG: `prefix` ist der im Gerät eingestellte MQTT-Name, NICHT die Gerätekennung
+  # (shellyplus1-b8d61a86e20c). Bestätigt am 06.09.2026 an der Terrassensteckdose, die unter
+  # „Lichterkette_Terassenlicht/events“ sendet, obwohl ihre Kennung shellyplusplugs-d4d4daf36370 lautet.
+  # Präfix am 06.09.2026 am Broker bestätigt (NotifyStatus mit dst „Pufferspeicher_Temperaturen/events“).
+  # ⚠ Zuordnung der Komponenten-IDs zu den Fühlern noch offen; bestätigt ist bisher nur, dass
+  #   temperature:102 existiert (56,38 °C am 06.09.2026 um 16:44).
   # Die IDs 100…104 stehen in der Reihenfolge, in der die Fühler angelernt wurden – nicht zwingend
   # von oben nach unten. Fühler 4 (temperature:103) liefert „unknown“ und bleibt daher unbelegt.
-  # Voraussetzung im Gerät: MQTT aktiv und „RPC status notifications over MQTT“ eingeschaltet.
-  - prefix: "shellyplus1-b8d61a86e20c"
+  # Voraussetzung im Gerät: MQTT aktiv und „RPC status notifications over MQTT“ eingeschaltet;
+  # „Generic status update over MQTT“ zusätzlich schickt auch ohne Änderung regelmäßig einen Vollstand.
+  - prefix: "Pufferspeicher_Temperaturen"
     generation: 2
     label: "Pufferspeicher"
     components:
@@ -86,9 +91,12 @@ mqtt:
       "temperature:102": buffer_temp_mid_bottom_c
       "temperature:104": buffer_temp_bottom_c
 
-  # --- Bekannte MQTT-Kennungen der Shelly-Plus-Steckdosen (Stand 06.09.2026) ---
-  # Sie senden bereits an den Broker, sind hier aber noch nicht eingebunden: Schalten läuft weiter über
-  # Home Assistant (Aktoren unten), und die Bridge schickt über MQTT bislang nur Messwerte.
-  #   shellyplusplugs-d4d4daf36370  Schalter_Terassenlicht  → switch.shellyterrassenlicht
-  #   shellyplusplugs-d4d4daf36158  Licht_Gartenzaun        → switch.shellygartenzaun
-  #   shellyplusplugs-64b7080cc70c  Lichterkette_Innenhof   → noch nicht in HA (siehe Aktoren unten)
+  # --- Bekannte Shelly-Plus-Steckdosen am Broker (Stand 06.09.2026) ---
+  # Sie senden bereits, sind hier aber noch nicht eingebunden: Schalten läuft weiter über Home Assistant
+  # (Aktoren unten), und die Bridge schickt über MQTT bislang nur Messwerte.
+  #   Kennung                       Topic-Präfix (= Gerätename)  HA-Entität
+  #   shellyplusplugs-d4d4daf36370  Lichterkette_Terassenlicht   switch.shellyterrassenlicht
+  #   shellyplusplugs-d4d4daf36158  Licht_Gartenzaun             switch.shellygartenzaun
+  #   shellyplusplugs-64b7080cc70c  Lichterkette_Innenhof        noch nicht in HA (siehe Aktoren unten)
+  # Alle drei am 06.09.2026 am Broker bestätigt. Sie liefern je switch:0 mit apower (W) und
+  # aenergy.total (Wh) – einbindbar, sobald die Leistungsschlüssel serverseitig vorgesehen sind.

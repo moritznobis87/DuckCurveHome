@@ -91,6 +91,12 @@ Passwort aus Schritt 2, „Enable MQTT Control“ nach Belieben, **„RPC status
 `status/…`-Topics. Das MQTT-Präfix (Standard: der Gerätename, z. B. `shellyplus1-b8d61a86e20c`) unverändert
 lassen und genauso ins Mapping eintragen.
 
+**Achtung, häufigste Fehlerquelle:** Das Präfix ist frei überschreibbar und in vielen Installationen auf
+einen sprechenden Namen gesetzt. Es ist dann **nicht** die Gerätekennung. Ein Gerät mit der Kennung
+`shellyplusplugs-d4d4daf36370` kann durchaus unter `Lichterkette_Terassenlicht/events/rpc` senden. Welches
+Präfix gilt, steht in jeder Nachricht im Feld `dst` (die Kennung steht in `src`). Im Zweifel `#` abonnieren
+und nachsehen, statt die Kennung zu raten.
+
 **Im Mapping eintragen.** In `/config/duckcurve/entities.yaml` gibt es dafür den Abschnitt `mqtt:`. Er sagt,
 welche Komponente des Geräts welchem Duck-Curve-Schlüssel entspricht:
 
