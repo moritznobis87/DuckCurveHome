@@ -10,11 +10,14 @@ import asyncio
 import contextlib
 from collections import deque
 from datetime import UTC, date, datetime, time, timedelta
+from typing import Any
 
 import structlog
 
 from dch_api.application.energy_accounting import EnergyAccounting
 from dch_api.application.forecast_evaluation import ForecastEvaluator
+from dch_api.application.ha_import import ImportResult
+from dch_api.errors import DchError
 from dch_api.infrastructure.history import HistoryStore
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
@@ -173,6 +176,11 @@ class DemoRunner:
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
         return await self.accounting.ev_report(period, anchor, self.now)
+
+    async def import_history(
+        self, payload: bytes, kind: str, dry_run: bool, extra_map: dict[str, dict[str, Any]] | None
+    ) -> ImportResult:
+        raise DchError("not_supported", "Import nur im Live-Modus.", 400)
 
     async def forecast_evaluation(self) -> ForecastEvaluationOut:
         now = self.now

@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     myenergi_api_key: str = ""
     myenergi_poll_s: float = 30.0
     myenergi_backfill_hours: int = 48  # Minutenhistorie beim Start nachladen; 0 = aus
+    # Entity-Mapping für den Import der HA-Historie (Sensorregeln wie im Bridge-YAML)
+    import_entities_file: str = "config/entities.home.yaml"
     weather_refresh_min: int = 60
     price_refresh_min: int = 30
     raw_retention_days: int = 14

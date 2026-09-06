@@ -157,6 +157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/import/ha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** HA-Recorder-Export (CSV, optional gzip) in Stundenbilanzen übernehmen */
+        post: operations["import_ha_api_v1_import_ha_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/control/actuators/{key}": {
         parameters: {
             query?: never;
@@ -1377,6 +1394,37 @@ export interface components {
             label_de: string;
             score: components["schemas"]["ForecastScore"];
         };
+        /** ImportResult */
+        ImportResult: {
+            /** Kind */
+            kind: string;
+            /** Rows */
+            rows: number;
+            /** Entities */
+            entities: string[];
+            /** Unmapped */
+            unmapped: string[];
+            /** First */
+            first: string | null;
+            /** Last */
+            last: string | null;
+            /** Hours Computed */
+            hours_computed: number;
+            /** Hours Written */
+            hours_written: number;
+            /** Hours Kept Existing */
+            hours_kept_existing: number;
+            /** Raw Readings Stored */
+            raw_readings_stored: number;
+            /** Price Minutes From Tibber */
+            price_minutes_from_tibber: number;
+            /** Minutes Without Price */
+            minutes_without_price: number;
+            /** Dry Run */
+            dry_run: boolean;
+            /** Note De */
+            note_de: string;
+        };
         /** LiveStateOut */
         LiveStateOut: {
             snapshot: components["schemas"]["EnergySnapshot"];
@@ -1929,6 +1977,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_ha_api_v1_import_ha_post: {
+        parameters: {
+            query?: {
+                kind?: "auto" | "states" | "statistics";
+                dry_run?: boolean;
+                /** @description JSON {entity: {key, unit?, sign?, scale?}} */
+                extra_map?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
                 };
             };
             /** @description Validation Error */

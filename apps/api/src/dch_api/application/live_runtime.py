@@ -10,6 +10,7 @@ import asyncio
 import contextlib
 from collections import deque
 from datetime import UTC, date, datetime, timedelta
+from typing import Any, cast
 
 import structlog
 
@@ -17,8 +18,10 @@ from dch_api.application.config_loader import AppConfig
 from dch_api.application.energy_accounting import ENERGY_KEYS, EnergyAccounting
 from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
 from dch_api.application.forecast_service import ForecastService
+from dch_api.application.ha_import import HaImporter, ImportResult, Kind, load_entity_rules
 from dch_api.application.myenergi_source import MyenergiSource, StatusClient
 from dch_api.application.plan_service import build_plan
+from dch_api.errors import DchError
 from dch_api.infrastructure.bridge_hub import BridgeHub
 from dch_api.infrastructure.db.repositories import SqlRepositories
 from dch_api.infrastructure.history import SERIES
@@ -434,6 +437,31 @@ class LiveRuntime:
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
         return await self.accounting.ev_report(period, anchor, self.now)
+
+    async def import_history(
+        self, payload: bytes, kind: str, dry_run: bool, extra_map: dict[str, dict[str, Any]] | None
+    ) -> ImportResult:
+        rules = load_entity_rules(self.settings.import_entities_file, extra_map)
+        if not rules:
+            raise DchError(
+                "config",
+                f"Kein Entity-Mapping gefunden ({self.settings.import_entities_file}).",
+                500,
+            )
+        prices = self.forecasts.prices
+        importer = HaImporter(
+            self.hems,
+            rules,
+            self.repos.energy_hours,
+            self.repos.upsert_energy_hours,
+            self.repos.add_readings,
+            price_history=prices.fetch_range
+            if prices is not None and hasattr(prices, "fetch_range")
+            else None,
+        )
+        result = await importer.run(payload, cast(Kind, kind), dry_run)
+        log.info("ha import", **result.model_dump(exclude={"entities", "unmapped"}, mode="json"))
+        return result
 
     async def _accounting_loop(self) -> None:
         while True:

@@ -392,6 +392,82 @@
         }
       }
     },
+    "/api/v1/import/ha": {
+      "post": {
+        "tags": [
+          "Import"
+        ],
+        "summary": "HA-Recorder-Export (CSV, optional gzip) in Stundenbilanzen übernehmen",
+        "operationId": "import_ha_api_v1_import_ha_post",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "auto",
+                "states",
+                "statistics"
+              ],
+              "type": "string",
+              "default": "auto",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Dry Run"
+            }
+          },
+          {
+            "name": "extra_map",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JSON {entity: {key, unit?, sign?, scale?}}",
+              "title": "Extra Map"
+            },
+            "description": "JSON {entity: {key, unit?, sign?, scale?}}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/control/actuators/{key}": {
       "post": {
         "tags": [
@@ -2768,6 +2844,106 @@
           "score"
         ],
         "title": "HorizonScoreOut"
+      },
+      "ImportResult": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          },
+          "entities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entities"
+          },
+          "unmapped": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unmapped"
+          },
+          "first": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First"
+          },
+          "last": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last"
+          },
+          "hours_computed": {
+            "type": "integer",
+            "title": "Hours Computed"
+          },
+          "hours_written": {
+            "type": "integer",
+            "title": "Hours Written"
+          },
+          "hours_kept_existing": {
+            "type": "integer",
+            "title": "Hours Kept Existing"
+          },
+          "raw_readings_stored": {
+            "type": "integer",
+            "title": "Raw Readings Stored"
+          },
+          "price_minutes_from_tibber": {
+            "type": "integer",
+            "title": "Price Minutes From Tibber"
+          },
+          "minutes_without_price": {
+            "type": "integer",
+            "title": "Minutes Without Price"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "rows",
+          "entities",
+          "unmapped",
+          "first",
+          "last",
+          "hours_computed",
+          "hours_written",
+          "hours_kept_existing",
+          "raw_readings_stored",
+          "price_minutes_from_tibber",
+          "minutes_without_price",
+          "dry_run",
+          "note_de"
+        ],
+        "title": "ImportResult"
       },
       "LiveStateOut": {
         "properties": {

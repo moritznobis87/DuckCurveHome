@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Protocol
+from typing import Any, Protocol
 
+from dch_api.application.ha_import import ImportResult
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
     EnergySummaryOut,
@@ -35,6 +36,9 @@ class Runtime(Protocol):
     async def energy_summary(self, period: Period, anchor: date) -> EnergySummaryOut: ...
     async def heat_report(self, period: Period, anchor: date) -> HeatReportOut: ...
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut: ...
+    async def import_history(
+        self, payload: bytes, kind: str, dry_run: bool, extra_map: dict[str, dict[str, Any]] | None
+    ) -> ImportResult: ...
     async def switch_actuator(
         self, key: str, state: bool, duration_min: int | None
     ) -> tuple[bool, bool | None, str | None]: ...
