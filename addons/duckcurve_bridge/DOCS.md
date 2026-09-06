@@ -129,7 +129,7 @@ mqtt:
     components:
       "switch:0":
         apower: terrace_light_power_kw          # W → kW
-        output: "actuator:terrace_light"        # true/false → 1/0
+        output: "actuator:terrace_light"        # true/false → 1/0, und über MQTT schaltbar
 ```
 
 Je Komponententyp nimmt die Kurzform (`"temperature:100": buffer_temp_top_c`) das natürliche Feld:
@@ -158,6 +158,19 @@ Ein Fühler, der `unknown` bzw. `null` liefert, ist nicht angeschlossen und blei
 Schlüssel, die im Abschnitt `mqtt:` vorkommen, holt die Bridge bei `source_mode: mqtt` **nicht mehr** aus Home
 Assistant; die entsprechenden `sensors:`-Einträge bleiben als Rückfallebene für `source_mode: home_assistant`
 stehen. Alle Geräte teilen sich eine einzige Broker-Verbindung.
+
+**Schalten über MQTT.** Zeigt eine Zuordnung auf `actuator:<schlüssel>` und liegt sie auf dem Feld `output`
+einer `switch:`- oder `light:`-Komponente, schaltet die Bridge diesen Aktor auch über den Broker: sie
+veröffentlicht `Switch.Set` auf `<präfix>/rpc` und wartet auf die Rückmeldung des Geräts. Bestätigt wird
+nicht das Kommando, sondern erst die folgende `NotifyStatus` – bleibt sie aus, gilt die Schaltung als nicht
+bestätigt. Eine mitgegebene Laufzeit wird zu `toggle_after`: das Gerät fällt von selbst zurück, wenn kein
+weiteres Kommando kommt.
+
+Zwei Ausnahmen, bewusst so:
+
+- Aktoren der Sicherheitsklasse `heat_pump` gehen **immer** über Home Assistant, auch wenn ein MQTT-Gerät
+  sie könnte. Sonst sähe die Wächter-Automation einen anderen Schalter als den, den Duck Curve Home stellt.
+- Geräte der ersten Generation können das nicht; sie bleiben bei Home Assistant (siehe Schritt 3).
 
 **Hinweis:** Bei Gen 2/3 bleibt die Shelly-Cloud neben MQTT nutzbar (anders als bei Gen 1, siehe Schritt 3).
 

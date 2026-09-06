@@ -21,10 +21,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import itertools
 import json
 import math
 import random
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
@@ -36,6 +37,8 @@ from hems_core.protocol import RawReading
 
 log = structlog.get_logger("shelly_mqtt")
 
+RPC_SRC = "dch-bridge"  # Antworten des Shelly landen unter <RPC_SRC>/rpc – wir werten sie nicht aus
+SWITCHABLE_KINDS = frozenset({"switch", "light"})
 PHASES = ("0", "1", "2")
 PHASE_LABEL = {"0": "l1", "1": "l2", "2": "l3"}
 FIELDS = ("power", "voltage", "current", "pf", "total", "total_returned")
@@ -524,6 +527,7 @@ class MqttSession(Protocol):
     async def __aenter__(self) -> MqttSession: ...
     async def __aexit__(self, *exc: object) -> None: ...
     async def subscribe(self, topic: str, qos: int = 0) -> Any: ...
+    async def publish(self, topic: str, payload: Any, qos: int = 0) -> Any: ...
     @property
     def messages(self) -> AsyncIterator[MqttMessage]: ...
 
@@ -543,6 +547,13 @@ class Device(Protocol):
     def status(self) -> dict[str, Any]: ...
     @property
     def owned_keys(self) -> set[str]: ...
+    def command(self, key: str, state: bool, ttl_s: float | None) -> tuple[str, str] | None:
+        """Topic und Nutzdaten, um `key` zu schalten – None, wenn das Gerät das nicht kann."""
+        ...
+
+    def observed(self, key: str) -> bool | None:
+        """Zuletzt empfangener Schaltzustand zu `key`, None wenn unbekannt."""
+        ...
 
 
 @dataclass
@@ -567,6 +578,12 @@ class Em3Device:
     @property
     def owned_keys(self) -> set[str]:
         return {f"{self.key_prefix}_power_kw", f"{self.key_prefix}_energy_kwh"}
+
+    def command(self, key: str, state: bool, ttl_s: float | None) -> tuple[str, str] | None:
+        return None  # ein Zähler schaltet nichts
+
+    def observed(self, key: str) -> bool | None:
+        return None
 
     def topics(self) -> list[str]:
         return [f"{self.topic_prefix}/#"]
@@ -625,9 +642,24 @@ class Gen2Device:
     state: Gen2State = field(init=False)
     emitted: int = 0
     _last_seen_messages: int = field(default=0, init=False)
+    _switchable: dict[str, tuple[str, int]] = field(default_factory=dict, init=False)
+    _rpc_ids: Iterator[int] = field(default_factory=lambda: itertools.count(1), init=False)
 
     def __post_init__(self) -> None:
         self.state = Gen2State(topic_prefix=self.topic_prefix, components=self.components)
+        # Schaltbar ist, was auf das Feld `output` einer Switch-Komponente zeigt.
+        self._switchable = {}
+        self._rpc_ids = itertools.count(1)
+        for component, target in self.components.items():
+            kind, _, ident = component.partition(":")
+            if kind not in SWITCHABLE_KINDS or not ident.isdigit():
+                continue
+            fields = (
+                {NATURAL_FIELD.get(kind, "value"): target} if isinstance(target, str) else target
+            )
+            for field_path, mapped in fields.items():
+                if field_path == "output":
+                    self._switchable[mapped] = (kind, int(ident))
 
     @property
     def owned_keys(self) -> set[str]:
@@ -653,6 +685,30 @@ class Gen2Device:
             self.emitted += 1
         return items
 
+    def command(self, key: str, state: bool, ttl_s: float | None) -> tuple[str, str] | None:
+        """Switch.Set an <präfix>/rpc. `ttl_s` wird zu `toggle_after`: der Shelly fällt von selbst
+        zurück, falls kein weiteres Kommando kommt – dieselbe Absicherung wie ein Auto-Off-Timer."""
+        target = self._switchable.get(key)
+        if target is None:
+            return None
+        kind, ident = target
+        params: dict[str, Any] = {"id": ident, "on": state}
+        if ttl_s and ttl_s > 0:
+            params["toggle_after"] = int(ttl_s)
+        payload = {
+            "id": next(self._rpc_ids),
+            "src": RPC_SRC,
+            "method": f"{kind.capitalize()}.Set",
+            "params": params,
+        }
+        return f"{self.topic_prefix}/rpc", json.dumps(payload)
+
+    def observed(self, key: str) -> bool | None:
+        value = self.state.values.get(key)
+        if value is None:
+            return None
+        return value.value >= 0.5
+
     def status(self) -> dict[str, Any]:
         return {
             "device": self.topic_prefix,
@@ -677,6 +733,8 @@ class MqttHub:
     forward: bool = True  # False im Vergleichsmodus: nur messen, nicht senden
     connected: bool = False
     reconnects: int = 0
+    commands: int = 0
+    _session: MqttSession | None = field(default=None, init=False)
 
     @property
     def owned_keys(self) -> set[str]:
@@ -684,6 +742,36 @@ class MqttHub:
         for dev in self.devices:
             out |= dev.owned_keys
         return out
+
+    def can_switch(self, key: str) -> bool:
+        return any(dev.command(key, True, None) is not None for dev in self.devices)
+
+    async def switch(
+        self, key: str, state: bool, ttl_s: float | None, timeout_s: float = 5.0
+    ) -> bool | None:
+        """Aktor über den Broker schalten und auf die Rückmeldung des Geräts warten.
+
+        Rückgabe ist der beobachtete Zustand, nicht der gewünschte: der Shelly meldet die Änderung
+        von sich aus per NotifyStatus, und erst die zählt als Bestätigung. None heißt „keine
+        Rückmeldung“ – der Aufrufer wertet das als nicht bestätigt.
+        """
+        session = self._session
+        if session is None:
+            raise RuntimeError("keine MQTT-Verbindung")
+        for dev in self.devices:
+            built = dev.command(key, state, ttl_s)
+            if built is None:
+                continue
+            topic, payload = built
+            await session.publish(topic, payload, qos=self.qos)
+            self.commands += 1
+            deadline = asyncio.get_running_loop().time() + timeout_s
+            while asyncio.get_running_loop().time() < deadline:
+                if dev.observed(key) == state:
+                    return state
+                await asyncio.sleep(0.05)
+            return dev.observed(key)
+        raise LookupError(f"kein MQTT-Gerät für {key}")
 
     async def run(self) -> None:
         await asyncio.gather(self._connect_loop(), self._emit_loop())
@@ -695,6 +783,7 @@ class MqttHub:
                 async with self.session_factory() as session:
                     for topic in sorted({t for dev in self.devices for t in dev.topics()}):
                         await session.subscribe(topic, qos=self.qos)
+                    self._session = session
                     self.connected = True
                     backoff = 1.0
                     log.info("mqtt connected", devices=len(self.devices), qos=self.qos)
@@ -710,6 +799,7 @@ class MqttHub:
             except Exception as exc:  # aiomqtt.MqttError, OSError, …
                 log.warning("mqtt connection failed", error=str(exc)[:200])
             self.connected = False
+            self._session = None
             self.reconnects += 1
             await asyncio.sleep(backoff + random.uniform(0, 0.5))
             backoff = min(backoff * 2, 60.0)
@@ -733,6 +823,7 @@ class MqttHub:
         return {
             "connected": self.connected,
             "reconnects": self.reconnects,
+            "commands": self.commands,
             "devices": [dev.status() for dev in self.devices],
         }
 

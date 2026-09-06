@@ -26,7 +26,7 @@ from dch_bridge.sources.shelly_mqtt import (
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.3.1"
+VERSION = "0.4.0"
 log = structlog.get_logger("bridge")
 
 
@@ -191,6 +191,30 @@ class Bridge:
     async def execute_command(self, cmd: CommandFrame) -> CommandResultFrame:
         now = datetime.now(UTC)
         a = self._actuator(cmd.actuator_key)
+        # Aktoren, die einem MQTT-Gerät gehören, werden direkt am Broker geschaltet – kein Umweg über
+        # Home Assistant. Ausgenommen die Sicherheitsklasse heat_pump: dort bleibt der Weg über HA,
+        # damit die Wächter-Automation denselben Schalter sieht, den DCH stellt.
+        key = f"actuator:{cmd.actuator_key}"
+        safety = a.safety_class if a is not None else "none"
+        if self.mqtt is not None and safety != "heat_pump" and self.mqtt.can_switch(key):
+            try:
+                observed = await self.mqtt.switch(key, cmd.state, cmd.ttl_s)
+            except Exception as exc:
+                return CommandResultFrame(
+                    command_id=cmd.command_id,
+                    ok=False,
+                    observed_state=None,
+                    error=str(exc)[:200],
+                    at=datetime.now(UTC),
+                )
+            ok = observed == cmd.state
+            return CommandResultFrame(
+                command_id=cmd.command_id,
+                ok=ok,
+                observed_state=observed,
+                error=None if ok else "Zustand nicht bestätigt",
+                at=datetime.now(UTC),
+            )
         if a is None:
             return CommandResultFrame(
                 command_id=cmd.command_id,

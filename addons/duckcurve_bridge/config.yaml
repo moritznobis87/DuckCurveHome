@@ -1,5 +1,5 @@
 name: Duck Curve Home Bridge
-version: "0.3.1"
+version: "0.4.0"
 slug: duckcurve_bridge
 description: Verbindet das Haus ausgehend mit Duck Curve Home (Railway). Shellys direkt über MQTT, übrige Entitäten und Aktoren über Home Assistant.
 url: https://github.com/moritznobis87/DuckCurveHome

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 
@@ -118,6 +119,9 @@ class FakeSession:
         self._messages = messages
         self.fail_connect = fail_connect
         self.subscribed: list[tuple[str, int]] = []
+        self.published: list[tuple[str, str, int]] = []
+        self.echo: Callable[[str, str], FakeMessage | None] | None = None
+        self._extra: asyncio.Queue[FakeMessage] = asyncio.Queue()
         self.entered = 0
 
     async def __aenter__(self) -> FakeSession:
@@ -132,12 +136,20 @@ class FakeSession:
     async def subscribe(self, topic: str, qos: int = 0) -> None:
         self.subscribed.append((topic, qos))
 
+    async def publish(self, topic: str, payload: Any, qos: int = 0) -> None:
+        self.published.append((topic, str(payload), qos))
+        if self.echo is not None:
+            answer = self.echo(topic, str(payload))
+            if answer is not None:
+                self._extra.put_nowait(answer)
+
     @property
     def messages(self) -> AsyncIterator[FakeMessage]:
         async def gen() -> AsyncIterator[FakeMessage]:
             for m in self._messages:
                 yield m
-            await asyncio.sleep(3600)  # Verbindung bleibt offen
+            while True:  # danach nur noch, was das Gerät auf Kommandos hin meldet
+                yield await self._extra.get()
 
         return gen()
 
@@ -415,3 +427,120 @@ async def test_hub_serves_two_generations_over_one_connection() -> None:
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+
+
+PLUG = "Lichterkette_Innenhof"
+PLUG_COMPONENTS: dict[str, str | dict[str, str]] = {
+    "switch:0": {"output": "actuator:courtyard_light", "apower": "courtyard_light_power_kw"}
+}
+
+
+def test_gen2_builds_switch_set_command() -> None:
+    dev = Gen2Device(topic_prefix=PLUG, components=PLUG_COMPONENTS)
+    built = dev.command("actuator:courtyard_light", True, 1800)
+    assert built is not None
+    topic, payload = built
+    assert topic == f"{PLUG}/rpc"
+    body = json.loads(payload)
+    assert body["method"] == "Switch.Set"
+    assert body["params"] == {"id": 0, "on": True, "toggle_after": 1800}
+    assert body["src"] == "dch-bridge"
+    # Ohne Laufzeit kein toggle_after; fortlaufende Kennungen je Kommando
+    second = dev.command("actuator:courtyard_light", False, None)
+    assert second is not None
+    body2 = json.loads(second[1])
+    assert body2["params"] == {"id": 0, "on": False} and body2["id"] != body["id"]
+    # Was kein Schaltausgang ist, lässt sich nicht schalten
+    assert dev.command("courtyard_light_power_kw", True, None) is None
+    assert (
+        Gen2Device(topic_prefix=G2, components=BUFFER).command("buffer_temp_top_c", True, None)
+        is None
+    )
+
+
+def test_gen2_observed_state_follows_notifications() -> None:
+    dev = Gen2Device(topic_prefix=PLUG, components=PLUG_COMPONENTS)
+    assert dev.observed("actuator:courtyard_light") is None
+    body = json.dumps(
+        {"src": PLUG, "method": "NotifyStatus", "params": {"ts": 1.0, "switch:0": {"output": True}}}
+    ).encode()
+    assert dev.apply(f"{PLUG}/events/rpc", body, T0)
+    assert dev.observed("actuator:courtyard_light") is True
+
+
+@pytest.mark.asyncio
+async def test_hub_switches_and_waits_for_the_device_to_confirm() -> None:
+    """Bestätigt wird nicht das Kommando, sondern die Rückmeldung des Geräts."""
+
+    async def sink(items: list[RawReading]) -> None:
+        return None
+
+    dev = Gen2Device(topic_prefix=PLUG, components=PLUG_COMPONENTS)
+    session = FakeSession([])
+
+    def echo(topic: str, payload: str) -> FakeMessage:
+        on = json.loads(payload)["params"]["on"]
+        body = json.dumps(
+            {
+                "src": PLUG,
+                "method": "NotifyStatus",
+                "params": {"ts": 1.0, "switch:0": {"output": on}},
+            }
+        ).encode()
+        return FakeMessage(f"{PLUG}/events/rpc", body)
+
+    session.echo = echo
+    hub = MqttHub(session_factory=lambda: session, devices=[dev], on_readings=sink, qos=1)
+    task = asyncio.create_task(hub.run())
+    try:
+        for _ in range(100):
+            await asyncio.sleep(0.02)
+            if hub.connected:
+                break
+        assert hub.can_switch("actuator:courtyard_light")
+        assert not hub.can_switch("actuator:coffee_machine")
+        assert await hub.switch("actuator:courtyard_light", True, 1800.0) is True
+        assert session.published[0][0] == f"{PLUG}/rpc" and session.published[0][2] == 1
+        assert await hub.switch("actuator:courtyard_light", False, None) is False
+        assert hub.commands == 2 and hub.status()["commands"] == 2
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+
+@pytest.mark.asyncio
+async def test_switch_without_confirmation_reports_the_last_known_state() -> None:
+    async def sink(items: list[RawReading]) -> None:
+        return None
+
+    dev = Gen2Device(topic_prefix=PLUG, components=PLUG_COMPONENTS)
+    session = FakeSession([])  # antwortet nicht
+    hub = MqttHub(session_factory=lambda: session, devices=[dev], on_readings=sink)
+    task = asyncio.create_task(hub.run())
+    try:
+        for _ in range(100):
+            await asyncio.sleep(0.02)
+            if hub.connected:
+                break
+        assert await hub.switch("actuator:courtyard_light", True, None, timeout_s=0.1) is None
+        with pytest.raises(LookupError):
+            await hub.switch("actuator:unbekannt", True, None, timeout_s=0.1)
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+
+@pytest.mark.asyncio
+async def test_switch_without_connection_raises() -> None:
+    async def sink(items: list[RawReading]) -> None:
+        return None
+
+    hub = MqttHub(
+        session_factory=lambda: FakeSession([]),
+        devices=[Gen2Device(topic_prefix=PLUG, components=PLUG_COMPONENTS)],
+        on_readings=sink,
+    )
+    with pytest.raises(RuntimeError):
+        await hub.switch("actuator:courtyard_light", True, None)

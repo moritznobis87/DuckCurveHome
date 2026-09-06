@@ -93,7 +93,10 @@ class EntityMap(BaseModel):
         return out
 
     def keys(self) -> list[str]:
-        return [s.key for s in self.sensors] + [f"actuator:{a.key}" for a in self.actuators]
+        """Was die Bridge der API ankündigt – auch Schlüssel, die es nur über MQTT gibt."""
+        out = [s.key for s in self.sensors] + [f"actuator:{a.key}" for a in self.actuators]
+        out += sorted(self.mqtt_keys() - set(out))
+        return out
 
     def mqtt_keys(self) -> set[str]:
         """Domänenschlüssel, die über MQTT kommen – Home Assistant liefert sie dann nicht mehr."""
