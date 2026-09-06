@@ -614,3 +614,36 @@ def test_malformed_answer_is_counted_not_crashing() -> None:
     assert not dev.apply(answer, b'{"error": {"code": -105}}', T0)  # Antwort ohne result
     assert not dev.apply(answer, b'{"result": 5}', T0)
     assert dev.state.rejected == 3 and dev.state.values == {}
+
+
+def test_faulty_sensor_reports_unavailable_instead_of_an_old_value() -> None:
+    """Ein Fühler mit Lesefehler darf nicht den zuletzt gültigen Wert stehen lassen."""
+    dev = Gen2Device(topic_prefix=G2, components=BUFFER)
+    ok = json.dumps(
+        {
+            "src": G2,
+            "method": "NotifyStatus",
+            "params": {"ts": 1.0, "temperature:100": {"tC": 46.6}},
+        }
+    ).encode()
+    assert dev.apply(f"{G2}/events/rpc", ok, T0)
+    assert dev.state.values["buffer_temp_top_c"].value == pytest.approx(46.6)
+
+    broken = json.dumps(
+        {
+            "src": G2,
+            "method": "NotifyStatus",
+            "params": {"ts": 2.0, "temperature:100": {"tC": None, "errors": ["read"]}},
+        }
+    ).encode()
+    assert dev.apply(f"{G2}/events/rpc", broken, T0)
+    assert "buffer_temp_top_c" not in dev.state.values
+    items = {r.key: r for r in dev.state.readings(T0, timedelta(seconds=300), "mqtt:x")}
+    assert items["buffer_temp_top_c"].value is None
+    assert items["buffer_temp_top_c"].quality is Quality.UNAVAILABLE
+
+    # Meldet der Fühler wieder, zählt er wieder als gültig
+    assert dev.apply(f"{G2}/events/rpc", ok, T0)
+    items = {r.key: r for r in dev.state.readings(T0, timedelta(seconds=300), "mqtt:x")}
+    assert items["buffer_temp_top_c"].value == pytest.approx(46.6)
+    assert items["buffer_temp_top_c"].quality is Quality.OK

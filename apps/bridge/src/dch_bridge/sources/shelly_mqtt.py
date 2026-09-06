@@ -375,6 +375,7 @@ class Gen2State:
     topic_prefix: str
     components: dict[str, str | dict[str, str]]
     values: dict[str, _Value] = field(default_factory=dict)  # Domänenschlüssel → Wert
+    faulted: dict[str, datetime] = field(default_factory=dict)  # Schlüssel, deren Komponente meldet
     last_message_at: datetime | None = None
     messages: int = 0
     rejected: int = 0
@@ -456,11 +457,20 @@ class Gen2State:
             if isinstance(target, str)
             else target
         )
+        # Ein Fühler mit Lesefehler meldet `tC: null` und `errors: ["read"]`. Ohne diesen Zweig bliebe
+        # der zuletzt gültige Wert stehen – die Anzeige zeigte dann eine Temperatur, die es nicht gibt.
+        broken = bool(state.get("errors"))
         touched = False
         for field_path, key in fields.items():
             value = self._value(field_path, state)
             if value is None:
+                explicit_null = field_path in state and _dig(state, field_path) is None
+                if broken or explicit_null:
+                    self.values.pop(key, None)
+                    self.faulted[key] = now
+                    touched = True
                 continue
+            self.faulted.pop(key, None)
             self.values[key] = _Value(value, now)
             touched = True
         return touched
@@ -486,11 +496,19 @@ class Gen2State:
         return round(value * FIELD_SCALE.get(field_path, 1.0), 4)
 
     def readings(self, now: datetime, stale_after: timedelta, source: str) -> list[RawReading]:
-        return [
+        out = [
             RawReading(key=key, value=v.value, observed_at=v.at, source=source)
             for key, v in self.values.items()
             if now - v.at <= stale_after
         ]
+        out += [
+            RawReading(
+                key=key, value=None, observed_at=at, quality=Quality.UNAVAILABLE, source=source
+            )
+            for key, at in self.faulted.items()
+            if now - at <= stale_after
+        ]
+        return out
 
     def is_stale(
         self, now: datetime, stale_after: timedelta, since: datetime | None = None

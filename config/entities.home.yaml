@@ -76,11 +76,12 @@ mqtt:
   # ⚠ WICHTIG: `prefix` ist der im Gerät eingestellte MQTT-Name, NICHT die Gerätekennung
   # (shellyplus1-b8d61a86e20c). Bestätigt am 06.09.2026 an der Terrassensteckdose, die unter
   # „Lichterkette_Terassenlicht/events“ sendet, obwohl ihre Kennung shellyplusplugs-d4d4daf36370 lautet.
-  # Fühlerreihenfolge am 06.09.2026 abends korrigiert. Die Komponenten-IDs folgen der Anlernreihenfolge,
-  # nicht der Einbauhöhe. Abgelesen an der Schichtung bei ruhendem Speicher (22:23, WP aus seit Stunden):
-  #   102 = 55 °C, 100 = 47 °C, 104 = 36 °C, 101 = 35 °C  → in dieser Reihenfolge von oben nach unten.
-  # 103 ist der defekte Fühler und bleibt unbelegt. Die beiden untersten liegen nur 1 K auseinander;
-  # eindeutig prüfen lässt sich das beim Laden – der oberste Fühler steigt zuerst.
+  # Fühlerbelegung am 06.09.2026 aus dem Vollstand des Geräts (Shelly.GetStatus) bestimmt, 23:08:
+  #   temperature:102 = 54,6 °C   temperature:103 = 53,4 °C
+  #   temperature:100 = 46,6 °C   temperature:101 = 34,5 °C
+  #   temperature:104 = null, errors: ["read"]  → defekt, bleibt unbelegt
+  # Die IDs folgen der Anlernreihenfolge, nicht der Einbauhöhe; die Zuordnung stammt aus der Schichtung
+  # bei ruhendem Speicher. Gegenprobe beim Laden: der oberste Fühler steigt zuerst.
   # Voraussetzung im Gerät: MQTT aktiv, „RPC status notifications over MQTT“ ein und (seit 06.09.2026
   # gesetzt) „Generic status update over MQTT“, das auch ohne Änderung regelmäßig einen Vollstand schickt.
   - prefix: "Pufferspeicher_Temperaturen"
@@ -88,8 +89,8 @@ mqtt:
     label: "Pufferspeicher"
     components:
       "temperature:102": buffer_temp_top_c
-      "temperature:100": buffer_temp_mid_top_c
-      "temperature:104": buffer_temp_mid_bottom_c
+      "temperature:103": buffer_temp_mid_top_c
+      "temperature:100": buffer_temp_mid_bottom_c
       "temperature:101": buffer_temp_bottom_c
 
   # --- Die drei Lichterketten: Shelly Plus Plug S (Generation 2) ---

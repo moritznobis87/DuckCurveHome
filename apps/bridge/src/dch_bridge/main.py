@@ -27,7 +27,7 @@ from dch_bridge.sources.shelly_mqtt import (
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.5.0"
+VERSION = "0.5.1"
 log = structlog.get_logger("bridge")
 
 
