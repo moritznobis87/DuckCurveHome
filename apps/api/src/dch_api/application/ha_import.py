@@ -29,6 +29,7 @@ from pydantic import BaseModel, ConfigDict
 
 from hems_core.accounting import HourlyEnergy, MinuteSample, hourly_energy
 from hems_core.domain import HemsConfig, Quality
+from hems_core.domain.config import TariffConfig
 from hems_core.planning import PricePoint
 from hems_core.protocol import RawReading
 
@@ -438,6 +439,63 @@ def compute_hours(dump: ParsedDump, hems: HemsConfig) -> list[tuple[HourlyEnergy
     return out
 
 
+CONSUMER_KEYS = {"heat_pump_power_kw": "heat_pump", "ev_power_kw": "ev"}
+
+
+def consumer_only_hours(dump: ParsedDump) -> dict[datetime, dict[str, float]]:
+    """Stunden, für die der Export nur Verbraucherleistungen kennt (ohne PV und Netz ist keine Bilanz möglich).
+
+    Beispiel: im April 2026 stand in Home Assistant nur der Wärmepumpenzähler, die myenergi-Werte fehlten.
+    Die Energie je Verbraucher wird hier getrennt gesammelt, um eine bereits gespeicherte Stunde zu ergänzen.
+    """
+    out: dict[datetime, dict[str, float]] = {}
+    for key, name in CONSUMER_KEYS.items():
+        for minute, kw in dump.minutes[key].items():
+            hour = minute.replace(minute=0, second=0, microsecond=0)
+            if _samples(dump.minutes, hour):
+                continue  # vollständige Stunde – die normale Rechnung deckt sie ab
+            bucket = out.setdefault(hour, {})
+            bucket[name] = bucket.get(name, 0.0) + max(0.0, kw) / 60.0
+    return {h: {k: round(v, 4) for k, v in c.items()} for h, c in out.items()}
+
+
+def patch_consumers(
+    old: HourlyEnergy, consumers: dict[str, float], tariff: TariffConfig
+) -> HourlyEnergy | None:
+    """Verbraucher in eine gespeicherte Stunde nachtragen, deren Quelle sie nicht kannte.
+
+    Die Herkunft (PV, Batterie, Netz) und damit die Kosten werden im Verhältnis des Hausverbrauchs dieser
+    Stunde aufgeteilt – genauer geht es ohne gemeinsame Minutenwerte nicht, und das wird als Schätzung
+    ausgewiesen. Ein Verbraucher, den die gespeicherte Stunde schon kennt, bleibt unangetastet."""
+    patch: dict[str, float] = {}
+    house = old.house_kwh
+    if house <= 1e-6:
+        return None
+    shares = (
+        old.pv_direct_kwh / house,
+        old.battery_to_house_kwh / house,
+        old.grid_to_house_kwh / house,
+    )
+    price_ct = old.avg_import_price_ct
+    for name, kwh in consumers.items():
+        if kwh <= 1e-6 or getattr(old, f"{name}_kwh") > 0.0:
+            continue
+        capped = min(kwh, house)
+        pv, bat, grid = (round(capped * f, 4) for f in shares)
+        patch[f"{name}_kwh"] = round(capped, 4)
+        patch[f"{name}_pv_kwh"] = pv
+        patch[f"{name}_battery_kwh"] = bat
+        patch[f"{name}_grid_kwh"] = grid
+        patch[f"{name}_cost_eur"] = round(grid * (price_ct or 0.0) / 100.0, 4)
+        patch[f"{name}_opportunity_eur"] = round((pv + bat) * tariff.feed_in_ct_kwh / 100.0, 4)
+    if not patch:
+        return None
+    hp = patch.get("heat_pump_kwh", old.heat_pump_kwh)
+    ev = patch.get("ev_kwh", old.ev_kwh)
+    patch["base_kwh"] = round(max(0.0, house - hp - ev), 4)
+    return old.model_copy(update=patch)
+
+
 # Eine gespeicherte Stunde mit mindestens so vielen direkt gemessenen Minuten bleibt: Import ersetzt nur,
 # was nicht über Bridge, myenergi oder Tibber selbst erfasst wurde.
 DIRECT_MINUTES_KEEP = 30
@@ -463,6 +521,7 @@ class ImportResult(BaseModel):
     hours_computed: int
     hours_written: int
     hours_kept_existing: int
+    hours_consumer_patched: int = 0  # Stunden, in die nur Verbraucher nachgetragen wurden
     raw_readings_stored: int
     price_minutes_from_tibber: int
     minutes_without_price: int
@@ -521,6 +580,26 @@ class HaImporter:
                 chunk = to_write[i : i + 500]
                 await self.write_hours([h for h, _ in chunk], {h.hour_start: t for h, t in chunk})
             written = len(to_write)
+        patched = 0
+        extra = consumer_only_hours(dump)
+        if extra and not dry_run:
+            span = sorted(extra)
+            known = {
+                h.hour_start: (h, t)
+                for h, t in await self.read_hours(span[0], span[-1] + timedelta(hours=1))
+            }
+            updates: list[tuple[HourlyEnergy, float | None]] = []
+            for hour, consumers in sorted(extra.items()):
+                old, temp = known.get(hour, (None, None))
+                if old is None:
+                    continue  # ohne Bilanz aus einer anderen Quelle lässt sich nichts ergänzen
+                merged = patch_consumers(old, consumers, self.hems.tariff)
+                if merged is not None:
+                    updates.append((merged, temp))
+            for i in range(0, len(updates), 500):
+                chunk = updates[i : i + 500]
+                await self.write_hours([h for h, _ in chunk], {h.hour_start: t for h, t in chunk})
+            patched = len(updates)
         stored = 0
         if dump.readings and not dry_run:
             for i in range(0, len(dump.readings), 2000):
@@ -544,6 +623,7 @@ class HaImporter:
             hours_computed=len(hours),
             hours_written=written,
             hours_kept_existing=kept,
+            hours_consumer_patched=patched,
             raw_readings_stored=stored,
             price_minutes_from_tibber=tibber_minutes,
             minutes_without_price=missing_price,

@@ -3119,6 +3119,11 @@
             "type": "integer",
             "title": "Hours Kept Existing"
           },
+          "hours_consumer_patched": {
+            "type": "integer",
+            "title": "Hours Consumer Patched",
+            "default": 0
+          },
           "raw_readings_stored": {
             "type": "integer",
             "title": "Raw Readings Stored"

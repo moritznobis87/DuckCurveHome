@@ -13,8 +13,10 @@ from dch_api.application.ha_import import (
     HaImporter,
     apply_prices,
     compute_hours,
+    consumer_only_hours,
     load_entity_rules,
     parse_dump,
+    patch_consumers,
 )
 from hems_core.accounting import HourlyEnergy
 from hems_core.domain import HemsConfig
@@ -285,3 +287,68 @@ async def test_replace_until_overrides_full_imported_hours() -> None:
     assert res.hours_written == 0 and res.hours_kept_existing == 1  # volle Stunde bleibt
     res = await imp.run(_stats_csv(3600, 1), replace_until=T0 + timedelta(days=1))
     assert res.hours_written == 1 and written[0].pv_kwh == pytest.approx(4.0)
+
+
+def test_consumer_only_hours_are_collected_separately() -> None:
+    """April 2026: Home Assistant kannte nur die Wärmepumpe, PV und Netz fehlten ganz."""
+    ts = T0.timestamp()
+    lines = ["statistic_id,unit_of_measurement,start_ts,mean,min,max,state,sum"]
+    for i in range(4):  # vier Viertelstunden mit 2 kW Wärmepumpe, sonst nichts
+        lines.append(f"sensor.heatpump_total_power,W,{ts + i * 900},2000,,,,")
+    dump = parse_dump("\n".join(lines).encode(), RULES)
+    assert compute_hours(dump, HemsConfig()) == []  # ohne PV und Netz keine Bilanz
+    extra = consumer_only_hours(dump)
+    assert list(extra) == [T0] and extra[T0]["heat_pump"] == pytest.approx(2.0)
+
+
+def test_patch_consumers_splits_by_house_sources() -> None:
+    stored = HourlyEnergy(
+        hour_start=T0,
+        minutes=60,
+        house_kwh=4.0,
+        pv_direct_kwh=2.0,
+        battery_to_house_kwh=1.0,
+        grid_to_house_kwh=1.0,
+        base_kwh=4.0,
+        import_kwh=1.0,
+        price_weighted_ct=30.0,
+    )
+    merged = patch_consumers(stored, {"heat_pump": 2.0}, HemsConfig().tariff)
+    assert merged is not None
+    assert merged.heat_pump_kwh == pytest.approx(2.0)
+    assert merged.heat_pump_pv_kwh == pytest.approx(
+        1.0
+    )  # halb PV, ein Viertel Batterie, ein Viertel Netz
+    assert merged.heat_pump_battery_kwh == pytest.approx(0.5)
+    assert merged.heat_pump_grid_kwh == pytest.approx(0.5)
+    assert merged.heat_pump_cost_eur == pytest.approx(0.5 * 0.30)
+    assert merged.heat_pump_opportunity_eur == pytest.approx(1.5 * 0.08)
+    assert merged.base_kwh == pytest.approx(2.0)  # Rest schrumpft um die Wärmepumpe
+    # eine Stunde, die den Verbraucher schon kennt, bleibt unangetastet
+    assert patch_consumers(merged, {"heat_pump": 9.0}, HemsConfig().tariff) is None
+
+
+@pytest.mark.asyncio
+async def test_import_patches_consumer_into_existing_hour() -> None:
+    written: list[HourlyEnergy] = []
+    stored = HourlyEnergy(hour_start=T0, minutes=60, house_kwh=4.0, pv_direct_kwh=4.0, base_kwh=4.0)
+
+    async def read_hours(s: datetime, e: datetime) -> list[tuple[HourlyEnergy, float | None]]:
+        return [(stored, 11.0)]
+
+    async def write_hours(hours: list[HourlyEnergy], temps: dict[datetime, float | None]) -> None:
+        written.extend(hours)
+
+    async def add_readings(items: list[RawReading]) -> None:
+        pass
+
+    ts = T0.timestamp()
+    lines = ["statistic_id,unit_of_measurement,start_ts,mean,min,max,state,sum"]
+    for i in range(4):
+        lines.append(f"sensor.heatpump_total_power,W,{ts + i * 900},1000,,,,")
+    imp = HaImporter(HemsConfig(), RULES, read_hours, write_hours, add_readings)
+    res = await imp.run("\n".join(lines).encode())
+    assert res.hours_computed == 0 and res.hours_consumer_patched == 1
+    assert written[0].heat_pump_kwh == pytest.approx(1.0)
+    assert written[0].heat_pump_pv_kwh == pytest.approx(1.0)  # Stunde war voll aus PV gedeckt
+    assert written[0].base_kwh == pytest.approx(3.0)

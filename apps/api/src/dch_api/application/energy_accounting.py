@@ -57,6 +57,48 @@ WEEKDAYS_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 MONTHS_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
 BACKFILL_DAYS = 14  # entspricht der Aufbewahrung der Rohwerte
 
+# Verbraucherfelder, die eine Neuberechnung verlieren kann: kennt eine Quelle den Zähler nicht (die
+# myenergi-Cloud weiß nichts von der Wärmepumpe), ergibt die Rechnung 0 kWh statt „unbekannt“.
+CARRY_GROUPS: dict[str, tuple[str, ...]] = {
+    "heat_pump_kwh": (
+        "heat_pump_kwh",
+        "heat_pump_pv_kwh",
+        "heat_pump_battery_kwh",
+        "heat_pump_grid_kwh",
+        "heat_pump_cost_eur",
+        "heat_pump_opportunity_eur",
+    ),
+    "ev_kwh": (
+        "ev_kwh",
+        "ev_pv_kwh",
+        "ev_battery_kwh",
+        "ev_grid_kwh",
+        "ev_cost_eur",
+        "ev_opportunity_eur",
+    ),
+}
+
+
+def merge_hour(new: HourlyEnergy, old: HourlyEnergy | None) -> HourlyEnergy:
+    """Neu berechnete Stunde mit der gespeicherten zusammenführen.
+
+    Weist die neue Rechnung einen Verbraucher mit genau 0 kWh aus, während die gespeicherte Stunde einen
+    Verbrauch kennt, war er in den Minutenwerten nicht enthalten (z. B. die Wärmepumpe nach einem
+    myenergi-Backfill). Sein Wert samt Herkunft und Kosten wird übernommen, der Rest (base_kwh) entsprechend
+    verkleinert. Die Bilanz der Quellen bleibt die der neuen, vollständigeren Messung."""
+    if old is None:
+        return new
+    patch: dict[str, float] = {}
+    for lead, fields in CARRY_GROUPS.items():
+        if getattr(new, lead) == 0.0 and getattr(old, lead) > 0.0:
+            patch.update({f: getattr(old, f) for f in fields})
+    if not patch:
+        return new
+    hp = patch.get("heat_pump_kwh", new.heat_pump_kwh)
+    ev = patch.get("ev_kwh", new.ev_kwh)
+    patch["base_kwh"] = round(max(0.0, new.house_kwh - hp - ev), 4)
+    return new.model_copy(update=patch)
+
 
 def _mean(values: Iterable[float | None]) -> float | None:
     xs = [v for v in values if v is not None]
@@ -153,7 +195,7 @@ class EnergyAccounting:
         """Live: fehlende und die laufende Stunde neu berechnen und speichern. Liefert die Anzahl Stunden."""
         if self.store is None:
             return 0
-        _read, write, last = self.store
+        read, write, last = self.store
         current = now.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
         if self._last_refresh_hour is None:
             stored = await last()
@@ -165,9 +207,27 @@ class EnergyAccounting:
         begin = max(begin, current - timedelta(days=BACKFILL_DAYS))
         hours = await self._compute_hours(begin, current + timedelta(hours=1))
         if hours:
-            await write([h for h, _ in hours], {h.hour_start: t for h, t in hours})
+            merged = await self._merge_with_stored(read, hours, begin, current + timedelta(hours=1))
+            await write([h for h, _ in merged], {h.hour_start: t for h, t in merged})
         self._last_refresh_hour = current
         return len(hours)
+
+    async def _merge_with_stored(
+        self,
+        read: Callable[[datetime, datetime], Awaitable[list[tuple[HourlyEnergy, float | None]]]],
+        hours: list[tuple[HourlyEnergy, float | None]],
+        begin: datetime,
+        stop: datetime,
+    ) -> list[tuple[HourlyEnergy, float | None]]:
+        """Neu berechnete Stunden gegen den Bestand abgleichen: nichts verlieren, nichts verschlechtern."""
+        stored = {h.hour_start: (h, t) for h, t in await read(begin, stop)}
+        out: list[tuple[HourlyEnergy, float | None]] = []
+        for h, temp in hours:
+            old, old_temp = stored.get(h.hour_start, (None, None))
+            if old is not None and h.minutes < old.minutes:
+                continue  # Teildaten ersetzen keine vollständigere Stunde
+            out.append((merge_hour(h, old), temp if temp is not None else old_temp))
+        return out
 
     async def recompute(self, start: datetime, end: datetime) -> int:
         """Stunden eines Zeitraums aus Minutenwerten neu berechnen (nach nachgetragenen Messwerten).
@@ -182,8 +242,7 @@ class EnergyAccounting:
         hours = await self._compute_hours(begin, stop)
         if not hours:
             return 0
-        existing = {h.hour_start: h.minutes for h, _ in await read(begin, stop)}
-        keep = [(h, t) for h, t in hours if h.minutes >= existing.get(h.hour_start, 0)]
+        keep = await self._merge_with_stored(read, hours, begin, stop)
         if keep:
             await write([h for h, _ in keep], {h.hour_start: t for h, t in keep})
         return len(keep)

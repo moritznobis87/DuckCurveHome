@@ -1469,6 +1469,11 @@ export interface components {
             hours_written: number;
             /** Hours Kept Existing */
             hours_kept_existing: number;
+            /**
+             * Hours Consumer Patched
+             * @default 0
+             */
+            hours_consumer_patched: number;
             /** Raw Readings Stored */
             raw_readings_stored: number;
             /** Price Minutes From Tibber */
