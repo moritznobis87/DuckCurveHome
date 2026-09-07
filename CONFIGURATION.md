@@ -70,7 +70,14 @@ Optionen des Add-ons (`addons/duckcurve_bridge/config.yaml`): `api_ws_url`, `api
 | `mcz_poll_interval_s` / `DCH_BRIDGE_MCZ_POLL_INTERVAL_S` | `15` | Abstand zwischen zwei Zustandsabfragen |
 
 Die Quelle liest ausschließlich, sie sendet nur `C|RecuperoInfo` und schaltet nichts. Vor dem
-Konfigurieren lässt sich die Verbindung von Hand prüfen, ohne die Bridge anzufassen:
+Konfigurieren lässt sich die Verbindung von Hand prüfen, ohne die Bridge anzufassen. Von jedem
+Rechner im selben Netz, ohne Installation, mit dem Python, das ohnehin da ist:
+
+```
+python3 tools/mcz_probe.py 192.168.1.42
+```
+
+In einer eingerichteten Entwicklungsumgebung geht auch der Weg über die Bridge selbst:
 
 ```
 uv run python -m dch_bridge.sources.mcz_maestro 192.168.1.42

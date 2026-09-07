@@ -203,10 +203,10 @@ Die Quelle **schreibt nie**. Der einzige Rahmen, der hinausgeht, ist `C|Recupero
 die im Winter das Haus warm hält, ist kein Ort für Fernsteuerung nebenbei. Die Schreibbefehle sind
 bekannt und bewusst nicht eingebaut.
 
-Vor dem Konfigurieren prüfbar, von jedem Rechner im selben Netz:
+Vor dem Konfigurieren prüfbar, von jedem Rechner im selben Netz, ohne Installation:
 
 ```
-uv run python -m dch_bridge.sources.mcz_maestro <ip-des-ofens>
+python3 tools/mcz_probe.py <ip-des-ofens>
 ```
 
 **Die allgemeine MQTT-Quelle bleibt trotzdem auf der Liste**, aber nicht mehr für den Ofen: der

@@ -9,6 +9,9 @@ keine Information trägt.
 from __future__ import annotations
 
 import asyncio
+import importlib.util
+from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -19,6 +22,16 @@ from dch_bridge.sources.mcz_maestro import (
     stove_url,
 )
 from hems_core.domain.quality import Quality
+
+
+def _probe_module() -> ModuleType:
+    """`tools/mcz_probe.py` laden, ohne dass es ein Paket sein muss."""
+    path = Path(__file__).resolve().parents[3] / "tools" / "mcz_probe.py"
+    spec = importlib.util.spec_from_file_location("mcz_probe", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def frame(overrides: dict[int, int] | None = None) -> str:
@@ -149,3 +162,19 @@ def test_werte_tragen_qualitaet() -> None:
     assert by_key["stove_buffer_temp_c"].quality is Quality.OK
     assert by_key["stove_return_temp_c"].quality is Quality.UNKNOWN
     assert by_key["stove_buffer_temp_c"].source == "mcz"
+
+
+def test_pruefskript_und_bridge_lesen_dieselben_felder() -> None:
+    """`tools/mcz_probe.py` hält eine eigene Kopie der Feldtabelle, damit es ohne Repository und
+    ohne Installation läuft. Diese Kopie darf nicht abdriften: sonst zeigt das Prüfskript etwas
+    anderes an, als die Bridge später aufzeichnet."""
+    probe = _probe_module()
+    assert tuple((f.index, f.key, f.kind) for f in MAESTRO_FIELDS) == probe.FIELDS
+
+
+def test_pruefskript_deutet_einen_rahmen_wie_die_bridge() -> None:
+    probe = _probe_module()
+    raw = frame({1: 15, 7: 118, 8: 160, 9: 255, 59: 128})
+    mine = parse_info(raw)
+    theirs = probe.parse_info(raw)
+    assert theirs == {k: v for k, v in mine.items() if k != "stove_running"}
