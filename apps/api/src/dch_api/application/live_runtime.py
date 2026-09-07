@@ -44,6 +44,7 @@ from dch_api.schemas import (
     LiveStateOut,
     Period,
     PlanOut,
+    PvTaxReportOut,
     SourceStatusOut,
     SystemEventOut,
     SystemStatusOut,
@@ -477,6 +478,9 @@ class LiveRuntime:
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
         return await self.accounting.ev_report(period, anchor, self.now)
+
+    async def pv_report(self, period: Period, anchor: date) -> PvTaxReportOut:
+        return await self.accounting.pv_report(period, anchor, self.now)
 
     async def check_invoice(self, payload: bytes, file_name: str | None) -> InvoiceReportOut:
         return await self.invoice_service.check(payload, file_name)

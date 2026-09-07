@@ -57,8 +57,8 @@ export function anchorLabel(anchor: string, period: Period): string {
 }
 
 /** Zeitraum-Zustand mit URL-Synchronisation (?period=&anchor=), ohne useSearchParams (statisches Prerender). */
-export function usePeriod(): { period: Period; anchor: string; setPeriod: (p: Period) => void; move: (dir: -1 | 1) => void; today: () => void } {
-  const [period, setPeriodState] = useState<Period>("day");
+export function usePeriod(initial: Period = "day"): { period: Period; anchor: string; setPeriod: (p: Period) => void; move: (dir: -1 | 1) => void; today: () => void } {
+  const [period, setPeriodState] = useState<Period>(initial);
   // Leer bis zum ersten Client-Render: die Seite wird statisch vorgerendert, das Datum darf nicht vom Build stammen.
   const [anchor, setAnchor] = useState<string>("");
   useEffect(() => {

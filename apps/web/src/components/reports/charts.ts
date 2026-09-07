@@ -331,3 +331,40 @@ export function invoicePositions(positions: Array<{ label: string; group: string
     ],
   };
 }
+
+export type MoneySeries = { name: string; color: string; values: number[] };
+
+/** Gestapelte Balken über frei gewählte Beschriftungen, Werte in Euro (Tooltip mit zwei Nachkommastellen). */
+export function moneyBars(labels: string[], series: MoneySeries[]): EChartsCoreOption {
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    textStyle: { fontFamily: MONO },
+    tooltip: {
+      ...tooltip,
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      formatter: (params: unknown) => {
+        const ps = params as Array<{ seriesName: string; value: number; color: string; dataIndex: number }>;
+        if (!ps.length) return "";
+        const total = ps.reduce((a, p) => a + (typeof p.value === "number" ? p.value : 0), 0);
+        const rows = ps
+          .filter((p) => typeof p.value === "number" && p.value !== 0)
+          .map((p) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:${p.color}">${p.seriesName}</span><span>${de1(p.value, 2)} €</span></div>`)
+          .join("");
+        return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${labels[ps[0]!.dataIndex] ?? ""}</div>${rows}<div style="margin-top:4px;border-top:1px solid rgba(255,255,255,.12);padding-top:3px">Summe ${de1(total, 2)} €</div>`;
+      },
+    },
+    grid: { left: 52, right: 12, top: 24, bottom: 30 },
+    xAxis: { type: "category", data: labels, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, interval: labels.length > 12 ? "auto" : 0, hideOverlap: true } },
+    yAxis: { type: "value", name: "€", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 3 },
+    series: series.map((s, i) => ({
+      name: s.name,
+      type: "bar",
+      stack: "total",
+      data: s.values.map((v) => Math.round(v * 100) / 100),
+      itemStyle: { color: s.color, borderRadius: i === series.length - 1 ? [2, 2, 0, 0] : 0 },
+      barCategoryGap: "35%",
+    })),
+  };
+}

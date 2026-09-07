@@ -18,6 +18,7 @@ from dch_api.schemas import (
     LiveStateOut,
     Period,
     PlanOut,
+    PvTaxReportOut,
     SystemEventOut,
 )
 from dch_api.settings import Settings
@@ -40,6 +41,7 @@ class Runtime(Protocol):
     async def energy_summary(self, period: Period, anchor: date) -> EnergySummaryOut: ...
     async def heat_report(self, period: Period, anchor: date) -> HeatReportOut: ...
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut: ...
+    async def pv_report(self, period: Period, anchor: date) -> PvTaxReportOut: ...
     async def import_history(
         self,
         payload: bytes,

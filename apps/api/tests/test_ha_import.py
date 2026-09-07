@@ -107,7 +107,8 @@ def test_apply_prices_fills_only_missing_minutes() -> None:
     assert n == 59 and dump.minutes["electricity_price_ct_kwh"][T0] == 99.0
     h, _ = compute_hours(dump, HemsConfig())[0]
     assert h.price_missing_minutes == 0
-    assert h.import_cost_eur == 0.0 and h.export_revenue_eur == pytest.approx(0.08)
+    feed_in = HemsConfig().tariff.feed_in_ct_kwh / 100.0
+    assert h.import_cost_eur == 0.0 and h.export_revenue_eur == pytest.approx(feed_in)
 
 
 @pytest.mark.asyncio
@@ -322,7 +323,8 @@ def test_patch_consumers_splits_by_house_sources() -> None:
     assert merged.heat_pump_battery_kwh == pytest.approx(0.5)
     assert merged.heat_pump_grid_kwh == pytest.approx(0.5)
     assert merged.heat_pump_cost_eur == pytest.approx(0.5 * 0.30)
-    assert merged.heat_pump_opportunity_eur == pytest.approx(1.5 * 0.08)
+    feed_in = HemsConfig().tariff.feed_in_ct_kwh / 100.0
+    assert merged.heat_pump_opportunity_eur == pytest.approx(1.5 * feed_in, abs=5e-5)
     assert merged.base_kwh == pytest.approx(2.0)  # Rest schrumpft um die Wärmepumpe
     # eine Stunde, die den Verbraucher schon kennt, bleibt unangetastet
     assert patch_consumers(merged, {"heat_pump": 9.0}, HemsConfig().tariff) is None

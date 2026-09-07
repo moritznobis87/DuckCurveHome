@@ -22,3 +22,11 @@ hems:
     min_useful_temperature_c: 35
     target_temperature_c: 50
     max_temperature_c: 62
+  tariff:
+    # Einspeisevergütung netto laut Bescheid des Netzbetreibers. Die Tibber-Preise der Zeitreihe sind
+    # Bruttopreise; der Eigenverbrauch wird für die Umsatzsteuer daraus netto bewertet.
+    feed_in_ct_kwh: 7.41
+    fallback_import_ct_kwh: 30.0
+    vat_rate: 0.19
+    price_includes_vat: true
+    small_business: false

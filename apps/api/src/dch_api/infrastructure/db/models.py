@@ -208,6 +208,11 @@ class EnergyHour(Base):
     grid_to_house_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     pv_to_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     grid_to_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    battery_pv_to_house_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    battery_origin_estimated_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    # Bestand am Stundenende, kein Summand: Herkunftskonto des Speichers für die Folgestunde.
+    battery_pv_stored_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    battery_grid_stored_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     heat_pump_pv_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     heat_pump_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     heat_pump_grid_kwh: Mapped[float] = mapped_column(Float, default=0.0)
@@ -223,6 +228,7 @@ class EnergyHour(Base):
     battery_savings_eur: Mapped[float] = mapped_column(Float, default=0.0)
     pv_direct_savings_eur: Mapped[float] = mapped_column(Float, default=0.0)
     price_weighted_ct: Mapped[float] = mapped_column(Float, default=0.0)
+    self_consumption_value_eur: Mapped[float] = mapped_column(Float, default=0.0)
     outdoor_temp_c: Mapped[float | None] = mapped_column(Float)  # Stundenmittel, für COP-Schätzung
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

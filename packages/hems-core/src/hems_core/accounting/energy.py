@@ -4,6 +4,11 @@ Reine Rechenlogik. Vorzeichen wie im Domänenmodell: grid > 0 Bezug, battery > 0
 der Hausverbrauch auf die Quellen PV direkt, Batterie und Netz verteilt; Verbraucher (Wärmepumpe, Wallbox)
 erhalten diese Quellen anteilig an ihrer Leistung. Kosten: Netzbezug × Preis; PV- und Batterieanteile werden
 mit der entgangenen Einspeisevergütung bewertet („Opportunität“).
+
+Zusätzlich wird der steuerlich verwertbare Eigenverbrauch geführt: welcher Teil des Hausverbrauchs aus
+eigener PV stammt (direkt oder über den Speicher) und was seine Wiederbeschaffung aus dem Netz netto
+gekostet hätte. Der Speicher macht das nichttrivial, weil er auch Netzstrom aufnimmt; dafür läuft ein
+Herkunftskonto (BatteryOrigin) über die Stunden hinweg mit.
 """
 
 from __future__ import annotations
@@ -30,6 +35,54 @@ class MinuteSample:
     price_ct_kwh: float | None
 
 
+@dataclass
+class BatteryOrigin:
+    """Herkunftskonto des Speicherinhalts in kWh: wie viel davon ist PV, wie viel kam aus dem Netz.
+
+    Ohne dieses Konto ließe sich eine Entladung nicht zuordnen — nachts fließt Strom aus dem Speicher,
+    ohne dass in derselben Stunde geladen wurde. Es wird über die Stunden fortgeschrieben. Geladen wird
+    anteilig gutgeschrieben, entladen anteilig abgebucht. Der Inhalt wird auf die Speicherkapazität
+    begrenzt: Ladeverluste bedeuten, dass über die Zeit mehr hinein- als herausgeht, sonst wüchse das
+    Konto unbegrenzt und die Anteile wären irgendwann von Jahren alten Ladungen bestimmt.
+    """
+
+    pv_kwh: float = 0.0
+    grid_kwh: float = 0.0
+
+    @property
+    def content_kwh(self) -> float:
+        return self.pv_kwh + self.grid_kwh
+
+    def charge(self, pv_kwh: float, grid_kwh: float, capacity_kwh: float | None) -> None:
+        self.pv_kwh += pv_kwh
+        self.grid_kwh += grid_kwh
+        content = self.content_kwh
+        if capacity_kwh and content > capacity_kwh > 0.0:
+            f = capacity_kwh / content
+            self.pv_kwh *= f
+            self.grid_kwh *= f
+
+    def discharge(self, kwh: float) -> tuple[float, float, float]:
+        """Entnahme aufteilen. Liefert (PV-Anteil, Netzanteil, geschätzter Anteil).
+
+        Ist das Konto leer — beim ersten Start, oder wenn Ladeverluste es leergerechnet haben —, gilt die
+        Entnahme als PV. Das ist die richtige Annahme für eine Anlage, die fast nur aus PV lädt, aber sie
+        ist eine Annahme; ihr Umfang wird mitgezählt und auf der Abrechnungsseite ausgewiesen.
+        """
+        content = self.content_kwh
+        take = min(kwh, content)
+        if take > 1e-12:
+            share = self.pv_kwh / content
+            pv = take * share
+            grid = take - pv
+            self.pv_kwh -= pv
+            self.grid_kwh -= grid
+        else:
+            pv = grid = 0.0
+        rest = max(0.0, kwh - take)
+        return pv + rest, grid, rest
+
+
 class EnergyTotals(BaseModel):
     """Energien (kWh) und Geld (EUR) eines Zeitraums – Stunde, Tag, Woche, Monat oder Jahr."""
 
@@ -51,6 +104,11 @@ class EnergyTotals(BaseModel):
     grid_to_house_kwh: float = 0.0
     pv_to_battery_kwh: float = 0.0
     grid_to_battery_kwh: float = 0.0
+    # Herkunft der Speicherentladung ins Haus: nur der PV-Anteil ist Eigenverbrauch eigener Erzeugung,
+    # der Netzanteil war beim Bezug bereits Netzstrom. battery_origin_estimated_kwh ist der Teil, dessen
+    # Herkunft das Konto nicht kannte und der als PV angenommen wurde.
+    battery_pv_to_house_kwh: float = 0.0
+    battery_origin_estimated_kwh: float = 0.0
     # Verbraucher nach Herkunft
     heat_pump_pv_kwh: float = 0.0
     heat_pump_battery_kwh: float = 0.0
@@ -68,6 +126,10 @@ class EnergyTotals(BaseModel):
     battery_savings_eur: float = 0.0  # Entladung ins Haus × (Preis − Vergütung)
     pv_direct_savings_eur: float = 0.0  # PV direkt × (Preis − Vergütung)
     price_weighted_ct: float = 0.0  # Σ Bezug × Preis, für den Mittelpreis
+    # Steuerliche Bewertung des Eigenverbrauchs: Σ selbst verbrauchte PV-kWh × Netto-Bezugspreis derselben
+    # Minute (Wiederbeschaffungspreis). Netto, weil das die Bemessungsgrundlage der unentgeltlichen
+    # Wertabgabe ist.
+    self_consumption_value_eur: float = 0.0
     price_missing_minutes: int = 0
 
     @property
@@ -75,6 +137,17 @@ class EnergyTotals(BaseModel):
         return (
             round(self.price_weighted_ct / self.import_kwh, 2) if self.import_kwh > 1e-6 else None
         )
+
+    @property
+    def self_consumption_kwh(self) -> float:
+        """Eigenverbrauch eigener Erzeugung: PV direkt plus der PV-Anteil der Speicherentladung."""
+        return round(self.pv_direct_kwh + self.battery_pv_to_house_kwh, 4)
+
+    @property
+    def self_consumption_ct_kwh(self) -> float | None:
+        """Mittlerer Netto-Wiederbeschaffungspreis des Eigenverbrauchs in ct/kWh."""
+        kwh = self.self_consumption_kwh
+        return round(self.self_consumption_value_eur * 100.0 / kwh, 2) if kwh > 1e-6 else None
 
     @property
     def autarky(self) -> float | None:
@@ -95,6 +168,11 @@ class HourlyEnergy(EnergyTotals):
     model_config = ConfigDict(frozen=True)
 
     hour_start: datetime
+    # Stand des Herkunftskontos am Ende der Stunde. Gehört bewusst nicht zu EnergyTotals: ein Bestand
+    # darf über Stunden nicht aufsummiert werden. Gespeichert wird er, damit eine Neuberechnung dort
+    # weiterrechnen kann, wo die vorige aufgehört hat, statt das Konto wieder bei null zu beginnen.
+    battery_pv_stored_kwh: float = 0.0
+    battery_grid_stored_kwh: float = 0.0
 
 
 _SUM_FIELDS = [
@@ -107,12 +185,25 @@ def _r(x: float) -> float:
 
 
 def hourly_energy(
-    hour_start: datetime, samples: Iterable[MinuteSample], tariff: TariffConfig
+    hour_start: datetime,
+    samples: Iterable[MinuteSample],
+    tariff: TariffConfig,
+    origin: BatteryOrigin | None = None,
+    capacity_kwh: float | None = None,
 ) -> HourlyEnergy:
+    """Eine Stunde bilanzieren.
+
+    `origin` ist der Stand des Speicher-Herkunftskontos zu Beginn der Stunde; es wird dabei verändert und
+    steht danach für die Folgestunde bereit. Ohne Angabe beginnt die Rechnung mit einem leeren Konto —
+    dann gilt jede Entladung als PV und wird als geschätzt gezählt.
+    """
     acc: dict[str, float] = dict.fromkeys(_SUM_FIELDS, 0.0)
     minutes = 0
     price_missing = 0
     feed_in = tariff.feed_in_ct_kwh
+    vat = 0.0 if tariff.small_business else tariff.vat_rate
+    net_factor = 1.0 / (1.0 + vat) if tariff.price_includes_vat else 1.0
+    bat_origin = origin if origin is not None else BatteryOrigin()
     for smp in samples:
         if smp.pv_kw is None or smp.grid_kw is None:
             continue  # ohne PV und Netz keine Bilanz
@@ -160,6 +251,21 @@ def hourly_energy(
         acc["grid_to_house_kwh"] += grid_to_house * STEP_H
         acc["pv_to_battery_kwh"] += pv_to_bat * STEP_H
         acc["grid_to_battery_kwh"] += grid_to_bat * STEP_H
+
+        # Herkunftskonto fortschreiben. Entnommen wird die gesamte Entladung, gutgeschrieben als
+        # Eigenverbrauch nur der Teil, der ins Haus ging – was aus dem Speicher ins Netz fließt, ist
+        # Einspeisung und über export_kwh bereits erfasst.
+        bat_origin.charge(pv_to_bat * STEP_H, grid_to_bat * STEP_H, capacity_kwh)
+        bat_pv_house = 0.0
+        if dis > 1e-9:
+            pv_out, _grid_out, guessed = bat_origin.discharge(dis * STEP_H)
+            house_share = (bat_to_house / dis) if dis > 1e-9 else 0.0
+            bat_pv_house = pv_out * house_share
+            acc["battery_pv_to_house_kwh"] += bat_pv_house
+            acc["battery_origin_estimated_kwh"] += guessed * house_share
+        acc["self_consumption_value_eur"] += (
+            (pv_direct * STEP_H + bat_pv_house) * price * net_factor / 100.0
+        )
         for name, load in (("heat_pump", hp), ("ev", ev)):
             f = load * share
             l_pv = f * pv_direct * STEP_H
@@ -180,6 +286,8 @@ def hourly_energy(
         hour_start=hour_start,
         minutes=minutes,
         price_missing_minutes=price_missing,
+        battery_pv_stored_kwh=_r(bat_origin.pv_kwh),
+        battery_grid_stored_kwh=_r(bat_origin.grid_kwh),
         **{k: _r(v) for k, v in acc.items()},
     )
 

@@ -33,6 +33,7 @@ from dch_api.schemas import (
     LiveStateOut,
     Period,
     PlanOut,
+    PvTaxReportOut,
     SystemEventOut,
     SystemStatusOut,
 )
@@ -210,6 +211,9 @@ class DemoRunner:
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
         return await self.accounting.ev_report(period, anchor, self.now)
+
+    async def pv_report(self, period: Period, anchor: date) -> PvTaxReportOut:
+        return await self.accounting.pv_report(period, anchor, self.now)
 
     async def import_history(
         self,

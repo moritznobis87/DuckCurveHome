@@ -12,6 +12,7 @@ import { C, donut, pvForecastChart, stackedBars } from "./charts";
 import { CoverageNote, de1, ErrorBanner, eur, KpiGrid, pct, ReportShell, usePeriod } from "./ReportShell";
 import { PeriodStrip } from "./PeriodStrip";
 import { isoToday, useMultiPeriod, useReport } from "./useReport";
+import { useRole } from "@/lib/live/useRole";
 
 const SERIES = [
   { key: "pv_direct_kwh" as const, name: "Direkt genutzt", color: C.pv },
@@ -36,6 +37,7 @@ function forecastKwh(plan: Plan | null, dayStart: number): { today: number; tomo
 
 export function PvReport() {
   const { period, anchor, setPeriod, move, today } = usePeriod();
+  const role = useRole();
   const { data, error } = useReport<EnergySummary>(api.energySummary, period, anchor);
   const strip = useMultiPeriod<EnergySummary>(api.energySummary);
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -74,7 +76,17 @@ export function PvReport() {
   const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "–");
 
   return (
-    <ReportShell title="Photovoltaik" kicker="Erzeugung · Verwendung · Prognose" period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
+    <ReportShell
+      title="Photovoltaik"
+      kicker="Erzeugung · Verwendung · Prognose"
+      period={period}
+      anchor={anchor}
+      onPeriod={setPeriod}
+      onMove={move}
+      onToday={today}
+      // Gästen wird der Weg gar nicht erst gezeigt: die Abrechnung ist ihnen verschlossen.
+      right={role === "owner" ? <Link href="/pv/abrechnung" className="text-[12px] text-amber">Abrechnung →</Link> : undefined}
+    >
       {error ? <ErrorBanner message={error} /> : null}
       <KpiGrid cols={6}>
         <Stat label="Erzeugung" value={de1(t?.pv_kwh)} unit="kWh" tone="amber" hint={t?.minutes ? `${Math.round(t.minutes / 60)} h bewertet` : "keine Daten"} />

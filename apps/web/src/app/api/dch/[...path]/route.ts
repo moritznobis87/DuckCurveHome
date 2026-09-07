@@ -3,10 +3,11 @@ import { SESSION_COOKIE, authRequired, verifySession } from "@/lib/session";
 import { touch } from "@/lib/presence";
 
 /**
- * Pfade, die Gästen verschlossen bleiben. Bewusst nur die Rechnungen: sie enthalten Name, Adresse,
- * Marktlokations-ID, Zählernummer und IBAN. Verbräuche und Kosten dürfen Gäste sehen.
+ * Pfade, die Gästen verschlossen bleiben. Verbräuche und Kosten dürfen Gäste sehen; hier steht, was in
+ * die Steuerakte gehört: die Rechnungen (Name, Adresse, Marktlokations-ID, Zählernummer, IBAN) und die
+ * PV-Abrechnung (Bemessungsgrundlagen und Umsatzsteuer der Anlage).
  */
-const GUEST_FORBIDDEN = [/^import\/tibber-invoice/];
+const GUEST_FORBIDDEN = [/^import\/tibber-invoice/, /^energy\/pv$/];
 
 /**
  * BFF-Proxy zur API. Liest die Ziel-URL zur Laufzeit (nicht zur Build-Zeit wie Rewrites), reicht

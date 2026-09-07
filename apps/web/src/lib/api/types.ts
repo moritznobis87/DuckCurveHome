@@ -157,6 +157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/energy/pv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** PV-Abrechnung: Einspeisung, Eigenverbrauch, Umsatzsteuer */
+        get: operations["pv_api_v1_energy_pv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/import/ha": {
         parameters: {
             query?: never;
@@ -937,6 +954,16 @@ export interface components {
              */
             grid_to_battery_kwh: number;
             /**
+             * Battery Pv To House Kwh
+             * @default 0
+             */
+            battery_pv_to_house_kwh: number;
+            /**
+             * Battery Origin Estimated Kwh
+             * @default 0
+             */
+            battery_origin_estimated_kwh: number;
+            /**
              * Heat Pump Pv Kwh
              * @default 0
              */
@@ -1011,6 +1038,11 @@ export interface components {
              * @default 0
              */
             price_weighted_ct: number;
+            /**
+             * Self Consumption Value Eur
+             * @default 0
+             */
+            self_consumption_value_eur: number;
             /**
              * Price Missing Minutes
              * @default 0
@@ -1406,8 +1438,11 @@ export interface components {
             timeouts: components["schemas"]["SensorTimeouts"];
             /**
              * @default {
-             *       "feed_in_ct_kwh": 8,
-             *       "fallback_import_ct_kwh": 30
+             *       "feed_in_ct_kwh": 7.41,
+             *       "fallback_import_ct_kwh": 30,
+             *       "vat_rate": 0.19,
+             *       "price_includes_vat": true,
+             *       "small_business": false
              *     }
              */
             tariff: components["schemas"]["TariffConfig"];
@@ -1887,6 +1922,159 @@ export interface components {
              */
             min_buffer_headroom_soc: number;
         };
+        /** PvTaxBucketOut */
+        PvTaxBucketOut: {
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Label */
+            label: string;
+            totals: components["schemas"]["PvTaxTotals"];
+        };
+        /**
+         * PvTaxMetaOut
+         * @description Was die Zahlen der Abrechnung bedingt – gehört sichtbar zur Auswertung, nicht ins Kleingedruckte.
+         */
+        PvTaxMetaOut: {
+            /** Feed In Ct Kwh */
+            feed_in_ct_kwh: number;
+            /** Vat Rate */
+            vat_rate: number;
+            /** Small Business */
+            small_business: boolean;
+            /** Prices Include Vat */
+            prices_include_vat: boolean;
+            /** Data Since */
+            data_since: string | null;
+            /** Coverage */
+            coverage: number | null;
+            /** Battery Capacity Kwh */
+            battery_capacity_kwh: number;
+            /** Method De */
+            method_de: string;
+        };
+        /**
+         * PvTaxReportOut
+         * @description PV-Abrechnung eines Zeitraums: Einspeisung, Eigenverbrauch, Umsatzsteuer.
+         */
+        PvTaxReportOut: {
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "week" | "month" | "year";
+            /**
+             * Anchor
+             * Format: date
+             */
+            anchor: string;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            totals: components["schemas"]["PvTaxTotals"];
+            /** Buckets */
+            buckets: components["schemas"]["PvTaxBucketOut"][];
+            meta: components["schemas"]["PvTaxMetaOut"];
+        };
+        /**
+         * PvTaxTotals
+         * @description Geldseite der PV für einen Zeitraum. Beträge in EUR, Preise in ct/kWh.
+         */
+        PvTaxTotals: {
+            /**
+             * Small Business
+             * @default false
+             */
+            small_business: boolean;
+            /**
+             * Vat Rate
+             * @default 0.19
+             */
+            vat_rate: number;
+            /**
+             * Feed In Ct Kwh
+             * @default 0
+             */
+            feed_in_ct_kwh: number;
+            /**
+             * Export Kwh
+             * @default 0
+             */
+            export_kwh: number;
+            /**
+             * Export Net Eur
+             * @default 0
+             */
+            export_net_eur: number;
+            /**
+             * Export Vat Eur
+             * @default 0
+             */
+            export_vat_eur: number;
+            /**
+             * Export Gross Eur
+             * @default 0
+             */
+            export_gross_eur: number;
+            /**
+             * Self Consumption Kwh
+             * @default 0
+             */
+            self_consumption_kwh: number;
+            /**
+             * Self Direct Kwh
+             * @default 0
+             */
+            self_direct_kwh: number;
+            /**
+             * Self Battery Kwh
+             * @default 0
+             */
+            self_battery_kwh: number;
+            /**
+             * Self Value Net Eur
+             * @default 0
+             */
+            self_value_net_eur: number;
+            /**
+             * Self Vat Eur
+             * @default 0
+             */
+            self_vat_eur: number;
+            /** Self Ct Kwh */
+            self_ct_kwh?: number | null;
+            /**
+             * Self Estimated Kwh
+             * @default 0
+             */
+            self_estimated_kwh: number;
+            /**
+             * Vat Payable Eur
+             * @default 0
+             */
+            vat_payable_eur: number;
+            /**
+             * Pv Kwh
+             * @default 0
+             */
+            pv_kwh: number;
+            /** Self Consumption Share */
+            self_consumption_share?: number | null;
+        };
         /**
          * Quality
          * @enum {string}
@@ -1997,12 +2185,16 @@ export interface components {
         };
         /**
          * TariffConfig
-         * @description Geldseite: Einspeisevergütung und Ersatzpreis, falls kein Tibber-Preis vorliegt.
+         * @description Geldseite: Einspeisevergütung, Ersatzpreis und die umsatzsteuerliche Einordnung der Anlage.
+         *
+         *     Netto und brutto sauber zu trennen ist hier keine Förmlichkeit: die Tibber-Preise der Zeitreihe sind
+         *     Bruttopreise (Energie, Netz, Steuern, Abgaben – so zeigt Tibber sie), die Einspeisevergütung nach EEG
+         *     ist ein Nettosatz, und die steuerliche Bemessungsgrundlage des Eigenverbrauchs ist ebenfalls netto.
          */
         TariffConfig: {
             /**
              * Feed In Ct Kwh
-             * @default 8
+             * @default 7.41
              */
             feed_in_ct_kwh: number;
             /**
@@ -2010,6 +2202,21 @@ export interface components {
              * @default 30
              */
             fallback_import_ct_kwh: number;
+            /**
+             * Vat Rate
+             * @default 0.19
+             */
+            vat_rate: number;
+            /**
+             * Price Includes Vat
+             * @default true
+             */
+            price_includes_vat: boolean;
+            /**
+             * Small Business
+             * @default false
+             */
+            small_business: boolean;
         };
         /** TibberInvoice */
         TibberInvoice: {
@@ -2306,6 +2513,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pv_api_v1_energy_pv_get: {
+        parameters: {
+            query?: {
+                period?: "day" | "week" | "month" | "year";
+                anchor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PvTaxReportOut"];
                 };
             };
             /** @description Validation Error */

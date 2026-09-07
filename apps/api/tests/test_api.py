@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -161,6 +162,33 @@ def test_energy_summary_day_and_buckets(client: TestClient) -> None:
     for period, n in (("week", 7), ("year", 12)):
         r = client.get(f"/api/v1/energy/summary?period={period}")
         assert r.status_code == 200 and len(r.json()["buckets"]) == n
+
+
+def test_energy_pv_report_splits_feed_in_and_self_consumption(client: TestClient) -> None:
+    r = client.get("/api/v1/energy/pv?period=day")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["period"] == "day" and len(body["buckets"]) == 24
+    t = body["totals"]
+    # Eigenverbrauch ist PV direkt plus PV-Anteil aus dem Speicher und übersteigt die Erzeugung nie.
+    assert t["self_consumption_kwh"] == pytest.approx(
+        t["self_direct_kwh"] + t["self_battery_kwh"], abs=0.01
+    )
+    assert t["self_consumption_kwh"] <= t["pv_kwh"] + 0.01
+    # Umsatzsteuer: 19 % auf beide Bemessungsgrundlagen, die Zahllast ist ihre Summe.
+    m = body["meta"]
+    assert m["vat_rate"] == pytest.approx(0.19) and m["prices_include_vat"] is True
+    assert t["export_vat_eur"] == pytest.approx(t["export_net_eur"] * 0.19, abs=0.01)
+    assert t["export_gross_eur"] == pytest.approx(
+        t["export_net_eur"] + t["export_vat_eur"], abs=0.01
+    )
+    assert t["vat_payable_eur"] == pytest.approx(t["export_vat_eur"] + t["self_vat_eur"], abs=0.01)
+    # Bewertet wird netto: der Preis des Eigenverbrauchs liegt unter dem Bruttopreis des Bezugs.
+    if t["self_ct_kwh"] is not None:
+        assert 0 < t["self_ct_kwh"] < 100
+    for period, n in (("month", 28), ("year", 12)):
+        r = client.get(f"/api/v1/energy/pv?period={period}")
+        assert r.status_code == 200 and len(r.json()["buckets"]) >= n
 
 
 def test_energy_heat_and_ev_reports(client: TestClient) -> None:

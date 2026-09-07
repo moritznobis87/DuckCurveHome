@@ -392,6 +392,72 @@
         }
       }
     },
+    "/api/v1/energy/pv": {
+      "get": {
+        "tags": [
+          "Energiebilanz"
+        ],
+        "summary": "PV-Abrechnung: Einspeisung, Eigenverbrauch, Umsatzsteuer",
+        "operationId": "pv_api_v1_energy_pv_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string",
+              "default": "year",
+              "title": "Period"
+            }
+          },
+          {
+            "name": "anchor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anchor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PvTaxReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/import/ha": {
       "post": {
         "tags": [
@@ -2157,6 +2223,16 @@
             "title": "Grid To Battery Kwh",
             "default": 0.0
           },
+          "battery_pv_to_house_kwh": {
+            "type": "number",
+            "title": "Battery Pv To House Kwh",
+            "default": 0.0
+          },
+          "battery_origin_estimated_kwh": {
+            "type": "number",
+            "title": "Battery Origin Estimated Kwh",
+            "default": 0.0
+          },
           "heat_pump_pv_kwh": {
             "type": "number",
             "title": "Heat Pump Pv Kwh",
@@ -2230,6 +2306,11 @@
           "price_weighted_ct": {
             "type": "number",
             "title": "Price Weighted Ct",
+            "default": 0.0
+          },
+          "self_consumption_value_eur": {
+            "type": "number",
+            "title": "Self Consumption Value Eur",
             "default": 0.0
           },
           "price_missing_minutes": {
@@ -3041,8 +3122,11 @@
           "tariff": {
             "$ref": "#/components/schemas/TariffConfig",
             "default": {
-              "feed_in_ct_kwh": 8.0,
-              "fallback_import_ct_kwh": 30.0
+              "feed_in_ct_kwh": 7.41,
+              "fallback_import_ct_kwh": 30.0,
+              "vat_rate": 0.19,
+              "price_includes_vat": true,
+              "small_business": false
             }
           },
           "heat_demand": {
@@ -4087,6 +4171,257 @@
         "type": "object",
         "title": "PvRuleConfig"
       },
+      "PvTaxBucketOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PvTaxTotals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "label",
+          "totals"
+        ],
+        "title": "PvTaxBucketOut"
+      },
+      "PvTaxMetaOut": {
+        "properties": {
+          "feed_in_ct_kwh": {
+            "type": "number",
+            "title": "Feed In Ct Kwh"
+          },
+          "vat_rate": {
+            "type": "number",
+            "title": "Vat Rate"
+          },
+          "small_business": {
+            "type": "boolean",
+            "title": "Small Business"
+          },
+          "prices_include_vat": {
+            "type": "boolean",
+            "title": "Prices Include Vat"
+          },
+          "data_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Since"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "battery_capacity_kwh": {
+            "type": "number",
+            "title": "Battery Capacity Kwh"
+          },
+          "method_de": {
+            "type": "string",
+            "title": "Method De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feed_in_ct_kwh",
+          "vat_rate",
+          "small_business",
+          "prices_include_vat",
+          "data_since",
+          "coverage",
+          "battery_capacity_kwh",
+          "method_de"
+        ],
+        "title": "PvTaxMetaOut",
+        "description": "Was die Zahlen der Abrechnung bedingt – gehört sichtbar zur Auswertung, nicht ins Kleingedruckte."
+      },
+      "PvTaxReportOut": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "year"
+            ],
+            "title": "Period"
+          },
+          "anchor": {
+            "type": "string",
+            "format": "date",
+            "title": "Anchor"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PvTaxTotals"
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/PvTaxBucketOut"
+            },
+            "type": "array",
+            "title": "Buckets"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PvTaxMetaOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period",
+          "anchor",
+          "start",
+          "end",
+          "totals",
+          "buckets",
+          "meta"
+        ],
+        "title": "PvTaxReportOut",
+        "description": "PV-Abrechnung eines Zeitraums: Einspeisung, Eigenverbrauch, Umsatzsteuer."
+      },
+      "PvTaxTotals": {
+        "properties": {
+          "small_business": {
+            "type": "boolean",
+            "title": "Small Business",
+            "default": false
+          },
+          "vat_rate": {
+            "type": "number",
+            "title": "Vat Rate",
+            "default": 0.19
+          },
+          "feed_in_ct_kwh": {
+            "type": "number",
+            "title": "Feed In Ct Kwh",
+            "default": 0.0
+          },
+          "export_kwh": {
+            "type": "number",
+            "title": "Export Kwh",
+            "default": 0.0
+          },
+          "export_net_eur": {
+            "type": "number",
+            "title": "Export Net Eur",
+            "default": 0.0
+          },
+          "export_vat_eur": {
+            "type": "number",
+            "title": "Export Vat Eur",
+            "default": 0.0
+          },
+          "export_gross_eur": {
+            "type": "number",
+            "title": "Export Gross Eur",
+            "default": 0.0
+          },
+          "self_consumption_kwh": {
+            "type": "number",
+            "title": "Self Consumption Kwh",
+            "default": 0.0
+          },
+          "self_direct_kwh": {
+            "type": "number",
+            "title": "Self Direct Kwh",
+            "default": 0.0
+          },
+          "self_battery_kwh": {
+            "type": "number",
+            "title": "Self Battery Kwh",
+            "default": 0.0
+          },
+          "self_value_net_eur": {
+            "type": "number",
+            "title": "Self Value Net Eur",
+            "default": 0.0
+          },
+          "self_vat_eur": {
+            "type": "number",
+            "title": "Self Vat Eur",
+            "default": 0.0
+          },
+          "self_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Self Ct Kwh"
+          },
+          "self_estimated_kwh": {
+            "type": "number",
+            "title": "Self Estimated Kwh",
+            "default": 0.0
+          },
+          "vat_payable_eur": {
+            "type": "number",
+            "title": "Vat Payable Eur",
+            "default": 0.0
+          },
+          "pv_kwh": {
+            "type": "number",
+            "title": "Pv Kwh",
+            "default": 0.0
+          },
+          "self_consumption_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Self Consumption Share"
+          }
+        },
+        "type": "object",
+        "title": "PvTaxTotals",
+        "description": "Geldseite der PV für einen Zeitraum. Beträge in EUR, Preise in ct/kWh."
+      },
       "Quality": {
         "type": "string",
         "enum": [
@@ -4330,17 +4665,32 @@
           "feed_in_ct_kwh": {
             "type": "number",
             "title": "Feed In Ct Kwh",
-            "default": 8.0
+            "default": 7.41
           },
           "fallback_import_ct_kwh": {
             "type": "number",
             "title": "Fallback Import Ct Kwh",
             "default": 30.0
+          },
+          "vat_rate": {
+            "type": "number",
+            "title": "Vat Rate",
+            "default": 0.19
+          },
+          "price_includes_vat": {
+            "type": "boolean",
+            "title": "Price Includes Vat",
+            "default": true
+          },
+          "small_business": {
+            "type": "boolean",
+            "title": "Small Business",
+            "default": false
           }
         },
         "type": "object",
         "title": "TariffConfig",
-        "description": "Geldseite: Einspeisevergütung und Ersatzpreis, falls kein Tibber-Preis vorliegt."
+        "description": "Geldseite: Einspeisevergütung, Ersatzpreis und die umsatzsteuerliche Einordnung der Anlage.\n\nNetto und brutto sauber zu trennen ist hier keine Förmlichkeit: die Tibber-Preise der Zeitreihe sind\nBruttopreise (Energie, Netz, Steuern, Abgaben – so zeigt Tibber sie), die Einspeisevergütung nach EEG\nist ein Nettosatz, und die steuerliche Bemessungsgrundlage des Eigenverbrauchs ist ebenfalls netto."
       },
       "TibberInvoice": {
         "properties": {

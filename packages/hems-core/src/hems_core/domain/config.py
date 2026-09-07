@@ -107,12 +107,22 @@ class SensorTimeouts(BaseModel):
 
 
 class TariffConfig(BaseModel):
-    """Geldseite: Einspeisevergütung und Ersatzpreis, falls kein Tibber-Preis vorliegt."""
+    """Geldseite: Einspeisevergütung, Ersatzpreis und die umsatzsteuerliche Einordnung der Anlage.
+
+    Netto und brutto sauber zu trennen ist hier keine Förmlichkeit: die Tibber-Preise der Zeitreihe sind
+    Bruttopreise (Energie, Netz, Steuern, Abgaben – so zeigt Tibber sie), die Einspeisevergütung nach EEG
+    ist ein Nettosatz, und die steuerliche Bemessungsgrundlage des Eigenverbrauchs ist ebenfalls netto.
+    """
 
     model_config = ConfigDict(frozen=True)
 
-    feed_in_ct_kwh: float = 8.0  # Einspeisevergütung (Plan 25.12: 8 ct annehmen)
-    fallback_import_ct_kwh: float = 30.0  # Ersatzpreis für Minuten ohne Preisdaten
+    feed_in_ct_kwh: float = 7.41  # Einspeisevergütung netto laut Bescheid des Netzbetreibers
+    fallback_import_ct_kwh: float = 30.0  # Ersatzpreis für Minuten ohne Preisdaten (brutto)
+    vat_rate: float = 0.19  # Umsatzsteuersatz auf Einspeisung und unentgeltliche Wertabgabe
+    price_includes_vat: bool = True  # Tibber liefert Bruttopreise
+    small_business: bool = (
+        False  # § 19 UStG: dann keine Umsatzsteuer, weder erhalten noch geschuldet
+    )
 
 
 class HeatDemandConfig(BaseModel):

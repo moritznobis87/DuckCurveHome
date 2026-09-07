@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from dch_api.application.tibber_invoice import InvoiceFinding, MeasuredPeriod, TibberInvoice
-from hems_core.accounting import EnergyTotals, HeatForecastPoint
+from hems_core.accounting import EnergyTotals, HeatForecastPoint, PvTaxTotals
 from hems_core.domain import (
     AutoProfile,
     BufferState,
@@ -279,6 +279,38 @@ class EnergySummaryOut(BaseModel):
     totals: EnergyTotalsOut
     buckets: list[EnergyBucketOut]
     meta: EnergyMetaOut
+
+
+class PvTaxMetaOut(BaseModel):
+    """Was die Zahlen der Abrechnung bedingt – gehört sichtbar zur Auswertung, nicht ins Kleingedruckte."""
+
+    feed_in_ct_kwh: float  # Nettosatz laut Bescheid
+    vat_rate: float
+    small_business: bool
+    prices_include_vat: bool
+    data_since: datetime | None
+    coverage: float | None  # bewertete Minuten / Minuten des Zeitraums
+    battery_capacity_kwh: float
+    method_de: str
+
+
+class PvTaxBucketOut(BaseModel):
+    start: datetime
+    end: datetime
+    label: str
+    totals: PvTaxTotals
+
+
+class PvTaxReportOut(BaseModel):
+    """PV-Abrechnung eines Zeitraums: Einspeisung, Eigenverbrauch, Umsatzsteuer."""
+
+    period: Period
+    anchor: date
+    start: datetime
+    end: datetime
+    totals: PvTaxTotals
+    buckets: list[PvTaxBucketOut]
+    meta: PvTaxMetaOut
 
 
 class HeatReportOut(BaseModel):

@@ -7,7 +7,13 @@ from fastapi import APIRouter, Depends, Query
 
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
-from dch_api.schemas import EnergySummaryOut, EvReportOut, HeatReportOut, Period
+from dch_api.schemas import (
+    EnergySummaryOut,
+    EvReportOut,
+    HeatReportOut,
+    Period,
+    PvTaxReportOut,
+)
 from hems_core.simulation import BERLIN
 
 router = APIRouter(prefix="/energy", tags=["Energiebilanz"])
@@ -48,3 +54,16 @@ async def ev(
     anchor: date | None = None,
 ) -> EvReportOut:
     return await runner.ev_report(period, _anchor(runner, anchor))
+
+
+@router.get(
+    "/pv",
+    response_model=PvTaxReportOut,
+    summary="PV-Abrechnung: Einspeisung, Eigenverbrauch, Umsatzsteuer",
+)
+async def pv(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    period: Annotated[Period, Query()] = "year",
+    anchor: date | None = None,
+) -> PvTaxReportOut:
+    return await runner.pv_report(period, _anchor(runner, anchor))

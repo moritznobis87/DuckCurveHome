@@ -31,8 +31,9 @@ function ago(ms: number): string {
 async function publicHost(): Promise<string> {
   const configured = process.env.DCH_PUBLIC_HOST?.trim();
   if (configured) return configured.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-  const host = (await headers()).get("host");
-  if (host && !host.endsWith(".railway.app")) return host;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (host && !host.endsWith(".railway.app")) return host.split(",")[0]!.trim();
   return "home.duckcurve.de";
 }
 

@@ -19,12 +19,17 @@ from dch_api.schemas import (
     EvSessionOut,
     HeatReportOut,
     Period,
+    PvTaxBucketOut,
+    PvTaxMetaOut,
+    PvTaxReportOut,
 )
 from hems_core.accounting import (
+    BatteryOrigin,
     HourlyEnergy,
     cop_at,
     heat_forecast,
     hourly_energy,
+    pv_tax,
     samples_from_rows,
     summarize,
 )
@@ -184,12 +189,31 @@ class EnergyAccounting:
             ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00")).astimezone(UTC)
             by_hour.setdefault(ts.replace(minute=0, second=0, microsecond=0), []).append(r)
         out: list[tuple[HourlyEnergy, float | None]] = []
-        for hour_start in sorted(by_hour):
+        order = sorted(by_hour)
+        # Das Herkunftskonto des Speichers läuft über die Stunden weiter; ohne den Anschluss an die
+        # vorige Stunde begänne jede Neuberechnung mit leerem Konto und hielte die erste Entladung
+        # danach für PV. Fehlt die Vorstunde, bleibt es leer – dann wird die Schätzung ausgewiesen.
+        origin = await self._origin_before(order[0]) if order else BatteryOrigin()
+        capacity = self.hems.battery.capacity_kwh
+        for hour_start in order:
             hrows = by_hour[hour_start]
-            h = hourly_energy(hour_start, samples_from_rows(hrows), self.hems.tariff)
+            h = hourly_energy(
+                hour_start, samples_from_rows(hrows), self.hems.tariff, origin, capacity
+            )
             temps = [r.get("outdoor_temp_c") for r in hrows]
             out.append((h, _mean(v if isinstance(v, int | float) else None for v in temps)))
         return out
+
+    async def _origin_before(self, start: datetime) -> BatteryOrigin:
+        """Stand des Speicher-Herkunftskontos aus der letzten gespeicherten Stunde vor `start`."""
+        if self.store is None:
+            return BatteryOrigin()
+        read, _write, _last = self.store
+        prev = await read(start - timedelta(hours=6), start)
+        if not prev:
+            return BatteryOrigin()
+        h = prev[-1][0]
+        return BatteryOrigin(pv_kwh=h.battery_pv_stored_kwh, grid_kwh=h.battery_grid_stored_kwh)
 
     async def refresh(self, now: datetime) -> int:
         """Live: fehlende und die laufende Stunde neu berechnen und speichern. Liefert die Anzahl Stunden."""
@@ -287,6 +311,56 @@ class EnergyAccounting:
                     "Quellen-Zuordnung je Minute: PV deckt zuerst den Hausverbrauch, dann die Batterie; "
                     "Verbraucher erhalten die Quellen anteilig. Geld: Netzbezug × Tibber-Preis, PV- und "
                     f"Batterieanteile mit {self.hems.tariff.feed_in_ct_kwh:g} ct Einspeisevergütung bewertet."
+                ),
+            ),
+        )
+
+    async def pv_report(self, period: Period, anchor: date, now: datetime) -> PvTaxReportOut:
+        """PV-Abrechnung: Einspeisung, Eigenverbrauch und Umsatzsteuer für den Zeitraum.
+
+        Die Summen des Zeitraums werden aus den ungerundeten Stundenwerten gebildet, die Zeilen der
+        Aufschlüsselung jede für sich. Die Zeilensumme kann deshalb um wenige Cent vom ausgewiesenen
+        Gesamtwert abweichen; die Seite sagt das dazu.
+        """
+        start, end = self.period_bounds(period, anchor)
+        hours = await self.hours(start, end)
+        totals = summarize(h for h, _ in hours)
+        tariff = self.hems.tariff
+        buckets = [
+            PvTaxBucketOut(
+                start=b_start,
+                end=b_end,
+                label=label,
+                totals=pv_tax(
+                    summarize(h for h, _ in hours if b_start <= h.hour_start < b_end), tariff
+                ),
+            )
+            for b_start, b_end, label in self.bucket_starts(period, start, end)
+        ]
+        elapsed_min = max(0.0, (min(now, end) - start).total_seconds() / 60.0)
+        coverage = round(min(1.0, totals.minutes / elapsed_min), 3) if elapsed_min > 0 else None
+        since = await self.data_since() if self.data_since else None
+        return PvTaxReportOut(
+            period=period,
+            anchor=anchor,
+            start=start,
+            end=end,
+            totals=pv_tax(totals, tariff),
+            buckets=buckets,
+            meta=PvTaxMetaOut(
+                feed_in_ct_kwh=tariff.feed_in_ct_kwh,
+                vat_rate=0.0 if tariff.small_business else tariff.vat_rate,
+                small_business=tariff.small_business,
+                prices_include_vat=tariff.price_includes_vat,
+                data_since=since,
+                coverage=coverage,
+                battery_capacity_kwh=self.hems.battery.capacity_kwh,
+                method_de=(
+                    "Eigenverbrauch ist PV, die im Haus geblieben ist: direkt plus der PV-Anteil der "
+                    "Speicherentladung. Über den Speicher wird Buch geführt, welcher Anteil des Inhalts "
+                    "aus PV stammt und welcher aus dem Netz geladen wurde; nur der PV-Anteil zählt. "
+                    "Bewertet wird jede Kilowattstunde mit dem Netto-Bezugspreis derselben Stunde "
+                    "(Tibber-Preis ÷ 1,19), also dem, was ihre Beschaffung aus dem Netz gekostet hätte."
                 ),
             ),
         )

@@ -5,11 +5,13 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from hems_core.accounting import (
+    BatteryOrigin,
     MinuteSample,
     cop_at,
     heat_demand_kw,
     heat_forecast,
     hourly_energy,
+    pv_tax,
     samples_from_rows,
     summarize,
 )
@@ -114,3 +116,109 @@ def test_heat_model() -> None:
     assert heat_demand_kw(18.0, 12, cfg)[0] == 0.0  # über Heizgrenze
     pts = heat_forecast([(H0, 5.0), (H0 + timedelta(hours=1), 16.0)], cfg)
     assert pts[0].electric_kw > 0 and pts[1].heating_kw == 0.0
+
+
+# ------------------------------------------------------------------ Eigenverbrauch und Steuer
+
+TAX_TARIFF = TariffConfig(feed_in_ct_kwh=7.41, fallback_import_ct_kwh=30.0)
+
+
+def test_self_consumption_is_valued_net_not_gross() -> None:
+    # PV 3 kW, Haus 3 kW, kein Netz, kein Speicher: 3 kWh Eigenverbrauch zu 35,7 ct brutto.
+    hour = hourly_energy(H0, _minutes(60, pv_kw=3.0, grid_kw=0.0, price_ct_kwh=35.7), TAX_TARIFF)
+    assert hour.self_consumption_kwh == pytest.approx(3.0)
+    # 35,7 ct brutto sind 30 ct netto; 3 kWh × 30 ct = 0,90 €
+    assert hour.self_consumption_value_eur == pytest.approx(0.90, abs=1e-3)
+    assert hour.self_consumption_ct_kwh == pytest.approx(30.0, abs=0.02)
+
+
+def test_battery_origin_separates_grid_charge_from_pv_charge() -> None:
+    """Nachts aus dem Netz geladen, tags entladen: der Netzanteil ist kein Eigenverbrauch."""
+    origin = BatteryOrigin()
+    # Stunde 1: Netzbezug 4 kW, davon 4 kW in den Speicher (kein PV, kein Hausverbrauch).
+    h1 = hourly_energy(
+        H0, _minutes(60, pv_kw=0.0, grid_kw=4.0, battery_kw=-4.0), TAX_TARIFF, origin, 10.0
+    )
+    assert h1.grid_to_battery_kwh == pytest.approx(4.0)
+    assert h1.battery_pv_to_house_kwh == pytest.approx(0.0)
+    assert origin.grid_kwh == pytest.approx(4.0)
+    # Stunde 2: PV 2 kW lädt weiter, Haus 0.
+    h2 = hourly_energy(
+        H0 + timedelta(hours=1),
+        _minutes(60, pv_kw=2.0, grid_kw=0.0, battery_kw=-2.0),
+        TAX_TARIFF,
+        origin,
+        10.0,
+    )
+    assert h2.pv_to_battery_kwh == pytest.approx(2.0)
+    assert origin.pv_kwh == pytest.approx(2.0)
+    # Stunde 3: Speicher entlädt 3 kW ins Haus. Konto steht 2 PV zu 4 Netz → ein Drittel ist PV.
+    h3 = hourly_energy(
+        H0 + timedelta(hours=2),
+        _minutes(60, pv_kw=0.0, grid_kw=0.0, battery_kw=3.0),
+        TAX_TARIFF,
+        origin,
+        10.0,
+    )
+    assert h3.battery_to_house_kwh == pytest.approx(3.0)
+    assert h3.battery_pv_to_house_kwh == pytest.approx(1.0)
+    assert h3.battery_origin_estimated_kwh == pytest.approx(0.0)
+    assert h3.battery_pv_stored_kwh == pytest.approx(1.0)
+    assert h3.battery_grid_stored_kwh == pytest.approx(2.0)
+
+
+def test_unknown_battery_content_counts_as_pv_but_is_flagged() -> None:
+    hour = hourly_energy(H0, _minutes(60, pv_kw=0.0, grid_kw=0.0, battery_kw=2.0), TAX_TARIFF)
+    assert hour.battery_pv_to_house_kwh == pytest.approx(2.0)
+    assert hour.battery_origin_estimated_kwh == pytest.approx(2.0)
+
+
+def test_battery_ledger_is_capped_at_capacity() -> None:
+    """Ladeverluste lassen das Konto sonst über die Kapazität hinaus wachsen."""
+    origin = BatteryOrigin()
+    for i in range(4):
+        hourly_energy(
+            H0 + timedelta(hours=i),
+            _minutes(60, pv_kw=3.0, grid_kw=0.0, battery_kw=-3.0),
+            TAX_TARIFF,
+            origin,
+            10.0,
+        )
+    assert origin.content_kwh == pytest.approx(10.0)
+
+
+def test_pv_tax_splits_vat_on_feed_in_and_self_consumption() -> None:
+    hour = hourly_energy(H0, _minutes(60, pv_kw=5.0, grid_kw=-3.0, price_ct_kwh=35.7), TAX_TARIFF)
+    rep = pv_tax(hour, TAX_TARIFF)
+    assert rep.export_kwh == pytest.approx(3.0)
+    # Geldbeträge werden auf den Cent gerundet, die Prüfung darum auf den halben Cent genau.
+    assert rep.export_net_eur == pytest.approx(3.0 * 0.0741, abs=5e-3)
+    assert rep.export_vat_eur == pytest.approx(3.0 * 0.0741 * 0.19, abs=5e-3)
+    assert rep.export_gross_eur == pytest.approx(rep.export_net_eur + rep.export_vat_eur, abs=5e-3)
+    assert rep.self_consumption_kwh == pytest.approx(2.0)
+    assert rep.self_value_net_eur == pytest.approx(0.60, abs=1e-2)  # 2 kWh × 30 ct netto
+    assert rep.self_vat_eur == pytest.approx(0.60 * 0.19, abs=1e-2)
+    assert rep.vat_payable_eur == pytest.approx(rep.export_vat_eur + rep.self_vat_eur, abs=1e-2)
+    assert rep.self_consumption_share == pytest.approx(0.4)
+
+
+def test_small_business_owes_no_vat() -> None:
+    tariff = TariffConfig(feed_in_ct_kwh=7.41, small_business=True)
+    hour = hourly_energy(H0, _minutes(60, pv_kw=5.0, grid_kw=-3.0, price_ct_kwh=35.7), tariff)
+    rep = pv_tax(hour, tariff)
+    assert rep.export_vat_eur == 0.0
+    assert rep.self_vat_eur == 0.0
+    assert rep.vat_payable_eur == 0.0
+    # Ohne Umsatzsteuer ist der Bruttopreis auch der Beschaffungspreis.
+    assert rep.self_ct_kwh == pytest.approx(35.7, abs=0.02)
+
+
+def test_summarize_adds_self_consumption_but_not_the_ledger() -> None:
+    a = hourly_energy(H0, _minutes(60, pv_kw=3.0, grid_kw=0.0, price_ct_kwh=35.7), TAX_TARIFF)
+    b = hourly_energy(
+        H0 + timedelta(hours=1), _minutes(60, pv_kw=3.0, grid_kw=0.0, price_ct_kwh=35.7), TAX_TARIFF
+    )
+    total = summarize([a, b])
+    assert total.self_consumption_kwh == pytest.approx(6.0)
+    assert total.self_consumption_value_eur == pytest.approx(1.80, abs=1e-2)
+    assert not hasattr(total, "battery_pv_stored_kwh")
