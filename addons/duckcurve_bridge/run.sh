@@ -42,8 +42,11 @@ if ! bashio::fs.file_exists "${DCH_BRIDGE_ENTITIES_FILE}"; then
   fi
   bashio::log.info "Kein ${DCH_BRIDGE_ENTITIES_FILE} – das Mapping wird aus dem Repository geladen."
 fi
-# Geräte kommen entweder aus dem Abschnitt `mqtt:` des Mappings oder ersatzweise aus den Add-on-Optionen.
+# Vor einem fehlenden MQTT-Gerät kann nur gewarnt werden, wenn das Mapping hier auch lesbar ist. Kommt es
+# aus dem Repository, weiß das Startskript nichts über seinen Inhalt – dann prüft das Programm selbst und
+# meldet es sauber. Eine Warnung bei gesundem Betrieb ist schlimmer als keine.
 if [ "${DCH_BRIDGE_SOURCE_MODE}" != "home_assistant" ] \
+  && bashio::fs.file_exists "${DCH_BRIDGE_ENTITIES_FILE}" \
   && [ -z "${DCH_BRIDGE_SHELLY_DEVICE_ID}" ] \
   && [ -z "${DCH_BRIDGE_MQTT_TOPIC_PREFIX}" ] \
   && ! grep -qE '^mqtt:[[:space:]]*$' "${DCH_BRIDGE_ENTITIES_FILE}"; then
