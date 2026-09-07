@@ -61,6 +61,25 @@ Bei Überschneidung gewinnt der verdichtete Wert.
   letzten 14 Tage. Wenn sich die Rechenregeln ändern — wie zuletzt beim Eigenverbrauch —, lässt sich
   die Historie nachziehen, statt mit einer Lücke zu leben.
 
+## Was die Historie sichtbar macht
+
+Die Jahreskarte (`/jahr`) legt ein Kalenderjahr als Fläche aus: 365 Spalten zu je 24 Stunden. Sie
+liest die Stundenbilanz, nicht die Minutenwerte — 8 760 Zeilen je Jahr, unabhängig davon, wie lange
+das System schon läuft.
+
+* Die Stundenachse ist **Ortszeit**. In UTC wanderte die Sonne im Bild um eine Stunde, sobald die
+  Zeitumstellung kommt. Am Rückstelltag fallen zwei UTC-Stunden auf dieselbe Ortsstunde: Energien
+  werden addiert, Preise und Quoten gemittelt. Am Umstelltag im Frühjahr bleibt 02:00 leer.
+* Eine fehlende Stunde ist `null`, nicht `0`. Eine Lücke in der Aufzeichnung sähe sonst aus wie eine
+  Nacht ohne Verbrauch — die Farbe darf hier nicht lügen.
+* Die Farbskala endet beim **98. Perzentil**. Ein einzelner Ausreißer zöge sonst die Skala zusammen
+  und färbte das restliche Jahr einheitlich dunkel; der wahre Größtwert steht in der Fußnote.
+* Die Rampen sind in OKLab zwischen Markenfarben interpoliert, damit die wahrgenommene Helligkeit
+  gleichmäßig steigt. Sequenziell ein Farbton von der Kartenfläche zur Marke; divergierend zwei
+  Farbtöne mit neutraler Mitte, gleich große Schritte je Arm und **beide Pole gleich hell**, sonst
+  schriee eine Seite lauter. Farbzuordnung wie im Energiefluss: Bernstein = eigene Energie, Mist =
+  Netz.
+
 ## Sicherung
 
 Die Datenbank ist die einzige Kopie. „Für immer" hält nur, was auch außerhalb liegt: ein

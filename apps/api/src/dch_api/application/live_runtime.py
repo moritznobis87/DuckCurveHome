@@ -49,6 +49,7 @@ from dch_api.schemas import (
     SourceStatusOut,
     SystemEventOut,
     SystemStatusOut,
+    YearMapOut,
 )
 from dch_api.settings import Settings
 from hems_core.accounting import summarize
@@ -482,6 +483,9 @@ class LiveRuntime:
 
     async def pv_report(self, period: Period, anchor: date) -> PvTaxReportOut:
         return await self.accounting.pv_report(period, anchor, self.now)
+
+    async def year_map(self, year: int) -> YearMapOut:
+        return await self.accounting.year_map(year, self.now)
 
     def export_csv(self, kind: str, start: datetime, end: datetime) -> AsyncIterator[str]:
         """Rohdaten eines Zeitraums als CSV-Strom. `kind` ist "minutes" oder "hours"."""

@@ -458,6 +458,57 @@
         }
       }
     },
+    "/api/v1/energy/year-map": {
+      "get": {
+        "tags": [
+          "Energiebilanz"
+        ],
+        "summary": "Kalenderjahr als Fläche Tag × Stunde (Jahreskarte)",
+        "operationId": "year_map_api_v1_energy_year_map_get",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2100,
+                  "minimum": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YearMapOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/export/{kind}": {
       "get": {
         "tags": [
@@ -4951,6 +5002,68 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "YearMapOut": {
+        "properties": {
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "days": {
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "items": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Metrics"
+          },
+          "hours_with_data": {
+            "type": "integer",
+            "title": "Hours With Data"
+          },
+          "data_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Since"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year",
+          "days",
+          "metrics",
+          "hours_with_data",
+          "data_since"
+        ],
+        "title": "YearMapOut",
+        "description": "Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.\n\nDie Stunde ist Ortszeit, nicht UTC — sonst wanderte die Sonne im Bild um eine Stunde, sobald die\nZeitumstellung kommt. `null` heißt „keine Messdaten\", nicht „null Kilowattstunden\"; beides zu\nunterscheiden ist der halbe Nutzen der Darstellung."
       }
     }
   }

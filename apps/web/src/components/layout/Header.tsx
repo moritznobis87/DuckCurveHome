@@ -65,6 +65,9 @@ export function Header() {
         <a href="/prognose" aria-label="Prognose-Auswertung" title="Prognose-Auswertung" className="flex h-9 w-9 items-center justify-center rounded-[3px] border border-line-2">
           <Icon name="chart" size={18} color="var(--text-3)" />
         </a>
+        <a href="/jahr" aria-label="Jahreskarte" title="Jahreskarte" className="flex h-9 w-9 items-center justify-center rounded-[3px] border border-line-2">
+          <Icon name="calendar" size={18} color="var(--text-3)" />
+        </a>
         <a href="/settings" aria-label="Einstellungen" className="flex h-9 w-9 items-center justify-center rounded-[3px] border border-line-2">
           <Icon name="gear" size={18} color="var(--text-3)" />
         </a>

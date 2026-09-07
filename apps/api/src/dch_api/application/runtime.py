@@ -21,6 +21,7 @@ from dch_api.schemas import (
     PlanOut,
     PvTaxReportOut,
     SystemEventOut,
+    YearMapOut,
 )
 from dch_api.settings import Settings
 from hems_core.domain import AutoProfile, Decision, OperatingMode, SystemMode
@@ -44,6 +45,7 @@ class Runtime(Protocol):
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut: ...
     async def pv_report(self, period: Period, anchor: date) -> PvTaxReportOut: ...
     def export_csv(self, kind: str, start: datetime, end: datetime) -> AsyncIterator[str]: ...
+    async def year_map(self, year: int) -> YearMapOut: ...
     async def import_history(
         self,
         payload: bytes,

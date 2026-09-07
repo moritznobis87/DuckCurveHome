@@ -13,6 +13,7 @@ from dch_api.schemas import (
     HeatReportOut,
     Period,
     PvTaxReportOut,
+    YearMapOut,
 )
 from hems_core.simulation import BERLIN
 
@@ -67,3 +68,16 @@ async def pv(
     anchor: date | None = None,
 ) -> PvTaxReportOut:
     return await runner.pv_report(period, _anchor(runner, anchor))
+
+
+@router.get(
+    "/year-map",
+    response_model=YearMapOut,
+    summary="Kalenderjahr als Fläche Tag × Stunde (Jahreskarte)",
+)
+async def year_map(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    year: Annotated[int | None, Query(ge=2000, le=2100)] = None,
+) -> YearMapOut:
+    out: YearMapOut = await runner.year_map(year or _anchor(runner, None).year)
+    return out

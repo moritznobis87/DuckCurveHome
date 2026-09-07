@@ -313,6 +313,33 @@ class PvTaxReportOut(BaseModel):
     meta: PvTaxMetaOut
 
 
+YearMetric = Literal[
+    "pv_kwh",
+    "house_kwh",
+    "import_kwh",
+    "export_kwh",
+    "grid_net_kwh",
+    "heat_pump_kwh",
+    "price_ct_kwh",
+    "autarky",
+]
+
+
+class YearMapOut(BaseModel):
+    """Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.
+
+    Die Stunde ist Ortszeit, nicht UTC — sonst wanderte die Sonne im Bild um eine Stunde, sobald die
+    Zeitumstellung kommt. `null` heißt „keine Messdaten", nicht „null Kilowattstunden"; beides zu
+    unterscheiden ist der halbe Nutzen der Darstellung.
+    """
+
+    year: int
+    days: list[date]  # Spaltenachse, ein Eintrag je Kalendertag
+    metrics: dict[str, list[list[float | None]]]  # Kennzahl → [Tag][Stunde 0–23]
+    hours_with_data: int
+    data_since: datetime | None
+
+
 class HeatReportOut(BaseModel):
     summary: EnergySummaryOut
     thermal_kwh_est: float  # gelieferte Wärme aus Strom × COP (Schätzung)

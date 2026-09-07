@@ -368,3 +368,125 @@ export function moneyBars(labels: string[], series: MoneySeries[]): EChartsCoreO
     })),
   };
 }
+
+/* Jahreskarte: 365 Spalten × 24 Zeilen.
+   Die Rampen sind in OKLab zwischen Markenfarben interpoliert, nicht von Hand gewählt – nur so
+   steigt die wahrgenommene Helligkeit gleichmäßig, und nur so liest sich „mehr" als „heller".
+   Sequenziell = ein Farbton, von der Kartenfläche bis zur Marke; der dunkelste Schritt ist der
+   Hintergrund selbst, damit „fast nichts" mit der Fläche verschmilzt.
+   Divergierend = zwei Farbtöne mit neutraler, flächennaher Mitte, gleich große Helligkeitsschritte
+   je Arm und beide Pole gleich hell – sonst schriee eine Seite lauter als die andere.
+   Farbzuordnung wie im Energiefluss: Bernstein = eigene Energie, Mist = Netz. */
+export const RAMP_OWN = ["#123544", "#6a6448", "#c39234", "#f5b22e", "#fac558", "#ffd778"];
+export const RAMP_GRID = ["#123544", "#3c5f6e", "#688c9b", "#93b1bf", "#bbced7", "#e4ecef"];
+export const RAMP_HEAT = ["#123544", "#655c57", "#b68365", "#e5a17a", "#eeb797", "#f6cdb4"];
+/* Einspeisung (bernstein) ← neutral → Bezug (mist) */
+export const RAMP_NET = ["#f2a900", "#ac833b", "#695f44", "#2b3a41", "#4c646e", "#70909f", "#96c0d3"];
+
+const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
+/** Robuste Obergrenze: das 98. Perzentil statt des Maximums.
+ *  Ein einzelner Ausreißer – ein Ladevorgang, ein Defekt – zöge sonst die ganze Skala zusammen und
+ *  färbte das restliche Jahr einheitlich dunkel. Der wahre Größtwert steht in der Fußnote. */
+function robustMax(values: number[]): number {
+  if (!values.length) return 1;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.98))] ?? 1;
+}
+
+export function yearMap(
+  days: string[],
+  grid: Array<Array<number | null>>,
+  opts: { unit: string; diverging?: boolean; ramp: string[]; digits?: number },
+): EChartsCoreOption {
+  const data: Array<[number, number, number]> = [];
+  const present: number[] = [];
+  for (let d = 0; d < grid.length; d++) {
+    for (let h = 0; h < 24; h++) {
+      const v = grid[d]?.[h];
+      // null heißt „keine Messdaten" – die Zelle bleibt leer und zeigt die Kartenfläche.
+      if (typeof v !== "number") continue;
+      data.push([d, h, v]);
+      present.push(v);
+    }
+  }
+  const digits = opts.digits ?? 2;
+  const bound = opts.diverging
+    ? robustMax(present.map(Math.abs))
+    : robustMax(present.filter((v) => v > 0));
+  const monthStarts = days
+    .map((iso, i) => ({ i, d: new Date(`${iso}T12:00:00`) }))
+    .filter(({ d }) => d.getDate() === 1);
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    textStyle: { fontFamily: MONO },
+    tooltip: {
+      ...tooltip,
+      formatter: (params: unknown) => {
+        const p = params as { data: [number, number, number] };
+        const iso = days[p.data[0]];
+        if (!iso) return "";
+        const label = new Date(`${iso}T12:00:00`).toLocaleDateString("de-DE", {
+          weekday: "short",
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        });
+        const hour = String(p.data[1]).padStart(2, "0");
+        return `<div style="color:rgba(255,255,255,.6)">${label}</div><div>${hour}:00 – ${hour}:59</div><div style="margin-top:3px">${de1(p.data[2], digits)} ${opts.unit}</div>`;
+      },
+    },
+    grid: { left: 44, right: 16, top: 38, bottom: 34 },
+    xAxis: {
+      type: "category",
+      data: days,
+      axisLine: { lineStyle: { color: C.axis } },
+      axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: {
+        ...axisText,
+        fontSize: 10,
+        interval: (i: number) => monthStarts.some((m) => m.i === i),
+        formatter: (_v: string, i: number) => MONTHS[new Date(`${days[i]}T12:00:00`).getMonth()] ?? "",
+      },
+    },
+    yAxis: {
+      type: "category",
+      data: Array.from({ length: 24 }, (_, h) => String(h)),
+      inverse: true, // 00:00 oben, wie ein Tagesplan gelesen wird
+      axisLine: { lineStyle: { color: C.axis } },
+      axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: { ...axisText, fontSize: 10, interval: (i: number) => i % 6 === 0, formatter: (v: string) => `${String(v).padStart(2, "0")}:00` },
+    },
+    visualMap: {
+      type: "continuous",
+      min: opts.diverging ? -bound : 0,
+      max: bound,
+      calculable: true,
+      orient: "horizontal",
+      // Oben rechts statt unten: unten drängen sich sonst Monatsbeschriftung und Skala, und die
+      // Karte selbst verliert die Höhe, die sie zum Lesen braucht.
+      right: 8,
+      top: 0,
+      itemWidth: 12,
+      itemHeight: 190,
+      // Bei der divergierenden Karte tragen die Pole eine Bedeutung, die nicht in der Farbe allein
+      // stehen darf – sie werden benannt.
+      text: opts.diverging ? ["Bezug", "Einspeisung"] : undefined,
+      textGap: 8,
+      textStyle: { color: C.text, fontFamily: MONO, fontSize: 10 },
+      formatter: (v: number) => `${de1(v, bound < 5 ? 1 : 0)} ${opts.unit}`,
+      inRange: { color: opts.ramp },
+    },
+    series: [
+      {
+        type: "heatmap",
+        data,
+        progressive: 4000,
+        emphasis: { itemStyle: { borderColor: "rgba(255,255,255,.85)", borderWidth: 1 } },
+      },
+    ],
+  };
+}

@@ -36,6 +36,7 @@ export type EvSession = S["EvSessionOut"];
 export type PvTaxReport = S["PvTaxReportOut"];
 export type PvTaxTotals = S["PvTaxTotals"];
 export type PvTaxBucket = S["PvTaxBucketOut"];
+export type YearMap = S["YearMapOut"];
 export type Period = S["EnergySummaryOut"]["period"];
 export type InvoiceReport = S["InvoiceReportOut"];
 export type InvoiceSummary = S["InvoiceSummaryOut"];

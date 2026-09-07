@@ -22,6 +22,7 @@ from dch_api.schemas import (
     PvTaxBucketOut,
     PvTaxMetaOut,
     PvTaxReportOut,
+    YearMapOut,
 )
 from hems_core.accounting import (
     BatteryOrigin,
@@ -58,6 +59,17 @@ ENERGY_KEYS = [
     "buffer_temp_mid_bottom_c",
     "buffer_temp_bottom_c",
 ]
+# Kennzahlen der Jahreskarte. Energien werden über zusammenfallende Stunden addiert, Preise und
+# Quoten gemittelt – bei der Zeitumstellung im Herbst fällt eine Ortsstunde doppelt an.
+ENERGY_METRICS = (
+    "pv_kwh",
+    "house_kwh",
+    "import_kwh",
+    "export_kwh",
+    "grid_net_kwh",
+    "heat_pump_kwh",
+)
+MEAN_METRICS = ("price_ct_kwh", "autarky")
 WEEKDAYS_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 MONTHS_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
 # Fenster, das der laufende Betrieb nachrechnet. Nicht mehr durch die Datenhaltung begrenzt: die
@@ -324,6 +336,62 @@ class EnergyAccounting:
                     f"Batterieanteile mit {self.hems.tariff.feed_in_ct_kwh:g} ct Einspeisevergütung bewertet."
                 ),
             ),
+        )
+
+    async def year_map(self, year: int, now: datetime) -> YearMapOut:
+        """Ein Kalenderjahr als Fläche Tag × Stunde.
+
+        Gruppiert wird nach **Ortszeit**: die Stundenzeilen sollen die Sonne zeigen, nicht die
+        Zeitzone. Die Umstellung im Frühjahr lässt eine Stunde leer, die im Herbst legt zwei
+        UTC-Stunden auf dieselbe Ortsstunde — Energien werden dort addiert, Preise und Quoten
+        gemittelt, was beides der Wirklichkeit entspricht.
+
+        Fehlende Stunden bleiben `None`. Sie als 0 auszuweisen wäre die bequeme Lüge: eine Lücke in
+        der Aufzeichnung sähe dann aus wie eine Nacht ohne Verbrauch.
+        """
+        start = datetime.combine(date(year, 1, 1), time(0), tzinfo=self.tz).astimezone(UTC)
+        end = datetime.combine(date(year + 1, 1, 1), time(0), tzinfo=self.tz).astimezone(UTC)
+        days = [date(year, 1, 1) + timedelta(days=i) for i in range((end - start).days + 2)]
+        days = [d for d in days if d.year == year]
+        index = {d: i for i, d in enumerate(days)}
+
+        sums: dict[str, list[list[float]]] = {}
+        counts: list[list[int]] = [[0] * 24 for _ in days]
+        for name in ENERGY_METRICS + MEAN_METRICS:
+            sums[name] = [[0.0] * 24 for _ in days]
+
+        for h, _temp in await self.hours(start, end):
+            local = h.hour_start.astimezone(self.tz)
+            row = index.get(local.date())
+            if row is None or h.minutes <= 0:
+                continue
+            col = local.hour
+            counts[row][col] += 1
+            sums["pv_kwh"][row][col] += h.pv_kwh
+            sums["house_kwh"][row][col] += h.house_kwh
+            sums["import_kwh"][row][col] += h.import_kwh
+            sums["export_kwh"][row][col] += h.export_kwh
+            sums["grid_net_kwh"][row][col] += h.import_kwh - h.export_kwh
+            sums["heat_pump_kwh"][row][col] += h.heat_pump_kwh
+            sums["price_ct_kwh"][row][col] += h.avg_import_price_ct or 0.0
+            sums["autarky"][row][col] += h.autarky if h.autarky is not None else 0.0
+
+        metrics: dict[str, list[list[float | None]]] = {}
+        for name in ENERGY_METRICS + MEAN_METRICS:
+            divide = name in MEAN_METRICS
+            metrics[name] = [
+                [
+                    None
+                    if counts[r][c] == 0
+                    else round(sums[name][r][c] / (counts[r][c] if divide else 1), 3)
+                    for c in range(24)
+                ]
+                for r in range(len(days))
+            ]
+        filled = sum(1 for r in counts for c in r if c)
+        since = await self.data_since() if self.data_since else None
+        return YearMapOut(
+            year=year, days=days, metrics=metrics, hours_with_data=filled, data_since=since
         )
 
     async def pv_report(self, period: Period, anchor: date, now: datetime) -> PvTaxReportOut:

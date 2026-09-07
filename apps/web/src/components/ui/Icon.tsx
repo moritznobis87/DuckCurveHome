@@ -14,6 +14,8 @@ const PATHS: Record<string, string> = {
   coffee: '<path d="M5 9h11v5a5 5 0 0 1-10 0V9z"/><path d="M16 10h2a2 2 0 0 1 0 4h-2"/><path d="M4 20h13"/><path d="M8 5c0 1 1 1 1 2M11 5c0 1 1 1 1 2"/>',
   bulb: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M8.5 14.5A6 6 0 1 1 15.5 14.5c-.7.7-1 1.6-1 2.5h-5c0-.9-.3-1.8-1-2.5z"/>',
   chart: '<path d="M3 20h18"/><path d="M5 17V11"/><path d="M10 17V6"/><path d="M15 17v-4"/><path d="M20 17V8"/>',
+  // Jahreskarte: ein Raster aus Zellen – das Bild, das die Seite zeigt.
+  calendar: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18"/><path d="M9 9v12M15 9v12"/><path d="M3 15h18"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
   alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5"/><path d="M12 18v.5"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',

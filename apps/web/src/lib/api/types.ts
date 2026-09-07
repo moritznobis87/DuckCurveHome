@@ -174,6 +174,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/energy/year-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kalenderjahr als Fläche Tag × Stunde (Jahreskarte) */
+        get: operations["year_map_api_v1_energy_year_map_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/export/{kind}": {
         parameters: {
             query?: never;
@@ -2303,6 +2320,28 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /**
+         * YearMapOut
+         * @description Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.
+         *
+         *     Die Stunde ist Ortszeit, nicht UTC — sonst wanderte die Sonne im Bild um eine Stunde, sobald die
+         *     Zeitumstellung kommt. `null` heißt „keine Messdaten", nicht „null Kilowattstunden"; beides zu
+         *     unterscheiden ist der halbe Nutzen der Darstellung.
+         */
+        YearMapOut: {
+            /** Year */
+            year: number;
+            /** Days */
+            days: string[];
+            /** Metrics */
+            metrics: {
+                [key: string]: (number | null)[][];
+            };
+            /** Hours With Data */
+            hours_with_data: number;
+            /** Data Since */
+            data_since: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -2562,6 +2601,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PvTaxReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    year_map_api_v1_energy_year_map_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["YearMapOut"];
                 };
             };
             /** @description Validation Error */
