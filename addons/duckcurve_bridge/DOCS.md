@@ -289,13 +289,24 @@ Deshalb wlan0 **nicht** auf DHCP stehen lassen, sondern gleich auf statische IPv
 | Feld | Wert |
 | --- | --- |
 | Methode | Statisch |
-| Adresse | die per DHCP bereits vergebene, mit Präfix, z. B. `192.168.120.100/24` |
-| Gateway | **leer** |
-| DNS | **leer** |
+| Adresse | die per DHCP bereits vergebene, z. B. `192.168.120.100` |
+| Netzmaske | `255.255.255.0` |
+| Gateway | `192.168.120.1` |
+| DNS | **leer**, ersatzweise ein öffentlicher wie `9.9.9.9`. Niemals der Ofen |
 
 Die Adresse einfach übernehmen, die unter DHCP angezeigt wurde: sie funktioniert nachweislich, und
-der Ofen hat sie ohnehin für diesen Client vorgesehen. Zu ändern sind allein die beiden anderen
-Felder, sie sind das Problem, nicht die IP.
+der Ofen hat sie ohnehin für diesen Client vorgesehen.
+
+**Das entscheidende Feld ist der DNS, nicht das Gateway.** Die Oberfläche von Home Assistant
+verlangt bei statischer IPv4 ein Gateway und lehnt ein leeres ab
+(`expected IPv4Address ... Got None`), also trägt man dort den Ofen ein. Das ist unschädlich: zwei
+Standardrouten nebeneinander sortiert der NetworkManager über Metriken, und Kabel schlägt WLAN
+(100 gegen 600). Ein gekaperter Namensserver dagegen wirkt sofort und überall, denn er landet in der
+`resolv.conf` des Hosts, und die benutzt der Docker-Build ohne jede Ausweichlogik.
+
+Nach dem Verbinden prüfen, ob Home Assistant weiterhin ins Internet kommt: lädt der Add-on-Store,
+und verbindet sich die Bridge wieder mit der API? Wenn nicht, hat die WLAN-Standardroute doch
+gewonnen, und dann hilft nur, wlan0 beim Bauen kurz zu trennen.
 
 Damit hat der Pi **beides gleichzeitig und dauerhaft**, und genau darum geht es:
 
