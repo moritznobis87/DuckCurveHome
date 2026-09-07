@@ -231,6 +231,7 @@ class MaestroStove:
     _announced_offline: bool = False
     _frames: int = 0
     _reconnects: int = 0
+    _logged_first_frame: bool = False
 
     @property
     def keys(self) -> list[str]:
@@ -258,6 +259,7 @@ class MaestroStove:
                 reader, writer = await _handshake(host, port, self.connect_timeout_s)
                 self._connected = True
                 self._announced_offline = False
+                self._logged_first_frame = False
                 backoff = 1.0
                 log.info("stove connected", url=self.url)
                 await self._session(reader, writer)
@@ -295,6 +297,12 @@ class MaestroStove:
                 values = parse_info(payload.decode("utf-8", "replace"))
                 if values:
                     self._frames += 1
+                    if not self._logged_first_frame:
+                        # Einmal je Verbindung im Klartext: welche Größen dieses Gerät wirklich
+                        # führt und welche Fühler es nicht hat. Ohne das steht im Protokoll nur
+                        # eine Zahl, und ob 20 Rahmen sinnvolle Werte trugen, bliebe offen.
+                        self._logged_first_frame = True
+                        log.info("stove first frame", values=readable(values.items()))
                     await self._emit(values)
         finally:
             poller.cancel()

@@ -28,7 +28,7 @@ from dch_bridge.sources.shelly_mqtt import (
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.6.1"
+VERSION = "0.6.2"
 log = structlog.get_logger("bridge")
 
 
@@ -207,7 +207,10 @@ class Bridge:
                 continue
             items = list(self._pending.values())
             self._pending.clear()
-            self._last_sent = {r.key: (r.value, r.source) for r in items}
+            # Fortschreiben, nicht ersetzen: ein Takt trägt nur die Schlüssel, die gerade neu sind.
+            # Ersetzen hieße, dass die Statuszeile alle fünf Minuten eine zufällige Sekunde zeigt
+            # statt den letzten bekannten Stand jeder Größe.
+            self._last_sent.update({r.key: (r.value, r.source) for r in items})
             for r in items:
                 kind = (r.source or "?").split(":", 1)[0]
                 self._sent_by_source[kind] = self._sent_by_source.get(kind, 0) + 1

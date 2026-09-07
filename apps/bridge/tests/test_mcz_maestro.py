@@ -178,3 +178,11 @@ def test_pruefskript_deutet_einen_rahmen_wie_die_bridge() -> None:
     mine = parse_info(raw)
     theirs = probe.parse_info(raw)
     assert theirs == {k: v for k, v in mine.items() if k != "stove_running"}
+
+
+def test_lesbare_zeile_zeigt_fehlende_fuehler_als_strich() -> None:
+    """`readable` ist die Form, in der der erste Rahmen im Protokoll landet."""
+    from dch_bridge.sources.mcz_maestro import readable
+
+    line = readable([("stove_buffer_temp_c", 59.0), ("stove_return_temp_c", None)])
+    assert line == "stove_buffer_temp_c=59.0 stove_return_temp_c=-"

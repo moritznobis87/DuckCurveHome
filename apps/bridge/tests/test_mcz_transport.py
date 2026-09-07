@@ -222,3 +222,27 @@ def test_client_rahmen_sind_immer_maskiert() -> None:
     assert frame[1] & 0x80, "Maskenbit fehlt"
     mask = frame[2:6]
     assert bytes(b ^ mask[i % 4] for i, b in enumerate(frame[6:])) == b"C|RecuperoInfo"
+
+
+async def test_erster_rahmen_wird_im_klartext_protokolliert(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Ohne diese Zeile steht im Protokoll nur eine Rahmenzahl, aber kein einziger Messwert."""
+    seen: list[list] = []
+
+    async def collect(items: list) -> None:
+        seen.append(items)
+
+    async with FakeStove() as server:
+        stove = MaestroStove(
+            url=f"ws://127.0.0.1:{server.port}/",
+            on_readings=collect,
+            poll_interval_s=0.05,
+        )
+        await _collect_one(stove, seen)
+
+    out = capsys.readouterr().out
+    assert "stove first frame" in out
+    assert "stove_buffer_temp_c=59.0" in out
+    assert "stove_return_temp_c=64.0" in out
+    assert out.count("stove first frame") == 1, "nur einmal je Verbindung, nicht je Rahmen"
