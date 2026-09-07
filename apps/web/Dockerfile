@@ -1,4 +1,4 @@
-# Duck Curve Home – Web (Next.js standalone). Build-Kontext: apps/web.
+# Duck Curve Home - Web (Next.js standalone). Build-Kontext: apps/web.
 FROM node:22-alpine AS deps
 RUN corepack enable && corepack prepare pnpm@10 --activate
 WORKDIR /app

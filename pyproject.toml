@@ -1,7 +1,7 @@
 [project]
 name = "duckcurve-home"
 version = "0.1.0"
-description = "Duck Curve Home – Home Energy Management System (Monorepo-Wurzel)"
+description = "Duck Curve Home - Home Energy Management System (Monorepo-Wurzel)"
 requires-python = ">=3.12"
 dependencies = []
 

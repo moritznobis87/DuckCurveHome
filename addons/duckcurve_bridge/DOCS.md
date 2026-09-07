@@ -9,7 +9,7 @@ Verbindet Home Assistant **ausgehend** mit der Duck-Curve-Home-API. Kein offener
 2. Add-on „Duck Curve Home Bridge“ installieren.
 3. Das Entity-Mapping ordnet Home-Assistant-Entitäten den Duck-Curve-Größen zu und legt Einheit und
    Vorzeichen fest. Ab 0.5.0 lädt die Bridge es beim Start selbst aus dem Repository (Option
-   `entities_url`, standardmäßig `config/entities.home.yaml` auf `main`) – eine Änderung dort wirkt nach
+   `entities_url`, standardmäßig `config/entities.home.yaml` auf `main`) - eine Änderung dort wirkt nach
    einem Neustart des Add-ons, ohne dass eine Datei kopiert werden muss. Die Antwort wird unter
    `/data/entities.cache.yaml` abgelegt, damit die Bridge auch ohne Internet startet.
    Wer ein eigenes Mapping fahren will, legt `/config/duckcurve/entities.yaml` an (Vorlage:
@@ -23,7 +23,7 @@ Verbindet Home Assistant **ausgehend** mit der Duck-Curve-Home-API. Kein offener
 
 Die Shellys liefern ihre Werte direkt an den lokalen Mosquitto-Broker; die Bridge liest sie dort ab, ohne den
 Umweg über Home-Assistant-Integration und -Entitäten. Unterstützt werden die erste Generation (Shelly 3EM,
-Abschnitt 3) und die Generationen 2/3 – Plus und Pro (Abschnitt 4b). Home Assistant bleibt für die übrigen
+Abschnitt 3) und die Generationen 2/3 - Plus und Pro (Abschnitt 4b). Home Assistant bleibt für die übrigen
 Entitäten und die Schalter zuständig und hört am Broker nur noch mit.
 
 Datenfluss neu: `Shelly → Mosquitto (LAN) → Bridge → Duck-Curve-API`. Der Broker bleibt im Heimnetz, kein
@@ -33,11 +33,11 @@ Port ins Internet. Der Shelly 3EM Gen1 kann kein verschlüsseltes MQTT, deshalb 
 
 Einstellungen → Add-ons → Add-on Store → „Mosquitto broker“ (offiziell) installieren und starten. Danach
 Einstellungen → Geräte & Dienste → unten rechts „+ Integration hinzufügen“ → „MQTT“ (Broker `core-mosquitto`,
-Port 1883, Benutzer und Passwort aus Schritt 2). Add-on und Integration sind zwei verschiedene Dinge – das
+Port 1883, Benutzer und Passwort aus Schritt 2). Add-on und Integration sind zwei verschiedene Dinge - das
 Add-on ist der Broker, die Integration ist der Zugang von Home Assistant dorthin. Erst mit der Integration
 sieht Home Assistant weiterhin die Shelly-Werte und es gibt die Seite `/config/mqtt` zum Mitlesen.
 Gen-2-Shellys melden sich dort **nicht** selbst an (kein HA-Discovery); „0 Geräte“ ist also normal und für
-die Bridge ohne Belang – sie abonniert die Topics direkt.
+die Bridge ohne Belang - sie abonniert die Topics direkt.
 
 ### 2. Eigene MQTT-Zugangsdaten anlegen
 
@@ -54,13 +54,13 @@ ein zweiter (`shellyem3_485519db56d2`). Gebraucht wird die Geräte-ID des **Wär
 dessen Weboberfläche unter Settings → Device Info („Device ID“ bzw. Hostname `shellyem3-<ID>`) und in der
 Topic-Vorschau der MQTT-Einstellungen. Die ID des zweiten Geräts (`485519DB56D2`) ist hier **nicht** gemeint.
 
-Weboberfläche des Wärmepumpen-Shelly → Internet & Security → Advanced – Developer settings → „Enable action
+Weboberfläche des Wärmepumpen-Shelly → Internet & Security → Advanced - Developer settings → „Enable action
 execution via MQTT“: Server `<IP von Home Assistant>:1883`, Benutzer und Passwort aus Schritt 2, „Retain“ aus,
 „Clean Session“ an, Update-Periode 30 s (der Shelly sendet Leistungen zusätzlich bei Änderung).
 
 **Hinweis:** Beim Shelly der ersten Generation schaltet aktiviertes MQTT die Shelly-Cloud ab **und** den
 CoIoT-Kanal, über den die HA-Shelly-Integration arbeitet. Ein Gen-1-Gerät, dessen Relais in Home Assistant
-schaltbar bleiben soll – etwa ein Wärmepumpen-Kontakt oder eine Schaltsteckdose –, gehört deshalb nicht auf
+schaltbar bleiben soll - etwa ein Wärmepumpen-Kontakt oder eine Schaltsteckdose -, gehört deshalb nicht auf
 MQTT. Im Haus in Geilenkirchen bleiben aus diesem Grund der Wärmepumpen-Zähler, der Wärmepumpenschalter und
 die Kaffeemaschine bei Home Assistant; nur die Gen-2-Geräte laufen über den Broker.
 
@@ -96,7 +96,7 @@ Unplausible Werte (Bereich, fallende Zählerstände, unlesbare Nutzdaten) werden
 
 Geräte der Reihen **Plus** und **Pro** sprechen ein anderes Topic-Schema: statt einzelner Zahlen unter
 `shellies/…` senden sie JSON-RPC-Nachrichten unter `<präfix>/events/rpc` (Meldungen `NotifyStatus` und
-`NotifyFullStatus`) und – falls in der Geräteoberfläche eingeschaltet – zusätzlich einen Vollstand je
+`NotifyFullStatus`) und - falls in der Geräteoberfläche eingeschaltet - zusätzlich einen Vollstand je
 Komponente unter `<präfix>/status/<komponente>`. Die Bridge abonniert beides und wertet aus, was ankommt.
 
 **Im Gerät einstellen** (Weboberfläche → Networks → MQTT): Server `<IP von Home Assistant>:1883`, Benutzer und
@@ -123,10 +123,10 @@ welche Komponente des Geräts welchem Duck-Curve-Schlüssel entspricht:
 
 ```yaml
 mqtt:
-  # Generation 1 – dreiphasiger Zähler, braucht nur ein Schlüssel-Präfix
+  # Generation 1 - dreiphasiger Zähler, braucht nur ein Schlüssel-Präfix
   - { prefix: "shellies/shellyem3-XXXXXXXXXXXX", generation: 1, kind: em3, key_prefix: heat_pump, label: "WP-Zähler" }
 
-  # Generation 2 – Pufferspeicher, Shelly Plus 1 mit Temperatur-Add-on
+  # Generation 2 - Pufferspeicher, Shelly Plus 1 mit Temperatur-Add-on
   - prefix: "shellyplus1-b8d61a86e20c"
     generation: 2
     label: "Pufferspeicher"
@@ -152,7 +152,7 @@ Je Komponententyp nimmt die Kurzform (`"temperature:100": buffer_temp_top_c`) da
 Langform mit dem Feldnamen aus dem JSON, verschachtelte Felder mit Punkt (`aenergy.total`, Wh → kWh).
 
 **Komponenten-IDs herausfinden.** Die Nummern (100, 101, …) vergibt das Gerät in der Reihenfolge, in der die
-Fühler angelernt wurden – sie sagen nichts über die Einbaulage. Am Broker mitlesen und zuordnen:
+Fühler angelernt wurden - sie sagen nichts über die Einbaulage. Am Broker mitlesen und zuordnen:
 
 ```
 mosquitto_sub -h core-mosquitto -u <benutzer> -P <passwort> -t 'shellyplus1-b8d61a86e20c/#' -v
@@ -165,21 +165,21 @@ Knopf „Konfigurieren“ gibt es in neueren HA-Versionen nicht mehr, notfalls d
 Gen-2-Nachricht als eine unlesbare Zeile. Meldet sich das Gerät nicht von selbst, im Abschnitt „Ein Paket
 veröffentlichen“ eine Vollmeldung anfordern: Topic `<präfix>/rpc`, Payload
 `{"id":1,"src":"ha","method":"Shelly.GetStatus"}`. Steht auf der Seite „Integration nicht eingerichtet“,
-fehlt die MQTT-**Integration** (das Mosquitto-**Add-on** allein genügt nicht) – siehe Schritt 1.
+fehlt die MQTT-**Integration** (das Mosquitto-**Add-on** allein genügt nicht) - siehe Schritt 1.
 Bequemer für mehrere Werte gleichzeitig ist der [MQTT Explorer](http://mqtt-explorer.com) vom PC aus.
 Ein Fühler, der `unknown` bzw. `null` liefert, ist nicht angeschlossen und bleibt unbelegt.
 
 Schlüssel, die im Abschnitt `mqtt:` vorkommen, holt die Bridge bei `source_mode: mqtt` aus dem Broker,
 **solange das Gerät auch wirklich meldet**. Schweigt es länger als `mqtt_stale_s`, springt der Wert aus Home
-Assistant wieder ein – sonst bliebe der letzte Stand eingefroren, obwohl HA den richtigen kennt. Meldet auch
-HA nichts, wird der Schlüssel ausdrücklich als nicht verfügbar gemeldet und im Dashboard steht „–“, nie ein
+Assistant wieder ein - sonst bliebe der letzte Stand eingefroren, obwohl HA den richtigen kennt. Meldet auch
+HA nichts, wird der Schlüssel ausdrücklich als nicht verfügbar gemeldet und im Dashboard steht „-“, nie ein
 alter Wert ohne Hinweis. Die Einträge unter `sensors:` bzw. `actuators:` die entsprechenden `sensors:`-Einträge bleiben als Rückfallebene für `source_mode: home_assistant`
 stehen. Alle Geräte teilen sich eine einzige Broker-Verbindung.
 
 **Schalten über MQTT.** Zeigt eine Zuordnung auf `actuator:<schlüssel>` und liegt sie auf dem Feld `output`
 einer `switch:`- oder `light:`-Komponente, schaltet die Bridge diesen Aktor auch über den Broker: sie
 veröffentlicht `Switch.Set` auf `<präfix>/rpc` und wartet auf die Rückmeldung des Geräts. Bestätigt wird
-nicht das Kommando, sondern erst die folgende `NotifyStatus` – bleibt sie aus, gilt die Schaltung als nicht
+nicht das Kommando, sondern erst die folgende `NotifyStatus` - bleibt sie aus, gilt die Schaltung als nicht
 bestätigt. Eine mitgegebene Laufzeit wird zu `toggle_after`: das Gerät fällt von selbst zurück, wenn kein
 weiteres Kommando kommt.
 
@@ -194,21 +194,21 @@ Zwei Ausnahmen, bewusst so:
 ### 4c. Wenn nichts ankommt: das Mosquitto-Protokoll lesen
 
 Einstellungen → Add-ons → Mosquitto broker → Reiter **Protokoll**. Es sagt für jedes Gerät genau, woran es
-liegt – Raten erübrigt sich:
+liegt - Raten erübrigt sich:
 
 | Zeile im Protokoll | Bedeutung | Abhilfe |
 |---|---|---|
-| `New client connected … as <gerät> … u'<benutzer>'` | alles in Ordnung | – |
+| `New client connected … as <gerät> … u'<benutzer>'` | alles in Ordnung | - |
 | `received null username or password` | Der Shelly schickt kein Passwort. Ein gespeichertes Passwort zeigt Shelly nie wieder an, ein leeres und ein gefülltes Feld sehen deshalb gleich aus | Passwort im Gerät neu eintippen, speichern, **Gerät neu starten** |
 | `disconnected: not authorised` | Benutzer oder Passwort falsch (Groß-/Kleinschreibung zählt) | Benutzer muss ein echter HA-Benutzer sein; nach dem Anlegen das Mosquitto-Add-on neu starten |
 | Das Gerät kommt gar nicht vor | Es versucht es nicht einmal | „Enable“ im Gerät gesetzt? Server-IP und Port 1883 richtig? Nach dem Speichern neu gestartet? Gerät im Netz? |
-| `disconnected: session taken over` | Zwei Verbindungen mit derselben Kennung – beim Wiederverbinden normal, dauerhaft ein Zeichen für doppelt vergebene Client-IDs | – |
+| `disconnected: session taken over` | Zwei Verbindungen mit derselben Kennung - beim Wiederverbinden normal, dauerhaft ein Zeichen für doppelt vergebene Client-IDs | - |
 
 Verbindungen von `172.30.32.x`, die sofort wieder schließen, sind die Erreichbarkeitsprüfung des
 Supervisors und harmlos.
 
 Zum Port: `1883` ist Klartext, `8883` TLS. Solange „SSL connectivity“ im Gerät **nicht** angehakt ist, ist
-1883 richtig. Bei falschem Port käme keine Verbindung zustande und das Gerät meldete „disconnected“ – ein
+1883 richtig. Bei falschem Port käme keine Verbindung zustande und das Gerät meldete „disconnected“ - ein
 Gerät, das „connected“ zeigt, hat Adresse, Port und Zugangsdaten also bereits bestätigt.
 
 ### 5. MQTT-Empfang testen
@@ -234,7 +234,7 @@ die API; ihre Schlüssel kommen dort weiter aus Home Assistant.
 
 ### 7. Rollback
 
-`source_mode: home_assistant` setzen und das Add-on neu starten – die Bridge liest den Zähler wieder aus
+`source_mode: home_assistant` setzen und das Add-on neu starten - die Bridge liest den Zähler wieder aus
 den HA-Entitäten, MQTT wird nicht verbunden. Der Shelly darf weiter an den Broker senden. Ausstehende
 Datensätze in der Outbox bleiben erhalten.
 
@@ -245,6 +245,69 @@ Bestätigung (Ack mit Sequenznummer) der API gelöscht. Bei Ausfall von Railway 
 wachsendem Abstand (bis 60 s) neu und liefert die Outbox nach. Nachlieferungen sind unschädlich: die API
 schreibt Messwerte per Upsert auf (Schlüssel, Messzeitpunkt), ein zweites Mal gesendete Datensätze erzeugen
 keine Doppel. Die MQTT-Verbindung selbst verbindet sich ebenfalls mit Backoff neu (QoS 1, Clean Session aus).
+
+## Pelletofen: MCZ mit Maestro-Modul (ab 0.6.0)
+
+Der Ofen wird direkt über seinen WebSocket gelesen, ohne Cloud und ohne zusätzlichen Dienst. Geliefert
+werden unter anderem die Schneckendrehzahl (der Brennstoffeintrag), die Rauchgastemperatur, Vor- und
+Rücklauf des Ofenkreises, die Pumpenmodulation und der eigene Pufferfühler des Ofens. Erst damit ist
+zu trennen, welcher Anteil einer Pufferladung von der Wärmepumpe kam und welcher vom Ofen.
+
+**Die Bridge schaltet den Ofen nicht.** Der einzige Rahmen, der hinausgeht, ist `C|RecuperoInfo`.
+
+### 1. Warum das WLAN des Pi gebraucht wird
+
+Die Maestro-Platine lauscht **nicht** im Heimnetz. Sie ist dort zwar angemeldet und erreichbar, aber
+kein einziger Port ist offen; ein Verbindungsversuch endet in `Connection refused`. Dass die MCZ-App
+auch von unterwegs funktioniert, widerspricht dem nicht: die Platine baut eine **ausgehende**
+Verbindung zur MCZ-Cloud auf, und ein ausgehender Tunnel ist kein lauschender Port.
+
+Erreichbar ist der WebSocket nur auf dem **eigenen Hotspot** des Ofens, dort unter `192.168.120.1:81`.
+Der Pi muss also zusätzlich zum Kabel im Heimnetz per WLAN an diesem Hotspot hängen.
+
+### 2. WLAN in Home Assistant verbinden
+
+Alles über die Weboberfläche, kein Shell-Zugriff nötig:
+
+1. **Einstellungen → System → Netzwerk**
+2. Reiter **wlan0** wählen (er ist da, auch wenn er bisher ungenutzt ist)
+3. Aus der Liste das Netz `MCZ-…` wählen, Passwort eintragen. Beides steht in der MCZ-App unter
+   **SOFTWARE VERSIONEN** als „WIFI HOME NAME" und „WIFI HOME PASSWORT"
+4. IPv4 auf **DHCP** lassen, der Ofen vergibt eine Adresse in `192.168.120.x`
+5. Speichern
+
+Das Kabel bleibt unangetastet und behält die Standardroute. Falls Home Assistant nach dem Verbinden
+kein Internet mehr hat, hat sich der Hotspot als Standardroute vorgedrängt: dann in denselben
+Einstellungen für **wlan0** auf statische IPv4 wechseln und das **Gateway leer lassen**.
+
+**Reichweite prüfen:** der Pi muss den Hotspot sehen. Taucht `MCZ-…` in der Netzliste gar nicht auf,
+steht er zu weit weg, und es braucht einen zweiten kleinen Rechner näher am Ofen, der Port 81
+weiterreicht (siehe `docs/SENSORIK.md`).
+
+### 3. Bridge konfigurieren
+
+In den Add-on-Optionen:
+
+```yaml
+mcz_host: "192.168.120.1"
+mcz_port: 81
+mcz_poll_interval_s: 15
+```
+
+Add-on neu starten. Im Protokoll erscheint `stove connected`, und alle fünf Minuten eine Zeile
+`stove status` mit der Zahl gelesener Rahmen. Bleibt es bei `stove connection failed`, ist der Pi
+nicht am Hotspot.
+
+### 4. Vorher von Hand prüfen
+
+Von jedem Rechner, der am Hotspot des Ofens hängt, ohne Installation:
+
+```
+python3 tools/mcz_probe.py 192.168.120.1
+```
+
+Das gibt den Rohrahmen aus, die daraus gelesenen Werte und die Spreizung des Ofenkreises. Wenn das
+antwortet, wird auch die Bridge antworten.
 
 ## Wächter-Automation (empfohlen, Rückfallebene E1)
 
@@ -263,7 +326,7 @@ ausführen kann. Einstellungen → Automatisierungen & Szenen → „Automatisie
 Geilenkirchen; in anderen Installationen den eigenen eintragen, K2 ergänzen, sofern verdrahtet):
 
 ```yaml
-alias: Duck Curve Home – Wächter
+alias: Duck Curve Home - Wächter
 description: Setzt die Wärmepumpen-Freigabe zurück, wenn die Bridge nicht mehr meldet.
 trigger:
   - platform: time_pattern
@@ -279,7 +342,7 @@ action:
   - service: persistent_notification.create
     data:
       title: Duck Curve Home
-      message: Die Bridge meldet sich seit 30 Minuten nicht – die Wärmepumpen-Freigabe wurde zurückgesetzt.
+      message: Die Bridge meldet sich seit 30 Minuten nicht - die Wärmepumpen-Freigabe wurde zurückgesetzt.
 mode: single
 ```
 
@@ -288,11 +351,11 @@ dann in ihrer eigenen Regelung weiter. Die Bedingung ist so gebaut, dass ein feh
 Heartbeat als „gerade eben“ gilt und die Automation nicht auslöst, solange die Entität noch gar nicht
 existiert.
 
-Zusätzlich sollte das Gerät, das den Kontakt schaltet, einen **Auto-Off-Timer** haben (30 min) –
+Zusätzlich sollte das Gerät, das den Kontakt schaltet, einen **Auto-Off-Timer** haben (30 min) -
 Rückfallebene E0, unabhängig von jeder Software. Duck Curve Home sendet Freigaben ohnehin nur mit
 begrenzter Laufzeit; der Timer im Gerät ist die Absicherung für den Fall, dass gar nichts mehr kommt.
 
-Erst wenn E0 und E1 stehen, lohnt es sich, in der API `DCH_HEAT_PUMP_ACTUATION_ENABLED=true` zu setzen –
+Erst wenn E0 und E1 stehen, lohnt es sich, in der API `DCH_HEAT_PUMP_ACTUATION_ENABLED=true` zu setzen -
 bis dahin liest Duck Curve Home den Kontakt nur mit.
 
 ## Build-Hinweis

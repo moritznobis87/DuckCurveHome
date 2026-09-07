@@ -1,4 +1,4 @@
-# Duck Curve Home – API und Worker (ein Image, zwei Startkommandos). Build-Kontext: Repo-Root.
+# Duck Curve Home - API und Worker (ein Image, zwei Startkommandos). Build-Kontext: Repo-Root.
 FROM python:3.12-slim AS base
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy \
     UV_PYTHON_PREFERENCE=only-system UV_PYTHON=/usr/local/bin/python3
