@@ -104,6 +104,12 @@ class EnergyTotals(BaseModel):
     grid_to_house_kwh: float = 0.0
     pv_to_battery_kwh: float = 0.0
     grid_to_battery_kwh: float = 0.0
+    # Netzladung in Minuten ohne jede PV-Leistung. Die Unterscheidung trennt zwei sehr verschiedene
+    # Ursachen: bei Dunkelheit lädt der Speicher wirklich aus dem Netz, das ist eine Einstellung
+    # oder eine Entscheidung des Geräts. Bei Sonne ist es meist ein Messartefakt - PV, Netz und
+    # Batterie kommen aus drei Quellen mit eigenen Abtastzeitpunkten, und in einer Minute mit
+    # ziehender Wolke passen die drei Werte nicht exakt zusammen.
+    grid_to_battery_dark_kwh: float = 0.0
     # Herkunft der Speicherentladung ins Haus: nur der PV-Anteil ist Eigenverbrauch eigener Erzeugung,
     # der Netzanteil war beim Bezug bereits Netzstrom. battery_origin_estimated_kwh ist der Teil, dessen
     # Herkunft das Konto nicht kannte und der als PV angenommen wurde.
@@ -251,6 +257,8 @@ def hourly_energy(
         acc["grid_to_house_kwh"] += grid_to_house * STEP_H
         acc["pv_to_battery_kwh"] += pv_to_bat * STEP_H
         acc["grid_to_battery_kwh"] += grid_to_bat * STEP_H
+        if pv < 0.05:
+            acc["grid_to_battery_dark_kwh"] += grid_to_bat * STEP_H
 
         # Herkunftskonto fortschreiben. Entnommen wird die gesamte Entladung, gutgeschrieben als
         # Eigenverbrauch nur der Teil, der ins Haus ging - was aus dem Speicher ins Netz fließt, ist

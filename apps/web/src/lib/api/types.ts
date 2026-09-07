@@ -1085,6 +1085,11 @@ export interface components {
              */
             grid_to_battery_kwh: number;
             /**
+             * Grid To Battery Dark Kwh
+             * @default 0
+             */
+            grid_to_battery_dark_kwh: number;
+            /**
              * Battery Pv To House Kwh
              * @default 0
              */

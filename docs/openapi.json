@@ -2557,6 +2557,11 @@
             "title": "Grid To Battery Kwh",
             "default": 0.0
           },
+          "grid_to_battery_dark_kwh": {
+            "type": "number",
+            "title": "Grid To Battery Dark Kwh",
+            "default": 0.0
+          },
           "battery_pv_to_house_kwh": {
             "type": "number",
             "title": "Battery Pv To House Kwh",

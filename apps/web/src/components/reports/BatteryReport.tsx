@@ -65,8 +65,15 @@ export function BatteryReport() {
   return (
     <ReportShell title="Batteriespeicher" kicker={cap > 0 ? `${de1(cap, 1)} kWh · Nutzung und Ersparnis` : "Nutzung und Ersparnis"} period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
       {error ? <ErrorBanner message={error} /> : null}
-      <KpiGrid cols={6}>
+      <KpiGrid cols={7}>
         <Stat label="Geladen" value={de1(t?.battery_charge_kwh)} unit="kWh" tone="amber" hint={t ? `PV ${de1(t.pv_to_battery_kwh)} · Netz ${de1(t.grid_to_battery_kwh)} kWh` : undefined} />
+        <Stat
+          label="Netzladung bei Dunkelheit"
+          value={de1(t?.grid_to_battery_dark_kwh)}
+          unit="kWh"
+          tone={(t?.grid_to_battery_dark_kwh ?? 0) > 0.2 ? "ember" : "muted"}
+          hint={t ? `von ${de1(t.grid_to_battery_kwh)} kWh Netzladung insgesamt` : undefined}
+        />
         <Stat label="Entladen" value={de1(t?.battery_discharge_kwh)} unit="kWh" tone="mist" hint={t ? `${de1(t.battery_to_house_kwh)} kWh ins Haus` : undefined} />
         <Stat label="Vollzyklen" value={cycles != null ? de1(cycles, cycles >= 10 ? 0 : 1) : "-"} hint={cap > 0 ? `Entladung ÷ ${de1(cap, 1)} kWh` : "Kapazität unbekannt"} />
         <Stat label="Ersparnis" value={eur(t?.battery_savings_eur)} tone="amber" hint="gegenüber Netzbezug" />

@@ -222,3 +222,16 @@ def test_summarize_adds_self_consumption_but_not_the_ledger() -> None:
     assert total.self_consumption_kwh == pytest.approx(6.0)
     assert total.self_consumption_value_eur == pytest.approx(1.80, abs=1e-2)
     assert not hasattr(total, "battery_pv_stored_kwh")
+
+
+def test_grid_charging_is_split_by_daylight() -> None:
+    """Nachts aus dem Netz zu laden ist eine Entscheidung, tagsüber meist ein Messartefakt."""
+    # Nacht: kein PV, Netzbezug 4 kW, Speicher lädt 4 kW
+    night = hourly_energy(H0, _minutes(60, pv_kw=0.0, grid_kw=4.0, battery_kw=-4.0), TARIFF)
+    assert night.grid_to_battery_kwh == pytest.approx(4.0)
+    assert night.grid_to_battery_dark_kwh == pytest.approx(4.0)
+
+    # Tag: PV 1 kW, Haus 0, Speicher lädt 4 kW, davon 3 aus dem Netz - aber die Sonne scheint
+    day = hourly_energy(H0, _minutes(60, pv_kw=1.0, grid_kw=3.0, battery_kw=-4.0), TARIFF)
+    assert day.grid_to_battery_kwh == pytest.approx(3.0)
+    assert day.grid_to_battery_dark_kwh == pytest.approx(0.0)

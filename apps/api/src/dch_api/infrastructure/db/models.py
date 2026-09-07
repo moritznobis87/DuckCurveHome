@@ -233,6 +233,7 @@ class EnergyHour(Base):
     grid_to_house_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     pv_to_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     grid_to_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    grid_to_battery_dark_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     battery_pv_to_house_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     battery_origin_estimated_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     # Bestand am Stundenende, kein Summand: Herkunftskonto des Speichers für die Folgestunde.
