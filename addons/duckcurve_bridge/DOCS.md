@@ -289,9 +289,13 @@ Deshalb wlan0 **nicht** auf DHCP stehen lassen, sondern gleich auf statische IPv
 | Feld | Wert |
 | --- | --- |
 | Methode | Statisch |
-| Adresse | `192.168.120.50/24` |
+| Adresse | die per DHCP bereits vergebene, mit Präfix, z. B. `192.168.120.100/24` |
 | Gateway | **leer** |
 | DNS | **leer** |
+
+Die Adresse einfach übernehmen, die unter DHCP angezeigt wurde: sie funktioniert nachweislich, und
+der Ofen hat sie ohnehin für diesen Client vorgesehen. Zu ändern sind allein die beiden anderen
+Felder, sie sind das Problem, nicht die IP.
 
 Damit hat der Pi **beides gleichzeitig und dauerhaft**, und genau darum geht es:
 
