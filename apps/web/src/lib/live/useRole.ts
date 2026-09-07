@@ -11,14 +11,21 @@ export function useRole(): Role {
   const [role, setRole] = useState<Role>("owner");
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/session", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { role: "guest" }))
-      .then((d: { role?: string }) => {
-        if (!cancelled) setRole(d.role === "owner" ? "owner" : "guest");
-      })
-      .catch(() => undefined);
+    const ask = () => {
+      void fetch("/api/session", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : { role: "guest" }))
+        .then((d: { role?: string }) => {
+          if (!cancelled) setRole(d.role === "owner" ? "owner" : "guest");
+        })
+        .catch(() => undefined);
+    };
+    ask();
+    // Alle zwei Minuten erneut: hält zugleich die Anwesenheitsliste aktuell, denn der Live-Zustand
+    // läuft über einen einzigen langen SSE-Strom und erzeugt sonst keine weiteren Anfragen.
+    const timer = setInterval(ask, 120_000);
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
   }, []);
   return role;

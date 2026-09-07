@@ -39,7 +39,10 @@
   --grid-in: var(--mist);
   --grid-out: var(--amber-soft);
   --battery: #4f7b88;
-  --heat-pump: #e4ecef;
+  /* Warmes Terrakotta statt Fastweiß: Weiß ist im Energiefluss dem Haus vorbehalten (Knoten der
+     Summe). Deutlich abgesetzt von --amber (PV) und von --alert, damit die Wärmepumpe nicht wie
+     eine Störung aussieht. */
+  --heat-pump: #e0966b;
   --ev: #5c8fa3;
   --price: var(--mist);
   --load: rgba(255, 255, 255, 0.62);

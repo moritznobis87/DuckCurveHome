@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, authRequired, verifySession } from "@/lib/session";
+import { touch } from "@/lib/presence";
 
 /**
  * Pfade, die Gästen verschlossen bleiben. Bewusst nur die Rechnungen: sie enthalten Name, Adresse,
@@ -21,6 +22,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   if (authRequired() && !session) {
     return Response.json({ error: { code: "unauthorized", message: "Nicht angemeldet.", details: null } }, { status: 401 });
   }
+  touch(session, req.headers.get("user-agent"));
   const { path } = await ctx.params;
   // Gäste dürfen ausschließlich lesen. Serverseitig, nicht nur in der Anzeige: eine ausgeblendete Kachel
   // hält niemanden auf, der die Adresse kennt.
