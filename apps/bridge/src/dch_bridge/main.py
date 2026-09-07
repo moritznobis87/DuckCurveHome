@@ -27,7 +27,7 @@ from dch_bridge.sources.shelly_mqtt import (
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.5.4"
+VERSION = "0.5.5"
 log = structlog.get_logger("bridge")
 
 
@@ -55,6 +55,7 @@ class Bridge:
         self._pending: dict[str, RawReading] = {}
         self._released_contacts_after_offline = False
         self._last_sent: dict[str, tuple[float | None, str | None]] = {}
+        self._sent_by_source: dict[str, int] = {}  # kumulativ, je Quellenart
         # Geräte, die direkt über MQTT gelesen werden (Modus mqtt/compare). Im Modus mqtt liefert Home
         # Assistant die dort abgedeckten Schlüssel nicht mehr – sie kämen sonst doppelt und älter.
         self.mqtt: MqttHub | None = None
@@ -197,6 +198,9 @@ class Bridge:
             items = list(self._pending.values())
             self._pending.clear()
             self._last_sent = {r.key: (r.value, r.source) for r in items}
+            for r in items:
+                kind = (r.source or "?").split(":", 1)[0]
+                self._sent_by_source[kind] = self._sent_by_source.get(kind, 0) + 1
             await self.uplink.publish(items)
 
     # ------------------------------------------------------------------ Schalten
@@ -309,6 +313,7 @@ class Bridge:
             log.info(
                 "telemetry keys",
                 owned_by_mqtt=sorted(self._mqtt_owned),
+                sent_by_source=self._sent_by_source,
                 last_sent={k: v for k, v in sorted(self._last_sent.items())},
             )
 

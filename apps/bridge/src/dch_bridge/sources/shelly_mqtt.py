@@ -843,6 +843,7 @@ class MqttHub:
     reconnects: int = 0
     commands: int = 0
     polls: int = 0
+    forwarded: int = 0  # Messwerte, die an die Bridge weitergereicht wurden (kumulativ)
     _session: MqttSession | None = field(default=None, init=False)
 
     @property
@@ -960,6 +961,7 @@ class MqttHub:
         for dev in self.devices:
             items.extend(dev.emit(now))
         if items and self.forward:
+            self.forwarded += len(items)
             await self.on_readings(items)
         return items
 
@@ -969,6 +971,7 @@ class MqttHub:
             # Ohne dieses Feld sieht ein Vergleichslauf wie ein gesunder Betrieb aus: die Geräte
             # antworten, die Zähler laufen – nur gesendet wird nichts.
             "forwarding": self.forward,
+            "forwarded": self.forwarded,
             "reconnects": self.reconnects,
             "commands": self.commands,
             "polls": self.polls,
