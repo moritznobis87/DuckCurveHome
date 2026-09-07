@@ -220,12 +220,16 @@ socat TCP-LISTEN:8181,fork,reuseaddr TCP:192.168.120.1:81
 In der Bridge dann `mcz_host` auf die Heimnetz-Adresse dieses Rechners und `mcz_port` auf `8181`.
 Die Bridge bleibt, wo sie ist; nur ein Sprung kommt dazu.
 
-**Die Falle dabei:** der Ofen-Hotspot hat kein Internet. Wird seine Route zur Standardroute, verliert
-der Rechner die Verbindung nach draußen. Unter NetworkManager gehört deshalb an diese Verbindung:
+**Die Falle dabei, gemessen und nicht vermutet:** der Hotspot des Ofens betreibt einen DNS, der jede
+Anfrage mit seiner eigenen Adresse beantwortet. Wer ihn per DHCP übernimmt, bekommt auf `ghcr.io`
+die Antwort `192.168.120.1` und damit `connection refused` auf 443. Ein Captive Portal ohne Portal.
+An diese Verbindung gehört deshalb:
 
 ```
-nmcli connection modify "MCZ-…" ipv4.never-default yes ipv6.never-default yes
+nmcli connection modify "MCZ-…" ipv4.never-default yes ipv6.never-default yes ipv4.ignore-auto-dns yes
 ```
+
+In der Home-Assistant-Oberfläche entspricht das: statische IPv4, Gateway leer, DNS leer.
 
 Zum Prüfen der Lage: `tools/mcz_find.py`.
 
