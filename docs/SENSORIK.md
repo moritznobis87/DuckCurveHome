@@ -55,9 +55,22 @@ Der zweite Nutzen ist die Auslegung: qp eines Wärmemengenzählers wird nach dem
 gewählt, nicht nach dem Spitzenwert. Der abgelesene m³/h-Wert bei laufender Heizung entscheidet
 zwischen qp 1,5 und qp 2,5.
 
-Steht neben der Pumpe eine Zeitschaltuhr, ist das für den Optimierer relevant: die Wärmeabgabe ans
-Haus ist dann zeitlich fest verdrahtet und nicht beliebig aus dem Puffer abrufbar. Der Planer darf
-Pufferenergie dann nicht als jederzeit verfügbar annehmen.
+### Der Heizkreis ist gemischt, und das ist die eigentliche Nachricht
+
+Der Kasten neben der Pumpe ist keine Zeitschaltuhr, sondern eine Heizungsregelung, die das
+Vierwegeventil darunter stellt. Sie mischt dem Heizkreis eine Vorlauftemperatur zu, die Pumpe
+versorgt damit zwei Heizkreisverteiler.
+
+Für den Planer heißt das: **das Haus ist keine schaltbare Last.** Wie viel Wärme ins Haus geht,
+bestimmt die Heizkurve über die Vorlauftemperatur, nicht wir. Der Puffer lässt sich nicht auf Zuruf
+schneller entladen, weil gerade billiger Strom da ist. Verschiebbar ist nur die Ladeseite, also wann
+die Wärmepumpe den Puffer füllt. Genau so ist der Optimierer auch gebaut, die Annahme ist damit
+bestätigt und nicht bloß gesetzt.
+
+Für die Messung heißt es: der Volumenstrom des Heizkreises ist von der Wärmeleistung entkoppelt.
+Bei gemischtem Kreis wird die Leistung über die Vorlauftemperatur geregelt, der Volumenstrom bleibt
+im Rahmen dessen, was die Verteiler zulassen, ungefähr gleich. Wärme ohne Spreizung abzuschätzen
+geht deshalb nicht, es braucht Vorlauf und Rücklauf.
 
 ## Warum kein Bus hilft
 
