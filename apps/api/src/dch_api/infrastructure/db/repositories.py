@@ -455,6 +455,19 @@ class SqlRepositories:
             v = (await s.execute(select(func.max(m.EnergyHour.hour_start)))).scalar_one_or_none()
         return None if v is None else self._aware(v)
 
+    async def oldest_raw_at(self) -> datetime | None:
+        """Ältester noch vorhandener Rohwert – der Startpunkt einer Verdichtung, die bei null beginnt.
+
+        Bewusst getrennt von `first_measurement_at`: das beantwortet „seit wann zeichnen wir auf" und
+        schaut deshalb in die dauerhafte Minutentabelle. Wer damit eine Verdichtung starten wollte,
+        begänne vor Jahren statt vor 14 Tagen.
+        """
+        async with self.maker() as s:
+            v = (
+                await s.execute(select(func.min(m.MeasurementRaw.observed_at)))
+            ).scalar_one_or_none()
+        return None if v is None else self._aware(v)
+
     async def first_measurement_at(self) -> datetime | None:
         """Beginn der Aufzeichnung.
 

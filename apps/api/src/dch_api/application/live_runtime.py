@@ -618,7 +618,7 @@ class LiveRuntime:
         """
         current = now.astimezone(UTC).replace(second=0, microsecond=0)
         last = await self.repos.last_minute_bucket()
-        oldest_raw = await self.repos.first_measurement_at()
+        oldest_raw = await self.repos.oldest_raw_at()
         if oldest_raw is None:
             return 0
         begin = max(last - timedelta(minutes=5), oldest_raw) if last else oldest_raw
