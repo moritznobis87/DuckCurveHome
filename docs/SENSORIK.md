@@ -29,6 +29,36 @@ Ohne gemessene Wärme lässt sich auch nicht sagen, ob die Wärmepumpe die Arbei
 sie gekauft wurde. Eine Anlage, die 2,8 statt 3,5 fährt, kostet bei 4000 kWh Jahresverbrauch rund
 250 € im Jahr - und fällt ohne Wärmemengenzähler niemandem auf.
 
+## Die Heizkreispumpe kann Volumenstrom, gratis
+
+Die COSMO-Umwälzpumpe im Heizkreis hat ein Display mit den Einheiten `W`, `m³/h` und `m`. Die
+MODE-Taste schaltet zwischen ihnen um. Damit ist der **Volumenstrom des Heizkreises** ohne jede
+Anschaffung ablesbar, und mit ihm die Wärmeleistung ins Haus:
+
+```
+Q [kW] = V [m³/h] × 1,163 × ΔT [K]        (Wasser, ΔT = Vorlauf minus Rücklauf)
+Beispiel: 0,8 m³/h bei 7 K Spreizung  =  6,5 kW
+```
+
+Zwei Dinge sind dabei wichtig:
+
+* **Die Pumpe sitzt hinter dem Puffer**, nicht zwischen Wärmepumpe und Puffer. Sie misst also, was
+  ins Haus geht, nicht was die Wärmepumpe erzeugt. Für die Arbeitszahl taugt der Wert nicht, für
+  `heat_loss_kw_per_k` dagegen sehr wohl: an einem kalten Abend ohne Ofenbetrieb und ohne
+  Warmwasserladung ist H = Q / (Raumtemperatur minus Außentemperatur), und der aktuelle Wert 0,22
+  kW/K ist bis heute nichts als eine Schätzung.
+* **Auslesbar ist die Pumpe nicht.** Diese Baureihe hat einen PWM-Eingang zur Ansteuerung, aber
+  keine Datenschnittstelle nach außen: kein M-Bus, kein Modbus. Der Wert ist ein Handablesewert.
+  Dauerhaft kommt der Volumenstrom ohnehin aus dem Wärmemengenzähler.
+
+Der zweite Nutzen ist die Auslegung: qp eines Wärmemengenzählers wird nach dem **Dauer**volumenstrom
+gewählt, nicht nach dem Spitzenwert. Der abgelesene m³/h-Wert bei laufender Heizung entscheidet
+zwischen qp 1,5 und qp 2,5.
+
+Steht neben der Pumpe eine Zeitschaltuhr, ist das für den Optimierer relevant: die Wärmeabgabe ans
+Haus ist dann zeitlich fest verdrahtet und nicht beliebig aus dem Puffer abrufbar. Der Planer darf
+Pufferenergie dann nicht als jederzeit verfügbar annehmen.
+
 ## Warum kein Bus hilft
 
 Die Aerotop-Reihe fährt einen Siemens-Regler mit BSB/LPB, und dafür gäbe es BSB-LAN (ESP32-Adapter,
