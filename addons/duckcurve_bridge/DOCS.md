@@ -276,9 +276,28 @@ Alles über die Weboberfläche, kein Shell-Zugriff nötig:
 4. IPv4 auf **DHCP** lassen, der Ofen vergibt eine Adresse in `192.168.120.x`
 5. Speichern
 
-Das Kabel bleibt unangetastet und behält die Standardroute. Falls Home Assistant nach dem Verbinden
-kein Internet mehr hat, hat sich der Hotspot als Standardroute vorgedrängt: dann in denselben
-Einstellungen für **wlan0** auf statische IPv4 wechseln und das **Gateway leer lassen**.
+**Wichtig, sonst baut anschließend kein Add-on mehr:** der Ofen betreibt auf seinem Hotspot einen
+DNS, der **jede** Anfrage mit seiner eigenen Adresse beantwortet. Übernimmt Home Assistant diesen DNS
+per DHCP, löst plötzlich auch `ghcr.io` zu `192.168.120.1` auf, und jeder Download endet in
+
+```
+dial tcp 192.168.120.1:443: connect: connection refused
+```
+
+Deshalb wlan0 **nicht** auf DHCP stehen lassen, sondern gleich auf statische IPv4:
+
+| Feld | Wert |
+| --- | --- |
+| Methode | Statisch |
+| Adresse | `192.168.120.50/24` |
+| Gateway | **leer** |
+| DNS | **leer** |
+
+Leeres Gateway hält die Standardroute beim Kabel, leerer DNS hält die Namensauflösung beim Heimnetz.
+Der Ofen bleibt unter `192.168.120.1` trotzdem erreichbar, dafür genügt die Route ins eigene Subnetz.
+
+Ist es schon passiert, hilft der kurze Weg: wlan0 trennen, das Add-on bauen lassen, danach wlan0 mit
+den Werten oben wieder verbinden. Das Bauen braucht Internet, der laufende Betrieb nicht.
 
 **Reichweite prüfen:** der Pi muss den Hotspot sehen. Taucht `MCZ-…` in der Netzliste gar nicht auf,
 steht er zu weit weg, und es braucht einen zweiten kleinen Rechner näher am Ofen, der Port 81
