@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
+          // Kein Suchmaschineneintrag: die Seite zeigt den Zustand eines bewohnten Hauses.
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet, noimageindex" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "Referrer-Policy", value: "same-origin" },
         ],

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Duck Curve">
+  <!-- Die Marken-Ente, unveraendert aus den Markenassets uebernommen
+       (marke/ente-einfach.svg im Repository valyze) - dieselbe Ente wie
+       in der Anwendung. Hier steht sie auf der hellen Kachel, wie im
+       Markenicon brand/duck-icon.png: Der Koerper ist petrol, und auf
+       einer dunklen Tab-Leiste verschwaende er ohne sie.
+       Die Fassung mit Laecheln (ente-begleiter.svg) taugt fuer das
+       Favicon nicht: Das Laecheln ist ein Strich von 18 Einheiten, bei
+       16 Pixeln also ein Viertelpixel breit - genau der Fehler der
+       Entenkurve, die vorher hier stand. Diese Ente ist reine Flaeche. -->
+  <rect width="1024" height="1024" rx="224" fill="#FFFFFF"/>
+  <g transform="translate(-152 36) scale(1.0595)">
+    <path fill="#0F2E3D" d="M238 585c0-130 78-227 194-255-11-26-17-55-17-85 0-112 91-203 203-203s203 91 203 203c0 50-18 96-49 131 39 20 73 47 99 80 36 45 69 48 107 5 17-19 32-15 35 12 13 126-33 258-145 325-84 51-198 66-331 57-176-12-299-105-299-270z"/>
+    <path fill="#F2A900" d="M426 238c-74 8-132 31-178 68 54 25 111 34 173 23 25-5 40-25 35-47-5-24-14-39-30-44z"/>
+    <circle cx="587" cy="220" r="23" fill="#FFFFFF"/>
+  </g>
+</svg>
