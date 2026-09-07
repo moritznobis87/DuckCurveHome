@@ -109,3 +109,85 @@ async def test_energy_hours_roundtrip(repos: SqlRepositories) -> None:
     rows = await repos.energy_hours(h0, h0 + timedelta(hours=3))
     assert [round(h.pv_kwh, 1) for h, _ in rows] == [9.0, 2.0, 3.0]
     assert rows[0][1] is None and (await repos.last_energy_hour()) == h0 + timedelta(hours=2)
+
+
+async def test_minute_rollup_survives_pruned_raw(repos: SqlRepositories) -> None:
+    """Der Sinn der Minutentabelle: die Werte bleiben, wenn die Rohwerte gelöscht sind."""
+    await repos.add_readings(
+        [
+            RawReading(
+                key="pv_power_kw",
+                value=v,
+                observed_at=NOW + timedelta(seconds=s),
+                quality=Quality.OK,
+                source="t",
+            )
+            for v, s in ((4.0, 0), (6.0, 30), (8.0, 70))
+        ]
+        + [
+            RawReading(
+                key="actuator:hp_release_contact",
+                value=1.0,
+                observed_at=NOW,
+                quality=Quality.OK,
+                source="t",
+            ),
+            # Reihe ohne eigene Spalte: darf nicht verlorengehen
+            RawReading(
+                key="actuator:courtyard_light",
+                value=1.0,
+                observed_at=NOW,
+                quality=Quality.OK,
+                source="t",
+            ),
+        ]
+    )
+    written = await repos.rollup_minutes(NOW - timedelta(minutes=1), NOW + timedelta(minutes=5))
+    assert written == 2
+    assert await repos.last_minute_bucket() == NOW + timedelta(minutes=1)
+
+    assert await repos.prune_raw(timedelta(days=0)) == 5
+    rows = await repos.minute_series(
+        NOW - timedelta(minutes=1),
+        NOW + timedelta(minutes=5),
+        ["pv_power_kw", "grid_power_kw", "hp_release_contact", "actuator:courtyard_light"],
+    )
+    assert len(rows) == 2
+    assert rows[0]["pv_power_kw"] == 5.0 and rows[1]["pv_power_kw"] == 8.0
+    assert rows[0]["grid_power_kw"] is None  # nie gemessen
+    assert rows[0]["hp_release_contact"] == 1.0  # Präfix "actuator:" wird auf die Spalte abgebildet
+    assert rows[0]["actuator:courtyard_light"] == 1.0  # aus extra
+
+
+async def test_minute_rollup_is_repeatable(repos: SqlRepositories) -> None:
+    """Nachzügler dürfen eine bereits verdichtete Minute korrigieren, nicht verdoppeln."""
+    span = (NOW - timedelta(minutes=1), NOW + timedelta(minutes=1))
+    await repos.add_readings(
+        [RawReading(key="pv_power_kw", value=4.0, observed_at=NOW, quality=Quality.OK, source="t")]
+    )
+    await repos.rollup_minutes(*span)
+    await repos.add_readings(
+        [
+            RawReading(
+                key="pv_power_kw",
+                value=8.0,
+                observed_at=NOW + timedelta(seconds=20),
+                quality=Quality.OK,
+                source="t",
+            )
+        ]
+    )
+    assert await repos.rollup_minutes(*span) == 1
+    rows = await repos.minute_series(*span, ["pv_power_kw"])
+    assert len(rows) == 1 and rows[0]["pv_power_kw"] == 6.0
+
+
+async def test_minute_columns_match_history_series() -> None:
+    """Spalten und Reihen dürfen nicht auseinanderlaufen – sonst fiele eine Reihe still in extra."""
+    from dch_api.infrastructure.db import models as m
+    from dch_api.infrastructure.db.repositories import MINUTE_COLUMNS
+    from dch_api.infrastructure.history import SERIES
+
+    assert MINUTE_COLUMNS == SERIES
+    columns = set(m.MeasurementMinute.__table__.columns.keys())
+    assert columns == set(SERIES) | {"bucket", "extra"}

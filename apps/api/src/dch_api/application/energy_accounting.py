@@ -60,7 +60,9 @@ ENERGY_KEYS = [
 ]
 WEEKDAYS_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 MONTHS_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
-BACKFILL_DAYS = 14  # entspricht der Aufbewahrung der Rohwerte
+# Fenster, das der laufende Betrieb nachrechnet. Nicht mehr durch die Datenhaltung begrenzt: die
+# Minutenwerte bleiben dauerhaft, `recompute` kann daher jeden beliebigen Zeitraum neu bilanzieren.
+BACKFILL_DAYS = 14
 
 # Verbraucherfelder, die eine Neuberechnung verlieren kann: kennt eine Quelle den Zähler nicht (die
 # myenergi-Cloud weiß nichts von der Wärmepumpe), ergibt die Rechnung 0 kWh statt „unbekannt“.

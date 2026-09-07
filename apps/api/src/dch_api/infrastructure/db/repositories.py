@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 from sqlalchemy.sql import Executable
 
 from dch_api.infrastructure.db import models as m
+from dch_api.infrastructure.history import SERIES
 from hems_core.accounting import HourlyEnergy
 from hems_core.domain import Decision, OperatingMode, Quality
 from hems_core.protocol import RawReading
@@ -22,6 +23,14 @@ QUALITY_CODE = {q: i for i, q in enumerate(Quality)}
 CODE_QUALITY = {i: q for q, i in QUALITY_CODE.items()}
 
 Row = dict[str, Any]
+
+
+# Spalten der dauerhaften Minutentabelle. Sie entsprechen den Reihen der Historie; der Aktor trägt in
+# den Rohwerten den Präfix "actuator:", als Spaltenname wäre das ungültig.
+MINUTE_COLUMNS: tuple[str, ...] = SERIES
+MINUTE_KEY_TO_COLUMN: dict[str, str] = {
+    ("actuator:hp_release_contact" if k == "hp_release_contact" else k): k for k in SERIES
+}
 
 
 class SqlRepositories:
@@ -127,7 +136,32 @@ class SqlRepositories:
     async def minute_series(
         self, start: datetime, end: datetime, keys: list[str]
     ) -> list[dict[str, float | str | None]]:
-        """Minutenmittel direkt aus Rohwerten; ein Aggregationsjob füllt später die 1-min-Tabelle."""
+        """Minutenmittel eines Zeitraums, aus dem dauerhaften Bestand und den frischen Rohwerten.
+
+        Beide Quellen werden gelesen und zusammengeführt: `measurements_minute` reicht beliebig weit
+        zurück, endet aber am letzten verdichteten Bin, und die Minuten danach stehen nur in den
+        Rohwerten. Bei Überschneidung gewinnt der verdichtete Wert — er ist aus denselben Rohwerten
+        entstanden, nur bereits abgeschlossen.
+        """
+        by_bucket: dict[str, dict[str, float | str | None]] = {}
+        for ts, values in await self._stored_minutes(start, end):
+            row = by_bucket.setdefault(ts, {"ts": ts})
+            for k in keys:
+                if k in values:
+                    row[k] = values[k]
+        for ts, key, avg in await self._raw_minutes(start, end, keys):
+            row = by_bucket.setdefault(ts, {"ts": ts})
+            row.setdefault(key, None if avg is None else round(avg, 3))
+        out = [by_bucket[ts] for ts in sorted(by_bucket)]
+        for row in out:
+            for k in keys:
+                row.setdefault(k, None)
+        return out
+
+    async def _raw_minutes(
+        self, start: datetime, end: datetime, keys: list[str] | None = None
+    ) -> list[tuple[str, str, float | None]]:
+        """Rohwerte zu Minutenmitteln gruppiert: (Zeitstempel, Reihe, Mittelwert)."""
         if self.dialect == "sqlite":
             bucket: Any = func.strftime("%Y-%m-%dT%H:%M:00+00:00", m.MeasurementRaw.observed_at)
         else:
@@ -139,26 +173,89 @@ class SqlRepositories:
                 func.avg(m.MeasurementRaw.value),
             )
             .where(m.MeasurementRaw.observed_at >= start, m.MeasurementRaw.observed_at < end)
-            .where(m.MeasurementRaw.sensor_key.in_(keys), m.MeasurementRaw.quality.in_([0, 4]))
+            .where(m.MeasurementRaw.quality.in_([0, 4]))
             .group_by("bucket", m.MeasurementRaw.sensor_key)
             .order_by("bucket")
         )
+        if keys is not None:
+            stmt = stmt.where(m.MeasurementRaw.sensor_key.in_(keys))
         async with self.maker() as s:
             rows = (await s.execute(stmt)).all()
-        by_bucket: dict[str, dict[str, float | str | None]] = {}
-        for b, key, avg in rows:
-            ts = (
-                self._aware(b).astimezone(UTC).isoformat().replace("+00:00", "Z")
-                if isinstance(b, datetime)
-                else str(b).replace("+00:00", "Z")
+        return [
+            (self._bucket_iso(b), key, None if avg is None else float(avg)) for b, key, avg in rows
+        ]
+
+    def _bucket_iso(self, b: object) -> str:
+        if isinstance(b, datetime):
+            return self._aware(b).astimezone(UTC).isoformat().replace("+00:00", "Z")
+        return str(b).replace("+00:00", "Z")
+
+    async def _stored_minutes(
+        self, start: datetime, end: datetime
+    ) -> list[tuple[str, dict[str, float | None]]]:
+        async with self.maker() as s:
+            rows = (
+                (
+                    await s.execute(
+                        select(m.MeasurementMinute)
+                        .where(m.MeasurementMinute.bucket >= start)
+                        .where(m.MeasurementMinute.bucket < end)
+                        .order_by(m.MeasurementMinute.bucket)
+                    )
+                )
+                .scalars()
+                .all()
             )
-            row = by_bucket.setdefault(ts, {"ts": ts})
-            row[key] = None if avg is None else round(float(avg), 3)
-        out = list(by_bucket.values())
-        for row in out:
-            for k in keys:
-                row.setdefault(k, None)
+        out: list[tuple[str, dict[str, float | None]]] = []
+        for r in rows:
+            values: dict[str, float | None] = {k: getattr(r, k) for k in MINUTE_COLUMNS}
+            for k, v in (r.extra or {}).items():
+                values[k] = v
+            out.append((self._bucket_iso(self._aware(r.bucket)), values))
         return out
+
+    async def last_minute_bucket(self) -> datetime | None:
+        async with self.maker() as s:
+            v = (await s.execute(select(func.max(m.MeasurementMinute.bucket)))).scalar_one_or_none()
+        return None if v is None else self._aware(v)
+
+    async def rollup_minutes(self, start: datetime, end: datetime) -> int:
+        """Rohwerte des Zeitraums zu Minutenzeilen verdichten und dauerhaft ablegen.
+
+        Läuft mehrfach über denselben Zeitraum ohne Schaden: jede Minute wird ersetzt, nicht ergänzt.
+        Reihen ohne eigene Spalte wandern nach `extra`, damit ein neu hinzugekommener Sensor nicht
+        stillschweigend verloren geht, bevor jemand ihm eine Spalte gibt.
+        """
+        grouped: dict[str, dict[str, float | None]] = {}
+        for ts, key, avg in await self._raw_minutes(start, end):
+            grouped.setdefault(ts, {})[key] = None if avg is None else round(avg, 3)
+        if not grouped:
+            return 0
+        rows: list[dict[str, Any]] = []
+        for ts, values in grouped.items():
+            row: dict[str, Any] = {"bucket": datetime.fromisoformat(ts.replace("Z", "+00:00"))}
+            extra: dict[str, float] = {}
+            for key, value in values.items():
+                column = MINUTE_KEY_TO_COLUMN.get(key)
+                if column is not None:
+                    row[column] = value
+                elif value is not None:
+                    extra[key] = value
+            for column in MINUTE_COLUMNS:
+                row.setdefault(column, None)
+            row["extra"] = extra or None
+            rows.append(row)
+        async with self.maker() as s:
+            await s.execute(
+                self._upsert(
+                    m.MeasurementMinute,
+                    rows,
+                    ["bucket"],
+                    [*MINUTE_COLUMNS, "extra"],
+                )
+            )
+            await s.commit()
+        return len(rows)
 
     async def prune_raw(self, older_than: timedelta) -> int:
         cutoff = datetime.now(UTC) - older_than

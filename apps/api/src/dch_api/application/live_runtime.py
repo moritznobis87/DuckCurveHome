@@ -606,6 +606,44 @@ class LiveRuntime:
             for r in rows
         ]
 
+    async def _rollup_minutes(self, now: datetime) -> int:
+        """Abgeschlossene Minuten aus den Rohwerten in den dauerhaften Bestand verdichten.
+
+        Aufgeholt wird ab der letzten verdichteten Minute, ein paar Minuten überlappend: Rohwerte
+        treffen mit dem Zeitstempel ihrer Quelle ein und können einer bereits verdichteten Minute
+        nachträglich zufallen. Erneutes Verdichten ersetzt die Zeile, es entsteht nichts doppelt.
+
+        Die laufende Minute bleibt aus: ihr Mittelwert wäre noch unvollständig, und er würde
+        festgeschrieben, während weitere Messwerte noch unterwegs sind.
+        """
+        current = now.astimezone(UTC).replace(second=0, microsecond=0)
+        last = await self.repos.last_minute_bucket()
+        oldest_raw = await self.repos.first_measurement_at()
+        if oldest_raw is None:
+            return 0
+        begin = max(last - timedelta(minutes=5), oldest_raw) if last else oldest_raw
+        if begin >= current:
+            return 0
+        # Tageweise, damit der erste Lauf über die ganzen Rohwerte nicht eine einzige riesige
+        # Abfrage wird.
+        total = 0
+        cursor = begin
+        while cursor < current:
+            stop = min(cursor + timedelta(days=1), current)
+            total += await self.repos.rollup_minutes(cursor, stop)
+            cursor = stop
+        return total
+
+    async def _rollup_loop(self) -> None:
+        while True:
+            try:
+                n = await self._rollup_minutes(self.now)
+                if n:
+                    log.info("minutes rolled up", rows=n)
+            except Exception as exc:
+                log.warning("minute rollup failed", error=repr(exc)[:200])
+            await asyncio.sleep(300)
+
     async def _accounting_loop(self) -> None:
         while True:
             try:
@@ -641,6 +679,7 @@ class LiveRuntime:
                 asyncio.create_task(self._forecast_loop(), name="forecast"),
                 asyncio.create_task(self._housekeeping_loop(), name="housekeeping"),
                 asyncio.create_task(self._accounting_loop(), name="accounting"),
+                asyncio.create_task(self._rollup_loop(), name="rollup"),
             ]
             if self.myenergi is not None:
                 self.myenergi.start()
@@ -695,6 +734,9 @@ class LiveRuntime:
         while True:
             await asyncio.sleep(3600)
             with contextlib.suppress(Exception):
+                # Erst verdichten, dann löschen. Andersherum verschwänden Rohwerte, deren Minute noch
+                # nicht im dauerhaften Bestand steht – und die sind dann für immer weg.
+                await self._rollup_minutes(self.now)
                 deleted = await self.repos.prune_raw(
                     timedelta(days=self.settings.raw_retention_days)
                 )

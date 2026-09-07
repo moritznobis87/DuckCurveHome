@@ -45,14 +45,39 @@ class MeasurementRaw(Base):
     __table_args__ = (Index("ix_measurements_raw_observed_at", "observed_at"),)
 
 
-class Measurement1min(Base):
-    __tablename__ = "measurements_1min"
-    sensor_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+class MeasurementMinute(Base):
+    """Minutenmittel aller Messreihen – das dauerhafte Gedächtnis der Anlage.
+
+    Eine Zeile je Minute mit einer Spalte je Reihe, nicht eine Zeile je Messwert. Postgres schlägt pro
+    Zeile rund 27 Byte Kopf auf; im schmalen Format (Schlüssel, Zeit, Wert) zahlt man den für jeden
+    einzelnen Messwert, hier einmal für fünfzehn. Das ist der Unterschied zwischen ungefähr 9 GB und
+    1 GB in zehn Jahren und der Grund, warum Minutenauflösung dauerhaft tragbar ist.
+
+    Die Spalten entsprechen `infrastructure.history.SERIES`; ein Test hält beides zusammen. Reihen ohne
+    eigene Spalte — weitere Aktoren, später ergänzte Sensoren — landen in `extra`, damit nichts
+    stillschweigend verloren geht; sie können jederzeit zu Spalten befördert werden.
+
+    Diese Tabelle wird nie gelöscht. Gelöscht werden nur die Rohwerte, aus denen sie entsteht.
+    """
+
+    __tablename__ = "measurements_minute"
     bucket: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
-    avg: Mapped[float | None] = mapped_column(Float)
-    min: Mapped[float | None] = mapped_column(Float)
-    max: Mapped[float | None] = mapped_column(Float)
-    samples: Mapped[int] = mapped_column(Integer, default=0)
+    pv_power_kw: Mapped[float | None] = mapped_column(Float)
+    grid_power_kw: Mapped[float | None] = mapped_column(Float)
+    battery_power_kw: Mapped[float | None] = mapped_column(Float)
+    battery_soc: Mapped[float | None] = mapped_column(Float)
+    house_power_kw: Mapped[float | None] = mapped_column(Float)
+    base_load_kw: Mapped[float | None] = mapped_column(Float)
+    heat_pump_power_kw: Mapped[float | None] = mapped_column(Float)
+    ev_power_kw: Mapped[float | None] = mapped_column(Float)
+    electricity_price_ct_kwh: Mapped[float | None] = mapped_column(Float)
+    outdoor_temp_c: Mapped[float | None] = mapped_column(Float)
+    buffer_temp_top_c: Mapped[float | None] = mapped_column(Float)
+    buffer_temp_mid_top_c: Mapped[float | None] = mapped_column(Float)
+    buffer_temp_mid_bottom_c: Mapped[float | None] = mapped_column(Float)
+    buffer_temp_bottom_c: Mapped[float | None] = mapped_column(Float)
+    hp_release_contact: Mapped[float | None] = mapped_column(Float)
+    extra: Mapped[dict[str, float] | None] = mapped_column(JsonType)
 
 
 class LiveStateRow(Base):
