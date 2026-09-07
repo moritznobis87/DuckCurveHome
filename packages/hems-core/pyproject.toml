@@ -5,6 +5,12 @@ description = "Duck Curve Home – reine Domäne: Modelle, Bilanz, Thermik, Regl
 requires-python = ">=3.12"
 dependencies = ["pydantic>=2.9"]
 
+# scipy nur für den MILP-Planer. Der Kern bleibt sonst bei pydantic: er soll laut Plan auch auf der
+# Bridge laufen können, und dort ist eine 80-MB-Abhängigkeit fehl am Platz. Das Modul importiert
+# scipy erst beim Aufruf und sagt verständlich Bescheid, wenn es fehlt.
+[project.optional-dependencies]
+optimizer = ["scipy>=1.11", "numpy>=1.26"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

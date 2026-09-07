@@ -5,6 +5,10 @@ description = "Duck Curve Home – API, Live-Stream, Worker"
 requires-python = ">=3.12"
 dependencies = [
     "hems-core",
+    # Solver für den MILP-Planer. Er liegt in hems_core.planning, gebraucht wird er aber
+    # nur hier: die Bridge plant nicht. hems-core führt ihn als optionales Extra.
+    "scipy>=1.11",
+    "numpy>=1.26",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "pydantic>=2.9",
