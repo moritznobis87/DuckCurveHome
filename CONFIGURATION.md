@@ -25,6 +25,7 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `hems.tariff.vat_rate` (YAML) | `0.19` | Umsatzsteuersatz auf Einspeisung und unentgeltliche Wertabgabe |
 | `hems.tariff.price_includes_vat` (YAML) | `true` | Tibber liefert Bruttopreise; der Eigenverbrauch wird daraus netto bewertet |
 | `hems.tariff.small_business` (YAML) | `false` | § 19 UStG: dann weist die PV-Abrechnung keine Umsatzsteuer aus |
+| `DCH_TIBBER_PRICE_RESOLUTION` | *(leer)* | Auflösung der Preishistorie. Leer = feinste laut Tibber-Schema (Viertelstunden, wo angeboten); `HOURLY` erzwingt Stundenpreise |
 | `DCH_PUBLIC_HOST` | `home.duckcurve.de` | Öffentliche Adresse für die Pairing-Links auf der Einstellungsseite. Ohne sie wird der Host der Anfrage genommen, sofern er nicht auf `.railway.app` endet |
 | `DCH_GUEST_HOURS` | `24` | Vorgabe-Gültigkeit einer Gast-Sitzung in Stunden; `hours` im Link übersteuert sie, höchstens 720 |
 | `DCH_ACTUATION_ENABLED` | `true` | Vom Bedienenden ausgelöstes Schalten (Lichter, Kaffeemaschine) |

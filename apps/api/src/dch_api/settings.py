@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     config_file: str = ""  # YAML mit site/pv_system/hems (config/hems.example.yaml)
     tibber_token: str = ""
     tibber_home_id: str = ""
+    # Auflösung der Tibber-Preishistorie. Leer heißt: beim ersten Abruf im GraphQL-Schema nachsehen
+    # und die feinste angebotene Auflösung nehmen — die Börse rechnet seit Oktober 2025 in
+    # Viertelstunden. Ein hier gesetzter Wert überspringt die Abfrage und erzwingt ihn (z. B.
+    # "HOURLY"). Die Tages- und Morgenpreise folgen ohnehin dem, was Tibber liefert.
+    tibber_price_resolution: str = ""
     # myenergi-Cloud direkt (ohne Home Assistant): Hub-Seriennummer + API-Key aus der myenergi-App
     myenergi_serial: str = ""
     myenergi_api_key: str = ""

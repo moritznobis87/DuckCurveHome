@@ -64,7 +64,11 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
         cfg.site,
         cfg.pv_system,
         weather=OpenMeteoWeatherProvider() if settings.weather_refresh_min > 0 else None,
-        prices=TibberPriceProvider(settings.tibber_token, settings.tibber_home_id or None)
+        prices=TibberPriceProvider(
+            settings.tibber_token,
+            settings.tibber_home_id or None,
+            resolution=settings.tibber_price_resolution,
+        )
         if settings.tibber_token
         else None,
     )

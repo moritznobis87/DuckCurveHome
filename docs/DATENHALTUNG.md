@@ -68,6 +68,18 @@ bei einem Anbieter ist kein Archiv. Zu klären ist eine regelmäßige Sicherung 
 entweder über dessen Backups oder über einen Export der Minutentabelle (ein Jahr sind rund 95 MB, als
 komprimiertes CSV deutlich weniger), der irgendwo landet, wo er einen Anbieterwechsel überlebt.
 
+## Preisauflösung
+
+Der Strompreis ist die einzige Reihe, die nicht gemessen, sondern bezogen wird. Seit die Börse im
+Oktober 2025 auf Viertelstunden umgestellt hat, kann Tibber vier Preise je Stunde liefern. Die
+Auflösung wird nicht angenommen, sondern beim ersten Abruf im GraphQL-Schema erfragt
+(`DCH_TIBBER_PRICE_RESOLUTION` leer = feinste angebotene); das Log schreibt beim Start, welche
+gewählt wurde und welche das Schema anbietet.
+
+In der Speicherung ändert das nichts — der Preis liegt ohnehin je Minute vor. Es ändert etwas für
+den Planer, der auf einem 15-Minuten-Raster rechnet: er liest den Preis jetzt aus dem Preispunkt,
+der das Intervall überdeckt, statt aus dem der vollen Stunde.
+
 ## Sonstige Tabellen
 
 Dauerhaft, aber ereignisgetrieben und damit klein: Regelentscheidungen (nur bei Zustandswechsel),
