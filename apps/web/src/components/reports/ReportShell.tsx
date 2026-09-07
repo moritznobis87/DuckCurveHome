@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Period } from "@/lib/api/models";
-import { NavButtons } from "@/components/layout/NavButtons";
 
 export const PERIOD_LABEL: Record<Period, string> = { day: "Tag", week: "Woche", month: "Monat", year: "Jahr" };
 const PERIODS: Period[] = ["day", "week", "month", "year"];
@@ -108,7 +107,6 @@ export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, o
         </div>
         <div className="report-header-right flex shrink-0 items-center gap-4">
           {right}
-          <NavButtons />
           <div className="report-nav flex items-center gap-1 rounded-[3px] border border-line-2 p-1">
             <button onClick={() => onMove(-1)} aria-label="Zurück" className="mono px-2.5 py-1 text-[13px] text-text-2 hover:text-text-1">‹</button>
             <span className="report-anchor mono min-w-[190px] text-center text-[12px] text-text-1">{anchor ? anchorLabel(anchor, period) : "…"}</span>

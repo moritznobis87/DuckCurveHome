@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import type { YearMap as YearMapData } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
-import { NavButtons } from "@/components/layout/NavButtons";
 import { EChart } from "@/components/charts/EChart";
 import { RAMP_GRID, RAMP_HEAT, RAMP_NET, RAMP_OWN, yearMap } from "./charts";
 import { de1, ErrorBanner, Note } from "./ReportShell";
@@ -80,15 +79,12 @@ export function YearMapReport() {
             <span className="kicker truncate" style={{ fontSize: 12 }}>365 Tage × 24 Stunden</span>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-4">
-        <div className="flex items-center gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Jahr">
+        <div className="flex shrink-0 items-center gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Jahr">
           {years.map((y) => (
             <button key={y} onClick={() => setYear(y)} className="mono px-3 py-1.5 text-[12px]" style={{ background: year === y ? "var(--amber)" : "transparent", color: year === y ? "var(--petrol)" : "var(--text-2)", borderRadius: 2 }}>
               {y}
             </button>
           ))}
-        </div>
-        <NavButtons />
         </div>
       </header>
 

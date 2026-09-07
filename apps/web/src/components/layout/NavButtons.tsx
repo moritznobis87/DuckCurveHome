@@ -4,14 +4,14 @@ import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { useRole } from "@/lib/live/useRole";
 
-/** Die immer gleichen kleinen Knöpfe oben rechts: jede Seite unmittelbar unter dem Dashboard ist
- *  damit von jeder anderen aus erreichbar, nicht nur über die Klickstrecke.
+/** Die Einstiegsleiste im Dashboard-Kopf: von hier aus ist jede Seite unmittelbar unter dem
+ *  Dashboard mit einem Griff erreichbar.
  *
- *  Bewusst nur eine Ebene. Unterunterseiten (PV-Abrechnung, Rechnungsprüfung) bleiben dort, wo sie
- *  hingehören: erreichbar aus ihrer Elternseite. Sonst wüchse die Leiste mit jeder neuen Seite und
- *  verlöre genau die Übersicht, die sie herstellen soll.
+ *  Bewusst nur hier. In den Unterseiten stand sie kurzzeitig auch, wurde dort aber zur Dauerpräsenz
+ *  ohne Nutzen: wer eine Detailseite offen hat, will Zeiträume vergleichen, nicht springen. Zurück
+ *  führt links das „← Dashboard". Unterunterseiten (PV-Abrechnung, Rechnungsprüfung) bleiben
+ *  ohnehin aus ihrer Elternseite erreichbar.
  *
- *  Die eigene Seite lässt ihren Knopf weg: ein Verweis auf sich selbst ist keine Navigation.
  *  Die Einstellungen erscheinen nur bei Vollzugriff; Gästen einen Weg zu zeigen, der sie umleitet,
  *  wäre unhöflich. */
 const ITEMS = [
