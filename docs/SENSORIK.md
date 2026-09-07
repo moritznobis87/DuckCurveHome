@@ -51,9 +51,10 @@ Zwei Dinge sind dabei wichtig:
   keine Datenschnittstelle nach außen: kein M-Bus, kein Modbus. Der Wert ist ein Handablesewert.
   Dauerhaft kommt der Volumenstrom ohnehin aus dem Wärmemengenzähler.
 
-Der zweite Nutzen ist die Auslegung: qp eines Wärmemengenzählers wird nach dem **Dauer**volumenstrom
-gewählt, nicht nach dem Spitzenwert. Der abgelesene m³/h-Wert bei laufender Heizung entscheidet
-zwischen qp 1,5 und qp 2,5.
+Für die Auslegung des Zählers an der **Wärmepumpe** taugt der Wert dagegen nicht. Zwischen beiden
+liegt der Puffer, die Volumenströme sind hydraulisch entkoppelt. Der WP-Kreis wird aus Nennleistung
+und Auslegungsspreizung gerechnet (siehe Einkaufsliste), nicht aus dem, was die Heizkreispumpe
+fördert. Der Ablesewert bemisst allein einen künftigen zweiten Zähler im Heizkreis.
 
 ### Der Heizkreis ist gemischt, und das ist die eigentliche Nachricht
 
@@ -68,9 +69,22 @@ die Wärmepumpe den Puffer füllt. Genau so ist der Optimierer auch gebaut, die 
 bestätigt und nicht bloß gesetzt.
 
 Für die Messung heißt es: der Volumenstrom des Heizkreises ist von der Wärmeleistung entkoppelt.
-Bei gemischtem Kreis wird die Leistung über die Vorlauftemperatur geregelt, der Volumenstrom bleibt
-im Rahmen dessen, was die Verteiler zulassen, ungefähr gleich. Wärme ohne Spreizung abzuschätzen
-geht deshalb nicht, es braucht Vorlauf und Rücklauf.
+Bei gemischtem Kreis wird die Leistung über die Vorlauftemperatur geregelt. Wärme ohne Spreizung
+abzuschätzen geht deshalb nicht, es braucht Vorlauf und Rücklauf.
+
+### Betriebsart der Pumpe: Δp-c
+
+An den beiden Verteilern sitzen Stellantriebe, die einzelne Kreise auf- und zufahren. Damit ist der
+hydraulische Widerstand veränderlich, und die richtige Betriebsart ist **Konstantdruck (Δp-c)**,
+Sollwert-Förderhöhe rund 2 m als Startpunkt.
+
+Eine feste Drehzahl wäre hier falsch. Schließen Zonen, stiege der Differenzdruck, die verbleibenden
+Kreise würden überströmt, es rauscht, und das Überströmventil geht auf. Der bequeme Sonderfall
+"feste Drehzahl gleich konstanter Volumenstrom" gilt nur für Kreise ohne Stellantriebe.
+
+Folge für die Messung: der Volumenstrom ist veränderlich, ein einzelner Ablesewert ist eine
+Momentaufnahme. Für die Auslegung eines Heizkreiszählers deshalb bei **allen Kreisen offen** ablesen,
+das ist der Dauerhöchstwert.
 
 ## Warum kein Bus hilft
 
@@ -99,9 +113,10 @@ deutlich besser als qp 2,5 - und dort, im sommerlichen Warmwasserbetrieb unter 1
 schlechten Arbeitszahlen. DN20 statt DN15 wegen des Druckverlusts: die Umwälzpumpe einer Wärmepumpe
 hat viel weniger Förderhöhe als ein Fernwärmenetz.
 
-**Vor der Bestellung abzulesen:** die tatsächliche Spreizung. Die Umwälzpumpe zeigt den Volumenstrom
-im Display, der Regler Vor- und Rücklauftemperatur. Zehn Minuten an der Maschine schlagen jedes
-Datenblatt.
+**Vor der Bestellung abzulesen:** die tatsächliche Spreizung **im Wärmepumpenkreis**, also Vor- und
+Rücklauf an der Aerotop selbst, während sie den Puffer lädt. Nicht die Heizkreispumpe im Keller: die
+sitzt hinter dem Puffer und sagt über den WP-Kreis nichts aus. Zehn Minuten an der Maschine schlagen
+jedes Datenblatt.
 
 Alternativen mit denselben Eigenschaften: Kamstrup MULTICAL 303/403 (Treiber `kamheat`), Zenner
 zelsius C5. Der Diehl Sharky 775 wäre technisch gleichwertig (Dynamikbereich 1:250), wird aber nur
