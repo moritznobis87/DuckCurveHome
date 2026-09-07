@@ -379,16 +379,24 @@ def test_gen2_ignores_unknown_and_invalid_messages() -> None:
     assert dev.emit(T0) == [] and dev.state.rejected >= 3
 
 
-def test_gen2_values_expire_and_only_new_data_is_emitted() -> None:
+def test_gen2_reports_expired_values_as_unavailable() -> None:
+    """Veraltete Werte werden gemeldet, nicht verschwiegen.
+
+    Ließe die Bridge sie weg, behielte die API ihren letzten Wert und zeigte ihn weiter an, als wäre er
+    aktuell – so stand ein Schaltzustand siebzehn Stunden lang unverändert im Dashboard.
+    """
     dev = Gen2Device(topic_prefix=G2, components=BUFFER, stale_s=300)
     dev.apply(f"{G2}/events/rpc", notify({"temperature:100": {"tC": 58.2}}), T0)
     assert len(dev.emit(T0)) == 1
     assert dev.emit(T0 + timedelta(seconds=10)) == []  # nichts Neues
-    dev.apply(
-        f"{G2}/events/rpc", notify({"temperature:101": {"tC": 50.0}}), T0 + timedelta(minutes=10)
-    )
-    fresh = {r.key for r in dev.emit(T0 + timedelta(minutes=10))}
-    assert fresh == {"buffer_temp_mid_top_c"}  # der alte Wert von 100 ist zu alt
+
+    later = T0 + timedelta(minutes=10)
+    dev.apply(f"{G2}/events/rpc", notify({"temperature:101": {"tC": 50.0}}), later)
+    items = {r.key: r for r in dev.emit(later)}
+    assert items["buffer_temp_mid_top_c"].value == pytest.approx(50.0)
+    assert items["buffer_temp_mid_top_c"].quality is Quality.OK
+    veraltet = items["buffer_temp_top_c"]
+    assert veraltet.value is None and veraltet.quality is Quality.UNAVAILABLE
 
 
 @pytest.mark.asyncio

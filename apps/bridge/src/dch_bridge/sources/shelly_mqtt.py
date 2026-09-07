@@ -74,7 +74,9 @@ class Shelly3EmState:
     online: bool | None = None
     online_at: datetime | None = None
     last_message_at: datetime | None = None
+    last_answer_at: datetime | None = None  # letzte Antwort auf Shelly.GetStatus
     messages: int = 0
+    answers: int = 0
     rejected: int = 0
     _lower_counter: dict[tuple[str, str], int] = field(default_factory=dict)
 
@@ -377,7 +379,9 @@ class Gen2State:
     values: dict[str, _Value] = field(default_factory=dict)  # Domänenschlüssel → Wert
     faulted: dict[str, datetime] = field(default_factory=dict)  # Schlüssel, deren Komponente meldet
     last_message_at: datetime | None = None
+    last_answer_at: datetime | None = None  # letzte Antwort auf Shelly.GetStatus
     messages: int = 0
+    answers: int = 0
     rejected: int = 0
 
     @property
@@ -444,6 +448,8 @@ class Gen2State:
         for component, state in result.items():
             if isinstance(state, dict) and self._component(component, state, now):
                 touched = True
+        self.answers += 1
+        self.last_answer_at = now
         if touched:
             self.last_message_at = now
         return touched
@@ -496,17 +502,29 @@ class Gen2State:
         return round(value * FIELD_SCALE.get(field_path, 1.0), 4)
 
     def readings(self, now: datetime, stale_after: timedelta, source: str) -> list[RawReading]:
-        out = [
-            RawReading(key=key, value=v.value, observed_at=v.at, source=source)
-            for key, v in self.values.items()
-            if now - v.at <= stale_after
-        ]
+        """Alle bekannten Schlüssel melden – veraltete ausdrücklich als nicht verfügbar.
+
+        Sie einfach wegzulassen wäre die schlechtere Wahl: die API behält dann ihren letzten Wert und
+        zeigt ihn weiter an, als wäre er aktuell. Genau so stand ein Schaltzustand siebzehn Stunden lang
+        unverändert im Dashboard.
+        """
+        out: list[RawReading] = []
+        for key, v in self.values.items():
+            fresh = now - v.at <= stale_after
+            out.append(
+                RawReading(
+                    key=key,
+                    value=v.value if fresh else None,
+                    observed_at=v.at if fresh else now,
+                    quality=Quality.OK if fresh else Quality.UNAVAILABLE,
+                    source=source,
+                )
+            )
         out += [
             RawReading(
-                key=key, value=None, observed_at=at, quality=Quality.UNAVAILABLE, source=source
+                key=key, value=None, observed_at=now, quality=Quality.UNAVAILABLE, source=source
             )
-            for key, at in self.faulted.items()
-            if now - at <= stale_after
+            for key in self.faulted
         ]
         return out
 
@@ -782,6 +800,8 @@ class Gen2Device:
             "components": len(self.components),
             "values": len(self.state.values),
             "messages": self.state.messages,
+            "answers": self.state.answers,
+            "last_answer_at": self.state.last_answer_at,
             "rejected": self.state.rejected,
             "emitted": self.emitted,
             "last_message_at": self.state.last_message_at,
