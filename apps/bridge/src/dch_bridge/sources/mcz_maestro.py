@@ -18,6 +18,17 @@ kein Ort für Fernsteuerung nebenbei.
 nicht vorhandener Fühler ist etwas anderes als ein Fühler, der 127,5 °C meldet. Betriebsstunden
 kommen in Sekunden und werden zu Stunden.
 
+**Warum der WebSocket hier von Hand gesprochen wird.** Die Firmware des Ofens **maskiert ihre
+Antwortrahmen**. RFC 6455 verbietet das: maskiert wird nur vom Client zum Server, nie zurück. Die
+Bibliothek `websockets` hält sich strikt daran und beendet die Verbindung mit
+
+    sent 1002 (protocol error) incorrect masking
+
+Ein Schalter dagegen ist nicht vorgesehen, und das ist auch richtig so. Für ein Gerät, das man nicht
+reparieren kann, bleibt nur ein eigener, nachsichtiger Client: er entmaskiert, was maskiert ankommt,
+statt auf der Norm zu bestehen. Der Rest des Protokolls ist gewöhnlich, der Code darunter deshalb
+kurz.
+
 **Wozu.** Der Ofen ist die zweite Wärmequelle am selben Puffer. Ohne ihn ist nicht zu sagen, welcher
 Anteil einer Pufferladung von der Wärmepumpe kam, und damit ist auch deren Arbeitszahl nicht
 belastbar. Schneckendrehzahl (Brennstoffeintrag), Rauchgastemperatur (feuert er wirklich) und
@@ -27,15 +38,16 @@ Pumpenmodulation (lädt er gerade) schließen genau diese Lücke.
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
+import os
 import random
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from urllib.parse import urlsplit
 
 import structlog
-import websockets
-from websockets.asyncio.client import ClientConnection
 
 from hems_core.domain.quality import Quality
 from hems_core.protocol import RawReading
@@ -126,6 +138,78 @@ def _convert(field: MaestroField, raw: int) -> float | None:
     return float(raw)
 
 
+# --------------------------------------------------------------------- WebSocket von Hand
+OPCODE_TEXT = 0x1
+OPCODE_CLOSE = 0x8
+OPCODE_PING = 0x9
+OPCODE_PONG = 0xA
+
+
+def _client_frame(opcode: int, payload: bytes) -> bytes:
+    """Einen Rahmen zum Server bauen. Maskiert, wie es die Norm für diese Richtung verlangt."""
+    mask = os.urandom(4)
+    n = len(payload)
+    if n < 126:
+        header = bytes([0x80 | opcode, 0x80 | n])
+    elif n < 1 << 16:
+        header = bytes([0x80 | opcode, 0x80 | 126]) + n.to_bytes(2, "big")
+    else:
+        header = bytes([0x80 | opcode, 0x80 | 127]) + n.to_bytes(8, "big")
+    return header + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+
+
+async def _read_frame(reader: asyncio.StreamReader) -> tuple[int, bytes]:
+    """Einen Rahmen vom Server lesen - maskiert oder nicht, beides wird angenommen."""
+    b0, b1 = await reader.readexactly(2)
+    opcode = b0 & 0x0F
+    length = b1 & 0x7F
+    if length == 126:
+        length = int.from_bytes(await reader.readexactly(2), "big")
+    elif length == 127:
+        length = int.from_bytes(await reader.readexactly(8), "big")
+    mask = await reader.readexactly(4) if b1 & 0x80 else b""
+    payload = await reader.readexactly(length) if length else b""
+    if mask:
+        payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+    return opcode, payload
+
+
+async def _handshake(
+    host: str, port: int, timeout_s: float
+) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+    """HTTP-Upgrade nach RFC 6455. Geprüft wird nur der Status 101.
+
+    Bewusst nicht geprüft wird `Sec-WebSocket-Accept`: eine Firmware, die schon beim Maskieren
+    schludert, soll nicht an einer Prüfsumme scheitern, die uns nichts nützt.
+    """
+    reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout_s)
+    try:
+        writer.write(
+            (
+                "GET / HTTP/1.1\r\n"
+                f"Host: {host}:{port}\r\n"
+                "Upgrade: websocket\r\n"
+                "Connection: Upgrade\r\n"
+                f"Sec-WebSocket-Key: {base64.b64encode(os.urandom(16)).decode()}\r\n"
+                "Sec-WebSocket-Version: 13\r\n\r\n"
+            ).encode()
+        )
+        await writer.drain()
+        head = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=timeout_s)
+    except BaseException:
+        writer.close()
+        with contextlib.suppress(Exception):
+            await writer.wait_closed()
+        raise
+    status = head.split(b"\r\n", 1)[0].decode("latin-1", "replace")
+    if " 101" not in status:
+        writer.close()
+        with contextlib.suppress(Exception):
+            await writer.wait_closed()
+        raise ConnectionError(f"kein WebSocket-Upgrade: {status}")
+    return reader, writer
+
+
 @dataclass
 class MaestroStove:
     """Hält die WebSocket-Verbindung zum Ofen und liefert Messwerte im Bridge-Takt.
@@ -139,6 +223,8 @@ class MaestroStove:
     url: str
     on_readings: Callable[[list[RawReading]], Awaitable[None]]
     poll_interval_s: float = 15.0
+    connect_timeout_s: float = 10.0
+    read_timeout_s: float = 60.0  # deutlich über dem Abfragetakt: Schweigen ist ein Ausfall
     label: str = "MCZ Maestro"
 
     _connected: bool = False
@@ -158,33 +244,55 @@ class MaestroStove:
             "reconnects": self._reconnects,
         }
 
+    @property
+    def address(self) -> tuple[str, int]:
+        parts = urlsplit(self.url)
+        return parts.hostname or "192.168.120.1", parts.port or 81
+
     async def run(self) -> None:
         backoff = 1.0
         while True:
+            writer: asyncio.StreamWriter | None = None
             try:
-                async with websockets.connect(self.url, open_timeout=10) as ws:
-                    self._connected = True
-                    self._announced_offline = False
-                    backoff = 1.0
-                    log.info("stove connected", url=self.url)
-                    await self._session(ws)
+                host, port = self.address
+                reader, writer = await _handshake(host, port, self.connect_timeout_s)
+                self._connected = True
+                self._announced_offline = False
+                backoff = 1.0
+                log.info("stove connected", url=self.url)
+                await self._session(reader, writer)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                log.warning("stove connection failed", error=str(exc)[:200])
+                log.warning("stove connection failed", error=f"{type(exc).__name__}: {exc}"[:200])
+            finally:
+                if writer is not None:
+                    writer.close()
+                    with contextlib.suppress(Exception):
+                        await writer.wait_closed()
             self._connected = False
             self._reconnects += 1
             await self._announce_offline()
             await asyncio.sleep(backoff + random.uniform(0, 0.5))
             backoff = min(backoff * 2, 60.0)
 
-    async def _session(self, ws: ClientConnection) -> None:
+    async def _session(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Solange die Verbindung steht: anfragen, lesen, weiterreichen."""
-        poller = asyncio.create_task(self._poll(ws), name="mcz-poll")
+        poller = asyncio.create_task(self._poll(writer), name="mcz-poll")
         try:
-            async for message in ws:
-                text = message if isinstance(message, str) else message.decode("utf-8", "replace")
-                values = parse_info(text)
+            while True:
+                opcode, payload = await asyncio.wait_for(
+                    _read_frame(reader), timeout=self.read_timeout_s
+                )
+                if opcode == OPCODE_CLOSE:
+                    raise ConnectionError("Ofen hat die Verbindung geschlossen")
+                if opcode == OPCODE_PING:
+                    writer.write(_client_frame(OPCODE_PONG, payload))
+                    await writer.drain()
+                    continue
+                if opcode != OPCODE_TEXT:
+                    continue
+                values = parse_info(payload.decode("utf-8", "replace"))
                 if values:
                     self._frames += 1
                     await self._emit(values)
@@ -193,9 +301,10 @@ class MaestroStove:
             with contextlib.suppress(asyncio.CancelledError):
                 await poller
 
-    async def _poll(self, ws: ClientConnection) -> None:
+    async def _poll(self, writer: asyncio.StreamWriter) -> None:
         while True:
-            await ws.send(GET_INFO)
+            writer.write(_client_frame(OPCODE_TEXT, GET_INFO.encode()))
+            await writer.drain()
             await asyncio.sleep(self.poll_interval_s)
 
     async def _emit(self, values: dict[str, float | None]) -> None:
@@ -253,32 +362,41 @@ async def probe(host: str, port: int = 81, timeout_s: float = 20.0) -> int:
     Konfiguration und ändert am Ofen nichts. Wer wissen will, ob die Maestro-Platine über die
     Heimnetz-Adresse antwortet, führt das hier aus, bevor er die Bridge anfasst.
     """
-    url = stove_url(host, port)
-    print(f"verbinde mit {url}")
+    print(f"verbinde mit {stove_url(host, port)}")
+    writer: asyncio.StreamWriter | None = None
     try:
-        async with websockets.connect(url, open_timeout=10) as ws:
-            await ws.send(GET_INFO)
-            async with asyncio.timeout(timeout_s):
-                async for message in ws:
-                    text = (
-                        message if isinstance(message, str) else message.decode("utf-8", "replace")
-                    )
-                    print(f"roh:  {text}")
-                    values = parse_info(text)
-                    if not values:
-                        continue
-                    print(f"info: {readable(values.items())}")
-                    missing = [k for k, v in values.items() if v is None]
-                    if missing:
-                        print(f"ohne Fühler: {', '.join(missing)}")
-                    return 0
+        reader, writer = await _handshake(host, port, timeout_s=10.0)
+        writer.write(_client_frame(OPCODE_TEXT, GET_INFO.encode()))
+        await writer.drain()
+        async with asyncio.timeout(timeout_s):
+            while True:
+                opcode, payload = await _read_frame(reader)
+                if opcode == OPCODE_CLOSE:
+                    print("Ofen hat die Verbindung geschlossen, ohne zu antworten")
+                    return 1
+                if opcode != OPCODE_TEXT:
+                    continue
+                text = payload.decode("utf-8", "replace")
+                print(f"roh:  {text}")
+                values = parse_info(text)
+                if not values:
+                    continue
+                print(f"info: {readable(values.items())}")
+                missing = [k for k, v in values.items() if v is None]
+                if missing:
+                    print(f"ohne Fühler: {', '.join(missing)}")
+                return 0
     except TimeoutError:
         print("kein Info-Rahmen innerhalb der Wartezeit")
         return 1
     except Exception as exc:  # Prüfmodus: jeder Grund soll im Klartext auf dem Schirm stehen
-        print(f"fehlgeschlagen: {exc}")
+        print(f"fehlgeschlagen: {type(exc).__name__}: {exc}")
         return 1
-    return 1
+    finally:
+        if writer is not None:
+            writer.close()
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
 
 
 if __name__ == "__main__":  # pragma: no cover - Prüfmodus von Hand
