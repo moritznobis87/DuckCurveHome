@@ -25,7 +25,7 @@ function ago(ms: number): string {
   return `vor ${Math.round(s / 60)} min`;
 }
 
-/** Der Pairing-Link soll die Adresse tragen, unter der das Haus die Seite kennt – nicht die, über die
+/** Der Pairing-Link soll die Adresse tragen, unter der das Haus die Seite kennt - nicht die, über die
  *  dieser Aufruf zufällig hereinkam. Railway antwortet weiterhin unter *.up.railway.app; ein von dort
  *  kopierter Link führte Gäste an der eigenen Domain vorbei. Vorrang hat darum DCH_PUBLIC_HOST, dann
  *  ein echter Host aus der Anfrage (localhost bleibt für die Entwicklung erhalten), zuletzt die Domain. */
@@ -45,7 +45,7 @@ export default async function SettingsPage() {
   const base = `https://${await publicHost()}`;
   // Die Links tragen die echten Tokens, damit sie sich kopieren und sofort verwenden lassen. Das
   // ist vertretbar, weil diese Seite nur mit Vollzugriff erreichbar ist und pro Anfrage gerendert
-  // wird — aber es heißt auch: wer einen Screenshot dieser Seite bekommt, hat die Schlüssel zum
+  // wird - aber es heißt auch: wer einen Screenshot dieser Seite bekommt, hat die Schlüssel zum
   // Haus. Ist eine Variable nicht gesetzt, bleibt der Platzhalter stehen.
   const kiosk = process.env.DCH_KIOSK_TOKEN || "<DCH_KIOSK_TOKEN>";
   const guest = process.env.DCH_GUEST_TOKEN || "<DCH_GUEST_TOKEN>";
@@ -62,9 +62,9 @@ export default async function SettingsPage() {
         <h2 className="m-0 text-[18px] font-semibold">Zugang einrichten</h2>
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
           Ein Gerät wird einmal über einen Link gepaart und behält danach seine Sitzung. Die Links
-          unten enthalten die echten Tokens und sind sofort verwendbar — behandle sie wie einen
+          unten enthalten die echten Tokens und sind sofort verwendbar - behandle sie wie einen
           Haustürschlüssel. Die Adresse kommt aus
-          <code className="mono mx-1 text-[13px]">DCH_PUBLIC_HOST</code> — so steht hier die eigene Domain,
+          <code className="mono mx-1 text-[13px]">DCH_PUBLIC_HOST</code> - so steht hier die eigene Domain,
           auch wenn du gerade über die Railway-Adresse hereingekommen bist.
         </p>
         <Row
@@ -79,9 +79,9 @@ export default async function SettingsPage() {
         />
         <p className="m-0 text-[14px] leading-[1.6] text-text-3">
           Der Ablauf begrenzt die <em>Sitzung</em>, nicht den Link: Wer ihn aufhebt, kann sich erneut paaren.
-          Um das zu unterbinden, <code className="mono text-[13px]">DCH_GUEST_TOKEN</code> ändern — bestehende
+          Um das zu unterbinden, <code className="mono text-[13px]">DCH_GUEST_TOKEN</code> ändern - bestehende
           Gast-Sitzungen laufen dann regulär ab, neue entstehen nicht mehr.
-          {missing.length ? ` Nicht gesetzt: ${missing.join(", ")} — der Link zeigt dort noch den Platzhalter.` : ""}
+          {missing.length ? ` Nicht gesetzt: ${missing.join(", ")} - der Link zeigt dort noch den Platzhalter.` : ""}
           {!authRequired() ? " Achtung: DCH_SESSION_SECRET ist nicht gesetzt, die Anmeldung ist derzeit deaktiviert." : ""}
         </p>
       </section>
@@ -109,7 +109,7 @@ export default async function SettingsPage() {
         <p className="m-0 text-[14px] leading-[1.6] text-text-3">
           Der Name stammt aus dem Pairing-Link (<code className="mono text-[13px]">&amp;name=…</code>); ohne Angabe
           heißt ein Gast schlicht „gast". Die Liste liegt nur im Arbeitsspeicher: nach einem Neustart des
-          Web-Dienstes ist sie leer. Sie zeigt, wer zusieht — ein Zugriffsprotokoll ist sie nicht.
+          Web-Dienstes ist sie leer. Sie zeigt, wer zusieht - ein Zugriffsprotokoll ist sie nicht.
           Zum Aktualisieren die Seite neu laden.
         </p>
       </section>
@@ -119,7 +119,7 @@ export default async function SettingsPage() {
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
           Die Datenbank ist die einzige Kopie. Ein verwaltetes Volume bei einem Anbieter ist kein
           Archiv: es überlebt keinen gelöschten Zugang und keinen Anbieterwechsel. Einmal im Jahr
-          herunterladen und woanders ablegen — die Dateien sind gzip-komprimiertes CSV und lassen
+          herunterladen und woanders ablegen - die Dateien sind gzip-komprimiertes CSV und lassen
           sich ohne dieses Programm lesen.
         </p>
         <div className="flex flex-col gap-2">
@@ -139,7 +139,7 @@ export default async function SettingsPage() {
           ))}
         </div>
         <p className="m-0 text-[14px] leading-[1.6] text-text-3">
-          Die Stundenbilanz enthält auch die Grundlagen der PV-Abrechnung — Eigenverbrauch,
+          Die Stundenbilanz enthält auch die Grundlagen der PV-Abrechnung - Eigenverbrauch,
           Wiederbeschaffungswert und Umsatzsteuer. Sie gehört zu den Unterlagen, die aufzubewahren
           sind. Ein laufendes Jahr ist naturgemäß unvollständig; für den Abschluss im Januar erneut
           holen.
@@ -149,7 +149,7 @@ export default async function SettingsPage() {
       <section className="flex max-w-[760px] flex-col gap-2">
         <h2 className="m-0 text-[18px] font-semibold">Sichtbarkeit</h2>
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-          Die Seite ist für Suchmaschinen gesperrt — über <code className="mono text-[13px]">robots.txt</code>, den
+          Die Seite ist für Suchmaschinen gesperrt - über <code className="mono text-[13px]">robots.txt</code>, den
           <code className="mono mx-1 text-[13px]">noindex</code>-Meta-Tag und den Header
           <code className="mono mx-1 text-[13px]">X-Robots-Tag</code>. Ein Schutz vor unbefugtem Zugriff ist das
           nicht; dafür sorgt die Anmeldung.

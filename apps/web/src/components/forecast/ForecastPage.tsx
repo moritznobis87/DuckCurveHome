@@ -24,8 +24,8 @@ const C = {
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const REFRESH_MS = 5 * 60_000;
 
-const de = (n: number | null | undefined, digits = 1): string => (n == null ? "–" : n.toFixed(digits).replace(".", ","));
-const pct = (n: number | null | undefined): string => (n == null ? "–" : `${n > 0 ? "+" : ""}${de(n, 1)} %`);
+const de = (n: number | null | undefined, digits = 1): string => (n == null ? "-" : n.toFixed(digits).replace(".", ","));
+const pct = (n: number | null | undefined): string => (n == null ? "-" : `${n > 0 ? "+" : ""}${de(n, 1)} %`);
 const dayLabel = (iso: string): string => new Date(`${iso}T12:00:00`).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
 
 const axisText = { color: C.text, fontFamily: MONO, fontSize: 11 };
@@ -98,7 +98,7 @@ function dailyOption(ev: ForecastEvaluation): EChartsCoreOption {
         if (!ps.length) return "";
         const d = days[ps[0]!.dataIndex];
         const rows = ps.map((p) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:${p.color}">${p.seriesName}</span><span>${de(p.value, 1)} kWh</span></div>`).join("");
-        return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${d ? dayLabel(d.day) : ""}</div>${rows}<div style="margin-top:4px;color:rgba(255,255,255,.6)">Abweichung ${d ? pct(d.energy_error_pct) : "–"} · MAE ${d ? de(d.mae_kw, 2) : "–"} kW</div>`;
+        return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${d ? dayLabel(d.day) : ""}</div>${rows}<div style="margin-top:4px;color:rgba(255,255,255,.6)">Abweichung ${d ? pct(d.energy_error_pct) : "-"} · MAE ${d ? de(d.mae_kw, 2) : "-"} kW</div>`;
       },
     },
     grid: { left: 44, right: 12, top: 24, bottom: 30 },
@@ -155,7 +155,7 @@ function factorOption(ev: ForecastEvaluation): EChartsCoreOption {
         const ps = params as Array<{ dataIndex: number }>;
         const b = bins[ps[0]?.dataIndex ?? 0];
         if (!b) return "";
-        return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">Sonnenhöhe ${b.label_de}</div>Faktor ${de(b.factor, 3)} · gestern ${de(b.previous, 3)}<br/>letztes Ist/Prognose ${b.last_ratio == null ? "–" : de(b.last_ratio, 3)} · ${b.days} Lerntage`;
+        return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">Sonnenhöhe ${b.label_de}</div>Faktor ${de(b.factor, 3)} · gestern ${de(b.previous, 3)}<br/>letztes Ist/Prognose ${b.last_ratio == null ? "-" : de(b.last_ratio, 3)} · ${b.days} Lerntage`;
       },
     },
     grid: { left: 52, right: 12, top: 24, bottom: 30 },
@@ -262,11 +262,11 @@ export function ForecastPage() {
       ) : null}
 
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
-        <Stat label="Heute · Ist bis jetzt" value={todayScore ? de(todayScore.energy_actual_kwh, 1) : "–"} unit="kWh" tone="amber" />
-        <Stat label="Heute · Day-ahead bis jetzt" value={todayScore ? de(todayScore.energy_forecast_kwh, 1) : "–"} unit="kWh" />
-        <Stat label="Heute · Abweichung" value={todayScore ? pct(todayScore.energy_error_pct) : "–"} tone={todayScore?.energy_error_pct != null && Math.abs(todayScore.energy_error_pct) > 15 ? "ember" : undefined} />
-        <Stat label="MAE · 7 Tage" value={mae7 == null ? "–" : de(mae7, 2)} unit="kW" />
-        <Stat label="Tage innerhalb ±15 %" value={recent.length ? `${hits} / ${recent.length}` : "–"} tone="muted" />
+        <Stat label="Heute · Ist bis jetzt" value={todayScore ? de(todayScore.energy_actual_kwh, 1) : "-"} unit="kWh" tone="amber" />
+        <Stat label="Heute · Day-ahead bis jetzt" value={todayScore ? de(todayScore.energy_forecast_kwh, 1) : "-"} unit="kWh" />
+        <Stat label="Heute · Abweichung" value={todayScore ? pct(todayScore.energy_error_pct) : "-"} tone={todayScore?.energy_error_pct != null && Math.abs(todayScore.energy_error_pct) > 15 ? "ember" : undefined} />
+        <Stat label="MAE · 7 Tage" value={mae7 == null ? "-" : de(mae7, 2)} unit="kW" />
+        <Stat label="Tage innerhalb ±15 %" value={recent.length ? `${hits} / ${recent.length}` : "-"} tone="muted" />
       </div>
 
       <Card style={{ padding: 16, height: 340 }}>
@@ -345,7 +345,7 @@ export function ForecastPage() {
           </div>
         </Card>
         <Card style={{ padding: 18 }}>
-          <CardHead title="Quellen und Gewichte" right={`Ist/Prognose gesamt ${st ? de(st.k_global, 2) : "–"}`} />
+          <CardHead title="Quellen und Gewichte" right={`Ist/Prognose gesamt ${st ? de(st.k_global, 2) : "-"}`} />
           <table className="mt-3 w-full border-collapse text-[13px]">
             <thead>
               <tr className="kicker text-left" style={{ fontSize: 11 }}>
@@ -360,14 +360,14 @@ export function ForecastPage() {
                 <tr key={s.name} className="border-t border-line-1">
                   <td className="py-2 text-text-1">{s.label_de}<div className="mono text-[11px] text-text-3">{s.name}</div></td>
                   <td className="mono py-2 text-right text-text-1">{de(s.weight, 2)}</td>
-                  <td className="mono py-2 text-right text-text-1">{s.mae_7d_kw == null ? "–" : `${de(s.mae_7d_kw, 2)} kW`}</td>
+                  <td className="mono py-2 text-right text-text-1">{s.mae_7d_kw == null ? "-" : `${de(s.mae_7d_kw, 2)} kW`}</td>
                   <td className="mono py-2 text-right text-[11px] uppercase tracking-[.1em]" style={{ color: s.active ? "var(--amber)" : "var(--text-3)" }}>{s.active ? "aktiv" : "aus"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="mt-4 text-[12px] leading-[1.55] text-text-3">
-            Weitere Quellen (forecast.solar, Solcast aus Home Assistant) kommen mit der Bridge dazu und werden hier nach ihrer Güte gewichtet. Bias 7 Tage: {bias7 == null ? "–" : `${de(bias7, 2)} kW`} · aufbewahrte Läufe: {ev?.runs_kept ?? "–"}.
+            Weitere Quellen (forecast.solar, Solcast aus Home Assistant) kommen mit der Bridge dazu und werden hier nach ihrer Güte gewichtet. Bias 7 Tage: {bias7 == null ? "-" : `${de(bias7, 2)} kW`} · aufbewahrte Läufe: {ev?.runs_kept ?? "-"}.
           </p>
         </Card>
       </div>

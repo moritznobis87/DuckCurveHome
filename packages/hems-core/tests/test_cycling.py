@@ -25,7 +25,7 @@ def test_a_run_is_consecutive_minutes_above_the_threshold() -> None:
 
 
 def test_standby_power_does_not_count_as_a_run() -> None:
-    """Umwälzpumpe und Elektronik laufen weiter — ohne Schwelle wäre alles ein Dauerlauf."""
+    """Umwälzpumpe und Elektronik laufen weiter - ohne Schwelle wäre alles ein Dauerlauf."""
     assert compressor_runs(series([0.2, 0.3, 0.25, 0.2]), ON) == []
 
 

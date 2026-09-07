@@ -2,10 +2,10 @@
 
 Die Prüfung trennt zwei Arten von Befunden:
 
-* **Rechnerisch** – nur aus der Rechnung selbst: Preis × Menge je Position, Zwischensummen, Mehrwertsteuer,
+* **Rechnerisch** - nur aus der Rechnung selbst: Preis × Menge je Position, Zwischensummen, Mehrwertsteuer,
   Durchschnittspreis, Grundgebühr nach Tagen, Zählerstandsdifferenz. Diese Befunde sind hart: eine Abweichung
   über die Rundungstoleranz hinaus ist ein Rechenfehler.
-* **Abgleich** – gegen unsere Messung und die gespeicherte Tibber-Preisreihe. Diese Befunde sind Hinweise:
+* **Abgleich** - gegen unsere Messung und die gespeicherte Tibber-Preisreihe. Diese Befunde sind Hinweise:
   unser Netzzähler ist eine CT-Messung, nicht der geeichte Zähler, und unsere Datenabdeckung ist selten 100 %.
 """
 
@@ -85,7 +85,7 @@ class InvoicePosition(BaseModel):
     label: str
     group: str
     ct_per_kwh: float
-    ct_decimals: int  # angegebene Nachkommastellen – bestimmt die Rundungstoleranz
+    ct_decimals: int  # angegebene Nachkommastellen - bestimmt die Rundungstoleranz
     amount_eur: float
 
 
@@ -142,7 +142,7 @@ class InvoiceFinding(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def delta(self) -> float | None:
-        """Abweichung der Rechnung von der Erwartung – im Web direkt anzeigbar."""
+        """Abweichung der Rechnung von der Erwartung - im Web direkt anzeigbar."""
         if self.expected is None or self.actual is None:
             return None
         return round(self.actual - self.expected, 4)
@@ -313,7 +313,7 @@ def _euro(v: float) -> str:
 
 
 def _de(v: float, digits: int = 2) -> str:
-    """Zahl in deutscher Schreibweise – die Befunde werden unverändert angezeigt."""
+    """Zahl in deutscher Schreibweise - die Befunde werden unverändert angezeigt."""
     return f"{v:,.{digits}f}".replace(",", "@").replace(".", ",").replace("@", ".")
 
 
@@ -324,7 +324,7 @@ def _price_tolerance(pos: InvoicePosition, kwh: float) -> float:
 
 
 def check_invoice(inv: TibberInvoice) -> list[InvoiceFinding]:
-    """Rein rechnerische Prüfung der Rechnung – ohne eigene Messwerte."""
+    """Rein rechnerische Prüfung der Rechnung - ohne eigene Messwerte."""
     out: list[InvoiceFinding] = []
 
     for pos in inv.positions:
@@ -523,7 +523,7 @@ class MeasuredPeriod(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     import_kwh: float
-    coverage: float | None = None  # Anteil bewerteter Minuten (0–1)
+    coverage: float | None = None  # Anteil bewerteter Minuten (0-1)
     avg_price_ct_kwh: float | None = None  # bezugsgewichteter Mittelwert der Tibber-Preise (brutto)
 
 
@@ -548,7 +548,7 @@ def compare_with_measurement(
                 unit="%",
             )
         )
-    # Unter der Hälfte wird nicht hochgerechnet – daraus ließe sich kein belastbarer Vergleich bilden.
+    # Unter der Hälfte wird nicht hochgerechnet - daraus ließe sich kein belastbarer Vergleich bilden.
     scaled = measured.import_kwh / cov if cov and cov >= 0.5 else measured.import_kwh
     if scaled <= 0:
         out.append(
@@ -576,7 +576,7 @@ def compare_with_measurement(
                         if cov and cov < 0.98
                         else ""
                     )
-                    + f", Rechnung {inv.kwh:.2f} kWh – Abweichung {deviation:.1f} %."
+                    + f", Rechnung {inv.kwh:.2f} kWh - Abweichung {deviation:.1f} %."
                 ),
                 expected=round(scaled, 2),
                 actual=inv.kwh,

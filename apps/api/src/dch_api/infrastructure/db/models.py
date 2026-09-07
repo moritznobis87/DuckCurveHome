@@ -46,7 +46,7 @@ class MeasurementRaw(Base):
 
 
 class MeasurementMinute(Base):
-    """Minutenmittel aller Messreihen – das dauerhafte Gedächtnis der Anlage.
+    """Minutenmittel aller Messreihen - das dauerhafte Gedächtnis der Anlage.
 
     Eine Zeile je Minute mit einer Spalte je Reihe, nicht eine Zeile je Messwert. Postgres schlägt pro
     Zeile rund 27 Byte Kopf auf; im schmalen Format (Schlüssel, Zeit, Wert) zahlt man den für jeden
@@ -54,7 +54,7 @@ class MeasurementMinute(Base):
     1 GB in zehn Jahren und der Grund, warum Minutenauflösung dauerhaft tragbar ist.
 
     Die Spalten entsprechen `infrastructure.history.SERIES`; ein Test hält beides zusammen. Reihen ohne
-    eigene Spalte — weitere Aktoren, später ergänzte Sensoren — landen in `extra`, damit nichts
+    eigene Spalte - weitere Aktoren, später ergänzte Sensoren - landen in `extra`, damit nichts
     stillschweigend verloren geht; sie können jederzeit zu Spalten befördert werden.
 
     Diese Tabelle wird nie gelöscht. Gelöscht werden nur die Rohwerte, aus denen sie entsteht.
@@ -213,7 +213,7 @@ class ModelCalibration(Base):
 
 
 class EnergyHour(Base):
-    """Energiebilanz je Stunde (Quellen, Verbraucher, Geld) – Grundlage der Detailseiten."""
+    """Energiebilanz je Stunde (Quellen, Verbraucher, Geld) - Grundlage der Detailseiten."""
 
     __tablename__ = "energy_hourly"
     hour_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)

@@ -37,7 +37,7 @@ def _totals(hours) -> EnergyTotalsOut:
 
 
 def test_heat_pump_running_in_cheap_hours_shows_an_advantage() -> None:
-    # 18 teure Stunden ohne WP, 6 günstige mit WP — das günstigste Viertel von 24 Stunden sind 6
+    # 18 teure Stunden ohne WP, 6 günstige mit WP - das günstigste Viertel von 24 Stunden sind 6
     hours = [_hour(i, price_ct=45.0, import_kwh=2.0, hp_kwh=0.0, hp_grid=0.0) for i in range(18)]
     hours += [
         _hour(i, price_ct=15.0, import_kwh=3.0, hp_kwh=3.0, hp_grid=3.0) for i in range(18, 24)
@@ -79,7 +79,7 @@ def _row(t: float, hp: float) -> dict[str, float | str | None]:
 
 
 def test_buffer_gain_without_the_heat_pump_is_flagged_as_foreign_heat() -> None:
-    """Der Puffer wird wärmer, obwohl die Wärmepumpe steht — beim Kombipuffer der Pelletofen."""
+    """Der Puffer wird wärmer, obwohl die Wärmepumpe steht - beim Kombipuffer der Pelletofen."""
     cfg = BufferConfig()
     series = [_row(40.0, 0.0), _row(45.0, 0.0), _row(50.0, 0.0)]
     b = _buffer_balance(series, cfg)

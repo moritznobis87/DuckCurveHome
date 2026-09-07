@@ -1,4 +1,4 @@
-# ADR-0001 – Geräteschicht und Hosting (offen, Entscheidung vor Phase 2)
+# ADR-0001 - Geräteschicht und Hosting (offen, Entscheidung vor Phase 2)
 
 **Status:** angenommen und bestätigt (2026-09-04: Railway als Hosting, kein Nabu Casa, Home Assistant OS) · **Datum:** 2026-09-04
 
@@ -11,7 +11,7 @@ Der bisher gebaute Code (Domäne, Regler, API, Dashboard) ist von beiden Fragen 
 
 ## Optionen
 
-| | A – lokal, direkte Adapter | B – Railway + eigene Bridge | **C – Railway + HA als Geräteschicht** |
+| | A - lokal, direkte Adapter | B - Railway + eigene Bridge | **C - Railway + HA als Geräteschicht** |
 |---|---|---|---|
 | Geräte | Shelly MQTT/RPC, MyEnergi-Cloud, SolarEdge Modbus selbst implementiert | wie A, in der Bridge | HA WebSocket-API liefert alle Entitäten; Schalten über HA-Dienste |
 | Datenbank | Postgres im Compose auf dem Pi | Railway-Postgres | Railway-Postgres |
@@ -43,6 +43,6 @@ abonniert, kann der Worker direkt auf die HA-WebSocket-API zugreifen; der Adapte
 - Phase 2 baut: PostgreSQL mit Alembic auf Railway, `integrations/home_assistant` (Adapter, Entity-Mapping),
   `apps/bridge` als HA-Add-on (Repository-Struktur für lokale Add-ons), Bridge-Ingest in der API mit
   Device-Token, Tibber- und Wetter-Provider, PV-Forecast v1, Railway-Konfiguration.
-- Die Rückfallebenen bleiben: Shelly-Auto-Off als Geräteeinstellung (E0), HA-Automation als Wächter (E1) – sie
-  läuft auf demselben Host wie das Add-on und überwacht dessen Heartbeat-Entität –, TTL im Regler (E2/E3).
+- Die Rückfallebenen bleiben: Shelly-Auto-Off als Geräteeinstellung (E0), HA-Automation als Wächter (E1) - sie
+  läuft auf demselben Host wie das Add-on und überwacht dessen Heartbeat-Entität -, TTL im Regler (E2/E3).
 - Docker Compose bleibt für Entwicklung und Demo; Profil A (alles lokal) bleibt technisch möglich.

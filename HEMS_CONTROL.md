@@ -6,7 +6,7 @@ Simulation betrieben und ab Phase 4 gegen die echten Shelly-Kontakte. Er steuert
 | Kontakt | Bedeutung | Regler-Ausgang |
 |---|---|---|
 | K1 „PV-Überschuss“ | Anforderung an die Wärmepumpe, mehr Wärme zu erzeugen | `k1_release` |
-| K2 „Netzbetreiber-Shutdown“ | Sperre | `k2_block` – in Phase 1–4 immer `false` |
+| K2 „Netzbetreiber-Shutdown“ | Sperre | `k2_block` - in Phase 1-4 immer `false` |
 
 Ob die Wärmepumpe läuft, wird aus der elektrischen Leistung (Shelly 3EM) abgeleitet (`HeatPumpTracker`,
 Schwelle 0,5 kW, Entprellung 60 s). Mindestlaufzeit und Mindestauszeit beziehen sich auf diesen Ist-Zustand.

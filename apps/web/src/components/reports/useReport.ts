@@ -9,7 +9,7 @@ const REFRESH_MS = 5 * 60_000;
 export const ALL_PERIODS: Period[] = ["day", "week", "month", "year"];
 
 function describe(e: unknown): string {
-  if (e instanceof ApiError) return e.status === 401 || e.status === 403 ? "Nicht angemeldet – bitte Gerät koppeln." : e.message;
+  if (e instanceof ApiError) return e.status === 401 || e.status === 403 ? "Nicht angemeldet - bitte Gerät koppeln." : e.message;
   return "Daten konnten nicht geladen werden.";
 }
 
@@ -46,7 +46,7 @@ export function useReport<T>(loader: (period: Period, anchor: string) => Promise
   return { data, error, loading };
 }
 
-/** Dieselbe Kennzahl für heute, diese Woche, diesen Monat und dieses Jahr – alle vier Zeiträume auf einmal. */
+/** Dieselbe Kennzahl für heute, diese Woche, diesen Monat und dieses Jahr - alle vier Zeiträume auf einmal. */
 export function useMultiPeriod<T>(loader: (period: Period, anchor: string) => Promise<T>): Partial<Record<Period, T>> {
   const [out, setOut] = useState<Partial<Record<Period, T>>>({});
   useEffect(() => {

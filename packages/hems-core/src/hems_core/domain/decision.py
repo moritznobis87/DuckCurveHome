@@ -1,4 +1,4 @@
-"""Entscheidung des Reglers – strukturiert, erklärbar, mit Gültigkeit."""
+"""Entscheidung des Reglers - strukturiert, erklärbar, mit Gültigkeit."""
 
 from __future__ import annotations
 

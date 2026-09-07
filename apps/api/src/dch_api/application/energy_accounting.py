@@ -64,7 +64,7 @@ ENERGY_KEYS = [
     "buffer_temp_bottom_c",
 ]
 # Kennzahlen der Jahreskarte. Energien werden über zusammenfallende Stunden addiert, Preise und
-# Quoten gemittelt – bei der Zeitumstellung im Herbst fällt eine Ortsstunde doppelt an.
+# Quoten gemittelt - bei der Zeitumstellung im Herbst fällt eine Ortsstunde doppelt an.
 ENERGY_METRICS = (
     "pv_kwh",
     "house_kwh",
@@ -135,10 +135,10 @@ def _price_quality(
 
     Gemessen wird das Ergebnis, nicht die Regeltreue: was der Wärmepumpenstrom aus dem Netz
     tatsächlich gekostet hat, gegen den Mittelpreis des Hausbezugs im selben Zeitraum. Die Zahlen
-    stehen bereits in der Stundenbilanz — `heat_pump_cost_eur` ist Netzanteil × Preis der Stunde.
+    stehen bereits in der Stundenbilanz - `heat_pump_cost_eur` ist Netzanteil × Preis der Stunde.
 
     Ein Vergleich gegen den *geplanten* Fahrplan wäre die naheliegende Alternative, ist aber nicht
-    möglich: Pläne werden bisher nicht gespeichert. Das Ergebnis ist ohnehin die ehrlichere Frage —
+    möglich: Pläne werden bisher nicht gespeichert. Das Ergebnis ist ohnehin die ehrlichere Frage -
     ein Plan, der perfekt eingehalten wird und trotzdem teuer ist, hilft niemandem.
     """
     hp_grid = sum(h.heat_pump_grid_kwh for h, _ in hours)
@@ -176,7 +176,7 @@ def _price_quality(
         )
     elif advantage < -0.5:
         note = (
-            f"Der Wärmepumpenstrom war {-advantage:.2f} ct/kWh teurer als der Hausdurchschnitt —"
+            f"Der Wärmepumpenstrom war {-advantage:.2f} ct/kWh teurer als der Hausdurchschnitt -"
             " sie lief überwiegend in den teuren Stunden."
         )
     else:
@@ -203,7 +203,7 @@ _BUFFER_KEYS = (
 def _buffer_balance(series: list[MinuteRow], cfg: BufferConfig) -> BufferBalanceOut:
     """Energieinhalt des Puffers über den Tag und wer ihn gefüllt hat.
 
-    Zunahmen, während die Wärmepumpe steht, sind Fremdwärme — beim Kombipuffer der Pelletofen.
+    Zunahmen, während die Wärmepumpe steht, sind Fremdwärme - beim Kombipuffer der Pelletofen.
     Die Rechnung ist eine Untergrenze: läuft gleichzeitig die Heizung, wird ein Teil der zugeführten
     Wärme sofort wieder entnommen und taucht hier nie auf.
     """
@@ -231,7 +231,7 @@ def _buffer_balance(series: list[MinuteRow], cfg: BufferConfig) -> BufferBalance
         else:
             drop -= d
     note = (
-        f"{without_hp:.1f} kWh kamen in den Puffer, während die Wärmepumpe stand — beim"
+        f"{without_hp:.1f} kWh kamen in den Puffer, während die Wärmepumpe stand - beim"
         " Kombipuffer der Pelletofen. Untergrenze: gleichzeitige Entnahme ist darin nicht enthalten."
         if without_hp > 0.2
         else "Keine nennenswerte Wärmezufuhr ohne laufende Wärmepumpe."
@@ -330,7 +330,7 @@ class EnergyAccounting:
         order = sorted(by_hour)
         # Das Herkunftskonto des Speichers läuft über die Stunden weiter; ohne den Anschluss an die
         # vorige Stunde begänne jede Neuberechnung mit leerem Konto und hielte die erste Entladung
-        # danach für PV. Fehlt die Vorstunde, bleibt es leer – dann wird die Schätzung ausgewiesen.
+        # danach für PV. Fehlt die Vorstunde, bleibt es leer - dann wird die Schätzung ausgewiesen.
         origin = await self._origin_before(order[0]) if order else BatteryOrigin()
         capacity = self.hems.battery.capacity_kwh
         for hour_start in order:
@@ -394,7 +394,7 @@ class EnergyAccounting:
     async def recompute(self, start: datetime, end: datetime) -> int:
         """Stunden eines Zeitraums aus Minutenwerten neu berechnen (nach nachgetragenen Messwerten).
 
-        Eine gespeicherte Stunde mit mehr bewerteten Minuten (z. B. aus einem Historienimport) bleibt stehen –
+        Eine gespeicherte Stunde mit mehr bewerteten Minuten (z. B. aus einem Historienimport) bleibt stehen -
         Teildaten aus der Cloud dürfen eine vollständige Stunde nicht ersetzen.
 
         Gerechnet wird tageweise. Ein Backfill darf 62 Tage umfassen; die auf einmal zu laden wären
@@ -467,7 +467,7 @@ class EnergyAccounting:
 
         Gruppiert wird nach **Ortszeit**: die Stundenzeilen sollen die Sonne zeigen, nicht die
         Zeitzone. Die Umstellung im Frühjahr lässt eine Stunde leer, die im Herbst legt zwei
-        UTC-Stunden auf dieselbe Ortsstunde — Energien werden dort addiert, Preise und Quoten
+        UTC-Stunden auf dieselbe Ortsstunde - Energien werden dort addiert, Preise und Quoten
         gemittelt, was beides der Wirklichkeit entspricht.
 
         Fehlende Stunden bleiben `None`. Sie als 0 auszuweisen wäre die bequeme Lüge: eine Lücke in

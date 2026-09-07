@@ -1,8 +1,8 @@
-"""energy_hourly – Eigenverbrauch, Herkunft der Speicherentladung, Wiederbeschaffungswert
+"""energy_hourly - Eigenverbrauch, Herkunft der Speicherentladung, Wiederbeschaffungswert
 
 Fünf Spalten für die steuerliche Auswertung der PV. Vier davon sind Summanden wie die übrigen Energien
 und Beträge; battery_pv_stored_kwh und battery_grid_stored_kwh sind ein Bestand am Stundenende und
-dürfen nicht aufsummiert werden – sie stehen hier, damit eine Neuberechnung das Herkunftskonto des
+dürfen nicht aufsummiert werden - sie stehen hier, damit eine Neuberechnung das Herkunftskonto des
 Speichers dort fortsetzen kann, wo die vorige Rechnung es verlassen hat.
 
 Bestehende Zeilen bekommen 0,0. Sie sind damit nicht falsch, sondern unbewertet: für Zeiträume vor

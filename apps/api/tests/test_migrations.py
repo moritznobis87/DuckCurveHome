@@ -1,12 +1,12 @@
 """Die Migrationskette muss dasselbe Schema erzeugen wie die Modelle.
 
-Ohne diese Prüfung fällt eine vergessene Migration erst beim Deploy auf — dann steht die API, und
+Ohne diese Prüfung fällt eine vergessene Migration erst beim Deploy auf - dann steht die API, und
 die Datenbank ist in einem Zustand, den niemand vorhergesehen hat. Alembic läuft dabei als eigener
 Prozess, genau wie beim Deploy; env.py startet eine eigene Ereignisschleife und ließe sich aus einem
 laufenden Test heraus nicht aufrufen.
 
 Geprüft wird gegen SQLite. Die Spaltentypen unterscheiden sich von PostgreSQL, die Tabellen- und
-Spaltennamen nicht — und genau die gehen beim Nachtragen verloren.
+Spaltennamen nicht - und genau die gehen beim Nachtragen verloren.
 """
 
 from __future__ import annotations

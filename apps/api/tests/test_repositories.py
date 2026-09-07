@@ -186,7 +186,7 @@ async def test_minute_rollup_is_repeatable(repos: SqlRepositories) -> None:
 
 
 async def test_minute_columns_match_history_series() -> None:
-    """Spalten und Reihen dürfen nicht auseinanderlaufen – sonst fiele eine Reihe still in extra."""
+    """Spalten und Reihen dürfen nicht auseinanderlaufen - sonst fiele eine Reihe still in extra."""
     from dch_api.infrastructure.db import models as m
     from dch_api.infrastructure.db.repositories import MINUTE_COLUMNS
     from dch_api.infrastructure.history import SERIES

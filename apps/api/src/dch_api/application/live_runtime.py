@@ -748,7 +748,7 @@ class LiveRuntime:
             await asyncio.sleep(3600)
             with contextlib.suppress(Exception):
                 # Erst verdichten, dann löschen. Andersherum verschwänden Rohwerte, deren Minute noch
-                # nicht im dauerhaften Bestand steht – und die sind dann für immer weg.
+                # nicht im dauerhaften Bestand steht - und die sind dann für immer weg.
                 await self._rollup_minutes(self.now)
                 deleted = await self.repos.prune_raw(
                     timedelta(days=self.settings.raw_retention_days)

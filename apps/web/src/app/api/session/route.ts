@@ -5,7 +5,7 @@ import { SESSION_COOKIE, authRequired, verifySession } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 /**
- * Rolle der laufenden Sitzung. Die Oberfläche blendet danach aus, was ein Gast ohnehin nicht darf –
+ * Rolle der laufenden Sitzung. Die Oberfläche blendet danach aus, was ein Gast ohnehin nicht darf -
  * verboten wird es im Proxy, hier geht es nur darum, keine toten Knöpfe zu zeigen.
  *
  * Nebenbei hält der regelmäßige Aufruf die Anwesenheitsliste aktuell.

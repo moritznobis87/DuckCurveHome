@@ -1,4 +1,4 @@
-# Duck Curve Home – Projektplan (Phase 0)
+# Duck Curve Home - Projektplan (Phase 0)
 
 **Stand:** 4. September 2026 · **Status:** Analyse und Architekturvorschlag, noch keine Implementierung
 **Repository:** `moritznobis87/DuckCurveHome` · **Branch:** `claude/duck-curve-home-project-9vfe9h`
@@ -11,8 +11,8 @@ Wärmepumpe als flexible thermische Last. Der primäre Bildschirm ist ein wandmo
 Assistant noch von der bestehenden InfluxDB ab. Ein lokaler Agent („Bridge“) spricht direkt mit den Geräten (Shelly,
 MyEnergi, SolarEdge) und den Cloud-Diensten (Tibber, Wetter); alle Daten liegen in einer eigenen PostgreSQL-Datenbank.
 Home Assistant kann parallel weiterlaufen, wird aber weder gelesen noch geschrieben. Da damit alle Datenquellen und
-Aktoren im Haus liegen, stellt Abschnitt 15 zwei Hosting-Profile gegenüber – **lokaler Mini-Rechner (empfohlen)**
-oder **Railway mit Bridge** – und bittet um eine Entscheidung vor Phase 2.
+Aktoren im Haus liegen, stellt Abschnitt 15 zwei Hosting-Profile gegenüber - **lokaler Mini-Rechner (empfohlen)**
+oder **Railway mit Bridge** - und bittet um eine Entscheidung vor Phase 2.
 
 **Stand (4. September 2026):** Phase 1 (Demo-Modus) umgesetzt; Phase 2 (Read-only Live) im Code fertig: Bridge als
 HA-Add-on, PostgreSQL mit Alembic, Bridge-Ingest, Live-Runtime, Tibber, Open-Meteo, Kiosk-Anmeldung, Railway-Konfiguration
@@ -70,7 +70,7 @@ Plan ist Neubau.
 
 ### 1.2 Duckcurve_Website (`moritznobis87/Duckcurve_Website`)
 
-**Zweck:** öffentliche Marketing-Website `www.duckcurve.de` für „Duck Curve – Energy Investment Analytics“ (die
+**Zweck:** öffentliche Marketing-Website `www.duckcurve.de` für „Duck Curve - Energy Investment Analytics“ (die
 valyze-Anwendung läuft unter `app.duckcurve.de`).
 
 **Technik:**
@@ -81,7 +81,7 @@ valyze-Anwendung läuft unter `app.duckcurve.de`).
 | Styling | **eine** handgeschriebene `app/globals.css` (≈87 KB, ~150 Klassen), CSS-Custom-Properties als Tokens. Tailwind 4 ist als PostCSS-Plugin installiert, aber praktisch nicht verwendet (keine Utility-Klassen im Markup) |
 | Schriften | IBM Plex Sans 400/600 und IBM Plex Mono 400 als lokale OTF in `public/brand/`, per `@font-face` |
 | Komponenten | Server Components ohne eigene Client-Komponenten (bewusst: „Seite funktioniert ohne JavaScript“); mobile Navigation als `<details>` |
-| Visuals | alle Diagramme als reines SVG/CSS in `app/visuals.tsx` – keine Chart-Bibliothek |
+| Visuals | alle Diagramme als reines SVG/CSS in `app/visuals.tsx` - keine Chart-Bibliothek |
 | Hosting | Node-Worker (`worker/kern.ts`, `worker/node.ts`) für Railway; alternativ Cloudflare-Worker (`worker/index.ts`). Sitzung, Einwilligungsbanner, Messung, Rate-Limit (`worker/schutz.ts`) und Sicherheits-Header laufen im Worker, nicht in Next |
 | Daten | keine eigene Datenbank; Kontaktanfragen und Messung gehen an die valyze-API (`worker/api.ts`, `WEBSITE_SCHLUESSEL`) |
 | Tests | `tests/rendered-html.test.mjs` (node:test) prüft das **gerenderte** HTML des Workers, nicht Quelltext |
@@ -144,8 +144,8 @@ Amber = Hauptserie, Mist = Referenz, gestrichelt (7 7) = Vergleichsserie.
 |---|---|
 | Farb-Tokens `--petrol --deep --amber --amber-soft --mist --paper --cloud --ink --line` | 1:1 als Basis-Tokens, ergänzt um Dashboard-Semantik |
 | IBM Plex Sans 400/600, IBM Plex Mono 400 (lokale OTF) | gleiche Dateien, gleiche Gewichte; Mono für alle Zahlen |
-| Kicker-Stil (Mono, Versalien, 0,13 em) | für Kartentitel und Achsenbeschriftungen, auf 12–13 px vergrößert |
-| Radien 2/3/6 px, 1-px-Linien mit 0,10–0,17 Alpha, Glas-Header | identisch |
+| Kicker-Stil (Mono, Versalien, 0,13 em) | für Kartentitel und Achsenbeschriftungen, auf 12-13 px vergrößert |
+| Radien 2/3/6 px, 1-px-Linien mit 0,10-0,17 Alpha, Glas-Header | identisch |
 | Dunkelkarte `#123544` auf `--deep`, Hover `#173f50` | Kartenhierarchie des Dashboards |
 | Chart-Grammatik: Grid 0,09, Achse 0,20, Achsentext 0,42, Linien 3,5 px rund, Amber = Hauptserie, Mist = Referenz, 7-7-Strich = Vergleich/Prognose, Labels als `rx=3`-Rechteck mit Amber-Mono-Text | als ECharts-Theme umgesetzt |
 | Bewegungssprache: 0,18 s `ease`, `translateY(-2px)` Hover, `prefers-reduced-motion` respektiert | identisch; Flussanimation wird unter `reduce` statisch |
@@ -165,7 +165,7 @@ Amber = Hauptserie, Mist = Referenz, gestrichelt (7 7) = Vergleichsserie.
 | CI | Python ohne CI | ruff + mypy + pytest + Alembic-Check bei jedem Push | Regler-Code ohne CI ist im Heizungsumfeld nicht vertretbar |
 | Migrationen | nur manuell | automatisch im Deploy für additive Migrationen; destruktive nur manuell mit Gate | ein Betreiber, viele Deploys; Verfahren in 23.4 |
 | Docstrings | sehr lang | kurz; Entscheidungen in `docs/decisions/ADR-xxx.md` | Navigierbarkeit |
-| Zeitauflösung | stündlich | 15 Minuten als Planungsraster, 1 s–10 s Live | Tibber-Viertelstundenpreise, Regler-Dynamik |
+| Zeitauflösung | stündlich | 15 Minuten als Planungsraster, 1 s-10 s Live | Tibber-Viertelstundenpreise, Regler-Dynamik |
 | Zustandsverwaltung Frontend | keine | ein kleiner Store (Zustand) für den Live-State + SSE-Client | Dutzende Komponenten hängen an demselben Live-Snapshot |
 
 ## 3. Vorgeschlagene Gesamtarchitektur
@@ -173,7 +173,7 @@ Amber = Hauptserie, Mist = Referenz, gestrichelt (7 7) = Vergleichsserie.
 ### 3.1 Leitgedanken
 
 1. **Eigenständig.** Duck Curve Home hat eigene Geräteintegrationen, eine eigene Datenbank und eine eigene
-   Steuerlogik. Home Assistant und InfluxDB sind keine Abhängigkeiten – weder für Daten noch für Schaltbefehle. Sie
+   Steuerlogik. Home Assistant und InfluxDB sind keine Abhängigkeiten - weder für Daten noch für Schaltbefehle. Sie
    dürfen weiterlaufen; Abschnitt 8.7 beschreibt, worauf beim Parallelbetrieb zu achten ist.
 2. **Das Haus bleibt ohne Duck Curve Home funktionsfähig.** MyEnergi-HEMS und die Wärmepumpen-Regelung arbeiten wie
    heute weiter. Duck Curve Home greift nur über die zwei dafür vorgesehenen potenzialfreien Kontakte ein. Jeder
@@ -201,8 +201,8 @@ Amber = Hauptserie, Mist = Referenz, gestrichelt (7 7) = Vergleichsserie.
 │  │   ┌──────────────────────────────────────────▼──────────────────────────────┐            │
 │  │   │  duckcurve-bridge (Python, Docker-Compose auf einem Mini-Rechner)       │            │
 │  │   │  • integrations/shelly     MQTT-Abonnent, RPC-Client, Auto-Off-Timer     │            │
-│  │   │  • integrations/myenergi   Cloud-API (Zappi, Libbi, Harvi) alle 10–15 s  │◄── Cloud   │
-│  │   │  • integrations/solaredge  Modbus TCP (SunSpec) lokal, 1–2 s             │◄── Inverter│
+│  │   │  • integrations/myenergi   Cloud-API (Zappi, Libbi, Harvi) alle 10-15 s  │◄── Cloud   │
+│  │   │  • integrations/solaredge  Modbus TCP (SunSpec) lokal, 1-2 s             │◄── Inverter│
 │  │   │  • Normalisierung, Vorzeichen, Qualität, lokaler Ringpuffer (SQLite)     │            │
 │  │   │  • Kommando-Ausführung mit TTL + Ack, lokaler Wächterprozess (Guardian)  │            │
 │  │   │  • Status-Seite http://bridge.local:8080 (nur LAN)                       │            │
@@ -221,7 +221,7 @@ Amber = Hauptserie, Mist = Referenz, gestrichelt (7 7) = Vergleichsserie.
 │                                         └───────────────┬──────────────────────────────┘   │
 │                                                         │ SQLAlchemy async                 │
 │  ┌──────────────────────────────────┐                   ▼                                  │
-│  │  worker (gleiches Python-Image)  │◄──────────► PostgreSQL (Railway) – EINZIGE Datenbank │
+│  │  worker (gleiches Python-Image)  │◄──────────► PostgreSQL (Railway) - EINZIGE Datenbank │
 │  │  • Control-Loop (10 s Takt)      │              Rohmesswerte (partitioniert, gestuft),   │
 │  │  • Forecast-Jobs (Wetter/PV/Preis)│             Aggregate, Konfiguration, Entscheidungen,│
 │  │  • Planner (alle 15 min)         │              Forecasts, Pläne, Events                 │
@@ -245,7 +245,7 @@ Antwort), MQTT dient dem Lesen.
 
 **Warum Control-Loop in der Cloud und nicht auf der Bridge?** Deployment, Beobachtbarkeit, Tests und Konfiguration
 sind in der Cloud einfacher; Latenz spielt bei einem 10-Sekunden-Takt keine Rolle. Bei Internet-Ausfall findet keine
-Optimierung statt – akzeptabel, weil die Wärmepumpe dann in ihre eigene Regelung zurückfällt (Safety-Konzept). Der
+Optimierung statt - akzeptabel, weil die Wärmepumpe dann in ihre eigene Regelung zurückfällt (Safety-Konzept). Der
 Regler-Kern ist I/O-frei und kann in einer späteren Phase auf der Bridge laufen, wenn Offline-Optimierung gewünscht
 wird.
 
@@ -281,10 +281,10 @@ Zuordnung (z. B. `shellyplus1-abc/status/switch:0 → hp_release_contact`) ist K
 
 ## 4. Datenfluss
 
-### 4.1 Live-Pfad (Ziel: 1–5 s Ende-zu-Ende)
+### 4.1 Live-Pfad (Ziel: 1-5 s Ende-zu-Ende)
 
 ```
-Shelly (MQTT push ≈ 1 s) · SolarEdge (Modbus 1–2 s) · MyEnergi (Cloud-Poll 10–15 s)
+Shelly (MQTT push ≈ 1 s) · SolarEdge (Modbus 1-2 s) · MyEnergi (Cloud-Poll 10-15 s)
   → Bridge: Normalisierung (Einheit, Vorzeichen, Qualität, observed_at je Quelle)
   → Bridge: Ringpuffer (SQLite, 7 Tage Rohwerte) + Telemetrie-Frame alle 1 s (nur Änderungen) → WSS → api
   → api: LiveState.apply(frame) → EnergySnapshot (vollständig, mit Qualitätsflags, Bilanzprüfung)
@@ -327,7 +327,7 @@ worker: ControlTick (10 s)
 
 ```
 worker: alle 15 min + bei neuen Preisen/Forecasts/Modus-Wechsel
-  → Forecast-Refresh (Wetter 1 h, PV 1 h, Preise 13:00–15:00 für morgen, danach stündlich)
+  → Forecast-Refresh (Wetter 1 h, PV 1 h, Preise 13:00-15:00 für morgen, danach stündlich)
   → HeatDemandModel (48 h, 15 min) → BufferModel-Simulation
   → Planner erzeugt Plan[96] mit reason je Intervall → plans/plan_intervals
   → Dashboard: Plan-Fenster im 24h-Chart, Intelligence Card „Nächste Aktion“
@@ -349,20 +349,20 @@ geprüft. Ergebnis: Sie passt, und sie ist mit valyze bereits erprobt. Die wicht
 | Frontend-State | **Zustand** (kleiner Store) + eigener SSE-Client mit Reconnect | Redux zu schwer; React Query passt nicht zu Push-Daten; Context allein re-rendert zu breit |
 | Backend | **Python 3.12, FastAPI ≥ 0.115, Pydantic 2, pydantic-settings, SQLAlchemy 2 async + asyncpg, Alembic, httpx, structlog** | Python wegen Optimierung (pvlib, scipy/HiGHS, später OR-Tools/Pyomo). Node-Backend wäre für Live-Daten gleichwertig, aber die Optimierung müsste dann als zweiter Dienst existieren |
 | Paketmanager Python | **uv** (Workspace mit `packages/hems-core`, `apps/api`, `apps/bridge`) | pip/requirements (valyze) hat keine Lockfile; Poetry langsamer; uv-Workspaces erlauben, dass API und Bridge denselben Kern teilen |
-| Scheduler/Control-Loop | **asyncio-Tasks im Worker** mit Postgres-Advisory-Lock; APScheduler nur für Cron-artige Jobs (Forecast-Refresh, Retention) | Celery/RQ brauchen Redis – unnötig für eine Handvoll Jobs; der 10-s-Regeltakt gehört in einen langlebigen Prozess, nicht in eine Job-Queue |
+| Scheduler/Control-Loop | **asyncio-Tasks im Worker** mit Postgres-Advisory-Lock; APScheduler nur für Cron-artige Jobs (Forecast-Refresh, Retention) | Celery/RQ brauchen Redis - unnötig für eine Handvoll Jobs; der 10-s-Regeltakt gehört in einen langlebigen Prozess, nicht in eine Job-Queue |
 | Live-Transport Dashboard | **Server-Sent Events** (HTTP, `EventSource`) | WebSocket wäre bidirektional, aber das Dashboard sendet Befehle selten (REST reicht). `EventSource` bringt Auto-Reconnect und `Last-Event-ID` mit, läuft problemlos durch Railway-Proxy und iPad-Safari, keine Ping/Pong-Logik nötig |
-| Transport Bridge ↔ Cloud | **ausgehende WebSocket-Verbindung (WSS)** mit JSON-Frames, Device-Token, Sequenznummern und Ack | MQTT-Broker (z. B. Mosquitto auf Railway) wäre Standard im IoT, aber ein zusätzlicher Dienst mit eigener Auth; Tailscale/VPN würde HA erreichbar machen, aber die Cloud muss dann in das Hausnetz „hinein“ – umgekehrt zur gewünschten Richtung. Das Transport-Protokoll ist gekapselt (`BridgeTransport`), MQTT kann später ergänzt werden |
-| Datenbank | **PostgreSQL 16 als einzige Datenbank** (lokal im Compose oder Railway-Managed, Abschnitt 15) – Rohmesswerte gestuft (14 Tage roh, 180 Tage 10 s, 3 Jahre 1 min, 15 min unbegrenzt), native Partitionierung, Retention-Job | keine zweite Zeitreihen-DB (kein InfluxDB, kein VictoriaMetrics): ein System, ein Backup, ein Abfragepfad. TimescaleDB ist auf Railways Standard-Postgres nicht verfügbar; natives Partitioning reicht für ~15 Sensoren. Bewertung Timescale in 16.5 |
+| Transport Bridge ↔ Cloud | **ausgehende WebSocket-Verbindung (WSS)** mit JSON-Frames, Device-Token, Sequenznummern und Ack | MQTT-Broker (z. B. Mosquitto auf Railway) wäre Standard im IoT, aber ein zusätzlicher Dienst mit eigener Auth; Tailscale/VPN würde HA erreichbar machen, aber die Cloud muss dann in das Hausnetz „hinein“ - umgekehrt zur gewünschten Richtung. Das Transport-Protokoll ist gekapselt (`BridgeTransport`), MQTT kann später ergänzt werden |
+| Datenbank | **PostgreSQL 16 als einzige Datenbank** (lokal im Compose oder Railway-Managed, Abschnitt 15) - Rohmesswerte gestuft (14 Tage roh, 180 Tage 10 s, 3 Jahre 1 min, 15 min unbegrenzt), native Partitionierung, Retention-Job | keine zweite Zeitreihen-DB (kein InfluxDB, kein VictoriaMetrics): ein System, ein Backup, ein Abfragepfad. TimescaleDB ist auf Railways Standard-Postgres nicht verfügbar; natives Partitioning reicht für ~15 Sensoren. Bewertung Timescale in 16.5 |
 | Geräte-Integration Shelly | **MQTT (lokaler Mosquitto) zum Lesen, Shelly-RPC/HTTP zum Schalten** (`aiomqtt`, `httpx`) | Polling per HTTP verpasst Zustände und weckt keine Batteriesensoren; CoIoT (Gen1) ist proprietär und in Gen2 entfallen; Shelly-Cloud-API ist nicht lokal |
-| Geräte-Integration MyEnergi | **MyEnergi-Cloud-API** (Digest-Auth mit Hub-Seriennummer + API-Key, `cgi-jstatus-*`), Poll 10–15 s | es gibt keine offizielle lokale API des Hubs; die Cloud-API liefert Zappi, Libbi und Harvi in einem Aufruf |
-| Geräte-Integration SolarEdge | **Modbus TCP (SunSpec) am Wechselrichter**, 1–2 s, `pymodbus` | die SolarEdge-Monitoring-Cloud-API ist auf 300 Aufrufe/Tag und 15-min-Auflösung begrenzt – untauglich für Live; sie dient nur der täglichen Energie-Abstimmung. PV-Leistung ist zusätzlich über den MyEnergi-CT (`gen`) verfügbar |
-| Strompreise / Zählerlive | **Tibber GraphQL** (Preise) und optional **Tibber-Live-Subscription** (Pulse) aus dem Worker | – |
+| Geräte-Integration MyEnergi | **MyEnergi-Cloud-API** (Digest-Auth mit Hub-Seriennummer + API-Key, `cgi-jstatus-*`), Poll 10-15 s | es gibt keine offizielle lokale API des Hubs; die Cloud-API liefert Zappi, Libbi und Harvi in einem Aufruf |
+| Geräte-Integration SolarEdge | **Modbus TCP (SunSpec) am Wechselrichter**, 1-2 s, `pymodbus` | die SolarEdge-Monitoring-Cloud-API ist auf 300 Aufrufe/Tag und 15-min-Auflösung begrenzt - untauglich für Live; sie dient nur der täglichen Energie-Abstimmung. PV-Leistung ist zusätzlich über den MyEnergi-CT (`gen`) verfügbar |
+| Strompreise / Zählerlive | **Tibber GraphQL** (Preise) und optional **Tibber-Live-Subscription** (Pulse) aus dem Worker | - |
 | Auth | **Single-Tenant**: Admin-Passwort (Argon2id) + Kiosk-Pairing-Code → langlebiges Geräte-Session-Cookie (HttpOnly) über Next-BFF; Bridge mit eigenem Device-Token (rotierbar) | kein OAuth-Provider nötig; valyze-Muster (iron-session, Bearer bleibt serverseitig) wird übernommen |
 | Haus-Rechner | **Docker Compose** auf einem kleinen Always-on-Rechner im LAN (Raspberry Pi 5 / Intel NUC): Profil A das ganze System, Profil B nur bridge + mosquitto + guardian; Auto-Restart, Hardware-Watchdog | Betrieb als HA-Add-on entfällt bewusst (Eigenständigkeit); Details Abschnitt 15 |
 | Konfiguration | **`.env` für Secrets/Umgebung (pydantic-settings), YAML für Anlage/Haus/Regler (versioniert in Postgres, Datei als Seed)** | TOML ist gleichwertig; YAML deckt sich mit HA-Konventionen und dem Auftragsbeispiel |
-| Logging | **structlog → JSON** (Railway-Logs), Korrelation über `decision_id`/`command_id` | – |
-| Tests Backend | **pytest, pytest-asyncio, hypothesis (Guards), freezegun/time-machine (Mindestzeiten)**, Testcontainers-freie Postgres über GitHub-Service-Container | – |
-| Tests Frontend | **vitest + Testing Library**, **Playwright** Smoke-Test des Demo-Dashboards (iPad-Viewport 1180×820) | – |
+| Logging | **structlog → JSON** (Railway-Logs), Korrelation über `decision_id`/`command_id` | - |
+| Tests Backend | **pytest, pytest-asyncio, hypothesis (Guards), freezegun/time-machine (Mindestzeiten)**, Testcontainers-freie Postgres über GitHub-Service-Container | - |
+| Tests Frontend | **vitest + Testing Library**, **Playwright** Smoke-Test des Demo-Dashboards (iPad-Viewport 1180×820) | - |
 | Lint/Format | ruff (Lint + Format), mypy `--strict` für `hems-core`, ESLint 9 + `typescript-eslint`, Prettier | valyze nutzt ruff mit `E501` ignoriert; wir halten 100 Zeichen ohne Ausnahme |
 | Container | ein Python-Dockerfile (Multi-Stage, uv), ein Node-Dockerfile (Multi-Stage, pnpm, `output: standalone`) | valyze baut Frontend vom Repo-Root; wir bauen jeden Service aus seinem Verzeichnis mit Railway „Root Directory“ |
 
@@ -481,7 +481,7 @@ OpenAPI-Typen. Ein Test in `hems-core` prüft die Importgrenze.
 ### 7.1 Vorzeichenkonvention (verbindlich im gesamten System)
 
 **Grundregel: Aus Sicht des Hauses. Was ins Haus fließt, ist positiv. Erzeuger sind positiv. Verbraucher sind
-positiv. Speicher: Entladen (liefert ans Haus) positiv, Laden negativ.** Genau eine Ausnahme gibt es nicht – auch
+positiv. Speicher: Entladen (liefert ans Haus) positiv, Laden negativ.** Genau eine Ausnahme gibt es nicht - auch
 das Netz folgt der Regel: Bezug (fließt ins Haus) positiv, Einspeisung negativ.
 
 | Feld | Einheit | > 0 bedeutet | < 0 bedeutet |
@@ -489,15 +489,15 @@ das Netz folgt der Regel: Bezug (fließt ins Haus) positiv, Einspeisung negativ.
 | `pv_power_kw` | kW | Erzeugung | nie (Nachtverbrauch des Wechselrichters wird auf 0 geklemmt und als `pv_standby_kw` separat geführt, falls messbar) |
 | `grid_power_kw` | kW | **Netzbezug** | **Netzeinspeisung** |
 | `battery_power_kw` | kW | **Entladen** (Batterie → Haus) | **Laden** (Haus → Batterie) |
-| `battery_soc` | 0–1 | – | – |
+| `battery_soc` | 0-1 | - | - |
 | `house_power_kw` | kW | Gesamtverbrauch des Hauses **inkl.** Wärmepumpe und Wallbox | nie |
 | `base_load_kw` | kW | Verbrauch **ohne** Wärmepumpe und Wallbox (abgeleitet) | nie (negativ = Messabweichung, wird geklemmt und geflaggt) |
 | `heat_pump_power_kw` | kW | Verbrauch Wärmepumpe (Shelly 3EM, Summe der drei Phasen) | nie |
 | `ev_power_kw` | kW | Ladeleistung Zappi | nie in v1 (V2H nicht vorhanden) |
 | `electricity_price_ct_kwh` | ct/kWh | Bezugspreis (Tibber, inkl. Steuern, Netzentgelte, Abgaben, laut Tibber `total`) | negativer Preis (wird korrekt negativ geführt) |
-| `feed_in_tariff_ct_kwh` | ct/kWh | Einspeisevergütung (Konfiguration) | – |
-| `buffer_temp_top_c` … `buffer_temp_bottom_c` | °C | – | – |
-| `outdoor_temp_c` | °C | – | – |
+| `feed_in_tariff_ct_kwh` | ct/kWh | Einspeisevergütung (Konfiguration) | - |
+| `buffer_temp_top_c` … `buffer_temp_bottom_c` | °C | - | - |
+| `outdoor_temp_c` | °C | - | - |
 
 Bilanzgleichung, die in jedem Snapshot gelten muss (Toleranz konfigurierbar, Default 0,3 kW):
 
@@ -552,7 +552,7 @@ class EnergySnapshot(BaseModel):
 
 class BufferState(BaseModel):
     temps_c: BufferTemperatures
-    soc: float                 # 0–1, thermischer Ladezustand (geschätzt)
+    soc: float                 # 0-1, thermischer Ladezustand (geschätzt)
     usable_energy_kwh: float   # oberhalb T_min
     capacity_kwh: float        # zwischen T_min und T_max
     status: Literal["cold", "partial", "warm", "full"]
@@ -576,7 +576,7 @@ Entscheidung, Plan, Forecast und Konfigurationsobjekte folgen in Abschnitten 10,
   `battery_soc ≥ config.pv.count_battery_charging_above_soc`, plus optional `ev_power_kw` wenn
   `config.pv.heat_pump_before_ev`. Wenn die Wärmepumpe läuft, wird für die Halte-Bedingung
   `pv_surplus_kw + heat_pump_power_kw` betrachtet (sonst würde sie sich selbst abschalten).
-- `self_consumption_kw`, `autarky_ratio`, `today_kwh` je Fluss – nur für Anzeige.
+- `self_consumption_kw`, `autarky_ratio`, `today_kwh` je Fluss - nur für Anzeige.
 - Geglättete Werte: exponentiell gewichteter Mittelwert (`ewma_seconds`, Default 180 s) für jede Regelgröße; die
   Guards arbeiten nur auf geglätteten Werten.
 
@@ -612,17 +612,17 @@ Zustände aller Shellys. In jedem Shelly wird MQTT auf den Broker konfiguriert (
 |---|---|---|---|
 | Relais (K1, K2, Kaffee, Lichter): Shelly 1/1PM/Plus 1/Plus 1PM/Pro | Gen1: `shellies/<id>/relay/0`, Gen2/3: `<id>/status/switch:0` (JSON mit `output`, `apower`, `temperature`) | Push bei Änderung + periodisch (Gen2 `status` alle 60 s konfigurierbar) | sofort |
 | Shelly 3EM (Wärmepumpe) | Gen1: `shellies/<id>/emeter/<0..2>/power`, `…/energy`; Pro 3EM (Gen2): `<id>/status/em:0` mit `total_act_power`, Phasen | Gen1 sendet Leistung jede Sekunde, Gen2 bei Änderung (Schwelle konfigurierbar) | ≈ 1 s |
-| Temperatursensoren Puffer | vermutlich **Shelly Plus 1 (PM) mit Plus Add-on und bis zu 5 DS18B20-Fühlern** (`<id>/status/temperature:100…104`) oder vier **Shelly H&T** (Batterie, `shellies/<id>/sensor/temperature`, meldet bei Änderung ≥ 0,5 K bzw. periodisch) | Add-on: Push bei Änderung (0,5 K Standard, einstellbar) plus Periodik; H&T: nur beim Aufwachen | 10 s – 10 min |
+| Temperatursensoren Puffer | vermutlich **Shelly Plus 1 (PM) mit Plus Add-on und bis zu 5 DS18B20-Fühlern** (`<id>/status/temperature:100…104`) oder vier **Shelly H&T** (Batterie, `shellies/<id>/sensor/temperature`, meldet bei Änderung ≥ 0,5 K bzw. periodisch) | Add-on: Push bei Änderung (0,5 K Standard, einstellbar) plus Periodik; H&T: nur beim Aufwachen | 10 s - 10 min |
 
 Wichtige Gerätedetails werden in Phase 2 verifiziert (offene Frage 25.1): exakte Modelle, Firmware-Generation,
 Topic-Präfixe. Adapter für Gen1 und Gen2/3 sind getrennt implementiert, weil sich Topic-Struktur und RPC unterscheiden.
 
 **Schalten über RPC/HTTP** (nicht über MQTT, weil eine synchrone Antwort gebraucht wird):
 
-- Gen2/3: `POST http://<ip>/rpc/Switch.Set {"id":0,"on":true,"toggle_after":1200}` – `toggle_after` ist der
+- Gen2/3: `POST http://<ip>/rpc/Switch.Set {"id":0,"on":true,"toggle_after":1200}` - `toggle_after` ist der
   **hardwareseitige Auto-Off-Timer** (Rückfallebene E0, Abschnitt 11). Anschließend `Switch.GetStatus` zur
   Verifikation. Authentifizierung: Digest (Gerätepasswort, nur in der Bridge).
-- Gen1: `GET http://<ip>/relay/0?turn=on&timer=1200` – gleiche Semantik über den `timer`-Parameter; Verifikation über
+- Gen1: `GET http://<ip>/relay/0?turn=on&timer=1200` - gleiche Semantik über den `timer`-Parameter; Verifikation über
   `GET /status`.
 - Für Wärmepumpen-Kontakte wird `toggle_after`/`timer` **immer** gesetzt (Default 1200 s bei K2, 1800 s bei K1) und vom
   Regler alle 10 min aufgefrischt. Kaffee und Lichter erhalten optional einen Timer (Kaffeemaschine z. B. 2 h).
@@ -635,7 +635,7 @@ Topic-Präfixe. Adapter für Gen1 und Gen2/3 sind getrennt implementiert, weil s
   aber seit Jahren stabile Cloud-API: Director `https://director.myenergi.net` liefert per Header den zuständigen
   Server (`s18.myenergi.net` o. Ä.), Anmeldung per HTTP-Digest mit **Hub-Seriennummer** als Benutzer und dem in der
   MyEnergi-App erzeugten **API-Key** als Passwort. Endpunkt `/cgi-jstatus-*` liefert alle Geräte in einem Aufruf.
-- Poll-Intervall 10–15 s (Community-Erfahrung: darunter drosselt der Dienst; Duck Curve Home hält sich an 10 s und
+- Poll-Intervall 10-15 s (Community-Erfahrung: darunter drosselt der Dienst; Duck Curve Home hält sich an 10 s und
   reduziert bei HTTP 429/5xx exponentiell). Jeder Wert erhält `observed_at` aus dem Antwort-Zeitstempel des Hubs,
   nicht aus der Empfangszeit.
 - Gelesene Größen: Netzleistung (Harvi/Zappi `grd`, Vorzeichen: MyEnergi positiv = Import → passt zur Konvention),
@@ -644,13 +644,13 @@ Topic-Präfixe. Adapter für Gen1 und Gen2/3 sind getrennt implementiert, weil s
 - Fällt die Cloud aus, werden Netz-/Batteriewerte `STALE`; die Wärmepumpen-Regelung nach PV-Überschuss pausiert dann
   (Netzleistung ist Pflichtgröße), sofern nicht ein zweiter Netzmesser konfiguriert ist (Tibber Pulse, 8.5).
 - Die MyEnergi-App und der Hub sind vom Lesen nicht betroffen; Duck Curve Home schreibt in v1 nichts an MyEnergi.
-  Wenn Home Assistant parallel dieselbe API pollt, verdoppelt sich die Last – siehe 8.7.
+  Wenn Home Assistant parallel dieselbe API pollt, verdoppelt sich die Last - siehe 8.7.
 
 ### 8.4 SolarEdge
 
 - **Primär: Modbus TCP (SunSpec)** am Wechselrichter, Port 1502 (in SetApp/Installer-Menü aktivieren). Register
   `I_AC_Power` (+ Skalierungsfaktor), `I_AC_Energy_WH`, `I_DC_Power`, `I_Temp_Sink`, `I_Status`. Poll 2 s. Nur lesen.
-  Hinweis: Modbus TCP am SolarEdge lässt nur eine begrenzte Zahl gleichzeitiger Verbindungen zu (meist eine) – wenn
+  Hinweis: Modbus TCP am SolarEdge lässt nur eine begrenzte Zahl gleichzeitiger Verbindungen zu (meist eine) - wenn
   Home Assistant ebenfalls per Modbus liest, gewinnt einer (8.7).
 - **Sekundär: MyEnergi `gen`** (CT-Klemme) als redundante PV-Messung; bei Abweichung > 10 % dauerhaft → Event
   (Kalibrierungshinweis).
@@ -660,10 +660,10 @@ Topic-Präfixe. Adapter für Gen1 und Gen2/3 sind getrennt implementiert, weil s
 ### 8.5 Tibber
 
 - Preise per GraphQL aus dem Worker (`viewer.homes[].currentSubscription.priceInfo { today tomorrow }`, sobald
-  verfügbar 15-Minuten-Auflösung), Abruf 13:00–15:00 halbstündlich, sonst stündlich. Persistiert als
+  verfügbar 15-Minuten-Auflösung), Abruf 13:00-15:00 halbstündlich, sonst stündlich. Persistiert als
   `forecasts(kind="price")`.
 - Falls ein **Tibber Pulse** vorhanden ist (25.4): `liveMeasurement`-Subscription (WebSocket
-  `wss://websocket-api.tibber.com/v1-beta/gql/subscriptions`) liefert Netzleistung und Zählerstände alle 2–10 s.
+  `wss://websocket-api.tibber.com/v1-beta/gql/subscriptions`) liefert Netzleistung und Zählerstände alle 2-10 s.
   Das ist eine zweite, unabhängige Netzmessung und würde die Abhängigkeit von der MyEnergi-Cloud für die
   PV-Überschuss-Regelung beseitigen. Der Adapter läuft im Worker (Cloud → Tibber), nicht in der Bridge.
 - Ausfall: letzte Preise bleiben mit `stale`-Kennzeichnung; preisbasierte Regeln pausieren nach `price_max_age_h`
@@ -754,10 +754,10 @@ Home Assistant wird nicht benötigt und kann abgeschaltet werden. Läuft es weit
 
 | Strecke | Ziel |
 |---|---|
-| Gerät → Bridge | Shelly per MQTT ≈ 1 s (3EM jede Sekunde), SolarEdge Modbus 2 s, MyEnergi-Cloud 10–15 s (Poll) |
+| Gerät → Bridge | Shelly per MQTT ≈ 1 s (3EM jede Sekunde), SolarEdge Modbus 2 s, MyEnergi-Cloud 10-15 s (Poll) |
 | Bridge → API | Frame alle 1 s (koalesziert), < 300 ms Laufzeit |
 | API → Dashboard | SSE, max. 1 Frame/s, < 200 ms |
-| **Ende-zu-Ende (Shelly/Modbus-Werte)** | **≈ 1–3 s**; MyEnergi-Werte (Netz, Batterie, Wallbox) tragen ihr eigenes `observed_at` und werden mit Alter angezeigt; mit Tibber Pulse (8.5) käme die Netzleistung alle 2–10 s |
+| **Ende-zu-Ende (Shelly/Modbus-Werte)** | **≈ 1-3 s**; MyEnergi-Werte (Netz, Batterie, Wallbox) tragen ihr eigenes `observed_at` und werden mit Alter angezeigt; mit Tibber Pulse (8.5) käme die Netzleistung alle 2-10 s |
 
 Damit „live wirken“ nicht an der langsamsten Quelle hängt, zeigt das Dashboard je Knoten das Alter des Wertes an
 (dezent, erst ab 30 s sichtbar) und animiert Flüsse nur mit frischen Werten.
@@ -769,7 +769,7 @@ Damit „live wirken“ nicht an der langsamsten Quelle hängt, zeigt das Dashbo
   `decision` (bei neuer Regler-Entscheidung), `plan` (bei neuem Plan), `actuator` (Ack/Fail eines Kommandos),
   `system` (Bridge online/offline, Backend-Version, Zeitversatz).
 - Jeder Event trägt `id` (monoton); Client sendet `Last-Event-ID`, Server liefert beim Reconnect den aktuellen
-  Zustand komplett (kein Replay nötig – der Verlauf kommt aus der History-API).
+  Zustand komplett (kein Replay nötig - der Verlauf kommt aus der History-API).
 - `retry: 2000` im Stream; Client-Backoff bis 30 s mit Jitter.
 - Backend-Broker: ein `asyncio.Queue` pro Verbindung mit Größe 5; bei Überlauf werden ältere `snapshot`-Events
   verworfen (Koaleszenz), nie `decision`/`actuator`-Events.
@@ -778,11 +778,11 @@ Damit „live wirken“ nicht an der langsamsten Quelle hängt, zeigt das Dashbo
 
 | Störung | Verhalten |
 |---|---|
-| WLAN-Unterbrechung | `EventSource` reconnectet; Store setzt `connection=reconnecting`; nach 15 s ohne Frame: Statusleiste „Verbindung unterbrochen – letzte Daten 00:42“ und alle Werte gedimmt; Flussanimation stoppt |
+| WLAN-Unterbrechung | `EventSource` reconnectet; Store setzt `connection=reconnecting`; nach 15 s ohne Frame: Statusleiste „Verbindung unterbrochen - letzte Daten 00:42“ und alle Werte gedimmt; Flussanimation stoppt |
 | Backend-Neustart | Deploy-Rollover < 30 s; identisch zu WLAN-Fall; Client holt nach Reconnect `GET /live/state` + `GET /history/today` |
 | Bridge offline | Backend sendet `system{bridge: offline, since}`; Dashboard zeigt Banner „Haus nicht erreichbar“; Werte bleiben mit Alter stehen; Regler geht in `FAILSAFE_RELEASED` (Abschnitt 11) |
 | Einzelnes Gerät offline (Shelly ohne WLAN, MyEnergi-Cloud down, Modbus-Timeout) | Bridge meldet `SourceHealth` je Quelle; betroffene Werte `UNAVAILABLE`; Dashboard zeigt am Knoten ein Gerätesymbol mit „seit 12:41“ |
-| Sensor `unavailable`/`unknown` | Knoten zeigt „–“ mit Sensor-Symbol, Fluss ausgeblendet, Bilanz rechnet ohne den Wert und markiert `derived` |
+| Sensor `unavailable`/`unknown` | Knoten zeigt „-“ mit Sensor-Symbol, Fluss ausgeblendet, Bilanz rechnet ohne den Wert und markiert `derived` |
 | Veraltete Werte | pro Sensor `stale_after_s`; stale → Quality `STALE`, UI grau + Alter; Regler behandelt stale wie fehlend |
 | Tibber/Wetter-API-Ausfall | Forecast-Reihen bleiben als „Stand 13:05“ stehen; Intelligence Card nennt die Einschränkung |
 | Speicherleck über Tage | ECharts erhält nur `setOption` mit begrenzten Arrays (max. 1440 Punkte/Serie), Store hält keine Historie außer dem Tagesfenster; ein `reloadPolicy` lädt die Seite täglich um 03:30 neu und nach jedem erkannten Backend-Versionswechsel |
@@ -797,12 +797,12 @@ clientseitig), sodass der History-Endpoint nur beim Laden und nach Reconnect geb
 
 ## 10. Wärmepumpen-Steuerungsarchitektur
 
-### 10.1 Was die beiden Kontakte tun – und was nicht
+### 10.1 Was die beiden Kontakte tun - und was nicht
 
 | Kontakt | Bedeutung für die ELCO AERO | Wirkung | Risiko bei Fehlbedienung |
 |---|---|---|---|
-| **K1 „PV-Überschuss“** (SG-Ready-ähnliche Anforderung) | „Du darfst/sollst mehr Wärme erzeugen“ – typischerweise erhöht die Regelung Sollwerte (Puffer/Warmwasser) oder startet eine Beladung | **Anforderung**, keine Garantie. Die Wärmepumpe entscheidet selbst, ob und wie lange sie läuft (eigene Hysteresen, Abtauung, Verdichter-Mindestzeiten) | gering: häufiges Toggeln kann zu unnötigen Starts führen, die Wärmepumpe schützt sich aber selbst. Dauerhaft an = höhere Speichertemperatur, mehr Verluste, ggf. ineffizienter Betrieb |
-| **K2 „Netzbetreiber-Shutdown“** (EVU-Sperre) | „Du darfst jetzt nicht laufen“ | **Sperre**, hart. Bei Sperre gilt bei den meisten Geräten Frostschutz weiter, aber kein Heiz-/Warmwasserbetrieb | **hoch**: Ein Softwarefehler, der K2 dauerhaft setzt, lässt das Haus auskühlen und das Warmwasser kalt werden. Hersteller begrenzen EVU-Sperren üblicherweise auf wenige Stunden pro Tag – genau diese Grenze übernimmt das HEMS |
+| **K1 „PV-Überschuss“** (SG-Ready-ähnliche Anforderung) | „Du darfst/sollst mehr Wärme erzeugen“ - typischerweise erhöht die Regelung Sollwerte (Puffer/Warmwasser) oder startet eine Beladung | **Anforderung**, keine Garantie. Die Wärmepumpe entscheidet selbst, ob und wie lange sie läuft (eigene Hysteresen, Abtauung, Verdichter-Mindestzeiten) | gering: häufiges Toggeln kann zu unnötigen Starts führen, die Wärmepumpe schützt sich aber selbst. Dauerhaft an = höhere Speichertemperatur, mehr Verluste, ggf. ineffizienter Betrieb |
+| **K2 „Netzbetreiber-Shutdown“** (EVU-Sperre) | „Du darfst jetzt nicht laufen“ | **Sperre**, hart. Bei Sperre gilt bei den meisten Geräten Frostschutz weiter, aber kein Heiz-/Warmwasserbetrieb | **hoch**: Ein Softwarefehler, der K2 dauerhaft setzt, lässt das Haus auskühlen und das Warmwasser kalt werden. Hersteller begrenzen EVU-Sperren üblicherweise auf wenige Stunden pro Tag - genau diese Grenze übernimmt das HEMS |
 
 Konsequenzen für das HEMS-Design:
 
@@ -830,7 +830,7 @@ auto_profile: ECO | PV | PRICE | SMART        (nur relevant bei AUTO)
 override:     none | force_release | force_block | inhibit_release   (zeitlich begrenzt, max. 12 h Default)
 ```
 
-- **OFF:** Duck Curve Home beobachtet nur und schaltet nichts. Beide Kontakte aus (bzw. so, wie ein anderes System sie hinterlassen hat – nur in der Übergangszeit vor Phase 3, siehe 8.7).
+- **OFF:** Duck Curve Home beobachtet nur und schaltet nichts. Beide Kontakte aus (bzw. so, wie ein anderes System sie hinterlassen hat - nur in der Übergangszeit vor Phase 3, siehe 8.7).
 - **MANUAL:** Nutzer schaltet K1 (und, wenn freigegeben, K2) direkt über das Dashboard; jede manuelle Schaltung hat
   eine Dauer (Default 2 h, wählbar), danach Rückfall nach `AUTO` bzw. `OFF`. Dashboard zeigt sichtbar „MANUELL bis
   16:30“.
@@ -938,7 +938,7 @@ NONE         Puffer ≥ T_max ODER (Sommer UND Warmwasser über Ziel)       → 
 ```
 
 Heizperiode: gleitendes 24-h-Mittel der Außentemperatur < `heating_limit_c` (Default 15 °C) oder Kalenderfenster
-(Oktober–April), konfigurierbar. Die Modul-Grenze (`hems_core.thermal.heat_demand.HeatDemandClassifier`) ist so
+(Oktober-April), konfigurierbar. Die Modul-Grenze (`hems_core.thermal.heat_demand.HeatDemandClassifier`) ist so
 gezogen, dass später ein gelerntes Modell dieselbe Enum liefert.
 
 ### 10.6 Entscheidungsobjekt und Erklärbarkeit
@@ -962,7 +962,7 @@ Reason-Codes sind eine geschlossene Enum (Auszug): `PV_SURPLUS`, `PV_SURPLUS_FAD
 `PRICE_CHEAP_WINDOW`, `PLANNED_WINDOW`, `HEAT_DEMAND_FORCED`, `BUFFER_FULL`, `BUFFER_NO_HEADROOM`,
 `MIN_OFFTIME_PENDING`, `MIN_RUNTIME_HOLD`, `MAX_STARTS_REACHED`, `MANUAL_OVERRIDE`, `SENSOR_STALE`,
 `SENSOR_UNAVAILABLE`, `PRICE_DATA_STALE`, `BRIDGE_OFFLINE`, `FAILSAFE`, `HP_NOT_RESPONDING`, `MODE_OFF`.
-Die deutschen Sätze („Wärmepumpe wartet – Mindeststillstandszeit noch 8 Minuten“) werden aus Code + Inputs
+Die deutschen Sätze („Wärmepumpe wartet - Mindeststillstandszeit noch 8 Minuten“) werden aus Code + Inputs
 gerendert; die Codes sind stabil, die Texte frei änderbar. Jede Decision wird persistiert; das Dashboard zeigt die
 aktuelle und die letzten Übergänge als Zeitleiste.
 
@@ -993,10 +993,10 @@ auch ein stromloses Relais „kein Eingriff“ bedeutet (25.10).
 2. K2 nur wenn `block.enabled`, nie bei `HeatDemand.FORCED`, nie bei `T_out < block.min_outdoor_temp_c`, nie länger als
    `max_duration_min`, nie öfter als `max_per_day`, nie wenn `buffer.T_top < T_min_comfort`.
 3. Kein K1-Start vor Ablauf von `min_offtime_min` seit letztem **tatsächlichem** Stopp, kein K1-Stopp (durch Regel)
-   vor `min_runtime_min` seit **tatsächlichem** Start – Ausnahmen: Puffer voll (T_max), Override, Failsafe.
+   vor `min_runtime_min` seit **tatsächlichem** Start - Ausnahmen: Puffer voll (T_max), Override, Failsafe.
 4. Kein Start, wenn eine für die Entscheidung notwendige Größe `STALE/UNAVAILABLE/UNKNOWN` ist. Notwendig für PV:
    `grid_power_kw`, `heat_pump_power_kw`, Puffertemperaturen; für PRICE: zusätzlich Preisreihe nicht älter als
-   `price_max_age_h`. Ein laufender K1 wird bei Sensorausfall nach `sensor_grace_min` (Default 5) beendet – das ist
+   `price_max_age_h`. Ein laufender K1 wird bei Sensorausfall nach `sensor_grace_min` (Default 5) beendet - das ist
    sicher, weil die Wärmepumpe dann nur in Normalbetrieb zurückfällt.
 5. Maximal `max_starts_per_day` durch DCH ausgelöste Starts.
 6. Jede Änderung eines Wärmepumpen-Kontakts erzeugt ein `system_event` mit Decision-Referenz. Mehr als
@@ -1004,7 +1004,7 @@ auch ein stromloses Relais „kein Eingriff“ bedeutet (25.10).
 7. `FAILSAFE`-Zustand bei: Bridge offline, Leader-Lock verloren, unbehandelte Exception im Tick, Konfigurations-
    Validierungsfehler, Uhrzeitversatz Bridge/Cloud > 60 s. Auto-Recovery nach Ursachenbehebung + `failsafe_hold_min`.
 8. Overrides (MANUAL) sind immer zeitlich begrenzt und unterliegen Regel 1 und 2 (auch der Mensch kann K2 nicht
-   länger als `max_duration_min` setzen – wer das braucht, nutzt den physischen Schalter der Anlage).
+   länger als `max_duration_min` setzen - wer das braucht, nutzt den physischen Schalter der Anlage).
 
 ### 11.4 Externe Abhängigkeiten und ihr Ausfallverhalten
 
@@ -1017,7 +1017,7 @@ auch ein stromloses Relais „kein Eingriff“ bedeutet (25.10).
 | Bridge-Host komplett (Strom, Defekt) | keine (E0 nach ≤ 30 min) | keine Live-Daten, Dashboard zeigt Störung; Ringpuffer geht ab Ausfall verloren |
 | Mosquitto / WLAN im Haus | keine (E1/E0) | Shelly-Werte `UNAVAILABLE`; Regler stoppt K1 nach `sensor_grace_min` |
 | MyEnergi-Cloud | keine | Netz/Batterie/Wallbox `STALE`; PV-Regel pausiert, außer Tibber Pulse liefert Netzleistung |
-| Duck Curve Home vollständig entfernt | keine | – |
+| Duck Curve Home vollständig entfernt | keine | - |
 
 ### 11.5 Watchdog-Konzept zusammengefasst
 
@@ -1027,7 +1027,7 @@ Cloud-Regler ──10 s──► Decision (valid_until = now + TTL)
       ▼ Kommando/Refresh nur bei Änderung oder alle 10 min
 Bridge ──30 s──► Heartbeat (lokal)        ──► Guardian schaltet nach 5 min ohne Heartbeat K1/K2 aus
       │
-      ▼ Switch.Set on + toggle_after      ──► Relais fällt nach 20–30 min selbst
+      ▼ Switch.Set on + toggle_after      ──► Relais fällt nach 20-30 min selbst
 Shelly-Relais
 ```
 
@@ -1057,7 +1057,7 @@ gelten unverändert. Kein Planer kann die Safety-Schicht umgehen.
 |---|---|---|---|---|
 | **1 Rule-Based** | 4 | Zustandsmaschine aus 10.3, PV-Überschuss, negative Preise, günstigstes Preisdezil des laufenden Tages | Live-Snapshot, Tagespreise | Decision; „Plan“ = nur Preisfenster des Tages |
 | **2 Forecast-Aware** | 5 | Regelbasierte Tagesplanung: Wärmebedarf 24 h aus T_out-Forecast, benötigte Beladungen aus Puffer-Bilanz, Zuordnung zu Zeitfenstern nach Rangfolge (1) PV-Überschuss-Prognose, (2) negative Preise, (3) günstigste Preise unter Berücksichtigung von Mindestlaufzeiten; Vorheizen des Puffers vor Hochpreisphasen | + PV-Forecast, Wetter, Wärmebedarf, Puffermodell | Plan[96] mit Begründungen, Intelligence-Card-Ausblick |
-| **3 Rolling-Horizon** | 6 | MILP über 24–36 h, 15 min: Variablen `hp_on[t] ∈ {0,1}`, `hp_start[t]`, `E_buffer[t]`, `T_building[t]` (RC-Modell); Ziel: Kosten + Komfortstrafe + Schaltstrafe + Spitzenstrafe; Nebenbedingungen: Pufferbilanz, Grenzen, Mindestlauf-/-auszeit (per Start-Variablen), Leistungsgrenze, Sperrdauer. Solver HiGHS (scipy ≥ 1.9 `milp`) wie in valyze | + Kalibrierte Modelle | Plan[96] + Sensitivität (Schattenpreise) |
+| **3 Rolling-Horizon** | 6 | MILP über 24-36 h, 15 min: Variablen `hp_on[t] ∈ {0,1}`, `hp_start[t]`, `E_buffer[t]`, `T_building[t]` (RC-Modell); Ziel: Kosten + Komfortstrafe + Schaltstrafe + Spitzenstrafe; Nebenbedingungen: Pufferbilanz, Grenzen, Mindestlauf-/-auszeit (per Start-Variablen), Leistungsgrenze, Sperrdauer. Solver HiGHS (scipy ≥ 1.9 `milp`) wie in valyze | + Kalibrierte Modelle | Plan[96] + Sensitivität (Schattenpreise) |
 
 Erweiterungen nach Stufe 3 (nicht geplant, aber architektonisch offen): Batterie-Ladeleistung als Variable (nur
 wenn MyEnergi eine schreibende API stabil erlaubt), Wallbox-Ladefenster, weitere Verbraucher, stochastische
@@ -1073,9 +1073,9 @@ Temperaturverläufe. Ergebnisse landen in `model_calibrations` und werden als Ko
 ### 13.1 Rahmenbedingungen
 
 - Gerät: iPad im Querformat an der Wand, ca. 1180×820 CSS-px (iPad Air/Pro 11") bzw. 1024×768 (ältere iPads).
-  Layout wird für 1024–1366 px Breite bei Seitenverhältnis 4:3 bis 3:2 ausgelegt; darunter (Handy) eine gestapelte
+  Layout wird für 1024-1366 px Breite bei Seitenverhältnis 4:3 bis 3:2 ausgelegt; darunter (Handy) eine gestapelte
   Fallback-Ansicht ohne Anspruch auf Kiosk-Qualität.
-- Leseabstand 1–3 m: Primär-KPIs 56–72 px Mono, Sekundärwerte 28–32 px, Labels ≥ 13 px, Kontrast ≥ 4,5:1 auf
+- Leseabstand 1-3 m: Primär-KPIs 56-72 px Mono, Sekundärwerte 28-32 px, Labels ≥ 13 px, Kontrast ≥ 4,5:1 auf
   `--deep`. Kein Text unter 12 px.
 - Dark Mode ist der einzige Modus in v1 (Wandbetrieb, nachts nicht blendend). Ein Light-Theme wird über die Tokens
   vorbereitet, aber nicht gebaut.
@@ -1085,11 +1085,11 @@ Temperaturverläufe. Ergebnisse landen in `model_calibrations` und werden als Ko
 
 ### 13.2 Informationshierarchie
 
-1. **Was passiert gerade?** Energiefluss (links) – der größte Block, weil er in einer Sekunde begreifbar ist.
-2. **Warum und was kommt?** Intelligence Card (Mitte) – das Alleinstellungsmerkmal; sie bekommt eine ganze Spalte.
-3. **Thermischer Zustand** – Pufferspeicher (rechts), hoch und schmal wie das Objekt selbst.
-4. **Tagesverlauf mit Prognose** – Chart über die volle Breite, halbhoch.
-5. **Bedienung** – Kachelleiste unten, immer erreichbar, aber visuell zurückgenommen.
+1. **Was passiert gerade?** Energiefluss (links) - der größte Block, weil er in einer Sekunde begreifbar ist.
+2. **Warum und was kommt?** Intelligence Card (Mitte) - das Alleinstellungsmerkmal; sie bekommt eine ganze Spalte.
+3. **Thermischer Zustand** - Pufferspeicher (rechts), hoch und schmal wie das Objekt selbst.
+4. **Tagesverlauf mit Prognose** - Chart über die volle Breite, halbhoch.
+5. **Bedienung** - Kachelleiste unten, immer erreichbar, aber visuell zurückgenommen.
 
 ### 13.3 Layout (Landscape, 12-Spalten-Raster, 20-px-Gutter, 24-px-Rand)
 
@@ -1108,12 +1108,12 @@ Temperaturverläufe. Ergebnisse landen in `model_calibrations` und werden als Ko
 │   ◉ 0 kW       ◉ 0 kW             │                                  │   └───┘  32 °       │
 │                                   │ WARUM                            │                     │
 │                                   │ · PV-Überschuss ≥ 4 kW seit 1 min│   62 %              │
-│                                   │ · Puffer 46 % – Platz vorhanden  │   teilgeladen       │
+│                                   │ · Puffer 46 % - Platz vorhanden  │   teilgeladen       │
 │                                   │ · Stillstand 38 min ≥ 20 min     │   +1,2 K/h          │
 │                                   │                                  │                     │
 │                                   │ AUSBLICK                         │                     │
 │                                   │ Laufzeit ≈ 45 min · Ziel 85 %    │                     │
-│                                   │ Nächstes Preistief 02:15–04:00   │                     │
+│                                   │ Nächstes Preistief 02:15-04:00   │                     │
 ├───────────────────────────────────┴──────────────────────────────────┴─────────────────────┤
 │ HEUTE · PV / WÄRMEPUMPE / WALLBOX · STROMPREIS                        ▢ Heute ▢ Gestern ▢ 7 T │
 │  kW ┤        ╭──╮                                                          ct/kWh              │
@@ -1138,15 +1138,15 @@ Menü im Kiosk; ein Zahnrad öffnet die Einstellungen (mit PIN ab Phase 3).
 
 **Energiefluss (`EnergyFlow`):** fünf bis sechs Knoten in fester Anordnung (PV oben, Haus Mitte, Netz links,
 Batterie rechts, Wärmepumpe und Wallbox unten). Kanten als Bezier-Pfade; Fluss durch wandernde Punkte
-(`stroke-dasharray` + `stroke-dashoffset`-Animation), Geschwindigkeit in drei Stufen (< 0,5 kW: still, 0,5–3 kW:
-langsam, > 3 kW: schneller), Linienstärke 2–5 px ∝ Leistung, Richtung durch Punktbewegung, nicht durch Pfeilspitzen.
+(`stroke-dasharray` + `stroke-dashoffset`-Animation), Geschwindigkeit in drei Stufen (< 0,5 kW: still, 0,5-3 kW:
+langsam, > 3 kW: schneller), Linienstärke 2-5 px ∝ Leistung, Richtung durch Punktbewegung, nicht durch Pfeilspitzen.
 Farben: PV Amber, Netz Mist (Bezug) / Amber-Soft (Export), Batterie Teal (`--battery`), Wärmepumpe/Wallbox neutral
 (`--paper` 60 %). Wert am Knoten als Mono-Zahl 28 px, Einheit 13 px. Kein Fluss unter 0,05 kW. Bei `STALE` wird
 der Knoten gedimmt und mit Alter versehen. Unter `prefers-reduced-motion` stehen die Punkte und die Richtung wird
 durch einen kleinen Chevron gezeigt.
 
 **Intelligence Card (`IntelligenceCard`):** vier Abschnitte mit Mono-Kickern JETZT / ENTSCHEIDUNG / WARUM /
-AUSBLICK. Die Entscheidung ist der größte Text der Karte (22–26 px SemiBold). „Warum“ als Liste der Reason-Codes
+AUSBLICK. Die Entscheidung ist der größte Text der Karte (22-26 px SemiBold). „Warum“ als Liste der Reason-Codes
 mit Inputs (max. 3). „Ausblick“ aus `next_expected` und Plan. Der Header trägt eine dünne 3-px-Amber-Linie oben
 wie das `product-window` der Website. Bei Override färbt sich der Kicker „ENTSCHEIDUNG“ zu „MANUELL BIS 16:30“.
 
@@ -1167,11 +1167,11 @@ Zeitraumwahl (Heute/Gestern/7 Tage/benutzerdefiniert) als Segmentschalter oben r
 
 **Steuerkacheln (`ControlTile`):** 96 px hoch, Icon links, Label Sans 15 px, Zustand Mono 13 px Versalien
 (AN/AUS/AUTO), rechter Rand 3 px Amber wenn aktiv. Tippen → optimistischer Zustand mit Ladepunkt → Ack → fest;
-Fehlschlag → Ember-Rand + „Fehler – nicht bestätigt“ + Rücksprung. Wärmepumpe als Segment AUTO | AN | AUS, bei
+Fehlschlag → Ember-Rand + „Fehler - nicht bestätigt“ + Rücksprung. Wärmepumpe als Segment AUTO | AN | AUS, bei
 AN/AUS mit Dauer-Chooser (30 min / 2 h / 6 h) im Bottom-Sheet und Restzeit-Anzeige. Ein Long-Press zeigt Details
 (Entität, letzte Schaltung, TTL).
 
-**Zustände:** Skeletons beim Laden (keine leeren Karten), „–“ statt 0 bei fehlenden Werten, Offline-Banner unter
+**Zustände:** Skeletons beim Laden (keine leeren Karten), „-“ statt 0 bei fehlenden Werten, Offline-Banner unter
 dem Header, Fehlertexte in ganzen Sätzen auf Deutsch.
 
 ### 13.5 Abgrenzung zum heutigen Home-Assistant-Dashboard
@@ -1186,12 +1186,12 @@ eine eigene Spalte statt eines Tooltips.
 | Phase | Inhalt | Definition of Done | Aufwand (grob) |
 |---|---|---|---|
 | **0 Analyse** | dieses Dokument | Freigabe der Architektur und der offenen Fragen | erledigt |
-| **Entscheidung Hosting** | Profil A (lokal) oder B (Railway), Abschnitt 15 | Entscheidung des Betreibers, spätestens vor Phase 2 | – |
-| **1 UI-Prototyp / Demo-Modus** | Monorepo-Skelett, Tokens/Design-System, `hems-core` mit Domänenmodell, Thermal-SOC, Bilanzierer, Simulation (`demo_house`), API mit In-Memory-Repositories und SSE, Dashboard mit Energiefluss, Tageschart, Puffer, Steuerkacheln (gegen Simulation), Intelligence Card mit simulierten Entscheidungen, Zeitraffer (24 h in 5 min), CI (Web + Python), Docker-Compose, README/ARCHITECTURE/CONFIGURATION/HEMS_CONTROL Erstfassung | `docker compose up` startet Demo ohne Haus; Playwright-Smoke grün; Tests für SOC, Bilanz, Simulation; Dashboard läuft 24 h stabil im Browser-Kiosk | 2–3 Wochen |
-| **2 Read-only Live** | Bridge mit eigenen Geräteintegrationen (Shelly über Mosquitto/MQTT, MyEnergi-Cloud-API, SolarEdge Modbus), `devices.yaml` + Discovery, Ringpuffer, Uplink; API-Ingest; Postgres + Alembic (Messwerte gestuft, Events, Konfiguration); Tibber-Preise (+ Pulse, falls vorhanden); Wetter (Open-Meteo); PV-Forecast v1; History-API; Zeitraumwahl; Deployment nach gewähltem Profil (A: Compose auf dem Haus-Rechner + Cloudflare Tunnel; B: Railway + Bridge-Host); Kiosk-Pairing | echte Werte auf dem iPad ohne Home Assistant; Ausfallszenarien (WLAN, Bridge-Neustart, Backend-Deploy, MyEnergi-Cloud down) getestet; Nachlieferung aus dem Ringpuffer nach 1 h Offline nachgewiesen | 4–5 Wochen |
-| **3 Manuelle Steuerung** | Shelly-Kommandos mit `toggle_after`/TTL/Ack über Bridge, Kacheln aktiv, Wärmepumpe MANUAL mit Dauer, Guardian-Prozess, Auto-Off als Geräteeinstellung, bestehende HA-Automation für die Wärmepumpe deaktiviert, Verhalten der ELCO auf K1/K2 protokolliert | Kaffee/Licht/K1 schaltbar; Rückfall-Tests E0–E2 durchgeführt und dokumentiert | 2 Wochen |
+| **Entscheidung Hosting** | Profil A (lokal) oder B (Railway), Abschnitt 15 | Entscheidung des Betreibers, spätestens vor Phase 2 | - |
+| **1 UI-Prototyp / Demo-Modus** | Monorepo-Skelett, Tokens/Design-System, `hems-core` mit Domänenmodell, Thermal-SOC, Bilanzierer, Simulation (`demo_house`), API mit In-Memory-Repositories und SSE, Dashboard mit Energiefluss, Tageschart, Puffer, Steuerkacheln (gegen Simulation), Intelligence Card mit simulierten Entscheidungen, Zeitraffer (24 h in 5 min), CI (Web + Python), Docker-Compose, README/ARCHITECTURE/CONFIGURATION/HEMS_CONTROL Erstfassung | `docker compose up` startet Demo ohne Haus; Playwright-Smoke grün; Tests für SOC, Bilanz, Simulation; Dashboard läuft 24 h stabil im Browser-Kiosk | 2-3 Wochen |
+| **2 Read-only Live** | Bridge mit eigenen Geräteintegrationen (Shelly über Mosquitto/MQTT, MyEnergi-Cloud-API, SolarEdge Modbus), `devices.yaml` + Discovery, Ringpuffer, Uplink; API-Ingest; Postgres + Alembic (Messwerte gestuft, Events, Konfiguration); Tibber-Preise (+ Pulse, falls vorhanden); Wetter (Open-Meteo); PV-Forecast v1; History-API; Zeitraumwahl; Deployment nach gewähltem Profil (A: Compose auf dem Haus-Rechner + Cloudflare Tunnel; B: Railway + Bridge-Host); Kiosk-Pairing | echte Werte auf dem iPad ohne Home Assistant; Ausfallszenarien (WLAN, Bridge-Neustart, Backend-Deploy, MyEnergi-Cloud down) getestet; Nachlieferung aus dem Ringpuffer nach 1 h Offline nachgewiesen | 4-5 Wochen |
+| **3 Manuelle Steuerung** | Shelly-Kommandos mit `toggle_after`/TTL/Ack über Bridge, Kacheln aktiv, Wärmepumpe MANUAL mit Dauer, Guardian-Prozess, Auto-Off als Geräteeinstellung, bestehende HA-Automation für die Wärmepumpe deaktiviert, Verhalten der ELCO auf K1/K2 protokolliert | Kaffee/Licht/K1 schaltbar; Rückfall-Tests E0-E2 durchgeführt und dokumentiert | 2 Wochen |
 | **4 Rule-Based HEMS** | Controller-Zustandsmaschine, Guards, PV-/Preisregeln, Reason-Codes, Decision-Persistenz, Intelligence Card mit echten Begründungen, vollständige Unit-Tests der geforderten Fälle (Hysterese, Mindestzeiten, PV, negative Preise, Puffer voll, Override, Sensorausfall, Tibber-Ausfall) | mindestens 2 Wochen Betrieb AUTO/PV ohne Eingriff; Events zeigen keine Guard-Verletzung | 3 Wochen |
-| **5 Smart Scheduler** | Wärmebedarfsmodell, Puffermodell, Forecast-Aware-Planner, Plan-Persistenz, Plan-Bänder im Chart, Kalibrierungsjobs, optional K2 nach Validierung | Plan erklärt jedes Intervall; PV-Forecast-Fehler < 20 % Tages-kWh nach Kalibrierung; K2 nur mit dokumentiertem Freigabetest | 3–4 Wochen |
+| **5 Smart Scheduler** | Wärmebedarfsmodell, Puffermodell, Forecast-Aware-Planner, Plan-Persistenz, Plan-Bänder im Chart, Kalibrierungsjobs, optional K2 nach Validierung | Plan erklärt jedes Intervall; PV-Forecast-Fehler < 20 % Tages-kWh nach Kalibrierung; K2 nur mit dokumentiertem Freigabetest | 3-4 Wochen |
 | **6 Optimizer** | MILP-Planer (HiGHS), Gebäude-RC-Modell, Komfortgrenzen, Vergleich Regel vs. Optimum im Dashboard | Optimum-Plan im Schattenbetrieb 4 Wochen mit Kostenvergleich, dann aktiv | 4+ Wochen |
 
 Jede Phase beginnt mit einer kurzen Standortbestimmung (Was ist da, was hat sich geändert, Plan in 10 Zeilen), endet
@@ -1217,7 +1217,7 @@ Prozess mit Uplink („Bridge“) oder als Modul im Worker („in-process“) ar
 | Protokolle zu bauen | keiner (Geräteschicht ruft Repositories direkt) | Bridge-Uplink-Protokoll mit Sequenzen, Acks, Ringpuffer, Token-Rotation (17.2) |
 | Deployment | GitHub Actions baut Images (arm64/amd64) → GHCR; Host aktualisiert per Watchtower oder `compose pull` nach Tag; Migrationen im Start-Container | Railway-GitHub-Integration, `preDeployCommand` |
 | Betrieb/Zuverlässigkeit | Hardware selbst verantwortet: SSD statt SD-Karte, USV empfehlenswert, Hardware-Watchdog; Postgres-Backups per Job in Objektspeicher | Managed Postgres mit Snapshots, Neustart durch Plattform; Bridge-Host bleibt trotzdem nötig |
-| Kosten | einmalig 100–250 € Hardware, Strom ~5 W | ~10–25 €/Monat |
+| Kosten | einmalig 100-250 € Hardware, Strom ~5 W | ~10-25 €/Monat |
 | Update-Komfort | gut mit Watchtower, aber ein Host, den man warten muss | sehr gut |
 | Rechenleistung | Pi 5 (8 GB) reicht für Postgres + FastAPI + Next.js + MILP (HiGHS, Sekundenbereich); NUC komfortabler | unbegrenzt |
 | Sicherheitsfläche | kein eingehender Port; Cloudflare Access/Tailscale vor dem Dashboard | ein öffentlicher API-Endpunkt für die Bridge |
@@ -1225,7 +1225,7 @@ Prozess mit Uplink („Bridge“) oder als Modul im Worker („in-process“) ar
 **Empfehlung: Profil A.** Ein HEMS, dessen Sensoren und Aktoren ausnahmslos im Haus stehen, gehört ins Haus. Die
 Regelung ist dann vom Internet unabhängig, die Architektur hat eine Schicht weniger, und der externe Zugriff ist über
 einen Tunnel ohne offenen Port lösbar. Railway bleibt als Profil B vollständig unterstützt (gleiche Images, gleiche
-Konfiguration, zusätzlich Bridge-Uplink) – zum Beispiel, wenn später mehrere Häuser oder ein Betrieb ohne eigene
+Konfiguration, zusätzlich Bridge-Uplink) - zum Beispiel, wenn später mehrere Häuser oder ein Betrieb ohne eigene
 Hardware gewünscht sind. Die Entscheidung ist **vor Phase 2** zu treffen; Phase 1 (Demo-Modus) ist davon unabhängig,
 weil sie ohnehin per Docker Compose läuft.
 
@@ -1234,7 +1234,7 @@ Damit beide Profile ohne Code-Duplikation funktionieren, ist die Geräteschicht 
 und `uplink` (eigener Prozess mit Ringpuffer und WSS). Die Adapter für Shelly, MyEnergi und SolarEdge sind in beiden
 Fällen identisch.
 
-### 15.2 Profil A – lokaler Host
+### 15.2 Profil A - lokaler Host
 
 ```
 Mini-Rechner im LAN (Docker Compose, arm64 oder amd64)
@@ -1249,7 +1249,7 @@ Mini-Rechner im LAN (Docker Compose, arm64 oder amd64)
 ```
 
 - Das iPad spricht `https://home.local` (Caddy, internes Zertifikat, Root-CA einmal auf dem iPad installiert) oder
-  direkt `http://<ip>:3000` – kein Internet nötig.
+  direkt `http://<ip>:3000` - kein Internet nötig.
 - Von außen: `https://home.duckcurve.de` → Cloudflare Access (Identität) → Tunnel → Caddy → web. Die Anwendung
   behält zusätzlich ihre eigene Session (Kiosk-Pairing), Cloudflare Access ist die zweite Schranke.
 - Updates: GitHub Release-Tag → Images auf GHCR → Watchtower zieht in einem Wartungsfenster (03:30) oder manuell.
@@ -1260,7 +1260,7 @@ Mini-Rechner im LAN (Docker Compose, arm64 oder amd64)
 - Hardware: Pi 5 8 GB mit NVMe-HAT oder NUC, USV (z. B. kleine Line-Interactive-USV oder Pi-UPS-HAT), LAN-Kabel,
   Hardware-Watchdog aktiviert.
 
-### 15.3 Profil B – Railway
+### 15.3 Profil B - Railway
 
 ```
 Railway Project „duckcurve-home“  (Region: EU-West, gleiche Region für alle Services)
@@ -1314,7 +1314,7 @@ unkritisch. Deploy-Rollover: Bridge reconnectet in < 5 s, Ringpuffer überbrück
 - Ein Satz Images (`duckcurve-api`, `duckcurve-web`, `duckcurve-bridge`), Konfiguration über `DCH_*`-Variablen,
   `DCH_GATEWAY=inprocess|remote` wählt das Profil.
 - Dieselbe Postgres-Struktur, dieselben Migrationen, dieselbe Retention.
-- Dieselbe Sicherheitsarchitektur für die Kontakte (Abschnitt 11) – der Guardian läuft in beiden Profilen auf dem
+- Dieselbe Sicherheitsarchitektur für die Kontakte (Abschnitt 11) - der Guardian läuft in beiden Profilen auf dem
   Haus-Rechner.
 
 ## 16. PostgreSQL-Datenmodell
@@ -1333,7 +1333,7 @@ bekommen Spalten; alles andere bleibt Payload (valyze-Regel).
 | `sensors` | Messpunkte mit Quelle und Mapping (Spiegel der `devices.yaml`, von der Bridge beim Handshake gemeldet) | `id, device_id, key` (z. B. `pv_power_kw`), `source` (`shelly`, `myenergi`, `solaredge`, `tibber`, `derived`), `source_ref` (Topic/Register/Feld), `unit, stale_after_s, sign_convention, priority, enabled` |
 | `actuators` | steuerbare Ausgänge | `id, device_id, key, source_ref` (Shelly-ID + Kanal), `label, safety_class` (`none`, `heat_pump`), `safe_state, default_ttl_s, hw_auto_off_s` |
 | `device_health` | letzter Gesundheitszustand je Quelle (von der Bridge gemeldet) | `source pk, status, since, last_ok_at, error, details jsonb` |
-| `config_versions` | versionierte Gesamtkonfiguration (Haus, Anlage, Regler, Komfort) | `id, created_at, created_by, kind` (`site`, `control`, `comfort`, `dashboard`), `payload jsonb, comment, active bool` – genau eine aktive Version je `kind` |
+| `config_versions` | versionierte Gesamtkonfiguration (Haus, Anlage, Regler, Komfort) | `id, created_at, created_by, kind` (`site`, `control`, `comfort`, `dashboard`), `payload jsonb, comment, active bool` - genau eine aktive Version je `kind` |
 | `users` | Betreiberkonten | `id, email, password_hash (argon2id), role, created_at` |
 | `kiosk_devices` | gepaarte Anzeigegeräte | `id, name, paired_at, last_seen_at, session_token_hash, revoked_at` |
 | `bridge_credentials` | Bridge-Tokens | `id, name, token_hash, created_at, rotated_at, last_seen_at, revoked_at` |
@@ -1355,7 +1355,7 @@ bekommen Spalten; alles andere bleibt Payload (valyze-Regel).
 
 | Tabelle | Zweck | Spalten / Besonderheit |
 |---|---|---|
-| `measurements_raw` | Rohwerte in Gerätetaktung (1–15 s) – **die einzige Rohdatenquelle des Systems** | `(sensor_key, observed_at) pk, value real, quality smallint`; **partitioniert nach Tag** (`PARTITION BY RANGE (observed_at)`), Retention 14 Tage (Partition droppen, nicht `DELETE`) |
+| `measurements_raw` | Rohwerte in Gerätetaktung (1-15 s) - **die einzige Rohdatenquelle des Systems** | `(sensor_key, observed_at) pk, value real, quality smallint`; **partitioniert nach Tag** (`PARTITION BY RANGE (observed_at)`), Retention 14 Tage (Partition droppen, nicht `DELETE`) |
 | `measurements_10s` | 10-Sekunden-Mittel (für Detailansichten und Regler-Nachanalyse) | `(sensor_key, bucket) pk, avg, min, max, samples`; Partition wöchentlich, Retention 180 Tage |
 | `measurements_1min` | Minutenmittel (Tages-/Wochencharts) | `(sensor_key, bucket) pk, avg, min, max, samples`; Partition monatlich, Retention 3 Jahre |
 | `measurements_15min` | Planungsraster, Kalibrierung | `(sensor_key, bucket) pk, avg_kw, energy_kwh, min, max, samples`; unbegrenzt |
@@ -1367,7 +1367,7 @@ bekommen Spalten; alles andere bleibt Payload (valyze-Regel).
 | Tabelle | Zweck |
 |---|---|
 | `forecast_runs` | ein Abruf/eine Berechnung: `id, kind` (`weather`, `pv`, `price`, `heat_demand`, `load`), `provider, issued_at, horizon_start, horizon_end, resolution_min, params jsonb, quality jsonb` |
-| `forecast_points` | Werte: `(run_id, ts) pk, value, value_lo, value_hi` (Bänder optional) – Partition monatlich |
+| `forecast_points` | Werte: `(run_id, ts) pk, value, value_lo, value_hi` (Bänder optional) - Partition monatlich |
 | `forecast_latest` | Materialisierte Sicht: aktuellster Wert je `kind, ts` für die Chart-Abfrage |
 | `plans` | Planlauf: `id, planner, created_at, horizon_start, horizon_end, inputs jsonb, objective jsonb, status` |
 | `plan_intervals` | `(plan_id, ts) pk, expected_pv_kw, expected_load_kw, expected_heat_demand_kw_th, price_ct_kwh, planned_hp_state, planned_buffer_soc, reason_code, note` |
@@ -1375,7 +1375,7 @@ bekommen Spalten; alles andere bleibt Payload (valyze-Regel).
 
 ### 16.2 Indizes und Zugriffsmuster
 
-- `measurements_*`: PK `(sensor_key, ts)` deckt die Chart-Abfrage „Sensor X von–bis“ ab; zusätzlicher BRIN auf `ts`
+- `measurements_*`: PK `(sensor_key, ts)` deckt die Chart-Abfrage „Sensor X von-bis“ ab; zusätzlicher BRIN auf `ts`
   für Partition-Pruning-Hilfe ist bei Tagespartitionen unnötig.
 - `control_decisions(at desc)`, `system_events(at desc, severity)`, `actuator_commands(status, at)`.
 - `forecast_points(run_id, ts)`; `forecast_latest` als Tabelle, die der Worker nach jedem Run neu schreibt (kein
@@ -1387,9 +1387,9 @@ Worker-Job alle 10 min: `raw → 10s → 1min` (für den letzten abgeschlossenen
 täglich `15min → daily`; danach Partitionen älter als Retention droppen. Aggregation ist idempotent
 (`INSERT … ON CONFLICT DO UPDATE`), damit die Nachlieferung aus dem Bridge-Ringpuffer dieselben Wege nutzt.
 
-Volumenabschätzung (≈ 15 Sensoren): Rohwerte ≈ 0,6–1,3 Mio. Zeilen/Tag → 14 Tage ≈ 15 Mio. Zeilen ≈ 1 GB;
+Volumenabschätzung (≈ 15 Sensoren): Rohwerte ≈ 0,6-1,3 Mio. Zeilen/Tag → 14 Tage ≈ 15 Mio. Zeilen ≈ 1 GB;
 10-s-Stufe 180 Tage ≈ 23 Mio. Zeilen ≈ 1,2 GB; 1-min-Stufe 3 Jahre ≈ 24 Mio. Zeilen ≈ 1,3 GB; 15-min unbegrenzt
-≈ 0,5 Mio. Zeilen/Jahr. Gesamt stabil unter ~5 GB – im Railway-Rahmen unkritisch.
+≈ 0,5 Mio. Zeilen/Jahr. Gesamt stabil unter ~5 GB - im Railway-Rahmen unkritisch.
 
 ### 16.4 Eine Datenbank, klare Rollen
 
@@ -1418,23 +1418,23 @@ Aggregationsjob so schneiden, dass ein Wechsel zu Hypertables nur Migrationen be
 ### 17.1 Bewertete Optionen
 
 Ausgangslage: Die Shellys, der MyEnergi-Hub und der SolarEdge-Wechselrichter haben private LAN-Adressen und sind
-aus dem Internet **nicht erreichbar** – und sollen es auch nicht werden. Eine Cloud kann sie also nie direkt
+aus dem Internet **nicht erreichbar** - und sollen es auch nicht werden. Eine Cloud kann sie also nie direkt
 ansprechen. Dieser Abschnitt gilt für das Profil **B (Railway)** aus Abschnitt 15; im Profil **A (lokal)** entfällt
 der Tunnel, weil Anwendung und Geräte im selben LAN stehen.
 
 | Option | Richtung | Bewertung |
 |---|---|---|
 | Geräte per Port-Forwarding öffentlich machen | Cloud → Haus | **abgelehnt**: Shelly-Weboberflächen und Modbus ohne TLS im Internet sind ein erhebliches Risiko |
-| Shelly-Cloud-API + MyEnergi-Cloud + SolarEdge-Cloud direkt aus Railway | Cloud → Hersteller-Clouds | für MyEnergi ohnehin nötig; Shelly-Cloud nur Gen2 mit eigenem Key, Latenz mehrere Sekunden, Batteriesensoren nur Cloud-seitig gecacht, SolarEdge-Cloud 15-min – kein Live, kein lokaler Betrieb, drei Fremdabhängigkeiten für Schaltbefehle: **abgelehnt** |
-| Home Assistant als Vermittler (REST/WebSocket, Nabu-Casa-URL) | Cloud → HA | technisch möglich, macht Duck Curve Home aber dauerhaft von HA abhängig – vom Betreiber ausgeschlossen |
-| VPN/Tailscale zwischen Railway und Haus | beidseitig | Railway hat keinen nativen Tailscale-Sidecar; Userspace-Tailscale im Container ist möglich, aber fragil bei Deploys; die Cloud bekäme Zugriff auf das ganze Hausnetz – mehr als nötig |
+| Shelly-Cloud-API + MyEnergi-Cloud + SolarEdge-Cloud direkt aus Railway | Cloud → Hersteller-Clouds | für MyEnergi ohnehin nötig; Shelly-Cloud nur Gen2 mit eigenem Key, Latenz mehrere Sekunden, Batteriesensoren nur Cloud-seitig gecacht, SolarEdge-Cloud 15-min - kein Live, kein lokaler Betrieb, drei Fremdabhängigkeiten für Schaltbefehle: **abgelehnt** |
+| Home Assistant als Vermittler (REST/WebSocket, Nabu-Casa-URL) | Cloud → HA | technisch möglich, macht Duck Curve Home aber dauerhaft von HA abhängig - vom Betreiber ausgeschlossen |
+| VPN/Tailscale zwischen Railway und Haus | beidseitig | Railway hat keinen nativen Tailscale-Sidecar; Userspace-Tailscale im Container ist möglich, aber fragil bei Deploys; die Cloud bekäme Zugriff auf das ganze Hausnetz - mehr als nötig |
 | MQTT-Broker in der Cloud, Shellys publizieren direkt | Haus → Cloud | Shellys können nur einen Broker; TLS/Auth auf jedem Gerät pflegen; Gen1 ohne TLS-MQTT; Modbus/MyEnergi bräuchten trotzdem einen lokalen Vermittler |
 | **Lokaler Agent (Bridge) mit ausgehender WSS-Verbindung** | **Haus → Cloud** | **gewählt für Profil B**: minimale Angriffsfläche (kein offener Port im Haus), volle Kontrolle über Protokoll, Puffer und Failsafe, alle Gerätezugänge bleiben im LAN, ein einziger Tunnel nach außen |
 
 ### 17.2 Bridge-Protokoll (v1)
 
 - Transport: `wss://api-home.duckcurve.de/bridge/ws`, TLS 1.2+ (Railway-Zertifikat), Pinning der Railway-CA nicht
-  nötig; optional mTLS später, wenn Railway Client-Zertifikate durchreicht (heute nicht) – daher Token-Auth.
+  nötig; optional mTLS später, wenn Railway Client-Zertifikate durchreicht (heute nicht) - daher Token-Auth.
 - Authentifizierung: `Authorization: Bearer <bridge_token>` im Upgrade-Request. Token = 32 Byte zufällig,
   serverseitig nur als Argon2id/SHA-256-HMAC-Hash mit Pepper gespeichert. Erstausgabe über die Einstellungs-UI
   (einmal anzeigen), Rotation: neuer Token wird ausgegeben, alter bleibt `grace_h` (Default 24) gültig, dann
@@ -1477,10 +1477,10 @@ Regeln: keine Secrets im Repo (`.env.example` enthält nur Namen), `gitleaks` in
 
 Ohne Cloud: Die Bridge liest weiter alle Geräte und füllt den Ringpuffer (7 Tage), hält den lokalen Heartbeat für
 den Guardian, setzt nach `offline_release_s` alle Wärmepumpen-Kontakte auf `safe_state` und schreibt einen lokalen
-Event. Es gibt in Profil B **keine** lokale Regelung – die Wärmepumpe läuft dann so, wie sie es auch ohne Duck Curve
+Event. Es gibt in Profil B **keine** lokale Regelung - die Wärmepumpe läuft dann so, wie sie es auch ohne Duck Curve
 Home täte. Die Status-Seite der Bridge (`http://bridge:8080`, nur LAN) zeigt Live-Werte, Gerätegesundheit,
-Puffer-Stand, Verbindung, Uhrzeitversatz und letzte Kommandos – ein Minimal-Dashboard für den Störfall. (Im Profil A
-läuft die Regelung lokal und ist vom Internet unabhängig – einer der Hauptgründe für die Empfehlung.)
+Puffer-Stand, Verbindung, Uhrzeitversatz und letzte Kommandos - ein Minimal-Dashboard für den Störfall. (Im Profil A
+läuft die Regelung lokal und ist vom Internet unabhängig - einer der Hauptgründe für die Empfehlung.)
 
 ## 18. Weather Forecast Provider
 
@@ -1494,7 +1494,7 @@ class WeatherPoint(BaseModel):
     ghi_w_m2: float | None          # Globalstrahlung horizontal
     dni_w_m2: float | None
     dhi_w_m2: float | None
-    cloud_cover: float | None       # 0–1
+    cloud_cover: float | None       # 0-1
     precipitation_mm: float | None
     wind_speed_m_s: float | None
     humidity: float | None
@@ -1529,14 +1529,14 @@ sehr einfach). Ein `CompositeWeatherProvider` kann Fallback-Reihenfolgen abbilde
 ### 18.3 Persistenz
 
 Jeder Abruf → `forecast_runs(kind="weather", provider="open_meteo")` + `forecast_points` je Größe (mehrere Größen
-in `forecast_points` über `variable`-Spalte; Alternative: eine breite Tabelle `weather_points` – gewählt: breite
+in `forecast_points` über `variable`-Spalte; Alternative: eine breite Tabelle `weather_points` - gewählt: breite
 Tabelle für Wetter, weil immer alle Größen zusammen gelesen werden; generische `forecast_points` für skalare
 Reihen wie PV und Preis). Historische Forecasts bleiben 90 Tage (für Kalibrierung Forecast vs. Ist), ältere werden
 auf den „letzten Forecast vor Intervallbeginn“ verdichtet.
 
 ## 19. PV Forecast Provider
 
-> Weiterführend: [Prognoselernen und Wärmemodell](design/prognose-und-waermemodell.md) – Ensemble aus
+> Weiterführend: [Prognoselernen und Wärmemodell](design/prognose-und-waermemodell.md) - Ensemble aus
 > forecast.solar, Solcast und eigener Prognose mit rollierender Korrektur, Einspeiseprognose, Begründung gegen RL.
 
 ### 19.1 Konfiguration
@@ -1598,9 +1598,9 @@ realistisch aussehen.
 Täglich (23:30) für den abgelaufenen Tag: `ratio_day = E_actual / E_forecast_issued_at_06:00`. Zusätzlich
 stündliche Residuen nach Sonnenstand-Klasse (Elevation-Bins) und Bewölkungs-Klasse. Ableitung:
 
-1. **Globaler Skalierungsfaktor** `k_global` als EWMA (α = 0,1) der Tagesverhältnisse, begrenzt auf [0,6; 1,3] –
+1. **Globaler Skalierungsfaktor** `k_global` als EWMA (α = 0,1) der Tagesverhältnisse, begrenzt auf [0,6; 1,3] -
    fängt systematische Fehler (falsche kWp, Verluste, Verschattung im Mittel).
-2. **Sonnenstands-Korrektur** `k_elev[bin]` (z. B. 0–10°, 10–20°, …) – fängt Horizontverschattung und
+2. **Sonnenstands-Korrektur** `k_elev[bin]` (z. B. 0-10°, 10-20°, …) - fängt Horizontverschattung und
    Morgen-/Abendfehler.
 3. Später: Regression `E_actual ~ E_forecast + cloud_cover + season` (Ridge) als eigener Provider
    `CalibratedPvProvider`, der jeden Basis-Provider umhüllt.
@@ -1611,7 +1611,7 @@ Schneebedeckung).
 
 ## 20. Heat Demand Model
 
-> Weiterführend: [Prognoselernen und Wärmemodell](design/prognose-und-waermemodell.md), Abschnitt 3 – Bilanz um den
+> Weiterführend: [Prognoselernen und Wärmemodell](design/prognose-und-waermemodell.md), Abschnitt 3 - Bilanz um den
 > 1000-l-Kombipuffer, geplante Wärmestrommessung ins Haus, Pelletofen als zweite Quelle, pufferbewusste Planung.
 
 ### 20.1 Konfiguration
@@ -1707,7 +1707,7 @@ definierten Zeitpunkt (z. B. 06:00) gültig war.
 |---|---|---|---|---|---|
 | `weather` | open_meteo (…) | 60 min (15 min für 72 h optional) | 7 Tage | stündlich | 90 Tage, danach 1 Run/Tag |
 | `pv` | pvlib_open_meteo, forecast_solar, solcast | 15 min | 72 h | stündlich (nach Wetter) | 90 Tage, danach 1 Run/Tag |
-| `price` | tibber | 60 min → 15 min | bis Ende morgen | 13:00–15:00 alle 30 min, sonst stündlich | unbegrenzt (klein) |
+| `price` | tibber | 60 min → 15 min | bis Ende morgen | 13:00-15:00 alle 30 min, sonst stündlich | unbegrenzt (klein) |
 | `heat_demand` | model_v1 | 15 min | 48 h | mit jedem Planlauf | 30 Tage |
 | `load` (Grundlast) | profile_v1 (Median letzter 4 Wochen je Wochentag/Viertelstunde) | 15 min | 48 h | täglich | 30 Tage |
 
@@ -1723,7 +1723,7 @@ gespeichert; `total` von Tibber ist der maßgebliche Bezugspreis, `energy` und `
 
 ### 22.1 Raster und Auslösung
 
-- Zeitschritt 15 min, Horizont 24–36 h (bis Ende des Tages, für den Tibber-Preise vorliegen, mindestens 24 h; ohne
+- Zeitschritt 15 min, Horizont 24-36 h (bis Ende des Tages, für den Tibber-Preise vorliegen, mindestens 24 h; ohne
   Morgenpreise werden die heutigen Preise als Schätzung wiederholt und als `estimated` markiert).
 - Neuplanung: alle 15 min zur Viertelstundengrenze; zusätzlich bei neuen Tibber-Preisen, neuem PV-Forecast mit
   Tagesenergie-Abweichung > 15 %, Moduswechsel, Override-Beginn/-Ende, Failsafe-Ende.
@@ -1747,10 +1747,10 @@ class PlanInterval(BaseModel):
     planned_building_offset_k: float  # Phase 6 (Vorheizen)
     reason_code: ReasonCode
     note_de: str | None
-    confidence: float                 # 0–1 aus Forecast-Alter und -Streuung
+    confidence: float                 # 0-1 aus Forecast-Alter und -Streuung
 ```
 
-### 22.3 Regelbasierter Planer (Stufe 2, Phase 5) – Ablauf
+### 22.3 Regelbasierter Planer (Stufe 2, Phase 5) - Ablauf
 
 1. **Bedarf:** `Q_demand[t]` aus dem Wärmebedarfsmodell; kumulierter Bedarf bis zum nächsten Morgen.
 2. **Pufferbilanz vorwärts:** ausgehend vom aktuellen `soc`, mit Verlusten, ohne Wärmepumpe → erster Zeitpunkt,
@@ -1771,7 +1771,7 @@ class PlanInterval(BaseModel):
    Live-Guards entscheiden endgültig (z. B. Start entfällt, wenn Überschuss real nicht eintritt und Preis nicht
    günstig ist → Umplanung im nächsten Lauf).
 
-### 22.4 Optimierer (Stufe 3, Phase 6) – Formulierung (Skizze)
+### 22.4 Optimierer (Stufe 3, Phase 6) - Formulierung (Skizze)
 
 ```
 min  Σ_t [ p_t · P_el,t · Δt  −  f · P_export,t · Δt ]  +  c_start · Σ_t s_t  +  c_comfort · Σ_t (u_t + v_t)  +  c_peak · P_peak
@@ -1786,7 +1786,7 @@ s.t.  E_{t+1} = E_t + η · COP_t · P_el,t · Δt − Q_demand,t · Δt − Q_l
       Gebäude (optional): T_{t+1} = T_t + Δt/C · (Q_heat,t − H·(T_t − T_out,t)),  T_min ≤ T_t ≤ T_max_preheat
 ```
 
-Gelöst mit `scipy.optimize.milp` (HiGHS), 96–144 binäre Variablen → Sekundenbereich. Ergebnis wird in dasselbe
+Gelöst mit `scipy.optimize.milp` (HiGHS), 96-144 binäre Variablen → Sekundenbereich. Ergebnis wird in dasselbe
 `PlanInterval`-Format übersetzt; Reason-Codes werden aus den aktiven Nebenbedingungen abgeleitet
 (z. B. `PLANNED_CHEAP_WINDOW`, wenn `x_t = 1` und `price_rank < 0,3`).
 
@@ -1797,7 +1797,7 @@ Gelöst mit `scipy.optimize.milp` (HiGHS), 96–144 binäre Variablen → Sekund
 - valyze: Frontend-Workflow „billigstes zuerst“ (tsc → vitest → build) übernehmen; `alembic check` gegen Modell-
   Drift übernehmen; manueller, bestätigter Workflow mit `environment: production` für gefährliche DB-Aktionen
   übernehmen. **Nicht** übernehmen: fehlende Python-CI, rein manuelle Migrationen.
-- Website: kein CI, Deploy via Railway-GitHub-Integration – reicht für eine statische Seite, nicht für einen Regler.
+- Website: kein CI, Deploy via Railway-GitHub-Integration - reicht für eine statische Seite, nicht für einen Regler.
 
 ### 23.2 Workflows
 
@@ -1870,11 +1870,11 @@ testen).
 |---|---|
 | Farben | `--petrol #0f2e3d`, `--deep #082431`, `--amber #f2a900`, `--amber-soft #ffd778`, `--mist #7fa3b3`, `--paper #fff`, `--cloud #f1f5f5`, `--ink #102e3c`, `--line rgba(15,46,61,.15)`; Dunkelkarte `#123544`; Petrol-Hover `#173f50`; Amber-Hover `#ffb71c`; Charge-Teal `#4f7b88`; Label-Muted `#345d6b`; Verlauf-Ende `#153c4c`; Menü-Dunkel `#07202c` |
 | Schrift | IBM Plex Sans 400/600 (nur zwei Gewichte), IBM Plex Mono 400; lokale OTF, `font-display: swap`; `-webkit-font-smoothing: antialiased` |
-| Typo-System | Kicker: Mono, Versalien, `letter-spacing .13em`, 11 px (auf der Seite 7–11 px), Farbe Mist; Headline: Sans 600, `letter-spacing -.045em`, `line-height 1.07`, `em` als Amber-Zeile in Gewicht 400; Fließtext 15–19 px, `line-height 1.65–1.75`, Paper mit 0,72 Alpha auf Dunkel; große Zahlen 34 px `letter-spacing -.03em` (`.stat-kacheln strong`) |
-| Radien | 2 px (Pills, Menülinks), 3 px (Buttons, Labels), 6 px (Product-Window), 50 % (Punkte) – **nie** größer |
-| Linien | 1 px, auf Dunkel `rgba(255,255,255,.10–.17)`, auf Hell `--line`; Karten-Grids mit 1-px-Gap in `--line`-Farbe statt Rahmen (`.storage-modes`, `.thema-kennzahlen`) |
+| Typo-System | Kicker: Mono, Versalien, `letter-spacing .13em`, 11 px (auf der Seite 7-11 px), Farbe Mist; Headline: Sans 600, `letter-spacing -.045em`, `line-height 1.07`, `em` als Amber-Zeile in Gewicht 400; Fließtext 15-19 px, `line-height 1.65-1.75`, Paper mit 0,72 Alpha auf Dunkel; große Zahlen 34 px `letter-spacing -.03em` (`.stat-kacheln strong`) |
+| Radien | 2 px (Pills, Menülinks), 3 px (Buttons, Labels), 6 px (Product-Window), 50 % (Punkte) - **nie** größer |
+| Linien | 1 px, auf Dunkel `rgba(255,255,255,.10-.17)`, auf Hell `--line`; Karten-Grids mit 1-px-Gap in `--line`-Farbe statt Rahmen (`.storage-modes`, `.thema-kennzahlen`) |
 | Schatten | groß und weich, nur für „schwebende“ Elemente: `0 18px 60px rgba(0,0,0,.09)` Header, `0 44px 120px rgba(0,0,0,.36)` Product-Window, `0 26px 60px rgba(0,0,0,.42)` Menü; Buttons Amber `0 18px 48px rgba(0,0,0,.22)`; Fokusring `0 0 0 6px rgba(242,169,0,.12)` |
-| Abstände | Shell `min(1220px, 100% − 64px)`; Section 124 px; Kartenpadding 30–38 px; Grid-Gaps 16–22 px; Header 82 px |
+| Abstände | Shell `min(1220px, 100% − 64px)`; Section 124 px; Kartenpadding 30-38 px; Grid-Gaps 16-22 px; Header 82 px |
 | Buttons | `min-height 54px`, `padding 0 24px`, Radius 3, 15 px 600; Varianten amber/petrol/outline/linie/small (42 px); Hover `translateY(-2px)` |
 | Header | Grid `1fr auto 1fr`, Glas: `rgba(8,36,49,.38)` + `backdrop-filter blur(18px)` + 1-px-Rahmen `.17` |
 | Hintergrund | `linear-gradient(130deg, --deep, --petrol 62%, #153c4c)` + radialer Mist-Schein + 58-px-Raster (`rgba(255,255,255,.09)`, Opazität .18, nach unten maskiert) |
@@ -1883,7 +1883,7 @@ testen).
 | Charts (SVG) | Grid `rgba(255,255,255,.09)`, Achse `.20`, Achsentext Mono 8 px `.42` Laufweite `.1em`; Linie 3,5 px `round`; Amber Hauptserie, Mist Referenz, `stroke-dasharray 7 7` Vergleich; Fläche Amber-Verlauf `.32 → .03`; Label = Rechteck `rx 3` Fill `--deep` Rahmen `.14` + Amber-Mono-Text; Dispatch: Laden Teal `#4f7b88`, Entladen Amber; SoC-Balken Paper `.26` mit 2-px-Oberkante `.68` |
 | Animation | `.18s ease` für alles Interaktive; Eintritt `cubic-bezier(.22,.61,.36,1)`; Keyframes für Linien-Zeichnen (`pathLength`), Balken-Wachsen, Puls; `prefers-reduced-motion: reduce` → `transition-duration .01ms` |
 | Responsiv | Breakpoints 1020 / 760 / 700 / 420 px; Grids kollabieren auf 1 Spalte |
-| Dark Mode | kein Umschalter – dunkle und helle **Abschnitte** wechseln sich ab (Hero/Analytics/Footer dunkel, Rest hell) |
+| Dark Mode | kein Umschalter - dunkle und helle **Abschnitte** wechseln sich ab (Hero/Analytics/Footer dunkel, Rest hell) |
 | Marke | `duck-curve-mark.svg` (Balkenreihe als Entenkurve, Mist auf Petrol), `duck-curve-header.png` (Wortmarke), Maskottchen nur auf CTA |
 
 valyze verwendet dieselben Grundfarben als helle App (`--wash #f4f7f8`, `--line #dce5ea`, `--positiv #2e7d32`,
@@ -1894,7 +1894,7 @@ diese Ableitungen nicht übertragbar (zu dunkel auf `--deep`), das Prinzip aber 
 
 ```css
 :root {
-  /* Marke – identisch zur Website */
+  /* Marke - identisch zur Website */
   --petrol: #0f2e3d;  --deep: #082431;  --amber: #f2a900;  --amber-soft: #ffd778;
   --mist: #7fa3b3;    --paper: #ffffff; --cloud: #f1f5f5;  --ink: #102e3c;
 
@@ -1926,7 +1926,7 @@ diese Ableitungen nicht übertragbar (zu dunkel auf `--deep`), das Prinzip aber 
   /* Status (neu, nur für Zustände) */
   --ok:    var(--mist);
   --warn:  var(--amber);
-  --alert: #e0533d;                          /* „Ember“ – einzige neue Hue, nur Fehler/Störung/negativer Preis */
+  --alert: #e0533d;                          /* „Ember“ - einzige neue Hue, nur Fehler/Störung/negativer Preis */
 
   /* Thermische Skala (Pufferspeicher) */
   --heat-0: #1f4c66;  /* ≤ 25 °C */  --heat-1: #7fa3b3;  /* 40 °C */
@@ -1974,19 +1974,19 @@ Ein Light-Theme kann später allein durch Überschreiben der `--bg/--surface/--t
 | Header | `.site-header` Glas | `Header` 56 px, Glas, Mark 28 px hoch, Uhrzeit Mono |
 | Hintergrund | `.hero` Verlauf + Raster | `DashboardShell`: `--bg-gradient` + 58-px-Raster bei .10 Opazität, ohne Maske |
 | Chart-Theme | `.svg-*` | ECharts-Theme `duckcurve-dark`: `textStyle.fontFamily` Mono für Achsen, Grid `--grid-line`, Achse `.20`, Achsentext 12 px `--text-3` (Website 8 px ist für die Wand zu klein), Serienbreite 3 (Live) / 2 (Prognose gestrichelt `[7,7]`), Tooltip als dunkles Rechteck Radius 3 mit 1-px-Rahmen .14 und Amber-Mono-Werten |
-| Energiefluss | `.storage-*`-Grafik, `.svg-line` | Knoten: Kreis 72 px, 2-px-Kontur `.17`, Icon 24 px, Wert darunter; Kanten 2–5 px, Punkte 4 px im Serienton |
-| Pufferspeicher | – (neu) | Zylinder 120 × 320 px, Kontur 2 px `.17`, Füllung `linearGradient` aus `--heat-*`, Sensorwerte rechts Mono 20 px |
+| Energiefluss | `.storage-*`-Grafik, `.svg-line` | Knoten: Kreis 72 px, 2-px-Kontur `.17`, Icon 24 px, Wert darunter; Kanten 2-5 px, Punkte 4 px im Serienton |
+| Pufferspeicher | - (neu) | Zylinder 120 × 320 px, Kontur 2 px `.17`, Füllung `linearGradient` aus `--heat-*`, Sensorwerte rechts Mono 20 px |
 | Ladezustand | `.storage-soc` (Balken .26 mit Oberkante .68) | Mini-Balken für Batterie-SOC im Knoten |
 
 ### 24.4 Was bewusst anders ist als auf der Website
 
-- Alle Schriftgrößen der Kicker/Achsen von 7–11 px auf ≥ 12 px angehoben (Leseabstand).
-- Keine 3D-Neigung (`perspective … rotateY`) – Wandbetrieb braucht Ruhe.
+- Alle Schriftgrößen der Kicker/Achsen von 7-11 px auf ≥ 12 px angehoben (Leseabstand).
+- Keine 3D-Neigung (`perspective … rotateY`) - Wandbetrieb braucht Ruhe.
 - Nur dunkle Oberflächen; helle Abschnitte gibt es nicht.
 - Eine zusätzliche Hue (Ember `#e0533d`) für Störung/negativen Preis; die Website hat keine Warnfarbe, ein Dashboard
   braucht eine. Sie wird auf Petrol-Hintergrund auf Kontrast ≥ 4,5:1 geprüft (Text nur als Pill mit dunklem Text
   oder als Linie/Fläche, nicht als Fließtext).
-- Datenfarben für Serien auf Dunkel: Amber, Mist, Paper 62 %, Teal – Kontrast und CVD-Abstand werden in Phase 1 mit
+- Datenfarben für Serien auf Dunkel: Amber, Mist, Paper 62 %, Teal - Kontrast und CVD-Abstand werden in Phase 1 mit
   demselben Palettencheck geprüft, den valyze für seine Ableitungen verwendet; wenn Mist als Preislinie gegen Teal
   zu ähnlich ist, wird der Preis heller gesetzt (Paper 72 %), nicht bunter.
 
@@ -2000,8 +2000,8 @@ Vor Phase 2 zu klären (Phase 1 läuft komplett im Demo-Modus und ist davon unab
 |---|---|---|---|
 | 25.1 | **Shelly-Inventar:** genaue Modelle und Generation (Gen1/Gen2/Gen3) von 3EM, Relais (K1, K2, Kaffee, Terrasse, Gartenzaun) und den vier Temperatursensoren (Plus Add-on mit DS18B20? H&T?), Firmware-Stand, feste IPs vorhanden? | Adapter-Auswahl (Gen1 vs. RPC), Auto-Off-Fähigkeit, MQTT-Konfiguration | Discovery in Phase 2; Annahmen in 8.2/8.6 |
 | 25.2 | **Bridge-Host:** Welcher Rechner steht dauerhaft im LAN (Raspberry Pi, NUC, vorhandener HA-Host mit Docker)? Architektur (arm64/amd64), Stromversorgung, LAN-Kabel? | Docker-Images, Zuverlässigkeit | Raspberry Pi 4/5 mit SSD oder NUC, Docker Compose |
-| 25.3 | **MyEnergi:** Hub-Seriennummer und API-Key aus der App verfügbar? Welche Geräte (Zappi, Libbi, Harvi – je Seriennummer)? Liefert der Harvi die Netzleistung oder ein Zappi-CT? | Netzmessung = Pflichtgröße der Regelung | Harvi als Netzmesser |
-| 25.4 | **Tibber Pulse vorhanden?** | zweite, cloud-unabhängige Netzmessung alle 2–10 s | ohne Pulse hängt die PV-Regel an der MyEnergi-Cloud |
+| 25.3 | **MyEnergi:** Hub-Seriennummer und API-Key aus der App verfügbar? Welche Geräte (Zappi, Libbi, Harvi - je Seriennummer)? Liefert der Harvi die Netzleistung oder ein Zappi-CT? | Netzmessung = Pflichtgröße der Regelung | Harvi als Netzmesser |
+| 25.4 | **Tibber Pulse vorhanden?** | zweite, cloud-unabhängige Netzmessung alle 2-10 s | ohne Pulse hängt die PV-Regel an der MyEnergi-Cloud |
 | 25.5 | **SolarEdge:** Modbus TCP aktivierbar (SetApp/Installer-Zugang)? Wechselrichtermodell? Nutzt Home Assistant heute schon Modbus? | Live-PV mit 2 s vs. nur CT-Wert | MyEnergi-CT als Start, Modbus in Phase 2 aktivieren |
 | 25.6 | **Koordinaten, kWp, Ausrichtung, Neigung, Wechselrichterleistung, Dachflächen**, evtl. Einspeisebegrenzung | PV-Forecast | Platzhalter in 19.1 |
 | 25.7 | **Innentemperatur verfügbar?** (Thermostat, Shelly H&T innen) | Gebäudemodell, Komfortgrenzen | ohne: Gebäude-Vorheizen nur mit engen Grenzen oder gar nicht |
@@ -2029,7 +2029,7 @@ Vor Phase 2 zu klären (Phase 1 läuft komplett im Demo-Modus und ist davon unab
 | **Ringpuffer** | lokale SQLite-Ablage des Gateways mit 7 Tagen Rohwerten für die Nachlieferung nach Verbindungsabbrüchen (nur Profil B) |
 | **LiveState** | letzter bekannter Wert je Sensor mit Qualität und Alter, im API-Prozess und als Spiegel in Postgres |
 | **Decision** | strukturierte Regler-Entscheidung mit Reason-Codes, Inputs, TTL und Ausblick |
-| **Plan / PlanInterval** | 15-min-Fahrplan über 24–36 h mit geplantem Wärmepumpenzustand und Begründung |
+| **Plan / PlanInterval** | 15-min-Fahrplan über 24-36 h mit geplantem Wärmepumpenzustand und Begründung |
 | **Guard** | Sicherheitsregel im Regler, die eine Entscheidung verhindert oder begrenzt |
 | **Failsafe** | Regelzustand, in dem alle Wärmepumpen-Kontakte aus sind und der Regler pausiert |
 | **TTL** | Gültigkeitsdauer eines Kommandos; danach fällt der Aktor auf `safe_state` |
@@ -2045,7 +2045,7 @@ Leerzeichen vor Einheit: „6,8 kW“, „29,4 ct/kWh“).
 Anzeige in `Europe/Berlin`.
 
 **Einheiten:** Leistung kW, Energie kWh, Temperatur °C, Preis ct/kWh (Speicherung mit vier Nachkommastellen),
-SOC als Anteil 0–1 (Anzeige in %).
+SOC als Anteil 0-1 (Anzeige in %).
 
 ---
 

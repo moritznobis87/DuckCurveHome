@@ -1,4 +1,4 @@
-"""Shelly-Geräte direkt über MQTT lesen – ohne Umweg über Home Assistant.
+"""Shelly-Geräte direkt über MQTT lesen - ohne Umweg über Home Assistant.
 
 Zwei Gerätegenerationen mit sehr verschiedenen Formaten:
 
@@ -8,13 +8,13 @@ Zwei Gerätegenerationen mit sehr verschiedenen Formaten:
 Speicher des Geräts; die flüchtigen `energy`/`returned_energy` werden bewusst nicht verwendet.
 
 **Generation 2 und 3** (Plus, Pro): das Gerät meldet JSON-RPC unter `<präfix>/events/rpc`
-(`NotifyStatus`, `NotifyFullStatus`) und – falls in der Geräteoberfläche aktiviert – den Zustand je
+(`NotifyStatus`, `NotifyFullStatus`) und - falls in der Geräteoberfläche aktiviert - den Zustand je
 Komponente unter `<präfix>/status/<komponente>`. Welche Komponente welchem Domänenschlüssel entspricht,
 steht im Entity-Mapping.
 
 Gemeinsam ist beiden: jede Nachricht wird geprüft, der letzte gültige Zustand gehalten und daraus alle
 `publish_interval_s` ein konsistenter Satz `RawReading`s in der Domänenkonvention erzeugt (kW, kWh, °C).
-Als Messzeitpunkt gilt der Empfang – die Uhr des Geräts wird bewusst nicht verwendet.
+Als Messzeitpunkt gilt der Empfang - die Uhr des Geräts wird bewusst nicht verwendet.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from hems_core.protocol import RawReading
 
 log = structlog.get_logger("shelly_mqtt")
 
-RPC_SRC = "dch-bridge"  # Antworten des Shelly landen unter <RPC_SRC>/rpc – wir werten sie nicht aus
+RPC_SRC = "dch-bridge"  # Antworten des Shelly landen unter <RPC_SRC>/rpc - wir werten sie nicht aus
 SWITCHABLE_KINDS = frozenset({"switch", "light"})
 PHASES = ("0", "1", "2")
 PHASE_LABEL = {"0": "l1", "1": "l2", "2": "l3"}
@@ -105,7 +105,7 @@ class Shelly3EmState:
             or parts[1] not in PHASES
             or parts[2] not in FIELDS
         ):
-            return False  # unbekanntes Topic (relay, announce, energy, …) – bewusst ignoriert
+            return False  # unbekanntes Topic (relay, announce, energy, …) - bewusst ignoriert
         phase, fld = parts[1], parts[2]
         value = _parse_float(text)
         if value is None:
@@ -191,7 +191,7 @@ class Shelly3EmState:
 class Shelly3EmSnapshot:
     at: datetime  # Empfangszeit der jüngsten enthaltenen Nachricht
     online: bool | None
-    phases: dict[str, dict[str, float]]  # l1/l2/l3 → Feld → Rohwert (W, V, A, –, Wh)
+    phases: dict[str, dict[str, float]]  # l1/l2/l3 → Feld → Rohwert (W, V, A, -, Wh)
     power_w: float  # Summe der drei aktuellen Leistungen
     energy_wh: float | None  # Summe der drei Zählerstände (Bezug)
     energy_returned_wh: float | None
@@ -464,7 +464,7 @@ class Gen2State:
             else target
         )
         # Ein Fühler mit Lesefehler meldet `tC: null` und `errors: ["read"]`. Ohne diesen Zweig bliebe
-        # der zuletzt gültige Wert stehen – die Anzeige zeigte dann eine Temperatur, die es nicht gibt.
+        # der zuletzt gültige Wert stehen - die Anzeige zeigte dann eine Temperatur, die es nicht gibt.
         broken = bool(state.get("errors"))
         touched = False
         for field_path, key in fields.items():
@@ -502,7 +502,7 @@ class Gen2State:
         return round(value * FIELD_SCALE.get(field_path, 1.0), 4)
 
     def readings(self, now: datetime, stale_after: timedelta, source: str) -> list[RawReading]:
-        """Alle bekannten Schlüssel melden – veraltete ausdrücklich als nicht verfügbar.
+        """Alle bekannten Schlüssel melden - veraltete ausdrücklich als nicht verfügbar.
 
         Sie einfach wegzulassen wäre die schlechtere Wahl: die API behält dann ihren letzten Wert und
         zeigt ihn weiter an, als wäre er aktuell. Genau so stand ein Schaltzustand siebzehn Stunden lang
@@ -616,11 +616,11 @@ class Device(Protocol):
     @property
     def owned_keys(self) -> set[str]: ...
     def command(self, key: str, state: bool, ttl_s: float | None) -> tuple[str, str] | None:
-        """Topic und Nutzdaten, um `key` zu schalten – None, wenn das Gerät das nicht kann."""
+        """Topic und Nutzdaten, um `key` zu schalten - None, wenn das Gerät das nicht kann."""
         ...
 
     def poll(self) -> tuple[str, str] | None:
-        """Topic und Nutzdaten, um den vollständigen Zustand abzufragen – None, wenn nicht nötig."""
+        """Topic und Nutzdaten, um den vollständigen Zustand abzufragen - None, wenn nicht nötig."""
         ...
 
     def observed(self, key: str) -> bool | None:
@@ -676,7 +676,7 @@ class Em3Device:
         return self.state.apply(topic, payload, now)
 
     def emit(self, now: datetime) -> list[RawReading]:
-        """Konsistenter Datensatz, sobald alle drei Phasen frisch sind – sonst die Nichtverfügbarkeit."""
+        """Konsistenter Datensatz, sobald alle drei Phasen frisch sind - sonst die Nichtverfügbarkeit."""
         stale = timedelta(seconds=self.stale_s)
         if self._started_at is None:
             self._started_at = now
@@ -771,7 +771,7 @@ class Gen2Device:
 
     def command(self, key: str, state: bool, ttl_s: float | None) -> tuple[str, str] | None:
         """Switch.Set an <präfix>/rpc. `ttl_s` wird zu `toggle_after`: der Shelly fällt von selbst
-        zurück, falls kein weiteres Kommando kommt – dieselbe Absicherung wie ein Auto-Off-Timer."""
+        zurück, falls kein weiteres Kommando kommt - dieselbe Absicherung wie ein Auto-Off-Timer."""
         target = self._switchable.get(key)
         if target is None:
             return None
@@ -871,7 +871,7 @@ class MqttHub:
 
         Rückgabe ist der beobachtete Zustand, nicht der gewünschte: der Shelly meldet die Änderung
         von sich aus per NotifyStatus, und erst die zählt als Bestätigung. None heißt „keine
-        Rückmeldung“ – der Aufrufer wertet das als nicht bestätigt.
+        Rückmeldung“ - der Aufrufer wertet das als nicht bestätigt.
         """
         session = self._session
         if session is None:
@@ -969,7 +969,7 @@ class MqttHub:
         return {
             "connected": self.connected,
             # Ohne dieses Feld sieht ein Vergleichslauf wie ein gesunder Betrieb aus: die Geräte
-            # antworten, die Zähler laufen – nur gesendet wird nichts.
+            # antworten, die Zähler laufen - nur gesendet wird nichts.
             "forwarding": self.forward,
             "forwarded": self.forwarded,
             "reconnects": self.reconnects,
@@ -982,7 +982,7 @@ class MqttHub:
 def aiomqtt_session_factory(
     host: str, port: int, username: str, password: str, client_id: str
 ) -> SessionFactory:
-    """Echte Verbindung (unverschlüsselt im LAN – der Shelly 3EM Gen1 kann kein TLS). Zugangsdaten werden nie
+    """Echte Verbindung (unverschlüsselt im LAN - der Shelly 3EM Gen1 kann kein TLS). Zugangsdaten werden nie
     protokolliert."""
     import aiomqtt
 

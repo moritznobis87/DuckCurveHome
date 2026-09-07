@@ -2,7 +2,7 @@
 
 Richtung Bridge → API: hello, telemetry, backlog, command_result, heartbeat, device_health, event
 Richtung API → Bridge: welcome, ack, command, heartbeat
-Alle Zeitstempel UTC. Werte sind bereits in der Domänenkonvention (kW, °C, ct/kWh, 0–1, 0/1).
+Alle Zeitstempel UTC. Werte sind bereits in der Domänenkonvention (kW, °C, ct/kWh, 0-1, 0/1).
 """
 
 from __future__ import annotations

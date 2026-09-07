@@ -35,7 +35,7 @@ def test_outbox_survives_restart(tmp_path: Path) -> None:
 def test_sequence_keeps_climbing_after_everything_was_acknowledged(tmp_path: Path) -> None:
     """Der Zähler darf nicht bei 1 neu beginnen, sobald die Outbox leer läuft.
 
-    Die API nimmt ein Telemetriepaket nur an, wenn seine Nummer größer ist als die zuletzt gesehene –
+    Die API nimmt ein Telemetriepaket nur an, wenn seine Nummer größer ist als die zuletzt gesehene -
     bestätigt es aber in jedem Fall. Eine wiederholte 1 wurde deshalb stillschweigend verworfen, und die
     Bridge löschte sie danach als erledigt. So ging über Stunden jede Messung verloren.
     """

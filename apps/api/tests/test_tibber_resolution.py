@@ -89,7 +89,7 @@ async def test_picks_quarter_hourly_when_the_schema_offers_it(
 async def test_quarterly_is_not_mistaken_for_a_quarter_hour(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """QUARTERLY neben MONTHLY und ANNUAL ist ein Quartal – gröber, nicht feiner."""
+    """QUARTERLY neben MONTHLY und ANNUAL ist ein Quartal - gröber, nicht feiner."""
     provider, seen = _provider(
         monkeypatch, ["HOURLY", "DAILY", "WEEKLY", "QUARTERLY", "ANNUAL"], step_min=60
     )

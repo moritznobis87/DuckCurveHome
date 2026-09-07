@@ -2,7 +2,7 @@
 
 > **Anlagendaten (07.09.):** Wärmepumpe **ELCO AEROTOP SPLIT WH 09-11**, Pelletofen **MCZ Star
 > Hydromatic** (wasserführend, speist denselben 1000-l-Puffer). Die Wärmeseite ist damit vollständig
-> benannt — und die Split-Baureihe ist genau die, die BSB-LAN ausschließt: an ihre Wärmedaten kommt
+> benannt - und die Split-Baureihe ist genau die, die BSB-LAN ausschließt: an ihre Wärmedaten kommt
 > man nur über einen externen Wärmemengenzähler. Auswahl, Baugröße und Begründung stehen in
 > `docs/SENSORIK.md`.
 
@@ -18,7 +18,7 @@ Beantwortete Punkte wandern mit Datum und Antwort nach unten in „Erledigt“.
 > Stand 06.09.: myenergi wird jetzt direkt aus der Cloud gelesen (`DCH_MYENERGI_SERIAL`/`_API_KEY`); die HA-Sensoren für PV, Netz, Batterie und Wallbox sind nur noch Rückfall. Q3 (Batterievorzeichen) ist damit fest im Code: interner Libbi-CT negiert, Entladen positiv.
 
 > **Q9 erledigt (06.09.): Die Shellys der ersten Generation bleiben bei Home Assistant.** Beim Gen-1-Shelly
-> schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die HA-Shelly-Integration arbeitet – die Schalter
+> schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die HA-Shelly-Integration arbeitet - die Schalter
 > in HA gingen also verloren. Das ist beim Wärmepumpen-Kontakt und bei der Kaffeemaschine nicht hinnehmbar.
 > Deshalb: `heat_pump_power_kw` (Shelly 3EM), der Wärmepumpenschalter und `coffee_machine` laufen dauerhaft
 > über Home Assistant, die Gen-2-Geräte (Pufferspeicher, Lichter) über MQTT. Die Bridge kann beides
@@ -41,9 +41,9 @@ Weitere, ältere Fragen mit Standardannahmen: Abschnitt 25 im [Projektplan](PROJ
 
 | Datum | Frage | Antwort |
 |---|---|---|
-| 2026-09-06 | K1/K2-Zuordnung (Q1) | `switch.warmepumpe` ist K1 „PV-Überschuss“: er fordert den Überschussbetrieb an und schaltet die Wärmepumpe **nicht** stromlos. Als Aktor gemappt, sicherer Zustand „aus“. Der Abschaltkontakt K2 an der Wärmepumpe ist noch nicht verdrahtet – nichts zu mappen |
+| 2026-09-06 | K1/K2-Zuordnung (Q1) | `switch.warmepumpe` ist K1 „PV-Überschuss“: er fordert den Überschussbetrieb an und schaltet die Wärmepumpe **nicht** stromlos. Als Aktor gemappt, sicherer Zustand „aus“. Der Abschaltkontakt K2 an der Wärmepumpe ist noch nicht verdrahtet - nichts zu mappen |
 | 2026-09-06 | Innenhof-Licht (Q6) | In HA eingerichtet als `switch.shellyplusplugs_64b7080cc70c`, als Aktor `courtyard_light` gemappt. Der Plug sendet zwar auch an den Broker, wird aber wie die beiden anderen Lichter über HA gelesen und geschaltet |
-| 2026-09-06 | Pufferfühler-Reihenfolge (Q2) | Aus dem Vollstand des Geräts (`Shelly.GetStatus`, 23:08) bestimmt: `102` oben (54,6 °C), `103` mitte-oben (53,4 °C), `100` mitte-unten (46,6 °C), `101` unten (34,5 °C). Defekt ist `temperature:104` (`tC: null`, `errors: ["read"]`), nicht 103 – die beiden vorherigen Zuordnungen beruhten auf Vermutungen und waren falsch. Gegenprobe beim Laden: der oberste Fühler steigt zuerst |
+| 2026-09-06 | Pufferfühler-Reihenfolge (Q2) | Aus dem Vollstand des Geräts (`Shelly.GetStatus`, 23:08) bestimmt: `102` oben (54,6 °C), `103` mitte-oben (53,4 °C), `100` mitte-unten (46,6 °C), `101` unten (34,5 °C). Defekt ist `temperature:104` (`tC: null`, `errors: ["read"]`), nicht 103 - die beiden vorherigen Zuordnungen beruhten auf Vermutungen und waren falsch. Gegenprobe beim Laden: der oberste Fühler steigt zuerst |
 | 2026-09-06 | MQTT-Topic-Präfix der Gen-2-Shellys | Nicht die Gerätekennung, sondern der im Gerät gesetzte Name: `Pufferspeicher_Temperaturen`, `Lichterkette_Terassenlicht`, `Licht_Gartenzaun`, `Lichterkette_Innenhof`. Steht in jeder Nachricht im Feld `dst` |
 | 2026-09-05 | Puffervolumen | 1000 l Kombipuffer; WP und Pelletofen speisen ein, Heizung und Warmwasser entnehmen |
 | 2026-09-05 | Lichter | Drei Lichterketten: Terrasse, Innenhof (neu), Gartenzaun. Benennung „Licht <Ort>“ |

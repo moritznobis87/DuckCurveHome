@@ -1,11 +1,11 @@
-"""measurements_minute – dauerhaftes Minutengedächtnis, breit statt schmal
+"""measurements_minute - dauerhaftes Minutengedächtnis, breit statt schmal
 
 Bisher gab es unterhalb der Stunde nur die Rohwerte, und die werden nach 14 Tagen gelöscht: ein Blick
 in einen Tag vor zwei Jahren zeigte nichts Feineres als ein Stundenmittel. Diese Tabelle hält die
 Minutenmittel dauerhaft.
 
 Eine Zeile je Minute mit einer Spalte je Reihe, nicht eine Zeile je Messwert. Der Zeilenkopf von
-Postgres (rund 27 Byte) fällt damit einmal für fünfzehn Werte an statt fünfzehnmal — ungefähr 1 GB
+Postgres (rund 27 Byte) fällt damit einmal für fünfzehn Werte an statt fünfzehnmal - ungefähr 1 GB
 statt 9 GB in zehn Jahren. Deshalb ist Minutenauflösung dauerhaft tragbar und die sonst übliche
 Verdichtung auf Viertelstunden unnötig.
 

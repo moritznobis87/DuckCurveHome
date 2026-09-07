@@ -1,6 +1,6 @@
 """Rechnungsprüfung als Dienst: PDF entgegennehmen, prüfen, speichern, Verlauf ausgeben.
 
-Die Rechnung selbst wird nicht abgelegt – nur die gelesenen Werte, die Befunde und eine Prüfsumme der Datei.
+Die Rechnung selbst wird nicht abgelegt - nur die gelesenen Werte, die Befunde und eine Prüfsumme der Datei.
 Der Zugang ist derselbe wie für das Dashboard (API-Token), damit eine Automatisierung wie OpenClaw eine neue
 Rechnung aus dem Postfach direkt hochladen kann.
 """
@@ -108,7 +108,7 @@ class InvoiceService:
 
 
 def _previous(invoice: TibberInvoice, stored: list[InvoiceReportOut]) -> TibberInvoice | None:
-    """Die Rechnung, die zeitlich unmittelbar vor dieser liegt – Grundlage der Zählerstandskette."""
+    """Die Rechnung, die zeitlich unmittelbar vor dieser liegt - Grundlage der Zählerstandskette."""
     earlier = [
         r.invoice
         for r in stored

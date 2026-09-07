@@ -536,7 +536,7 @@ export interface components {
          * @description Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.
          *
          *     Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die
-         *     Wärmepumpe steht, kommt die Wärme von woanders — beim Kombipuffer also vom Pelletofen. Das ist
+         *     Wärmepumpe steht, kommt die Wärme von woanders - beim Kombipuffer also vom Pelletofen. Das ist
          *     die beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist.
          */
         BufferBalanceOut: {
@@ -1745,7 +1745,7 @@ export interface components {
             unit: string;
             /**
              * Delta
-             * @description Abweichung der Rechnung von der Erwartung – im Web direkt anzeigbar.
+             * @description Abweichung der Rechnung von der Erwartung - im Web direkt anzeigbar.
              */
             readonly delta: number | null;
         };
@@ -1974,7 +1974,7 @@ export interface components {
          *
          *     Verglichen wird, was der Wärmepumpenstrom aus dem Netz gekostet hat, mit dem, was der Bezug des
          *     ganzen Hauses im selben Zeitraum im Mittel kostete. Liegt der erste darunter, hat die Steuerung
-         *     gewirkt — unabhängig davon, ob sie jedes geplante Fenster genau getroffen hat.
+         *     gewirkt - unabhängig davon, ob sie jedes geplante Fenster genau getroffen hat.
          */
         PriceQualityOut: {
             /** Hp Grid Price Ct */
@@ -2104,7 +2104,7 @@ export interface components {
         };
         /**
          * PvTaxMetaOut
-         * @description Was die Zahlen der Abrechnung bedingt – gehört sichtbar zur Auswertung, nicht ins Kleingedruckte.
+         * @description Was die Zahlen der Abrechnung bedingt - gehört sichtbar zur Auswertung, nicht ins Kleingedruckte.
          */
         PvTaxMetaOut: {
             /** Feed In Ct Kwh */
@@ -2352,7 +2352,7 @@ export interface components {
          * @description Geldseite: Einspeisevergütung, Ersatzpreis und die umsatzsteuerliche Einordnung der Anlage.
          *
          *     Netto und brutto sauber zu trennen ist hier keine Förmlichkeit: die Tibber-Preise der Zeitreihe sind
-         *     Bruttopreise (Energie, Netz, Steuern, Abgaben – so zeigt Tibber sie), die Einspeisevergütung nach EEG
+         *     Bruttopreise (Energie, Netz, Steuern, Abgaben - so zeigt Tibber sie), die Einspeisevergütung nach EEG
          *     ist ein Nettosatz, und die steuerliche Bemessungsgrundlage des Eigenverbrauchs ist ebenfalls netto.
          */
         TariffConfig: {
@@ -2454,7 +2454,7 @@ export interface components {
          * YearMapOut
          * @description Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.
          *
-         *     Die Stunde ist Ortszeit, nicht UTC — sonst wanderte die Sonne im Bild um eine Stunde, sobald die
+         *     Die Stunde ist Ortszeit, nicht UTC - sonst wanderte die Sonne im Bild um eine Stunde, sobald die
          *     Zeitumstellung kommt. `null` heißt „keine Messdaten", nicht „null Kilowattstunden"; beides zu
          *     unterscheiden ist der halbe Nutzen der Darstellung.
          */

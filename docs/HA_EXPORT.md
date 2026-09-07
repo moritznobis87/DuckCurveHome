@@ -77,7 +77,7 @@ Zugangsdaten, nur Messwerte.
 
 Wer die `influxdb`-Integration nutzt, hat dort die vollständige Historie in Rohauflösung. Die HA-Integration
 schreibt je **Einheit** eine Measurement (`W`, `%`, `°C`, …) mit Tag `entity_id` (ohne `sensor.`) und Feld
-`value`. Abfragesprache ist InfluxQL, kein SQL – daher scheitern die Recorder-Abfragen dort mit
+`value`. Abfragesprache ist InfluxQL, kein SQL - daher scheitern die Recorder-Abfragen dort mit
 „error parsing query“.
 
 Inventar:
@@ -116,7 +116,7 @@ Der Preissensor steht nicht im Bridge-Mapping und wird beim Import per `extra_ma
 
 Ergebnisspalten: `name,tags,time,mean` (tags = `entity_id=…`). Genau dieses Format versteht der Import; die
 Schrittweite (1, 5 oder 60 min) erkennt er selbst. Bei sehr großen Datenmengen `time > now() - 400d` in
-Monatsfenster teilen und die Dateien nacheinander importieren – der Import ist idempotent. Mit dem Add-on
+Monatsfenster teilen und die Dateien nacheinander importieren - der Import ist idempotent. Mit dem Add-on
 InfluxDB (Chronograf) geht dasselbe über *Explore → CSV*, nur unbequemer bei großen Ergebnissen.
 
 ## 6. Import in Duck Curve Home

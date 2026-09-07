@@ -6,14 +6,14 @@ Bei Regelbesteuerung sind drei Größen zu trennen, die im Alltag gern verschwim
   Netzbetreiber zahlt zusätzlich die Umsatzsteuer aus. Sie ist durchlaufender Posten und wird mit der
   Voranmeldung wieder abgeführt.
 * Der **Eigenverbrauch** ist eine unentgeltliche Wertabgabe. Bemessungsgrundlage ist nach § 10 Abs. 4
-  UStG der Einkaufspreis im Zeitpunkt des Umsatzes – für Strom also das, was der Bezug derselben Menge
+  UStG der Einkaufspreis im Zeitpunkt des Umsatzes - für Strom also das, was der Bezug derselben Menge
   aus dem Netz netto gekostet hätte. Bei einem Tarif mit stündlichem Preis ist das keine Pauschale,
   sondern die Summe über die Stunden.
 * Der **Speicher** verschiebt beides zeitlich. Nur der PV-Anteil seiner Entladung ist Eigenverbrauch
   eigener Erzeugung; Strom, der aus dem Netz in den Speicher ging, wurde bereits als Bezug versteuert.
 
 Diese Datei rechnet nur; sie kennt weder Datenbank noch HTTP. Die Zahlen ersetzen keine
-Steuerberatung – sie bereiten die Beträge so auf, dass sie prüfbar sind.
+Steuerberatung - sie bereiten die Beträge so auf, dass sie prüfbar sind.
 """
 
 from __future__ import annotations

@@ -31,7 +31,7 @@ export function EvReport() {
   const barsOpt = useMemo(() => stackedBars(data?.summary.buckets ?? [], SOURCES), [data]);
   const donutOpt = useMemo(() => donut(SOURCES.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), pct(pvShare), "Sonnenstrom"), [t, pvShare]);
   const sessions = useMemo(() => [...(data?.sessions ?? [])].sort((a, b) => b.start.localeCompare(a.start)), [data]);
-  const val = (p: Period, f: (s: EvReportData) => string) => (strip[p] ? f(strip[p] as EvReportData) : "–");
+  const val = (p: Period, f: (s: EvReportData) => string) => (strip[p] ? f(strip[p] as EvReportData) : "-");
 
   return (
     <ReportShell title="Wallbox" kicker="Ladungen · Herkunft · Kosten" period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
@@ -42,7 +42,7 @@ export function EvReport() {
         <Stat label="Aus dem Netz" value={de1(t?.ev_grid_kwh)} unit="kWh" tone="ember" hint={paidCt != null ? `Ø ${de1(paidCt, 1)} ct/kWh bezahlt` : "kein Netzbezug"} />
         <Stat label="Bezahlt" value={eur(t?.ev_cost_eur)} tone="ember" hint="Netzanteil × Strompreis" />
         <Stat label="Entgangene Vergütung" value={eur(t?.ev_opportunity_eur)} tone="muted" hint="nicht eingespeister PV-Strom" />
-        <Stat label="Effektiv je kWh" value={effCt != null ? de1(effCt, 1) : "–"} unit="ct" hint="bezahlt + entgangen" />
+        <Stat label="Effektiv je kWh" value={effCt != null ? de1(effCt, 1) : "-"} unit="ct" hint="bezahlt + entgangen" />
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>

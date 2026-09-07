@@ -25,7 +25,7 @@ function ControlTile({ tile, on, m, readOnly, onToggle }: { tile: (typeof TILES)
   }, [on, optimistic]);
   const click = async () => {
     // Gäste sehen den Zustand, schalten aber nicht. Die Kachel bleibt bedienbar und sagt, warum nichts
-    // passiert – ein toter Knopf ohne Erklärung ist ärgerlicher als eine kurze Auskunft.
+    // passiert - ein toter Knopf ohne Erklärung ist ärgerlicher als eine kurze Auskunft.
     if (readOnly) {
       setStatus("error");
       setMessage("Gastzugang · nur Ansicht");
@@ -48,7 +48,7 @@ function ControlTile({ tile, on, m, readOnly, onToggle }: { tile: (typeof TILES)
   };
   const color = status === "error" ? "var(--alert)" : shown ? "var(--amber)" : "var(--text-3)";
   // Woher der Zustand stammt und wie alt er ist. Ohne das lässt sich eine falsch wirkende Kachel nicht
-  // von einer eingefrorenen unterscheiden – „aus“ sieht gleich aus, ob gerade gemessen oder Stunden alt.
+  // von einer eingefrorenen unterscheiden - „aus“ sieht gleich aus, ob gerade gemessen oder Stunden alt.
   const age = m ? ageLabel(m.observed_at, Date.now()) : null;
   const stale = m ? m.quality === "stale" || m.quality === "unavailable" || m.quality === "unknown" : true;
   const origin = m?.source ?? "keine Quelle";
@@ -65,7 +65,7 @@ function ControlTile({ tile, on, m, readOnly, onToggle }: { tile: (typeof TILES)
           style={{ color }}
           title={status === "error" ? message ?? "Fehler" : undefined}
         >
-          {status === "pending" ? "schalte …" : status === "error" ? message ?? "Fehler" : shown === null ? "–" : shown ? "an" : "aus"}
+          {status === "pending" ? "schalte …" : status === "error" ? message ?? "Fehler" : shown === null ? "-" : shown ? "an" : "aus"}
           {status === "idle" && age ? <span style={{ color: stale ? "var(--alert)" : "var(--text-3)" }}> · {age}</span> : null}
         </span>
       </span>

@@ -9,18 +9,18 @@ import { Icon } from "@/components/ui/Icon";
 
 type NodeKey = "pv" | "grid" | "house" | "bat" | "hp" | "ev";
 // Die Grafik wird auf die Kartenhöhe skaliert: ein Bildpunkt entspricht H / Kartenhöhe Einheiten.
-// Schrift und Knoten größer zu machen bringt deshalb nichts, wenn H im selben Maß mitwächst – beides
+// Schrift und Knoten größer zu machen bringt deshalb nichts, wenn H im selben Maß mitwächst - beides
 // hebt sich auf. Entscheidend ist das Verhältnis. H bleibt darum knapp, die Zeilen rücken nur so weit
 // auseinander, wie die zweizeilige Beschriftung es braucht.
 // Breite ist gratis: skaliert wird auf die Höhe, eine breitere Zeichenfläche nutzt also nur den bisher
-// leeren Rand der Karte. Deshalb stehen die Knoten weit auseinander – so läuft keine Beschriftung mehr
+// leeren Rand der Karte. Deshalb stehen die Knoten weit auseinander - so läuft keine Beschriftung mehr
 // hinter einen Nachbarkreis.
 const R = 48;
 const W = 700;
 const H = 370; // bleibt fest: wächst H mit, hebt sich die Vergrößerung wieder auf
 const ICON = 42;
 // Netz und Batterie sitzen höher als das Haus, damit ihre zweizeilige Beschriftung oberhalb der unteren
-// Kreise endet. Andernfalls verschwindet die längste Zeile – „Batterie · lädt 2,9 kW“ – hinter der
+// Kreise endet. Andernfalls verschwindet die längste Zeile - „Batterie · lädt 2,9 kW“ - hinter der
 // Wallbox. Das Haus steht in der Mitte, die übrigen fünf gruppieren sich darum.
 const NODES: Record<NodeKey, { x: number; y: number; label: string; icon: string; color: string; href: string }> = {
   pv: { x: 350, y: 52, label: "PV", icon: "sun", color: "var(--pv)", href: "/pv" },
@@ -67,14 +67,14 @@ function Node({ k, value, unit, m, nowMs, sub, onOpen }: { k: NodeKey; value: st
   const ty1 = right ? n.y - 2 : n.y + R + 26;
   const ty2 = right ? n.y + 24 : n.y + R + 46;
   return (
-    <g className="flow-node" role="link" tabIndex={0} aria-label={`${n.label} – Details öffnen`} style={{ cursor: "pointer" }} onClick={() => onOpen(n.href)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(n.href); }}>
+    <g className="flow-node" role="link" tabIndex={0} aria-label={`${n.label} - Details öffnen`} style={{ cursor: "pointer" }} onClick={() => onOpen(n.href)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(n.href); }}>
       <circle cx={n.x} cy={n.y} r={R + 10} fill="transparent" />
       <circle cx={n.x} cy={n.y} r={R} fill="var(--petrol)" stroke={col} strokeOpacity={dim ? 0.35 : 0.55} strokeWidth={2} />
       <g transform={`translate(${n.x - ICON / 2},${n.y - ICON / 2})`}>
         <Icon name={n.icon} size={ICON} color={col} />
       </g>
       <text x={tx} y={ty1} textAnchor={anchor} className="mono" style={{ fontSize: 30, letterSpacing: "-.02em" }} fill={dim ? "var(--text-3)" : "var(--text-1)"}>
-        {m && m.value === null ? "–" : value}
+        {m && m.value === null ? "-" : value}
         <tspan style={{ fontFamily: "var(--font-sans)", fontSize: 16 }} fill="var(--text-3)" dx={5}>{unit}</tspan>
       </text>
       <text x={tx} y={ty2} textAnchor={anchor} style={{ fontFamily: "var(--font-sans)", fontSize: 16 }} fill="var(--text-3)">
@@ -135,7 +135,7 @@ export function EnergyFlow({ snapshot, nowMs }: { snapshot: EnergySnapshot | nul
           <Node k="pv" value={kw(s?.pv_power_kw.value)} unit="kW" m={s?.pv_power_kw ?? null} nowMs={nowMs} onOpen={open} />
           <Node k="grid" value={kw(s?.grid_power_kw.value)} unit="kW" m={s?.grid_power_kw ?? null} nowMs={nowMs} onOpen={open} />
           <Node k="house" value={kw(s?.house_power_kw.value)} unit="kW" m={s?.house_power_kw ?? null} nowMs={nowMs} onOpen={open} />
-          <Node k="bat" value={s?.battery_soc.value != null ? String(Math.round(s.battery_soc.value * 100)) : "–"} unit="%" m={s?.battery_soc ?? null} nowMs={nowMs} sub={v.charge >= 0.05 ? `lädt ${kw(v.charge)} kW` : v.discharge >= 0.05 ? `entlädt ${kw(v.discharge)} kW` : undefined} onOpen={open} />
+          <Node k="bat" value={s?.battery_soc.value != null ? String(Math.round(s.battery_soc.value * 100)) : "-"} unit="%" m={s?.battery_soc ?? null} nowMs={nowMs} sub={v.charge >= 0.05 ? `lädt ${kw(v.charge)} kW` : v.discharge >= 0.05 ? `entlädt ${kw(v.discharge)} kW` : undefined} onOpen={open} />
           <Node k="hp" value={kw(s?.heat_pump_power_kw.value)} unit="kW" m={s?.heat_pump_power_kw ?? null} nowMs={nowMs} onOpen={open} />
           <Node k="ev" value={kw(s?.ev_power_kw.value)} unit="kW" m={s?.ev_power_kw ?? null} nowMs={nowMs} onOpen={open} />
         </svg>

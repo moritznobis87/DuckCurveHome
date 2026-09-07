@@ -1,4 +1,4 @@
-"""API-Schemas – dort, wo sie vom Domänenmodell abweichen (Transportform)."""
+"""API-Schemas - dort, wo sie vom Domänenmodell abweichen (Transportform)."""
 
 from __future__ import annotations
 
@@ -283,7 +283,7 @@ class EnergySummaryOut(BaseModel):
 
 
 class PvTaxMetaOut(BaseModel):
-    """Was die Zahlen der Abrechnung bedingt – gehört sichtbar zur Auswertung, nicht ins Kleingedruckte."""
+    """Was die Zahlen der Abrechnung bedingt - gehört sichtbar zur Auswertung, nicht ins Kleingedruckte."""
 
     feed_in_ct_kwh: float  # Nettosatz laut Bescheid
     vat_rate: float
@@ -329,14 +329,14 @@ YearMetric = Literal[
 class YearMapOut(BaseModel):
     """Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.
 
-    Die Stunde ist Ortszeit, nicht UTC — sonst wanderte die Sonne im Bild um eine Stunde, sobald die
+    Die Stunde ist Ortszeit, nicht UTC - sonst wanderte die Sonne im Bild um eine Stunde, sobald die
     Zeitumstellung kommt. `null` heißt „keine Messdaten", nicht „null Kilowattstunden"; beides zu
     unterscheiden ist der halbe Nutzen der Darstellung.
     """
 
     year: int
     days: list[date]  # Spaltenachse, ein Eintrag je Kalendertag
-    metrics: dict[str, list[list[float | None]]]  # Kennzahl → [Tag][Stunde 0–23]
+    metrics: dict[str, list[list[float | None]]]  # Kennzahl → [Tag][Stunde 0-23]
     hours_with_data: int
     data_since: datetime | None
 
@@ -346,7 +346,7 @@ class PriceQualityOut(BaseModel):
 
     Verglichen wird, was der Wärmepumpenstrom aus dem Netz gekostet hat, mit dem, was der Bezug des
     ganzen Hauses im selben Zeitraum im Mittel kostete. Liegt der erste darunter, hat die Steuerung
-    gewirkt — unabhängig davon, ob sie jedes geplante Fenster genau getroffen hat.
+    gewirkt - unabhängig davon, ob sie jedes geplante Fenster genau getroffen hat.
     """
 
     hp_grid_price_ct: float | None = None  # Mittelpreis des WP-Netzbezugs
@@ -362,7 +362,7 @@ class BufferBalanceOut(BaseModel):
     """Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.
 
     Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die
-    Wärmepumpe steht, kommt die Wärme von woanders — beim Kombipuffer also vom Pelletofen. Das ist
+    Wärmepumpe steht, kommt die Wärme von woanders - beim Kombipuffer also vom Pelletofen. Das ist
     die beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist.
     """
 

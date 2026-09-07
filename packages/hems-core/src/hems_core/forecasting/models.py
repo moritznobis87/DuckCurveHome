@@ -1,4 +1,4 @@
-"""Anbieterneutrale Forecast-Modelle und Provider-Protokolle (Plan Abschnitte 18–19)."""
+"""Anbieterneutrale Forecast-Modelle und Provider-Protokolle (Plan Abschnitte 18-19)."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ class WeatherPoint(BaseModel):
     ghi_w_m2: float | None = None
     dni_w_m2: float | None = None
     dhi_w_m2: float | None = None
-    cloud_cover: float | None = None  # 0–1
+    cloud_cover: float | None = None  # 0-1
     precipitation_mm: float | None = None
     wind_speed_m_s: float | None = None
     humidity: float | None = None

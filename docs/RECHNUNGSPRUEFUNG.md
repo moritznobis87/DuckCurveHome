@@ -21,7 +21,7 @@ und eine Prüfsumme der Datei.
 | Anschluss | Endstand der Vorrechnung = Anfangsstand dieser Rechnung, ohne Lücke im Zeitraum |
 
 Die Toleranz folgt der Rundung: Wie genau ein Posten stimmen muss, ergibt sich aus den angegebenen
-Nachkommastellen seines ct-Preises. Tibber rundet die Mehrwertsteuer je Position und summiert danach – der
+Nachkommastellen seines ct-Preises. Tibber rundet die Mehrwertsteuer je Position und summiert danach - der
 Bruttobetrag einer Summe weicht deshalb um bis zu einen halben Cent je Position ab (Juni 2026: 86,05 € statt
 86,06 €). Das wird als Rundung erkannt und nicht als Fehler gemeldet.
 
@@ -67,9 +67,9 @@ Die Antwort ist der vollständige Prüfbericht:
 
 Weitere Endpunkte:
 
-* `GET /api/v1/import/tibber-invoices` – alle geprüften Rechnungen, neueste zuerst, mit Menge, Beträgen,
+* `GET /api/v1/import/tibber-invoices` - alle geprüften Rechnungen, neueste zuerst, mit Menge, Beträgen,
   Durchschnittspreis, eigenem Vergleichswert und Ampel.
-* `GET /api/v1/import/tibber-invoices/{nummer}` – ein vollständiger Bericht.
+* `GET /api/v1/import/tibber-invoices/{nummer}` - ein vollständiger Bericht.
 
 ## Auswertung auf der Seite
 

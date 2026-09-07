@@ -31,10 +31,10 @@ export function HouseReport() {
   const t = data?.totals;
   const consOpt = useMemo(() => stackedBars(data?.buckets ?? [], CONSUMERS), [data]);
   const srcOpt = useMemo(() => stackedBars(data?.buckets ?? [], SOURCES), [data]);
-  const consDonut = useMemo(() => donut(CONSUMERS.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), t ? `${de1(t.house_kwh, t.house_kwh >= 100 ? 0 : 1)} kWh` : "–", "Verbrauch"), [t]);
+  const consDonut = useMemo(() => donut(CONSUMERS.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), t ? `${de1(t.house_kwh, t.house_kwh >= 100 ? 0 : 1)} kWh` : "-", "Verbrauch"), [t]);
   const srcDonut = useMemo(() => donut(SOURCES.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), pct(t?.autarky), "Autarkie"), [t]);
   const share = (part: number | undefined, whole: number | undefined) => (part != null && whole && whole > 0 ? `${Math.round((part / whole) * 100)} % des Verbrauchs` : undefined);
-  const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "–");
+  const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "-");
 
   return (
     <ReportShell title="Haus" kicker="Verbrauch · Verbraucher · Herkunft" period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
@@ -51,7 +51,7 @@ export function HouseReport() {
           value={eur(t?.import_cost_eur)}
           tone="ember"
           href={role === "owner" ? "/haus/rechnungen" : undefined}
-          ariaLabel={role === "owner" ? "Netzbezug – zur Rechnungsprüfung" : undefined}
+          ariaLabel={role === "owner" ? "Netzbezug - zur Rechnungsprüfung" : undefined}
           hint={t ? `${de1(t.import_kwh)} kWh${role === "owner" ? " · Rechnungen prüfen" : ""}` : undefined}
         />
       </KpiGrid>

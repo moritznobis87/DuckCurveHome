@@ -4,13 +4,25 @@ import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { useRole } from "@/lib/live/useRole";
 
-/** Die immer gleichen kleinen Knöpfe oben rechts. Eine Stelle, damit die Unterseiten nicht
- *  auseinanderlaufen — bisher hatte jede ihre eigene, teils gar keine.
- *  Die eigene Seite lässt ihren Knopf weg: ein Verweis auf sich selbst ist keine Navigation. */
+/** Die immer gleichen kleinen Knöpfe oben rechts: jede Seite unmittelbar unter dem Dashboard ist
+ *  damit von jeder anderen aus erreichbar, nicht nur über die Klickstrecke.
+ *
+ *  Bewusst nur eine Ebene. Unterunterseiten (PV-Abrechnung, Rechnungsprüfung) bleiben dort, wo sie
+ *  hingehören: erreichbar aus ihrer Elternseite. Sonst wüchse die Leiste mit jeder neuen Seite und
+ *  verlöre genau die Übersicht, die sie herstellen soll.
+ *
+ *  Die eigene Seite lässt ihren Knopf weg: ein Verweis auf sich selbst ist keine Navigation.
+ *  Die Einstellungen erscheinen nur bei Vollzugriff; Gästen einen Weg zu zeigen, der sie umleitet,
+ *  wäre unhöflich. */
 const ITEMS = [
-  { href: "/", icon: "home", label: "Dashboard" },
+  { href: "/", icon: "dashboard", label: "Dashboard" },
+  { href: "/pv", icon: "sun", label: "Photovoltaik" },
+  { href: "/haus", icon: "house", label: "Haus" },
+  { href: "/batterie", icon: "battery", label: "Batterie" },
+  { href: "/waerme", icon: "pump", label: "Wärme" },
+  { href: "/wallbox", icon: "car", label: "Wallbox" },
+  { href: "/prognose", icon: "chart", label: "Prognosegüte" },
   { href: "/jahr", icon: "calendar", label: "Jahreskarte" },
-  { href: "/prognose", icon: "chart", label: "Prognose-Auswertung" },
   { href: "/settings", icon: "gear", label: "Einstellungen", ownerOnly: true },
 ] as const;
 

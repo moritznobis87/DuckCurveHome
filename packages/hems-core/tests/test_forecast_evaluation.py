@@ -103,7 +103,7 @@ def test_state_roundtrip_and_explanation() -> None:
     restored = CorrectorState.model_validate(dumped)
     assert restored == c.state
     lines = explain_corrections_de(restored)
-    assert any("20–30°" in ln and "gesenkt" in ln for ln in lines)
+    assert any("20-30°" in ln and "gesenkt" in ln for ln in lines)
     assert any("Tagesenergie" in ln for ln in lines)
     inactive = explain_corrections_de(CorrectorState())
     assert inactive[0].startswith("Korrektur noch nicht aktiv")

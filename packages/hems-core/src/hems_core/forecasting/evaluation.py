@@ -15,7 +15,7 @@ from datetime import date, datetime, timedelta
 from pydantic import BaseModel, ConfigDict, Field
 
 ELEVATION_BINS: tuple[tuple[float, float], ...] = ((0, 10), (10, 20), (20, 30), (30, 45), (45, 90))
-BIN_LABELS_DE: tuple[str, ...] = ("0–10°", "10–20°", "20–30°", "30–45°", "über 45°")
+BIN_LABELS_DE: tuple[str, ...] = ("0-10°", "10-20°", "20-30°", "30-45°", "über 45°")
 HORIZON_CLASSES: tuple[tuple[float, float, str], ...] = (
     (0, 3, "0-3h"),
     (3, 12, "3-12h"),

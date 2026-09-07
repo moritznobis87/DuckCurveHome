@@ -2,8 +2,8 @@
 
 Zwei Exportarten:
 - `statistics` / `statistics_short_term`: Spalten statistic_id, unit_of_measurement, start_ts, mean, min, max,
-  state, sum – Stunden- bzw. 5-Minuten-Mittel. Das Mittel gilt als konstante Leistung im Intervall.
-- `states`: Spalten entity_id, state, last_updated_ts – Rohzustände (nur die letzten Tage der Aufbewahrung);
+  state, sum - Stunden- bzw. 5-Minuten-Mittel. Das Mittel gilt als konstante Leistung im Intervall.
+- `states`: Spalten entity_id, state, last_updated_ts - Rohzustände (nur die letzten Tage der Aufbewahrung);
   Sprungfunktion, Lücken bis 20 min werden fortgeschrieben.
 
 Entitäten werden über das Mapping (config/entities.home.yaml) in Domänenschlüssel übersetzt, mit Einheit und
@@ -453,7 +453,7 @@ def consumer_only_hours(dump: ParsedDump) -> dict[datetime, dict[str, float]]:
         for minute, kw in dump.minutes[key].items():
             hour = minute.replace(minute=0, second=0, microsecond=0)
             if _samples(dump.minutes, hour):
-                continue  # vollständige Stunde – die normale Rechnung deckt sie ab
+                continue  # vollständige Stunde - die normale Rechnung deckt sie ab
             bucket = out.setdefault(hour, {})
             bucket[name] = bucket.get(name, 0.0) + max(0.0, kw) / 60.0
     return {h: {k: round(v, 4) for k, v in c.items()} for h, c in out.items()}
@@ -465,7 +465,7 @@ def patch_consumers(
     """Verbraucher in eine gespeicherte Stunde nachtragen, deren Quelle sie nicht kannte.
 
     Die Herkunft (PV, Batterie, Netz) und damit die Kosten werden im Verhältnis des Hausverbrauchs dieser
-    Stunde aufgeteilt – genauer geht es ohne gemeinsame Minutenwerte nicht, und das wird als Schätzung
+    Stunde aufgeteilt - genauer geht es ohne gemeinsame Minutenwerte nicht, und das wird als Schätzung
     ausgewiesen. Ein Verbraucher, den die gespeicherte Stunde schon kennt, bleibt unangetastet."""
     patch: dict[str, float] = {}
     house = old.house_kwh

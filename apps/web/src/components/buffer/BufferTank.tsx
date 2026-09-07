@@ -42,8 +42,8 @@ export function BufferTank({ snapshot, buffer, targetSoc = 0.85 }: { snapshot: E
   const fresh = temps.every((m) => m.quality === "ok" || m.quality === "derived");
   const socPct = buffer?.soc != null ? Math.round(buffer.soc * 100) : null;
   return (
-    <Card href="/waerme" ariaLabel="Pufferspeicher – zur Wärmeseite" className="dash-buffer" style={{ gridColumn: "span 3", minHeight: 0 }}>
-      <CardHead title="Pufferspeicher" right={<span>{buffer ? `${Math.round(buffer.volume_liters)} l` : "–"} <span className="text-amber">›</span></span>} />
+    <Card href="/waerme" ariaLabel="Pufferspeicher - zur Wärmeseite" className="dash-buffer" style={{ gridColumn: "span 3", minHeight: 0 }}>
+      <CardHead title="Pufferspeicher" right={<span>{buffer ? `${Math.round(buffer.volume_liters)} l` : "-"} <span className="text-amber">›</span></span>} />
       <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
         <svg viewBox={`0 0 200 ${TH + 16}`} width="100%" height="100%" style={{ display: "block", maxWidth: 320 }} role="img" aria-label="Pufferspeicher mit vier Temperaturmesspunkten">
           <defs>
@@ -63,7 +63,7 @@ export function BufferTank({ snapshot, buffer, targetSoc = 0.85 }: { snapshot: E
               <g key={i}>
                 <line x1={x0 + TW} y1={ys[i]} x2={x0 + TW + 12} y2={ys[i]} stroke="var(--line-2)" strokeWidth={1} />
                 <text x={x0 + TW + 18} y={ys[i]! + 7} className="mono" style={{ fontSize: 19 }} fill={bad ? "var(--text-3)" : "var(--text-1)"}>
-                  {m.value === null ? "–" : Math.round(m.value)}
+                  {m.value === null ? "-" : Math.round(m.value)}
                   <tspan style={{ fontSize: 11 }} fill="var(--text-3)" dx={3}>°C</tspan>
                 </text>
               </g>
@@ -72,14 +72,14 @@ export function BufferTank({ snapshot, buffer, targetSoc = 0.85 }: { snapshot: E
         </svg>
       </div>
       <div className="mt-1.5 flex items-baseline gap-2">
-        <span className="mono text-[36px] leading-none tracking-[-.03em] text-text-1">{socPct ?? "–"}</span>
+        <span className="mono text-[36px] leading-none tracking-[-.03em] text-text-1">{socPct ?? "-"}</span>
         <span className="text-[14px] text-text-3">%</span>
         <span className="mono ml-auto text-[12px] uppercase tracking-[.1em]" style={{ color: buffer?.status === "unknown" ? "var(--text-3)" : "var(--amber)" }}>
           {STATUS_DE[buffer?.status ?? "unknown"]}
         </span>
       </div>
       <div className="mt-2 flex justify-between text-[12px] text-text-3">
-        <span>Nutzbar {buffer?.usable_energy_kwh != null ? `${buffer.usable_energy_kwh.toFixed(1).replace(".", ",")} kWh` : "–"}</span>
+        <span>Nutzbar {buffer?.usable_energy_kwh != null ? `${buffer.usable_energy_kwh.toFixed(1).replace(".", ",")} kWh` : "-"}</span>
         <span>Ziel {Math.round(targetSoc * 100)} % · {celsius(50)}</span>
       </div>
     </Card>

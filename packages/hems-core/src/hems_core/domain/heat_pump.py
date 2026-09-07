@@ -1,4 +1,4 @@
-"""Ist-Zustand der Wärmepumpe – abgeleitet aus der elektrischen Leistung, nicht aus Kontakten."""
+"""Ist-Zustand der Wärmepumpe - abgeleitet aus der elektrischen Leistung, nicht aus Kontakten."""
 
 from __future__ import annotations
 

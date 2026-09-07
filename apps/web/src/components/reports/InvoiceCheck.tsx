@@ -86,7 +86,7 @@ function DropZone({ onFiles, busy, compact }: { onFiles: (files: File[]) => void
       <input ref={input} type="file" accept="application/pdf,.pdf" multiple hidden onChange={(e) => take(e.target.files)} />
       <span className="text-[14px] text-text-1">{busy ? "Rechnung wird geprüft …" : "Tibber-Rechnung hierher ziehen"}</span>
       <span className="text-[12px] text-text-3">
-        {busy ? "Positionen werden nachgerechnet" : "oder klicken, um PDFs auszuwählen – mehrere auf einmal möglich"}
+        {busy ? "Positionen werden nachgerechnet" : "oder klicken, um PDFs auszuwählen - mehrere auf einmal möglich"}
       </span>
     </div>
   );
@@ -224,7 +224,7 @@ export function InvoiceCheck() {
           <Stat label="Geprüfte Rechnungen" value={String(items.length)} hint={items.length ? `${chronological[0]?.period_label} bis ${chronological[chronological.length - 1]?.period_label}` : "noch keine"} />
           <Stat label="Beanstandet" value={String(problems)} tone={problems ? "ember" : "amber"} hint={problems ? "Befunde unten ansehen" : "keine Auffälligkeit"} />
           <Stat label="Summe brutto" value={eur(totalGross)} hint={`über ${de1(totalKwh, 0)} kWh`} />
-          <Stat label="Ø Preis brutto" value={totalKwh > 0 ? de1(items.reduce((a, i) => a + i.avg_ct_kwh_gross * i.kwh, 0) / totalKwh, 2) : "–"} unit="ct/kWh" tone="amber" hint="mengengewichtet über alle Rechnungen" />
+          <Stat label="Ø Preis brutto" value={totalKwh > 0 ? de1(items.reduce((a, i) => a + i.avg_ct_kwh_gross * i.kwh, 0) / totalKwh, 2) : "-"} unit="ct/kWh" tone="amber" hint="mengengewichtet über alle Rechnungen" />
         </div>
       </div>
 
@@ -288,7 +288,7 @@ export function InvoiceCheck() {
                         <td className="py-1.5 pr-3 text-right text-text-3">
                           {i.measured_kwh != null && i.measured_kwh > 0
                             ? `${de1(i.measured_kwh, 1)} kWh${i.coverage != null && i.coverage < 0.98 ? ` (${Math.round(i.coverage * 100)} %)` : ""}`
-                            : "–"}
+                            : "-"}
                         </td>
                         <td className="py-1.5 pr-3 text-right">{de1(i.avg_ct_kwh_gross, 2)} ct</td>
                         <td className="py-1.5 pr-3 text-right text-text-3">{eur(i.total_net_eur)}</td>
@@ -335,7 +335,7 @@ export function InvoiceCheck() {
       ) : loaded && !busy ? (
         <Card style={{ padding: 24 }}>
           <Note>
-            Noch keine Rechnung geprüft. Lade eine Tibber-Rechnung als PDF hoch – die Auswertung entsteht dann
+            Noch keine Rechnung geprüft. Lade eine Tibber-Rechnung als PDF hoch - die Auswertung entsteht dann
             hier und wächst mit jeder weiteren Rechnung.
           </Note>
         </Card>

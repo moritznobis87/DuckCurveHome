@@ -125,7 +125,7 @@ def ha_state(entity: str, state: str) -> Any:
 
 @pytest.mark.asyncio
 async def test_home_assistant_fills_in_when_the_broker_device_goes_quiet(tmp_path: Path) -> None:
-    """Schweigt der Shelly, darf sein letzter Stand nicht einfrieren – HA kennt den richtigen."""
+    """Schweigt der Shelly, darf sein letzter Stand nicht einfrieren - HA kennt den richtigen."""
     bridge = build(tmp_path, QuietHub(fresh=False))
     bridge._mqtt_owned = {"actuator:courtyard_light"}
     bridge._ingest(ha_state("switch.lichtinnenhof", "on"))

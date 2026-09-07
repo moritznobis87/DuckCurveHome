@@ -27,11 +27,11 @@ function berlinOffsetMs(at: number): number {
   return Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second")) - at;
 }
 
-/** Mitternacht in Europe/Berlin als UTC-Zeitstempel – unabhängig von der Zeitzone des Browsers. */
+/** Mitternacht in Europe/Berlin als UTC-Zeitstempel - unabhängig von der Zeitzone des Browsers. */
 /** Skalierung der Preisachse.
  *
  * Der Strompreis schwankt an einem Tag oft nur zwischen 18 und 45 ct. Eine Achse, die bei 0 beginnt,
- * drückt den Verlauf dann in das obere Drittel und macht ihn flach – deshalb spannt sie hier zwischen
+ * drückt den Verlauf dann in das obere Drittel und macht ihn flach - deshalb spannt sie hier zwischen
  * dem tatsächlichen Minimum und Maximum auf, gerundet auf runde Schritte und mit etwas Luft, damit die
  * Kurve die Ränder nicht berührt. Negative Preise kommen vor und werden mit erfasst.
  */
@@ -42,9 +42,9 @@ export function priceBounds(rows: Array<Array<number | null>>): { min: number; m
   const hi = Math.max(...values);
   const pad = Math.max(0.5, (hi - lo) * 0.06); // wenig Luft, damit die Kurve die Ränder nicht berührt
   // Der feinste runde Schritt, der mit höchstens sieben Abschnitten auskommt. Weil die Schrittweiten
-  // ansteigen, ist der erste Treffer zugleich der mit der engsten Spanne – und je enger die Spanne,
+  // ansteigen, ist der erste Treffer zugleich der mit der engsten Spanne - und je enger die Spanne,
   // desto mehr Höhe bleibt für den Verlauf. Ein gröberer Schritt reißt die Achse beim Runden wieder auf:
-  // bei 22–46 ct ergibt Schritt 5 die Spanne 20–50, Schritt 10 dagegen 20–50 → 10–50, Schritt 20 sogar 0–60.
+  // bei 22-46 ct ergibt Schritt 5 die Spanne 20-50, Schritt 10 dagegen 20-50 → 10-50, Schritt 20 sogar 0-60.
   for (const step of [0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100]) {
     const min = Math.floor((lo - pad) / step) * step;
     const max = Math.ceil((hi + pad) / step) * step;
@@ -86,6 +86,8 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
     });
     const showForecast = range !== "yesterday";
     const pvForecast = showForecast ? future.map((i) => [hx(new Date(i.ts).getTime()), i.expected_pv_kw]) : [];
+    // Alles ab jetzt, nicht „morgen": innerhalb der Tagesansicht sind das weiterhin die Preise von
+    // heute, nur noch nicht eingetreten. Die Reihe hieß darum falsch.
     const priceFuture = showForecast ? future.map((i) => [hx(new Date(i.ts).getTime()), i.price_ct_kwh]) : [];
     const bands = (plan?.windows ?? [])
       .filter((w) => new Date(w.start).getTime() < end && new Date(w.end).getTime() > start)
@@ -139,7 +141,7 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
           const t = hhmm(new Date(start + ps[0]!.value[0] * 3600000));
           const rows = ps
             .filter((p) => p.value[1] != null)
-            .map((p) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:${p.color}">${p.seriesName}</span><span>${p.value[1]!.toFixed(1).replace(".", ",")} ${p.seriesName === "Strompreis" || p.seriesName === "Preis morgen" ? "ct/kWh" : "kW"}</span></div>`)
+            .map((p) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:${p.color}">${p.seriesName}</span><span>${p.value[1]!.toFixed(1).replace(".", ",")} ${p.seriesName === "Strompreis" || p.seriesName === "Preis voraus" ? "ct/kWh" : "kW"}</span></div>`)
             .join("");
           return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${t}</div>${rows}`;
         },
@@ -187,7 +189,7 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
         { name: "Wärmepumpe", type: "line", step: "end", xAxisIndex: 0, yAxisIndex: 0, data: hp, showSymbol: false, lineStyle: { color: C.hp, width: 2 }, z: 4 },
         { name: "Wallbox", type: "line", step: "end", xAxisIndex: 0, yAxisIndex: 0, data: ev, showSymbol: false, lineStyle: { color: C.ev, width: 2 }, z: 3 },
         { name: "Strompreis", type: "line", step: "end", xAxisIndex: priceX, yAxisIndex: 1, data: priceHist, showSymbol: false, lineStyle: { color: C.price, width: 2 }, markArea: { silent: true, data: priceBands }, markLine: nowLine, z: 3 },
-        { name: "Preis morgen", type: "line", step: "end", xAxisIndex: priceX, yAxisIndex: 1, data: priceFuture, showSymbol: false, lineStyle: { color: C.price, width: 2, type: [7, 7], opacity: 0.8 }, z: 2 },
+        { name: "Preis voraus", type: "line", step: "end", xAxisIndex: priceX, yAxisIndex: 1, data: priceFuture, showSymbol: false, lineStyle: { color: C.price, width: 2, type: [7, 7], opacity: 0.8 }, z: 2 },
       ],
     };
   }, [history, plan, nowMs, start, end, range, layout]);
@@ -214,6 +216,7 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
             <Legend color={C.ev} label="Wallbox" />
             <Legend color={C.price} label="Strompreis" />
             <Legend color={C.pv} label="Prognose" dashed />
+            <Legend color={C.price} label="Preis voraus" dashed />
           </div>
         </div>
         <div className="flex shrink-0 gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Zeitraum">

@@ -65,7 +65,7 @@ export function PvReport() {
   const fc = useMemo(() => forecastKwh(plan, dayStart), [plan, dayStart]);
   const barsOpt = useMemo(() => stackedBars(data?.buckets ?? [], SERIES), [data]);
   const donutOpt = useMemo(
-    () => donut(SERIES.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), t ? `${de1(t.pv_kwh, t.pv_kwh >= 100 ? 0 : 1)} kWh` : "–", "Erzeugung"),
+    () => donut(SERIES.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), t ? `${de1(t.pv_kwh, t.pv_kwh >= 100 ? 0 : 1)} kWh` : "-", "Erzeugung"),
     [t],
   );
   const fcOpt = useMemo(() => {
@@ -73,7 +73,7 @@ export function PvReport() {
     return pvForecastChart(actual, fc.points, dayStart, nowMs);
   }, [rows, fc, dayStart, nowMs]);
   const isToday = anchor === isoToday();
-  const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "–");
+  const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "-");
 
   return (
     <ReportShell
@@ -94,7 +94,7 @@ export function PvReport() {
         <Stat label="Eingespeist" value={de1(t?.export_kwh)} unit="kWh" tone="mist" hint={t ? `Erlös ${eur(t.export_revenue_eur)} bei ${de1(data?.meta.feed_in_ct_kwh, 1)} ct` : undefined} />
         <Stat label="Ersparnis direkt" value={eur(t?.pv_direct_savings_eur)} tone="amber" hint="gegenüber Netzbezug" />
         <Stat label="Prognose heute" value={de1(fc.today)} unit="kWh" hint={isToday && t ? `${de1(t.pv_kwh)} kWh bisher erzeugt` : "Tagesprognose"} />
-        <Stat label="Prognose morgen" value={fc.tomorrow > 0 ? de1(fc.tomorrow) : "–"} unit="kWh" hint={fc.tomorrow > 0 ? "aus Wetterprognose" : "noch nicht verfügbar"} />
+        <Stat label="Prognose morgen" value={fc.tomorrow > 0 ? de1(fc.tomorrow) : "-"} unit="kWh" hint={fc.tomorrow > 0 ? "aus Wetterprognose" : "noch nicht verfügbar"} />
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 300 }}>

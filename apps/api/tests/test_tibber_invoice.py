@@ -139,7 +139,7 @@ def test_per_position_vat_rounding_is_tolerated() -> None:
 
 
 def test_wrong_position_amount_is_found() -> None:
-    """Ein Posten ist zu hoch, die Zwischensumme bleibt stehen – beides muss auffallen."""
+    """Ein Posten ist zu hoch, die Zwischensumme bleibt stehen - beides muss auffallen."""
     inv = parse_invoice(build_invoice(amounts={"Stromsteuer": 15.15}, energy_net=72.32))
     findings = {f.code: f for f in check_invoice(inv)}
     assert findings["position:Stromsteuer"].severity == "error"

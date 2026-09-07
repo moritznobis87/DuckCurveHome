@@ -1,7 +1,7 @@
 """Datenexport: die Messreihen als komprimiertes CSV herunterladen.
 
 Die Datenbank ist die einzige Kopie. „Für immer aufbewahren" hält nur, was auch außerhalb dieses
-Anbieters liegt — ein verwaltetes Volume ist kein Archiv. Diese Endpunkte liefern den Bestand als
+Anbieters liegt - ein verwaltetes Volume ist kein Archiv. Diese Endpunkte liefern den Bestand als
 Datei, die einen Anbieterwechsel überlebt.
 
 Alles wird gestreamt und im Vorbeigehen komprimiert: ein Jahr Minutenwerte sind 525 600 Zeilen, und

@@ -116,7 +116,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="Duck Curve Home API",
         version="0.1.0",
-        description="Home Energy Management System – Live-Zustand, Historie, Plan und Steuerung.",
+        description="Home Energy Management System - Live-Zustand, Historie, Plan und Steuerung.",
         lifespan=lifespan,
     )
     app.add_middleware(

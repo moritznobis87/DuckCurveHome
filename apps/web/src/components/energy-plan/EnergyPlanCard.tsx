@@ -16,7 +16,7 @@ const WINDOW_STYLE: Record<PriceWindow["kind"], { color: string; label: string }
   negative: { color: "rgba(224,83,61,.8)", label: "negativ" },
 };
 
-/** Kleine Kennzahl mit Balken: Wert, Kontext, Füllstand 0–1. */
+/** Kleine Kennzahl mit Balken: Wert, Kontext, Füllstand 0-1. */
 function Gauge({ label, value, unit, hint, fill, tone }: { label: string; value: string; unit?: string; hint: string; fill: number | null; tone: "amber" | "mist" | "ember" | "muted" }) {
   const color = tone === "amber" ? "var(--amber)" : tone === "mist" ? "var(--mist)" : tone === "ember" ? "var(--alert)" : "var(--text-3)";
   return (
@@ -111,9 +111,9 @@ export function EnergyPlanCard({ state, plan }: { state: LiveState | null; plan:
 
   return (
     <Card accent className="dash-plan" style={{ gridColumn: "span 4", minHeight: 0 }}>
-      <CardHead title="Energy Plan" right={d ? `Entscheidung ${hhmm(d.at)}` : "–"} />
+      <CardHead title="Energy Plan" right={d ? `Entscheidung ${hhmm(d.at)}` : "-"} />
       <div className="plan-body mt-2 flex min-h-0 flex-1 flex-col overflow-hidden">
-        {/* Status: was passiert, warum – in einem Blick */}
+        {/* Status: was passiert, warum - in einem Blick */}
         <div className="flex items-start gap-3">
           <span className="mt-[6px] h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: override ? "var(--amber-soft)" : running ? "var(--amber)" : "var(--text-3)", boxShadow: running ? "0 0 0 4px rgba(242,169,0,.15)" : undefined }} />
           <div className="min-w-0 flex-1">
@@ -134,9 +134,9 @@ export function EnergyPlanCard({ state, plan }: { state: LiveState | null; plan:
 
         {/* Die drei Größen, die die Entscheidung bestimmen */}
         <div className="flex gap-2">
-          <Gauge label="PV-Überschuss" value={surplus == null ? "–" : kw(surplus)} unit="kW" hint={`Freigabe ab ${kw(SURPLUS_TARGET_KW)} kW`} fill={surplus == null ? null : surplus / SURPLUS_TARGET_KW} tone={surplus != null && surplus >= SURPLUS_TARGET_KW ? "amber" : "muted"} />
-          <Gauge label="Strompreis" value={price == null ? "–" : price.toFixed(1).replace(".", ",")} unit="ct" hint={priceLabel(rank)} fill={rank == null ? null : 1 - rank} tone={rank != null && rank <= 0.25 ? "mist" : rank != null && rank >= 0.75 ? "ember" : "muted"} />
-          <Gauge label="Puffer" value={soc == null ? "–" : String(Math.round(soc * 100))} unit="%" hint={`Ziel ${Math.round(BUFFER_TARGET * 100)} % · ${celsius(inputs?.buffer_top_c ?? s?.buffer_temps_c.top.value)} oben`} fill={soc} tone={soc != null && soc >= BUFFER_TARGET ? "amber" : "muted"} />
+          <Gauge label="PV-Überschuss" value={surplus == null ? "-" : kw(surplus)} unit="kW" hint={`Freigabe ab ${kw(SURPLUS_TARGET_KW)} kW`} fill={surplus == null ? null : surplus / SURPLUS_TARGET_KW} tone={surplus != null && surplus >= SURPLUS_TARGET_KW ? "amber" : "muted"} />
+          <Gauge label="Strompreis" value={price == null ? "-" : price.toFixed(1).replace(".", ",")} unit="ct" hint={priceLabel(rank)} fill={rank == null ? null : 1 - rank} tone={rank != null && rank <= 0.25 ? "mist" : rank != null && rank >= 0.75 ? "ember" : "muted"} />
+          <Gauge label="Puffer" value={soc == null ? "-" : String(Math.round(soc * 100))} unit="%" hint={`Ziel ${Math.round(BUFFER_TARGET * 100)} % · ${celsius(inputs?.buffer_top_c ?? s?.buffer_temps_c.top.value)} oben`} fill={soc} tone={soc != null && soc >= BUFFER_TARGET ? "amber" : "muted"} />
         </div>
 
         {/* Nächste 24 h */}
@@ -144,14 +144,14 @@ export function EnergyPlanCard({ state, plan }: { state: LiveState | null; plan:
           <Timeline plan={plan} nowMs={nowMs} />
           <div className="plan-next flex flex-wrap gap-x-4 gap-y-0.5 overflow-hidden text-[12px] text-text-2">
             {nextStep ? <span><span className="text-text-3">Nächster Schritt</span> <span className="mono text-text-1">{nextStep}</span></span> : null}
-            {nextPv ? <span><span className="text-text-3">PV-Fenster</span> <span className="mono text-text-1">{hhmm(nextPv.start)}–{hhmm(nextPv.end)}</span></span> : null}
-            {nextCheap ? <span><span className="text-text-3">Preistief</span> <span className="mono text-text-1">{hhmm(nextCheap.start)}–{hhmm(nextCheap.end)}{nextCheap.avg_ct_kwh != null ? ` · ${nextCheap.avg_ct_kwh.toFixed(1).replace(".", ",")} ct` : ""}</span></span> : null}
+            {nextPv ? <span><span className="text-text-3">PV-Fenster</span> <span className="mono text-text-1">{hhmm(nextPv.start)}-{hhmm(nextPv.end)}</span></span> : null}
+            {nextCheap ? <span><span className="text-text-3">Preistief</span> <span className="mono text-text-1">{hhmm(nextCheap.start)}-{hhmm(nextCheap.end)}{nextCheap.avg_ct_kwh != null ? ` · ${nextCheap.avg_ct_kwh.toFixed(1).replace(".", ",")} ct` : ""}</span></span> : null}
           </div>
         </div>
 
         <div className="mt-auto flex shrink-0 items-baseline justify-between gap-3 border-t border-line-1 pt-1.5 text-[12px]">
           <a href="/prognose" className="text-text-3 underline decoration-line-2 underline-offset-[3px]">PV-Prognose heute ›</a>
-          <span className="mono text-text-1">{plan ? kwh(plan.pv_forecast_today_kwh) : "–"} · {celsius(s?.outdoor_temp_c.value, 1)} außen</span>
+          <span className="mono text-text-1">{plan ? kwh(plan.pv_forecast_today_kwh) : "-"} · {celsius(s?.outdoor_temp_c.value, 1)} außen</span>
         </div>
       </div>
     </Card>

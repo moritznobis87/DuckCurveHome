@@ -1,4 +1,4 @@
-"""model_calibrations – gelernter Zustand je Modell (PV-Bias-Korrektor)
+"""model_calibrations - gelernter Zustand je Modell (PV-Bias-Korrektor)
 
 Revision ID: 7c1e2a9f3b4d
 Revises: 440a3f9346c1

@@ -197,7 +197,7 @@ def _j_to_kw(joule: Any) -> float:
 def history_minutes(rows_by_device: dict[str, list[dict[str, Any]]]) -> list[HistoryMinute]:
     """Minutenzeilen mehrerer Geräte zu einer Reihe je Minute zusammenführen.
 
-    Netz (`imp`/`exp`) und Erzeugung (`gep`) meldet jedes Gerät für den Standort – es zählt der größte Wert
+    Netz (`imp`/`exp`) und Erzeugung (`gep`) meldet jedes Gerät für den Standort - es zählt der größte Wert
     statt der Summe. Wallbox: `h1d`+`h1b` der Zappi(s). Batterie: `bdp1`−`bcp1` der Libbi (Entladen positiv).
     Fehlende Felder einer vorhandenen Minutenzeile bedeuten 0 (myenergi überträgt Nullen nicht).
     """

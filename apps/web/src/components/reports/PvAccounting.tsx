@@ -12,9 +12,9 @@ import { de1, ErrorBanner, eur, KpiGrid, Note, pct, ReportShell, usePeriod } fro
 import { PeriodStrip } from "./PeriodStrip";
 import { useMultiPeriod, useReport } from "./useReport";
 
-const ct = (n: number | null | undefined): string => (n == null ? "–" : `${de1(n, 2)} ct`);
+const ct = (n: number | null | undefined): string => (n == null ? "-" : `${de1(n, 2)} ct`);
 
-/** Eine Zeile der Aufstellung – dieselbe Struktur für die Buckets und für die Summenzeile. */
+/** Eine Zeile der Aufstellung - dieselbe Struktur für die Buckets und für die Summenzeile. */
 type Row = {
   label: string;
   exportKwh: number;
@@ -80,13 +80,13 @@ export function PvAccounting() {
           { name: "Über den Speicher", value: t?.self_battery_kwh ?? 0, color: C.battery },
           { name: "Eingespeist", value: t?.export_kwh ?? 0, color: C.export },
         ],
-        t ? `${de1(t.pv_kwh, t.pv_kwh >= 100 ? 0 : 1)} kWh` : "–",
+        t ? `${de1(t.pv_kwh, t.pv_kwh >= 100 ? 0 : 1)} kWh` : "-",
         "Erzeugung",
       ),
     [t],
   );
 
-  const val = (p: Period, f: (r: PvTaxReport) => string) => (strip[p] ? f(strip[p] as PvTaxReport) : "–");
+  const val = (p: Period, f: (r: PvTaxReport) => string) => (strip[p] ? f(strip[p] as PvTaxReport) : "-");
   const sum = t ? rowOf("Summe", t) : null;
 
   return (

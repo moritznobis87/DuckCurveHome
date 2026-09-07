@@ -1,4 +1,4 @@
-"""tibber_invoices – geprüfte Tibber-Rechnungen mit Befunden
+"""tibber_invoices - geprüfte Tibber-Rechnungen mit Befunden
 
 Revision ID: b6c1f4e28a37
 Revises: a4b8c2d1e9f0

@@ -39,7 +39,7 @@ class MinuteSample:
 class BatteryOrigin:
     """Herkunftskonto des Speicherinhalts in kWh: wie viel davon ist PV, wie viel kam aus dem Netz.
 
-    Ohne dieses Konto ließe sich eine Entladung nicht zuordnen — nachts fließt Strom aus dem Speicher,
+    Ohne dieses Konto ließe sich eine Entladung nicht zuordnen - nachts fließt Strom aus dem Speicher,
     ohne dass in derselben Stunde geladen wurde. Es wird über die Stunden fortgeschrieben. Geladen wird
     anteilig gutgeschrieben, entladen anteilig abgebucht. Der Inhalt wird auf die Speicherkapazität
     begrenzt: Ladeverluste bedeuten, dass über die Zeit mehr hinein- als herausgeht, sonst wüchse das
@@ -65,7 +65,7 @@ class BatteryOrigin:
     def discharge(self, kwh: float) -> tuple[float, float, float]:
         """Entnahme aufteilen. Liefert (PV-Anteil, Netzanteil, geschätzter Anteil).
 
-        Ist das Konto leer — beim ersten Start, oder wenn Ladeverluste es leergerechnet haben —, gilt die
+        Ist das Konto leer - beim ersten Start, oder wenn Ladeverluste es leergerechnet haben -, gilt die
         Entnahme als PV. Das ist die richtige Annahme für eine Anlage, die fast nur aus PV lädt, aber sie
         ist eine Annahme; ihr Umfang wird mitgezählt und auf der Abrechnungsseite ausgewiesen.
         """
@@ -84,7 +84,7 @@ class BatteryOrigin:
 
 
 class EnergyTotals(BaseModel):
-    """Energien (kWh) und Geld (EUR) eines Zeitraums – Stunde, Tag, Woche, Monat oder Jahr."""
+    """Energien (kWh) und Geld (EUR) eines Zeitraums - Stunde, Tag, Woche, Monat oder Jahr."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -194,7 +194,7 @@ def hourly_energy(
     """Eine Stunde bilanzieren.
 
     `origin` ist der Stand des Speicher-Herkunftskontos zu Beginn der Stunde; es wird dabei verändert und
-    steht danach für die Folgestunde bereit. Ohne Angabe beginnt die Rechnung mit einem leeren Konto —
+    steht danach für die Folgestunde bereit. Ohne Angabe beginnt die Rechnung mit einem leeren Konto -
     dann gilt jede Entladung als PV und wird als geschätzt gezählt.
     """
     acc: dict[str, float] = dict.fromkeys(_SUM_FIELDS, 0.0)
@@ -253,7 +253,7 @@ def hourly_energy(
         acc["grid_to_battery_kwh"] += grid_to_bat * STEP_H
 
         # Herkunftskonto fortschreiben. Entnommen wird die gesamte Entladung, gutgeschrieben als
-        # Eigenverbrauch nur der Teil, der ins Haus ging – was aus dem Speicher ins Netz fließt, ist
+        # Eigenverbrauch nur der Teil, der ins Haus ging - was aus dem Speicher ins Netz fließt, ist
         # Einspeisung und über export_kwh bereits erfasst.
         bat_origin.charge(pv_to_bat * STEP_H, grid_to_bat * STEP_H, capacity_kwh)
         bat_pv_house = 0.0

@@ -1,4 +1,4 @@
-"""Regelbasierter Wärmepumpen-Controller (Stufe 1) – K1-Pfad.
+"""Regelbasierter Wärmepumpen-Controller (Stufe 1) - K1-Pfad.
 
 Zustandsmaschine (siehe HEMS_CONTROL.md):
   IDLE → ARMING → RELEASED → RUNNING_RELEASED → COOLDOWN → IDLE
@@ -256,7 +256,7 @@ class HeatPumpController:
                     self.cooldown_since = self.cooldown_since or now
                     in_cooldown_s = (now - self.cooldown_since).total_seconds()
                     # Läuft die Wärmepumpe 5 min nach Rücknahme der Freigabe weiter, ist das ihre
-                    # eigene Regelung – der Regler geht zurück in IDLE und beobachtet.
+                    # eigene Regelung - der Regler geht zurück in IDLE und beobachtet.
                     own_control = inp.hp.running and in_cooldown_s > 300
                     rested = not inp.hp.running and (since_stop is None or since_stop >= min_off)
                     if own_control or rested:
@@ -379,7 +379,7 @@ class HeatPumpController:
                     reasons = sensor_codes
                     blocked = sensor_codes
                 elif not inp.hp.running and since_stop is not None and since_stop > 120:
-                    # Wärmepumpe hat selbst abgeschaltet – Freigabe zurücknehmen
+                    # Wärmepumpe hat selbst abgeschaltet - Freigabe zurücknehmen
                     self.state = ControllerState.COOLDOWN
                     self.cooldown_reason = ReasonCode.HP_RUNNING_OWN_CONTROL
                     reasons = [ReasonCode.MIN_OFFTIME_PENDING]

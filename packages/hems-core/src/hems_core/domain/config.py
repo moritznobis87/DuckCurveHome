@@ -100,7 +100,7 @@ class BalanceConfig(BaseModel):
 class SensorTimeouts(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    power_s: float = 180.0  # HA-Integrationen (myenergi, Shelly) melden teils nur alle 60–120 s
+    power_s: float = 180.0  # HA-Integrationen (myenergi, Shelly) melden teils nur alle 60-120 s
     battery_s: float = 180.0
     temperature_s: float = 900.0
     price_s: float = 3600.0 * 2
@@ -110,7 +110,7 @@ class TariffConfig(BaseModel):
     """Geldseite: Einspeisevergütung, Ersatzpreis und die umsatzsteuerliche Einordnung der Anlage.
 
     Netto und brutto sauber zu trennen ist hier keine Förmlichkeit: die Tibber-Preise der Zeitreihe sind
-    Bruttopreise (Energie, Netz, Steuern, Abgaben – so zeigt Tibber sie), die Einspeisevergütung nach EEG
+    Bruttopreise (Energie, Netz, Steuern, Abgaben - so zeigt Tibber sie), die Einspeisevergütung nach EEG
     ist ein Nettosatz, und die steuerliche Bemessungsgrundlage des Eigenverbrauchs ist ebenfalls netto.
     """
 
@@ -135,7 +135,7 @@ class HeatDemandConfig(BaseModel):
     heating_limit_c: float = 15.0  # darüber keine Heizung
     internal_gains_kw: float = 0.4  # Personen, Geräte, Sonne
     dhw_kwh_per_day: float = 8.0  # Warmwasser thermisch je Tag
-    # Gewichte je Stunde (0–23) für die Warmwasserentnahme, morgens und abends erhöht
+    # Gewichte je Stunde (0-23) für die Warmwasserentnahme, morgens und abends erhöht
     dhw_profile: list[float] = Field(
         default_factory=lambda: [
             0.2,

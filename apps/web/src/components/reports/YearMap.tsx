@@ -14,20 +14,20 @@ import { de1, ErrorBanner, Note } from "./ReportShell";
  *  Mist für das Netz, Terrakotta für die Wärmepumpe. Wer den Energiefluss gelesen hat, liest die
  *  Karte ohne Umlernen. */
 const METRICS = [
-  { key: "grid_net_kwh", label: "Netz", unit: "kWh", ramp: RAMP_NET, diverging: true, hint: "Bezug (hell blau) gegen Einspeisung (bernstein) — die Entenkurve über ein ganzes Jahr" },
+  { key: "grid_net_kwh", label: "Netz", unit: "kWh", ramp: RAMP_NET, diverging: true, hint: "Bezug (hell blau) gegen Einspeisung (bernstein) - die Entenkurve über ein ganzes Jahr" },
   { key: "pv_kwh", label: "Erzeugung", unit: "kWh", ramp: RAMP_OWN, hint: "Wann die Anlage lieferte: Tageslänge und Wetter, Tag für Tag" },
-  { key: "house_kwh", label: "Verbrauch", unit: "kWh", ramp: RAMP_GRID, hint: "Der Rhythmus des Hauses — Wochentage, Urlaube, Gewohnheiten" },
+  { key: "house_kwh", label: "Verbrauch", unit: "kWh", ramp: RAMP_GRID, hint: "Der Rhythmus des Hauses - Wochentage, Urlaube, Gewohnheiten" },
   { key: "heat_pump_kwh", label: "Wärmepumpe", unit: "kWh", ramp: RAMP_HEAT, hint: "Heizperiode, Warmwasserspitzen und die Taktung der Regelung" },
   { key: "import_kwh", label: "Netzbezug", unit: "kWh", ramp: RAMP_GRID, hint: "Nur der Bezug, ohne Verrechnung mit der Einspeisung" },
   { key: "export_kwh", label: "Einspeisung", unit: "kWh", ramp: RAMP_OWN, hint: "Überschuss, der ins Netz ging" },
-  { key: "price_ct_kwh", label: "Strompreis", unit: "ct/kWh", ramp: RAMP_GRID, digits: 1, hint: "Der bezugsgewichtete Preis je Stunde — die Struktur, gegen die geplant wird" },
-  { key: "autarky", label: "Autarkie", unit: "", ramp: RAMP_OWN, digits: 2, hint: "Anteil des Verbrauchs, der nicht aus dem Netz kam (0–1)" },
+  { key: "price_ct_kwh", label: "Strompreis", unit: "ct/kWh", ramp: RAMP_GRID, digits: 1, hint: "Der bezugsgewichtete Preis je Stunde - die Struktur, gegen die geplant wird" },
+  { key: "autarky", label: "Autarkie", unit: "", ramp: RAMP_OWN, digits: 2, hint: "Anteil des Verbrauchs, der nicht aus dem Netz kam (0-1)" },
 ] as const;
 
 type MetricKey = (typeof METRICS)[number]["key"];
 
 function describe(e: unknown): string {
-  if (e instanceof ApiError) return e.status === 401 || e.status === 403 ? "Nicht angemeldet – bitte Gerät koppeln." : e.message;
+  if (e instanceof ApiError) return e.status === 401 || e.status === 403 ? "Nicht angemeldet - bitte Gerät koppeln." : e.message;
   return "Daten konnten nicht geladen werden.";
 }
 

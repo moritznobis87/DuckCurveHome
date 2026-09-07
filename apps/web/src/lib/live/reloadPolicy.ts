@@ -1,7 +1,7 @@
 /** Wann das Dashboard sich selbst neu lädt.
  *
  * Es läuft als Wandanzeige über Tage hinweg im selben Tab. Ohne diese Regeln bliebe nach einem Deploy
- * für immer die alte Fassung stehen – gemerkt hat man das erst, wenn eine Änderung „nicht ankommt“.
+ * für immer die alte Fassung stehen - gemerkt hat man das erst, wenn eine Änderung „nicht ankommt“.
  * Drei Anlässe: eine neue API-Version, ein neuer Web-Build und ein täglicher Neustart um 03:30.
  */
 export function startReloadPolicy(getVersion: () => string | null): () => void {

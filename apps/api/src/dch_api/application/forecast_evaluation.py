@@ -36,7 +36,7 @@ from hems_core.forecasting import (
 from hems_core.forecasting.evaluation import HORIZON_LABELS_DE, horizon_hours
 
 STEP = timedelta(minutes=15)
-STAGE_DE = "Stufe 1 – Bias-Korrektur je Sonnenhöhe"
+STAGE_DE = "Stufe 1 - Bias-Korrektur je Sonnenhöhe"
 
 
 class IssuedRun(BaseModel):

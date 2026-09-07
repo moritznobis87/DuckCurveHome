@@ -15,7 +15,7 @@ log = structlog.get_logger("tibber")
 TIBBER_URL = "https://api.tibber.com/v1-beta/gql"
 # Namen, unter denen ein Viertelstundenraster im Schema auftauchen kann. Ein Muster statt einer
 # festen Liste, weil der genaue Bezeichner Tibbers Sache ist. „QUARTER" muss dabei an „HOUR" hängen:
-# ein bloßes QUARTERLY neben MONTHLY und ANNUAL wäre ein Quartal — gröber statt feiner, und damit
+# ein bloßes QUARTERLY neben MONTHLY und ANNUAL wäre ein Quartal - gröber statt feiner, und damit
 # genau das Gegenteil dessen, wonach hier gesucht wird.
 _FINE = re.compile(r"QUARTER[_ ]?HOUR|FIFTEEN[_ ]?MIN|15[_ ]?MIN|MIN(UTE)?[_ ]?15|PT15M", re.I)
 QUERY = """
@@ -39,7 +39,7 @@ class TibberPriceProvider:
         self.timeout_s = timeout_s
         # Auflösung der Preishistorie. Leer heißt: beim ersten Abruf im Schema nachsehen und die
         # feinste angebotene nehmen. Die Börse rechnet seit Oktober 2025 in Viertelstunden, aber wie
-        # der zugehörige Enum-Wert heißt, ist nichts, was man raten sollte — GraphQL kann danach
+        # der zugehörige Enum-Wert heißt, ist nichts, was man raten sollte - GraphQL kann danach
         # gefragt werden. Ein fest gesetzter Wert überspringt die Abfrage.
         self.resolution = resolution
         self._resolved: str | None = resolution or None
@@ -55,8 +55,8 @@ class TibberPriceProvider:
     async def _resolution(self, client: httpx.AsyncClient) -> str:
         """Feinste Auflösung, die `range` laut Schema annimmt; im Zweifel stündlich.
 
-        Gefragt wird das Schema selbst (`__type`), nicht das eigene Gedächtnis. Kommt keine Antwort —
-        Introspektion abgeschaltet, Feld umbenannt —, bleibt es bei HOURLY: lieber gröber nachtragen
+        Gefragt wird das Schema selbst (`__type`), nicht das eigene Gedächtnis. Kommt keine Antwort -
+        Introspektion abgeschaltet, Feld umbenannt -, bleibt es bei HOURLY: lieber gröber nachtragen
         als gar nicht.
         """
         if self._resolved is not None:

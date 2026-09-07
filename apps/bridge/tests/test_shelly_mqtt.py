@@ -269,7 +269,7 @@ async def test_real_client_factory_builds_expected_connection() -> None:
     from dch_bridge.sources.shelly_mqtt import aiomqtt_session_factory
 
     client = aiomqtt_session_factory("core-mosquitto", 1883, "u", "p", "dch-bridge-haus")()
-    assert client._client._protocol == 4  # MQTTv311 – der Shelly 3EM Gen1 spricht kein MQTT 5
+    assert client._client._protocol == 4  # MQTTv311 - der Shelly 3EM Gen1 spricht kein MQTT 5
     assert client._client._clean_session is False  # Abonnement überlebt einen Verbindungsabbruch
     # ohne Zugangsdaten (anonymer Broker) muss der Aufbau ebenfalls gelingen
     assert aiomqtt_session_factory("h", 1883, "", "", "id")() is not None
@@ -383,7 +383,7 @@ def test_gen2_reports_expired_values_as_unavailable() -> None:
     """Veraltete Werte werden gemeldet, nicht verschwiegen.
 
     Ließe die Bridge sie weg, behielte die API ihren letzten Wert und zeigte ihn weiter an, als wäre er
-    aktuell – so stand ein Schaltzustand siebzehn Stunden lang unverändert im Dashboard.
+    aktuell - so stand ein Schaltzustand siebzehn Stunden lang unverändert im Dashboard.
     """
     dev = Gen2Device(topic_prefix=G2, components=BUFFER, stale_s=300)
     dev.apply(f"{G2}/events/rpc", notify({"temperature:100": {"tC": 58.2}}), T0)
@@ -561,7 +561,7 @@ async def test_switch_without_connection_raises() -> None:
 
 @pytest.mark.asyncio
 async def test_status_is_polled_on_connect_so_nothing_stays_unknown() -> None:
-    """NotifyStatus kommt nur bei Änderung – ohne Abruf wüsste die Bridge nach einem Neustart nichts."""
+    """NotifyStatus kommt nur bei Änderung - ohne Abruf wüsste die Bridge nach einem Neustart nichts."""
     received: list[RawReading] = []
 
     async def sink(items: list[RawReading]) -> None:

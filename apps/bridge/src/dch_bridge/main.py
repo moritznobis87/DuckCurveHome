@@ -57,7 +57,7 @@ class Bridge:
         self._last_sent: dict[str, tuple[float | None, str | None]] = {}
         self._sent_by_source: dict[str, int] = {}  # kumulativ, je Quellenart
         # Geräte, die direkt über MQTT gelesen werden (Modus mqtt/compare). Im Modus mqtt liefert Home
-        # Assistant die dort abgedeckten Schlüssel nicht mehr – sie kämen sonst doppelt und älter.
+        # Assistant die dort abgedeckten Schlüssel nicht mehr - sie kämen sonst doppelt und älter.
         self.mqtt: MqttHub | None = None
         self.comparator: Comparator | None = None
         self._mqtt_owned: set[str] = set()
@@ -141,7 +141,7 @@ class Bridge:
             and reading.key == f"{self.settings.mqtt_key_prefix}_power_kw"
         ):
             self.comparator.note_ha(reading.value, reading.observed_at)
-        # Modus mqtt: der Shelly kommt direkt über den Broker – aber nur solange er auch wirklich
+        # Modus mqtt: der Shelly kommt direkt über den Broker - aber nur solange er auch wirklich
         # meldet. Schweigt er, springt Home Assistant ein, statt den letzten Stand einfrieren zu lassen.
         if (
             reading.key in self._mqtt_owned
@@ -213,7 +213,7 @@ class Bridge:
     async def execute_command(self, cmd: CommandFrame) -> CommandResultFrame:
         now = datetime.now(UTC)
         a = self._actuator(cmd.actuator_key)
-        # Aktoren, die einem MQTT-Gerät gehören, werden direkt am Broker geschaltet – kein Umweg über
+        # Aktoren, die einem MQTT-Gerät gehören, werden direkt am Broker geschaltet - kein Umweg über
         # Home Assistant. Ausgenommen die Sicherheitsklasse heat_pump: dort bleibt der Weg über HA,
         # damit die Wächter-Automation denselben Schalter sieht, den DCH stellt.
         key = f"actuator:{cmd.actuator_key}"
@@ -309,7 +309,7 @@ class Bridge:
             await asyncio.sleep(300)
             if self.mqtt is not None:
                 log.info("mqtt status", **self.mqtt.status())
-            # Welche Schlüssel zuletzt tatsächlich an die API gingen – und aus welcher Quelle.
+            # Welche Schlüssel zuletzt tatsächlich an die API gingen - und aus welcher Quelle.
             log.info(
                 "telemetry keys",
                 owned_by_mqtt=sorted(self._mqtt_owned),
@@ -364,20 +364,20 @@ def run() -> None:
     settings = BridgeSettings()
     _configure_logging(settings.log_level)
     if not settings.api_token:
-        log.error("DCH_BRIDGE_API_TOKEN fehlt – Bridge startet nicht")
+        log.error("DCH_BRIDGE_API_TOKEN fehlt - Bridge startet nicht")
         sys.exit(2)
     try:
         entity_map, origin = load_entity_map(
             settings.entities_file, settings.entities_url, settings.entities_cache
         )
     except Exception as exc:
-        log.error("Entity-Mapping nicht ladbar – Bridge startet nicht", error=str(exc)[:300])
+        log.error("Entity-Mapping nicht ladbar - Bridge startet nicht", error=str(exc)[:300])
         sys.exit(2)
     log.info("entity map loaded", origin=origin, digest=entity_map.digest())
     has_device = bool(entity_map.mqtt) or bool(settings.shelly_topic_prefix)
     if settings.source_mode != "home_assistant" and not (settings.mqtt_host and has_device):
         log.error(
-            "MQTT-Modus ohne Broker oder Gerät – Rückfall auf home_assistant",
+            "MQTT-Modus ohne Broker oder Gerät - Rückfall auf home_assistant",
             source_mode=settings.source_mode,
             hint="shelly_device_id in den Add-on-Optionen oder ein Abschnitt mqtt: im Entity-Mapping",
         )

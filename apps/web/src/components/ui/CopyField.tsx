@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-/** Ein Wert, der zum Kopieren dasteht — mit Knopf, weil Markieren auf dem Tablet mühsam ist.
+/** Ein Wert, der zum Kopieren dasteht - mit Knopf, weil Markieren auf dem Tablet mühsam ist.
  *
  *  Fällt die Zwischenablage aus (ältere Browser, unsicherer Kontext), wird der Text stattdessen
  *  markiert: dann tut der Knopf wenigstens den halben Weg, statt still zu versagen. */

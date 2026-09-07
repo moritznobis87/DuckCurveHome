@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Duck Curve Home API",
-    "description": "Home Energy Management System – Live-Zustand, Historie, Plan und Steuerung.",
+    "description": "Home Energy Management System - Live-Zustand, Historie, Plan und Steuerung.",
     "version": "0.1.0"
   },
   "paths": {
@@ -1463,7 +1463,7 @@
         },
         "type": "object",
         "title": "BufferBalanceOut",
-        "description": "Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.\n\nDie Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die\nWärmepumpe steht, kommt die Wärme von woanders — beim Kombipuffer also vom Pelletofen. Das ist\ndie beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist."
+        "description": "Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.\n\nDie Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die\nWärmepumpe steht, kommt die Wärme von woanders - beim Kombipuffer also vom Pelletofen. Das ist\ndie beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist."
       },
       "BufferConfig": {
         "properties": {
@@ -3829,7 +3829,7 @@
               }
             ],
             "title": "Delta",
-            "description": "Abweichung der Rechnung von der Erwartung – im Web direkt anzeigbar.",
+            "description": "Abweichung der Rechnung von der Erwartung - im Web direkt anzeigbar.",
             "readOnly": true
           }
         },
@@ -4468,7 +4468,7 @@
         },
         "type": "object",
         "title": "PriceQualityOut",
-        "description": "Lief die Wärmepumpe zur richtigen Zeit? Ergebnis statt Regeltreue.\n\nVerglichen wird, was der Wärmepumpenstrom aus dem Netz gekostet hat, mit dem, was der Bezug des\nganzen Hauses im selben Zeitraum im Mittel kostete. Liegt der erste darunter, hat die Steuerung\ngewirkt — unabhängig davon, ob sie jedes geplante Fenster genau getroffen hat."
+        "description": "Lief die Wärmepumpe zur richtigen Zeit? Ergebnis statt Regeltreue.\n\nVerglichen wird, was der Wärmepumpenstrom aus dem Netz gekostet hat, mit dem, was der Bezug des\nganzen Hauses im selben Zeitraum im Mittel kostete. Liegt der erste darunter, hat die Steuerung\ngewirkt - unabhängig davon, ob sie jedes geplante Fenster genau getroffen hat."
       },
       "PriceRuleConfig": {
         "properties": {
@@ -4680,7 +4680,7 @@
           "method_de"
         ],
         "title": "PvTaxMetaOut",
-        "description": "Was die Zahlen der Abrechnung bedingt – gehört sichtbar zur Auswertung, nicht ins Kleingedruckte."
+        "description": "Was die Zahlen der Abrechnung bedingt - gehört sichtbar zur Auswertung, nicht ins Kleingedruckte."
       },
       "PvTaxReportOut": {
         "properties": {
@@ -5108,7 +5108,7 @@
         },
         "type": "object",
         "title": "TariffConfig",
-        "description": "Geldseite: Einspeisevergütung, Ersatzpreis und die umsatzsteuerliche Einordnung der Anlage.\n\nNetto und brutto sauber zu trennen ist hier keine Förmlichkeit: die Tibber-Preise der Zeitreihe sind\nBruttopreise (Energie, Netz, Steuern, Abgaben – so zeigt Tibber sie), die Einspeisevergütung nach EEG\nist ein Nettosatz, und die steuerliche Bemessungsgrundlage des Eigenverbrauchs ist ebenfalls netto."
+        "description": "Geldseite: Einspeisevergütung, Ersatzpreis und die umsatzsteuerliche Einordnung der Anlage.\n\nNetto und brutto sauber zu trennen ist hier keine Förmlichkeit: die Tibber-Preise der Zeitreihe sind\nBruttopreise (Energie, Netz, Steuern, Abgaben - so zeigt Tibber sie), die Einspeisevergütung nach EEG\nist ein Nettosatz, und die steuerliche Bemessungsgrundlage des Eigenverbrauchs ist ebenfalls netto."
       },
       "TibberInvoice": {
         "properties": {
@@ -5337,7 +5337,7 @@
           "data_since"
         ],
         "title": "YearMapOut",
-        "description": "Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.\n\nDie Stunde ist Ortszeit, nicht UTC — sonst wanderte die Sonne im Bild um eine Stunde, sobald die\nZeitumstellung kommt. `null` heißt „keine Messdaten\", nicht „null Kilowattstunden\"; beides zu\nunterscheiden ist der halbe Nutzen der Darstellung."
+        "description": "Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.\n\nDie Stunde ist Ortszeit, nicht UTC - sonst wanderte die Sonne im Bild um eine Stunde, sobald die\nZeitumstellung kommt. `null` heißt „keine Messdaten\", nicht „null Kilowattstunden\"; beides zu\nunterscheiden ist der halbe Nutzen der Darstellung."
       }
     }
   }

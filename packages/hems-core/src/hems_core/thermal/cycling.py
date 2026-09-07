@@ -1,6 +1,6 @@
 """Taktung der Wärmepumpe: Verdichterläufe aus der Leistungsreihe.
 
-Zu häufiges Takten ist der häufigste Fehler an Wärmepumpenanlagen — falsch eingestellte Hysterese,
+Zu häufiges Takten ist der häufigste Fehler an Wärmepumpenanlagen - falsch eingestellte Hysterese,
 zu kleiner Puffer, überdimensionierter Verdichter. Es kostet Effizienz und Verdichterlebensdauer,
 und der Stromzähler zeigt es nicht: er kennt nur die Summe. Sichtbar wird es erst, wenn man die
 Minutenreihe in Läufe zerlegt und zählt.
@@ -62,7 +62,7 @@ def compressor_runs(
 ) -> list[Run]:
     """Läufe aus einer Leistungsreihe schneiden.
 
-    `on_kw` trennt den Verdichter von der Grundlast der Anlage (Umwälzpumpe, Elektronik, Standby) —
+    `on_kw` trennt den Verdichter von der Grundlast der Anlage (Umwälzpumpe, Elektronik, Standby) -
     ohne diese Schwelle zählte jedes Brummen als Lauf.
 
     Eine Lücke in den Messwerten beendet den Lauf, statt ihn zu überbrücken. Über eine Lücke hinweg
@@ -132,14 +132,14 @@ def assess(s: CyclingStats, min_runtime_min: float) -> dict[str, object]:
     Die Schwellen sind Erfahrungswerte, keine Norm: eine Wärmepumpe, die im Mittel öfter als
     stündlich startet oder deren Läufe überwiegend unter der eingestellten Mindestlaufzeit bleiben,
     taktet auffällig. Ob das an Hysterese, Puffereinbindung oder Dimensionierung liegt, sagt diese
-    Rechnung nicht — sie sagt nur, dass es sich anzusehen lohnt.
+    Rechnung nicht - sie sagt nur, dass es sich anzusehen lohnt.
     """
     if s.starts_per_day is None or s.runs == 0:
         return {"verdict": "unknown", "note_de": "Kein Verdichterlauf im Zeitraum erfasst."}
     if s.covered_hours < 12:
         return {
             "verdict": "unknown",
-            "note_de": f"Nur {s.covered_hours:g} h bewertet — für eine Aussage zur Taktung zu wenig.",
+            "note_de": f"Nur {s.covered_hours:g} h bewertet - für eine Aussage zur Taktung zu wenig.",
         }
     short = s.short_share or 0.0
     base = (
@@ -149,7 +149,7 @@ def assess(s: CyclingStats, min_runtime_min: float) -> dict[str, object]:
     if s.starts_per_day >= 24 or short >= 0.5:
         return {
             "verdict": "short_cycling",
-            "note_de": f"{base} Das ist auffällig häufig — Hysterese, Puffereinbindung und"
+            "note_de": f"{base} Das ist auffällig häufig - Hysterese, Puffereinbindung und"
             " Dimensionierung wären einen Blick wert.",
         }
     if s.starts_per_day >= 12 or short >= 0.25:

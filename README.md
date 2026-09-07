@@ -1,11 +1,11 @@
 # Duck Curve Home
 
 Home-Energy-Management-System (HEMS) für ein Wohnhaus in Geilenkirchen: Energieflüsse, Pufferspeicher,
-Strompreis und der Wärmepumpen-Plan auf einen Blick – auf einem iPad an der Wand. Ab Phase 4 optimiert
+Strompreis und der Wärmepumpen-Plan auf einen Blick - auf einem iPad an der Wand. Ab Phase 4 optimiert
 Duck Curve Home die Wärmepumpe als flexible Last nach PV-Überschuss, Strompreis und Wärmebedarf, ohne die
 Anlage selbst zu verändern: gesteuert werden ausschließlich die beiden dafür vorgesehenen Kontakte.
 
-**Status: Phase 2 – Read-only Live.** Demo-Modus (Simulation) und Live-Modus (Home Assistant über die Bridge
+**Status: Phase 2 - Read-only Live.** Demo-Modus (Simulation) und Live-Modus (Home Assistant über die Bridge
 als HA-Add-on, PostgreSQL auf Railway, Tibber, Open-Meteo). Der Regler entscheidet und erklärt, schaltet aber
 noch nichts (`DCH_ACTUATION_ENABLED=false`). Plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md),
 Betrieb: [DEPLOYMENT.md](DEPLOYMENT.md).
@@ -58,11 +58,11 @@ curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '
 ## Phasen
 
 0 Analyse ✔ · 1 Demo-Modus ✔ · **2 Read-only Live (dieser Stand)** · 3 Manuelle Steuerung · 4 Rule-Based HEMS ·
-5 Smart Scheduler · 6 Optimizer – Details und Definition of Done in Abschnitt 14 des Projektplans.
+5 Smart Scheduler · 6 Optimizer - Details und Definition of Done in Abschnitt 14 des Projektplans.
 
 ## Weitere Dokumente
 
-- [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) – offene Rückfragen mit Annahmen
-- [docs/RECHNUNGSPRUEFUNG.md](docs/RECHNUNGSPRUEFUNG.md) – Tibber-Rechnungen prüfen (`/haus/rechnungen`, Endpunkt für Automatisierungen)
-- [docs/HA_EXPORT.md](docs/HA_EXPORT.md) – Historie aus dem Home-Assistant-Recorder exportieren und importieren (`POST /api/v1/import/ha`)
-- [docs/design/prognose-und-waermemodell.md](docs/design/prognose-und-waermemodell.md) – Prognoselernen, Einspeiseprognose, Wärmemodell
+- [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) - offene Rückfragen mit Annahmen
+- [docs/RECHNUNGSPRUEFUNG.md](docs/RECHNUNGSPRUEFUNG.md) - Tibber-Rechnungen prüfen (`/haus/rechnungen`, Endpunkt für Automatisierungen)
+- [docs/HA_EXPORT.md](docs/HA_EXPORT.md) - Historie aus dem Home-Assistant-Recorder exportieren und importieren (`POST /api/v1/import/ha`)
+- [docs/design/prognose-und-waermemodell.md](docs/design/prognose-und-waermemodell.md) - Prognoselernen, Einspeiseprognose, Wärmemodell

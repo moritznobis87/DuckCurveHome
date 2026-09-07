@@ -1,5 +1,5 @@
 """Der Planer rechnet auf einem 15-Minuten-Raster. Er muss deshalb auch Preise auflösen können, die
-feiner sind als eine Stunde — die Strombörse rechnet seit Oktober 2025 in Viertelstunden."""
+feiner sind als eine Stunde - die Strombörse rechnet seit Oktober 2025 in Viertelstunden."""
 
 from __future__ import annotations
 

@@ -122,7 +122,7 @@ class MyenergiSource:
         start = start.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
         end = end.astimezone(UTC)
         rows_by_device: dict[str, list[dict[str, Any]]] = {}
-        # je Gerät und UTC-Tag höchstens 1440 Minuten – längere Fenster liefert die Cloud nicht zuverlässig
+        # je Gerät und UTC-Tag höchstens 1440 Minuten - längere Fenster liefert die Cloud nicht zuverlässig
         for kind, prefix, sno in devices:
             rows: list[dict[str, Any]] = []
             day = start.replace(hour=0)

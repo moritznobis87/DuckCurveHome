@@ -69,7 +69,7 @@ class BridgeHub:
         self.last_frame_at = self.connected_at
         # Bei einer neuen Verbindung zählt die Sicht der Bridge: ihre Nummerierung kann neu beginnen
         # (frische Outbox, neues Gerät). Behielte die API ihren alten Stand, verwürfe sie jedes Paket
-        # der neuen Verbindung – und bestätigte es trotzdem, also unbemerkt.
+        # der neuen Verbindung - und bestätigte es trotzdem, also unbemerkt.
         self.last_seq = hello.last_acked_seq
         resume = self.last_seq + 1
         await ws.send_text(

@@ -53,7 +53,7 @@ def telemetry(seq: int, value: float) -> TelemetryFrame:
 async def test_reconnect_accepts_a_restarted_sequence(monkeypatch: pytest.MonkeyPatch) -> None:
     """Beginnt die Bridge nach einem Neustart wieder bei 1, muss die API das annehmen.
 
-    Vorher verglich sie stur mit ihrem eigenen Höchststand, verwarf jedes Paket – und bestätigte es
+    Vorher verglich sie stur mit ihrem eigenen Höchststand, verwarf jedes Paket - und bestätigte es
     trotzdem, sodass die Bridge es löschte. Der Verlust blieb auf beiden Seiten unsichtbar.
     """
     seen: list[list[RawReading]] = []
@@ -80,7 +80,7 @@ async def test_reconnect_accepts_a_restarted_sequence(monkeypatch: pytest.Monkey
 
 @pytest.mark.asyncio
 async def test_repeated_sequence_within_one_connection_is_reported() -> None:
-    """Ein echtes Doppel wird weiterhin übergangen – aber nicht mehr stillschweigend."""
+    """Ein echtes Doppel wird weiterhin übergangen - aber nicht mehr stillschweigend."""
     seen: list[list[RawReading]] = []
 
     async def sink(items: list[RawReading], is_backlog: bool) -> None:

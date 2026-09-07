@@ -1,4 +1,4 @@
-"""EnergySnapshot – der vollständige Zustand des Hauses zu einem Zeitpunkt.
+"""EnergySnapshot - der vollständige Zustand des Hauses zu einem Zeitpunkt.
 
 Vorzeichenkonvention (verbindlich, siehe docs/PROJECT_PLAN.md Abschnitt 7):
   Aus Sicht des Hauses. Erzeuger positiv, Verbraucher positiv.

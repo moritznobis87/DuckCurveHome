@@ -1,10 +1,10 @@
 """Thermischer Ladezustand des Pufferspeichers.
 
 Zwei konfigurierbare Methoden:
-  layered_energy_v1  – nutzbare Energie je Schicht oberhalb T_min, bezogen auf die Kapazität
+  layered_energy_v1  - nutzbare Energie je Schicht oberhalb T_min, bezogen auf die Kapazität
                        zwischen T_min und T_max. Schichten unter T_min zählen 0 (Schichtung wird
                        berücksichtigt). Standard.
-  weighted_mean_v1   – gewichtete Mitteltemperatur, linear zwischen T_min und T_max.
+  weighted_mean_v1   - gewichtete Mitteltemperatur, linear zwischen T_min und T_max.
 Beide sind Schätzwerte; die Methode wird im Ergebnis mitgeführt.
 """
 
@@ -44,7 +44,7 @@ def usable_energy_kwh(temps: Sequence[float], cfg: BufferConfig) -> float:
 
     Herausgezogen aus `compute_buffer_state`, damit dieselbe Rechnung auch auf eine Zeitreihe
     angewandt werden kann: die Änderung dieses Werts über die Zeit ist die Netto-Wärmeleistung des
-    Speichers — Zufuhr minus Entnahme minus Verluste. Damit lässt sich Fremdwärme beziffern, statt
+    Speichers - Zufuhr minus Entnahme minus Verluste. Damit lässt sich Fremdwärme beziffern, statt
     sie nur zu vermuten, ganz ohne Wärmemengenzähler.
     """
     if len(temps) != len(cfg.layers):

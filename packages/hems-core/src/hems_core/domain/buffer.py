@@ -28,7 +28,7 @@ class BufferStatus(StrEnum):
 class BufferState(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    soc: float | None  # 0–1, None wenn Sensoren fehlen
+    soc: float | None  # 0-1, None wenn Sensoren fehlen
     usable_energy_kwh: float | None
     capacity_kwh: float
     volume_liters: float

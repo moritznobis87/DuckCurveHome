@@ -1,4 +1,4 @@
-"""Einstellungen (pydantic-settings). Alle Variablen mit Präfix DCH_ – siehe CONFIGURATION.md."""
+"""Einstellungen (pydantic-settings). Alle Variablen mit Präfix DCH_ - siehe CONFIGURATION.md."""
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     tibber_token: str = ""
     tibber_home_id: str = ""
     # Auflösung der Tibber-Preishistorie. Leer heißt: beim ersten Abruf im GraphQL-Schema nachsehen
-    # und die feinste angebotene Auflösung nehmen — die Börse rechnet seit Oktober 2025 in
+    # und die feinste angebotene Auflösung nehmen - die Börse rechnet seit Oktober 2025 in
     # Viertelstunden. Ein hier gesetzter Wert überspringt die Abfrage und erzwingt ihn (z. B.
     # "HOURLY"). Die Tages- und Morgenpreise folgen ohnehin dem, was Tibber liefert.
     tibber_price_resolution: str = ""

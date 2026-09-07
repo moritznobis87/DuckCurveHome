@@ -85,7 +85,7 @@ def build_plan(
                 return w
         return None
 
-    # Der Preis eines Intervalls ist der des Preispunkts, der es überdeckt — nicht der der vollen
+    # Der Preis eines Intervalls ist der des Preispunkts, der es überdeckt - nicht der der vollen
     # Stunde. Seit die Börse auf Viertelstunden umgestellt hat, liefert Tibber vier Punkte je Stunde;
     # ein Nachschlagen über den Stundenschlüssel gäbe allen vier den Preis der ersten Viertelstunde
     # und machte den Planer blind für genau die Preisunterschiede, für die sein Raster gedacht ist.
@@ -95,7 +95,7 @@ def build_plan(
         return p.ct_kwh if p else None
 
     # Reicht die Preisreihe über morgen 00:00 hinaus, wird zwei Tage geplant, sonst einer. Vorher stand
-    # hier `len(prices) > 24` — eine Zählung, die nur bei Stundenpreisen einen Tag bedeutet.
+    # hier `len(prices) > 24` - eine Zählung, die nur bei Stundenpreisen einen Tag bedeutet.
     covered_until = max((p.end for p in prices), default=day_start)
     intervals: list[PlanIntervalOut] = []
     t = day_start

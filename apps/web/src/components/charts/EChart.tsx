@@ -7,7 +7,7 @@ import { GridComponent, GraphicComponent, LegendComponent, MarkAreaComponent, Ma
 import { CanvasRenderer } from "echarts/renderers";
 import type { EChartsCoreOption } from "echarts/core";
 
-// Nur registrierte Bausteine zeichnen. Fehlt einer, bleibt die Reihe stillschweigend weg — das Gerüst
+// Nur registrierte Bausteine zeichnen. Fehlt einer, bleibt die Reihe stillschweigend weg - das Gerüst
 // erscheint, die Daten nicht. HeatmapChart und VisualMapComponent tragen die Jahreskarte.
 echarts.use([LineChart, BarChart, ScatterChart, PieChart, HeatmapChart, GraphicComponent, LegendComponent, GridComponent, MarkAreaComponent, MarkLineComponent, TooltipComponent, AxisPointerComponent, VisualMapComponent, CanvasRenderer]);
 
@@ -19,7 +19,11 @@ export function EChart({ option, className }: { option: EChartsCoreOption; class
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const c = echarts.init(el, undefined, { renderer: "canvas", useDirtyRect: true });
+    // useDirtyRect zeichnet nur veränderte Rechtecke neu. Das spart Rechenzeit, hinterlässt aber
+    // beim Überfahren leere Flächen, sobald sich Tooltip, Achsenzeiger und Hervorhebung
+    // überlagern - die Optimierung schätzt die betroffene Fläche dann zu klein. Vollbild neu
+    // zeichnen ist bei unseren Diagrammgrößen ohnehin nicht spürbar.
+    const c = echarts.init(el, undefined, { renderer: "canvas" });
     chart.current = c;
     const ro = new ResizeObserver(() => c.resize());
     ro.observe(el);

@@ -19,7 +19,7 @@ class Outbox:
         )
         # Der Zähler steht getrennt von den Einträgen: `ack` löscht bestätigte Zeilen, und aus einer
         # leeren Tabelle abgeleitet begänne die Nummerierung wieder bei 1. Die API verwirft dann jedes
-        # Paket, dessen Nummer nicht größer ist als die zuletzt gesehene – stillschweigend, weil sie es
+        # Paket, dessen Nummer nicht größer ist als die zuletzt gesehene - stillschweigend, weil sie es
         # trotzdem bestätigt. Genau so gingen ganze Betriebstage an Telemetrie verloren.
         self._db.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v INTEGER NOT NULL)")
         self._db.execute(
@@ -29,7 +29,7 @@ class Outbox:
         self.max_age = max_age
 
     def next_seq(self) -> int:
-        """Fortlaufend und dauerhaft steigend – auch wenn die Outbox zwischendurch leer läuft."""
+        """Fortlaufend und dauerhaft steigend - auch wenn die Outbox zwischendurch leer läuft."""
         row = self._db.execute(
             "SELECT MAX(v) FROM ("
             "SELECT v FROM meta WHERE k = 'last_seq' UNION ALL SELECT COALESCE(MAX(seq), 0) FROM outbox)"

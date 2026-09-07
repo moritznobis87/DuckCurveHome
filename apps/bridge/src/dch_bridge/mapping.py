@@ -49,8 +49,8 @@ class MqttDeviceMap(BaseModel):
     Generation 1 (Shelly 3EM): jede Größe kommt als eigene Nachricht unter
     `shellies/<gerät>/emeter/<phase>/<feld>`. Es genügt `prefix` und `key_prefix`.
 
-    Generation 2/3 (Plus, Pro): das Gerät meldet JSON unter `<präfix>/events/rpc` und – falls in der
-    Geräteoberfläche aktiviert – `<präfix>/status/<komponente>`. Hier muss `components` sagen, welche
+    Generation 2/3 (Plus, Pro): das Gerät meldet JSON unter `<präfix>/events/rpc` und - falls in der
+    Geräteoberfläche aktiviert - `<präfix>/status/<komponente>`. Hier muss `components` sagen, welche
     Komponente welchem Domänenschlüssel entspricht:
 
     ```yaml
@@ -93,13 +93,13 @@ class EntityMap(BaseModel):
         return out
 
     def keys(self) -> list[str]:
-        """Was die Bridge der API ankündigt – auch Schlüssel, die es nur über MQTT gibt."""
+        """Was die Bridge der API ankündigt - auch Schlüssel, die es nur über MQTT gibt."""
         out = [s.key for s in self.sensors] + [f"actuator:{a.key}" for a in self.actuators]
         out += sorted(self.mqtt_keys() - set(out))
         return out
 
     def mqtt_keys(self) -> set[str]:
-        """Domänenschlüssel, die über MQTT kommen – Home Assistant liefert sie dann nicht mehr."""
+        """Domänenschlüssel, die über MQTT kommen - Home Assistant liefert sie dann nicht mehr."""
         out: set[str] = set()
         for dev in self.mqtt:
             if dev.kind == "em3" and dev.key_prefix:

@@ -6,13 +6,13 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * (nur Entwicklung/Demo).
  *
  * Zwei Rollen: `owner` darf alles, `guest` nur zusehen. Gäste werden über DCH_GUEST_TOKEN gepaart.
- * Durchgesetzt wird das im BFF-Proxy, nicht in der Anzeige – eine ausgeblendete Kachel hält niemanden
+ * Durchgesetzt wird das im BFF-Proxy, nicht in der Anzeige - eine ausgeblendete Kachel hält niemanden
  * auf, der die Adresse kennt.
  */
 export type Role = "owner" | "guest";
 export const SESSION_COOKIE = "dch_session";
 const MAX_AGE_S = 180 * 24 * 3600; // Wandanzeige: einmal paaren, dann monatelang Ruhe
-const GUEST_MAX_HOURS = 720; // 30 Tage – darüber hinaus ist es kein Besuch mehr
+const GUEST_MAX_HOURS = 720; // 30 Tage - darüber hinaus ist es kein Besuch mehr
 
 /** Gültigkeitsdauer einer Gast-Sitzung in Sekunden; `hours` aus dem Pairing-Link übersteuert die Vorgabe. */
 export function guestTtlSeconds(hours?: number | null): number {
@@ -55,7 +55,7 @@ export function verifySession(cookie: string | undefined): { name: string; role:
   try {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { n: string; r?: Role; exp: number };
     if (data.exp < Date.now() / 1000) return null;
-    // Sitzungen aus der Zeit vor den Rollen gehören dem Hausherrn – sie entstanden nur mit dem Kiosk-Token.
+    // Sitzungen aus der Zeit vor den Rollen gehören dem Hausherrn - sie entstanden nur mit dem Kiosk-Token.
     return { name: data.n, role: data.r === "guest" ? "guest" : "owner" };
   } catch {
     return null;
@@ -73,7 +73,7 @@ export function pairingTokenValid(token: string | null): boolean {
   return tokenMatches(token, process.env.DCH_KIOSK_TOKEN ?? "");
 }
 
-/** Welche Rolle der Pairing-Token vergibt – null, wenn er zu keinem der beiden passt. */
+/** Welche Rolle der Pairing-Token vergibt - null, wenn er zu keinem der beiden passt. */
 export function roleForToken(token: string | null): Role | null {
   if (tokenMatches(token, process.env.DCH_KIOSK_TOKEN ?? "")) return "owner";
   if (tokenMatches(token, process.env.DCH_GUEST_TOKEN ?? "")) return "guest";

@@ -1,1 +1,1 @@
-"""Duck Curve Home – Bridge (Home-Assistant-Add-on)."""
+"""Duck Curve Home - Bridge (Home-Assistant-Add-on)."""

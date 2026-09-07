@@ -45,8 +45,8 @@ die letzten 14 Tage besser war. Damit kann nichts schlechter werden als die einf
 
 **Stufe 0, Referenz.** Beste externe Quelle unverändert. Metrik: MAE und Bias je Stunde, MAPE je Tag.
 
-**Stufe 1, Bias-Korrektur je Quelle.** Für jede Quelle `s` und jede Sonnenstandsklasse `b` (Elevation 0–10°,
-10–20°, …, 60°+) ein Faktor `k[s,b]` als exponentiell gewichtetes Verhältnis Ist/Prognose, Halbwertszeit 10 Tage,
+**Stufe 1, Bias-Korrektur je Quelle.** Für jede Quelle `s` und jede Sonnenstandsklasse `b` (Elevation 0-10°,
+10-20°, …, 60°+) ein Faktor `k[s,b]` als exponentiell gewichtetes Verhältnis Ist/Prognose, Halbwertszeit 10 Tage,
 begrenzt auf [0,5; 1,5]. Fängt systematische Fehler: falsche kWp in forecast.solar, Horizontverschattung am Morgen,
 Verschmutzung. Entspricht Abschnitt 19.4 des Plans, jetzt aber **je Quelle**.
 
@@ -82,7 +82,7 @@ die Messung von `power_export` bewertet. Die Einspeiseprognose ist die Größe, 
 ### 2.4 Datenhaltung und Bewertung
 
 Prognosen werden versioniert (`forecast_runs`, `forecast_points`, Plan Abschnitt 21). Neu kommt eine Tabelle
-`forecast_scores` mit je einer Zeile pro Quelle, Tag und Horizontklasse (0–3 h, 3–12 h, 12–36 h): MAE, Bias, RMSE,
+`forecast_scores` mit je einer Zeile pro Quelle, Tag und Horizontklasse (0-3 h, 3-12 h, 12-36 h): MAE, Bias, RMSE,
 Anzahl Intervalle. Der Energy Plan zeigt im Block „Ziel & Ausblick“ die Güte der letzten 7 Tage als
 „Prognosegüte ±x %“, damit sichtbar bleibt, wie sehr man dem Plan trauen kann. Ein Kalibrierlauf pro Nacht um 23:30
 und eine Aktualisierung der Kurzfristkorrektur alle 15 Minuten.

@@ -1,4 +1,4 @@
-"""Rechnungsprüfung über die HTTP-Schnittstelle – so wie eine Automatisierung sie benutzt."""
+"""Rechnungsprüfung über die HTTP-Schnittstelle - so wie eine Automatisierung sie benutzt."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def test_upload_check_list_and_detail(client: TestClient) -> None:
     codes = {f["code"] for f in report["findings"]}
     assert {"positions_sum", "total_gross", "vat", "meter_delta"} <= codes
     assert all(f["severity"] != "error" for f in report["findings"])
-    # der Abgleich mit eigenen Daten ist immer dabei – mit Vergleichswert oder als klarer Hinweis
+    # der Abgleich mit eigenen Daten ist immer dabei - mit Vergleichswert oder als klarer Hinweis
     assert {"measured_kwh", "no_measurement"} & codes
 
     listing = client.get("/api/v1/import/tibber-invoices").json()

@@ -6,7 +6,7 @@ export type Role = "owner" | "guest";
 
 /** Rolle der Sitzung. Bis die Antwort da ist, gilt „owner": die Schaltkacheln sehen für alle gleich aus,
  *  und ein Gast, der in der ersten Sekunde tippt, bekommt vom Proxy eine saubere Absage. Umgekehrt wäre
- *  es ärgerlicher – der Hausherr sähe kurz „nur Ansicht" an seinen eigenen Schaltern. */
+ *  es ärgerlicher - der Hausherr sähe kurz „nur Ansicht" an seinen eigenen Schaltern. */
 export function useRole(): Role {
   const [role, setRole] = useState<Role>("owner");
   useEffect(() => {

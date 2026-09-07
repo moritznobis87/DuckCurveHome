@@ -49,7 +49,7 @@ export function HeatReport() {
   const barsOpt = useMemo(() => stackedBars(data?.summary.buckets ?? [], SOURCES), [data]);
   const fcOpt = useMemo(() => heatForecastChart(data?.forecast ?? []), [data]);
   const bufOpt = useMemo(() => bufferChart(data?.buffer_series ?? []), [data]);
-  const val = (p: Period, f: (s: HeatReportData) => string) => (strip[p] ? f(strip[p] as HeatReportData) : "–");
+  const val = (p: Period, f: (s: HeatReportData) => string) => (strip[p] ? f(strip[p] as HeatReportData) : "-");
   const hasBuffer = (data?.buffer_series.length ?? 0) > 0;
   const cyc = data?.cycling;
   const pq = data?.price_quality;
@@ -63,7 +63,7 @@ export function HeatReport() {
         <Stat label="Bezahlt" value={eur(t?.heat_pump_cost_eur)} tone="ember" hint={t ? `${de1(t.heat_pump_grid_kwh)} kWh Netz${paidCt != null ? ` · Ø ${de1(paidCt, 1)} ct` : ""}` : undefined} />
         <Stat label="Entgangene Vergütung" value={eur(t?.heat_pump_opportunity_eur)} tone="muted" hint="nicht eingespeister PV-Strom" />
         <Stat label="Wärme geliefert" value={de1(data?.thermal_kwh_est, data && data.thermal_kwh_est >= 100 ? 0 : 1)} unit="kWh" tone="amber" hint={data ? `geschätzt · COP ${de1(data.cop_est, 2)}` : "geschätzt"} />
-        <Stat label="Wärmepreis" value={thermalCt != null ? de1(thermalCt, 1) : "–"} unit="ct/kWh" hint="je kWh Wärme, geschätzt" />
+        <Stat label="Wärmepreis" value={thermalCt != null ? de1(thermalCt, 1) : "-"} unit="ct/kWh" hint="je kWh Wärme, geschätzt" />
         <Stat label="Prognose 24 h" value={de1(data?.forecast_electric_kwh_24h)} unit="kWh" tone="mist" hint={data ? `Strom für ${de1(data.forecast_thermal_kwh_24h, 0)} kWh Wärme` : undefined} />
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "7fr 5fr" } as React.CSSProperties}>
@@ -96,7 +96,7 @@ export function HeatReport() {
           <CardHead title="Taktung" right={cyc?.covered_hours ? `${de1(cyc.covered_hours, 0)} h bewertet` : undefined} />
           <div className="flex items-baseline gap-3">
             <span className="mono text-[26px] leading-none" style={{ color: verdictOf(cyc?.verdict).color }}>
-              {cyc?.starts_per_day != null ? de1(cyc.starts_per_day, 1) : "–"}
+              {cyc?.starts_per_day != null ? de1(cyc.starts_per_day, 1) : "-"}
             </span>
             <span className="text-[13px] text-text-3">Starts je Tag</span>
             <span className="mono ml-auto text-[11px] uppercase tracking-[.08em]" style={{ color: verdictOf(cyc?.verdict).color }}>
@@ -104,12 +104,12 @@ export function HeatReport() {
             </span>
           </div>
           <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
-            <Fact k="Läufe" v={cyc ? String(cyc.runs) : "–"} />
+            <Fact k="Läufe" v={cyc ? String(cyc.runs) : "-"} />
             <Fact k="Laufanteil" v={pct(cyc?.duty_cycle)} />
-            <Fact k="Lauf im Mittel" v={cyc?.mean_run_min != null ? `${de1(cyc.mean_run_min, 0)} min` : "–"} />
-            <Fact k="kürzester Lauf" v={cyc?.shortest_run_min != null ? `${cyc.shortest_run_min} min` : "–"} />
-            <Fact k="Pause im Mittel" v={cyc?.mean_pause_min != null ? `${de1(cyc.mean_pause_min, 0)} min` : "–"} />
-            <Fact k="unter Mindestlaufzeit" v={cyc?.short_runs != null ? `${cyc.short_runs}×` : "–"} />
+            <Fact k="Lauf im Mittel" v={cyc?.mean_run_min != null ? `${de1(cyc.mean_run_min, 0)} min` : "-"} />
+            <Fact k="kürzester Lauf" v={cyc?.shortest_run_min != null ? `${cyc.shortest_run_min} min` : "-"} />
+            <Fact k="Pause im Mittel" v={cyc?.mean_pause_min != null ? `${de1(cyc.mean_pause_min, 0)} min` : "-"} />
+            <Fact k="unter Mindestlaufzeit" v={cyc?.short_runs != null ? `${cyc.short_runs}×` : "-"} />
           </dl>
           <Note>{cyc?.note_de}</Note>
         </Card>
@@ -118,13 +118,13 @@ export function HeatReport() {
           <CardHead title="Lief sie zur richtigen Zeit?" right={pq?.hours_ranked ? `${pq.hours_ranked} Stunden mit Preis` : undefined} />
           <div className="flex items-baseline gap-3">
             <span className="mono text-[26px] leading-none" style={{ color: (pq?.advantage_ct ?? 0) > 0.5 ? "var(--amber)" : (pq?.advantage_ct ?? 0) < -0.5 ? "var(--alert)" : "var(--text-1)" }}>
-              {pq?.advantage_ct != null ? `${pq.advantage_ct > 0 ? "−" : "+"}${de1(Math.abs(pq.advantage_ct), 2)}` : "–"}
+              {pq?.advantage_ct != null ? `${pq.advantage_ct > 0 ? "−" : "+"}${de1(Math.abs(pq.advantage_ct), 2)}` : "-"}
             </span>
             <span className="text-[13px] text-text-3">ct/kWh gegen den Hausschnitt</span>
           </div>
           <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
-            <Fact k="WP-Strom aus dem Netz" v={pq?.hp_grid_price_ct != null ? `${de1(pq.hp_grid_price_ct, 2)} ct` : "–"} />
-            <Fact k="Haus im Mittel" v={pq?.house_grid_price_ct != null ? `${de1(pq.house_grid_price_ct, 2)} ct` : "–"} />
+            <Fact k="WP-Strom aus dem Netz" v={pq?.hp_grid_price_ct != null ? `${de1(pq.hp_grid_price_ct, 2)} ct` : "-"} />
+            <Fact k="Haus im Mittel" v={pq?.house_grid_price_ct != null ? `${de1(pq.house_grid_price_ct, 2)} ct` : "-"} />
             <Fact k="im günstigsten Viertel" v={pct(pq?.cheap_share)} />
             <Fact k="aus eigener Erzeugung" v={pct(pq?.pv_share)} />
           </dl>
@@ -135,15 +135,15 @@ export function HeatReport() {
           <CardHead title="Puffer-Energiebilanz" right={period === "day" ? "Ankertag" : "nur in der Tagesansicht"} />
           <div className="flex items-baseline gap-3">
             <span className="mono text-[26px] leading-none" style={{ color: (bb?.gain_without_hp_kwh ?? 0) > 0.2 ? "var(--heat-pump)" : "var(--text-1)" }}>
-              {bb?.samples ? de1(bb.gain_without_hp_kwh, 1) : "–"}
+              {bb?.samples ? de1(bb.gain_without_hp_kwh, 1) : "-"}
             </span>
             <span className="text-[13px] text-text-3">kWh Fremdwärme</span>
           </div>
           <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
-            <Fact k="Zufuhr gesamt" v={bb?.samples ? `${de1(bb.gain_kwh, 1)} kWh` : "–"} />
-            <Fact k="davon mit WP" v={bb?.samples ? `${de1(bb.gain_with_hp_kwh, 1)} kWh` : "–"} />
-            <Fact k="Entnahme + Verluste" v={bb?.samples ? `${de1(bb.drop_kwh, 1)} kWh` : "–"} />
-            <Fact k="Inhalt jetzt" v={bb?.energy_end_kwh != null ? `${de1(bb.energy_end_kwh, 1)} kWh` : "–"} />
+            <Fact k="Zufuhr gesamt" v={bb?.samples ? `${de1(bb.gain_kwh, 1)} kWh` : "-"} />
+            <Fact k="davon mit WP" v={bb?.samples ? `${de1(bb.gain_with_hp_kwh, 1)} kWh` : "-"} />
+            <Fact k="Entnahme + Verluste" v={bb?.samples ? `${de1(bb.drop_kwh, 1)} kWh` : "-"} />
+            <Fact k="Inhalt jetzt" v={bb?.energy_end_kwh != null ? `${de1(bb.energy_end_kwh, 1)} kWh` : "-"} />
           </dl>
           <Note>{bb?.note_de}</Note>
         </Card>

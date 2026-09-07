@@ -88,6 +88,20 @@ export function donut(parts: Array<{ name: string; value: number; color: string 
 }
 
 /** Wärmebedarfsprognose: Heizung + Warmwasser gestapelt (kW_th), Strombedarf als Linie, Außentemperatur rechts. */
+/** Positionen der Tageswechsel auf der Kategorienachse, benannt nach dem Wochentag danach. */
+function midnights(points: HeatForecastPoint[]): Array<{ xAxis: number; value: string }> {
+  const out: Array<{ xAxis: number; value: string }> = [];
+  points.forEach((p, i) => {
+    if (i === 0) return;
+    const d = new Date(p.ts);
+    const prev = new Date(points[i - 1]!.ts);
+    if (d.getDate() !== prev.getDate()) {
+      out.push({ xAxis: i, value: d.toLocaleDateString("de-DE", { weekday: "short" }) });
+    }
+  });
+  return out;
+}
+
 export function heatForecastChart(points: HeatForecastPoint[]): EChartsCoreOption {
   const labels = points.map((p) => new Date(p.ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }));
   return {
@@ -106,7 +120,16 @@ export function heatForecastChart(points: HeatForecastPoint[]): EChartsCoreOptio
       { name: "Heizung (thermisch)", type: "bar", stack: "th", data: points.map((p) => p.heating_kw), itemStyle: { color: "rgba(242,169,0,.55)" }, barCategoryGap: "30%" },
       { name: "Warmwasser (thermisch)", type: "bar", stack: "th", data: points.map((p) => p.dhw_kw), itemStyle: { color: "rgba(127,163,179,.7)", borderRadius: [2, 2, 0, 0] } },
       { name: "Strombedarf WP", type: "line", data: points.map((p) => p.electric_kw), showSymbol: false, lineStyle: { color: C.hp, width: 2 }, z: 3 },
-      { name: "Außentemperatur", type: "line", yAxisIndex: 1, data: points.map((p) => p.outdoor_c), showSymbol: false, lineStyle: { color: C.grid, width: 1.5, type: [4, 4] }, z: 2 },
+      { name: "Außentemperatur", type: "line", yAxisIndex: 1, data: points.map((p) => p.outdoor_c), showSymbol: false, lineStyle: { color: C.grid, width: 1.5, type: [4, 4] }, z: 2,
+        // Tagesgrenzen als senkrechte Striche: über 48 Stunden ist sonst nicht zu sehen, wo der
+        // eine Tag endet. Angehängt an eine stille Reihe, damit sie nicht in der Legende auftaucht.
+        markLine: {
+          symbol: "none",
+          silent: true,
+          lineStyle: { color: "rgba(255,255,255,.28)", width: 1, type: "solid" },
+          label: { show: true, position: "insideEndTop", color: C.text, fontFamily: MONO, fontSize: 10, formatter: (p: { value: string }) => p.value },
+          data: midnights(points),
+        } },
     ],
   };
 }
@@ -297,7 +320,7 @@ export function invoicePriceLine(items: Array<{ label: string; invoice: number; 
     animation: false,
     backgroundColor: "transparent",
     textStyle: { fontFamily: MONO },
-    tooltip: { ...tooltip, trigger: "axis", valueFormatter: (v: unknown) => (v == null ? "–" : `${de1(Number(v), 2)} ct/kWh`) },
+    tooltip: { ...tooltip, trigger: "axis", valueFormatter: (v: unknown) => (v == null ? "-" : `${de1(Number(v), 2)} ct/kWh`) },
     legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8 },
     grid: { left: 52, right: 12, top: 24, bottom: 52 },
     xAxis: { type: "category", data: items.map((i) => i.label), axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, hideOverlap: true } },
@@ -370,12 +393,12 @@ export function moneyBars(labels: string[], series: MoneySeries[]): EChartsCoreO
 }
 
 /* Jahreskarte: 365 Spalten × 24 Zeilen.
-   Die Rampen sind in OKLab zwischen Markenfarben interpoliert, nicht von Hand gewählt – nur so
+   Die Rampen sind in OKLab zwischen Markenfarben interpoliert, nicht von Hand gewählt - nur so
    steigt die wahrgenommene Helligkeit gleichmäßig, und nur so liest sich „mehr" als „heller".
    Sequenziell = ein Farbton, von der Kartenfläche bis zur Marke; der dunkelste Schritt ist der
    Hintergrund selbst, damit „fast nichts" mit der Fläche verschmilzt.
    Divergierend = zwei Farbtöne mit neutraler, flächennaher Mitte, gleich große Helligkeitsschritte
-   je Arm und beide Pole gleich hell – sonst schriee eine Seite lauter als die andere.
+   je Arm und beide Pole gleich hell - sonst schriee eine Seite lauter als die andere.
    Farbzuordnung wie im Energiefluss: Bernstein = eigene Energie, Mist = Netz. */
 export const RAMP_OWN = ["#123544", "#6a6448", "#c39234", "#f5b22e", "#fac558", "#ffd778"];
 export const RAMP_GRID = ["#123544", "#3c5f6e", "#688c9b", "#93b1bf", "#bbced7", "#e4ecef"];
@@ -386,7 +409,7 @@ export const RAMP_NET = ["#f2a900", "#ac833b", "#695f44", "#2b3a41", "#4c646e", 
 const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
 /** Robuste Obergrenze: das 98. Perzentil statt des Maximums.
- *  Ein einzelner Ausreißer – ein Ladevorgang, ein Defekt – zöge sonst die ganze Skala zusammen und
+ *  Ein einzelner Ausreißer - ein Ladevorgang, ein Defekt - zöge sonst die ganze Skala zusammen und
  *  färbte das restliche Jahr einheitlich dunkel. Der wahre Größtwert steht in der Fußnote. */
 function robustMax(values: number[]): number {
   if (!values.length) return 1;
@@ -404,7 +427,7 @@ export function yearMap(
   for (let d = 0; d < grid.length; d++) {
     for (let h = 0; h < 24; h++) {
       const v = grid[d]?.[h];
-      // null heißt „keine Messdaten" – die Zelle bleibt leer und zeigt die Kartenfläche.
+      // null heißt „keine Messdaten" - die Zelle bleibt leer und zeigt die Kartenfläche.
       if (typeof v !== "number") continue;
       data.push([d, h, v]);
       present.push(v);
@@ -434,7 +457,7 @@ export function yearMap(
           year: "numeric",
         });
         const hour = String(p.data[1]).padStart(2, "0");
-        return `<div style="color:rgba(255,255,255,.6)">${label}</div><div>${hour}:00 – ${hour}:59</div><div style="margin-top:3px">${de1(p.data[2], digits)} ${opts.unit}</div>`;
+        return `<div style="color:rgba(255,255,255,.6)">${label}</div><div>${hour}:00 - ${hour}:59</div><div style="margin-top:3px">${de1(p.data[2], digits)} ${opts.unit}</div>`;
       },
     },
     grid: { left: 44, right: 16, top: 38, bottom: 34 },
@@ -473,7 +496,7 @@ export function yearMap(
       itemWidth: 12,
       itemHeight: 190,
       // Bei der divergierenden Karte tragen die Pole eine Bedeutung, die nicht in der Farbe allein
-      // stehen darf – sie werden benannt.
+      // stehen darf - sie werden benannt.
       text: opts.diverging ? ["Bezug", "Einspeisung"] : undefined,
       textGap: 8,
       textStyle: { color: C.text, fontFamily: MONO, fontSize: 10 },

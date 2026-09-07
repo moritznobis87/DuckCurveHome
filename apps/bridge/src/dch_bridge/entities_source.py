@@ -1,7 +1,7 @@
 """Woher das Entity-Mapping kommt: aus dem Repository, aus /config oder aus dem letzten Abruf.
 
 Die Datei von Hand nach Home Assistant zu kopieren war die häufigste Fehlerquelle beim Nachziehen von
-Änderungen – ein Add-on-Update ohne Dateikopie sieht aus wie ein Fehler, ist aber nur ein alter Stand.
+Änderungen - ein Add-on-Update ohne Dateikopie sieht aus wie ein Fehler, ist aber nur ein alter Stand.
 Deshalb holt die Bridge das Mapping standardmäßig selbst aus dem Repository. Die Datei in /config
 übersteuert es weiterhin, für Versuche und für den Fall, dass jemand ohne Repository arbeitet.
 """
@@ -42,7 +42,7 @@ def load_entity_map(
     """Mapping laden und sagen, woher es stammt.
 
     Reihenfolge: die Datei in /config übersteuert alles. Sonst das Repository, dessen Antwort als
-    Zwischenspeicher abgelegt wird – damit die Bridge auch ohne Internet startet. Erst wenn beides
+    Zwischenspeicher abgelegt wird - damit die Bridge auch ohne Internet startet. Erst wenn beides
     ausfällt, greift der letzte erfolgreiche Abruf.
     """
     if file.is_file():
@@ -60,7 +60,7 @@ def load_entity_map(
         except Exception as exc:
             log.warning("Mapping nicht abrufbar", url=url, error=str(exc)[:200])
     if cache.is_file():
-        log.warning("Mapping aus dem Zwischenspeicher – möglicherweise nicht der neueste Stand")
+        log.warning("Mapping aus dem Zwischenspeicher - möglicherweise nicht der neueste Stand")
         return _parse(cache.read_text(encoding="utf-8")), f"zwischenspeicher:{cache}"
     raise FileNotFoundError(
         f"Kein Entity-Mapping: weder {file} noch abrufbar unter {url or '(keine URL gesetzt)'}"

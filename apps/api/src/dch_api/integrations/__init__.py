@@ -1,1 +1,1 @@
-"""Duck Curve Home – dch_api.integrations"""
+"""Duck Curve Home - dch_api.integrations"""

@@ -1,4 +1,4 @@
-# Duck Curve Home – Entity-Mapping für das Haus in Geilenkirchen.
+# Duck Curve Home - Entity-Mapping für das Haus in Geilenkirchen.
 # Nach Home Assistant kopieren als /config/duckcurve/entities.yaml (Option `entities_file` im Add-on).
 #
 # Quelle der Zuordnung: Entity-Liste aus HA vom 05.09.2026, aufgenommen bei PV 7,65 kW, Einspeisung 2,38 kW,
@@ -15,12 +15,12 @@ sensors:
   # Netz: negativ = Einspeisung (power_export 2378 W bei power_grid −2378 W) → import_positive.
   - { key: grid_power_kw,      entity: sensor.myenergi_hub_14117600_power_grid,           unit: W, sign: import_positive, stale_after_s: 120 }
   # Batterie (libbi): interner Last-CT ist beim Laden positiv (445 W bei "Battery charge today" steigend).
-  # ⚠ Vorzeichen beim Entladen noch verifizieren (erwartet negativ) – siehe docs/OPEN_QUESTIONS.md.
+  # ⚠ Vorzeichen beim Entladen noch verifizieren (erwartet negativ) - siehe docs/OPEN_QUESTIONS.md.
   - { key: battery_power_kw,   entity: sensor.myenergi_libbi_26244255_power_ct_internal_load, unit: W, sign: charge_positive, stale_after_s: 120 }
   - { key: battery_soc,        entity: sensor.myenergi_libbi_26244255_soc,                unit: "%", stale_after_s: 600 }
   # Wallbox (zappi): interner Last-CT = Ladeleistung des Autos.
   - { key: ev_power_kw,        entity: sensor.myenergi_wallbox_power_ct_internal_load,    unit: W, stale_after_s: 120 }
-  # Hausverbrauch laut Hub – nur Plausibilitätsprüfung; die Bilanz rechnet DCH selbst.
+  # Hausverbrauch laut Hub - nur Plausibilitätsprüfung; die Bilanz rechnet DCH selbst.
   - { key: house_power_kw,     entity: sensor.myenergi_hub_14117600_home_consumption,     unit: W, stale_after_s: 120 }
 
   # --- Wärmepumpe: Shelly 3EM, Summe der drei Phasen (HA-Template-Sensor) ---
@@ -36,12 +36,12 @@ sensors:
   # --- Umgebung ---
   - { key: outdoor_temp_c,     entity: sensor.geilenkirchen_air_base_temperatur,          unit: "°C", stale_after_s: 3600 }
 
-  # Strompreis kommt serverseitig direkt von Tibber (DCH_TIBBER_TOKEN) – hier nichts mappen.
+  # Strompreis kommt serverseitig direkt von Tibber (DCH_TIBBER_TOKEN) - hier nichts mappen.
 
 actuators:
   # --- Komfort-Schalter (Shelly) ---
   - { key: coffee_machine,     entity: switch.shelly1pm_34945472c2c5, label: Kaffeemaschine }
-  # Drei Lichterketten: Terrasse, Innenhof, Gartenzaun – einheitlich „Licht <Ort>“.
+  # Drei Lichterketten: Terrasse, Innenhof, Gartenzaun - einheitlich „Licht <Ort>“.
   - { key: terrace_light,      entity: switch.shellyterrassenlicht,   label: Licht Terrasse }
   - { key: garden_fence_light, entity: switch.shellygartenzaun,       label: Licht Gartenzaun }
   # Innenhof: Shelly Plus Plug S „Lichterkette_Innenhof“ (Kennung shellyplusplugs-64b7080cc70c),
@@ -53,22 +53,22 @@ actuators:
   # (Relais des Shelly 3EM), switch.temperaturen_heizung (Relais des Shelly Plus 1 mit Temperaturfühlern).
   # Erst eintragen, wenn die Verdrahtung zum ELCO-Regler bestätigt ist. Ein Shelly, der die WP-Versorgung
   # schaltet, darf hier NIE stehen. Bis dahin bleibt die Steuerung reine Beobachtung.
-  # K1 „PV-Überschuss“: bestätigt am 06.09.2026 – switch.warmepumpe fordert den Überschussbetrieb an und
+  # K1 „PV-Überschuss“: bestätigt am 06.09.2026 - switch.warmepumpe fordert den Überschussbetrieb an und
   # schaltet die Wärmepumpe NICHT stromlos. Sicherer Zustand ist „aus“ (WP läuft dann in eigener Regelung).
   - { key: hp_release_contact, entity: switch.warmepumpe, label: WP PV-Freigabe, safety_class: heat_pump, safe_state: false }
-  # K2 „EVU-Sperre“: der Abschaltkontakt an der Wärmepumpe ist noch nicht belegt – nichts zu mappen.
+  # K2 „EVU-Sperre“: der Abschaltkontakt an der Wärmepumpe ist noch nicht belegt - nichts zu mappen.
   # - { key: hp_block_contact,   entity: switch.<K2>, label: WP Sperre,      safety_class: heat_pump, safe_state: false }
 
 # ---------------------------------------------------------------------------
 # Shellys, die die Bridge direkt über den lokalen Mosquitto liest (ohne Umweg über HA).
 # Aktiv nur bei source_mode: mqtt oder compare. Schlüssel, die hier auftauchen, kommen dann
-# NICHT mehr aus Home Assistant – die passenden `sensors:`-Einträge oben bleiben als Fallback
+# NICHT mehr aus Home Assistant - die passenden `sensors:`-Einträge oben bleiben als Fallback
 # für source_mode: home_assistant stehen. Alles, was hier NICHT steht, läuft unverändert über HA.
 mqtt:
   # --- Nicht über MQTT: die Geräte der ersten Generation ---
   # Der Wärmepumpen-Zähler (Shelly 3EM), der Wärmepumpenschalter und die Kaffeemaschine bleiben bei
   # Home Assistant. Grund: beim Gen-1-Shelly schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die
-  # HA-Shelly-Integration arbeitet – die Schalter in HA gingen verloren. Das ist beim WP-Kontakt nicht
+  # HA-Shelly-Integration arbeitet - die Schalter in HA gingen verloren. Das ist beim WP-Kontakt nicht
   # hinnehmbar. Die Bridge mischt problemlos: bei source_mode mqtt übergeht sie in HA nur die Schlüssel,
   # die hier unten stehen; heat_pump_power_kw und die Aktoren kommen weiter über Home Assistant.
 

@@ -1,4 +1,4 @@
-"""Duck Curve Home – Domänenmodell (reines Python, keine I/O)."""
+"""Duck Curve Home - Domänenmodell (reines Python, keine I/O)."""
 
 from hems_core.domain.buffer import BufferState, BufferStatus
 from hems_core.domain.config import (

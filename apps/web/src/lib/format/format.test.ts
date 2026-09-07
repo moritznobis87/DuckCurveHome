@@ -6,7 +6,7 @@ describe("format", () => {
     expect(kw(6.84)).toBe("6,8");
     expect(kw(-2.4)).toBe("−2,4");
     expect(kw(0.02)).toBe("0,0");
-    expect(kw(null)).toBe("–");
+    expect(kw(null)).toBe("-");
     expect(kwWithUnit(3.6)).toBe("3,6 kW");
   });
   it("formatiert Prozent, Temperatur und Preis", () => {

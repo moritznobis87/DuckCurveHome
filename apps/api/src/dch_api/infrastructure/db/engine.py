@@ -62,7 +62,7 @@ def make_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
 
 
 async def create_all_for_tests(engine: AsyncEngine) -> None:
-    """Nur für Tests/SQLite – im Betrieb laufen Alembic-Migrationen."""
+    """Nur für Tests/SQLite - im Betrieb laufen Alembic-Migrationen."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

@@ -1,4 +1,4 @@
-# Duck Curve Home – Anlagen- und Reglerkonfiguration (DCH_CONFIG_FILE). Alle Werte optional; Defaults siehe CONFIGURATION.md.
+# Duck Curve Home - Anlagen- und Reglerkonfiguration (DCH_CONFIG_FILE). Alle Werte optional; Defaults siehe CONFIGURATION.md.
 site:
   name: Geilenkirchen
   location: { latitude: 50.97, longitude: 6.12, elevation_m: 80 }

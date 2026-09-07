@@ -42,7 +42,7 @@ export function Dashboard() {
       const saved = localStorage.getItem("dch.chartLayout");
       if (valid(saved)) setChartLayout(saved);
     } catch {
-      /* Speicher nicht verfügbar – Standard behalten */
+      /* Speicher nicht verfügbar - Standard behalten */
     }
   }, []);
 
@@ -72,7 +72,7 @@ export function Dashboard() {
       <Header />
       {degraded ? (
         <div className="mono -mt-2 flex h-9 shrink-0 items-center justify-center rounded-[3px] border text-[12px] uppercase tracking-[.1em]" style={{ borderColor: "rgba(224,83,61,.4)", background: "rgba(224,83,61,.12)", color: "var(--alert)" }}>
-          Verbindung unterbrochen{lastFrameAt ? ` · letzte Daten ${hhmm(new Date(lastFrameAt + offset))}` : ""} – Anzeige wird fortgesetzt, sobald das Backend erreichbar ist
+          Verbindung unterbrochen{lastFrameAt ? ` · letzte Daten ${hhmm(new Date(lastFrameAt + offset))}` : ""} - Anzeige wird fortgesetzt, sobald das Backend erreichbar ist
         </div>
       ) : null}
       <div className="dash-top" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>

@@ -92,7 +92,7 @@ def test_bridge_telemetry_reaches_live_state(live_client: TestClient) -> None:
         assert state["snapshot"]["actuators"]["coffee_machine"]["value"] == 1.0
         assert state["system"]["mode"] == "live" and state["system"]["bridge_online"] is True
         # Gewöhnliche Aktoren werden geschaltet: das Kommando geht an die Bridge und wartet auf
-        # ihre Bestätigung. Die Testbridge antwortet nicht, das Ergebnis ist also „keine Antwort“ –
+        # ihre Bestätigung. Die Testbridge antwortet nicht, das Ergebnis ist also „keine Antwort“ -
         # entscheidend ist, dass es nicht mehr an einer Phasensperre scheitert.
         r = live_client.post(
             "/api/v1/control/actuators/coffee_machine",

@@ -24,7 +24,7 @@ Home Assistant OS (Haus)                          Railway
    | Variable | Wert |
    |---|---|
    | `DATABASE_URL` | Referenz `${{Postgres.DATABASE_URL}}` |
-   | `PORT` | `8000` (fest setzen – sonst vergibt Railway einen zufälligen Port und die Web-App findet die API im privaten Netz nicht) |
+   | `PORT` | `8000` (fest setzen - sonst vergibt Railway einen zufälligen Port und die Web-App findet die API im privaten Netz nicht) |
    | `DCH_MODE` | `live` |
    | `DCH_ROLE` | `all` (API + Regler in einem Prozess; Worker-Trennung später) |
    | `DCH_BRIDGE_TOKENS` | `<zufälliges Token, z. B. openssl rand -hex 32>` (einzelnes Token; mehrere kommagetrennt oder als JSON-Liste) |
@@ -58,17 +58,17 @@ Schritte manuell (Plan 23.4).
 ### Fehlersuche: Dashboard zeigt „Verbindung unterbrochen“
 
 Das Banner bedeutet: Die Web-App bekommt keinen SSE-Stream von der API. Die fehlende Bridge ist **nicht**
-die Ursache – ohne Bridge liefert die API trotzdem Snapshots (dann ist der Punkt im Kopf grün „live“, die
+die Ursache - ohne Bridge liefert die API trotzdem Snapshots (dann ist der Punkt im Kopf grün „live“, die
 Werte bleiben Striche, weil noch keine Messwerte vorliegen). Prüfreihenfolge:
 
 1. `https://<web-domain>/api/health` → erwartet `{"status":"ok","api":200}`.
    - `"api":"unreachable"`: `DCH_API_URL` falsch, Port stimmt nicht oder die API lauscht nur auf IPv4.
-     Railways privates Netz ist **reines IPv6**, der öffentliche Proxy spricht IPv4 – die API bindet deshalb beide
+     Railways privates Netz ist **reines IPv6**, der öffentliche Proxy spricht IPv4 - die API bindet deshalb beide
      Familien (uvicorn `--host ""`; `::` allein wäre IPv6-only und liefert öffentlich 502 „Application failed to respond“).
      Im API-Service `PORT=8000` setzen (bzw. `${{api.PORT}}` referenzieren), Service-Name in der Referenz
      prüfen (aufgelöster Wert in Railway sichtbar, z. B. `http://api.railway.internal:8000`), beide Services
      neu deployen.
-   - `"api":401`/`403`: kommt hier nicht vor (`/health` ist offen) – dann ist ein Proxy dazwischen.
+   - `"api":401`/`403`: kommt hier nicht vor (`/health` ist offen) - dann ist ein Proxy dazwischen.
 2. `https://<api-domain>/health` → erwartet `"mode":"live"`, `"status":"ok"`.
 3. Im Browser die Konsole/Netzwerk-Tab öffnen: `GET /api/dch/live/stream`.
    - Antwort `401` mit `unauthorized`: `DCH_API_TOKEN` in web und api ist nicht identisch (oder in web leer).
@@ -81,7 +81,7 @@ Werte bleiben Striche, weil noch keine Messwerte vorliegen). Prüfreihenfolge:
 
 1. Einstellungen → Add-ons → Add-on Store → ⋮ → Repositories → `https://github.com/moritznobis87/DuckCurveHome`.
 2. „Duck Curve Home Bridge“ installieren (Home Assistant baut das Image lokal aus dem Repository).
-3. `/config/duckcurve/entities.yaml` anlegen – Vorlage `addons/duckcurve_bridge/entities.example.yaml`.
+3. `/config/duckcurve/entities.yaml` anlegen - Vorlage `addons/duckcurve_bridge/entities.example.yaml`.
    Entity-IDs findest du unter Entwicklerwerkzeuge → Zustände.
 4. Optionen: `api_ws_url = wss://<öffentliche API-Domain>/bridge/ws` (ohne Port), `api_token = <DCH_BRIDGE_TOKENS-Eintrag>`.
 5. Starten, Protokoll prüfen („uplink connected“). In Home Assistant erscheint `sensor.duckcurve_bridge_heartbeat`.

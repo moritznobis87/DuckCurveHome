@@ -27,7 +27,7 @@ class LiveState:
         for r in items:
             cur = self.readings.get(r.key)
             # Eine leere Meldung (unavailable/unknown) einer anderen Quelle verdrängt keinen gültigen Wert:
-            # liefert myenergi PV direkt, darf der ausgefallene HA-Sensor ihn nicht auf „–“ setzen.
+            # liefert myenergi PV direkt, darf der ausgefallene HA-Sensor ihn nicht auf „-“ setzen.
             if (
                 r.value is None
                 and cur is not None

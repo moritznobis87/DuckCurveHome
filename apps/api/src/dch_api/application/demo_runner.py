@@ -111,7 +111,7 @@ class DemoRunner:
         self.accounting = EnergyAccounting(
             self.hems, BERLIN, self._minute_rows, store=None, data_since=self._data_since
         )
-        # Rechnungen liegen im Demo-Modus nur im Speicher – zum Ausprobieren der Seite ohne Datenbank
+        # Rechnungen liegen im Demo-Modus nur im Speicher - zum Ausprobieren der Seite ohne Datenbank
         self._invoices: dict[str, InvoiceReportOut] = {}
         self.invoice_service = InvoiceService(
             BERLIN,

@@ -60,7 +60,7 @@ export function BatteryReport() {
   const dischargeOpt = useMemo(() => stackedBars(data?.buckets ?? [], DISCHARGE), [data]);
   const donutOpt = useMemo(() => donut(CHARGE.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), pct(pvShare), "aus PV geladen"), [t, pvShare]);
   const dayOpt = useMemo(() => batteryDayChart(rows), [rows]);
-  const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "–");
+  const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "-");
 
   return (
     <ReportShell title="Batteriespeicher" kicker={cap > 0 ? `${de1(cap, 1)} kWh · Nutzung und Ersparnis` : "Nutzung und Ersparnis"} period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
@@ -68,7 +68,7 @@ export function BatteryReport() {
       <KpiGrid cols={6}>
         <Stat label="Geladen" value={de1(t?.battery_charge_kwh)} unit="kWh" tone="amber" hint={t ? `PV ${de1(t.pv_to_battery_kwh)} · Netz ${de1(t.grid_to_battery_kwh)} kWh` : undefined} />
         <Stat label="Entladen" value={de1(t?.battery_discharge_kwh)} unit="kWh" tone="mist" hint={t ? `${de1(t.battery_to_house_kwh)} kWh ins Haus` : undefined} />
-        <Stat label="Vollzyklen" value={cycles != null ? de1(cycles, cycles >= 10 ? 0 : 1) : "–"} hint={cap > 0 ? `Entladung ÷ ${de1(cap, 1)} kWh` : "Kapazität unbekannt"} />
+        <Stat label="Vollzyklen" value={cycles != null ? de1(cycles, cycles >= 10 ? 0 : 1) : "-"} hint={cap > 0 ? `Entladung ÷ ${de1(cap, 1)} kWh` : "Kapazität unbekannt"} />
         <Stat label="Ersparnis" value={eur(t?.battery_savings_eur)} tone="amber" hint="gegenüber Netzbezug" />
         <Stat label="PV-Anteil Ladung" value={pct(pvShare)} hint={t && t.grid_to_battery_kwh > 0.05 ? `${de1(t.grid_to_battery_kwh)} kWh aus dem Netz geladen` : "keine Netzladung"} />
         <Stat label="Wirkungsgrad" value={pct(eff)} tone="muted" hint="Entladen ÷ Geladen" />
@@ -97,7 +97,7 @@ export function BatteryReport() {
           rows={[
             { label: "Ersparnis", value: (p) => val(p, (s) => eur(s.totals.battery_savings_eur)), tone: "amber" },
             { label: "Entladen · kWh", value: (p) => val(p, (s) => de1(s.totals.battery_discharge_kwh, s.totals.battery_discharge_kwh >= 100 ? 0 : 1)) },
-            { label: "Vollzyklen", value: (p) => val(p, (s) => (cap > 0 ? de1(s.totals.battery_discharge_kwh / cap, 1) : "–")) },
+            { label: "Vollzyklen", value: (p) => val(p, (s) => (cap > 0 ? de1(s.totals.battery_discharge_kwh / cap, 1) : "-")) },
             { label: "PV-Anteil", value: (p) => val(p, (s) => pct(s.totals.battery_charge_kwh > 0 ? s.totals.pv_to_battery_kwh / s.totals.battery_charge_kwh : null)) },
           ]}
         />

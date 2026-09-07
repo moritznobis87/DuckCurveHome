@@ -1,4 +1,4 @@
-"""Repositories – die einzige Stelle mit SQL. Der Demo-Modus nutzt In-Memory-Varianten."""
+"""Repositories - die einzige Stelle mit SQL. Der Demo-Modus nutzt In-Memory-Varianten."""
 
 from __future__ import annotations
 
@@ -154,7 +154,7 @@ class SqlRepositories:
 
         Beide Quellen werden gelesen und zusammengeführt: `measurements_minute` reicht beliebig weit
         zurück, endet aber am letzten verdichteten Bin, und die Minuten danach stehen nur in den
-        Rohwerten. Bei Überschneidung gewinnt der verdichtete Wert — er ist aus denselben Rohwerten
+        Rohwerten. Bei Überschneidung gewinnt der verdichtete Wert - er ist aus denselben Rohwerten
         entstanden, nur bereits abgeschlossen.
         """
         by_bucket: dict[str, dict[str, float | str | None]] = {}
@@ -279,7 +279,7 @@ class SqlRepositories:
 
         Geblättert wird über den Zeitstempel, nicht über OFFSET: ein Jahr sind 525 600 Zeilen, und
         OFFSET ließe die Datenbank für jede Seite erneut alles davor durchzählen. Nichts von alldem
-        liegt gleichzeitig im Speicher — weder hier noch beim Empfänger, der es als Datei mitschreibt.
+        liegt gleichzeitig im Speicher - weder hier noch beim Empfänger, der es als Datei mitschreibt.
         """
         columns = [*MINUTE_COLUMNS, "extra"]
         yield _csv_line(["ts", *columns])
@@ -320,7 +320,7 @@ class SqlRepositories:
     async def stream_hours_csv(
         self, start: datetime, end: datetime, batch: int = 2000
     ) -> AsyncIterator[str]:
-        """Stundenbilanz als CSV – Energien, Herkunft, Kosten und die Grundlagen der PV-Abrechnung."""
+        """Stundenbilanz als CSV - Energien, Herkunft, Kosten und die Grundlagen der PV-Abrechnung."""
         columns = [c.name for c in m.EnergyHour.__table__.columns if c.name != "hour_start"]
         yield _csv_line(["hour_start", *columns])
         cursor = start
@@ -553,7 +553,7 @@ class SqlRepositories:
         return None if v is None else self._aware(v)
 
     async def oldest_raw_at(self) -> datetime | None:
-        """Ältester noch vorhandener Rohwert – der Startpunkt einer Verdichtung, die bei null beginnt.
+        """Ältester noch vorhandener Rohwert - der Startpunkt einer Verdichtung, die bei null beginnt.
 
         Bewusst getrennt von `first_measurement_at`: das beantwortet „seit wann zeichnen wir auf" und
         schaut deshalb in die dauerhafte Minutentabelle. Wer damit eine Verdichtung starten wollte,

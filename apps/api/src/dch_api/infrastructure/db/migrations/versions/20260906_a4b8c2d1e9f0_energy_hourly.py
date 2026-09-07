@@ -1,4 +1,4 @@
-"""energy_hourly – Energiebilanz je Stunde mit Quellen-Zuordnung und Kosten
+"""energy_hourly - Energiebilanz je Stunde mit Quellen-Zuordnung und Kosten
 
 Revision ID: a4b8c2d1e9f0
 Revises: 7c1e2a9f3b4d

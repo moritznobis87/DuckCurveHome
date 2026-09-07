@@ -8,9 +8,9 @@ import { NavButtons } from "@/components/layout/NavButtons";
 export const PERIOD_LABEL: Record<Period, string> = { day: "Tag", week: "Woche", month: "Monat", year: "Jahr" };
 const PERIODS: Period[] = ["day", "week", "month", "year"];
 
-export const de1 = (n: number | null | undefined, digits = 1): string => (n == null || Number.isNaN(n) ? "–" : n.toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits }));
-export const eur = (n: number | null | undefined): string => (n == null ? "–" : `${de1(n, 2)} €`);
-export const pct = (frac: number | null | undefined): string => (frac == null ? "–" : `${Math.round(frac * 100)} %`);
+export const de1 = (n: number | null | undefined, digits = 1): string => (n == null || Number.isNaN(n) ? "-" : n.toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits }));
+export const eur = (n: number | null | undefined): string => (n == null ? "-" : `${de1(n, 2)} €`);
+export const pct = (frac: number | null | undefined): string => (frac == null ? "-" : `${Math.round(frac * 100)} %`);
 
 function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -51,7 +51,7 @@ export function anchorLabel(anchor: string, period: Period): string {
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     const f = (x: Date) => x.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
-    return `KW ${isoWeek(d)} · ${f(monday)} – ${f(sunday)}${sunday.getFullYear()}`;
+    return `KW ${isoWeek(d)} · ${f(monday)} - ${f(sunday)}${sunday.getFullYear()}`;
   }
   if (period === "month") return d.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
   return String(d.getFullYear());

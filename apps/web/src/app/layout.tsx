@@ -3,7 +3,7 @@ import "@/styles/globals.css";
 
 export const metadata: Metadata = {
   title: "Duck Curve Home",
-  description: "Home Energy Management – Energieflüsse, Pufferspeicher, Strompreis und Wärmepumpen-Plan auf einen Blick.",
+  description: "Home Energy Management - Energieflüsse, Pufferspeicher, Strompreis und Wärmepumpen-Plan auf einen Blick.",
   applicationName: "Duck Curve Home",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Duck Curve Home" },
   // Dieselben Markenicons wie duckcurve.de: ein Tab, ein Vogel.

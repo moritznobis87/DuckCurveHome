@@ -20,7 +20,7 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_DEMO_START` | jetzt | Startzeitpunkt der Simulation (ISO 8601) |
 | `DCH_DEMO_WARMUP_HOURS` | `30` | Vorlauf beim Start, damit Chart und Historie gefüllt sind |
 | `DCH_DEMO_AUTOSTART` | `true` | `false` in Tests |
-| `DCH_GUEST_TOKEN` | – | Pairing-Token für Gäste: `/pair?token=…&hours=8` gibt eine Sitzung, die nur lesen darf. Gäste sehen alles inklusive Kosten und Schaltkacheln, können aber nichts schalten und keine Tibber-Rechnung öffnen. Leer lassen, solange niemand eingeladen ist |
+| `DCH_GUEST_TOKEN` | - | Pairing-Token für Gäste: `/pair?token=…&hours=8` gibt eine Sitzung, die nur lesen darf. Gäste sehen alles inklusive Kosten und Schaltkacheln, können aber nichts schalten und keine Tibber-Rechnung öffnen. Leer lassen, solange niemand eingeladen ist |
 | `hems.tariff.feed_in_ct_kwh` (YAML) | `7.41` | Einspeisevergütung **netto** in ct/kWh. Bemisst den Einspeiseerlös, die entgangene Vergütung beim Eigenverbrauch und die PV-Abrechnung |
 | `hems.tariff.vat_rate` (YAML) | `0.19` | Umsatzsteuersatz auf Einspeisung und unentgeltliche Wertabgabe |
 | `hems.tariff.price_includes_vat` (YAML) | `true` | Tibber liefert Bruttopreise; der Eigenverbrauch wird daraus netto bewertet |
@@ -31,22 +31,22 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_ACTUATION_ENABLED` | `true` | Vom Bedienenden ausgelöstes Schalten (Lichter, Kaffeemaschine) |
 | `DCH_HEAT_PUMP_ACTUATION_ENABLED` | `false` | Selbsttätiges Stellen des WP-Kontakts K1 aus der Regelentscheidung. Erst einschalten, wenn die Wächter-Automation in Home Assistant steht und der Kontakt im Gerät einen Auto-Off-Timer hat |
 | `DCH_PLAN_REFRESH_MIN` | `15` | Neuplanung |
-| `DATABASE_URL` | – | Live-Modus: `postgresql://…` (Railway) oder `sqlite+aiosqlite:///…` (Entwicklung) |
+| `DATABASE_URL` | - | Live-Modus: `postgresql://…` (Railway) oder `sqlite+aiosqlite:///…` (Entwicklung) |
 | `DCH_DB_CREATE_ALL` | `false` | Schema ohne Alembic anlegen (nur SQLite/Tests) |
 | `DCH_BRIDGE_TOKENS` | `[]` | JSON-Liste erlaubter Bridge-Tokens (Secrets) |
-| `DCH_API_TOKEN` | – | Bearer-Token, das das Web-BFF mitschickt; leer = keine Prüfung |
-| `DCH_CONFIG_FILE` | – | YAML mit `site`, `pv_system`, `hems` (siehe `config/hems.example.yaml`) |
-| `DCH_TIBBER_TOKEN` / `DCH_TIBBER_HOME_ID` | – | Tibber-Preise; ohne Token pausieren Preisregeln |
-| `DCH_MYENERGI_SERIAL` / `DCH_MYENERGI_API_KEY` | – | myenergi-Cloud direkt: Hub-Seriennummer und API-Key (App → Konto → Erweitert). Liefert PV, Netz, Batterie, SOC, Wallbox ohne Home Assistant |
+| `DCH_API_TOKEN` | - | Bearer-Token, das das Web-BFF mitschickt; leer = keine Prüfung |
+| `DCH_CONFIG_FILE` | - | YAML mit `site`, `pv_system`, `hems` (siehe `config/hems.example.yaml`) |
+| `DCH_TIBBER_TOKEN` / `DCH_TIBBER_HOME_ID` | - | Tibber-Preise; ohne Token pausieren Preisregeln |
+| `DCH_MYENERGI_SERIAL` / `DCH_MYENERGI_API_KEY` | - | myenergi-Cloud direkt: Hub-Seriennummer und API-Key (App → Konto → Erweitert). Liefert PV, Netz, Batterie, SOC, Wallbox ohne Home Assistant |
 | `DCH_MYENERGI_POLL_S` | `30` | Abfragetakt der myenergi-Cloud |
 | `DCH_MYENERGI_BACKFILL_HOURS` | `48` | Minutenhistorie beim Start nachladen (Lücken füllen); danach stündlich die letzten 3 h; `0` = aus |
 | `DCH_WEATHER_REFRESH_MIN` | `60` | Open-Meteo-Abruf; `0` deaktiviert Wetter |
-| `DCH_PRICE_REFRESH_MIN` | `30` | Tibber-Abruf (13–15 Uhr immer halbstündlich) |
+| `DCH_PRICE_REFRESH_MIN` | `30` | Tibber-Abruf (13-15 Uhr immer halbstündlich) |
 | `DCH_RAW_RETENTION_DAYS` | `14` | Aufbewahrung der **Rohwerte**. Minutenmittel und Stundenbilanzen bleiben dauerhaft, siehe `docs/DATENHALTUNG.md` |
 | `DCH_API_URL` (web) | `http://localhost:8000` | Ziel der BFF-Route `/api/dch/*` |
-| `DCH_API_TOKEN` (web) | – | wird als Bearer an die API weitergereicht |
-| `DCH_SESSION_SECRET` (web) | – | ≥ 32 Zeichen; aktiviert die Kiosk-Anmeldung |
-| `DCH_KIOSK_TOKEN` (web) | – | Pairing-Token für `/pair?token=…&name=…` |
+| `DCH_API_TOKEN` (web) | - | wird als Bearer an die API weitergereicht |
+| `DCH_SESSION_SECRET` (web) | - | ≥ 32 Zeichen; aktiviert die Kiosk-Anmeldung |
+| `DCH_KIOSK_TOKEN` (web) | - | Pairing-Token für `/pair?token=…&name=…` |
 
 ## Bridge (Home-Assistant-Add-on)
 
@@ -97,7 +97,7 @@ control:
     price_max_age_h: 30
     expensive_quantile: 0.85
   block:
-    enabled: false                 # K2 in Phase 1–4 aus
+    enabled: false                 # K2 in Phase 1-4 aus
 buffer:
   volume_liters: 800
   layers: [0.25, 0.25, 0.25, 0.25]
