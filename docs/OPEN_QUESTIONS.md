@@ -1,5 +1,11 @@
 # Offene Fragen an den Hausherrn
 
+> **Anlagendaten (07.09.):** Wärmepumpe **ELCO AEROTOP SPLIT WH 09-11**, Pelletofen **MCZ Star
+> Hydromatic** (wasserführend, speist denselben 1000-l-Puffer). Die Wärmeseite ist damit vollständig
+> benannt — und die Split-Baureihe ist genau die, die BSB-LAN ausschließt: an ihre Wärmedaten kommt
+> man nur über einen externen Wärmemengenzähler. Auswahl, Baugröße und Begründung stehen in
+> `docs/SENSORIK.md`.
+
 Lebende Liste. Jede Frage nennt, was davon abhängt und mit welcher Annahme das System bis zur Antwort läuft.
 Beantwortete Punkte wandern mit Datum und Antwort nach unten in „Erledigt“.
 
