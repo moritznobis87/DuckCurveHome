@@ -531,6 +531,50 @@ export interface components {
              */
             block_ttl_min: number;
         };
+        /**
+         * BufferBalanceOut
+         * @description Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.
+         *
+         *     Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die
+         *     Wärmepumpe steht, kommt die Wärme von woanders — beim Kombipuffer also vom Pelletofen. Das ist
+         *     die beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist.
+         */
+        BufferBalanceOut: {
+            /** Energy Start Kwh */
+            energy_start_kwh?: number | null;
+            /** Energy End Kwh */
+            energy_end_kwh?: number | null;
+            /**
+             * Gain Kwh
+             * @default 0
+             */
+            gain_kwh: number;
+            /**
+             * Drop Kwh
+             * @default 0
+             */
+            drop_kwh: number;
+            /**
+             * Gain With Hp Kwh
+             * @default 0
+             */
+            gain_with_hp_kwh: number;
+            /**
+             * Gain Without Hp Kwh
+             * @default 0
+             */
+            gain_without_hp_kwh: number;
+            /**
+             * Samples
+             * @default 0
+             */
+            samples: number;
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
+        };
         /** BufferConfig */
         BufferConfig: {
             /**
@@ -722,6 +766,59 @@ export interface components {
             half_life_days: number;
             /** Updated On */
             updated_on?: string | null;
+        };
+        /**
+         * CyclingStats
+         * @description Kennzahlen der Taktung eines Zeitraums.
+         */
+        CyclingStats: {
+            /**
+             * Runs
+             * @default 0
+             */
+            runs: number;
+            /**
+             * Covered Hours
+             * @default 0
+             */
+            covered_hours: number;
+            /** Starts Per Day */
+            starts_per_day?: number | null;
+            /**
+             * Running Minutes
+             * @default 0
+             */
+            running_minutes: number;
+            /** Duty Cycle */
+            duty_cycle?: number | null;
+            /** Mean Run Min */
+            mean_run_min?: number | null;
+            /** Median Run Min */
+            median_run_min?: number | null;
+            /** Shortest Run Min */
+            shortest_run_min?: number | null;
+            /** Longest Run Min */
+            longest_run_min?: number | null;
+            /** Mean Pause Min */
+            mean_pause_min?: number | null;
+            /**
+             * Short Runs
+             * @default 0
+             */
+            short_runs: number;
+            /** Short Share */
+            short_share?: number | null;
+            /**
+             * Verdict
+             * @default unknown
+             * @enum {string}
+             */
+            verdict: "ok" | "watch" | "short_cycling" | "unknown";
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
         };
         /** DailyScoreOut */
         DailyScoreOut: {
@@ -1368,6 +1465,9 @@ export interface components {
             }[];
             /** Heat Loss Kw Per K */
             heat_loss_kw_per_k: number;
+            cycling: components["schemas"]["CyclingStats"];
+            price_quality: components["schemas"]["PriceQualityOut"];
+            buffer_balance: components["schemas"]["BufferBalanceOut"];
             /** Model Note De */
             model_note_de: string;
         };
@@ -1867,6 +1967,36 @@ export interface components {
             /** Pv Forecast Today Kwh */
             pv_forecast_today_kwh: number;
             next_cheap_window: components["schemas"]["PriceWindowOut"] | null;
+        };
+        /**
+         * PriceQualityOut
+         * @description Lief die Wärmepumpe zur richtigen Zeit? Ergebnis statt Regeltreue.
+         *
+         *     Verglichen wird, was der Wärmepumpenstrom aus dem Netz gekostet hat, mit dem, was der Bezug des
+         *     ganzen Hauses im selben Zeitraum im Mittel kostete. Liegt der erste darunter, hat die Steuerung
+         *     gewirkt — unabhängig davon, ob sie jedes geplante Fenster genau getroffen hat.
+         */
+        PriceQualityOut: {
+            /** Hp Grid Price Ct */
+            hp_grid_price_ct?: number | null;
+            /** House Grid Price Ct */
+            house_grid_price_ct?: number | null;
+            /** Advantage Ct */
+            advantage_ct?: number | null;
+            /** Cheap Share */
+            cheap_share?: number | null;
+            /** Pv Share */
+            pv_share?: number | null;
+            /**
+             * Hours Ranked
+             * @default 0
+             */
+            hours_ranked: number;
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
         };
         /** PriceRuleConfig */
         PriceRuleConfig: {

@@ -19,6 +19,7 @@ from hems_core.domain import (
     SystemMode,
 )
 from hems_core.forecasting import CorrectorState, ForecastScore
+from hems_core.thermal import CyclingStats
 
 
 class PriceWindowOut(BaseModel):
@@ -340,6 +341,41 @@ class YearMapOut(BaseModel):
     data_since: datetime | None
 
 
+class PriceQualityOut(BaseModel):
+    """Lief die Wärmepumpe zur richtigen Zeit? Ergebnis statt Regeltreue.
+
+    Verglichen wird, was der Wärmepumpenstrom aus dem Netz gekostet hat, mit dem, was der Bezug des
+    ganzen Hauses im selben Zeitraum im Mittel kostete. Liegt der erste darunter, hat die Steuerung
+    gewirkt — unabhängig davon, ob sie jedes geplante Fenster genau getroffen hat.
+    """
+
+    hp_grid_price_ct: float | None = None  # Mittelpreis des WP-Netzbezugs
+    house_grid_price_ct: float | None = None  # Mittelpreis des Hausbezugs
+    advantage_ct: float | None = None  # Differenz; positiv = günstiger als der Durchschnitt
+    cheap_share: float | None = None  # Anteil der WP-Energie in den günstigsten 25 % der Stunden
+    pv_share: float | None = None  # Anteil der WP-Energie aus eigener PV
+    hours_ranked: int = 0
+    note_de: str = ""
+
+
+class BufferBalanceOut(BaseModel):
+    """Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.
+
+    Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die
+    Wärmepumpe steht, kommt die Wärme von woanders — beim Kombipuffer also vom Pelletofen. Das ist
+    die beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist.
+    """
+
+    energy_start_kwh: float | None = None
+    energy_end_kwh: float | None = None
+    gain_kwh: float = 0.0  # Summe aller Zunahmen
+    drop_kwh: float = 0.0  # Summe aller Abnahmen (Entnahme und Verluste)
+    gain_with_hp_kwh: float = 0.0
+    gain_without_hp_kwh: float = 0.0  # Fremdwärme-Verdacht
+    samples: int = 0
+    note_de: str = ""
+
+
 class HeatReportOut(BaseModel):
     summary: EnergySummaryOut
     thermal_kwh_est: float  # gelieferte Wärme aus Strom × COP (Schätzung)
@@ -351,6 +387,9 @@ class HeatReportOut(BaseModel):
         dict[str, float | str | None]
     ]  # Puffertemperaturen des Ankertags (Minutenmittel)
     heat_loss_kw_per_k: float
+    cycling: CyclingStats
+    price_quality: PriceQualityOut
+    buffer_balance: BufferBalanceOut
     model_note_de: str
 
 

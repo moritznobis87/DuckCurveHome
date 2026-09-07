@@ -1406,6 +1406,65 @@
         "type": "object",
         "title": "BlockRuleConfig"
       },
+      "BufferBalanceOut": {
+        "properties": {
+          "energy_start_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy Start Kwh"
+          },
+          "energy_end_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy End Kwh"
+          },
+          "gain_kwh": {
+            "type": "number",
+            "title": "Gain Kwh",
+            "default": 0.0
+          },
+          "drop_kwh": {
+            "type": "number",
+            "title": "Drop Kwh",
+            "default": 0.0
+          },
+          "gain_with_hp_kwh": {
+            "type": "number",
+            "title": "Gain With Hp Kwh",
+            "default": 0.0
+          },
+          "gain_without_hp_kwh": {
+            "type": "number",
+            "title": "Gain Without Hp Kwh",
+            "default": 0.0
+          },
+          "samples": {
+            "type": "integer",
+            "title": "Samples",
+            "default": 0
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "BufferBalanceOut",
+        "description": "Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.\n\nDie Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die\nWärmepumpe steht, kommt die Wärme von woanders — beim Kombipuffer also vom Pelletofen. Das ist\ndie beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist."
+      },
       "BufferConfig": {
         "properties": {
           "volume_liters": {
@@ -1730,6 +1789,137 @@
         "type": "object",
         "title": "CorrectorState",
         "description": "Serialisierbarer Zustand des Korrektors (Persistenz in der API)."
+      },
+      "CyclingStats": {
+        "properties": {
+          "runs": {
+            "type": "integer",
+            "title": "Runs",
+            "default": 0
+          },
+          "covered_hours": {
+            "type": "number",
+            "title": "Covered Hours",
+            "default": 0.0
+          },
+          "starts_per_day": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts Per Day"
+          },
+          "running_minutes": {
+            "type": "integer",
+            "title": "Running Minutes",
+            "default": 0
+          },
+          "duty_cycle": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duty Cycle"
+          },
+          "mean_run_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Run Min"
+          },
+          "median_run_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Run Min"
+          },
+          "shortest_run_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shortest Run Min"
+          },
+          "longest_run_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longest Run Min"
+          },
+          "mean_pause_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Pause Min"
+          },
+          "short_runs": {
+            "type": "integer",
+            "title": "Short Runs",
+            "default": 0
+          },
+          "short_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Share"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "watch",
+              "short_cycling",
+              "unknown"
+            ],
+            "title": "Verdict",
+            "default": "unknown"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "CyclingStats",
+        "description": "Kennzahlen der Taktung eines Zeitraums."
       },
       "DailyScoreOut": {
         "properties": {
@@ -3145,6 +3335,15 @@
             "type": "number",
             "title": "Heat Loss Kw Per K"
           },
+          "cycling": {
+            "$ref": "#/components/schemas/CyclingStats"
+          },
+          "price_quality": {
+            "$ref": "#/components/schemas/PriceQualityOut"
+          },
+          "buffer_balance": {
+            "$ref": "#/components/schemas/BufferBalanceOut"
+          },
           "model_note_de": {
             "type": "string",
             "title": "Model Note De"
@@ -3160,6 +3359,9 @@
           "forecast_thermal_kwh_24h",
           "buffer_series",
           "heat_loss_kw_per_k",
+          "cycling",
+          "price_quality",
+          "buffer_balance",
           "model_note_de"
         ],
         "title": "HeatReportOut"
@@ -4195,6 +4397,78 @@
           "next_cheap_window"
         ],
         "title": "PlanOut"
+      },
+      "PriceQualityOut": {
+        "properties": {
+          "hp_grid_price_ct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hp Grid Price Ct"
+          },
+          "house_grid_price_ct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House Grid Price Ct"
+          },
+          "advantage_ct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Advantage Ct"
+          },
+          "cheap_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cheap Share"
+          },
+          "pv_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pv Share"
+          },
+          "hours_ranked": {
+            "type": "integer",
+            "title": "Hours Ranked",
+            "default": 0
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "PriceQualityOut",
+        "description": "Lief die Wärmepumpe zur richtigen Zeit? Ergebnis statt Regeltreue.\n\nVerglichen wird, was der Wärmepumpenstrom aus dem Netz gekostet hat, mit dem, was der Bezug des\nganzen Hauses im selben Zeitraum im Mittel kostete. Liegt der erste darunter, hat die Steuerung\ngewirkt — unabhängig davon, ob sie jedes geplante Fenster genau getroffen hat."
       },
       "PriceRuleConfig": {
         "properties": {

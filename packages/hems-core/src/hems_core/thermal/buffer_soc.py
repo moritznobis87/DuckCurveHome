@@ -10,6 +10,8 @@ Beide sind Schätzwerte; die Methode wird im Ergebnis mitgeführt.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from hems_core.domain.buffer import BufferState, BufferStatus
 from hems_core.domain.config import BufferConfig
 from hems_core.domain.snapshot import BufferTemperatures
@@ -35,6 +37,23 @@ def status_for(soc: float, cfg: BufferConfig) -> BufferStatus:
 def capacity_kwh(cfg: BufferConfig) -> float:
     span = cfg.max_temperature_c - cfg.min_useful_temperature_c
     return cfg.volume_liters * KWH_PER_LITER_KELVIN * span
+
+
+def usable_energy_kwh(temps: Sequence[float], cfg: BufferConfig) -> float:
+    """Nutzbare Energie im Puffer oberhalb T_min, aus vier Schichttemperaturen.
+
+    Herausgezogen aus `compute_buffer_state`, damit dieselbe Rechnung auch auf eine Zeitreihe
+    angewandt werden kann: die Änderung dieses Werts über die Zeit ist die Netto-Wärmeleistung des
+    Speichers — Zufuhr minus Entnahme minus Verluste. Damit lässt sich Fremdwärme beziffern, statt
+    sie nur zu vermuten, ganz ohne Wärmemengenzähler.
+    """
+    if len(temps) != len(cfg.layers):
+        raise ValueError("temps und buffer.layers müssen gleich lang sein")
+    usable = 0.0
+    for share, ti in zip(cfg.layers, temps, strict=True):
+        liters = cfg.volume_liters * share
+        usable += liters * KWH_PER_LITER_KELVIN * max(0.0, ti - cfg.min_useful_temperature_c)
+    return min(usable, capacity_kwh(cfg))
 
 
 def compute_buffer_state(temps: BufferTemperatures, cfg: BufferConfig) -> BufferState:
@@ -64,11 +83,7 @@ def compute_buffer_state(temps: BufferTemperatures, cfg: BufferConfig) -> Buffer
         soc = _clamp01((mean - cfg.min_useful_temperature_c) / span)
         usable = soc * cap
     else:
-        usable = 0.0
-        for share, ti in zip(cfg.layers, t, strict=True):
-            liters = cfg.volume_liters * share
-            usable += liters * KWH_PER_LITER_KELVIN * max(0.0, ti - cfg.min_useful_temperature_c)
-        usable = min(usable, cap)
+        usable = usable_energy_kwh(t, cfg)
         soc = _clamp01(usable / cap) if cap > 0 else 0.0
         mean = sum(s * ti for s, ti in zip(cfg.layers, t, strict=True))
 

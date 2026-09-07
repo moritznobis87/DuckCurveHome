@@ -6,11 +6,13 @@ from __future__ import annotations
 import calendar
 from collections.abc import Awaitable, Callable, Iterable
 from datetime import UTC, date, datetime, time, timedelta
+from itertools import pairwise
 from zoneinfo import ZoneInfo
 
 import structlog
 
 from dch_api.schemas import (
+    BufferBalanceOut,
     EnergyBucketOut,
     EnergyMetaOut,
     EnergySummaryOut,
@@ -19,6 +21,7 @@ from dch_api.schemas import (
     EvSessionOut,
     HeatReportOut,
     Period,
+    PriceQualityOut,
     PvTaxBucketOut,
     PvTaxMetaOut,
     PvTaxReportOut,
@@ -34,7 +37,8 @@ from hems_core.accounting import (
     samples_from_rows,
     summarize,
 )
-from hems_core.domain import HemsConfig
+from hems_core.domain import BufferConfig, HemsConfig
+from hems_core.thermal import CyclingStats, compressor_runs, cycling_stats, usable_energy_kwh
 
 log = structlog.get_logger("energy")
 
@@ -122,6 +126,126 @@ def merge_hour(new: HourlyEnergy, old: HourlyEnergy | None) -> HourlyEnergy:
 def _mean(values: Iterable[float | None]) -> float | None:
     xs = [v for v in values if v is not None]
     return round(sum(xs) / len(xs), 2) if xs else None
+
+
+def _price_quality(
+    hours: list[tuple[HourlyEnergy, float | None]], totals: EnergyTotalsOut
+) -> PriceQualityOut:
+    """Hat die Wärmepumpe zur richtigen Zeit gelaufen?
+
+    Gemessen wird das Ergebnis, nicht die Regeltreue: was der Wärmepumpenstrom aus dem Netz
+    tatsächlich gekostet hat, gegen den Mittelpreis des Hausbezugs im selben Zeitraum. Die Zahlen
+    stehen bereits in der Stundenbilanz — `heat_pump_cost_eur` ist Netzanteil × Preis der Stunde.
+
+    Ein Vergleich gegen den *geplanten* Fahrplan wäre die naheliegende Alternative, ist aber nicht
+    möglich: Pläne werden bisher nicht gespeichert. Das Ergebnis ist ohnehin die ehrlichere Frage —
+    ein Plan, der perfekt eingehalten wird und trotzdem teuer ist, hilft niemandem.
+    """
+    hp_grid = sum(h.heat_pump_grid_kwh for h, _ in hours)
+    hp_cost = sum(h.heat_pump_cost_eur for h, _ in hours)
+    hp_price = round(hp_cost * 100.0 / hp_grid, 2) if hp_grid > 1e-6 else None
+    house_price = totals.avg_import_price_ct
+
+    # Anteil der WP-Energie in den günstigsten 25 % der Stunden. Gerankt wird nur, was einen Preis
+    # hat; Stunden ohne Bezug haben keinen gewichteten Mittelpreis.
+    priced = [(h.avg_import_price_ct, h.heat_pump_kwh) for h, _ in hours if h.avg_import_price_ct]
+    cheap_share: float | None = None
+    if len(priced) >= 8:
+        priced.sort(key=lambda x: x[0] or 0.0)
+        cut = max(1, len(priced) // 4)
+        cheap = sum(kwh for _, kwh in priced[:cut])
+        total = sum(kwh for _, kwh in priced)
+        cheap_share = round(cheap / total, 3) if total > 1e-6 else None
+
+    hp_total = totals.heat_pump_kwh
+    pv_share = (
+        round((totals.heat_pump_pv_kwh + totals.heat_pump_battery_kwh) / hp_total, 3)
+        if hp_total > 1e-6
+        else None
+    )
+    advantage = (
+        round(house_price - hp_price, 2)
+        if hp_price is not None and house_price is not None
+        else None
+    )
+    if advantage is None:
+        note = "Zu wenig Netzbezug der Wärmepumpe für einen Preisvergleich."
+    elif advantage > 0.5:
+        note = (
+            f"Der Wärmepumpenstrom war {advantage:.2f} ct/kWh günstiger als der Hausdurchschnitt."
+        )
+    elif advantage < -0.5:
+        note = (
+            f"Der Wärmepumpenstrom war {-advantage:.2f} ct/kWh teurer als der Hausdurchschnitt —"
+            " sie lief überwiegend in den teuren Stunden."
+        )
+    else:
+        note = "Der Wärmepumpenstrom kostete etwa so viel wie der Hausdurchschnitt."
+    return PriceQualityOut(
+        hp_grid_price_ct=hp_price,
+        house_grid_price_ct=house_price,
+        advantage_ct=advantage,
+        cheap_share=cheap_share,
+        pv_share=pv_share,
+        hours_ranked=len(priced),
+        note_de=note,
+    )
+
+
+_BUFFER_KEYS = (
+    "buffer_temp_top_c",
+    "buffer_temp_mid_top_c",
+    "buffer_temp_mid_bottom_c",
+    "buffer_temp_bottom_c",
+)
+
+
+def _buffer_balance(series: list[MinuteRow], cfg: BufferConfig) -> BufferBalanceOut:
+    """Energieinhalt des Puffers über den Tag und wer ihn gefüllt hat.
+
+    Zunahmen, während die Wärmepumpe steht, sind Fremdwärme — beim Kombipuffer der Pelletofen.
+    Die Rechnung ist eine Untergrenze: läuft gleichzeitig die Heizung, wird ein Teil der zugeführten
+    Wärme sofort wieder entnommen und taucht hier nie auf.
+    """
+    points: list[tuple[float, bool]] = []
+    for row in series:
+        temps = [row.get(k) for k in _BUFFER_KEYS]
+        if any(not isinstance(t, int | float) for t in temps):
+            continue
+        hp = row.get("heat_pump_power_kw")
+        running = isinstance(hp, int | float) and hp > 0.3
+        points.append((usable_energy_kwh([float(t) for t in temps], cfg), running))  # type: ignore[arg-type]
+    if len(points) < 2:
+        return BufferBalanceOut(
+            note_de="Zu wenige vollständige Puffermesswerte am Ankertag für eine Bilanz."
+        )
+    gain = drop = with_hp = without_hp = 0.0
+    for (e0, _), (e1, running) in pairwise(points):
+        d = e1 - e0
+        if d >= 0:
+            gain += d
+            if running:
+                with_hp += d
+            else:
+                without_hp += d
+        else:
+            drop -= d
+    note = (
+        f"{without_hp:.1f} kWh kamen in den Puffer, während die Wärmepumpe stand — beim"
+        " Kombipuffer der Pelletofen. Untergrenze: gleichzeitige Entnahme ist darin nicht enthalten."
+        if without_hp > 0.2
+        else "Keine nennenswerte Wärmezufuhr ohne laufende Wärmepumpe."
+    )
+    return BufferBalanceOut(
+        energy_start_kwh=round(points[0][0], 2),
+        energy_end_kwh=round(points[-1][0], 2),
+        gain_kwh=round(gain, 2),
+        drop_kwh=round(drop, 2),
+        gain_with_hp_kwh=round(with_hp, 2),
+        gain_without_hp_kwh=round(without_hp, 2),
+        samples=len(points),
+        note_de=note,
+    )
 
 
 class EnergyAccounting:
@@ -482,10 +606,14 @@ class EnergyAccounting:
             for i, r in enumerate(rows)
             if i % 5 == 0
         ]
+        cycling = await self._cycling(start, min(end, now))
         return HeatReportOut(
             summary=summary,
             thermal_kwh_est=round(thermal, 2),
             cop_est=cop_est,
+            cycling=cycling,
+            price_quality=_price_quality(hours, summary.totals),
+            buffer_balance=_buffer_balance(buffer_series, self.hems.buffer),
             forecast=fc,
             forecast_electric_kwh_24h=round(sum(p.electric_kw for p in first24), 2),
             forecast_thermal_kwh_24h=round(sum(p.heating_kw + p.dhw_kw for p in first24), 2),
@@ -497,6 +625,36 @@ class EnergyAccounting:
                 f"{cfg.heating_limit_c:g} °C) plus Warmwasserprofil ({cfg.dhw_kwh_per_day:g} kWh/Tag)."
             ),
         )
+
+    async def _cycling(self, start: datetime, end: datetime) -> CyclingStats:
+        """Verdichterläufe aus der Minutenreihe des Zeitraums.
+
+        Über 31 Tage hinaus wird nicht gerechnet: dafür müssten hunderttausende Minutenzeilen durch
+        den Dienst, und für die Frage „taktet die Anlage?" sagt ein Monat alles, was ein Jahr auch
+        sagt. Statt einer stillen Näherung gibt es dann eine Ansage.
+        """
+        span = end - start
+        if span > timedelta(days=31):
+            return CyclingStats(
+                note_de="Für Zeiträume über einen Monat wird die Taktung nicht ausgewertet."
+            )
+        rows = await self.minute_rows(start, end)
+        samples: list[tuple[datetime, float | None]] = []
+        covered = 0
+        for r in rows:
+            ts_raw = r.get("ts")
+            if not isinstance(ts_raw, str):
+                continue
+            v = r.get("heat_pump_power_kw")
+            value = float(v) if isinstance(v, int | float) else None
+            samples.append((datetime.fromisoformat(ts_raw.replace("Z", "+00:00")), value))
+            if value is not None:
+                covered += 1
+        hp = self.hems.heat_pump
+        # Schwelle zwischen Verdichter und Grundlast: gut ein Drittel der kleinsten Verdichterstufe.
+        on_kw = max(0.3, hp.minimum_electric_power_kw * 0.35)
+        runs = compressor_runs(samples, on_kw)
+        return cycling_stats(runs, covered, hp.min_runtime_min)
 
     async def ev_report(self, period: Period, anchor: date, now: datetime) -> EvReportOut:
         summary = await self.summary(period, anchor, now)
