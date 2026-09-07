@@ -199,6 +199,18 @@ Rohwert 255 heißt „kein Fühler". Rekonstruiert aus `hackximus/MCZ-Maestro-AP
 Die Bridge liest den Ofen deshalb **direkt**, in `sources/mcz_maestro.py`. Kein zweiter Daemon, kein
 MQTT-Umweg, keine Cloud. Konfiguriert wird nur die Adresse des Ofens, siehe `CONFIGURATION.md`.
 
+**Die Hürde: der WebSocket lebt auf dem Hotspot, nicht im Heimnetz.** Der Ofen ist zwar im WLAN
+angemeldet und erreichbar, aber Port 81 auf seiner Heimnetz-Adresse ist zu (`Connection refused`,
+also ein antwortender Host ohne Dienst). Dass die App auch von unterwegs funktioniert, widerspricht
+dem nicht: die Platine baut eine **ausgehende** Verbindung zur MCZ-Cloud auf. Ein ausgehender
+Tunnel ist kein lauschender Port. Genau deshalb verlangt `hackximus/MCZ-Maestro-API` zwei
+Netzwerkkarten, und `Chibald/maestrogateway` hat `192.168.120.1` als Standardadresse: das ist der
+Ofen auf seiner eigenen Hotspot-Schnittstelle.
+
+Wer den Ofen einbinden will, braucht deshalb einen kleinen Dauerläufer mit zwei Wegen: WLAN am
+Hotspot `MCZ-…`, Kabel oder zweites Funkmodul im Heimnetz. Auf dem läuft die Bridge, oder er reicht
+weiter. Zum Prüfen der Lage: `tools/mcz_find.py`.
+
 Die Quelle **schreibt nie**. Der einzige Rahmen, der hinausgeht, ist `C|RecuperoInfo`. Eine Heizung,
 die im Winter das Haus warm hält, ist kein Ort für Fernsteuerung nebenbei. Die Schreibbefehle sind
 bekannt und bewusst nicht eingebaut.
