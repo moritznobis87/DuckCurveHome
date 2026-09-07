@@ -97,3 +97,44 @@ async def test_unconfirmed_broker_command_is_not_ok(tmp_path: Path) -> None:
     bridge = build(tmp_path, FakeHub(confirms=False))
     result = await bridge.execute_command(frame("courtyard_light", True))
     assert result.ok is False and "nicht bestätigt" in (result.error or "")
+
+
+class QuietHub(FakeHub):
+    """Ein MQTT-Gerät, das schweigt: es besitzt den Schlüssel, hat aber keinen frischen Wert."""
+
+    def __init__(self, fresh: bool) -> None:
+        super().__init__()
+        self._fresh = fresh
+
+    def has_fresh(self, key: str, now: datetime) -> bool:
+        return self._fresh
+
+    @property
+    def owned_keys(self) -> set[str]:
+        return {"actuator:courtyard_light"}
+
+
+def ha_state(entity: str, state: str) -> Any:
+    from dch_bridge.home_assistant.ws_client import EntityState
+
+    now = datetime.now(UTC)
+    return EntityState(
+        entity_id=entity, state=state, attributes={}, last_updated=now, last_changed=now
+    )
+
+
+@pytest.mark.asyncio
+async def test_home_assistant_fills_in_when_the_broker_device_goes_quiet(tmp_path: Path) -> None:
+    """Schweigt der Shelly, darf sein letzter Stand nicht einfrieren – HA kennt den richtigen."""
+    bridge = build(tmp_path, QuietHub(fresh=False))
+    bridge._mqtt_owned = {"actuator:courtyard_light"}
+    bridge._ingest(ha_state("switch.lichtinnenhof", "on"))
+    assert bridge._pending["actuator:courtyard_light"].value == 1.0
+
+
+@pytest.mark.asyncio
+async def test_broker_value_keeps_precedence_while_it_is_fresh(tmp_path: Path) -> None:
+    bridge = build(tmp_path, QuietHub(fresh=True))
+    bridge._mqtt_owned = {"actuator:courtyard_light"}
+    bridge._ingest(ha_state("switch.lichtinnenhof", "on"))
+    assert "actuator:courtyard_light" not in bridge._pending

@@ -27,7 +27,7 @@ from dch_bridge.sources.shelly_mqtt import (
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.5.2"
+VERSION = "0.5.3"
 log = structlog.get_logger("bridge")
 
 
@@ -125,14 +125,21 @@ class Bridge:
         if m is None:
             return
         self.latest[st.entity_id] = st
-        reading = normalize(m, st.state, st.attributes, st.observed_at, datetime.now(UTC))
+        now = datetime.now(UTC)
+        reading = normalize(m, st.state, st.attributes, st.observed_at, now)
         if (
             self.comparator is not None
             and reading.key == f"{self.settings.mqtt_key_prefix}_power_kw"
         ):
             self.comparator.note_ha(reading.value, reading.observed_at)
-        if reading.key in self._mqtt_owned:
-            return  # Modus mqtt: der Shelly kommt direkt über den Broker, HA-Wert nicht doppelt senden
+        # Modus mqtt: der Shelly kommt direkt über den Broker – aber nur solange er auch wirklich
+        # meldet. Schweigt er, springt Home Assistant ein, statt den letzten Stand einfrieren zu lassen.
+        if (
+            reading.key in self._mqtt_owned
+            and self.mqtt is not None
+            and self.mqtt.has_fresh(reading.key, now)
+        ):
+            return
         self._pending[reading.key] = reading
 
     async def _ingest_readings(self, items: list[RawReading]) -> None:

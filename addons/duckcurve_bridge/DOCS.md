@@ -169,8 +169,11 @@ fehlt die MQTT-**Integration** (das Mosquitto-**Add-on** allein genügt nicht) �
 Bequemer für mehrere Werte gleichzeitig ist der [MQTT Explorer](http://mqtt-explorer.com) vom PC aus.
 Ein Fühler, der `unknown` bzw. `null` liefert, ist nicht angeschlossen und bleibt unbelegt.
 
-Schlüssel, die im Abschnitt `mqtt:` vorkommen, holt die Bridge bei `source_mode: mqtt` **nicht mehr** aus Home
-Assistant; die entsprechenden `sensors:`-Einträge bleiben als Rückfallebene für `source_mode: home_assistant`
+Schlüssel, die im Abschnitt `mqtt:` vorkommen, holt die Bridge bei `source_mode: mqtt` aus dem Broker,
+**solange das Gerät auch wirklich meldet**. Schweigt es länger als `mqtt_stale_s`, springt der Wert aus Home
+Assistant wieder ein – sonst bliebe der letzte Stand eingefroren, obwohl HA den richtigen kennt. Meldet auch
+HA nichts, wird der Schlüssel ausdrücklich als nicht verfügbar gemeldet und im Dashboard steht „–“, nie ein
+alter Wert ohne Hinweis. Die Einträge unter `sensors:` bzw. `actuators:` die entsprechenden `sensors:`-Einträge bleiben als Rückfallebene für `source_mode: home_assistant`
 stehen. Alle Geräte teilen sich eine einzige Broker-Verbindung.
 
 **Schalten über MQTT.** Zeigt eine Zuordnung auf `actuator:<schlüssel>` und liegt sie auf dem Feld `output`

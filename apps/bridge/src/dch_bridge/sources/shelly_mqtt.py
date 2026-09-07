@@ -627,6 +627,10 @@ class Device(Protocol):
         """Zuletzt empfangener Schaltzustand zu `key`, None wenn unbekannt."""
         ...
 
+    def fresh(self, key: str, now: datetime) -> bool:
+        """Hat das Gerät gerade einen belastbaren Wert für `key`?"""
+        ...
+
 
 @dataclass
 class Em3Device:
@@ -659,6 +663,11 @@ class Em3Device:
 
     def observed(self, key: str) -> bool | None:
         return None
+
+    def fresh(self, key: str, now: datetime) -> bool:
+        return key in self.owned_keys and not self.state.is_stale(
+            now, timedelta(seconds=self.stale_s)
+        )
 
     def topics(self) -> list[str]:
         return [f"{self.topic_prefix}/#"]
@@ -794,6 +803,10 @@ class Gen2Device:
             return None
         return value.value >= 0.5
 
+    def fresh(self, key: str, now: datetime) -> bool:
+        value = self.state.values.get(key)
+        return value is not None and now - value.at <= timedelta(seconds=self.stale_s)
+
     def status(self) -> dict[str, Any]:
         return {
             "device": self.topic_prefix,
@@ -831,6 +844,14 @@ class MqttHub:
         for dev in self.devices:
             out |= dev.owned_keys
         return out
+
+    def has_fresh(self, key: str, now: datetime) -> bool:
+        """Liefert gerade ein MQTT-Gerät einen belastbaren Wert für `key`?
+
+        Nur dann darf der Wert aus Home Assistant unterdrückt werden. Sonst bliebe bei einem stummen
+        Gerät der letzte Stand stehen, obwohl HA den richtigen kennt.
+        """
+        return any(dev.fresh(key, now) for dev in self.devices)
 
     def can_switch(self, key: str) -> bool:
         return any(dev.command(key, True, None) is not None for dev in self.devices)
