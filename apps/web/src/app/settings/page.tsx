@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { requireOwner } from "@/lib/guard";
 import { authRequired } from "@/lib/session";
 import { active } from "@/lib/presence";
+import { CopyField } from "@/components/ui/CopyField";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Einstellungen · Duck Curve Home" };
@@ -11,7 +12,7 @@ function Row({ label, url, note }: { label: string; url: string; note: string })
   return (
     <div className="flex flex-col gap-1.5 rounded-[3px] border border-line-1 bg-surface-2 p-4">
       <span className="kicker" style={{ fontSize: 11 }}>{label}</span>
-      <code className="mono break-all text-[14px] text-text-1">{url}</code>
+      <CopyField value={url} label={label} />
       <span className="text-[13px] leading-[1.5] text-text-3">{note}</span>
     </div>
   );

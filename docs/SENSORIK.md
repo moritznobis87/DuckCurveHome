@@ -101,44 +101,6 @@ Einstrahlungssensor (Open-Meteo plus der vorhandene Korrektor holen das meiste);
 Netzzähler, falls ein Tibber Pulse möglich ist — der liefert den Zählerstand als Wahrheit für die
 Rechnungsprüfung.
 
-## Anfragetext für den Heizungsbauer
-
-Wörtlich verwendbar. Eine vage Anfrage („können Sie mir was zum Messen einbauen?") führt zu einem
-vagen Angebot; eine präzise macht daraus einen kalkulierbaren Ein-Stunden-Auftrag.
-
-> **Betreff: Einbau eines Wärmemengenzählers im Heizkreis der Wärmepumpe**
->
-> Anlage: ELCO AEROTOP SPLIT WH 09-11 (Luft/Wasser), 1000-l-Kombipuffer, zusätzlich ein
-> wasserführender Pelletofen, der denselben Puffer speist.
->
-> Gewünscht ist der Einbau eines Ultraschall-Wärmemengenzählers **im Rücklauf zwischen Wärmepumpe
-> und Puffer**, so dass ausschließlich der Wärmepumpenkreis erfasst wird — nicht die Entnahme zum
-> Heizkreis oder zum Warmwasser. Zweck ist die Messung der Jahresarbeitszahl, keine Abrechnung.
->
-> Gerät (bitte mitliefern oder Angebot beides):
-> * Landis+Gyr ULTRAHEAT T330 (UH30) oder T550 (UH50), Ultraschall, MID
-> * **qp 1,5**; falls die Anlage mit weniger als 4 K Spreizung fährt, stattdessen qp 2,5 — bitte den
->   Volumenstrom vor Ort prüfen
-> * möglichst großes Gehäuse (DN20) wegen des Druckverlusts an der Umwälzpumpe
-> * Temperaturfühlerpaar Pt500, **direkt eintauchend**, keine Anlegefühler
-> * Kommunikationsmodul: wM-Bus (Funk) **oder** M-Bus verdrahtet
-> * falls lieferbar: **230-V-Netzteil** statt Batteriebetrieb
->
-> **Wichtig:** Ich benötige zum Gerät die **Zählernummer** und — bei Funk — den **AES-Schlüssel**,
-> schriftlich auf dem Lieferschein. Ohne den Schlüssel sind die Funktelegramme nicht lesbar.
->
-> Bitte um Angebot einschließlich Absperren, Entleeren und Wiederinbetriebnahme.
->
-> Zwei Fragen vorab: Welchen Volumenstrom fährt die Anlage im Auslegungsfall? Ist im Rücklauf eine
-> Tauchhülse oder ein Kugelhahn für den zweiten Fühler vorhanden?
-
-**Wen fragen:** am ehesten einen Betrieb, der Wärmepumpen-Optimierung oder hydraulischen Abgleich
-anbietet — dort ist ein Wärmemengenzähler ein vertrautes Werkzeug. Der ELCO-Servicepartner kennt
-zudem die Maschine. Ein allgemeiner Sanitärbetrieb zuckt bei der Frage eher mit den Schultern.
-
-**Zeitpunkt:** Der Kreis muss abgesperrt und teilentleert werden. Wenn ohnehin eine Wartung oder
-eine andere Arbeit an der Heizung ansteht, gehört der Zähler in denselben Termin.
-
 ## Nach dem Einbau hier eintragen
 
 | Zähler | Zählernummer | Baugröße | Einbauort | Modul | Datum |

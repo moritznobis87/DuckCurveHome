@@ -44,6 +44,12 @@
     user-select: none;
   }
   a { color: inherit; text-decoration: none; }
+  /* Der Reset oben ist für die Wandanzeige gedacht: dort soll nichts versehentlich markiert werden.
+     Was zum Kopieren dasteht, muss sich aber markieren lassen – Pairing-Links, Zählernummern, Codes. */
+  code, pre, input, textarea, [data-selectable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; appearance: none; -webkit-appearance: none; }
   :focus-visible { outline: 0; box-shadow: var(--focus-ring); }
 }
