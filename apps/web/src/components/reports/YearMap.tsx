@@ -108,7 +108,9 @@ export function YearMapReport() {
         ))}
       </div>
 
-      <Card style={{ padding: 16, minHeight: 420, flex: 1 }}>
+      {/* Feste Höhe, keine Flex-Höhe: `height: 100%` im Chart löst sich sonst gegen eine unbestimmte
+          Elternhöhe auf und die Karte fällt auf eine Linie zusammen. */}
+      <Card style={{ padding: 16, height: "clamp(360px, calc(100dvh - 250px), 780px)" }}>
         <CardHead title={active.label} right={active.unit || undefined} />
         <div className="min-h-0 flex-1">
           {loading && !data ? <Note>Jahr wird geladen …</Note> : data && data.hours_with_data === 0 ? <Note>Für {year} liegen keine Stundenwerte vor.</Note> : <EChart option={option} />}
