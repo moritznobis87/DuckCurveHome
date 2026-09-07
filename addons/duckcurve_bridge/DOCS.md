@@ -293,11 +293,20 @@ Deshalb wlan0 **nicht** auf DHCP stehen lassen, sondern gleich auf statische IPv
 | Gateway | **leer** |
 | DNS | **leer** |
 
-Leeres Gateway hält die Standardroute beim Kabel, leerer DNS hält die Namensauflösung beim Heimnetz.
-Der Ofen bleibt unter `192.168.120.1` trotzdem erreichbar, dafür genügt die Route ins eigene Subnetz.
+Damit hat der Pi **beides gleichzeitig und dauerhaft**, und genau darum geht es:
 
-Ist es schon passiert, hilft der kurze Weg: wlan0 trennen, das Add-on bauen lassen, danach wlan0 mit
-den Werten oben wieder verbinden. Das Bauen braucht Internet, der laufende Betrieb nicht.
+* **Internet über das Kabel.** Leeres Gateway heißt, dass wlan0 keine Standardroute anmeldet; leerer
+  DNS heißt, dass die Namensauflösung beim Heimnetz bleibt. Die Bridge braucht diesen Weg im Betrieb
+  ständig, sie hält eine offene Verbindung zur API.
+* **Den Ofen über wlan0.** Für ein direkt angeschlossenes Netz braucht es kein Gateway: die Route
+  nach `192.168.120.0/24` entsteht allein daraus, dass die Schnittstelle eine Adresse darin hat.
+
+Das eine schließt das andere also nicht aus. Falsch wird es nur, wenn wlan0 auf DHCP steht und dabei
+Gateway und DNS des Ofens übernimmt.
+
+Ist das schon passiert, führt der kürzeste Weg zurück über einen Zwischenschritt: wlan0 **einmalig**
+trennen, das Add-on bauen lassen, danach wlan0 mit den Werten oben dauerhaft wieder verbinden. Das
+Trennen ist nur nötig, weil der falsche DNS bereits eingetragen ist, nicht Teil des Endzustands.
 
 **Reichweite prüfen:** der Pi muss den Hotspot sehen. Taucht `MCZ-…` in der Netzliste gar nicht auf,
 steht er zu weit weg, und es braucht einen zweiten kleinen Rechner näher am Ofen, der Port 81
