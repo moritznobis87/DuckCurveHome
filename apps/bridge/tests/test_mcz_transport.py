@@ -15,6 +15,7 @@ import base64
 import os
 
 import pytest
+from structlog.testing import capture_logs
 
 from dch_bridge.sources.mcz_maestro import (
     OPCODE_PING,
@@ -224,10 +225,13 @@ def test_client_rahmen_sind_immer_maskiert() -> None:
     assert bytes(b ^ mask[i % 4] for i, b in enumerate(frame[6:])) == b"C|RecuperoInfo"
 
 
-async def test_erster_rahmen_wird_im_klartext_protokolliert(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Ohne diese Zeile steht im Protokoll nur eine Rahmenzahl, aber kein einziger Messwert."""
+async def test_erster_rahmen_wird_im_klartext_protokolliert() -> None:
+    """Ohne diese Zeile steht im Protokoll nur eine Rahmenzahl, aber kein einziger Messwert.
+
+    Geprüft wird mit `capture_logs`, nicht über `capsys`: structlog hält eine Referenz auf den
+    Ausgabekanal, den es beim Konfigurieren vorgefunden hat. Wird es von einem früheren Test
+    eingerichtet, greift das Austauschen von `sys.stderr` ins Leere.
+    """
     seen: list[list] = []
 
     async def collect(items: list) -> None:
@@ -239,10 +243,10 @@ async def test_erster_rahmen_wird_im_klartext_protokolliert(
             on_readings=collect,
             poll_interval_s=0.05,
         )
-        await _collect_one(stove, seen)
+        with capture_logs() as entries:
+            await _collect_one(stove, seen)
 
-    out = capsys.readouterr().out
-    assert "stove first frame" in out
-    assert "stove_buffer_temp_c=59.0" in out
-    assert "stove_return_temp_c=64.0" in out
-    assert out.count("stove first frame") == 1, "nur einmal je Verbindung, nicht je Rahmen"
+    first = [e for e in entries if e["event"] == "stove first frame"]
+    assert len(first) == 1, "einmal je Verbindung, nicht je Rahmen"
+    assert "stove_buffer_temp_c=59.0" in first[0]["values"]
+    assert "stove_return_temp_c=64.0" in first[0]["values"]
