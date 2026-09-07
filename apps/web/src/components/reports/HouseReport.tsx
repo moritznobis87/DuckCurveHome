@@ -45,12 +45,15 @@ export function HouseReport() {
         <Stat label="Wallbox" value={de1(t?.ev_kwh)} unit="kWh" tone="mist" hint={share(t?.ev_kwh, t?.house_kwh)} />
         <Stat label="Haushalt (Rest)" value={de1(t?.base_kwh)} unit="kWh" tone="muted" hint={share(t?.base_kwh, t?.house_kwh)} />
         <Stat label="Autarkie" value={pct(t?.autarky)} tone="amber" hint={t ? `${de1(t.pv_direct_kwh + t.battery_to_house_kwh)} kWh ohne Netz` : undefined} />
-        {/* Gäste sehen die bezogene Energie, nicht was sie gekostet hat – und keinen Weg zu den Rechnungen. */}
-        {role === "owner" ? (
-          <Stat label="Netzbezug" value={eur(t?.import_cost_eur)} tone="ember" href="/haus/rechnungen" ariaLabel="Netzbezug – zur Rechnungsprüfung" hint={t ? `${de1(t.import_kwh)} kWh · Rechnungen prüfen` : "Rechnungen prüfen"} />
-        ) : (
-          <Stat label="Netzbezug" value={de1(t?.import_kwh)} unit="kWh" tone="ember" hint={share(t?.import_kwh, t?.house_kwh)} />
-        )}
+        {/* Kosten sehen alle; nur der Weg zur Rechnungsprüfung bleibt dem Hausherrn. */}
+        <Stat
+          label="Netzbezug"
+          value={eur(t?.import_cost_eur)}
+          tone="ember"
+          href={role === "owner" ? "/haus/rechnungen" : undefined}
+          ariaLabel={role === "owner" ? "Netzbezug – zur Rechnungsprüfung" : undefined}
+          hint={t ? `${de1(t.import_kwh)} kWh${role === "owner" ? " · Rechnungen prüfen" : ""}` : undefined}
+        />
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>

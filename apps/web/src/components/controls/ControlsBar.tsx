@@ -15,7 +15,7 @@ const TILES: Array<{ key: string; label: string; icon: string; durationMin?: num
 
 type TileStatus = "idle" | "pending" | "error";
 
-function ControlTile({ tile, on, m, onToggle }: { tile: (typeof TILES)[number]; on: boolean | null; m: Measurement | null; onToggle: (next: boolean) => Promise<void> }) {
+function ControlTile({ tile, on, m, readOnly, onToggle }: { tile: (typeof TILES)[number]; on: boolean | null; m: Measurement | null; readOnly: boolean; onToggle: (next: boolean) => Promise<void> }) {
   const [status, setStatus] = useState<TileStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
@@ -24,6 +24,14 @@ function ControlTile({ tile, on, m, onToggle }: { tile: (typeof TILES)[number]; 
     if (optimistic !== null && on === optimistic) setOptimistic(null);
   }, [on, optimistic]);
   const click = async () => {
+    // Gäste sehen den Zustand, schalten aber nicht. Die Kachel bleibt bedienbar und sagt, warum nichts
+    // passiert – ein toter Knopf ohne Erklärung ist ärgerlicher als eine kurze Auskunft.
+    if (readOnly) {
+      setStatus("error");
+      setMessage("Gastzugang · nur Ansicht");
+      setTimeout(() => setStatus("idle"), 2500);
+      return;
+    }
     const next = !(shown ?? false);
     setOptimistic(next);
     setStatus("pending");
@@ -67,7 +75,7 @@ function ControlTile({ tile, on, m, onToggle }: { tile: (typeof TILES)[number]; 
 
 const DURATIONS = [30, 120, 360];
 
-function ModeSegment({ state }: { state: LiveState | null }) {
+function ModeSegment({ state, readOnly = false }: { state: LiveState | null; readOnly?: boolean }) {
   const mode = state?.operating_mode;
   const override = mode?.override;
   const active: "auto" | "on" | "off" = override ? (override.kind === "force_release" ? "on" : "off") : mode?.system_mode === "off" ? "off" : "auto";
@@ -75,6 +83,7 @@ function ModeSegment({ state }: { state: LiveState | null }) {
   const [busy, setBusy] = useState(false);
   const hp = state?.heat_pump;
   const send = async (body: Parameters<typeof api.setHeatPumpMode>[0]) => {
+    if (readOnly) return;
     setBusy(true);
     try {
       await api.setHeatPumpMode(body);
@@ -83,11 +92,16 @@ function ModeSegment({ state }: { state: LiveState | null }) {
       setPicker(null);
     }
   };
-  const status = override ? `${override.kind === "force_release" ? "manuell an" : "manuell aus"} bis ${hhmm(override.ends_at)}` : hp?.running ? `läuft · ${state?.decision?.reasons[0]?.replace(/_/g, " ") ?? ""}` : "bereit";
+  const running = override ? `${override.kind === "force_release" ? "manuell an" : "manuell aus"} bis ${hhmm(override.ends_at)}` : hp?.running ? `läuft · ${state?.decision?.reasons[0]?.replace(/_/g, " ") ?? ""}` : "bereit";
+  const status = readOnly ? `${running} · nur Ansicht` : running;
   const Btn = ({ v, label }: { v: "auto" | "on" | "off"; label: string }) => (
     <button
       disabled={busy}
-      onClick={() => (v === "auto" ? void send({ system_mode: "auto", duration_min: 120 }) : setPicker(v))}
+      onClick={() => {
+        if (readOnly) return;
+        if (v === "auto") void send({ system_mode: "auto", duration_min: 120 });
+        else setPicker(v);
+      }}
       className="mono flex h-full flex-1 items-center justify-center border-l border-line-1 text-[13px] uppercase tracking-[.1em] transition-colors duration-[var(--dur)]"
       style={{ background: active === v ? "var(--amber)" : "transparent", color: active === v ? "var(--petrol)" : "var(--text-2)" }}
     >
@@ -123,11 +137,11 @@ function ModeSegment({ state }: { state: LiveState | null }) {
   );
 }
 
-export function ControlsBar({ state }: { state: LiveState | null }) {
+export function ControlsBar({ state, readOnly = false }: { state: LiveState | null; readOnly?: boolean }) {
   const act = state?.snapshot.actuators ?? {};
   return (
     <div className="controls-grid grid shrink-0 gap-4">
-      <ModeSegment state={state} />
+      <ModeSegment state={state} readOnly={readOnly} />
       {TILES.map((t) => {
         const m = act[t.key];
         const on = m && m.value !== null ? m.value >= 0.5 : null;
@@ -137,6 +151,7 @@ export function ControlsBar({ state }: { state: LiveState | null }) {
             tile={t}
             on={on}
             m={m ?? null}
+            readOnly={readOnly}
             onToggle={async (next) => {
               const r = await api.switchActuator(t.key, next, next ? t.durationMin : undefined);
               if (!r.ok) throw new ApiError("not_confirmed", r.message_de, 200);

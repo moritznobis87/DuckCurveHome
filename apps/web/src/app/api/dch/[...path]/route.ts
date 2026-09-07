@@ -1,21 +1,11 @@
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, authRequired, verifySession } from "@/lib/session";
 
-/** Pfade, die Gästen verschlossen bleiben: die Rechnungen enthalten Name, Adresse, Zählernummer, IBAN. */
-const GUEST_FORBIDDEN = [/^import\//, /^config\//];
-
-/** Entfernt Kostenangaben rekursiv – Gäste sehen Energie, nicht was sie gekostet hat. */
-function withoutCosts(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withoutCosts);
-  if (value !== null && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .filter(([k]) => !/cost/i.test(k))
-        .map(([k, v]) => [k, withoutCosts(v)]),
-    );
-  }
-  return value;
-}
+/**
+ * Pfade, die Gästen verschlossen bleiben. Bewusst nur die Rechnungen: sie enthalten Name, Adresse,
+ * Marktlokations-ID, Zählernummer und IBAN. Verbräuche und Kosten dürfen Gäste sehen.
+ */
+const GUEST_FORBIDDEN = [/^import\/tibber-invoice/];
 
 /**
  * BFF-Proxy zur API. Liest die Ziel-URL zur Laufzeit (nicht zur Build-Zeit wie Rewrites), reicht
@@ -64,20 +54,9 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   const out = new Headers();
   out.set("content-type", upstream.headers.get("content-type") ?? "application/json");
   out.set("cache-control", "no-store");
-  const isStream = upstream.headers.get("content-type")?.includes("text/event-stream") ?? false;
-  if (isStream) {
+  if (upstream.headers.get("content-type")?.includes("text/event-stream")) {
     out.set("x-accel-buffering", "no");
     out.set("connection", "keep-alive");
-  }
-  // Für Gäste die Kosten aus der Antwort nehmen. Streams bleiben unangetastet: der Live-Zustand führt
-  // Leistungen und Zustände, keine Beträge.
-  if (guest && !isStream && out.get("content-type")?.includes("application/json")) {
-    try {
-      const body = withoutCosts(await upstream.json());
-      return Response.json(body, { status: upstream.status, headers: out });
-    } catch {
-      return new Response(null, { status: upstream.status, headers: out });
-    }
   }
   return new Response(upstream.body, { status: upstream.status, headers: out });
 }

@@ -85,7 +85,7 @@ export function Dashboard() {
           <DayChart history={history} plan={plan} nowMs={nowMs} range={historyRange} onRange={(r) => void changeRange(r)} layout={isMobile ? "stacked" : chartLayout} />
         </div>
       </div>
-      {role === "owner" ? <ControlsBar state={state} /> : null}
+      <ControlsBar state={state} readOnly={role !== "owner"} />
     </main>
   );
 }
