@@ -191,3 +191,18 @@ async def test_minute_columns_match_history_series() -> None:
     assert MINUTE_COLUMNS == SERIES
     columns = set(m.MeasurementMinute.__table__.columns.keys())
     assert columns == set(SERIES) | {"bucket", "extra"}
+
+
+async def test_data_since_uses_the_permanent_record(repos: SqlRepositories) -> None:
+    """Sonst behauptet die Oberfläche für immer, die Aufzeichnung habe vor 14 Tagen begonnen."""
+    old = NOW - timedelta(days=400)
+    await repos.add_readings(
+        [RawReading(key="pv_power_kw", value=1.0, observed_at=old, quality=Quality.OK, source="t")]
+    )
+    await repos.rollup_minutes(old - timedelta(minutes=1), old + timedelta(minutes=1))
+    await repos.prune_raw(timedelta(days=14))  # der alte Rohwert fällt weg
+    await repos.add_readings(
+        [RawReading(key="pv_power_kw", value=2.0, observed_at=NOW, quality=Quality.OK, source="t")]
+    )
+    since = await repos.first_measurement_at()
+    assert since is not None and since.date() == old.date()

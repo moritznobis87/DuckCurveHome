@@ -456,7 +456,19 @@ class SqlRepositories:
         return None if v is None else self._aware(v)
 
     async def first_measurement_at(self) -> datetime | None:
+        """Beginn der Aufzeichnung.
+
+        Maßgeblich ist die dauerhafte Minutentabelle, nicht die Rohwerte: die reichen nur 14 Tage
+        zurück, und aus ihnen abgeleitet behauptete die Oberfläche auf jeder Berichtsseite, die
+        Aufzeichnung habe vor zwei Wochen begonnen. Solange noch nichts verdichtet wurde, gilt der
+        älteste Rohwert.
+        """
         async with self.maker() as s:
+            minute = (
+                await s.execute(select(func.min(m.MeasurementMinute.bucket)))
+            ).scalar_one_or_none()
+            if minute is not None:
+                return self._aware(minute)
             v = (
                 await s.execute(select(func.min(m.MeasurementRaw.observed_at)))
             ).scalar_one_or_none()

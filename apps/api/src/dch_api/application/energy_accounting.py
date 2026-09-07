@@ -259,19 +259,28 @@ class EnergyAccounting:
         """Stunden eines Zeitraums aus Minutenwerten neu berechnen (nach nachgetragenen Messwerten).
 
         Eine gespeicherte Stunde mit mehr bewerteten Minuten (z. B. aus einem Historienimport) bleibt stehen –
-        Teildaten aus der Cloud dürfen eine vollständige Stunde nicht ersetzen."""
+        Teildaten aus der Cloud dürfen eine vollständige Stunde nicht ersetzen.
+
+        Gerechnet wird tageweise. Ein Backfill darf 62 Tage umfassen; die auf einmal zu laden wären
+        rund 90 000 Minutenzeilen im Speicher, und das Herkunftskonto des Speichers läuft ohnehin
+        chronologisch weiter, sodass die Zerlegung nichts kostet."""
         if self.store is None:
             return 0
         read, write, _last = self.store
         begin = start.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
         stop = end.astimezone(UTC).replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-        hours = await self._compute_hours(begin, stop)
-        if not hours:
-            return 0
-        keep = await self._merge_with_stored(read, hours, begin, stop)
-        if keep:
-            await write([h for h, _ in keep], {h.hour_start: t for h, t in keep})
-        return len(keep)
+        total = 0
+        cursor = begin
+        while cursor < stop:
+            chunk_end = min(cursor + timedelta(days=1), stop)
+            hours = await self._compute_hours(cursor, chunk_end)
+            if hours:
+                keep = await self._merge_with_stored(read, hours, cursor, chunk_end)
+                if keep:
+                    await write([h for h, _ in keep], {h.hour_start: t for h, t in keep})
+                    total += len(keep)
+            cursor = chunk_end
+        return total
 
     async def hours(
         self, start: datetime, end: datetime
