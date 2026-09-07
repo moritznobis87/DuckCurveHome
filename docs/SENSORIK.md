@@ -29,6 +29,63 @@ Ohne gemessene Wärme lässt sich auch nicht sagen, ob die Wärmepumpe die Arbei
 sie gekauft wurde. Eine Anlage, die 2,8 statt 3,5 fährt, kostet bei 4000 kWh Jahresverbrauch rund
 250 € im Jahr - und fällt ohne Wärmemengenzähler niemandem auf.
 
+## Die Heizkreispumpe kann Volumenstrom, gratis
+
+Die COSMO-Umwälzpumpe im Heizkreis hat ein Display mit den Einheiten `W`, `m³/h` und `m`. Die
+MODE-Taste schaltet zwischen ihnen um. Damit ist der **Volumenstrom des Heizkreises** ohne jede
+Anschaffung ablesbar, und mit ihm die Wärmeleistung ins Haus:
+
+```
+Q [kW] = V [m³/h] × 1,163 × ΔT [K]        (Wasser, ΔT = Vorlauf minus Rücklauf)
+Beispiel: 0,8 m³/h bei 7 K Spreizung  =  6,5 kW
+```
+
+Zwei Dinge sind dabei wichtig:
+
+* **Die Pumpe sitzt hinter dem Puffer**, nicht zwischen Wärmepumpe und Puffer. Sie misst also, was
+  ins Haus geht, nicht was die Wärmepumpe erzeugt. Für die Arbeitszahl taugt der Wert nicht, für
+  `heat_loss_kw_per_k` dagegen sehr wohl: an einem kalten Abend ohne Ofenbetrieb und ohne
+  Warmwasserladung ist H = Q / (Raumtemperatur minus Außentemperatur), und der aktuelle Wert 0,22
+  kW/K ist bis heute nichts als eine Schätzung.
+* **Auslesbar ist die Pumpe nicht.** Diese Baureihe hat einen PWM-Eingang zur Ansteuerung, aber
+  keine Datenschnittstelle nach außen: kein M-Bus, kein Modbus. Der Wert ist ein Handablesewert.
+  Dauerhaft kommt der Volumenstrom ohnehin aus dem Wärmemengenzähler.
+
+Für die Auslegung des Zählers an der **Wärmepumpe** taugt der Wert dagegen nicht. Zwischen beiden
+liegt der Puffer, die Volumenströme sind hydraulisch entkoppelt. Der WP-Kreis wird aus Nennleistung
+und Auslegungsspreizung gerechnet (siehe Einkaufsliste), nicht aus dem, was die Heizkreispumpe
+fördert. Der Ablesewert bemisst allein einen künftigen zweiten Zähler im Heizkreis.
+
+### Der Heizkreis ist gemischt, und das ist die eigentliche Nachricht
+
+Der Kasten neben der Pumpe ist keine Zeitschaltuhr, sondern eine Heizungsregelung, die das
+Vierwegeventil darunter stellt. Sie mischt dem Heizkreis eine Vorlauftemperatur zu, die Pumpe
+versorgt damit zwei Heizkreisverteiler.
+
+Für den Planer heißt das: **das Haus ist keine schaltbare Last.** Wie viel Wärme ins Haus geht,
+bestimmt die Heizkurve über die Vorlauftemperatur, nicht wir. Der Puffer lässt sich nicht auf Zuruf
+schneller entladen, weil gerade billiger Strom da ist. Verschiebbar ist nur die Ladeseite, also wann
+die Wärmepumpe den Puffer füllt. Genau so ist der Optimierer auch gebaut, die Annahme ist damit
+bestätigt und nicht bloß gesetzt.
+
+Für die Messung heißt es: der Volumenstrom des Heizkreises ist von der Wärmeleistung entkoppelt.
+Bei gemischtem Kreis wird die Leistung über die Vorlauftemperatur geregelt. Wärme ohne Spreizung
+abzuschätzen geht deshalb nicht, es braucht Vorlauf und Rücklauf.
+
+### Betriebsart der Pumpe: Δp-c
+
+An den beiden Verteilern sitzen Stellantriebe, die einzelne Kreise auf- und zufahren. Damit ist der
+hydraulische Widerstand veränderlich, und die richtige Betriebsart ist **Konstantdruck (Δp-c)**,
+Sollwert-Förderhöhe rund 2 m als Startpunkt.
+
+Eine feste Drehzahl wäre hier falsch. Schließen Zonen, stiege der Differenzdruck, die verbleibenden
+Kreise würden überströmt, es rauscht, und das Überströmventil geht auf. Der bequeme Sonderfall
+"feste Drehzahl gleich konstanter Volumenstrom" gilt nur für Kreise ohne Stellantriebe.
+
+Folge für die Messung: der Volumenstrom ist veränderlich, ein einzelner Ablesewert ist eine
+Momentaufnahme. Für die Auslegung eines Heizkreiszählers deshalb bei **allen Kreisen offen** ablesen,
+das ist der Dauerhöchstwert.
+
 ## Warum kein Bus hilft
 
 Die Aerotop-Reihe fährt einen Siemens-Regler mit BSB/LPB, und dafür gäbe es BSB-LAN (ESP32-Adapter,
@@ -56,9 +113,10 @@ deutlich besser als qp 2,5 - und dort, im sommerlichen Warmwasserbetrieb unter 1
 schlechten Arbeitszahlen. DN20 statt DN15 wegen des Druckverlusts: die Umwälzpumpe einer Wärmepumpe
 hat viel weniger Förderhöhe als ein Fernwärmenetz.
 
-**Vor der Bestellung abzulesen:** die tatsächliche Spreizung. Die Umwälzpumpe zeigt den Volumenstrom
-im Display, der Regler Vor- und Rücklauftemperatur. Zehn Minuten an der Maschine schlagen jedes
-Datenblatt.
+**Vor der Bestellung abzulesen:** die tatsächliche Spreizung **im Wärmepumpenkreis**, also Vor- und
+Rücklauf an der Aerotop selbst, während sie den Puffer lädt. Nicht die Heizkreispumpe im Keller: die
+sitzt hinter dem Puffer und sagt über den WP-Kreis nichts aus. Zehn Minuten an der Maschine schlagen
+jedes Datenblatt.
 
 Alternativen mit denselben Eigenschaften: Kamstrup MULTICAL 303/403 (Treiber `kamheat`), Zenner
 zelsius C5. Der Diehl Sharky 775 wäre technisch gleichwertig (Dynamikbereich 1:250), wird aber nur
