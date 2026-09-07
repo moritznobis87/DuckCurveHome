@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { requireOwner } from "@/lib/guard";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  await requireOwner();
   return (
     <main className="dashboard-bg flex min-h-[100dvh] flex-col gap-6 p-8 text-text-1">
       <Link href="/" className="kicker">← Zurück zum Dashboard</Link>

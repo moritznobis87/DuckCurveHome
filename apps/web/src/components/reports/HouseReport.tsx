@@ -10,6 +10,7 @@ import { C, donut, stackedBars } from "./charts";
 import { CoverageNote, de1, ErrorBanner, eur, KpiGrid, pct, ReportShell, usePeriod } from "./ReportShell";
 import { PeriodStrip } from "./PeriodStrip";
 import { useMultiPeriod, useReport } from "./useReport";
+import { useRole } from "@/lib/live/useRole";
 
 const CONSUMERS = [
   { key: "heat_pump_kwh" as const, name: "Wärmepumpe", color: C.hp },
@@ -23,6 +24,7 @@ const SOURCES = [
 ];
 
 export function HouseReport() {
+  const role = useRole();
   const { period, anchor, setPeriod, move, today } = usePeriod();
   const { data, error } = useReport<EnergySummary>(api.energySummary, period, anchor);
   const strip = useMultiPeriod<EnergySummary>(api.energySummary);
@@ -43,7 +45,12 @@ export function HouseReport() {
         <Stat label="Wallbox" value={de1(t?.ev_kwh)} unit="kWh" tone="mist" hint={share(t?.ev_kwh, t?.house_kwh)} />
         <Stat label="Haushalt (Rest)" value={de1(t?.base_kwh)} unit="kWh" tone="muted" hint={share(t?.base_kwh, t?.house_kwh)} />
         <Stat label="Autarkie" value={pct(t?.autarky)} tone="amber" hint={t ? `${de1(t.pv_direct_kwh + t.battery_to_house_kwh)} kWh ohne Netz` : undefined} />
-        <Stat label="Netzbezug" value={eur(t?.import_cost_eur)} tone="ember" href="/haus/rechnungen" ariaLabel="Netzbezug – zur Rechnungsprüfung" hint={t ? `${de1(t.import_kwh)} kWh · Rechnungen prüfen` : "Rechnungen prüfen"} />
+        {/* Gäste sehen die bezogene Energie, nicht was sie gekostet hat – und keinen Weg zu den Rechnungen. */}
+        {role === "owner" ? (
+          <Stat label="Netzbezug" value={eur(t?.import_cost_eur)} tone="ember" href="/haus/rechnungen" ariaLabel="Netzbezug – zur Rechnungsprüfung" hint={t ? `${de1(t.import_kwh)} kWh · Rechnungen prüfen` : "Rechnungen prüfen"} />
+        ) : (
+          <Stat label="Netzbezug" value={de1(t?.import_kwh)} unit="kWh" tone="ember" hint={share(t?.import_kwh, t?.house_kwh)} />
+        )}
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>

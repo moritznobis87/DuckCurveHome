@@ -12,9 +12,11 @@ import { EnergyPlanCard } from "@/components/energy-plan/EnergyPlanCard";
 import { BufferTank } from "@/components/buffer/BufferTank";
 import { DayChart, type ChartLayout, type ChartRange } from "@/components/charts/DayChart";
 import { ControlsBar } from "@/components/controls/ControlsBar";
+import { useRole } from "@/lib/live/useRole";
 import { useIsMobile } from "@/lib/useIsMobile";
 
 export function Dashboard() {
+  const role = useRole();
   const state = useLiveStore((s) => s.state);
   const plan = useLiveStore((s) => s.plan);
   const history = useLiveStore((s) => s.history);
@@ -83,7 +85,7 @@ export function Dashboard() {
           <DayChart history={history} plan={plan} nowMs={nowMs} range={historyRange} onRange={(r) => void changeRange(r)} layout={isMobile ? "stacked" : chartLayout} />
         </div>
       </div>
-      <ControlsBar state={state} />
+      {role === "owner" ? <ControlsBar state={state} /> : null}
     </main>
   );
 }
