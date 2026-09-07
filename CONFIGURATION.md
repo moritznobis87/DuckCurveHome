@@ -65,9 +65,14 @@ Optionen des Add-ons (`addons/duckcurve_bridge/config.yaml`): `api_ws_url`, `api
 
 | Option / Umgebungsvariable | Default | Bedeutung |
 | --- | --- | --- |
-| `mcz_host` / `DCH_BRIDGE_MCZ_HOST` | leer | IP oder Hostname des Ofens im Heimnetz. Leer heißt: Quelle aus |
-| `mcz_port` / `DCH_BRIDGE_MCZ_PORT` | `81` | WebSocket-Port der Maestro-Platine |
+| `mcz_host` / `DCH_BRIDGE_MCZ_HOST` | leer | Adresse des Ofens, oder des Rechners, der den Port weiterreicht. Leer heißt: Quelle aus |
+| `mcz_port` / `DCH_BRIDGE_MCZ_PORT` | `81` | WebSocket-Port der Maestro-Platine, bei Weiterleitung der Port des Weiterleiters |
 | `mcz_poll_interval_s` / `DCH_BRIDGE_MCZ_POLL_INTERVAL_S` | `15` | Abstand zwischen zwei Zustandsabfragen |
+
+**Der Ofen ist im Heimnetz meist nicht direkt erreichbar.** Die Maestro-Platine bedient den
+WebSocket nur auf ihrem eigenen Hotspot (`192.168.120.1`), im Heimnetz lauscht sie auf nichts. Der
+übliche Weg ist deshalb ein kleiner Rechner mit zwei Netzwegen, der den Port weiterreicht, siehe
+`docs/SENSORIK.md`. `mcz_host` und `mcz_port` zeigen dann auf diesen Rechner.
 
 Die Quelle liest ausschließlich, sie sendet nur `C|RecuperoInfo` und schaltet nichts. Vor dem
 Konfigurieren lässt sich die Verbindung von Hand prüfen, ohne die Bridge anzufassen. Von jedem

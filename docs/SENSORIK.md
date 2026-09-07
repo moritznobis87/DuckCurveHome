@@ -207,9 +207,27 @@ Tunnel ist kein lauschender Port. Genau deshalb verlangt `hackximus/MCZ-Maestro-
 Netzwerkkarten, und `Chibald/maestrogateway` hat `192.168.120.1` als Standardadresse: das ist der
 Ofen auf seiner eigenen Hotspot-Schnittstelle.
 
-Wer den Ofen einbinden will, braucht deshalb einen kleinen Dauerläufer mit zwei Wegen: WLAN am
-Hotspot `MCZ-…`, Kabel oder zweites Funkmodul im Heimnetz. Auf dem läuft die Bridge, oder er reicht
-weiter. Zum Prüfen der Lage: `tools/mcz_find.py`.
+Gemessen am 7.9.2026: von zehn Kandidatenports war keiner offen, alle refused. Ein lebendes Gerät
+ohne einen einzigen Dienst auf der Heimnetz-Seite.
+
+**Die Lösung ist eine Portweiterleitung, kein Umzug der Bridge.** Ein kleiner Dauerläufer mit zwei
+Wegen (WLAN am Hotspot `MCZ-…`, Kabel im Heimnetz) reicht den Port durch:
+
+```
+socat TCP-LISTEN:8181,fork,reuseaddr TCP:192.168.120.1:81
+```
+
+In der Bridge dann `mcz_host` auf die Heimnetz-Adresse dieses Rechners und `mcz_port` auf `8181`.
+Die Bridge bleibt, wo sie ist; nur ein Sprung kommt dazu.
+
+**Die Falle dabei:** der Ofen-Hotspot hat kein Internet. Wird seine Route zur Standardroute, verliert
+der Rechner die Verbindung nach draußen. Unter NetworkManager gehört deshalb an diese Verbindung:
+
+```
+nmcli connection modify "MCZ-…" ipv4.never-default yes ipv6.never-default yes
+```
+
+Zum Prüfen der Lage: `tools/mcz_find.py`.
 
 Die Quelle **schreibt nie**. Der einzige Rahmen, der hinausgeht, ist `C|RecuperoInfo`. Eine Heizung,
 die im Winter das Haus warm hält, ist kein Ort für Fernsteuerung nebenbei. Die Schreibbefehle sind
