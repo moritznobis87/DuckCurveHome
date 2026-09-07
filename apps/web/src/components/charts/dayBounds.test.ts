@@ -21,7 +21,7 @@ describe("priceBounds", () => {
     expect(b.min).toBeLessThanOrEqual(18.4);
     expect(b.max).toBeGreaterThanOrEqual(45.2);
     expect(b.min).toBeGreaterThan(0); // der leere Bereich unter 18 ct fällt weg
-    expect((b.max - b.min) / b.step).toBeLessThanOrEqual(5);
+    expect((b.max - b.min) / b.step).toBeLessThanOrEqual(7);
   });
 
   it("lässt Luft, damit die Kurve die Ränder nicht berührt", () => {
@@ -32,8 +32,14 @@ describe("priceBounds", () => {
 
   it("bleibt auch bei weiter Spanne über null", () => {
     const b = priceBounds(rows(18, 20, 33, 45, 47));
-    expect(b.min).toBeGreaterThan(0);
+    expect(b.min).toBeGreaterThanOrEqual(15);
     expect(b.max).toBeGreaterThanOrEqual(47);
+  });
+
+  it("verschenkt keine Höhe: die Spanne bleibt nah an den Daten", () => {
+    const b = priceBounds(rows(22.4, 31.0, 45.8));
+    // höchstens ein Drittel mehr Spanne als die Daten selbst einnehmen
+    expect(b.max - b.min).toBeLessThanOrEqual((45.8 - 22.4) * 1.34);
   });
 
   it("erfasst negative Preise", () => {

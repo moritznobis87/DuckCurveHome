@@ -40,14 +40,15 @@ export function priceBounds(rows: Array<Array<number | null>>): { min: number; m
   if (values.length === 0) return { min: 0, max: 45, step: 15 };
   const lo = Math.min(...values);
   const hi = Math.max(...values);
-  const pad = Math.max(1, (hi - lo) * 0.12); // Luft, damit die Kurve die Ränder nicht berührt
-  // Der feinste runde Schritt, der mit höchstens fünf Abschnitten auskommt. Ein gröberer Schritt würde
-  // die Achse beim Runden wieder zu weit aufreißen – genau das drückte den Verlauf bisher nach oben.
-  // Bei 18–47 ct etwa ergibt Schritt 10 die Spanne 10–60, Schritt 20 dagegen erneut 0–60.
+  const pad = Math.max(0.5, (hi - lo) * 0.06); // wenig Luft, damit die Kurve die Ränder nicht berührt
+  // Der feinste runde Schritt, der mit höchstens sieben Abschnitten auskommt. Weil die Schrittweiten
+  // ansteigen, ist der erste Treffer zugleich der mit der engsten Spanne – und je enger die Spanne,
+  // desto mehr Höhe bleibt für den Verlauf. Ein gröberer Schritt reißt die Achse beim Runden wieder auf:
+  // bei 22–46 ct ergibt Schritt 5 die Spanne 20–50, Schritt 10 dagegen 20–50 → 10–50, Schritt 20 sogar 0–60.
   for (const step of [0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100]) {
     const min = Math.floor((lo - pad) / step) * step;
     const max = Math.ceil((hi + pad) / step) * step;
-    if ((max - min) / step <= 5) return { min, max: Math.max(max, min + 2 * step), step };
+    if ((max - min) / step <= 7) return { min, max: Math.max(max, min + 2 * step), step };
   }
   return { min: Math.floor(lo - pad), max: Math.ceil(hi + pad), step: Math.max(1, Math.round((hi - lo) / 3)) };
 }
