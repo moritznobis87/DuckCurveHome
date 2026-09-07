@@ -1,7 +1,7 @@
 [project]
 name = "dch-api"
 version = "0.1.0"
-description = "Duck Curve Home – API, Live-Stream, Worker"
+description = "Duck Curve Home - API, Live-Stream, Worker"
 requires-python = ">=3.12"
 dependencies = [
     "hems-core",

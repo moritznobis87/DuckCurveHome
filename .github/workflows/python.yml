@@ -19,7 +19,7 @@ jobs:
       - run: uv run mypy apps/api/src apps/bridge/src packages/hems-core/src
       - run: uv run lint-imports
       - run: uv run pytest -q -p no:warnings
-      - name: Migrationen auf leerer Datenbank (SQLite) – upgrade, check, downgrade
+      - name: Migrationen auf leerer Datenbank (SQLite) - upgrade, check, downgrade
         run: |
           export DATABASE_URL=sqlite+aiosqlite:////tmp/mig.sqlite
           uv run --directory apps/api alembic upgrade head
@@ -28,4 +28,4 @@ jobs:
       - name: OpenAPI-Schema aktuell?
         run: |
           uv run python -c "import json; from dch_api.main import create_app; from dch_api.settings import Settings; json.dump(create_app(Settings(demo_autostart=False)).openapi(), open('/tmp/openapi.json','w'), indent=2, ensure_ascii=False)"
-          diff -q /tmp/openapi.json docs/openapi.json || (echo "docs/openapi.json ist veraltet – bitte neu erzeugen (tools/gen-types.sh)"; exit 1)
+          diff -q /tmp/openapi.json docs/openapi.json || (echo "docs/openapi.json ist veraltet - bitte neu erzeugen (tools/gen-types.sh)"; exit 1)

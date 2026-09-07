@@ -1,7 +1,7 @@
 [project]
 name = "dch-bridge"
 version = "0.1.0"
-description = "Duck Curve Home – Bridge: Home-Assistant-Add-on, verbindet das Haus ausgehend mit der API"
+description = "Duck Curve Home - Bridge: Home-Assistant-Add-on, verbindet das Haus ausgehend mit der API"
 requires-python = ">=3.12"
 dependencies = [
     "hems-core",

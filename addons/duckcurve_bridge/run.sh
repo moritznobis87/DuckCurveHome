@@ -19,6 +19,9 @@ export DCH_BRIDGE_MQTT_PUBLISH_INTERVAL_S="$(bashio::config 'mqtt_publish_interv
 export DCH_BRIDGE_MQTT_STALE_S="$(bashio::config 'mqtt_stale_s')"
 export DCH_BRIDGE_MQTT_QOS="$(bashio::config 'mqtt_qos')"
 export DCH_BRIDGE_MQTT_POLL_INTERVAL_S="$(bashio::config 'mqtt_poll_interval_s')"
+export DCH_BRIDGE_MCZ_HOST="$(bashio::config 'mcz_host' '')"
+export DCH_BRIDGE_MCZ_PORT="$(bashio::config 'mcz_port')"
+export DCH_BRIDGE_MCZ_POLL_INTERVAL_S="$(bashio::config 'mcz_poll_interval_s')"
 export DCH_BRIDGE_HA_WS_URL="ws://supervisor/core/websocket"
 export DCH_BRIDGE_HA_REST_URL="http://supervisor/core/api"
 export DCH_BRIDGE_OUTBOX_PATH="/data/outbox.sqlite"
@@ -36,14 +39,14 @@ fi
 # Das Mapping kommt aus dem Repository; die Datei in /config übersteuert es, wenn sie existiert.
 if ! bashio::fs.file_exists "${DCH_BRIDGE_ENTITIES_FILE}"; then
   if [ -z "${DCH_BRIDGE_ENTITIES_URL}" ]; then
-    bashio::log.fatal "Weder ${DCH_BRIDGE_ENTITIES_FILE} noch die Option 'entities_url' vorhanden – die Bridge weiß nicht, welche Entitäten sie lesen soll."
+    bashio::log.fatal "Weder ${DCH_BRIDGE_ENTITIES_FILE} noch die Option 'entities_url' vorhanden - die Bridge weiß nicht, welche Entitäten sie lesen soll."
     sleep 60
     exit 1
   fi
-  bashio::log.info "Kein ${DCH_BRIDGE_ENTITIES_FILE} – das Mapping wird aus dem Repository geladen."
+  bashio::log.info "Kein ${DCH_BRIDGE_ENTITIES_FILE} - das Mapping wird aus dem Repository geladen."
 fi
 # Vor einem fehlenden MQTT-Gerät kann nur gewarnt werden, wenn das Mapping hier auch lesbar ist. Kommt es
-# aus dem Repository, weiß das Startskript nichts über seinen Inhalt – dann prüft das Programm selbst und
+# aus dem Repository, weiß das Startskript nichts über seinen Inhalt - dann prüft das Programm selbst und
 # meldet es sauber. Eine Warnung bei gesundem Betrieb ist schlimmer als keine.
 if [ "${DCH_BRIDGE_SOURCE_MODE}" != "home_assistant" ] \
   && bashio::fs.file_exists "${DCH_BRIDGE_ENTITIES_FILE}" \

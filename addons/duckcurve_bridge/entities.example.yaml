@@ -1,4 +1,4 @@
-# Duck Curve Home – Entity-Mapping (nach /config/duckcurve/entities.yaml kopieren und anpassen).
+# Duck Curve Home - Entity-Mapping (nach /config/duckcurve/entities.yaml kopieren und anpassen).
 # Domänenkonvention: grid > 0 Bezug, battery > 0 Entladen; Leistungen in kW (unit W wird skaliert).
 sensors:
   - { key: pv_power_kw,              entity: sensor.solaredge_ac_power,          unit: W }
@@ -23,7 +23,7 @@ actuators:
 # Shellys, die die Bridge direkt am lokalen Mosquitto liest (source_mode: mqtt oder compare).
 # Diese Schlüssel kommen dann nicht mehr aus Home Assistant. Siehe DOCS.md, Abschnitte 3 und 4b.
 mqtt:
-  # Generation 1: dreiphasiger Zähler (Shelly 3EM) – ein Schlüssel-Präfix genügt.
+  # Generation 1: dreiphasiger Zähler (Shelly 3EM) - ein Schlüssel-Präfix genügt.
   - { prefix: "shellies/shellyem3-XXXXXXXXXXXX", generation: 1, kind: em3, key_prefix: heat_pump, label: "WP-Zähler" }
   # Generation 2/3 (Plus, Pro): Komponenten ausdrücklich zuordnen.
   - prefix: "shellyplus1-XXXXXXXXXXXX"
