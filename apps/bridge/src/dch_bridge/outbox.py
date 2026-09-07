@@ -17,11 +17,26 @@ class Outbox:
             "CREATE TABLE IF NOT EXISTS outbox ("
             "seq INTEGER PRIMARY KEY, created_at TEXT NOT NULL, payload TEXT NOT NULL)"
         )
+        # Der Zähler steht getrennt von den Einträgen: `ack` löscht bestätigte Zeilen, und aus einer
+        # leeren Tabelle abgeleitet begänne die Nummerierung wieder bei 1. Die API verwirft dann jedes
+        # Paket, dessen Nummer nicht größer ist als die zuletzt gesehene – stillschweigend, weil sie es
+        # trotzdem bestätigt. Genau so gingen ganze Betriebstage an Telemetrie verloren.
+        self._db.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v INTEGER NOT NULL)")
+        self._db.execute(
+            "INSERT OR IGNORE INTO meta (k, v) VALUES ('last_seq', "
+            "(SELECT COALESCE(MAX(seq), 0) FROM outbox))"
+        )
         self.max_age = max_age
 
     def next_seq(self) -> int:
-        row = self._db.execute("SELECT COALESCE(MAX(seq), 0) FROM outbox").fetchone()
-        return int(row[0]) + 1
+        """Fortlaufend und dauerhaft steigend – auch wenn die Outbox zwischendurch leer läuft."""
+        row = self._db.execute(
+            "SELECT MAX(v) FROM ("
+            "SELECT v FROM meta WHERE k = 'last_seq' UNION ALL SELECT COALESCE(MAX(seq), 0) FROM outbox)"
+        ).fetchone()
+        nxt = int(row[0] or 0) + 1
+        self._db.execute("UPDATE meta SET v = ? WHERE k = 'last_seq'", (nxt,))
+        return nxt
 
     def put(self, seq: int, payload: dict[str, object]) -> None:
         self._db.execute(

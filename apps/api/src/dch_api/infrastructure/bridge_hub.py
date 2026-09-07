@@ -46,6 +46,7 @@ class BridgeHub:
         self.last_frame_at: datetime | None = None
         self.last_seq = 0
         self.frames_in = 0
+        self.skipped = 0
         self._pending: dict[UUID, asyncio.Future[CommandResultFrame]] = {}
         self.on_telemetry: TelemetryHandler | None = None
         self.on_event: Callable[[EventFrame | DeviceHealthFrame], Awaitable[None]] | None = None
@@ -66,7 +67,11 @@ class BridgeHub:
         self.bridge_id = hello.bridge_id
         self.connected_at = datetime.now(UTC)
         self.last_frame_at = self.connected_at
-        resume = max(self.last_seq, hello.last_acked_seq) + 1
+        # Bei einer neuen Verbindung zählt die Sicht der Bridge: ihre Nummerierung kann neu beginnen
+        # (frische Outbox, neues Gerät). Behielte die API ihren alten Stand, verwürfe sie jedes Paket
+        # der neuen Verbindung – und bestätigte es trotzdem, also unbemerkt.
+        self.last_seq = hello.last_acked_seq
+        resume = self.last_seq + 1
         await ws.send_text(
             WelcomeFrame(
                 server_time=datetime.now(UTC),
@@ -91,6 +96,16 @@ class BridgeHub:
                 if self.on_telemetry is not None:
                     await self.on_telemetry(frame.items, is_backlog)
                 self.last_seq = max(self.last_seq, frame.seq)
+            else:
+                # Nie stillschweigend verwerfen: dass diese Zeile fehlte, hat die Suche einen Tag gekostet.
+                self.skipped += 1
+                log.warning(
+                    "telemetry verworfen: Sequenznummer nicht neu",
+                    seq=frame.seq,
+                    last_seq=self.last_seq,
+                    items=len(frame.items),
+                    skipped=self.skipped,
+                )
             if self._ws is not None:
                 await self._ws.send_text(AckFrame(seq=frame.seq).model_dump_json())
         elif isinstance(frame, CommandResultFrame):
