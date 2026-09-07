@@ -24,6 +24,22 @@ SERIES = (
     "buffer_temp_mid_bottom_c",
     "buffer_temp_bottom_c",
     "hp_release_contact",
+    # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
+    # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
+    "stove_state",  # Zustandscode der Maestro-Firmware
+    "stove_running",  # abgeleitet: erzeugt er gerade Wärme
+    "stove_power_level",  # Leistungsstufe 1 bis 5
+    "stove_fume_temp_c",  # Rauchgastemperatur, der ehrlichste Betriebsindikator
+    "stove_fume_fan_rpm",  # Rauchgasgebläse
+    "stove_auger_rpm",  # Förderschnecke: der Brennstoffeintrag
+    "stove_boiler_temp_c",  # Vorlauf des Ofenkreises
+    "stove_return_temp_c",  # Rücklauf des Ofenkreises
+    "stove_buffer_temp_c",  # eigener Pufferfühler des Ofens
+    "stove_ambient_temp_c",  # Raumfühler des Ofens
+    "stove_pump_pct",  # Modulation der Ofenpumpe
+    "stove_dhw_mode",  # Dreiwegeventil: 1 = Warmwasser
+    "stove_operating_hours",  # Betriebsstundenzähler, monoton
+    "stove_ignitions",  # Zündungszähler, monoton
 )
 
 

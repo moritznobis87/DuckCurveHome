@@ -33,6 +33,7 @@ export type HeatReport = S["HeatReportOut"];
 export type CyclingStats = S["CyclingStats"];
 export type PriceQuality = S["PriceQualityOut"];
 export type BufferBalance = S["BufferBalanceOut"];
+export type Stove = S["StoveOut"];
 export type HeatForecastPoint = S["HeatForecastPoint"];
 export type EvReport = S["EvReportOut"];
 export type EvSession = S["EvSessionOut"];

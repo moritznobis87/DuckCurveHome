@@ -77,6 +77,22 @@ class MeasurementMinute(Base):
     buffer_temp_mid_bottom_c: Mapped[float | None] = mapped_column(Float)
     buffer_temp_bottom_c: Mapped[float | None] = mapped_column(Float)
     hp_release_contact: Mapped[float | None] = mapped_column(Float)
+    # Pelletofen. Eigene Spalten auch für Größen, die nicht jede Firmware füllt: eine leere
+    # Spalte kostet in Postgres nur ein Bit in der NULL-Maske, eine zweite Migration mehr.
+    stove_state: Mapped[float | None] = mapped_column(Float)
+    stove_running: Mapped[float | None] = mapped_column(Float)
+    stove_power_level: Mapped[float | None] = mapped_column(Float)
+    stove_fume_temp_c: Mapped[float | None] = mapped_column(Float)
+    stove_fume_fan_rpm: Mapped[float | None] = mapped_column(Float)
+    stove_auger_rpm: Mapped[float | None] = mapped_column(Float)
+    stove_boiler_temp_c: Mapped[float | None] = mapped_column(Float)
+    stove_return_temp_c: Mapped[float | None] = mapped_column(Float)
+    stove_buffer_temp_c: Mapped[float | None] = mapped_column(Float)
+    stove_ambient_temp_c: Mapped[float | None] = mapped_column(Float)
+    stove_pump_pct: Mapped[float | None] = mapped_column(Float)
+    stove_dhw_mode: Mapped[float | None] = mapped_column(Float)
+    stove_operating_hours: Mapped[float | None] = mapped_column(Float)
+    stove_ignitions: Mapped[float | None] = mapped_column(Float)
     extra: Mapped[dict[str, float] | None] = mapped_column(JsonType)
 
 

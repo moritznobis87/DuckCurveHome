@@ -535,9 +535,10 @@ export interface components {
          * BufferBalanceOut
          * @description Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.
          *
-         *     Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die
-         *     Wärmepumpe steht, kommt die Wärme von woanders - beim Kombipuffer also vom Pelletofen. Das ist
-         *     die beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist.
+         *     Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Wer sie verursacht hat, war
+         *     bis zur Anbindung des Ofens eine Schlussfolgerung: steigt der Inhalt, während die Wärmepumpe
+         *     steht, muss die Wärme von woanders kommen. Mit den Maestro-Daten ist es eine Feststellung, und
+         *     `gain_unexplained_kwh` bleibt für das übrig, was wirklich niemand erklärt.
          */
         BufferBalanceOut: {
             /** Energy Start Kwh */
@@ -564,6 +565,21 @@ export interface components {
              * @default 0
              */
             gain_without_hp_kwh: number;
+            /**
+             * Gain With Stove Kwh
+             * @default 0
+             */
+            gain_with_stove_kwh: number;
+            /**
+             * Gain Unexplained Kwh
+             * @default 0
+             */
+            gain_unexplained_kwh: number;
+            /**
+             * Stove Known
+             * @default false
+             */
+            stove_known: boolean;
             /**
              * Samples
              * @default 0
@@ -1473,6 +1489,7 @@ export interface components {
             cycling: components["schemas"]["CyclingStats"];
             price_quality: components["schemas"]["PriceQualityOut"];
             buffer_balance: components["schemas"]["BufferBalanceOut"];
+            stove: components["schemas"]["StoveOut"];
             /** Model Note De */
             model_note_de: string;
         };
@@ -2306,6 +2323,74 @@ export interface components {
              * @default
              */
             detail_de: string;
+        };
+        /**
+         * StoveOut
+         * @description Der Pelletofen im Zeitraum. `available=False` heißt: keine Daten, nicht „lief nicht".
+         */
+        StoveOut: {
+            /**
+             * Available
+             * @default false
+             */
+            available: boolean;
+            /**
+             * Running Minutes
+             * @default 0
+             */
+            running_minutes: number;
+            /**
+             * Burning Minutes
+             * @default 0
+             */
+            burning_minutes: number;
+            /**
+             * Runs
+             * @default 0
+             */
+            runs: number;
+            /** Longest Run Min */
+            longest_run_min?: number | null;
+            /**
+             * Auger Revolutions
+             * @default 0
+             */
+            auger_revolutions: number;
+            /** Fume Temp Max C */
+            fume_temp_max_c?: number | null;
+            /** Spread K */
+            spread_k?: number | null;
+            /**
+             * Pumping Minutes
+             * @default 0
+             */
+            pumping_minutes: number;
+            /**
+             * Dhw Minutes
+             * @default 0
+             */
+            dhw_minutes: number;
+            /**
+             * Minutes By Level
+             * @default {}
+             */
+            minutes_by_level: {
+                [key: string]: number;
+            };
+            /** Operating Hours */
+            operating_hours?: number | null;
+            /** Ignitions */
+            ignitions?: number | null;
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
+            /**
+             * Fuel Note De
+             * @default
+             */
+            fuel_note_de: string;
         };
         /** SystemEventOut */
         SystemEventOut: {

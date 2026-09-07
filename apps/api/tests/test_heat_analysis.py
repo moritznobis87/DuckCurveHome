@@ -68,25 +68,55 @@ def test_price_quality_without_heat_pump_grid_use_says_so() -> None:
     assert "Zu wenig" in q.note_de
 
 
-def _row(t: float, hp: float) -> dict[str, float | str | None]:
-    return {
+def _row(t: float, hp: float, stove: float | None = None) -> dict[str, float | str | None]:
+    row: dict[str, float | str | None] = {
         "buffer_temp_top_c": t,
         "buffer_temp_mid_top_c": t,
         "buffer_temp_mid_bottom_c": t,
         "buffer_temp_bottom_c": t,
         "heat_pump_power_kw": hp,
     }
+    if stove is not None:
+        row["stove_running"] = stove
+    return row
 
 
-def test_buffer_gain_without_the_heat_pump_is_flagged_as_foreign_heat() -> None:
-    """Der Puffer wird wärmer, obwohl die Wärmepumpe steht - beim Kombipuffer der Pelletofen."""
+def test_buffer_gain_without_the_heat_pump_stays_a_suspicion_without_stove_data() -> None:
+    """Ohne Ofendaten wird die Quelle benannt, aber nicht behauptet.
+
+    Früher stand hier „beim Kombipuffer der Pelletofen". Das war eine Schlussfolgerung, die als
+    Feststellung gelesen wurde. Seit der Ofen gemessen wird, ist beides zu unterscheiden.
+    """
     cfg = BufferConfig()
     series = [_row(40.0, 0.0), _row(45.0, 0.0), _row(50.0, 0.0)]
     b = _buffer_balance(series, cfg)
     assert b.samples == 3
     assert b.gain_kwh > 0 and b.gain_with_hp_kwh == 0.0
     assert b.gain_without_hp_kwh == pytest.approx(b.gain_kwh)
-    assert "Pelletofen" in b.note_de
+    assert b.stove_known is False
+    assert b.gain_with_stove_kwh == 0.0
+    assert "Vermutung" in b.note_de
+
+
+def test_laufender_ofen_macht_aus_dem_verdacht_eine_messung() -> None:
+    cfg = BufferConfig()
+    series = [_row(40.0, 0.0, 1.0), _row(45.0, 0.0, 1.0), _row(50.0, 0.0, 1.0)]
+    b = _buffer_balance(series, cfg)
+    assert b.stove_known is True
+    assert b.gain_with_stove_kwh == pytest.approx(b.gain_kwh)
+    assert b.gain_unexplained_kwh == 0.0
+    assert "gemessen und nicht geschlossen" in b.note_de
+
+
+def test_waerme_ohne_ofen_und_ohne_waermepumpe_wird_nicht_dem_ofen_angelastet() -> None:
+    """Beide stehen, der Puffer wird trotzdem wärmer: das ist Umschichtung, kein Fremdwärmebefund."""
+    cfg = BufferConfig()
+    series = [_row(40.0, 0.0, 0.0), _row(45.0, 0.0, 0.0), _row(50.0, 0.0, 0.0)]
+    b = _buffer_balance(series, cfg)
+    assert b.stove_known is True
+    assert b.gain_with_stove_kwh == 0.0
+    assert b.gain_unexplained_kwh == pytest.approx(b.gain_kwh)
+    assert "kein Fremdwärme-Befund" in b.note_de
 
 
 def test_buffer_gain_while_the_heat_pump_runs_is_not_foreign_heat() -> None:

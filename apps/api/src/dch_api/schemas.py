@@ -361,9 +361,10 @@ class PriceQualityOut(BaseModel):
 class BufferBalanceOut(BaseModel):
     """Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.
 
-    Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die
-    Wärmepumpe steht, kommt die Wärme von woanders - beim Kombipuffer also vom Pelletofen. Das ist
-    die beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist.
+    Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Wer sie verursacht hat, war
+    bis zur Anbindung des Ofens eine Schlussfolgerung: steigt der Inhalt, während die Wärmepumpe
+    steht, muss die Wärme von woanders kommen. Mit den Maestro-Daten ist es eine Feststellung, und
+    `gain_unexplained_kwh` bleibt für das übrig, was wirklich niemand erklärt.
     """
 
     energy_start_kwh: float | None = None
@@ -371,9 +372,32 @@ class BufferBalanceOut(BaseModel):
     gain_kwh: float = 0.0  # Summe aller Zunahmen
     drop_kwh: float = 0.0  # Summe aller Abnahmen (Entnahme und Verluste)
     gain_with_hp_kwh: float = 0.0
-    gain_without_hp_kwh: float = 0.0  # Fremdwärme-Verdacht
+    gain_without_hp_kwh: float = 0.0  # ohne laufende Wärmepumpe, gleich ob Ofen bekannt oder nicht
+    gain_with_stove_kwh: float = 0.0  # gemessen: der Ofen lief
+    gain_unexplained_kwh: float = 0.0  # weder Wärmepumpe noch Ofen: Rest, Messfehler, Schichtung
+    stove_known: bool = False  # lagen für den Zeitraum überhaupt Ofendaten vor
     samples: int = 0
     note_de: str = ""
+
+
+class StoveOut(BaseModel):
+    """Der Pelletofen im Zeitraum. `available=False` heißt: keine Daten, nicht „lief nicht"."""
+
+    available: bool = False
+    running_minutes: int = 0
+    burning_minutes: int = 0
+    runs: int = 0
+    longest_run_min: int | None = None
+    auger_revolutions: float = 0.0  # Brennstoffeintrag, relativ; siehe fuel_note_de
+    fume_temp_max_c: float | None = None
+    spread_k: float | None = None
+    pumping_minutes: int = 0
+    dhw_minutes: int = 0
+    minutes_by_level: dict[str, int] = {}
+    operating_hours: float | None = None  # Zählerstand des Geräts, monoton
+    ignitions: int | None = None
+    note_de: str = ""
+    fuel_note_de: str = ""
 
 
 class HeatReportOut(BaseModel):
@@ -390,6 +414,7 @@ class HeatReportOut(BaseModel):
     cycling: CyclingStats
     price_quality: PriceQualityOut
     buffer_balance: BufferBalanceOut
+    stove: StoveOut
     model_note_de: str
 
 

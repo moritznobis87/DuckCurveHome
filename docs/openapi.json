@@ -1450,6 +1450,21 @@
             "title": "Gain Without Hp Kwh",
             "default": 0.0
           },
+          "gain_with_stove_kwh": {
+            "type": "number",
+            "title": "Gain With Stove Kwh",
+            "default": 0.0
+          },
+          "gain_unexplained_kwh": {
+            "type": "number",
+            "title": "Gain Unexplained Kwh",
+            "default": 0.0
+          },
+          "stove_known": {
+            "type": "boolean",
+            "title": "Stove Known",
+            "default": false
+          },
           "samples": {
             "type": "integer",
             "title": "Samples",
@@ -1463,7 +1478,7 @@
         },
         "type": "object",
         "title": "BufferBalanceOut",
-        "description": "Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.\n\nDie Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die\nWärmepumpe steht, kommt die Wärme von woanders - beim Kombipuffer also vom Pelletofen. Das ist\ndie beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist."
+        "description": "Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.\n\nDie Änderung des Energieinhalts ist die Nettoleistung des Speichers. Wer sie verursacht hat, war\nbis zur Anbindung des Ofens eine Schlussfolgerung: steigt der Inhalt, während die Wärmepumpe\nsteht, muss die Wärme von woanders kommen. Mit den Maestro-Daten ist es eine Feststellung, und\n`gain_unexplained_kwh` bleibt für das übrig, was wirklich niemand erklärt."
       },
       "BufferConfig": {
         "properties": {
@@ -3349,6 +3364,9 @@
           "buffer_balance": {
             "$ref": "#/components/schemas/BufferBalanceOut"
           },
+          "stove": {
+            "$ref": "#/components/schemas/StoveOut"
+          },
           "model_note_de": {
             "type": "string",
             "title": "Model Note De"
@@ -3367,6 +3385,7 @@
           "cycling",
           "price_quality",
           "buffer_balance",
+          "stove",
           "model_note_de"
         ],
         "title": "HeatReportOut"
@@ -4988,6 +5007,121 @@
         ],
         "title": "SourceStatusOut",
         "description": "Zustand einer Messquelle (Bridge, myenergi, …)."
+      },
+      "StoveOut": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": false
+          },
+          "running_minutes": {
+            "type": "integer",
+            "title": "Running Minutes",
+            "default": 0
+          },
+          "burning_minutes": {
+            "type": "integer",
+            "title": "Burning Minutes",
+            "default": 0
+          },
+          "runs": {
+            "type": "integer",
+            "title": "Runs",
+            "default": 0
+          },
+          "longest_run_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longest Run Min"
+          },
+          "auger_revolutions": {
+            "type": "number",
+            "title": "Auger Revolutions",
+            "default": 0.0
+          },
+          "fume_temp_max_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fume Temp Max C"
+          },
+          "spread_k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spread K"
+          },
+          "pumping_minutes": {
+            "type": "integer",
+            "title": "Pumping Minutes",
+            "default": 0
+          },
+          "dhw_minutes": {
+            "type": "integer",
+            "title": "Dhw Minutes",
+            "default": 0
+          },
+          "minutes_by_level": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Minutes By Level",
+            "default": {}
+          },
+          "operating_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Hours"
+          },
+          "ignitions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ignitions"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          },
+          "fuel_note_de": {
+            "type": "string",
+            "title": "Fuel Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "StoveOut",
+        "description": "Der Pelletofen im Zeitraum. `available=False` heißt: keine Daten, nicht „lief nicht\"."
       },
       "SystemEventOut": {
         "properties": {
