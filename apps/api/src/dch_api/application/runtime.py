@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import date, datetime
 from typing import Any, Protocol
 
@@ -42,6 +43,7 @@ class Runtime(Protocol):
     async def heat_report(self, period: Period, anchor: date) -> HeatReportOut: ...
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut: ...
     async def pv_report(self, period: Period, anchor: date) -> PvTaxReportOut: ...
+    def export_csv(self, kind: str, start: datetime, end: datetime) -> AsyncIterator[str]: ...
     async def import_history(
         self,
         payload: bytes,

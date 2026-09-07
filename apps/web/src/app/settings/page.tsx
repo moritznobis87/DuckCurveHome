@@ -40,6 +40,7 @@ async function publicHost(): Promise<string> {
 export default async function SettingsPage() {
   await requireOwner();
   const here = active();
+  const year = new Date().getFullYear();
   const base = `https://${await publicHost()}`;
   return (
     <main className="dashboard-bg flex min-h-[100dvh] flex-col gap-6 p-8 text-text-1">
@@ -98,6 +99,38 @@ export default async function SettingsPage() {
           heißt ein Gast schlicht „gast". Die Liste liegt nur im Arbeitsspeicher: nach einem Neustart des
           Web-Dienstes ist sie leer. Sie zeigt, wer zusieht — ein Zugriffsprotokoll ist sie nicht.
           Zum Aktualisieren die Seite neu laden.
+        </p>
+      </section>
+
+      <section className="flex max-w-[760px] flex-col gap-3">
+        <h2 className="m-0 text-[18px] font-semibold">Sicherung</h2>
+        <p className="m-0 text-[15px] leading-[1.6] text-text-2">
+          Die Datenbank ist die einzige Kopie. Ein verwaltetes Volume bei einem Anbieter ist kein
+          Archiv: es überlebt keinen gelöschten Zugang und keinen Anbieterwechsel. Einmal im Jahr
+          herunterladen und woanders ablegen — die Dateien sind gzip-komprimiertes CSV und lassen
+          sich ohne dieses Programm lesen.
+        </p>
+        <div className="flex flex-col gap-2">
+          {[year, year - 1].map((y) => (
+            <div key={y} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">
+              <span className="mono text-[14px] text-text-1">{y}</span>
+              <a className="text-[14px] text-amber" href={`/api/dch/export/minutes?year=${y}`}>
+                Minutenwerte ↓
+              </a>
+              <a className="text-[14px] text-amber" href={`/api/dch/export/hours?year=${y}`}>
+                Stundenbilanz ↓
+              </a>
+              <span className="text-[13px] text-text-3">
+                Minutenwerte eines vollen Jahres: rund 20 MB gepackt
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="m-0 text-[14px] leading-[1.6] text-text-3">
+          Die Stundenbilanz enthält auch die Grundlagen der PV-Abrechnung — Eigenverbrauch,
+          Wiederbeschaffungswert und Umsatzsteuer. Sie gehört zu den Unterlagen, die aufzubewahren
+          sind. Ein laufendes Jahr ist naturgemäß unvollständig; für den Abschluss im Januar erneut
+          holen.
         </p>
       </section>
 

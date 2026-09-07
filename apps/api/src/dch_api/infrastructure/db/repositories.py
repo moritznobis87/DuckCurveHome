@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import csv
+import io
+import json
+from collections.abc import AsyncIterator, Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from uuid import UUID
@@ -31,6 +34,17 @@ MINUTE_COLUMNS: tuple[str, ...] = SERIES
 MINUTE_KEY_TO_COLUMN: dict[str, str] = {
     ("actuator:hp_release_contact" if k == "hp_release_contact" else k): k for k in SERIES
 }
+
+
+def _csv_line(values: list[Any]) -> str:
+    """Eine CSV-Zeile nach RFC 4180: Komma als Trennzeichen, Punkt als Dezimalzeichen, leer für NULL.
+
+    Bewusst nicht im deutschen Excel-Dialekt (Semikolon, Dezimalkomma): das hier ist das Archiv, das
+    einen Anbieterwechsel und ein Jahrzehnt überstehen soll, und es wird von jedem Werkzeug gelesen.
+    """
+    buf = io.StringIO()
+    csv.writer(buf, lineterminator="\n").writerow(["" if v is None else v for v in values])
+    return buf.getvalue()
 
 
 class SqlRepositories:
@@ -256,6 +270,89 @@ class SqlRepositories:
             )
             await s.commit()
         return len(rows)
+
+    # ------------------------------------------------------------------ Export
+    async def stream_minutes_csv(
+        self, start: datetime, end: datetime, batch: int = 5000
+    ) -> AsyncIterator[str]:
+        """Minutenwerte als CSV, seitenweise.
+
+        Geblättert wird über den Zeitstempel, nicht über OFFSET: ein Jahr sind 525 600 Zeilen, und
+        OFFSET ließe die Datenbank für jede Seite erneut alles davor durchzählen. Nichts von alldem
+        liegt gleichzeitig im Speicher — weder hier noch beim Empfänger, der es als Datei mitschreibt.
+        """
+        columns = [*MINUTE_COLUMNS, "extra"]
+        yield _csv_line(["ts", *columns])
+        cursor = start
+        while True:
+            async with self.maker() as s:
+                rows = (
+                    (
+                        await s.execute(
+                            select(m.MeasurementMinute)
+                            .where(m.MeasurementMinute.bucket >= cursor)
+                            .where(m.MeasurementMinute.bucket < end)
+                            .order_by(m.MeasurementMinute.bucket)
+                            .limit(batch)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+            if not rows:
+                return
+            out: list[str] = []
+            for r in rows:
+                values = [getattr(r, c) for c in MINUTE_COLUMNS]
+                extra = r.extra
+                out.append(
+                    _csv_line(
+                        [
+                            self._bucket_iso(self._aware(r.bucket)),
+                            *values,
+                            json.dumps(extra, sort_keys=True) if extra else None,
+                        ]
+                    )
+                )
+            yield "".join(out)
+            cursor = self._aware(rows[-1].bucket) + timedelta(microseconds=1)
+
+    async def stream_hours_csv(
+        self, start: datetime, end: datetime, batch: int = 2000
+    ) -> AsyncIterator[str]:
+        """Stundenbilanz als CSV – Energien, Herkunft, Kosten und die Grundlagen der PV-Abrechnung."""
+        columns = [c.name for c in m.EnergyHour.__table__.columns if c.name != "hour_start"]
+        yield _csv_line(["hour_start", *columns])
+        cursor = start
+        while True:
+            async with self.maker() as s:
+                rows = (
+                    (
+                        await s.execute(
+                            select(m.EnergyHour)
+                            .where(m.EnergyHour.hour_start >= cursor)
+                            .where(m.EnergyHour.hour_start < end)
+                            .order_by(m.EnergyHour.hour_start)
+                            .limit(batch)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+            if not rows:
+                return
+            out: list[str] = []
+            for r in rows:
+                out.append(
+                    _csv_line(
+                        [
+                            self._bucket_iso(self._aware(r.hour_start)),
+                            *[getattr(r, c) for c in columns],
+                        ]
+                    )
+                )
+            yield "".join(out)
+            cursor = self._aware(rows[-1].hour_start) + timedelta(microseconds=1)
 
     async def prune_raw(self, older_than: timedelta) -> int:
         cutoff = datetime.now(UTC) - older_than

@@ -458,6 +458,99 @@
         }
       }
     },
+    "/api/v1/export/{kind}": {
+      "get": {
+        "tags": [
+          "Export"
+        ],
+        "summary": "Messreihen als gzip-komprimiertes CSV herunterladen",
+        "operationId": "export_api_v1_export__kind__get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "minutes",
+                "hours"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2100,
+                  "minimum": 2000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Kalenderjahr (Ortszeit)",
+              "title": "Year"
+            },
+            "description": "Kalenderjahr (Ortszeit)"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/import/ha": {
       "post": {
         "tags": [

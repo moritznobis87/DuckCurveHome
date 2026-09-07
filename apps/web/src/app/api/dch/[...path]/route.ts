@@ -5,9 +5,10 @@ import { touch } from "@/lib/presence";
 /**
  * Pfade, die Gästen verschlossen bleiben. Verbräuche und Kosten dürfen Gäste sehen; hier steht, was in
  * die Steuerakte gehört: die Rechnungen (Name, Adresse, Marktlokations-ID, Zählernummer, IBAN) und die
- * PV-Abrechnung (Bemessungsgrundlagen und Umsatzsteuer der Anlage).
+ * PV-Abrechnung (Bemessungsgrundlagen und Umsatzsteuer der Anlage) und der Datenexport, der den
+ * gesamten Bestand als Datei ausliefert.
  */
-const GUEST_FORBIDDEN = [/^import\/tibber-invoice/, /^energy\/pv$/];
+const GUEST_FORBIDDEN = [/^import\/tibber-invoice/, /^energy\/pv$/, /^export\//];
 
 /**
  * BFF-Proxy zur API. Liest die Ziel-URL zur Laufzeit (nicht zur Build-Zeit wie Rewrites), reicht
@@ -57,6 +58,9 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   const out = new Headers();
   out.set("content-type", upstream.headers.get("content-type") ?? "application/json");
   out.set("cache-control", "no-store");
+  // Ohne diesen Kopf landet der Export als „route.gz" im Download-Ordner statt unter seinem Namen.
+  const disposition = upstream.headers.get("content-disposition");
+  if (disposition) out.set("content-disposition", disposition);
   if (upstream.headers.get("content-type")?.includes("text/event-stream")) {
     out.set("x-accel-buffering", "no");
     out.set("connection", "keep-alive");

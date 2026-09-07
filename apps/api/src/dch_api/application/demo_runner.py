@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections import deque
+from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
@@ -229,6 +230,9 @@ class DemoRunner:
         self, hours: int, start: datetime | None = None, end: datetime | None = None
     ) -> BackfillResultOut:
         raise DchError("not_supported", "myenergi nur im Live-Modus.", 400)
+
+    def export_csv(self, kind: str, start: datetime, end: datetime) -> AsyncIterator[str]:
+        raise DchError("not_supported", "Export nur im Live-Modus.", 400)
 
     async def recent_events(self, limit: int) -> list[SystemEventOut]:
         return []

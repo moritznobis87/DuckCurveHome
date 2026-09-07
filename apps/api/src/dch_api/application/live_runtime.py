@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections import deque
+from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, cast
 
@@ -481,6 +482,14 @@ class LiveRuntime:
 
     async def pv_report(self, period: Period, anchor: date) -> PvTaxReportOut:
         return await self.accounting.pv_report(period, anchor, self.now)
+
+    def export_csv(self, kind: str, start: datetime, end: datetime) -> AsyncIterator[str]:
+        """Rohdaten eines Zeitraums als CSV-Strom. `kind` ist "minutes" oder "hours"."""
+        if kind == "minutes":
+            return self.repos.stream_minutes_csv(start, end)
+        if kind == "hours":
+            return self.repos.stream_hours_csv(start, end)
+        raise DchError("invalid_kind", f"Unbekannter Export: {kind}", 422)
 
     async def check_invoice(self, payload: bytes, file_name: str | None) -> InvoiceReportOut:
         return await self.invoice_service.check(payload, file_name)

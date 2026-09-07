@@ -61,12 +61,37 @@ Bei Überschneidung gewinnt der verdichtete Wert.
   letzten 14 Tage. Wenn sich die Rechenregeln ändern — wie zuletzt beim Eigenverbrauch —, lässt sich
   die Historie nachziehen, statt mit einer Lücke zu leben.
 
-## Was noch fehlt
+## Sicherung
 
-Die Datenbank ist die einzige Kopie. „Für immer" hält nur, was auch gesichert ist: ein Postgres-Volume
-bei einem Anbieter ist kein Archiv. Zu klären ist eine regelmäßige Sicherung außerhalb von Railway —
-entweder über dessen Backups oder über einen Export der Minutentabelle (ein Jahr sind rund 95 MB, als
-komprimiertes CSV deutlich weniger), der irgendwo landet, wo er einen Anbieterwechsel überlebt.
+Die Datenbank ist die einzige Kopie. „Für immer" hält nur, was auch außerhalb liegt: ein
+Postgres-Volume bei einem Anbieter überlebt keinen gelöschten Zugang und keinen Anbieterwechsel.
+
+Dafür gibt es zwei Endpunkte, erreichbar nur mit Vollzugriff (für Gäste sperrt sie auch der Proxy):
+
+| Endpunkt | Inhalt | Größe je Jahr |
+| --- | --- | --- |
+| `GET /api/v1/export/minutes?year=2026` | alle Messreihen je Minute | ~18 MB gepackt (60 MB roh) |
+| `GET /api/v1/export/hours?year=2026` | Stundenbilanz samt PV-Abrechnung | wenige hundert KB |
+
+Statt `year` gehen auch `start`/`end` (höchstens 800 Tage je Abruf). Ein Jahr ist das Kalenderjahr in
+Ortszeit, wie überall sonst in der Auswertung. Auf der Einstellungsseite stehen die Links für das
+laufende und das vorige Jahr.
+
+Format ist gzip-komprimiertes CSV nach RFC 4180 — Komma als Trennzeichen, Punkt als Dezimalzeichen,
+leere Felder für fehlende Werte, ISO-8601-Zeitstempel in UTC. Bewusst nicht der deutsche
+Excel-Dialekt: das hier soll ein Jahrzehnt und einen Werkzeugwechsel überstehen, und jedes Programm
+liest es. Die erste Zeile ist die Kopfzeile; eine Reihe ohne eigene Spalte steht als JSON in `extra`.
+
+Erzeugt wird beides als Strom, seitenweise über den Zeitstempel geblättert und im Vorbeigehen
+komprimiert: ein Jahr sind 525 600 Zeilen, die weder der Dienst noch die Antwort gleichzeitig im
+Speicher halten.
+
+Die Stundenbilanz gehört zu den steuerlich aufzubewahrenden Unterlagen — sie enthält Eigenverbrauch,
+Wiederbeschaffungswert und Umsatzsteuer je Stunde. Ein laufendes Jahr ist unvollständig; für den
+Abschluss im Januar erneut holen.
+
+Das ersetzt keine Sicherung der Datenbank selbst (Railways eigene Backups), sondern ergänzt sie um
+eine Kopie, die von diesem Anbieter und von diesem Programm unabhängig ist.
 
 ## Preisauflösung
 

@@ -174,6 +174,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/export/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Messreihen als gzip-komprimiertes CSV herunterladen */
+        get: operations["export_api_v1_export__kind__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/import/ha": {
         parameters: {
             query?: never;
@@ -2546,6 +2563,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PvTaxReportOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_api_v1_export__kind__get: {
+        parameters: {
+            query?: {
+                /** @description Kalenderjahr (Ortszeit) */
+                year?: number | null;
+                start?: string | null;
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                kind: "minutes" | "hours";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

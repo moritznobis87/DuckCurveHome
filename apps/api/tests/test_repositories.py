@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -7,6 +9,7 @@ import pytest
 
 from dch_api.infrastructure.db.engine import create_all_for_tests, make_engine
 from dch_api.infrastructure.db.repositories import SqlRepositories
+from hems_core.accounting import HourlyEnergy
 from hems_core.domain import AutoProfile, OperatingMode, Quality, SystemMode
 from hems_core.protocol import RawReading
 
@@ -206,3 +209,53 @@ async def test_data_since_uses_the_permanent_record(repos: SqlRepositories) -> N
     )
     since = await repos.first_measurement_at()
     assert since is not None and since.date() == old.date()
+
+
+async def test_minute_export_streams_all_rows_in_pages(repos: SqlRepositories) -> None:
+    """Geblättert wird über die Zeit; keine Zeile darf dabei doppelt oder gar nicht erscheinen."""
+    await repos.add_readings(
+        [
+            RawReading(
+                key="pv_power_kw",
+                value=float(i),
+                observed_at=NOW + timedelta(minutes=i),
+                quality=Quality.OK,
+                source="t",
+            )
+            for i in range(25)
+        ]
+        + [
+            RawReading(
+                key="actuator:courtyard_light",
+                value=1.0,
+                observed_at=NOW,
+                quality=Quality.OK,
+                source="t",
+            )
+        ]
+    )
+    await repos.rollup_minutes(NOW, NOW + timedelta(hours=1))
+    text = "".join(
+        [c async for c in repos.stream_minutes_csv(NOW, NOW + timedelta(hours=1), batch=7)]
+    )
+    rows = list(csv.DictReader(io.StringIO(text)))
+    assert len(rows) == 25
+    assert [r["pv_power_kw"] for r in rows[:3]] == ["0.0", "1.0", "2.0"]
+    assert len({r["ts"] for r in rows}) == 25  # keine Dopplungen über die Seitengrenzen
+    assert rows[0]["extra"] == '{"actuator:courtyard_light": 1.0}'
+    assert rows[1]["extra"] == ""  # NULL wird leer, nicht "None"
+    # Nie gemessene Reihen bleiben leere Felder, die Spalte existiert trotzdem
+    assert rows[0]["grid_power_kw"] == ""
+
+
+async def test_hour_export_carries_the_accounting_columns(repos: SqlRepositories) -> None:
+    await repos.upsert_energy_hours(
+        [HourlyEnergy(hour_start=NOW, minutes=60, pv_kwh=4.0, export_kwh=1.0)]
+    )
+    text = "".join([c async for c in repos.stream_hours_csv(NOW, NOW + timedelta(hours=1))])
+    rows = list(csv.DictReader(io.StringIO(text)))
+    assert len(rows) == 1
+    assert rows[0]["pv_kwh"] == "4.0" and rows[0]["export_kwh"] == "1.0"
+    # Die Grundlagen der PV-Abrechnung müssen mit ins Archiv
+    assert "self_consumption_value_eur" in rows[0]
+    assert "battery_pv_to_house_kwh" in rows[0]
