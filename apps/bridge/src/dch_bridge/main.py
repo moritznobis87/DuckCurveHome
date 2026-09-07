@@ -27,7 +27,7 @@ from dch_bridge.sources.shelly_mqtt import (
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.5.3"
+VERSION = "0.5.4"
 log = structlog.get_logger("bridge")
 
 
@@ -54,6 +54,7 @@ class Bridge:
         self.latest: dict[str, EntityState] = {}
         self._pending: dict[str, RawReading] = {}
         self._released_contacts_after_offline = False
+        self._last_sent: dict[str, tuple[float | None, str | None]] = {}
         # Geräte, die direkt über MQTT gelesen werden (Modus mqtt/compare). Im Modus mqtt liefert Home
         # Assistant die dort abgedeckten Schlüssel nicht mehr – sie kämen sonst doppelt und älter.
         self.mqtt: MqttHub | None = None
@@ -78,6 +79,13 @@ class Bridge:
             )
             if settings.source_mode == "mqtt":
                 self._mqtt_owned = self.mqtt.owned_keys
+            else:
+                log.warning(
+                    "MQTT-Geräte werden nur mitgelesen, nicht gesendet",
+                    source_mode=settings.source_mode,
+                    hint="source_mode auf mqtt setzen, damit die Werte in der API ankommen",
+                    devices=[d.label for d in devices],
+                )
 
     def _mqtt_devices(self) -> list[Device]:
         """Geräteliste aus dem Entity-Mapping; der Shelly 3EM geht ersatzweise auch über die Add-on-Optionen."""
@@ -188,6 +196,7 @@ class Bridge:
                 continue
             items = list(self._pending.values())
             self._pending.clear()
+            self._last_sent = {r.key: (r.value, r.source) for r in items}
             await self.uplink.publish(items)
 
     # ------------------------------------------------------------------ Schalten
@@ -296,6 +305,12 @@ class Bridge:
             await asyncio.sleep(300)
             if self.mqtt is not None:
                 log.info("mqtt status", **self.mqtt.status())
+            # Welche Schlüssel zuletzt tatsächlich an die API gingen – und aus welcher Quelle.
+            log.info(
+                "telemetry keys",
+                owned_by_mqtt=sorted(self._mqtt_owned),
+                last_sent={k: v for k, v in sorted(self._last_sent.items())},
+            )
 
     async def run(self) -> None:
         log.info(

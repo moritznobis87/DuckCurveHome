@@ -815,6 +815,13 @@ class Gen2Device:
             "messages": self.state.messages,
             "answers": self.state.answers,
             "last_answer_at": self.state.last_answer_at,
+            # Was das Gerät gerade hält, mit Alter in Sekunden. Ohne das lässt sich nicht unterscheiden,
+            # ob ein Wert nicht gesendet wird oder gar nicht erst entsteht.
+            "latest": {
+                key: [v.value, round((datetime.now(UTC) - v.at).total_seconds())]
+                for key, v in self.state.values.items()
+            },
+            "faulted": sorted(self.state.faulted),
             "rejected": self.state.rejected,
             "emitted": self.emitted,
             "last_message_at": self.state.last_message_at,
@@ -959,6 +966,9 @@ class MqttHub:
     def status(self) -> dict[str, Any]:
         return {
             "connected": self.connected,
+            # Ohne dieses Feld sieht ein Vergleichslauf wie ein gesunder Betrieb aus: die Geräte
+            # antworten, die Zähler laufen – nur gesendet wird nichts.
+            "forwarding": self.forward,
             "reconnects": self.reconnects,
             "commands": self.commands,
             "polls": self.polls,
