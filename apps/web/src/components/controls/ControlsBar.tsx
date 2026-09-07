@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
-import type { LiveState } from "@/lib/api/models";
-import { hhmm } from "@/lib/format";
+import type { LiveState, Measurement } from "@/lib/api/models";
+import { ageLabel, hhmm } from "@/lib/format";
 import { Icon } from "@/components/ui/Icon";
 
 const TILES: Array<{ key: string; label: string; icon: string; durationMin?: number }> = [
@@ -15,7 +15,7 @@ const TILES: Array<{ key: string; label: string; icon: string; durationMin?: num
 
 type TileStatus = "idle" | "pending" | "error";
 
-function ControlTile({ tile, on, onToggle }: { tile: (typeof TILES)[number]; on: boolean | null; onToggle: (next: boolean) => Promise<void> }) {
+function ControlTile({ tile, on, m, onToggle }: { tile: (typeof TILES)[number]; on: boolean | null; m: Measurement | null; onToggle: (next: boolean) => Promise<void> }) {
   const [status, setStatus] = useState<TileStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
@@ -39,8 +39,13 @@ function ControlTile({ tile, on, onToggle }: { tile: (typeof TILES)[number]; on:
     }
   };
   const color = status === "error" ? "var(--alert)" : shown ? "var(--amber)" : "var(--text-3)";
+  // Woher der Zustand stammt und wie alt er ist. Ohne das lässt sich eine falsch wirkende Kachel nicht
+  // von einer eingefrorenen unterscheiden – „aus“ sieht gleich aus, ob gerade gemessen oder Stunden alt.
+  const age = m ? ageLabel(m.observed_at, Date.now()) : null;
+  const stale = m ? m.quality === "stale" || m.quality === "unavailable" || m.quality === "unknown" : true;
+  const origin = m?.source ?? "keine Quelle";
   return (
-    <button onClick={click} aria-pressed={shown ?? undefined} className="flex min-h-20 min-w-0 items-center gap-3 rounded-[3px] border border-line-1 bg-surface-2 px-3 py-2 text-left transition-transform duration-[var(--dur)] active:scale-[.99]" style={{ borderRight: `3px solid ${status === "error" ? "var(--alert)" : shown ? "var(--amber)" : "transparent"}` }}>
+    <button onClick={click} aria-pressed={shown ?? undefined} title={`${tile.label}: Quelle ${origin}${age ? `, Stand ${age}` : ", gerade gemessen"}`} className="flex min-h-20 min-w-0 items-center gap-3 rounded-[3px] border border-line-1 bg-surface-2 px-3 py-2 text-left transition-transform duration-[var(--dur)] active:scale-[.99]" style={{ borderRight: `3px solid ${status === "error" ? "var(--alert)" : shown ? "var(--amber)" : "transparent"}` }}>
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-2 bg-petrol">
         <Icon name={tile.icon} size={22} color={color} />
       </span>
@@ -53,6 +58,7 @@ function ControlTile({ tile, on, onToggle }: { tile: (typeof TILES)[number]; on:
           title={status === "error" ? message ?? "Fehler" : undefined}
         >
           {status === "pending" ? "schalte …" : status === "error" ? message ?? "Fehler" : shown === null ? "–" : shown ? "an" : "aus"}
+          {status === "idle" && age ? <span style={{ color: stale ? "var(--alert)" : "var(--text-3)" }}> · {age}</span> : null}
         </span>
       </span>
     </button>
@@ -130,6 +136,7 @@ export function ControlsBar({ state }: { state: LiveState | null }) {
             key={t.key}
             tile={t}
             on={on}
+            m={m ?? null}
             onToggle={async (next) => {
               const r = await api.switchActuator(t.key, next, next ? t.durationMin : undefined);
               if (!r.ok) throw new ApiError("not_confirmed", r.message_de, 200);
