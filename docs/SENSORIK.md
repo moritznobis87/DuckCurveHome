@@ -22,8 +22,10 @@ Das System kennt den **Strom** der Wärmepumpe, aber nicht die **Wärme**. Folge
 * Der COP kommt aus einer Kennlinie (`cop_at`), nicht aus einer Messung.
 * Der Hausverlust (`heat_loss_kw_per_k`) und der Warmwasserbedarf (`dhw_kwh_per_day`) sind Annahmen,
   die nie mit der Wirklichkeit abgeglichen wurden.
-* **Es ist nicht unterscheidbar, ob der Puffer von der Wärmepumpe oder vom Pelletofen warm wurde.**
-  Solange das so ist, verfälscht der Ofen jede Wärmebilanz und jede COP-Schätzung.
+* **Der Anteil des Pelletofens an der Pufferladung ist nicht quantifizierbar.** Wer geladen hat,
+  verrät die Leistungsmessung der Wärmepumpe noch. Wie viel jeder von beiden beigetragen hat, nicht.
+  Solange das so ist, verfälscht der Ofen jede Wärmebilanz und jede COP-Schätzung. Die Ofendaten aus
+  dem Maestro-Modul lösen genau das, siehe Einkaufsliste Punkt 3.
 
 Ohne gemessene Wärme lässt sich auch nicht sagen, ob die Wärmepumpe die Arbeitszahl liefert, für die
 sie gekauft wurde. Eine Anlage, die 2,8 statt 3,5 fährt, kostet bei 4000 kWh Jahresverbrauch rund
@@ -128,27 +130,86 @@ Nutzung ist das Netzteil trotzdem richtig: häufiges Abfragen über M-Bus weckt 
 leert die Batterie schneller als der Abrechnungsbetrieb, für den die 16 Jahre gelten. Eichrechtliche
 Plomben dürfen nicht verletzt werden, ein Batteriewechsel ist kein Heimwerkerjob.
 
-### 2. Ofensignal aus dem Maestro-Modul - fast umsonst
+### 2. Anlegefühler Vorlauf und Rücklauf am Wärmepumpenkreis
 
-Lokal, ohne Cloud: ein kleiner Rechner verbindet sich mit dem WLAN-Hotspot des Ofens (SSID
-`MCZ-XXXXXXX`), die Bibliothek **maestrogateway** veröffentlicht auf MQTT - unter anderem
-`Maestro/Stove_State` (Zündung, Leistungsstufen 1-5, Fehler) und `Maestro/Power_Level`. Hydro-Modelle
-sind laut Community kompatibel. Das beantwortet Q8 besser als der zuvor angedachte Shelly-Plug: nicht
-nur an/aus, sondern die Leistungsstufe.
+| | |
+| --- | --- |
+| Gerät | Shelly Plus 1 + **Shelly Plus Add-On** + DS18B20-Kabelfühler |
+| Anzahl | 2 Fühler, das Add-On trägt bis zu drei (beim Kauf im Datenblatt gegenprüfen) |
+| Kosten | rund 60 € komplett |
+| Einbau | Anlegefühler mit Wärmeleitpaste auf Vor- und Rücklauf **zwischen Wärmepumpe und Puffer**, darüber die Rohrdämmung wieder schließen |
+| Anbindung | MQTT, Gen 2. Die Bridge spricht das bereits, es braucht keinen neuen Quelltyp |
 
-Die Cloud-Integration `Robbe-B/maestro_mcz` liefert nur eine Climate-Entität und einen
-Temperatursensor - zu dünn.
+Kein Klempner nötig, die Fühler werden aufgelegt, nicht eingeschnitten. Nur 230 V für den Shelly.
+
+**Die Fühler vor dem Einbau paaren.** DS18B20 ist mit ±0,5 K spezifiziert. Bei 5 K Spreizung wären
+das im schlimmsten Fall 20 % Fehler, und zwar systematisch, nicht rauschend. Also beide Fühler
+zusammen in ein Glas Wasser legen, zehn Minuten warten, die Differenz notieren und als Offset in die
+Konfiguration schreiben. Danach ist die **Spreizung** auf etwa 0,1 K genau, auch wenn der Absolutwert
+um ein Grad danebenliegt. Für unseren Zweck ist genau das die richtige Reihenfolge der Prioritäten.
+
+Was die zwei Zahlen aufschließen, in der Reihenfolge ihres Werts:
+
+* **Die Spreizung im WP-Kreis.** Das ist der Wert, der vor der Bestellung des Wärmemengenzählers
+  fehlt, und danach die Dauerdiagnose: sinkt die Spreizung über Monate, stimmt etwas nicht.
+* **Abtauzyklen.** Beim Abtauen kehrt die Maschine den Kreis um, der Vorlauf bricht ein. Heute ist
+  das unsichtbar und verfälscht jede COP-Schätzung, weil die Abtauenergie als Heizenergie zählt.
+* **Warmwasserladung von Heizung trennen.** Die Ladung springt auf 50 bis 55 °C, weit über die
+  Heizkurve. `dhw_kwh_per_day` ist bis heute die Annahme 8,0 kWh und wäre damit messbar.
+* **Die tatsächlich gefahrene Heizkurve.** Vorlauf gegen Außentemperatur aufgetragen, über eine
+  Heizperiode. Daraus wird die Wärmelastprognose ein Stück ehrlicher.
+* **Takterkennung** schärfer als aus dem Strom allein: ein Start ist im Vorlauf binnen Sekunden zu
+  sehen.
+
+Wärme in kWh liefern die zwei Fühler **nicht**, dazu fehlt der Volumenstrom. Sie sind die Vorstufe
+zum Wärmemengenzähler, nicht sein Ersatz.
+
+### 3. Ofendaten aus dem Maestro-Modul - der größte Hebel für null Euro
+
+Der Ofen ist eine MCZ mit Maestro-Modul, Datenbank `SC12-HYD`, und er hängt bereits **im
+Heim-WLAN**, nicht nur an seinem eigenen Hotspot. Das ist der entscheidende Unterschied: die
+Maestro-Platine ist damit von der Bridge aus über die LAN-Adresse erreichbar, es braucht keinen
+zweiten Rechner am Ofen-Hotspot.
+
+Das INFO-Menü der App zeigt, was die Platine intern führt. Alles davon ist für uns brauchbar:
+
+| Feld | Was es uns gibt |
+| --- | --- |
+| `U/MIN FÖRDERSCHNECKE` (live und Soll) | **Brennstoffeintrag.** Die Schneckendrehzahl ist proportional zum Pelletmassenstrom. Das ist die Inputseite der Ofenbilanz, die bisher komplett fehlt |
+| `T° RAUCH` | Feuert er wirklich, oder steht er nur unter Spannung. Der ehrlichste Betriebsindikator |
+| `T° HEATING FLOW` (live und Soll) | Vorlauftemperatur des Ofenkreises |
+| `T° PUFFER` (live und Soll) | **Fünfter, unabhängiger Pufferfühler.** Gegenprobe für unsere vier, siehe die offene Frage zur Fühlerreihenfolge |
+| `PWM PUMP` | Modulation der Ofenpumpe, also ob und wie stark er gerade in den Puffer lädt |
+| `3 WAY VALVE` | Ob die Wärme in den Heizkreis oder ins Warmwasser geht |
+| `U/MIN RAUCHGASGEBL.`, `ZÜNDKERZE`, `BRAZIER` | Zünd- und Störungserkennung, Reinigungsbedarf |
+| `AUTO MODUS`, `ECO STOP`, `T° RAUM` | Betriebsart und Raumfühler |
+
+Damit ist die größte Lücke des Modells geschlossen. Bisher gilt: der Puffer wird warm, und es ist
+nicht quantifizierbar, welcher Anteil aus der Wärmepumpe kam und welcher aus dem Ofen. Wer von
+beiden lief, verrät zwar schon die Leistungsmessung der Wärmepumpe; **wie viel** jeder beigetragen
+hat, verrät sie nicht. Mit Schneckendrehzahl, Rauchgastemperatur und Pumpenmodulation wird der
+Ofenanteil erstmals schätzbar, und die Arbeitszahl der Wärmepumpe damit belastbar.
+
+**Weg dorthin:** die Bibliothek **maestrogateway** spricht das lokale Protokoll der Platine und
+veröffentlicht auf MQTT, unter anderem `Maestro/Stove_State` und `Maestro/Power_Level`. Die
+Cloud-Integration `Robbe-B/maestro_mcz` liefert dagegen nur eine Climate-Entität und einen
+Temperatursensor, zu dünn.
 
 **Voraussetzung in der Bridge:** eine allgemeine MQTT-Quelle. Die heutige Anbindung ist Shelly-förmig
-(Komponenten wie `temperature:102`, Gen-2-RPC); Maestro sendet flache Topics.
+(Komponenten wie `temperature:102`, Gen-2-RPC); Maestro sendet flache Topics. Dieselbe Quelle wird
+später auch für den Wärmemengenzähler über `wmbusmeters` gebraucht, sie lohnt sich doppelt.
 
-### 3. Raumtemperatur im Referenzraum
+**Zugangsdaten gehören nicht ins Repo.** SSID, Hotspot-Passwort, MAC und Seriennummer des Ofens
+stehen im Info-Dialog der App. Sie gehören in die Umgebung des Bridge-Prozesses, nicht in eine Datei
+unter Versionskontrolle.
+
+### 4. Raumtemperatur im Referenzraum
 
 Zwei, drei Zigbee- oder BLE-Fühler, je 15-20 €. Ohne gemessene Innentemperatur ist die
 Komfortbedingung des geplanten MILP (`T_building[t]`) eine Zahl aus der Luft, und „Vorheizen vor der
 Hochpreisphase" - die Funktion, die wirklich Geld spart - nicht seriös zu bauen.
 
-### 4. Wärmemengenzähler am Pelletofen
+### 5. Wärmemengenzähler am Pelletofen
 
 Erst später. Die Quellenzuordnung geht mit Ofensignal plus Puffer-Energiebilanz auch ohne. Falls doch:
 gleiches Modell, qp 0,6 (der Ofenkreis läuft mit größerer Spreizung).
