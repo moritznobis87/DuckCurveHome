@@ -190,14 +190,27 @@ beiden lief, verrät zwar schon die Leistungsmessung der Wärmepumpe; **wie viel
 hat, verrät sie nicht. Mit Schneckendrehzahl, Rauchgastemperatur und Pumpenmodulation wird der
 Ofenanteil erstmals schätzbar, und die Arbeitszahl der Wärmepumpe damit belastbar.
 
-**Weg dorthin:** die Bibliothek **maestrogateway** spricht das lokale Protokoll der Platine und
-veröffentlicht auf MQTT, unter anderem `Maestro/Stove_State` und `Maestro/Power_Level`. Die
-Cloud-Integration `Robbe-B/maestro_mcz` liefert dagegen nur eine Climate-Entität und einen
-Temperatursensor, zu dünn.
+**Gebaut, nicht mehr geplant.** Das Protokoll ist offengelegt: die Maestro-Platine spricht WebSocket
+auf Port 81, der Textrahmen `C|RecuperoInfo` fordert den Zustand an, die Antwort ist eine mit `|`
+getrennte Liste hexadezimaler Felder mit fester Reihenfolge. Temperaturen stehen in halben Grad, der
+Rohwert 255 heißt „kein Fühler". Rekonstruiert aus `hackximus/MCZ-Maestro-API` (Rahmenformat) und
+`Chibald/maestrogateway` (Feldtabelle).
 
-**Voraussetzung in der Bridge:** eine allgemeine MQTT-Quelle. Die heutige Anbindung ist Shelly-förmig
-(Komponenten wie `temperature:102`, Gen-2-RPC); Maestro sendet flache Topics. Dieselbe Quelle wird
-später auch für den Wärmemengenzähler über `wmbusmeters` gebraucht, sie lohnt sich doppelt.
+Die Bridge liest den Ofen deshalb **direkt**, in `sources/mcz_maestro.py`. Kein zweiter Daemon, kein
+MQTT-Umweg, keine Cloud. Konfiguriert wird nur die Adresse des Ofens, siehe `CONFIGURATION.md`.
+
+Die Quelle **schreibt nie**. Der einzige Rahmen, der hinausgeht, ist `C|RecuperoInfo`. Eine Heizung,
+die im Winter das Haus warm hält, ist kein Ort für Fernsteuerung nebenbei. Die Schreibbefehle sind
+bekannt und bewusst nicht eingebaut.
+
+Vor dem Konfigurieren prüfbar, von jedem Rechner im selben Netz:
+
+```
+uv run python -m dch_bridge.sources.mcz_maestro <ip-des-ofens>
+```
+
+**Die allgemeine MQTT-Quelle bleibt trotzdem auf der Liste**, aber nicht mehr für den Ofen: der
+Wärmemengenzähler über `wmbusmeters` braucht sie weiterhin.
 
 **Zugangsdaten gehören nicht ins Repo.** SSID, Hotspot-Passwort, MAC und Seriennummer des Ofens
 stehen im Info-Dialog der App. Sie gehören in die Umgebung des Bridge-Prozesses, nicht in eine Datei

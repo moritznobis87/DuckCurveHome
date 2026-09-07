@@ -61,6 +61,27 @@ Optionen des Add-ons (`addons/duckcurve_bridge/config.yaml`): `api_ws_url`, `api
 `export_positive`, `discharge_positive`, `charge_positive`), `stale_after_s`; je Aktor `key`, `entity`,
 `label`, `safety_class` (`heat_pump` für K1/K2), `safe_state`.
 
+### Pelletofen (MCZ mit Maestro-Modul)
+
+| Option / Umgebungsvariable | Default | Bedeutung |
+| --- | --- | --- |
+| `mcz_host` / `DCH_BRIDGE_MCZ_HOST` | leer | IP oder Hostname des Ofens im Heimnetz. Leer heißt: Quelle aus |
+| `mcz_port` / `DCH_BRIDGE_MCZ_PORT` | `81` | WebSocket-Port der Maestro-Platine |
+| `mcz_poll_interval_s` / `DCH_BRIDGE_MCZ_POLL_INTERVAL_S` | `15` | Abstand zwischen zwei Zustandsabfragen |
+
+Die Quelle liest ausschließlich, sie sendet nur `C|RecuperoInfo` und schaltet nichts. Vor dem
+Konfigurieren lässt sich die Verbindung von Hand prüfen, ohne die Bridge anzufassen:
+
+```
+uv run python -m dch_bridge.sources.mcz_maestro 192.168.1.42
+```
+
+Das gibt einen Rohrahmen und die daraus gelesenen Werte aus, dazu die Fühler, die dieser Ofen nicht
+hat. Geliefert werden `stove_state`, `stove_running`, `stove_fume_temp_c`, `stove_ambient_temp_c`,
+`stove_buffer_temp_c`, `stove_boiler_temp_c`, `stove_return_temp_c`, `stove_fume_fan_rpm`,
+`stove_auger_rpm`, `stove_pump_pct`, `stove_dhw_mode`, `stove_power_level`, `stove_operating_hours`
+und `stove_ignitions`.
+
 ## HemsConfig (Auszug, Defaults)
 
 ```yaml

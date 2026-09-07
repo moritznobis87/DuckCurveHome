@@ -51,6 +51,10 @@ class BridgeSettings(BaseSettings):
     mqtt_key_prefix: str = (
         "heat_pump"  # Domänenschlüssel: heat_pump_power_kw, heat_pump_energy_kwh, …
     )
+    # Pelletofen: MCZ mit Maestro-Modul, direkt über dessen WebSocket. Nur lesend.
+    mcz_host: str = ""  # IP oder Hostname des Ofens im Heimnetz; leer = Quelle aus
+    mcz_port: int = 81
+    mcz_poll_interval_s: float = 15.0
 
     @property
     def shelly_topic_prefix(self) -> str:

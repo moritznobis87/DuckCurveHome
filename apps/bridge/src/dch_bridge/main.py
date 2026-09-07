@@ -16,6 +16,7 @@ from dch_bridge.home_assistant.ws_client import EntityState, HaWsClient
 from dch_bridge.mapping import ActuatorMap, EntityMap, normalize
 from dch_bridge.outbox import Outbox
 from dch_bridge.settings import BridgeSettings
+from dch_bridge.sources.mcz_maestro import MaestroStove, stove_url
 from dch_bridge.sources.shelly_mqtt import (
     Comparator,
     Device,
@@ -27,7 +28,7 @@ from dch_bridge.sources.shelly_mqtt import (
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.5.7"
+VERSION = "0.6.0"
 log = structlog.get_logger("bridge")
 
 
@@ -41,13 +42,22 @@ class Bridge:
         self.outbox = Outbox(
             settings.outbox_path, max_age=timedelta(hours=settings.outbox_max_age_h)
         )
+        # Pelletofen: eigene WebSocket-Verbindung, unabhängig von Home Assistant und vom Broker.
+        # Vor dem Uplink, damit seine Schlüssel im hello mit angekündigt werden.
+        self.stove: MaestroStove | None = None
+        if settings.mcz_host:
+            self.stove = MaestroStove(
+                url=stove_url(settings.mcz_host, settings.mcz_port),
+                on_readings=self._ingest_readings,
+                poll_interval_s=settings.mcz_poll_interval_s,
+            )
         self.uplink = UplinkClient(
             url=settings.api_ws_url,
             token=settings.api_token,
             bridge_id=settings.bridge_id,
             bridge_version=VERSION,
             entity_map_hash=entity_map.digest(),
-            keys=entity_map.keys(),
+            keys=entity_map.keys() + (self.stove.keys if self.stove else []),
             outbox=self.outbox,
             on_command=self.execute_command,
         )
@@ -152,7 +162,7 @@ class Bridge:
         self._pending[reading.key] = reading
 
     async def _ingest_readings(self, items: list[RawReading]) -> None:
-        """Messwerte einer Nicht-HA-Quelle (MQTT) in denselben Sammelpuffer."""
+        """Messwerte einer Nicht-HA-Quelle (MQTT, Pelletofen) in denselben Sammelpuffer."""
         for r in items:
             self._pending[r.key] = r
 
@@ -303,12 +313,14 @@ class Bridge:
             if connected:
                 self._released_contacts_after_offline = False
 
-    async def _mqtt_status_loop(self) -> None:
-        """Alle 5 Minuten Kennzahlen der MQTT-Quelle ins Protokoll (Nachrichten, verworfen, Reconnects)."""
+    async def _source_status_loop(self) -> None:
+        """Alle 5 Minuten Kennzahlen der Direktquellen ins Protokoll (Nachrichten, verworfen, Reconnects)."""
         while True:
             await asyncio.sleep(300)
             if self.mqtt is not None:
                 log.info("mqtt status", **self.mqtt.status())
+            if self.stove is not None:
+                log.info("stove status", **self.stove.status())
             # Welche Schlüssel zuletzt tatsächlich an die API gingen - und aus welcher Quelle.
             log.info(
                 "telemetry keys",
@@ -326,6 +338,7 @@ class Bridge:
             source_mode=self.settings.source_mode,
             mqtt=f"{self.settings.mqtt_host}:{self.settings.mqtt_port}" if self.mqtt else None,
             mqtt_devices=[d.label for d in self.mqtt.devices] if self.mqtt else [],
+            stove=self.stove.url if self.stove else None,
         )
         tasks = [
             asyncio.create_task(self._ha_loop(), name="ha"),
@@ -336,7 +349,10 @@ class Bridge:
         ]
         if self.mqtt is not None:
             tasks.append(asyncio.create_task(self.mqtt.run(), name="mqtt"))
-            tasks.append(asyncio.create_task(self._mqtt_status_loop(), name="mqtt-status"))
+        if self.stove is not None:
+            tasks.append(asyncio.create_task(self.stove.run(), name="mcz"))
+        if self.mqtt is not None or self.stove is not None:
+            tasks.append(asyncio.create_task(self._source_status_loop(), name="source-status"))
         try:
             await asyncio.gather(*tasks)
         finally:
