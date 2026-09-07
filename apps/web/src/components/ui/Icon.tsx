@@ -8,8 +8,10 @@ const PATHS: Record<string, string> = {
   battery: '<rect x="3" y="7" width="16" height="10" rx="1.5"/><path d="M21 10v4"/><path d="M7 11v2M10 11v2M13 11v2"/>',
   // Außeneinheit mit Lüfterrad: liest sich als Wärmepumpe, nicht als Fadenkreuz.
   pump: '<rect x="3" y="5.5" width="18" height="13" rx="2"/><circle cx="12" cy="12" r="3.6"/><path d="M12 12l2.9-1.9M12 12l-2.9-1.9M12 12v3.4"/><path d="M6.5 18.5v1.6M17.5 18.5v1.6"/>',
-  // Elektroauto, Blitz in der Kabine. Außen angesetzt sah er aus wie ein Anhänger.
-  car: '<path d="M3.2 16.6v-4l2.3-4.5h11l2.3 4.5v4"/><path d="M3.2 12.6h15.6"/><circle cx="6.8" cy="17.8" r="1.7"/><circle cx="15.2" cy="17.8" r="1.7"/><path d="M11.9 8.1l-1.5 2.6h2.6l-1.5 2.6"/>',
+  // Die Wallbox selbst: Gehäuse, Blitz, hängendes Ladekabel. Vier Auto-Varianten haben es davor
+  // nicht getan — von vorn wurde ein Tisch daraus, von der Seite ein Kleinbus, mit Stecker am Heck
+  // ein Anhänger. Das Gerät zu zeichnen statt seinen Zweck ist hier eindeutiger.
+  car: '<rect x="6" y="2.8" width="9" height="12.5" rx="2"/><path d="M11.3 6.1l-1.8 3.2h2.5l-1.8 3.2"/><path d="M10.5 15.3v2.4a3.3 3.3 0 0 0 3.3 3.3h1.9a3.3 3.3 0 0 0 3.3-3.3v-4.6"/>',
   coffee: '<path d="M5 9h11v5a5 5 0 0 1-10 0V9z"/><path d="M16 10h2a2 2 0 0 1 0 4h-2"/><path d="M4 20h13"/><path d="M8 5c0 1 1 1 1 2M11 5c0 1 1 1 1 2"/>',
   bulb: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M8.5 14.5A6 6 0 1 1 15.5 14.5c-.7.7-1 1.6-1 2.5h-5c0-.9-.3-1.8-1-2.5z"/>',
   chart: '<path d="M3 20h18"/><path d="M5 17V11"/><path d="M10 17V6"/><path d="M15 17v-4"/><path d="M20 17V8"/>',

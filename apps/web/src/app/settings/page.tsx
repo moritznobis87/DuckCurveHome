@@ -43,6 +43,16 @@ export default async function SettingsPage() {
   const here = active();
   const year = new Date().getFullYear();
   const base = `https://${await publicHost()}`;
+  // Die Links tragen die echten Tokens, damit sie sich kopieren und sofort verwenden lassen. Das
+  // ist vertretbar, weil diese Seite nur mit Vollzugriff erreichbar ist und pro Anfrage gerendert
+  // wird — aber es heißt auch: wer einen Screenshot dieser Seite bekommt, hat die Schlüssel zum
+  // Haus. Ist eine Variable nicht gesetzt, bleibt der Platzhalter stehen.
+  const kiosk = process.env.DCH_KIOSK_TOKEN || "<DCH_KIOSK_TOKEN>";
+  const guest = process.env.DCH_GUEST_TOKEN || "<DCH_GUEST_TOKEN>";
+  const missing = [
+    !process.env.DCH_KIOSK_TOKEN ? "DCH_KIOSK_TOKEN" : null,
+    !process.env.DCH_GUEST_TOKEN ? "DCH_GUEST_TOKEN" : null,
+  ].filter(Boolean);
   return (
     <main className="dashboard-bg flex min-h-[100dvh] flex-col gap-6 p-8 text-text-1">
       <Link href="/" className="kicker">← Zurück zum Dashboard</Link>
@@ -51,26 +61,27 @@ export default async function SettingsPage() {
       <section className="flex max-w-[760px] flex-col gap-3">
         <h2 className="m-0 text-[18px] font-semibold">Zugang einrichten</h2>
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-          Ein Gerät wird einmal über einen Link gepaart und behält danach seine Sitzung. Setze
-          <code className="mono mx-1 text-[13px]">…</code> durch den jeweiligen Token aus den
-          Umgebungsvariablen des Web-Dienstes. Die Adresse kommt aus
+          Ein Gerät wird einmal über einen Link gepaart und behält danach seine Sitzung. Die Links
+          unten enthalten die echten Tokens und sind sofort verwendbar — behandle sie wie einen
+          Haustürschlüssel. Die Adresse kommt aus
           <code className="mono mx-1 text-[13px]">DCH_PUBLIC_HOST</code> — so steht hier die eigene Domain,
           auch wenn du gerade über die Railway-Adresse hereingekommen bist.
         </p>
         <Row
           label="Vollzugriff (Hausherr, Wandanzeige)"
-          url={`${base}/pair?token=<DCH_KIOSK_TOKEN>&name=iPad-Flur`}
+          url={`${base}/pair?token=${kiosk}&name=iPad-Flur`}
           note="Darf schalten, sieht Kosten und Rechnungen. Die Sitzung hält ein halbes Jahr; `name` erscheint nur im Protokoll."
         />
         <Row
           label="Gast (nur ansehen)"
-          url={`${base}/pair?token=<DCH_GUEST_TOKEN>&hours=8`}
+          url={`${base}/pair?token=${guest}&hours=8`}
           note="Sieht alles inklusive Kosten, die Schaltkacheln bleiben sichtbar, bewirken aber nichts. Tibber-Rechnungen sind gesperrt. Ohne `hours` gilt DCH_GUEST_HOURS (Vorgabe 24), höchstens 720."
         />
         <p className="m-0 text-[14px] leading-[1.6] text-text-3">
           Der Ablauf begrenzt die <em>Sitzung</em>, nicht den Link: Wer ihn aufhebt, kann sich erneut paaren.
           Um das zu unterbinden, <code className="mono text-[13px]">DCH_GUEST_TOKEN</code> ändern — bestehende
           Gast-Sitzungen laufen dann regulär ab, neue entstehen nicht mehr.
+          {missing.length ? ` Nicht gesetzt: ${missing.join(", ")} — der Link zeigt dort noch den Platzhalter.` : ""}
           {!authRequired() ? " Achtung: DCH_SESSION_SECRET ist nicht gesetzt, die Anmeldung ist derzeit deaktiviert." : ""}
         </p>
       </section>
