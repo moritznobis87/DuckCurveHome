@@ -181,10 +181,11 @@ async def test_stove_without_release_ends_in_a_readable_error(tmp_path: Path) ->
 
 
 @pytest.mark.asyncio
-async def test_stove_that_does_not_confirm_is_not_ok(tmp_path: Path) -> None:
+async def test_stove_that_is_still_igniting_is_not_an_error(tmp_path: Path) -> None:
+    """Zünden dauert Minuten. „Angekommen" und „umgesetzt" sind zwei verschiedene Aussagen."""
     bridge = build(tmp_path, FakeHub())
     bridge.stove = FakeStove(observed=False)  # type: ignore[assignment]
     result = await bridge.execute_command(frame("stove", True))
-    assert result.ok is False
-    assert result.observed_state is False
-    assert "nicht bestätigt" in (result.error or "")
+    assert result.ok is True, "der Befehl ist beim Ofen angekommen"
+    assert result.observed_state is False, "und er brennt noch nicht"
+    assert result.error is None

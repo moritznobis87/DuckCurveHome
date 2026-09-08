@@ -16,6 +16,7 @@ from hems_core.domain import (
     EnergySnapshot,
     HeatPumpState,
     OperatingMode,
+    Quality,
     SystemMode,
 )
 from hems_core.forecasting import CorrectorState, ForecastScore
@@ -125,12 +126,46 @@ class SystemStatusOut(BaseModel):
     sources: list[SourceStatusOut] = Field(default_factory=list)
 
 
+class StoveLiveOut(BaseModel):
+    """Der Pelletofen im Augenblick: was er tut und ob DCH ihn schalten darf.
+
+    Zwei Dinge sind hier bewusst getrennt. `running` ist eine **Beobachtung** aus dem Maestro-Modul;
+    `mode` ist eine **Absicht** des Bedienenden. Beide können auseinanderlaufen: ein Ofen braucht
+    Minuten zum Zünden und noch mehr zum Ausbrennen, und in dieser Zeit sagt die Oberfläche „an"
+    (gewollt) und „läuft nicht" (gemessen) zugleich. Genau das soll sie auch.
+
+    `control_enabled` ist die Freigabe aus der Konfiguration. Ist sie aus, zeigt die Leiste den Ofen
+    weiterhin an, aber ohne Schaltflächen: eine Feuerstätte fernzustarten gehört nicht zu den
+    Dingen, die standardmäßig eingeschaltet sind.
+    """
+
+    present: bool = False
+    control_enabled: bool = False
+    mode: Literal["auto", "on", "off"] = "auto"
+    ends_at: datetime | None = None  # Ende eines manuellen Eingriffs
+    running: bool | None = None
+    power_level: float | None = None
+    fume_temp_c: float | None = None
+    boiler_temp_c: float | None = None
+    observed_at: datetime | None = None
+    quality: Quality = Quality.UNAVAILABLE
+    note_de: str = ""
+
+
+class StoveModeIn(BaseModel):
+    """`auto` heißt: DCH schaltet nicht und überlässt dem Ofen seine eigene Regelung."""
+
+    mode: Literal["auto", "on", "off"]
+    duration_min: int = Field(default=180, ge=15, le=24 * 60)
+
+
 class LiveStateOut(BaseModel):
     snapshot: EnergySnapshot
     buffer: BufferState
     heat_pump: HeatPumpState
     decision: Decision | None
     operating_mode: OperatingMode
+    stove: StoveLiveOut = StoveLiveOut()
     price_rank: float | None
     today_kwh: dict[str, float]
     system: SystemStatusOut

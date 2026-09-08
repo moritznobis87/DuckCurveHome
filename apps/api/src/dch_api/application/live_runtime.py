@@ -27,6 +27,7 @@ from dch_api.application.myenergi_source import (
     price_readings_for_gaps,
 )
 from dch_api.application.plan_service import build_plan
+from dch_api.application.stove_control import StoveController, StoveMode
 from dch_api.application.tibber_invoice import MeasuredPeriod
 from dch_api.errors import DchError
 from dch_api.infrastructure.bridge_hub import BridgeHub
@@ -47,6 +48,7 @@ from dch_api.schemas import (
     PlanOut,
     PvTaxReportOut,
     SourceStatusOut,
+    StoveLiveOut,
     SystemEventOut,
     SystemStatusOut,
     YearMapOut,
@@ -97,6 +99,7 @@ class LiveRuntime:
         self.tracker = HeatPumpTracker(self.hems.heat_pump)
         self.controller = HeatPumpController(self.hems)
         self.mode = OperatingMode(system_mode=SystemMode.AUTO, auto_profile=AutoProfile.SMART)
+        self.stove = StoveController(self.hems.stove)
         self.decision: Decision | None = None
         self.decisions: deque[Decision] = deque(maxlen=100)
         self.plan: PlanOut | None = None
@@ -344,6 +347,50 @@ class LiveRuntime:
         )
         return result.ok, result.observed_state, result.error
 
+    def _stove_state(self, now: datetime) -> StoveLiveOut:
+        return self.stove.state(lambda key, stale: self.live.measurement(key, now, stale), now)
+
+    async def set_stove_mode(self, mode: StoveMode, duration_min: int) -> StoveLiveOut:
+        """Den Ofen von Hand stellen. `auto` nimmt einen Eingriff zurueck, ohne selbst zu schalten.
+
+        Geschaltet wird nur, wenn die Konfiguration es freigibt und die Bridge steht. Scheitert der
+        Befehl, bleibt der alte Modus stehen: eine Absicht, die das Geraet nie erreicht hat, waere
+        in der Oberflaeche eine Luege.
+        """
+        now = self.now
+        if not self.hems.stove.present:
+            raise DchError("no_stove", "Für dieses Haus ist kein Ofen konfiguriert.", 404)
+        if not self.stove.controllable:
+            raise DchError(
+                "stove_control_disabled",
+                "Die Ofensteuerung ist nicht freigegeben (stove.control_enabled).",
+                409,
+            )
+        if mode in ("on", "off"):
+            if not self.settings.actuation_enabled:
+                raise DchError(
+                    "actuation_disabled", "Steuerung ist in dieser Phase deaktiviert.", 409
+                )
+            if not self.hub.online:
+                raise DchError("bridge_offline", "Bridge nicht verbunden.", 503)
+            result = await self.hub.send_command("stove", mode == "on", None, None)
+            if not result.ok:
+                await self.repos.add_event(
+                    "warning", "stove.failed", f"Ofen → {mode}: {result.error}", {}
+                )
+                raise DchError(
+                    "stove_not_confirmed", result.error or "Ofen hat nicht bestätigt.", 502
+                )
+        before = self.stove.mode
+        self.stove.set(mode, duration_min, now)
+        if self.stove.mode != before:
+            await self.repos.add_event(
+                "info", "stove.mode", f"Ofen: {before} → {self.stove.mode}", {}
+            )
+        state = self._stove_state(now)
+        self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+        return state
+
     async def set_heat_pump_mode(
         self,
         system_mode: SystemMode,
@@ -378,6 +425,7 @@ class LiveRuntime:
             heat_pump=hp,
             decision=self.decision,
             operating_mode=self._effective_mode(now),
+            stove=self._stove_state(now),
             price_rank=price_rank(self.forecasts.prices, now),
             today_kwh={},
             system=SystemStatusOut(

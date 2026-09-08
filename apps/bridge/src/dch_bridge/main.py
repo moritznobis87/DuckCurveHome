@@ -247,12 +247,15 @@ class Bridge:
                     error=str(exc)[:200],
                     at=datetime.now(UTC),
                 )
-            ok = observed == cmd.state
+            # Beim Ofen zählt als gelungen, dass der Befehl angekommen ist. Ein Pelletofen
+            # bestätigt nicht in Sekunden: Zünden dauert Minuten, und beim Abschalten meldet die
+            # Firmware die ganze Ausbrandphase über weiter „läuft". `observed_state` sagt, was er
+            # gerade tut; wer das mit „nicht geschaltet" verwechselt, zeigt beim Anheizen Fehler an.
             return CommandResultFrame(
                 command_id=cmd.command_id,
-                ok=ok,
+                ok=True,
                 observed_state=observed,
-                error=None if ok else "Ofen hat den Zustand nicht bestätigt",
+                error=None,
                 at=datetime.now(UTC),
             )
         if self.mqtt is not None and safety != "heat_pump" and self.mqtt.can_switch(key):

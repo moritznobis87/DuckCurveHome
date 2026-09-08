@@ -342,7 +342,10 @@ async def test_ausschalten_geht_als_einziger_schreibrahmen_hinaus() -> None:
 
 
 async def test_ein_sturer_ofen_bestaetigt_nicht_und_das_bleibt_sichtbar() -> None:
-    """Bestätigt ist ein Befehl erst, wenn der Zustand ihn zeigt. Sonst kommt der wahre zurück."""
+    """Bestätigt ist ein Befehl erst, wenn der Zustand ihn zeigt. Sonst kommt der wahre zurück.
+
+    Das ist kein Fehlerfall: genau so sieht auch ein Ofen aus, der gerade erst zündet.
+    """
     seen: list[list] = []
 
     async def collect(items: list) -> None:
@@ -366,5 +369,5 @@ async def test_ein_sturer_ofen_bestaetigt_nicht_und_das_bleibt_sichtbar() -> Non
                 await task
 
     assert observed is True, "der Ofen läuft weiter, und genau das wird gemeldet"
-    assert [e["event"] for e in entries if e["event"] == "stove switch not confirmed"]
+    assert [e["event"] for e in entries if e["event"] == "stove switch sent, not yet confirmed"]
     assert b"C|WriteParametri|34|40" in server.requests, "gesendet wurde er trotzdem"

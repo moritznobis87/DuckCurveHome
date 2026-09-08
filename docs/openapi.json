@@ -1039,6 +1039,48 @@
         }
       }
     },
+    "/api/v1/control/stove/mode": {
+      "post": {
+        "tags": [
+          "Steuerung"
+        ],
+        "summary": "Pelletofen stellen",
+        "description": "`auto` gibt den Ofen frei, `on` und `off` sind befristete Eingriffe.\n\nDer eigene Endpunkt statt `/actuators/stove` ist Absicht: der Ofen ist keine Lichterkette. Er\nhat eine Freigabe in der Konfiguration, sein Eingriff läuft nach einer Dauer wieder ab, und\n„geschaltet\" heißt bei ihm „der Befehl ist angekommen\", nicht „er brennt bereits\".",
+        "operationId": "set_stove_mode_api_v1_control_stove_mode_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoveModeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoveLiveOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/control/decisions": {
       "get": {
         "tags": [
@@ -4125,6 +4167,16 @@
           "operating_mode": {
             "$ref": "#/components/schemas/OperatingMode"
           },
+          "stove": {
+            "$ref": "#/components/schemas/StoveLiveOut",
+            "default": {
+              "present": false,
+              "control_enabled": false,
+              "mode": "auto",
+              "quality": "unavailable",
+              "note_de": ""
+            }
+          },
           "price_rank": {
             "anyOf": [
               {
@@ -5151,6 +5203,136 @@
         "type": "object",
         "title": "StoveConfig",
         "description": "Der Pelletofen als zweite Wärmequelle am selben Puffer.\n\nDie Zahlen stammen vom Gerät und vom Betreiber, nicht aus einer Messung; der Wärmemengenzähler\nsteht noch aus. Sie sind trotzdem belastbar genug für eine Kostenentscheidung, weil der Ofen\npraktisch immer unter Volllast läuft und die Aufteilung zwischen Wasser und Raum dann fest ist.\n\n**Die Kette:** aus der Nennleistung und dem Verbrennungswirkungsgrad folgt die Feuerungsleistung,\ndaraus über den Heizwert der Pelletdurchsatz, daraus über den Preis die Kosten je Stunde. Geteilt\ndurch die Wärme, die tatsächlich ankommt, ergibt das den Wärmepreis, mit dem sich der Ofen gegen\ndie Wärmepumpe vergleichen lässt. Gerechnet wird das in `hems_core.accounting.stove_cost`."
+      },
+      "StoveLiveOut": {
+        "properties": {
+          "present": {
+            "type": "boolean",
+            "title": "Present",
+            "default": false
+          },
+          "control_enabled": {
+            "type": "boolean",
+            "title": "Control Enabled",
+            "default": false
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "on",
+              "off"
+            ],
+            "title": "Mode",
+            "default": "auto"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running"
+          },
+          "power_level": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Level"
+          },
+          "fume_temp_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fume Temp C"
+          },
+          "boiler_temp_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boiler Temp C"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/Quality",
+            "default": "unavailable"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "StoveLiveOut",
+        "description": "Der Pelletofen im Augenblick: was er tut und ob DCH ihn schalten darf.\n\nZwei Dinge sind hier bewusst getrennt. `running` ist eine **Beobachtung** aus dem Maestro-Modul;\n`mode` ist eine **Absicht** des Bedienenden. Beide können auseinanderlaufen: ein Ofen braucht\nMinuten zum Zünden und noch mehr zum Ausbrennen, und in dieser Zeit sagt die Oberfläche „an\"\n(gewollt) und „läuft nicht\" (gemessen) zugleich. Genau das soll sie auch.\n\n`control_enabled` ist die Freigabe aus der Konfiguration. Ist sie aus, zeigt die Leiste den Ofen\nweiterhin an, aber ohne Schaltflächen: eine Feuerstätte fernzustarten gehört nicht zu den\nDingen, die standardmäßig eingeschaltet sind."
+      },
+      "StoveModeIn": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "on",
+              "off"
+            ],
+            "title": "Mode"
+          },
+          "duration_min": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 15.0,
+            "title": "Duration Min",
+            "default": 180
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "StoveModeIn",
+        "description": "`auto` heißt: DCH schaltet nicht und überlässt dem Ofen seine eigene Regelung."
       },
       "StoveOut": {
         "properties": {

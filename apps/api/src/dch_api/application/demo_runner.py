@@ -19,6 +19,7 @@ from dch_api.application.energy_accounting import EnergyAccounting
 from dch_api.application.forecast_evaluation import ForecastEvaluator
 from dch_api.application.ha_import import ImportResult
 from dch_api.application.invoice_service import InvoiceService
+from dch_api.application.stove_control import StoveMode
 from dch_api.application.tibber_invoice import MeasuredPeriod
 from dch_api.errors import DchError
 from dch_api.infrastructure.history import HistoryStore
@@ -35,6 +36,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    StoveLiveOut,
     SystemEventOut,
     SystemStatusOut,
     YearMapOut,
@@ -406,6 +408,15 @@ class DemoRunner:
         self._control_tick(self.snapshot)
         self._after_step_publish()
         return self.mode
+
+    async def set_stove_mode(self, mode: StoveMode, duration_min: int) -> StoveLiveOut:
+        """Im Demo-Modus gibt es keinen Ofen. Ein erfundener Schaltvorgang wäre hier das Schlechteste.
+
+        Das simulierte Haus kennt nur Wärmepumpe und Puffer; einen Ofen mitzusimulieren hieße, im
+        Dashboard eine Wärmequelle zu zeigen, deren Verhalten nichts mit dem echten Gerät zu tun
+        hat. Die Oberfläche blendet den Ofen im Demo-Modus deshalb aus, und dieser Weg bleibt zu.
+        """
+        raise DchError("no_stove", "Im Demo-Modus gibt es keinen Ofen.", 404)
 
     def demo_control(
         self,

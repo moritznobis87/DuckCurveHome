@@ -370,12 +370,18 @@ class MaestroStove:
         """Schaltet diese Quelle den genannten Aktor? Nur den Ofen, und nur mit Freigabe."""
         return self.allow_control and key == "actuator:stove"
 
-    async def switch(self, key: str, state: bool, timeout_s: float = 90.0) -> bool | None:
-        """Den Ofen ein- oder ausschalten und auf seine Bestätigung warten.
+    async def switch(self, key: str, state: bool, timeout_s: float = 5.0) -> bool | None:
+        """Den Ofen ein- oder ausschalten und kurz auf seine Bestätigung warten.
 
-        Zurückgegeben wird der **beobachtete** Zustand, nicht der gewünschte. Ein Pelletofen
-        braucht Minuten zum Zünden und zum Ausbrennen; wer sofort ein Ergebnis erwartet, bekommt
-        `None` und muss das als „noch nicht bestätigt" lesen, nicht als Fehler.
+        Zurückgegeben wird der **beobachtete** Zustand, nicht der gewünschte, und die Wartezeit ist
+        absichtlich kurz. Ein Pelletofen bestätigt nicht in Sekunden: das Zünden dauert Minuten, und
+        beim Abschalten meldet die Firmware noch für die ganze Ausbrandphase „läuft". Länger zu
+        warten hieße, den Bedienenden minutenlang vor einem drehenden Rad sitzen zu lassen, um am
+        Ende dieselbe Auskunft zu geben.
+
+        Gelungen ist der Befehl deshalb, wenn der Rahmen hinausgegangen ist; ob der Ofen ihn schon
+        umgesetzt hat, sagt der Rückgabewert. Wer beides verwechselt, baut eine Oberfläche, die beim
+        Anheizen „Fehler" anzeigt.
         """
         if not self.can_switch(key):
             raise PermissionError("Ofensteuerung ist nicht freigegeben (mcz_allow_control)")
@@ -387,15 +393,17 @@ class MaestroStove:
         await writer.drain()
         self._switches += 1
 
-        # Auf die Bestätigung warten. Der Zustand kommt aus dem nächsten Info-Rahmen, den der
-        # Abfragetakt ohnehin holt; hier wird nur beobachtet, nicht nachgefragt.
+        # Kurz nachfassen statt auf den nächsten Abfragetakt zu warten: der liegt bis zu
+        # `poll_interval_s` entfernt, und in dieser Zeit hätte die Oberfläche nichts zu zeigen.
         deadline = asyncio.get_running_loop().time() + timeout_s
         while asyncio.get_running_loop().time() < deadline:
             if self._last_state == state:
                 log.info("stove switch confirmed", state=state)
                 return state
-            await asyncio.sleep(1.0)
-        log.warning("stove switch not confirmed", state=state, last=self._last_state)
+            await asyncio.sleep(0.5)
+            writer.write(_client_frame(OPCODE_TEXT, GET_INFO.encode()))
+            await writer.drain()
+        log.info("stove switch sent, not yet confirmed", state=state, last=self._last_state)
         return self._last_state
 
     async def _announce_offline(self) -> None:

@@ -347,6 +347,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/control/stove/mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pelletofen stellen
+         * @description `auto` gibt den Ofen frei, `on` und `off` sind befristete Eingriffe.
+         *
+         *     Der eigene Endpunkt statt `/actuators/stove` ist Absicht: der Ofen ist keine Lichterkette. Er
+         *     hat eine Freigabe in der Konfiguration, sein Eingriff läuft nach einer Dauer wieder ab, und
+         *     „geschaltet" heißt bei ihm „der Befehl ist angekommen", nicht „er brennt bereits".
+         */
+        post: operations["set_stove_mode_api_v1_control_stove_mode_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/control/decisions": {
         parameters: {
             query?: never;
@@ -1894,6 +1918,16 @@ export interface components {
             heat_pump: components["schemas"]["HeatPumpState"];
             decision: components["schemas"]["Decision"] | null;
             operating_mode: components["schemas"]["OperatingMode"];
+            /**
+             * @default {
+             *       "present": false,
+             *       "control_enabled": false,
+             *       "mode": "auto",
+             *       "quality": "unavailable",
+             *       "note_de": ""
+             *     }
+             */
+            stove: components["schemas"]["StoveLiveOut"];
             /** Price Rank */
             price_rank: number | null;
             /** Today Kwh */
@@ -2475,6 +2509,72 @@ export interface components {
              * @default 0.1
              */
             start_cost_eur: number;
+        };
+        /**
+         * StoveLiveOut
+         * @description Der Pelletofen im Augenblick: was er tut und ob DCH ihn schalten darf.
+         *
+         *     Zwei Dinge sind hier bewusst getrennt. `running` ist eine **Beobachtung** aus dem Maestro-Modul;
+         *     `mode` ist eine **Absicht** des Bedienenden. Beide können auseinanderlaufen: ein Ofen braucht
+         *     Minuten zum Zünden und noch mehr zum Ausbrennen, und in dieser Zeit sagt die Oberfläche „an"
+         *     (gewollt) und „läuft nicht" (gemessen) zugleich. Genau das soll sie auch.
+         *
+         *     `control_enabled` ist die Freigabe aus der Konfiguration. Ist sie aus, zeigt die Leiste den Ofen
+         *     weiterhin an, aber ohne Schaltflächen: eine Feuerstätte fernzustarten gehört nicht zu den
+         *     Dingen, die standardmäßig eingeschaltet sind.
+         */
+        StoveLiveOut: {
+            /**
+             * Present
+             * @default false
+             */
+            present: boolean;
+            /**
+             * Control Enabled
+             * @default false
+             */
+            control_enabled: boolean;
+            /**
+             * Mode
+             * @default auto
+             * @enum {string}
+             */
+            mode: "auto" | "on" | "off";
+            /** Ends At */
+            ends_at?: string | null;
+            /** Running */
+            running?: boolean | null;
+            /** Power Level */
+            power_level?: number | null;
+            /** Fume Temp C */
+            fume_temp_c?: number | null;
+            /** Boiler Temp C */
+            boiler_temp_c?: number | null;
+            /** Observed At */
+            observed_at?: string | null;
+            /** @default unavailable */
+            quality: components["schemas"]["Quality"];
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
+        };
+        /**
+         * StoveModeIn
+         * @description `auto` heißt: DCH schaltet nicht und überlässt dem Ofen seine eigene Regelung.
+         */
+        StoveModeIn: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "auto" | "on" | "off";
+            /**
+             * Duration Min
+             * @default 180
+             */
+            duration_min: number;
         };
         /**
          * StoveOut
@@ -3290,6 +3390,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperatingMode"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_stove_mode_api_v1_control_stove_mode_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoveModeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoveLiveOut"];
                 };
             };
             /** @description Validation Error */
