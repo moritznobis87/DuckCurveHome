@@ -61,7 +61,9 @@ Reine Rechenlogik, kein I/O.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from hems_core.domain.config import StoveConfig
 
@@ -283,3 +285,53 @@ def break_even_cop(
     econ = stove_economics(cfg, aux_price_ct_kwh=price_ct_kwh)
     stove_ct = econ.ct_per_kwh_useful if credit_room_heat else econ.ct_per_kwh_water
     return round(price_ct_kwh / stove_ct, 2) if stove_ct > 1e-6 else float("inf")
+
+
+def budget_window(cfg: StoveConfig, now_local: datetime) -> tuple[datetime, datetime]:
+    """Das laufende Budgetfenster: von Füllung zu Füllung.
+
+    Der Planungstag des Ofens beginnt nicht um Mitternacht, sondern wenn nachgefüllt wird. Wer das
+    verwechselt, plant um 23 Uhr mit einem vollen Behälter, obwohl der seit dem Morgen fast leer ist.
+
+    Erwartet Ortszeit. Die Umrechnung gehört in die Schicht darüber, hier wird nur gerechnet.
+    """
+    start = now_local.replace(hour=cfg.refill_hour, minute=0, second=0, microsecond=0)
+    if now_local < start:
+        start -= timedelta(days=1)
+    return start, start + timedelta(days=1)
+
+
+def fuel_rate_kg_per_h(cfg: StoveConfig, power_level: float) -> float:
+    """Pelletdurchsatz bei einer Leistungsstufe, linear zwischen Minimal- und Volllast.
+
+    Die Linearität ist eine Annahme: das Datenblatt nennt nur die beiden Endpunkte, Stufe 1 und
+    Stufe 5. Sie ist die einfachste Kurve, die beide trifft, und für eine Verbrauchsschätzung
+    genauer als der übliche Ausweg, alles als Volllast zu zählen.
+    """
+    lo = stove_economics_min_load(cfg).kg_per_hour
+    hi = stove_economics(cfg).kg_per_hour
+    span = max(cfg.power_levels - 1, 1)
+    t = min(max((power_level - 1.0) / span, 0.0), 1.0)
+    return round(lo + (hi - lo) * t, 3)
+
+
+def estimated_kg_burned(cfg: StoveConfig, minutes_by_level: Mapping[str, int]) -> float:
+    """Verbrauch aus den Minuten je Leistungsstufe schätzen.
+
+    Der Ofen meldet keinen Verbrauch, wohl aber seine Leistungsstufe im Minutentakt. Zusammen mit
+    dem Durchsatz je Stufe ergibt das eine brauchbare Schätzung, wie viel noch im Behälter liegt.
+    Eine Messung ist es nicht: dafür fehlt der Faktor zwischen Schneckendrehzahl und Kilogramm.
+    """
+    total = 0.0
+    for level, minutes in minutes_by_level.items():
+        try:
+            lvl = float(level)
+        except ValueError:
+            continue
+        total += fuel_rate_kg_per_h(cfg, lvl) * minutes / 60.0
+    return round(total, 2)
+
+
+def remaining_kg(cfg: StoveConfig, burned_kg: float) -> float:
+    """Was von der Tagesfüllung noch übrig ist. Nie negativ: dann war die Schätzung zu grob."""
+    return round(max(cfg.hopper_kg - burned_kg, 0.0), 2)

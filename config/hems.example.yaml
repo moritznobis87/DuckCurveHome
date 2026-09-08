@@ -42,6 +42,7 @@ hems:
     # das ein hartes Tagesbudget von 15 kg, also höchstens 56 kWh in den Puffer.
     hopper_kg: 15.0
     refills_per_day: 1.0
+    refill_hour: 7  # wann nachgefuellt wird; das Budgetfenster laeuft von hier bis hier
     # Der Pelletpreis der letzten Lieferung. Er geht linear in den Wärmepreis ein: verdoppelt er
     # sich, verdoppelt sich der Wärmepreis. Nach jedem Kauf hier nachziehen.
     pellet_price_eur_per_t: 450.0

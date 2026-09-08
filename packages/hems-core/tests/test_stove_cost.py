@@ -204,3 +204,42 @@ def test_die_naechtliche_frage_des_hausherrn() -> None:
     c = cheaper_source(CFG, price_ct_kwh=32.0, cop=2.5)
     assert c.cheaper == "stove"
     assert c.heat_pump_ct == pytest.approx(12.8, abs=0.05)
+
+
+def test_das_budgetfenster_laeuft_von_fuellung_zu_fuellung() -> None:
+    """Nicht von Mitternacht zu Mitternacht: nachgefüllt wird morgens um sieben.
+
+    Wer das verwechselt, plant um 23 Uhr mit einem vollen Behälter, obwohl der seit dem Morgen
+    fast leer ist.
+    """
+    from datetime import datetime
+
+    from hems_core.accounting import budget_window
+
+    start, end = budget_window(CFG, datetime(2026, 9, 8, 23, 0))
+    assert (start.day, start.hour) == (8, 7)
+    assert (end.day, end.hour) == (9, 7)
+
+    # Frühmorgens vor dem Nachfüllen gilt noch die Füllung des Vortages.
+    start, _ = budget_window(CFG, datetime(2026, 9, 8, 5, 0))
+    assert (start.day, start.hour) == (7, 7)
+
+
+def test_verbrauch_aus_den_leistungsstufen() -> None:
+    """Der Ofen meldet keinen Verbrauch, aber seine Stufe. Daraus wird der Rest im Behälter."""
+    from hems_core.accounting import estimated_kg_burned, fuel_rate_kg_per_h, remaining_kg
+
+    assert fuel_rate_kg_per_h(CFG, 1) == pytest.approx(0.68, abs=0.01)
+    assert fuel_rate_kg_per_h(CFG, 5) == pytest.approx(2.666, abs=0.01)
+    assert fuel_rate_kg_per_h(CFG, 3) == pytest.approx(1.673, abs=0.01), "linear dazwischen"
+
+    burned = estimated_kg_burned(CFG, {"5": 120, "3": 60})
+    assert burned == pytest.approx(7.0, abs=0.05)  # 2 h × 2,666 + 1 h × 1,673
+    assert remaining_kg(CFG, burned) == pytest.approx(8.0, abs=0.05)
+
+
+def test_der_rest_wird_nie_negativ() -> None:
+    """Eine zu grobe Schätzung darf keinen negativen Vorrat ergeben."""
+    from hems_core.accounting import remaining_kg
+
+    assert remaining_kg(CFG, 99.0) == 0.0

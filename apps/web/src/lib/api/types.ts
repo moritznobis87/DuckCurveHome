@@ -1677,8 +1677,10 @@ export interface components {
              *       "electric_ignition_w": 390,
              *       "pellet_kg_per_hour_max": 2.7,
              *       "pellet_kg_per_hour_min": 0.7,
+             *       "power_levels": 5,
              *       "hopper_kg": 15,
              *       "refills_per_day": 1,
+             *       "refill_hour": 7,
              *       "pellet_price_eur_per_t": 450,
              *       "pellet_kwh_per_kg": 4.9,
              *       "room_heat_credit": 1,
@@ -2424,6 +2426,11 @@ export interface components {
              */
             pellet_kg_per_hour_min: number;
             /**
+             * Power Levels
+             * @default 5
+             */
+            power_levels: number;
+            /**
              * Hopper Kg
              * @default 15
              */
@@ -2433,6 +2440,11 @@ export interface components {
              * @default 1
              */
             refills_per_day: number;
+            /**
+             * Refill Hour
+             * @default 7
+             */
+            refill_hour: number;
             /**
              * Pellet Price Eur Per T
              * @default 450

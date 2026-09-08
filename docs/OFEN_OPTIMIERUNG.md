@@ -100,7 +100,32 @@ Nacht von 17 bis 6 Uhr sind dreizehn Stunden, und bei Volllast reicht eine Füll
 Ofen kommt dort nur durch, weil er von selbst herunterregelt, sobald der Puffer warm ist. Genau
 deshalb muss der Planer beide Lastpunkte kennen, auch wenn der Wärmepreis derselbe ist.
 
-`daily_budget` liefert diese Zahlen, `buffer_kwh_per_kg` die Kennzahl für die knappe Ressource.
+### Das Budgetfenster läuft von Füllung zu Füllung
+
+Nachgefüllt wird **morgens, und dann ist der Behälter voll**. Der Planungstag des Ofens beginnt also
+nicht um Mitternacht, sondern beim Nachfüllen. Das ist keine Feinheit: wer um 23 Uhr mit einem
+vollen Behälter plant, obwohl der seit dem Morgen zu drei Vierteln leer ist, verplant Wärme, die
+nicht kommt. `budget_window` liefert das laufende Fenster, `refill_hour` steht in der Konfiguration.
+
+Weil der Behälter jeden Morgen wieder gefüllt wird, ist ein Rest darin **nicht verloren**. Es gibt
+also keinen Anreiz, die Füllung noch schnell zu verheizen; nicht verbrauchte Pellets sind schlicht
+nicht gekauftes Heizen.
+
+### Wie viel noch im Behälter liegt
+
+Der Ofen meldet keinen Verbrauch, wohl aber seine Leistungsstufe im Minutentakt. Zwischen Stufe 1
+(0,68 kg/h) und Stufe 5 (2,67 kg/h) wird linear interpoliert, das ist die einfachste Kurve durch
+beide Datenblattpunkte:
+
+| Stufe | 1 | 2 | 3 | 4 | 5 |
+| --- | --- | --- | --- | --- | --- |
+| kg/h | 0,68 | 1,18 | 1,67 | 2,17 | 2,67 |
+
+`estimated_kg_burned` summiert das über die Minuten je Stufe, `remaining_kg` zieht es von der Füllung
+ab. Eine Messung ist es nicht, dafür fehlt der Faktor zwischen Schneckendrehzahl und Kilogramm. Für
+die Frage „reicht es noch bis morgen früh?" ist es genau genug.
+
+`daily_budget` liefert die Eckwerte, `buffer_kwh_per_kg` die Kennzahl für die knappe Ressource.
 
 ### Die Raumwärme
 
