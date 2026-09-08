@@ -845,8 +845,10 @@ class LiveRuntime:
         # Die Kennung waechst mit dem Verfahren. v1 hielt Messwerte fuenf Minuten - das reicht fuer
         # einen Takt, nicht fuer eine Nacht ohne PV-Meldung; v2 laesst eine gemessene Null unbegrenzt
         # gelten; v3 ordnet Stunden, die es nur als Stundenmittel gibt, neu zu, statt ihnen Netzladung
-        # anzudichten. Wer die Kennung nicht mitzieht, laesst die alten Zeilen stehen.
-        marker = "energy.rebuild_coarse_v3"
+        # anzudichten; v4 prueft die Ladung gegen ein Fuenf-Minuten-Fenster, weil Netzzaehler und
+        # Speicher nicht im selben Moment melden. Wer die Kennung nicht mitzieht, laesst die alten
+        # Zeilen stehen.
+        marker = "energy.rebuild_window_v4"
         try:
             if await self.repos.has_event(marker):
                 self.energy_rebuild = "erledigt"
