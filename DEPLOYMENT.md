@@ -33,7 +33,7 @@ Home Assistant OS (Haus)                          Railway
    | `DCH_MYENERGI_SERIAL` | Seriennummer des myenergi-Hubs (myenergi-App → Konto → Erweitert → API) |
    | `DCH_MYENERGI_API_KEY` | API-Key aus derselben Ansicht. Mit beiden Werten liest die API PV, Netz, Batterie und Wallbox direkt aus der myenergi-Cloud; Home Assistant liefert dann nur noch Wärmepumpe, Puffer und Schalter |
    | `DCH_CONFIG_FILE` | optional Pfad zu einer YAML wie `config/hems.example.yaml` (im Image mitgeliefert) |
-   | `DCH_ACTUATION_ENABLED` | `false` in Phase 2 |
+   | `DCH_ACTUATION_ENABLED` | `true`: Lichter, Kaffeemaschine und der Pelletofen lassen sich schalten. Auf `false` bleibt auch der Ofenfahrplan folgenlos, er wird nur angezeigt |
    | `DCH_MIGRATE_ON_START` | `true` (Standard): Alembic-Migration läuft beim Containerstart, bevor die API hochfährt |
    | `DCH_CORS_ORIGINS` | `[]` (Web spricht serverseitig über das BFF) |
 

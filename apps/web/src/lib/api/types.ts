@@ -347,6 +347,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/control/stove/mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pelletofen stellen
+         * @description `auto` gibt den Ofen frei, `on` und `off` sind befristete Eingriffe.
+         *
+         *     Der eigene Endpunkt statt `/actuators/stove` ist Absicht: der Ofen ist keine Lichterkette. Er
+         *     hat eine Freigabe in der Konfiguration, sein Eingriff läuft nach einer Dauer wieder ab, und
+         *     „geschaltet" heißt bei ihm „der Befehl ist angekommen", nicht „er brennt bereits".
+         */
+        post: operations["set_stove_mode_api_v1_control_stove_mode_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/control/decisions": {
         parameters: {
             query?: never;
@@ -535,9 +559,10 @@ export interface components {
          * BufferBalanceOut
          * @description Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.
          *
-         *     Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die
-         *     Wärmepumpe steht, kommt die Wärme von woanders - beim Kombipuffer also vom Pelletofen. Das ist
-         *     die beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist.
+         *     Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Wer sie verursacht hat, war
+         *     bis zur Anbindung des Ofens eine Schlussfolgerung: steigt der Inhalt, während die Wärmepumpe
+         *     steht, muss die Wärme von woanders kommen. Mit den Maestro-Daten ist es eine Feststellung, und
+         *     `gain_unexplained_kwh` bleibt für das übrig, was wirklich niemand erklärt.
          */
         BufferBalanceOut: {
             /** Energy Start Kwh */
@@ -564,6 +589,21 @@ export interface components {
              * @default 0
              */
             gain_without_hp_kwh: number;
+            /**
+             * Gain With Stove Kwh
+             * @default 0
+             */
+            gain_with_stove_kwh: number;
+            /**
+             * Gain Unexplained Kwh
+             * @default 0
+             */
+            gain_unexplained_kwh: number;
+            /**
+             * Stove Known
+             * @default false
+             */
+            stove_known: boolean;
             /**
              * Samples
              * @default 0
@@ -1473,6 +1513,7 @@ export interface components {
             cycling: components["schemas"]["CyclingStats"];
             price_quality: components["schemas"]["PriceQualityOut"];
             buffer_balance: components["schemas"]["BufferBalanceOut"];
+            stove: components["schemas"]["StoveOut"];
             /** Model Note De */
             model_note_de: string;
         };
@@ -1646,6 +1687,33 @@ export interface components {
              *     }
              */
             battery: components["schemas"]["BatteryConfig"];
+            /**
+             * @default {
+             *       "present": true,
+             *       "control_enabled": true,
+             *       "nominal_heat_kw": 11.9,
+             *       "water_heat_kw": 10,
+             *       "combustion_efficiency": 0.911,
+             *       "min_heat_kw": 3.2,
+             *       "min_water_heat_kw": 1.8,
+             *       "min_combustion_efficiency": 0.961,
+             *       "electric_w": 75,
+             *       "electric_ignition_w": 390,
+             *       "pellet_kg_per_hour_max": 2.7,
+             *       "pellet_kg_per_hour_min": 0.7,
+             *       "power_levels": 5,
+             *       "hopper_kg": 15,
+             *       "refills_per_day": 1,
+             *       "refill_hour": 7,
+             *       "pellet_price_eur_per_t": 450,
+             *       "pellet_kwh_per_kg": 4.9,
+             *       "room_heat_credit": 1,
+             *       "min_runtime_min": 120,
+             *       "min_offtime_min": 60,
+             *       "start_cost_eur": 0.1
+             *     }
+             */
+            stove: components["schemas"]["StoveConfig"];
         };
         /** HistoryOut */
         HistoryOut: {
@@ -1850,6 +1918,17 @@ export interface components {
             heat_pump: components["schemas"]["HeatPumpState"];
             decision: components["schemas"]["Decision"] | null;
             operating_mode: components["schemas"]["OperatingMode"];
+            /**
+             * @default {
+             *       "present": false,
+             *       "control_enabled": false,
+             *       "mode": "auto",
+             *       "quality": "unavailable",
+             *       "plan_note_de": "",
+             *       "note_de": ""
+             *     }
+             */
+            stove: components["schemas"]["StoveLiveOut"];
             /** Price Rank */
             price_rank: number | null;
             /** Today Kwh */
@@ -2306,6 +2385,274 @@ export interface components {
              * @default
              */
             detail_de: string;
+        };
+        /**
+         * StoveConfig
+         * @description Der Pelletofen als zweite Wärmequelle am selben Puffer.
+         *
+         *     Die Zahlen stammen vom Gerät und vom Betreiber, nicht aus einer Messung; der Wärmemengenzähler
+         *     steht noch aus. Sie sind trotzdem belastbar genug für eine Kostenentscheidung, weil der Ofen
+         *     praktisch immer unter Volllast läuft und die Aufteilung zwischen Wasser und Raum dann fest ist.
+         *
+         *     **Die Kette:** aus der Nennleistung und dem Verbrennungswirkungsgrad folgt die Feuerungsleistung,
+         *     daraus über den Heizwert der Pelletdurchsatz, daraus über den Preis die Kosten je Stunde. Geteilt
+         *     durch die Wärme, die tatsächlich ankommt, ergibt das den Wärmepreis, mit dem sich der Ofen gegen
+         *     die Wärmepumpe vergleichen lässt. Gerechnet wird das in `hems_core.accounting.stove_cost`.
+         */
+        StoveConfig: {
+            /**
+             * Present
+             * @default true
+             */
+            present: boolean;
+            /**
+             * Control Enabled
+             * @default true
+             */
+            control_enabled: boolean;
+            /**
+             * Nominal Heat Kw
+             * @default 11.9
+             */
+            nominal_heat_kw: number;
+            /**
+             * Water Heat Kw
+             * @default 10
+             */
+            water_heat_kw: number;
+            /**
+             * Combustion Efficiency
+             * @default 0.911
+             */
+            combustion_efficiency: number;
+            /**
+             * Min Heat Kw
+             * @default 3.2
+             */
+            min_heat_kw: number;
+            /**
+             * Min Water Heat Kw
+             * @default 1.8
+             */
+            min_water_heat_kw: number;
+            /**
+             * Min Combustion Efficiency
+             * @default 0.961
+             */
+            min_combustion_efficiency: number;
+            /**
+             * Electric W
+             * @default 75
+             */
+            electric_w: number;
+            /**
+             * Electric Ignition W
+             * @default 390
+             */
+            electric_ignition_w: number;
+            /**
+             * Pellet Kg Per Hour Max
+             * @default 2.7
+             */
+            pellet_kg_per_hour_max: number;
+            /**
+             * Pellet Kg Per Hour Min
+             * @default 0.7
+             */
+            pellet_kg_per_hour_min: number;
+            /**
+             * Power Levels
+             * @default 5
+             */
+            power_levels: number;
+            /**
+             * Hopper Kg
+             * @default 15
+             */
+            hopper_kg: number;
+            /**
+             * Refills Per Day
+             * @default 1
+             */
+            refills_per_day: number;
+            /**
+             * Refill Hour
+             * @default 7
+             */
+            refill_hour: number;
+            /**
+             * Pellet Price Eur Per T
+             * @default 450
+             */
+            pellet_price_eur_per_t: number;
+            /**
+             * Pellet Kwh Per Kg
+             * @default 4.9
+             */
+            pellet_kwh_per_kg: number;
+            /**
+             * Room Heat Credit
+             * @default 1
+             */
+            room_heat_credit: number;
+            /**
+             * Min Runtime Min
+             * @default 120
+             */
+            min_runtime_min: number;
+            /**
+             * Min Offtime Min
+             * @default 60
+             */
+            min_offtime_min: number;
+            /**
+             * Start Cost Eur
+             * @default 0.1
+             */
+            start_cost_eur: number;
+        };
+        /**
+         * StoveLiveOut
+         * @description Der Pelletofen im Augenblick: was er tut und ob DCH ihn schalten darf.
+         *
+         *     Zwei Dinge sind hier bewusst getrennt. `running` ist eine **Beobachtung** aus dem Maestro-Modul;
+         *     `mode` ist eine **Absicht** des Bedienenden. Beide können auseinanderlaufen: ein Ofen braucht
+         *     Minuten zum Zünden und noch mehr zum Ausbrennen, und in dieser Zeit sagt die Oberfläche „an"
+         *     (gewollt) und „läuft nicht" (gemessen) zugleich. Genau das soll sie auch.
+         *
+         *     `control_enabled` ist die Freigabe aus der Konfiguration. Ist sie aus, zeigt die Leiste den Ofen
+         *     weiterhin an, aber ohne Schaltflächen: eine Feuerstätte fernzustarten gehört nicht zu den
+         *     Dingen, die standardmäßig eingeschaltet sind.
+         */
+        StoveLiveOut: {
+            /**
+             * Present
+             * @default false
+             */
+            present: boolean;
+            /**
+             * Control Enabled
+             * @default false
+             */
+            control_enabled: boolean;
+            /**
+             * Mode
+             * @default auto
+             * @enum {string}
+             */
+            mode: "auto" | "on" | "off";
+            /** Ends At */
+            ends_at?: string | null;
+            /** Running */
+            running?: boolean | null;
+            /** Power Level */
+            power_level?: number | null;
+            /** Fume Temp C */
+            fume_temp_c?: number | null;
+            /** Boiler Temp C */
+            boiler_temp_c?: number | null;
+            /** Observed At */
+            observed_at?: string | null;
+            /** @default unavailable */
+            quality: components["schemas"]["Quality"];
+            /** Planned On */
+            planned_on?: boolean | null;
+            /** Plan Until */
+            plan_until?: string | null;
+            /**
+             * Plan Note De
+             * @default
+             */
+            plan_note_de: string;
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
+        };
+        /**
+         * StoveModeIn
+         * @description `auto` heißt: DCH schaltet nicht und überlässt dem Ofen seine eigene Regelung.
+         */
+        StoveModeIn: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "auto" | "on" | "off";
+            /**
+             * Duration Min
+             * @default 180
+             */
+            duration_min: number;
+        };
+        /**
+         * StoveOut
+         * @description Der Pelletofen im Zeitraum. `available=False` heißt: keine Daten, nicht „lief nicht".
+         */
+        StoveOut: {
+            /**
+             * Available
+             * @default false
+             */
+            available: boolean;
+            /**
+             * Running Minutes
+             * @default 0
+             */
+            running_minutes: number;
+            /**
+             * Burning Minutes
+             * @default 0
+             */
+            burning_minutes: number;
+            /**
+             * Runs
+             * @default 0
+             */
+            runs: number;
+            /** Longest Run Min */
+            longest_run_min?: number | null;
+            /**
+             * Auger Revolutions
+             * @default 0
+             */
+            auger_revolutions: number;
+            /** Fume Temp Max C */
+            fume_temp_max_c?: number | null;
+            /** Spread K */
+            spread_k?: number | null;
+            /**
+             * Pumping Minutes
+             * @default 0
+             */
+            pumping_minutes: number;
+            /**
+             * Dhw Minutes
+             * @default 0
+             */
+            dhw_minutes: number;
+            /**
+             * Minutes By Level
+             * @default {}
+             */
+            minutes_by_level: {
+                [key: string]: number;
+            };
+            /** Operating Hours */
+            operating_hours?: number | null;
+            /** Ignitions */
+            ignitions?: number | null;
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
+            /**
+             * Fuel Note De
+             * @default
+             */
+            fuel_note_de: string;
         };
         /** SystemEventOut */
         SystemEventOut: {
@@ -3053,6 +3400,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperatingMode"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_stove_mode_api_v1_control_stove_mode_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoveModeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoveLiveOut"];
                 };
             };
             /** @description Validation Error */

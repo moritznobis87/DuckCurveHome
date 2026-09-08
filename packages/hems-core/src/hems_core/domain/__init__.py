@@ -13,6 +13,7 @@ from hems_core.domain.config import (
     PriceRuleConfig,
     PvRuleConfig,
     SensorTimeouts,
+    StoveConfig,
     TariffConfig,
 )
 from hems_core.domain.decision import (
@@ -56,6 +57,7 @@ __all__ = [
     "Quality",
     "ReasonCode",
     "SensorTimeouts",
+    "StoveConfig",
     "SystemMode",
     "TariffConfig",
 ]

@@ -170,6 +170,78 @@ class HeatDemandConfig(BaseModel):
     )
 
 
+class StoveConfig(BaseModel):
+    """Der Pelletofen als zweite Wärmequelle am selben Puffer.
+
+    Die Zahlen stammen vom Gerät und vom Betreiber, nicht aus einer Messung; der Wärmemengenzähler
+    steht noch aus. Sie sind trotzdem belastbar genug für eine Kostenentscheidung, weil der Ofen
+    praktisch immer unter Volllast läuft und die Aufteilung zwischen Wasser und Raum dann fest ist.
+
+    **Die Kette:** aus der Nennleistung und dem Verbrennungswirkungsgrad folgt die Feuerungsleistung,
+    daraus über den Heizwert der Pelletdurchsatz, daraus über den Preis die Kosten je Stunde. Geteilt
+    durch die Wärme, die tatsächlich ankommt, ergibt das den Wärmepreis, mit dem sich der Ofen gegen
+    die Wärmepumpe vergleichen lässt. Gerechnet wird das in `hems_core.accounting.stove_cost`.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    present: bool = True
+    # Ob DCH den Ofen schalten darf. Eine Feuerstätte fernzustarten ist eine andere Klasse von
+    # Eingriff als ein Relais, und die Entscheidung gehört dem Hausherrn; er hat sie getroffen.
+    # Das ist nur die eine Hälfte der Freigabe: ohne `mcz_allow_control` schreibt die Bridge
+    # trotzdem keinen Rahmen an den Ofen. Beide Seiten müssen zustimmen, und beide bleiben
+    # einzeln abschaltbar.
+    control_enabled: bool = True
+
+    # Datenblatt: MCZ STAR HYDROMATIC 12 M1, Rev. 09_2019.
+    nominal_heat_kw: float = 11.9  # Nominale Nutzleistung, Wasser und Raum zusammen
+    water_heat_kw: float = 10.0  # davon in den Pufferspeicher
+    combustion_efficiency: float = 0.911  # Wirkungsgrad bei Maximalbetrieb
+    # Teillast. Der Ofen ist dort **wirkungsgradbesser** (96,1 gegen 91,1 %), weil das Rauchgas
+    # kühler abzieht: 48 statt 123 °C. Zugleich geht weniger davon ins Wasser, 1,8 von 3,2 kW statt
+    # 10 von 11,9. Beides hebt sich im Wärmepreis fast genau auf, siehe stove_cost.
+    min_heat_kw: float = 3.2
+    min_water_heat_kw: float = 1.8
+    min_combustion_efficiency: float = 0.961
+
+    electric_w: float = 75.0  # Eigenverbrauch im Betrieb: Gebläse, Schnecke, Steuerung
+    electric_ignition_w: float = 390.0  # Spitze beim Zünden (Zündwiderstand)
+
+    # Gegenprobe für die gerechnete Kette, an beiden Lastpunkten.
+    pellet_kg_per_hour_max: float = 2.7
+    pellet_kg_per_hour_min: float = 0.7
+    power_levels: int = 5  # Stufe 1 bis 5; Stufe 1 ist Minimallast, Stufe 5 Volllast
+    # Gewogen, nicht aus dem Datenblatt: in den 31-l-Behälter passen 15 kg. Bei Volllast reicht das
+    # für 5,6 Stunden, bei kleinster Flamme für 22.
+    hopper_kg: float = 15.0
+    # Nachgefüllt wird einmal am Tag, nie öfter, und dann ist der Behälter voll. Das macht aus der
+    # Behältergröße ein hartes **Tagesbudget**: der Planer darf zwischen zwei Füllungen nicht mehr
+    # als eine Füllung verplanen. Diese Grenze ist schärfer als jede Mindestlaufzeit.
+    refills_per_day: float = 1.0
+    # Wann nachgefüllt wird, als volle Stunde in Ortszeit. Das ist der Anfang des Budgetfensters:
+    # der Planungstag des Ofens läuft von Füllung zu Füllung, nicht von Mitternacht zu Mitternacht.
+    # Wer abends plant, plant gegen den Rest im Behälter, nicht gegen 15 kg.
+    refill_hour: int = 7
+
+    pellet_price_eur_per_t: float = 450.0
+    # 4,9 kWh/kg ist der Normwert für ENplus A1 bei 8 % Feuchte. Die Norm verlangt mindestens 4,6,
+    # gute Ware liegt zwischen 4,9 und 5,3. Wer seinen Lieferschein hat, trägt den echten Wert ein.
+    pellet_kwh_per_kg: float = 4.9
+
+    # Wie viel der Raumwärme als Nutzen zählt. Der Ofen steht in der Küche und heizt sie mit 1,9 kW
+    # mit; in der Heizperiode ersetzt das Wärme, die sonst die Wärmepumpe liefern müsste. Der
+    # Hausherr rechnet die gesamte Nutzwärme an, also 1,0. Im Sommer oder bei ohnehin überheizter
+    # Küche wäre 0 ehrlicher. Bei diesem Gerät ist der Unterschied klein, weil fast alles ins Wasser
+    # geht: 10,3 gegen 12,2 ct/kWh.
+    room_heat_credit: float = 1.0
+
+    # Ein Ofen wird nicht für zwanzig Minuten angeworfen: Zünden kostet Strom und unverbrannte
+    # Pellets, und jede Zündung zählt auf die Wartung.
+    min_runtime_min: float = 120.0
+    min_offtime_min: float = 60.0
+    start_cost_eur: float = 0.10
+
+
 class BatteryConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -188,3 +260,4 @@ class HemsConfig(BaseModel):
     tariff: TariffConfig = TariffConfig()
     heat_demand: HeatDemandConfig = HeatDemandConfig()
     battery: BatteryConfig = BatteryConfig()
+    stove: StoveConfig = StoveConfig()

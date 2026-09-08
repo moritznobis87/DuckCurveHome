@@ -7,7 +7,13 @@ from fastapi import APIRouter, Depends
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
 from dch_api.errors import DchError
-from dch_api.schemas import ActuatorCommandIn, ActuatorCommandOut, HeatPumpModeIn
+from dch_api.schemas import (
+    ActuatorCommandIn,
+    ActuatorCommandOut,
+    HeatPumpModeIn,
+    StoveLiveOut,
+    StoveModeIn,
+)
 from hems_core.domain import Decision, OperatingMode, SystemMode
 
 router = APIRouter(prefix="/control", tags=["Steuerung"])
@@ -58,6 +64,19 @@ async def set_mode(
     return await runner.set_heat_pump_mode(
         cmd.system_mode, cmd.auto_profile, cmd.manual_state, cmd.duration_min
     )
+
+
+@router.post("/stove/mode", response_model=StoveLiveOut, summary="Pelletofen stellen")
+async def set_stove_mode(
+    cmd: StoveModeIn, runner: Annotated[Runtime, Depends(get_runner)]
+) -> StoveLiveOut:
+    """`auto` gibt den Ofen frei, `on` und `off` sind befristete Eingriffe.
+
+    Der eigene Endpunkt statt `/actuators/stove` ist Absicht: der Ofen ist keine Lichterkette. Er
+    hat eine Freigabe in der Konfiguration, sein Eingriff läuft nach einer Dauer wieder ab, und
+    „geschaltet" heißt bei ihm „der Befehl ist angekommen", nicht „er brennt bereits".
+    """
+    return await runner.set_stove_mode(cmd.mode, cmd.duration_min)
 
 
 @router.get(

@@ -22,6 +22,39 @@ hems:
     min_useful_temperature_c: 35
     target_temperature_c: 50
     max_temperature_c: 62
+  stove:
+    # Pelletofen (MCZ Star Hydromatic). Die Zahlen bestimmen, ab wann der Ofen günstiger heizt als
+    # die Wärmepumpe, siehe hems_core.accounting.stove_cost und docs/OFEN_OPTIMIERUNG.md.
+    present: true
+    control_enabled: true  # darf DCH ihn schalten? Freigegeben; Sicherungen in OFEN_OPTIMIERUNG.md
+    nominal_heat_kw: 11.9  # Gesamtwärmeleistung bei Volllast, laut Datenblatt
+    water_heat_kw: 10.0  # davon in den Pufferspeicher; 1,9 kW heizen die Küche
+    combustion_efficiency: 0.911  # Wirkungsgrad bei Maximalbetrieb
+    min_heat_kw: 3.2  # Teillast, dort ist der Wirkungsgrad besser: 96,1 %
+    min_water_heat_kw: 1.8
+    min_combustion_efficiency: 0.961
+    electric_w: 75.0  # Eigenverbrauch im Betrieb
+    electric_ignition_w: 390.0  # Spitze beim Zünden
+    # Datenblattwerte als Gegenprobe: die gerechnete Kette muss 2,7 kg/h treffen.
+    pellet_kg_per_hour_max: 2.7
+    pellet_kg_per_hour_min: 0.7
+    # Gewogen: in den 31-l-Behälter passen 15 kg. Zusammen mit einmal Nachfüllen am Tag ergibt
+    # das ein hartes Tagesbudget von 15 kg, also höchstens 56 kWh in den Puffer.
+    hopper_kg: 15.0
+    refills_per_day: 1.0
+    refill_hour: 7  # wann nachgefuellt wird; das Budgetfenster laeuft von hier bis hier
+    # Der Pelletpreis der letzten Lieferung. Er geht linear in den Wärmepreis ein: verdoppelt er
+    # sich, verdoppelt sich der Wärmepreis. Nach jedem Kauf hier nachziehen.
+    pellet_price_eur_per_t: 450.0
+    # 4,9 kWh/kg ist der Normwert bei 8 % Feuchte (ENplus A1 fordert mindestens 4,6). Steht auf dem
+    # Lieferschein ein anderer Wert, gehört der hierher.
+    pellet_kwh_per_kg: 4.9
+    # Zählt die Wärme, die der Ofen in die Küche abgibt, als Nutzen? In der Heizperiode ja, denn sie
+    # ersetzt Wärme, die sonst die Wärmepumpe liefern müsste. Der Wert entscheidet mit darüber, ob
+    # der Ofen billiger rechnet: 1,0 ergibt 10,3 ct/kWh, 0,0 ergibt 12,2 ct/kWh.
+    room_heat_credit: 1.0
+    min_runtime_min: 120
+    min_offtime_min: 60
   tariff:
     # Einspeisevergütung netto laut Bescheid des Netzbetreibers. Die Tibber-Preise der Zeitreihe sind
     # Bruttopreise; der Eigenverbrauch wird für die Umsatzsteuer daraus netto bewertet.

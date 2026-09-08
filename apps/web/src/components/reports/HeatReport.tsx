@@ -29,6 +29,34 @@ function verdictOf(v: string | undefined) {
   return VERDICT[(v ?? "unknown") as keyof typeof VERDICT] ?? VERDICT.unknown;
 }
 
+/** Minuten als Stunden und Minuten. „3:05 h" liest sich schneller als „185 min". */
+function hhmm(min: number | null | undefined) {
+  if (min == null) return "-";
+  if (min < 60) return `${min} min`;
+  return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")} h`;
+}
+
+/** Ein Balken, der die Pufferladung nach Quelle aufteilt. Ohne Ofendaten bleibt der Rest grau,
+ *  statt ihn dem Ofen zuzuschlagen: das war früher eine Schlussfolgerung, keine Messung. */
+function SourceBar({ hp, stove, rest, known }: { hp: number; stove: number; rest: number; known: boolean }) {
+  const total = hp + stove + rest;
+  if (total <= 0.01) return null;
+  const seg = [
+    { w: hp / total, color: "var(--heat-pump)", title: "Wärmepumpe" },
+    { w: stove / total, color: "var(--stove)", title: "Pelletofen" },
+    { w: rest / total, color: "rgba(255,255,255,.16)", title: known ? "ohne erkennbare Quelle" : "Quelle unbekannt" },
+  ].filter((x) => x.w > 0.001);
+  // 2 px Fläche zwischen den Segmenten: nebeneinanderliegende Füllungen ohne Trennung verschmelzen
+  // optisch, und Ofen und Wärmepumpe liegen farblich ohnehin nah beieinander.
+  return (
+    <div className="flex h-2 gap-[2px] overflow-hidden rounded-full" role="img" aria-label="Anteile der Wärmequellen an der Pufferladung">
+      {seg.map((x) => (
+        <div key={x.title} title={x.title} style={{ width: `${x.w * 100}%`, background: x.color }} />
+      ))}
+    </div>
+  );
+}
+
 function Fact({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2 border-t border-line-1 py-1">
@@ -54,9 +82,11 @@ export function HeatReport() {
   const cyc = data?.cycling;
   const pq = data?.price_quality;
   const bb = data?.buffer_balance;
+  const st = data?.stove;
+  const levels = Object.entries(st?.minutes_by_level ?? {}).sort(([a], [b]) => Number(a) - Number(b));
 
   return (
-    <ReportShell title="Wärme" kicker="Wärmepumpe · Pufferspeicher · Wärmelastprognose" period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
+    <ReportShell title="Wärme" kicker="Wärmepumpe · Pelletofen · Pufferspeicher · Wärmelastprognose" period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
       {error ? <ErrorBanner message={error} /> : null}
       <KpiGrid cols={6}>
         <Stat label="Strom Wärmepumpe" value={de1(t?.heat_pump_kwh)} unit="kWh" hint={t ? `${pct(pvShare)} Sonnenstrom` : undefined} />
@@ -132,20 +162,53 @@ export function HeatReport() {
         </Card>
 
         <Card style={{ padding: "14px 18px", gap: 10 }}>
-          <CardHead title="Puffer-Energiebilanz" right={period === "day" ? "Ankertag" : "nur in der Tagesansicht"} />
+          <CardHead title="Wer hat den Puffer geladen?" right={period === "day" ? "Ankertag" : "nur in der Tagesansicht"} />
           <div className="flex items-baseline gap-3">
-            <span className="mono text-[26px] leading-none" style={{ color: (bb?.gain_without_hp_kwh ?? 0) > 0.2 ? "var(--heat-pump)" : "var(--text-1)" }}>
-              {bb?.samples ? de1(bb.gain_without_hp_kwh, 1) : "-"}
-            </span>
-            <span className="text-[13px] text-text-3">kWh Fremdwärme</span>
+            <span className="mono text-[26px] leading-none text-text-1">{bb?.samples ? de1(bb.gain_kwh, 1) : "-"}</span>
+            <span className="text-[13px] text-text-3">kWh zugeführt</span>
           </div>
+          {bb?.samples ? <SourceBar hp={bb.gain_with_hp_kwh} stove={bb.gain_with_stove_kwh} rest={bb.stove_known ? bb.gain_unexplained_kwh : bb.gain_without_hp_kwh} known={bb.stove_known} /> : null}
           <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
-            <Fact k="Zufuhr gesamt" v={bb?.samples ? `${de1(bb.gain_kwh, 1)} kWh` : "-"} />
-            <Fact k="davon mit WP" v={bb?.samples ? `${de1(bb.gain_with_hp_kwh, 1)} kWh` : "-"} />
+            <Fact k="Wärmepumpe" v={bb?.samples ? `${de1(bb.gain_with_hp_kwh, 1)} kWh` : "-"} />
+            <Fact k={bb?.stove_known ? "Pelletofen" : "ohne WP (Quelle offen)"} v={bb?.samples ? `${de1(bb.stove_known ? bb.gain_with_stove_kwh : bb.gain_without_hp_kwh, 1)} kWh` : "-"} />
             <Fact k="Entnahme + Verluste" v={bb?.samples ? `${de1(bb.drop_kwh, 1)} kWh` : "-"} />
             <Fact k="Inhalt jetzt" v={bb?.energy_end_kwh != null ? `${de1(bb.energy_end_kwh, 1)} kWh` : "-"} />
           </dl>
           <Note>{bb?.note_de}</Note>
+        </Card>
+      </div>
+
+      <div className="report-row" style={{ "--cols": "5fr 7fr" } as React.CSSProperties}>
+        <Card style={{ padding: "14px 18px", gap: 10 }}>
+          <CardHead title="Pelletofen" right={st?.available ? `${st.runs} Brennphase${st.runs === 1 ? "" : "n"}` : undefined} />
+          <div className="flex items-baseline gap-3">
+            <span className="mono text-[26px] leading-none" style={{ color: st?.running_minutes ? "var(--stove)" : "var(--text-1)" }}>
+              {st?.available ? hhmm(st.running_minutes) : "-"}
+            </span>
+            <span className="text-[13px] text-text-3">Laufzeit</span>
+          </div>
+          <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
+            <Fact k="davon mit Feuer" v={st?.available ? hhmm(st.burning_minutes) : "-"} />
+            <Fact k="längste Phase" v={st?.longest_run_min ? `${st.longest_run_min} min` : "-"} />
+            <Fact k="Brennstoff" v={st?.auger_revolutions ? `${de1(st.auger_revolutions, 0)} U` : "-"} />
+            <Fact k="Spreizung" v={st?.spread_k != null ? `${de1(st.spread_k, 1)} K` : "-"} />
+            <Fact k="Rauchgas max." v={st?.fume_temp_max_c != null ? `${de1(st.fume_temp_max_c, 0)} °C` : "-"} />
+            <Fact k="Warmwasser" v={st?.available ? hhmm(st.dhw_minutes) : "-"} />
+            <Fact k="Betriebsstunden" v={st?.operating_hours != null ? `${de1(st.operating_hours, 0)} h` : "-"} />
+            <Fact k="Zündungen" v={st?.ignitions != null ? String(st.ignitions) : "-"} />
+          </dl>
+          {levels.length ? (
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12px] text-text-3">
+              <span>Leistungsstufen:</span>
+              {levels.map(([lvl, min]) => (
+                <span key={lvl} className="mono text-text-1">
+                  {lvl}: {hhmm(min)}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          <Note>{st?.note_de}</Note>
+          {st?.auger_revolutions ? <Note>{st.fuel_note_de}</Note> : null}
         </Card>
       </div>
       <CoverageNote meta={data?.summary.meta} extra={data ? `${data.model_note_de} Wärmeverlust ${de1(data.heat_loss_kw_per_k, 2)} kW/K.` : undefined} />

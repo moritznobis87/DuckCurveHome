@@ -16,6 +16,7 @@ from hems_core.domain import (
     EnergySnapshot,
     HeatPumpState,
     OperatingMode,
+    Quality,
     SystemMode,
 )
 from hems_core.forecasting import CorrectorState, ForecastScore
@@ -125,12 +126,51 @@ class SystemStatusOut(BaseModel):
     sources: list[SourceStatusOut] = Field(default_factory=list)
 
 
+class StoveLiveOut(BaseModel):
+    """Der Pelletofen im Augenblick: was er tut und ob DCH ihn schalten darf.
+
+    Zwei Dinge sind hier bewusst getrennt. `running` ist eine **Beobachtung** aus dem Maestro-Modul;
+    `mode` ist eine **Absicht** des Bedienenden. Beide können auseinanderlaufen: ein Ofen braucht
+    Minuten zum Zünden und noch mehr zum Ausbrennen, und in dieser Zeit sagt die Oberfläche „an"
+    (gewollt) und „läuft nicht" (gemessen) zugleich. Genau das soll sie auch.
+
+    `control_enabled` ist die Freigabe aus der Konfiguration. Ist sie aus, zeigt die Leiste den Ofen
+    weiterhin an, aber ohne Schaltflächen: eine Feuerstätte fernzustarten gehört nicht zu den
+    Dingen, die standardmäßig eingeschaltet sind.
+    """
+
+    present: bool = False
+    control_enabled: bool = False
+    mode: Literal["auto", "on", "off"] = "auto"
+    ends_at: datetime | None = None  # Ende eines manuellen Eingriffs
+    running: bool | None = None
+    power_level: float | None = None
+    fume_temp_c: float | None = None
+    boiler_temp_c: float | None = None
+    observed_at: datetime | None = None
+    quality: Quality = Quality.UNAVAILABLE
+    # Der Fahrplan des Optimierers. `planned_on` ist das, was DCH im Modus `auto` von sich aus tut;
+    # `None` heißt: es liegt kein Fahrplan vor, und dann schaltet DCH auch nichts.
+    planned_on: bool | None = None
+    plan_until: datetime | None = None
+    plan_note_de: str = ""
+    note_de: str = ""
+
+
+class StoveModeIn(BaseModel):
+    """`auto` heißt: DCH schaltet nicht und überlässt dem Ofen seine eigene Regelung."""
+
+    mode: Literal["auto", "on", "off"]
+    duration_min: int = Field(default=180, ge=15, le=24 * 60)
+
+
 class LiveStateOut(BaseModel):
     snapshot: EnergySnapshot
     buffer: BufferState
     heat_pump: HeatPumpState
     decision: Decision | None
     operating_mode: OperatingMode
+    stove: StoveLiveOut = StoveLiveOut()
     price_rank: float | None
     today_kwh: dict[str, float]
     system: SystemStatusOut
@@ -361,9 +401,10 @@ class PriceQualityOut(BaseModel):
 class BufferBalanceOut(BaseModel):
     """Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.
 
-    Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die
-    Wärmepumpe steht, kommt die Wärme von woanders - beim Kombipuffer also vom Pelletofen. Das ist
-    die beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist.
+    Die Änderung des Energieinhalts ist die Nettoleistung des Speichers. Wer sie verursacht hat, war
+    bis zur Anbindung des Ofens eine Schlussfolgerung: steigt der Inhalt, während die Wärmepumpe
+    steht, muss die Wärme von woanders kommen. Mit den Maestro-Daten ist es eine Feststellung, und
+    `gain_unexplained_kwh` bleibt für das übrig, was wirklich niemand erklärt.
     """
 
     energy_start_kwh: float | None = None
@@ -371,9 +412,32 @@ class BufferBalanceOut(BaseModel):
     gain_kwh: float = 0.0  # Summe aller Zunahmen
     drop_kwh: float = 0.0  # Summe aller Abnahmen (Entnahme und Verluste)
     gain_with_hp_kwh: float = 0.0
-    gain_without_hp_kwh: float = 0.0  # Fremdwärme-Verdacht
+    gain_without_hp_kwh: float = 0.0  # ohne laufende Wärmepumpe, gleich ob Ofen bekannt oder nicht
+    gain_with_stove_kwh: float = 0.0  # gemessen: der Ofen lief
+    gain_unexplained_kwh: float = 0.0  # weder Wärmepumpe noch Ofen: Rest, Messfehler, Schichtung
+    stove_known: bool = False  # lagen für den Zeitraum überhaupt Ofendaten vor
     samples: int = 0
     note_de: str = ""
+
+
+class StoveOut(BaseModel):
+    """Der Pelletofen im Zeitraum. `available=False` heißt: keine Daten, nicht „lief nicht"."""
+
+    available: bool = False
+    running_minutes: int = 0
+    burning_minutes: int = 0
+    runs: int = 0
+    longest_run_min: int | None = None
+    auger_revolutions: float = 0.0  # Brennstoffeintrag, relativ; siehe fuel_note_de
+    fume_temp_max_c: float | None = None
+    spread_k: float | None = None
+    pumping_minutes: int = 0
+    dhw_minutes: int = 0
+    minutes_by_level: dict[str, int] = {}
+    operating_hours: float | None = None  # Zählerstand des Geräts, monoton
+    ignitions: int | None = None
+    note_de: str = ""
+    fuel_note_de: str = ""
 
 
 class HeatReportOut(BaseModel):
@@ -390,6 +454,7 @@ class HeatReportOut(BaseModel):
     cycling: CyclingStats
     price_quality: PriceQualityOut
     buffer_balance: BufferBalanceOut
+    stove: StoveOut
     model_note_de: str
 
 

@@ -341,6 +341,31 @@ Add-on neu starten. Im Protokoll erscheint `stove connected`, und alle fünf Min
 `stove status` mit der Zahl gelesener Rahmen. Bleibt es bei `stove connection failed`, ist der Pi
 nicht am Hotspot.
 
+### 3a. Den Ofen schalten lassen
+
+```yaml
+mcz_allow_control: true   # Vorgabe seit 0.7.1
+```
+
+Damit darf Duck Curve Home den Ofen ein- und ausschalten, und nur das: geschaltet wird ausschließlich
+der Ein/Aus-Parameter der Firmware. Leistungsstufen, Solltemperaturen und Chronostat bleiben beim
+Ofen. Steht die Option auf `false`, ist die Quelle nicht imstande zu schreiben, nicht bloß unwillig;
+ein Schaltbefehl scheitert dann mit einem klaren Fehler, statt still zu verschwinden.
+
+**Wer das einschaltet, sollte wissen, worauf er sich einlässt.** Eine Feuerstätte fernzustarten ist
+eine andere Klasse von Eingriff als ein Relais zu schalten: der Ofen muss gewartet, der Behälter
+gefüllt und der Rauchabzug frei sein, und niemand steht daneben, wenn DCH ihn zündet. Wer das für
+sein Haus nicht bejahen kann, setzt die Option auf `false`; alles andere läuft dann unverändert
+weiter, nur ohne Schaltbefehle.
+
+Jeder Schaltvorgang steht im Protokoll (`stove switch requested`, danach `stove switch confirmed`
+oder `sent, not yet confirmed`). Bestätigt ist ein Befehl erst, wenn ein Rahmen des Ofens ihn zeigt,
+und das dauert: Zünden Minuten, Ausbrennen deutlich länger.
+
+**Wenn Sie 0.7.0 schon installiert haben,** übernimmt Home Assistant die neue Vorgabe nicht
+nachträglich: die Option steht dann bei Ihnen weiterhin auf `false` und muss einmal von Hand
+umgestellt werden. Bei einer Installation ab 0.7.1 ist sie von vornherein an.
+
 ### 4. Vorher von Hand prüfen
 
 Von jedem Rechner, der am Hotspot des Ofens hängt, ohne Installation:

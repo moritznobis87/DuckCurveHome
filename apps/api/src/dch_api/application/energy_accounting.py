@@ -25,6 +25,7 @@ from dch_api.schemas import (
     PvTaxBucketOut,
     PvTaxMetaOut,
     PvTaxReportOut,
+    StoveOut,
     YearMapOut,
 )
 from hems_core.accounting import (
@@ -38,7 +39,15 @@ from hems_core.accounting import (
     summarize,
 )
 from hems_core.domain import BufferConfig, HemsConfig
-from hems_core.thermal import CyclingStats, compressor_runs, cycling_stats, usable_energy_kwh
+from hems_core.thermal import (
+    CyclingStats,
+    StoveSample,
+    compressor_runs,
+    cycling_stats,
+    fuel_note,
+    stove_stats,
+    usable_energy_kwh,
+)
 
 log = structlog.get_logger("energy")
 
@@ -200,6 +209,15 @@ _BUFFER_KEYS = (
 )
 
 
+def _num(v: object) -> bool:
+    """Liegt für diese Minute überhaupt ein Messwert vor? `None` heißt Lücke, nicht Null."""
+    return isinstance(v, int | float) and not isinstance(v, bool)
+
+
+def _val(v: object) -> float | None:
+    return float(v) if _num(v) else None  # type: ignore[arg-type]
+
+
 def _buffer_balance(series: list[MinuteRow], cfg: BufferConfig) -> BufferBalanceOut:
     """Energieinhalt des Puffers über den Tag und wer ihn gefüllt hat.
 
@@ -207,35 +225,38 @@ def _buffer_balance(series: list[MinuteRow], cfg: BufferConfig) -> BufferBalance
     Die Rechnung ist eine Untergrenze: läuft gleichzeitig die Heizung, wird ein Teil der zugeführten
     Wärme sofort wieder entnommen und taucht hier nie auf.
     """
-    points: list[tuple[float, bool]] = []
+    points: list[tuple[float, bool, bool | None]] = []
     for row in series:
         temps = [row.get(k) for k in _BUFFER_KEYS]
         if any(not isinstance(t, int | float) for t in temps):
             continue
         hp = row.get("heat_pump_power_kw")
         running = isinstance(hp, int | float) and hp > 0.3
-        points.append((usable_energy_kwh([float(t) for t in temps], cfg), running))  # type: ignore[arg-type]
+        sr = row.get("stove_running")
+        stove = bool(sr) if isinstance(sr, int | float) else None
+        points.append((usable_energy_kwh([float(t) for t in temps], cfg), running, stove))  # type: ignore[arg-type]
     if len(points) < 2:
         return BufferBalanceOut(
             note_de="Zu wenige vollständige Puffermesswerte am Ankertag für eine Bilanz."
         )
-    gain = drop = with_hp = without_hp = 0.0
-    for (e0, _), (e1, running) in pairwise(points):
+    gain = drop = with_hp = without_hp = with_stove = unexplained = 0.0
+    stove_known = False
+    for (e0, _, _), (e1, running, stove) in pairwise(points):
         d = e1 - e0
-        if d >= 0:
-            gain += d
-            if running:
-                with_hp += d
-            else:
-                without_hp += d
-        else:
+        if d < 0:
             drop -= d
-    note = (
-        f"{without_hp:.1f} kWh kamen in den Puffer, während die Wärmepumpe stand - beim"
-        " Kombipuffer der Pelletofen. Untergrenze: gleichzeitige Entnahme ist darin nicht enthalten."
-        if without_hp > 0.2
-        else "Keine nennenswerte Wärmezufuhr ohne laufende Wärmepumpe."
-    )
+            continue
+        gain += d
+        if stove is not None:
+            stove_known = True
+        if running:
+            with_hp += d
+            continue
+        without_hp += d
+        if stove:
+            with_stove += d
+        elif stove is False:
+            unexplained += d
     return BufferBalanceOut(
         energy_start_kwh=round(points[0][0], 2),
         energy_end_kwh=round(points[-1][0], 2),
@@ -243,8 +264,36 @@ def _buffer_balance(series: list[MinuteRow], cfg: BufferConfig) -> BufferBalance
         drop_kwh=round(drop, 2),
         gain_with_hp_kwh=round(with_hp, 2),
         gain_without_hp_kwh=round(without_hp, 2),
+        gain_with_stove_kwh=round(with_stove, 2),
+        gain_unexplained_kwh=round(unexplained, 2),
+        stove_known=stove_known,
         samples=len(points),
-        note_de=note,
+        note_de=_balance_note(without_hp, with_stove, unexplained, stove_known),
+    )
+
+
+def _balance_note(without_hp: float, stove: float, unexplained: float, known: bool) -> str:
+    """Den Befund in Worte fassen, ohne mehr zu behaupten, als die Daten hergeben."""
+    if without_hp <= 0.2:
+        return "Keine nennenswerte Wärmezufuhr ohne laufende Wärmepumpe."
+    if not known:
+        return (
+            f"{without_hp:.1f} kWh kamen in den Puffer, während die Wärmepumpe stand. Ohne Ofendaten "
+            "bleibt die Quelle eine Vermutung. Untergrenze: gleichzeitige Entnahme fehlt darin."
+        )
+    if stove > 0.2 and unexplained <= 0.2:
+        return (
+            f"{stove:.1f} kWh kamen vom Pelletofen, gemessen und nicht geschlossen. "
+            "Untergrenze: gleichzeitige Entnahme ist darin nicht enthalten."
+        )
+    if stove > 0.2:
+        return (
+            f"{stove:.1f} kWh vom Pelletofen, {unexplained:.1f} kWh ohne erkennbare Quelle. "
+            "Letzteres deutet auf Umschichtung im Speicher oder auf einen Fühler, der nachläuft."
+        )
+    return (
+        f"{unexplained:.1f} kWh kamen in den Puffer, ohne dass Wärmepumpe oder Ofen liefen. Das ist "
+        "kein Fremdwärme-Befund, sondern ein Hinweis auf Umschichtung oder Messfehler."
     )
 
 
@@ -601,12 +650,19 @@ class EnergyAccounting:
                     "buffer_temp_bottom_c",
                     "heat_pump_power_kw",
                     "outdoor_temp_c",
+                    # Der Ofen lädt denselben Puffer. Ohne ihn in derselben Reihe wäre die Frage
+                    # „wer hat geladen?" wieder nur zu erschließen statt abzulesen.
+                    "stove_running",
+                    "stove_boiler_temp_c",
+                    "stove_return_temp_c",
+                    "stove_pump_pct",
                 )
             }
             for i, r in enumerate(rows)
             if i % 5 == 0
         ]
         cycling = await self._cycling(start, min(end, now))
+        stove = await self._stove(start, min(end, now))
         return HeatReportOut(
             summary=summary,
             thermal_kwh_est=round(thermal, 2),
@@ -614,6 +670,7 @@ class EnergyAccounting:
             cycling=cycling,
             price_quality=_price_quality(hours, summary.totals),
             buffer_balance=_buffer_balance(buffer_series, self.hems.buffer),
+            stove=stove,
             forecast=fc,
             forecast_electric_kwh_24h=round(sum(p.electric_kw for p in first24), 2),
             forecast_thermal_kwh_24h=round(sum(p.heating_kw + p.dhw_kw for p in first24), 2),
@@ -624,6 +681,41 @@ class EnergyAccounting:
                 f"Bedarfsprognose aus Heizgradstunden (H = {cfg.heat_loss_kw_per_k:g} kW/K, Heizgrenze "
                 f"{cfg.heating_limit_c:g} °C) plus Warmwasserprofil ({cfg.dhw_kwh_per_day:g} kWh/Tag)."
             ),
+        )
+
+    async def _stove(self, start: datetime, end: datetime) -> StoveOut:
+        """Kennzahlen des Pelletofens aus der Minutenreihe des Zeitraums.
+
+        Dieselbe Zeitgrenze wie bei der Taktung: über einen Monat hinaus wird nicht gerechnet, sonst
+        müssten hunderttausende Zeilen durch den Dienst. Für „wie oft und wie lange brennt er?" sagt
+        ein Monat dasselbe wie ein Jahr.
+        """
+        if end - start > timedelta(days=31):
+            return StoveOut(
+                note_de="Für Zeiträume über einen Monat wird der Ofen nicht ausgewertet."
+            )
+        rows = await self.minute_rows(start, end)
+        samples = [
+            StoveSample(
+                running=bool(r["stove_running"]) if _num(r.get("stove_running")) else None,
+                power_level=_val(r.get("stove_power_level")),
+                auger_rpm=_val(r.get("stove_auger_rpm")),
+                fume_temp_c=_val(r.get("stove_fume_temp_c")),
+                boiler_temp_c=_val(r.get("stove_boiler_temp_c")),
+                return_temp_c=_val(r.get("stove_return_temp_c")),
+                pump_pct=_val(r.get("stove_pump_pct")),
+                dhw=bool(r["stove_dhw_mode"]) if _num(r.get("stove_dhw_mode")) else None,
+            )
+            for r in rows
+        ]
+        st = stove_stats(samples)
+        last = next((r for r in reversed(rows) if _num(r.get("stove_operating_hours"))), None)
+        ignitions = _val(last.get("stove_ignitions")) if last else None
+        return StoveOut(
+            **st.model_dump(),
+            operating_hours=_val(last.get("stove_operating_hours")) if last else None,
+            ignitions=int(ignitions) if ignitions is not None else None,
+            fuel_note_de=fuel_note(st.auger_revolutions),
         )
 
     async def _cycling(self, start: datetime, end: datetime) -> CyclingStats:

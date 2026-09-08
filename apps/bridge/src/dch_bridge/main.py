@@ -28,7 +28,7 @@ from dch_bridge.sources.shelly_mqtt import (
 from dch_bridge.uplink.client import UplinkClient
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.6.1"
+VERSION = "0.7.0"
 log = structlog.get_logger("bridge")
 
 
@@ -50,6 +50,7 @@ class Bridge:
                 url=stove_url(settings.mcz_host, settings.mcz_port),
                 on_readings=self._ingest_readings,
                 poll_interval_s=settings.mcz_poll_interval_s,
+                allow_control=settings.mcz_allow_control,
             )
         self.uplink = UplinkClient(
             url=settings.api_ws_url,
@@ -57,7 +58,9 @@ class Bridge:
             bridge_id=settings.bridge_id,
             bridge_version=VERSION,
             entity_map_hash=entity_map.digest(),
-            keys=entity_map.keys() + (self.stove.keys if self.stove else []),
+            keys=entity_map.keys()
+            + (self.stove.keys if self.stove else [])
+            + (["actuator:stove"] if self.stove and settings.mcz_allow_control else []),
             outbox=self.outbox,
             on_command=self.execute_command,
         )
@@ -207,7 +210,10 @@ class Bridge:
                 continue
             items = list(self._pending.values())
             self._pending.clear()
-            self._last_sent = {r.key: (r.value, r.source) for r in items}
+            # Fortschreiben, nicht ersetzen: ein Takt trägt nur die Schlüssel, die gerade neu sind.
+            # Ersetzen hieße, dass die Statuszeile alle fünf Minuten eine zufällige Sekunde zeigt
+            # statt den letzten bekannten Stand jeder Größe.
+            self._last_sent.update({r.key: (r.value, r.source) for r in items})
             for r in items:
                 kind = (r.source or "?").split(":", 1)[0]
                 self._sent_by_source[kind] = self._sent_by_source.get(kind, 0) + 1
@@ -228,6 +234,30 @@ class Bridge:
         # damit die Wächter-Automation denselben Schalter sieht, den DCH stellt.
         key = f"actuator:{cmd.actuator_key}"
         safety = a.safety_class if a is not None else "none"
+        # Der Ofen hängt an keinem Broker und an keiner HA-Entität: er wird direkt über seinen
+        # eigenen WebSocket geschaltet, und nur wenn die Freigabe gesetzt ist.
+        if self.stove is not None and self.stove.can_switch(key):
+            try:
+                observed = await self.stove.switch(key, cmd.state)
+            except Exception as exc:
+                return CommandResultFrame(
+                    command_id=cmd.command_id,
+                    ok=False,
+                    observed_state=None,
+                    error=str(exc)[:200],
+                    at=datetime.now(UTC),
+                )
+            # Beim Ofen zählt als gelungen, dass der Befehl angekommen ist. Ein Pelletofen
+            # bestätigt nicht in Sekunden: Zünden dauert Minuten, und beim Abschalten meldet die
+            # Firmware die ganze Ausbrandphase über weiter „läuft". `observed_state` sagt, was er
+            # gerade tut; wer das mit „nicht geschaltet" verwechselt, zeigt beim Anheizen Fehler an.
+            return CommandResultFrame(
+                command_id=cmd.command_id,
+                ok=True,
+                observed_state=observed,
+                error=None,
+                at=datetime.now(UTC),
+            )
         if self.mqtt is not None and safety != "heat_pump" and self.mqtt.can_switch(key):
             try:
                 observed = await self.mqtt.switch(key, cmd.state, cmd.ttl_s)

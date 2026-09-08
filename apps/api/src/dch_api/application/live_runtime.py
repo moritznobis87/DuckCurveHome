@@ -1,7 +1,14 @@
 """Live-Runtime: Telemetrie der Bridge → LiveState + PostgreSQL; Regler-Tick; Planung; SSE.
 
-Phase 2 ist „read-only“: Entscheidungen werden berechnet, gespeichert und angezeigt, aber erst mit
-DCH_ACTUATION_ENABLED=true an die Bridge geschickt (Phase 3/4).
+**Was von hier aus geschaltet wird, und was nicht.** Die Wärmepumpe bleibt zurückhaltend: ihre
+Entscheidungen werden gerechnet, gespeichert und angezeigt, aber nur mit
+`DCH_HEAT_PUMP_ACTUATION_ENABLED=true` als K1-Kontakt gestellt. Der Pelletofen dagegen wird geführt,
+sobald beide Freigaben stehen (`stove.control_enabled` und `mcz_allow_control` in der Bridge): sein
+Fahrplan kommt alle 15 Minuten aus dem MILP, und der Regeltakt setzt ihn um.
+
+Der Unterschied ist kein Zufall. Der K1-Kontakt greift in eine Maschine ein, die ihre eigene
+Regelung hat und deren Sicherheitsketten wir nicht kennen; der Ofen bekommt genau einen Befehl, den
+er selbst kennt, und regelt danach allein weiter.
 """
 
 from __future__ import annotations
@@ -27,6 +34,8 @@ from dch_api.application.myenergi_source import (
     price_readings_for_gaps,
 )
 from dch_api.application.plan_service import build_plan
+from dch_api.application.stove_control import STALE_AFTER_S, StoveController, StoveMode
+from dch_api.application.stove_planner import StovePlan, decide_switch, plan_stove
 from dch_api.application.tibber_invoice import MeasuredPeriod
 from dch_api.errors import DchError
 from dch_api.infrastructure.bridge_hub import BridgeHub
@@ -47,12 +56,14 @@ from dch_api.schemas import (
     PlanOut,
     PvTaxReportOut,
     SourceStatusOut,
+    StoveLiveOut,
     SystemEventOut,
     SystemStatusOut,
     YearMapOut,
 )
 from dch_api.settings import Settings
 from hems_core.accounting import summarize
+from hems_core.accounting.stove_cost import budget_window, estimated_kg_burned, remaining_kg
 from hems_core.control import ControlInputs, HeatPumpController, HeatPumpTracker
 from hems_core.domain import (
     AutoProfile,
@@ -97,6 +108,9 @@ class LiveRuntime:
         self.tracker = HeatPumpTracker(self.hems.heat_pump)
         self.controller = HeatPumpController(self.hems)
         self.mode = OperatingMode(system_mode=SystemMode.AUTO, auto_profile=AutoProfile.SMART)
+        self.stove = StoveController(self.hems.stove)
+        self.stove_plan = StovePlan()
+        self._stove_switched_at: datetime | None = None
         self.decision: Decision | None = None
         self.decisions: deque[Decision] = deque(maxlen=100)
         self.plan: PlanOut | None = None
@@ -294,6 +308,9 @@ class LiveRuntime:
             self.broker.publish("decision", decision.model_dump(mode="json"))
             if self.settings.heat_pump_actuation_enabled:
                 await self._apply_contacts(decision)
+        # Der Ofen hängt nicht am Regler der Wärmepumpe: seine Entscheidung steht im Fahrplan, und
+        # dieser Aufruf setzt sie um. Er läuft in jedem Takt, schaltet aber nur bei einem Unterschied.
+        await self._apply_stove_plan(now)
         return decision
 
     async def _apply_contacts(self, decision: Decision) -> None:
@@ -328,6 +345,125 @@ class LiveRuntime:
         )
         self._plan_at = now
         self.broker.publish("plan", self.plan.model_dump(mode="json"))
+        await self.refresh_stove_plan()
+
+    # ------------------------------------------------------------------ Der Ofen
+    async def refresh_stove_plan(self) -> None:
+        """Den Ofenfahrplan neu rechnen, im selben Takt wie den Plan der Wärmepumpe.
+
+        Der Solver braucht einige hundert Millisekunden; alle 15 Minuten ist das billig, in jedem
+        Regeltakt wäre es Verschwendung. Zwischen zwei Läufen liest der Regeltakt einfach den
+        bestehenden Fahrplan ab.
+
+        Gerechnet wird in einem Thread. HiGHS ist synchron und darf im schlechtesten Fall bis zu
+        seiner Zeitgrenze laufen; im Ereignisschleifen-Thread hieße das, dass so lange kein SSE-Frame
+        und keine Antwort herausgeht. Eine Sekunde Rechnen ist in Ordnung, eine Sekunde Stillstand
+        des ganzen Dienstes nicht.
+        """
+        if not self.hems.stove.present:
+            return
+        _, buffer, hp = self._states()
+        remaining = await self._stove_remaining_kg()
+        pv_expected = self.evaluator.pv_expected_corrected(self.forecasts.pv_expected_kw)
+        temps = self._temps_48h()
+        self.stove_plan = await asyncio.to_thread(
+            plan_stove,
+            now=self.now,
+            tz=BERLIN,
+            cfg=self.hems,
+            prices=list(self.forecasts.prices),
+            pv_expected=pv_expected,
+            temps=temps,
+            buffer=buffer,
+            hp_running=hp.running,
+            stove_running=self._stove_running() is True,
+            remaining_kg=remaining,
+        )
+        log.info(
+            "stove plan",
+            status=self.stove_plan.status,
+            hours=self.stove_plan.runtime_h(),
+            kg=self.stove_plan.pellet_kg,
+            budget_kg=self.stove_plan.fuel_budget_kg,
+            ms=self.stove_plan.solve_ms,
+            note=self.stove_plan.note_de,
+        )
+
+    def _stove_running(self) -> bool | None:
+        """Der gemessene Betriebszustand, oder None, wenn nichts Frisches vorliegt."""
+        m = self.live.measurement("stove_running", self.now, STALE_AFTER_S)
+        if m.value is None or m.quality not in (Quality.OK, Quality.STALE):
+            return None
+        return bool(m.value)
+
+    async def _stove_remaining_kg(self) -> float | None:
+        """Was seit dem letzten Nachfüllen noch im Behälter liegt, aus den Leistungsstufen geschätzt.
+
+        Ohne jede Ofenmeldung im laufenden Fenster kommt `None` zurück, und der Planer rechnet dann
+        mit einer vollen Füllung. Das ist die optimistische Annahme; sie ist vertretbar, weil ohne
+        Ofendaten ohnehin kein Schaltbefehl ankäme.
+        """
+        start_local, _ = budget_window(self.hems.stove, self.now.astimezone(BERLIN))
+        rows = await self.repos.minute_series(
+            start_local.astimezone(UTC), self.now, ["stove_power_level", "stove_running"]
+        )
+        by_level: dict[str, int] = {}
+        seen = False
+        for row in rows:
+            level = row.get("stove_power_level")
+            running = row.get("stove_running")
+            if running is None:
+                continue
+            seen = True
+            if running and isinstance(level, int | float) and level >= 1:
+                key = str(int(level))
+                by_level[key] = by_level.get(key, 0) + 1
+        if not seen:
+            return None
+        return remaining_kg(self.hems.stove, estimated_kg_burned(self.hems.stove, by_level))
+
+    def _temps_48h(self) -> list[tuple[datetime, float]]:
+        w = self.forecasts.weather
+        if w is None:
+            return []
+        return [
+            (p.ts, p.temp_c)
+            for p in w.points
+            if p.temp_c is not None and p.ts >= self.now - timedelta(hours=1)
+        ][:48]
+
+    async def _apply_stove_plan(self, now: datetime) -> None:
+        """Den Fahrplan umsetzen, solange niemand von Hand eingegriffen hat.
+
+        Die Entscheidung selbst trifft `decide_switch`; hier steht nur noch, was danach passiert.
+        Fehlt eine der Freigaben, plant DCH weiter und schaltet nicht: der Fahrplan bleibt im
+        Dashboard sichtbar, und die Sperre steht daneben.
+        """
+        d = decide_switch(
+            plan=self.stove_plan,
+            now=now,
+            mode=self.stove.effective_mode(now),
+            controllable=self.stove.controllable,
+            actuation_enabled=self.settings.actuation_enabled,
+            bridge_online=self.hub.online,
+            observed=self._stove_running(),
+            last_switch_at=self._stove_switched_at,
+            min_runtime_min=self.hems.stove.min_runtime_min,
+            min_offtime_min=self.hems.stove.min_offtime_min,
+        )
+        if not d.switch:
+            return
+        want = d.state
+        self._stove_switched_at = now
+        result = await self.hub.send_command("stove", want, None, None)
+        log.info("stove auto switch", want=want, ok=result.ok, error=result.error)
+        await self.repos.add_event(
+            "info" if result.ok else "warning",
+            "stove.auto",
+            f"Planer: Ofen {'an' if want else 'aus'}"
+            + ("" if result.ok else f" fehlgeschlagen: {result.error}"),
+            {"note": self.stove_plan.note_de},
+        )
 
     # ------------------------------------------------------------------ Kommandos (Dashboard)
     async def switch_actuator(
@@ -343,6 +479,60 @@ class LiveRuntime:
             key, state, duration_min * 60 if duration_min else None, None
         )
         return result.ok, result.observed_state, result.error
+
+    def _stove_state(self, now: datetime) -> StoveLiveOut:
+        return self.stove.state(
+            lambda key, stale: self.live.measurement(key, now, stale),
+            now,
+            planned_on=self.stove_plan.on_at(now),
+            plan_until=self.stove_plan.until(now),
+            plan_note_de=self.stove_plan.note_de,
+        )
+
+    async def set_stove_mode(self, mode: StoveMode, duration_min: int) -> StoveLiveOut:
+        """Den Ofen von Hand stellen. `auto` nimmt einen Eingriff zurueck, ohne selbst zu schalten.
+
+        Geschaltet wird nur, wenn die Konfiguration es freigibt und die Bridge steht. Scheitert der
+        Befehl, bleibt der alte Modus stehen: eine Absicht, die das Geraet nie erreicht hat, waere
+        in der Oberflaeche eine Luege.
+        """
+        now = self.now
+        if not self.hems.stove.present:
+            raise DchError("no_stove", "Für dieses Haus ist kein Ofen konfiguriert.", 404)
+        if not self.stove.controllable:
+            raise DchError(
+                "stove_control_disabled",
+                "Die Ofensteuerung ist nicht freigegeben (stove.control_enabled).",
+                409,
+            )
+        if mode in ("on", "off"):
+            if not self.settings.actuation_enabled:
+                raise DchError(
+                    "actuation_disabled", "Steuerung ist in dieser Phase deaktiviert.", 409
+                )
+            if not self.hub.online:
+                raise DchError("bridge_offline", "Bridge nicht verbunden.", 503)
+            result = await self.hub.send_command("stove", mode == "on", None, None)
+            if not result.ok:
+                await self.repos.add_event(
+                    "warning", "stove.failed", f"Ofen → {mode}: {result.error}", {}
+                )
+                raise DchError(
+                    "stove_not_confirmed", result.error or "Ofen hat nicht bestätigt.", 502
+                )
+        before = self.stove.mode
+        if mode in ("on", "off"):
+            # Auch ein Eingriff von Hand startet die Sperre: gleich danach darf der Planer nicht
+            # zurückschalten, sonst wäre der Knopf ein Vorschlag und keine Anweisung.
+            self._stove_switched_at = now
+        self.stove.set(mode, duration_min, now)
+        if self.stove.mode != before:
+            await self.repos.add_event(
+                "info", "stove.mode", f"Ofen: {before} → {self.stove.mode}", {}
+            )
+        state = self._stove_state(now)
+        self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+        return state
 
     async def set_heat_pump_mode(
         self,
@@ -378,6 +568,7 @@ class LiveRuntime:
             heat_pump=hp,
             decision=self.decision,
             operating_mode=self._effective_mode(now),
+            stove=self._stove_state(now),
             price_rank=price_rank(self.forecasts.prices, now),
             today_kwh={},
             system=SystemStatusOut(
@@ -468,15 +659,7 @@ class LiveRuntime:
         return await self.accounting.summary(period, anchor, self.now)
 
     async def heat_report(self, period: Period, anchor: date) -> HeatReportOut:
-        temps: list[tuple[datetime, float]] = []
-        w = self.forecasts.weather
-        if w is not None:
-            temps = [
-                (p.ts, p.temp_c)
-                for p in w.points
-                if p.temp_c is not None and p.ts >= self.now - timedelta(hours=1)
-            ][:48]
-        return await self.accounting.heat_report(period, anchor, self.now, temps)
+        return await self.accounting.heat_report(period, anchor, self.now, self._temps_48h())
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
         return await self.accounting.ev_report(period, anchor, self.now)

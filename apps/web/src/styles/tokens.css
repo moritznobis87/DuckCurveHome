@@ -43,6 +43,17 @@
      Summe). Deutlich abgesetzt von --amber (PV) und von --alert, damit die Wärmepumpe nicht wie
      eine Störung aussieht. */
   --heat-pump: #e0966b;
+  /* Pelletofen: die zweite Wärmequelle am selben Puffer, steht also direkt neben --heat-pump und
+     muss von ihm unterscheidbar sein. Der warme Bereich ist eng: gegen --heat-pump, --amber und
+     --alert gleichzeitig zu bestehen, gelingt nur hier. Geprüft auf --surface-2 mit dem
+     Palettenprüfer der dataviz-Anleitung: ΔE 15,3 zu --heat-pump, 20,7 zu --amber, 18,3 zu
+     --battery, jeweils über der Schwelle von 15.
+
+     Zwei Auflagen dazu. Erstens liegt der Kontrast zur Fläche bei 2,99:1 und damit knapp unter
+     3:1; die Farbe darf deshalb nie allein tragen, es gehört immer eine sichtbare Beschriftung
+     daneben. Zweitens ist der Abstand zu --alert und --grid-in nur ΔE 9,3: Ofen und Netzbezug
+     dürfen nicht ohne Zweitkodierung in dieselbe Grafik. */
+  --stove: #b5651d;
   --ev: #5c8fa3;
   --price: var(--mist);
   --load: rgba(255, 255, 255, 0.62);

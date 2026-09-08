@@ -7,6 +7,7 @@ from datetime import date, datetime
 from typing import Any, Protocol
 
 from dch_api.application.ha_import import ImportResult
+from dch_api.application.stove_control import StoveMode
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
     BackfillResultOut,
@@ -20,6 +21,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    StoveLiveOut,
     SystemEventOut,
     YearMapOut,
 )
@@ -71,3 +73,4 @@ class Runtime(Protocol):
         manual_state: str | None,
         duration_min: int,
     ) -> OperatingMode: ...
+    async def set_stove_mode(self, mode: StoveMode, duration_min: int) -> StoveLiveOut: ...

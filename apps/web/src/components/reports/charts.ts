@@ -14,6 +14,7 @@ export const C = {
   axis: "rgba(255,255,255,.2)",
   text: "rgba(255,255,255,.48)",
   deep: "#082431",
+  stove: "#b5651d",  // Pelletofen, siehe --stove in tokens.css: geprüfter Abstand zu --heat-pump
 };
 export const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const axisText = { color: C.text, fontFamily: MONO, fontSize: 11 };
@@ -144,6 +145,12 @@ export function bufferChart(rows: Array<Record<string, number | string | null>>)
     ["buffer_temp_mid_bottom_c", "mitte unten", "#7fa3b3"],
     ["buffer_temp_bottom_c", "unten", "#1f4c66"],
   ];
+  // Brennphasen des Ofens als hinterlegte Bänder. Das ist der eigentliche Erkenntnisgewinn dieses
+  // Diagramms: steigt die Puffertemperatur innerhalb eines Bandes, war es der Ofen und nicht die
+  // Wärmepumpe. Vorher musste man das aus der Abwesenheit der WP-Leistung erschließen.
+  const burns = runsOf(rows, "stove_running");
+  const stoveBands = burns.map(([a, b]) => [{ xAxis: a }, { xAxis: b }]);
+
   return {
     animation: false,
     backgroundColor: "transparent",
@@ -159,8 +166,29 @@ export function bufferChart(rows: Array<Record<string, number | string | null>>)
     series: [
       ...temps.map(([k, name, color]) => ({ name, type: "line", data: num(k), showSymbol: false, connectNulls: true, lineStyle: { color, width: 2 }, z: 3 })),
       { name: "WP-Leistung", type: "line", yAxisIndex: 1, step: "end", data: num("heat_pump_power_kw"), showSymbol: false, lineStyle: { color: C.hp, width: 1.5 }, areaStyle: { color: "rgba(228,236,239,.10)" }, z: 1 },
+      // Träger der Bänder: eine Reihe ohne Daten, damit sie in der Legende steht und abschaltbar
+      // bleibt. markArea allein bekäme keinen Legendeneintrag.
+      ...(stoveBands.length
+        ? [{ name: "Ofen brennt", type: "line", data: [], itemStyle: { color: C.stove }, markArea: { silent: true, itemStyle: { color: "rgba(181,101,29,.20)" }, data: stoveBands } }]
+        : []),
     ],
   };
+}
+
+/** Zusammenhängende Abschnitte, in denen `key` wahr ist, als Indexpaare [von, bis]. */
+function runsOf(rows: Array<Record<string, number | string | null>>, key: string): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  let start = -1;
+  rows.forEach((r, i) => {
+    const on = typeof r[key] === "number" && (r[key] as number) > 0;
+    if (on && start < 0) start = i;
+    if (!on && start >= 0) {
+      out.push([start, i - 1]);
+      start = -1;
+    }
+  });
+  if (start >= 0) out.push([start, rows.length - 1]);
+  return out;
 }
 
 /** Linie einer Größe über den Tag (z. B. SOC) aus Minutenzeilen der Historie. */

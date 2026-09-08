@@ -48,6 +48,10 @@ class LiveState:
         )
         return m.aged(now, stale_after_s)
 
+    def measurement(self, key: str, now: datetime, stale_after_s: float) -> Measurement:
+        """Ein einzelner Schlüssel mit Alterung. Für Größen, die nicht im Snapshot stehen."""
+        return self._m(key, now, stale_after_s)
+
     def snapshot(self, now: datetime | None = None) -> EnergySnapshot:
         now = now or datetime.now(UTC)
         t = self.cfg.timeouts

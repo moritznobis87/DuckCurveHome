@@ -1039,6 +1039,48 @@
         }
       }
     },
+    "/api/v1/control/stove/mode": {
+      "post": {
+        "tags": [
+          "Steuerung"
+        ],
+        "summary": "Pelletofen stellen",
+        "description": "`auto` gibt den Ofen frei, `on` und `off` sind befristete Eingriffe.\n\nDer eigene Endpunkt statt `/actuators/stove` ist Absicht: der Ofen ist keine Lichterkette. Er\nhat eine Freigabe in der Konfiguration, sein Eingriff läuft nach einer Dauer wieder ab, und\n„geschaltet\" heißt bei ihm „der Befehl ist angekommen\", nicht „er brennt bereits\".",
+        "operationId": "set_stove_mode_api_v1_control_stove_mode_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoveModeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoveLiveOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/control/decisions": {
       "get": {
         "tags": [
@@ -1450,6 +1492,21 @@
             "title": "Gain Without Hp Kwh",
             "default": 0.0
           },
+          "gain_with_stove_kwh": {
+            "type": "number",
+            "title": "Gain With Stove Kwh",
+            "default": 0.0
+          },
+          "gain_unexplained_kwh": {
+            "type": "number",
+            "title": "Gain Unexplained Kwh",
+            "default": 0.0
+          },
+          "stove_known": {
+            "type": "boolean",
+            "title": "Stove Known",
+            "default": false
+          },
           "samples": {
             "type": "integer",
             "title": "Samples",
@@ -1463,7 +1520,7 @@
         },
         "type": "object",
         "title": "BufferBalanceOut",
-        "description": "Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.\n\nDie Änderung des Energieinhalts ist die Nettoleistung des Speichers. Steigt er, während die\nWärmepumpe steht, kommt die Wärme von woanders - beim Kombipuffer also vom Pelletofen. Das ist\ndie beste Fremdwärme-Erkennung, die ohne Wärmemengenzähler zu haben ist."
+        "description": "Energiebilanz des Puffers am Ankertag, aus den vier Fühlern gerechnet.\n\nDie Änderung des Energieinhalts ist die Nettoleistung des Speichers. Wer sie verursacht hat, war\nbis zur Anbindung des Ofens eine Schlussfolgerung: steigt der Inhalt, während die Wärmepumpe\nsteht, muss die Wärme von woanders kommen. Mit den Maestro-Daten ist es eine Feststellung, und\n`gain_unexplained_kwh` bleibt für das übrig, was wirklich niemand erklärt."
       },
       "BufferConfig": {
         "properties": {
@@ -3349,6 +3406,9 @@
           "buffer_balance": {
             "$ref": "#/components/schemas/BufferBalanceOut"
           },
+          "stove": {
+            "$ref": "#/components/schemas/StoveOut"
+          },
           "model_note_de": {
             "type": "string",
             "title": "Model Note De"
@@ -3367,6 +3427,7 @@
           "cycling",
           "price_quality",
           "buffer_balance",
+          "stove",
           "model_note_de"
         ],
         "title": "HeatReportOut"
@@ -3539,6 +3600,33 @@
             "default": {
               "capacity_kwh": 5.1,
               "max_power_kw": 3.7
+            }
+          },
+          "stove": {
+            "$ref": "#/components/schemas/StoveConfig",
+            "default": {
+              "present": true,
+              "control_enabled": true,
+              "nominal_heat_kw": 11.9,
+              "water_heat_kw": 10.0,
+              "combustion_efficiency": 0.911,
+              "min_heat_kw": 3.2,
+              "min_water_heat_kw": 1.8,
+              "min_combustion_efficiency": 0.961,
+              "electric_w": 75.0,
+              "electric_ignition_w": 390.0,
+              "pellet_kg_per_hour_max": 2.7,
+              "pellet_kg_per_hour_min": 0.7,
+              "power_levels": 5,
+              "hopper_kg": 15.0,
+              "refills_per_day": 1.0,
+              "refill_hour": 7,
+              "pellet_price_eur_per_t": 450.0,
+              "pellet_kwh_per_kg": 4.9,
+              "room_heat_credit": 1.0,
+              "min_runtime_min": 120.0,
+              "min_offtime_min": 60.0,
+              "start_cost_eur": 0.1
             }
           }
         },
@@ -4078,6 +4166,17 @@
           },
           "operating_mode": {
             "$ref": "#/components/schemas/OperatingMode"
+          },
+          "stove": {
+            "$ref": "#/components/schemas/StoveLiveOut",
+            "default": {
+              "present": false,
+              "control_enabled": false,
+              "mode": "auto",
+              "quality": "unavailable",
+              "plan_note_de": "",
+              "note_de": ""
+            }
           },
           "price_rank": {
             "anyOf": [
@@ -4988,6 +5087,396 @@
         ],
         "title": "SourceStatusOut",
         "description": "Zustand einer Messquelle (Bridge, myenergi, …)."
+      },
+      "StoveConfig": {
+        "properties": {
+          "present": {
+            "type": "boolean",
+            "title": "Present",
+            "default": true
+          },
+          "control_enabled": {
+            "type": "boolean",
+            "title": "Control Enabled",
+            "default": true
+          },
+          "nominal_heat_kw": {
+            "type": "number",
+            "title": "Nominal Heat Kw",
+            "default": 11.9
+          },
+          "water_heat_kw": {
+            "type": "number",
+            "title": "Water Heat Kw",
+            "default": 10.0
+          },
+          "combustion_efficiency": {
+            "type": "number",
+            "title": "Combustion Efficiency",
+            "default": 0.911
+          },
+          "min_heat_kw": {
+            "type": "number",
+            "title": "Min Heat Kw",
+            "default": 3.2
+          },
+          "min_water_heat_kw": {
+            "type": "number",
+            "title": "Min Water Heat Kw",
+            "default": 1.8
+          },
+          "min_combustion_efficiency": {
+            "type": "number",
+            "title": "Min Combustion Efficiency",
+            "default": 0.961
+          },
+          "electric_w": {
+            "type": "number",
+            "title": "Electric W",
+            "default": 75.0
+          },
+          "electric_ignition_w": {
+            "type": "number",
+            "title": "Electric Ignition W",
+            "default": 390.0
+          },
+          "pellet_kg_per_hour_max": {
+            "type": "number",
+            "title": "Pellet Kg Per Hour Max",
+            "default": 2.7
+          },
+          "pellet_kg_per_hour_min": {
+            "type": "number",
+            "title": "Pellet Kg Per Hour Min",
+            "default": 0.7
+          },
+          "power_levels": {
+            "type": "integer",
+            "title": "Power Levels",
+            "default": 5
+          },
+          "hopper_kg": {
+            "type": "number",
+            "title": "Hopper Kg",
+            "default": 15.0
+          },
+          "refills_per_day": {
+            "type": "number",
+            "title": "Refills Per Day",
+            "default": 1.0
+          },
+          "refill_hour": {
+            "type": "integer",
+            "title": "Refill Hour",
+            "default": 7
+          },
+          "pellet_price_eur_per_t": {
+            "type": "number",
+            "title": "Pellet Price Eur Per T",
+            "default": 450.0
+          },
+          "pellet_kwh_per_kg": {
+            "type": "number",
+            "title": "Pellet Kwh Per Kg",
+            "default": 4.9
+          },
+          "room_heat_credit": {
+            "type": "number",
+            "title": "Room Heat Credit",
+            "default": 1.0
+          },
+          "min_runtime_min": {
+            "type": "number",
+            "title": "Min Runtime Min",
+            "default": 120.0
+          },
+          "min_offtime_min": {
+            "type": "number",
+            "title": "Min Offtime Min",
+            "default": 60.0
+          },
+          "start_cost_eur": {
+            "type": "number",
+            "title": "Start Cost Eur",
+            "default": 0.1
+          }
+        },
+        "type": "object",
+        "title": "StoveConfig",
+        "description": "Der Pelletofen als zweite Wärmequelle am selben Puffer.\n\nDie Zahlen stammen vom Gerät und vom Betreiber, nicht aus einer Messung; der Wärmemengenzähler\nsteht noch aus. Sie sind trotzdem belastbar genug für eine Kostenentscheidung, weil der Ofen\npraktisch immer unter Volllast läuft und die Aufteilung zwischen Wasser und Raum dann fest ist.\n\n**Die Kette:** aus der Nennleistung und dem Verbrennungswirkungsgrad folgt die Feuerungsleistung,\ndaraus über den Heizwert der Pelletdurchsatz, daraus über den Preis die Kosten je Stunde. Geteilt\ndurch die Wärme, die tatsächlich ankommt, ergibt das den Wärmepreis, mit dem sich der Ofen gegen\ndie Wärmepumpe vergleichen lässt. Gerechnet wird das in `hems_core.accounting.stove_cost`."
+      },
+      "StoveLiveOut": {
+        "properties": {
+          "present": {
+            "type": "boolean",
+            "title": "Present",
+            "default": false
+          },
+          "control_enabled": {
+            "type": "boolean",
+            "title": "Control Enabled",
+            "default": false
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "on",
+              "off"
+            ],
+            "title": "Mode",
+            "default": "auto"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running"
+          },
+          "power_level": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Level"
+          },
+          "fume_temp_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fume Temp C"
+          },
+          "boiler_temp_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boiler Temp C"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/Quality",
+            "default": "unavailable"
+          },
+          "planned_on": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned On"
+          },
+          "plan_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Until"
+          },
+          "plan_note_de": {
+            "type": "string",
+            "title": "Plan Note De",
+            "default": ""
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "StoveLiveOut",
+        "description": "Der Pelletofen im Augenblick: was er tut und ob DCH ihn schalten darf.\n\nZwei Dinge sind hier bewusst getrennt. `running` ist eine **Beobachtung** aus dem Maestro-Modul;\n`mode` ist eine **Absicht** des Bedienenden. Beide können auseinanderlaufen: ein Ofen braucht\nMinuten zum Zünden und noch mehr zum Ausbrennen, und in dieser Zeit sagt die Oberfläche „an\"\n(gewollt) und „läuft nicht\" (gemessen) zugleich. Genau das soll sie auch.\n\n`control_enabled` ist die Freigabe aus der Konfiguration. Ist sie aus, zeigt die Leiste den Ofen\nweiterhin an, aber ohne Schaltflächen: eine Feuerstätte fernzustarten gehört nicht zu den\nDingen, die standardmäßig eingeschaltet sind."
+      },
+      "StoveModeIn": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "on",
+              "off"
+            ],
+            "title": "Mode"
+          },
+          "duration_min": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 15.0,
+            "title": "Duration Min",
+            "default": 180
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "StoveModeIn",
+        "description": "`auto` heißt: DCH schaltet nicht und überlässt dem Ofen seine eigene Regelung."
+      },
+      "StoveOut": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": false
+          },
+          "running_minutes": {
+            "type": "integer",
+            "title": "Running Minutes",
+            "default": 0
+          },
+          "burning_minutes": {
+            "type": "integer",
+            "title": "Burning Minutes",
+            "default": 0
+          },
+          "runs": {
+            "type": "integer",
+            "title": "Runs",
+            "default": 0
+          },
+          "longest_run_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longest Run Min"
+          },
+          "auger_revolutions": {
+            "type": "number",
+            "title": "Auger Revolutions",
+            "default": 0.0
+          },
+          "fume_temp_max_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fume Temp Max C"
+          },
+          "spread_k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spread K"
+          },
+          "pumping_minutes": {
+            "type": "integer",
+            "title": "Pumping Minutes",
+            "default": 0
+          },
+          "dhw_minutes": {
+            "type": "integer",
+            "title": "Dhw Minutes",
+            "default": 0
+          },
+          "minutes_by_level": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Minutes By Level",
+            "default": {}
+          },
+          "operating_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operating Hours"
+          },
+          "ignitions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ignitions"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          },
+          "fuel_note_de": {
+            "type": "string",
+            "title": "Fuel Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "StoveOut",
+        "description": "Der Pelletofen im Zeitraum. `available=False` heißt: keine Daten, nicht „lief nicht\"."
       },
       "SystemEventOut": {
         "properties": {
