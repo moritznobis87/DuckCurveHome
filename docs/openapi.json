@@ -3559,6 +3559,22 @@
               "capacity_kwh": 5.1,
               "max_power_kw": 3.7
             }
+          },
+          "stove": {
+            "$ref": "#/components/schemas/StoveConfig",
+            "default": {
+              "present": true,
+              "control_enabled": false,
+              "nominal_heat_kw": 12.0,
+              "water_heat_kw": 9.0,
+              "combustion_efficiency": 0.92,
+              "pellet_price_eur_per_t": 450.0,
+              "pellet_kwh_per_kg": 4.9,
+              "room_heat_credit": 1.0,
+              "min_runtime_min": 120.0,
+              "min_offtime_min": 60.0,
+              "start_cost_eur": 0.1
+            }
           }
         },
         "type": "object",
@@ -5007,6 +5023,68 @@
         ],
         "title": "SourceStatusOut",
         "description": "Zustand einer Messquelle (Bridge, myenergi, …)."
+      },
+      "StoveConfig": {
+        "properties": {
+          "present": {
+            "type": "boolean",
+            "title": "Present",
+            "default": true
+          },
+          "control_enabled": {
+            "type": "boolean",
+            "title": "Control Enabled",
+            "default": false
+          },
+          "nominal_heat_kw": {
+            "type": "number",
+            "title": "Nominal Heat Kw",
+            "default": 12.0
+          },
+          "water_heat_kw": {
+            "type": "number",
+            "title": "Water Heat Kw",
+            "default": 9.0
+          },
+          "combustion_efficiency": {
+            "type": "number",
+            "title": "Combustion Efficiency",
+            "default": 0.92
+          },
+          "pellet_price_eur_per_t": {
+            "type": "number",
+            "title": "Pellet Price Eur Per T",
+            "default": 450.0
+          },
+          "pellet_kwh_per_kg": {
+            "type": "number",
+            "title": "Pellet Kwh Per Kg",
+            "default": 4.9
+          },
+          "room_heat_credit": {
+            "type": "number",
+            "title": "Room Heat Credit",
+            "default": 1.0
+          },
+          "min_runtime_min": {
+            "type": "number",
+            "title": "Min Runtime Min",
+            "default": 120.0
+          },
+          "min_offtime_min": {
+            "type": "number",
+            "title": "Min Offtime Min",
+            "default": 60.0
+          },
+          "start_cost_eur": {
+            "type": "number",
+            "title": "Start Cost Eur",
+            "default": 0.1
+          }
+        },
+        "type": "object",
+        "title": "StoveConfig",
+        "description": "Der Pelletofen als zweite Wärmequelle am selben Puffer.\n\nDie Zahlen stammen vom Gerät und vom Betreiber, nicht aus einer Messung; der Wärmemengenzähler\nsteht noch aus. Sie sind trotzdem belastbar genug für eine Kostenentscheidung, weil der Ofen\npraktisch immer unter Volllast läuft und die Aufteilung zwischen Wasser und Raum dann fest ist.\n\n**Die Kette:** aus der Nennleistung und dem Verbrennungswirkungsgrad folgt die Feuerungsleistung,\ndaraus über den Heizwert der Pelletdurchsatz, daraus über den Preis die Kosten je Stunde. Geteilt\ndurch die Wärme, die tatsächlich ankommt, ergibt das den Wärmepreis, mit dem sich der Ofen gegen\ndie Wärmepumpe vergleichen lässt. Gerechnet wird das in `hems_core.accounting.stove_cost`."
       },
       "StoveOut": {
         "properties": {

@@ -170,6 +170,48 @@ class HeatDemandConfig(BaseModel):
     )
 
 
+class StoveConfig(BaseModel):
+    """Der Pelletofen als zweite Wärmequelle am selben Puffer.
+
+    Die Zahlen stammen vom Gerät und vom Betreiber, nicht aus einer Messung; der Wärmemengenzähler
+    steht noch aus. Sie sind trotzdem belastbar genug für eine Kostenentscheidung, weil der Ofen
+    praktisch immer unter Volllast läuft und die Aufteilung zwischen Wasser und Raum dann fest ist.
+
+    **Die Kette:** aus der Nennleistung und dem Verbrennungswirkungsgrad folgt die Feuerungsleistung,
+    daraus über den Heizwert der Pelletdurchsatz, daraus über den Preis die Kosten je Stunde. Geteilt
+    durch die Wärme, die tatsächlich ankommt, ergibt das den Wärmepreis, mit dem sich der Ofen gegen
+    die Wärmepumpe vergleichen lässt. Gerechnet wird das in `hems_core.accounting.stove_cost`.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    present: bool = True
+    # Ob der Planer den Ofen schalten darf. Bewusst aus: eine Feuerstätte fernzustarten ist eine
+    # andere Klasse von Eingriff als ein Relais, und die Entscheidung gehört dem Hausherrn.
+    control_enabled: bool = False
+
+    nominal_heat_kw: float = 12.0  # Gesamtwärmeleistung bei Volllast, Wasser und Raum zusammen
+    water_heat_kw: float = 9.0  # davon in den Pufferspeicher
+    combustion_efficiency: float = 0.92  # Rest geht über den Schornstein
+
+    pellet_price_eur_per_t: float = 450.0
+    # 4,9 kWh/kg ist der Normwert für ENplus A1 bei 8 % Feuchte. Die Norm verlangt mindestens 4,6,
+    # gute Ware liegt zwischen 4,9 und 5,3. Wer seinen Lieferschein hat, trägt den echten Wert ein.
+    pellet_kwh_per_kg: float = 4.9
+
+    # Wie viel der Raumwärme als Nutzen zählt. Der Ofen steht in der Küche und heizt sie mit; in der
+    # Heizperiode ersetzt das Wärme, die sonst die Wärmepumpe liefern müsste, also 1,0. Im Sommer
+    # oder bei ohnehin überheizter Küche wäre 0 ehrlicher. Der Wert entscheidet mit darüber, ob der
+    # Ofen billiger rechnet als die Wärmepumpe, deshalb steht er hier und nicht in einer Formel.
+    room_heat_credit: float = 1.0
+
+    # Ein Ofen wird nicht für zwanzig Minuten angeworfen: Zünden kostet Strom und unverbrannte
+    # Pellets, und jede Zündung zählt auf die Wartung.
+    min_runtime_min: float = 120.0
+    min_offtime_min: float = 60.0
+    start_cost_eur: float = 0.10
+
+
 class BatteryConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -188,3 +230,4 @@ class HemsConfig(BaseModel):
     tariff: TariffConfig = TariffConfig()
     heat_demand: HeatDemandConfig = HeatDemandConfig()
     battery: BatteryConfig = BatteryConfig()
+    stove: StoveConfig = StoveConfig()

@@ -1663,6 +1663,22 @@ export interface components {
              *     }
              */
             battery: components["schemas"]["BatteryConfig"];
+            /**
+             * @default {
+             *       "present": true,
+             *       "control_enabled": false,
+             *       "nominal_heat_kw": 12,
+             *       "water_heat_kw": 9,
+             *       "combustion_efficiency": 0.92,
+             *       "pellet_price_eur_per_t": 450,
+             *       "pellet_kwh_per_kg": 4.9,
+             *       "room_heat_credit": 1,
+             *       "min_runtime_min": 120,
+             *       "min_offtime_min": 60,
+             *       "start_cost_eur": 0.1
+             *     }
+             */
+            stove: components["schemas"]["StoveConfig"];
         };
         /** HistoryOut */
         HistoryOut: {
@@ -2323,6 +2339,76 @@ export interface components {
              * @default
              */
             detail_de: string;
+        };
+        /**
+         * StoveConfig
+         * @description Der Pelletofen als zweite Wärmequelle am selben Puffer.
+         *
+         *     Die Zahlen stammen vom Gerät und vom Betreiber, nicht aus einer Messung; der Wärmemengenzähler
+         *     steht noch aus. Sie sind trotzdem belastbar genug für eine Kostenentscheidung, weil der Ofen
+         *     praktisch immer unter Volllast läuft und die Aufteilung zwischen Wasser und Raum dann fest ist.
+         *
+         *     **Die Kette:** aus der Nennleistung und dem Verbrennungswirkungsgrad folgt die Feuerungsleistung,
+         *     daraus über den Heizwert der Pelletdurchsatz, daraus über den Preis die Kosten je Stunde. Geteilt
+         *     durch die Wärme, die tatsächlich ankommt, ergibt das den Wärmepreis, mit dem sich der Ofen gegen
+         *     die Wärmepumpe vergleichen lässt. Gerechnet wird das in `hems_core.accounting.stove_cost`.
+         */
+        StoveConfig: {
+            /**
+             * Present
+             * @default true
+             */
+            present: boolean;
+            /**
+             * Control Enabled
+             * @default false
+             */
+            control_enabled: boolean;
+            /**
+             * Nominal Heat Kw
+             * @default 12
+             */
+            nominal_heat_kw: number;
+            /**
+             * Water Heat Kw
+             * @default 9
+             */
+            water_heat_kw: number;
+            /**
+             * Combustion Efficiency
+             * @default 0.92
+             */
+            combustion_efficiency: number;
+            /**
+             * Pellet Price Eur Per T
+             * @default 450
+             */
+            pellet_price_eur_per_t: number;
+            /**
+             * Pellet Kwh Per Kg
+             * @default 4.9
+             */
+            pellet_kwh_per_kg: number;
+            /**
+             * Room Heat Credit
+             * @default 1
+             */
+            room_heat_credit: number;
+            /**
+             * Min Runtime Min
+             * @default 120
+             */
+            min_runtime_min: number;
+            /**
+             * Min Offtime Min
+             * @default 60
+             */
+            min_offtime_min: number;
+            /**
+             * Start Cost Eur
+             * @default 0.1
+             */
+            start_cost_eur: number;
         };
         /**
          * StoveOut

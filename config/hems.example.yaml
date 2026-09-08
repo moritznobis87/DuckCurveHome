@@ -22,6 +22,26 @@ hems:
     min_useful_temperature_c: 35
     target_temperature_c: 50
     max_temperature_c: 62
+  stove:
+    # Pelletofen (MCZ Star Hydromatic). Die Zahlen bestimmen, ab wann der Ofen günstiger heizt als
+    # die Wärmepumpe, siehe hems_core.accounting.stove_cost und docs/OFEN_OPTIMIERUNG.md.
+    present: true
+    control_enabled: false  # darf der Planer ihn schalten? Bewusst aus, bis es gewollt ist
+    nominal_heat_kw: 12.0  # Gesamtwärmeleistung bei Volllast
+    water_heat_kw: 9.0  # davon in den Pufferspeicher, der Rest heizt den Aufstellraum
+    combustion_efficiency: 0.92
+    # Der Pelletpreis der letzten Lieferung. Er geht linear in den Wärmepreis ein: verdoppelt er
+    # sich, verdoppelt sich der Wärmepreis. Nach jedem Kauf hier nachziehen.
+    pellet_price_eur_per_t: 450.0
+    # 4,9 kWh/kg ist der Normwert bei 8 % Feuchte (ENplus A1 fordert mindestens 4,6). Steht auf dem
+    # Lieferschein ein anderer Wert, gehört der hierher.
+    pellet_kwh_per_kg: 4.9
+    # Zählt die Wärme, die der Ofen in die Küche abgibt, als Nutzen? In der Heizperiode ja, denn sie
+    # ersetzt Wärme, die sonst die Wärmepumpe liefern müsste. Der Wert entscheidet mit darüber, ob
+    # der Ofen billiger rechnet: 1,0 ergibt 10,0 ct/kWh, 0,0 ergibt 13,3 ct/kWh.
+    room_heat_credit: 1.0
+    min_runtime_min: 120
+    min_offtime_min: 60
   tariff:
     # Einspeisevergütung netto laut Bescheid des Netzbetreibers. Die Tibber-Preise der Zeitreihe sind
     # Bruttopreise; der Eigenverbrauch wird für die Umsatzsteuer daraus netto bewertet.
