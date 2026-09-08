@@ -38,7 +38,10 @@ hems:
     # Datenblattwerte als Gegenprobe: die gerechnete Kette muss 2,7 kg/h treffen.
     pellet_kg_per_hour_max: 2.7
     pellet_kg_per_hour_min: 0.7
-    hopper_kg: 20.0  # 31 l Behälter; reicht bei Volllast rund siebeneinhalb Stunden
+    # Gewogen: in den 31-l-Behälter passen 15 kg. Zusammen mit einmal Nachfüllen am Tag ergibt
+    # das ein hartes Tagesbudget von 15 kg, also höchstens 56 kWh in den Puffer.
+    hopper_kg: 15.0
+    refills_per_day: 1.0
     # Der Pelletpreis der letzten Lieferung. Er geht linear in den Wärmepreis ein: verdoppelt er
     # sich, verdoppelt sich der Wärmepreis. Nach jedem Kauf hier nachziehen.
     pellet_price_eur_per_t: 450.0

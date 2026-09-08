@@ -30,18 +30,26 @@ eine falsch eingetragene Zahl nicht still eine falsche Entscheidung erzeugt.
 **Der Eigenverbrauch** von 75 W ist klein, aber er gehört dazu: er ist Strom zum Marktpreis und
 verschiebt den Vergleich in dieselbe Richtung wie ein teurer Strompreis, nur um wenige Zehntel.
 
-**Teillast kostet dasselbe.** Das ist das überraschendste Ergebnis dieser Rechnung und der Grund,
-warum der Planer keine Teillastkennlinie braucht. Der Ofen ist auf kleiner Flamme
-wirkungsgradbesser (96,1 statt 91,1 %), weil das Rauchgas kühler abzieht, verliert aber gleichzeitig
-Wasseranteil (56 statt 84 %). Auf die gesamte Nutzwärme gerechnet heben sich beide Effekte fast
-genau auf:
+**Teillast kostet dasselbe, ist aber trotzdem schlechter.** Diese beiden Sätze widersprechen sich
+nur scheinbar, und der Unterschied ist für den Planer entscheidend.
+
+Auf kleiner Flamme ist der Ofen wirkungsgradbesser (96,1 statt 91,1 %), weil das Rauchgas kühler
+abzieht. Gleichzeitig geht weniger davon ins Wasser (56 statt 84 %). Je **Kilowattstunde Nutzwärme**
+heben sich beide Effekte fast genau auf:
 
     Volllast     11,9 kW nutzbar    2,67 kg/h    10,27 ct/kWh
     Minimallast   3,2 kW nutzbar    0,68 kg/h    10,26 ct/kWh
 
-Für den Planer heißt das: die Modulation ist **keine Kostenfrage, sondern eine Zeitfrage.** Sie
-entscheidet, wie schnell der Puffer voll wird, nicht wie teuer die Wärme ist. Wer nur ein- und
-ausschaltet, verliert dadurch nichts.
+Je **Kilogramm Pellets in den Puffer** sieht es völlig anders aus:
+
+    Volllast     3,75 kWh Pufferwärme je kg
+    Minimallast  2,65 kWh Pufferwärme je kg     42 % weniger
+
+Solange Brennstoff beliebig verfügbar ist, zählt die erste Tabelle und die Modulation ist gleichgültig.
+**Er ist aber nicht beliebig verfügbar:** in den Behälter passen 15 kg, und nachgefüllt wird einmal
+am Tag. Damit ist der Brennstoff das knappe Gut, und dann zählt die zweite Tabelle. Wer den Puffer
+laden will, fährt Volllast; jede Stunde auf kleiner Flamme verschenkt 42 % der Pufferwärme, die in
+demselben Kilogramm gesteckt hätte.
 
 **Die Wärmepumpe** ist die einfachere Seite: Strompreis geteilt durch Arbeitszahl. Solange der
 Wärmemengenzähler fehlt, ist die Arbeitszahl eine Kennlinie über der Außentemperatur und damit eine
@@ -141,14 +149,69 @@ def stove_economics_min_load(cfg: StoveConfig, aux_price_ct_kwh: float = 0.0) ->
     )
 
 
-def hopper_runtime_h(cfg: StoveConfig) -> float:
-    """Wie lange der Behälterinhalt bei Volllast reicht.
-
-    Eine harte Grenze für den Planer: eine Nacht durchheizen geht, zwei Nächte nicht. Wer eine
-    Laufzeit einplant, für die kein Brennstoff im Gerät ist, plant eine Wärmelieferung, die ausfällt.
-    """
-    econ = stove_economics(cfg)
+def hopper_runtime_h(cfg: StoveConfig, *, min_load: bool = False) -> float:
+    """Wie lange der Behälterinhalt reicht, bei Voll- oder bei kleinster Last."""
+    econ = stove_economics_min_load(cfg) if min_load else stove_economics(cfg)
     return round(cfg.hopper_kg / econ.kg_per_hour, 1) if econ.kg_per_hour > 1e-6 else float("inf")
+
+
+def buffer_kwh_per_kg(cfg: StoveConfig, *, min_load: bool = False) -> float:
+    """Wie viel Pufferwärme in einem Kilogramm Pellets steckt.
+
+    Die entscheidende Kennzahl, sobald der Brennstoff knapp ist. Sie unterscheidet sich zwischen den
+    Lastpunkten erheblich, obwohl der Wärmepreis je Kilowattstunde fast gleich ist: bei Volllast geht
+    ein viel größerer Anteil ins Wasser statt in die Küche.
+    """
+    heat, water, eff = (
+        (cfg.min_heat_kw, cfg.min_water_heat_kw, cfg.min_combustion_efficiency)
+        if min_load
+        else (cfg.nominal_heat_kw, cfg.water_heat_kw, cfg.combustion_efficiency)
+    )
+    if heat <= 1e-6:
+        return 0.0
+    return round(cfg.pellet_kwh_per_kg * eff * water / heat, 3)
+
+
+@dataclass(frozen=True)
+class DailyBudget:
+    """Was eine Tagesfüllung hergibt. Die härteste Randbedingung des Ofens.
+
+    Nicht die Mindestlaufzeit begrenzt den Planer, sondern der Brennstoff: 15 kg je Tag, und das
+    Nachfüllen passiert von Hand. Eine kalte Nacht von 17 bis 6 Uhr sind dreizehn Stunden; bei
+    Volllast reicht die Füllung dafür nicht. Der Ofen kommt dort nur durch, weil er moduliert, und
+    genau deshalb muss der Planer beide Lastpunkte kennen.
+    """
+
+    pellet_kg: float
+    fuel_kwh: float
+    useful_kwh: float  # bei Volllast
+    buffer_kwh: float  # davon in den Puffer, bei Volllast
+    runtime_full_h: float
+    runtime_min_h: float
+    note_de: str
+
+
+def daily_budget(cfg: StoveConfig) -> DailyBudget:
+    """Das Tagesbudget einer Füllung, in den Größen, die der Planer braucht."""
+    kg = cfg.hopper_kg * cfg.refills_per_day
+    fuel = kg * cfg.pellet_kwh_per_kg
+    useful = fuel * cfg.combustion_efficiency
+    buffer = kg * buffer_kwh_per_kg(cfg)
+    full_h = hopper_runtime_h(cfg)
+    min_h = hopper_runtime_h(cfg, min_load=True)
+    return DailyBudget(
+        pellet_kg=round(kg, 1),
+        fuel_kwh=round(fuel, 1),
+        useful_kwh=round(useful, 1),
+        buffer_kwh=round(buffer, 1),
+        runtime_full_h=full_h,
+        runtime_min_h=min_h,
+        note_de=(
+            f"{kg:.0f} kg je Tag: höchstens {buffer:.0f} kWh in den Puffer, und das nur bei "
+            f"Volllast. Die Füllung trägt {full_h:.1f} Stunden Volllast oder {min_h:.0f} Stunden "
+            "kleinste Flamme."
+        ),
+    )
 
 
 def _ct_per_kwh(eur_per_hour: float, kw: float) -> float:

@@ -18,10 +18,13 @@ from hems_core.accounting.heat import (
 )
 from hems_core.accounting.pv_tax import PvTaxTotals, pv_tax
 from hems_core.accounting.stove_cost import (
+    DailyBudget,
     SourceChoice,
     StoveEconomics,
     break_even_cop,
+    buffer_kwh_per_kg,
     cheaper_source,
+    daily_budget,
     heat_pump_ct_per_kwh,
     hopper_runtime_h,
     stove_economics,
@@ -30,6 +33,7 @@ from hems_core.accounting.stove_cost import (
 
 __all__ = [
     "BatteryOrigin",
+    "DailyBudget",
     "EnergyTotals",
     "HeatForecastPoint",
     "HourlyEnergy",
@@ -38,8 +42,10 @@ __all__ = [
     "SourceChoice",
     "StoveEconomics",
     "break_even_cop",
+    "buffer_kwh_per_kg",
     "cheaper_source",
     "cop_at",
+    "daily_budget",
     "heat_demand_kw",
     "heat_forecast",
     "heat_pump_ct_per_kwh",

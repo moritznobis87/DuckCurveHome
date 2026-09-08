@@ -3575,7 +3575,8 @@
               "electric_ignition_w": 390.0,
               "pellet_kg_per_hour_max": 2.7,
               "pellet_kg_per_hour_min": 0.7,
-              "hopper_kg": 20.0,
+              "hopper_kg": 15.0,
+              "refills_per_day": 1.0,
               "pellet_price_eur_per_t": 450.0,
               "pellet_kwh_per_kg": 4.9,
               "room_heat_credit": 1.0,
@@ -5097,7 +5098,12 @@
           "hopper_kg": {
             "type": "number",
             "title": "Hopper Kg",
-            "default": 20.0
+            "default": 15.0
+          },
+          "refills_per_day": {
+            "type": "number",
+            "title": "Refills Per Day",
+            "default": 1.0
           },
           "pellet_price_eur_per_t": {
             "type": "number",

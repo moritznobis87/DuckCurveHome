@@ -207,10 +207,13 @@ class StoveConfig(BaseModel):
     # Gegenprobe für die gerechnete Kette, an beiden Lastpunkten.
     pellet_kg_per_hour_max: float = 2.7
     pellet_kg_per_hour_min: float = 0.7
-    # 31 l Behälter, rund 0,65 kg/l Schüttdichte. Bei Volllast reicht das für gut sieben Stunden,
-    # das Datenblatt nennt acht. Eine Nacht durchheizen geht also, zwei Nächte nicht: der Planer
-    # darf keine Laufzeit einplanen, für die kein Brennstoff im Gerät ist.
-    hopper_kg: float = 20.0
+    # Gewogen, nicht aus dem Datenblatt: in den 31-l-Behälter passen 15 kg. Bei Volllast reicht das
+    # für 5,6 Stunden, bei kleinster Flamme für 22.
+    hopper_kg: float = 15.0
+    # Nachgefüllt wird einmal am Tag, nie öfter. Das macht aus der Behältergröße ein hartes
+    # **Tagesbudget**: der Planer darf über 24 Stunden nicht mehr als eine Füllung verplanen. Diese
+    # Grenze ist schärfer als jede Mindestlaufzeit und muss ins MILP.
+    refills_per_day: float = 1.0
 
     pellet_price_eur_per_t: float = 450.0
     # 4,9 kWh/kg ist der Normwert für ENplus A1 bei 8 % Feuchte. Die Norm verlangt mindestens 4,6,

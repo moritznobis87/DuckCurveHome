@@ -13,7 +13,9 @@ import pytest
 
 from hems_core.accounting.stove_cost import (
     break_even_cop,
+    buffer_kwh_per_kg,
     cheaper_source,
+    daily_budget,
     heat_pump_ct_per_kwh,
     hopper_runtime_h,
     stove_economics,
@@ -73,8 +75,41 @@ def test_teillast_kostet_dasselbe() -> None:
 
 
 def test_der_pelletbehaelter_begrenzt_die_laufzeit() -> None:
-    """Eine Nacht durchheizen geht, zwei Nächte nicht. Das ist eine harte Grenze für den Planer."""
-    assert hopper_runtime_h(CFG) == pytest.approx(7.5, abs=0.3)  # Datenblatt: rund 8 h
+    """15 kg gewogen: 5,6 Stunden Volllast, 22 Stunden kleinste Flamme."""
+    assert hopper_runtime_h(CFG) == pytest.approx(5.6, abs=0.2)
+    assert hopper_runtime_h(CFG, min_load=True) == pytest.approx(22.1, abs=0.5)
+
+
+def test_bei_knappem_brennstoff_ist_volllast_deutlich_besser() -> None:
+    """Die Kehrseite von „Teillast kostet dasselbe", und die wichtigere Aussage.
+
+    Je Kilowattstunde Nutzwärme sind beide Lastpunkte gleich teuer. Je **Kilogramm Pellets in den
+    Puffer** ist Volllast um gut 40 % besser, weil dort ein viel größerer Anteil ins Wasser geht.
+    Sobald der Brennstoff das knappe Gut ist, und das ist er bei einer Füllung am Tag, zählt die
+    zweite Kennzahl.
+    """
+    voll = buffer_kwh_per_kg(CFG)
+    teil = buffer_kwh_per_kg(CFG, min_load=True)
+    assert voll == pytest.approx(3.75, abs=0.02)
+    assert teil == pytest.approx(2.65, abs=0.02)
+    assert voll / teil > 1.4
+
+
+def test_das_tagesbudget_ist_die_haerteste_schranke() -> None:
+    """Einmal am Tag nachfüllen heißt: höchstens 56 kWh in den Puffer, und das nur bei Volllast."""
+    b = daily_budget(CFG)
+    assert b.pellet_kg == 15.0
+    assert b.fuel_kwh == pytest.approx(73.5, abs=0.5)
+    assert b.buffer_kwh == pytest.approx(56.3, abs=0.5)
+    assert b.runtime_full_h < 6, "eine kalte Nacht von 17 bis 6 Uhr geht bei Volllast nicht durch"
+    assert b.runtime_min_h > 20, "mit Modulation dagegen schon"
+    assert "15 kg je Tag" in b.note_de
+
+
+def test_zwei_fuellungen_verdoppeln_das_budget() -> None:
+    b = daily_budget(CFG.model_copy(update={"refills_per_day": 2.0}))
+    assert b.pellet_kg == 30.0
+    assert b.buffer_kwh == pytest.approx(2 * daily_budget(CFG).buffer_kwh, abs=0.5)
 
 
 def test_der_eigenverbrauch_zaehlt_mit() -> None:

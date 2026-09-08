@@ -53,33 +53,54 @@ derselben Quelle und sind über den Heizwert verknüpft, also müssen die Rechen
 | --- | --- | --- |
 | Verbrauch bei Volllast | 11,9 / 0,911 / 4,9 = 2,67 kg/h | 2,7 kg/h |
 | Verbrauch bei Minimallast | 3,2 / 0,961 / 4,9 = 0,68 kg/h | 0,7 kg/h |
-| Behälterreichweite Volllast | 20 kg / 2,67 = 7,5 h | rund 8 h |
+| Behälterreichweite Volllast | 15 kg / 2,67 = 5,6 h | rund 8 h bei 20 kg |
 
-Alle drei innerhalb weniger Prozent. Damit ist auch der **Heizwert bestätigt**: die ursprüngliche
+Die ersten beiden innerhalb weniger Prozent. Die dritte weicht ab, weil das Datenblatt mit einer
+vollen Füllung von rund 20 kg rechnet; gewogen passen in diesen Behälter 15 kg. Damit ist auch der **Heizwert bestätigt**: die ursprüngliche
 Schätzung von 5,4 kWh/kg verfehlt beide Verbrauchspunkte um zehn Prozent.
 `StoveEconomics.plausible` prüft das bei jeder Rechnung mit.
 
-### Teillast kostet dasselbe
+### Teillast kostet dasselbe, ist aber trotzdem schlechter
 
-Der überraschendste Befund, und der Grund, warum der Planer **keine Teillastkennlinie braucht**. Auf
-kleiner Flamme ist der Ofen wirkungsgradbesser, weil das Rauchgas kühler abzieht (48 statt 123 °C).
-Gleichzeitig geht weniger davon ins Wasser. Beides hebt sich auf:
+Die beiden Sätze widersprechen sich nur scheinbar, und der Unterschied entscheidet, wie der Planer
+gebaut werden muss.
+
+Auf kleiner Flamme ist der Ofen wirkungsgradbesser, weil das Rauchgas kühler abzieht (48 statt
+123 °C). Gleichzeitig geht weniger davon ins Wasser. Je **Kilowattstunde Nutzwärme** hebt sich das
+auf:
 
 | | nutzbar | Wirkungsgrad | ins Wasser | Verbrauch | Wärmepreis |
 | --- | --- | --- | --- | --- | --- |
 | Volllast | 11,9 kW | 91,1 % | 84 % | 2,67 kg/h | **10,27 ct/kWh** |
 | Minimallast | 3,2 kW | 96,1 % | 56 % | 0,68 kg/h | **10,26 ct/kWh** |
 
-Für den Planer heißt das: **die Modulation ist eine Zeitfrage, keine Kostenfrage.** Sie entscheidet,
-wie schnell der Puffer voll wird, nicht wie teuer die Wärme ist. Wer nur ein- und ausschaltet,
-verliert dadurch nichts. Auf die Pufferwärme allein gerechnet sieht es anders aus, dort ist Teillast
-deutlich teurer, weil dann mehr in die Küche geht.
+Je **Kilogramm Pellets in den Puffer** dagegen nicht:
 
-### Der Pelletbehälter begrenzt die Laufzeit
+| | Pufferwärme je kg |
+| --- | --- |
+| Volllast | **3,75 kWh** |
+| Minimallast | 2,65 kWh, also 42 % weniger |
 
-31 Liter fassen rund 20 kg. Bei Volllast reicht das für **siebeneinhalb Stunden**. Eine kalte Nacht
-durchheizen geht also, zwei Nächte nicht. Der Planer darf keine Laufzeit einplanen, für die kein
-Brennstoff im Gerät ist: `hopper_runtime_h` liefert die Grenze.
+Welche der beiden Tabellen gilt, hängt daran, ob der Brennstoff knapp ist. Und er ist knapp.
+
+### Das Tagesbudget ist die härteste Schranke
+
+In den Behälter passen **15 kg** (gewogen, nicht geschätzt), und nachgefüllt wird **einmal am Tag,
+nie öfter**. Damit ist nicht die Mindestlaufzeit die bindende Grenze, sondern der Brennstoff:
+
+| | |
+| --- | --- |
+| Tagesbudget | 15 kg = 73,5 kWh Feuerung |
+| davon höchstens in den Puffer | **56 kWh**, und das nur bei Volllast |
+| Laufzeit bei Volllast | 5,6 h |
+| Laufzeit bei kleinster Flamme | 22 h |
+
+Daraus folgt unmittelbar etwas, das die Handregel bereits kennt, ohne es zu benennen: **eine kalte
+Nacht von 17 bis 6 Uhr sind dreizehn Stunden, und bei Volllast reicht eine Füllung dafür nicht.** Der
+Ofen kommt dort nur durch, weil er von selbst herunterregelt, sobald der Puffer warm ist. Genau
+deshalb muss der Planer beide Lastpunkte kennen, auch wenn der Wärmepreis derselbe ist.
+
+`daily_budget` liefert diese Zahlen, `buffer_kwh_per_kg` die Kennzahl für die knappe Ressource.
 
 ### Die Raumwärme
 
@@ -124,11 +145,18 @@ Die Rechnung oben liefert je Viertelstunde einen Preis für beide Quellen. Für 
   bei der Wärmepumpe (zwei Stunden statt einer halben),
 * Zündkosten als Startkosten, damit der Planer ihn nicht stündlich an- und ausknipst (der
   Zündwiderstand zieht kurzzeitig 390 statt 75 W),
-* die Behälterreichweite von siebeneinhalb Stunden als obere Schranke einer Laufzeit,
+* **das Tagesbudget von 15 kg als Nebenbedingung über 24 Stunden**, nicht als Laufzeitgrenze: der
+  Planer verteilt eine Füllung über den Tag und muss dabei entscheiden, wann sie am meisten wert ist,
 * und die Kostenfunktion mit beiden Preisen statt nur mit dem Strompreis.
 
 Die Raumwärme gehört dabei **nicht** in die Pufferbilanz, sondern in die Kostenseite: sie senkt den
 Wärmepreis des Ofens, füllt aber keinen Speicher.
+
+Und weil der Brennstoff das knappe Gut ist, ändert sich die Zielgröße: der Planer minimiert nicht
+Kosten je Kilowattstunde, sondern **Kosten je Tag unter einer Brennstoffschranke**. Das ist ein
+Rucksackproblem, und es hat eine andere Lösung als der reine Preisvergleich. Eine Stunde Ofen ist
+nicht mehr beliebig oft verfügbar, sondern muss sich gegen jede andere Stunde desselben Tages
+durchsetzen.
 
 ## Was noch fehlt
 
