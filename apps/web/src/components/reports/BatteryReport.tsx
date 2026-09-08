@@ -17,6 +17,27 @@ const CHARGE = [
 ];
 const DISCHARGE = [{ key: "battery_to_house_kwh" as const, name: "Entladung ins Haus", color: C.battery }];
 
+/**
+ * Geladene und entladene Energie aus dem Ladestandsverlauf, unabhängig von der Leistungsmessung.
+ *
+ * Summiert werden die Anstiege und die Abstiege des Ladestands, mal Kapazität. Das ist die Energie
+ * *im* Speicher; an den Klemmen ist die Ladung etwas größer und die Entladung etwas kleiner, weil
+ * die Verluste dazwischenliegen. Für die Frage „stimmt die Größenordnung?" reicht das genau.
+ */
+export function socEnergy(rows: HistoryRow[], capacityKwh: number): { charge: number; discharge: number; samples: number } | null {
+  if (capacityKwh <= 0) return null;
+  const soc = rows.map((r) => (typeof r.battery_soc === "number" ? r.battery_soc : null)).filter((v): v is number => v !== null);
+  if (soc.length < 10) return null;
+  let up = 0;
+  let down = 0;
+  for (let i = 1; i < soc.length; i++) {
+    const d = soc[i]! - soc[i - 1]!;
+    if (d > 0) up += d;
+    else down -= d;
+  }
+  return { charge: up * capacityKwh, discharge: down * capacityKwh, samples: soc.length };
+}
+
 function isoShift(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -53,6 +74,11 @@ export function BatteryReport() {
 
   const t = data?.totals;
   const cap = data?.meta.battery_capacity_kwh ?? 0;
+  // Gegenprobe aus dem Ladestand: was der Speicher laut seinem eigenen Füllstand abgegeben hat.
+  // Zwei unabhängige Wege zur selben Zahl - die Leistungsmessung integriert über die Zeit, der
+  // Ladestand zählt nur Anfang und Ende. Laufen sie auseinander, fehlen der Bilanz Minuten, und
+  // das gehört auf die Seite und nicht in eine Rückfrage.
+  const bySoc = useMemo(() => socEnergy(rows, cap), [rows, cap]);
   const cycles = t && cap > 0 ? t.battery_discharge_kwh / cap : null;
   const pvShare = t && t.battery_charge_kwh > 0 ? t.pv_to_battery_kwh / t.battery_charge_kwh : null;
   const eff = t && t.battery_charge_kwh > 0.5 ? Math.min(1, t.battery_discharge_kwh / t.battery_charge_kwh) : null;
@@ -78,7 +104,17 @@ export function BatteryReport() {
         <Stat label="Vollzyklen" value={cycles != null ? de1(cycles, cycles >= 10 ? 0 : 1) : "-"} hint={cap > 0 ? `Entladung ÷ ${de1(cap, 1)} kWh` : "Kapazität unbekannt"} />
         <Stat label="Ersparnis" value={eur(t?.battery_savings_eur)} tone="amber" hint="gegenüber Netzbezug" />
         <Stat label="PV-Anteil Ladung" value={pct(pvShare)} hint={t && t.grid_to_battery_kwh > 0.05 ? `${de1(t.grid_to_battery_kwh)} kWh aus dem Netz geladen` : "keine Netzladung"} />
-        <Stat label="Wirkungsgrad" value={pct(eff)} tone="muted" hint="Entladen ÷ Geladen" />
+        {bySoc ? (
+          <Stat
+            label="Laut Ladestand"
+            value={de1(bySoc.discharge)}
+            unit="kWh"
+            tone={t && Math.abs(bySoc.discharge - t.battery_discharge_kwh) > 0.25 * Math.max(bySoc.discharge, 0.5) ? "ember" : "muted"}
+            hint={t ? `entladen · Leistungsmessung ${de1(t.battery_discharge_kwh)} kWh` : "entladen"}
+          />
+        ) : (
+          <Stat label="Wirkungsgrad" value={pct(eff)} tone="muted" hint="Entladen ÷ Geladen" />
+        )}
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "5fr 3fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>

@@ -8,6 +8,7 @@ from hems_core.accounting import (
     BatteryOrigin,
     MinuteSample,
     cop_at,
+    fill_gaps,
     heat_demand_kw,
     heat_forecast,
     hourly_energy,
@@ -235,3 +236,80 @@ def test_grid_charging_is_split_by_daylight() -> None:
     day = hourly_energy(H0, _minutes(60, pv_kw=1.0, grid_kw=3.0, battery_kw=-4.0), TARIFF)
     assert day.grid_to_battery_kwh == pytest.approx(3.0)
     assert day.grid_to_battery_dark_kwh == pytest.approx(0.0)
+
+
+# ------------------------------------------------------------------ Lücken im Minutenraster
+# Der Fall, an dem die Bilanz still gescheitert ist: der Speicher trägt nachts das Haus mit
+# gleichmäßiger Leistung, aber die Quelle meldet nur jede dritte Minute. Gezählt wurde vorher nur,
+# was einen Messwert hatte - die Entladung schrumpfte auf ein Drittel, ohne dass irgendwo eine
+# Warnung erschien. Am 08.09. waren das 0,6 statt 1,7 kWh, und daraus ein Wirkungsgrad von 11 %.
+
+
+def _sparse(n: int, every: int, **kw: float | None) -> list[MinuteSample]:
+    return [s for i, s in enumerate(_minutes(n, **kw)) if i % every == 0]
+
+
+def test_lueckige_minuten_verlieren_keine_energie_mehr() -> None:
+    voll = hourly_energy(H0, _minutes(60, battery_kw=0.36, grid_kw=-0.36), TARIFF)
+    lueckig = hourly_energy(H0, fill_gaps(_sparse(60, 3, battery_kw=0.36, grid_kw=-0.36)), TARIFF)
+    assert voll.battery_discharge_kwh == pytest.approx(0.36)
+    assert lueckig.battery_discharge_kwh == pytest.approx(voll.battery_discharge_kwh, abs=0.02)
+    assert lueckig.minutes >= 58
+
+
+def test_ohne_fuellung_fehlten_zwei_drittel() -> None:
+    """Der Beleg für den Befund: ungefüllt zählt die Stunde nur ihre 20 gemeldeten Minuten."""
+    roh = hourly_energy(H0, _sparse(60, 3, battery_kw=0.36, grid_kw=-0.36), TARIFF)
+    assert roh.minutes == 20
+    assert roh.battery_discharge_kwh == pytest.approx(0.12, abs=0.005)
+
+
+def test_ein_echter_ausfall_wird_nicht_zugeschuettet() -> None:
+    """Fünf Minuten Lücke sind ein Takt, eine halbe Stunde ist ein Ausfall - und bleibt einer."""
+    erste = _minutes(5, battery_kw=1.0)
+    spaete = [
+        MinuteSample(
+            ts=H0 + timedelta(minutes=40 + i),
+            pv_kw=0.0,
+            grid_kw=0.0,
+            battery_kw=1.0,
+            heat_pump_kw=0.0,
+            ev_kw=0.0,
+            price_ct_kwh=30.0,
+        )
+        for i in range(5)
+    ]
+    h = hourly_energy(H0, fill_gaps(erste + spaete), TARIFF)
+    assert h.minutes == 15, "5 gemessene + 5 gehaltene + 5 gemessene Minuten"
+    assert h.battery_discharge_kwh == pytest.approx(15 / 60, abs=1e-3)
+
+
+def test_ueber_den_letzten_messwert_hinaus_wird_nichts_erfunden() -> None:
+    """Die laufende Stunde darf nicht vorgreifen: sonst stünde Energie da, die es noch nicht gibt."""
+    h = hourly_energy(H0, fill_gaps(_minutes(10, battery_kw=1.0)), TARIFF)
+    assert h.minutes == 10
+    assert h.battery_discharge_kwh == pytest.approx(10 / 60, abs=1e-3)
+
+
+def test_jedes_feld_haelt_fuer_sich() -> None:
+    """Fehlt nur die Batterie, gelten PV und Netz weiter - und umgekehrt."""
+    a = MinuteSample(
+        ts=H0,
+        pv_kw=3.0,
+        grid_kw=-1.0,
+        battery_kw=-2.0,
+        heat_pump_kw=0.0,
+        ev_kw=0.0,
+        price_ct_kwh=30.0,
+    )
+    b = MinuteSample(
+        ts=H0 + timedelta(minutes=1),
+        pv_kw=None,
+        grid_kw=-1.0,
+        battery_kw=None,
+        heat_pump_kw=0.0,
+        ev_kw=0.0,
+        price_ct_kwh=30.0,
+    )
+    filled = fill_gaps([a, b])
+    assert filled[1].pv_kw == 3.0 and filled[1].battery_kw == -2.0

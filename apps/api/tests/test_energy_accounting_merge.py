@@ -78,3 +78,41 @@ async def test_recompute_carries_heat_pump_forward() -> None:
     assert h.house_kwh == pytest.approx(5.0)  # PV 4 + Netz 1, aus den Minutenwerten
     assert h.heat_pump_kwh == pytest.approx(2.0)  # erhalten geblieben
     assert h.base_kwh == pytest.approx(3.0)
+
+
+@pytest.mark.asyncio
+async def test_luecken_im_minutenraster_kosten_keine_energie_mehr() -> None:
+    """Der Befund vom 08.09.: nachts meldet die Quelle nur jede dritte Minute.
+
+    Der Speicher trug das Haus mit gleichmäßigen 0,36 kW. Gezählt wurde vorher nur, was eine
+    Minutenzeile hatte - ein Drittel. Auf der Seite standen 0,6 statt 1,7 kWh und daraus ein
+    Wirkungsgrad von 11 %.
+    """
+    written: list[HourlyEnergy] = []
+
+    async def minute_rows(s: datetime, e: datetime) -> list[dict[str, float | str | None]]:
+        return [
+            {
+                "ts": (HOUR + timedelta(minutes=i)).isoformat().replace("+00:00", "Z"),
+                "pv_power_kw": 0.0,
+                "grid_power_kw": 0.0,
+                "battery_power_kw": 0.36,
+            }
+            for i in range(0, 60, 3)
+        ]
+
+    async def read(s: datetime, e: datetime) -> list[tuple[HourlyEnergy, float | None]]:
+        return []
+
+    async def write(hours: list[HourlyEnergy], temps: dict[datetime, float | None]) -> None:
+        written.extend(hours)
+
+    async def last() -> datetime | None:
+        return None
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, minute_rows, store=(read, write, last))
+    await acc.recompute(HOUR, HOUR + timedelta(hours=1))
+    h = written[0]
+    assert h.minutes >= 58, "die Stunde ist abgedeckt, nicht nur zu einem Drittel"
+    assert h.battery_discharge_kwh == pytest.approx(0.36, abs=0.02)
+    assert h.battery_to_house_kwh == pytest.approx(0.36, abs=0.02)

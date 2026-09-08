@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict
 
@@ -188,6 +188,60 @@ _SUM_FIELDS = [
 
 def _r(x: float) -> float:
     return round(x, 4)
+
+
+# Felder, die zwischen zwei Messwerten weitergelten. Ein Preis gilt ohnehin stundenweise, eine
+# Leistung bis zur nächsten Meldung.
+_HOLD_FIELDS = ("pv_kw", "grid_kw", "battery_kw", "heat_pump_kw", "ev_kw", "price_ct_kwh")
+
+# So lange gilt ein Messwert weiter, wenn kein neuer kommt. Fünf Minuten, weil myenergi-Geräte im
+# Leerlauf in diesem Takt melden; länger wäre keine Lücke mehr, sondern ein Ausfall, und den soll
+# die Bilanz nicht zuschütten.
+MAX_HOLD_MIN = 5
+
+
+def fill_gaps(
+    samples: Iterable[MinuteSample], max_hold_min: int = MAX_HOLD_MIN
+) -> list[MinuteSample]:
+    """Minutenreihe auf ein lückenloses Raster bringen: jeder Messwert gilt bis zum nächsten.
+
+    **Warum das sein muss.** Die Bilanz zählt je Minutenzeile Leistung × 1/60 h. Eine Minute ohne
+    Zeile trägt damit nichts bei - sie zählt als null Energie, nicht als „unbekannt". Das ist genau
+    dann falsch, wenn eine Quelle nur meldet, wenn sich etwas ändert oder wenn sie es für nötig
+    hält: die myenergi-Geräte tragen den Zeitstempel ihres eigenen letzten Berichts, und im
+    Leerlauf berichten sie im Minutenabstand oder seltener. Nachts, wenn der Speicher mit
+    gleichmäßigen 0,35 kW das Haus trägt, fehlen dann zwei von drei Minuten - und die Entladung
+    schrumpft auf ein Drittel, ohne dass irgendwo ein Fehler auftaucht.
+
+    Ein Messwert gilt deshalb weiter, bis ein neuer kommt, höchstens aber `max_hold_min` Minuten.
+    Danach ist es keine Lücke mehr, sondern ein Ausfall, und die Minute bleibt leer.
+
+    **Zwei Grenzen, die bewusst nicht überschritten werden.** Über den letzten Messwert hinaus wird
+    nicht fortgeschrieben: in der laufenden Stunde wäre das erfundene Energie, die es noch nicht
+    gibt. Und jedes Feld hält für sich - fehlt nur die Batterie, gelten PV und Netz trotzdem weiter.
+    """
+    rows = sorted(samples, key=lambda s: s.ts)
+    if not rows:
+        return []
+    by_minute = {s.ts.replace(second=0, microsecond=0): s for s in rows}
+    out: list[MinuteSample] = []
+    held: dict[str, tuple[float, datetime]] = {}
+    hold = timedelta(minutes=max_hold_min)
+    t, stop = min(by_minute), max(by_minute)
+    while t <= stop:
+        cur = by_minute.get(t)
+        values: dict[str, float | None] = {}
+        for field in _HOLD_FIELDS:
+            v = getattr(cur, field) if cur is not None else None
+            if v is not None:
+                held[field] = (v, t)
+            else:
+                prev = held.get(field)
+                v = prev[0] if prev is not None and t - prev[1] <= hold else None
+            values[field] = v
+        out.append(MinuteSample(ts=t, **values))
+        t += timedelta(minutes=1)
+    return out
 
 
 def hourly_energy(

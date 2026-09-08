@@ -830,6 +830,38 @@ class LiveRuntime:
             cursor = stop
         return total
 
+    async def _rebuild_energy_once(self) -> None:
+        """Die gespeicherten Stundenbilanzen einmalig neu rechnen, wenn sich die Methode geändert hat.
+
+        Eine Stundenbilanz trägt nicht bei sich, nach welchem Verfahren sie entstanden ist. Ändert
+        sich das Verfahren - hier: Minutenlücken werden gehalten statt als null Energie gezählt -,
+        bleiben alte Zeilen sonst für immer falsch, und die Jahresansicht zeigt eine Mischung aus
+        zwei Rechnungen. Der Marker steht als Systemereignis in der Datenbank; er wird erst gesetzt,
+        wenn der Durchlauf fertig ist, damit ein Absturz mittendrin ihn nicht überspringt.
+
+        Läuft im Hintergrund und tageweise: ein Jahr sind über eine halbe Million Minutenzeilen.
+        """
+        marker = "energy.rebuild_hold_v1"
+        try:
+            if await self.repos.has_event(marker):
+                return
+            start = await self.repos.first_measurement_at()
+            if start is None:
+                return
+            began = self.now
+            hours = await self.accounting.recompute(start, began)
+            await self.repos.add_event(
+                "info",
+                marker,
+                f"{hours} Stundenbilanzen ab {start:%d.%m.%Y} neu gerechnet (Minutenlücken).",
+                {"hours": hours},
+            )
+            log.info("energy hours rebuilt", hours=hours, since=start.isoformat())
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            log.warning("energy rebuild failed", error=repr(exc)[:300])
+
     async def _rollup_loop(self) -> None:
         while True:
             try:
@@ -876,6 +908,7 @@ class LiveRuntime:
                 asyncio.create_task(self._housekeeping_loop(), name="housekeeping"),
                 asyncio.create_task(self._accounting_loop(), name="accounting"),
                 asyncio.create_task(self._rollup_loop(), name="rollup"),
+                asyncio.create_task(self._rebuild_energy_once(), name="energy-rebuild"),
             ]
             if self.myenergi is not None:
                 self.myenergi.start()

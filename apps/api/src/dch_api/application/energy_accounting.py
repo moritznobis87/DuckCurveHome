@@ -31,7 +31,9 @@ from dch_api.schemas import (
 from hems_core.accounting import (
     BatteryOrigin,
     HourlyEnergy,
+    MinuteSample,
     cop_at,
+    fill_gaps,
     heat_forecast,
     hourly_energy,
     pv_tax,
@@ -368,13 +370,21 @@ class EnergyAccounting:
     ) -> list[tuple[HourlyEnergy, float | None]]:
         """Stunden direkt aus Minutenzeilen berechnen (Demo, oder Live für noch nicht gespeicherte Stunden)."""
         rows = await self.minute_rows(start, end)
-        by_hour: dict[datetime, list[MinuteRow]] = {}
+        # Erst das Raster füllen, dann nach Stunden schneiden. Andersherum endete jede Lücke an der
+        # Stundengrenze, und genau über die läuft eine ruhige Nacht.
+        by_hour: dict[datetime, list[MinuteSample]] = {}
+        for smp in fill_gaps(samples_from_rows(rows)):
+            by_hour.setdefault(smp.ts.replace(minute=0, second=0, microsecond=0), []).append(smp)
+        temps_by_hour: dict[datetime, list[float | None]] = {}
         for r in rows:
             ts_raw = r.get("ts")
             if not isinstance(ts_raw, str):
                 continue
             ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00")).astimezone(UTC)
-            by_hour.setdefault(ts.replace(minute=0, second=0, microsecond=0), []).append(r)
+            t_out = r.get("outdoor_temp_c")
+            temps_by_hour.setdefault(ts.replace(minute=0, second=0, microsecond=0), []).append(
+                t_out if isinstance(t_out, int | float) else None
+            )
         out: list[tuple[HourlyEnergy, float | None]] = []
         order = sorted(by_hour)
         # Das Herkunftskonto des Speichers läuft über die Stunden weiter; ohne den Anschluss an die
@@ -383,12 +393,8 @@ class EnergyAccounting:
         origin = await self._origin_before(order[0]) if order else BatteryOrigin()
         capacity = self.hems.battery.capacity_kwh
         for hour_start in order:
-            hrows = by_hour[hour_start]
-            h = hourly_energy(
-                hour_start, samples_from_rows(hrows), self.hems.tariff, origin, capacity
-            )
-            temps = [r.get("outdoor_temp_c") for r in hrows]
-            out.append((h, _mean(v if isinstance(v, int | float) else None for v in temps)))
+            h = hourly_energy(hour_start, by_hour[hour_start], self.hems.tariff, origin, capacity)
+            out.append((h, _mean(temps_by_hour.get(hour_start, []))))
         return out
 
     async def _origin_before(self, start: datetime) -> BatteryOrigin:
