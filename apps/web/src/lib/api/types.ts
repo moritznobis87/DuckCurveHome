@@ -1667,9 +1667,12 @@ export interface components {
              * @default {
              *       "present": true,
              *       "control_enabled": false,
-             *       "nominal_heat_kw": 12,
-             *       "water_heat_kw": 9,
-             *       "combustion_efficiency": 0.92,
+             *       "nominal_heat_kw": 11.9,
+             *       "water_heat_kw": 10,
+             *       "combustion_efficiency": 0.904,
+             *       "electric_w": 75,
+             *       "pellet_kg_per_hour_max": 2.7,
+             *       "pellet_kg_per_hour_min": 0.7,
              *       "pellet_price_eur_per_t": 450,
              *       "pellet_kwh_per_kg": 4.9,
              *       "room_heat_credit": 1,
@@ -2366,19 +2369,34 @@ export interface components {
             control_enabled: boolean;
             /**
              * Nominal Heat Kw
-             * @default 12
+             * @default 11.9
              */
             nominal_heat_kw: number;
             /**
              * Water Heat Kw
-             * @default 9
+             * @default 10
              */
             water_heat_kw: number;
             /**
              * Combustion Efficiency
-             * @default 0.92
+             * @default 0.904
              */
             combustion_efficiency: number;
+            /**
+             * Electric W
+             * @default 75
+             */
+            electric_w: number;
+            /**
+             * Pellet Kg Per Hour Max
+             * @default 2.7
+             */
+            pellet_kg_per_hour_max: number;
+            /**
+             * Pellet Kg Per Hour Min
+             * @default 0.7
+             */
+            pellet_kg_per_hour_min: number;
             /**
              * Pellet Price Eur Per T
              * @default 450

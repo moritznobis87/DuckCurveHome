@@ -30,36 +30,52 @@ Die Kette hat nach Anbindung des Maestro-Moduls keine unbekannte Größe mehr. G
 
 | Größe | Wert | Herkunft |
 | --- | --- | --- |
-| Nennleistung gesamt | 12 kW | Gerät |
-| davon ins Wasser | 9 kW | Gerät |
-| davon in die Küche | 3 kW | Differenz |
-| Verbrennungswirkungsgrad | 92 % | Betreiberangabe |
-| Feuerungsleistung | 13,04 kW | 12 / 0,92 |
-| Schornsteinverlust | 1,04 kW | Differenz |
+| Nennleistung gesamt | 11,9 kW | Datenblatt |
+| davon ins Wasser | 10 kW | Datenblatt |
+| davon in die Küche | 1,9 kW | Differenz |
+| Feuerungswirkungsgrad | 90,4 % | Datenblatt |
+| Feuerungsleistung | 13,16 kW | 11,9 / 0,904 |
+| Schornsteinverlust | 1,26 kW | Differenz |
+| Eigenverbrauch elektrisch | 75 W | Datenblatt |
 | Pelletpreis | 450 €/t | letzte Lieferung, **einstellbar** |
 | Heizwert | 4,9 kWh/kg | ENplus A1 bei 8 % Feuchte, **einstellbar** |
-| Pelletdurchsatz | 2,66 kg/h | 13,04 / 4,9 |
-| Kosten | 1,20 €/h | 2,66 × 0,45 |
+| Pelletdurchsatz | 2,686 kg/h | 13,16 / 4,9 |
+| Kosten Brennstoff | 1,21 €/h | 2,686 × 0,45 |
+| Kosten Strom | 0,02 €/h | 75 W bei 30 ct |
 
-Der Ofen läuft in diesem Haus praktisch immer auf Stufe 5. Teillast wird deshalb bewusst nicht
-modelliert: eine Kennlinie zu erfinden, die niemand gemessen hat, macht die Rechnung nicht genauer,
-nur länger.
+Der Ofen läuft in diesem Haus praktisch immer auf Stufe 5. Das Datenblatt kennt zwar einen
+Minimalverbrauch von 0,7 kg/h, aber Teillast wird bewusst nicht modelliert: eine Kennlinie zu
+erfinden, die niemand gemessen hat, macht die Rechnung nicht genauer, nur länger.
 
-### Die eine Entscheidung, über die man streiten kann
+### Die Kette prüft sich selbst
 
-**Zählt die Raumwärme als Nutzen?** Der Ofen steht in der Küche und heizt sie mit drei Kilowatt. Das
-ist kein Verlust, aber es ist auch keine Wärme im Puffer.
+Das ist die wertvollste Eigenschaft dieser Zahlen. Leistung, Wirkungsgrad und maximaler Verbrauch
+stammen aus derselben Quelle und sind über den Heizwert verknüpft, also müssen beide Rechenwege zum
+selben Ergebnis führen:
+
+```
+vorwärts:    11,9 / 0,904 / 4,9   = 2,686 kg/h     Datenblatt: 2,7
+rückwärts:   2,7 × 4,9 × 0,904    = 11,96 kW       Datenblatt: 11,9
+```
+
+Ein halbes Prozent Abweichung. Damit ist auch der **Heizwert bestätigt**: die ursprüngliche
+Schätzung von 5,4 kWh/kg ergäbe 2,44 kg/h und läge zehn Prozent unter dem Datenblatt.
+`StoveEconomics.plausible` prüft das bei jeder Rechnung, damit eine falsch eingetragene Zahl nicht
+still eine falsche Entscheidung erzeugt.
+
+### Die Raumwärme
+
+**Zählt die Wärme, die in der Küche bleibt, als Nutzen?** Ja, so ist es entschieden: die gesamte
+Nutzwärme wird angerechnet. Bei diesem Gerät ist der Unterschied ohnehin klein, weil fast alles ins
+Wasser geht.
 
 | Lesart | Wärmepreis |
 | --- | --- |
-| nur die Pufferwärme (9 kW) | **13,3 ct/kWh** |
-| Puffer plus Raumwärme (12 kW) | **10,0 ct/kWh** |
+| nur die Pufferwärme (10 kW) | 12,3 ct/kWh |
+| gesamte Nutzwärme (11,9 kW) | **10,4 ct/kWh** |
 
-Beide Zahlen sind richtig, sie beantworten verschiedene Fragen. In der Heizperiode ersetzt die
-Küchenwärme Wärme, die sonst die Wärmepumpe liefern müsste, dann ist 10,0 der ehrliche Wert. Im
-Sommer, oder wenn die Küche ohnehin zu warm wird, ist sie wertlos, dann gilt 13,3. Der
-Anrechnungsgrad steht deshalb als `room_heat_credit` in der Konfiguration und nicht als Konstante im
-Code, und die Rechnung gibt immer beide Preise aus.
+Die Rechnung gibt trotzdem beide Zahlen aus. Im Sommer, wenn die Küchenwärme lästig statt nützlich
+ist, gilt die obere, und `room_heat_credit` schaltet zwischen beiden um.
 
 ## Wann welche Quelle gewinnt
 
@@ -71,11 +87,11 @@ Zahl zusammenziehen, die man gegen die COP-Kennlinie halten kann:
 Schafft die Maschine bei der aktuellen Außentemperatur mehr, ist sie dran. Schafft sie weniger, ist
 der Ofen dran.
 
-| Strompreis | Break-even-COP (mit Raumwärme) | Urteil bei COP 2,4 (etwa -7 °C) |
+| Strompreis | Break-even-COP (gesamte Nutzwärme) | Urteil bei COP 2,4 (etwa -7 °C) |
 | --- | --- | --- |
 | 20 ct | 2,0 | Wärmepumpe |
-| 30 ct | 3,0 | Ofen |
-| 45 ct | 4,5 | Ofen, deutlich |
+| 30 ct | 2,9 | Ofen |
+| 45 ct | 4,3 | Ofen, deutlich |
 
 Damit ist die Handregel nachgerechnet und im Kern bestätigt: bei Kälte und teurem Strom gewinnt der
 Ofen. Der Planer wird sie nicht umwerfen, sondern schärfen.
@@ -85,7 +101,7 @@ Ofen. Der Planer wird sie nicht umwerfen, sondern schärfen.
 Die Rechnung oben liefert je Viertelstunde einen Preis für beide Quellen. Für das MILP heißt das:
 
 * eine zweite binäre Schaltvariable neben der Wärmepumpe,
-* die Ofenleistung als feste 9 kW in die Pufferbilanz (nicht 12: in den Puffer gehen neun),
+* die Ofenleistung als feste 10 kW in die Pufferbilanz (nicht 11,9: in den Puffer gehen zehn),
 * Mindestlaufzeit und Mindeststillstand des Ofens als eigene Nebenbedingungen, deutlich länger als
   bei der Wärmepumpe (zwei Stunden statt einer halben),
 * Zündkosten als Startkosten, damit der Planer ihn nicht stündlich an- und ausknipst,
@@ -104,7 +120,7 @@ gemessener Wert, und erst dann ist die Entscheidung wirklich belastbar.
 **Der Brennstoffeintrag ist bisher relativ.** Die Schneckendrehzahl ist dem Pelletmassenstrom
 proportional, der Faktor ist unbekannt. Wer einmal einen Sack wiegt und die Umdrehungen dazwischen
 abliest, hat ihn. Für die Kostenrechnung wird er nicht gebraucht, wohl aber für die Gegenprobe, ob
-der Ofen wirklich 2,66 kg/h verbraucht.
+der Ofen wirklich 2,69 kg/h verbraucht.
 
 **Fernstart einer Feuerstätte** ist eine andere Klasse von Eingriff als ein Relais. `control_enabled`
 steht deshalb auf `false`, bis es ausdrücklich gewollt ist.

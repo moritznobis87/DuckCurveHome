@@ -190,19 +190,28 @@ class StoveConfig(BaseModel):
     # andere Klasse von Eingriff als ein Relais, und die Entscheidung gehört dem Hausherrn.
     control_enabled: bool = False
 
-    nominal_heat_kw: float = 12.0  # Gesamtwärmeleistung bei Volllast, Wasser und Raum zusammen
-    water_heat_kw: float = 9.0  # davon in den Pufferspeicher
-    combustion_efficiency: float = 0.92  # Rest geht über den Schornstein
+    # Datenblattwerte des Geräts (MCZ Star Hydromatic).
+    nominal_heat_kw: float = 11.9  # Gesamtwärmeleistung bei Volllast, Wasser und Raum zusammen
+    water_heat_kw: float = 10.0  # davon in den Pufferspeicher
+    combustion_efficiency: float = (
+        0.904  # Feuerungswirkungsgrad; der Rest geht über den Schornstein
+    )
+    electric_w: float = 75.0  # Eigenverbrauch im Betrieb: Gebläse, Schnecke, Steuerung
+    # Ebenfalls aus dem Datenblatt, hier als Gegenprobe für die gerechnete Kette. Der Ofen läuft in
+    # diesem Haus praktisch immer auf Volllast, deshalb ist der Minimalwert nur dokumentiert.
+    pellet_kg_per_hour_max: float = 2.7
+    pellet_kg_per_hour_min: float = 0.7
 
     pellet_price_eur_per_t: float = 450.0
     # 4,9 kWh/kg ist der Normwert für ENplus A1 bei 8 % Feuchte. Die Norm verlangt mindestens 4,6,
     # gute Ware liegt zwischen 4,9 und 5,3. Wer seinen Lieferschein hat, trägt den echten Wert ein.
     pellet_kwh_per_kg: float = 4.9
 
-    # Wie viel der Raumwärme als Nutzen zählt. Der Ofen steht in der Küche und heizt sie mit; in der
-    # Heizperiode ersetzt das Wärme, die sonst die Wärmepumpe liefern müsste, also 1,0. Im Sommer
-    # oder bei ohnehin überheizter Küche wäre 0 ehrlicher. Der Wert entscheidet mit darüber, ob der
-    # Ofen billiger rechnet als die Wärmepumpe, deshalb steht er hier und nicht in einer Formel.
+    # Wie viel der Raumwärme als Nutzen zählt. Der Ofen steht in der Küche und heizt sie mit 1,9 kW
+    # mit; in der Heizperiode ersetzt das Wärme, die sonst die Wärmepumpe liefern müsste. Der
+    # Hausherr rechnet die gesamte Nutzwärme an, also 1,0. Im Sommer oder bei ohnehin überheizter
+    # Küche wäre 0 ehrlicher. Bei diesem Gerät ist der Unterschied klein, weil fast alles ins Wasser
+    # geht: 10,2 gegen 12,1 ct/kWh.
     room_heat_credit: float = 1.0
 
     # Ein Ofen wird nicht für zwanzig Minuten angeworfen: Zünden kostet Strom und unverbrannte

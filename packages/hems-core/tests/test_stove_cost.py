@@ -1,8 +1,9 @@
 """Wärmepreis des Pelletofens und der Vergleich mit der Wärmepumpe.
 
 Die Zahlen sind von Hand nachgerechnet, damit ein Fehler in der Formel auffällt und nicht nur eine
-Abweichung vom letzten Lauf. Gerät: 12 kW gesamt, davon 9 kW ins Wasser, 92 % Verbrennung,
-450 €/t, 4,9 kWh/kg.
+Abweichung vom letzten Lauf. Gerät laut Datenblatt (MCZ Star Hydromatic): 11,9 kW gesamt, davon
+10 kW ins Wasser, 90,4 % Feuerungswirkungsgrad, 75 W Eigenverbrauch, maximal 2,7 kg/h.
+Pellets 450 €/t bei 4,9 kWh/kg.
 """
 
 from __future__ import annotations
@@ -21,25 +22,50 @@ CFG = StoveConfig()
 
 
 def test_die_kette_vom_pellet_zur_waerme() -> None:
-    """12 / 0,92 = 13,04 kW Feuerung; / 4,9 = 2,661 kg/h; × 0,45 €/kg = 1,197 €/h."""
+    """11,9 / 0,904 = 13,16 kW Feuerung; / 4,9 = 2,686 kg/h; × 0,45 €/kg = 1,209 €/h."""
     e = stove_economics(CFG)
-    assert e.fuel_kw == pytest.approx(13.04, abs=0.01)
-    assert e.chimney_loss_kw == pytest.approx(1.04, abs=0.01)
-    assert e.water_heat_kw == 9.0
-    assert e.room_heat_kw == 3.0
-    assert e.kg_per_hour == pytest.approx(2.661, abs=0.002)
-    assert e.eur_per_hour == pytest.approx(1.197, abs=0.002)
+    assert e.fuel_kw == pytest.approx(13.16, abs=0.01)
+    assert e.chimney_loss_kw == pytest.approx(1.26, abs=0.01)
+    assert e.water_heat_kw == 10.0
+    assert e.room_heat_kw == pytest.approx(1.9, abs=0.01)
+    assert e.kg_per_hour == pytest.approx(2.686, abs=0.002)
+    assert e.pellet_eur_per_hour == pytest.approx(1.209, abs=0.002)
 
 
-def test_die_raumwaerme_entscheidet_ueber_den_waermepreis() -> None:
-    """Derselbe Ofen kostet 13,3 oder 10,0 ct/kWh, je nachdem was man als Nutzen zählt.
+def test_die_kette_prueft_sich_am_datenblatt() -> None:
+    """Der gerechnete Durchsatz muss den angegebenen treffen, sonst stimmt eine Eingangsgröße nicht.
 
-    Das ist keine Rechenungenauigkeit, sondern eine Bewertungsfrage. Deshalb gibt die Rechnung
-    beide Zahlen aus, statt sich stillschweigend für eine zu entscheiden.
+    Das ist die wertvollste Eigenschaft dieser Zahlen: Leistung, Wirkungsgrad und Verbrauch stammen
+    aus derselben Quelle und sind über den Heizwert verknüpft. Wer den Heizwert falsch einträgt,
+    fällt hier auf, statt still eine falsche Entscheidung zu erzeugen.
     """
     e = stove_economics(CFG)
-    assert e.ct_per_kwh_water == pytest.approx(13.3, abs=0.1)  # 1,197 / 9
-    assert e.ct_per_kwh_useful == pytest.approx(9.98, abs=0.1)  # 1,197 / 12
+    assert abs(e.datasheet_deviation) < 0.01, "2,686 gegen 2,7 kg/h sind ein halbes Prozent"
+    assert e.plausible
+
+    # Die ursprüngliche Schätzung von 5,4 kWh/kg widerspricht dem Datenblatt um zehn Prozent.
+    zu_hoch = stove_economics(CFG.model_copy(update={"pellet_kwh_per_kg": 5.4}))
+    assert zu_hoch.datasheet_deviation < -0.09
+    assert not zu_hoch.plausible
+
+
+def test_der_eigenverbrauch_zaehlt_mit() -> None:
+    """75 W zum Marktpreis: klein, aber Strom, und er verschiebt in dieselbe Richtung wie ein hoher
+    Strompreis."""
+    ohne = stove_economics(CFG)
+    mit = stove_economics(CFG, aux_price_ct_kwh=30.0)
+    assert ohne.electricity_eur_per_hour == 0.0
+    assert mit.electricity_eur_per_hour == pytest.approx(0.0225, abs=0.0002)
+    assert mit.ct_per_kwh_useful > ohne.ct_per_kwh_useful
+    assert mit.ct_per_kwh_useful - ohne.ct_per_kwh_useful < 0.3, "Zehntel, keine Cents"
+
+
+def test_die_raumwaerme_verschiebt_den_waermepreis_nur_wenig() -> None:
+    """12,1 gegen 10,2 ct/kWh. Bei diesem Gerät geht fast alles ins Wasser, anders als zunächst
+    angenommen: 10 der 11,9 kW, nicht 9 von 12."""
+    e = stove_economics(CFG)
+    assert e.ct_per_kwh_water == pytest.approx(12.09, abs=0.05)  # 1,209 / 10
+    assert e.ct_per_kwh_useful == pytest.approx(10.16, abs=0.05)  # 1,209 / 11,9
 
 
 def test_ohne_anrechnung_der_raumwaerme_zaehlt_nur_der_puffer() -> None:
@@ -67,16 +93,16 @@ def test_waermepumpe_ist_strompreis_durch_arbeitszahl() -> None:
 
 
 def test_bei_kaelte_und_teurem_strom_gewinnt_der_ofen() -> None:
-    """Minus sieben Grad, COP 2,4, 45 ct/kWh: 18,75 ct Wärmepumpe gegen 9,98 ct Ofen."""
+    """Minus sieben Grad, COP 2,4, 45 ct/kWh: 18,75 ct Wärmepumpe gegen gut 10 ct Ofen."""
     c = cheaper_source(CFG, price_ct_kwh=45.0, cop=2.4)
     assert c.cheaper == "stove"
     assert c.heat_pump_ct == pytest.approx(18.75, abs=0.05)
-    assert c.saving_ct_per_kwh > 8
+    assert c.saving_ct_per_kwh > 7
     assert "Ofen günstiger" in c.note_de
 
 
 def test_bei_mildem_wetter_und_billigem_strom_gewinnt_die_waermepumpe() -> None:
-    """Sieben Grad, COP 3,5, 20 ct/kWh: 5,71 ct gegen 9,98 ct."""
+    """Sieben Grad, COP 3,5, 20 ct/kWh: 5,71 ct gegen gut 10 ct."""
     c = cheaper_source(CFG, price_ct_kwh=20.0, cop=3.5)
     assert c.cheaper == "heat_pump"
     assert c.heat_pump_ct == pytest.approx(5.71, abs=0.05)
@@ -84,9 +110,13 @@ def test_bei_mildem_wetter_und_billigem_strom_gewinnt_die_waermepumpe() -> None:
 
 
 def test_die_lesart_kann_die_entscheidung_kippen() -> None:
-    """Bei 30 ct und COP 2,4 liegt die Wärmepumpe bei 12,5 ct, also zwischen den beiden Ofenpreisen."""
-    mit = cheaper_source(CFG, price_ct_kwh=30.0, cop=2.4, credit_room_heat=True)
-    ohne = cheaper_source(CFG, price_ct_kwh=30.0, cop=2.4, credit_room_heat=False)
+    """Bei 30 ct und COP 2,45 liegt die Wärmepumpe zwischen den beiden Ofenpreisen (10,4 und 12,3).
+
+    Das Fenster ist bei diesem Gerät schmal, weil fast die gesamte Wärme ins Wasser geht. Es
+    existiert aber, und deshalb gibt die Rechnung weiter beide Zahlen aus.
+    """
+    mit = cheaper_source(CFG, price_ct_kwh=30.0, cop=2.45, credit_room_heat=True)
+    ohne = cheaper_source(CFG, price_ct_kwh=30.0, cop=2.45, credit_room_heat=False)
     assert mit.cheaper == "stove"
     assert ohne.cheaper == "heat_pump"
     assert "mit angerechneter Raumwärme" in mit.note_de
@@ -94,18 +124,18 @@ def test_die_lesart_kann_die_entscheidung_kippen() -> None:
 
 
 def test_break_even_cop_ist_die_zahl_fuer_die_kennlinie() -> None:
-    """Ab welcher Arbeitszahl schlägt die Wärmepumpe den Ofen? Bei 30 ct: 30 / 9,98 = 3,01."""
-    assert break_even_cop(CFG, 30.0) == pytest.approx(3.01, abs=0.02)
-    assert break_even_cop(CFG, 45.0) == pytest.approx(4.51, abs=0.02)
+    """Ab welcher Arbeitszahl schlägt die Wärmepumpe den Ofen? Bei 30 ct: 30 / 10,35 = 2,9."""
+    assert break_even_cop(CFG, 30.0) == pytest.approx(2.9, abs=0.05)
+    assert break_even_cop(CFG, 45.0) == pytest.approx(4.32, abs=0.05)
     # Ohne Anrechnung der Raumwärme ist der Ofen teurer, die Schwelle sinkt entsprechend.
-    assert break_even_cop(CFG, 30.0, credit_room_heat=False) == pytest.approx(2.26, abs=0.02)
+    assert break_even_cop(CFG, 30.0, credit_room_heat=False) == pytest.approx(2.44, abs=0.05)
 
 
 def test_die_naechtliche_frage_des_hausherrn() -> None:
     """Kalte Winternacht, Ofen an statt Wärmepumpe: die bisherige Handregel wird nachgerechnet.
 
     Minus fünf Grad heißt nach der Kennlinie etwa COP 2,5. Bei 32 ct Nachtstrom kostet die
-    Wärmepumpe 12,8 ct/kWh, der Ofen 10,0. Die Handregel war also richtig, und zwar aus Gründen,
+    Wärmepumpe 12,8 ct/kWh, der Ofen 10,4. Die Handregel war also richtig, und zwar aus Gründen,
     nicht aus Gefühl.
     """
     c = cheaper_source(CFG, price_ct_kwh=32.0, cop=2.5)

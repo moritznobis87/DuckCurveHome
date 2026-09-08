@@ -3565,9 +3565,12 @@
             "default": {
               "present": true,
               "control_enabled": false,
-              "nominal_heat_kw": 12.0,
-              "water_heat_kw": 9.0,
-              "combustion_efficiency": 0.92,
+              "nominal_heat_kw": 11.9,
+              "water_heat_kw": 10.0,
+              "combustion_efficiency": 0.904,
+              "electric_w": 75.0,
+              "pellet_kg_per_hour_max": 2.7,
+              "pellet_kg_per_hour_min": 0.7,
               "pellet_price_eur_per_t": 450.0,
               "pellet_kwh_per_kg": 4.9,
               "room_heat_credit": 1.0,
@@ -5039,17 +5042,32 @@
           "nominal_heat_kw": {
             "type": "number",
             "title": "Nominal Heat Kw",
-            "default": 12.0
+            "default": 11.9
           },
           "water_heat_kw": {
             "type": "number",
             "title": "Water Heat Kw",
-            "default": 9.0
+            "default": 10.0
           },
           "combustion_efficiency": {
             "type": "number",
             "title": "Combustion Efficiency",
-            "default": 0.92
+            "default": 0.904
+          },
+          "electric_w": {
+            "type": "number",
+            "title": "Electric W",
+            "default": 75.0
+          },
+          "pellet_kg_per_hour_max": {
+            "type": "number",
+            "title": "Pellet Kg Per Hour Max",
+            "default": 2.7
+          },
+          "pellet_kg_per_hour_min": {
+            "type": "number",
+            "title": "Pellet Kg Per Hour Min",
+            "default": 0.7
           },
           "pellet_price_eur_per_t": {
             "type": "number",

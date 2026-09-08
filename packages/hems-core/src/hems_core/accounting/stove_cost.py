@@ -11,12 +11,24 @@ eingeplant".
     Pelletdurchsatz × Preis                  = Kosten je Stunde
     Kosten je Stunde / gelieferte Wärme      = Wärmepreis
 
-Der letzte Schritt hat eine Entscheidung darin, und sie ist die einzige, über die man streiten kann:
-**zählt die Raumwärme als Nutzen?** Der Ofen gibt bei diesem Gerät zwölf Kilowatt ab, davon neun ins
-Wasser und drei in den Aufstellraum. Die drei Kilowatt sind kein Verlust, sie heizen die Küche. In
-der Heizperiode ersetzen sie damit Wärme, die sonst die Wärmepumpe liefern müsste. Im Sommer, oder
-wenn die Küche ohnehin zu warm ist, sind sie wertlos. Deshalb steht der Anrechnungsgrad in der
-Konfiguration und nicht in dieser Formel, und deshalb gibt diese Datei **beide** Preise aus.
+Der letzte Schritt hat eine Entscheidung darin: **zählt die Raumwärme als Nutzen?** Der Ofen gibt
+11,9 kW ab, davon 10 ins Wasser und 1,9 in die Küche. Die 1,9 kW sind kein Verlust, sie heizen den
+Aufstellraum, und in der Heizperiode ersetzen sie Wärme, die sonst die Wärmepumpe liefern müsste.
+Der Anrechnungsgrad steht deshalb in der Konfiguration, und diese Datei gibt **beide** Preise aus.
+Bei diesem Gerät ist der Unterschied klein, weil fast alles ins Wasser geht.
+
+**Die Kette prüft sich selbst.** Das Datenblatt nennt neben Leistung und Wirkungsgrad auch den
+maximalen Pelletverbrauch. Beide Wege müssen zum selben Ergebnis führen, und sie tun es:
+
+    vorwärts:   11,9 / 0,904 / 4,9        = 2,686 kg/h   (Datenblatt: 2,7)
+    rückwärts:  2,7 × 4,9 × 0,904         = 11,96 kW     (Datenblatt: 11,9)
+
+Damit ist auch der Heizwert bestätigt. Mit den geschätzten 5,4 kWh/kg käme die Rechnung auf
+2,44 kg/h und läge zehn Prozent unter dem Datenblatt. `datasheet_deviation` prüft das laufend, damit
+eine falsch eingetragene Zahl nicht still eine falsche Entscheidung erzeugt.
+
+**Der Eigenverbrauch** von 75 W ist klein, aber er gehört dazu: er ist Strom zum Marktpreis und
+verschiebt den Vergleich in dieselbe Richtung wie ein teurer Strompreis, nur um wenige Zehntel.
 
 **Die Wärmepumpe** ist die einfachere Seite: Strompreis geteilt durch Arbeitszahl. Solange der
 Wärmemengenzähler fehlt, ist die Arbeitszahl eine Kennlinie über der Außentemperatur und damit eine
@@ -42,37 +54,57 @@ class StoveEconomics:
     water_heat_kw: float  # in den Puffer
     room_heat_kw: float  # in den Aufstellraum
     kg_per_hour: float
-    eur_per_hour: float
+    pellet_eur_per_hour: float
+    electricity_eur_per_hour: float  # Eigenverbrauch des Ofens zum Strompreis
+    eur_per_hour: float  # beides zusammen
     ct_per_kwh_water: float  # alle Kosten auf die Pufferwärme umgelegt
     ct_per_kwh_useful: float  # Kosten auf Puffer plus angerechnete Raumwärme
+    datasheet_deviation: float  # gerechneter Durchsatz gegen den Datenblattwert, als Anteil
 
     @property
-    def credited_heat_kw(self) -> float:
-        return self.eur_per_hour * 100.0 / self.ct_per_kwh_useful if self.ct_per_kwh_useful else 0.0
+    def plausible(self) -> bool:
+        """Stimmt die gerechnete Kette mit dem Datenblatt überein?
+
+        Fünf Prozent Abweichung sind die Toleranz, in der sich Rundung, Feuchte der Pellets und die
+        Angabe des Herstellers bewegen. Darüber stimmt eine der eingetragenen Zahlen nicht, und dann
+        ist die ganze Entscheidung zwischen Ofen und Wärmepumpe schief.
+        """
+        return abs(self.datasheet_deviation) <= 0.05
 
 
-def stove_economics(cfg: StoveConfig) -> StoveEconomics:
+def stove_economics(cfg: StoveConfig, aux_price_ct_kwh: float = 0.0) -> StoveEconomics:
     """Volllastbetrieb durchrechnen. Teillast wird bewusst nicht modelliert.
 
     Der Ofen läuft in diesem Haus praktisch immer auf Stufe 5, und für einen Planer, der ihn nur
-    ein- oder ausschaltet, ist das auch die einzige Betriebsart, die zählt. Eine Teillastkennlinie
-    zu erfinden, die niemand gemessen hat, würde die Rechnung nicht genauer machen, nur länger.
+    ein- oder ausschaltet, ist das auch die einzige Betriebsart, die zählt. Das Datenblatt kennt zwar
+    einen Minimalverbrauch von 0,7 kg/h, aber eine Teillastkennlinie zu erfinden, die niemand
+    gemessen hat, würde die Rechnung nicht genauer machen, nur länger.
+
+    `aux_price_ct_kwh` ist der Strompreis für den Eigenverbrauch des Ofens. Ohne Angabe zählt nur
+    der Brennstoff; das ist die Zahl fürs Datenblatt, nicht die für eine Entscheidung.
     """
     eff = max(cfg.combustion_efficiency, 1e-6)
     fuel_kw = cfg.nominal_heat_kw / eff
     kg_per_hour = fuel_kw / max(cfg.pellet_kwh_per_kg, 1e-6)
-    eur_per_hour = kg_per_hour * cfg.pellet_price_eur_per_t / 1000.0
+    pellet_eur = kg_per_hour * cfg.pellet_price_eur_per_t / 1000.0
+    electricity_eur = cfg.electric_w / 1000.0 * aux_price_ct_kwh / 100.0
+    total_eur = pellet_eur + electricity_eur
     room_kw = max(cfg.nominal_heat_kw - cfg.water_heat_kw, 0.0)
     credited_kw = cfg.water_heat_kw + room_kw * cfg.room_heat_credit
+    rated = cfg.pellet_kg_per_hour_max
+    deviation = (kg_per_hour - rated) / rated if rated > 1e-6 else 0.0
     return StoveEconomics(
         fuel_kw=round(fuel_kw, 2),
         chimney_loss_kw=round(fuel_kw - cfg.nominal_heat_kw, 2),
         water_heat_kw=cfg.water_heat_kw,
         room_heat_kw=round(room_kw, 2),
         kg_per_hour=round(kg_per_hour, 3),
-        eur_per_hour=round(eur_per_hour, 3),
-        ct_per_kwh_water=round(_ct_per_kwh(eur_per_hour, cfg.water_heat_kw), 2),
-        ct_per_kwh_useful=round(_ct_per_kwh(eur_per_hour, credited_kw), 2),
+        pellet_eur_per_hour=round(pellet_eur, 3),
+        electricity_eur_per_hour=round(electricity_eur, 4),
+        eur_per_hour=round(total_eur, 3),
+        ct_per_kwh_water=round(_ct_per_kwh(total_eur, cfg.water_heat_kw), 2),
+        ct_per_kwh_useful=round(_ct_per_kwh(total_eur, credited_kw), 2),
+        datasheet_deviation=round(deviation, 4),
     )
 
 
@@ -114,7 +146,7 @@ def cheaper_source(
     der Ofen deutlich günstiger, ohne sie deutlich teurer. Wer das ohne Angabe der Lesart vergleicht,
     vergleicht nichts.
     """
-    econ = stove_economics(cfg)
+    econ = stove_economics(cfg, aux_price_ct_kwh=price_ct_kwh)
     stove_ct = econ.ct_per_kwh_useful if credit_room_heat else econ.ct_per_kwh_water
     hp_ct = heat_pump_ct_per_kwh(price_ct_kwh, cop)
     stove_wins = stove_ct < hp_ct
@@ -142,6 +174,6 @@ def break_even_cop(
     Liegt der Wert über dem, was die Maschine bei der aktuellen Außentemperatur schafft, ist der
     Ofen dran.
     """
-    econ = stove_economics(cfg)
+    econ = stove_economics(cfg, aux_price_ct_kwh=price_ct_kwh)
     stove_ct = econ.ct_per_kwh_useful if credit_room_heat else econ.ct_per_kwh_water
     return round(price_ct_kwh / stove_ct, 2) if stove_ct > 1e-6 else float("inf")

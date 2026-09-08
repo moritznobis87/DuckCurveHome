@@ -27,9 +27,13 @@ hems:
     # die Wärmepumpe, siehe hems_core.accounting.stove_cost und docs/OFEN_OPTIMIERUNG.md.
     present: true
     control_enabled: false  # darf der Planer ihn schalten? Bewusst aus, bis es gewollt ist
-    nominal_heat_kw: 12.0  # Gesamtwärmeleistung bei Volllast
-    water_heat_kw: 9.0  # davon in den Pufferspeicher, der Rest heizt den Aufstellraum
-    combustion_efficiency: 0.92
+    nominal_heat_kw: 11.9  # Gesamtwärmeleistung bei Volllast, laut Datenblatt
+    water_heat_kw: 10.0  # davon in den Pufferspeicher; 1,9 kW heizen die Küche
+    combustion_efficiency: 0.904  # Feuerungswirkungsgrad
+    electric_w: 75.0  # Eigenverbrauch im Betrieb
+    # Datenblattwerte als Gegenprobe: die gerechnete Kette muss 2,7 kg/h treffen.
+    pellet_kg_per_hour_max: 2.7
+    pellet_kg_per_hour_min: 0.7
     # Der Pelletpreis der letzten Lieferung. Er geht linear in den Wärmepreis ein: verdoppelt er
     # sich, verdoppelt sich der Wärmepreis. Nach jedem Kauf hier nachziehen.
     pellet_price_eur_per_t: 450.0
@@ -38,7 +42,7 @@ hems:
     pellet_kwh_per_kg: 4.9
     # Zählt die Wärme, die der Ofen in die Küche abgibt, als Nutzen? In der Heizperiode ja, denn sie
     # ersetzt Wärme, die sonst die Wärmepumpe liefern müsste. Der Wert entscheidet mit darüber, ob
-    # der Ofen billiger rechnet: 1,0 ergibt 10,0 ct/kWh, 0,0 ergibt 13,3 ct/kWh.
+    # der Ofen billiger rechnet: 1,0 ergibt 10,2 ct/kWh, 0,0 ergibt 12,1 ct/kWh.
     room_heat_credit: 1.0
     min_runtime_min: 120
     min_offtime_min: 60
