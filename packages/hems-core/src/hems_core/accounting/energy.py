@@ -89,6 +89,11 @@ class EnergyTotals(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     minutes: int = 0  # bewertete Minuten (Datenabdeckung)
+    # Davon Minuten, deren Eingang gröber war als eine Minute (Stundenmittel aus einem
+    # Historienexport). Die Summen stimmen dort, die Aufteilung auf Quellen ist geschätzt -
+    # siehe hourly_energy. Ohne diese Zahl mischt eine Jahresansicht zwei Rechnungsarten,
+    # ohne dass man es ihr ansieht.
+    coarse_minutes: int = 0
     pv_kwh: float = 0.0
     import_kwh: float = 0.0
     export_kwh: float = 0.0
@@ -182,7 +187,9 @@ class HourlyEnergy(EnergyTotals):
 
 
 _SUM_FIELDS = [
-    f for f in EnergyTotals.model_fields if f not in ("minutes", "price_missing_minutes")
+    f
+    for f in EnergyTotals.model_fields
+    if f not in ("minutes", "coarse_minutes", "price_missing_minutes")
 ]
 
 
@@ -198,6 +205,11 @@ _HOLD_FIELDS = ("pv_kw", "grid_kw", "battery_kw", "heat_pump_kw", "ev_kw", "pric
 # Leerlauf in diesem Takt melden; länger wäre keine Lücke mehr, sondern ein Ausfall, und den soll
 # die Bilanz nicht zuschütten.
 MAX_HOLD_MIN = 5
+
+# Ab dieser Eingangsauflösung ist die Zuordnung innerhalb der Stunde nicht mehr messbar, sondern
+# eine Annahme. Fünf Minuten, weil die Geräte hier in diesem Takt melden; ein Stundenmittel liegt
+# weit darüber.
+COARSE_RESOLUTION_MIN = 5
 
 
 def fill_gaps(
@@ -271,12 +283,36 @@ def hourly_energy(
     tariff: TariffConfig,
     origin: BatteryOrigin | None = None,
     capacity_kwh: float | None = None,
+    resolution_min: int = 1,
 ) -> HourlyEnergy:
     """Eine Stunde bilanzieren.
 
     `origin` ist der Stand des Speicher-Herkunftskontos zu Beginn der Stunde; es wird dabei verändert und
     steht danach für die Folgestunde bereit. Ohne Angabe beginnt die Rechnung mit einem leeren Konto -
     dann gilt jede Entladung als PV und wird als geschätzt gezählt.
+
+    `resolution_min` ist die Auflösung der Eingangsdaten. Sie ändert nichts an den Summen, aber die
+    Reihenfolge, in der PV verteilt wird - und das ist kein Detail:
+
+    **Warum eine grobe Auflösung Netzladung erfindet.** Bei echten Minutenwerten gilt in jeder Minute
+    eine physikalische Bilanz, und die Rangfolge „PV deckt erst das Haus, der Rest lädt den Speicher"
+    ist richtig: mehr als den Überschuss kann der Speicher in dieser Minute nicht bekommen. Kommt der
+    Eingang dagegen als Stundenmittel, ist die Rangfolge falsch. Ein Beispiel, nachgerechnet: 20 min
+    Sonne mit 2,2 kW - der Speicher lädt aus dem Überschuss -, danach 40 min Wolke, in denen das Haus
+    aus dem Netz versorgt wird. Über die Stunde gemittelt bleiben 1,47 kW PV, +0,20 kW Netz und
+    0,67 kWh Ladung. Die Minutenrechnung sagt: 0,00 kWh aus dem Netz geladen. Dieselbe Stunde als
+    Mittelwert gerechnet sagt: 0,20 kWh - denn der Überschuss über die ganze Stunde ist kleiner als
+    die Ladung, obwohl er es in den Minuten, in denen geladen wurde, nicht war. Der Netzbezug der
+    Wolkenminuten und der PV-Überschuss der Sonnenminuten löschen sich im Mittel gegenseitig aus, und
+    die Differenz landet als Netzladung im Speicher. Über einen Wintermonat summiert sich das zu
+    dreistelligen Kilowattstunden, die nie geflossen sind.
+
+    Deshalb gilt ab `COARSE_RESOLUTION_MIN` die umgekehrte Rangfolge: PV lädt zuerst den Speicher.
+    Sie ist genauso wenig gemessen, aber sie irrt in die harmlosere Richtung. Netzladung wird nur noch
+    ausgewiesen, wenn die Ladung die gesamte PV-Erzeugung der Stunde übersteigt - dann hat sie
+    wirklich stattgefunden, etwa nachts. Der Preis dafür ist, dass der direkte PV-Anteil am
+    Hausverbrauch etwas zu hoch und der Netzanteil etwas zu niedrig ausfällt. Wie viele Minuten so
+    gerechnet wurden, steht in `coarse_minutes` und gehört auf die Auswertungsseite.
     """
     acc: dict[str, float] = dict.fromkeys(_SUM_FIELDS, 0.0)
     minutes = 0
@@ -285,6 +321,7 @@ def hourly_energy(
     vat = 0.0 if tariff.small_business else tariff.vat_rate
     net_factor = 1.0 / (1.0 + vat) if tariff.price_includes_vat else 1.0
     bat_origin = origin if origin is not None else BatteryOrigin()
+    coarse = resolution_min > COARSE_RESOLUTION_MIN
     for smp in samples:
         if smp.pv_kw is None or smp.grid_kw is None:
             continue  # ohne PV und Netz keine Bilanz
@@ -308,9 +345,12 @@ def hourly_energy(
         ev = min(ev, house - hp)
         base = max(0.0, house - hp - ev)
 
-        pv_direct = min(pv, house)
-        pv_rest = pv - pv_direct
-        pv_to_bat = min(pv_rest, chg)
+        if coarse:
+            pv_to_bat = min(pv, chg)
+            pv_direct = min(pv - pv_to_bat, house)
+        else:
+            pv_direct = min(pv, house)
+            pv_to_bat = min(pv - pv_direct, chg)
         grid_to_bat = max(0.0, chg - pv_to_bat)
         bat_to_house = min(dis, max(0.0, house - pv_direct))
         grid_to_house = max(0.0, house - pv_direct - bat_to_house)
@@ -368,6 +408,7 @@ def hourly_energy(
     return HourlyEnergy(
         hour_start=hour_start,
         minutes=minutes,
+        coarse_minutes=minutes if coarse else 0,
         price_missing_minutes=price_missing,
         battery_pv_stored_kwh=_r(bat_origin.pv_kwh),
         battery_grid_stored_kwh=_r(bat_origin.grid_kwh),
@@ -378,15 +419,52 @@ def hourly_energy(
 def summarize(parts: Iterable[EnergyTotals]) -> EnergyTotals:
     acc: dict[str, float] = dict.fromkeys(_SUM_FIELDS, 0.0)
     minutes = 0
+    coarse = 0
     missing = 0
     for p in parts:
         minutes += p.minutes
+        coarse += p.coarse_minutes
         missing += p.price_missing_minutes
         for k in _SUM_FIELDS:
             acc[k] += getattr(p, k)
     return EnergyTotals(
-        minutes=minutes, price_missing_minutes=missing, **{k: _r(v) for k, v in acc.items()}
+        minutes=minutes,
+        coarse_minutes=coarse,
+        price_missing_minutes=missing,
+        **{k: _r(v) for k, v in acc.items()},
     )
+
+
+def samples_from_totals(hour: HourlyEnergy) -> list[MinuteSample]:
+    """Eine gespeicherte Stundenbilanz in gleichförmige Minutenwerte zurückverwandeln.
+
+    Für Stunden, deren Minutenwerte es nie gab: der Historienimport hat aus Stundenmitteln direkt
+    Stundenbilanzen geschrieben, und eine Neuberechnung findet dafür keine einzige Minutenzeile. Die
+    gespeicherten Summen enthalten aber alles, was der Import damals wusste - Erzeugung, Netzsaldo,
+    Speicherfluss, Verbraucher und den mittleren Bezugspreis. Daraus lässt sich dieselbe Stunde noch
+    einmal rechnen, jetzt mit der Rangfolge für grobe Auflösung (siehe `hourly_energy`).
+
+    Es entstehen so viele Minuten, wie die Stunde bewertet hatte, jede mit der mittleren Leistung
+    dieser Minuten - die Summen bleiben damit exakt erhalten. Netzbezug und Einspeisung erscheinen
+    als Saldo; das ist keine Näherung, sondern der Informationsstand eines Stundenmittels.
+    """
+    n = max(1, hour.minutes)
+    f = 60.0 / n
+    grid = (hour.import_kwh - hour.export_kwh) * f
+    battery = (hour.battery_discharge_kwh - hour.battery_charge_kwh) * f
+    price = hour.avg_import_price_ct
+    return [
+        MinuteSample(
+            ts=hour.hour_start + timedelta(minutes=i),
+            pv_kw=hour.pv_kwh * f,
+            grid_kw=grid,
+            battery_kw=battery,
+            heat_pump_kw=hour.heat_pump_kwh * f,
+            ev_kw=hour.ev_kwh * f,
+            price_ct_kwh=price,
+        )
+        for i in range(n)
+    ]
 
 
 def samples_from_rows(

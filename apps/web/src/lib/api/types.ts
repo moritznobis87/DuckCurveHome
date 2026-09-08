@@ -1055,6 +1055,11 @@ export interface components {
              */
             minutes: number;
             /**
+             * Coarse Minutes
+             * @default 0
+             */
+            coarse_minutes: number;
+            /**
              * Pv Kwh
              * @default 0
              */

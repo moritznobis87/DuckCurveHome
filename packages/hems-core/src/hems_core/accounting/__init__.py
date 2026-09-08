@@ -1,6 +1,7 @@
 """Energiebilanz (Stunden, Zeiträume, Kosten) und Wärmemodell v1."""
 
 from hems_core.accounting.energy import (
+    COARSE_RESOLUTION_MIN,
     MAX_HOLD_MIN,
     BatteryOrigin,
     EnergyTotals,
@@ -9,6 +10,7 @@ from hems_core.accounting.energy import (
     fill_gaps,
     hourly_energy,
     samples_from_rows,
+    samples_from_totals,
     summarize,
 )
 from hems_core.accounting.heat import (
@@ -38,6 +40,7 @@ from hems_core.accounting.stove_cost import (
 )
 
 __all__ = [
+    "COARSE_RESOLUTION_MIN",
     "MAX_HOLD_MIN",
     "BatteryOrigin",
     "DailyBudget",
@@ -65,6 +68,7 @@ __all__ = [
     "pv_tax",
     "remaining_kg",
     "samples_from_rows",
+    "samples_from_totals",
     "stove_economics",
     "stove_economics_min_load",
     "summarize",

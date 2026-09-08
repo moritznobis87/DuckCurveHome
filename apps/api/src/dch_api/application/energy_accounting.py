@@ -30,6 +30,7 @@ from dch_api.schemas import (
 )
 from hems_core.accounting import (
     BatteryOrigin,
+    EnergyTotals,
     HourlyEnergy,
     MinuteSample,
     cop_at,
@@ -38,6 +39,7 @@ from hems_core.accounting import (
     hourly_energy,
     pv_tax,
     samples_from_rows,
+    samples_from_totals,
     summarize,
 )
 from hems_core.domain import BufferConfig, HemsConfig
@@ -132,6 +134,23 @@ def merge_hour(new: HourlyEnergy, old: HourlyEnergy | None) -> HourlyEnergy:
     ev = patch.get("ev_kwh", new.ev_kwh)
     patch["base_kwh"] = round(max(0.0, new.house_kwh - hp - ev), 4)
     return new.model_copy(update=patch)
+
+
+def coarse_note(totals: EnergyTotals) -> str:
+    """Zusatz zur Methodenangabe, wenn ein Teil des Zeitraums nur als Stundenmittel vorliegt.
+
+    Die Summen stimmen dort, die Aufteilung auf PV, Speicher und Netz ist eine Annahme (siehe
+    `hourly_energy`). Das gehört sichtbar auf die Seite: sonst liest sich eine Jahresansicht, als
+    wäre jede Zahl darin gemessen."""
+    if totals.coarse_minutes <= 0 or totals.minutes <= 0:
+        return ""
+    share = totals.coarse_minutes / totals.minutes
+    hours = round(totals.coarse_minutes / 60)
+    return (
+        f" Für {hours} Stunden ({share:.0%}) liegen nur Stundenmittel aus dem Historienimport vor: "
+        "Erzeugung, Verbrauch und Speicherfluss sind dort richtig, die Aufteilung auf PV und Netz "
+        "ist geschätzt - die Ladung wird zuerst der PV zugerechnet."
+    )
 
 
 def _mean(values: Iterable[float | None]) -> float | None:
@@ -446,11 +465,49 @@ class EnergyAccounting:
             out.append((merge_hour(h, old), temp if temp is not None else old_temp))
         return out
 
-    async def recompute(self, start: datetime, end: datetime) -> int:
+    async def _repair_coarse(
+        self,
+        read: Callable[[datetime, datetime], Awaitable[list[tuple[HourlyEnergy, float | None]]]],
+        start: datetime,
+        stop: datetime,
+    ) -> list[tuple[HourlyEnergy, float | None]]:
+        """Gespeicherte Stunden ohne eigene Minutenwerte aus ihren Summen neu zuordnen.
+
+        Der Historienimport hat aus Stundenmitteln direkt Stundenbilanzen geschrieben; Minutenzeilen
+        gibt es dafür nicht, und `_compute_hours` liefert für solche Tage nichts. Die alte Zuordnung
+        stammt aber aus der Rangfolge für Minutenwerte und hat dem Netz Ladung zugeschrieben, die es
+        nie geliefert hat (siehe `hourly_energy`). Die Summen der Stunde sind davon nicht betroffen
+        und bleiben erhalten - nur die Aufteilung wird noch einmal gerechnet, jetzt mit der Rangfolge
+        für grobe Auflösung, und die Stunde trägt danach `coarse_minutes`.
+        """
+        stored = await read(start, stop)
+        if not stored:
+            return []
+        origin = await self._origin_before(stored[0][0].hour_start)
+        capacity = self.hems.battery.capacity_kwh
+        out: list[tuple[HourlyEnergy, float | None]] = []
+        for old_hour, temp in stored:
+            if old_hour.minutes <= 0:
+                continue
+            fresh = hourly_energy(
+                old_hour.hour_start,
+                samples_from_totals(old_hour),
+                self.hems.tariff,
+                origin,
+                capacity,
+                resolution_min=60,
+            )
+            out.append((fresh, temp))  # merge_hour folgt in _merge_with_stored
+        return out
+
+    async def recompute(self, start: datetime, end: datetime, repair_coarse: bool = False) -> int:
         """Stunden eines Zeitraums aus Minutenwerten neu berechnen (nach nachgetragenen Messwerten).
 
         Eine gespeicherte Stunde mit mehr bewerteten Minuten (z. B. aus einem Historienimport) bleibt stehen -
         Teildaten aus der Cloud dürfen eine vollständige Stunde nicht ersetzen.
+
+        Mit `repair_coarse` werden zusätzlich Tage angefasst, für die es überhaupt keine Minutenwerte
+        gibt: dort wird die Quellenzuordnung aus den gespeicherten Summen neu abgeleitet.
 
         Gerechnet wird tageweise. Ein Backfill darf 62 Tage umfassen; die auf einmal zu laden wären
         rund 90 000 Minutenzeilen im Speicher, und das Herkunftskonto des Speichers läuft ohnehin
@@ -465,6 +522,11 @@ class EnergyAccounting:
         while cursor < stop:
             chunk_end = min(cursor + timedelta(days=1), stop)
             hours = await self._compute_hours(cursor, chunk_end)
+            # Ein Tag hat entweder Minutenwerte oder nur importierte Stundenbilanzen; gemischt kommt
+            # er nicht vor. Nur im zweiten Fall wird aus den Summen neu zugeordnet - sonst würde eine
+            # Reparatur eine echte Minutenrechnung durch eine Schätzung ersetzen.
+            if repair_coarse and not hours:
+                hours = await self._repair_coarse(read, cursor, chunk_end)
             if hours:
                 keep = await self._merge_with_stored(read, hours, cursor, chunk_end)
                 if keep:
@@ -513,6 +575,7 @@ class EnergyAccounting:
                     "Quellen-Zuordnung je Minute: PV deckt zuerst den Hausverbrauch, dann die Batterie; "
                     "Verbraucher erhalten die Quellen anteilig. Geld: Netzbezug × Tibber-Preis, PV- und "
                     f"Batterieanteile mit {self.hems.tariff.feed_in_ct_kwh:g} ct Einspeisevergütung bewertet."
+                    + coarse_note(totals)
                 ),
             ),
         )

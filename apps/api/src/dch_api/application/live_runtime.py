@@ -844,24 +844,28 @@ class LiveRuntime:
         """
         # Die Kennung waechst mit dem Verfahren. v1 hielt Messwerte fuenf Minuten - das reicht fuer
         # einen Takt, nicht fuer eine Nacht ohne PV-Meldung; v2 laesst eine gemessene Null unbegrenzt
-        # gelten. Wer die Kennung nicht mitzieht, laesst die alten Zeilen stehen.
-        marker = "energy.rebuild_hold_v2"
+        # gelten; v3 ordnet Stunden, die es nur als Stundenmittel gibt, neu zu, statt ihnen Netzladung
+        # anzudichten. Wer die Kennung nicht mitzieht, laesst die alten Zeilen stehen.
+        marker = "energy.rebuild_coarse_v3"
         try:
             if await self.repos.has_event(marker):
                 self.energy_rebuild = "erledigt"
                 return
-            start = await self.repos.first_measurement_at()
+            # Ab der aeltesten gespeicherten Stunde, nicht ab der ersten Messung: die Stundentabelle
+            # reicht weiter zurueck als jede Minutenzeile, weil der Historienimport Stunden direkt
+            # geschrieben hat - und genau die sind hier zu korrigieren.
+            start = await self.repos.first_energy_hour() or await self.repos.first_measurement_at()
             if start is None:
                 self.energy_rebuild = "keine Daten"
                 return
             began = self.now
             self.energy_rebuild = f"laeuft seit {began:%H:%M}"
-            hours = await self.accounting.recompute(start, began)
+            hours = await self.accounting.recompute(start, began, repair_coarse=True)
             self.energy_rebuild = f"{hours} Stunden neu gerechnet"
             await self.repos.add_event(
                 "info",
                 marker,
-                f"{hours} Stundenbilanzen ab {start:%d.%m.%Y} neu gerechnet (Minutenlücken).",
+                f"{hours} Stundenbilanzen ab {start:%d.%m.%Y} neu gerechnet (Quellenzuordnung).",
                 {"hours": hours},
             )
             log.info("energy hours rebuilt", hours=hours, since=start.isoformat())
