@@ -13,6 +13,16 @@ def test_health(client: TestClient) -> None:
     r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
+    # Ohne den Commit ist „laeuft mein Stand schon?" nicht zu beantworten: `version` ist eine
+    # Konstante im Quelltext und aendert sich mit keinem Deploy.
+    assert r.json()["commit"] == "dev", "lokal ohne Plattform-Umgebung"
+
+
+def test_health_zeigt_den_laufenden_stand(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dch_api.routers.health import running_commit
+
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "42d9e527afe611ee448d691fe92c1df1d9ac017e")
+    assert running_commit() == "42d9e52"
 
 
 def test_live_state_is_consistent(client: TestClient) -> None:
