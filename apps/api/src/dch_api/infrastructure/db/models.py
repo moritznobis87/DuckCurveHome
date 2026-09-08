@@ -234,6 +234,9 @@ class EnergyHour(Base):
     __tablename__ = "energy_hourly"
     hour_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
     minutes: Mapped[int] = mapped_column(Integer, default=0)
+    # Minuten aus grober Eingangsauflösung (Stundenmittel eines Historienexports): die Summen
+    # stimmen, die Aufteilung auf PV, Speicher und Netz ist dort geschätzt.
+    coarse_minutes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     price_missing_minutes: Mapped[int] = mapped_column(Integer, default=0)
     pv_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     import_kwh: Mapped[float] = mapped_column(Float, default=0.0)

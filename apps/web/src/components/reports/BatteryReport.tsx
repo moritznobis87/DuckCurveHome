@@ -79,6 +79,10 @@ export function BatteryReport() {
   // Ladestand zählt nur Anfang und Ende. Laufen sie auseinander, fehlen der Bilanz Minuten, und
   // das gehört auf die Seite und nicht in eine Rückfrage.
   const bySoc = useMemo(() => socEnergy(rows, cap), [rows, cap]);
+  // Anteil des Zeitraums, der nur als Stundenmittel vorliegt. Dort sind die Summen richtig, die
+  // Aufteilung auf PV und Netz ist eine Annahme - und genau die steht auf diesen beiden Kacheln.
+  const coarse = t && t.minutes > 0 ? t.coarse_minutes / t.minutes : 0;
+  const est = coarse > 0.05 ? ` · Aufteilung für ${Math.round(coarse * 100)} % des Zeitraums geschätzt` : "";
   const cycles = t && cap > 0 ? t.battery_discharge_kwh / cap : null;
   const pvShare = t && t.battery_charge_kwh > 0 ? t.pv_to_battery_kwh / t.battery_charge_kwh : null;
   const eff = t && t.battery_charge_kwh > 0.5 ? Math.min(1, t.battery_discharge_kwh / t.battery_charge_kwh) : null;
@@ -92,18 +96,18 @@ export function BatteryReport() {
     <ReportShell title="Batteriespeicher" kicker={cap > 0 ? `${de1(cap, 1)} kWh · Nutzung und Ersparnis` : "Nutzung und Ersparnis"} period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
       {error ? <ErrorBanner message={error} /> : null}
       <KpiGrid cols={7}>
-        <Stat label="Geladen" value={de1(t?.battery_charge_kwh)} unit="kWh" tone="amber" hint={t ? `PV ${de1(t.pv_to_battery_kwh)} · Netz ${de1(t.grid_to_battery_kwh)} kWh` : undefined} />
+        <Stat label="Geladen" value={de1(t?.battery_charge_kwh)} unit="kWh" tone="amber" hint={t ? `PV ${de1(t.pv_to_battery_kwh)} · Netz ${de1(t.grid_to_battery_kwh)} kWh${est}` : undefined} />
         <Stat
           label="Netzladung bei Dunkelheit"
           value={de1(t?.grid_to_battery_dark_kwh)}
           unit="kWh"
           tone={(t?.grid_to_battery_dark_kwh ?? 0) > 0.2 ? "ember" : "muted"}
-          hint={t ? `von ${de1(t.grid_to_battery_kwh)} kWh Netzladung insgesamt` : undefined}
+          hint={t ? `von ${de1(t.grid_to_battery_kwh)} kWh Netzladung insgesamt${est}` : undefined}
         />
         <Stat label="Entladen" value={de1(t?.battery_discharge_kwh)} unit="kWh" tone="mist" hint={t ? `${de1(t.battery_to_house_kwh)} kWh ins Haus` : undefined} />
         <Stat label="Vollzyklen" value={cycles != null ? de1(cycles, cycles >= 10 ? 0 : 1) : "-"} hint={cap > 0 ? `Entladung ÷ ${de1(cap, 1)} kWh` : "Kapazität unbekannt"} />
         <Stat label="Ersparnis" value={eur(t?.battery_savings_eur)} tone="amber" hint="gegenüber Netzbezug" />
-        <Stat label="PV-Anteil Ladung" value={pct(pvShare)} hint={t && t.grid_to_battery_kwh > 0.05 ? `${de1(t.grid_to_battery_kwh)} kWh aus dem Netz geladen` : "keine Netzladung"} />
+        <Stat label="PV-Anteil Ladung" value={pct(pvShare)} hint={(t && t.grid_to_battery_kwh > 0.05 ? `${de1(t.grid_to_battery_kwh)} kWh aus dem Netz geladen` : "keine Netzladung") + est} />
         {bySoc ? (
           <Stat
             label="Laut Ladestand"

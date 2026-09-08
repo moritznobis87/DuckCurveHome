@@ -116,3 +116,94 @@ async def test_luecken_im_minutenraster_kosten_keine_energie_mehr() -> None:
     assert h.minutes >= 58, "die Stunde ist abgedeckt, nicht nur zu einem Drittel"
     assert h.battery_discharge_kwh == pytest.approx(0.36, abs=0.02)
     assert h.battery_to_house_kwh == pytest.approx(0.36, abs=0.02)
+
+
+@pytest.mark.asyncio
+async def test_repair_coarse_nimmt_erfundene_netzladung_zurueck() -> None:
+    """Der Befund vom 08.09.: Januar und Februar melden Netzladung, die es nie gab.
+
+    Diese Monate stammen aus dem Historienimport und liegen nur als Stundenmittel vor; Minutenzeilen
+    gibt es dafür nicht. Im Mittel einer Stunde löschen sich der PV-Überschuss der Sonnenminuten und
+    der Netzbezug der Wolkenminuten gegenseitig aus, und die Differenz erschien als Netzladung des
+    Speichers. Die Reparatur ordnet aus den gespeicherten Summen neu zu.
+    """
+    written: list[HourlyEnergy] = []
+    # So sah die Stunde gespeichert aus: 1,47 kWh PV, 0,20 kWh Bezug, 0,67 kWh geladen - und daraus
+    # 0,20 kWh angebliche Netzladung.
+    stored = HourlyEnergy(
+        hour_start=HOUR,
+        minutes=60,
+        pv_kwh=1.467,
+        import_kwh=0.2,
+        export_kwh=0.0,
+        battery_charge_kwh=0.667,
+        house_kwh=1.0,
+        base_kwh=1.0,
+        pv_direct_kwh=1.0,
+        grid_to_house_kwh=0.0,
+        pv_to_battery_kwh=0.467,
+        grid_to_battery_kwh=0.2,
+        import_cost_eur=0.06,
+        price_weighted_ct=6.0,
+    )
+
+    async def minute_rows(s: datetime, e: datetime) -> list[dict[str, float | str | None]]:
+        return []  # genau der Fall: keine Minutenwerte für diesen Zeitraum
+
+    async def read(s: datetime, e: datetime) -> list[tuple[HourlyEnergy, float | None]]:
+        return [(stored, 3.0)] if s <= HOUR < e else []
+
+    async def write(hours: list[HourlyEnergy], temps: dict[datetime, float | None]) -> None:
+        written.extend(hours)
+
+    async def last() -> datetime | None:
+        return None
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, minute_rows, store=(read, write, last))
+    assert await acc.recompute(HOUR, HOUR + timedelta(hours=1)) == 0, "ohne Auftrag nichts anfassen"
+    assert written == []
+
+    n = await acc.recompute(HOUR, HOUR + timedelta(hours=1), repair_coarse=True)
+    assert n == 1
+    h = written[0]
+    assert h.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
+    assert h.pv_to_battery_kwh == pytest.approx(0.667, abs=0.005)
+    assert h.coarse_minutes == 60  # die Stunde weist ihre Auflösung jetzt aus
+    # Die Summen bleiben, wie sie waren - korrigiert wird nur die Zuordnung.
+    assert h.pv_kwh == pytest.approx(stored.pv_kwh, abs=0.005)
+    assert h.house_kwh == pytest.approx(stored.house_kwh, abs=0.005)
+    assert h.battery_charge_kwh == pytest.approx(stored.battery_charge_kwh, abs=0.005)
+    assert h.import_kwh == pytest.approx(stored.import_kwh, abs=0.005)
+    assert h.import_cost_eur == pytest.approx(stored.import_cost_eur, abs=0.005)
+
+
+@pytest.mark.asyncio
+async def test_repair_coarse_laesst_echte_minutenrechnung_in_ruhe() -> None:
+    """Ein Tag mit Minutenwerten wird normal gerechnet, auch wenn die Reparatur angefordert ist."""
+    written: list[HourlyEnergy] = []
+
+    async def minute_rows(s: datetime, e: datetime) -> list[dict[str, float | str | None]]:
+        return [
+            {
+                "ts": (HOUR + timedelta(minutes=i)).isoformat().replace("+00:00", "Z"),
+                "pv_power_kw": 0.0,
+                "grid_power_kw": 3.0,
+                "battery_power_kw": -3.0,
+            }
+            for i in range(60)
+        ]
+
+    async def read(s: datetime, e: datetime) -> list[tuple[HourlyEnergy, float | None]]:
+        return []
+
+    async def write(hours: list[HourlyEnergy], temps: dict[datetime, float | None]) -> None:
+        written.extend(hours)
+
+    async def last() -> datetime | None:
+        return None
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, minute_rows, store=(read, write, last))
+    await acc.recompute(HOUR, HOUR + timedelta(hours=1), repair_coarse=True)
+    h = written[0]
+    assert h.coarse_minutes == 0
+    assert h.grid_to_battery_kwh == pytest.approx(3.0, abs=0.02)  # echte Netzladung bleibt stehen

@@ -2544,6 +2544,11 @@
             "title": "Minutes",
             "default": 0
           },
+          "coarse_minutes": {
+            "type": "integer",
+            "title": "Coarse Minutes",
+            "default": 0
+          },
           "pv_kwh": {
             "type": "number",
             "title": "Pv Kwh",

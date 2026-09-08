@@ -555,6 +555,17 @@ class SqlRepositories:
             )
         return out
 
+    async def first_energy_hour(self) -> datetime | None:
+        """Älteste gespeicherte Stundenbilanz.
+
+        Bewusst nicht `first_measurement_at`: die Stundentabelle reicht weiter zurück als jede
+        Minutenzeile, weil der Historienimport Stunden direkt geschrieben hat. Wer eine Reparatur der
+        Historie bei der ersten Messung beginnen lässt, fasst genau die Monate nicht an, um die es geht.
+        """
+        async with self.maker() as s:
+            v = (await s.execute(select(func.min(m.EnergyHour.hour_start)))).scalar_one_or_none()
+        return None if v is None else self._aware(v)
+
     async def last_energy_hour(self) -> datetime | None:
         async with self.maker() as s:
             v = (await s.execute(select(func.max(m.EnergyHour.hour_start)))).scalar_one_or_none()

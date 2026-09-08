@@ -42,6 +42,35 @@ Der Kontostand am Stundenende wird in `energy_hourly` mitgespeichert (`battery_p
 `battery_grid_stored_kwh`), damit eine Neuberechnung dort fortsetzt, wo die vorige aufgehört hat,
 statt wieder bei null zu beginnen. Er ist ein Bestand und wird nie über Stunden aufsummiert.
 
+### Warum die Auflösung der Eingangsdaten die Zuordnung entscheidet
+
+Bei Minutenwerten gilt in jeder Minute eine physikalische Bilanz, und die Rangfolge „PV deckt erst
+das Haus, der Rest lädt den Speicher" ist richtig: mehr als den Überschuss dieser Minute kann der
+Speicher nicht bekommen. Liegt der Zeitraum dagegen nur als Stundenmittel vor - so kamen die Monate
+aus dem Home-Assistant-Import in die Datenbank -, ist dieselbe Rangfolge falsch und erfindet
+Netzladung. Nachgerechnet an einer Stunde mit 20 min Sonne (der Speicher lädt aus dem Überschuss)
+und 40 min Wolke (das Haus hängt am Netz):
+
+| | je Minute | aus dem Stundenmittel |
+|---|---|---|
+| PV | 1,467 kWh | 1,467 kWh |
+| Hausverbrauch | 1,000 kWh | 1,000 kWh |
+| Speicherladung | 0,667 kWh | 0,667 kWh |
+| **davon aus dem Netz** | **0,000 kWh** | **0,200 kWh** |
+
+Die Summen überstehen die Mittelung, die Zuordnung nicht: im Mittel löschen sich der PV-Überschuss
+der Sonnenminuten und der Netzbezug der Wolkenminuten gegenseitig aus, und die Differenz landet als
+Netzladung im Speicher. Über einen Wintermonat summiert sich das zu dreistelligen Kilowattstunden,
+die nie geflossen sind.
+
+Ab `COARSE_RESOLUTION_MIN` (5 min) gilt deshalb die umgekehrte Rangfolge: PV lädt zuerst den
+Speicher, Netzladung wird nur ausgewiesen, wenn die Ladung die gesamte PV-Erzeugung der Stunde
+übersteigt - dann hat sie wirklich stattgefunden, etwa nachts. Auch das ist nicht gemessen, aber es
+irrt in die harmlosere Richtung; der Preis ist ein etwas zu hoher direkter PV-Anteil am
+Hausverbrauch. Wie viele Minuten so gerechnet wurden, steht in `coarse_minutes` und wird auf den
+Auswertungsseiten genannt, damit eine Jahresansicht nicht zwei Rechnungsarten mischt, ohne dass man
+es ihr ansieht.
+
 ## Umsatzsteuer
 
 | Posten | Grundlage | Richtung |

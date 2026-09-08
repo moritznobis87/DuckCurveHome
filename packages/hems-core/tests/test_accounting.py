@@ -375,3 +375,97 @@ def test_ohne_jede_meldung_entsteht_keine_minute() -> None:
     ]
     filled = fill_gaps(erste + spaet)
     assert len(filled) == 3 + 5 + 1, "drei gemessene, fünf gehaltene, dann Stille bis zur letzten"
+
+
+def _mixed_hour() -> list[MinuteSample]:
+    """20 min Sonne (Speicher lädt aus dem Überschuss), 40 min Wolke (Haus am Netz)."""
+    sun = _minutes(20, pv_kw=4.4, grid_kw=-1.4, battery_kw=-2.0)
+    cloud = [
+        MinuteSample(
+            ts=H0 + timedelta(minutes=20 + i),
+            pv_kw=0.0,
+            grid_kw=1.0,
+            battery_kw=0.0,
+            heat_pump_kw=0.0,
+            ev_kw=0.0,
+            price_ct_kwh=30.0,
+        )
+        for i in range(40)
+    ]
+    return sun + cloud
+
+
+def _as_hourly_mean(samples: list[MinuteSample]) -> list[MinuteSample]:
+    n = len(samples)
+    mean = lambda f: sum(getattr(s, f) or 0.0 for s in samples) / n  # noqa: E731
+    return [
+        MinuteSample(
+            ts=H0 + timedelta(minutes=i),
+            pv_kw=mean("pv_kw"),
+            grid_kw=mean("grid_kw"),
+            battery_kw=mean("battery_kw"),
+            heat_pump_kw=0.0,
+            ev_kw=0.0,
+            price_ct_kwh=30.0,
+        )
+        for i in range(n)
+    ]
+
+
+def test_minute_resolution_sees_no_grid_charging() -> None:
+    h = hourly_energy(H0, _mixed_hour(), TARIFF)
+    assert h.battery_charge_kwh == pytest.approx(0.667, abs=0.002)
+    assert h.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
+
+
+def test_hourly_means_would_invent_grid_charging_without_the_marker() -> None:
+    """Der Fehler, um den es geht: dieselbe Stunde als Mittelwert, mit der Minuten-Rangfolge."""
+    h = hourly_energy(H0, _as_hourly_mean(_mixed_hour()), TARIFF, resolution_min=1)
+    assert h.grid_to_battery_kwh > 0.15  # erfunden: in Wirklichkeit floss nichts aus dem Netz
+
+
+def test_hourly_means_with_marker_keep_the_charge_on_the_pv_side() -> None:
+    fine = hourly_energy(H0, _mixed_hour(), TARIFF)
+    coarse = hourly_energy(H0, _as_hourly_mean(_mixed_hour()), TARIFF, resolution_min=60)
+    assert coarse.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
+    assert coarse.pv_to_battery_kwh == pytest.approx(fine.pv_to_battery_kwh, abs=0.002)
+    # Summen bleiben von der Rangfolge unberührt
+    assert coarse.pv_kwh == pytest.approx(fine.pv_kwh, abs=0.002)
+    assert coarse.house_kwh == pytest.approx(fine.house_kwh, abs=0.002)
+    assert coarse.battery_charge_kwh == pytest.approx(fine.battery_charge_kwh, abs=0.002)
+    # und die Stunde weist aus, dass ihre Zuordnung geschätzt ist
+    assert coarse.coarse_minutes == 60
+    assert fine.coarse_minutes == 0
+
+
+def test_real_night_charging_survives_the_coarse_rule() -> None:
+    """Ohne PV bleibt Netzladung Netzladung - die Regel deckt nur zu, was PV hergibt."""
+    h = hourly_energy(
+        H0, _minutes(60, pv_kw=0.0, grid_kw=3.0, battery_kw=-3.0), TARIFF, resolution_min=60
+    )
+    assert h.grid_to_battery_kwh == pytest.approx(3.0, abs=0.01)
+    assert h.grid_to_battery_dark_kwh == pytest.approx(3.0, abs=0.01)
+
+
+def test_summarize_adds_up_coarse_minutes() -> None:
+    a = hourly_energy(H0, _minutes(60, pv_kw=1.0, grid_kw=1.0), TARIFF, resolution_min=60)
+    b = hourly_energy(H0 + timedelta(hours=1), _minutes(60, pv_kw=1.0, grid_kw=1.0), TARIFF)
+    assert summarize([a, b]).coarse_minutes == 60
+    assert summarize([a, b]).minutes == 120
+
+
+def test_samples_from_totals_reproduces_the_sums_and_fixes_the_split() -> None:
+    """Reparatur der Historie: eine gespeicherte Stunde ohne Minutenwerte neu zuordnen."""
+    from hems_core.accounting import samples_from_totals
+
+    stored = hourly_energy(H0, _as_hourly_mean(_mixed_hour()), TARIFF, resolution_min=1)
+    assert stored.grid_to_battery_kwh > 0.15
+    repaired = hourly_energy(H0, samples_from_totals(stored), TARIFF, resolution_min=60)
+    assert repaired.minutes == stored.minutes
+    assert repaired.pv_kwh == pytest.approx(stored.pv_kwh, abs=0.002)
+    assert repaired.house_kwh == pytest.approx(stored.house_kwh, abs=0.002)
+    assert repaired.battery_charge_kwh == pytest.approx(stored.battery_charge_kwh, abs=0.002)
+    assert repaired.import_kwh == pytest.approx(stored.import_kwh, abs=0.002)
+    assert repaired.import_cost_eur == pytest.approx(stored.import_cost_eur, abs=0.002)
+    assert repaired.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
+    assert repaired.coarse_minutes == 60

@@ -114,6 +114,10 @@ class ParsedDump:
     readings: list[RawReading] = field(default_factory=list)
     first: datetime | None = None
     last: datetime | None = None
+    # Gröbste Auflösung unter den bilanzrelevanten Reihen, in Minuten. Ein Recorder-Statistikexport
+    # liefert Stundenmittel; die Bilanz muss das wissen, sonst erfindet sie Netzladung (siehe
+    # hourly_energy). Rohzustände sind ereignisgenau und bleiben bei 1.
+    resolution_min: int = 1
 
     def span(self, ts: datetime) -> None:
         self.first = ts if self.first is None or ts < self.first else self.first
@@ -266,6 +270,9 @@ DEFAULT_FILL = timedelta(hours=1)
 # Mehrere Entitäten für dieselbe Größe (z. B. Hub-Erzeugung und photovoltaic_total): der größere Wert zählt,
 # weil ein fehlender/abgeschalteter Sensor 0 liefert, nie zu viel.
 COMBINE_MAX = {"pv_power_kw"}
+# Reihen, aus denen die Stundenbilanz die Quellen ableitet. Nur ihre Auflösung entscheidet, ob die
+# Zuordnung gemessen oder geschätzt ist - ein grob abgetasteter Aussentemperaturfühler tut das nicht.
+BALANCE_KEYS = {"pv_power_kw", "grid_power_kw", "battery_power_kw"}
 
 
 def _fill_span(key: str, value: float, step: timedelta) -> timedelta:
@@ -306,6 +313,8 @@ def _parse_statistics(
         deltas = sorted(b - a for (a, _), (b, _) in pairwise(pts) if b > a)
         step_s = deltas[len(deltas) // 2] if deltas else 3600.0
         step = timedelta(minutes=max(1, min(60, round(step_s / 60))))
+        if rule.key in BALANCE_KEYS:
+            out.resolution_min = max(out.resolution_min, int(step.total_seconds() // 60))
         target = out.minutes[rule.key]
         for (ts, mean), nxt in zip(pts, [*pts[1:], (None, None)], strict=False):
             start = _minute(ts)
@@ -431,7 +440,7 @@ def compute_hours(dump: ParsedDump, hems: HemsConfig) -> list[tuple[HourlyEnergy
             vals = [t for t in ts if t is not None]
             out.append(
                 (
-                    hourly_energy(hour, samples, hems.tariff),
+                    hourly_energy(hour, samples, hems.tariff, resolution_min=dump.resolution_min),
                     round(sum(vals) / len(vals), 2) if vals else None,
                 )
             )
@@ -607,7 +616,8 @@ class HaImporter:
             stored = len(dump.readings)
         missing_price = sum(h.price_missing_minutes for h, _ in hours)
         note = (
-            "Statistik-Mittel gelten als konstante Leistung im Intervall; Quellenzuordnung deshalb näherungsweise."
+            f"Statistik-Mittel ({dump.resolution_min} min) gelten als konstante Leistung im Intervall; "
+            "die Ladung des Speichers wird deshalb zuerst der PV zugerechnet und nur der Rest dem Netz."
             if dump.kind == "statistics"
             else "Rohzustände als Sprungfunktion (Lücken bis 20 min fortgeschrieben)."
         )
