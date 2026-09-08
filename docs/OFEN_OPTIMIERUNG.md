@@ -183,6 +183,39 @@ Rucksackproblem, und es hat eine andere Lösung als der reine Preisvergleich. Ei
 nicht mehr beliebig oft verfügbar, sondern muss sich gegen jede andere Stunde desselben Tages
 durchsetzen.
 
+## Bedienung: die untere Leiste
+
+Der Ofen steht in der Steuerleiste des Dashboards neben der Wärmepumpe, mit denselben drei
+Schaltflächen: **Auto**, **An**, **Aus**. Damit beide nebeneinander passen, tragen sie kein
+ausgeschriebenes Gerätewort mehr, sondern ihr Symbol; die Zeile daneben zeigt den Zustand, der sich
+ohnehin dauernd ändert. Der Name steht im Titel des Symbols und in der Vorlesehilfe.
+
+Die Zeile stellt zwei Dinge nebeneinander, die man nicht verwechseln darf:
+
+| | Woher | Beispiel |
+|---|---|---|
+| **Zustand** | gemessen, aus dem Maestro-Modul | `brennt · Stufe 5` |
+| **Absicht** | gesetzt, von Hand oder vom Planer | `manuell an bis 21:00` |
+
+Zwischen Befehl und Feuer liegen Minuten, und beim Abschalten meldet die Firmware die ganze
+Ausbrandphase über weiter „läuft". Eine Oberfläche, die beides gleichsetzt, zeigt beim Anheizen
+einen Fehler an, wo keiner ist. Deshalb gilt ein Schaltbefehl als gelungen, sobald er beim Ofen
+**angekommen** ist; ob er schon umgesetzt wurde, sagt der Zustand.
+
+**An** und **Aus** sind befristet: die kürzeste Wahl sind zwei Stunden, weil darunter mehr Pellets
+im Zünden und Ausbrennen verschwinden, als nutzbar in den Puffer gehen. Läuft die Frist ab, fällt
+der Ofen auf **Auto** zurück; ein Dauerbefehl, den niemand zurücknimmt, wäre bei einer Feuerstätte
+die schlechteste Betriebsart.
+
+**Auto heißt heute: DCH schaltet nicht.** Der Planer kann den Ofen rechnen (das MILP oben), aber er
+führt ihn noch nicht; bis dahin regelt der Ofen sich selbst, und die Zustandszeile sagt das auch so.
+Das ist die ehrlichere Beschriftung als ein „Auto", das nichts tut und so aussieht, als täte es etwas.
+
+**Zwei Freigaben, nicht eine.** `stove.control_enabled` in der Anlagenkonfiguration entscheidet, ob
+die Oberfläche überhaupt Schaltflächen anbietet; `mcz_allow_control` im Add-on entscheidet, ob die
+Bridge einen Rahmen an den Ofen schreibt. Beide stehen ab Werk auf aus, und keine davon setzt die
+andere. Fehlt eine, sagt die Leiste `nicht freigegeben`, statt einen toten Knopf zu zeigen.
+
 ## Was noch fehlt
 
 **Die Arbeitszahl der Wärmepumpe ist geschätzt.** Sie kommt aus einer Kennlinie über der
@@ -197,3 +230,8 @@ der Ofen wirklich 2,67 kg/h verbraucht.
 
 **Fernstart einer Feuerstätte** ist eine andere Klasse von Eingriff als ein Relais. `control_enabled`
 steht deshalb auf `false`, bis es ausdrücklich gewollt ist.
+
+**Der Planer führt den Ofen noch nicht.** Das MILP kann ihn (zweite Schaltvariable, Startkosten,
+Rucksackbedingung über das Tagesbudget), aber die Live-Runtime ruft es nicht mit Ofenparametern auf.
+Bis dahin ist `Auto` eine Freigabe an den Ofen selbst und keine Führung durch DCH. Das ist der
+nächste Schritt, und er ist der einzige, der die Rechnung oben in Betrieb bringt.

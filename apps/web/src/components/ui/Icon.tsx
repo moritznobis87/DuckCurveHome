@@ -26,6 +26,9 @@ const PATHS: Record<string, string> = {
   gear: '<path d="M21.86 10.36 L21.86 13.64 L19.18 13.78 L18.34 15.82 L20.14 17.81 L17.81 20.14 L15.82 18.34 L13.78 19.18 L13.64 21.86 L10.36 21.86 L10.22 19.18 L8.18 18.34 L6.19 20.14 L3.86 17.81 L5.66 15.82 L4.82 13.78 L2.14 13.64 L2.14 10.36 L4.82 10.22 L5.66 8.18 L3.86 6.19 L6.19 3.86 L8.18 5.66 L10.22 4.82 L10.36 2.14 L13.64 2.14 L13.78 4.82 L15.82 5.66 L17.81 3.86 L20.14 6.19 L18.34 8.18 L19.18 10.22 Z"/><circle cx="12" cy="12" r="3.6"/>',
   alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5"/><path d="M12 18v.5"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  // Pelletofen: Korpus mit Sichtscheibe und Flamme darin. Eine Flamme allein hieße „Wärme"
+  // irgendwoher - hier geht es um ein bestimmtes Gerät, das neben der Wärmepumpe steht.
+  stove: '<rect x="4" y="2.6" width="16" height="17.8" rx="2"/><path d="M4 7.5h16"/><path d="M12 10.6c1.7 1.7 2.7 2.9 2.7 4.3a2.7 2.7 0 0 1-5.4 0c0-1.4 1-2.6 2.7-4.3z"/><path d="M7.5 20.4v1.4M16.5 20.4v1.4"/>',
   thermo: '<path d="M10 4a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 9v6"/>',
 };
 

@@ -73,60 +73,91 @@ function ControlTile({ tile, on, m, readOnly, onToggle }: { tile: (typeof TILES)
   );
 }
 
-const DURATIONS = [30, 120, 360];
+/**
+ * Ein Gerät, das DCH führen kann: Symbol, Zustandszeile, darunter Auto | An | Aus.
+ *
+ * Zwei davon passen nur nebeneinander, weil der ausgeschriebene Gerätename der Zustandszeile weicht.
+ * Das ist kein reiner Platzgewinn: der Name ändert sich nie, der Zustand dauernd, und die Leiste soll
+ * im Vorbeigehen lesbar sein. Wer den Namen braucht, findet ihn im Titel des Symbols und in der
+ * Vorlesehilfe.
+ */
+type Mode = "auto" | "on" | "off";
 
-function ModeSegment({ state, readOnly = false }: { state: LiveState | null; readOnly?: boolean }) {
-  const mode = state?.operating_mode;
-  const override = mode?.override;
-  const active: "auto" | "on" | "off" = override ? (override.kind === "force_release" ? "on" : "off") : mode?.system_mode === "off" ? "off" : "auto";
-  const [picker, setPicker] = useState<"on" | "off" | null>(null);
+function DeviceSegment({
+  icon,
+  label,
+  active,
+  activeColor,
+  status,
+  statusColor,
+  title,
+  disabled,
+  disabledNote,
+  durations,
+  pickerLabel,
+  onSet,
+}: {
+  icon: string;
+  label: string;
+  active: Mode;
+  activeColor: string;
+  status: string;
+  statusColor: string;
+  title: string;
+  disabled?: boolean;
+  disabledNote?: string;
+  durations: number[];
+  pickerLabel: (m: Mode) => string;
+  onSet: (mode: Mode, durationMin: number) => Promise<void>;
+}) {
+  const [picker, setPicker] = useState<Mode | null>(null);
   const [busy, setBusy] = useState(false);
-  const hp = state?.heat_pump;
-  const send = async (body: Parameters<typeof api.setHeatPumpMode>[0]) => {
-    if (readOnly) return;
+  const [error, setError] = useState<string | null>(null);
+  const run = async (mode: Mode, durationMin: number) => {
     setBusy(true);
+    setError(null);
     try {
-      await api.setHeatPumpMode(body);
+      await onSet(mode, durationMin);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Umschalten nicht bestätigt.");
+      setTimeout(() => setError(null), 12000);
     } finally {
       setBusy(false);
       setPicker(null);
     }
   };
-  const running = override ? `${override.kind === "force_release" ? "manuell an" : "manuell aus"} bis ${hhmm(override.ends_at)}` : hp?.running ? `läuft · ${state?.decision?.reasons[0]?.replace(/_/g, " ") ?? ""}` : "bereit";
-  const status = readOnly ? `${running} · nur Ansicht` : running;
-  const Btn = ({ v, label }: { v: "auto" | "on" | "off"; label: string }) => (
+  const Btn = ({ v, text }: { v: Mode; text: string }) => (
     <button
-      disabled={busy}
-      onClick={() => {
-        if (readOnly) return;
-        if (v === "auto") void send({ system_mode: "auto", duration_min: 120 });
-        else setPicker(v);
-      }}
-      className="mono flex h-full flex-1 items-center justify-center border-l border-line-1 text-[13px] uppercase tracking-[.1em] transition-colors duration-[var(--dur)]"
-      style={{ background: active === v ? "var(--amber)" : "transparent", color: active === v ? "var(--petrol)" : "var(--text-2)" }}
+      disabled={busy || disabled}
+      aria-pressed={active === v}
+      onClick={() => (v === "auto" ? void run("auto", 0) : setPicker(v))}
+      className="mono flex h-full flex-1 items-center justify-center border-l border-line-1 text-[13px] uppercase tracking-[.1em] transition-colors duration-[var(--dur)] first:border-l-0 disabled:opacity-45"
+      style={{ background: active === v ? activeColor : "transparent", color: active === v ? "var(--petrol)" : "var(--text-2)" }}
     >
-      {label}
+      {text}
     </button>
   );
+  const line = error ?? (disabled ? disabledNote ?? status : status);
   return (
-    <div className="controls-hp relative flex h-20 min-w-0 items-center gap-3 overflow-visible rounded-[3px] border border-line-1 bg-surface-2 pl-4">
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-2 bg-petrol">
-        <Icon name="pump" size={22} color={hp?.running ? "var(--heat-pump)" : "var(--text-3)"} />
-      </span>
-      <span className="flex w-[124px] shrink-0 flex-col gap-[5px] overflow-hidden">
-        <span className="text-[14px] text-text-1">Wärmepumpe</span>
-        <span className="mono truncate text-[12px] uppercase tracking-[.1em]" style={{ color: override ? "var(--amber-soft)" : hp?.running ? "var(--amber)" : "var(--text-3)" }}>{status}</span>
-      </span>
-      <div className="ml-2 flex h-full flex-1 overflow-hidden rounded-r-[3px]">
-        <Btn v="auto" label="Auto" />
-        <Btn v="on" label="An" />
-        <Btn v="off" label="Aus" />
+    <div className="controls-device relative flex h-20 min-w-0 flex-col overflow-visible rounded-[3px] border border-line-1 bg-surface-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line-2 bg-petrol" title={title} aria-label={label} role="img">
+          <Icon name={icon} size={17} color={activeColor} />
+        </span>
+        <span className="mono truncate text-[12px] uppercase tracking-[.1em]" style={{ color: error ? "var(--alert)" : statusColor }} title={error ?? title}>
+          {busy ? "schalte …" : line}
+        </span>
+      </div>
+      <div className="flex h-11 shrink-0 overflow-hidden rounded-b-[3px] border-t border-line-1">
+        <Btn v="auto" text="Auto" />
+        <Btn v="on" text="An" />
+        <Btn v="off" text="Aus" />
       </div>
       {picker ? (
-        <div className="absolute bottom-[calc(100%+8px)] right-0 z-10 flex items-center gap-2 rounded-[3px] border border-line-2 p-2" style={{ background: "#07202c", boxShadow: "var(--shadow-sheet)" }}>
-          <span className="kicker px-2" style={{ fontSize: 11 }}>{picker === "on" ? "Manuell an für" : "Manuell aus für"}</span>
-          {DURATIONS.map((m) => (
-            <button key={m} onClick={() => void send({ system_mode: "manual", manual_state: picker, duration_min: m })} className="mono h-11 min-w-[64px] rounded-[2px] border border-line-2 px-3 text-[13px] text-text-1 hover:bg-surface-3">
+        <div className="absolute bottom-[calc(100%+8px)] left-0 z-10 flex items-center gap-2 rounded-[3px] border border-line-2 p-2" style={{ background: "#07202c", boxShadow: "var(--shadow-sheet)" }}>
+          <span className="kicker whitespace-nowrap px-2" style={{ fontSize: 11 }}>{pickerLabel(picker)}</span>
+          {durations.map((m) => (
+            <button key={m} onClick={() => void run(picker, m)} className="mono h-11 min-w-[64px] rounded-[2px] border border-line-2 px-3 text-[13px] text-text-1 hover:bg-surface-3">
               {m < 60 ? `${m} min` : `${m / 60} h`}
             </button>
           ))}
@@ -137,11 +168,80 @@ function ModeSegment({ state, readOnly = false }: { state: LiveState | null; rea
   );
 }
 
+const HP_DURATIONS = [30, 120, 360];
+
+function HeatPumpSegment({ state, readOnly = false }: { state: LiveState | null; readOnly?: boolean }) {
+  const mode = state?.operating_mode;
+  const override = mode?.override;
+  const active: Mode = override ? (override.kind === "force_release" ? "on" : "off") : mode?.system_mode === "off" ? "off" : "auto";
+  const hp = state?.heat_pump;
+  const running = override
+    ? `${override.kind === "force_release" ? "manuell an" : "manuell aus"} bis ${hhmm(override.ends_at)}`
+    : hp?.running
+      ? `läuft · ${state?.decision?.reasons[0]?.replace(/_/g, " ") ?? ""}`
+      : "bereit";
+  return (
+    <DeviceSegment
+      icon="pump"
+      label="Wärmepumpe"
+      active={active}
+      activeColor={hp?.running ? "var(--heat-pump)" : "var(--amber)"}
+      status={readOnly ? `${running} · nur Ansicht` : running}
+      statusColor={override ? "var(--amber-soft)" : hp?.running ? "var(--amber)" : "var(--text-3)"}
+      title={`Wärmepumpe: ${running}`}
+      disabled={readOnly}
+      disabledNote={`${running} · nur Ansicht`}
+      durations={HP_DURATIONS}
+      pickerLabel={(m) => (m === "on" ? "Manuell an für" : "Manuell aus für")}
+      onSet={async (m, duration_min) => {
+        if (m === "auto") await api.setHeatPumpMode({ system_mode: "auto", duration_min: 120 });
+        else await api.setHeatPumpMode({ system_mode: "manual", manual_state: m, duration_min });
+      }}
+    />
+  );
+}
+
+// Zwei Stunden ist die kleinste sinnvolle Anforderung: darunter verbrennt der Ofen mehr Pellets im
+// Zünden und Ausbrennen, als er nutzbar in den Puffer bringt. Deshalb beginnt die Auswahl dort und
+// nicht bei 30 Minuten wie an der Wärmepumpe.
+const STOVE_DURATIONS = [120, 240, 480];
+
+function StoveSegment({ state, readOnly = false }: { state: LiveState | null; readOnly?: boolean }) {
+  const stove = state?.stove;
+  if (!stove?.present) return null;
+  const brennt = stove.running === null ? "keine Verbindung" : stove.running ? (stove.power_level ? `brennt · Stufe ${Math.round(stove.power_level)}` : "brennt") : "aus";
+  // Wunsch und Wirklichkeit stehen nebeneinander, sobald sie auseinanderlaufen: zwischen Befehl und
+  // Feuer liegen Minuten, und beim Abschalten meldet der Ofen die ganze Ausbrandphase über „läuft“.
+  const wunsch = stove.mode === "auto" ? "" : ` · manuell ${stove.mode === "on" ? "an" : "aus"}${stove.ends_at ? ` bis ${hhmm(stove.ends_at)}` : ""}`;
+  const status = readOnly ? `${brennt} · nur Ansicht` : `${brennt}${wunsch}`;
+  const color = stove.running === null ? "var(--alert)" : stove.running ? "var(--stove)" : "var(--text-3)";
+  return (
+    <DeviceSegment
+      icon="stove"
+      label="Pelletofen"
+      active={stove.mode}
+      activeColor={stove.running ? "var(--stove)" : "var(--amber)"}
+      status={status}
+      statusColor={stove.mode === "auto" ? color : "var(--amber-soft)"}
+      title={stove.note_de || "Pelletofen"}
+      disabled={readOnly || !stove.control_enabled}
+      disabledNote={readOnly ? `${brennt} · nur Ansicht` : `${brennt} · nicht freigegeben`}
+      durations={STOVE_DURATIONS}
+      pickerLabel={(m) => (m === "on" ? "Ofen an für" : "Ofen aus für")}
+      onSet={async (mode, duration_min) => {
+        await api.setStoveMode({ mode, duration_min: duration_min || 180 });
+      }}
+    />
+  );
+}
+
 export function ControlsBar({ state, readOnly = false }: { state: LiveState | null; readOnly?: boolean }) {
   const act = state?.snapshot.actuators ?? {};
+  const withStove = Boolean(state?.stove?.present);
   return (
-    <div className="controls-grid grid shrink-0 gap-4">
-      <ModeSegment state={state} readOnly={readOnly} />
+    <div className={`controls-grid grid shrink-0 gap-4${withStove ? " has-stove" : ""}`}>
+      <HeatPumpSegment state={state} readOnly={readOnly} />
+      <StoveSegment state={state} readOnly={readOnly} />
       {TILES.map((t) => {
         const m = act[t.key];
         const on = m && m.value !== null ? m.value >= 0.5 : null;

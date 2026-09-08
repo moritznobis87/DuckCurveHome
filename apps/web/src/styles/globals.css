@@ -127,6 +127,9 @@
 .dash-top { display: grid; min-height: 0; flex: 1; gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
 .dash-chart { display: flex; flex-shrink: 0; height: clamp(270px, 35vh, 440px); }
 .controls-grid { grid-template-columns: 1.8fr repeat(4, minmax(0, 1fr)); }
+/* Mit Ofen teilen sich zwei Geräte den Platz, den vorher eines hatte. Sie bleiben breiter als eine
+   Kachel, weil unter dem Zustand noch drei Schaltflächen stehen. */
+.controls-grid.has-stove { grid-template-columns: 1.35fr 1.35fr repeat(4, minmax(0, 1fr)); }
 .kpi-grid { display: grid; gap: 16px; grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr)); }
 .report-row { display: grid; gap: 16px; grid-template-columns: var(--cols, 1fr); }
 
@@ -145,8 +148,8 @@
   .dash-chart { height: 620px; }
   .chart-head { flex-wrap: wrap; gap: 8px; }
   .chart-legend { display: none; }
-  .controls-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .controls-hp { grid-column: 1 / -1; }
+  .controls-grid, .controls-grid.has-stove { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .controls-device { grid-column: 1 / -1; }
   .card { padding: 14px; }
 
   .report-main { padding: 12px; gap: 12px; }
