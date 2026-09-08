@@ -25,11 +25,16 @@ Beantwortete Punkte wandern mit Datum und Antwort nach unten in „Erledigt“.
 > gleichzeitig: bei `source_mode: mqtt` übergeht sie in HA nur die Schlüssel, die im Abschnitt `mqtt:` des
 > Mappings stehen; alles andere kommt weiter aus HA. Die Geräte-ID des 3EM wird damit nicht mehr gebraucht.
 
+**Q3 beantwortet (08.09.2026): das Vorzeichen stimmt.** Der Ladezustandsverlauf des 08.09. zeigt es
+unmittelbar: nachts fällt der Ladestand von 33 auf 0 %, und die Leistung liegt dabei bei +0,35 kW.
+Positiv heißt entladen, wie im Domänenmodell. Auch die Größe passt: 33 % von 5,1 kWh sind 1,68 kWh
+auf 4,6 Stunden, also 0,37 kW. Die Messung war nie das Problem - die Bilanz darüber war es, siehe
+`fill_gaps` in `hems_core.accounting.energy`.
+
 ## Offen
 
 | Nr. | Frage | Hängt davon ab | Annahme bis zur Antwort |
 |---|---|---|---|
-| Q3 | **Batterie-Vorzeichen beim Entladen.** Wird `sensor.myenergi_libbi_26244255_power_ct_internal_load` beim Entladen negativ? (Beim Laden war er positiv, 445 W.) Abends prüfen, wenn die libbi entlädt. | Energiebilanz, Überschussregel | Laden positiv → Mapping `charge_positive` |
 | Q4 | **Zweiter Wechselrichter?** `sensor.nobis_solar_network_111_solar_power` meldet 2,49 kW, der myenergi-Hub 7,65 kW (drei harvi-CTs à ~2,55 kW). Separate Anlage, die die CTs nicht erfassen, oder dasselbe Gerät mit anderer Zählung? | PV-Gesamtleistung, Bilanz, Prognosekalibrierung | Hub-Wert ist die Gesamt-PV |
 | Q5 | **Tibber-Sensor-Abweichung.** `sensor.electricity_waldstrasse_48_gesamtleistung` zeigte 3168 W Bezug, myenergi gleichzeitig 2378 W Einspeisung. Tibber Pulse vorhanden? War der Wert veraltet? | Zweite Netzmessung (Plan 25.4) | myenergi ist die Netzmessung |
 | Q7 | **Batterie-Schwelle für den WP-Überschuss.** Aktuell zählt Batterieladung erst ab 80 % SOC als nutzbarer Überschuss (Batterie hat Vorrang). Soll die Wärmepumpe bei großem Puffer-Ladebedarf früher Vorrang bekommen? | `count_battery_charging_above_soc` in der HEMS-Konfiguration | 0,8 |

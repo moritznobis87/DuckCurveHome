@@ -490,6 +490,14 @@ class SqlRepositories:
             )
         return list(rows)
 
+    async def has_event(self, code: str) -> bool:
+        """Gab es dieses Ereignis schon einmal? Für einmalige Wartungsschritte nach einem Deploy."""
+        async with self.maker() as s:
+            row = (
+                await s.execute(select(m.SystemEvent.id).where(m.SystemEvent.code == code).limit(1))
+            ).first()
+        return row is not None
+
     async def recent_events(self, limit: int = 50) -> list[m.SystemEvent]:
         async with self.maker() as s:
             rows = (

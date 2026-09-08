@@ -15,7 +15,8 @@ sensors:
   # Netz: negativ = Einspeisung (power_export 2378 W bei power_grid −2378 W) → import_positive.
   - { key: grid_power_kw,      entity: sensor.myenergi_hub_14117600_power_grid,           unit: W, sign: import_positive, stale_after_s: 120 }
   # Batterie (libbi): interner Last-CT ist beim Laden positiv (445 W bei "Battery charge today" steigend).
-  # ⚠ Vorzeichen beim Entladen noch verifizieren (erwartet negativ) - siehe docs/OPEN_QUESTIONS.md.
+  # Vorzeichen am 08.09.2026 am Ladezustandsverlauf bestaetigt: nachts faellt der Ladestand, die
+  # Leistung steht bei +0,35 kW - entladen ist positiv, wie das Domaenenmodell es verlangt.
   - { key: battery_power_kw,   entity: sensor.myenergi_libbi_26244255_power_ct_internal_load, unit: W, sign: charge_positive, stale_after_s: 120 }
   - { key: battery_soc,        entity: sensor.myenergi_libbi_26244255_soc,                unit: "%", stale_after_s: 600 }
   # Wallbox (zappi): interner Last-CT = Ladeleistung des Autos.
