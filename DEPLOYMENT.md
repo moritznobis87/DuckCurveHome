@@ -61,7 +61,9 @@ Das Banner bedeutet: Die Web-App bekommt keinen SSE-Stream von der API. Die fehl
 die Ursache - ohne Bridge liefert die API trotzdem Snapshots (dann ist der Punkt im Kopf grün „live“, die
 Werte bleiben Striche, weil noch keine Messwerte vorliegen). Prüfreihenfolge:
 
-1. `https://<web-domain>/api/health` → erwartet `{"status":"ok","api":200}`.
+1. `https://<web-domain>/api/health` → erwartet `{"status":"ok","api":200,"web":"<commit>","api_commit":"<commit>"}`.
+   Die beiden Kennungen sagen, welcher Stand gerade laeuft; sie werden getrennt ausgerollt und koennen
+   auseinanderlaufen. Die Adresse ist ohne Anmeldung erreichbar - genau dafuer.
    - `"api":"unreachable"`: `DCH_API_URL` falsch, Port stimmt nicht oder die API lauscht nur auf IPv4.
      Railways privates Netz ist **reines IPv6**, der öffentliche Proxy spricht IPv4 - die API bindet deshalb beide
      Familien (uvicorn `--host ""`; `::` allein wäre IPv6-only und liefert öffentlich 502 „Application failed to respond“).

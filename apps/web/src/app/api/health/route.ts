@@ -18,10 +18,19 @@ export async function GET(): Promise<Response> {
   } catch {
     return Response.json({ status: "degraded", api: "invalid_url", target: base }, { status: 503 });
   }
+  // Beide Kennungen an einer Stelle: welcher Stand im Web läuft und welcher in der API. Ohne das
+  // ist „ist mein Fehler schon behoben?" nur über den Deployment-Verlauf zu beantworten, und die
+  // beiden Dienste werden getrennt ausgerollt - sie können auseinanderlaufen.
+  const web = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? process.env.NEXT_PUBLIC_BUILD_ID ?? "dev";
   try {
     const r = await fetch(`${base}/health`, { cache: "no-store", signal: AbortSignal.timeout(3000) });
-    return Response.json({ status: r.ok ? "ok" : "degraded", api: r.status, target }, { status: r.ok ? 200 : 503 });
+    const body: unknown = r.ok ? await r.json().catch(() => null) : null;
+    const apiCommit = typeof body === "object" && body !== null ? (body as { commit?: unknown }).commit : undefined;
+    return Response.json(
+      { status: r.ok ? "ok" : "degraded", api: r.status, web, api_commit: typeof apiCommit === "string" ? apiCommit : "unbekannt", target },
+      { status: r.ok ? 200 : 503 },
+    );
   } catch (err) {
-    return Response.json({ status: "degraded", api: "unreachable", target, error: errorCode(err) }, { status: 503 });
+    return Response.json({ status: "degraded", api: "unreachable", web, target, error: errorCode(err) }, { status: 503 });
   }
 }
