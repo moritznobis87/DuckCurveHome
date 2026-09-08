@@ -26,7 +26,7 @@ hems:
     # Pelletofen (MCZ Star Hydromatic). Die Zahlen bestimmen, ab wann der Ofen günstiger heizt als
     # die Wärmepumpe, siehe hems_core.accounting.stove_cost und docs/OFEN_OPTIMIERUNG.md.
     present: true
-    control_enabled: false  # darf der Planer ihn schalten? Bewusst aus, bis es gewollt ist
+    control_enabled: true  # darf DCH ihn schalten? Freigegeben; Sicherungen in OFEN_OPTIMIERUNG.md
     nominal_heat_kw: 11.9  # Gesamtwärmeleistung bei Volllast, laut Datenblatt
     water_heat_kw: 10.0  # davon in den Pufferspeicher; 1,9 kW heizen die Küche
     combustion_efficiency: 0.911  # Wirkungsgrad bei Maximalbetrieb

@@ -1,5 +1,5 @@
 name: Duck Curve Home Bridge
-version: "0.7.0"
+version: "0.7.1"
 slug: duckcurve_bridge
 description: Verbindet das Haus ausgehend mit Duck Curve Home (Railway). Shellys direkt über MQTT, den MCZ-Pelletofen über sein Maestro-Modul, übrige Entitäten und Aktoren über Home Assistant.
 url: https://github.com/moritznobis87/DuckCurveHome
@@ -34,7 +34,7 @@ options:
   mcz_host: ""
   mcz_port: 81
   mcz_poll_interval_s: 15
-  mcz_allow_control: false
+  mcz_allow_control: true
 schema:
   api_ws_url: str
   api_token: password

@@ -186,9 +186,12 @@ class StoveConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     present: bool = True
-    # Ob der Planer den Ofen schalten darf. Bewusst aus: eine Feuerstätte fernzustarten ist eine
-    # andere Klasse von Eingriff als ein Relais, und die Entscheidung gehört dem Hausherrn.
-    control_enabled: bool = False
+    # Ob DCH den Ofen schalten darf. Eine Feuerstätte fernzustarten ist eine andere Klasse von
+    # Eingriff als ein Relais, und die Entscheidung gehört dem Hausherrn; er hat sie getroffen.
+    # Das ist nur die eine Hälfte der Freigabe: ohne `mcz_allow_control` schreibt die Bridge
+    # trotzdem keinen Rahmen an den Ofen. Beide Seiten müssen zustimmen, und beide bleiben
+    # einzeln abschaltbar.
+    control_enabled: bool = True
 
     # Datenblatt: MCZ STAR HYDROMATIC 12 M1, Rev. 09_2019.
     nominal_heat_kw: float = 11.9  # Nominale Nutzleistung, Wasser und Raum zusammen
