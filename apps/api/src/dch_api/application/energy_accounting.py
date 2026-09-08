@@ -116,6 +116,32 @@ CARRY_GROUPS: dict[str, tuple[str, ...]] = {
 }
 
 
+# Ab so vielen bewerteten Minuten gilt eine Stunde aus echten Minutenwerten als vollständig genug,
+# um eine gespeicherte Stunde auch dann zu ersetzen, wenn diese mehr Minuten zählt.
+FULL_ENOUGH_MINUTES = 55
+
+
+def supersedes(new: HourlyEnergy, old: HourlyEnergy | None) -> bool:
+    """Darf die neu gerechnete Stunde die gespeicherte ersetzen?
+
+    Die ursprüngliche Regel war einfach: mehr bewertete Minuten gewinnen. Sie sollte verhindern,
+    dass Teildaten aus der Cloud eine vollständige Stunde überschreiben. Sie hat aber einen zweiten,
+    ungewollten Effekt: eine Stunde, die der Historienimport aus **Stundenmitteln** gebildet hat,
+    zählt immer 60 Minuten - nicht weil 60 Minuten gemessen wurden, sondern weil das Mittel über die
+    Stunde ausgerollt wurde. Gegen diese 60 kommt eine Rechnung aus echten Minutenwerten mit 58
+    abgedeckten Minuten nicht an, und die schlechtere Stunde bleibt für immer stehen. Genau daran
+    scheiterte am 03.09. jede Korrektur der Quellenzuordnung.
+
+    Deshalb gewinnt eine Rechnung aus echten Minutenwerten, sobald sie die Stunde nahezu abdeckt.
+    Die Schwelle liegt hoch, damit eine wirklich lückenhafte Stunde weiterhin nichts überschreibt.
+    """
+    if old is None:
+        return True
+    if new.minutes >= old.minutes:
+        return True
+    return new.coarse_minutes == 0 and new.minutes >= FULL_ENOUGH_MINUTES
+
+
 def merge_hour(new: HourlyEnergy, old: HourlyEnergy | None) -> HourlyEnergy:
     """Neu berechnete Stunde mit der gespeicherten zusammenführen.
 
@@ -464,7 +490,7 @@ class EnergyAccounting:
         out: list[tuple[HourlyEnergy, float | None]] = []
         for h, temp in hours:
             old, old_temp = stored.get(h.hour_start, (None, None))
-            if old is not None and h.minutes < old.minutes:
+            if not supersedes(h, old):
                 continue  # Teildaten ersetzen keine vollständigere Stunde
             out.append((merge_hour(h, old), temp if temp is not None else old_temp))
         return out

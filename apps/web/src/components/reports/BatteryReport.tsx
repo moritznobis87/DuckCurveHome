@@ -38,10 +38,12 @@ export function socEnergy(rows: HistoryRow[], capacityKwh: number): { charge: nu
   return { charge: up * capacityKwh, discharge: down * capacityKwh, samples: soc.length };
 }
 
-function isoShift(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** Ortszeit-Mitternacht des Ankertags und des Folgetags - die Grenzen, die der Nutzer meint. */
+function dayBounds(anchor: string): [Date, Date] {
+  const start = new Date(`${anchor}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return [start, end];
 }
 
 export function BatteryReport() {
@@ -49,28 +51,32 @@ export function BatteryReport() {
   const { data, error } = useReport<EnergySummary>(api.energySummary, period, anchor);
   const strip = useMultiPeriod<EnergySummary>(api.energySummary);
   const [rows, setRows] = useState<HistoryRow[]>([]);
-  const dayRange: "today" | "yesterday" | null = period !== "day" ? null : anchor === isoToday() ? "today" : anchor === isoShift(-1) ? "yesterday" : null;
+  const isDay = period === "day";
+  const isToday = anchor === isoToday();
   useEffect(() => {
-    if (!dayRange) {
+    if (!isDay) {
       setRows([]);
       return;
     }
     let alive = true;
     const load = async () => {
       try {
-        const h = await api.history(dayRange);
+        const [start, end] = dayBounds(anchor);
+        const h = isToday ? await api.history("today") : await api.historyDay(start, end);
         if (alive) setRows(h.rows as HistoryRow[]);
       } catch {
         if (alive) setRows([]);
       }
     };
     void load();
+    // Nur der laufende Tag wächst noch; ein vergangener Tag wird einmal geladen.
+    if (!isToday) return () => { alive = false; };
     const t = setInterval(() => void load(), 60_000);
     return () => {
       alive = false;
       clearInterval(t);
     };
-  }, [dayRange]);
+  }, [isDay, isToday, anchor]);
 
   const t = data?.totals;
   const cap = data?.meta.battery_capacity_kwh ?? 0;
@@ -136,8 +142,8 @@ export function BatteryReport() {
       </div>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Ladezustand über den Tag" right={dayRange ? "Minutenwerte · + Entladen, − Laden" : "nur für heute und gestern verfügbar"} />
-          {dayRange && rows.length > 0 ? <div className="min-h-0 flex-1"><EChart option={dayOpt} /></div> : <div className="flex flex-1 items-center justify-center"><Note>{dayRange ? "Noch keine Minutenwerte für diesen Tag." : "Der Ladezustandsverlauf wird für heute und gestern gezeigt; für andere Zeiträume gelten die Stundenbilanzen oben."}</Note></div>}
+          <CardHead title="Ladezustand über den Tag" right={isDay ? "Minutenwerte · + Entladen, − Laden" : "nur in der Tagesansicht"} />
+          {isDay && rows.length > 0 ? <div className="min-h-0 flex-1"><EChart option={dayOpt} /></div> : <div className="flex flex-1 items-center justify-center"><Note>{isDay ? "Für diesen Tag liegen keine Minutenwerte vor; die Stundenbilanzen oben stammen dann aus dem Historienimport." : "Der Verlauf wird je Tag gezeigt; für längere Zeiträume gelten die Stundenbilanzen oben."}</Note></div>}
         </Card>
         <PeriodStrip
           title="Speicher im Überblick"

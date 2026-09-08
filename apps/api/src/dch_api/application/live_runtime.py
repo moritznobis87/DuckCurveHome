@@ -846,9 +846,10 @@ class LiveRuntime:
         # einen Takt, nicht fuer eine Nacht ohne PV-Meldung; v2 laesst eine gemessene Null unbegrenzt
         # gelten; v3 ordnet Stunden, die es nur als Stundenmittel gibt, neu zu, statt ihnen Netzladung
         # anzudichten; v4 prueft die Ladung gegen ein Fuenf-Minuten-Fenster, weil Netzzaehler und
-        # Speicher nicht im selben Moment melden. Wer die Kennung nicht mitzieht, laesst die alten
-        # Zeilen stehen.
-        marker = "energy.rebuild_window_v4"
+        # Speicher nicht im selben Moment melden; v5 laesst eine Rechnung aus echten Minutenwerten
+        # eine importierte Stunde ersetzen, die nur deshalb 60 Minuten zaehlt, weil ein Stundenmittel
+        # ausgerollt wurde. Wer die Kennung nicht mitzieht, laesst die alten Zeilen stehen.
+        marker = "energy.rebuild_supersede_v5"
         try:
             if await self.repos.has_event(marker):
                 self.energy_rebuild = "erledigt"

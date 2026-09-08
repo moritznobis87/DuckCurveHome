@@ -207,3 +207,25 @@ async def test_repair_coarse_laesst_echte_minutenrechnung_in_ruhe() -> None:
     h = written[0]
     assert h.coarse_minutes == 0
     assert h.grid_to_battery_kwh == pytest.approx(3.0, abs=0.02)  # echte Netzladung bleibt stehen
+
+
+def test_importierte_stunde_blockiert_die_minutenrechnung_nicht_mehr() -> None:
+    """Der Befund vom 03.09.: die Korrektur der Quellenzuordnung kam nie an.
+
+    Eine aus Stundenmitteln gebildete Stunde zählt immer 60 Minuten, weil das Mittel über die Stunde
+    ausgerollt wird. Gegen diese 60 kam eine Rechnung aus echten Minutenwerten mit 58 abgedeckten
+    Minuten nicht an, und die schlechtere Zuordnung blieb stehen.
+    """
+    from dch_api.application.energy_accounting import supersedes
+
+    imported = HourlyEnergy(hour_start=HOUR, minutes=60, coarse_minutes=60)
+    measured = HourlyEnergy(hour_start=HOUR, minutes=58)
+    assert supersedes(measured, imported)
+    # Auch ohne Marker: eine gespeicherte Stunde mit 60 Minuten aus einem alten Import trägt
+    # coarse_minutes=0, die Regel greift trotzdem über die Vollständigkeit der neuen Rechnung.
+    assert supersedes(measured, HourlyEnergy(hour_start=HOUR, minutes=60))
+    # Wirklich lückenhafte Rechnungen überschreiben weiterhin nichts.
+    assert not supersedes(HourlyEnergy(hour_start=HOUR, minutes=30), imported)
+    # Und eine Rechnung, die selbst aus Stundenmitteln stammt, gewinnt nie über die Abkürzung.
+    assert not supersedes(HourlyEnergy(hour_start=HOUR, minutes=58, coarse_minutes=58), imported)
+    assert supersedes(measured, None)
