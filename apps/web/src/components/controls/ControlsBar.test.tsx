@@ -111,3 +111,38 @@ describe("untere Leiste", () => {
     expect(within(box).getByRole("button", { name: "Aus" })).toBeDisabled();
   });
 });
+
+describe("was der Planer vorhat", () => {
+  it("zeigt im Automatikbetrieb den Fahrplan neben dem Zustand", () => {
+    // Der Ofen brennt noch nicht, der Plan sagt an: genau so sieht Zünden aus.
+    render(
+      <ControlsBar
+        state={state({ running: false, mode: "auto", planned_on: true, plan_until: "2026-01-15T20:00:00Z" })}
+      />,
+    );
+    expect(stoveSegment().textContent).toContain("aus · Plan an bis");
+  });
+
+  it("schweigt, wenn es keinen Fahrplan gibt", () => {
+    render(<ControlsBar state={state({ running: true, mode: "auto", planned_on: null })} />);
+    expect(stoveSegment().textContent).not.toContain("Plan");
+  });
+
+  it("zeigt bei Handbetrieb den Eingriff und nicht den Fahrplan", () => {
+    render(
+      <ControlsBar state={state({ running: true, mode: "off", ends_at: "2026-01-15T21:00:00Z", planned_on: true })} />,
+    );
+    const text = stoveSegment().textContent ?? "";
+    expect(text).toContain("manuell aus");
+    expect(text).not.toContain("Plan an");
+  });
+});
+
+describe("die Vorgabe", () => {
+  it("nennt „aus ohne Frist“ nicht Handbetrieb, sondern abgeschalteten Planer", () => {
+    render(<ControlsBar state={state({ running: false, mode: "off", ends_at: null })} />);
+    const text = stoveSegment().textContent ?? "";
+    expect(text).toContain("Planer aus");
+    expect(text).not.toContain("manuell");
+  });
+});

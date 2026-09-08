@@ -149,6 +149,11 @@ class StoveLiveOut(BaseModel):
     boiler_temp_c: float | None = None
     observed_at: datetime | None = None
     quality: Quality = Quality.UNAVAILABLE
+    # Der Fahrplan des Optimierers. `planned_on` ist das, was DCH im Modus `auto` von sich aus tut;
+    # `None` heißt: es liegt kein Fahrplan vor, und dann schaltet DCH auch nichts.
+    planned_on: bool | None = None
+    plan_until: datetime | None = None
+    plan_note_de: str = ""
     note_de: str = ""
 
 

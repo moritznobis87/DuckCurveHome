@@ -1690,7 +1690,7 @@ export interface components {
             /**
              * @default {
              *       "present": true,
-             *       "control_enabled": false,
+             *       "control_enabled": true,
              *       "nominal_heat_kw": 11.9,
              *       "water_heat_kw": 10,
              *       "combustion_efficiency": 0.911,
@@ -1924,6 +1924,7 @@ export interface components {
              *       "control_enabled": false,
              *       "mode": "auto",
              *       "quality": "unavailable",
+             *       "plan_note_de": "",
              *       "note_de": ""
              *     }
              */
@@ -2406,7 +2407,7 @@ export interface components {
             present: boolean;
             /**
              * Control Enabled
-             * @default false
+             * @default true
              */
             control_enabled: boolean;
             /**
@@ -2554,6 +2555,15 @@ export interface components {
             observed_at?: string | null;
             /** @default unavailable */
             quality: components["schemas"]["Quality"];
+            /** Planned On */
+            planned_on?: boolean | null;
+            /** Plan Until */
+            plan_until?: string | null;
+            /**
+             * Plan Note De
+             * @default
+             */
+            plan_note_de: string;
             /**
              * Note De
              * @default

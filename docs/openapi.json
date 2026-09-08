@@ -3606,7 +3606,7 @@
             "$ref": "#/components/schemas/StoveConfig",
             "default": {
               "present": true,
-              "control_enabled": false,
+              "control_enabled": true,
               "nominal_heat_kw": 11.9,
               "water_heat_kw": 10.0,
               "combustion_efficiency": 0.911,
@@ -4174,6 +4174,7 @@
               "control_enabled": false,
               "mode": "auto",
               "quality": "unavailable",
+              "plan_note_de": "",
               "note_de": ""
             }
           },
@@ -5097,7 +5098,7 @@
           "control_enabled": {
             "type": "boolean",
             "title": "Control Enabled",
-            "default": false
+            "default": true
           },
           "nominal_heat_kw": {
             "type": "number",
@@ -5297,6 +5298,34 @@
           "quality": {
             "$ref": "#/components/schemas/Quality",
             "default": "unavailable"
+          },
+          "planned_on": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned On"
+          },
+          "plan_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Until"
+          },
+          "plan_note_de": {
+            "type": "string",
+            "title": "Plan Note De",
+            "default": ""
           },
           "note_de": {
             "type": "string",

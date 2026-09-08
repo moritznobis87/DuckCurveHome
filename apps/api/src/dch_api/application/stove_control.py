@@ -35,13 +35,23 @@ STALE_AFTER_S = 300.0
 
 MeasurementLookup = Callable[[str, float], Measurement]
 
+# Der Zustand nach einem Neustart und nach jedem abgelaufenen Eingriff. Bewusst `off` und nicht
+# `auto`: die Automatik ist fertig und geprüft, aber sie soll nicht von selbst anlaufen, weil ein
+# Dienst neu gestartet wurde. Wer will, dass der Planer den Ofen führt, drückt einmal **Auto**.
+#
+# `off` heißt hier nicht „DCH schaltet den Ofen aus". Es heißt: DCH lässt ihn in Ruhe. Ein Befehl
+# geht nur hinaus, wenn jemand eine Schaltfläche drückt oder der Planer im Modus `auto` etwas
+# anderes vorsieht. Ein von Hand angezündeter Ofen brennt also weiter, und die Zustandszeile zeigt
+# das auch so.
+DEFAULT_MODE: StoveMode = "off"
+
 
 @dataclass
 class StoveController:
     """Hält den gewünschten Betriebszustand und setzt ihn mit dem gemessenen zusammen."""
 
     cfg: StoveConfig
-    mode: StoveMode = "auto"
+    mode: StoveMode = DEFAULT_MODE
     ends_at: datetime | None = None
 
     @property
@@ -49,9 +59,14 @@ class StoveController:
         return self.cfg.present and self.cfg.control_enabled
 
     def effective_mode(self, now: datetime) -> StoveMode:
-        """Den gültigen Modus liefern und einen abgelaufenen Eingriff dabei verfallen lassen."""
+        """Den gültigen Modus liefern und einen abgelaufenen Eingriff dabei verfallen lassen.
+
+        Ein abgelaufener Eingriff fällt auf die Vorgabe zurück, nicht auf `auto`. Sonst hieße „an
+        für zwei Stunden" in Wahrheit „an für zwei Stunden, danach entscheidet der Planer", und das
+        hat niemand angetippt.
+        """
         if self.ends_at is not None and now >= self.ends_at:
-            self.mode, self.ends_at = "auto", None
+            self.mode, self.ends_at = DEFAULT_MODE, None
         return self.mode
 
     def set(self, mode: StoveMode, duration_min: int, now: datetime) -> StoveMode:
@@ -63,8 +78,20 @@ class StoveController:
             self.ends_at = now + timedelta(minutes=duration_min)
         return self.mode
 
-    def state(self, measure: MeasurementLookup, now: datetime) -> StoveLiveOut:
-        """Den Zustand für die Oberfläche zusammensetzen."""
+    def state(
+        self,
+        measure: MeasurementLookup,
+        now: datetime,
+        *,
+        planned_on: bool | None = None,
+        plan_until: datetime | None = None,
+        plan_note_de: str = "",
+    ) -> StoveLiveOut:
+        """Den Zustand für die Oberfläche zusammensetzen.
+
+        Der Fahrplan kommt von außen herein, statt hier gerechnet zu werden: dieser Teil hält den
+        Bedienzustand, der Planer die Optimierung, und beide sollen sich einzeln prüfen lassen.
+        """
         if not self.cfg.present:
             return StoveLiveOut(note_de="Kein Ofen konfiguriert.")
         mode = self.effective_mode(now)
@@ -83,7 +110,12 @@ class StoveController:
             boiler_temp_c=_value(measure("stove_boiler_temp_c", STALE_AFTER_S)),
             observed_at=run.observed_at if fresh else None,
             quality=run.quality,
-            note_de=note(mode, running, level, self.ends_at, self.controllable),
+            planned_on=planned_on,
+            plan_until=plan_until,
+            plan_note_de=plan_note_de,
+            note_de=note(
+                mode, running, level, self.ends_at, self.controllable, planned_on, plan_until
+            ),
         )
 
 
@@ -97,6 +129,8 @@ def note(
     level: float | None,
     ends_at: datetime | None,
     controllable: bool,
+    planned_on: bool | None = None,
+    plan_until: datetime | None = None,
 ) -> str:
     """Ein Satz, der Wunsch und Wirklichkeit nebeneinanderstellt, statt einen davon zu verschweigen."""
     if running is None:
@@ -109,7 +143,15 @@ def note(
     if not controllable:
         return f"{was} DCH schaltet ihn nicht (Steuerung nicht freigegeben)."
     if mode == "auto":
-        return f"{was} Auto: DCH schaltet nicht, der Ofen regelt selbst."
+        if planned_on is None:
+            # Ohne Fahrplan wird nicht behauptet, es entscheide jemand. Das ist der Zustand bei
+            # fehlenden Preisen, blindem Puffer oder zu kurzem Horizont.
+            return f"{was} Auto: kein Fahrplan, der Ofen regelt selbst."
+        bis = f" bis {plan_until:%H:%M}" if plan_until else ""
+        return f"{was} Auto: Planer sagt {'an' if planned_on else 'aus'}{bis}."
+    if mode == "off" and ends_at is None:
+        # Die Vorgabe, kein Eingriff: DCH lässt den Ofen in Ruhe, in beide Richtungen.
+        return f"{was} DCH lässt ihn in Ruhe; für den Planer auf Auto stellen."
     wunsch = "an" if mode == "on" else "aus"
     bis = f" bis {ends_at:%H:%M}" if ends_at else ""
     return f"{was} Manuell {wunsch}{bis}."

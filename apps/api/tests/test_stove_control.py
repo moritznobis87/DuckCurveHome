@@ -88,11 +88,34 @@ def test_ohne_freigabe_sagt_die_auskunft_warum_nichts_passiert() -> None:
     assert "nicht freigegeben" in s.note_de
 
 
-def test_auto_verspricht_nicht_mehr_als_es_haelt() -> None:
-    """Solange der Planer den Ofen nicht führt, heißt Auto: DCH schaltet nicht. Das steht da auch."""
+def test_die_vorgabe_ist_aus_und_nicht_auto() -> None:
+    """Die Automatik läuft nicht von selbst an, nur weil ein Dienst neu gestartet wurde."""
     s = controller().state(lookup({"stove_running": 0.0}), NOW)
-    assert s.mode == "auto"
-    assert "der Ofen regelt selbst" in s.note_de
+    assert s.mode == "off"
+    assert s.ends_at is None, "keine Frist: das ist ein Zustand, kein Eingriff"
+    assert "in Ruhe" in s.note_de and "Auto" in s.note_de
+
+
+def test_auto_ohne_fahrplan_verspricht_keine_automatik() -> None:
+    c = controller()
+    c.set("auto", 0, NOW)
+    s = c.state(lookup({"stove_running": 0.0}), NOW)
+    assert "kein Fahrplan" in s.note_de
+
+
+def test_auto_mit_fahrplan_sagt_was_der_planer_vorhat() -> None:
+    c = controller()
+    c.set("auto", 0, NOW)
+    s = c.state(
+        lookup({"stove_running": 0.0}),
+        NOW,
+        planned_on=True,
+        plan_until=NOW + timedelta(hours=3),
+        plan_note_de="2,0 h Ofen in einer Zündung.",
+    )
+    assert s.planned_on is True
+    assert "Planer sagt an bis 21:00" in s.note_de
+    assert s.plan_note_de.startswith("2,0 h")
 
 
 def test_veralteter_wert_wird_gezeigt_aber_gekennzeichnet() -> None:
@@ -104,11 +127,12 @@ def test_veralteter_wert_wird_gezeigt_aber_gekennzeichnet() -> None:
 # ------------------------------------------------------------------ Ablauf des Eingriffs
 
 
-def test_ein_eingriff_laeuft_ab_und_faellt_auf_auto() -> None:
+def test_ein_eingriff_laeuft_ab_und_faellt_auf_die_vorgabe() -> None:
+    """Nach „an für zwei Stunden" übernimmt nicht der Planer, sondern wieder die Vorgabe."""
     c = controller()
     c.set("on", 120, NOW)
     assert c.effective_mode(NOW + timedelta(minutes=119)) == "on"
-    assert c.effective_mode(NOW + timedelta(minutes=120)) == "auto"
+    assert c.effective_mode(NOW + timedelta(minutes=120)) == "off"
     assert c.ends_at is None
 
 
@@ -168,7 +192,7 @@ def test_ohne_bridge_kein_schaltbefehl(open_client: TestClient) -> None:
     r = open_client.post("/api/v1/control/stove/mode", json={"mode": "on"}, headers=AUTH)
     assert r.status_code == 503
     state = open_client.get("/api/v1/live/state", headers=AUTH).json()
-    assert state["stove"]["mode"] == "auto", "eine Absicht ohne Wirkung wird nicht gespeichert"
+    assert state["stove"]["mode"] == "off", "eine Absicht ohne Wirkung wird nicht gespeichert"
 
 
 def test_auto_geht_immer_denn_es_schaltet_nichts(open_client: TestClient) -> None:

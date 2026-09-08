@@ -5,9 +5,12 @@ Strompreis und der Wärmepumpen-Plan auf einen Blick - auf einem iPad an der Wan
 Duck Curve Home die Wärmepumpe als flexible Last nach PV-Überschuss, Strompreis und Wärmebedarf, ohne die
 Anlage selbst zu verändern: gesteuert werden ausschließlich die beiden dafür vorgesehenen Kontakte.
 
-**Status: Phase 2 - Read-only Live.** Demo-Modus (Simulation) und Live-Modus (Home Assistant über die Bridge
-als HA-Add-on, PostgreSQL auf Railway, Tibber, Open-Meteo). Der Regler entscheidet und erklärt, schaltet aber
-noch nichts (`DCH_ACTUATION_ENABLED=false`). Plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md),
+**Status: Live, mit einer geführten Wärmequelle.** Demo-Modus (Simulation) und Live-Modus (Home Assistant
+über die Bridge als HA-Add-on, PostgreSQL auf Railway, Tibber, Open-Meteo). An der **Wärmepumpe** entscheidet
+und erklärt der Regler, stellt den Kontakt aber nur mit `DCH_HEAT_PUMP_ACTUATION_ENABLED=true`. Der
+**Pelletofen** wird geführt: sein Fahrplan kommt aus dem MILP und wird umgesetzt, sobald beide Freigaben
+stehen (`stove.control_enabled` und `mcz_allow_control`). Warum der Unterschied, steht in
+[`docs/OFEN_OPTIMIERUNG.md`](docs/OFEN_OPTIMIERUNG.md). Plan: [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md),
 Betrieb: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Schnellstart

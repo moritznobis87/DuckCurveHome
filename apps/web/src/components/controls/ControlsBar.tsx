@@ -212,8 +212,13 @@ function StoveSegment({ state, readOnly = false }: { state: LiveState | null; re
   const brennt = stove.running === null ? "keine Verbindung" : stove.running ? (stove.power_level ? `brennt · Stufe ${Math.round(stove.power_level)}` : "brennt") : "aus";
   // Wunsch und Wirklichkeit stehen nebeneinander, sobald sie auseinanderlaufen: zwischen Befehl und
   // Feuer liegen Minuten, und beim Abschalten meldet der Ofen die ganze Ausbrandphase über „läuft“.
-  const wunsch = stove.mode === "auto" ? "" : ` · manuell ${stove.mode === "on" ? "an" : "aus"}${stove.ends_at ? ` bis ${hhmm(stove.ends_at)}` : ""}`;
-  const status = readOnly ? `${brennt} · nur Ansicht` : `${brennt}${wunsch}`;
+  // „Aus“ ohne Frist ist die Vorgabe und kein Eingriff: DCH lässt den Ofen dann in Ruhe, in beide
+  // Richtungen. Das ist etwas anderes als ein „manuell aus bis 21:00“, und es soll auch anders heißen.
+  const wunsch = stove.mode === "auto" ? "" : stove.ends_at ? ` · manuell ${stove.mode === "on" ? "an" : "aus"} bis ${hhmm(stove.ends_at)}` : " · Planer aus";
+  // Im Automatikbetrieb zählt, was der Planer vorhat - und zwar auch dann, wenn der Ofen es noch
+  // nicht umgesetzt hat. „aus · Plan an bis 21:00“ heißt: er zündet gerade.
+  const plan = stove.mode === "auto" && stove.planned_on != null ? ` · Plan ${stove.planned_on ? "an" : "aus"}${stove.plan_until ? ` bis ${hhmm(stove.plan_until)}` : ""}` : "";
+  const status = readOnly ? `${brennt} · nur Ansicht` : `${brennt}${wunsch}${plan}`;
   const color = stove.running === null ? "var(--alert)" : stove.running ? "var(--stove)" : "var(--text-3)";
   return (
     <DeviceSegment
@@ -223,7 +228,7 @@ function StoveSegment({ state, readOnly = false }: { state: LiveState | null; re
       activeColor={stove.running ? "var(--stove)" : "var(--amber)"}
       status={status}
       statusColor={stove.mode === "auto" ? color : "var(--amber-soft)"}
-      title={stove.note_de || "Pelletofen"}
+      title={[stove.note_de, stove.plan_note_de].filter(Boolean).join(" ") || "Pelletofen"}
       disabled={readOnly || !stove.control_enabled}
       disabledNote={readOnly ? `${brennt} · nur Ansicht` : `${brennt} · nicht freigegeben`}
       durations={STOVE_DURATIONS}

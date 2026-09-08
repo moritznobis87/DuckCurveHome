@@ -207,14 +207,32 @@ im Zünden und Ausbrennen verschwinden, als nutzbar in den Puffer gehen. Läuft 
 der Ofen auf **Auto** zurück; ein Dauerbefehl, den niemand zurücknimmt, wäre bei einer Feuerstätte
 die schlechteste Betriebsart.
 
-**Auto heißt heute: DCH schaltet nicht.** Der Planer kann den Ofen rechnen (das MILP oben), aber er
-führt ihn noch nicht; bis dahin regelt der Ofen sich selbst, und die Zustandszeile sagt das auch so.
-Das ist die ehrlichere Beschriftung als ein „Auto", das nichts tut und so aussieht, als täte es etwas.
+**Die Vorgabe ist Aus, nicht Auto.** Nach einem Neustart und nach jedem abgelaufenen Eingriff steht
+der Ofen auf **Aus**, und das heißt hier: DCH lässt ihn in Ruhe, in beide Richtungen. Es geht kein
+Befehl hinaus, weder ein Start noch ein Stopp; ein von Hand angezündeter Ofen brennt weiter. Wer
+will, dass der Planer ihn führt, drückt einmal **Auto**. Die Automatik ist fertig und geprüft, aber
+sie soll nicht anlaufen, weil ein Dienst neu gestartet wurde.
+
+**Auto heißt: der Fahrplan führt.** Alle 15 Minuten rechnet `stove_planner` das MILP mit den
+aktuellen Preisen, der Wetterprognose, der PV-Erwartung und dem gemessenen Pufferzustand. Der
+Regeltakt liest daraus ab, was jetzt gelten soll, und schaltet, wenn der Ofen etwas anderes tut. Die
+Zustandszeile zeigt beides: `aus · Plan an bis 21:00` heißt, er zündet gerade.
+
+Liegt kein Fahrplan vor (keine Preise, blinder Puffer, zu kurzer Horizont, kein Solver), schaltet DCH
+nichts und sagt das auch: `Auto: kein Fahrplan, der Ofen regelt selbst`. Ein Automatikbetrieb, der
+im Zweifel rät, wäre schlechter als einer, der die Hände in den Schoß legt.
 
 **Zwei Freigaben, nicht eine.** `stove.control_enabled` in der Anlagenkonfiguration entscheidet, ob
-die Oberfläche überhaupt Schaltflächen anbietet; `mcz_allow_control` im Add-on entscheidet, ob die
-Bridge einen Rahmen an den Ofen schreibt. Beide stehen ab Werk auf aus, und keine davon setzt die
-andere. Fehlt eine, sagt die Leiste `nicht freigegeben`, statt einen toten Knopf zu zeigen.
+DCH überhaupt schalten darf; `mcz_allow_control` im Add-on entscheidet, ob die Bridge einen Rahmen an
+den Ofen schreibt. Beide stehen inzwischen auf an, und keine davon setzt die andere: wer eine
+zurücknimmt, hat den Fernstart abgeschaltet, ohne sonst etwas zu verlieren. Fehlt eine, sagt die
+Leiste `nicht freigegeben`, statt einen toten Knopf zu zeigen.
+
+**Vier Sperren vor jedem Schaltbefehl**, jede einzeln prüfbar (`decide_switch`): Freigabe,
+Modus `auto`, freigegebene Aktorik, stehende Bridge. Dazu zwei, die dem Gerät gelten: ohne
+gemessenen Ofenzustand wird nicht blind geschaltet, und nach jedem Schaltvorgang gilt eine Sperre
+von zwei Stunden (nach dem Einschalten) beziehungsweise einer Stunde (nach dem Ausschalten). Die
+gilt auch für einen Eingriff von Hand: sonst wäre der Knopf ein Vorschlag und keine Anweisung.
 
 ## Was noch fehlt
 
@@ -228,10 +246,13 @@ proportional, der Faktor ist unbekannt. Wer einmal einen Sack wiegt und die Umdr
 abliest, hat ihn. Für die Kostenrechnung wird er nicht gebraucht, wohl aber für die Gegenprobe, ob
 der Ofen wirklich 2,67 kg/h verbraucht.
 
-**Fernstart einer Feuerstätte** ist eine andere Klasse von Eingriff als ein Relais. `control_enabled`
-steht deshalb auf `false`, bis es ausdrücklich gewollt ist.
+**Der Restbestand im Behälter ist geschätzt, nicht gewogen.** Er kommt aus den Minuten je
+Leistungsstufe seit dem letzten Nachfüllen. Liegen für das laufende Fenster gar keine Ofendaten vor,
+rechnet der Planer mit einer vollen Füllung; das ist die optimistische Annahme, aber ohne Ofendaten
+käme ohnehin kein Schaltbefehl an. Eine Waage unter dem Behälter oder eine gemessene
+Kilogramm-je-Umdrehung würde das zu einer Messung machen.
 
-**Der Planer führt den Ofen noch nicht.** Das MILP kann ihn (zweite Schaltvariable, Startkosten,
-Rucksackbedingung über das Tagesbudget), aber die Live-Runtime ruft es nicht mit Ofenparametern auf.
-Bis dahin ist `Auto` eine Freigabe an den Ofen selbst und keine Führung durch DCH. Das ist der
-nächste Schritt, und er ist der einzige, der die Rechnung oben in Betrieb bringt.
+**Die Wärmepumpe geht mit Nennwerten in den Fahrplan**, nicht mit einer COP-abhängigen Leistung, und
+ihr Fahrplan wird nicht umgesetzt: der Regler der Wärmepumpe bleibt der regelbasierte. Das MILP
+plant sie mit, weil der Ofen sonst gegen nichts abgewogen würde; wer beide Regler auf das MILP
+umstellen will, hat es damit vorbereitet, aber noch nicht getan.
