@@ -55,6 +55,10 @@ class BridgeSettings(BaseSettings):
     mcz_host: str = ""  # IP oder Hostname des Ofens im Heimnetz; leer = Quelle aus
     mcz_port: int = 81
     mcz_poll_interval_s: float = 15.0
+    # Darf die Bridge den Ofen ein- und ausschalten? Standardmäßig nein. Eine Feuerstätte
+    # fernzustarten ist eine andere Klasse von Eingriff als ein Relais, und die Entscheidung
+    # gehört dem Hausherrn, nicht der Voreinstellung.
+    mcz_allow_control: bool = False
 
     @property
     def shelly_topic_prefix(self) -> str:

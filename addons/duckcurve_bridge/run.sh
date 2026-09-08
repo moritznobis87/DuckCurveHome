@@ -22,6 +22,7 @@ export DCH_BRIDGE_MQTT_POLL_INTERVAL_S="$(bashio::config 'mqtt_poll_interval_s')
 export DCH_BRIDGE_MCZ_HOST="$(bashio::config 'mcz_host' '')"
 export DCH_BRIDGE_MCZ_PORT="$(bashio::config 'mcz_port')"
 export DCH_BRIDGE_MCZ_POLL_INTERVAL_S="$(bashio::config 'mcz_poll_interval_s')"
+export DCH_BRIDGE_MCZ_ALLOW_CONTROL="$(bashio::config 'mcz_allow_control')"
 export DCH_BRIDGE_HA_WS_URL="ws://supervisor/core/websocket"
 export DCH_BRIDGE_HA_REST_URL="http://supervisor/core/api"
 export DCH_BRIDGE_OUTBOX_PATH="/data/outbox.sqlite"

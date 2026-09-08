@@ -9,9 +9,21 @@ Rekonstruiert aus zwei quelloffenen Projekten, die dasselbe Protokoll sprechen:
 `hackximus/MCZ-Maestro-API` (Rahmenformat der Schreibbefehle) und `Chibald/maestrogateway`
 (Feldtabelle und Maßstäbe). Übernommen ist die Protokollkenntnis, kein Quelltext.
 
-**Diese Quelle schreibt nie.** Der einzige Rahmen, den sie sendet, ist `C|RecuperoInfo`. Der Ofen
-wird gelesen, nicht gesteuert. Das ist Absicht: eine Heizung, die im Winter das Haus warm hält, ist
-kein Ort für Fernsteuerung nebenbei.
+**Lesen ist der Normalfall, Schalten die Ausnahme.** Der einzige Rahmen, der ohne ausdrückliche
+Freigabe hinausgeht, ist `C|RecuperoInfo`. Ein- und Ausschalten kam später dazu, weil der Planer den
+Ofen gegen die Wärmepumpe abwägen soll, und es ist bewusst umständlich gehalten:
+
+* `MaestroStove` schaltet nur, wenn `allow_control` gesetzt ist. Ohne das ist die Quelle nicht
+  imstande zu schreiben, nicht bloß unwillig.
+* Geschaltet wird ausschließlich der Ein/Aus-Parameter (34). Leistungsstufen, Solltemperaturen,
+  Chronostat und die Diagnosebefehle sind bekannt und bleiben draußen. Der Ofen regelt sich selbst,
+  wir sagen nur, ob er darf.
+* Jeder Schaltvorgang wird protokolliert, und der beobachtete Zustand zählt, nicht der gewünschte:
+  bestätigt ist ein Befehl erst, wenn der nächste Info-Rahmen ihn zeigt.
+
+Das ist keine Vorsicht um ihrer selbst willen. Eine Feuerstätte fernzustarten ist eine andere Klasse
+von Eingriff als ein Relais zu schalten, und der Unterschied gehört in den Code, nicht nur in die
+Dokumentation.
 
 **Maßstäbe.** Temperaturen stehen in halben Grad, der Rohwert wird halbiert. Der Rohwert 255
 (also 127,5 °C) heißt „kein Fühler angeschlossen" und wird zu `None` mit Qualität `unknown` - ein
@@ -57,6 +69,17 @@ log = structlog.get_logger("mcz")
 INFO_MESSAGE_TYPE = "01"
 GET_INFO = "C|RecuperoInfo"
 NO_PROBE_RAW = 255  # Rohwert eines nicht angeschlossenen Temperaturfühlers
+
+# Der Ein/Aus-Parameter der Maestro-Firmware. Die Werte sind nicht 1 und 0, sondern 1 und 40; das
+# ist eine Eigenheit des Geräts und in beiden quelloffenen Projekten gleich dokumentiert.
+PARAM_POWER = 34
+POWER_ON = 1
+POWER_OFF = 40
+
+
+def power_command(state: bool) -> str:
+    """Den einzigen Schreibbefehl bauen, den diese Quelle kennt."""
+    return f"C|WriteParametri|{PARAM_POWER}|{POWER_ON if state else POWER_OFF}"
 
 
 @dataclass(frozen=True)
@@ -226,12 +249,18 @@ class MaestroStove:
     connect_timeout_s: float = 10.0
     read_timeout_s: float = 60.0  # deutlich über dem Abfragetakt: Schweigen ist ein Ausfall
     label: str = "MCZ Maestro"
+    # Ohne diese Freigabe ist die Quelle nicht imstande zu schalten. Sie kommt aus der
+    # Add-on-Konfiguration und steht dort standardmäßig auf aus.
+    allow_control: bool = False
 
     _connected: bool = False
     _announced_offline: bool = False
     _frames: int = 0
     _reconnects: int = 0
     _logged_first_frame: bool = False
+    _writer: asyncio.StreamWriter | None = None  # Schreibende der laufenden Verbindung
+    _last_state: bool | None = None  # zuletzt gelesener Betriebszustand
+    _switches: int = 0
 
     @property
     def keys(self) -> list[str]:
@@ -243,6 +272,8 @@ class MaestroStove:
             "connected": self._connected,
             "frames": self._frames,
             "reconnects": self._reconnects,
+            "control": self.allow_control,
+            "switches": self._switches,
         }
 
     @property
@@ -257,6 +288,7 @@ class MaestroStove:
             try:
                 host, port = self.address
                 reader, writer = await _handshake(host, port, self.connect_timeout_s)
+                self._writer = writer
                 self._connected = True
                 self._announced_offline = False
                 self._logged_first_frame = False
@@ -268,6 +300,7 @@ class MaestroStove:
             except Exception as exc:
                 log.warning("stove connection failed", error=f"{type(exc).__name__}: {exc}"[:200])
             finally:
+                self._writer = None
                 if writer is not None:
                     writer.close()
                     with contextlib.suppress(Exception):
@@ -297,6 +330,9 @@ class MaestroStove:
                 values = parse_info(payload.decode("utf-8", "replace"))
                 if values:
                     self._frames += 1
+                    running = values.get("stove_running")
+                    if running is not None:
+                        self._last_state = bool(running)
                     if not self._logged_first_frame:
                         # Einmal je Verbindung im Klartext: welche Größen dieses Gerät wirklich
                         # führt und welche Fühler es nicht hat. Ohne das steht im Protokoll nur
@@ -329,6 +365,38 @@ class MaestroStove:
                 for key, value in values.items()
             ]
         )
+
+    def can_switch(self, key: str) -> bool:
+        """Schaltet diese Quelle den genannten Aktor? Nur den Ofen, und nur mit Freigabe."""
+        return self.allow_control and key == "actuator:stove"
+
+    async def switch(self, key: str, state: bool, timeout_s: float = 90.0) -> bool | None:
+        """Den Ofen ein- oder ausschalten und auf seine Bestätigung warten.
+
+        Zurückgegeben wird der **beobachtete** Zustand, nicht der gewünschte. Ein Pelletofen
+        braucht Minuten zum Zünden und zum Ausbrennen; wer sofort ein Ergebnis erwartet, bekommt
+        `None` und muss das als „noch nicht bestätigt" lesen, nicht als Fehler.
+        """
+        if not self.can_switch(key):
+            raise PermissionError("Ofensteuerung ist nicht freigegeben (mcz_allow_control)")
+        writer = self._writer
+        if writer is None or not self._connected:
+            raise RuntimeError("keine Verbindung zum Ofen")
+        log.warning("stove switch requested", state=state, url=self.url)
+        writer.write(_client_frame(OPCODE_TEXT, power_command(state).encode()))
+        await writer.drain()
+        self._switches += 1
+
+        # Auf die Bestätigung warten. Der Zustand kommt aus dem nächsten Info-Rahmen, den der
+        # Abfragetakt ohnehin holt; hier wird nur beobachtet, nicht nachgefragt.
+        deadline = asyncio.get_running_loop().time() + timeout_s
+        while asyncio.get_running_loop().time() < deadline:
+            if self._last_state == state:
+                log.info("stove switch confirmed", state=state)
+                return state
+            await asyncio.sleep(1.0)
+        log.warning("stove switch not confirmed", state=state, last=self._last_state)
+        return self._last_state
 
     async def _announce_offline(self) -> None:
         """Einmal je Ausfall melden, dass der Ofen nicht erreichbar ist - nicht bei jedem Versuch."""

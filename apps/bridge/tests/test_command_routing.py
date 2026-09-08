@@ -138,3 +138,53 @@ async def test_broker_value_keeps_precedence_while_it_is_fresh(tmp_path: Path) -
     bridge._mqtt_owned = {"actuator:courtyard_light"}
     bridge._ingest(ha_state("switch.lichtinnenhof", "on"))
     assert "actuator:courtyard_light" not in bridge._pending
+
+
+class FakeStove:
+    """Der Ofen hängt an keinem Broker: er hat seinen eigenen WebSocket und seine eigene Freigabe."""
+
+    def __init__(self, *, allow: bool = True, observed: bool | None = None) -> None:
+        self.allow = allow
+        self.observed = observed
+        self.calls: list[tuple[str, bool]] = []
+        self.url = "ws://ofen/"
+
+    def can_switch(self, key: str) -> bool:
+        return self.allow and key == "actuator:stove"
+
+    async def switch(self, key: str, state: bool) -> bool | None:
+        if not self.can_switch(key):
+            raise PermissionError("Ofensteuerung ist nicht freigegeben (mcz_allow_control)")
+        self.calls.append((key, state))
+        return state if self.observed is None else self.observed
+
+
+@pytest.mark.asyncio
+async def test_stove_is_switched_over_its_own_connection(tmp_path: Path) -> None:
+    hub = FakeHub()
+    bridge = build(tmp_path, hub)
+    bridge.stove = FakeStove()  # type: ignore[assignment]
+    result = await bridge.execute_command(frame("stove", True))
+    assert result.ok and result.observed_state is True
+    assert bridge.stove.calls == [("actuator:stove", True)]  # type: ignore[union-attr]
+    assert hub.calls == [] and bridge.ha.calls == []  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_stove_without_release_ends_in_a_readable_error(tmp_path: Path) -> None:
+    """Ohne Freigabe fällt der Befehl nicht durch auf einen anderen Weg, sondern scheitert."""
+    bridge = build(tmp_path, FakeHub())
+    bridge.stove = FakeStove(allow=False)  # type: ignore[assignment]
+    result = await bridge.execute_command(frame("stove", True))
+    assert result.ok is False
+    assert result.error == "unbekannter Aktor", "kein HA-Umweg für einen Ofen ohne Freigabe"
+
+
+@pytest.mark.asyncio
+async def test_stove_that_does_not_confirm_is_not_ok(tmp_path: Path) -> None:
+    bridge = build(tmp_path, FakeHub())
+    bridge.stove = FakeStove(observed=False)  # type: ignore[assignment]
+    result = await bridge.execute_command(frame("stove", True))
+    assert result.ok is False
+    assert result.observed_state is False
+    assert "nicht bestätigt" in (result.error or "")

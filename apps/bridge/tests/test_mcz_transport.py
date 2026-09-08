@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import os
+from collections.abc import Callable
 
 import pytest
 from structlog.testing import capture_logs
@@ -23,6 +25,7 @@ from dch_bridge.sources.mcz_maestro import (
     MaestroStove,
     _client_frame,
     _read_frame,
+    power_command,
 )
 
 INFO_FRAME = "01|" + "|".join(
@@ -79,12 +82,20 @@ def _server_frame(opcode: int, payload: bytes, *, masked: bool) -> bytes:
 class FakeStove:
     """Ein Ofen aus rohem TCP: Handschlag von Hand, Antwort maskiert."""
 
-    def __init__(self, *, masked: bool = True, send_ping: bool = False) -> None:
+    def __init__(self, *, masked: bool = True, send_ping: bool = False, obeys: bool = True) -> None:
         self.masked = masked
         self.send_ping = send_ping
+        self.obeys = obeys  # nimmt er einen Schaltbefehl an, oder bleibt er stur?
         self.requests: list[bytes] = []
         self.pongs = 0
+        self.power = True
         self._server: asyncio.Server | None = None
+
+    def _info(self) -> bytes:
+        """Der Info-Rahmen mit dem gerade eingestellten Zustand in Feld 1."""
+        parts = INFO_FRAME.split("|")
+        parts[1] = "F" if self.power else "0"  # Leistungsstufe 5 oder aus
+        return "|".join(parts).encode()
 
     @property
     def port(self) -> int:
@@ -120,10 +131,10 @@ class FakeStove:
                 opcode, payload = await _read_frame(reader)
                 if opcode == OPCODE_TEXT:
                     self.requests.append(payload)
+                    if payload.startswith(b"C|WriteParametri|34|") and self.obeys:
+                        self.power = payload.rsplit(b"|", 1)[1] == b"1"
                     writer.write(_server_frame(OPCODE_TEXT, b"PING", masked=self.masked))
-                    writer.write(
-                        _server_frame(OPCODE_TEXT, INFO_FRAME.encode(), masked=self.masked)
-                    )
+                    writer.write(_server_frame(OPCODE_TEXT, self._info(), masked=self.masked))
                     await writer.drain()
                 else:
                     self.pongs += 1
@@ -133,21 +144,24 @@ class FakeStove:
             writer.close()
 
 
+async def _until(ready: Callable[[], object], what: str = "Messwerte") -> None:
+    """Auf ein Ereignis warten, ohne feste Wartezeit: schnell im Normalfall, endlich im Fehlerfall."""
+    for _ in range(200):
+        if ready():
+            return
+        await asyncio.sleep(0.02)
+    raise AssertionError(f"keine {what} innerhalb der Wartezeit")
+
+
 async def _collect_one(stove: MaestroStove, seen: list[list]) -> None:
     """Die Quelle laufen lassen, bis der erste Satz Messwerte da ist."""
     task = asyncio.create_task(stove.run())
     try:
-        for _ in range(200):
-            if seen:
-                return
-            await asyncio.sleep(0.02)
-        raise AssertionError("keine Messwerte innerhalb der Wartezeit")
+        await _until(lambda: seen)
     finally:
         task.cancel()
-        try:  # noqa: SIM105 - contextlib.suppress verdeckt hier den Abbruchpfad
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
 
 
 @pytest.mark.parametrize("masked", [True, False])
@@ -250,3 +264,107 @@ async def test_erster_rahmen_wird_im_klartext_protokolliert() -> None:
     assert len(first) == 1, "einmal je Verbindung, nicht je Rahmen"
     assert "stove_buffer_temp_c=59.0" in first[0]["values"]
     assert "stove_return_temp_c=64.0" in first[0]["values"]
+
+
+# ------------------------------------------------------------------- Schalten
+# Der Ofen ist die einzige Quelle in der Bridge, die schreibt. Eine Feuerstätte fernzustarten ist
+# eine andere Klasse von Eingriff als ein Relais zu schalten, deshalb prüfen die folgenden Tests
+# nicht nur, dass es funktioniert, sondern vor allem, was dabei *nicht* passiert: kein Rahmen ohne
+# Freigabe, kein anderer Parameter als 34, keine Bestätigung ohne beobachteten Zustand.
+
+
+def test_der_schaltbefehl_hat_genau_eine_gestalt() -> None:
+    """1 und 40, nicht 1 und 0: eine Eigenheit der Maestro-Firmware, kein Tippfehler."""
+    assert power_command(True) == "C|WriteParametri|34|1"
+    assert power_command(False) == "C|WriteParametri|34|40"
+
+
+def test_ohne_freigabe_ist_die_quelle_nicht_imstande_zu_schalten() -> None:
+    """Nicht bloß unwillig: der Fehler kommt, bevor irgendetwas hinausgeht."""
+
+    async def collect(items: list) -> None:
+        raise AssertionError("hier kommt nichts an")
+
+    stove = MaestroStove(url="ws://test/", on_readings=collect)
+    assert stove.can_switch("actuator:stove") is False
+    with pytest.raises(PermissionError, match="mcz_allow_control"):
+        asyncio.run(stove.switch("actuator:stove", True))
+
+
+def test_auch_mit_freigabe_schaltet_die_quelle_nur_den_ofen() -> None:
+    async def collect(items: list) -> None: ...
+
+    stove = MaestroStove(url="ws://test/", on_readings=collect, allow_control=True)
+    assert stove.can_switch("actuator:stove") is True
+    assert stove.can_switch("actuator:hp_release_contact") is False
+    with pytest.raises(PermissionError):
+        asyncio.run(stove.switch("actuator:hp_release_contact", True))
+
+
+def test_ohne_verbindung_wird_der_befehl_nicht_verschluckt() -> None:
+    """Ein Schaltbefehl ins Leere muss scheitern, nicht still verschwinden."""
+
+    async def collect(items: list) -> None: ...
+
+    stove = MaestroStove(url="ws://test/", on_readings=collect, allow_control=True)
+    with pytest.raises(RuntimeError, match="keine Verbindung"):
+        asyncio.run(stove.switch("actuator:stove", True))
+
+
+async def test_ausschalten_geht_als_einziger_schreibrahmen_hinaus() -> None:
+    """Der Ofen läuft, wird ausgeschaltet, und bestätigt es im nächsten Info-Rahmen."""
+    seen: list[list] = []
+
+    async def collect(items: list) -> None:
+        seen.append(items)
+
+    async with FakeStove() as server:
+        stove = MaestroStove(
+            url=f"ws://127.0.0.1:{server.port}/",
+            on_readings=collect,
+            poll_interval_s=0.05,
+            allow_control=True,
+        )
+        task = asyncio.create_task(stove.run())
+        try:
+            await _until(lambda: seen)
+            assert stove._last_state is True, "der Ofen läuft, bevor geschaltet wird"
+            observed = await stove.switch("actuator:stove", False, timeout_s=5.0)
+        finally:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+    assert observed is False, "bestätigt wird der beobachtete Zustand"
+    writes = [r for r in server.requests if not r.startswith(b"C|RecuperoInfo")]
+    assert writes == [b"C|WriteParametri|34|40"], "genau ein Schreibrahmen, und kein anderer"
+    assert stove.status()["switches"] == 1
+
+
+async def test_ein_sturer_ofen_bestaetigt_nicht_und_das_bleibt_sichtbar() -> None:
+    """Bestätigt ist ein Befehl erst, wenn der Zustand ihn zeigt. Sonst kommt der wahre zurück."""
+    seen: list[list] = []
+
+    async def collect(items: list) -> None:
+        seen.append(items)
+
+    async with FakeStove(obeys=False) as server:
+        stove = MaestroStove(
+            url=f"ws://127.0.0.1:{server.port}/",
+            on_readings=collect,
+            poll_interval_s=0.05,
+            allow_control=True,
+        )
+        task = asyncio.create_task(stove.run())
+        try:
+            await _until(lambda: seen)
+            with capture_logs() as entries:
+                observed = await stove.switch("actuator:stove", False, timeout_s=0.3)
+        finally:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+    assert observed is True, "der Ofen läuft weiter, und genau das wird gemeldet"
+    assert [e["event"] for e in entries if e["event"] == "stove switch not confirmed"]
+    assert b"C|WriteParametri|34|40" in server.requests, "gesendet wurde er trotzdem"
