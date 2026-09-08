@@ -313,3 +313,65 @@ def test_jedes_feld_haelt_fuer_sich() -> None:
     )
     filled = fill_gaps([a, b])
     assert filled[1].pv_kw == 3.0 and filled[1].battery_kw == -2.0
+
+
+def test_eine_gemessene_null_altert_nicht() -> None:
+    """Nachts meldet die PV-Seite nichts mehr, weil sich an ihrer Null nichts ändert.
+
+    Der erste Anlauf hielt Werte fünf Minuten - das reicht für einen Takt, nicht für eine Nacht.
+    Und weil die Bilanz eine Minute ohne PV-Wert verwirft, nahm die fehlende Null die Entladung des
+    Speichers gleich mit. Genau das war der Grund, warum die erste Korrektur nichts bewirkt hat.
+    """
+    nacht = [
+        MinuteSample(
+            ts=H0 + timedelta(minutes=i),
+            pv_kw=0.0 if i == 0 else None,  # danach schweigt die PV-Seite
+            grid_kw=-0.36,
+            battery_kw=0.36,
+            heat_pump_kw=0.0,
+            ev_kw=0.0,
+            price_ct_kwh=30.0,
+        )
+        for i in range(60)
+    ]
+    h = hourly_energy(H0, fill_gaps(nacht), TARIFF)
+    assert h.minutes == 60, "die Null gilt weiter, die Minute bleibt bewertbar"
+    assert h.battery_discharge_kwh == pytest.approx(0.36, abs=0.01)
+    assert h.pv_kwh == pytest.approx(0.0)
+
+
+def test_ein_veralteter_wert_ungleich_null_gilt_nicht_weiter() -> None:
+    """Eine Leistung, die zuletzt 3 kW war, ist nach einer Stunde Schweigen keine Auskunft mehr."""
+    reihe = [
+        MinuteSample(
+            ts=H0 + timedelta(minutes=i),
+            pv_kw=3.0 if i == 0 else None,
+            grid_kw=1.0,
+            battery_kw=0.0,
+            heat_pump_kw=0.0,
+            ev_kw=0.0,
+            price_ct_kwh=30.0,
+        )
+        for i in range(30)
+    ]
+    filled = fill_gaps(reihe)
+    assert filled[3].pv_kw == 3.0, "innerhalb der Haltezeit gilt er"
+    assert filled[20].pv_kw is None, "danach nicht mehr"
+
+
+def test_ohne_jede_meldung_entsteht_keine_minute() -> None:
+    """Ein Ausfall zählt nicht als abgedeckt, nur weil irgendwann eine Null gemessen wurde."""
+    erste = _minutes(3, pv_kw=0.0, grid_kw=0.0, battery_kw=0.0)
+    spaet = [
+        MinuteSample(
+            ts=H0 + timedelta(minutes=50),
+            pv_kw=0.0,
+            grid_kw=0.0,
+            battery_kw=0.0,
+            heat_pump_kw=0.0,
+            ev_kw=0.0,
+            price_ct_kwh=30.0,
+        )
+    ]
+    filled = fill_gaps(erste + spaet)
+    assert len(filled) == 3 + 5 + 1, "drei gemessene, fünf gehaltene, dann Stille bis zur letzten"

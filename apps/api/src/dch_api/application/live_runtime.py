@@ -110,6 +110,7 @@ class LiveRuntime:
         self.mode = OperatingMode(system_mode=SystemMode.AUTO, auto_profile=AutoProfile.SMART)
         self.stove = StoveController(self.hems.stove)
         self.stove_plan = StovePlan()
+        self.energy_rebuild = "ausstehend"
         self._stove_switched_at: datetime | None = None
         self.decision: Decision | None = None
         self.decisions: deque[Decision] = deque(maxlen=100)
@@ -841,15 +842,22 @@ class LiveRuntime:
 
         Läuft im Hintergrund und tageweise: ein Jahr sind über eine halbe Million Minutenzeilen.
         """
-        marker = "energy.rebuild_hold_v1"
+        # Die Kennung waechst mit dem Verfahren. v1 hielt Messwerte fuenf Minuten - das reicht fuer
+        # einen Takt, nicht fuer eine Nacht ohne PV-Meldung; v2 laesst eine gemessene Null unbegrenzt
+        # gelten. Wer die Kennung nicht mitzieht, laesst die alten Zeilen stehen.
+        marker = "energy.rebuild_hold_v2"
         try:
             if await self.repos.has_event(marker):
+                self.energy_rebuild = "erledigt"
                 return
             start = await self.repos.first_measurement_at()
             if start is None:
+                self.energy_rebuild = "keine Daten"
                 return
             began = self.now
+            self.energy_rebuild = f"laeuft seit {began:%H:%M}"
             hours = await self.accounting.recompute(start, began)
+            self.energy_rebuild = f"{hours} Stunden neu gerechnet"
             await self.repos.add_event(
                 "info",
                 marker,
@@ -860,7 +868,12 @@ class LiveRuntime:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            # Ein stiller Fehlschlag hier ist der teuerste: die Zahlen bleiben falsch, und niemand
+            # sieht warum. Deshalb steht der Grund im Zustand und im Ereignisprotokoll.
+            self.energy_rebuild = f"fehlgeschlagen: {type(exc).__name__}"
             log.warning("energy rebuild failed", error=repr(exc)[:300])
+            with contextlib.suppress(Exception):
+                await self.repos.add_event("warning", "energy.rebuild_failed", repr(exc)[:300], {})
 
     async def _rollup_loop(self) -> None:
         while True:

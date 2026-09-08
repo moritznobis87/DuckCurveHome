@@ -216,9 +216,19 @@ def fill_gaps(
     Ein Messwert gilt deshalb weiter, bis ein neuer kommt, höchstens aber `max_hold_min` Minuten.
     Danach ist es keine Lücke mehr, sondern ein Ausfall, und die Minute bleibt leer.
 
+    **Eine Null altert nicht.** Die Fünf-Minuten-Grenze gilt für Werte, die sich ändern können.
+    Nachts meldet die PV-Seite nichts mehr, weil sich an ihrer Null nichts ändert - und weil die
+    Bilanz eine Minute ohne PV-Wert verwirft, nahm sie die Entladung des Speichers gleich mit. Der
+    erste Anlauf dieser Funktion hat das nicht behoben: fünf Minuten reichen für einen Takt, nicht
+    für eine ganze Nacht. Eine zuletzt gemessene Null gilt deshalb unbegrenzt weiter. Das erfindet
+    keine Energie - null mal irgendetwas bleibt null -, es verhindert nur, dass die Null die
+    Nachbarwerte mit in den Papierkorb zieht.
+
     **Zwei Grenzen, die bewusst nicht überschritten werden.** Über den letzten Messwert hinaus wird
     nicht fortgeschrieben: in der laufenden Stunde wäre das erfundene Energie, die es noch nicht
-    gibt. Und jedes Feld hält für sich - fehlt nur die Batterie, gelten PV und Netz trotzdem weiter.
+    gibt. Und eine Minute entsteht nur, wenn mindestens ein Feld einen frischen oder eben erst
+    gehaltenen Wert hat - sonst zählte ein Ausfall als lückenlos abgedeckt, nur weil irgendwann
+    einmal eine Null gemessen wurde.
     """
     rows = sorted(samples, key=lambda s: s.ts)
     if not rows:
@@ -231,14 +241,25 @@ def fill_gaps(
     while t <= stop:
         cur = by_minute.get(t)
         values: dict[str, float | None] = {}
+        recent = False
         for field in _HOLD_FIELDS:
             v = getattr(cur, field) if cur is not None else None
             if v is not None:
                 held[field] = (v, t)
+                recent = True
             else:
                 prev = held.get(field)
-                v = prev[0] if prev is not None and t - prev[1] <= hold else None
+                if prev is None:
+                    v = None
+                elif t - prev[1] <= hold:
+                    v = prev[0]
+                    recent = True
+                else:
+                    v = prev[0] if prev[0] == 0.0 else None
             values[field] = v
+        if not recent:  # niemand hat sich gemeldet: das ist ein Ausfall, keine Lücke
+            t += timedelta(minutes=1)
+            continue
         out.append(MinuteSample(ts=t, **values))
         t += timedelta(minutes=1)
     return out

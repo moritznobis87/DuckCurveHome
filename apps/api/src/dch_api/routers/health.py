@@ -39,6 +39,10 @@ def health(runner: Annotated[Runtime, Depends(get_runner)]) -> dict[str, object]
         "version": runner.live_state().system.version,
         "commit": running_commit(),
         "mode": runner.settings.mode,
+        # Einmalige Wartungsschritte laufen im Hintergrund. Ohne diese Zeile ist von aussen nicht zu
+        # sehen, ob sie liefen, noch laufen oder gescheitert sind - und dann sucht man den Fehler in
+        # der Rechnung, obwohl er im Ablauf liegt.
+        "energy_rebuild": getattr(runner, "energy_rebuild", "unbekannt"),
         "server_time": runner.now.isoformat(),
         "sse_clients": runner.broker.client_count,
     }

@@ -25,9 +25,10 @@ export async function GET(): Promise<Response> {
   try {
     const r = await fetch(`${base}/health`, { cache: "no-store", signal: AbortSignal.timeout(3000) });
     const body: unknown = r.ok ? await r.json().catch(() => null) : null;
-    const apiCommit = typeof body === "object" && body !== null ? (body as { commit?: unknown }).commit : undefined;
+    const payload = (typeof body === "object" && body !== null ? body : {}) as { commit?: unknown; energy_rebuild?: unknown };
+    const str = (v: unknown) => (typeof v === "string" ? v : "unbekannt");
     return Response.json(
-      { status: r.ok ? "ok" : "degraded", api: r.status, web, api_commit: typeof apiCommit === "string" ? apiCommit : "unbekannt", target },
+      { status: r.ok ? "ok" : "degraded", api: r.status, web, api_commit: str(payload.commit), energy_rebuild: str(payload.energy_rebuild), target },
       { status: r.ok ? 200 : 503 },
     );
   } catch (err) {
