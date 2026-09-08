@@ -142,7 +142,7 @@ export function BatteryReport() {
       </div>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Ladezustand über den Tag" right={isDay ? "Minutenwerte · Speicher + Entladen, − Laden · Netz + Bezug" : "nur in der Tagesansicht"} />
+          <CardHead title="Ladezustand über den Tag" right={isDay ? "Minutenwerte · + Entladen, − Laden" : "nur in der Tagesansicht"} />
           {isDay && rows.length > 0 ? <div className="min-h-0 flex-1"><EChart option={dayOpt} /></div> : <div className="flex flex-1 items-center justify-center"><Note>{isDay ? "Für diesen Tag liegen keine Minutenwerte vor; die Stundenbilanzen oben stammen dann aus dem Historienimport." : "Der Verlauf wird je Tag gezeigt; für längere Zeiträume gelten die Stundenbilanzen oben."}</Note></div>}
         </Card>
         <PeriodStrip
