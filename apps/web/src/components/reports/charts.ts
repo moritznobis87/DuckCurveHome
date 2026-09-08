@@ -291,6 +291,11 @@ export function batteryDayChart(rows: Array<Record<string, number | string | nul
       { type: "value", name: "kW", position: "right", nameTextStyle: { color: C.text, fontSize: 10, align: "left", padding: [0, 0, 0, 6] }, splitLine: { show: false }, axisLabel: axisText, splitNumber: 3 },
     ],
     series: [
+      // PV und Netz gehören dazu, sonst ist die naheliegendste Frage an diesem Bild nicht zu
+      // beantworten: hat die Sonne die Ladung getragen, oder lief gleichzeitig Netzbezug? Genau
+      // daran entscheidet sich, ob eine ausgewiesene Netzladung echt ist.
+      { name: "PV", type: "line", yAxisIndex: 1, data: rows.map((r) => [ts(r), num(r, "pv_power_kw")]), showSymbol: false, lineStyle: { color: C.pv, width: 1, opacity: 0.55 }, z: 2 },
+      { name: "Netz", type: "line", yAxisIndex: 1, step: "end", data: rows.map((r) => [ts(r), num(r, "grid_power_kw")]), showSymbol: false, lineStyle: { color: C.grid, width: 1, opacity: 0.7 }, z: 2 },
       { name: "Leistung", type: "line", yAxisIndex: 1, step: "end", data: rows.map((r) => [ts(r), num(r, "battery_power_kw")]), showSymbol: false, lineStyle: { color: "rgba(127,163,179,.7)", width: 1 }, areaStyle: { color: "rgba(127,163,179,.12)" }, z: 1 },
       { name: "Ladezustand", type: "line", data: rows.map((r) => [ts(r), num(r, "battery_soc") != null ? (num(r, "battery_soc") as number) * 100 : null]), showSymbol: false, connectNulls: true, lineStyle: { color: C.pv, width: 2.5 }, z: 3 },
     ],
