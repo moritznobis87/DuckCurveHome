@@ -190,17 +190,27 @@ class StoveConfig(BaseModel):
     # andere Klasse von Eingriff als ein Relais, und die Entscheidung gehört dem Hausherrn.
     control_enabled: bool = False
 
-    # Datenblattwerte des Geräts (MCZ Star Hydromatic).
-    nominal_heat_kw: float = 11.9  # Gesamtwärmeleistung bei Volllast, Wasser und Raum zusammen
+    # Datenblatt: MCZ STAR HYDROMATIC 12 M1, Rev. 09_2019.
+    nominal_heat_kw: float = 11.9  # Nominale Nutzleistung, Wasser und Raum zusammen
     water_heat_kw: float = 10.0  # davon in den Pufferspeicher
-    combustion_efficiency: float = (
-        0.904  # Feuerungswirkungsgrad; der Rest geht über den Schornstein
-    )
+    combustion_efficiency: float = 0.911  # Wirkungsgrad bei Maximalbetrieb
+    # Teillast. Der Ofen ist dort **wirkungsgradbesser** (96,1 gegen 91,1 %), weil das Rauchgas
+    # kühler abzieht: 48 statt 123 °C. Zugleich geht weniger davon ins Wasser, 1,8 von 3,2 kW statt
+    # 10 von 11,9. Beides hebt sich im Wärmepreis fast genau auf, siehe stove_cost.
+    min_heat_kw: float = 3.2
+    min_water_heat_kw: float = 1.8
+    min_combustion_efficiency: float = 0.961
+
     electric_w: float = 75.0  # Eigenverbrauch im Betrieb: Gebläse, Schnecke, Steuerung
-    # Ebenfalls aus dem Datenblatt, hier als Gegenprobe für die gerechnete Kette. Der Ofen läuft in
-    # diesem Haus praktisch immer auf Volllast, deshalb ist der Minimalwert nur dokumentiert.
+    electric_ignition_w: float = 390.0  # Spitze beim Zünden (Zündwiderstand)
+
+    # Gegenprobe für die gerechnete Kette, an beiden Lastpunkten.
     pellet_kg_per_hour_max: float = 2.7
     pellet_kg_per_hour_min: float = 0.7
+    # 31 l Behälter, rund 0,65 kg/l Schüttdichte. Bei Volllast reicht das für gut sieben Stunden,
+    # das Datenblatt nennt acht. Eine Nacht durchheizen geht also, zwei Nächte nicht: der Planer
+    # darf keine Laufzeit einplanen, für die kein Brennstoff im Gerät ist.
+    hopper_kg: float = 20.0
 
     pellet_price_eur_per_t: float = 450.0
     # 4,9 kWh/kg ist der Normwert für ENplus A1 bei 8 % Feuchte. Die Norm verlangt mindestens 4,6,
@@ -211,7 +221,7 @@ class StoveConfig(BaseModel):
     # mit; in der Heizperiode ersetzt das Wärme, die sonst die Wärmepumpe liefern müsste. Der
     # Hausherr rechnet die gesamte Nutzwärme an, also 1,0. Im Sommer oder bei ohnehin überheizter
     # Küche wäre 0 ehrlicher. Bei diesem Gerät ist der Unterschied klein, weil fast alles ins Wasser
-    # geht: 10,2 gegen 12,1 ct/kWh.
+    # geht: 10,3 gegen 12,2 ct/kWh.
     room_heat_credit: float = 1.0
 
     # Ein Ofen wird nicht für zwanzig Minuten angeworfen: Zünden kostet Strom und unverbrannte

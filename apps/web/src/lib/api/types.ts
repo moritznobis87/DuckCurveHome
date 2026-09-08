@@ -1669,10 +1669,15 @@ export interface components {
              *       "control_enabled": false,
              *       "nominal_heat_kw": 11.9,
              *       "water_heat_kw": 10,
-             *       "combustion_efficiency": 0.904,
+             *       "combustion_efficiency": 0.911,
+             *       "min_heat_kw": 3.2,
+             *       "min_water_heat_kw": 1.8,
+             *       "min_combustion_efficiency": 0.961,
              *       "electric_w": 75,
+             *       "electric_ignition_w": 390,
              *       "pellet_kg_per_hour_max": 2.7,
              *       "pellet_kg_per_hour_min": 0.7,
+             *       "hopper_kg": 20,
              *       "pellet_price_eur_per_t": 450,
              *       "pellet_kwh_per_kg": 4.9,
              *       "room_heat_credit": 1,
@@ -2379,14 +2384,34 @@ export interface components {
             water_heat_kw: number;
             /**
              * Combustion Efficiency
-             * @default 0.904
+             * @default 0.911
              */
             combustion_efficiency: number;
+            /**
+             * Min Heat Kw
+             * @default 3.2
+             */
+            min_heat_kw: number;
+            /**
+             * Min Water Heat Kw
+             * @default 1.8
+             */
+            min_water_heat_kw: number;
+            /**
+             * Min Combustion Efficiency
+             * @default 0.961
+             */
+            min_combustion_efficiency: number;
             /**
              * Electric W
              * @default 75
              */
             electric_w: number;
+            /**
+             * Electric Ignition W
+             * @default 390
+             */
+            electric_ignition_w: number;
             /**
              * Pellet Kg Per Hour Max
              * @default 2.7
@@ -2397,6 +2422,11 @@ export interface components {
              * @default 0.7
              */
             pellet_kg_per_hour_min: number;
+            /**
+             * Hopper Kg
+             * @default 20
+             */
+            hopper_kg: number;
             /**
              * Pellet Price Eur Per T
              * @default 450

@@ -3567,10 +3567,15 @@
               "control_enabled": false,
               "nominal_heat_kw": 11.9,
               "water_heat_kw": 10.0,
-              "combustion_efficiency": 0.904,
+              "combustion_efficiency": 0.911,
+              "min_heat_kw": 3.2,
+              "min_water_heat_kw": 1.8,
+              "min_combustion_efficiency": 0.961,
               "electric_w": 75.0,
+              "electric_ignition_w": 390.0,
               "pellet_kg_per_hour_max": 2.7,
               "pellet_kg_per_hour_min": 0.7,
+              "hopper_kg": 20.0,
               "pellet_price_eur_per_t": 450.0,
               "pellet_kwh_per_kg": 4.9,
               "room_heat_credit": 1.0,
@@ -5052,12 +5057,32 @@
           "combustion_efficiency": {
             "type": "number",
             "title": "Combustion Efficiency",
-            "default": 0.904
+            "default": 0.911
+          },
+          "min_heat_kw": {
+            "type": "number",
+            "title": "Min Heat Kw",
+            "default": 3.2
+          },
+          "min_water_heat_kw": {
+            "type": "number",
+            "title": "Min Water Heat Kw",
+            "default": 1.8
+          },
+          "min_combustion_efficiency": {
+            "type": "number",
+            "title": "Min Combustion Efficiency",
+            "default": 0.961
           },
           "electric_w": {
             "type": "number",
             "title": "Electric W",
             "default": 75.0
+          },
+          "electric_ignition_w": {
+            "type": "number",
+            "title": "Electric Ignition W",
+            "default": 390.0
           },
           "pellet_kg_per_hour_max": {
             "type": "number",
@@ -5068,6 +5093,11 @@
             "type": "number",
             "title": "Pellet Kg Per Hour Min",
             "default": 0.7
+          },
+          "hopper_kg": {
+            "type": "number",
+            "title": "Hopper Kg",
+            "default": 20.0
           },
           "pellet_price_eur_per_t": {
             "type": "number",

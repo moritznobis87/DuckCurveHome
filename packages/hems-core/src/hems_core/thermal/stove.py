@@ -23,7 +23,12 @@ from pydantic import BaseModel, ConfigDict
 
 # Ab dieser Rauchgastemperatur brennt es wirklich. Darunter kann der Zustandscode „an" melden,
 # während nur gezündet oder ausgekühlt wird.
-BURNING_FUME_C = 60.0
+#
+# 45 °C und nicht 60: das Datenblatt nennt für den Minimalbetrieb 48 °C Abgastemperatur. Mit der
+# ursprünglichen Schwelle hätte ein sauber auf kleiner Flamme laufender Ofen als „brennt nicht"
+# gegolten. Die Schwelle muss unter den kältesten Betriebspunkt und über die Raumtemperatur, und
+# dazwischen ist weniger Platz, als man vermutet.
+BURNING_FUME_C = 45.0
 # Ab dieser Pumpenmodulation gibt der Ofen Wärme an den Kreis ab. Darunter zirkuliert nichts,
 # und eine Spreizung wäre bedeutungslos.
 PUMPING_PCT = 5.0

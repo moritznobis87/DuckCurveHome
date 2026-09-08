@@ -23,7 +23,9 @@ from hems_core.accounting.stove_cost import (
     break_even_cop,
     cheaper_source,
     heat_pump_ct_per_kwh,
+    hopper_runtime_h,
     stove_economics,
+    stove_economics_min_load,
 )
 
 __all__ = [
@@ -41,10 +43,12 @@ __all__ = [
     "heat_demand_kw",
     "heat_forecast",
     "heat_pump_ct_per_kwh",
+    "hopper_runtime_h",
     "hourly_energy",
     "pv_tax",
     "samples_from_rows",
     "stove_economics",
+    "stove_economics_min_load",
     "summarize",
     "thermal_kwh_from_electric",
 ]

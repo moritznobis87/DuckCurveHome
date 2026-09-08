@@ -30,6 +30,19 @@ eine falsch eingetragene Zahl nicht still eine falsche Entscheidung erzeugt.
 **Der Eigenverbrauch** von 75 W ist klein, aber er gehört dazu: er ist Strom zum Marktpreis und
 verschiebt den Vergleich in dieselbe Richtung wie ein teurer Strompreis, nur um wenige Zehntel.
 
+**Teillast kostet dasselbe.** Das ist das überraschendste Ergebnis dieser Rechnung und der Grund,
+warum der Planer keine Teillastkennlinie braucht. Der Ofen ist auf kleiner Flamme
+wirkungsgradbesser (96,1 statt 91,1 %), weil das Rauchgas kühler abzieht, verliert aber gleichzeitig
+Wasseranteil (56 statt 84 %). Auf die gesamte Nutzwärme gerechnet heben sich beide Effekte fast
+genau auf:
+
+    Volllast     11,9 kW nutzbar    2,67 kg/h    10,27 ct/kWh
+    Minimallast   3,2 kW nutzbar    0,68 kg/h    10,26 ct/kWh
+
+Für den Planer heißt das: die Modulation ist **keine Kostenfrage, sondern eine Zeitfrage.** Sie
+entscheidet, wie schnell der Puffer voll wird, nicht wie teuer die Wärme ist. Wer nur ein- und
+ausschaltet, verliert dadurch nichts.
+
 **Die Wärmepumpe** ist die einfachere Seite: Strompreis geteilt durch Arbeitszahl. Solange der
 Wärmemengenzähler fehlt, ist die Arbeitszahl eine Kennlinie über der Außentemperatur und damit eine
 Schätzung. Das ist der schwächste Punkt des Vergleichs, und er sitzt auf der Seite der Wärmepumpe,
@@ -106,6 +119,36 @@ def stove_economics(cfg: StoveConfig, aux_price_ct_kwh: float = 0.0) -> StoveEco
         ct_per_kwh_useful=round(_ct_per_kwh(total_eur, credited_kw), 2),
         datasheet_deviation=round(deviation, 4),
     )
+
+
+def stove_economics_min_load(cfg: StoveConfig, aux_price_ct_kwh: float = 0.0) -> StoveEconomics:
+    """Derselbe Ofen auf kleinster Flamme, für die Gegenprobe gegen das Datenblatt.
+
+    Gebraucht wird das nicht zum Planen, sondern zum Prüfen: der Minimalverbrauch ist der zweite
+    unabhängige Punkt, an dem sich die Kette bestätigen lässt. Trifft sie beide, stimmen Heizwert,
+    Wirkungsgrade und Leistungsangaben zusammen.
+    """
+    return stove_economics(
+        cfg.model_copy(
+            update={
+                "nominal_heat_kw": cfg.min_heat_kw,
+                "water_heat_kw": cfg.min_water_heat_kw,
+                "combustion_efficiency": cfg.min_combustion_efficiency,
+                "pellet_kg_per_hour_max": cfg.pellet_kg_per_hour_min,
+            }
+        ),
+        aux_price_ct_kwh=aux_price_ct_kwh,
+    )
+
+
+def hopper_runtime_h(cfg: StoveConfig) -> float:
+    """Wie lange der Behälterinhalt bei Volllast reicht.
+
+    Eine harte Grenze für den Planer: eine Nacht durchheizen geht, zwei Nächte nicht. Wer eine
+    Laufzeit einplant, für die kein Brennstoff im Gerät ist, plant eine Wärmelieferung, die ausfällt.
+    """
+    econ = stove_economics(cfg)
+    return round(cfg.hopper_kg / econ.kg_per_hour, 1) if econ.kg_per_hour > 1e-6 else float("inf")
 
 
 def _ct_per_kwh(eur_per_hour: float, kw: float) -> float:
