@@ -44,6 +44,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   liveState: () => request<LiveState>("/live/state"),
   history: (range: "today" | "yesterday" | "24h") => request<History>(`/history?range=${range}`),
+  // Minutenwerte eines beliebigen Tages. Ohne das ist der Verlauf nur für heute und gestern zu
+  // sehen, und genau der beantwortet die Frage „was ist an diesem Tag wirklich passiert?".
+  historyDay: (start: Date, end: Date) =>
+    request<History>(`/history?range=custom&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`),
   plan: () => request<Plan>("/plan"),
   forecastEvaluation: () => request<ForecastEvaluation>("/forecast/evaluation"),
   energySummary: (period: Period, anchor: string) => request<EnergySummary>(`/energy/summary?period=${period}&anchor=${anchor}`),
