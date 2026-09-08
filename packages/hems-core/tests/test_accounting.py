@@ -469,3 +469,75 @@ def test_samples_from_totals_reproduces_the_sums_and_fixes_the_split() -> None:
     assert repaired.import_cost_eur == pytest.approx(stored.import_cost_eur, abs=0.002)
     assert repaired.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
     assert repaired.coarse_minutes == 60
+
+
+def _cloud_edge_hour(lag_min: int = 1) -> list[MinuteSample]:
+    """Sonne und Wolke im Wechsel, PV-Signal um `lag_min` verzögert gemeldet.
+
+    Der Befund vom 03.09.: der Speicher lud zwischen 14 und 16 Uhr angeblich 3,2 kWh aus dem Netz,
+    bei bester Sonne. PV, Netz und Batterie tragen drei verschiedene Gerätezeitstempel; an der
+    Wolkenkante fällt der Netzbezug der Wolkenminute mit der Ladung der Sonnenminute zusammen.
+    """
+    # Wahrheit: 5 min Sonne (PV 5 kW, Haus 1 kW, Speicher lädt 3 kW, 1 kW Einspeisung),
+    # dann 5 min Wolke (PV 0, Haus 1 kW aus dem Netz, Speicher aus).
+    truth = []
+    for i in range(60):
+        sunny = (i // 5) % 2 == 0
+        truth.append((5.0, -1.0, -3.0) if sunny else (0.0, 1.0, 0.0))
+    out = []
+    for i in range(60):
+        pv = truth[max(0, i - lag_min)][0]  # PV hinkt nach
+        _, grid, bat = truth[i]
+        out.append(
+            MinuteSample(
+                ts=H0 + timedelta(minutes=i),
+                pv_kw=pv,
+                grid_kw=grid,
+                battery_kw=bat,
+                heat_pump_kw=0.0,
+                ev_kw=0.0,
+                price_ct_kwh=30.0,
+            )
+        )
+    return out
+
+
+def test_zeitversatz_zwischen_geraeten_erzeugt_netzladung() -> None:
+    """Ohne Fenster schlägt der Versatz voll durch - das ist der gemeldete Fehler."""
+    h = hourly_energy(H0, _cloud_edge_hour(), TARIFF)
+    assert h.grid_to_battery_kwh > 0.05
+
+
+def test_kurzes_fenster_gibt_die_ladung_der_sonne_zurueck() -> None:
+    from hems_core.accounting import with_charge_window
+
+    h = hourly_energy(H0, with_charge_window(_cloud_edge_hour()), TARIFF)
+    assert h.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
+    assert h.pv_to_battery_kwh == pytest.approx(h.battery_charge_kwh, abs=1e-6)
+    # Der gemessene Netzbezug bleibt unangetastet, er zählt jetzt beim Haus statt beim Speicher.
+    raw = hourly_energy(H0, _cloud_edge_hour(), TARIFF)
+    assert h.import_kwh == pytest.approx(raw.import_kwh, abs=1e-9)
+    assert h.house_kwh == pytest.approx(raw.house_kwh, abs=1e-9)
+    assert h.grid_to_house_kwh + h.grid_to_battery_kwh == pytest.approx(h.import_kwh, abs=1e-6)
+    # Ohne Fenster stimmt nicht einmal das: die Zuordnung verteilt mehr Netzstrom, als der Zähler
+    # gemessen hat, weil der verschobene PV-Wert den Hausverbrauch der Minute auf null drückt.
+    assert raw.grid_to_house_kwh + raw.grid_to_battery_kwh > raw.import_kwh + 0.1
+
+
+def test_fenster_laesst_echte_nachtladung_stehen() -> None:
+    """Nachts ist der Überschuss über jedes Fenster null - die Ladung bleibt dem Netz."""
+    from hems_core.accounting import with_charge_window
+
+    night = _minutes(60, pv_kw=0.0, grid_kw=3.5, battery_kw=-3.0)
+    h = hourly_energy(H0, with_charge_window(night), TARIFF)
+    assert h.grid_to_battery_kwh == pytest.approx(3.0, abs=0.01)
+    assert h.grid_to_battery_dark_kwh == pytest.approx(3.0, abs=0.01)
+
+
+def test_fenster_bringt_die_stundenmittel_verzerrung_nicht_zurueck() -> None:
+    """Fünf Minuten sind kurz genug: der Test von oben, jetzt mit Fenster."""
+    from hems_core.accounting import with_charge_window
+
+    h = hourly_energy(H0, with_charge_window(_mixed_hour()), TARIFF)
+    assert h.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
+    assert h.battery_charge_kwh == pytest.approx(0.667, abs=0.002)

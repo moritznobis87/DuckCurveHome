@@ -14,7 +14,7 @@ Herkunftskonto (BatteryOrigin) über die Stunden hinweg mit.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict
@@ -33,6 +33,10 @@ class MinuteSample:
     heat_pump_kw: float | None
     ev_kw: float | None
     price_ct_kwh: float | None
+    # Anteil der Speicherladung, den der PV-Überschuss über ein kurzes zentriertes Fenster deckt
+    # (0..1), gesetzt von `with_charge_window`. Nur die Zuordnung der Ladung greift darauf zu; ist
+    # er None, gilt die Minute für sich allein.
+    pv_charge_share: float | None = None
 
 
 @dataclass
@@ -277,6 +281,63 @@ def fill_gaps(
     return out
 
 
+# Halbe Breite des Fensters, gegen das die Speicherladung geprüft wird: ±2 min, also fünf Minuten.
+# Kurz genug, dass es die Stundenmittel-Verzerrung nicht wieder einführt, lang genug für den
+# Zeitversatz zwischen drei Geräten.
+CHARGE_WINDOW_MIN = 2
+
+
+def with_charge_window(
+    samples: Iterable[MinuteSample], half_width_min: int = CHARGE_WINDOW_MIN
+) -> list[MinuteSample]:
+    """Je Minute festhalten, welchen Anteil der Ladung der PV-Überschuss eines kurzen Fensters deckt.
+
+    **Warum das nötig ist.** In einer Lademinute ist die Zuordnung rechnerisch zwingend
+    `Netz → Speicher = min(Ladeleistung, Netzbezug)`; die PV-Leistung spielt darin gar keine Rolle,
+    weil der Hausverbrauch selbst aus der Bilanz stammt. Damit hängt alles daran, dass Netzzähler
+    und Speicher **im selben Moment** gemessen haben - und das tun sie nicht. Die myenergi-Zuordnung
+    vergibt der Erzeugung `gen_at`, dem Netzbezug `grid_at` und dem Speicher die Zeit des Libbi;
+    drei Geräte, drei Zeitstempel. An einer Wolkenkante meldet der Zähler schon den Bezug der
+    Wolkenminute, während der Libbi noch die Ladung der Sonnenminute meldet, und die Bilanz macht
+    daraus Netzladung. Am 03.09.2026 kamen so 3,2 kWh zwischen 14 und 16 Uhr zusammen, zur besten
+    PV-Zeit; nur 0,6 kWh der Tagessumme fielen in die Dunkelheit, wo sie echt gewesen wären.
+
+    **Warum ein Mittelwert allein nicht reicht.** Den geglätteten Überschuss gegen die Ladung
+    *dieser einen Minute* zu halten, verschiebt den Fehler nur: in einer Minute mit 3 kW Ladung,
+    deren Fenster im Mittel 1,8 kW Ladung und 2,0 kW Überschuss sieht, blieben 1,0 kW „aus dem
+    Netz". Verglichen werden muss Gleiches mit Gleichem. Deshalb wird im Fenster der **Anteil**
+    gebildet - wie viel des dort geladenen Stroms der dortige Überschuss trägt - und dieser Anteil
+    auf die Minute angewandt.
+
+    Der Überschuss selbst ergibt sich ohne PV-Wert aus Netz und Speicher: `max(0, -grid - battery)`.
+    Nachts ist er null, der Anteil damit null, und echte Netzladung bleibt dem Netz zugeschrieben.
+    Verschoben wird ohnehin nur die Herkunft der Ladung: der gemessene Netzbezug der Minute bleibt,
+    wie er ist, und zählt dann als Bezug des Hauses - was an einer Wolkenkante auch geschehen ist.
+    """
+    rows = sorted(samples, key=lambda s: s.ts)
+    n = len(rows)
+    if n == 0:
+        return []
+    # Dieselbe Bedingung wie in `hourly_energy`: ohne PV und Netz wird die Minute nicht bilanziert,
+    # also darf sie auch das Fenster nicht mitbestimmen.
+    ok = [r.pv_kw is not None and r.grid_kw is not None for r in rows]
+    charge = [max(0.0, -(r.battery_kw or 0.0)) if v else 0.0 for r, v in zip(rows, ok, strict=True)]
+    surplus = [
+        max(0.0, -(r.grid_kw or 0.0) - (r.battery_kw or 0.0)) if v else 0.0
+        for r, v in zip(rows, ok, strict=True)
+    ]
+    out: list[MinuteSample] = []
+    for i, cur in enumerate(rows):
+        lo, hi = max(0, i - half_width_min), min(n, i + half_width_min + 1)
+        chg_sum = sum(charge[lo:hi])
+        if chg_sum <= 1e-9:
+            out.append(cur)
+            continue
+        share = min(1.0, sum(surplus[lo:hi]) / chg_sum)
+        out.append(replace(cur, pv_charge_share=share))
+    return out
+
+
 def hourly_energy(
     hour_start: datetime,
     samples: Iterable[MinuteSample],
@@ -348,6 +409,12 @@ def hourly_energy(
         if coarse:
             pv_to_bat = min(pv, chg)
             pv_direct = min(pv - pv_to_bat, house)
+        elif smp.pv_charge_share is not None:
+            # Die Ladung wird gegen den Überschuss eines kurzen Fensters geprüft, nicht gegen diese
+            # eine Minute (siehe `with_charge_window`). Was das Fenster deckt, kam von der Sonne;
+            # der gemessene Netzbezug der Minute bleibt und zählt dann als Bezug des Hauses.
+            pv_to_bat = smp.pv_charge_share * chg
+            pv_direct = min(max(0.0, pv - pv_to_bat), house)
         else:
             pv_direct = min(pv, house)
             pv_to_bat = min(pv - pv_direct, chg)

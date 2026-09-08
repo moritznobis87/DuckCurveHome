@@ -41,6 +41,7 @@ from hems_core.accounting import (
     samples_from_rows,
     samples_from_totals,
     summarize,
+    with_charge_window,
 )
 from hems_core.domain import BufferConfig, HemsConfig
 from hems_core.thermal import (
@@ -392,7 +393,10 @@ class EnergyAccounting:
         # Erst das Raster füllen, dann nach Stunden schneiden. Andersherum endete jede Lücke an der
         # Stundengrenze, und genau über die läuft eine ruhige Nacht.
         by_hour: dict[datetime, list[MinuteSample]] = {}
-        for smp in fill_gaps(samples_from_rows(rows)):
+        # Das Fenster für die Ladungszuordnung wird über den ganzen geladenen Bereich gebildet, vor
+        # dem Schnitt in Stunden: sonst endete es an jeder Stundengrenze, und die erste und letzte
+        # Minute jeder Stunde hätte kein Fenster.
+        for smp in with_charge_window(fill_gaps(samples_from_rows(rows))):
             by_hour.setdefault(smp.ts.replace(minute=0, second=0, microsecond=0), []).append(smp)
         temps_by_hour: dict[datetime, list[float | None]] = {}
         for r in rows:
@@ -573,6 +577,8 @@ class EnergyAccounting:
                 coverage=coverage,
                 estimated_note_de=(
                     "Quellen-Zuordnung je Minute: PV deckt zuerst den Hausverbrauch, dann die Batterie; "
+                    "die Ladung des Speichers wird dabei gegen den PV-Überschuss eines Fünf-Minuten-"
+                    "Fensters geprüft, weil Netzzähler und Speicher nicht im selben Moment melden. "
                     "Verbraucher erhalten die Quellen anteilig. Geld: Netzbezug × Tibber-Preis, PV- und "
                     f"Batterieanteile mit {self.hems.tariff.feed_in_ct_kwh:g} ct Einspeisevergütung bewertet."
                     + coarse_note(totals)

@@ -42,6 +42,36 @@ Der Kontostand am Stundenende wird in `energy_hourly` mitgespeichert (`battery_p
 `battery_grid_stored_kwh`), damit eine Neuberechnung dort fortsetzt, wo die vorige aufgehört hat,
 statt wieder bei null zu beginnen. Er ist ein Bestand und wird nie über Stunden aufsummiert.
 
+### Warum die Ladung gegen ein Fenster geprüft wird
+
+In einer Minute, in der der Speicher lädt, ist die Zuordnung rechnerisch zwingend:
+
+```
+Netz → Speicher = min(Ladeleistung, Netzbezug)
+```
+
+Die PV-Leistung kommt darin gar nicht vor, weil der Hausverbrauch selbst aus der Bilanz stammt
+(`house = pv + grid + battery`). Damit hängt alles daran, dass Netzzähler und Speicher **im selben
+Moment** gemessen haben. Sie tun es nicht: `apps/api/src/dch_api/integrations/myenergi/mapping.py`
+vergibt der Erzeugung `gen_at`, dem Netzbezug `grid_at` und dem Speicher die Zeit des Libbi, drei
+Geräte mit drei Zeitstempeln. An einer Wolkenkante meldet der Zähler bereits den Bezug der
+Wolkenminute, während der Libbi noch die Ladung der Sonnenminute meldet, und die Bilanz macht daraus
+Netzladung.
+
+Am 03.09.2026 waren das 3,2 kWh zwischen 14 und 16 Uhr, zur besten PV-Zeit; von der Tagessumme
+fielen nur 0,6 kWh in die Dunkelheit, wo Netzladung echt gewesen wäre.
+
+`with_charge_window` legt deshalb je Minute ein zentriertes Fenster von ±2 Minuten und bildet darin
+den **Anteil**, den der PV-Überschuss an der geladenen Energie hat; dieser Anteil wird auf die
+Minute angewandt. Der Anteil, nicht der geglättete Überschuss selbst: eine Minutenladung gegen ein
+Fenstermittel zu halten vergleicht Ungleiches und verschiebt den Fehler nur. Der Überschuss ergibt
+sich dabei ohne PV-Wert aus `max(0, -grid - battery)`.
+
+Nachts ist der Überschuss null, der Anteil null, und echte Netzladung bleibt dem Netz zugeschrieben.
+Auch eine Netzladung am Tag, bei der die PV die Ladeleistung nicht deckt, bleibt stehen. Verschoben
+wird nur die Herkunft: der gemessene Netzbezug der Minute bleibt unverändert und zählt dann als
+Bezug des Hauses, was an einer Wolkenkante auch das ist, was geschehen ist.
+
 ### Warum die Auflösung der Eingangsdaten die Zuordnung entscheidet
 
 Bei Minutenwerten gilt in jeder Minute eine physikalische Bilanz, und die Rangfolge „PV deckt erst
