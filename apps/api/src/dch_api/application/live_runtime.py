@@ -671,6 +671,9 @@ class LiveRuntime:
     async def year_map(self, year: int) -> YearMapOut:
         return await self.accounting.year_map(year, self.now)
 
+    async def diagnose_day(self, day: date) -> str:
+        return await self.accounting.diagnose_day(day)
+
     def export_csv(self, kind: str, start: datetime, end: datetime) -> AsyncIterator[str]:
         """Rohdaten eines Zeitraums als CSV-Strom. `kind` ist "minutes" oder "hours"."""
         if kind == "minutes":

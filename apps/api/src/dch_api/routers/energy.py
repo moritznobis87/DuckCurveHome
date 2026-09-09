@@ -4,6 +4,7 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import PlainTextResponse
 
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
@@ -81,3 +82,17 @@ async def year_map(
 ) -> YearMapOut:
     out: YearMapOut = await runner.year_map(year or _anchor(runner, None).year)
     return out
+
+
+@router.get(
+    "/diagnose",
+    response_class=PlainTextResponse,
+    summary="Einen Tag als Text aufschlüsseln (Stunden und auffällige Minuten)",
+)
+async def diagnose(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    day: date | None = None,
+) -> str:
+    """Rohe Zahlen statt Grafik: was steht in den Stunden, und welche Minuten haben es dorthin
+    gebracht. Gedacht für die Frage „diese Zahl kann nicht stimmen"."""
+    return await runner.diagnose_day(_anchor(runner, day))

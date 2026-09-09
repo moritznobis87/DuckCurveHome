@@ -509,6 +509,57 @@
         }
       }
     },
+    "/api/v1/energy/diagnose": {
+      "get": {
+        "tags": [
+          "Energiebilanz"
+        ],
+        "summary": "Einen Tag als Text aufschlüsseln (Stunden und auffällige Minuten)",
+        "description": "Rohe Zahlen statt Grafik: was steht in den Stunden, und welche Minuten haben es dorthin\ngebracht. Gedacht für die Frage „diese Zahl kann nicht stimmen\".",
+        "operationId": "diagnose_api_v1_energy_diagnose_get",
+        "parameters": [
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/export/{kind}": {
       "get": {
         "tags": [

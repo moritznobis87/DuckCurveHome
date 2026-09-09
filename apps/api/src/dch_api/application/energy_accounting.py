@@ -573,6 +573,108 @@ class EnergyAccounting:
         read, _write, _last = self.store
         return await read(start, end)
 
+    # ------------------------------------------------------------------ Diagnose
+    async def diagnose_day(self, day: date) -> str:
+        """Einen Tag als Text aufschlüsseln: gespeicherte Stunden und die auffälligsten Minuten.
+
+        Wenn eine Auswertung etwas behauptet, das nicht sein kann, hilft keine weitere Grafik,
+        sondern die Zahlen, aus denen die Behauptung entstanden ist. Genau die stehen hier: je
+        Stunde die Bilanz, wie sie gespeichert ist, und darunter die Minuten mit der größten
+        gleichzeitigen Ladung und gleichzeitigem Netzbezug - denn in einer Lademinute ist
+        `Netz → Speicher = min(Ladeleistung, Netzbezug)`, und ob diese Gleichzeitigkeit echt ist,
+        entscheidet sich an den Rohwerten dieser Minuten.
+        """
+        start, end = self.period_bounds("day", day)
+        raw = await self.minute_rows(start, end)
+        filled = with_charge_window(fill_gaps(samples_from_rows(raw)))
+        stored = await self.hours(start, end)
+        out: list[str] = []
+        out.append(f"Diagnose {day:%d.%m.%Y} (Ortszeit {self.tz})")
+        out.append(
+            f"Minutenzeilen roh: {len(raw)} | nach Fuellen: {len(filled)} | "
+            f"gespeicherte Stunden: {len(stored)}"
+        )
+        out.append("")
+        out.append("Std |    PV   Haus   Lade   Entl  Bezug  Einsp | PV>Sp Nz>Sp dunkel | Min grob")
+        totals = summarize(h for h, _ in stored)
+        for h, _t in stored:
+            loc = h.hour_start.astimezone(self.tz)
+            out.append(
+                f" {loc:%H} |{h.pv_kwh:6.2f} {h.house_kwh:6.2f} {h.battery_charge_kwh:6.2f} "
+                f"{h.battery_discharge_kwh:6.2f} {h.import_kwh:6.2f} {h.export_kwh:6.2f} |"
+                f"{h.pv_to_battery_kwh:6.2f}{h.grid_to_battery_kwh:6.2f}{h.grid_to_battery_dark_kwh:7.2f} |"
+                f"{h.minutes:4d}{h.coarse_minutes:5d}"
+            )
+        out.append(
+            f"Tag |{totals.pv_kwh:6.2f} {totals.house_kwh:6.2f} {totals.battery_charge_kwh:6.2f} "
+            f"{totals.battery_discharge_kwh:6.2f} {totals.import_kwh:6.2f} {totals.export_kwh:6.2f} |"
+            f"{totals.pv_to_battery_kwh:6.2f}{totals.grid_to_battery_kwh:6.2f}"
+            f"{totals.grid_to_battery_dark_kwh:7.2f} |{totals.minutes:4d}{totals.coarse_minutes:5d}"
+        )
+        out.append("")
+        if not filled:
+            out.append("Keine Minutenwerte fuer diesen Tag: die Stunden stammen aus dem Import.")
+            return "\n".join(out)
+        # Zusammenhängende Strecken, in denen der Speicher lädt, während der Zähler Bezug meldet.
+        # Genau daran entscheidet sich die Frage: ein Messversatz zwischen zwei Geräten dauert ein,
+        # zwei Minuten, eine Regelungseigenschaft des Speichers dauert eine halbe Stunde.
+        runs: list[dict[str, float | datetime]] = []
+        prev_ts: datetime | None = None
+        for smp in filled:
+            if smp.pv_kw is None or smp.grid_kw is None:
+                continue
+            pv = max(0.0, smp.pv_kw)
+            grid = smp.grid_kw
+            bat = smp.battery_kw or 0.0
+            chg = max(0.0, -bat)
+            imp = max(0.0, grid)
+            share = smp.pv_charge_share if smp.pv_charge_share is not None else 0.0
+            g2b = max(0.0, chg - share * chg)
+            if chg <= 0.01 or imp <= 0.01 or g2b <= 0.01:
+                prev_ts = None
+                continue
+            joins = prev_ts is not None and smp.ts - prev_ts == timedelta(minutes=1)
+            if not joins:
+                runs.append(
+                    {
+                        "t0": smp.ts,
+                        "t1": smp.ts,
+                        "n": 0.0,
+                        "pv": 0.0,
+                        "grid": 0.0,
+                        "chg": 0.0,
+                        "house": 0.0,
+                        "share": 0.0,
+                        "kwh": 0.0,
+                    }
+                )
+            r = runs[-1]
+            r["t1"] = smp.ts
+            r["n"] = float(r["n"]) + 1.0
+            r["pv"] = float(r["pv"]) + pv
+            r["grid"] = float(r["grid"]) + grid
+            r["chg"] = float(r["chg"]) + chg
+            r["house"] = float(r["house"]) + max(0.0, pv + grid + bat)
+            r["share"] = float(r["share"]) + share
+            r["kwh"] = float(r["kwh"]) + g2b / 60.0
+            prev_ts = smp.ts
+        total_kwh = sum(float(r["kwh"]) for r in runs)
+        out.append(
+            f"Strecken mit Ladung bei gleichzeitigem Netzbezug: {len(runs)} "
+            f"(zusammen {total_kwh:.2f} kWh Netzladung)"
+        )
+        out.append("  von    bis    min |    PV   Netz   Haus   Lade | PV-Anteil    kWh")
+        for r in sorted(runs, key=lambda x: -float(x["kwh"]))[:25]:
+            n = float(r["n"])
+            t0, t1 = r["t0"], r["t1"]
+            assert isinstance(t0, datetime) and isinstance(t1, datetime)
+            out.append(
+                f"  {t0.astimezone(self.tz):%H:%M}  {t1.astimezone(self.tz):%H:%M} {int(n):5d} |"
+                f"{float(r['pv']) / n:6.2f}{float(r['grid']) / n:7.2f}{float(r['house']) / n:7.2f}"
+                f"{float(r['chg']) / n:7.2f} |{float(r['share']) / n:10.2f}{float(r['kwh']):7.2f}"
+            )
+        return "\n".join(out)
+
     # ------------------------------------------------------------------ Zusammenfassungen
     async def summary(self, period: Period, anchor: date, now: datetime) -> EnergySummaryOut:
         start, end = self.period_bounds(period, anchor)
