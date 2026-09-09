@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import calendar
 from collections.abc import Awaitable, Callable, Iterable
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from itertools import pairwise
 from zoneinfo import ZoneInfo
@@ -161,6 +162,48 @@ def merge_hour(new: HourlyEnergy, old: HourlyEnergy | None) -> HourlyEnergy:
     ev = patch.get("ev_kwh", new.ev_kwh)
     patch["base_kwh"] = round(max(0.0, new.house_kwh - hp - ev), 4)
     return new.model_copy(update=patch)
+
+
+@dataclass
+class ChargeRun:
+    """Eine zusammenhängende Strecke, in der der Speicher lädt, während der Zähler Bezug meldet."""
+
+    t0: datetime
+    t1: datetime
+    minutes: int = 0
+    pv: float = 0.0
+    grid: float = 0.0
+    house: float = 0.0
+    charge: float = 0.0
+    share: float = 0.0
+    kwh: float = 0.0
+
+    def add(
+        self,
+        ts: datetime,
+        pv: float,
+        grid: float,
+        house: float,
+        chg: float,
+        share: float,
+        kwh: float,
+    ) -> None:
+        self.t1 = ts
+        self.minutes += 1
+        self.pv += pv
+        self.grid += grid
+        self.house += house
+        self.charge += chg
+        self.share += share
+        self.kwh += kwh
+
+    def mean(self, total: float) -> float:
+        return total / self.minutes if self.minutes else 0.0
+
+
+def _ct(value: float | None) -> str:
+    """Mittlerer Bezugspreis einer Stunde, oder ein Strich, wenn nichts bezogen wurde."""
+    return f"{value:7.1f}" if value is not None else "      -"
 
 
 def coarse_note(totals: EnergyTotals) -> str:
@@ -595,21 +638,28 @@ class EnergyAccounting:
             f"gespeicherte Stunden: {len(stored)}"
         )
         out.append("")
-        out.append("Std |    PV   Haus   Lade   Entl  Bezug  Einsp | PV>Sp Nz>Sp dunkel | Min grob")
+        # Der Preis gehört dazu: Netzladung ist nicht per se falsch. Lädt der Speicher in einer
+        # billigen Stunde, um in einer teuren zu entladen, ist es Arbitrage und richtig. Ohne die
+        # Preisspalte lässt sich „echt" nicht von „sinnvoll" trennen.
+        out.append(
+            "Std |    PV   Haus   Lade   Entl  Bezug  Einsp | PV>Sp Nz>Sp dunkel | ct/kWh | Min grob"
+        )
         totals = summarize(h for h, _ in stored)
         for h, _t in stored:
             loc = h.hour_start.astimezone(self.tz)
             out.append(
                 f" {loc:%H} |{h.pv_kwh:6.2f} {h.house_kwh:6.2f} {h.battery_charge_kwh:6.2f} "
                 f"{h.battery_discharge_kwh:6.2f} {h.import_kwh:6.2f} {h.export_kwh:6.2f} |"
-                f"{h.pv_to_battery_kwh:6.2f}{h.grid_to_battery_kwh:6.2f}{h.grid_to_battery_dark_kwh:7.2f} |"
+                f"{h.pv_to_battery_kwh:6.2f}{h.grid_to_battery_kwh:6.2f}"
+                f"{h.grid_to_battery_dark_kwh:7.2f} |{_ct(h.avg_import_price_ct)} |"
                 f"{h.minutes:4d}{h.coarse_minutes:5d}"
             )
         out.append(
             f"Tag |{totals.pv_kwh:6.2f} {totals.house_kwh:6.2f} {totals.battery_charge_kwh:6.2f} "
             f"{totals.battery_discharge_kwh:6.2f} {totals.import_kwh:6.2f} {totals.export_kwh:6.2f} |"
             f"{totals.pv_to_battery_kwh:6.2f}{totals.grid_to_battery_kwh:6.2f}"
-            f"{totals.grid_to_battery_dark_kwh:7.2f} |{totals.minutes:4d}{totals.coarse_minutes:5d}"
+            f"{totals.grid_to_battery_dark_kwh:7.2f} |{_ct(totals.avg_import_price_ct)} |"
+            f"{totals.minutes:4d}{totals.coarse_minutes:5d}"
         )
         out.append("")
         if not filled:
@@ -618,7 +668,7 @@ class EnergyAccounting:
         # Zusammenhängende Strecken, in denen der Speicher lädt, während der Zähler Bezug meldet.
         # Genau daran entscheidet sich die Frage: ein Messversatz zwischen zwei Geräten dauert ein,
         # zwei Minuten, eine Regelungseigenschaft des Speichers dauert eine halbe Stunde.
-        runs: list[dict[str, float | datetime]] = []
+        runs: list[ChargeRun] = []
         prev_ts: datetime | None = None
         for smp in filled:
             if smp.pv_kw is None or smp.grid_kw is None:
@@ -633,45 +683,20 @@ class EnergyAccounting:
             if chg <= 0.01 or imp <= 0.01 or g2b <= 0.01:
                 prev_ts = None
                 continue
-            joins = prev_ts is not None and smp.ts - prev_ts == timedelta(minutes=1)
-            if not joins:
-                runs.append(
-                    {
-                        "t0": smp.ts,
-                        "t1": smp.ts,
-                        "n": 0.0,
-                        "pv": 0.0,
-                        "grid": 0.0,
-                        "chg": 0.0,
-                        "house": 0.0,
-                        "share": 0.0,
-                        "kwh": 0.0,
-                    }
-                )
-            r = runs[-1]
-            r["t1"] = smp.ts
-            r["n"] = float(r["n"]) + 1.0
-            r["pv"] = float(r["pv"]) + pv
-            r["grid"] = float(r["grid"]) + grid
-            r["chg"] = float(r["chg"]) + chg
-            r["house"] = float(r["house"]) + max(0.0, pv + grid + bat)
-            r["share"] = float(r["share"]) + share
-            r["kwh"] = float(r["kwh"]) + g2b / 60.0
+            if prev_ts is None or smp.ts - prev_ts != timedelta(minutes=1):
+                runs.append(ChargeRun(t0=smp.ts, t1=smp.ts))
+            runs[-1].add(smp.ts, pv, grid, max(0.0, pv + grid + bat), chg, share, g2b / 60.0)
             prev_ts = smp.ts
-        total_kwh = sum(float(r["kwh"]) for r in runs)
         out.append(
             f"Strecken mit Ladung bei gleichzeitigem Netzbezug: {len(runs)} "
-            f"(zusammen {total_kwh:.2f} kWh Netzladung)"
+            f"(zusammen {sum(r.kwh for r in runs):.2f} kWh Netzladung)"
         )
         out.append("  von    bis    min |    PV   Netz   Haus   Lade | PV-Anteil    kWh")
-        for r in sorted(runs, key=lambda x: -float(x["kwh"]))[:25]:
-            n = float(r["n"])
-            t0, t1 = r["t0"], r["t1"]
-            assert isinstance(t0, datetime) and isinstance(t1, datetime)
+        for r in sorted(runs, key=lambda x: -x.kwh)[:25]:
             out.append(
-                f"  {t0.astimezone(self.tz):%H:%M}  {t1.astimezone(self.tz):%H:%M} {int(n):5d} |"
-                f"{float(r['pv']) / n:6.2f}{float(r['grid']) / n:7.2f}{float(r['house']) / n:7.2f}"
-                f"{float(r['chg']) / n:7.2f} |{float(r['share']) / n:10.2f}{float(r['kwh']):7.2f}"
+                f"  {r.t0.astimezone(self.tz):%H:%M}  {r.t1.astimezone(self.tz):%H:%M} "
+                f"{r.minutes:5d} |{r.mean(r.pv):6.2f}{r.mean(r.grid):7.2f}{r.mean(r.house):7.2f}"
+                f"{r.mean(r.charge):7.2f} |{r.mean(r.share):10.2f}{r.kwh:7.2f}"
             )
         return "\n".join(out)
 
