@@ -7,7 +7,7 @@ import { Card, CardHead } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
 import { C, donut, stackedBars } from "./charts";
-import { CoverageNote, de1, ErrorBanner, eur, KpiGrid, Note, pct, ReportShell, usePeriod } from "./ReportShell";
+import { ChartLegend, CoverageNote, de1, ErrorBanner, eur, KpiGrid, Note, pct, ReportShell, usePeriod } from "./ReportShell";
 import { PeriodStrip } from "./PeriodStrip";
 import { useMultiPeriod, useReport } from "./useReport";
 
@@ -46,7 +46,7 @@ export function EvReport() {
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Geladene Energie nach Herkunft" right="PV · Batterie · Netz" />
+          <CardHead title="Geladene Energie nach Herkunft" right={<ChartLegend items={SOURCES} />} />
           <div className="min-h-0 flex-1"><EChart option={barsOpt} /></div>
         </Card>
         <Card style={{ padding: 16, height: 280 }}>

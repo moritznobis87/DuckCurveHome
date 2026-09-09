@@ -130,7 +130,11 @@
 /* Mit Ofen teilen sich zwei Geräte den Platz, den vorher eines hatte. Sie bleiben breiter als eine
    Kachel, weil unter dem Zustand noch drei Schaltflächen stehen. */
 .controls-grid.has-stove { grid-template-columns: 1.35fr 1.35fr repeat(4, minmax(0, 1fr)); }
-.kpi-grid { display: grid; gap: 16px; grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr)); }
+/* Kennzahlkacheln: eine Mindestbreite statt einer festen Spaltenzahl. `--cols` ist damit eine
+   Obergrenze und keine Vorschrift. Vorher zwang die Batterieseite sieben Kacheln in eine Reihe;
+   die Überschrift „Netzladung bei Dunkelheit" brach um, die Zahl darunter rutschte aus der Zeile
+   der Nachbarn, und die Kontextzeilen endeten in „…". Lieber zwei ruhige Reihen als eine gedrängte. */
+.kpi-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 100% / var(--cols, 6) - 16px, 260px), 1fr)); }
 .report-row { display: grid; gap: 16px; grid-template-columns: var(--cols, 1fr); }
 
 /* ---------- Telefon (Hochformat, schmaler Viewport): eine Spalte, Seite scrollt ---------- */

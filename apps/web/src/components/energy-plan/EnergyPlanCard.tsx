@@ -121,7 +121,10 @@ export function EnergyPlanCard({ state, plan }: { state: LiveState | null; plan:
               <span className="truncate text-[17px] font-semibold tracking-[-.02em] text-text-1" style={{ color: override ? "var(--amber-soft)" : undefined }}>{headline}</span>
               <span className="mono shrink-0 text-[11px] uppercase tracking-[.08em] text-text-3">{[since, stateLabel].filter(Boolean).join(" · ")}</span>
             </div>
-            <div className="mt-0.5 truncate text-[13px] leading-[1.4] text-text-2">{d?.explanation_de ?? "Warte auf erste Entscheidung …"}</div>
+            {/* Die Begründung der Entscheidung ist der Satz, für den die Karte da ist. Gekürzt
+                („… und kein günstige…") beantwortet er die Frage nicht mehr, die er beantworten
+                soll. Zwei Zeilen dürfen es sein; die Karte hat den Platz. */}
+            <div className="mt-0.5 line-clamp-2 text-[13px] leading-[1.4] text-text-2">{d?.explanation_de ?? "Warte auf erste Entscheidung …"}</div>
             {reasons.length ? (
               <div className="plan-chips mt-1.5 flex flex-wrap gap-1.5">
                 {reasons.map((r) => (

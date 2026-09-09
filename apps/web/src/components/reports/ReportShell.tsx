@@ -127,8 +127,15 @@ export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, o
   );
 }
 
+/**
+ * Erläuternder Fließtext unter einer Auswertung.
+ *
+ * Die Zeilenlänge ist begrenzt. Über die volle Breite eines 1440er Bildschirms geriet die
+ * Methodenangabe auf gut 200 Zeichen je Zeile; beim Zeilenwechsel findet das Auge dann den Anfang
+ * der nächsten Zeile nicht wieder. 90 Zeichen sind die übliche Obergrenze für Lesetext.
+ */
 export function Note({ children }: { children: React.ReactNode }) {
-  return <p className="m-0 text-[12px] leading-[1.55] text-text-3">{children}</p>;
+  return <p className="m-0 max-w-[90ch] text-[12px] leading-[1.55] text-text-3">{children}</p>;
 }
 
 export function ErrorBanner({ message }: { message: string }) {
@@ -159,6 +166,27 @@ export function KpiGrid({ children, cols }: { children: React.ReactNode; cols: n
   return (
     <div className="kpi-grid" style={{ "--cols": cols } as React.CSSProperties}>
       {children}
+    </div>
+  );
+}
+
+/**
+ * Legende einer Serie: Farbfleck plus Name.
+ *
+ * **Warum es sie geben muss.** Die Kopfzeilen der Diagramme trugen die Zuordnung bisher als grauen
+ * Fließtext („Wärmepumpe · Wallbox · Haushalt"). Damit lag die Identität der Flächen allein in der
+ * Farbe, und wer die Reihenfolge nicht kennt, muss raten. Ein Farbfleck neben dem Namen kostet
+ * nichts und macht aus der Aufzählung eine Legende.
+ */
+export function ChartLegend({ items }: { items: ReadonlyArray<{ color: string; name: string }> }) {
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+      {items.map((it) => (
+        <span key={it.name} className="flex items-center gap-1.5 whitespace-nowrap">
+          <span aria-hidden className="inline-block h-2 w-2.5 shrink-0 rounded-[1px]" style={{ background: it.color }} />
+          <span className="text-[12px] text-text-3">{it.name}</span>
+        </span>
+      ))}
     </div>
   );
 }

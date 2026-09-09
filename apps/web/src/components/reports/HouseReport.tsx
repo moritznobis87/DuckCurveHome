@@ -7,7 +7,7 @@ import { Card, CardHead } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
 import { C, donut, stackedBars } from "./charts";
-import { CoverageNote, de1, ErrorBanner, eur, KpiGrid, pct, ReportShell, usePeriod } from "./ReportShell";
+import { ChartLegend, CoverageNote, de1, ErrorBanner, eur, KpiGrid, pct, ReportShell, usePeriod } from "./ReportShell";
 import { PeriodStrip } from "./PeriodStrip";
 import { useMultiPeriod, useReport } from "./useReport";
 import { useRole } from "@/lib/live/useRole";
@@ -57,7 +57,7 @@ export function HouseReport() {
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Wer hat verbraucht?" right="Wärmepumpe · Wallbox · Haushalt" />
+          <CardHead title="Wer hat verbraucht?" right={<ChartLegend items={CONSUMERS} />} />
           <div className="min-h-0 flex-1"><EChart option={consOpt} /></div>
         </Card>
         <Card style={{ padding: 16, height: 280 }}>
@@ -67,7 +67,7 @@ export function HouseReport() {
       </div>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Woher kam der Strom?" right="PV direkt · Batterie · Netz" />
+          <CardHead title="Woher kam der Strom?" right={<ChartLegend items={SOURCES} />} />
           <div className="min-h-0 flex-1"><EChart option={srcOpt} /></div>
         </Card>
         <Card style={{ padding: 16, height: 280 }}>

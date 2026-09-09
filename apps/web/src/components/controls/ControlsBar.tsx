@@ -144,8 +144,14 @@ function DeviceSegment({
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line-2 bg-petrol" title={title} aria-label={label} role="img">
           <Icon name={icon} size={17} color={activeColor} />
         </span>
-        <span className="mono truncate text-[12px] uppercase tracking-[.1em]" style={{ color: error ? "var(--alert)" : statusColor }} title={error ?? title}>
-          {busy ? "schalte …" : line}
+        {/* Der Name des Geräts stand bisher nur im Titel-Attribut und in der Vorlesehilfe. Auf dem
+            Bildschirm trug ihn allein das Symbol - während jede Kachel daneben ihren Namen
+            ausschreibt. Er steht jetzt da und wird nicht gekürzt; gekürzt wird die Zustandszeile. */}
+        <span className="mono flex min-w-0 items-baseline gap-1.5 text-[12px] uppercase tracking-[.1em]">
+          <span className="shrink-0 text-text-2">{label}</span>
+          <span className="truncate" style={{ color: error ? "var(--alert)" : statusColor }} title={error ?? title}>
+            {busy ? "schalte …" : line}
+          </span>
         </span>
       </div>
       <div className="flex h-11 shrink-0 overflow-hidden rounded-b-[3px] border-t border-line-1">
@@ -178,7 +184,7 @@ function HeatPumpSegment({ state, readOnly = false }: { state: LiveState | null;
   const running = override
     ? `${override.kind === "force_release" ? "manuell an" : "manuell aus"} bis ${hhmm(override.ends_at)}`
     : hp?.running
-      ? `läuft · ${state?.decision?.reasons[0]?.replace(/_/g, " ") ?? ""}`
+      ? "läuft"
       : "bereit";
   return (
     <DeviceSegment
@@ -188,7 +194,7 @@ function HeatPumpSegment({ state, readOnly = false }: { state: LiveState | null;
       activeColor={hp?.running ? "var(--heat-pump)" : "var(--amber)"}
       status={readOnly ? `${running} · nur Ansicht` : running}
       statusColor={override ? "var(--amber-soft)" : hp?.running ? "var(--amber)" : "var(--text-3)"}
-      title={`Wärmepumpe: ${running}`}
+      title={[`Wärmepumpe: ${running}`, state?.decision?.explanation_de].filter(Boolean).join(" · ")}
       disabled={readOnly}
       disabledNote={`${running} · nur Ansicht`}
       durations={HP_DURATIONS}

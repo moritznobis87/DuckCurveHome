@@ -8,18 +8,7 @@ import { hhmm } from "@/lib/format";
 import { Card } from "@/components/ui/Card";
 import { EChart } from "./EChart";
 
-const C = {
-  pv: "#f2a900",
-  hp: "#e4ecef",
-  ev: "#5c8fa3",
-  price: "#7fa3b3",
-  ember: "#e0533d",
-  grid: "rgba(255,255,255,.09)",
-  axis: "rgba(255,255,255,.2)",
-  text: "rgba(255,255,255,.48)",
-  deep: "#082431",
-};
-const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+import { C, MONO } from "./palette";
 
 function berlinOffsetMs(at: number): number {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Berlin", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date(at));
@@ -94,7 +83,7 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
       .map((w) => {
         const color = w.kind === "pv_surplus" ? "rgba(242,169,0,.10)" : w.kind === "expensive" ? "rgba(224,83,61,.08)" : w.kind === "negative" ? "rgba(224,83,61,.14)" : "rgba(127,163,179,.12)";
         const label = { pv_surplus: "PV NUTZEN", expensive: "WP MEIDEN", cheap: "GÜNSTIG", negative: "NEGATIV" }[w.kind];
-        const labelColor = w.kind === "pv_surplus" ? C.pv : w.kind === "expensive" || w.kind === "negative" ? C.ember : C.price;
+        const labelColor = w.kind === "pv_surplus" ? C.pv : w.kind === "expensive" || w.kind === "negative" ? C.alert : C.price;
         return [
           { xAxis: Math.max(0, hx(new Date(w.start).getTime())), itemStyle: { color }, label: { show: true, position: "insideTopLeft", formatter: label, color: labelColor, fontFamily: MONO, fontSize: 10, letterSpacing: 1 } },
           { xAxis: Math.min(24, hx(new Date(w.end).getTime())) },
@@ -169,7 +158,7 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
             ]
           : [{ ...axisCommon, gridIndex: 0 }],
       yAxis: [
-        { type: "value", gridIndex: 0, min: 0, max: powerMax, interval: powerMax / 2, name: "kW", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.grid } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 } },
+        { type: "value", gridIndex: 0, min: 0, max: powerMax, interval: powerMax / 2, name: "kW", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 } },
         {
           type: "value",
           gridIndex: layout === "overlay" ? 0 : 1,
@@ -179,7 +168,7 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
           interval: priceStep,
           name: "ct/kWh",
           nameTextStyle: { color: C.text, fontSize: 10, align: layout === "overlay" ? "left" : "right", padding: layout === "overlay" ? [0, 0, 0, 6] : [0, 6, 0, 0] },
-          splitLine: { show: layout !== "overlay", lineStyle: { color: C.grid } },
+          splitLine: { show: layout !== "overlay", lineStyle: { color: C.gridline } },
           axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 },
         },
       ],
@@ -210,12 +199,19 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
       <div className="chart-head flex items-center justify-between">
         <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
           <h2 className="kicker m-0">{RANGE_LABEL[range]} · Leistung {layout === "side" ? "|" : "und"} Strompreis</h2>
-          <div className="chart-legend flex flex-wrap gap-x-5 gap-y-1">
+          {/* Zwei Legenden statt einer Reihe aus sechs Einträgen. Leistung und Preis stehen in
+              getrennten Flächen mit eigenen Achsen; eine gemeinsame Legende liess offen, welcher
+              Eintrag zu welcher Fläche gehört, und machte den Strompreis optisch zum vierten
+              Energiefluss. Die Einheit steht jeweils davor und benennt die Zugehörigkeit. */}
+          <div className="chart-legend flex flex-wrap items-baseline gap-x-5 gap-y-1">
+            <span className="mono text-[11px] uppercase tracking-[.1em]" style={{ color: "var(--text-3)" }}>kW</span>
             <Legend color={C.pv} label="PV" />
+            <Legend color={C.pv} label="PV-Prognose" dashed />
             <Legend color={C.hp} label="Wärmepumpe" />
             <Legend color={C.ev} label="Wallbox" />
+            <span aria-hidden className="h-3 w-px" style={{ background: "var(--line-2)" }} />
+            <span className="mono text-[11px] uppercase tracking-[.1em]" style={{ color: "var(--text-3)" }}>ct/kWh</span>
             <Legend color={C.price} label="Strompreis" />
-            <Legend color={C.pv} label="Prognose" dashed />
             <Legend color={C.price} label="Preis voraus" dashed />
           </div>
         </div>
