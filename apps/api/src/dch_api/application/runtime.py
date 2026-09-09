@@ -6,11 +6,13 @@ from collections.abc import AsyncIterator
 from datetime import date, datetime
 from typing import Any, Protocol
 
+from dch_api.application.battery_control import BatteryMode
 from dch_api.application.ha_import import ImportResult
 from dch_api.application.stove_control import StoveMode
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
     BackfillResultOut,
+    BatteryLiveOut,
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
@@ -75,3 +77,7 @@ class Runtime(Protocol):
         duration_min: int,
     ) -> OperatingMode: ...
     async def set_stove_mode(self, mode: StoveMode, duration_min: int) -> StoveLiveOut: ...
+    async def set_battery_mode(
+        self, mode: BatteryMode, duration_min: int, reserve_soc: float | None
+    ) -> BatteryLiveOut: ...
+    def battery_state(self) -> BatteryLiveOut: ...

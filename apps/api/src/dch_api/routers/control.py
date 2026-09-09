@@ -10,6 +10,8 @@ from dch_api.errors import DchError
 from dch_api.schemas import (
     ActuatorCommandIn,
     ActuatorCommandOut,
+    BatteryLiveOut,
+    BatteryModeIn,
     HeatPumpModeIn,
     StoveLiveOut,
     StoveModeIn,
@@ -77,6 +79,24 @@ async def set_stove_mode(
     „geschaltet" heißt bei ihm „der Befehl ist angekommen", nicht „er brennt bereits".
     """
     return await runner.set_stove_mode(cmd.mode, cmd.duration_min)
+
+
+@router.get("/battery", response_model=BatteryLiveOut, summary="Speicher: Zustand")
+async def battery_state(runner: Annotated[Runtime, Depends(get_runner)]) -> BatteryLiveOut:
+    return runner.battery_state()
+
+
+@router.post("/battery/mode", response_model=BatteryLiveOut, summary="Speicher stellen")
+async def set_battery_mode(
+    cmd: BatteryModeIn, runner: Annotated[Runtime, Depends(get_runner)]
+) -> BatteryLiveOut:
+    """Betriebsart des Speichers setzen, mit der Untergrenze als optionaler Beigabe.
+
+    `off` ist die Vorgabe und heißt: DCH sendet nichts. `auto` schaltet die Untergrenze scharf,
+    `hold` hält den Speicher befristet an, `normal` gibt ihn frei. Ein manueller Eingriff läuft ab;
+    ein dauerhaft angehaltener Speicher nähme auch keine Sonne mehr auf.
+    """
+    return await runner.set_battery_mode(cmd.mode, cmd.duration_min, cmd.reserve_soc)
 
 
 @router.get(

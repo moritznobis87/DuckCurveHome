@@ -164,6 +164,37 @@ class StoveModeIn(BaseModel):
     duration_min: int = Field(default=180, ge=15, le=24 * 60)
 
 
+class BatteryLiveOut(BaseModel):
+    """Der Speicher im Augenblick: sein Ladestand und was DCH mit ihm vorhat.
+
+    `mode` ist die Absicht, `command` der zuletzt an den Libbi gesendete Befehl. Die myenergi-Cloud
+    bestätigt nichts; ob das Gerät folgt, sagt erst die nächste Messung. Deshalb stehen beide da.
+
+    `command` kann None sein, und das ist nicht dasselbe wie „normal": es heißt, dass DCH gar nichts
+    gesendet hat und der Speicher in seiner eigenen Betriebsart läuft.
+    """
+
+    control_enabled: bool = False
+    mode: Literal["auto", "normal", "hold", "off"] = "off"
+    ends_at: datetime | None = None
+    reserve_soc: float = 0.0  # Untergrenze als Anteil; 0 heisst abgeschaltet
+    soc: float | None = None
+    command: Literal["normal", "stopped"] | None = None
+    sent_at: datetime | None = None
+    last_error: str | None = None
+    note_de: str = ""
+
+
+class BatteryModeIn(BaseModel):
+    """`off` heißt: DCH sendet nichts und lässt dem Speicher seine eigene Regelung."""
+
+    mode: Literal["auto", "normal", "hold", "off"]
+    duration_min: int = Field(default=120, ge=15, le=24 * 60)
+    # Die Untergrenze lässt sich zusammen mit dem Modus setzen, damit sie nicht in einer YAML-Datei
+    # auf dem Server festliegt. None lässt sie, wie sie ist.
+    reserve_soc: float | None = Field(default=None, ge=0.0, le=0.5)
+
+
 class LiveStateOut(BaseModel):
     snapshot: EnergySnapshot
     buffer: BufferState
