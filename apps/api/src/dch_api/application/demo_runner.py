@@ -15,6 +15,7 @@ from typing import Any
 
 import structlog
 
+from dch_api.application.battery_control import BatteryMode
 from dch_api.application.energy_accounting import EnergyAccounting
 from dch_api.application.forecast_evaluation import ForecastEvaluator
 from dch_api.application.ha_import import ImportResult
@@ -26,6 +27,7 @@ from dch_api.infrastructure.history import HistoryStore
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
     BackfillResultOut,
+    BatteryLiveOut,
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
@@ -224,6 +226,14 @@ class DemoRunner:
 
     async def diagnose_day(self, day: date) -> str:
         return await self.accounting.diagnose_day(day)
+
+    def battery_state(self) -> BatteryLiveOut:
+        return BatteryLiveOut(note_de="Demo-Modus: kein Speicher zum Schalten.")
+
+    async def set_battery_mode(
+        self, mode: BatteryMode, duration_min: int, reserve_soc: float | None
+    ) -> BatteryLiveOut:
+        raise DchError("demo_mode", "Im Demo-Modus wird nichts geschaltet.", 409)
 
     async def import_history(
         self,

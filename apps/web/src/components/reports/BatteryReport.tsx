@@ -8,6 +8,7 @@ import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
 import { batteryDayChart, C, donut, stackedBars } from "./charts";
 import { CoverageNote, de1, ErrorBanner, eur, KpiGrid, Note, pct, ReportShell, usePeriod } from "./ReportShell";
+import { BatteryControl } from "./BatteryControl";
 import { PeriodStrip } from "./PeriodStrip";
 import { isoToday, useMultiPeriod, useReport } from "./useReport";
 
@@ -126,6 +127,7 @@ export function BatteryReport() {
           <Stat label="Wirkungsgrad" value={pct(eff)} tone="muted" hint="Entladen ÷ Geladen" />
         )}
       </KpiGrid>
+      <BatteryControl />
       <div className="report-row" style={{ "--cols": "5fr 3fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Ladung nach Herkunft" right="PV · Netz" />

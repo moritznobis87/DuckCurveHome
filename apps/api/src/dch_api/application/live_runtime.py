@@ -22,6 +22,7 @@ from typing import Any, cast
 
 import structlog
 
+from dch_api.application.battery_control import BatteryController, BatteryMode
 from dch_api.application.config_loader import AppConfig
 from dch_api.application.energy_accounting import ENERGY_KEYS, EnergyAccounting
 from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
@@ -45,6 +46,7 @@ from dch_api.infrastructure.live_state import LiveState
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
     BackfillResultOut,
+    BatteryLiveOut,
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
@@ -109,6 +111,9 @@ class LiveRuntime:
         self.controller = HeatPumpController(self.hems)
         self.mode = OperatingMode(system_mode=SystemMode.AUTO, auto_profile=AutoProfile.SMART)
         self.stove = StoveController(self.hems.stove)
+        self.battery = BatteryController(self.hems.battery)
+        self.battery_sent_at: datetime | None = None
+        self.battery_error: str | None = None
         self.stove_plan = StovePlan()
         self.energy_rebuild = "ausstehend"
         self._stove_switched_at: datetime | None = None
@@ -913,6 +918,83 @@ class LiveRuntime:
             now, await self._pv_rows(ts, te), await self._pv_rows(ys, ye)
         )
 
+    # ------------------------------------------------------------------ Speicher
+    def _battery_surplus_kw(self) -> float | None:
+        """PV minus Hausverbrauch. None, wenn eine der beiden Groessen fehlt."""
+        snap = self.live.snapshot(self.now)
+        pv = snap.pv_power_kw.value
+        house = snap.house_power_kw.value
+        if pv is None or house is None:
+            return None
+        return float(pv) - float(house)
+
+    def _battery_soc(self) -> float | None:
+        m = self.live.measurement("battery_soc", self.now, 600.0)
+        if m.value is None or m.quality not in (Quality.OK, Quality.STALE):
+            return None
+        return float(m.value)
+
+    async def _apply_battery(self) -> None:
+        """Den gewuenschten Befehl senden, wenn er sich geaendert hat.
+
+        Nur bei Aenderung: die myenergi-Cloud ist kein Ort fuer einen Aufruf je Regeltakt. Scheitert
+        der Befehl, bleibt `sent` stehen, damit der naechste Durchlauf es erneut versucht, und der
+        Grund steht im Zustand - ein stiller Fehlschlag waere hier der teuerste.
+        """
+        want = self.battery.wanted(self.now, self._battery_soc(), self._battery_surplus_kw())
+        if want is None or want == self.battery.sent:
+            return
+        if self.myenergi is None or not self.settings.actuation_enabled:
+            self.battery_error = "Schalten nicht freigegeben."
+            return
+        try:
+            await self.myenergi.set_libbi_mode(want)
+        except Exception as exc:
+            self.battery_error = repr(exc)[:200]
+            log.warning("libbi mode failed", mode=want, error=self.battery_error)
+            return
+        self.battery.sent = want
+        self.battery_sent_at = self.now
+        self.battery_error = None
+        log.info("libbi mode set", mode=want, reason=self.battery.reason_de)
+
+    async def _battery_loop(self) -> None:
+        while True:
+            try:
+                await self._apply_battery()
+            except Exception as exc:
+                log.warning("battery loop failed", error=repr(exc)[:200])
+            await asyncio.sleep(60)
+
+    def battery_state(self) -> BatteryLiveOut:
+        return BatteryLiveOut(
+            control_enabled=self.battery.controllable,
+            mode=self.battery.effective_mode(self.now),
+            ends_at=self.battery.ends_at,
+            reserve_soc=self.battery.cfg.reserve_soc,
+            soc=self._battery_soc(),
+            command=self.battery.sent,
+            sent_at=self.battery_sent_at,
+            last_error=self.battery_error,
+            note_de=self.battery.reason_de,
+        )
+
+    async def set_battery_mode(
+        self, mode: BatteryMode, duration_min: int, reserve_soc: float | None
+    ) -> BatteryLiveOut:
+        """Den Speicher von Hand stellen. `off` nimmt einen Eingriff zurueck, ohne zu senden."""
+        if not self.battery.controllable:
+            raise DchError(
+                "battery_control_disabled",
+                "Die Steuerung des Speichers ist in der Konfiguration nicht freigegeben.",
+                409,
+            )
+        if reserve_soc is not None:
+            self.battery.cfg = self.battery.cfg.model_copy(update={"reserve_soc": reserve_soc})
+        self.battery.set(mode, duration_min, self.now)
+        await self._apply_battery()
+        return self.battery_state()
+
     # ------------------------------------------------------------------ Laufzeit
     async def start(self) -> None:
         self.live.apply(await self.repos.latest())
@@ -930,6 +1012,7 @@ class LiveRuntime:
                 asyncio.create_task(self._forecast_loop(), name="forecast"),
                 asyncio.create_task(self._housekeeping_loop(), name="housekeeping"),
                 asyncio.create_task(self._accounting_loop(), name="accounting"),
+                asyncio.create_task(self._battery_loop(), name="battery"),
                 asyncio.create_task(self._rollup_loop(), name="rollup"),
                 asyncio.create_task(self._rebuild_energy_once(), name="energy-rebuild"),
             ]

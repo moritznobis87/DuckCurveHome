@@ -1132,6 +1132,69 @@
         }
       }
     },
+    "/api/v1/control/battery": {
+      "get": {
+        "tags": [
+          "Steuerung"
+        ],
+        "summary": "Speicher: Zustand",
+        "operationId": "battery_state_api_v1_control_battery_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatteryLiveOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/control/battery/mode": {
+      "post": {
+        "tags": [
+          "Steuerung"
+        ],
+        "summary": "Speicher stellen",
+        "description": "Betriebsart des Speichers setzen, mit der Untergrenze als optionaler Beigabe.\n\n`off` ist die Vorgabe und heißt: DCH sendet nichts. `auto` schaltet die Untergrenze scharf,\n`hold` hält den Speicher befristet an, `normal` gibt ihn frei. Ein manueller Eingriff läuft ab;\nein dauerhaft angehaltener Speicher nähme auch keine Sonne mehr auf.",
+        "operationId": "set_battery_mode_api_v1_control_battery_mode_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatteryModeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatteryLiveOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/control/decisions": {
       "get": {
         "tags": [
@@ -1414,10 +1477,154 @@
             "type": "number",
             "title": "Max Power Kw",
             "default": 3.7
+          },
+          "control_enabled": {
+            "type": "boolean",
+            "title": "Control Enabled",
+            "default": false
+          },
+          "reserve_soc": {
+            "type": "number",
+            "title": "Reserve Soc",
+            "default": 0.0
           }
         },
         "type": "object",
         "title": "BatteryConfig"
+      },
+      "BatteryLiveOut": {
+        "properties": {
+          "control_enabled": {
+            "type": "boolean",
+            "title": "Control Enabled",
+            "default": false
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "normal",
+              "hold",
+              "off"
+            ],
+            "title": "Mode",
+            "default": "off"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "reserve_soc": {
+            "type": "number",
+            "title": "Reserve Soc",
+            "default": 0.0
+          },
+          "soc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soc"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "normal",
+                  "stopped"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "BatteryLiveOut",
+        "description": "Der Speicher im Augenblick: sein Ladestand und was DCH mit ihm vorhat.\n\n`mode` ist die Absicht, `command` der zuletzt an den Libbi gesendete Befehl. Die myenergi-Cloud\nbestätigt nichts; ob das Gerät folgt, sagt erst die nächste Messung. Deshalb stehen beide da.\n\n`command` kann None sein, und das ist nicht dasselbe wie „normal\": es heißt, dass DCH gar nichts\ngesendet hat und der Speicher in seiner eigenen Betriebsart läuft."
+      },
+      "BatteryModeIn": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "normal",
+              "hold",
+              "off"
+            ],
+            "title": "Mode"
+          },
+          "duration_min": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 15.0,
+            "title": "Duration Min",
+            "default": 120
+          },
+          "reserve_soc": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 0.5,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reserve Soc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "BatteryModeIn",
+        "description": "`off` heißt: DCH sendet nichts und lässt dem Speicher seine eigene Regelung."
       },
       "BinCorrection": {
         "properties": {
@@ -3655,7 +3862,9 @@
             "$ref": "#/components/schemas/BatteryConfig",
             "default": {
               "capacity_kwh": 5.1,
-              "max_power_kw": 3.7
+              "max_power_kw": 3.7,
+              "control_enabled": false,
+              "reserve_soc": 0.0
             }
           },
           "stove": {

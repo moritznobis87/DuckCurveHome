@@ -392,6 +392,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/control/battery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Speicher: Zustand */
+        get: operations["battery_state_api_v1_control_battery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/control/battery/mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Speicher stellen
+         * @description Betriebsart des Speichers setzen, mit der Untergrenze als optionaler Beigabe.
+         *
+         *     `off` ist die Vorgabe und heißt: DCH sendet nichts. `auto` schaltet die Untergrenze scharf,
+         *     `hold` hält den Speicher befristet an, `normal` gibt ihn frei. Ein manueller Eingriff läuft ab;
+         *     ein dauerhaft angehaltener Speicher nähme auch keine Sonne mehr auf.
+         */
+        post: operations["set_battery_mode_api_v1_control_battery_mode_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/control/decisions": {
         parameters: {
             query?: never;
@@ -518,6 +559,77 @@ export interface components {
              * @default 3.7
              */
             max_power_kw: number;
+            /**
+             * Control Enabled
+             * @default false
+             */
+            control_enabled: boolean;
+            /**
+             * Reserve Soc
+             * @default 0
+             */
+            reserve_soc: number;
+        };
+        /**
+         * BatteryLiveOut
+         * @description Der Speicher im Augenblick: sein Ladestand und was DCH mit ihm vorhat.
+         *
+         *     `mode` ist die Absicht, `command` der zuletzt an den Libbi gesendete Befehl. Die myenergi-Cloud
+         *     bestätigt nichts; ob das Gerät folgt, sagt erst die nächste Messung. Deshalb stehen beide da.
+         *
+         *     `command` kann None sein, und das ist nicht dasselbe wie „normal": es heißt, dass DCH gar nichts
+         *     gesendet hat und der Speicher in seiner eigenen Betriebsart läuft.
+         */
+        BatteryLiveOut: {
+            /**
+             * Control Enabled
+             * @default false
+             */
+            control_enabled: boolean;
+            /**
+             * Mode
+             * @default off
+             * @enum {string}
+             */
+            mode: "auto" | "normal" | "hold" | "off";
+            /** Ends At */
+            ends_at?: string | null;
+            /**
+             * Reserve Soc
+             * @default 0
+             */
+            reserve_soc: number;
+            /** Soc */
+            soc?: number | null;
+            /** Command */
+            command?: ("normal" | "stopped") | null;
+            /** Sent At */
+            sent_at?: string | null;
+            /** Last Error */
+            last_error?: string | null;
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
+        };
+        /**
+         * BatteryModeIn
+         * @description `off` heißt: DCH sendet nichts und lässt dem Speicher seine eigene Regelung.
+         */
+        BatteryModeIn: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "auto" | "normal" | "hold" | "off";
+            /**
+             * Duration Min
+             * @default 120
+             */
+            duration_min: number;
+            /** Reserve Soc */
+            reserve_soc?: number | null;
         };
         /** BinCorrection */
         BinCorrection: {
@@ -1709,7 +1821,9 @@ export interface components {
             /**
              * @default {
              *       "capacity_kwh": 5.1,
-             *       "max_power_kw": 3.7
+             *       "max_power_kw": 3.7,
+             *       "control_enabled": false,
+             *       "reserve_soc": 0
              *     }
              */
             battery: components["schemas"]["BatteryConfig"];
@@ -3490,6 +3604,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StoveLiveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    battery_state_api_v1_control_battery_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatteryLiveOut"];
+                };
+            };
+        };
+    };
+    set_battery_mode_api_v1_control_battery_mode_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatteryModeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatteryLiveOut"];
                 };
             };
             /** @description Validation Error */

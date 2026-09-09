@@ -247,6 +247,13 @@ class BatteryConfig(BaseModel):
 
     capacity_kwh: float = 5.1  # myenergi libbi
     max_power_kw: float = 3.7
+    # Ob DCH die Betriebsart des Speichers setzen darf. Wie beim Ofen ist das nur die eine Hälfte
+    # der Freigabe; ohne myenergi-Zugangsdaten in der Umgebung geht ohnehin kein Befehl hinaus.
+    control_enabled: bool = False
+    # Untergrenze des Ladestands als Anteil. Darunter hält der Regler den Speicher an, statt ihn
+    # die letzten Prozent fahren zu lassen - die bringen nichts und lösen beim Libbi eine
+    # Netznachladung aus (siehe hems_core.control.battery_reserve). 0 schaltet die Grenze ab.
+    reserve_soc: float = 0.0
 
 
 class HemsConfig(BaseModel):

@@ -24,8 +24,14 @@ class MyenergiError(RuntimeError):
     pass
 
 
+# Setzbare Betriebsarten des Libbi. Mehr gibt die Schnittstelle nicht her: die weiteren Modi, die
+# die App anzeigt (capture, charge, match), lassen sich nur lesen. „Stopped" hält beides an, Laden
+# und Entladen - ein „nicht mehr entladen, aber noch laden" existiert nicht.
+LIBBI_MODES: dict[str, int] = {"stopped": 0, "normal": 1, "export": 5}
+
+
 class MyenergiClient:
-    """Kleiner, asynchroner Client. Nur lesende Aufrufe; Schaltbefehle kommen mit Phase 3."""
+    """Kleiner, asynchroner Client für die Hub-API (director.myenergi.net, Digest-Auth)."""
 
     def __init__(self, hub_serial: str, api_key: str, timeout_s: float = 20.0) -> None:
         self.hub_serial = hub_serial.strip()
@@ -61,6 +67,20 @@ class MyenergiClient:
         except httpx.HTTPError as exc:
             self.base_url = None
             raise MyenergiError(f"Netzwerkfehler: {exc.__class__.__name__}") from exc
+
+    async def set_libbi_mode(self, serial: int | str, mode: str) -> None:
+        """Betriebsart des Libbi setzen.
+
+        Die Schnittstelle ist nicht dokumentiert; myenergi veröffentlicht keine API. Der Pfad
+        stammt aus der Gegenprobe mit `pymyenergi`, der Bibliothek hinter der
+        Home-Assistant-Integration, und läuft über dieselbe Digest-Anmeldung wie alles Lesende.
+        Ein Firmware-Update kann ihn brechen; deshalb wirft ein Fehlschlag hier eine Ausnahme,
+        statt still zu scheitern, und der Aufrufer entscheidet, ob er es erneut versucht.
+        """
+        key = mode.strip().lower()
+        if key not in LIBBI_MODES:
+            raise MyenergiError(f"Unbekannte Betriebsart: {mode}")
+        await self._request(f"/cgi-libbi-mode-L{serial}-{LIBBI_MODES[key]}")
 
     async def status(self) -> list[dict[str, Any]]:
         """Alle Geräte mit aktuellen Werten: Liste von Gruppen {"zappi": [...]}, {"libbi": [...]}, …"""

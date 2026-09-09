@@ -37,6 +37,8 @@ class StatusClient(Protocol):
         self, prefix: str, serial: int | str, start_utc: datetime, minutes: int
     ) -> list[dict[str, Any]]: ...
 
+    async def set_libbi_mode(self, serial: int | str, mode: str) -> None: ...
+
 
 MinuteRows = list[dict[str, float | str | None]]
 
@@ -72,6 +74,29 @@ class MyenergiSource:
         self.last_backfill_error: str | None = None
         self._groups: list[dict[str, Any]] = []
         self._tasks: list[asyncio.Task[None]] = []
+
+    # ------------------------------------------------------------------ Schalten
+    @property
+    def libbi_serial(self) -> int | None:
+        """Seriennummer des Speichers aus der letzten Statusantwort, oder None ohne Gerät."""
+        for grp in self._groups:
+            for d in grp.get("libbi") or []:
+                sno = d.get("sno")
+                if sno is not None:
+                    return int(sno)
+        return None
+
+    async def set_libbi_mode(self, mode: str) -> None:
+        """Betriebsart des Speichers setzen. Ohne bekannte Seriennummer passiert nichts.
+
+        Die Seriennummer stammt aus dem laufenden Status und nicht aus der Konfiguration: sie steht
+        ohnehin in jeder Antwort, und eine Zahl, die an zwei Stellen gepflegt werden muss, läuft
+        irgendwann auseinander.
+        """
+        serial = self.libbi_serial
+        if serial is None:
+            raise RuntimeError("Kein Libbi in der myenergi-Antwort")
+        await self.client.set_libbi_mode(serial, mode)
 
     # ------------------------------------------------------------------ Live
     async def poll_once(self, now: datetime | None = None) -> list[RawReading]:

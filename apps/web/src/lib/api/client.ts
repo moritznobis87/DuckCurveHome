@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, EnergySummary, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, StoveLive, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, BatteryLive, BatteryModeIn, EnergySummary, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, StoveLive, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -48,6 +48,9 @@ export const api = {
   // sehen, und genau der beantwortet die Frage „was ist an diesem Tag wirklich passiert?".
   historyDay: (start: Date, end: Date) =>
     request<History>(`/history?range=custom&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`),
+  batteryState: () => request<BatteryLive>("/control/battery"),
+  setBatteryMode: (body: BatteryModeIn) =>
+    request<BatteryLive>("/control/battery/mode", { method: "POST", body: JSON.stringify(body) }),
   plan: () => request<Plan>("/plan"),
   forecastEvaluation: () => request<ForecastEvaluation>("/forecast/evaluation"),
   energySummary: (period: Period, anchor: string) => request<EnergySummary>(`/energy/summary?period=${period}&anchor=${anchor}`),
