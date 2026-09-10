@@ -290,29 +290,22 @@ CHARGE_WINDOW_MIN = 2
 def with_charge_window(
     samples: Iterable[MinuteSample], half_width_min: int = CHARGE_WINDOW_MIN
 ) -> list[MinuteSample]:
-    """Je Minute festhalten, welchen Anteil der Ladung der PV-Überschuss eines kurzen Fensters deckt.
+    """Je Minute festhalten, welchen Anteil der Ladung die PV eines kurzen Fensters deckt.
 
-    **Warum das nötig ist.** In einer Lademinute ist die Zuordnung rechnerisch zwingend
-    `Netz → Speicher = min(Ladeleistung, Netzbezug)`; die PV-Leistung spielt darin gar keine Rolle,
-    weil der Hausverbrauch selbst aus der Bilanz stammt. Damit hängt alles daran, dass Netzzähler
-    und Speicher **im selben Moment** gemessen haben - und das tun sie nicht. Die myenergi-Zuordnung
-    vergibt der Erzeugung `gen_at`, dem Netzbezug `grid_at` und dem Speicher die Zeit des Libbi;
-    drei Geräte, drei Zeitstempel. An einer Wolkenkante meldet der Zähler schon den Bezug der
-    Wolkenminute, während der Libbi noch die Ladung der Sonnenminute meldet, und die Bilanz macht
-    daraus Netzladung. Am 03.09.2026 kamen so 3,2 kWh zwischen 14 und 16 Uhr zusammen, zur besten
-    PV-Zeit; nur 0,6 kWh der Tagessumme fielen in die Dunkelheit, wo sie echt gewesen wären.
+    Die Zuordnung fragt „wie viel PV stand der Ladung gegenüber?" und vergleicht dafür zwei Größen,
+    die aus **zwei verschiedenen Geräten** kommen: die Erzeugung von den Generation-CTs, die Ladung
+    vom Libbi. Die myenergi-Zuordnung gibt jedem seinen eigenen Zeitstempel (`gen_at` und die Zeit
+    des Libbi). An einer Wolkenkante hinkt der eine dem anderen um eine Minute nach, und in dieser
+    Minute sieht es aus, als habe der Speicher ohne Sonne geladen.
 
-    **Warum ein Mittelwert allein nicht reicht.** Den geglätteten Überschuss gegen die Ladung
-    *dieser einen Minute* zu halten, verschiebt den Fehler nur: in einer Minute mit 3 kW Ladung,
-    deren Fenster im Mittel 1,8 kW Ladung und 2,0 kW Überschuss sieht, blieben 1,0 kW „aus dem
-    Netz". Verglichen werden muss Gleiches mit Gleichem. Deshalb wird im Fenster der **Anteil**
-    gebildet - wie viel des dort geladenen Stroms der dortige Überschuss trägt - und dieser Anteil
-    auf die Minute angewandt.
+    Deshalb wird im Fenster von ±`half_width_min` Minuten der **Anteil** gebildet - wie viel der
+    dort geladenen Energie die dortige Erzeugung deckt - und dieser Anteil auf die Minute angewandt.
+    Der Anteil, nicht die geglättete Erzeugung selbst: eine Minutenladung gegen ein Fenstermittel zu
+    halten vergleicht Ungleiches und verschiebt den Fehler nur, statt ihn aufzuheben.
 
-    Der Überschuss selbst ergibt sich ohne PV-Wert aus Netz und Speicher: `max(0, -grid - battery)`.
-    Nachts ist er null, der Anteil damit null, und echte Netzladung bleibt dem Netz zugeschrieben.
-    Verschoben wird ohnehin nur die Herkunft der Ladung: der gemessene Netzbezug der Minute bleibt,
-    wie er ist, und zählt dann als Bezug des Hauses - was an einer Wolkenkante auch geschehen ist.
+    Nachts ist die Erzeugung null, der Anteil damit null, und Netzladung bleibt dem Netz
+    zugeschrieben. Reicht die Erzeugung nicht für die Ladeleistung, bleibt die Differenz ebenfalls
+    stehen. Nur das kurze Zappeln verschwindet.
     """
     rows = sorted(samples, key=lambda s: s.ts)
     n = len(rows)
@@ -322,10 +315,7 @@ def with_charge_window(
     # also darf sie auch das Fenster nicht mitbestimmen.
     ok = [r.pv_kw is not None and r.grid_kw is not None for r in rows]
     charge = [max(0.0, -(r.battery_kw or 0.0)) if v else 0.0 for r, v in zip(rows, ok, strict=True)]
-    surplus = [
-        max(0.0, -(r.grid_kw or 0.0) - (r.battery_kw or 0.0)) if v else 0.0
-        for r, v in zip(rows, ok, strict=True)
-    ]
+    gen = [max(0.0, r.pv_kw or 0.0) if v else 0.0 for r, v in zip(rows, ok, strict=True)]
     out: list[MinuteSample] = []
     for i, cur in enumerate(rows):
         lo, hi = max(0, i - half_width_min), min(n, i + half_width_min + 1)
@@ -333,7 +323,7 @@ def with_charge_window(
         if chg_sum <= 1e-9:
             out.append(cur)
             continue
-        share = min(1.0, sum(surplus[lo:hi]) / chg_sum)
+        share = min(1.0, sum(gen[lo:hi]) / chg_sum)
         out.append(replace(cur, pv_charge_share=share))
     return out
 
@@ -352,28 +342,26 @@ def hourly_energy(
     steht danach für die Folgestunde bereit. Ohne Angabe beginnt die Rechnung mit einem leeren Konto -
     dann gilt jede Entladung als PV und wird als geschätzt gezählt.
 
-    `resolution_min` ist die Auflösung der Eingangsdaten. Sie ändert nichts an den Summen, aber die
-    Reihenfolge, in der PV verteilt wird - und das ist kein Detail:
+    **Die Rangfolge: der Speicher bekommt die PV zuerst.** Gab es in einer Minute mindestens so
+    viel Erzeugung wie Ladeleistung, gilt die Ladung vollständig als Sonnenstrom - auch dann, wenn
+    der Zähler gleichzeitig Bezug meldet, weil das Haus mehr wollte, als übrig war. Der Bezug ist
+    dann Bezug **des Hauses**, nicht des Speichers.
 
-    **Warum eine grobe Auflösung Netzladung erfindet.** Bei echten Minutenwerten gilt in jeder Minute
-    eine physikalische Bilanz, und die Rangfolge „PV deckt erst das Haus, der Rest lädt den Speicher"
-    ist richtig: mehr als den Überschuss kann der Speicher in dieser Minute nicht bekommen. Kommt der
-    Eingang dagegen als Stundenmittel, ist die Rangfolge falsch. Ein Beispiel, nachgerechnet: 20 min
-    Sonne mit 2,2 kW - der Speicher lädt aus dem Überschuss -, danach 40 min Wolke, in denen das Haus
-    aus dem Netz versorgt wird. Über die Stunde gemittelt bleiben 1,47 kW PV, +0,20 kW Netz und
-    0,67 kWh Ladung. Die Minutenrechnung sagt: 0,00 kWh aus dem Netz geladen. Dieselbe Stunde als
-    Mittelwert gerechnet sagt: 0,20 kWh - denn der Überschuss über die ganze Stunde ist kleiner als
-    die Ladung, obwohl er es in den Minuten, in denen geladen wurde, nicht war. Der Netzbezug der
-    Wolkenminuten und der PV-Überschuss der Sonnenminuten löschen sich im Mittel gegenseitig aus, und
-    die Differenz landet als Netzladung im Speicher. Über einen Wintermonat summiert sich das zu
-    dreistelligen Kilowattstunden, die nie geflossen sind.
+    Das ist eine Konvention und keine Messung; die Physik kennt keine Etiketten auf Elektronen. Die
+    umgekehrte Rangfolge (Haus zuerst, Speicher aus dem Rest) ist ebenso vertretbar und war hier
+    zuerst eingebaut. Gegen sie spricht, was sie anrichtet: springt an einem sonnigen Morgen die
+    Wärmepumpe an, während der Speicher aus der PV lädt, schrieb sie dem Speicher Netzladung zu, die
+    er nie gesehen hat. Wer dann „Netzladung" liest, sucht den Fehler beim Speicher - dabei liegt er
+    beim Verbrauch, der zur falschen Zeit lief. Diese Rangfolge legt ihn dorthin, wo er hingehört.
 
-    Deshalb gilt ab `COARSE_RESOLUTION_MIN` die umgekehrte Rangfolge: PV lädt zuerst den Speicher.
-    Sie ist genauso wenig gemessen, aber sie irrt in die harmlosere Richtung. Netzladung wird nur noch
-    ausgewiesen, wenn die Ladung die gesamte PV-Erzeugung der Stunde übersteigt - dann hat sie
-    wirklich stattgefunden, etwa nachts. Der Preis dafür ist, dass der direkte PV-Anteil am
-    Hausverbrauch etwas zu hoch und der Netzanteil etwas zu niedrig ausfällt. Wie viele Minuten so
-    gerechnet wurden, steht in `coarse_minutes` und gehört auf die Auswertungsseite.
+    Der Preis dafür steht in derselben Rechnung: der direkte PV-Anteil am Hausverbrauch fällt
+    kleiner aus, der Netzanteil größer, und damit sinkt die ausgewiesene Autarkie. Die PV-Menge
+    selbst verschiebt sich nur, sie verschwindet nicht - was nicht direkt ins Haus geht, liegt im
+    Speicher und kommt später heraus.
+
+    `resolution_min` ist die Auflösung der Eingangsdaten. Sie ändert an der Rangfolge nichts mehr,
+    zählt aber die betroffenen Minuten in `coarse_minutes`, damit eine Jahresansicht nicht
+    verschweigt, dass ein Teil ihrer Zahlen aus Stundenmitteln stammt.
     """
     acc: dict[str, float] = dict.fromkeys(_SUM_FIELDS, 0.0)
     minutes = 0
@@ -406,18 +394,16 @@ def hourly_energy(
         ev = min(ev, house - hp)
         base = max(0.0, house - hp - ev)
 
-        if coarse:
-            pv_to_bat = min(pv, chg)
-            pv_direct = min(pv - pv_to_bat, house)
-        elif smp.pv_charge_share is not None:
-            # Die Ladung wird gegen den Überschuss eines kurzen Fensters geprüft, nicht gegen diese
-            # eine Minute (siehe `with_charge_window`). Was das Fenster deckt, kam von der Sonne;
-            # der gemessene Netzbezug der Minute bleibt und zählt dann als Bezug des Hauses.
-            pv_to_bat = smp.pv_charge_share * chg
-            pv_direct = min(max(0.0, pv - pv_to_bat), house)
-        else:
-            pv_direct = min(pv, house)
-            pv_to_bat = min(pv - pv_direct, chg)
+        # Rangfolge: die Ladung des Speichers bekommt die PV zuerst, der Hausverbrauch den Rest.
+        # `pv_charge_share` prüft die Ladung dabei gegen ein kurzes Fenster statt gegen die einzelne
+        # Minute (siehe `with_charge_window`); ohne Fenster gilt die Minute für sich.
+        share = (
+            smp.pv_charge_share
+            if smp.pv_charge_share is not None
+            else (min(1.0, pv / chg) if chg > 1e-9 else 0.0)
+        )
+        pv_to_bat = share * chg
+        pv_direct = min(max(0.0, pv - pv_to_bat), house)
         grid_to_bat = max(0.0, chg - pv_to_bat)
         bat_to_house = min(dis, max(0.0, house - pv_direct))
         grid_to_house = max(0.0, house - pv_direct - bat_to_house)
