@@ -7,7 +7,7 @@ import { Card, CardHead } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
 import { batteryDayChart, C, donut, stackedBars } from "./charts";
-import { CoverageNote, de1, ErrorBanner, eur, KpiGrid, Note, pct, ReportShell, usePeriod } from "./ReportShell";
+import { ChartLegend, CoverageNote, de1, ErrorBanner, eur, KpiGrid, Note, pct, ReportShell, usePeriod } from "./ReportShell";
 import { BatteryControl } from "./BatteryControl";
 import { PeriodStrip } from "./PeriodStrip";
 import { isoToday, useMultiPeriod, useReport } from "./useReport";
@@ -105,7 +105,7 @@ export function BatteryReport() {
       <KpiGrid cols={7}>
         <Stat label="Geladen" value={de1(t?.battery_charge_kwh)} unit="kWh" tone="amber" hint={t ? `PV ${de1(t.pv_to_battery_kwh)} · Netz ${de1(t.grid_to_battery_kwh)} kWh${est}` : undefined} />
         <Stat
-          label="Netzladung bei Dunkelheit"
+          label="Netzladung ohne PV"
           value={de1(t?.grid_to_battery_dark_kwh)}
           unit="kWh"
           tone={(t?.grid_to_battery_dark_kwh ?? 0) > 0.2 ? "ember" : "muted"}
@@ -130,7 +130,7 @@ export function BatteryReport() {
       <BatteryControl />
       <div className="report-row" style={{ "--cols": "5fr 3fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Ladung nach Herkunft" right="PV · Netz" />
+          <CardHead title="Ladung nach Herkunft" right={<ChartLegend items={CHARGE} />} />
           <div className="min-h-0 flex-1"><EChart option={chargeOpt} /></div>
         </Card>
         <Card style={{ padding: 16, height: 280 }}>

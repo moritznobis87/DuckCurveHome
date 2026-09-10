@@ -10,7 +10,10 @@ export function Stat({ label, value, unit, hint, tone, href, ariaLabel }: { labe
         {value}
         {unit ? <span className="ml-1.5 text-[13px] text-text-3" style={{ fontFamily: "var(--font-sans)" }}>{unit}</span> : null}
       </span>
-      {hint ? <span className="truncate text-[12px] text-text-3">{href ? <span className="text-amber">› </span> : null}{hint}</span> : null}
+      {/* Die Kontextzeile darf umbrechen. Abgeschnitten („von 0,0 kWh Netzladung i…") ist sie
+          nutzlos, und der gewonnene Platz war nie das Problem. Zwei Zeilen sind das Maximum,
+          damit die Kacheln in einer Reihe gleich hoch bleiben. */}
+      {hint ? <span className="line-clamp-2 text-[12px] leading-[1.35] text-text-3">{href ? <span className="text-amber">› </span> : null}{hint}</span> : null}
     </Card>
   );
 }

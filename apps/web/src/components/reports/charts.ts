@@ -1,22 +1,8 @@
 import type { EChartsCoreOption } from "echarts/core";
 import type { EnergyBucket, EnergyTotals, HeatForecastPoint } from "@/lib/api/models";
 
-export const C = {
-  pv: "#f2a900",
-  battery: "#7fa3b3",
-  grid: "#e0533d",
-  hp: "#e4ecef",
-  ev: "#5c8fa3",
-  base: "#4d6b78",
-  export: "rgba(228,236,239,.5)",
-  mist: "#7fa3b3",
-  gridline: "rgba(255,255,255,.09)",
-  axis: "rgba(255,255,255,.2)",
-  text: "rgba(255,255,255,.48)",
-  deep: "#082431",
-  stove: "#b5651d",  // Pelletofen, siehe --stove in tokens.css: geprüfter Abstand zu --heat-pump
-};
-export const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+export { C, MONO } from "@/components/charts/palette";
+import { C, MONO } from "@/components/charts/palette";
 const axisText = { color: C.text, fontFamily: MONO, fontSize: 11 };
 const tooltip = { backgroundColor: C.deep, borderColor: "rgba(255,255,255,.14)", borderRadius: 3, textStyle: { color: "rgba(255,255,255,.92)", fontFamily: MONO, fontSize: 12 } };
 const de1 = (n: number, d = 1) => n.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -63,7 +49,12 @@ export function stackedBars(buckets: EnergyBucket[], series: BarSeries[], unit =
   };
 }
 
-/** Anteile als Ring, Beschriftung in der Mitte. */
+/** Anteile als Ring, Kennzahl in der Mitte, Legende darunter.
+ *
+ * Die Legende ist nicht schmückend. Ohne sie trägt allein die Farbe, welches Segment welches ist,
+ * und wer den Ring zum ersten Mal sieht, kann es nicht wissen - im Ausdruck, bei Farbenblindheit
+ * oder auf dem Kioskbildschirm aus zwei Metern schon gar nicht. Der Ring gibt dafür etwas Radius
+ * ab; das ist der günstigere Tausch. */
 export function donut(parts: Array<{ name: string; value: number; color: string }>, center: string, sub: string): EChartsCoreOption {
   const total = parts.reduce((a, p) => a + p.value, 0);
   return {
@@ -71,19 +62,32 @@ export function donut(parts: Array<{ name: string; value: number; color: string 
     backgroundColor: "transparent",
     textStyle: { fontFamily: MONO },
     tooltip: { ...tooltip, formatter: (p: unknown) => { const q = p as { name: string; value: number; percent: number }; return `${q.name}: ${de1(q.value)} kWh · ${Math.round(q.percent)} %`; } },
+    legend: {
+      show: total > 0,
+      bottom: 0,
+      left: "center",
+      itemWidth: 10,
+      itemHeight: 8,
+      itemGap: 14,
+      icon: "roundRect",
+      textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 },
+    },
     series: [
       {
         type: "pie",
-        radius: ["62%", "86%"],
+        radius: ["58%", "80%"],
+        center: ["50%", "44%"],
         avoidLabelOverlap: false,
         label: { show: false },
+        // 2 px Fläche zwischen den Segmenten: die Trennung liegt dann in der Geometrie und nicht
+        // allein in der Farbe.
         itemStyle: { borderColor: C.deep, borderWidth: 2 },
         data: total > 0 ? parts.map((p) => ({ name: p.name, value: Math.round(p.value * 100) / 100, itemStyle: { color: p.color } })) : [{ name: "keine Daten", value: 1, itemStyle: { color: "rgba(255,255,255,.08)" } }],
       },
     ],
     graphic: [
-      { type: "text", left: "center", top: "42%", style: { text: center, fill: "rgba(255,255,255,.92)", font: `600 22px ${MONO}`, textAlign: "center" } },
-      { type: "text", left: "center", top: "58%", style: { text: sub, fill: C.text, font: `11px ${MONO}`, textAlign: "center" } },
+      { type: "text", left: "center", top: "37%", style: { text: center, fill: "rgba(255,255,255,.92)", font: `600 22px ${MONO}`, textAlign: "center" } },
+      { type: "text", left: "center", top: "51%", style: { text: sub, fill: C.text, font: `11px ${MONO}`, textAlign: "center" } },
     ],
   };
 }

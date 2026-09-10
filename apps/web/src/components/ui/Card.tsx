@@ -21,7 +21,9 @@ export function CardHead({ title, right }: { title: string; right?: ReactNode })
   return (
     <div className="card-head flex items-baseline justify-between gap-4">
       <h2 className="kicker m-0">{title}</h2>
-      {right ? <div className="card-head-right min-w-0 truncate text-[12px] text-text-3">{right}</div> : null}
+      {/* `truncate` nur für Text. Eine Legende soll umbrechen statt zu verschwinden: ein
+          abgeschnittener Legendeneintrag ist schlimmer als eine zweite Zeile. */}
+      {right ? <div className={`card-head-right min-w-0 text-[12px] text-text-3 ${typeof right === "string" ? "truncate" : ""}`}>{right}</div> : null}
     </div>
   );
 }

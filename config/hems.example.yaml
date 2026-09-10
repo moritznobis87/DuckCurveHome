@@ -30,8 +30,8 @@ hems:
     # hems_core.control.battery_reserve. 0.0 schaltet die Grenze ab.
     capacity_kwh: 5.1
     max_power_kw: 3.7
-    control_enabled: false
-    reserve_soc: 0.0
+    control_enabled: true  # darf DCH die Betriebsart setzen? Freigegeben
+    reserve_soc: 0.0  # Untergrenze in der Oberfläche stellen, nicht hier
   stove:
     # Pelletofen (MCZ Star Hydromatic). Die Zahlen bestimmen, ab wann der Ofen günstiger heizt als
     # die Wärmepumpe, siehe hems_core.accounting.stove_cost und docs/OFEN_OPTIMIERUNG.md.
