@@ -42,64 +42,71 @@ Der Kontostand am Stundenende wird in `energy_hourly` mitgespeichert (`battery_p
 `battery_grid_stored_kwh`), damit eine Neuberechnung dort fortsetzt, wo die vorige aufgehört hat,
 statt wieder bei null zu beginnen. Er ist ein Bestand und wird nie über Stunden aufsummiert.
 
-### Warum die Ladung gegen ein Fenster geprüft wird
+### Die Rangfolge: der Speicher bekommt die PV zuerst
 
-In einer Minute, in der der Speicher lädt, ist die Zuordnung rechnerisch zwingend:
+Gab es in einer Minute mindestens so viel Erzeugung wie Ladeleistung, gilt die Ladung vollständig
+als Sonnenstrom. Auch dann, wenn der Zähler in derselben Minute Bezug meldet, weil das Haus mehr
+wollte, als übrig war. Dieser Bezug gehört dann zum **Haus**.
 
-```
-Netz → Speicher = min(Ladeleistung, Netzbezug)
-```
+Ein Beispiel um acht Uhr morgens:
 
-Die PV-Leistung kommt darin gar nicht vor, weil der Hausverbrauch selbst aus der Bilanz stammt
-(`house = pv + grid + battery`). Damit hängt alles daran, dass Netzzähler und Speicher **im selben
-Moment** gemessen haben. Sie tun es nicht: `apps/api/src/dch_api/integrations/myenergi/mapping.py`
-vergibt der Erzeugung `gen_at`, dem Netzbezug `grid_at` und dem Speicher die Zeit des Libbi, drei
-Geräte mit drei Zeitstempeln. An einer Wolkenkante meldet der Zähler bereits den Bezug der
-Wolkenminute, während der Libbi noch die Ladung der Sonnenminute meldet, und die Bilanz macht daraus
-Netzladung.
+| | |
+|---|---|
+| PV | 3,0 kW |
+| Hausverbrauch (die Wärmepumpe macht Warmwasser) | 2,0 kW |
+| Speicher lädt | 2,0 kW |
+| Zähler | 1,0 kW Bezug |
 
-Am 03.09.2026 waren das 3,2 kWh zwischen 14 und 16 Uhr, zur besten PV-Zeit; von der Tagessumme
-fielen nur 0,6 kWh in die Dunkelheit, wo Netzladung echt gewesen wäre.
+Zusammen wollten Haus und Speicher 4 kW, die Sonne lieferte 3. Ein Kilowatt kam aus dem Netz. Die
+Frage ist nicht, ob es floss, sondern wem man es zuschreibt.
+
+**Warum dem Haus.** Die umgekehrte Rangfolge - Haus zuerst, Speicher aus dem Rest - war hier zuerst
+eingebaut und ist ebenso vertretbar; die Physik kennt keine Etiketten auf Elektronen. Gegen sie
+spricht, was sie anrichtet: sie schreibt dem Speicher Netzladung zu, obwohl er nur genommen hat, was
+die Sonne hergab. Wer dann „Netzladung" liest, sucht den Fehler beim Speicher. Er liegt aber beim
+Verbrauch, der zur falschen Zeit lief, und genau dorthin gehört er in der Bilanz. Dass die Regelung
+des Speichers das Haus ans Netz zwingt, bleibt ein Problem - es ist nur nicht dasselbe Problem wie
+„der Speicher lädt aus dem Netz".
+
+**Der Preis.** Der direkte PV-Anteil am Hausverbrauch fällt kleiner aus, der Netzanteil größer, und
+damit sinkt die ausgewiesene Autarkie. Die PV-Menge verschiebt sich dabei nur: was nicht direkt ins
+Haus geht, liegt im Speicher und kommt später heraus. Für die steuerliche Bewertung heißt das, dass
+ein Teil des Eigenverbrauchs nicht mehr zum Mittagspreis, sondern zum Abendpreis der Entladung
+bewertet wird.
+
+**Was stehen bleibt.** Deckt die Erzeugung die Ladeleistung nicht, bleibt die Differenz Netzladung:
+`Netz → Speicher = max(0, Ladeleistung − Erzeugung)`. Nachts ist die Erzeugung null, also ist dort
+jede Ladung Netzladung, und die Kachel „Netzladung ohne PV" zeigt genau diesen Teil.
+
+### Warum die Ladung gegen ein kurzes Fenster geprüft wird
+
+Die Rangfolge vergleicht zwei Größen aus **zwei verschiedenen Geräten**: die Erzeugung von den
+Generation-CTs, die Ladung vom Libbi. `apps/api/src/dch_api/integrations/myenergi/mapping.py` gibt
+jedem seinen eigenen Zeitstempel. An einer Wolkenkante hinkt der eine dem anderen um eine Minute
+nach, und in dieser Minute sieht es aus, als habe der Speicher ohne Sonne geladen.
 
 `with_charge_window` legt deshalb je Minute ein zentriertes Fenster von ±2 Minuten und bildet darin
-den **Anteil**, den der PV-Überschuss an der geladenen Energie hat; dieser Anteil wird auf die
-Minute angewandt. Der Anteil, nicht der geglättete Überschuss selbst: eine Minutenladung gegen ein
-Fenstermittel zu halten vergleicht Ungleiches und verschiebt den Fehler nur. Der Überschuss ergibt
-sich dabei ohne PV-Wert aus `max(0, -grid - battery)`.
+den **Anteil**, den die dortige Erzeugung an der dort geladenen Energie hat; dieser Anteil wird auf
+die Minute angewandt. Der Anteil, nicht die geglättete Erzeugung selbst: eine Minutenladung gegen
+ein Fenstermittel zu halten vergleicht Ungleiches und verschiebt den Fehler nur, statt ihn
+aufzuheben.
 
-Nachts ist der Überschuss null, der Anteil null, und echte Netzladung bleibt dem Netz zugeschrieben.
-Auch eine Netzladung am Tag, bei der die PV die Ladeleistung nicht deckt, bleibt stehen. Verschoben
-wird nur die Herkunft: der gemessene Netzbezug der Minute bleibt unverändert und zählt dann als
-Bezug des Hauses, was an einer Wolkenkante auch das ist, was geschehen ist.
+Zwei Minuten sind kurz genug, dass eine echte Netzladung nicht darin verschwindet, und lang genug
+für den Zeitversatz zwischen zwei Geräten.
 
-### Warum die Auflösung der Eingangsdaten die Zuordnung entscheidet
+### Die Auflösung der Eingangsdaten
 
-Bei Minutenwerten gilt in jeder Minute eine physikalische Bilanz, und die Rangfolge „PV deckt erst
-das Haus, der Rest lädt den Speicher" ist richtig: mehr als den Überschuss dieser Minute kann der
-Speicher nicht bekommen. Liegt der Zeitraum dagegen nur als Stundenmittel vor - so kamen die Monate
-aus dem Home-Assistant-Import in die Datenbank -, ist dieselbe Rangfolge falsch und erfindet
-Netzladung. Nachgerechnet an einer Stunde mit 20 min Sonne (der Speicher lädt aus dem Überschuss)
-und 40 min Wolke (das Haus hängt am Netz):
+Stunden, die der Historienimport aus **Stundenmitteln** gebildet hat, tragen richtige Summen. Mit
+der früheren Rangfolge war ihre Zuordnung zusätzlich verzerrt, weil sich im Mittel einer Stunde der
+PV-Überschuss der Sonnenminuten und der Netzbezug der Wolkenminuten gegenseitig auslöschten und die
+Differenz als Netzladung im Speicher landete; über einen Wintermonat wurden daraus dreistellige
+Kilowattstunden, die nie geflossen sind.
 
-| | je Minute | aus dem Stundenmittel |
-|---|---|---|
-| PV | 1,467 kWh | 1,467 kWh |
-| Hausverbrauch | 1,000 kWh | 1,000 kWh |
-| Speicherladung | 0,667 kWh | 0,667 kWh |
-| **davon aus dem Netz** | **0,000 kWh** | **0,200 kWh** |
-
-Die Summen überstehen die Mittelung, die Zuordnung nicht: im Mittel löschen sich der PV-Überschuss
-der Sonnenminuten und der Netzbezug der Wolkenminuten gegenseitig aus, und die Differenz landet als
-Netzladung im Speicher. Über einen Wintermonat summiert sich das zu dreistelligen Kilowattstunden,
-die nie geflossen sind.
-
-Ab `COARSE_RESOLUTION_MIN` (5 min) gilt deshalb die umgekehrte Rangfolge: PV lädt zuerst den
-Speicher, Netzladung wird nur ausgewiesen, wenn die Ladung die gesamte PV-Erzeugung der Stunde
-übersteigt - dann hat sie wirklich stattgefunden, etwa nachts. Auch das ist nicht gemessen, aber es
-irrt in die harmlosere Richtung; der Preis ist ein etwas zu hoher direkter PV-Anteil am
-Hausverbrauch. Wie viele Minuten so gerechnet wurden, steht in `coarse_minutes` und wird auf den
-Auswertungsseiten genannt, damit eine Jahresansicht nicht zwei Rechnungsarten mischt, ohne dass man
-es ihr ansieht.
+Seit die Ladung die PV zuerst bekommt, entfällt dieser Unterschied: die Zuordnung hängt nur noch an
+Erzeugung und Ladeleistung, und beide überstehen die Mittelung. `coarse_minutes` zählt die
+betroffenen Minuten trotzdem weiter und wird auf den Auswertungsseiten genannt - nicht mehr, weil
+dort anders gerechnet würde, sondern weil eine Jahresansicht nicht verschweigen soll, dass ein Teil
+ihrer Zahlen aus gröberen Daten stammt.
 
 ## Umsatzsteuer
 

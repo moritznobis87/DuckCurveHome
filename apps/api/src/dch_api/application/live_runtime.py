@@ -856,8 +856,9 @@ class LiveRuntime:
         # anzudichten; v4 prueft die Ladung gegen ein Fuenf-Minuten-Fenster, weil Netzzaehler und
         # Speicher nicht im selben Moment melden; v5 laesst eine Rechnung aus echten Minutenwerten
         # eine importierte Stunde ersetzen, die nur deshalb 60 Minuten zaehlt, weil ein Stundenmittel
-        # ausgerollt wurde. Wer die Kennung nicht mitzieht, laesst die alten Zeilen stehen.
-        marker = "energy.rebuild_supersede_v5"
+        # ausgerollt wurde; v6 gibt die PV zuerst dem Speicher und erst den Rest dem Haus. Wer die
+        # Kennung nicht mitzieht, laesst die alten Zeilen stehen.
+        marker = "energy.rebuild_pvfirst_v6"
         try:
             if await self.repos.has_event(marker):
                 self.energy_rebuild = "erledigt"

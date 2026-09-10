@@ -418,10 +418,18 @@ def test_minute_resolution_sees_no_grid_charging() -> None:
     assert h.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
 
 
-def test_hourly_means_would_invent_grid_charging_without_the_marker() -> None:
-    """Der Fehler, um den es geht: dieselbe Stunde als Mittelwert, mit der Minuten-Rangfolge."""
-    h = hourly_energy(H0, _as_hourly_mean(_mixed_hour()), TARIFF, resolution_min=1)
-    assert h.grid_to_battery_kwh > 0.15  # erfunden: in Wirklichkeit floss nichts aus dem Netz
+def test_die_rangfolge_haengt_nicht_mehr_an_der_aufloesung() -> None:
+    """Dieselbe Stunde je Minute und als Mittelwert muss dieselbe Netzladung ergeben.
+
+    Vorher tat sie das nicht: mit der alten Rangfolge (Haus zuerst) erfand das Stundenmittel
+    0,2 kWh Netzladung, die es je Minute nicht gab. Seit die Ladung die PV zuerst bekommt, ist die
+    Zuordnung von der Auflösung unabhängig - `resolution_min` zählt nur noch die betroffenen
+    Minuten, es rechnet nicht mehr anders.
+    """
+    fein = hourly_energy(H0, _mixed_hour(), TARIFF, resolution_min=1)
+    grob = hourly_energy(H0, _as_hourly_mean(_mixed_hour()), TARIFF, resolution_min=1)
+    assert fein.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
+    assert grob.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
 
 
 def test_hourly_means_with_marker_keep_the_charge_on_the_pv_side() -> None:
@@ -459,7 +467,6 @@ def test_samples_from_totals_reproduces_the_sums_and_fixes_the_split() -> None:
     from hems_core.accounting import samples_from_totals
 
     stored = hourly_energy(H0, _as_hourly_mean(_mixed_hour()), TARIFF, resolution_min=1)
-    assert stored.grid_to_battery_kwh > 0.15
     repaired = hourly_energy(H0, samples_from_totals(stored), TARIFF, resolution_min=60)
     assert repaired.minutes == stored.minutes
     assert repaired.pv_kwh == pytest.approx(stored.pv_kwh, abs=0.002)
@@ -541,3 +548,27 @@ def test_fenster_bringt_die_stundenmittel_verzerrung_nicht_zurueck() -> None:
     h = hourly_energy(H0, with_charge_window(_mixed_hour()), TARIFF)
     assert h.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
     assert h.battery_charge_kwh == pytest.approx(0.667, abs=0.002)
+
+
+def test_ladung_bei_ausreichender_erzeugung_ist_gruenstrom() -> None:
+    """Die Konvention: reicht die Erzeugung für die Ladeleistung, ist die Ladung Sonnenstrom.
+
+    PV 3 kW, Haus 2 kW, Speicher lädt 2 kW: der Zähler meldet 1 kW Bezug, weil zusammen 4 kW
+    gebraucht wurden. Dieser Bezug gehört zum **Haus**, das zur falschen Zeit lief, nicht zum
+    Speicher, der nur genommen hat, was die Sonne hergab.
+    """
+    h = hourly_energy(H0, _minutes(60, pv_kw=3.0, grid_kw=1.0, battery_kw=-2.0), TARIFF)
+    assert h.battery_charge_kwh == pytest.approx(2.0, abs=0.01)
+    assert h.grid_to_battery_kwh == pytest.approx(0.0, abs=1e-6)
+    assert h.pv_to_battery_kwh == pytest.approx(2.0, abs=0.01)
+    # Der gemessene Bezug bleibt, er steht jetzt beim Haus.
+    assert h.import_kwh == pytest.approx(1.0, abs=0.01)
+    assert h.grid_to_house_kwh == pytest.approx(1.0, abs=0.01)
+    assert h.pv_direct_kwh == pytest.approx(1.0, abs=0.01)
+
+
+def test_zu_wenig_erzeugung_bleibt_netzladung() -> None:
+    """Deckt die Erzeugung die Ladeleistung nicht, bleibt die Differenz dem Netz zugeschrieben."""
+    h = hourly_energy(H0, _minutes(60, pv_kw=1.0, grid_kw=2.0, battery_kw=-3.0), TARIFF)
+    assert h.grid_to_battery_kwh == pytest.approx(2.0, abs=0.01)
+    assert h.pv_to_battery_kwh == pytest.approx(1.0, abs=0.01)

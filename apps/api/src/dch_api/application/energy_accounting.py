@@ -729,9 +729,11 @@ class EnergyAccounting:
                 data_since=since,
                 coverage=coverage,
                 estimated_note_de=(
-                    "Quellen-Zuordnung je Minute: PV deckt zuerst den Hausverbrauch, dann die Batterie; "
-                    "die Ladung des Speichers wird dabei gegen den PV-Überschuss eines Fünf-Minuten-"
-                    "Fensters geprüft, weil Netzzähler und Speicher nicht im selben Moment melden. "
+                    "Quellen-Zuordnung je Minute: die Ladung des Speichers bekommt die PV zuerst, "
+                    "der Hausverbrauch den Rest. Reichte die Erzeugung für die Ladeleistung, gilt die "
+                    "Ladung als Sonnenstrom, auch wenn der Zähler gleichzeitig Bezug meldete - dieser "
+                    "Bezug gehört dann zum Haus. Geprüft wird gegen ein Fünf-Minuten-Fenster, weil "
+                    "Erzeugung und Speicher nicht im selben Moment melden. "
                     "Verbraucher erhalten die Quellen anteilig. Geld: Netzbezug × Tibber-Preis, PV- und "
                     f"Batterieanteile mit {self.hems.tariff.feed_in_ct_kwh:g} ct Einspeisevergütung bewertet."
                     + coarse_note(totals)
