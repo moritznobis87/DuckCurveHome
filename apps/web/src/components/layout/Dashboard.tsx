@@ -54,7 +54,7 @@ export function Dashboard() {
    * ein anderer als der des Servers, und die Ansicht lud einen Tag, für den es keine Messwerte gab.
    */
   useEffect(() => {
-    if (historyDay || lastFrameAt === null) return;
+    if (lastFrameAt === null) return;
     let iso: string | null = null;
     try {
       const q = new URLSearchParams(window.location.search).get("tag");
@@ -62,7 +62,14 @@ export function Dashboard() {
     } catch {
       /* ignorieren */
     }
-    void changeDay(iso ?? isoDay(useLiveStore.getState().nowMs()));
+    // Ein Tag in der Adresse gilt auch dann, wenn schon einer geladen ist: aus einer Unterseite
+    // führt „← Dashboard" mit `?tag=` zurück, und das ist eine Navigation innerhalb der Anwendung.
+    // Der Zustandsspeicher überlebt sie, die Bedingung „nur beim ersten Mal" verwarf den Tag daher.
+    if (iso) {
+      if (iso !== historyDay) void changeDay(iso);
+      return;
+    }
+    if (!historyDay) void changeDay(isoDay(useLiveStore.getState().nowMs()));
   }, [historyDay, lastFrameAt]);
 
   useEffect(() => {

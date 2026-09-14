@@ -97,7 +97,11 @@ export function DataCheck() {
         kW-Achse mit hervorgehobener Nulllinie. Der Hausverbrauch ist dabei keine eigene Messung,
         sondern folgt aus der Bilanz Haus = PV + Netz + Speicher. Läuft die PV und zeigt das Netz
         trotzdem Bezug, sieht man hier unmittelbar, ob der Hausverbrauch über der Erzeugung lag oder
-        ob die Erzeugungsreihe selbst eine Lücke hat.
+        ob die Erzeugungsreihe selbst eine Lücke hat. Der Text darunter nimmt diese zweite Frage noch
+        einmal auf: zwischen der ersten und der letzten Minute mit Erzeugung zählt er die Minuten auf
+        genau 0,00 kW und meldet es, wenn sich der Netzwert in derselben Strecke weiterbewegt. Dann
+        liefert der Zähler, die Erzeugungsmessung aber nicht - und die ausgewiesene Netzladung ist
+        eine Folge der Lücke, kein Verhalten des Speichers.
       </Note>
     </ReportShell>
   );

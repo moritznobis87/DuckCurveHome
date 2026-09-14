@@ -2,27 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { isoDate, isoToday } from "@/lib/day";
 import type { Period } from "@/lib/api/models";
 
 export const PERIOD_LABEL: Record<Period, string> = { day: "Tag", week: "Woche", month: "Monat", year: "Jahr" };
 const PERIODS: Period[] = ["day", "week", "month", "year"];
 
+export { isoToday };
+
 export const de1 = (n: number | null | undefined, digits = 1): string => (n == null || Number.isNaN(n) ? "-" : n.toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits }));
 export const eur = (n: number | null | undefined): string => (n == null ? "-" : `${de1(n, 2)} €`);
 export const pct = (frac: number | null | undefined): string => (frac == null ? "-" : `${Math.round(frac * 100)} %`);
 
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Heutiges Datum im Haus-Zeitraum (Europe/Berlin), unabhängig von der Zeitzone des Geräts. */
-export function isoToday(): string {
-  try {
-    return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  } catch {
-    return isoDate(new Date());
-  }
-}
 
 function shift(anchor: string, period: Period, dir: -1 | 1): string {
   const d = new Date(`${anchor}T12:00:00`);
@@ -99,7 +90,9 @@ export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, o
     <main className="dashboard-bg report-main flex min-h-[100dvh] flex-col gap-4 p-5 text-text-1">
       <header className="report-header flex h-14 shrink-0 items-center justify-between rounded-[3px] border border-line-2 px-5" style={{ background: "var(--surface-glass)", backdropFilter: "blur(18px)" }}>
         <div className="flex min-w-0 items-center gap-5">
-          <Link href="/" className="kicker whitespace-nowrap" style={{ fontSize: 12 }}>← Dashboard</Link>
+          {/* Der Tag reist mit zurueck. Wer vom 13. September aus auf das Dashboard geht, will dort
+              den 13. September sehen und nicht wieder heute. */}
+          <Link href={isToday ? "/" : `/?tag=${anchor}`} className="kicker whitespace-nowrap" style={{ fontSize: 12 }}>← Dashboard</Link>
           <div className="flex min-w-0 items-baseline gap-2.5">
             <span className="whitespace-nowrap text-[17px] font-semibold tracking-[-.02em]">{title}</span>
             <span className="kicker truncate" style={{ fontSize: 12 }}>{kicker}</span>

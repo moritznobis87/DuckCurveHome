@@ -93,7 +93,11 @@ export function PvReport() {
         <Stat label="Eigenverbrauch" value={pct(t?.self_consumption_share)} hint={t ? `${de1(t.pv_direct_kwh + t.pv_to_battery_kwh)} kWh selbst genutzt` : undefined} />
         <Stat label="Eingespeist" value={de1(t?.export_kwh)} unit="kWh" tone="mist" hint={t ? `Erlös ${eur(t.export_revenue_eur)} bei ${de1(data?.meta.feed_in_ct_kwh, 1)} ct` : undefined} />
         <Stat label="Ersparnis direkt" value={eur(t?.pv_direct_savings_eur)} tone="amber" hint="gegenüber Netzbezug" />
-        <Stat label="Prognose heute" value={de1(fc.today)} unit="kWh" hint={isToday && t ? `${de1(t.pv_kwh)} kWh bisher erzeugt` : "Tagesprognose"} />
+        {/* Die beiden Prognosewerte und die Kurve darunter kommen aus dem laufenden Plan. Der kennt
+            nur heute und morgen; für einen vergangenen Tag gibt es keine Vorhersage mehr. Blättert
+            man zurück, folgt der Rest der Seite dem gewählten Tag, diese drei Felder aber nicht -
+            und genau das muss dastehen, sonst liest man sie als Prognose des gewählten Tages. */}
+        <Stat label="Prognose heute" value={de1(fc.today)} unit="kWh" hint={isToday ? (t ? `${de1(t.pv_kwh)} kWh bisher erzeugt` : "Tagesprognose") : "für heute, nicht für den gewählten Tag"} />
         <Stat label="Prognose morgen" value={fc.tomorrow > 0 ? de1(fc.tomorrow) : "-"} unit="kWh" hint={fc.tomorrow > 0 ? "aus Wetterprognose" : "noch nicht verfügbar"} />
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
@@ -108,7 +112,7 @@ export function PvReport() {
       </div>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Heute und morgen" right={<Link href="/prognose" className="text-amber">Prognosegüte →</Link>} />
+          <CardHead title={isToday ? "Heute und morgen" : "Prognose heute und morgen"} right={<Link href="/prognose" className="text-amber">Prognosegüte →</Link>} />
           <div className="min-h-0 flex-1"><EChart option={fcOpt} /></div>
         </Card>
         <PeriodStrip

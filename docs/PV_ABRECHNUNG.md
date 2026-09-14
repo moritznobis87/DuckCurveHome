@@ -108,6 +108,24 @@ betroffenen Minuten trotzdem weiter und wird auf den Auswertungsseiten genannt -
 dort anders gerechnet würde, sondern weil eine Jahresansicht nicht verschweigen soll, dass ein Teil
 ihrer Zahlen aus gröberen Daten stammt.
 
+### Wenn die Erzeugungsmessung ausfällt
+
+Eine Annahme trägt die ganze Rangfolge: dass `pv_kw` die Erzeugung ist. Meldet der
+Erzeugungszähler nicht mehr, während Netz- und Speicherwerte weiterlaufen, steht dort 0,00 kW, die
+Minutenzeile ist trotzdem vollständig, und `fill_gaps` hält diese gemessene Null beliebig lange.
+Die Rechnung ist dann in sich richtig und im Ergebnis falsch: keine Erzeugung, also die ganze
+Ladung aus dem Netz.
+
+Von außen ist das nicht zu sehen, an der Signatur aber schon. Die Prüfseite `/daten` grenzt dazu
+erst die Erzeugungsstrecke des Tages ab: von der ersten bis zur letzten Minute mit einem Wert über
+null. Nur darin wird gezählt. Das ist die einzige Abgrenzung, die ohne Sonnenstand auskommt und
+trotzdem nie falschen Alarm schlägt, denn vor Sonnenaufgang und nach Sonnenuntergang steht die
+Anlage zu Recht auf null; eine feste Uhrzeit als Grenze wäre im September falsch, sobald sie im
+Dezember stimmt. Innerhalb der Strecke sucht die Prüfung die längste zusammenhängende Folge exakter
+Nullen und misst, wie weit sich der Netzwert in derselben Folge bewegt. Bewegt er sich, lief der
+Logger und die Erzeugungsmessung nicht: eine halbe Stunde exakt gleicher Nullen zwischen zwei
+Sonnenstunden hat keine Wetterursache. Bewegt sich auch das Netz nicht, bleibt der Hinweis aus.
+
 ## Umsatzsteuer
 
 | Posten | Grundlage | Richtung |

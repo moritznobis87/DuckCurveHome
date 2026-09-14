@@ -206,6 +206,78 @@ def _ct(value: float | None) -> str:
     return f"{value:7.1f}" if value is not None else "      -"
 
 
+# Eine Strecke gilt erst ab dieser Länge als auffällig. Kürzere Nullen entstehen beim Ein- und
+# Ausschwingen des Wechselrichters und bei durchziehenden Wolken.
+FLAT_ZERO_MIN = 20
+# Ab dieser Bewegung des Netzwerts innerhalb der Null-Strecke steht fest, dass der Logger lief.
+GRID_MOVES_KW = 0.2
+
+
+def _pv_series_note(samples: list[MinuteSample], tz: ZoneInfo) -> list[str]:
+    """Gegenprobe auf die Erzeugungsreihe selbst: fehlt sie, oder steht sie mitten am Tag auf Null?
+
+    Die Zuordnung der Ladung hängt an `pv_kw`. Meldet der Erzeugungszähler nicht mehr, während
+    Netz und Speicher weiterlaufen, dann ist die Erzeugung in der Rechnung null, die Ladung damit
+    vollständig aus dem Netz - und die Auswertung behauptet etwas, das nur an der Lücke liegt.
+    Von außen ist die Lücke nicht zu sehen, denn die Minutenzeile ist ja da.
+
+    Geprüft wird deshalb nur die Strecke **zwischen der ersten und der letzten Minute mit
+    Erzeugung**. Das ist keine Sparsamkeit, sondern die einzige Abgrenzung, die ohne Sonnenstand
+    auskommt und trotzdem nie falschen Alarm schlägt: vor Sonnenaufgang und nach Sonnenuntergang
+    steht die Anlage zu Recht auf null, und eine feste Uhrzeit als Grenze wäre im September falsch,
+    sobald sie im Dezember stimmt. Innerhalb der Erzeugungsstrecke dagegen hat eine halbe Stunde
+    exakt gleicher Nullen keine Wetterursache. Bewegt sich der Netzwert in derselben Strecke, lief
+    der Logger, und es bleibt nur die ausgefallene Erzeugungsmessung.
+    """
+    if not samples:
+        return []
+    out: list[str] = []
+    missing = sum(1 for s in samples if s.pv_kw is None)
+    live = [s for s in samples if s.pv_kw is not None and s.pv_kw > 0.005]
+    if not live:
+        out.append(
+            f"Erzeugungsreihe: an keiner der {len(samples)} Minuten dieses Tages wurde Erzeugung "
+            f"gemessen ({missing} Minuten ohne Wert)."
+        )
+        return out
+    first, last = live[0].ts, live[-1].ts
+    inner = [s for s in samples if first <= s.ts <= last]
+    zeros = sum(1 for s in inner if s.pv_kw is not None and s.pv_kw <= 0.005)
+    out.append(
+        f"Erzeugungsreihe: gemessen von {first.astimezone(tz):%H:%M} bis "
+        f"{last.astimezone(tz):%H:%M}, darin {zeros} Minuten auf genau 0,00 kW"
+        f"{f' ({missing} Minuten des Tages ohne Wert)' if missing else ''}"
+    )
+    best: list[MinuteSample] = []
+    run: list[MinuteSample] = []
+    for smp in inner:
+        flat = smp.pv_kw is not None and smp.pv_kw <= 0.005
+        if flat and run and smp.ts - run[-1].ts == timedelta(minutes=1):
+            run.append(smp)
+        elif flat:
+            run = [smp]
+        else:
+            run = []
+        if len(run) > len(best):
+            best = list(run)
+    if len(best) < FLAT_ZERO_MIN:
+        return out
+    grid = [s.grid_kw for s in best if s.grid_kw is not None]
+    span = max(grid) - min(grid) if grid else 0.0
+    out.append(
+        f"  laengste Null-Strecke innerhalb der Erzeugung: "
+        f"{best[0].ts.astimezone(tz):%H:%M}-{best[-1].ts.astimezone(tz):%H:%M} "
+        f"({len(best)} min), Netzwert bewegt sich darin um {span:.2f} kW"
+    )
+    if span > GRID_MOVES_KW:
+        out.append(
+            "  -> der Zaehler liefert in dieser Strecke, die Erzeugung nicht: "
+            "Verdacht auf Ausfall der Erzeugungsmessung, nicht auf fehlende Sonne. "
+            "Eine Ladung in dieser Strecke steht deshalb zu Unrecht als Netzladung."
+        )
+    return out
+
+
 def coarse_note(totals: EnergyTotals) -> str:
     """Zusatz zur Methodenangabe, wenn ein Teil des Zeitraums nur als Stundenmittel vorliegt.
 
@@ -629,7 +701,10 @@ class EnergyAccounting:
         """
         start, end = self.period_bounds("day", day)
         raw = await self.minute_rows(start, end)
-        filled = with_charge_window(fill_gaps(samples_from_rows(raw)))
+        # Ungefuellt und gefuellt getrennt halten: `fill_gaps` haelt den letzten Wert, und genau
+        # das wuerde eine ausgefallene Erzeugungsmessung unsichtbar machen.
+        plain = samples_from_rows(raw)
+        filled = with_charge_window(fill_gaps(plain))
         stored = await self.hours(start, end)
         out: list[str] = []
         out.append(f"Diagnose {day:%d.%m.%Y} (Ortszeit {self.tz})")
@@ -665,6 +740,10 @@ class EnergyAccounting:
         if not filled:
             out.append("Keine Minutenwerte fuer diesen Tag: die Stunden stammen aus dem Import.")
             return "\n".join(out)
+        note = _pv_series_note(plain, self.tz)
+        if note:
+            out.extend(note)
+            out.append("")
         # Zusammenhängende Strecken, in denen der Speicher lädt, während der Zähler Bezug meldet.
         # Genau daran entscheidet sich die Frage: ein Messversatz zwischen zwei Geräten dauert ein,
         # zwei Minuten, eine Regelungseigenschaft des Speichers dauert eine halbe Stunde.
