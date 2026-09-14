@@ -22,12 +22,14 @@ interface LiveStore {
   lastFrameAt: number | null;
   serverOffsetMs: number; // serverTime - clientTime
   history: HistoryPoint[];
-  historyRange: "yesterday" | "today" | "tomorrow";
+  // Der angezeigte Kalendertag als ISO-Datum. Vorher waren es drei feste Stufen; die Ansicht
+  // soll aber jedem Tag folgen können, auf den man blättert.
+  historyDay: string;
   setState: (s: LiveState) => void;
   setPlan: (p: Plan) => void;
   pushDecision: (d: Decision) => void;
   setConnection: (c: Connection) => void;
-  setHistory: (rows: HistoryPoint[], range: "yesterday" | "today" | "tomorrow") => void;
+  setHistory: (rows: HistoryPoint[], day: string) => void;
   nowMs: () => number;
 }
 
@@ -96,12 +98,15 @@ export const useLiveStore = create<LiveStore>((set, get) => ({
   lastFrameAt: null,
   serverOffsetMs: 0,
   history: [],
-  historyRange: "today",
+  historyDay: "",
   setState: (s) =>
     set((prev) => {
       const clientNow = Date.now();
       const serverNow = new Date(s.system.server_time).getTime();
-      const history = prev.historyRange === "today" ? appendLiveSample(prev.history, s, liveCounts) : prev.history;
+      // Live-Werte nur an den laufenden Tag anhängen. Ein vergangener Tag ist abgeschlossen;
+      // ein frischer Messwert gehört dort nicht hinein.
+      const today = new Date(clientNow).toLocaleDateString("sv-SE");
+      const history = prev.historyDay === today ? appendLiveSample(prev.history, s, liveCounts) : prev.history;
       return { state: s, lastFrameAt: clientNow, serverOffsetMs: serverNow - clientNow, connection: "live", history };
     }),
   setPlan: (p) => set({ plan: p }),
@@ -111,9 +116,9 @@ export const useLiveStore = create<LiveStore>((set, get) => ({
       return { decisions: [d, ...prev.decisions].slice(0, 50) };
     }),
   setConnection: (c) => set({ connection: c }),
-  setHistory: (rows, range) => {
+  setHistory: (rows, day) => {
     liveCounts.clear();
-    set({ history: rows, historyRange: range });
+    set({ history: rows, historyDay: day });
   },
   nowMs: () => Date.now() + get().serverOffsetMs,
 }));

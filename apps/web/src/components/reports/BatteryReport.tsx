@@ -50,7 +50,7 @@ function dayBounds(anchor: string): [Date, Date] {
 export function BatteryReport() {
   const { period, anchor, setPeriod, move, today } = usePeriod();
   const { data, error } = useReport<EnergySummary>(api.energySummary, period, anchor);
-  const strip = useMultiPeriod<EnergySummary>(api.energySummary);
+  const strip = useMultiPeriod<EnergySummary>(api.energySummary, anchor);
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const isDay = period === "day";
   const isToday = anchor === isoToday();
@@ -148,6 +148,7 @@ export function BatteryReport() {
           {isDay && rows.length > 0 ? <div className="min-h-0 flex-1"><EChart option={dayOpt} /></div> : <div className="flex flex-1 items-center justify-center"><Note>{isDay ? "Für diesen Tag liegen keine Minutenwerte vor; die Stundenbilanzen oben stammen dann aus dem Historienimport." : "Der Verlauf wird je Tag gezeigt; für längere Zeiträume gelten die Stundenbilanzen oben."}</Note></div>}
         </Card>
         <PeriodStrip
+          anchor={anchor}
           title="Speicher im Überblick"
           rows={[
             { label: "Ersparnis", value: (p) => val(p, (s) => eur(s.totals.battery_savings_eur)), tone: "amber" },

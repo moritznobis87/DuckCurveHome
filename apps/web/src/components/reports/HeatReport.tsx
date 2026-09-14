@@ -69,7 +69,7 @@ function Fact({ k, v }: { k: string; v: string }) {
 export function HeatReport() {
   const { period, anchor, setPeriod, move, today } = usePeriod();
   const { data, error } = useReport<HeatReportData>(api.energyHeat, period, anchor);
-  const strip = useMultiPeriod<HeatReportData>(api.energyHeat);
+  const strip = useMultiPeriod<HeatReportData>(api.energyHeat, anchor);
   const t = data?.summary.totals;
   const pvShare = t && t.heat_pump_kwh > 0 ? (t.heat_pump_pv_kwh + t.heat_pump_battery_kwh) / t.heat_pump_kwh : null;
   const paidCt = t && t.heat_pump_grid_kwh > 0.01 ? (t.heat_pump_cost_eur / t.heat_pump_grid_kwh) * 100 : null;
@@ -112,6 +112,7 @@ export function HeatReport() {
           {period === "day" && hasBuffer ? <div className="min-h-0 flex-1"><EChart option={bufOpt} /></div> : <div className="flex flex-1 items-center justify-center"><Note>{period === "day" ? "Keine Puffertemperaturen für diesen Tag aufgezeichnet." : "Wechseln Sie auf „Tag“, um Temperaturen und Leistung im Verlauf zu sehen."}</Note></div>}
         </Card>
         <PeriodStrip
+          anchor={anchor}
           title="Wärmepumpe im Überblick"
           rows={[
             { label: "Bezahlt", value: (p) => val(p, (s) => eur(s.summary.totals.heat_pump_cost_eur)), tone: "ember" },

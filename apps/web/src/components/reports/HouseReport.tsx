@@ -27,7 +27,7 @@ export function HouseReport() {
   const role = useRole();
   const { period, anchor, setPeriod, move, today } = usePeriod();
   const { data, error } = useReport<EnergySummary>(api.energySummary, period, anchor);
-  const strip = useMultiPeriod<EnergySummary>(api.energySummary);
+  const strip = useMultiPeriod<EnergySummary>(api.energySummary, anchor);
   const t = data?.totals;
   const consOpt = useMemo(() => stackedBars(data?.buckets ?? [], CONSUMERS), [data]);
   const srcOpt = useMemo(() => stackedBars(data?.buckets ?? [], SOURCES), [data]);
@@ -76,6 +76,7 @@ export function HouseReport() {
         </Card>
       </div>
       <PeriodStrip
+          anchor={anchor}
         title="Haus im Überblick"
         rows={[
           { label: "Verbrauch · kWh", value: (p) => val(p, (s) => de1(s.totals.house_kwh, s.totals.house_kwh >= 100 ? 0 : 1)) },

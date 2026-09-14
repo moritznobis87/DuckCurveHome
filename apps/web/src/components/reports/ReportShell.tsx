@@ -93,7 +93,7 @@ export function usePeriod(initial: Period = "day"): { period: Period; anchor: st
   };
 }
 
-export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, onToday, right, children }: { title: string; kicker: string; period: Period; anchor: string; onPeriod: (p: Period) => void; onMove: (dir: -1 | 1) => void; onToday: () => void; right?: React.ReactNode; children: React.ReactNode }) {
+export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, onToday, right, children, showPeriods = true }: { title: string; kicker: string; period: Period; anchor: string; onPeriod: (p: Period) => void; onMove: (dir: -1 | 1) => void; onToday: () => void; right?: React.ReactNode; children: React.ReactNode; showPeriods?: boolean }) {
   const isToday = !anchor || anchor === isoToday();
   return (
     <main className="dashboard-bg report-main flex min-h-[100dvh] flex-col gap-4 p-5 text-text-1">
@@ -113,7 +113,9 @@ export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, o
             <button onClick={() => onMove(1)} aria-label="Weiter" className="mono px-2.5 py-1 text-[13px] text-text-2 hover:text-text-1">›</button>
             {!isToday ? <button onClick={onToday} className="mono px-2 py-1 text-[11px] uppercase tracking-[.08em] text-amber">heute</button> : null}
           </div>
-          <div className="report-periods flex gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Zeitraum">
+          {/* Die Prüfansicht kennt nur Tage: Minutenwerte über eine Woche zu legen ergäbe ein Bild,
+              in dem man nichts mehr erkennt. Dort bleibt der Schalter deshalb weg. */}
+          <div className="report-periods flex gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Zeitraum" hidden={!showPeriods}>
             {PERIODS.map((p) => (
               <button key={p} onClick={() => onPeriod(p)} className="px-3 py-1.5 text-[12px] font-medium" style={{ background: period === p ? "var(--amber)" : "transparent", color: period === p ? "var(--petrol)" : "var(--text-2)", borderRadius: 2 }}>
                 {PERIOD_LABEL[p]}

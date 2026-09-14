@@ -30,6 +30,9 @@ const PATHS: Record<string, string> = {
   // irgendwoher - hier geht es um ein bestimmtes Gerät, das neben der Wärmepumpe steht.
   stove: '<rect x="4" y="2.6" width="16" height="17.8" rx="2"/><path d="M4 7.5h16"/><path d="M12 10.6c1.7 1.7 2.7 2.9 2.7 4.3a2.7 2.7 0 0 1-5.4 0c0-1.4 1-2.6 2.7-4.3z"/><path d="M7.5 20.4v1.4M16.5 20.4v1.4"/>',
   thermo: '<path d="M10 4a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 9v6"/>',
+  // Daten prüfen: Kurve über einem Raster - Messreihe und Zahlen, die beiden Dinge, die diese
+  // Seite nebeneinanderstellt. Abgesetzt von `calendar` (reines Raster) und `chart` (nur Balken).
+  table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 9v11"/><path d="M6 16.5l2.2-3 2.6 2 3-4.2 2.4 2.6 2-2.4"/>',
 };
 
 export function Icon({ name, size = 22, color = "currentColor", strokeWidth = 1.75 }: { name: keyof typeof PATHS | string; size?: number; color?: string; strokeWidth?: number }) {

@@ -48,6 +48,12 @@ export const api = {
   // sehen, und genau der beantwortet die Frage „was ist an diesem Tag wirklich passiert?".
   historyDay: (start: Date, end: Date) =>
     request<History>(`/history?range=custom&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`),
+  // Reiner Text, kein JSON-Umschlag: die Diagnose ist eine Tabelle zum Lesen, keine Datenstruktur.
+  diagnoseDay: async (day: string): Promise<string> => {
+    const res = await fetch(`/api/dch/energy/diagnose?day=${day}`, { cache: "no-store" });
+    if (!res.ok) throw new ApiError("http_error", `Fehler ${res.status}`, res.status);
+    return res.text();
+  },
   batteryState: () => request<BatteryLive>("/control/battery"),
   setBatteryMode: (body: BatteryModeIn) =>
     request<BatteryLive>("/control/battery/mode", { method: "POST", body: JSON.stringify(body) }),

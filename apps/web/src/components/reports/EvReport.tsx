@@ -23,7 +23,7 @@ const fmtDay = (iso: string) => new Date(iso).toLocaleDateString("de-DE", { week
 export function EvReport() {
   const { period, anchor, setPeriod, move, today } = usePeriod();
   const { data, error } = useReport<EvReportData>(api.energyEv, period, anchor);
-  const strip = useMultiPeriod<EvReportData>(api.energyEv);
+  const strip = useMultiPeriod<EvReportData>(api.energyEv, anchor);
   const t = data?.summary.totals;
   const pvShare = t && t.ev_kwh > 0 ? (t.ev_pv_kwh + t.ev_battery_kwh) / t.ev_kwh : null;
   const paidCt = t && t.ev_grid_kwh > 0.01 ? (t.ev_cost_eur / t.ev_grid_kwh) * 100 : null;
@@ -94,6 +94,7 @@ export function EvReport() {
           )}
         </Card>
         <PeriodStrip
+          anchor={anchor}
           title="Wallbox im Überblick"
           rows={[
             { label: "Geladen · kWh", value: (p) => val(p, (s) => de1(s.summary.totals.ev_kwh, s.summary.totals.ev_kwh >= 100 ? 0 : 1)), tone: "mist" },

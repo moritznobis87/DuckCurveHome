@@ -23,6 +23,7 @@ const ITEMS = [
   { href: "/wallbox", icon: "car", label: "Wallbox" },
   { href: "/prognose", icon: "chart", label: "Prognosegüte" },
   { href: "/jahr", icon: "calendar", label: "Jahreskarte" },
+  { href: "/daten", icon: "table", label: "Daten prüfen" },
   { href: "/settings", icon: "gear", label: "Einstellungen", ownerOnly: true },
 ] as const;
 

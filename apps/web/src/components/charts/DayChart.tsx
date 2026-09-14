@@ -52,15 +52,26 @@ export function dayBounds(nowMs: number): [number, number] {
 
 /** Anordnung der beiden Zeitreihen: nebeneinander (Standard), untereinander oder in einem Plot mit zwei y-Achsen. Umschalten per ?chart=side|stacked|overlay, wird pro Gerät gemerkt. */
 export type ChartLayout = "stacked" | "side" | "overlay";
-export type ChartRange = "yesterday" | "today" | "tomorrow";
-const RANGE_LABEL: Record<ChartRange, string> = { yesterday: "Gestern", today: "Heute", tomorrow: "Morgen" };
+/** Ein Kalendertag als ISO-Datum in Ortszeit. `sv-SE` liefert genau YYYY-MM-DD. */
+export function isoDay(ms: number): string {
+  return new Date(ms).toLocaleDateString("sv-SE");
+}
 
-export function DayChart({ history, plan, nowMs, range, onRange, layout = "side" }: { history: HistoryPoint[]; plan: Plan | null; nowMs: number; range: ChartRange; onRange: (r: ChartRange) => void; layout?: ChartLayout }) {
-  const [start, end] = useMemo(() => {
-    const [s, e] = dayBounds(nowMs);
-    const shift = range === "today" ? 0 : range === "yesterday" ? -86400000 : 86400000;
-    return [s + shift, e + shift];
-  }, [nowMs, range]);
+/** Ortszeit-Mitternacht des Tages und des Folgetags. */
+function boundsOf(dayIso: string): [number, number] {
+  const s = new Date(`${dayIso}T00:00:00`).getTime();
+  return [s, s + 86400000];
+}
+
+export function DayChart({ history, plan, nowMs, dayIso, onDay, layout = "side" }: { history: HistoryPoint[]; plan: Plan | null; nowMs: number; dayIso: string; onDay: (iso: string) => void; layout?: ChartLayout }) {
+  // Ein leerer Tag heisst „noch nicht gesetzt" und darf nicht bis in die Beschriftung durchschlagen
+  // - dort stand sonst „Invalid Date", bis die erste Antwort da war.
+  const day = dayIso || isoDay(nowMs);
+  const [start, end] = useMemo(() => boundsOf(day), [day]);
+  const isToday = day === isoDay(nowMs);
+  // Prognose und Fahrplan gibt es nur für das, was noch kommt. Für einen abgeschlossenen Tag hätte
+  // der aktuelle Plan dort nichts zu suchen - er ist der Plan von heute, nicht der von damals.
+  const isPast = end <= nowMs;
 
   const option = useMemo<EChartsCoreOption>(() => {
     const hx = (ts: number) => (ts - start) / 3600000;
@@ -73,7 +84,7 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
       const t = new Date(i.ts).getTime();
       return t >= nowMs - 15 * 60000 && t >= start && t <= end;
     });
-    const showForecast = range !== "yesterday";
+    const showForecast = !isPast;
     const pvForecast = showForecast ? future.map((i) => [hx(new Date(i.ts).getTime()), i.expected_pv_kw]) : [];
     // Alles ab jetzt, nicht „morgen": innerhalb der Tagesansicht sind das weiterhin die Preise von
     // heute, nur noch nicht eingetreten. Die Reihe hieß darum falsch.
@@ -112,7 +123,7 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
       splitLine: { show: false },
       axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11, formatter: (v: number) => `${String(v % 24).padStart(2, "0")}:00` },
     };
-    const nowLine = range === "today" ? { symbol: "none", silent: true, lineStyle: { color: C.pv, type: "dashed", width: 1.5 }, label: { show: false }, data: [{ xAxis: hx(nowMs) }] } : undefined;
+    const nowLine = isToday ? { symbol: "none", silent: true, lineStyle: { color: C.pv, type: "dashed", width: 1.5 }, label: { show: false }, data: [{ xAxis: hx(nowMs) }] } : undefined;
     return {
       animation: false,
       backgroundColor: "transparent",
@@ -181,7 +192,7 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
         { name: "Preis voraus", type: "line", step: "end", xAxisIndex: priceX, yAxisIndex: 1, data: priceFuture, showSymbol: false, lineStyle: { color: C.price, width: 2, type: [7, 7], opacity: 0.8 }, z: 2 },
       ],
     };
-  }, [history, plan, nowMs, start, end, range, layout]);
+  }, [history, plan, nowMs, start, end, isToday, isPast, layout]);
 
   const Legend = ({ color, label, dashed = false }: { color: string; label: string; dashed?: boolean }) => (
     <span className="flex items-center gap-2 text-[12px] text-text-2">
@@ -189,16 +200,29 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
       {label}
     </span>
   );
-  const Seg = ({ v }: { v: ChartRange }) => (
-    <button onClick={() => onRange(v)} className="px-3.5 py-1.5 text-[12px] font-medium tracking-[.02em] transition-colors" style={{ background: range === v ? "var(--amber)" : "transparent", color: range === v ? "var(--petrol)" : "var(--text-2)", borderRadius: 2 }}>
-      {RANGE_LABEL[v]}
+  // Kalendernavigation statt drei fester Stufen. Gestern und morgen bleiben als Schnellwahl, weil
+  // sie die häufigsten Sprünge sind; die Pfeile kommen an jeden anderen Tag.
+  const shifted = (days: number) => isoDay(new Date(`${day}T12:00:00`).getTime() + days * 86400000);
+  const Nav = ({ dir, label }: { dir: -1 | 1; label: string }) => (
+    <button onClick={() => onDay(shifted(dir))} aria-label={label} title={label} className="px-2.5 py-1.5 text-[13px] text-text-2 transition-colors hover:text-text-1">
+      {dir < 0 ? "‹" : "›"}
     </button>
   );
+  const Quick = ({ iso, text }: { iso: string; text: string }) => (
+    <button onClick={() => onDay(iso)} className="px-3 py-1.5 text-[12px] font-medium tracking-[.02em] transition-colors" style={{ background: day === iso ? "var(--amber)" : "transparent", color: day === iso ? "var(--petrol)" : "var(--text-2)", borderRadius: 2 }}>
+      {text}
+    </button>
+  );
+  const heute = isoDay(nowMs);
+  const gestern = isoDay(nowMs - 86400000);
+  const morgen = isoDay(nowMs + 86400000);
+  const titel =
+    day === heute ? "Heute" : day === gestern ? "Gestern" : day === morgen ? "Morgen" : new Date(`${day}T00:00:00`).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
   return (
     <Card className="flex-1" style={{ padding: 16, minHeight: 0 }}>
       <div className="chart-head flex items-center justify-between">
         <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
-          <h2 className="kicker m-0">{RANGE_LABEL[range]} · Leistung {layout === "side" ? "|" : "und"} Strompreis</h2>
+          <h2 className="kicker m-0">{titel} · Leistung {layout === "side" ? "|" : "und"} Strompreis</h2>
           {/* Zwei Legenden statt einer Reihe aus sechs Einträgen. Leistung und Preis stehen in
               getrennten Flächen mit eigenen Achsen; eine gemeinsame Legende liess offen, welcher
               Eintrag zu welcher Fläche gehört, und machte den Strompreis optisch zum vierten
@@ -206,19 +230,21 @@ export function DayChart({ history, plan, nowMs, range, onRange, layout = "side"
           <div className="chart-legend flex flex-wrap items-baseline gap-x-5 gap-y-1">
             <span className="mono text-[11px] uppercase tracking-[.1em]" style={{ color: "var(--text-3)" }}>kW</span>
             <Legend color={C.pv} label="PV" />
-            <Legend color={C.pv} label="PV-Prognose" dashed />
+            {isPast ? null : <Legend color={C.pv} label="PV-Prognose" dashed />}
             <Legend color={C.hp} label="Wärmepumpe" />
             <Legend color={C.ev} label="Wallbox" />
             <span aria-hidden className="h-3 w-px" style={{ background: "var(--line-2)" }} />
             <span className="mono text-[11px] uppercase tracking-[.1em]" style={{ color: "var(--text-3)" }}>ct/kWh</span>
             <Legend color={C.price} label="Strompreis" />
-            <Legend color={C.price} label="Preis voraus" dashed />
+            {isPast ? null : <Legend color={C.price} label="Preis voraus" dashed />}
           </div>
         </div>
-        <div className="flex shrink-0 gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Zeitraum">
-          <Seg v="yesterday" />
-          <Seg v="today" />
-          <Seg v="tomorrow" />
+        <div className="flex shrink-0 items-center gap-1 rounded-[3px] border border-line-2 p-1" aria-label="Tag wählen">
+          <Nav dir={-1} label="Tag zurück" />
+          <Quick iso={gestern} text="Gestern" />
+          <Quick iso={heute} text="Heute" />
+          <Quick iso={morgen} text="Morgen" />
+          <Nav dir={1} label="Tag vor" />
         </div>
       </div>
       <div className="mt-1 min-h-0 flex-1">

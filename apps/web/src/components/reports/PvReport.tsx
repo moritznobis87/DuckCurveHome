@@ -39,7 +39,7 @@ export function PvReport() {
   const { period, anchor, setPeriod, move, today } = usePeriod();
   const role = useRole();
   const { data, error } = useReport<EnergySummary>(api.energySummary, period, anchor);
-  const strip = useMultiPeriod<EnergySummary>(api.energySummary);
+  const strip = useMultiPeriod<EnergySummary>(api.energySummary, anchor);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -112,6 +112,7 @@ export function PvReport() {
           <div className="min-h-0 flex-1"><EChart option={fcOpt} /></div>
         </Card>
         <PeriodStrip
+          anchor={anchor}
           title="PV im Überblick"
           rows={[
             { label: "Erzeugt · kWh", value: (p) => val(p, (s) => de1(s.totals.pv_kwh, s.totals.pv_kwh >= 100 ? 0 : 1)), tone: "amber" },
