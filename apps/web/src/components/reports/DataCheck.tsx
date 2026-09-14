@@ -45,8 +45,13 @@ export function DataCheck() {
   }, [load]);
 
   const overlay = useMemo(() => powerOverlay(rows), [rows]);
-  const [start, end] = anchor ? dayBounds(anchor) : [new Date(), new Date()];
-  const csv = `/api/dch/export/minutes?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`;
+  // Ohne Anker keine Adresse. Sie aus `new Date()` zu bilden, ergäbe beim Vorrendern auf dem Server
+  // eine andere Zeichenkette als im Browser, und React beanstandet die Abweichung beim Hydrieren.
+  const csv = useMemo(() => {
+    if (!anchor) return null;
+    const [start, end] = dayBounds(anchor);
+    return `/api/dch/export/minutes?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`;
+  }, [anchor]);
 
   return (
     <ReportShell
@@ -79,9 +84,11 @@ export function DataCheck() {
         <CardHead
           title="Stundenbilanz und auffällige Strecken"
           right={
-            <a href={csv} className="text-amber" download>
-              Minutenwerte dieses Tages als CSV ›
-            </a>
+            csv ? (
+              <a href={csv} className="text-amber" download>
+                Minutenwerte dieses Tages als CSV ›
+              </a>
+            ) : undefined
           }
         />
         {/* Bewusst als Text und nicht als gestaltete Tabelle: das ist dieselbe Ausgabe, die auch
