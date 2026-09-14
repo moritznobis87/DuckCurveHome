@@ -53,7 +53,7 @@ export function PvAccounting() {
   // Steuerlich zählt das Kalenderjahr; die kürzeren Zeiträume sind der Blick hinein, nicht umgekehrt.
   const { period, anchor, setPeriod, move, today } = usePeriod("year");
   const { data, error } = useReport<PvTaxReport>(api.energyPv, period, anchor);
-  const strip = useMultiPeriod<PvTaxReport>(api.energyPv);
+  const strip = useMultiPeriod<PvTaxReport>(api.energyPv, anchor);
   const t = data?.totals;
   const vatOff = data?.meta.small_business === true;
 
@@ -166,6 +166,7 @@ export function PvAccounting() {
       </Card>
 
       <PeriodStrip
+          anchor={anchor}
         title="Zeiträume im Vergleich"
         rows={[
           { label: "Einspeisung · kWh", value: (p) => val(p, (r) => de1(r.totals.export_kwh, r.totals.export_kwh >= 100 ? 0 : 1)), tone: "mist" },

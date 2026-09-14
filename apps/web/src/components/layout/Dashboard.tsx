@@ -10,7 +10,7 @@ import { Header } from "./Header";
 import { EnergyFlow } from "@/components/energy-flow/EnergyFlow";
 import { EnergyPlanCard } from "@/components/energy-plan/EnergyPlanCard";
 import { BufferTank } from "@/components/buffer/BufferTank";
-import { DayChart, type ChartLayout, type ChartRange } from "@/components/charts/DayChart";
+import { DayChart, isoDay, type ChartLayout } from "@/components/charts/DayChart";
 import { ControlsBar } from "@/components/controls/ControlsBar";
 import { useRole } from "@/lib/live/useRole";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -20,7 +20,7 @@ export function Dashboard() {
   const state = useLiveStore((s) => s.state);
   const plan = useLiveStore((s) => s.plan);
   const history = useLiveStore((s) => s.history);
-  const historyRange = useLiveStore((s) => s.historyRange);
+  const historyDay = useLiveStore((s) => s.historyDay);
   const connection = useLiveStore((s) => s.connection);
   const lastFrameAt = useLiveStore((s) => s.lastFrameAt);
   const offset = useLiveStore((s) => s.serverOffsetMs);
@@ -46,6 +46,32 @@ export function Dashboard() {
     }
   }, []);
 
+  /**
+   * Startwert des Tages: aus der Adresse, sonst der heutige Tag **des Servers**.
+   *
+   * Erst nach dem ersten Live-Rahmen, und das ist kein Detail: bis dahin ist der Zeitversatz zum
+   * Server unbekannt, und im Demo-Modus läuft die Uhr im Zeitraffer. Der Tag des Browsers war dort
+   * ein anderer als der des Servers, und die Ansicht lud einen Tag, für den es keine Messwerte gab.
+   */
+  useEffect(() => {
+    if (lastFrameAt === null) return;
+    let iso: string | null = null;
+    try {
+      const q = new URLSearchParams(window.location.search).get("tag");
+      if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) iso = q;
+    } catch {
+      /* ignorieren */
+    }
+    // Ein Tag in der Adresse gilt auch dann, wenn schon einer geladen ist: aus einer Unterseite
+    // führt „← Dashboard" mit `?tag=` zurück, und das ist eine Navigation innerhalb der Anwendung.
+    // Der Zustandsspeicher überlebt sie, die Bedingung „nur beim ersten Mal" verwarf den Tag daher.
+    if (iso) {
+      if (iso !== historyDay) void changeDay(iso);
+      return;
+    }
+    if (!historyDay) void changeDay(isoDay(useLiveStore.getState().nowMs()));
+  }, [historyDay, lastFrameAt]);
+
   useEffect(() => {
     const stop = startLiveClient();
     const stopReload = startReloadPolicy(() => useLiveStore.getState().state?.system.version ?? null);
@@ -57,13 +83,40 @@ export function Dashboard() {
     };
   }, []);
 
-  const changeRange = async (r: ChartRange) => {
-    if (r === "tomorrow") {
-      setHistory([], r); // morgen gibt es nur Prognose (PV) und Preise aus dem Plan
+  /**
+   * Den angezeigten Kalendertag wechseln und die Messwerte dazu laden.
+   *
+   * Der Tag steht in der Adresse (`?tag=`), damit die Ansicht teilbar ist und ein Neuladen nicht
+   * zurück auf heute springt. Für den laufenden Tag wird der Schnellweg `range=today` genommen, weil
+   * daran anschließend die Live-Werte angehängt werden; jeder andere Tag kommt als Zeitraum. Ein
+   * künftiger Tag hat keine Messwerte, dort bleiben nur Prognose und Preise aus dem Plan.
+   */
+  const changeDay = async (iso: string) => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tag", iso);
+      window.history.replaceState(null, "", url.toString());
+    } catch {
+      /* ignorieren */
+    }
+    const now = Date.now() + useLiveStore.getState().serverOffsetMs;
+    if (iso > isoDay(now)) {
+      setHistory([], iso);
       return;
     }
-    const h = await api.history(r);
-    setHistory(h.rows.map(rowToPoint), r);
+    try {
+      if (iso === isoDay(now)) {
+        const h = await api.history("today");
+        setHistory(h.rows.map(rowToPoint), iso);
+        return;
+      }
+      const start = new Date(`${iso}T00:00:00`);
+      const end = new Date(start.getTime() + 86400000);
+      const h = await api.historyDay(start, end);
+      setHistory(h.rows.map(rowToPoint), iso);
+    } catch {
+      setHistory([], iso);
+    }
   };
 
   const degraded = connection !== "live";
@@ -82,7 +135,7 @@ export function Dashboard() {
       </div>
       <div className="dash-chart" style={{ opacity: degraded ? 0.6 : 1 }}>
         <div className="flex min-h-0 w-full flex-col">
-          <DayChart history={history} plan={plan} nowMs={nowMs} range={historyRange} onRange={(r) => void changeRange(r)} layout={isMobile ? "stacked" : chartLayout} />
+          <DayChart history={history} plan={plan} nowMs={nowMs} dayIso={historyDay} onDay={(iso) => void changeDay(iso)} layout={isMobile ? "stacked" : chartLayout} />
         </div>
       </div>
       <ControlsBar state={state} readOnly={role !== "owner"} />

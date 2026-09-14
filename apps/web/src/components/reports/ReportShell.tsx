@@ -2,27 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { isoDate, isoToday } from "@/lib/day";
 import type { Period } from "@/lib/api/models";
 
 export const PERIOD_LABEL: Record<Period, string> = { day: "Tag", week: "Woche", month: "Monat", year: "Jahr" };
 const PERIODS: Period[] = ["day", "week", "month", "year"];
 
+export { isoToday };
+
 export const de1 = (n: number | null | undefined, digits = 1): string => (n == null || Number.isNaN(n) ? "-" : n.toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits }));
 export const eur = (n: number | null | undefined): string => (n == null ? "-" : `${de1(n, 2)} €`);
 export const pct = (frac: number | null | undefined): string => (frac == null ? "-" : `${Math.round(frac * 100)} %`);
 
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Heutiges Datum im Haus-Zeitraum (Europe/Berlin), unabhängig von der Zeitzone des Geräts. */
-export function isoToday(): string {
-  try {
-    return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  } catch {
-    return isoDate(new Date());
-  }
-}
 
 function shift(anchor: string, period: Period, dir: -1 | 1): string {
   const d = new Date(`${anchor}T12:00:00`);
@@ -93,13 +84,15 @@ export function usePeriod(initial: Period = "day"): { period: Period; anchor: st
   };
 }
 
-export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, onToday, right, children }: { title: string; kicker: string; period: Period; anchor: string; onPeriod: (p: Period) => void; onMove: (dir: -1 | 1) => void; onToday: () => void; right?: React.ReactNode; children: React.ReactNode }) {
+export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, onToday, right, children, showPeriods = true }: { title: string; kicker: string; period: Period; anchor: string; onPeriod: (p: Period) => void; onMove: (dir: -1 | 1) => void; onToday: () => void; right?: React.ReactNode; children: React.ReactNode; showPeriods?: boolean }) {
   const isToday = !anchor || anchor === isoToday();
   return (
     <main className="dashboard-bg report-main flex min-h-[100dvh] flex-col gap-4 p-5 text-text-1">
       <header className="report-header flex h-14 shrink-0 items-center justify-between rounded-[3px] border border-line-2 px-5" style={{ background: "var(--surface-glass)", backdropFilter: "blur(18px)" }}>
         <div className="flex min-w-0 items-center gap-5">
-          <Link href="/" className="kicker whitespace-nowrap" style={{ fontSize: 12 }}>← Dashboard</Link>
+          {/* Der Tag reist mit zurueck. Wer vom 13. September aus auf das Dashboard geht, will dort
+              den 13. September sehen und nicht wieder heute. */}
+          <Link href={isToday ? "/" : `/?tag=${anchor}`} className="kicker whitespace-nowrap" style={{ fontSize: 12 }}>← Dashboard</Link>
           <div className="flex min-w-0 items-baseline gap-2.5">
             <span className="whitespace-nowrap text-[17px] font-semibold tracking-[-.02em]">{title}</span>
             <span className="kicker truncate" style={{ fontSize: 12 }}>{kicker}</span>
@@ -113,7 +106,9 @@ export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, o
             <button onClick={() => onMove(1)} aria-label="Weiter" className="mono px-2.5 py-1 text-[13px] text-text-2 hover:text-text-1">›</button>
             {!isToday ? <button onClick={onToday} className="mono px-2 py-1 text-[11px] uppercase tracking-[.08em] text-amber">heute</button> : null}
           </div>
-          <div className="report-periods flex gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Zeitraum">
+          {/* Die Prüfansicht kennt nur Tage: Minutenwerte über eine Woche zu legen ergäbe ein Bild,
+              in dem man nichts mehr erkennt. Dort bleibt der Schalter deshalb weg. */}
+          <div className="report-periods flex gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Zeitraum" hidden={!showPeriods}>
             {PERIODS.map((p) => (
               <button key={p} onClick={() => onPeriod(p)} className="px-3 py-1.5 text-[12px] font-medium" style={{ background: period === p ? "var(--amber)" : "transparent", color: period === p ? "var(--petrol)" : "var(--text-2)", borderRadius: 2 }}>
                 {PERIOD_LABEL[p]}

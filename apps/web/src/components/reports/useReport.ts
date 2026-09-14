@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import type { Period } from "@/lib/api/models";
-import { isoToday } from "./ReportShell";
 
 const REFRESH_MS = 5 * 60_000;
 export const ALL_PERIODS: Period[] = ["day", "week", "month", "year"];
@@ -46,13 +45,19 @@ export function useReport<T>(loader: (period: Period, anchor: string) => Promise
   return { data, error, loading };
 }
 
-/** Dieselbe Kennzahl für heute, diese Woche, diesen Monat und dieses Jahr - alle vier Zeiträume auf einmal. */
-export function useMultiPeriod<T>(loader: (period: Period, anchor: string) => Promise<T>): Partial<Record<Period, T>> {
+/**
+ * Dieselbe Kennzahl für Tag, Woche, Monat und Jahr **des Ankertags** - alle vier auf einmal.
+ *
+ * Der Anker kommt von außen und war vorher fest auf heute verdrahtet. Wer in der Navigation auf den
+ * 3. Januar blätterte, sah oben die Zahlen dieses Tages und in der Übersicht daneben weiterhin die
+ * laufende Woche und das laufende Jahr. Zwei Zeiträume in einer Ansicht, ohne dass es dastand.
+ */
+export function useMultiPeriod<T>(loader: (period: Period, anchor: string) => Promise<T>, anchor: string): Partial<Record<Period, T>> {
   const [out, setOut] = useState<Partial<Record<Period, T>>>({});
   useEffect(() => {
+    if (!anchor) return;
     let alive = true;
     const load = async () => {
-      const anchor = isoToday();
       const results = await Promise.allSettled(ALL_PERIODS.map((p) => loader(p, anchor)));
       if (!alive) return;
       const next: Partial<Record<Period, T>> = {};
@@ -67,6 +72,6 @@ export function useMultiPeriod<T>(loader: (period: Period, anchor: string) => Pr
       alive = false;
       clearInterval(t);
     };
-  }, [loader]);
+  }, [loader, anchor]);
   return out;
 }

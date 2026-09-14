@@ -2,6 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { isoToday } from "@/lib/day";
+import { useLiveStore } from "@/lib/live/store";
 import { useRole } from "@/lib/live/useRole";
 
 /** Die Einstiegsleiste im Dashboard-Kopf: von hier aus ist jede Seite unmittelbar unter dem
@@ -16,13 +18,14 @@ import { useRole } from "@/lib/live/useRole";
  *  wäre unhöflich. */
 const ITEMS = [
   { href: "/", icon: "dashboard", label: "Dashboard" },
-  { href: "/pv", icon: "sun", label: "Photovoltaik" },
-  { href: "/haus", icon: "house", label: "Haus" },
-  { href: "/batterie", icon: "battery", label: "Batterie" },
-  { href: "/waerme", icon: "pump", label: "Wärme" },
-  { href: "/wallbox", icon: "car", label: "Wallbox" },
+  { href: "/pv", icon: "sun", label: "Photovoltaik", dated: true },
+  { href: "/haus", icon: "house", label: "Haus", dated: true },
+  { href: "/batterie", icon: "battery", label: "Batterie", dated: true },
+  { href: "/waerme", icon: "pump", label: "Wärme", dated: true },
+  { href: "/wallbox", icon: "car", label: "Wallbox", dated: true },
   { href: "/prognose", icon: "chart", label: "Prognosegüte" },
   { href: "/jahr", icon: "calendar", label: "Jahreskarte" },
+  { href: "/daten", icon: "table", label: "Daten prüfen", dated: true },
   { href: "/settings", icon: "gear", label: "Einstellungen", ownerOnly: true },
 ] as const;
 
@@ -31,12 +34,17 @@ export function NavButtons() {
   // erzeugte beim Hydrieren eine Abweichung.
   const current = usePathname();
   const role = useRole();
+  // Der im Dashboard gewählte Kalendertag reist mit: wer den 13. September ansieht und dann auf
+  // „Photovoltaik" geht, will dort den 13. September sehen. Seiten ohne Zeitraum (Prognosegüte,
+  // Jahreskarte, Einstellungen) bekommen den Anker nicht angehängt, er hätte dort keine Wirkung.
+  const day = useLiveStore((s) => s.historyDay);
+  const anchor = day && day !== isoToday() ? day : "";
   return (
     <div className="flex shrink-0 items-center gap-2">
       {ITEMS.filter((i) => i.href !== current && (!("ownerOnly" in i) || role === "owner")).map((i) => (
         <a
           key={i.href}
-          href={i.href}
+          href={anchor && "dated" in i ? `${i.href}?anchor=${anchor}` : i.href}
           aria-label={i.label}
           title={i.label}
           className="flex h-9 w-9 items-center justify-center rounded-[3px] border border-line-2"

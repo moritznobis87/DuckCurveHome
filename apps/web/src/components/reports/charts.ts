@@ -545,3 +545,93 @@ export function yearMap(
     ],
   };
 }
+
+/**
+ * Alle Leistungen eines Tages übereinander, auf **einer** kW-Achse mit sichtbarer Nulllinie.
+ *
+ * Dafür gibt es diese Ansicht: die Frage „hat der Speicher aus dem Netz geladen, obwohl die Sonne
+ * schien?" lässt sich nur beantworten, wenn Erzeugung, Ladeleistung und Netzbezug im selben Bild und
+ * auf derselben Skala liegen. Eine zweite Achse wäre hier ein Fehler - zwei Nulllinien an derselben
+ * Stelle im Bild machen jeden Vergleich unmöglich.
+ *
+ * Vorzeichen wie im Domänenmodell: Netz positiv ist Bezug, negativ Einspeisung; Speicher positiv ist
+ * Entladen, negativ Laden. Der Hausverbrauch ist keine eigene Messung, sondern folgt aus der Bilanz
+ * `haus = pv + netz + speicher`; er steht mit dabei, weil er erklärt, warum bei laufender PV
+ * trotzdem Netzbezug auftreten kann.
+ */
+export function powerOverlay(rows: Array<Record<string, number | string | null>>): EChartsCoreOption {
+  const ts = (r: Record<string, number | string | null>) => new Date(String(r.ts)).getTime();
+  const num = (r: Record<string, number | string | null>, k: string) => (typeof r[k] === "number" ? (r[k] as number) : null);
+  const house = (r: Record<string, number | string | null>) => {
+    const pv = num(r, "pv_power_kw");
+    const grid = num(r, "grid_power_kw");
+    if (pv === null || grid === null) return null;
+    return Math.max(0, pv + grid + (num(r, "battery_power_kw") ?? 0));
+  };
+  // `color` und nicht nur `lineStyle.color`: die Legende nimmt ihre Farbe aus der Serienfarbe. Ohne
+  // sie zeichnet ECharts die Linien richtig und die Legendenpunkte aus seiner eigenen Standardreihe
+  // - eine Legende, die andere Farben zeigt als das Bild, ist schlimmer als gar keine.
+  const line = (name: string, color: string, pick: (r: Record<string, number | string | null>) => number | null, extra: Record<string, unknown> = {}) => ({
+    name,
+    type: "line",
+    step: "end",
+    color,
+    data: rows.map((r) => [ts(r), pick(r)]),
+    showSymbol: false,
+    connectNulls: false,
+    lineStyle: { color, width: 2 },
+    itemStyle: { color },
+    ...extra,
+  });
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    textStyle: { fontFamily: MONO },
+    tooltip: {
+      ...tooltip,
+      trigger: "axis",
+      axisPointer: { type: "line", lineStyle: { color: C.axis } },
+      formatter: (params: unknown) => {
+        const ps = params as Array<{ seriesName: string; value: [number, number | null]; color: string }>;
+        const p0 = ps[0];
+        if (!p0) return "";
+        const t = new Date(p0.value[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+        const body = ps
+          .filter((p) => p.value[1] != null)
+          .map((p) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:${p.color}">${p.seriesName}</span><span>${de1(p.value[1] ?? 0, 2)} kW</span></div>`)
+          .join("");
+        return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${t}</div>${body}`;
+      },
+    },
+    legend: { bottom: 0, left: "center", itemWidth: 14, itemHeight: 8, itemGap: 16, icon: "roundRect", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 } },
+    grid: { left: 52, right: 16, top: 24, bottom: 52 },
+    xAxis: {
+      type: "time",
+      axisLine: { lineStyle: { color: C.axis } },
+      axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => new Date(v).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) },
+    },
+    yAxis: {
+      type: "value",
+      name: "kW",
+      nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] },
+      splitLine: { lineStyle: { color: C.gridline } },
+      axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 },
+    },
+    series: [
+      // Die Nulllinie gehört hervorgehoben: an ihr entscheidet sich Bezug gegen Einspeisung und
+      // Laden gegen Entladen. Im Gitter allein geht sie unter.
+      {
+        ...line("PV", C.pv, (r) => num(r, "pv_power_kw")),
+        areaStyle: { color: "rgba(242,169,0,.18)" },
+        step: false,
+        markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: "rgba(255,255,255,.4)", width: 1, type: "solid" }, emphasis: { disabled: true }, data: [{ yAxis: 0 }] },
+        z: 2,
+      },
+      line("Haus", C.house, house, { step: false, z: 3 }),
+      line("Netz", C.grid, (r) => num(r, "grid_power_kw"), { z: 4 }),
+      line("Speicher", C.battery, (r) => num(r, "battery_power_kw"), { z: 5 }),
+    ],
+  };
+}

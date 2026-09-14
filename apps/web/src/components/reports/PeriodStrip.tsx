@@ -1,23 +1,42 @@
 import type { Period } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
-import { ALL_PERIODS } from "./useReport";
+import { ALL_PERIODS, isoToday } from "./useReport";
 
 const STRIP_LABEL: Record<Period, string> = { day: "Heute", week: "Woche", month: "Monat", year: "Jahr" };
+
+/** Spaltenkopf der Tagesspalte: „Heute" nur, wenn der Ankertag auch heute ist. */
+function dayLabel(anchor: string | undefined, todayIso: string): string {
+  if (!anchor || anchor === todayIso) return STRIP_LABEL.day;
+  const d = new Date(`${anchor}T00:00:00`);
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+}
 
 export type StripRow = { label: string; value: (p: Period) => string; tone?: "amber" | "ember" | "mist" };
 const TONE: Record<NonNullable<StripRow["tone"]>, string> = { amber: "var(--amber)", ember: "var(--alert)", mist: "var(--mist)" };
 
-/** Kennzahlen als Tabelle: Zeilen = Größen, Spalten = heute · Woche · Monat · Jahr (immer bis jetzt). */
-export function PeriodStrip({ title, rows, right }: { title: string; rows: StripRow[]; right?: string }) {
+/**
+ * Kennzahlen als Tabelle: Zeilen = Größen, Spalten = Tag · Woche · Monat · Jahr **des Ankertags**.
+ *
+ * Die Spalten folgen der Navigation. Blättert man auf einen vergangenen Tag, zeigen sie dessen
+ * Woche, Monat und Jahr - nicht mehr die laufenden. Der Kopf sagt, worauf sie sich beziehen, und die
+ * Tagesspalte heißt nur dann „Heute", wenn sie es auch ist.
+ */
+export function PeriodStrip({ title, rows, right, anchor }: { title: string; rows: StripRow[]; right?: string; anchor?: string }) {
+  const todayIso = isoToday();
+  const bis =
+    right ??
+    (!anchor || anchor === todayIso
+      ? "jeweils bis jetzt"
+      : `jeweils bis ${new Date(`${anchor}T00:00:00`).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}`);
   return (
     <Card style={{ padding: "14px 18px", gap: 10 }}>
-      <CardHead title={title} right={right ?? "jeweils bis jetzt"} />
+      <CardHead title={title} right={bis} />
       <table className="w-full border-collapse text-[12px]" style={{ tableLayout: "fixed" }}>
         <thead>
           <tr className="kicker" style={{ fontSize: 10 }}>
             <th className="w-[34%] pb-1.5 text-left font-medium" />
             {ALL_PERIODS.map((p) => (
-              <th key={p} className="pb-1.5 text-right font-medium">{STRIP_LABEL[p]}</th>
+              <th key={p} className="pb-1.5 text-right font-medium">{p === "day" ? dayLabel(anchor, todayIso) : STRIP_LABEL[p]}</th>
             ))}
           </tr>
         </thead>

@@ -38,6 +38,10 @@ export const C = {
   hp: "#e4ecef", // Wärmepumpe
   ev: "#2f89b5", // Wallbox
   base: "#c2a86b", // Haushalt ohne Wärmepumpe und Wallbox
+  // Hausverbrauch als Summe, nicht als Quelle. Eigene Farbe, weil er in der Prüfansicht neben
+  // PV, Netz und Speicher steht; dort scheitert das Sandfarbene des Haushalts an der PV
+  // (ΔE 9,3). Geprüft: schlechtestes Paar dieser vier ΔE 18,5 normal / 15,1 CVD.
+  house: "#cfd8dc",
   export: "rgba(228,236,239,.5)",
   stove: "#b5651d",
   mist: "#7fa3b3",
