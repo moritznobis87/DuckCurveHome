@@ -66,9 +66,11 @@ export function DataCheck() {
     >
       {error ? <ErrorBanner message={error} /> : null}
 
-      <Card style={{ padding: 16, height: 420 }}>
+      <Card style={{ padding: 16, height: 480 }}>
         <CardHead
           title="Leistungen über den Tag"
+          // Die Bedienhinweise stehen im Fließtext unter der Auswertung und nicht hier: auf einem
+          // Telefon ist diese Zeile schon mit der Vorzeichenregel voll und wird abgeschnitten.
           right="Netz + Bezug, − Einspeisung · Speicher + Entladen, − Laden"
         />
         {rows.length > 0 ? (
@@ -101,7 +103,12 @@ export function DataCheck() {
 
       <Note>
         Die obere Fläche zeigt die Messreihen, wie sie gespeichert sind, auf einer gemeinsamen
-        kW-Achse mit hervorgehobener Nulllinie. Der Hausverbrauch ist dabei keine eigene Messung,
+        kW-Achse mit hervorgehobener Nulllinie. Die Strecke, um die es geht, ist oft nur eine
+        Viertelstunde lang; über den ganzen Tag gezeichnet sind das wenige Bildpunkte. Deshalb lässt
+        sich ein Zeitfenster wählen: mit dem linken Werkzeug oben rechts ein Fenster aufziehen, mit
+        dem Regler unter dem Diagramm eines über den Tag schieben, oder mit dem Mausrad und zwei
+        Fingern dort zoomen, wo der Zeiger steht. Der Kreis daneben zeigt wieder den ganzen Tag. Die
+        kW-Achse geht dabei mit, damit auch kleine Leistungen im Ausschnitt lesbar bleiben. Der Hausverbrauch ist dabei keine eigene Messung,
         sondern folgt aus der Bilanz Haus = PV + Netz + Speicher. Läuft die PV und zeigt das Netz
         trotzdem Bezug, sieht man hier unmittelbar, ob der Hausverbrauch über der Erzeugung lag oder
         ob die Erzeugungsreihe selbst eine Lücke hat. Der Text darunter nimmt diese zweite Frage noch
