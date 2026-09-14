@@ -604,7 +604,54 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
       },
     },
     legend: { bottom: 0, left: "center", itemWidth: 14, itemHeight: 8, itemGap: 16, icon: "roundRect", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 } },
-    grid: { left: 52, right: 16, top: 24, bottom: 52 },
+    /**
+     * Das Zeitfenster. Ein Tag hat 1440 Minuten auf gut tausend Bildpunkten: die Strecke, um die es
+     * geht, ist oft eine Viertelstunde und damit zehn Pixel breit. Ohne Ausschnitt lässt sich dort
+     * nicht ablesen, ob die Erzeugung vor oder nach der Ladung einsetzte - und genau das ist die
+     * Frage, für die diese Ansicht da ist.
+     *
+     * Drei Wege, weil drei Bedürfnisse: das Werkzeug oben zieht ein Fenster auf (die genaueste
+     * Geste, wenn man die Strecke schon sieht), der Regler unten schiebt es über den Tag, und Rad
+     * beziehungsweise zwei Finger zoomen dort, wo der Zeiger steht. `filterMode: "filter"` lässt
+     * die kW-Achse mitgehen: im Ausschnitt einer Nachtstunde ist die Tagesspitze kein Maßstab mehr.
+     */
+    toolbox: {
+      right: 8,
+      top: 0,
+      itemSize: 13,
+      itemGap: 8,
+      iconStyle: { borderColor: C.text },
+      emphasis: { iconStyle: { borderColor: C.pv } },
+      feature: {
+        dataZoom: { yAxisIndex: "none", title: { zoom: "Zeitfenster aufziehen", back: "Ein Schritt zurück" }, brushStyle: { color: "rgba(242,169,0,.12)", borderColor: "rgba(242,169,0,.5)" } },
+        restore: { title: "Ganzer Tag" },
+      },
+    },
+    dataZoom: [
+      // start/end ausdrücklich: ohne sie behielte ECharts beim Tageswechsel den alten Ausschnitt,
+      // und der neue Tag erschiene wortlos als Ausschnitt eines Tages, den man nicht mehr sieht.
+      { type: "inside", xAxisIndex: 0, filterMode: "filter", start: 0, end: 100, zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      {
+        type: "slider",
+        xAxisIndex: 0,
+        filterMode: "filter",
+        start: 0,
+        end: 100,
+        bottom: 30,
+        height: 26,
+        brushSelect: false,
+        borderColor: C.gridline,
+        backgroundColor: "rgba(255,255,255,.02)",
+        fillerColor: "rgba(127,163,179,.16)",
+        handleStyle: { color: C.battery, borderColor: C.battery },
+        moveHandleStyle: { color: C.battery },
+        dataBackground: { lineStyle: { color: C.axis }, areaStyle: { color: "rgba(255,255,255,.05)" } },
+        selectedDataBackground: { lineStyle: { color: C.pv }, areaStyle: { color: "rgba(242,169,0,.14)" } },
+        textStyle: { color: C.text, fontFamily: MONO, fontSize: 10 },
+        labelFormatter: (v: number) => new Date(v).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+      },
+    ],
+    grid: { left: 52, right: 16, top: 28, bottom: 88 },
     xAxis: {
       type: "time",
       axisLine: { lineStyle: { color: C.axis } },
