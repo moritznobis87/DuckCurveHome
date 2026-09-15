@@ -498,6 +498,27 @@ class SqlRepositories:
             ).first()
         return row is not None
 
+    async def events_between(
+        self, code: str, start: datetime, end: datetime, limit: int = 200
+    ) -> list[m.SystemEvent]:
+        """Ereignisse eines Codes in einem Zeitraum, älteste zuerst - für die Tagesdiagnose."""
+        async with self.maker() as s:
+            rows = (
+                (
+                    await s.execute(
+                        select(m.SystemEvent)
+                        .where(m.SystemEvent.code == code)
+                        .where(m.SystemEvent.at >= start)
+                        .where(m.SystemEvent.at < end)
+                        .order_by(m.SystemEvent.at)
+                        .limit(limit)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        return list(rows)
+
     async def recent_events(self, limit: int = 50) -> list[m.SystemEvent]:
         async with self.maker() as s:
             rows = (

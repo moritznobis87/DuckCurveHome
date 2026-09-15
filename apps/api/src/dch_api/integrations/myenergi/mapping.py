@@ -152,6 +152,59 @@ def readings_from_status(groups: list[dict[str, Any]], now: datetime) -> list[Ra
     return out
 
 
+# Felder der Libbi-Statusantwort, die sich bei jeder Abfrage ändern: Leistungen der Stromwandler,
+# Zeitstempel, Ladestand, Netzspannung und -frequenz. Sie stehen ohnehin als Messreihe in der
+# Minutentabelle. Alles andere gilt als Beschreibung des Betriebszustands und wird mitgeschrieben -
+# auch Felder, die wir heute nicht deuten können. Genau die fehlen sonst, wenn später eine Frage
+# kommt, die wir heute nicht kennen.
+_VOLATILE_EXACT = frozenset(
+    {"dat", "tim", "soc", "gen", "grd", "div", "frq", "vol", "bsoc", "ectp", "che", "tz", "dst"}
+)
+_VOLATILE_NUMBERED = ("ectp", "pect", "nect")
+
+
+def _is_state_field(key: str) -> bool:
+    if key in _VOLATILE_EXACT:
+        return False
+    return not any(key.startswith(p) and key[len(p) :].isdigit() for p in _VOLATILE_NUMBERED)
+
+
+def libbi_report(groups: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Was der Speicher über seinen eigenen Betriebszustand meldet, ohne die Messwerte.
+
+    **Wozu das gebraucht wird.** DCH misst, was der Speicher tut, mit den Zahlen des Speichers
+    selbst - Erzeugung, Netz, Laden, Ladestand kommen alle aus derselben Hub-Antwort. Was in dieser
+    Antwort bisher weggeworfen wurde, ist der Zustand, aus dem der Speicher seine eigenen
+    Entscheidungen ableitet: Betriebsart, Statuscode, Freigaben, die Belegung der Stromwandler.
+    Ohne ihn lässt sich eine Ladung aus dem Netz zwar sehen, aber nicht erklären - man weiß, dass
+    geladen wurde, und nicht, in welchem Zustand das Gerät dabei war.
+
+    Zurückgegeben wird die Statusantwort ohne die schnell wechselnden Messgrößen, sortiert, damit
+    sich zwei Abrufe auf Gleichheit vergleichen lassen. `None`, wenn kein Libbi antwortet.
+    """
+    for grp in groups:
+        for d in grp.get("libbi") or []:
+            if isinstance(d, dict):
+                return {k: d[k] for k in sorted(d) if _is_state_field(k)}
+    return None
+
+
+def libbi_summary_de(report: dict[str, Any], changed: dict[str, Any] | None = None) -> str:
+    """Eine Zeile für das Ereignisprotokoll: Betriebsart, Status und was sich geändert hat."""
+    parts: list[str] = []
+    mode = report.get("lmo")
+    if isinstance(mode, str) and mode:
+        parts.append(f"Betriebsart {mode}")
+    sta = report.get("sta")
+    if sta is not None:
+        parts.append(f"Status {sta}")
+    head = "Speicher meldet " + (", ".join(parts) if parts else "einen neuen Zustand")
+    if changed:
+        keys = ", ".join(f"{k}={changed[k]}" for k in sorted(changed))
+        return f"{head} (geändert: {keys})"
+    return head
+
+
 def devices_for_history(groups: list[dict[str, Any]]) -> list[tuple[str, str, int]]:
     """(kind, prefix, serial) aller Geräte mit Historie (Harvi hat keine)."""
     out: list[tuple[str, str, int]] = []
