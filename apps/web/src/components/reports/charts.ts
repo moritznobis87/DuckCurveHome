@@ -603,7 +603,25 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
         return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${t}</div>${body}`;
       },
     },
-    legend: { bottom: 0, left: "center", itemWidth: 14, itemHeight: 8, itemGap: 16, icon: "roundRect", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 } },
+    legend: {
+      bottom: 0,
+      left: "center",
+      itemWidth: 14,
+      itemHeight: 8,
+      itemGap: 16,
+      icon: "roundRect",
+      textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 },
+      // Der Ladestand trägt die Farbe des Speichers, weil er dasselbe Gerät ist. Damit hätte er in
+      // der Legende auch dessen Fleck, und zwei gleiche Flecken nebeneinander heben die Legende
+      // auf. Sein Zeichen sind deshalb zwei Striche: dieselbe Farbe, die Strichelung der Linie.
+      data: [
+        { name: "PV" },
+        { name: "Haus" },
+        { name: "Netz" },
+        { name: "Speicher" },
+        { name: "Ladestand %", icon: "path://M0,0 H6 V3 H0 Z M10,0 H16 V3 H10 Z" },
+      ],
+    },
     /**
      * Das Zeitfenster. Ein Tag hat 1440 Minuten auf gut tausend Bildpunkten: die Strecke, um die es
      * geht, ist oft eine Viertelstunde und damit zehn Pixel breit. Ohne Ausschnitt lässt sich dort
@@ -617,7 +635,7 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
      */
     toolbox: {
       right: 8,
-      top: 0,
+      top: 2,
       itemSize: 13,
       itemGap: 8,
       iconStyle: { borderColor: C.text },
@@ -651,7 +669,9 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
         labelFormatter: (v: number) => new Date(v).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
       },
     ],
-    grid: { left: 52, right: 16, top: 28, bottom: 88 },
+    // Oben 46 statt 28: die Prozentachse setzt ihre „100" genau auf die obere Gitterkante, und die
+    // lag sonst auf derselben Zeile wie die Werkzeuge.
+    grid: { left: 52, right: 56, top: 46, bottom: 88 },
     xAxis: {
       type: "time",
       axisLine: { lineStyle: { color: C.axis } },
@@ -659,13 +679,43 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
       splitLine: { show: false },
       axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => new Date(v).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) },
     },
-    yAxis: {
-      type: "value",
-      name: "kW",
-      nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] },
-      splitLine: { lineStyle: { color: C.gridline } },
-      axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 },
-    },
+    /**
+     * Zwei Achsen, und die zweite ist der eigentliche Grund für diese Ansicht.
+     *
+     * Die Ladeleistung und der Ladestand sind zwei **unabhängige** Messwerte desselben Geräts. Sie
+     * müssen zueinander passen: 2,8 kW über anderthalb Stunden sind 4,2 kWh und damit über 80
+     * Prozentpunkte in einem 5,1-kWh-Speicher. Steigt der Ladestand dabei nicht, stimmt eine der
+     * beiden Reihen nicht, und die Frage „lag es an unseren Daten" ist damit beantwortet, ohne dass
+     * jemand raten muss.
+     *
+     * Die Prozentachse steht fest auf 0 bis 100 und bekommt keine eigenen Gitterlinien: sonst
+     * liefen zwei Gitter mit verschiedenen Nullpunkten übereinander, und das war schon einmal der
+     * Fehler. Der Ladestand trägt die Farbe des Speichers und ist gestrichelt - es ist dasselbe
+     * Gerät, nur seine andere Größe. Eine fünfte Farbe gäbe es hier ohnehin nicht: der
+     * Palettenprüfer findet zu jedem Kandidaten ein Paar unter ΔE 15 gegen Speicher oder Haus.
+     */
+    yAxis: [
+      {
+        type: "value",
+        name: "kW",
+        nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] },
+        splitLine: { lineStyle: { color: C.gridline } },
+        axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 },
+      },
+      {
+        type: "value",
+        name: "%",
+        min: 0,
+        max: 100,
+        // Seitlich in der Mitte statt oben: oben stünde es genau dort, wo die Werkzeuge liegen.
+        nameLocation: "middle",
+        nameGap: 34,
+        nameRotate: 0,
+        nameTextStyle: { color: C.text, fontSize: 10 },
+        splitLine: { show: false },
+        axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11 },
+      },
+    ],
     series: [
       // Die Nulllinie gehört hervorgehoben: an ihr entscheidet sich Bezug gegen Einspeisung und
       // Laden gegen Entladen. Im Gitter allein geht sie unter.
@@ -679,6 +729,16 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
       line("Haus", C.house, house, { step: false, z: 3 }),
       line("Netz", C.grid, (r) => num(r, "grid_power_kw"), { z: 4 }),
       line("Speicher", C.battery, (r) => num(r, "battery_power_kw"), { z: 5 }),
+      {
+        ...line("Ladestand %", C.battery, (r) => {
+          const soc = num(r, "battery_soc");
+          return soc === null ? null : soc * 100;
+        }),
+        yAxisIndex: 1,
+        step: false,
+        lineStyle: { color: C.battery, width: 1.5, type: "dashed", opacity: 0.75 },
+        z: 1,
+      },
     ],
   };
 }

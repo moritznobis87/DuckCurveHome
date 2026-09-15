@@ -126,6 +126,34 @@ Nullen und misst, wie weit sich der Netzwert in derselben Folge bewegt. Bewegt e
 Logger und die Erzeugungsmessung nicht: eine halbe Stunde exakt gleicher Nullen zwischen zwei
 Sonnenstunden hat keine Wetterursache. Bewegt sich auch das Netz nicht, bleibt der Hinweis aus.
 
+### Was der Speicher über sich selbst meldet
+
+Die Messreihen sagen, **dass** der Speicher geladen hat. Warum, sagt keine von ihnen. DCH schickt
+nie einen Ladebefehl: der Regler kennt genau zwei Ausgaben, „Normal" und „Stopped", und in der
+Vorgabe schickt er gar nichts. Eine Ladung aus dem Netz entsteht also im Gerät selbst, und die
+myenergi-Cloud nennt dafür keinen Grund.
+
+Was sie mitschickt, ist der Zustand: Betriebsart, Statuscode, Freigaben, die Belegung der
+Stromwandler. Diese Felder wurden bisher verworfen. Jetzt hält DCH sie fest, sobald sich eines
+davon ändert, und die Tagesdiagnose auf `/daten` zeigt die Meldungen neben den Ladestrecken.
+Mitgeschrieben wird alles außer den schnell wechselnden Messgrößen, auch Felder, die wir heute
+nicht deuten können: gerade die fehlen sonst, wenn später eine Frage kommt, die wir heute nicht
+kennen. Damit die unvermeidliche Fehleinschätzung in dieser Auswahl nicht das Protokoll flutet,
+liegt zwischen zwei Meldungen mindestens eine Minute.
+
+Eine Netzladung, neben der eine Zustandsänderung steht, ist erklärbar. Eine ohne jede Meldung
+heißt, dass das Gerät die ganze Zeit dasselbe von sich behauptet hat und die Ursache in einer
+Einstellung liegt, die es nicht mitteilt - dann hilft nur die myenergi-App.
+
+### Die Gegenprobe aus dem Ladestand
+
+Ladeleistung und Ladestand sind zwei unabhängige Messwerte desselben Geräts und müssen zueinander
+passen. 2,8 kW über anderthalb Stunden sind 4,2 kWh und damit über 80 Prozentpunkte in einem
+5,1-kWh-Speicher. Auf `/daten` liegt der Ladestand deshalb als gestrichelte Linie auf einer eigenen
+Prozentachse über den Leistungen. Bewegt er sich während einer Ladung nicht, stimmt eine der beiden
+Reihen nicht. Steigt er wie erwartet, hat der Speicher wirklich geladen, und die Frage ist nicht
+mehr, ob die Daten stimmen, sondern warum er es tat.
+
 ## Umsatzsteuer
 
 | Posten | Grundlage | Richtung |

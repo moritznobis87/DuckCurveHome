@@ -64,6 +64,8 @@ HourStore = tuple[
     Callable[[list[HourlyEnergy], dict[datetime, float | None]], Awaitable[None]],
     Callable[[], Awaitable[datetime | None]],
 ]
+# Zustandsmeldungen eines Geräts in einem Zeitraum: (Zeitpunkt, Text).
+DeviceEvents = Callable[[datetime, datetime], Awaitable[list[tuple[datetime, str]]]]
 
 ENERGY_KEYS = [
     "pv_power_kw",
@@ -468,12 +470,14 @@ class EnergyAccounting:
         minute_rows: MinuteRows,
         store: HourStore | None = None,
         data_since: Callable[[], Awaitable[datetime | None]] | None = None,
+        device_events: DeviceEvents | None = None,
     ) -> None:
         self.hems = hems
         self.tz = tz
         self.minute_rows = minute_rows
         self.store = store
         self.data_since = data_since
+        self.device_events = device_events
         self._last_refresh_hour: datetime | None = None
 
     # ------------------------------------------------------------------ Zeiträume
@@ -689,6 +693,36 @@ class EnergyAccounting:
         return await read(start, end)
 
     # ------------------------------------------------------------------ Diagnose
+    async def _device_note(self, start: datetime, end: datetime) -> list[str]:
+        """Was der Speicher in diesem Zeitraum über seinen eigenen Zustand gemeldet hat.
+
+        Die Messreihen sagen, **dass** geladen wurde. Warum, sagt keine von ihnen: die myenergi-Cloud
+        nennt keine Gründe, und DCH selbst schickt nie einen Ladebefehl, nur „Normal" oder
+        „Stopped". Bleibt der Zustand des Geräts, den es in jeder Statusantwort mitschickt und den
+        DCH bei jeder Änderung festhält. Eine Netzladung, neben der eine Zustandsänderung steht,
+        ist erklärbar; eine ohne jede Meldung heißt, dass das Gerät die ganze Zeit dasselbe von sich
+        behauptet hat und die Ursache in einer Einstellung liegt, die es nicht mitteilt.
+        """
+        if self.device_events is None:
+            return []
+        try:
+            rows = await self.device_events(start, end)
+        except Exception as exc:  # eine Diagnose darf an ihrer Zusatzspalte nicht scheitern
+            log.warning("device events failed", error=repr(exc)[:200])
+            return []
+        if not rows:
+            return [
+                "Zustandsmeldungen des Speichers: keine. Entweder hat er sich an diesem Tag nicht "
+                "verändert, oder die Aufzeichnung lief noch nicht.",
+                "",
+            ]
+        out = [f"Zustandsmeldungen des Speichers: {len(rows)}"]
+        out.extend(f"  {at.astimezone(self.tz):%H:%M}  {msg}" for at, msg in rows[:40])
+        if len(rows) > 40:
+            out.append(f"  ... {len(rows) - 40} weitere")
+        out.append("")
+        return out
+
     async def diagnose_day(self, day: date) -> str:
         """Einen Tag als Text aufschlüsseln: gespeicherte Stunden und die auffälligsten Minuten.
 
@@ -744,6 +778,7 @@ class EnergyAccounting:
         if note:
             out.extend(note)
             out.append("")
+        out.extend(await self._device_note(start, end))
         # Zusammenhängende Strecken, in denen der Speicher lädt, während der Zähler Bezug meldet.
         # Genau daran entscheidet sich die Frage: ein Messversatz zwischen zwei Geräten dauert ein,
         # zwei Minuten, eine Regelungseigenschaft des Speichers dauert eine halbe Stunde.

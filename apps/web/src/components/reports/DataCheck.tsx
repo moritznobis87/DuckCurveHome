@@ -71,7 +71,7 @@ export function DataCheck() {
           title="Leistungen über den Tag"
           // Die Bedienhinweise stehen im Fließtext unter der Auswertung und nicht hier: auf einem
           // Telefon ist diese Zeile schon mit der Vorzeichenregel voll und wird abgeschnitten.
-          right="Netz + Bezug, − Einspeisung · Speicher + Entladen, − Laden"
+          right="Netz + Bezug, − Einspeisung · Speicher + Entladen, − Laden · Ladestand rechts in %"
         />
         {rows.length > 0 ? (
           <div className="min-h-0 flex-1"><EChart option={overlay} /></div>
@@ -108,7 +108,14 @@ export function DataCheck() {
         sich ein Zeitfenster wählen: mit dem linken Werkzeug oben rechts ein Fenster aufziehen, mit
         dem Regler unter dem Diagramm eines über den Tag schieben, oder mit dem Mausrad und zwei
         Fingern dort zoomen, wo der Zeiger steht. Der Kreis daneben zeigt wieder den ganzen Tag. Die
-        kW-Achse geht dabei mit, damit auch kleine Leistungen im Ausschnitt lesbar bleiben. Der Hausverbrauch ist dabei keine eigene Messung,
+        kW-Achse geht dabei mit, damit auch kleine Leistungen im Ausschnitt lesbar bleiben.
+        <br />
+        Die gestrichelte Linie ist der Ladestand auf der rechten Achse. Sie steht hier als
+        Gegenprobe: Ladeleistung und Ladestand sind zwei unabhängige Messwerte desselben Geräts und
+        müssen zueinander passen. 2,8 kW über anderthalb Stunden sind 4,2 kWh und damit über 80
+        Prozentpunkte in einem 5,1-kWh-Speicher. Bewegt sich der Ladestand dabei nicht, stimmt eine
+        der beiden Reihen nicht. Steigt er wie erwartet, hat der Speicher wirklich geladen, und die
+        Frage ist nicht mehr, ob die Daten stimmen, sondern warum er es tat. Der Hausverbrauch ist dabei keine eigene Messung,
         sondern folgt aus der Bilanz Haus = PV + Netz + Speicher. Läuft die PV und zeigt das Netz
         trotzdem Bezug, sieht man hier unmittelbar, ob der Hausverbrauch über der Erzeugung lag oder
         ob die Erzeugungsreihe selbst eine Lücke hat. Der Text darunter nimmt diese zweite Frage noch

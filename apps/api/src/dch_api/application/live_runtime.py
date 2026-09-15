@@ -145,6 +145,7 @@ class LiveRuntime:
             lambda s, e: repos.minute_series(s, e, ENERGY_KEYS),
             store=(repos.energy_hours, repos.upsert_energy_hours, repos.last_energy_hour),
             data_since=repos.first_measurement_at,
+            device_events=self._libbi_events,
         )
         hub.on_telemetry = self.on_telemetry
         hub.on_event = self.on_bridge_event
@@ -158,6 +159,7 @@ class LiveRuntime:
                 minute_rows=repos.minute_series,
                 on_backfilled=self._after_backfill,
                 on_state_change=self._on_source_state,
+                on_libbi_state=self._on_libbi_state,
             )
 
     @property
@@ -225,6 +227,21 @@ class LiveRuntime:
         if self.myenergi is not None:
             out.append(SourceStatusOut(**self.myenergi.status_out()))
         return out
+
+    async def _libbi_events(self, start: datetime, end: datetime) -> list[tuple[datetime, str]]:
+        """Die Zustandsmeldungen des Speichers eines Zeitraums, für die Tagesdiagnose."""
+        rows = await self.repos.events_between("libbi_state", start, end)
+        return [(r.at, r.message) for r in rows]
+
+    async def _on_libbi_state(self, message: str, report: dict[str, object]) -> None:
+        """Eine Zustandsmeldung des Speichers ins Ereignisprotokoll schreiben.
+
+        Sie landet unter dem Code `libbi_state` und erscheint in der Tagesdiagnose. Damit steht
+        neben der Frage „wann hat der Speicher aus dem Netz geladen" auch die Antwort auf „in
+        welchem Zustand war er dabei" - die einzige Spur, die DCH von den Entscheidungen des
+        Geräts überhaupt bekommen kann, denn die myenergi-Cloud nennt keine Gründe.
+        """
+        await self.repos.add_event("info", "libbi_state", message, report)
 
     async def on_bridge_event(self, frame: EventFrame | DeviceHealthFrame) -> None:
         if isinstance(frame, EventFrame):

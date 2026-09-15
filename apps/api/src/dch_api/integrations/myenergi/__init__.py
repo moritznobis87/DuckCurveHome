@@ -4,6 +4,8 @@ from dch_api.integrations.myenergi.client import MyenergiClient, MyenergiError
 from dch_api.integrations.myenergi.mapping import (
     HistoryMinute,
     history_minutes,
+    libbi_report,
+    libbi_summary_de,
     readings_from_status,
 )
 
@@ -12,5 +14,7 @@ __all__ = [
     "MyenergiClient",
     "MyenergiError",
     "history_minutes",
+    "libbi_report",
+    "libbi_summary_de",
     "readings_from_status",
 ]

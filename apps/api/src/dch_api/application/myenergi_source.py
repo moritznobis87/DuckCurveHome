@@ -19,6 +19,8 @@ from dch_api.integrations.myenergi.mapping import (
     HISTORY_KEYS,
     devices_for_history,
     history_minutes,
+    libbi_report,
+    libbi_summary_de,
     readings_from_history,
     readings_from_status,
 )
@@ -28,6 +30,11 @@ from hems_core.protocol import RawReading
 
 log = structlog.get_logger("myenergi")
 MAX_BACKOFF_S = 300.0
+# Kleinster Abstand zwischen zwei Zustandsmeldungen des Speichers. Die Auswahl der mitgeschriebenen
+# Felder ist eine Annahme: bleibt ein schnell wechselndes Feld darin, meldete der Speicher sonst bei
+# jeder Abfrage etwas Neues und füllte das Protokoll. Der Abstand begrenzt den Schaden auf 60
+# Zeilen je Stunde und macht ihn zugleich sichtbar.
+LIBBI_STATE_MIN_GAP_S = 60.0
 
 
 class StatusClient(Protocol):
@@ -56,6 +63,7 @@ class MyenergiSource:
         minute_rows: Callable[[datetime, datetime, list[str]], Awaitable[MinuteRows]] | None = None,
         on_backfilled: Callable[[datetime, datetime], Awaitable[object]] | None = None,
         on_state_change: Callable[[bool, str], Awaitable[None]] | None = None,
+        on_libbi_state: Callable[[str, dict[str, Any]], Awaitable[None]] | None = None,
     ) -> None:
         self.client = client
         self.on_readings = on_readings
@@ -64,6 +72,7 @@ class MyenergiSource:
         self.minute_rows = minute_rows
         self.on_backfilled = on_backfilled
         self.on_state_change = on_state_change
+        self.on_libbi_state = on_libbi_state
         self.online = False
         self.request_gap_s = 0.25
         self.last_ok: datetime | None = None
@@ -73,6 +82,8 @@ class MyenergiSource:
         self.last_backfill_at: datetime | None = None
         self.last_backfill_error: str | None = None
         self._groups: list[dict[str, Any]] = []
+        self._libbi_report: dict[str, Any] | None = None
+        self._libbi_report_at: datetime | None = None
         self._tasks: list[asyncio.Task[None]] = []
 
     # ------------------------------------------------------------------ Schalten
@@ -110,9 +121,38 @@ class MyenergiSource:
         self.last_ok = now
         self.polls_ok += 1
         await self._set_online(True, "")
+        await self._note_libbi_state(now)
         if readings:
             await self.on_readings(readings)
         return readings
+
+    async def _note_libbi_state(self, now: datetime) -> None:
+        """Den Betriebszustand des Speichers festhalten, sobald er sich ändert.
+
+        Das ist die Gegenprobe zu den Messwerten. Lädt der Speicher aus dem Netz, während die Sonne
+        nicht reicht, zeigen die Messreihen das Was; erklären lässt es sich erst mit dem Zustand,
+        in dem das Gerät dabei war - Betriebsart, Statuscode, Freigaben. DCH selbst schickt nie
+        einen Ladebefehl, also entscheidet sich an diesen Feldern, ob der Speicher einer eigenen
+        Zeitvorgabe folgte oder einer Einstellung, die niemand mehr kannte.
+        """
+        report = libbi_report(self._groups)
+        if report is None or report == self._libbi_report:
+            return
+        if (
+            self._libbi_report_at is not None
+            and (now - self._libbi_report_at).total_seconds() < LIBBI_STATE_MIN_GAP_S
+        ):
+            return
+        prev = self._libbi_report
+        changed = {k: v for k, v in report.items() if prev is None or prev.get(k) != v}
+        self._libbi_report = report
+        self._libbi_report_at = now
+        log.info("libbi state", changed=changed)
+        if self.on_libbi_state is not None:
+            with contextlib.suppress(Exception):
+                await self.on_libbi_state(
+                    libbi_summary_de(report, changed if prev else None), report
+                )
 
     async def _set_online(self, online: bool, error: str) -> None:
         self.last_error = error or None
