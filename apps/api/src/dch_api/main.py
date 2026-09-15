@@ -26,6 +26,7 @@ from dch_api.routers import (
     imports,
     live,
     plan,
+    system,
 )
 from dch_api.settings import Settings, get_settings
 
@@ -139,6 +140,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         imports.router,
         control.router,
         config.router,
+        system.router,
         demo.router,
     ):
         app.include_router(r, prefix=API_PREFIX, dependencies=protected)

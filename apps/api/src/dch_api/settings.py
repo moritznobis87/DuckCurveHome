@@ -83,7 +83,18 @@ class Settings(BaseSettings):
     import_entities_file: str = "config/entities.home.yaml"
     weather_refresh_min: int = 60
     price_refresh_min: int = 30
-    raw_retention_days: int = 14
+    # Wie lange Rohwerte liegen bleiben, nachdem sie zu Minutenzeilen verdichtet wurden.
+    #
+    # Sie werden dafür nur Minuten gebraucht: die Verdichtung läuft alle fünf Minuten, und danach
+    # steht jede Minute dauerhaft in `measurements_minute`. Vierzehn Tage waren Vorrat für einen
+    # Fall, der nicht eintrat, und `measurements_raw` ist mit Abstand die breiteste Tabelle: eine
+    # Zeile je Messwert statt je Minute, dazu ein Schlüsselfeld, das in jeder Zeile und noch einmal
+    # im Primärindex steht. Bei einer verwalteten Datenbank, die nach Arbeitsspeicher abgerechnet
+    # wird, ist das der teuerste Posten im ganzen Programm.
+    #
+    # Drei Tage lassen einen Dienst, der zwei Tage stillstand, seine Rohwerte beim Start noch
+    # verdichten. Der Platzbedarf steht in den Einstellungen unter „Platzbedarf".
+    raw_retention_days: int = 3
 
     @field_validator("cors_origins", "bridge_tokens", mode="before")
     @classmethod

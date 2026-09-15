@@ -502,3 +502,27 @@ class EvSessionOut(BaseModel):
 class EvReportOut(BaseModel):
     summary: EnergySummaryOut
     sessions: list[EvSessionOut]  # Ladevorgänge im Zeitraum (nur Tag/Woche)
+
+
+class StorageTableOut(BaseModel):
+    """Platzbedarf einer Tabelle: Daten, Indizes, geschätzte Zeilen."""
+
+    name: str
+    total_bytes: int
+    table_bytes: int
+    index_bytes: int
+    rows_estimate: int
+
+
+class StorageReportOut(BaseModel):
+    """Womit die Datenbank ihren Platz füllt, und wie lange Rohwerte aufgehoben werden.
+
+    Die Aufbewahrung gehört dazu, weil sie der einzige Regler ist, der von außen gestellt werden
+    kann: `measurements_raw` ist ein Durchlauferhitzer für die Verdichtung zu Minutenwerten, alles
+    darüber hinaus ist Vorrat für einen Fall, der selten eintritt.
+    """
+
+    tables: list[StorageTableOut]
+    total_bytes: int
+    raw_retention_days: int
+    note_de: str

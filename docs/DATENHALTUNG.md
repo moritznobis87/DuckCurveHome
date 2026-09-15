@@ -6,14 +6,29 @@ Was wird in welcher Auflösung wie lange behalten - und warum.
 
 | Stufe | Tabelle | Auflösung | Aufbewahrung | Größe |
 | --- | --- | --- | --- | --- |
-| Rohwerte | `measurements_raw` | so fein wie die Quelle liefert (Shelly über MQTT ~10 s) | 14 Tage (`DCH_RAW_RETENTION_DAYS`) | ~300-400 MB im Dauerzustand |
+| Rohwerte | `measurements_raw` | so fein wie die Quelle liefert (Shelly über MQTT ~10 s) | 3 Tage (`DCH_RAW_RETENTION_DAYS`) | ~70-90 MB im Dauerzustand |
 | Minutenmittel | `measurements_minute` | 1 Minute | **dauerhaft** | ~95 MB je Jahr |
 | Stundenbilanz | `energy_hourly` | 1 Stunde | **dauerhaft** | ~3,5 MB je Jahr |
 | Live-Zustand | `live_state` | nur der letzte Wert | eine Zeile je Reihe | konstant |
 
-Rohwerte sind Arbeitsmaterial: aus ihnen entstehen die Minutenmittel, und sie erlauben es, eine Stunde
-neu zu bilanzieren, wenn Messwerte verspätet eintreffen. Nach 14 Tagen werden sie gelöscht - was
-bleibt, steht dann in der Minutentabelle.
+Rohwerte sind Arbeitsmaterial: aus ihnen entstehen die Minutenmittel. Nach drei Tagen werden sie
+gelöscht - was bleibt, steht dann in der Minutentabelle.
+
+Die Frist stand einmal auf 14 Tagen. Gebraucht werden Rohwerte aber nur Minuten: die Verdichtung
+läuft alle fünf Minuten, und nachgetragene Minuten aus der myenergi-Historie werden seit demselben
+Stand ausdrücklich mitverdichtet, statt nur durch die Stundenrechnung zu laufen. Der Rest war
+Vorrat für einen Fall, der nicht eintrat - und `measurements_raw` ist mit Abstand die breiteste
+Tabelle: eine Zeile je Messwert statt je Minute, dazu ein Schlüsselfeld, das in jeder Zeile und noch
+einmal im Primärindex steht. Bei einer verwalteten Datenbank, die nach Arbeitsspeicher abgerechnet
+wird, war das der teuerste Posten im ganzen Programm.
+
+Drei Tage lassen einen Dienst, der zwei Tage stillstand, seine Rohwerte beim Start noch verdichten.
+
+**Löschen gibt den Platz nicht von selbst zurück.** Postgres markiert die Seiten als frei und füllt
+sie neu; die Datei bleibt so groß, wie sie einmal war. Wer nach einer Verkürzung der Frist die
+Größe wirklich sehen will, braucht einmalig ein `VACUUM FULL measurements_raw` - das sperrt die
+Tabelle für die Dauer des Laufs. Die aktuellen Größen stehen in den Einstellungen unter
+„Platzbedarf".
 
 Alles unterhalb der Stunde, das dauerhaft interessiert, liegt in `measurements_minute`. Nichts wird
 dort je gelöscht.
@@ -58,7 +73,7 @@ Bei Überschneidung gewinnt der verdichtete Wert.
 
 * Ein Tagesverlauf von vor zehn Jahren zeigt weiterhin Minutenwerte, nicht nur ein Stundenmittel.
 * `EnergyAccounting.recompute` kann jeden beliebigen Zeitraum neu bilanzieren, nicht mehr nur die
-  letzten 14 Tage. Wenn sich die Rechenregeln ändern - wie zuletzt beim Eigenverbrauch -, lässt sich
+  letzten Tage. Wenn sich die Rechenregeln ändern - wie zuletzt beim Eigenverbrauch -, lässt sich
   die Historie nachziehen, statt mit einer Lücke zu leben.
 
 ## Was die Historie sichtbar macht

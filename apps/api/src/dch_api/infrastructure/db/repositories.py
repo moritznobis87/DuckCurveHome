@@ -354,6 +354,38 @@ class SqlRepositories:
             yield "".join(out)
             cursor = self._aware(rows[-1].hour_start) + timedelta(microseconds=1)
 
+    async def storage_report(self) -> list[dict[str, object]]:
+        """Platzbedarf je Tabelle, größte zuerst: Daten, Indizes, geschätzte Zeilenzahl.
+
+        Der Speicherplatz einer verwalteten Datenbank ist die Größe, die bei den meisten Anbietern
+        die Rechnung treibt - über den Arbeitsspeicher, den der Seitencache belegt, nicht über den
+        Plattenplatz allein. Ohne diese Abfrage rät man, welche Tabelle das Geld kostet, und die
+        Antwort ist selten die, die man erwartet: Indizes sind bei schmalen Zeilen regelmäßig
+        größer als die Daten.
+
+        `reltuples` ist die Schätzung des Planers und wird von Autovacuum gepflegt; sie ist nach
+        einem großen Löschlauf kurzzeitig zu hoch. Ein exaktes `count(*)` wäre hier genau die Art
+        von Abfrage, deren Kosten wir untersuchen wollen.
+        """
+        if self.dialect != "postgresql":
+            return []
+        sql = text(
+            """
+            SELECT c.relname AS name,
+                   pg_total_relation_size(c.oid) AS total_bytes,
+                   pg_table_size(c.oid) AS table_bytes,
+                   pg_indexes_size(c.oid) AS index_bytes,
+                   GREATEST(c.reltuples, 0)::bigint AS rows_estimate
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relkind = 'r'
+            ORDER BY pg_total_relation_size(c.oid) DESC
+            """
+        )
+        async with self.maker() as s:
+            rows = (await s.execute(sql)).mappings().all()
+        return [dict(r) for r in rows]
+
     async def prune_raw(self, older_than: timedelta) -> int:
         cutoff = datetime.now(UTC) - older_than
         async with self.maker() as s:

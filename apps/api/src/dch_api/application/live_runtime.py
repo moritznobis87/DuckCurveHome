@@ -206,6 +206,14 @@ class LiveRuntime:
                 self.price_fill_note = f"Tibber-Historie fehlgeschlagen: {repr(exc)[:200]}"
                 log.warning("tibber history failed", error=repr(exc)[:200])
                 await self.repos.add_event("warning", "tibber.history", self.price_fill_note)
+        # Erst verdichten, dann rechnen. Die nachgetragenen Rohwerte tragen alte Zeitstempel, und
+        # die regelmäßige Verdichtung holt nur ab der letzten verdichteten Minute auf - sie hätte
+        # diese Zeilen nie angefasst. Sie wären über `minute_series` in die Stundenbilanz
+        # eingegangen, nach Ablauf der Aufbewahrungsfrist aber gelöscht worden, ohne je im
+        # dauerhaften Bestand zu stehen: die Lücke käme dann zurück, sobald die Stunden einmal neu
+        # gerechnet werden. Das ist zugleich die Voraussetzung dafür, die Frist kurz zu halten.
+        rolled = await self.repos.rollup_minutes(start, end)
+        log.info("backfilled minutes rolled up", rows=rolled, start=start.isoformat())
         await self.accounting.recompute(start, end)
 
     async def _on_source_state(self, online: bool, error: str) -> None:
