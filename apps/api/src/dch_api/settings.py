@@ -79,6 +79,18 @@ class Settings(BaseSettings):
     myenergi_api_key: str = ""
     myenergi_poll_s: float = 30.0
     myenergi_backfill_hours: int = 48  # Minutenhistorie beim Start nachladen; 0 = aus
+    # Amtlicher Zähler bei inexogy (vormals Discovergy). Angemeldet wird mit der Kontomail und dem
+    # Kontopasswort über HTTP Basic; einen API-Schlüssel gibt es dort nicht, und die dokumentierte
+    # OAuth-Kette wäre vier Aufrufe für dasselbe Ergebnis. Das Passwort gehört in die Umgebung des
+    # Dienstes und nirgendwo sonst hin.
+    #
+    # `inexogy_meter` darf leer bleiben: dann gewinnt der Zähler, der zuletzt gemeldet hat. Sonst
+    # nimmt das Feld `meterId` oder eine der Seriennummern - die lange steht auf dem Gerät.
+    inexogy_email: str = ""
+    inexogy_password: str = ""
+    inexogy_meter: str = ""
+    inexogy_poll_s: float = 30.0
+    inexogy_backfill_hours: int = 48  # Lücken beim Start nachtragen; 0 = aus
     # Entity-Mapping für den Import der HA-Historie (Sensorregeln wie im Bridge-YAML)
     import_entities_file: str = "config/entities.home.yaml"
     weather_refresh_min: int = 60

@@ -40,6 +40,12 @@ SERIES = (
     "stove_dhw_mode",  # Dreiwegeventil: 1 = Warmwasser
     "stove_operating_hours",  # Betriebsstundenzähler, monoton
     "stove_ignitions",  # Zündungszähler, monoton
+    # Amtlicher Zähler (inexogy), zweite Meinung zum Netzanschluss. Die beiden Zählerstände sind
+    # für den Vergleich die wichtigeren Zahlen als die Leistung: über eine Stunde gerechnet hebt
+    # sich der Messversatz zwischen den Geräten auf, je Minute misst man vor allem ihn.
+    "grid_power_meter_kw",
+    "grid_import_meter_kwh",
+    "grid_export_meter_kwh",
 )
 
 

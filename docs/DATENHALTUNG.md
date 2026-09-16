@@ -11,6 +11,10 @@ Was wird in welcher Auflösung wie lange behalten - und warum.
 | Stundenbilanz | `energy_hourly` | 1 Stunde | **dauerhaft** | ~3,5 MB je Jahr |
 | Live-Zustand | `live_state` | nur der letzte Wert | eine Zeile je Reihe | konstant |
 
+Seit dem 16.09.2026 trägt die Minutentabelle drei weitere Spalten: `grid_power_meter_kw`,
+`grid_import_meter_kwh` und `grid_export_meter_kwh`, die Werte des amtlichen Zählers. Sie stehen
+**neben** `grid_power_kw` und nicht an dessen Stelle; warum, steht in `SENSORIK.md`.
+
 Rohwerte sind Arbeitsmaterial: aus ihnen entstehen die Minutenmittel. Nach drei Tagen werden sie
 gelöscht - was bleibt, steht dann in der Minutentabelle.
 

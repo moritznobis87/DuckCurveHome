@@ -79,7 +79,12 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
         from dch_api.integrations.myenergi import MyenergiClient
 
         myenergi = MyenergiClient(settings.myenergi_serial, settings.myenergi_api_key)
-    runtime = LiveRuntime(settings, cfg, repos, hub, forecasts, myenergi=myenergi)
+    inexogy = None
+    if settings.inexogy_email and settings.inexogy_password:
+        from dch_api.integrations.inexogy import InexogyClient
+
+        inexogy = InexogyClient(settings.inexogy_email, settings.inexogy_password)
+    runtime = LiveRuntime(settings, cfg, repos, hub, forecasts, myenergi=myenergi, inexogy=inexogy)
     app.state.engine = engine
     app.state.bridge_hub = hub
     app.state.runner = runtime

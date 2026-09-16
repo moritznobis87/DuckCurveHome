@@ -28,6 +28,7 @@ from dch_api.application.energy_accounting import ENERGY_KEYS, EnergyAccounting
 from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
 from dch_api.application.forecast_service import ForecastService
 from dch_api.application.ha_import import HaImporter, ImportResult, Kind, load_entity_rules
+from dch_api.application.inexogy_source import InexogySource, MeterClient
 from dch_api.application.invoice_service import InvoiceService
 from dch_api.application.myenergi_source import (
     MyenergiSource,
@@ -98,6 +99,7 @@ class LiveRuntime:
         hub: BridgeHub,
         forecasts: ForecastService,
         myenergi: StatusClient | None = None,
+        inexogy: MeterClient | None = None,
     ) -> None:
         self.settings = settings
         self.config = config
@@ -161,6 +163,19 @@ class LiveRuntime:
                 on_state_change=self._on_source_state,
                 on_libbi_state=self._on_libbi_state,
             )
+        # Der amtliche Zähler läuft als zweite Meinung mit und schreibt auf eigene Schlüssel. Er
+        # ändert an keiner Bilanz etwas; erst wenn feststeht, wie stabil er überträgt, ist die
+        # Frage zu stellen, wer den Netzwert tragen soll.
+        self.inexogy: InexogySource | None = None
+        if inexogy is not None:
+            self.inexogy = InexogySource(
+                inexogy,
+                self.on_source_readings,
+                meter=settings.inexogy_meter,
+                poll_s=settings.inexogy_poll_s,
+                backfill_hours=settings.inexogy_backfill_hours,
+                on_state_change=self._on_inexogy_state,
+            )
 
     @property
     def now(self) -> datetime:
@@ -216,6 +231,14 @@ class LiveRuntime:
         log.info("backfilled minutes rolled up", rows=rolled, start=start.isoformat())
         await self.accounting.recompute(start, end)
 
+    async def _on_inexogy_state(self, online: bool, error: str) -> None:
+        await self.repos.add_event(
+            "info" if online else "warning",
+            "inexogy.connection",
+            "Zähler erreichbar" if online else f"Zähler nicht erreichbar: {error}",
+        )
+        self.broker.publish("system", {"sources": self._sources()})
+
     async def _on_source_state(self, online: bool, error: str) -> None:
         await self.repos.add_event(
             "info" if online else "warning",
@@ -234,6 +257,8 @@ class LiveRuntime:
         ]
         if self.myenergi is not None:
             out.append(SourceStatusOut(**self.myenergi.status_out()))
+        if self.inexogy is not None:
+            out.append(SourceStatusOut(**self.inexogy.status_out()))
         return out
 
     async def _libbi_events(self, start: datetime, end: datetime) -> list[tuple[datetime, str]]:
@@ -1044,6 +1069,8 @@ class LiveRuntime:
             ]
             if self.myenergi is not None:
                 self.myenergi.start()
+            if self.inexogy is not None:
+                self.inexogy.start()
         log.info(
             "live runtime started",
             actuation=self.settings.actuation_enabled,
@@ -1051,6 +1078,8 @@ class LiveRuntime:
         )
 
     async def stop(self) -> None:
+        if self.inexogy is not None:
+            await self.inexogy.stop()
         if self.myenergi is not None:
             await self.myenergi.stop()
         for t in self._tasks:
