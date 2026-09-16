@@ -4,6 +4,7 @@ import { requireOwner } from "@/lib/guard";
 import { authRequired } from "@/lib/session";
 import { active } from "@/lib/presence";
 import { CopyField } from "@/components/ui/CopyField";
+import { StorageReport } from "@/components/settings/StorageReport";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Einstellungen · Duck Curve Home" };
@@ -112,6 +113,16 @@ export default async function SettingsPage() {
           Web-Dienstes ist sie leer. Sie zeigt, wer zusieht - ein Zugriffsprotokoll ist sie nicht.
           Zum Aktualisieren die Seite neu laden.
         </p>
+      </section>
+
+      <section className="flex max-w-[760px] flex-col gap-3">
+        <h2 className="m-0 text-[18px] font-semibold">Platzbedarf</h2>
+        <p className="m-0 text-[15px] leading-[1.6] text-text-2">
+          Eine verwaltete Datenbank wird nach Arbeitsspeicher abgerechnet, und den belegt sie im
+          Wesentlichen mit ihrer eigenen Größe. Welche Tabelle das ist, lässt sich nicht erraten:
+          bei schmalen Zeilen sind die Indizes regelmäßig größer als die Daten.
+        </p>
+        <StorageReport />
       </section>
 
       <section className="flex max-w-[760px] flex-col gap-3">

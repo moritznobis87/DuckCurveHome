@@ -1263,6 +1263,27 @@
         }
       }
     },
+    "/api/v1/system/storage": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Platzbedarf der Datenbank",
+        "operationId": "storage_api_v1_system_storage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageReportOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/demo": {
       "post": {
         "tags": [
@@ -5352,6 +5373,72 @@
         ],
         "title": "SourceStatusOut",
         "description": "Zustand einer Messquelle (Bridge, myenergi, …)."
+      },
+      "StorageReportOut": {
+        "properties": {
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/StorageTableOut"
+            },
+            "type": "array",
+            "title": "Tables"
+          },
+          "total_bytes": {
+            "type": "integer",
+            "title": "Total Bytes"
+          },
+          "raw_retention_days": {
+            "type": "integer",
+            "title": "Raw Retention Days"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tables",
+          "total_bytes",
+          "raw_retention_days",
+          "note_de"
+        ],
+        "title": "StorageReportOut",
+        "description": "Womit die Datenbank ihren Platz füllt, und wie lange Rohwerte aufgehoben werden.\n\nDie Aufbewahrung gehört dazu, weil sie der einzige Regler ist, der von außen gestellt werden\nkann: `measurements_raw` ist ein Durchlauferhitzer für die Verdichtung zu Minutenwerten, alles\ndarüber hinaus ist Vorrat für einen Fall, der selten eintritt."
+      },
+      "StorageTableOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "total_bytes": {
+            "type": "integer",
+            "title": "Total Bytes"
+          },
+          "table_bytes": {
+            "type": "integer",
+            "title": "Table Bytes"
+          },
+          "index_bytes": {
+            "type": "integer",
+            "title": "Index Bytes"
+          },
+          "rows_estimate": {
+            "type": "integer",
+            "title": "Rows Estimate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "total_bytes",
+          "table_bytes",
+          "index_bytes",
+          "rows_estimate"
+        ],
+        "title": "StorageTableOut",
+        "description": "Platzbedarf einer Tabelle: Daten, Indizes, geschätzte Zeilen."
       },
       "StoveConfig": {
         "properties": {

@@ -467,6 +467,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platzbedarf der Datenbank */
+        get: operations["storage_api_v1_system_storage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/demo": {
         parameters: {
             query?: never;
@@ -2527,6 +2544,40 @@ export interface components {
             detail_de: string;
         };
         /**
+         * StorageReportOut
+         * @description Womit die Datenbank ihren Platz füllt, und wie lange Rohwerte aufgehoben werden.
+         *
+         *     Die Aufbewahrung gehört dazu, weil sie der einzige Regler ist, der von außen gestellt werden
+         *     kann: `measurements_raw` ist ein Durchlauferhitzer für die Verdichtung zu Minutenwerten, alles
+         *     darüber hinaus ist Vorrat für einen Fall, der selten eintritt.
+         */
+        StorageReportOut: {
+            /** Tables */
+            tables: components["schemas"]["StorageTableOut"][];
+            /** Total Bytes */
+            total_bytes: number;
+            /** Raw Retention Days */
+            raw_retention_days: number;
+            /** Note De */
+            note_de: string;
+        };
+        /**
+         * StorageTableOut
+         * @description Platzbedarf einer Tabelle: Daten, Indizes, geschätzte Zeilen.
+         */
+        StorageTableOut: {
+            /** Name */
+            name: string;
+            /** Total Bytes */
+            total_bytes: number;
+            /** Table Bytes */
+            table_bytes: number;
+            /** Index Bytes */
+            index_bytes: number;
+            /** Rows Estimate */
+            rows_estimate: number;
+        };
+        /**
          * StoveConfig
          * @description Der Pelletofen als zweite Wärmequelle am selben Puffer.
          *
@@ -3717,6 +3768,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HemsConfig"];
+                };
+            };
+        };
+    };
+    storage_api_v1_system_storage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageReportOut"];
                 };
             };
         };
