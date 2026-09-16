@@ -93,6 +93,11 @@ class MeasurementMinute(Base):
     stove_dhw_mode: Mapped[float | None] = mapped_column(Float)
     stove_operating_hours: Mapped[float | None] = mapped_column(Float)
     stove_ignitions: Mapped[float | None] = mapped_column(Float)
+    # Amtlicher Zähler (inexogy). Eigene Spalten neben `grid_power_kw`, nicht statt dessen: führend
+    # bleibt der Stromwandler des Speichers, der Zähler läuft als unabhängige Beobachtung mit.
+    grid_power_meter_kw: Mapped[float | None] = mapped_column(Float)
+    grid_import_meter_kwh: Mapped[float | None] = mapped_column(Float)
+    grid_export_meter_kwh: Mapped[float | None] = mapped_column(Float)
     extra: Mapped[dict[str, float] | None] = mapped_column(JsonType)
 
 

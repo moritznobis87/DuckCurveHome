@@ -15,6 +15,37 @@ Was gemessen wird, was geschätzt wird und was zu kaufen wäre, um aus Schätzun
 Strom (PV, Netz, Batterie, Wärmepumpe, Wallbox, Haus), Batterie-SOC, vier Puffertemperaturen,
 Außentemperatur, Strompreis, Schaltzustände. Minutenauflösung, dauerhaft (siehe `DATENHALTUNG.md`).
 
+### Der Netzanschluss wird doppelt gemessen
+
+Den Netzwert liefert bisher ein Stromwandler des Speichers. Seit dem Einbau des inexogy-Smartmeters
+gibt es dieselbe Größe ein zweites Mal, gemessen vom **amtlichen Zähler** - dem Gerät, nach dem
+abgerechnet wird.
+
+Führend bleibt vorerst der Wandler. Der Zähler läuft auf eigenen Schlüsseln mit
+(`grid_power_meter_kw`, `grid_import_meter_kwh`, `grid_export_meter_kwh`) und ändert an keiner
+Bilanz etwas. Zuerst ist zu beantworten, wie stabil er überträgt - der vorige Zähler hatte
+Verbindungsabbrüche -, und danach, wie weit die beiden auseinanderliegen. Beides setzt getrennte
+Reihen voraus: liefe der Zählerwert nach `grid_power_kw`, verglichen wir ihn mit sich selbst.
+
+**Anmeldung.** Kontomail und Kontopasswort über HTTP Basic gegen `https://api.inexogy.com/public/v1`.
+Einen API-Schlüssel gibt es dort nicht; die dokumentierte OAuth-1.0a-Kette wäre vier Aufrufe für
+dasselbe Ergebnis, und Basic nimmt der Server an. Die Zugangsdaten stehen in `DCH_INEXOGY_EMAIL`
+und `DCH_INEXOGY_PASSWORD` in der Umgebung des Dienstes, nirgendwo sonst. `DCH_INEXOGY_METER` ist
+optional und nimmt `meterId` oder eine der Seriennummern; ohne Angabe gewinnt der Zähler, der
+zuletzt gemeldet hat.
+
+**Zwei Fallstricke.** Die API nimmt nur den 32-stelligen `meterId` aus `/meters`, nicht die
+Seriennummer - daran ist evcc nach der Umbenennung von Discovergy gescheitert. Und sie erlaubt je
+IP nur **eine gleichzeitige Verbindung**; der Client hält deshalb genau eine offen und
+serialisiert seine Aufrufe.
+
+**Die Einheiten stehen nicht in der Beschreibung.** `power` in Milliwatt und die Zählerstände in
+Zehnmilliardstel Kilowattstunden sind aus den Clients des Ökosystems geschlossen, nicht aus einer
+Zusage des Herstellers. Deshalb prüft die Übersetzung jeden Wert gegen eine Plausibilitätsgrenze:
+stimmt der Faktor nicht, liegt das Ergebnis um Zehnerpotenzen daneben, die Reihe bleibt leer und im
+Protokoll steht, was ankam. Eine Messreihe, die aussieht wie eine Messreihe und um den Faktor
+tausend falsch ist, wäre hier der teuerste Fehler.
+
 ## Was geschätzt wird - die eigentliche Lücke
 
 Das System kennt den **Strom** der Wärmepumpe, aber nicht die **Wärme**. Folge:
