@@ -1,7 +1,7 @@
 name: Duck Curve Home Bridge
-version: "0.7.1"
+version: "0.8.0"
 slug: duckcurve_bridge
-description: Verbindet das Haus ausgehend mit Duck Curve Home (Railway). Shellys direkt über MQTT, den MCZ-Pelletofen über sein Maestro-Modul, übrige Entitäten und Aktoren über Home Assistant.
+description: Verbindet das Haus ausgehend mit Duck Curve Home (Railway). Shellys direkt über MQTT, den MCZ-Pelletofen über sein Maestro-Modul, übrige Entitäten und Aktoren über Home Assistant. Öffnet auf Wunsch die Haustür, wenn der UniFi-Access-Reader ein freigegebenes Gesicht erkennt.
 url: https://github.com/moritznobis87/DuckCurveHome
 arch: [aarch64, amd64, armv7]
 startup: services
@@ -35,6 +35,20 @@ options:
   mcz_port: 81
   mcz_poll_interval_s: 15
   mcz_allow_control: true
+  # Haustür. Ohne unifi_host/nuki_host bleibt der Dienst aus. Mit Zugangsdaten, aber ohne
+  # door_enabled läuft er im Beobachtungsbetrieb: er protokolliert jeden Zutritt und rührt das
+  # Schloss nicht an. Die Werte für die drei Listen stehen dann im Protokoll - siehe DOCS.md.
+  unifi_host: ""
+  unifi_port: 12445
+  unifi_token: ""
+  nuki_host: ""
+  nuki_port: 8080
+  nuki_token: ""
+  nuki_id: ""
+  door_enabled: false
+  door_doors: ""
+  door_actors: ""
+  door_methods: ""
 schema:
   api_ws_url: str
   api_token: password
@@ -59,3 +73,14 @@ schema:
   mcz_port: port
   mcz_poll_interval_s: int(5,600)
   mcz_allow_control: bool
+  unifi_host: str?
+  unifi_port: port
+  unifi_token: password?
+  nuki_host: str?
+  nuki_port: port
+  nuki_token: password?
+  nuki_id: str?
+  door_enabled: bool
+  door_doors: str?
+  door_actors: str?
+  door_methods: str?
