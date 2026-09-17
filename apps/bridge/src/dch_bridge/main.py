@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import structlog
 
+from dch_bridge.door import DoorService
 from dch_bridge.entities_source import load_entity_map
 from dch_bridge.home_assistant.rest_client import HaRestClient
 from dch_bridge.home_assistant.ws_client import EntityState, HaWsClient
@@ -17,6 +18,7 @@ from dch_bridge.mapping import ActuatorMap, EntityMap, normalize
 from dch_bridge.outbox import Outbox
 from dch_bridge.settings import BridgeSettings
 from dch_bridge.sources.mcz_maestro import MaestroStove, stove_url
+from dch_bridge.sources.nuki_lock import NukiLock
 from dch_bridge.sources.shelly_mqtt import (
     Comparator,
     Device,
@@ -25,10 +27,12 @@ from dch_bridge.sources.shelly_mqtt import (
     MqttHub,
     aiomqtt_session_factory,
 )
+from dch_bridge.sources.unifi_access import UnifiAccessEvents
 from dch_bridge.uplink.client import UplinkClient
+from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 log = structlog.get_logger("bridge")
 
 
@@ -51,6 +55,31 @@ class Bridge:
                 on_readings=self._ingest_readings,
                 poll_interval_s=settings.mcz_poll_interval_s,
                 allow_control=settings.mcz_allow_control,
+            )
+        # Haustür: Zutrittsereignisse der UniFi-Konsole öffnen das Nuki-Schloss. Beides im
+        # Heimnetz. Dieser Dienst hat bewusst keine Verbindung zum Uplink - die Cloud bekommt
+        # keinen Weg zur Tür, weil es keinen gibt, nicht weil wir ihn gerade versperrt haben.
+        self.door: DoorService | None = None
+        if settings.door_configured:
+            self.door = DoorService(
+                UnifiAccessEvents(
+                    settings.unifi_host,
+                    settings.unifi_token,
+                    port=settings.unifi_port,
+                    verify_tls=settings.unifi_verify_tls,
+                ),
+                NukiLock(
+                    settings.nuki_host,
+                    settings.nuki_token,
+                    port=settings.nuki_port,
+                    nuki_id=settings.nuki_id,
+                ),
+                DoorPolicy.of(
+                    enabled=settings.door_enabled,
+                    doors=settings.door_doors,
+                    actors=settings.door_actors,
+                    methods=settings.door_methods,
+                ),
             )
         self.uplink = UplinkClient(
             url=settings.api_ws_url,
@@ -351,6 +380,8 @@ class Bridge:
                 log.info("mqtt status", **self.mqtt.status())
             if self.stove is not None:
                 log.info("stove status", **self.stove.status())
+            if self.door is not None:
+                log.info("door status", **self.door.status())
             # Welche Schlüssel zuletzt tatsächlich an die API gingen - und aus welcher Quelle.
             log.info(
                 "telemetry keys",
@@ -369,6 +400,9 @@ class Bridge:
             mqtt=f"{self.settings.mqtt_host}:{self.settings.mqtt_port}" if self.mqtt else None,
             mqtt_devices=[d.label for d in self.mqtt.devices] if self.mqtt else [],
             stove=self.stove.url if self.stove else None,
+            door="beobachtend"
+            if self.door and not self.settings.door_enabled
+            else ("freigegeben" if self.door else None),
         )
         tasks = [
             asyncio.create_task(self._ha_loop(), name="ha"),
@@ -381,7 +415,9 @@ class Bridge:
             tasks.append(asyncio.create_task(self.mqtt.run(), name="mqtt"))
         if self.stove is not None:
             tasks.append(asyncio.create_task(self.stove.run(), name="mcz"))
-        if self.mqtt is not None or self.stove is not None:
+        if self.door is not None:
+            tasks.append(asyncio.create_task(self.door.events.run(), name="unifi-access"))
+        if self.mqtt is not None or self.stove is not None or self.door is not None:
             tasks.append(asyncio.create_task(self._source_status_loop(), name="source-status"))
         try:
             await asyncio.gather(*tasks)

@@ -46,6 +46,11 @@ stimmt der Faktor nicht, liegt das Ergebnis um Zehnerpotenzen daneben, die Reihe
 Protokoll steht, was ankam. Eine Messreihe, die aussieht wie eine Messreihe und um den Faktor
 tausend falsch ist, wäre hier der teuerste Fehler.
 
+### Die Haustür hängt ebenfalls an der Bridge
+
+Gesichtsscan am UniFi-Access-Reader öffnet das Nuki-Schloss, beides im Heimnetz und ohne Cloud.
+Das ist keine Messung, steht aber hier, weil es dieselbe Bridge trägt: siehe `TUEROEFFNUNG.md`.
+
 ## Was geschätzt wird - die eigentliche Lücke
 
 Das System kennt den **Strom** der Wärmepumpe, aber nicht die **Wärme**. Folge:

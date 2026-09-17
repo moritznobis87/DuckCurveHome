@@ -3,11 +3,12 @@ Umgebungsvariablen DCH_BRIDGE_*), lokal aus .env."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class BridgeSettings(BaseSettings):
@@ -59,6 +60,33 @@ class BridgeSettings(BaseSettings):
     # fernzustarten ist eine andere Klasse von Eingriff als ein Relais, und die Entscheidung
     # gehört dem Hausherrn, nicht der Voreinstellung.
     mcz_allow_control: bool = False
+    # Haustür: Gesichtsscan am UniFi-Access-Reader öffnet das Nuki-Schloss. Beides im Heimnetz,
+    # ohne Cloud. Leer = aus.
+    #
+    # Der Token für Access entsteht in dessen Oberfläche unter Einstellungen → Allgemein →
+    # API-Token, der für Nuki in der Nuki-App unter „Geräte verwalten" beim Einschalten der
+    # HTTP-API. Beide gehören in die Umgebung der Bridge und nirgendwo sonst hin.
+    unifi_host: str = ""  # IP der UniFi-Konsole; leer = Türdienst aus
+    unifi_port: int = 12445
+    unifi_token: str = ""
+    unifi_verify_tls: bool = False  # die Konsole stellt ihr Zertifikat selbst aus
+    nuki_host: str = ""  # IP des Schlosses (Pro mit WLAN); leer = Türdienst aus
+    nuki_port: int = 8080
+    nuki_token: str = ""
+    nuki_id: str = ""  # leer = das erste Schloss aus /list
+    # Die Freigabe selbst. Ohne sie läuft der Dienst im Beobachtungsbetrieb: er protokolliert jedes
+    # Zutrittsereignis und rührt das Schloss nicht an. So findet man die Werte für die Listen
+    # unten an der eigenen Tür heraus, statt sie zu raten.
+    door_enabled: bool = False
+    # `NoDecode`, weil pydantic-settings eine Liste aus der Umgebung sonst als JSON zu lesen
+    # versucht und an „Haustür" scheitert, bevor der Validator unten überhaupt drankommt.
+    door_doors: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    door_actors: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    door_methods: Annotated[list[str], NoDecode] = Field(default_factory=list)
+
+    @property
+    def door_configured(self) -> bool:
+        return bool(self.unifi_host and self.unifi_token and self.nuki_host and self.nuki_token)
 
     @property
     def shelly_topic_prefix(self) -> str:
@@ -74,3 +102,17 @@ class BridgeSettings(BaseSettings):
             return raw  # bereits ein Pfad, z. B. shellies/shellyem3-485519db56d2
         device = raw if raw.startswith("shellyem3-") else f"shellyem3-{raw}"
         return f"shellies/{device}"
+
+    @field_validator("door_doors", "door_actors", "door_methods", mode="before")
+    @classmethod
+    def _lists(cls, value: object) -> list[str]:
+        """Aus der Umgebung kommen Listen als Text: „Haustür, Nebentür" oder als JSON-Liste."""
+        if value is None or value == "":
+            return []
+        if isinstance(value, str):
+            raw = value.strip()
+            if raw.startswith("["):
+                parsed = json.loads(raw)
+                return [str(v) for v in parsed] if isinstance(parsed, list) else []
+            return [p.strip() for p in raw.split(",") if p.strip()]
+        return [str(v) for v in value] if isinstance(value, list) else []

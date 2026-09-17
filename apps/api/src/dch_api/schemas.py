@@ -526,3 +526,30 @@ class StorageReportOut(BaseModel):
     total_bytes: int
     raw_retention_days: int
     note_de: str
+
+
+class CoverageSeriesOut(BaseModel):
+    """Verfügbarkeit einer Messreihe: je Stunde die Zahl der angekommenen Minuten, plus Kennzahlen.
+
+    `longest_outage_h` zählt nur **vollständig** leere Stunden. Das ist bewusst eine Untergrenze:
+    aus Stundenzahlen lässt sich nicht ablesen, ob die fehlenden Minuten einer halb gefüllten Stunde
+    zusammenhängen. Eine Zahl, die etwas behauptet, was die Daten nicht hergeben, wäre hier schlimmer
+    als eine, die zu klein ist - und die Karte zeigt die Teilstunden ohnehin.
+    """
+
+    key: str
+    label_de: str
+    hours: list[tuple[str, int]]
+    coverage: float
+    minutes_seen: int
+    minutes_expected: int
+    incomplete_hours: int
+    longest_outage_h: int
+    last_at: datetime | None
+
+
+class CoverageOut(BaseModel):
+    start: datetime
+    end: datetime
+    series: list[CoverageSeriesOut]
+    note_de: str

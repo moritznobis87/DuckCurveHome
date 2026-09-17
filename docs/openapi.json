@@ -1284,6 +1284,67 @@
         }
       }
     },
+    "/api/v1/system/coverage": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Verfügbarkeit der Netzreihen",
+        "description": "Wie lückenlos die beiden Netzmessungen in den letzten Tagen angekommen sind.\n\nDer Zeitraum endet am Ankertag, damit die Karte zu dem Tag passt, den die Prüfseite gerade\nzeigt, und nicht zu heute.",
+        "operationId": "coverage_api_v1_system_coverage_get",
+        "parameters": [
+          {
+            "name": "anchor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anchor"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 28,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/demo": {
       "post": {
         "tags": [
@@ -2125,6 +2186,114 @@
         "type": "object",
         "title": "CorrectorState",
         "description": "Serialisierbarer Zustand des Korrektors (Persistenz in der API)."
+      },
+      "CoverageOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageSeriesOut"
+            },
+            "type": "array",
+            "title": "Series"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "series",
+          "note_de"
+        ],
+        "title": "CoverageOut"
+      },
+      "CoverageSeriesOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label_de": {
+            "type": "string",
+            "title": "Label De"
+          },
+          "hours": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Hours"
+          },
+          "coverage": {
+            "type": "number",
+            "title": "Coverage"
+          },
+          "minutes_seen": {
+            "type": "integer",
+            "title": "Minutes Seen"
+          },
+          "minutes_expected": {
+            "type": "integer",
+            "title": "Minutes Expected"
+          },
+          "incomplete_hours": {
+            "type": "integer",
+            "title": "Incomplete Hours"
+          },
+          "longest_outage_h": {
+            "type": "integer",
+            "title": "Longest Outage H"
+          },
+          "last_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label_de",
+          "hours",
+          "coverage",
+          "minutes_seen",
+          "minutes_expected",
+          "incomplete_hours",
+          "longest_outage_h",
+          "last_at"
+        ],
+        "title": "CoverageSeriesOut",
+        "description": "Verfügbarkeit einer Messreihe: je Stunde die Zahl der angekommenen Minuten, plus Kennzahlen.\n\n`longest_outage_h` zählt nur **vollständig** leere Stunden. Das ist bewusst eine Untergrenze:\naus Stundenzahlen lässt sich nicht ablesen, ob die fehlenden Minuten einer halb gefüllten Stunde\nzusammenhängen. Eine Zahl, die etwas behauptet, was die Daten nicht hergeben, wäre hier schlimmer\nals eine, die zu klein ist - und die Karte zeigt die Teilstunden ohnehin."
       },
       "CyclingStats": {
         "properties": {

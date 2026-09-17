@@ -426,6 +426,40 @@ begrenzter Laufzeit; der Timer im Gerät ist die Absicherung für den Fall, dass
 Erst wenn E0 und E1 stehen, lohnt es sich, in der API `DCH_HEAT_PUMP_ACTUATION_ENABLED=true` zu setzen -
 bis dahin liest Duck Curve Home den Kontakt nur mit.
 
+## Haustür: Gesichtsscan öffnet die Falle
+
+Ab 0.8.0 kann die Bridge die Haustür öffnen, wenn der UniFi-Access-Reader ein freigegebenes Gesicht
+erkennt. Die Kette ist Reader → UniFi-Konsole → Bridge → Nuki-Schloss, alles im Heimnetz: weder die
+DCH-Cloud noch Home Assistant noch die Nuki-Cloud stehen darin. Der ausführliche Hintergrund steht in
+`docs/TUEROEFFNUNG.md` im Repository.
+
+Voraussetzungen: ein **Nuki Smart Lock Pro** mit WLAN, in dessen App unter „Geräte verwalten" die
+HTTP-API eingeschaltet ist (dort wird auch der Token vergeben, 6 bis 20 Zeichen), und ein
+API-Token der UniFi-Access-Konsole aus Einstellungen → Allgemein → API-Token.
+
+**Inbetriebnahme in drei Schritten.** Der Dienst startet im Beobachtungsbetrieb und rührt das
+Schloss nicht an. Das ist nötig, weil der Wert, den die Konsole für einen Gesichtsscan schreibt,
+nirgends dokumentiert ist - man liest ihn ab, statt ihn zu raten.
+
+1. `unifi_host`, `unifi_token`, `nuki_host` und `nuki_token` eintragen, `door_enabled` aus lassen.
+2. Einmal vor die Tür stellen und scannen lassen. Im Add-on-Protokoll steht dann eine Zeile
+
+   ```
+   access event door=Haustür actor=Moritz method=FACE granted=True open_door=False
+   ```
+
+3. Die drei Werte in `door_doors`, `door_actors` und `door_methods` übernehmen (mehrere mit Komma
+   getrennt) und `door_enabled` einschalten.
+
+Freigegeben wird ausschließlich, was in diesen drei Listen steht. Eine leere Liste heißt niemand,
+nicht alle. Zusätzlich lehnt die Bridge Ereignisse ab, die älter als 30 Sekunden sind - nach einem
+Verbindungsabbruch liefert die Konsole zurückliegende Einträge nach, und eine Tür holt nichts nach.
+
+**Der sichere Zustand ist „zu".** Steht die Bridge, geht die Tür über diesen Weg nicht auf.
+Schlüssel und Nuki-App bleiben der Rückfallweg, und der Reader sollte weiterhin auch ohne dieses
+Add-on funktionieren. Eine Automatisierung, die zur einzigen Art wird, ins Haus zu kommen, ist ein
+Fehler im Entwurf.
+
 ## Build-Hinweis
 
 Der Supervisor baut das Image auf dem HA-Rechner mit dem Add-on-Ordner als Kontext. Das Dockerfile installiert

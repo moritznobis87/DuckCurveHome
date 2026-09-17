@@ -484,6 +484,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Verfügbarkeit der Netzreihen
+         * @description Wie lückenlos die beiden Netzmessungen in den letzten Tagen angekommen sind.
+         *
+         *     Der Zeitraum endet am Ankertag, damit die Karte zu dem Tag passt, den die Prüfseite gerade
+         *     zeigt, und nicht zu heute.
+         */
+        get: operations["coverage_api_v1_system_coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/demo": {
         parameters: {
             query?: never;
@@ -956,6 +979,55 @@ export interface components {
             half_life_days: number;
             /** Updated On */
             updated_on?: string | null;
+        };
+        /** CoverageOut */
+        CoverageOut: {
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Series */
+            series: components["schemas"]["CoverageSeriesOut"][];
+            /** Note De */
+            note_de: string;
+        };
+        /**
+         * CoverageSeriesOut
+         * @description Verfügbarkeit einer Messreihe: je Stunde die Zahl der angekommenen Minuten, plus Kennzahlen.
+         *
+         *     `longest_outage_h` zählt nur **vollständig** leere Stunden. Das ist bewusst eine Untergrenze:
+         *     aus Stundenzahlen lässt sich nicht ablesen, ob die fehlenden Minuten einer halb gefüllten Stunde
+         *     zusammenhängen. Eine Zahl, die etwas behauptet, was die Daten nicht hergeben, wäre hier schlimmer
+         *     als eine, die zu klein ist - und die Karte zeigt die Teilstunden ohnehin.
+         */
+        CoverageSeriesOut: {
+            /** Key */
+            key: string;
+            /** Label De */
+            label_de: string;
+            /** Hours */
+            hours: [
+                string,
+                number
+            ][];
+            /** Coverage */
+            coverage: number;
+            /** Minutes Seen */
+            minutes_seen: number;
+            /** Minutes Expected */
+            minutes_expected: number;
+            /** Incomplete Hours */
+            incomplete_hours: number;
+            /** Longest Outage H */
+            longest_outage_h: number;
+            /** Last At */
+            last_at: string | null;
         };
         /**
          * CyclingStats
@@ -3788,6 +3860,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StorageReportOut"];
+                };
+            };
+        };
+    };
+    coverage_api_v1_system_coverage_get: {
+        parameters: {
+            query?: {
+                anchor?: string | null;
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
