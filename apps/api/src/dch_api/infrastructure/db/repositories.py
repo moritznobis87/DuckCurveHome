@@ -354,6 +354,61 @@ class SqlRepositories:
             yield "".join(out)
             cursor = self._aware(rows[-1].hour_start) + timedelta(microseconds=1)
 
+    async def hourly_coverage(
+        self, keys: list[str], start: datetime, end: datetime
+    ) -> dict[str, list[tuple[str, int]]]:
+        """Je Reihe und Stunde: wie viele der 60 Minuten haben einen Wert.
+
+        Die Frage dahinter ist nicht „wie hoch war die Leistung", sondern „kam überhaupt etwas an".
+        Ein Zähler, dessen Verbindung nachts abreißt, ist in einer Leistungskurve schwer zu sehen -
+        eine Null sieht aus wie eine Null. In einer Karte aus Tagen und Stunden ist er ein Streifen.
+
+        Gezählt wird ausschließlich auf der Stunde, nicht auf der Minute: eine volle Stunde braucht
+        eine Zahl und keine sechzig, und über vier Wochen ist der Unterschied zwischen 672 Zeilen
+        und 40 000 der zwischen einer Abfrage und einem Grund, sie nicht zu stellen.
+        """
+        cols = [(k, MINUTE_KEY_TO_COLUMN[k]) for k in keys if k in MINUTE_KEY_TO_COLUMN]
+        if not cols:
+            return {}
+        if self.dialect == "sqlite":
+            bucket: Any = func.strftime("%Y-%m-%dT%H:00:00+00:00", m.MeasurementMinute.bucket)
+        else:
+            bucket = func.date_trunc("hour", m.MeasurementMinute.bucket)
+        stmt = (
+            select(
+                bucket.label("hour"),
+                *[func.count(getattr(m.MeasurementMinute, col)).label(key) for key, col in cols],
+            )
+            .where(m.MeasurementMinute.bucket >= start, m.MeasurementMinute.bucket < end)
+            .group_by("hour")
+            .order_by("hour")
+        )
+        async with self.maker() as s:
+            rows = (await s.execute(stmt)).all()
+        out: dict[str, list[tuple[str, int]]] = {key: [] for key, _ in cols}
+        for row in rows:
+            hour = self._bucket_iso(row[0])
+            for i, (key, _col) in enumerate(cols, start=1):
+                out[key].append((hour, int(row[i] or 0)))
+        return out
+
+    async def last_value_at(self, key: str) -> datetime | None:
+        """Wann zuletzt ein Wert dieser Reihe im dauerhaften Bestand stand."""
+        col = MINUTE_KEY_TO_COLUMN.get(key)
+        if col is None:
+            return None
+        async with self.maker() as s:
+            row = (
+                await s.execute(
+                    select(func.max(m.MeasurementMinute.bucket)).where(
+                        getattr(m.MeasurementMinute, col).is_not(None)
+                    )
+                )
+            ).first()
+        # SQLite gibt den Zeitstempel ohne Zone zurück, PostgreSQL mit. Ohne Vereinheitlichung
+        # rechnete die Oberfläche das Alter des Werts je nach Datenbank um zwei Stunden daneben.
+        return self._aware(row[0]) if row and row[0] else None
+
     async def storage_report(self) -> list[dict[str, object]]:
         """Platzbedarf je Tabelle, größte zuerst: Daten, Indizes, geschätzte Zeilenzahl.
 

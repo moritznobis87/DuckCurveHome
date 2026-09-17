@@ -452,7 +452,18 @@ function robustMax(values: number[]): number {
 export function yearMap(
   days: string[],
   grid: Array<Array<number | null>>,
-  opts: { unit: string; diverging?: boolean; ramp: string[]; digits?: number },
+  opts: {
+    unit: string;
+    diverging?: boolean;
+    ramp: string[];
+    digits?: number;
+    // Feste Obergrenze statt des 98. Perzentils. Für eine Verfügbarkeitskarte ist die Skala von
+    // vornherein bekannt - eine Stunde hat sechzig Minuten -, und eine Skala, die sich nach den
+    // Daten richtet, färbte einen Zeitraum ohne jede Lücke genauso wie einen mit lauter Lücken.
+    max?: number;
+    // Über vier Wochen gibt es keine Monatsanfänge zu beschriften; dort gehören Tage an die Achse.
+    xLabel?: "month" | "day";
+  },
 ): EChartsCoreOption {
   const data: Array<[number, number, number]> = [];
   const present: number[] = [];
@@ -466,9 +477,9 @@ export function yearMap(
     }
   }
   const digits = opts.digits ?? 2;
-  const bound = opts.diverging
-    ? robustMax(present.map(Math.abs))
-    : robustMax(present.filter((v) => v > 0));
+  const bound =
+    opts.max ??
+    (opts.diverging ? robustMax(present.map(Math.abs)) : robustMax(present.filter((v) => v > 0)));
   const monthStarts = days
     .map((iso, i) => ({ i, d: new Date(`${iso}T12:00:00`) }))
     .filter(({ d }) => d.getDate() === 1);
@@ -492,19 +503,29 @@ export function yearMap(
         return `<div style="color:rgba(255,255,255,.6)">${label}</div><div>${hour}:00 - ${hour}:59</div><div style="margin-top:3px">${de1(p.data[2], digits)} ${opts.unit}</div>`;
       },
     },
-    grid: { left: 44, right: 16, top: 38, bottom: 34 },
+    // Die kompakte Variante braucht oben mehr Luft: dort liegt die Skala waagerecht über der
+    // Karte, und die obersten Stunden sind gerade die, in denen nächtliche Abrisse stehen.
+    grid: { left: 44, right: 16, top: opts.xLabel === "day" ? 52 : 38, bottom: 34 },
     xAxis: {
       type: "category",
       data: days,
       axisLine: { lineStyle: { color: C.axis } },
       axisTick: { show: false },
       splitLine: { show: false },
-      axisLabel: {
-        ...axisText,
-        fontSize: 10,
-        interval: (i: number) => monthStarts.some((m) => m.i === i),
-        formatter: (_v: string, i: number) => MONTHS[new Date(`${days[i]}T12:00:00`).getMonth()] ?? "",
-      },
+      axisLabel:
+        opts.xLabel === "day"
+          ? {
+              ...axisText,
+              fontSize: 10,
+              interval: (i: number) => i % Math.max(1, Math.round(days.length / 10)) === 0,
+              formatter: (v: string) => new Date(`${v}T12:00:00`).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }),
+            }
+          : {
+              ...axisText,
+              fontSize: 10,
+              interval: (i: number) => monthStarts.some((m) => m.i === i),
+              formatter: (_v: string, i: number) => MONTHS[new Date(`${days[i]}T12:00:00`).getMonth()] ?? "",
+            },
     },
     yAxis: {
       type: "category",
@@ -521,6 +542,7 @@ export function yearMap(
       max: bound,
       calculable: true,
       orient: "horizontal",
+      ...(opts.xLabel === "day" ? { itemWidth: 10, itemHeight: 120, top: 2 } : {}),
       // Oben rechts statt unten: unten drängen sich sonst Monatsbeschriftung und Skala, und die
       // Karte selbst verliert die Höhe, die sie zum Lesen braucht.
       right: 8,
@@ -618,6 +640,7 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
         { name: "PV" },
         { name: "Haus" },
         { name: "Netz" },
+        { name: "Netz (Zähler)", icon: "path://M0,0 H6 V3 H0 Z M10,0 H16 V3 H10 Z" },
         { name: "Speicher" },
         { name: "Ladestand %", icon: "path://M0,0 H6 V3 H0 Z M10,0 H16 V3 H10 Z" },
       ],
@@ -728,6 +751,22 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
       },
       line("Haus", C.house, house, { step: false, z: 3 }),
       line("Netz", C.grid, (r) => num(r, "grid_power_kw"), { z: 4 }),
+      /**
+       * Dieselbe Größe ein zweites Mal, gemessen vom amtlichen Zähler.
+       *
+       * Sie trägt die Farbe des Netzbezugs und ist gestrichelt, weil sie dieselbe Sache meint und
+       * nur von einem anderen Gerät kommt. Eine eigene Farbe wäre hier falsch - der Palettenprüfer
+       * findet zu jedem Kandidaten ohnehin ein Paar unter ΔE 15 gegen Speicher oder Haus, und die
+       * Legende soll sagen „das ist der Netzwert, nur anders gemessen" und nicht „das ist etwas
+       * Neues".
+       *
+       * Solange der Zähler nichts liefert, ist die Reihe leer und die Linie schlicht nicht da.
+       */
+      {
+        ...line("Netz (Zähler)", C.grid, (r) => num(r, "grid_power_meter_kw")),
+        lineStyle: { color: C.grid, width: 1.5, type: "dashed", opacity: 0.85 },
+        z: 6,
+      },
       line("Speicher", C.battery, (r) => num(r, "battery_power_kw"), { z: 5 }),
       {
         ...line("Ladestand %", C.battery, (r) => {

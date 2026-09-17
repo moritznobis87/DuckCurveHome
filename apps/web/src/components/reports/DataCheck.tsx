@@ -5,6 +5,7 @@ import { api } from "@/lib/api/client";
 import type { HistoryRow } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
 import { EChart } from "@/components/charts/EChart";
+import { CoverageMap } from "./CoverageMap";
 import { powerOverlay } from "./charts";
 import { ErrorBanner, Note, ReportShell, usePeriod } from "./ReportShell";
 
@@ -72,6 +73,7 @@ export function DataCheck() {
           // Die Bedienhinweise stehen im Fließtext unter der Auswertung und nicht hier: auf einem
           // Telefon ist diese Zeile schon mit der Vorzeichenregel voll und wird abgeschnitten.
           right="Netz + Bezug, − Einspeisung · Speicher + Entladen, − Laden · Ladestand rechts in %"
+          // gestrichelt = dasselbe, anders gemessen: Ladestand am Speicher, Zähler am Netz
         />
         {rows.length > 0 ? (
           <div className="min-h-0 flex-1"><EChart option={overlay} /></div>
@@ -81,6 +83,10 @@ export function DataCheck() {
           </div>
         )}
       </Card>
+
+      {/* Die Verfügbarkeit steht vor der Bilanz: eine Auswertung zu lesen, deren Datengrundlage
+          Löcher hat, ist die falsche Reihenfolge. */}
+      <CoverageMap anchor={anchor} />
 
       <Card style={{ padding: 16 }}>
         <CardHead
@@ -115,7 +121,13 @@ export function DataCheck() {
         müssen zueinander passen. 2,8 kW über anderthalb Stunden sind 4,2 kWh und damit über 80
         Prozentpunkte in einem 5,1-kWh-Speicher. Bewegt sich der Ladestand dabei nicht, stimmt eine
         der beiden Reihen nicht. Steigt er wie erwartet, hat der Speicher wirklich geladen, und die
-        Frage ist nicht mehr, ob die Daten stimmen, sondern warum er es tat. Der Hausverbrauch ist dabei keine eigene Messung,
+        Frage ist nicht mehr, ob die Daten stimmen, sondern warum er es tat.
+        <br />
+        Die zweite gestrichelte Linie, in der Farbe des Netzbezugs, ist der amtliche Zähler. Er misst
+        dieselbe Größe wie der Stromwandler des Speichers und läuft vorerst nur mit: führend bleibt
+        der Wandler. Wo die beiden Linien übereinanderliegen, sind sich die Geräte einig. Wo nicht,
+        ist erst zu prüfen, ob es eine echte Abweichung ist oder nur ein Versatz von Sekunden - dafür
+        ist das Zeitfenster da. Der Hausverbrauch ist dabei keine eigene Messung,
         sondern folgt aus der Bilanz Haus = PV + Netz + Speicher. Läuft die PV und zeigt das Netz
         trotzdem Bezug, sieht man hier unmittelbar, ob der Hausverbrauch über der Erzeugung lag oder
         ob die Erzeugungsreihe selbst eine Lücke hat. Der Text darunter nimmt diese zweite Frage noch
