@@ -480,6 +480,13 @@ Der Supervisor baut das Image auf dem HA-Rechner mit dem Add-on-Ordner als Konte
 erhöht wird; danach im Add-on-Store „Auf Updates prüfen“ bzw. das Repository neu laden und das Update installieren.
 Der erste Build dauert auf einem Raspberry Pi einige Minuten (Python-Pakete werden geladen).
 
+**Zuerst nach `main`, dann die Nummer erhöhen.** Der Supervisor holt den Code mit `pip install git+...@main`,
+nicht aus dem Ordner. Wird die Version erhöht, bevor die Änderung auf `main` liegt, baut er das Abbild aus dem
+alten Stand, zeigt aber die neue Nummer an. Die Nummer auf der Add-on-Seite ist nur das Etikett aus
+`config.yaml`; welcher Code wirklich läuft, steht im Protokoll in der Zeile `bridge starting`: `version` ist der
+eingebaute Code, `addon` das Etikett. Laufen die beiden auseinander, wurde das Abbild nicht neu gebaut, und es
+hilft nur eine weitere Erhöhung der Version (sie steckt im `RUN`-Befehl und bricht damit den Docker-Cache).
+
 ## Verhalten ohne Internet
 
 Die Bridge liest weiter und speichert Telemetrie lokal (SQLite-Outbox, 7 Tage). Nach `offline_release_s`

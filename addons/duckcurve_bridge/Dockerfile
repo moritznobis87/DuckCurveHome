@@ -8,6 +8,8 @@ ARG DCH_REF=main
 # BUILD_VERSION kommt vom Supervisor (= version in config.yaml). Sie steht in der RUN-Zeile, damit Docker die
 # Installationsschicht bei jeder neuen Add-on-Version neu baut statt sie aus dem Cache zu nehmen.
 ARG BUILD_VERSION=dev
+# Damit im Log steht, welches Etikett zu welchem Code gehoert.
+ENV DCH_ADDON_VERSION=${BUILD_VERSION}
 RUN echo "Duck Curve Bridge Add-on ${BUILD_VERSION} (${DCH_REF})" \
     && apk add --no-cache git \
     && pip install --no-cache-dir \

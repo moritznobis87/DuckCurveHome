@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import sys
 from datetime import UTC, datetime, timedelta
 
@@ -33,7 +34,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.8.2"
+VERSION = "0.8.3"
 log = structlog.get_logger("bridge")
 
 
@@ -403,6 +404,10 @@ class Bridge:
         log.info(
             "bridge starting",
             version=VERSION,
+            # Zwei Nummern, die auseinanderlaufen koennen: version ist der eingebaute Code,
+            # addon das Etikett aus config.yaml, das Home Assistant anzeigt. Baut der Supervisor
+            # das Abbild nicht neu, zeigt er die neue Nummer an und faehrt den alten Code.
+            addon=os.environ.get("DCH_ADDON_VERSION"),
             sensors=len(self.map.sensors),
             actuators=len(self.map.actuators),
             source_mode=self.settings.source_mode,
