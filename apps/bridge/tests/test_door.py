@@ -16,7 +16,7 @@ import pytest
 from dch_bridge.door import DoorService
 from dch_bridge.sources.nuki_lock import ACTION_UNLATCH, NukiError, NukiLock
 from dch_bridge.sources.opener import HomeAssistantOpener, NukiBridgeOpener, OpenerError
-from dch_bridge.sources.unifi_access import UnifiAccessEvents, parse_event
+from dch_bridge.sources.unifi_access import UnifiAccessEvents, parse_event, unreadable
 from hems_core.control import AccessEvent, DoorPolicy
 
 NOW = datetime(2026, 9, 17, 18, 30, tzinfo=UTC)
@@ -62,6 +62,35 @@ def test_a_denied_result_is_carried_through_honestly() -> None:
 def test_a_frame_without_a_timestamp_falls_back_to_now() -> None:
     e = parse_event(_frame(published=None), NOW)
     assert e is not None and e.at == NOW
+
+
+def _nested_frame() -> dict[str, Any]:
+    """Die Bauform der Entwickler-Schnittstelle: Ergebnis und Zeit unter `event`, Verfahren unter
+    `authentication`. Genau an ihr sind uns beim ersten echten Scan alle Felder leer geblieben."""
+    return {
+        "event": "access.logs.add",
+        "data": {
+            "actor": {"type": "user", "display_name": "Moritz"},
+            "target": [{"type": "door", "display_name": "Haustür"}],
+            "authentication": {"credential_provider": "Face"},
+            "event": {"result": "ACCESS GRANTED", "published": PUBLISHED},
+        },
+    }
+
+
+def test_the_nested_shape_of_the_developer_api_is_read_too() -> None:
+    e = parse_event(_nested_frame(), NOW)
+    assert e is not None
+    assert (e.door, e.actor, e.method, e.granted) == ("Haustür", "Moritz", "Face", True)
+    assert e.at == NOW
+    assert not unreadable(e)
+
+
+def test_a_frame_in_neither_shape_is_marked_unreadable() -> None:
+    """Dann ist der Rahmen selbst die einzige Auskunft, und er gehört ins Protokoll."""
+    e = parse_event({"event": "access.logs.add", "data": {"_id": "abc"}}, NOW)
+    assert e is not None
+    assert unreadable(e)
 
 
 class _Lock(NukiLock):
@@ -372,3 +401,26 @@ async def test_unreadable_frames_do_not_end_the_connection() -> None:
     with pytest.raises(ConnectionError):
         await ev.pump(_Socket(["kein json", "{kaputt", "[]"]))
     assert ev.events_seen == 3 and ev.access_events == 0
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_access_frame_is_counted_and_still_passed_on() -> None:
+    """Zählen statt verschlucken: nur so fällt im Status auf, dass die Deutung nicht greift.
+
+    Weitergereicht wird es trotzdem, damit die Entscheidung an einer Stelle bleibt - dort wird aus
+    dem leeren Ereignis ein „nichts zu lesen" und keine erfundene Ablehnung.
+    """
+    seen: list[AccessEvent] = []
+
+    async def collect(e: AccessEvent, _f: Any) -> None:
+        seen.append(e)
+
+    ev = UnifiAccessEvents("192.0.2.8", "t", idle_timeout_s=0.05)
+    ev.on_event = collect
+    frame = json.dumps({"event": "access.logs.add", "data": {"_id": "abc"}})
+    with pytest.raises(ConnectionError):
+        await ev.pump(_Socket([frame]))
+    assert ev.access_events == 1
+    assert ev.unreadable_events == 1
+    assert len(seen) == 1
+    assert ev.status()["unreadable_events"] == 1

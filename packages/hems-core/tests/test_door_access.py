@@ -64,6 +64,23 @@ def test_a_refused_access_stays_refused() -> None:
     assert "abgelehnt" in d.reason_de
 
 
+def test_an_event_we_could_not_read_is_not_called_a_refusal() -> None:
+    """Ein leeres Ereignis ist ein Fehler bei uns, keine Entscheidung der Konsole.
+
+    Die Unterscheidung stammt aus einem echten Gesichtsscan: im Protokoll stand „Die Konsole hat
+    den Zutritt selbst abgelehnt", während in Wahrheit unsere Feldnamen nicht zum Rahmen passten.
+    """
+    d = DoorGate(_policy()).decide(_event(door="", actor="", method="", granted=False), NOW)
+    assert not d.open_door
+    assert "nichts zu lesen" in d.reason_de
+
+
+def test_a_refusal_with_at_least_one_field_stays_a_refusal() -> None:
+    d = DoorGate(_policy()).decide(_event(actor="", method="", granted=False), NOW)
+    assert not d.open_door
+    assert "abgelehnt" in d.reason_de
+
+
 def test_another_door_does_not_open_this_one() -> None:
     assert not DoorGate(_policy()).decide(_event(door="Garage"), NOW).open_door
 

@@ -10,9 +10,10 @@ ist, öffnet nicht. Das gilt für die Tür, die Person und das Verfahren gleiche
 Sperrliste wäre hier der falsche Weg: sie ist genau dann unvollständig, wenn ein neues Gerät, ein
 neuer Benutzer oder ein Firmware-Update einen Fall hinzufügt, an den niemand gedacht hat.
 
-**Fünf Gründe abzulehnen**, und jeder ist ein eigener Fall, weil man im Protokoll sehen will,
+**Sechs Gründe abzulehnen**, und jeder ist ein eigener Fall, weil man im Protokoll sehen will,
 welcher es war:
 
+* aus dem Ereignis war nichts zu lesen (dann liegt der Fehler bei uns, nicht an der Tür),
 * das Ereignis meldet keinen Erfolg (die Konsole hat selbst schon abgelehnt),
 * die Tür steht nicht in der Liste,
 * die Person steht nicht in der Liste,
@@ -98,6 +99,14 @@ class DoorGate:
         method = event.method.strip().lower()
         if not self.policy.enabled:
             return DoorDecision(False, "Türöffnung ist nicht freigegeben (Beobachtungsbetrieb).")
+        if not (door or who or method):
+            # Nicht dasselbe wie eine Ablehnung, und die Unterscheidung ist teuer erkauft: ein
+            # Rahmen, dessen Felder wir nicht finden, sah im Protokoll aus wie eine Konsole, die
+            # den Zutritt verweigert. Das schickt bei der Fehlersuche in die falsche Richtung.
+            return DoorDecision(
+                False,
+                "Aus dem Ereignis war nichts zu lesen - weder Tür noch Person noch Verfahren.",
+            )
         if not event.granted:
             return DoorDecision(False, "Die Konsole hat den Zutritt selbst abgelehnt.")
         age = (now - event.at).total_seconds()

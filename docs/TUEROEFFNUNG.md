@@ -104,6 +104,15 @@ einmal eingetippt hat. Beides liest man ab, statt es zu raten.
                 reason=Türöffnung ist nicht freigegeben (Beobachtungsbetrieb).
    ```
 
+   Stehen dort **drei leere Felder**, hat die Konsole eine andere Bauform geschickt als erwartet.
+   Das ist kein abgelehnter Zutritt, auch wenn es beim ersten Versuch genau so im Protokoll stand.
+   Die Bridge schreibt in diesem Fall eine zweite Zeile `access event unleserlich` mit dem Rahmen
+   im Rohzustand (gekürzt auf 2000 Zeichen); daraus werden die Feldnamen abgelesen. Gelesen werden
+   inzwischen beide bekannten Bauformen: flach (`result`, `authentication_type` direkt im Rumpf)
+   und verschachtelt, wie die Entwickler-Schnittstelle sie beschreibt (`event.result`,
+   `authentication.credential_provider`). Der Rohrahmen enthält Namen und Kennungen des Hauses und
+   gehört deshalb nicht weitergereicht, ohne ihn anzusehen.
+
 3. Die drei Werte in die Erlaubnisliste übernehmen und freigeben:
 
    ```

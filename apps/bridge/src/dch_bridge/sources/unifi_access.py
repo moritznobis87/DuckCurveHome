@@ -46,9 +46,18 @@ MAX_BACKOFF_S = 60.0
 # sich aus regelmäßig einen Keepalive-Rahmen mit dem Inhalt "Hello". Bleibt selbst der aus, liegt
 # nicht Ruhe im Haus vor, sondern eine Leitung, die niemand mehr bedient.
 IDLE_TIMEOUT_S = 300.0
+# So viel eines unlesbaren Rahmens landet im Protokoll. Genug, um die Felder zu benennen,
+# wenig genug, um das Protokoll nicht mit Kennungen zu fluten.
+RAW_FRAME_CHARS = 2000
 # Ein „Access Granted" der Konsole in den Sprachen, in denen sie es schreibt. Verlässlicher als das
 # Wort ist es nicht - deshalb entscheidet am Ende ohnehin die Erlaubnisliste und nicht dieses Feld.
 GRANTED_MARKERS = ("granted", "access granted", "erlaubt", "zutritt gewährt")
+
+
+def _sub(body: dict[str, Any], key: str) -> dict[str, Any]:
+    """Ein verschachteltes Objekt, oder ein leeres, wenn es fehlt oder etwas anderes ist."""
+    value = body.get(key)
+    return value if isinstance(value, dict) else {}
 
 
 def _target(payload: dict[str, Any], kind: str) -> str:
@@ -76,16 +85,28 @@ def parse_event(frame: dict[str, Any], now: datetime) -> AccessEvent | None:
         return None
     payload = frame.get("data")
     body = payload if isinstance(payload, dict) else frame
-    actor = body.get("actor")
-    actor_name = str(actor.get("display_name", "")) if isinstance(actor, dict) else ""
-    result = str(body.get("result", "")).strip().lower()
+    # Zwei Bauformen, beide werden gelesen: flach (Ergebnis und Verfahren direkt im Rumpf) und
+    # verschachtelt, wie die Entwickler-Schnittstelle es beschreibt - Ergebnis und Zeitstempel
+    # unter `event`, das Verfahren unter `authentication.credential_provider`. Welche Firmware was
+    # schickt, entscheidet die Firmware; darauf zu wetten hat uns bereits leere Felder gekostet.
+    inner = _sub(body, "event")
+    actor = _sub(body, "actor")
+    auth = _sub(body, "authentication")
+    result = str(inner.get("result") or body.get("result") or "").strip().lower()
+    method = str(auth.get("credential_provider") or body.get("authentication_type") or "")
+    name = str(actor.get("display_name") or actor.get("alternate_name") or "")
     return AccessEvent(
-        at=_published_at(body, now),
-        door=_target(body, "door"),
-        actor=actor_name or _target(body, "user"),
-        method=str(body.get("authentication_type", "")),
+        at=_published_at(inner, _published_at(body, now)),
+        door=_target(body, "door") or _target(inner, "door"),
+        actor=name or _target(body, "user") or _target(inner, "user"),
+        method=method,
         granted=any(marker in result for marker in GRANTED_MARKERS),
     )
+
+
+def unreadable(event: AccessEvent) -> bool:
+    """Ein Zutritt ohne Tür, ohne Person und ohne Verfahren ist keiner - er ist ungelesen."""
+    return not (event.door.strip() or event.actor.strip() or event.method.strip())
 
 
 class UnifiAccessEvents:
@@ -113,6 +134,7 @@ class UnifiAccessEvents:
         self.last_error: str | None = None
         self.events_seen = 0
         self.access_events = 0
+        self.unreadable_events = 0
         self.last_event_at: datetime | None = None
         self._task: asyncio.Task[None] | None = None
 
@@ -172,6 +194,16 @@ class UnifiAccessEvents:
                 continue
             self.access_events += 1
             self.last_event_at = event.at
+            if unreadable(event):
+                # Der Rahmen war ein Zutritt, aber keines der Felder stand, wo wir es erwartet
+                # haben. Dann ist der Rahmen selbst die einzige brauchbare Auskunft. Er steht nur
+                # in diesem Fall im Protokoll, und gekürzt: er enthält Namen und Kennungen.
+                self.unreadable_events += 1
+                log.warning(
+                    "access event unleserlich",
+                    hinweis="Rahmen im Rohzustand, damit die Felder benannt werden koennen",
+                    frame=json.dumps(frame, ensure_ascii=False)[:RAW_FRAME_CHARS],
+                )
             if self.on_event is not None:
                 with contextlib.suppress(Exception):
                     await self.on_event(event, frame)
@@ -229,6 +261,7 @@ class UnifiAccessEvents:
             "online": self.online,
             "events": self.events_seen,
             "access_events": self.access_events,
+            "unreadable_events": self.unreadable_events,
             "last_event_at": self.last_event_at.isoformat() if self.last_event_at else None,
             "error": self.last_error,
         }
