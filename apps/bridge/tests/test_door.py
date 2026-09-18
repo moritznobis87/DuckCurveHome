@@ -93,6 +93,68 @@ def test_a_frame_in_neither_shape_is_marked_unreadable() -> None:
     assert unreadable(e)
 
 
+def _console_frame(**over: Any) -> dict[str, Any]:
+    """Der Rahmen, wie die Konsole ihn wirklich schickt.
+
+    Nach einem echten Gesichtsscan an der Haustür abgelesen und hier mit ausgedachten Namen und
+    Kennungen nachgebaut - das Repository ist öffentlich, und wer im Haus wohnt, gehört nicht
+    hinein. Erhalten bleibt allein die Form, und die ist der Punkt: die Nutzdaten liegen unter
+    `data._source`, nicht unter `data`. Genau diese eine Ebene hat zwei Scans ins Leere laufen
+    lassen.
+    """
+    source: dict[str, Any] = {
+        "actor": {"id": "1111", "type": "user", "display_name": "Erika Muster"},
+        "event": {
+            "type": "access.door.unlock",
+            "display_message": "Access Granted (Face)",
+            "result": "ACCESS",
+            "published": PUBLISHED,
+            "log_key": "dashboard.access.door.unlock.success",
+        },
+        "authentication": {"credential_provider": "FACE", "issuer": "2222"},
+        "target": [
+            {"type": "UAH-DOOR", "id": "3333", "display_name": "UA-HUB-DOOR-0000"},
+            {"type": "UA-G2-PRO", "id": "4444", "display_name": "UA-G2-PRO-0000"},
+            {"type": "door", "id": "3333", "display_name": "Haustür"},
+            {"type": "floor", "id": "5555", "display_name": "EG"},
+        ],
+    }
+    source.update(over)
+    return {"event": "access.logs.add", "data": {"_id": "", "_source": source, "tag": "access"}}
+
+
+def test_the_frame_of_the_real_console_is_read() -> None:
+    e = parse_event(_console_frame(), NOW)
+    assert e is not None
+    assert (e.door, e.actor, e.method, e.granted) == ("Haustür", "Erika Muster", "FACE", True)
+    assert e.at == NOW
+    assert not unreadable(e)
+
+
+def test_the_hub_and_the_reader_are_not_mistaken_for_the_door() -> None:
+    """In `target` tragen Hub, Reader, Etage und Gebäude ebenfalls Anzeigenamen."""
+    e = parse_event(_console_frame(), NOW)
+    assert e is not None and e.door == "Haustür"
+
+
+def test_a_bare_access_as_result_counts_as_granted() -> None:
+    """Das Ergebnisfeld der Konsole heißt bei Erfolg schlicht „ACCESS"; „Granted" steht daneben."""
+    e = parse_event(_console_frame(event={"result": "ACCESS", "published": PUBLISHED}), NOW)
+    assert e is not None and e.granted
+
+
+def test_a_denial_beats_everything_else() -> None:
+    """Steht irgendwo eine Ablehnung, wird nicht geöffnet - auch wenn daneben „ACCESS" steht."""
+    denied = _console_frame(
+        event={"result": "ACCESS", "display_message": "Access Denied", "published": PUBLISHED}
+    )
+    e = parse_event(denied, NOW)
+    assert e is not None and not e.granted
+    blocked = _console_frame(event={"result": "BLOCKED", "published": PUBLISHED})
+    e = parse_event(blocked, NOW)
+    assert e is not None and not e.granted
+
+
 class _Lock(NukiLock):
     def __init__(self, fail: bool = False) -> None:
         super().__init__("192.0.2.9", "token")

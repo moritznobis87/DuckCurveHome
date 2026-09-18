@@ -107,11 +107,31 @@ einmal eingetippt hat. Beides liest man ab, statt es zu raten.
    Stehen dort **drei leere Felder**, hat die Konsole eine andere Bauform geschickt als erwartet.
    Das ist kein abgelehnter Zutritt, auch wenn es beim ersten Versuch genau so im Protokoll stand.
    Die Bridge schreibt in diesem Fall eine zweite Zeile `access event unleserlich` mit dem Rahmen
-   im Rohzustand (gekürzt auf 2000 Zeichen); daraus werden die Feldnamen abgelesen. Gelesen werden
-   inzwischen beide bekannten Bauformen: flach (`result`, `authentication_type` direkt im Rumpf)
-   und verschachtelt, wie die Entwickler-Schnittstelle sie beschreibt (`event.result`,
-   `authentication.credential_provider`). Der Rohrahmen enthält Namen und Kennungen des Hauses und
-   gehört deshalb nicht weitergereicht, ohne ihn anzusehen.
+   im Rohzustand (gekürzt auf 2000 Zeichen), und daraus werden die Feldnamen abgelesen. Der
+   Rohrahmen enthält Namen und Kennungen des Hauses; er gehört nicht weitergereicht, ohne ihn
+   vorher anzusehen.
+
+   **So sieht der Rahmen an dieser Anlage wirklich aus** (UniFi Access, Herbst 2026, an einem
+   Gesichtsscan abgelesen). Die Nutzdaten liegen eine Ebene tiefer als die Beschreibung der
+   Schnittstelle vermuten lässt, nämlich unter `data._source`:
+
+   ```
+   data._source.actor.display_name              → die Person
+   data._source.authentication.credential_provider → das Verfahren, beim Gesicht „FACE"
+   data._source.target[] mit type == "door"      → die Tür
+   data._source.event.result                     → „ACCESS" bei Erfolg
+   data._source.event.display_message            → „Access Granted (Face)"
+   data._source.event.published                  → Zeitpunkt in Millisekunden
+   ```
+
+   Zwei Dinge daran sind leicht zu übersehen. In `target` stehen auch Hub, Reader, Etage und
+   Gebäude, alle mit Anzeigenamen; die Tür ist allein der Eintrag vom Typ `door`. Und das
+   Ergebnisfeld trägt bei Erfolg nur das Wort `ACCESS`; das Wort „Granted" steht daneben in
+   `display_message`. Wer nur auf `result` nach „granted" sucht, hält jede geglückte Öffnung für
+   eine Ablehnung. Eine Ablehnung schlägt im Übrigen jede Zusage: steht irgendwo `denied`,
+   `blocked`, `rejected`, `failed`, `abgelehnt` oder `verweigert`, wird nicht geöffnet.
+
+   Flache Rahmen (`result` und `authentication_type` direkt im Rumpf) werden weiterhin gelesen.
 
 3. Die drei Werte in die Erlaubnisliste übernehmen und freigeben:
 

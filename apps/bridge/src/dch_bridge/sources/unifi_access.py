@@ -51,13 +51,44 @@ IDLE_TIMEOUT_S = 300.0
 RAW_FRAME_CHARS = 2000
 # Ein „Access Granted" der Konsole in den Sprachen, in denen sie es schreibt. Verlässlicher als das
 # Wort ist es nicht - deshalb entscheidet am Ende ohnehin die Erlaubnisliste und nicht dieses Feld.
-GRANTED_MARKERS = ("granted", "access granted", "erlaubt", "zutritt gewährt")
+GRANTED_MARKERS = ("granted", "erlaubt", "zutritt gewährt")
+# Das Ergebnisfeld selbst trägt bei einer gelungenen Öffnung nur das Wort „ACCESS"; das Wort
+# „Granted" steht daneben in `display_message` („Access Granted (Face)"). Abgelesen an einem echten
+# Gesichtsscan an der eigenen Haustür, nicht der Dokumentation entnommen.
+GRANTED_RESULTS = ("access",)
+# Eine Ablehnung schlägt eine Zusage. Wie die Konsole sie schreibt, haben wir noch nicht gesehen -
+# umso mehr Wörter stehen hier, und umso mehr zählt danach die Erlaubnisliste.
+DENIED_MARKERS = ("denied", "blocked", "rejected", "failed", "abgelehnt", "verweigert")
 
 
 def _sub(body: dict[str, Any], key: str) -> dict[str, Any]:
     """Ein verschachteltes Objekt, oder ein leeres, wenn es fehlt oder etwas anderes ist."""
     value = body.get(key)
     return value if isinstance(value, dict) else {}
+
+
+def _body(frame: dict[str, Any]) -> dict[str, Any]:
+    """Zu den Nutzdaten hinabsteigen, so tief die Konsole sie legt.
+
+    An der eigenen Haustür liegen sie unter `data._source`. Die Beschreibung der Schnittstelle
+    zeigt sie eine Ebene höher, ältere Firmware legt sie flach in den Rahmen. Statt auf eine
+    Variante zu wetten, wird jede vorhandene Hülle geöffnet: das kostet zwei Zeilen und hat uns
+    bereits zwei Tage gekostet, als es sie nicht gab.
+    """
+    body = frame
+    for key in ("data", "_source"):
+        nested = _sub(body, key)
+        if nested:
+            body = nested
+    return body
+
+
+def _granted(result: str, message: str) -> bool:
+    """Meldet das Ereignis einen Erfolg? Eine Ablehnung schlägt jedes Ja."""
+    text = f"{result} {message}".strip().lower()
+    if any(marker in text for marker in DENIED_MARKERS):
+        return False
+    return result.strip().lower() in GRANTED_RESULTS or any(m in text for m in GRANTED_MARKERS)
 
 
 def _target(payload: dict[str, Any], kind: str) -> str:
@@ -83,16 +114,16 @@ def parse_event(frame: dict[str, Any], now: datetime) -> AccessEvent | None:
     """
     if str(frame.get("event", "")) != ACCESS_EVENT:
         return None
-    payload = frame.get("data")
-    body = payload if isinstance(payload, dict) else frame
-    # Zwei Bauformen, beide werden gelesen: flach (Ergebnis und Verfahren direkt im Rumpf) und
-    # verschachtelt, wie die Entwickler-Schnittstelle es beschreibt - Ergebnis und Zeitstempel
-    # unter `event`, das Verfahren unter `authentication.credential_provider`. Welche Firmware was
-    # schickt, entscheidet die Firmware; darauf zu wetten hat uns bereits leere Felder gekostet.
+    body = _body(frame)
+    # Ergebnis, Zeitstempel und Meldung stehen unter `event`, das Verfahren unter
+    # `authentication.credential_provider`, die Tür in der Liste `target` beim Eintrag vom Typ
+    # „door" (daneben stehen dort Hub, Reader, Etage und Gebäude - alle mit Anzeigenamen, von denen
+    # keiner die Tür ist). Die flachen Felder bleiben als Rückfall stehen.
     inner = _sub(body, "event")
     actor = _sub(body, "actor")
     auth = _sub(body, "authentication")
-    result = str(inner.get("result") or body.get("result") or "").strip().lower()
+    result = str(inner.get("result") or body.get("result") or "")
+    message = str(inner.get("display_message") or body.get("display_message") or "")
     method = str(auth.get("credential_provider") or body.get("authentication_type") or "")
     name = str(actor.get("display_name") or actor.get("alternate_name") or "")
     return AccessEvent(
@@ -100,7 +131,7 @@ def parse_event(frame: dict[str, Any], now: datetime) -> AccessEvent | None:
         door=_target(body, "door") or _target(inner, "door"),
         actor=name or _target(body, "user") or _target(inner, "user"),
         method=method,
-        granted=any(marker in result for marker in GRANTED_MARKERS),
+        granted=_granted(result, message),
     )
 
 
