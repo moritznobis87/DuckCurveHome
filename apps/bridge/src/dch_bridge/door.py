@@ -25,15 +25,20 @@ kann.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
 import structlog
 
-from dch_bridge.sources.nuki_lock import NukiError, NukiLock
+from dch_bridge.sources.opener import Opener, OpenerError
 from dch_bridge.sources.unifi_access import UnifiAccessEvents
 from hems_core.control import AccessEvent, DoorGate, DoorPolicy
 from hems_core.control.door_access import stale_cutoff
+from hems_core.domain import Quality
+from hems_core.protocol import RawReading
 
 log = structlog.get_logger("door")
 
@@ -41,13 +46,24 @@ log = structlog.get_logger("door")
 class DoorService:
     """Bindet den Ereignisstrom an das Schloss - über die Prüfung, nie daran vorbei."""
 
-    def __init__(self, events: UnifiAccessEvents, lock: NukiLock, policy: DoorPolicy) -> None:
+    def __init__(
+        self,
+        events: UnifiAccessEvents,
+        opener: Opener,
+        policy: DoorPolicy,
+        on_readings: Callable[[list[RawReading]], Awaitable[None]] | None = None,
+        *,
+        probe_interval_s: float = 60.0,
+    ) -> None:
         self.events = events
-        self.lock = lock
+        self.opener = opener
+        self.on_readings = on_readings
+        self.probe_interval_s = probe_interval_s
         self.gate = DoorGate(policy)
         self.opened = 0
         self.refused = 0
         self.failed = 0
+        self.reachable = False
         self.last_de: str = "noch kein Zutritt beobachtet"
         events.on_event = self.handle
 
@@ -71,8 +87,8 @@ class DoorService:
             self.last_de = f"{event.actor or 'unbekannt'}: {decision.reason_de}"
             return
         try:
-            await self.lock.unlatch()
-        except NukiError as exc:
+            await self.opener.open_door()
+        except OpenerError as exc:
             # Die Wiederholsperre wird bewusst nicht gesetzt: wer vor der Tür steht und einen
             # Fehlschlag erlebt, versucht es sofort noch einmal, und das soll gehen.
             self.failed += 1
@@ -84,9 +100,47 @@ class DoorService:
         self.last_de = f"Geöffnet für {event.actor} um {now.astimezone():%H:%M:%S}."
         log.info("door opened", actor=event.actor, door=event.door, method=event.method)
 
+    async def probe(self) -> bool:
+        """Ist der Weg zum Schloss gerade offen?
+
+        Die Antwort wird als Messreihe `door_lock_online` weitergereicht und landet damit in
+        derselben Verfügbarkeitskarte wie der Stromzähler. Das ist der Punkt: die Vermutung, die
+        Strecke zum Schloss sei brüchig, ist keine Vermutung mehr, sobald sie vier Wochen lang
+        stündlich aufgeschrieben wurde. Und sie entscheidet, ob der Türweg bei Home Assistant
+        bleibt oder auf eine Nuki-Bridge wandert.
+        """
+        probe = getattr(self.opener, "reachable", None)
+        if probe is None:
+            return True
+        ok = bool(await probe())
+        if ok != self.reachable:
+            log.info("door lock reachability", opener=self.opener.name, reachable=ok)
+        self.reachable = ok
+        if self.on_readings is not None:
+            await self.on_readings(
+                [
+                    RawReading(
+                        key="door_lock_online",
+                        value=1.0 if ok else 0.0,
+                        observed_at=datetime.now(UTC),
+                        quality=Quality.OK,
+                        source=f"door:{self.opener.name}",
+                    )
+                ]
+            )
+        return ok
+
+    async def run(self) -> None:
+        while True:
+            with contextlib.suppress(Exception):
+                await self.probe()
+            await asyncio.sleep(self.probe_interval_s)
+
     def status(self) -> dict[str, Any]:
         return {
             "enabled": self.gate.policy.enabled,
+            "opener": self.opener.name,
+            "reachable": self.reachable,
             "opened": self.opened,
             "refused": self.refused,
             "failed": self.failed,

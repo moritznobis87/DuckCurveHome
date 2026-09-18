@@ -8,16 +8,49 @@ UniFi Access G2 Reader Pro
 UniFi-Konsole
         │  wss://<konsole>:12445/api/v1/developer/devices/notifications
 DCH-Bridge im Haus
-        │  http://<schloss>:8080/lockAction?...&action=3
-Nuki Smart Lock Pro
+        │  lock.open auf der Matter-Entität
+Home Assistant  →  HomePod (Thread-Border-Router)  →  Nuki Smart Lock Pro
 ```
 
-Alles im Heimnetz. Weder die DCH-Cloud noch Home Assistant noch die Nuki-Cloud stehen in diesem
-Weg. Das ist der Zweck der Sache: eine Tür, die nur aufgeht, wenn drei Dienste und zwei
-Internetstrecken gleichzeitig mitspielen, geht irgendwann nicht auf.
+Alles im Heimnetz, ohne Internetstrecke. Das ist der Zweck: eine Tür, die nur aufgeht, wenn drei
+Dienste und zwei Internetstrecken gleichzeitig mitspielen, geht irgendwann nicht auf.
 
-`action=3` heißt bei Nuki **unlatch** und zieht die Falle. Die Tür geht damit wirklich auf, statt
-dass nur der Riegel zurückgeht. Ob das mechanisch möglich ist, entscheidet das Schloss in der Tür.
+`lock.open` zieht die **Falle** und öffnet die Tür wirklich; `lock.unlock` dreht nur den Riegel
+zurück. Ob die Matter-Anbindung des Schlosses das Öffnen hergibt, hängt von Gerät, Firmware und
+HA-Version ab. Deshalb steht der Dienstname in der Konfiguration (`door_service`) und nicht im
+Quelltext: das probiert man in zehn Sekunden aus und schlägt es nicht zuverlässig nach.
+
+## Warum nicht direkt zum Schloss
+
+Zwei Wege, die naheliegen, führen hier nicht hin.
+
+**Eine lokale HTTP-API am Schloss gibt es nicht.** Sie existiert nur an der Nuki-Bridge, dem
+Steckdosengerät. Nuki sagt zum Smart Lock Pro der 4. Generation ausdrücklich: „the Smart Lock Pro
+(4th Generation) does not include the HTTP API".
+
+**MQTT gibt es, kostet aber die Batterie.** Es setzt das WLAN des Schlosses voraus, und nach Nukis
+eigener Rangfolge ist WLAN die teuerste Verbindungsart - Bluetooth am sparsamsten, Thread wenig
+darüber, WLAN deutlich dahinter. Ein Schloss, das über Thread am HomePod hängt, hat sein WLAN aus
+und hält dafür rund ein halbes Jahr. Das gibt man nicht für einen Türöffner auf.
+
+Bleibt der Weg über Matter, den es ohnehin schon gibt: Home Assistant tritt als **zweiter
+Verwalter** derselben Matter-Fabric bei. Apple Home behält das Schloss, das WLAN bleibt aus, der
+HomePod routet. In der Home-App teilt man das Zubehör, in HA fügt die Matter-Integration es mit
+dem Kopplungscode hinzu.
+
+## Der Ausweg, falls diese Strecke nicht trägt
+
+Sie hat einen Preis: Home Assistant und der Border Router stehen jetzt in der Kette. Ob das trägt,
+ist eine Tatsachenfrage, und sie wird gemessen. Die Bridge fragt den Zustand der Schloss-Entität
+im Minutentakt ab und schreibt ihn als Messreihe `door_lock_online`; auf `/daten` erscheint sie in
+derselben Verfügbarkeitskarte wie der Stromzähler. Nach ein paar Wochen steht dort, ob die Strecke
+aussetzt und wann.
+
+Setzt sie aus, wandert der Türweg auf eine **Nuki-Bridge**: das Steckdosengerät spricht Bluetooth
+mit dem Schloss und bietet die lokale HTTP-API. Damit fallen Home Assistant **und** der HomePod aus
+dem Türweg heraus, das WLAN bleibt trotzdem aus, und Apple Home läuft unberührt weiter. Der Wechsel
+ist dann eine Einstellung (`door_opener: nuki_bridge`) und keine Änderung am Programm - der Öffner
+ist deshalb austauschbar gebaut.
 
 ## Die Cloud hat keinen Weg zur Tür
 
@@ -52,15 +85,16 @@ Vorsichtsgeste: der Wert, den die Konsole für einen Gesichtsscan in `authentica
 ist nirgends dokumentiert, und die Anzeigenamen von Tür und Person stehen so, wie sie jemand
 einmal eingetippt hat. Beides liest man ab, statt es zu raten.
 
-1. Zugangsdaten setzen. Der Access-Token entsteht in der Access-Oberfläche unter Einstellungen →
-   Allgemein → API-Token, der Nuki-Token in der Nuki-App beim Einschalten der HTTP-API unter
-   „Geräte verwalten" (6 bis 20 Zeichen).
+1. Zugangsdaten und Ziel setzen. Der Access-Token entsteht in der Access-Oberfläche unter
+   Einstellungen → Allgemein → API-Token. Die Entität ist die des Schlosses in Home Assistant.
+   Vorher einmal ausprobieren, ob `lock.open` darauf die Falle zieht - wenn nicht, gehört
+   `lock.unlock` in `door_service`, und die Tür geht dann nur auf Riegel.
 
    ```
    DCH_BRIDGE_UNIFI_HOST=192.168.x.x
    DCH_BRIDGE_UNIFI_TOKEN=…
-   DCH_BRIDGE_NUKI_HOST=192.168.x.x
-   DCH_BRIDGE_NUKI_TOKEN=…
+   DCH_BRIDGE_DOOR_ENTITY=lock.haupteingang_nuki
+   DCH_BRIDGE_DOOR_SERVICE=lock.open
    ```
 
 2. Einmal vor die Tür stellen und das Gesicht scannen lassen. Im Protokoll der Bridge steht dann

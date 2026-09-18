@@ -70,7 +70,24 @@ class BridgeSettings(BaseSettings):
     unifi_port: int = 12445
     unifi_token: str = ""
     unifi_verify_tls: bool = False  # die Konsole stellt ihr Zertifikat selbst aus
-    nuki_host: str = ""  # IP des Schlosses (Pro mit WLAN); leer = Türdienst aus
+    # Wer die Tür tatsächlich aufmacht.
+    #
+    # `home_assistant` ruft einen Dienst auf der Matter-Entität des Schlosses auf. Das Schloss
+    # bleibt dabei auf Thread, sein WLAN bleibt aus, die Batterie hält - dafür stehen Home
+    # Assistant und der Border Router in der Kette.
+    #
+    # `nuki_bridge` spricht über das Steckdosengerät von Nuki und dessen lokale HTTP-API, das
+    # Schloss erreicht es per Bluetooth. Damit fallen HA und der HomePod aus dem Türweg heraus.
+    # Diesen Weg gibt es hier, weil er der Ausweg ist, falls sich die Strecke über Home Assistant
+    # im Betrieb als unzuverlässig erweist - die Verfügbarkeit wird als `door_lock_online`
+    # mitgeschrieben, die Entscheidung fällt also an Daten und nicht an Vermutungen.
+    door_opener: Literal["home_assistant", "nuki_bridge"] = "home_assistant"
+    door_entity: str = ""  # z. B. lock.haupteingang_nuki
+    # `lock.open` zieht die Falle, `lock.unlock` dreht nur den Riegel zurück. Ob die Matter-
+    # Anbindung des Schlosses das Öffnen hergibt, hängt von Gerät, Firmware und HA-Version ab und
+    # ist in zehn Sekunden auszuprobieren - deshalb Einstellung und nicht Quelltext.
+    door_service: str = "lock.open"
+    nuki_host: str = ""  # nur für door_opener=nuki_bridge: IP der Nuki-Bridge
     nuki_port: int = 8080
     nuki_token: str = ""
     nuki_id: str = ""  # leer = das erste Schloss aus /list
@@ -86,7 +103,12 @@ class BridgeSettings(BaseSettings):
 
     @property
     def door_configured(self) -> bool:
-        return bool(self.unifi_host and self.unifi_token and self.nuki_host and self.nuki_token)
+        """Läuft der Türdienst? Beide Hälften müssen stehen: Ereignisse und ein Weg zum Schloss."""
+        if not (self.unifi_host and self.unifi_token):
+            return False
+        if self.door_opener == "nuki_bridge":
+            return bool(self.nuki_host and self.nuki_token)
+        return bool(self.door_entity)
 
     @property
     def shelly_topic_prefix(self) -> str:

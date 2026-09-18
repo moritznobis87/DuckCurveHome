@@ -46,6 +46,9 @@ SERIES = (
     "grid_power_meter_kw",
     "grid_import_meter_kwh",
     "grid_export_meter_kwh",
+    # Haustür: ist der Weg zum Schloss offen (1) oder nicht (0). Keine Energiegröße, aber dieselbe
+    # Frage wie beim Zähler - kommt an, was ankommen soll -, und damit dieselbe Karte.
+    "door_lock_online",
 )
 
 

@@ -1,5 +1,5 @@
 name: Duck Curve Home Bridge
-version: "0.8.0"
+version: "0.8.1"
 slug: duckcurve_bridge
 description: Verbindet das Haus ausgehend mit Duck Curve Home (Railway). Shellys direkt über MQTT, den MCZ-Pelletofen über sein Maestro-Modul, übrige Entitäten und Aktoren über Home Assistant. Öffnet auf Wunsch die Haustür, wenn der UniFi-Access-Reader ein freigegebenes Gesicht erkennt.
 url: https://github.com/moritznobis87/DuckCurveHome
@@ -35,12 +35,20 @@ options:
   mcz_port: 81
   mcz_poll_interval_s: 15
   mcz_allow_control: true
-  # Haustür. Ohne unifi_host/nuki_host bleibt der Dienst aus. Mit Zugangsdaten, aber ohne
-  # door_enabled läuft er im Beobachtungsbetrieb: er protokolliert jeden Zutritt und rührt das
-  # Schloss nicht an. Die Werte für die drei Listen stehen dann im Protokoll - siehe DOCS.md.
+  # Haustür. Ohne unifi_host bleibt der Dienst aus, ebenso ohne Ziel (door_entity bzw. nuki_host).
+  # Mit Zugangsdaten, aber ohne door_enabled läuft er im Beobachtungsbetrieb: er protokolliert
+  # jeden Zutritt und rührt das Schloss nicht an. Die Werte für die drei Listen stehen dann im
+  # Protokoll - siehe DOCS.md.
   unifi_host: ""
   unifi_port: 12445
   unifi_token: ""
+  # Wer öffnet. `home_assistant` ruft `door_service` auf `door_entity` auf; das Schloss bleibt
+  # dabei auf Thread, sein WLAN bleibt aus, die Batterie hält. `nuki_bridge` spricht über das
+  # Steckdosengerät und dessen lokale HTTP-API, per Bluetooth zum Schloss - der Ausweg, falls
+  # sich die Strecke über Home Assistant als unzuverlässig erweist.
+  door_opener: "home_assistant"
+  door_entity: ""
+  door_service: "lock.open"
   nuki_host: ""
   nuki_port: 8080
   nuki_token: ""
@@ -76,6 +84,9 @@ schema:
   unifi_host: str?
   unifi_port: port
   unifi_token: password?
+  door_opener: list(home_assistant|nuki_bridge)
+  door_entity: str?
+  door_service: str
   nuki_host: str?
   nuki_port: port
   nuki_token: password?
