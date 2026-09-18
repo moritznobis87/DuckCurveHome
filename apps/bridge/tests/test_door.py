@@ -13,6 +13,7 @@ import pytest
 
 from dch_bridge.door import DoorService
 from dch_bridge.sources.nuki_lock import ACTION_UNLATCH, NukiError, NukiLock
+from dch_bridge.sources.opener import HomeAssistantOpener, NukiBridgeOpener, OpenerError
 from dch_bridge.sources.unifi_access import UnifiAccessEvents, parse_event
 from hems_core.control import AccessEvent, DoorPolicy
 
@@ -83,7 +84,7 @@ def _service(lock: NukiLock, **policy: Any) -> DoorService:
     }
     args.update(policy)
     events = UnifiAccessEvents("192.0.2.8", "t")
-    return DoorService(events, lock, DoorPolicy.of(**args))
+    return DoorService(events, NukiBridgeOpener(lock), DoorPolicy.of(**args))
 
 
 def _event(**over: Any) -> AccessEvent:
@@ -191,16 +192,106 @@ def test_the_allowlist_comes_out_of_the_environment_intact(monkeypatch: Any) -> 
     assert BridgeSettings(_env_file=None).door_actors == []  # type: ignore[call-arg]
 
 
-def test_the_door_service_stays_off_until_both_devices_are_configured(monkeypatch: Any) -> None:
+def test_the_door_service_stays_off_until_both_halves_are_configured(monkeypatch: Any) -> None:
+    """Ereignisse **und** ein Weg zum Schloss. Eine Hälfte allein startet nichts."""
     from dch_bridge.settings import BridgeSettings
 
-    for k in ("UNIFI_HOST", "UNIFI_TOKEN", "NUKI_HOST", "NUKI_TOKEN"):
+    for k in ("UNIFI_HOST", "UNIFI_TOKEN", "NUKI_HOST", "NUKI_TOKEN", "DOOR_ENTITY", "DOOR_OPENER"):
         monkeypatch.delenv(f"DCH_BRIDGE_{k}", raising=False)
     assert not BridgeSettings(_env_file=None).door_configured  # type: ignore[call-arg]
+
     monkeypatch.setenv("DCH_BRIDGE_UNIFI_HOST", "192.0.2.8")
     monkeypatch.setenv("DCH_BRIDGE_UNIFI_TOKEN", "t")
-    # Nur die halbe Kette: ohne Schloss bleibt der Dienst aus.
+    # Nur die Ereignisseite: ohne Ziel bleibt der Dienst aus.
+    assert not BridgeSettings(_env_file=None).door_configured  # type: ignore[call-arg]
+
+    # Vorgabe ist Home Assistant; dort genügt die Entität.
+    monkeypatch.setenv("DCH_BRIDGE_DOOR_ENTITY", "lock.haupteingang_nuki")
+    s = BridgeSettings(_env_file=None)  # type: ignore[call-arg]
+    assert s.door_opener == "home_assistant" and s.door_configured
+    assert s.door_service == "lock.open"
+
+    # Auf der Nuki-Bridge zählt stattdessen deren Adresse - die Entität hilft dort nicht.
+    monkeypatch.setenv("DCH_BRIDGE_DOOR_OPENER", "nuki_bridge")
     assert not BridgeSettings(_env_file=None).door_configured  # type: ignore[call-arg]
     monkeypatch.setenv("DCH_BRIDGE_NUKI_HOST", "192.0.2.9")
     monkeypatch.setenv("DCH_BRIDGE_NUKI_TOKEN", "t")
     assert BridgeSettings(_env_file=None).door_configured  # type: ignore[call-arg]
+
+
+class _Rest:
+    """Home Assistant, so weit die Tür es braucht: ein Dienstaufruf und ein Zustand."""
+
+    def __init__(self, state: str | None = "locked", fail: bool = False) -> None:
+        self.calls: list[tuple[str, str, str]] = []
+        self.state = state
+        self.fail = fail
+
+    async def call_service(self, domain: str, service: str, entity_id: str) -> Any:
+        self.calls.append((domain, service, entity_id))
+        if self.fail:
+            raise RuntimeError("500 Internal Server Error")
+        return []
+
+    async def state_of(self, entity_id: str) -> str | None:
+        if self.fail:
+            raise RuntimeError("timeout")
+        return self.state
+
+
+@pytest.mark.asyncio
+async def test_home_assistant_opener_calls_the_configured_service() -> None:
+    rest = _Rest()
+    op = HomeAssistantOpener(rest, "lock.haupteingang_nuki")  # type: ignore[arg-type]
+    await op.open_door()
+    # lock.open zieht die Falle. Der Dienstname ist Einstellung, nicht Quelltext - ob die
+    # Matter-Anbindung ihn hergibt, entscheidet das Gerät.
+    assert rest.calls == [("lock", "open", "lock.haupteingang_nuki")]
+
+
+@pytest.mark.asyncio
+async def test_a_different_service_can_be_configured_without_a_code_change() -> None:
+    rest = _Rest()
+    op = HomeAssistantOpener(rest, "lock.haupteingang_nuki", "lock.unlock")  # type: ignore[arg-type]
+    await op.open_door()
+    assert rest.calls == [("lock", "unlock", "lock.haupteingang_nuki")]
+
+
+@pytest.mark.asyncio
+async def test_a_failing_service_call_raises_instead_of_going_quiet() -> None:
+    op = HomeAssistantOpener(_Rest(fail=True), "lock.x")  # type: ignore[arg-type]
+    with pytest.raises(OpenerError):
+        await op.open_door()
+
+
+@pytest.mark.asyncio
+async def test_reachability_distinguishes_unavailable_from_a_real_state() -> None:
+    """Genau diese Größe entscheidet später, ob der Türweg bei HA bleibt."""
+    assert await HomeAssistantOpener(_Rest("locked"), "lock.x").reachable()  # type: ignore[arg-type]
+    assert await HomeAssistantOpener(_Rest("unlocked"), "lock.x").reachable()  # type: ignore[arg-type]
+    assert not await HomeAssistantOpener(_Rest("unavailable"), "lock.x").reachable()  # type: ignore[arg-type]
+    assert not await HomeAssistantOpener(_Rest("unknown"), "lock.x").reachable()  # type: ignore[arg-type]
+    assert not await HomeAssistantOpener(_Rest(None), "lock.x").reachable()  # type: ignore[arg-type]
+    assert not await HomeAssistantOpener(_Rest(fail=True), "lock.x").reachable()  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_the_probe_is_written_as_a_measurement_series() -> None:
+    """Die Vermutung „die Strecke ist brüchig" wird damit zu einer Reihe in der Verfügbarkeitskarte."""
+    seen: list[Any] = []
+
+    async def collect(items: list[Any]) -> None:
+        seen.extend(items)
+
+    events = UnifiAccessEvents("192.0.2.8", "t")
+    op = HomeAssistantOpener(_Rest("locked"), "lock.x")  # type: ignore[arg-type]
+    svc = DoorService(
+        events, op, DoorPolicy.of(enabled=False, doors=[], actors=[], methods=[]), collect
+    )
+    assert await svc.probe()
+    assert [(r.key, r.value) for r in seen] == [("door_lock_online", 1.0)]
+
+    op.rest = _Rest("unavailable")  # type: ignore[assignment]
+    assert not await svc.probe()
+    assert seen[-1].value == 0.0
+    assert svc.status()["opener"] == "home_assistant"

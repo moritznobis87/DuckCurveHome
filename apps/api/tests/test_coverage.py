@@ -62,7 +62,11 @@ def test_an_hour_without_any_row_differs_from_an_hour_without_this_series(
 def test_the_counts_are_per_hour_and_per_series(client: TestClient) -> None:
     r = client.get("/api/v1/system/coverage?anchor=2026-09-15&days=1", headers=AUTH)
     assert r.status_code == 200
-    assert {s["key"] for s in r.json()["series"]} == {"grid_power_meter_kw", "grid_power_kw"}
+    assert {s["key"] for s in r.json()["series"]} == {
+        "grid_power_meter_kw",
+        "grid_power_kw",
+        "door_lock_online",
+    }
     assert all(s["label_de"] for s in r.json()["series"])
 
 

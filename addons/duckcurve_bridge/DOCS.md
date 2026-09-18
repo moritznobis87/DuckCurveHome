@@ -433,15 +433,21 @@ erkennt. Die Kette ist Reader → UniFi-Konsole → Bridge → Nuki-Schloss, all
 DCH-Cloud noch Home Assistant noch die Nuki-Cloud stehen darin. Der ausführliche Hintergrund steht in
 `docs/TUEROEFFNUNG.md` im Repository.
 
-Voraussetzungen: ein **Nuki Smart Lock Pro** mit WLAN, in dessen App unter „Geräte verwalten" die
-HTTP-API eingeschaltet ist (dort wird auch der Token vergeben, 6 bis 20 Zeichen), und ein
-API-Token der UniFi-Access-Konsole aus Einstellungen → Allgemein → API-Token.
+Voraussetzungen: ein API-Token der UniFi-Access-Konsole aus Einstellungen → Allgemein → API-Token,
+und ein Weg zum Schloss. Der Vorgabeweg führt über Home Assistant: das Schloss muss dort als
+Matter-Gerät sichtbar sein. Hängt es an einem HomePod, teilt man es in der Home-App zusätzlich an
+HA („Zubehör teilen") - Matter erlaubt mehrere Verwalter, Apple Home behält es, das WLAN des
+Schlosses bleibt aus und die Batterie hält.
+
+Probier vorher einmal aus, ob `lock.open` auf der Entität die **Falle** zieht (Entwicklerwerkzeuge
+→ Aktionen). Wenn nicht, gehört `lock.unlock` in `door_service`; die Tür geht dann nur auf Riegel.
 
 **Inbetriebnahme in drei Schritten.** Der Dienst startet im Beobachtungsbetrieb und rührt das
 Schloss nicht an. Das ist nötig, weil der Wert, den die Konsole für einen Gesichtsscan schreibt,
 nirgends dokumentiert ist - man liest ihn ab, statt ihn zu raten.
 
-1. `unifi_host`, `unifi_token`, `nuki_host` und `nuki_token` eintragen, `door_enabled` aus lassen.
+1. `unifi_host`, `unifi_token` und `door_entity` eintragen (z. B. `lock.haupteingang_nuki`),
+   `door_enabled` aus lassen.
 2. Einmal vor die Tür stellen und scannen lassen. Im Add-on-Protokoll steht dann eine Zeile
 
    ```
@@ -454,6 +460,12 @@ nirgends dokumentiert ist - man liest ihn ab, statt ihn zu raten.
 Freigegeben wird ausschließlich, was in diesen drei Listen steht. Eine leere Liste heißt niemand,
 nicht alle. Zusätzlich lehnt die Bridge Ereignisse ab, die älter als 30 Sekunden sind - nach einem
 Verbindungsabbruch liefert die Konsole zurückliegende Einträge nach, und eine Tür holt nichts nach.
+
+**Trägt die Strecke zum Schloss?** Das Add-on fragt ihren Zustand im Minutentakt ab und schickt
+ihn als Messreihe `door_lock_online` mit. Auf der Prüfseite `/daten` erscheint sie in derselben
+Verfügbarkeitskarte wie der Stromzähler. Setzt die Strecke über Home Assistant regelmäßig aus,
+lässt sich der Türweg mit `door_opener: nuki_bridge` auf das Steckdosengerät von Nuki umstellen -
+das spricht Bluetooth mit dem Schloss, und HA wie HomePod fallen aus dem Türweg heraus.
 
 **Der sichere Zustand ist „zu".** Steht die Bridge, geht die Tür über diesen Weg nicht auf.
 Schlüssel und Nuki-App bleiben der Rückfallweg, und der Reader sollte weiterhin auch ohne dieses

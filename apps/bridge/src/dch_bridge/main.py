@@ -19,6 +19,7 @@ from dch_bridge.outbox import Outbox
 from dch_bridge.settings import BridgeSettings
 from dch_bridge.sources.mcz_maestro import MaestroStove, stove_url
 from dch_bridge.sources.nuki_lock import NukiLock
+from dch_bridge.sources.opener import HomeAssistantOpener, NukiBridgeOpener, Opener
 from dch_bridge.sources.shelly_mqtt import (
     Comparator,
     Device,
@@ -32,7 +33,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.8.0"
+VERSION = "0.8.1"
 log = structlog.get_logger("bridge")
 
 
@@ -61,6 +62,18 @@ class Bridge:
         # keinen Weg zur Tür, weil es keinen gibt, nicht weil wir ihn gerade versperrt haben.
         self.door: DoorService | None = None
         if settings.door_configured:
+            opener: Opener = (
+                NukiBridgeOpener(
+                    NukiLock(
+                        settings.nuki_host,
+                        settings.nuki_token,
+                        port=settings.nuki_port,
+                        nuki_id=settings.nuki_id,
+                    )
+                )
+                if settings.door_opener == "nuki_bridge"
+                else HomeAssistantOpener(self.rest, settings.door_entity, settings.door_service)
+            )
             self.door = DoorService(
                 UnifiAccessEvents(
                     settings.unifi_host,
@@ -68,18 +81,14 @@ class Bridge:
                     port=settings.unifi_port,
                     verify_tls=settings.unifi_verify_tls,
                 ),
-                NukiLock(
-                    settings.nuki_host,
-                    settings.nuki_token,
-                    port=settings.nuki_port,
-                    nuki_id=settings.nuki_id,
-                ),
+                opener,
                 DoorPolicy.of(
                     enabled=settings.door_enabled,
                     doors=settings.door_doors,
                     actors=settings.door_actors,
                     methods=settings.door_methods,
                 ),
+                self._ingest_readings,
             )
         self.uplink = UplinkClient(
             url=settings.api_ws_url,
@@ -400,9 +409,10 @@ class Bridge:
             mqtt=f"{self.settings.mqtt_host}:{self.settings.mqtt_port}" if self.mqtt else None,
             mqtt_devices=[d.label for d in self.mqtt.devices] if self.mqtt else [],
             stove=self.stove.url if self.stove else None,
-            door="beobachtend"
-            if self.door and not self.settings.door_enabled
-            else ("freigegeben" if self.door else None),
+            door=f"{self.settings.door_opener}/"
+            + ("beobachtend" if not self.settings.door_enabled else "freigegeben")
+            if self.door
+            else None,
         )
         tasks = [
             asyncio.create_task(self._ha_loop(), name="ha"),
@@ -417,6 +427,7 @@ class Bridge:
             tasks.append(asyncio.create_task(self.stove.run(), name="mcz"))
         if self.door is not None:
             tasks.append(asyncio.create_task(self.door.events.run(), name="unifi-access"))
+            tasks.append(asyncio.create_task(self.door.run(), name="door-probe"))
         if self.mqtt is not None or self.stove is not None or self.door is not None:
             tasks.append(asyncio.create_task(self._source_status_loop(), name="source-status"))
         try:

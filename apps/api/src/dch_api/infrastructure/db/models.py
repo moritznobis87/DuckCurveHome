@@ -98,6 +98,9 @@ class MeasurementMinute(Base):
     grid_power_meter_kw: Mapped[float | None] = mapped_column(Float)
     grid_import_meter_kwh: Mapped[float | None] = mapped_column(Float)
     grid_export_meter_kwh: Mapped[float | None] = mapped_column(Float)
+    # Erreichbarkeit des Türschlosses, 1 oder 0. Steht hier, weil die Verfügbarkeitskarte sie
+    # zeigen soll: die Vermutung, die Strecke zum Schloss sei brüchig, wird damit nachprüfbar.
+    door_lock_online: Mapped[float | None] = mapped_column(Float)
     extra: Mapped[dict[str, float] | None] = mapped_column(JsonType)
 
 

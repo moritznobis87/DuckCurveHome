@@ -46,6 +46,9 @@ async def storage(runner: Annotated[Runtime, Depends(get_runner)]) -> StorageRep
 COVERAGE_SERIES: list[tuple[str, str]] = [
     ("grid_power_meter_kw", "Zähler (inexogy)"),
     ("grid_power_kw", "Stromwandler (Libbi)"),
+    # Die Tür gehört nicht zur Energiebilanz, aber zur selben Frage: kommt an, was ankommen soll.
+    # Ob die Strecke zum Schloss trägt, entscheidet sich an dieser Zeile und nicht am Gefühl.
+    ("door_lock_online", "Weg zum Türschloss"),
 ]
 MAX_COVERAGE_DAYS = 90
 
