@@ -6,6 +6,8 @@ Beobachtungsbetrieb muss das Schloss unberührt bleiben, sonst wäre die Lernpha
 
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -319,3 +321,54 @@ def test_a_rejected_handshake_says_what_to_check() -> None:
     assert "HTTP 500" in ev._explain(_HandshakeError(500))
     # Ohne Antwort bleibt die rohe Ausnahme - besser als eine erfundene Erklärung.
     assert "ValueError" in ev._explain(ValueError("kaputt"))
+
+
+class _Socket:
+    """Ein WebSocket, so weit `pump` ihn braucht: eine Folge von Rahmen, dann Stille."""
+
+    def __init__(self, frames: list[str], then_silent: bool = True) -> None:
+        self.frames = list(frames)
+        self.then_silent = then_silent
+
+    async def recv(self) -> str:
+        if self.frames:
+            return self.frames.pop(0)
+        if self.then_silent:
+            await asyncio.sleep(3600)  # nie - der Totmannschalter muss greifen
+        raise RuntimeError("Verbindung zu")
+
+
+@pytest.mark.asyncio
+async def test_the_keepalive_of_the_console_keeps_the_line_alive() -> None:
+    """Die Konsole schickt den nackten Text „Hello". Er ist kein Zutritt, aber ein Lebenszeichen."""
+    seen: list[AccessEvent] = []
+
+    async def collect(e: AccessEvent, _f: Any) -> None:
+        seen.append(e)
+
+    ev = UnifiAccessEvents("192.0.2.8", "t", idle_timeout_s=0.05)
+    ev.on_event = collect
+    with pytest.raises(ConnectionError, match="kein Rahmen"):
+        await ev.pump(_Socket(['"Hello"', '"Hello"', json.dumps(_frame())]))
+    # Drei Rahmen gezählt, einer davon ein Zutritt. Die beiden Keepalives gehen nicht verloren:
+    # an ihnen sieht man, dass die Leitung lebt, auch wenn niemand vor der Tür steht.
+    assert ev.events_seen == 3
+    assert ev.access_events == 1
+    assert len(seen) == 1 and seen[0].actor == "Moritz"
+
+
+@pytest.mark.asyncio
+async def test_a_line_that_says_nothing_at_all_is_treated_as_dead() -> None:
+    """Ohne Protokoll-Pings ist das die einzige Stelle, an der eine tote Leitung auffliegt."""
+    ev = UnifiAccessEvents("192.0.2.8", "t", idle_timeout_s=0.05)
+    with pytest.raises(ConnectionError, match="kein Keepalive"):
+        await ev.pump(_Socket([]))
+    assert ev.events_seen == 0
+
+
+@pytest.mark.asyncio
+async def test_unreadable_frames_do_not_end_the_connection() -> None:
+    ev = UnifiAccessEvents("192.0.2.8", "t", idle_timeout_s=0.05)
+    with pytest.raises(ConnectionError):
+        await ev.pump(_Socket(["kein json", "{kaputt", "[]"]))
+    assert ev.events_seen == 3 and ev.access_events == 0

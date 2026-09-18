@@ -42,6 +42,10 @@ NOTIFICATIONS_PATH = "/api/v1/developer/devices/notifications"
 # Geräte- und Systemmeldungen; sie werden gezählt, aber nicht gedeutet.
 ACCESS_EVENT = "access.logs.add"
 MAX_BACKOFF_S = 60.0
+# Ohne Rahmen so lange gilt die Verbindung als tot. Das ist keine Willkür: die Konsole schickt von
+# sich aus regelmäßig einen Keepalive-Rahmen mit dem Inhalt "Hello". Bleibt selbst der aus, liegt
+# nicht Ruhe im Haus vor, sondern eine Leitung, die niemand mehr bedient.
+IDLE_TIMEOUT_S = 300.0
 # Ein „Access Granted" der Konsole in den Sprachen, in denen sie es schreibt. Verlässlicher als das
 # Wort ist es nicht - deshalb entscheidet am Ende ohnehin die Erlaubnisliste und nicht dieses Feld.
 GRANTED_MARKERS = ("granted", "access granted", "erlaubt", "zutritt gewährt")
@@ -96,6 +100,7 @@ class UnifiAccessEvents:
         *,
         port: int = 12445,
         verify_tls: bool = False,
+        idle_timeout_s: float = IDLE_TIMEOUT_S,
     ) -> None:
         self.url = f"wss://{host.strip()}:{port}{NOTIFICATIONS_PATH}"
         self.token = token
@@ -103,6 +108,7 @@ class UnifiAccessEvents:
         # das ist der Beobachtungsbetrieb in seiner rohesten Form.
         self.on_event: Callable[[AccessEvent, dict[str, Any]], Awaitable[None]] | None = None
         self.verify_tls = verify_tls
+        self.idle_timeout_s = idle_timeout_s
         self.online = False
         self.last_error: str | None = None
         self.events_seen = 0
@@ -123,28 +129,52 @@ class UnifiAccessEvents:
             self.url,
             additional_headers={"Authorization": f"Bearer {self.token}"},
             ssl=self._ssl(),
-            ping_interval=20,
-            ping_timeout=20,
+            # **Keine Protokoll-Pings.** Die Konsole beantwortet sie nicht, und die Bibliothek
+            # beendet die Verbindung dann nach zwei Takten von sich aus:
+            #
+            #     ConnectionClosedError(Close(code=1011, reason='keepalive ping timeout'))
+            #
+            # Die Verbindung war dabei völlig in Ordnung - wir haben sie selbst umgebracht. Die
+            # Konsole hält sie stattdessen mit eigenen Textrahmen offen („Hello"), und das genügt
+            # sowohl der Leitung als auch uns: an ihnen erkennt man auch, dass noch jemand da ist.
+            ping_interval=None,
         ) as ws:
             self.online = True
             self.last_error = None
             log.info("unifi access online", url=self.url)
-            async for raw in ws:
-                self.events_seen += 1
-                try:
-                    frame = json.loads(raw)
-                except (TypeError, ValueError):
-                    continue
-                if not isinstance(frame, dict):
-                    continue
-                event = parse_event(frame, datetime.now(UTC))
-                if event is None:
-                    continue
-                self.access_events += 1
-                self.last_event_at = event.at
-                if self.on_event is not None:
-                    with contextlib.suppress(Exception):
-                        await self.on_event(event, frame)
+            await self.pump(ws)
+
+    async def pump(self, ws: Any) -> None:
+        """Rahmen lesen, bis nichts mehr kommt.
+
+        Eigen benannt und nicht in `_consume` verschachtelt, weil hier der Totmannschalter sitzt:
+        ohne Protokoll-Pings ist das die einzige Stelle, an der eine Leitung auffliegt, die nur
+        noch aussieht wie eine. Was sich prüfen lässt, gehört in eine Funktion, die man prüfen kann.
+        """
+        while True:
+            try:
+                raw = await asyncio.wait_for(ws.recv(), timeout=self.idle_timeout_s)
+            except TimeoutError:
+                raise ConnectionError(
+                    f"seit {self.idle_timeout_s:.0f} s kein Rahmen, auch kein Keepalive"
+                ) from None
+            self.events_seen += 1
+            try:
+                frame = json.loads(raw)
+            except (TypeError, ValueError):
+                continue
+            # Der Keepalive der Konsole ist der nackte Text „Hello" und damit kein Objekt. Er wird
+            # mitgezählt und sonst übergangen: gerade an ihm sieht man, dass die Leitung lebt.
+            if not isinstance(frame, dict):
+                continue
+            event = parse_event(frame, datetime.now(UTC))
+            if event is None:
+                continue
+            self.access_events += 1
+            self.last_event_at = event.at
+            if self.on_event is not None:
+                with contextlib.suppress(Exception):
+                    await self.on_event(event, frame)
 
     def _explain(self, exc: Exception) -> str:
         """Aus einer Ausnahme eine Meldung machen, mit der man etwas anfangen kann.
