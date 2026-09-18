@@ -96,6 +96,28 @@ def test_another_method_does_not_open() -> None:
     assert "Verfahren" in d.reason_de
 
 
+def test_a_star_lets_every_recognised_person_through() -> None:
+    """Viele eingetragene Gesichter im Haus: die Auswahl trifft dann die Konsole, nicht die Liste."""
+    gate = DoorGate(DoorPolicy.of(enabled=True, doors=["Haustür"], actors=["*"], methods=["FACE"]))
+    assert gate.decide(_event(actor="Riccarda"), NOW).open_door
+    assert gate.decide(_event(actor="Wer Auch Immer"), NOW).open_door
+
+
+def test_the_star_does_not_cover_someone_who_was_not_recognised() -> None:
+    """„Alle, die erkannt wurden" ist etwas anderes als „alle"."""
+    gate = DoorGate(DoorPolicy.of(enabled=True, doors=["Haustür"], actors=["*"], methods=["FACE"]))
+    d = gate.decide(_event(actor="   "), NOW)
+    assert not d.open_door
+    assert "keine Person" in d.reason_de
+
+
+def test_the_star_for_the_people_does_not_open_other_doors() -> None:
+    """Er gilt je Liste. Tür und Verfahren bleiben eng, auch wenn die Personen offen sind."""
+    gate = DoorGate(DoorPolicy.of(enabled=True, doors=["Haustür"], actors=["*"], methods=["FACE"]))
+    assert not gate.decide(_event(door="Gartentor"), NOW).open_door
+    assert not gate.decide(_event(method="PIN"), NOW).open_door
+
+
 def test_an_empty_list_lets_nobody_through() -> None:
     """Eine leere Erlaubnisliste heißt „niemand" und nicht „alle" - der teuerste denkbare Fehler."""
     gate = DoorGate(DoorPolicy.of(enabled=True, doors=[], actors=[], methods=[]))

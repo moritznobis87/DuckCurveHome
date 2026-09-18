@@ -458,7 +458,25 @@ nirgends dokumentiert ist - man liest ihn ab, statt ihn zu raten.
    getrennt) und `door_enabled` einschalten.
 
 Freigegeben wird ausschließlich, was in diesen drei Listen steht. Eine leere Liste heißt niemand,
-nicht alle. Zusätzlich lehnt die Bridge Ereignisse ab, die älter als 30 Sekunden sind - nach einem
+nicht alle.
+
+**Viele Gesichter im Haus?** Dann trag bei `door_actors` einen einzelnen Stern ein:
+
+```
+door_actors: "*"
+```
+
+Das heißt nicht „jeder", sondern „jede Person, die die Konsole erkannt hat". Ein Ereignis ohne
+Namen wird weiterhin abgelehnt, und die Prüfung darauf steht vor der Liste, lässt sich also mit dem
+Stern nicht aushebeln. Die Auswahl, wer ins Haus darf, trifft dann UniFi Access an der Stelle, an
+der die Gesichter ohnehin gepflegt werden - statt in einer zweiten Namensliste, die still veraltet
+und jemanden vor der Tür stehen lässt, den du gerade erst aufgenommen hast.
+
+Bei `door_doors` und `door_methods` wirkt der Stern genauso, ist dort aber die schlechtere Wahl:
+ein Stern bei den Verfahren hieße, dass auch ein PIN die Falle zieht, einer bei den Türen, dass ein
+zweiter Leser am Gartentor die Haustür öffnet.
+
+Zusätzlich lehnt die Bridge Ereignisse ab, die älter als 30 Sekunden sind - nach einem
 Verbindungsabbruch liefert die Konsole zurückliegende Einträge nach, und eine Tür holt nichts nach.
 
 **Trägt die Strecke zum Schloss?** Das Add-on fragt ihren Zustand im Minutentakt ab und schickt

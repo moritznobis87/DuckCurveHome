@@ -10,12 +10,20 @@ ist, öffnet nicht. Das gilt für die Tür, die Person und das Verfahren gleiche
 Sperrliste wäre hier der falsche Weg: sie ist genau dann unvollständig, wenn ein neues Gerät, ein
 neuer Benutzer oder ein Firmware-Update einen Fall hinzufügt, an den niemand gedacht hat.
 
-**Sechs Gründe abzulehnen**, und jeder ist ein eigener Fall, weil man im Protokoll sehen will,
+**Ein Stern in einer Liste lässt alles Benannte zu.** In einem Haushalt mit vielen eingetragenen
+Gesichtern ist eine gepflegte Namensliste die schlechtere Sicherung: sie veraltet still, und wer
+neu aufgenommen wird, steht dann vor der Tür und versteht nicht, warum. Bei den Personen darf
+deshalb `*` stehen. Es heißt nicht „jeder", sondern „jede Person, die die Konsole erkannt hat" -
+wer nicht erkannt wurde, trägt keinen Namen im Ereignis und scheitert an der Prüfung davor. Die
+eigentliche Auswahl trifft dann UniFi Access, dort, wo die Gesichter hinterlegt sind.
+
+**Sieben Gründe abzulehnen**, und jeder ist ein eigener Fall, weil man im Protokoll sehen will,
 welcher es war:
 
 * aus dem Ereignis war nichts zu lesen (dann liegt der Fehler bei uns, nicht an der Tür),
 * das Ereignis meldet keinen Erfolg (die Konsole hat selbst schon abgelehnt),
 * die Tür steht nicht in der Liste,
+* das Ereignis nennt keine Person,
 * die Person steht nicht in der Liste,
 * das Verfahren steht nicht in der Liste (ein PIN ist kein Gesichtsscan),
 * dieselbe Person hat eben erst geöffnet (Wiederholsperre).
@@ -37,6 +45,15 @@ REPEAT_LOCK_S = 8.0
 # Verbindung liefert die Konsole zurückliegende Einträge nach - eine Tür, die aufgeht, weil vor
 # zwanzig Minuten jemand davorstand, ist ein Fehler und kein Nachholen.
 MAX_EVENT_AGE_S = 30.0
+# Steht dieses Zeichen allein in einer der drei Listen, ist jeder benannte Wert zugelassen. Gemeint
+# ist „jede Person, die die Konsole erkannt hat", nicht „jeder". Wer nicht erkannt wurde, trägt
+# keinen Namen im Ereignis und kommt auch so nicht durch: die Prüfung auf einen leeren Namen steht
+# vor der Liste und lässt sich mit dem Zeichen nicht aushebeln.
+#
+# Für Türen und Verfahren ist es dieselbe Mechanik, aber die schlechtere Wahl. Ein Stern bei den
+# Verfahren hieße, dass auch ein PIN die Falle zieht, und ein Stern bei den Türen, dass ein zweiter
+# Leser am Gartentor dieselbe Haustür öffnet.
+ANY = "*"
 
 
 @dataclass(frozen=True)
@@ -52,6 +69,10 @@ class AccessEvent:
 
 def _norm(values: list[str]) -> frozenset[str]:
     return frozenset(v.strip().lower() for v in values if v.strip())
+
+
+def _allows(allowed: frozenset[str], value: str) -> bool:
+    return ANY in allowed or value in allowed
 
 
 @dataclass(frozen=True)
@@ -112,11 +133,15 @@ class DoorGate:
         age = (now - event.at).total_seconds()
         if age > MAX_EVENT_AGE_S:
             return DoorDecision(False, f"Ereignis ist {age:.0f} s alt und wird nicht nachgeholt.")
-        if door not in self.policy.doors:
+        if not _allows(self.policy.doors, door):
             return DoorDecision(False, f"Tür „{event.door}“ ist nicht freigegeben.")
-        if who not in self.policy.actors:
+        if not who:
+            # Vor der Liste, damit der Stern in `actors` diesen Fall nicht mitnimmt: „alle, die
+            # erkannt wurden" ist etwas anderes als „alle".
+            return DoorDecision(False, "Das Ereignis nennt keine Person.")
+        if not _allows(self.policy.actors, who):
             return DoorDecision(False, f"Person „{event.actor}“ ist nicht freigegeben.")
-        if method not in self.policy.methods:
+        if not _allows(self.policy.methods, method):
             return DoorDecision(False, f"Verfahren „{event.method}“ ist nicht freigegeben.")
         last = self.last_open.get(who)
         if last is not None and (now - last).total_seconds() < REPEAT_LOCK_S:

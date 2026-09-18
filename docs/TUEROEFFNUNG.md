@@ -145,6 +145,23 @@ einmal eingetippt hat. Beides liest man ab, statt es zu raten.
 Groß- und Kleinschreibung und Leerzeichen spielen keine Rolle. Mehrere Werte werden mit Komma
 getrennt.
 
+**Viele Gesichter im Haus?** Dann trag bei `door_actors` einen einzelnen Stern ein:
+
+```
+door_actors: "*"
+```
+
+Das heißt nicht „jeder", sondern „jede Person, die die Konsole erkannt hat". Ein Ereignis ohne
+Namen wird weiterhin abgelehnt, und die Prüfung darauf steht vor der Liste, lässt sich also mit dem
+Stern nicht aushebeln. Die Auswahl, wer ins Haus darf, trifft dann UniFi Access an der Stelle, an
+der die Gesichter ohnehin gepflegt werden - statt in einer zweiten Namensliste, die still veraltet
+und jemanden vor der Tür stehen lässt, den du gerade erst aufgenommen hast.
+
+Bei `door_doors` und `door_methods` wirkt der Stern genauso, ist dort aber die schlechtere Wahl:
+ein Stern bei den Verfahren hieße, dass auch ein PIN die Falle zieht, einer bei den Türen, dass ein
+zweiter Leser am Gartentor die Haustür öffnet.
+
+
 ## Was bleibt, wenn die Bridge steht
 
 Dann geht die Tür über diesen Weg nicht auf. Der Schlüssel und die Nuki-App bleiben der
