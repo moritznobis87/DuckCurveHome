@@ -295,3 +295,27 @@ async def test_the_probe_is_written_as_a_measurement_series() -> None:
     assert not await svc.probe()
     assert seen[-1].value == 0.0
     assert svc.status()["opener"] == "home_assistant"
+
+
+def test_a_rejected_handshake_says_what_to_check() -> None:
+    """Beim Einrichten ist der Grund mehr wert als der Statuscode.
+
+    Der Rumpf der Antwort geht in der Standardmeldung der WebSocket-Bibliothek unter; übrig bleibt
+    eine abgeschnittene Kopfzeilenliste, aus der niemand ableiten kann, welcher Token falsch ist.
+    """
+
+    class _Resp:
+        def __init__(self, code: int) -> None:
+            self.status_code = code
+
+    class _HandshakeError(Exception):
+        def __init__(self, code: int) -> None:
+            self.response = _Resp(code)
+
+    ev = UnifiAccessEvents("192.0.2.8", "t")
+    msg = ev._explain(_HandshakeError(401))
+    assert "401" in msg and "Access" in msg and "System Log" in msg
+    assert "404" in ev._explain(_HandshakeError(404))
+    assert "HTTP 500" in ev._explain(_HandshakeError(500))
+    # Ohne Antwort bleibt die rohe Ausnahme - besser als eine erfundene Erklärung.
+    assert "ValueError" in ev._explain(ValueError("kaputt"))

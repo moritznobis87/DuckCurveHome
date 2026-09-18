@@ -146,6 +146,31 @@ class UnifiAccessEvents:
                     with contextlib.suppress(Exception):
                         await self.on_event(event, frame)
 
+    def _explain(self, exc: Exception) -> str:
+        """Aus einer Ausnahme eine Meldung machen, mit der man etwas anfangen kann.
+
+        Ein abgelehnter Handschlag ist der wahrscheinlichste Fehler beim Einrichten, und die
+        Standardmeldung der Bibliothek zeigt davon nur den Statuscode und eine abgeschnittene
+        Kopfzeilenliste. Die Antwort der Konsole trägt aber einen Grund im Rumpf, und der ist beim
+        Einrichten mehr wert als alles andere im Protokoll.
+        """
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        if status == 401:
+            return (
+                "401 Unauthorized: der Token wird abgelehnt. Häufigste Ursachen: er stammt aus "
+                "UniFi Protect oder Network statt aus Access, oder ihm fehlen Berechtigungen - "
+                "beim Anlegen unter Access → Einstellungen alle Rechte vergeben, mindestens "
+                "Space, Device und System Log."
+            )
+        if status == 404:
+            return (
+                "404: die Konsole kennt den Pfad nicht. Läuft die Access-Anwendung auf dieser "
+                "Konsole, und ist der Port richtig (Vorgabe 12445)?"
+            )
+        if status is not None:
+            return f"HTTP {status} beim Verbindungsaufbau"
+        return repr(exc)[:200]
+
     async def run(self) -> None:
         backoff = 1.0
         while True:
@@ -154,8 +179,8 @@ class UnifiAccessEvents:
                 backoff = 1.0
             except Exception as exc:
                 self.online = False
-                self.last_error = repr(exc)[:200]
-                log.warning("unifi access offline", error=self.last_error)
+                self.last_error = self._explain(exc)
+                log.warning("unifi access offline", error=self.last_error, url=self.url)
             await asyncio.sleep(backoff)
             backoff = min(MAX_BACKOFF_S, backoff * 2)
 
