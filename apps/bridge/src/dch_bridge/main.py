@@ -33,7 +33,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.8.1"
+VERSION = "0.8.2"
 log = structlog.get_logger("bridge")
 
 
