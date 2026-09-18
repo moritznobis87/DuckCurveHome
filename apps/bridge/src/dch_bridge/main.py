@@ -34,7 +34,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.8.6"
+VERSION = "0.8.7"
 log = structlog.get_logger("bridge")
 
 
@@ -90,6 +90,9 @@ class Bridge:
                     methods=settings.door_methods,
                 ),
                 self._ingest_readings,
+                # Gebunden an die Bridge, nicht an den Uplink: den gibt es in dieser Zeile noch
+                # nicht, und die Reihenfolge des Aufbaus soll nicht davon abhängen, wer wen kennt.
+                on_event=self._emit_event,
             )
         self.uplink = UplinkClient(
             url=settings.api_ws_url,
@@ -202,6 +205,12 @@ class Bridge:
         ):
             return
         self._pending[reading.key] = reading
+
+    async def _emit_event(
+        self, at: datetime, severity: str, code: str, message: str, context: dict[str, str]
+    ) -> None:
+        """Ein Ereignis der Bridge ins Ereignisprotokoll der Cloud durchreichen."""
+        await self.uplink.emit_event(at, severity, code, message, context)
 
     async def _ingest_readings(self, items: list[RawReading]) -> None:
         """Messwerte einer Nicht-HA-Quelle (MQTT, Pelletofen) in denselben Sammelpuffer."""

@@ -14,7 +14,14 @@ from fastapi import APIRouter, Depends
 
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
-from dch_api.schemas import CoverageOut, CoverageSeriesOut, StorageReportOut, StorageTableOut
+from dch_api.schemas import (
+    CoverageOut,
+    CoverageSeriesOut,
+    DoorEntryOut,
+    DoorLogOut,
+    StorageReportOut,
+    StorageTableOut,
+)
 from hems_core.simulation import BERLIN
 
 router = APIRouter(prefix="/system", tags=["System"])
@@ -111,3 +118,59 @@ async def coverage(
             "Der längste Ausfall zählt nur vollständig leere Stunden und ist damit eine Untergrenze."
         ),
     )
+
+
+# Unter diesem Code legt die API ab, was die Bridge als `door_access` meldet.
+DOOR_EVENT_CODE = "bridge.door_access"
+MAX_DOOR_DAYS = 90
+MAX_DOOR_ENTRIES = 500
+
+
+@router.get("/door", response_model=DoorLogOut, summary="Zutritte an der Haustür")
+async def door_log(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    days: int = 14,
+    limit: int = 200,
+) -> DoorLogOut:
+    """Wer sich wann an der Haustür erkannt hat, jüngster Eintrag zuerst.
+
+    **Nur lesen.** Es gibt hier keinen Weg zur Tür und soll keinen geben: die Entscheidung fällt im
+    Haus, an einer Erlaubnisliste in der Bridge, und die Cloud erfährt davon erst hinterher. Ein
+    Endpunkt, der öffnen könnte, wäre eine Tür, die am Internet hängt.
+
+    Gezeigt werden auch die abgelehnten Versuche. Für die eine Frage, wegen der man abends
+    hineinsieht - stand jemand vor der Tür, den das Haus nicht kannte - sind sie die eigentliche
+    Auskunft.
+    """
+    span = max(1, min(MAX_DOOR_DAYS, days))
+    count = max(1, min(MAX_DOOR_ENTRIES, limit))
+    since = runner.now - timedelta(days=span)
+    repos = getattr(runner, "repos", None)
+    rows = await repos.events_by_code(DOOR_EVENT_CODE, since, count) if repos is not None else []
+    entries = [DoorEntryOut(at=r.at, **_door_fields(r.context)) for r in rows]
+    opened = sum(1 for e in entries if e.outcome == "geöffnet")
+    note = (
+        f"{len(entries)} Ereignisse in {span} Tagen, davon {opened} geöffnet."
+        if entries
+        else "Noch kein Zutritt aufgezeichnet. Die Bridge meldet jeden Scan, sobald sie ihn sieht."
+    )
+    return DoorLogOut(entries=entries, days=span, note_de=note)
+
+
+def _door_fields(context: object) -> dict[str, object]:
+    """Die Zusatzfelder eines Ereignisses in die Felder einer Zeile übersetzen.
+
+    Nachsichtig, weil das Protokoll älter sein kann als diese Fassung: eine Zeile aus einer früheren
+    Version der Bridge soll nicht die ganze Abfrage zum Scheitern bringen, sondern mit leeren
+    Feldern dastehen. Ein Protokoll, das bei der ersten Formänderung nicht mehr lesbar ist, ist
+    kein Protokoll.
+    """
+    c = context if isinstance(context, dict) else {}
+    return {
+        "actor": str(c.get("actor") or ""),
+        "door": str(c.get("door") or ""),
+        "method": str(c.get("method") or ""),
+        "outcome": str(c.get("outcome") or "unbekannt"),
+        "granted": str(c.get("granted") or "") == "ja",
+        "reason": str(c.get("reason") or ""),
+    }

@@ -537,12 +537,25 @@ class SqlRepositories:
         )
 
     async def add_event(
-        self, severity: str, code: str, message: str, context: Mapping[str, object] | None = None
+        self,
+        severity: str,
+        code: str,
+        message: str,
+        context: Mapping[str, object] | None = None,
+        *,
+        at: datetime | None = None,
     ) -> None:
+        """Ein Ereignis ablegen. `at` ist der Zeitpunkt des Geschehens, nicht der des Eintragens.
+
+        Der Unterschied zählt bei allem, was aus dem Haus gemeldet wird: hat die Leitung eine
+        Viertelstunde gestanden, kommen fünf Ereignisse auf einmal an. Mit dem Zeitpunkt des
+        Eintragens stünden sie alle in derselben Sekunde, und das Türprotokoll behauptete, um 19:04
+        seien vier Leute gleichzeitig vor der Tür gewesen.
+        """
         async with self.maker() as s:
             s.add(
                 m.SystemEvent(
-                    at=datetime.now(UTC),
+                    at=at or datetime.now(UTC),
                     severity=severity,
                     code=code,
                     message=message,
@@ -598,6 +611,31 @@ class SqlRepositories:
                         .where(m.SystemEvent.at >= start)
                         .where(m.SystemEvent.at < end)
                         .order_by(m.SystemEvent.at)
+                        .limit(limit)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        return list(rows)
+
+    async def events_by_code(
+        self, code: str, since: datetime, limit: int = 200
+    ) -> list[m.SystemEvent]:
+        """Ereignisse eines Codes seit einem Zeitpunkt, jüngste zuerst.
+
+        Getrennt von `events_between`, weil die Blickrichtung eine andere ist: dort wird ein Tag
+        nachgelesen, hier die letzte Zeit überblickt. Die Sortierung entscheidet, welche Zeilen die
+        Grenze abschneidet - beim Türprotokoll sollen es die ältesten sein.
+        """
+        async with self.maker() as s:
+            rows = (
+                (
+                    await s.execute(
+                        select(m.SystemEvent)
+                        .where(m.SystemEvent.code == code)
+                        .where(m.SystemEvent.at >= since)
+                        .order_by(m.SystemEvent.at.desc())
                         .limit(limit)
                     )
                 )

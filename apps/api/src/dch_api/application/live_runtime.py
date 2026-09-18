@@ -279,7 +279,7 @@ class LiveRuntime:
     async def on_bridge_event(self, frame: EventFrame | DeviceHealthFrame) -> None:
         if isinstance(frame, EventFrame):
             await self.repos.add_event(
-                frame.severity, f"bridge.{frame.code}", frame.message, frame.context
+                frame.severity, f"bridge.{frame.code}", frame.message, frame.context, at=frame.at
             )
         else:
             await self.repos.add_event(

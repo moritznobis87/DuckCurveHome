@@ -1345,6 +1345,60 @@
         }
       }
     },
+    "/api/v1/system/door": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Zutritte an der Haustür",
+        "description": "Wer sich wann an der Haustür erkannt hat, jüngster Eintrag zuerst.\n\n**Nur lesen.** Es gibt hier keinen Weg zur Tür und soll keinen geben: die Entscheidung fällt im\nHaus, an einer Erlaubnisliste in der Bridge, und die Cloud erfährt davon erst hinterher. Ein\nEndpunkt, der öffnen könnte, wäre eine Tür, die am Internet hängt.\n\nGezeigt werden auch die abgelehnten Versuche. Für die eine Frage, wegen der man abends\nhineinsieht - stand jemand vor der Tür, den das Haus nicht kannte - sind sie die eigentliche\nAuskunft.",
+        "operationId": "door_log_api_v1_system_door_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 14,
+              "title": "Days"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DoorLogOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/demo": {
       "post": {
         "tags": [
@@ -2776,6 +2830,77 @@
         },
         "type": "object",
         "title": "DemoControlIn"
+      },
+      "DoorEntryOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "door": {
+            "type": "string",
+            "title": "Door"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "outcome": {
+            "type": "string",
+            "title": "Outcome"
+          },
+          "granted": {
+            "type": "boolean",
+            "title": "Granted"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "actor",
+          "door",
+          "method",
+          "outcome",
+          "granted",
+          "reason"
+        ],
+        "title": "DoorEntryOut",
+        "description": "Ein Zutritt an der Haustür, so wie er im Ereignisprotokoll steht.\n\nAufbereitet und nicht roh: die Oberfläche soll eine Zeile zeigen können, ohne selbst zu wissen,\nwie die Zutrittskonsole ihre Felder nennt. Die Übersetzung von „ACCESS\" zu „geöffnet\" ist an\nder Tür passiert, hier steht das Ergebnis."
+      },
+      "DoorLogOut": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/DoorEntryOut"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entries",
+          "days",
+          "note_de"
+        ],
+        "title": "DoorLogOut"
       },
       "EnergyBucketOut": {
         "properties": {

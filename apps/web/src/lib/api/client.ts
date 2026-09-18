@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, BatteryLive, BatteryModeIn, Coverage, EnergySummary, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -66,6 +66,7 @@ export const api = {
   energyYearMap: (year: number) => request<YearMap>(`/energy/year-map?year=${year}`),
   storage: () => request<StorageReport>("/system/storage"),
   coverage: (anchor: string, days: number) => request<Coverage>(`/system/coverage?anchor=${anchor}&days=${days}`),
+  doorLog: (days: number) => request<DoorLog>(`/system/door?days=${days}`),
   switchActuator: (key: string, state: boolean, durationMin?: number) =>
     request<ActuatorCommandOut>(`/control/actuators/${key}`, {
       method: "POST",

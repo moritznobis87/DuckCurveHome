@@ -553,3 +553,26 @@ class CoverageOut(BaseModel):
     end: datetime
     series: list[CoverageSeriesOut]
     note_de: str
+
+
+class DoorEntryOut(BaseModel):
+    """Ein Zutritt an der Haustür, so wie er im Ereignisprotokoll steht.
+
+    Aufbereitet und nicht roh: die Oberfläche soll eine Zeile zeigen können, ohne selbst zu wissen,
+    wie die Zutrittskonsole ihre Felder nennt. Die Übersetzung von „ACCESS" zu „geöffnet" ist an
+    der Tür passiert, hier steht das Ergebnis.
+    """
+
+    at: datetime
+    actor: str
+    door: str
+    method: str
+    outcome: str
+    granted: bool
+    reason: str
+
+
+class DoorLogOut(BaseModel):
+    entries: list[DoorEntryOut]
+    days: int
+    note_de: str

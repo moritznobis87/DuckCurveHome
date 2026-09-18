@@ -168,7 +168,7 @@ class _Lock(NukiLock):
         return {"success": True}
 
 
-def _service(lock: NukiLock, **policy: Any) -> DoorService:
+def _service(lock: NukiLock, on_event: Any = None, **policy: Any) -> DoorService:
     args: dict[str, Any] = {
         "enabled": True,
         "doors": ["Haustür"],
@@ -177,7 +177,7 @@ def _service(lock: NukiLock, **policy: Any) -> DoorService:
     }
     args.update(policy)
     events = UnifiAccessEvents("192.0.2.8", "t")
-    return DoorService(events, NukiBridgeOpener(lock), DoorPolicy.of(**args))
+    return DoorService(events, NukiBridgeOpener(lock), DoorPolicy.of(**args), on_event=on_event)
 
 
 def _event(**over: Any) -> AccessEvent:
@@ -486,3 +486,69 @@ async def test_an_unreadable_access_frame_is_counted_and_still_passed_on() -> No
     assert ev.unreadable_events == 1
     assert len(seen) == 1
     assert ev.status()["unreadable_events"] == 1
+
+
+@pytest.mark.asyncio
+async def test_every_access_is_reported_to_the_cloud() -> None:
+    """Auch die abgelehnten. Das Protokoll der Bridge lebt nur bis zum nächsten Neustart."""
+    seen: list[tuple[Any, ...]] = []
+
+    async def sink(at: Any, severity: str, code: str, message: str, ctx: dict[str, str]) -> None:
+        seen.append((at, severity, code, message, ctx))
+
+    lock = _Lock()
+    svc = _service(lock, on_event=sink)
+    event = _event()
+    await svc.handle(event, {})
+    assert lock.actions == [ACTION_UNLATCH]
+    at, severity, code, message, ctx = seen[0]
+    assert (severity, code) == ("info", "door_access")
+    assert ctx["outcome"] == "geöffnet"
+    assert ctx["actor"] == "Moritz"
+    assert message == "Moritz an Haustür per FACE: geöffnet."
+    # Der Zeitpunkt des Scans, nicht der des Meldens: sonst behauptet das Protokoll nach einem
+    # Leitungsausfall, alle seien gleichzeitig vor der Tür gewesen.
+    assert at == event.at
+
+
+@pytest.mark.asyncio
+async def test_a_refusal_is_reported_with_its_reason() -> None:
+    """Der abgelehnte Versuch ist die eigentliche Auskunft, wenn man abends hineinsieht."""
+    seen: list[dict[str, str]] = []
+
+    async def sink(at: Any, severity: str, code: str, message: str, ctx: dict[str, str]) -> None:
+        seen.append(ctx)
+
+    lock = _Lock()
+    svc = _service(lock, enabled=False, on_event=sink)
+    await svc.handle(_event(), {})
+    assert lock.actions == []
+    assert seen[0]["outcome"] == "abgelehnt"
+    assert "Beobachtung" in seen[0]["reason"]
+
+
+@pytest.mark.asyncio
+async def test_a_failing_lock_is_reported_as_a_fault_not_as_a_refusal() -> None:
+    """Ein Fehlschlag am Schloss ist ein Defekt, eine Ablehnung eine Entscheidung."""
+    seen: list[tuple[str, dict[str, str]]] = []
+
+    async def sink(at: Any, severity: str, code: str, message: str, ctx: dict[str, str]) -> None:
+        seen.append((severity, ctx))
+
+    svc = _service(_Lock(fail=True), on_event=sink)
+    await svc.handle(_event(), {})
+    assert seen[0][0] == "warning"
+    assert seen[0][1]["outcome"] == "fehlgeschlagen"
+
+
+@pytest.mark.asyncio
+async def test_a_broken_reporting_path_does_not_keep_the_door_shut() -> None:
+    """Die Meldung ist Beiwerk. Wer vor der Tür steht, soll nicht an ihr scheitern."""
+
+    async def sink(*_: Any) -> None:
+        raise RuntimeError("Uplink weg")
+
+    lock = _Lock()
+    svc = _service(lock, on_event=sink)
+    await svc.handle(_event(), {})
+    assert lock.actions == [ACTION_UNLATCH]

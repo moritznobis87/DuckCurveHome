@@ -479,6 +479,12 @@ zweiter Leser am Gartentor die Haustür öffnet.
 Zusätzlich lehnt die Bridge Ereignisse ab, die älter als 30 Sekunden sind - nach einem
 Verbindungsabbruch liefert die Konsole zurückliegende Einträge nach, und eine Tür holt nichts nach.
 
+**Wo steht, wer da war?** Jeder Zutritt geht als Ereignis an die Cloud und erscheint dort unter
+Einstellungen → Haustür, nach Tagen gruppiert. Abgelehnte Versuche stehen mit dabei. Das Protokoll
+des Add-ons selbst lebt nur bis zum nächsten Neustart und taugt dafür nicht. Bei getrennter Leitung
+merkt sich die Bridge bis zu 200 Ereignisse und schickt sie nach; ein Neustart während einer
+Störung verliert sie.
+
 **Trägt die Strecke zum Schloss?** Das Add-on fragt ihren Zustand im Minutentakt ab und schickt
 ihn als Messreihe `door_lock_online` mit. Auf der Prüfseite `/daten` erscheint sie in derselben
 Verfügbarkeitskarte wie der Stromzähler. Setzt die Strecke über Home Assistant regelmäßig aus,

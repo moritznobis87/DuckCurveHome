@@ -5,6 +5,7 @@ import { authRequired } from "@/lib/session";
 import { active } from "@/lib/presence";
 import { CopyField } from "@/components/ui/CopyField";
 import { StorageReport } from "@/components/settings/StorageReport";
+import { DoorLog } from "@/components/settings/DoorLog";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Einstellungen · Duck Curve Home" };
@@ -123,6 +124,22 @@ export default async function SettingsPage() {
           bei schmalen Zeilen sind die Indizes regelmäßig größer als die Daten.
         </p>
         <StorageReport />
+      </section>
+
+      <section className="flex max-w-[760px] flex-col gap-3">
+        <h2 className="m-0 text-[18px] font-semibold">Haustür</h2>
+        <p className="m-0 text-[15px] leading-[1.6] text-text-2">
+          Wer sich am Reader erkennen ließ, und was daraufhin geschah. Von hier führt kein Weg zur
+          Tür: die Entscheidung fällt im Haus, an einer Erlaubnisliste in der Bridge, und diese
+          Seite liest nur mit. Abgelehnte Versuche stehen mit dabei - sie sind die eigentliche
+          Auskunft, wenn man wissen will, ob jemand vor der Tür stand, den das Haus nicht kannte.
+        </p>
+        <DoorLog />
+        <p className="m-0 text-[14px] leading-[1.6] text-text-3">
+          Die Namen kommen aus UniFi Access und stehen in der Datenbank im Klartext. Deshalb steht
+          diese Liste hier und nicht auf dem Dashboard: die Einstellungen sind nur mit Vollzugriff
+          erreichbar, ein Gast sieht sie nicht.
+        </p>
       </section>
 
       <section className="flex max-w-[760px] flex-col gap-3">

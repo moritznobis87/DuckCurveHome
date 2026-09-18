@@ -507,6 +507,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/door": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Zutritte an der Haustür
+         * @description Wer sich wann an der Haustür erkannt hat, jüngster Eintrag zuerst.
+         *
+         *     **Nur lesen.** Es gibt hier keinen Weg zur Tür und soll keinen geben: die Entscheidung fällt im
+         *     Haus, an einer Erlaubnisliste in der Bridge, und die Cloud erfährt davon erst hinterher. Ein
+         *     Endpunkt, der öffnen könnte, wäre eine Tür, die am Internet hängt.
+         *
+         *     Gezeigt werden auch die abgelehnten Versuche. Für die eine Frage, wegen der man abends
+         *     hineinsieht - stand jemand vor der Tür, den das Haus nicht kannte - sind sie die eigentliche
+         *     Auskunft.
+         */
+        get: operations["door_log_api_v1_system_door_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/demo": {
         parameters: {
             query?: never;
@@ -1179,6 +1207,42 @@ export interface components {
             fault_duration_s?: number | null;
             /** Scenario */
             scenario?: ("reset" | "sunny_surplus" | "cold_evening" | "buffer_full" | "sensor_outage") | null;
+        };
+        /**
+         * DoorEntryOut
+         * @description Ein Zutritt an der Haustür, so wie er im Ereignisprotokoll steht.
+         *
+         *     Aufbereitet und nicht roh: die Oberfläche soll eine Zeile zeigen können, ohne selbst zu wissen,
+         *     wie die Zutrittskonsole ihre Felder nennt. Die Übersetzung von „ACCESS" zu „geöffnet" ist an
+         *     der Tür passiert, hier steht das Ergebnis.
+         */
+        DoorEntryOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Actor */
+            actor: string;
+            /** Door */
+            door: string;
+            /** Method */
+            method: string;
+            /** Outcome */
+            outcome: string;
+            /** Granted */
+            granted: boolean;
+            /** Reason */
+            reason: string;
+        };
+        /** DoorLogOut */
+        DoorLogOut: {
+            /** Entries */
+            entries: components["schemas"]["DoorEntryOut"][];
+            /** Days */
+            days: number;
+            /** Note De */
+            note_de: string;
         };
         /** EnergyBucketOut */
         EnergyBucketOut: {
@@ -3883,6 +3947,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoverageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    door_log_api_v1_system_door_get: {
+        parameters: {
+            query?: {
+                days?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DoorLogOut"];
                 };
             };
             /** @description Validation Error */

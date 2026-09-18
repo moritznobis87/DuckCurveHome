@@ -162,6 +162,27 @@ ein Stern bei den Verfahren hieße, dass auch ein PIN die Falle zieht, einer bei
 zweiter Leser am Gartentor die Haustür öffnet.
 
 
+## Nachlesen, wer da war
+
+Jeder Zutritt wird als Ereignis an die Cloud gemeldet und steht dort unter `bridge.door_access` im
+Ereignisprotokoll. In der Oberfläche liegt er unter **Einstellungen → Haustür**, nach Tagen
+gruppiert, jüngster Eintrag oben.
+
+**Auch die abgelehnten Versuche.** Ein Protokoll, das nur die geglückten Öffnungen zeigt,
+beantwortet die Frage nicht, wegen der man abends hineinsieht: stand jemand vor der Tür, den das
+Haus nicht kannte. Ein Fehlschlag am Schloss steht als solcher da und nicht als Ablehnung - das
+erste ist ein Defekt, das zweite eine Entscheidung.
+
+**Von dort führt kein Weg zur Tür.** Die Seite liest mit, mehr nicht; es gibt in der Cloud keinen
+Endpunkt, der öffnet. Ein Test hält das fest, damit das Versprechen nicht still verfällt.
+
+Zwei Dinge sind dabei ehrlich zu sagen. Erstens wandern die Namen aus UniFi Access in die
+Datenbank und stehen dort im Klartext; deshalb liegt die Liste in den Einstellungen, die nur mit
+Vollzugriff erreichbar sind, und nicht auf dem Dashboard. Zweitens merkt sich die Bridge bei
+getrennter Leitung höchstens 200 Ereignisse und fährt sie beim nächsten Handschlag nach. Ein
+Neustart des Add-ons während einer Störung verliert sie. Der Zeitstempel ist immer der des Scans,
+nicht der des Meldens.
+
 ## Was bleibt, wenn die Bridge steht
 
 Dann geht die Tür über diesen Weg nicht auf. Der Schlüssel und die Nuki-App bleiben der

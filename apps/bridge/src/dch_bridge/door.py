@@ -42,6 +42,14 @@ from hems_core.protocol import RawReading
 
 log = structlog.get_logger("door")
 
+# Der Code, unter dem die Zutritte im Ereignisprotokoll der Cloud liegen. Die API stellt ihm
+# "bridge." voran; gesucht wird dort also nach "bridge.door_access".
+EVENT_CODE = "door_access"
+
+# Was an die Cloud gemeldet wird: Zeitpunkt, Schwere, Code, Satz, Zusatzfelder. Dieselbe Form
+# wie `UplinkClient.emit_event`, damit die Kopplung aus einer Zeile besteht.
+EventSink = Callable[[datetime, str, str, str, dict[str, str]], Awaitable[None]]
+
 
 class DoorService:
     """Bindet den Ereignisstrom an das Schloss - über die Prüfung, nie daran vorbei."""
@@ -53,11 +61,13 @@ class DoorService:
         policy: DoorPolicy,
         on_readings: Callable[[list[RawReading]], Awaitable[None]] | None = None,
         *,
+        on_event: EventSink | None = None,
         probe_interval_s: float = 60.0,
     ) -> None:
         self.events = events
         self.opener = opener
         self.on_readings = on_readings
+        self.on_event = on_event
         self.probe_interval_s = probe_interval_s
         self.gate = DoorGate(policy)
         self.opened = 0
@@ -85,6 +95,7 @@ class DoorService:
         if not decision.open_door:
             self.refused += 1
             self.last_de = f"{event.actor or 'unbekannt'}: {decision.reason_de}"
+            await self._report(event, "abgelehnt", decision.reason_de)
             return
         try:
             await self.opener.open_door()
@@ -94,11 +105,47 @@ class DoorService:
             self.failed += 1
             self.last_de = f"Öffnen fehlgeschlagen: {exc}"
             log.error("unlatch failed", actor=event.actor, error=str(exc))
+            await self._report(event, "fehlgeschlagen", str(exc))
             return
         self.gate.note_open(event.actor, now)
         self.opened += 1
         self.last_de = f"Geöffnet für {event.actor} um {now.astimezone():%H:%M:%S}."
         log.info("door opened", actor=event.actor, door=event.door, method=event.method)
+        await self._report(event, "geöffnet", decision.reason_de)
+
+    async def _report(self, event: AccessEvent, outcome: str, reason: str) -> None:
+        """Den Zutritt an die Cloud melden, damit er dort nachlesbar bleibt.
+
+        **Auch die abgelehnten.** Ein Protokoll, das nur die geglückten Öffnungen kennt, beantwortet
+        die eine Frage nicht, für die man abends hineinsieht: hat jemand vor der Tür gestanden, den
+        das Haus nicht kannte. Das Protokoll der Bridge selbst ist dafür kein Ersatz, es lebt nur
+        bis zum nächsten Neustart des Add-ons.
+
+        Dass dabei Namen aus dem Haushalt in die Datenbank wandern, ist der Preis und keine
+        Nebensache. Sie stehen dort in Klartext, und die Seite, die sie zeigt, ist deshalb nur mit
+        Vollzugriff erreichbar - für Gäste gibt es sie nicht.
+        """
+        if self.on_event is None:
+            return
+        who = event.actor.strip() or "unbekannt"
+        where = event.door.strip() or "unbekannte Tür"
+        how = event.method.strip() or "unbekanntes Verfahren"
+        severity = "warning" if outcome == "fehlgeschlagen" else "info"
+        with contextlib.suppress(Exception):
+            await self.on_event(
+                event.at,
+                severity,
+                EVENT_CODE,
+                f"{who} an {where} per {how}: {outcome}.",
+                {
+                    "door": event.door,
+                    "actor": event.actor,
+                    "method": event.method,
+                    "granted": "ja" if event.granted else "nein",
+                    "outcome": outcome,
+                    "reason": reason,
+                },
+            )
 
     async def probe(self) -> bool:
         """Ist der Weg zum Schloss gerade offen?

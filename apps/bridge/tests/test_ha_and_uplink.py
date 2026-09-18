@@ -222,3 +222,57 @@ async def test_uplink_hello_telemetry_ack_and_command(tmp_path: Path) -> None:
     assert outbox.count() == 0  # alles bestätigt
     outbox.close()
     assert websockets  # verwendet
+
+
+class _Sent:
+    """Eine Leitung, die nur mitschreibt."""
+
+    def __init__(self) -> None:
+        self.frames: list[dict[str, Any]] = []
+
+    async def send(self, raw: str) -> None:
+        self.frames.append(json.loads(raw))
+
+
+def _client(tmp_path: Path) -> UplinkClient:
+    async def on_command(frame: CommandFrame) -> CommandResultFrame:
+        return CommandResultFrame(command_id=frame.command_id, ok=True, at=datetime.now(UTC))
+
+    outbox = Outbox(tmp_path / "ev.sqlite", timedelta(days=7))
+    return UplinkClient("ws://x", "t", "haus", "v", "h", [], outbox, on_command)
+
+
+async def test_events_wait_for_the_line_and_keep_their_order(tmp_path: Path) -> None:
+    """Ein Zutritt ist nicht wiederholbar. Er wartet, statt im Nichts zu verschwinden.
+
+    Die Outbox nimmt ihn nicht auf: sie ist mit ihren Sequenzen für Telemetrie gebaut, und die wird
+    verdichtet, während ein Ereignis für sich steht.
+    """
+    up = _client(tmp_path)
+    at = datetime.now(UTC)
+    await up.emit_event(at, "info", "door_access", "erster", {})
+    await up.emit_event(at, "info", "door_access", "zweiter", {})
+
+    line = _Sent()
+    up._ws = line  # type: ignore[assignment]
+    up.connected = True
+    await up._flush_events()
+
+    assert [f["message"] for f in line.frames] == ["erster", "zweiter"]
+    assert all(f["type"] == "event" for f in line.frames)
+    # Einmal gesendet ist gesendet: die nächste Verbindung wiederholt sie nicht.
+    await up._flush_events()
+    assert len(line.frames) == 2
+    up.outbox.close()
+
+
+async def test_an_unknown_severity_does_not_drop_the_event(tmp_path: Path) -> None:
+    """Lieber als „info" ablegen als eine Türöffnung an einem Tippfehler verlieren."""
+    up = _client(tmp_path)
+    await up.emit_event(datetime.now(UTC), "dringend", "door_access", "x", {})
+    line = _Sent()
+    up._ws = line  # type: ignore[assignment]
+    up.connected = True
+    await up._flush_events()
+    assert line.frames[0]["severity"] == "info"
+    up.outbox.close()

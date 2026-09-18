@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import json
 import random
+from collections import deque
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
@@ -19,6 +20,7 @@ from hems_core.protocol import (
     BacklogFrame,
     CommandFrame,
     CommandResultFrame,
+    EventFrame,
     HeartbeatFrame,
     HelloFrame,
     RawReading,
@@ -29,6 +31,11 @@ from hems_core.protocol import (
 
 log = structlog.get_logger("uplink")
 CommandHandler = Callable[[CommandFrame], Awaitable[CommandResultFrame]]
+# So viele Ereignisse werden bei getrennter Leitung gemerkt. Ereignisse sind selten (eine
+# Türöffnung, eine Zustandsmeldung), aber sie sind auch nicht wiederholbar: die Outbox mit ihren
+# Sequenzen ist für Telemetrie gebaut und nimmt sie nicht auf. Ein kurzer Ausfall ueberbrueckt
+# sich so, ein langer oder ein Neustart der Bridge verliert sie - das ist die ehrliche Grenze.
+MAX_PENDING_EVENTS = 200
 
 
 class UplinkClient:
@@ -57,6 +64,7 @@ class UplinkClient:
         self._ws: ClientConnection | None = None
         self._send_lock = asyncio.Lock()
         self._stop = asyncio.Event()
+        self._events: deque[EventFrame] = deque(maxlen=MAX_PENDING_EVENTS)
 
     # ------------------------------------------------------------------ Senden
     async def _send(self, payload: object) -> None:
@@ -79,6 +87,36 @@ class UplinkClient:
         if self.connected:
             with contextlib.suppress(ConnectionError, websockets.ConnectionClosed):
                 await self._send(frame)
+
+    async def emit_event(
+        self, at: datetime, severity: str, code: str, message: str, context: dict[str, str]
+    ) -> None:
+        """Ein Ereignis in die Cloud melden, wo es ins Ereignisprotokoll wandert.
+
+        Getrennt von `publish`, weil ein Ereignis kein Messwert ist: es hat keinen Schlüssel, keine
+        Einheit und keine Minute, in der es verdichtet würde. Es zählt nur der Satz und der
+        Zeitpunkt. Geht es gerade nicht raus, wartet es hier und fährt beim nächsten Handschlag
+        mit - in der Reihenfolge, in der es entstanden ist.
+        """
+        frame = EventFrame(
+            at=at,
+            severity=severity if severity in ("info", "warning", "error") else "info",
+            code=code,
+            message=message,
+            context=context,
+        )
+        self._events.append(frame)
+        if self.connected:
+            await self._flush_events()
+
+    async def _flush_events(self) -> None:
+        while self._events:
+            frame = self._events[0]
+            try:
+                await self._send(frame)
+            except (ConnectionError, websockets.ConnectionClosed):
+                return
+            self._events.popleft()
 
     async def _drain_backlog(self, resume_from: int) -> None:
         after = max(resume_from - 1, 0)
@@ -149,6 +187,7 @@ class UplinkClient:
             )
             self.last_contact = datetime.now(UTC)
             await self._drain_backlog(welcome.resume_from_seq)
+            await self._flush_events()
             heartbeat = asyncio.create_task(self._heartbeat_loop(welcome.heartbeat_s))
             try:
                 async for raw in ws:
