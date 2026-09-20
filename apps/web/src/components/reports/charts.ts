@@ -761,9 +761,24 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
        * Neues".
        *
        * Solange der Zähler nichts liefert, ist die Reihe leer und die Linie schlicht nicht da.
+       *
+       * **Diese eine Reihe verbindet Lücken, und sie zeigt ihre Punkte.** Der Zähler meldet nicht
+       * im Minutentakt wie alles andere hier, sondern alle rund fünfzehn Minuten. Zwischen zwei
+       * Werten stehen also vierzehn leere Minuten, und mit `connectNulls: false` zeichnet ECharts
+       * dann gar nichts: lauter einzelne Punkte ohne Nachbarn, und Punkte sind ausgeschaltet. Die
+       * Reihe war vorhanden, vollständig und vollkommen unsichtbar.
+       *
+       * Die Punkte bleiben deshalb sichtbar - sie sind die Messwerte. Die Linie dazwischen ist
+       * gezeichnet und nicht gemessen; gerade und nicht als Treppe, weil eine Treppe behaupten
+       * würde, der Wert habe fünfzehn Minuten lang so gestanden.
        */
       {
         ...line("Netz (Zähler)", C.grid, (r) => num(r, "grid_power_meter_kw")),
+        step: false,
+        connectNulls: true,
+        showSymbol: true,
+        symbol: "circle",
+        symbolSize: 3.5,
         lineStyle: { color: C.grid, width: 1.5, type: "dashed", opacity: 0.85 },
         z: 6,
       },
