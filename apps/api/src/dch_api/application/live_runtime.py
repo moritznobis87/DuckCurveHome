@@ -248,6 +248,13 @@ class LiveRuntime:
         self.broker.publish("system", {"sources": self._sources()})
 
     def _sources(self) -> list[SourceStatusOut]:
+        """Eine Zeile je Messquelle, auch für die, die es gerade nicht gibt.
+
+        **Eine fehlende Quelle wird genannt, nicht weggelassen.** Wer wissen will, warum vom Zähler
+        nichts kommt, sucht sonst eine Zeile, die gar nicht da ist, und findet nichts - was aussieht
+        wie eine Auskunft und keine ist. Der häufigste Grund steht deshalb gleich dabei: die
+        Zugangsdaten fehlen in der Umgebung des Dienstes.
+        """
         out = [
             SourceStatusOut(
                 name="bridge",
@@ -255,10 +262,24 @@ class LiveRuntime:
                 detail_de="Home-Assistant-Bridge" if self.hub.online else "Bridge offline",
             )
         ]
-        if self.myenergi is not None:
-            out.append(SourceStatusOut(**self.myenergi.status_out()))
-        if self.inexogy is not None:
-            out.append(SourceStatusOut(**self.inexogy.status_out()))
+        out.append(
+            SourceStatusOut(**self.myenergi.status_out())
+            if self.myenergi is not None
+            else SourceStatusOut(
+                name="myenergi",
+                online=False,
+                detail_de="nicht eingerichtet: DCH_MYENERGI_SERIAL und DCH_MYENERGI_API_KEY fehlen",
+            )
+        )
+        out.append(
+            SourceStatusOut(**self.inexogy.status_out())
+            if self.inexogy is not None
+            else SourceStatusOut(
+                name="inexogy",
+                online=False,
+                detail_de="nicht eingerichtet: DCH_INEXOGY_EMAIL und DCH_INEXOGY_PASSWORD fehlen",
+            )
+        )
         return out
 
     async def _libbi_events(self, start: datetime, end: datetime) -> list[tuple[datetime, str]]:

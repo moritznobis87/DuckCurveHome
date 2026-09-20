@@ -157,3 +157,20 @@ def test_duplicate_telemetry_is_idempotent(live_client: TestClient) -> None:
         row for row in r.json()["rows"] if isinstance(row.get("heat_pump_power_kw"), int | float)
     ]
     assert len(rows) == 1 and rows[0]["heat_pump_power_kw"] == 2.5
+
+
+def test_a_source_that_is_not_set_up_says_so_instead_of_vanishing(live_client: TestClient) -> None:
+    """Eine fehlende Zeile sieht aus wie eine Auskunft und ist keine.
+
+    Der Fall ist echt: der Zähler lieferte nichts, weil seine Zugangsdaten fehlten, und im Zustand
+    stand dazu gar nichts - weder ein Fehler noch die Quelle selbst. Gesucht wurde daraufhin an der
+    falschen Stelle.
+    """
+    body = live_client.get(
+        "/api/v1/live/state", headers={"authorization": "Bearer api-geheim"}
+    ).json()
+    sources = {s["name"]: s for s in body["system"]["sources"]}
+    assert set(sources) == {"bridge", "myenergi", "inexogy"}
+    assert sources["inexogy"]["online"] is False
+    assert "DCH_INEXOGY_EMAIL" in sources["inexogy"]["detail_de"]
+    assert "DCH_MYENERGI_SERIAL" in sources["myenergi"]["detail_de"]

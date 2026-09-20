@@ -6,6 +6,7 @@ import type { HistoryRow } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
 import { EChart } from "@/components/charts/EChart";
 import { CoverageMap } from "./CoverageMap";
+import { Sources } from "./Sources";
 import { powerOverlay } from "./charts";
 import { ErrorBanner, Note, ReportShell, usePeriod } from "./ReportShell";
 
@@ -85,7 +86,15 @@ export function DataCheck() {
       </Card>
 
       {/* Die Verfügbarkeit steht vor der Bilanz: eine Auswertung zu lesen, deren Datengrundlage
-          Löcher hat, ist die falsche Reihenfolge. */}
+          Löcher hat, ist die falsche Reihenfolge. Und vor der Karte steht der Augenblick: sie
+          zählt Stunden und sieht einen Ausfall erst nach einer. */}
+      <Card style={{ padding: 16 }}>
+        <CardHead title="Quellen" right="liefert gerade, was liefern soll?" />
+        <div className="mt-3">
+          <Sources />
+        </div>
+      </Card>
+
       <CoverageMap anchor={anchor} />
 
       <Card style={{ padding: 16 }}>
