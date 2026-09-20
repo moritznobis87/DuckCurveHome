@@ -24,6 +24,7 @@ import structlog
 
 from dch_api.integrations.inexogy.mapping import (
     POWER_KEY,
+    identifiers,
     pick_meter,
     readings_from_history,
     readings_from_measurement,
@@ -31,6 +32,17 @@ from dch_api.integrations.inexogy.mapping import (
 from hems_core.protocol import RawReading
 
 log = structlog.get_logger("inexogy")
+
+
+def _why(exc: Exception) -> str:
+    """Der Satz der Ausnahme, nicht ihre Darstellung im Quelltext.
+
+    `repr` macht aus einer brauchbaren Meldung `RuntimeError('...')` mit doppelt maskierten
+    Anführungszeichen. Diese Zeichenkette landet in der Oberfläche, wo sie jemand lesen soll.
+    """
+    return (str(exc) or exc.__class__.__name__)[:200]
+
+
 MAX_BACKOFF_S = 300.0
 # Feinste Auflösung, die für einen Nachtrag über Stunden noch sinnvoll ist. `raw` liefert beim
 # Discovergy-Zähler alle zwei Sekunden und damit für einen Tag über vierzigtausend Zeilen; drei
@@ -95,8 +107,10 @@ class InexogySource:
         meters = await self.client.meters()
         chosen = pick_meter(meters, self.wanted_meter)
         if chosen is None:
-            names = ", ".join(str(m.get("serialNumber", "?")) for m in meters) or "keine"
-            raise RuntimeError(f"Zähler „{self.wanted_meter}“ nicht im Konto (vorhanden: {names})")
+            # Alle Kennungen, nicht nur die Seriennummer: wer diese Meldung liest, sucht den Wert,
+            # den er eintragen soll, und der stand hier bisher nicht vollständig.
+            names = " | ".join(sorted(", ".join(sorted(identifiers(m))) for m in meters)) or "keine"
+            raise RuntimeError(f"Zähler „{self.wanted_meter}“ nicht eindeutig im Konto ({names})")
         self.meter_id = str(chosen.get("meterId", ""))
         if not self.meter_id:
             raise RuntimeError("Zähler ohne meterId in der Antwort")
@@ -112,7 +126,7 @@ class InexogySource:
             measurement = await self.client.last_reading(meter_id)
             readings = readings_from_measurement(measurement, now, f"inexogy:{self.meter_label}")
         except Exception as exc:
-            await self._set_online(False, repr(exc)[:200])
+            await self._set_online(False, _why(exc))
             raise
         self.last_ok = now
         self.polls_ok += 1
@@ -170,7 +184,7 @@ class InexogySource:
                 self.last_backfill_error = None
                 log.info("inexogy backfilled", readings=n)
             except Exception as exc:
-                self.last_backfill_error = repr(exc)[:200]
+                self.last_backfill_error = _why(exc)
                 log.warning("inexogy backfill failed", error=self.last_backfill_error)
             await asyncio.sleep(3600)
 

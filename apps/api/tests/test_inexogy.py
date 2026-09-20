@@ -184,3 +184,45 @@ async def test_the_backfill_reports_how_much_it_wrote() -> None:
     n = await src.backfill(NOW - timedelta(hours=1), NOW)
     assert n == 6  # zwei Messwerte mit je drei Feldern
     assert len(seen) == 6
+
+
+def test_the_number_on_the_meter_finds_the_meter_in_the_account() -> None:
+    """Auf dem Gerät steht LGZ0019822281, in der Antwort der API steht 19822281.
+
+    Der Fall ist echt: eine wörtlich abgetippte Zählernummer hat die Anbindung stillgelegt, und in
+    der Meldung standen zwei Nummern, von denen keine so aussah wie die an der Wand.
+    """
+    meters = [
+        {"meterId": "aaa", "serialNumber": "61233439"},
+        {"meterId": "bbb", "serialNumber": "19822281"},
+    ]
+    chosen = pick_meter(meters, "LGZ0019822281")
+    assert chosen is not None and chosen["meterId"] == "bbb"
+
+
+def test_the_full_serial_still_works() -> None:
+    meters = [{"meterId": "bbb", "serialNumber": "19822281", "fullSerialNumber": "1LGZ0019822281"}]
+    assert pick_meter(meters, "1LGZ0019822281") is not None
+    assert pick_meter(meters, "19822281") is not None
+    assert pick_meter(meters, "bbb") is not None
+
+
+def test_a_tail_that_fits_two_meters_picks_neither() -> None:
+    """Raten hiesse, monatelang die Werte des falschen Zaehlers mitzuschreiben."""
+    meters = [
+        {"meterId": "a", "serialNumber": "10019822281"},
+        {"meterId": "b", "serialNumber": "19822281"},
+    ]
+    assert pick_meter(meters, "19822281") is None
+
+
+def test_a_short_tail_is_not_a_match() -> None:
+    """Sonst fände „281" jeden Zähler, und „1" erst recht."""
+    meters = [{"meterId": "a", "serialNumber": "19822281"}]
+    assert pick_meter(meters, "281") is None
+    assert pick_meter(meters, "1") is None
+
+
+def test_an_unknown_number_still_finds_nothing() -> None:
+    meters = [{"meterId": "a", "serialNumber": "19822281"}]
+    assert pick_meter(meters, "1ESY1602268231") is None

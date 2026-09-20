@@ -110,6 +110,32 @@ def readings_from_history(
     return out
 
 
+ID_FIELDS = ("meterId", "serialNumber", "fullSerialNumber", "printedFullSerialNumber")
+# Kürzer als das darf ein Ende nicht sein, um als Treffer zu gelten. Acht Stellen sind eine
+# Seriennummer; drei wären eine Einladung, den falschen Zähler zu erwischen.
+MIN_TAIL = 6
+
+
+def identifiers(meter: dict[str, Any]) -> set[str]:
+    return {str(meter.get(k, "")).strip().lower() for k in ID_FIELDS} - {""}
+
+
+def _matches(wanted: str, candidate: str) -> bool:
+    """Passt die gesuchte Nummer auf diese?
+
+    Gleichheit zuerst. Danach das Ende: auf dem Gerät steht `LGZ0019822281`, in der Antwort der API
+    steht `19822281`. Dieselbe Nummer, ein Herstellerkürzel und ein paar führende Nullen Unterschied
+    - abgelesen an einem echten Konto, nachdem eine wörtlich abgetippte Zählernummer die Anbindung
+    stillgelegt hat.
+
+    Ein Ende genügt nur, wenn es lang genug ist. Sonst fände „1" jeden Zähler.
+    """
+    if wanted == candidate:
+        return True
+    short, long = sorted((wanted, candidate), key=len)
+    return len(short) >= MIN_TAIL and long.endswith(short)
+
+
 def pick_meter(meters: list[dict[str, Any]], wanted: str = "") -> dict[str, Any] | None:
     """Den Zähler auswählen, dessen Werte gelesen werden sollen.
 
@@ -117,17 +143,14 @@ def pick_meter(meters: list[dict[str, Any]], wanted: str = "") -> dict[str, Any]
     lange Seriennummer, weil an der Wand nur letztere steht. Ohne Angabe gewinnt der Zähler, der
     zuletzt gemeldet hat: in einem Konto mit einem einzigen Zähler ist das der richtige, und in
     einem mit mehreren ist „der, der lebt" die einzige Wahl, die ohne Nachfrage auskommt.
+
+    **Eindeutig oder gar nicht.** Passt das Ende auf mehrere Zähler, wird keiner genommen. Eine
+    Anbindung, die in diesem Fall rät, schreibt monatelang die Werte des Nachbarhauses mit.
     """
     if wanted:
         w = wanted.strip().lower()
-        for m in meters:
-            candidates = {
-                str(m.get(k, "")).lower()
-                for k in ("meterId", "serialNumber", "fullSerialNumber", "printedFullSerialNumber")
-            }
-            if w in candidates - {""}:
-                return m
-        return None
+        hits = [m for m in meters if any(_matches(w, c) for c in identifiers(m))]
+        return hits[0] if len(hits) == 1 else None
     alive = [m for m in meters if _num(m.get("lastMeasurementTime")) not in (None, -1)]
     if not alive:
         return meters[0] if meters else None
