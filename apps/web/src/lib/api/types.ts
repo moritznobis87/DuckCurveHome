@@ -492,6 +492,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/config/heat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Wärmeannahmen ändern
+         * @description Die Annahmen der Wärmerechnung ändern: Kennlinie, Ofen, Puffer, Pellets.
+         *
+         *     **Wirkt sofort und rückwirkend.** Die Auswertungen rechnen bei jeder Abfrage neu, und gespeichert
+         *     sind Eingänge und keine Ergebnisse; eine korrigierte Zahl gilt deshalb auch für letztes Jahr. Das
+         *     ist Absicht: eine Annahme, die nur nach vorn wirkt, lässt die Vergangenheit falsch stehen, ohne
+         *     dass es jemandem auffällt.
+         *
+         *     Die neue Fassung wird als Konfigurationsstand gespeichert und übersteht einen Neustart. Gäste
+         *     kommen hier nicht hin: der Proxy der Oberfläche lässt für sie nur GET durch.
+         */
+        post: operations["set_heat_api_v1_config_heat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/storage": {
         parameters: {
             query?: never;
@@ -1796,6 +1824,49 @@ export interface components {
             electric_kwh: number;
             /** Cop Mean */
             cop_mean?: number | null;
+        };
+        /**
+         * HeatConfigIn
+         * @description Die Annahmen der Wärmerechnung, soweit sie von Hand zu stellen sind.
+         *
+         *     **Teilmenge, kein Abbild der Konfiguration.** Hier stehen nur Werte, die ein Mensch an seiner
+         *     Anlage kennt oder ablesen kann: was auf dem Lieferschein der Pellets steht, was im Datenblatt des
+         *     Ofens steht, wie warm der Puffer gefahren wird. Regelparameter bleiben draußen; sie gehören in
+         *     die Konfigurationsdatei, wo eine falsche Zahl beim Start auffällt und nicht nachts um drei.
+         *
+         *     Jedes Feld ist freiwillig: geschickt wird, was geändert wurde, alles andere bleibt stehen.
+         */
+        HeatConfigIn: {
+            /**
+             * Cop Curve
+             * @description Stützpunkte (Außentemperatur °C, COP) der Kennlinie, aufsteigend nach Temperatur
+             */
+            cop_curve?: [
+                number,
+                number
+            ][] | null;
+            /** Buffer Target Temperature C */
+            buffer_target_temperature_c?: number | null;
+            /** Buffer Volume Liters */
+            buffer_volume_liters?: number | null;
+            /** Buffer Loss Kw Per K */
+            buffer_loss_kw_per_k?: number | null;
+            /** Indoor Target C */
+            indoor_target_c?: number | null;
+            /** Stove Nominal Heat Kw */
+            stove_nominal_heat_kw?: number | null;
+            /** Stove Water Heat Kw */
+            stove_water_heat_kw?: number | null;
+            /** Stove Min Heat Kw */
+            stove_min_heat_kw?: number | null;
+            /** Stove Min Water Heat Kw */
+            stove_min_water_heat_kw?: number | null;
+            /** Stove Combustion Efficiency */
+            stove_combustion_efficiency?: number | null;
+            /** Pellet Kwh Per Kg */
+            pellet_kwh_per_kg?: number | null;
+            /** Pellet Price Eur Per T */
+            pellet_price_eur_per_t?: number | null;
         };
         /**
          * HeatDemandConfig
@@ -4245,6 +4316,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HemsConfig"];
+                };
+            };
+        };
+    };
+    set_heat_api_v1_config_heat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeatConfigIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HemsConfig"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

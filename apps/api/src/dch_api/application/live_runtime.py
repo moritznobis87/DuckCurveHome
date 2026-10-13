@@ -52,6 +52,7 @@ from dch_api.schemas import (
     EvReportOut,
     ForecastEvaluationOut,
     HeatBalanceOut,
+    HeatConfigIn,
     HeatReportOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
@@ -75,11 +76,13 @@ from hems_core.domain import (
     Decision,
     EnergySnapshot,
     HeatPumpState,
+    HemsConfig,
     OperatingMode,
     Override,
     OverrideKind,
     Quality,
     SystemMode,
+    apply_heat_patch,
 )
 from hems_core.planning import cheap_windows, current_price, next_window_after, price_rank
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
@@ -745,7 +748,34 @@ class LiveRuntime:
         return await self.accounting.heat_report(period, anchor, self.now, self._temps_48h())
 
     async def heat_balance(self, period: Period, anchor: date) -> HeatBalanceOut:
-        return await self.accounting.heat_balance(period, anchor, self.now)
+        return await self.accounting.heat_balance(period, anchor, self.now, self._temps_48h())
+
+    async def update_heat_config(self, patch: HeatConfigIn) -> HemsConfig:
+        """Geänderte Wärmeannahmen übernehmen, speichern und sofort wirksam machen."""
+        werte = patch.model_dump(exclude_none=True)
+        try:
+            neu = apply_heat_patch(self.hems, werte)
+        except ValueError as exc:
+            raise DchError("invalid_config", str(exc), 422) from exc
+        await self.repos.save_config("heat", werte, created_by="owner")
+        self._apply_hems(neu)
+        log.info("heat config updated", fields=sorted(werte))
+        return neu
+
+    def _apply_hems(self, neu: HemsConfig) -> None:
+        """Die neue Konfiguration überall einsetzen, wo eine Referenz auf die alte liegt.
+
+        Regler und Nachführung halten ihre Konfiguration als schlichtes Feld und lesen sie bei jedem
+        Takt. Sie neu zu bauen wäre der naheliegende Weg und der falsche: dabei gingen Haltezeiten,
+        Startzähler und die Entprellung verloren, und ein geänderter Heizwert von Pellets würde die
+        Wärmepumpe anhalten.
+        """
+        self.hems = neu
+        self.accounting.hems = neu
+        self.live.cfg = neu
+        self.controller.cfg = neu
+        self.tracker.cfg = neu.heat_pump
+        self.stove.cfg = neu.stove
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
         return await self.accounting.ev_report(period, anchor, self.now)
@@ -1078,6 +1108,11 @@ class LiveRuntime:
 
     # ------------------------------------------------------------------ Laufzeit
     async def start(self) -> None:
+        # Der gespeicherte Konfigurationsstand zuerst: alles danach soll ihn schon sehen.
+        gespeichert = await self.repos.active_config("heat")
+        if gespeichert:
+            with contextlib.suppress(ValueError):
+                self._apply_hems(apply_heat_patch(self.hems, gespeichert))
         self.live.apply(await self.repos.latest())
         stored = await self.repos.load_mode()
         if stored is not None:

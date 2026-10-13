@@ -15,6 +15,7 @@ from hems_core.domain.config import (
     SensorTimeouts,
     StoveConfig,
     TariffConfig,
+    apply_heat_patch,
 )
 from hems_core.domain.decision import (
     ControllerState,
@@ -60,4 +61,5 @@ __all__ = [
     "StoveConfig",
     "SystemMode",
     "TariffConfig",
+    "apply_heat_patch",
 ]

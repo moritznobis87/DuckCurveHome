@@ -6,6 +6,7 @@ import { active } from "@/lib/presence";
 import { CopyField } from "@/components/ui/CopyField";
 import { StorageReport } from "@/components/settings/StorageReport";
 import { DoorLog } from "@/components/settings/DoorLog";
+import { HeatSettings } from "@/components/settings/HeatSettings";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Einstellungen · Duck Curve Home" };
@@ -124,6 +125,22 @@ export default async function SettingsPage() {
           bei schmalen Zeilen sind die Indizes regelmäßig größer als die Daten.
         </p>
         <StorageReport />
+      </section>
+
+      <section className="flex max-w-[980px] flex-col gap-3">
+        <h2 className="m-0 text-[18px] font-semibold">Wärme: Annahmen der Rechnung</h2>
+        <p className="m-0 text-[15px] leading-[1.6] text-text-2">
+          Es gibt keinen Wärmemengenzähler im Haus. Die Wärmebilanz wird deshalb gerechnet, und diese
+          Zahlen sind die Annahmen dahinter: was auf dem Lieferschein der Pellets steht, was im
+          Datenblatt des Ofens steht, wie warm der Puffer gefahren wird. Jede Änderung wirkt sofort
+          und rückwirkend, weil Messwerte gespeichert sind und keine Rechenergebnisse.
+        </p>
+        <HeatSettings />
+        <p className="m-0 text-[14px] leading-[1.6] text-text-3">
+          Ob die Zahlen stimmen, steht auf der <Link href="/waermebilanz" className="text-amber">Wärmebilanz</Link>:
+          dort gibt es die Zeile „nicht zuzuordnen". Was die Erzeuger nicht erklären, landet in ihr,
+          und sie klein zu bekommen ist genau der Sinn dieser Felder.
+        </p>
       </section>
 
       <section className="flex max-w-[760px] flex-col gap-3">

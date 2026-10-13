@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from dch_api.application.tibber_invoice import InvoiceFinding, MeasuredPeriod, TibberInvoice
 from hems_core.accounting import EnergyTotals, HeatForecastPoint, PvTaxTotals
@@ -644,3 +644,46 @@ class HeatBalanceOut(BaseModel):
     forecast_note_de: str = ""
     params: HeatParamsOut
     note_de: str = ""
+
+
+class HeatConfigIn(BaseModel):
+    """Die Annahmen der Wärmerechnung, soweit sie von Hand zu stellen sind.
+
+    **Teilmenge, kein Abbild der Konfiguration.** Hier stehen nur Werte, die ein Mensch an seiner
+    Anlage kennt oder ablesen kann: was auf dem Lieferschein der Pellets steht, was im Datenblatt des
+    Ofens steht, wie warm der Puffer gefahren wird. Regelparameter bleiben draußen; sie gehören in
+    die Konfigurationsdatei, wo eine falsche Zahl beim Start auffällt und nicht nachts um drei.
+
+    Jedes Feld ist freiwillig: geschickt wird, was geändert wurde, alles andere bleibt stehen.
+    """
+
+    cop_curve: list[tuple[float, float]] | None = Field(
+        default=None,
+        description="Stützpunkte (Außentemperatur °C, COP) der Kennlinie, aufsteigend nach Temperatur",
+    )
+    buffer_target_temperature_c: float | None = Field(default=None, gt=20.0, lt=95.0)
+    buffer_volume_liters: float | None = Field(default=None, gt=50.0, lt=20000.0)
+    buffer_loss_kw_per_k: float | None = Field(default=None, ge=0.0, le=1.0)
+    indoor_target_c: float | None = Field(default=None, gt=5.0, lt=30.0)
+    stove_nominal_heat_kw: float | None = Field(default=None, gt=0.0, lt=100.0)
+    stove_water_heat_kw: float | None = Field(default=None, ge=0.0, lt=100.0)
+    stove_min_heat_kw: float | None = Field(default=None, gt=0.0, lt=100.0)
+    stove_min_water_heat_kw: float | None = Field(default=None, ge=0.0, lt=100.0)
+    stove_combustion_efficiency: float | None = Field(default=None, gt=0.3, le=1.0)
+    pellet_kwh_per_kg: float | None = Field(default=None, gt=1.0, lt=10.0)
+    pellet_price_eur_per_t: float | None = Field(default=None, ge=0.0, lt=5000.0)
+
+    @field_validator("cop_curve")
+    @classmethod
+    def _kennlinie(cls, v: list[tuple[float, float]] | None) -> list[tuple[float, float]] | None:
+        """Eine Kennlinie mit einem Punkt ist eine Konstante, eine mit Sprüngen eine Falle."""
+        if v is None:
+            return v
+        if not 2 <= len(v) <= 10:
+            raise ValueError("Die Kennlinie braucht zwischen zwei und zehn Stützpunkten.")
+        temps = [t for t, _ in v]
+        if temps != sorted(temps) or len(set(temps)) != len(temps):
+            raise ValueError("Die Außentemperaturen müssen aufsteigend und verschieden sein.")
+        if any(c <= 0.5 or c > 10.0 for _, c in v):
+            raise ValueError("Eine Arbeitszahl liegt zwischen 0,5 und 10.")
+        return v

@@ -32,6 +32,7 @@ from dch_api.schemas import (
     EvReportOut,
     ForecastEvaluationOut,
     HeatBalanceOut,
+    HeatConfigIn,
     HeatReportOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
@@ -59,6 +60,7 @@ from hems_core.domain import (
     OverrideKind,
     Quality,
     SystemMode,
+    apply_heat_patch,
 )
 from hems_core.planning import PricePoint, cheap_windows, next_window_after, price_rank
 from hems_core.simulation import BERLIN, DemoConfig, DemoHouse, new_demo_house
@@ -217,7 +219,22 @@ class DemoRunner:
         return await self.accounting.heat_report(period, anchor, self.now, temps)
 
     async def heat_balance(self, period: Period, anchor: date) -> HeatBalanceOut:
-        return await self.accounting.heat_balance(period, anchor, self.now)
+        base = self.now.replace(minute=0, second=0, microsecond=0)
+        temps = [
+            (base + timedelta(hours=i), self.house.outdoor_temp_c(base + timedelta(hours=i)))
+            for i in range(48)
+        ]
+        return await self.accounting.heat_balance(period, anchor, self.now, temps)
+
+    async def update_heat_config(self, patch: HeatConfigIn) -> HemsConfig:
+        """Im Demo-Betrieb wirkt die Änderung, überlebt aber keinen Neustart: nichts wird gespeichert."""
+        try:
+            neu = apply_heat_patch(self.hems, patch.model_dump(exclude_none=True))
+        except ValueError as exc:
+            raise DchError("invalid_config", str(exc), 422) from exc
+        self.hems = neu
+        self.accounting.hems = neu
+        return neu
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
         return await self.accounting.ev_report(period, anchor, self.now)

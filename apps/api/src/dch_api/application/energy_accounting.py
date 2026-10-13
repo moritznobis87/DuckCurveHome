@@ -1075,7 +1075,13 @@ class EnergyAccounting:
     # zu ziehen, um am Ende zwölf Balken zu zeigen, ist keine Auswertung, sondern ein Ausfall.
     HEAT_MINUTE_DAYS = 31
 
-    async def heat_balance(self, period: Period, anchor: date, now: datetime) -> HeatBalanceOut:
+    async def heat_balance(
+        self,
+        period: Period,
+        anchor: date,
+        now: datetime,
+        temps_48h: list[tuple[datetime, float]] | None = None,
+    ) -> HeatBalanceOut:
         """Wer hat Wärme geliefert, wo ist sie geblieben, und was kostet die Annahme dahinter.
 
         Gerechnet wird aus Minutenwerten, solange der Zeitraum nicht länger als ein Monat ist.
@@ -1148,6 +1154,7 @@ class EnergyAccounting:
             if samples
             else "keine Daten im Zeitraum"
         )
+        bedarf, fc_note = self._forecast_tomorrow(period, anchor, now, temps_48h or [])
         return HeatBalanceOut(
             period=period,
             start=start,
@@ -1157,8 +1164,52 @@ class EnergyAccounting:
             previous=previous,
             series=series,
             buckets=buckets,
+            forecast_heat_kwh=bedarf,
+            forecast_note_de=fc_note,
             params=self._heat_params(),
             note_de=totals.note_de,
+        )
+
+    def _forecast_tomorrow(
+        self,
+        period: Period,
+        anchor: date,
+        now: datetime,
+        temps_48h: list[tuple[datetime, float]],
+    ) -> tuple[float | None, str]:
+        """Der erwartete Wärmebedarf des Folgetags, aus Heizgradstunden und Warmwasserprofil.
+
+        **Bedarf, nicht Erzeugung.** Wie viel davon der Ofen und wie viel die Wärmepumpe liefern
+        wird, entscheidet der Fahrplan nach Preis und Brennstoffbudget und nicht dieses Modell; eine
+        Aufteilung hier wäre geraten. Die Zahl sagt, wie viel Wärme das Haus morgen braucht.
+
+        Nur für die Tagesansicht und nur, solange der Ankertag heute ist: eine Prognose für den Tag
+        nach einem vergangenen Tag wäre keine Prognose, sondern eine Behauptung über Vergangenes.
+        """
+        heute = now.astimezone(self.tz).date()
+        if period != "day" or anchor != heute:
+            return None, ""
+        if not temps_48h:
+            return None, "Ohne Wetterprognose keine Bedarfsvorschau."
+        off = now.astimezone(self.tz).utcoffset()
+        offset_h = int(off.total_seconds() // 3600) if off is not None else 0
+        morgen = heute + timedelta(days=1)
+        punkte = [
+            p
+            for p in heat_forecast(temps_48h, self.hems.heat_demand, tz_offset_h=offset_h)
+            if p.ts.astimezone(self.tz).date() == morgen
+        ]
+        if not punkte:
+            return None, "Die Wetterprognose reicht nicht bis morgen."
+        bedarf = round(sum(p.heating_kw + p.dhw_kw for p in punkte), 1)
+        if len(punkte) < 24:
+            return bedarf, (
+                f"Erwarteter Wärmebedarf morgen: {bedarf:.1f} kWh, allerdings nur für "
+                f"{len(punkte)} von 24 Stunden - so weit reicht die Wetterprognose."
+            )
+        return bedarf, (
+            f"Erwarteter Wärmebedarf morgen: {bedarf:.1f} kWh thermisch, aus Heizgradstunden und "
+            "Warmwasserprofil. Wer ihn liefert, entscheidet der Fahrplan."
         )
 
     async def refresh_heat_hours(self, start: datetime, end: datetime) -> int:

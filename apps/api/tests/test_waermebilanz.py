@@ -162,3 +162,60 @@ async def test_die_stundeneingaenge_entstehen_aus_den_minuten(tmp_path: Path) ->
     assert "Stunden" in bericht.resolution_de
     assert bericht.totals.heat_pump_kwh > 0
     assert bericht.totals.stove_water_kwh > 0
+
+
+# ------------------------------------------------------------------ Parameter ändern
+
+
+def test_geaenderte_annahmen_gelten_sofort_und_rueckwirkend(client: TestClient) -> None:
+    """Der Kern des Schreibwegs: eine Korrektur, die nur nach vorn wirkt, ist keine Korrektur.
+
+    Gespeichert sind Eingänge und keine Ergebnisse, also muss derselbe Tag nach der Änderung anders
+    dastehen als vorher.
+    """
+    vorher = client.get(f"/api/v1/energy/waermebilanz?anchor={TAG}", headers=AUTH).json()
+    assert vorher["params"]["pellet_kwh_per_kg"] != 5.25
+
+    r = client.post("/api/v1/config/heat", json={"pellet_kwh_per_kg": 5.25}, headers=AUTH)
+    assert r.status_code == 200, r.text
+    assert r.json()["stove"]["pellet_kwh_per_kg"] == 5.25
+
+    nachher = client.get(f"/api/v1/energy/waermebilanz?anchor={TAG}", headers=AUTH).json()
+    assert nachher["params"]["pellet_kwh_per_kg"] == 5.25
+    # Und die Konfigurationsseite zeigt denselben Stand.
+    assert client.get("/api/v1/config", headers=AUTH).json()["stove"]["pellet_kwh_per_kg"] == 5.25
+
+
+def test_ein_widerspruch_wird_abgelehnt_und_aendert_nichts(client: TestClient) -> None:
+    vorher = client.get("/api/v1/config", headers=AUTH).json()["stove"]["water_heat_kw"]
+    r = client.post("/api/v1/config/heat", json={"stove_water_heat_kw": 99.0}, headers=AUTH)
+    assert r.status_code == 422
+    assert "Wasseranteil" in r.text
+    assert client.get("/api/v1/config", headers=AUTH).json()["stove"]["water_heat_kw"] == vorher
+
+
+def test_eine_unsinnige_kennlinie_kommt_nicht_durch(client: TestClient) -> None:
+    for kurve in ([[7.0, 3.0]], [[7.0, 3.0], [-7.0, 2.0]], [[0.0, 3.0], [7.0, 99.0]]):
+        r = client.post("/api/v1/config/heat", json={"cop_curve": kurve}, headers=AUTH)
+        assert r.status_code == 422, kurve
+
+
+def test_die_kennlinie_laesst_sich_setzen(client: TestClient) -> None:
+    kurve = [[-10.0, 2.1], [0.0, 2.8], [10.0, 3.9]]
+    r = client.post("/api/v1/config/heat", json={"cop_curve": kurve}, headers=AUTH)
+    assert r.status_code == 200, r.text
+    body = client.get(f"/api/v1/energy/waermebilanz?anchor={TAG}", headers=AUTH).json()
+    assert body["params"]["cop_curve"] == kurve
+
+
+def test_der_schreibweg_ist_nicht_oeffentlich(client: TestClient) -> None:
+    assert client.post("/api/v1/config/heat", json={"pellet_kwh_per_kg": 5.0}).status_code == 401
+
+
+def test_die_vorschau_gibt_es_nur_fuer_heute(client: TestClient) -> None:
+    """Ein Folgetag eines vergangenen Tages waere keine Prognose, sondern eine Behauptung."""
+    alt = client.get(f"/api/v1/energy/waermebilanz?anchor={TAG}", headers=AUTH).json()
+    assert alt["forecast_heat_kwh"] is None
+    assert alt["forecast_note_de"] == ""
+    woche = client.get("/api/v1/energy/waermebilanz?period=week", headers=AUTH).json()
+    assert woche["forecast_heat_kwh"] is None

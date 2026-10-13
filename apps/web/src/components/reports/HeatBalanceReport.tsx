@@ -94,6 +94,20 @@ export function HeatBalanceReport() {
         <Stat label="Verlust" value={kwh(t?.loss_kwh)} unit="kWh" tone="mist" hint="an den Aufstellraum, nicht verloren" />
       </KpiGrid>
 
+      {/* Die Vorschau steht nur in der Tagesansicht und nur für heute: ein Folgetag eines
+          vergangenen Tages waere keine Prognose. */}
+      {data?.forecast_heat_kwh != null ? (
+        <Card style={{ padding: 16 }}>
+          <CardHead title="Morgen" right="Bedarf, nicht Erzeugung" />
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+            <span className="text-[28px] font-semibold tracking-[-.02em] text-amber">
+              {kwh(data.forecast_heat_kwh)} <span className="text-[15px] text-text-3">kWh</span>
+            </span>
+            <Note>{data.forecast_note_de}</Note>
+          </div>
+        </Card>
+      ) : null}
+
       {period === "day" ? (
         <Card style={{ padding: 16, minHeight: 320 }}>
           {/* Keine zweite Legende: das Diagramm bringt eine eigene mit, und sie ist anklickbar.
@@ -148,7 +162,7 @@ export function HeatBalanceReport() {
           </div>
         </div>
         <Note>
-          {data?.note_de} {vergleich}
+          {data?.note_de} {vergleich} {data?.forecast_note_de}
         </Note>
         <Note>
           Die Arbeitszahl folgt der Kennlinie über der Außentemperatur und wird über das Verhältnis
