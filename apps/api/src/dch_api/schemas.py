@@ -36,6 +36,10 @@ class PlanIntervalOut(BaseModel):
     expected_pv_kw: float
     price_ct_kwh: float | None
     planned_hp_state: Literal["off", "release", "free", "avoid"]
+    # Soll der Ofen in diesem Viertelstundenschritt brennen? `None` heißt: kein Fahrplan - weil es
+    # keinen Ofen gibt, die Fühler fehlen oder der Optimierer nicht gerechnet hat. Das ist etwas
+    # anderes als `False`, und die Oberfläche muss es unterscheiden können.
+    planned_stove_on: bool | None = None
     reason_code: str
     note_de: str | None = None
 

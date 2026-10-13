@@ -5735,6 +5735,17 @@
             ],
             "title": "Planned Hp State"
           },
+          "planned_stove_on": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Stove On"
+          },
           "reason_code": {
             "type": "string",
             "title": "Reason Code"

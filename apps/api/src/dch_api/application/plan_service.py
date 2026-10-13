@@ -61,8 +61,20 @@ def pv_surplus_windows(
 
 
 def build_plan(
-    pv_expected: PvExpected, prices: list[PricePoint], now: datetime, cfg: HemsConfig
+    pv_expected: PvExpected,
+    prices: list[PricePoint],
+    now: datetime,
+    cfg: HemsConfig,
+    stove_on: Callable[[datetime], bool | None] | None = None,
 ) -> PlanOut:
+    """Der Fahrplan über den Horizont.
+
+    `stove_on` ist der Ofenfahrplan des Optimierers, als Nachschlagefunktion über der Zeit. Er wird
+    hier nur **mitgeführt**, nicht gerechnet: die Wärmepumpe folgt den Preis- und PV-Fenstern dieser
+    Funktion, der Ofen einem gemischt-ganzzahligen Programm über Preis, Wärmebedarf, Puffer und
+    Brennstoffbudget. Zwei Planer in einem Haus sind eine Ungenauigkeit, die man sehen können soll,
+    statt sie zu verschweigen - und man sieht sie erst, wenn beide in derselben Ansicht stehen.
+    """
     local_day = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
     day_start = local_day.astimezone(UTC)
     horizon_end = (local_day + timedelta(days=2)).astimezone(UTC)
@@ -118,6 +130,7 @@ def build_plan(
                 expected_pv_kw=round(pv_expected(t), 3),
                 price_ct_kwh=price,
                 planned_hp_state=state,
+                planned_stove_on=stove_on(t) if stove_on else None,
                 reason_code=code,
                 note_de=note,
             )

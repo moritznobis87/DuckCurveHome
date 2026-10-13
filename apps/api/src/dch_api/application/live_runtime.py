@@ -423,15 +423,18 @@ class LiveRuntime:
 
     async def refresh_plan(self) -> None:
         now = self.now
+        # Der Ofen zuerst: sein Fahrplan geht in den Plan ein, und ein Plan mit dem Ofenstand von
+        # vor einer Viertelstunde zeigt Brennphasen, die der Optimierer gerade verworfen hat.
+        await self.refresh_stove_plan()
         self.plan = build_plan(
             self.evaluator.pv_expected_corrected(self.forecasts.pv_expected_kw),
             self.forecasts.prices,
             now,
             self.hems,
+            stove_on=self.stove_plan.on_at,
         )
         self._plan_at = now
         self.broker.publish("plan", self.plan.model_dump(mode="json"))
-        await self.refresh_stove_plan()
 
     # ------------------------------------------------------------------ Der Ofen
     async def refresh_stove_plan(self) -> None:

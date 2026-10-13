@@ -2746,6 +2746,8 @@ export interface components {
              * @enum {string}
              */
             planned_hp_state: "off" | "release" | "free" | "avoid";
+            /** Planned Stove On */
+            planned_stove_on?: boolean | null;
             /** Reason Code */
             reason_code: string;
             /** Note De */
