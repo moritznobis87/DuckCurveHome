@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLiveStore, rowToPoint } from "@/lib/live/store";
 import { startLiveClient } from "@/lib/live/sseClient";
 import { startReloadPolicy } from "@/lib/live/reloadPolicy";
@@ -14,6 +14,22 @@ import { DayChart, isoDay, type ChartLayout } from "@/components/charts/DayChart
 import { ControlsBar } from "@/components/controls/ControlsBar";
 import { useRole } from "@/lib/live/useRole";
 import { useIsMobile } from "@/lib/useIsMobile";
+
+/**
+ * Kam dieses Dokument aus einem Neuladen?
+ *
+ * Der Unterschied entscheidet, wie ernst ein `?tag=` in der Adresse zu nehmen ist. Ein geteilter
+ * oder gemerkter Link ist ein Wunsch; dieselbe Adresse nach einem selbst ausgeloesten Neuladen ist
+ * nur ein Rest, den `replaceState` hinterlassen hat.
+ */
+function ausNeuladen(): boolean {
+  try {
+    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    return nav?.type === "reload";
+  } catch {
+    return false;
+  }
+}
 
 export function Dashboard() {
   const role = useRole();
@@ -65,12 +81,39 @@ export function Dashboard() {
     // Ein Tag in der Adresse gilt auch dann, wenn schon einer geladen ist: aus einer Unterseite
     // führt „← Dashboard" mit `?tag=` zurück, und das ist eine Navigation innerhalb der Anwendung.
     // Der Zustandsspeicher überlebt sie, die Bedingung „nur beim ersten Mal" verwarf den Tag daher.
+    //
+    // **Nach einem Neuladen gilt er nicht.** `changeDay` schreibt den Tag in die Adresse, damit die
+    // Ansicht teilbar ist. Lädt die Seite danach neu - und das tut sie von selbst, sobald eine neue
+    // Fassung ausgerollt ist -, stand dort immer noch der Tag von vorgestern, und die Wandanzeige
+    // blieb daran hängen, bis jemand hinging. Ein geteilter Link ist ein Wunsch, dieser Rest nicht.
+    const heute = isoDay(useLiveStore.getState().nowMs());
+    if (iso && iso !== heute && ausNeuladen()) iso = null;
     if (iso) {
       if (iso !== historyDay) void changeDay(iso);
       return;
     }
-    if (!historyDay) void changeDay(isoDay(useLiveStore.getState().nowMs()));
+    if (!historyDay) void changeDay(heute);
   }, [historyDay, lastFrameAt]);
+
+  /**
+   * Mitternacht: dem neuen Tag folgen, aber nur, wer auf dem laufenden Tag stand.
+   *
+   * Vorher wechselte die Ansicht gar nicht. Um 0:01 zeigte sie weiter gestern, und weil der
+   * Zustandsspeicher Live-Werte nur an den laufenden Tag anhängt, hörte die Kurve dort schlicht
+   * auf - eine Anzeige, die aussieht, als sei nichts mehr passiert.
+   *
+   * Wer gerade einen vergangenen Tag liest, wird nicht weggezogen. Wer auf „Morgen" stand, bekommt
+   * den Tag neu geladen: er ist jetzt der laufende und hat Messwerte, die es vorhin nicht gab.
+   */
+  const gesehenerTag = useRef<string>("");
+  useEffect(() => {
+    if (lastFrameAt === null) return;
+    const heute = isoDay(useLiveStore.getState().nowMs());
+    const vorher = gesehenerTag.current;
+    gesehenerTag.current = heute;
+    if (!vorher || vorher === heute) return;
+    if (historyDay === vorher || historyDay === heute) void changeDay(heute);
+  }, [nowMs, historyDay, lastFrameAt]);
 
   useEffect(() => {
     const stop = startLiveClient();
@@ -92,14 +135,17 @@ export function Dashboard() {
    * künftiger Tag hat keine Messwerte, dort bleiben nur Prognose und Preise aus dem Plan.
    */
   const changeDay = async (iso: string) => {
+    const now = Date.now() + useLiveStore.getState().serverOffsetMs;
     try {
       const url = new URL(window.location.href);
-      url.searchParams.set("tag", iso);
+      // Der laufende Tag steht nicht in der Adresse. Er ist die Vorgabe, und was Vorgabe ist, muss
+      // man nicht aufschreiben; aufgeschrieben wäre er morgen falsch.
+      if (iso === isoDay(now)) url.searchParams.delete("tag");
+      else url.searchParams.set("tag", iso);
       window.history.replaceState(null, "", url.toString());
     } catch {
       /* ignorieren */
     }
-    const now = Date.now() + useLiveStore.getState().serverOffsetMs;
     if (iso > isoDay(now)) {
       setHistory([], iso);
       return;
