@@ -21,6 +21,7 @@ from dch_api.infrastructure.history import SERIES
 from hems_core.accounting import HourlyEnergy
 from hems_core.domain import Decision, OperatingMode, Quality
 from hems_core.protocol import RawReading
+from hems_core.thermal import HeatHourInput
 
 QUALITY_CODE = {q: i for i, q in enumerate(Quality)}
 CODE_QUALITY = {i: q for q, i in QUALITY_CODE.items()}
@@ -563,6 +564,45 @@ class SqlRepositories:
                 )
             )
             await s.commit()
+
+    # ------------------------------------------------------------------ Wärmestunden
+    async def upsert_heat_hours(self, rows: list[HeatHourInput]) -> None:
+        """Eingangsgrößen der Wärmebilanz je Stunde schreiben, vorhandene ersetzen."""
+        if not rows:
+            return
+        now = datetime.now(UTC)
+        async with self.maker() as s:
+            for r in rows:
+                data = r.model_dump()
+                data["updated_at"] = now
+                row = await s.get(m.HeatHour, r.hour_start)
+                if row is None:
+                    s.add(m.HeatHour(**data))
+                else:
+                    for k, v in data.items():
+                        setattr(row, k, v)
+            await s.commit()
+
+    async def heat_hours(self, start: datetime, end: datetime) -> list[HeatHourInput]:
+        async with self.maker() as s:
+            rows = (
+                (
+                    await s.execute(
+                        select(m.HeatHour)
+                        .where(m.HeatHour.hour_start >= start, m.HeatHour.hour_start < end)
+                        .order_by(m.HeatHour.hour_start)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        fields = [k for k in HeatHourInput.model_fields if k != "hour_start"]
+        return [
+            HeatHourInput(
+                hour_start=self._aware(r.hour_start), **{k: getattr(r, k) for k in fields}
+            )
+            for r in rows
+        ]
 
     # ------------------------------------------------------------------ Rechnungen
     async def upsert_tibber_invoice(self, data: dict[str, Any]) -> None:

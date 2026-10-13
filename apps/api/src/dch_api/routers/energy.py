@@ -11,6 +11,7 @@ from dch_api.dependencies import get_runner
 from dch_api.schemas import (
     EnergySummaryOut,
     EvReportOut,
+    HeatBalanceOut,
     HeatReportOut,
     Period,
     PvTaxReportOut,
@@ -43,6 +44,26 @@ async def heat(
     anchor: date | None = None,
 ) -> HeatReportOut:
     return await runner.heat_report(period, _anchor(runner, anchor))
+
+
+@router.get(
+    "/waermebilanz",
+    response_model=HeatBalanceOut,
+    summary="Wärmebilanz: wer geliefert hat, was entnommen wurde, was verloren ging",
+)
+async def waermebilanz(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    period: Annotated[Period, Query()] = "day",
+    anchor: date | None = None,
+) -> HeatBalanceOut:
+    """Die Wärmeseite als Bilanz, ohne Wärmemengenzähler gerechnet.
+
+    Getrennt von `/energy/heat`, weil beide verschiedene Fragen beantworten: dort steht, was die
+    Wärmepumpe an **Strom** gekostet hat und was sie voraussichtlich brauchen wird; hier steht, wie
+    viel **Wärme** jeder der beiden Erzeuger geliefert hat und wo sie geblieben ist. Die Annahmen
+    stehen im selben Dokument, weil eine gerechnete Wärmemenge ohne sie keine Zahl ist.
+    """
+    return await runner.heat_balance(period, _anchor(runner, anchor))
 
 
 @router.get(

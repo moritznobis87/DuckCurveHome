@@ -286,6 +286,29 @@ class EnergyHour(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class HeatHour(Base):
+    """Die Eingangsgrößen der Wärmebilanz je Stunde.
+
+    **Eingänge, keine Ergebnisse.** Was das Modell daraus macht, entsteht beim Lesen; nur so erreicht
+    eine geänderte Annahme auch die Vergangenheit. Die Tabelle ist klein: 8760 Zeilen im Jahr gegen
+    525 000 Minutenzeilen, und genau das ist ihr Zweck - eine Jahresstatistik aus Minutenwerten ist
+    keine Auswertung, sondern ein Ausfall.
+    """
+
+    __tablename__ = "heat_hours"
+    hour_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    minutes: Mapped[int] = mapped_column(Integer, default=0)
+    electric_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    outdoor_c: Mapped[float | None] = mapped_column(Float)
+    buffer_top_c: Mapped[float | None] = mapped_column(Float)
+    buffer_mean_c: Mapped[float | None] = mapped_column(Float)
+    room_c: Mapped[float | None] = mapped_column(Float)
+    buffer_kwh_end: Mapped[float | None] = mapped_column(Float)
+    stove_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    stove_level_mean: Mapped[float | None] = mapped_column(Float)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class TibberInvoice(Base):
     """Geprüfte Tibber-Rechnung. Die Rechnung selbst wird nicht gespeichert, nur die gelesenen Werte,
     die Befunde der Prüfung und eine Prüfsumme, damit dieselbe Datei nicht doppelt ausgewertet wird."""

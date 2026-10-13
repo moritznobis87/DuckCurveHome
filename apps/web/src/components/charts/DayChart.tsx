@@ -79,6 +79,16 @@ export function DayChart({ history, plan, nowMs, dayIso, onDay, layout = "side" 
     const pv = inDay.map((p) => [hx(p.ts), p.pv]);
     const hp = inDay.map((p) => [hx(p.ts), p.hp]);
     const ev = inDay.map((p) => [hx(p.ts), p.ev]);
+    /**
+     * Netzbezug: nur was aus dem Netz kommt, die Einspeisung bleibt draussen.
+     *
+     * Die Reihe `grid_power_kw` ist vorzeichenbehaftet, + ist Bezug. Hier steht sie auf null, wo
+     * eingespeist wird, statt ins Negative zu laufen: die Flaeche dieses Diagramms beginnt bei
+     * null, eine negative Linie waere unsichtbar und die Achse muesste sich fuer sie oeffnen - dann
+     * schrumpfen alle anderen Reihen. Wer die Einspeisung sehen will, findet sie auf /daten, wo das
+     * Netz mit Vorzeichen steht.
+     */
+    const grid = inDay.map((p) => [hx(p.ts), p.grid === null ? null : Math.max(0, p.grid)]);
     const priceHist = inDay.map((p) => [hx(p.ts), p.price]);
     const future = (plan?.intervals ?? []).filter((i) => {
       const t = new Date(i.ts).getTime();
@@ -105,7 +115,7 @@ export function DayChart({ history, plan, nowMs, dayIso, onDay, layout = "side" 
     const priceX = layout === "overlay" ? 0 : 1;
     // Achsen skalieren mit den Daten: wenige, runde Schritte, damit der Verlauf ablesbar bleibt
     const maxOf = (rows: Array<Array<number | null>>) => rows.reduce((m, p) => (typeof p[1] === "number" && Number.isFinite(p[1]) ? Math.max(m, p[1]) : m), 0);
-    const powerMax = Math.max(4, Math.ceil((maxOf([...pv, ...hp, ...ev, ...pvForecast]) * 1.1) / 2) * 2);
+    const powerMax = Math.max(4, Math.ceil((maxOf([...pv, ...hp, ...ev, ...grid, ...pvForecast]) * 1.1) / 2) * 2);
     const priceRows = [...priceHist, ...priceFuture];
     const { min: priceMin, max: priceMax, step: priceStep } = priceBounds(priceRows);
     // Im Overlay teilen sich beide Reihen die Fläche: Preisfenster nur als Streifen am unteren Rand zeigen
@@ -188,6 +198,9 @@ export function DayChart({ history, plan, nowMs, dayIso, onDay, layout = "side" 
         { name: "PV-Prognose", type: "line", xAxisIndex: 0, yAxisIndex: 0, data: pvForecast, showSymbol: false, lineStyle: { color: C.pv, width: 2, type: [7, 7], opacity: 0.8 }, z: 2 },
         { name: "Wärmepumpe", type: "line", step: "end", xAxisIndex: 0, yAxisIndex: 0, data: hp, showSymbol: false, lineStyle: { color: C.hp, width: 2 }, z: 4 },
         { name: "Wallbox", type: "line", step: "end", xAxisIndex: 0, yAxisIndex: 0, data: ev, showSymbol: false, lineStyle: { color: C.ev, width: 2 }, z: 3 },
+        // Hinter den uebrigen Reihen (z: 1): der Netzbezug ist die Folge, nicht die Ursache, und er
+        // soll die Erzeugung nicht verdecken. Farbe wie ueberall sonst im Haus fuer das Netz.
+        { name: "Netzbezug", type: "line", step: "end", xAxisIndex: 0, yAxisIndex: 0, data: grid, showSymbol: false, lineStyle: { color: C.grid, width: 2 }, z: 1 },
         { name: "Strompreis", type: "line", step: "end", xAxisIndex: priceX, yAxisIndex: 1, data: priceHist, showSymbol: false, lineStyle: { color: C.price, width: 2 }, markArea: { silent: true, data: priceBands }, markLine: nowLine, z: 3 },
         { name: "Preis voraus", type: "line", step: "end", xAxisIndex: priceX, yAxisIndex: 1, data: priceFuture, showSymbol: false, lineStyle: { color: C.price, width: 2, type: [7, 7], opacity: 0.8 }, z: 2 },
       ],
@@ -233,6 +246,7 @@ export function DayChart({ history, plan, nowMs, dayIso, onDay, layout = "side" 
             {isPast ? null : <Legend color={C.pv} label="PV-Prognose" dashed />}
             <Legend color={C.hp} label="Wärmepumpe" />
             <Legend color={C.ev} label="Wallbox" />
+            <Legend color={C.grid} label="Netzbezug" />
             <span aria-hidden className="h-3 w-px" style={{ background: "var(--line-2)" }} />
             <span className="mono text-[11px] uppercase tracking-[.1em]" style={{ color: "var(--text-3)" }}>ct/kWh</span>
             <Legend color={C.price} label="Strompreis" />

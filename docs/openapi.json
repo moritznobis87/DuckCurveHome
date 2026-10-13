@@ -326,6 +326,73 @@
         }
       }
     },
+    "/api/v1/energy/waermebilanz": {
+      "get": {
+        "tags": [
+          "Energiebilanz"
+        ],
+        "summary": "Wärmebilanz: wer geliefert hat, was entnommen wurde, was verloren ging",
+        "description": "Die Wärmeseite als Bilanz, ohne Wärmemengenzähler gerechnet.\n\nGetrennt von `/energy/heat`, weil beide verschiedene Fragen beantworten: dort steht, was die\nWärmepumpe an **Strom** gekostet hat und was sie voraussichtlich brauchen wird; hier steht, wie\nviel **Wärme** jeder der beiden Erzeuger geliefert hat und wo sie geblieben ist. Die Annahmen\nstehen im selben Dokument, weil eine gerechnete Wärmemenge ohne sie keine Zahl ist.",
+        "operationId": "waermebilanz_api_v1_energy_waermebilanz_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string",
+              "default": "day",
+              "title": "Period"
+            }
+          },
+          {
+            "name": "anchor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anchor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeatBalanceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/energy/ev": {
       "get": {
         "tags": [
@@ -1256,6 +1323,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HemsConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/config/heat": {
+      "post": {
+        "tags": [
+          "Konfiguration"
+        ],
+        "summary": "Wärmeannahmen ändern",
+        "description": "Die Annahmen der Wärmerechnung ändern: Kennlinie, Ofen, Puffer, Pellets.\n\n**Wirkt sofort und rückwirkend.** Die Auswertungen rechnen bei jeder Abfrage neu, und gespeichert\nsind Eingänge und keine Ergebnisse; eine korrigierte Zahl gilt deshalb auch für letztes Jahr. Das\nist Absicht: eine Annahme, die nur nach vorn wirkt, lässt die Vergangenheit falsch stehen, ohne\ndass es jemandem auffällt.\n\nDie neue Fassung wird als Konfigurationsstand gespeichert und übersteht einen Neustart. Gäste\nkommen hier nicht hin: der Proxy der Oberfläche lässt für sie nur GET durch.",
+        "operationId": "set_heat_api_v1_config_heat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeatConfigIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HemsConfig"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -3654,6 +3763,406 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HeatBalanceOut": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "year"
+            ],
+            "title": "Period"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "resolution_de": {
+            "type": "string",
+            "title": "Resolution De"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/HeatTotals"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeatTotals"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/HeatBalancePointOut"
+            },
+            "type": "array",
+            "title": "Series",
+            "default": []
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/HeatBucketOut"
+            },
+            "type": "array",
+            "title": "Buckets",
+            "default": []
+          },
+          "forecast_heat_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Heat Kwh"
+          },
+          "forecast_note_de": {
+            "type": "string",
+            "title": "Forecast Note De",
+            "default": ""
+          },
+          "params": {
+            "$ref": "#/components/schemas/HeatParamsOut"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "period",
+          "start",
+          "end",
+          "resolution_de",
+          "totals",
+          "params"
+        ],
+        "title": "HeatBalanceOut",
+        "description": "Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging."
+      },
+      "HeatBalancePointOut": {
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "heat_pump_kw": {
+            "type": "number",
+            "title": "Heat Pump Kw",
+            "default": 0.0
+          },
+          "stove_water_kw": {
+            "type": "number",
+            "title": "Stove Water Kw",
+            "default": 0.0
+          },
+          "stove_room_kw": {
+            "type": "number",
+            "title": "Stove Room Kw",
+            "default": 0.0
+          },
+          "draw_kw": {
+            "type": "number",
+            "title": "Draw Kw",
+            "default": 0.0
+          },
+          "loss_kw": {
+            "type": "number",
+            "title": "Loss Kw",
+            "default": 0.0
+          },
+          "buffer_change_kw": {
+            "type": "number",
+            "title": "Buffer Change Kw",
+            "default": 0.0
+          },
+          "buffer_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Kwh"
+          },
+          "cop": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ts"
+        ],
+        "title": "HeatBalancePointOut",
+        "description": "Ein Punkt der Wärmebilanz im Zeitverlauf, alle Leistungen thermisch in kW."
+      },
+      "HeatBucketOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "label_de": {
+            "type": "string",
+            "title": "Label De"
+          },
+          "heat_pump_kwh": {
+            "type": "number",
+            "title": "Heat Pump Kwh",
+            "default": 0.0
+          },
+          "stove_water_kwh": {
+            "type": "number",
+            "title": "Stove Water Kwh",
+            "default": 0.0
+          },
+          "stove_room_kwh": {
+            "type": "number",
+            "title": "Stove Room Kwh",
+            "default": 0.0
+          },
+          "draw_kwh": {
+            "type": "number",
+            "title": "Draw Kwh",
+            "default": 0.0
+          },
+          "loss_kwh": {
+            "type": "number",
+            "title": "Loss Kwh",
+            "default": 0.0
+          },
+          "residual_kwh": {
+            "type": "number",
+            "title": "Residual Kwh",
+            "default": 0.0
+          },
+          "electric_kwh": {
+            "type": "number",
+            "title": "Electric Kwh",
+            "default": 0.0
+          },
+          "cop_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Mean"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "label_de"
+        ],
+        "title": "HeatBucketOut",
+        "description": "Ein Balken der Statistik: Stunde, Tag oder Monat, je nach Zeitraum."
+      },
+      "HeatConfigIn": {
+        "properties": {
+          "cop_curve": {
+            "anyOf": [
+              {
+                "items": {
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array",
+                  "maxItems": 2,
+                  "minItems": 2
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Curve",
+            "description": "Stützpunkte (Außentemperatur °C, COP) der Kennlinie, aufsteigend nach Temperatur"
+          },
+          "buffer_target_temperature_c": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 95.0,
+                "exclusiveMinimum": 20.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Target Temperature C"
+          },
+          "buffer_volume_liters": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 20000.0,
+                "exclusiveMinimum": 50.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Volume Liters"
+          },
+          "buffer_loss_kw_per_k": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Loss Kw Per K"
+          },
+          "indoor_target_c": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 30.0,
+                "exclusiveMinimum": 5.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indoor Target C"
+          },
+          "stove_nominal_heat_kw": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stove Nominal Heat Kw"
+          },
+          "stove_water_heat_kw": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stove Water Heat Kw"
+          },
+          "stove_min_heat_kw": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stove Min Heat Kw"
+          },
+          "stove_min_water_heat_kw": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stove Min Water Heat Kw"
+          },
+          "stove_combustion_efficiency": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "exclusiveMinimum": 0.3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stove Combustion Efficiency"
+          },
+          "pellet_kwh_per_kg": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 10.0,
+                "exclusiveMinimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pellet Kwh Per Kg"
+          },
+          "pellet_price_eur_per_t": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 5000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pellet Price Eur Per T"
+          }
+        },
+        "type": "object",
+        "title": "HeatConfigIn",
+        "description": "Die Annahmen der Wärmerechnung, soweit sie von Hand zu stellen sind.\n\n**Teilmenge, kein Abbild der Konfiguration.** Hier stehen nur Werte, die ein Mensch an seiner\nAnlage kennt oder ablesen kann: was auf dem Lieferschein der Pellets steht, was im Datenblatt des\nOfens steht, wie warm der Puffer gefahren wird. Regelparameter bleiben draußen; sie gehören in\ndie Konfigurationsdatei, wo eine falsche Zahl beim Start auffällt und nicht nachts um drei.\n\nJedes Feld ist freiwillig: geschickt wird, was geändert wurde, alles andere bleibt stehen."
+      },
       "HeatDemandConfig": {
         "properties": {
           "heat_loss_kw_per_k": {
@@ -3748,6 +4257,86 @@
           "electric_kw"
         ],
         "title": "HeatForecastPoint"
+      },
+      "HeatParamsOut": {
+        "properties": {
+          "cop_curve": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Cop Curve",
+            "default": []
+          },
+          "cop_reference_c": {
+            "type": "number",
+            "title": "Cop Reference C",
+            "default": 0.0
+          },
+          "stove_nominal_heat_kw": {
+            "type": "number",
+            "title": "Stove Nominal Heat Kw",
+            "default": 0.0
+          },
+          "stove_water_heat_kw": {
+            "type": "number",
+            "title": "Stove Water Heat Kw",
+            "default": 0.0
+          },
+          "stove_min_heat_kw": {
+            "type": "number",
+            "title": "Stove Min Heat Kw",
+            "default": 0.0
+          },
+          "stove_min_water_heat_kw": {
+            "type": "number",
+            "title": "Stove Min Water Heat Kw",
+            "default": 0.0
+          },
+          "stove_combustion_efficiency": {
+            "type": "number",
+            "title": "Stove Combustion Efficiency",
+            "default": 0.0
+          },
+          "pellet_kwh_per_kg": {
+            "type": "number",
+            "title": "Pellet Kwh Per Kg",
+            "default": 0.0
+          },
+          "pellet_price_eur_per_t": {
+            "type": "number",
+            "title": "Pellet Price Eur Per T",
+            "default": 0.0
+          },
+          "buffer_volume_liters": {
+            "type": "number",
+            "title": "Buffer Volume Liters",
+            "default": 0.0
+          },
+          "buffer_loss_kw_per_k": {
+            "type": "number",
+            "title": "Buffer Loss Kw Per K",
+            "default": 0.0
+          },
+          "room_source_de": {
+            "type": "string",
+            "title": "Room Source De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "HeatParamsOut",
+        "description": "Die Annahmen, mit denen gerechnet wurde.\n\nSie stehen im Bericht, weil eine gerechnete Wärmemenge ohne ihre Annahmen keine Zahl ist,\nsondern eine Behauptung. Wer sie ändert, ändert jede Zahl auf dieser Seite, auch die von letztem\nJahr - gespeichert werden Eingänge, nicht Ergebnisse."
       },
       "HeatPumpConfig": {
         "properties": {
@@ -4009,6 +4598,84 @@
           "model_note_de"
         ],
         "title": "HeatReportOut"
+      },
+      "HeatTotals": {
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "title": "Minutes",
+            "default": 0
+          },
+          "heat_pump_kwh": {
+            "type": "number",
+            "title": "Heat Pump Kwh",
+            "default": 0.0
+          },
+          "stove_water_kwh": {
+            "type": "number",
+            "title": "Stove Water Kwh",
+            "default": 0.0
+          },
+          "stove_room_kwh": {
+            "type": "number",
+            "title": "Stove Room Kwh",
+            "default": 0.0
+          },
+          "produced_kwh": {
+            "type": "number",
+            "title": "Produced Kwh",
+            "default": 0.0
+          },
+          "draw_kwh": {
+            "type": "number",
+            "title": "Draw Kwh",
+            "default": 0.0
+          },
+          "loss_kwh": {
+            "type": "number",
+            "title": "Loss Kwh",
+            "default": 0.0
+          },
+          "buffer_change_kwh": {
+            "type": "number",
+            "title": "Buffer Change Kwh",
+            "default": 0.0
+          },
+          "residual_kwh": {
+            "type": "number",
+            "title": "Residual Kwh",
+            "default": 0.0
+          },
+          "electric_kwh": {
+            "type": "number",
+            "title": "Electric Kwh",
+            "default": 0.0
+          },
+          "cop_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Mean"
+          },
+          "stove_minutes": {
+            "type": "integer",
+            "title": "Stove Minutes",
+            "default": 0
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "HeatTotals",
+        "description": "Summen eines Zeitraums in kWh, thermisch, plus die Zahlen, die sie beurteilbar machen."
       },
       "HemsConfig": {
         "properties": {

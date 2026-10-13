@@ -16,6 +16,8 @@ from dch_api.schemas import (
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
+    HeatBalanceOut,
+    HeatConfigIn,
     HeatReportOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
@@ -28,7 +30,7 @@ from dch_api.schemas import (
     YearMapOut,
 )
 from dch_api.settings import Settings
-from hems_core.domain import AutoProfile, Decision, OperatingMode, SystemMode
+from hems_core.domain import AutoProfile, Decision, HemsConfig, OperatingMode, SystemMode
 
 
 class Runtime(Protocol):
@@ -46,6 +48,8 @@ class Runtime(Protocol):
     async def forecast_evaluation(self) -> ForecastEvaluationOut: ...
     async def energy_summary(self, period: Period, anchor: date) -> EnergySummaryOut: ...
     async def heat_report(self, period: Period, anchor: date) -> HeatReportOut: ...
+    async def heat_balance(self, period: Period, anchor: date) -> HeatBalanceOut: ...
+    async def update_heat_config(self, patch: HeatConfigIn) -> HemsConfig: ...
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut: ...
     async def pv_report(self, period: Period, anchor: date) -> PvTaxReportOut: ...
     def export_csv(self, kind: str, start: datetime, end: datetime) -> AsyncIterator[str]: ...

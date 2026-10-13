@@ -268,3 +268,67 @@ class HemsConfig(BaseModel):
     heat_demand: HeatDemandConfig = HeatDemandConfig()
     battery: BatteryConfig = BatteryConfig()
     stove: StoveConfig = StoveConfig()
+
+
+# Welches Feld der Wärmeannahmen in welchen Teil der Konfiguration gehört. Eine Tabelle und keine
+# Kette von if-Zweigen: wer ein Feld hinzufügt, ergänzt eine Zeile, und die Zuordnung steht an einer
+# Stelle statt verteilt über Dienst und Oberfläche.
+HEAT_FIELD_MAP: dict[str, tuple[str, str]] = {
+    "cop_curve": ("heat_demand", "cop_curve"),
+    "indoor_target_c": ("heat_demand", "indoor_target_c"),
+    "buffer_target_temperature_c": ("buffer", "target_temperature_c"),
+    "buffer_volume_liters": ("buffer", "volume_liters"),
+    "buffer_loss_kw_per_k": ("buffer", "loss_kw_per_k"),
+    "stove_nominal_heat_kw": ("stove", "nominal_heat_kw"),
+    "stove_water_heat_kw": ("stove", "water_heat_kw"),
+    "stove_min_heat_kw": ("stove", "min_heat_kw"),
+    "stove_min_water_heat_kw": ("stove", "min_water_heat_kw"),
+    "stove_combustion_efficiency": ("stove", "combustion_efficiency"),
+    "pellet_kwh_per_kg": ("stove", "pellet_kwh_per_kg"),
+    "pellet_price_eur_per_t": ("stove", "pellet_price_eur_per_t"),
+}
+
+
+def apply_heat_patch(cfg: HemsConfig, patch: dict[str, object]) -> HemsConfig:
+    """Geänderte Wärmeannahmen in eine neue Konfiguration einsetzen.
+
+    Reine Funktion auf unveränderlichen Modellen: sie gibt eine neue Konfiguration zurück und fasst
+    die alte nicht an. Das ist hier kein Stil, sondern Sicherheit - die laufende Regelung hält eine
+    Referenz, und ein halb geändertes Objekt wäre ein Zustand, den niemand gewollt hat.
+
+    Werte mit `None` bleiben stehen. Geschickt wird, was geändert wurde.
+
+    **Die Widerspruchsprüfung steht hier**, nicht im Eingabeschema: ob der Wasseranteil zur
+    Gesamtleistung passt, hängt vom Wert daneben ab, und der kann aus dem Bestand kommen, wenn nur
+    einer der beiden geschickt wurde.
+    """
+    gruppen: dict[str, dict[str, object]] = {}
+    for feld, wert in patch.items():
+        if wert is None or feld not in HEAT_FIELD_MAP:
+            continue
+        gruppe, name = HEAT_FIELD_MAP[feld]
+        gruppen.setdefault(gruppe, {})[name] = wert
+    if not gruppen:
+        return cfg
+    neu = cfg.model_copy(
+        update={g: getattr(cfg, g).model_copy(update=w) for g, w in gruppen.items()}
+    )
+    if neu.stove.water_heat_kw > neu.stove.nominal_heat_kw:
+        raise ValueError("Der Wasseranteil kann nicht größer sein als die Gesamtleistung.")
+    if neu.stove.min_water_heat_kw > neu.stove.min_heat_kw:
+        raise ValueError(
+            "Bei Minimallast kann der Wasseranteil nicht größer sein als die Leistung."
+        )
+    if neu.stove.min_heat_kw > neu.stove.nominal_heat_kw:
+        raise ValueError("Die Minimallast kann nicht über der Volllast liegen.")
+    if neu.buffer.target_temperature_c > neu.buffer.max_temperature_c:
+        raise ValueError(
+            f"Die Zieltemperatur liegt über der Höchsttemperatur des Puffers "
+            f"({neu.buffer.max_temperature_c:g} °C)."
+        )
+    if neu.buffer.target_temperature_c <= neu.buffer.min_useful_temperature_c:
+        raise ValueError(
+            f"Die Zieltemperatur liegt unter der nutzbaren Temperatur "
+            f"({neu.buffer.min_useful_temperature_c:g} °C)."
+        )
+    return neu

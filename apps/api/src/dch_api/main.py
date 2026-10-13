@@ -90,6 +90,9 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
     app.state.runner = runtime
     app.state.hems = cfg.hems
     await runtime.start()
+    # Erst nach dem Start: dort wird ein gespeicherter Konfigurationsstand angewandt, und die
+    # Konfigurationsseite soll den zeigen und nicht den aus der Datei.
+    app.state.hems = runtime.hems
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

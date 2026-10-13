@@ -22,6 +22,10 @@ const ITEMS = [
   { href: "/haus", icon: "house", label: "Haus", dated: true },
   { href: "/batterie", icon: "battery", label: "Batterie", dated: true },
   { href: "/waerme", icon: "pump", label: "Wärme", dated: true },
+  // Zwei Wärmeseiten, zwei Fragen: „Wärme" steht für den Strom der Wärmepumpe und ihre Taktung,
+  // „Wärmebilanz" für die Wärmemengen beider Erzeuger. Sie zusammenzulegen hiesse, Kilowattstunden
+  // Strom und Kilowattstunden Wärme in eine Ansicht zu werfen.
+  { href: "/waermebilanz", icon: "stove", label: "Wärmebilanz", dated: true },
   { href: "/wallbox", icon: "car", label: "Wallbox", dated: true },
   { href: "/prognose", icon: "chart", label: "Prognosegüte" },
   { href: "/jahr", icon: "calendar", label: "Jahreskarte" },
