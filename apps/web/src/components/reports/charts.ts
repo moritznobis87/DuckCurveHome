@@ -1,5 +1,5 @@
 import type { EChartsCoreOption } from "echarts/core";
-import type { EnergyBucket, EnergyTotals, HeatForecastPoint } from "@/lib/api/models";
+import type { EnergyTotals, HeatBalancePoint, HeatForecastPoint } from "@/lib/api/models";
 
 export { C, MONO } from "@/components/charts/palette";
 import { C, MONO } from "@/components/charts/palette";
@@ -7,10 +7,17 @@ const axisText = { color: C.text, fontFamily: MONO, fontSize: 11 };
 const tooltip = { backgroundColor: C.deep, borderColor: "rgba(255,255,255,.14)", borderRadius: 3, textStyle: { color: "rgba(255,255,255,.92)", fontFamily: MONO, fontSize: 12 } };
 const de1 = (n: number, d = 1) => n.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
 
-export type BarSeries = { key: keyof EnergyTotals; name: string; color: string };
+export type BarSeries<K extends string = keyof EnergyTotals & string> = { key: K; name: string; color: string };
 
-/** Gestapelte Balken je Zeitraum-Bucket; Werte in kWh. Leere Buckets (keine Daten) bleiben leer. */
-export function stackedBars(buckets: EnergyBucket[], series: BarSeries[], unit = "kWh"): EChartsCoreOption {
+/**
+ * Gestapelte Balken je Zeitraum-Bucket; Werte in kWh. Leere Buckets (keine Daten) bleiben leer.
+ *
+ * Über die Schlüssel generisch, damit nicht nur die Energiebilanz hier hineinpasst: die Wärmeseite
+ * hat dieselbe Form (Balken je Stunde, Tag oder Monat) und andere Felder. Vorher stand hier
+ * `keyof EnergyTotals`, und der erste fremde Aufrufer musste den Typ mit `as never` übergehen -
+ * woraufhin die Seite beim ersten Rendern mit „cannot read properties of undefined" stehenblieb.
+ */
+export function stackedBars<K extends string>(buckets: Array<{ label: string; totals: Partial<Record<K, number | null>> }>, series: Array<BarSeries<K>>, unit = "kWh"): EChartsCoreOption {
   const labels = buckets.map((b) => b.label);
   return {
     animation: false,
@@ -812,15 +819,14 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
  * Farbabstände geprüft (dE2000, dunkler Grund): das engste Paar ist Ofen gegen Verlust mit 16,9;
  * alle übrigen liegen zwischen 21,6 und 44,5. Die Grenze des Projekts ist 15.
  */
-export function heatBalanceChart(points: Array<Record<string, number | string | null>>): EChartsCoreOption {
-  const ts = (p: Record<string, number | string | null>) => new Date(String(p.ts)).getTime();
-  const num = (p: Record<string, number | string | null>, k: string) => (typeof p[k] === "number" ? (p[k] as number) : null);
-  const reihe = (k: string) => points.map((p) => [ts(p), num(p, k)]);
-  const flaeche = (name: string, key: string, color: string, rgba: string) => ({
+export function heatBalanceChart(points: HeatBalancePoint[]): EChartsCoreOption {
+  const reihe = (pick: (p: HeatBalancePoint) => number | null | undefined) =>
+    points.map((p) => [new Date(p.ts).getTime(), pick(p) ?? null]);
+  const flaeche = (name: string, pick: (p: HeatBalancePoint) => number | null | undefined, color: string, rgba: string) => ({
     name,
     type: "line",
     stack: "zufuhr",
-    data: reihe(key),
+    data: reihe(pick),
     showSymbol: false,
     connectNulls: false,
     lineStyle: { color, width: 1 },
@@ -880,14 +886,14 @@ export function heatBalanceChart(points: Array<Record<string, number | string | 
       { type: "value", name: "kWh", nameLocation: "middle", nameGap: 34, nameRotate: 0, nameTextStyle: { color: C.text, fontSize: 10 }, splitLine: { show: false }, axisLabel: axisText, splitNumber: 3 },
     ],
     series: [
-      flaeche("Wärmepumpe", "heat_pump_kw", C.hp, "rgba(228,236,239,.20)"),
-      flaeche("Ofen (Wasser)", "stove_water_kw", C.stove, "rgba(181,101,29,.28)"),
+      flaeche("Wärmepumpe", (p) => p.heat_pump_kw, C.hp, "rgba(228,236,239,.20)"),
+      flaeche("Ofen (Wasser)", (p) => p.stove_water_kw, C.stove, "rgba(181,101,29,.28)"),
       // Die Raumwärme des Ofens geht nicht in den Puffer. Sie gehört deshalb nicht in den Stapel,
       // auch wenn sie vom selben Gerät kommt - gestrichelt daneben, in derselben Farbe.
-      { name: "Ofen (Raum)", type: "line", data: reihe("stove_room_kw"), showSymbol: false, connectNulls: false, lineStyle: { color: C.stove, width: 1.5, type: "dashed", opacity: 0.9 }, itemStyle: { color: C.stove }, z: 3 },
-      { name: "Entnahme", type: "line", data: reihe("draw_kw"), showSymbol: false, connectNulls: false, lineStyle: { color: C.base, width: 2 }, itemStyle: { color: C.base }, z: 4 },
-      { name: "Verlust an den Raum", type: "line", data: reihe("loss_kw"), showSymbol: false, connectNulls: false, lineStyle: { color: C.alert, width: 1.5, type: "dashed" }, itemStyle: { color: C.alert }, z: 3 },
-      { name: "Puffer", type: "line", yAxisIndex: 1, data: reihe("buffer_kwh"), showSymbol: false, connectNulls: true, lineStyle: { color: C.battery, width: 1.5, type: "dashed" }, itemStyle: { color: C.battery }, z: 1 },
+      { name: "Ofen (Raum)", type: "line", data: reihe((p) => p.stove_room_kw), showSymbol: false, connectNulls: false, lineStyle: { color: C.stove, width: 1.5, type: "dashed", opacity: 0.9 }, itemStyle: { color: C.stove }, z: 3 },
+      { name: "Entnahme", type: "line", data: reihe((p) => p.draw_kw), showSymbol: false, connectNulls: false, lineStyle: { color: C.base, width: 2 }, itemStyle: { color: C.base }, z: 4 },
+      { name: "Verlust an den Raum", type: "line", data: reihe((p) => p.loss_kw), showSymbol: false, connectNulls: false, lineStyle: { color: C.alert, width: 1.5, type: "dashed" }, itemStyle: { color: C.alert }, z: 3 },
+      { name: "Puffer", type: "line", yAxisIndex: 1, data: reihe((p) => p.buffer_kwh), showSymbol: false, connectNulls: true, lineStyle: { color: C.battery, width: 1.5, type: "dashed" }, itemStyle: { color: C.battery }, z: 1 },
     ],
   };
 }

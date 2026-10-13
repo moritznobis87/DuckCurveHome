@@ -38,6 +38,7 @@ export type Coverage = S["CoverageOut"];
 export type DoorLog = S["DoorLogOut"];
 export type HeatBalance = S["HeatBalanceOut"];
 export type HeatBucket = S["HeatBucketOut"];
+export type HeatBalancePoint = S["HeatBalancePointOut"];
 export type HeatParams = S["HeatParamsOut"];
 export type DoorEntry = S["DoorEntryOut"];
 export type CoverageSeries = S["CoverageSeriesOut"];
