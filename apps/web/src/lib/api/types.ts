@@ -140,6 +140,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/energy/waermebilanz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wärmebilanz: wer geliefert hat, was entnommen wurde, was verloren ging
+         * @description Die Wärmeseite als Bilanz, ohne Wärmemengenzähler gerechnet.
+         *
+         *     Getrennt von `/energy/heat`, weil beide verschiedene Fragen beantworten: dort steht, was die
+         *     Wärmepumpe an **Strom** gekostet hat und was sie voraussichtlich brauchen wird; hier steht, wie
+         *     viel **Wärme** jeder der beiden Erzeuger geliefert hat und wo sie geblieben ist. Die Annahmen
+         *     stehen im selben Dokument, weil eine gerechnete Wärmemenge ohne sie keine Zahl ist.
+         */
+        get: operations["waermebilanz_api_v1_energy_waermebilanz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/energy/ev": {
         parameters: {
             query?: never;
@@ -1630,6 +1655,149 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
+         * HeatBalanceOut
+         * @description Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging.
+         */
+        HeatBalanceOut: {
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "week" | "month" | "year";
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Resolution De */
+            resolution_de: string;
+            totals: components["schemas"]["HeatTotals"];
+            previous?: components["schemas"]["HeatTotals"] | null;
+            /**
+             * Series
+             * @default []
+             */
+            series: components["schemas"]["HeatBalancePointOut"][];
+            /**
+             * Buckets
+             * @default []
+             */
+            buckets: components["schemas"]["HeatBucketOut"][];
+            /** Forecast Heat Kwh */
+            forecast_heat_kwh?: number | null;
+            /**
+             * Forecast Note De
+             * @default
+             */
+            forecast_note_de: string;
+            params: components["schemas"]["HeatParamsOut"];
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
+        };
+        /**
+         * HeatBalancePointOut
+         * @description Ein Punkt der Wärmebilanz im Zeitverlauf, alle Leistungen thermisch in kW.
+         */
+        HeatBalancePointOut: {
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            /**
+             * Heat Pump Kw
+             * @default 0
+             */
+            heat_pump_kw: number;
+            /**
+             * Stove Water Kw
+             * @default 0
+             */
+            stove_water_kw: number;
+            /**
+             * Stove Room Kw
+             * @default 0
+             */
+            stove_room_kw: number;
+            /**
+             * Draw Kw
+             * @default 0
+             */
+            draw_kw: number;
+            /**
+             * Loss Kw
+             * @default 0
+             */
+            loss_kw: number;
+            /**
+             * Buffer Change Kw
+             * @default 0
+             */
+            buffer_change_kw: number;
+            /** Buffer Kwh */
+            buffer_kwh?: number | null;
+            /** Cop */
+            cop?: number | null;
+        };
+        /**
+         * HeatBucketOut
+         * @description Ein Balken der Statistik: Stunde, Tag oder Monat, je nach Zeitraum.
+         */
+        HeatBucketOut: {
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Label De */
+            label_de: string;
+            /**
+             * Heat Pump Kwh
+             * @default 0
+             */
+            heat_pump_kwh: number;
+            /**
+             * Stove Water Kwh
+             * @default 0
+             */
+            stove_water_kwh: number;
+            /**
+             * Stove Room Kwh
+             * @default 0
+             */
+            stove_room_kwh: number;
+            /**
+             * Draw Kwh
+             * @default 0
+             */
+            draw_kwh: number;
+            /**
+             * Loss Kwh
+             * @default 0
+             */
+            loss_kwh: number;
+            /**
+             * Residual Kwh
+             * @default 0
+             */
+            residual_kwh: number;
+            /**
+             * Electric Kwh
+             * @default 0
+             */
+            electric_kwh: number;
+            /** Cop Mean */
+            cop_mean?: number | null;
+        };
+        /**
          * HeatDemandConfig
          * @description Wärmebedarfsmodell v1 (Plan 20.2): Heizgradstunden, Warmwasserprofil, COP-Kennlinie.
          */
@@ -1684,6 +1852,79 @@ export interface components {
             cop: number;
             /** Electric Kw */
             electric_kw: number;
+        };
+        /**
+         * HeatParamsOut
+         * @description Die Annahmen, mit denen gerechnet wurde.
+         *
+         *     Sie stehen im Bericht, weil eine gerechnete Wärmemenge ohne ihre Annahmen keine Zahl ist,
+         *     sondern eine Behauptung. Wer sie ändert, ändert jede Zahl auf dieser Seite, auch die von letztem
+         *     Jahr - gespeichert werden Eingänge, nicht Ergebnisse.
+         */
+        HeatParamsOut: {
+            /**
+             * Cop Curve
+             * @default []
+             */
+            cop_curve: [
+                number,
+                number
+            ][];
+            /**
+             * Cop Reference C
+             * @default 0
+             */
+            cop_reference_c: number;
+            /**
+             * Stove Nominal Heat Kw
+             * @default 0
+             */
+            stove_nominal_heat_kw: number;
+            /**
+             * Stove Water Heat Kw
+             * @default 0
+             */
+            stove_water_heat_kw: number;
+            /**
+             * Stove Min Heat Kw
+             * @default 0
+             */
+            stove_min_heat_kw: number;
+            /**
+             * Stove Min Water Heat Kw
+             * @default 0
+             */
+            stove_min_water_heat_kw: number;
+            /**
+             * Stove Combustion Efficiency
+             * @default 0
+             */
+            stove_combustion_efficiency: number;
+            /**
+             * Pellet Kwh Per Kg
+             * @default 0
+             */
+            pellet_kwh_per_kg: number;
+            /**
+             * Pellet Price Eur Per T
+             * @default 0
+             */
+            pellet_price_eur_per_t: number;
+            /**
+             * Buffer Volume Liters
+             * @default 0
+             */
+            buffer_volume_liters: number;
+            /**
+             * Buffer Loss Kw Per K
+             * @default 0
+             */
+            buffer_loss_kw_per_k: number;
+            /**
+             * Room Source De
+             * @default
+             */
+            room_source_de: string;
         };
         /** HeatPumpConfig */
         HeatPumpConfig: {
@@ -1807,6 +2048,74 @@ export interface components {
             stove: components["schemas"]["StoveOut"];
             /** Model Note De */
             model_note_de: string;
+        };
+        /**
+         * HeatTotals
+         * @description Summen eines Zeitraums in kWh, thermisch, plus die Zahlen, die sie beurteilbar machen.
+         */
+        HeatTotals: {
+            /**
+             * Minutes
+             * @default 0
+             */
+            minutes: number;
+            /**
+             * Heat Pump Kwh
+             * @default 0
+             */
+            heat_pump_kwh: number;
+            /**
+             * Stove Water Kwh
+             * @default 0
+             */
+            stove_water_kwh: number;
+            /**
+             * Stove Room Kwh
+             * @default 0
+             */
+            stove_room_kwh: number;
+            /**
+             * Produced Kwh
+             * @default 0
+             */
+            produced_kwh: number;
+            /**
+             * Draw Kwh
+             * @default 0
+             */
+            draw_kwh: number;
+            /**
+             * Loss Kwh
+             * @default 0
+             */
+            loss_kwh: number;
+            /**
+             * Buffer Change Kwh
+             * @default 0
+             */
+            buffer_change_kwh: number;
+            /**
+             * Residual Kwh
+             * @default 0
+             */
+            residual_kwh: number;
+            /**
+             * Electric Kwh
+             * @default 0
+             */
+            electric_kwh: number;
+            /** Cop Mean */
+            cop_mean?: number | null;
+            /**
+             * Stove Minutes
+             * @default 0
+             */
+            stove_minutes: number;
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
         };
         /** HemsConfig */
         HemsConfig: {
@@ -3346,6 +3655,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HeatReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    waermebilanz_api_v1_energy_waermebilanz_get: {
+        parameters: {
+            query?: {
+                period?: "day" | "week" | "month" | "year";
+                anchor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeatBalanceOut"];
                 };
             };
             /** @description Validation Error */

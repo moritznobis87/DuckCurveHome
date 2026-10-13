@@ -31,6 +31,7 @@ from dch_api.schemas import (
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
+    HeatBalanceOut,
     HeatReportOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
@@ -214,6 +215,9 @@ class DemoRunner:
             for i in range(48)
         ]
         return await self.accounting.heat_report(period, anchor, self.now, temps)
+
+    async def heat_balance(self, period: Period, anchor: date) -> HeatBalanceOut:
+        return await self.accounting.heat_balance(period, anchor, self.now)
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
         return await self.accounting.ev_report(period, anchor, self.now)

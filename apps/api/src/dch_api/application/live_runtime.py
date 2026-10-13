@@ -24,7 +24,7 @@ import structlog
 
 from dch_api.application.battery_control import BatteryController, BatteryMode
 from dch_api.application.config_loader import AppConfig
-from dch_api.application.energy_accounting import ENERGY_KEYS, EnergyAccounting
+from dch_api.application.energy_accounting import ENERGY_KEYS, HEAT_KEYS, EnergyAccounting
 from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
 from dch_api.application.forecast_service import ForecastService
 from dch_api.application.ha_import import HaImporter, ImportResult, Kind, load_entity_rules
@@ -51,6 +51,7 @@ from dch_api.schemas import (
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
+    HeatBalanceOut,
     HeatReportOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
@@ -148,6 +149,11 @@ class LiveRuntime:
             store=(repos.energy_hours, repos.upsert_energy_hours, repos.last_energy_hour),
             data_since=repos.first_measurement_at,
             device_events=self._libbi_events,
+            # Eigene, breitere Abfrage für die Wärmeseite: der Ofen steht nicht in ENERGY_KEYS,
+            # und ohne ihn meldete die Ofenauswertung im Live-Betrieb „keine Daten", während
+            # die Spalten gefüllt dastanden.
+            heat_rows=lambda s, e: repos.minute_series(s, e, HEAT_KEYS),
+            heat_store=(repos.heat_hours, repos.upsert_heat_hours),
         )
         hub.on_telemetry = self.on_telemetry
         hub.on_event = self.on_bridge_event
@@ -737,6 +743,9 @@ class LiveRuntime:
 
     async def heat_report(self, period: Period, anchor: date) -> HeatReportOut:
         return await self.accounting.heat_report(period, anchor, self.now, self._temps_48h())
+
+    async def heat_balance(self, period: Period, anchor: date) -> HeatBalanceOut:
+        return await self.accounting.heat_balance(period, anchor, self.now)
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:
         return await self.accounting.ev_report(period, anchor, self.now)

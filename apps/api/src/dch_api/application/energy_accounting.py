@@ -20,6 +20,10 @@ from dch_api.schemas import (
     EnergyTotalsOut,
     EvReportOut,
     EvSessionOut,
+    HeatBalanceOut,
+    HeatBalancePointOut,
+    HeatBucketOut,
+    HeatParamsOut,
     HeatReportOut,
     Period,
     PriceQualityOut,
@@ -47,10 +51,16 @@ from hems_core.accounting import (
 from hems_core.domain import BufferConfig, HemsConfig
 from hems_core.thermal import (
     CyclingStats,
+    HeatHourInput,
+    HeatSample,
     StoveSample,
     compressor_runs,
     cycling_stats,
     fuel_note,
+    heat_series,
+    heat_totals,
+    hourly_inputs,
+    samples_from_hours,
     stove_stats,
     usable_energy_kwh,
 )
@@ -63,6 +73,11 @@ HourStore = tuple[
     Callable[[datetime, datetime], Awaitable[list[tuple[HourlyEnergy, float | None]]]],
     Callable[[list[HourlyEnergy], dict[datetime, float | None]], Awaitable[None]],
     Callable[[], Awaitable[datetime | None]],
+]
+# Lesen und Schreiben der stündlichen Eingangsgrößen der Wärmebilanz.
+HeatStore = tuple[
+    Callable[[datetime, datetime], Awaitable[list[HeatHourInput]]],
+    Callable[[list[HeatHourInput]], Awaitable[None]],
 ]
 # Zustandsmeldungen eines Geräts in einem Zeitraum: (Zeitpunkt, Text).
 DeviceEvents = Callable[[datetime, datetime], Awaitable[list[tuple[datetime, str]]]]
@@ -79,6 +94,24 @@ ENERGY_KEYS = [
     "buffer_temp_mid_top_c",
     "buffer_temp_mid_bottom_c",
     "buffer_temp_bottom_c",
+]
+# Dieselben Reihen plus alles, was die Wärmeseite braucht. Eigene Liste und nicht ENERGY_KEYS
+# erweitert: die Stundenbilanz läuft über jeden Backfill und soll keine dreizehn Spalten mitschleppen,
+# die sie nicht ansieht. Umgekehrt war die Trennung bisher ein stiller Fehler - `_stove` und der
+# Ofenzweig der Pufferbilanz lasen über ENERGY_KEYS und bekamen im Live-Betrieb nie eine Ofenspalte;
+# sie meldeten „keine Ofendaten", während die Spalten in der Minutentabelle gefüllt dastanden.
+HEAT_KEYS = [
+    *ENERGY_KEYS,
+    "stove_state",
+    "stove_running",
+    "stove_power_level",
+    "stove_fume_temp_c",
+    "stove_auger_rpm",
+    "stove_boiler_temp_c",
+    "stove_return_temp_c",
+    "stove_pump_pct",
+    "stove_dhw_mode",
+    "stove_ambient_temp_c",
 ]
 # Kennzahlen der Jahreskarte. Energien werden über zusammenfallende Stunden addiert, Preise und
 # Quoten gemittelt - bei der Zeitumstellung im Herbst fällt eine Ortsstunde doppelt an.
@@ -471,10 +504,16 @@ class EnergyAccounting:
         store: HourStore | None = None,
         data_since: Callable[[], Awaitable[datetime | None]] | None = None,
         device_events: DeviceEvents | None = None,
+        heat_rows: MinuteRows | None = None,
+        heat_store: HeatStore | None = None,
     ) -> None:
         self.hems = hems
         self.tz = tz
         self.minute_rows = minute_rows
+        # Ohne eigene Quelle liest die Wärmeseite dieselbe wie die Bilanz. Das ist der Demo-Betrieb,
+        # wo ohnehin alle Spalten kommen; live wird hier die breitere Abfrage eingehängt.
+        self.heat_rows = heat_rows or minute_rows
+        self.heat_store = heat_store
         self.store = store
         self.data_since = data_since
         self.device_events = device_events
@@ -681,6 +720,9 @@ class EnergyAccounting:
                 if keep:
                     await write([h for h, _ in keep], {h.hour_start: t for h, t in keep})
                     total += len(keep)
+            # Die Wärmestunden im selben Durchgang: sie lesen dieselben Minutenzeilen, nur breiter,
+            # und ein getrennter Takt hätte am Ende zwei Stände, die sich widersprechen können.
+            await self.refresh_heat_hours(cursor, chunk_end)
             cursor = chunk_end
         return total
 
@@ -982,7 +1024,7 @@ class EnergyAccounting:
         fc = heat_forecast(temps_48h, cfg, tz_offset_h=offset_h)
         first24 = fc[:24]
         day_start, day_end = self.period_bounds("day", anchor)
-        rows = await self.minute_rows(day_start, min(day_end, now + timedelta(minutes=1)))
+        rows = await self.heat_rows(day_start, min(day_end, now + timedelta(minutes=1)))
         buffer_series = [
             {
                 k: r.get(k)
@@ -1027,6 +1069,212 @@ class EnergyAccounting:
             ),
         )
 
+    # ------------------------------------------------------------------ Wärmebilanz
+    # Über diesen Zeitraum hinaus wird nicht aus Minuten gerechnet. Dieselbe Grenze wie bei der
+    # Taktung und aus demselben Grund: ein Jahr sind rund 525 000 Zeilen, und die durch den Dienst
+    # zu ziehen, um am Ende zwölf Balken zu zeigen, ist keine Auswertung, sondern ein Ausfall.
+    HEAT_MINUTE_DAYS = 31
+
+    async def heat_balance(self, period: Period, anchor: date, now: datetime) -> HeatBalanceOut:
+        """Wer hat Wärme geliefert, wo ist sie geblieben, und was kostet die Annahme dahinter.
+
+        Gerechnet wird aus Minutenwerten, solange der Zeitraum nicht länger als ein Monat ist.
+        Darüber steht der Zeitraum ohne Verlauf da, mit einer Ansage statt einer stillen Näherung.
+        """
+        start, end = self.period_bounds(period, anchor)
+        stop = min(end, now + timedelta(minutes=1))
+        samples, step_min = await self._samples_for(start, stop)
+        points = heat_series(
+            samples, stove=self.hems.stove, heat=self.hems.heat_demand, buffer=self.hems.buffer
+        )
+        totals = heat_totals(points, samples, step_min)
+
+        vor_start, vor_end = self._previous_bounds(period, anchor)
+        vor_samples, vor_step = await self._samples_for(vor_start, min(vor_end, now))
+        vor_points = heat_series(
+            vor_samples, stove=self.hems.stove, heat=self.hems.heat_demand, buffer=self.hems.buffer
+        )
+        previous = heat_totals(vor_points, vor_samples, vor_step) if vor_samples else None
+
+        buckets: list[HeatBucketOut] = []
+        if samples:
+            nach_start = {p.at: p for p in points}
+            for b_start, b_end, label in self.bucket_starts(period, start, end):
+                teil = [p for ts, p in nach_start.items() if b_start <= ts < b_end]
+                roh = [s for s in samples if b_start <= s.at < b_end]
+                if not teil:
+                    continue
+                t = heat_totals(teil, roh, step_min)
+                buckets.append(
+                    HeatBucketOut(
+                        start=b_start,
+                        label_de=label,
+                        heat_pump_kwh=t.heat_pump_kwh,
+                        stove_water_kwh=t.stove_water_kwh,
+                        stove_room_kwh=t.stove_room_kwh,
+                        draw_kwh=t.draw_kwh,
+                        loss_kwh=t.loss_kwh,
+                        residual_kwh=t.residual_kwh,
+                        electric_kwh=t.electric_kwh,
+                        cop_mean=t.cop_mean,
+                    )
+                )
+
+        # Der Verlauf nur beim Tag, und dort jede fünfte Minute: 288 Punkte zeichnen dieselbe Kurve
+        # wie 1440 und sind ein Fünftel der Antwort.
+        series = (
+            [
+                HeatBalancePointOut(
+                    ts=p.at,
+                    heat_pump_kw=p.heat_pump_kw,
+                    stove_water_kw=p.stove_water_kw,
+                    stove_room_kw=p.stove_room_kw,
+                    draw_kw=p.draw_kw,
+                    loss_kw=p.loss_kw,
+                    buffer_change_kw=p.buffer_change_kw,
+                    buffer_kwh=p.buffer_kwh,
+                    cop=p.cop,
+                )
+                for i, p in enumerate(points)
+                if i % 5 == 0
+            ]
+            if period == "day"
+            else []
+        )
+        aufloesung = (
+            "aus Minutenwerten"
+            if step_min < 60
+            else "aus Stundenwerten"
+            if samples
+            else "keine Daten im Zeitraum"
+        )
+        return HeatBalanceOut(
+            period=period,
+            start=start,
+            end=end,
+            resolution_de=aufloesung,
+            totals=totals,
+            previous=previous,
+            series=series,
+            buckets=buckets,
+            params=self._heat_params(),
+            note_de=totals.note_de,
+        )
+
+    async def refresh_heat_hours(self, start: datetime, end: datetime) -> int:
+        """Die stündlichen Eingangsgrößen eines Zeitraums aus Minutenwerten neu bilden.
+
+        Läuft im selben Takt wie die Stundenbilanz und tageweise, aus demselben Grund: ein Backfill
+        darf zwei Monate umfassen, und die auf einmal zu laden wären hunderttausend Zeilen im
+        Speicher.
+        """
+        if self.heat_store is None:
+            return 0
+        _read, write = self.heat_store
+        begin = start.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+        stop = end.astimezone(UTC).replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        total = 0
+        cursor = begin
+        while cursor < stop:
+            chunk_end = min(cursor + timedelta(days=1), stop)
+            samples = await self._heat_samples(cursor, chunk_end)
+            if samples:
+                rows = hourly_inputs(samples, self.hems.buffer)
+                await write(rows)
+                total += len(rows)
+            cursor = chunk_end
+        return total
+
+    def _previous_bounds(self, period: Period, anchor: date) -> tuple[datetime, datetime]:
+        """Der vorangegangene gleichartige Zeitraum, für den Vergleich."""
+        if period == "day":
+            return self.period_bounds("day", anchor - timedelta(days=1))
+        if period == "week":
+            return self.period_bounds("week", anchor - timedelta(days=7))
+        if period == "month":
+            erster = anchor.replace(day=1)
+            return self.period_bounds("month", erster - timedelta(days=1))
+        return self.period_bounds("year", anchor.replace(year=anchor.year - 1, month=1, day=1))
+
+    async def _samples_for(self, start: datetime, end: datetime) -> tuple[list[HeatSample], float]:
+        """Proben und Schrittweite für einen Zeitraum: Minuten, wo es geht, sonst Stunden.
+
+        Ein Modell, zwei Auflösungen - und nicht zwei Modelle. Die gröbere mittelt die Temperaturen
+        über die Stunde und schätzt die Arbeitszahl deshalb etwas anders; für eine Jahresstatistik
+        ist das die richtige Auflösung, und die Herkunft steht im Bericht.
+        """
+        if end <= start:
+            return [], 1.0
+        if (end - start) <= timedelta(days=self.HEAT_MINUTE_DAYS):
+            return await self._heat_samples(start, end), 1.0
+        if self.heat_store is None:
+            return [], 60.0
+        read, _write = self.heat_store
+        rows = await read(start, end)
+        return samples_from_hours(rows), 60.0
+
+    async def _heat_samples(self, start: datetime, end: datetime) -> list[HeatSample]:
+        """Minutenzeilen in Proben der Wärmebilanz übersetzen.
+
+        **Der Aufstellraum des Puffers ist nicht gemessen.** Genommen wird der Raumfühler des Ofens;
+        steht der Puffer woanders, ist das eine Näherung und keine Messung. Fehlt er, gilt die
+        Wunschtemperatur des Hauses. Beides steht als Quelle im Bericht, damit niemand den
+        Verlustterm für eine Messung hält.
+        """
+        if end <= start or (end - start) > timedelta(days=self.HEAT_MINUTE_DAYS):
+            return []
+        rows = await self.heat_rows(start, end)
+        out: list[HeatSample] = []
+        for r in rows:
+            ts_raw = r.get("ts")
+            if not isinstance(ts_raw, str):
+                continue
+            temps = tuple(
+                _val(r.get(k))
+                for k in (
+                    "buffer_temp_top_c",
+                    "buffer_temp_mid_top_c",
+                    "buffer_temp_mid_bottom_c",
+                    "buffer_temp_bottom_c",
+                )
+            )
+            running = _val(r.get("stove_running"))
+            out.append(
+                HeatSample(
+                    at=datetime.fromisoformat(ts_raw.replace("Z", "+00:00")),
+                    heat_pump_kw=_val(r.get("heat_pump_power_kw")),
+                    outdoor_c=_val(r.get("outdoor_temp_c")),
+                    buffer_c=(
+                        tuple(t for t in temps if t is not None)
+                        if all(t is not None for t in temps)
+                        else None
+                    ),
+                    room_c=_val(r.get("stove_ambient_temp_c")),
+                    stove_running=None if running is None else running >= 0.5,
+                    stove_level=_val(r.get("stove_power_level")),
+                )
+            )
+        return out
+
+    def _heat_params(self) -> HeatParamsOut:
+        stove = self.hems.stove
+        buffer = self.hems.buffer
+        heat = self.hems.heat_demand
+        return HeatParamsOut(
+            cop_curve=list(heat.cop_curve),
+            cop_reference_c=buffer.target_temperature_c,
+            stove_nominal_heat_kw=stove.nominal_heat_kw,
+            stove_water_heat_kw=stove.water_heat_kw,
+            stove_min_heat_kw=stove.min_heat_kw,
+            stove_min_water_heat_kw=stove.min_water_heat_kw,
+            stove_combustion_efficiency=stove.combustion_efficiency,
+            pellet_kwh_per_kg=stove.pellet_kwh_per_kg,
+            pellet_price_eur_per_t=stove.pellet_price_eur_per_t,
+            buffer_volume_liters=buffer.volume_liters,
+            buffer_loss_kw_per_k=buffer.loss_kw_per_k,
+            room_source_de=(f"Raumfühler des Ofens, ersatzweise {heat.indoor_target_c:g} °C"),
+        )
+
     async def _stove(self, start: datetime, end: datetime) -> StoveOut:
         """Kennzahlen des Pelletofens aus der Minutenreihe des Zeitraums.
 
@@ -1038,7 +1286,7 @@ class EnergyAccounting:
             return StoveOut(
                 note_de="Für Zeiträume über einen Monat wird der Ofen nicht ausgewertet."
             )
-        rows = await self.minute_rows(start, end)
+        rows = await self.heat_rows(start, end)
         samples = [
             StoveSample(
                 running=bool(r["stove_running"]) if _num(r.get("stove_running")) else None,

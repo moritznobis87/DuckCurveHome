@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -61,6 +61,7 @@ export const api = {
   forecastEvaluation: () => request<ForecastEvaluation>("/forecast/evaluation"),
   energySummary: (period: Period, anchor: string) => request<EnergySummary>(`/energy/summary?period=${period}&anchor=${anchor}`),
   energyHeat: (period: Period, anchor: string) => request<HeatReport>(`/energy/heat?period=${period}&anchor=${anchor}`),
+  heatBalance: (period: Period, anchor: string) => request<HeatBalance>(`/energy/waermebilanz?period=${period}&anchor=${anchor}`),
   energyEv: (period: Period, anchor: string) => request<EvReport>(`/energy/ev?period=${period}&anchor=${anchor}`),
   energyPv: (period: Period, anchor: string) => request<PvTaxReport>(`/energy/pv?period=${period}&anchor=${anchor}`),
   energyYearMap: (year: number) => request<YearMap>(`/energy/year-map?year=${year}`),

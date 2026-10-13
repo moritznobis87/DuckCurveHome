@@ -20,7 +20,7 @@ from hems_core.domain import (
     SystemMode,
 )
 from hems_core.forecasting import CorrectorState, ForecastScore
-from hems_core.thermal import CyclingStats
+from hems_core.thermal import CyclingStats, HeatTotals
 
 
 class PriceWindowOut(BaseModel):
@@ -576,3 +576,71 @@ class DoorLogOut(BaseModel):
     entries: list[DoorEntryOut]
     days: int
     note_de: str
+
+
+class HeatBalancePointOut(BaseModel):
+    """Ein Punkt der Wärmebilanz im Zeitverlauf, alle Leistungen thermisch in kW."""
+
+    ts: datetime
+    heat_pump_kw: float = 0.0
+    stove_water_kw: float = 0.0
+    stove_room_kw: float = 0.0
+    draw_kw: float = 0.0
+    loss_kw: float = 0.0
+    buffer_change_kw: float = 0.0
+    buffer_kwh: float | None = None
+    cop: float | None = None
+
+
+class HeatBucketOut(BaseModel):
+    """Ein Balken der Statistik: Stunde, Tag oder Monat, je nach Zeitraum."""
+
+    start: datetime
+    label_de: str
+    heat_pump_kwh: float = 0.0
+    stove_water_kwh: float = 0.0
+    stove_room_kwh: float = 0.0
+    draw_kwh: float = 0.0
+    loss_kwh: float = 0.0
+    residual_kwh: float = 0.0
+    electric_kwh: float = 0.0
+    cop_mean: float | None = None
+
+
+class HeatParamsOut(BaseModel):
+    """Die Annahmen, mit denen gerechnet wurde.
+
+    Sie stehen im Bericht, weil eine gerechnete Wärmemenge ohne ihre Annahmen keine Zahl ist,
+    sondern eine Behauptung. Wer sie ändert, ändert jede Zahl auf dieser Seite, auch die von letztem
+    Jahr - gespeichert werden Eingänge, nicht Ergebnisse.
+    """
+
+    cop_curve: list[tuple[float, float]] = []
+    cop_reference_c: float = 0.0  # Senkentemperatur, bei der die Kennlinie gilt
+    stove_nominal_heat_kw: float = 0.0
+    stove_water_heat_kw: float = 0.0
+    stove_min_heat_kw: float = 0.0
+    stove_min_water_heat_kw: float = 0.0
+    stove_combustion_efficiency: float = 0.0
+    pellet_kwh_per_kg: float = 0.0
+    pellet_price_eur_per_t: float = 0.0
+    buffer_volume_liters: float = 0.0
+    buffer_loss_kw_per_k: float = 0.0
+    room_source_de: str = ""
+
+
+class HeatBalanceOut(BaseModel):
+    """Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging."""
+
+    period: Period
+    start: datetime
+    end: datetime
+    resolution_de: str  # woraus gerechnet wurde: Minuten oder Stunden
+    totals: HeatTotals
+    previous: HeatTotals | None = None
+    series: list[HeatBalancePointOut] = []
+    buckets: list[HeatBucketOut] = []
+    forecast_heat_kwh: float | None = None  # erwarteter Wärmebedarf des Folgetags
+    forecast_note_de: str = ""
+    params: HeatParamsOut
+    note_de: str = ""
