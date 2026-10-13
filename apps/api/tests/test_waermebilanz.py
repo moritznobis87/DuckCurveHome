@@ -219,3 +219,23 @@ def test_die_vorschau_gibt_es_nur_fuer_heute(client: TestClient) -> None:
     assert alt["forecast_note_de"] == ""
     woche = client.get("/api/v1/energy/waermebilanz?period=week", headers=AUTH).json()
     assert woche["forecast_heat_kwh"] is None
+
+
+async def test_der_laufende_betrieb_fuellt_die_waermestunden(tmp_path: Path) -> None:
+    """Sonst entstuenden sie nur beim Nachrechnen, und die Jahresstatistik bliebe leer."""
+    from dch_api.application.energy_accounting import HEAT_KEYS, EnergyAccounting
+    from hems_core.domain import HemsConfig
+    from hems_core.simulation import BERLIN
+
+    repos = await _seed(tmp_path)
+    acc = EnergyAccounting(
+        HemsConfig(),
+        BERLIN,
+        lambda s, e: repos.minute_series(s, e, HEAT_KEYS),
+        store=(repos.energy_hours, repos.upsert_energy_hours, repos.last_energy_hour),
+        heat_rows=lambda s, e: repos.minute_series(s, e, HEAT_KEYS),
+        heat_store=(repos.heat_hours, repos.upsert_heat_hours),
+    )
+    await acc.refresh(START + timedelta(hours=2))
+    stunden = await repos.heat_hours(START, START + timedelta(hours=3))
+    assert len(stunden) >= 2

@@ -633,6 +633,9 @@ class EnergyAccounting:
         if hours:
             merged = await self._merge_with_stored(read, hours, begin, current + timedelta(hours=1))
             await write([h for h, _ in merged], {h.hour_start: t for h, t in merged})
+        # Die Wärmestunden im selben Takt. Ohne diese Zeile fuellten sie sich nur beim Nachrechnen
+        # nach einem Backfill, und die Jahresstatistik bliebe im laufenden Betrieb leer.
+        await self.refresh_heat_hours(begin, current + timedelta(hours=1))
         self._last_refresh_hour = current
         return len(hours)
 
