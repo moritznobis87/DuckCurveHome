@@ -130,23 +130,28 @@ def test_die_waermepumpe_liefert_strom_mal_arbeitszahl() -> None:
 
 
 def test_ein_ladender_speicher_zaehlt_als_ladung_und_nicht_als_entnahme() -> None:
-    """Steigende Temperaturen heissen: die Wärme ist im Speicher geblieben."""
+    """Steigende Temperaturen heissen: die Wärme ist im Speicher geblieben, nicht im Heizkreis.
+
+    0,1 K je Minute auf 1000 Liter sind rund 7 kW - ein Wert, den eine Wärmepumpe wirklich liefert.
+    Mit 1 K je Minute, wie dieser Test ihn einmal hatte, wären es 70 kW gewesen, und die gibt es in
+    diesem Haus nicht; die Bilanz sagt dazu inzwischen „unbekannt" statt einer Zahl.
+    """
     samples = [
         HeatSample(
             at=NOW + timedelta(minutes=i),
             heat_pump_kw=3.0,
             outdoor_c=5.0,
-            buffer_c=(40.0 + i, 40.0 + i, 40.0 + i, 40.0 + i),
+            buffer_c=((40.0 + 0.1 * i,) * 4),
             room_c=21.0,
         )
-        for i in range(6)
+        for i in range(20)
     ]
     punkte = heat_series(samples, stove=STOVE, heat=HEAT, buffer=BUFFER)
-    assert punkte[-1].buffer_change_kw > 0
-    # 1 K je Minute auf 1000 Liter sind rund 70 kW - mehr, als die Pumpe liefert. Der Rest ist dann
-    # negativ, und genau das soll er sein: die Bilanz sagt, dass hier etwas nicht stimmt.
-    assert punkte[-1].draw_kw == 0.0
-    assert punkte[-1].residual_kw < 0
+    mitte = punkte[10]
+    assert not mitte.unknown
+    assert 5.0 < mitte.buffer_change_kw < 9.0
+    # Was die Pumpe liefert, steckt zum grössten Teil im Speicher: die Entnahme bleibt klein.
+    assert mitte.draw_kw < mitte.heat_pump_kw
 
 
 def test_ein_entladender_speicher_ergibt_eine_entnahme() -> None:
@@ -174,15 +179,17 @@ def test_was_nicht_aufgeht_steht_als_rest_da() -> None:
     samples = [
         HeatSample(
             at=NOW + timedelta(minutes=i),
-            buffer_c=(45.0 + 0.5 * i,) * 4,
+            buffer_c=(45.0 + 0.1 * i,) * 4,
             room_c=21.0,
             outdoor_c=5.0,
         )
-        for i in range(6)
+        for i in range(20)
     ]
     punkte = heat_series(samples, stove=STOVE, heat=HEAT, buffer=BUFFER)
-    assert punkte[-1].draw_kw == 0.0
-    assert punkte[-1].residual_kw < -1.0
+    mitte = punkte[10]
+    assert not mitte.unknown
+    assert mitte.draw_kw == 0.0
+    assert mitte.residual_kw < -1.0
 
 
 def test_eine_luecke_wird_nicht_ueberbrueckt() -> None:
@@ -281,3 +288,80 @@ def test_eine_stunde_ohne_ofen_meldet_null_minuten() -> None:
     stunden = hourly_inputs(_reihe(30), BUFFER)
     assert stunden[0].stove_minutes == 0
     assert stunden[0].stove_level_mean is None
+
+
+# ------------------------------------------------------------------ Speicherleistung
+
+
+def _stufe(n: int, sprung_bei: int, hoehe: float) -> list[HeatSample]:
+    """Konstante Temperaturen mit einem einzigen Sprung - der Fall, der 50 kW erzeugt hat."""
+    return [
+        HeatSample(
+            at=NOW + timedelta(minutes=i),
+            buffer_c=((50.0 + (hoehe if i >= sprung_bei else 0.0)),) * 4,
+            room_c=21.0,
+            outdoor_c=5.0,
+        )
+        for i in range(n)
+    ]
+
+
+def test_ein_fuehlersprung_wird_nicht_zu_fuenfzig_kilowatt() -> None:
+    """Der gemeldete Fehler: einmal in fünf Minuten eine Entnahme von 50 kW.
+
+    1000 Liter sind 1,16 kWh je Kelvin. Über eine Minute abgeleitet sind 0,72 K fast 50 kW - durch
+    ein Rohr dieses Hauses passen keine 50 kW. Über ein Fenster gebildet bleibt davon der Betrag,
+    der wirklich geflossen sein kann.
+    """
+    punkte = heat_series(_stufe(30, 15, 0.72), stove=STOVE, heat=HEAT, buffer=BUFFER)
+    spitze = max(abs(p.buffer_change_kw) for p in punkte)
+    assert spitze < 10.0, spitze
+    # Und die Entnahme erbt die Spitze nicht.
+    assert max(p.draw_kw for p in punkte) < 10.0
+
+
+def test_das_fenster_verliert_die_energie_nicht() -> None:
+    """Geglättet werden darf nur die Verteilung, nicht die Menge."""
+    from hems_core.thermal.heat_balance import buffer_power_kw
+
+    samples = _stufe(40, 20, 1.0)
+    leistungen = [p for p in buffer_power_kw(samples, BUFFER) if p is not None]
+    # Summe der Leistungen mal Zeitschritt gegen die Differenz der Bestände.
+    integral = sum(leistungen) / 60.0
+    echt = stored_energy_kwh((51.0,) * 4, BUFFER) - stored_energy_kwh((50.0,) * 4, BUFFER)
+    assert abs(integral - echt) < 0.25 * echt, (integral, echt)
+
+
+def test_ohne_speicherleistung_wird_keine_entnahme_behauptet() -> None:
+    """Sonst sähe eine Datenlücke aus wie ein Verbrauch in voller Höhe der Erzeugung."""
+    samples = [
+        HeatSample(at=NOW + timedelta(minutes=i), heat_pump_kw=3.0, outdoor_c=5.0, room_c=21.0)
+        for i in range(10)
+    ]
+    punkte = heat_series(samples, stove=STOVE, heat=HEAT, buffer=BUFFER)
+    assert all(p.draw_kw == 0.0 for p in punkte)
+    assert all(p.residual_kw == 0.0 for p in punkte)
+    assert all(p.heat_pump_kw > 0 for p in punkte)  # die Erzeugung steht trotzdem da
+
+
+def test_ein_unmoeglicher_betrag_sagt_nichts_statt_etwas_falsches() -> None:
+    """Was durch kein Rohr des Hauses passt, ist ein Fühlersprung und kein Wärmestrom.
+
+    Ihn auf die Grenze zu beschneiden wäre die schlechtere Antwort: dann stünde dort eine Entnahme
+    in Höhe der Grenze, also eine erfundene Zahl an der Stelle einer unbekannten.
+    """
+    punkte = heat_series(_stufe(6, 3, -10.0), stove=STOVE, heat=HEAT, buffer=BUFFER)
+    betroffen = [p for p in punkte if p.unknown]
+    assert betroffen, "ein Sprung von 10 K muss auffallen"
+    assert all(p.draw_kw == 0.0 and p.residual_kw == 0.0 for p in betroffen)
+
+
+def test_die_summen_zaehlen_die_minuten_ohne_aussage() -> None:
+    """Schweigen über eine Lücke sieht aus wie eine Null, und eine Null sieht aus wie eine Messung."""
+    samples = [
+        HeatSample(at=NOW + timedelta(minutes=i), heat_pump_kw=3.0, outdoor_c=5.0, room_c=21.0)
+        for i in range(30)
+    ]
+    summen = heat_totals(heat_series(samples, stove=STOVE, heat=HEAT, buffer=BUFFER), samples)
+    assert summen.unknown_minutes == 30
+    assert "nichts sagen" in summen.note_de

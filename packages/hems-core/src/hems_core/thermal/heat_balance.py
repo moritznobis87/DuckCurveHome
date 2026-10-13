@@ -40,7 +40,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from hems_core.accounting.heat import cop_at
-from hems_core.domain.config import BufferConfig, HeatDemandConfig, StoveConfig
+from hems_core.domain.config import BufferConfig, HeatDemandConfig, HeatPumpConfig, StoveConfig
 
 KWH_PER_LITER_KELVIN = 4.186 / 3600.0  # Wasser: 4,186 kJ/(kg·K) → kWh/(l·K)
 KELVIN = 273.15
@@ -49,6 +49,22 @@ KELVIN = 273.15
 MAX_GAP_MIN = 15.0
 # Unter diesem Hub ist die Carnot-Zahl keine Auskunft mehr, sondern eine Division durch fast null.
 MIN_LIFT_K = 3.0
+# Über dieses Fenster wird die Leistung des Speichers gebildet, statt Minute gegen Minute.
+#
+# **Warum nicht je Minute.** 1000 Liter sind 1,16 kWh je Kelvin; über eine Minute abgeleitet
+# entspricht ein Kelvin fast 70 kW. Ein Fühler, der um 0,1 K zappelt, erzeugt damit 1,7 kW aus dem
+# Nichts, und ein Sprung von 0,7 K - wie er entsteht, wenn eine Temperaturfront an einem Fühler
+# vorbeiläuft - erzeugt 50 kW. Durch ein Rohr dieses Hauses passen keine 50 kW.
+#
+# Die zentrierte Differenz über zehn Minuten ist genau die mittlere Leistung dieser zehn Minuten und
+# zugleich ein Tiefpass. Sie verschmiert kurze Zapfungen, und das ist der Preis; die Alternative war
+# eine Kurve, in der die Zapfung unter dem Rauschen gar nicht zu finden war.
+BUFFER_WINDOW_MIN = 10.0
+# Was physikalisch in den Speicher hinein oder aus ihm heraus kann. Hinein begrenzen ihn die
+# Erzeuger, und mehr als sie liefern kann niemand einspeisen; heraus kann nicht mehr, als die
+# Kreise desselben Hauses tragen. Was darüber steht, ist kein Wärmestrom, sondern ein Fühlersprung,
+# und es gehört deshalb in den Rest und nicht in die Entnahme.
+BUFFER_LIMIT_MARGIN = 1.2
 
 
 @dataclass(frozen=True)
@@ -76,6 +92,9 @@ class HeatPoint(BaseModel):
     stove_water_kw: float = 0.0
     stove_room_kw: float = 0.0
     buffer_kwh: float | None = None  # Inhalt über der Bezugstemperatur, kein Summand
+    # True heißt: über die Entnahme dieser Minute lässt sich nichts sagen, weil die
+    # Speicherleistung fehlt oder jenseits des physikalisch Möglichen liegt.
+    unknown: bool = False
     buffer_change_kw: float = 0.0  # positiv: der Speicher lädt
     loss_kw: float = 0.0  # an den Aufstellraum
     draw_kw: float = 0.0  # Heizkreis und Warmwasser, als Rest der Bilanz
@@ -99,6 +118,7 @@ class HeatTotals(BaseModel):
     electric_kwh: float = 0.0  # Strom der Wärmepumpe, Grundlage der Arbeitszahl
     cop_mean: float | None = None  # Arbeitszahl des Zeitraums: Wärme durch Strom
     stove_minutes: int = 0
+    unknown_minutes: int = 0  # ohne Aussage über die Entnahme
     note_de: str = ""
 
 
@@ -181,32 +201,91 @@ def stove_output_kw(level: float | None, cfg: StoveConfig) -> tuple[float, float
     return round(water, 3), round(max(0.0, total - water), 3)
 
 
+def buffer_power_kw(
+    samples: Sequence[HeatSample], buffer: BufferConfig, window_min: float = BUFFER_WINDOW_MIN
+) -> list[float | None]:
+    """Die Leistung des Speichers je Probe, als zentrierte Differenz über ein Zeitfenster.
+
+    `None` heißt: für diese Minute lässt sie sich nicht bilden, weil die Temperaturen fehlen oder
+    eine Lücke dazwischenliegt. Das ist etwas anderes als null, und der Unterschied darf nicht
+    verlorengehen: eine fehlende Speicheränderung als null zu buchen hieße zu behaupten, alles
+    Erzeugte sei in diesem Augenblick entnommen worden.
+
+    Gesucht wird je Probe die nächste Messung mindestens ein halbes Fenster davor und dahinter; die
+    Differenz zwischen ihnen, geteilt durch ihren Abstand, ist die mittlere Leistung über diese
+    Spanne. Am Rand der Reihe bleibt nur die einseitige Differenz.
+    """
+    zeiten = [s.at for s in samples]
+    inhalte: list[float | None] = [
+        stored_energy_kwh(list(s.buffer_c), buffer) if s.buffer_c else None for s in samples
+    ]
+    gemessen = [i for i, e in enumerate(inhalte) if e is not None]
+    out: list[float | None] = [None] * len(samples)
+    if len(gemessen) < 2:
+        return out
+    halb = window_min / 2.0
+    for i in range(len(samples)):
+        vor = _letzte_vor(gemessen, zeiten, i, halb)
+        nach = _erste_nach(gemessen, zeiten, i, halb)
+        if vor is None or nach is None or vor == nach:
+            continue
+        minuten = (zeiten[nach] - zeiten[vor]).total_seconds() / 60.0
+        # Eine Lücke überbrückt die Rechnung nicht: zwei Temperaturen im Abstand einer Stunde sind
+        # keine Leistung, sondern zwei Temperaturen.
+        if minuten <= 0 or minuten > MAX_GAP_MIN + window_min:
+            continue
+        e_vor, e_nach = inhalte[vor], inhalte[nach]
+        if e_vor is None or e_nach is None:
+            continue
+        out[i] = (e_nach - e_vor) / (minuten / 60.0)
+    return out
+
+
+def _letzte_vor(gemessen: list[int], zeiten: list[datetime], i: int, halb: float) -> int | None:
+    """Die letzte Messung, die mindestens `halb` Minuten vor Probe `i` liegt - sonst die letzte davor."""
+    kandidat: int | None = None
+    for j in gemessen:
+        if j > i:
+            break
+        abstand = (zeiten[i] - zeiten[j]).total_seconds() / 60.0
+        if abstand >= halb or kandidat is None:
+            kandidat = j
+    return kandidat
+
+
+def _erste_nach(gemessen: list[int], zeiten: list[datetime], i: int, halb: float) -> int | None:
+    """Die erste Messung, die mindestens `halb` Minuten nach Probe `i` liegt - sonst die letzte."""
+    letzte: int | None = None
+    for j in gemessen:
+        if j < i:
+            continue
+        letzte = j
+        if (zeiten[j] - zeiten[i]).total_seconds() / 60.0 >= halb:
+            return j
+    return letzte
+
+
 def heat_series(
     samples: Sequence[HeatSample],
     *,
     stove: StoveConfig,
     heat: HeatDemandConfig,
     buffer: BufferConfig,
+    heat_pump: HeatPumpConfig | None = None,
 ) -> list[HeatPoint]:
     """Die Wärmebilanz Minute für Minute.
 
-    Die Reihe muss zeitlich sortiert sein. Lücken über `MAX_GAP_MIN` beenden die Ableitung des
-    Speicherinhalts, statt sie zu überbrücken.
+    Die Reihe muss zeitlich sortiert sein. Die Leistung des Speichers entsteht über ein Zeitfenster
+    und nicht aus zwei benachbarten Minuten; warum, steht bei `BUFFER_WINDOW_MIN`.
     """
     out: list[HeatPoint] = []
-    prev_at: datetime | None = None
-    prev_energy: float | None = None
-    for s in samples:
+    hp_cfg = heat_pump or HeatPumpConfig()
+    grenze = (hp_cfg.nominal_thermal_power_kw + stove.nominal_heat_kw) * BUFFER_LIMIT_MARGIN
+    leistungen = buffer_power_kw(samples, buffer)
+    for s, change in zip(samples, leistungen, strict=True):
         temps = list(s.buffer_c) if s.buffer_c else []
         energy = stored_energy_kwh(temps, buffer) if temps else None
-        gap_h = 0.0
-        if prev_at is not None:
-            gap_min = (s.at - prev_at).total_seconds() / 60.0
-            gap_h = gap_min / 60.0 if 0 < gap_min <= MAX_GAP_MIN else 0.0
-
-        change_kw = 0.0
-        if energy is not None and prev_energy is not None and gap_h > 0:
-            change_kw = (energy - prev_energy) / gap_h
+        change_kw = change if change is not None else 0.0
 
         sink = temps[0] if temps else None
         cop: float | None = None
@@ -225,9 +304,21 @@ def heat_series(
             loss_kw = max(0.0, buffer.loss_kw_per_k * (mean_temperature_c(temps, buffer) - room))
 
         # Die Bilanz: was hineingeht, geht in den Speicher, an den Raum oder in die Kreise.
-        balance = hp_kw + water_kw - change_kw - loss_kw
-        draw_kw = max(0.0, balance)
-        residual_kw = min(0.0, balance)
+        #
+        # Ohne Speicherleistung wird nichts behauptet. Sie als null zu lesen hiesse, alles Erzeugte
+        # sei in diesem Augenblick entnommen worden - der haeufigste Weg, aus fehlenden Daten eine
+        # Zahl zu machen, die aussieht wie eine Messung.
+        # Ein Betrag jenseits dessen, was Erzeuger und Kreise tragen, ist ein Fuehlersprung und kein
+        # Waermestrom. Ihn zu beschneiden waere die schlechtere Antwort: dann staende dort eine
+        # Entnahme in Hoehe der Grenze, also eine erfundene Zahl an der Stelle einer unbekannten.
+        # Fuer diese Minute laesst sich ueber die Entnahme nichts sagen, und genau das steht da.
+        unbekannt = change is None or abs(change_kw) > grenze
+        if unbekannt:
+            draw_kw = residual_kw = 0.0
+        else:
+            balance = hp_kw + water_kw - change_kw - loss_kw
+            draw_kw = max(0.0, balance)
+            residual_kw = min(0.0, balance)
 
         out.append(
             HeatPoint(
@@ -241,13 +332,9 @@ def heat_series(
                 loss_kw=round(loss_kw, 3),
                 draw_kw=round(draw_kw, 3),
                 residual_kw=round(residual_kw, 3),
+                unknown=unbekannt,
             )
         )
-        if energy is not None:
-            prev_energy = energy
-            prev_at = s.at
-        elif gap_h == 0.0:
-            prev_at = s.at
     return out
 
 
@@ -271,6 +358,7 @@ def heat_totals(
     change = (inhalt[-1] - inhalt[0]) if len(inhalt) >= 2 else 0.0
     cop = round(hp / electric, 2) if electric > 0.05 else None
     stove_minutes = sum(1 for p in points if p.stove_water_kw > 0 or p.stove_room_kw > 0)
+    ohne = sum(1 for p in points if p.unknown)
     return HeatTotals(
         minutes=len(points),
         heat_pump_kwh=round(hp, 2),
@@ -284,7 +372,22 @@ def heat_totals(
         electric_kwh=round(electric, 2),
         cop_mean=cop,
         stove_minutes=stove_minutes,
-        note_de=_note(hp, water + room, residual, draw),
+        unknown_minutes=ohne,
+        note_de=_note(hp, water + room, residual, draw) + _ohne_aussage(ohne, len(points)),
+    )
+
+
+def _ohne_aussage(ohne: int, gesamt: int) -> str:
+    """Ein Satz, wenn nennenswert viele Minuten ohne Aussage über die Entnahme blieben.
+
+    Schweigen über eine Lücke sieht aus wie eine Null, und eine Null sieht aus wie eine Messung.
+    Unter einem Zwanzigstel bleibt es still: ein paar Minuten am Rand hat jede Reihe.
+    """
+    if gesamt <= 0 or ohne * 20 < gesamt:
+        return ""
+    return (
+        f" Für {ohne} von {gesamt} Minuten ließ sich über die Entnahme nichts sagen: dort fehlte "
+        "die Speichertemperatur oder sie sprang weiter, als ein Wärmestrom es kann."
     )
 
 

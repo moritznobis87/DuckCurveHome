@@ -1765,11 +1765,8 @@ export interface components {
              * @default 0
              */
             stove_room_kw: number;
-            /**
-             * Draw Kw
-             * @default 0
-             */
-            draw_kw: number;
+            /** Draw Kw */
+            draw_kw?: number | null;
             /**
              * Loss Kw
              * @default 0
@@ -2233,6 +2230,11 @@ export interface components {
              * @default 0
              */
             stove_minutes: number;
+            /**
+             * Unknown Minutes
+             * @default 0
+             */
+            unknown_minutes: number;
             /**
              * Note De
              * @default

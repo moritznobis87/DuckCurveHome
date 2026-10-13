@@ -3888,9 +3888,15 @@
             "default": 0.0
           },
           "draw_kw": {
-            "type": "number",
-            "title": "Draw Kw",
-            "default": 0.0
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draw Kw"
           },
           "loss_kw": {
             "type": "number",
@@ -4729,6 +4735,11 @@
           "stove_minutes": {
             "type": "integer",
             "title": "Stove Minutes",
+            "default": 0
+          },
+          "unknown_minutes": {
+            "type": "integer",
+            "title": "Unknown Minutes",
             "default": 0
           },
           "note_de": {
