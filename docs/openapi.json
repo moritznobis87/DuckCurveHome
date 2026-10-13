@@ -3818,6 +3818,16 @@
             "title": "Buckets",
             "default": []
           },
+          "cost": {
+            "$ref": "#/components/schemas/HeatCostOut",
+            "default": {
+              "heat_pump_paid_eur": 0.0,
+              "heat_pump_opportunity_eur": 0.0,
+              "stove_kg": 0.0,
+              "stove_eur": 0.0,
+              "cheaper_de": ""
+            }
+          },
           "forecast_heat_kwh": {
             "anyOf": [
               {
@@ -4162,6 +4172,60 @@
         "type": "object",
         "title": "HeatConfigIn",
         "description": "Die Annahmen der Wärmerechnung, soweit sie von Hand zu stellen sind.\n\n**Teilmenge, kein Abbild der Konfiguration.** Hier stehen nur Werte, die ein Mensch an seiner\nAnlage kennt oder ablesen kann: was auf dem Lieferschein der Pellets steht, was im Datenblatt des\nOfens steht, wie warm der Puffer gefahren wird. Regelparameter bleiben draußen; sie gehören in\ndie Konfigurationsdatei, wo eine falsche Zahl beim Start auffällt und nicht nachts um drei.\n\nJedes Feld ist freiwillig: geschickt wird, was geändert wurde, alles andere bleibt stehen."
+      },
+      "HeatCostOut": {
+        "properties": {
+          "heat_pump_paid_eur": {
+            "type": "number",
+            "title": "Heat Pump Paid Eur",
+            "default": 0.0
+          },
+          "heat_pump_opportunity_eur": {
+            "type": "number",
+            "title": "Heat Pump Opportunity Eur",
+            "default": 0.0
+          },
+          "heat_pump_ct_per_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heat Pump Ct Per Kwh"
+          },
+          "stove_kg": {
+            "type": "number",
+            "title": "Stove Kg",
+            "default": 0.0
+          },
+          "stove_eur": {
+            "type": "number",
+            "title": "Stove Eur",
+            "default": 0.0
+          },
+          "stove_ct_per_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stove Ct Per Kwh"
+          },
+          "cheaper_de": {
+            "type": "string",
+            "title": "Cheaper De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "HeatCostOut",
+        "description": "Was die Wärme des Zeitraums gekostet hat, je Erzeuger und je Kilowattstunde.\n\n**Zwei verschiedene Arten von Kosten**, und sie stehen deshalb getrennt. Der Strom der\nWärmepumpe ist bezahlt worden, als er floss; zu ihm gehört die entgangene Einspeisevergütung für\nPV-Strom, der stattdessen ins Haus ging. Die Pellets sind bezahlt worden, als sie geliefert\nwurden - hier steht, was die in diesem Zeitraum **verbrannte** Menge zum hinterlegten Preis\nwert war. Das ist kein Kontoauszug, sondern der Vergleichsmaßstab zwischen zwei Erzeugern."
       },
       "HeatDemandConfig": {
         "properties": {
@@ -6775,6 +6839,16 @@
               }
             ],
             "title": "Ignitions"
+          },
+          "pellet_kg": {
+            "type": "number",
+            "title": "Pellet Kg",
+            "default": 0.0
+          },
+          "pellet_eur": {
+            "type": "number",
+            "title": "Pellet Eur",
+            "default": 0.0
           },
           "note_de": {
             "type": "string",

@@ -88,12 +88,13 @@ export function HeatReport() {
   return (
     <ReportShell title="Wärme" kicker="Wärmepumpe · Pelletofen · Pufferspeicher · Wärmelastprognose" period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
       {error ? <ErrorBanner message={error} /> : null}
-      <KpiGrid cols={6}>
+      <KpiGrid cols={7}>
         <Stat label="Strom Wärmepumpe" value={de1(t?.heat_pump_kwh)} unit="kWh" hint={t ? `${pct(pvShare)} Sonnenstrom` : undefined} />
         <Stat label="Bezahlt" value={eur(t?.heat_pump_cost_eur)} tone="ember" hint={t ? `${de1(t.heat_pump_grid_kwh)} kWh Netz${paidCt != null ? ` · Ø ${de1(paidCt, 1)} ct` : ""}` : undefined} />
         <Stat label="Entgangene Vergütung" value={eur(t?.heat_pump_opportunity_eur)} tone="muted" hint="nicht eingespeister PV-Strom" />
         <Stat label="Wärme geliefert" value={de1(data?.thermal_kwh_est, data && data.thermal_kwh_est >= 100 ? 0 : 1)} unit="kWh" tone="amber" hint={data ? `geschätzt · COP ${de1(data.cop_est, 2)}` : "geschätzt"} />
         <Stat label="Wärmepreis" value={thermalCt != null ? de1(thermalCt, 1) : "-"} unit="ct/kWh" hint="je kWh Wärme, geschätzt" />
+        <Stat label="Pellets verbrannt" value={st?.pellet_eur ? eur(st.pellet_eur) : "-"} tone="ember" hint={st?.pellet_kg ? `${de1(st.pellet_kg, 1)} kg · geschätzt aus den Leistungsstufen` : "kein Ofenbetrieb im Zeitraum"} />
         <Stat label="Prognose 24 h" value={de1(data?.forecast_electric_kwh_24h)} unit="kWh" tone="mist" hint={data ? `Strom für ${de1(data.forecast_thermal_kwh_24h, 0)} kWh Wärme` : undefined} />
       </KpiGrid>
       <div className="report-row" style={{ "--cols": "7fr 5fr" } as React.CSSProperties}>
@@ -116,6 +117,8 @@ export function HeatReport() {
           title="Wärmepumpe im Überblick"
           rows={[
             { label: "Bezahlt", value: (p) => val(p, (s) => eur(s.summary.totals.heat_pump_cost_eur)), tone: "ember" },
+            { label: "Pellets verbrannt", value: (p) => val(p, (s) => (s.stove.pellet_kg ? `${de1(s.stove.pellet_kg, 1)} kg` : "-")) },
+            { label: "Pellets im Wert von", value: (p) => val(p, (s) => (s.stove.pellet_eur ? eur(s.stove.pellet_eur) : "-")), tone: "ember" },
             { label: "Strom · kWh", value: (p) => val(p, (s) => de1(s.summary.totals.heat_pump_kwh, s.summary.totals.heat_pump_kwh >= 100 ? 0 : 1)) },
             { label: "Wärme · kWh (geschätzt)", value: (p) => val(p, (s) => de1(s.thermal_kwh_est, 0)), tone: "amber" },
             { label: "Sonnenanteil", value: (p) => val(p, (s) => pct(s.summary.totals.heat_pump_kwh > 0 ? (s.summary.totals.heat_pump_pv_kwh + s.summary.totals.heat_pump_battery_kwh) / s.summary.totals.heat_pump_kwh : null)) },
@@ -191,7 +194,8 @@ export function HeatReport() {
           <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
             <Fact k="davon mit Feuer" v={st?.available ? hhmm(st.burning_minutes) : "-"} />
             <Fact k="längste Phase" v={st?.longest_run_min ? `${st.longest_run_min} min` : "-"} />
-            <Fact k="Brennstoff" v={st?.auger_revolutions ? `${de1(st.auger_revolutions, 0)} U` : "-"} />
+            <Fact k="Brennstoff" v={st?.pellet_kg ? `${de1(st.pellet_kg, 1)} kg` : "-"} />
+            <Fact k="zum Preis von" v={st?.pellet_eur ? eur(st.pellet_eur) : "-"} />
             <Fact k="Spreizung" v={st?.spread_k != null ? `${de1(st.spread_k, 1)} K` : "-"} />
             <Fact k="Rauchgas max." v={st?.fume_temp_max_c != null ? `${de1(st.fume_temp_max_c, 0)} °C` : "-"} />
             <Fact k="Warmwasser" v={st?.available ? hhmm(st.dhw_minutes) : "-"} />

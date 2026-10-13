@@ -467,6 +467,11 @@ class StoveOut(BaseModel):
     minutes_by_level: dict[str, int] = {}
     operating_hours: float | None = None  # Zählerstand des Geräts, monoton
     ignitions: int | None = None
+    # Verbrauch und Kosten: geschätzt aus den Minuten je Leistungsstufe und dem Durchsatz je Stufe.
+    # Der Ofen meldet keine Kilogramm, und der Faktor zwischen Schneckendrehzahl und Gewicht ist
+    # ungemessen; bis jemand den Sack wiegt, ist das eine belastbare Schätzung und keine Messung.
+    pellet_kg: float = 0.0
+    pellet_eur: float = 0.0
     note_de: str = ""
     fuel_note_de: str = ""
 
@@ -629,6 +634,25 @@ class HeatParamsOut(BaseModel):
     room_source_de: str = ""
 
 
+class HeatCostOut(BaseModel):
+    """Was die Wärme des Zeitraums gekostet hat, je Erzeuger und je Kilowattstunde.
+
+    **Zwei verschiedene Arten von Kosten**, und sie stehen deshalb getrennt. Der Strom der
+    Wärmepumpe ist bezahlt worden, als er floss; zu ihm gehört die entgangene Einspeisevergütung für
+    PV-Strom, der stattdessen ins Haus ging. Die Pellets sind bezahlt worden, als sie geliefert
+    wurden - hier steht, was die in diesem Zeitraum **verbrannte** Menge zum hinterlegten Preis
+    wert war. Das ist kein Kontoauszug, sondern der Vergleichsmaßstab zwischen zwei Erzeugern.
+    """
+
+    heat_pump_paid_eur: float = 0.0  # Netzstrom der Wärmepumpe
+    heat_pump_opportunity_eur: float = 0.0  # nicht eingespeister PV-Strom
+    heat_pump_ct_per_kwh: float | None = None  # je Kilowattstunde Wärme
+    stove_kg: float = 0.0  # geschätzt aus den Minuten je Leistungsstufe
+    stove_eur: float = 0.0
+    stove_ct_per_kwh: float | None = None
+    cheaper_de: str = ""
+
+
 class HeatBalanceOut(BaseModel):
     """Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging."""
 
@@ -640,6 +664,7 @@ class HeatBalanceOut(BaseModel):
     previous: HeatTotals | None = None
     series: list[HeatBalancePointOut] = []
     buckets: list[HeatBucketOut] = []
+    cost: HeatCostOut = HeatCostOut()
     forecast_heat_kwh: float | None = None  # erwarteter Wärmebedarf des Folgetags
     forecast_note_de: str = ""
     params: HeatParamsOut

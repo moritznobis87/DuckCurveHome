@@ -239,3 +239,40 @@ async def test_der_laufende_betrieb_fuellt_die_waermestunden(tmp_path: Path) -> 
     await acc.refresh(START + timedelta(hours=2))
     stunden = await repos.heat_hours(START, START + timedelta(hours=3))
     assert len(stunden) >= 2
+
+
+# ------------------------------------------------------------------ Kosten
+
+
+async def test_der_ofen_bekommt_einen_preis(tmp_path: Path) -> None:
+    """Der Ofen meldet keine Kilogramm. Über Stufe und Durchsatz wird daraus eine Menge.
+
+    Zwei Stunden Volllast: rund 2,7 kg je Stunde laut Datenblatt, bei 450 €/t also gut 2,40 €.
+    """
+    from datetime import date
+
+    from dch_api.application.energy_accounting import HEAT_KEYS, EnergyAccounting
+    from hems_core.domain import HemsConfig
+    from hems_core.simulation import BERLIN
+
+    repos = await _seed(tmp_path)
+    acc = EnergyAccounting(
+        HemsConfig(),
+        BERLIN,
+        lambda s, e: repos.minute_series(s, e, HEAT_KEYS),
+        heat_rows=lambda s, e: repos.minute_series(s, e, HEAT_KEYS),
+    )
+    b = await acc.heat_balance("day", date(2026, 10, 12), START + timedelta(hours=3))
+    assert 4.0 < b.cost.stove_kg < 7.0, b.cost.stove_kg
+    assert 1.8 < b.cost.stove_eur < 3.2, b.cost.stove_eur
+    assert b.cost.stove_ct_per_kwh is not None
+    # Die Wärme ins Wasser plus angerechnete Raumwärme; der Preis je kWh muss plausibel sein.
+    assert 5.0 < b.cost.stove_ct_per_kwh < 25.0, b.cost.stove_ct_per_kwh
+    assert "ct je Kilowattstunde" in b.cost.cheaper_de
+
+
+def test_ohne_ofen_gibt_es_keine_pelletkosten(client: TestClient) -> None:
+    body = client.get(f"/api/v1/energy/waermebilanz?anchor={TAG}", headers=AUTH).json()
+    assert body["cost"]["stove_kg"] == 0.0
+    assert body["cost"]["stove_eur"] == 0.0
+    assert body["cost"]["stove_ct_per_kwh"] is None

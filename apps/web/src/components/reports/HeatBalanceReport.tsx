@@ -37,6 +37,8 @@ const BUCKET_SERIES = [
 const kwh = (n: number | null | undefined) => (n == null ? "-" : de1(n, 1));
 const feld = (d: Data | undefined, pick: (t: Data["totals"]) => number | null | undefined) =>
   !d || d.totals.minutes === 0 ? "-" : `${kwh(pick(d.totals))} kWh`;
+const euro = (n: number | null | undefined) => (n == null ? "-" : `${de1(n, 2)} €`);
+const ct = (n: number | null | undefined) => (n == null ? "-" : `${de1(n, 1)} ct`);
 
 function Param({ k, v }: { k: string; v: string }) {
   return (
@@ -67,6 +69,9 @@ export function HeatBalanceReport() {
     { label: "Strom der Wärmepumpe", value: (x) => feld(alle[x], (t) => t.electric_kwh) },
     { label: "Arbeitszahl", value: (x) => (alle[x]?.totals.cop_mean == null ? "-" : de1(alle[x]?.totals.cop_mean, 2)), tone: "mist" },
     { label: "nicht zuzuordnen", value: (x) => feld(alle[x], (t) => t.residual_kwh), tone: "ember" },
+    { label: "Strom bezahlt", value: (x) => euro(alle[x]?.cost.heat_pump_paid_eur) },
+    { label: "Pellets verbrannt", value: (x) => (alle[x] ? `${de1(alle[x]!.cost.stove_kg, 1)} kg` : "-") },
+    { label: "Pellets im Wert von", value: (x) => euro(alle[x]?.cost.stove_eur) },
   ];
 
   const vergleich =
@@ -141,6 +146,30 @@ export function HeatBalanceReport() {
         ) : (
           <Note>Für diesen Zeitraum liegen keine Werte vor.</Note>
         )}
+      </Card>
+
+      <Card style={{ padding: 16 }}>
+        <CardHead title="Was die Wärme gekostet hat" right={data?.cost.cheaper_de} />
+        <div className="mt-2 grid gap-x-8 md:grid-cols-2">
+          <div>
+            <Param k="Wärmepumpe: bezahlter Netzstrom" v={euro(data?.cost.heat_pump_paid_eur)} />
+            <Param k="Wärmepumpe: entgangene Vergütung" v={euro(data?.cost.heat_pump_opportunity_eur)} />
+            <Param k="Wärmepumpe: je kWh Wärme" v={ct(data?.cost.heat_pump_ct_per_kwh)} />
+          </div>
+          <div>
+            <Param k="Pellets: verbrannte Menge" v={data ? `${de1(data.cost.stove_kg, 1)} kg` : "-"} />
+            <Param k="Pellets: Wert zum hinterlegten Preis" v={euro(data?.cost.stove_eur)} />
+            <Param k="Ofen: je kWh Wärme" v={ct(data?.cost.stove_ct_per_kwh)} />
+          </div>
+        </div>
+        <Note>
+          Die beiden Zahlen sind nicht gleicher Art. Der Strom der Wärmepumpe ist geflossen und
+          bezahlt worden, und dazu gehört die entgangene Einspeisevergütung für PV-Strom, der statt
+          ins Netz in den Verdichter ging - ohne sie sähe jede sonnige Stunde kostenlos aus. Die
+          Pellets sind längst bezahlt, als sie geliefert wurden; hier steht, was die in diesem
+          Zeitraum verbrannte Menge zum hinterlegten Preis wert war. Die Menge ist geschätzt: der
+          Ofen meldet keine Kilogramm, sondern seine Leistungsstufe.
+        </Note>
       </Card>
 
       <PeriodStrip title="Wärme im Zeitraum" rows={rows} anchor={anchor} />

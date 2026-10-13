@@ -1716,6 +1716,16 @@ export interface components {
              * @default []
              */
             buckets: components["schemas"]["HeatBucketOut"][];
+            /**
+             * @default {
+             *       "heat_pump_paid_eur": 0,
+             *       "heat_pump_opportunity_eur": 0,
+             *       "stove_kg": 0,
+             *       "stove_eur": 0,
+             *       "cheaper_de": ""
+             *     }
+             */
+            cost: components["schemas"]["HeatCostOut"];
             /** Forecast Heat Kwh */
             forecast_heat_kwh?: number | null;
             /**
@@ -1867,6 +1877,47 @@ export interface components {
             pellet_kwh_per_kg?: number | null;
             /** Pellet Price Eur Per T */
             pellet_price_eur_per_t?: number | null;
+        };
+        /**
+         * HeatCostOut
+         * @description Was die Wärme des Zeitraums gekostet hat, je Erzeuger und je Kilowattstunde.
+         *
+         *     **Zwei verschiedene Arten von Kosten**, und sie stehen deshalb getrennt. Der Strom der
+         *     Wärmepumpe ist bezahlt worden, als er floss; zu ihm gehört die entgangene Einspeisevergütung für
+         *     PV-Strom, der stattdessen ins Haus ging. Die Pellets sind bezahlt worden, als sie geliefert
+         *     wurden - hier steht, was die in diesem Zeitraum **verbrannte** Menge zum hinterlegten Preis
+         *     wert war. Das ist kein Kontoauszug, sondern der Vergleichsmaßstab zwischen zwei Erzeugern.
+         */
+        HeatCostOut: {
+            /**
+             * Heat Pump Paid Eur
+             * @default 0
+             */
+            heat_pump_paid_eur: number;
+            /**
+             * Heat Pump Opportunity Eur
+             * @default 0
+             */
+            heat_pump_opportunity_eur: number;
+            /** Heat Pump Ct Per Kwh */
+            heat_pump_ct_per_kwh?: number | null;
+            /**
+             * Stove Kg
+             * @default 0
+             */
+            stove_kg: number;
+            /**
+             * Stove Eur
+             * @default 0
+             */
+            stove_eur: number;
+            /** Stove Ct Per Kwh */
+            stove_ct_per_kwh?: number | null;
+            /**
+             * Cheaper De
+             * @default
+             */
+            cheaper_de: string;
         };
         /**
          * HeatDemandConfig
@@ -3350,6 +3401,16 @@ export interface components {
             operating_hours?: number | null;
             /** Ignitions */
             ignitions?: number | null;
+            /**
+             * Pellet Kg
+             * @default 0
+             */
+            pellet_kg: number;
+            /**
+             * Pellet Eur
+             * @default 0
+             */
+            pellet_eur: number;
             /**
              * Note De
              * @default

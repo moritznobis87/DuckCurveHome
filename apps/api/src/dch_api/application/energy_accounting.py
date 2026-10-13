@@ -23,6 +23,7 @@ from dch_api.schemas import (
     HeatBalanceOut,
     HeatBalancePointOut,
     HeatBucketOut,
+    HeatCostOut,
     HeatParamsOut,
     HeatReportOut,
     Period,
@@ -39,6 +40,7 @@ from hems_core.accounting import (
     HourlyEnergy,
     MinuteSample,
     cop_at,
+    estimated_kg_burned,
     fill_gaps,
     heat_forecast,
     hourly_energy,
@@ -53,6 +55,7 @@ from hems_core.thermal import (
     CyclingStats,
     HeatHourInput,
     HeatSample,
+    HeatTotals,
     StoveSample,
     compressor_runs,
     cycling_stats,
@@ -60,6 +63,7 @@ from hems_core.thermal import (
     heat_series,
     heat_totals,
     hourly_inputs,
+    minutes_by_level,
     samples_from_hours,
     stove_stats,
     usable_energy_kwh,
@@ -492,6 +496,33 @@ def _balance_note(without_hp: float, stove: float, unexplained: float, known: bo
     return (
         f"{unexplained:.1f} kWh kamen in den Puffer, ohne dass Wärmepumpe oder Ofen liefen. Das ist "
         "kein Fremdwärme-Befund, sondern ein Hinweis auf Umschichtung oder Messfehler."
+    )
+
+
+def _de(x: float, digits: int = 1) -> str:
+    """Deutsche Schreibweise. Diese Saetze stehen so in der Oberflaeche."""
+    return f"{x:.{digits}f}".replace(".", ",")
+
+
+def _guenstiger(wp_ct: float | None, ofen_ct: float | None) -> str:
+    """Welcher Erzeuger die Kilowattstunde Wärme billiger geliefert hat.
+
+    Nur ein Vergleich des Zeitraums, keine Empfehlung: der Ofen heizt den Raum mit, die Wärmepumpe
+    läuft dann, wenn der Strom billig ist, und beide hatten in diesem Zeitraum nicht dieselbe
+    Aufgabe. Wer daraus eine Entscheidung ableiten will, braucht den Fahrplan und nicht diese Zeile.
+    """
+    if wp_ct is not None and ofen_ct is None:
+        return f"Nur die Wärmepumpe lief, zu {_de(wp_ct)} ct je Kilowattstunde Wärme."
+    if ofen_ct is not None and wp_ct is None:
+        return f"Nur der Ofen lief, zu {_de(ofen_ct)} ct je Kilowattstunde Wärme."
+    if wp_ct is None or ofen_ct is None:
+        return ""
+    if abs(wp_ct - ofen_ct) < 0.5:
+        return f"Beide lagen gleichauf, rund {_de(min(wp_ct, ofen_ct))} ct je Kilowattstunde Wärme."
+    gewinner = "Die Wärmepumpe" if wp_ct < ofen_ct else "Der Ofen"
+    return (
+        f"{gewinner} war günstiger: {_de(min(wp_ct, ofen_ct))} gegen "
+        f"{_de(max(wp_ct, ofen_ct))} ct je Kilowattstunde Wärme."
     )
 
 
@@ -1157,6 +1188,7 @@ class EnergyAccounting:
             if samples
             else "keine Daten im Zeitraum"
         )
+        kosten = await self._heat_cost(period, anchor, now, samples, totals, step_min)
         bedarf, fc_note = self._forecast_tomorrow(period, anchor, now, temps_48h or [])
         return HeatBalanceOut(
             period=period,
@@ -1167,10 +1199,60 @@ class EnergyAccounting:
             previous=previous,
             series=series,
             buckets=buckets,
+            cost=kosten,
             forecast_heat_kwh=bedarf,
             forecast_note_de=fc_note,
             params=self._heat_params(),
             note_de=totals.note_de,
+        )
+
+    async def _heat_cost(
+        self,
+        period: Period,
+        anchor: date,
+        now: datetime,
+        samples: list[HeatSample],
+        totals: HeatTotals,
+        step_min: float,
+    ) -> HeatCostOut:
+        """Was die Wärme gekostet hat, je Erzeuger und je Kilowattstunde.
+
+        **Die beiden Zahlen sind nicht gleicher Art, und das steht im Ergebnis.** Der Strom der
+        Wärmepumpe ist geflossen und bezahlt; dazu gehört die entgangene Einspeisevergütung für
+        PV-Strom, der statt ins Netz in den Verdichter ging - ohne sie sähe jede sonnige Stunde
+        kostenlos aus. Die Pellets dagegen sind längst bezahlt, als sie geliefert wurden; hier steht,
+        was die in diesem Zeitraum verbrannte Menge zum hinterlegten Preis wert war.
+
+        Der Verbrauch ist geschätzt: der Ofen meldet keine Kilogramm, sondern seine Leistungsstufe.
+        Über den Durchsatz je Stufe wird daraus eine Menge. Wer den Sack wiegt, bekommt den Faktor;
+        bis dahin ist es eine belastbare Schätzung und keine Messung.
+        """
+        summary = await self.summary(period, anchor, now)
+        t = summary.totals
+        stove_cfg = self.hems.stove
+        kg = estimated_kg_burned(stove_cfg, minutes_by_level(samples, step_min))
+        eur = round(kg * stove_cfg.pellet_price_eur_per_t / 1000.0, 2)
+        waerme_ofen = totals.stove_water_kwh + totals.stove_room_kwh * stove_cfg.room_heat_credit
+        wp_gesamt = t.heat_pump_cost_eur + t.heat_pump_opportunity_eur
+        return HeatCostOut(
+            heat_pump_paid_eur=round(t.heat_pump_cost_eur, 2),
+            heat_pump_opportunity_eur=round(t.heat_pump_opportunity_eur, 2),
+            heat_pump_ct_per_kwh=(
+                round(100 * wp_gesamt / totals.heat_pump_kwh, 1)
+                if totals.heat_pump_kwh > 0.05
+                else None
+            ),
+            stove_kg=kg,
+            stove_eur=eur,
+            stove_ct_per_kwh=(
+                round(100 * eur / waerme_ofen, 1) if waerme_ofen > 0.05 and eur > 0 else None
+            ),
+            cheaper_de=_guenstiger(
+                round(100 * wp_gesamt / totals.heat_pump_kwh, 1)
+                if totals.heat_pump_kwh > 0.05
+                else None,
+                round(100 * eur / waerme_ofen, 1) if waerme_ofen > 0.05 and eur > 0 else None,
+            ),
         )
 
     def _forecast_tomorrow(
@@ -1207,11 +1289,11 @@ class EnergyAccounting:
         bedarf = round(sum(p.heating_kw + p.dhw_kw for p in punkte), 1)
         if len(punkte) < 24:
             return bedarf, (
-                f"Erwarteter Wärmebedarf morgen: {bedarf:.1f} kWh, allerdings nur für "
+                f"Erwarteter Wärmebedarf morgen: {_de(bedarf)} kWh, allerdings nur für "
                 f"{len(punkte)} von 24 Stunden - so weit reicht die Wetterprognose."
             )
         return bedarf, (
-            f"Erwarteter Wärmebedarf morgen: {bedarf:.1f} kWh thermisch, aus Heizgradstunden und "
+            f"Erwarteter Wärmebedarf morgen: {_de(bedarf)} kWh thermisch, aus Heizgradstunden und "
             "Warmwasserprofil. Wer ihn liefert, entscheidet der Fahrplan."
         )
 
@@ -1357,8 +1439,11 @@ class EnergyAccounting:
         st = stove_stats(samples)
         last = next((r for r in reversed(rows) if _num(r.get("stove_operating_hours"))), None)
         ignitions = _val(last.get("stove_ignitions")) if last else None
+        kg = estimated_kg_burned(self.hems.stove, st.minutes_by_level)
         return StoveOut(
             **st.model_dump(),
+            pellet_kg=kg,
+            pellet_eur=round(kg * self.hems.stove.pellet_price_eur_per_t / 1000.0, 2),
             operating_hours=_val(last.get("stove_operating_hours")) if last else None,
             ignitions=int(ignitions) if ignitions is not None else None,
             fuel_note_de=fuel_note(st.auger_revolutions),

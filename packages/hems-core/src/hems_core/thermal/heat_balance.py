@@ -288,6 +288,11 @@ def heat_totals(
     )
 
 
+def _de(x: float, digits: int = 1) -> str:
+    """Deutsche Schreibweise. Ein Komma, kein Punkt: die Saetze stehen in der Oberflaeche."""
+    return f"{x:.{digits}f}".replace(".", ",")
+
+
 def _note(hp_kwh: float, stove_kwh: float, residual_kwh: float, draw_kwh: float) -> str:
     """Ein Satz, der sagt, was man sieht - und ob man es glauben darf."""
     total = hp_kwh + stove_kwh
@@ -301,11 +306,31 @@ def _note(hp_kwh: float, stove_kwh: float, residual_kwh: float, draw_kwh: float)
     )
     if draw_kwh > 0.05 and abs(residual_kwh) > 0.25 * draw_kwh:
         return (
-            f"{wer} Die Bilanz geht allerdings nicht auf: {abs(residual_kwh):.1f} kWh lassen sich "
+            f"{wer} Die Bilanz geht allerdings nicht auf: {_de(abs(residual_kwh))} kWh lassen sich "
             "nicht zuordnen. Das ist ein Hinweis auf einen falschen Parameter, nicht auf eine "
             "fehlende Messung."
         )
     return wer
+
+
+def minutes_by_level(samples: Sequence[HeatSample], step_min: float = 1.0) -> dict[str, int]:
+    """Wie viele Minuten der Ofen auf welcher Leistungsstufe brannte.
+
+    Die Form, die `accounting.stove_cost.estimated_kg_burned` erwartet: ohne Durchsatz je Stufe
+    gibt es keinen Verbrauch und ohne Verbrauch keine Kosten. Eine fehlende Stufe zählt als
+    Volllast, wie in `stove_output_kw`, und aus demselben Grund: der Ofen läuft praktisch immer
+    dort, und eine brennende Flamme ohne Stufe als null zu verbuchen wäre die schlechtere Annahme.
+
+    `step_min` macht die Funktion auch für Stundenwerte brauchbar; dort steht je Stunde eine Probe
+    mit der mittleren Stufe und der Zahl der Brennminuten.
+    """
+    out: dict[str, int] = {}
+    for s in samples:
+        if not s.stove_running:
+            continue
+        stufe = str(round(s.stove_level if s.stove_level is not None else 5.0))
+        out[stufe] = out.get(stufe, 0) + round(step_min)
+    return dict(sorted(out.items()))
 
 
 # ------------------------------------------------------------------ Stundenraster
