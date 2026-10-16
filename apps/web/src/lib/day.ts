@@ -18,4 +18,23 @@ export function isoToday(): string {
   }
 }
 
+/** Ein Kalendertag als ISO-Datum in der Ortszeit des Geraets. `sv-SE` liefert genau YYYY-MM-DD. */
+export function isoDay(ms: number): string {
+  return new Date(ms).toLocaleDateString("sv-SE");
+}
+
+/**
+ * Ist das ein Kalendertag, mit dem die Oberflaeche rechnen kann?
+ *
+ * Die Form allein genuegt nicht. `2026-13-45` besteht jede Pruefung mit regulaerem Ausdruck und
+ * ergibt doch ein `Invalid Date`; `new Date(NaN).toLocaleDateString()` liefert sogar genau diese
+ * Zeichenkette zurueck. Darum wird zurueckgerechnet: was sich nicht wieder zu sich selbst
+ * formatieren laesst, ist keiner.
+ */
+export function istTagIso(s: string | null | undefined): s is string {
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T12:00:00`);
+  return Number.isFinite(d.getTime()) && isoDate(d) === s;
+}
+
 export { isoDate };

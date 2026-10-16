@@ -103,11 +103,17 @@ export const useLiveStore = create<LiveStore>((set, get) => ({
     set((prev) => {
       const clientNow = Date.now();
       const serverNow = new Date(s.system.server_time).getTime();
+      // Eine unlesbare Serverzeit darf den Zeitversatz nicht vergiften. Aus NaN wird sonst überall
+      // „Invalid Date": in der Überschrift des Tagesdiagramms, im geladenen Tag, in den Verweisen
+      // der Navigation - und es bleibt so, denn der nächste gute Rahmen macht den einmal
+      // weggeschriebenen Tag nicht wieder gut.
+      const serverOffsetMs = Number.isFinite(serverNow) ? serverNow - clientNow : prev.serverOffsetMs;
       // Live-Werte nur an den laufenden Tag anhängen. Ein vergangener Tag ist abgeschlossen;
-      // ein frischer Messwert gehört dort nicht hinein.
-      const today = new Date(clientNow).toLocaleDateString("sv-SE");
+      // ein frischer Messwert gehört dort nicht hinein. Maßgeblich ist der Tag des Servers: im
+      // Demo-Betrieb läuft dessen Uhr im Zeitraffer, und die des Geräts zeigt dann etwas anderes.
+      const today = new Date(clientNow + serverOffsetMs).toLocaleDateString("sv-SE");
       const history = prev.historyDay === today ? appendLiveSample(prev.history, s, liveCounts) : prev.history;
-      return { state: s, lastFrameAt: clientNow, serverOffsetMs: serverNow - clientNow, connection: "live", history };
+      return { state: s, lastFrameAt: clientNow, serverOffsetMs, connection: "live", history };
     }),
   setPlan: (p) => set({ plan: p }),
   pushDecision: (d) =>

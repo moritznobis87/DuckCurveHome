@@ -5,6 +5,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import type { Plan } from "@/lib/api/models";
 import type { HistoryPoint } from "@/lib/live/store";
 import { hhmm } from "@/lib/format";
+import { isoDay, istTagIso } from "@/lib/day";
 import { Card } from "@/components/ui/Card";
 import { EChart } from "./EChart";
 
@@ -52,10 +53,9 @@ export function dayBounds(nowMs: number): [number, number] {
 
 /** Anordnung der beiden Zeitreihen: nebeneinander (Standard), untereinander oder in einem Plot mit zwei y-Achsen. Umschalten per ?chart=side|stacked|overlay, wird pro Gerät gemerkt. */
 export type ChartLayout = "stacked" | "side" | "overlay";
-/** Ein Kalendertag als ISO-Datum in Ortszeit. `sv-SE` liefert genau YYYY-MM-DD. */
-export function isoDay(ms: number): string {
-  return new Date(ms).toLocaleDateString("sv-SE");
-}
+// Liegt in `lib/day`, damit auch der Live-Client den Tag so benennt wie die Anzeige. Hier nur
+// weitergereicht, weil die Startseite ihn von hier holt.
+export { isoDay };
 
 /** Ortszeit-Mitternacht des Tages und des Folgetags. */
 function boundsOf(dayIso: string): [number, number] {
@@ -65,8 +65,11 @@ function boundsOf(dayIso: string): [number, number] {
 
 export function DayChart({ history, plan, nowMs, dayIso, onDay, layout = "side" }: { history: HistoryPoint[]; plan: Plan | null; nowMs: number; dayIso: string; onDay: (iso: string) => void; layout?: ChartLayout }) {
   // Ein leerer Tag heisst „noch nicht gesetzt" und darf nicht bis in die Beschriftung durchschlagen
-  // - dort stand sonst „Invalid Date", bis die erste Antwort da war.
-  const day = dayIso || isoDay(nowMs);
+  // - dort stand sonst „Invalid Date", bis die erste Antwort da war. Geprueft wird der Tag und
+  // nicht nur, ob ueberhaupt etwas dasteht: eine Zeichenkette, die kein Datum ist, ergaebe dieselbe
+  // Ueberschrift, dazu zwei leere Diagramme und keine hervorgehobene Schaltflaeche. Eine Wandanzeige
+  // zeigt dann lieber den laufenden Tag als einen Fehler.
+  const day = istTagIso(dayIso) ? dayIso : isoDay(nowMs);
   const [start, end] = useMemo(() => boundsOf(day), [day]);
   const isToday = day === isoDay(nowMs);
   // Prognose und Fahrplan gibt es nur für das, was noch kommt. Für einen abgeschlossenen Tag hätte
