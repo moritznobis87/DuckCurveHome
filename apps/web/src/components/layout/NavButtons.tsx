@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { isoToday } from "@/lib/day";
+import { isoToday, istTagIso } from "@/lib/day";
 import { useLiveStore } from "@/lib/live/store";
 import { useRole } from "@/lib/live/useRole";
 
@@ -42,7 +42,7 @@ export function NavButtons() {
   // „Photovoltaik" geht, will dort den 13. September sehen. Seiten ohne Zeitraum (Prognosegüte,
   // Jahreskarte, Einstellungen) bekommen den Anker nicht angehängt, er hätte dort keine Wirkung.
   const day = useLiveStore((s) => s.historyDay);
-  const anchor = day && day !== isoToday() ? day : "";
+  const anchor = istTagIso(day) && day !== isoToday() ? day : "";
   return (
     <div className="flex shrink-0 items-center gap-2">
       {ITEMS.filter((i) => i.href !== current && (!("ownerOnly" in i) || role === "owner")).map((i) => (

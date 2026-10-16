@@ -1125,14 +1125,22 @@ class EnergyAccounting:
         stop = min(end, now + timedelta(minutes=1))
         samples, step_min = await self._samples_for(start, stop)
         points = heat_series(
-            samples, stove=self.hems.stove, heat=self.hems.heat_demand, buffer=self.hems.buffer
+            samples,
+            stove=self.hems.stove,
+            heat=self.hems.heat_demand,
+            buffer=self.hems.buffer,
+            heat_pump=self.hems.heat_pump,
         )
         totals = heat_totals(points, samples, step_min)
 
         vor_start, vor_end = self._previous_bounds(period, anchor)
         vor_samples, vor_step = await self._samples_for(vor_start, min(vor_end, now))
         vor_points = heat_series(
-            vor_samples, stove=self.hems.stove, heat=self.hems.heat_demand, buffer=self.hems.buffer
+            vor_samples,
+            stove=self.hems.stove,
+            heat=self.hems.heat_demand,
+            buffer=self.hems.buffer,
+            heat_pump=self.hems.heat_pump,
         )
         previous = heat_totals(vor_points, vor_samples, vor_step) if vor_samples else None
 
@@ -1169,7 +1177,7 @@ class EnergyAccounting:
                     heat_pump_kw=p.heat_pump_kw,
                     stove_water_kw=p.stove_water_kw,
                     stove_room_kw=p.stove_room_kw,
-                    draw_kw=p.draw_kw,
+                    draw_kw=None if p.unknown else p.draw_kw,
                     loss_kw=p.loss_kw,
                     buffer_change_kw=p.buffer_change_kw,
                     buffer_kwh=p.buffer_kwh,

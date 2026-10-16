@@ -1,5 +1,6 @@
 import { api } from "@/lib/api/client";
 import type { Decision, LiveState, Plan } from "@/lib/api/models";
+import { isoDay, istTagIso } from "@/lib/day";
 import { rowToPoint, useLiveStore } from "./store";
 
 const STREAM_URL = "/api/dch/live/stream";
@@ -19,10 +20,30 @@ export function startLiveClient(): () => void {
   const loadInitial = async (): Promise<void> => {
     try {
       const [state, history, plan] = await Promise.all([api.liveState(), api.history("today"), api.plan()]);
-      store().setHistory(history.rows.map(rowToPoint), "today");
+      // Der Zustand zuerst: er setzt den Zeitversatz zum Server, und ohne den ist „heute" geraten.
       store().setState(state);
       store().setPlan(plan);
       if (state.decision) store().pushDecision(state.decision);
+      /**
+       * Die Historie kommt als `range=today`, abgelegt wird sie unter dem **Datum** dieses Tages.
+       *
+       * Hier stand das Wort „today". Das war richtig, solange der Tagesschalter drei feste Stufen
+       * hatte; seit daraus ein Kalender wurde, ist `historyDay` ein ISO-Datum. Das Wort überlebte
+       * den Umbau und hat die Startseite zerlegt: die Überschrift las „Invalid Date", beide
+       * Diagramme blieben leer, weil der Zeitraum des Tages zu NaN wurde und kein Messwert mehr
+       * hineinfiel, keine der Schaltflächen Gestern/Heute/Morgen war hervorgehoben, und der
+       * Zustandsspeicher hängte auch keine Live-Werte mehr an, weil der laufende Tag nicht mehr
+       * „today" heißt. Dass es trotzdem meist ging, lag an einem Zufall: die Adresse trug früher
+       * immer ein `?tag=`, und das lud den richtigen Tag gleich wieder nach. Seit der laufende Tag
+       * nicht mehr in der Adresse steht, fehlte diese Reparatur.
+       *
+       * **Nur, wenn die Ansicht auf dem laufenden Tag steht.** Diese Funktion läuft nach *jeder*
+       * Wiederverbindung, und die Aufsicht erzwingt eine, sobald 15 s lang kein Rahmen kam. Wer
+       * gerade den 12. Oktober liest, soll davon nichts merken.
+       */
+      const heute = isoDay(store().nowMs());
+      const gezeigt = store().historyDay;
+      if (!istTagIso(gezeigt) || gezeigt === heute) store().setHistory(history.rows.map(rowToPoint), heute);
     } catch {
       /* Stream liefert den Zustand ohnehin; Historie wird beim nächsten Reconnect nachgeladen */
     }

@@ -36,6 +36,10 @@ class PlanIntervalOut(BaseModel):
     expected_pv_kw: float
     price_ct_kwh: float | None
     planned_hp_state: Literal["off", "release", "free", "avoid"]
+    # Soll der Ofen in diesem Viertelstundenschritt brennen? `None` heißt: kein Fahrplan - weil es
+    # keinen Ofen gibt, die Fühler fehlen oder der Optimierer nicht gerechnet hat. Das ist etwas
+    # anderes als `False`, und die Oberfläche muss es unterscheiden können.
+    planned_stove_on: bool | None = None
     reason_code: str
     note_de: str | None = None
 
@@ -590,7 +594,9 @@ class HeatBalancePointOut(BaseModel):
     heat_pump_kw: float = 0.0
     stove_water_kw: float = 0.0
     stove_room_kw: float = 0.0
-    draw_kw: float = 0.0
+    # `None` heißt: für diese Minute lässt sich über die Entnahme nichts sagen. Eine Lücke in der
+    # Kurve ist dafür die richtige Darstellung; eine Null wäre eine Behauptung.
+    draw_kw: float | None = None
     loss_kw: float = 0.0
     buffer_change_kw: float = 0.0
     buffer_kwh: float | None = None

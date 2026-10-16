@@ -11,6 +11,7 @@ import { EnergyFlow } from "@/components/energy-flow/EnergyFlow";
 import { EnergyPlanCard } from "@/components/energy-plan/EnergyPlanCard";
 import { BufferTank } from "@/components/buffer/BufferTank";
 import { DayChart, isoDay, type ChartLayout } from "@/components/charts/DayChart";
+import { istTagIso } from "@/lib/day";
 import { ControlsBar } from "@/components/controls/ControlsBar";
 import { useRole } from "@/lib/live/useRole";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -92,7 +93,10 @@ export function Dashboard() {
       if (iso !== historyDay) void changeDay(iso);
       return;
     }
-    if (!historyDay) void changeDay(heute);
+    // Nicht „ist schon einer gesetzt", sondern „ist der gesetzte brauchbar". Steht dort etwas, das
+    // kein Kalendertag ist, blieb die Ansicht sonst fuer immer daran haengen: die Bedingung sah
+    // einen Wert und war zufrieden, und die Wandanzeige zeigte bis zum naechsten Mitternacht nichts.
+    if (!istTagIso(historyDay)) void changeDay(heute);
   }, [historyDay, lastFrameAt]);
 
   /**

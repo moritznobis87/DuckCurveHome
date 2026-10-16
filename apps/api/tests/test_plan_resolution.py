@@ -68,3 +68,27 @@ def test_horizon_follows_price_coverage_not_point_count() -> None:
     assert build_plan(_pv, _hourly_prices(48), NOW, HemsConfig()).intervals[
         -1
     ].ts >= DAY_START + timedelta(days=1)
+
+
+def test_der_ofen_steht_im_plan_oder_gar_nichts() -> None:
+    """Der Fahrplan des Ofens wird mitgeführt, nicht hier gerechnet.
+
+    `None` heißt „kein Ofenfahrplan" und ist etwas anderes als `False`: ohne diesen Unterschied
+    zeigte die Zeitleiste einen Ofen, der durchgehend aus ist, wo in Wahrheit niemand geplant hat.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from dch_api.application.plan_service import build_plan
+    from hems_core.domain import HemsConfig
+
+    now = datetime(2026, 10, 13, 10, 0, tzinfo=UTC)
+    brennt_bis = now + timedelta(hours=2)
+
+    ohne = build_plan(lambda t: 0.0, [], now, HemsConfig())
+    assert all(iv.planned_stove_on is None for iv in ohne.intervals)
+
+    mit = build_plan(lambda t: 0.0, [], now, HemsConfig(), stove_on=lambda t: now <= t < brennt_bis)
+    an = [iv for iv in mit.intervals if iv.planned_stove_on]
+    aus = [iv for iv in mit.intervals if iv.planned_stove_on is False]
+    assert len(an) == 8, "zwei Stunden sind acht Viertelstunden"
+    assert aus, "ausserhalb der Brennphase steht ausdrücklich „aus“"
