@@ -66,6 +66,14 @@ class StovePlan:
     """Der Fahrplan über den Horizont. `available=False` heißt: es wurde nicht geplant, und warum."""
 
     available: bool = False
+    # Getrennt von `available`, weil es zwei Fahrpläne sind.
+    #
+    # Der Optimierer rechnet beide Erzeuger in einer Pufferbilanz, aber ihre Voraussetzungen sind
+    # verschieden. Ein Haus ohne Ofen, ein leerer Behälter, ein Ofen, der gerade nicht meldet: der
+    # Ofenteil fällt dann weg, der Wärmepumpenteil nicht. Dass beide an einem Schalter hingen, hat
+    # genau einmal gewirkt, nämlich sofort: in der Vorführung ohne Ofen führte der Optimierer die
+    # Wärmepumpe gar nicht, und von außen sah das aus wie „er hat sich für die Regel entschieden".
+    hp_available: bool = False
     status: str = "unavailable"
     start: datetime | None = None
     step_min: int = STEP_MIN
@@ -101,8 +109,10 @@ class StovePlan:
         ausdrücklichen `False` zu unterscheiden: das eine ist ein Rückfall, das andere eine
         Entscheidung.
         """
-        i = self._index(t, self.hp_on)
-        return None if i is None else self.hp_on[i]
+        if not self.hp_available or self.start is None or not self.hp_on:
+            return None
+        i = int((t - self.start).total_seconds() // (self.step_min * 60))
+        return self.hp_on[i] if 0 <= i < len(self.hp_on) else None
 
     def until(self, t: datetime) -> datetime | None:
         """Bis wann der jetzige Zustand laut Fahrplan gilt. `None` am Ende des Horizonts."""
@@ -199,8 +209,6 @@ def plan_stove(
     außen genauso aus wie einer, der sich entschieden hat.
     """
     stove = cfg.stove
-    if not stove.present:
-        return StovePlan(note_de="Kein Ofen konfiguriert.")
     if buffer.usable_energy_kwh is None:
         return StovePlan(note_de="Ohne Pufferzustand kein Fahrplan: die Fühler fehlen.")
     if not prices:
@@ -214,7 +222,7 @@ def plan_stove(
         hours = (end - start).total_seconds() / 3600.0
         return StovePlan(
             note_de=(
-                f"Die Preisreihe reicht nur {hours:.0f} Stunden. Der Ofen wird erst ab "
+                f"Die Preisreihe reicht nur {hours:.0f} Stunden. Es wird erst ab "
                 f"{MIN_HORIZON_H} Stunden Horizont geplant, sonst fehlt der Vergleich."
             )
         )
@@ -267,7 +275,10 @@ def plan_stove(
             min_runtime_min=cfg.heat_pump.min_runtime_min,
             min_offtime_min=cfg.heat_pump.min_offtime_min,
             running_now=hp_running,
-            stove_thermal_kw=stove.water_heat_kw,
+            # Ohne Ofen bleibt seine Wärmeleistung null, und das Modell lässt seine Variablen
+            # ganz weg. Die Wärmepumpe wird dann allein geplant, was sie vorher auch wurde - nur
+            # wurde das Ergebnis weggeworfen.
+            stove_thermal_kw=stove.water_heat_kw if stove.present else 0.0,
             stove_kg_per_h=econ.kg_per_hour,
             stove_min_runtime_min=stove.min_runtime_min,
             stove_min_offtime_min=stove.min_offtime_min,
@@ -278,14 +289,31 @@ def plan_stove(
     except SolverUnavailableError as exc:
         return StovePlan(note_de=f"Kein Solver verfügbar: {exc}")
 
-    if result.status not in ("optimal", "feasible") or not result.stove_on:
+    gerechnet = result.status in ("optimal", "feasible")
+    if not gerechnet or not (result.stove_on or result.on):
         return StovePlan(
             status=result.status,
             note_de=f"Der Optimierer fand keinen Fahrplan ({result.status}).",
         )
+    if not result.stove_on:
+        # Die Wärmepumpe hat einen Fahrplan, der Ofen nicht. Kein halber Ofenfahrplan, aber auch
+        # kein weggeworfener Wärmepumpenfahrplan.
+        return StovePlan(
+            hp_available=True,
+            status=result.status,
+            start=start,
+            hp_on=list(result.on),
+            solve_ms=result.solve_ms,
+            note_de=(
+                "Kein Ofenfahrplan"
+                + ("" if stove.present else " (kein Ofen konfiguriert)")
+                + "; die Wärmepumpe ist geplant."
+            ),
+        )
 
     plan = StovePlan(
         available=True,
+        hp_available=True,
         status=result.status,
         start=start,
         on=list(result.stove_on),

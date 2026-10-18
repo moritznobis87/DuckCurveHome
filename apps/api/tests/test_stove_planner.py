@@ -259,3 +259,31 @@ def test_nach_dem_ausschalten_gilt_die_mindestpause() -> None:
     d = decide(observed=False, last_switch_at=NOW - timedelta(minutes=30))
     assert d.switch is False and "Schaltsperre" in d.reason_de
     assert decide(observed=False, last_switch_at=NOW - timedelta(minutes=61)).switch is True
+
+
+def test_ohne_ofen_wird_die_waermepumpe_trotzdem_geplant() -> None:
+    """Zwei Fahrpläne, zwei Voraussetzungen.
+
+    Der Optimierer rechnet beide Erzeuger in einer Pufferbilanz, aber dass kein Ofen da ist,
+    sagt nichts über die Wärmepumpe. Beide an einem Schalter aufzuhängen hiess: in einem Haus
+    ohne Ofen führt der Optimierer die Wärmepumpe gar nicht, und von aussen sieht das aus wie
+    eine Entscheidung für die Faustregel.
+    """
+    ohne_ofen = HemsConfig().model_copy(
+        update={"stove": HemsConfig().stove.model_copy(update={"present": False})}
+    )
+    p = plan(cfg=ohne_ofen, opt_cfg=GEDULDIG)
+    assert p.available is False, "ohne Ofen gibt es keinen Ofenfahrplan"
+    assert p.on == []
+    assert p.hp_available is True, "die Wärmepumpe hat trotzdem einen"
+    assert any(p.hp_on), "und er sieht Laufzeit vor"
+    assert p.hp_on_at(NOW) is not None
+    assert "Wärmepumpe ist geplant" in p.note_de
+
+
+def test_ohne_pufferzustand_hat_auch_die_waermepumpe_keinen_fahrplan() -> None:
+    """Die eine Voraussetzung, die beide teilen: ohne Pufferinhalt rechnet das Modell nichts."""
+    blind = buffer().model_copy(update={"usable_energy_kwh": None, "soc": None})
+    p = plan(buffer=blind)
+    assert p.available is False and p.hp_available is False
+    assert p.hp_on_at(NOW) is None
