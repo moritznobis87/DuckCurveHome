@@ -109,7 +109,10 @@ def test_die_annahmen_stehen_im_bericht(client: TestClient) -> None:
     assert p["cop_curve"], "ohne Kennlinie keine Wärmepumpenwärme"
     assert p["stove_water_heat_kw"] > 0
     assert p["pellet_kwh_per_kg"] > 0
-    assert "Ofen" in p["room_source_de"]
+    # Nicht mehr der Ofenfühler: der Puffer steht woanders, und das muss im Bericht stehen.
+    assert "Aufstellraum" in p["room_source_de"]
+    assert p["buffer_ambient_c"] > 0
+    assert 0.0 <= p["buffer_loss_useful_fraction"] <= 1.0
 
 
 def test_es_ist_nicht_oeffentlich(client: TestClient) -> None:

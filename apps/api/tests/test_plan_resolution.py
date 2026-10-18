@@ -92,3 +92,47 @@ def test_der_ofen_steht_im_plan_oder_gar_nichts() -> None:
     aus = [iv for iv in mit.intervals if iv.planned_stove_on is False]
     assert len(an) == 8, "zwei Stunden sind acht Viertelstunden"
     assert aus, "ausserhalb der Brennphase steht ausdrücklich „aus“"
+
+
+def test_der_optimierer_fuehrt_die_waermepumpe_und_die_regel_faengt_auf() -> None:
+    """Sagt der Fahrplan etwas, gilt er. Sagt er nichts, gilt wieder die Faustregel.
+
+    Vorher rechnete dasselbe Programm den Fahrplan der Wärmepumpe mit, in derselben Pufferbilanz
+    wie den des Ofens, und das Ergebnis wurde weggeworfen. Danebenher entschied eine Regel aus
+    Preis- und PV-Fenstern.
+    """
+    laeuft_bis = NOW + timedelta(hours=2)
+
+    ohne = build_plan(_pv, _hourly_prices(24), NOW, HemsConfig())
+    assert ohne.planner == "rule_based_v1"
+    assert all(iv.planned_hp_state != "off" for iv in ohne.intervals)
+
+    mit = build_plan(
+        _pv, _hourly_prices(24), NOW, HemsConfig(), hp_on=lambda t: NOW <= t < laeuft_bis
+    )
+    assert mit.planner == "milp_v1"
+    frei = [iv for iv in mit.intervals if NOW <= iv.ts < laeuft_bis]
+    assert frei and all(iv.planned_hp_state == "release" for iv in frei)
+    assert all(iv.reason_code == "planned_optimizer" for iv in frei)
+    # Ausserhalb seines Fensters sagt der Fahrplan ausdrücklich „nein", und das ist etwas anderes
+    # als „dazu nichts": nur das Nein lässt die Preisregeln schweigen.
+    assert [iv for iv in mit.intervals if iv.planned_hp_state == "off"]
+
+
+def test_ein_halber_horizont_faellt_am_rand_auf_die_regel_zurueck() -> None:
+    """Der Optimierer plant 36 h, der Plan zeigt bis zu 48. Dazwischen darf keine Lücke sein."""
+    # Kürzer als der Planhorizont gewählt, damit die Naht im Test wirklich vorkommt: der Plan
+    # beginnt an der lokalen Mitternacht, der Optimierer rechnet ab jetzt.
+    horizont_ende = DAY_START + timedelta(hours=30)
+
+    plan = build_plan(
+        _pv,
+        _quarter_prices(48),
+        NOW,
+        HemsConfig(),
+        hp_on=lambda t: False if t < horizont_ende else None,
+    )
+    spaet = [iv for iv in plan.intervals if iv.ts >= horizont_ende]
+    assert spaet, "zwei Tage Preise ergeben Intervalle jenseits des Optimiererhorizonts"
+    assert all(iv.planned_hp_state in ("release", "avoid", "free") for iv in spaet)
+    assert all(iv.reason_code != "planned_optimizer" for iv in spaet)

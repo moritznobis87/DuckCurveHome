@@ -1162,6 +1162,7 @@ class EnergyAccounting:
                         stove_room_kwh=t.stove_room_kwh,
                         draw_kwh=t.draw_kwh,
                         loss_kwh=t.loss_kwh,
+                        loss_useful_kwh=t.loss_useful_kwh,
                         residual_kwh=t.residual_kwh,
                         electric_kwh=t.electric_kwh,
                         cop_mean=t.cop_mean,
@@ -1179,6 +1180,7 @@ class EnergyAccounting:
                     stove_room_kw=p.stove_room_kw,
                     draw_kw=None if p.unknown else p.draw_kw,
                     loss_kw=p.loss_kw,
+                    loss_useful_kw=p.loss_useful_kw,
                     buffer_change_kw=p.buffer_change_kw,
                     buffer_kwh=p.buffer_kwh,
                     cop=p.cop,
@@ -1355,15 +1357,17 @@ class EnergyAccounting:
             return [], 60.0
         read, _write = self.heat_store
         rows = await read(start, end)
-        return samples_from_hours(rows), 60.0
+        return samples_from_hours(rows, self.hems.buffer), 60.0
 
     async def _heat_samples(self, start: datetime, end: datetime) -> list[HeatSample]:
         """Minutenzeilen in Proben der Wärmebilanz übersetzen.
 
-        **Der Aufstellraum des Puffers ist nicht gemessen.** Genommen wird der Raumfühler des Ofens;
-        steht der Puffer woanders, ist das eine Näherung und keine Messung. Fehlt er, gilt die
-        Wunschtemperatur des Hauses. Beides steht als Quelle im Bericht, damit niemand den
-        Verlustterm für eine Messung hält.
+        **Der Aufstellraum des Puffers ist nicht gemessen.** Hier stand der Raumfühler des Ofens,
+        und der hängt in einem anderen Raum: der Puffer steht im Technikraum. Die Messung war echt,
+        nur maß sie etwas anderes. Jetzt rechnet der Verlustterm gegen den eingestellten
+        Aufstellraum (`buffer.ambient_c`), und der steht als Annahme im Bericht, damit niemand ihn
+        für eine Messung hält. `room_c` wird weiter mitgeschrieben - als Messwert des Ofenraums,
+        der er immer war.
         """
         if end <= start or (end - start) > timedelta(days=self.HEAT_MINUTE_DAYS):
             return []
@@ -1416,7 +1420,12 @@ class EnergyAccounting:
             pellet_price_eur_per_t=stove.pellet_price_eur_per_t,
             buffer_volume_liters=buffer.volume_liters,
             buffer_loss_kw_per_k=buffer.loss_kw_per_k,
-            room_source_de=(f"Raumfühler des Ofens, ersatzweise {heat.indoor_target_c:g} °C"),
+            buffer_ambient_c=buffer.ambient_c,
+            buffer_loss_useful_fraction=buffer.loss_useful_fraction,
+            room_source_de=(
+                f"Aufstellraum des Puffers, angenommen {buffer.ambient_c:g} °C; davon "
+                f"{buffer.loss_useful_fraction:.0%} nutzbar"
+            ),
         )
 
     async def _stove(self, start: datetime, end: datetime) -> StoveOut:

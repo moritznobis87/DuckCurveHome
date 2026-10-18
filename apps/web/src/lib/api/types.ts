@@ -904,6 +904,16 @@ export interface components {
              */
             loss_kw_per_k: number;
             /**
+             * Ambient C
+             * @default 17
+             */
+            ambient_c: number;
+            /**
+             * Loss Useful Fraction
+             * @default 0.5
+             */
+            loss_useful_fraction: number;
+            /**
              * Soc Method
              * @default layered_energy_v1
              * @enum {string}
@@ -1773,6 +1783,11 @@ export interface components {
              */
             loss_kw: number;
             /**
+             * Loss Useful Kw
+             * @default 0
+             */
+            loss_useful_kw: number;
+            /**
              * Buffer Change Kw
              * @default 0
              */
@@ -1820,6 +1835,11 @@ export interface components {
              */
             loss_kwh: number;
             /**
+             * Loss Useful Kwh
+             * @default 0
+             */
+            loss_useful_kwh: number;
+            /**
              * Residual Kwh
              * @default 0
              */
@@ -1858,6 +1878,10 @@ export interface components {
             buffer_volume_liters?: number | null;
             /** Buffer Loss Kw Per K */
             buffer_loss_kw_per_k?: number | null;
+            /** Buffer Ambient C */
+            buffer_ambient_c?: number | null;
+            /** Buffer Loss Useful Fraction */
+            buffer_loss_useful_fraction?: number | null;
             /** Indoor Target C */
             indoor_target_c?: number | null;
             /** Stove Nominal Heat Kw */
@@ -2040,6 +2064,16 @@ export interface components {
              */
             buffer_loss_kw_per_k: number;
             /**
+             * Buffer Ambient C
+             * @default 0
+             */
+            buffer_ambient_c: number;
+            /**
+             * Buffer Loss Useful Fraction
+             * @default 0
+             */
+            buffer_loss_useful_fraction: number;
+            /**
              * Room Source De
              * @default
              */
@@ -2209,6 +2243,11 @@ export interface components {
              */
             loss_kwh: number;
             /**
+             * Loss Useful Kwh
+             * @default 0
+             */
+            loss_useful_kwh: number;
+            /**
              * Buffer Change Kwh
              * @default 0
              */
@@ -2308,6 +2347,8 @@ export interface components {
              *       "max_temperature_c": 62,
              *       "comfort_min_top_c": 42,
              *       "loss_kw_per_k": 0.004,
+             *       "ambient_c": 17,
+             *       "loss_useful_fraction": 0.5,
              *       "soc_method": "layered_energy_v1",
              *       "weights": [
              *         0.25,
@@ -3060,7 +3101,7 @@ export interface components {
          * ReasonCode
          * @enum {string}
          */
-        ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
+        ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "planned_pause" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
         /** SensorTimeouts */
         SensorTimeouts: {
             /**

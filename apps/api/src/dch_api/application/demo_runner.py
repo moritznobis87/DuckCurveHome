@@ -335,6 +335,17 @@ class DemoRunner:
         )
         nxt = next_window_after(cheap, snap.timestamp)
         price_ok = snap.electricity_price_ct_kwh.usable
+        geplant = None
+        if self.plan is not None:
+            cur = next(
+                (
+                    i
+                    for i in self.plan.intervals
+                    if i.ts <= snap.timestamp < i.ts + timedelta(minutes=15)
+                ),
+                None,
+            )
+            geplant = cur.planned_hp_state if cur else None
         inputs = ControlInputs(
             now=snap.timestamp,
             snapshot=snap,
@@ -344,7 +355,10 @@ class DemoRunner:
             price_rank=rank if price_ok else None,
             price_age_s=60.0 if price_ok else None,
             next_cheap_window_start=nxt.start if nxt else None,
-            planned_release=False,
+            # Die Vorführung liest denselben Fahrplan wie der Betrieb. Fest verdrahtete `False`
+            # hießen: das neue Verhalten ist genau dort nicht zu sehen, wo man es zeigt.
+            planned_release=geplant == "release",
+            planned_off=geplant == "off",
         )
         decision = self.controller.tick(inputs)
         self.decision = decision

@@ -598,6 +598,7 @@ class HeatBalancePointOut(BaseModel):
     # Kurve ist dafür die richtige Darstellung; eine Null wäre eine Behauptung.
     draw_kw: float | None = None
     loss_kw: float = 0.0
+    loss_useful_kw: float = 0.0  # davon dem Aufstellraum zugute
     buffer_change_kw: float = 0.0
     buffer_kwh: float | None = None
     cop: float | None = None
@@ -613,6 +614,7 @@ class HeatBucketOut(BaseModel):
     stove_room_kwh: float = 0.0
     draw_kwh: float = 0.0
     loss_kwh: float = 0.0
+    loss_useful_kwh: float = 0.0
     residual_kwh: float = 0.0
     electric_kwh: float = 0.0
     cop_mean: float | None = None
@@ -637,6 +639,8 @@ class HeatParamsOut(BaseModel):
     pellet_price_eur_per_t: float = 0.0
     buffer_volume_liters: float = 0.0
     buffer_loss_kw_per_k: float = 0.0
+    buffer_ambient_c: float = 0.0
+    buffer_loss_useful_fraction: float = 0.0
     room_source_de: str = ""
 
 
@@ -695,6 +699,8 @@ class HeatConfigIn(BaseModel):
     buffer_target_temperature_c: float | None = Field(default=None, gt=20.0, lt=95.0)
     buffer_volume_liters: float | None = Field(default=None, gt=50.0, lt=20000.0)
     buffer_loss_kw_per_k: float | None = Field(default=None, ge=0.0, le=1.0)
+    buffer_ambient_c: float | None = Field(default=None, gt=-20.0, lt=40.0)
+    buffer_loss_useful_fraction: float | None = Field(default=None, ge=0.0, le=1.0)
     indoor_target_c: float | None = Field(default=None, gt=5.0, lt=30.0)
     stove_nominal_heat_kw: float | None = Field(default=None, gt=0.0, lt=100.0)
     stove_water_heat_kw: float | None = Field(default=None, ge=0.0, lt=100.0)

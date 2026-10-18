@@ -39,6 +39,7 @@ class ReasonCode(StrEnum):
     BUFFER_NO_HEADROOM = "buffer_no_headroom"
     MAX_STARTS_REACHED = "max_starts_reached"
     NO_TRIGGER = "no_trigger"
+    PLANNED_PAUSE = "planned_pause"  # der Fahrplan sieht hier keine Freigabe vor
     IMPORT_TOO_HIGH = "import_too_high"
     # Übersteuerung / Modus
     MANUAL_OVERRIDE = "manual_override"

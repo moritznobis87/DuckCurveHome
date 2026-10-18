@@ -66,14 +66,21 @@ def build_plan(
     now: datetime,
     cfg: HemsConfig,
     stove_on: Callable[[datetime], bool | None] | None = None,
+    hp_on: Callable[[datetime], bool | None] | None = None,
 ) -> PlanOut:
     """Der Fahrplan über den Horizont.
 
-    `stove_on` ist der Ofenfahrplan des Optimierers, als Nachschlagefunktion über der Zeit. Er wird
-    hier nur **mitgeführt**, nicht gerechnet: die Wärmepumpe folgt den Preis- und PV-Fenstern dieser
-    Funktion, der Ofen einem gemischt-ganzzahligen Programm über Preis, Wärmebedarf, Puffer und
-    Brennstoffbudget. Zwei Planer in einem Haus sind eine Ungenauigkeit, die man sehen können soll,
-    statt sie zu verschweigen - und man sieht sie erst, wenn beide in derselben Ansicht stehen.
+    `stove_on` und `hp_on` sind die beiden Hälften des Optimiererergebnisses, als
+    Nachschlagefunktionen über der Zeit. Sie werden hier **mitgeführt**, nicht gerechnet.
+
+    **Der Optimierer führt, die Regel fängt auf.** Vorher standen hier zwei Planer nebeneinander:
+    der Ofen folgte einem gemischt-ganzzahligen Programm über Preis, Wärmebedarf, Puffer und
+    Brennstoffbudget, die Wärmepumpe daneben einer Faustregel aus Preis- und PV-Fenstern. Dasselbe
+    Programm rechnet den Fahrplan der Wärmepumpe längst mit, in derselben Pufferbilanz; er wurde nur
+    nicht gelesen. Jetzt entscheidet er, wo er etwas sagt. Sagt er nichts - kein Solver, keine
+    Preise, blinde Puffersensoren, oder schlicht außerhalb seines Horizonts -, gilt wieder die
+    Regel. Ein Fahrplan, der bei fehlenden Eingängen „aus" plante, sähe von außen aus wie einer,
+    der sich entschieden hat.
     """
     local_day = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
     day_start = local_day.astimezone(UTC)
@@ -114,11 +121,21 @@ def build_plan(
     end_plan = day_start + timedelta(
         hours=48 if covered_until > day_start + timedelta(days=1) else 24
     )
+    vom_optimierer = 0
     while t < end_plan:
         price = price_at(t)
         w = in_windows(t, {"negative", "pv_surplus", "cheap"})
         avoid = in_windows(t, {"expensive"})
-        if w is not None:
+        geplant = hp_on(t) if hp_on else None
+        if geplant is not None:
+            vom_optimierer += 1
+            # Der Grund bleibt das Fenster, in dem der Fahrplan liegt: er sagt, *wann*, das Fenster
+            # sagt, *warum*. Ohne Fenster steht der Optimierer für sich.
+            grund = w or avoid
+            state = "release" if geplant else "off"
+            code = "planned_optimizer"
+            note = grund.label_de if grund else None
+        elif w is not None:
             state, code, note = "release", f"planned_{w.kind}", w.label_de
         elif avoid is not None:
             state, code, note = "avoid", "planned_avoid_peak", avoid.label_de
@@ -139,9 +156,11 @@ def build_plan(
 
     pv_kwh = sum(i.expected_pv_kw for i in intervals if i.ts < day_start + timedelta(days=1)) / 4
     nxt = next_window_after([*cheap, *negative], now)
+    # Der Name sagt, wer geführt hat. Ein Plan, der sich „rule_based_v1" nennt, während der
+    # Optimierer entschieden hat, verschweigt genau die Frage, die man an einen Fahrplan stellt.
     return PlanOut(
         created_at=now,
-        planner="rule_based_v1",
+        planner="milp_v1" if vom_optimierer else "rule_based_v1",
         horizon_start=day_start,
         horizon_end=horizon_end,
         windows=windows,

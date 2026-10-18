@@ -17,6 +17,7 @@ export function reasonLines(d: Decision, minOfftimeMin = 20, minRuntimeMin = 30)
     price_negative: `Strompreis negativ (${price})`,
     price_cheap_window: `Strompreis ${price} im günstigsten Tagesfenster${rank ? ` (${rank})` : ""}`,
     planned_window: "Geplantes Zeitfenster laut Energieplan",
+    planned_pause: "Der Fahrplan hält diese Stunde frei - PV-Überschuss startet trotzdem",
     heat_demand_forced: "Heizbedarf hat Vorrang",
     hp_running_own_control: "Wärmepumpe läuft in eigener Regelung",
     min_runtime_hold: `Mindestlaufzeit ${minRuntimeMin} min - läuft seit ${sinceStart ?? "?"} min`,

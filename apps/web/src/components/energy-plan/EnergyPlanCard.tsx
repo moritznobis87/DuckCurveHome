@@ -1,6 +1,6 @@
 "use client";
 
-import type { Decision, LiveState, Plan, PriceWindow } from "@/lib/api/models";
+import type { Decision, LiveState, Plan, PlanInterval, PriceWindow } from "@/lib/api/models";
 import { celsius, hhmm, kw, kwh } from "@/lib/format";
 import { Card, CardHead } from "@/components/ui/Card";
 import { STATE_DE, nextExpectedLine, reasonLines } from "./reasons";
@@ -43,20 +43,20 @@ function priceLabel(rank: number | null | undefined): string {
 }
 
 /**
- * Zusammenhängende Brennphasen aus den Viertelstundenschritten des Fahrplans.
+ * Zusammenhängende Phasen aus den Viertelstundenschritten des Fahrplans.
  *
- * Der Ofen steht nicht in `windows`: Preis- und PV-Fenster sind Eigenschaften des Tages, eine
- * Brennphase ist eine Entscheidung. Sie entsteht hier aus den Intervallen, in denen der Optimierer
- * „an" geplant hat. `null` heißt „kein Fahrplan" und ergibt gar keine Spur - etwas anderes als ein
- * Fahrplan, der „aus" sagt.
+ * Weder Ofen noch Wärmepumpe stehen in `windows`: Preis- und PV-Fenster sind Eigenschaften des
+ * Tages, eine Brennphase oder eine Freigabe ist eine Entscheidung. Sie entsteht hier aus den
+ * Intervallen, in denen der Optimierer „an" geplant hat. `null` heißt „kein Fahrplan" und ergibt
+ * gar keine Spur - etwas anderes als ein Fahrplan, der „aus" sagt.
  */
-function stovePhases(plan: Plan | null, nowMs: number, end: number): Array<{ start: number; end: number }> {
+function phasen(plan: Plan | null, nowMs: number, end: number, an: (iv: PlanInterval) => boolean | null | undefined): Array<{ start: number; end: number }> {
   const out: Array<{ start: number; end: number }> = [];
   let offen: { start: number; end: number } | null = null;
   for (const iv of plan?.intervals ?? []) {
     const t = new Date(iv.ts).getTime();
     if (t + STEP_MS <= nowMs || t >= end) continue;
-    if (iv.planned_stove_on) {
+    if (an(iv)) {
       if (offen && offen.end === t) offen.end = t + STEP_MS;
       else {
         offen = { start: t, end: t + STEP_MS };
@@ -71,13 +71,41 @@ function stovePhases(plan: Plan | null, nowMs: number, end: number): Array<{ sta
 
 const STEP_MS = 15 * 60_000;
 
+/** Eine Spur der Zeitleiste: geplante Phasen eines Geräts. Zweimal dasselbe, einmal geschrieben. */
+function Spur({ name, phasen, nowMs, span, end, ticks, farbe, text, titel }: { name: string; phasen: Array<{ start: number; end: number }>; nowMs: number; span: number; end: number; ticks: number[]; farbe: string; text: string; titel: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="kicker w-8 shrink-0" style={{ fontSize: 9 }}>{name}</span>
+      <div className="relative h-[14px] flex-1 overflow-hidden rounded-[2px] bg-surface-1/60">
+        {phasen.map((ph, i) => {
+          const s = Math.max(nowMs, ph.start);
+          const e = Math.min(end, ph.end);
+          const widthPct = ((e - s) / span) * 100;
+          return (
+            <span key={i} className="absolute inset-y-0 flex items-center overflow-hidden px-1" style={{ left: `${(((s - nowMs) / span) * 100).toFixed(2)}%`, width: `${widthPct.toFixed(2)}%`, background: farbe }} title={titel}>
+              {widthPct > 10 ? <span className="mono truncate text-[9px] uppercase tracking-[.06em] text-petrol">{text}</span> : null}
+            </span>
+          );
+        })}
+        {ticks.map((h) => (
+          <span key={h} className="absolute inset-y-0 w-px bg-line-2/70" style={{ left: `${(h / HORIZON_H) * 100}%` }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Zeitleiste der nächsten 24 h: PV, Preisfenster und die geplanten Brennphasen des Ofens. */
 function Timeline({ plan, nowMs }: { plan: Plan | null; nowMs: number }) {
   const end = nowMs + HORIZON_H * 3600_000;
   const span = end - nowMs;
   const windows = (plan?.windows ?? []).filter((w) => new Date(w.end).getTime() > nowMs && new Date(w.start).getTime() < end);
-  const ofen = stovePhases(plan, nowMs, end);
+  const ofen = phasen(plan, nowMs, end, (iv) => iv.planned_stove_on);
   const hatOfenplan = (plan?.intervals ?? []).some((iv) => iv.planned_stove_on != null);
+  // Die Wärmepumpe steht hier, seit der Optimierer sie führt. „off" ist seine Aussage, „free" und
+  // „avoid" sind die der Faustregel - nur wo er selbst entschieden hat, gibt es eine Spur.
+  const wp = phasen(plan, nowMs, end, (iv) => iv.reason_code === "planned_optimizer" && iv.planned_hp_state === "release");
+  const hatWpPlan = (plan?.intervals ?? []).some((iv) => iv.reason_code === "planned_optimizer");
   const lanes: Array<{ name: string; items: PriceWindow[] }> = [
     { name: "PV", items: windows.filter((w) => w.kind === "pv_surplus") },
     { name: "Preis", items: windows.filter((w) => w.kind !== "pv_surplus") },
@@ -106,26 +134,8 @@ function Timeline({ plan, nowMs }: { plan: Plan | null; nowMs: number }) {
           </div>
         </div>
       ))}
-      {hatOfenplan ? (
-        <div className="flex items-center gap-2">
-          <span className="kicker w-8 shrink-0" style={{ fontSize: 9 }}>Ofen</span>
-          <div className="relative h-[14px] flex-1 overflow-hidden rounded-[2px] bg-surface-1/60">
-            {ofen.map((ph, i) => {
-              const s2 = Math.max(nowMs, ph.start);
-              const e2 = Math.min(end, ph.end);
-              const widthPct = ((e2 - s2) / span) * 100;
-              return (
-                <span key={i} className="absolute inset-y-0 flex items-center overflow-hidden px-1" style={{ left: `${(((s2 - nowMs) / span) * 100).toFixed(2)}%`, width: `${widthPct.toFixed(2)}%`, background: "rgba(181,101,29,.75)" }} title="Geplante Brennphase">
-                  {widthPct > 10 ? <span className="mono truncate text-[9px] uppercase tracking-[.06em] text-petrol">brennt</span> : null}
-                </span>
-              );
-            })}
-            {ticks.map((h) => (
-              <span key={h} className="absolute inset-y-0 w-px bg-line-2/70" style={{ left: `${(h / HORIZON_H) * 100}%` }} />
-            ))}
-          </div>
-        </div>
-      ) : null}
+      {hatWpPlan ? <Spur name="WP" phasen={wp} nowMs={nowMs} span={span} end={end} ticks={ticks} farbe="rgba(228,236,239,.72)" text="frei" titel="Geplante Freigabe" /> : null}
+      {hatOfenplan ? <Spur name="Ofen" phasen={ofen} nowMs={nowMs} span={span} end={end} ticks={ticks} farbe="rgba(181,101,29,.75)" text="brennt" titel="Geplante Brennphase" /> : null}
       <div className="mono flex justify-between pl-10 text-[10px] text-text-3">
         <span>jetzt</span>
         {ticks.map((h) => (

@@ -66,6 +66,7 @@ export function HeatBalanceReport() {
     { label: "davon Ofen (Raum)", value: (x) => feld(alle[x], (t) => t.stove_room_kwh) },
     { label: "Entnahme Heizung und Warmwasser", value: (x) => feld(alle[x], (t) => t.draw_kwh) },
     { label: "Verlust an den Aufstellraum", value: (x) => feld(alle[x], (t) => t.loss_kwh) },
+    { label: "davon dem Haus zugute", value: (x) => feld(alle[x], (t) => t.loss_useful_kwh) },
     { label: "Strom der Wärmepumpe", value: (x) => feld(alle[x], (t) => t.electric_kwh) },
     { label: "Arbeitszahl", value: (x) => (alle[x]?.totals.cop_mean == null ? "-" : de1(alle[x]?.totals.cop_mean, 2)), tone: "mist" },
     { label: "nicht zuzuordnen", value: (x) => feld(alle[x], (t) => t.residual_kwh), tone: "ember" },
@@ -96,7 +97,10 @@ export function HeatBalanceReport() {
         <Stat label="Wärmepumpe" value={kwh(t?.heat_pump_kwh)} unit="kWh" hint={t?.cop_mean ? `Arbeitszahl ${de1(t.cop_mean, 2)}` : "keine Laufzeit"} />
         <Stat label="Pelletofen" value={kwh((t?.stove_water_kwh ?? 0) + (t?.stove_room_kwh ?? 0))} unit="kWh" hint={`${kwh(t?.stove_water_kwh)} kWh ins Wasser, ${kwh(t?.stove_room_kwh)} kWh in den Raum`} />
         <Stat label="Entnahme" value={kwh(t?.draw_kwh)} unit="kWh" hint="Heizkreis und Warmwasser, als Rest der Bilanz" />
-        <Stat label="Verlust" value={kwh(t?.loss_kwh)} unit="kWh" tone="mist" hint="an den Aufstellraum, nicht verloren" />
+        {/* „nicht verloren" stand hier pauschal, und es stimmte nicht: der Puffer steht in einem
+            unbeheizten Technikraum, nicht im Wohnraum. Jetzt steht da, wie viel davon dem Haus
+            wirklich zugutekommt, und das ist eine eingestellte Annahme. */}
+        <Stat label="Verlust" value={kwh(t?.loss_kwh)} unit="kWh" tone="mist" hint={t?.loss_useful_kwh ? `davon ${kwh(t.loss_useful_kwh)} kWh dem Haus zugute` : "an den Aufstellraum des Puffers"} />
       </KpiGrid>
 
       {/* Die Vorschau steht nur in der Tagesansicht und nur für heute: ein Folgetag eines
@@ -181,7 +185,7 @@ export function HeatBalanceReport() {
             <Param k="COP-Kennlinie (Außentemperatur → COP)" v={(p?.cop_curve ?? []).map(([a, b]) => `${de1(a, 0)}°C: ${de1(b, 1)}`).join(" · ") || "-"} />
             <Param k="Kennlinie gilt bei Vorlauf" v={`${de1(p?.cop_reference_c, 0)} °C`} />
             <Param k="Puffer" v={`${de1(p?.buffer_volume_liters, 0)} l · Verlust ${de1((p?.buffer_loss_kw_per_k ?? 0) * 1000, 0)} W/K`} />
-            <Param k="Raumtemperatur für den Verlust" v={p?.room_source_de ?? "-"} />
+            <Param k="Aufstellraum für den Verlust" v={p?.room_source_de ?? "-"} />
           </div>
           <div>
             <Param k="Ofen Volllast" v={`${de1(p?.stove_nominal_heat_kw, 1)} kW, davon ${de1(p?.stove_water_heat_kw, 1)} kW ins Wasser`} />

@@ -37,8 +37,14 @@ const FELDER: Feld[] = [
   { key: "buffer_volume_liters", label: "Puffervolumen", unit: "l", step: 10 },
   { key: "buffer_target_temperature_c", label: "Zieltemperatur des Puffers", unit: "°C", step: 1, hint: "Zugleich der Vorlauf, bei dem die COP-Kennlinie gilt." },
   { key: "buffer_loss_kw_per_k", label: "Verlustbeiwert des Puffers", unit: "kW/K", step: 0.001, hint: "0,004 kW/K sind 4 Watt je Kelvin Übertemperatur." },
-  { key: "indoor_target_c", label: "Raumtemperatur, ersatzweise", unit: "°C", step: 0.5, hint: "Gilt nur, wenn der Raumfühler des Ofens nichts meldet." },
+  { key: "buffer_ambient_c", label: "Aufstellraum des Puffers", unit: "°C", step: 0.5, hint: "Nicht der Wohnraum: der Raum, in dem der Puffer wirklich steht. Unbeheizter Technikraum 15 bis 18, Keller 10 bis 14. Eine Annahme, bis dort ein Fühler hängt." },
+  { key: "buffer_loss_useful_fraction", label: "davon nutzbar fürs Haus", unit: "0 bis 1", step: 0.05, hint: "Liegt der Raum in der beheizten Hülle, heizt sein Verlust mit. 0 heißt ganz verloren, 1 heißt voll nutzbar." },
+  { key: "indoor_target_c", label: "Raumtemperatur des Hauses", unit: "°C", step: 0.5, hint: "Für den Heizbedarf aus Heizgradstunden. Auf den Pufferverlust wirkt sie nicht mehr." },
 ];
+
+// Die Spalten teilen sich die Felder, statt bei einer festen Zahl zu trennen: mit jedem neuen
+// Feld stand sonst eine Spalte laenger da als die andere.
+const HALB = Math.ceil(FELDER.length / 2);
 
 /** Die Kennlinie als Textzeile: „-7:2.4, 2:3.0, 7:3.5, 15:4.2". Kürzer als elf Eingabefelder. */
 function kurveZuText(kurve: Array<[number, number]> | undefined): string {
@@ -97,6 +103,8 @@ export function HeatSettings() {
       buffer_volume_liters: String(c.buffer.volume_liters),
       buffer_target_temperature_c: String(c.buffer.target_temperature_c),
       buffer_loss_kw_per_k: String(c.buffer.loss_kw_per_k),
+      buffer_ambient_c: String(c.buffer.ambient_c),
+      buffer_loss_useful_fraction: String(c.buffer.loss_useful_fraction),
       indoor_target_c: String(c.heat_demand.indoor_target_c),
     });
     setKurve(kurveZuText(c.heat_demand.cop_curve as Array<[number, number]>));
@@ -147,12 +155,12 @@ export function HeatSettings() {
     <div className="flex flex-col gap-3">
       <div className="grid gap-x-8 md:grid-cols-2">
         <div>
-          {FELDER.slice(0, 6).map((f) => (
+          {FELDER.slice(0, HALB).map((f) => (
             <Zeile key={f.key} f={f} wert={werte[f.key] ?? ""} onChange={(v) => setWerte((w) => ({ ...w, [f.key]: v }))} />
           ))}
         </div>
         <div>
-          {FELDER.slice(6).map((f) => (
+          {FELDER.slice(HALB).map((f) => (
             <Zeile key={f.key} f={f} wert={werte[f.key] ?? ""} onChange={(v) => setWerte((w) => ({ ...w, [f.key]: v }))} />
           ))}
         </div>

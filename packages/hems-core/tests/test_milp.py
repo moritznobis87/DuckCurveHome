@@ -255,8 +255,17 @@ def test_beide_quellen_zusammen_decken_mehr_als_eine_allein() -> None:
     der Ofen schließen, und auch er nur, solange die Füllung reicht.
     """
     prices = [60.0] * 96
-    allein = optimize(ivs(prices, demand=2.6), **BASE)
-    zusammen = optimize(ivs_with_stove(prices, demand=2.6), **BASE, **STOVE, fuel_budget_kg=[15.0])
+    # **Dem Solver Zeit geben, sonst prüft dieser Test die Maschine statt das Modell.** Mit der
+    # Betriebsgrenze von 5 s bricht HiGHS auf einem langsamen Rechner bei diesem Fall mit „feasible"
+    # ab und meldet dieselben 34 kWh ungedeckt wie ohne Ofen - nicht, weil der Ofen nichts brächte,
+    # sondern weil er die Lösung nicht mehr gefunden hat. Gemessen: 5 s „feasible", 30 s „optimal"
+    # mit 0 kWh ungedeckt. Der Status wird deshalb mitgeprüft; ein Abbruch soll hier auffallen.
+    geduldig = OptimizerConfig(time_limit_s=60.0)
+    allein = optimize(ivs(prices, demand=2.6), **BASE, cfg=geduldig)
+    zusammen = optimize(
+        ivs_with_stove(prices, demand=2.6), **BASE, **STOVE, fuel_budget_kg=[15.0], cfg=geduldig
+    )
+    assert allein.status == "optimal" and zusammen.status == "optimal"
     assert allein.unmet_demand_kwh > 0, "die Wärmepumpe allein schafft das nicht"
     assert zusammen.unmet_demand_kwh < allein.unmet_demand_kwh
     assert any(zusammen.stove_on)

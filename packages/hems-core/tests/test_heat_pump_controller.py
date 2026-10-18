@@ -37,6 +37,9 @@ class Harness:
         self.hp_follows_k1 = True
         self.k1 = False
         self.last = None
+        # Was der Fahrplan für den laufenden Zeitpunkt sagt. Beides False heißt „er sagt nichts".
+        self.planned_release = False
+        self.planned_off = False
 
     def step(
         self,
@@ -64,6 +67,8 @@ class Harness:
                 mode=self.mode,
                 price_rank=price_rank,
                 price_age_s=price_age_s,
+                planned_release=self.planned_release,
+                planned_off=self.planned_off,
             )
             self.last = self.ctrl.tick(inp)
             self.k1 = self.last.k1_release
@@ -313,3 +318,76 @@ def test_every_reason_code_has_explanation_text() -> None:
             ControllerState.IDLE, [code], [code], inputs, min_offtime_s=1200, min_runtime_s=1800
         )
         assert isinstance(text, str) and len(text) > 10
+
+
+# ------------------------------------------------- Der Fahrplan führt, die Schutzkette bleibt
+
+
+def test_der_fahrplan_gibt_frei_wo_die_faustregel_schwiege() -> None:
+    """Teurer Strom, kein Überschuss - und der Optimierer will trotzdem laden.
+
+    Er hat 36 Stunden gerechnet und weiß etwas, das die Faustregel „günstigstes Zehntel" nicht
+    sehen kann: dass es später teurer wird oder der Puffer sonst nicht reicht.
+    """
+    h = Harness()
+    h.planned_release = True
+    d = h.step(8, grid=2.0, price=42.0, price_rank=0.9)
+    assert d.k1_release
+    assert ReasonCode.PLANNED_WINDOW in d.reasons
+
+
+def test_der_fahrplan_laesst_die_preisregel_schweigen() -> None:
+    """Sagt er ausdrücklich „hier nicht", startet die Faustregel nicht gegen ihn an."""
+    guenstig = Harness()
+    d = guenstig.step(8, grid=2.0, price=6.0, price_rank=0.02)
+    assert d.k1_release, "ohne Fahrplan gilt die Faustregel weiter"
+
+    h = Harness()
+    h.planned_off = True
+    d = h.step(8, grid=2.0, price=6.0, price_rank=0.02)
+    assert not d.k1_release
+    assert ReasonCode.PRICE_CHEAP_WINDOW not in d.reasons
+    assert ReasonCode.PLANNED_PAUSE in d.blocked_by
+
+
+def test_echter_pv_ueberschuss_schlaegt_den_fahrplan() -> None:
+    """Der Fahrplan rechnet mit einer Prognose, der Zähler misst.
+
+    Scheint die Sonne wirklich, ist die Messung näher an der Wahrheit als die Vorhersage von
+    vorhin. Darum schaltet der Fahrplan nur die Preisgründe ab und nicht alle.
+    """
+    h = Harness()
+    h.planned_off = True
+    d = h.step(8, grid=-5.0)
+    assert d.k1_release
+    assert ReasonCode.PV_SURPLUS in d.reasons
+
+
+def test_der_fahrplan_haengt_die_schutzkette_nicht_aus() -> None:
+    """Der eine Test, der zählt: der Plan ist ein Grund, keine Vollmacht.
+
+    Mindestauszeit, Taktgrenze und ein voller Puffer stehen im Regler, nicht im Optimierer; das
+    Modell kennt davon nur Mindestlaufzeit und Mindestauszeit. Ein Fahrplan, der an ihnen vorbei
+    auf das Relais ginge, verlöre alles andere.
+    """
+    voll = Harness()
+    voll.planned_release = True
+    d = voll.step(8, temps=(63.0, 62.0, 61.0, 60.0))
+    assert not d.k1_release, "Puffer voll schlägt den Fahrplan"
+    assert ReasonCode.BUFFER_FULL in d.blocked_by
+
+    takt = Harness()
+    takt.planned_release = True
+    takt.step(1)
+    takt.tracker.starts_today = takt.cfg.heat_pump.max_starts_per_day
+    d = takt.step(8, grid=2.0, price_rank=0.9)
+    assert not d.k1_release, "die Taktgrenze schlägt den Fahrplan"
+    assert ReasonCode.MAX_STARTS_REACHED in d.blocked_by
+
+
+def test_ohne_smart_wirkt_der_fahrplan_nicht() -> None:
+    """In PRICE und PV hat der Mensch eine einfachere Regel gewählt. Der Plan redet dort nicht mit."""
+    h = Harness(profile=AutoProfile.PRICE)
+    h.planned_off = True
+    d = h.step(8, grid=2.0, price=6.0, price_rank=0.02)
+    assert d.k1_release, "das Preisprofil folgt dem Preis, nicht dem Fahrplan"

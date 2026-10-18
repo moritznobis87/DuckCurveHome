@@ -17,7 +17,9 @@ braucht den ganzen Horizont auf einmal.
 * Der Wärmebedarf kommt aus dem Modell v1 (Heizgradstunden plus Warmwasserprofil), nicht aus einer
   Messung. Solange der Wärmemengenzähler fehlt, ist das die beste verfügbare Zahl.
 * Der Pufferverlust ist je Intervall konstant, gerechnet aus der mittleren Puffertemperatur gegen
-  20 °C Aufstellraum.
+  den eingestellten Aufstellraum (`buffer.ambient_c`). Dieselbe Annahme wie in der Rückschau: hier
+  standen einmal fest verdrahtete 20 °C, während die Bilanz gegen den Ofenfühler rechnete, und
+  derselbe Beiwert ergab zwei verschiedene Verluste.
 
 Jede dieser Näherungen ist kleiner als die Prognoseunsicherheit, gegen die hier optimiert wird. Was
 sie nicht sind: unsichtbar. `note_de` sagt bei jedem Fahrplan, worauf er beruht.
@@ -57,7 +59,6 @@ MIN_HORIZON_H = 8
 # Grundlast des Hauses, die von der PV-Erwartung abgeht, bevor von Überschuss die Rede ist.
 # Dieselbe Annahme wie in `plan_service.pv_surplus_windows`; sie gehört irgendwann gemessen.
 BASE_LOAD_KW = 0.6
-ROOM_TEMP_C = 20.0  # Aufstellraum des Puffers, für den Verlustterm
 
 
 @dataclass(frozen=True)
@@ -77,16 +78,31 @@ class StovePlan:
     solve_ms: int = 0
     note_de: str = ""
 
-    def index_at(self, t: datetime) -> int | None:
-        if not self.available or self.start is None or not self.on:
+    def _index(self, t: datetime, reihe: list[bool]) -> int | None:
+        if not self.available or self.start is None or not reihe:
             return None
         i = int((t - self.start).total_seconds() // (self.step_min * 60))
-        return i if 0 <= i < len(self.on) else None
+        return i if 0 <= i < len(reihe) else None
+
+    def index_at(self, t: datetime) -> int | None:
+        return self._index(t, self.on)
 
     def on_at(self, t: datetime) -> bool | None:
         """Soll der Ofen zu diesem Zeitpunkt brennen? `None`, wenn der Fahrplan nichts dazu sagt."""
         i = self.index_at(t)
         return None if i is None else self.on[i]
+
+    def hp_on_at(self, t: datetime) -> bool | None:
+        """Soll die Wärmepumpe zu diesem Zeitpunkt freigegeben sein?
+
+        Dasselbe Modell rechnet beide Erzeuger in einer Pufferbilanz; dieser Teil des Ergebnisses
+        lag bisher ungelesen da, und die Wärmepumpe folgte daneben einer Faustregel aus Preis- und
+        PV-Fenstern. `None` heißt wie beim Ofen „der Fahrplan sagt dazu nichts" und ist vom
+        ausdrücklichen `False` zu unterscheiden: das eine ist ein Rückfall, das andere eine
+        Entscheidung.
+        """
+        i = self._index(t, self.hp_on)
+        return None if i is None else self.hp_on[i]
 
     def until(self, t: datetime) -> datetime | None:
         """Bis wann der jetzige Zustand laut Fahrplan gilt. `None` am Ende des Horizonts."""
@@ -170,6 +186,11 @@ def plan_stove(
     hp_running: bool,
     stove_running: bool,
     remaining_kg: float | None = None,
+    # Die Solverkonfiguration, vor allem seine Zeitgrenze. Sie ist eine Eigenschaft der Maschine
+    # und nicht des Modells: auf einem langsamen Rechner bricht HiGHS nach 5 s mit „feasible" ab
+    # und gibt einen Fahrplan zurück, der schlechter ist, ohne dass das irgendwo steht. Tests, die
+    # das Modell prüfen und nicht die Maschine, setzen die Grenze hoch.
+    opt_cfg: OptimizerConfig | None = None,
 ) -> StovePlan:
     """Einen Fahrplan für beide Wärmequellen rechnen und den Ofenteil davon zurückgeben.
 
@@ -232,7 +253,7 @@ def plan_stove(
     mean_c = (
         buffer.mean_temp_c if buffer.mean_temp_c is not None else cfg.buffer.target_temperature_c
     )
-    loss_kwh = max(0.0, cfg.buffer.loss_kw_per_k * (mean_c - ROOM_TEMP_C)) * dt_h
+    loss_kwh = max(0.0, cfg.buffer.loss_kw_per_k * (mean_c - cfg.buffer.ambient_c)) * dt_h
 
     try:
         result = optimize(
@@ -252,7 +273,7 @@ def plan_stove(
             stove_min_offtime_min=stove.min_offtime_min,
             stove_running_now=stove_running,
             fuel_budget_kg=budgets,
-            cfg=OptimizerConfig(step_min=STEP_MIN),
+            cfg=opt_cfg or OptimizerConfig(step_min=STEP_MIN),
         )
     except SolverUnavailableError as exc:
         return StovePlan(note_de=f"Kein Solver verfügbar: {exc}")

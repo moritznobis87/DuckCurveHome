@@ -115,11 +115,45 @@ def test_ohne_gemeldete_stufe_gilt_volllast() -> None:
 def test_ein_stehender_speicher_ohne_erzeuger_verliert_nur() -> None:
     punkte = heat_series(_reihe(10), stove=STOVE, heat=HEAT, buffer=BUFFER)
     letzter = punkte[-1]
-    # 0,004 kW/K mal 29 K Übertemperatur
-    assert letzter.loss_kw == round(BUFFER.loss_kw_per_k * (50.0 - 21.0), 3)
+    # Übertemperatur gegen den Aufstellraum des Puffers, nicht gegen den Wohnraum
+    assert letzter.loss_kw == round(BUFFER.loss_kw_per_k * (50.0 - BUFFER.ambient_c), 3)
     assert letzter.heat_pump_kw == 0.0
     assert letzter.draw_kw == 0.0
     assert letzter.residual_kw < 0.0  # der Verlust ist unerklärte Abfuhr, keine Entnahme
+
+
+def test_der_ofenfuehler_bestimmt_den_pufferverlust_nicht_mehr() -> None:
+    """Der gemeldete Fehler: der Puffer steht nicht in dem Raum, in dem der Fühler hängt.
+
+    Der Fühler bleibt eine Messung und wird weiter mitgeschrieben; er trägt nur keine Rechnung
+    mehr, für die er nie gedacht war. Zwei Reihen mit 15 K Unterschied im Ofenraum müssen
+    denselben Verlust ergeben.
+    """
+    kalt = heat_series(_reihe(5, room_c=8.0), stove=STOVE, heat=HEAT, buffer=BUFFER)
+    warm = heat_series(_reihe(5, room_c=23.0), stove=STOVE, heat=HEAT, buffer=BUFFER)
+    ohne = heat_series(_reihe(5, room_c=None), stove=STOVE, heat=HEAT, buffer=BUFFER)
+    assert kalt[-1].loss_kw == warm[-1].loss_kw == ohne[-1].loss_kw
+
+
+def test_ein_kuehlerer_aufstellraum_kostet_mehr_verlust() -> None:
+    keller = BUFFER.model_copy(update={"ambient_c": 12.0})
+    punkte = heat_series(_reihe(5), stove=STOVE, heat=HEAT, buffer=keller)
+    warm = heat_series(_reihe(5), stove=STOVE, heat=HEAT, buffer=BUFFER)
+    assert punkte[-1].loss_kw > warm[-1].loss_kw
+    assert punkte[-1].loss_kw == round(0.004 * (50.0 - 12.0), 3)
+
+
+def test_der_nutzbare_anteil_ist_ein_teil_des_verlusts_und_kein_zweiter() -> None:
+    """Er ändert die Bilanzgleichung nicht, er beantwortet nur, wie viel davon wirklich fort ist."""
+    punkte = heat_series(_reihe(60), stove=STOVE, heat=HEAT, buffer=BUFFER)
+    summen = heat_totals(punkte, _reihe(60))
+    assert summen.loss_useful_kwh == round(summen.loss_kwh * BUFFER.loss_useful_fraction, 2)
+    assert 0.0 < summen.loss_useful_kwh < summen.loss_kwh
+
+    ganz = BUFFER.model_copy(update={"loss_useful_fraction": 0.0})
+    verloren = heat_totals(heat_series(_reihe(60), stove=STOVE, heat=HEAT, buffer=ganz), _reihe(60))
+    assert verloren.loss_useful_kwh == 0.0
+    assert verloren.loss_kwh == summen.loss_kwh  # dieselbe Bilanz, nur andere Lesart
 
 
 def test_die_waermepumpe_liefert_strom_mal_arbeitszahl() -> None:
@@ -267,10 +301,32 @@ def test_die_stunde_verdichtet_minuten_ohne_das_modell_zu_wechseln() -> None:
     assert h.buffer_top_c == 50.0
 
     # Dieselbe Bilanz, nur gröber: die Größenordnung muss stehen.
-    grob = heat_series(samples_from_hours(stunden), stove=STOVE, heat=HEAT, buffer=BUFFER)
+    grob = heat_series(samples_from_hours(stunden, BUFFER), stove=STOVE, heat=HEAT, buffer=BUFFER)
     fein = heat_series(samples, stove=STOVE, heat=HEAT, buffer=BUFFER)
     assert abs(grob[0].heat_pump_kw - fein[-1].heat_pump_kw) < 0.3
     assert grob[0].stove_water_kw == fein[-1].stove_water_kw
+
+
+def test_die_stunde_baut_eine_schichtung_mit_demselben_mittel() -> None:
+    """Sonst rechnet der Stundenweg den Verlust systematisch zu hoch.
+
+    Aus Kopf- und Mitteltemperatur wurden die Schichten (oben, Mittel, Mittel, Mittel) gebaut.
+    Bei gleicher Gewichtung ergibt das 0,25·oben + 0,75·Mittel und damit ein zu hohes Mittel,
+    sobald der Puffer geschichtet ist. Der Verlust hing daran, und die Abweichung war klein
+    genug, um unbemerkt zu bleiben.
+    """
+    from hems_core.thermal import hourly_inputs, mean_temperature_c, samples_from_hours
+
+    geschichtet = _reihe(60, buffer_c=(58.0, 52.0, 46.0, 40.0))
+    stunden = hourly_inputs(geschichtet, BUFFER)
+    zurueck = samples_from_hours(stunden, BUFFER)
+    assert zurueck[0].buffer_c is not None
+    assert mean_temperature_c(list(zurueck[0].buffer_c), BUFFER) == stunden[0].buffer_mean_c
+    assert zurueck[0].buffer_c[0] == stunden[0].buffer_top_c  # der Kopf bleibt die Senke
+
+    grob = heat_series(zurueck, stove=STOVE, heat=HEAT, buffer=BUFFER)
+    fein = heat_series(geschichtet, stove=STOVE, heat=HEAT, buffer=BUFFER)
+    assert grob[0].loss_kw == fein[-1].loss_kw
 
 
 def test_die_stundeneingaenge_speichern_eingaenge_und_keine_ergebnisse() -> None:
