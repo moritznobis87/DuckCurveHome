@@ -2804,6 +2804,21 @@ export interface components {
             /** Planner */
             planner: string;
             /**
+             * Planner Status
+             * @default unavailable
+             */
+            planner_status: string;
+            /**
+             * Planner Note De
+             * @default
+             */
+            planner_note_de: string;
+            /**
+             * Planner Warn De
+             * @default
+             */
+            planner_warn_de: string;
+            /**
              * Horizon Start
              * Format: date-time
              */

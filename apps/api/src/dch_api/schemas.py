@@ -47,6 +47,17 @@ class PlanIntervalOut(BaseModel):
 class PlanOut(BaseModel):
     created_at: datetime
     planner: str
+    # Wie der Fahrplan zustande kam, nicht nur von wem.
+    #
+    # Der Optimierer darf abbrechen, wenn seine Zeit um ist, und gibt dann das Beste zurück, was er
+    # bis dahin gefunden hat. Das sah von außen aus wie ein fertiger Lauf: dieselbe Datenstruktur,
+    # dieselben Zahlen, nur eben ein anderer Fahrplan. Seit er die Wärmepumpe führt, steht hinter
+    # diesem Unterschied echte Laufzeit am Relais, also steht er jetzt im Plan.
+    planner_status: str = "unavailable"
+    planner_note_de: str = ""
+    # Leer, solange nichts zu sagen ist. Die Beurteilung steht im Dienst und nicht in der
+    # Oberfläche: ob ein Abstand von 5 % erwähnenswert ist, ist eine fachliche Frage.
+    planner_warn_de: str = ""
     horizon_start: datetime
     horizon_end: datetime
     windows: list[PriceWindowOut]

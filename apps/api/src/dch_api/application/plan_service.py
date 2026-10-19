@@ -67,6 +67,9 @@ def build_plan(
     cfg: HemsConfig,
     stove_on: Callable[[datetime], bool | None] | None = None,
     hp_on: Callable[[datetime], bool | None] | None = None,
+    planner_status: str = "unavailable",
+    planner_note_de: str = "",
+    planner_warn_de: str = "",
 ) -> PlanOut:
     """Der Fahrplan über den Horizont.
 
@@ -161,6 +164,9 @@ def build_plan(
     return PlanOut(
         created_at=now,
         planner="milp_v1" if vom_optimierer else "rule_based_v1",
+        planner_status=planner_status if vom_optimierer else "unavailable",
+        planner_note_de=planner_note_de if vom_optimierer else "",
+        planner_warn_de=planner_warn_de if vom_optimierer else "",
         horizon_start=day_start,
         horizon_end=horizon_end,
         windows=windows,

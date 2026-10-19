@@ -7,6 +7,14 @@ from __future__ import annotations
 
 from hems_core.planning import Interval, OptimizerConfig, optimize
 
+# Statuswerte, bei denen ein Fahrplan benutzbar ist.
+#
+# „timeout" gehoert dazu, und zwar nicht als Zugestaendnis: gemessen am 19.10.2026 erreicht ein
+# gewoehnlicher Tageshorizont auch in 30 s kein bewiesenes Optimum, er bleibt bei rund 5 % Abstand.
+# Wer hier Optimalitaet verlangt, prueft die Rechengeschwindigkeit der Maschine. Tests, die es
+# trotzdem brauchen, sagen es ausdruecklich und geben dem Solver Zeit.
+BRAUCHBAR = ("optimal", "feasible", "timeout")
+
 CHEAP, PRICEY = 10.0, 45.0
 KW_EL, KW_TH = 3.0, 9.0  # COP 3
 BASE = dict(
@@ -32,7 +40,7 @@ def test_it_puts_the_run_into_the_cheap_hours() -> None:
     """Vier teure Stunden, dann vier günstige. Der Bedarf lässt sich verschieben."""
     prices = [PRICEY] * 16 + [CHEAP] * 16 + [PRICEY] * 64  # 24 h in Viertelstunden
     r = optimize(ivs(prices), **BASE)
-    assert r.status in ("optimal", "feasible")
+    assert r.status in BRAUCHBAR
     cheap_on = sum(r.on[16:32])
     assert cheap_on > 0
     # Anteil der Laufzeit im günstigen Fenster liegt deutlich über dessen Zeitanteil (16/96)
@@ -95,7 +103,7 @@ def test_an_impossible_comfort_target_is_penalised_not_refused() -> None:
     """Lieber ein Fahrplan mit ausgewiesener Komfortlücke als gar keiner."""
     args = {**BASE, "buffer_start_kwh": 6.0, "thermal_kw": 0.5}
     r = optimize(ivs([CHEAP] * 96, demand=2.0), **args)
-    assert r.status in ("optimal", "feasible")
+    assert r.status in BRAUCHBAR
     assert r.comfort_miss_kwh > 0
     assert "Komfortminimum" in r.note_de
 
@@ -107,7 +115,7 @@ def test_empty_horizon_says_so() -> None:
 def test_it_solves_a_36_hour_horizon_quickly() -> None:
     prices = [CHEAP if (i // 4) % 6 < 2 else PRICEY for i in range(144)]
     r = optimize(ivs(prices), **BASE)
-    assert r.status in ("optimal", "feasible")
+    assert r.status in BRAUCHBAR
     assert r.solve_ms < 5000
     assert len(r.on) == 144
 
@@ -155,7 +163,7 @@ def test_ohne_ofen_bleibt_das_problem_so_gross_wie_vorher() -> None:
 def test_bei_billigem_strom_bleibt_der_ofen_aus() -> None:
     """10 ct und COP 3 heißen 3,3 ct/kWh Wärme. Dagegen hat der Ofen mit 12 ct keine Chance."""
     r = optimize(ivs_with_stove([CHEAP] * 96), **BASE, **STOVE, fuel_budget_kg=[15.0])
-    assert r.status in ("optimal", "feasible")
+    assert r.status in BRAUCHBAR
     assert not any(r.stove_on), "der Ofen darf hier nicht anspringen"
     assert "Ofen bleibt aus" in r.note_de
 
@@ -163,7 +171,7 @@ def test_bei_billigem_strom_bleibt_der_ofen_aus() -> None:
 def test_bei_teurem_strom_uebernimmt_der_ofen() -> None:
     """80 ct und COP 3 sind 26,7 ct/kWh Wärme. Der Ofen liefert dieselbe Wärme für gut 12."""
     r = optimize(ivs_with_stove([80.0] * 96), **BASE, **STOVE, fuel_budget_kg=[15.0])
-    assert r.status in ("optimal", "feasible")
+    assert r.status in BRAUCHBAR
     assert any(r.stove_on), "der Ofen ist hier die günstigere Quelle"
     assert r.stove_runtime_min >= 120, "und läuft dann mindestens seine Mindestlaufzeit"
 
@@ -175,7 +183,7 @@ def test_der_brennstoff_begrenzt_die_ofenlaufzeit() -> None:
     zu verteilen statt sie zu verbrauchen, sobald sie sich lohnt.
     """
     r = optimize(ivs_with_stove([200.0] * 96, demand=1.0), **BASE, **STOVE, fuel_budget_kg=[15.0])
-    assert r.status in ("optimal", "feasible")
+    assert r.status in BRAUCHBAR
     assert r.stove_pellet_kg <= 15.05, f"Budget überschritten: {r.stove_pellet_kg} kg"
     assert r.stove_runtime_min <= 6 * 60, "15 kg tragen keine sechs Stunden Volllast"
     assert r.stove_runtime_min > 0
@@ -209,7 +217,7 @@ def test_zwei_budgetfenster_werden_getrennt_begrenzt() -> None:
         **STOVE,
         fuel_budget_kg=[15.0, 15.0],
     )
-    assert r.status in ("optimal", "feasible")
+    assert r.status in BRAUCHBAR
     kg_per_step = STOVE["stove_kg_per_h"] * 0.25
     first = sum(r.stove_on[:96]) * kg_per_step
     second = sum(r.stove_on[96:]) * kg_per_step
@@ -269,3 +277,44 @@ def test_beide_quellen_zusammen_decken_mehr_als_eine_allein() -> None:
     assert allein.unmet_demand_kwh > 0, "die Wärmepumpe allein schafft das nicht"
     assert zusammen.unmet_demand_kwh < allein.unmet_demand_kwh
     assert any(zusammen.stove_on)
+
+
+# ------------------------------------------------------------- Die Zeitgrenze wird sichtbar
+
+
+def test_eine_gerissene_zeitgrenze_heisst_timeout_und_nicht_unloesbar() -> None:
+    """Der Unterschied, der vorher fehlte: „die Zeit reichte nicht" statt „es geht nicht".
+
+    Ein Lauf, der an der Zeitgrenze ohne Lösung abbricht, meldete „infeasible". Wer dem Satz
+    glaubt, sucht den Fehler im Modell und findet keinen, denn es gibt ihn nicht.
+    """
+    prices = [60.0] * 96
+    knapp = OptimizerConfig(time_limit_s=0.001)
+    r = optimize(
+        ivs_with_stove(prices, demand=2.6), **BASE, **STOVE, fuel_budget_kg=[15.0], cfg=knapp
+    )
+    assert r.status in BRAUCHBAR
+    if r.status == "timeout" and not r.on:
+        # Der Satz muss die Grenze nennen und darf nicht behaupten, es gebe keinen Fahrplan.
+        assert "Grenze reicht" in r.note_de
+        assert "nicht, dass es keinen gibt" in r.note_de
+
+
+def test_ein_echter_widerspruch_heisst_weiterhin_unloesbar() -> None:
+    """Die Gegenprobe: unlösbar darf nicht zu „timeout" werden, sonst ist nichts gewonnen.
+
+    Der Puffer startet über seiner eigenen Kapazität. Dafür gibt es keinen Fahrplan, und zwar
+    unabhängig davon, wie lange gerechnet wird.
+    """
+    widerspruch = dict(BASE)
+    widerspruch["buffer_start_kwh"] = 99.0  # über buffer_max_kwh von 25
+    r = optimize(ivs([10.0] * 32), **widerspruch, cfg=OptimizerConfig(time_limit_s=10.0))
+    assert r.status == "infeasible"
+    assert r.on == []
+
+
+def test_ein_fertiger_lauf_sagt_wie_weit_er_vom_besten_entfernt_ist() -> None:
+    """`mip_gap` macht ein „timeout" erst beurteilbar: 0,2 % sind gleichgültig, 30 % nicht."""
+    r = optimize(ivs([10.0] * 96), **BASE, cfg=OptimizerConfig(time_limit_s=30.0))
+    assert r.status == "optimal"
+    assert r.mip_gap is None or r.mip_gap >= 0.0

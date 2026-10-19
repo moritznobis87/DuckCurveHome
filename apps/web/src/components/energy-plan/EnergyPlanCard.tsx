@@ -206,6 +206,13 @@ export function EnergyPlanCard({ state, plan }: { state: LiveState | null; plan:
         {/* Nächste 24 h */}
         <div className="flex shrink-0 flex-col gap-1.5">
           <Timeline plan={plan} nowMs={nowMs} />
+          {/* Ein abgebrochener Solverlauf sieht in den Zahlen aus wie ein fertiger. Seit der
+              Optimierer die Wärmepumpe führt, steht hinter dem Unterschied Laufzeit am Relais,
+              also wird er gesagt - aber nur, wenn er etwas ausmacht. Ob das so ist, entscheidet
+              der Dienst: abbrechen tut der Solver fast immer, 5 % Abstand sind gleichgültig. */}
+          {plan?.planner_warn_de ? (
+            <span className="text-[12px]" style={{ color: "var(--amber-soft)" }}>{plan.planner_warn_de}</span>
+          ) : null}
           <div className="plan-next flex flex-wrap gap-x-4 gap-y-0.5 overflow-hidden text-[12px] text-text-2">
             {nextStep ? <span><span className="text-text-3">Nächster Schritt</span> <span className="mono text-text-1">{nextStep}</span></span> : null}
             {nextPv ? <span><span className="text-text-3">PV-Fenster</span> <span className="mono text-text-1">{hhmm(nextPv.start)}-{hhmm(nextPv.end)}</span></span> : null}

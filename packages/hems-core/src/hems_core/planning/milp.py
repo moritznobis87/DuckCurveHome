@@ -125,7 +125,16 @@ class OptimizerResult(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    status: str  # "optimal", "feasible", "infeasible", "unavailable"
+    # "optimal"    - bewiesen bestes Ergebnis im Rahmen der Toleranz
+    # "timeout"     - die Zeitgrenze war erreicht; die Zahlen gelten, sind aber nicht die besten
+    # "feasible"    - zulässig, aber aus anderem Grund nicht zu Ende gerechnet
+    # "infeasible"  - es gibt keinen Fahrplan, der alle Bedingungen erfüllt
+    # "unavailable" - gar nicht gerechnet (kein Solver, kein Horizont)
+    #
+    # Der Unterschied zwischen "timeout" und "infeasible" ist der wichtigste: das eine heißt
+    # "die Zeit hat nicht gereicht", das andere "es geht nicht". Beides stand hier einmal unter
+    # demselben Wort, und das war die unangenehmere Hälfte der Verwechslung.
+    status: str
     on: list[bool] = Field(default_factory=list)
     buffer_kwh: list[float] = Field(default_factory=list)
     energy_cost_eur: float = 0.0
@@ -140,6 +149,10 @@ class OptimizerResult(BaseModel):
     stove_cost_eur: float = 0.0
     stove_pellet_kg: float = 0.0
     solve_ms: int = 0
+    # Wie weit die gefundene Lösung von der beweisbar besten entfernt sein kann, relativ.
+    # `None`, wenn der Solver nichts dazu sagt. Erst diese Zahl macht ein "timeout" beurteilbar:
+    # 0,2 % daneben ist gleichgültig, 30 % sind ein anderer Fahrplan.
+    mip_gap: float | None = None
     note_de: str = ""
 
 
@@ -354,11 +367,20 @@ def optimize(
     )
     solve_ms = int((time.perf_counter() - t0) * 1000)
 
+    # scipy meldet die Zeitgrenze als status 1, mit oder ohne Lösung. Ohne Lösung hieß das hier
+    # "infeasible", also "es gibt keinen Fahrplan" - und das ist eine andere Aussage als "die Zeit
+    # hat nicht gereicht". Wer dem ersten Satz glaubt, sucht den Fehler im Modell.
+    zeitgrenze = res.status == 1
     if res.x is None:
         return OptimizerResult(
-            status="infeasible",
+            status="timeout" if zeitgrenze else "infeasible",
             solve_ms=solve_ms,
-            note_de=f"Kein zulässiger Fahrplan gefunden ({res.message.strip()[:120]}).",
+            note_de=(
+                f"In {c.time_limit_s:g} s kein Fahrplan gefunden. Die Grenze reicht für diesen "
+                f"Fall nicht; es heißt nicht, dass es keinen gibt."
+                if zeitgrenze
+                else f"Kein zulässiger Fahrplan gefunden ({res.message.strip()[:120]})."
+            ),
         )
     x = res.x
     on = [bool(round(x[i_on + t])) for t in range(n)]
@@ -374,7 +396,9 @@ def optimize(
         for iv, run in zip(intervals, on, strict=True)
         if run
     )
-    status = "optimal" if res.status == 0 else "feasible"
+    gap = getattr(res, "mip_gap", None)
+    gap = float(gap) if isinstance(gap, (int, float)) else None
+    status = "optimal" if res.status == 0 else ("timeout" if zeitgrenze else "feasible")
     s_on: list[bool] = []
     s_starts = 0
     s_cost = 0.0
@@ -401,6 +425,7 @@ def optimize(
         stove_cost_eur=round(s_cost, 4),
         stove_pellet_kg=round(s_kg, 2),
         solve_ms=solve_ms,
+        mip_gap=gap,
         note_de=(
             f"{sum(on)} von {n} Intervallen Freigabe, {starts} Anläufe, "
             f"{energy:.2f} EUR Stromkosten über {round(n * dt_h)} h."
@@ -417,6 +442,15 @@ def optimize(
                 f" {unmet:.1f} kWh Wärmebedarf bleiben ungedeckt - die Anlage kann den Bedarf"
                 " im Horizont nicht decken."
                 if unmet > 0.05
+                else ""
+            )
+            # Der Satz, der vorher fehlte. Ein abgebrochener Lauf sah von außen aus wie ein
+            # fertiger, und der Fahrplan war trotzdem ein anderer.
+            + (
+                f" Abgebrochen nach {c.time_limit_s:g} s Rechenzeit"
+                + (f", bis zu {gap * 100:.0f} % vom Besten entfernt" if gap else "")
+                + " - es kann einen günstigeren Fahrplan geben."
+                if status == "timeout"
                 else ""
             )
         ),

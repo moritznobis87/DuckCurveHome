@@ -61,6 +61,25 @@ MIN_HORIZON_H = 8
 BASE_LOAD_KW = 0.6
 
 
+# Ab welchem Abstand zum Optimum ein abgebrochener Lauf erwähnenswert ist.
+#
+# **Der Abbruch allein ist es nicht.** Gemessen am 19.10.2026 auf dem Entwicklungsrechner: ein
+# gewöhnlicher Tageshorizont erreicht auch in 30 s kein bewiesenes Optimum, er bleibt bei rund
+# 5 % Abstand. Abbrechen ist hier der Normalfall, und eine Warnung, die immer leuchtet, sagt
+# nichts. 15 % ist die Grenze, ab der es nicht mehr in der Prognoseunsicherheit verschwindet,
+# gegen die der ganze Fahrplan ohnehin rechnet.
+WARN_GAP = 0.15
+
+# Statuswerte, mit denen sich arbeiten lässt.
+#
+# „timeout" gehört dazu, und das ist keine Nachsicht: der Solver bricht bei einem Tageshorizont
+# fast immer an seiner Zeitgrenze ab (gemessen 19.10.2026: auch in 30 s rund 5 % Abstand zum
+# Optimum). Diese Liste als Literal in der Prüfung unten stehen zu haben, war ein Fehler mit
+# Reichweite: als „timeout" neu hinzukam, galt jeder abgebrochene Lauf schlagartig als „kein
+# Fahrplan" - und damit wäre der Optimierer im Betrieb vollständig ausgefallen.
+BRAUCHBAR = ("optimal", "feasible", "timeout")
+
+
 @dataclass(frozen=True)
 class StovePlan:
     """Der Fahrplan über den Horizont. `available=False` heißt: es wurde nicht geplant, und warum."""
@@ -84,6 +103,7 @@ class StovePlan:
     starts: int = 0
     fuel_budget_kg: float = 0.0
     solve_ms: int = 0
+    mip_gap: float | None = None  # wie weit das Ergebnis vom Besten entfernt sein kann
     note_de: str = ""
 
     def _index(self, t: datetime, reihe: list[bool]) -> int | None:
@@ -124,6 +144,19 @@ class StovePlan:
             if self.on[j] != state:
                 return self.start + timedelta(minutes=self.step_min * j)
         return None
+
+    def warnung_de(self) -> str:
+        """Was an diesem Lauf erwähnenswert ist, oder nichts. Die Oberfläche urteilt nicht selbst."""
+        if self.status != "timeout":
+            return ""
+        if self.mip_gap is None:
+            return "Der Optimierer fand in seiner Rechenzeit keinen Fahrplan; es gilt die Regel."
+        if self.mip_gap < WARN_GAP:
+            return ""
+        return (
+            f"Fahrplan unter Zeitdruck gerechnet, bis zu {self.mip_gap * 100:.0f} % vom "
+            f"günstigsten entfernt."
+        )
 
     def runtime_h(self) -> float:
         return round(sum(self.on) * self.step_min / 60.0, 1)
@@ -289,7 +322,7 @@ def plan_stove(
     except SolverUnavailableError as exc:
         return StovePlan(note_de=f"Kein Solver verfügbar: {exc}")
 
-    gerechnet = result.status in ("optimal", "feasible")
+    gerechnet = result.status in BRAUCHBAR
     if not gerechnet or not (result.stove_on or result.on):
         return StovePlan(
             status=result.status,
@@ -304,6 +337,7 @@ def plan_stove(
             start=start,
             hp_on=list(result.on),
             solve_ms=result.solve_ms,
+            mip_gap=result.mip_gap,
             note_de=(
                 "Kein Ofenfahrplan"
                 + ("" if stove.present else " (kein Ofen konfiguriert)")
@@ -323,6 +357,7 @@ def plan_stove(
         starts=result.stove_starts,
         fuel_budget_kg=round(first_budget, 1),
         solve_ms=result.solve_ms,
+        mip_gap=result.mip_gap,
     )
     return replace(plan, note_de=_note(plan, first_budget))
 

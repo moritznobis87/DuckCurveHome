@@ -470,6 +470,9 @@ class DemoRunner:
                 self.hems,
                 stove_on=self.stove_plan.on_at,
                 hp_on=self.stove_plan.hp_on_at,
+                planner_status=self.stove_plan.status,
+                planner_note_de=self.stove_plan.note_de,
+                planner_warn_de=self.stove_plan.warnung_de(),
             )
             self._plan_at = now
             self.broker.publish("plan", self.plan.model_dump(mode="json"))
