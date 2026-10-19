@@ -2814,6 +2814,11 @@ export interface components {
              */
             planner_note_de: string;
             /**
+             * Planner Warn De
+             * @default
+             */
+            planner_warn_de: string;
+            /**
              * Horizon Start
              * Format: date-time
              */

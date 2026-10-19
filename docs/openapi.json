@@ -5856,6 +5856,11 @@
             "title": "Planner Note De",
             "default": ""
           },
+          "planner_warn_de": {
+            "type": "string",
+            "title": "Planner Warn De",
+            "default": ""
+          },
           "horizon_start": {
             "type": "string",
             "format": "date-time",
