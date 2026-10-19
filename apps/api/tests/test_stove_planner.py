@@ -287,3 +287,36 @@ def test_ohne_pufferzustand_hat_auch_die_waermepumpe_keinen_fahrplan() -> None:
     p = plan(buffer=blind)
     assert p.available is False and p.hp_available is False
     assert p.hp_on_at(NOW) is None
+
+
+def test_nicht_der_abbruch_wird_gemeldet_sondern_der_abstand() -> None:
+    """Eine Warnung, die immer leuchtet, liest nach einer Woche niemand mehr.
+
+    Der Solver bricht bei einem Tageshorizont fast immer an seiner Zeitgrenze ab (gemessen
+    19.10.2026: auch in 30 s rund 5 % Abstand zum Optimum). Gemeldet wird deshalb der Abstand,
+    nicht der Abbruch.
+    """
+    fertig = StovePlan(hp_available=True, status="optimal", mip_gap=0.0)
+    assert fertig.warnung_de() == ""
+
+    knapp = StovePlan(hp_available=True, status="timeout", mip_gap=0.05)
+    assert knapp.warnung_de() == "", "5 Prozent sind der Normalfall und keine Meldung"
+
+    weit = StovePlan(hp_available=True, status="timeout", mip_gap=0.32)
+    assert "32" in weit.warnung_de()
+    assert "günstigsten" in weit.warnung_de()
+
+    # Der schlimmste Fall: die Zeit reichte nicht einmal für irgendeinen Fahrplan.
+    leer = StovePlan(status="timeout", mip_gap=None)
+    assert "keinen Fahrplan" in leer.warnung_de()
+    assert "Regel" in leer.warnung_de()
+
+
+def test_die_grenze_steht_an_einer_stelle() -> None:
+    """Sonst urteilt die Oberfläche mit, und die kann es nicht."""
+    from dch_api.application.stove_planner import WARN_GAP
+
+    drunter = StovePlan(hp_available=True, status="timeout", mip_gap=WARN_GAP - 0.001)
+    drueber = StovePlan(hp_available=True, status="timeout", mip_gap=WARN_GAP + 0.001)
+    assert drunter.warnung_de() == ""
+    assert drueber.warnung_de() != ""
