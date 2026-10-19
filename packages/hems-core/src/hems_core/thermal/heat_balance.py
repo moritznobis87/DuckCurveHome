@@ -99,6 +99,7 @@ class HeatPoint(BaseModel):
     loss_kw: float = 0.0  # an den Aufstellraum
     draw_kw: float = 0.0  # Heizkreis und Warmwasser, als Rest der Bilanz
     residual_kw: float = 0.0  # was die Bilanz nicht erklärt
+    loss_useful_kw: float = 0.0  # der Teil des Verlusts, der den Aufstellraum nützlich heizt
 
 
 class HeatTotals(BaseModel):
@@ -113,6 +114,7 @@ class HeatTotals(BaseModel):
     produced_kwh: float = 0.0  # alles, was erzeugt wurde, Raumwärme des Ofens eingeschlossen
     draw_kwh: float = 0.0
     loss_kwh: float = 0.0
+    loss_useful_kwh: float = 0.0  # davon dem Haus zugute, siehe BufferConfig.loss_useful_fraction
     buffer_change_kwh: float = 0.0
     residual_kwh: float = 0.0
     electric_kwh: float = 0.0  # Strom der Wärmepumpe, Grundlage der Arbeitszahl
@@ -298,10 +300,21 @@ def heat_series(
         if s.stove_running:
             water_kw, room_kw = stove_output_kw(s.stove_level, stove)
 
+        # Der Verlust rechnet gegen den **Aufstellraum des Puffers**, nicht gegen den Wohnraum.
+        #
+        # Hier stand der Raumfühler des Ofens, ersatzweise die Wunschtemperatur des Hauses. Beides
+        # ist der falsche Raum: der Puffer steht im Technikraum, der Fühler hängt beim Ofen. Die
+        # Messung war echt, nur maß sie etwas anderes - die unauffälligste Art, eine Bilanz falsch
+        # zu machen, denn eine Zahl stand ja da. Jetzt steht dort eine Annahme, die man als solche
+        # einstellen kann; der Ofenfühler bleibt als Messwert erhalten, er trägt nur nicht mehr
+        # eine Rechnung, für die er nie gedacht war.
+        #
+        # Die Abschneidung bei null bleibt: unter der Raumtemperatur gewinnt der Puffer Wärme, aber
+        # ein Gewinn ist kein Verlust, und bei 0,004 kW/K geht es um weniger als 15 W.
         loss_kw = 0.0
         if temps:
-            room = s.room_c if s.room_c is not None else heat.indoor_target_c
-            loss_kw = max(0.0, buffer.loss_kw_per_k * (mean_temperature_c(temps, buffer) - room))
+            uebertemperatur = mean_temperature_c(temps, buffer) - buffer.ambient_c
+            loss_kw = max(0.0, buffer.loss_kw_per_k * uebertemperatur)
 
         # Die Bilanz: was hineingeht, geht in den Speicher, an den Raum oder in die Kreise.
         #
@@ -330,6 +343,7 @@ def heat_series(
                 buffer_kwh=round(energy, 3) if energy is not None else None,
                 buffer_change_kw=round(change_kw, 3),
                 loss_kw=round(loss_kw, 3),
+                loss_useful_kw=round(loss_kw * buffer.loss_useful_fraction, 3),
                 draw_kw=round(draw_kw, 3),
                 residual_kw=round(residual_kw, 3),
                 unknown=unbekannt,
@@ -350,6 +364,7 @@ def heat_totals(
     room = sum(p.stove_room_kw for p in points) * h
     draw = sum(p.draw_kw for p in points) * h
     loss = sum(p.loss_kw for p in points) * h
+    loss_useful = sum(p.loss_useful_kw for p in points) * h
     residual = sum(p.residual_kw for p in points) * h
     electric = sum(s.heat_pump_kw or 0.0 for s in samples) * h
     # Der Speicher: nicht die Summe der Leistungen, sondern die Differenz der Bestände. Sie ist die
@@ -367,6 +382,7 @@ def heat_totals(
         produced_kwh=round(hp + water + room, 2),
         draw_kwh=round(draw, 2),
         loss_kwh=round(loss, 2),
+        loss_useful_kwh=round(loss_useful, 2),
         buffer_change_kwh=round(change, 2),
         residual_kwh=round(residual, 2),
         electric_kwh=round(electric, 2),
@@ -500,7 +516,25 @@ def hourly_inputs(samples: Sequence[HeatSample], buffer: BufferConfig) -> list[H
     return out
 
 
-def samples_from_hours(rows: Sequence[HeatHourInput]) -> list[HeatSample]:
+def _schichten(top_c: float, mean_c: float, buffer: BufferConfig) -> tuple[float, ...]:
+    """Aus Kopftemperatur und Mitteltemperatur vier Schichten bauen, deren Mittel wieder `mean_c` ist.
+
+    **Warum nicht einfach (oben, Mittel, Mittel, Mittel).** So stand es hier, und es war falsch:
+    `mean_temperature_c` gewichtet alle vier Schichten gleich und liefert daraus 0,25·oben +
+    0,75·Mittel, nicht das Mittel. Bei 8 K Schichtung sind das 2 K zu viel, über ein Jahr rund
+    7 % zu viel Verlust - eine Abweichung, die niemandem auffällt, weil sie in die richtige
+    Richtung klein ist. Die unteren Schichten tragen deshalb genau so viel, dass das gewichtete
+    Mittel wieder herauskommt.
+    """
+    anteile = list(buffer.layers) if len(buffer.layers) == 4 else [0.25] * 4
+    summe = sum(anteile) or 1.0
+    kopf = anteile[0] / summe
+    rest = 1.0 - kopf
+    unten = (mean_c - kopf * top_c) / rest if rest > 1e-9 else mean_c
+    return (top_c, unten, unten, unten)
+
+
+def samples_from_hours(rows: Sequence[HeatHourInput], buffer: BufferConfig) -> list[HeatSample]:
     """Stundeneingänge zurück in Proben, damit dieselbe Bilanz darauf läuft.
 
     Ein Modell, zwei Auflösungen. Die gröbere mittelt die Temperaturen über die Stunde und schätzt
@@ -511,7 +545,7 @@ def samples_from_hours(rows: Sequence[HeatHourInput]) -> list[HeatSample]:
     out: list[HeatSample] = []
     for r in rows:
         temps = (
-            (r.buffer_top_c, r.buffer_mean_c, r.buffer_mean_c, r.buffer_mean_c)
+            _schichten(r.buffer_top_c, r.buffer_mean_c, buffer)
             if r.buffer_top_c is not None and r.buffer_mean_c is not None
             else None
         )

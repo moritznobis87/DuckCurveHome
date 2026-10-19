@@ -11,6 +11,7 @@ import contextlib
 from collections import deque
 from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime, time, timedelta
+from time import monotonic
 from typing import Any
 
 import structlog
@@ -21,6 +22,7 @@ from dch_api.application.forecast_evaluation import ForecastEvaluator
 from dch_api.application.ha_import import ImportResult
 from dch_api.application.invoice_service import InvoiceService
 from dch_api.application.stove_control import StoveMode
+from dch_api.application.stove_planner import StovePlan
 from dch_api.application.tibber_invoice import MeasuredPeriod
 from dch_api.errors import DchError
 from dch_api.infrastructure.history import HistoryStore
@@ -62,11 +64,26 @@ from hems_core.domain import (
     SystemMode,
     apply_heat_patch,
 )
-from hems_core.planning import PricePoint, cheap_windows, next_window_after, price_rank
+from hems_core.planning import (
+    OptimizerConfig,
+    PricePoint,
+    cheap_windows,
+    next_window_after,
+    price_rank,
+)
 from hems_core.simulation import BERLIN, DemoConfig, DemoHouse, new_demo_house
 from hems_core.thermal import compute_buffer_state
 
 log = structlog.get_logger("demo")
+
+# Wie oft die Vorführung den Optimierer höchstens laufen lässt, in echten Sekunden.
+DEMO_SOLVE_S = 30.0
+
+
+class _UebersprungenError(Exception):
+    """Kein Fehler: der Fahrplan ist noch frisch genug, es wird nicht neu gerechnet."""
+
+
 VERSION = "0.1.0-phase1"
 
 
@@ -96,6 +113,8 @@ class DemoRunner:
         )
         self.decision: Decision | None = None
         self.plan: PlanOut | None = None
+        self.stove_plan: StovePlan = StovePlan()
+        self._stove_solve_at = 0.0  # monotone Echtzeit des letzten Solverlaufs
         self._plan_at: datetime | None = None
         self._next_tick_at: datetime = self.house.now
         self._task: asyncio.Task[None] | None = None
@@ -335,6 +354,17 @@ class DemoRunner:
         )
         nxt = next_window_after(cheap, snap.timestamp)
         price_ok = snap.electricity_price_ct_kwh.usable
+        geplant = None
+        if self.plan is not None:
+            cur = next(
+                (
+                    i
+                    for i in self.plan.intervals
+                    if i.ts <= snap.timestamp < i.ts + timedelta(minutes=15)
+                ),
+                None,
+            )
+            geplant = cur.planned_hp_state if cur else None
         inputs = ControlInputs(
             now=snap.timestamp,
             snapshot=snap,
@@ -344,7 +374,10 @@ class DemoRunner:
             price_rank=rank if price_ok else None,
             price_age_s=60.0 if price_ok else None,
             next_cheap_window_start=nxt.start if nxt else None,
-            planned_release=False,
+            # Die Vorführung liest denselben Fahrplan wie der Betrieb. Fest verdrahtete `False`
+            # hießen: das neue Verhalten ist genau dort nicht zu sehen, wo man es zeigt.
+            planned_release=geplant == "release",
+            planned_off=geplant == "off",
         )
         decision = self.controller.tick(inputs)
         self.decision = decision
@@ -387,13 +420,56 @@ class DemoRunner:
             or self.plan is None
         ):
             from dch_api.application.plan_service import build_plan
+            from dch_api.application.stove_planner import plan_stove
 
             self._record_forecast_run(now)
+            # Der Optimierer läuft auch in der Vorführung, und das ist kein Beiwerk: er führt
+            # inzwischen die Wärmepumpe. Eine Vorführung, die ihn auslässt, zeigt genau das
+            # nicht, was zu sehen sein soll, und sie zeigt es dann wie eine Entscheidung für die
+            # Faustregel.
+            #
+            # **Zwei Zügel, beide nötig.** Dieser Pfad läuft bei jedem Simulationsschritt, und die
+            # Schritte eilen: beim Nachholen der Historie vergehen Stunden in Sekunden. Ohne Zügel
+            # solvte er hunderte Male und blockierte dabei die Ereignisschleife, denn anders als in
+            # der Laufzeit gibt es hier keinen eigenen Thread - der Dienst kam schlicht nicht hoch.
+            # Also höchstens alle DEMO_SOLVE_S **echte** Sekunden, und mit kurzer Zeitgrenze. Eine
+            # Sekunde Rechenzeit reicht für eine Vorführung; im Haus gilt die Betriebsgrenze.
+            basis = now.replace(minute=0, second=0, microsecond=0)
+            echt = monotonic()
+            try:
+                if echt - self._stove_solve_at < DEMO_SOLVE_S and self.stove_plan.start is not None:
+                    raise _UebersprungenError
+                self._stove_solve_at = echt
+                self.stove_plan = plan_stove(
+                    now=now,
+                    tz=BERLIN,
+                    cfg=self.hems,
+                    prices=self._prices(),
+                    pv_expected=self.evaluator.pv_expected_corrected(self.house.pv_expected_kw),
+                    temps=[
+                        (
+                            basis + timedelta(hours=i),
+                            self.house.outdoor_temp_c(basis + timedelta(hours=i)),
+                        )
+                        for i in range(48)
+                    ],
+                    buffer=self.buffer,
+                    hp_running=self.hp.running,
+                    stove_running=False,
+                    opt_cfg=OptimizerConfig(step_min=15, time_limit_s=1.0),
+                )
+            except _UebersprungenError:
+                pass  # der vorige Fahrplan gilt weiter, `hp_on_at` verfällt von selbst
+            except Exception as exc:
+                log.warning("demo stove plan failed", error=str(exc))
+                self.stove_plan = StovePlan(note_de=f"Fahrplan nicht gerechnet: {exc}")
             self.plan = build_plan(
                 self.evaluator.pv_expected_corrected(self.house.pv_expected_kw),
                 self._prices(),
                 now,
                 self.hems,
+                stove_on=self.stove_plan.on_at,
+                hp_on=self.stove_plan.hp_on_at,
             )
             self._plan_at = now
             self.broker.publish("plan", self.plan.model_dump(mode="json"))

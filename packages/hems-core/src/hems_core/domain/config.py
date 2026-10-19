@@ -84,6 +84,22 @@ class BufferConfig(BaseModel):
     max_temperature_c: float = 62.0
     comfort_min_top_c: float = 42.0
     loss_kw_per_k: float = 0.004
+    # Der Aufstellraum des Puffers, und ausdrücklich nicht der Wohnraum.
+    #
+    # Der Verlustterm rechnet gegen die Übertemperatur, und die beiden auseinanderzuhalten ist
+    # keine Feinheit: zwischen 21 °C Wohnraum und 17 °C unbeheiztem Technikraum liegen bei 50 °C
+    # Puffer rund 14 % Verlust. Vorher stand hier der Raumfühler des **Ofens**, also die
+    # Temperatur eines Raums, in dem der Puffer gar nicht steht (Angabe des Hausherrn 17.10.2026:
+    # unbeheizter Technikraum). 17 °C ist die Mitte der dort üblichen Spanne und eine Annahme,
+    # keine Messung; sie steht auf der Einstellungsseite und wird am Restglied kalibriert.
+    ambient_c: float = 17.0
+    # Welcher Anteil des Verlusts dem Haus trotzdem zugutekommt.
+    #
+    # Ein Puffer in der beheizten Hülle gibt seine Verlustwärme an einen Raum ab, den sonst die
+    # Heizung erwärmen müsste; in einer Garage ist sie fort. Der Technikraum liegt dazwischen: er
+    # grenzt an Wohnräume und an die Außenwand. Der Anteil ändert die Bilanzgleichung nicht, er
+    # beantwortet nur die Frage, wie viel von dem ausgewiesenen Verlust wirklich Verlust ist.
+    loss_useful_fraction: float = 0.5
     soc_method: Literal["layered_energy_v1", "weighted_mean_v1"] = "layered_energy_v1"
     weights: list[float] = Field(default_factory=lambda: [0.25, 0.25, 0.25, 0.25])
     status_thresholds: tuple[float, float, float] = (0.2, 0.6, 0.9)  # cold|partial|warm|full
@@ -279,6 +295,8 @@ HEAT_FIELD_MAP: dict[str, tuple[str, str]] = {
     "buffer_target_temperature_c": ("buffer", "target_temperature_c"),
     "buffer_volume_liters": ("buffer", "volume_liters"),
     "buffer_loss_kw_per_k": ("buffer", "loss_kw_per_k"),
+    "buffer_ambient_c": ("buffer", "ambient_c"),
+    "buffer_loss_useful_fraction": ("buffer", "loss_useful_fraction"),
     "stove_nominal_heat_kw": ("stove", "nominal_heat_kw"),
     "stove_water_heat_kw": ("stove", "water_heat_kw"),
     "stove_min_heat_kw": ("stove", "min_heat_kw"),
@@ -325,6 +343,13 @@ def apply_heat_patch(cfg: HemsConfig, patch: dict[str, object]) -> HemsConfig:
         raise ValueError(
             f"Die Zieltemperatur liegt über der Höchsttemperatur des Puffers "
             f"({neu.buffer.max_temperature_c:g} °C)."
+        )
+    if not 0.0 <= neu.buffer.loss_useful_fraction <= 1.0:
+        raise ValueError("Der nutzbare Anteil des Pufferverlusts liegt zwischen 0 und 1.")
+    if neu.buffer.ambient_c >= neu.buffer.min_useful_temperature_c:
+        raise ValueError(
+            f"Der Aufstellraum des Puffers muss kühler sein als dessen nutzbare Temperatur "
+            f"({neu.buffer.min_useful_temperature_c:g} °C); sonst gibt der Puffer nie Wärme ab."
         )
     if neu.buffer.target_temperature_c <= neu.buffer.min_useful_temperature_c:
         raise ValueError(

@@ -17,7 +17,9 @@ braucht den ganzen Horizont auf einmal.
 * Der Wärmebedarf kommt aus dem Modell v1 (Heizgradstunden plus Warmwasserprofil), nicht aus einer
   Messung. Solange der Wärmemengenzähler fehlt, ist das die beste verfügbare Zahl.
 * Der Pufferverlust ist je Intervall konstant, gerechnet aus der mittleren Puffertemperatur gegen
-  20 °C Aufstellraum.
+  den eingestellten Aufstellraum (`buffer.ambient_c`). Dieselbe Annahme wie in der Rückschau: hier
+  standen einmal fest verdrahtete 20 °C, während die Bilanz gegen den Ofenfühler rechnete, und
+  derselbe Beiwert ergab zwei verschiedene Verluste.
 
 Jede dieser Näherungen ist kleiner als die Prognoseunsicherheit, gegen die hier optimiert wird. Was
 sie nicht sind: unsichtbar. `note_de` sagt bei jedem Fahrplan, worauf er beruht.
@@ -57,7 +59,6 @@ MIN_HORIZON_H = 8
 # Grundlast des Hauses, die von der PV-Erwartung abgeht, bevor von Überschuss die Rede ist.
 # Dieselbe Annahme wie in `plan_service.pv_surplus_windows`; sie gehört irgendwann gemessen.
 BASE_LOAD_KW = 0.6
-ROOM_TEMP_C = 20.0  # Aufstellraum des Puffers, für den Verlustterm
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,14 @@ class StovePlan:
     """Der Fahrplan über den Horizont. `available=False` heißt: es wurde nicht geplant, und warum."""
 
     available: bool = False
+    # Getrennt von `available`, weil es zwei Fahrpläne sind.
+    #
+    # Der Optimierer rechnet beide Erzeuger in einer Pufferbilanz, aber ihre Voraussetzungen sind
+    # verschieden. Ein Haus ohne Ofen, ein leerer Behälter, ein Ofen, der gerade nicht meldet: der
+    # Ofenteil fällt dann weg, der Wärmepumpenteil nicht. Dass beide an einem Schalter hingen, hat
+    # genau einmal gewirkt, nämlich sofort: in der Vorführung ohne Ofen führte der Optimierer die
+    # Wärmepumpe gar nicht, und von außen sah das aus wie „er hat sich für die Regel entschieden".
+    hp_available: bool = False
     status: str = "unavailable"
     start: datetime | None = None
     step_min: int = STEP_MIN
@@ -77,16 +86,33 @@ class StovePlan:
     solve_ms: int = 0
     note_de: str = ""
 
-    def index_at(self, t: datetime) -> int | None:
-        if not self.available or self.start is None or not self.on:
+    def _index(self, t: datetime, reihe: list[bool]) -> int | None:
+        if not self.available or self.start is None or not reihe:
             return None
         i = int((t - self.start).total_seconds() // (self.step_min * 60))
-        return i if 0 <= i < len(self.on) else None
+        return i if 0 <= i < len(reihe) else None
+
+    def index_at(self, t: datetime) -> int | None:
+        return self._index(t, self.on)
 
     def on_at(self, t: datetime) -> bool | None:
         """Soll der Ofen zu diesem Zeitpunkt brennen? `None`, wenn der Fahrplan nichts dazu sagt."""
         i = self.index_at(t)
         return None if i is None else self.on[i]
+
+    def hp_on_at(self, t: datetime) -> bool | None:
+        """Soll die Wärmepumpe zu diesem Zeitpunkt freigegeben sein?
+
+        Dasselbe Modell rechnet beide Erzeuger in einer Pufferbilanz; dieser Teil des Ergebnisses
+        lag bisher ungelesen da, und die Wärmepumpe folgte daneben einer Faustregel aus Preis- und
+        PV-Fenstern. `None` heißt wie beim Ofen „der Fahrplan sagt dazu nichts" und ist vom
+        ausdrücklichen `False` zu unterscheiden: das eine ist ein Rückfall, das andere eine
+        Entscheidung.
+        """
+        if not self.hp_available or self.start is None or not self.hp_on:
+            return None
+        i = int((t - self.start).total_seconds() // (self.step_min * 60))
+        return self.hp_on[i] if 0 <= i < len(self.hp_on) else None
 
     def until(self, t: datetime) -> datetime | None:
         """Bis wann der jetzige Zustand laut Fahrplan gilt. `None` am Ende des Horizonts."""
@@ -170,6 +196,11 @@ def plan_stove(
     hp_running: bool,
     stove_running: bool,
     remaining_kg: float | None = None,
+    # Die Solverkonfiguration, vor allem seine Zeitgrenze. Sie ist eine Eigenschaft der Maschine
+    # und nicht des Modells: auf einem langsamen Rechner bricht HiGHS nach 5 s mit „feasible" ab
+    # und gibt einen Fahrplan zurück, der schlechter ist, ohne dass das irgendwo steht. Tests, die
+    # das Modell prüfen und nicht die Maschine, setzen die Grenze hoch.
+    opt_cfg: OptimizerConfig | None = None,
 ) -> StovePlan:
     """Einen Fahrplan für beide Wärmequellen rechnen und den Ofenteil davon zurückgeben.
 
@@ -178,8 +209,6 @@ def plan_stove(
     außen genauso aus wie einer, der sich entschieden hat.
     """
     stove = cfg.stove
-    if not stove.present:
-        return StovePlan(note_de="Kein Ofen konfiguriert.")
     if buffer.usable_energy_kwh is None:
         return StovePlan(note_de="Ohne Pufferzustand kein Fahrplan: die Fühler fehlen.")
     if not prices:
@@ -193,7 +222,7 @@ def plan_stove(
         hours = (end - start).total_seconds() / 3600.0
         return StovePlan(
             note_de=(
-                f"Die Preisreihe reicht nur {hours:.0f} Stunden. Der Ofen wird erst ab "
+                f"Die Preisreihe reicht nur {hours:.0f} Stunden. Es wird erst ab "
                 f"{MIN_HORIZON_H} Stunden Horizont geplant, sonst fehlt der Vergleich."
             )
         )
@@ -232,7 +261,7 @@ def plan_stove(
     mean_c = (
         buffer.mean_temp_c if buffer.mean_temp_c is not None else cfg.buffer.target_temperature_c
     )
-    loss_kwh = max(0.0, cfg.buffer.loss_kw_per_k * (mean_c - ROOM_TEMP_C)) * dt_h
+    loss_kwh = max(0.0, cfg.buffer.loss_kw_per_k * (mean_c - cfg.buffer.ambient_c)) * dt_h
 
     try:
         result = optimize(
@@ -246,25 +275,45 @@ def plan_stove(
             min_runtime_min=cfg.heat_pump.min_runtime_min,
             min_offtime_min=cfg.heat_pump.min_offtime_min,
             running_now=hp_running,
-            stove_thermal_kw=stove.water_heat_kw,
+            # Ohne Ofen bleibt seine Wärmeleistung null, und das Modell lässt seine Variablen
+            # ganz weg. Die Wärmepumpe wird dann allein geplant, was sie vorher auch wurde - nur
+            # wurde das Ergebnis weggeworfen.
+            stove_thermal_kw=stove.water_heat_kw if stove.present else 0.0,
             stove_kg_per_h=econ.kg_per_hour,
             stove_min_runtime_min=stove.min_runtime_min,
             stove_min_offtime_min=stove.min_offtime_min,
             stove_running_now=stove_running,
             fuel_budget_kg=budgets,
-            cfg=OptimizerConfig(step_min=STEP_MIN),
+            cfg=opt_cfg or OptimizerConfig(step_min=STEP_MIN),
         )
     except SolverUnavailableError as exc:
         return StovePlan(note_de=f"Kein Solver verfügbar: {exc}")
 
-    if result.status not in ("optimal", "feasible") or not result.stove_on:
+    gerechnet = result.status in ("optimal", "feasible")
+    if not gerechnet or not (result.stove_on or result.on):
         return StovePlan(
             status=result.status,
             note_de=f"Der Optimierer fand keinen Fahrplan ({result.status}).",
         )
+    if not result.stove_on:
+        # Die Wärmepumpe hat einen Fahrplan, der Ofen nicht. Kein halber Ofenfahrplan, aber auch
+        # kein weggeworfener Wärmepumpenfahrplan.
+        return StovePlan(
+            hp_available=True,
+            status=result.status,
+            start=start,
+            hp_on=list(result.on),
+            solve_ms=result.solve_ms,
+            note_de=(
+                "Kein Ofenfahrplan"
+                + ("" if stove.present else " (kein Ofen konfiguriert)")
+                + "; die Wärmepumpe ist geplant."
+            ),
+        )
 
     plan = StovePlan(
         available=True,
+        hp_available=True,
         status=result.status,
         start=start,
         on=list(result.stove_on),

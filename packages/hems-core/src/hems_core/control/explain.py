@@ -78,6 +78,8 @@ def explain(
         return "Keine Freigabe - Messwerte fehlen oder sind veraltet."
     if block is ReasonCode.PRICE_DATA_STALE:
         return "Preisregeln pausiert - Strompreise veraltet; PV-Regel bleibt aktiv."
+    if block is ReasonCode.PLANNED_PAUSE:
+        return "Wärmepumpe aus - der Fahrplan hält diese Stunde frei; PV-Regel bleibt aktiv."
     if main is ReasonCode.PV_SURPLUS_FADING:
         return "Wärmepumpe aus - PV-Überschuss reicht nicht mehr."
     return "Wärmepumpe aus - kein nutzbarer Überschuss und kein günstiges Preisfenster."

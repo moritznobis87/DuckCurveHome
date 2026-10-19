@@ -2064,6 +2064,16 @@
             "title": "Loss Kw Per K",
             "default": 0.004
           },
+          "ambient_c": {
+            "type": "number",
+            "title": "Ambient C",
+            "default": 17.0
+          },
+          "loss_useful_fraction": {
+            "type": "number",
+            "title": "Loss Useful Fraction",
+            "default": 0.5
+          },
           "soc_method": {
             "type": "string",
             "enum": [
@@ -3903,6 +3913,11 @@
             "title": "Loss Kw",
             "default": 0.0
           },
+          "loss_useful_kw": {
+            "type": "number",
+            "title": "Loss Useful Kw",
+            "default": 0.0
+          },
           "buffer_change_kw": {
             "type": "number",
             "title": "Buffer Change Kw",
@@ -3972,6 +3987,11 @@
           "loss_kwh": {
             "type": "number",
             "title": "Loss Kwh",
+            "default": 0.0
+          },
+          "loss_useful_kwh": {
+            "type": "number",
+            "title": "Loss Useful Kwh",
             "default": 0.0
           },
           "residual_kwh": {
@@ -4069,6 +4089,32 @@
               }
             ],
             "title": "Buffer Loss Kw Per K"
+          },
+          "buffer_ambient_c": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMaximum": 40.0,
+                "exclusiveMinimum": -20.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Ambient C"
+          },
+          "buffer_loss_useful_fraction": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Loss Useful Fraction"
           },
           "indoor_target_c": {
             "anyOf": [
@@ -4398,6 +4444,16 @@
             "title": "Buffer Loss Kw Per K",
             "default": 0.0
           },
+          "buffer_ambient_c": {
+            "type": "number",
+            "title": "Buffer Ambient C",
+            "default": 0.0
+          },
+          "buffer_loss_useful_fraction": {
+            "type": "number",
+            "title": "Buffer Loss Useful Fraction",
+            "default": 0.0
+          },
           "room_source_de": {
             "type": "string",
             "title": "Room Source De",
@@ -4706,6 +4762,11 @@
             "title": "Loss Kwh",
             "default": 0.0
           },
+          "loss_useful_kwh": {
+            "type": "number",
+            "title": "Loss Useful Kwh",
+            "default": 0.0
+          },
           "buffer_change_kwh": {
             "type": "number",
             "title": "Buffer Change Kwh",
@@ -4820,6 +4881,8 @@
               "max_temperature_c": 62.0,
               "comfort_min_top_c": 42.0,
               "loss_kw_per_k": 0.004,
+              "ambient_c": 17.0,
+              "loss_useful_fraction": 0.5,
               "soc_method": "layered_energy_v1",
               "weights": [
                 0.25,
@@ -6307,6 +6370,7 @@
           "buffer_no_headroom",
           "max_starts_reached",
           "no_trigger",
+          "planned_pause",
           "import_too_high",
           "manual_override",
           "mode_off",

@@ -20,6 +20,7 @@ from dch_api.application.stove_planner import (
     stove_eur_per_h,
 )
 from hems_core.domain import BufferState, BufferStatus, HemsConfig
+from hems_core.planning import OptimizerConfig
 from hems_core.planning.price_windows import PricePoint
 from hems_core.simulation import BERLIN
 
@@ -125,6 +126,8 @@ def test_billiger_strom_laesst_den_ofen_aus() -> None:
 # also noch 14 Stunden, das sind 56 Viertelstunden. Danach ist der Behälter wieder voll, und der
 # Fahrplan darf dort selbstverständlich wieder Ofen vorsehen.
 BIS_ZUM_NACHFUELLEN = 14 * 4
+# Siehe die Begründung an der Fundstelle: diese Tests prüfen das Modell, nicht die Rechenzeit.
+GEDULDIG = OptimizerConfig(step_min=15, time_limit_s=60.0)
 KG_PRO_STUNDE = 2.666  # Volllast, siehe stove_cost
 
 
@@ -139,7 +142,10 @@ def test_der_brennstoff_im_behaelter_begrenzt_das_laufende_fenster() -> None:
 
 
 def test_ein_leerer_behaelter_laesst_den_ofen_bis_zum_nachfuellen_aus() -> None:
-    p = plan(prices=prices(60.0), temps=temps(-8.0), remaining_kg=0.0)
+    # Geduldiger Solver: mit der Betriebsgrenze von 5 s bricht HiGHS bei diesem Fall auf einem
+    # langsamen Rechner ab und lässt den Ofen auch nach dem Nachfüllen aus. Das wäre eine Aussage
+    # über die Maschine, nicht über den Fahrplan.
+    p = plan(prices=prices(60.0), temps=temps(-8.0), remaining_kg=0.0, opt_cfg=GEDULDIG)
     assert p.available is True
     assert not any(p.on[:BIS_ZUM_NACHFUELLEN]), "im laufenden Fenster ist nichts mehr zu holen"
     assert any(p.on[BIS_ZUM_NACHFUELLEN:]), "nach dem Nachfüllen schon"
@@ -253,3 +259,31 @@ def test_nach_dem_ausschalten_gilt_die_mindestpause() -> None:
     d = decide(observed=False, last_switch_at=NOW - timedelta(minutes=30))
     assert d.switch is False and "Schaltsperre" in d.reason_de
     assert decide(observed=False, last_switch_at=NOW - timedelta(minutes=61)).switch is True
+
+
+def test_ohne_ofen_wird_die_waermepumpe_trotzdem_geplant() -> None:
+    """Zwei Fahrpläne, zwei Voraussetzungen.
+
+    Der Optimierer rechnet beide Erzeuger in einer Pufferbilanz, aber dass kein Ofen da ist,
+    sagt nichts über die Wärmepumpe. Beide an einem Schalter aufzuhängen hiess: in einem Haus
+    ohne Ofen führt der Optimierer die Wärmepumpe gar nicht, und von aussen sieht das aus wie
+    eine Entscheidung für die Faustregel.
+    """
+    ohne_ofen = HemsConfig().model_copy(
+        update={"stove": HemsConfig().stove.model_copy(update={"present": False})}
+    )
+    p = plan(cfg=ohne_ofen, opt_cfg=GEDULDIG)
+    assert p.available is False, "ohne Ofen gibt es keinen Ofenfahrplan"
+    assert p.on == []
+    assert p.hp_available is True, "die Wärmepumpe hat trotzdem einen"
+    assert any(p.hp_on), "und er sieht Laufzeit vor"
+    assert p.hp_on_at(NOW) is not None
+    assert "Wärmepumpe ist geplant" in p.note_de
+
+
+def test_ohne_pufferzustand_hat_auch_die_waermepumpe_keinen_fahrplan() -> None:
+    """Die eine Voraussetzung, die beide teilen: ohne Pufferinhalt rechnet das Modell nichts."""
+    blind = buffer().model_copy(update={"usable_energy_kwh": None, "soc": None})
+    p = plan(buffer=blind)
+    assert p.available is False and p.hp_available is False
+    assert p.hp_on_at(NOW) is None

@@ -40,6 +40,9 @@ class ControlInputs:
     price_age_s: float | None  # Alter der Preisreihe
     next_cheap_window_start: datetime | None = None
     planned_release: bool = False
+    # Der Fahrplan sieht hier ausdrücklich keine Freigabe vor. Das ist etwas anderes als „der
+    # Fahrplan sagt nichts": nur ein ausdrückliches Nein darf die Preisregeln überstimmen.
+    planned_off: bool = False
 
 
 @dataclass
@@ -94,12 +97,30 @@ class HeatPumpController:
         return inp.price_age_s <= self.cfg.control.price.price_max_age_h * 3600.0
 
     def _triggers(self, inp: ControlInputs, surplus: float | None) -> list[ReasonCode]:
+        """Welche Gründe gerade für zusätzliche Wärme sprechen.
+
+        **Der Fahrplan führt, aber nur über die Preisgründe.** Sagt er im Profil SMART ausdrücklich
+        „hier nicht", schweigen die Preisregeln: er hat 36 Stunden Preise, Wärmebedarf und
+        Pufferinhalt gegeneinander gerechnet, die Faustregel kennt nur das günstigste Zehntel des
+        Tages. Zwei Freigaben aus zwei Quellen ergäben sonst mehr Laufzeit als beide einzeln
+        wollten.
+
+        **Der PV-Überschuss bleibt davon unberührt.** Der Fahrplan rechnet mit einer *Prognose*;
+        steht die Sonne wirklich am Himmel und der Zähler läuft rückwärts, ist die Messung näher an
+        der Wahrheit als die Vorhersage von vorhin. Diese Ausnahme ist der Grund, warum der
+        Fahrplan hier nur die Preisgründe abschaltet und nicht einfach alle.
+        """
         codes: list[ReasonCode] = []
         profile = inp.mode.auto_profile
         pv_cfg = self.cfg.control.pv
         if surplus is not None and surplus >= pv_cfg.on_surplus_kw:
             codes.append(ReasonCode.PV_SURPLUS)
-        if profile in (AutoProfile.PRICE, AutoProfile.SMART) and self._price_fresh(inp):
+        plan_schweigt = profile is AutoProfile.SMART and inp.planned_off
+        if (
+            not plan_schweigt
+            and profile in (AutoProfile.PRICE, AutoProfile.SMART)
+            and self._price_fresh(inp)
+        ):
             price = inp.snapshot.electricity_price_ct_kwh
             if (
                 self.cfg.control.price.negative_price_release
@@ -305,6 +326,11 @@ class HeatPumpController:
                         reasons = [ReasonCode.NO_TRIGGER]
                     if price_stale:
                         blocked.append(ReasonCode.PRICE_DATA_STALE)
+                    # Kein Startblocker, sondern eine Begründung: der Fahrplan hat die Preisregeln
+                    # schweigen lassen. Als Blocker eingetragen wäre er stärker, als er ist - der
+                    # PV-Überschuss darf weiterhin starten.
+                    if inp.planned_off and inp.mode.auto_profile is AutoProfile.SMART:
+                        blocked.append(ReasonCode.PLANNED_PAUSE)
                     if inp.next_cheap_window_start is not None and not inp.hp.running:
                         nxt = NextExpected(
                             action="window_start",

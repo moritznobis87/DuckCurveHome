@@ -29,12 +29,27 @@ def test_felder_landen_in_der_richtigen_gruppe() -> None:
         {
             "cop_curve": [(-7.0, 2.2), (7.0, 3.3)],
             "buffer_volume_liters": 800.0,
+            "buffer_ambient_c": 13.5,
+            "buffer_loss_useful_fraction": 0.25,
             "stove_combustion_efficiency": 0.93,
         },
     )
     assert neu.heat_demand.cop_curve == [(-7.0, 2.2), (7.0, 3.3)]
     assert neu.buffer.volume_liters == 800.0
+    assert neu.buffer.ambient_c == 13.5
+    assert neu.buffer.loss_useful_fraction == 0.25
     assert neu.stove.combustion_efficiency == 0.93
+
+
+def test_ein_aufstellraum_so_warm_wie_der_puffer_wird_abgelehnt() -> None:
+    """Sonst gäbe der Puffer rechnerisch nie Wärme ab und der Verlustterm wäre dauerhaft null."""
+    with pytest.raises(ValueError, match="kühler"):
+        apply_heat_patch(HemsConfig(), {"buffer_ambient_c": 40.0})
+
+
+def test_ein_nutzbarer_anteil_ausserhalb_null_bis_eins_wird_abgelehnt() -> None:
+    with pytest.raises(ValueError, match="zwischen 0 und 1"):
+        apply_heat_patch(HemsConfig(), {"buffer_loss_useful_fraction": 1.4})
 
 
 def test_ein_leerer_patch_gibt_dieselbe_konfiguration_zurueck() -> None:

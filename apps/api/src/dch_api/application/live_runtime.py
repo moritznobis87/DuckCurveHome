@@ -127,6 +127,8 @@ class LiveRuntime:
         self.decisions: deque[Decision] = deque(maxlen=100)
         self.plan: PlanOut | None = None
         self._plan_at: datetime | None = None
+        # Wann K1 zuletzt gesendet wurde: der Hardware-Timer läuft ab Befehl, nicht ab Entscheidung.
+        self._k1_sent_at: datetime | None = None
         self._last_publish = 0.0
         self._last_price_stored: datetime | None = None
         self.price_fill_note: str | None = None
@@ -363,12 +365,17 @@ class LiveRuntime:
             prices, self.hems.control.price.cheap_quantile, self.hems.control.price.min_window_min
         )
         nxt = next_window_after(cheap, now)
-        planned = False
+        # Drei Zustände, nicht zwei. „release" ist ein Grund zu starten, „off" ein ausdrückliches
+        # Nein des Fahrplans, alles andere heißt, dass er dazu nichts sagt. Vorher fiel das Nein
+        # mit dem Schweigen in einen Topf, und ein Fahrplan, der nur freigeben und nie pausieren
+        # kann, ist keiner.
+        planned = planned_off = False
         if self.plan is not None:
             cur = next(
                 (i for i in self.plan.intervals if i.ts <= now < i.ts + timedelta(minutes=15)), None
             )
             planned = cur is not None and cur.planned_hp_state == "release"
+            planned_off = cur is not None and cur.planned_hp_state == "off"
         inputs = ControlInputs(
             now=now,
             snapshot=snap,
@@ -379,6 +386,7 @@ class LiveRuntime:
             price_age_s=self.forecasts.price_age_s(now),
             next_cheap_window_start=nxt.start if nxt else None,
             planned_release=planned,
+            planned_off=planned_off,
         )
         decision = self.controller.tick(inputs)
         self.decision = decision
@@ -394,6 +402,20 @@ class LiveRuntime:
             self.broker.publish("decision", decision.model_dump(mode="json"))
             if self.settings.heat_pump_actuation_enabled:
                 await self._apply_contacts(decision)
+        elif self.settings.heat_pump_actuation_enabled and decision.k1_release:
+            # **Die Freigabe muss nachgesendet werden, sonst fällt sie von selbst.** Der Befehl geht
+            # mit einem Hardware-Timer hinaus (`hw_auto_off_release_s`, 30 min): bleibt das nächste
+            # Kommando aus, schaltet der Shelly zurück. Das war richtig, solange eine Freigabe aus
+            # einem Preisfenster kam und selten länger stand. Ein Fahrplan hält sie über Stunden,
+            # und weil nur bei *geänderter* Entscheidung gesendet wurde, wäre sie nach einer halben
+            # Stunde stillschweigend weg gewesen - ohne Eintrag, ohne Zustandswechsel, ohne dass
+            # jemand etwas davon sieht. Nachgesendet wird nach der Hälfte der Frist.
+            frist = self.hems.heat_pump.hw_auto_off_release_s
+            faellig = (
+                self._k1_sent_at is None or (now - self._k1_sent_at).total_seconds() >= frist / 2
+            )
+            if faellig:
+                await self._apply_contacts(decision)
         # Der Ofen hängt nicht am Regler der Wärmepumpe: seine Entscheidung steht im Fahrplan, und
         # dieser Aufruf setzt sie um. Er läuft in jedem Takt, schaltet aber nur bei einem Unterschied.
         await self._apply_stove_plan(now)
@@ -402,6 +424,7 @@ class LiveRuntime:
     async def _apply_contacts(self, decision: Decision) -> None:
         if not self.hub.online:
             return
+        self._k1_sent_at = decision.at
         result = await self.hub.send_command(
             "hp_release_contact",
             decision.k1_release,
@@ -432,6 +455,7 @@ class LiveRuntime:
             now,
             self.hems,
             stove_on=self.stove_plan.on_at,
+            hp_on=self.stove_plan.hp_on_at,
         )
         self._plan_at = now
         self.broker.publish("plan", self.plan.model_dump(mode="json"))
