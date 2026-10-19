@@ -129,6 +129,7 @@ class LiveRuntime:
         self._plan_at: datetime | None = None
         # Wann K1 zuletzt gesendet wurde: der Hardware-Timer läuft ab Befehl, nicht ab Entscheidung.
         self._k1_sent_at: datetime | None = None
+        self._plan_status_vorher: str = ""  # damit nur der Wechsel ein Ereignis wird
         self._last_publish = 0.0
         self._last_price_stored: datetime | None = None
         self.price_fill_note: str | None = None
@@ -456,6 +457,9 @@ class LiveRuntime:
             self.hems,
             stove_on=self.stove_plan.on_at,
             hp_on=self.stove_plan.hp_on_at,
+            planner_status=self.stove_plan.status,
+            planner_note_de=self.stove_plan.note_de,
+            planner_warn_de=self.stove_plan.warnung_de(),
         )
         self._plan_at = now
         self.broker.publish("plan", self.plan.model_dump(mode="json"))
@@ -473,8 +477,9 @@ class LiveRuntime:
         und keine Antwort herausgeht. Eine Sekunde Rechnen ist in Ordnung, eine Sekunde Stillstand
         des ganzen Dienstes nicht.
         """
-        if not self.hems.stove.present:
-            return
+        # Kein Ausstieg ohne Ofen mehr: `plan_stove` rechnet dann die Wärmepumpe allein, und die
+        # führt inzwischen. Hier auszusteigen hieße, ihren Fahrplan wegen eines anderen Geräts
+        # nicht einmal zu rechnen.
         _, buffer, hp = self._states()
         remaining = await self._stove_remaining_kg()
         pv_expected = self.evaluator.pv_expected_corrected(self.forecasts.pv_expected_kw)
@@ -492,15 +497,36 @@ class LiveRuntime:
             stove_running=self._stove_running() is True,
             remaining_kg=remaining,
         )
-        log.info(
+        plan = self.stove_plan
+        # Dieselbe Beurteilung wie für Ereignis und Oberfläche: nicht der Abbruch ist die
+        # Meldung, sondern der Abstand. Sonst stünde hier alle 15 Minuten eine Warnung, und eine
+        # Warnung, die immer dasteht, liest nach einer Woche niemand mehr.
+        ebene = log.warning if plan.warnung_de() else log.info
+        ebene(
             "stove plan",
-            status=self.stove_plan.status,
-            hours=self.stove_plan.runtime_h(),
-            kg=self.stove_plan.pellet_kg,
-            budget_kg=self.stove_plan.fuel_budget_kg,
-            ms=self.stove_plan.solve_ms,
-            note=self.stove_plan.note_de,
+            status=plan.status,
+            hours=plan.runtime_h(),
+            kg=plan.pellet_kg,
+            budget_kg=plan.fuel_budget_kg,
+            ms=plan.solve_ms,
+            gap=plan.mip_gap,
+            note=plan.note_de,
         )
+        # Ein Abbruch gehört ins Ereignisprotokoll, nicht nur in die Konsole. Sonst merkt niemand,
+        # dass der Fahrplan am Relais ein anderer ist als der, den der Optimierer gewollt hätte;
+        # es steht ja eine Zahl da, und die sieht aus wie jede andere. Nur beim Wechsel, damit ein
+        # dauerhaft knapper Solver nicht alle 15 Minuten dieselbe Zeile schreibt.
+        if plan.status != self._plan_status_vorher:
+            self._plan_status_vorher = plan.status
+            if plan.warnung_de():
+                gap = f" (bis zu {plan.mip_gap * 100:.0f} % vom Besten)" if plan.mip_gap else ""
+                await self.repos.add_event(
+                    "warning",
+                    "planner.timeout",
+                    f"Der Optimierer brach nach {plan.solve_ms} ms ab{gap}. "
+                    f"Der Fahrplan gilt, ist aber nicht der beste.",
+                    {"solve_ms": plan.solve_ms, "mip_gap": plan.mip_gap},
+                )
 
     def _stove_running(self) -> bool | None:
         """Der gemessene Betriebszustand, oder None, wenn nichts Frisches vorliegt."""

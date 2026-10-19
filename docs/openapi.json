@@ -5846,6 +5846,16 @@
             "type": "string",
             "title": "Planner"
           },
+          "planner_status": {
+            "type": "string",
+            "title": "Planner Status",
+            "default": "unavailable"
+          },
+          "planner_note_de": {
+            "type": "string",
+            "title": "Planner Note De",
+            "default": ""
+          },
           "horizon_start": {
             "type": "string",
             "format": "date-time",
