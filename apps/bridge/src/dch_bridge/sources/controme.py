@@ -63,6 +63,11 @@ def raeume_aus(daten: object) -> list[dict[str, Any]]:
 
     Die Antworten von `temps`, `outs` und `rooms` haben dieselbe Form: eine Liste von Etagen, jede
     mit einer Liste `raeume`. Ein Raum ohne `id` ist fuer uns nicht zuzuordnen und faellt heraus.
+
+    **Der Abruf eines einzelnen Raums hat eine andere Form**: dort liegen die Raumfelder flach im
+    Array, ohne Etagenhuelle. Diese Funktion gibt dafuer eine leere Liste zurueck. Das ist heute
+    richtig, weil nur die Sammelabrufe benutzt werden; wer `temps/<raumid>/` dazunimmt, muss es
+    hier abfangen.
     """
     out: list[dict[str, Any]] = []
     if not isinstance(daten, list):
@@ -119,7 +124,10 @@ class ContromeRooms:
         password: str = "",
         timeout_s: float = 10.0,
     ) -> None:
-        self.host = host.strip().rstrip("/")
+        # Das Schema wird hier angehaengt, nicht erwartet. Wer "http://192.168.1.50" eintraegt,
+        # bekaeme sonst "http://http://..."; der haeufigste Eingabefehler bei solchen Feldern,
+        # und er kostet eine Zeile.
+        self.host = host.strip().removeprefix("http://").removeprefix("https://").rstrip("/")
         self.on_readings = on_readings
         self.on_rooms = on_rooms
         self.house_id = house_id  # 0 = suchen
@@ -200,9 +208,25 @@ class ContromeRooms:
             rid = int(raum["id"])
             namen[rid] = str(raum.get("name") or f"Raum {rid}")
             werte[f"room_{rid}_temp_c"] = _zahl(raum.get("temperatur"))
-            # `solltemperatur` ist der Wert, auf den geregelt wird; `total_offset` steckt laut
-            # Contromes Oberflaeche bereits darin. Beide getrennt mitzuschreiben waere doppelt.
+            # **Sollwert und Offset getrennt, und das ist Absicht.**
+            #
+            # Ich hatte zuerst nur `solltemperatur` genommen, mit der Begruendung, der Offset
+            # stecke bereits darin. Dagegen sprechen drei Belege: Contromes FPS-Dokumentation
+            # definiert `ziel = soll + offsets`, die Supportseite rechnet "Zieltemperatur =
+            # Standardtemperatur plus/minus Offset", und die Anlage selbst meldet
+            # `solltemperatur: 21.0` neben `total_offset: 0.2` - 21,0 ist ein glatter Planwert,
+            # der Offset steckt also nicht darin.
+            #
+            # Belegt ist das nicht, die offizielle Beschreibung sagt es nicht ausdruecklich.
+            # Darum werden beide Zahlen mitgeschrieben: dann ist die Frage aus den eigenen Daten
+            # zu entscheiden statt aus einer Vermutung, und falsch gerechnet wird in keinem Fall
+            # mehr als der Offset.
             werte[f"room_{rid}_setpoint_c"] = _zahl(raum.get("solltemperatur"))
+            werte[f"room_{rid}_offset_k"] = _zahl(raum.get("total_offset"))
+            # Luftfeuchte: im Bad die interessantere Groesse als die Temperatur. Controme setzt
+            # hier bei fehlendem Fuehler einen deutschen Satz statt einer Zahl ("kein Sensor
+            # vorhanden"); `_zahl` macht daraus `None` statt eines Typfehlers.
+            werte[f"room_{rid}_humidity_pct"] = _zahl(raum.get("luftfeuchte"))
 
         for raum in raeume_aus(outs):
             rid = int(raum["id"])
@@ -252,4 +276,7 @@ class ContromeRooms:
                 except Exception as exc:
                     self._fails += 1
                     log.warning("controme poll failed", error=str(exc), fails=self._fails)
-                await asyncio.sleep(self.poll_interval_s)
+                # Rueckfalltakt: gegen einen abgeschalteten Mini-Server waeren es sonst gut
+                # 700 vergebliche Anfragen am Tag. Nach jedem Fehlschlag wird laenger gewartet,
+                # gedeckelt bei zehn Takten, und ein Erfolg setzt zurueck.
+                await asyncio.sleep(self.poll_interval_s * (1 + min(self._fails, 10)))

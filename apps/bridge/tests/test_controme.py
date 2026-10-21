@@ -38,14 +38,17 @@ TEMPS = [
                 "total_offset": 0.2,
                 "solltemperatur": 21.0,
                 "temperatur": 20.579999923706055,
+                "luftfeuchte": 47,
                 "id": 1,
                 "name": "Arbeiten",
                 "offsets": {"Geolocation": {"raum": 0.0, "haus": 0.0}},
             },
+            # Ohne Fuehler setzt Controme einen deutschen Satz an die Stelle der Zahl.
             {
                 "total_offset": 0.0,
                 "solltemperatur": 21.5,
                 "temperatur": 21.5,
+                "luftfeuchte": "kein Sensor vorhanden",
                 "id": 2,
                 "name": "Wohnen",
                 "offsets": {},
@@ -57,6 +60,8 @@ TEMPS = [
         "id": 2,
         "raeume": [
             {"solltemperatur": 23.0, "temperatur": None, "id": 4, "name": "Oben", "offsets": {}},
+            # Aeltere Firmware laesst Felder ganz weg. Ausser id und name ist alles freiwillig.
+            {"id": 5, "name": "Knapp"},
         ],
     },
 ]
@@ -74,6 +79,7 @@ OUTS = [
         "id": 2,
         "raeume": [
             {"ausgang": {"9": 1, " 8": 0}, "id": 4, "name": "Oben"},
+            {"ausgang": {}, "id": 5, "name": "Knapp"},
         ],
     },
 ]
@@ -116,7 +122,7 @@ async def _lauf(q: ContromeRooms) -> list:
 
 def test_die_etagenschachtelung_wird_flach() -> None:
     flach = raeume_aus(TEMPS)
-    assert [r["id"] for r in flach] == [1, 2, 4]
+    assert [r["id"] for r in flach] == [1, 2, 4, 5]
     assert flach[2]["etage"] == "Obergeschoss"
 
 
@@ -187,7 +193,7 @@ async def test_die_raumnamen_gehen_einmal_hinaus_und_nicht_bei_jedem_lauf() -> N
     """Namen sind keine Messwerte. Sie kommen als Ereignis, und nur wenn sie sich ändern."""
     q, _, raeume = _quelle()
     await _lauf(q)
-    assert raeume == [{1: "Arbeiten", 2: "Wohnen", 4: "Oben"}]
+    assert raeume == [{1: "Arbeiten", 2: "Wohnen", 4: "Oben", 5: "Knapp"}]
     await _lauf(q)
     assert len(raeume) == 1, "unveränderte Namen erzeugen kein zweites Ereignis"
 
@@ -239,3 +245,54 @@ async def test_die_beobachtungszeit_ist_gesetzt() -> None:
     assert all(isinstance(r.observed_at, datetime) for r in werte)
     assert all(r.observed_at.tzinfo is UTC for r in werte)
     assert all(r.source == "controme" for r in werte)
+
+
+# ------------------------------------------------------------------ Was die Quellenlage ergab
+
+
+def test_der_einzelraum_abruf_hat_eine_andere_form() -> None:
+    """Dort liegen die Raumfelder flach, ohne Etagenhuelle. Wird heute nicht abgefragt."""
+    assert raeume_aus([{"id": 1, "name": "Arbeiten", "temperatur": 20.5}]) == []
+
+
+@pytest.mark.anyio
+async def test_sollwert_und_offset_stehen_getrennt() -> None:
+    """Ob der Offset im Sollwert steckt, ist nicht belegt. Also beides mitschreiben.
+
+    Contromes FPS-Dokumentation definiert `ziel = soll + offsets`, und die Anlage meldet
+    `solltemperatur: 21.0` neben `total_offset: 0.2` - ein glatter Planwert neben einem krummen
+    Offset. Wer nur den Sollwert nimmt, rechnet moeglicherweise systematisch um den Offset
+    daneben; wer beide hat, kann es aus den eigenen Daten entscheiden.
+    """
+    q, _, _ = _quelle()
+    werte = {r.key: r.value for r in await _lauf(q)}
+    assert werte["room_1_setpoint_c"] == 21.0
+    assert werte["room_1_offset_k"] == 0.2
+    assert werte["room_2_offset_k"] == 0.0
+
+
+@pytest.mark.anyio
+async def test_eine_luftfeuchte_als_satz_wird_nicht_zu_einer_zahl() -> None:
+    """Controme setzt bei fehlendem Fuehler "kein Sensor vorhanden" an die Stelle der Zahl."""
+    q, _, _ = _quelle()
+    werte = {r.key: r for r in await _lauf(q)}
+    assert werte["room_1_humidity_pct"].value == 47.0
+    assert werte["room_2_humidity_pct"].value is None
+    assert werte["room_2_humidity_pct"].quality is Quality.UNKNOWN
+
+
+@pytest.mark.anyio
+async def test_fehlende_felder_aelterer_firmware_werfen_nicht() -> None:
+    """Ausser `id` und `name` ist jedes Feld freiwillig."""
+    q, _, _ = _quelle()
+    werte = {r.key: r.value for r in await _lauf(q)}
+    assert werte["room_5_temp_c"] is None
+    assert werte["room_5_setpoint_c"] is None
+    assert werte["room_5_valve"] is None
+
+
+def test_ein_schema_im_hostfeld_wird_abgeschnitten() -> None:
+    """Der haeufigste Eingabefehler: wer das Schema mittippt, bekaeme sonst http://http://..."""
+    q, _, _ = _quelle()
+    assert ContromeRooms("http://192.0.2.50/", q.on_readings).host == "192.0.2.50"
+    assert ContromeRooms("https://192.0.2.50", q.on_readings).host == "192.0.2.50"
