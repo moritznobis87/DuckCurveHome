@@ -18,6 +18,7 @@ from dch_bridge.home_assistant.ws_client import EntityState, HaWsClient
 from dch_bridge.mapping import ActuatorMap, EntityMap, normalize
 from dch_bridge.outbox import Outbox
 from dch_bridge.settings import BridgeSettings
+from dch_bridge.sources.controme import ContromeRooms
 from dch_bridge.sources.mcz_maestro import MaestroStove, stove_url
 from dch_bridge.sources.nuki_lock import NukiLock
 from dch_bridge.sources.opener import HomeAssistantOpener, NukiBridgeOpener, Opener
@@ -57,6 +58,19 @@ class Bridge:
                 on_readings=self._ingest_readings,
                 poll_interval_s=settings.mcz_poll_interval_s,
                 allow_control=settings.mcz_allow_control,
+            )
+        # Einzelraumregelung: Raumtemperaturen, Sollwerte und Ventilstellungen vom Mini-Server
+        # der Heizungsregelung. Nur lesend - die Regelung bleibt dort, wo sie hingehört.
+        self.rooms: ContromeRooms | None = None
+        if settings.controme_host:
+            self.rooms = ContromeRooms(
+                settings.controme_host,
+                self._ingest_readings,
+                on_rooms=self._emit_rooms,
+                house_id=settings.controme_house_id,
+                poll_interval_s=settings.controme_poll_interval_s,
+                user=settings.controme_user,
+                password=settings.controme_password,
             )
         # Haustür: Zutrittsereignisse der UniFi-Konsole öffnen das Nuki-Schloss. Beides im
         # Heimnetz. Dieser Dienst hat bewusst keine Verbindung zum Uplink - die Cloud bekommt
@@ -205,6 +219,22 @@ class Bridge:
         ):
             return
         self._pending[reading.key] = reading
+
+    async def _emit_rooms(self, namen: dict[int, str]) -> None:
+        """Die Raumnamen in die Cloud bringen.
+
+        Ein Messwert ist eine Zahl, ein Raumname ist keiner - über die Telemetrie geht er nicht.
+        Das Ereignisprotokoll nimmt dagegen einen freien Zusammenhang auf, und die Auswertung
+        liest den jüngsten Eintrag dieses Codes. Gesendet wird nur bei Änderung, also praktisch
+        einmal nach dem Start und danach, wenn jemand in der Heizungsregelung etwas umbenennt.
+        """
+        await self._emit_event(
+            datetime.now(UTC),
+            "info",
+            "rooms.list",
+            f"{len(namen)} Räume der Einzelraumregelung",
+            {str(k): v for k, v in sorted(namen.items())},
+        )
 
     async def _emit_event(
         self, at: datetime, severity: str, code: str, message: str, context: dict[str, str]
@@ -439,6 +469,8 @@ class Bridge:
             tasks.append(asyncio.create_task(self.mqtt.run(), name="mqtt"))
         if self.stove is not None:
             tasks.append(asyncio.create_task(self.stove.run(), name="mcz"))
+        if self.rooms is not None:
+            tasks.append(asyncio.create_task(self.rooms.run(), name="controme"))
         if self.door is not None:
             tasks.append(asyncio.create_task(self.door.events.run(), name="unifi-access"))
             tasks.append(asyncio.create_task(self.door.run(), name="door-probe"))
