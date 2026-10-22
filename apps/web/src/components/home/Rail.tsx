@@ -92,8 +92,9 @@ export function Rail({ state, plan, rooms, nowMs }: { state: LiveState | null; p
   const temps = s ? [s.buffer_temps_c.top, s.buffer_temps_c.mid_top, s.buffer_temps_c.mid_bottom, s.buffer_temps_c.bottom] : [];
   const haveTemps = temps.length > 0 && temps.every((m) => m.value !== null);
   const verlauf = haveTemps ? `linear-gradient(180deg, ${temps.map((m, i) => `${heatColor(m.value ?? 20)} ${[8, 37, 63, 92][i]}%`).join(", ")})` : "var(--surface-3)";
+  const fuehler: Array<[string, number | null]> = [["oben", temps[0]?.value ?? null], ["", temps[1]?.value ?? null], ["", temps[2]?.value ?? null], ["unten", temps[3]?.value ?? null]];
   const soc = buffer?.soc ?? null;
-  const pufferWort = `${celsius(s?.buffer_temps_c.top.value)} oben${state?.heat_pump.running ? " · lädt" : buffer?.status === "full" ? " · voll" : ""}`;
+  const pufferWort = `${celsius(s?.buffer_temps_c.top.value)} oben${state?.heat_pump.running ? ", lädt" : buffer?.status === "full" ? ", voll" : ""}`;
 
   // Raeume: Mittel der gemessenen, und der Raum, der am weitesten unter seinem Ziel liegt.
   const gemessen = (rooms?.rooms ?? []).filter((r) => r.temp_c != null);
@@ -117,9 +118,26 @@ export function Rail({ state, plan, rooms, nowMs }: { state: LiveState | null; p
 
   return (
     <div className="home-rail">
-      <Kachel href="/waerme" kicker="Puffer" value={soc != null ? String(Math.round(soc * 100)) : "-"} unit="%" wort={pufferWort}>
-        <span className="home-tank" style={{ background: verlauf, opacity: haveTemps ? 1 : 0.5 }} aria-hidden />
-      </Kachel>
+      <Link href="/waerme" className="home-kachel home-kachel-puffer" aria-label={`Puffer ${soc != null ? Math.round(soc * 100) : "-"} %, ${pufferWort}`}>
+        <span className="home-tank" style={{ background: verlauf, opacity: haveTemps ? 1 : 0.5 }} aria-hidden>
+          {[25, 50, 75].map((y) => <span key={y} className="home-tank-marke" style={{ top: `${y}%` }} />)}
+        </span>
+        <span className="home-tank-fuehler" aria-hidden>
+          {fuehler.map(([wort, v], i) => (
+            <span key={i} className="flex items-baseline gap-1.5">
+              <span className="mono">{celsius(v, 0)}</span>
+              {wort ? <span className="text-[10px] text-text-3">{wort}</span> : null}
+            </span>
+          ))}
+        </span>
+        <span className="flex min-w-0 flex-col justify-center gap-1">
+          <span className="kicker" style={{ fontSize: 11 }}>Puffer</span>
+          <span className="mono home-rail-zahl text-text-1">
+            {soc != null ? String(Math.round(soc * 100)) : "-"} <span className="home-einheit">%</span>
+          </span>
+          <span className="text-[12px] text-text-2">{state?.heat_pump.running ? "lädt" : buffer?.status === "full" ? "voll" : buffer?.status === "cold" ? "kalt" : buffer?.status === "warm" ? "warm" : "hält"}</span>
+        </span>
+      </Link>
       <Kachel href="/waerme/raeume" kicker="Räume" value={mittel != null ? mittel.toFixed(1).replace(".", ",") : "-"} unit="°C" wort={raeumeWort} />
       <Kachel href="/strom" kicker="Strompreis" value={price != null ? price.toFixed(1).replace(".", ",") : "-"} unit="ct" wort={preisWort} />
       {zeilen.length ? (

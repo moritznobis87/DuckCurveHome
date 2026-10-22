@@ -14,14 +14,18 @@ import { Icon, type IconName } from "@/components/ui/Icon";
  * sie mehr koennen als an und aus: Auto, An fuer eine Frist, Aus fuer eine Frist, und einen Satz,
  * warum der Optimierer gerade so entschieden hat.
  *
+ * **Unter jedem Knopf steht ein Wort.** Drei Gluehbirnen nebeneinander sind nicht zu
+ * unterscheiden (Rueckmeldung vom 22.10.2026, an der Wand); „Terrasse", „Hof", „Zaun" in
+ * Kapitaelchen loesen das, und beim Tippen sagt die Zeile ueber dem Dock, was geschaltet wurde.
+ *
  * **Gaeste sehen alles und schalten nichts.** Der Knopf bleibt bedienbar und sagt, warum nichts
  * passiert; ein toter Knopf ohne Erklaerung ist aergerlicher als ein kurzer Satz.
  */
-const KACHELN: Array<{ key: string; label: string; icon: IconName; durationMin?: number }> = [
-  { key: "coffee_machine", label: "Kaffeemaschine", icon: "coffee", durationMin: 120 },
-  { key: "terrace_light", label: "Licht Terrasse", icon: "bulb" },
-  { key: "courtyard_light", label: "Licht Innenhof", icon: "bulb" },
-  { key: "garden_fence_light", label: "Licht Gartenzaun", icon: "bulb" },
+const KACHELN: Array<{ key: string; label: string; kurz: string; icon: IconName; durationMin?: number }> = [
+  { key: "coffee_machine", label: "Kaffeemaschine", kurz: "Kaffee", icon: "coffee", durationMin: 120 },
+  { key: "terrace_light", label: "Licht Terrasse", kurz: "Terrasse", icon: "bulb" },
+  { key: "courtyard_light", label: "Licht Innenhof", kurz: "Hof", icon: "bulb" },
+  { key: "garden_fence_light", label: "Licht Gartenzaun", kurz: "Zaun", icon: "bulb" },
 ];
 
 type Mode = "auto" | "on" | "off";
@@ -30,26 +34,29 @@ const HP_DAUERN = [30, 120, 360];
 // Pellets im Zuenden und Ausbrennen, als er nutzbar in den Puffer bringt.
 const OFEN_DAUERN = [120, 240, 480];
 
-function Knopf({ label, icon, an, farbe, busy, fehler, onClick, offen }: { label: string; icon: IconName; an: boolean | null; farbe: string; busy?: boolean; fehler?: boolean; onClick: () => void; offen?: boolean }) {
+function Knopf({ label, kurz, icon, an, farbe, busy, fehler, onClick, offen }: { label: string; kurz: string; icon: IconName; an: boolean | null; farbe: string; busy?: boolean; fehler?: boolean; onClick: () => void; offen?: boolean }) {
   const leuchtet = an === true;
   return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      aria-pressed={an ?? undefined}
-      aria-expanded={offen}
-      className="home-dock-knopf"
-      style={{
-        color: fehler ? "var(--alert)" : leuchtet ? farbe : "var(--text-3)",
-        borderColor: fehler ? "var(--alert)" : leuchtet || offen ? farbe : "var(--line-2)",
-        boxShadow: leuchtet ? `0 0 22px color-mix(in srgb, ${farbe} 35%, transparent)` : undefined,
-        background: offen ? `color-mix(in srgb, ${farbe} 14%, transparent)` : undefined,
-        opacity: busy ? 0.6 : 1,
-      }}
-    >
-      <Icon name={icon} size={26} />
-    </button>
+    <span className="home-dock-item" data-an={leuchtet}>
+      <button
+        onClick={onClick}
+        aria-label={label}
+        title={label}
+        aria-pressed={an ?? undefined}
+        aria-expanded={offen}
+        className="home-dock-knopf"
+        style={{
+          color: fehler ? "var(--alert)" : leuchtet ? farbe : "var(--text-3)",
+          borderColor: fehler ? "var(--alert)" : leuchtet || offen ? farbe : "var(--line-2)",
+          boxShadow: leuchtet ? `0 0 22px color-mix(in srgb, ${farbe} 35%, transparent)` : undefined,
+          background: offen ? `color-mix(in srgb, ${farbe} 14%, transparent)` : undefined,
+          opacity: busy ? 0.6 : 1,
+        }}
+      >
+        <Icon name={icon} size={26} />
+      </button>
+      <span className="home-dock-wort" aria-hidden>{kurz}</span>
+    </span>
   );
 }
 
@@ -139,6 +146,7 @@ export function Dock({ state, readOnly }: { state: LiveState | null; readOnly: b
     try {
       const r = await api.switchActuator(key, !an, !an ? durationMin : undefined);
       if (!r.ok) throw new ApiError("not_confirmed", r.message_de, 200);
+      sag(`${label} ${an ? "aus" : "an"}${!an && durationMin ? ` für ${durationMin / 60} h` : ""}`);
     } catch (e) {
       setFehlerKey(key);
       sag(`${label}: ${e instanceof ApiError ? e.message : "Schaltung nicht bestätigt."}`, 8000);
@@ -166,11 +174,11 @@ export function Dock({ state, readOnly }: { state: LiveState | null; readOnly: b
           const m = act[k.key];
           const an = m && m.value !== null ? m.value >= 0.5 : null;
           const age = m ? ageLabel(m.observed_at, nowMs) : null;
-          return <Knopf key={k.key} label={`${k.label}${an == null ? "" : an ? " · an" : " · aus"}${age ? ` · ${age}` : ""}`} icon={k.icon} an={an} farbe="var(--amber)" busy={busy === k.key} fehler={fehlerKey === k.key} onClick={() => void schalte(k.key, k.label, k.durationMin)} />;
+          return <Knopf key={k.key} label={`${k.label}${an == null ? "" : an ? " · an" : " · aus"}${age ? ` · ${age}` : ""}`} kurz={k.kurz} icon={k.icon} an={an} farbe="var(--amber)" busy={busy === k.key} fehler={fehlerKey === k.key} onClick={() => void schalte(k.key, k.label, k.durationMin)} />;
         })}
         <span className="home-dock-trenner" aria-hidden />
-        <Knopf label={`Wärmepumpe · ${hpStatus}`} icon="pump" an={hp?.running ?? null} farbe="var(--heat-pump)" offen={offen === "hp"} onClick={() => setOffen(offen === "hp" ? null : "hp")} />
-        {stove?.present ? <Knopf label={`Pelletofen · ${ofenStatus}`} icon="stove" an={stove.running ?? null} farbe="var(--stove)" offen={offen === "stove"} onClick={() => setOffen(offen === "stove" ? null : "stove")} /> : null}
+        <Knopf label={`Wärmepumpe · ${hpStatus}`} kurz="Wärmepumpe" icon="pump" an={hp?.running ?? null} farbe="var(--heat-pump)" offen={offen === "hp"} onClick={() => setOffen(offen === "hp" ? null : "hp")} />
+        {stove?.present ? <Knopf label={`Pelletofen · ${ofenStatus}`} kurz="Ofen" icon="stove" an={stove.running ?? null} farbe="var(--stove)" offen={offen === "stove"} onClick={() => setOffen(offen === "stove" ? null : "stove")} /> : null}
       </div>
       {offen === "hp" ? (
         <Blatt

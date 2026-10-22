@@ -9,6 +9,10 @@ import { Icon } from "@/components/ui/Icon";
 /**
  * Der Energiefluss als Bild der Startseite.
  *
+ * **Die Kreise sind die Ziele.** Jede Leitung laeuft von Kreismitte zu Kreismitte; der Kreis
+ * liegt ueber dem SVG und deckt ihr Ende ab, die Beschriftung steht auf der Seite, von der keine
+ * Leitung kommt. So endet kein Strich zwischen Zahl und Zeichen und keiner kreuzt ein Wort.
+ *
  * **Knoten sind Text, Leitungen sind Striche.** Vorher war alles ein SVG, und die Zahlen
  * skalierten mit der Karte: je groesser der Bildschirm, desto groesser die Schrift, bis sie
  * hinter die Nachbarkreise lief. Jetzt stehen die Knoten als gewoehnliche Elemente an festen
@@ -22,12 +26,12 @@ import { Icon } from "@/components/ui/Icon";
 type Key = "pv" | "grid" | "house" | "bat" | "hp" | "ev";
 
 const POS: Record<Key, { x: number; y: number }> = {
-  pv: { x: 50, y: 14 },
-  grid: { x: 11, y: 50 },
-  house: { x: 50, y: 54 },
-  bat: { x: 89, y: 50 },
-  hp: { x: 26, y: 90 },
-  ev: { x: 74, y: 90 },
+  pv: { x: 50, y: 13 },
+  grid: { x: 11, y: 48 },
+  house: { x: 50, y: 48 },
+  bat: { x: 89, y: 48 },
+  hp: { x: 20, y: 78 },
+  ev: { x: 80, y: 78 },
 };
 
 const FARBE: Record<Key, string> = {
@@ -51,22 +55,29 @@ function frisch(m: Measurement | null | undefined): boolean {
   return !!m && m.value !== null && (m.quality === "ok" || m.quality === "derived");
 }
 
+/**
+ * Ein Knoten: der Kreis sitzt genau auf dem Ankerpunkt, auf den die Leitungen zielen, und deckt
+ * ihre Enden ab. Der Text haengt an der Seite, von der keine Leitung kommt: bei der Sonne rechts
+ * (die Leitung geht nach unten), sonst unten (die Leitungen kommen von der Seite oder von oben).
+ * Die Leitungen vom Haus zu Waermepumpe und Wallbox laufen flach genug, dass sie am Text unter
+ * dem Haus vorbeigehen; die Positionen oben sind darauf abgestimmt.
+ */
+const SEITE: Record<Key, "unten" | "rechts"> = { pv: "rechts", grid: "unten", house: "unten", bat: "unten", hp: "unten", ev: "unten" };
+
 function Knoten({ k, href, value, unit, label, sub, m, nowMs, gross = false, fuell }: { k: Key; href: string; value: string; unit: string; label: string; sub?: string; m: Measurement | null | undefined; nowMs: number; gross?: boolean; fuell?: number | null }) {
   const pos = POS[k];
   const ok = frisch(m);
   const age = m ? ageLabel(m.observed_at, nowMs) : null;
   const farbe = ok ? FARBE[k] : "var(--text-3)";
-  const ring = gross ? "var(--flow-ring-big)" : "var(--flow-ring)";
-  const seite = k === "pv" || k === "hp" || k === "ev";
   return (
     <Link
       href={href}
-      className={`home-knoten ${seite ? "home-knoten-seite" : ""} ${gross ? "home-knoten-gross" : ""}`}
+      className={`home-knoten home-knoten-${SEITE[k]} ${gross ? "home-knoten-gross" : ""}`}
       style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
       aria-label={`${label}: ${value} ${unit}${sub ? `, ${sub}` : ""}. Details oeffnen`}
       title={age ? `Stand ${age}` : undefined}
     >
-      <span className="home-ring" style={{ width: ring, height: ring, borderColor: farbe, background: `color-mix(in srgb, ${farbe} 12%, transparent)` }}>
+      <span className="home-ring" style={{ borderColor: farbe, background: `linear-gradient(color-mix(in srgb, ${farbe} 14%, transparent), color-mix(in srgb, ${farbe} 14%, transparent)), var(--petrol)` }}>
         {typeof fuell === "number" ? <span className="home-fuell" style={{ height: `${Math.round(fuell * 100)}%` }} /> : null}
         <Icon name={k === "pv" ? "sun" : k === "grid" ? "grid" : k === "house" ? "home" : k === "bat" ? "battery" : k === "hp" ? "pump" : "car"} size={gross ? 44 : 26} color={farbe} />
       </span>
