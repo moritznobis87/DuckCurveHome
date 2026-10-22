@@ -8,7 +8,7 @@ import { hhmm } from "@/lib/format";
 import { Card, CardHead } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
 import { EChart } from "@/components/charts/EChart";
-import { dayBounds } from "@/components/charts/DayChart";
+import { dayBounds } from "@/components/charts/dayBounds";
 import { AreaShell } from "@/components/layout/AreaShell";
 
 const C = {

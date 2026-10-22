@@ -6,6 +6,8 @@ export type Connection = "connecting" | "live" | "reconnecting" | "offline";
 export interface HistoryPoint {
   ts: number; // ms UTC, Minutenanfang
   pv: number | null;
+  // Der ganze Hausverbrauch, mit Waermepumpe und Wallbox: die weisse Linie der Tageskurve.
+  house: number | null;
   hp: number | null;
   ev: number | null;
   grid: number | null;
@@ -41,6 +43,7 @@ export function rowToPoint(row: Record<string, number | string | null>): History
   return {
     ts: new Date(String(row.ts)).getTime(),
     pv: num("pv_power_kw"),
+    house: num("house_power_kw"),
     hp: num("heat_pump_power_kw"),
     ev: num("ev_power_kw"),
     grid: num("grid_power_kw"),
@@ -57,6 +60,7 @@ export function appendLiveSample(points: HistoryPoint[], s: LiveState, counts: M
   const sample: HistoryPoint = {
     ts: minute,
     pv: s.snapshot.pv_power_kw.value ?? null,
+    house: s.snapshot.house_power_kw.value ?? null,
     hp: s.snapshot.heat_pump_power_kw.value ?? null,
     ev: s.snapshot.ev_power_kw.value ?? null,
     grid: s.snapshot.grid_power_kw.value ?? null,
@@ -73,6 +77,7 @@ export function appendLiveSample(points: HistoryPoint[], s: LiveState, counts: M
     const merged: HistoryPoint = {
       ts: minute,
       pv: avg(last.pv, sample.pv),
+      house: avg(last.house, sample.house),
       hp: avg(last.hp, sample.hp),
       ev: avg(last.ev, sample.ev),
       grid: avg(last.grid, sample.grid),

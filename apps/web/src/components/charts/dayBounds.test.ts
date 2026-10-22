@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayBounds, priceBounds } from "./DayChart";
+import { dayBounds, priceBounds } from "./dayBounds";
 
 describe("dayBounds", () => {
   it("liefert Berliner Mitternacht in UTC (Sommerzeit)", () => {

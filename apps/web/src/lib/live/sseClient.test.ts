@@ -57,7 +57,7 @@ describe("Erstladung des Live-Clients", () => {
   });
 
   it("zieht niemanden von einem vergangenen Tag weg", async () => {
-    useLiveStore.getState().setHistory([{ ts: 1, pv: 2, hp: null, ev: null, grid: null, battery: null, price: null, k1: null }], "2026-10-12");
+    useLiveStore.getState().setHistory([{ ts: 1, pv: 2, house: null, hp: null, ev: null, grid: null, battery: null, price: null, k1: null }], "2026-10-12");
     const stop = startLiveClient();
     await vi.waitFor(() => expect(useLiveStore.getState().lastFrameAt).not.toBeNull());
     expect(useLiveStore.getState().historyDay).toBe("2026-10-12");
