@@ -166,11 +166,14 @@
 .home-kachel:hover { border-color: var(--line-2); }
 .home-kachel-plan { flex: none; }
 .home-rail-zahl { font-size: clamp(22px, 2.2vw, 30px); line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
-.home-kachel-puffer { flex: 2 1 0; display: flex; gap: 14px; align-items: stretch; }
-.home-tank { width: 52px; align-self: stretch; min-height: 110px; border-radius: 8px; border: 1px solid rgba(255,255,255,.22); flex: none; position: relative; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+/* Die Pufferkachel nimmt, was die Planzeilen uebrig lassen; der Tank fuellt ihre Hoehe. Kein
+   min-height am Tank: das liess ihn an der Wand ueber die Kachel hinauslaufen. */
+.home-kachel-puffer { flex: 1 1 auto; min-height: 0; display: flex; gap: 16px; align-items: stretch; overflow: hidden; }
+.home-tank { width: 76px; align-self: stretch; border-radius: 10px; border: 1px solid rgba(255,255,255,.22); flex: none; position: relative; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+.home-kachel-puffer .home-rail-zahl { font-size: clamp(28px, 2.8vw, 40px); }
 .home-tank-marke { position: absolute; left: 0; right: 0; height: 1px; background: rgba(0,0,0,.25); }
-.home-tank-fuehler { display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0; font-size: 12px; color: var(--text-2); white-space: nowrap; }
-.home-tank-fuehler .mono { color: var(--text-1); font-size: 13px; }
+.home-tank-fuehler { display: flex; flex-direction: column; justify-content: space-between; padding: 6px 0; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.home-tank-fuehler .mono { color: var(--text-1); font-size: 14px; }
 
 .home-kurve { display: flex; flex-direction: column; gap: 4px; min-height: 0; }
 
@@ -219,8 +222,7 @@
   .home-dock-reihe { justify-content: space-between; gap: 6px; }
   .home-dock-knopf { width: 46px; height: 46px; border-radius: 12px; }
   .home-dock-item { width: 46px; }
-  .home-kachel-puffer { flex: 1 1 100%; }
-  .home-tank { min-height: 90px; }
+  .home-kachel-puffer { flex: 1 1 100%; min-height: 150px; }
   .home-dock-trenner { display: none; }
   .home-blatt { left: 0; right: 0; width: auto; }
   .home-kurve-legende { display: none; }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
-import type { EnergySummary, RoomsLive } from "@/lib/api/models";
+import type { EnergySummary } from "@/lib/api/models";
 import { useLiveStore, rowToPoint } from "@/lib/live/store";
 import { startLiveClient } from "@/lib/live/sseClient";
 import { startReloadPolicy } from "@/lib/live/reloadPolicy";
@@ -27,20 +27,7 @@ import { Dock } from "./Dock";
  * Blaettern durch Tage. Die Begruendung ist der Satz oben; die Zeitspuren sind drei Zeilen in der
  * Leiste; und vergangene Tage stehen unter Strom, mit allem Blaettern, das dort hingehoert.
  */
-const RAEUME_MS = 60_000;
 const TAG_MS = 5 * 60_000;
-
-function useRooms(): RoomsLive | null {
-  const [rooms, setRooms] = useState<RoomsLive | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const lade = () => void api.rooms().then((r) => { if (alive) setRooms(r); }).catch(() => undefined);
-    lade();
-    const t = setInterval(lade, RAEUME_MS);
-    return () => { alive = false; clearInterval(t); };
-  }, []);
-  return rooms;
-}
 
 /** Der Tag in drei Zahlen, aus derselben Stundenbilanz wie die Strom-Seite. */
 function useHeute(day: string): EnergySummary | null {
@@ -90,7 +77,6 @@ export function Home() {
     void api.history("today").then((h) => setHistory(h.rows.map(rowToPoint), heute)).catch(() => undefined);
   }, [heute, setHistory]);
 
-  const rooms = useRooms();
   const tag = useHeute(heute);
   const s = state?.snapshot;
   const pvPeak = useMemo(() => Math.max(4, ...(plan?.intervals ?? []).map((i) => i.expected_pv_kw)), [plan]);
@@ -125,7 +111,7 @@ export function Home() {
 
       <div className="home-hero" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>
         {isMobile ? <FlowList snapshot={s ?? null} pvPeakKw={pvPeak} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} />}
-        <Rail state={state} plan={plan} rooms={rooms} nowMs={now} />
+        <Rail state={state} plan={plan} nowMs={now} />
       </div>
 
       <DayCurve history={history} plan={plan} nowMs={now} />
