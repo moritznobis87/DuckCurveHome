@@ -119,7 +119,7 @@ Kommt `[]`, ist es die falsche Haus-Kennung; kommt eine Liste von Etagen mit `ra
 Gelesen wird nur. Geliefert werden je Raum `room_<id>_temp_c`, `room_<id>_setpoint_c`,
 `room_<id>_offset_k`, `room_<id>_humidity_pct` und `room_<id>_valve`; die Namen, Etagen und
 Kreiszahlen gehen als Ereignis `rooms.list` mit, weil sie keine Zahlen sind. Zu sehen ist das
-alles unter `/raeume`.
+alles unter `/waerme/raeume`.
 
 ## HemsConfig (Auszug, Defaults)
 

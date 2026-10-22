@@ -98,7 +98,7 @@ export function PvAccounting() {
       onPeriod={setPeriod}
       onMove={move}
       onToday={today}
-      right={<Link href="/pv" className="text-[12px] text-amber">Erzeugung →</Link>}
+      right={<Link href="/strom/pv" className="text-[12px] text-amber">Erzeugung →</Link>}
     >
       {error ? <ErrorBanner message={error} /> : null}
       <KpiGrid cols={6}>

@@ -10,6 +10,25 @@ const nextConfig: NextConfig = {
   env: { NEXT_PUBLIC_BUILD_ID: process.env.RAILWAY_GIT_COMMIT_SHA ?? "dev" },
   reactStrictMode: true,
   poweredByHeader: false,
+  // Die alten Adressen, eine je Geraet, fuehren auf die neuen Bereiche. Lesezeichen und der
+  // Verlauf des Wand-iPads bleiben gueltig; die Abfrage (?period=&anchor=) reist mit.
+  async redirects() {
+    const alt: Array<[string, string]> = [
+      ["/pv", "/strom/pv"],
+      ["/pv/abrechnung", "/geld/pv-abrechnung"],
+      ["/haus", "/strom"],
+      ["/haus/rechnungen", "/geld/rechnungen"],
+      ["/batterie", "/strom/speicher"],
+      ["/wallbox", "/strom/wallbox"],
+      ["/jahr", "/strom/jahr"],
+      ["/waermebilanz", "/waerme/bilanz"],
+      ["/raeume", "/waerme/raeume"],
+      ["/prognose", "/system"],
+      ["/daten", "/system/daten"],
+      ["/settings", "/system/zugang"],
+    ];
+    return alt.map(([source, destination]) => ({ source, destination, permanent: true }));
+  },
   async headers() {
     return [
       {

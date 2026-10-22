@@ -1,15 +1,13 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import { requireOwner } from "@/lib/guard";
 import { authRequired } from "@/lib/session";
 import { active } from "@/lib/presence";
 import { CopyField } from "@/components/ui/CopyField";
 import { StorageReport } from "@/components/settings/StorageReport";
-import { DoorLog } from "@/components/settings/DoorLog";
-import { HeatSettings } from "@/components/settings/HeatSettings";
+import { AreaShell } from "@/components/layout/AreaShell";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Einstellungen · Duck Curve Home" };
+export const metadata = { title: "Zugang und Sicherung · Duck Curve Home" };
 
 function Row({ label, url, note }: { label: string; url: string; note: string }) {
   return (
@@ -41,8 +39,8 @@ async function publicHost(): Promise<string> {
   return "home.duckcurve.de";
 }
 
-export default async function SettingsPage() {
-  await requireOwner();
+export default async function Page() {
+  await requireOwner(); // doppelt zum Layout: die Seite zeigt die Schluessel zum Haus
   const here = active();
   const year = new Date().getFullYear();
   const base = `https://${await publicHost()}`;
@@ -57,9 +55,7 @@ export default async function SettingsPage() {
     !process.env.DCH_GUEST_TOKEN ? "DCH_GUEST_TOKEN" : null,
   ].filter(Boolean);
   return (
-    <main className="dashboard-bg flex min-h-[100dvh] flex-col gap-6 p-8 text-text-1">
-      <Link href="/" className="kicker">← Zurück zum Dashboard</Link>
-      <h1 className="m-0 text-[28px] font-semibold tracking-[-.02em]">Einstellungen</h1>
+    <AreaShell kicker="Geräte koppeln · wer zusieht · Daten sichern">
 
       <section className="flex max-w-[760px] flex-col gap-3">
         <h2 className="m-0 text-[18px] font-semibold">Zugang einrichten</h2>
@@ -78,7 +74,7 @@ export default async function SettingsPage() {
         <Row
           label="Gast (nur ansehen)"
           url={`${base}/pair?token=${guest}&hours=8`}
-          note="Sieht alles inklusive Kosten, die Schaltkacheln bleiben sichtbar, bewirken aber nichts. Tibber-Rechnungen sind gesperrt. Ohne `hours` gilt DCH_GUEST_HOURS (Vorgabe 24), höchstens 720."
+          note="Sieht Jetzt, Strom, Wärme und Geld; PV-Abrechnung, Rechnungen und System bleiben verschlossen. Die Schalter bleiben sichtbar und sagen „nur Ansicht“. Ohne `hours` gilt DCH_GUEST_HOURS (Vorgabe 24), höchstens 720."
         />
         <p className="m-0 text-[14px] leading-[1.6] text-text-3">
           Der Ablauf begrenzt die <em>Sitzung</em>, nicht den Link: Wer ihn aufhebt, kann sich erneut paaren.
@@ -127,38 +123,6 @@ export default async function SettingsPage() {
         <StorageReport />
       </section>
 
-      <section className="flex max-w-[980px] flex-col gap-3">
-        <h2 className="m-0 text-[18px] font-semibold">Wärme: Annahmen der Rechnung</h2>
-        <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-          Es gibt keinen Wärmemengenzähler im Haus. Die Wärmebilanz wird deshalb gerechnet, und diese
-          Zahlen sind die Annahmen dahinter: was auf dem Lieferschein der Pellets steht, was im
-          Datenblatt des Ofens steht, wie warm der Puffer gefahren wird. Jede Änderung wirkt sofort
-          und rückwirkend, weil Messwerte gespeichert sind und keine Rechenergebnisse.
-        </p>
-        <HeatSettings />
-        <p className="m-0 text-[14px] leading-[1.6] text-text-3">
-          Ob die Zahlen stimmen, steht auf der <Link href="/waermebilanz" className="text-amber">Wärmebilanz</Link>:
-          dort gibt es die Zeile „nicht zuzuordnen". Was die Erzeuger nicht erklären, landet in ihr,
-          und sie klein zu bekommen ist genau der Sinn dieser Felder.
-        </p>
-      </section>
-
-      <section className="flex max-w-[760px] flex-col gap-3">
-        <h2 className="m-0 text-[18px] font-semibold">Haustür</h2>
-        <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-          Wer sich am Reader erkennen ließ, und was daraufhin geschah. Von hier führt kein Weg zur
-          Tür: die Entscheidung fällt im Haus, an einer Erlaubnisliste in der Bridge, und diese
-          Seite liest nur mit. Abgelehnte Versuche stehen mit dabei - sie sind die eigentliche
-          Auskunft, wenn man wissen will, ob jemand vor der Tür stand, den das Haus nicht kannte.
-        </p>
-        <DoorLog />
-        <p className="m-0 text-[14px] leading-[1.6] text-text-3">
-          Die Namen kommen aus UniFi Access und stehen in der Datenbank im Klartext. Deshalb steht
-          diese Liste hier und nicht auf dem Dashboard: die Einstellungen sind nur mit Vollzugriff
-          erreichbar, ein Gast sieht sie nicht.
-        </p>
-      </section>
-
       <section className="flex max-w-[760px] flex-col gap-3">
         <h2 className="m-0 text-[18px] font-semibold">Sicherung</h2>
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
@@ -205,9 +169,10 @@ export default async function SettingsPage() {
         <h2 className="m-0 text-[18px] font-semibold">Konfiguration</h2>
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
           Regelparameter, Aktoren und Grenzwerte stehen in <code className="mono text-[13px]">CONFIGURATION.md</code> und
-          im Entity-Mapping, das die Bridge beim Start aus dem Repository lädt.
+          im Entity-Mapping, das die Bridge beim Start aus dem Repository lädt. Die Annahmen der
+          Wärmerechnung stehen unter <a href="/waerme/annahmen" className="text-amber">Wärme › Annahmen</a>.
         </p>
       </section>
-    </main>
+    </AreaShell>
   );
 }
