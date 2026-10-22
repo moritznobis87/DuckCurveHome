@@ -508,6 +508,8 @@ class DemoRunner:
         out: list[RoomLiveOut] = []
         for r in demo_rooms.ROOMS:
             ist = demo_rooms.temperature_c(r, now)
+            offset = demo_rooms.offset_k(r, now)
+            ziel = rooms.ziel(r.setpoint_c, offset)
             out.append(
                 RoomLiveOut(
                     id=r.id,
@@ -516,10 +518,11 @@ class DemoRunner:
                     circuits=r.circuits,
                     temp_c=ist,
                     setpoint_c=r.setpoint_c,
-                    offset_k=0.0,
+                    offset_k=offset,
+                    target_c=ziel,
                     humidity_pct=None,
                     valve=demo_rooms.valve(r, now),
-                    deviation_k=round(ist - r.setpoint_c, 2),
+                    deviation_k=round(ist - (ziel or r.setpoint_c), 2),
                     observed_at=now,
                     quality=Quality.OK,
                 )
@@ -546,6 +549,7 @@ class DemoRunner:
                     circuits=r.circuits,
                     temp_c=[demo_rooms.temperature_c(r, t) if t <= jetzt else None for t in ts],
                     setpoint_c=[r.setpoint_c if t <= jetzt else None for t in ts],
+                    offset_k=[demo_rooms.offset_k(r, t) if t <= jetzt else None for t in ts],
                     valve=[demo_rooms.valve(r, t) if t <= jetzt else None for t in ts],
                 )
                 for r in demo_rooms.ROOMS

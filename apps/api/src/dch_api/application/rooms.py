@@ -22,15 +22,20 @@ from datetime import datetime, timedelta
 
 # Die Felder je Raum, in der Reihenfolge, in der sie in der Anzeige gebraucht werden.
 FIELDS = ("temp_c", "setpoint_c", "offset_k", "humidity_pct", "valve")
-# Felder, für die eine Zeitreihe aufgehoben wird. Der Offset gehört nicht dazu: er ist eine
-# Einstellung, und wie oft jemand am Regler gedreht hat, steht im Sollwert mit drin.
-SERIES_FIELDS = ("temp_c", "setpoint_c", "valve")
+# Felder, für die eine Zeitreihe aufgehoben wird.
+#
+# **Der Offset gehört dazu.** Hier stand zuerst das Gegenteil, mit der Begründung, er sei eine
+# Einstellung und stecke ohnehin im Sollwert. Beides ist falsch: Contromes eigene Oberfläche
+# rechnet sichtbar `21,00 - 0,32 = 20,68` und regelt auf das Ergebnis (Bildschirmfoto der Anlage,
+# 22.10.2026). Ohne den Offset in der Zeitreihe wäre die Abweichung eines vergangenen Tages gegen
+# eine Zahl gerechnet, auf die nie jemand geregelt hat.
+SERIES_FIELDS = ("temp_c", "setpoint_c", "offset_k", "valve")
 
 _KEY = re.compile(r"^room_(\d+)_(" + "|".join(FIELDS) + r")$")
 _META = re.compile(r"^raum\.(\d+)\.(name|etage|kreise|rang)$")
 
 # Verdichtungsstufen der Tageszeitreihe. Eine Raumtemperatur folgt dem Haus mit Zeitkonstanten um
-# 25 Stunden; minütlich übertragen wären es neun Räume mal drei Reihen mal 1440 Zahlen für eine
+# 25 Stunden; minütlich übertragen wären es neun Räume mal vier Reihen mal 1440 Zahlen für eine
 # Kurve, die in diesem Takt gar nichts Neues sagt.
 STEPS = (5, 15, 60)
 
@@ -115,6 +120,31 @@ def meta_from_context(context: Mapping[str, object]) -> dict[int, RoomMeta]:
         )
         for rid, name in namen.items()
     }
+
+
+def ziel(setpoint_c: float | None, offset_k: float | None) -> float | None:
+    """Die Temperatur, auf die geregelt wird: Sollwert plus Offset.
+
+    **Belegt, nicht geraten.** Contromes Oberfläche zeigt die Rechnung selbst: In einem Raum mit
+    `solltemperatur: 21.0` steht dort `21,00 - 0,32` und darunter `20,68` als Zielwert
+    (Bildschirmfoto der Anlage, 22.10.2026). Der Offset steckt also nicht im Sollwert, sondern
+    kommt hinzu.
+
+    **Was daran noch offen ist, ist das Vorzeichen in den Daten.** Die Oberfläche setzt das
+    Rechenzeichen selbst und zeigt daneben einen Betrag; ob `total_offset` in der Schnittstelle
+    schon vorzeichenbehaftet ankommt, sagt sie nicht. Hier wird addiert, weil Contromes
+    FPS-Beschreibung `ziel = soll + offsets` definiert und eine Schnittstelle, die die Richtung
+    einer Anpassung nicht ausdrücken kann, keine wäre. Stimmt das nicht, liegt der Zielwert um das
+    Doppelte des Offsets daneben - sichtbar, weil die Anzeige Sollwert und Offset einzeln daneben
+    stellt und mit Contromes eigener Anzeige zu vergleichen ist.
+
+    **`total_offset` ist eine Summe.** Neben ihm steht ein Feld `offsets` mit benannten Quellen
+    (gesehen: `Geolocation`). Witterung mag eine davon sein, die einzige ist sie nicht - darum
+    heißt das hier Offset und nicht Witterung.
+    """
+    if setpoint_c is None:
+        return None
+    return round(setpoint_c + (offset_k or 0.0), 2)
 
 
 def sort_key(m: RoomMeta) -> tuple[int, int, str]:

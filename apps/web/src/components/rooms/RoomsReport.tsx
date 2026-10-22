@@ -8,7 +8,7 @@ import { ErrorBanner, Note, ReportShell, usePeriod } from "@/components/reports/
 import { celsius, hhmm } from "@/lib/format";
 import { isoToday } from "@/lib/day";
 import { abweichungText, anteilText, BAND_K, farbe, kelvin, KEIN_WERT, NOCH_NICHT, STUFEN, ventilText, zahl1 } from "./palette";
-import { abweichungen, etagenText, gruppiere, mittel } from "./logic";
+import { abweichungen, etagenText, gruppiere, mittel, ziel } from "./logic";
 
 /**
  * Die Räume des Hauses: wie warm sie sind, wohin sie sollen, und wie weit die Heizkreise offen
@@ -137,7 +137,7 @@ function Verlauf({ serie, ts, proStunde, linie, bisMs }: { serie: RoomSeries; ts
 
   return (
     <div className="flex flex-col gap-[3px]">
-      <svg viewBox={`0 0 320 ${H}`} preserveAspectRatio="none" style={{ width: "100%", height: H, display: "block" }} role="img" aria-label="Abweichung vom Sollwert über den Tag">
+      <svg viewBox={`0 0 320 ${H}`} preserveAspectRatio="none" style={{ width: "100%", height: H, display: "block" }} role="img" aria-label="Abweichung vom Zielwert über den Tag">
         <line x1="0" y1={H / 2} x2="320" y2={H / 2} stroke="var(--line-2)" strokeWidth="1" strokeDasharray="3 3" />
         {stuecke.map((d) => (
           <path key={d.slice(0, 24)} d={d} fill="none" stroke={linie} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
@@ -160,6 +160,7 @@ function Verlauf({ serie, ts, proStunde, linie, bisMs }: { serie: RoomSeries; ts
 function RaumKachel({ raum, serie, ts, proStunde, bisMs }: { raum: RoomLive; serie: RoomSeries | undefined; ts: string[]; proStunde: number; bisMs: number }) {
   const d = raum.deviation_k;
   const stumm = raum.temp_c == null;
+  const hatOffset = raum.offset_k != null && Math.abs(raum.offset_k) >= 0.05;
   const aufSoll = d != null && Math.abs(d) <= BAND_K;
   const tagesventil = serie ? mittel(serie.valve) : null;
   // **An der Grenze**: die Kreise standen fast den ganzen Tag offen, und der Raum ist trotzdem zu
@@ -174,7 +175,7 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs }: { raum: RoomLive; ser
         {anDerGrenze ? (
           // Farblos und mit Zeichen. Ein bernsteinfarbenes Abzeichen stünde in der Farbe, die auf
           // dieser Seite „zu warm" heißt, und sagte damit das Gegenteil.
-          <span className="mono shrink-0 rounded-[2px] border border-line-2 px-[5px] py-px text-[10px] uppercase tracking-[.08em] text-text-2" title="Die Heizkreise standen fast den ganzen Tag offen und der Raum ist trotzdem unter dem Sollwert. Dieser Raum bestimmt die nötige Vorlauftemperatur mit.">
+          <span className="mono shrink-0 rounded-[2px] border border-line-2 px-[5px] py-px text-[10px] uppercase tracking-[.08em] text-text-2" title="Die Heizkreise standen fast den ganzen Tag offen und der Raum ist trotzdem unter dem Zielwert. Dieser Raum bestimmt die nötige Vorlauftemperatur mit.">
             ! an der Grenze
           </span>
         ) : null}
@@ -190,7 +191,21 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs }: { raum: RoomLive; ser
           </div>
         )}
         <div className="flex flex-col items-end gap-1">
-          <span className="mono text-[11px] text-text-3">Soll {celsius(raum.setpoint_c, 1)}</span>
+          {/* **Ziel, nicht Soll.** Geregelt wird auf Sollwert plus Offset - Controme rechnet es
+              in seiner eigenen Oberfläche vor. Die beiden Zahlen stehen darunter, solange der
+              Offset nicht null ist: dann ist die Rechnung nachvollziehbar, und ein vertauschtes
+              Vorzeichen fiele beim Vergleich mit Controme sofort auf. */}
+          <span
+            className="mono text-[11px] text-text-3"
+            title={hatOffset ? `Sollwert ${celsius(raum.setpoint_c, 1)}, Offset ${kelvin(raum.offset_k ?? 0)}` : undefined}
+          >
+            Ziel {celsius(raum.target_c ?? raum.setpoint_c, 1)}
+          </span>
+          {hatOffset ? (
+            <span className="mono text-[10px] text-text-3 opacity-70">
+              {celsius(raum.setpoint_c, 1)} {kelvin(raum.offset_k ?? 0)}
+            </span>
+          ) : null}
           <span
             className="mono text-[11px] font-medium"
             style={{
@@ -210,10 +225,7 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs }: { raum: RoomLive; ser
 
       <div className="mono flex justify-between border-t border-line-1 pt-2 text-[11px] text-text-3">
         <span title="Jetzt">Ventil {ventilText(raum.valve, raum.circuits)}</span>
-        <span>
-          {raum.offset_k != null && Math.abs(raum.offset_k) >= 0.05 ? `Offset ${kelvin(raum.offset_k)}` : ""}
-          {raum.humidity_pct != null ? ` · ${Math.round(raum.humidity_pct)} % rF` : ""}
-        </span>
+        <span>{raum.humidity_pct != null ? `${Math.round(raum.humidity_pct)} % rF` : ""}</span>
       </div>
     </div>
   );
@@ -290,6 +302,8 @@ export function RoomsReport() {
       const i = s.temp_c.reduce<number>((best, v, k) => (v != null ? k : best), -1);
       const t = (i >= 0 ? s.temp_c[i] : null) ?? null;
       const soll = (i >= 0 ? s.setpoint_c[i] : null) ?? null;
+      const off = (i >= 0 ? s.offset_k[i] : null) ?? null;
+      const z = i >= 0 ? ziel(s, i) : null;
       return {
         id: s.id,
         name: s.name,
@@ -297,10 +311,11 @@ export function RoomsReport() {
         circuits: s.circuits,
         temp_c: t,
         setpoint_c: soll,
-        offset_k: null,
+        offset_k: off,
+        target_c: z,
         humidity_pct: null,
         valve: (i >= 0 ? s.valve[i] : null) ?? null,
-        deviation_k: t != null && soll != null ? t - soll : null,
+        deviation_k: t != null && z != null ? t - z : null,
         observed_at: (i >= 0 ? ts[i] : null) ?? null,
         quality: "unavailable",
       } satisfies RoomLive;
@@ -360,7 +375,7 @@ export function RoomsReport() {
         <Card style={{ padding: "18px 20px 16px" }}>
           <CardHead
             title="Abweichung im Tagesverlauf"
-            right="Je Raum und Viertelstunde die Abweichung vom Sollwert. Der Raum, der zuerst abfällt, bestimmt die nötige Vorlauftemperatur für alle."
+            right="Je Raum und Viertelstunde die Abweichung vom Zielwert. Der Raum, der zuerst abfällt, bestimmt die nötige Vorlauftemperatur für alle."
           />
           <div className="rooms-matrix mt-3 flex flex-col gap-[3px]">
             {matrix.map((z) => (
@@ -402,7 +417,7 @@ export function RoomsReport() {
                 <th className="border-b border-line-1 px-2 py-1.5 font-medium">Raum</th>
                 <th className="border-b border-line-1 px-2 py-1.5 font-medium">Etage</th>
                 <th className="border-b border-line-1 px-2 py-1.5 text-right font-medium">Ist</th>
-                <th className="border-b border-line-1 px-2 py-1.5 text-right font-medium">Soll</th>
+                <th className="border-b border-line-1 px-2 py-1.5 text-right font-medium">Ziel</th>
                 <th className="border-b border-line-1 px-2 py-1.5 text-right font-medium">Abweichung</th>
                 <th className="border-b border-line-1 px-2 py-1.5 text-right font-medium">Ventil am Tag</th>
                 <th className="border-b border-line-1 px-2 py-1.5 text-right font-medium">Kreise</th>
@@ -417,7 +432,7 @@ export function RoomsReport() {
                     <td className="border-b border-line-1 px-2 py-1.5">{r.name}</td>
                     <td className="border-b border-line-1 px-2 py-1.5 text-text-3">{r.floor || "-"}</td>
                     <td className="mono border-b border-line-1 px-2 py-1.5 text-right">{r.temp_c == null ? "-" : celsius(r.temp_c, 1)}</td>
-                    <td className="mono border-b border-line-1 px-2 py-1.5 text-right text-text-2">{celsius(r.setpoint_c, 1)}</td>
+                    <td className="mono border-b border-line-1 px-2 py-1.5 text-right text-text-2" title={`Sollwert ${celsius(r.setpoint_c, 1)}, Offset ${kelvin(r.offset_k ?? 0)}`}>{celsius(r.target_c ?? r.setpoint_c, 1)}</td>
                     <td className="mono border-b border-line-1 px-2 py-1.5 text-right">{r.deviation_k == null ? "-" : kelvin(r.deviation_k)}</td>
                     <td className="mono border-b border-line-1 px-2 py-1.5 text-right">{anteilText(tagesventil)}</td>
                     <td className="mono border-b border-line-1 px-2 py-1.5 text-right text-text-3">{r.circuits || "-"}</td>
@@ -430,9 +445,10 @@ export function RoomsReport() {
       ) : null}
 
       <Note>
-        Die Abweichung bezieht sich auf den Sollwert, den die Heizungsregelung meldet, nicht auf
-        Sollwert plus Offset. Dass der Regler auf die Summe regelt, ist nicht belegt; beide Zahlen
-        stehen deshalb getrennt in der Kachel. Die Antriebe am Verteiler sind auf oder zu - ein
+        Geregelt wird auf <strong>Sollwert plus Offset</strong> - Controme rechnet das in seiner
+        eigenen Oberfläche vor und zeigt das Ergebnis als Zieltemperatur. Der Offset ist dabei die
+        Summe mehrerer benannter Anpassungen, nicht nur der Witterung; die beiden Zahlen stehen
+        deshalb einzeln unter dem Zielwert. Die Antriebe am Verteiler sind auf oder zu - ein
         Zwischenwert im Streifen heißt „ein Teil der Kreise" oder „einen Teil des Fensters", nicht
         „halb offen". Gestellt wird von hier aus nichts.
       </Note>

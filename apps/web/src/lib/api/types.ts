@@ -3182,11 +3182,10 @@ export interface components {
          * @description Ein Raum im Augenblick.
          *
          *     `deviation_k` wird hier gerechnet und nicht in der Anzeige, weil zur Abweichung die Frage
-         *     gehört, auf welchen Sollwert sie sich bezieht - und die ist offen: Controme meldet
-         *     `solltemperatur` und `total_offset` getrennt, und ob der Regler auf die Summe regelt, ist
-         *     nicht belegt. `setpoint_c` ist der gemeldete Sollwert, `offset_k` der Zuschlag daneben;
-         *     `deviation_k` bezieht sich auf `setpoint_c` allein. Wer die Summe für richtig hält, liest die
-         *     Abweichung dazu um `offset_k` verschoben.
+         *     gehört, auf welchen Wert sie sich bezieht - und die ist entschieden: auf `target_c`, den
+         *     Sollwert **plus** Offset. Contromes Oberfläche rechnet es selbst vor (`21,00 - 0,32` über
+         *     `20,68`). `setpoint_c` und `offset_k` stehen weiter einzeln daneben, damit die Rechnung
+         *     nachvollziehbar bleibt und ein falsches Vorzeichen auffällt.
          *
          *     **Jedes Feld ist angegeben, keines hat eine Voreinstellung.** Das ist keine Pedanterie: Aus den
          *     Voreinstellungen wird in der erzeugten Schnittstellenbeschreibung „darf fehlen", und in der App
@@ -3208,6 +3207,8 @@ export interface components {
             setpoint_c: number | null;
             /** Offset K */
             offset_k: number | null;
+            /** Target C */
+            target_c: number | null;
             /** Humidity Pct */
             humidity_pct: number | null;
             /** Valve */
@@ -3235,6 +3236,8 @@ export interface components {
             temp_c: (number | null)[];
             /** Setpoint C */
             setpoint_c: (number | null)[];
+            /** Offset K */
+            offset_k: (number | null)[];
             /** Valve */
             valve: (number | null)[];
         };

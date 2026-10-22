@@ -27,11 +27,23 @@ export function mittel(werte: (number | null)[]): number | null {
   return gut.reduce((a, b) => a + b, 0) / gut.length;
 }
 
-/** Die Abweichung je Fenster: Ist minus Soll, wo beides vorliegt. */
+/** Worauf in diesem Fenster geregelt wurde: Sollwert plus Offset.
+ *
+ *  Dieselbe Rechnung wie `rooms.ziel` auf der Dienstseite, und sie steht hier ein zweites Mal,
+ *  weil die Zeitreihe die beiden Zahlen einzeln überträgt statt den fertigen Zielwert - dann ist
+ *  an der Kurve noch zu sehen, woraus er entstand. Ein fehlender Offset ist einer von null, ein
+ *  fehlender Sollwert dagegen kein Zielwert. */
+export function ziel(s: RoomSeries, i: number): number | null {
+  const soll = s.setpoint_c[i];
+  if (soll == null) return null;
+  return soll + (s.offset_k[i] ?? 0);
+}
+
+/** Die Abweichung je Fenster: Ist minus Zielwert, wo beides vorliegt. */
 export function abweichungen(s: RoomSeries): (number | null)[] {
   return s.temp_c.map((t, i) => {
-    const soll = s.setpoint_c[i];
-    return t == null || soll == null ? null : t - soll;
+    const z = ziel(s, i);
+    return t == null || z == null ? null : t - z;
   });
 }
 
@@ -42,8 +54,8 @@ export function etagenText(rooms: RoomLive[]): string {
   const stumm = rooms.filter((r) => r.temp_c == null).length;
   const kalt = rooms.filter((r) => r.deviation_k != null && r.deviation_k < -BAND_K).length;
   const teile: string[] = [];
-  if (kalt > 0) teile.push(`${kalt} unter Sollwert`);
+  if (kalt > 0) teile.push(`${kalt} unter dem Ziel`);
   if (stumm > 0) teile.push(`${stumm} ohne Messwert`);
-  if (teile.length === 0) teile.push("alle auf Sollwert");
+  if (teile.length === 0) teile.push("alle am Ziel");
   return `${wort} · ${teile.join(" · ")}`;
 }

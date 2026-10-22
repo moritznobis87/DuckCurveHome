@@ -6591,6 +6591,17 @@
             ],
             "title": "Offset K"
           },
+          "target_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target C"
+          },
           "humidity_pct": {
             "anyOf": [
               {
@@ -6649,6 +6660,7 @@
           "temp_c",
           "setpoint_c",
           "offset_k",
+          "target_c",
           "humidity_pct",
           "valve",
           "deviation_k",
@@ -6656,7 +6668,7 @@
           "quality"
         ],
         "title": "RoomLiveOut",
-        "description": "Ein Raum im Augenblick.\n\n`deviation_k` wird hier gerechnet und nicht in der Anzeige, weil zur Abweichung die Frage\ngehört, auf welchen Sollwert sie sich bezieht - und die ist offen: Controme meldet\n`solltemperatur` und `total_offset` getrennt, und ob der Regler auf die Summe regelt, ist\nnicht belegt. `setpoint_c` ist der gemeldete Sollwert, `offset_k` der Zuschlag daneben;\n`deviation_k` bezieht sich auf `setpoint_c` allein. Wer die Summe für richtig hält, liest die\nAbweichung dazu um `offset_k` verschoben.\n\n**Jedes Feld ist angegeben, keines hat eine Voreinstellung.** Das ist keine Pedanterie: Aus den\nVoreinstellungen wird in der erzeugten Schnittstellenbeschreibung „darf fehlen\", und in der App\nheißt das für jede Zahl eine zweite Möglichkeit neben `null` - undefiniert -, die dasselbe\nbedeutet und trotzdem überall mitgeprüft werden müsste."
+        "description": "Ein Raum im Augenblick.\n\n`deviation_k` wird hier gerechnet und nicht in der Anzeige, weil zur Abweichung die Frage\ngehört, auf welchen Wert sie sich bezieht - und die ist entschieden: auf `target_c`, den\nSollwert **plus** Offset. Contromes Oberfläche rechnet es selbst vor (`21,00 - 0,32` über\n`20,68`). `setpoint_c` und `offset_k` stehen weiter einzeln daneben, damit die Rechnung\nnachvollziehbar bleibt und ein falsches Vorzeichen auffällt.\n\n**Jedes Feld ist angegeben, keines hat eine Voreinstellung.** Das ist keine Pedanterie: Aus den\nVoreinstellungen wird in der erzeugten Schnittstellenbeschreibung „darf fehlen\", und in der App\nheißt das für jede Zahl eine zweite Möglichkeit neben `null` - undefiniert -, die dasselbe\nbedeutet und trotzdem überall mitgeprüft werden müsste."
       },
       "RoomSeriesOut": {
         "properties": {
@@ -6704,6 +6716,20 @@
             "type": "array",
             "title": "Setpoint C"
           },
+          "offset_k": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Offset K"
+          },
           "valve": {
             "items": {
               "anyOf": [
@@ -6727,6 +6753,7 @@
           "circuits",
           "temp_c",
           "setpoint_c",
+          "offset_k",
           "valve"
         ],
         "title": "RoomSeriesOut",

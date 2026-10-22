@@ -4,7 +4,7 @@
  *
  * **Zweiseitig, weil die Größe zweiseitig ist.** Zu kalt und zu warm sind nicht zwei Grade
  * desselben, sondern zwei Richtungen; eine Skala von hell nach dunkel könnte das nicht zeigen.
- * Null ist eine eigene, gedeckte Stufe und keine Lücke: „auf Sollwert" ist das Ergebnis, auf das
+ * Null ist eine eigene, gedeckte Stufe und keine Lücke: „am Ziel" ist das Ergebnis, auf das
  * es hinausläuft, und soll als solches zu sehen sein.
  */
 export type Stufe = { readonly von: number; readonly bis: number; readonly farbe: string; readonly marke: string };
@@ -57,10 +57,13 @@ export function kelvin(k: number): string {
   return `${k > 0 ? "+" : "\u2212"}${nf1.format(Math.abs(k))}\u202fK`;
 }
 
-/** Eine Abweichung als Text: „auf Soll" innerhalb des Bandes, sonst mit Vorzeichen. */
+/** Eine Abweichung als Text: „am Ziel" innerhalb des Bandes, sonst mit Vorzeichen.
+ *
+ *  Nicht „auf Soll": Geregelt wird auf Sollwert plus Offset, und der Sollwert allein ist eine
+ *  Zahl, auf die niemand regelt. */
 export function abweichungText(k: number | null | undefined): string {
   if (k == null) return "kein Messwert";
-  if (Math.abs(k) <= BAND_K) return "auf Soll";
+  if (Math.abs(k) <= BAND_K) return "am Ziel";
   return kelvin(k);
 }
 

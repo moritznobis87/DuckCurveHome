@@ -59,13 +59,29 @@ def temperature_c(room: DemoRoom, at: datetime) -> float:
     return round(room.setpoint_c + room.bias_k + gang + fein, 1)
 
 
+def offset_k(room: DemoRoom, at: datetime) -> float:
+    """Die Anpassung, die Controme auf den Sollwert rechnet.
+
+    In der echten Anlage ist `total_offset` die **Summe** mehrerer benannter Quellen - neben dem
+    Wert steht ein Feld `offsets`, und darin stand unter anderem `Geolocation`. Hier wird eine
+    davon nachgebildet: Je milder der Tag, desto weiter wird der Sollwert gesenkt. Das Vorzeichen
+    ist damit meistens negativ, wie auf dem Bildschirmfoto der Anlage.
+
+    Nicht für jeden Raum derselbe Wert: sonst wäre auf der Seite nicht zu sehen, dass der Offset
+    je Raum verschieden sein kann.
+    """
+    h = _tageszeit(at)
+    milde = max(0.0, math.cos((h - 14.0) / 24.0 * 2.0 * math.pi))
+    return round(-0.5 * milde * (0.6 + 0.1 * (room.id % 5)), 2)
+
+
 def valve(room: DemoRoom, at: datetime) -> float:
     """Anteil der offenen Heizkreise, 0 bis 1 - in Stufen von einem Kreis.
 
     Der Regler öffnet, wenn es unter dem Sollwert liegt, und je mehr Kreise, je feiner die
     Abstufung. Keine Zwischenstellung: jeder Kreis ist auf oder zu.
     """
-    fehlt = room.setpoint_c - temperature_c(room, at)
+    fehlt = room.setpoint_c + offset_k(room, at) - temperature_c(room, at)
     if fehlt <= 0.0:
         return 0.0
     # 0,15 K Unterschreitung je zusätzlich geöffneten Kreis, gedeckelt bei allen.

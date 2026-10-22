@@ -781,10 +781,10 @@ class LiveRuntime:
 
             ist = wert("temp_c")
             soll = wert("setpoint_c")
+            offset = wert("offset_k")
+            ziel = rooms.ziel(soll.value, offset.value)
             abweichung = (
-                round(ist.value - soll.value, 2)
-                if ist.value is not None and soll.value is not None
-                else None
+                round(ist.value - ziel, 2) if ist.value is not None and ziel is not None else None
             )
             out.append(
                 RoomLiveOut(
@@ -794,7 +794,8 @@ class LiveRuntime:
                     circuits=m.circuits,
                     temp_c=ist.value,
                     setpoint_c=soll.value,
-                    offset_k=wert("offset_k").value,
+                    offset_k=offset.value,
+                    target_c=ziel,
                     humidity_pct=wert("humidity_pct").value,
                     valve=wert("valve").value,
                     deviation_k=abweichung,
@@ -845,6 +846,7 @@ class LiveRuntime:
                     circuits=self._room_name(meta, i).circuits,
                     temp_c=nach_id[i].values["temp_c"],
                     setpoint_c=nach_id[i].values["setpoint_c"],
+                    offset_k=nach_id[i].values["offset_k"],
                     valve=nach_id[i].values["valve"],
                 )
                 for i in sortiert

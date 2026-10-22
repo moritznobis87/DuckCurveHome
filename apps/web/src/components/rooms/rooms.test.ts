@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abweichungen, etagenText, gruppiere, mittel } from "./logic";
+import { abweichungen, etagenText, gruppiere, mittel, ziel } from "./logic";
 import { abweichungText, anteilText, farbe, kelvin, ventilText } from "./palette";
 import type { RoomLive, RoomSeries } from "@/lib/api/models";
 
@@ -12,6 +12,7 @@ function raum(p: Partial<RoomLive> & { id: number }): RoomLive {
     temp_c: p.temp_c ?? null,
     setpoint_c: p.setpoint_c ?? null,
     offset_k: p.offset_k ?? null,
+    target_c: p.target_c ?? p.setpoint_c ?? null,
     humidity_pct: p.humidity_pct ?? null,
     valve: p.valve ?? null,
     deviation_k: p.deviation_k ?? null,
@@ -44,31 +45,43 @@ describe("Zusammenfassung einer Etage", () => {
       raum({ id: 2, temp_c: null }),
       raum({ id: 3, temp_c: 21, deviation_k: 0.1 }),
     ]);
-    expect(text).toBe("3 Räume · 1 unter Sollwert · 1 ohne Messwert");
+    expect(text).toBe("3 Räume · 1 unter dem Ziel · 1 ohne Messwert");
   });
 
   it("sagt es, wenn nichts zu melden ist", () => {
-    expect(etagenText([raum({ id: 1, temp_c: 21, deviation_k: 0.2 })])).toBe("1 Raum · alle auf Sollwert");
+    expect(etagenText([raum({ id: 1, temp_c: 21, deviation_k: 0.2 })])).toBe("1 Raum · alle am Ziel");
   });
 
   it("zählt eine Abweichung innerhalb des Messrauschens nicht als zu kalt", () => {
-    expect(etagenText([raum({ id: 1, temp_c: 21, deviation_k: -0.4 })])).toContain("alle auf Sollwert");
+    expect(etagenText([raum({ id: 1, temp_c: 21, deviation_k: -0.4 })])).toContain("alle am Ziel");
   });
 });
 
 describe("Abweichung je Fenster", () => {
-  const serie = (temp: (number | null)[], soll: (number | null)[]): RoomSeries => ({
+  const serie = (temp: (number | null)[], soll: (number | null)[], off: (number | null)[] = []): RoomSeries => ({
     id: 1,
     name: "x",
     floor: "",
     circuits: 2,
     temp_c: temp,
     setpoint_c: soll,
+    offset_k: off.length ? off : soll.map(() => null),
     valve: [],
   });
 
   it("bleibt leer, wo eine der beiden Zahlen fehlt", () => {
     expect(abweichungen(serie([20, null, 22], [21, 21, null]))).toEqual([-1, null, null]);
+  });
+
+  it("rechnet gegen Sollwert plus Offset, nicht gegen den Sollwert allein", () => {
+    // Controme zeigt in seiner Oberfläche `21,00 - 0,32` und darunter `20,68` als Zielwert.
+    expect(ziel(serie([20.36], [21], [-0.32]), 0)).toBeCloseTo(20.68, 5);
+    expect(abweichungen(serie([20.36], [21], [-0.32]))[0]).toBeCloseTo(-0.32, 5);
+  });
+
+  it("nimmt einen fehlenden Offset als null, einen fehlenden Sollwert als kein Ziel", () => {
+    expect(ziel(serie([20], [21], [null]), 0)).toBe(21);
+    expect(ziel(serie([20], [null], [0.5]), 0)).toBeNull();
   });
 
   it("mittelt nur über vorhandene Werte", () => {
@@ -78,14 +91,14 @@ describe("Abweichung je Fenster", () => {
 });
 
 describe("Texte", () => {
-  it("nennt eine Abweichung innerhalb des Bandes „auf Soll“", () => {
-    expect(abweichungText(0.3)).toBe("auf Soll");
-    expect(abweichungText(-0.5)).toBe("auf Soll");
+  it("nennt eine Abweichung innerhalb des Bandes „am Ziel“", () => {
+    expect(abweichungText(0.3)).toBe("am Ziel");
+    expect(abweichungText(-0.5)).toBe("am Ziel");
   });
 
   it("unterscheidet kein Messwert von null Abweichung", () => {
     expect(abweichungText(null)).toBe("kein Messwert");
-    expect(abweichungText(0)).toBe("auf Soll");
+    expect(abweichungText(0)).toBe("am Ziel");
   });
 
   it("setzt das Minuszeichen und das deutsche Komma", () => {

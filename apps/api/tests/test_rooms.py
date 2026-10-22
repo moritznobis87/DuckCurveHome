@@ -66,6 +66,18 @@ def test_das_alte_ereignisformat_wird_noch_gelesen() -> None:
     assert [m.id for m in sorted(meta.values(), key=rooms.sort_key)] == [5, 7]
 
 
+def test_der_zielwert_ist_sollwert_plus_offset() -> None:
+    """Contromes Oberfläche rechnet `21,00 - 0,32` und zeigt darunter `20,68` als Zielwert."""
+    assert rooms.ziel(21.0, -0.32) == 20.68
+    assert rooms.ziel(21.0, 0.2) == 21.2
+
+
+def test_ein_fehlender_offset_ist_einer_von_null() -> None:
+    """Ohne Offset bleibt der Sollwert der Zielwert. Ohne Sollwert gibt es keinen Zielwert."""
+    assert rooms.ziel(21.0, None) == 21.0
+    assert rooms.ziel(None, 0.5) is None
+
+
 def test_raeume_ohne_etage_stehen_hinten() -> None:
     """Sie gehören in keine Geschossgruppe, und eine erfundene wäre schlimmer als keine."""
     ohne = rooms.RoomMeta(id=1, name="Irgendwo", floor="", rank=0)
@@ -129,6 +141,16 @@ def test_werte_ausserhalb_des_zeitraums_fallen_heraus() -> None:
     zeilen = [_zeile(0, room_1_temp_c=99.0), _zeile(70, room_1_temp_c=20.0)]
     _, reihen = rooms.condense(zeilen, [1], start, start + timedelta(minutes=15), 15)
     assert reihen[0].values["temp_c"] == [20.0]
+
+
+def test_der_offset_wird_als_reihe_aufgehoben() -> None:
+    """Sonst wäre die Abweichung eines vergangenen Tages gegen eine Zahl gerechnet, auf die an
+    diesem Tag nie jemand geregelt hat."""
+    assert "offset_k" in rooms.SERIES_FIELDS
+    start = datetime(2026, 10, 22, 0, 0, tzinfo=UTC)
+    zeilen = [_zeile(0, room_1_setpoint_c=21.0, room_1_offset_k=-0.3)]
+    _, reihen = rooms.condense(zeilen, [1], start, start + timedelta(minutes=5), 5)
+    assert reihen[0].values["offset_k"] == [-0.3]
 
 
 def test_ein_unbekannter_raum_in_den_zeilen_stoert_nicht() -> None:
@@ -228,17 +250,22 @@ def test_raeume_kommen_von_der_bruecke_bis_in_die_anzeige(live_client: TestClien
         erster = antwort["rooms"][0]
         assert erster["name"] == "Arbeiten" and erster["floor"] == "Erdgeschoss"
         assert erster["circuits"] == 2 and erster["valve"] == 1.0
-        # Die Abweichung bezieht sich auf den gemeldeten Sollwert, nicht auf Soll plus Offset:
-        # dass der Regler auf die Summe regelt, ist nicht belegt. Beide Zahlen stehen daneben.
+        # **Geregelt wird auf Soll plus Offset.** Contromes Oberfläche rechnet es selbst vor:
+        # `21,00 - 0,32` steht dort über `20,68`. Beide Zahlen bleiben einzeln daneben stehen,
+        # damit die Rechnung nachvollziehbar ist.
         assert erster["temp_c"] == 20.6 and erster["setpoint_c"] == 21.0
         assert erster["offset_k"] == 0.2
-        assert erster["deviation_k"] == -0.4
+        assert erster["target_c"] == 21.2
+        assert erster["deviation_k"] == -0.6
 
         stumm = antwort["rooms"][1]
         assert stumm["name"] == "Oben"
         # Kein Messwert heißt kein Messwert, nicht 0 °C - und keine ausgerechnete Abweichung.
         assert stumm["temp_c"] is None and stumm["deviation_k"] is None
         assert stumm["setpoint_c"] == 23.0, "der Sollwert ist bekannt, nur die Messung fehlt"
+        # Ohne gemeldeten Offset ist der Zielwert der Sollwert, nicht etwa `None`: ein fehlender
+        # Offset ist kein fehlender Zielwert, sondern einer von null.
+        assert stumm["target_c"] == 23.0
         assert stumm["observed_at"] is None
 
     verlauf = live_client.get(
@@ -296,6 +323,10 @@ def test_die_vorfuehrung_zeigt_erfundene_raeume(client: TestClient) -> None:
     assert {r["floor"] for r in antwort["rooms"]} == {"Erdgeschoss", "Obergeschoss"}
     bad = next(r for r in antwort["rooms"] if r["name"] == "Baden")
     assert bad["setpoint_c"] == 23.0
+    # Auch die Vorführung hat Offsets, sonst wäre an ihr nicht zu sehen, dass es sie gibt.
+    assert any(r["offset_k"] != 0.0 for r in antwort["rooms"])
+    for r in antwort["rooms"]:
+        assert r["target_c"] == pytest.approx(r["setpoint_c"] + r["offset_k"], abs=0.011)
     # Jeder Kreis ist auf oder zu: der Anteil ist ein Bruch mit der Kreiszahl als Nenner.
     for r in antwort["rooms"]:
         assert r["valve"] is not None
