@@ -44,6 +44,10 @@ export const C = {
   house: "#cfd8dc",
   export: "rgba(228,236,239,.5)",
   stove: "#b5651d",
+  // Die Waermepumpe als Linie, in der Farbe ihres Knotens im Energiefluss. `hp` ist ein helles
+  // Grau fuer Flaechen und steht der weissen Hauslinie zu nah (CIEDE2000 4,5); dieses Orange
+  // haelt Abstand zu allen Linien der Tageskurve (zur Sonne 18,4, zum Strompreis 34,0).
+  heatPump: "#e0966b",
   mist: "#7fa3b3",
   // Nicht-Energie
   price: "#7fa3b3",

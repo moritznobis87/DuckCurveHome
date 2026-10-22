@@ -116,14 +116,15 @@ def build_plan(
         p = current_price(prices, t)
         return p.ct_kwh if p else None
 
-    # Reicht die Preisreihe über morgen 00:00 hinaus, wird zwei Tage geplant, sonst einer. Vorher stand
-    # hier `len(prices) > 24` - eine Zählung, die nur bei Stundenpreisen einen Tag bedeutet.
-    covered_until = max((p.end for p in prices), default=day_start)
+    # **Zwei Tage, immer.** Vorher endete der Fahrplan nach 24 Stunden, solange die Preise für
+    # morgen noch nicht veröffentlicht waren - die Börse gibt sie erst gegen 13 Uhr frei. Damit
+    # fehlte vormittags auch die PV-Vorschau für morgen, obwohl die Wetterprognose sie längst
+    # hergab, und die Wandanzeige konnte über morgen nichts sagen. Wo kein Preis bekannt ist,
+    # bleibt `price_ct_kwh` leer; ohne Preis gibt es dort auch kein Fenster und keinen Fahrplan,
+    # sondern `free`. Eine leere Viertelstunde ist ehrlicher als eine fehlende.
     intervals: list[PlanIntervalOut] = []
     t = day_start
-    end_plan = day_start + timedelta(
-        hours=48 if covered_until > day_start + timedelta(days=1) else 24
-    )
+    end_plan = day_start + timedelta(hours=48)
     vom_optimierer = 0
     while t < end_plan:
         price = price_at(t)

@@ -2,13 +2,13 @@
 
 import { useMemo } from "react";
 import type { EChartsCoreOption } from "echarts/core";
-import type { Plan } from "@/lib/api/models";
+import type { HeatReport, Plan } from "@/lib/api/models";
 import type { HistoryPoint } from "@/lib/live/store";
 import { hhmm } from "@/lib/format";
-import { isoDay } from "@/lib/day";
 import { EChart } from "@/components/charts/EChart";
 import { C, MONO } from "@/components/charts/palette";
 import { priceBounds } from "@/components/charts/dayBounds";
+import { TAGE, TAG_WORT, type Tag } from "./tage";
 
 /**
  * Die Kurve des Tages: die Marke selbst.
@@ -17,31 +17,41 @@ import { priceBounds } from "@/components/charts/dayBounds";
  * der Strompreis als Linie auf eigener Achse, das Preistief als Band. Ein Blick zeigt, warum es
  * dieses Haus gibt: mittags ist Strom billig, weil die Sonne scheint.
  *
- * Nur der laufende Tag. Vergangene Tage stehen unter Strom, mit Blaettern und allem; die
- * Wandanzeige soll nicht an einem Tag von vorgestern haengen bleiben, wie es der alten passiert
- * ist.
+ * **Drei Tage, eine Zeichnung.** Gestern ist nur Messung, morgen nur Erwartung, heute beides mit
+ * der Marke „jetzt" dazwischen. Dieselben Achsen, dieselben Farben: Was gestrichelt ist, ist
+ * nicht gemessen. Fuer morgen kommt eine Linie dazu, die es sonst nicht gaebe - der Strom, den
+ * die Waermepumpe nach der Wetterprognose brauchen wird.
+ *
+ * Weiter zurueck als gestern geht es hier nicht. Vergangene Tage stehen unter Strom, mit Blaettern
+ * und allem; die Wandanzeige soll nicht an einem Tag von vorgestern haengen bleiben, wie es der
+ * alten passiert ist.
  */
-function boundsOf(dayIso: string): [number, number] {
-  const s = new Date(`${dayIso}T00:00:00`).getTime();
-  return [s, s + 86400000];
-}
-
-export function DayCurve({ history, plan, nowMs }: { history: HistoryPoint[]; plan: Plan | null; nowMs: number }) {
-  const day = isoDay(nowMs);
-  const [start, end] = useMemo(() => boundsOf(day), [day]);
-
+export function DayCurve({ tag, onTag, history, plan, heat, nowMs, start, end }: { tag: Tag; onTag: (t: Tag) => void; history: HistoryPoint[]; plan: Plan | null; heat: HeatReport | null; nowMs: number; start: number; end: number }) {
   const option = useMemo<EChartsCoreOption>(() => {
     const hx = (ts: number) => (ts - start) / 3600000;
     const inDay = history.filter((p) => p.ts >= start && p.ts < end);
     const pv = inDay.map((p) => [hx(p.ts), p.pv]);
     const haus = inDay.map((p) => [hx(p.ts), p.house]);
     const preisHist = inDay.map((p) => [hx(p.ts), p.price]);
-    const future = (plan?.intervals ?? []).filter((i) => {
-      const t = new Date(i.ts).getTime();
-      return t >= nowMs - 15 * 60000 && t >= start && t <= end;
-    });
+    // Gestern wird nichts vorhergesagt, heute erst ab jetzt: eine Prognose ueber eine Messung zu
+    // legen, die es schon gibt, waere doppelt gezeichnet und sagte nichts.
+    const abMs = tag === "heute" ? Math.max(start, nowMs - 15 * 60000) : start;
+    const future =
+      tag === "gestern"
+        ? []
+        : (plan?.intervals ?? []).filter((i) => {
+            const t = new Date(i.ts).getTime();
+            return t >= abMs && t >= start && t <= end;
+          });
     const pvPrognose = future.map((i) => [hx(new Date(i.ts).getTime()), i.expected_pv_kw]);
     const preisVoraus = future.map((i) => [hx(new Date(i.ts).getTime()), i.price_ct_kwh]);
+    const waerme =
+      tag === "morgen"
+        ? (heat?.forecast ?? [])
+            .map((p) => ({ t: new Date(p.ts).getTime(), kw: p.electric_kw }))
+            .filter((p) => p.t >= start && p.t < end)
+            .map((p) => [hx(p.t), p.kw])
+        : [];
     const baender = (plan?.windows ?? [])
       .filter((w) => (w.kind === "cheap" || w.kind === "negative") && new Date(w.start).getTime() < end && new Date(w.end).getTime() > start)
       .map((w) => [
@@ -49,9 +59,9 @@ export function DayCurve({ history, plan, nowMs }: { history: HistoryPoint[]; pl
         { xAxis: Math.min(24, hx(new Date(w.end).getTime())) },
       ]);
     const maxOf = (rows: Array<Array<number | null>>) => rows.reduce((m, p) => (typeof p[1] === "number" && Number.isFinite(p[1]) ? Math.max(m, p[1]) : m), 0);
-    const powerMax = Math.max(3, Math.ceil((maxOf([...pv, ...haus, ...pvPrognose]) * 1.1) / 2) * 2);
+    const powerMax = Math.max(3, Math.ceil((maxOf([...pv, ...haus, ...pvPrognose, ...waerme]) * 1.1) / 2) * 2);
     const { min: pMin, max: pMax, step: pStep } = priceBounds([...preisHist, ...preisVoraus]);
-    const jetzt = { symbol: "none", silent: true, lineStyle: { color: "var(--amber-soft)", type: "dashed", width: 1.2 }, label: { show: false }, data: [{ xAxis: hx(nowMs) }] };
+    const jetzt = tag === "heute" ? { symbol: "none", silent: true, lineStyle: { color: "var(--amber-soft)", type: "dashed", width: 1.2 }, label: { show: false }, data: [{ xAxis: hx(nowMs) }] } : undefined;
     return {
       animation: false,
       backgroundColor: "transparent",
@@ -80,14 +90,15 @@ export function DayCurve({ history, plan, nowMs }: { history: HistoryPoint[]; pl
         { type: "value", position: "right", min: pMin, max: pMax, interval: pStep, splitLine: { show: false }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => `${v} ct` } },
       ],
       series: [
-        { name: "Sonne", type: "line", yAxisIndex: 0, data: pv, showSymbol: false, lineStyle: { color: C.pv, width: 2 }, areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(242,169,0,.45)" }, { offset: 1, color: "rgba(242,169,0,.04)" }] } }, markArea: { silent: true, data: baender }, markLine: jetzt, z: 3 },
+        { name: "Sonne", type: "line", yAxisIndex: 0, data: pv, showSymbol: false, lineStyle: { color: C.pv, width: 2 }, areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(242,169,0,.45)" }, { offset: 1, color: "rgba(242,169,0,.04)" }] } }, markArea: { silent: true, data: baender }, ...(jetzt ? { markLine: jetzt } : {}), z: 3 },
         { name: "Sonne, Prognose", type: "line", yAxisIndex: 0, data: pvPrognose, showSymbol: false, lineStyle: { color: C.pv, width: 1.5, type: [5, 5], opacity: 0.7 }, areaStyle: { color: "rgba(242,169,0,.08)" }, z: 2 },
         { name: "Haus", type: "line", yAxisIndex: 0, data: haus, showSymbol: false, lineStyle: { color: "rgba(255,255,255,.88)", width: 1.8 }, z: 4 },
+        { name: "Wärmepumpe, erwartet", type: "line", step: "end", yAxisIndex: 0, data: waerme, showSymbol: false, lineStyle: { color: C.heatPump, width: 1.5, type: [5, 5], opacity: 0.9 }, z: 3 },
         { name: "Strompreis", type: "line", step: "end", yAxisIndex: 1, data: preisHist, showSymbol: false, lineStyle: { color: C.price, width: 1.6 }, z: 3 },
         { name: "Preis voraus", type: "line", step: "end", yAxisIndex: 1, data: preisVoraus, showSymbol: false, lineStyle: { color: C.price, width: 1.6, type: [5, 5], opacity: 0.8 }, z: 2 },
       ],
     };
-  }, [history, plan, nowMs, start, end]);
+  }, [tag, history, plan, heat, nowMs, start, end]);
 
   const Legende = ({ color, label, dashed = false, flaeche = false }: { color: string; label: string; dashed?: boolean; flaeche?: boolean }) => (
     <span className="flex items-center gap-1.5 text-[12px] text-text-2">
@@ -97,14 +108,21 @@ export function DayCurve({ history, plan, nowMs }: { history: HistoryPoint[]; pl
   );
   return (
     <div className="home-kurve">
-      <div className="flex items-baseline justify-between gap-4">
-        <span className="kicker" style={{ fontSize: 11 }}>Heute</span>
+      <div className="flex items-center justify-between gap-4">
+        <div className="home-tage" role="tablist" aria-label="Tag">
+          {TAGE.map((t) => (
+            <button key={t} role="tab" aria-selected={t === tag} onClick={() => onTag(t)} className="home-tag" style={{ background: t === tag ? "var(--amber)" : "transparent", color: t === tag ? "var(--petrol)" : "var(--text-2)" }}>
+              {TAG_WORT[t]}
+            </button>
+          ))}
+        </div>
         <div className="home-kurve-legende flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
-          <Legende color={C.pv} label="Sonne" flaeche />
-          <Legende color={C.pv} label="Prognose" dashed />
-          <Legende color="rgba(255,255,255,.88)" label="Haus" />
-          <Legende color={C.price} label="Strompreis" />
-          <Legende color={C.price} label="Preistief" flaeche />
+          {tag !== "morgen" ? <Legende color={C.pv} label="Sonne" flaeche /> : null}
+          {tag !== "gestern" ? <Legende color={C.pv} label={tag === "morgen" ? "Sonne erwartet" : "Prognose"} dashed /> : null}
+          {tag !== "morgen" ? <Legende color="rgba(255,255,255,.88)" label="Haus" /> : null}
+          {tag === "morgen" ? <Legende color={C.heatPump} label="Wärmepumpe" dashed /> : null}
+          <Legende color={C.price} label="Strompreis" dashed={tag === "morgen"} />
+          {tag !== "gestern" ? <Legende color={C.price} label="Preistief" flaeche /> : null}
         </div>
       </div>
       <div className="min-h-0 flex-1">

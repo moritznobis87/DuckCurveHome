@@ -175,6 +175,9 @@
 .home-tank-fuehler { display: flex; flex-direction: column; justify-content: space-between; padding: 6px 0; font-size: 12px; color: var(--text-2); white-space: nowrap; }
 .home-tank-fuehler .mono { color: var(--text-1); font-size: 14px; }
 
+/* Gestern, heute, morgen: gross genug fuer einen Daumen im Vorbeigehen. */
+.home-tage { display: flex; gap: 2px; border: 1px solid var(--line-2); border-radius: 5px; padding: 2px; }
+.home-tag { padding: 5px 14px; border-radius: 3px; font-size: 13px; line-height: 1.2; transition: background .15s, color .15s; }
 .home-kurve { display: flex; flex-direction: column; gap: 4px; min-height: 0; }
 
 .home-fuss { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
@@ -226,6 +229,7 @@
   .home-dock-trenner { display: none; }
   .home-blatt { left: 0; right: 0; width: auto; }
   .home-kurve-legende { display: none; }
+  .home-tag { padding: 6px 12px; }
   .card { padding: 14px; }
 
   .report-main { padding: 12px; gap: 12px; }

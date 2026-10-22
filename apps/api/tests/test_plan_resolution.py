@@ -55,19 +55,31 @@ def test_hourly_prices_are_unchanged() -> None:
     assert [i.price_ct_kwh for i in first_hour] == [20.0] * 4
 
 
-def test_horizon_follows_price_coverage_not_point_count() -> None:
-    """96 Viertelstundenpreise sind ein Tag, nicht vier. Eine Zählung verwechselte das."""
-    one_day = build_plan(_pv, _quarter_prices(24), NOW, HemsConfig())
-    assert one_day.intervals[-1].ts < DAY_START + timedelta(days=1)
-    two_days = build_plan(_pv, _quarter_prices(48), NOW, HemsConfig())
-    assert two_days.intervals[-1].ts >= DAY_START + timedelta(days=1)
-    # Stundenpreise verhalten sich weiterhin gleich
-    assert build_plan(_pv, _hourly_prices(24), NOW, HemsConfig()).intervals[
-        -1
-    ].ts < DAY_START + timedelta(days=1)
-    assert build_plan(_pv, _hourly_prices(48), NOW, HemsConfig()).intervals[
-        -1
-    ].ts >= DAY_START + timedelta(days=1)
+def test_zwei_tage_plan_und_preise_nur_so_weit_sie_reichen() -> None:
+    """Der Horizont sind immer zwei Tage; der Preis endet, wo die Preisreihe endet.
+
+    Vorher endete der Fahrplan nach 24 Stunden, wenn die Preise für morgen noch fehlten. Dann
+    fehlte vormittags auch die PV-Vorschau für morgen, obwohl die Wetterprognose sie hergab. Jetzt
+    reicht der Plan immer über zwei Tage, und die Viertelstunden ohne bekannten Preis sagen das,
+    indem sie keinen tragen. Die ursprüngliche Frage dieses Tests bleibt: 96 Viertelstundenpreise
+    sind ein Tag, nicht vier - eine Zählung der Punkte verwechselte das.
+    """
+    ein_tag = build_plan(_pv, _quarter_prices(24), NOW, HemsConfig())
+    assert ein_tag.intervals[-1].ts >= DAY_START + timedelta(days=1)
+    morgen = [i for i in ein_tag.intervals if i.ts >= DAY_START + timedelta(days=1)]
+    assert len(morgen) == 96
+    assert all(i.price_ct_kwh is None for i in morgen)
+    assert all(i.planned_hp_state == "free" for i in morgen)
+    assert all(i.price_ct_kwh is not None for i in ein_tag.intervals if i not in morgen)
+
+    zwei_tage = build_plan(_pv, _quarter_prices(48), NOW, HemsConfig())
+    assert all(i.price_ct_kwh is not None for i in zwei_tage.intervals)
+    # Stundenpreise verhalten sich genauso
+    assert all(
+        i.price_ct_kwh is None
+        for i in build_plan(_pv, _hourly_prices(24), NOW, HemsConfig()).intervals
+        if i.ts >= DAY_START + timedelta(days=1)
+    )
 
 
 def test_der_ofen_steht_im_plan_oder_gar_nichts() -> None:
