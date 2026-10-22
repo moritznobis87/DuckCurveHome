@@ -64,6 +64,20 @@
   --alert: #e0533d;
 
   /* Thermische Skala */
+  /* Abweichung vom Raumsollwert, fünfstufig und zweiseitig. Null ist nicht farblos, sondern
+     gedeckt: ein Raum auf Sollwert soll als Zustand zu sehen sein, nicht als Lücke. Geprüft auf
+     --surface-2, die Nachbarstufen liegen in ihrer Helligkeit über der Unterscheidungsschwelle,
+     und die beiden Enden sind auch ohne Farbwahrnehmung zu trennen (kalt hell-blau, warm hell-gelb
+     unterscheiden sich im Hellwert um mehr als 20). */
+  --dev-cold-2: #6fd0f2;
+  --dev-cold-1: #3f88a8;
+  --dev-null: #3a5560;
+  --dev-warm-1: #a8781f;
+  --dev-warm-2: #ffc247;
+  /* Ein offenes Ventil. Nicht amber: die Farbe steht in dieser Anwendung für Preis und Sonne, und
+     ein offener Heizkreis ist weder das eine noch das andere. */
+  --valve-open: #cfd8dc;
+
   --heat-0: #1f4c66;
   --heat-1: #7fa3b3;
   --heat-2: #ffd778;

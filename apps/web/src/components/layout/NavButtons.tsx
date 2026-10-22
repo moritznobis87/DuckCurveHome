@@ -22,6 +22,9 @@ const ITEMS = [
   { href: "/haus", icon: "house", label: "Haus", dated: true },
   { href: "/batterie", icon: "battery", label: "Batterie", dated: true },
   { href: "/waerme", icon: "pump", label: "Wärme", dated: true },
+  // Räume: die Einzelraumregelung. Steht neben den Wärmeseiten, beantwortet aber eine andere
+  // Frage - nicht „wie viel Wärme", sondern „wohin ist sie gegangen und wo fehlt sie".
+  { href: "/raeume", icon: "thermo", label: "Räume", dated: true },
   // Zwei Wärmeseiten, zwei Fragen: „Wärme" steht für den Strom der Wärmepumpe und ihre Taktung,
   // „Wärmebilanz" für die Wärmemengen beider Erzeuger. Sie zusammenzulegen hiesse, Kilowattstunden
   // Strom und Kilowattstunden Wärme in eine Ansicht zu werfen.

@@ -16,6 +16,7 @@ from typing import Any
 
 import structlog
 
+from dch_api.application import demo_rooms, rooms
 from dch_api.application.battery_control import BatteryMode
 from dch_api.application.energy_accounting import EnergyAccounting
 from dch_api.application.forecast_evaluation import ForecastEvaluator
@@ -42,6 +43,10 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    RoomHistoryOut,
+    RoomLiveOut,
+    RoomSeriesOut,
+    RoomsLiveOut,
     StoveLiveOut,
     SystemEventOut,
     SystemStatusOut,
@@ -496,6 +501,56 @@ class DemoRunner:
 
     async def recent_decisions(self, limit: int) -> list[Decision]:
         return list(self.decisions)[:limit]
+
+    # ------------------------------------------------------------------ Einzelraumregelung
+    async def rooms_live(self) -> RoomsLiveOut:
+        now = self.now
+        out: list[RoomLiveOut] = []
+        for r in demo_rooms.ROOMS:
+            ist = demo_rooms.temperature_c(r, now)
+            out.append(
+                RoomLiveOut(
+                    id=r.id,
+                    name=r.name,
+                    floor=r.floor,
+                    circuits=r.circuits,
+                    temp_c=ist,
+                    setpoint_c=r.setpoint_c,
+                    offset_k=0.0,
+                    humidity_pct=None,
+                    valve=demo_rooms.valve(r, now),
+                    deviation_k=round(ist - r.setpoint_c, 2),
+                    observed_at=now,
+                    quality=Quality.OK,
+                )
+            )
+        return RoomsLiveOut(at=now, named=True, rooms=out)
+
+    async def rooms_history(self, start: datetime, end: datetime, step_min: int) -> RoomHistoryOut:
+        ts = rooms.bucket_starts(start, end, step_min)
+        # **Nach jetzt kommt nichts.** Die Werte sind eine Formel und ließen sich für jede Uhrzeit
+        # ausrechnen, auch für heute Abend. Dann zeigte die Vorführung um acht Uhr morgens einen
+        # vollständigen Tag und sähe aus, als sage sie Raumtemperaturen voraus. Eine Vorführung
+        # darf erfundene Werte zeigen, aber nicht vorgeben, mehr zu wissen als die echte Anlage.
+        jetzt = self.now
+        return RoomHistoryOut(
+            start=start,
+            end=end,
+            step_min=step_min,
+            ts=ts,
+            rooms=[
+                RoomSeriesOut(
+                    id=r.id,
+                    name=r.name,
+                    floor=r.floor,
+                    circuits=r.circuits,
+                    temp_c=[demo_rooms.temperature_c(r, t) if t <= jetzt else None for t in ts],
+                    setpoint_c=[r.setpoint_c if t <= jetzt else None for t in ts],
+                    valve=[demo_rooms.valve(r, t) if t <= jetzt else None for t in ts],
+                )
+                for r in demo_rooms.ROOMS
+            ],
+        )
 
     async def set_heat_pump_mode(
         self,

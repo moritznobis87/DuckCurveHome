@@ -8,7 +8,13 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from dch_bridge.sources.controme import ContromeRooms, raeume_aus, ventilanteil
+from dch_bridge.sources.controme import (
+    ContromeRooms,
+    RaumInfo,
+    kreiszahl,
+    raeume_aus,
+    ventilanteil,
+)
 from hems_core.domain.quality import Quality
 
 # Abgeschrieben von der Anlage in Geilenkirchen, 21.10.2026, Haus-Kennung 2. Die Raumnamen sind
@@ -104,8 +110,8 @@ def _quelle(**kw: object) -> tuple[ContromeRooms, list, list]:
     async def on_readings(items: list) -> None:
         gelesen.extend(items)
 
-    async def on_rooms(namen: dict[int, str]) -> None:
-        raeume.append(namen)
+    async def on_rooms(infos: dict[int, RaumInfo]) -> None:
+        raeume.append(infos)
 
     q = ContromeRooms("192.0.2.50", on_readings, on_rooms=on_rooms, **kw)  # type: ignore[arg-type]
     return q, gelesen, raeume
@@ -193,9 +199,38 @@ async def test_die_raumnamen_gehen_einmal_hinaus_und_nicht_bei_jedem_lauf() -> N
     """Namen sind keine Messwerte. Sie kommen als Ereignis, und nur wenn sie sich ändern."""
     q, _, raeume = _quelle()
     await _lauf(q)
-    assert raeume == [{1: "Arbeiten", 2: "Wohnen", 4: "Oben", 5: "Knapp"}]
+    assert raeume == [
+        {
+            1: RaumInfo(name="Arbeiten", etage="Erdgeschoss", kreise=2, rang=0),
+            2: RaumInfo(name="Wohnen", etage="Erdgeschoss", kreise=4, rang=1),
+            4: RaumInfo(name="Oben", etage="Obergeschoss", kreise=2, rang=2),
+            # Dieser Raum hat keinen Ausgang am Verteiler, also auch keinen Heizkreis.
+            5: RaumInfo(name="Knapp", etage="Obergeschoss", kreise=0, rang=3),
+        }
+    ]
     await _lauf(q)
     assert len(raeume) == 1, "unveränderte Namen erzeugen kein zweites Ereignis"
+
+
+def test_die_kreiszahl_zaehlt_die_ausgaenge_nicht_die_offenen() -> None:
+    """Sie beschreibt den Verteiler, nicht den Augenblick: ein zugedrehter Kreis ist einer."""
+    assert kreiszahl({"1": 0, " 10": 0, " 4": 0, " 3": 0}) == 4
+    assert kreiszahl({"9": 1, " 8": 0}) == 2
+    assert kreiszahl({}) == 0
+    assert kreiszahl(None) == 0
+
+
+@pytest.mark.anyio
+async def test_die_etage_bleibt_wenn_nur_die_ausgaenge_antworten() -> None:
+    """`temps` und `outs` sind zwei Abrufe, und einer kann ausfallen.
+
+    Der zweite Durchgang über `outs` ergänzt den Raum, er ersetzt ihn nicht - sonst verlöre die
+    Anzeige bei einem halb geglückten Lauf die Geschossgruppierung.
+    """
+    q, _, raeume = _quelle()
+    await _lauf(q)
+    assert raeume[0][1].etage == "Erdgeschoss"
+    assert raeume[0][1].kreise == 2
 
 
 @pytest.mark.anyio

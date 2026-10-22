@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -42,6 +43,28 @@ SOURCE = "controme"
 HAUS_KANDIDATEN = (2, 1, 3)
 # Contromes Funkfuehler melden alle 3 bis 5 Minuten. Haeufiger zu fragen erzeugt Last ohne Ertrag.
 POLL_S = 120.0
+
+
+@dataclass(frozen=True, slots=True)
+class RaumInfo:
+    """Was einen Raum beschreibt, ohne eine Messgroesse zu sein.
+
+    Diese drei Angaben gehen nicht durch die Telemetrie - die kennt nur Zahlen je Schluessel. Sie
+    gehen als Zusammenhang eines Ereignisses mit, und zwar alle drei: Die Etage braucht die
+    Anzeige, um nach Geschoss zu gruppieren, und die Zahl der Heizkreise braucht sie, um aus
+    "0,25 offen" wieder "einer von vier" zu machen.
+
+    Die Kreiszahl steht hier und nicht in einer Messreihe, weil sie sich nicht aendert, solange
+    niemand am Verteiler schraubt. Als Zeitreihe waere sie 1440 Mal am Tag dieselbe Zahl.
+    """
+
+    name: str
+    etage: str = ""
+    kreise: int = 0
+    # Der Platz in Contromes eigener Reihenfolge. Die Anzeige gruppiert nach Etage, und die
+    # Reihenfolge der Etagen steckt nur in der Reihenfolge des JSON: alphabetisch sortiert waere
+    # das Dachgeschoss vor dem Erdgeschoss und der Keller mitten drin.
+    rang: int = 0
 
 
 def _zahl(v: object) -> float | None:
@@ -81,6 +104,18 @@ def raeume_aus(daten: object) -> list[dict[str, Any]]:
     return out
 
 
+def _kreiswerte(ausgang: object) -> list[float]:
+    """Die auswertbaren Ventilwerte eines Raums. Leer, wenn keiner brauchbar ist."""
+    if not isinstance(ausgang, dict):
+        return []
+    return [v for v in (_zahl(x) for x in ausgang.values()) if v is not None]
+
+
+def kreiszahl(ausgang: object) -> int:
+    """Wie viele Heizkreise dieser Raum am Verteiler hat."""
+    return len(_kreiswerte(ausgang))
+
+
 def ventilanteil(ausgang: object) -> float | None:
     """Welcher Anteil der Heizkreise dieses Raums offen ist, 0 bis 1.
 
@@ -96,10 +131,7 @@ def ventilanteil(ausgang: object) -> float | None:
     werden nur die Werte gebraucht; der Hinweis steht trotzdem da, weil jeder, der spaeter je
     Ausgang auswerten will, darueber stolpert.
     """
-    if not isinstance(ausgang, dict) or not ausgang:
-        return None
-    werte = [_zahl(v) for v in ausgang.values()]
-    gut = [v for v in werte if v is not None]
+    gut = _kreiswerte(ausgang)
     if not gut:
         return None
     # Auf oder Zu: alles ueber null gilt als offen. Sollte Controme je Prozentwerte liefern
@@ -117,7 +149,7 @@ class ContromeRooms:
         host: str,
         on_readings: Callable[[list[RawReading]], Awaitable[None]],
         *,
-        on_rooms: Callable[[dict[int, str]], Awaitable[None]] | None = None,
+        on_rooms: Callable[[dict[int, RaumInfo]], Awaitable[None]] | None = None,
         house_id: int = 0,
         poll_interval_s: float = POLL_S,
         user: str = "",
@@ -134,7 +166,7 @@ class ContromeRooms:
         self.poll_interval_s = poll_interval_s
         self.timeout_s = timeout_s
         self._auth = (user, password) if user else None
-        self._names: dict[int, str] = {}
+        self._names: dict[int, RaumInfo] = {}
         self._keys: list[str] = []
         self._last_ok: datetime | None = None
         self._fails = 0
@@ -202,11 +234,15 @@ class ContromeRooms:
 
         jetzt = datetime.now(UTC)
         werte: dict[str, float | None] = {}
-        namen: dict[int, str] = {}
+        infos: dict[int, RaumInfo] = {}
 
-        for raum in raeume_aus(temps):
+        for i, raum in enumerate(raeume_aus(temps)):
             rid = int(raum["id"])
-            namen[rid] = str(raum.get("name") or f"Raum {rid}")
+            infos[rid] = RaumInfo(
+                name=str(raum.get("name") or f"Raum {rid}"),
+                etage=str(raum.get("etage") or ""),
+                rang=i,
+            )
             werte[f"room_{rid}_temp_c"] = _zahl(raum.get("temperatur"))
             # **Sollwert und Offset getrennt, und das ist Absicht.**
             #
@@ -228,15 +264,24 @@ class ContromeRooms:
             # vorhanden"); `_zahl` macht daraus `None` statt eines Typfehlers.
             werte[f"room_{rid}_humidity_pct"] = _zahl(raum.get("luftfeuchte"))
 
-        for raum in raeume_aus(outs):
+        for i, raum in enumerate(raeume_aus(outs)):
             rid = int(raum["id"])
-            namen.setdefault(rid, str(raum.get("name") or f"Raum {rid}"))
-            werte[f"room_{rid}_valve"] = ventilanteil(raum.get("ausgang"))
+            ausgang = raum.get("ausgang")
+            # `outs` kennt dieselben Raeume wie `temps`, aber nicht unbedingt gleichzeitig: einer
+            # der beiden Abrufe kann ausgefallen sein. Darum wird hier ergaenzt und nicht ersetzt.
+            vorher = infos.get(rid)
+            infos[rid] = RaumInfo(
+                name=vorher.name if vorher else str(raum.get("name") or f"Raum {rid}"),
+                etage=(vorher.etage if vorher and vorher.etage else str(raum.get("etage") or "")),
+                kreise=kreiszahl(ausgang),
+                rang=vorher.rang if vorher else i,
+            )
+            werte[f"room_{rid}_valve"] = ventilanteil(ausgang)
 
-        if namen != self._names:
-            self._names = namen
+        if infos != self._names:
+            self._names = infos
             if self.on_rooms is not None:
-                await self.on_rooms(dict(namen))
+                await self.on_rooms(dict(infos))
         self._keys = sorted(werte)
 
         return [

@@ -18,7 +18,7 @@ from dch_bridge.home_assistant.ws_client import EntityState, HaWsClient
 from dch_bridge.mapping import ActuatorMap, EntityMap, normalize
 from dch_bridge.outbox import Outbox
 from dch_bridge.settings import BridgeSettings
-from dch_bridge.sources.controme import ContromeRooms
+from dch_bridge.sources.controme import ContromeRooms, RaumInfo
 from dch_bridge.sources.mcz_maestro import MaestroStove, stove_url
 from dch_bridge.sources.nuki_lock import NukiLock
 from dch_bridge.sources.opener import HomeAssistantOpener, NukiBridgeOpener, Opener
@@ -220,20 +220,31 @@ class Bridge:
             return
         self._pending[reading.key] = reading
 
-    async def _emit_rooms(self, namen: dict[int, str]) -> None:
-        """Die Raumnamen in die Cloud bringen.
+    async def _emit_rooms(self, raeume: dict[int, RaumInfo]) -> None:
+        """Namen, Etagen und Kreiszahlen der Räume in die Cloud bringen.
 
         Ein Messwert ist eine Zahl, ein Raumname ist keiner - über die Telemetrie geht er nicht.
         Das Ereignisprotokoll nimmt dagegen einen freien Zusammenhang auf, und die Auswertung
         liest den jüngsten Eintrag dieses Codes. Gesendet wird nur bei Änderung, also praktisch
         einmal nach dem Start und danach, wenn jemand in der Heizungsregelung etwas umbenennt.
+
+        Ein Schlüssel je Angabe, nicht ein zusammengesetzter Wert: ein Raumname darf jedes
+        Zeichen enthalten, also auch das, das man sich als Trenner ausgedacht hätte.
         """
+        ctx: dict[str, str] = {}
+        for rid, info in sorted(raeume.items()):
+            ctx[f"raum.{rid}.name"] = info.name
+            if info.etage:
+                ctx[f"raum.{rid}.etage"] = info.etage
+            if info.kreise:
+                ctx[f"raum.{rid}.kreise"] = str(info.kreise)
+            ctx[f"raum.{rid}.rang"] = str(info.rang)
         await self._emit_event(
             datetime.now(UTC),
             "info",
             "rooms.list",
-            f"{len(namen)} Räume der Einzelraumregelung",
-            {str(k): v for k, v in sorted(namen.items())},
+            f"{len(raeume)} Räume der Einzelraumregelung",
+            ctx,
         )
 
     async def _emit_event(

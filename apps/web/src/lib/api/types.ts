@@ -89,6 +89,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Räume im Augenblick */
+        get: operations["rooms_live_api_v1_rooms_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rooms/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Raumtemperaturen eines Tages
+         * @description Ein Kalendertag in Ortszeit, oder die letzten 24 Stunden.
+         *
+         *     **Der Tag ist der hiesige, nicht der der Datenbank.** Ein Heiztag beginnt um Mitternacht in
+         *     Geilenkirchen; in UTC gerechnet wäre er im Sommer um zwei Stunden verschoben, und die
+         *     Nachtabsenkung läge halb im Vortag.
+         */
+        get: operations["rooms_history_api_v1_rooms_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -3117,6 +3158,98 @@ export interface components {
          * @enum {string}
          */
         ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "planned_pause" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
+        /** RoomHistoryOut */
+        RoomHistoryOut: {
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Step Min */
+            step_min: number;
+            /** Ts */
+            ts: string[];
+            /** Rooms */
+            rooms: components["schemas"]["RoomSeriesOut"][];
+        };
+        /**
+         * RoomLiveOut
+         * @description Ein Raum im Augenblick.
+         *
+         *     `deviation_k` wird hier gerechnet und nicht in der Anzeige, weil zur Abweichung die Frage
+         *     gehört, auf welchen Sollwert sie sich bezieht - und die ist offen: Controme meldet
+         *     `solltemperatur` und `total_offset` getrennt, und ob der Regler auf die Summe regelt, ist
+         *     nicht belegt. `setpoint_c` ist der gemeldete Sollwert, `offset_k` der Zuschlag daneben;
+         *     `deviation_k` bezieht sich auf `setpoint_c` allein. Wer die Summe für richtig hält, liest die
+         *     Abweichung dazu um `offset_k` verschoben.
+         *
+         *     **Jedes Feld ist angegeben, keines hat eine Voreinstellung.** Das ist keine Pedanterie: Aus den
+         *     Voreinstellungen wird in der erzeugten Schnittstellenbeschreibung „darf fehlen", und in der App
+         *     heißt das für jede Zahl eine zweite Möglichkeit neben `null` - undefiniert -, die dasselbe
+         *     bedeutet und trotzdem überall mitgeprüft werden müsste.
+         */
+        RoomLiveOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Floor */
+            floor: string;
+            /** Circuits */
+            circuits: number;
+            /** Temp C */
+            temp_c: number | null;
+            /** Setpoint C */
+            setpoint_c: number | null;
+            /** Offset K */
+            offset_k: number | null;
+            /** Humidity Pct */
+            humidity_pct: number | null;
+            /** Valve */
+            valve: number | null;
+            /** Deviation K */
+            deviation_k: number | null;
+            /** Observed At */
+            observed_at: string | null;
+            quality: components["schemas"]["Quality"];
+        };
+        /**
+         * RoomSeriesOut
+         * @description Eine Raumzeitreihe spaltenweise: alle Listen so lang wie `ts` der Hülle.
+         */
+        RoomSeriesOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Floor */
+            floor: string;
+            /** Circuits */
+            circuits: number;
+            /** Temp C */
+            temp_c: (number | null)[];
+            /** Setpoint C */
+            setpoint_c: (number | null)[];
+            /** Valve */
+            valve: (number | null)[];
+        };
+        /** RoomsLiveOut */
+        RoomsLiveOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Named */
+            named: boolean;
+            /** Rooms */
+            rooms: components["schemas"]["RoomLiveOut"][];
+        };
         /** SensorTimeouts */
         SensorTimeouts: {
             /**
@@ -3772,6 +3905,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanOut"];
+                };
+            };
+        };
+    };
+    rooms_live_api_v1_rooms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomsLiveOut"];
+                };
+            };
+        };
+    };
+    rooms_history_api_v1_rooms_history_get: {
+        parameters: {
+            query?: {
+                /** @description Kalendertag als YYYY-MM-DD, Ortszeit */
+                day?: string | null;
+                range?: "today" | "yesterday" | "24h";
+                /** @description Fensterbreite in Minuten */
+                step_min?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomHistoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

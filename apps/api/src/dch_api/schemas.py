@@ -735,3 +735,66 @@ class HeatConfigIn(BaseModel):
         if any(c <= 0.5 or c > 10.0 for _, c in v):
             raise ValueError("Eine Arbeitszahl liegt zwischen 0,5 und 10.")
         return v
+
+
+# ------------------------------------------------------------------ Einzelraumregelung
+
+
+class RoomLiveOut(BaseModel):
+    """Ein Raum im Augenblick.
+
+    `deviation_k` wird hier gerechnet und nicht in der Anzeige, weil zur Abweichung die Frage
+    gehört, auf welchen Sollwert sie sich bezieht - und die ist offen: Controme meldet
+    `solltemperatur` und `total_offset` getrennt, und ob der Regler auf die Summe regelt, ist
+    nicht belegt. `setpoint_c` ist der gemeldete Sollwert, `offset_k` der Zuschlag daneben;
+    `deviation_k` bezieht sich auf `setpoint_c` allein. Wer die Summe für richtig hält, liest die
+    Abweichung dazu um `offset_k` verschoben.
+
+    **Jedes Feld ist angegeben, keines hat eine Voreinstellung.** Das ist keine Pedanterie: Aus den
+    Voreinstellungen wird in der erzeugten Schnittstellenbeschreibung „darf fehlen", und in der App
+    heißt das für jede Zahl eine zweite Möglichkeit neben `null` - undefiniert -, die dasselbe
+    bedeutet und trotzdem überall mitgeprüft werden müsste.
+    """
+
+    id: int
+    name: str
+    floor: str
+    circuits: int
+    temp_c: float | None
+    setpoint_c: float | None
+    offset_k: float | None
+    humidity_pct: float | None
+    # Anteil der offenen Heizkreise, 0 bis 1. Die Antriebe kennen keine Zwischenstellung, der
+    # Anteil entsteht aus der Zahl der Kreise: 0,25 heißt „einer von vier".
+    valve: float | None
+    deviation_k: float | None
+    observed_at: datetime | None
+    quality: Quality
+
+
+class RoomsLiveOut(BaseModel):
+    at: datetime
+    # Falsch, solange die Brücke noch kein `rooms.list` geschickt hat: dann stehen hier Messwerte
+    # unter Ersatznamen („Raum 5"), und die Anzeige soll sagen können, warum.
+    named: bool
+    rooms: list[RoomLiveOut]
+
+
+class RoomSeriesOut(BaseModel):
+    """Eine Raumzeitreihe spaltenweise: alle Listen so lang wie `ts` der Hülle."""
+
+    id: int
+    name: str
+    floor: str
+    circuits: int
+    temp_c: list[float | None]
+    setpoint_c: list[float | None]
+    valve: list[float | None]
+
+
+class RoomHistoryOut(BaseModel):
+    start: datetime
+    end: datetime
+    step_min: int
+    ts: list[datetime]
+    rooms: list[RoomSeriesOut]

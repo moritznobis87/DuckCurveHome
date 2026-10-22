@@ -22,6 +22,7 @@ from typing import Any, cast
 
 import structlog
 
+from dch_api.application import rooms
 from dch_api.application.battery_control import BatteryController, BatteryMode
 from dch_api.application.config_loader import AppConfig
 from dch_api.application.energy_accounting import ENERGY_KEYS, HEAT_KEYS, EnergyAccounting
@@ -60,6 +61,10 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    RoomHistoryOut,
+    RoomLiveOut,
+    RoomSeriesOut,
+    RoomsLiveOut,
     SourceStatusOut,
     StoveLiveOut,
     SystemEventOut,
@@ -77,6 +82,7 @@ from hems_core.domain import (
     EnergySnapshot,
     HeatPumpState,
     HemsConfig,
+    Measurement,
     OperatingMode,
     Override,
     OverrideKind,
@@ -739,6 +745,111 @@ class LiveRuntime:
         for row in rows:  # Schlüsselname wie im Demo-Modus
             row["hp_release_contact"] = row.pop("actuator:hp_release_contact", None)
         return rows
+
+    # ------------------------------------------------------------------ Einzelraumregelung
+    async def _room_meta(self) -> dict[int, rooms.RoomMeta]:
+        """Namen, Etagen und Kreiszahlen aus dem jüngsten `rooms.list` der Brücke."""
+        ereignis = await self.repos.latest_event(rooms.EVENT_CODE)
+        if ereignis is None:
+            return {}
+        return rooms.meta_from_context(ereignis.context or {})
+
+    def _room_ids(self, meta: dict[int, rooms.RoomMeta]) -> list[int]:
+        """Welche Räume es gibt: was gerade meldet, vereint mit dem, was benannt ist.
+
+        Beide Quellen allein wären unvollständig. Ein Raum, dessen Funkfühler seit Tagen schweigt,
+        steht nur noch in der Namensliste - und soll sichtbar bleiben, denn das Schweigen ist die
+        Aussage. Ein gerade in Controme angelegter Raum meldet schon, bevor die Brücke die neue
+        Liste geschickt hat, und soll nicht bis dahin fehlen.
+        """
+        return sorted(set(rooms.ids_from_keys(self.live.readings)) | set(meta))
+
+    @staticmethod
+    def _room_name(meta: dict[int, rooms.RoomMeta], rid: int) -> rooms.RoomMeta:
+        return meta.get(rid) or rooms.RoomMeta(id=rid, name=f"Raum {rid}", rank=rid)
+
+    async def rooms_live(self) -> RoomsLiveOut:
+        now = self.now
+        meta = await self._room_meta()
+        ids = self._room_ids(meta)
+        out: list[RoomLiveOut] = []
+        for rid in ids:
+            m = self._room_name(meta, rid)
+
+            def wert(feld: str, _rid: int = rid) -> Measurement:
+                return self.live.measurement(f"room_{_rid}_{feld}", now, rooms.STALE_S)
+
+            ist = wert("temp_c")
+            soll = wert("setpoint_c")
+            abweichung = (
+                round(ist.value - soll.value, 2)
+                if ist.value is not None and soll.value is not None
+                else None
+            )
+            out.append(
+                RoomLiveOut(
+                    id=rid,
+                    name=m.name,
+                    floor=m.floor,
+                    circuits=m.circuits,
+                    temp_c=ist.value,
+                    setpoint_c=soll.value,
+                    offset_k=wert("offset_k").value,
+                    humidity_pct=wert("humidity_pct").value,
+                    valve=wert("valve").value,
+                    deviation_k=abweichung,
+                    observed_at=ist.observed_at if ist.value is not None else None,
+                    quality=ist.quality,
+                )
+            )
+        out.sort(key=lambda r: rooms.sort_key(self._room_name(meta, r.id)))
+        return RoomsLiveOut(at=now, named=bool(meta), rooms=out)
+
+    async def rooms_history(self, start: datetime, end: datetime, step_min: int) -> RoomHistoryOut:
+        """Die Tageszeitreihe der Räume, verdichtet auf Fenster von `step_min` Minuten.
+
+        **Welche Räume gefragt werden, entscheidet die Gegenwart.** `minute_series` braucht die
+        Reihennamen vorab - die Werte liegen in der JSON-Spalte `extra`, und danach lässt sich
+        nicht nach „allen Räumen" suchen. Gefragt wird also nach den heute bekannten Räumen. Ein
+        Raum, den jemand in Controme gelöscht hat, fehlt damit auch in den Tagen, in denen er noch
+        gemessen hat; seine Werte sind nicht verloren, nur über diesen Weg nicht zu sehen.
+        """
+        meta = await self._room_meta()
+        ids = self._room_ids(meta)
+        if not ids:
+            # Keine Räume, aber die Zeitachse gibt es trotzdem: die Anzeige soll einen leeren Tag
+            # zeichnen können statt an einer fehlenden Achse zu scheitern.
+            return RoomHistoryOut(
+                start=start,
+                end=end,
+                step_min=step_min,
+                ts=rooms.bucket_starts(start, end, step_min),
+                rooms=[],
+            )
+        zeilen = await self.repos.minute_series(
+            start, end, rooms.keys_for(ids, rooms.SERIES_FIELDS)
+        )
+        ts, reihen = rooms.condense(zeilen, ids, start, end, step_min)
+        nach_id = {r.id: r for r in reihen}
+        sortiert = sorted(ids, key=lambda i: rooms.sort_key(self._room_name(meta, i)))
+        return RoomHistoryOut(
+            start=start,
+            end=end,
+            step_min=step_min,
+            ts=ts,
+            rooms=[
+                RoomSeriesOut(
+                    id=i,
+                    name=self._room_name(meta, i).name,
+                    floor=self._room_name(meta, i).floor,
+                    circuits=self._room_name(meta, i).circuits,
+                    temp_c=nach_id[i].values["temp_c"],
+                    setpoint_c=nach_id[i].values["setpoint_c"],
+                    valve=nach_id[i].values["valve"],
+                )
+                for i in sortiert
+            ],
+        )
 
     async def recent_decisions(self, limit: int) -> list[Decision]:
         if self.decisions:

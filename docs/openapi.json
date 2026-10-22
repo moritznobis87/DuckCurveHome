@@ -173,6 +173,106 @@
         }
       }
     },
+    "/api/v1/rooms": {
+      "get": {
+        "tags": [
+          "Räume"
+        ],
+        "summary": "Räume im Augenblick",
+        "operationId": "rooms_live_api_v1_rooms_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomsLiveOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rooms/history": {
+      "get": {
+        "tags": [
+          "Räume"
+        ],
+        "summary": "Raumtemperaturen eines Tages",
+        "description": "Ein Kalendertag in Ortszeit, oder die letzten 24 Stunden.\n\n**Der Tag ist der hiesige, nicht der der Datenbank.** Ein Heiztag beginnt um Mitternacht in\nGeilenkirchen; in UTC gerechnet wäre er im Sommer um zwei Stunden verschoben, und die\nNachtabsenkung läge halb im Vortag.",
+        "operationId": "rooms_history_api_v1_rooms_history_get",
+        "parameters": [
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Kalendertag als YYYY-MM-DD, Ortszeit",
+              "title": "Day"
+            },
+            "description": "Kalendertag als YYYY-MM-DD, Ortszeit"
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "today",
+                "yesterday",
+                "24h"
+              ],
+              "type": "string",
+              "default": "today",
+              "title": "Range"
+            }
+          },
+          {
+            "name": "step_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Fensterbreite in Minuten",
+              "default": 15,
+              "title": "Step Min"
+            },
+            "description": "Fensterbreite in Minuten"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomHistoryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -6397,6 +6497,267 @@
           "toggle_rate_exceeded"
         ],
         "title": "ReasonCode"
+      },
+      "RoomHistoryOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "step_min": {
+            "type": "integer",
+            "title": "Step Min"
+          },
+          "ts": {
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "type": "array",
+            "title": "Ts"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/RoomSeriesOut"
+            },
+            "type": "array",
+            "title": "Rooms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "step_min",
+          "ts",
+          "rooms"
+        ],
+        "title": "RoomHistoryOut"
+      },
+      "RoomLiveOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "floor": {
+            "type": "string",
+            "title": "Floor"
+          },
+          "circuits": {
+            "type": "integer",
+            "title": "Circuits"
+          },
+          "temp_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temp C"
+          },
+          "setpoint_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setpoint C"
+          },
+          "offset_k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offset K"
+          },
+          "humidity_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Humidity Pct"
+          },
+          "valve": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valve"
+          },
+          "deviation_k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deviation K"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/Quality"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "floor",
+          "circuits",
+          "temp_c",
+          "setpoint_c",
+          "offset_k",
+          "humidity_pct",
+          "valve",
+          "deviation_k",
+          "observed_at",
+          "quality"
+        ],
+        "title": "RoomLiveOut",
+        "description": "Ein Raum im Augenblick.\n\n`deviation_k` wird hier gerechnet und nicht in der Anzeige, weil zur Abweichung die Frage\ngehört, auf welchen Sollwert sie sich bezieht - und die ist offen: Controme meldet\n`solltemperatur` und `total_offset` getrennt, und ob der Regler auf die Summe regelt, ist\nnicht belegt. `setpoint_c` ist der gemeldete Sollwert, `offset_k` der Zuschlag daneben;\n`deviation_k` bezieht sich auf `setpoint_c` allein. Wer die Summe für richtig hält, liest die\nAbweichung dazu um `offset_k` verschoben.\n\n**Jedes Feld ist angegeben, keines hat eine Voreinstellung.** Das ist keine Pedanterie: Aus den\nVoreinstellungen wird in der erzeugten Schnittstellenbeschreibung „darf fehlen\", und in der App\nheißt das für jede Zahl eine zweite Möglichkeit neben `null` - undefiniert -, die dasselbe\nbedeutet und trotzdem überall mitgeprüft werden müsste."
+      },
+      "RoomSeriesOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "floor": {
+            "type": "string",
+            "title": "Floor"
+          },
+          "circuits": {
+            "type": "integer",
+            "title": "Circuits"
+          },
+          "temp_c": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Temp C"
+          },
+          "setpoint_c": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Setpoint C"
+          },
+          "valve": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Valve"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "floor",
+          "circuits",
+          "temp_c",
+          "setpoint_c",
+          "valve"
+        ],
+        "title": "RoomSeriesOut",
+        "description": "Eine Raumzeitreihe spaltenweise: alle Listen so lang wie `ts` der Hülle."
+      },
+      "RoomsLiveOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "named": {
+            "type": "boolean",
+            "title": "Named"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/RoomLiveOut"
+            },
+            "type": "array",
+            "title": "Rooms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "named",
+          "rooms"
+        ],
+        "title": "RoomsLiveOut"
       },
       "SensorTimeouts": {
         "properties": {

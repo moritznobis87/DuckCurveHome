@@ -136,6 +136,18 @@
    der Nachbarn, und die Kontextzeilen endeten in „…". Lieber zwei ruhige Reihen als eine gedrängte. */
 .kpi-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 100% / var(--cols, 6) - 16px, 260px), 1fr)); }
 .report-row { display: grid; gap: 16px; grid-template-columns: var(--cols, 1fr); }
+/* Raumkacheln: eine Mindestbreite, keine feste Spaltenzahl. Neun Räume auf dem Wand-iPad ergeben
+   drei Reihen zu drei; am Telefon so viele, wie hineinpassen. Eine Kachel braucht rund 260 px,
+   darunter stünde die große Zahl neben der Sollwertspalte nicht mehr ruhig. */
+/* `auto-fill`, nicht `auto-fit`: `auto-fit` lässt leere Spuren einfallen, und dann wurden die drei
+   Räume des Erdgeschosses breiter gezeichnet als die sechs des Obergeschosses darunter. Gleich
+   breite Kacheln sind der Punkt - sonst vergleicht man Zahlen in verschieden großer Schrift. */
+.rooms-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
+.rooms-matrix-label { width: 128px; }
+.rooms-matrix-cells { gap: 2px; }
+/* Tagesmatrix und Tabelle rollen notfalls für sich. 96 Felder mit 2 px Abstand brauchen allein
+   190 px, und am Telefon schob das die ganze Seite nach rechts. */
+.rooms-matrix, .rooms-table { max-width: 100%; overflow-x: auto; }
 
 /* ---------- Telefon (Hochformat, schmaler Viewport): eine Spalte, Seite scrollt ---------- */
 @media (max-width: 720px) {
@@ -164,4 +176,8 @@
   .report-periods button { padding: 6px 8px; }
   .kpi-grid { gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .report-row { gap: 12px; grid-template-columns: minmax(0, 1fr); }
+  .rooms-grid { gap: 10px; grid-template-columns: minmax(0, 1fr); }
+  .rooms-matrix-label { width: 76px; }
+  .rooms-matrix-cells { gap: 1px; min-width: 240px; }
+  .rooms-table table { min-width: 560px; }
 }
