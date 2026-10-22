@@ -82,6 +82,7 @@ export function Home() {
   const pvPeak = useMemo(() => Math.max(4, ...(plan?.intervals ?? []).map((i) => i.expected_pv_kw)), [plan]);
   const degraded = connection !== "live";
   const now = nowMs ?? Date.now() + offset;
+  const preis = s?.electricity_price_ct_kwh.value ?? null;
   const d = state?.decision;
   const satz = d?.explanation_de ?? (state ? "Das Haus ist da, die erste Entscheidung steht noch aus." : "Verbinde mit dem Haus …");
   const modeWort = state?.operating_mode.override ? `manuell bis ${hhmm(state.operating_mode.override.ends_at)}` : state?.operating_mode.system_mode === "off" ? "aus · beobachten" : `auto · ${state?.operating_mode.auto_profile ?? "smart"}`;
@@ -129,6 +130,10 @@ export function Home() {
           <span className="home-heute-wert">
             <span className="mono home-heute-zahl">{tag ? tag.totals.import_cost_eur.toFixed(2).replace(".", ",") : "-"} <span className="home-einheit">€</span></span>
             <span className="home-heute-wort">bezahlt bis jetzt</span>
+          </span>
+          <span className="home-heute-wert">
+            <span className="mono home-heute-zahl" style={{ color: preis != null && preis < 0 ? "var(--pv)" : undefined }}>{preis != null ? preis.toFixed(1).replace(".", ",") : "-"} <span className="home-einheit">ct</span></span>
+            <span className="home-heute-wort">Strom gerade</span>
           </span>
         </div>
         <Dock state={state} readOnly={role !== "owner"} />
