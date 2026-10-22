@@ -377,6 +377,52 @@ python3 tools/mcz_probe.py 192.168.120.1
 Das gibt den Rohrahmen aus, die daraus gelesenen Werte und die Spreizung des Ofenkreises. Wenn das
 antwortet, wird auch die Bridge antworten.
 
+## Einzelraumregelung: Controme mitlesen (ab 0.9.0)
+
+Die Bridge liest den Controme-Mini-Server im Heimnetz: je Raum die gemessene Temperatur, den
+Sollwert, den Offset (Witterung und andere Anpassungen, zusammen mit dem Sollwert ergibt er das
+Ziel, auf das geregelt wird), die Luftfeuchte und die Stellung der Ventile am Heizkreisverteiler.
+Namen, Etagen und die Zahl der Heizkreise je Raum gehen als Raumliste mit. Zu sehen ist das unter
+Wärme, Reiter Räume.
+
+**Die Bridge stellt nichts.** Sie liest die Endpunkte `temps` und `outs`; Sollwerte bleiben bei
+Controme.
+
+### 1. Adresse prüfen
+
+Von jedem Rechner im selben Netz, ohne die Bridge:
+
+```
+curl http://<adresse-des-mini-servers>/get/json/v1/2/temps/
+```
+
+Kommt eine Liste von Etagen mit `raeume`, stimmen Adresse und Haus-Kennung. Kommt `[]`, ist es
+die falsche Haus-Kennung; sie ist nicht verlässlich 1, auf manchen Anlagen 2. Die Bridge probiert
+deshalb selbst 2, 1 und 3, wenn `controme_house_id` auf 0 steht.
+
+### 2. Bridge konfigurieren
+
+In den Add-on-Optionen:
+
+```yaml
+controme_host: "192.168.1.50"
+controme_house_id: 0
+controme_poll_interval_s: 120
+controme_user: ""
+controme_password: ""
+```
+
+Benutzername und Passwort bleiben leer: Die Lese-Endpunkte des Mini-Servers antworten im Heimnetz
+ohne Anmeldung (Stand 21.10.2026). Die beiden Felder sind für den Fall da, dass Controme das einmal
+ändert. Häufiger als alle zwei Minuten zu fragen bringt nichts, die Funkfühler melden alle drei
+bis fünf Minuten.
+
+Add-on neu starten. Im Protokoll erscheint einmal `controme house found` mit der gefundenen
+Haus-Kennung; danach ist die Quelle still, solange sie liefert. Die Werte stehen wenige Minuten
+später unter Wärme, Reiter Räume. Steht dort stattdessen `controme liefert nichts`, stimmt die
+Adresse oder die Haus-Kennung nicht; `controme poll failed` heißt, der Mini-Server ist nicht
+erreichbar. Bleibt der Host leer, ist die Quelle aus.
+
 ## Wächter-Automation (empfohlen, Rückfallebene E1)
 
 Gibt Duck Curve Home die Wärmepumpe frei und reißt danach die Verbindung ab, bliebe der Kontakt stehen, wo
