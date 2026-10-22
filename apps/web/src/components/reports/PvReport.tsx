@@ -7,7 +7,7 @@ import type { EnergySummary, HistoryRow, Period, Plan } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
-import { dayBounds } from "@/components/charts/DayChart";
+import { dayBounds } from "@/components/charts/dayBounds";
 import { C, donut, pvForecastChart, stackedBars } from "./charts";
 import { CoverageNote, de1, ErrorBanner, eur, KpiGrid, pct, ReportShell, usePeriod } from "./ReportShell";
 import { PeriodStrip } from "./PeriodStrip";
