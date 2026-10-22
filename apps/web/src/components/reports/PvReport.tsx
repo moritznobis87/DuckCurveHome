@@ -85,7 +85,7 @@ export function PvReport() {
       onMove={move}
       onToday={today}
       // Gästen wird der Weg gar nicht erst gezeigt: die Abrechnung ist ihnen verschlossen.
-      right={role === "owner" ? <Link href="/pv/abrechnung" className="text-[12px] text-amber">Abrechnung →</Link> : undefined}
+      right={role === "owner" ? <Link href="/geld/pv-abrechnung" className="text-[12px] text-amber">Abrechnung →</Link> : undefined}
     >
       {error ? <ErrorBanner message={error} /> : null}
       <KpiGrid cols={6}>
@@ -112,7 +112,7 @@ export function PvReport() {
       </div>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title={isToday ? "Heute und morgen" : "Prognose heute und morgen"} right={<Link href="/prognose" className="text-amber">Prognosegüte →</Link>} />
+          <CardHead title={isToday ? "Heute und morgen" : "Prognose heute und morgen"} right={<Link href="/system" className="text-amber">Prognosegüte →</Link>} />
           <div className="min-h-0 flex-1"><EChart option={fcOpt} /></div>
         </Card>
         <PeriodStrip

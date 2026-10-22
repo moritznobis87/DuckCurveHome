@@ -5,7 +5,7 @@ import { useLiveStore } from "@/lib/live/store";
 import { hhmm, longDate } from "@/lib/format";
 import { Pill } from "@/components/ui/Pill";
 import { Dot } from "@/components/ui/Dot";
-import { NavButtons } from "@/components/layout/NavButtons";
+import { AreaIcons } from "@/components/layout/AreaNav";
 import { useIsMobile } from "@/lib/useIsMobile";
 
 function Mark({ height = 26 }: { height?: number }) {
@@ -62,7 +62,7 @@ export function Header() {
           <span className="kicker" style={{ fontSize: 12, color: "var(--text-3)" }}>{conn[1]}</span>
         </div>
         <Pill tone={override ? "alert" : mode?.system_mode === "off" ? "neutral" : "amber"}>{modeLabel}</Pill>
-        <NavButtons />
+        <AreaIcons />
       </div>
     </header>
   );

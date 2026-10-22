@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import type { YearMap as YearMapData } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
 import { EChart } from "@/components/charts/EChart";
+import { AreaShell } from "@/components/layout/AreaShell";
 import { RAMP_GRID, RAMP_HEAT, RAMP_NET, RAMP_OWN, yearMap } from "./charts";
 import { de1, ErrorBanner, Note } from "./ReportShell";
 
@@ -70,23 +70,13 @@ export function YearMapReport() {
   const years = Array.from({ length: 4 }, (_, i) => thisYear - i);
 
   return (
-    <main className="dashboard-bg report-main flex min-h-[100dvh] flex-col gap-4 p-5 text-text-1">
-      <header className="report-header flex h-14 shrink-0 items-center justify-between rounded-[3px] border border-line-2 px-5" style={{ background: "var(--surface-glass)", backdropFilter: "blur(18px)" }}>
-        <div className="flex min-w-0 items-center gap-5">
-          <Link href="/" className="kicker whitespace-nowrap" style={{ fontSize: 12 }}>← Dashboard</Link>
-          <div className="flex min-w-0 items-baseline gap-2.5">
-            <span className="whitespace-nowrap text-[17px] font-semibold tracking-[-.02em]">Jahreskarte</span>
-            <span className="kicker truncate" style={{ fontSize: 12 }}>365 Tage × 24 Stunden</span>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1 rounded-[3px] border border-line-2 p-1" role="tablist" aria-label="Jahr">
+    <AreaShell kicker="365 Tage × 24 Stunden" right={<div className="flex shrink-0 items-center gap-1 rounded-[4px] border border-line-2 p-1" role="tablist" aria-label="Jahr">
           {years.map((y) => (
-            <button key={y} onClick={() => setYear(y)} className="mono px-3 py-1.5 text-[12px]" style={{ background: year === y ? "var(--amber)" : "transparent", color: year === y ? "var(--petrol)" : "var(--text-2)", borderRadius: 2 }}>
+            <button key={y} onClick={() => setYear(y)} className="mono px-3 py-1.5 text-[12px]" style={{ background: year === y ? "var(--amber)" : "transparent", color: year === y ? "var(--petrol)" : "var(--text-2)", borderRadius: 3 }}>
               {y}
             </button>
           ))}
-        </div>
-      </header>
+        </div>}>
 
       {error ? <ErrorBanner message={error} /> : null}
 
@@ -125,6 +115,6 @@ export function YearMapReport() {
         {data ? ` ${de1(data.hours_with_data, 0)} von ${de1(data.days.length * 24, 0)} Stunden erfasst.` : ""}
         {extremes ? ` Werteumfang ${de1(extremes.min, 2)} bis ${de1(extremes.max, 2)} ${active.unit}; die Farbskala endet beim 98. Perzentil, damit einzelne Ausreißer nicht das ganze Jahr einfärben.` : ""}
       </Note>
-    </main>
+    </AreaShell>
   );
 }

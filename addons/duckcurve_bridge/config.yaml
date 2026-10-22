@@ -35,6 +35,11 @@ options:
   mcz_port: 81
   mcz_poll_interval_s: 15
   mcz_allow_control: true
+  controme_host: ""
+  controme_house_id: 0
+  controme_poll_interval_s: 120
+  controme_user: ""
+  controme_password: ""
   # Haustür. Ohne unifi_host bleibt der Dienst aus, ebenso ohne Ziel (door_entity bzw. nuki_host).
   # Mit Zugangsdaten, aber ohne door_enabled läuft er im Beobachtungsbetrieb: er protokolliert
   # jeden Zutritt und rührt das Schloss nicht an. Die Werte für die drei Listen stehen dann im
@@ -81,6 +86,11 @@ schema:
   mcz_port: port
   mcz_poll_interval_s: int(5,600)
   mcz_allow_control: bool
+  controme_host: str?
+  controme_house_id: int(0,9)
+  controme_poll_interval_s: int(30,3600)
+  controme_user: str?
+  controme_password: password?
   unifi_host: str?
   unifi_port: port
   unifi_token: password?

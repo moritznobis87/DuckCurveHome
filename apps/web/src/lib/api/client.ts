@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomHistory, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -62,6 +62,10 @@ export const api = {
   energySummary: (period: Period, anchor: string) => request<EnergySummary>(`/energy/summary?period=${period}&anchor=${anchor}`),
   energyHeat: (period: Period, anchor: string) => request<HeatReport>(`/energy/heat?period=${period}&anchor=${anchor}`),
   heatBalance: (period: Period, anchor: string) => request<HeatBalance>(`/energy/waermebilanz?period=${period}&anchor=${anchor}`),
+  // Einzelraumregelung. Zwei Abrufe, weil es zwei Fragen sind: wie ist es jetzt, und wie war der
+  // Tag. Der Istwert kommt im Sekundentakt der Anzeige, die Zeitreihe einmal je Tageswechsel.
+  rooms: () => request<RoomsLive>("/rooms"),
+  roomsDay: (day: string, stepMin = 15) => request<RoomHistory>(`/rooms/history?day=${day}&step_min=${stepMin}`),
   heatConfig: () => request<HemsConfig>("/config"),
   setHeatConfig: (patch: HeatConfigIn) =>
     request<HemsConfig>("/config/heat", { method: "POST", body: JSON.stringify(patch) }),

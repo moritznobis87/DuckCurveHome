@@ -37,7 +37,7 @@ export function HouseReport() {
   const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "-");
 
   return (
-    <ReportShell title="Haus" kicker="Verbrauch · Verbraucher · Herkunft" period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
+    <ReportShell title="Strom" kicker="Verbrauch · Verbraucher · Herkunft" period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
       {error ? <ErrorBanner message={error} /> : null}
       <KpiGrid cols={6}>
         <Stat label="Verbrauch gesamt" value={de1(t?.house_kwh)} unit="kWh" hint={t?.minutes ? `${Math.round(t.minutes / 60)} h bewertet` : "keine Daten"} />
@@ -50,7 +50,7 @@ export function HouseReport() {
           label="Netzbezug"
           value={eur(t?.import_cost_eur)}
           tone="ember"
-          href={role === "owner" ? "/haus/rechnungen" : undefined}
+          href={role === "owner" ? "/geld/rechnungen" : undefined}
           ariaLabel={role === "owner" ? "Netzbezug - zur Rechnungsprüfung" : undefined}
           hint={t ? `${de1(t.import_kwh)} kWh${role === "owner" ? " · Rechnungen prüfen" : ""}` : undefined}
         />
@@ -77,7 +77,7 @@ export function HouseReport() {
       </div>
       <PeriodStrip
           anchor={anchor}
-        title="Haus im Überblick"
+        title="Strom im Überblick"
         rows={[
           { label: "Verbrauch · kWh", value: (p) => val(p, (s) => de1(s.totals.house_kwh, s.totals.house_kwh >= 100 ? 0 : 1)) },
           { label: "Autarkie", value: (p) => val(p, (s) => pct(s.totals.autarky)), tone: "amber" },

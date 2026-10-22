@@ -51,6 +51,55 @@ tausend falsch ist, wäre hier der teuerste Fehler.
 Gesichtsscan am UniFi-Access-Reader öffnet das Nuki-Schloss, beides im Heimnetz und ohne Cloud.
 Das ist keine Messung, steht aber hier, weil es dieselbe Bridge trägt: siehe `TUEROEFFNUNG.md`.
 
+### Die Einzelraumregelung wird mitgelesen
+
+Das Haus hat eine Fußbodenheizung mit Einzelraumregelung von **Controme**: ein Mini-Server auf
+einem Raspberry Pi, zwei Gateways (Erdgeschoss, Obergeschoss) und je Raum ein Fühler sowie ein
+oder mehrere thermoelektrische Antriebe am Heizkreisverteiler. Die Hardware ist durchweg von
+Dritten - Fühler von Danfoss, Antriebe Möhlenhoff Alpha 5 (230 V, stromlos geschlossen), als
+Gateway ein Arduino Mega 2560. Gemessen am 21.10.2026.
+
+Seit dem 22.10.2026 liest die Bridge diesen Server mit: je Raum Temperatur, Sollwert, Offset,
+Luftfeuchte und der Anteil der offenen Heizkreise. **Damit bekommt die Pufferentnahme Zeugen.**
+Bisher war sie eine einzige Zahl, die als Rest einer Umkehrrechnung herausfiel; jetzt steht
+daneben, welcher Raum wann Wärme gezogen hat.
+
+**Die Lese-Endpunkte antworten im Heimnetz ohne Anmeldung** (gemessen am 21.10.2026). Das ist eine
+Schwäche von Controme, keine Einladung: Die Quelle nimmt deshalb optional Benutzername und
+Passwort entgegen, damit sie weiterläuft, wenn Controme das eines Tages repariert.
+
+**Gestellt wird nichts.** Für Ausgänge hat die Schnittstelle ausschließlich Lese-Endpunkte;
+schreiben ließe sich nur der Sollwert, und das wäre ein Eingriff in die Behaglichkeit eines
+bewohnten Hauses. Dazu kommt ein Zeitargument: Der Fußboden hat Zeitkonstanten um 13 Stunden, der
+Raum um 25; auf dieser Skala gewinnt ein Optimierer durch feinere Ventiltaktung nichts. Der
+eigentliche Hebel ist die Vorlauftemperatur, und wer sie senken will, muss wissen, welcher Raum
+zuerst nicht mehr mitkommt. Genau das zeigen die Ventilstellungen.
+
+**Geregelt wird auf Sollwert plus Offset.** Controme meldet `solltemperatur` und `total_offset`
+getrennt, und die Frage, ob der Regler auf die Summe regelt, war eine Zeitlang offen. Contromes
+eigene Oberfläche beantwortet sie: In einem Raum steht dort `21,00 - 0,32` und darunter `20,68`
+als Zielwert (Bildschirmfoto der Anlage, 22.10.2026). Die Rechnung geht genau auf - das ist keine
+Messung, sondern Arithmetik. Damit deckt sich die FPS-Beschreibung des Herstellers, die
+`ziel = soll + offsets` definiert.
+
+Beide Zahlen werden trotzdem **einzeln** mitgeschrieben, und die Raumseite stellt sie unter den
+Zielwert. Denn eines ist noch offen: **das Vorzeichen in den Daten**. Die Oberfläche setzt das
+Rechenzeichen selbst und zeigt daneben einen Betrag; ob `total_offset` in der Schnittstelle schon
+vorzeichenbehaftet ankommt, sagt sie nicht. Addiert wird, weil eine Schnittstelle, die die
+Richtung einer Anpassung nicht ausdrücken kann, keine wäre. Stimmt es nicht, liegt der Zielwert um
+das Doppelte des Offsets daneben - und das fällt beim Vergleich mit Contromes eigener Anzeige
+sofort auf, weil die Raumseite die Rechnung mit ausdruckt.
+
+**`total_offset` ist eine Summe, nicht die Witterungsführung.** Neben dem Wert steht ein Feld
+`offsets` mit benannten Quellen; gesehen wurde dort `Geolocation`, also eine Anpassung nach
+Anwesenheit. Witterung mag eine weitere sein. Die Einzelquellen werden heute nicht übertragen -
+wer wissen will, *warum* der Zielwert gesenkt wurde, muss sie nachziehen.
+
+**Was noch fehlt.** Es gibt einen Endpunkt `rltemps` mit **Rücklauftemperaturen je Raum** - belegt
+durch laufenden Code dritter Projekte, nicht nur durch Dokumentation. Zusammen mit den
+Ventilstellungen wäre das der zweite Zeuge für die Pufferentnahme. Der Vorbehalt: Ein Rücklaufwert
+sagt nur etwas, solange das Ventil dieses Raums offen ist.
+
 ## Was geschätzt wird - die eigentliche Lücke
 
 Das System kennt den **Strom** der Wärmepumpe, aber nicht die **Wärme**. Folge:

@@ -23,12 +23,12 @@ const ICON = 42;
 // Kreise endet. Andernfalls verschwindet die längste Zeile - „Batterie · lädt 2,9 kW“ - hinter der
 // Wallbox. Das Haus steht in der Mitte, die übrigen fünf gruppieren sich darum.
 const NODES: Record<NodeKey, { x: number; y: number; label: string; icon: string; color: string; href: string }> = {
-  pv: { x: 350, y: 52, label: "PV", icon: "sun", color: "var(--pv)", href: "/pv" },
-  grid: { x: 70, y: 120, label: "Netz", icon: "grid", color: "var(--grid-in)", href: "/haus" },
-  house: { x: 350, y: 175, label: "Haus", icon: "home", color: "var(--text-1)", href: "/haus" },
-  bat: { x: 592, y: 120, label: "Batterie", icon: "battery", color: "var(--battery)", href: "/batterie" },
+  pv: { x: 350, y: 52, label: "PV", icon: "sun", color: "var(--pv)", href: "/strom/pv" },
+  grid: { x: 70, y: 120, label: "Netz", icon: "grid", color: "var(--grid-in)", href: "/strom" },
+  house: { x: 350, y: 175, label: "Haus", icon: "home", color: "var(--text-1)", href: "/strom" },
+  bat: { x: 592, y: 120, label: "Batterie", icon: "battery", color: "var(--battery)", href: "/strom/speicher" },
   hp: { x: 150, y: 274, label: "Wärmepumpe", icon: "pump", color: "var(--heat-pump)", href: "/waerme" },
-  ev: { x: 540, y: 274, label: "Wallbox", icon: "car", color: "var(--ev)", href: "/wallbox" },
+  ev: { x: 540, y: 274, label: "Wallbox", icon: "car", color: "var(--ev)", href: "/strom/wallbox" },
 };
 
 function Edge({ from, to, kwValue, color, minFlow = 0.05 }: { from: NodeKey; to: NodeKey; kwValue: number; color: string; minFlow?: number }) {

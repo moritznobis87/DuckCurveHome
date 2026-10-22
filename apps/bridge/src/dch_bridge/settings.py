@@ -60,6 +60,21 @@ class BridgeSettings(BaseSettings):
     # fernzustarten ist eine andere Klasse von Eingriff als ein Relais, und die Entscheidung
     # gehört dem Hausherrn, nicht der Voreinstellung.
     mcz_allow_control: bool = False
+    # Einzelraumregelung: der Mini-Server der Heizungsregelung im Heimnetz. Nur lesend.
+    #
+    # Die Haus-Kennung bleibt auf 0 und wird gesucht. Die Dokumentation des Herstellers sagt,
+    # sie sei "aus unterschiedlichen Gruenden manchmal 2 und nicht 1"; auf der Anlage, gegen die
+    # das gebaut wurde, ist sie 2. Eine Einstellung, die niemand erraten kann, waere nur eine
+    # Quelle fuer Rueckfragen.
+    #
+    # Benutzer und Passwort sind leer, weil die Lese-Endpunkte im Heimnetz ohne Anmeldung
+    # antworten (gemessen 21.10.2026). Die Felder stehen trotzdem da: das ist eine Schwaeche des
+    # Herstellers, und wenn er sie behebt, soll hier nur ein Wert zu setzen sein.
+    controme_host: str = ""  # IP oder Hostname; leer = Quelle aus
+    controme_house_id: int = 0  # 0 = suchen
+    controme_poll_interval_s: float = 120.0
+    controme_user: str = ""
+    controme_password: str = ""
     # Haustür: Gesichtsscan am UniFi-Access-Reader öffnet das Nuki-Schloss. Beides im Heimnetz,
     # ohne Cloud. Leer = aus.
     #

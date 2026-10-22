@@ -94,6 +94,33 @@ hat. Geliefert werden `stove_state`, `stove_running`, `stove_fume_temp_c`, `stov
 `stove_auger_rpm`, `stove_pump_pct`, `stove_dhw_mode`, `stove_power_level`, `stove_operating_hours`
 und `stove_ignitions`.
 
+### Einzelraumregelung (Controme)
+
+| Option / Umgebungsvariable | Default | Bedeutung |
+| --- | --- | --- |
+| `controme_host` / `DCH_BRIDGE_CONTROME_HOST` | leer | Adresse des Mini-Servers im Heimnetz. **Leer heißt: Quelle aus** - ohne diesen Eintrag liest die Bridge keine Räume |
+| `controme_house_id` / `DCH_BRIDGE_CONTROME_HOUSE_ID` | `0` | Haus-Kennung. `0` heißt suchen: probiert 2, 1, 3 und nimmt die erste, unter der Räume stehen |
+| `controme_poll_interval_s` / `DCH_BRIDGE_CONTROME_POLL_INTERVAL_S` | `120` | Abstand zwischen zwei Abfragen |
+| `controme_user` / `DCH_BRIDGE_CONTROME_USER` | leer | nur nötig, falls die Lese-Endpunkte einmal eine Anmeldung verlangen |
+| `controme_password` / `DCH_BRIDGE_CONTROME_PASSWORD` | leer | dito |
+
+Die Haus-Kennung ist **nicht verlässlich 1** - auf der hiesigen Anlage ist sie 2, und 1 liefert eine
+leere Liste. Darum wird sie gesucht statt vorausgesetzt. Contromes eigene Beschreibung sagt dazu
+nur, sie sei "aus unterschiedlichen Gründen manchmal 2".
+
+Prüfen lässt sich die Adresse ohne die Bridge, von jedem Rechner im selben Netz:
+
+```
+curl http://192.168.1.50/get/json/v1/2/temps/
+```
+
+Kommt `[]`, ist es die falsche Haus-Kennung; kommt eine Liste von Etagen mit `raeume`, stimmt sie.
+
+Gelesen wird nur. Geliefert werden je Raum `room_<id>_temp_c`, `room_<id>_setpoint_c`,
+`room_<id>_offset_k`, `room_<id>_humidity_pct` und `room_<id>_valve`; die Namen, Etagen und
+Kreiszahlen gehen als Ereignis `rooms.list` mit, weil sie keine Zahlen sind. Zu sehen ist das
+alles unter `/waerme/raeume`.
+
 ## HemsConfig (Auszug, Defaults)
 
 ```yaml

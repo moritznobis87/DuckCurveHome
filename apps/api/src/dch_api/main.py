@@ -26,6 +26,7 @@ from dch_api.routers import (
     imports,
     live,
     plan,
+    rooms,
     system,
 )
 from dch_api.settings import Settings, get_settings
@@ -142,6 +143,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         live.router,
         history.router,
         plan.router,
+        rooms.router,
         forecast.router,
         energy.router,
         export.router,

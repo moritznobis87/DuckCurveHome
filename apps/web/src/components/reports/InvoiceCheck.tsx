@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import type { InvoiceFinding, InvoiceReport, InvoiceSummary } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
+import { AreaShell } from "@/components/layout/AreaShell";
 import { invoiceCostStack, invoicePositions, invoicePriceLine, invoiceVsMeasured } from "./charts";
 import { de1, ErrorBanner, eur, Note } from "./ReportShell";
 
@@ -197,16 +197,7 @@ export function InvoiceCheck() {
   const compared = findings.filter((f) => ["measured_kwh", "measured_price", "coverage", "no_measurement"].includes(f.code));
 
   return (
-    <main className="dashboard-bg report-main flex min-h-[100dvh] flex-col gap-4 p-5 text-text-1">
-      <header className="report-header flex h-14 shrink-0 items-center justify-between rounded-[3px] border border-line-2 px-5" style={{ background: "var(--surface-glass)", backdropFilter: "blur(18px)" }}>
-        <div className="flex min-w-0 items-center gap-5">
-          <Link href="/haus" className="kicker whitespace-nowrap" style={{ fontSize: 12 }}>← Haus</Link>
-          <div className="flex min-w-0 items-baseline gap-2.5">
-            <span className="whitespace-nowrap text-[17px] font-semibold tracking-[-.02em]">Rechnungsprüfung</span>
-            <span className="kicker truncate" style={{ fontSize: 12 }}>Tibber · nachgerechnet und gegen die eigene Messung gehalten</span>
-          </div>
-        </div>
-      </header>
+    <AreaShell kicker="Tibber · nachgerechnet und gegen die eigene Messung gehalten" right={undefined}>
 
       {error ? <ErrorBanner message={error} /> : null}
 
@@ -340,6 +331,6 @@ export function InvoiceCheck() {
           </Note>
         </Card>
       ) : null}
-    </main>
+    </AreaShell>
   );
 }

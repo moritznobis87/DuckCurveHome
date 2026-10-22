@@ -221,7 +221,7 @@ export function EnergyPlanCard({ state, plan }: { state: LiveState | null; plan:
         </div>
 
         <div className="mt-auto flex shrink-0 items-baseline justify-between gap-3 border-t border-line-1 pt-1.5 text-[12px]">
-          <a href="/prognose" className="text-text-3 underline decoration-line-2 underline-offset-[3px]">PV-Prognose heute ›</a>
+          <a href="/system" className="text-text-3 underline decoration-line-2 underline-offset-[3px]">PV-Prognose heute ›</a>
           <span className="mono text-text-1">{plan ? kwh(plan.pv_forecast_today_kwh) : "-"} · {celsius(s?.outdoor_temp_c.value, 1)} außen</span>
         </div>
       </div>

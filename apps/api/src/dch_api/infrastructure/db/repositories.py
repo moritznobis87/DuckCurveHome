@@ -684,6 +684,28 @@ class SqlRepositories:
             )
         return list(rows)
 
+    async def latest_event(self, code: str) -> m.SystemEvent | None:
+        """Der jüngste Eintrag eines Codes, ohne Zeitgrenze.
+
+        Für Ereignisse, die kein Vorfall sind, sondern ein Stand: die Raumliste der
+        Einzelraumregelung etwa wird einmal nach dem Start geschickt und danach nur bei Änderung.
+        Eine Suche „seit gestern" fände sie nach einem ruhigen Monat nicht mehr.
+        """
+        async with self.maker() as s:
+            row = (
+                (
+                    await s.execute(
+                        select(m.SystemEvent)
+                        .where(m.SystemEvent.code == code)
+                        .order_by(m.SystemEvent.at.desc())
+                        .limit(1)
+                    )
+                )
+                .scalars()
+                .first()
+            )
+        return row
+
     async def recent_events(self, limit: int = 50) -> list[m.SystemEvent]:
         async with self.maker() as s:
             rows = (

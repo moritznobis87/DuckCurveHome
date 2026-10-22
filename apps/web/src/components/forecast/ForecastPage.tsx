@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import type { EChartsCoreOption } from "echarts/core";
 import { api, ApiError } from "@/lib/api/client";
 import type { ForecastDay, ForecastEvaluation } from "@/lib/api/models";
-import Link from "next/link";
 import { hhmm } from "@/lib/format";
 import { Card, CardHead } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
 import { EChart } from "@/components/charts/EChart";
 import { dayBounds } from "@/components/charts/DayChart";
+import { AreaShell } from "@/components/layout/AreaShell";
 
 const C = {
   pv: "#f2a900",
@@ -240,20 +240,10 @@ export function ForecastPage() {
   const st = ev?.corrector;
 
   return (
-    <main className="dashboard-bg flex min-h-[100dvh] flex-col gap-4 p-5 text-text-1">
-      <header className="flex h-14 shrink-0 items-center justify-between rounded-[3px] border border-line-2 px-5" style={{ background: "var(--surface-glass)", backdropFilter: "blur(18px)" }}>
-        <div className="flex items-center gap-5">
-          <Link href="/" className="kicker whitespace-nowrap" style={{ fontSize: 12 }}>← Dashboard</Link>
-          <div className="flex items-baseline gap-2.5">
-            <span className="text-[17px] font-semibold tracking-[-.02em]">Prognose</span>
-            <span className="kicker whitespace-nowrap" style={{ fontSize: 12 }}>Auswertung und Lernen</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
+    <AreaShell kicker="PV-Prognose gegen Ist · Korrekturfaktoren" right={<>
           {ev ? <span className="mono hidden whitespace-nowrap text-[12px] uppercase tracking-[.1em] text-text-3 min-[1400px]:inline">Stand {hhmm(ev.generated_at)} · {ev.sources[0]?.label_de}</span> : null}
           {ev ? <span className="whitespace-nowrap"><Pill tone={ev.correction_active ? "amber" : "neutral"}>{ev.stage_de}{ev.correction_active ? " · aktiv" : " · lernt"}</Pill></span> : null}
-        </div>
-      </header>
+        </>}>
 
       {error ? (
         <div className="mono rounded-[3px] border px-4 py-3 text-[12px] uppercase tracking-[.1em]" style={{ borderColor: "rgba(224,83,61,.4)", background: "rgba(224,83,61,.12)", color: "var(--alert)" }}>
@@ -371,6 +361,6 @@ export function ForecastPage() {
           </p>
         </Card>
       </div>
-    </main>
+    </AreaShell>
   );
 }
