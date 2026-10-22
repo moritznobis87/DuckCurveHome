@@ -205,8 +205,15 @@
   .home-knoten-gross { --r: 46px; }
 }
 
-/* ---------- Telefon (Hochformat, schmaler Viewport): eine Spalte, Seite scrollt ---------- */
-@media (max-width: 720px) {
+/* ---------- Telefon: eine Spalte, Seite scrollt ----------
+   Zwei Fälle, dieselbe Antwort. **Schmal** ist das Hochformat. **Niedrig** ist das Querformat:
+   ein iPhone quer ist rund 850 Punkte breit und nur rund 390 hoch, also breiter als die Grenze
+   oben und trotzdem kein Bildschirm für die Wandansicht. Die rechnet mit `100dvh` und festen
+   Zeilen; bei 390 Punkten Höhe blieben für das Bild 27 Punkte, und die Knoten des Energieflusses
+   (absolut gesetzt) lagen über Text und Kurve (gesehen am 22.10.2026 auf dem iPhone quer).
+   Hier gilt deshalb dieselbe Spaltenansicht wie im Hochformat, und `useIsMobile` fragt dieselben
+   zwei Bedingungen ab, damit statt der Zeichnung die Liste kommt. */
+@media (max-width: 720px), (max-height: 560px) {
   .home { height: auto; min-height: 100dvh; overflow: visible; grid-template-rows: auto auto auto 220px auto; padding: 14px 16px 24px; gap: 14px; }
   .home-kopf { flex-wrap: wrap; gap: 10px; }
   .home-uhr { gap: 12px; }
@@ -246,4 +253,20 @@
   .rooms-matrix-label { width: 76px; }
   .rooms-matrix-cells { gap: 1px; min-width: 240px; }
   .rooms-table table { min-width: 560px; }
+}
+
+/* ---------- Telefon im Querformat: niedrig, aber breit ----------
+   Die Spaltenansicht von oben gilt weiter, nur stehen Liste und Puffer wieder nebeneinander und
+   die Fusszeile in einer Reihe. Sonst sieht man auf 390 Punkten Hoehe drei Zeilen und sonst
+   nichts. */
+@media (max-height: 560px) and (min-width: 600px) {
+  .home { padding-top: 10px; gap: 10px; }
+  .home-satz { font-size: 18px; }
+  .home-satz-zeile { flex-direction: row; align-items: baseline; }
+  .home-hero { grid-template-columns: minmax(0, 1fr) 240px; }
+  .home-rail { flex-direction: column; }
+  .home-kachel { flex: 1 1 auto; }
+  .home-kachel-puffer { flex: 1 1 auto; min-height: 120px; }
+  .home-fuss { flex-direction: row; align-items: flex-end; }
+  .home-datum { display: none; }
 }
