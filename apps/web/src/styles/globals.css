@@ -117,6 +117,18 @@
 .rooms-matrix-cells { gap: 2px; }
 /* Tagesmatrix und Tabelle rollen notfalls für sich. 96 Felder mit 2 px Abstand brauchen allein
    190 px, und am Telefon schob das die ganze Seite nach rechts. */
+/* Raum stellen: Blende und Blatt. Groß genug für einen Daumen, nicht so groß, dass die Seite
+   dahinter verschwindet. */
+.raum-kachel-tippbar { cursor: pointer; transition: border-color .15s, transform .1s; }
+.raum-kachel-tippbar:hover { border-color: var(--line-2); }
+.raum-kachel-tippbar:active { transform: scale(.995); }
+.raum-blende { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(3,20,28,.62); backdrop-filter: blur(2px); }
+.raum-blatt { display: flex; flex-direction: column; gap: 14px; width: min(460px, 100%); max-height: calc(100dvh - 32px); overflow: auto; padding: 20px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--petrol); box-shadow: 0 24px 60px rgba(0,0,0,.45); }
+.raum-knopf { width: 64px; height: 64px; border-radius: 12px; border: 1px solid var(--line-2); font-size: 26px; line-height: 1; color: var(--text-1); background: rgba(255,255,255,.03); }
+.raum-knopf:disabled { opacity: .35; }
+.raum-knopf:active:not(:disabled) { background: rgba(255,255,255,.08); }
+.raum-aktion { flex: 1; height: 52px; border-radius: 8px; border: 1px solid; font-size: 14px; font-weight: 500; }
+.raum-aktion:disabled { opacity: .5; }
 .rooms-matrix, .rooms-table { max-width: 100%; overflow-x: auto; }
 
 

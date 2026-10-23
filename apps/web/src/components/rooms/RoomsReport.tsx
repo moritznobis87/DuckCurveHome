@@ -9,6 +9,8 @@ import { celsius, hhmm } from "@/lib/format";
 import { isoToday } from "@/lib/day";
 import { abweichungText, anteilText, BAND_K, farbe, kelvin, KEIN_WERT, NOCH_NICHT, STUFEN, ventilText, zahl1 } from "./palette";
 import { abweichungen, etagenText, gruppiere, mittel, ziel } from "./logic";
+import { Stellen } from "./Stellen";
+import { useRole } from "@/lib/live/useRole";
 
 /**
  * Die Räume des Hauses: wie warm sie sind, wohin sie sollen, und wie weit die Heizkreise offen
@@ -21,9 +23,12 @@ import { abweichungen, etagenText, gruppiere, mittel, ziel } from "./logic";
  * mit? Ein Raum, dessen Kreise den ganzen Tag offen sind und der trotzdem unter dem Sollwert
  * bleibt, bestimmt die Vorlauftemperatur für alle anderen mit.
  *
- * **Gestellt wird hier nichts.** Die Regelung bleibt in Controme. Der Fußboden hat Zeitkonstanten
- * um 13 Stunden, der Raum um 25; auf dieser Skala gewinnt ein Optimierer durch feinere
- * Ventiltaktung nichts. Die Seite sieht zu, und zwar genau hin.
+ * **Geregelt wird in Controme, gestellt auch von hier.** Die Ventile bleiben Sache des Reglers:
+ * Der Fußboden hat Zeitkonstanten um 13 Stunden, der Raum um 25; auf dieser Skala gewinnt niemand
+ * durch feinere Taktung. Der Sollwert dagegen ist der Griff, den auch ein Mensch benutzt - ein
+ * Tippen auf eine Kachel öffnet ihn, mit der geschätzten Wirkung daneben. Gestellt wird dauerhaft,
+ * ohne Frist, und nur für heute: Wer einen vergangenen Tag liest, soll nicht in die Gegenwart
+ * greifen, ohne es zu merken.
  */
 
 /** Wie oft die Istwerte neu geholt werden. Controme fragt seine Fühler alle zwei Minuten ab, und
@@ -156,8 +161,8 @@ function Verlauf({ serie, ts, proStunde, linie, bisMs }: { serie: RoomSeries; ts
   );
 }
 
-/** Ein Raum als Kachel. */
-function RaumKachel({ raum, serie, ts, proStunde, bisMs }: { raum: RoomLive; serie: RoomSeries | undefined; ts: string[]; proStunde: number; bisMs: number }) {
+/** Ein Raum als Kachel. Tippbar, wenn der laufende Tag angezeigt wird. */
+function RaumKachel({ raum, serie, ts, proStunde, bisMs, onStellen }: { raum: RoomLive; serie: RoomSeries | undefined; ts: string[]; proStunde: number; bisMs: number; onStellen?: () => void }) {
   const d = raum.deviation_k;
   const stumm = raum.temp_c == null;
   const hatOffset = raum.offset_k != null && Math.abs(raum.offset_k) >= 0.05;
@@ -168,8 +173,14 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs }: { raum: RoomLive; ser
   // bestimmt sie für alle anderen mit.
   const anDerGrenze = tagesventil != null && tagesventil >= 0.85 && d != null && d < -BAND_K;
 
+  const Huelle = onStellen ? "button" : "div";
   return (
-    <div className="card flex flex-col gap-3" style={{ padding: "16px 18px 14px" }}>
+    <Huelle
+      className={`card flex flex-col gap-3 text-left ${onStellen ? "raum-kachel-tippbar" : ""}`}
+      style={{ padding: "16px 18px 14px" }}
+      onClick={onStellen}
+      {...(onStellen ? { "aria-label": `${raum.name}: Sollwert stellen` } : {})}
+    >
       <div className="flex items-baseline justify-between gap-2.5">
         <span className="text-[15px] font-medium text-text-1">{raum.name}</span>
         {anDerGrenze ? (
@@ -227,7 +238,7 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs }: { raum: RoomLive; ser
         <span title="Jetzt">Ventil {ventilText(raum.valve, raum.circuits)}</span>
         <span>{raum.humidity_pct != null ? `${Math.round(raum.humidity_pct)} % rF` : ""}</span>
       </div>
-    </div>
+    </Huelle>
   );
 }
 
@@ -236,6 +247,10 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs }: { raum: RoomLive; ser
 export function RoomsReport() {
   const { period, anchor, setPeriod, move, today } = usePeriod("day");
   const [live, setLive] = useState<RoomsLive | null>(null);
+  // Welcher Raum gerade gestellt wird. Nur die Kennung, nicht der Raum selbst: der Wert kommt aus
+  // der laufenden Liste, damit das Fenster beim naechsten Takt nicht auf einem alten Stand steht.
+  const [stellt, setStellt] = useState<number | null>(null);
+  const role = useRole();
   const [tag, setTag] = useState<RoomHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -365,7 +380,15 @@ export function RoomsReport() {
           </div>
           <div className="rooms-grid">
             {g.rooms.map((r) => (
-              <RaumKachel key={r.id} raum={r} serie={serien.get(r.id)} ts={ts} proStunde={proStunde} bisMs={bisMs} />
+              <RaumKachel
+                key={r.id}
+                raum={r}
+                serie={serien.get(r.id)}
+                ts={ts}
+                proStunde={proStunde}
+                bisMs={bisMs}
+                onStellen={istHeute ? () => setStellt(r.id) : undefined}
+              />
             ))}
           </div>
         </div>
@@ -450,8 +473,24 @@ export function RoomsReport() {
         Summe mehrerer benannter Anpassungen, nicht nur der Witterung; die beiden Zahlen stehen
         deshalb einzeln unter dem Zielwert. Die Antriebe am Verteiler sind auf oder zu - ein
         Zwischenwert im Streifen heißt „ein Teil der Kreise" oder „einen Teil des Fensters", nicht
-        „halb offen". Gestellt wird von hier aus nichts.
+        „halb offen". Ein Tippen auf eine Kachel stellt den Sollwert dieses Raums, dauerhaft und
+        in halben Grad; die Ventile bleiben Sache des Reglers.
       </Note>
+
+      {stellt != null && live ? (
+        (() => {
+          const raum = live.rooms.find((r) => r.id === stellt);
+          if (!raum) return null;
+          return (
+            <Stellen
+              raum={raum}
+              readOnly={role !== "owner"}
+              onClose={() => setStellt(null)}
+              onDone={() => void ladeLive()}
+            />
+          );
+        })()
+      ) : null}
     </ReportShell>
   );
 }

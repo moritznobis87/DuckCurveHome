@@ -271,8 +271,8 @@
             "required": false,
             "schema": {
               "type": "number",
-              "maximum": 3.0,
-              "minimum": -3.0,
+              "maximum": 14.0,
+              "minimum": -14.0,
               "description": "Änderung in Kelvin",
               "default": 0.5,
               "title": "Delta K"

@@ -59,7 +59,7 @@ async def set_setpoint(
 async def room_effect(
     runner: Annotated[Runtime, Depends(get_runner)],
     room_id: int,
-    delta_k: Annotated[float, Query(ge=-3.0, le=3.0, description="Änderung in Kelvin")] = 0.5,
+    delta_k: Annotated[float, Query(ge=-14.0, le=14.0, description="Änderung in Kelvin")] = 0.5,
 ) -> RoomEffectOut:
     """Geschätzte Kosten je Tag und das Verschiebepotenzial des Raums als Wärmespeicher."""
     return await runner.room_effect(room_id, delta_k)
