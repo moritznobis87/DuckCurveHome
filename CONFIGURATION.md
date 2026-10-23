@@ -123,6 +123,13 @@ Grenzen 5 bis 30 Grad, auf Zehntel gerundet). Geliefert werden je Raum `room_<id
 Kreiszahlen gehen als Ereignis `rooms.list` mit, weil sie keine Zahlen sind. Zu sehen ist das
 alles unter `/waerme/raeume`.
 
+### Fensterkontakte
+
+Sie gehören nicht zu Controme, sondern in die Entity-Zuordnung (`config/entities.home.yaml`), als
+gewöhnliche Binärsensoren mit dem Schlüssel `room_<id>_window` - `<id>` ist die Raumkennung aus
+Controme, 1 heißt offen. Mehrere Fenster in einem Raum fasst in Home Assistant eine Gruppe
+zusammen; zwei Einträge mit demselben Schlüssel überschrieben einander.
+
 ## HemsConfig (Auszug, Defaults)
 
 ```yaml

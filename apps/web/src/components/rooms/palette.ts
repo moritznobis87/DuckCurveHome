@@ -80,6 +80,22 @@ export function ventilText(anteil: number | null | undefined, kreise: number): s
   return `${Math.round(offen)} von ${kreise} offen`;
 }
 
+/**
+ * Der Fensterkontakt als Satz.
+ *
+ * Ohne Kontakt steht nichts da - nicht „zu", denn das wäre eine Behauptung über einen Raum, an
+ * dem niemand misst.
+ */
+export function fensterText(offen: number | null | undefined, seitMin: number | null): string | null {
+  if (offen == null) return null;
+  if (offen < 0.5) return null;
+  if (seitMin == null || seitMin < 5) return "Fenster offen";
+  if (seitMin < 60) return `Fenster offen seit ${Math.round(seitMin)} min`;
+  const h = Math.floor(seitMin / 60);
+  const m = Math.round(seitMin - h * 60);
+  return `Fenster offen seit ${h} h${m ? ` ${m} min` : ""}`;
+}
+
 /** Derselbe Anteil über einen Zeitraum, und da ist er kein Bruch mehr.
  *
  *  Über eine Viertelstunde gemittelt heißt 0,57 weder „0,57 Kreise" noch „57 % offen" an einem

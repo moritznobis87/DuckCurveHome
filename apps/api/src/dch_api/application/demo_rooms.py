@@ -75,6 +75,25 @@ def offset_k(room: DemoRoom, at: datetime) -> float:
     return round(-0.5 * milde * (0.6 + 0.1 * (room.id % 5)), 2)
 
 
+def window(room: DemoRoom, at: datetime) -> float | None:
+    """Fensterkontakt der Vorfuehrung: morgens wird gelueftet, und zwar nicht ueberall.
+
+    **Warum die Vorfuehrung das kann.** Ohne ein offenes Fenster waere an ihr nicht zu sehen, was
+    die Kontakte ueberhaupt bringen: dass ein kalter Raum eine harmlose Erklaerung haben kann.
+    Raeume ohne Kontakt melden `None` - auch das soll die Anzeige aushalten.
+    """
+    if room.id % 3 == 0:
+        return None  # kein Kontakt an diesem Raum
+    lokal = at.astimezone(BERLIN)
+    minuten = lokal.hour * 60 + lokal.minute
+    # Schlafzimmer morgens eine halbe Stunde, Bad nach dem Duschen eine Viertelstunde.
+    if room.floor == "Obergeschoss" and 7 * 60 <= minuten < 7 * 60 + 30:
+        return 1.0
+    if room.name == "Baden" and 8 * 60 <= minuten < 8 * 60 + 15:
+        return 1.0
+    return 0.0
+
+
 def valve(room: DemoRoom, at: datetime) -> float:
     """Anteil der offenen Heizkreise, 0 bis 1 - in Stufen von einem Kreis.
 

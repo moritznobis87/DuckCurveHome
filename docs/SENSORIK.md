@@ -121,6 +121,14 @@ sofort auf, weil die Raumseite die Rechnung mit ausdruckt.
 Anwesenheit. Witterung mag eine weitere sein. Die Einzelquellen werden heute nicht übertragen -
 wer wissen will, *warum* der Zielwert gesenkt wurde, muss sie nachziehen.
 
+**Fenster stehen daneben, und sie kommen woanders her.** Controme weiß nichts von Fenstern. Die
+Kontakte der Lupusec-Alarmanlage kommen über die Home-Assistant-Integration und werden unter der
+Controme-Kennung ihres Raums gemeldet (`room_<id>_window`, 1 heißt offen, seit dem 23.10.2026).
+Das beantwortet eine Frage, die die Raumseite sonst falsch stellt: Ein Raum unter seinem Ziel mit
+offenen Kreisen sieht aus wie einer, für den die Vorlauftemperatur nicht reicht - auch dann, wenn
+schlicht gelüftet wird. Solange ein Kontakt offen meldet, steht das in der Kachel, und die
+Markierung „an der Grenze" bleibt aus. Räume ohne Kontakt melden nichts; dort steht auch nichts.
+
 **Was noch fehlt.** Es gibt einen Endpunkt `rltemps` mit **Rücklauftemperaturen je Raum** - belegt
 durch laufenden Code dritter Projekte, nicht nur durch Dokumentation. Zusammen mit den
 Ventilstellungen wäre das der zweite Zeuge für die Pufferentnahme. Der Vorbehalt: Ein Rücklaufwert

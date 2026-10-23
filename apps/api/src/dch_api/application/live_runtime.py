@@ -799,6 +799,7 @@ class LiveRuntime:
                     target_c=ziel,
                     humidity_pct=wert("humidity_pct").value,
                     valve=wert("valve").value,
+                    window=wert("window").value,
                     deviation_k=abweichung,
                     observed_at=ist.observed_at if ist.value is not None else None,
                     quality=ist.quality,
@@ -943,6 +944,7 @@ class LiveRuntime:
                     setpoint_c=nach_id[i].values["setpoint_c"],
                     offset_k=nach_id[i].values["offset_k"],
                     valve=nach_id[i].values["valve"],
+                    window=nach_id[i].values["window"],
                 )
                 for i in sortiert
             ],

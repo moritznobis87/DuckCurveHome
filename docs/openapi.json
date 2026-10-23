@@ -6856,6 +6856,17 @@
             ],
             "title": "Valve"
           },
+          "window": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window"
+          },
           "deviation_k": {
             "anyOf": [
               {
@@ -6895,6 +6906,7 @@
           "target_c",
           "humidity_pct",
           "valve",
+          "window",
           "deviation_k",
           "observed_at",
           "quality"
@@ -6975,6 +6987,20 @@
             },
             "type": "array",
             "title": "Valve"
+          },
+          "window": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Window"
           }
         },
         "type": "object",
@@ -6986,7 +7012,8 @@
           "temp_c",
           "setpoint_c",
           "offset_k",
-          "valve"
+          "valve",
+          "window"
         ],
         "title": "RoomSeriesOut",
         "description": "Eine Raumzeitreihe spaltenweise: alle Listen so lang wie `ts` der Hülle."

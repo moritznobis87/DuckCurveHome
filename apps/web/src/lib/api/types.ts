@@ -3300,6 +3300,8 @@ export interface components {
             humidity_pct: number | null;
             /** Valve */
             valve: number | null;
+            /** Window */
+            window: number | null;
             /** Deviation K */
             deviation_k: number | null;
             /** Observed At */
@@ -3327,6 +3329,8 @@ export interface components {
             offset_k: (number | null)[];
             /** Valve */
             valve: (number | null)[];
+            /** Window */
+            window: (number | null)[];
         };
         /**
          * RoomSetpointIn

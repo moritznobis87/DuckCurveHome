@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { abweichungen, etagenText, gruppiere, mittel, ziel } from "./logic";
-import { abweichungText, anteilText, farbe, kelvin, ventilText } from "./palette";
+import { abweichungen, etagenText, gruppiere, mittel, offenSeitMin, ziel } from "./logic";
+import { abweichungText, anteilText, farbe, fensterText, kelvin, ventilText } from "./palette";
 import type { RoomLive, RoomSeries } from "@/lib/api/models";
 
 function raum(p: Partial<RoomLive> & { id: number }): RoomLive {
@@ -10,6 +10,7 @@ function raum(p: Partial<RoomLive> & { id: number }): RoomLive {
     floor: p.floor ?? "",
     circuits: p.circuits ?? 0,
     temp_c: p.temp_c ?? null,
+    window: p.window ?? null,
     setpoint_c: p.setpoint_c ?? null,
     offset_k: p.offset_k ?? null,
     target_c: p.target_c ?? p.setpoint_c ?? null,
@@ -67,6 +68,7 @@ describe("Abweichung je Fenster", () => {
     setpoint_c: soll,
     offset_k: off.length ? off : soll.map(() => null),
     valve: [],
+    window: [],
   });
 
   it("bleibt leer, wo eine der beiden Zahlen fehlt", () => {
@@ -139,5 +141,32 @@ describe("Farbskala", () => {
     expect(farbe(0)).toBe("var(--dev-null)");
     expect(farbe(0.4)).toBe("var(--dev-null)");
     expect(farbe(0.6)).not.toBe("var(--dev-null)");
+  });
+});
+
+describe("Fensterkontakte", () => {
+  it("zählt vom Ende der Reihe rückwärts, in Fenstern von 15 Minuten", () => {
+    const reihe = [0, 0, 1, 1, 1];
+    expect(offenSeitMin(reihe, 15, 4)).toBe(45);
+    expect(offenSeitMin([0, 0, 0], 15, 2)).toBeNull();
+  });
+
+  it("überspringt die noch nicht gemessenen Fenster am Ende", () => {
+    // Der laufende Tag: hinter der Gegenwart steht null, davor ein offenes Fenster.
+    expect(offenSeitMin([0, 1, 1, null, null], 15, 4)).toBe(30);
+  });
+
+  it("sagt nichts, wo kein Kontakt sitzt", () => {
+    expect(offenSeitMin([null, null], 15, 1)).toBeNull();
+    expect(fensterText(null, 30)).toBeNull();
+    expect(fensterText(0, 30)).toBeNull();
+  });
+
+  it("nennt die Dauer erst, wenn sie etwas sagt", () => {
+    expect(fensterText(1, null)).toBe("Fenster offen");
+    expect(fensterText(1, 2)).toBe("Fenster offen");
+    expect(fensterText(1, 40)).toBe("Fenster offen seit 40 min");
+    expect(fensterText(1, 95)).toBe("Fenster offen seit 1 h 35 min");
+    expect(fensterText(1, 120)).toBe("Fenster offen seit 2 h");
   });
 });

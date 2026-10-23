@@ -20,6 +20,30 @@ export function gruppiere(rooms: RoomLive[]): Gruppe[] {
   return out;
 }
 
+/**
+ * Wie lange das Fenster dieses Raums schon offen steht, in Minuten.
+ *
+ * Gerechnet aus dem Ende der Zeitreihe rückwärts: so viele Fenster, wie durchgehend „offen"
+ * melden, mal ihre Breite. `null` heißt, dass es keinen Kontakt gibt oder gerade keiner offen ist.
+ *
+ * **Warum nicht aus einem Zeitstempel.** Die Messreihe sagt, *dass* der Kontakt offen ist, nicht
+ * *seit wann* - einen Wechselzeitpunkt überträgt die Telemetrie nicht. Die Zeitreihe weiß es
+ * trotzdem, und zwar auf die Breite eines Fensters genau. Das reicht für den Satz, um den es geht:
+ * „kalt, weil seit einer halben Stunde gelüftet wird".
+ */
+export function offenSeitMin(werte: (number | null)[], stepMin: number, bisIndex: number): number | null {
+  let i = Math.min(bisIndex, werte.length - 1);
+  // Noch nicht gemessene Fenster am Ende überspringen.
+  while (i >= 0 && werte[i] == null) i--;
+  if (i < 0 || (werte[i] ?? 0) < 0.5) return null;
+  let zahl = 0;
+  while (i >= 0 && (werte[i] ?? 0) >= 0.5) {
+    zahl++;
+    i--;
+  }
+  return zahl * stepMin;
+}
+
 /** Mittelwert über die vorhandenen Werte einer Reihe. `null`, wenn keiner vorhanden ist. */
 export function mittel(werte: (number | null)[]): number | null {
   const gut = werte.filter((v): v is number => v != null);

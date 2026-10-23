@@ -21,7 +21,13 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 # Die Felder je Raum, in der Reihenfolge, in der sie in der Anzeige gebraucht werden.
-FIELDS = ("temp_c", "setpoint_c", "offset_k", "humidity_pct", "valve")
+# **`window` ist kein Controme-Wert.** Die Einzelraumregelung weiß nichts von Fenstern; der Wert
+# kommt aus den Kontakten der Alarmanlage über Home Assistant und wird demselben Raum zugeordnet,
+# indem er unter dessen Kennung gemeldet wird (`room_<id>_window`, 1 heißt offen). Er steht hier,
+# weil er genau die Frage beantwortet, die die Raumseite sonst falsch stellt: Ein Raum unter
+# seinem Ziel mit offenen Kreisen sieht aus wie einer, für den die Vorlauftemperatur nicht reicht -
+# auch dann, wenn schlicht das Fenster offen steht.
+FIELDS = ("temp_c", "setpoint_c", "offset_k", "humidity_pct", "valve", "window")
 # Felder, für die eine Zeitreihe aufgehoben wird.
 #
 # **Der Offset gehört dazu.** Hier stand zuerst das Gegenteil, mit der Begründung, er sei eine
@@ -29,7 +35,7 @@ FIELDS = ("temp_c", "setpoint_c", "offset_k", "humidity_pct", "valve")
 # rechnet sichtbar `21,00 - 0,32 = 20,68` und regelt auf das Ergebnis (Bildschirmfoto der Anlage,
 # 22.10.2026). Ohne den Offset in der Zeitreihe wäre die Abweichung eines vergangenen Tages gegen
 # eine Zahl gerechnet, auf die nie jemand geregelt hat.
-SERIES_FIELDS = ("temp_c", "setpoint_c", "offset_k", "valve")
+SERIES_FIELDS = ("temp_c", "setpoint_c", "offset_k", "valve", "window")
 
 _KEY = re.compile(r"^room_(\d+)_(" + "|".join(FIELDS) + r")$")
 _META = re.compile(r"^raum\.(\d+)\.(name|etage|kreise|rang)$")

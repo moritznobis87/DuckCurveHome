@@ -34,6 +34,22 @@ sensors:
   - { key: buffer_temp_mid_bottom_c, entity: sensor.speicher_3_temperature, unit: "°C", stale_after_s: 3600 }
   - { key: buffer_temp_bottom_c,     entity: sensor.speicher_5_temperature, unit: "°C", stale_after_s: 3600 }
 
+  # --- Fensterkontakte der Alarmanlage (Lupusec über die HA-Integration) ---
+  # Ein Kontakt je Raum, unter der Controme-Kennung dieses Raums: `room_<id>_window`, 1 = offen.
+  # Damit steht das Fenster auf der Raumseite neben der Temperatur, und ein gelüfteter Raum wird
+  # nicht mehr der Heizkurve angelastet.
+  #
+  # ⚠ NOCH NICHT ZUGEORDNET. Die Namen unten sind Platzhalter; einzutragen sind die Entitäten aus
+  # Home Assistant (Einstellungen → Geräte & Dienste → Entitäten, Filter „binary_sensor"), und zwar
+  # mit der Raumnummer, die Controme führt (zu sehen in der Adresse der Raumseite oder im Protokoll
+  # der Bridge als `room_<id>_temp_c`).
+  #
+  # Hat ein Raum mehrere Fenster, gehört in Home Assistant eine Gruppe darüber (Einstellungen →
+  # Geräte & Dienste → Hilfsmittel → Gruppe → Binärsensor); sie meldet „offen", solange eines offen
+  # ist. Zwei Einträge mit demselben Schlüssel überschrieben sich gegenseitig.
+  # - { key: room_1_window, entity: binary_sensor.fenster_arbeiten, kind: binary, stale_after_s: 900 }
+  # - { key: room_2_window, entity: binary_sensor.fenster_kochen,   kind: binary, stale_after_s: 900 }
+
   # --- Umgebung ---
   - { key: outdoor_temp_c,     entity: sensor.geilenkirchen_air_base_temperatur,          unit: "°C", stale_after_s: 3600 }
 

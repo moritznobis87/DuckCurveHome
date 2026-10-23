@@ -589,6 +589,7 @@ class DemoRunner:
                     target_c=ziel,
                     humidity_pct=None,
                     valve=demo_rooms.valve(r, now),
+                    window=demo_rooms.window(r, now),
                     deviation_k=round(ist - (ziel or soll), 2),
                     observed_at=now,
                     quality=Quality.OK,
@@ -615,9 +616,13 @@ class DemoRunner:
                     floor=r.floor,
                     circuits=r.circuits,
                     temp_c=[demo_rooms.temperature_c(r, t) if t <= jetzt else None for t in ts],
-                    setpoint_c=[r.setpoint_c if t <= jetzt else None for t in ts],
+                    setpoint_c=[
+                        self._room_setpoints.get(r.id, r.setpoint_c) if t <= jetzt else None
+                        for t in ts
+                    ],
                     offset_k=[demo_rooms.offset_k(r, t) if t <= jetzt else None for t in ts],
                     valve=[demo_rooms.valve(r, t) if t <= jetzt else None for t in ts],
+                    window=[demo_rooms.window(r, t) if t <= jetzt else None for t in ts],
                 )
                 for r in demo_rooms.ROOMS
             ],

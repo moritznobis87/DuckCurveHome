@@ -770,6 +770,9 @@ class RoomLiveOut(BaseModel):
     # Anteil der offenen Heizkreise, 0 bis 1. Die Antriebe kennen keine Zwischenstellung, der
     # Anteil entsteht aus der Zahl der Kreise: 0,25 heißt „einer von vier".
     valve: float | None
+    # 1, solange ein Fenster dieses Raums offen steht; `None`, wenn es keinen Kontakt gibt. Aus der
+    # Alarmanlage, nicht aus Controme.
+    window: float | None
     deviation_k: float | None
     observed_at: datetime | None
     quality: Quality
@@ -840,6 +843,7 @@ class RoomSeriesOut(BaseModel):
     setpoint_c: list[float | None]
     offset_k: list[float | None]
     valve: list[float | None]
+    window: list[float | None]
 
 
 class RoomHistoryOut(BaseModel):

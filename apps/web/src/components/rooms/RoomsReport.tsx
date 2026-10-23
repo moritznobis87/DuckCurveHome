@@ -7,8 +7,8 @@ import { Card, CardHead } from "@/components/ui/Card";
 import { ErrorBanner, Note, ReportShell, usePeriod } from "@/components/reports/ReportShell";
 import { celsius, hhmm } from "@/lib/format";
 import { isoToday } from "@/lib/day";
-import { abweichungText, anteilText, BAND_K, farbe, kelvin, KEIN_WERT, NOCH_NICHT, STUFEN, ventilText, zahl1 } from "./palette";
-import { abweichungen, etagenText, gruppiere, mittel, ziel } from "./logic";
+import { abweichungText, anteilText, BAND_K, farbe, fensterText, kelvin, KEIN_WERT, NOCH_NICHT, STUFEN, ventilText, zahl1 } from "./palette";
+import { abweichungen, etagenText, gruppiere, mittel, offenSeitMin, ziel } from "./logic";
 import { Stellen } from "./Stellen";
 import { useRole } from "@/lib/live/useRole";
 
@@ -162,16 +162,24 @@ function Verlauf({ serie, ts, proStunde, linie, bisMs }: { serie: RoomSeries; ts
 }
 
 /** Ein Raum als Kachel. Tippbar, wenn der laufende Tag angezeigt wird. */
-function RaumKachel({ raum, serie, ts, proStunde, bisMs, onStellen }: { raum: RoomLive; serie: RoomSeries | undefined; ts: string[]; proStunde: number; bisMs: number; onStellen?: () => void }) {
+function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen }: { raum: RoomLive; serie: RoomSeries | undefined; ts: string[]; proStunde: number; bisMs: number; stepMin: number; onStellen?: () => void }) {
   const d = raum.deviation_k;
   const stumm = raum.temp_c == null;
   const hatOffset = raum.offset_k != null && Math.abs(raum.offset_k) >= 0.05;
   const aufSoll = d != null && Math.abs(d) <= BAND_K;
   const tagesventil = serie ? mittel(serie.valve) : null;
+  // Wie lange schon gelüftet wird. Der Index des letzten gemessenen Fensters kommt aus der
+  // Zeitachse, nicht aus der Länge: am laufenden Tag steht hinter der Gegenwart noch nichts.
+  const letzter = ts.reduce((acc, t, i) => (new Date(t).getTime() <= bisMs ? i : acc), -1);
+  const offenSeit = serie && letzter >= 0 ? offenSeitMin(serie.window, stepMin, letzter) : null;
+  const fenster = fensterText(raum.window, offenSeit);
   // **An der Grenze**: die Kreise standen fast den ganzen Tag offen, und der Raum ist trotzdem zu
   // kalt. Dann ist nicht die Einzelraumregelung am Zug, sondern die Vorlauftemperatur - dieser Raum
   // bestimmt sie für alle anderen mit.
-  const anDerGrenze = tagesventil != null && tagesventil >= 0.85 && d != null && d < -BAND_K;
+  // **Ein offenes Fenster nimmt die Anklage zurück.** Ohne die Kontakte sah ein gelüfteter Raum
+  // genauso aus wie einer, für den die Vorlauftemperatur nicht reicht - und die Seite schob es auf
+  // die Heizkurve. Steht das Fenster offen, ist die Erklärung bekannt und harmlos.
+  const anDerGrenze = tagesventil != null && tagesventil >= 0.85 && d != null && d < -BAND_K && !fenster;
 
   const Huelle = onStellen ? "button" : "div";
   return (
@@ -183,7 +191,11 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs, onStellen }: { raum: Ro
     >
       <div className="flex items-baseline justify-between gap-2.5">
         <span className="text-[15px] font-medium text-text-1">{raum.name}</span>
-        {anDerGrenze ? (
+        {fenster ? (
+          <span className="mono shrink-0 rounded-[2px] border px-[5px] py-px text-[10px] uppercase tracking-[.08em]" style={{ borderColor: "var(--mist)", color: "var(--mist)" }} title="Ein Fensterkontakt dieses Raums meldet offen. Solange das so ist, sagt eine Unterschreitung nichts über die Heizkurve.">
+            {fenster}
+          </span>
+        ) : anDerGrenze ? (
           // Farblos und mit Zeichen. Ein bernsteinfarbenes Abzeichen stünde in der Farbe, die auf
           // dieser Seite „zu warm" heißt, und sagte damit das Gegenteil.
           <span className="mono shrink-0 rounded-[2px] border border-line-2 px-[5px] py-px text-[10px] uppercase tracking-[.08em] text-text-2" title="Die Heizkreise standen fast den ganzen Tag offen und der Raum ist trotzdem unter dem Zielwert. Dieser Raum bestimmt die nötige Vorlauftemperatur mit.">
@@ -330,6 +342,7 @@ export function RoomsReport() {
         target_c: z,
         humidity_pct: null,
         valve: (i >= 0 ? s.valve[i] : null) ?? null,
+        window: (i >= 0 ? s.window[i] : null) ?? null,
         deviation_k: t != null && z != null ? t - z : null,
         observed_at: (i >= 0 ? ts[i] : null) ?? null,
         quality: "unavailable",
@@ -387,6 +400,7 @@ export function RoomsReport() {
                 ts={ts}
                 proStunde={proStunde}
                 bisMs={bisMs}
+                stepMin={tag?.step_min ?? STEP_MIN}
                 onStellen={istHeute ? () => setStellt(r.id) : undefined}
               />
             ))}
