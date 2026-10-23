@@ -1274,6 +1274,48 @@
         }
       }
     },
+    "/api/v1/control/alarm/arm": {
+      "post": {
+        "tags": [
+          "Steuerung"
+        ],
+        "summary": "Alarmanlage scharf schalten",
+        "description": "Nur schärfen, nie entschärfen.\n\nDie Anzeige hängt in der Küche und ihr Zugang ist ein Sitzungskeks auf einem Gerät. Das ist\ngenug, um eine Anlage scharf zu schalten - im schlimmsten Fall wird das lästig -, und zu wenig,\num sie abzuschalten. Dafür gibt es das Bedienteil.",
+        "operationId": "arm_alarm_api_v1_control_alarm_arm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlarmArmIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlarmArmOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/control/actuators/{key}": {
       "post": {
         "tags": [
@@ -1829,6 +1871,94 @@
           "message_de"
         ],
         "title": "ActuatorCommandOut"
+      },
+      "AlarmArmIn": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "home",
+              "away"
+            ],
+            "title": "Mode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "AlarmArmIn"
+      },
+      "AlarmArmOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "alarm": {
+            "$ref": "#/components/schemas/AlarmOut"
+          },
+          "message_de": {
+            "type": "string",
+            "title": "Message De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "alarm",
+          "message_de"
+        ],
+        "title": "AlarmArmOut"
+      },
+      "AlarmOut": {
+        "properties": {
+          "present": {
+            "type": "boolean",
+            "title": "Present"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "state_de": {
+            "type": "string",
+            "title": "State De"
+          },
+          "can_arm": {
+            "type": "boolean",
+            "title": "Can Arm"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "present",
+          "state",
+          "state_de",
+          "can_arm",
+          "observed_at"
+        ],
+        "title": "AlarmOut",
+        "description": "Die Alarmanlage, so weit sie dieses Werkzeug angeht.\n\n**Scharf ja, unscharf nein.** Die Anzeige hängt in der Küche, Gäste gehen daran vorbei, und\nihr Zugang ist ein Sitzungskeks auf einem Gerät - schwächer als ein Code am Bedienteil.\nDeshalb kennt diese Schnittstelle nur das Schärfen. Wer entschärfen will, tut es dort, wo es\nhingehört, und `can_arm` sagt, ob überhaupt geschaltet werden darf."
       },
       "AutoProfile": {
         "type": "string",
@@ -5790,6 +5920,14 @@
             },
             "type": "object",
             "title": "Today Kwh"
+          },
+          "alarm": {
+            "$ref": "#/components/schemas/AlarmOut",
+            "default": {
+              "present": false,
+              "state_de": "nicht eingerichtet",
+              "can_arm": false
+            }
           },
           "system": {
             "$ref": "#/components/schemas/SystemStatusOut"

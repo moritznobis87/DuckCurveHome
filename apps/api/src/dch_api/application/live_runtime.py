@@ -47,6 +47,7 @@ from dch_api.infrastructure.history import SERIES
 from dch_api.infrastructure.live_state import LiveState
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
+    AlarmOut,
     BackfillResultOut,
     BatteryLiveOut,
     EnergySummaryOut,
@@ -704,6 +705,53 @@ class LiveRuntime:
         self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
         return self.mode
 
+    # ------------------------------------------------------------------ Alarmanlage
+    ALARM_WORT = {
+        0.0: "unscharf",
+        1.0: "zu Hause scharf",
+        2.0: "unterwegs scharf",
+        3.0: "schaltet gerade",
+        4.0: "ausgelöst",
+    }
+
+    def _alarm_state(self, now: datetime) -> AlarmOut:
+        """Was die Anlage meldet, und ob von hier aus geschärft werden darf.
+
+        Die Reihe heißt `alarm_state` und kommt wie jede andere über die Entity-Zuordnung. Fehlt
+        sie, ist keine Anlage eingerichtet - dann sagt die Anzeige das und zeigt keinen Knopf.
+        """
+        m = self.live.measurement("alarm_state", now, 1800)
+        da = m.value is not None or m.observed_at is not None
+        return AlarmOut(
+            present=da,
+            state=m.value,
+            state_de=self.ALARM_WORT.get(m.value, "unbekannt")
+            if m.value is not None
+            else "keine Meldung",
+            # Geschärft wird nur, wenn die Brücke steht und die Steuerung überhaupt frei ist. Ob
+            # es die Bridge-Seite freigibt, weiß erst der Befehl; das sagt dann seine Antwort.
+            can_arm=da and self.hub.online and self.settings.actuation_enabled,
+            observed_at=m.observed_at,
+        )
+
+    async def arm_alarm(self, mode: str) -> tuple[bool, str]:
+        """Die Anlage schärfen. Unscharf wird hier nicht geschaltet - siehe `AlarmOut`."""
+        if mode not in ("home", "away"):
+            raise DchError("invalid_mode", "Nur 'home' oder 'away'.", 422)
+        if not self.settings.actuation_enabled:
+            raise DchError("actuation_disabled", "Steuerung ist in dieser Phase deaktiviert.", 409)
+        if not self.hub.online:
+            raise DchError("bridge_offline", "Bridge nicht verbunden.", 503)
+        result = await self.hub.send_command(f"alarm:arm_{mode}", True, None, None)
+        wort = "zu Hause" if mode == "home" else "unterwegs"
+        if not result.ok:
+            return False, result.error or "Die Anlage hat nicht bestätigt."
+        await self.repos.add_event(
+            "info", "alarm.armed", f"Alarmanlage {wort} scharf geschaltet.", {"mode": mode}
+        )
+        log.info("alarm armed", mode=mode)
+        return True, f"Alarmanlage wird {wort} scharf geschaltet."
+
     # ------------------------------------------------------------------ Ausgabe
     def live_state(self) -> LiveStateOut:
         snap, buffer, hp = self._states()
@@ -717,6 +765,7 @@ class LiveRuntime:
             stove=self._stove_state(now),
             price_rank=price_rank(self.forecasts.prices, now),
             today_kwh={},
+            alarm=self._alarm_state(now),
             system=SystemStatusOut(
                 mode="live",
                 server_time=now,

@@ -70,6 +70,11 @@ class BridgeSettings(BaseSettings):
     # Benutzer und Passwort sind leer, weil die Lese-Endpunkte im Heimnetz ohne Anmeldung
     # antworten (gemessen 21.10.2026). Die Felder stehen trotzdem da: das ist eine Schwaeche des
     # Herstellers, und wenn er sie behebt, soll hier nur ein Wert zu setzen sein.
+    # Alarmanlage. Gelesen wird sie ueber die Entity-Zuordnung wie jede andere Groesse; diese
+    # beiden Werte brauchen nur das Scharfschalten. Ohne `alarm_arm_enabled` bleibt es beim Lesen.
+    alarm_entity: str = ""
+    alarm_arm_enabled: bool = False
+
     controme_host: str = ""  # IP oder Hostname; leer = Quelle aus
     controme_house_id: int = 0  # 0 = suchen
     controme_poll_interval_s: float = 120.0

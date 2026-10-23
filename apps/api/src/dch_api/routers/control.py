@@ -10,6 +10,8 @@ from dch_api.errors import DchError
 from dch_api.schemas import (
     ActuatorCommandIn,
     ActuatorCommandOut,
+    AlarmArmIn,
+    AlarmArmOut,
     BatteryLiveOut,
     BatteryModeIn,
     HeatPumpModeIn,
@@ -19,6 +21,21 @@ from dch_api.schemas import (
 from hems_core.domain import Decision, OperatingMode, SystemMode
 
 router = APIRouter(prefix="/control", tags=["Steuerung"])
+
+
+@router.post("/alarm/arm", response_model=AlarmArmOut, summary="Alarmanlage scharf schalten")
+async def arm_alarm(
+    runner: Annotated[Runtime, Depends(get_runner)], body: AlarmArmIn
+) -> AlarmArmOut:
+    """Nur schärfen, nie entschärfen.
+
+    Die Anzeige hängt in der Küche und ihr Zugang ist ein Sitzungskeks auf einem Gerät. Das ist
+    genug, um eine Anlage scharf zu schalten - im schlimmsten Fall wird das lästig -, und zu wenig,
+    um sie abzuschalten. Dafür gibt es das Bedienteil.
+    """
+    ok, text = await runner.arm_alarm(body.mode)
+    return AlarmArmOut(ok=ok, alarm=runner.live_state().alarm, message_de=text)
+
 
 ACTUATOR_LABELS = {
     "coffee_machine": "Kaffeemaschine",

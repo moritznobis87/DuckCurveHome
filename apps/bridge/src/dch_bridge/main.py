@@ -35,7 +35,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.10.1"
+VERSION = "0.11.0"
 log = structlog.get_logger("bridge")
 
 
@@ -321,6 +321,8 @@ class Bridge:
         # der Einzelraumregelung. Der Schluessel traegt die Raumnummer, der Wert steht in `value`.
         if cmd.actuator_key.startswith("room:"):
             return await self._setze_raum(cmd)
+        if cmd.actuator_key.startswith("alarm:"):
+            return await self._alarm(cmd)
         a = self._actuator(cmd.actuator_key)
         # Aktoren, die einem MQTT-Gerät gehören, werden direkt am Broker geschaltet - kein Umweg über
         # Home Assistant. Ausgenommen die Sicherheitsklasse heat_pump: dort bleibt der Weg über HA,
@@ -436,6 +438,56 @@ class Bridge:
         # `observed_state` bleibt leer: Ein Sollwert ist kein Zustand, den man als an oder aus
         # bestaetigen koennte. Dass er steht, zeigt die naechste Abfrage, die gerade angestossen
         # wurde.
+        return CommandResultFrame(
+            command_id=cmd.command_id,
+            ok=True,
+            observed_state=None,
+            error=None,
+            at=datetime.now(UTC),
+        )
+
+    async def _alarm(self, cmd: CommandFrame) -> CommandResultFrame:
+        """`alarm:arm_home` und `alarm:arm_away`: die Anlage scharf schalten.
+
+        **Unscharf wird hier nicht geschaltet, und das ist kein Versehen.** Die Anzeige haengt in
+        der Kueche, Gaeste gehen daran vorbei, und ihr Zugang ist ein Sitzungskeks auf einem
+        Geraet - schwaecher als ein Code am Bedienteil. Scharfschalten kann im schlimmsten Fall
+        laestig werden; Unscharfschalten waere ein Weg an der Alarmanlage vorbei. Wer entschaerfen
+        will, tut es dort, wo es hingehoert.
+
+        Freigegeben sein muss es trotzdem: ohne `alarm_arm_enabled` bleibt es beim Zusehen.
+        """
+        modus = cmd.actuator_key.removeprefix("alarm:")
+        dienste = {"arm_home": "alarm_arm_home", "arm_away": "alarm_arm_away"}
+        fehler: str | None = None
+        if modus not in dienste:
+            fehler = (
+                "Nur Scharfschalten: 'arm_home' oder 'arm_away'. Unscharf wird am Bedienteil "
+                "geschaltet, nicht von der Wandanzeige."
+            )
+        elif not self.settings.alarm_arm_enabled:
+            fehler = "Scharfschalten ist nicht freigegeben (Option alarm_arm_enabled)."
+        elif not self.settings.alarm_entity:
+            fehler = "Keine Alarmanlage eingerichtet (Option alarm_entity)."
+        if fehler is None:
+            try:
+                await self.ha.call_service(
+                    "alarm_control_panel", dienste[modus], self.settings.alarm_entity
+                )
+            except Exception as exc:
+                fehler = str(exc)[:300]
+        if fehler is not None:
+            return CommandResultFrame(
+                command_id=cmd.command_id,
+                ok=False,
+                observed_state=None,
+                error=fehler,
+                at=datetime.now(UTC),
+            )
+        log.info("alarm armed", mode=modus, entity=self.settings.alarm_entity)
+        # Eine Anlage braucht ihre Ausgangszeit: der Zustand ist gleich "arming" und erst danach
+        # scharf. Bestaetigt wird deshalb die Annahme des Befehls, nicht der Endzustand - den
+        # meldet die naechste Messung.
         return CommandResultFrame(
             command_id=cmd.command_id,
             ok=True,

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from fastapi.testclient import TestClient
+
 from dch_api.infrastructure.live_state import LiveState
 from hems_core.domain import HemsConfig, Quality
 from hems_core.protocol import RawReading
@@ -43,3 +45,24 @@ def test_newer_reading_wins_and_actuators_map() -> None:
     snap = ls.snapshot(NOW)
     assert snap.actuators["coffee_machine"].value == 1.0
     assert snap.hp_release_contact.value == 0.0
+
+
+def test_die_alarmanlage_laesst_sich_schaerfen_aber_nicht_entschaerfen(client: TestClient) -> None:
+    """Scharf ja, unscharf nein - die Anzeige hängt in der Küche.
+
+    Ein Gerät mit Sitzungskeks ist genug, um eine Anlage scharf zu schalten; im schlimmsten Fall
+    wird das lästig. Für das Gegenteil ist es zu wenig, und deshalb gibt es den Weg nicht.
+    """
+    vorher = client.get("/api/v1/live/state").json()["alarm"]
+    assert vorher["state_de"] == "unscharf"
+    assert vorher["can_arm"] is True
+
+    r = client.post("/api/v1/control/alarm/arm", json={"mode": "away"})
+    assert r.status_code == 200, r.text
+    assert r.json()["ok"] is True
+    assert r.json()["alarm"]["state_de"] == "unterwegs scharf"
+    assert client.get("/api/v1/live/state").json()["alarm"]["state"] == 2.0
+
+    # Es gibt keinen Modus, der entschärft.
+    assert client.post("/api/v1/control/alarm/arm", json={"mode": "disarm"}).status_code == 422
+    assert client.post("/api/v1/control/alarm/arm", json={"mode": "off"}).status_code == 422

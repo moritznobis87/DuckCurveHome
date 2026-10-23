@@ -123,6 +123,20 @@ Grenzen 5 bis 30 Grad, auf Zehntel gerundet). Geliefert werden je Raum `room_<id
 Kreiszahlen gehen als Ereignis `rooms.list` mit, weil sie keine Zahlen sind. Zu sehen ist das
 alles unter `/waerme/raeume`.
 
+### Alarmanlage
+
+| Option / Umgebungsvariable | Default | Bedeutung |
+| --- | --- | --- |
+| `alarm_entity` / `DCH_BRIDGE_ALARM_ENTITY` | leer | Die Entität der Anlage in Home Assistant, etwa `alarm_control_panel.lupusec`. Nur fürs Schärfen; gelesen wird über die Entity-Zuordnung |
+| `alarm_arm_enabled` / `DCH_BRIDGE_ALARM_ARM_ENABLED` | `false` | Ohne diese Freigabe bleibt es beim Zusehen |
+
+Der Zustand gehört in die Entity-Zuordnung als `{ key: alarm_state, kind: alarm }` und kommt als
+Zahl an: 0 unscharf, 1 zu Hause scharf, 2 unterwegs scharf, 3 schaltet gerade, 4 ausgelöst.
+
+**Geschärft wird, entschärft nie.** `POST /control/alarm/arm` kennt `home` und `away` und sonst
+nichts. Die Anzeige hängt in der Küche, Gäste gehen daran vorbei, und ihr Zugang ist ein
+Sitzungskeks auf einem Gerät: genug, um eine Anlage einzuschalten, zu wenig, um sie abzuschalten.
+
 ### Fensterkontakte
 
 Sie gehören nicht zu Controme, sondern in die Entity-Zuordnung (`config/entities.home.yaml`), als

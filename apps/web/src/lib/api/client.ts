@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -86,6 +86,9 @@ export const api = {
     }),
   setHeatPumpMode: (cmd: HeatPumpModeIn) =>
     request<OperatingMode>("/control/heat-pump/mode", { method: "POST", body: JSON.stringify(cmd) }),
+  // Nur schaerfen. Einen Weg zum Entschaerfen gibt es nicht, und das ist Absicht.
+  armAlarm: (mode: "home" | "away") =>
+    request<AlarmArmResult>("/control/alarm/arm", { method: "POST", body: JSON.stringify({ mode }) }),
   setStoveMode: (cmd: StoveModeIn) =>
     request<StoveLive>("/control/stove/mode", { method: "POST", body: JSON.stringify(cmd) }),
   tibberInvoices: () => request<InvoiceSummary[]>("/import/tibber-invoices"),

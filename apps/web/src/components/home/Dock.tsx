@@ -118,8 +118,66 @@ function Blatt({ titel, status, text, modus, dauern, dauerWort, disabled, onSet,
   );
 }
 
+/**
+ * Das Blatt der Alarmanlage: zwei Knoepfe zum Schaerfen, keiner zum Entschaerfen.
+ *
+ * Das ist keine Luecke. Die Anzeige haengt in der Kueche, Gaeste gehen daran vorbei, und ihr
+ * Zugang ist ein Sitzungskeks auf einem Geraet - genug, um eine Anlage scharf zu schalten, zu
+ * wenig, um sie abzuschalten. Der Satz unten sagt das, damit niemand sucht.
+ */
+function AlarmBlatt({ alarm, disabled, onClose }: { alarm: NonNullable<LiveState["alarm"]>; disabled: boolean; onClose: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const [fertig, setFertig] = useState<string | null>(null);
+  const scharf = async (mode: "home" | "away") => {
+    setBusy(true);
+    setFehler(null);
+    try {
+      const r = await api.armAlarm(mode);
+      setFertig(r.message_de);
+    } catch (e) {
+      setFehler(e instanceof ApiError ? e.message : "Die Anlage hat nicht bestätigt.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const Knopf = ({ mode, text }: { mode: "home" | "away"; text: string }) => (
+    <button
+      disabled={busy || disabled || !alarm.can_arm}
+      onClick={() => void scharf(mode)}
+      className="home-modus"
+      style={{ borderColor: "var(--mist)", color: "var(--text-1)" }}
+    >
+      {text}
+    </button>
+  );
+  return (
+    <div role="dialog" aria-label="Alarmanlage" className="home-blatt">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="flex items-baseline gap-3">
+          <span className="text-[18px] font-semibold tracking-[-.01em]">Alarmanlage</span>
+          <span className="mono text-[11px] uppercase tracking-[.08em]" style={{ color: "var(--mist)" }}>{alarm.state_de}</span>
+        </span>
+        <button onClick={onClose} className="text-[13px] text-text-3" aria-label="Schließen">schließen</button>
+      </div>
+      <div className="flex gap-2">
+        <Knopf mode="home" text="Zu Hause" />
+        <Knopf mode="away" text="Unterwegs" />
+      </div>
+      <p className="m-0 text-[12px] leading-[1.45] text-text-3">
+        Unscharf wird am Bedienteil geschaltet, nicht hier. Diese Anzeige hängt in der Küche, und
+        wer an ihr vorbeigeht, soll eine Alarmanlage einschalten können, nicht ausschalten.
+      </p>
+      {disabled ? <p className="m-0 text-[12px] text-text-3">Nur Ansicht: dieses Gerät schaltet nichts.</p> : null}
+      {!alarm.can_arm && !disabled ? <p className="m-0 text-[12px] text-text-3">Gerade nicht erreichbar.</p> : null}
+      {fehler ? <p className="m-0 text-[12px]" style={{ color: "var(--alert)" }}>{fehler}</p> : null}
+      {fertig ? <p className="m-0 text-[12px]" style={{ color: "var(--pv)" }}>{fertig}</p> : null}
+    </div>
+  );
+}
+
 export function Dock({ state, readOnly }: { state: LiveState | null; readOnly: boolean }) {
-  const [offen, setOffen] = useState<"hp" | "stove" | null>(null);
+  const [offen, setOffen] = useState<"hp" | "stove" | "alarm" | null>(null);
   const [meldung, setMeldung] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [fehlerKey, setFehlerKey] = useState<string | null>(null);
@@ -155,6 +213,7 @@ export function Dock({ state, readOnly }: { state: LiveState | null; readOnly: b
     }
   };
 
+  const alarm = state?.alarm;
   const hp = state?.heat_pump;
   const mode = state?.operating_mode;
   const override = mode?.override;
@@ -179,6 +238,18 @@ export function Dock({ state, readOnly }: { state: LiveState | null; readOnly: b
         <span className="home-dock-trenner" aria-hidden />
         <Knopf label={`Wärmepumpe · ${hpStatus}`} kurz="Wärmepumpe" icon="pump" an={hp?.running ?? null} farbe="var(--heat-pump)" offen={offen === "hp"} onClick={() => setOffen(offen === "hp" ? null : "hp")} />
         {stove?.present ? <Knopf label={`Pelletofen · ${ofenStatus}`} kurz="Ofen" icon="stove" an={stove.running ?? null} farbe="var(--stove)" offen={offen === "stove"} onClick={() => setOffen(offen === "stove" ? null : "stove")} /> : null}
+        {/* Die Alarmanlage leuchtet, wenn sie scharf ist - rot nur, wenn sie ausgelöst hat. */}
+        {alarm?.present ? (
+          <Knopf
+            label={`Alarmanlage · ${alarm.state_de}`}
+            kurz="Alarm"
+            icon="shield"
+            an={alarm.state != null && alarm.state > 0}
+            farbe={alarm.state === 4 ? "var(--alert)" : "var(--mist)"}
+            offen={offen === "alarm"}
+            onClick={() => setOffen(offen === "alarm" ? null : "alarm")}
+          />
+        ) : null}
       </div>
       {offen === "hp" ? (
         <Blatt
@@ -196,6 +267,9 @@ export function Dock({ state, readOnly }: { state: LiveState | null; readOnly: b
             else await api.setHeatPumpMode({ system_mode: "manual", manual_state: m, duration_min: dauer });
           }}
         />
+      ) : null}
+      {offen === "alarm" && alarm ? (
+        <AlarmBlatt alarm={alarm} disabled={readOnly} onClose={() => setOffen(null)} />
       ) : null}
       {offen === "stove" && stove ? (
         <Blatt

@@ -443,6 +443,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/control/alarm/arm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Alarmanlage scharf schalten
+         * @description Nur schärfen, nie entschärfen.
+         *
+         *     Die Anzeige hängt in der Küche und ihr Zugang ist ein Sitzungskeks auf einem Gerät. Das ist
+         *     genug, um eine Anlage scharf zu schalten - im schlimmsten Fall wird das lästig -, und zu wenig,
+         *     um sie abzuschalten. Dafür gibt es das Bedienteil.
+         */
+        post: operations["arm_alarm_api_v1_control_alarm_arm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/control/actuators/{key}": {
         parameters: {
             query?: never;
@@ -712,6 +736,43 @@ export interface components {
             ok: boolean;
             /** Message De */
             message_de: string;
+        };
+        /** AlarmArmIn */
+        AlarmArmIn: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "home" | "away";
+        };
+        /** AlarmArmOut */
+        AlarmArmOut: {
+            /** Ok */
+            ok: boolean;
+            alarm: components["schemas"]["AlarmOut"];
+            /** Message De */
+            message_de: string;
+        };
+        /**
+         * AlarmOut
+         * @description Die Alarmanlage, so weit sie dieses Werkzeug angeht.
+         *
+         *     **Scharf ja, unscharf nein.** Die Anzeige hängt in der Küche, Gäste gehen daran vorbei, und
+         *     ihr Zugang ist ein Sitzungskeks auf einem Gerät - schwächer als ein Code am Bedienteil.
+         *     Deshalb kennt diese Schnittstelle nur das Schärfen. Wer entschärfen will, tut es dort, wo es
+         *     hingehört, und `can_arm` sagt, ob überhaupt geschaltet werden darf.
+         */
+        AlarmOut: {
+            /** Present */
+            present: boolean;
+            /** State */
+            state: number | null;
+            /** State De */
+            state_de: string;
+            /** Can Arm */
+            can_arm: boolean;
+            /** Observed At */
+            observed_at: string | null;
         };
         /**
          * AutoProfile
@@ -2786,6 +2847,14 @@ export interface components {
             today_kwh: {
                 [key: string]: number;
             };
+            /**
+             * @default {
+             *       "present": false,
+             *       "state_de": "nicht eingerichtet",
+             *       "can_arm": false
+             *     }
+             */
+            alarm: components["schemas"]["AlarmOut"];
             system: components["schemas"]["SystemStatusOut"];
         };
         /**
@@ -4595,6 +4664,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvoiceReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    arm_alarm_api_v1_control_alarm_arm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlarmArmIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlarmArmOut"];
                 };
             };
             /** @description Validation Error */

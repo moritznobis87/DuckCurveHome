@@ -34,6 +34,13 @@ sensors:
   - { key: buffer_temp_mid_bottom_c, entity: sensor.speicher_3_temperature, unit: "°C", stale_after_s: 3600 }
   - { key: buffer_temp_bottom_c,     entity: sensor.speicher_5_temperature, unit: "°C", stale_after_s: 3600 }
 
+  # --- Alarmanlage (Lupusec über die HA-Integration) ---
+  # Der Zustand als Zahl: 0 unscharf, 1 zu Hause scharf, 2 unterwegs scharf, 3 schaltet gerade,
+  # 4 ausgelöst. `kind: alarm` übersetzt die Zustandswörter von Home Assistant.
+  # Scharf schalten lässt sich die Anlage erst, wenn im Add-on `alarm_entity` gesetzt und
+  # `alarm_arm_enabled` eingeschaltet ist. Unscharf schaltet DCH nie.
+  # - { key: alarm_state, entity: alarm_control_panel.lupusec, kind: alarm, stale_after_s: 1800 }
+
   # --- Fensterkontakte der Alarmanlage (Lupusec über die HA-Integration) ---
   # Ein Kontakt je Raum, unter der Controme-Kennung dieses Raums: `room_<id>_window`, 1 = offen.
   # Damit steht das Fenster auf der Raumseite neben der Temperatur, und ein gelüfteter Raum wird

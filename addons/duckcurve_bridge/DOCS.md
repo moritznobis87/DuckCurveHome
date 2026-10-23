@@ -434,6 +434,28 @@ später unter Wärme, Reiter Räume. Steht dort stattdessen `controme liefert ni
 Adresse oder die Haus-Kennung nicht; `controme poll failed` heißt, der Mini-Server ist nicht
 erreichbar. Bleibt der Host leer, ist die Quelle aus.
 
+## Alarmanlage: Zustand lesen, scharf schalten (ab 0.11.0)
+
+Die Anlage wird über ihre Home-Assistant-Integration gelesen, wie jede andere Größe: ein Eintrag
+`{ key: alarm_state, entity: alarm_control_panel.<deine>, kind: alarm }` in der Entity-Zuordnung.
+Daraus wird eine Zahl: 0 unscharf, 1 zu Hause scharf, 2 unterwegs scharf, 3 schaltet gerade,
+4 ausgelöst.
+
+Zum Schärfen zwei Optionen:
+
+```yaml
+alarm_entity: "alarm_control_panel.lupusec"
+alarm_arm_enabled: true
+```
+
+Danach steht im Dock der Startseite ein Schild. Es zeigt den Zustand und öffnet zwei Knöpfe:
+„Zu Hause" und „Unterwegs".
+
+**Unscharf schaltet die Bridge nie**, und das ist kein Versehen. Die Wandanzeige hängt in der
+Küche, Gäste gehen daran vorbei, und ihr Zugang ist ein Sitzungskeks auf einem Gerät - schwächer
+als ein Code am Bedienteil. Scharfschalten kann im schlimmsten Fall lästig werden;
+Unscharfschalten wäre ein Weg an der Alarmanlage vorbei.
+
 ## Wächter-Automation (empfohlen, Rückfallebene E1)
 
 Gibt Duck Curve Home die Wärmepumpe frei und reißt danach die Verbindung ab, bliebe der Kontakt stehen, wo

@@ -211,6 +211,23 @@ class BatteryModeIn(BaseModel):
     reserve_soc: float | None = Field(default=None, ge=0.0, le=0.5)
 
 
+class AlarmOut(BaseModel):
+    """Die Alarmanlage, so weit sie dieses Werkzeug angeht.
+
+    **Scharf ja, unscharf nein.** Die Anzeige hängt in der Küche, Gäste gehen daran vorbei, und
+    ihr Zugang ist ein Sitzungskeks auf einem Gerät - schwächer als ein Code am Bedienteil.
+    Deshalb kennt diese Schnittstelle nur das Schärfen. Wer entschärfen will, tut es dort, wo es
+    hingehört, und `can_arm` sagt, ob überhaupt geschaltet werden darf.
+    """
+
+    present: bool
+    # 0 unscharf, 1 zu Hause scharf, 2 unterwegs scharf, 3 schaltet gerade, 4 ausgelöst.
+    state: float | None
+    state_de: str
+    can_arm: bool
+    observed_at: datetime | None
+
+
 class LiveStateOut(BaseModel):
     snapshot: EnergySnapshot
     buffer: BufferState
@@ -220,6 +237,9 @@ class LiveStateOut(BaseModel):
     stove: StoveLiveOut = StoveLiveOut()
     price_rank: float | None
     today_kwh: dict[str, float]
+    alarm: AlarmOut = AlarmOut(
+        present=False, state=None, state_de="nicht eingerichtet", can_arm=False, observed_at=None
+    )
     system: SystemStatusOut
 
 
@@ -228,6 +248,16 @@ class HistoryOut(BaseModel):
     end: datetime
     resolution_s: int = 60
     rows: list[dict[str, float | str | None]]
+
+
+class AlarmArmIn(BaseModel):
+    mode: Literal["home", "away"]
+
+
+class AlarmArmOut(BaseModel):
+    ok: bool
+    alarm: AlarmOut
+    message_de: str
 
 
 class ActuatorCommandIn(BaseModel):

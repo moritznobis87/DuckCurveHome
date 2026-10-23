@@ -23,6 +23,10 @@ export DCH_BRIDGE_MCZ_HOST="$(bashio::config 'mcz_host' '')"
 export DCH_BRIDGE_MCZ_PORT="$(bashio::config 'mcz_port')"
 export DCH_BRIDGE_MCZ_POLL_INTERVAL_S="$(bashio::config 'mcz_poll_interval_s')"
 export DCH_BRIDGE_MCZ_ALLOW_CONTROL="$(bashio::config 'mcz_allow_control')"
+# Alarmanlage. Gelesen wird sie über die Entity-Zuordnung; diese beiden Werte brauchen nur das
+# Scharfschalten. Unscharf schaltet die Bridge nie.
+export DCH_BRIDGE_ALARM_ENTITY="$(bashio::config 'alarm_entity' '')"
+export DCH_BRIDGE_ALARM_ARM_ENABLED="$(bashio::config 'alarm_arm_enabled')"
 # Einzelraumregelung. Leerer Host heißt: Quelle aus; house_id 0 heißt suchen.
 export DCH_BRIDGE_CONTROME_HOST="$(bashio::config 'controme_host' '')"
 export DCH_BRIDGE_CONTROME_HOUSE_ID="$(bashio::config 'controme_house_id')"

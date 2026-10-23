@@ -29,6 +29,7 @@ from dch_api.errors import DchError
 from dch_api.infrastructure.history import HistoryStore
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
+    AlarmOut,
     BackfillResultOut,
     BatteryLiveOut,
     EnergySummaryOut,
@@ -108,6 +109,8 @@ class DemoRunner:
         self.history = HistoryStore(timedelta(hours=settings.history_retention_hours))
         # Von Hand gestellte Sollwerte der Vorfuehrung, Raum auf Grad.
         self._room_setpoints: dict[int, float] = {}
+        # Die Alarmanlage der Vorfuehrung: unscharf, bis jemand drueckt.
+        self._alarm: float = 0.0
         self.broker = SseBroker()
         self.mode = OperatingMode(system_mode=SystemMode.AUTO, auto_profile=AutoProfile.SMART)
         self.decisions: deque[Decision] = deque(maxlen=300)
@@ -526,6 +529,14 @@ class DemoRunner:
         self._room_setpoints[room_id] = werte
         return True, werte, f"{raum.name} steht jetzt auf {werte:.1f} Grad."
 
+    async def arm_alarm(self, mode: str) -> tuple[bool, str]:
+        """Auch die Vorfuehrung schaltet wirklich scharf - im Arbeitsspeicher."""
+        if mode not in ("home", "away"):
+            raise DchError("invalid_mode", "Nur 'home' oder 'away'.", 422)
+        self._alarm = 1.0 if mode == "home" else 2.0
+        wort = "zu Hause" if mode == "home" else "unterwegs"
+        return True, f"Alarmanlage wird {wort} scharf geschaltet."
+
     async def room_effect(self, room_id: int, delta_k: float) -> RoomEffectOut:
         """Dieselbe Rechnung wie im Betrieb, mit den Preisen und dem Wetter der Vorfuehrung."""
         raum = next((r for r in demo_rooms.ROOMS if r.id == room_id), None)
@@ -716,6 +727,15 @@ class DemoRunner:
             operating_mode=self._effective_mode(self.now),
             price_rank=price_rank(prices, self.now),
             today_kwh=self._today_kwh(),
+            alarm=AlarmOut(
+                present=True,
+                state=self._alarm,
+                state_de={0.0: "unscharf", 1.0: "zu Hause scharf", 2.0: "unterwegs scharf"}[
+                    self._alarm
+                ],
+                can_arm=True,
+                observed_at=self.now,
+            ),
             system=SystemStatusOut(
                 mode=self.settings.mode,
                 server_time=self.now,

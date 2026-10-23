@@ -30,7 +30,7 @@ class SensorMap(BaseModel):
     scale: float | None = None  # explizite Skalierung, sonst aus unit abgeleitet
     sign: SignConvention = "as_is"
     stale_after_s: int = 120
-    kind: Literal["number", "binary"] = "number"
+    kind: Literal["number", "binary", "alarm"] = "number"
 
 
 class ActuatorMap(BaseModel):
@@ -117,6 +117,21 @@ UNIT_SCALE: dict[str, float] = {
     "EUR/kWh": 100.0,
     "ct/kWh": 1.0,
 }
+# Der Zustand einer Alarmanlage ist ein Wort, kein Messwert. Als Zahl bleibt er in derselben
+# Telemetrie wie alles andere, und die Reihenfolge ist die der Verbindlichkeit: 0 offen, 4 Alarm.
+# Was Home Assistant sonst noch kennt (armed_night, armed_vacation, armed_custom_bypass), zaehlt
+# als "unterwegs scharf" - fuer dieses Haus ist die Unterscheidung ohne Folge.
+ALARM_STATES: dict[str, float] = {
+    "disarmed": 0.0,
+    "armed_home": 1.0,
+    "armed_night": 2.0,
+    "armed_vacation": 2.0,
+    "armed_custom_bypass": 2.0,
+    "armed_away": 2.0,
+    "arming": 3.0,
+    "pending": 3.0,
+    "triggered": 4.0,
+}
 UNAVAILABLE_STATES = {"unavailable", "none", ""}
 UNKNOWN_STATES = {"unknown"}
 
@@ -146,6 +161,16 @@ def normalize(
     if s in UNKNOWN_STATES:
         return RawReading(
             key=key, value=None, observed_at=at, quality=Quality.UNKNOWN, source=source
+        )
+    if isinstance(m, SensorMap) and m.kind == "alarm":
+        wert = ALARM_STATES.get(s)
+        return RawReading(
+            key=key,
+            value=wert,
+            observed_at=at,
+            # Ein unbekanntes Wort ist kein Zustand: lieber nichts melden als "unscharf" raten.
+            quality=Quality.OK if wert is not None else Quality.UNKNOWN,
+            source=source,
         )
     if isinstance(m, ActuatorMap) or m.kind == "binary":
         return RawReading(
