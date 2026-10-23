@@ -349,23 +349,32 @@ def test_die_vorfuehrung_zeigt_erfundene_raeume(client: TestClient) -> None:
 # ------------------------------------------------------------------ Sollwert stellen
 
 
-def test_der_sollwert_laesst_sich_stellen_und_wird_gerundet(client: TestClient) -> None:
-    """Halbe Grad, und die Antwort nennt den Wert, der wirklich steht."""
-    r = client.post("/api/v1/rooms/1/setpoint", json={"setpoint_c": 21.3})
+def test_der_sollwert_laesst_sich_stellen_und_wird_auf_zehntel_gerundet(client: TestClient) -> None:
+    """Zehntel, wie Controme sie führt - und die Antwort nennt den Wert, der wirklich steht.
+
+    Hier stand erst ein Raster von einem halben Grad. Die Anlage meldet einen Raum mit 22,2 Grad;
+    ein solches Raster hätte ihn beim ersten Tippen um 0,2 K verschoben, ohne es zu sagen.
+    """
+    r = client.post("/api/v1/rooms/1/setpoint", json={"setpoint_c": 21.34})
     assert r.status_code == 200, r.text
     d = r.json()
     assert d["ok"] is True
-    assert d["setpoint_c"] == 21.5
-    assert d["room"]["setpoint_c"] == 21.5
+    assert d["setpoint_c"] == 21.3
+    assert d["room"]["setpoint_c"] == 21.3
     # Und er bleibt stehen, nicht nur in der Antwort.
     liste = client.get("/api/v1/rooms").json()
-    assert next(x for x in liste["rooms"] if x["id"] == 1)["setpoint_c"] == 21.5
+    assert next(x for x in liste["rooms"] if x["id"] == 1)["setpoint_c"] == 21.3
 
 
 def test_unsinnige_sollwerte_werden_abgewiesen(client: TestClient) -> None:
     """Die Grenzen sind kein Geschmack, sondern ein Schutz gegen Tippfehler."""
     assert client.post("/api/v1/rooms/1/setpoint", json={"setpoint_c": 40}).status_code == 422
-    assert client.post("/api/v1/rooms/1/setpoint", json={"setpoint_c": 5}).status_code == 422
+    assert client.post("/api/v1/rooms/1/setpoint", json={"setpoint_c": 2}).status_code == 422
+
+
+def test_frostschutz_bleibt_erreichbar(client: TestClient) -> None:
+    """Ein Raum dieses Hauses steht auf 8 Grad. Wer ihn anhebt, muss zurück können."""
+    assert client.post("/api/v1/rooms/1/setpoint", json={"setpoint_c": 8.0}).status_code == 200
 
 
 def test_ein_unbekannter_raum_wird_nicht_gestellt(client: TestClient) -> None:

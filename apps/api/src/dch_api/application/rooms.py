@@ -42,17 +42,21 @@ STEPS = (5, 15, 60)
 # Grenzen eines von Hand gestellten Sollwerts. Dieselben Zahlen stehen in der Brücke; dort sind sie
 # die letzte Prüfung vor Controme, hier die erste vor dem Bedienenden, damit eine Fehleingabe eine
 # Meldung bekommt statt einer Reise durchs halbe System.
-SOLL_MIN = 12.0
-SOLL_MAX = 26.0
-# Controme nimmt feinere Werte an; eine Fußbodenheizung beantwortet sie nicht. Ein Zehntel Kelvin
-# liegt weit unter dem, was ein Raum mit 25 Stunden Zeitkonstante je zeigt, und erzeugte nur eine
-# Scheingenauigkeit in der Anzeige.
+#
+# **Fünf Grad, nicht zwölf.** Diese Anlage führt einen Raum auf 8,0 Grad (Frostschutz, gesehen am
+# 23.10.2026). Eine Untergrenze von 12 hätte ihn unerreichbar gemacht.
+SOLL_MIN = 5.0
+SOLL_MAX = 30.0
+# **Gerundet wird auf Zehntel, verstellt in halben Graden.** Das ist kein Widerspruch: Die Stufe
+# der Knöpfe ist eine Frage der Bedienung, das Raster eine der Wahrheit. Controme führt Zehntel -
+# die Anlage meldet einen Raum mit 22,2 Grad -, und ein Raster von einem halben Grad hätte diesen
+# Wert beim ersten Tippen stillschweigend um 0,2 K verschoben.
 SOLL_SCHRITT = 0.5
 
 
 def runde_soll(wert: float) -> float:
-    """Auf den nächsten halben Grad, damit gestellter und angezeigter Wert dieselben sind."""
-    return round(round(wert / SOLL_SCHRITT) * SOLL_SCHRITT, 2)
+    """Auf ein Zehntel genau: so fein, wie Controme es führt, und nicht feiner."""
+    return round(wert, 1)
 
 
 # Ab wann ein Raumwert als alt gilt. Contromes Funkfühler melden alle 3 bis 5 Minuten, die Brücke

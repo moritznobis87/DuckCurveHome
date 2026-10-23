@@ -47,11 +47,14 @@ log = structlog.get_logger(__name__)
 
 SOURCE = "controme"
 # Grenzen, in denen ein Sollwert ueberhaupt plausibel ist. Sie sind kein Komfortgeschmack, sondern
-# ein Schutz gegen Tippfehler und gegen ein Programm, das sich verrechnet: unter 12 Grad friert
-# eine Fussbodenheizung niemanden auf, sie laesst nur das Haus auskuehlen, ueber 26 Grad heizt sie
-# gegen jedes Fenster an.
-SOLL_MIN = 12.0
-SOLL_MAX = 26.0
+# ein Schutz gegen Tippfehler und gegen ein Programm, das sich verrechnet.
+#
+# **Fuenf Grad, nicht zwoelf.** Hier standen erst 12 bis 26. Das Protokoll der Anlage vom
+# 23.10.2026 zeigt einen Raum auf 8,0 Grad - Frostschutz fuer einen Raum, der nicht geheizt wird.
+# Eine Untergrenze von 12 haette diesen Wert unerreichbar gemacht: Wer ihn einmal anhebt, bekaeme
+# ihn nie wieder zurueck.
+SOLL_MIN = 5.0
+SOLL_MAX = 30.0
 # Welche Haus-Kennungen beim Suchen probiert werden, in dieser Reihenfolge.
 HAUS_KANDIDATEN = (2, 1, 3)
 # Contromes Funkfuehler melden alle 3 bis 5 Minuten. Haeufiger zu fragen erzeugt Last ohne Ertrag.

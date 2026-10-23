@@ -118,7 +118,7 @@ Kommt `[]`, ist es die falsche Haus-Kennung; kommt eine Liste von Etagen mit `ra
 
 Ohne Zugangsdaten liest die Brücke nur. Mit ihnen lässt sich auf der Räume-Seite der Sollwert
 eines Raums stellen, dauerhaft und auf halbe Grad gerundet (`POST /rooms/{id}/setpoint`,
-Grenzen 12 bis 26 Grad). Geliefert werden je Raum `room_<id>_temp_c`, `room_<id>_setpoint_c`,
+Grenzen 5 bis 30 Grad, auf Zehntel gerundet). Geliefert werden je Raum `room_<id>_temp_c`, `room_<id>_setpoint_c`,
 `room_<id>_offset_k`, `room_<id>_humidity_pct` und `room_<id>_valve`; die Namen, Etagen und
 Kreiszahlen gehen als Ereignis `rooms.list` mit, weil sie keine Zahlen sind. Zu sehen ist das
 alles unter `/waerme/raeume`.

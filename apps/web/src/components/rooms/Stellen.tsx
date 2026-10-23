@@ -22,9 +22,15 @@ import { zahl1 } from "./palette";
  * **Gaeste sehen alles und stellen nichts.** Der Knopf bleibt sichtbar und sagt, warum er nicht
  * geht; ein fehlender Knopf laesst suchen.
  */
+// **Verstellt wird in halben Graden, gerundet auf Zehntel.** Die Stufe der Knoepfe ist eine Frage
+// der Bedienung, das Raster eine der Wahrheit: Controme fuehrt Zehntel, und ein Raum dieser
+// Anlage steht auf 22,2. Wer ihn auf 22,0 zoege, weil die Oberflaeche ein halbes Grad fuer die
+// einzig moegliche Stufe haelt, haette ihn verstellt, ohne es zu sagen.
 const SCHRITT = 0.5;
-const MIN = 12;
-const MAX = 26;
+// Fuenf Grad, weil ein Raum dieses Hauses auf Frostschutz steht (8,0 Grad, gesehen am
+// 23.10.2026). Eine Untergrenze darueber machte diesen Wert unerreichbar.
+const MIN = 5;
+const MAX = 30;
 /** So lange wird nach der letzten Berührung gewartet, bevor die Wirkung neu gerechnet wird. */
 const RUHE_MS = 300;
 
@@ -39,7 +45,8 @@ function Zeile({ k, v, stark = false }: { k: string; v: string; stark?: boolean 
 
 export function Stellen({ raum, readOnly, onClose, onDone }: { raum: RoomLive; readOnly: boolean; onClose: () => void; onDone: () => void }) {
   const aktuell = raum.setpoint_c ?? 21;
-  const [soll, setSoll] = useState(Math.round(aktuell / SCHRITT) * SCHRITT);
+  // Angefangen wird beim Wert, der dasteht - nicht beim naechsten Rasterpunkt.
+  const [soll, setSoll] = useState(Math.round(aktuell * 10) / 10);
   const [wirkung, setWirkung] = useState<RoomEffect | null>(null);
   const [busy, setBusy] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);

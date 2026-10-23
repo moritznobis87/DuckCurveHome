@@ -84,7 +84,8 @@ Contromes eigene Beschreibung. Drei Eigenheiten, alle drei schon einmal jemandem
 Schrägstrich am Ende gehört dazu; der Wert muss eine nackte Zahl mit Punkt sein, sonst kommt ein
 `403` ohne Begründung; und **zum Schreiben sind die Zugangsdaten Pflicht**, anders als zum Lesen.
 
-Gestellt wird **dauerhaft**, ohne Frist. Controme kennt auch einen Sollwert auf Zeit; er wäre eine
+Gestellt wird **dauerhaft**, ohne Frist, zwischen 5 und 30 Grad und auf Zehntel gerundet (die
+Anlage führt Zehntel: ein Raum steht auf 22,2, ein anderer auf 8,0 Frostschutz). Controme kennt auch einen Sollwert auf Zeit; er wäre eine
 zweite Wahrheit neben der, die der Regler kennt, und ein Programm, das ohnehin bei jedem Takt neu
 entscheidet, braucht ihn nicht. Wer anhebt, nimmt selbst wieder zurück. Jede Änderung steht als
 Ereignis `rooms.setpoint` mit altem und neuem Wert in der Datenbank.

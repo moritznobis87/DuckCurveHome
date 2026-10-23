@@ -422,7 +422,8 @@ fragen bringt nichts, die Funkfühler melden alle drei bis fünf Minuten.
 
 Mit Zugangsdaten wird aus der Anzeige eine Bedienung: Auf der Räume-Seite öffnet ein Tippen auf
 einen Raum ein Fenster, in dem sich die Solltemperatur in halben Grad verstellen lässt, dauerhaft
-und in Grenzen von 12 bis 26 Grad. Die Brücke schickt sie an denselben Endpunkt, den auch
+und in Grenzen von 5 bis 30 Grad. Fünf Grad als Untergrenze, weil ein Raum dieses Hauses auf
+Frostschutz steht; gerundet wird auf Zehntel, weil Controme sie führt. Die Brücke schickt sie an denselben Endpunkt, den auch
 Contromes eigene Oberfläche benutzt, und fragt sofort danach neu ab, damit die Anzeige nicht zwei
 Minuten lang den alten Wert zeigt. Lehnt Controme ab, steht der Grund im Fenster; `403` heißt
 fast immer falsche Zugangsdaten.

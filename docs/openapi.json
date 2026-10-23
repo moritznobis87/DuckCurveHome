@@ -6995,8 +6995,8 @@
         "properties": {
           "setpoint_c": {
             "type": "number",
-            "maximum": 26.0,
-            "minimum": 12.0,
+            "maximum": 30.0,
+            "minimum": 5.0,
             "title": "Setpoint C"
           }
         },
