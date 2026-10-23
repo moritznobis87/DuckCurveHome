@@ -39,6 +39,22 @@ _META = re.compile(r"^raum\.(\d+)\.(name|etage|kreise|rang)$")
 # Kurve, die in diesem Takt gar nichts Neues sagt.
 STEPS = (5, 15, 60)
 
+# Grenzen eines von Hand gestellten Sollwerts. Dieselben Zahlen stehen in der Brücke; dort sind sie
+# die letzte Prüfung vor Controme, hier die erste vor dem Bedienenden, damit eine Fehleingabe eine
+# Meldung bekommt statt einer Reise durchs halbe System.
+SOLL_MIN = 12.0
+SOLL_MAX = 26.0
+# Controme nimmt feinere Werte an; eine Fußbodenheizung beantwortet sie nicht. Ein Zehntel Kelvin
+# liegt weit unter dem, was ein Raum mit 25 Stunden Zeitkonstante je zeigt, und erzeugte nur eine
+# Scheingenauigkeit in der Anzeige.
+SOLL_SCHRITT = 0.5
+
+
+def runde_soll(wert: float) -> float:
+    """Auf den nächsten halben Grad, damit gestellter und angezeigter Wert dieselben sind."""
+    return round(round(wert / SOLL_SCHRITT) * SOLL_SCHRITT, 2)
+
+
 # Ab wann ein Raumwert als alt gilt. Contromes Funkfühler melden alle 3 bis 5 Minuten, die Brücke
 # fragt alle 2 Minuten; eine Viertelstunde Stille ist also kein Takt mehr, sondern ein Ausfall.
 STALE_S = 900.0

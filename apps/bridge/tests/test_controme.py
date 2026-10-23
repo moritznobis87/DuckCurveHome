@@ -331,3 +331,87 @@ def test_ein_schema_im_hostfeld_wird_abgeschnitten() -> None:
     q, _, _ = _quelle()
     assert ContromeRooms("http://192.0.2.50/", q.on_readings).host == "192.0.2.50"
     assert ContromeRooms("https://192.0.2.50", q.on_readings).host == "192.0.2.50"
+
+
+# --------------------------------------------------------------------------- Sollwert stellen
+
+
+async def _nichts(_items: list) -> None:
+    """Die Rueckgabe interessiert beim Schreiben nicht."""
+
+
+def _schreib_client(aufzeichnung: list[httpx.Request], status: int = 200):
+    def antwort(request: httpx.Request) -> httpx.Response:
+        aufzeichnung.append(request)
+        return httpx.Response(status, text="Soll gesetzt" if status == 200 else "Forbidden")
+
+    return lambda: httpx.AsyncClient(transport=httpx.MockTransport(antwort))
+
+
+@pytest.mark.asyncio
+async def test_sollwert_geht_als_formular_an_den_setz_endpunkt() -> None:
+    """Pfad, Felder und Zahlenformat sind die drei Stellen, an denen Controme stumm ablehnt."""
+    gesehen: list[httpx.Request] = []
+    quelle = ContromeRooms(
+        "192.168.1.50",
+        _nichts,  # type: ignore[arg-type]
+        house_id=2,
+        user="moritz",
+        password="geheim",
+        client_factory=_schreib_client(gesehen),
+    )
+    assert await quelle.setze_soll(4, 21.5) == 21.5
+    (req,) = gesehen
+    assert req.method == "POST"
+    assert str(req.url) == "http://192.168.1.50/set/json/v1/2/soll/4/"
+    rumpf = req.content.decode()
+    assert "user=moritz" in rumpf
+    assert "password=geheim" in rumpf
+    # Nackte Zahl mit Punkt: "21,50" oder "21.5 °C" quittiert der Mini-Server mit einem 403 ohne
+    # Begruendung.
+    assert "soll=21.50" in rumpf
+
+
+@pytest.mark.asyncio
+async def test_ohne_zugangsdaten_wird_gar_nicht_erst_geschickt() -> None:
+    gesehen: list[httpx.Request] = []
+    quelle = ContromeRooms(
+        "192.168.1.50",
+        _nichts,  # type: ignore[arg-type]
+        house_id=2,
+        client_factory=_schreib_client(gesehen),
+    )
+    with pytest.raises(RuntimeError, match="Zugangsdaten"):
+        await quelle.setze_soll(4, 21.5)
+    assert gesehen == []
+
+
+@pytest.mark.asyncio
+async def test_unsinnige_werte_erreichen_die_anlage_nicht() -> None:
+    gesehen: list[httpx.Request] = []
+    quelle = ContromeRooms(
+        "192.168.1.50",
+        _nichts,  # type: ignore[arg-type]
+        house_id=2,
+        user="u",
+        password="p",
+        client_factory=_schreib_client(gesehen),
+    )
+    for wert in (4.0, 35.0):
+        with pytest.raises(ValueError):
+            await quelle.setze_soll(4, wert)
+    assert gesehen == []
+
+
+@pytest.mark.asyncio
+async def test_ein_403_wird_zu_einem_satz() -> None:
+    quelle = ContromeRooms(
+        "192.168.1.50",
+        _nichts,  # type: ignore[arg-type]
+        house_id=2,
+        user="u",
+        password="falsch",
+        client_factory=_schreib_client([], status=403),
+    )
+    with pytest.raises(RuntimeError, match="403"):
+        await quelle.setze_soll(4, 21.0)

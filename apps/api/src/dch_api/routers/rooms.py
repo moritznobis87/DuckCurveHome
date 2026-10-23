@@ -5,13 +5,19 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 
 from dch_api.application import rooms as room_logic
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
 from dch_api.errors import DchError
-from dch_api.schemas import RoomHistoryOut, RoomsLiveOut
+from dch_api.schemas import (
+    RoomEffectOut,
+    RoomHistoryOut,
+    RoomSetpointIn,
+    RoomSetpointOut,
+    RoomsLiveOut,
+)
 from hems_core.simulation import BERLIN
 
 router = APIRouter(prefix="/rooms", tags=["Räume"])
@@ -20,6 +26,43 @@ router = APIRouter(prefix="/rooms", tags=["Räume"])
 @router.get("", response_model=RoomsLiveOut, summary="Räume im Augenblick")
 async def rooms_live(runner: Annotated[Runtime, Depends(get_runner)]) -> RoomsLiveOut:
     return await runner.rooms_live()
+
+
+@router.post(
+    "/{room_id}/setpoint",
+    response_model=RoomSetpointOut,
+    summary="Solltemperatur eines Raums stellen",
+)
+async def set_setpoint(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    room_id: int,
+    body: Annotated[RoomSetpointIn, Body()],
+) -> RoomSetpointOut:
+    """Den Sollwert dauerhaft setzen - derselbe Griff, den Contromes eigene Oberfläche anbietet.
+
+    Gerundet wird auf halbe Grad. Eine Fußbodenheizung beantwortet feinere Stufen nicht, und eine
+    Anzeige, die 21,3 zeigt, wo 21,5 steht, wäre falsch.
+    """
+    ok, gestellt, text = await runner.set_room_setpoint(room_id, body.setpoint_c)
+    live = await runner.rooms_live()
+    raum = next((r for r in live.rooms if r.id == room_id), None)
+    if raum is None:
+        raise DchError("unknown_room", f"Raum {room_id} ist nicht bekannt.", 404)
+    return RoomSetpointOut(ok=ok, room=raum, setpoint_c=gestellt, message_de=text)
+
+
+@router.get(
+    "/{room_id}/wirkung",
+    response_model=RoomEffectOut,
+    summary="Was eine Sollwertänderung bedeutet",
+)
+async def room_effect(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    room_id: int,
+    delta_k: Annotated[float, Query(ge=-3.0, le=3.0, description="Änderung in Kelvin")] = 0.5,
+) -> RoomEffectOut:
+    """Geschätzte Kosten je Tag und das Verschiebepotenzial des Raums als Wärmespeicher."""
+    return await runner.room_effect(room_id, delta_k)
 
 
 @router.get("/history", response_model=RoomHistoryOut, summary="Raumtemperaturen eines Tages")

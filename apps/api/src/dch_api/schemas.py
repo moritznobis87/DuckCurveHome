@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from dch_api.application import rooms as rooms_logic
 from dch_api.application.tibber_invoice import InvoiceFinding, MeasuredPeriod, TibberInvoice
 from hems_core.accounting import EnergyTotals, HeatForecastPoint, PvTaxTotals
 from hems_core.domain import (
@@ -780,6 +781,52 @@ class RoomsLiveOut(BaseModel):
     # unter Ersatznamen („Raum 5"), und die Anzeige soll sagen können, warum.
     named: bool
     rooms: list[RoomLiveOut]
+
+
+class RoomSetpointIn(BaseModel):
+    """Ein von Hand gestellter Sollwert, dauerhaft.
+
+    Ohne Frist und ohne Rücknahme: Wer in Controme am Sollwert dreht, meint es so, bis er es
+    anders meint. Ein Wert auf Zeit wäre eine zweite Wahrheit neben der, die der Regler kennt.
+    """
+
+    setpoint_c: float = Field(ge=rooms_logic.SOLL_MIN, le=rooms_logic.SOLL_MAX)
+
+
+class RoomSetpointOut(BaseModel):
+    ok: bool
+    room: RoomLiveOut
+    # Was gestellt wurde, nachdem gerundet wurde - nicht, was gewünscht war.
+    setpoint_c: float
+    message_de: str
+
+
+class RoomEffectOut(BaseModel):
+    """Was eine Sollwertänderung in diesem Raum bedeutet - geschätzt, mit Herkunft im Satz.
+
+    Die Zahlen sind klein und ihre Grundlage ist eine Annahme; beides muss die Anzeige sagen. Der
+    Zweck ist nicht die zweite Nachkommastelle, sondern die Größenordnung: ob ein halbes Grad
+    Cent oder Euro kostet, und ob Vorladen vor dem Preishoch überhaupt lohnt.
+    """
+
+    room_id: int
+    name: str
+    delta_k: float
+    share: float
+    daily_kwh_th: float
+    daily_kwh_el: float
+    daily_eur: float
+    store_kwh_th: float
+    store_kwh_el: float
+    shift_saving_eur: float | None
+    half_life_h: float
+    cop: float
+    # Woraus gerechnet wurde, damit die Zahlen nachzuvollziehen sind.
+    outdoor_c: float
+    price_ct_kwh: float | None
+    cheap_ct_kwh: float | None
+    expensive_ct_kwh: float | None
+    note_de: str
 
 
 class RoomSeriesOut(BaseModel):

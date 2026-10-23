@@ -43,6 +43,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    RoomEffectOut,
     RoomHistoryOut,
     RoomLiveOut,
     RoomSeriesOut,
@@ -77,7 +78,7 @@ from hems_core.planning import (
     price_rank,
 )
 from hems_core.simulation import BERLIN, DemoConfig, DemoHouse, new_demo_house
-from hems_core.thermal import compute_buffer_state
+from hems_core.thermal import compute_buffer_state, room_shift
 
 log = structlog.get_logger("demo")
 
@@ -105,6 +106,8 @@ class DemoRunner:
         self.tracker = HeatPumpTracker(self.hems.heat_pump)
         self.controller = HeatPumpController(self.hems)
         self.history = HistoryStore(timedelta(hours=settings.history_retention_hours))
+        # Von Hand gestellte Sollwerte der Vorfuehrung, Raum auf Grad.
+        self._room_setpoints: dict[int, float] = {}
         self.broker = SseBroker()
         self.mode = OperatingMode(system_mode=SystemMode.AUTO, auto_profile=AutoProfile.SMART)
         self.decisions: deque[Decision] = deque(maxlen=300)
@@ -503,13 +506,77 @@ class DemoRunner:
         return list(self.decisions)[:limit]
 
     # ------------------------------------------------------------------ Einzelraumregelung
+    async def set_room_setpoint(self, room_id: int, setpoint_c: float) -> tuple[bool, float, str]:
+        """In der Vorfuehrung wird wirklich gestellt - nur eben im Arbeitsspeicher.
+
+        Eine Vorfuehrung, in der ein Knopf nichts tut, ist schlimmer als keine: Sie zeigt die Form
+        und verschweigt, ob die Sache funktioniert. Der gesetzte Wert ueberschreibt den der
+        Raumliste, bis der Dienst neu startet.
+        """
+        werte = rooms.runde_soll(setpoint_c)
+        raum = next((r for r in demo_rooms.ROOMS if r.id == room_id), None)
+        if raum is None:
+            raise DchError("unknown_room", f"Raum {room_id} ist nicht bekannt.", 404)
+        if not (rooms.SOLL_MIN <= werte <= rooms.SOLL_MAX):
+            raise DchError(
+                "invalid_setpoint",
+                f"Sollwert muss zwischen {rooms.SOLL_MIN:.0f} und {rooms.SOLL_MAX:.0f} Grad liegen.",
+                422,
+            )
+        self._room_setpoints[room_id] = werte
+        return True, werte, f"{raum.name} steht jetzt auf {werte:.1f} Grad."
+
+    async def room_effect(self, room_id: int, delta_k: float) -> RoomEffectOut:
+        """Dieselbe Rechnung wie im Betrieb, mit den Preisen und dem Wetter der Vorfuehrung."""
+        raum = next((r for r in demo_rooms.ROOMS if r.id == room_id), None)
+        if raum is None:
+            raise DchError("unknown_room", f"Raum {room_id} ist nicht bekannt.", 404)
+        now = self.now
+        preise = [
+            iv.price_ct_kwh
+            for iv in (self.plan.intervals if self.plan else [])
+            if iv.price_ct_kwh is not None and now <= iv.ts < now + timedelta(hours=24)
+        ]
+        mittel = sum(preise) / len(preise) if preise else None
+        aussen = self.house.outdoor_temp_c(now)
+        wirkung = room_shift.effect(
+            delta_k=delta_k,
+            circuits=max(1, raum.circuits),
+            total_circuits=max(1, sum(r.circuits for r in demo_rooms.ROOMS)),
+            cfg=self.hems.heat_demand,
+            outdoor_c=aussen,
+            price_ct_kwh=mittel,
+            cheap_ct_kwh=min(preise) if preise else None,
+            expensive_ct_kwh=max(preise) if preise else None,
+        )
+        return RoomEffectOut(
+            room_id=room_id,
+            name=raum.name,
+            delta_k=wirkung.delta_k,
+            share=wirkung.share,
+            daily_kwh_th=wirkung.daily_kwh_th,
+            daily_kwh_el=wirkung.daily_kwh_el,
+            daily_eur=wirkung.daily_eur,
+            store_kwh_th=wirkung.store_kwh_th,
+            store_kwh_el=wirkung.store_kwh_el,
+            shift_saving_eur=wirkung.shift_saving_eur,
+            half_life_h=wirkung.half_life_h,
+            cop=wirkung.cop,
+            outdoor_c=round(aussen, 1),
+            price_ct_kwh=round(mittel, 1) if mittel is not None else None,
+            cheap_ct_kwh=round(min(preise), 1) if preise else None,
+            expensive_ct_kwh=round(max(preise), 1) if preise else None,
+            note_de=wirkung.note_de,
+        )
+
     async def rooms_live(self) -> RoomsLiveOut:
         now = self.now
         out: list[RoomLiveOut] = []
         for r in demo_rooms.ROOMS:
-            ist = demo_rooms.temperature_c(r, now)
+            soll = self._room_setpoints.get(r.id, r.setpoint_c)
+            ist = demo_rooms.temperature_c(r, now) + (soll - r.setpoint_c)
             offset = demo_rooms.offset_k(r, now)
-            ziel = rooms.ziel(r.setpoint_c, offset)
+            ziel = rooms.ziel(soll, offset)
             out.append(
                 RoomLiveOut(
                     id=r.id,
@@ -517,12 +584,12 @@ class DemoRunner:
                     floor=r.floor,
                     circuits=r.circuits,
                     temp_c=ist,
-                    setpoint_c=r.setpoint_c,
+                    setpoint_c=soll,
                     offset_k=offset,
                     target_c=ziel,
                     humidity_pct=None,
                     valve=demo_rooms.valve(r, now),
-                    deviation_k=round(ist - (ziel or r.setpoint_c), 2),
+                    deviation_k=round(ist - (ziel or soll), 2),
                     observed_at=now,
                     quality=Quality.OK,
                 )

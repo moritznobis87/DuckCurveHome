@@ -5,16 +5,22 @@ und wie weit die Ventile am Heizkreisverteiler offen sind. Das ist genau die Sch
 Werkzeug bisher fehlte: Die Entnahme des Puffers war eine einzige Zahl, die als Rest einer
 Umkehrrechnung herausfiel. Mit den Ventilstellungen bekommt dieser Rest Zeugen.
 
-**Warum nur lesen.** Contromes Schnittstelle hat fuer Ausgaenge ausschliesslich Lese-Endpunkte;
-schreiben liesse sich nur der Sollwert, und das waere ein Eingriff in die Behaglichkeit eines
-bewohnten Hauses. Der Fussboden hat Zeitkonstanten von rund 13 Stunden, der Raum von rund 25 -
-auf dieser Skala gewinnt ein Optimierer durch feinere Ventiltaktung nichts. Die Regelung bleibt
-dort, wo sie hingehoert; wir sehen ihr zu.
+**Gelesen wird alles, geschrieben genau eines: der Sollwert.** Fuer Ausgaenge hat Controme nur
+Lese-Endpunkte - Ventile stellt weiter sein Regler, und das ist richtig so: Der Fussboden hat
+Zeitkonstanten von rund 13 Stunden, der Raum von rund 25, auf dieser Skala gewinnt niemand durch
+feinere Ventiltaktung. Der Sollwert dagegen ist genau der Griff, den auch ein Mensch benutzt,
+wenn ihm ein Zimmer zu kuehl ist, und ueber ihn laesst sich das Haus als Waermespeicher nutzen:
+vor einem Preishoch ein halbes Kelvin mehr, waehrend des Hochs wieder zurueck.
+
+Geschrieben wird dauerhaft, ohne Frist. Controme kennt auch einen Sollwert auf Zeit; er passt
+nicht zu einem Programm, das ohnehin bei jedem Takt neu entscheidet, und er waere eine zweite
+Wahrheit neben der eigenen. Wer anhebt, nimmt selbst wieder zurueck.
 
 **Ohne Anmeldung, und das ist kein Entwurf, sondern ein Befund.** Die Lese-Endpunkte des
 Mini-Servers antworten im Heimnetz ohne Zugangsdaten (gemessen am 21.10.2026). Das ist eine
 Schwaeche von Controme, keine Einladung: Die Quelle nimmt deshalb optional Benutzername und
-Passwort entgegen, damit sie weiterlaeuft, wenn Controme das eines Tages repariert.
+Passwort entgegen, damit sie weiterlaeuft, wenn Controme das eines Tages repariert. **Zum
+Schreiben sind sie Pflicht** - der Setz-Endpunkt verlangt sie als Formularfelder.
 
 **Die Haus-Kennung ist nicht verlaesslich 1.** Contromes eigene Dokumentation sagt, sie sei "aus
 unterschiedlichen Gruenden manchmal 2". Auf der Anlage, gegen die das hier gebaut wurde, ist sie
@@ -25,6 +31,7 @@ weniger, die jemand falsch setzen kann.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -39,6 +46,12 @@ from hems_core.protocol.frames import RawReading
 log = structlog.get_logger(__name__)
 
 SOURCE = "controme"
+# Grenzen, in denen ein Sollwert ueberhaupt plausibel ist. Sie sind kein Komfortgeschmack, sondern
+# ein Schutz gegen Tippfehler und gegen ein Programm, das sich verrechnet: unter 12 Grad friert
+# eine Fussbodenheizung niemanden auf, sie laesst nur das Haus auskuehlen, ueber 26 Grad heizt sie
+# gegen jedes Fenster an.
+SOLL_MIN = 12.0
+SOLL_MAX = 26.0
 # Welche Haus-Kennungen beim Suchen probiert werden, in dieser Reihenfolge.
 HAUS_KANDIDATEN = (2, 1, 3)
 # Contromes Funkfuehler melden alle 3 bis 5 Minuten. Haeufiger zu fragen erzeugt Last ohne Ertrag.
@@ -155,6 +168,7 @@ class ContromeRooms:
         user: str = "",
         password: str = "",
         timeout_s: float = 10.0,
+        client_factory: Callable[[], httpx.AsyncClient] | None = None,
     ) -> None:
         # Das Schema wird hier angehaengt, nicht erwartet. Wer "http://192.168.1.50" eintraegt,
         # bekaeme sonst "http://http://..."; der haeufigste Eingabefehler bei solchen Feldern,
@@ -170,6 +184,11 @@ class ContromeRooms:
         self._keys: list[str] = []
         self._last_ok: datetime | None = None
         self._fails = 0
+        # Nach einem gesetzten Sollwert soll nicht bis zum naechsten Takt gewartet werden.
+        self._wecken = asyncio.Event()
+        # Der Weg zum HTTP-Client ist eine Naht, damit ein Test antworten kann, ohne dass ein
+        # Mini-Server im Netz steht.
+        self._client_factory = client_factory or (lambda: httpx.AsyncClient(timeout=self.timeout_s))
 
     # ------------------------------------------------------------------ Auskunft
     @property
@@ -297,9 +316,52 @@ class ContromeRooms:
             for k, v in werte.items()
         ]
 
+    # ------------------------------------------------------------------ Stellen
+    async def setze_soll(self, raum_id: int, soll: float) -> float:
+        """Die Solltemperatur eines Raums dauerhaft setzen.
+
+        Der Endpunkt ist `set/json/v1/<haus>/soll/<raum>/` und nimmt Benutzername, Passwort und
+        den Wert als Formularfelder. Drei Dinge daran sind erfahrungsgemaess die Fehlerquellen,
+        und alle drei sind hier festgelegt: der Schraegstrich am Ende gehoert dazu, der Wert ist
+        eine nackte Zahl mit Punkt als Trennzeichen (wer "21 Grad" schickt, bekommt ein nacktes
+        403 ohne Begruendung), und ohne Zugangsdaten antwortet der Server gar nicht erst.
+
+        Zurueck kommt der gesetzte Wert, nicht Contromes Antwort: der Server bestaetigt mit einem
+        kurzen Text, nicht mit dem Raum. Ob es wirklich stand, sagt die naechste Abfrage - und die
+        wird gleich angestossen, damit die Anzeige nicht zwei Minuten lang den alten Wert zeigt.
+        """
+        if self._auth is None:
+            raise RuntimeError(
+                "Controme-Zugangsdaten fehlen: zum Lesen nicht noetig, zum Stellen Pflicht "
+                "(controme_user und controme_password in der Add-on-Konfiguration)."
+            )
+        if not (SOLL_MIN <= soll <= SOLL_MAX):
+            raise ValueError(
+                f"Sollwert {soll} liegt ausserhalb von {SOLL_MIN} bis {SOLL_MAX} Grad."
+            )
+        haus = self.house_id
+        if not haus:
+            raise RuntimeError("Haus-Kennung noch nicht gefunden - die erste Abfrage steht aus.")
+        benutzer, passwort = self._auth
+        url = f"http://{self.host}/set/json/v1/{haus}/soll/{raum_id}/"
+        async with self._client_factory() as client:
+            r = await client.post(
+                url,
+                data={"user": benutzer, "password": passwort, "soll": f"{soll:.2f}"},
+            )
+            if r.status_code == 403:
+                raise RuntimeError(
+                    "Controme lehnt ab (403): Zugangsdaten falsch, oder der Benutzer darf diesen "
+                    "Raum nicht stellen."
+                )
+            r.raise_for_status()
+        log.info("controme setpoint set", raum=raum_id, soll=soll)
+        self._wecken.set()
+        return soll
+
     # ------------------------------------------------------------------ Lauf
     async def run(self) -> None:
-        async with httpx.AsyncClient(timeout=self.timeout_s) as client:
+        async with self._client_factory() as client:
             while True:
                 try:
                     werte = await self._einmal(client)
@@ -323,5 +385,12 @@ class ContromeRooms:
                     log.warning("controme poll failed", error=str(exc), fails=self._fails)
                 # Rueckfalltakt: gegen einen abgeschalteten Mini-Server waeren es sonst gut
                 # 700 vergebliche Anfragen am Tag. Nach jedem Fehlschlag wird laenger gewartet,
-                # gedeckelt bei zehn Takten, und ein Erfolg setzt zurueck.
-                await asyncio.sleep(self.poll_interval_s * (1 + min(self._fails, 10)))
+                # gedeckelt bei zehn Takten, und ein Erfolg setzt zurueck. Ein gesetzter Sollwert
+                # bricht die Wartezeit ab: wer stellt, will das Ergebnis sehen und nicht zwei
+                # Minuten lang den alten Wert.
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(
+                        self._wecken.wait(),
+                        self.poll_interval_s * (1 + min(self._fails, 10)),
+                    )
+                self._wecken.clear()

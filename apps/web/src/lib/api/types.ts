@@ -106,6 +106,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rooms/{room_id}/setpoint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Solltemperatur eines Raums stellen
+         * @description Den Sollwert dauerhaft setzen - derselbe Griff, den Contromes eigene Oberfläche anbietet.
+         *
+         *     Gerundet wird auf halbe Grad. Eine Fußbodenheizung beantwortet feinere Stufen nicht, und eine
+         *     Anzeige, die 21,3 zeigt, wo 21,5 steht, wäre falsch.
+         */
+        post: operations["set_setpoint_api_v1_rooms__room_id__setpoint_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rooms/{room_id}/wirkung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Was eine Sollwertänderung bedeutet
+         * @description Geschätzte Kosten je Tag und das Verschiebepotenzial des Raums als Wärmespeicher.
+         */
+        get: operations["room_effect_api_v1_rooms__room_id__wirkung_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rooms/history": {
         parameters: {
             query?: never;
@@ -3158,6 +3201,50 @@ export interface components {
          * @enum {string}
          */
         ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "planned_pause" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
+        /**
+         * RoomEffectOut
+         * @description Was eine Sollwertänderung in diesem Raum bedeutet - geschätzt, mit Herkunft im Satz.
+         *
+         *     Die Zahlen sind klein und ihre Grundlage ist eine Annahme; beides muss die Anzeige sagen. Der
+         *     Zweck ist nicht die zweite Nachkommastelle, sondern die Größenordnung: ob ein halbes Grad
+         *     Cent oder Euro kostet, und ob Vorladen vor dem Preishoch überhaupt lohnt.
+         */
+        RoomEffectOut: {
+            /** Room Id */
+            room_id: number;
+            /** Name */
+            name: string;
+            /** Delta K */
+            delta_k: number;
+            /** Share */
+            share: number;
+            /** Daily Kwh Th */
+            daily_kwh_th: number;
+            /** Daily Kwh El */
+            daily_kwh_el: number;
+            /** Daily Eur */
+            daily_eur: number;
+            /** Store Kwh Th */
+            store_kwh_th: number;
+            /** Store Kwh El */
+            store_kwh_el: number;
+            /** Shift Saving Eur */
+            shift_saving_eur: number | null;
+            /** Half Life H */
+            half_life_h: number;
+            /** Cop */
+            cop: number;
+            /** Outdoor C */
+            outdoor_c: number;
+            /** Price Ct Kwh */
+            price_ct_kwh: number | null;
+            /** Cheap Ct Kwh */
+            cheap_ct_kwh: number | null;
+            /** Expensive Ct Kwh */
+            expensive_ct_kwh: number | null;
+            /** Note De */
+            note_de: string;
+        };
         /** RoomHistoryOut */
         RoomHistoryOut: {
             /**
@@ -3240,6 +3327,27 @@ export interface components {
             offset_k: (number | null)[];
             /** Valve */
             valve: (number | null)[];
+        };
+        /**
+         * RoomSetpointIn
+         * @description Ein von Hand gestellter Sollwert, dauerhaft.
+         *
+         *     Ohne Frist und ohne Rücknahme: Wer in Controme am Sollwert dreht, meint es so, bis er es
+         *     anders meint. Ein Wert auf Zeit wäre eine zweite Wahrheit neben der, die der Regler kennt.
+         */
+        RoomSetpointIn: {
+            /** Setpoint C */
+            setpoint_c: number;
+        };
+        /** RoomSetpointOut */
+        RoomSetpointOut: {
+            /** Ok */
+            ok: boolean;
+            room: components["schemas"]["RoomLiveOut"];
+            /** Setpoint C */
+            setpoint_c: number;
+            /** Message De */
+            message_de: string;
         };
         /** RoomsLiveOut */
         RoomsLiveOut: {
@@ -3928,6 +4036,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoomsLiveOut"];
+                };
+            };
+        };
+    };
+    set_setpoint_api_v1_rooms__room_id__setpoint_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                room_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoomSetpointIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomSetpointOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    room_effect_api_v1_rooms__room_id__wirkung_get: {
+        parameters: {
+            query?: {
+                /** @description Änderung in Kelvin */
+                delta_k?: number;
+            };
+            header?: never;
+            path: {
+                room_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomEffectOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

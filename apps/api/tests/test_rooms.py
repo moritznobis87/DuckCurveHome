@@ -344,3 +344,53 @@ def test_die_vorfuehrung_zeigt_erfundene_raeume(client: TestClient) -> None:
         kuenftig = datetime.fromisoformat(zeit.replace("Z", "+00:00")) > jetzt
         assert (reihe[i] is None) == kuenftig, f"Fenster {zeit}"
     assert any(v is not None for v in reihe), "der angebrochene Tag ist nicht leer"
+
+
+# ------------------------------------------------------------------ Sollwert stellen
+
+
+def test_der_sollwert_laesst_sich_stellen_und_wird_gerundet(client: TestClient) -> None:
+    """Halbe Grad, und die Antwort nennt den Wert, der wirklich steht."""
+    r = client.post("/api/v1/rooms/1/setpoint", json={"setpoint_c": 21.3})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["ok"] is True
+    assert d["setpoint_c"] == 21.5
+    assert d["room"]["setpoint_c"] == 21.5
+    # Und er bleibt stehen, nicht nur in der Antwort.
+    liste = client.get("/api/v1/rooms").json()
+    assert next(x for x in liste["rooms"] if x["id"] == 1)["setpoint_c"] == 21.5
+
+
+def test_unsinnige_sollwerte_werden_abgewiesen(client: TestClient) -> None:
+    """Die Grenzen sind kein Geschmack, sondern ein Schutz gegen Tippfehler."""
+    assert client.post("/api/v1/rooms/1/setpoint", json={"setpoint_c": 40}).status_code == 422
+    assert client.post("/api/v1/rooms/1/setpoint", json={"setpoint_c": 5}).status_code == 422
+
+
+def test_ein_unbekannter_raum_wird_nicht_gestellt(client: TestClient) -> None:
+    assert client.post("/api/v1/rooms/999/setpoint", json={"setpoint_c": 21}).status_code == 404
+
+
+def test_ohne_bridge_sagt_die_antwort_warum(live_client: TestClient) -> None:
+    """Im Live-Betrieb ohne verbundene Brücke ist der Befehl nicht zuzustellen."""
+    r = live_client.post("/api/v1/rooms/5/setpoint", json={"setpoint_c": 21.0}, headers=KOPF)
+    assert r.status_code in (404, 503)
+    if r.status_code == 503:
+        assert "Bridge" in r.json()["error"]["message"]
+
+
+def test_die_wirkung_einer_anhebung_steht_mit_ihrer_herkunft_da(client: TestClient) -> None:
+    """Zahlen in Euro, und ein Satz, der sagt, woraus sie kommen."""
+    r = client.get("/api/v1/rooms/1/wirkung", params={"delta_k": 0.5})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["room_id"] == 1
+    assert 0 < d["share"] <= 1
+    assert d["daily_kwh_th"] > 0
+    assert d["daily_kwh_el"] == pytest.approx(d["daily_kwh_th"] / d["cop"], abs=0.02)
+    assert d["half_life_h"] > 0
+    assert d["note_de"].startswith("Geschätzt")
+    # Eine Absenkung kostet nichts, sie spart.
+    runter = client.get("/api/v1/rooms/1/wirkung", params={"delta_k": -0.5}).json()
+    assert runter["daily_kwh_th"] < 0

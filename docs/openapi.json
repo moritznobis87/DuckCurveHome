@@ -194,6 +194,116 @@
         }
       }
     },
+    "/api/v1/rooms/{room_id}/setpoint": {
+      "post": {
+        "tags": [
+          "Räume"
+        ],
+        "summary": "Solltemperatur eines Raums stellen",
+        "description": "Den Sollwert dauerhaft setzen - derselbe Griff, den Contromes eigene Oberfläche anbietet.\n\nGerundet wird auf halbe Grad. Eine Fußbodenheizung beantwortet feinere Stufen nicht, und eine\nAnzeige, die 21,3 zeigt, wo 21,5 steht, wäre falsch.",
+        "operationId": "set_setpoint_api_v1_rooms__room_id__setpoint_post",
+        "parameters": [
+          {
+            "name": "room_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Room Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomSetpointIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomSetpointOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rooms/{room_id}/wirkung": {
+      "get": {
+        "tags": [
+          "Räume"
+        ],
+        "summary": "Was eine Sollwertänderung bedeutet",
+        "description": "Geschätzte Kosten je Tag und das Verschiebepotenzial des Raums als Wärmespeicher.",
+        "operationId": "room_effect_api_v1_rooms__room_id__wirkung_get",
+        "parameters": [
+          {
+            "name": "room_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Room Id"
+            }
+          },
+          {
+            "name": "delta_k",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 3.0,
+              "minimum": -3.0,
+              "description": "Änderung in Kelvin",
+              "default": 0.5,
+              "title": "Delta K"
+            },
+            "description": "Änderung in Kelvin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomEffectOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rooms/history": {
       "get": {
         "tags": [
@@ -6498,6 +6608,128 @@
         ],
         "title": "ReasonCode"
       },
+      "RoomEffectOut": {
+        "properties": {
+          "room_id": {
+            "type": "integer",
+            "title": "Room Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "delta_k": {
+            "type": "number",
+            "title": "Delta K"
+          },
+          "share": {
+            "type": "number",
+            "title": "Share"
+          },
+          "daily_kwh_th": {
+            "type": "number",
+            "title": "Daily Kwh Th"
+          },
+          "daily_kwh_el": {
+            "type": "number",
+            "title": "Daily Kwh El"
+          },
+          "daily_eur": {
+            "type": "number",
+            "title": "Daily Eur"
+          },
+          "store_kwh_th": {
+            "type": "number",
+            "title": "Store Kwh Th"
+          },
+          "store_kwh_el": {
+            "type": "number",
+            "title": "Store Kwh El"
+          },
+          "shift_saving_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shift Saving Eur"
+          },
+          "half_life_h": {
+            "type": "number",
+            "title": "Half Life H"
+          },
+          "cop": {
+            "type": "number",
+            "title": "Cop"
+          },
+          "outdoor_c": {
+            "type": "number",
+            "title": "Outdoor C"
+          },
+          "price_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Ct Kwh"
+          },
+          "cheap_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cheap Ct Kwh"
+          },
+          "expensive_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expensive Ct Kwh"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "room_id",
+          "name",
+          "delta_k",
+          "share",
+          "daily_kwh_th",
+          "daily_kwh_el",
+          "daily_eur",
+          "store_kwh_th",
+          "store_kwh_el",
+          "shift_saving_eur",
+          "half_life_h",
+          "cop",
+          "outdoor_c",
+          "price_ct_kwh",
+          "cheap_ct_kwh",
+          "expensive_ct_kwh",
+          "note_de"
+        ],
+        "title": "RoomEffectOut",
+        "description": "Was eine Sollwertänderung in diesem Raum bedeutet - geschätzt, mit Herkunft im Satz.\n\nDie Zahlen sind klein und ihre Grundlage ist eine Annahme; beides muss die Anzeige sagen. Der\nZweck ist nicht die zweite Nachkommastelle, sondern die Größenordnung: ob ein halbes Grad\nCent oder Euro kostet, und ob Vorladen vor dem Preishoch überhaupt lohnt."
+      },
       "RoomHistoryOut": {
         "properties": {
           "start": {
@@ -6758,6 +6990,49 @@
         ],
         "title": "RoomSeriesOut",
         "description": "Eine Raumzeitreihe spaltenweise: alle Listen so lang wie `ts` der Hülle."
+      },
+      "RoomSetpointIn": {
+        "properties": {
+          "setpoint_c": {
+            "type": "number",
+            "maximum": 26.0,
+            "minimum": 12.0,
+            "title": "Setpoint C"
+          }
+        },
+        "type": "object",
+        "required": [
+          "setpoint_c"
+        ],
+        "title": "RoomSetpointIn",
+        "description": "Ein von Hand gestellter Sollwert, dauerhaft.\n\nOhne Frist und ohne Rücknahme: Wer in Controme am Sollwert dreht, meint es so, bis er es\nanders meint. Ein Wert auf Zeit wäre eine zweite Wahrheit neben der, die der Regler kennt."
+      },
+      "RoomSetpointOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "room": {
+            "$ref": "#/components/schemas/RoomLiveOut"
+          },
+          "setpoint_c": {
+            "type": "number",
+            "title": "Setpoint C"
+          },
+          "message_de": {
+            "type": "string",
+            "title": "Message De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "room",
+          "setpoint_c",
+          "message_de"
+        ],
+        "title": "RoomSetpointOut"
       },
       "RoomsLiveOut": {
         "properties": {

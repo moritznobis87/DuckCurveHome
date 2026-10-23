@@ -412,10 +412,20 @@ controme_user: ""
 controme_password: ""
 ```
 
-Benutzername und Passwort bleiben leer: Die Lese-Endpunkte des Mini-Servers antworten im Heimnetz
-ohne Anmeldung (Stand 21.10.2026). Die beiden Felder sind für den Fall da, dass Controme das einmal
-ändert. Häufiger als alle zwei Minuten zu fragen bringt nichts, die Funkfühler melden alle drei
-bis fünf Minuten.
+Benutzername und Passwort dürfen leer bleiben, solange nur gelesen wird: Die Lese-Endpunkte des
+Mini-Servers antworten im Heimnetz ohne Anmeldung (Stand 21.10.2026). **Zum Stellen sind sie
+Pflicht** - wer auf der Räume-Seite einen Sollwert ändern will, trägt hier dieselben Daten ein,
+mit denen er sich auch in Contromes eigener Oberfläche anmeldet. Häufiger als alle zwei Minuten zu
+fragen bringt nichts, die Funkfühler melden alle drei bis fünf Minuten.
+
+### 3. Sollwerte stellen (ab 0.10.0)
+
+Mit Zugangsdaten wird aus der Anzeige eine Bedienung: Auf der Räume-Seite öffnet ein Tippen auf
+einen Raum ein Fenster, in dem sich die Solltemperatur in halben Grad verstellen lässt, dauerhaft
+und in Grenzen von 12 bis 26 Grad. Die Brücke schickt sie an denselben Endpunkt, den auch
+Contromes eigene Oberfläche benutzt, und fragt sofort danach neu ab, damit die Anzeige nicht zwei
+Minuten lang den alten Wert zeigt. Lehnt Controme ab, steht der Grund im Fenster; `403` heißt
+fast immer falsche Zugangsdaten.
 
 Add-on neu starten. Im Protokoll erscheint einmal `controme house found` mit der gefundenen
 Haus-Kennung; danach ist die Quelle still, solange sie liefert. Die Werte stehen wenige Minuten

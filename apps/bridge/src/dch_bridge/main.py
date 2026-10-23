@@ -317,6 +317,10 @@ class Bridge:
 
     async def execute_command(self, cmd: CommandFrame) -> CommandResultFrame:
         now = datetime.now(UTC)
+        # Raeume zuerst: sie sind kein Aktor im Sinne der Zuordnungsdatei, sondern ein Sollwert in
+        # der Einzelraumregelung. Der Schluessel traegt die Raumnummer, der Wert steht in `value`.
+        if cmd.actuator_key.startswith("room:"):
+            return await self._setze_raum(cmd)
         a = self._actuator(cmd.actuator_key)
         # Aktoren, die einem MQTT-Gerät gehören, werden direkt am Broker geschaltet - kein Umweg über
         # Home Assistant. Ausgenommen die Sicherheitsklasse heat_pump: dort bleibt der Weg über HA,
@@ -395,6 +399,50 @@ class Bridge:
                 error=str(exc)[:200],
                 at=datetime.now(UTC),
             )
+
+    async def _setze_raum(self, cmd: CommandFrame) -> CommandResultFrame:
+        """`room:<id>:soll` mit einem Wert: die Solltemperatur eines Raums stellen.
+
+        Jeder Fehlschlag kommt als Satz zurueck, nicht als Fehlercode: Diese Befehle loest ein
+        Mensch aus, der vor der Anzeige steht, und er soll lesen koennen, woran es lag.
+        """
+        teile = cmd.actuator_key.split(":")
+        fehler: str | None = None
+        if len(teile) != 3 or teile[2] != "soll" or not teile[1].isdigit():
+            fehler = f"unbekannter Raumbefehl: {cmd.actuator_key}"
+        elif self.rooms is None:
+            fehler = "Einzelraumregelung ist in dieser Bridge nicht eingerichtet (controme_host)."
+        elif cmd.value is None:
+            fehler = "Kein Sollwert im Befehl."
+        if fehler is not None:
+            return CommandResultFrame(
+                command_id=cmd.command_id,
+                ok=False,
+                observed_state=None,
+                error=fehler,
+                at=datetime.now(UTC),
+            )
+        assert self.rooms is not None and cmd.value is not None
+        try:
+            await self.rooms.setze_soll(int(teile[1]), cmd.value)
+        except Exception as exc:
+            return CommandResultFrame(
+                command_id=cmd.command_id,
+                ok=False,
+                observed_state=None,
+                error=str(exc)[:300],
+                at=datetime.now(UTC),
+            )
+        # `observed_state` bleibt leer: Ein Sollwert ist kein Zustand, den man als an oder aus
+        # bestaetigen koennte. Dass er steht, zeigt die naechste Abfrage, die gerade angestossen
+        # wurde.
+        return CommandResultFrame(
+            command_id=cmd.command_id,
+            ok=True,
+            observed_state=None,
+            error=None,
+            at=datetime.now(UTC),
+        )
 
     async def _wait_for_state(self, entity: str, want: bool, timeout_s: float) -> bool | None:
         deadline = asyncio.get_running_loop().time() + timeout_s

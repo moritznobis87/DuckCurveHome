@@ -68,12 +68,37 @@ daneben, welcher Raum wann Wärme gezogen hat.
 Schwäche von Controme, keine Einladung: Die Quelle nimmt deshalb optional Benutzername und
 Passwort entgegen, damit sie weiterläuft, wenn Controme das eines Tages repariert.
 
-**Gestellt wird nichts.** Für Ausgänge hat die Schnittstelle ausschließlich Lese-Endpunkte;
-schreiben ließe sich nur der Sollwert, und das wäre ein Eingriff in die Behaglichkeit eines
-bewohnten Hauses. Dazu kommt ein Zeitargument: Der Fußboden hat Zeitkonstanten um 13 Stunden, der
-Raum um 25; auf dieser Skala gewinnt ein Optimierer durch feinere Ventiltaktung nichts. Der
-eigentliche Hebel ist die Vorlauftemperatur, und wer sie senken will, muss wissen, welcher Raum
-zuerst nicht mehr mitkommt. Genau das zeigen die Ventilstellungen.
+**Ventile stellt weiter Controme, den Sollwert stellt seit dem 23.10.2026 auch DCH.** Für
+Ausgänge hat die Schnittstelle nur Lese-Endpunkte, und das ist richtig so: Der Fußboden hat
+Zeitkonstanten um 13 Stunden, der Raum um 25; auf dieser Skala gewinnt niemand durch feinere
+Ventiltaktung. Der Sollwert dagegen ist der Griff, den auch ein Mensch benutzt, und er ist der
+Zugang zum Haus als Wärmespeicher.
+
+```
+POST http://<mini-server>/set/json/v1/<haus>/soll/<raum>/
+Formularfelder: user, password, soll
+```
+
+Belegt durch laufenden Code zweier fremder Projekte (openHAB-Anbindung, Loxone-Forum), nicht durch
+Contromes eigene Beschreibung. Drei Eigenheiten, alle drei schon einmal jemandem begegnet: Der
+Schrägstrich am Ende gehört dazu; der Wert muss eine nackte Zahl mit Punkt sein, sonst kommt ein
+`403` ohne Begründung; und **zum Schreiben sind die Zugangsdaten Pflicht**, anders als zum Lesen.
+
+Gestellt wird **dauerhaft**, ohne Frist. Controme kennt auch einen Sollwert auf Zeit; er wäre eine
+zweite Wahrheit neben der, die der Regler kennt, und ein Programm, das ohnehin bei jedem Takt neu
+entscheidet, braucht ihn nicht. Wer anhebt, nimmt selbst wieder zurück. Jede Änderung steht als
+Ereignis `rooms.setpoint` mit altem und neuem Wert in der Datenbank.
+
+**Was das Anheben bedeutet, rechnet `hems_core.thermal.room_shift`.** Das Modell steht auf drei
+Zahlen: dem Verlustkoeffizienten des Hauses aus den Wärmeannahmen (0,22 kW/K, geschätzt), dem
+Anteil eines Raums nach seinen Heizkreisen, und der Zeitkonstante des Raums von rund 25 Stunden.
+Aus den letzten beiden folgt die Wärmekapazität, denn eine Zeitkonstante ist Kapazität durch
+Verlust: `C = tau * H`, für dieses Haus rund 5,5 kWh je Kelvin. Damit lässt sich beantworten, was
+ein halbes Grad mehr am Tag kostet und was es bringt, es vor einem Preishoch einzulagern. Alle
+Zahlen sind Schätzungen und heißen in der Anzeige auch so.
+
+Der eigentliche Hebel bleibt die Vorlauftemperatur, und wer sie senken will, muss wissen, welcher
+Raum zuerst nicht mehr mitkommt. Genau das zeigen die Ventilstellungen.
 
 **Geregelt wird auf Sollwert plus Offset.** Controme meldet `solltemperatur` und `total_offset`
 getrennt, und die Frage, ob der Regler auf die Summe regelt, war eine Zeitlang offen. Contromes

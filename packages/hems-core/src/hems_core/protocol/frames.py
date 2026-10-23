@@ -68,6 +68,16 @@ class AckFrame(BaseModel):
 
 
 class CommandFrame(BaseModel):
+    """Ein Befehl an die Bridge.
+
+    **`value` ist der Ausweg aus dem Schalterdenken.** Bis hierher kannte das Protokoll nur an und
+    aus; ein Sollwert ist keines von beidem. Statt eines zweiten Rahmentyps traegt der Befehl nun
+    optional eine Zahl, und der Schluessel sagt, was mit ihr gemeint ist: `room:<id>:soll` stellt
+    die Solltemperatur eines Raums in der Einzelraumregelung. Eine aeltere Bridge kennt diesen
+    Schluessel nicht und antwortet "unbekannter Aktor" - eine klare Absage statt einer stillen
+    Fehldeutung.
+    """
+
     type: Literal["command"] = "command"
     command_id: UUID
     issued_at: datetime
@@ -75,6 +85,7 @@ class CommandFrame(BaseModel):
     state: bool
     ttl_s: int | None = None
     decision_id: UUID | None = None
+    value: float | None = None
 
 
 class CommandResultFrame(BaseModel):

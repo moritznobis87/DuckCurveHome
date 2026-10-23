@@ -61,6 +61,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    RoomEffectOut,
     RoomHistoryOut,
     RoomLiveOut,
     RoomSeriesOut,
@@ -93,7 +94,7 @@ from hems_core.domain import (
 from hems_core.planning import cheap_windows, current_price, next_window_after, price_rank
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
 from hems_core.simulation import BERLIN
-from hems_core.thermal import compute_buffer_state
+from hems_core.thermal import compute_buffer_state, room_shift
 
 log = structlog.get_logger("live")
 VERSION = "0.1.0-phase2"
@@ -805,6 +806,100 @@ class LiveRuntime:
             )
         out.sort(key=lambda r: rooms.sort_key(self._room_name(meta, r.id)))
         return RoomsLiveOut(at=now, named=bool(meta), rooms=out)
+
+    async def set_room_setpoint(self, room_id: int, setpoint_c: float) -> tuple[bool, float, str]:
+        """Die Solltemperatur eines Raums stellen, dauerhaft.
+
+        **Die Anzeige bekommt keinen Wert geschenkt.** Gelingt der Befehl, steht der neue Sollwert
+        trotzdem erst da, wenn Controme ihn das nächste Mal meldet - die Brücke stößt diese Abfrage
+        sofort an. Hier wird nichts in die Messreihe geschrieben: eine Zahl, die aus der Absicht
+        stammt und nicht aus der Anlage, wäre in einer Messreihe eine Fälschung, und genau an ihr
+        würde man später die Frage „hat er wirklich gestellt?" nicht mehr beantworten können.
+
+        Jede Änderung steht als Ereignis in der Datenbank, mit altem und neuem Wert. Wer in einem
+        halben Jahr vor einer Abweichung steht, soll nachlesen können, wann jemand gedreht hat.
+        """
+        werte = rooms.runde_soll(setpoint_c)
+        if not (rooms.SOLL_MIN <= werte <= rooms.SOLL_MAX):
+            raise DchError(
+                "invalid_setpoint",
+                f"Sollwert muss zwischen {rooms.SOLL_MIN:.0f} und {rooms.SOLL_MAX:.0f} Grad liegen.",
+                422,
+            )
+        meta = await self._room_meta()
+        if room_id not in self._room_ids(meta):
+            raise DchError("unknown_room", f"Raum {room_id} ist nicht bekannt.", 404)
+        name = self._room_name(meta, room_id).name
+        if not self.settings.actuation_enabled:
+            raise DchError("actuation_disabled", "Steuerung ist in dieser Phase deaktiviert.", 409)
+        if not self.hub.online:
+            raise DchError("bridge_offline", "Bridge nicht verbunden.", 503)
+        vorher = self.live.measurement(f"room_{room_id}_setpoint_c", self.now, rooms.STALE_S).value
+        result = await self.hub.send_command(f"room:{room_id}:soll", True, None, None, value=werte)
+        if not result.ok:
+            return False, werte, result.error or "Controme hat den Sollwert nicht bestätigt."
+        await self.repos.add_event(
+            "info",
+            "rooms.setpoint",
+            f"{name}: Sollwert auf {werte:.1f} Grad gestellt"
+            + (f" (vorher {vorher:.1f})" if vorher is not None else ""),
+            {"room": room_id, "name": name, "from": vorher, "to": werte},
+        )
+        log.info("room setpoint set", room=room_id, to=werte, before=vorher)
+        return True, werte, f"{name} steht jetzt auf {werte:.1f} Grad."
+
+    async def room_effect(self, room_id: int, delta_k: float) -> RoomEffectOut:
+        """Die Wirkung einer Sollwertänderung, gerechnet mit dem Wetter und den Preisen von jetzt.
+
+        **Die Preise kommen aus dem Fahrplan, nicht aus dem Augenblick.** Für die Dauerkosten zählt
+        der mittlere Preis der nächsten 24 Stunden; wer sie mit dem Preis dieser Minute bewertete,
+        bekäme mittags eine andere Antwort als abends, obwohl sich an der Wirkung nichts geändert
+        hat. Für das Verschieben zählen das günstigste und das teuerste Viertel derselben Stunden.
+        """
+        meta = await self._room_meta()
+        if room_id not in self._room_ids(meta):
+            raise DchError("unknown_room", f"Raum {room_id} ist nicht bekannt.", 404)
+        info = self._room_name(meta, room_id)
+        kreise_gesamt = sum(max(1, self._room_name(meta, r).circuits) for r in self._room_ids(meta))
+        now = self.now
+        aussen = self.live.measurement("outdoor_temp_c", now, 3600).value
+        preise = [
+            iv.price_ct_kwh
+            for iv in (self.plan.intervals if self.plan else [])
+            if iv.price_ct_kwh is not None and now <= iv.ts < now + timedelta(hours=24)
+        ]
+        mittel = sum(preise) / len(preise) if preise else None
+        if mittel is None:
+            mittel = self.live.measurement("electricity_price_ct_kwh", now, 3600).value
+        wirkung = room_shift.effect(
+            delta_k=delta_k,
+            circuits=max(1, info.circuits),
+            total_circuits=max(1, kreise_gesamt),
+            cfg=self.hems.heat_demand,
+            outdoor_c=aussen if aussen is not None else 7.0,
+            price_ct_kwh=mittel,
+            cheap_ct_kwh=min(preise) if preise else None,
+            expensive_ct_kwh=max(preise) if preise else None,
+        )
+        return RoomEffectOut(
+            room_id=room_id,
+            name=info.name,
+            delta_k=wirkung.delta_k,
+            share=wirkung.share,
+            daily_kwh_th=wirkung.daily_kwh_th,
+            daily_kwh_el=wirkung.daily_kwh_el,
+            daily_eur=wirkung.daily_eur,
+            store_kwh_th=wirkung.store_kwh_th,
+            store_kwh_el=wirkung.store_kwh_el,
+            shift_saving_eur=wirkung.shift_saving_eur,
+            half_life_h=wirkung.half_life_h,
+            cop=wirkung.cop,
+            outdoor_c=round(aussen if aussen is not None else 7.0, 1),
+            price_ct_kwh=round(mittel, 1) if mittel is not None else None,
+            cheap_ct_kwh=round(min(preise), 1) if preise else None,
+            expensive_ct_kwh=round(max(preise), 1) if preise else None,
+            note_de=wirkung.note_de,
+        )
 
     async def rooms_history(self, start: datetime, end: datetime, step_min: int) -> RoomHistoryOut:
         """Die Tageszeitreihe der Räume, verdichtet auf Fenster von `step_min` Minuten.

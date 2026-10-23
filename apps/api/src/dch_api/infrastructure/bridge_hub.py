@@ -133,6 +133,7 @@ class BridgeHub:
         ttl_s: int | None,
         decision_id: UUID | None,
         timeout_s: float = 10.0,
+        value: float | None = None,
     ) -> CommandResultFrame:
         if self._ws is None:
             raise ConnectionError("Bridge nicht verbunden")
@@ -143,6 +144,7 @@ class BridgeHub:
             state=state,
             ttl_s=ttl_s,
             decision_id=decision_id,
+            value=value,
         )
         fut: asyncio.Future[CommandResultFrame] = asyncio.get_running_loop().create_future()
         self._pending[cmd.command_id] = fut
