@@ -149,13 +149,16 @@ function Verlauf({ serie, ts, proStunde, linie, bisMs }: { serie: RoomSeries; ts
         ))}
       </svg>
       <VentilStreifen serie={serie.valve} ts={ts} proStunde={proStunde} bisMs={bisMs} />
-      <div className="mono relative flex justify-between text-[9px] text-text-3">
+      {/* **Die Achse ist eine Zeile, keine zwei.** Die Spanne stand vorher als absolut gesetzte
+          Marke darüber und schob in manchen Kacheln die Zeile darunter weg; jetzt steht sie am
+          rechten Ende derselben Zeile, wo ohnehin die 24 steht. */}
+      <div className="mono flex items-baseline justify-between text-[9px] text-text-3">
         <span>00</span>
         <span>12</span>
-        <span>24</span>
-        {/* Nur wenn die Spanne von den üblichen ±2 K abweicht. Sonst stünde an jeder der neun
-            Kacheln dieselbe Zahl und sagte nichts. */}
-        {groesste > 2 ? <span className="absolute -top-[13px] right-0 text-text-3">±{groesste} K</span> : null}
+        <span className="flex items-baseline gap-2">
+          {groesste > 2 ? <span className="opacity-80">±{groesste} K</span> : null}
+          <span>24</span>
+        </span>
       </div>
     </div>
   );
@@ -184,13 +187,12 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen }: {
   const Huelle = onStellen ? "button" : "div";
   return (
     <Huelle
-      className={`card flex flex-col gap-3 text-left ${onStellen ? "raum-kachel-tippbar" : ""}`}
-      style={{ padding: "16px 18px 14px" }}
+      className={`card raum-kachel text-left ${onStellen ? "raum-kachel-tippbar" : ""}`}
       onClick={onStellen}
       {...(onStellen ? { "aria-label": `${raum.name}: Sollwert stellen` } : {})}
     >
-      <div className="flex items-baseline justify-between gap-2.5">
-        <span className="text-[15px] font-medium text-text-1">{raum.name}</span>
+      <div className="raum-kopf">
+        <span className="truncate text-[15px] font-medium text-text-1">{raum.name}</span>
         {fenster ? (
           <span className="mono shrink-0 rounded-[2px] border px-[5px] py-px text-[10px] uppercase tracking-[.08em]" style={{ borderColor: "var(--mist)", color: "var(--mist)" }} title="Ein Fensterkontakt dieses Raums meldet offen. Solange das so ist, sagt eine Unterschreitung nichts über die Heizkurve.">
             {fenster}
@@ -204,7 +206,7 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen }: {
         ) : null}
       </div>
 
-      <div className="flex items-end justify-between gap-3">
+      <div className="raum-werte">
         {stumm ? (
           <span className="mono text-[20px] leading-none text-text-3">kein Messwert</span>
         ) : (
@@ -213,7 +215,7 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen }: {
             <span className="mono text-[14px] text-text-3">°C</span>
           </div>
         )}
-        <div className="flex flex-col items-end gap-1">
+        <div className="raum-ziel">
           {/* **Ziel, nicht Soll.** Geregelt wird auf Sollwert plus Offset - Controme rechnet es
               in seiner eigenen Oberfläche vor. Die beiden Zahlen stehen darunter, solange der
               Offset nicht null ist: dann ist die Rechnung nachvollziehbar, und ein vertauschtes
@@ -224,11 +226,12 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen }: {
           >
             Ziel {celsius(raum.target_c ?? raum.setpoint_c, 1)}
           </span>
-          {hatOffset ? (
-            <span className="mono text-[10px] text-text-3 opacity-70">
-              {celsius(raum.setpoint_c, 1)} {kelvin(raum.offset_k ?? 0)}
-            </span>
-          ) : null}
+          {/* **Die Zeile steht immer da, auch leer.** Sonst hat eine Kachel mit Offset drei
+              Zeilen und die daneben zwei - und die großen Zahlen des ganzen Gitters stünden auf
+              zwei verschiedenen Linien. Gesehen an der Wand am 23.10.2026. */}
+          <span className="mono text-[10px] text-text-3 opacity-70" aria-hidden={!hatOffset} style={{ visibility: hatOffset ? "visible" : "hidden" }}>
+            {celsius(raum.setpoint_c, 1)} {kelvin(raum.offset_k ?? 0)}
+          </span>
           <span
             className="mono text-[11px] font-medium"
             style={{
@@ -244,9 +247,13 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen }: {
         </div>
       </div>
 
-      {serie ? <Verlauf serie={serie} ts={ts} proStunde={proStunde} linie={stumm ? "var(--text-3)" : farbe(d ?? 0)} bisMs={bisMs} /> : <div className="h-[60px]" />}
+      {/* Immer derselbe Platz, mit Reihe oder ohne: ein Raum ohne Zeitreihe soll die Kachel
+          neben sich nicht kürzer machen. */}
+      <div className="raum-verlauf">
+        {serie ? <Verlauf serie={serie} ts={ts} proStunde={proStunde} linie={stumm ? "var(--text-3)" : farbe(d ?? 0)} bisMs={bisMs} /> : null}
+      </div>
 
-      <div className="mono flex justify-between border-t border-line-1 pt-2 text-[11px] text-text-3">
+      <div className="raum-fuss mono flex justify-between border-t border-line-1 pt-2 text-[11px] text-text-3">
         <span title="Jetzt">Ventil {ventilText(raum.valve, raum.circuits)}</span>
         <span>{raum.humidity_pct != null ? `${Math.round(raum.humidity_pct)} % rF` : ""}</span>
       </div>

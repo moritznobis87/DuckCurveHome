@@ -117,6 +117,17 @@
 .rooms-matrix-cells { gap: 2px; }
 /* Tagesmatrix und Tabelle rollen notfalls für sich. 96 Felder mit 2 px Abstand brauchen allein
    190 px, und am Telefon schob das die ganze Seite nach rechts. */
+/* ---------- Raumkacheln: alle Zeilen auf derselben Linie ----------
+   Die Kachel ist ein Raster mit festen Zeilen, keine Stapelung nach Inhalt. Vorher wuchs sie mit
+   dem, was zufaellig dastand - eine Zeile Offset mehr, eine Zeitreihe weniger -, und im Gitter
+   standen die grossen Zahlen auf verschiedenen Hoehen (gesehen an der Wand, 23.10.2026). */
+.raum-kachel { display: grid; grid-template-rows: 22px 56px 74px auto; gap: 10px; padding: 16px 18px 14px; align-content: start; }
+.raum-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.raum-werte { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.raum-ziel { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; gap: 3px; }
+.raum-verlauf { display: flex; flex-direction: column; justify-content: flex-end; min-height: 0; }
+.raum-fuss { align-self: end; }
+
 /* Raum stellen: Blende und Blatt. Groß genug für einen Daumen, nicht so groß, dass die Seite
    dahinter verschwindet. */
 .raum-kachel-tippbar { cursor: pointer; transition: border-color .15s, transform .1s; }
