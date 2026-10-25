@@ -175,7 +175,14 @@
 /* ---------- Jetzt: die Startseite der Wandanzeige ----------
    Ein Raster aus fuenf Zeilen, das den Bildschirm genau fuellt: Kopf, Satz, das lebende Bild,
    die Kurve des Tages, der Fuss. Am Telefon wird daraus eine Seite, die rollt. */
-.home { --home-pad: 22px; height: 100dvh; box-sizing: border-box; overflow: hidden; display: grid; grid-template-rows: auto auto minmax(0, 1fr) clamp(170px, 24vh, 260px) auto; gap: 12px; padding: max(var(--home-pad), env(safe-area-inset-top)) 32px max(14px, env(safe-area-inset-bottom)); color: var(--text-1); }
+/* **`minmax(0, 1fr)` ist hier kein Schmuck, sondern die Bremse.** Ohne eine gesetzte Spalte hat
+   das Raster eine implizite mit `auto`, und die waechst bis zum breitesten Kind. Die Tageskurve
+   ist eine Zeichenflaeche, die ihre Breite vom Elternteil nimmt und nur schrumpft, wenn der
+   kleiner wird - zwei, die aufeinander warten. Beim Kippen ins Querformat wuchs sie auf 820
+   Punkte, und beim Zurueckkippen blieb die Spalte 820 Punkte breit, weil die Zeichenflaeche so
+   breit war: die Seite kam nicht zurueck (gesehen am 25.10.2026 auf dem iPhone). Mit einer
+   Spalte, deren Mindestbreite null ist, hat das Fenster das letzte Wort. */
+.home { --home-pad: 22px; height: 100dvh; box-sizing: border-box; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) clamp(170px, 24vh, 260px) auto; gap: 12px; padding: max(var(--home-pad), env(safe-area-inset-top)) 32px max(14px, env(safe-area-inset-bottom)); color: var(--text-1); }
 .home-kopf { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .home-uhr { display: flex; align-items: baseline; gap: 22px; }
 .home-datum { font-size: 15px; color: var(--text-2); white-space: nowrap; }
@@ -288,7 +295,7 @@
      seine beiden Kinder direkte Kinder des Seitenrasters werden und sich einsortieren lassen:
      erst das Jetzt, dann die Tageskurve - die Marke der Seite -, danach Puffer und Fahrplan.
      Vorher kam die Kurve nach beidem und begann unterhalb des ersten Bildschirms. */
-  .home { grid-template-rows: none; grid-auto-rows: min-content; }
+  .home { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: min-content; }
   .home-hero { display: contents; }
   .home-kopf { order: 1; }
   .home-satz-zeile { order: 2; }
