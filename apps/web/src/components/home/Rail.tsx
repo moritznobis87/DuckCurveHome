@@ -119,13 +119,18 @@ export function Rail({ state, plan, nowMs, kompakt = false }: { state: LiveState
           <span className="home-tank-quer" style={{ background: verlaufQuer, opacity: vollstaendig && !veraltet ? 1 : 0.45 }} aria-hidden>
             {[25, 50, 75].map((x) => <span key={x} className="home-tank-marke-quer" style={{ left: `${x}%` }} />)}
           </span>
+          {/* **Die Einheit steht einmal, am Ende der Reihe.** Vier Mal „°C" hinter vier Zahlen
+              brauchte mehr Platz, als die Kachel hat; auf schmalen Geraeten klebte das Zeichen am
+              naechsten Wert („56 °C47 °C"). Eine Reihe gleichartiger Zahlen traegt ihre Einheit
+              ohnehin nur einmal. */}
           <span className="home-puffer-fuehler" aria-hidden>
             {fuehler.map((v, i) => (
               <span key={i} className="flex flex-col items-start gap-[2px]">
-                <span className="mono">{v == null ? "-" : `${Math.round(v)} °C`}</span>
+                <span className="mono">{v == null ? "-" : Math.round(v)}</span>
                 {i === 0 ? <span className="home-puffer-ort">oben</span> : i === 3 ? <span className="home-puffer-ort">unten</span> : null}
               </span>
             ))}
+            <span className="home-puffer-einheit">°C</span>
           </span>
         </Link>
         {zeilen.length ? <Plan zeilen={zeilen} warnung={plan?.planner_warn_de} /> : null}
