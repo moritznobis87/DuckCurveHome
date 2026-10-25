@@ -180,7 +180,7 @@ export function Home() {
 
       <div className="home-hero" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>
         {isMobile ? <FlowList snapshot={s ?? null} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} />}
-        <Rail state={state} plan={plan} nowMs={now} />
+        <Rail state={state} plan={plan} nowMs={now} kompakt={isMobile} />
       </div>
 
       <DayCurve tag={tag} onTag={(t) => { setTag(t); setGetippt(Date.now()); }} history={reihe} plan={plan} heat={waerme} nowMs={minute} start={start} end={end} />
