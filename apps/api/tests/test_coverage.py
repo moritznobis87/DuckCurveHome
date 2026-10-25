@@ -21,6 +21,7 @@ from dch_api.main import create_app
 from dch_api.settings import Settings
 from hems_core.domain import Quality
 from hems_core.protocol import RawReading
+from hems_core.simulation import BERLIN
 
 AUTH = {"authorization": "Bearer api-geheim"}
 DAY = datetime(2026, 9, 15, 0, 0, tzinfo=UTC)
@@ -70,21 +71,31 @@ def test_the_counts_are_per_hour_and_per_series(client: TestClient) -> None:
     assert all(s["label_de"] for s in r.json()["series"])
 
 
+def _kalendertage(body: dict[str, object]) -> int:
+    """Die Spanne in Kalendertagen am Ort, nicht in Vielfachen von 24 Stunden.
+
+    **Zweimal im Jahr ist ein Tag keine 24 Stunden.** Die Grenzen des Zeitraums liegen auf
+    Mitternacht in Geilenkirchen; über eine Zeitumstellung hinweg sind 90 Kalendertage in
+    absoluter Zeit 90 Tage und eine Stunde. Ein Test auf exakte Gleichheit scheiterte deshalb an
+    genau zwei Tagen im Jahr - gesehen am 25.10.2026, dem Tag der Rückstellung.
+    """
+    start = datetime.fromisoformat(str(body["start"])).astimezone(BERLIN)
+    end = datetime.fromisoformat(str(body["end"])).astimezone(BERLIN)
+    return (end.date() - start.date()).days
+
+
 def test_the_window_ends_on_the_anchor_day(client: TestClient) -> None:
     r = client.get("/api/v1/system/coverage?anchor=2026-09-15&days=7", headers=AUTH)
     body = r.json()
     assert body["end"].startswith("2026-09-15T22:00") or body["end"].startswith("2026-09-16")
-    span = datetime.fromisoformat(body["end"]) - datetime.fromisoformat(body["start"])
-    assert span == timedelta(days=7)
+    assert _kalendertage(body) == 7
 
 
 def test_the_span_is_capped(client: TestClient) -> None:
     body = client.get("/api/v1/system/coverage?days=9999", headers=AUTH).json()
-    span = datetime.fromisoformat(body["end"]) - datetime.fromisoformat(body["start"])
-    assert span == timedelta(days=90)
+    assert _kalendertage(body) == 90
     body = client.get("/api/v1/system/coverage?days=0", headers=AUTH).json()
-    span = datetime.fromisoformat(body["end"]) - datetime.fromisoformat(body["start"])
-    assert span == timedelta(days=1)
+    assert _kalendertage(body) == 1
 
 
 def test_it_is_not_public(client: TestClient) -> None:
