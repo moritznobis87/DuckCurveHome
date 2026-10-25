@@ -179,7 +179,7 @@ export function Home() {
       </div>
 
       <div className="home-hero" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>
-        {isMobile ? <FlowList snapshot={s ?? null} pvPeakKw={pvPeak} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} />}
+        {isMobile ? <FlowList snapshot={s ?? null} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} />}
         <Rail state={state} plan={plan} nowMs={now} />
       </div>
 

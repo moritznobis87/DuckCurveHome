@@ -45,7 +45,9 @@ export function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2.5" aria-label="Duck Curve Home, zur Startseite">
       <Icon name="duck" size={30} color="var(--amber)" strokeWidth={2.4} />
-      <span className="whitespace-nowrap text-[16px] font-semibold tracking-[-.02em] text-text-1">Duck Curve</span>
+      {/* Auf sehr schmalen Geraeten bleibt die Kurve und der Name geht: fuenf Bereichszeichen
+          daneben sind wichtiger als ein Wort, das ohnehin ueberall steht. */}
+      <span className="brand-name whitespace-nowrap text-[16px] font-semibold tracking-[-.02em] text-text-1">Duck Curve</span>
     </Link>
   );
 }

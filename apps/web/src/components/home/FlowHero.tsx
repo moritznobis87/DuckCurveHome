@@ -151,45 +151,91 @@ export function FlowHero({ snapshot, nowMs, pvPeakKw }: { snapshot: EnergySnapsh
 }
 
 /**
- * Derselbe Fluss als Liste, fuer das Telefon.
+ * Das Jetzt auf dem Telefon: zwei grosse Zahlen und vier Kacheln.
  *
- * Auf 390 px ist die Zeichnung zu eng: sechs Knoten mit Zahlen ueberlappen. Die Zahlen bleiben,
- * die Geometrie geht; ein Balken je Zeile sagt, wie viel gerade fliesst.
+ * **Warum nicht die Zeichnung.** Auf 390 Punkten Breite ueberlappen sechs Knoten mit Zahlen; die
+ * Geometrie geht, die Zahlen bleiben.
+ *
+ * **Warum nicht die Liste von vorher.** Sechs gleich hohe Zeilen mit Balken sahen aus wie eine
+ * Tabelle und fuellten den halben Bildschirm, bevor die Tageskurve ueberhaupt anfing (gesehen am
+ * 25.10.2026 auf dem iPhone). Jetzt fuehren die beiden Zahlen, um die es geht - was die Sonne
+ * gibt und was das Haus nimmt -, und der Rest steht als kompaktes Raster darunter. Was dazu
+ * gehoert, steht beieinander: Die Farbe des Netzes sagt, in welche Richtung es fliesst.
  */
-export function FlowList({ snapshot, pvPeakKw }: { snapshot: EnergySnapshot | null; pvPeakKw: number }) {
+export function FlowList({ snapshot }: { snapshot: EnergySnapshot | null }) {
   const s = snapshot;
   const soc = s?.battery_soc.value ?? null;
   const num = (m?: Measurement | null) => (frisch(m) ? (m!.value as number) : 0);
   const grid = num(s?.grid_power_kw);
   const bat = num(s?.battery_power_kw);
-  const max = Math.max(2, pvPeakKw);
-  const zeilen: Array<{ k: Key; href: string; name: string; wort: string; wert: string; einheit: string; anteil: number }> = [
-    { k: "pv", href: "/strom/pv", name: "Sonne", wort: num(s?.pv_power_kw) >= 0.05 ? "erzeugt" : "nichts", wert: kw(s?.pv_power_kw.value), einheit: "kW", anteil: num(s?.pv_power_kw) / max },
-    { k: "house", href: "/strom", name: "Haus", wort: "verbraucht", wert: kw(s?.house_power_kw.value), einheit: "kW", anteil: num(s?.house_power_kw) / max },
-    { k: "hp", href: "/waerme", name: "Wärmepumpe", wort: num(s?.heat_pump_power_kw) >= 0.05 ? "läuft" : "steht", wert: kw(s?.heat_pump_power_kw.value), einheit: "kW", anteil: num(s?.heat_pump_power_kw) / max },
-    { k: "bat", href: "/strom/speicher", name: "Speicher", wort: bat < -0.05 ? `lädt ${kw(-bat)} kW` : bat > 0.05 ? `gibt ${kw(bat)} kW` : "hält", wert: soc != null ? String(Math.round(soc * 100)) : "-", einheit: "%", anteil: soc ?? 0 },
-    { k: "grid", href: "/strom", name: "Netz", wort: grid < -0.05 ? "Einspeisung" : grid > 0.05 ? "Bezug" : "nichts", wert: kw(Math.abs(grid)), einheit: "kW", anteil: Math.abs(grid) / max },
-    { k: "ev", href: "/strom/wallbox", name: "Wallbox", wort: num(s?.ev_power_kw) >= 0.05 ? "lädt" : "steht", wert: kw(s?.ev_power_kw.value), einheit: "kW", anteil: num(s?.ev_power_kw) / max },
-  ];
+  const einspeisung = grid < -0.05;
+
+  const Gross = ({ k, href, wert, wort }: { k: Key; href: string; wert: string; wort: string }) => (
+    <Link href={href} className="home-jetzt-gross">
+      <span className="home-jetzt-kopf">
+        <Icon name={k === "pv" ? "sun" : "home"} size={16} color={FARBE[k]} />
+        <span>{wort}</span>
+      </span>
+      <span className="mono home-jetzt-zahl" style={{ color: k === "pv" ? FARBE.pv : "var(--text-1)" }}>
+        {wert} <span className="home-einheit">kW</span>
+      </span>
+    </Link>
+  );
+
+  const Klein = ({ k, href, wert, einheit, name, wort, farbe }: { k: Key; href: string; wert: string; einheit: string; name: string; wort: string; farbe?: string }) => (
+    <Link href={href} className="home-jetzt-klein">
+      <span className="home-jetzt-kopf">
+        <Icon name={k === "grid" ? "grid" : k === "bat" ? "battery" : k === "hp" ? "pump" : "car"} size={15} color={farbe ?? FARBE[k]} />
+        <span>{name}</span>
+      </span>
+      <span className="mono home-jetzt-klein-zahl">
+        {wert} <span className="home-einheit">{einheit}</span>
+      </span>
+      <span className="home-jetzt-wort">{wort}</span>
+    </Link>
+  );
+
   return (
-    <div className="card" style={{ padding: "4px 16px" }}>
-      {zeilen.map((z) => (
-        <Link key={z.k} href={z.href} className="flex items-center gap-3 border-b border-line-1 py-2.5 last:border-b-0">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border" style={{ borderColor: FARBE[z.k], color: FARBE[z.k] }}>
-            <Icon name={z.k === "pv" ? "sun" : z.k === "grid" ? "grid" : z.k === "house" ? "home" : z.k === "bat" ? "battery" : z.k === "hp" ? "pump" : "car"} size={18} />
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="text-[14px] text-text-1">{z.name}</span>
-            <span className="text-[12px] text-text-3">{z.wort}</span>
-          </span>
-          <span className="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-line-1">
-            <span className="block h-full" style={{ width: `${Math.round(Math.max(0, Math.min(1, z.anteil)) * 100)}%`, background: FARBE[z.k] }} />
-          </span>
-          <span className="mono min-w-[78px] text-right text-[20px] tracking-[-.02em] text-text-1">
-            {z.wert} <span className="text-[11px] text-text-3" style={{ fontFamily: "var(--font-sans)" }}>{z.einheit}</span>
-          </span>
-        </Link>
-      ))}
+    <div className="home-jetzt">
+      <div className="home-jetzt-reihe">
+        <Gross k="pv" href="/strom/pv" wert={kw(s?.pv_power_kw.value)} wort="Sonne" />
+        <Gross k="house" href="/strom" wert={kw(s?.house_power_kw.value)} wort="Haus" />
+      </div>
+      <div className="home-jetzt-raster">
+        <Klein
+          k="grid"
+          href="/strom"
+          wert={kw(Math.abs(grid))}
+          einheit="kW"
+          name="Netz"
+          wort={einspeisung ? "Einspeisung" : grid > 0.05 ? "Bezug" : "nichts"}
+          farbe={einspeisung ? "var(--grid-out)" : "var(--grid-in)"}
+        />
+        <Klein
+          k="bat"
+          href="/strom/speicher"
+          wert={soc != null ? String(Math.round(soc * 100)) : "-"}
+          einheit="%"
+          name="Speicher"
+          wort={bat < -0.05 ? `lädt ${kw(-bat)} kW` : bat > 0.05 ? `gibt ${kw(bat)} kW` : "hält"}
+        />
+        <Klein
+          k="hp"
+          href="/waerme"
+          wert={kw(s?.heat_pump_power_kw.value)}
+          einheit="kW"
+          name="Wärmepumpe"
+          wort={num(s?.heat_pump_power_kw) >= 0.05 ? "läuft" : "steht"}
+        />
+        <Klein
+          k="ev"
+          href="/strom/wallbox"
+          wert={kw(s?.ev_power_kw.value)}
+          einheit="kW"
+          name="Wallbox"
+          wort={num(s?.ev_power_kw) >= 0.05 ? "lädt" : "steht"}
+        />
+      </div>
     </div>
   );
 }
