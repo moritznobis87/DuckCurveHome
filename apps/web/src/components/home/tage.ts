@@ -127,3 +127,79 @@ export function kennzahlen(tag: Tag, summary: EnergySummary | null, preisJetzt: 
     letzte,
   ];
 }
+
+// -------------------------------------------------------------------- Die Schattenkurve
+
+/** Ein Punkt einer Messreihe, so viel davon wie hier gebraucht wird. */
+export interface Punkt {
+  ts: number;
+  pv: number | null;
+}
+
+/**
+ * Der Tag davor, blass hinter dem Tag.
+ *
+ * **Warum.** Eine Kurve allein sagt nicht, ob der Tag gut war. 13,4 kWh sind viel oder wenig, je
+ * nachdem, was gestern dastand - und genau diesen Vergleich macht sonst niemand, weil er zwei
+ * Ansichten und ein Gedächtnis braucht. Hinter heute liegt deshalb gestern, hinter morgen heute.
+ *
+ * **Hinter gestern liegt nichts.** Vorgestern holt die Wandanzeige nicht; wer so weit zurück
+ * will, ist unter Strom richtig, mit Blättern und allem.
+ */
+export interface Schatten {
+  punkte: Punkt[];
+  /** Tagesbeginn der Schattenreihe: Die Zeichnung legt sie darüber auf dieselbe Stundenachse. */
+  start: number;
+  end: number;
+  /** Das Wort in der Legende: „gestern" hinter heute, „heute" hinter morgen. */
+  wort: string;
+  /** Die Sonne dieses Tages bis zur gleichen Uhrzeit, in kWh. Null, solange die Reihe fehlt. */
+  kwh: number | null;
+}
+
+/**
+ * Fläche unter der Sonnenleistung bis `bis`, in kWh: Trapeze zwischen den Messpunkten.
+ *
+ * Eine Lücke von mehr als einer Stunde wird übersprungen. Zwei Punkte mit einer Nacht dazwischen
+ * sagen nichts über die Nacht, und als Trapez gerechnet ergäben sie eine Energie, die es nie gab.
+ */
+export function pvKwh(punkte: Punkt[], bis: number): number | null {
+  let summe = 0;
+  let paare = 0;
+  for (let i = 1; i < punkte.length; i++) {
+    const a = punkte[i - 1]!;
+    const b = punkte[i]!;
+    if (b.ts > bis) break;
+    if (a.pv == null || b.pv == null) continue;
+    const h = (b.ts - a.ts) / 3600_000;
+    if (h <= 0 || h > 1) continue;
+    summe += ((a.pv + b.pv) / 2) * h;
+    paare++;
+  }
+  return paare ? summe : null;
+}
+
+/** Dieselbe Uhrzeit an einem anderen Tag. Über `setHours`, damit die Zeitumstellung stimmt. */
+function gleicheUhrzeit(tagBeginn: number, nowMs: number): number {
+  const jetzt = new Date(nowMs);
+  const d = new Date(tagBeginn);
+  d.setHours(jetzt.getHours(), jetzt.getMinutes(), 0, 0);
+  return d.getTime();
+}
+
+export function schatten(tag: Tag, nowMs: number, gestern: Punkt[], heute: Punkt[]): Schatten | null {
+  if (tag === "gestern") return null;
+  const punkte = tag === "heute" ? gestern : heute;
+  if (!punkte.length) return null;
+  const vorher = grenzen(tag === "heute" ? "gestern" : "heute", nowMs);
+  // Verglichen wird bis zur gleichen Uhrzeit, nicht bis zum Tagesende: „gestern um diese Zeit"
+  // ist die Zahl, die etwas sagt. Hinter morgen liegt heute, und heute ist bis jetzt gelaufen.
+  const bis = tag === "heute" ? gleicheUhrzeit(vorher.start, nowMs) : nowMs;
+  return {
+    punkte,
+    start: vorher.start,
+    end: vorher.end,
+    wort: tag === "heute" ? "gestern" : "heute",
+    kwh: pvKwh(punkte, bis),
+  };
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EnergySummary, HeatReport, Plan } from "@/lib/api/models";
-import { grenzen, kennzahlen, preise, pvSumme, waermeSumme, type MorgenDaten } from "./tage";
+import { grenzen, kennzahlen, preise, pvKwh, pvSumme, schatten, waermeSumme, type MorgenDaten, type Punkt } from "./tage";
 
 const LEER: MorgenDaten = { pvKwh: null, waerme: null, preise: [] };
 
@@ -105,5 +105,68 @@ describe("kennzahlen", () => {
     for (const tag of ["gestern", "heute", "morgen"] as const) {
       expect(kennzahlen(tag, null, null, LEER)).toHaveLength(4);
     }
+  });
+});
+
+describe("pvKwh", () => {
+  const start = new Date("2026-10-23T00:00:00").getTime();
+  const reihe = (von: number, bis: number, kw: number): Punkt[] =>
+    Array.from({ length: (bis - von) * 60 + 1 }, (_, i) => ({ ts: start + von * 3600_000 + i * 60_000, pv: kw }));
+
+  it("rechnet die Fläche unter der Leistung", () => {
+    // Zwei Stunden mit 3 kW sind 6 kWh.
+    expect(pvKwh(reihe(10, 12, 3), start + 24 * 3600_000)).toBeCloseTo(6, 3);
+  });
+  it("hört bei der gefragten Uhrzeit auf", () => {
+    expect(pvKwh(reihe(10, 12, 3), start + 11 * 3600_000)).toBeCloseTo(3, 3);
+  });
+  it("überspringt Lücken von mehr als einer Stunde", () => {
+    // Zwei Punkte mit einer Nacht dazwischen: als Trapez wären das Kilowattstunden, die es nie gab.
+    const nacht: Punkt[] = [
+      { ts: start + 18 * 3600_000, pv: 2 },
+      { ts: start + 30 * 3600_000, pv: 2 },
+    ];
+    expect(pvKwh(nacht, start + 48 * 3600_000)).toBeNull();
+  });
+  it("gibt null, solange keine Reihe da ist", () => {
+    expect(pvKwh([], start)).toBeNull();
+    expect(pvKwh([{ ts: start, pv: null }, { ts: start + 60_000, pv: null }], start + 3600_000)).toBeNull();
+  });
+});
+
+describe("schatten", () => {
+  const jetzt = new Date("2026-10-23T12:00:00").getTime();
+  const gesternStart = new Date("2026-10-22T00:00:00").getTime();
+  const heuteStart = new Date("2026-10-23T00:00:00").getTime();
+  const gesternReihe: Punkt[] = Array.from({ length: 121 }, (_, i) => ({ ts: gesternStart + 10 * 3600_000 + i * 60_000, pv: 3 }));
+  const heuteReihe: Punkt[] = Array.from({ length: 121 }, (_, i) => ({ ts: heuteStart + 9 * 3600_000 + i * 60_000, pv: 4 }));
+
+  it("legt gestern hinter heute, bis zur gleichen Uhrzeit", () => {
+    const s = schatten("heute", jetzt, gesternReihe, heuteReihe);
+    expect(s?.wort).toBe("gestern");
+    expect(s?.start).toBe(gesternStart);
+    expect(s?.kwh).toBeCloseTo(6, 3);
+  });
+  it("legt heute hinter morgen", () => {
+    const s = schatten("morgen", jetzt, gesternReihe, heuteReihe);
+    expect(s?.wort).toBe("heute");
+    expect(s?.start).toBe(heuteStart);
+    expect(s?.kwh).toBeCloseTo(8, 3);
+  });
+  it("legt hinter gestern nichts", () => {
+    expect(schatten("gestern", jetzt, gesternReihe, heuteReihe)).toBeNull();
+  });
+  it("bleibt aus, solange die Reihe fehlt", () => {
+    expect(schatten("heute", jetzt, [], heuteReihe)).toBeNull();
+  });
+  // Am 26.10.2026 war gestern 25 Stunden lang. Die gleiche Uhrzeit ist dann nicht die gleiche
+  // Zahl von Millisekunden seit Mitternacht.
+  it("trifft die gleiche Uhrzeit auch nach der Zeitumstellung", () => {
+    const nach = new Date("2026-10-26T12:00:00").getTime();
+    const vortag = new Date("2026-10-25T00:00:00").getTime();
+    const lang: Punkt[] = Array.from({ length: 181 }, (_, i) => ({ ts: vortag + 11 * 3600_000 + i * 60_000, pv: 2 }));
+    const s = schatten("heute", nach, lang, heuteReihe);
+    // Bis 12 Uhr Ortszeit ist eine Stunde der Reihe gelaufen, nicht zwei.
+    expect(s?.kwh).toBeCloseTo(2, 3);
   });
 });

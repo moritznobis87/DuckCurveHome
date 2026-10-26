@@ -48,6 +48,13 @@ export const C = {
   // Grau fuer Flaechen und steht der weissen Hauslinie zu nah (CIEDE2000 4,5); dieses Orange
   // haelt Abstand zu allen Linien der Tageskurve (zur Sonne 18,4, zum Strompreis 34,0).
   heatPump: "#e0966b",
+  // Die Sonne eines anderen Tages: hinter heute liegt gestern, hinter morgen heute. Dieselbe
+  // Familie wie `pv`, nur dunkler - CIEDE2000 9,9 zur Sonne, also nach dem Maßstab dieser Liste
+  // zu nah. **Hier ist das der Sinn:** Es ist dieselbe Größe an einem anderen Tag, und wer die
+  // beiden für verwandt hält, hat richtig gelesen. Unterschieden werden sie an der Form - keine
+  // Fläche, dünner, hinter allem - und in der Legende, die den Tag nennt. Gegen die Kartenfläche
+  // #123544 hat sie 4,63:1, reicht also auch aus drei Metern.
+  pvSchatten: "#c8902f",
   mist: "#7fa3b3",
   // Nicht-Energie
   price: "#7fa3b3",

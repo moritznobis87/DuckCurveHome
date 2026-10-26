@@ -15,7 +15,7 @@ import { FlowHero, FlowList } from "./FlowHero";
 import { Rail } from "./Rail";
 import { DayCurve } from "./DayCurve";
 import { Dock } from "./Dock";
-import { grenzen, kennzahlen, preise, pvSumme, waermeSumme, type Tag } from "./tage";
+import { grenzen, kennzahlen, preise, pvSumme, schatten, waermeSumme, type Tag } from "./tage";
 
 /**
  * Jetzt: die Startseite der Wandanzeige.
@@ -111,16 +111,18 @@ export function Home() {
   // Hin- und Herschalten keine Anfrage.
   const bilanzGestern = useTagesbilanz(tag === "gestern" ? isoGestern : "");
 
+  // Die Reihe von gestern wird immer geholt, nicht erst beim Umschalten: Sie liegt als
+  // Schattenkurve hinter heute (siehe `schatten` in `tage.ts`). Eine Anfrage am Tag.
   const [gesternReihe, setGesternReihe] = useState<HistoryPoint[]>([]);
   const gesternGeholt = useRef("");
   useEffect(() => {
-    if (tag !== "gestern" || !isoGestern || gesternGeholt.current === isoGestern) return;
+    if (!isoGestern || gesternGeholt.current === isoGestern) return;
     gesternGeholt.current = isoGestern;
     void api
       .history("yesterday")
       .then((h) => setGesternReihe(h.rows.map(rowToPoint)))
       .catch(() => { gesternGeholt.current = ""; });
-  }, [tag, isoGestern]);
+  }, [isoGestern]);
 
   // Die Waermelastprognose reicht 48 Stunden und wird nur geholt, wenn jemand nach morgen fragt.
   const [waerme, setWaerme] = useState<HeatReport | null>(null);
@@ -148,6 +150,8 @@ export function Home() {
       preise: preise(plan?.intervals, g.start, g.end),
     };
   }, [plan, waerme, minute]);
+
+  const schattenKurve = useMemo(() => schatten(tag, minute, gesternReihe, history), [tag, minute, gesternReihe, history]);
 
   const zahlen = kennzahlen(tag, tag === "gestern" ? bilanzGestern : bilanzHeute, preis, morgen);
   const reihe = tag === "gestern" ? gesternReihe : tag === "morgen" ? KEINE_REIHE : history;
@@ -183,7 +187,7 @@ export function Home() {
         <Rail state={state} plan={plan} nowMs={now} kompakt={isMobile} />
       </div>
 
-      <DayCurve tag={tag} onTag={(t) => { setTag(t); setGetippt(Date.now()); }} history={reihe} plan={plan} heat={waerme} nowMs={minute} start={start} end={end} />
+      <DayCurve tag={tag} onTag={(t) => { setTag(t); setGetippt(Date.now()); }} history={reihe} plan={plan} heat={waerme} schatten={schattenKurve} nowMs={minute} start={start} end={end} />
 
       <div className="home-fuss">
         <div className="home-heute">
