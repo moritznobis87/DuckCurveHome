@@ -131,6 +131,22 @@ class SourceStatusOut(BaseModel):
     detail_de: str = ""
 
 
+class WatchFindingOut(BaseModel):
+    """Ein Befund des Wächters: Dieses Signal schweigt, seit wann, und was deshalb fehlt.
+
+    Die Regeln stehen in `hems_core.watch`; hier ist nur die Form für die Oberfläche. Der Text ist
+    ein ganzer Satz, weil er auch als Mitteilung auf einem Telefon landet, wo niemand aus
+    `name` und `silent_min` etwas zusammensetzen kann.
+    """
+
+    name: str
+    title_de: str
+    severity: Literal["warn", "alarm"]
+    since: datetime | None = None
+    silent_min: float
+    text_de: str
+
+
 class SystemStatusOut(BaseModel):
     mode: str
     server_time: datetime
@@ -140,6 +156,8 @@ class SystemStatusOut(BaseModel):
     version: str
     connection_label_de: str
     sources: list[SourceStatusOut] = Field(default_factory=list)
+    #: Was gerade schweigt. Leer ist der Normalfall und bedeutet: Alles meldet sich.
+    watch: list[WatchFindingOut] = Field(default_factory=list)
 
 
 class StoveLiveOut(BaseModel):

@@ -7874,6 +7874,13 @@
             },
             "type": "array",
             "title": "Sources"
+          },
+          "watch": {
+            "items": {
+              "$ref": "#/components/schemas/WatchFindingOut"
+            },
+            "type": "array",
+            "title": "Watch"
           }
         },
         "type": "object",
@@ -8086,6 +8093,56 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WatchFindingOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "title_de": {
+            "type": "string",
+            "title": "Title De"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "warn",
+              "alarm"
+            ],
+            "title": "Severity"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since"
+          },
+          "silent_min": {
+            "type": "number",
+            "title": "Silent Min"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "title_de",
+          "severity",
+          "silent_min",
+          "text_de"
+        ],
+        "title": "WatchFindingOut",
+        "description": "Ein Befund des Wächters: Dieses Signal schweigt, seit wann, und was deshalb fehlt.\n\nDie Regeln stehen in `hems_core.watch`; hier ist nur die Form für die Oberfläche. Der Text ist\nein ganzer Satz, weil er auch als Mitteilung auf einem Telefon landet, wo niemand aus\n`name` und `silent_min` etwas zusammensetzen kann."
       },
       "YearMapOut": {
         "properties": {

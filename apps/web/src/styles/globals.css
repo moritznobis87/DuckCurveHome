@@ -196,7 +196,14 @@
 .home-punkt { width: 8px; height: 8px; border-radius: 50%; background: var(--mist); animation: dch-atmen 3.6s ease-in-out infinite; }
 .home-punkt-aus { background: var(--alert); animation: none; }
 @keyframes dch-atmen { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+.home-satz-block { display: flex; flex-direction: column; gap: 8px; }
 .home-satz-zeile { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; }
+/* Der Waechter. Keine Kachel, kein Fenster: eine Zeile mit Kante, die man im Vorbeigehen sieht
+   und die nichts verdeckt. Der Normalfall ist, dass hier nichts steht. */
+.home-wache { display: flex; flex-direction: column; gap: 6px; }
+.home-wache-zeile { display: flex; align-items: flex-start; gap: 8px; padding: 7px 12px; border-left: 3px solid currentColor; border-radius: 0 4px 4px 0; background: rgba(224,83,61,.10); font-size: 14px; line-height: 1.35; color: var(--alert); }
+.home-wache-zeile[data-schwere="warn"] { color: var(--amber-soft); background: rgba(255,215,120,.10); }
+.home-wache-zeile span:last-child { color: var(--text-1); }
 .home-satz { margin: 0; font-size: clamp(20px, 2.1vw, 28px); font-weight: 500; letter-spacing: -.015em; line-height: 1.25; max-width: 70ch; }
 .home-satz-meta { white-space: nowrap; }
 
@@ -393,6 +400,8 @@
 
 .ambiente-satz-zeile { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: clamp(24px, 4vw, 48px); }
 .ambiente-satz { margin: 0; font-size: clamp(22px, 3.2vw, 40px); font-weight: 500; letter-spacing: -.015em; line-height: 1.2; max-width: 22ch; }
+.ambiente-satz[data-schwere="alarm"] { color: var(--alert); }
+.ambiente-satz[data-schwere="warn"] { color: var(--amber-soft); }
 
 /* Die Aussicht neben dem Satz: was der Tag noch bringt. */
 .ambiente-vorschau { display: flex; flex-direction: column; gap: 8px; width: clamp(240px, 30vw, 360px); flex: none; padding-top: 4px; }

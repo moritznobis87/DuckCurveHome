@@ -16,6 +16,7 @@ import { FlowHero, FlowList } from "./FlowHero";
 import { Rail } from "./Rail";
 import { DayCurve } from "./DayCurve";
 import { Dock } from "./Dock";
+import { Wache } from "./Wache";
 import { Ambiente } from "./Ambiente";
 import { grenzen, kennzahlen, preise, pvSumme, schatten, waermeSumme, type Tag } from "./tage";
 
@@ -169,6 +170,7 @@ export function Home() {
 
   const zahlen = kennzahlen(tag, tag === "gestern" ? bilanzGestern : bilanzHeute, preis, morgen);
   const reihe = tag === "gestern" ? gesternReihe : tag === "morgen" ? KEINE_REIHE : history;
+  const wache = state?.system.watch ?? [];
   const d = state?.decision;
   const satz = d?.explanation_de ?? (state ? "Das Haus ist da, die erste Entscheidung steht noch aus." : "Verbinde mit dem Haus …");
   const modeWort = state?.operating_mode.override ? `manuell bis ${hhmm(state.operating_mode.override.ends_at)}` : state?.operating_mode.system_mode === "off" ? "aus · beobachten" : `auto · ${state?.operating_mode.auto_profile ?? "smart"}`;
@@ -191,9 +193,12 @@ export function Home() {
         </div>
       </header>
 
-      <div className="home-satz-zeile">
-        <p className="home-satz">{satz}</p>
-        <span className="kicker home-satz-meta" style={{ fontSize: 11, color: "var(--text-3)" }}>{d ? `Entscheidung ${hhmm(d.at)} · ${modeWort}` : modeWort}</span>
+      <div className="home-satz-block">
+        <div className="home-satz-zeile">
+          <p className="home-satz">{satz}</p>
+          <span className="kicker home-satz-meta" style={{ fontSize: 11, color: "var(--text-3)" }}>{d ? `Entscheidung ${hhmm(d.at)} · ${modeWort}` : modeWort}</span>
+        </div>
+        <Wache befunde={wache} />
       </div>
 
       <div className="home-hero" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>

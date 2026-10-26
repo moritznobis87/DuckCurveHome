@@ -71,6 +71,7 @@ from dch_api.schemas import (
     StoveLiveOut,
     SystemEventOut,
     SystemStatusOut,
+    WatchFindingOut,
     YearMapOut,
 )
 from dch_api.settings import Settings
@@ -96,6 +97,7 @@ from hems_core.planning import cheap_windows, current_price, next_window_after, 
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
 from hems_core.simulation import BERLIN
 from hems_core.thermal import compute_buffer_state, room_shift
+from hems_core.watch import BRIDGE, findings
 
 log = structlog.get_logger("live")
 VERSION = "0.1.0-phase2"
@@ -130,6 +132,10 @@ class LiveRuntime:
         self.battery_error: str | None = None
         self.stove_plan = StovePlan()
         self.energy_rebuild = "ausstehend"
+        # Seit wann dieser Vorgang läuft. Der Wächter braucht es für den Fall, dass die Brücke
+        # sich seit dem Start nie gemeldet hat: Dann beginnt die Stille hier und nicht in der
+        # Ewigkeit (siehe `_watch`).
+        self.started_at = datetime.now(UTC)
         self._stove_switched_at: datetime | None = None
         self.decision: Decision | None = None
         self.decisions: deque[Decision] = deque(maxlen=100)
@@ -301,6 +307,33 @@ class LiveRuntime:
             )
         )
         return out
+
+    def _watch(self, now: datetime) -> list[WatchFindingOut]:
+        """Was gerade schweigt.
+
+        Die Zeitpunkte kommen aus dem Rohbestand (`live.readings`), nicht aus dem Snapshot: Der
+        Snapshot ersetzt alte Werte durch „unavailable" und verliert dabei genau die Auskunft, um
+        die es hier geht - **wann** zuletzt etwas kam. Beim Start lädt `start()` den letzten Stand
+        aus der Datenbank, also überlebt diese Auskunft einen Neustart des Dienstes.
+
+        Die Brücke ist eine Zeile wie die anderen, mit ihrem letzten Lebenszeichen. Eine stehende
+        Verbindung, durch die nichts geht, ist der Fall vom 23.10.2026 und soll gemeldet werden.
+        """
+        zuletzt: dict[str, datetime | None] = {
+            k: r.observed_at for k, r in self.live.readings.items()
+        }
+        zuletzt[BRIDGE] = self.hub.last_frame_at
+        return [
+            WatchFindingOut(
+                name=f.name,
+                title_de=f.title_de,
+                severity=f.severity,
+                since=f.since,
+                silent_min=round(f.silent_min, 1),
+                text_de=f.text_de,
+            )
+            for f in findings(zuletzt, now, self.started_at)
+        ]
 
     async def _libbi_events(self, start: datetime, end: datetime) -> list[tuple[datetime, str]]:
         """Die Zustandsmeldungen des Speichers eines Zeitraums, für die Tagesdiagnose."""
@@ -775,6 +808,7 @@ class LiveRuntime:
                 version=VERSION,
                 connection_label_de=self._connection_label(),
                 sources=self._sources(),
+                watch=self._watch(now),
             ),
         )
 

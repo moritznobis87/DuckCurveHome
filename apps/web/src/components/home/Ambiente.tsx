@@ -8,6 +8,7 @@ import { aussicht, bild, bogen, sonnenlauf } from "./ambiente";
 import { planZeilen } from "./fahrplan";
 import { FUEHLER_POS, heatColor, pufferZustand, SCHICHT_GRENZEN } from "./puffer";
 import type { Kennzahl } from "./tage";
+import { schwerster } from "./Wache";
 
 /**
  * Das Ambiente: dasselbe Haus, aus drei Metern gelesen.
@@ -27,6 +28,7 @@ export function Ambiente({ state, plan, zahlen, morgenPvKwh, nowMs, degraded, on
   const s = state?.snapshot;
   const lauf = useMemo(() => sonnenlauf(plan, nowMs), [plan, nowMs]);
   const welches = bild(lauf, nowMs, s?.pv_power_kw.value);
+  const befund = schwerster(state?.system.watch);
 
   return (
     <button type="button" className="ambiente" onClick={onWecken} aria-label="Bedienung zurückholen">
@@ -48,8 +50,13 @@ export function Ambiente({ state, plan, zahlen, morgenPvKwh, nowMs, degraded, on
         </span>
       </div>
 
+      {/* Schweigt eine Quelle, steht das hier statt der Entscheidung. Wer im Vorbeigehen auf
+          die Wand sieht, soll den Ausfall sehen und nicht einen Satz über eine Wärmepumpe, der
+          auf zwei Tage alten Zahlen beruht. */}
       <div className="ambiente-satz-zeile">
-        <p className="ambiente-satz">{state?.decision?.explanation_de ?? "Verbinde mit dem Haus …"}</p>
+        <p className="ambiente-satz" data-schwere={befund?.severity}>
+          {befund ? befund.text_de : (state?.decision?.explanation_de ?? "Verbinde mit dem Haus …")}
+        </p>
         {welches === "tag" ? <Vorschau plan={plan} lauf={lauf} nowMs={nowMs} /> : null}
       </div>
 

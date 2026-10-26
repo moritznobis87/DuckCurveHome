@@ -3843,6 +3843,8 @@ export interface components {
             connection_label_de: string;
             /** Sources */
             sources?: components["schemas"]["SourceStatusOut"][];
+            /** Watch */
+            watch?: components["schemas"]["WatchFindingOut"][];
         };
         /**
          * TariffConfig
@@ -3946,6 +3948,31 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WatchFindingOut
+         * @description Ein Befund des Wächters: Dieses Signal schweigt, seit wann, und was deshalb fehlt.
+         *
+         *     Die Regeln stehen in `hems_core.watch`; hier ist nur die Form für die Oberfläche. Der Text ist
+         *     ein ganzer Satz, weil er auch als Mitteilung auf einem Telefon landet, wo niemand aus
+         *     `name` und `silent_min` etwas zusammensetzen kann.
+         */
+        WatchFindingOut: {
+            /** Name */
+            name: string;
+            /** Title De */
+            title_de: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "warn" | "alarm";
+            /** Since */
+            since?: string | null;
+            /** Silent Min */
+            silent_min: number;
+            /** Text De */
+            text_de: string;
         };
         /**
          * YearMapOut
