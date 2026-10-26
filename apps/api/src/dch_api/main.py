@@ -93,7 +93,9 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
 
         inexogy = InexogyClient(settings.inexogy_email, settings.inexogy_password)
     push = PushService(repos, settings.push_subject)
-    runtime = LiveRuntime(settings, cfg, repos, hub, forecasts, myenergi=myenergi, inexogy=inexogy)
+    runtime = LiveRuntime(
+        settings, cfg, repos, hub, forecasts, myenergi=myenergi, inexogy=inexogy, push=push
+    )
     app.state.engine = engine
     app.state.bridge_hub = hub
     app.state.runner = runtime

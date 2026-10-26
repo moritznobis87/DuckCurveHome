@@ -37,6 +37,7 @@ from dch_api.application.myenergi_source import (
     price_readings_for_gaps,
 )
 from dch_api.application.plan_service import build_plan
+from dch_api.application.push import Mitteilung, PushService
 from dch_api.application.stove_control import STALE_AFTER_S, StoveController, StoveMode
 from dch_api.application.stove_planner import StovePlan, decide_switch, plan_stove
 from dch_api.application.tibber_invoice import MeasuredPeriod
@@ -97,11 +98,15 @@ from hems_core.planning import cheap_windows, current_price, next_window_after, 
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
 from hems_core.simulation import BERLIN
 from hems_core.thermal import compute_buffer_state, room_shift
-from hems_core.watch import BRIDGE, findings
+from hems_core.watch import BRIDGE, RULES, back_text, findings
 
 log = structlog.get_logger("live")
 VERSION = "0.1.0-phase2"
 HISTORY_KEYS = [k for k in SERIES if k != "hp_release_contact"] + ["actuator:hp_release_contact"]
+
+
+#: So lange nach einer Meldung bleibt dieselbe Regel still, auch wenn sie erneut wechselt.
+MELDE_PAUSE_MIN = 30
 
 
 class LiveRuntime:
@@ -114,6 +119,7 @@ class LiveRuntime:
         forecasts: ForecastService,
         myenergi: StatusClient | None = None,
         inexogy: MeterClient | None = None,
+        push: PushService | None = None,
     ) -> None:
         self.settings = settings
         self.config = config
@@ -132,6 +138,12 @@ class LiveRuntime:
         self.battery_error: str | None = None
         self.stove_plan = StovePlan()
         self.energy_rebuild = "ausstehend"
+        self.push = push
+        # Was der Wächter beim letzten Takt sah, je Regel, und wann zuletzt etwas gemeldet wurde.
+        # Beides nur im Speicher; den Stand über Neustarts hinweg holt `start()` aus den
+        # Ereignissen, damit ein Neustart nicht alles noch einmal meldet.
+        self._watch_state: dict[str, bool] = {}
+        self._watch_sent: dict[str, datetime] = {}
         # Seit wann dieser Vorgang läuft. Der Wächter braucht es für den Fall, dass die Brücke
         # sich seit dem Start nie gemeldet hat: Dann beginnt die Stille hier und nicht in der
         # Ewigkeit (siehe `_watch`).
@@ -319,10 +331,6 @@ class LiveRuntime:
         Die Brücke ist eine Zeile wie die anderen, mit ihrem letzten Lebenszeichen. Eine stehende
         Verbindung, durch die nichts geht, ist der Fall vom 23.10.2026 und soll gemeldet werden.
         """
-        zuletzt: dict[str, datetime | None] = {
-            k: r.observed_at for k, r in self.live.readings.items()
-        }
-        zuletzt[BRIDGE] = self.hub.last_frame_at
         return [
             WatchFindingOut(
                 name=f.name,
@@ -332,8 +340,71 @@ class LiveRuntime:
                 silent_min=round(f.silent_min, 1),
                 text_de=f.text_de,
             )
-            for f in findings(zuletzt, now, self.started_at)
+            for f in findings(self._last_seen(), now, self.started_at)
         ]
+
+    async def _watch_notify(self, now: datetime) -> None:
+        """Aus einem Befund wird eine Mitteilung - einmal, wenn er auftritt, und einmal, wenn er geht.
+
+        **Zustandswechsel, nicht Zustand.** Ein Ausfall, der seit zwei Tagen läuft, ist eine
+        Nachricht und nicht 17 280 Nachrichten. Gemeldet wird deshalb nur der Übergang.
+
+        **Ein Neustart ist kein Ausfall.** Der letzte bekannte Stand steht in den Ereignissen
+        (`watch.<name>`), und `start()` liest ihn zurück. Ohne das meldete jeder Deploy alle
+        offenen Befunde noch einmal - und davon gibt es an einem schlechten Tag mehrere.
+
+        **Die Pause ist ein Sicherheitsventil.** Liefert eine Quelle genau im Takt ihrer eigenen
+        Frist, wechselt der Befund ständig. Der Zustand wird dann weitergeführt, aber nicht
+        gemeldet; sonst klingelt das Telefon im Viertelstundentakt.
+        """
+        if self.push is None:
+            return
+        offen = {f.name: f for f in findings(self._last_seen(), now, self.started_at)}
+        for rule in RULES:
+            aktiv = rule.name in offen
+            vorher = self._watch_state.get(rule.name, False)
+            self._watch_state[rule.name] = aktiv
+            if aktiv == vorher:
+                continue
+            zuletzt = self._watch_sent.get(rule.name)
+            if zuletzt is not None and (now - zuletzt) < timedelta(minutes=MELDE_PAUSE_MIN):
+                continue
+            self._watch_sent[rule.name] = now
+            if aktiv:
+                befund = offen[rule.name]
+                # Der Titel ist die Sache, der Rumpf der Satz ohne sie: „Die Puffertemperaturen" /
+                # „seit 2 Tagen still. Ohne sie gibt es keinen Ladezustand …". Auf einem Telefon
+                # steht der Name der App ohnehin darüber.
+                rumpf = befund.text_de.removeprefix(f"{rule.title_de} ")
+                await self.repos.add_event("warning", f"watch.{rule.name}", befund.text_de)
+                await self.push.send(
+                    Mitteilung(title=rule.title_de, body=rumpf, tag=f"watch-{rule.name}", url="/")
+                )
+            else:
+                satz = back_text(rule)
+                await self.repos.add_event("info", f"watch.{rule.name}", satz)
+                await self.push.send(
+                    Mitteilung(
+                        title=rule.title_de,
+                        body=satz.removeprefix(f"{rule.title_de} "),
+                        tag=f"watch-{rule.name}",
+                        url="/",
+                    )
+                )
+
+    def _last_seen(self) -> dict[str, datetime | None]:
+        """Wann zu jedem Schlüssel zuletzt etwas kam, die Brücke eingeschlossen."""
+        zuletzt: dict[str, datetime | None] = {
+            k: r.observed_at for k, r in self.live.readings.items()
+        }
+        zuletzt[BRIDGE] = self.hub.last_frame_at
+        return zuletzt
+
+    async def _load_watch_state(self) -> None:
+        """Den Stand des Wächters aus den Ereignissen zurückholen, damit ein Neustart nicht meldet."""
+        for rule in RULES:
+            row = await self.repos.latest_event(f"watch.{rule.name}")
+            self._watch_state[rule.name] = row is not None and row.severity == "warning"
 
     async def _libbi_events(self, start: datetime, end: datetime) -> list[tuple[datetime, str]]:
         """Die Zustandsmeldungen des Speichers eines Zeitraums, für die Tagesdiagnose."""
@@ -1464,6 +1535,7 @@ class LiveRuntime:
         if stored is not None:
             self.mode = stored
         await self._load_calibration()
+        await self._load_watch_state()
         await self.forecasts.refresh_prices(self.now)
         await self.forecasts.refresh_weather(self.now)
         await self._record_forecast_run()
@@ -1504,6 +1576,7 @@ class LiveRuntime:
             await asyncio.sleep(self.settings.tick_s)
             try:
                 await self.control_tick()
+                await self._watch_notify(self.now)
                 if self._plan_at is None or self.now - self._plan_at >= timedelta(
                     minutes=self.settings.plan_refresh_min
                 ):

@@ -46,6 +46,10 @@ class WatchRule:
     impact_de: str
     #: True: auch melden, wenn seit dem Start nie etwas kam.
     expected: bool = False
+    #: Mehrzahl? „Die Puffertemperaturen melden sich wieder", „Die Brücke meldet sich wieder".
+    #: Steht hier, weil der Satz der Entwarnung aus der Regel gebaut wird und kein Befund mehr da
+    #: ist, aus dem man ihn nehmen könnte.
+    plural: bool = False
 
 
 #: Die Voreinstellung. Die Zeiten sind großzügiger als die Alterung im Snapshot (dort gilt ein
@@ -73,6 +77,7 @@ RULES: tuple[WatchRule, ...] = (
         silence_min=30,
         severity="alarm",
         impact_de="Ohne sie gibt es keinen Ladezustand und keine Entscheidung über die Wärmepumpe.",
+        plural=True,
     ),
     WatchRule(
         name="power",
@@ -81,6 +86,7 @@ RULES: tuple[WatchRule, ...] = (
         silence_min=20,
         severity="alarm",
         impact_de="Ohne sie weiß DCH nicht, was das Haus gerade tut.",
+        plural=True,
     ),
     WatchRule(
         name="price",
@@ -164,3 +170,12 @@ def findings(
         )
     out.sort(key=lambda f: (0 if f.severity == "alarm" else 1, -f.silent_min))
     return out
+
+
+def back_text(rule: WatchRule) -> str:
+    """Die Entwarnung. Aus der Regel gebaut, weil es keinen Befund mehr gibt, wenn sie fällig ist."""
+    return f"{rule.title_de} {'melden' if rule.plural else 'meldet'} sich wieder."
+
+
+def rule_by_name(name: str, rules: tuple[WatchRule, ...] = RULES) -> WatchRule | None:
+    return next((r for r in rules if r.name == name), None)
