@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { LiveState, Plan, PlanInterval } from "@/lib/api/models";
-import { celsius, hhmm } from "@/lib/format";
-import { pufferZustand } from "./puffer";
+import type { LiveState, Plan } from "@/lib/api/models";
+import { celsius } from "@/lib/format";
+import { planZeilen } from "./fahrplan";
+import { FUEHLER_POS, heatColor, pufferZustand, SCHICHT_GRENZEN } from "./puffer";
 
 /**
  * Die Leiste rechts neben dem Fluss: der Puffer und der Plan.
@@ -15,61 +16,6 @@ import { pufferZustand } from "./puffer";
  * die Frage „was hat das Haus vor" sonst nur im Satz oben beantwortet waere, und der sagt nur das
  * Naechste.
  */
-const STOPS: Array<[number, [number, number, number]]> = [
-  [25, [0x1f, 0x4c, 0x66]],
-  [40, [0x7f, 0xa3, 0xb3]],
-  [50, [0xff, 0xd7, 0x78]],
-  [60, [0xf2, 0xa9, 0x00]],
-  [70, [0xe0, 0x53, 0x3d]],
-];
-const rgb = (c: [number, number, number]) => `rgb(${c[0]},${c[1]},${c[2]})`;
-
-/** Farbe einer Puffertemperatur, von kalt-petrol bis heiss-rot. */
-export function heatColor(t: number): string {
-  const first = STOPS[0]!;
-  const last = STOPS[STOPS.length - 1]!;
-  if (t <= first[0]) return rgb(first[1]);
-  if (t >= last[0]) return rgb(last[1]);
-  for (let i = 0; i < STOPS.length - 1; i++) {
-    const [t0, c0] = STOPS[i]!;
-    const [t1, c1] = STOPS[i + 1]!;
-    if (t >= t0 && t <= t1) {
-      const f = (t - t0) / (t1 - t0);
-      return rgb([0, 1, 2].map((k) => Math.round(c0[k]! + (c1[k]! - c0[k]!) * f)) as [number, number, number]);
-    }
-  }
-  return rgb(last[1]);
-}
-
-const STEP_MS = 15 * 60_000;
-
-/** Wo die vier Fuehler sitzen: in der Mitte ihrer Schicht, in Prozent vom oberen Ende. */
-const FUEHLER_POS = [12.5, 37.5, 62.5, 87.5] as const;
-/** Die Grenzen zwischen den Schichten. */
-const SCHICHT_GRENZEN = [25, 50, 75] as const;
-
-/** Zusammenhaengende Phasen aus den Viertelstundenschritten des Fahrplans. */
-function phasen(plan: Plan | null, nowMs: number, end: number, an: (iv: PlanInterval) => boolean | null | undefined): Array<{ start: number; end: number }> {
-  const out: Array<{ start: number; end: number }> = [];
-  let offen: { start: number; end: number } | null = null;
-  for (const iv of plan?.intervals ?? []) {
-    const t = new Date(iv.ts).getTime();
-    if (t + STEP_MS <= nowMs || t >= end) continue;
-    if (an(iv)) {
-      if (offen && offen.end === t) offen.end = t + STEP_MS;
-      else {
-        offen = { start: t, end: t + STEP_MS };
-        out.push(offen);
-      }
-    } else offen = null;
-  }
-  return out;
-}
-
-function spanne(p: { start: number; end: number }, nowMs: number): string {
-  return p.start <= nowMs ? `bis ${hhmm(new Date(p.end))}` : `${hhmm(new Date(p.start))} bis ${hhmm(new Date(p.end))}`;
-}
-
 export function Rail({ state, plan, nowMs, kompakt = false }: { state: LiveState | null; plan: Plan | null; nowMs: number; kompakt?: boolean }) {
   const s = state?.snapshot;
   const buffer = state?.buffer;
@@ -95,17 +41,7 @@ export function Rail({ state, plan, nowMs, kompakt = false }: { state: LiveState
   const fuehler = temps.map((m) => m.value);
   const soc = buffer?.soc ?? null;
 
-  const tief = plan?.next_cheap_window;
-  const end = nowMs + 24 * 3600_000;
-  const wp = phasen(plan, nowMs, end, (iv) => iv.reason_code === "planned_optimizer" && iv.planned_hp_state === "release");
-  const hatWp = (plan?.intervals ?? []).some((iv) => iv.reason_code === "planned_optimizer");
-  const ofen = phasen(plan, nowMs, end, (iv) => iv.planned_stove_on);
-  const hatOfen = (plan?.intervals ?? []).some((iv) => iv.planned_stove_on != null);
-  const zeilen: Array<[string, string]> = [];
-  if (hatWp) zeilen.push(["Wärmepumpe", wp[0] ? spanne(wp[0], nowMs) : "bleibt aus"]);
-  if (hatOfen) zeilen.push(["Pelletofen", ofen[0] ? spanne(ofen[0], nowMs) : "bleibt aus"]);
-  if (tief) zeilen.push(["Preistief", `${hhmm(tief.start)} bis ${hhmm(tief.end)}`]);
-
+  const zeilen = planZeilen(plan, nowMs);
 
   const pufferWort = `${celsius(s?.buffer_temps_c.top.value)} oben, ${zustand}`;
 

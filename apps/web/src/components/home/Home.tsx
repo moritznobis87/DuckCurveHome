@@ -8,6 +8,7 @@ import { startLiveClient } from "@/lib/live/sseClient";
 import { startReloadPolicy } from "@/lib/live/reloadPolicy";
 import { useRole } from "@/lib/live/useRole";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useRuhe } from "@/lib/useRuhe";
 import { celsius, hhmm, longDate } from "@/lib/format";
 import { isoDay } from "@/lib/day";
 import { AreaIcons, Brand } from "@/components/layout/AreaNav";
@@ -15,6 +16,7 @@ import { FlowHero, FlowList } from "./FlowHero";
 import { Rail } from "./Rail";
 import { DayCurve } from "./DayCurve";
 import { Dock } from "./Dock";
+import { Ambiente } from "./Ambiente";
 import { grenzen, kennzahlen, preise, pvSumme, schatten, waermeSumme, type Tag } from "./tage";
 
 /**
@@ -30,6 +32,11 @@ import { grenzen, kennzahlen, preise, pvSumme, schatten, waermeSumme, type Tag }
  * Beruehrung kehrt die Anzeige zu heute zurueck: Wer vorbeigeht, soll nicht das Gestern eines
  * anderen sehen.
  *
+ * **Wenn niemand da ist, wird daraus ein Bild.** Nach fuenf Minuten ohne Beruehrung legt sich das
+ * Ambiente darueber: Uhr, Satz, drei grosse Zahlen. Die Seite darunter bleibt am Leben und mit
+ * ihr die Verbindung; eine Beruehrung holt die Bedienung zurueck. Auf dem Telefon nicht - das
+ * schaltet sich von selbst ab.
+ *
  * **Was hier nicht mehr ist.** Die Messuhren, die Begruendungs-Chips, die vier Zeitspuren und das
  * Blaettern durch Tage. Die Begruendung ist der Satz oben; die Zeitspuren sind drei Zeilen in der
  * Leiste; und vergangene Tage stehen unter Strom, mit allem Blaettern, das dort hingehoert.
@@ -37,6 +44,9 @@ import { grenzen, kennzahlen, preise, pvSumme, schatten, waermeSumme, type Tag }
 const TAG_MS = 5 * 60_000;
 // Nach dieser Zeit ohne Beruehrung steht wieder heute da.
 const HEIMKEHR_MS = 2 * 60_000;
+// Und nach dieser Zeit wird aus der Bedienung ein Bild (siehe `Ambiente`). Laenger als die
+// Heimkehr, damit das Ambiente immer den heutigen Tag zeigt und nicht das Gestern von jemandem.
+const AMBIENTE_MS = 5 * 60_000;
 // Eine stabile leere Reihe: als Literal im JSX waere sie jedes Mal neu und liesse die Zeichnung
 // bei jedem Takt von vorn rechnen.
 const KEINE_REIHE: HistoryPoint[] = [];
@@ -135,6 +145,10 @@ export function Home() {
     return () => { alive = false; clearInterval(t); };
   }, [tag, heute]);
 
+  // Das Ambiente erst, wenn ueberhaupt etwas da ist: Eine Wand, die nach fuenf Minuten gross
+  // „Verbinde mit dem Haus" sagt, ist kein Bild, sondern ein Vorwurf.
+  const { ruhe, wecken } = useRuhe(AMBIENTE_MS, !isMobile && state != null);
+
   const [getippt, setGetippt] = useState(0);
   useEffect(() => {
     if (tag === "heute") return;
@@ -202,6 +216,10 @@ export function Home() {
         </div>
         <Dock state={state} readOnly={role !== "owner"} />
       </div>
+
+      {ruhe && tag === "heute" ? (
+        <Ambiente state={state} plan={plan} zahlen={zahlen} morgenPvKwh={morgen.pvKwh} nowMs={minute} degraded={degraded} onWecken={wecken} />
+      ) : null}
     </main>
   );
 }
