@@ -43,6 +43,11 @@ export function heatColor(t: number): string {
 
 const STEP_MS = 15 * 60_000;
 
+/** Wo die vier Fuehler sitzen: in der Mitte ihrer Schicht, in Prozent vom oberen Ende. */
+const FUEHLER_POS = [12.5, 37.5, 62.5, 87.5] as const;
+/** Die Grenzen zwischen den Schichten. */
+const SCHICHT_GRENZEN = [25, 50, 75] as const;
+
 /** Zusammenhaengende Phasen aus den Viertelstundenschritten des Fahrplans. */
 function phasen(plan: Plan | null, nowMs: number, end: number, an: (iv: PlanInterval) => boolean | null | undefined): Array<{ start: number; end: number }> {
   const out: Array<{ start: number; end: number }> = [];
@@ -69,9 +74,13 @@ export function Rail({ state, plan, nowMs, kompakt = false }: { state: LiveState
   const s = state?.snapshot;
   const buffer = state?.buffer;
   const temps = s ? [s.buffer_temps_c.top, s.buffer_temps_c.mid_top, s.buffer_temps_c.mid_bottom, s.buffer_temps_c.bottom] : [];
-  // Derselbe Farbverlauf in zwei Richtungen: hochkant neben der Zahl (iPad), liegend unter ihr
-  // (Telefon). Oben ist links.
-  const stufen = temps.map((m, i) => `${heatColor(m.value ?? 20)} ${[8, 37, 63, 92][i]}%`).join(", ");
+  // **Eine Zahl steht ueber ihrer Farbe.** Der Tank ist in vier gleich hohe Schichten geteilt,
+  // je ein Fuehler in der Mitte seiner Schicht: 12,5 / 37,5 / 62,5 / 87,5 Prozent. Dieselben vier
+  // Werte tragen den Farbverlauf, die Beschriftung und - als Grenzen dazwischen - die
+  // Trennlinien. Vorher lagen die Farbstopps bei 8/37/63/92, die Linien bei 25/50/75 und die
+  // Zahlen gleichmaessig verteilt mit der Einheit als fuenftem Posten, der sie alle nach links
+  // schob: die 28 stand bei 69 Prozent, waehrend ihre Farbe bei 92 lag (gesehen am 26.10.2026).
+  const stufen = temps.map((m, i) => `${heatColor(m.value ?? 20)} ${FUEHLER_POS[i]}%`).join(", ");
   // Das Wort unter dem Fuellstand und die Frage, ob die Werte ueberhaupt frisch sind: in
   // `puffer.ts`, weil genau daran am 25.10.2026 eine Stunde Suche haengen blieb.
   const { vollstaendig, veraltet, wort: zustand } = pufferZustand(
@@ -82,8 +91,7 @@ export function Rail({ state, plan, nowMs, kompakt = false }: { state: LiveState
   );
   const verlauf = vollstaendig ? `linear-gradient(180deg, ${stufen})` : "var(--surface-3)";
   const verlaufQuer = vollstaendig ? `linear-gradient(90deg, ${stufen})` : "var(--surface-3)";
-  // Vier Fuehler, von oben nach unten, neben dem Tank auf gleicher Hoehe. Ohne Worte: der Tank
-  // selbst sagt, wo oben ist, und die Kachel hat keine Breite fuer ein drittes Wort je Zeile.
+  // Vier Fuehler, von oben nach unten. Ohne Worte: der Tank selbst sagt, wo oben ist.
   const fuehler = temps.map((m) => m.value);
   const soc = buffer?.soc ?? null;
 
@@ -117,20 +125,21 @@ export function Rail({ state, plan, nowMs, kompakt = false }: { state: LiveState
             </span>
           </span>
           <span className="home-tank-quer" style={{ background: verlaufQuer, opacity: vollstaendig && !veraltet ? 1 : 0.45 }} aria-hidden>
-            {[25, 50, 75].map((x) => <span key={x} className="home-tank-marke-quer" style={{ left: `${x}%` }} />)}
+            {SCHICHT_GRENZEN.map((x) => <span key={x} className="home-tank-marke-quer" style={{ left: `${x}%` }} />)}
           </span>
-          {/* **Die Einheit steht einmal, am Ende der Reihe.** Vier Mal „°C" hinter vier Zahlen
-              brauchte mehr Platz, als die Kachel hat; auf schmalen Geraeten klebte das Zeichen am
-              naechsten Wert („56 °C47 °C"). Eine Reihe gleichartiger Zahlen traegt ihre Einheit
-              ohnehin nur einmal. */}
+          {/* Jede Zahl steht ueber ihrer Farbe, nicht in einer gleichmaessigen Reihe. Die Einheit
+              steht einmal, ganz rechts, und nimmt keinen Platz in der Verteilung ein. */}
           <span className="home-puffer-fuehler" aria-hidden>
             {fuehler.map((v, i) => (
-              <span key={i} className="flex flex-col items-start gap-[2px]">
-                <span className="mono">{v == null ? "-" : Math.round(v)}</span>
-                {i === 0 ? <span className="home-puffer-ort">oben</span> : i === 3 ? <span className="home-puffer-ort">unten</span> : null}
+              <span key={i} className="mono home-puffer-wert" style={{ left: `${FUEHLER_POS[i]}%` }}>
+                {v == null ? "-" : Math.round(v)}
               </span>
             ))}
             <span className="home-puffer-einheit">°C</span>
+          </span>
+          <span className="home-puffer-orte" aria-hidden>
+            <span className="home-puffer-ort" style={{ left: `${FUEHLER_POS[0]}%` }}>oben</span>
+            <span className="home-puffer-ort" style={{ left: `${FUEHLER_POS[3]}%` }}>unten</span>
           </span>
         </Link>
         {zeilen.length ? <Plan zeilen={zeilen} warnung={plan?.planner_warn_de} /> : null}
@@ -142,11 +151,14 @@ export function Rail({ state, plan, nowMs, kompakt = false }: { state: LiveState
     <div className="home-rail">
       <Link href="/waerme" className="home-kachel home-kachel-puffer" aria-label={`Puffer ${soc != null ? Math.round(soc * 100) : "-"} %, ${pufferWort}`}>
         <span className="home-tank" style={{ background: verlauf, opacity: vollstaendig && !veraltet ? 1 : 0.45 }} aria-hidden>
-          {[25, 50, 75].map((y) => <span key={y} className="home-tank-marke" style={{ top: `${y}%` }} />)}
+          {SCHICHT_GRENZEN.map((y) => <span key={y} className="home-tank-marke" style={{ top: `${y}%` }} />)}
         </span>
+        {/* Auch hier: jede Zahl auf der Hoehe, auf der ihre Farbe steht. */}
         <span className="home-tank-fuehler" aria-hidden>
           {fuehler.map((v, i) => (
-            <span key={i} className="mono">{v == null ? "-" : `${Math.round(v)} °C`}</span>
+            <span key={i} className="mono home-tank-wert" style={{ top: `${FUEHLER_POS[i]}%` }}>
+              {v == null ? "-" : `${Math.round(v)} °C`}
+            </span>
           ))}
         </span>
         <span className="flex min-w-0 flex-1 flex-col justify-center gap-1">
