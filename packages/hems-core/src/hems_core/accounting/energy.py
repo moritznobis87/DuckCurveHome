@@ -141,6 +141,11 @@ class EnergyTotals(BaseModel):
     battery_savings_eur: float = 0.0  # Entladung ins Haus × (Preis − Vergütung)
     pv_direct_savings_eur: float = 0.0  # PV direkt × (Preis − Vergütung)
     price_weighted_ct: float = 0.0  # Σ Bezug × Preis, für den Mittelpreis
+    # Σ Preis × Stunden, unabhängig davon, ob Strom bezogen wurde. `price_weighted_ct` kennt den
+    # Preis einer Stunde nur, wenn in ihr etwas aus dem Netz kam - in einer Stunde voller Sonne ist
+    # er darum nicht zu haben. Der Vergleichslauf (`counterfactual`) braucht ihn aber gerade dort:
+    # Ohne Preisblick wäre in dieser Stunde vielleicht Bezug angefallen.
+    price_hours_ct: float = 0.0
     # Steuerliche Bewertung des Eigenverbrauchs: Σ selbst verbrauchte PV-kWh × Netto-Bezugspreis derselben
     # Minute (Wiederbeschaffungspreis). Netto, weil das die Bemessungsgrundlage der unentgeltlichen
     # Wertabgabe ist.
@@ -152,6 +157,12 @@ class EnergyTotals(BaseModel):
         return (
             round(self.price_weighted_ct / self.import_kwh, 2) if self.import_kwh > 1e-6 else None
         )
+
+    @property
+    def mean_price_ct(self) -> float | None:
+        """Mittlerer Strompreis über die Zeit, nicht über die Menge. Für den Vergleichslauf."""
+        stunden = self.minutes / 60.0
+        return round(self.price_hours_ct / stunden, 2) if stunden > 1e-6 else None
 
     @property
     def self_consumption_kwh(self) -> float:
@@ -457,6 +468,7 @@ def hourly_energy(
         acc["battery_savings_eur"] += bat_to_house * STEP_H * spread / 100.0
         acc["pv_direct_savings_eur"] += pv_direct * STEP_H * spread / 100.0
         acc["price_weighted_ct"] += imp * STEP_H * price
+        acc["price_hours_ct"] += price * STEP_H
 
     return HourlyEnergy(
         hour_start=hour_start,

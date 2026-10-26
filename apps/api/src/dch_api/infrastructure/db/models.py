@@ -281,6 +281,7 @@ class EnergyHour(Base):
     battery_savings_eur: Mapped[float] = mapped_column(Float, default=0.0)
     pv_direct_savings_eur: Mapped[float] = mapped_column(Float, default=0.0)
     price_weighted_ct: Mapped[float] = mapped_column(Float, default=0.0)
+    price_hours_ct: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
     self_consumption_value_eur: Mapped[float] = mapped_column(Float, default=0.0)
     outdoor_temp_c: Mapped[float | None] = mapped_column(Float)  # Stundenmittel, für COP-Schätzung
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

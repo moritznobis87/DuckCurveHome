@@ -31,6 +31,8 @@ from dch_api.schemas import (
     PvTaxBucketOut,
     PvTaxMetaOut,
     PvTaxReportOut,
+    ShiftDayOut,
+    ShiftReportOut,
     StoveOut,
     YearMapOut,
 )
@@ -39,6 +41,7 @@ from hems_core.accounting import (
     EnergyTotals,
     HourlyEnergy,
     MinuteSample,
+    ShiftHour,
     cop_at,
     estimated_kg_burned,
     fill_gaps,
@@ -47,6 +50,7 @@ from hems_core.accounting import (
     pv_tax,
     samples_from_rows,
     samples_from_totals,
+    shift_value,
     summarize,
     with_charge_window,
 )
@@ -929,6 +933,79 @@ class EnergyAccounting:
                     + coarse_note(totals)
                 ),
             ),
+        )
+
+    async def shift_report(self, period: Period, anchor: date, now: datetime) -> ShiftReportOut:
+        """Was das Verschieben gebracht hat: derselbe Zeitraum ohne Preisblick.
+
+        Die Rechnung steht in `hems_core.accounting.counterfactual`; hier wird nur eingesammelt,
+        was sie braucht. Der Kalendertag und die Stunde sind die vor Ort, nicht die in UTC: Ein
+        Thermostat heizt nach der Uhr an der Wand, und das Warmwasserprofil folgt derselben.
+        """
+        start, end = self.period_bounds(period, anchor)
+        rows = await self.hours(start, min(end, now))
+        cfg = self.hems.heat_demand
+        stunden = [
+            ShiftHour(
+                hour_start=h.hour_start,
+                day=h.hour_start.astimezone(self.tz).date(),
+                local_hour=h.hour_start.astimezone(self.tz).hour,
+                minutes=h.minutes,
+                import_kwh=h.import_kwh,
+                export_kwh=h.export_kwh,
+                heat_pump_kwh=h.heat_pump_kwh,
+                price_ct=h.mean_price_ct,
+                outdoor_c=t_out,
+            )
+            for h, t_out in rows
+        ]
+        ergebnis = shift_value(
+            stunden,
+            cfg,
+            self.hems.tariff.feed_in_ct_kwh,
+            self.hems.heat_pump.nominal_electric_power_kw,
+        )
+        gerechnet = [t for t in ergebnis.days if not t.note_de]
+        return ShiftReportOut(
+            period=period,
+            start=start,
+            end=end,
+            actual_eur=round(ergebnis.actual_eur, 2),
+            naive_eur=round(ergebnis.naive_eur, 2),
+            saving_eur=round(ergebnis.saving_eur, 2),
+            saving_ct_per_kwh=ergebnis.saving_ct_per_kwh,
+            heat_pump_kwh=round(ergebnis.heat_pump_kwh, 1),
+            shifted_kwh=round(ergebnis.shifted_kwh, 1),
+            days=[
+                ShiftDayOut(
+                    day=t.day,
+                    saving_eur=round(t.saving_eur, 3),
+                    heat_pump_kwh=round(t.heat_pump_kwh, 1),
+                    shifted_kwh=round(t.shifted_kwh, 1),
+                    note_de=t.note_de,
+                )
+                for t in ergebnis.days
+            ],
+            days_used=len(gerechnet),
+            days_skipped=ergebnis.skipped,
+            skipped_de=ergebnis.skipped_de,
+            method_de=(
+                "Vergleichslauf: dieselben Stunden, dieselbe Strommenge der Wärmepumpe, aber "
+                f"verteilt nach dem Wärmebedarf der Stunde (Heizgrenze {cfg.heating_limit_c:g} °C, "
+                f"Warmwasserprofil {cfg.dhw_kwh_per_day:g} kWh/Tag) statt nach dem Preis. "
+                "Geschätzt, nicht gemessen."
+            ),
+            assumptions_de=[
+                "Gleiche Strommenge, andere Stunden: Die Tagesmenge ist die gemessene.",
+                "Der Rest des Hauses und der Speicher bleiben, wie sie waren. In Wirklichkeit "
+                "steuert DCH die Batterie mit; dieser Anteil fehlt hier.",
+                "Die Wärmepumpe nimmt höchstens "
+                f"{self.hems.heat_pump.nominal_electric_power_kw:g} kW auf; was in einer Stunde "
+                "nicht hineinpasst, liegt in den Nachbarstunden.",
+                "Der Pelletofen bleibt außen vor: Er ersetzt Wärme, kostet aber Pellets statt Strom.",
+                f"Einspeisevergütung {self.hems.tariff.feed_in_ct_kwh:g} ct/kWh: So viel ist eine "
+                "Kilowattstunde wert, die in einer Sonnenstunde nicht ins Netz geht.",
+            ],
         )
 
     async def year_map(self, year: int, now: datetime) -> YearMapOut:

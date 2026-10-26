@@ -324,6 +324,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/energy/shift": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Was das Verschieben der Wärmepumpe gebracht hat
+         * @description Vergleichslauf: dieselben Stunden ohne Preisblick.
+         *
+         *     Eine Rechnung, keine Messung - was wirklich passiert wäre, weiß niemand. Die Annahmen stehen
+         *     im Ergebnis, damit die Zahl nicht mehr behauptet, als sie weiß.
+         */
+        get: operations["shift_api_v1_energy_shift_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/energy/ev": {
         parameters: {
             query?: never;
@@ -1788,6 +1811,11 @@ export interface components {
              * @default 0
              */
             price_weighted_ct: number;
+            /**
+             * Price Hours Ct
+             * @default 0
+             */
+            price_hours_ct: number;
             /**
              * Self Consumption Value Eur
              * @default 0
@@ -3573,6 +3601,81 @@ export interface components {
              */
             price_s: number;
         };
+        /**
+         * ShiftDayOut
+         * @description Ein Tag im Vergleichslauf. `note_de` ist leer, wenn gerechnet wurde.
+         */
+        ShiftDayOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Saving Eur */
+            saving_eur: number;
+            /** Heat Pump Kwh */
+            heat_pump_kwh: number;
+            /** Shifted Kwh */
+            shifted_kwh: number;
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
+        };
+        /**
+         * ShiftReportOut
+         * @description Was das Verschieben der Wärmepumpe gebracht hat - eine Rechnung, keine Messung.
+         *
+         *     Der Vergleichslauf legt dieselbe Strommenge in die Stunden, in denen ein gewöhnlicher
+         *     Thermostat sie gebraucht hätte, und stellt die Stromrechnung beider Läufe gegenüber. Die
+         *     Annahmen stehen einzeln in `assumptions_de`, weil eine Zahl ohne sie mehr behauptet, als sie
+         *     weiß.
+         */
+        ShiftReportOut: {
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "day" | "week" | "month" | "year";
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Actual Eur */
+            actual_eur: number;
+            /** Naive Eur */
+            naive_eur: number;
+            /** Saving Eur */
+            saving_eur: number;
+            /** Saving Ct Per Kwh */
+            saving_ct_per_kwh?: number | null;
+            /** Heat Pump Kwh */
+            heat_pump_kwh: number;
+            /** Shifted Kwh */
+            shifted_kwh: number;
+            /** Days */
+            days?: components["schemas"]["ShiftDayOut"][];
+            /** Days Used */
+            days_used: number;
+            /** Days Skipped */
+            days_skipped: number;
+            /**
+             * Skipped De
+             * @default
+             */
+            skipped_de: string;
+            /** Method De */
+            method_de: string;
+            /** Assumptions De */
+            assumptions_de?: string[];
+        };
         /** SourceOut */
         SourceOut: {
             /** Name */
@@ -4569,6 +4672,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HeatBalanceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    shift_api_v1_energy_shift_get: {
+        parameters: {
+            query?: {
+                period?: "day" | "week" | "month" | "year";
+                anchor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftReportOut"];
                 };
             };
             /** @description Validation Error */

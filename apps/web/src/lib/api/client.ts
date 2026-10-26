@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, PushKey, PushResult, PushSubscribeBody, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, PushKey, PushResult, PushSubscribeBody, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -60,6 +60,8 @@ export const api = {
   plan: () => request<Plan>("/plan"),
   forecastEvaluation: () => request<ForecastEvaluation>("/forecast/evaluation"),
   energySummary: (period: Period, anchor: string) => request<EnergySummary>(`/energy/summary?period=${period}&anchor=${anchor}`),
+  // Der Vergleichslauf: dieselben Stunden ohne Preisblick (siehe accounting/counterfactual.py).
+  energyShift: (period: Period, anchor: string) => request<ShiftReport>(`/energy/shift?period=${period}&anchor=${anchor}`),
   energyHeat: (period: Period, anchor: string) => request<HeatReport>(`/energy/heat?period=${period}&anchor=${anchor}`),
   heatBalance: (period: Period, anchor: string) => request<HeatBalance>(`/energy/waermebilanz?period=${period}&anchor=${anchor}`),
   // Einzelraumregelung. Zwei Abrufe, weil es zwei Fragen sind: wie ist es jetzt, und wie war der

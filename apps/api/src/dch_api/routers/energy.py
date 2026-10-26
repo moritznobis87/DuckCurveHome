@@ -15,6 +15,7 @@ from dch_api.schemas import (
     HeatReportOut,
     Period,
     PvTaxReportOut,
+    ShiftReportOut,
     YearMapOut,
 )
 from hems_core.simulation import BERLIN
@@ -64,6 +65,24 @@ async def waermebilanz(
     stehen im selben Dokument, weil eine gerechnete Wärmemenge ohne sie keine Zahl ist.
     """
     return await runner.heat_balance(period, _anchor(runner, anchor))
+
+
+@router.get(
+    "/shift",
+    response_model=ShiftReportOut,
+    summary="Was das Verschieben der Wärmepumpe gebracht hat",
+)
+async def shift(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    period: Annotated[Period, Query()] = "month",
+    anchor: date | None = None,
+) -> ShiftReportOut:
+    """Vergleichslauf: dieselben Stunden ohne Preisblick.
+
+    Eine Rechnung, keine Messung - was wirklich passiert wäre, weiß niemand. Die Annahmen stehen
+    im Ergebnis, damit die Zahl nicht mehr behauptet, als sie weiß.
+    """
+    return await runner.shift_report(period, _anchor(runner, anchor))
 
 
 @router.get(

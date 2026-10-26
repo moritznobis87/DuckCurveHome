@@ -929,3 +929,40 @@ class PushResultOut(BaseModel):
     ok: bool
     devices: int
     message_de: str
+
+
+class ShiftDayOut(BaseModel):
+    """Ein Tag im Vergleichslauf. `note_de` ist leer, wenn gerechnet wurde."""
+
+    day: date
+    saving_eur: float
+    heat_pump_kwh: float
+    shifted_kwh: float
+    note_de: str = ""
+
+
+class ShiftReportOut(BaseModel):
+    """Was das Verschieben der Wärmepumpe gebracht hat - eine Rechnung, keine Messung.
+
+    Der Vergleichslauf legt dieselbe Strommenge in die Stunden, in denen ein gewöhnlicher
+    Thermostat sie gebraucht hätte, und stellt die Stromrechnung beider Läufe gegenüber. Die
+    Annahmen stehen einzeln in `assumptions_de`, weil eine Zahl ohne sie mehr behauptet, als sie
+    weiß.
+    """
+
+    period: Literal["day", "week", "month", "year"]
+    start: datetime
+    end: datetime
+    actual_eur: float
+    naive_eur: float
+    saving_eur: float
+    #: Was jede verschobene Kilowattstunde gebracht hat; null, wenn nichts verschoben wurde.
+    saving_ct_per_kwh: float | None = None
+    heat_pump_kwh: float
+    shifted_kwh: float
+    days: list[ShiftDayOut] = Field(default_factory=list)
+    days_used: int
+    days_skipped: int
+    skipped_de: str = ""
+    method_de: str
+    assumptions_de: list[str] = Field(default_factory=list)

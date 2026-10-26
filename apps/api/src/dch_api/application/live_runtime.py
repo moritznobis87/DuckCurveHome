@@ -68,6 +68,7 @@ from dch_api.schemas import (
     RoomLiveOut,
     RoomSeriesOut,
     RoomsLiveOut,
+    ShiftReportOut,
     SourceStatusOut,
     StoveLiveOut,
     SystemEventOut,
@@ -1200,6 +1201,9 @@ class LiveRuntime:
     async def pv_report(self, period: Period, anchor: date) -> PvTaxReportOut:
         return await self.accounting.pv_report(period, anchor, self.now)
 
+    async def shift_report(self, period: Period, anchor: date) -> ShiftReportOut:
+        return await self.accounting.shift_report(period, anchor, self.now)
+
     async def year_map(self, year: int) -> YearMapOut:
         return await self.accounting.year_map(year, self.now)
 
@@ -1384,8 +1388,9 @@ class LiveRuntime:
         # Speicher nicht im selben Moment melden; v5 laesst eine Rechnung aus echten Minutenwerten
         # eine importierte Stunde ersetzen, die nur deshalb 60 Minuten zaehlt, weil ein Stundenmittel
         # ausgerollt wurde; v6 gibt die PV zuerst dem Speicher und erst den Rest dem Haus. Wer die
-        # Kennung nicht mitzieht, laesst die alten Zeilen stehen.
-        marker = "energy.rebuild_pvfirst_v6"
+        # Kennung nicht mitzieht, laesst die alten Zeilen stehen. v7 traegt den Stundenpreis nach
+        # (`price_hours_ct`), ohne den der Vergleichslauf keine Stunde ohne Netzbezug bewerten kann.
+        marker = "energy.rebuild_price_hours_v7"
         try:
             if await self.repos.has_event(marker):
                 self.energy_rebuild = "erledigt"

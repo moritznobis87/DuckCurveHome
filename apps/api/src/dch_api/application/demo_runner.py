@@ -49,6 +49,7 @@ from dch_api.schemas import (
     RoomLiveOut,
     RoomSeriesOut,
     RoomsLiveOut,
+    ShiftReportOut,
     StoveLiveOut,
     SystemEventOut,
     SystemStatusOut,
@@ -239,6 +240,9 @@ class DemoRunner:
 
     async def energy_summary(self, period: Period, anchor: date) -> EnergySummaryOut:
         return await self.accounting.summary(period, anchor, self.now)
+
+    async def shift_report(self, period: Period, anchor: date) -> ShiftReportOut:
+        return await self.accounting.shift_report(period, anchor, self.now)
 
     async def heat_report(self, period: Period, anchor: date) -> HeatReportOut:
         base = self.now.replace(minute=0, second=0, microsecond=0)
