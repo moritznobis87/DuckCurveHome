@@ -31,6 +31,7 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_ACTUATION_ENABLED` | `true` | Vom Bedienenden ausgelöstes Schalten (Lichter, Kaffeemaschine) |
 | `DCH_HEAT_PUMP_ACTUATION_ENABLED` | `false` | Selbsttätiges Stellen des WP-Kontakts K1 aus der Regelentscheidung. Erst einschalten, wenn die Wächter-Automation in Home Assistant steht und der Kontakt im Gerät einen Auto-Off-Timer hat |
 | `DCH_PLAN_REFRESH_MIN` | `15` | Neuplanung |
+| `DCH_PUSH_SUBJECT` | `mailto:duck-curve-home@example.invalid` | Absender im VAPID-Anspruch der Mitteilungen. Die Push-Dienste prüfen nur die Form; eine echte Adresse gehört nicht ins Repository, deshalb der Platzhalter. **Das Schlüsselpaar selbst steht nicht hier**: Der Dienst erzeugt es beim ersten Gebrauch und behält es in der Tabelle `push_keys` - ein privater Schlüssel in einer Umgebungsvariable ist ein Geheimnis, das durch zu viele Hände geht |
 | `DATABASE_URL` | - | Live-Modus: `postgresql://…` (Railway) oder `sqlite+aiosqlite:///…` (Entwicklung) |
 | `DCH_DB_CREATE_ALL` | `false` | Schema ohne Alembic anlegen (nur SQLite/Tests) |
 | `DCH_BRIDGE_TOKENS` | `[]` | JSON-Liste erlaubter Bridge-Tokens (Secrets) |

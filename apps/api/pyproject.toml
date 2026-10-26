@@ -23,6 +23,7 @@ dependencies = [
     "websockets>=13.0",
     "pyyaml>=6.0",
     "pypdf>=5.1",  # Text aus Tibber-Rechnungen lesen
+    "pywebpush>=2.0",
 ]
 
 [project.scripts]

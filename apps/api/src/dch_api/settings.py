@@ -57,6 +57,10 @@ class Settings(BaseSettings):
         False  # selbsttätiges Stellen von K1 aus der Regelentscheidung
     )
     plan_refresh_min: int = 15
+    # Wer die Mitteilung schickt. Web Push verlangt im VAPID-Anspruch eine Adresse, unter der der
+    # Absender erreichbar waere; Push-Dienste pruefen nur die Form. Eine echte Adresse gehoert
+    # nicht ins Repository, also steht hier ein Platzhalter - wer will, setzt DCH_PUSH_SUBJECT.
+    push_subject: str = "mailto:duck-curve-home@example.invalid"
 
     # Live-Modus
     database_url: str = Field(default="", validation_alias="DATABASE_URL")

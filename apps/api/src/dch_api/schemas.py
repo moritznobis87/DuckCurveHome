@@ -900,3 +900,32 @@ class RoomHistoryOut(BaseModel):
     step_min: int
     ts: list[datetime]
     rooms: list[RoomSeriesOut]
+
+
+class PushKeyOut(BaseModel):
+    """Der öffentliche Schlüssel des Dienstes und die Zahl der angemeldeten Geräte.
+
+    Der Browser braucht den Schlüssel, um ein Abonnement anzulegen; ohne ihn geht gar nichts.
+    Öffentlich ist er im Wortsinn: Er darf in jeder Seite stehen.
+    """
+
+    public_key: str
+    devices: int
+
+
+class PushSubscribeIn(BaseModel):
+    endpoint: str
+    p256dh: str
+    auth: str
+    #: Ein Wort, an dem man das Gerät später wiedererkennt („iPhone", „iPad Küche").
+    label: str = ""
+
+
+class PushUnsubscribeIn(BaseModel):
+    endpoint: str
+
+
+class PushResultOut(BaseModel):
+    ok: bool
+    devices: int
+    message_de: str

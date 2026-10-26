@@ -26,6 +26,7 @@ from dch_api.routers import (
     imports,
     live,
     plan,
+    push,
     rooms,
     system,
 )
@@ -36,9 +37,14 @@ API_PREFIX = "/api/v1"
 
 async def _start_demo(app: FastAPI, settings: Settings) -> None:
     from dch_api.application.demo_runner import DemoRunner
+    from dch_api.application.push import MemoryPushStore, PushService
 
     runner = DemoRunner(settings)
     app.state.runner = runner
+    # Ohne Datenbank: Die Anmeldungen leben nur, solange der Vorgang lebt. Fuer den Demo-Modus ist
+    # das richtig - dort soll nichts von gestern uebrig sein -, und die Oberflaeche ist damit auch
+    # ohne Datenbank zu bedienen.
+    app.state.push = PushService(MemoryPushStore(), settings.push_subject)
     app.state.hems = runner.hems
     await runner.start()
 
@@ -46,6 +52,7 @@ async def _start_demo(app: FastAPI, settings: Settings) -> None:
 async def _start_live(app: FastAPI, settings: Settings) -> None:
     from dch_api.application.forecast_service import ForecastService
     from dch_api.application.live_runtime import VERSION, LiveRuntime
+    from dch_api.application.push import PushService
     from dch_api.infrastructure.bridge_hub import BridgeHub
     from dch_api.infrastructure.db.engine import create_all_for_tests, make_engine
     from dch_api.infrastructure.db.repositories import SqlRepositories
@@ -85,10 +92,12 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
         from dch_api.integrations.inexogy import InexogyClient
 
         inexogy = InexogyClient(settings.inexogy_email, settings.inexogy_password)
+    push = PushService(repos, settings.push_subject)
     runtime = LiveRuntime(settings, cfg, repos, hub, forecasts, myenergi=myenergi, inexogy=inexogy)
     app.state.engine = engine
     app.state.bridge_hub = hub
     app.state.runner = runtime
+    app.state.push = push
     app.state.hems = cfg.hems
     await runtime.start()
     # Erst nach dem Start: dort wird ein gespeicherter Konfigurationsstand angewandt, und die
@@ -143,6 +152,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         live.router,
         history.router,
         plan.router,
+        push.router,
         rooms.router,
         forecast.router,
         energy.router,

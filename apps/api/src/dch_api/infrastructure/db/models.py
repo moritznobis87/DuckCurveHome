@@ -342,3 +342,42 @@ class KioskDevice(Base):
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     session_token_hash: Mapped[str] = mapped_column(String(128), unique=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PushKey(Base):
+    """Das VAPID-Schlüsselpaar des Dienstes. Genau eine Zeile.
+
+    **Warum in der Datenbank und nicht in der Umgebung.** Ein privater Schlüssel ist ein Geheimnis;
+    er darf weder ins Repository noch durch einen Chat. Der Dienst erzeugt ihn deshalb beim ersten
+    Mal selbst und behält ihn hier. Niemand muss ihn jemals sehen, und es gibt keinen Weg, auf dem
+    er versehentlich irgendwo landet.
+
+    Geht die Zeile verloren, werden die bestehenden Abonnements ungültig: Ein Push-Dienst verknüpft
+    sie mit dem öffentlichen Schlüssel, der sie angelegt hat. Das ist kein Schaden, der bleibt - die
+    Geräte melden sich beim nächsten Besuch der Seite neu an.
+    """
+
+    __tablename__ = "push_keys"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    private_key: Mapped[str] = mapped_column(String(128))  # base64url des rohen Skalars
+    public_key: Mapped[str] = mapped_column(String(255))  # base64url des unkomprimierten Punktes
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PushSubscription(Base):
+    """Ein Gerät, das Mitteilungen bekommen möchte.
+
+    Der Endpunkt ist die Adresse beim Push-Dienst des Browsers und zugleich der Schlüssel: Dasselbe
+    Gerät, das sich zweimal anmeldet, soll nicht zweimal klingeln. `failures` zählt die Versuche
+    seit der letzten Zustellung; ein Endpunkt, den der Dienst mit 404 oder 410 beantwortet, wird
+    sofort gelöscht - dann gibt es das Gerät nicht mehr.
+    """
+
+    __tablename__ = "push_subscriptions"
+    endpoint: Mapped[str] = mapped_column(String(512), primary_key=True)
+    p256dh: Mapped[str] = mapped_column(String(255))
+    auth: Mapped[str] = mapped_column(String(64))
+    label: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failures: Mapped[int] = mapped_column(Integer, default=0)

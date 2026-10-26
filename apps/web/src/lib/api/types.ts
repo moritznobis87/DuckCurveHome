@@ -89,6 +89,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/push/key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Öffentlicher Schlüssel für Mitteilungen */
+        get: operations["key_api_v1_push_key_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dieses Gerät anmelden */
+        post: operations["subscribe_api_v1_push_subscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dieses Gerät abmelden */
+        post: operations["unsubscribe_api_v1_push_unsubscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Probemitteilung senden
+         * @description Eine Probe an alle angemeldeten Geräte.
+         *
+         *     Der Weg hat viele Glieder - Browser, Push-Dienst, Schlüssel, Service Worker -, und jedes kann
+         *     still versagen. Ohne eine Probe merkt man das erst, wenn die erste echte Meldung ausbleibt,
+         *     also genau dann, wenn sie gebraucht wird.
+         */
+        post: operations["test_api_v1_push_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rooms": {
         parameters: {
             query?: never;
@@ -3069,6 +3144,47 @@ export interface components {
             /** Label De */
             label_de: string;
         };
+        /**
+         * PushKeyOut
+         * @description Der öffentliche Schlüssel des Dienstes und die Zahl der angemeldeten Geräte.
+         *
+         *     Der Browser braucht den Schlüssel, um ein Abonnement anzulegen; ohne ihn geht gar nichts.
+         *     Öffentlich ist er im Wortsinn: Er darf in jeder Seite stehen.
+         */
+        PushKeyOut: {
+            /** Public Key */
+            public_key: string;
+            /** Devices */
+            devices: number;
+        };
+        /** PushResultOut */
+        PushResultOut: {
+            /** Ok */
+            ok: boolean;
+            /** Devices */
+            devices: number;
+            /** Message De */
+            message_de: string;
+        };
+        /** PushSubscribeIn */
+        PushSubscribeIn: {
+            /** Endpoint */
+            endpoint: string;
+            /** P256Dh */
+            p256dh: string;
+            /** Auth */
+            auth: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+        };
+        /** PushUnsubscribeIn */
+        PushUnsubscribeIn: {
+            /** Endpoint */
+            endpoint: string;
+        };
         /** PvRuleConfig */
         PvRuleConfig: {
             /**
@@ -4116,6 +4232,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanOut"];
+                };
+            };
+        };
+    };
+    key_api_v1_push_key_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushKeyOut"];
+                };
+            };
+        };
+    };
+    subscribe_api_v1_push_subscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsubscribe_api_v1_push_unsubscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushUnsubscribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_api_v1_push_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushResultOut"];
                 };
             };
         };

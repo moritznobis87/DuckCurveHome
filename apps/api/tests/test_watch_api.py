@@ -57,7 +57,8 @@ def telemetrie(seq: int, beobachtet: datetime) -> str:
         seq=seq,
         sent_at=datetime.now(UTC),
         items=[
-            RawReading(key=k, value=50.0, observed_at=beobachtet, source="ha:puffer") for k in PUFFER
+            RawReading(key=k, value=50.0, observed_at=beobachtet, source="ha:puffer")
+            for k in PUFFER
         ],
     ).model_dump_json()
 

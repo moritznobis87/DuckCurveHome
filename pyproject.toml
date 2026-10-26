@@ -42,6 +42,12 @@ plugins = ["pydantic.mypy"]
 mypy_path = "packages/hems-core/src:apps/api/src:apps/bridge/src"
 exclude = ["tests"]
 
+# pywebpush bringt keine Typen mit (kein py.typed). Der Zugriff darauf steht an einer Stelle,
+# `push._send_one`, und ist dort mit Absicht eng: ein Aufruf, zwei erwartete Fehlerfaelle.
+[[tool.mypy.overrides]]
+module = ["pywebpush.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["packages/hems-core/tests", "apps/api/tests", "apps/bridge/tests"]
 asyncio_mode = "auto"

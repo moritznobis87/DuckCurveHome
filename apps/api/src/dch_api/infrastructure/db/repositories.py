@@ -883,3 +883,78 @@ class SqlRepositories:
                 m.BridgeCredential(name=name, token_hash=token_hash, created_at=datetime.now(UTC))
             )
             await s.commit()
+
+    # ------------------------------------------------------------------ Mitteilungen
+    async def push_key(self) -> tuple[str, str] | None:
+        """Das gespeicherte VAPID-Paar (privat, öffentlich) oder None, wenn es noch keines gibt."""
+        async with self.maker() as s:
+            row = await s.get(m.PushKey, 1)
+        return None if row is None else (row.private_key, row.public_key)
+
+    async def save_push_key(self, private_key: str, public_key: str) -> None:
+        async with self.maker() as s:
+            row = await s.get(m.PushKey, 1)
+            if row is None:
+                s.add(
+                    m.PushKey(
+                        id=1,
+                        private_key=private_key,
+                        public_key=public_key,
+                        created_at=datetime.now(UTC),
+                    )
+                )
+            else:
+                row.private_key = private_key
+                row.public_key = public_key
+                row.created_at = datetime.now(UTC)
+            await s.commit()
+
+    async def add_push_subscription(
+        self, endpoint: str, p256dh: str, auth: str, label: str = ""
+    ) -> None:
+        """Ein Gerät anmelden. Dasselbe Gerät zweimal bleibt ein Gerät: Der Endpunkt ist der Schlüssel."""
+        async with self.maker() as s:
+            row = await s.get(m.PushSubscription, endpoint)
+            if row is None:
+                s.add(
+                    m.PushSubscription(
+                        endpoint=endpoint,
+                        p256dh=p256dh,
+                        auth=auth,
+                        label=label[:64],
+                        created_at=datetime.now(UTC),
+                        failures=0,
+                    )
+                )
+            else:
+                row.p256dh = p256dh
+                row.auth = auth
+                row.label = label[:64] or row.label
+                row.failures = 0
+            await s.commit()
+
+    async def push_subscriptions(self) -> list[m.PushSubscription]:
+        async with self.maker() as s:
+            rows = (await s.execute(select(m.PushSubscription))).scalars().all()
+        return list(rows)
+
+    async def drop_push_subscription(self, endpoint: str) -> bool:
+        async with self.maker() as s:
+            row = await s.get(m.PushSubscription, endpoint)
+            if row is None:
+                return False
+            await s.delete(row)
+            await s.commit()
+        return True
+
+    async def push_delivered(self, endpoint: str, ok: bool) -> None:
+        async with self.maker() as s:
+            row = await s.get(m.PushSubscription, endpoint)
+            if row is None:
+                return
+            if ok:
+                row.last_ok_at = datetime.now(UTC)
+                row.failures = 0
+            else:
+                row.failures += 1
+            await s.commit()

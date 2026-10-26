@@ -173,6 +173,131 @@
         }
       }
     },
+    "/api/v1/push/key": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Öffentlicher Schlüssel für Mitteilungen",
+        "operationId": "key_api_v1_push_key_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushKeyOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/push/subscribe": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Dieses Gerät anmelden",
+        "operationId": "subscribe_api_v1_push_subscribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscribeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/push/unsubscribe": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Dieses Gerät abmelden",
+        "operationId": "unsubscribe_api_v1_push_unsubscribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushUnsubscribeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/push/test": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Probemitteilung senden",
+        "description": "Eine Probe an alle angemeldeten Geräte.\n\nDer Weg hat viele Glieder - Browser, Push-Dienst, Schlüssel, Service Worker -, und jedes kann\nstill versagen. Ohne eine Probe merkt man das erst, wenn die erste echte Meldung ausbleibt,\nalso genau dann, wenn sie gebraucht wird.",
+        "operationId": "test_api_v1_push_test_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResultOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rooms": {
       "get": {
         "tags": [
@@ -6410,6 +6535,89 @@
           "label_de"
         ],
         "title": "PriceWindowOut"
+      },
+      "PushKeyOut": {
+        "properties": {
+          "public_key": {
+            "type": "string",
+            "title": "Public Key"
+          },
+          "devices": {
+            "type": "integer",
+            "title": "Devices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "public_key",
+          "devices"
+        ],
+        "title": "PushKeyOut",
+        "description": "Der öffentliche Schlüssel des Dienstes und die Zahl der angemeldeten Geräte.\n\nDer Browser braucht den Schlüssel, um ein Abonnement anzulegen; ohne ihn geht gar nichts.\nÖffentlich ist er im Wortsinn: Er darf in jeder Seite stehen."
+      },
+      "PushResultOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "devices": {
+            "type": "integer",
+            "title": "Devices"
+          },
+          "message_de": {
+            "type": "string",
+            "title": "Message De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "devices",
+          "message_de"
+        ],
+        "title": "PushResultOut"
+      },
+      "PushSubscribeIn": {
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint"
+          },
+          "p256dh": {
+            "type": "string",
+            "title": "P256Dh"
+          },
+          "auth": {
+            "type": "string",
+            "title": "Auth"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "endpoint",
+          "p256dh",
+          "auth"
+        ],
+        "title": "PushSubscribeIn"
+      },
+      "PushUnsubscribeIn": {
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "endpoint"
+        ],
+        "title": "PushUnsubscribeIn"
       },
       "PvRuleConfig": {
         "properties": {

@@ -73,3 +73,6 @@ export type InvoiceSummary = S["InvoiceSummaryOut"];
 export type InvoiceFinding = S["InvoiceFinding"];
 export type TibberInvoice = S["TibberInvoice"];
 export type InvoicePosition = S["InvoicePosition"];
+export type PushKey = S["PushKeyOut"];
+export type PushResult = S["PushResultOut"];
+export type PushSubscribeBody = S["PushSubscribeIn"];

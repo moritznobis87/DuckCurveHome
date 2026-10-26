@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, PushKey, PushResult, PushSubscribeBody, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -99,5 +99,13 @@ export const api = {
       body: file,
       headers: { "content-type": "application/pdf" },
     }),
+  // Mitteilungen. Der oeffentliche Schluessel darf in jeder Seite stehen; der private verlaesst
+  // den Dienst nie (siehe application/push.py).
+  pushKey: () => request<PushKey>("/push/key"),
+  pushSubscribe: (body: PushSubscribeBody) =>
+    request<PushResult>("/push/subscribe", { method: "POST", body: JSON.stringify(body) }),
+  pushUnsubscribe: (endpoint: string) =>
+    request<PushResult>("/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
+  pushTest: () => request<PushResult>("/push/test", { method: "POST" }),
   demo: (body: Record<string, unknown>) => request<Record<string, unknown>>("/demo", { method: "POST", body: JSON.stringify(body) }),
 };

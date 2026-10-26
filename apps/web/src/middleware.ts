@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { publicUrl } from "@/lib/publicUrl";
 
-const OEFFENTLICHE_DATEIEN = new Set(["/manifest.webmanifest", "/apple-touch-icon.png", "/favicon.svg"]);
+// Der Service Worker gehoert dazu: Seine Registrierung scheitert hart, wenn die Antwort eine
+// Umleitung ist ("The script resource is behind a redirect"), und er enthaelt nichts ueber das
+// Haus - nur den Umgang mit Mitteilungen.
+const OEFFENTLICHE_DATEIEN = new Set(["/manifest.webmanifest", "/apple-touch-icon.png", "/favicon.svg", "/sw.js"]);
 
 /**
  * Zugangsschutz für den Kiosk: Ohne gültiges Session-Cookie wird eine Hinweisseite gezeigt.

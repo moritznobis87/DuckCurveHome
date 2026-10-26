@@ -75,6 +75,7 @@ export const AREAS: Area[] = [
     tabs: [
       { href: "/system", label: "Prognose" },
       { href: "/system/daten", label: "Daten prüfen", dated: true },
+      { href: "/system/mitteilungen", label: "Mitteilungen" },
       { href: "/system/haustuer", label: "Haustür" },
       { href: "/system/zugang", label: "Zugang und Sicherung" },
     ],
