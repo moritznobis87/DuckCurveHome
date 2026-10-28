@@ -2019,6 +2019,7 @@ export interface components {
              */
             forecast_note_de: string;
             params: components["schemas"]["HeatParamsOut"];
+            ventilation?: components["schemas"]["VentilationOut"] | null;
             /**
              * Note De
              * @default
@@ -4293,6 +4294,45 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * VentilationOut
+         * @description Wärme, die in Räume mit offenem Fenster ging - geschätzt, nicht gemessen.
+         *
+         *     Die Entnahme der Wärmebilanz ist eine Zahl für das ganze Haus. Verteilt wird sie hier nach
+         *     offenen Heizkreisen je Raum; was auf Räume mit offenem Fenster entfällt, steht hier. Das ist
+         *     **nicht** der Lüftungsverlust: Ein Teil dieser Wärme ist im Raum geblieben. Und es ist eher zu
+         *     viel als zu wenig, weil Warmwasser in derselben Entnahme steckt und sich nicht trennen lässt.
+         */
+        VentilationOut: {
+            /** Kwh */
+            kwh: number;
+            /** Share */
+            share?: number | null;
+            /** Open Minutes */
+            open_minutes: number;
+            /** Minutes Known */
+            minutes_known: number;
+            /** Rooms */
+            rooms?: components["schemas"]["VentilationRoomOut"][];
+            /** Note De */
+            note_de: string;
+        };
+        /**
+         * VentilationRoomOut
+         * @description Ein Raum, in dem während der Heizzeit ein Fenster offen stand.
+         */
+        VentilationRoomOut: {
+            /** Room Id */
+            room_id: number;
+            /** Name */
+            name: string;
+            /** Open Minutes */
+            open_minutes: number;
+            /** Heating Minutes */
+            heating_minutes: number;
+            /** Kwh */
+            kwh: number;
         };
         /**
          * WatchFindingOut

@@ -738,6 +738,9 @@ class HeatBalanceOut(BaseModel):
     forecast_heat_kwh: float | None = None  # erwarteter Wärmebedarf des Folgetags
     forecast_note_de: str = ""
     params: HeatParamsOut
+    #: Was bei offenem Fenster in die Räume ging. None, wenn der Zeitraum zu lang für Minutenwerte
+    #: ist oder keine Fensterkontakte gemeldet haben.
+    ventilation: VentilationOut | None = None
     note_de: str = ""
 
 
@@ -1026,3 +1029,32 @@ class RoomShiftIn(BaseModel):
     draw_k: float | None = None
     lead_h: float | None = None
     min_spread_ct: float | None = None
+
+
+class VentilationRoomOut(BaseModel):
+    """Ein Raum, in dem während der Heizzeit ein Fenster offen stand."""
+
+    room_id: int
+    name: str
+    open_minutes: int
+    #: Davon Minuten, in denen zugleich Heizkreise dieses Raums offen standen.
+    heating_minutes: int
+    kwh: float
+
+
+class VentilationOut(BaseModel):
+    """Wärme, die in Räume mit offenem Fenster ging - geschätzt, nicht gemessen.
+
+    Die Entnahme der Wärmebilanz ist eine Zahl für das ganze Haus. Verteilt wird sie hier nach
+    offenen Heizkreisen je Raum; was auf Räume mit offenem Fenster entfällt, steht hier. Das ist
+    **nicht** der Lüftungsverlust: Ein Teil dieser Wärme ist im Raum geblieben. Und es ist eher zu
+    viel als zu wenig, weil Warmwasser in derselben Entnahme steckt und sich nicht trennen lässt.
+    """
+
+    kwh: float
+    share: float | None = None
+    open_minutes: int
+    #: Minuten mit Fenster- und Ventilwerten. Ohne sie ist die Zahl eine Untergrenze.
+    minutes_known: int
+    rooms: list[VentilationRoomOut] = Field(default_factory=list)
+    note_de: str

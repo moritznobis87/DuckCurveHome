@@ -115,7 +115,7 @@ from hems_core.planning import (
 )
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
 from hems_core.simulation import BERLIN
-from hems_core.thermal import compute_buffer_state, room_shift
+from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
 from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 from hems_core.watch import BRIDGE, RULES, back_text, findings
 
@@ -219,6 +219,7 @@ class LiveRuntime:
             # und ohne ihn meldete die Ofenauswertung im Live-Betrieb „keine Daten", während
             # die Spalten gefüllt dastanden.
             heat_rows=lambda s, e: repos.minute_series(s, e, HEAT_KEYS),
+            room_rows=self._vent_rows,
             heat_store=(repos.heat_hours, repos.upsert_heat_hours),
         )
         hub.on_telemetry = self.on_telemetry
@@ -1117,6 +1118,47 @@ class LiveRuntime:
         if not result.ok:
             return False, result.error or "Controme hat den Sollwert nicht bestätigt."
         return True, ""
+
+    async def _vent_rows(
+        self, start: datetime, end: datetime
+    ) -> tuple[list[RoomMinute], dict[int, int], dict[int, str]]:
+        """Ventil- und Fensterreihen der Räume für die Wärmebilanz.
+
+        Die Bilanz kennt keine Räume - sie rechnet mit einer Zahl für das ganze Haus. Welche
+        Räume es gibt, weiß nur die Laufzeit, also reicht sie die Reihen hier herein.
+        """
+        meta = await self._room_meta()
+        ids = self._room_ids(meta)
+        if not ids:
+            return [], {}, {}
+        zeilen = await self.repos.minute_series(
+            start, end, rooms.keys_for(ids, ("valve", "window"))
+        )
+        out: list[RoomMinute] = []
+        for z in zeilen:
+            roh = z.get("ts")
+            if not isinstance(roh, str):
+                continue
+            try:
+                at = datetime.fromisoformat(roh.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            for rid in ids:
+                v = z.get(f"room_{rid}_valve")
+                w = z.get(f"room_{rid}_window")
+                if v is None and w is None:
+                    continue
+                out.append(
+                    RoomMinute(
+                        at=at,
+                        room_id=rid,
+                        valve=float(v) if isinstance(v, int | float) else None,
+                        window=float(w) if isinstance(w, int | float) else None,
+                    )
+                )
+        kreise = {rid: self._room_name(meta, rid).circuits for rid in ids}
+        namen = {rid: self._room_name(meta, rid).name for rid in ids}
+        return out, kreise, namen
 
     # ------------------------------------------------------------------ Raumautomatik
     async def _load_shift_state(self) -> None:

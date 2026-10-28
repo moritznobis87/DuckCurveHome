@@ -4456,6 +4456,16 @@
           "params": {
             "$ref": "#/components/schemas/HeatParamsOut"
           },
+          "ventilation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VentilationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "note_de": {
             "type": "string",
             "title": "Note De",
@@ -8846,6 +8856,87 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VentilationOut": {
+        "properties": {
+          "kwh": {
+            "type": "number",
+            "title": "Kwh"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          },
+          "open_minutes": {
+            "type": "integer",
+            "title": "Open Minutes"
+          },
+          "minutes_known": {
+            "type": "integer",
+            "title": "Minutes Known"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/VentilationRoomOut"
+            },
+            "type": "array",
+            "title": "Rooms"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kwh",
+          "open_minutes",
+          "minutes_known",
+          "note_de"
+        ],
+        "title": "VentilationOut",
+        "description": "Wärme, die in Räume mit offenem Fenster ging - geschätzt, nicht gemessen.\n\nDie Entnahme der Wärmebilanz ist eine Zahl für das ganze Haus. Verteilt wird sie hier nach\noffenen Heizkreisen je Raum; was auf Räume mit offenem Fenster entfällt, steht hier. Das ist\n**nicht** der Lüftungsverlust: Ein Teil dieser Wärme ist im Raum geblieben. Und es ist eher zu\nviel als zu wenig, weil Warmwasser in derselben Entnahme steckt und sich nicht trennen lässt."
+      },
+      "VentilationRoomOut": {
+        "properties": {
+          "room_id": {
+            "type": "integer",
+            "title": "Room Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "open_minutes": {
+            "type": "integer",
+            "title": "Open Minutes"
+          },
+          "heating_minutes": {
+            "type": "integer",
+            "title": "Heating Minutes"
+          },
+          "kwh": {
+            "type": "number",
+            "title": "Kwh"
+          }
+        },
+        "type": "object",
+        "required": [
+          "room_id",
+          "name",
+          "open_minutes",
+          "heating_minutes",
+          "kwh"
+        ],
+        "title": "VentilationRoomOut",
+        "description": "Ein Raum, in dem während der Heizzeit ein Fenster offen stand."
       },
       "WatchFindingOut": {
         "properties": {

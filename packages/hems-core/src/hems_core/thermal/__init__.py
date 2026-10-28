@@ -39,9 +39,17 @@ from hems_core.thermal.shift_plan import (
     shift_target,
 )
 from hems_core.thermal.stove import StoveSample, StoveStats, fuel_note, stove_stats
+from hems_core.thermal.ventilation import (
+    OFFEN,
+    RoomMinute,
+    RoomVent,
+    VentResult,
+    ventilation_split,
+)
 
 __all__ = [
     "AUS",
+    "OFFEN",
     "TAU_RAUM_H",
     "CyclingStats",
     "HeatHourInput",
@@ -49,12 +57,15 @@ __all__ = [
     "HeatSample",
     "HeatTotals",
     "Phase",
+    "RoomMinute",
+    "RoomVent",
     "Run",
     "ShiftEffect",
     "ShiftPolicy",
     "ShiftTarget",
     "StoveSample",
     "StoveStats",
+    "VentResult",
     "capacity_kwh",
     "capacity_kwh_per_k",
     "compressor_runs",
@@ -78,4 +89,5 @@ __all__ = [
     "stove_output_kw",
     "stove_stats",
     "usable_energy_kwh",
+    "ventilation_split",
 ]

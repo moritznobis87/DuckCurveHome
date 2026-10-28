@@ -92,7 +92,7 @@ from hems_core.planning import (
     price_rank,
 )
 from hems_core.simulation import BERLIN, DemoConfig, DemoHouse, new_demo_house
-from hems_core.thermal import compute_buffer_state, room_shift
+from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
 from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 
 log = structlog.get_logger("demo")
@@ -168,7 +168,12 @@ class DemoRunner:
             }
         )
         self.accounting = EnergyAccounting(
-            self.hems, BERLIN, self._minute_rows, store=None, data_since=self._data_since
+            self.hems,
+            BERLIN,
+            self._minute_rows,
+            store=None,
+            data_since=self._data_since,
+            room_rows=self._vent_rows,
         )
         # Rechnungen liegen im Demo-Modus nur im Speicher - zum Ausprobieren der Seite ohne Datenbank
         self._invoices: dict[str, InvoiceReportOut] = {}
@@ -534,6 +539,30 @@ class DemoRunner:
         return list(self.decisions)[:limit]
 
     # ------------------------------------------------------------------ Einzelraumregelung
+    async def _vent_rows(
+        self, start: datetime, end: datetime
+    ) -> tuple[list[RoomMinute], dict[int, int], dict[int, str]]:
+        """Ventil und Fenster der Vorfuehrungsraeume, Minute fuer Minute aus demselben Modell."""
+        out: list[RoomMinute] = []
+        schritt = timedelta(minutes=1)
+        at = start
+        while at < end:
+            for r in demo_rooms.ROOMS:
+                out.append(
+                    RoomMinute(
+                        at=at,
+                        room_id=r.id,
+                        valve=demo_rooms.valve(r, at),
+                        window=demo_rooms.window(r, at),
+                    )
+                )
+            at += schritt
+        return (
+            out,
+            {r.id: r.circuits for r in demo_rooms.ROOMS},
+            {r.id: r.name for r in demo_rooms.ROOMS},
+        )
+
     # ------------------------------------------------------------------ Raumautomatik
     def _shift_preise(self) -> list[PricePoint]:
         """Die Preisreihe der Vorfuehrung als Punkte, so wie sie der Betrieb kennt."""

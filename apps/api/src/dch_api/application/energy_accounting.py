@@ -34,6 +34,8 @@ from dch_api.schemas import (
     ShiftDayOut,
     ShiftReportOut,
     StoveOut,
+    VentilationOut,
+    VentilationRoomOut,
     YearMapOut,
 )
 from hems_core.accounting import (
@@ -58,8 +60,10 @@ from hems_core.domain import BufferConfig, HemsConfig
 from hems_core.thermal import (
     CyclingStats,
     HeatHourInput,
+    HeatPoint,
     HeatSample,
     HeatTotals,
+    RoomMinute,
     StoveSample,
     compressor_runs,
     cycling_stats,
@@ -71,6 +75,7 @@ from hems_core.thermal import (
     samples_from_hours,
     stove_stats,
     usable_energy_kwh,
+    ventilation_split,
 )
 
 log = structlog.get_logger("energy")
@@ -530,6 +535,14 @@ def _guenstiger(wp_ct: float | None, ofen_ct: float | None) -> str:
     )
 
 
+#: Liefert die Fenster- und Ventilreihen eines Zeitraums samt Heizkreisen je Raum. Die Bilanz
+#: kennt die Räume nicht; wer sie kennt, reicht sie hier herein (siehe `ventilation_split`).
+RoomRows = Callable[
+    [datetime, datetime],
+    Awaitable[tuple[list[RoomMinute], dict[int, int], dict[int, str]]],
+]
+
+
 class EnergyAccounting:
     def __init__(
         self,
@@ -541,6 +554,7 @@ class EnergyAccounting:
         device_events: DeviceEvents | None = None,
         heat_rows: MinuteRows | None = None,
         heat_store: HeatStore | None = None,
+        room_rows: RoomRows | None = None,
     ) -> None:
         self.hems = hems
         self.tz = tz
@@ -549,6 +563,7 @@ class EnergyAccounting:
         # wo ohnehin alle Spalten kommen; live wird hier die breitere Abfrage eingehängt.
         self.heat_rows = heat_rows or minute_rows
         self.heat_store = heat_store
+        self.room_rows = room_rows
         self.store = store
         self.data_since = data_since
         self.device_events = device_events
@@ -1217,6 +1232,7 @@ class EnergyAccounting:
             heat_pump=self.hems.heat_pump,
         )
         totals = heat_totals(points, samples, step_min)
+        lueftung = await self._ventilation(start, stop, points, step_min)
 
         vor_start, vor_end = self._previous_bounds(period, anchor)
         vor_samples, vor_step = await self._samples_for(vor_start, min(vor_end, now))
@@ -1298,6 +1314,7 @@ class EnergyAccounting:
             forecast_heat_kwh=bedarf,
             forecast_note_de=fc_note,
             params=self._heat_params(),
+            ventilation=lueftung,
             note_de=totals.note_de,
         )
 
@@ -1426,6 +1443,41 @@ class EnergyAccounting:
             erster = anchor.replace(day=1)
             return self.period_bounds("month", erster - timedelta(days=1))
         return self.period_bounds("year", anchor.replace(year=anchor.year - 1, month=1, day=1))
+
+    async def _ventilation(
+        self, start: datetime, end: datetime, points: list[HeatPoint], step_min: float
+    ) -> VentilationOut | None:
+        """Wie viel der Entnahme in Räume mit offenem Fenster ging.
+
+        **Nur aus Minutenwerten.** Über Stundenmittel ist die Frage nicht zu beantworten: Ein
+        Fenster, das zwanzig Minuten offen stand, ist in einer Stunde ein Drittel, und welches
+        Drittel, weiß dann niemand mehr. Für lange Zeiträume steht hier deshalb nichts, statt einer
+        Zahl, die so tut, als wüsste sie es.
+        """
+        if self.room_rows is None or step_min > 5.0 or not points:
+            return None
+        raum_minuten, kreise, namen = await self.room_rows(start, end)
+        if not raum_minuten:
+            return None
+        entnahme = {p.at: p.draw_kw for p in points if not p.unknown}
+        v = ventilation_split(entnahme, raum_minuten, kreise, step_min)
+        return VentilationOut(
+            kwh=v.kwh,
+            share=v.share,
+            open_minutes=v.open_minutes,
+            minutes_known=v.minutes_known,
+            rooms=[
+                VentilationRoomOut(
+                    room_id=r.room_id,
+                    name=namen.get(r.room_id, str(r.room_id)),
+                    open_minutes=r.open_minutes,
+                    heating_minutes=r.heating_minutes,
+                    kwh=r.kwh,
+                )
+                for r in v.rooms
+            ],
+            note_de=v.note_de,
+        )
 
     async def _samples_for(self, start: datetime, end: datetime) -> tuple[list[HeatSample], float]:
         """Proben und Schrittweite für einen Zeitraum: Minuten, wo es geht, sonst Stunden.

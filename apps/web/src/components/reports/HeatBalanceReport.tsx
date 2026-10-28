@@ -19,6 +19,11 @@ import { useMultiPeriod, useReport } from "./useReport";
  * Annahmen auf derselben Seite und nicht in einer Fußnote: eine Wärmemenge ohne ihre Annahmen ist
  * eine Behauptung.
  *
+ * **Das offene Fenster steht jetzt dabei.** Ein Raum, der lüftet, zieht weiter Wärme aus dem
+ * Fußboden; in der Entnahme sah das aus wie Wärmebedarf. Wie viel davon in Räume mit offenem
+ * Fenster ging, steht in einer eigenen Karte - geschätzt, nach offenen Heizkreisen verteilt, und
+ * mit der Grenze daneben: Lüftungsverlust ist es nicht ganz, weil ein Teil im Raum bleibt.
+ *
  * **Der Rest ist die wichtigste Zahl.** Die Entnahme in Heiz- und Brauchwasserkreis wird nicht
  * gemessen, sie ist der Rest der Bilanz, und jeder Fehler der anderen Größen landet in ihr. Was
  * nicht aufgeht, steht deshalb als eigene Zeile da. Ein dauerhaft großer Rest heißt: ein Parameter
@@ -56,6 +61,7 @@ export function HeatBalanceReport() {
   const alle = useMultiPeriod<Data>(loader, anchor);
 
   const t = data?.totals;
+  const lueftung = data?.ventilation;
   const p = data?.params;
   // Die Statistik über alle vier Zeiträume: dieselbe Zeile, vier Spalten. Das ist die Antwort auf
   // „was hat welcher Erzeuger umgesetzt" - ohne vier Mal blättern zu müssen.
@@ -96,7 +102,16 @@ export function HeatBalanceReport() {
         <Stat label="Wärme gesamt" value={kwh(t?.produced_kwh)} unit="kWh" tone="amber" hint="beide Erzeuger, Raumwärme des Ofens eingeschlossen" />
         <Stat label="Wärmepumpe" value={kwh(t?.heat_pump_kwh)} unit="kWh" hint={t?.cop_mean ? `Arbeitszahl ${de1(t.cop_mean, 2)}` : "keine Laufzeit"} />
         <Stat label="Pelletofen" value={kwh((t?.stove_water_kwh ?? 0) + (t?.stove_room_kwh ?? 0))} unit="kWh" hint={`${kwh(t?.stove_water_kwh)} kWh ins Wasser, ${kwh(t?.stove_room_kwh)} kWh in den Raum`} />
-        <Stat label="Entnahme" value={kwh(t?.draw_kwh)} unit="kWh" hint="Heizkreis und Warmwasser, als Rest der Bilanz" />
+        <Stat
+          label="Entnahme"
+          value={kwh(t?.draw_kwh)}
+          unit="kWh"
+          hint={
+            lueftung && lueftung.kwh > 0.05
+              ? `Heizkreis und Warmwasser · davon ${kwh(lueftung.kwh)} kWh bei offenem Fenster`
+              : "Heizkreis und Warmwasser, als Rest der Bilanz"
+          }
+        />
         {/* „nicht verloren" stand hier pauschal, und es stimmte nicht: der Puffer steht in einem
             unbeheizten Technikraum, nicht im Wohnraum. Jetzt steht da, wie viel davon dem Haus
             wirklich zugutekommt, und das ist eine eingestellte Annahme. */}
@@ -114,6 +129,50 @@ export function HeatBalanceReport() {
             </span>
             <Note>{data.forecast_note_de}</Note>
           </div>
+        </Card>
+      ) : null}
+
+      {/* Nur zeigen, wenn es etwas zu zeigen gibt: Eine Karte, die jeden Tag „null" sagt, liest
+          nach einer Woche niemand mehr. */}
+      {lueftung && (lueftung.kwh > 0.01 || lueftung.open_minutes > 0) ? (
+        <Card style={{ padding: 16 }}>
+          <CardHead title="Bei offenem Fenster" right="geschätzt, nach offenen Heizkreisen verteilt" />
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+            <span className="text-[28px] font-semibold tracking-[-.02em]" style={{ color: "var(--amber-soft)" }}>
+              {kwh(lueftung.kwh)} <span className="text-[15px] text-text-3">kWh</span>
+            </span>
+            <span className="mono text-[12px] text-text-3">
+              {Math.round(lueftung.open_minutes)} Minuten Fenster offen
+              {lueftung.share != null && lueftung.share >= 0.01
+                ? ` · ${de1(lueftung.share * 100, 0)} % der Entnahme`
+                : ""}
+            </span>
+          </div>
+          {(lueftung.rooms ?? []).length ? (
+            <table className="mt-3 w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="kicker" style={{ fontSize: 10 }}>
+                  <th className="pb-1 text-left font-medium">Raum</th>
+                  <th className="pb-1 text-right font-medium">Fenster offen</th>
+                  <th className="pb-1 text-right font-medium">davon geheizt</th>
+                  <th className="pb-1 text-right font-medium">Wärme</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(lueftung.rooms ?? []).map((r) => (
+                  <tr key={r.room_id} className="border-t border-line-1">
+                    <td className="py-1.5 pr-3 text-text-1">{r.name}</td>
+                    <td className="mono py-1.5 pr-3 text-right text-text-2">{r.open_minutes} min</td>
+                    <td className="mono py-1.5 pr-3 text-right text-text-2">{r.heating_minutes} min</td>
+                    <td className="mono py-1.5 text-right" style={{ color: r.kwh > 0.05 ? "var(--amber-soft)" : "var(--text-3)" }}>
+                      {kwh(r.kwh)} kWh
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+          <Note>{lueftung.note_de}</Note>
         </Card>
       ) : null}
 
