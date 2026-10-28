@@ -382,3 +382,28 @@ class PushSubscription(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     failures: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class RoomShiftState(Base):
+    """Was die Automatik in einem Raum angestellt hat - und worauf sie ihn zurückstellen muss.
+
+    **Diese Zeile ist die Rückfahrkarte.** Hebt die Automatik einen Sollwert von 22,2 auf 22,7 an
+    und geht der Dienst dabei unter, dann weiß ohne sie niemand mehr, dass 22,2 der Wert des
+    Menschen war - und der Raum bliebe für immer einen halben Grad zu warm. Darum wird sie
+    **vor** dem Stellen geschrieben, nicht danach.
+
+    `written_setpoint_c` ist, was die Automatik zuletzt gestellt hat. Weicht der gemeldete Sollwert
+    davon ab, hat jemand anders gedreht - in Controme, an der Wand, egal. Dann zieht sich die
+    Automatik für diesen Raum zurück, statt dagegenzuhalten.
+    """
+
+    __tablename__ = "room_shift_states"
+    room_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    base_setpoint_c: Mapped[float] = mapped_column(Float)
+    offset_k: Mapped[float] = mapped_column(Float, default=0.0)
+    written_setpoint_c: Mapped[float] = mapped_column(Float)
+    written_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    phase: Mapped[str] = mapped_column(String(16), default="aus")
+    until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    paused_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

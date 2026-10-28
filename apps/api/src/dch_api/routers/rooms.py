@@ -16,6 +16,8 @@ from dch_api.schemas import (
     RoomHistoryOut,
     RoomSetpointIn,
     RoomSetpointOut,
+    RoomShiftIn,
+    RoomShiftOut,
     RoomsLiveOut,
 )
 from hems_core.simulation import BERLIN
@@ -63,6 +65,33 @@ async def room_effect(
 ) -> RoomEffectOut:
     """Geschätzte Kosten je Tag und das Verschiebepotenzial des Raums als Wärmespeicher."""
     return await runner.room_effect(room_id, delta_k)
+
+
+@router.get(
+    "/automatik",
+    response_model=RoomShiftOut,
+    summary="Automatik: Vorladen vor dem Preishoch",
+)
+async def rooms_automatik(runner: Annotated[Runtime, Depends(get_runner)]) -> RoomShiftOut:
+    """Was die Automatik darf, was sie gerade will und was sie zuletzt getan hat."""
+    return await runner.rooms_automatik()
+
+
+@router.post(
+    "/automatik",
+    response_model=RoomShiftOut,
+    summary="Automatik einstellen",
+)
+async def set_rooms_automatik(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    body: Annotated[RoomShiftIn, Body()],
+) -> RoomShiftOut:
+    """Einschalten, ausschalten, Räume wählen.
+
+    **Ausschalten stellt zurück.** Wer den Schalter umlegt, während ein Raum angehoben ist,
+    bekommt ihn zurück - nicht beim nächsten Takt, sondern sofort.
+    """
+    return await runner.set_rooms_automatik(body)
 
 
 @router.get("/history", response_model=RoomHistoryOut, summary="Raumtemperaturen eines Tages")

@@ -429,6 +429,68 @@
         }
       }
     },
+    "/api/v1/rooms/automatik": {
+      "get": {
+        "tags": [
+          "Räume"
+        ],
+        "summary": "Automatik: Vorladen vor dem Preishoch",
+        "description": "Was die Automatik darf, was sie gerade will und was sie zuletzt getan hat.",
+        "operationId": "rooms_automatik_api_v1_rooms_automatik_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomShiftOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Räume"
+        ],
+        "summary": "Automatik einstellen",
+        "description": "Einschalten, ausschalten, Räume wählen.\n\n**Ausschalten stellt zurück.** Wer den Schalter umlegt, während ein Raum angehoben ist,\nbekommt ihn zurück - nicht beim nächsten Takt, sondern sofort.",
+        "operationId": "set_rooms_automatik_api_v1_rooms_automatik_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomShiftIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomShiftOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rooms/history": {
       "get": {
         "tags": [
@@ -7478,6 +7540,280 @@
           "message_de"
         ],
         "title": "RoomSetpointOut"
+      },
+      "RoomShiftEventOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "text_de"
+        ],
+        "title": "RoomShiftEventOut"
+      },
+      "RoomShiftIn": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rooms"
+          },
+          "delta_k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta K"
+          },
+          "draw_k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draw K"
+          },
+          "lead_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead H"
+          },
+          "min_spread_ct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Spread Ct"
+          }
+        },
+        "type": "object",
+        "title": "RoomShiftIn",
+        "description": "Alles freiwillig: Was fehlt, bleibt, wie es war."
+      },
+      "RoomShiftOut": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "rooms": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Rooms"
+          },
+          "delta_k": {
+            "type": "number",
+            "title": "Delta K"
+          },
+          "draw_k": {
+            "type": "number",
+            "title": "Draw K"
+          },
+          "lead_h": {
+            "type": "number",
+            "title": "Lead H"
+          },
+          "min_spread_ct": {
+            "type": "number",
+            "title": "Min Spread Ct"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "laden",
+              "zehren",
+              "aus"
+            ],
+            "title": "Phase"
+          },
+          "offset_k": {
+            "type": "number",
+            "title": "Offset K"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          },
+          "window_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start"
+          },
+          "window_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End"
+          },
+          "spread_ct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spread Ct"
+          },
+          "reason_de": {
+            "type": "string",
+            "title": "Reason De"
+          },
+          "active": {
+            "items": {
+              "$ref": "#/components/schemas/RoomShiftRoomOut"
+            },
+            "type": "array",
+            "title": "Active"
+          },
+          "log": {
+            "items": {
+              "$ref": "#/components/schemas/RoomShiftEventOut"
+            },
+            "type": "array",
+            "title": "Log"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "delta_k",
+          "draw_k",
+          "lead_h",
+          "min_spread_ct",
+          "phase",
+          "offset_k",
+          "reason_de"
+        ],
+        "title": "RoomShiftOut",
+        "description": "Was die Automatik darf, was sie gerade will und was sie getan hat.\n\n**Aus, bis jemand sie einschaltet.** Das ist die einzige Stelle in Duck Curve Home, an der das\nWerkzeug von sich aus etwas in der Wohnung verstellt; die Voreinstellung ist deshalb nicht\n„an mit Vorsicht\", sondern „aus\"."
+      },
+      "RoomShiftRoomOut": {
+        "properties": {
+          "room_id": {
+            "type": "integer",
+            "title": "Room Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "base_setpoint_c": {
+            "type": "number",
+            "title": "Base Setpoint C"
+          },
+          "offset_k": {
+            "type": "number",
+            "title": "Offset K"
+          },
+          "written_setpoint_c": {
+            "type": "number",
+            "title": "Written Setpoint C"
+          },
+          "written_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Written At"
+          },
+          "paused_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused Until"
+          }
+        },
+        "type": "object",
+        "required": [
+          "room_id",
+          "name",
+          "base_setpoint_c",
+          "offset_k",
+          "written_setpoint_c",
+          "written_at"
+        ],
+        "title": "RoomShiftRoomOut",
+        "description": "Ein Raum, in dem die Automatik gerade etwas angestellt hat - oder gerade ruht."
       },
       "RoomsLiveOut": {
         "properties": {

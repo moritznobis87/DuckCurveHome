@@ -22,6 +22,13 @@ from dch_api.application.energy_accounting import EnergyAccounting
 from dch_api.application.forecast_evaluation import ForecastEvaluator
 from dch_api.application.ha_import import ImportResult
 from dch_api.application.invoice_service import InvoiceService
+from dch_api.application.room_automatik import (
+    AutomatikConfig,
+    RaumZustand,
+    Stellen,
+    Zurueckziehen,
+    entscheide,
+)
 from dch_api.application.stove_control import StoveMode
 from dch_api.application.stove_planner import StovePlan
 from dch_api.application.tibber_invoice import MeasuredPeriod
@@ -48,6 +55,10 @@ from dch_api.schemas import (
     RoomHistoryOut,
     RoomLiveOut,
     RoomSeriesOut,
+    RoomShiftEventOut,
+    RoomShiftIn,
+    RoomShiftOut,
+    RoomShiftRoomOut,
     RoomsLiveOut,
     ShiftReportOut,
     StoveLiveOut,
@@ -76,11 +87,13 @@ from hems_core.planning import (
     OptimizerConfig,
     PricePoint,
     cheap_windows,
+    expensive_windows,
     next_window_after,
     price_rank,
 )
 from hems_core.simulation import BERLIN, DemoConfig, DemoHouse, new_demo_house
 from hems_core.thermal import compute_buffer_state, room_shift
+from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 
 log = structlog.get_logger("demo")
 
@@ -110,6 +123,14 @@ class DemoRunner:
         self.history = HistoryStore(timedelta(hours=settings.history_retention_hours))
         # Von Hand gestellte Sollwerte der Vorfuehrung, Raum auf Grad.
         self._room_setpoints: dict[int, float] = {}
+        # Die Raumautomatik der Vorfuehrung: dieselbe Entscheidung, derselbe Schutz, nur ohne
+        # Datenbank. Eine Vorfuehrung, in der ein Schalter nichts tut, zeigt die Form und
+        # verschweigt die Sache.
+        self.shift_cfg = AutomatikConfig()
+        self._shift_states: dict[int, RaumZustand] = {}
+        self._shift_log: deque[tuple[datetime, str]] = deque(maxlen=20)
+        self._shift_at: datetime | None = None
+        self.shift_target: ShiftTarget = AUS
         # Die Alarmanlage der Vorfuehrung: unscharf, bis jemand drueckt.
         self._alarm: float = 0.0
         self.broker = SseBroker()
@@ -513,6 +534,137 @@ class DemoRunner:
         return list(self.decisions)[:limit]
 
     # ------------------------------------------------------------------ Einzelraumregelung
+    # ------------------------------------------------------------------ Raumautomatik
+    def _shift_preise(self) -> list[PricePoint]:
+        """Die Preisreihe der Vorfuehrung als Punkte, so wie sie der Betrieb kennt."""
+        iv = self.plan.intervals if self.plan else []
+        return [
+            PricePoint(start=i.ts, end=i.ts + timedelta(minutes=15), ct_kwh=i.price_ct_kwh)
+            for i in iv
+            if i.price_ct_kwh is not None
+        ]
+
+    def _shift_soll(self, room_id: int) -> float | None:
+        raum = next((r for r in demo_rooms.ROOMS if r.id == room_id), None)
+        if raum is None:
+            return None
+        return self._room_setpoints.get(room_id, raum.setpoint_c)
+
+    def _shift_tick(self) -> None:
+        """Dieselbe Entscheidung wie im Betrieb, nur im Arbeitsspeicher gestellt."""
+        now = self.now
+        if self._shift_at is not None and (now - self._shift_at).total_seconds() < 60:
+            return
+        self._shift_at = now
+        cfg = self.shift_cfg
+        preise = self._shift_preise()
+        self.shift_target = (
+            shift_target(
+                now,
+                preise,
+                expensive_windows(preise, self.hems.control.price.expensive_quantile, 60),
+                cfg.policy(),
+            )
+            if cfg.enabled
+            else AUS
+        )
+        raeume = (
+            sorted(set(cfg.rooms) | set(self._shift_states))
+            if cfg.enabled
+            else sorted(self._shift_states)
+        )
+        for rid in raeume:
+            dabei = cfg.enabled and rid in cfg.rooms
+            gemessen = self._shift_soll(rid)
+            aktion = entscheide(
+                now=now,
+                ziel_offset_k=self.shift_target.offset_k if dabei else 0.0,
+                grund=self.shift_target.reason_de if dabei else "nicht mehr in der Automatik",
+                gemessen_c=gemessen,
+                gemessen_at=now,
+                fenster_offen=bool(
+                    (lambda r: r is not None and (demo_rooms.window(r, now) or 0.0) >= 0.5)(
+                        next((x for x in demo_rooms.ROOMS if x.id == rid), None)
+                    )
+                ),
+                zustand=self._shift_states.get(rid),
+            )
+            if isinstance(aktion, Zurueckziehen):
+                vorher = self._shift_states.get(rid)
+                if aktion.ruhe_bis is not None and vorher is not None:
+                    self._shift_states[rid] = RaumZustand(
+                        base_setpoint_c=vorher.base_setpoint_c,
+                        offset_k=0.0,
+                        written_setpoint_c=vorher.written_setpoint_c,
+                        written_at=vorher.written_at,
+                        paused_until=aktion.ruhe_bis,
+                    )
+                    self._shift_log.appendleft((now, f"Raum {rid}: {aktion.grund}"))
+                else:
+                    self._shift_states.pop(rid, None)
+            elif isinstance(aktion, Stellen):
+                self._shift_states[rid] = RaumZustand(
+                    base_setpoint_c=aktion.base_c,
+                    offset_k=aktion.offset_k,
+                    written_setpoint_c=aktion.setpoint_c,
+                    written_at=now,
+                    paused_until=None,
+                )
+                self._room_setpoints[rid] = aktion.setpoint_c
+                name = next((r.name for r in demo_rooms.ROOMS if r.id == rid), str(rid))
+                vorher_wert = f"{gemessen:.1f}".replace(".", ",") if gemessen is not None else "-"
+                neuer_wert = f"{aktion.setpoint_c:.1f}".replace(".", ",")
+                self._shift_log.appendleft(
+                    (now, f"{name}: Sollwert {vorher_wert} auf {neuer_wert} ({aktion.grund})")
+                )
+
+    async def rooms_automatik(self) -> RoomShiftOut:
+        self._shift_tick()
+        ziel = self.shift_target
+        return RoomShiftOut(
+            enabled=self.shift_cfg.enabled,
+            rooms=list(self.shift_cfg.rooms),
+            delta_k=self.shift_cfg.delta_k,
+            draw_k=self.shift_cfg.draw_k,
+            lead_h=self.shift_cfg.lead_h,
+            min_spread_ct=self.shift_cfg.min_spread_ct,
+            phase=ziel.phase,
+            offset_k=ziel.offset_k,
+            until=ziel.until,
+            window_start=ziel.window_start,
+            window_end=ziel.window_end,
+            spread_ct=ziel.spread_ct,
+            reason_de=ziel.reason_de,
+            active=[
+                RoomShiftRoomOut(
+                    room_id=rid,
+                    name=next((r.name for r in demo_rooms.ROOMS if r.id == rid), str(rid)),
+                    base_setpoint_c=z.base_setpoint_c,
+                    offset_k=z.offset_k,
+                    written_setpoint_c=z.written_setpoint_c,
+                    written_at=z.written_at,
+                    paused_until=z.paused_until,
+                )
+                for rid, z in sorted(self._shift_states.items())
+            ],
+            log=[RoomShiftEventOut(at=at, text_de=t) for at, t in self._shift_log],
+            note_de="",
+        )
+
+    async def set_rooms_automatik(self, patch: RoomShiftIn) -> RoomShiftOut:
+        werte = self.shift_cfg.payload()
+        werte.update(patch.model_dump(exclude_none=True))
+        neu = AutomatikConfig.from_payload(werte)
+        bekannt = {r.id for r in demo_rooms.ROOMS}
+        unbekannt = [r for r in neu.rooms if r not in bekannt]
+        if unbekannt:
+            raise DchError(
+                "unknown_room", f"Unbekannte Räume: {', '.join(str(r) for r in unbekannt)}.", 422
+            )
+        self.shift_cfg = neu
+        self._shift_at = None
+        return await self.rooms_automatik()
+
     async def set_room_setpoint(self, room_id: int, setpoint_c: float) -> tuple[bool, float, str]:
         """In der Vorfuehrung wird wirklich gestellt - nur eben im Arbeitsspeicher.
 
@@ -752,6 +904,9 @@ class DemoRunner:
         )
 
     def _after_step_publish(self) -> None:
+        # Die Automatik laeuft mit der Vorfuehrung, nicht erst, wenn jemand hinsieht. Sonst waere
+        # sie eine Anzeige, die sich beim Hinschauen erfindet.
+        self._shift_tick()
         self.snapshot = self.house.snapshot()  # Aktorzustände sofort sichtbar
         self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
 

@@ -224,6 +224,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rooms/automatik": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Automatik: Vorladen vor dem Preishoch
+         * @description Was die Automatik darf, was sie gerade will und was sie zuletzt getan hat.
+         */
+        get: operations["rooms_automatik_api_v1_rooms_automatik_get"];
+        put?: never;
+        /**
+         * Automatik einstellen
+         * @description Einschalten, ausschalten, Räume wählen.
+         *
+         *     **Ausschalten stellt zurück.** Wer den Schalter umlegt, während ein Raum angehoben ist,
+         *     bekommt ihn zurück - nicht beim nächsten Takt, sondern sofort.
+         */
+        post: operations["set_rooms_automatik_api_v1_rooms_automatik_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rooms/history": {
         parameters: {
             query?: never;
@@ -3566,6 +3593,105 @@ export interface components {
             /** Message De */
             message_de: string;
         };
+        /** RoomShiftEventOut */
+        RoomShiftEventOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Text De */
+            text_de: string;
+        };
+        /**
+         * RoomShiftIn
+         * @description Alles freiwillig: Was fehlt, bleibt, wie es war.
+         */
+        RoomShiftIn: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Rooms */
+            rooms?: number[] | null;
+            /** Delta K */
+            delta_k?: number | null;
+            /** Draw K */
+            draw_k?: number | null;
+            /** Lead H */
+            lead_h?: number | null;
+            /** Min Spread Ct */
+            min_spread_ct?: number | null;
+        };
+        /**
+         * RoomShiftOut
+         * @description Was die Automatik darf, was sie gerade will und was sie getan hat.
+         *
+         *     **Aus, bis jemand sie einschaltet.** Das ist die einzige Stelle in Duck Curve Home, an der das
+         *     Werkzeug von sich aus etwas in der Wohnung verstellt; die Voreinstellung ist deshalb nicht
+         *     „an mit Vorsicht", sondern „aus".
+         */
+        RoomShiftOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Rooms */
+            rooms?: number[];
+            /** Delta K */
+            delta_k: number;
+            /** Draw K */
+            draw_k: number;
+            /** Lead H */
+            lead_h: number;
+            /** Min Spread Ct */
+            min_spread_ct: number;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "laden" | "zehren" | "aus";
+            /** Offset K */
+            offset_k: number;
+            /** Until */
+            until?: string | null;
+            /** Window Start */
+            window_start?: string | null;
+            /** Window End */
+            window_end?: string | null;
+            /** Spread Ct */
+            spread_ct?: number | null;
+            /** Reason De */
+            reason_de: string;
+            /** Active */
+            active?: components["schemas"]["RoomShiftRoomOut"][];
+            /** Log */
+            log?: components["schemas"]["RoomShiftEventOut"][];
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
+        };
+        /**
+         * RoomShiftRoomOut
+         * @description Ein Raum, in dem die Automatik gerade etwas angestellt hat - oder gerade ruht.
+         */
+        RoomShiftRoomOut: {
+            /** Room Id */
+            room_id: number;
+            /** Name */
+            name: string;
+            /** Base Setpoint C */
+            base_setpoint_c: number;
+            /** Offset K */
+            offset_k: number;
+            /** Written Setpoint C */
+            written_setpoint_c: number;
+            /**
+             * Written At
+             * Format: date-time
+             */
+            written_at: string;
+            /** Paused Until */
+            paused_until?: string | null;
+        };
         /** RoomsLiveOut */
         RoomsLiveOut: {
             /**
@@ -4521,6 +4647,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoomEffectOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rooms_automatik_api_v1_rooms_automatik_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomShiftOut"];
+                };
+            };
+        };
+    };
+    set_rooms_automatik_api_v1_rooms_automatik_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoomShiftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomShiftOut"];
                 };
             };
             /** @description Validation Error */

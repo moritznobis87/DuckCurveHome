@@ -966,3 +966,63 @@ class ShiftReportOut(BaseModel):
     skipped_de: str = ""
     method_de: str
     assumptions_de: list[str] = Field(default_factory=list)
+
+
+class RoomShiftRoomOut(BaseModel):
+    """Ein Raum, in dem die Automatik gerade etwas angestellt hat - oder gerade ruht."""
+
+    room_id: int
+    name: str
+    #: Der Wert des Menschen, auf den zurückgestellt wird.
+    base_setpoint_c: float
+    offset_k: float
+    written_setpoint_c: float
+    written_at: datetime
+    #: Gesetzt, wenn jemand von Hand gestellt hat: So lange fasst die Automatik den Raum nicht an.
+    paused_until: datetime | None = None
+
+
+class RoomShiftEventOut(BaseModel):
+    at: datetime
+    text_de: str
+
+
+class RoomShiftOut(BaseModel):
+    """Was die Automatik darf, was sie gerade will und was sie getan hat.
+
+    **Aus, bis jemand sie einschaltet.** Das ist die einzige Stelle in Duck Curve Home, an der das
+    Werkzeug von sich aus etwas in der Wohnung verstellt; die Voreinstellung ist deshalb nicht
+    „an mit Vorsicht", sondern „aus".
+    """
+
+    enabled: bool
+    rooms: list[int] = Field(default_factory=list)
+    delta_k: float
+    draw_k: float
+    lead_h: float
+    min_spread_ct: float
+    #: Was die Automatik in dieser Minute will.
+    phase: Literal["laden", "zehren", "aus"]
+    offset_k: float
+    until: datetime | None = None
+    window_start: datetime | None = None
+    window_end: datetime | None = None
+    spread_ct: float | None = None
+    reason_de: str
+    #: Räume mit einer Rückfahrkarte: angehoben oder in Ruhe nach einem Eingriff.
+    active: list[RoomShiftRoomOut] = Field(default_factory=list)
+    #: Die letzten Eingriffe, jüngste zuerst.
+    log: list[RoomShiftEventOut] = Field(default_factory=list)
+    #: Warum gerade nichts gestellt werden kann, falls etwas im Weg ist.
+    note_de: str = ""
+
+
+class RoomShiftIn(BaseModel):
+    """Alles freiwillig: Was fehlt, bleibt, wie es war."""
+
+    enabled: bool | None = None
+    rooms: list[int] | None = None
+    delta_k: float | None = None
+    draw_k: float | None = None
+    lead_h: float | None = None
+    min_spread_ct: float | None = None

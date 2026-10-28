@@ -30,17 +30,29 @@ from hems_core.thermal.room_shift import (
     hold_hours,
     share_of_house,
 )
+from hems_core.thermal.shift_plan import (
+    AUS,
+    Phase,
+    ShiftPolicy,
+    ShiftTarget,
+    next_expensive,
+    shift_target,
+)
 from hems_core.thermal.stove import StoveSample, StoveStats, fuel_note, stove_stats
 
 __all__ = [
+    "AUS",
     "TAU_RAUM_H",
     "CyclingStats",
     "HeatHourInput",
     "HeatPoint",
     "HeatSample",
     "HeatTotals",
+    "Phase",
     "Run",
     "ShiftEffect",
+    "ShiftPolicy",
+    "ShiftTarget",
     "StoveSample",
     "StoveStats",
     "capacity_kwh",
@@ -57,8 +69,10 @@ __all__ = [
     "hourly_inputs",
     "mean_temperature_c",
     "minutes_by_level",
+    "next_expensive",
     "samples_from_hours",
     "share_of_house",
+    "shift_target",
     "status_for",
     "stored_energy_kwh",
     "stove_output_kw",

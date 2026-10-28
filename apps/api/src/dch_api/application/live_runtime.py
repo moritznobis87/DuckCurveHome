@@ -38,6 +38,13 @@ from dch_api.application.myenergi_source import (
 )
 from dch_api.application.plan_service import build_plan
 from dch_api.application.push import Mitteilung, PushService
+from dch_api.application.room_automatik import (
+    AutomatikConfig,
+    RaumZustand,
+    Stellen,
+    Zurueckziehen,
+    entscheide,
+)
 from dch_api.application.stove_control import STALE_AFTER_S, StoveController, StoveMode
 from dch_api.application.stove_planner import StovePlan, decide_switch, plan_stove
 from dch_api.application.tibber_invoice import MeasuredPeriod
@@ -67,6 +74,10 @@ from dch_api.schemas import (
     RoomHistoryOut,
     RoomLiveOut,
     RoomSeriesOut,
+    RoomShiftEventOut,
+    RoomShiftIn,
+    RoomShiftOut,
+    RoomShiftRoomOut,
     RoomsLiveOut,
     ShiftReportOut,
     SourceStatusOut,
@@ -95,10 +106,17 @@ from hems_core.domain import (
     SystemMode,
     apply_heat_patch,
 )
-from hems_core.planning import cheap_windows, current_price, next_window_after, price_rank
+from hems_core.planning import (
+    cheap_windows,
+    current_price,
+    expensive_windows,
+    next_window_after,
+    price_rank,
+)
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
 from hems_core.simulation import BERLIN
 from hems_core.thermal import compute_buffer_state, room_shift
+from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 from hems_core.watch import BRIDGE, RULES, back_text, findings
 
 log = structlog.get_logger("live")
@@ -108,6 +126,15 @@ HISTORY_KEYS = [k for k in SERIES if k != "hp_release_contact"] + ["actuator:hp_
 
 #: So lange nach einer Meldung bleibt dieselbe Regel still, auch wenn sie erneut wechselt.
 MELDE_PAUSE_MIN = 30
+
+
+def _komma(wert: float | None) -> str:
+    """Ein Zehntel mit Komma, oder ein Strich. Für Sätze, die im Protokoll stehen."""
+    return "-" if wert is None else f"{wert:.1f}".replace(".", ",")
+
+
+#: So oft sieht die Raumautomatik nach. Eine Fussbodenheizung beantwortet keine schnelleren Takte.
+SHIFT_TAKT_S = 60.0
 
 
 class LiveRuntime:
@@ -140,6 +167,12 @@ class LiveRuntime:
         self.stove_plan = StovePlan()
         self.energy_rebuild = "ausstehend"
         self.push = push
+        # Die Raumautomatik: Einstellung, Rueckfahrkarten und das letzte Ziel fuer die Anzeige.
+        # Aus, bis jemand sie einschaltet - `start()` holt den gespeicherten Stand.
+        self.shift_cfg = AutomatikConfig()
+        self._shift_states: dict[int, RaumZustand] = {}
+        self._shift_at: datetime | None = None
+        self.shift_target: ShiftTarget = AUS
         # Was der Wächter beim letzten Takt sah, je Regel, und wann zuletzt etwas gemeldet wurde.
         # Beides nur im Speicher; den Stand über Neustarts hinweg holt `start()` aus den
         # Ereignissen, damit ein Neustart nicht alles noch einmal meldet.
@@ -991,9 +1024,9 @@ class LiveRuntime:
         if not self.hub.online:
             raise DchError("bridge_offline", "Bridge nicht verbunden.", 503)
         vorher = self.live.measurement(f"room_{room_id}_setpoint_c", self.now, rooms.STALE_S).value
-        result = await self.hub.send_command(f"room:{room_id}:soll", True, None, None, value=werte)
-        if not result.ok:
-            return False, werte, result.error or "Controme hat den Sollwert nicht bestätigt."
+        ok, fehler = await self._send_setpoint(room_id, werte)
+        if not ok:
+            return False, werte, fehler
         await self.repos.add_event(
             "info",
             "rooms.setpoint",
@@ -1003,6 +1036,249 @@ class LiveRuntime:
         )
         log.info("room setpoint set", room=room_id, to=werte, before=vorher)
         return True, werte, f"{name} steht jetzt auf {werte:.1f} Grad."
+
+    async def rooms_automatik(self) -> RoomShiftOut:
+        """Der Stand der Automatik: Einstellung, Absicht, Rückfahrkarten, Protokoll."""
+        meta = await self._room_meta()
+        ziel = self.shift_target
+        hindernis = ""
+        if self.shift_cfg.enabled and not self.settings.actuation_enabled:
+            hindernis = "Steuerung ist im Dienst abgeschaltet (DCH_ACTUATION_ENABLED)."
+        elif self.shift_cfg.enabled and not self.hub.online:
+            hindernis = "Ohne Brücke wird nichts gestellt."
+        ereignisse = await self.repos.events_by_code(
+            "rooms.automatik", self.now - timedelta(days=7), limit=20
+        )
+        return RoomShiftOut(
+            enabled=self.shift_cfg.enabled,
+            rooms=list(self.shift_cfg.rooms),
+            delta_k=self.shift_cfg.delta_k,
+            draw_k=self.shift_cfg.draw_k,
+            lead_h=self.shift_cfg.lead_h,
+            min_spread_ct=self.shift_cfg.min_spread_ct,
+            phase=ziel.phase,
+            offset_k=ziel.offset_k,
+            until=ziel.until,
+            window_start=ziel.window_start,
+            window_end=ziel.window_end,
+            spread_ct=ziel.spread_ct,
+            reason_de=ziel.reason_de,
+            active=[
+                RoomShiftRoomOut(
+                    room_id=rid,
+                    name=self._room_name(meta, rid).name,
+                    base_setpoint_c=z.base_setpoint_c,
+                    offset_k=z.offset_k,
+                    written_setpoint_c=z.written_setpoint_c,
+                    written_at=z.written_at,
+                    paused_until=z.paused_until,
+                )
+                for rid, z in sorted(self._shift_states.items())
+            ],
+            log=[RoomShiftEventOut(at=e.at, text_de=e.message) for e in ereignisse],
+            note_de=hindernis,
+        )
+
+    async def set_rooms_automatik(self, patch: RoomShiftIn) -> RoomShiftOut:
+        """Die Automatik einstellen. Was fehlt, bleibt; was unsinnig ist, wird beschnitten."""
+        werte = self.shift_cfg.payload()
+        werte.update({k: v for k, v in patch.model_dump(exclude_none=True).items()})
+        neu = AutomatikConfig.from_payload(werte)
+        bekannt = self._room_ids(await self._room_meta())
+        unbekannt = [r for r in neu.rooms if r not in bekannt]
+        if unbekannt:
+            raise DchError(
+                "unknown_room",
+                f"Unbekannte Räume: {', '.join(str(r) for r in unbekannt)}.",
+                422,
+            )
+        self.shift_cfg = neu
+        await self.repos.save_config("room_shift", neu.payload(), created_by="owner")
+        await self.repos.add_event(
+            "info",
+            "rooms.automatik",
+            ("Automatik eingeschaltet" if neu.enabled else "Automatik ausgeschaltet")
+            + (f" für {len(neu.rooms)} Räume" if neu.rooms else ""),
+            neu.payload(),
+        )
+        log.info("room shift config", enabled=neu.enabled, rooms=list(neu.rooms))
+        # Sofort nachsehen: Wer ausschaltet, will nicht bis zum nächsten Takt warten.
+        self._shift_at = None
+        await self._room_shift_tick(self.now)
+        return await self.rooms_automatik()
+
+    async def _send_setpoint(self, room_id: int, wert: float) -> tuple[bool, str]:
+        """Den Sollwert an Controme schicken. Ohne Protokoll - das schreibt der Aufrufer.
+
+        Dieselbe Leitung für den Menschen und für die Automatik: Es gibt genau einen Weg in die
+        Anlage, und er ist an einer Stelle zu prüfen.
+        """
+        result = await self.hub.send_command(f"room:{room_id}:soll", True, None, None, value=wert)
+        if not result.ok:
+            return False, result.error or "Controme hat den Sollwert nicht bestätigt."
+        return True, ""
+
+    # ------------------------------------------------------------------ Raumautomatik
+    async def _load_shift_state(self) -> None:
+        """Einstellung und Rückfahrkarten aus der Datenbank holen.
+
+        **Ohne diesen Schritt wäre ein Neustart gefährlich.** Die Automatik wüsste nicht mehr,
+        dass sie einen Raum angehoben hat, und ließe ihn dort stehen; der gemessene Sollwert
+        wäre für sie der Wert des Menschen.
+        """
+        gespeichert = await self.repos.active_config("room_shift")
+        if gespeichert:
+            self.shift_cfg = AutomatikConfig.from_payload(gespeichert)
+        for row in await self.repos.room_shift_states():
+            self._shift_states[row.room_id] = RaumZustand(
+                base_setpoint_c=row.base_setpoint_c,
+                offset_k=row.offset_k,
+                written_setpoint_c=row.written_setpoint_c,
+                written_at=row.written_at,
+                paused_until=row.paused_until,
+            )
+        if self._shift_states:
+            log.info("room shift state loaded", rooms=sorted(self._shift_states))
+
+    async def _save_shift_state(self, room_id: int, zustand: RaumZustand) -> None:
+        self._shift_states[room_id] = zustand
+        await self.repos.save_room_shift_state(
+            room_id=room_id,
+            base_setpoint_c=zustand.base_setpoint_c,
+            offset_k=zustand.offset_k,
+            written_setpoint_c=zustand.written_setpoint_c,
+            written_at=zustand.written_at,
+            phase=self.shift_target.phase,
+            until=self.shift_target.until,
+            paused_until=zustand.paused_until,
+        )
+
+    async def _room_shift_tick(self, now: datetime) -> None:
+        """Die Automatik: ein Blick auf den Preis, ein Blick auf jeden Raum.
+
+        **Ausgeschaltet heißt zurückstellen, nicht vergessen.** Wer den Schalter umlegt, während
+        ein Raum angehoben ist, soll ihn zurückbekommen; deshalb laufen die gespeicherten Räume
+        auch dann durch, wenn die Automatik aus ist.
+
+        **Ohne Brücke wird nichts entschieden.** Ein Befehl, der nicht ankommt, wäre als
+        angewandt vermerkt - und beim nächsten Takt sähe die Automatik eine fremde Änderung, wo
+        nur ihr eigener Befehl verloren ging.
+        """
+        if self._shift_at is not None and (now - self._shift_at).total_seconds() < SHIFT_TAKT_S:
+            return
+        self._shift_at = now
+        cfg = self.shift_cfg
+        self.shift_target = (
+            shift_target(
+                now,
+                self.forecasts.prices,
+                expensive_windows(
+                    self.forecasts.prices, self.hems.control.price.expensive_quantile, 60
+                ),
+                cfg.policy(),
+            )
+            if cfg.enabled
+            else AUS
+        )
+        raeume = (
+            sorted(set(cfg.rooms) | set(self._shift_states))
+            if cfg.enabled
+            else sorted(self._shift_states)
+        )
+        if not raeume or not self.settings.actuation_enabled or not self.hub.online:
+            return
+        for rid in raeume:
+            dabei = cfg.enabled and rid in cfg.rooms
+            offset = self.shift_target.offset_k if dabei else 0.0
+            grund = (
+                self.shift_target.reason_de
+                if dabei
+                else "Dieser Raum macht nicht mehr mit - zurück auf deinen Wert."
+            )
+            try:
+                await self._room_shift_one(rid, offset, grund, now)
+            except Exception as exc:  # ein Raum darf die anderen nicht aufhalten
+                log.warning("room shift failed", room=rid, error=repr(exc)[:200])
+
+    async def _room_shift_one(self, rid: int, offset_k: float, grund: str, now: datetime) -> None:
+        soll = self.live.measurement(f"room_{rid}_setpoint_c", now, rooms.STALE_S)
+        fenster = self.live.measurement(f"room_{rid}_window", now, rooms.STALE_S).value
+        vorher = self._shift_states.get(rid)
+        aktion = entscheide(
+            now=now,
+            ziel_offset_k=offset_k,
+            grund=grund,
+            gemessen_c=soll.value,
+            gemessen_at=soll.observed_at if soll.value is not None else None,
+            fenster_offen=fenster is not None and fenster >= 0.5,
+            zustand=vorher,
+        )
+        if aktion is None:
+            return
+        meta = await self._room_meta()
+        name = self._room_name(meta, rid).name
+
+        if isinstance(aktion, Zurueckziehen):
+            if aktion.ruhe_bis is not None and vorher is not None:
+                # Der Mensch hat gestellt: Die Anhebung gilt als aufgehoben, der Raum ruht.
+                await self._save_shift_state(
+                    rid,
+                    RaumZustand(
+                        base_setpoint_c=vorher.base_setpoint_c,
+                        offset_k=0.0,
+                        written_setpoint_c=vorher.written_setpoint_c,
+                        written_at=vorher.written_at,
+                        paused_until=aktion.ruhe_bis,
+                    ),
+                )
+                await self.repos.add_event(
+                    "info", "rooms.automatik", f"{name}: {aktion.grund}", {"room": rid}
+                )
+                log.info("room shift stood down", room=rid)
+            else:
+                self._shift_states.pop(rid, None)
+                await self.repos.drop_room_shift_state(rid)
+            return
+
+        if not isinstance(aktion, Stellen):
+            return
+        # **Erst die Rückfahrkarte, dann der Befehl.** Geht der Dienst dazwischen unter, weiß der
+        # nächste Start, worauf zurückzustellen ist.
+        neu = RaumZustand(
+            base_setpoint_c=aktion.base_c,
+            offset_k=aktion.offset_k,
+            written_setpoint_c=aktion.setpoint_c,
+            written_at=now,
+            paused_until=vorher.paused_until if vorher is not None else None,
+        )
+        await self._save_shift_state(rid, neu)
+        ok, fehler = await self._send_setpoint(rid, aktion.setpoint_c)
+        if not ok:
+            # Nicht angekommen heißt nicht angewandt. Der alte Stand kommt zurück, sonst hielte
+            # die Automatik beim nächsten Takt ihren eigenen verlorenen Befehl für einen Eingriff.
+            if vorher is None:
+                self._shift_states.pop(rid, None)
+                await self.repos.drop_room_shift_state(rid)
+            else:
+                await self._save_shift_state(rid, vorher)
+            log.warning("room shift command failed", room=rid, error=fehler[:200])
+            return
+        await self.repos.add_event(
+            "info",
+            "rooms.automatik",
+            # Von dem, was dastand, auf das, was jetzt dasteht - nicht von der Rückfahrkarte aus.
+            # „22,2 auf 22,2" war die erste Fassung, und sie las sich wie ein Fehler.
+            f"{name}: Sollwert {_komma(soll.value)} auf {_komma(aktion.setpoint_c)} ({grund})",
+            {
+                "room": rid,
+                "name": name,
+                "base": aktion.base_c,
+                "to": aktion.setpoint_c,
+                "offset": aktion.offset_k,
+                "phase": self.shift_target.phase,
+            },
+        )
+        log.info("room shift set", room=rid, to=aktion.setpoint_c, offset=aktion.offset_k)
 
     async def room_effect(self, room_id: int, delta_k: float) -> RoomEffectOut:
         """Die Wirkung einer Sollwertänderung, gerechnet mit dem Wetter und den Preisen von jetzt.
@@ -1541,6 +1817,7 @@ class LiveRuntime:
             self.mode = stored
         await self._load_calibration()
         await self._load_watch_state()
+        await self._load_shift_state()
         await self.forecasts.refresh_prices(self.now)
         await self.forecasts.refresh_weather(self.now)
         await self._record_forecast_run()
@@ -1582,6 +1859,7 @@ class LiveRuntime:
             try:
                 await self.control_tick()
                 await self._watch_notify(self.now)
+                await self._room_shift_tick(self.now)
                 if self._plan_at is None or self.now - self._plan_at >= timedelta(
                     minutes=self.settings.plan_refresh_min
                 ):

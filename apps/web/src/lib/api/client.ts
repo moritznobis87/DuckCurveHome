@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, PushKey, PushResult, PushSubscribeBody, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -70,6 +70,10 @@ export const api = {
   // Dauerhaft, ohne Frist: derselbe Griff wie in Contromes eigener Oberflaeche.
   setRoomSetpoint: (id: number, setpointC: number) =>
     request<RoomSetpointResult>(`/rooms/${id}/setpoint`, { method: "POST", body: JSON.stringify({ setpoint_c: setpointC }) }),
+  // Die Automatik fuer die thermische Masse. Aus, bis jemand sie einschaltet.
+  roomsAutomatik: () => request<RoomShift>("/rooms/automatik"),
+  setRoomsAutomatik: (patch: RoomShiftPatch) =>
+    request<RoomShift>("/rooms/automatik", { method: "POST", body: JSON.stringify(patch) }),
   roomEffect: (id: number, deltaK: number) => request<RoomEffect>(`/rooms/${id}/wirkung?delta_k=${deltaK}`),
   roomsDay: (day: string, stepMin = 15) => request<RoomHistory>(`/rooms/history?day=${day}&step_min=${stepMin}`),
   heatConfig: () => request<HemsConfig>("/config"),

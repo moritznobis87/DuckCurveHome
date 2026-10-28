@@ -78,3 +78,6 @@ export type PushResult = S["PushResultOut"];
 export type PushSubscribeBody = S["PushSubscribeIn"];
 export type ShiftReport = S["ShiftReportOut"];
 export type ShiftDay = S["ShiftDayOut"];
+export type RoomShift = S["RoomShiftOut"];
+export type RoomShiftRoom = S["RoomShiftRoomOut"];
+export type RoomShiftPatch = S["RoomShiftIn"];

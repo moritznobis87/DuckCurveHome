@@ -958,3 +958,42 @@ class SqlRepositories:
             else:
                 row.failures += 1
             await s.commit()
+
+    # ------------------------------------------------------------------ Raumautomatik
+    async def room_shift_states(self) -> list[m.RoomShiftState]:
+        async with self.maker() as s:
+            rows = (await s.execute(select(m.RoomShiftState))).scalars().all()
+        return list(rows)
+
+    async def save_room_shift_state(
+        self,
+        room_id: int,
+        base_setpoint_c: float,
+        offset_k: float,
+        written_setpoint_c: float,
+        written_at: datetime,
+        phase: str,
+        until: datetime | None,
+        paused_until: datetime | None,
+    ) -> None:
+        async with self.maker() as s:
+            row = await s.get(m.RoomShiftState, room_id)
+            if row is None:
+                row = m.RoomShiftState(room_id=room_id, base_setpoint_c=base_setpoint_c)
+                s.add(row)
+            row.base_setpoint_c = base_setpoint_c
+            row.offset_k = offset_k
+            row.written_setpoint_c = written_setpoint_c
+            row.written_at = written_at
+            row.phase = phase
+            row.until = until
+            row.paused_until = paused_until
+            row.updated_at = datetime.now(UTC)
+            await s.commit()
+
+    async def drop_room_shift_state(self, room_id: int) -> None:
+        async with self.maker() as s:
+            row = await s.get(m.RoomShiftState, room_id)
+            if row is not None:
+                await s.delete(row)
+                await s.commit()

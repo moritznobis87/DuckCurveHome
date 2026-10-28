@@ -10,6 +10,7 @@ import { isoToday } from "@/lib/day";
 import { abweichungText, anteilText, BAND_K, farbe, fensterText, kelvin, KEIN_WERT, NOCH_NICHT, STUFEN, ventilText, zahl1 } from "./palette";
 import { abweichungen, etagenText, gruppiere, mittel, offenSeitMin, ziel } from "./logic";
 import { Stellen } from "./Stellen";
+import { Automatik } from "./Automatik";
 import { useRole } from "@/lib/live/useRole";
 
 /**
@@ -374,6 +375,10 @@ export function RoomsReport() {
       {/* Die Legende stand zuerst im Seitenkopf und drängte den Untertitel ins Abschneiden. Sie
           gehört ohnehin über die Kacheln: dort wird sie gebraucht. */}
       {raeume.length > 0 ? <Legende /> : null}
+
+      {/* Die Automatik steht ueber den Kacheln: Sie betrifft alle Raeume, und wer wissen will,
+          warum ein Sollwert von selbst anders steht, soll es zuerst lesen. */}
+      {raeume.length > 0 ? <Automatik rooms={raeume} readOnly={role !== "owner"} /> : null}
 
       {live && !live.named && raeume.length > 0 ? (
         <Note>

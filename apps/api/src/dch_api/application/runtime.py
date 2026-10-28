@@ -27,6 +27,8 @@ from dch_api.schemas import (
     PvTaxReportOut,
     RoomEffectOut,
     RoomHistoryOut,
+    RoomShiftIn,
+    RoomShiftOut,
     RoomsLiveOut,
     ShiftReportOut,
     StoveLiveOut,
@@ -54,6 +56,8 @@ class Runtime(Protocol):
         self, room_id: int, setpoint_c: float
     ) -> tuple[bool, float, str]: ...
     async def room_effect(self, room_id: int, delta_k: float) -> RoomEffectOut: ...
+    async def rooms_automatik(self) -> RoomShiftOut: ...
+    async def set_rooms_automatik(self, patch: RoomShiftIn) -> RoomShiftOut: ...
     async def arm_alarm(self, mode: str) -> tuple[bool, str]: ...
     async def rooms_history(
         self, start: datetime, end: datetime, step_min: int
