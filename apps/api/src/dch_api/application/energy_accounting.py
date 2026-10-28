@@ -959,11 +959,19 @@ class EnergyAccounting:
             )
             for h, t_out in rows
         ]
+        # Wie viel von jedem Tag gelaufen ist. Ohne das wäre „was hat heute das Verschieben
+        # gebracht" bis Mitternacht immer „zu wenige Daten".
+        erwartet: dict[date, float] = {}
+        for tag in {h.day for h in stunden}:
+            tag_start = datetime.combine(tag, time(0), tzinfo=self.tz)
+            tag_ende = tag_start + timedelta(days=1)
+            erwartet[tag] = max(0.0, (min(now, tag_ende) - tag_start).total_seconds() / 3600.0)
         ergebnis = shift_value(
             stunden,
             cfg,
             self.hems.tariff.feed_in_ct_kwh,
             self.hems.heat_pump.nominal_electric_power_kw,
+            erwartet,
         )
         gerechnet = [t for t in ergebnis.days if not t.note_de]
         return ShiftReportOut(

@@ -153,3 +153,16 @@ def test_die_stundenlaenge_des_tages_folgt_der_uhr() -> None:
     tag = day_value(TAG, lang, CFG, FEED_IN, CAP)
     assert tag.note_de == ""
     assert tag.heat_pump_kwh == 25.0
+
+
+def test_der_laufende_tag_zaehlt_so_weit_er_gelaufen_ist() -> None:
+    """Sonst wäre „was hat heute das Verschieben gebracht" bis Mitternacht immer unbeantwortet."""
+    preise = [10.0] * 6 + [40.0] * 18
+    halber = stunden([2.0] * 6 + [0.0] * 18, preise)[:12]  # zwölf Stunden, Mittag
+    assert day_value(TAG, halber, CFG, FEED_IN, CAP, erwartet_h=12.0).note_de == ""
+    # Dieselben zwölf Stunden als vergangener Tag sind eine Lücke, keine Auskunft.
+    assert day_value(TAG, halber, CFG, FEED_IN, CAP, erwartet_h=24.0).note_de == (
+        "zu wenige Stunden mit Daten"
+    )
+    # Ein Tag, der erst zwei Stunden alt ist, sagt trotzdem nichts.
+    assert day_value(TAG, halber[:2], CFG, FEED_IN, CAP, erwartet_h=2.0).note_de != ""

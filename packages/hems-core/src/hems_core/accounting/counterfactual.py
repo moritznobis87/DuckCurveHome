@@ -27,7 +27,7 @@ unten einzeln aufgezählt, und darum ist die Zahl eher vorsichtig:
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime
 
@@ -36,8 +36,13 @@ from hems_core.domain.config import HeatDemandConfig
 
 #: So viele Minuten muss eine Stunde haben, damit sie zählt. Darunter ist sie eine Lücke.
 MIN_MINUTEN = 50
-#: So viele volle Stunden braucht ein Tag, sonst wird er nicht gerechnet.
-MIN_STUNDEN = 20
+#: So viele volle Stunden braucht ein Tag mindestens, sonst wird er nicht gerechnet. Ein Tag, der
+#: erst zwei Stunden alt ist, sagt über das Verschieben nichts.
+MIN_STUNDEN = 6
+#: Und so viel vom gelaufenen Teil des Tages muss belegt sein. Für einen vergangenen Tag sind das
+#: rund 19 von 24 Stunden; für den laufenden Tag zählt nur, was schon vorbei ist - sonst wäre die
+#: Antwort auf „was hat heute das Verschieben gebracht" bis Mitternacht immer „zu wenige Daten".
+ANTEIL_NOETIG = 0.8
 #: Darunter lief die Wärmepumpe praktisch nicht, und es gibt nichts zu verschieben.
 MIN_WP_KWH = 1.0
 
@@ -160,13 +165,19 @@ def day_value(
     cfg: HeatDemandConfig,
     feed_in_ct: float,
     cap_kwh: float,
+    erwartet_h: float = 24.0,
 ) -> ShiftDay:
-    """Ein Tag im Vergleich. Was nicht zu rechnen ist, sagt im `note_de`, warum."""
+    """Ein Tag im Vergleich. Was nicht zu rechnen ist, sagt im `note_de`, warum.
+
+    `erwartet_h` ist, wie viel von diesem Tag überhaupt gelaufen ist. Für einen vergangenen Tag
+    sind das 24 Stunden, für den laufenden so viele, wie die Uhr zeigt.
+    """
     leer = ShiftDay(
         day=day, heat_pump_kwh=0.0, shifted_kwh=0.0, actual_eur=0.0, naive_eur=0.0, saving_eur=0.0
     )
     voll = [h for h in hours if h.minutes >= MIN_MINUTEN]
-    if len(voll) < MIN_STUNDEN:
+    noetig = max(MIN_STUNDEN, ANTEIL_NOETIG * max(0.0, erwartet_h))
+    if len(voll) < noetig:
         return replace(leer, note_de="zu wenige Stunden mit Daten")
     if any(h.price_ct is None for h in voll):
         return replace(leer, note_de="ohne Preis")
@@ -206,12 +217,20 @@ def shift_value(
     cfg: HeatDemandConfig,
     feed_in_ct: float,
     cap_kwh: float,
+    erwartet: Mapping[date, float] | None = None,
 ) -> ShiftResult:
-    """Der ganze Zeitraum, Tag für Tag. Tage ohne Aussage zählen nicht mit, sie werden genannt."""
+    """Der ganze Zeitraum, Tag für Tag. Tage ohne Aussage zählen nicht mit, sie werden genannt.
+
+    `erwartet` sagt je Tag, wie viele Stunden von ihm gelaufen sind; ohne Angabe gilt ein voller
+    Tag. Das trennt eine Lücke von einem Tag, der einfach noch läuft.
+    """
     nach_tag: dict[date, list[ShiftHour]] = {}
     for h in hours:
         nach_tag.setdefault(h.day, []).append(h)
-    tage = [day_value(d, nach_tag[d], cfg, feed_in_ct, cap_kwh) for d in sorted(nach_tag)]
+    tage = [
+        day_value(d, nach_tag[d], cfg, feed_in_ct, cap_kwh, (erwartet or {}).get(d, 24.0))
+        for d in sorted(nach_tag)
+    ]
     gerechnet = [t for t in tage if not t.note_de]
     gruende: dict[str, int] = {}
     for t in tage:
