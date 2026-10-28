@@ -456,6 +456,25 @@ Küche, Gäste gehen daran vorbei, und ihr Zugang ist ein Sitzungskeks auf einem
 als ein Code am Bedienteil. Scharfschalten kann im schlimmsten Fall lästig werden;
 Unscharfschalten wäre ein Weg an der Alarmanlage vorbei.
 
+## Werte, die stillstehen (ab 0.12.0)
+
+Home Assistant setzt den Zeitstempel eines Sensors nur fort, wenn die Integration den Wert erneut
+schreibt, und manche schreiben nur bei Änderung. Genau die Werte, die stillstehen sollen, altern
+dadurch weg: Nachts liegt die PV-Leistung stundenlang bei null, ein leerer Speicher gibt
+stundenlang nichts ab. Im Dienst galten beide als veraltet, der Bilanz fehlte die
+Erzeugungsseite, und der Hausknoten zeigte einen Strich, obwohl über das Netz sichtbar Leistung
+ins Haus ging.
+
+Die Bridge liest alle `state_refresh_s` Sekunden (Voreinstellung 30) ohnehin alle Zustände neu.
+Was dabei ankommt, gilt seit 0.12.0 als eben bestätigt und damit als frisch. Ein unveränderter
+Wert ist kein Schweigen.
+
+Echtes Schweigen kommt weiter an: Fällt eine Integration aus, meldet Home Assistant
+`unavailable`, und das bleibt ein unbrauchbarer Messwert; fällt Home Assistant aus, liest die
+Bridge nichts mehr nach, und alle Werte altern wie bisher. Nicht mehr auffallen würde eine
+Integration, die eingefroren ist und trotzdem „verfügbar" meldet; die fiel aber auch vorher nicht
+auf, solange sie unverändert weiterschrieb.
+
 ## Wächter-Automation (empfohlen, Rückfallebene E1)
 
 Gibt Duck Curve Home die Wärmepumpe frei und reißt danach die Verbindung ab, bliebe der Kontakt stehen, wo

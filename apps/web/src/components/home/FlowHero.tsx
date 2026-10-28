@@ -22,6 +22,13 @@ import { Icon } from "@/components/ui/Icon";
  *
  * **Der Sonnenschein ist ein Messwert.** Der Lichtschein hinter der Sonne hat die Staerke der
  * PV-Leistung. An einem grauen Tag ist er fast aus; das ist kein Schmuck, sondern die Auskunft.
+ *
+ * **Das Haus sagt, was ausser Pumpe und Auto laeuft.** Der Kreis zeigt den ganzen Verbrauch, denn
+ * auf ihn zielen die drei Leitungen von Sonne, Netz und Speicher. Waermepumpe und Wallbox haengen
+ * aber als eigene Kreise darunter, und wer die beiden vom Hausverbrauch abzieht, findet eine
+ * Zahl, die nirgends stand: „Das Haus nimmt 0,5 kW, die Pumpe 0,1 - wo sind die anderen 0,4?“
+ * (gefragt am 29.10.2026). Sie stehen jetzt unter dem Kreis, sobald ueberhaupt etwas davon
+ * abgeht.
  */
 type Key = "pv" | "grid" | "house" | "bat" | "hp" | "ev";
 
@@ -95,6 +102,17 @@ function Knoten({ k, href, value, unit, label, sub, m, nowMs, gross = false, fue
   );
 }
 
+/**
+ * Was vom Hausverbrauch bleibt, wenn Waermepumpe und Wallbox abgezogen sind.
+ *
+ * Nur wenn die beiden ueberhaupt etwas nehmen: Steht alles still, ist die Grundlast der
+ * Hausverbrauch, und die Zeile wuerde dieselbe Zahl ein zweites Mal sagen.
+ */
+function grundlast(rest: number | null, andere: number): string | undefined {
+  if (rest === null || andere < 0.05) return undefined;
+  return `davon ${kw(rest)} kW Grundlast`;
+}
+
 export function FlowHero({ snapshot, nowMs, pvPeakKw }: { snapshot: EnergySnapshot | null; nowMs: number; pvPeakKw: number }) {
   const s = snapshot;
   const v = useMemo(() => {
@@ -115,6 +133,7 @@ export function FlowHero({ snapshot, nowMs, pvPeakKw }: { snapshot: EnergySnapsh
       hp,
       ev,
       house,
+      rest: frisch(s?.base_load_kw) ? (s!.base_load_kw.value as number) : null,
     };
   }, [s]);
   const einspeisung = v.exportKw >= v.importKw;
@@ -142,7 +161,7 @@ export function FlowHero({ snapshot, nowMs, pvPeakKw }: { snapshot: EnergySnapsh
       </svg>
       <Knoten k="pv" href="/strom/pv" value={kw(s?.pv_power_kw.value)} unit="kW" label="Sonne" m={s?.pv_power_kw} nowMs={nowMs} />
       <Knoten k="grid" href="/strom" value={kw(einspeisung ? v.exportKw : v.importKw)} unit="kW" label="Netz" sub={einspeisung && v.exportKw >= 0.05 ? "Einspeisung" : v.importKw >= 0.05 ? "Bezug" : undefined} m={s?.grid_power_kw} nowMs={nowMs} />
-      <Knoten k="house" href="/strom" value={kw(s?.house_power_kw.value)} unit="kW" label="Haus" m={s?.house_power_kw} nowMs={nowMs} gross />
+      <Knoten k="house" href="/strom" value={kw(s?.house_power_kw.value)} unit="kW" label="Haus" sub={grundlast(v.rest, v.hp + v.ev)} m={s?.house_power_kw} nowMs={nowMs} gross />
       <Knoten k="bat" href="/strom/speicher" value={soc != null ? String(Math.round(soc * 100)) : "-"} unit="%" label="Speicher" sub={v.charge >= 0.05 ? `lädt ${kw(v.charge)} kW` : v.discharge >= 0.05 ? `gibt ${kw(v.discharge)} kW` : undefined} m={s?.battery_soc} nowMs={nowMs} fuell={soc} />
       <Knoten k="hp" href="/waerme" value={kw(s?.heat_pump_power_kw.value)} unit="kW" label="Wärmepumpe" sub={v.hp >= 0.05 ? "läuft" : undefined} m={s?.heat_pump_power_kw} nowMs={nowMs} />
       <Knoten k="ev" href="/strom/wallbox" value={kw(s?.ev_power_kw.value)} unit="kW" label="Wallbox" sub={v.ev >= 0.05 ? "lädt" : undefined} m={s?.ev_power_kw} nowMs={nowMs} />
@@ -168,9 +187,10 @@ export function FlowList({ snapshot }: { snapshot: EnergySnapshot | null }) {
   const num = (m?: Measurement | null) => (frisch(m) ? (m!.value as number) : 0);
   const grid = num(s?.grid_power_kw);
   const bat = num(s?.battery_power_kw);
+  const rest = frisch(s?.base_load_kw) ? (s!.base_load_kw.value as number) : null;
   const einspeisung = grid < -0.05;
 
-  const Gross = ({ k, href, wert, wort }: { k: Key; href: string; wert: string; wort: string }) => (
+  const Gross = ({ k, href, wert, wort, unten }: { k: Key; href: string; wert: string; wort: string; unten?: string }) => (
     <Link href={href} className="home-jetzt-gross">
       <span className="home-jetzt-kopf">
         <Icon name={k === "pv" ? "sun" : "home"} size={16} color={FARBE[k]} />
@@ -179,6 +199,7 @@ export function FlowList({ snapshot }: { snapshot: EnergySnapshot | null }) {
       <span className="mono home-jetzt-zahl" style={{ color: k === "pv" ? FARBE.pv : "var(--text-1)" }}>
         {wert} <span className="home-einheit">kW</span>
       </span>
+      {unten ? <span className="home-jetzt-wort">{unten}</span> : null}
     </Link>
   );
 
@@ -199,7 +220,7 @@ export function FlowList({ snapshot }: { snapshot: EnergySnapshot | null }) {
     <div className="home-jetzt">
       <div className="home-jetzt-reihe">
         <Gross k="pv" href="/strom/pv" wert={kw(s?.pv_power_kw.value)} wort="Sonne" />
-        <Gross k="house" href="/strom" wert={kw(s?.house_power_kw.value)} wort="Haus" />
+        <Gross k="house" href="/strom" wert={kw(s?.house_power_kw.value)} wort="Haus" unten={grundlast(rest, num(s?.heat_pump_power_kw) + num(s?.ev_power_kw))} />
       </div>
       <div className="home-jetzt-raster">
         <Klein

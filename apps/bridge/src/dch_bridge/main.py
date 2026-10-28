@@ -35,7 +35,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.11.0"
+VERSION = "0.12.0"
 log = structlog.get_logger("bridge")
 
 
@@ -198,13 +198,33 @@ class Bridge:
         return out
 
     # ------------------------------------------------------------------ Lesen
-    def _ingest(self, st: EntityState) -> None:
+    def _ingest(self, st: EntityState, *, bestaetigt: bool = False) -> None:
+        """Einen Zustand aus Home Assistant in einen Messwert übersetzen und vormerken.
+
+        `bestaetigt` heißt: Der Wert kommt aus dem periodischen Nachlesen, Home Assistant hat ihn
+        also eben auf Nachfrage herausgegeben. Dann zählt der Lesezeitpunkt und nicht der
+        Zeitstempel aus Home Assistant. Der läuft nämlich nur weiter, wenn die Integration den
+        Wert erneut schreibt, und manche schreiben nur bei Änderung.
+
+        Das trifft genau die Werte, die stillstehen, weil sie stillstehen sollen: Nachts liegt die
+        PV-Leistung stundenlang bei null, ein leerer Speicher gibt stundenlang nichts ab. Ihr
+        Zeitstempel bleibt stehen, der Dienst hält den Wert für veraltet, und der Bilanz fehlt
+        die Erzeugungsseite - der Hausknoten zeigt einen Strich, obwohl über das Netz sichtbar
+        Leistung ins Haus geht (gesehen am 29.10.2026 um 00:04: Netz 0,5 kW, Haus "-").
+
+        Ein unveränderter Wert ist kein Schweigen. Echtes Schweigen kommt weiter an: Fällt eine
+        Integration aus, meldet Home Assistant `unavailable`, und das bleibt ein unbrauchbarer
+        Messwert; fällt Home Assistant aus, liest diese Schleife nichts mehr nach, und alles
+        altert wie bisher. Was damit nicht mehr auffällt, ist eine Integration, die eingefroren
+        ist und trotzdem "verfügbar" meldet - die fällt aber auch über den Zeitstempel nicht
+        auf, solange sie unverändert weiterschreibt.
+        """
         m = self.by_entity.get(st.entity_id)
         if m is None:
             return
         self.latest[st.entity_id] = st
         now = datetime.now(UTC)
-        reading = normalize(m, st.state, st.attributes, st.observed_at, now)
+        reading = normalize(m, st.state, st.attributes, now if bestaetigt else st.observed_at, now)
         if (
             self.comparator is not None
             and reading.key == f"{self.settings.mqtt_key_prefix}_power_kw"
@@ -264,7 +284,7 @@ class Bridge:
             try:
                 await self.ha.connect()
                 for st in await self.ha.get_states():
-                    self._ingest(st)
+                    self._ingest(st, bestaetigt=True)
                 await self.ha.subscribe_state_changes()
                 backoff = 1.0
                 async for st in self.ha.events():
@@ -281,14 +301,18 @@ class Bridge:
 
     async def _refresh_loop(self) -> None:
         """Alle Zustände periodisch neu lesen: HA sendet state_changed nur bei Änderungen, ein konstanter Wert
-        (PV nachts, Puffertemperatur) würde sonst nie wieder gemeldet und in der API als veraltet gelten."""
+        (PV nachts, Puffertemperatur) würde sonst nie wieder gemeldet und in der API als veraltet gelten.
+
+        Was hier ankommt, gilt als eben bestätigt und damit als frisch - die Begründung steht in
+        `_ingest`. Ohne das liefe diese Schleife ins Leere: Sie schickte denselben Wert mit
+        demselben alten Zeitstempel noch einmal, und veraltet bliebe er trotzdem."""
         while True:
             await asyncio.sleep(self.settings.state_refresh_s)
             if not self.ha.connected:
                 continue
             try:
                 for st in await self.ha.get_states():
-                    self._ingest(st)
+                    self._ingest(st, bestaetigt=True)
             except Exception as exc:
                 log.warning("state refresh failed", error=repr(exc)[:200])
 
