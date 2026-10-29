@@ -4,11 +4,26 @@ Umgebungsvariablen DCH_BRIDGE_*), lokal aus .env."""
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+#: Wie eine Entität in Home Assistant aussieht: Bereich, Punkt, Name.
+ENTITAET = re.compile(r"[a-z_]+\.[a-z0-9_]+")
+
+
+def ist_entitaet(text: str) -> bool:
+    """Taugt der Text als Ziel für einen Dienstaufruf?
+
+    Gefragt wird, bevor etwas an Home Assistant geht. Was dort ankommt und keine Entität ist,
+    beantwortet Home Assistant mit `invalid_format: expected 'all' or 'none' at
+    'target.entity_id'` - ein Satz, der die Ursache nicht nennt und beim Druck auf den Knopf
+    erscheint, nicht beim Einrichten.
+    """
+    return bool(ENTITAET.fullmatch(text.strip()))
 
 
 class BridgeSettings(BaseSettings):
@@ -144,6 +159,32 @@ class BridgeSettings(BaseSettings):
             return raw  # bereits ein Pfad, z. B. shellies/shellyem3-485519db56d2
         device = raw if raw.startswith("shellyem3-") else f"shellyem3-{raw}"
         return f"shellies/{device}"
+
+    @field_validator("alarm_entity", "door_entity", "heartbeat_entity", mode="before")
+    @classmethod
+    def _entitaet(cls, value: object) -> str:
+        """Eine Entität aus dem Eingabefeld, auch wenn die ganze Zeile hineingeraten ist.
+
+        In den Add-on-Optionen steht je Option ein eigenes Feld; in der Anleitung steht die Zeile
+        `alarm_entity: alarm_control_panel.lupusec_alarm`. Wer sie ganz kopiert, trägt den
+        Optionsnamen mit ein, und Home Assistant bekommt als Ziel den Text
+        „alarm_entity: alarm_control_panel.lupusec_alarm". Die Antwort darauf lautet
+        `invalid_format: expected 'all' or 'none' at 'target.entity_id'`, und sie erscheint beim
+        Druck auf den Knopf in der Küche, nicht beim Einrichten (gesehen am 29.10.2026).
+
+        Repariert wird nur, was eindeutig ist: Leerraum, Anführungszeichen und ein vorangestellter
+        Optionsname. Eine Entität enthält selbst keinen Doppelpunkt, deshalb ist der Schnitt
+        sicher. Was danach keine Entität ist, bleibt stehen, wie es ist: Der Dienst, der sie
+        braucht, sagt dann, was fehlt, statt sich eine auszudenken.
+        """
+        if value is None:
+            return ""
+        raw = str(value).strip().strip("'\"").strip()
+        if ":" in raw:
+            kopf, _, rest = raw.partition(":")
+            if "." not in kopf:
+                raw = rest.strip().strip("'\"").strip()
+        return raw
 
     @field_validator("door_doors", "door_actors", "door_methods", mode="before")
     @classmethod

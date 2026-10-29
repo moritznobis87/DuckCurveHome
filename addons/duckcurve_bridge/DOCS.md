@@ -441,12 +441,18 @@ Die Anlage wird über ihre Home-Assistant-Integration gelesen, wie jede andere G
 Daraus wird eine Zahl: 0 unscharf, 1 zu Hause scharf, 2 unterwegs scharf, 3 schaltet gerade,
 4 ausgelöst.
 
-Zum Schärfen zwei Optionen:
+Zum Schärfen zwei Optionen. In der Add-on-Konfiguration hat jede ihr **eigenes Feld**; in das
+Feld gehört nur der Wert, nicht der Name davor:
 
-```yaml
-alarm_entity: "alarm_control_panel.lupusec"
-alarm_arm_enabled: true
-```
+| Feld | Wert |
+| --- | --- |
+| `alarm_entity` | `alarm_control_panel.lupusec` |
+| `alarm_arm_enabled` | an |
+
+Steht im Feld `alarm_entity` versehentlich die ganze Zeile (`alarm_entity: alarm_control_panel.…`),
+schneidet die Bridge den Namen ab 0.12.1 selbst weg. Davor ging der ganze Text als Ziel an Home
+Assistant, und die Antwort lautete `invalid_format: expected 'all' or 'none' at
+'target.entity_id'` - beim Druck auf den Knopf, nicht beim Einrichten.
 
 Danach steht im Dock der Startseite ein Schild. Es zeigt den Zustand und öffnet zwei Knöpfe:
 „Zu Hause" und „Unterwegs".

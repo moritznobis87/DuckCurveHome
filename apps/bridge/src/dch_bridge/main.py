@@ -17,7 +17,7 @@ from dch_bridge.home_assistant.rest_client import HaRestClient
 from dch_bridge.home_assistant.ws_client import EntityState, HaWsClient
 from dch_bridge.mapping import ActuatorMap, EntityMap, normalize
 from dch_bridge.outbox import Outbox
-from dch_bridge.settings import BridgeSettings
+from dch_bridge.settings import BridgeSettings, ist_entitaet
 from dch_bridge.sources.controme import ContromeRooms, RaumInfo
 from dch_bridge.sources.mcz_maestro import MaestroStove, stove_url
 from dch_bridge.sources.nuki_lock import NukiLock
@@ -35,7 +35,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.12.0"
+VERSION = "0.12.1"
 log = structlog.get_logger("bridge")
 
 
@@ -493,6 +493,14 @@ class Bridge:
             fehler = "Scharfschalten ist nicht freigegeben (Option alarm_arm_enabled)."
         elif not self.settings.alarm_entity:
             fehler = "Keine Alarmanlage eingerichtet (Option alarm_entity)."
+        elif not ist_entitaet(self.settings.alarm_entity):
+            # Lieber hier eine Absage mit Grund als dort eine mit `invalid_format`: Wer vor der
+            # Anzeige steht, soll lesen koennen, was in welches Feld gehoert.
+            fehler = (
+                f"Die Option alarm_entity enthaelt „{self.settings.alarm_entity}“ und damit keine "
+                "Entitaet. Dort gehoert nur der Name hinein, zum Beispiel "
+                "alarm_control_panel.lupusec_alarm, ohne den Optionsnamen davor."
+            )
         if fehler is None:
             try:
                 await self.ha.call_service(
@@ -648,6 +656,15 @@ def run() -> None:
         log.error("Entity-Mapping nicht ladbar - Bridge startet nicht", error=str(exc)[:300])
         sys.exit(2)
     log.info("entity map loaded", origin=origin, digest=entity_map.digest())
+    # Beim Start sagen, nicht erst beim Druck auf den Knopf: Scharfschalten ist freigegeben, aber
+    # das Ziel taugt nicht. Die Bridge laeuft trotzdem weiter - das Lesen der Anlage haengt an der
+    # Entity-Zuordnung und nicht an dieser Option.
+    if settings.alarm_arm_enabled and not ist_entitaet(settings.alarm_entity):
+        log.warning(
+            "alarm_entity ist keine Entitaet - Scharfschalten bleibt gesperrt",
+            wert=settings.alarm_entity,
+            erwartet="alarm_control_panel.<name>",
+        )
     has_device = bool(entity_map.mqtt) or bool(settings.shelly_topic_prefix)
     if settings.source_mode != "home_assistant" and not (settings.mqtt_host and has_device):
         log.error(
