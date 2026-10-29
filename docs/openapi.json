@@ -1899,6 +1899,28 @@
         }
       }
     },
+    "/api/v1/system/speicher": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Woraus der Speicher besteht",
+        "description": "Die Aufschlüsselung des eigenen Arbeitsspeichers, auf Abruf.\n\nNeben `/system/storage`, weil es dieselbe Frage von der anderen Seite ist: Dort geht es um den\nPlatz, den die Datenbank belegt, hier um den, den dieser Vorgang belegt. Beides wird\nabgerechnet, und ohne Zahlen spart man am falschen Ende.\n\nDer Durchlauf über alle verwalteten Objekte dauert je nach Grösse Sekundenbruchteile bis\nSekunden. Deshalb auf Abruf und nicht im Takt.",
+        "operationId": "speicher_api_v1_system_speicher_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryReportOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system/coverage": {
       "get": {
         "tags": [
@@ -6285,6 +6307,91 @@
           "source"
         ],
         "title": "Measurement"
+      },
+      "MemoryReportOut": {
+        "properties": {
+          "rss_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rss Mb"
+          },
+          "peak_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak Mb"
+          },
+          "objects": {
+            "type": "integer",
+            "title": "Objects"
+          },
+          "tracked_mb": {
+            "type": "number",
+            "title": "Tracked Mb"
+          },
+          "types": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryTypeOut"
+            },
+            "type": "array",
+            "title": "Types"
+          },
+          "pool_de": {
+            "type": "string",
+            "title": "Pool De"
+          },
+          "note_de": {
+            "type": "string",
+            "title": "Note De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rss_mb",
+          "peak_mb",
+          "objects",
+          "tracked_mb",
+          "types",
+          "pool_de",
+          "note_de"
+        ],
+        "title": "MemoryReportOut",
+        "description": "Woraus der Arbeitsspeicher dieses Vorgangs besteht.\n\nDer Dienst wird nach Arbeitsspeicher abgerechnet, und die Plattform nennt nur eine Summe je\nDienst. `rss_mb` ist diese Summe für die API, `types` beantwortet die Anschlussfrage: Liegt\nirgendwo eine Million Zeilen herum, die dort nicht hingehört?\n\nDie Differenz zwischen `rss_mb` und `tracked_mb` ist gross und in Ordnung: Interpreter,\nBibliotheken und der Speicher von C-Erweiterungen zählen nicht zum verwalteten Haufen."
+      },
+      "MemoryTypeOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "mb": {
+            "type": "number",
+            "title": "Mb"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "count",
+          "mb"
+        ],
+        "title": "MemoryTypeOut",
+        "description": "Eine Objektgruppe im Python-Haufen: Typ, Anzahl, flache Größe."
       },
       "NextExpected": {
         "properties": {

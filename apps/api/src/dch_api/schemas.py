@@ -597,6 +597,34 @@ class StorageReportOut(BaseModel):
     note_de: str
 
 
+class MemoryTypeOut(BaseModel):
+    """Eine Objektgruppe im Python-Haufen: Typ, Anzahl, flache Größe."""
+
+    name: str
+    count: int
+    mb: float
+
+
+class MemoryReportOut(BaseModel):
+    """Woraus der Arbeitsspeicher dieses Vorgangs besteht.
+
+    Der Dienst wird nach Arbeitsspeicher abgerechnet, und die Plattform nennt nur eine Summe je
+    Dienst. `rss_mb` ist diese Summe für die API, `types` beantwortet die Anschlussfrage: Liegt
+    irgendwo eine Million Zeilen herum, die dort nicht hingehört?
+
+    Die Differenz zwischen `rss_mb` und `tracked_mb` ist gross und in Ordnung: Interpreter,
+    Bibliotheken und der Speicher von C-Erweiterungen zählen nicht zum verwalteten Haufen.
+    """
+
+    rss_mb: float | None
+    peak_mb: float | None
+    objects: int
+    tracked_mb: float
+    types: list[MemoryTypeOut]
+    pool_de: str
+    note_de: str
+
+
 class CoverageSeriesOut(BaseModel):
     """Verfügbarkeit einer Messreihe: je Stunde die Zahl der angekommenen Minuten, plus Kennzahlen.
 

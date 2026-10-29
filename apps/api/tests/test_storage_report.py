@@ -1,4 +1,4 @@
-"""Der Platzbedarf der Datenbank muss von außen ablesbar sein.
+"""Was Platz und Speicher belegt, muss von außen ablesbar sein.
 
 Eine verwaltete Datenbank wird nach Arbeitsspeicher abgerechnet, und den belegt sie im Wesentlichen
 mit ihrer eigenen Größe. Welche Tabelle das ist, lässt sich nicht erraten - und solange man rät,
@@ -48,3 +48,23 @@ def test_the_endpoint_answers_and_names_the_retention(client: TestClient) -> Non
 
 def test_it_is_not_public(client: TestClient) -> None:
     assert client.get("/api/v1/system/storage").status_code == 401
+
+
+def test_der_speicher_des_dienstes_ist_aufgeschluesselt(client: TestClient) -> None:
+    """Die Summe sagt, dass es viel ist; erst die Liste sagt, wovon."""
+    r = client.get("/api/v1/system/speicher", headers=AUTH)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    # Auf Linux steht die Zahl in /proc; sonst darf sie fehlen, der Rest muss trotzdem kommen.
+    assert body["rss_mb"] is None or body["rss_mb"] > 0
+    assert body["objects"] > 1000
+    assert body["tracked_mb"] > 0
+    assert body["types"], "ohne Liste beantwortet die Auskunft die Anschlussfrage nicht"
+    assert body["types"] == sorted(body["types"], key=lambda t: -t["mb"])
+    # Der grosse Abstand zwischen beiden Zahlen ist der Normalfall und muss dastehen, sonst liest
+    # ihn jemand als Verlust.
+    assert "tracked_mb" in body["note_de"]
+
+
+def test_der_speicher_ist_nicht_oeffentlich(client: TestClient) -> None:
+    assert client.get("/api/v1/system/speicher").status_code == 401

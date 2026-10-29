@@ -770,6 +770,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/speicher": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Woraus der Speicher besteht
+         * @description Die Aufschlüsselung des eigenen Arbeitsspeichers, auf Abruf.
+         *
+         *     Neben `/system/storage`, weil es dieselbe Frage von der anderen Seite ist: Dort geht es um den
+         *     Platz, den die Datenbank belegt, hier um den, den dieser Vorgang belegt. Beides wird
+         *     abgerechnet, und ohne Zahlen spart man am falschen Ende.
+         *
+         *     Der Durchlauf über alle verwalteten Objekte dauert je nach Grösse Sekundenbruchteile bis
+         *     Sekunden. Deshalb auf Abruf und nicht im Takt.
+         */
+        get: operations["speicher_api_v1_system_speicher_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/coverage": {
         parameters: {
             query?: never;
@@ -3012,6 +3039,45 @@ export interface components {
             quality: components["schemas"]["Quality"];
             /** Source */
             source: string;
+        };
+        /**
+         * MemoryReportOut
+         * @description Woraus der Arbeitsspeicher dieses Vorgangs besteht.
+         *
+         *     Der Dienst wird nach Arbeitsspeicher abgerechnet, und die Plattform nennt nur eine Summe je
+         *     Dienst. `rss_mb` ist diese Summe für die API, `types` beantwortet die Anschlussfrage: Liegt
+         *     irgendwo eine Million Zeilen herum, die dort nicht hingehört?
+         *
+         *     Die Differenz zwischen `rss_mb` und `tracked_mb` ist gross und in Ordnung: Interpreter,
+         *     Bibliotheken und der Speicher von C-Erweiterungen zählen nicht zum verwalteten Haufen.
+         */
+        MemoryReportOut: {
+            /** Rss Mb */
+            rss_mb: number | null;
+            /** Peak Mb */
+            peak_mb: number | null;
+            /** Objects */
+            objects: number;
+            /** Tracked Mb */
+            tracked_mb: number;
+            /** Types */
+            types: components["schemas"]["MemoryTypeOut"][];
+            /** Pool De */
+            pool_de: string;
+            /** Note De */
+            note_de: string;
+        };
+        /**
+         * MemoryTypeOut
+         * @description Eine Objektgruppe im Python-Haufen: Typ, Anzahl, flache Größe.
+         */
+        MemoryTypeOut: {
+            /** Name */
+            name: string;
+            /** Count */
+            count: number;
+            /** Mb */
+            mb: number;
         };
         /** NextExpected */
         NextExpected: {
@@ -5567,6 +5633,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StorageReportOut"];
+                };
+            };
+        };
+    };
+    speicher_api_v1_system_speicher_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryReportOut"];
                 };
             };
         };

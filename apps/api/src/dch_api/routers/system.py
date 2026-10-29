@@ -10,15 +10,18 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
+from dch_api.infrastructure.prozess import objekte_nach_typ, speicher_mb
 from dch_api.schemas import (
     CoverageOut,
     CoverageSeriesOut,
     DoorEntryOut,
     DoorLogOut,
+    MemoryReportOut,
+    MemoryTypeOut,
     StorageReportOut,
     StorageTableOut,
 )
@@ -44,6 +47,41 @@ async def storage(runner: Annotated[Runtime, Depends(get_runner)]) -> StorageRep
         total_bytes=sum(t.total_bytes for t in tables),
         raw_retention_days=days,
         note_de=note,
+    )
+
+
+@router.get("/speicher", response_model=MemoryReportOut, summary="Woraus der Speicher besteht")
+def speicher(request: Request) -> MemoryReportOut:
+    """Die Aufschlüsselung des eigenen Arbeitsspeichers, auf Abruf.
+
+    Neben `/system/storage`, weil es dieselbe Frage von der anderen Seite ist: Dort geht es um den
+    Platz, den die Datenbank belegt, hier um den, den dieser Vorgang belegt. Beides wird
+    abgerechnet, und ohne Zahlen spart man am falschen Ende.
+
+    Der Durchlauf über alle verwalteten Objekte dauert je nach Grösse Sekundenbruchteile bis
+    Sekunden. Deshalb auf Abruf und nicht im Takt.
+    """
+    jetzt, hoechst = speicher_mb()
+    anzahl, verfolgt, oben = objekte_nach_typ()
+    engine = getattr(request.app.state, "engine", None)
+    pool = getattr(engine, "pool", None)
+    pool_de = (
+        pool.status() if pool is not None and hasattr(pool, "status") else "ohne Verbindungspool"
+    )
+    return MemoryReportOut(
+        rss_mb=jetzt,
+        peak_mb=hoechst,
+        objects=anzahl,
+        tracked_mb=verfolgt,
+        types=[MemoryTypeOut(name=n, count=c, mb=m) for n, c, m in oben],
+        pool_de=pool_de,
+        note_de=(
+            "rss_mb ist, was die Plattform abrechnet. tracked_mb zählt nur den verwalteten "
+            "Python-Haufen und ist deshalb viel kleiner: Interpreter, Bibliotheken und der "
+            "Speicher von C-Erweiterungen (numpy, scipy, asyncpg) stehen nicht darin. Eine "
+            "Zeile mit Millionen Objekten ist eine Spur; steht nichts Grosses darin, liegt der "
+            "Rest in den Bibliotheken und ist am Code nicht zu holen."
+        ),
     )
 
 

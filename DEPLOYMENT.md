@@ -119,9 +119,29 @@ Beides ist ohne Datenbank gemessen. Zwei Erklärungen, die naheliegen und beide 
   wuchs derselbe Lauf auf 170 statt 175 MB. Der Zuwachs liegt nicht im alten Heap, ein Deckel
   spart nichts und kostet im Zweifel einen Absturz.
 
-Wie groß die Datenbank selbst ist, steht in der Oberfläche unter **System → Zugang und
-Sicherung**: Platzbedarf je Tabelle. Rohwerte werden `DCH_RAW_RETENTION_DAYS` Tage aufgehoben
-(Voreinstellung 3), die Minutentabelle bleibt.
+Woraus der Speicher der API besteht, sagt `/api/v1/system/speicher`. Angemeldet im Browser zu
+öffnen als `https://<web-domain>/api/dch/system/speicher`; der BFF legt den Token dazu. Die Liste
+beantwortet die Anschlussfrage: Liegt irgendwo eine Million Zeilen herum, die dort nicht hingehört?
+Zur Einordnung, gemessen im Demo-Modus: 162 MB belegt, davon 22 MB verwalteter Python-Haufen. Der
+Rest sind Interpreter, Bibliotheken und C-Erweiterungen. Der Solver allein (`scipy.optimize`, für
+den MILP-Planer) kostet 46 MB, Web-Push 12 MB, asyncpg 2,5 MB.
+
+**Der größte Posten im Projekt ist aber die Datenbank, und dort die Rohwerte.** Nachgebaut am
+29.10.2026 mit einem realistischen Bestand (150 Tage Minutenwerte, 3 Tage Rohwerte bei 16 Reihen
+alle 3 Sekunden):
+
+| Tabelle | Zeilen | Platz mit Indizes |
+| --- | --- | --- |
+| `measurements_raw` (3 Tage) | 1,38 Mio | **213 MB** |
+| `measurements_minute` (150 Tage) | 216 Tsd. | 37 MB |
+
+Das dauerhafte Gedächtnis der Anlage ist also ein Sechstel so groß wie der Zwischenspeicher davor.
+`measurements_raw` wird nur gebraucht, bis die Minute verdichtet ist, und das geschieht alle fünf
+Minuten; der Rest ist Vorrat für die Fehlersuche. `DCH_RAW_RETENTION_DAYS=1` statt 3 drittelt
+diesen Posten. Die echten Größen stehen in der Oberfläche unter **System → Zugang und Sicherung**.
+
+Das Neurechnen der Stundenbilanzen beim Start ist dagegen unschuldig: 3601 Stunden aus 216 Tsd.
+Minutenzeilen liefen mit einer Spitze von 185 MB und endeten bei 166 MB. Es arbeitet tageweise.
 
 ## 3. Lokale Entwicklung im Live-Modus ohne Postgres
 
