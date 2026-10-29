@@ -58,17 +58,24 @@ class SqlRepositories:
     def _upsert(
         self,
         table: Any,
-        rows: list[Row],
         pk: list[str],
         update: list[str],
         newer_col: str | None = None,
     ) -> Executable:
-        """INSERT … ON CONFLICT DO UPDATE; mit newer_col nur, wenn der neue Wert nicht älter ist."""
-        ins: Any = (
-            sqlite_insert(table).values(rows)
-            if self.dialect == "sqlite"
-            else pg_insert(table).values(rows)
-        )
+        """INSERT … ON CONFLICT DO UPDATE für **eine** Zeile; mit newer_col nur, wenn der neue Wert nicht älter ist.
+
+        Die Zeilen kommen beim Ausführen dazu (`execute(anweisung, zeilen)`) und nicht in die
+        Anweisung hinein. Das ist der ganze Unterschied, und er ist grösser, als er aussieht:
+        `values(zeilen)` baut einen Platzhalter je Spalte **und Zeile** in die Anweisung, und
+        SQLAlchemy hebt jede übersetzte Anweisung in seinem Zwischenspeicher auf. Ein Rollup über
+        dreitausend Minuten mit dreissig Spalten ist damit eine Anweisung mit neunzigtausend
+        Platzhaltern, die nie wieder genau so gebraucht wird und trotzdem liegen bleibt. In
+        Produktion standen so 102 774 Platzhalter im Speicher (gemessen am 29.10.2026).
+
+        So bleibt es eine Anweisung mit einem Satz Platzhalter, gleich wie viele Zeilen kommen.
+        SQLAlchemy bündelt die Zeilen beim Ausführen selbst.
+        """
+        ins: Any = sqlite_insert(table) if self.dialect == "sqlite" else pg_insert(table)
         set_ = {c: getattr(ins.excluded, c) for c in update}
         where = None
         if newer_col is not None:
@@ -118,19 +125,19 @@ class SqlRepositories:
             await s.execute(
                 self._upsert(
                     m.MeasurementRaw,
-                    list(dedup.values()),
                     ["sensor_key", "observed_at"],
                     ["value", "quality"],
-                )
+                ),
+                list(dedup.values()),
             )
             await s.execute(
                 self._upsert(
                     m.LiveStateRow,
-                    live_rows,
                     ["sensor_key"],
                     ["value", "observed_at", "quality", "source", "received_at"],
                     newer_col="observed_at",
-                )
+                ),
+                live_rows,
             )
             await s.commit()
 
@@ -264,10 +271,10 @@ class SqlRepositories:
             await s.execute(
                 self._upsert(
                     m.MeasurementMinute,
-                    rows,
                     ["bucket"],
                     [*MINUTE_COLUMNS, "extra"],
-                )
+                ),
+                rows,
             )
             await s.commit()
         return len(rows)

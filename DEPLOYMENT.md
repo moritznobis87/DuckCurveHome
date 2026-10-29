@@ -143,6 +143,14 @@ diesen Posten. Die echten Größen stehen in der Oberfläche unter **System → 
 Das Neurechnen der Stundenbilanzen beim Start ist dagegen unschuldig: 3601 Stunden aus 216 Tsd.
 Minutenzeilen liefen mit einer Spitze von 185 MB und endeten bei 166 MB. Es arbeitet tageweise.
 
+**Was die Aufschlüsselung in Produktion zeigte** (29.10.2026, kurz nach einem Neustart): 334 MB
+belegt, davon 57 MB verwalteter Python-Haufen, und darin 102 774 `BindParameter`-Objekte. Die
+lagen nicht herum, sie waren in Arbeit: Der Minuten-Rollup holte den Rückstand auf, und
+`INSERT … VALUES (…), (…), …` setzt einen Platzhalter je Spalte **und Zeile** in die Anweisung.
+Ein Tag sind 1440 Zeilen mit rund dreißig Spalten. Seitdem gehen die Zeilen ans Ausführen statt in
+die Anweisung (`execute(anweisung, zeilen)`); gemessen an einem Tag Rollup fiel die Spitze von
+32,6 MB auf 8,6 MB.
+
 ## 3. Lokale Entwicklung im Live-Modus ohne Postgres
 
 ```bash
