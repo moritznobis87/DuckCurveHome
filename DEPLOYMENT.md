@@ -90,6 +90,39 @@ Werte bleiben Striche, weil noch keine Messwerte vorliegen). Prüfreihenfolge:
 6. Wächter-Automation aus `addons/duckcurve_bridge/DOCS.md` anlegen; Auto-Off-Timer in den Shelly-Relais der
    Wärmepumpen-Kontakte setzen (K1 30 min, K2 20 min).
 
+## 2b. Speicherbedarf (Railway rechnet ihn ab)
+
+Drei Dienste teilen sich die Rechnung, und die Plattform zeigt sie einzeln. Wer die Summe senken
+will, muss zuerst wissen, welcher Dienst sie treibt. Eine einzige Abfrage sagt es für zwei der
+drei:
+
+```
+curl -s https://<web-domain>/api/health
+```
+
+`web_rss_mb` ist der Node-Vorgang, `api_rss_mb` der Python-Vorgang, `api_rss_peak_mb` dessen
+Höchststand seit dem Start. Was in der Railway-Summe darüber hinaus steht, ist die Datenbank.
+
+**Gemessen am 29.10.2026 auf dem Entwicklungsrechner** (Leerlauf, nach 300 Seitenaufrufen):
+
+| Dienst | belegt |
+| --- | --- |
+| API (Python, Demo-Modus, uvicorn, ein Vorgang) | 160 MB |
+| Web (Next.js standalone, `node server.js`) | 170 MB |
+
+Beides ist ohne Datenbank gemessen. Zwei Erklärungen, die naheliegen und beide **nicht** zutreffen:
+
+- *Fragmentierung.* Python gibt den Speicher zurück: 1,5 Millionen Zeilenobjekte belegten 319 MB,
+  nach `del` und `gc.collect()` standen wieder 11 MB, und `malloc_trim(0)` änderte nichts mehr.
+  Ein `malloc_trim` nach dem Neurechnen der Stundenbilanzen wäre also wirkungslos.
+- *Ungebremster V8-Heap im Web-Dienst.* Mit `--max-old-space-size=128` statt der Voreinstellung
+  wuchs derselbe Lauf auf 170 statt 175 MB. Der Zuwachs liegt nicht im alten Heap, ein Deckel
+  spart nichts und kostet im Zweifel einen Absturz.
+
+Wie groß die Datenbank selbst ist, steht in der Oberfläche unter **System → Zugang und
+Sicherung**: Platzbedarf je Tabelle. Rohwerte werden `DCH_RAW_RETENTION_DAYS` Tage aufgehoben
+(Voreinstellung 3), die Minutentabelle bleibt.
+
 ## 3. Lokale Entwicklung im Live-Modus ohne Postgres
 
 ```bash

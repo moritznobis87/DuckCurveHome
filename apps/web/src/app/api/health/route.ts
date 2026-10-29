@@ -9,6 +9,17 @@ function errorCode(err: unknown): string {
   return "unknown";
 }
 
+/**
+ * Wie viel Arbeitsspeicher dieser Node-Vorgang gerade belegt (MB).
+ *
+ * Railway rechnet Speicher ab und zeigt ihn je Dienst. Hier steht die Zahl des Web-Dienstes neben
+ * der der API, damit eine einzige Abfrage sagt, welcher der beiden die Summe treibt. Was dann noch
+ * fehlt, ist die Datenbank.
+ */
+function rssMb(): number {
+  return Math.round(process.memoryUsage.rss() / (1024 * 1024));
+}
+
 /** Gesundheitscheck des Web-Services inkl. Erreichbarkeit der API (Zielhost zur Fehlersuche, ohne Token). */
 export async function GET(): Promise<Response> {
   const base = (process.env.DCH_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
@@ -25,13 +36,24 @@ export async function GET(): Promise<Response> {
   try {
     const r = await fetch(`${base}/health`, { cache: "no-store", signal: AbortSignal.timeout(3000) });
     const body: unknown = r.ok ? await r.json().catch(() => null) : null;
-    const payload = (typeof body === "object" && body !== null ? body : {}) as { commit?: unknown; energy_rebuild?: unknown };
+    const payload = (typeof body === "object" && body !== null ? body : {}) as { commit?: unknown; energy_rebuild?: unknown; rss_mb?: unknown; rss_peak_mb?: unknown };
     const str = (v: unknown) => (typeof v === "string" ? v : "unbekannt");
+    const num = (v: unknown) => (typeof v === "number" ? v : null);
     return Response.json(
-      { status: r.ok ? "ok" : "degraded", api: r.status, web, api_commit: str(payload.commit), energy_rebuild: str(payload.energy_rebuild), target },
+      {
+        status: r.ok ? "ok" : "degraded",
+        api: r.status,
+        web,
+        api_commit: str(payload.commit),
+        energy_rebuild: str(payload.energy_rebuild),
+        target,
+        web_rss_mb: rssMb(),
+        api_rss_mb: num(payload.rss_mb),
+        api_rss_peak_mb: num(payload.rss_peak_mb),
+      },
       { status: r.ok ? 200 : 503 },
     );
   } catch (err) {
-    return Response.json({ status: "degraded", api: "unreachable", web, target, error: errorCode(err) }, { status: 503 });
+    return Response.json({ status: "degraded", api: "unreachable", web, target, web_rss_mb: rssMb(), error: errorCode(err) }, { status: 503 });
   }
 }
