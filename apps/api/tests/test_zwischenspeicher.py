@@ -10,6 +10,14 @@ Die Zeilen gehören deshalb ans Ausführen (`execute(anweisung, zeilen)`), nicht
 Dann ist die Anweisung eine Zeile breit, gleich wie viele Zeilen kommen, und SQLAlchemy bündelt
 sie selbst.
 
+**Was die Suite nicht prüfen kann.** Sie läuft auf SQLite, geschrieben wird in Produktion auf
+PostgreSQL, und `ON CONFLICT DO UPDATE` mit einem Stapel ist genau die Stelle, an der sich die
+beiden unterscheiden könnten. Von Hand gegen PostgreSQL 16 geprüft am 29.10.2026: ein Stapel von
+eins, ein Stapel von 2000, derselbe Schlüssel noch einmal mit neuem Wert, danach zweimal
+derselbe Rollup. Ergebnis: eine Zeile je Schlüssel im Live-Zustand mit dem jüngeren Wert, 2000
+Rohzeilen statt 4000, und der zweite Rollup aktualisierte dieselben 400 Minutenzeilen, statt sie
+zu verdoppeln.
+
 **Was hier nicht geprüft wird, und warum nicht.** Ein erster Versuch zählte die Platzhalter im
 Speicher vor und nach dem Schreiben. Der Test bestand auch mit dem alten Stand: Die Objekte leben
 nur während des Schreibens, danach räumt Python sie weg. Sie lagen nicht herum, sie waren in
