@@ -41,6 +41,8 @@ class BridgeSettings(BaseSettings):
     entities_file: Path = Path("/config/duckcurve/entities.yaml")  # übersteuert das Repository
     entities_url: str = "https://raw.githubusercontent.com/moritznobis87/DuckCurveHome/main/config/entities.home.yaml"
     entities_cache: Path = Path("/data/entities.cache.yaml")
+    # Hausplan fuer die Modellansicht; fehlt die Datei, gibt es keinen Plan und keinen Fehler
+    house_file: Path = Path("/config/duckcurve/haus.yaml")
     # Verhalten
     telemetry_interval_s: float = 1.0
     state_refresh_s: float = (

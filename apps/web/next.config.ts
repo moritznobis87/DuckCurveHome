@@ -12,11 +12,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Die alten Adressen, eine je Geraet, fuehren auf die neuen Bereiche. Lesezeichen und der
   // Verlauf des Wand-iPads bleiben gueltig; die Abfrage (?period=&anchor=) reist mit.
+  // `/haus` fehlt mit Absicht: Seit dem 30.10.2026 ist das der Bereich mit dem Hausmodell; die
+  // alte Hausbilanz dahinter wohnt unter /strom, und wer sie sucht, findet sie dort ueber die Leiste.
   async redirects() {
     const alt: Array<[string, string]> = [
       ["/pv", "/strom/pv"],
       ["/pv/abrechnung", "/geld/pv-abrechnung"],
-      ["/haus", "/strom"],
       ["/haus/rechnungen", "/geld/rechnungen"],
       ["/batterie", "/strom/speicher"],
       ["/wallbox", "/strom/wallbox"],

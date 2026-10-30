@@ -22,7 +22,7 @@ from typing import Any, cast
 
 import structlog
 
-from dch_api.application import rooms
+from dch_api.application import house, rooms
 from dch_api.application.battery_control import BatteryController, BatteryMode
 from dch_api.application.config_loader import AppConfig
 from dch_api.application.energy_accounting import ENERGY_KEYS, HEAT_KEYS, EnergyAccounting
@@ -64,6 +64,8 @@ from dch_api.schemas import (
     HeatBalanceOut,
     HeatConfigIn,
     HeatReportOut,
+    HouseContactOut,
+    HouseOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
     LiveStateOut,
@@ -996,6 +998,49 @@ class LiveRuntime:
             )
         out.sort(key=lambda r: rooms.sort_key(self._room_name(meta, r.id)))
         return RoomsLiveOut(at=now, named=bool(meta), rooms=out)
+
+    # ------------------------------------------------------------------ Hausplan
+    async def house_plan(self) -> HouseOut:
+        """Der Plan aus dem juengsten `house.plan` der Bruecke, und was seine Kontakte melden."""
+        now = self.now
+        ereignis = await self.repos.latest_event(house.EVENT_CODE)
+        if ereignis is None:
+            return HouseOut(
+                at=now,
+                present=False,
+                plan=None,
+                source_de="",
+                received_at=None,
+                error_de="Die Bruecke hat noch keinen Hausplan gemeldet. Er kommt aus der Datei "
+                "haus.yaml neben der Entity-Zuordnung, sobald sie dort liegt.",
+                contacts=[],
+            )
+        context = ereignis.context or {}
+        plan, fehler = house.plan_from_context(context)
+        kontakte: list[HouseContactOut] = []
+        if plan is not None:
+            for k in plan.contacts:
+                m = self.live.measurement(k.key, now, house.STALE_S)
+                kontakte.append(
+                    HouseContactOut(
+                        key=k.key,
+                        name=k.name,
+                        room=k.room,
+                        door=k.door,
+                        open=house.contact_open(m),
+                        observed_at=m.observed_at if m.value is not None else None,
+                        quality=m.quality,
+                    )
+                )
+        return HouseOut(
+            at=now,
+            present=plan is not None,
+            plan=plan,
+            source_de=house.source_text(context, ereignis.at),
+            received_at=ereignis.at,
+            error_de=fehler,
+            contacts=kontakte,
+        )
 
     async def set_room_setpoint(self, room_id: int, setpoint_c: float) -> tuple[bool, float, str]:
         """Die Solltemperatur eines Raums stellen, dauerhaft.

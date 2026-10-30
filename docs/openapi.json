@@ -570,6 +570,28 @@
         }
       }
     },
+    "/api/v1/haus": {
+      "get": {
+        "tags": [
+          "Haus"
+        ],
+        "summary": "Hausplan und Kontakte",
+        "description": "Der Plan aus der Datei `haus.yaml` neben der Entity-Zuordnung, gemeldet von der Bruecke,\nund je Kontakt darin, ob er gerade offen ist. Ohne Plan sagt `error_de`, warum.",
+        "operationId": "house_api_v1_haus_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -2847,6 +2869,72 @@
         ],
         "title": "BufferTemperatures"
       },
+      "Contact": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          },
+          "room": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "n",
+              "s",
+              "o",
+              "w"
+            ],
+            "title": "Side"
+          },
+          "at": {
+            "type": "number",
+            "title": "At"
+          },
+          "a": {
+            "type": "number",
+            "title": "A"
+          },
+          "b": {
+            "type": "number",
+            "title": "B"
+          },
+          "door": {
+            "type": "boolean",
+            "title": "Door",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "key",
+          "side",
+          "at",
+          "a",
+          "b"
+        ],
+        "title": "Contact",
+        "description": "Ein Fenster oder eine Tuer mit Kontakt der Alarmanlage.\n\n`key` ist der Schluessel, unter dem die Bruecke den Kontakt meldet (Entity-Zuordnung, `kind:\nbinary`, 1 heisst offen). `side` sagt, in welcher Aussenwand des Raums er sitzt, `at` ist die\nKoordinate dieser Wand (z fuer n/s, x fuer o/w), `a..b` die Lage laengs der Wand."
+      },
       "ControlConfig": {
         "properties": {
           "tick_s": {
@@ -3488,6 +3576,183 @@
           "seconds_since_start"
         ],
         "title": "DecisionInputs"
+      },
+      "Deck": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,15}$",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "shell": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 60,
+            "minItems": 3,
+            "title": "Shell"
+          },
+          "plate": {
+            "anyOf": [
+              {
+                "items": {
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array",
+                  "maxItems": 2,
+                  "minItems": 2
+                },
+                "type": "array",
+                "maxItems": 60,
+                "minItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plate"
+          },
+          "alarm_shell": {
+            "anyOf": [
+              {
+                "items": {
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array",
+                  "maxItems": 2,
+                  "minItems": 2
+                },
+                "type": "array",
+                "maxItems": 60,
+                "minItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alarm Shell"
+          },
+          "holes": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 4,
+              "minItems": 4
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Holes"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/Room"
+            },
+            "type": "array",
+            "maxItems": 80,
+            "minItems": 1,
+            "title": "Rooms"
+          },
+          "walls": {
+            "items": {
+              "$ref": "#/components/schemas/WallLine"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Walls"
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/WallLine"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Gaps"
+          },
+          "openings": {
+            "items": {
+              "$ref": "#/components/schemas/Opening"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Openings"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/Contact"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Contacts"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "type": "array",
+            "maxItems": 600,
+            "title": "Items"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/Place"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Places"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "shell",
+          "rooms"
+        ],
+        "title": "Deck",
+        "description": "Ein Geschoss. `shell` ist die Aussenhaut (Vieleck, gegen den Uhrzeigersinn in x/z); an ihr\nwerden Aussenwaende hoeher und heller gezeichnet und steht der Schutzschild der Alarmanlage.\n`plate` ist die Grundplatte darunter, `holes` sind Loecher darin (Luftraeume)."
       },
       "DemoControlIn": {
         "properties": {
@@ -5717,6 +5982,171 @@
         ],
         "title": "HorizonScoreOut"
       },
+      "HouseContactOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "room": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room"
+          },
+          "door": {
+            "type": "boolean",
+            "title": "Door"
+          },
+          "open": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/Quality"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "room",
+          "door",
+          "open",
+          "observed_at",
+          "quality"
+        ],
+        "title": "HouseContactOut",
+        "description": "Ein Kontakt des Hausplans im Augenblick. `open` ist `None`, wenn nichts Frisches vorliegt:\nnicht zugeordnet, noch nie gemeldet oder seit einer halben Stunde still."
+      },
+      "HouseOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "present": {
+            "type": "boolean",
+            "title": "Present"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HousePlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_de": {
+            "type": "string",
+            "title": "Source De"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "error_de": {
+            "type": "string",
+            "title": "Error De"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/HouseContactOut"
+            },
+            "type": "array",
+            "title": "Contacts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "present",
+          "plan",
+          "source_de",
+          "received_at",
+          "error_de",
+          "contacts"
+        ],
+        "title": "HouseOut",
+        "description": "Der Hausplan fuer die Modellansicht, samt dem Zustand seiner Kontakte.\n\n`present` ist falsch, solange keine Bruecke einen Plan gemeldet hat oder der letzte gemeldete\nnicht lesbar war; dann steht der Grund in `error_de`. Der Plan selbst ist Geometrie, keine\nMessung: Raeume verweisen ueber `room_id` auf die Einzelraumregelung, Kontakte ueber `key`\nauf die Entity-Zuordnung. Was zu welchem Raum gehoert, entscheidet die Datei des Hauses."
+      },
+      "HousePlan": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Name",
+            "default": ""
+          },
+          "decks": {
+            "items": {
+              "$ref": "#/components/schemas/Deck"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Decks"
+          },
+          "note_de": {
+            "type": "string",
+            "maxLength": 400,
+            "title": "Note De",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decks"
+        ],
+        "title": "HousePlan",
+        "description": "Das ganze Haus: ein bis drei Decks. `note_de` steht unter der Anzeige, etwa fuer das, was\nim Plan angenommen und nicht gemessen ist."
+      },
       "ImportResult": {
         "properties": {
           "kind": {
@@ -6159,6 +6589,310 @@
         "title": "InvoiceSummaryOut",
         "description": "Eine Zeile im Rechnungsverlauf."
       },
+      "Item": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "box",
+              "cylinder",
+              "bed",
+              "chair",
+              "stove",
+              "ladder",
+              "loft",
+              "panel",
+              "tiles",
+              "ground",
+              "wall",
+              "gate",
+              "plant",
+              "car",
+              "wallbox",
+              "heat_pump",
+              "buffer",
+              "indoor_unit",
+              "pipe",
+              "flight",
+              "landing",
+              "pit"
+            ],
+            "title": "Kind"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "dark",
+                  "light",
+                  "soft",
+                  "water",
+                  "wall",
+                  "paving",
+                  "terrace",
+                  "slate"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone"
+          },
+          "x": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X"
+          },
+          "z": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Z"
+          },
+          "y": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y"
+          },
+          "b": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B"
+          },
+          "t": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "T"
+          },
+          "h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "H"
+          },
+          "r": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R"
+          },
+          "x0": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X0"
+          },
+          "z0": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Z0"
+          },
+          "x1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X1"
+          },
+          "z1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Z1"
+          },
+          "y1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y1"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 40.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
+          },
+          "head": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "n",
+                  "s",
+                  "o",
+                  "w"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head"
+          },
+          "dir": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "n",
+                  "s",
+                  "o",
+                  "w"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dir"
+          },
+          "angle": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Angle"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pellet",
+                  "wood"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "items": {
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array",
+                  "maxItems": 3,
+                  "minItems": 3
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "Item",
+        "description": "Ein Moebel, ein Geraet, ein Stueck Treppe. Welche Felder gelten, sagt `kind`; die Anzeige\nnimmt fuer fehlende Masse ihre Voreinstellungen. Geprueft wird hier nur, dass die Zahlen endlich\nsind und die Art bekannt ist."
+      },
       "LiveStateOut": {
         "properties": {
           "snapshot": {
@@ -6428,6 +7162,53 @@
         ],
         "title": "NextExpected"
       },
+      "Opening": {
+        "properties": {
+          "x": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X"
+          },
+          "z": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Z"
+          },
+          "a": {
+            "type": "number",
+            "title": "A"
+          },
+          "b": {
+            "type": "number",
+            "title": "B"
+          },
+          "door": {
+            "type": "boolean",
+            "title": "Door",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "a",
+          "b"
+        ],
+        "title": "Opening",
+        "description": "Fenster oder Tuer ohne Kontakt: steht still in der Wand."
+      },
       "OperatingMode": {
         "properties": {
           "system_mode": {
@@ -6489,6 +7270,33 @@
           "force_block"
         ],
         "title": "OverrideKind"
+      },
+      "Place": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "z": {
+            "type": "number",
+            "title": "Z"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text",
+          "x",
+          "z"
+        ],
+        "title": "Place",
+        "description": "Eine Ortsmarke draussen: Garten, Innenhof, Strasse."
       },
       "PlanIntervalOut": {
         "properties": {
@@ -7204,6 +8012,106 @@
           "toggle_rate_exceeded"
         ],
         "title": "ReasonCode"
+      },
+      "Room": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "room_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Id"
+          },
+          "x0": {
+            "type": "number",
+            "title": "X0"
+          },
+          "z0": {
+            "type": "number",
+            "title": "Z0"
+          },
+          "x1": {
+            "type": "number",
+            "title": "X1"
+          },
+          "z1": {
+            "type": "number",
+            "title": "Z1"
+          },
+          "part_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Part Of"
+          },
+          "minor": {
+            "type": "boolean",
+            "title": "Minor",
+            "default": false
+          },
+          "silent": {
+            "type": "boolean",
+            "title": "Silent",
+            "default": false
+          },
+          "open": {
+            "type": "boolean",
+            "title": "Open",
+            "default": false
+          },
+          "cold": {
+            "type": "boolean",
+            "title": "Cold",
+            "default": false
+          },
+          "tech": {
+            "type": "boolean",
+            "title": "Tech",
+            "default": false
+          },
+          "tiles": {
+            "type": "boolean",
+            "title": "Tiles",
+            "default": false
+          },
+          "no_walls": {
+            "type": "string",
+            "title": "No Walls",
+            "default": ""
+          },
+          "railing": {
+            "type": "string",
+            "title": "Railing",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "x0",
+          "z0",
+          "x1",
+          "z1"
+        ],
+        "title": "Room",
+        "description": "Ein Raum als Rechteck. `room_id` ist die Kennung der Einzelraumregelung; ohne sie zeigt die\nAnzeige den Namen, aber keine Temperatur."
       },
       "RoomEffectOut": {
         "properties": {
@@ -9044,6 +9952,48 @@
         ],
         "title": "VentilationRoomOut",
         "description": "Ein Raum, in dem während der Heizzeit ein Fenster offen stand."
+      },
+      "WallLine": {
+        "properties": {
+          "x": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X"
+          },
+          "z": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Z"
+          },
+          "a": {
+            "type": "number",
+            "title": "A"
+          },
+          "b": {
+            "type": "number",
+            "title": "B"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "a",
+          "b"
+        ],
+        "title": "WallLine",
+        "description": "Ein Stueck Wandlinie: `x` fuer eine Nord-Sued-Wand, `z` fuer eine Ost-West-Wand, `a..b`\nlaengs der Wand. Genau eines von `x` und `z` ist gesetzt."
       },
       "WatchFindingOut": {
         "properties": {

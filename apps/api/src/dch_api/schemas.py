@@ -21,6 +21,7 @@ from hems_core.domain import (
     SystemMode,
 )
 from hems_core.forecasting import CorrectorState, ForecastScore
+from hems_core.house import HousePlan
 from hems_core.thermal import CyclingStats, HeatTotals
 
 
@@ -259,6 +260,37 @@ class LiveStateOut(BaseModel):
         present=False, state=None, state_de="nicht eingerichtet", can_arm=False, observed_at=None
     )
     system: SystemStatusOut
+
+
+class HouseContactOut(BaseModel):
+    """Ein Kontakt des Hausplans im Augenblick. `open` ist `None`, wenn nichts Frisches vorliegt:
+    nicht zugeordnet, noch nie gemeldet oder seit einer halben Stunde still."""
+
+    key: str
+    name: str
+    room: str | None
+    door: bool
+    open: bool | None
+    observed_at: datetime | None
+    quality: Quality
+
+
+class HouseOut(BaseModel):
+    """Der Hausplan fuer die Modellansicht, samt dem Zustand seiner Kontakte.
+
+    `present` ist falsch, solange keine Bruecke einen Plan gemeldet hat oder der letzte gemeldete
+    nicht lesbar war; dann steht der Grund in `error_de`. Der Plan selbst ist Geometrie, keine
+    Messung: Raeume verweisen ueber `room_id` auf die Einzelraumregelung, Kontakte ueber `key`
+    auf die Entity-Zuordnung. Was zu welchem Raum gehoert, entscheidet die Datei des Hauses.
+    """
+
+    at: datetime
+    present: bool
+    plan: HousePlan | None
+    source_de: str
+    received_at: datetime | None
+    error_de: str
+    contacts: list[HouseContactOut]
 
 
 class HistoryOut(BaseModel):

@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, House, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -67,6 +67,9 @@ export const api = {
   // Einzelraumregelung. Zwei Abrufe, weil es zwei Fragen sind: wie ist es jetzt, und wie war der
   // Tag. Der Istwert kommt im Sekundentakt der Anzeige, die Zeitreihe einmal je Tageswechsel.
   rooms: () => request<RoomsLive>("/rooms"),
+  // Der Hausplan samt Kontakten. Geometrie von der Bruecke, Zustand aus dem Augenblick; die
+  // Temperaturen dazu kommen aus `rooms`, der Alarm aus dem Live-Zustand.
+  house: () => request<House>("/haus"),
   // Dauerhaft, ohne Frist: derselbe Griff wie in Contromes eigener Oberflaeche.
   setRoomSetpoint: (id: number, setpointC: number) =>
     request<RoomSetpointResult>(`/rooms/${id}/setpoint`, { method: "POST", body: JSON.stringify({ setpoint_c: setpointC }) }),

@@ -16,12 +16,17 @@ describe("Bereiche", () => {
     expect(tabOf(strom, "/strom/")?.label).toBe("Bilanz");
   });
 
+  it("kennt das Haus als eigenen Bereich ohne Reiter", () => {
+    expect(areaOf("/haus").key).toBe("haus");
+    expect(areaOf("/haus").tabs).toEqual([]);
+  });
+
   it("hat genau einen Bereich nur fuer den Hausherrn, und der ist System", () => {
     expect(AREAS.filter((a) => a.ownerOnly).map((a) => a.key)).toEqual(["system"]);
   });
 
   it("verweist nirgends auf eine alte Adresse", () => {
-    const alt = ["/pv", "/haus", "/batterie", "/wallbox", "/jahr", "/waermebilanz", "/raeume", "/prognose", "/daten", "/settings"];
+    const alt = ["/pv", "/batterie", "/wallbox", "/jahr", "/waermebilanz", "/raeume", "/prognose", "/daten", "/settings"];
     for (const a of AREAS) for (const t of a.tabs) expect(alt).not.toContain(t.href);
   });
 });

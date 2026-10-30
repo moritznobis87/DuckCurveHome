@@ -16,7 +16,7 @@ from typing import Any
 
 import structlog
 
-from dch_api.application import demo_rooms, rooms
+from dch_api.application import demo_house, demo_rooms, rooms
 from dch_api.application.battery_control import BatteryMode
 from dch_api.application.energy_accounting import EnergyAccounting
 from dch_api.application.forecast_evaluation import ForecastEvaluator
@@ -45,6 +45,8 @@ from dch_api.schemas import (
     HeatBalanceOut,
     HeatConfigIn,
     HeatReportOut,
+    HouseContactOut,
+    HouseOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
     LiveStateOut,
@@ -792,6 +794,33 @@ class DemoRunner:
                 )
             )
         return RoomsLiveOut(at=now, named=True, rooms=out)
+
+    async def house_plan(self) -> HouseOut:
+        """Das erfundene Haus der Vorfuehrung, mit Kontakten aus der Uhrzeit."""
+        now = self.now
+        kontakte = [
+            HouseContactOut(
+                key=k.key,
+                name=k.name,
+                room=k.room,
+                door=k.door,
+                open=demo_house.contact_open(k.key, now),
+                observed_at=now if demo_house.contact_open(k.key, now) is not None else None,
+                quality=Quality.OK
+                if demo_house.contact_open(k.key, now) is not None
+                else Quality.UNAVAILABLE,
+            )
+            for k in demo_house.PLAN.contacts
+        ]
+        return HouseOut(
+            at=now,
+            present=True,
+            plan=demo_house.PLAN,
+            source_de="Vorfuehrung, erfundener Grundriss",
+            received_at=now,
+            error_de="",
+            contacts=kontakte,
+        )
 
     async def rooms_history(self, start: datetime, end: datetime, step_min: int) -> RoomHistoryOut:
         ts = rooms.bucket_starts(start, end, step_min)

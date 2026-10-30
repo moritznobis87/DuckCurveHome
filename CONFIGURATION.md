@@ -145,6 +145,21 @@ gewöhnliche Binärsensoren mit dem Schlüssel `room_<id>_window` - `<id>` ist d
 Controme, 1 heißt offen. Mehrere Fenster in einem Raum fasst in Home Assistant eine Gruppe
 zusammen; zwei Einträge mit demselben Schlüssel überschrieben einander.
 
+### Hausplan (Bereich Haus)
+
+| Option / Umgebungsvariable | Default | Bedeutung |
+| --- | --- | --- |
+| `house_file` / `DCH_BRIDGE_HOUSE_FILE` | `/config/duckcurve/haus.yaml` | Die Geometrie des Hauses für die Modellansicht. Fehlt die Datei, gibt es keinen Plan und keinen Fehler |
+
+Die Datei beschreibt Decks, Räume, Wände mit Türlücken, Fenster, Kontakte und Möbel in Metern; das
+Schema steht in `hems_core/house/plan.py`, eine kommentierte Vorlage mit einem erfundenen Haus in
+`config/haus.example.yaml`. Der Plan des eigenen Hauses gehört nicht ins Repository: Die Bridge
+liest ihn vom Home-Assistant-Rechner, prüft ihn und schickt ihn als Ereignis `house.plan`; der
+Dienst hebt den jüngsten Stand auf und liefert ihn unter `GET /haus`, zusammen mit dem Zustand
+der Kontakte. Temperaturen kommen weiter aus `/rooms` (verbunden über `room_id`), Alarm, Puffer
+und Wärmepumpe aus dem Live-Zustand. Geändert wird die Datei im laufenden Betrieb: Die Bridge sieht
+alle 30 Sekunden nach und meldet einen neuen Stand, einen Fehler im Dokument mit Pfad.
+
 ## HemsConfig (Auszug, Defaults)
 
 ```yaml

@@ -5,6 +5,8 @@ export DCH_BRIDGE_API_TOKEN="$(bashio::config 'api_token')"
 export DCH_BRIDGE_BRIDGE_ID="$(bashio::config 'bridge_id')"
 export DCH_BRIDGE_ENTITIES_FILE="$(bashio::config 'entities_file')"
 export DCH_BRIDGE_ENTITIES_URL="$(bashio::config 'entities_url' '')"
+# Hausplan fuer die Modellansicht. Fehlt die Datei, gibt es keinen Plan und keinen Fehler.
+export DCH_BRIDGE_HOUSE_FILE="$(bashio::config 'house_file')"
 export DCH_BRIDGE_HEARTBEAT_ENTITY="$(bashio::config 'heartbeat_entity')"
 export DCH_BRIDGE_OFFLINE_RELEASE_S="$(bashio::config 'offline_release_s')"
 export DCH_BRIDGE_LOG_LEVEL="$(bashio::config 'log_level')"

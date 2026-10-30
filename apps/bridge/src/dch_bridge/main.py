@@ -15,6 +15,7 @@ from dch_bridge.door import DoorService
 from dch_bridge.entities_source import load_entity_map
 from dch_bridge.home_assistant.rest_client import HaRestClient
 from dch_bridge.home_assistant.ws_client import EntityState, HaWsClient
+from dch_bridge.house_source import HousePlanSource
 from dch_bridge.mapping import ActuatorMap, EntityMap, normalize
 from dch_bridge.outbox import Outbox
 from dch_bridge.settings import BridgeSettings, ist_entitaet
@@ -35,7 +36,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.12.1"
+VERSION = "0.13.0"
 log = structlog.get_logger("bridge")
 
 
@@ -72,6 +73,9 @@ class Bridge:
                 user=settings.controme_user,
                 password=settings.controme_password,
             )
+        # Hausplan: die Geometrie der Modellansicht, aus der Datei neben der Entity-Zuordnung.
+        # Gesendet als Ereignis, einmal je Stand der Datei.
+        self.house_plan = HousePlanSource(settings.house_file, self._emit_event)
         # Haustür: Zutrittsereignisse der UniFi-Konsole öffnen das Nuki-Schloss. Beides im
         # Heimnetz. Dieser Dienst hat bewusst keine Verbindung zum Uplink - die Cloud bekommt
         # keinen Weg zur Tür, weil es keinen gibt, nicht weil wir ihn gerade versperrt haben.
@@ -596,6 +600,9 @@ class Bridge:
             mqtt=f"{self.settings.mqtt_host}:{self.settings.mqtt_port}" if self.mqtt else None,
             mqtt_devices=[d.label for d in self.mqtt.devices] if self.mqtt else [],
             stove=self.stove.url if self.stove else None,
+            house_plan=str(self.settings.house_file)
+            if self.settings.house_file.is_file()
+            else None,
             door=f"{self.settings.door_opener}/"
             + ("beobachtend" if not self.settings.door_enabled else "freigegeben")
             if self.door
@@ -614,6 +621,7 @@ class Bridge:
             tasks.append(asyncio.create_task(self.stove.run(), name="mcz"))
         if self.rooms is not None:
             tasks.append(asyncio.create_task(self.rooms.run(), name="controme"))
+        tasks.append(asyncio.create_task(self.house_plan.run(), name="house-plan"))
         if self.door is not None:
             tasks.append(asyncio.create_task(self.door.events.run(), name="unifi-access"))
             tasks.append(asyncio.create_task(self.door.run(), name="door-probe"))

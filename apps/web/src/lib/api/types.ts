@@ -275,6 +275,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/haus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Hausplan und Kontakte
+         * @description Der Plan aus der Datei `haus.yaml` neben der Entity-Zuordnung, gemeldet von der Bruecke,
+         *     und je Kontakt darin, ob er gerade offen ist. Ohne Plan sagt `error_de`, warum.
+         */
+        get: operations["house_api_v1_haus_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -1267,6 +1288,38 @@ export interface components {
             mid_bottom: components["schemas"]["Measurement"];
             bottom: components["schemas"]["Measurement"];
         };
+        /**
+         * Contact
+         * @description Ein Fenster oder eine Tuer mit Kontakt der Alarmanlage.
+         *
+         *     `key` ist der Schluessel, unter dem die Bruecke den Kontakt meldet (Entity-Zuordnung, `kind:
+         *     binary`, 1 heisst offen). `side` sagt, in welcher Aussenwand des Raums er sitzt, `at` ist die
+         *     Koordinate dieser Wand (z fuer n/s, x fuer o/w), `a..b` die Lage laengs der Wand.
+         */
+        Contact: {
+            /** Name */
+            name: string;
+            /** Key */
+            key: string;
+            /** Room */
+            room?: string | null;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "n" | "s" | "o" | "w";
+            /** At */
+            at: number;
+            /** A */
+            a: number;
+            /** B */
+            b: number;
+            /**
+             * Door
+             * @default false
+             */
+            door: boolean;
+        };
         /** ControlConfig */
         ControlConfig: {
             /**
@@ -1554,6 +1607,54 @@ export interface components {
             seconds_since_stop: number | null;
             /** Seconds Since Start */
             seconds_since_start: number | null;
+        };
+        /**
+         * Deck
+         * @description Ein Geschoss. `shell` ist die Aussenhaut (Vieleck, gegen den Uhrzeigersinn in x/z); an ihr
+         *     werden Aussenwaende hoeher und heller gezeichnet und steht der Schutzschild der Alarmanlage.
+         *     `plate` ist die Grundplatte darunter, `holes` sind Loecher darin (Luftraeume).
+         */
+        Deck: {
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Shell */
+            shell: [
+                number,
+                number
+            ][];
+            /** Plate */
+            plate?: [
+                number,
+                number
+            ][] | null;
+            /** Alarm Shell */
+            alarm_shell?: [
+                number,
+                number
+            ][] | null;
+            /** Holes */
+            holes?: [
+                number,
+                number,
+                number,
+                number
+            ][];
+            /** Rooms */
+            rooms: components["schemas"]["Room"][];
+            /** Walls */
+            walls?: components["schemas"]["WallLine"][];
+            /** Gaps */
+            gaps?: components["schemas"]["WallLine"][];
+            /** Openings */
+            openings?: components["schemas"]["Opening"][];
+            /** Contacts */
+            contacts?: components["schemas"]["Contact"][];
+            /** Items */
+            items?: components["schemas"]["Item"][];
+            /** Places */
+            places?: components["schemas"]["Place"][];
         };
         /** DemoControlIn */
         DemoControlIn: {
@@ -2815,6 +2916,78 @@ export interface components {
             label_de: string;
             score: components["schemas"]["ForecastScore"];
         };
+        /**
+         * HouseContactOut
+         * @description Ein Kontakt des Hausplans im Augenblick. `open` ist `None`, wenn nichts Frisches vorliegt:
+         *     nicht zugeordnet, noch nie gemeldet oder seit einer halben Stunde still.
+         */
+        HouseContactOut: {
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Room */
+            room: string | null;
+            /** Door */
+            door: boolean;
+            /** Open */
+            open: boolean | null;
+            /** Observed At */
+            observed_at: string | null;
+            quality: components["schemas"]["Quality"];
+        };
+        /**
+         * HouseOut
+         * @description Der Hausplan fuer die Modellansicht, samt dem Zustand seiner Kontakte.
+         *
+         *     `present` ist falsch, solange keine Bruecke einen Plan gemeldet hat oder der letzte gemeldete
+         *     nicht lesbar war; dann steht der Grund in `error_de`. Der Plan selbst ist Geometrie, keine
+         *     Messung: Raeume verweisen ueber `room_id` auf die Einzelraumregelung, Kontakte ueber `key`
+         *     auf die Entity-Zuordnung. Was zu welchem Raum gehoert, entscheidet die Datei des Hauses.
+         */
+        HouseOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Present */
+            present: boolean;
+            plan: components["schemas"]["HousePlan"] | null;
+            /** Source De */
+            source_de: string;
+            /** Received At */
+            received_at: string | null;
+            /** Error De */
+            error_de: string;
+            /** Contacts */
+            contacts: components["schemas"]["HouseContactOut"][];
+        };
+        /**
+         * HousePlan
+         * @description Das ganze Haus: ein bis drei Decks. `note_de` steht unter der Anzeige, etwa fuer das, was
+         *     im Plan angenommen und nicht gemessen ist.
+         */
+        HousePlan: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Decks */
+            decks: components["schemas"]["Deck"][];
+            /**
+             * Note De
+             * @default
+             */
+            note_de: string;
+        };
         /** ImportResult */
         ImportResult: {
             /** Kind */
@@ -2981,6 +3154,63 @@ export interface components {
              */
             checked_at: string;
         };
+        /**
+         * Item
+         * @description Ein Moebel, ein Geraet, ein Stueck Treppe. Welche Felder gelten, sagt `kind`; die Anzeige
+         *     nimmt fuer fehlende Masse ihre Voreinstellungen. Geprueft wird hier nur, dass die Zahlen endlich
+         *     sind und die Art bekannt ist.
+         */
+        Item: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "box" | "cylinder" | "bed" | "chair" | "stove" | "ladder" | "loft" | "panel" | "tiles" | "ground" | "wall" | "gate" | "plant" | "car" | "wallbox" | "heat_pump" | "buffer" | "indoor_unit" | "pipe" | "flight" | "landing" | "pit";
+            /** Tone */
+            tone?: ("dark" | "light" | "soft" | "water" | "wall" | "paving" | "terrace" | "slate") | null;
+            /** X */
+            x?: number | null;
+            /** Z */
+            z?: number | null;
+            /** Y */
+            y?: number | null;
+            /** B */
+            b?: number | null;
+            /** T */
+            t?: number | null;
+            /** H */
+            h?: number | null;
+            /** R */
+            r?: number | null;
+            /** X0 */
+            x0?: number | null;
+            /** Z0 */
+            z0?: number | null;
+            /** X1 */
+            x1?: number | null;
+            /** Z1 */
+            z1?: number | null;
+            /** Y1 */
+            y1?: number | null;
+            /** Steps */
+            steps?: number | null;
+            /** Head */
+            head?: ("n" | "s" | "o" | "w") | null;
+            /** Dir */
+            dir?: ("n" | "s" | "o" | "w") | null;
+            /** Angle */
+            angle?: number | null;
+            /** Device */
+            device?: ("pellet" | "wood") | null;
+            /** Label */
+            label?: string | null;
+            /** Points */
+            points?: [
+                number,
+                number,
+                number
+            ][] | null;
+        };
         /** LiveStateOut */
         LiveStateOut: {
             snapshot: components["schemas"]["EnergySnapshot"];
@@ -3089,6 +3319,25 @@ export interface components {
             /** Text De */
             text_de: string;
         };
+        /**
+         * Opening
+         * @description Fenster oder Tuer ohne Kontakt: steht still in der Wand.
+         */
+        Opening: {
+            /** X */
+            x?: number | null;
+            /** Z */
+            z?: number | null;
+            /** A */
+            a: number;
+            /** B */
+            b: number;
+            /**
+             * Door
+             * @default false
+             */
+            door: boolean;
+        };
         /** OperatingMode */
         OperatingMode: {
             /** @default auto */
@@ -3121,6 +3370,18 @@ export interface components {
          * @enum {string}
          */
         OverrideKind: "force_release" | "force_off" | "force_block";
+        /**
+         * Place
+         * @description Eine Ortsmarke draussen: Garten, Innenhof, Strasse.
+         */
+        Place: {
+            /** Text */
+            text: string;
+            /** X */
+            x: number;
+            /** Z */
+            z: number;
+        };
         /** PlanIntervalOut */
         PlanIntervalOut: {
             /**
@@ -3508,6 +3769,67 @@ export interface components {
          * @enum {string}
          */
         ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "planned_pause" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
+        /**
+         * Room
+         * @description Ein Raum als Rechteck. `room_id` ist die Kennung der Einzelraumregelung; ohne sie zeigt die
+         *     Anzeige den Namen, aber keine Temperatur.
+         */
+        Room: {
+            /** Name */
+            name: string;
+            /** Room Id */
+            room_id?: number | null;
+            /** X0 */
+            x0: number;
+            /** Z0 */
+            z0: number;
+            /** X1 */
+            x1: number;
+            /** Z1 */
+            z1: number;
+            /** Part Of */
+            part_of?: string | null;
+            /**
+             * Minor
+             * @default false
+             */
+            minor: boolean;
+            /**
+             * Silent
+             * @default false
+             */
+            silent: boolean;
+            /**
+             * Open
+             * @default false
+             */
+            open: boolean;
+            /**
+             * Cold
+             * @default false
+             */
+            cold: boolean;
+            /**
+             * Tech
+             * @default false
+             */
+            tech: boolean;
+            /**
+             * Tiles
+             * @default false
+             */
+            tiles: boolean;
+            /**
+             * No Walls
+             * @default
+             */
+            no_walls: string;
+            /**
+             * Railing
+             * @default
+             */
+            railing: string;
+        };
         /**
          * RoomEffectOut
          * @description Was eine Sollwertänderung in diesem Raum bedeutet - geschätzt, mit Herkunft im Satz.
@@ -4401,6 +4723,21 @@ export interface components {
             kwh: number;
         };
         /**
+         * WallLine
+         * @description Ein Stueck Wandlinie: `x` fuer eine Nord-Sued-Wand, `z` fuer eine Ost-West-Wand, `a..b`
+         *     laengs der Wand. Genau eines von `x` und `z` ist gesetzt.
+         */
+        WallLine: {
+            /** X */
+            x?: number | null;
+            /** Z */
+            z?: number | null;
+            /** A */
+            a: number;
+            /** B */
+            b: number;
+        };
+        /**
          * WatchFindingOut
          * @description Ein Befund des Wächters: Dieses Signal schweigt, seit wann, und was deshalb fehlt.
          *
@@ -4850,6 +5187,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    house_api_v1_haus_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseOut"];
                 };
             };
         };

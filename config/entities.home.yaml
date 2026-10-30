@@ -57,6 +57,22 @@ sensors:
   # - { key: room_1_window, entity: binary_sensor.fenster_arbeiten, kind: binary, stale_after_s: 900 }
   # - { key: room_2_window, entity: binary_sensor.fenster_kochen,   kind: binary, stale_after_s: 900 }
 
+  # --- Kontakte des Hausplans (Bereich Haus) ---
+  # Je Fenster und Tuer mit Kontakt ein eigener Schluessel, so wie ihn /config/duckcurve/haus.yaml
+  # unter `contacts` nennt: 1 heisst offen. Anders als `room_<id>_window` (ein Wert je Raum fuer die
+  # Raumseite) zeigt das Modell jede Tuer einzeln. Die Entitaeten sind die der Alarmanlage in Home
+  # Assistant (Einstellungen, Geraete und Dienste, Entitaeten, Filter binary_sensor); Namen am
+  # 30.10.2026 aus der Entitaetenliste uebernommen, am Geraet zu pruefen.
+  - { key: kontakt_wohnen_fenster,   entity: binary_sensor.fenster_wohnzimmer,             kind: binary, stale_after_s: 1800 }
+  - { key: kontakt_gartentuer_1,     entity: binary_sensor.gartentur_wohnzimmer,           kind: binary, stale_after_s: 1800 }
+  - { key: kontakt_gartentuer_2,     entity: binary_sensor.gartentur_wohnzimmer_2,         kind: binary, stale_after_s: 1800 }
+  - { key: kontakt_haustuer_wohnen,  entity: binary_sensor.haustur_wohnzimmer,             kind: binary, stale_after_s: 1800 }
+  - { key: kontakt_haustuer_garten,  entity: binary_sensor.haustur_garten,                 kind: binary, stale_after_s: 1800 }
+  - { key: kontakt_kueche_fenster_1, entity: binary_sensor.fenster_kuche_1,                kind: binary, stale_after_s: 1800 }
+  - { key: kontakt_kueche_fenster_2, entity: binary_sensor.fenster_kuche_2,                kind: binary, stale_after_s: 1800 }
+  - { key: kontakt_haustuer_vorne,   entity: binary_sensor.haustur_vorne,                  kind: binary, stale_after_s: 1800 }
+  - { key: kontakt_arbeiten_fenster, entity: binary_sensor.arbeitszimmer_fenster_innenhof, kind: binary, stale_after_s: 1800 }
+
   # --- Umgebung ---
   - { key: outdoor_temp_c,     entity: sensor.geilenkirchen_air_base_temperatur,          unit: "°C", stale_after_s: 3600 }
 

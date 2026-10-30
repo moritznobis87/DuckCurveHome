@@ -1,5 +1,5 @@
 name: Duck Curve Home Bridge
-version: "0.12.1"
+version: "0.13.0"
 slug: duckcurve_bridge
 description: Verbindet das Haus ausgehend mit Duck Curve Home (Railway). Shellys direkt über MQTT, den MCZ-Pelletofen über sein Maestro-Modul, übrige Entitäten und Aktoren über Home Assistant. Öffnet auf Wunsch die Haustür, wenn der UniFi-Access-Reader ein freigegebenes Gesicht erkennt.
 url: https://github.com/moritznobis87/DuckCurveHome
@@ -17,6 +17,7 @@ options:
   bridge_id: "haus"
   entities_file: "/config/duckcurve/entities.yaml"
   entities_url: "https://raw.githubusercontent.com/moritznobis87/DuckCurveHome/main/config/entities.home.yaml"
+  house_file: "/config/duckcurve/haus.yaml"
   heartbeat_entity: "sensor.duckcurve_bridge_heartbeat"
   offline_release_s: 180
   log_level: "INFO"
@@ -70,6 +71,7 @@ schema:
   bridge_id: str
   entities_file: str
   entities_url: str?
+  house_file: str
   heartbeat_entity: str
   offline_release_s: int(60,3600)
   log_level: list(DEBUG|INFO|WARNING|ERROR)

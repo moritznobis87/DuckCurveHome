@@ -462,6 +462,39 @@ Küche, Gäste gehen daran vorbei, und ihr Zugang ist ein Sitzungskeks auf einem
 als ein Code am Bedienteil. Scharfschalten kann im schlimmsten Fall lästig werden;
 Unscharfschalten wäre ein Weg an der Alarmanlage vorbei.
 
+## Hausplan: das Haus als Modell (ab 0.13.0)
+
+Der Bereich Haus der Anzeige zeichnet beide Geschosse als Glasmodell: Räume leuchten in ihrer
+Temperatur, offene Heizkreise zeigen ihre Schleifen, Fenster und Türen mit Kontakt öffnen sich,
+der Schutzschild der Alarmanlage steht um die Außenhaut, Puffer, Wärmepumpe und Wallbox zeigen
+ihre Zahlen. Woher die Geometrie kommt: aus einer Datei neben der Entity-Zuordnung.
+
+| Feld | Wert |
+| --- | --- |
+| `house_file` | `/config/duckcurve/haus.yaml` |
+
+Die Bridge liest die Datei beim Start und sieht danach alle 30 Sekunden nach, ob sie sich geändert
+hat. Ein neuer Stand geht als Ereignis `house.plan` an den Dienst, der ihn im Ereignisprotokoll
+aufhebt und unter `/haus` zeigt. Fehlt die Datei, gibt es keinen Plan und keinen Fehler; die
+Seite sagt dann, wo sie hingehört.
+
+**Die Vorlage liegt im Repository**: `config/haus.example.yaml` beschreibt ein erfundenes Haus mit
+jeder Art von Eintrag und erklärt im Kopf die Felder. Kopieren, die Räume nach dem eigenen
+Grundriss setzen, die `room_id` je Raum aus der Einzelraumregelung eintragen (die Kennung steht
+in der Adresse der Raumseite oder im Protokoll der Bridge als `room_<id>_temp_c`), für jedes
+Fenster und jede Tür mit Kontakt einen `key` vergeben und denselben Schlüssel in der
+Entity-Zuordnung auf den Binärsensor legen (`kind: binary`, 1 heißt offen).
+
+**Ein Fehler in der Datei bleibt nicht stumm.** Die Bridge prüft den Plan gegen dasselbe Modell,
+mit dem der Dienst ihn liest. Geht er nicht durch, steht im Protokoll `house plan invalid` mit dem
+Pfad im Dokument (`decks.0.rooms.2: x1 > x0 und z1 > z0 noetig`), und die Seite zeigt denselben
+Satz statt eines alten Modells. Prüfen lässt sich die Datei auch ohne Bridge, auf jedem Rechner
+mit dem Repository:
+
+```
+uv run python -c "import yaml; from hems_core.house import HousePlan; HousePlan.model_validate(yaml.safe_load(open('haus.yaml')))"
+```
+
 ## Werte, die stillstehen (ab 0.12.0)
 
 Home Assistant setzt den Zeitstempel eines Sensors nur fort, wenn die Integration den Wert erneut

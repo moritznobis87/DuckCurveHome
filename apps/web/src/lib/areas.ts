@@ -1,5 +1,5 @@
 /**
- * Die Seitenstruktur: vier Bereiche nach Frage, dazu System fuer den Hausherrn.
+ * Die Seitenstruktur: fuenf Bereiche nach Frage, dazu System fuer den Hausherrn.
  *
  * **Warum nach Frage und nicht nach Geraet.** Dreizehn Seiten waren nacheinander entstanden, je
  * eine je Geraet, und jede mit eigener Zeitraumwahl. Wer die Woche in der Photovoltaik ansah und
@@ -20,7 +20,7 @@ export type Tab = {
 };
 
 export type Area = {
-  key: "jetzt" | "strom" | "waerme" | "geld" | "system";
+  key: "jetzt" | "haus" | "strom" | "waerme" | "geld" | "system";
   href: string;
   icon: IconName;
   label: string;
@@ -30,6 +30,9 @@ export type Area = {
 
 export const AREAS: Area[] = [
   { key: "jetzt", href: "/", icon: "duck", label: "Jetzt", tabs: [] },
+  // Das Haus als Modell: ein Bereich ohne Reiter und ohne Zeitraum, weil er den Augenblick
+  // zeigt. Die Geometrie kommt von der Bruecke (haus.yaml), die Werte aus Raeumen und Live-Zustand.
+  { key: "haus", href: "/haus", icon: "house", label: "Haus", tabs: [] },
   {
     key: "strom",
     href: "/strom",
