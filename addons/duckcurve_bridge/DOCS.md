@@ -495,6 +495,12 @@ mit dem Repository:
 uv run python -c "import yaml; from hems_core.house import HousePlan; HousePlan.model_validate(yaml.safe_load(open('haus.yaml')))"
 ```
 
+**Schema und Add-on gehoeren zusammen.** Die Bridge prueft den Plan mit dem Schema, das in ihr
+Abbild eingebaut ist. Kommt eine neue Art von Eintrag dazu (0.13.1: `tree`), muss das Add-on
+nachziehen, sonst lehnt es die Datei mit `Input should be 'box', 'cylinder', ...` ab, obwohl
+der Dienst sie laengst kennt. Die Zahl im Protokoll (`bridge starting ... version`) sagt, welcher
+Stand laeuft.
+
 ## Werte, die stillstehen (ab 0.12.0)
 
 Home Assistant setzt den Zeitstempel eines Sensors nur fort, wenn die Integration den Wert erneut
