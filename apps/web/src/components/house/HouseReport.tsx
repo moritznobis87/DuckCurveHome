@@ -6,12 +6,14 @@ import { Card, CardHead } from "@/components/ui/Card";
 import { Stellen } from "@/components/rooms/Stellen";
 import { api, ApiError } from "@/lib/api/client";
 import type { House, HouseContactPlan, RoomsLive } from "@/lib/api/models";
-import { celsius, kwWithUnit } from "@/lib/format";
+import { celsius } from "@/lib/format";
 import { startLiveClient } from "@/lib/live/sseClient";
 import { useLiveStore } from "@/lib/live/store";
 import { useRole } from "@/lib/live/useRole";
 import type { FokusInfo, HausSzene } from "./HouseScene";
-import { ALARM_WORT, hausLive, offeneKontakte, offenSatz, type HausLive } from "./live";
+import { hausLive, type HausLive } from "./live";
+import type { Ort } from "./insights";
+import { Konsole, type Klappe } from "./Konsole";
 
 /**
  * Das Haus als Modell: beide Geschosse als Glas, die Raeume in ihrer Temperatur, Tueren und
@@ -29,6 +31,9 @@ import { ALARM_WORT, hausLive, offeneKontakte, offenSatz, type HausLive } from "
  * Kontakte. Der Sollwert wird im selben Fenster gestellt wie auf der Raumseite, mit der
  * geschaetzten Wirkung daneben; eine zweite Stellmechanik waere eine zweite Wahrheit.
  *
+ * **Die Bloecke links klappen auf** und beantworten die Anschlussfrage zu ihrer Zahl (siehe
+ * `Konsole`); aus einer Zeile dort springt das Modell in den Raum, der gemeint ist.
+ *
  * three.js wird erst im Browser geladen: Die Szene braucht WebGL und das Dokument, und das
  * halbe Megabyte soll nicht in jeder anderen Seite mitreisen.
  */
@@ -44,12 +49,23 @@ export function HouseReport() {
   const [fokus, setFokus] = useState<FokusInfo | null>(null);
   const [stellt, setStellt] = useState<number | null>(null);
   const [sichtbar, setSichtbar] = useState<string>("alle");
+  const [klappe, setKlappe] = useState<Klappe | null>(null);
   const [alarmMeldung, setAlarmMeldung] = useState<string | null>(null);
   const [alarmBusy, setAlarmBusy] = useState(false);
+  // Die Uhr des Servers: im Demo-Betrieb laeuft sie im Zeitraffer, und „seit 12 min" soll sich auf
+  // sie beziehen und nicht auf die des Geraets.
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const buehne = useRef<HTMLDivElement>(null);
   const szene = useRef<HausSzene | null>(null);
+  const history = useLiveStore((s) => s.history);
 
   useEffect(() => startLiveClient(), []);
+  useEffect(() => {
+    const tick = () => setNowMs(Date.now() + useLiveStore.getState().serverOffsetMs);
+    tick();
+    const t = setInterval(tick, 10_000);
+    return () => clearInterval(t);
+  }, []);
 
   const ladeHaus = useCallback(async () => {
     try {
@@ -125,6 +141,17 @@ export function HouseReport() {
     szene.current?.setFokus(null, null);
   };
 
+  /** Aus einer Zeile der Konsole in den Raum: notfalls das Geschoss wechseln, dann scharf stellen. */
+  const springe = (ort: Ort) => {
+    const deck = plan?.decks.find((d) => d.key === ort.deck);
+    const raum = deck?.rooms.find((r) => r.name === ort.raum && !r.part_of);
+    if (!deck || !raum) return;
+    if (sichtbar !== "alle" && sichtbar !== deck.key) waehleDeck(deck.key);
+    szene.current?.setFokus(deck.key, raum.name);
+    setFokus({ deck: deck.key, raum });
+    setKlappe(null);
+  };
+
   const scharf = async (mode: "home" | "away") => {
     setAlarmBusy(true);
     setAlarmMeldung(null);
@@ -138,7 +165,6 @@ export function HouseReport() {
     }
   };
 
-  const offen = useMemo(() => offeneKontakte(live.kontakte.values()), [live]);
   const decks = plan?.decks ?? [];
   const fokusRaum = fokus?.raum ?? null;
   const fokusWerte = fokusRaum?.room_id != null ? live.raeume.get(fokusRaum.room_id) ?? null : null;
@@ -191,50 +217,18 @@ export function HouseReport() {
 
       {plan ? (
         <div className="haus-seite">
-          <aside className="haus-konsole" aria-label="Zustand">
-            <div className="haus-block" data-zustand={live.alarm}>
-              <span className="k">Alarm</span>
-              <span className="w">{ALARM_WORT[live.alarm]}</span>
-              <span className="s">{live.alarmSatz}</span>
-              {alarm?.present && live.alarm !== "ausgeloest" ? (
-                <div className="haus-block-knoepfe">
-                  <button disabled={!kannScharf || alarmBusy || live.alarm === "zuhause"} onClick={() => void scharf("home")}>zu Hause</button>
-                  <button disabled={!kannScharf || alarmBusy || live.alarm === "unterwegs"} onClick={() => void scharf("away")}>unterwegs</button>
-                </div>
-              ) : null}
-              {alarmMeldung ? <span className="s">{alarmMeldung}</span> : null}
-              {alarm?.present && !kannScharf && role !== "owner" ? <span className="s">Gastzugang: nur Ansicht.</span> : null}
-            </div>
-            <div className="haus-block" style={{ "--farbe": "var(--mist)" } as React.CSSProperties}>
-              <span className="k">Fenster und Türen</span>
-              <span className="w">
-                {offen.length}
-                <small>offen</small>
-              </span>
-              <span className="s">{offenSatz(offen, live.kontakte.size)}</span>
-            </div>
-            <div className="haus-block" style={{ "--farbe": "var(--heat-pump)" } as React.CSSProperties}>
-              <span className="k">Puffer</span>
-              <span className="w">
-                {live.pufferSoc == null ? "-" : Math.round(live.pufferSoc * 100)}
-                <small>%</small>
-              </span>
-              <span className="s">{live.pufferTemps.filter((t): t is number => t != null).map((t) => Math.round(t)).join(" · ") || "keine Werte"} °C</span>
-            </div>
-            <div className="haus-block" style={{ "--farbe": "var(--heat-pump)" } as React.CSSProperties}>
-              <span className="k">Wärmepumpe</span>
-              <span className="w">{kwWithUnit(live.waermepumpeKw)}</span>
-              <span className="s">{state?.heat_pump.running ? "läuft" : "steht"}</span>
-            </div>
-            <div className="haus-block" style={{ "--farbe": "var(--ev)" } as React.CSSProperties}>
-              <span className="k">Heizkreise</span>
-              <span className="w">
-                {live.kreiseOffen}
-                <small>offen</small>
-              </span>
-              <span className="s">{rooms ? `${rooms.rooms.length} Räume` : "keine Raumwerte"}</span>
-            </div>
-          </aside>
+          <Konsole
+            live={live}
+            state={state}
+            rooms={rooms?.rooms ?? null}
+            plan={plan}
+            history={history}
+            nowMs={nowMs}
+            offen={klappe}
+            onKlappe={setKlappe}
+            onSpringe={springe}
+            alarm={{ kannScharf, busy: alarmBusy, meldung: alarmMeldung, nurAnsicht: role !== "owner", onScharf: (m) => void scharf(m) }}
+          />
 
           <div className="haus-buehne-huelle">
             <div ref={buehne} className="haus-buehne" aria-label="Hausmodell" />

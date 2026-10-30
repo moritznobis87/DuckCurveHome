@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { House, HouseContact, LiveState, RoomLive } from "@/lib/api/models";
-import { alarmStufe, hausLive, offeneKontakte, offenSatz } from "./live";
+import { alarmStufe, hausLive, offenSatz } from "./live";
 
 const kontakt = (key: string, open: boolean | null, door = false): HouseContact => ({ key, name: key, room: null, door, open, observed_at: null, quality: open == null ? "unavailable" : "ok" });
 
@@ -50,11 +50,10 @@ describe("Das Bild des Augenblicks", () => {
   });
 });
 
-describe("Offene Kontakte", () => {
-  it("nennt Tueren zuerst und zaehlt den Rest", () => {
-    const offen = offeneKontakte([kontakt("fenster", true), kontakt("tuer", true, true), kontakt("zu", false), kontakt("stumm", null)]);
-    expect(offen.map((k) => k.key)).toEqual(["tuer", "fenster"]);
-    expect(offenSatz(offen, 4)).toBe("tuer und 1 weitere");
+describe("Der Satz unter der Zahl", () => {
+  it("nennt einen Namen und zaehlt den Rest", () => {
+    expect(offenSatz([{ name: "Tür" }, { name: "Fenster" }], 4)).toBe("Tür und 1 weitere");
+    expect(offenSatz([{ name: "Tür" }], 4)).toBe("Tür");
     expect(offenSatz([], 4)).toBe("alles zu");
     expect(offenSatz([], 0)).toBe("keine Kontakte im Plan");
   });

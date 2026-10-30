@@ -456,8 +456,15 @@
    das Tippen die Boeden darunter trifft. */
 .haus-seite { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 14px; flex: 1 1 auto; min-height: 520px; }
 .haus-konsole { display: flex; flex-direction: column; gap: 8px; }
-.haus-block { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px 10px 18px; border-radius: 16px 4px 4px 16px; border: 1px solid var(--line-1); background: rgba(15,46,61,.72); overflow: hidden; }
-.haus-block::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--farbe, var(--amber)); }
+/* Kein `overflow: hidden` mehr: das Aufklapp-Fenster steht ausserhalb des Blocks, und ein
+   abgeschnittenes Fenster waere kein Fenster. Der Farbstreifen bekommt seine Rundung selbst. */
+.haus-block { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px 10px 18px; border-radius: 16px 4px 4px 16px; border: 1px solid var(--line-1); background: rgba(15,46,61,.72); }
+.haus-block::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-radius: 15px 0 0 15px; background: var(--farbe, var(--amber)); }
+.haus-block-kopf { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "k p" "w p" "s p"; align-items: center; gap: 0 8px; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; }
+button.haus-block-kopf { cursor: pointer; }
+.haus-block-kopf .k { grid-area: k; } .haus-block-kopf .w { grid-area: w; } .haus-block-kopf .s { grid-area: s; }
+.haus-block-pfeil { grid-area: p; font-family: var(--font-mono); font-size: 16px; line-height: 1; color: var(--text-3); transition: color .15s ease; }
+button.haus-block-kopf:hover .haus-block-pfeil { color: var(--text-1); }
 .haus-block .k { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--text-3); }
 .haus-block .w { font-family: var(--font-mono); font-size: 21px; line-height: 1.1; letter-spacing: -.02em; }
 .haus-block .w small { font-size: 10px; color: var(--text-3); letter-spacing: .1em; margin-left: 5px; text-transform: uppercase; }
@@ -498,10 +505,12 @@
 .haus-kontakt .punkt { width: 7px; height: 7px; border-radius: 50%; background: var(--petrol); animation: haus-puls 1.2s ease-in-out infinite; }
 .haus-kontakt.alarm { background: #ff3b3b; color: #fff; box-shadow: 0 0 22px rgba(255,59,59,.8); }
 .haus-kontakt.alarm .punkt { background: #fff; }
+.haus-labels.nurpunkt .haus-kontakt { padding: 5px; gap: 0; font-size: 0; }
+.haus-labels.nurpunkt .haus-kontakt b, .haus-labels.nurpunkt .haus-kontakt small { display: none; }
 @keyframes haus-puls { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
 .haus-legende { position: absolute; left: 14px; bottom: 12px; display: flex; align-items: center; gap: 8px; pointer-events: none; }
 .haus-balken { width: 120px; height: 7px; border-radius: 4px; background: linear-gradient(90deg, #25506a, #3d7a9c, #6ab6c8, #c8902f, #f2b134, #ff7a45); border: 1px solid var(--line-2); }
-.haus-panel { position: absolute; right: 14px; top: 14px; width: 320px; display: flex; flex-direction: column; gap: 10px; padding: 16px 18px 14px; border-radius: 10px; background: rgba(10,36,49,.88); border: 1px solid var(--line-2); backdrop-filter: blur(10px); box-shadow: 0 10px 40px rgba(0,0,0,.4); }
+.haus-panel { position: absolute; right: 14px; top: 14px; width: 320px; display: flex; flex-direction: column; gap: 10px; padding: 16px 18px 14px; border-radius: 10px; background: rgba(10,36,49,.94); border: 1px solid var(--line-2); backdrop-filter: blur(10px); box-shadow: 0 10px 40px rgba(0,0,0,.4); }
 .haus-zu { font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-2); background: transparent; border: 1px solid var(--line-2); border-radius: 999px; padding: 5px 10px; cursor: pointer; }
 .haus-zeile { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 0; border-top: 1px solid var(--line-1); }
 .haus-zeile .k { font-family: var(--font-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
@@ -512,8 +521,39 @@
 .haus-zeile li.offen span { color: var(--amber); }
 .haus-zeile li.leer { color: var(--text-3); }
 .haus-stellen { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--petrol); background: var(--amber); border: 0; border-radius: 999px; padding: 9px 14px; cursor: pointer; }
+/* Das Aufklapp-Fenster eines Blocks: rechts daneben, ueber dem Modell. */
+.haus-pop { position: absolute; left: calc(100% + 10px); top: 0; z-index: 30; width: 330px; max-height: min(70dvh, 560px); overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 12px; border-radius: 10px; border: 1px solid var(--line-2); background: rgba(10,36,49,.94); backdrop-filter: blur(12px); box-shadow: var(--shadow-sheet); }
+.haus-pop-gross { display: flex; align-items: baseline; gap: 8px; }
+.haus-pop-gross .z { font-family: var(--font-mono); font-size: 28px; line-height: 1; letter-spacing: -.02em; }
+.haus-pop-gross .e { font-size: 12px; color: var(--text-3); }
+.haus-pop-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.haus-pop-liste > li + li, .haus-pop > .haus-pop-zeile { border-top: 1px solid var(--line-1); }
+.haus-pop-zeile { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 7px 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
+.haus-pop-tippbar { cursor: pointer; border-radius: 4px; }
+.haus-pop-tippbar:hover { background: rgba(255,255,255,.04); }
+.haus-pop-links { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.haus-pop-name { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-2); }
+.haus-pop-name.stark { color: var(--text-1); }
+.haus-pop-unten { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.haus-pop-rechts { flex-shrink: 0; text-align: right; }
+.haus-wort { font-family: var(--font-mono); font-size: 12px; color: var(--text-2); }
+.haus-wort.offen { color: var(--amber); }
+.haus-wort.stumm { color: var(--text-3); }
+.haus-wort small { font-size: 10px; color: var(--text-3); }
+.haus-punkt { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.haus-pop-leer, .haus-pop-fuss { font-size: 11.5px; line-height: 1.45; color: var(--text-3); margin: 0; }
+.haus-pop-fuss a { color: var(--amber); text-decoration: none; }
+.haus-pop-fuss a:hover { text-decoration: underline; }
+.haus-pop-grund { margin: 0; padding: 8px 10px; border-left: 2px solid var(--line-2); border-radius: 0 4px 4px 0; background: rgba(255,255,255,.03); font-size: 12px; line-height: 1.45; color: var(--text-2); }
+.haus-spark { display: flex; flex-direction: column; gap: 3px; }
+.haus-spark svg { width: 100%; height: 46px; display: block; }
+.haus-spark-achse { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-3); }
+
 @media (max-width: 900px) {
   .haus-seite { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  /* Auf dem Telefon liegt die Konsole quer und scrollt; ein Fenster daneben haette keinen Platz
+     und waere vom Rollbereich abgeschnitten. Es kommt deshalb als Blatt von unten. */
+  .haus-pop { position: fixed; left: 10px; right: 10px; bottom: 10px; top: auto; width: auto; max-height: 62dvh; }
   .haus-konsole { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px; }
   .haus-block { min-width: 138px; padding: 7px 10px 7px 14px; }
   .haus-block .w { font-size: 16px; } .haus-block .s { font-size: 10.5px; }

@@ -68,13 +68,9 @@ export function hausLive(rooms: RoomLive[] | null, house: House | null, state: L
   };
 }
 
-/** Die offenen Kontakte, Tueren zuerst, fuer die Liste neben dem Modell. */
-export function offeneKontakte(kontakte: Iterable<HouseContact>): HouseContact[] {
-  return [...kontakte].filter((k) => k.open === true).sort((a, b) => Number(b.door) - Number(a.door) || a.name.localeCompare(b.name, "de"));
-}
-
-/** Satz unter der Zahl der offenen Kontakte. */
-export function offenSatz(offen: HouseContact[], gesamt: number): string {
+/** Satz unter der Zahl der offenen Kontakte. Zwei Namen waeren schon eine Liste, und der Block
+ *  hat die Breite einer Zahl: einer reicht, der Rest wird gezaehlt. Wer alle sehen will, klappt auf. */
+export function offenSatz(offen: { name: string }[], gesamt: number): string {
   if (gesamt === 0) return "keine Kontakte im Plan";
   if (offen.length === 0) return "alles zu";
   if (offen.length === 1) return offen[0]!.name;

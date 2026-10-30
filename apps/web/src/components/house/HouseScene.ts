@@ -1322,6 +1322,12 @@ export class HausSzene {
     for (const r of this.raumKnoten) if (r.label && r.raum.minor) r.label.visible = pxProMeter > 30 || this.fokus === r;
     for (const l of this.nurNah) l.visible = pxProMeter > 30;
     this.labels.domElement.classList.toggle("nurzahl", pxProMeter < 27 && !this.fokus);
+    // **Zwei offene Tueren, zwei Fahnen, ein Wortsalat.** Nebeneinander gelesen ergab das am
+    // 30.10.2026 „Gartentuer 1 offen offen": zwei Beschriftungen, die sich bei kleinem Massstab
+    // ueberlagerten. Unter 26 Punkten je Meter bleibt deshalb nur der Punkt stehen; wo etwas offen
+    // ist, sagen weiter der leuchtende Fluegel und der Streifen am Boden, und welche Tuer es ist,
+    // steht in der Konsole.
+    this.labels.domElement.classList.toggle("nurpunkt", pxProMeter < 26);
 
     for (const r of this.raumKnoten) {
       if (!r.heizMat) continue;

@@ -67,10 +67,10 @@ decks:
   - {z: 8.0, a: 4.2, b: 5.6}
   contacts:
   - {name: 'Wohnen, Fenster', key: kontakt_wohnen_fenster, room: Wohnen, side: n, at: 0.0, a: 1.0, b: 2.6}
-  - {name: Terrassentuer, key: kontakt_terrassentuer, room: Wohnen, side: n, at: 0.0, a: 4.0, b: 5.3, door: true}
+  - {name: Terrassentür, key: kontakt_terrassentuer, room: Wohnen, side: n, at: 0.0, a: 4.0, b: 5.3, door: true}
   - {name: 'Kochen, Fenster', key: kontakt_kochen_fenster, room: Kochen, side: n, at: 0.0, a: 8.5, b: 9.9}
   - {name: 'Arbeiten, Fenster', key: kontakt_arbeiten_fenster, room: Arbeiten, side: s, at: 8.0, a: 1.2, b: 2.6}
-  - {name: Haustuer, key: kontakt_haustuer, room: Diele, side: s, at: 8.0, a: 7.4, b: 8.4, door: true}
+  - {name: Haustür, key: kontakt_haustuer, room: Diele, side: s, at: 8.0, a: 7.4, b: 8.4, door: true}
   items:
   - {kind: box, tone: soft, x: 3.2, z: 3.9, b: 2.6, t: 0.9, h: 0.42}
   - {kind: box, tone: dark, x: 3.2, z: 2.6, b: 1.1, t: 0.6, h: 0.4}

@@ -95,7 +95,7 @@ PLAN = HousePlan.model_validate(
                         "b": 2.6,
                     },
                     {
-                        "name": "Terrassentuer",
+                        "name": "Terrassentür",
                         "key": "kontakt_terrassentuer",
                         "room": "Wohnen",
                         "side": "n",
@@ -123,7 +123,7 @@ PLAN = HousePlan.model_validate(
                         "b": 2.6,
                     },
                     {
-                        "name": "Haustuer",
+                        "name": "Haustür",
                         "key": "kontakt_haustuer",
                         "room": "Diele",
                         "side": "s",
@@ -387,8 +387,8 @@ def _minuten(at: datetime) -> int:
 def contact_open(key: str, at: datetime) -> bool | None:
     """Ob ein Kontakt der Vorfuehrung gerade offen ist.
 
-    Morgens wird in der Kueche gelueftet, mittags und abends steht die Terrassentuer eine Weile
-    auf. Die Haustuer ist ein Kontakt ohne Meldung: auch das soll die Anzeige aushalten.
+    Morgens wird in der Kueche gelueftet, mittags und abends steht die Terrassentür eine Weile
+    auf. Die Haustür ist ein Kontakt ohne Meldung: auch das soll die Anzeige aushalten.
     """
     m = _minuten(at)
     if key == "kontakt_kochen_fenster":
