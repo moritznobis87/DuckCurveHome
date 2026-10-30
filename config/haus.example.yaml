@@ -29,7 +29,8 @@
 #                der Wand), a..b laengs der Wand, door.
 #   items        Moebel und Geraete, siehe die Arten in hems_core/house/plan.py: box, cylinder,
 #                bed, chair, stove (device: pellet bindet die Glut an den Pelletofen), ladder,
-#                loft, panel, tiles, ground, wall, gate, plant, car, wallbox (x1 z1: wohin das
+#                loft, panel, tiles, ground, wall, gate, plant, tree (Baum im Dachspalier: b
+#                Durchmesser der Baumscheibe, h Stammhoehe, r Radius des Dachs), car, wallbox (x1 z1: wohin das
 #                Kabel geht), heat_pump, buffer, indoor_unit, pipe, flight, landing, pit.
 #                tone: dark, light, soft, water, wall, paving, terrace, slate.
 #   places       Ortsmarken draussen: text, x, z.
@@ -97,6 +98,7 @@ decks:
   - {kind: wall, x: 12.1, z: 10.7, b: 0.2, t: 5.0, h: 0.9}
   - {kind: car, x: 3.4, z: 10.9, angle: 0.25}
   - {kind: wallbox, x: 8.9, z: 8.15, x1: 5.2, z1: 10.3, label: Wallbox}
+  - {kind: tree, x: 9.2, z: 11.6, b: 2.0, h: 2.2, r: 1.3}
   places:
   - {text: Garten, x: 6.0, z: -3.1}
   - {text: Hof, x: 6.0, z: 12.4}

@@ -6607,6 +6607,7 @@
               "wall",
               "gate",
               "plant",
+              "tree",
               "car",
               "wallbox",
               "heat_pump",

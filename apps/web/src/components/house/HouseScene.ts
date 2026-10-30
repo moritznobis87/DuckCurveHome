@@ -779,6 +779,41 @@ export class HausSzene {
       case "plant":
         Z(glas(0x3f8f6c, 0.6), x, z, it.r ?? 0.2, it.h ?? 0.6, y);
         return;
+      case "tree": {
+        // Ein Baum im Dachspalier: runde Baumscheibe im Pflaster, Stamm, darueber das flache Dach
+        // als Glasscheibe mit Rand und Spalierlinien. Kein Laubball: so sieht man die Form, die
+        // der Baum wirklich hat, und das Modell bleibt lesbar.
+        const rDach = it.r ?? 1.3;
+        const rScheibe = (it.b ?? 2.0) / 2;
+        const hStamm = it.h ?? 2.2;
+        const scheibe = new THREE.Mesh(new THREE.CircleGeometry(rScheibe, 40), new THREE.MeshLambertMaterial({ color: 0x0a2331 }));
+        scheibe.rotation.x = -Math.PI / 2;
+        scheibe.position.set(x, 0.008, z);
+        g.add(scheibe);
+        const rand = new THREE.Mesh(new THREE.RingGeometry(rScheibe - 0.03, rScheibe, 40), new THREE.MeshBasicMaterial({ color: KANTE, transparent: true, opacity: 0.35, depthWrite: false }));
+        rand.rotation.x = -Math.PI / 2;
+        rand.position.set(x, 0.01, z);
+        g.add(rand);
+        g.add(this.zylinder(glas(0x7a5a3a, 0.8), x, 0, z, 0.08, hStamm, 12, false));
+        const laub = glas(0x3f8f6c, 0.42, { side: THREE.DoubleSide });
+        const dach = new THREE.Mesh(new THREE.CylinderGeometry(rDach, rDach * 0.92, 0.12, 40), laub);
+        dach.position.set(x, hStamm + 0.06, z);
+        g.add(dach);
+        const kante = new THREE.Mesh(new THREE.TorusGeometry(rDach, 0.015, 6, 48), new THREE.MeshBasicMaterial({ color: 0x9fe3c6, transparent: true, opacity: 0.6, depthWrite: false }));
+        kante.rotation.x = Math.PI / 2;
+        kante.position.set(x, hStamm + 0.12, z);
+        g.add(kante);
+        const speichen: THREE.Vector3[] = [];
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI;
+          speichen.push(new THREE.Vector3(x - Math.cos(a) * rDach, hStamm + 0.125, z - Math.sin(a) * rDach), new THREE.Vector3(x + Math.cos(a) * rDach, hStamm + 0.125, z + Math.sin(a) * rDach));
+        }
+        g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(speichen), new THREE.LineBasicMaterial({ color: 0x9fe3c6, transparent: true, opacity: 0.3 })));
+        const schatten = HausSzene.kontaktSchatten(rDach * 2.4, rDach * 2.4);
+        schatten.position.set(x, 0.013, z);
+        g.add(schatten);
+        return;
+      }
       case "bed": {
         const b = it.b ?? 1.6;
         const t = it.t ?? 2.0;

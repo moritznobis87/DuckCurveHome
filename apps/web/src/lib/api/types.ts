@@ -3165,7 +3165,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "box" | "cylinder" | "bed" | "chair" | "stove" | "ladder" | "loft" | "panel" | "tiles" | "ground" | "wall" | "gate" | "plant" | "car" | "wallbox" | "heat_pump" | "buffer" | "indoor_unit" | "pipe" | "flight" | "landing" | "pit";
+            kind: "box" | "cylinder" | "bed" | "chair" | "stove" | "ladder" | "loft" | "panel" | "tiles" | "ground" | "wall" | "gate" | "plant" | "tree" | "car" | "wallbox" | "heat_pump" | "buffer" | "indoor_unit" | "pipe" | "flight" | "landing" | "pit";
             /** Tone */
             tone?: ("dark" | "light" | "soft" | "water" | "wall" | "paving" | "terrace" | "slate") | null;
             /** X */

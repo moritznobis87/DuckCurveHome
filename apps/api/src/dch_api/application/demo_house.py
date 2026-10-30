@@ -242,6 +242,7 @@ PLAN = HousePlan.model_validate(
                         "z1": 10.3,
                         "label": "Wallbox",
                     },
+                    {"kind": "tree", "x": 9.2, "z": 11.6, "r": 1.3, "b": 2.0, "h": 2.2},
                 ],
                 "places": [
                     {"text": "Garten", "x": 6.0, "z": -3.1},

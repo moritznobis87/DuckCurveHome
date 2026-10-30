@@ -54,6 +54,7 @@ ItemKind = Literal[
     "wall",  # Mauer draussen, in Aussenwandfarbe
     "gate",  # Tor: Rahmen mit Staeben, von x0 bis x1 bei z (oder z0 bis z1 bei x)
     "plant",  # Pflanze: Zylinder in Gruen
+    "tree",  # Baum im Dachspalier: Baumscheibe (b: Durchmesser), Stamm (h), flaches Dach (r: Radius)
     "car",  # Auto, schemenhaft, an (x, z) mit Drehwinkel angle (rad)
     "wallbox",  # Wallbox mit Ladekabel nach (x1, z1), Chip mit der Ladeleistung
     "heat_pump",  # Aussengeraet der Waermepumpe, Luefter zur Seite dir, Chip mit der Leistung
