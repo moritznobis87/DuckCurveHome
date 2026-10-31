@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import type { RoomLog, RoomLogEntry } from "@/lib/api/models";
 import { celsius } from "@/lib/format";
-import { KEIN_WERT } from "./palette";
-import { artText, pfad, QUELLE_FARBE, QUELLE_WORT, spanne, sprungText, ueberschrift, verdichte, xFuerZeit, zeitMarken } from "./protokoll";
+import { anteilText, KEIN_WERT } from "./palette";
+import { artText, fahnenPosition, fensterText, indexFuerAnteil, pfad, QUELLE_FARBE, QUELLE_WORT, spanne, sprungText, ueberschrift, verdichte, wertText, xFuerZeit, yFuerWert, zeitMarken } from "./protokoll";
 
 /**
  * Das Protokoll eines Raums: was gemessen wurde, worauf geregelt wurde, und wer daran gedreht hat.
@@ -92,11 +92,15 @@ export function Protokoll({ roomId, name, floor, onClose }: { roomId: number; na
   const [stufe, setStufe] = useState<(typeof STUFEN)[number]>(STUFEN[1]);
   const [log, setLog] = useState<RoomLog | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
+  // Welcher Punkt der Kurve gerade abgelesen wird. Ein Index, kein Pixel: Die Fahne soll den
+  // gemessenen Wert zeigen, nicht einen zwischen zwei Messungen interpolierten.
+  const [marke, setMarke] = useState<number | null>(null);
 
   useEffect(() => {
     let lebt = true;
     setLog(null);
     setFehler(null);
+    setMarke(null);
     void api
       .roomLog(roomId, stufe.stunden, stufe.stepMin)
       .then((l) => { if (lebt) setLog(l); })
@@ -116,9 +120,26 @@ export function Protokoll({ roomId, name, floor, onClose }: { roomId: number; na
   // der Stufe: Liefert die Schnittstelle eines Tages eine andere, bleiben es Stunden.
   const jeStunde = Math.max(1, Math.round(60 / (log?.step_min ?? stufe.stepMin)));
 
+  // Der Finger wandert ueber den Rahmen; daraus wird ein Anteil der Breite und daraus ein Punkt.
+  const zeige = (clientX: number, el: HTMLElement) => {
+    if (!log || log.ts.length === 0) return;
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0) return;
+    setMarke(indexFuerAnteil((clientX - r.left) / r.width, log.ts.length));
+  };
+
+  const letzter = log ? Math.max(1, log.ts.length - 1) : 1;
+  const markeX = marke == null ? null : (marke / letzter) * BREITE;
+  const markeTempY = marke == null || !s ? null : yFuerWert(log?.room.temp_c[marke], s, HOEHE);
+  const markeZielY = marke == null || !s ? null : yFuerWert(log?.target_c[marke], s, HOEHE);
+  // **Die Fahne weicht der Kurve aus.** Liegt der abgelesene Punkt oben, haengt sie unten und
+  // umgekehrt. Fest oben angeschlagen verdeckte sie bei warmen Raeumen genau die Punkte, die sie
+  // beschriftet - und man las eine Zahl, ohne zu sehen, wo sie herkommt.
+  const fahneUnten = markeTempY != null && markeTempY < HOEHE / 2;
+
   return (
     <div className="raum-blende" role="dialog" aria-modal="true" aria-label={`Protokoll ${name}`} onClick={onClose}>
-      <div className="raum-blatt raum-blatt-breit" onClick={(e) => e.stopPropagation()}>
+      <div className="raum-blatt raum-blatt-breit" onClick={(e) => e.stopPropagation()} onPointerDown={() => setMarke(null)}>
         <div className="flex items-baseline justify-between gap-3">
           <span className="flex items-baseline gap-3">
             <span className="text-[19px] font-semibold tracking-[-.01em]">{name}</span>
@@ -152,25 +173,92 @@ export function Protokoll({ roomId, name, floor, onClose }: { roomId: number; na
             <p className="m-0 text-[13px] text-text-2">{ueberschrift(log.entries, stufe.stunden)}</p>
 
             <div className="flex flex-col gap-2">
-              <svg viewBox={`0 0 ${BREITE} ${HOEHE}`} preserveAspectRatio="none" style={{ width: "100%", height: 170 }} role="img" aria-label={`Temperaturverlauf ${name}`}>
-                {/* Die Zielkurve zuerst, damit die gemessene darüber liegt: Sie ist die Antwort,
-                    die andere der Maßstab. */}
-                <path d={pfad(log.target_c, s, BREITE, HOEHE)} fill="none" stroke="var(--text-3)" strokeWidth={2} strokeDasharray="6 5" vectorEffect="non-scaling-stroke" />
-                <path d={pfad(log.room.temp_c, s, BREITE, HOEHE)} fill="none" stroke="var(--amber)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-                {/* Jede Sollwertänderung als senkrechte Marke in der Farbe ihrer Herkunft. Damit
-                    liegt der Knick in der Kurve und sein Grund auf derselben Senkrechten. */}
-                {log.entries
-                  .filter((e) => e.art === "sollwert")
-                  .map((e, i) => {
-                    const x = xFuerZeit(e.at, log.ts as unknown as string[], BREITE);
-                    return x == null ? null : (
-                      <line key={i} x1={x} x2={x} y1={0} y2={HOEHE} stroke={QUELLE_FARBE[e.quelle]} strokeWidth={1} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" opacity={0.75} />
-                    );
-                  })}
-              </svg>
+              {/* **Die Ablesefläche liegt über der Zeichnung, nicht in ihr.** Das SVG ist auf
+                  `preserveAspectRatio="none"` verzerrt; Mauszeiger darin umzurechnen hieße, die
+                  Verzerrung nachzurechnen. Der Rahmen daneben hat echte Bildpunkte, und aus
+                  denen wird ein Anteil der Breite - der gilt in beiden Welten. */}
+              <div
+                className="relative"
+                style={{ touchAction: "none", cursor: "crosshair" }}
+                onPointerMove={(e) => zeige(e.clientX, e.currentTarget)}
+                // Haelt das Ereignis hier fest: Das Blatt darueber raeumt bei jedem Tipp die
+                // Fahne weg, und ohne das Anhalten loeschte der eigene Tipp sie sofort wieder.
+                onPointerDown={(e) => { e.stopPropagation(); zeige(e.clientX, e.currentTarget); }}
+                // **Nur die Maus raeumt beim Verlassen auf.** Ein Finger verlaesst die Flaeche in
+                // dem Augenblick, in dem er hochgeht - die Fahne waere weg, bevor jemand sie
+                // lesen kann, und ein Tippen zeigte gar nichts. Der abgelesene Wert bleibt
+                // deshalb stehen, bis woanders hingetippt oder das Fenster geschlossen wird.
+                onPointerLeave={(e) => { if (e.pointerType === "mouse") setMarke(null); }}
+                onPointerCancel={() => setMarke(null)}
+              >
+                <svg viewBox={`0 0 ${BREITE} ${HOEHE}`} preserveAspectRatio="none" style={{ width: "100%", height: 170, display: "block" }} role="img" aria-label={`Temperaturverlauf ${name}`}>
+                  {/* Die Zielkurve zuerst, damit die gemessene darüber liegt: Sie ist die Antwort,
+                      die andere der Maßstab. */}
+                  <path d={pfad(log.target_c, s, BREITE, HOEHE)} fill="none" stroke="var(--text-3)" strokeWidth={2} strokeDasharray="6 5" vectorEffect="non-scaling-stroke" />
+                  <path d={pfad(log.room.temp_c, s, BREITE, HOEHE)} fill="none" stroke="var(--amber)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                  {/* Jede Sollwertänderung als senkrechte Marke in der Farbe ihrer Herkunft. Damit
+                      liegt der Knick in der Kurve und sein Grund auf derselben Senkrechten. */}
+                  {log.entries
+                    .filter((e) => e.art === "sollwert")
+                    .map((e, i) => {
+                      const x = xFuerZeit(e.at, log.ts, BREITE);
+                      return x == null ? null : (
+                        <line key={i} x1={x} x2={x} y1={0} y2={HOEHE} stroke={QUELLE_FARBE[e.quelle]} strokeWidth={1} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" opacity={0.75} />
+                      );
+                    })}
+
+                  {/* Das Fadenkreuz. Die Punkte sitzen auf den Kurven, nicht auf dem Finger:
+                      Abgelesen wird der Messwert, nicht die Stelle, auf die jemand zeigt. */}
+                  {markeX != null ? (
+                    <>
+                      <line x1={markeX} x2={markeX} y1={0} y2={HOEHE} stroke="var(--text-2)" strokeWidth={1} vectorEffect="non-scaling-stroke" opacity={0.6} />
+                      {markeZielY != null ? (
+                        <circle cx={markeX} cy={markeZielY} r={4} fill="var(--petrol)" stroke="var(--text-3)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                      ) : null}
+                      {markeTempY != null ? (
+                        <circle cx={markeX} cy={markeTempY} r={4} fill="var(--petrol)" stroke="var(--amber)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                      ) : null}
+                    </>
+                  ) : null}
+                </svg>
+
+                {/* Die Fahne. Sie liegt über der Zeichnung und fängt keine Zeiger ab, sonst
+                    verlöre die Fläche darunter den Finger, sobald er die Fahne berührt. */}
+                {marke != null ? (
+                  <div
+                    className="pointer-events-none absolute z-10 rounded-[6px] border border-line-2 px-2.5 py-2"
+                    style={{
+                      left: `${fahnenPosition(marke / Math.max(1, log.ts.length - 1))}%`,
+                      [fahneUnten ? "bottom" : "top"]: 4,
+                      transform: "translateX(-50%)",
+                      background: "rgba(5,26,36,.95)",
+                      minWidth: 168,
+                    }}
+                  >
+                    <div className="mono whitespace-nowrap text-[10px] uppercase tracking-[.08em] text-text-3">{fensterText(log.ts, marke, log.step_min)}</div>
+                    <div className="mt-1 flex flex-col gap-[2px]">
+                      <span className="mono flex items-center justify-between gap-3 whitespace-nowrap text-[12px]">
+                        <span style={{ color: "var(--amber)" }}>gemessen</span>
+                        <span className="text-text-1">{wertText(log.room.temp_c[marke])}</span>
+                      </span>
+                      <span className="mono flex items-center justify-between gap-3 whitespace-nowrap text-[12px]">
+                        <span className="text-text-3">geregelt auf</span>
+                        <span className="text-text-2">{wertText(log.target_c[marke])}</span>
+                      </span>
+                      <span className="mono flex items-center justify-between gap-3 whitespace-nowrap text-[12px]">
+                        <span className="text-text-3">Ventil</span>
+                        <span className="text-text-2">{anteilText(log.room.valve[marke])}</span>
+                      </span>
+                      {log.room.window[marke] != null && log.room.window[marke]! > 0 ? (
+                        <span className="mono whitespace-nowrap text-[12px]" style={{ color: "var(--mist)" }}>Fenster offen</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
 
               <div className="mono flex justify-between text-[10px] text-text-3">
-                {zeitMarken(log.ts as unknown as string[]).map((m, i) => (
+                {zeitMarken(log.ts).map((m, i) => (
                   <span key={i}>{m.text}</span>
                 ))}
               </div>

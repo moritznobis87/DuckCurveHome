@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RoomLogEntry } from "@/lib/api/models";
-import { artText, pfad, spanne, sprungText, ueberschrift, verdichte, xFuerZeit, zaehle, zeitMarken } from "./protokoll";
+import { artText, fahnenPosition, fensterText, indexFuerAnteil, pfad, spanne, sprungText, ueberschrift, verdichte, wertText, xFuerZeit, yFuerWert, zaehle, zeitMarken } from "./protokoll";
 
 function eintrag(p: Partial<RoomLogEntry>): RoomLogEntry {
   return {
@@ -149,5 +149,80 @@ describe("verdichte", () => {
 
   it("nimmt auch ein angeschnittenes letztes Fenster mit", () => {
     expect(verdichte([1, 1, 1, 1, 0], 4)).toEqual([1, 0]);
+  });
+});
+
+describe("indexFuerAnteil", () => {
+  it("trifft Anfang, Mitte und Ende", () => {
+    expect(indexFuerAnteil(0, 5)).toBe(0);
+    expect(indexFuerAnteil(0.5, 5)).toBe(2);
+    expect(indexFuerAnteil(1, 5)).toBe(4);
+  });
+
+  it("rundet zum naechsten Punkt statt abzuschneiden", () => {
+    // 0,74 liegt naeher an Punkt 3 als an Punkt 2; mit floor waere es 2.
+    expect(indexFuerAnteil(0.74, 5)).toBe(3);
+  });
+
+  it("bleibt in den Grenzen, auch wenn der Finger daneben liegt", () => {
+    expect(indexFuerAnteil(-0.3, 5)).toBe(0);
+    expect(indexFuerAnteil(1.4, 5)).toBe(4);
+  });
+
+  it("gibt ohne Punkte nichts zurueck", () => {
+    expect(indexFuerAnteil(0.5, 0)).toBeNull();
+  });
+});
+
+describe("wertText", () => {
+  it("schreibt mit Komma und Einheit", () => {
+    expect(wertText(21.34)).toBe("21,3 °C");
+    expect(wertText(0.5, "", 0)).toBe("1 ");
+  });
+
+  it("sagt bei einer Luecke, dass nichts gemessen wurde", () => {
+    expect(wertText(null)).toBe("kein Messwert");
+    expect(wertText(undefined)).toBe("kein Messwert");
+  });
+});
+
+describe("fensterText", () => {
+  const ts = ["2026-10-31T06:00:00Z", "2026-10-31T06:15:00Z"];
+
+  it("nennt den Zeitraum, nicht einen Augenblick", () => {
+    const t = fensterText(ts, 0, 15);
+    expect(t).toMatch(/\d{2}:\d{2} bis \d{2}:\d{2}/);
+  });
+
+  it("gibt bei kaputter Zeit nichts zurueck", () => {
+    expect(fensterText(["unsinn"], 0, 15)).toBe("");
+    expect(fensterText(ts, 9, 15)).toBe("");
+  });
+});
+
+describe("fahnenPosition", () => {
+  it("folgt dem Finger in der Mitte", () => {
+    expect(fahnenPosition(0.5)).toBe(50);
+  });
+
+  it("bleibt an den Raendern stehen, damit sie nicht hinauslaeuft", () => {
+    expect(fahnenPosition(0)).toBe(16);
+    expect(fahnenPosition(1)).toBe(84);
+  });
+});
+
+describe("yFuerWert", () => {
+  const s = { min: 20, max: 22 };
+
+  it("legt den kleinsten Wert nach unten und den groessten nach oben", () => {
+    // In SVG waechst y nach unten: der Hoechstwert liegt bei 0.
+    expect(yFuerWert(20, s, 50)).toBe(50);
+    expect(yFuerWert(22, s, 50)).toBe(0);
+    expect(yFuerWert(21, s, 50)).toBe(25);
+  });
+
+  it("gibt ohne Wert oder bei entarteter Spanne nichts zurueck", () => {
+    expect(yFuerWert(null, s, 50)).toBeNull();
+    expect(yFuerWert(21, { min: 21, max: 21 }, 50)).toBeNull();
   });
 });

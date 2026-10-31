@@ -47,6 +47,12 @@ export function sprungText(e: RoomLogEntry): string {
 
 export type Spanne = { min: number; max: number };
 
+/** Wo ein Wert senkrecht liegt. `null`, wenn es ihn nicht gibt oder die Spanne entartet ist. */
+export function yFuerWert(v: number | null | undefined, s: Spanne, hoehe: number): number | null {
+  if (v == null || s.max <= s.min) return null;
+  return hoehe - ((v - s.min) / (s.max - s.min)) * hoehe;
+}
+
 /**
  * Die Temperaturspanne der Kurve: so eng wie möglich, aber nie enger als `mindestK`.
  *
@@ -77,7 +83,7 @@ export function pfad(werte: (number | null)[], s: Spanne, breite: number, hoehe:
   if (werte.length === 0 || s.max <= s.min) return "";
   const n = werte.length;
   const x = (i: number) => (n === 1 ? 0 : (i / (n - 1)) * breite);
-  const y = (v: number) => hoehe - ((v - s.min) / (s.max - s.min)) * hoehe;
+  const y = (v: number) => yFuerWert(v, s, hoehe)!;
   let d = "";
   let offen = false;
   werte.forEach((v, i) => {
@@ -147,6 +153,51 @@ export function verdichte(werte: (number | null)[], je: number): (number | null)
     out.push(teil.length ? teil.reduce((a, b) => a + b, 0) / teil.length : null);
   }
   return out;
+}
+
+/**
+ * Welcher Punkt der Reihe unter dieser Stelle der Breite liegt, `anteil` von 0 bis 1.
+ *
+ * **Gerundet, nicht abgeschnitten.** Wer mit dem Finger auf einen Punkt zeigt, meint den
+ * nächstgelegenen - mit `floor` läge der Ablesewert immer links vom Finger, und bei
+ * Fünfzehnminutenfenstern wären das bis zu fünfzehn Minuten Versatz in eine Richtung.
+ */
+export function indexFuerAnteil(anteil: number, n: number): number | null {
+  if (n <= 0) return null;
+  const i = Math.round(anteil * (n - 1));
+  return Math.max(0, Math.min(n - 1, i));
+}
+
+/** `21,3 °C`, oder das ehrliche Wort, wenn in diesem Fenster nichts gemessen wurde. */
+export function wertText(v: number | null | undefined, einheit = "°C", stellen = 1): string {
+  if (v == null) return "kein Messwert";
+  return `${v.toFixed(stellen).replace(".", ",")} ${einheit}`;
+}
+
+/**
+ * Der Zeitraum eines Fensters als Text, `22:15 bis 22:30`.
+ *
+ * **Warum nicht nur ein Zeitpunkt.** Die Kurve zeigt Fenstermittel, keine Augenblicke. Ein
+ * einzelner Zeitstempel daneben läse sich wie „um 22:15 waren es 21,3 Grad", und das stünde für
+ * einen Messwert, den es so nie gab. Der Zeitraum sagt, worüber gemittelt wurde.
+ */
+export function fensterText(ts: string[], i: number, stepMin: number): string {
+  const a = new Date(ts[i] ?? "");
+  if (Number.isNaN(a.getTime())) return "";
+  const b = new Date(a.getTime() + stepMin * 60_000);
+  const uhr = (d: Date) => d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const tag = a.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+  return `${tag} ${uhr(a)} bis ${uhr(b)}`;
+}
+
+/**
+ * Wo die Ablesefahne stehen darf, in Prozent der Breite.
+ *
+ * Sie hängt mittig über dem Finger, würde an den Rändern aber aus dem Kasten laufen. Deshalb
+ * bleibt sie zwischen zwei Schranken stehen, während die Linie weiter dem Finger folgt.
+ */
+export function fahnenPosition(anteil: number, rand = 0.16): number {
+  return Math.max(rand, Math.min(1 - rand, anteil)) * 100;
 }
 
 /** Wie viele Einträge es je Quelle gibt - die Zusammenfassung über dem Protokoll. */
