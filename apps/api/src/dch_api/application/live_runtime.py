@@ -23,6 +23,7 @@ from typing import Any, cast
 import structlog
 
 from dch_api.application import house, rooms
+from dch_api.application import room_log as room_log_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
 from dch_api.application.config_loader import AppConfig
 from dch_api.application.energy_accounting import ENERGY_KEYS, HEAT_KEYS, EnergyAccounting
@@ -75,6 +76,8 @@ from dch_api.schemas import (
     RoomEffectOut,
     RoomHistoryOut,
     RoomLiveOut,
+    RoomLogEntryOut,
+    RoomLogOut,
     RoomSeriesOut,
     RoomShiftEventOut,
     RoomShiftIn,
@@ -1465,6 +1468,71 @@ class LiveRuntime:
                     window=nach_id[i].values["window"],
                 )
                 for i in sortiert
+            ],
+        )
+
+    async def room_log(
+        self, room_id: int, start: datetime, end: datetime, step_min: int
+    ) -> RoomLogOut:
+        """Zeitreihe und Zeitleiste eines Raums über denselben Zeitraum.
+
+        **Zwei Auflösungen aus einer Abfrage.** Die Minutenzeilen werden einmal geholt und dann
+        zweimal gelesen: verdichtet für die Kurve, minutengenau für die Sprünge. Einen Sprung aus
+        den Fenstermitteln zu lesen hieße, ihn auf eine Viertelstunde zu datieren und unterwegs
+        Zwischenwerte zu behaupten, die niemand gestellt hat.
+
+        **Der Zielwert wird hier gerechnet, nicht in der Anzeige.** Geregelt wird auf Sollwert
+        plus Offset; wer die Kurve gegen den blanken Sollwert liest, sieht eine Abweichung, die
+        es nie gab.
+        """
+        meta = await self._room_meta()
+        if room_id not in self._room_ids(meta):
+            raise DchError("unknown_room", f"Raum {room_id} ist nicht bekannt.", 404)
+        name = self._room_name(meta, room_id)
+
+        zeilen = await self.repos.minute_series(
+            start, end, rooms.keys_for([room_id], rooms.SERIES_FIELDS)
+        )
+        ts, reihen = rooms.condense(zeilen, [room_id], start, end, step_min)
+        werte = reihen[0].values
+
+        saetze = room_log_logic.spruenge(
+            room_log_logic.punkte(zeilen, f"room_{room_id}_setpoint_c")
+        )
+        roh: list[room_log_logic.RohEreignis] = []
+        for code in room_log_logic.CODES:
+            for ev in await self.repos.events_between(code, start, end, limit=500):
+                kandidat = room_log_logic.RohEreignis(
+                    at=ev.at, code=code, message=ev.message, context=ev.context or {}
+                )
+                if room_log_logic.gehoert_zu_raum(kandidat, room_id):
+                    roh.append(kandidat)
+
+        return RoomLogOut(
+            room=RoomSeriesOut(
+                id=room_id,
+                name=name.name,
+                floor=name.floor,
+                circuits=name.circuits,
+                temp_c=werte["temp_c"],
+                setpoint_c=werte["setpoint_c"],
+                offset_k=werte["offset_k"],
+                valve=werte["valve"],
+                window=werte["window"],
+            ),
+            start=start,
+            end=end,
+            step_min=step_min,
+            ts=ts,
+            target_c=[
+                rooms.ziel(soll, off)
+                for soll, off in zip(werte["setpoint_c"], werte["offset_k"], strict=True)
+            ],
+            entries=[
+                RoomLogEntryOut(
+                    at=e.at, quelle=e.quelle, art=e.art, from_c=e.von, to_c=e.nach, text=e.text
+                )
+                for e in room_log_logic.verschmelze(saetze, roh)
             ],
         )
 

@@ -570,6 +570,75 @@
         }
       }
     },
+    "/api/v1/rooms/{room_id}/log": {
+      "get": {
+        "tags": [
+          "Räume"
+        ],
+        "summary": "Protokoll eines Raums",
+        "description": "Zeitreihe und Zeitleiste eines Raums über die letzten Stunden.\n\n**Wofür das da ist.** Ein Raum wird wärmer, als er soll. Die Kurve allein sagt nicht, warum -\nhier steht daneben, wann sich der Sollwert geändert hat, wer ihn geändert hat und mit welcher\nBegründung. Dazu die Ventilstellungen und der Fensterkontakt, weil beide die Kurve erklären,\nohne dass jemand etwas gestellt hat.\n\n**48 Stunden sind die Grenze, nicht die Aufbewahrung.** Die Minutenmittel reichen beliebig\nweit zurück (siehe `docs/DATENHALTUNG.md`); begrenzt wird die Antwortgröße. Für einen älteren\nZeitraum ist die Tagesansicht der Raumseite da.\n\n**Der Anfang liegt auf dem Raster, das Ende ist jetzt** - aus demselben Grund wie bei\n`/rooms/history`: Zwei Abrufe kurz hintereinander sollen dieselbe Kurve zeigen, und die\nlaufende Minute soll trotzdem dabei sein.",
+        "operationId": "room_log_api_v1_rooms__room_id__log_get",
+        "parameters": [
+          {
+            "name": "room_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Room Id"
+            }
+          },
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 48,
+              "minimum": 1,
+              "description": "Rückblick in Stunden",
+              "default": 48,
+              "title": "Hours"
+            },
+            "description": "Rückblick in Stunden"
+          },
+          {
+            "name": "step_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Fensterbreite der Kurve in Minuten",
+              "default": 5,
+              "title": "Step Min"
+            },
+            "description": "Fensterbreite der Kurve in Minuten"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomLogOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/haus": {
       "get": {
         "tags": [
@@ -8419,6 +8488,131 @@
         ],
         "title": "RoomLiveOut",
         "description": "Ein Raum im Augenblick.\n\n`deviation_k` wird hier gerechnet und nicht in der Anzeige, weil zur Abweichung die Frage\ngehört, auf welchen Wert sie sich bezieht - und die ist entschieden: auf `target_c`, den\nSollwert **plus** Offset. Contromes Oberfläche rechnet es selbst vor (`21,00 - 0,32` über\n`20,68`). `setpoint_c` und `offset_k` stehen weiter einzeln daneben, damit die Rechnung\nnachvollziehbar bleibt und ein falsches Vorzeichen auffällt.\n\n**Jedes Feld ist angegeben, keines hat eine Voreinstellung.** Das ist keine Pedanterie: Aus den\nVoreinstellungen wird in der erzeugten Schnittstellenbeschreibung „darf fehlen\", und in der App\nheißt das für jede Zahl eine zweite Möglichkeit neben `null` - undefiniert -, die dasselbe\nbedeutet und trotzdem überall mitgeprüft werden müsste."
+      },
+      "RoomLogEntryOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "quelle": {
+            "type": "string",
+            "enum": [
+              "app",
+              "automatik",
+              "extern"
+            ],
+            "title": "Quelle"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "sollwert",
+              "befehl",
+              "ruhe",
+              "einstellung"
+            ],
+            "title": "Art"
+          },
+          "from_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From C"
+          },
+          "to_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To C"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "quelle",
+          "art",
+          "text"
+        ],
+        "title": "RoomLogEntryOut",
+        "description": "Eine Zeile der Zeitleiste: wann sich der Sollwert geändert hat und wer es war.\n\n`quelle` ist `app` (hier gestellt), `automatik` oder `extern`. **`extern` heißt nicht\n„der Nutzer\"**, sondern nur: nicht über dieses Werkzeug. Dahinter stecken die Controme-App,\ndas Bedienteil an der Wand oder Contromes eigenes Heizprogramm, und diese drei lassen sich\nvon hier aus nicht unterscheiden.\n\n`art` ist `sollwert` (gemessene Änderung), `befehl` (geschickt, aber nie gemeldet),\n`ruhe` (die Automatik zieht sich zurück) oder `einstellung` (die Automatik wurde geschaltet)."
+      },
+      "RoomLogOut": {
+        "properties": {
+          "room": {
+            "$ref": "#/components/schemas/RoomSeriesOut"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "step_min": {
+            "type": "integer",
+            "title": "Step Min"
+          },
+          "ts": {
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "type": "array",
+            "title": "Ts"
+          },
+          "target_c": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Target C"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/RoomLogEntryOut"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "room",
+          "start",
+          "end",
+          "step_min",
+          "ts",
+          "target_c",
+          "entries"
+        ],
+        "title": "RoomLogOut",
+        "description": "Das Protokoll eines Raums: Zeitreihe und Zeitleiste über denselben Zeitraum."
       },
       "RoomSeriesOut": {
         "properties": {

@@ -14,6 +14,7 @@ from dch_api.errors import DchError
 from dch_api.schemas import (
     RoomEffectOut,
     RoomHistoryOut,
+    RoomLogOut,
     RoomSetpointIn,
     RoomSetpointOut,
     RoomShiftIn,
@@ -21,6 +22,10 @@ from dch_api.schemas import (
     RoomsLiveOut,
 )
 from hems_core.simulation import BERLIN
+
+#: Wie weit das Protokoll zurückreicht. Mehr wäre eine Antwort, die niemand mehr liest, und
+#: für den Blick auf Wochen ist die Tagesansicht da.
+MAX_LOG_H = 48
 
 router = APIRouter(prefix="/rooms", tags=["Räume"])
 
@@ -138,3 +143,37 @@ async def rooms_history(
             lokal -= timedelta(days=1)
         start, end = lokal.astimezone(UTC), (lokal + timedelta(days=1)).astimezone(UTC)
     return await runner.rooms_history(start, end, step_min)
+
+
+@router.get("/{room_id}/log", response_model=RoomLogOut, summary="Protokoll eines Raums")
+async def room_log(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    room_id: int,
+    hours: Annotated[int, Query(ge=1, le=MAX_LOG_H, description="Rückblick in Stunden")] = 48,
+    step_min: Annotated[int, Query(description="Fensterbreite der Kurve in Minuten")] = 5,
+) -> RoomLogOut:
+    """Zeitreihe und Zeitleiste eines Raums über die letzten Stunden.
+
+    **Wofür das da ist.** Ein Raum wird wärmer, als er soll. Die Kurve allein sagt nicht, warum -
+    hier steht daneben, wann sich der Sollwert geändert hat, wer ihn geändert hat und mit welcher
+    Begründung. Dazu die Ventilstellungen und der Fensterkontakt, weil beide die Kurve erklären,
+    ohne dass jemand etwas gestellt hat.
+
+    **48 Stunden sind die Grenze, nicht die Aufbewahrung.** Die Minutenmittel reichen beliebig
+    weit zurück (siehe `docs/DATENHALTUNG.md`); begrenzt wird die Antwortgröße. Für einen älteren
+    Zeitraum ist die Tagesansicht der Raumseite da.
+
+    **Der Anfang liegt auf dem Raster, das Ende ist jetzt** - aus demselben Grund wie bei
+    `/rooms/history`: Zwei Abrufe kurz hintereinander sollen dieselbe Kurve zeigen, und die
+    laufende Minute soll trotzdem dabei sein.
+    """
+    if step_min not in room_logic.STEPS:
+        raise DchError(
+            "invalid_step",
+            f"step_min muss einer von {', '.join(str(s) for s in room_logic.STEPS)} sein.",
+            422,
+        )
+    now = runner.now
+    anfang = now.replace(second=0, microsecond=0) - timedelta(hours=hours)
+    start = anfang - timedelta(minutes=anfang.minute % step_min)
+    return await runner.room_log(room_id, start, now, step_min)

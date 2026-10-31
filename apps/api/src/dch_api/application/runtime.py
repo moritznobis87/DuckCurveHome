@@ -28,6 +28,7 @@ from dch_api.schemas import (
     PvTaxReportOut,
     RoomEffectOut,
     RoomHistoryOut,
+    RoomLogOut,
     RoomShiftIn,
     RoomShiftOut,
     RoomsLiveOut,
@@ -64,6 +65,9 @@ class Runtime(Protocol):
     async def rooms_history(
         self, start: datetime, end: datetime, step_min: int
     ) -> RoomHistoryOut: ...
+    async def room_log(
+        self, room_id: int, start: datetime, end: datetime, step_min: int
+    ) -> RoomLogOut: ...
     async def forecast_evaluation(self) -> ForecastEvaluationOut: ...
     async def energy_summary(self, period: Period, anchor: date) -> EnergySummaryOut: ...
     async def heat_report(self, period: Period, anchor: date) -> HeatReportOut: ...

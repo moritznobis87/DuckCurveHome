@@ -56,6 +56,8 @@ from dch_api.schemas import (
     RoomEffectOut,
     RoomHistoryOut,
     RoomLiveOut,
+    RoomLogEntryOut,
+    RoomLogOut,
     RoomSeriesOut,
     RoomShiftEventOut,
     RoomShiftIn,
@@ -125,6 +127,11 @@ class DemoRunner:
         self.history = HistoryStore(timedelta(hours=settings.history_retention_hours))
         # Von Hand gestellte Sollwerte der Vorfuehrung, Raum auf Grad.
         self._room_setpoints: dict[int, float] = {}
+        # Das Raumprotokoll der Vorführung. Die echte Laufzeit liest es aus Messreihe und
+        # Ereignissen zusammen; hier wird es mitgeschrieben, weil die Vorführung keine Datenbank
+        # hat. Gezeigt wird dasselbe, erzeugt wird es anders - und nur der Fall „extern" fehlt,
+        # weil in einer Vorführung niemand an der Wand dreht.
+        self._room_log: dict[int, list[RoomLogEntryOut]] = {}
         # Die Raumautomatik der Vorfuehrung: dieselbe Entscheidung, derselbe Schutz, nur ohne
         # Datenbank. Eine Vorfuehrung, in der ein Schalter nichts tut, zeigt die Form und
         # verschweigt die Sache.
@@ -631,6 +638,11 @@ class DemoRunner:
                         paused_until=aktion.ruhe_bis,
                     )
                     self._shift_log.appendleft((now, f"Raum {rid}: {aktion.grund}"))
+                    self._room_log.setdefault(rid, []).append(
+                        RoomLogEntryOut(
+                            at=now, quelle="automatik", art="ruhe", text=aktion.grund
+                        )
+                    )
                 else:
                     self._shift_states.pop(rid, None)
             elif isinstance(aktion, Stellen):
@@ -647,6 +659,16 @@ class DemoRunner:
                 neuer_wert = f"{aktion.setpoint_c:.1f}".replace(".", ",")
                 self._shift_log.appendleft(
                     (now, f"{name}: Sollwert {vorher_wert} auf {neuer_wert} ({aktion.grund})")
+                )
+                self._room_log.setdefault(rid, []).append(
+                    RoomLogEntryOut(
+                        at=now,
+                        quelle="automatik",
+                        art="sollwert",
+                        from_c=gemessen,
+                        to_c=aktion.setpoint_c,
+                        text=f"{name}: Sollwert {vorher_wert} auf {neuer_wert} ({aktion.grund})",
+                    )
                 )
 
     async def rooms_automatik(self) -> RoomShiftOut:
@@ -713,7 +735,18 @@ class DemoRunner:
                 f"Sollwert muss zwischen {rooms.SOLL_MIN:.0f} und {rooms.SOLL_MAX:.0f} Grad liegen.",
                 422,
             )
+        vorher = self._room_setpoints.get(room_id, raum.setpoint_c)
         self._room_setpoints[room_id] = werte
+        self._room_log.setdefault(room_id, []).append(
+            RoomLogEntryOut(
+                at=self.now,
+                quelle="app",
+                art="sollwert",
+                from_c=vorher,
+                to_c=werte,
+                text=f"{raum.name}: Sollwert auf {werte:.1f} Grad gestellt",
+            )
+        )
         return True, werte, f"{raum.name} steht jetzt auf {werte:.1f} Grad."
 
     async def arm_alarm(self, mode: str) -> tuple[bool, str]:
@@ -851,6 +884,39 @@ class DemoRunner:
                 )
                 for r in demo_rooms.ROOMS
             ],
+        )
+
+    async def room_log(
+        self, room_id: int, start: datetime, end: datetime, step_min: int
+    ) -> RoomLogOut:
+        raum = next((r for r in demo_rooms.ROOMS if r.id == room_id), None)
+        if raum is None:
+            raise DchError("unknown_room", f"Raum {room_id} ist nicht bekannt.", 404)
+        ts = rooms.bucket_starts(start, end, step_min)
+        jetzt = self.now
+        soll = [self._room_setpoints.get(raum.id, raum.setpoint_c) if t <= jetzt else None for t in ts]
+        offset = [demo_rooms.offset_k(raum, t) if t <= jetzt else None for t in ts]
+        return RoomLogOut(
+            room=RoomSeriesOut(
+                id=raum.id,
+                name=raum.name,
+                floor=raum.floor,
+                circuits=raum.circuits,
+                temp_c=[demo_rooms.temperature_c(raum, t) if t <= jetzt else None for t in ts],
+                setpoint_c=soll,
+                offset_k=offset,
+                valve=[demo_rooms.valve(raum, t) if t <= jetzt else None for t in ts],
+                window=[demo_rooms.window(raum, t) if t <= jetzt else None for t in ts],
+            ),
+            start=start,
+            end=end,
+            step_min=step_min,
+            ts=ts,
+            target_c=[rooms.ziel(a, b) for a, b in zip(soll, offset, strict=True)],
+            # Bis einschliesslich jetzt: Das Ende des Fensters ist die laufende Minute, und ein
+            # Eintrag aus genau dieser Minute gehoert hinein. Mit `<` fehlte gerade der Eintrag,
+            # den jemand eben erzeugt hat - und das ist der, auf den er wartet.
+            entries=[e for e in self._room_log.get(room_id, []) if start <= e.at <= end],
         )
 
     async def set_heat_pump_mode(

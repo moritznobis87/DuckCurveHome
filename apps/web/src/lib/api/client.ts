@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, House, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, House, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -79,6 +79,9 @@ export const api = {
     request<RoomShift>("/rooms/automatik", { method: "POST", body: JSON.stringify(patch) }),
   roomEffect: (id: number, deltaK: number) => request<RoomEffect>(`/rooms/${id}/wirkung?delta_k=${deltaK}`),
   roomsDay: (day: string, stepMin = 15) => request<RoomHistory>(`/rooms/history?day=${day}&step_min=${stepMin}`),
+  /** Das Protokoll eines Raums: Kurve und Zeitleiste über die letzten Stunden, höchstens 48. */
+  roomLog: (id: number, hours = 48, stepMin = 5) =>
+    request<RoomLog>(`/rooms/${id}/log?hours=${hours}&step_min=${stepMin}`),
   heatConfig: () => request<HemsConfig>("/config"),
   setHeatConfig: (patch: HeatConfigIn) =>
     request<HemsConfig>("/config/heat", { method: "POST", body: JSON.stringify(patch) }),

@@ -275,6 +275,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rooms/{room_id}/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Protokoll eines Raums
+         * @description Zeitreihe und Zeitleiste eines Raums über die letzten Stunden.
+         *
+         *     **Wofür das da ist.** Ein Raum wird wärmer, als er soll. Die Kurve allein sagt nicht, warum -
+         *     hier steht daneben, wann sich der Sollwert geändert hat, wer ihn geändert hat und mit welcher
+         *     Begründung. Dazu die Ventilstellungen und der Fensterkontakt, weil beide die Kurve erklären,
+         *     ohne dass jemand etwas gestellt hat.
+         *
+         *     **48 Stunden sind die Grenze, nicht die Aufbewahrung.** Die Minutenmittel reichen beliebig
+         *     weit zurück (siehe `docs/DATENHALTUNG.md`); begrenzt wird die Antwortgröße. Für einen älteren
+         *     Zeitraum ist die Tagesansicht der Raumseite da.
+         *
+         *     **Der Anfang liegt auf dem Raster, das Ende ist jetzt** - aus demselben Grund wie bei
+         *     `/rooms/history`: Zwei Abrufe kurz hintereinander sollen dieselbe Kurve zeigen, und die
+         *     laufende Minute soll trotzdem dabei sein.
+         */
+        get: operations["room_log_api_v1_rooms__room_id__log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/haus": {
         parameters: {
             query?: never;
@@ -3938,6 +3971,66 @@ export interface components {
             quality: components["schemas"]["Quality"];
         };
         /**
+         * RoomLogEntryOut
+         * @description Eine Zeile der Zeitleiste: wann sich der Sollwert geändert hat und wer es war.
+         *
+         *     `quelle` ist `app` (hier gestellt), `automatik` oder `extern`. **`extern` heißt nicht
+         *     „der Nutzer"**, sondern nur: nicht über dieses Werkzeug. Dahinter stecken die Controme-App,
+         *     das Bedienteil an der Wand oder Contromes eigenes Heizprogramm, und diese drei lassen sich
+         *     von hier aus nicht unterscheiden.
+         *
+         *     `art` ist `sollwert` (gemessene Änderung), `befehl` (geschickt, aber nie gemeldet),
+         *     `ruhe` (die Automatik zieht sich zurück) oder `einstellung` (die Automatik wurde geschaltet).
+         */
+        RoomLogEntryOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Quelle
+             * @enum {string}
+             */
+            quelle: "app" | "automatik" | "extern";
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "sollwert" | "befehl" | "ruhe" | "einstellung";
+            /** From C */
+            from_c?: number | null;
+            /** To C */
+            to_c?: number | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * RoomLogOut
+         * @description Das Protokoll eines Raums: Zeitreihe und Zeitleiste über denselben Zeitraum.
+         */
+        RoomLogOut: {
+            room: components["schemas"]["RoomSeriesOut"];
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Step Min */
+            step_min: number;
+            /** Ts */
+            ts: string[];
+            /** Target C */
+            target_c: (number | null)[];
+            /** Entries */
+            entries: components["schemas"]["RoomLogEntryOut"][];
+        };
+        /**
          * RoomSeriesOut
          * @description Eine Raumzeitreihe spaltenweise: alle Listen so lang wie `ts` der Hülle.
          */
@@ -5178,6 +5271,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoomHistoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    room_log_api_v1_rooms__room_id__log_get: {
+        parameters: {
+            query?: {
+                /** @description Rückblick in Stunden */
+                hours?: number;
+                /** @description Fensterbreite der Kurve in Minuten */
+                step_min?: number;
+            };
+            header?: never;
+            path: {
+                room_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomLogOut"];
                 };
             };
             /** @description Validation Error */

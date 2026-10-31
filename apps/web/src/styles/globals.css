@@ -173,6 +173,17 @@
 .raum-knopf:active:not(:disabled) { background: rgba(255,255,255,.08); }
 .raum-aktion { flex: 1; height: 52px; border-radius: 8px; border: 1px solid; font-size: 14px; font-weight: 500; }
 .raum-aktion:disabled { opacity: .5; }
+/* Das Protokollfenster ist breiter als das Stellfenster: Es traegt eine Kurve ueber zwei Tage,
+   und die wird unter 460 Punkten zu einem Gekritzel. */
+.raum-blatt-breit { width: min(760px, 100%); }
+/* Der Protokollknopf sitzt in der Kachel, aber nicht *in* ihrem Knopf: Ein Knopf im Knopf ist
+   kein gueltiges HTML, und Tastatur wie Vorlesesoftware kaemen durcheinander. Die Schale ist
+   deshalb der gemeinsame Rahmen, und der Fuss der Kachel macht rechts Platz. */
+.raum-kachel-schale { position: relative; display: flex; }
+.raum-kachel-schale > .raum-kachel { flex: 1 1 auto; min-width: 0; }
+.raum-kachel-schale .raum-fuss { padding-right: 76px; }
+.raum-protokoll-knopf { position: absolute; right: 12px; bottom: 10px; z-index: 1; border: 1px solid var(--line-2); border-radius: 3px; padding: 2px 7px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); background: rgba(255,255,255,.03); }
+.raum-protokoll-knopf:hover { color: var(--text-1); border-color: var(--amber); }
 .rooms-matrix, .rooms-table { max-width: 100%; overflow-x: auto; }
 
 

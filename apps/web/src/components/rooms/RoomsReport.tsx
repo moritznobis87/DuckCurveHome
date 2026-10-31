@@ -11,6 +11,7 @@ import { abweichungText, anteilText, BAND_K, farbe, fensterText, kelvin, KEIN_WE
 import { abweichungen, etagenText, gruppiere, mittel, offenSeitMin, ziel } from "./logic";
 import { Stellen } from "./Stellen";
 import { Automatik } from "./Automatik";
+import { Protokoll } from "./Protokoll";
 import { useRole } from "@/lib/live/useRole";
 
 /**
@@ -166,7 +167,7 @@ function Verlauf({ serie, ts, proStunde, linie, bisMs }: { serie: RoomSeries; ts
 }
 
 /** Ein Raum als Kachel. Tippbar, wenn der laufende Tag angezeigt wird. */
-function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen }: { raum: RoomLive; serie: RoomSeries | undefined; ts: string[]; proStunde: number; bisMs: number; stepMin: number; onStellen?: () => void }) {
+function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen, onProtokoll }: { raum: RoomLive; serie: RoomSeries | undefined; ts: string[]; proStunde: number; bisMs: number; stepMin: number; onStellen?: () => void; onProtokoll?: () => void }) {
   const d = raum.deviation_k;
   const stumm = raum.temp_c == null;
   const hatOffset = raum.offset_k != null && Math.abs(raum.offset_k) >= 0.05;
@@ -186,7 +187,7 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen }: {
   const anDerGrenze = tagesventil != null && tagesventil >= 0.85 && d != null && d < -BAND_K && !fenster;
 
   const Huelle = onStellen ? "button" : "div";
-  return (
+  const kachel = (
     <Huelle
       className={`card raum-kachel text-left ${onStellen ? "raum-kachel-tippbar" : ""}`}
       onClick={onStellen}
@@ -260,6 +261,24 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen }: {
       </div>
     </Huelle>
   );
+
+  if (!onProtokoll) return kachel;
+  // **Der Knopf steht neben der Kachel, nicht in ihr.** Die Kachel ist selbst ein Knopf (sie
+  // stellt den Sollwert), und ein Knopf im Knopf ist weder gueltiges HTML noch mit der Tastatur
+  // zu bedienen. Die Schale haelt beide nebeneinander und legt den kleinen ueber die Ecke.
+  return (
+    <div className="raum-kachel-schale">
+      {kachel}
+      <button
+        className="raum-protokoll-knopf mono"
+        onClick={onProtokoll}
+        aria-label={`${raum.name}: Protokoll der letzten Stunden`}
+        title="Zeitreihe, Ventilstellungen und jede Sollwertaenderung mit Herkunft"
+      >
+        Protokoll
+      </button>
+    </div>
+  );
 }
 
 // ------------------------------------------------------------------ Seite
@@ -270,6 +289,26 @@ export function RoomsReport() {
   // Welcher Raum gerade gestellt wird. Nur die Kennung, nicht der Raum selbst: der Wert kommt aus
   // der laufenden Liste, damit das Fenster beim naechsten Takt nicht auf einem alten Stand steht.
   const [stellt, setStellt] = useState<number | null>(null);
+  // Welcher Raum sein Protokoll zeigt. Steht in der Adresse, damit ein Befund zu verlinken ist:
+  // Wer jemandem schreibt „sieh dir das an", soll nicht „und dann auf Protokoll tippen" dazusagen.
+  //
+  // **Ohne Router, mit `replaceState`.** Die Adresse ist hier kein Seitenwechsel, sondern ein
+  // Lesezeichen auf einen geoeffneten Kasten. Ein `push` haette jeden Blick ins Protokoll in die
+  // Zurueck-Taste gelegt, und wer dreimal hingesehen hat, muesste dreimal zurueck.
+  const [protokoll, setProtokoll] = useState<number | null>(null);
+
+  useEffect(() => {
+    const roh = new URLSearchParams(window.location.search).get("protokoll");
+    const id = roh == null ? NaN : Number(roh);
+    if (Number.isInteger(id)) setProtokoll(id);
+  }, []);
+
+  useEffect(() => {
+    const u = new URL(window.location.href);
+    if (protokoll == null) u.searchParams.delete("protokoll");
+    else u.searchParams.set("protokoll", String(protokoll));
+    window.history.replaceState(null, "", u);
+  }, [protokoll]);
   const role = useRole();
   const [tag, setTag] = useState<RoomHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -414,6 +453,7 @@ export function RoomsReport() {
                 bisMs={bisMs}
                 stepMin={tag?.step_min ?? STEP_MIN}
                 onStellen={istHeute ? () => setStellt(r.id) : undefined}
+                onProtokoll={() => setProtokoll(r.id)}
               />
             ))}
           </div>
@@ -513,6 +553,20 @@ export function RoomsReport() {
               readOnly={role !== "owner"}
               onClose={() => setStellt(null)}
               onDone={() => void ladeLive()}
+            />
+          );
+        })()
+      ) : null}
+
+      {protokoll != null ? (
+        (() => {
+          const raum = live?.rooms.find((r) => r.id === protokoll);
+          return (
+            <Protokoll
+              roomId={protokoll}
+              name={raum?.name ?? `Raum ${protokoll}`}
+              floor={raum?.floor ?? ""}
+              onClose={() => setProtokoll(null)}
             />
           );
         })()

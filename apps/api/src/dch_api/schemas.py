@@ -965,6 +965,40 @@ class RoomHistoryOut(BaseModel):
     rooms: list[RoomSeriesOut]
 
 
+class RoomLogEntryOut(BaseModel):
+    """Eine Zeile der Zeitleiste: wann sich der Sollwert geändert hat und wer es war.
+
+    `quelle` ist `app` (hier gestellt), `automatik` oder `extern`. **`extern` heißt nicht
+    „der Nutzer"**, sondern nur: nicht über dieses Werkzeug. Dahinter stecken die Controme-App,
+    das Bedienteil an der Wand oder Contromes eigenes Heizprogramm, und diese drei lassen sich
+    von hier aus nicht unterscheiden.
+
+    `art` ist `sollwert` (gemessene Änderung), `befehl` (geschickt, aber nie gemeldet),
+    `ruhe` (die Automatik zieht sich zurück) oder `einstellung` (die Automatik wurde geschaltet).
+    """
+
+    at: datetime
+    quelle: Literal["app", "automatik", "extern"]
+    art: Literal["sollwert", "befehl", "ruhe", "einstellung"]
+    #: `from` ist in Python ein Schlüsselwort, daher die Endung. Die Einheit ist Grad Celsius.
+    from_c: float | None = None
+    to_c: float | None = None
+    text: str
+
+
+class RoomLogOut(BaseModel):
+    """Das Protokoll eines Raums: Zeitreihe und Zeitleiste über denselben Zeitraum."""
+
+    room: RoomSeriesOut
+    start: datetime
+    end: datetime
+    step_min: int
+    ts: list[datetime]
+    #: Sollwert plus Offset - die Temperatur, auf die tatsächlich geregelt wurde.
+    target_c: list[float | None]
+    entries: list[RoomLogEntryOut]
+
+
 class PushKeyOut(BaseModel):
     """Der öffentliche Schlüssel des Dienstes und die Zahl der angemeldeten Geräte.
 
