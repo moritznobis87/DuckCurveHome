@@ -33,8 +33,11 @@ Der Kanal, den ein Produkt mit Heizungsbauern bräuchte. Er wird gerade besetzt.
 
 - **gridX:** Plattform mit lokalem Gateway und Cloud, vertrieben über Partner wie Viessmann, nicht
   direkt an Endkunden [8]. Das Installateursnetz PV Green installiert sie unter dem Namen „ELIO“ und
-  will bis Ende 2026 rund 600 Anlagen erreichen [7]. Dass gridX zu E.ON gehört: **ungeprüft**.
-- **Kiwigrid:** direkt an Installateure, über den Großhandel und als White Label; über 200 getestete
+  will bis Ende 2026 rund 600 Anlagen erreichen [7]. E.ON übernahm im September 2021 die Mehrheit
+  [15] und kaufte gridX danach vollständig [16]; den Zeitpunkt nennen die Quellen unterschiedlich
+  (Ende 2022 oder Anfang 2023). Ein Beispiel für den Weg „Plattform für andere, dann übernommen“.
+- **Kiwigrid:** Dresden, eigenständig ohne Mutterkonzern [17]; auf seiner Plattform läuft unter
+  anderem der Energiemanager von Solarwatt [17]. Vertrieb direkt an Installateure, über den Großhandel und als White Label; über 200 getestete
   Geräteanbindungen, davon 79 Wärmepumpen [9]. Seit Januar 2026 erweiterte Wärmepumpensteuerung
   über SG Ready und EEBus [2].
 - **E.ON:** Partnerprogramm seit Februar 2026, bis zu 120 € Prämie je installiertem
@@ -107,3 +110,6 @@ White-Label-Plattformen anbinden lässt, statt gegen sie anzutreten.
 12. ZfK: [tado vertreibt stundengenauen dynamischen Tarif](https://www.zfk.de/unternehmen/nachrichten/tado-vertreibt-stundengenauen-dynamsichen-tarif)
 13. Loxone: [Einzelraumregelung für Fußbodenheizung mit dem Loxone Stellantrieb](https://www.loxone.com/dede/blog/einzelraumregelung-fussbodenheizung-stellantrieb/)
 14. energiesparhaus.at: [Forum Heizung, Lüftung, Klima](https://www.energiesparhaus.at/forum/58625)
+15. gridX: [E.ON acquires majority stake in leading smart grid company gridX](https://www.gridx.ai/press-releases/e-on-acquires-majority-stake-in-leading-smart-grid-company-gridx)
+16. Handelsblatt: [Eon übernimmt Start-up GridX komplett](https://www.handelsblatt.com/unternehmen/energie/energiebranche-eon-uebernimmt-start-up-gridx-komplett/28862594.html)
+17. dezentralo: [Welches HEMS ist das beste? Vergleich 2026 mit 79 Systemen](https://dezentralo.com/blog/home-energy-management-systeme-im-vergleich)
