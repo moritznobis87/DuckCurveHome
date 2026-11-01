@@ -16,6 +16,7 @@ from typing import Any
 
 import structlog
 
+from dch_api import urheber
 from dch_api.application import demo_house, demo_rooms, rooms
 from dch_api.application.battery_control import BatteryMode
 from dch_api.application.energy_accounting import EnergyAccounting
@@ -640,7 +641,11 @@ class DemoRunner:
                     self._shift_log.appendleft((now, f"Raum {rid}: {aktion.grund}"))
                     self._room_log.setdefault(rid, []).append(
                         RoomLogEntryOut(
-                            at=now, quelle="automatik", art="ruhe", text=aktion.grund
+                            at=now,
+                            quelle="automatik",
+                            art="ruhe",
+                            text=aktion.grund,
+                            urheber=urheber.AUTOMATIK.text(),
                         )
                     )
                 else:
@@ -668,6 +673,7 @@ class DemoRunner:
                         from_c=gemessen,
                         to_c=aktion.setpoint_c,
                         text=f"{name}: Sollwert {vorher_wert} auf {neuer_wert} ({aktion.grund})",
+                        urheber=urheber.AUTOMATIK.text(),
                     )
                 )
 
@@ -745,6 +751,9 @@ class DemoRunner:
                 from_c=vorher,
                 to_c=werte,
                 text=f"{raum.name}: Sollwert auf {werte:.1f} Grad gestellt",
+                # In der Vorfuehrung gibt es meist keine Sitzung; dann bleibt das Feld leer,
+                # und die Anzeige zeigt genau das, was sie ohne Paarung auch im Haus zeigt.
+                urheber=(wer.text() if (wer := urheber.aktueller()) is not None else ""),
             )
         )
         return True, werte, f"{raum.name} steht jetzt auf {werte:.1f} Grad."
@@ -894,7 +903,9 @@ class DemoRunner:
             raise DchError("unknown_room", f"Raum {room_id} ist nicht bekannt.", 404)
         ts = rooms.bucket_starts(start, end, step_min)
         jetzt = self.now
-        soll = [self._room_setpoints.get(raum.id, raum.setpoint_c) if t <= jetzt else None for t in ts]
+        soll = [
+            self._room_setpoints.get(raum.id, raum.setpoint_c) if t <= jetzt else None for t in ts
+        ]
         offset = [demo_rooms.offset_k(raum, t) if t <= jetzt else None for t in ts]
         return RoomLogOut(
             room=RoomSeriesOut(

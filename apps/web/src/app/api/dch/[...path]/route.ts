@@ -40,6 +40,20 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   const headers: Record<string, string> = { accept: req.headers.get("accept") ?? "*/*" };
   const apiToken = process.env.DCH_API_TOKEN;
   if (apiToken) headers["authorization"] = `Bearer ${apiToken}`;
+  // **Wer das hier auslöst, reist mit.** Der Name kommt aus dem signierten Sitzungscookie und
+  // wurde beim Paaren vergeben (/pair?token=…&name=iPad-Flur). Der Dienst schreibt ihn in jedes
+  // Ereignis, das diese Anfrage auslöst, damit später nachzulesen ist, wer etwas verstellt hat.
+  //
+  // **Die Art steht ausdrücklich dabei und lautet heute „geraet".** Ein Gerätename ist kein
+  // Mensch - am iPad im Flur kann jeder gestanden haben. Kommt später ein Benutzersystem, setzt
+  // diese Stelle `person` samt Benutzerkennung und schickt den Gerätenamen zusätzlich als
+  // `-geraet`; die alten Zeilen bleiben, was sie sind, und behaupten nie eine Person.
+  if (session?.name) {
+    headers["x-dch-urheber-art"] = "geraet";
+    headers["x-dch-urheber-name"] = session.name;
+    headers["x-dch-urheber-geraet"] = session.name;
+    headers["x-dch-urheber-rolle"] = session.role;
+  }
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;
   let upstream: Response;

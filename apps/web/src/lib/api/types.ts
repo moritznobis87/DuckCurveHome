@@ -4004,6 +4004,11 @@ export interface components {
             to_c?: number | null;
             /** Text */
             text: string;
+            /**
+             * Urheber
+             * @default
+             */
+            urheber: string;
         };
         /**
          * RoomLogOut

@@ -79,7 +79,16 @@ function Zeile({ e }: { e: RoomLogEntry }) {
         {QUELLE_WORT[e.quelle]}
       </span>
       <span className="min-w-0 flex-1">
-        {sprung ? <span className="mono whitespace-nowrap text-[13px] text-text-1">{sprung} °C</span> : null}
+        <span className="flex flex-wrap items-baseline gap-x-2">
+          {sprung ? <span className="mono whitespace-nowrap text-[13px] text-text-1">{sprung} °C</span> : null}
+          {/* **Wer es war, steht neben dem Wert, nicht im Satz darunter.** Das ist die Frage, mit
+              der jemand dieses Protokoll aufmacht; sie soll nicht am Ende einer Zeile stehen, die
+              man erst lesen muss. Ist das Feld leer, steht hier nichts - leer heißt unbekannt,
+              und „unbekannt" hinzuschreiben fuellte die Liste mit einer Nichtauskunft. */}
+          {e.urheber ? (
+            <span className="mono whitespace-nowrap text-[11px] text-text-2">{e.urheber}</span>
+          ) : null}
+        </span>
         {/* Der Text des Dienstes, wenn es einen gibt - er trägt die Begründung der Automatik.
             Sonst die Art in eigenen Worten, damit keine Zeile stumm bleibt. */}
         <span className="block text-[12px] leading-[1.45] text-text-3">{e.text || artText(e)}</span>

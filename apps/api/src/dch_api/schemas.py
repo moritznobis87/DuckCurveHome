@@ -984,6 +984,10 @@ class RoomLogEntryOut(BaseModel):
     from_c: float | None = None
     to_c: float | None = None
     text: str
+    #: Wer es war, als fertige Zeile: „iPad Flur", mit Benutzersystem „Moritz, am iPad Flur".
+    #: Leer heißt **unbekannt**, nicht „niemand": bei Änderungen von außen weiß es dieser Dienst
+    #: nicht, und Zeilen aus der Zeit vor dieser Aufzeichnung tragen es nicht nach.
+    urheber: str = ""
 
 
 class RoomLogOut(BaseModel):

@@ -75,9 +75,25 @@ def test_statistics_short_term_and_gzip() -> None:
     assert len(hours) == 1 and hours[0][0].minutes == 60
 
 
+def _zustandszeilen(base: datetime) -> bytes:
+    """Drei Messpunkte im Zehnminutenabstand, danach ein `unavailable`."""
+    rows = ["entity_id,state,last_updated_ts"]
+    for i, (pv, grid) in enumerate([(3000, -500), (3200, -700), (2800, -300)]):
+        ts = (base + timedelta(minutes=10 * i)).timestamp()
+        rows.append(f"sensor.myenergi_hub_14117600_power_generation,{pv},{ts}")
+        rows.append(f"sensor.myenergi_hub_14117600_power_grid,{grid},{ts}")
+    rows.append(
+        f"sensor.myenergi_hub_14117600_power_grid,unavailable,{(base + timedelta(minutes=25)).timestamp()}"
+    )
+    return "\n".join(rows).encode()
+
+
 def test_states_step_function_and_raw_readings() -> None:
-    now = datetime.now(UTC).replace(second=0, microsecond=0)
-    base = now - timedelta(hours=2)
+    # **Feste Zeit, keine Uhr.** Vorher stand hier `datetime.now()`, und der Test fiel genau
+    # dann um, wenn er zufällig in Minute 39 einer Stunde lief: Dann endet die Reihe auf der
+    # Stundengrenze, und die Summe war 21 statt 22 (gemessen am 1.11.2026, ein Lauf von sechzig).
+    # Ein Test, der stündlich eine Minute lang falsch ist, sagt nichts über den Code aus.
+    base = datetime(2026, 11, 1, 10, 12, tzinfo=UTC)
     rows = ["entity_id,state,last_updated_ts"]
     for i, (pv, grid) in enumerate([(3000, -500), (3200, -700), (2800, -300)]):
         ts = (base + timedelta(minutes=10 * i)).timestamp()
@@ -98,6 +114,19 @@ def test_states_step_function_and_raw_readings() -> None:
     assert len(dump.readings) == 6 and all(r.source.startswith("ha-import:") for r in dump.readings)
     hours = compute_hours(dump, HemsConfig())
     assert sum(h.minutes for h, _ in hours) == 22
+
+
+def test_an_der_stundengrenze_fehlt_eine_minute() -> None:
+    """Endet die Reihe genau auf einer vollen Stunde, zählt `compute_hours` 21 statt 22 Minuten.
+
+    **Festgehalten, nicht gebilligt.** Das ist der Stand vom 1.11.2026 und die Ursache des
+    früheren Wackeltests: Bei einem Beginn in Minute 39 fällt der letzte Messpunkt auf Minute 0
+    der nächsten Stunde, und diese Stunde steuert nichts bei. Eine Minute je Importlauf ist
+    wenig, aber es ist ein Verlust, und er gehört in einen eigenen Durchgang. Schlägt dieser
+    Test fehl, weil jemand das behoben hat: Erwartung auf 22 setzen und diesen Text löschen.
+    """
+    dump = parse_dump(_zustandszeilen(datetime(2026, 11, 1, 10, 39, tzinfo=UTC)), RULES)
+    assert sum(h.minutes for h, _ in compute_hours(dump, HemsConfig())) == 21
 
 
 def test_apply_prices_fills_only_missing_minutes() -> None:

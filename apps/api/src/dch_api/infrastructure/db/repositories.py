@@ -16,6 +16,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 from sqlalchemy.sql import Executable
 
+from dch_api import urheber
 from dch_api.infrastructure.db import models as m
 from dch_api.infrastructure.history import SERIES
 from hems_core.accounting import HourlyEnergy
@@ -559,7 +560,20 @@ class SqlRepositories:
         Viertelstunde gestanden, kommen fünf Ereignisse auf einmal an. Mit dem Zeitpunkt des
         Eintragens stünden sie alle in derselben Sekunde, und das Türprotokoll behauptete, um 19:04
         seien vier Leute gleichzeitig vor der Tür gewesen.
+
+        **Der Urheber kommt von selbst dazu**, sofern gerade einer handelt. Er als Parameter
+        hätte an einundzwanzig Rufstellen angehängt werden müssen, und die eine, die jemand
+        vergisst, wäre genau die Zeile, die später fehlt.
+
+        **Nur bei Anfragen, nicht bei jedem Ereignis.** Außerhalb einer Anfrage - Takt, Start,
+        Brücke - steht dort nichts, und das ist richtig so: Ein „System" an jeder der
+        zehntausend Brückenmeldungen wäre Rauschen, kein Hinweis. Wer einen eigenen Urheber
+        mitgibt (die Automatik tut das), behält ihn.
         """
+        kontext = dict(context or {})
+        wer = urheber.aktueller()
+        if wer is not None and f"{urheber.PRAEFIX}.name" not in kontext:
+            kontext.update(wer.als_kontext())
         async with self.maker() as s:
             s.add(
                 m.SystemEvent(
@@ -567,7 +581,7 @@ class SqlRepositories:
                     severity=severity,
                     code=code,
                     message=message,
-                    context=dict(context or {}),
+                    context=kontext,
                 )
             )
             await s.commit()
@@ -848,16 +862,24 @@ class SqlRepositories:
         self,
         kind: str,
         payload: dict[str, object],
-        created_by: str = "system",
+        created_by: str | None = None,
         comment: str | None = None,
     ) -> UUID:
+        """Eine Fassung der Konfiguration ablegen.
+
+        **`created_by` kommt vom Urheber der Anfrage**, wenn der Aufrufer nichts anderes sagt.
+        Vorher stand hier fest verdrahtet „owner" - eine Angabe, die niemanden bezeichnete und
+        bei jeder Zeile gleich aussah.
+        """
+        wer = urheber.aktueller()
+        urhebername = created_by or (wer.id if wer is not None else "system")
         async with self.maker() as s:
             await s.execute(
                 text("UPDATE config_versions SET active = false WHERE kind = :kind"), {"kind": kind}
             )
             row = m.ConfigVersion(
                 created_at=datetime.now(UTC),
-                created_by=created_by,
+                created_by=urhebername,
                 kind=kind,
                 payload=payload,
                 comment=comment,

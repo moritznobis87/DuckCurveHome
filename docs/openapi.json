@@ -8540,6 +8540,11 @@
           "text": {
             "type": "string",
             "title": "Text"
+          },
+          "urheber": {
+            "type": "string",
+            "title": "Urheber",
+            "default": ""
           }
         },
         "type": "object",

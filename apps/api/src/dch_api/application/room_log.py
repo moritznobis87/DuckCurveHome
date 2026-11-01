@@ -41,7 +41,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from itertools import pairwise
 from typing import Literal
+
+from dch_api import urheber as urheber_logik
 
 #: Ab wann zwei Sollwerte verschieden sind. Controme führt Zehntel; alles darunter ist Rundung.
 SPRUNG_K = 0.05
@@ -96,6 +99,10 @@ class Eintrag:
     von: float | None
     nach: float | None
     text: str
+    #: Wer es war, als Anzeigezeile („iPad Flur", später „Moritz, am iPad Flur"). Leer, wenn es
+    #: niemand sagen kann: bei Änderungen von außen, und bei Zeilen aus der Zeit vor dieser
+    #: Aufzeichnung. **Leer heißt unbekannt, nicht „niemand".**
+    urheber: str = ""
 
 
 def _zahl(wert: object) -> float | None:
@@ -134,7 +141,7 @@ def spruenge(werte: Sequence[tuple[datetime, float]], schwelle: float = SPRUNG_K
     als ginge es, wäre schlimmer als die Minute Unschärfe.
     """
     out: list[Sprung] = []
-    for (_, vorher), (zeit, jetzt) in zip(werte, werte[1:], strict=False):
+    for (_, vorher), (zeit, jetzt) in pairwise(werte):
         if abs(jetzt - vorher) > schwelle:
             out.append(Sprung(at=zeit, von=vorher, nach=jetzt))
     return out
@@ -183,10 +190,20 @@ def verschmelze(
     for ev in sorted(ereignisse, key=lambda e: e.at):
         art = _art(ev)
         quelle = _quelle(ev.code)
+        wer = urheber_logik.aus_kontext(ev.context)
+        wer_text = wer.text() if wer is not None else ""
         ziel = _zahl(ev.context.get("to"))
         if art != "sollwert" or ziel is None:
             out.append(
-                Eintrag(at=ev.at, quelle=quelle, art=art, von=None, nach=None, text=ev.message)
+                Eintrag(
+                    at=ev.at,
+                    quelle=quelle,
+                    art=art,
+                    von=None,
+                    nach=None,
+                    text=ev.message,
+                    urheber=wer_text,
+                )
             )
             continue
         treffer = next(
@@ -208,6 +225,7 @@ def verschmelze(
                     von=_zahl(ev.context.get("from")),
                     nach=ziel,
                     text=ev.message,
+                    urheber=wer_text,
                 )
             )
             continue
@@ -220,6 +238,7 @@ def verschmelze(
                 von=treffer.von,
                 nach=treffer.nach,
                 text=ev.message,
+                urheber=wer_text,
             )
         )
 

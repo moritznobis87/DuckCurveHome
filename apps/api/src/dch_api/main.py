@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from dch_api import urheber
 from dch_api.application.config_loader import load_app_config
 from dch_api.dependencies import require_api_token
 from dch_api.errors import DchError, install_error_handlers
@@ -147,6 +148,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def urheber_setzen(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """Den Urheber dieser Anfrage für ihre ganze Dauer bereitstellen.
+
+        **Warum Middleware und nicht Abhängigkeit.** Eine Abhängigkeit müsste jeder Endpunkt
+        annehmen, und die Ablage müsste sie durch jede Schicht gereicht bekommen. Hier steht sie
+        einmal und gilt für alles, was in dieser Anfrage geschrieben wird - auch tief unten in
+        `repos.add_event`, das von einundzwanzig Stellen gerufen wird.
+
+        **Geglaubt wird die Angabe, weil hinter derselben Tür das API-Token steht.** Wer das
+        Token hat, könnte jeden Urheber behaupten - er könnte aber ohnehin alles. Das ist eine
+        Zuordnung, keine Beweisführung; siehe `application/urheber.py`.
+        """
+        merker = urheber.setze(urheber.aus_kopfzeilen(request.headers))
+        try:
+            return await call_next(request)
+        finally:
+            urheber.zuruecksetzen(merker)
+
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(bridge.router)

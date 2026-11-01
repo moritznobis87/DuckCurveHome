@@ -22,6 +22,7 @@ from typing import Any, cast
 
 import structlog
 
+from dch_api import urheber
 from dch_api.application import house, rooms
 from dch_api.application import room_log as room_log_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
@@ -1142,7 +1143,7 @@ class LiveRuntime:
                 422,
             )
         self.shift_cfg = neu
-        await self.repos.save_config("room_shift", neu.payload(), created_by="owner")
+        await self.repos.save_config("room_shift", neu.payload())
         await self.repos.add_event(
             "info",
             "rooms.automatik",
@@ -1291,6 +1292,19 @@ class LiveRuntime:
                 log.warning("room shift failed", room=rid, error=repr(exc)[:200])
 
     async def _room_shift_one(self, rid: int, offset_k: float, grund: str, now: datetime) -> None:
+        """Einen Raum nachführen. Was hier geschrieben wird, war die Automatik, niemand sonst.
+
+        **Auch dann, wenn ein Mensch den Takt ausgelöst hat.** Wer die Automatik einschaltet,
+        löst sofort einen Durchlauf aus; ohne diese Zeile stünde unter der Sollwertänderung sein
+        Name, obwohl nicht er den Wert gewählt hat, sondern die Automatik.
+        """
+        merker = urheber.setze(urheber.AUTOMATIK)
+        try:
+            await self._room_shift_eins(rid, offset_k, grund, now)
+        finally:
+            urheber.zuruecksetzen(merker)
+
+    async def _room_shift_eins(self, rid: int, offset_k: float, grund: str, now: datetime) -> None:
         soll = self.live.measurement(f"room_{rid}_setpoint_c", now, rooms.STALE_S)
         fenster = self.live.measurement(f"room_{rid}_window", now, rooms.STALE_S).value
         vorher = self._shift_states.get(rid)
@@ -1530,7 +1544,13 @@ class LiveRuntime:
             ],
             entries=[
                 RoomLogEntryOut(
-                    at=e.at, quelle=e.quelle, art=e.art, from_c=e.von, to_c=e.nach, text=e.text
+                    at=e.at,
+                    quelle=e.quelle,
+                    art=e.art,
+                    from_c=e.von,
+                    to_c=e.nach,
+                    text=e.text,
+                    urheber=e.urheber,
                 )
                 for e in room_log_logic.verschmelze(saetze, roh)
             ],
@@ -1606,7 +1626,7 @@ class LiveRuntime:
             neu = apply_heat_patch(self.hems, werte)
         except ValueError as exc:
             raise DchError("invalid_config", str(exc), 422) from exc
-        await self.repos.save_config("heat", werte, created_by="owner")
+        await self.repos.save_config("heat", werte)
         self._apply_hems(neu)
         log.info("heat config updated", fields=sorted(werte))
         return neu

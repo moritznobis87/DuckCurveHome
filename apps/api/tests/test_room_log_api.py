@@ -100,9 +100,7 @@ def test_ein_sollwertsprung_ohne_ereignis_steht_als_extern_im_protokoll(
         )
         assert json.loads(ws.receive_text()) == {"type": "ack", "seq": 2}
 
-        antwort = live_client.get(
-            "/api/v1/rooms/1/log?hours=2&step_min=5", headers=KOPF
-        ).json()
+        antwort = live_client.get("/api/v1/rooms/1/log?hours=2&step_min=5", headers=KOPF).json()
 
     assert antwort["room"]["name"] == "Nordzimmer"
     assert antwort["step_min"] == 5
