@@ -234,11 +234,11 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
       {/* Strom: drei Quellen laufen in einen Knoten; von dort zwei Abgänge: zur Wärmepumpe und
           hinunter zum Haushalt. Der Haushalt ist Abnehmer, keine Quelle, darum hängt er unter dem
           Knoten und nicht in der Spalte der Quellen. */}
-      <Rohr id="pv" d="M150 150 C 220 150, 230 300, 300 300" kw={e.pv_kw} col={FARBE.pv} ruhig={ruhig} />
-      <Rohr id="netz" d="M150 300 L 300 300" kw={e.grid_kw} col={istAn(e.grid_kw) && e.grid_kw < 0 ? FARBE.pvSoft : FARBE.netz} umkehren={istAn(e.grid_kw) && e.grid_kw < 0} ruhig={ruhig} />
-      <Rohr id="bat" d="M150 450 C 220 450, 230 300, 300 300" kw={e.battery_kw} col={FARBE.speicher} umkehren={istAn(e.battery_kw) && e.battery_kw < 0} ruhig={ruhig} />
+      <Rohr id="pv" d="M160 150 C 220 150, 230 300, 300 300" kw={e.pv_kw} col={FARBE.pv} ruhig={ruhig} />
+      <Rohr id="netz" d="M160 300 L 300 300" kw={e.grid_kw} col={istAn(e.grid_kw) && e.grid_kw < 0 ? FARBE.pvSoft : FARBE.netz} umkehren={istAn(e.grid_kw) && e.grid_kw < 0} ruhig={ruhig} />
+      <Rohr id="bat" d="M160 450 C 220 450, 230 300, 300 300" kw={e.battery_kw} col={FARBE.speicher} umkehren={istAn(e.battery_kw) && e.battery_kw < 0} ruhig={ruhig} />
       <Rohr id="wp" d="M300 300 C 360 300, 370 332, 420 332" kw={e.heat_pump_kw} col={mix.haupt} farben={mix.farben} ruhig={ruhig} />
-      <Rohr id="ev" d="M300 300 C 300 380, 330 400, 330 446" kw={e.rest_kw} col={mix.haupt} farben={mix.farben} ruhig={ruhig} />
+      <Rohr id="ev" d="M300 300 C 300 380, 330 400, 330 432" kw={e.rest_kw} col={mix.haupt} farben={mix.farben} ruhig={ruhig} />
       {/* Ofenkreis: der Vorlauf steigt über das Glas und fällt von oben senkrecht in die Spitze. */}
       <Rohr id="ofvl" d="M680 135 C 740 135, 860 40, 860 92" kw={ofKw} col={farbe(o.flow_c ?? t[0])} ruhig={ruhig} />
       {/* Der gemeinsame Rücklauf: ein Rohr aus der untersten Spitze bis zum Abzweig, dort teilt es
@@ -260,33 +260,33 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
       {/* ============ Strom ============ */}
       <Symbol ziel="pv">
       <g>
-        <circle className="anlage-kreis" cx="120" cy="150" r="30" fill="#0a2735" stroke={FARBE.pv} strokeOpacity=".75" strokeWidth="1.2" />
-        <text className="anlage-name" x="120" y="146" textAnchor="middle">
+        <circle className="anlage-kreis" cx="120" cy="150" r="40" fill="#0a2735" stroke={FARBE.pv} strokeOpacity=".75" strokeWidth="1.2" />
+        <text className="anlage-name" x="120" y="146" textAnchor="middle" fontSize="14">
           PV
         </text>
-        <Zahl x={120} y={164} size={15} wert={de(e.pv_kw)} einheit=" kW" anchor="middle" />
+        <Zahl x={120} y={164} size={14} wert={de(e.pv_kw)} einheit=" kW" anchor="middle" />
       </g>
       </Symbol>
       <Symbol ziel="netz">
       <g>
-        <circle className="anlage-kreis" cx="120" cy="300" r="30" fill="#0a2735" stroke={FARBE.netz} strokeOpacity=".75" strokeWidth="1.2" />
-        <text className="anlage-name" x="120" y="296" textAnchor="middle">
+        <circle className="anlage-kreis" cx="120" cy="300" r="40" fill="#0a2735" stroke={FARBE.netz} strokeOpacity=".75" strokeWidth="1.2" />
+        <text className="anlage-name" x="120" y="296" textAnchor="middle" fontSize="14">
           Netz
         </text>
-        <Zahl x={120} y={314} size={15} wert={de(e.grid_kw)} einheit=" kW" anchor="middle" />
-        <text className="anlage-hint" x="120" y="346" textAnchor="middle">
+        <Zahl x={120} y={314} size={14} wert={de(e.grid_kw)} einheit=" kW" anchor="middle" />
+        <text className="anlage-hint" x="120" y="356" textAnchor="middle">
           {netzWort(e.grid_kw)}
         </text>
       </g>
       </Symbol>
       <Symbol ziel="bat">
       <g>
-        <circle className="anlage-kreis" cx="120" cy="450" r="30" fill="#0a2735" stroke={FARBE.speicher} strokeOpacity=".75" strokeWidth="1.2" />
-        <text className="anlage-name" x="120" y="446" textAnchor="middle">
+        <circle className="anlage-kreis" cx="120" cy="450" r="40" fill="#0a2735" stroke={FARBE.speicher} strokeOpacity=".75" strokeWidth="1.2" />
+        <text className="anlage-name" x="120" y="446" textAnchor="middle" fontSize="14">
           Speicher
         </text>
-        <Zahl x={120} y={464} size={15} wert={de(e.battery_kw)} einheit=" kW" anchor="middle" />
-        <text className="anlage-hint" x="120" y="496" textAnchor="middle">
+        <Zahl x={120} y={464} size={14} wert={de(e.battery_kw)} einheit=" kW" anchor="middle" />
+        <text className="anlage-hint" x="120" y="506" textAnchor="middle">
           {batSoc ? `${batterieWort(e.battery_kw)} · ${batSoc}` : batterieWort(e.battery_kw)}
         </text>
       </g>
@@ -302,12 +302,12 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
       {/* Haushalt: Abnehmer unter dem Knoten, alles außer der Wärmepumpe */}
       <Symbol ziel="haus">
       <g>
-        <circle className="anlage-kreis" cx="330" cy="470" r="24" fill="#0a2735" stroke={FARBE.ev} strokeOpacity=".6" strokeWidth="1.2" />
-        <text className="anlage-name" x="330" y="467" textAnchor="middle" fontSize="13">
+        <circle className="anlage-kreis" cx="330" cy="470" r="38" fill="#0a2735" stroke={FARBE.ev} strokeOpacity=".6" strokeWidth="1.2" />
+        <text className="anlage-name" x="330" y="469" textAnchor="middle" fontSize="12.5">
           Haushalt
         </text>
-        <Zahl x={330} y={483} size={13} wert={de(e.rest_kw)} einheit=" kW" anchor="middle" />
-        <text className="anlage-hint" x="330" y="512" textAnchor="middle">
+        <Zahl x={330} y={486} size={13} wert={de(e.rest_kw)} einheit=" kW" anchor="middle" />
+        <text className="anlage-hint" x="330" y="522" textAnchor="middle">
           inkl. Wallbox
         </text>
       </g>
