@@ -517,6 +517,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/energy/speicher-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Speicherbilanz gegen Ladestand und Hausverbrauch halten
+         * @description Stimmt, was die Speicherseite ausweist?
+         *
+         *     Die Speicherauswertung rechnet alles aus einer einzigen Messreihe und kann sich deshalb nicht
+         *     selbst widerlegen. Diese Prüfung holt zwei unabhängige Zeugen dazu: den Ladestand aus dem Gerät
+         *     und den Hausverbrauch von den Wandlern des Hubs. Sie beantwortet die Frage, ob eine auffällige
+         *     Netzladung wirklich im Speicher angekommen ist, ob sie nur im Gerät geblieben ist oder ob sie
+         *     gar nicht geflossen ist.
+         */
+        get: operations["speicher_check_api_v1_energy_speicher_check_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/export/{kind}": {
         parameters: {
             query?: never;
@@ -5786,6 +5812,38 @@ export interface operations {
         parameters: {
             query?: {
                 day?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    speicher_check_api_v1_energy_speicher_check_get: {
+        parameters: {
+            query?: {
+                period?: "day" | "week" | "month" | "year";
+                anchor?: string | null;
             };
             header?: never;
             path?: never;

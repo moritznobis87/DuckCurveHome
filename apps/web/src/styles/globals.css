@@ -617,3 +617,9 @@ button.haus-block-kopf:hover .haus-block-pfeil { color: var(--text-1); }
 .anlage-fehler { margin: 0; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--alert); color: var(--text-1); font-size: 13px; }
 .anlage-warten { min-height: 420px; border-radius: 28px; border: 1px solid var(--line-1); display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .anlage-fade { transition: none; } }
+
+/* Der Pruefbericht des Speichers: eine Tabelle zum Lesen, keine Datenstruktur. Feste Breite,
+   damit die Spalten stehen, und ein eigener Rollbereich, damit er die Seite nicht auseinanderzieht. */
+.pruef-knopf { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--petrol); background: var(--amber); border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.pruef-knopf:disabled { background: var(--line-2); color: var(--text-2); cursor: default; }
+.pruefbericht { margin: 0; max-height: 60dvh; overflow: auto; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--line-1); background: rgba(8,36,49,.6); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.55; color: var(--text-2); white-space: pre; }

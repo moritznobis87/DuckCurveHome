@@ -136,3 +136,24 @@ async def diagnose(
     """Rohe Zahlen statt Grafik: was steht in den Stunden, und welche Minuten haben es dorthin
     gebracht. Gedacht für die Frage „diese Zahl kann nicht stimmen"."""
     return await runner.diagnose_day(_anchor(runner, day))
+
+
+@router.get(
+    "/speicher-check",
+    response_class=PlainTextResponse,
+    summary="Speicherbilanz gegen Ladestand und Hausverbrauch halten",
+)
+async def speicher_check(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    period: Annotated[Period, Query()] = "month",
+    anchor: date | None = None,
+) -> str:
+    """Stimmt, was die Speicherseite ausweist?
+
+    Die Speicherauswertung rechnet alles aus einer einzigen Messreihe und kann sich deshalb nicht
+    selbst widerlegen. Diese Prüfung holt zwei unabhängige Zeugen dazu: den Ladestand aus dem Gerät
+    und den Hausverbrauch von den Wandlern des Hubs. Sie beantwortet die Frage, ob eine auffällige
+    Netzladung wirklich im Speicher angekommen ist, ob sie nur im Gerät geblieben ist oder ob sie
+    gar nicht geflossen ist.
+    """
+    return await runner.speicher_check(period, _anchor(runner, anchor))

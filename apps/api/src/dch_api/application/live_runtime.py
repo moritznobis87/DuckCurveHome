@@ -28,7 +28,12 @@ from dch_api.application import house, rooms
 from dch_api.application import room_log as room_log_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
 from dch_api.application.config_loader import AppConfig
-from dch_api.application.energy_accounting import ENERGY_KEYS, HEAT_KEYS, EnergyAccounting
+from dch_api.application.energy_accounting import (
+    BATTERY_KEYS,
+    ENERGY_KEYS,
+    HEAT_KEYS,
+    EnergyAccounting,
+)
 from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
 from dch_api.application.forecast_service import ForecastService
 from dch_api.application.ha_import import HaImporter, ImportResult, Kind, load_entity_rules
@@ -227,6 +232,8 @@ class LiveRuntime:
             # und ohne ihn meldete die Ofenauswertung im Live-Betrieb „keine Daten", während
             # die Spalten gefüllt dastanden.
             heat_rows=lambda s, e: repos.minute_series(s, e, HEAT_KEYS),
+            # Und noch eine: die Speicherpruefung braucht Ladestand und Hub-Hausverbrauch.
+            battery_rows=lambda s, e: repos.minute_series(s, e, BATTERY_KEYS),
             room_rows=self._vent_rows,
             heat_store=(repos.heat_hours, repos.upsert_heat_hours),
         )
@@ -1697,6 +1704,9 @@ class LiveRuntime:
         if kind == "hours":
             return self.repos.stream_hours_csv(start, end)
         raise DchError("invalid_kind", f"Unbekannter Export: {kind}", 422)
+
+    async def speicher_check(self, period: Period, anchor: date) -> str:
+        return await self.accounting.speicher_check(period, anchor)
 
     async def check_invoice(self, payload: bytes, file_name: str | None) -> InvoiceReportOut:
         return await self.invoice_service.check(payload, file_name)

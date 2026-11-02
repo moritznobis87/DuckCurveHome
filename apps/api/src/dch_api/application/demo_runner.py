@@ -324,6 +324,9 @@ class DemoRunner:
     def battery_state(self) -> BatteryLiveOut:
         return BatteryLiveOut(note_de="Demo-Modus: kein Speicher zum Schalten.")
 
+    async def speicher_check(self, period: Period, anchor: date) -> str:
+        return await self.accounting.speicher_check(period, anchor)
+
     async def set_battery_mode(
         self, mode: BatteryMode, duration_min: int, reserve_soc: float | None
     ) -> BatteryLiveOut:

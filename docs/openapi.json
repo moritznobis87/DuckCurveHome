@@ -1203,6 +1203,73 @@
         }
       }
     },
+    "/api/v1/energy/speicher-check": {
+      "get": {
+        "tags": [
+          "Energiebilanz"
+        ],
+        "summary": "Speicherbilanz gegen Ladestand und Hausverbrauch halten",
+        "description": "Stimmt, was die Speicherseite ausweist?\n\nDie Speicherauswertung rechnet alles aus einer einzigen Messreihe und kann sich deshalb nicht\nselbst widerlegen. Diese Prüfung holt zwei unabhängige Zeugen dazu: den Ladestand aus dem Gerät\nund den Hausverbrauch von den Wandlern des Hubs. Sie beantwortet die Frage, ob eine auffällige\nNetzladung wirklich im Speicher angekommen ist, ob sie nur im Gerät geblieben ist oder ob sie\ngar nicht geflossen ist.",
+        "operationId": "speicher_check_api_v1_energy_speicher_check_get",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ],
+              "type": "string",
+              "default": "month",
+              "title": "Period"
+            }
+          },
+          {
+            "name": "anchor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Anchor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/export/{kind}": {
       "get": {
         "tags": [

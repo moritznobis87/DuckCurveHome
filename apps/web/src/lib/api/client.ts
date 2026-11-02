@@ -91,6 +91,13 @@ export const api = {
   energyEv: (period: Period, anchor: string) => request<EvReport>(`/energy/ev?period=${period}&anchor=${anchor}`),
   energyPv: (period: Period, anchor: string) => request<PvTaxReport>(`/energy/pv?period=${period}&anchor=${anchor}`),
   energyYearMap: (year: number) => request<YearMap>(`/energy/year-map?year=${year}`),
+  // Reiner Text wie die Tagesdiagnose: der Prüfbericht des Speichers, gegen Ladestand und
+  // Hausverbrauch gehalten. Kein JSON-Umschlag, weil es eine Antwort zum Lesen ist.
+  speicherCheck: async (period: Period, anchor: string): Promise<string> => {
+    const res = await fetch(`/api/dch/energy/speicher-check?period=${period}&anchor=${anchor}`, { cache: "no-store" });
+    if (!res.ok) throw new ApiError("http_error", `Fehler ${res.status}`, res.status);
+    return res.text();
+  },
   storage: () => request<StorageReport>("/system/storage"),
   coverage: (anchor: string, days: number) => request<Coverage>(`/system/coverage?anchor=${anchor}&days=${days}`),
   doorLog: (days: number) => request<DoorLog>(`/system/door?days=${days}`),

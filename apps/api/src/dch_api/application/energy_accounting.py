@@ -39,21 +39,30 @@ from dch_api.schemas import (
     YearMapOut,
 )
 from hems_core.accounting import (
+    Abschnitt,
     BatteryOrigin,
     EnergyTotals,
     HourlyEnergy,
     MinuteSample,
+    RuheBefund,
     ShiftHour,
+    SpeicherBefund,
+    SpeicherProbe,
+    TiefBefund,
+    Wirkungsgrade,
     cop_at,
     estimated_kg_burned,
     fill_gaps,
     heat_forecast,
     hourly_energy,
+    pruefe_speicher,
     pv_tax,
     samples_from_rows,
     samples_from_totals,
     shift_value,
+    speicher_urteil,
     summarize,
+    summe_abschnitte,
     with_charge_window,
 )
 from hems_core.domain import BufferConfig, HemsConfig
@@ -107,6 +116,17 @@ ENERGY_KEYS = [
     "buffer_temp_mid_top_c",
     "buffer_temp_mid_bottom_c",
     "buffer_temp_bottom_c",
+]
+# Was die Speicherprüfung liest. Zwei Reihen stehen hier, die in keiner Bilanz vorkommen und
+# genau deshalb gebraucht werden: `battery_soc` kommt aus dem Speicher selbst, `house_power_kw` von
+# den Wandlern des Hubs. Beide sind von `battery_power_kw` unabhängig, und nur Unabhängiges kann
+# eine Messung bestätigen oder widerlegen (siehe hems_core.accounting.battery_check).
+BATTERY_KEYS = [
+    "pv_power_kw",
+    "grid_power_kw",
+    "battery_power_kw",
+    "battery_soc",
+    "house_power_kw",
 ]
 # Dieselben Reihen plus alles, was die Wärmeseite braucht. Eigene Liste und nicht ENERGY_KEYS
 # erweitert: die Stundenbilanz läuft über jeden Backfill und soll keine dreizehn Spalten mitschleppen,
@@ -543,6 +563,112 @@ RoomRows = Callable[
 ]
 
 
+# ------------------------------------------------------------------ Speicherprüfung: Textform
+
+
+def _tagesgrenzen(start: datetime, end: datetime, tz: ZoneInfo) -> list[datetime]:
+    """Die Anfänge der Ortstage im Zeitraum, der Anfang des Zeitraums zuerst."""
+    out = [start]
+    loc = start.astimezone(tz)
+    naechster = (loc + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    while naechster < end.astimezone(tz):
+        out.append(naechster.astimezone(UTC))
+        naechster = (naechster + timedelta(days=1)).replace(hour=0, minute=0)
+    return out
+
+
+def _gruppen(tage: list[Abschnitt], tz: ZoneInfo, monatlich: bool) -> list[tuple[str, Abschnitt]]:
+    """Die Tage zu Zeilen zusammenfassen - ein Jahr als 306 Zeilen liest niemand."""
+    eimer: dict[str, list[Abschnitt]] = {}
+    for a in tage:
+        loc = a.von.astimezone(tz)
+        schluessel = f"{loc:%Y-%m}" if monatlich else f"{loc:%Y-%m-%d}"
+        eimer.setdefault(schluessel, []).append(a)
+    return [(k, summe_abschnitte(v)) for k, v in sorted(eimer.items())]
+
+
+def _q(wert: float | None, breite: int = 7, stellen: int = 2) -> str:
+    return " " * (breite - 1) + "-" if wert is None else f"{wert:{breite}.{stellen}f}"
+
+
+def _speicher_text(
+    b: SpeicherBefund, start: datetime, end: datetime, tz: ZoneInfo, period: Period
+) -> list[str]:
+    """Den Befund als Bericht setzen: erst die drei Messungen, dann das Urteil, dann die Zeilen."""
+    g = b.gesamt
+    tage = max(1, round((end - start).total_seconds() / 86400))
+    out = [
+        f"Speicherpruefung {start.astimezone(tz):%d.%m.%Y} bis {end.astimezone(tz):%d.%m.%Y} "
+        f"({period}, Ortszeit {tz})",
+        f"Kapazitaet {b.kapazitaet_kwh:.1f} kWh | {g.minuten} Minutenzeilen an {tage} Tagen "
+        f"({g.minuten / (tage * 1440):.0%} der Minuten belegt)",
+        "",
+        "Gemessen (battery_power_kw)",
+        f"  geladen            {g.laden_kwh:9.1f} kWh   davon ohne Erzeugung {g.laden_dunkel_kwh:.1f} kWh",
+        f"  entladen           {g.entladen_kwh:9.1f} kWh",
+    ]
+    if g.delta_speicher_kwh is not None and g.soc_von is not None and g.soc_bis is not None:
+        out += [
+            "Gegenprobe 1: der Ladestand (battery_soc), vom Speicher selbst",
+            f"  von {g.soc_von:.0%} auf {g.soc_bis:.0%}        {g.delta_speicher_kwh:+9.1f} kWh Inhaltsaenderung",
+            f"  weder heraus noch drin {g.verlust_kwh or 0.0:9.1f} kWh"
+            + (f"   = {g.verlust_anteil:.0%} der Ladung" if g.verlust_anteil is not None else ""),
+        ]
+    else:
+        out.append("Gegenprobe 1: kein Ladestand im Zeitraum aufgezeichnet.")
+    if g.restglied_kw is not None:
+        out += [
+            "Gegenprobe 2: die Leistungsbilanz, an anderen Wandlern gemessen",
+            f"  PV + Netz + Speicher - Haus {g.restglied_kw:+.3f} kW im Mittel "
+            f"ueber {g.restglied_minuten} Minuten",
+        ]
+    else:
+        out.append("Gegenprobe 2: kein Hausverbrauch des Hubs aufgezeichnet (house_power_kw).")
+    r = b.ruhe
+    if r.minuten:
+        out += [
+            "Was gemeldet wurde, waehrend der Ladestand stillstand",
+            f"  {r.strecken} Strecken, {r.stunden:.0f} h, dabei im Mittel "
+            f"{r.mittel_kw or 0.0:+.3f} kW   (mehr als {r.schranke_kw or 0.0:.3f} kW "
+            "kann der Ladestand nicht verbergen)",
+        ]
+    if b.tief.anzahl:
+        out += [
+            "Ladungen aus dem Netz, die am leeren Speicher begannen",
+            f"  {b.tief.anzahl} Stueck, zusammen {b.tief.kwh:.1f} kWh "
+            f"(im Mittel {b.tief.kwh / b.tief.anzahl:.2f} kWh)",
+        ]
+        for n in b.tief.beispiele:
+            out.append(
+                f"    {n.at.astimezone(tz):%d.%m. %H:%M}  ab {n.soc:.0%}  "
+                f"{n.minuten:3d} min  {n.kwh:.2f} kWh"
+            )
+    out += ["", "Urteil"]
+    out += [f"  - {satz}" for satz in speicher_urteil(b)]
+    out += [
+        "",
+        "Zeitraum     Minuten    Laden   Entlad   dunkel  dSpeich  Verlust Anteil Restglied",
+    ]
+    for name, a in _gruppen(b.tage, tz, monatlich=tage > 45):
+        anteil = f"{a.verlust_anteil:5.0%}" if a.verlust_anteil is not None else "    -"
+        out.append(
+            f"{name:11s} {a.minuten:8d} {a.laden_kwh:8.1f} {a.entladen_kwh:8.1f} "
+            f"{a.laden_dunkel_kwh:8.1f} {_q(a.delta_speicher_kwh, 8, 1)} "
+            f"{_q(a.verlust_kwh, 8, 1)} {anteil} {_q(a.restglied_kw, 9, 3)}"
+        )
+    out += [
+        "",
+        "Lesehilfe. `dSpeich` ist, was der Ladestand an Inhaltsaenderung behauptet; `Verlust` ist",
+        "Laden minus Entladen minus dSpeich, also was hineinging, ohne herauszukommen oder",
+        "anzukommen. Umwandlung erklaert 10 bis 20 Prozent. `Restglied` ist PV + Netz + Speicher",
+        "minus dem Hausverbrauch des Hubs: Ist es null, sehen die anderen Messgeraete denselben",
+        "Strom; weicht es ab, meldet die Speichermessung etwas, das sonst niemand sieht.",
+        "Eine Zeile mit auffaellig wenigen Minuten stammt aus einem Stundenimport; dort ist die",
+        "Aufteilung geschaetzt und die Lade-Entlade-Trennung grob.",
+    ]
+    return out
+
+
 class EnergyAccounting:
     def __init__(
         self,
@@ -553,6 +679,7 @@ class EnergyAccounting:
         data_since: Callable[[], Awaitable[datetime | None]] | None = None,
         device_events: DeviceEvents | None = None,
         heat_rows: MinuteRows | None = None,
+        battery_rows: MinuteRows | None = None,
         heat_store: HeatStore | None = None,
         room_rows: RoomRows | None = None,
     ) -> None:
@@ -562,6 +689,9 @@ class EnergyAccounting:
         # Ohne eigene Quelle liest die Wärmeseite dieselbe wie die Bilanz. Das ist der Demo-Betrieb,
         # wo ohnehin alle Spalten kommen; live wird hier die breitere Abfrage eingehängt.
         self.heat_rows = heat_rows or minute_rows
+        # Dasselbe für die Speicherprüfung: sie braucht Ladestand und Hub-Hausverbrauch, die in
+        # ENERGY_KEYS nichts zu suchen haben.
+        self.battery_rows = battery_rows or minute_rows
         self.heat_store = heat_store
         self.room_rows = room_rows
         self.store = store
@@ -817,6 +947,61 @@ class EnergyAccounting:
             out.append(f"  ... {len(rows) - 40} weitere")
         out.append("")
         return out
+
+    # ------------------------------------------------------------------ Speicherprüfung
+    def _speicher_proben(self, rows: list[dict[str, float | str | None]]) -> list[SpeicherProbe]:
+        def f(r: dict[str, float | str | None], k: str) -> float | None:
+            v = r.get(k)
+            return float(v) if isinstance(v, int | float) else None
+
+        return [
+            SpeicherProbe(
+                at=datetime.fromisoformat(str(r["ts"]).replace("Z", "+00:00")),
+                pv_kw=f(r, "pv_power_kw"),
+                grid_kw=f(r, "grid_power_kw"),
+                battery_kw=f(r, "battery_power_kw"),
+                house_kw=f(r, "house_power_kw"),
+                soc=f(r, "battery_soc"),
+            )
+            for r in rows
+        ]
+
+    async def speicher_check(self, period: Period, anchor: date) -> str:
+        """Die Speicherbilanz gegen Ladestand und Hub-Hausverbrauch halten, als Text.
+
+        **Warum als Text und nicht als Kachel.** Die Frage ist nicht „wie viel", sondern „stimmt
+        das überhaupt", und sie wird einmal gestellt und dann entschieden. Dafür braucht es die
+        Zahlen nebeneinander und einen Satz dazu, keine weitere Grafik neben der, an der schon der
+        Zweifel entstand.
+
+        Gelesen wird in Wochenstücken. Ein Jahr Minutenzeilen sind über eine halbe Million Zeilen;
+        am Stück gehalten wäre das eine Abfrage, die den Dienst für alle anderen anhält. Die
+        Teilbefunde addieren sich, weil sie ihre Summen mitführen und nicht ihre Quotienten.
+        """
+        start, end = self.period_bounds(period, anchor)
+        kap = self.hems.battery.capacity_kwh
+        tage: list[Abschnitt] = []
+        ruhe = RuheBefund(0, 0, 0.0, 0.0)
+        voll_minuten = 0
+        wirkung = Wirkungsgrade()
+        tief = TiefBefund()
+        fenster = start
+        while fenster < end:
+            bis = min(fenster + timedelta(days=7), end)
+            rows = await self.battery_rows(fenster, bis)
+            proben = self._speicher_proben(rows)
+            if proben:
+                grenzen = _tagesgrenzen(fenster, bis, self.tz)
+                befund = pruefe_speicher(proben, kap, grenzen)
+                tage.extend(befund.tage)
+                ruhe = ruhe.plus(befund.ruhe)
+                voll_minuten += befund.ruhe_voll_minuten
+                wirkung = wirkung.plus(befund.wirkungsgrade)
+                tief = tief.plus(befund.tief)
+            fenster = bis
+        gesamt = summe_abschnitte(tage)
+        ganz = SpeicherBefund(kap, gesamt, tage, ruhe, voll_minuten, wirkung, tief)
+        return "\n".join(_speicher_text(ganz, start, end, self.tz, period))
 
     async def diagnose_day(self, day: date) -> str:
         """Einen Tag als Text aufschlüsseln: gespeicherte Stunden und die auffälligsten Minuten.

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import type { EnergySummary, HistoryRow, Period } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
+import { SpeicherCheck } from "./SpeicherCheck";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
 import { batteryDayChart, C, donut, stackedBars } from "./charts";
@@ -158,6 +159,7 @@ export function BatteryReport() {
           ]}
         />
       </div>
+      <SpeicherCheck period={period} anchor={anchor} />
       <CoverageNote meta={data?.meta} extra="Ersparnis: jede ins Haus entladene Kilowattstunde spart den Bezugspreis der Stunde, abzüglich der Einspeisevergütung, die der gespeicherte PV-Strom sonst gebracht hätte." />
     </ReportShell>
   );
