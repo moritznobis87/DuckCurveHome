@@ -1,17 +1,17 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-export function Card({ children, accent = false, className = "", style, href, ariaLabel }: { children: ReactNode; accent?: boolean; className?: string; style?: React.CSSProperties; href?: string; ariaLabel?: string }) {
+export function Card({ children, accent = false, className = "", style, href, ariaLabel, id }: { children: ReactNode; accent?: boolean; className?: string; style?: React.CSSProperties; href?: string; ariaLabel?: string; id?: string }) {
   const cls = `card ${accent ? "card-accent" : ""} ${className}`;
   if (href) {
     return (
-      <Link href={href} aria-label={ariaLabel} className={`${cls} card-link`} style={{ ...style, color: "inherit", textDecoration: "none" }}>
+      <Link id={id} href={href} aria-label={ariaLabel} className={`${cls} card-link`} style={{ ...style, color: "inherit", textDecoration: "none" }}>
         {children}
       </Link>
     );
   }
   return (
-    <section className={cls} style={style}>
+    <section id={id} className={cls} style={style}>
       {children}
     </section>
   );

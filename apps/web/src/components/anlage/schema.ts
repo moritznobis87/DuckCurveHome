@@ -193,3 +193,19 @@ export function heizungStatus(h: Anlage["heizkreis"]): string {
   if (h.rooms_total === 0) return "keine Räume gemeldet";
   return h.rooms_open > 0 ? "Räume nehmen Wärme" : "kein Raum nimmt Wärme";
 }
+
+/** Wohin ein Symbol führt. Dieselben Ziele wie die Knoten der Startseite (`FlowHero`): wer dort
+ *  auf die Sonne tippt, landet auf der Photovoltaik, und hier auch. Die Wärme-Ziele bekommen eine
+ *  Sprungmarke auf die Karte der Erzeugerseite, die das Gerät zeigt. */
+export const ZIELE = {
+  pv: { href: "/strom/pv", label: "Photovoltaik" },
+  netz: { href: "/strom", label: "Strombilanz" },
+  bat: { href: "/strom/speicher", label: "Stromspeicher" },
+  haus: { href: "/strom", label: "Haushalt in der Strombilanz" },
+  wp: { href: "/waerme#puffer", label: "Wärmepumpe und Puffer im Verlauf" },
+  ofen: { href: "/waerme#ofen", label: "Pelletofen im Verlauf" },
+  puffer: { href: "/waerme#puffer", label: "Pufferspeicher im Verlauf" },
+  heizung: { href: "/waerme/raeume", label: "Räume und Heizkreise" },
+  warmwasser: { href: "/waerme/bilanz", label: "Wärmebilanz mit Warmwasser" },
+} as const;
+export type Ziel = keyof typeof ZIELE;

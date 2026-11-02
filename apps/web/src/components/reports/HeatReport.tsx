@@ -108,7 +108,7 @@ export function HeatReport() {
         </Card>
       </div>
       <div className="report-row" style={{ "--cols": "7fr 5fr" } as React.CSSProperties}>
-        <Card style={{ padding: 16, height: 280 }}>
+        <Card id="puffer" style={{ padding: 16, height: 280 }}>
           <CardHead title="Pufferspeicher und Wärmepumpe" right={period === "day" ? "Temperaturen in vier Höhen · WP-Leistung" : "Verlauf nur in der Tagesansicht"} />
           {period === "day" && hasBuffer ? <div className="min-h-0 flex-1"><EChart option={bufOpt} /></div> : <div className="flex flex-1 items-center justify-center"><Note>{period === "day" ? "Keine Puffertemperaturen für diesen Tag aufgezeichnet." : "Wechseln Sie auf „Tag“, um Temperaturen und Leistung im Verlauf zu sehen."}</Note></div>}
         </Card>
@@ -183,7 +183,7 @@ export function HeatReport() {
       </div>
 
       <div className="report-row" style={{ "--cols": "5fr 7fr" } as React.CSSProperties}>
-        <Card style={{ padding: "14px 18px", gap: 10 }}>
+        <Card id="ofen" style={{ padding: "14px 18px", gap: 10 }}>
           <CardHead title="Pelletofen" right={st?.available ? `${st.runs} Brennphase${st.runs === 1 ? "" : "n"}` : undefined} />
           <div className="flex items-baseline gap-3">
             <span className="mono text-[26px] leading-none" style={{ color: st?.running_minutes ? "var(--stove)" : "var(--text-1)" }}>

@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import type { MouseEvent, ReactNode } from "react";
 import type { Anlage } from "@/lib/api/models";
 import {
   batterieWort,
@@ -20,6 +21,8 @@ import {
   rohrDauer,
   rohrStaerke,
   warmwasserStatus,
+  ZIELE,
+  type Ziel,
 } from "./schema";
 
 /**
@@ -99,6 +102,24 @@ function Pumpe({ x, y, laeuft, text }: { x: number; y: number; laeuft: boolean; 
         </text>
       ) : null}
     </g>
+  );
+}
+
+/** Ein anklickbares Symbol: ein SVG-Link auf die Seite des Geräts, dieselben Ziele wie die Knoten
+ *  der Startseite. Ein echter Link, damit Mittelklick, Vorlesehilfe und „Link kopieren" gehen;
+ *  der normale Klick geht über den Router, damit die Seite nicht neu lädt. */
+function Symbol({ ziel, children }: { ziel: Ziel; children: ReactNode }) {
+  const router = useRouter();
+  const { href, label } = ZIELE[ziel];
+  const klick = (ev: MouseEvent<HTMLAnchorElement>) => {
+    if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button !== 0) return;
+    ev.preventDefault();
+    router.push(href);
+  };
+  return (
+    <a href={href} className="anlage-ziel" aria-label={`${label}. Details öffnen`} onClick={klick}>
+      {children}
+    </a>
   );
 }
 
@@ -237,15 +258,18 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
       <Rohr id="hzrl" d="M1070 380 C 1070 470, 960 470, 896 470" kw={hzKw} col={farbe(rl)} leise ruhig={ruhig} />
 
       {/* ============ Strom ============ */}
+      <Symbol ziel="pv">
       <g>
-        <circle cx="120" cy="150" r="30" fill="#0a2735" stroke={FARBE.pv} strokeOpacity=".75" strokeWidth="1.2" />
+        <circle className="anlage-kreis" cx="120" cy="150" r="30" fill="#0a2735" stroke={FARBE.pv} strokeOpacity=".75" strokeWidth="1.2" />
         <text className="anlage-name" x="120" y="146" textAnchor="middle">
           PV
         </text>
         <Zahl x={120} y={164} size={15} wert={de(e.pv_kw)} einheit=" kW" anchor="middle" />
       </g>
+      </Symbol>
+      <Symbol ziel="netz">
       <g>
-        <circle cx="120" cy="300" r="30" fill="#0a2735" stroke={FARBE.netz} strokeOpacity=".75" strokeWidth="1.2" />
+        <circle className="anlage-kreis" cx="120" cy="300" r="30" fill="#0a2735" stroke={FARBE.netz} strokeOpacity=".75" strokeWidth="1.2" />
         <text className="anlage-name" x="120" y="296" textAnchor="middle">
           Netz
         </text>
@@ -254,8 +278,10 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           {netzWort(e.grid_kw)}
         </text>
       </g>
+      </Symbol>
+      <Symbol ziel="bat">
       <g>
-        <circle cx="120" cy="450" r="30" fill="#0a2735" stroke={FARBE.speicher} strokeOpacity=".75" strokeWidth="1.2" />
+        <circle className="anlage-kreis" cx="120" cy="450" r="30" fill="#0a2735" stroke={FARBE.speicher} strokeOpacity=".75" strokeWidth="1.2" />
         <text className="anlage-name" x="120" y="446" textAnchor="middle">
           Speicher
         </text>
@@ -264,6 +290,7 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           {batSoc ? `${batterieWort(e.battery_kw)} · ${batSoc}` : batterieWort(e.battery_kw)}
         </text>
       </g>
+      </Symbol>
       {/* Der Knoten: ein Lichtpunkt ohne Namen. Hier treffen sich die Quellen, hier teilen sie sich. */}
       <g>
         <circle cx="300" cy="300" r="14" fill="#fff" opacity=".12" filter="url(#anlage-weich)" />
@@ -273,8 +300,9 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
         </text>
       </g>
       {/* Haushalt: Abnehmer unter dem Knoten, alles außer der Wärmepumpe */}
+      <Symbol ziel="haus">
       <g>
-        <circle cx="330" cy="470" r="24" fill="#0a2735" stroke={FARBE.ev} strokeOpacity=".6" strokeWidth="1.2" />
+        <circle className="anlage-kreis" cx="330" cy="470" r="24" fill="#0a2735" stroke={FARBE.ev} strokeOpacity=".6" strokeWidth="1.2" />
         <text className="anlage-name" x="330" y="467" textAnchor="middle" fontSize="13">
           Haushalt
         </text>
@@ -283,8 +311,10 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           inkl. Wallbox
         </text>
       </g>
+      </Symbol>
 
       {/* ============ Pelletofen, oben ============ */}
+      <Symbol ziel="ofen">
       <Kachel x={420} y={100} w={260} h={90} rx={24} gedimmt={!o.running}>
         <text className="anlage-name" x="446" y="130">
           Pelletofen
@@ -297,8 +327,10 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           {o.running && o.water_kw != null ? "geschätzt aus der Stufe" : ""}
         </text>
       </Kachel>
+      </Symbol>
 
       {/* ============ Wärmepumpe, die Bühne ============ */}
+      <Symbol ziel="wp">
       <Kachel x={420} y={268} w={260} h={128} rx={26} gedimmt={!w.running}>
         <text className="anlage-name" x="446" y="298">
           Wärmepumpe
@@ -325,8 +357,10 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           </text>
         </g>
       </Kachel>
+      </Symbol>
 
       {/* ============ Speicher: das Glas ============ */}
+      <Symbol ziel="puffer">
       <g>
         <ellipse cx="860" cy="582" rx="46" ry="9" fill="#000" opacity=".35" filter="url(#anlage-weich-gross)" />
         {/* Ladestand und Nettoleistung unter dem Glas. Die Nettoleistung ist aus den vier Fühlern
@@ -353,7 +387,7 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           ) : null}
           <rect x="824" y="92" width="72" height="470" fill="url(#anlage-reflex)" />
         </g>
-        <rect x="824" y="92" width="72" height="470" rx="36" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="1.2" />
+        <rect className="anlage-glasrand" x="824" y="92" width="72" height="470" rx="36" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="1.2" />
         <rect x="826" y="94" width="68" height="466" rx="34" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="1" />
         {[150, 268, 386, 504].map((y, i) => (
           <g key={y}>
@@ -364,8 +398,10 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           </g>
         ))}
       </g>
+      </Symbol>
 
       {/* ============ Abnehmer ============ */}
+      <Symbol ziel="warmwasser">
       <Kachel x={980} y={140} w={200} h={80} rx={22} gedimmt={!ww.present}>
         <text className="anlage-name" x="1004" y="172">
           Warmwasser
@@ -375,6 +411,8 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           {warmwasserStatus(ww, nowMs)}
         </text>
       </Kachel>
+      </Symbol>
+      <Symbol ziel="heizung">
       <Kachel x={980} y={300} w={200} h={80} rx={22} gedimmt={!hz.running}>
         <text className="anlage-name" x="1004" y="332">
           Heizung
@@ -384,6 +422,7 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           {heizungStatus(hz)}
         </text>
       </Kachel>
+      </Symbol>
       {/* Kaltwasser: kein Kasten, nur ein Wort am Rohr */}
       <text className="anlage-hint" x="992" y="567">
         {`Kaltwasser${ww.inlet_c != null ? ` ${grad(ww.inlet_c)}` : ""}${ww.tapping ? " läuft nach" : ""}`}

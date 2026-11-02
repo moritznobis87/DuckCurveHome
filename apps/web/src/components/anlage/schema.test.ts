@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AREAS } from "@/lib/areas";
 import {
   batterieWort,
   dauerText,
@@ -17,6 +18,7 @@ import {
   partikelZahl,
   rohrDauer,
   warmwasserStatus,
+  ZIELE,
 } from "./schema";
 
 const T = Date.UTC(2026, 10, 2, 18, 0);
@@ -125,5 +127,20 @@ describe("Sätze", () => {
     expect(warmwasserStatus({ present: true, outlet_c: 27, inlet_c: null, tapping: false, tapping_since: null }, T)).toBe("ruht · Auslass kühlt ab");
     expect(heizungStatus({ rooms_total: 0, rooms_open: 0, open_share: null, running: false })).toBe("keine Räume gemeldet");
     expect(heizungStatus({ rooms_total: 9, rooms_open: 7, open_share: 0.6, running: true })).toBe("Räume nehmen Wärme");
+  });
+});
+
+describe("Ziele der Symbole", () => {
+  const reiter = new Set(AREAS.flatMap((a) => a.tabs.map((t) => t.href)));
+  it("führen alle auf einen Reiter, den es gibt", () => {
+    for (const z of Object.values(ZIELE)) {
+      expect(reiter.has(z.href.split("#")[0] ?? "")).toBe(true);
+    }
+  });
+  it("sind dieselben wie auf der Startseite", () => {
+    expect(ZIELE.pv.href).toBe("/strom/pv");
+    expect(ZIELE.netz.href).toBe("/strom");
+    expect(ZIELE.bat.href).toBe("/strom/speicher");
+    expect(ZIELE.wp.href.startsWith("/waerme")).toBe(true);
   });
 });

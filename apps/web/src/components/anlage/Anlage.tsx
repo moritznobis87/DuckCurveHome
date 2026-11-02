@@ -94,7 +94,8 @@ export function Anlage() {
           <p>
             Licht wandert in Flussrichtung, sein Tempo ist die Leistung. Die Farbe eines Rohrs ist die
             Temperatur seines Wassers, auf derselben Skala wie das Glas. Ein ruhender Punkt auf dem Rohr
-            ist eine Pumpe; sie leuchtet, wenn sie läuft.
+            ist eine Pumpe; sie leuchtet, wenn sie läuft. Jedes Gerät lässt sich antippen; dahinter liegt
+            seine Seite, dieselbe wie von der Startseite aus.
           </p>
         </div>
         <div>

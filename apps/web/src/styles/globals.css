@@ -599,6 +599,16 @@ button.haus-block-kopf:hover .haus-block-pfeil { color: var(--text-1); }
 .anlage-rohr, .anlage-faden, .anlage-halo { fill: none; stroke-linecap: round; }
 .anlage-halo { stroke: #071d28; stroke-width: 20; stroke-opacity: .9; }
 .anlage-fade { transition: opacity .6s cubic-bezier(.2,.8,.2,1); }
+/* Anklickbare Symbole: beim Zeigen hebt sich die Glasfläche, der Ring oder der Glasrand, wie die
+   Knoten der Startseite ihren Ring heben. Kein eigener Rahmen, die Form selbst antwortet. */
+.anlage-ziel { cursor: pointer; outline: none; }
+.anlage-ziel .anlage-glas, .anlage-ziel .anlage-kreis, .anlage-ziel .anlage-glasrand { transition: stroke .2s ease, fill .2s ease, stroke-opacity .2s ease, stroke-width .2s ease; }
+.anlage-ziel:hover .anlage-glas, .anlage-ziel:focus-visible .anlage-glas { fill: rgba(255,255,255,.08); stroke: rgba(255,255,255,.34); }
+.anlage-ziel:hover .anlage-kreis, .anlage-ziel:focus-visible .anlage-kreis { stroke-opacity: 1; stroke-width: 2; }
+.anlage-ziel:hover .anlage-glasrand, .anlage-ziel:focus-visible .anlage-glasrand { stroke: rgba(255,255,255,.6); stroke-width: 2; }
+.anlage-ziel:focus-visible .anlage-glas, .anlage-ziel:focus-visible .anlage-kreis, .anlage-ziel:focus-visible .anlage-glasrand { stroke: var(--amber-soft); }
+/* Sprungmarken der Erzeugerseite landen nicht unter der Kopfzeile. */
+.card { scroll-margin-top: 84px; }
 .anlage-fuss { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 28px; padding: 4px 8px 0; }
 .anlage-fuss div { min-width: 0; }
 .anlage-fuss h2 { margin: 0 0 4px; font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); }
