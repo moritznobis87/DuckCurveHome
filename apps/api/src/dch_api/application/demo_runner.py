@@ -17,6 +17,7 @@ from typing import Any
 import structlog
 
 from dch_api import urheber
+from dch_api.application import anlage as anlage_logic
 from dch_api.application import demo_house, demo_rooms, rooms
 from dch_api.application.battery_control import BatteryMode
 from dch_api.application.energy_accounting import EnergyAccounting
@@ -38,6 +39,7 @@ from dch_api.infrastructure.history import HistoryStore
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
     AlarmOut,
+    AnlageOut,
     BackfillResultOut,
     BatteryLiveOut,
     EnergySummaryOut,
@@ -81,6 +83,7 @@ from hems_core.domain import (
     EnergySnapshot,
     HeatPumpState,
     HemsConfig,
+    Measurement,
     OperatingMode,
     Override,
     OverrideKind,
@@ -836,6 +839,27 @@ class DemoRunner:
                 )
             )
         return RoomsLiveOut(at=now, named=True, rooms=out)
+
+    async def anlage(self) -> AnlageOut:
+        """Das Schema der Vorführung. Ofen und Warmwasserfühler hat sie nicht, und das steht so da."""
+        now = self.now
+        fehlt = Measurement.missing(Quality.UNAVAILABLE, now, "demo")
+        return anlage_logic.zusammensetzen(
+            now=now,
+            snap=self.snapshot,
+            buffer=self.buffer,
+            hp=self.hp,
+            cfg=self.hems,
+            stove=StoveLiveOut(),
+            stove_return=fehlt,
+            stove_pump=fehlt,
+            dhw_outlet=fehlt,
+            dhw_inlet=fehlt,
+            raeume=await self.rooms_live(),
+            zeilen=self.history.series(
+                now - timedelta(minutes=anlage_logic.RUECKBLICK_MIN), now + timedelta(minutes=1)
+            ),
+        )
 
     async def house_plan(self) -> HouseOut:
         """Das erfundene Haus der Vorfuehrung, mit Kontakten aus der Uhrzeit."""

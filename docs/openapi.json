@@ -661,6 +661,27 @@
         }
       }
     },
+    "/api/v1/anlage": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Anlagenschema im Augenblick",
+        "operationId": "anlage_api_v1_anlage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnlageOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -2326,6 +2347,512 @@
         ],
         "title": "AlarmOut",
         "description": "Die Alarmanlage, so weit sie dieses Werkzeug angeht.\n\n**Scharf ja, unscharf nein.** Die Anzeige hängt in der Küche, Gäste gehen daran vorbei, und\nihr Zugang ist ein Sitzungskeks auf einem Gerät - schwächer als ein Code am Bedienteil.\nDeshalb kennt diese Schnittstelle nur das Schärfen. Wer entschärfen will, tut es dort, wo es\nhingehört, und `can_arm` sagt, ob überhaupt geschaltet werden darf."
+      },
+      "AnlageHeizkreisOut": {
+        "properties": {
+          "rooms_total": {
+            "type": "integer",
+            "title": "Rooms Total"
+          },
+          "rooms_open": {
+            "type": "integer",
+            "title": "Rooms Open"
+          },
+          "open_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Share"
+          },
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rooms_total",
+          "rooms_open",
+          "open_share",
+          "running"
+        ],
+        "title": "AnlageHeizkreisOut",
+        "description": "Der Heizkreis: wie viele Räume gerade Wärme nehmen. Eine Leistung gibt es nicht; die\nWärmebilanz kennt sie nur als Rest, und ein Rest ist keine Anzeige für den Augenblick."
+      },
+      "AnlageOfenOut": {
+        "properties": {
+          "present": {
+            "type": "boolean",
+            "title": "Present"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running"
+          },
+          "power_level": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Level"
+          },
+          "flow_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flow C"
+          },
+          "return_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return C"
+          },
+          "pump_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pump Pct"
+          },
+          "water_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Water Kw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "present",
+          "running",
+          "power_level",
+          "flow_c",
+          "return_c",
+          "pump_pct",
+          "water_kw"
+        ],
+        "title": "AnlageOfenOut",
+        "description": "Der Pelletofen im Schema. `water_kw` ist geschätzt aus der Leistungsstufe nach dem\nDatenblatt, dieselbe Rechnung wie in der Wärmebilanz."
+      },
+      "AnlageOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "outdoor_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outdoor C"
+          },
+          "strom": {
+            "$ref": "#/components/schemas/AnlageStromOut"
+          },
+          "waermepumpe": {
+            "$ref": "#/components/schemas/AnlageWaermepumpeOut"
+          },
+          "ofen": {
+            "$ref": "#/components/schemas/AnlageOfenOut"
+          },
+          "speicher": {
+            "$ref": "#/components/schemas/AnlageSpeicherOut"
+          },
+          "heizkreis": {
+            "$ref": "#/components/schemas/AnlageHeizkreisOut"
+          },
+          "warmwasser": {
+            "$ref": "#/components/schemas/AnlageWarmwasserOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "outdoor_c",
+          "strom",
+          "waermepumpe",
+          "ofen",
+          "speicher",
+          "heizkreis",
+          "warmwasser"
+        ],
+        "title": "AnlageOut",
+        "description": "Das Anlagenschema im Augenblick: alles, was die Seite „Anlage\" zeichnet, in einer Antwort.\n\nKeine Zeitreihe, kein Zeitraum: Das Bild ist der Augenblick, und seine Zahlen kommen aus dem\nLive-Zustand, aus den Räumen und aus zwei kurzen Rückblicken in die Minutenreihe für die\nNettoleistung des Speichers und die Zapferkennung."
+      },
+      "AnlageSpeicherOut": {
+        "properties": {
+          "temps_c": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Temps C"
+          },
+          "soc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soc"
+          },
+          "usable_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usable Kwh"
+          },
+          "capacity_kwh": {
+            "type": "number",
+            "title": "Capacity Kwh"
+          },
+          "volume_liters": {
+            "type": "number",
+            "title": "Volume Liters"
+          },
+          "net_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Kw"
+          },
+          "net_word": {
+            "type": "string",
+            "title": "Net Word"
+          },
+          "return_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return C"
+          }
+        },
+        "type": "object",
+        "required": [
+          "temps_c",
+          "soc",
+          "usable_kwh",
+          "capacity_kwh",
+          "volume_liters",
+          "net_kw",
+          "net_word",
+          "return_c"
+        ],
+        "title": "AnlageSpeicherOut",
+        "description": "Das Glas: vier Fühler von oben nach unten, Ladezustand und die gerechnete Nettoleistung.\n\n`net_kw` ist die Änderung des Energieinhalts über die letzte Viertelstunde, positiv = lädt,\naus den vier Temperaturen und dem Volumen. `net_word` ist das Wort dazu („lädt\", „entlädt\",\n„hält\"), hier entschieden und nicht in der Anzeige, damit die Schwelle an einer Stelle steht.\n`return_c` ist die Temperatur des gemeinsamen Rücklaufs an der untersten Spitze: der unterste\nFühler, den Ofen- und Wärmepumpenkreis teilen."
+      },
+      "AnlageStromOut": {
+        "properties": {
+          "pv_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pv Kw"
+          },
+          "grid_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grid Kw"
+          },
+          "battery_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Battery Kw"
+          },
+          "battery_soc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Battery Soc"
+          },
+          "house_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House Kw"
+          },
+          "heat_pump_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heat Pump Kw"
+          },
+          "rest_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rest Kw"
+          },
+          "share_pv": {
+            "type": "number",
+            "title": "Share Pv"
+          },
+          "share_grid": {
+            "type": "number",
+            "title": "Share Grid"
+          },
+          "share_battery": {
+            "type": "number",
+            "title": "Share Battery"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pv_kw",
+          "grid_kw",
+          "battery_kw",
+          "battery_soc",
+          "house_kw",
+          "heat_pump_kw",
+          "rest_kw",
+          "share_pv",
+          "share_grid",
+          "share_battery"
+        ],
+        "title": "AnlageStromOut",
+        "description": "Die Stromseite des Schemas: drei Quellen, ein Knoten, zwei Abgänge.\n\nVorzeichen wie im Live-Zustand: Netz positiv ist Bezug, Batterie positiv ist Laden. Die\nAnteile (`share_*`) sagen, woher der Strom im Knoten gerade kommt: PV, Netzbezug und\nSpeicherentladung nach ihrer Einspeisung. Das ist eine Zuordnung nach Anteilen, keine Physik,\naber es ist die Zuordnung, die jede Bilanz benutzt. Sie summieren sich zu 1 oder sind alle 0."
+      },
+      "AnlageWaermepumpeOut": {
+        "properties": {
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          },
+          "running_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running Since"
+          },
+          "power_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Kw"
+          },
+          "thermal_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thermal Kw"
+          },
+          "flow_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flow C"
+          },
+          "cop": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "running",
+          "running_since",
+          "power_kw",
+          "thermal_kw",
+          "flow_c",
+          "cop"
+        ],
+        "title": "AnlageWaermepumpeOut",
+        "description": "Die Wärmepumpe im Schema. Wärme, Vorlauf und COP bleiben leer, bis der Bus angeschlossen\nist; die Anzeige sagt dann „Wärme nicht gemessen\" statt eine Zahl zu erfinden."
+      },
+      "AnlageWarmwasserOut": {
+        "properties": {
+          "present": {
+            "type": "boolean",
+            "title": "Present"
+          },
+          "outlet_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outlet C"
+          },
+          "inlet_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inlet C"
+          },
+          "tapping": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tapping"
+          },
+          "tapping_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tapping Since"
+          }
+        },
+        "type": "object",
+        "required": [
+          "present",
+          "outlet_c",
+          "inlet_c",
+          "tapping",
+          "tapping_since"
+        ],
+        "title": "AnlageWarmwasserOut",
+        "description": "Das Trinkwasser: ein Anlegefühler am warmen Auslass, sonst nichts.\n\n`present` ist falsch, solange kein Fühler meldet; dann bleibt die Kachel gedimmt und sagt das.\n`tapping` ist **erkannt**, nicht gemessen: Das Rohr springt auf, sobald warmes Wasser läuft,\nsiehe `hems_core.thermal.anlage.zapfung`. Es sagt, dass und seit wann, nicht wie viel."
       },
       "AutoProfile": {
         "type": "string",

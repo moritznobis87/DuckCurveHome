@@ -573,3 +573,37 @@ button.haus-block-kopf:hover .haus-block-pfeil { color: var(--text-1); }
   .haus-werkzeuge { flex-wrap: wrap; }
   .haus-legende { display: none; }
 }
+
+/* ---------- Anlage: das Schema ----------
+   Eine Bühne auf tiefem Petrol. Die Zahlen setzen die Systemschrift zuerst, weil ihre leichten
+   Schnitte (200, 300) die Kacheln ruhig halten; IBM Plex kommt im Haus nur in 400 und 600. */
+.anlage { display: flex; flex-direction: column; gap: 18px; }
+.anlage-kopf { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
+.anlage-satz { margin: 0; font-size: 15px; font-weight: 300; line-height: 1.4; color: var(--text-2); }
+.anlage-satz b { color: var(--text-1); font-weight: 500; }
+.anlage-stand { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.anlage-buehne { border-radius: 28px; padding: 1px; background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03) 30%, rgba(255,255,255,.02)); box-shadow: 0 40px 120px rgba(0,0,0,.45); }
+.anlage-innen { border-radius: 27px; background: linear-gradient(180deg, rgba(10,39,53,.85), rgba(5,22,31,.9)); overflow: hidden; }
+.anlage-scroll { overflow-x: auto; }
+.anlage-flaeche { display: block; width: 100%; min-width: 940px; height: auto; font-family: -apple-system, "SF Pro Display", "SF Pro Text", var(--font-sans); font-variant-numeric: tabular-nums; }
+.anlage-flaeche text { fill: var(--text-1); }
+.anlage-cap { font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; fill: var(--text-3); }
+.anlage-name { font-size: 15px; font-weight: 500; letter-spacing: -.01em; }
+.anlage-sub { font-size: 12.5px; font-weight: 300; fill: var(--text-2); }
+.anlage-hint { font-size: 11.5px; font-weight: 300; fill: var(--text-3); }
+.anlage-num { font-weight: 200; letter-spacing: -.03em; }
+.anlage-unit { font-size: 12px; font-weight: 400; fill: var(--text-2); letter-spacing: 0; }
+.anlage-temp { font-size: 13px; font-weight: 400; fill: var(--text-2); }
+.anlage-glas { fill: rgba(255,255,255,.045); stroke: rgba(255,255,255,.10); }
+.anlage-glas-hi { fill: none; stroke: url(#anlage-hairline); stroke-width: 1; }
+.anlage-rohr, .anlage-faden, .anlage-halo { fill: none; stroke-linecap: round; }
+.anlage-halo { stroke: #071d28; stroke-width: 20; stroke-opacity: .9; }
+.anlage-fade { transition: opacity .6s cubic-bezier(.2,.8,.2,1); }
+.anlage-fuss { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 28px; padding: 4px 8px 0; }
+.anlage-fuss div { min-width: 0; }
+.anlage-fuss h2 { margin: 0 0 4px; font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); }
+.anlage-fuss p { margin: 0; color: var(--text-2); font-weight: 300; font-size: 13.5px; line-height: 1.5; }
+.anlage-fuss .m { color: var(--text-1); font-weight: 400; }
+.anlage-fehler { margin: 0; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--alert); color: var(--text-1); font-size: 13px; }
+.anlage-warten { min-height: 420px; border-radius: 28px; border: 1px solid var(--line-1); display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .anlage-fade { transition: none; } }

@@ -329,6 +329,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/anlage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Anlagenschema im Augenblick */
+        get: operations["anlage_api_v1_anlage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -979,6 +996,163 @@ export interface components {
             can_arm: boolean;
             /** Observed At */
             observed_at: string | null;
+        };
+        /**
+         * AnlageHeizkreisOut
+         * @description Der Heizkreis: wie viele Räume gerade Wärme nehmen. Eine Leistung gibt es nicht; die
+         *     Wärmebilanz kennt sie nur als Rest, und ein Rest ist keine Anzeige für den Augenblick.
+         */
+        AnlageHeizkreisOut: {
+            /** Rooms Total */
+            rooms_total: number;
+            /** Rooms Open */
+            rooms_open: number;
+            /** Open Share */
+            open_share: number | null;
+            /** Running */
+            running: boolean;
+        };
+        /**
+         * AnlageOfenOut
+         * @description Der Pelletofen im Schema. `water_kw` ist geschätzt aus der Leistungsstufe nach dem
+         *     Datenblatt, dieselbe Rechnung wie in der Wärmebilanz.
+         */
+        AnlageOfenOut: {
+            /** Present */
+            present: boolean;
+            /** Running */
+            running: boolean | null;
+            /** Power Level */
+            power_level: number | null;
+            /** Flow C */
+            flow_c: number | null;
+            /** Return C */
+            return_c: number | null;
+            /** Pump Pct */
+            pump_pct: number | null;
+            /** Water Kw */
+            water_kw: number | null;
+        };
+        /**
+         * AnlageOut
+         * @description Das Anlagenschema im Augenblick: alles, was die Seite „Anlage" zeichnet, in einer Antwort.
+         *
+         *     Keine Zeitreihe, kein Zeitraum: Das Bild ist der Augenblick, und seine Zahlen kommen aus dem
+         *     Live-Zustand, aus den Räumen und aus zwei kurzen Rückblicken in die Minutenreihe für die
+         *     Nettoleistung des Speichers und die Zapferkennung.
+         */
+        AnlageOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Outdoor C */
+            outdoor_c: number | null;
+            strom: components["schemas"]["AnlageStromOut"];
+            waermepumpe: components["schemas"]["AnlageWaermepumpeOut"];
+            ofen: components["schemas"]["AnlageOfenOut"];
+            speicher: components["schemas"]["AnlageSpeicherOut"];
+            heizkreis: components["schemas"]["AnlageHeizkreisOut"];
+            warmwasser: components["schemas"]["AnlageWarmwasserOut"];
+        };
+        /**
+         * AnlageSpeicherOut
+         * @description Das Glas: vier Fühler von oben nach unten, Ladezustand und die gerechnete Nettoleistung.
+         *
+         *     `net_kw` ist die Änderung des Energieinhalts über die letzte Viertelstunde, positiv = lädt,
+         *     aus den vier Temperaturen und dem Volumen. `net_word` ist das Wort dazu („lädt", „entlädt",
+         *     „hält"), hier entschieden und nicht in der Anzeige, damit die Schwelle an einer Stelle steht.
+         *     `return_c` ist die Temperatur des gemeinsamen Rücklaufs an der untersten Spitze: der unterste
+         *     Fühler, den Ofen- und Wärmepumpenkreis teilen.
+         */
+        AnlageSpeicherOut: {
+            /** Temps C */
+            temps_c: (number | null)[];
+            /** Soc */
+            soc: number | null;
+            /** Usable Kwh */
+            usable_kwh: number | null;
+            /** Capacity Kwh */
+            capacity_kwh: number;
+            /** Volume Liters */
+            volume_liters: number;
+            /** Net Kw */
+            net_kw: number | null;
+            /** Net Word */
+            net_word: string;
+            /** Return C */
+            return_c: number | null;
+        };
+        /**
+         * AnlageStromOut
+         * @description Die Stromseite des Schemas: drei Quellen, ein Knoten, zwei Abgänge.
+         *
+         *     Vorzeichen wie im Live-Zustand: Netz positiv ist Bezug, Batterie positiv ist Laden. Die
+         *     Anteile (`share_*`) sagen, woher der Strom im Knoten gerade kommt: PV, Netzbezug und
+         *     Speicherentladung nach ihrer Einspeisung. Das ist eine Zuordnung nach Anteilen, keine Physik,
+         *     aber es ist die Zuordnung, die jede Bilanz benutzt. Sie summieren sich zu 1 oder sind alle 0.
+         */
+        AnlageStromOut: {
+            /** Pv Kw */
+            pv_kw: number | null;
+            /** Grid Kw */
+            grid_kw: number | null;
+            /** Battery Kw */
+            battery_kw: number | null;
+            /** Battery Soc */
+            battery_soc: number | null;
+            /** House Kw */
+            house_kw: number | null;
+            /** Heat Pump Kw */
+            heat_pump_kw: number | null;
+            /** Rest Kw */
+            rest_kw: number | null;
+            /** Share Pv */
+            share_pv: number;
+            /** Share Grid */
+            share_grid: number;
+            /** Share Battery */
+            share_battery: number;
+        };
+        /**
+         * AnlageWaermepumpeOut
+         * @description Die Wärmepumpe im Schema. Wärme, Vorlauf und COP bleiben leer, bis der Bus angeschlossen
+         *     ist; die Anzeige sagt dann „Wärme nicht gemessen" statt eine Zahl zu erfinden.
+         */
+        AnlageWaermepumpeOut: {
+            /** Running */
+            running: boolean;
+            /** Running Since */
+            running_since: string | null;
+            /** Power Kw */
+            power_kw: number | null;
+            /** Thermal Kw */
+            thermal_kw: number | null;
+            /** Flow C */
+            flow_c: number | null;
+            /** Cop */
+            cop: number | null;
+        };
+        /**
+         * AnlageWarmwasserOut
+         * @description Das Trinkwasser: ein Anlegefühler am warmen Auslass, sonst nichts.
+         *
+         *     `present` ist falsch, solange kein Fühler meldet; dann bleibt die Kachel gedimmt und sagt das.
+         *     `tapping` ist **erkannt**, nicht gemessen: Das Rohr springt auf, sobald warmes Wasser läuft,
+         *     siehe `hems_core.thermal.anlage.zapfung`. Es sagt, dass und seit wann, nicht wie viel.
+         */
+        AnlageWarmwasserOut: {
+            /** Present */
+            present: boolean;
+            /** Outlet C */
+            outlet_c: number | null;
+            /** Inlet C */
+            inlet_c: number | null;
+            /** Tapping */
+            tapping: boolean | null;
+            /** Tapping Since */
+            tapping_since: string | null;
         };
         /**
          * AutoProfile
@@ -5341,6 +5515,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HouseOut"];
+                };
+            };
+        };
+    };
+    anlage_api_v1_anlage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnlageOut"];
                 };
             };
         };

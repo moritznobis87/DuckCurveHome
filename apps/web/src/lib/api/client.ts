@@ -1,4 +1,5 @@
-import type { ActuatorCommandOut, House, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+import type { ActuatorCommandOut, Anlage,
+  House, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -70,6 +71,8 @@ export const api = {
   // Der Hausplan samt Kontakten. Geometrie von der Bruecke, Zustand aus dem Augenblick; die
   // Temperaturen dazu kommen aus `rooms`, der Alarm aus dem Live-Zustand.
   house: () => request<House>("/haus"),
+  // Das Anlagenschema: der Augenblick der Wasser- und Stromseite, in einer Antwort.
+  anlage: () => request<Anlage>("/anlage"),
   // Dauerhaft, ohne Frist: derselbe Griff wie in Contromes eigener Oberflaeche.
   setRoomSetpoint: (id: number, setpointC: number) =>
     request<RoomSetpointResult>(`/rooms/${id}/setpoint`, { method: "POST", body: JSON.stringify({ setpoint_c: setpointC }) }),

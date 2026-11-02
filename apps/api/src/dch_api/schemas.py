@@ -1156,3 +1156,117 @@ class VentilationOut(BaseModel):
     minutes_known: int
     rooms: list[VentilationRoomOut] = Field(default_factory=list)
     note_de: str
+
+
+# ------------------------------------------------------------------ Anlagenschema
+
+
+class AnlageStromOut(BaseModel):
+    """Die Stromseite des Schemas: drei Quellen, ein Knoten, zwei Abgänge.
+
+    Vorzeichen wie im Live-Zustand: Netz positiv ist Bezug, Batterie positiv ist Laden. Die
+    Anteile (`share_*`) sagen, woher der Strom im Knoten gerade kommt: PV, Netzbezug und
+    Speicherentladung nach ihrer Einspeisung. Das ist eine Zuordnung nach Anteilen, keine Physik,
+    aber es ist die Zuordnung, die jede Bilanz benutzt. Sie summieren sich zu 1 oder sind alle 0.
+    """
+
+    pv_kw: float | None
+    grid_kw: float | None
+    battery_kw: float | None
+    battery_soc: float | None
+    house_kw: float | None
+    heat_pump_kw: float | None
+    #: Alles außer der Wärmepumpe: Haushalt samt Wallbox.
+    rest_kw: float | None
+    share_pv: float
+    share_grid: float
+    share_battery: float
+
+
+class AnlageWaermepumpeOut(BaseModel):
+    """Die Wärmepumpe im Schema. Wärme, Vorlauf und COP bleiben leer, bis der Bus angeschlossen
+    ist; die Anzeige sagt dann „Wärme nicht gemessen" statt eine Zahl zu erfinden."""
+
+    running: bool
+    running_since: datetime | None
+    power_kw: float | None
+    thermal_kw: float | None
+    flow_c: float | None
+    cop: float | None
+
+
+class AnlageOfenOut(BaseModel):
+    """Der Pelletofen im Schema. `water_kw` ist geschätzt aus der Leistungsstufe nach dem
+    Datenblatt, dieselbe Rechnung wie in der Wärmebilanz."""
+
+    present: bool
+    running: bool | None
+    power_level: float | None
+    flow_c: float | None
+    return_c: float | None
+    pump_pct: float | None
+    water_kw: float | None
+
+
+class AnlageSpeicherOut(BaseModel):
+    """Das Glas: vier Fühler von oben nach unten, Ladezustand und die gerechnete Nettoleistung.
+
+    `net_kw` ist die Änderung des Energieinhalts über die letzte Viertelstunde, positiv = lädt,
+    aus den vier Temperaturen und dem Volumen. `net_word` ist das Wort dazu („lädt", „entlädt",
+    „hält"), hier entschieden und nicht in der Anzeige, damit die Schwelle an einer Stelle steht.
+    `return_c` ist die Temperatur des gemeinsamen Rücklaufs an der untersten Spitze: der unterste
+    Fühler, den Ofen- und Wärmepumpenkreis teilen.
+    """
+
+    temps_c: list[float | None]
+    soc: float | None
+    usable_kwh: float | None
+    capacity_kwh: float
+    volume_liters: float
+    net_kw: float | None
+    net_word: str
+    return_c: float | None
+
+
+class AnlageHeizkreisOut(BaseModel):
+    """Der Heizkreis: wie viele Räume gerade Wärme nehmen. Eine Leistung gibt es nicht; die
+    Wärmebilanz kennt sie nur als Rest, und ein Rest ist keine Anzeige für den Augenblick."""
+
+    rooms_total: int
+    rooms_open: int
+    #: Mittlerer Anteil offener Heizkreise über alle Räume mit Messwert, 0 bis 1.
+    open_share: float | None
+    running: bool
+
+
+class AnlageWarmwasserOut(BaseModel):
+    """Das Trinkwasser: ein Anlegefühler am warmen Auslass, sonst nichts.
+
+    `present` ist falsch, solange kein Fühler meldet; dann bleibt die Kachel gedimmt und sagt das.
+    `tapping` ist **erkannt**, nicht gemessen: Das Rohr springt auf, sobald warmes Wasser läuft,
+    siehe `hems_core.thermal.anlage.zapfung`. Es sagt, dass und seit wann, nicht wie viel.
+    """
+
+    present: bool
+    outlet_c: float | None
+    inlet_c: float | None
+    tapping: bool | None
+    tapping_since: datetime | None
+
+
+class AnlageOut(BaseModel):
+    """Das Anlagenschema im Augenblick: alles, was die Seite „Anlage" zeichnet, in einer Antwort.
+
+    Keine Zeitreihe, kein Zeitraum: Das Bild ist der Augenblick, und seine Zahlen kommen aus dem
+    Live-Zustand, aus den Räumen und aus zwei kurzen Rückblicken in die Minutenreihe für die
+    Nettoleistung des Speichers und die Zapferkennung.
+    """
+
+    at: datetime
+    outdoor_c: float | None
+    strom: AnlageStromOut
+    waermepumpe: AnlageWaermepumpeOut
+    ofen: AnlageOfenOut
+    speicher: AnlageSpeicherOut
+    heizkreis: AnlageHeizkreisOut
+    warmwasser: AnlageWarmwasserOut

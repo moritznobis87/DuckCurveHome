@@ -1,5 +1,14 @@
 """Thermische Modelle: Pufferspeicher-SOC, Taktung der Wärmepumpe, Pelletofen."""
 
+from hems_core.thermal.anlage import (
+    HAELT_KW,
+    NETTO_FENSTER_MIN,
+    TempProbe,
+    Zapfung,
+    buffer_net_kw,
+    netto_wort,
+    zapfung,
+)
 from hems_core.thermal.buffer_soc import (
     capacity_kwh,
     compute_buffer_state,
@@ -49,6 +58,8 @@ from hems_core.thermal.ventilation import (
 
 __all__ = [
     "AUS",
+    "HAELT_KW",
+    "NETTO_FENSTER_MIN",
     "OFFEN",
     "TAU_RAUM_H",
     "CyclingStats",
@@ -65,7 +76,10 @@ __all__ = [
     "ShiftTarget",
     "StoveSample",
     "StoveStats",
+    "TempProbe",
     "VentResult",
+    "Zapfung",
+    "buffer_net_kw",
     "capacity_kwh",
     "capacity_kwh_per_k",
     "compressor_runs",
@@ -80,6 +94,7 @@ __all__ = [
     "hourly_inputs",
     "mean_temperature_c",
     "minutes_by_level",
+    "netto_wort",
     "next_expensive",
     "samples_from_hours",
     "share_of_house",
@@ -90,4 +105,5 @@ __all__ = [
     "stove_stats",
     "usable_energy_kwh",
     "ventilation_split",
+    "zapfung",
 ]

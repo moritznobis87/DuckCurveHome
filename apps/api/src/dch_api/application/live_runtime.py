@@ -23,6 +23,7 @@ from typing import Any, cast
 import structlog
 
 from dch_api import urheber
+from dch_api.application import anlage as anlage_logic
 from dch_api.application import house, rooms
 from dch_api.application import room_log as room_log_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
@@ -58,6 +59,7 @@ from dch_api.infrastructure.live_state import LiveState
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
     AlarmOut,
+    AnlageOut,
     BackfillResultOut,
     BatteryLiveOut,
     EnergySummaryOut,
@@ -1002,6 +1004,33 @@ class LiveRuntime:
             )
         out.sort(key=lambda r: rooms.sort_key(self._room_name(meta, r.id)))
         return RoomsLiveOut(at=now, named=bool(meta), rooms=out)
+
+    # ------------------------------------------------------------------ Anlagenschema
+    async def anlage(self) -> AnlageOut:
+        """Das Schema im Augenblick: Live-Zustand, Räume und zwei kurze Rückblicke in die Minuten."""
+        now = self.now
+        snap, buffer, hp = self._states()
+        zeilen = await self.repos.minute_series(
+            now - timedelta(minutes=anlage_logic.RUECKBLICK_MIN), now, anlage_logic.KEYS
+        )
+
+        def mess(key: str) -> Measurement:
+            return self.live.measurement(key, now, anlage_logic.STALE_S)
+
+        return anlage_logic.zusammensetzen(
+            now=now,
+            snap=snap,
+            buffer=buffer,
+            hp=hp,
+            cfg=self.hems,
+            stove=self._stove_state(now),
+            stove_return=mess("stove_return_temp_c"),
+            stove_pump=mess("stove_pump_pct"),
+            dhw_outlet=mess(anlage_logic.DHW_OUTLET),
+            dhw_inlet=mess(anlage_logic.DHW_INLET),
+            raeume=await self.rooms_live(),
+            zeilen=zeilen,
+        )
 
     # ------------------------------------------------------------------ Hausplan
     async def house_plan(self) -> HouseOut:

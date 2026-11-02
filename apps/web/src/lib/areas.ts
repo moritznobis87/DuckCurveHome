@@ -55,6 +55,7 @@ export const AREAS: Area[] = [
       { href: "/waerme", label: "Erzeuger", dated: true },
       { href: "/waerme/bilanz", label: "Bilanz", dated: true },
       { href: "/waerme/raeume", label: "Räume", dated: true },
+      { href: "/waerme/anlage", label: "Anlage" },
       { href: "/waerme/annahmen", label: "Annahmen", ownerOnly: true },
     ],
   },
