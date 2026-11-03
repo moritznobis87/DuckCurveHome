@@ -4960,6 +4960,16 @@
             "title": "Battery Device Opportunity Eur",
             "default": 0.0
           },
+          "battery_discharge_value_eur": {
+            "type": "number",
+            "title": "Battery Discharge Value Eur",
+            "default": 0.0
+          },
+          "battery_charge_cost_eur": {
+            "type": "number",
+            "title": "Battery Charge Cost Eur",
+            "default": 0.0
+          },
           "battery_savings_eur": {
             "type": "number",
             "title": "Battery Savings Eur",
@@ -5022,6 +5032,11 @@
               }
             ],
             "title": "Avg Import Price Ct"
+          },
+          "battery_net_eur": {
+            "type": "number",
+            "title": "Battery Net Eur",
+            "default": 0.0
           }
         },
         "type": "object",

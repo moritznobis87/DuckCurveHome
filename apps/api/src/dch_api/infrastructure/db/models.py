@@ -287,6 +287,10 @@ class EnergyHour(Base):
     battery_device_opportunity_eur: Mapped[float] = mapped_column(
         Float, default=0.0, server_default="0"
     )
+    battery_discharge_value_eur: Mapped[float] = mapped_column(
+        Float, default=0.0, server_default="0"
+    )
+    battery_charge_cost_eur: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
     battery_savings_eur: Mapped[float] = mapped_column(Float, default=0.0)
     pv_direct_savings_eur: Mapped[float] = mapped_column(Float, default=0.0)
     price_weighted_ct: Mapped[float] = mapped_column(Float, default=0.0)

@@ -155,7 +155,23 @@ class EnergyTotals(BaseModel):
     # Bezugspreis der Stunde (bezahlt), der PV-Anteil zur Einspeisevergütung (entgangen).
     battery_device_cost_eur: float = 0.0
     battery_device_opportunity_eur: float = 0.0
-    battery_savings_eur: float = 0.0  # Entladung ins Haus × (Preis − Vergütung)
+    # Was der Speicher gebracht und was er gekostet hat, getrennt - und damit zum ersten Mal
+    # vollständig.
+    #
+    # `battery_savings_eur` war die einzige Zahl und sie zählt nur eine Richtung: jede ins Haus
+    # entladene Kilowattstunde mal der Spanne zwischen Bezugspreis und Vergütung. Was hineinging
+    # und nie wieder herauskam, stand nirgends. Ein Speicher, der gar nichts mehr zurückgibt, hätte
+    # damit eine Ersparnis von null statt eines Verlusts, und ein Speicher mit 25 % Verlust sah aus
+    # wie einer mit 0 %.
+    #
+    # Die beiden neuen Zahlen schließen den Kreis. `battery_discharge_value_eur` ist der vermiedene
+    # Bezug, `battery_charge_cost_eur` ist, was das Füllen gekostet hat: Netzanteil zum Bezugspreis
+    # der Ladestunde, PV-Anteil zur Vergütung, die er sonst gebracht hätte. Die Differenz ist der
+    # Nutzen des Speichers, und sie enthält die Verluste von selbst - es ging mehr hinein als heraus.
+    # Sie enthält auch die Arbitrage: billig geladen und teuer entladen macht sie größer.
+    battery_discharge_value_eur: float = 0.0
+    battery_charge_cost_eur: float = 0.0
+    battery_savings_eur: float = 0.0  # Entladung ins Haus × (Preis − Vergütung), brutto
     pv_direct_savings_eur: float = 0.0  # PV direkt × (Preis − Vergütung)
     price_weighted_ct: float = 0.0  # Σ Bezug × Preis, für den Mittelpreis
     # Σ Preis × Stunden, unabhängig davon, ob Strom bezogen wurde. `price_weighted_ct` kennt den
@@ -180,6 +196,16 @@ class EnergyTotals(BaseModel):
         """Mittlerer Strompreis über die Zeit, nicht über die Menge. Für den Vergleichslauf."""
         stunden = self.minutes / 60.0
         return round(self.price_hours_ct / stunden, 2) if stunden > 1e-6 else None
+
+    @property
+    def battery_net_eur(self) -> float:
+        """Was der Speicher unter dem Strich gebracht hat: vermiedener Bezug minus Ladekosten.
+
+        Über einen kurzen Zeitraum ist die Zahl vom Anfangs- und Endstand abhängig: Wer am Morgen
+        einen vollen Speicher vorfindet und ihn abends leer zurücklässt, hat an diesem Tag einen
+        Nutzen ohne Kosten. Über Monat und Jahr mittelt sich das heraus.
+        """
+        return round(self.battery_discharge_value_eur - self.battery_charge_cost_eur, 4)
 
     @property
     def self_consumption_kwh(self) -> float:
@@ -518,6 +544,13 @@ def hourly_energy(
         acc["import_cost_eur"] += imp * STEP_H * price / 100.0
         acc["export_revenue_eur"] += exp * STEP_H * feed_in / 100.0
         acc["battery_savings_eur"] += bat_to_house * STEP_H * spread / 100.0
+        # Beide Richtungen, jede zu ihrem eigenen Preis und ihrer eigenen Stunde. Der
+        # Eigenverbrauch des Geräts gehört nicht dazu: Er hat die Zellen nie erreicht und steht
+        # mit `battery_device_cost_eur` als eigener Verbraucher da.
+        acc["battery_discharge_value_eur"] += bat_to_house * STEP_H * price / 100.0
+        acc["battery_charge_cost_eur"] += (
+            grid_to_bat * STEP_H * price + pv_to_bat * STEP_H * feed_in
+        ) / 100.0
         acc["pv_direct_savings_eur"] += pv_direct * STEP_H * spread / 100.0
         acc["price_weighted_ct"] += imp * STEP_H * price
         acc["price_hours_ct"] += price * STEP_H

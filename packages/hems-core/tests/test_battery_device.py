@@ -148,3 +148,99 @@ def test_die_reparatur_grober_stunden_rechnet_den_abzug_zurueck() -> None:
     nochmal = hourly_energy(H0, zurueck, TARIFF, inverter_idle_kw=IDLE)
     assert nochmal.battery_charge_kwh == pytest.approx(h.battery_charge_kwh, abs=1e-3)
     assert nochmal.battery_device_kwh == pytest.approx(h.battery_device_kwh, abs=1e-3)
+
+
+# ------------------------------------------------------------------ Ersparnis netto
+
+
+def test_ohne_verlust_ist_netto_gleich_der_alten_spanne() -> None:
+    """Der Rueckfall auf den Normalfall: PV hinein, alles wieder heraus, nichts verloren."""
+    laden = _minutes(60, pv_kw=3.0, grid_kw=0.0, battery_kw=-2.0)
+    h1 = hourly_energy(H0, laden, TARIFF)
+    # Dieselbe Menge in derselben Preislage wieder heraus.
+    entladen = [
+        MinuteSample(
+            ts=H0 + timedelta(hours=1, minutes=i),
+            pv_kw=0.0,
+            grid_kw=0.0,
+            battery_kw=2.0,
+            heat_pump_kw=0.0,
+            ev_kw=0.0,
+            price_ct_kwh=30.0,
+        )
+        for i in range(60)
+    ]
+    h2 = hourly_energy(H0 + timedelta(hours=1), entladen, TARIFF, origin=None)
+    netto = h1.battery_net_eur + h2.battery_net_eur
+    # 2 kWh hinein zur Verguetung (8 ct), 2 kWh heraus zum Bezugspreis (30 ct): 0,44 EUR.
+    assert netto == pytest.approx(2.0 * (0.30 - 0.08), abs=0.01)
+    # Und das ist genau die alte Bruttozahl, solange nichts verlorengeht.
+    assert netto == pytest.approx(h2.battery_savings_eur, abs=0.01)
+
+
+def test_der_verlust_schlaegt_auf_die_nettozahl_durch() -> None:
+    """Mehr hinein als heraus: brutto bleibt gleich, netto sinkt. Genau das war der Fehler."""
+    laden = _minutes(60, pv_kw=4.0, grid_kw=0.0, battery_kw=-3.0)
+    h1 = hourly_energy(H0, laden, TARIFF)
+    entladen = [
+        MinuteSample(
+            ts=H0 + timedelta(hours=1, minutes=i),
+            pv_kw=0.0,
+            grid_kw=0.0,
+            battery_kw=2.0,
+            heat_pump_kw=0.0,
+            ev_kw=0.0,
+            price_ct_kwh=30.0,
+        )
+        for i in range(60)
+    ]
+    h2 = hourly_energy(H0 + timedelta(hours=1), entladen, TARIFF)
+    # Brutto sieht den Verlust nicht: 2 kWh heraus mal 22 ct Spanne.
+    assert h2.battery_savings_eur == pytest.approx(2.0 * 0.22, abs=0.01)
+    # Netto schon: 3 kWh zur Verguetung hinein, 2 kWh zum Bezugspreis heraus.
+    netto = h1.battery_net_eur + h2.battery_net_eur
+    assert netto == pytest.approx(2.0 * 0.30 - 3.0 * 0.08, abs=0.01)
+    assert netto < h2.battery_savings_eur
+
+
+def test_netzladung_kostet_den_bezugspreis_nicht_die_verguetung() -> None:
+    laden = _minutes(60, pv_kw=0.0, grid_kw=2.0, battery_kw=-2.0, price_ct_kwh=10.0)
+    h = hourly_energy(H0, laden, TARIFF)
+    # 2 kWh aus dem Netz zu 10 ct, abzueglich des Eigenverbrauchs, der nicht dazugehoert.
+    assert h.battery_charge_cost_eur == pytest.approx(2.0 * 0.10, abs=0.01)
+    assert h.battery_discharge_value_eur == 0.0
+    assert h.battery_net_eur == pytest.approx(-0.20, abs=0.01)
+
+
+def test_arbitrage_steckt_in_der_nettozahl() -> None:
+    """Billig geladen, teuer entladen: das soll die Zahl belohnen."""
+    billig = _minutes(60, pv_kw=0.0, grid_kw=2.0, battery_kw=-2.0, price_ct_kwh=5.0)
+    teuer = [
+        MinuteSample(
+            ts=H0 + timedelta(hours=1, minutes=i),
+            pv_kw=0.0,
+            grid_kw=0.0,
+            battery_kw=2.0,
+            heat_pump_kw=0.0,
+            ev_kw=0.0,
+            price_ct_kwh=45.0,
+        )
+        for i in range(60)
+    ]
+    netto = (
+        hourly_energy(H0, billig, TARIFF).battery_net_eur
+        + hourly_energy(H0 + timedelta(hours=1), teuer, TARIFF).battery_net_eur
+    )
+    assert netto == pytest.approx(2.0 * 0.45 - 2.0 * 0.05, abs=0.01)
+
+
+def test_der_eigenverbrauch_zaehlt_nicht_zu_den_ladekosten() -> None:
+    """Er hat die Zellen nie erreicht und steht als eigener Verbraucher da - sonst doppelt."""
+    laden = _minutes(60, pv_kw=0.0, grid_kw=2.0, battery_kw=-2.0)
+    h = hourly_energy(H0, laden, TARIFF, inverter_idle_kw=IDLE)
+    assert h.battery_charge_cost_eur == pytest.approx(1.88 * 0.30, abs=0.01)
+    assert h.battery_device_cost_eur == pytest.approx(0.12 * 0.30, abs=0.01)
+    # Zusammen wieder der ganze Bezug dieser Stunde.
+    assert h.battery_charge_cost_eur + h.battery_device_cost_eur == pytest.approx(
+        2.0 * 0.30, abs=0.01
+    )

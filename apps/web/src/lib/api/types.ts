@@ -2215,6 +2215,16 @@ export interface components {
              */
             battery_device_opportunity_eur: number;
             /**
+             * Battery Discharge Value Eur
+             * @default 0
+             */
+            battery_discharge_value_eur: number;
+            /**
+             * Battery Charge Cost Eur
+             * @default 0
+             */
+            battery_charge_cost_eur: number;
+            /**
              * Battery Savings Eur
              * @default 0
              */
@@ -2250,6 +2260,11 @@ export interface components {
             self_consumption_share?: number | null;
             /** Avg Import Price Ct */
             avg_import_price_ct?: number | null;
+            /**
+             * Battery Net Eur
+             * @default 0
+             */
+            battery_net_eur: number;
         };
         /** EvReportOut */
         EvReportOut: {

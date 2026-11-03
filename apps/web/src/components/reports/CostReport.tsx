@@ -66,7 +66,7 @@ export function CostReport() {
   const pellets = heat?.stove.pellet_eur ?? 0;
   const bezahlt = t ? t.import_cost_eur + pellets : null;
   const bekommen = t?.export_revenue_eur ?? null;
-  const gespart = t ? t.pv_direct_savings_eur + t.battery_savings_eur : null;
+  const gespart = t ? t.pv_direct_savings_eur + t.battery_net_eur : null;
   const tage = t && t.minutes > 0 ? Math.max(1, t.minutes / 1440) : null;
   const jeTag = bezahlt != null && bekommen != null && tage ? (bezahlt - bekommen) / tage : null;
 
@@ -125,9 +125,9 @@ export function CostReport() {
           <CardHead title="Woraus die Ersparnis besteht" />
           {[
             { name: "Sonne direkt genutzt", v: t?.pv_direct_savings_eur ?? 0, color: C.pv },
-            { name: "Speicher statt Netz", v: t?.battery_savings_eur ?? 0, color: C.battery },
+            { name: "Speicher statt Netz (netto)", v: t?.battery_net_eur ?? 0, color: C.battery },
           ].map((e) => {
-            const max = Math.max(0.01, t?.pv_direct_savings_eur ?? 0, t?.battery_savings_eur ?? 0);
+            const max = Math.max(0.01, t?.pv_direct_savings_eur ?? 0, t?.battery_net_eur ?? 0);
             return (
               <div key={e.name} className="flex flex-col gap-1.5">
                 <div className="flex items-baseline justify-between text-[13px]">
@@ -228,7 +228,7 @@ export function CostReport() {
         rows={[
           { label: "Bezahlt (Netzstrom)", value: (p) => val(p, (s) => eur(s.totals.import_cost_eur)), tone: "ember" },
           { label: "Bekommen (Einspeisung)", value: (p) => val(p, (s) => eur(s.totals.export_revenue_eur)), tone: "mist" },
-          { label: "Gespart (Sonne, Speicher)", value: (p) => val(p, (s) => eur(s.totals.pv_direct_savings_eur + s.totals.battery_savings_eur)), tone: "amber" },
+          { label: "Gespart (Sonne, Speicher)", value: (p) => val(p, (s) => eur(s.totals.pv_direct_savings_eur + s.totals.battery_net_eur)), tone: "amber" },
           { label: "Netzbezug", value: (p) => val(p, (s) => `${de1(s.totals.import_kwh, 0)} kWh`) },
           { label: "Ø Bezugspreis", value: (p) => val(p, (s) => (s.totals.avg_import_price_ct != null ? `${de1(s.totals.avg_import_price_ct, 1)} ct` : "-")) },
         ]}

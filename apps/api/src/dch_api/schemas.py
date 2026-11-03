@@ -413,6 +413,10 @@ class EnergyTotalsOut(EnergyTotals):
     autarky: float | None = None
     self_consumption_share: float | None = None
     avg_import_price_ct: float | None = None
+    #: Nutzen des Speichers nach Abzug dessen, was das Fuellen gekostet hat. Die Anzeige rechnet
+    #: ihn nicht selbst: Eine Differenz zweier Betraege in der Oberflaeche waere eine zweite
+    #: Definition neben der hier, und zwei Definitionen gehen irgendwann auseinander.
+    battery_net_eur: float = 0.0
 
     @classmethod
     def from_totals(cls, t: EnergyTotals) -> EnergyTotalsOut:
@@ -421,6 +425,7 @@ class EnergyTotalsOut(EnergyTotals):
             autarky=t.autarky,
             self_consumption_share=t.self_consumption_share,
             avg_import_price_ct=t.avg_import_price_ct,
+            battery_net_eur=t.battery_net_eur,
         )
 
 

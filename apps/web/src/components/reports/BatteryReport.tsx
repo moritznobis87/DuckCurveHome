@@ -114,7 +114,14 @@ export function BatteryReport() {
         />
         <Stat label="Entladen" value={de1(t?.battery_discharge_kwh)} unit="kWh" tone="mist" hint={t ? `${de1(t.battery_to_house_kwh)} kWh ins Haus` : undefined} />
         <Stat label="Vollzyklen" value={cycles != null ? de1(cycles, cycles >= 10 ? 0 : 1) : "-"} hint={cap > 0 ? `Entladung ÷ ${de1(cap, 1)} kWh` : "Kapazität unbekannt"} />
-        <Stat label="Ersparnis" value={eur(t?.battery_savings_eur)} tone="amber" hint="gegenüber Netzbezug" />
+        {/* Netto: vermiedener Bezug minus dem, was das Fuellen gekostet hat. Die alte Zahl zaehlte
+            nur die Entladung und sah den Verlust nie. */}
+        <Stat
+          label="Ersparnis"
+          value={eur(t?.battery_net_eur)}
+          tone="amber"
+          hint={t ? `${eur(t.battery_discharge_value_eur)} gespart − ${eur(t.battery_charge_cost_eur)} fürs Laden` : "netto"}
+        />
         <Stat label="PV-Anteil Ladung" value={pct(pvShare)} hint={(t && t.grid_to_battery_kwh > 0.05 ? `${de1(t.grid_to_battery_kwh)} kWh aus dem Netz geladen` : "keine Netzladung") + est} />
         {bySoc ? (
           <Stat
@@ -130,7 +137,7 @@ export function BatteryReport() {
         {/* Was der Wandler als Ladung sah, die Zellen aber nie erreichte. Bezahlt wurde es immer
             schon; bis zur Trennung stand es nur als Ladung und als Netzladung da. */}
         <Stat
-          label="Wechselrichter"
+          label="Verlust im Gerät"
           value={de1(t?.battery_device_kwh)}
           unit="kWh"
           tone={(t?.battery_device_kwh ?? 0) > 0.2 ? "ember" : "muted"}
@@ -161,7 +168,7 @@ export function BatteryReport() {
           anchor={anchor}
           title="Speicher im Überblick"
           rows={[
-            { label: "Ersparnis", value: (p) => val(p, (s) => eur(s.totals.battery_savings_eur)), tone: "amber" },
+            { label: "Ersparnis netto", value: (p) => val(p, (s) => eur(s.totals.battery_net_eur)), tone: "amber" },
             { label: "Entladen · kWh", value: (p) => val(p, (s) => de1(s.totals.battery_discharge_kwh, s.totals.battery_discharge_kwh >= 100 ? 0 : 1)) },
             { label: "Vollzyklen", value: (p) => val(p, (s) => (cap > 0 ? de1(s.totals.battery_discharge_kwh / cap, 1) : "-")) },
             { label: "PV-Anteil", value: (p) => val(p, (s) => pct(s.totals.battery_charge_kwh > 0 ? s.totals.pv_to_battery_kwh / s.totals.battery_charge_kwh : null)) },
@@ -169,7 +176,7 @@ export function BatteryReport() {
         />
       </div>
       <SpeicherCheck period={period} anchor={anchor} />
-      <CoverageNote meta={data?.meta} extra="Geladen ist, was in den Zellen ankam: Der Eigenverbrauch des Wechselrichters steht als eigene Kachel daneben und nicht mehr in der Ladung. Ersparnis: jede ins Haus entladene Kilowattstunde spart den Bezugspreis der Stunde, abzüglich der Einspeisevergütung, die der gespeicherte PV-Strom sonst gebracht hätte." />
+      <CoverageNote meta={data?.meta} extra="Geladen ist, was in den Zellen ankam: Was der Wandler zusätzlich sah, hat sie nie erreicht und steht als Verlust im Gerät daneben. Ersparnis ist netto gerechnet: der vermiedene Bezug der Entladestunden, abzüglich dessen, was das Füllen gekostet hat (Netzanteil zum Bezugspreis, PV-Anteil zur entgangenen Vergütung). Die Verluste stecken darin von selbst, weil mehr hineinging als herauskam." />
     </ReportShell>
   );
 }

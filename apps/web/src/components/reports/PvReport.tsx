@@ -122,7 +122,7 @@ export function PvReport() {
             { label: "Erzeugt · kWh", value: (p) => val(p, (s) => de1(s.totals.pv_kwh, s.totals.pv_kwh >= 100 ? 0 : 1)), tone: "amber" },
             { label: "Eigenverbrauch", value: (p) => val(p, (s) => pct(s.totals.self_consumption_share)) },
             { label: "Einspeiseerlös", value: (p) => val(p, (s) => eur(s.totals.export_revenue_eur)) },
-            { label: "Ersparnis", value: (p) => val(p, (s) => eur(s.totals.pv_direct_savings_eur + s.totals.battery_savings_eur)) },
+            { label: "Ersparnis", value: (p) => val(p, (s) => eur(s.totals.pv_direct_savings_eur + s.totals.battery_net_eur)) },
           ]}
         />
       </div>
