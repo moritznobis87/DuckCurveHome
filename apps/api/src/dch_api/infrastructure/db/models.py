@@ -261,6 +261,11 @@ class EnergyHour(Base):
     pv_to_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     grid_to_battery_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     grid_to_battery_dark_kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    # Eigenverbrauch des Speichergeraets: was der Wandler als Ladung sah, die Zellen aber nie
+    # erreichte. `battery_charge_kwh` ist seit der Trennung die Menge in den Zellen.
+    battery_device_kwh: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    battery_device_pv_kwh: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    battery_device_grid_kwh: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
     battery_pv_to_house_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     battery_origin_estimated_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     # Bestand am Stundenende, kein Summand: Herkunftskonto des Speichers für die Folgestunde.
@@ -278,6 +283,10 @@ class EnergyHour(Base):
     heat_pump_opportunity_eur: Mapped[float] = mapped_column(Float, default=0.0)
     ev_cost_eur: Mapped[float] = mapped_column(Float, default=0.0)
     ev_opportunity_eur: Mapped[float] = mapped_column(Float, default=0.0)
+    battery_device_cost_eur: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    battery_device_opportunity_eur: Mapped[float] = mapped_column(
+        Float, default=0.0, server_default="0"
+    )
     battery_savings_eur: Mapped[float] = mapped_column(Float, default=0.0)
     pv_direct_savings_eur: Mapped[float] = mapped_column(Float, default=0.0)
     price_weighted_ct: Mapped[float] = mapped_column(Float, default=0.0)

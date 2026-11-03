@@ -96,8 +96,10 @@ export function CostReport() {
   }, [shift]);
 
   const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "-");
-  const haushaltCost = t ? Math.max(0, t.import_cost_eur - t.heat_pump_cost_eur - t.ev_cost_eur) : 0;
-  const haushaltKwh = t ? Math.max(0, t.import_kwh - t.heat_pump_grid_kwh - t.ev_grid_kwh) : 0;
+  // Das Speichergeraet zieht aus demselben Netzbezug wie alles andere. Ohne diesen Abzug stuende
+  // sein Verbrauch zweimal in der Aufstellung: einmal als eigener Posten und einmal im Haushalt.
+  const haushaltCost = t ? Math.max(0, t.import_cost_eur - t.heat_pump_cost_eur - t.ev_cost_eur - t.battery_device_cost_eur) : 0;
+  const haushaltKwh = t ? Math.max(0, t.import_kwh - t.heat_pump_grid_kwh - t.ev_grid_kwh - t.battery_device_grid_kwh) : 0;
   const shiftTon = shift && shift.days_used > 0 ? (shift.saving_eur >= 0 ? "var(--amber)" : "var(--alert)") : "var(--text-3)";
   const ct = (e: number, kwh: number) => (kwh > 0.05 ? `${de1((e / kwh) * 100, 1)} ct` : "-");
 
@@ -204,12 +206,16 @@ export function CostReport() {
             <Posten name="Netzstrom Haushalt" menge={`${de1(haushaltKwh, 0)} kWh`} preis={ct(haushaltCost, haushaltKwh)} betrag={eur(haushaltCost)} tone="var(--alert)" href="/strom" seite="Strom" />
             <Posten name="Netzstrom Wärmepumpe" menge={`${de1(t?.heat_pump_grid_kwh, 0)} kWh`} preis={t ? ct(t.heat_pump_cost_eur, t.heat_pump_grid_kwh) : "-"} betrag={eur(t?.heat_pump_cost_eur)} tone="var(--alert)" href="/waerme" seite="Wärme" />
             <Posten name="Netzstrom Wallbox" menge={`${de1(t?.ev_grid_kwh, 0)} kWh`} preis={t ? ct(t.ev_cost_eur, t.ev_grid_kwh) : "-"} betrag={eur(t?.ev_cost_eur)} tone="var(--alert)" href="/strom/wallbox" seite="Wallbox" />
+            <Posten name="Netzstrom Speichergerät" menge={`${de1(t?.battery_device_grid_kwh, 0)} kWh`} preis={t ? ct(t.battery_device_cost_eur, t.battery_device_grid_kwh) : "-"} betrag={eur(t?.battery_device_cost_eur)} tone="var(--alert)" href="/strom/speicher" seite="Speicher" />
             <Posten name="Pellets" menge={heat ? `${de1(heat.stove.pellet_kg, 1)} kg` : "-"} preis="" betrag={eur(pellets)} tone="var(--stove)" href="/waerme" seite="Wärme" />
             <Posten name="Einspeisung" menge={`${de1(t?.export_kwh, 0)} kWh`} preis={data ? `${de1(data.meta.feed_in_ct_kwh, 2)} ct` : "-"} betrag={bekommen != null ? `− ${eur(bekommen)}` : "-"} tone="var(--mist)" href="/geld/pv-abrechnung" seite="PV-Abrechnung" />
-            <Posten name="Entgangene Vergütung (Wärmepumpe, Wallbox)" menge="" preis="" betrag={eur(t ? t.heat_pump_opportunity_eur + t.ev_opportunity_eur : null)} tone="var(--text-3)" href="/strom/pv" seite="Photovoltaik" />
+            <Posten name="Entgangene Vergütung (Wärmepumpe, Wallbox, Speichergerät)" menge="" preis="" betrag={eur(t ? t.heat_pump_opportunity_eur + t.ev_opportunity_eur + t.battery_device_opportunity_eur : null)} tone="var(--text-3)" href="/strom/pv" seite="Photovoltaik" />
           </tbody>
         </table>
         <Note>
+          Netzstrom Speichergerät ist der Eigenverbrauch des Wechselrichters: Strom, der in das Gerät
+          floss, ohne die Zellen zu erreichen. Er stand früher als Ladung in der Speicherbilanz und
+          als Netzladung in der Statistik; bezahlt wurde er immer schon, nur stand er nirgends.
           Die Pelletmenge ist aus den Leistungsstufen des Ofens geschätzt, nicht gewogen. Die entgangene
           Vergütung ist kein Geld, das fehlt, sondern der Preis dafür, Sonnenstrom selbst zu nutzen statt
           ihn einzuspeisen; sie steht hier, weil sie in den Wärme- und Wallboxkosten mitgerechnet wird.

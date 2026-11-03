@@ -440,7 +440,13 @@ def compute_hours(dump: ParsedDump, hems: HemsConfig) -> list[tuple[HourlyEnergy
             vals = [t for t in ts if t is not None]
             out.append(
                 (
-                    hourly_energy(hour, samples, hems.tariff, resolution_min=dump.resolution_min),
+                    hourly_energy(
+                        hour,
+                        samples,
+                        hems.tariff,
+                        resolution_min=dump.resolution_min,
+                        inverter_idle_kw=hems.battery.inverter_idle_kw,
+                    ),
                     round(sum(vals) / len(vals), 2) if vals else None,
                 )
             )

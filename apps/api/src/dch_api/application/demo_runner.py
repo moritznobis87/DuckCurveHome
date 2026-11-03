@@ -119,7 +119,15 @@ VERSION = "0.1.0-phase1"
 class DemoRunner:
     def __init__(self, settings: Settings, hems: HemsConfig | None = None) -> None:
         self.settings = settings
-        self.hems = hems or HemsConfig()
+        # Der Eigenverbrauch des Wechselrichters ist in der Vorfuehrung aus. Das Haus hat ihn
+        # gemessen (siehe BatteryConfig.inverter_idle_kw), das simulierte Speichermodell kennt ihn
+        # aber nicht: Es laedt verlustfrei in den Ladestand. Ihn hier trotzdem abzuziehen hiesse,
+        # der Vorfuehrung einen Verbrauch anzudichten, den ihre eigene Physik nicht hat - und die
+        # Gegenprobe aus dem Ladestand widerspraeche der Ladung auf derselben Seite.
+        grund = hems or HemsConfig()
+        self.hems = grund.model_copy(
+            update={"battery": grund.battery.model_copy(update={"inverter_idle_kw": 0.0})}
+        )
         start = settings.demo_start or datetime.now(UTC)
         if start.tzinfo is None:
             start = start.replace(tzinfo=UTC)

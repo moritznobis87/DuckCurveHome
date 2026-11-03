@@ -1237,6 +1237,11 @@ export interface components {
              */
             control_enabled: boolean;
             /**
+             * Inverter Idle Kw
+             * @default 0.12
+             */
+            inverter_idle_kw: number;
+            /**
              * Reserve Soc
              * @default 0
              */
@@ -2110,6 +2115,21 @@ export interface components {
              */
             grid_to_battery_kwh: number;
             /**
+             * Battery Device Kwh
+             * @default 0
+             */
+            battery_device_kwh: number;
+            /**
+             * Battery Device Pv Kwh
+             * @default 0
+             */
+            battery_device_pv_kwh: number;
+            /**
+             * Battery Device Grid Kwh
+             * @default 0
+             */
+            battery_device_grid_kwh: number;
+            /**
              * Grid To Battery Dark Kwh
              * @default 0
              */
@@ -2184,6 +2204,16 @@ export interface components {
              * @default 0
              */
             ev_opportunity_eur: number;
+            /**
+             * Battery Device Cost Eur
+             * @default 0
+             */
+            battery_device_cost_eur: number;
+            /**
+             * Battery Device Opportunity Eur
+             * @default 0
+             */
+            battery_device_opportunity_eur: number;
             /**
              * Battery Savings Eur
              * @default 0
@@ -3087,6 +3117,7 @@ export interface components {
              *       "capacity_kwh": 5.1,
              *       "max_power_kw": 3.7,
              *       "control_enabled": false,
+             *       "inverter_idle_kw": 0.12,
              *       "reserve_soc": 0
              *     }
              */

@@ -103,7 +103,7 @@ export function BatteryReport() {
   return (
     <ReportShell title="Batteriespeicher" kicker={cap > 0 ? `${de1(cap, 1)} kWh · Nutzung und Ersparnis` : "Nutzung und Ersparnis"} period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today}>
       {error ? <ErrorBanner message={error} /> : null}
-      <KpiGrid cols={7}>
+      <KpiGrid cols={8}>
         <Stat label="Geladen" value={de1(t?.battery_charge_kwh)} unit="kWh" tone="amber" hint={t ? `PV ${de1(t.pv_to_battery_kwh)} · Netz ${de1(t.grid_to_battery_kwh)} kWh${est}` : undefined} />
         <Stat
           label="Netzladung ohne PV"
@@ -127,6 +127,15 @@ export function BatteryReport() {
         ) : (
           <Stat label="Wirkungsgrad" value={pct(eff)} tone="muted" hint="Entladen ÷ Geladen" />
         )}
+        {/* Was der Wandler als Ladung sah, die Zellen aber nie erreichte. Bezahlt wurde es immer
+            schon; bis zur Trennung stand es nur als Ladung und als Netzladung da. */}
+        <Stat
+          label="Wechselrichter"
+          value={de1(t?.battery_device_kwh)}
+          unit="kWh"
+          tone={(t?.battery_device_kwh ?? 0) > 0.2 ? "ember" : "muted"}
+          hint={t ? `${eur(t.battery_device_cost_eur)} bezahlt · ${eur(t.battery_device_opportunity_eur)} entgangen` : undefined}
+        />
       </KpiGrid>
       <BatteryControl />
       <div className="report-row" style={{ "--cols": "5fr 3fr 4fr" } as React.CSSProperties}>
@@ -160,7 +169,7 @@ export function BatteryReport() {
         />
       </div>
       <SpeicherCheck period={period} anchor={anchor} />
-      <CoverageNote meta={data?.meta} extra="Ersparnis: jede ins Haus entladene Kilowattstunde spart den Bezugspreis der Stunde, abzüglich der Einspeisevergütung, die der gespeicherte PV-Strom sonst gebracht hätte." />
+      <CoverageNote meta={data?.meta} extra="Geladen ist, was in den Zellen ankam: Der Eigenverbrauch des Wechselrichters steht als eigene Kachel daneben und nicht mehr in der Ladung. Ersparnis: jede ins Haus entladene Kilowattstunde spart den Bezugspreis der Stunde, abzüglich der Einspeisevergütung, die der gespeicherte PV-Strom sonst gebracht hätte." />
     </ReportShell>
   );
 }

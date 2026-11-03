@@ -266,6 +266,26 @@ class BatteryConfig(BaseModel):
     # Ob DCH die Betriebsart des Speichers setzen darf. Wie beim Ofen ist das nur die eine Hälfte
     # der Freigabe; ohne myenergi-Zugangsdaten in der Umgebung geht ohnehin kein Befehl hinaus.
     control_enabled: bool = False
+    # Was der Wechselrichter für sich selbst zieht, solange er lädt, in kW.
+    #
+    # **Warum das hier steht und nicht als Verlust durchgeht.** Der Stromwandler des Libbi sitzt auf
+    # der Wechselstromseite und sieht alles, was in das Gerät fließt - auch das, was nie in die
+    # Zellen gelangt, sondern Wechselrichter, Steuerung und Kühlung versorgt. Ohne diese Zahl bucht
+    # die Bilanz es als Ladung, nachts entsprechend als Netzladung, und weil es die Zellen nie
+    # erreicht, kommt es auch nie wieder heraus. Beide auffälligen Zahlen der Speicherseite, die
+    # hohe Netzladung und der Umlauf von 63 %, entstehen daraus.
+    #
+    # **Woher der Wert kommt.** Gemessen am Haus, Oktober 2026, 44 700 Minutenzeilen bei voller
+    # Abdeckung: Der Verlust je Tag liegt bei 1,5 bis 2,1 kWh, und zwar fast unabhängig davon, ob an
+    # diesem Tag 4,9 oder 11,8 kWh geladen wurden. Kleinste Quadrate über 27 Tage trennen das in
+    # 1,41 kWh je Tag plus 5,0 % des Durchsatzes; auf die aktive Zeit bezogen sind das rund 120 W.
+    # Ein Umwandlungsverlust wächst mit dem Durchsatz, dieser wächst mit der Zeit. Die Gegenprobe:
+    # Am 3.11.2026 wurde fast nur geladen, 4,4 kWh hinein, 4,0 kWh im Ladestand angekommen.
+    #
+    # Nachgemessen wird er mit `GET /energy/speicher-check`, der die Zerlegung je Zeitraum ausweist
+    # und die Rohreihen liest, also von dieser Einstellung unberührt bleibt. 0 schaltet den Abzug ab.
+    inverter_idle_kw: float = 0.12
+
     # Untergrenze des Ladestands als Anteil. Darunter hält der Regler den Speicher an, statt ihn
     # die letzten Prozent fahren zu lassen - die bringen nichts und lösen beim Libbi eine
     # Netznachladung aus (siehe hems_core.control.battery_reserve). 0 schaltet die Grenze ab.

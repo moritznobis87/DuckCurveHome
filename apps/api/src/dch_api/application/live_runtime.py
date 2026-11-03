@@ -1880,7 +1880,10 @@ class LiveRuntime:
         # ausgerollt wurde; v6 gibt die PV zuerst dem Speicher und erst den Rest dem Haus. Wer die
         # Kennung nicht mitzieht, laesst die alten Zeilen stehen. v7 traegt den Stundenpreis nach
         # (`price_hours_ct`), ohne den der Vergleichslauf keine Stunde ohne Netzbezug bewerten kann.
-        marker = "energy.rebuild_price_hours_v7"
+        # v8 trennt den Eigenverbrauch des Speichergeraets aus der Ladung heraus
+        # (hems_core.accounting.energy, BatteryConfig.inverter_idle_kw). Ohne diesen Lauf stuenden
+        # alte und neue Stunden nebeneinander, und die Jahreszahl waere die Summe aus beidem.
+        marker = "energy.rebuild_device_v8"
         try:
             if await self.repos.has_event(marker):
                 self.energy_rebuild = "erledigt"
@@ -1899,7 +1902,8 @@ class LiveRuntime:
             await self.repos.add_event(
                 "info",
                 marker,
-                f"{hours} Stundenbilanzen ab {start:%d.%m.%Y} neu gerechnet (Quellenzuordnung).",
+                f"{hours} Stundenbilanzen ab {start:%d.%m.%Y} neu gerechnet "
+                "(Eigenverbrauch des Speichergeraets getrennt).",
                 {"hours": hours},
             )
             log.info("energy hours rebuilt", hours=hours, since=start.isoformat())

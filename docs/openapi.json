@@ -3029,6 +3029,11 @@
             "title": "Control Enabled",
             "default": false
           },
+          "inverter_idle_kw": {
+            "type": "number",
+            "title": "Inverter Idle Kw",
+            "default": 0.12
+          },
           "reserve_soc": {
             "type": "number",
             "title": "Reserve Soc",
@@ -4855,6 +4860,21 @@
             "title": "Grid To Battery Kwh",
             "default": 0.0
           },
+          "battery_device_kwh": {
+            "type": "number",
+            "title": "Battery Device Kwh",
+            "default": 0.0
+          },
+          "battery_device_pv_kwh": {
+            "type": "number",
+            "title": "Battery Device Pv Kwh",
+            "default": 0.0
+          },
+          "battery_device_grid_kwh": {
+            "type": "number",
+            "title": "Battery Device Grid Kwh",
+            "default": 0.0
+          },
           "grid_to_battery_dark_kwh": {
             "type": "number",
             "title": "Grid To Battery Dark Kwh",
@@ -4928,6 +4948,16 @@
           "ev_opportunity_eur": {
             "type": "number",
             "title": "Ev Opportunity Eur",
+            "default": 0.0
+          },
+          "battery_device_cost_eur": {
+            "type": "number",
+            "title": "Battery Device Cost Eur",
+            "default": 0.0
+          },
+          "battery_device_opportunity_eur": {
+            "type": "number",
+            "title": "Battery Device Opportunity Eur",
             "default": 0.0
           },
           "battery_savings_eur": {
@@ -6543,6 +6573,7 @@
               "capacity_kwh": 5.1,
               "max_power_kw": 3.7,
               "control_enabled": false,
+              "inverter_idle_kw": 0.12,
               "reserve_soc": 0.0
             }
           },

@@ -113,6 +113,19 @@ class EnergyTotals(BaseModel):
     grid_to_house_kwh: float = 0.0
     pv_to_battery_kwh: float = 0.0
     grid_to_battery_kwh: float = 0.0
+    # Was der Wechselrichter für sich selbst gezogen hat, während er lud, getrennt nach Herkunft.
+    #
+    # Der Stromwandler des Speichers sitzt auf der Wechselstromseite und sieht alles, was in das
+    # Gerät fließt. Ein Teil davon erreicht die Zellen nie, sondern versorgt Wechselrichter,
+    # Steuerung und Kühlung. Als Ladung gebucht wäre er doppelt falsch: Er bläht die geladene Menge
+    # auf, nachts als Netzladung, und er kommt nie wieder heraus, was den Umlauf drückt. Hier steht
+    # er als das, was er ist - ein Verbraucher des Hauses, mit eigener Herkunft und eigenem Preis.
+    #
+    # `battery_charge_kwh` ist deshalb die Menge, die in den Zellen ankam, nicht die am Wandler
+    # gemessene. Wer die gemessene braucht, addiert `battery_device_kwh` dazu.
+    battery_device_kwh: float = 0.0
+    battery_device_pv_kwh: float = 0.0
+    battery_device_grid_kwh: float = 0.0
     # Netzladung in Minuten ohne jede PV-Leistung. Die Unterscheidung trennt zwei sehr verschiedene
     # Ursachen: bei Dunkelheit lädt der Speicher wirklich aus dem Netz, das ist eine Einstellung
     # oder eine Entscheidung des Geräts. Bei Sonne ist es meist ein Messartefakt - PV, Netz und
@@ -138,6 +151,10 @@ class EnergyTotals(BaseModel):
     heat_pump_opportunity_eur: float = 0.0  # PV-/Batterieanteil × Einspeisevergütung (entgangen)
     ev_cost_eur: float = 0.0
     ev_opportunity_eur: float = 0.0
+    # Eigenverbrauch des Speichergeräts, bewertet wie jeder andere Verbraucher: der Netzanteil zum
+    # Bezugspreis der Stunde (bezahlt), der PV-Anteil zur Einspeisevergütung (entgangen).
+    battery_device_cost_eur: float = 0.0
+    battery_device_opportunity_eur: float = 0.0
     battery_savings_eur: float = 0.0  # Entladung ins Haus × (Preis − Vergütung)
     pv_direct_savings_eur: float = 0.0  # PV direkt × (Preis − Vergütung)
     price_weighted_ct: float = 0.0  # Σ Bezug × Preis, für den Mittelpreis
@@ -166,7 +183,16 @@ class EnergyTotals(BaseModel):
 
     @property
     def self_consumption_kwh(self) -> float:
-        """Eigenverbrauch eigener Erzeugung: PV direkt plus der PV-Anteil der Speicherentladung."""
+        """Eigenverbrauch eigener Erzeugung: PV direkt plus der PV-Anteil der Speicherentladung.
+
+        **Ohne den Eigenverbrauch des Speichergeräts**, obwohl auch der im Haus geblieben ist. Ob
+        der Strom, den der Wechselrichter für seinen eigenen Betrieb zieht, eine unentgeltliche
+        Wertabgabe im Sinne des § 10 Abs. 4 UStG ist oder zum Betrieb der Anlage selbst gehört, ist
+        eine steuerliche Frage und keine, die sich aus den Messwerten beantworten lässt. Bis sie
+        entschieden ist, steht die Menge als `battery_device_pv_kwh` daneben und nicht darin; die
+        wirtschaftlich entscheidende Zahl, die entgangene Vergütung, führt
+        `battery_device_opportunity_eur`.
+        """
         return round(self.pv_direct_kwh + self.battery_pv_to_house_kwh, 4)
 
     @property
@@ -346,6 +372,7 @@ def hourly_energy(
     origin: BatteryOrigin | None = None,
     capacity_kwh: float | None = None,
     resolution_min: int = 1,
+    inverter_idle_kw: float = 0.0,
 ) -> HourlyEnergy:
     """Eine Stunde bilanzieren.
 
@@ -369,6 +396,15 @@ def hourly_energy(
     kleiner aus, der Netzanteil größer, und damit sinkt die ausgewiesene Autarkie. Die PV-Menge
     selbst verschiebt sich nur, sie verschwindet nicht - was nicht direkt ins Haus geht, liegt im
     Speicher und kommt später heraus.
+
+    **Der Eigenverbrauch des Speichergeräts.** `inverter_idle_kw` ist das, was der Wechselrichter
+    zieht, solange er lädt. Es wird je Lademinute von der gemessenen Ladeleistung abgezogen und als
+    eigener Verbraucher gebucht, mit derselben Herkunft wie die Ladung, in die es eingerechnet war.
+    Nicht abgezogen wird bei grober Auflösung: In einem Stundenmittel steht nicht, wie viele Minuten
+    das Gerät überhaupt wach war, und ein Abzug über die ganze Stunde wäre dann zu groß. Abgezogen
+    wird auch nur beim **Laden**. Beim Entladen zieht das Gerät aus den Zellen, nicht aus dem Netz;
+    das Haus bekommt genau das, was der Wandler misst, und die Zusatzentnahme steckt bereits im
+    Entladewirkungsgrad.
 
     `resolution_min` ist die Auflösung der Eingangsdaten. Sie ändert an der Rangfolge nichts mehr,
     zählt aber die betroffenen Minuten in `coarse_minutes`, damit eine Jahresansicht nicht
@@ -399,7 +435,13 @@ def hourly_energy(
         imp = max(0.0, grid)
         exp = max(0.0, -grid)
         dis = max(0.0, bat)
-        chg = max(0.0, -bat)
+        # Gemessen am Wandler, und darin steckt der Eigenverbrauch des Geräts. `chg` ist danach,
+        # was in den Zellen ankam; `eigen` ist der Rest und wird zum Verbraucher.
+        chg_gemessen = max(0.0, -bat)
+        eigen = min(inverter_idle_kw, chg_gemessen) if not coarse else 0.0
+        chg = chg_gemessen - eigen
+        # Das Haus bleibt, was es war: alles außer dem Speicher. Der Eigenverbrauch des Geräts
+        # steht daneben und nicht darin - er ist kein Verbraucher des Hauses, sondern des Speichers.
         house = max(0.0, pv + grid + bat)
         hp = min(hp, house)
         ev = min(ev, house - hp)
@@ -411,10 +453,15 @@ def hourly_energy(
         share = (
             smp.pv_charge_share
             if smp.pv_charge_share is not None
-            else (min(1.0, pv / chg) if chg > 1e-9 else 0.0)
+            else (min(1.0, pv / chg_gemessen) if chg_gemessen > 1e-9 else 0.0)
         )
         pv_to_bat = share * chg
-        pv_direct = min(max(0.0, pv - pv_to_bat), house)
+        # Derselbe Anteil für den Eigenverbrauch: Er steckte in derselben Ladung und hatte damit
+        # dieselbe Herkunft. Was das Gerät aus der Sonne nahm, steht dem Haus nicht mehr zur
+        # Verfügung, deshalb geht es vor `pv_direct` von der Erzeugung ab.
+        eigen_pv = share * eigen
+        eigen_grid = max(0.0, eigen - eigen_pv)
+        pv_direct = min(max(0.0, pv - pv_to_bat - eigen_pv), house)
         grid_to_bat = max(0.0, chg - pv_to_bat)
         bat_to_house = min(dis, max(0.0, house - pv_direct))
         grid_to_house = max(0.0, house - pv_direct - bat_to_house)
@@ -436,6 +483,11 @@ def hourly_energy(
         acc["grid_to_house_kwh"] += grid_to_house * STEP_H
         acc["pv_to_battery_kwh"] += pv_to_bat * STEP_H
         acc["grid_to_battery_kwh"] += grid_to_bat * STEP_H
+        acc["battery_device_kwh"] += eigen * STEP_H
+        acc["battery_device_pv_kwh"] += eigen_pv * STEP_H
+        acc["battery_device_grid_kwh"] += eigen_grid * STEP_H
+        acc["battery_device_cost_eur"] += eigen_grid * STEP_H * price / 100.0
+        acc["battery_device_opportunity_eur"] += eigen_pv * STEP_H * feed_in / 100.0
         if pv < 0.05:
             acc["grid_to_battery_dark_kwh"] += grid_to_bat * STEP_H
 
@@ -516,7 +568,10 @@ def samples_from_totals(hour: HourlyEnergy) -> list[MinuteSample]:
     n = max(1, hour.minutes)
     f = 60.0 / n
     grid = (hour.import_kwh - hour.export_kwh) * f
-    battery = (hour.battery_discharge_kwh - hour.battery_charge_kwh) * f
+    # Zurück auf das, was der Wandler gemessen hat: `battery_charge_kwh` ist die Menge in den
+    # Zellen, der Eigenverbrauch des Geräts steht daneben. Ohne diese Addition verlöre jede
+    # Reparatur einer groben Stunde den Abzug der vorigen und die Zahlen schrumpften bei jedem Lauf.
+    battery = (hour.battery_discharge_kwh - hour.battery_charge_kwh - hour.battery_device_kwh) * f
     price = hour.avg_import_price_ct
     return [
         MinuteSample(

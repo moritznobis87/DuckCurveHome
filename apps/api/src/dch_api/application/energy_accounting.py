@@ -819,7 +819,14 @@ class EnergyAccounting:
         origin = await self._origin_before(order[0]) if order else BatteryOrigin()
         capacity = self.hems.battery.capacity_kwh
         for hour_start in order:
-            h = hourly_energy(hour_start, by_hour[hour_start], self.hems.tariff, origin, capacity)
+            h = hourly_energy(
+                hour_start,
+                by_hour[hour_start],
+                self.hems.tariff,
+                origin,
+                capacity,
+                inverter_idle_kw=self.hems.battery.inverter_idle_kw,
+            )
             out.append((h, _mean(temps_by_hour.get(hour_start, []))))
         return out
 
@@ -906,6 +913,7 @@ class EnergyAccounting:
                 origin,
                 capacity,
                 resolution_min=60,
+                inverter_idle_kw=self.hems.battery.inverter_idle_kw,
             )
             out.append((fresh, temp))  # merge_hour folgt in _merge_with_stored
         return out

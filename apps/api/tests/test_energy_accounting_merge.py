@@ -206,7 +206,11 @@ async def test_repair_coarse_laesst_echte_minutenrechnung_in_ruhe() -> None:
     await acc.recompute(HOUR, HOUR + timedelta(hours=1), repair_coarse=True)
     h = written[0]
     assert h.coarse_minutes == 0
-    assert h.grid_to_battery_kwh == pytest.approx(3.0, abs=0.02)  # echte Netzladung bleibt stehen
+    # Echte Netzladung bleibt stehen, abzueglich dessen, was das Geraet fuer sich selbst zog:
+    # 0,12 kW ueber eine Stunde. Zusammen ergibt es wieder die am Wandler gemessenen 3 kWh.
+    assert h.grid_to_battery_kwh == pytest.approx(2.88, abs=0.02)
+    assert h.battery_device_grid_kwh == pytest.approx(0.12, abs=0.01)
+    assert h.grid_to_battery_kwh + h.battery_device_grid_kwh == pytest.approx(3.0, abs=0.02)
 
 
 def test_importierte_stunde_blockiert_die_minutenrechnung_nicht_mehr() -> None:
@@ -229,3 +233,62 @@ def test_importierte_stunde_blockiert_die_minutenrechnung_nicht_mehr() -> None:
     # Und eine Rechnung, die selbst aus Stundenmitteln stammt, gewinnt nie über die Abkürzung.
     assert not supersedes(HourlyEnergy(hour_start=HOUR, minutes=58, coarse_minutes=58), imported)
     assert supersedes(measured, None)
+
+
+def test_rueckwirkend_wird_der_eigenverbrauch_aus_alten_stunden_herausgeloest() -> None:
+    """Der Lauf, den der Marker `energy.rebuild_device_v8` einmal anstoesst.
+
+    Eine Stunde liegt bereits gespeichert, gerechnet ohne die Trennung: die ganze gemessene Ladung
+    steht als Netzladung. Nach der Neuberechnung aus denselben Minutenwerten steht der
+    Eigenverbrauch des Geraets getrennt daneben, und die Summe bleibt dieselbe. Ohne `supersedes`
+    mit `>=` bliebe die alte Stunde stehen, und die Korrektur erreichte die Historie nie.
+    """
+    import asyncio
+
+    async def lauf() -> HourlyEnergy:
+        async def minute_rows(s: datetime, e: datetime) -> list[dict[str, float | str | None]]:
+            return [
+                {
+                    "ts": (HOUR + timedelta(minutes=i)).isoformat().replace("+00:00", "Z"),
+                    "pv_power_kw": 0.0,
+                    "grid_power_kw": 2.0,
+                    "battery_power_kw": -2.0,
+                }
+                for i in range(60)
+            ]
+
+        # Der Bestand: dieselbe Stunde, aber ohne Trennung - so wie sie vor der Aenderung aussah.
+        alt = HourlyEnergy(
+            hour_start=HOUR,
+            minutes=60,
+            battery_charge_kwh=2.0,
+            grid_to_battery_kwh=2.0,
+            grid_to_battery_dark_kwh=2.0,
+            import_kwh=2.0,
+        )
+        gespeichert: dict[datetime, HourlyEnergy] = {HOUR: alt}
+
+        async def read(s: datetime, e: datetime) -> list[tuple[HourlyEnergy, float | None]]:
+            return [(h, None) for t, h in gespeichert.items() if s <= t < e]
+
+        async def write(hours: list[HourlyEnergy], temps: dict[datetime, float | None]) -> None:
+            for h in hours:
+                gespeichert[h.hour_start] = h
+
+        async def last() -> datetime | None:
+            return HOUR
+
+        acc = EnergyAccounting(HemsConfig(), BERLIN, minute_rows, store=(read, write, last))
+        await acc.recompute(HOUR, HOUR + timedelta(hours=1))
+        return gespeichert[HOUR]
+
+    neu = asyncio.run(lauf())
+    # 0,12 kW ueber eine Stunde sind im Geraet geblieben.
+    assert neu.battery_device_kwh == pytest.approx(0.12, abs=0.01)
+    assert neu.battery_device_grid_kwh == pytest.approx(0.12, abs=0.01)
+    assert neu.battery_charge_kwh == pytest.approx(1.88, abs=0.01)
+    # Die Netzladung ohne Sonne schrumpft um genau diesen Betrag, der Bezug bleibt, wie er war.
+    assert neu.grid_to_battery_dark_kwh == pytest.approx(1.88, abs=0.01)
+    assert neu.import_kwh == pytest.approx(2.0, abs=0.01)
+    # Und er ist bepreist.
+    assert neu.battery_device_cost_eur > 0.0
