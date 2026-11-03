@@ -587,6 +587,12 @@ def _gruppen(tage: list[Abschnitt], tz: ZoneInfo, monatlich: bool) -> list[tuple
     return [(k, summe_abschnitte(v)) for k, v in sorted(eimer.items())]
 
 
+def _abdeckung(g: Abschnitt) -> float:
+    """Anteil der Minuten zwischen erster und letzter Zeile, für die es eine Zeile gibt."""
+    spanne = (g.bis - g.von).total_seconds() / 60.0 + 1.0
+    return g.minuten / spanne if spanne > 0 else 0.0
+
+
 def _q(wert: float | None, breite: int = 7, stellen: int = 2) -> str:
     return " " * (breite - 1) + "-" if wert is None else f"{wert:{breite}.{stellen}f}"
 
@@ -597,11 +603,30 @@ def _speicher_text(
     """Den Befund als Bericht setzen: erst die drei Messungen, dann das Urteil, dann die Zeilen."""
     g = b.gesamt
     tage = max(1, round((end - start).total_seconds() / 86400))
-    out = [
+    kopf = (
         f"Speicherpruefung {start.astimezone(tz):%d.%m.%Y} bis {end.astimezone(tz):%d.%m.%Y} "
-        f"({period}, Ortszeit {tz})",
-        f"Kapazitaet {b.kapazitaet_kwh:.1f} kWh | {g.minuten} Minutenzeilen an {tage} Tagen "
-        f"({g.minuten / (tage * 1440):.0%} der Minuten belegt)",
+        f"({period}, Ortszeit {tz})"
+    )
+    if g.minuten == 0:
+        # Ein leerer Zeitraum hat keine erste und keine letzte Zeile; alles Weitere formatiert
+        # Zeitstempel, die es nicht gibt.
+        return [
+            kopf,
+            "",
+            "Keine Minutenzeilen in diesem Zeitraum.",
+            "",
+            "Urteil",
+            *[f"  - {satz}" for satz in speicher_urteil(b)],
+        ]
+    out = [
+        kopf,
+        f"Kapazitaet {b.kapazitaet_kwh:.1f} kWh | {g.minuten} Minutenzeilen, "
+        f"davon {g.aktiv_minuten} aktiv",
+        # Gemessen wird gegen die Spanne von der ersten bis zur letzten Zeile und nicht gegen den
+        # Kalenderzeitraum: Im laufenden Monat waere sonst jeder Bericht zu 90 % "luecknhaft",
+        # obwohl nur die Zukunft fehlt.
+        f"Abdeckung {_abdeckung(g):.0%} von {g.von.astimezone(tz):%d.%m. %H:%M} bis "
+        f"{g.bis.astimezone(tz):%d.%m. %H:%M} ({tage} Kalendertage im Zeitraum)",
         "",
         "Gemessen (battery_power_kw)",
         f"  geladen            {g.laden_kwh:9.1f} kWh   davon ohne Erzeugung {g.laden_dunkel_kwh:.1f} kWh",
@@ -624,6 +649,17 @@ def _speicher_text(
         ]
     else:
         out.append("Gegenprobe 2: kein Hausverbrauch des Hubs aufgezeichnet (house_power_kw).")
+    v = b.verlustquelle
+    if v.grundlast_w is not None and v.anteil is not None:
+        out += [
+            "Woran der Verlust haengt (kleinste Quadrate ueber die Tage)",
+            f"  {v.grundlast_w:.0f} W, solange der Speicher nicht ruht, "
+            f"dazu {v.anteil:.1%} des Durchsatzes",
+            f"  macht {v.grundlast_w * (g.aktiv_minuten / 60.0) / 1000.0:.0f} kWh aus der Zeit "
+            f"gegen {v.anteil * (g.laden_kwh + g.entladen_kwh):.0f} kWh aus der Menge "
+            f"(aus {v.tage} Tagen, Streuung {v.streuung_kwh or 0.0:.2f} kWh je Tag)",
+        ]
+
     r = b.ruhe
     if r.minuten:
         out += [
@@ -647,22 +683,25 @@ def _speicher_text(
     out += [f"  - {satz}" for satz in speicher_urteil(b)]
     out += [
         "",
-        "Zeitraum     Minuten    Laden   Entlad   dunkel  dSpeich  Verlust Anteil Restglied",
+        "Zeitraum     Minuten   aktiv    Laden   Entlad   dunkel  dSpeich  Verlust Anteil",
     ]
     for name, a in _gruppen(b.tage, tz, monatlich=tage > 45):
         anteil = f"{a.verlust_anteil:5.0%}" if a.verlust_anteil is not None else "    -"
         out.append(
-            f"{name:11s} {a.minuten:8d} {a.laden_kwh:8.1f} {a.entladen_kwh:8.1f} "
-            f"{a.laden_dunkel_kwh:8.1f} {_q(a.delta_speicher_kwh, 8, 1)} "
-            f"{_q(a.verlust_kwh, 8, 1)} {anteil} {_q(a.restglied_kw, 9, 3)}"
+            f"{name:11s} {a.minuten:8d} {a.aktiv_minuten:7d} {a.laden_kwh:8.1f} "
+            f"{a.entladen_kwh:8.1f} {a.laden_dunkel_kwh:8.1f} "
+            f"{_q(a.delta_speicher_kwh, 8, 1)} {_q(a.verlust_kwh, 8, 1)} {anteil}"
         )
     out += [
         "",
         "Lesehilfe. `dSpeich` ist, was der Ladestand an Inhaltsaenderung behauptet; `Verlust` ist",
         "Laden minus Entladen minus dSpeich, also was hineinging, ohne herauszukommen oder",
-        "anzukommen. Umwandlung erklaert 10 bis 20 Prozent. `Restglied` ist PV + Netz + Speicher",
-        "minus dem Hausverbrauch des Hubs: Ist es null, sehen die anderen Messgeraete denselben",
-        "Strom; weicht es ab, meldet die Speichermessung etwas, das sonst niemand sieht.",
+        "anzukommen. Umwandlung erklaert 10 bis 20 Prozent, und sie waechst mit dem Durchsatz.",
+        "Was stattdessen mit der aktiven Zeit waechst, ist Eigenverbrauch des Geraets und keine",
+        "Ladung; die Zeile ueber der Tabelle trennt beides. `Restglied` in der Kopfzeile ist",
+        "PV + Netz + Speicher minus dem Hausverbrauch des Hubs: Ist es null, sehen die anderen",
+        "Messgeraete denselben Strom; weicht es ab, meldet die Speichermessung etwas, das sonst",
+        "niemand sieht.",
         "Eine Zeile mit auffaellig wenigen Minuten stammt aus einem Stundenimport; dort ist die",
         "Aufteilung geschaetzt und die Lade-Entlade-Trennung grob.",
     ]

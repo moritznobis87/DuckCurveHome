@@ -55,8 +55,10 @@ EPISODE_MIN_MINUTEN = 15
 #: Ergebnis.
 EPISODE_MIN_SOC = 0.03
 #: Ab diesem Anteil der Ladung ist der Verlust nicht mehr mit Umwandlung zu erklären. Ein
-#: LFP-Speicher mit Hybridwechselrichter liegt im Umlauf bei 10 bis 20 Prozent.
-VERLUST_AUFFAELLIG = 0.25
+#: LFP-Speicher mit Hybridwechselrichter liegt im Umlauf bei 10 bis 20 Prozent. Die Schwelle stand
+#: zuerst bei 25 % und damit über dem, was derselbe Satz als erklärbar ausgibt: Ein Monat mit genau
+#: 25 % Verlust bekam „unauffällig" und daneben die Begründung, Umwandlung erkläre höchstens 20.
+VERLUST_AUFFAELLIG = 0.20
 #: Ab diesem Restglied im Mittel passt die Leistungsbilanz nicht mehr zusammen.
 RESTGLIED_AUFFAELLIG_KW = 0.05
 #: Bis hierher gilt der Speicher als leer. Darüber ist eine Ladung aus dem Netz eine Entscheidung,
@@ -97,6 +99,10 @@ class Abschnitt:
     #: Mittleres Restglied `PV + Netz + Speicher − Haus` über die Minuten, die alle vier kennen.
     restglied_kw: float | None
     restglied_minuten: int
+    #: Minuten, in denen der Speicher nicht ruhte. Ein Wechselrichter, der wach ist, kostet
+    #: auch dann etwas, wenn er wenig bewegt - und ohne diese Zahl ließe sich das nicht von
+    #: einem Verlust unterscheiden, der am Durchsatz hängt.
+    aktiv_minuten: int = 0
 
     @property
     def verlust_kwh(self) -> float | None:
@@ -194,6 +200,57 @@ class Wirkungsgrade:
 
 
 @dataclass(frozen=True)
+class Aufteilung:
+    """Woran der Verlust haengt: an der Zeit oder an der Menge.
+
+    Zwei Ursachen sehen in einer Monatssumme gleich aus und verlangen verschiedene Antworten. Ein
+    **Umwandlungsverlust** waechst mit dem Durchsatz: Wer doppelt so viel durch den Speicher
+    schickt, verliert doppelt so viel. Ein **Eigenverbrauch des Geraets** waechst mit der Zeit, in
+    der es wach ist, und ist an einem ruhigen Tag genauso gross wie an einem geschaeftigen.
+
+    Beides zugleich zu schaetzen geht, weil die Tage sich unterscheiden: An einem Tag mit 12 kWh
+    Durchsatz und einem mit 5 kWh ist der zeitabhaengige Teil derselbe, der mengenabhaengige nicht.
+    Gefittet wird ohne Achsenabschnitt - ein Speicher, der nicht laeuft, verliert nichts.
+    """
+
+    #: Verlust je Stunde, in der der Speicher nicht ruhte, in Watt.
+    grundlast_w: float | None
+    #: Zusaetzlicher Verlust als Anteil des Durchsatzes (Laden plus Entladen).
+    anteil: float | None
+    tage: int
+    #: Mittlerer Betrag, um den die Schaetzung je Tag danebenliegt, in kWh.
+    streuung_kwh: float | None
+
+
+def aufteilung(tage: Sequence[Abschnitt]) -> Aufteilung:
+    """Den Verlust in einen zeit- und einen mengenabhaengigen Teil zerlegen.
+
+    Kleinste Quadrate ueber die Tage: `Verlust = a * aktive Stunden + b * Durchsatz`. Weniger als
+    eine Handvoll brauchbarer Tage ergibt keine Gerade, und Tage, die sich im Verhaeltnis von
+    aktiver Zeit zu Durchsatz nicht unterscheiden, auch nicht - dann steht hier nichts.
+    """
+    punkte = [
+        (t.aktiv_minuten / 60.0, t.laden_kwh + t.entladen_kwh, t.verlust_kwh)
+        for t in tage
+        if t.verlust_kwh is not None and t.aktiv_minuten > 0
+    ]
+    if len(punkte) < 5:
+        return Aufteilung(None, None, len(punkte), None)
+    s11 = sum(x1 * x1 for x1, _, _ in punkte)
+    s12 = sum(x1 * x2 for x1, x2, _ in punkte)
+    s22 = sum(x2 * x2 for _, x2, _ in punkte)
+    sy1 = sum(x1 * (y or 0.0) for x1, _, y in punkte)
+    sy2 = sum(x2 * (y or 0.0) for _, x2, y in punkte)
+    det = s11 * s22 - s12 * s12
+    if abs(det) < 1e-9:
+        return Aufteilung(None, None, len(punkte), None)
+    a = (sy1 * s22 - sy2 * s12) / det
+    b = (sy2 * s11 - sy1 * s12) / det
+    streuung = sum(abs((y or 0.0) - a * x1 - b * x2) for x1, x2, y in punkte) / len(punkte)
+    return Aufteilung(round(a * 1000.0, 1), round(b, 4), len(punkte), round(streuung, 3))
+
+
+@dataclass(frozen=True)
 class SpeicherBefund:
     kapazitaet_kwh: float
     gesamt: Abschnitt
@@ -202,6 +259,7 @@ class SpeicherBefund:
     ruhe_voll_minuten: int
     wirkungsgrade: Wirkungsgrade
     tief: TiefBefund
+    verlustquelle: Aufteilung = Aufteilung(None, None, 0, None)
 
 
 def _summe(werte: Sequence[float | None]) -> float:
@@ -215,12 +273,15 @@ def abschnitt(proben: Sequence[SpeicherProbe], kapazitaet_kwh: float) -> Abschni
         jetzt = datetime.min
         return Abschnitt(jetzt, jetzt, 0, 0.0, 0.0, 0.0, None, None, None, None, 0)
     laden = entladen = dunkel = 0.0
+    aktiv = 0
     rest: list[float] = []
     for p in rows:
         b = p.battery_kw
         if b is not None:
             laden += max(0.0, -b) / 60.0
             entladen += max(0.0, b) / 60.0
+            if abs(b) > RUHE_KW:
+                aktiv += 1
             # „Dunkel" heißt: keine Erzeugung gemessen. Eine fehlende PV-Messung ist nicht dunkel.
             if b < 0 and p.pv_kw is not None and p.pv_kw <= 1e-9:
                 dunkel += -b / 60.0
@@ -248,6 +309,7 @@ def abschnitt(proben: Sequence[SpeicherProbe], kapazitaet_kwh: float) -> Abschni
         delta_speicher_kwh=delta,
         restglied_kw=round(sum(rest) / len(rest), 4) if rest else None,
         restglied_minuten=len(rest),
+        aktiv_minuten=aktiv,
     )
 
 
@@ -358,6 +420,7 @@ def summe_abschnitte(teile: Sequence[Abschnitt]) -> Abschnitt:
         delta_speicher_kwh=delta,
         restglied_kw=rest,
         restglied_minuten=rest_min,
+        aktiv_minuten=sum(t.aktiv_minuten for t in rows),
     )
 
 
@@ -474,6 +537,7 @@ def pruefe_speicher(
         ruhe_voll_minuten=voll,
         wirkungsgrade=wirkungsgrade(rows, kapazitaet_kwh),
         tief=tief_nachladungen(rows),
+        verlustquelle=aufteilung(tage),
     )
 
 
@@ -543,6 +607,18 @@ def speicher_urteil(b: SpeicherBefund) -> list[str]:
             f"Die Leistungsbilanz geht nicht auf: Restglied im Mittel {rest:+.3f} kW über "
             f"{g.restglied_minuten} Minuten. Die Speichermessung meldet damit Leistung, die weder "
             "Zähler noch Hub sehen. Das deutet auf den Stromwandler des Speichers."
+        )
+
+    v = b.verlustquelle
+    if v.grundlast_w is not None and v.anteil is not None:
+        zeit = v.grundlast_w * (g.aktiv_minuten / 60.0) / 1000.0
+        menge = v.anteil * (g.laden_kwh + g.entladen_kwh)
+        out.append(
+            f"Der Verlust haengt ueberwiegend an der Zeit, nicht an der Menge: ueber "
+            f"{v.tage} Tage gerechnet {v.grundlast_w:.0f} W, solange der Speicher nicht ruht, "
+            f"dazu {v.anteil:.0%} des Durchsatzes. Das macht {zeit:.0f} kWh gegen {menge:.0f} kWh. "
+            "Ein Umwandlungsverlust waechst mit dem Durchsatz; was mit der Zeit waechst, ist der "
+            "Eigenverbrauch des Geraets und gehoert nicht in die Speicherbilanz."
         )
 
     t = b.tief

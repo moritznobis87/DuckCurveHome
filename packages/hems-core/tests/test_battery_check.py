@@ -13,8 +13,10 @@ import pytest
 from hc_helpers import T0
 
 from hems_core.accounting.battery_check import (
+    Abschnitt,
     SpeicherProbe,
     abschnitt,
+    aufteilung,
     pruefe_speicher,
     ruhe_befund,
     speicher_urteil,
@@ -297,3 +299,70 @@ def test_das_urteil_nennt_den_mechanismus() -> None:
     text = " ".join(speicher_urteil(b))
     assert "SoC Recovery" in text
     assert b.tief.anzahl == 12
+
+
+# ------------------------------------------------------------------ Woran der Verlust haengt
+
+
+def _tag_mit(aktiv_min: int, kw: float, grundlast_w: float, anteil: float, tag: int) -> Abschnitt:
+    """Ein Tag, bei dem der Verlust nach Bauart aus Zeit und Menge entsteht."""
+    laden = kw * aktiv_min / 60.0
+    durchsatz = 2 * laden  # gleich viel hinein wie heraus
+    verlust = grundlast_w / 1000.0 * aktiv_min / 60.0 + anteil * durchsatz
+    # dSpeicher so gewaehlt, dass genau dieser Verlust herauskommt.
+    delta = laden - laden - verlust
+    return Abschnitt(
+        von=T0 + timedelta(days=tag),
+        bis=T0 + timedelta(days=tag, hours=23),
+        minuten=1440,
+        laden_kwh=laden,
+        entladen_kwh=laden,
+        laden_dunkel_kwh=0.0,
+        soc_von=0.5,
+        soc_bis=0.5 + delta / KAP,
+        delta_speicher_kwh=delta,
+        restglied_kw=None,
+        restglied_minuten=0,
+        aktiv_minuten=aktiv_min,
+    )
+
+
+def test_die_aufteilung_findet_grundlast_und_anteil_wieder() -> None:
+    # Tage, die sich im Verhaeltnis von aktiver Zeit zu Durchsatz unterscheiden - sonst waere
+    # die Gerade nicht bestimmt.
+    tage = [
+        _tag_mit(aktiv, kw, 120.0, 0.05, i)
+        for i, (aktiv, kw) in enumerate(
+            [(600, 0.5), (700, 1.2), (400, 2.0), (800, 0.4), (500, 1.5), (900, 0.8), (300, 2.4)]
+        )
+    ]
+    a = aufteilung(tage)
+    assert a.tage == 7
+    assert a.grundlast_w == pytest.approx(120.0, abs=2.0)
+    assert a.anteil == pytest.approx(0.05, abs=0.005)
+    assert a.streuung_kwh is not None and a.streuung_kwh < 0.01
+
+
+def test_ohne_genug_tage_keine_aufteilung() -> None:
+    tage = [_tag_mit(600, 1.0, 120.0, 0.05, i) for i in range(3)]
+    assert aufteilung(tage).grundlast_w is None
+
+
+def test_ein_reiner_umwandlungsverlust_zeigt_keine_grundlast() -> None:
+    tage = [
+        _tag_mit(aktiv, kw, 0.0, 0.12, i)
+        for i, (aktiv, kw) in enumerate(
+            [(600, 0.5), (700, 1.2), (400, 2.0), (800, 0.4), (500, 1.5), (900, 0.8)]
+        )
+    ]
+    a = aufteilung(tage)
+    assert a.grundlast_w == pytest.approx(0.0, abs=2.0)
+    assert a.anteil == pytest.approx(0.12, abs=0.005)
+
+
+def test_aktive_minuten_zaehlen_nur_was_sich_bewegt() -> None:
+    proben = reihe(60, batterie=-1.0, soc_start=0.3, soc_rate=0.18) + reihe(
+        120, batterie=0.0, soc_start=0.48, start_min=60
+    )
+    a = abschnitt(proben, KAP)
+    assert a.minuten == 180 and a.aktiv_minuten == 60
