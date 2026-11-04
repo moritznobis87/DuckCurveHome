@@ -194,7 +194,21 @@ def entscheide(
             return Zurueckziehen(grund="wieder auf dem Grundwert")
         return None
 
-    if zustand is not None and now - zustand.written_at < timedelta(minutes=schonfrist_min):
+    # Die Schonfrist bremst das **Stellen**, nicht das Zurückgeben.
+    #
+    # Sie verhindert, dass die Automatik einen Raum im Minutentakt hin und her schreibt. Auf dem
+    # Weg zurück auf den Grundwert gibt es nichts zu verhindern: Dort endet der Eingriff, und der
+    # Raum gehört wieder dem Menschen. Vorher galt sie in beide Richtungen, und das hatte eine
+    # Folge, die niemand wollte - wer die Automatik ausschaltete, fand seine Räume noch zehn
+    # Minuten lang angehoben vor. Genau das prüft
+    # `test_ausschalten_laesst_keinen_raum_angehoben_zurueck`; der Test fiel bisher nur deshalb
+    # nicht auf, weil er ohne feste Uhrzeit lief und zu den meisten Stunden gar nichts anzuheben
+    # war (nachgemessen am 04.11.2026: um 3 und um 15 Uhr schlug er fehl, sonst nicht).
+    if (
+        zustand is not None
+        and abs(wunsch) > 1e-9
+        and now - zustand.written_at < timedelta(minutes=schonfrist_min)
+    ):
         return None
 
     return Stellen(setpoint_c=soll, base_c=basis, offset_k=wunsch, grund=grund)

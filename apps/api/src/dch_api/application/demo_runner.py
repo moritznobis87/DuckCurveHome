@@ -24,6 +24,7 @@ from dch_api.application.energy_accounting import EnergyAccounting
 from dch_api.application.forecast_evaluation import ForecastEvaluator
 from dch_api.application.ha_import import ImportResult
 from dch_api.application.invoice_service import InvoiceService
+from dch_api.application.live_feed import Takt
 from dch_api.application.room_automatik import (
     AutomatikConfig,
     RaumZustand,
@@ -155,6 +156,9 @@ class DemoRunner:
         # Die Alarmanlage der Vorfuehrung: unscharf, bis jemand drueckt.
         self._alarm: float = 0.0
         self.broker = SseBroker()
+        # Derselbe Takt wie im Live-Betrieb: Die Vorfuehrung soll nicht billiger aussehen,
+        # als der echte Betrieb ist.
+        self._takt = Takt(settings.live_push_min_s, settings.live_push_max_s)
         self.mode = OperatingMode(system_mode=SystemMode.AUTO, auto_profile=AutoProfile.SMART)
         self.decisions: deque[Decision] = deque(maxlen=300)
         self.speed = settings.demo_speed
@@ -1078,7 +1082,11 @@ class DemoRunner:
         # sie eine Anzeige, die sich beim Hinschauen erfindet.
         self._shift_tick()
         self.snapshot = self.house.snapshot()  # Aktorzustände sofort sichtbar
-        self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+        zustand = self._takt.naechster(
+            monotonic(), lambda: self.live_state().model_dump(mode="json")
+        )
+        if zustand is not None:
+            self.broker.publish("snapshot", zustand)
 
     # ------------------------------------------------------------------ Laufzeit
     async def _loop(self) -> None:

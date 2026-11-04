@@ -18,6 +18,7 @@ import contextlib
 from collections import deque
 from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime, timedelta
+from time import monotonic
 from typing import Any, cast
 
 import structlog
@@ -39,6 +40,7 @@ from dch_api.application.forecast_service import ForecastService
 from dch_api.application.ha_import import HaImporter, ImportResult, Kind, load_entity_rules
 from dch_api.application.inexogy_source import InexogySource, MeterClient
 from dch_api.application.invoice_service import InvoiceService
+from dch_api.application.live_feed import Takt
 from dch_api.application.myenergi_source import (
     MyenergiSource,
     StatusClient,
@@ -203,7 +205,7 @@ class LiveRuntime:
         # Wann K1 zuletzt gesendet wurde: der Hardware-Timer läuft ab Befehl, nicht ab Entscheidung.
         self._k1_sent_at: datetime | None = None
         self._plan_status_vorher: str = ""  # damit nur der Wechsel ein Ereignis wird
-        self._last_publish = 0.0
+        self._takt = Takt(settings.live_push_min_s, settings.live_push_max_s)
         self._last_price_stored: datetime | None = None
         self.price_fill_note: str | None = None
         self._tasks: list[asyncio.Task[None]] = []
@@ -270,24 +272,30 @@ class LiveRuntime:
         return datetime.now(UTC)
 
     # ------------------------------------------------------------------ Eingang
+    def _sende_zustand(self, *, erzwinge: bool = False) -> None:
+        """Den Live-Zustand an die offenen Bildschirme geben, wenn er es wert ist.
+
+        Die Entscheidung trifft `live_feed.Takt`: Mindestabstand, Wiederholungsfilter,
+        Hoechstabstand. `erzwinge` ist fuer alles, was ein Mensch ausgeloest hat.
+        """
+        zustand = self._takt.naechster(
+            monotonic(), lambda: self.live_state().model_dump(mode="json"), erzwinge=erzwinge
+        )
+        if zustand is not None:
+            self.broker.publish("snapshot", zustand)
+
     async def on_telemetry(self, items: list[RawReading], is_backlog: bool) -> None:
         await self.repos.add_readings(items)
         if is_backlog:
             return
         self.live.apply(items)
-        loop_time = asyncio.get_running_loop().time()
-        if loop_time - self._last_publish >= 1.0:
-            self._last_publish = loop_time
-            self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+        self._sende_zustand()
 
     async def on_source_readings(self, items: list[RawReading]) -> None:
         """Messwerte einer serverseitigen Quelle (myenergi): speichern, Live-Zustand, Stream."""
         await self.repos.add_readings(items)
         self.live.apply(items)
-        loop_time = asyncio.get_running_loop().time()
-        if loop_time - self._last_publish >= 1.0:
-            self._last_publish = loop_time
-            self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+        self._sende_zustand()
 
     async def _after_backfill(self, start: datetime, end: datetime) -> None:
         """Nachgetragene Minuten brauchen einen Preis: Tibber-Historie für Lücken, dann Stunden neu rechnen."""
@@ -832,7 +840,7 @@ class LiveRuntime:
                 "info", "stove.mode", f"Ofen: {before} → {self.stove.mode}", {}
             )
         state = self._stove_state(now)
-        self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+        self._sende_zustand(erzwinge=True)
         return state
 
     async def set_heat_pump_mode(
@@ -856,7 +864,7 @@ class LiveRuntime:
         )
         await self.repos.save_mode(self.mode)
         await self.control_tick()
-        self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+        self._sende_zustand(erzwinge=True)
         return self.mode
 
     # ------------------------------------------------------------------ Alarmanlage
@@ -2083,7 +2091,7 @@ class LiveRuntime:
                     minutes=self.settings.plan_refresh_min
                 ):
                     await self.refresh_plan()
-                self.broker.publish("snapshot", self.live_state().model_dump(mode="json"))
+                self._sende_zustand()
             except Exception as exc:
                 log.error("control tick failed", error=repr(exc)[:300])
 

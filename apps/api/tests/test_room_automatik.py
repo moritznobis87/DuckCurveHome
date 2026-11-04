@@ -144,16 +144,52 @@ def test_waehrend_der_ruhe_passiert_nichts() -> None:
 
 
 def test_zwei_befehle_brauchen_abstand() -> None:
+    """Die Schonfrist bremst das Stellen: kein zweiter Sollwert zwei Minuten nach dem ersten."""
     a = entscheide(
         now=JETZT,
-        ziel_offset_k=0.0,
-        grund="zurueck",
+        ziel_offset_k=1.0,
+        grund="noch hoeher",
         gemessen_c=22.7,
         gemessen_at=JETZT,
         fenster_offen=False,
         zustand=zustand(written_at=JETZT - timedelta(minutes=2)),
     )
     assert a is None
+
+
+def test_zurueck_auf_den_grundwert_wartet_nicht() -> None:
+    """Wer die Automatik ausschaltet, soll seine Raeume nicht noch zehn Minuten angehoben finden.
+
+    Die Schonfrist gilt fuer das Stellen, nicht fuer das Zurueckgeben. Vorher galt sie in beide
+    Richtungen, und `test_ausschalten_laesst_keinen_raum_angehoben_zurueck` fiel genau deshalb -
+    allerdings nur zu den Stunden, in denen ueberhaupt angehoben wurde.
+    """
+    a = entscheide(
+        now=JETZT,
+        ziel_offset_k=0.0,
+        grund="nicht mehr in der Automatik",
+        gemessen_c=22.7,
+        gemessen_at=JETZT,
+        fenster_offen=False,
+        zustand=zustand(written_at=JETZT - timedelta(minutes=2)),
+    )
+    assert isinstance(a, Stellen)
+    assert a.offset_k == 0.0
+    assert a.setpoint_c == 22.2  # der Grundwert, den der Mensch gesetzt hatte
+
+
+def test_ein_offenes_fenster_nimmt_die_anhebung_sofort_zurueck() -> None:
+    """Derselbe Weg zurueck, aus einem anderen Grund - und auch er soll nicht warten."""
+    a = entscheide(
+        now=JETZT,
+        ziel_offset_k=1.0,
+        grund="Vorladen",
+        gemessen_c=22.7,
+        gemessen_at=JETZT,
+        fenster_offen=True,
+        zustand=zustand(written_at=JETZT - timedelta(minutes=2)),
+    )
+    assert isinstance(a, Stellen) and a.offset_k == 0.0
 
 
 def test_ohne_gemeldeten_sollwert_kein_eingriff() -> None:

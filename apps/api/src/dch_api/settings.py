@@ -47,6 +47,19 @@ class Settings(BaseSettings):
     demo_warmup_hours: float = 30.0  # Vorlauf, damit Chart und Historie sofort gefüllt sind
     demo_autostart: bool = True  # False in Tests: Simulation nur auf Abruf vorrücken
 
+    # Wie oft der Live-Zustand an die offenen Bildschirme geht.
+    #
+    # Er war auf eine Sekunde eingestellt, und das kostete je Bildschirm 549 MB am Tag (gemessen
+    # 03.11.2026: 4,5 kB je Momentaufnahme). Die Fuehler dahinter melden alle 15 bis 30 Sekunden;
+    # haeufiger zu senden wiederholt nur dieselben Zahlen. Fuenf Sekunden fuehlen sich auf einer
+    # Wandanzeige unveraendert an und senken die Menge auf ein Fuenftel.
+    #
+    # Der Hoechstabstand ist die Gegenprobe zum Wiederholungsfilter: Einmal je Minute geht der
+    # Zustand auch dann hinaus, wenn er gleich geblieben ist, damit ein Bildschirm, der eine
+    # Meldung verpasst hat, nicht beliebig lange auf dem alten Stand bleibt.
+    live_push_min_s: float = 5.0
+    live_push_max_s: float = 60.0
+
     # Regelung
     tick_s: int = 10
     history_retention_hours: int = 72

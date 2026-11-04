@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,7 +14,22 @@ from dch_api.settings import Settings
 
 @pytest.fixture
 def client() -> Iterator[TestClient]:
-    with TestClient(create_app(Settings(mode="demo", demo_autostart=False))) as c:
+    """Feste Uhrzeit, und zwar eine, zu der die Automatik wirklich etwas tut.
+
+    Ohne `demo_start` laeuft die Vorfuehrung auf der Wanduhr, und ob die Automatik in dieser
+    Stunde ueberhaupt anhebt, haengt vom Preisverlauf des Tages ab. Der Ausschalt-Test ging
+    deshalb zu den meisten Stunden durch, ohne etwas zu pruefen, und schlug um 3 und um 15 Uhr
+    fehl (nachgemessen am 04.11.2026). Drei Uhr nachts ist eine der Stunden, in denen angehoben
+    wird - hier soll der Test etwas zu tun haben.
+    """
+    settings = Settings(
+        mode="demo",
+        demo_autostart=False,
+        demo_warmup_hours=2.0,
+        demo_start=datetime(2026, 9, 4, 3, 0, tzinfo=UTC),
+        demo_seed=3,
+    )
+    with TestClient(create_app(settings)) as c:
         yield c
 
 
