@@ -214,6 +214,28 @@ Die Aerotop-Reihe fährt einen Siemens-Regler mit BSB/LPB, und dafür gäbe es B
 LN / Mono / Mono.2 / Split / Split.2!**)". Eine öffentlich dokumentierte Lösung für den Split gibt es
 nicht. Die Wärmedaten sind nur extern zu bekommen.
 
+**Stand 07.11.2026: der Hausherr hat einen eBUS Adapter Shield C6 gekauft** und erwartet, damit
+auslesen und sogar stellen zu können. Das steht zu dem Obigen in Spannung, und die Spannung ist
+nicht aufgelöst, sondern offen: **eBUS und BSB/LPB sind verschiedene Busse**, elektrisch und im
+Protokoll, und der Ausschluss oben betrifft BSB-LAN am Siemens-Regler. Ob der C6 diesen Regler
+erreicht, entscheidet der Versuch am Gerät, nicht dieses Dokument. Wer ihn gemacht hat, schreibt
+das Ergebnis hierher.
+
+Zwei Dinge gelten unabhängig davon. Erstens: **eine gerechnete Wärmemenge ist keine Messung.**
+Meldet der Bus eine intern aus Verdichtermodell und Temperaturen abgeleitete Zahl, ist sie das
+Modell des Herstellers, und sie löst den Kreisschluss aus `docs/design/digitaler-zwilling.md`
+Abschnitt 5.2 nicht: ein Fehler darin erschiene weiterhin als Fehler im Verlustkoeffizienten. Nur
+eine gezählte Energie löst ihn. Zweitens: **falls der C6 wirklich stellen kann, wird die
+Vorlauftemperatur zur Entscheidungsvariablen.** Heute ist K1 die einzige Stellgröße am Gerät, eine
+Anforderung ohne Garantie; mit einer stellbaren Vorlauftemperatur wird aus dem Zielzustand des
+Entwurfs der Istzustand, und der COP wird planbar statt nur bilanzierbar.
+
+**Die Reihe ist seit dem 07.11.2026 eingerichtet.** `flow_temp_c` steht in der Minutentabelle und im
+Anlagenschema, zugeordnet ist noch nichts. Welche Quelle sie füllt, der C6 oder die bisher nicht
+zugeordnete Entität `vorlauf_temperature` aus Home Assistant, ist dem Rest gleichgültig: die Zeile
+dafür liegt einkommentierfertig in `config/entities.home.yaml`. Bis dahin schreibt die Anlagenseite
+„Vorlauf ?" statt einer erfundenen Zahl.
+
 ## Einkaufsliste, nach Nutzen geordnet
 
 ### 1. Wärmemengenzähler an der Wärmepumpe

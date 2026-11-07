@@ -1,7 +1,7 @@
 # Digitaler Zwilling des Hauses
 
-Status: Entwurf, 2026-11-07. **Umsetzungsstand:** Schritt 1 der Reihenfolge ist gebaut, die
-Ablage der Prognoseläufe; alles andere nicht. Dieses Dokument hält das
+Status: Entwurf, 2026-11-07. **Umsetzungsstand:** Schritt 1 und 2 der Reihenfolge sind gebaut, die
+Ablage der Prognoseläufe und die Reihe für die Vorlauftemperatur; alles andere nicht. Dieses Dokument hält das
 Ergebnis einer Entwurfsbefragung fest, 33 Entscheidungen, jede mit ihrem Grund und, wo es einen
 gibt, mit dem Gegenargument.
 
@@ -198,6 +198,16 @@ intern gerechnete Wärmemenge aus Verdichtermodell und Temperaturen ist keine Me
 Modell des Herstellers. Für den Kreisschluss aus 5.2 hilft sie nicht, sie tauscht nur die eigene
 Schätzung gegen eine fremde.
 
+**Nachtrag 07.11.2026.** Der Hausherr hat einen eBUS Adapter Shield C6 gekauft und erwartet, damit
+auslesen und stellen zu können. Ob er den Siemens-Regler erreicht, entscheidet der Versuch; das
+Obige bleibt der dokumentierte Stand, bis jemand ihn gemacht hat. **Gelingt es und kann der Adapter
+wirklich stellen, verschiebt das eine der 33 Entscheidungen:** die Vorlauftemperatur wird zur
+Stellgröße, der COP damit zur Entscheidungsvariablen, und aus Q2 (b) wird der in Q2 genannte
+Zielzustand (c). Die harte Grenze aus Abschnitt 4, der Fahrplan aus Abschnitt 7 und die
+Nachbetrachtung aus Abschnitt 9 bleiben davon unberührt; was sich ändert, ist allein der Satz in
+Abschnitt 2, dass es keine stellbare Temperatur gibt. Die Rechnung in 5.1 ist darauf vorbereitet:
+sie nimmt die Vorlauftemperatur über Carnot auf und braucht dafür keine zweite Dimension.
+
 ## 7. Der Fahrplan
 
 Stellgrößen sind K1 und der Raumsollwert. K2 wird nicht verdrahtet: der Projektplan führt es selbst
@@ -349,7 +359,9 @@ ein Schalter und keine Arbeit.
 1. ~~**Prognoseläufe speichern.**~~ Gebaut am 07.11.2026: `hems_core.forecasting.archive` sagt,
    was ein Lauf ist, die Laufzeit legt bei jeder Auffrischung ab, und das Aufräumen behält je
    Ortstag einen kanonischen. Einzelheiten in [DATENHALTUNG.md](../DATENHALTUNG.md).
-2. **`vorlauf_temperature` zuordnen.** Eine Zeile, unabhängig von allem anderen.
+2. ~~**Vorlauftemperatur einrichten.**~~ Gebaut am 07.11.2026: die Reihe `flow_temp_c` steht in
+   der Minutentabelle und im Anlagenschema, die Zuordnung liegt einkommentierfertig in
+   `config/entities.home.yaml`. Gefüllt ist sie noch nicht.
 3. **K1-Wirkung auswerten**, Kontaktzustand gegen Wärmepumpenleistung, aus dem vorhandenen Bestand.
 4. Teilpaket `twin/` und Schichtenvertrag.
 5. Wärme als beobachtete Größe, COP als Ergebnis, Carnot mal Gütegrad.

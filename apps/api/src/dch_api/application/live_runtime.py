@@ -1055,6 +1055,7 @@ class LiveRuntime:
             stove_pump=mess("stove_pump_pct"),
             dhw_outlet=mess(anlage_logic.DHW_OUTLET),
             dhw_inlet=mess(anlage_logic.DHW_INLET),
+            wp_vorlauf=mess(anlage_logic.WP_VORLAUF),
             raeume=await self.rooms_live(),
             zeilen=zeilen,
         )

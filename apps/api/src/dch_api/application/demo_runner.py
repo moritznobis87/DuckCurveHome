@@ -870,6 +870,7 @@ class DemoRunner:
             stove_pump=fehlt,
             dhw_outlet=fehlt,
             dhw_inlet=fehlt,
+            wp_vorlauf=fehlt,
             raeume=await self.rooms_live(),
             zeilen=self.history.series(
                 now - timedelta(minutes=anlage_logic.RUECKBLICK_MIN), now + timedelta(minutes=1)

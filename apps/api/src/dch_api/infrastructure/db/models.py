@@ -77,6 +77,7 @@ class MeasurementMinute(Base):
     buffer_temp_mid_bottom_c: Mapped[float | None] = mapped_column(Float)
     buffer_temp_bottom_c: Mapped[float | None] = mapped_column(Float)
     hp_release_contact: Mapped[float | None] = mapped_column(Float)
+    flow_temp_c: Mapped[float | None] = mapped_column(Float)
     # Pelletofen. Eigene Spalten auch für Größen, die nicht jede Firmware füllt: eine leere
     # Spalte kostet in Postgres nur ein Bit in der NULL-Maske, eine zweite Migration mehr.
     stove_state: Mapped[float | None] = mapped_column(Float)

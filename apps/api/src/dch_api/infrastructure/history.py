@@ -24,6 +24,16 @@ SERIES = (
     "buffer_temp_mid_bottom_c",
     "buffer_temp_bottom_c",
     "hp_release_contact",
+    # Vorlauftemperatur des Waermepumpenkreises. Noch liefert sie niemand: in Home Assistant gibt
+    # es laut Influx-Inventar eine Entitaet `vorlauf_temperature`, sie ist in entities.home.yaml
+    # aber nicht zugeordnet, und der eBUS-Adapter ist erst gekauft.
+    #
+    # Die Reihe steht hier trotzdem, und das ist Absicht: sie ist die Senkentemperatur im COP, also
+    # die Groesse, ohne die der Wirkungsgrad der Waermepumpe eine Annahme bleibt. Solange kein Wert
+    # eintrifft, bleibt der Platz leer - als fehlende Messung mit Qualitaetsvermerk, nicht als NaN
+    # in der Spalte: NaN ist in JSON nicht darstellbar und wuerde jedes Minutenmittel vergiften, in
+    # dem es einmal auftaucht. Die Anzeige sagt dafuer "Vorlauf ?", und das ist dieselbe Aussage.
+    "flow_temp_c",
     # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
     # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
     "stove_state",  # Zustandscode der Maestro-Firmware
