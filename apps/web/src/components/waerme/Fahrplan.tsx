@@ -50,6 +50,26 @@ function zustandOf(s: string): (typeof WP_ZUSTAND)[WpZustand] {
   return WP_ZUSTAND[(s as WpZustand) in WP_ZUSTAND ? (s as WpZustand) : "off"];
 }
 
+/**
+ * Die Untergrenze einer Achse: der kleinste Wert der Kurve, abgerundet auf eine runde Stufe.
+ *
+ * **Warum nicht null.** Die Regel „Flächen beginnen bei null" gilt, wo die Fläche die Menge
+ * bedeutet. Der Strompreis bedeutet keine Menge, sondern einen Stand, und sein Tagesgang spielt
+ * sich zwischen 20 und 50 ct ab; von null aus gesehen ist das eine flache Welle in der oberen
+ * Hälfte. Dasselbe beim Wärmebedarf, der zwischen 1,5 und 4 kW schwankt. Gestaucht auf den
+ * eigenen Bereich wird aus beidem wieder eine Kurve, an der man die Stunde ablesen kann.
+ *
+ * Abgerundet und nicht genau auf das Minimum: sonst klebt die tiefste Stelle auf der Achse und
+ * die Beschriftung bekommt krumme Zahlen.
+ */
+function untergrenze(werte: number[], stufe: number): number | undefined {
+  if (werte.length === 0) return undefined;
+  const min = Math.min(...werte);
+  const unten = Math.floor(min / stufe) * stufe;
+  // Eine Reihe ohne Schwankung bekäme sonst min == max und damit gar keine Achse.
+  return unten === Math.max(...werte) ? unten - stufe : unten;
+}
+
 function de(x: number, n = 1): string {
   return x.toFixed(n).replace(".", ",");
 }
@@ -121,6 +141,18 @@ export function Fahrplan() {
     const puffer = iv.map((i) => [t(i.ts), i.buffer_kwh ?? null]);
     const hatWaerme = iv.some((i) => i.heat_demand_kw != null);
     const hatPuffer = iv.some((i) => i.buffer_kwh != null);
+    // 5 ct und 0,5 kW: die Stufen, in denen man diese beiden Größen ohnehin denkt.
+    const preisUnten = untergrenze(
+      iv.map((i) => i.price_ct_kwh).filter((x): x is number => x != null),
+      5,
+    );
+    // Beim Wärmebedarf zählt die **Summe** aus beiden Reihen, denn gestapelt ist sie es, die oben
+    // die Kurve bildet. Dass die untere Reihe dabei am unteren Rand beschnitten wird, ist der
+    // Preis der Stauchung: die Dicke des Bandes gilt weiter, seine Fläche nicht mehr.
+    const waermeUnten = untergrenze(
+      iv.filter((i) => i.heat_demand_kw != null).map((i) => (i.heat_demand_kw ?? 0) + (i.dhw_demand_kw ?? 0)),
+      0.5,
+    );
     const wp = iv.map((i) => {
       const z = zustandOf(i.planned_hp_state);
       return { value: [t(i.ts), z.hoehe], itemStyle: { color: z.farbe } };
@@ -173,14 +205,17 @@ export function Fahrplan() {
       axisLabel: labels ? { color: C.text, fontFamily: MONO, fontSize: 10 } : { show: false },
       splitLine: { show: true, lineStyle: { color: C.gridline } },
     });
-    const wert = (gridIndex: number, max?: number) => ({
+    const wert = (gridIndex: number, { min = 0, max }: { min?: number; max?: number } = {}) => ({
       type: "value" as const,
       gridIndex,
-      min: 0,
+      min,
       ...(max != null ? { max } : {}),
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10 },
+      // `showMinLabel`, weil die Achse jetzt nicht mehr bei null anfängt: ohne das sucht sich
+      // ECharts runde Stufen innerhalb des Bereichs und lässt die unterste Zahl weg - die Kurve
+      // liefe dann unter die tiefste Beschriftung, und genau die soll man ja ablesen können.
+      axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, showMinLabel: true },
       splitLine: { lineStyle: { color: C.gridline } },
     });
     const zustandsachse = (gridIndex: number) => ({ type: "value" as const, gridIndex, min: 0, max: 1, show: false });
@@ -207,10 +242,14 @@ export function Fahrplan() {
       grid: FLAECHEN.map((f) => ({ left: 56, right: 18, top: f.top, height: f.hoehe })),
       xAxis: FLAECHEN.map((_, k) => achse(k, k === FLAECHEN.length - 1)),
       yAxis: [
-        wert(0),
+        wert(0, { min: preisUnten }),
+        // Die PV-Erwartung behält die Null: nachts ist sie wirklich null, und das ist die halbe
+        // Aussage der Kurve.
         wert(1),
-        wert(2),
-        wert(3, plan.buffer_capacity_kwh ?? undefined),
+        wert(2, { min: waermeUnten }),
+        // Der Puffer behält sie auch: die Reservemarke misst sich vom Boden aus, und die Kapazität
+        // oben gibt der Kurve den Maßstab, der ihr sonst fehlt.
+        wert(3, { max: plan.buffer_capacity_kwh ?? undefined }),
         zustandsachse(4),
         zustandsachse(5),
       ],
