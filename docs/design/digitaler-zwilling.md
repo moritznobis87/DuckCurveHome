@@ -1,11 +1,12 @@
 # Digitaler Zwilling des Hauses
 
-Status: Entwurf, 2026-11-07. **Umsetzungsstand:** Schritt 1 und 2 der Reihenfolge sind gebaut, die
+Status: Entwurf, 2026-11-08. **Umsetzungsstand:** Schritt 1 und 2 der Reihenfolge sind gebaut, die
 Ablage der Prognoseläufe und die Reihe für die Vorlauftemperatur. Dazu gibt der Fahrplan seit dem
 07.11.2026 seine Eingänge mit heraus - Wärmebedarf, Pufferverlauf, Außentemperatur und COP je
-Viertelstunde -, und die Seite `/waerme/fahrplan` zeigt sie als Zeitreihen. Das ist kein eigener
-Schritt der Reihenfolge, sondern das Sichtbarmachen dessen, was der Optimierer ohnehin rechnete und
-bisher wegwarf. Alles andere nicht. Dieses Dokument hält das
+Viertelstunde -, und die Seite `/waerme/fahrplan` zeigt sie als Zeitreihen. Seit dem 08.11.2026
+wird das Archiv auch **gelesen**: `GET /forecast/history` hält jeden abgelegten Lauf einzeln gegen
+die Messung und sortiert den Fehler nach dem Abstand zur Lieferung. Das ist die erste Hälfte der
+Nachbetrachtung aus Abschnitt 9 - die Prognoseseite, noch nicht die Geldseite. Alles andere nicht. Dieses Dokument hält das
 Ergebnis einer Entwurfsbefragung fest, 33 Entscheidungen, jede mit ihrem Grund und, wo es einen
 gibt, mit dem Gegenargument.
 
@@ -282,6 +283,14 @@ perfekten Eingängen und einem auf den eingetretenen Tag gefitteten Modell. Der 
 diesen beiden ist, was das Modell wert ist, getrennt von dem, was die Prognose wert ist. Das sind
 zwei zusätzliche Löserläufe am Tag und das eigentliche Messinstrument der Lernschleife.
 
+**Gebaut ist davon der Teil vor dem Geld** (08.11.2026): der Rückblick auf `/system` beantwortet
+die Frage, um wie viel die Prognose besser wird, je näher die Lieferung kommt, in der Einheit der
+jeweiligen Größe. Für den Wärmebedarf geht das nur über die Temperatur - beide Seiten der Probe
+laufen durch dasselbe Bedarfsmodell, sodass das Modell herausfällt und der Prognosefehler übrig
+bleibt. **Was das nicht sagt, ist, wie gut das Modell ist**; dafür fehlt weiterhin die Messung der
+Wärme (Abschnitt 5.2). Die fünf Linien in Euro brauchen zusätzlich die Löserläufe und bleiben
+Schritt 9.
+
 Abgeschlossen wird **der Tag**, nach Mitternacht, wie es die PV-Bewertung schon tut; die
 Einzelläufe bleiben für die Detailansicht erhalten. Wärmepumpe und Ofen stehen in **einer**
 gemeinsamen Wärmerechnung; sobald die Wärmepumpenwärme gemessen ist, bleibt ihre Linie sauber, auch
@@ -309,7 +318,9 @@ keinen einzigen Tag mehr. Jeder Tag ohne diese Speicherung ist ein dauerhaft ver
 Deshalb steht sie in der Reihenfolge vorn, vor allem anderen.
 
 Aufbewahrt werden **alle Läufe 30 Tage**, dazu **ein kanonischer Day-ahead-Lauf je Tag für immer**.
-Die 30 Tage reichen, um die rollierende Verbesserung anzusehen; der Day-ahead-Lauf ist der
+Die 30 Tage reichen, um die rollierende Verbesserung anzusehen, und seit dem 08.11.2026 wird sie
+auch angesehen: der Rückblick liest alle Läufe eines Fensters und nicht nur den kanonischen, denn
+die Frage nach der Verbesserung braucht mehrere Läufe über demselben Intervall; der Day-ahead-Lauf ist der
 Lernbestand. Zur Größenordnung: 48 Stunden im Viertelstundenraster sind 192 Punkte je Reihe und
 Lauf, bei einem Lauf je Viertelstunde und sechs Reihen rund 110.000 Zeilen am Tag und 40 Millionen
 im Jahr; mit einem Wiederholungsfilter auf dem Lauf bleibt davon ein Bruchteil, weil die Anbieter
@@ -376,6 +387,8 @@ ein Schalter und keine Arbeit.
 7. Harte Komfortgrenze 1,0 K mit Rückfallebene.
 8. Raumsollwert stellen, K1 im Schatten.
 9. Nachbetrachtung: fünf Linien, zwei Perfect-Foresight-Läufe, Kostenzeile der Beschneidung.
+   Vorgezogen am 08.11.2026: die Prognoseseite davon steht - Fehler je Reihe und je
+   Vorlaufzeit aus dem Archiv, auf `/system`. Offen bleibt alles, was Euro sagt.
 10. Zeitschieber am Schema.
 11. Lernen: H aus Ofenstunden, Gütegrad, Dämpfung, menschliche Durchsicht im ersten Winter.
 12. `shift_plan` entfernen.

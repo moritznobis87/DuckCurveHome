@@ -10,6 +10,7 @@ import { Pill } from "@/components/ui/Pill";
 import { EChart } from "@/components/charts/EChart";
 import { dayBounds } from "@/components/charts/dayBounds";
 import { AreaShell } from "@/components/layout/AreaShell";
+import { Rueckblick } from "@/components/forecast/Rueckblick";
 
 const C = {
   pv: "#f2a900",
@@ -361,6 +362,10 @@ export function ForecastPage() {
           </p>
         </Card>
       </div>
+
+      {/* Der dauerhafte Bestand, unter dem Arbeitsspeicher des Bewerters: dieselbe Seite, aber
+          mehrere Tage, mehrere Reihen und eine feinere Vorlaufleiter. */}
+      <Rueckblick />
     </AreaShell>
   );
 }

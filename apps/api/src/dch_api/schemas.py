@@ -21,6 +21,7 @@ from hems_core.domain import (
     SystemMode,
 )
 from hems_core.forecasting import CorrectorState, ForecastScore
+from hems_core.forecasting.rueckblick import ReiheOut
 from hems_core.house import HousePlan
 from hems_core.thermal import CyclingStats, HeatTotals
 
@@ -423,6 +424,22 @@ class ForecastEvaluationOut(BaseModel):
     next_changes_de: list[str]
     runs_kept: int
     notes_de: list[str]
+
+
+class ForecastHistoryOut(BaseModel):
+    """Der Rückblick aus dem dauerhaften Archiv: Fehler je Reihe und je Vorlaufzeit.
+
+    Etwas anderes als `ForecastEvaluationOut`: dort steht, was der Bewerter im Arbeitsspeicher hält
+    (PV, gestern und heute), hier, was in `forecast_runs` liegt - mehrere Tage, und auch die
+    Außentemperatur, an der im Modell v1 der ganze Wärmebedarf hängt.
+    """
+
+    generated_at: datetime
+    von: datetime
+    bis: datetime
+    tage: int
+    reihen: list[ReiheOut]
+    hinweise_de: list[str]
 
 
 # ----------------------------------------------------------------------------- Energiebilanz

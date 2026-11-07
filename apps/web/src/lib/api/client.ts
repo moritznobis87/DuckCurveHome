@@ -1,5 +1,5 @@
 import type { ActuatorCommandOut, Anlage,
-  House, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+  House, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -60,6 +60,9 @@ export const api = {
     request<BatteryLive>("/control/battery/mode", { method: "POST", body: JSON.stringify(body) }),
   plan: () => request<Plan>("/plan"),
   forecastEvaluation: () => request<ForecastEvaluation>("/forecast/evaluation"),
+  // Der Rueckblick aus `forecast_runs`: wie gut die Prognose war, nach Abstand zur Lieferung.
+  // Etwas anderes als `forecastEvaluation`, das nur den Arbeitsspeicher des Bewerters zeigt.
+  forecastHistory: (tage = 7) => request<ForecastHistory>(`/forecast/history?days=${tage}`),
   energySummary: (period: Period, anchor: string) => request<EnergySummary>(`/energy/summary?period=${period}&anchor=${anchor}`),
   // Der Vergleichslauf: dieselben Stunden ohne Preisblick (siehe accounting/counterfactual.py).
   energyShift: (period: Period, anchor: string) => request<ShiftReport>(`/energy/shift?period=${period}&anchor=${anchor}`),

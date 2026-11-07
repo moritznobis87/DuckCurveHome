@@ -36,6 +36,7 @@ from dch_api.application.energy_accounting import (
     EnergyAccounting,
 )
 from dch_api.application.forecast_evaluation import EvaluatorState, ForecastEvaluator
+from dch_api.application.forecast_history import forecast_history
 from dch_api.application.forecast_service import ForecastService
 from dch_api.application.ha_import import HaImporter, ImportResult, Kind, load_entity_rules
 from dch_api.application.inexogy_source import InexogySource, MeterClient
@@ -72,6 +73,7 @@ from dch_api.schemas import (
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
+    ForecastHistoryOut,
     HeatBalanceOut,
     HeatConfigIn,
     HeatReportOut,
@@ -2037,6 +2039,10 @@ class LiveRuntime:
             except Exception as exc:
                 log.warning("energy refresh failed", error=repr(exc)[:200])
             await asyncio.sleep(300)
+
+    async def forecast_history(self, tage: int) -> ForecastHistoryOut:
+        """Der Rückblick aus dem dauerhaften Archiv. Liest nur, rechnet nichts fort."""
+        return await forecast_history(self.repos, self.now, self.hems, BERLIN, tage=tage)
 
     async def forecast_evaluation(self) -> ForecastEvaluationOut:
         now = self.now

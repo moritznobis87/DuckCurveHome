@@ -703,6 +703,51 @@
         }
       }
     },
+    "/api/v1/forecast/history": {
+      "get": {
+        "tags": [
+          "Prognose"
+        ],
+        "summary": "Was die abgelegten Prognosen wert waren, nach Abstand zur Lieferung",
+        "operationId": "history_api_v1_forecast_history_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 30,
+              "minimum": 1,
+              "default": 7,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastHistoryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/energy/summary": {
       "get": {
         "tags": [
@@ -5242,6 +5287,54 @@
         ],
         "title": "ForecastEvaluationOut"
       },
+      "ForecastHistoryOut": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "von": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Bis"
+          },
+          "tage": {
+            "type": "integer",
+            "title": "Tage"
+          },
+          "reihen": {
+            "items": {
+              "$ref": "#/components/schemas/ReiheOut"
+            },
+            "type": "array",
+            "title": "Reihen"
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at",
+          "von",
+          "bis",
+          "tage",
+          "reihen",
+          "hinweise_de"
+        ],
+        "title": "ForecastHistoryOut",
+        "description": "Der Rückblick aus dem dauerhaften Archiv: Fehler je Reihe und je Vorlaufzeit.\n\nEtwas anderes als `ForecastEvaluationOut`: dort steht, was der Bewerter im Arbeitsspeicher hält\n(PV, gestern und heute), hier, was in `forecast_runs` liegt - mehrere Tage, und auch die\nAußentemperatur, an der im Modell v1 der ganze Wärmebedarf hängt."
+      },
       "ForecastPointOut": {
         "properties": {
           "ts": {
@@ -8800,6 +8893,47 @@
         ],
         "title": "ReasonCode"
       },
+      "ReiheOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label_de": {
+            "type": "string",
+            "title": "Label De"
+          },
+          "einheit": {
+            "type": "string",
+            "title": "Einheit"
+          },
+          "gesamt": {
+            "$ref": "#/components/schemas/Wertung"
+          },
+          "je_vorlauf": {
+            "items": {
+              "$ref": "#/components/schemas/VorlaufOut"
+            },
+            "type": "array",
+            "title": "Je Vorlauf"
+          },
+          "laeufe": {
+            "type": "integer",
+            "title": "Laeufe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label_de",
+          "einheit",
+          "gesamt",
+          "je_vorlauf",
+          "laeufe"
+        ],
+        "title": "ReiheOut",
+        "description": "Eine Reihe im Rückblick: ihre Wertung über alles und je Vorlaufklasse."
+      },
       "Room": {
         "properties": {
           "name": {
@@ -10870,6 +11004,29 @@
         "title": "VentilationRoomOut",
         "description": "Ein Raum, in dem während der Heizzeit ein Fenster offen stand."
       },
+      "VorlaufOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label_de": {
+            "type": "string",
+            "title": "Label De"
+          },
+          "wertung": {
+            "$ref": "#/components/schemas/Wertung"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label_de",
+          "wertung"
+        ],
+        "title": "VorlaufOut",
+        "description": "Eine Sprosse der Vorlaufleiter mit ihrer Wertung."
+      },
       "WallLine": {
         "properties": {
           "x": {
@@ -10961,6 +11118,40 @@
         ],
         "title": "WatchFindingOut",
         "description": "Ein Befund des Wächters: Dieses Signal schweigt, seit wann, und was deshalb fehlt.\n\nDie Regeln stehen in `hems_core.watch`; hier ist nur die Form für die Oberfläche. Der Text ist\nein ganzer Satz, weil er auch als Mitteilung auf einem Telefon landet, wo niemand aus\n`name` und `silent_min` etwas zusammensetzen kann."
+      },
+      "Wertung": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "mae": {
+            "type": "number",
+            "title": "Mae"
+          },
+          "bias": {
+            "type": "number",
+            "title": "Bias"
+          },
+          "rmse": {
+            "type": "number",
+            "title": "Rmse"
+          },
+          "p95": {
+            "type": "number",
+            "title": "P95"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "mae",
+          "bias",
+          "rmse",
+          "p95"
+        ],
+        "title": "Wertung",
+        "description": "Kennzahlen einer Menge von Proben, in der Einheit der Reihe.\n\nEinheitenfrei benannt: `mae` ist bei der PV ein Kilowatt und bei der Temperatur ein Kelvin. Eine\nEnergiesumme steht hier bewusst nicht - sie ergibt nur für Leistungen einen Sinn, und wer sie\nfür PV braucht, findet sie in `evaluation.ForecastScore`."
       },
       "YearMapOut": {
         "properties": {
