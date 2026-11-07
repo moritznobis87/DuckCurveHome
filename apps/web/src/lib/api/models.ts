@@ -26,6 +26,9 @@ export type SystemMode = S["SystemMode"];
 export type AutoProfile = S["AutoProfile"];
 export type Quality = S["Quality"];
 export type ForecastEvaluation = S["ForecastEvaluationOut"];
+/** Der Rückblick aus dem dauerhaften Archiv: Fehler je Reihe und je Vorlaufzeit. */
+export type ForecastHistory = S["ForecastHistoryOut"];
+export type ForecastHistoryReihe = S["ReiheOut"];
 export type ForecastDay = S["ForecastDayOut"];
 export type ForecastPoint = S["ForecastPointOut"];
 export type DailyScore = S["DailyScoreOut"];

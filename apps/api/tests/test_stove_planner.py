@@ -349,12 +349,23 @@ def test_der_fahrplan_gibt_seine_eingaenge_her() -> None:
     assert z.puffer_kwh is not None
 
 
-def test_der_puffer_bleibt_zwischen_seinen_raendern() -> None:
-    """Ohne Maßstab ist der Inhalt keine Aussage: 9 kWh sind viel oder wenig je nach Behälter."""
+def test_der_puffer_haelt_seine_harte_grenze_und_nur_die() -> None:
+    """Ohne Maßstab ist der Inhalt keine Aussage: 9 kWh sind viel oder wenig je nach Behälter.
+
+    Der Behälter ist die **harte** Grenze: `upper[i_e] = buffer_max_kwh` in `planning/milp.py`, und
+    darunter null, denn weniger als nichts enthält kein Speicher.
+
+    Das Komfortminimum ist die **weiche**: die Nebenbedingung lautet `E[t] + miss[t] >= E_min`, und
+    `miss` kostet 5 Euro je Kilowattstunde. Der Fahrplan **darf** also darunter gehen, wenn der
+    Strom in dieser Viertelstunde teurer ist als die Strafe. Ein Test, der das verbietet, prüft
+    nicht das Modell, sondern das Glück des Lösers: diese Prüfung behauptete das bis zum 08.11.2026
+    und ging unter Last zwei von drei Läufen rot, weil der Löser nach fünf Sekunden abbricht und
+    dann eine andere zulässige Lösung mitbringt.
+    """
     p = plan()
     assert p.buffer_capacity_kwh == 31.0
     assert p.buffer_min_kwh is not None and 0 < p.buffer_min_kwh < 31.0
-    assert all(p.buffer_min_kwh - 0.3 <= kwh <= 31.3 for kwh in p.buffer_kwh)
+    assert all(0.0 <= kwh <= 31.3 for kwh in p.buffer_kwh), "Behälter und Boden sind hart"
 
 
 def test_ohne_ofen_stehen_die_eingaenge_trotzdem_da() -> None:

@@ -70,6 +70,19 @@ täglich. Dreißig Tage davon sind rund 300.000 Zeilen, bei geschätzt 110 Byte 
 Index etwa 33 MB im Dauerzustand. Die kanonischen Läufe wachsen mit rund 600 Zeilen am Tag, also
 etwa 24 MB je Jahr. Nachgemessen ist das noch nicht.
 
+**Wer liest.** Seit dem 08.11.2026 nicht mehr niemand: `GET /forecast/history` holt die Läufe
+wieder heraus und hält jeden einzeln gegen die Messung, sortiert nach dem Abstand zwischen Ausgabe
+und Intervall. Dass **alle** Läufe dreißig Tage bleiben und nicht nur der kanonische, hat genau
+diesen Zweck: die Frage, ob die Prognose besser wird, je näher die Lieferung kommt, lässt sich nur
+beantworten, wenn mehrere Läufe über dasselbe Intervall nebeneinander liegen. Die Rechnung steht in
+`hems_core.forecasting.rueckblick`, die Abfrage in `SqlRepositories.forecast_history`; letztere
+begrenzt die Suche auf 48 Stunden vor dem Fenster, weil kein älterer Lauf es noch beschreibt.
+
+Verglichen werden heute zwei Reihen: die PV-Leistung gegen `pv_power_kw` und die Außentemperatur
+gegen `outdoor_temp_c`. Der Preis bleibt draußen - der Day-ahead-Preis ist eine Veröffentlichung
+und keine Vorhersage, sein „Fehler" wäre die Frage, wann die Börse geliefert hat. Abgelegt wird er
+trotzdem, denn die Nachbetrachtung braucht den Preis, der zur Planungszeit bekannt war.
+
 ## Warum breit statt schmal
 
 Die Minutentabelle hat **eine Zeile je Minute mit einer Spalte je Reihe**, nicht eine Zeile je

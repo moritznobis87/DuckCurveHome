@@ -927,6 +927,71 @@ class SqlRepositories:
         # dann loescht das Aufraeumen nach dreissig Tagen Laeufe, die haetten bleiben sollen.
         return [(r[0], self._aware(r[1])) for r in rows]
 
+    async def forecast_history(
+        self,
+        art: str,
+        variable: str,
+        von: datetime,
+        bis: datetime,
+        *,
+        vorlauf_h: int = 48,
+    ) -> list[tuple[datetime, datetime, float]]:
+        """Alle abgelegten Punkte einer Reihe für ein Zeitfenster, je mit der Ausgabezeit ihres Laufs.
+
+        Gefragt wird nach dem **beschriebenen** Zeitpunkt, nicht nach der Ausgabezeit: wer wissen
+        will, wie gut der gestrige Nachmittag vorhergesagt war, braucht jeden Lauf, der ihn
+        beschrieben hat, und die wurden über zwei Tage verteilt ausgegeben.
+
+        `vorlauf_h` begrenzt die Suche nach hinten. Ohne diese Grenze müsste die Abfrage alle Läufe
+        des Bestandes anfassen, um festzustellen, dass die alten das Fenster nicht berühren; mit ihr
+        greift der Index auf `issued_at`. 48 Stunden sind der Planungshorizont, weiter zurück
+        beschreibt kein Lauf dieses Fenster.
+
+        Punkte ohne Wert werden weggelassen. Ein `NULL` im Archiv heißt „der Anbieter hat zu diesem
+        Zeitpunkt nichts geliefert", und das ist kein Prognosefehler.
+        """
+        von_utc, bis_utc = von.astimezone(UTC), bis.astimezone(UTC)
+        async with self.maker() as s:
+            rows = (
+                await s.execute(
+                    select(m.ForecastRun.issued_at, m.ForecastPoint.ts, m.ForecastPoint.value)
+                    .join(m.ForecastPoint, m.ForecastPoint.run_id == m.ForecastRun.id)
+                    .where(
+                        m.ForecastRun.kind == art,
+                        m.ForecastPoint.variable == variable,
+                        m.ForecastPoint.value.is_not(None),
+                        m.ForecastPoint.ts >= von_utc,
+                        m.ForecastPoint.ts < bis_utc,
+                        m.ForecastRun.issued_at >= von_utc - timedelta(hours=vorlauf_h),
+                        m.ForecastRun.issued_at < bis_utc,
+                    )
+                    .order_by(m.ForecastRun.issued_at, m.ForecastPoint.ts)
+                )
+            ).all()
+        # `_aware` auf beiden Zeitstempeln: SQLite gibt sie ohne Zone zurueck, und der Vorlauf ist
+        # eine Differenz zwischen ihnen. Eine naive und eine bewusste Zeit subtrahieren sich nicht.
+        return [(self._aware(r[0]), self._aware(r[1]), float(r[2])) for r in rows]
+
+    async def forecast_run_count(self, art: str, von: datetime, bis: datetime) -> int:
+        """Wie viele Läufe einer Art in einem Zeitraum ausgegeben wurden.
+
+        Null heißt „nichts abgelegt" und ist etwas anderes als eine Wertung ohne Fehler. Die Seite
+        soll den Unterschied zeigen können.
+        """
+        async with self.maker() as s:
+            n = (
+                await s.execute(
+                    select(func.count())
+                    .select_from(m.ForecastRun)
+                    .where(
+                        m.ForecastRun.kind == art,
+                        m.ForecastRun.issued_at >= von.astimezone(UTC),
+                        m.ForecastRun.issued_at < bis.astimezone(UTC),
+                    )
+                )
+            ).scalar_one_or_none()
+        return int(n or 0)
+
     async def mark_forecast_canonical(self, run_id: UUID, tag: date) -> None:
         """Diesen Lauf als den kanonischen des Ortstags vermerken."""
         async with self.maker() as s:

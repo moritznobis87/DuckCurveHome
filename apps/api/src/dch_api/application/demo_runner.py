@@ -20,8 +20,10 @@ from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import demo_house, demo_rooms, rooms
 from dch_api.application.battery_control import BatteryMode
+from dch_api.application.demo_archive import DemoArchiv
 from dch_api.application.energy_accounting import EnergyAccounting
 from dch_api.application.forecast_evaluation import ForecastEvaluator
+from dch_api.application.forecast_history import forecast_history
 from dch_api.application.ha_import import ImportResult
 from dch_api.application.invoice_service import InvoiceService
 from dch_api.application.live_feed import Takt
@@ -46,6 +48,7 @@ from dch_api.schemas import (
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
+    ForecastHistoryOut,
     HeatBalanceOut,
     HeatConfigIn,
     HeatReportOut,
@@ -373,6 +376,30 @@ class DemoRunner:
 
     async def invoice(self, number: str) -> InvoiceReportOut | None:
         return await self.invoice_service.detail(number)
+
+    async def forecast_history(self, tage: int) -> ForecastHistoryOut:
+        """Der Rückblick im Demobetrieb, aus einem gerechneten Archiv.
+
+        Die Demo hat keine Datenbank; `DemoArchiv` leitet die Läufe aus den Kurven des Demohauses
+        ab und legt einen Fehler darauf, der mit dem Vorlauf wächst. Das zeigt die Seite, es
+        bewertet nichts.
+        """
+        archiv = DemoArchiv(
+            self.house.pv_expected_kw,
+            self.house.outdoor_temp_c,
+            lambda start, end, keys: self.history.series(start, end),
+        )
+        out = await forecast_history(archiv, self.now, self.hems, BERLIN, tage=tage)
+        return out.model_copy(
+            update={
+                "hinweise_de": [
+                    "Demobetrieb: die Läufe sind gerechnet, nicht abgelegt. Der Fehler wächst mit "
+                    "der Wurzel des Vorlaufs nach einer festen Formel - er zeigt die Seite und "
+                    "nicht die Güte einer Prognose.",
+                    *out.hinweise_de,
+                ]
+            }
+        )
 
     async def forecast_evaluation(self) -> ForecastEvaluationOut:
         now = self.now

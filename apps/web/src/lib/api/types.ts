@@ -363,6 +363,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/forecast/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Was die abgelegten Prognosen wert waren, nach Abstand zur Lieferung */
+        get: operations["history_api_v1_forecast_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/energy/summary": {
         parameters: {
             query?: never;
@@ -2335,6 +2352,37 @@ export interface components {
             /** Notes De */
             notes_de: string[];
         };
+        /**
+         * ForecastHistoryOut
+         * @description Der Rückblick aus dem dauerhaften Archiv: Fehler je Reihe und je Vorlaufzeit.
+         *
+         *     Etwas anderes als `ForecastEvaluationOut`: dort steht, was der Bewerter im Arbeitsspeicher hält
+         *     (PV, gestern und heute), hier, was in `forecast_runs` liegt - mehrere Tage, und auch die
+         *     Außentemperatur, an der im Modell v1 der ganze Wärmebedarf hängt.
+         */
+        ForecastHistoryOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Von
+             * Format: date-time
+             */
+            von: string;
+            /**
+             * Bis
+             * Format: date-time
+             */
+            bis: string;
+            /** Tage */
+            tage: number;
+            /** Reihen */
+            reihen: components["schemas"]["ReiheOut"][];
+            /** Hinweise De */
+            hinweise_de: string[];
+        };
         /** ForecastPointOut */
         ForecastPointOut: {
             /**
@@ -4063,6 +4111,23 @@ export interface components {
          */
         ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "planned_pause" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
         /**
+         * ReiheOut
+         * @description Eine Reihe im Rückblick: ihre Wertung über alles und je Vorlaufklasse.
+         */
+        ReiheOut: {
+            /** Key */
+            key: string;
+            /** Label De */
+            label_de: string;
+            /** Einheit */
+            einheit: string;
+            gesamt: components["schemas"]["Wertung"];
+            /** Je Vorlauf */
+            je_vorlauf: components["schemas"]["VorlaufOut"][];
+            /** Laeufe */
+            laeufe: number;
+        };
+        /**
          * Room
          * @description Ein Raum als Rechteck. `room_id` ist die Kennung der Einzelraumregelung; ohne sie zeigt die
          *     Anzeige den Namen, aber keine Temperatur.
@@ -5081,6 +5146,17 @@ export interface components {
             kwh: number;
         };
         /**
+         * VorlaufOut
+         * @description Eine Sprosse der Vorlaufleiter mit ihrer Wertung.
+         */
+        VorlaufOut: {
+            /** Key */
+            key: string;
+            /** Label De */
+            label_de: string;
+            wertung: components["schemas"]["Wertung"];
+        };
+        /**
          * WallLine
          * @description Ein Stueck Wandlinie: `x` fuer eine Nord-Sued-Wand, `z` fuer eine Ost-West-Wand, `a..b`
          *     laengs der Wand. Genau eines von `x` und `z` ist gesetzt.
@@ -5119,6 +5195,26 @@ export interface components {
             silent_min: number;
             /** Text De */
             text_de: string;
+        };
+        /**
+         * Wertung
+         * @description Kennzahlen einer Menge von Proben, in der Einheit der Reihe.
+         *
+         *     Einheitenfrei benannt: `mae` ist bei der PV ein Kilowatt und bei der Temperatur ein Kelvin. Eine
+         *     Energiesumme steht hier bewusst nicht - sie ergibt nur für Leistungen einen Sinn, und wer sie
+         *     für PV braucht, findet sie in `evaluation.ForecastScore`.
+         */
+        Wertung: {
+            /** N */
+            n: number;
+            /** Mae */
+            mae: number;
+            /** Bias */
+            bias: number;
+            /** Rmse */
+            rmse: number;
+            /** P95 */
+            p95: number;
         };
         /**
          * YearMapOut
@@ -5641,6 +5737,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForecastEvaluationOut"];
+                };
+            };
+        };
+    };
+    history_api_v1_forecast_history_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForecastHistoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
