@@ -8065,6 +8065,61 @@
               }
             ],
             "title": "Note De"
+          },
+          "heat_demand_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heat Demand Kw"
+          },
+          "dhw_demand_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dhw Demand Kw"
+          },
+          "buffer_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Kwh"
+          },
+          "outdoor_temp_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outdoor Temp C"
+          },
+          "cop": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop"
           }
         },
         "type": "object",
@@ -8140,6 +8195,28 @@
                 "type": "null"
               }
             ]
+          },
+          "buffer_capacity_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Capacity Kwh"
+          },
+          "buffer_min_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer Min Kwh"
           }
         },
         "type": "object",

@@ -81,6 +81,25 @@ BRAUCHBAR = ("optimal", "feasible", "timeout")
 
 
 @dataclass(frozen=True)
+class Zwillingspunkt:
+    """Was der Optimierer über eine Viertelstunde wusste, bevor er sich entschied.
+
+    **Warum das nach außen gehört.** Diese fünf Zahlen gehen in jeden Fahrplan ein, und keine
+    einzige davon war bisher von außen zu sehen: der Wärmebedarf, gegen den geplant wird, der
+    Pufferinhalt, der dabei herauskommt, die Außentemperatur, die beides treibt, und der COP, der
+    aus ihr folgt. Ein Fahrplan ohne sie zeigt die Entscheidung und verschweigt ihren Anlass.
+
+    `puffer_kwh` ist der nutzbare Inhalt am **Ende** des Intervalls, so wie das Modell ihn fortrechnet.
+    """
+
+    heizen_kw: float
+    warmwasser_kw: float
+    puffer_kwh: float | None
+    aussen_c: float
+    cop: float
+
+
+@dataclass(frozen=True)
 class StovePlan:
     """Der Fahrplan über den Horizont. `available=False` heißt: es wurde nicht geplant, und warum."""
 
@@ -102,6 +121,19 @@ class StovePlan:
     pellet_kg: float = 0.0
     starts: int = 0
     fuel_budget_kg: float = 0.0
+    # Die Eingänge des Modells je Intervall, in der Reihenfolge von `start`. Sie werden nicht für
+    # die Regelung gebraucht, sondern dafür, dass der Fahrplan begründbar bleibt; ohne sie zeigt
+    # die Oberfläche eine Entscheidung ohne ihren Anlass.
+    heat_kw: list[float] = field(default_factory=list)
+    dhw_kw: list[float] = field(default_factory=list)
+    outdoor_c: list[float] = field(default_factory=list)
+    cop: list[float] = field(default_factory=list)
+    # Der geplante Pufferinhalt am Ende jedes Intervalls, aus derselben Bilanz wie die Fahrpläne.
+    buffer_kwh: list[float] = field(default_factory=list)
+    # Die Ränder, zwischen denen der Inhalt liegen muss. Erst sie machen die Kurve lesbar: 9 kWh
+    # sind viel oder wenig, je nachdem, ob der Behälter 12 oder 30 kWh hält.
+    buffer_capacity_kwh: float | None = None
+    buffer_min_kwh: float | None = None
     solve_ms: int = 0
     mip_gap: float | None = None  # wie weit das Ergebnis vom Besten entfernt sein kann
     note_de: str = ""
@@ -133,6 +165,27 @@ class StovePlan:
             return None
         i = int((t - self.start).total_seconds() // (self.step_min * 60))
         return self.hp_on[i] if 0 <= i < len(self.hp_on) else None
+
+    def twin_at(self, t: datetime) -> Zwillingspunkt | None:
+        """Die Modelleingänge dieses Intervalls, oder `None`, wenn nicht gerechnet wurde.
+
+        Hängt an `start` und nicht an `available`: die Reihen entstehen beim Füttern des Modells,
+        also auch dann, wenn am Ende kein Ofenfahrplan herauskam. Sie wegen eines fehlenden Ofens
+        zu verschweigen, wäre derselbe Fehler, der den Wärmepumpenfahrplan einmal am Ofenschalter
+        hängen ließ.
+        """
+        if self.start is None or not self.heat_kw:
+            return None
+        i = int((t - self.start).total_seconds() // (self.step_min * 60))
+        if not 0 <= i < len(self.heat_kw):
+            return None
+        return Zwillingspunkt(
+            heizen_kw=self.heat_kw[i],
+            warmwasser_kw=self.dhw_kw[i],
+            puffer_kwh=self.buffer_kwh[i] if i < len(self.buffer_kwh) else None,
+            aussen_c=self.outdoor_c[i],
+            cop=self.cop[i],
+        )
 
     def until(self, t: datetime) -> datetime | None:
         """Bis wann der jetzige Zustand laut Fahrplan gilt. `None` am Ende des Horizonts."""
@@ -265,6 +318,12 @@ def plan_stove(
     window_start, _ = budget_window(stove, now.astimezone(tz))
     per_window_kg = stove.hopper_kg * max(stove.refills_per_day, 1.0)
     intervals: list[Interval] = []
+    # Dieselben Zahlen, die gleich ins Modell gehen, nur aufbewahrt. Der Fahrplan soll hinterher
+    # sagen können, *weshalb* er so aussieht, und dafür braucht er seine Eingänge.
+    heizen_kw: list[float] = []
+    warmwasser_kw: list[float] = []
+    aussen_c: list[float] = []
+    cops: list[float] = []
     windows_seen = 0
     t = start
     while t < end:
@@ -276,6 +335,10 @@ def plan_stove(
         cop = cop_at(temp_c, cfg.heat_demand)
         w = int((t.astimezone(tz) - window_start) // timedelta(days=1))
         windows_seen = max(windows_seen, w)
+        heizen_kw.append(heating_kw)
+        warmwasser_kw.append(dhw_kw)
+        aussen_c.append(round(temp_c, 1))
+        cops.append(round(cop, 2))
         intervals.append(
             Interval(
                 price_ct_kwh=ct,
@@ -296,13 +359,31 @@ def plan_stove(
     )
     loss_kwh = max(0.0, cfg.buffer.loss_kw_per_k * (mean_c - cfg.buffer.ambient_c)) * dt_h
 
+    buffer_min_kwh = cfg.buffer.status_thresholds[0] * capacity
+
+    def mit_zwilling(plan: StovePlan) -> StovePlan:
+        """Die Modelleingänge an einen Fahrplan hängen.
+
+        Eine Funktion und nicht zweimal dieselbe Argumentliste: es gibt zwei Ausgänge, die einen
+        Fahrplan zurückgeben, und sie sind schon einmal auseinandergelaufen.
+        """
+        return replace(
+            plan,
+            heat_kw=heizen_kw,
+            dhw_kw=warmwasser_kw,
+            outdoor_c=aussen_c,
+            cop=cops,
+            buffer_capacity_kwh=round(capacity, 2),
+            buffer_min_kwh=round(buffer_min_kwh, 2),
+        )
+
     try:
         result = optimize(
             intervals,
             electric_kw=cfg.heat_pump.nominal_electric_power_kw,
             thermal_kw=cfg.heat_pump.nominal_thermal_power_kw,
             buffer_start_kwh=buffer.usable_energy_kwh,
-            buffer_min_kwh=cfg.buffer.status_thresholds[0] * capacity,
+            buffer_min_kwh=buffer_min_kwh,
             buffer_max_kwh=capacity,
             buffer_loss_kwh_per_step=loss_kwh,
             min_runtime_min=cfg.heat_pump.min_runtime_min,
@@ -331,33 +412,39 @@ def plan_stove(
     if not result.stove_on:
         # Die Wärmepumpe hat einen Fahrplan, der Ofen nicht. Kein halber Ofenfahrplan, aber auch
         # kein weggeworfener Wärmepumpenfahrplan.
-        return StovePlan(
+        return mit_zwilling(
+            StovePlan(
+                hp_available=True,
+                status=result.status,
+                start=start,
+                hp_on=list(result.on),
+                buffer_kwh=list(result.buffer_kwh),
+                solve_ms=result.solve_ms,
+                mip_gap=result.mip_gap,
+                note_de=(
+                    "Kein Ofenfahrplan"
+                    + ("" if stove.present else " (kein Ofen konfiguriert)")
+                    + "; die Wärmepumpe ist geplant."
+                ),
+            )
+        )
+
+    plan = mit_zwilling(
+        StovePlan(
+            available=True,
             hp_available=True,
             status=result.status,
             start=start,
+            on=list(result.stove_on),
             hp_on=list(result.on),
+            cost_eur=result.stove_cost_eur,
+            pellet_kg=result.stove_pellet_kg,
+            starts=result.stove_starts,
+            fuel_budget_kg=round(first_budget, 1),
+            buffer_kwh=list(result.buffer_kwh),
             solve_ms=result.solve_ms,
             mip_gap=result.mip_gap,
-            note_de=(
-                "Kein Ofenfahrplan"
-                + ("" if stove.present else " (kein Ofen konfiguriert)")
-                + "; die Wärmepumpe ist geplant."
-            ),
         )
-
-    plan = StovePlan(
-        available=True,
-        hp_available=True,
-        status=result.status,
-        start=start,
-        on=list(result.stove_on),
-        hp_on=list(result.on),
-        cost_eur=result.stove_cost_eur,
-        pellet_kg=result.stove_pellet_kg,
-        starts=result.stove_starts,
-        fuel_budget_kg=round(first_budget, 1),
-        solve_ms=result.solve_ms,
-        mip_gap=result.mip_gap,
     )
     return replace(plan, note_de=_note(plan, first_budget))
 

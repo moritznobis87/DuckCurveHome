@@ -44,6 +44,25 @@ class PlanIntervalOut(BaseModel):
     planned_stove_on: bool | None = None
     reason_code: str
     note_de: str | None = None
+    # Die Modelleingänge dieses Schritts. `None` heißt: es wurde nicht geplant - kein Solver, keine
+    # Preise, blinde Puffersensoren oder außerhalb des Planungshorizonts. Das ist etwas anderes als
+    # eine Null, und die Oberfläche muss es unterscheiden können: eine Lücke in der Kurve ist
+    # ehrlicher als eine Linie auf dem Boden.
+    #
+    # Getrennt nach Heizen und Warmwasser, weil die beiden sich verschieden verhalten: das Heizen
+    # hängt an der Außentemperatur, das Warmwasser am Tagesprofil. Gestapelt ergeben sie den
+    # Wärmebedarf, gegen den der Fahrplan rechnet.
+    heat_demand_kw: float | None = None
+    dhw_demand_kw: float | None = None
+    # Der geplante nutzbare Pufferinhalt am **Ende** des Schritts, aus derselben Bilanz wie der
+    # Fahrplan selbst. Er ist das Bindeglied: er erklärt, warum eine teure Stunde ohne Anforderung
+    # bleiben darf und eine billige angefordert wird.
+    buffer_kwh: float | None = None
+    outdoor_temp_c: float | None = None
+    # Die Arbeitszahl, mit der der Optimierer in diesem Schritt gerechnet hat. Sie folgt aus der
+    # Außentemperatur und ist der zweite Grund, warum die Morgenstunden teuer sind: hoher Preis
+    # **und** schlechter COP.
+    cop: float | None = None
 
 
 class PlanOut(BaseModel):
@@ -66,6 +85,10 @@ class PlanOut(BaseModel):
     intervals: list[PlanIntervalOut]
     pv_forecast_today_kwh: float
     next_cheap_window: PriceWindowOut | None
+    # Die Ränder des Puffers, damit `buffer_kwh` einen Maßstab hat. `None`, solange nicht geplant
+    # wurde; die Kapazität hängt am Zustand des Behälters, nicht an der Einstellung.
+    buffer_capacity_kwh: float | None = None
+    buffer_min_kwh: float | None = None
 
 
 class InvoiceReportOut(BaseModel):

@@ -3683,6 +3683,16 @@ export interface components {
             reason_code: string;
             /** Note De */
             note_de?: string | null;
+            /** Heat Demand Kw */
+            heat_demand_kw?: number | null;
+            /** Dhw Demand Kw */
+            dhw_demand_kw?: number | null;
+            /** Buffer Kwh */
+            buffer_kwh?: number | null;
+            /** Outdoor Temp C */
+            outdoor_temp_c?: number | null;
+            /** Cop */
+            cop?: number | null;
         };
         /** PlanOut */
         PlanOut: {
@@ -3725,6 +3735,10 @@ export interface components {
             /** Pv Forecast Today Kwh */
             pv_forecast_today_kwh: number;
             next_cheap_window: components["schemas"]["PriceWindowOut"] | null;
+            /** Buffer Capacity Kwh */
+            buffer_capacity_kwh?: number | null;
+            /** Buffer Min Kwh */
+            buffer_min_kwh?: number | null;
         };
         /**
          * PriceQualityOut
