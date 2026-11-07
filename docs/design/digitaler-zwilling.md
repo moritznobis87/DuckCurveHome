@@ -1,6 +1,7 @@
 # Digitaler Zwilling des Hauses
 
-Status: Entwurf, 2026-11-07. **Umsetzungsstand:** nichts davon gebaut. Dieses Dokument hält das
+Status: Entwurf, 2026-11-07. **Umsetzungsstand:** Schritt 1 der Reihenfolge ist gebaut, die
+Ablage der Prognoseläufe; alles andere nicht. Dieses Dokument hält das
 Ergebnis einer Entwurfsbefragung fest, 33 Entscheidungen, jede mit ihrem Grund und, wo es einen
 gibt, mit dem Gegenargument.
 
@@ -283,10 +284,10 @@ zweite Wahrheit stehen.
 
 ## 10. Was gespeichert wird
 
-Heute wird **kein** Prognoselauf aufbewahrt. Die Wettervorhersage liegt im Arbeitsspeicher des
-`ForecastService`, die PV-Läufe hält der `ForecastEvaluator` 60 Stunden, und die Tabellen
-`forecast_runs` und `forecast_points` liegen seit der Grundmigration da, mit `kind` für weather, pv
-und price, und kein Anwendungscode hat sie je beschrieben.
+Bis zum 07.11.2026 wurde **kein** Prognoselauf aufbewahrt. Die Wettervorhersage lag im
+Arbeitsspeicher des `ForecastService`, die PV-Läufe hielt der `ForecastEvaluator` 60 Stunden, und
+die Tabellen `forecast_runs` und `forecast_points` lagen seit der Grundmigration da, mit `kind` für
+weather, pv und price, ohne dass Anwendungscode sie je beschrieben hätte.
 
 Daraus folgt die unangenehmste Konsequenz des ganzen Vorhabens: **die Nachbetrachtung ist für die
 Vergangenheit nicht nachholbar.** Linie 2 braucht die ursprüngliche Prognose, und die gibt es für
@@ -345,7 +346,9 @@ ein Schalter und keine Arbeit.
 
 ## 14. Reihenfolge
 
-1. **Prognoseläufe speichern.** Jeder Tag ohne sie ist dauerhaft weg.
+1. ~~**Prognoseläufe speichern.**~~ Gebaut am 07.11.2026: `hems_core.forecasting.archive` sagt,
+   was ein Lauf ist, die Laufzeit legt bei jeder Auffrischung ab, und das Aufräumen behält je
+   Ortstag einen kanonischen. Einzelheiten in [DATENHALTUNG.md](../DATENHALTUNG.md).
 2. **`vorlauf_temperature` zuordnen.** Eine Zeile, unabhängig von allem anderen.
 3. **K1-Wirkung auswerten**, Kontaktzustand gegen Wärmepumpenleistung, aus dem vorhandenen Bestand.
 4. Teilpaket `twin/` und Schichtenvertrag.

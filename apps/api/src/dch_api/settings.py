@@ -124,6 +124,17 @@ class Settings(BaseSettings):
     # Drei Tage lassen einen Dienst, der zwei Tage stillstand, seine Rohwerte beim Start noch
     # verdichten. Der Platzbedarf steht in den Einstellungen unter „Platzbedarf".
     raw_retention_days: int = 3
+    # Wie lange Prognoselaeufe vollstaendig liegen bleiben.
+    #
+    # Dreissig Tage reichen fuer die Frage, die sie beantworten sollen: wie viel besser die Prognose
+    # wird, je naeher die Lieferung kommt. Wer das fuer einen Monat sehen kann, sieht es.
+    # Darueber hinaus bleibt je Ortstag ein kanonischer Lauf, und der wird nie geloescht.
+    forecast_run_retention_days: int = 30
+    # Welche Stunde Ortszeit den kanonischen Day-ahead-Lauf bestimmt.
+    #
+    # Sechs Uhr, weil `forecast_evaluation` seine Tageswertung schon gegen diese Stunde rechnet. Zwei
+    # verschiedene Begriffe von "der Lauf von gestern" waeren eine Fehlerquelle, die niemand findet.
+    forecast_canonical_hour: int = 6
 
     @field_validator("cors_origins", "bridge_tokens", mode="before")
     @classmethod

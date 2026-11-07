@@ -6,9 +6,9 @@ import csv
 import io
 import json
 from collections.abc import AsyncIterator, Mapping
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import CursorResult, delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -21,6 +21,7 @@ from dch_api.infrastructure.db import models as m
 from dch_api.infrastructure.history import SERIES
 from hems_core.accounting import HourlyEnergy
 from hems_core.domain import Decision, OperatingMode, Quality
+from hems_core.forecasting import Lauf
 from hems_core.protocol import RawReading
 from hems_core.thermal import HeatHourInput
 
@@ -846,6 +847,120 @@ class SqlRepositories:
         async with self.maker() as s:
             row = await s.get(m.ModelCalibration, model)
         return None if row is None else dict(row.state)
+
+    # ------------------------------------------------------------------ Prognoseläufe
+    async def save_forecast_run(self, lauf: Lauf) -> UUID:
+        """Einen Lauf mit allen Punkten ablegen und seine Kennung zurückgeben.
+
+        Der Fingerabdruck wandert nach `params`: so braucht der nächste Abruf nur den jüngsten Lauf
+        zu lesen, um zu wissen, ob er etwas Neues bringt, und nicht dessen sämtliche Punkte.
+        """
+        kennung = uuid4()
+        async with self.maker() as s:
+            s.add(
+                m.ForecastRun(
+                    id=kennung,
+                    kind=lauf.art,
+                    provider=lauf.anbieter,
+                    issued_at=lauf.erstellt,
+                    horizon_start=lauf.von,
+                    horizon_end=lauf.bis,
+                    resolution_min=lauf.schritt_min,
+                    params={"fingerabdruck": lauf.fingerabdruck},
+                )
+            )
+            s.add_all(
+                m.ForecastPoint(
+                    run_id=kennung,
+                    ts=punkt.ts,
+                    variable=punkt.variable,
+                    value=punkt.wert,
+                    value_lo=punkt.lo,
+                    value_hi=punkt.hi,
+                )
+                for punkt in lauf.punkte
+            )
+            await s.commit()
+        return kennung
+
+    async def last_forecast_fingerprint(self, art: str) -> str | None:
+        """Der Fingerabdruck des jüngsten Laufs dieser Art, oder `None`, wenn es keinen gibt."""
+        async with self.maker() as s:
+            row = (
+                await s.execute(
+                    select(m.ForecastRun.params)
+                    .where(m.ForecastRun.kind == art)
+                    .order_by(m.ForecastRun.issued_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+        if not isinstance(row, dict):
+            return None
+        wert = row.get("fingerabdruck")
+        return wert if isinstance(wert, str) else None
+
+    async def forecast_runs_between(
+        self, art: str, start: datetime, end: datetime
+    ) -> list[tuple[UUID, datetime]]:
+        """Kennung und Erstellungszeit aller Läufe einer Art in einem Zeitraum.
+
+        Die Grenzen werden nach UTC gedreht, bevor sie in die Abfrage gehen. Das ist keine
+        Förmlichkeit: SQLite verwirft beim Schreiben den Zeitzonen-Versatz und vergleicht danach
+        Wanduhrzeiten. Ein Fenster, das als Ortsmitternacht hereinkommt, träfe dort eine andere
+        Menge Zeilen als auf PostgreSQL, und der Aufrufer rechnet in Ortstagen.
+        """
+        async with self.maker() as s:
+            rows = (
+                await s.execute(
+                    select(m.ForecastRun.id, m.ForecastRun.issued_at)
+                    .where(
+                        m.ForecastRun.kind == art,
+                        m.ForecastRun.issued_at >= start.astimezone(UTC),
+                        m.ForecastRun.issued_at < end.astimezone(UTC),
+                    )
+                    .order_by(m.ForecastRun.issued_at)
+                )
+            ).all()
+        # `_aware` ist hier nicht Kosmetik: SQLite gibt die Zeitstempel ohne Zone zurueck, und
+        # `kanonisch` vergleicht sie gegen eine Ortszeit. Ohne das bricht das Markieren des
+        # kanonischen Laufs - im Betrieb lautlos, weil das Housekeeping Fehler unterdrueckt, und
+        # dann loescht das Aufraeumen nach dreissig Tagen Laeufe, die haetten bleiben sollen.
+        return [(r[0], self._aware(r[1])) for r in rows]
+
+    async def mark_forecast_canonical(self, run_id: UUID, tag: date) -> None:
+        """Diesen Lauf als den kanonischen des Ortstags vermerken."""
+        async with self.maker() as s:
+            row = await s.get(m.ForecastRun, run_id)
+            if row is None:
+                return
+            row.canonical_day = tag
+            await s.commit()
+
+    async def prune_forecast_runs(self, older_than: timedelta) -> int:
+        """Alte Läufe löschen, aber nie einen kanonischen.
+
+        Die Punkte werden zuerst von Hand gelöscht. Der Fremdschlüssel trägt zwar
+        `ondelete="CASCADE"`, aber SQLite führt das nur aus, wenn Fremdschlüssel eingeschaltet sind,
+        und darauf soll das Aufräumen nicht angewiesen sein: sonst blieben in den Tests Punkte ohne
+        Lauf zurück, und das fällt erst auf, wenn jemand sie zählt.
+        """
+        cutoff = datetime.now(UTC) - older_than
+        veraltet = (
+            m.ForecastRun.issued_at < cutoff,
+            m.ForecastRun.canonical_day.is_(None),
+        )
+        async with self.maker() as s:
+            await s.execute(
+                delete(m.ForecastPoint).where(
+                    m.ForecastPoint.run_id.in_(select(m.ForecastRun.id).where(*veraltet))
+                )
+            )
+            res = cast(
+                CursorResult[Any],
+                await s.execute(delete(m.ForecastRun).where(*veraltet)),
+            )
+            await s.commit()
+            return int(res.rowcount or 0)
 
     async def active_config(self, kind: str) -> dict[str, object] | None:
         async with self.maker() as s:

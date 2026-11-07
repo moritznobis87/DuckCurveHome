@@ -17,7 +17,7 @@ import asyncio
 import contextlib
 from collections import deque
 from collections.abc import AsyncIterator
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from time import monotonic
 from typing import Any, cast
 
@@ -121,6 +121,16 @@ from hems_core.domain import (
     SystemMode,
     apply_heat_patch,
 )
+from hems_core.forecasting import (
+    PREIS,
+    PV,
+    WETTER,
+    Lauf,
+    kanonisch,
+    preis_lauf,
+    pv_lauf,
+    wetter_lauf,
+)
 from hems_core.planning import (
     cheap_windows,
     current_price,
@@ -206,6 +216,8 @@ class LiveRuntime:
         self._k1_sent_at: datetime | None = None
         self._plan_status_vorher: str = ""  # damit nur der Wechsel ein Ereignis wird
         self._takt = Takt(settings.live_push_min_s, settings.live_push_max_s)
+        #: Fuer welchen Ortstag die kanonischen Laeufe schon vermerkt sind.
+        self._kanonisch_am: date | None = None
         self._last_price_stored: datetime | None = None
         self.price_fill_note: str | None = None
         self._tasks: list[asyncio.Task[None]] = []
@@ -1619,12 +1631,89 @@ class LiveRuntime:
         return out
 
     async def _record_forecast_run(self) -> None:
+        await self._laeufe_ablegen()
         pv = self.forecasts.pv
         if pv is None or not pv.points:
             return
         self.evaluator.record_run(pv.issued_at, [(p.ts, p.ac_kw) for p in pv.points], pv.provider)
         await self._close_forecast_days()
         await self._save_calibration()
+
+    # ------------------------------------------------------------------ Prognoseläufe aufbewahren
+    #
+    # Der Bewerter oben hält PV-Läufe 60 Stunden im Arbeitsspeicher und schreibt daraus einen
+    # gelernten Zustand. Das ist etwas anderes als das Folgende: hier gehen die Läufe selbst
+    # dauerhaft in `forecast_runs`, weil die Nachbetrachtung des Zwillings die Prognose von damals
+    # braucht und nicht ihre Kennzahlen. Ohne das ist die Frage „was hätte die ursprüngliche
+    # Prognose gekostet" für jeden vergangenen Tag unbeantwortbar, und zwar für immer.
+
+    #: Die Arten, für die je Ortstag ein kanonischer Lauf aufbewahrt wird.
+    ARTEN: tuple[str, ...] = (WETTER, PV, PREIS)
+
+    async def _lauf_ablegen(self, lauf: Lauf | None) -> None:
+        """Einen Lauf ablegen, falls er einer ist.
+
+        Gleicht der Inhalt dem zuletzt abgelegten, war es kein neuer Lauf, sondern eine
+        Wiederholung. Das betrifft vor allem die Preise: Tibber wird halbstündlich abgefragt,
+        zwischen 13 und 15 Uhr noch häufiger, und veröffentlicht einmal am Tag.
+
+        Ein Fehler hier darf die Prognoseschleife nicht anhalten. Eine Prognose, die nicht abgelegt
+        wurde, ist ein verlorener Lerntag; eine Prognose, die deswegen nicht geholt wird, ist ein
+        Fahrplan, der nicht entsteht.
+        """
+        if lauf is None:
+            return
+        try:
+            if await self.repos.last_forecast_fingerprint(lauf.art) == lauf.fingerabdruck:
+                return
+            await self.repos.save_forecast_run(lauf)
+            log.info("forecast run stored", art=lauf.art, punkte=len(lauf.punkte))
+        except Exception as exc:
+            log.warning("forecast run not stored", art=lauf.art, error=repr(exc)[:200])
+
+    async def _laeufe_ablegen(self) -> None:
+        """Wetter und PV ablegen. Beim Wetter greift der Wiederholungsfilter oft, bei PV selten:
+        ihr Raster wandert mit jeder Auffrischung eine Stunde weiter, und ein verschobener Horizont
+        ist neuer Inhalt."""
+        await self._lauf_ablegen(wetter_lauf(self.forecasts.weather))
+        await self._lauf_ablegen(pv_lauf(self.forecasts.pv))
+
+    async def _preise_ablegen(self) -> None:
+        anbieter = (
+            "unbekannt"
+            if self.forecasts.price_provider is None
+            else self.forecasts.price_provider.name
+        )
+        await self._lauf_ablegen(
+            preis_lauf(
+                self.forecasts.prices, self.forecasts.prices_fetched_at or self.now, anbieter
+            )
+        )
+
+    async def _kanonische_laeufe(self, bis: date) -> None:
+        """Je Art den Lauf vermerken, der von diesem Ortstag für immer bleibt.
+
+        Drei Tage rückwärts und nicht nur der letzte: stand der Dienst ein Wochenende still, sollen
+        die versäumten Tage ihren kanonischen Lauf noch bekommen, bevor das Löschen sie nach dreißig
+        Tagen mitnimmt.
+
+        Der Vermerk wird am Ende gesetzt, nicht am Anfang: scheitert ein Durchlauf, versucht es die
+        nächste Stunde erneut. Ein zweiter Durchlauf schadet nicht, er schreibt denselben Wert.
+        """
+        if self._kanonisch_am == bis:
+            return
+        stunde = self.settings.forecast_canonical_hour
+        for rueck in range(3):
+            tag = bis - timedelta(days=rueck)
+            start = datetime.combine(tag, time(0), tzinfo=BERLIN)
+            for art in self.ARTEN:
+                laeufe = await self.repos.forecast_runs_between(
+                    art, start, start + timedelta(days=1)
+                )
+                kennung = kanonisch(laeufe, tag, stunde, BERLIN)
+                if kennung is not None:
+                    await self.repos.mark_forecast_canonical(kennung, tag)
+        self._kanonisch_am = bis
 
     async def _close_forecast_days(self) -> None:
         closed = False
@@ -2047,6 +2136,7 @@ class LiveRuntime:
         await self._load_shift_state()
         await self.forecasts.refresh_prices(self.now)
         await self.forecasts.refresh_weather(self.now)
+        await self._preise_ablegen()
         await self._record_forecast_run()
         await self.refresh_plan()
         if self.settings.runs_worker:
@@ -2106,6 +2196,7 @@ class LiveRuntime:
             if now - last_prices >= timedelta(minutes=price_every):
                 await self.forecasts.refresh_prices(now)
                 last_prices = now
+                await self._preise_ablegen()
             if now - last_weather >= timedelta(minutes=self.settings.weather_refresh_min):
                 await self.forecasts.refresh_weather(now)
                 last_weather = now
@@ -2125,3 +2216,12 @@ class LiveRuntime:
                     timedelta(days=self.settings.raw_retention_days)
                 )
                 log.info("raw pruned", rows=deleted)
+                # Erst vermerken, dann löschen. Andersherum nähme das Löschen Läufe mit, die
+                # kanonisch geworden wären.
+                await self._kanonische_laeufe(
+                    self.now.astimezone(BERLIN).date() - timedelta(days=1)
+                )
+                weg = await self.repos.prune_forecast_runs(
+                    timedelta(days=self.settings.forecast_run_retention_days)
+                )
+                log.info("forecast runs pruned", rows=weg)
