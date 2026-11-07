@@ -77,6 +77,7 @@ class MeasurementMinute(Base):
     buffer_temp_mid_bottom_c: Mapped[float | None] = mapped_column(Float)
     buffer_temp_bottom_c: Mapped[float | None] = mapped_column(Float)
     hp_release_contact: Mapped[float | None] = mapped_column(Float)
+    flow_temp_c: Mapped[float | None] = mapped_column(Float)
     # Pelletofen. Eigene Spalten auch für Größen, die nicht jede Firmware füllt: eine leere
     # Spalte kostet in Postgres nur ein Bit in der NULL-Maske, eine zweite Migration mehr.
     stove_state: Mapped[float | None] = mapped_column(Float)
@@ -213,6 +214,12 @@ class ForecastRun(Base):
     horizon_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     resolution_min: Mapped[int] = mapped_column(Integer)
     params: Mapped[dict[str, object]] = mapped_column(JsonType, default=dict)
+    #: Welcher Ortstag diesen Lauf als kanonischen Day-ahead-Lauf behaelt, oder NULL.
+    #:
+    #: Gesetzt wird das beim Tagesabschluss, nicht beim Ablegen: kanonisch ist der letzte Lauf, der
+    #: zur kanonischen Stunde noch gueltig war, und wer der letzte war, steht erst am Ende des Tages
+    #: fest. Das Loeschen liest den Vermerk dann nur noch - was hier steht, bleibt.
+    canonical_day: Mapped[date | None] = mapped_column(Date)
 
 
 class ForecastPoint(Base):

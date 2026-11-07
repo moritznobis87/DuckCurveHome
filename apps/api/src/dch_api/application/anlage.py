@@ -11,6 +11,10 @@ Beides rechnet `hems_core.thermal.anlage`; hier werden nur die Zeilen in Proben 
 **Der Warmwasserfühler** ist ein Anlegefühler am warmen Auslass oben am Speicher, den es noch
 nicht gibt. Sobald die Brücke ihn unter `DHW_OUTLET` liefert, erscheint er; bis dahin bleibt die
 Kachel gedimmt. Ein zweiter am Kaltwasserzulauf (`DHW_INLET`) ist freiwillig.
+
+**Die Vorlauftemperatur der Wärmepumpe** steht genauso da und kommt genauso: unter `WP_VORLAUF`,
+sobald eine Quelle sie liefert, sei es die noch nicht zugeordnete Entität aus Home Assistant oder
+der eBUS-Adapter. Bis dahin schreibt die Anzeige „Vorlauf ?" statt einer erfundenen Zahl.
 """
 
 from __future__ import annotations
@@ -39,6 +43,9 @@ from hems_core.domain import (
 from hems_core.domain.config import StoveConfig
 from hems_core.thermal import TempProbe, buffer_net_kw, netto_wort, stove_output_kw, zapfung
 
+#: Die Vorlauftemperatur des Waermepumpenkreises. Noch liefert sie niemand; sobald die Bruecke sie
+#: unter diesem Schluessel schickt, erscheint sie im Schema, und bis dahin steht dort "Vorlauf ?".
+WP_VORLAUF = "flow_temp_c"
 DHW_OUTLET = "dhw_outlet_temp_c"
 DHW_INLET = "dhw_inlet_temp_c"
 #: Wie weit die Minutenreihe zurückgelesen wird: genug für die Nettoleistung (eine Viertelstunde
@@ -109,14 +116,22 @@ def strom(snap: EnergySnapshot) -> AnlageStromOut:
     )
 
 
-def waermepumpe(hp: HeatPumpState, snap: EnergySnapshot) -> AnlageWaermepumpeOut:
-    """Nur Strom und Takt. Wärme, Vorlauf und COP kommen mit dem Bus; bis dahin stehen sie leer."""
+def waermepumpe(
+    hp: HeatPumpState, snap: EnergySnapshot, vorlauf: Measurement
+) -> AnlageWaermepumpeOut:
+    """Strom, Takt und die Vorlauftemperatur, sobald jemand sie liefert.
+
+    `thermal_kw` und `cop` bleiben leer, auch wenn der Vorlauf da ist. Beides wäre jetzt errechenbar,
+    der COP als Carnot mal Gütegrad, aber es wäre eine Schätzung, und die Kachel verspricht eine
+    Messung. Sie kommen mit dem Schritt, der die Wärmemenge zur beobachteten Größe mit
+    Qualitätsvermerk macht; die Begründung steht in `docs/design/digitaler-zwilling.md`.
+    """
     return AnlageWaermepumpeOut(
         running=hp.running,
         running_since=hp.running_since,
         power_kw=_wert(snap.heat_pump_power_kw),
         thermal_kw=None,
-        flow_c=None,
+        flow_c=_wert(vorlauf),
         cop=None,
     )
 
@@ -210,6 +225,7 @@ def zusammensetzen(
     stove_pump: Measurement,
     dhw_outlet: Measurement,
     dhw_inlet: Measurement,
+    wp_vorlauf: Measurement,
     raeume: RoomsLiveOut,
     zeilen: list[Zeile],
 ) -> AnlageOut:
@@ -217,7 +233,7 @@ def zusammensetzen(
         at=now,
         outdoor_c=_wert(snap.outdoor_temp_c),
         strom=strom(snap),
-        waermepumpe=waermepumpe(hp, snap),
+        waermepumpe=waermepumpe(hp, snap, wp_vorlauf),
         ofen=ofen(stove, cfg.stove, stove_return, stove_pump),
         speicher=speicher(snap, buffer, cfg.buffer, zeilen, now),
         heizkreis=heizkreis(raeume),

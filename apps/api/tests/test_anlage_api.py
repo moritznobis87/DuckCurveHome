@@ -139,3 +139,34 @@ def test_ohne_geschichte_keine_nettoleistung(live_client: TestClient) -> None:
         a = live_client.get("/api/v1/anlage", headers=KOPF).json()
     # Eine einzige Minute ist keine Änderung. Null wäre eine Behauptung, also steht hier nichts.
     assert a["speicher"]["net_kw"] is None and a["speicher"]["net_word"] == ""
+
+
+def test_der_vorlauf_bleibt_leer_bis_jemand_ihn_liefert(client: TestClient) -> None:
+    """Die Reihe ist eingerichtet, der Wert fehlt. Das Schema sagt das, statt eine Zahl zu setzen.
+
+    Die Oberflaeche schreibt dafuer „Vorlauf ?". Ein NaN in der Spalte waere die naheliegende
+    Alternative und waere falsch: es ist in JSON nicht darstellbar und ginge in jedes Minutenmittel
+    ein, in das es einmal faellt.
+    """
+    wp = client.get("/api/v1/anlage", headers=KOPF).json()["waermepumpe"]
+    assert wp["flow_c"] is None
+    # Und der COP bleibt leer, auch wenn der Vorlauf eines Tages da ist: er waere dann gerechnet
+    # und nicht gemessen, und die Kachel verspricht eine Messung.
+    assert wp["cop"] is None
+    assert wp["thermal_kw"] is None
+
+
+def test_der_vorlauf_erscheint_sobald_die_bruecke_ihn_schickt(live_client: TestClient) -> None:
+    """Der eigentliche Zweck der Einrichtung: der erste Wert braucht keine Codeaenderung mehr."""
+    now = datetime.now(UTC).replace(second=0, microsecond=0)
+    with live_client.websocket_connect(
+        "/bridge/ws", headers={"authorization": "Bearer geheim"}
+    ) as ws:
+        ws.send_text(_hello())
+        assert json.loads(ws.receive_text())["type"] == "welcome"
+        ws.send_text(_telemetrie(1, now - timedelta(minutes=1), {logik.WP_VORLAUF: 38.5}))
+        assert json.loads(ws.receive_text()) == {"type": "ack", "seq": 1}
+
+        a = live_client.get("/api/v1/anlage", headers=KOPF).json()
+
+    assert a["waermepumpe"]["flow_c"] == 38.5

@@ -73,6 +73,19 @@ sensors:
   - { key: kontakt_haustuer_vorne,   entity: binary_sensor.haustur_vorne,                  kind: binary, stale_after_s: 1800 }
   - { key: kontakt_arbeiten_fenster, entity: binary_sensor.arbeitszimmer_fenster_innenhof, kind: binary, stale_after_s: 1800 }
 
+  # --- Waermepumpenkreis ---
+  # Die Vorlauftemperatur ist die Senkentemperatur im COP. Ohne sie bleibt der Wirkungsgrad der
+  # Waermepumpe eine Annahme, und mit ihr wird er rechenbar.
+  #
+  # Das Influx-Inventar vom 06.09.2026 nennt eine Entitaet `vorlauf_temperature`
+  # (docs/HA_EXPORT.md), ohne Domaenenpraefix. Welche Domaene es ist, steht in Home Assistant unter
+  # Entwicklerwerkzeuge; danach die Zeile einkommentieren und den Namen vervollstaendigen. Liefert
+  # stattdessen der eBUS-Adapter, tritt sein Schluessel an dieselbe Stelle.
+  #
+  # Die Reihe `flow_temp_c` existiert bereits, in der Minutentabelle und im Anlagenschema. Solange
+  # hier nichts steht, bleibt sie leer und die Anlagenseite schreibt "Vorlauf ?".
+  # - { key: flow_temp_c, entity: sensor.vorlauf_temperature, unit: "°C", stale_after_s: 900 }
+
   # --- Umgebung ---
   - { key: outdoor_temp_c,     entity: sensor.geilenkirchen_air_base_temperatur,          unit: "°C", stale_after_s: 3600 }
 
