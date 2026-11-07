@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
+from dch_api.application.stove_planner import Zwillingspunkt
 from dch_api.schemas import PlanIntervalOut, PlanOut, PriceWindowOut
 from hems_core.domain import HemsConfig
 from hems_core.planning import (
@@ -67,14 +68,22 @@ def build_plan(
     cfg: HemsConfig,
     stove_on: Callable[[datetime], bool | None] | None = None,
     hp_on: Callable[[datetime], bool | None] | None = None,
+    twin: Callable[[datetime], Zwillingspunkt | None] | None = None,
+    buffer_capacity_kwh: float | None = None,
+    buffer_min_kwh: float | None = None,
     planner_status: str = "unavailable",
     planner_note_de: str = "",
     planner_warn_de: str = "",
 ) -> PlanOut:
     """Der Fahrplan über den Horizont.
 
-    `stove_on` und `hp_on` sind die beiden Hälften des Optimiererergebnisses, als
-    Nachschlagefunktionen über der Zeit. Sie werden hier **mitgeführt**, nicht gerechnet.
+    `stove_on`, `hp_on` und `twin` sind das Optimiererergebnis, als Nachschlagefunktionen über der
+    Zeit. Sie werden hier **mitgeführt**, nicht gerechnet.
+
+    **Warum der Wärmebedarf hier auftaucht.** Er ist kein neues Modell: dasselbe Programm rechnet
+    ihn längst für jede Viertelstunde, um den Fahrplan zu finden, und warf ihn danach weg. Ein
+    Fahrplan, der zeigt, *wann* die Wärmepumpe laufen soll, aber nicht, *wogegen* geplant wurde,
+    lässt sich nicht beurteilen - und genau das stand bis zum 07.11.2026 auf der Seite „Fahrplan".
 
     **Der Optimierer führt, die Regel fängt auf.** Vorher standen hier zwei Planer nebeneinander:
     der Ofen folgte einem gemischt-ganzzahligen Programm über Preis, Wärmebedarf, Puffer und
@@ -145,6 +154,7 @@ def build_plan(
             state, code, note = "avoid", "planned_avoid_peak", avoid.label_de
         else:
             state, code, note = "free", "none", None
+        z = twin(t) if twin else None
         intervals.append(
             PlanIntervalOut(
                 ts=t,
@@ -154,6 +164,11 @@ def build_plan(
                 planned_stove_on=stove_on(t) if stove_on else None,
                 reason_code=code,
                 note_de=note,
+                heat_demand_kw=z.heizen_kw if z else None,
+                dhw_demand_kw=z.warmwasser_kw if z else None,
+                buffer_kwh=z.puffer_kwh if z else None,
+                outdoor_temp_c=z.aussen_c if z else None,
+                cop=z.cop if z else None,
             )
         )
         t += timedelta(minutes=15)
@@ -174,4 +189,6 @@ def build_plan(
         intervals=intervals,
         pv_forecast_today_kwh=round(pv_kwh, 1),
         next_cheap_window=_out(nxt) if nxt else None,
+        buffer_capacity_kwh=buffer_capacity_kwh,
+        buffer_min_kwh=buffer_min_kwh,
     )

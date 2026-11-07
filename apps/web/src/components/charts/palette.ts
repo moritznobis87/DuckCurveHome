@@ -56,6 +56,18 @@ export const C = {
   // #123544 hat sie 4,63:1, reicht also auch aus drei Metern.
   pvSchatten: "#c8902f",
   mist: "#7fa3b3",
+  // Der Wärmebedarf des Hauses, gestapelt aus Heizen und Warmwasser. Das Heizen nimmt die Farbe
+  // des Hauses (`house`), denn es ist der Verlust der Hülle; das Warmwasser bekommt sein eigenes
+  // Blau. Geprüft gegen die Kartenfläche #123544, Modus dunkel, alle Paare: ΔE 21,9 normal /
+  // 18,1 protan. Es ist das einzige **gestapelte** Paar der Seite „Fahrplan" und damit das
+  // einzige, an dem diese Liste streng sein muss.
+  dhw: "#4aa3c7",
+  // Der Pufferinhalt: eine einzelne Linie in einer eigenen Fläche. Ihr nächster Nachbar auf der
+  // Seite ist der Strompreis drei Flächen höher, ΔE 14,6 normal / 13,7 deutan - knapp unter der
+  // Grenze 15, die hier sonst gilt. Zulässig, weil die beiden nie im selben Gitter stehen: eigene
+  // Achse in kWh, eigener Titel, eine Lücke dazwischen. Genau die Trennung, die diese Liste
+  // weiter oben für Preis und Batterie schon zulässt.
+  puffer: "#8fbf6b",
   // Nicht-Energie
   price: "#7fa3b3",
   alert: "#e0533d",

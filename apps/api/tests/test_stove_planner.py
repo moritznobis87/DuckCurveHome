@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from dch_api.application.stove_planner import (
+    HORIZON_H,
     STEP_MIN,
     StovePlan,
     SwitchDecision,
@@ -320,3 +321,61 @@ def test_die_grenze_steht_an_einer_stelle() -> None:
     drueber = StovePlan(hp_available=True, status="timeout", mip_gap=WARN_GAP + 0.001)
     assert drunter.warnung_de() == ""
     assert drueber.warnung_de() != ""
+
+
+# ------------------------------------------------------------------ Die Modelleingänge
+
+
+def test_der_fahrplan_gibt_seine_eingaenge_her() -> None:
+    """Woraus geplant wurde, nicht nur was geplant wurde.
+
+    Der Wärmebedarf, der Pufferverlauf, die Außentemperatur und der COP gehen in jedes Intervall
+    ein. Sie lagen bis zum 07.11.2026 nur im Modell, und ein Fahrplan ohne sie zeigt die
+    Entscheidung ohne ihren Anlass.
+    """
+    p = plan(temps=temps(-5.0))
+    assert len(p.heat_kw) == len(p.hp_on)
+    assert len(p.dhw_kw) == len(p.heat_kw)
+    assert len(p.outdoor_c) == len(p.heat_kw)
+    assert len(p.cop) == len(p.heat_kw)
+    assert len(p.buffer_kwh) == len(p.heat_kw)
+
+    z = p.twin_at(NOW)
+    assert z is not None
+    assert z.aussen_c == -5.0
+    assert z.heizen_kw > 0, "bei minus fünf Grad wird geheizt"
+    assert z.warmwasser_kw > 0, "Warmwasser läuft rund um die Uhr nach Profil"
+    assert 1.5 < z.cop < 5.0
+    assert z.puffer_kwh is not None
+
+
+def test_der_puffer_bleibt_zwischen_seinen_raendern() -> None:
+    """Ohne Maßstab ist der Inhalt keine Aussage: 9 kWh sind viel oder wenig je nach Behälter."""
+    p = plan()
+    assert p.buffer_capacity_kwh == 31.0
+    assert p.buffer_min_kwh is not None and 0 < p.buffer_min_kwh < 31.0
+    assert all(p.buffer_min_kwh - 0.3 <= kwh <= 31.3 for kwh in p.buffer_kwh)
+
+
+def test_ohne_ofen_stehen_die_eingaenge_trotzdem_da() -> None:
+    """Dieselbe Trennung wie beim Fahrplan selbst: ein fehlender Ofen sagt nichts über das Modell."""
+    ohne_ofen = HemsConfig().model_copy(
+        update={"stove": HemsConfig().stove.model_copy(update={"present": False})}
+    )
+    p = plan(cfg=ohne_ofen)
+    assert p.available is False
+    assert p.twin_at(NOW) is not None
+
+
+def test_ohne_fahrplan_behaupten_die_eingaenge_nichts() -> None:
+    blind = buffer().model_copy(update={"usable_energy_kwh": None, "soc": None})
+    p = plan(buffer=blind)
+    assert p.twin_at(NOW) is None
+    assert p.buffer_capacity_kwh is None
+
+
+def test_jenseits_des_horizonts_gibt_es_keine_eingaenge() -> None:
+    """Eine Lücke ist ehrlicher als eine Null: jenseits des Horizonts weiß das Modell nichts."""
+    p = plan()
+    assert p.twin_at(NOW - timedelta(hours=1)) is None
+    assert p.twin_at(NOW + timedelta(hours=HORIZON_H + 1)) is None

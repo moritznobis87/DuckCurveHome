@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from dch_api.application.plan_service import build_plan
+from dch_api.application.stove_planner import Zwillingspunkt
 from hems_core.domain import HemsConfig
 from hems_core.planning import PricePoint
 from hems_core.simulation import BERLIN
@@ -148,3 +149,50 @@ def test_ein_halber_horizont_faellt_am_rand_auf_die_regel_zurueck() -> None:
     assert spaet, "zwei Tage Preise ergeben Intervalle jenseits des Optimiererhorizonts"
     assert all(iv.planned_hp_state in ("release", "avoid", "free") for iv in spaet)
     assert all(iv.reason_code != "planned_optimizer" for iv in spaet)
+
+
+# ------------------------------------------------------------------ Die Modelleingänge im Plan
+
+
+def test_ohne_zwilling_bleiben_die_felder_leer() -> None:
+    """Eine Null wäre eine Behauptung. Wo nicht geplant wurde, steht nichts."""
+    plan = build_plan(_pv, _hourly_prices(24), NOW, HemsConfig())
+    erste = plan.intervals[0]
+    assert erste.heat_demand_kw is None
+    assert erste.dhw_demand_kw is None
+    assert erste.buffer_kwh is None
+    assert erste.outdoor_temp_c is None
+    assert erste.cop is None
+    assert plan.buffer_capacity_kwh is None and plan.buffer_min_kwh is None
+
+
+def test_der_waermebedarf_erreicht_jedes_intervall() -> None:
+    """Der Fahrplan führt die Eingänge mit, aus denen er entstand - je Viertelstunde, nicht je Tag."""
+    bis = DAY_START + timedelta(hours=6)
+
+    def zwilling(t: datetime) -> Zwillingspunkt | None:
+        if not DAY_START <= t < bis:
+            return None
+        return Zwillingspunkt(
+            heizen_kw=3.5, warmwasser_kw=0.4, puffer_kwh=12.0, aussen_c=-2.0, cop=2.8
+        )
+
+    plan = build_plan(
+        _pv,
+        _hourly_prices(24),
+        NOW,
+        HemsConfig(),
+        twin=zwilling,
+        buffer_capacity_kwh=31.0,
+        buffer_min_kwh=9.3,
+    )
+    drinnen = [i for i in plan.intervals if i.ts < bis]
+    draussen = [i for i in plan.intervals if i.ts >= bis]
+    assert len(drinnen) == 24, "sechs Stunden sind vierundzwanzig Viertelstunden"
+    assert all(i.heat_demand_kw == 3.5 and i.dhw_demand_kw == 0.4 for i in drinnen)
+    assert all(i.buffer_kwh == 12.0 and i.cop == 2.8 for i in drinnen)
+    assert all(i.outdoor_temp_c == -2.0 for i in drinnen)
+    assert all(i.heat_demand_kw is None for i in draussen), (
+        "jenseits des Planungshorizonts bleibt die Kurve eine Lücke"
+    )
+    assert plan.buffer_capacity_kwh == 31.0 and plan.buffer_min_kwh == 9.3

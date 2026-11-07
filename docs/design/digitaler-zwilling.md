@@ -1,7 +1,11 @@
 # Digitaler Zwilling des Hauses
 
 Status: Entwurf, 2026-11-07. **Umsetzungsstand:** Schritt 1 und 2 der Reihenfolge sind gebaut, die
-Ablage der Prognoseläufe und die Reihe für die Vorlauftemperatur; alles andere nicht. Dieses Dokument hält das
+Ablage der Prognoseläufe und die Reihe für die Vorlauftemperatur. Dazu gibt der Fahrplan seit dem
+07.11.2026 seine Eingänge mit heraus - Wärmebedarf, Pufferverlauf, Außentemperatur und COP je
+Viertelstunde -, und die Seite `/waerme/fahrplan` zeigt sie als Zeitreihen. Das ist kein eigener
+Schritt der Reihenfolge, sondern das Sichtbarmachen dessen, was der Optimierer ohnehin rechnete und
+bisher wegwarf. Alles andere nicht. Dieses Dokument hält das
 Ergebnis einer Entwurfsbefragung fest, 33 Entscheidungen, jede mit ihrem Grund und, wo es einen
 gibt, mit dem Gegenargument.
 
@@ -362,6 +366,9 @@ ein Schalter und keine Arbeit.
 2. ~~**Vorlauftemperatur einrichten.**~~ Gebaut am 07.11.2026: die Reihe `flow_temp_c` steht in
    der Minutentabelle und im Anlagenschema, die Zuordnung liegt einkommentierfertig in
    `config/entities.home.yaml`. Gefüllt ist sie noch nicht.
+   Nachgezogen am 07.11.2026: `plan_stove` gibt die Eingänge des Modells mit heraus, `PlanOut`
+   trägt sie je Viertelstunde, die Seite „Fahrplan" zeichnet sie. Der Wärmebedarf steht damit als
+   Zeitreihe da, bevor er gemessen wird - als Modell v1, und die Seite sagt das auch.
 3. **K1-Wirkung auswerten**, Kontaktzustand gegen Wärmepumpenleistung, aus dem vorhandenen Bestand.
 4. Teilpaket `twin/` und Schichtenvertrag.
 5. Wärme als beobachtete Größe, COP als Ergebnis, Carnot mal Gütegrad.
