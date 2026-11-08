@@ -79,12 +79,17 @@ class EntityRule(BaseModel):
 def load_entity_rules(
     path: str | Path, extra: dict[str, dict[str, Any]] | None = None
 ) -> dict[str, EntityRule]:
-    """Mapping entity → Regel aus dem Bridge-YAML (sensors) plus optionalen Zusatzregeln."""
+    """Mapping entity → Regel aus dem Bridge-YAML plus optionalen Zusatzregeln.
+
+    Gelesen werden `sensors` und `history_sensors`. Der zweite Abschnitt hält Entitäten, die heute
+    eine andere Quelle direkt liefert (myenergi aus der Cloud), deren Historie aber nur in Home
+    Assistant liegt. Die Bridge überliest ihn, damit kein Wert aus zwei Quellen kommt.
+    """
     rules: dict[str, EntityRule] = {}
     p = Path(path)
     if p.exists():
         data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
-        for item in data.get("sensors") or []:
+        for item in [*(data.get("sensors") or []), *(data.get("history_sensors") or [])]:
             if isinstance(item, dict) and "key" in item and "entity" in item:
                 rules[str(item["entity"])] = EntityRule(
                     key=str(item["key"]),

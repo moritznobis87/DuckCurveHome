@@ -106,6 +106,28 @@ def test_status_falls_back_to_gen_and_grd_without_cts() -> None:
     assert r["pv_power_kw"].observed_at == NOW  # kein dat/tim → Abrufzeit
 
 
+def test_status_reads_omitted_ct_power_as_zero() -> None:
+    """Nachts fehlen die Leistungen der Erzeugungs-CTs: die Cloud lässt Nullwerte weg.
+
+    Ohne diese Regel gab es nachts gar keinen PV-Wert, er alterte aus, und mit ihm fiel der
+    Hausverbrauch aus der Bilanz weg (gesehen am 08.11.2026: PV „stale“, Haus „unavailable“).
+    """
+    groups: list[dict[str, Any]] = [
+        {"zappi": [{"sno": 1, "ectt1": "Internal Load", "ectt2": "None", "ectt3": "None"}]},
+        {
+            "harvi": [
+                {"sno": 2, "ectt1": "Generation", "ectt2": "Generation", "ectt3": "Generation"}
+            ]
+        },
+        {"libbi": [{"sno": 3, "ectt1": "Internal Load", "ectp2": 959, "ectt2": "Grid", "soc": 0}]},
+    ]
+    r = by_key(readings_from_status(groups, NOW))
+    assert r["pv_power_kw"].value == 0.0
+    assert r["grid_power_kw"].value == pytest.approx(0.959)
+    assert r["battery_power_kw"].value == 0.0
+    assert r["ev_power_kw"].value == 0.0
+
+
 def test_history_minutes_merge_devices() -> None:
     rows = {
         "libbi": [

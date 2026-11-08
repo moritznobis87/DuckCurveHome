@@ -47,3 +47,24 @@ def test_unit_from_attributes_and_yaml_load(tmp_path: Path) -> None:
     em = EntityMap.load(p)
     assert em.keys() == ["pv_power_kw", "actuator:coffee_machine"]
     assert len(em.digest()) == 16
+
+
+def test_house_mapping_leaves_myenergi_to_the_cloud() -> None:
+    """Die Bridge liest myenergi nicht mehr über Home Assistant: das macht die API direkt.
+
+    Die Einträge stehen weiter in der Datei, unter `history_sensors` für den Import der alten
+    Historie. Diesen Abschnitt muss die Bridge überlesen, sonst kämen dieselben Werte doppelt.
+    """
+    path = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
+    keys = {s.key for s in EntityMap.load(path).sensors}
+    assert keys.isdisjoint(
+        {
+            "pv_power_kw",
+            "grid_power_kw",
+            "battery_power_kw",
+            "battery_soc",
+            "ev_power_kw",
+            "house_power_kw",
+        }
+    )
+    assert "heat_pump_power_kw" in keys

@@ -34,10 +34,15 @@ def observed_at(device: dict[str, Any], fallback: datetime) -> datetime:
 
 
 def _cts(device: dict[str, Any], count: int) -> list[tuple[str, float]]:
+    """Belegte Stromwandler mit Leistung in W.
+
+    Die Cloud lässt Nullwerte weg: ein CT mit Namen, aber ohne `ectp`, misst 0 W. Nachts fehlt so
+    jede Erzeugungsleistung, und ohne diese Regel gäbe es dann gar keinen PV-Wert.
+    """
     out: list[tuple[str, float]] = []
     for i in range(1, count + 1):
         name = str(device.get(f"ectt{i}", "None"))
-        power = _num(device.get(f"ectp{i}"))
+        power = _num(device.get(f"ectp{i}", 0))
         if name.lower() != "none" and power is not None:
             out.append((name.lower(), power))
     return out

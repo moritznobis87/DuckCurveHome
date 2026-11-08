@@ -383,3 +383,13 @@ async def test_import_patches_consumer_into_existing_hour() -> None:
     assert written[0].heat_pump_kwh == pytest.approx(1.0)
     assert written[0].heat_pump_pv_kwh == pytest.approx(1.0)  # Stunde war voll aus PV gedeckt
     assert written[0].base_kwh == pytest.approx(3.0)
+
+
+def test_import_still_knows_myenergi_history() -> None:
+    """Die myenergi-Entitäten stehen unter `history_sensors`, weil die Bridge sie nicht mehr liest.
+
+    Der Import braucht sie trotzdem: die Historie vor dem direkten Abruf liegt nur in Home Assistant.
+    """
+    assert RULES["sensor.myenergi_hub_14117600_power_generation"].key == "pv_power_kw"
+    assert RULES["sensor.myenergi_wallbox_power_ct_internal_load"].key == "ev_power_kw"
+    assert RULES["sensor.heatpump_total_power"].key == "heat_pump_power_kw"
