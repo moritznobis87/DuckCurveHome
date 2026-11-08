@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections import deque
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, date, datetime, time, timedelta
 from time import monotonic
 from typing import Any, cast
@@ -47,7 +47,12 @@ from dch_api.application.myenergi_source import (
     StatusClient,
     price_readings_for_gaps,
 )
-from dch_api.application.plan_service import build_plan
+from dch_api.application.plan_service import (
+    IST_REIHEN,
+    Istpunkt,
+    build_plan,
+    ist_nachschlag,
+)
 from dch_api.application.push import Mitteilung, PushService
 from dch_api.application.room_automatik import (
     AutomatikConfig,
@@ -629,6 +634,21 @@ class LiveRuntime:
             )
         return self.mode
 
+    async def _ist_nachschlag(self, now: datetime) -> Callable[[datetime], Istpunkt | None]:
+        """Die Messung des laufenden Ortstags, verdichtet auf Viertelstunden.
+
+        Nur ab der Ortsmitternacht, denn weiter zurück reicht der Fahrplan nicht. Ein Fehler darf
+        den Fahrplan nicht aufhalten: ohne Messung zeigt die Seite eben nur die Absicht, und das
+        ist der Zustand von vorher, nicht ein schlechterer.
+        """
+        start = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
+        try:
+            rows = await self.repos.minute_series(start.astimezone(UTC), now, list(IST_REIHEN))
+        except Exception as exc:
+            log.warning("plan actuals not read", error=repr(exc)[:200])
+            return lambda _t: None
+        return ist_nachschlag(rows, now)
+
     async def refresh_plan(self) -> None:
         now = self.now
         # Der Ofen zuerst: sein Fahrplan geht in den Plan ein, und ein Plan mit dem Ofenstand von
@@ -642,6 +662,7 @@ class LiveRuntime:
             stove_on=self.stove_plan.on_at,
             hp_on=self.stove_plan.hp_on_at,
             twin=self.stove_plan.twin_at,
+            ist=await self._ist_nachschlag(now),
             buffer_capacity_kwh=self.stove_plan.buffer_capacity_kwh,
             buffer_min_kwh=self.stove_plan.buffer_min_kwh,
             planner_status=self.stove_plan.status,

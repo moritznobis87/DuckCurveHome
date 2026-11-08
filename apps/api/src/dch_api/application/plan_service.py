@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from dch_api.application.stove_planner import Zwillingspunkt
@@ -38,6 +39,75 @@ def _out(w: PriceWindow | tuple[datetime, datetime, str]) -> PriceWindowOut:
 
 PvExpected = Callable[[datetime], float]
 
+#: Welche Messreihen der Fahrplan neben seine Absicht legt.
+IST_REIHEN: tuple[str, ...] = ("pv_power_kw", "heat_pump_power_kw", "hp_release_contact")
+
+
+@dataclass(frozen=True)
+class Istpunkt:
+    """Was in einer Viertelstunde wirklich gemessen wurde.
+
+    Jedes Feld darf einzeln `None` sein: die Fühler können unabhängig voneinander schweigen, und
+    eine fehlende Wärmepumpenleistung sagt nichts über die PV.
+    """
+
+    pv_kw: float | None = None
+    waermepumpe_kw: float | None = None
+    anforderung: bool | None = None
+
+
+def ist_nachschlag(
+    rows: Iterable[Mapping[str, float | str | None]],
+    jetzt: datetime,
+) -> Callable[[datetime], Istpunkt | None]:
+    """Minutenwerte zu einem Nachschlagewerk über Viertelstunden verdichten.
+
+    **Nur abgeschlossene Viertelstunden.** Die laufende wird weggelassen, obwohl ihre ersten
+    Minuten schon vorliegen. Sonst zeigte die jüngste Spalte ein Drittel der Leistung und sähe aus
+    wie ein Einbruch, und zwar genau dort, wohin der Blick zuerst geht - an die Jetzt-Linie.
+
+    **Der Kontakt wird gemittelt und dann gerundet.** `hp_release_contact` ist null oder eins je
+    Minute; über eine Viertelstunde ist sein Mittel der Anteil der Zeit, in der angefordert wurde.
+    Mehr als die Hälfte heißt „angefordert". Ein Schwellwert verliert Information, aber eine
+    Viertelstunde mit vier Minuten Anforderung als „angefordert" zu zeigen wäre schlechter.
+    """
+    eimer: dict[datetime, dict[str, list[float]]] = {}
+    grenze = jetzt.astimezone(UTC).replace(second=0, microsecond=0)
+    grenze = grenze.replace(minute=(grenze.minute // 15) * 15)
+    for row in rows:
+        roh = row.get("ts")
+        if roh is None:
+            continue
+        ts = datetime.fromisoformat(str(roh)).astimezone(UTC)
+        slot = ts.replace(minute=(ts.minute // 15) * 15, second=0, microsecond=0)
+        if slot >= grenze:
+            continue
+        fach = eimer.setdefault(slot, {})
+        for key in IST_REIHEN:
+            wert = row.get(key)
+            if isinstance(wert, (int, float)) and not isinstance(wert, bool):
+                fach.setdefault(key, []).append(float(wert))
+
+    def mittel(fach: dict[str, list[float]], key: str) -> float | None:
+        werte = fach.get(key)
+        return None if not werte else sum(werte) / len(werte)
+
+    punkte: dict[datetime, Istpunkt] = {}
+    for slot, fach in eimer.items():
+        kontakt = mittel(fach, "hp_release_contact")
+        pv = mittel(fach, "pv_power_kw")
+        wp = mittel(fach, "heat_pump_power_kw")
+        punkte[slot] = Istpunkt(
+            pv_kw=None if pv is None else round(pv, 3),
+            waermepumpe_kw=None if wp is None else round(wp, 3),
+            anforderung=None if kontakt is None else kontakt > 0.5,
+        )
+
+    def nachschlag(t: datetime) -> Istpunkt | None:
+        return punkte.get(t.astimezone(UTC))
+
+    return nachschlag
+
 
 def pv_surplus_windows(
     pv_expected: PvExpected, day_start: datetime, cfg: HemsConfig
@@ -69,6 +139,7 @@ def build_plan(
     stove_on: Callable[[datetime], bool | None] | None = None,
     hp_on: Callable[[datetime], bool | None] | None = None,
     twin: Callable[[datetime], Zwillingspunkt | None] | None = None,
+    ist: Callable[[datetime], Istpunkt | None] | None = None,
     buffer_capacity_kwh: float | None = None,
     buffer_min_kwh: float | None = None,
     planner_status: str = "unavailable",
@@ -78,7 +149,16 @@ def build_plan(
     """Der Fahrplan über den Horizont.
 
     `stove_on`, `hp_on` und `twin` sind das Optimiererergebnis, als Nachschlagefunktionen über der
-    Zeit. Sie werden hier **mitgeführt**, nicht gerechnet.
+    Zeit. Sie werden hier **mitgeführt**, nicht gerechnet. `ist` ist die Gegenprobe aus der
+    Messung, ebenso nachgeschlagen; sie trägt nur für abgeschlossene Viertelstunden der
+    Vergangenheit etwas bei.
+
+    **Was links der Jetzt-Linie steht, ist nicht der Plan von damals.** Der Horizont beginnt an
+    der Ortsmitternacht, der Optimierer rechnet ab jetzt: für die vergangenen Viertelstunden gibt
+    `hp_on` nichts her, und es greift die Regel - also das, was sie *heute* für diese Stunde
+    sagen würde. Der aufbewahrte Fahrplan von damals steht in `forecast_runs` und gehört in die
+    Nachbetrachtung, nicht hierher. Was hier dazukommt, ist deshalb die **Messung**, und die ist
+    die ehrliche Vergangenheit dieser Seite.
 
     **Warum der Wärmebedarf hier auftaucht.** Er ist kein neues Modell: dasselbe Programm rechnet
     ihn längst für jede Viertelstunde, um den Fahrplan zu finden, und warf ihn danach weg. Ein
@@ -155,6 +235,7 @@ def build_plan(
         else:
             state, code, note = "free", "none", None
         z = twin(t) if twin else None
+        gemessen = ist(t) if ist else None
         intervals.append(
             PlanIntervalOut(
                 ts=t,
@@ -169,6 +250,9 @@ def build_plan(
                 buffer_kwh=z.puffer_kwh if z else None,
                 outdoor_temp_c=z.aussen_c if z else None,
                 cop=z.cop if z else None,
+                actual_pv_kw=gemessen.pv_kw if gemessen else None,
+                actual_hp_kw=gemessen.waermepumpe_kw if gemessen else None,
+                actual_hp_release=gemessen.anforderung if gemessen else None,
             )
         )
         t += timedelta(minutes=15)
