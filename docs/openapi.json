@@ -8213,6 +8213,39 @@
               }
             ],
             "title": "Cop"
+          },
+          "actual_pv_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Pv Kw"
+          },
+          "actual_hp_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Hp Kw"
+          },
+          "actual_hp_release": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Hp Release"
           }
         },
         "type": "object",

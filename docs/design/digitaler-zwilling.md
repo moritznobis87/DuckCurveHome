@@ -6,7 +6,10 @@ Ablage der Prognoseläufe und die Reihe für die Vorlauftemperatur. Dazu gibt de
 Viertelstunde -, und die Seite `/waerme/fahrplan` zeigt sie als Zeitreihen. Seit dem 08.11.2026
 wird das Archiv auch **gelesen**: `GET /forecast/history` hält jeden abgelegten Lauf einzeln gegen
 die Messung und sortiert den Fehler nach dem Abstand zur Lieferung. Das ist die erste Hälfte der
-Nachbetrachtung aus Abschnitt 9 - die Prognoseseite, noch nicht die Geldseite. Alles andere nicht. Dieses Dokument hält das
+Nachbetrachtung aus Abschnitt 9 - die Prognoseseite, noch nicht die Geldseite. Ebenfalls am
+08.11.2026 trägt der Fahrplan die **Messung** neben seiner Absicht: gemessene PV-Leistung,
+gemessene Leistung der Wärmepumpe und der gemessene Zustand des Freigabekontakts, je
+Viertelstunde. Alles andere nicht. Dieses Dokument hält das
 Ergebnis einer Entwurfsbefragung fest, 33 Entscheidungen, jede mit ihrem Grund und, wo es einen
 gibt, mit dem Gegenargument.
 
@@ -381,6 +384,9 @@ ein Schalter und keine Arbeit.
    trägt sie je Viertelstunde, die Seite „Fahrplan" zeichnet sie. Der Wärmebedarf steht damit als
    Zeitreihe da, bevor er gemessen wird - als Modell v1, und die Seite sagt das auch.
 3. **K1-Wirkung auswerten**, Kontaktzustand gegen Wärmepumpenleistung, aus dem vorhandenen Bestand.
+   Vorarbeit am 08.11.2026: beide Reihen stehen auf der Seite „Fahrplan" untereinander, je
+   Viertelstunde des laufenden Tages. Das ist die Ansicht, nicht die Auswertung - gezählt, gemittelt
+   und beurteilt wird noch nichts.
 4. Teilpaket `twin/` und Schichtenvertrag.
 5. Wärme als beobachtete Größe, COP als Ergebnis, Carnot mal Gütegrad.
 6. Der COP in den Löser: `planning/milp.py` rechnet heute mit festen Nennwerten.
@@ -396,7 +402,8 @@ ein Schalter und keine Arbeit.
 ## 15. Grenzen und offene Punkte
 
 * **Was K1 auslöst, ist unbekannt.** Projektplan 25.8, offen seit September. Darauf ruht die
-  Vollmacht des Fahrplans.
+  Vollmacht des Fahrplans. Seit dem 08.11.2026 wenigstens sichtbar: Anforderung und gezogene
+  Leistung stehen auf der Seite „Fahrplan" untereinander.
 * **H und tau sind Schätzungen.** 0,22 kW/K und 25 h, laut `docs/SENSORIK.md` „nie mit der
   Wirklichkeit abgeglichen".
 * **Die Aufstellraumtemperatur des Puffers ist nicht gemessen**, der Verlustterm rechnet gegen die

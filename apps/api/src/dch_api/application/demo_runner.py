@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections import deque
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, date, datetime, time, timedelta
 from time import monotonic
 from typing import Any
@@ -27,6 +27,7 @@ from dch_api.application.forecast_history import forecast_history
 from dch_api.application.ha_import import ImportResult
 from dch_api.application.invoice_service import InvoiceService
 from dch_api.application.live_feed import Takt
+from dch_api.application.plan_service import Istpunkt, ist_nachschlag
 from dch_api.application.room_automatik import (
     AutomatikConfig,
     RaumZustand,
@@ -271,6 +272,11 @@ class DemoRunner:
                 (datetime.fromisoformat(str(row["ts"])), v if isinstance(v, float) else None)
             )
         return out
+
+    def _ist_nachschlag(self, now: datetime) -> Callable[[datetime], Istpunkt | None]:
+        """Dieselbe Verdichtung wie im Livebetrieb, nur aus der Historie im Arbeitsspeicher."""
+        start = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
+        return ist_nachschlag(self.history.series(start.astimezone(UTC), now), now)
 
     def _record_forecast_run(self, now: datetime) -> None:
         start = now - timedelta(hours=1)
@@ -567,6 +573,7 @@ class DemoRunner:
                 stove_on=self.stove_plan.on_at,
                 hp_on=self.stove_plan.hp_on_at,
                 twin=self.stove_plan.twin_at,
+                ist=self._ist_nachschlag(now),
                 buffer_capacity_kwh=self.stove_plan.buffer_capacity_kwh,
                 buffer_min_kwh=self.stove_plan.buffer_min_kwh,
                 planner_status=self.stove_plan.status,

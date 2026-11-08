@@ -10,7 +10,7 @@ import { EChart } from "@/components/charts/EChart";
 import { C, MONO } from "@/components/charts/palette";
 
 /**
- * Die Seite „Fahrplan": der Horizont als Zeitreihen, nicht als Summe.
+ * Die Seite „Fahrplan": der Horizont als Zeitreihen, nicht als Summe - Absicht und Messung.
  *
  * **Warum nicht in die Tageskurve.** Die Kurve auf der Startseite zeigt einen Tag und legt Preis
  * und Leistung auf zwei Achsen. Hier geht es um sechs Größen mit sechs Einheiten über zwei Tage,
@@ -22,6 +22,13 @@ import { C, MONO } from "@/components/charts/palette";
  * die Entscheidung selbst. Wer von oben nach unten liest, liest die Rechnung in der Richtung, in
  * der sie entstanden ist - und sieht, warum eine teure Stunde ohne Anforderung bleiben darf: der
  * Puffer reicht.
+ *
+ * **Die Vergangenheit war bis zum 08.11.2026 eine Prognose.** Der Horizont beginnt an der
+ * Ortsmitternacht und reicht zwei Tage; mittags liegt also die Hälfte der Zeichnung hinter uns, und
+ * dort stand trotzdem nur die Absicht. Die PV-Kurve des Vormittags war eine Vorhersage, die wie
+ * eine Messung aussah. Jetzt trägt die gemessene PV die Fläche und die Erwartung die dünne Linie,
+ * und zwei neue Flächen zeigen, was die Wärmepumpe wirklich zog und wann der Freigabekontakt
+ * wirklich geschlossen war.
  *
  * **Was echt ist.** Alles aus `/plan`, je Viertelstunde. Der Wärmebedarf ist dabei kein Messwert,
  * sondern das Modell v1 des Hauses (Heizgradstunden gegen die Prognose plus Warmwasserprofil);
@@ -96,11 +103,13 @@ function tagUndUhr(ts: string): string {
  */
 const FLAECHEN = [
   { titel: "Strompreis · ct/kWh", top: 28, hoehe: 92 },
-  { titel: "PV-Erwartung · kW", top: 162, hoehe: 80 },
+  { titel: "PV · kW · erwartet und gemessen", top: 162, hoehe: 80 },
   { titel: "Wärmebedarf · kW thermisch", top: 284, hoehe: 92 },
   { titel: "Pufferinhalt · kWh", top: 418, hoehe: 80 },
-  { titel: "Wärmepumpe", top: 540, hoehe: 26 },
-  { titel: "Pelletofen", top: 596, hoehe: 26 },
+  { titel: "Wärmepumpe · kW elektrisch gemessen", top: 540, hoehe: 72 },
+  { titel: "Wärmepumpe geplant", top: 652, hoehe: 22 },
+  { titel: "Anforderung gemessen", top: 704, hoehe: 22 },
+  { titel: "Pelletofen geplant", top: 756, hoehe: 22 },
 ] as const;
 
 /** Wie hoch der Kasten um die Zeichnung sein muss: letzte Fläche plus Platz für die Zeitachse. */
@@ -134,6 +143,14 @@ export function Fahrplan() {
     const t = (s: string) => new Date(s).getTime();
     const preis = iv.filter((i) => i.price_ct_kwh != null).map((i) => [t(i.ts), i.price_ct_kwh]);
     const pv = iv.map((i) => [t(i.ts), i.expected_pv_kw]);
+    // Die Messung endet an der letzten abgeschlossenen Viertelstunde und ist davor lückenlos; wo
+    // sie fehlt, steht `null` und nicht null Kilowatt. Der Unterschied ist der ganze Punkt: eine
+    // Null hiesse „die Anlage stand", und in der Zukunft wäre das eine Behauptung über morgen.
+    const pvIst = iv.map((i) => [t(i.ts), i.actual_pv_kw ?? null]);
+    const wpIst = iv.map((i) => [t(i.ts), i.actual_hp_kw ?? null]);
+    const hatIst = iv.some((i) => i.actual_pv_kw != null || i.actual_hp_kw != null);
+    const hatWpIst = iv.some((i) => i.actual_hp_kw != null);
+    const hatAnforderung = iv.some((i) => i.actual_hp_release != null);
     // `null` und nicht `0`: eine Viertelstunde ohne Fahrplan ist eine Lücke in der Fläche. Eine
     // Null wäre die Behauptung, das Haus brauche dort keine Wärme.
     const heizen = iv.map((i) => [t(i.ts), i.heat_demand_kw ?? null]);
@@ -157,6 +174,14 @@ export function Fahrplan() {
       const z = zustandOf(i.planned_hp_state);
       return { value: [t(i.ts), z.hoehe], itemStyle: { color: z.farbe } };
     });
+    // Nur Viertelstunden mit Messung. Eine fehlende hinterlässt eine Lücke im Streifen, und das
+    // ist richtig: „nicht angefordert" und „nicht gemessen" sind zwei verschiedene Aussagen.
+    const anforderung = iv
+      .filter((i) => i.actual_hp_release != null)
+      .map((i) => ({
+        value: [t(i.ts), i.actual_hp_release ? 1 : 0.12],
+        itemStyle: { color: i.actual_hp_release ? C.heatPump : "rgba(255,255,255,.14)" },
+      }));
     const ofen = iv
       .filter((i) => i.planned_stove_on != null)
       .map((i) => ({
@@ -243,15 +268,19 @@ export function Fahrplan() {
       xAxis: FLAECHEN.map((_, k) => achse(k, k === FLAECHEN.length - 1)),
       yAxis: [
         wert(0, { min: preisUnten }),
-        // Die PV-Erwartung behält die Null: nachts ist sie wirklich null, und das ist die halbe
-        // Aussage der Kurve.
+        // Die PV behält die Null: nachts ist sie wirklich null, und das ist die halbe Aussage der
+        // Kurve. Hier gilt es doppelt, denn Erwartung und Messung müssen denselben Boden haben,
+        // sonst vergleicht man zwei Kurven auf zwei Maßstäben.
         wert(1),
         wert(2, { min: waermeUnten }),
         // Der Puffer behält sie auch: die Reservemarke misst sich vom Boden aus, und die Kapazität
         // oben gibt der Kurve den Maßstab, der ihr sonst fehlt.
         wert(3, { max: plan.buffer_capacity_kwh ?? undefined }),
-        zustandsachse(4),
+        // Die gemessene Leistung der Wärmepumpe: eine Menge, also beginnt sie bei null.
+        wert(4),
         zustandsachse(5),
+        zustandsachse(6),
+        zustandsachse(7),
       ],
       axisPointer: { link: [{ xAxisIndex: "all" }], label: { show: false }, lineStyle: { color: "rgba(255,255,255,.3)" } },
       tooltip: {
@@ -275,6 +304,14 @@ export function Fahrplan() {
             zeile("Strompreis", i.price_ct_kwh == null ? "-" : `${de(i.price_ct_kwh, 1)} ct`),
             zeile("PV erwartet", `${de(i.expected_pv_kw, 1)} kW`),
           ];
+          if (i.actual_pv_kw != null) {
+            const ab = i.actual_pv_kw - i.expected_pv_kw;
+            // Vorzeichen ausgeschrieben: „+0,4" liest sich als Zahl, „0,4 mehr als erwartet" als
+            // Aussage, und darum geht es in dieser Zeile.
+            const wort = Math.abs(ab) < 0.05 ? "wie erwartet" : `${de(Math.abs(ab), 1)} kW ${ab > 0 ? "mehr" : "weniger"} als erwartet`;
+            zeilen.push(zeile("PV gemessen", `${de(i.actual_pv_kw, 1)} kW`, C.pv));
+            zeilen.push(`<div style="padding-left:12px;color:rgba(255,255,255,.65)">${wort}</div>`);
+          }
           if (i.heat_demand_kw != null) {
             const summe = i.heat_demand_kw + (i.dhw_demand_kw ?? 0);
             zeilen.push(zeile("Wärmebedarf", `${de(summe, 1)} kW`));
@@ -287,7 +324,13 @@ export function Fahrplan() {
             const cop = i.cop == null ? "" : ` · COP ${de(i.cop, 2)}`;
             zeilen.push(zeile("Außen", `${de(i.outdoor_temp_c, 1)} °C${cop}`));
           }
-          zeilen.push(`<div>Wärmepumpe <b style="color:${z.farbe}">${z.wort}</b></div>`);
+          zeilen.push(`<div>Wärmepumpe geplant <b style="color:${z.farbe}">${z.wort}</b></div>`);
+          if (i.actual_hp_release != null) {
+            zeilen.push(
+              `<div>Anforderung gemessen <b style="color:${i.actual_hp_release ? C.heatPump : "inherit"}">${i.actual_hp_release ? "geschlossen" : "offen"}</b></div>`,
+            );
+          }
+          if (i.actual_hp_kw != null) zeilen.push(zeile("Wärmepumpe gemessen", `${de(i.actual_hp_kw, 2)} kW`, C.heatPump));
           zeilen.push(
             `<div>Pelletofen <b style="color:${i.planned_stove_on ? C.stove : "inherit"}">${i.planned_stove_on == null ? "kein Fahrplan" : i.planned_stove_on ? "brennt" : "aus"}</b></div>`,
           );
@@ -309,6 +352,18 @@ export function Fahrplan() {
           markArea: baender.length ? { silent: true, data: baender } : undefined,
           markLine: jetzt,
         },
+        // Erwartung und Messung in einer Fläche, und die Messung bekommt die Sonnenfarbe.
+        //
+        // **Warum herum.** Bis zum 08.11.2026 stand hier nur die Erwartung, gefüllt und in Gelb -
+        // über den ganzen Horizont, also auch über den halben Tag, der längst vorbei war. Wer
+        // mittags auf die Seite sah, sah für den Vormittag eine Prognose, die wie eine Messung
+        // aussah. Jetzt trägt die Wirklichkeit die Fläche und die Erwartung die dünne Linie; der
+        // Abstand zwischen beiden ist links der Jetzt-Linie der Prognosefehler und rechts davon
+        // gar nichts, weil es dort nur eine Kurve gibt.
+        //
+        // Geprüft mit dem Palettenprüfer gegen die Kartenfläche #123544, Modus dunkel: ΔE 22,4
+        // normal und 18,5 protan zwischen den beiden. Sie stehen im selben Gitter, also ist das
+        // der maßgebliche Abstand. Die Form trennt sie zusätzlich - gefüllt gegen gestrichelt.
         {
           name: "PV erwartet",
           type: "line" as const,
@@ -317,9 +372,18 @@ export function Fahrplan() {
           data: pv,
           smooth: true,
           symbol: "none" as const,
-          lineStyle: { color: C.pv, width: 2 },
-          areaStyle: { color: "rgba(242,169,0,.18)" },
+          lineStyle: { color: C.mist, width: 1.5, type: "dashed" as const },
           markLine: jetzt,
+        },
+        {
+          name: "PV gemessen",
+          type: "line" as const,
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: pvIst,
+          symbol: "none" as const,
+          lineStyle: { color: C.pv, width: 2 },
+          areaStyle: { color: "rgba(242,169,0,.20)" },
         },
         // Gestapelt, weil die Summe die Größe ist, gegen die geplant wird, und die beiden Teile
         // sich verschieden verhalten: das Heizen hängt an der Außentemperatur, das Warmwasser am
@@ -359,14 +423,35 @@ export function Fahrplan() {
           markArea: reserve,
           markLine: jetzt,
         },
-        { name: "Wärmepumpe", type: "bar" as const, xAxisIndex: 4, yAxisIndex: 4, data: wp, barWidth: "92%", markLine: jetzt },
-        { name: "Pelletofen", type: "bar" as const, xAxisIndex: 5, yAxisIndex: 5, data: ofen, barWidth: "92%", markLine: jetzt },
+        // Was die Maschine wirklich gezogen hat. Keine geplante Gegenlinie daneben: der Fahrplan
+        // sagt „angefordert" und nicht „so viele Kilowatt", und eine Nennleistung als Plan zu
+        // zeichnen wäre eine Zahl, die niemand geplant hat.
+        {
+          name: "Wärmepumpe gemessen",
+          type: "line" as const,
+          xAxisIndex: 4,
+          yAxisIndex: 4,
+          data: wpIst,
+          step: "end" as const,
+          symbol: "none" as const,
+          lineStyle: { color: C.heatPump, width: 1.8 },
+          areaStyle: { color: "rgba(224,150,107,.22)" },
+          markLine: jetzt,
+        },
+        { name: "Wärmepumpe geplant", type: "bar" as const, xAxisIndex: 5, yAxisIndex: 5, data: wp, barWidth: "92%", markLine: jetzt },
+        // Der Freigabekontakt, wie er wirklich stand. Direkt unter dem Plan, damit der Abstand
+        // zwischen Absicht und Ausführung in einer Augenbewegung liegt.
+        { name: "Anforderung gemessen", type: "bar" as const, xAxisIndex: 6, yAxisIndex: 6, data: anforderung, barWidth: "92%", markLine: jetzt },
+        { name: "Pelletofen", type: "bar" as const, xAxisIndex: 7, yAxisIndex: 7, data: ofen, barWidth: "92%", markLine: jetzt },
       ],
       // Die beiden leeren Flächen bleiben stehen und bekommen ein Wort statt einer leeren Achse:
       // „nicht geplant" ist eine Aussage, eine leere Fläche wäre ein Rätsel.
       graphic: [
         ...(hatWaerme ? [] : [leererHinweis(FLAECHEN[2].top + FLAECHEN[2].hoehe / 2, "kein Wärmebedarf im Fahrplan")]),
         ...(hatPuffer ? [] : [leererHinweis(FLAECHEN[3].top + FLAECHEN[3].hoehe / 2, "kein Pufferverlauf im Fahrplan")]),
+        ...(hatWpIst ? [] : [leererHinweis(FLAECHEN[4].top + FLAECHEN[4].hoehe / 2, "keine Messung der Wärmepumpe")]),
+        ...(hatAnforderung ? [] : [leererHinweis(FLAECHEN[6].top + 4, "kein Kontaktzustand gemessen")]),
+        ...(hatIst ? [] : [leererHinweis(FLAECHEN[1].top + FLAECHEN[1].hoehe / 2, "keine Messung im Horizont")]),
       ],
     };
   }, [plan]);
@@ -379,8 +464,22 @@ export function Fahrplan() {
       .filter((i) => i.heat_demand_kw != null)
       .reduce((s, i) => s + (i.heat_demand_kw ?? 0) + (i.dhw_demand_kw ?? 0), 0);
     const cops = iv.map((i) => i.cop).filter((c): c is number => c != null);
+    // Gelaufen heisst: die Maschine zog Strom, nicht: der Kontakt war zu. Genau der Unterschied
+    // ist die offene Frage der Wärmeseite - K1 fordert an, die Maschine entscheidet.
+    //
+    // **Beide Zahlen über denselben Zeitraum.** „Angefordert" zählt den ganzen Horizont, also zwei
+    // Tage; die Messung reicht nur bis jetzt. Nebeneinander gestellt wären 6,0 h Plan und 4,3 h
+    // Messung ein Vergleich zwischen zwei Tagen und einem halben. Die Gegenzahl zählt deshalb nur
+    // die Viertelstunden, für die es auch eine Messung gibt.
+    const mitMessung = iv.filter((i) => i.actual_hp_kw != null);
+    const gelaufen = mitMessung.filter((i) => (i.actual_hp_kw ?? 0) > 0.05).length;
+    const geplantImSelbenFenster = mitMessung.filter((i) => i.planned_hp_state === "release").length;
     return {
       wp: viertel(iv.filter((i) => i.planned_hp_state === "release").length),
+      gelaufen: mitMessung.length ? viertel(gelaufen) : null,
+      gelaufenHinweis: mitMessung.length
+        ? `seit Mitternacht · im selben Fenster geplant ${viertel(geplantImSelbenFenster)}`
+        : "keine Messung",
       gemieden: viertel(iv.filter((i) => i.planned_hp_state === "avoid").length),
       ofen: iv.some((i) => i.planned_stove_on != null) ? viertel(iv.filter((i) => i.planned_stove_on).length) : null,
       // Viertelstunden in Stunden: die Leistungen stehen je Viertelstunde, die Summe ist Arbeit.
@@ -402,8 +501,12 @@ export function Fahrplan() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      {/* Sieben Kacheln seit dem 08.11.2026, nicht sechs: die gemessene Laufzeit steht neben der
+          geplanten. Bei sechs Spalten fiele sie allein in eine zweite Zeile und sähe aus wie ein
+          Nachtrag. */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         <Stat label="Wärmepumpe angefordert" value={kennzahlen.wp} tone="ember" hint="im ganzen Horizont" />
+        <Stat label="Wärmepumpe gelaufen" value={kennzahlen.gelaufen ?? "-"} tone="amber" hint={kennzahlen.gelaufenHinweis} />
         <Stat label="bewusst gemieden" value={kennzahlen.gemieden} tone="muted" hint="teure Stunden ohne Anforderung" />
         <Stat label="Ofen geplant" value={kennzahlen.ofen ?? "-"} tone={kennzahlen.ofen ? "ember" : "muted"} hint={kennzahlen.ofen ? "Volllast, 15 kg je Füllung" : "kein Fahrplan für den Ofen"} />
         <Stat label="Wärmebedarf geplant" value={kennzahlen.waerme ?? "-"} unit="kWh" tone="mist" hint={kennzahlen.waerme ? "Modell v1, nicht gemessen" : "kein Fahrplan"} />
@@ -456,6 +559,15 @@ export function Fahrplan() {
             <span style={{ display: "inline-block", width: 14, height: 3, borderRadius: 2, background: C.puffer }} />
             Pufferinhalt
           </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span style={{ display: "inline-block", width: 14, height: 10, borderRadius: 2, background: C.pv }} />
+            PV gemessen
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span style={{ display: "inline-block", width: 14, height: 2, background: C.mist }} />
+            PV erwartet
+          </span>
+
         </div>
 
         {plan?.planner_note_de ? <p className="mt-3 text-[12px] leading-[1.5] text-text-3">{plan.planner_note_de}</p> : null}
@@ -473,7 +585,10 @@ export function Fahrplan() {
           Preis und PV-Erwartung sind Prognosen, der Wärmebedarf ist ein Modell: Heizgradstunden gegen die Wettervorhersage plus ein Warmwasserprofil über den Tag. Es ist derselbe Bedarf, gegen den der Optimierer rechnet, nicht ein zweiter daneben. Gemessen wird er noch nicht; das kommt mit dem Wärmemengenzähler über den eBUS-Anschluss. Der COP folgt aus der Außentemperatur, noch nicht aus der Vorlauftemperatur, denn die liefert bislang kein Fühler.
         </p>
         <p className="mt-3 text-[13px] leading-[1.6] text-text-3">
-          Was hier noch fehlt: die Nachbetrachtung, die Plan und Wirklichkeit gegeneinanderhält, und der Lernschritt, der das Hüllenmodell aus den Prognosefehlern nachzieht. Der Entwurf dazu steht in <code className="mono text-[12px]">docs/design/digitaler-zwilling.md</code>.
+          Links der Jetzt-Linie stehen zwei verschiedene Dinge nebeneinander. Gemessen sind die PV-Leistung, die Leistung der Wärmepumpe und der Freigabekontakt; sie enden an der letzten abgeschlossenen Viertelstunde, denn die laufende ist erst zum Teil vorbei und sähe aus wie ein Einbruch. Der <em>geplante</em> Zustand der Wärmepumpe ist dort dagegen keine Erinnerung: der Optimierer rechnet ab jetzt, für die vergangenen Stunden greift die Preisregel, also steht da, was sie heute für diese Stunde sagen würde. Weicht der gemessene Kontakt davon ab, ist das deshalb kein Widerspruch, sondern der Abstand zwischen zwei verschiedenen Fragen.
+        </p>
+        <p className="mt-3 text-[13px] leading-[1.6] text-text-3">
+          Was hier noch fehlt: der aufbewahrte Fahrplan von damals, gegen den sich die Messung wirklich halten lässt, die Nachbetrachtung in Euro und der Lernschritt, der das Hüllenmodell aus den Prognosefehlern nachzieht. Wie gut die Prognosen waren, steht schon unter <em>System → Prognose</em>. Der Entwurf zum Rest steht in <code className="mono text-[12px]">docs/design/digitaler-zwilling.md</code>.
         </p>
       </Card>
     </div>

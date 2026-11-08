@@ -3741,6 +3741,12 @@ export interface components {
             outdoor_temp_c?: number | null;
             /** Cop */
             cop?: number | null;
+            /** Actual Pv Kw */
+            actual_pv_kw?: number | null;
+            /** Actual Hp Kw */
+            actual_hp_kw?: number | null;
+            /** Actual Hp Release */
+            actual_hp_release?: boolean | null;
         };
         /** PlanOut */
         PlanOut: {

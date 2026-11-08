@@ -196,3 +196,102 @@ def test_der_waermebedarf_erreicht_jedes_intervall() -> None:
         "jenseits des Planungshorizonts bleibt die Kurve eine Lücke"
     )
     assert plan.buffer_capacity_kwh == 31.0 and plan.buffer_min_kwh == 9.3
+
+
+# ------------------------------------------------------------------ Was wirklich geschah
+
+
+def test_die_messung_steht_neben_der_absicht() -> None:
+    """Links der Jetzt-Linie liegt der halbe Fahrplan, und dort stand bis zum 08.11.2026 nur der Plan.
+
+    Der Horizont beginnt an der Ortsmitternacht. Mittags ist die Hälfte der Zeichnung Vergangenheit,
+    und die PV-Kurve dort war eine Prognose, die aussah wie eine Messung.
+    """
+    from dch_api.application.plan_service import ist_nachschlag
+
+    jetzt = DAY_START + timedelta(hours=6)
+    rows: list[dict[str, float | str | None]] = []
+    for minute in range(6 * 60):
+        ts = DAY_START + timedelta(minutes=minute)
+        rows.append(
+            {
+                "ts": ts.isoformat(),
+                "pv_power_kw": 2.0,
+                "heat_pump_power_kw": 1.5,
+                "hp_release_contact": 1.0,
+            }
+        )
+
+    plan = build_plan(_pv, _hourly_prices(24), jetzt, HemsConfig(), ist=ist_nachschlag(rows, jetzt))
+    gemessen = [i for i in plan.intervals if i.actual_pv_kw is not None]
+    assert len(gemessen) == 24, "sechs Stunden sind vierundzwanzig Viertelstunden"
+    assert all(i.actual_pv_kw == 2.0 for i in gemessen)
+    assert all(i.actual_hp_kw == 1.5 for i in gemessen)
+    assert all(i.actual_hp_release is True for i in gemessen)
+    zukunft = [i for i in plan.intervals if i.ts >= jetzt]
+    assert all(i.actual_pv_kw is None for i in zukunft), (
+        "eine Null in der Zukunft wäre eine Behauptung über morgen"
+    )
+
+
+def test_die_laufende_viertelstunde_bleibt_draussen() -> None:
+    """Sie ist erst zu einem Drittel vorbei und zeigte sonst ein Drittel der Leistung.
+
+    Und zwar genau an der Stelle, auf die der Blick zuerst fällt: an der Jetzt-Linie. Ein Einbruch,
+    der keiner ist, ist schlimmer als eine fehlende Spalte.
+    """
+    from dch_api.application.plan_service import ist_nachschlag
+
+    jetzt = DAY_START + timedelta(hours=1, minutes=5)
+    rows: list[dict[str, float | str | None]] = [
+        {"ts": (DAY_START + timedelta(minutes=m)).isoformat(), "pv_power_kw": 3.0}
+        for m in range(66)
+    ]
+    nachschlag = ist_nachschlag(rows, jetzt)
+    assert nachschlag(DAY_START + timedelta(minutes=45)) is not None
+    laufend = nachschlag(DAY_START + timedelta(hours=1))
+    assert laufend is None, "die Viertelstunde ab 01:00 läuft noch"
+
+
+def test_der_kontakt_wird_gemittelt_und_dann_gerundet() -> None:
+    """`hp_release_contact` ist je Minute null oder eins; über eine Viertelstunde ist er ein Anteil.
+
+    Vier von fünfzehn Minuten als „angefordert" zu zeigen wäre falscher als der Schwellwert.
+    """
+    from dch_api.application.plan_service import ist_nachschlag
+
+    jetzt = DAY_START + timedelta(hours=1)
+
+    def reihe(minuten_an: int) -> list[dict[str, float | str | None]]:
+        return [
+            {
+                "ts": (DAY_START + timedelta(minutes=m)).isoformat(),
+                "hp_release_contact": 1.0 if m < minuten_an else 0.0,
+            }
+            for m in range(15)
+        ]
+
+    knapp = ist_nachschlag(reihe(4), jetzt)(DAY_START)
+    ueberwiegend = ist_nachschlag(reihe(12), jetzt)(DAY_START)
+    assert knapp is not None and knapp.anforderung is False
+    assert ueberwiegend is not None and ueberwiegend.anforderung is True
+
+
+def test_ein_stummer_fuehler_zieht_die_anderen_nicht_mit() -> None:
+    """Jedes Feld steht für sich: eine fehlende Wärmepumpenleistung sagt nichts über die PV."""
+    from dch_api.application.plan_service import ist_nachschlag
+
+    jetzt = DAY_START + timedelta(hours=1)
+    rows: list[dict[str, float | str | None]] = [
+        {
+            "ts": (DAY_START + timedelta(minutes=m)).isoformat(),
+            "pv_power_kw": 1.0,
+            "heat_pump_power_kw": None,
+        }
+        for m in range(15)
+    ]
+    punkt = ist_nachschlag(rows, jetzt)(DAY_START)
+    assert punkt is not None
+    assert punkt.pv_kw == 1.0
+    assert punkt.waermepumpe_kw is None
+    assert punkt.anforderung is None

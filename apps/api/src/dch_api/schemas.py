@@ -64,6 +64,26 @@ class PlanIntervalOut(BaseModel):
     # Außentemperatur und ist der zweite Grund, warum die Morgenstunden teuer sind: hoher Preis
     # **und** schlechter COP.
     cop: float | None = None
+    # ---------------------------------------------------------------- Was wirklich geschah
+    #
+    # Der Fahrplan beginnt an der Ortsmitternacht und reicht zwei Tage. Mittags liegt also die
+    # Hälfte der Zeichnung in der **Vergangenheit**, und dort stand bis zum 08.11.2026 trotzdem
+    # nur die Absicht: die PV-Erwartung und der Zustand, den die Regel für diese Stunde ausgibt,
+    # wenn man sie heute noch einmal fragt. Was die Anlage in dieser Viertelstunde wirklich
+    # erzeugte und zog, war auf der Seite nirgends zu sehen.
+    #
+    # `None` heißt hier wie überall in diesem Modell: **keine Messung**. Entweder liegt die
+    # Viertelstunde in der Zukunft, oder sie ist noch nicht zu Ende, oder der Fühler schwieg. Eine
+    # Null wäre die Behauptung, die Anlage habe gestanden.
+    actual_pv_kw: float | None = None
+    actual_hp_kw: float | None = None
+    # War der Freigabekontakt K1 in dieser Viertelstunde überwiegend geschlossen?
+    #
+    # Das ist nicht dasselbe wie `actual_hp_kw > 0`, und der Unterschied ist der Kern der ganzen
+    # Wärmeseite: K1 ist eine **Anforderung** und keine Sperre. Die Maschine entscheidet nach
+    # ihrer eigenen Kennlinie, ob sie folgt. Beide Reihen nebeneinander zeigen zum ersten Mal, was
+    # eine Anforderung auslöst - die Frage, die der Projektplan seit September offen führt.
+    actual_hp_release: bool | None = None
 
 
 class PlanOut(BaseModel):
