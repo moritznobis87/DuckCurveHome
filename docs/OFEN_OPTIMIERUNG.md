@@ -288,7 +288,13 @@ rechnet der Planer mit einer vollen Füllung; das ist die optimistische Annahme,
 käme ohnehin kein Schaltbefehl an. Eine Waage unter dem Behälter oder eine gemessene
 Kilogramm-je-Umdrehung würde das zu einer Messung machen.
 
-**Die Wärmepumpe geht mit Nennwerten in den Fahrplan**, nicht mit einer COP-abhängigen Leistung, und
-ihr Fahrplan wird nicht umgesetzt: der Regler der Wärmepumpe bleibt der regelbasierte. Das MILP
-plant sie mit, weil der Ofen sonst gegen nichts abgewogen würde; wer beide Regler auf das MILP
-umstellen will, hat es damit vorbereitet, aber noch nicht getan.
+**Die Wärmepumpe geht mit Nennwerten in den Fahrplan**, nicht mit einer COP-abhängigen Leistung.
+Die Gegenprobe oben zeigt, in welche Richtung das verzerrt: zugunsten des Ofens an milden Tagen,
+nicht zu seinen Lasten.
+
+**Ihr Fahrplan wird inzwischen umgesetzt.** Hier stand bis zum 09.11.2026, der Regler der
+Wärmepumpe bleibe der regelbasierte. Das war schon damals zu kurz: im Profil `SMART`, der Vorgabe,
+liest der Regler `planned_release` und `planned_off` aus dem Fahrplan, und ein ausdrückliches Nein
+des Fahrplans überstimmt die Preisregeln. Seit dem 09.11.2026 kommt diese Entscheidung auch am
+Kontakt an - `heat_pump_actuation_enabled` steht auf `true`, der Schattenbetrieb ist beendet.
+Was dabei weiter gilt, steht in Abschnitt 13 des Zwillingsentwurfs.

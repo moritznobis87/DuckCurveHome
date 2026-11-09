@@ -66,9 +66,27 @@ class Settings(BaseSettings):
     # Zwei getrennte Schalter, weil zwei verschiedene Risiken: eine Lichterkette anzutippen ist harmlos,
     # den Wärmepumpen-Kontakt selbsttätig zu stellen nicht.
     actuation_enabled: bool = True  # vom Bedienenden ausgelöstes Schalten (Lichter, Kaffeemaschine)
-    heat_pump_actuation_enabled: bool = (
-        False  # selbsttätiges Stellen von K1 aus der Regelentscheidung
-    )
+    # Selbsttätiges Stellen von K1 aus der Regelentscheidung.
+    #
+    # **Seit dem 09.11.2026 an, auf ausdrückliche Anweisung des Hausherrn** („die Planung live
+    # schalten"). Bis dahin stand hier `False`, und der ganze Regelweg lief im Schatten: der Regler
+    # entschied, die Entscheidung wurde abgelegt und angezeigt, aber der Kontakt wurde nie gestellt.
+    #
+    # Die Voreinstellung und nicht die Umgebungsvariable, weil der Live-Dienst seine Variablen nicht
+    # aus diesem Repository bekommt: `docker-compose.yml` ist Demo-Modus, `railway.json` trägt keine.
+    # Eine Änderung hier ist damit der einzige Griff, der im Haus ankommt.
+    #
+    # **Was das voraussetzt und wer es schuldet.** Der Entwurf nennt zwei Rückfallebenen im Haus,
+    # und keine davon ist Software dieses Repositories: E0, ein Auto-Off-Timer von 30 min im Relais,
+    # das K1 schaltet, und E1, die Wächter-Automation in Home Assistant auf den Bridge-Heartbeat
+    # (`addons/duckcurve_bridge/DOCS.md`). E2 und E3 stehen im Code. Für K1 sind E0 und E1 nicht
+    # zusätzliche Gurte, sondern die einzigen: die Freigabe geht zwingend über Home Assistant, und
+    # dieser Weg überträgt die Laufzeitbegrenzung nicht. Wer diesen Wert auf `True` lässt, ohne dass
+    # E0 und E1 stehen, hat für den Fall „DCH gibt frei und verstummt" keine Rückfallebene.
+    #
+    # Sichtbar ist der Zustand in `SystemStatusOut.hp_actuation`; der Dienst sagt ihn beim Start
+    # auch als Warnung, damit er nicht still an ist.
+    heat_pump_actuation_enabled: bool = True
     plan_refresh_min: int = 15
     # Wer die Mitteilung schickt. Web Push verlangt im VAPID-Anspruch eine Adresse, unter der der
     # Absender erreichbar waere; Push-Dienste pruefen nur die Form. Eine echte Adresse gehoert

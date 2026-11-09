@@ -129,6 +129,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             actuation=settings.actuation_enabled,
             heat_pump_actuation=settings.heat_pump_actuation_enabled,
         )
+        # Eine Warnung und keine Zeile unter vielen: ab hier stellt die Software einen Kontakt an
+        # einer Wärmepumpe. Im Haus hängt daran, ob E0 und E1 stehen, und das weiß dieser Dienst
+        # nicht. Im Demo-Modus gibt es kein Relais, also auch keinen Grund zu warnen.
+        if settings.mode == "live" and settings.heat_pump_actuation_enabled:
+            log.warning(
+                "heat pump actuation is live",
+                hinweis=(
+                    "K1 wird selbsttätig gestellt. Rückfallebenen E0 (Auto-Off im Relais) und "
+                    "E1 (Wächter-Automation in Home Assistant) liegen im Haus und werden hier "
+                    "nicht geprüft."
+                ),
+            )
         try:
             yield
         finally:

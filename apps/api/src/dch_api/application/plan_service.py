@@ -145,6 +145,7 @@ def build_plan(
     planner_status: str = "unavailable",
     planner_note_de: str = "",
     planner_warn_de: str = "",
+    hp_actuation: bool = False,
 ) -> PlanOut:
     """Der Fahrplan über den Horizont.
 
@@ -267,6 +268,9 @@ def build_plan(
         planner_status=planner_status if vom_optimierer else "unavailable",
         planner_note_de=planner_note_de if vom_optimierer else "",
         planner_warn_de=planner_warn_de if vom_optimierer else "",
+        # Nicht an `vom_optimierer` gebunden: ob der Kontakt gestellt wird, gilt auch dann, wenn
+        # die Regel geführt hat. Es ist eine Eigenschaft der Anlage, nicht des Planers.
+        hp_actuation=hp_actuation,
         horizon_start=day_start,
         horizon_end=horizon_end,
         windows=windows,

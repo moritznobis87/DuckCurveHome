@@ -8284,6 +8284,11 @@
             "title": "Planner Warn De",
             "default": ""
           },
+          "hp_actuation": {
+            "type": "boolean",
+            "title": "Hp Actuation",
+            "default": false
+          },
           "horizon_start": {
             "type": "string",
             "format": "date-time",
@@ -10743,6 +10748,16 @@
             },
             "type": "array",
             "title": "Watch"
+          },
+          "hp_actuation": {
+            "type": "boolean",
+            "title": "Hp Actuation",
+            "default": false
+          },
+          "hp_actuation_de": {
+            "type": "string",
+            "title": "Hp Actuation De",
+            "default": "liest K1 nur mit"
           }
         },
         "type": "object",

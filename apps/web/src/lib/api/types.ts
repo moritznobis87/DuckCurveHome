@@ -3773,6 +3773,11 @@ export interface components {
              */
             planner_warn_de: string;
             /**
+             * Hp Actuation
+             * @default false
+             */
+            hp_actuation: boolean;
+            /**
              * Horizon Start
              * Format: date-time
              */
@@ -5008,6 +5013,16 @@ export interface components {
             sources?: components["schemas"]["SourceStatusOut"][];
             /** Watch */
             watch?: components["schemas"]["WatchFindingOut"][];
+            /**
+             * Hp Actuation
+             * @default false
+             */
+            hp_actuation: boolean;
+            /**
+             * Hp Actuation De
+             * @default liest K1 nur mit
+             */
+            hp_actuation_de: string;
         };
         /**
          * TariffConfig

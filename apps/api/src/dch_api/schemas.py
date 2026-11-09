@@ -100,6 +100,15 @@ class PlanOut(BaseModel):
     # Leer, solange nichts zu sagen ist. Die Beurteilung steht im Dienst und nicht in der
     # Oberfläche: ob ein Abstand von 5 % erwähnenswert ist, ist eine fachliche Frage.
     planner_warn_de: str = ""
+    # Erreicht `planned_hp_state == "release"` wirklich einen Kontakt, oder ist es eine Anforderung
+    # an niemanden?
+    #
+    # **Dieselbe Zahl steht auch in `SystemStatusOut.hp_actuation`, und das ist Absicht.** Dort ist
+    # sie der Zustand der Anlage, hier die Einschränkung einer Behauptung: die Seite „Fahrplan"
+    # sagt „Wärmepumpe angefordert 9,8 h", und ohne dieses Feld sähe eine Anforderung an niemanden
+    # genauso aus wie eine, die ankommt. Sie hier nachzuschlagen kostet eine zweite Abfrage je
+    # Minute für ein Wahrheitswort; die Verdopplung ist der kleinere Preis.
+    hp_actuation: bool = False
     horizon_start: datetime
     horizon_end: datetime
     windows: list[PriceWindowOut]
@@ -203,6 +212,19 @@ class SystemStatusOut(BaseModel):
     sources: list[SourceStatusOut] = Field(default_factory=list)
     #: Was gerade schweigt. Leer ist der Normalfall und bedeutet: Alles meldet sich.
     watch: list[WatchFindingOut] = Field(default_factory=list)
+    #: Stellt DCH den Wärmepumpen-Kontakt K1 selbst, oder liest es ihn nur mit?
+    #
+    #: **Warum das nach außen gehört.** Der Zustand stand bis zum 09.11.2026 in keinem Schema und
+    #: in keiner Antwort, nur in einer Logzeile beim Start. Die Oberfläche sagte „Wärmepumpe
+    #: angefordert 9,8 h", ob der Kontakt gestellt wurde oder nicht - eine Anforderung an niemanden
+    #: sieht genauso aus wie eine, die ankommt. Wer den Schalter umlegt, bekam keine Bestätigung;
+    #: wer ihn vergisst, keinen Hinweis.
+    #:
+    #: `False` heißt Schattenbetrieb: der Regler entscheidet, die Entscheidung wird abgelegt und
+    #: angezeigt, der Kontakt bleibt unberührt und die Wärmepumpe läuft in ihrer eigenen Regelung.
+    hp_actuation: bool = False
+    #: Derselbe Zustand als Satz, damit die Oberfläche ihn nicht selbst formulieren muss.
+    hp_actuation_de: str = "liest K1 nur mit"
 
 
 class StoveLiveOut(BaseModel):
