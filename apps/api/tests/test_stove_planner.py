@@ -8,9 +8,12 @@ Brennstoff, der wirklich im Behälter liegt, statt an den, der hineinpassen wür
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from time import monotonic
 
 import pytest
+from fastapi.testclient import TestClient
 
+from dch_api.application.demo_runner import DEMO_SOLVE_S
 from dch_api.application.stove_planner import (
     HORIZON_H,
     STEP_MIN,
@@ -20,6 +23,8 @@ from dch_api.application.stove_planner import (
     plan_stove,
     stove_eur_per_h,
 )
+from dch_api.main import create_app
+from dch_api.settings import Settings
 from hems_core.domain import BufferState, BufferStatus, HemsConfig
 from hems_core.planning import OptimizerConfig
 from hems_core.planning.price_windows import PricePoint
@@ -390,3 +395,72 @@ def test_jenseits_des_horizonts_gibt_es_keine_eingaenge() -> None:
     p = plan()
     assert p.twin_at(NOW - timedelta(hours=1)) is None
     assert p.twin_at(NOW + timedelta(hours=HORIZON_H + 1)) is None
+
+
+# ------------------------------------------------- Die Begründung, und dass sie nachrechenbar ist
+
+
+def test_der_verbrauch_wird_je_budgetfenster_verglichen() -> None:
+    """28 kg über zwei Füllungen sind keine Verletzung eines 15-kg-Budgets.
+
+    Bis zu dieser Fassung stellte die Begründung die Summe über den ganzen Horizont gegen das
+    Budget des *ersten* Fensters und schrieb Sätze wie „28,0 von 15,0 kg Brennstoff". Das behauptete
+    einen Bruch der härtesten Nebenbedingung des Ofens, wo keiner war - und wer dem glaubt, sucht
+    den Fehler im Löser.
+    """
+    p = plan(prices=prices(60.0), temps=temps(-8.0), opt_cfg=GEDULDIG)
+    assert p.available is True
+    assert p.fenster, "der Horizont reicht über mehr als ein Fenster"
+    for f in p.fenster:
+        assert f.kg <= f.budget_kg + 1e-6, f"Fenster {f.fenster} verplant mehr als es hat"
+    assert sum(f.kg for f in p.fenster) == pytest.approx(p.pellet_kg, abs=0.2)
+    assert "von 15,0 kg im laufenden Fenster" in p.note_de
+
+
+def test_die_begruendung_nennt_beide_waermepreise_und_den_grenzpreis() -> None:
+    """„Die Wärmepumpe ist günstiger" muss man glauben, „10,6 gegen 10,8 ct/kWh" kann man prüfen."""
+    p = plan(prices=prices(8.0), temps=temps(-5.0), opt_cfg=GEDULDIG)
+    v = p.vergleich
+    assert v is not None
+    assert v.wp_min_ct_kwh <= v.wp_max_ct_kwh
+    assert v.viertel == HORIZON_H * 60 // STEP_MIN
+    assert v.wp_grenzpreis_ct_kwh is not None, "bei 8 ct läuft die Wärmepumpe, also gibt es einen"
+    assert v.wp_grenzpreis_ct_kwh <= v.wp_max_ct_kwh
+    assert "ct/kWh" in p.note_de and "Grenzpreis" in p.note_de
+
+
+def test_der_ofen_bleibt_aus_und_die_begruendung_sagt_nicht_mehr_als_sie_weiss() -> None:
+    """Der alte Satz behauptete „durchgehend günstiger" - eine Aussage über jede einzelne Stunde.
+
+    Geprüft wird hier der Fall, in dem genau das falsch wäre: ein teures Fenster mitten in einem
+    billigen Tag. Der Ofen bleibt aus, weil der Puffer das Fenster überbrückt, und die Begründung
+    darf das nicht als „immer teurer" ausgeben.
+    """
+    p = plan(prices=prices(10.0, peak=(20, 23, 70.0)), temps=temps(-5.0), opt_cfg=GEDULDIG)
+    v = p.vergleich
+    assert v is not None
+    assert v.viertel_ofen_guenstiger > 0, "im teuren Fenster ist der Ofen die günstigere Quelle"
+    assert "bleibt aus" in p.note_de
+    assert "durchgehend" not in p.note_de
+    assert f"In {v.viertel_ofen_guenstiger} der {v.viertel} Viertelstunden" in p.note_de
+
+
+def test_in_der_vorfuehrung_faellt_auch_die_drossel_des_ofenlaufs() -> None:
+    """Zwei Sperren halten den Fahrplan fest, und eine geänderte Annahme muss beide lösen.
+
+    `_plan_at` macht den Plan fällig. Der Ofenlauf hat daneben eine eigene Drossel von
+    DEMO_SOLVE_S **echten** Sekunden, damit das Nachholen der Historie nicht hundertmal solvt.
+    Ohne den zweiten Griff würde der Plan nach einem geänderten Pelletpreis neu gebaut - mit dem
+    Ofenfahrplan von vorher, also genau mit der Zahl, die sich geändert hat.
+    """
+    settings = Settings(mode="demo", api_token="", demo_autostart=False, weather_refresh_min=0)
+    with TestClient(create_app(settings)) as c:
+        runner = c.app.state.runner
+        runner._plan_at = datetime.now(UTC)
+        runner._stove_solve_at = monotonic()
+        r = c.post("/api/v1/config/heat", json={"pellet_price_eur_per_t": 300.0})
+        assert r.status_code == 200, r.text
+        assert runner._plan_at is None
+        assert monotonic() - runner._stove_solve_at >= DEMO_SOLVE_S, (
+            "die Drossel muss gefallen sein"
+        )

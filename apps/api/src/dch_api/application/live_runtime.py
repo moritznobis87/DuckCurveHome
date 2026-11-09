@@ -1780,7 +1780,19 @@ class LiveRuntime:
         return await self.accounting.heat_balance(period, anchor, self.now, self._temps_48h())
 
     async def update_heat_config(self, patch: HeatConfigIn) -> HemsConfig:
-        """Geänderte Wärmeannahmen übernehmen, speichern und sofort wirksam machen."""
+        """Geänderte Wärmeannahmen übernehmen, speichern und sofort wirksam machen.
+
+        **Der Fahrplan gehört dazu.** Die Auswertungen rechnen bei jeder Abfrage neu und waren
+        damit sofort richtig; der Fahrplan nicht. Er wird alle `plan_refresh_min` Minuten
+        gerechnet, also stand nach einem geänderten Pelletpreis bis zu eine Viertelstunde lang ein
+        Fahrplan auf der Seite, der mit der alten Annahme entstanden war - und von außen sah das
+        aus, als hätte die Änderung keine Wirkung. Genau so wurde es gemeldet. `_plan_at = None`
+        macht ihn beim nächsten Regeltakt fällig, also binnen `tick_s` Sekunden.
+
+        Nicht hier gerechnet: der Löser darf bis zu seiner Zeitgrenze laufen, und diese Antwort
+        soll nicht darauf warten. Der neue Fahrplan kommt über denselben Weg wie jeder andere,
+        nämlich als Ereignis an die Oberfläche.
+        """
         werte = patch.model_dump(exclude_none=True)
         try:
             neu = apply_heat_patch(self.hems, werte)
@@ -1788,6 +1800,7 @@ class LiveRuntime:
             raise DchError("invalid_config", str(exc), 422) from exc
         await self.repos.save_config("heat", werte)
         self._apply_hems(neu)
+        self._plan_at = None
         log.info("heat config updated", fields=sorted(werte))
         return neu
 

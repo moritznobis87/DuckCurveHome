@@ -160,6 +160,42 @@ der Ofen dran.
 Damit ist die Handregel nachgerechnet und im Kern bestätigt: bei Kälte und teurem Strom gewinnt der
 Ofen. Der Planer wird sie nicht umwerfen, sondern schärfen.
 
+### Der Stundenvergleich ist nicht die Entscheidung
+
+**Diese Tabelle beantwortet die falsche Frage**, und das ist die wichtigste Einschränkung dieses
+ganzen Abschnitts. Sie vergleicht beide Quellen im **gleichen** Zeitpunkt. Der Planer hat diese
+Wahl nicht: er hat einen Puffer von rund 31 kWh, und der verschiebt Wärme. Die Frage ist also nicht
+„was ist um 19 Uhr günstiger", sondern „was ist günstiger als die **teuerste Stunde, die die
+Wärmepumpe im Fahrplan überhaupt braucht**". Das ist ihr Grenzpreis, und er liegt weit unter dem
+Preis der teuren Stunden, weil die Wärmepumpe dort gar nicht läuft.
+
+Gemessen am 09.11.2026 am Vorführtag (Preise 14,4 bis 42,9 ct, Außentemperatur -0,7 bis 13,5 °C,
+Puffer halb voll, 450 Euro je Tonne):
+
+| Größe | Wert |
+| --- | --- |
+| Ofen, Pufferwärme | 10,6 ct/kWh im Mittel |
+| Wärmepumpe über den Horizont | 5,4 bis 16,1 ct/kWh |
+| Wärmepumpe, **Grenzpreis im Fahrplan** | 10,8 ct/kWh |
+| Viertelstunden, in denen der Ofen die günstigere Quelle **dieser** Stunde wäre | 60 von 136 |
+| Ofenstunden im Fahrplan | 0 |
+
+In 60 von 136 Viertelstunden wäre der Ofen also billiger, und er bleibt trotzdem aus. Das ist kein
+Fehler: die 0,2 ct/kWh Vorsprung der Wärmepumpe am Grenzpreis sind über zwei Stunden Mindestlaufzeit
+rund 4 Cent, und die Zündung wiegt der Löser mit 30 Cent. **Bei 450 Euro je Tonne steht diese
+Anlage auf dem Break-even.** Am selben Tag durchgerechnet: bei 450 und bei 400 Euro je Tonne bleibt
+der Ofen aus, bei 350 kommt er mit 6,0 Stunden in den Fahrplan, bei 200 mit 10,5. Wer also fragt,
+warum der Ofen nie eingeschaltet wird: deshalb, und seit dem 09.11.2026 steht genau diese Rechnung
+als Begründung unter dem Fahrplan.
+
+**Ein genauerer COP im Löser hilft nicht dem Ofen, sondern der Wärmepumpe.** Gegenprobe am selben Tag: `planning/milp.py` rechnet die Wärmepumpe mit festen Nennwerten, 12 kW
+thermisch zu 4,5 kW elektrisch, also mit einem starren COP von 2,67. Setzt man statt dessen die
+Kennlinie ein (`cop_at`, bei diesen Temperaturen 2,9 bis 3,8), wird die Wärmepumpe im Modell
+**günstiger**: der Ofen kommt dann erst bei 300 Euro je Tonne in den Fahrplan statt schon bei 350.
+Die Nennwerte benachteiligen die Wärmepumpe an milden Tagen; der Ofen bleibt also nicht wegen dieser
+Vereinfachung aus. Das ändert Schritt 6 des Zwillingsentwurfs nicht - der COP gehört in den Löser -
+aber es nimmt ihm diese Begründung.
+
 ## Was der Planer daraus machen kann
 
 Die Rechnung oben liefert je Viertelstunde einen Preis für beide Quellen. Für das MILP heißt das:

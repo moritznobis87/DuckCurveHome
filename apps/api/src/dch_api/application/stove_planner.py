@@ -100,6 +100,91 @@ class Zwillingspunkt:
 
 
 @dataclass(frozen=True)
+class Fensterverbrauch:
+    """Was der Fahrplan in einem Budgetfenster verbrennt, gegen das, was dort bereitsteht.
+
+    **Warum je Fenster und nicht als Summe.** Der Horizont reicht über mehr als eine Füllung, und
+    `pellet_kg` ist die Summe über alles. Sie gegen das Budget *eines* Fensters zu stellen ergab
+    Sätze wie „28,0 von 15,0 kg Brennstoff", die eine Verletzung der härtesten Nebenbedingung des
+    Ofens behaupteten, wo keine war: 28 kg über zwei Füllungen sind 14 je Füllung. Verglichen wird
+    deshalb, was zusammengehört.
+    """
+
+    fenster: int
+    kg: float
+    budget_kg: float
+
+
+@dataclass(frozen=True)
+class Preisvergleich:
+    """Was eine Kilowattstunde Pufferwärme je Quelle kostet, in der Arithmetik des Lösers.
+
+    **Nicht `cheaper_source` aus hems_core.** Dort steht der Wärmepreis der Wärmepumpe über ihrer
+    COP-Kennlinie; hier über dem Verhältnis der Nennwerte, mit dem der Löser wirklich rechnet
+    (12 kW thermisch zu 4,5 kW elektrisch, also ein fester COP von 2,67). Eine Begründung, die eine
+    andere Zahl nennt als die, die entschieden hat, begründet nichts. Dass der Löser noch mit
+    Nennwerten rechnet, ist Schritt 6 des Entwurfs und hier bewusst sichtbar.
+
+    **Wozu `viertel_ofen_guenstiger`.** Ohne diese Zahl ist „der Ofen bleibt aus" nicht prüfbar. Sie
+    zählt die Viertelstunden, in denen der Ofen *in dieser Viertelstunde* die günstigere Quelle wäre.
+    Gemessen am 09.11.2026 am Vorführtag: 60 von 136, und der Ofen bleibt trotzdem aus. Das ist kein
+    Widerspruch, und `wp_grenzpreis_ct_kwh` sagt, warum.
+
+    **`wp_grenzpreis_ct_kwh` ist die eigentliche Antwort.** Es ist der teuerste Wärmepreis unter den
+    Viertelstunden, in denen der Fahrplan die Wärmepumpe wirklich freigibt - ihr Grenzpreis. Nicht
+    gegen den Preis *dieser* Stunde muss sich der Ofen durchsetzen, sondern gegen diesen: der Puffer
+    verschiebt die Wärme in die günstigen Stunden, und solange die Wärmepumpe dort unter dem Ofen
+    bleibt, ist jede Ofenstunde teuer gekaufte Wärme. `None`, wenn der Fahrplan die Wärmepumpe
+    gar nicht freigibt.
+    """
+
+    ofen_ct_kwh: float  # Mittel über den Horizont; schwankt nur mit Eigenstrom und Gutschrift
+    wp_min_ct_kwh: float
+    wp_max_ct_kwh: float
+    wp_grenzpreis_ct_kwh: float | None
+    viertel_ofen_guenstiger: int
+    viertel: int
+
+
+def preisvergleich(
+    intervals: Sequence[Interval],
+    *,
+    water_heat_kw: float,
+    electric_kw: float,
+    thermal_kw: float,
+    hp_on: Sequence[bool] | None = None,
+) -> Preisvergleich | None:
+    """Die beiden Wärmepreise über den Horizont, so wie der Löser sie sieht. `None` ohne Ofen.
+
+    Reine Funktion über den Intervallen, die gleich ins Modell gehen. Der Strompreis je Intervall
+    wird dabei genauso bestimmt wie dort: bei genug PV-Überschuss gilt die entgangene
+    Einspeisevergütung, sonst der Bezugspreis. Wer hier nur den Bezugspreis nähme, nannte für die
+    Mittagsstunden einen Preis, mit dem nicht gerechnet wurde.
+
+    `hp_on` ist der Wärmepumpenfahrplan des Lösers. Er wird nur für den Grenzpreis gebraucht und
+    ist darum freigestellt: die übrigen Zahlen stehen schon vor dem Lauf fest.
+    """
+    if water_heat_kw <= 1e-6 or thermal_kw <= 1e-6 or not intervals:
+        return None
+    ofen = [iv.stove_eur_per_h * 100.0 / water_heat_kw for iv in intervals]
+    wp = [
+        (iv.feed_in_ct_kwh if iv.surplus_kw >= electric_kw else iv.price_ct_kwh)
+        * electric_kw
+        / thermal_kw
+        for iv in intervals
+    ]
+    genutzt = [w for w, an in zip(wp, hp_on, strict=True) if an] if hp_on is not None else []
+    return Preisvergleich(
+        ofen_ct_kwh=round(sum(ofen) / len(ofen), 2),
+        wp_min_ct_kwh=round(min(wp), 2),
+        wp_max_ct_kwh=round(max(wp), 2),
+        wp_grenzpreis_ct_kwh=round(max(genutzt), 2) if genutzt else None,
+        viertel_ofen_guenstiger=sum(1 for o, w in zip(ofen, wp, strict=True) if o < w),
+        viertel=len(intervals),
+    )
+
+
+@dataclass(frozen=True)
 class StovePlan:
     """Der Fahrplan über den Horizont. `available=False` heißt: es wurde nicht geplant, und warum."""
 
@@ -136,6 +221,10 @@ class StovePlan:
     buffer_min_kwh: float | None = None
     solve_ms: int = 0
     mip_gap: float | None = None  # wie weit das Ergebnis vom Besten entfernt sein kann
+    # Was der Fahrplan je Budgetfenster verbrennt, und der Preisvergleich, der ihn begründet.
+    # Beides steht auch dann, wenn der Ofen aus bleibt: erst dann ist „aus" eine Aussage.
+    fenster: tuple[Fensterverbrauch, ...] = ()
+    vergleich: Preisvergleich | None = None
     note_de: str = ""
 
     def _index(self, t: datetime, reihe: list[bool]) -> int | None:
@@ -314,6 +403,7 @@ def plan_stove(
         )
 
     econ = stove_economics(stove)
+    solver = opt_cfg or OptimizerConfig(step_min=STEP_MIN)
     dt_h = STEP_MIN / 60.0
     window_start, _ = budget_window(stove, now.astimezone(tz))
     per_window_kg = stove.hopper_kg * max(stove.refills_per_day, 1.0)
@@ -361,6 +451,12 @@ def plan_stove(
 
     buffer_min_kwh = cfg.buffer.status_thresholds[0] * capacity
 
+    # Der Preisvergleich wird nach dem Lauf gefüllt, weil der Grenzpreis am Fahrplan der
+    # Wärmepumpe hängt. Er wird auch an einen Fahrplan ohne Ofen gehängt: „der Ofen bleibt aus"
+    # ohne die beiden Wärmepreise daneben ist eine Behauptung, mit ihnen eine nachrechenbare
+    # Aussage.
+    vergleich: Preisvergleich | None = None
+
     def mit_zwilling(plan: StovePlan) -> StovePlan:
         """Die Modelleingänge an einen Fahrplan hängen.
 
@@ -375,6 +471,7 @@ def plan_stove(
             cop=cops,
             buffer_capacity_kwh=round(capacity, 2),
             buffer_min_kwh=round(buffer_min_kwh, 2),
+            vergleich=vergleich,
         )
 
     try:
@@ -398,10 +495,18 @@ def plan_stove(
             stove_min_offtime_min=stove.min_offtime_min,
             stove_running_now=stove_running,
             fuel_budget_kg=budgets,
-            cfg=opt_cfg or OptimizerConfig(step_min=STEP_MIN),
+            cfg=solver,
         )
     except SolverUnavailableError as exc:
         return StovePlan(note_de=f"Kein Solver verfügbar: {exc}")
+
+    vergleich = preisvergleich(
+        intervals,
+        water_heat_kw=stove.water_heat_kw if stove.present else 0.0,
+        electric_kw=cfg.heat_pump.nominal_electric_power_kw,
+        thermal_kw=cfg.heat_pump.nominal_thermal_power_kw,
+        hp_on=list(result.on) or None,
+    )
 
     gerechnet = result.status in BRAUCHBAR
     if not gerechnet or not (result.stove_on or result.on):
@@ -444,9 +549,10 @@ def plan_stove(
             buffer_kwh=list(result.buffer_kwh),
             solve_ms=result.solve_ms,
             mip_gap=result.mip_gap,
+            fenster=_je_fenster(intervals, result.stove_on, econ.kg_per_hour, budgets, dt_h),
         )
     )
-    return replace(plan, note_de=_note(plan, first_budget))
+    return replace(plan, note_de=_note(plan, zuendstrafe_eur=solver.stove_start_penalty_eur))
 
 
 def stove_eur_per_h(cfg: HemsConfig, *, price_ct_kwh: float, cop: float) -> float:
@@ -466,17 +572,95 @@ def stove_eur_per_h(cfg: HemsConfig, *, price_ct_kwh: float, cop: float) -> floa
     return round(econ.eur_per_hour - credit_eur, 4)
 
 
-def _note(plan: StovePlan, budget_kg: float) -> str:
-    if not any(plan.on):
-        return (
-            f"Der Ofen bleibt aus: über {len(plan.on) * plan.step_min // 60} Stunden ist die "
-            "Wärmepumpe durchgehend günstiger."
-        )
-    hours = plan.runtime_h()
-    return (
-        f"{hours:.1f} h Ofen in {plan.starts} Zündung{'en' if plan.starts != 1 else ''}, "
-        f"{plan.pellet_kg:.1f} von {budget_kg:.1f} kg Brennstoff, {plan.cost_eur:.2f} EUR."
+def _je_fenster(
+    intervals: Sequence[Interval],
+    stove_on: Sequence[bool],
+    kg_per_h: float,
+    budgets: Sequence[float],
+    dt_h: float,
+) -> tuple[Fensterverbrauch, ...]:
+    """Verbrauch und Budget je Fenster, in der Reihenfolge der Fenster.
+
+    Dieselbe Gruppierung, die der Löser für die Brennstoffbedingung benutzt, nur nachgerechnet.
+    Ein Fenster ohne eigenes Budget bleibt im Modell unbeschränkt; es kommt hier nicht vor, weil
+    eine Grenze, die es nicht gibt, auch nicht als Zahl behauptet werden soll.
+    """
+    kg: dict[int, float] = {}
+    for iv, an in zip(intervals, stove_on, strict=True):
+        if an:
+            kg[iv.budget_window] = kg.get(iv.budget_window, 0.0) + kg_per_h * dt_h
+    fenster = sorted({iv.budget_window for iv in intervals})
+    return tuple(
+        Fensterverbrauch(fenster=w, kg=round(kg.get(w, 0.0), 1), budget_kg=round(budgets[w], 1))
+        for w in fenster
+        if w < len(budgets)
     )
+
+
+def _z(wert: float, stellen: int = 1) -> str:
+    """Deutsches Dezimalkomma. Diese Sätze erscheinen unverändert in der Oberfläche."""
+    return f"{wert:.{stellen}f}".replace(".", ",")
+
+
+def _note(plan: StovePlan, *, zuendstrafe_eur: float) -> str:
+    """Die Begründung des Fahrplans, in Zahlen, die man nachrechnen kann.
+
+    **Was hier vorher stand und falsch war.** „Der Ofen bleibt aus: über 34 Stunden ist die
+    Wärmepumpe durchgehend günstiger." Das ist eine Behauptung über jede einzelne Stunde, und der
+    Löser hat sie nie geprüft; er hat über den ganzen Horizont entschieden. Am Vorführtag des
+    09.11.2026 war sie außerdem schlicht unwahr: in 60 von 136 Viertelstunden wäre der Ofen die
+    günstigere Quelle gewesen. Aus bleibt er, weil er sich nicht gegen den Preis dieser Stunde
+    durchsetzen muss, sondern gegen den Grenzpreis der Wärmepumpe - und weil die Zündung dazukommt.
+    Bei 450 Euro je Tonne lagen die beiden Zahlen 0,2 ct/kWh auseinander; die Zündstrafe entschied.
+
+    Diese Begründung nennt deshalb Zahlen und keine Urteile. Wer liest „die Wärmepumpe ist
+    günstiger", muss das glauben; wer „10,6 gegen 10,8 ct/kWh" liest, kann nachrechnen und
+    widersprechen.
+    """
+    laeuft = any(plan.on)
+    teile: list[str] = []
+    if laeuft:
+        teile.append(
+            f"{_z(plan.runtime_h())} h Ofen in {plan.starts} "
+            f"Zündung{'en' if plan.starts != 1 else ''}, {_z(plan.cost_eur, 2)} EUR."
+        )
+        if plan.fenster:
+            erstes = plan.fenster[0]
+            rest = ", ".join(f"{_z(f.kg)} von {_z(f.budget_kg)} kg" for f in plan.fenster[1:])
+            teile.append(
+                f"Brennstoff: {_z(erstes.kg)} von {_z(erstes.budget_kg)} kg im laufenden Fenster"
+                + (f", danach {rest}." if rest else ".")
+            )
+    else:
+        teile.append("Der Ofen bleibt aus.")
+    v = plan.vergleich
+    if v is not None:
+        teile.append(
+            f"Pufferwärme kostet beim Ofen im Mittel {_z(v.ofen_ct_kwh)} ct/kWh, bei der "
+            f"Wärmepumpe zwischen {_z(v.wp_min_ct_kwh)} und {_z(v.wp_max_ct_kwh)} ct/kWh."
+        )
+        if v.wp_grenzpreis_ct_kwh is not None:
+            teile.append(
+                "Freigegeben wird sie im Fahrplan nur bis "
+                f"{_z(v.wp_grenzpreis_ct_kwh)} ct/kWh; gegen diesen Grenzpreis muss sich der Ofen "
+                "durchsetzen, nicht gegen den Preis der jeweiligen Stunde."
+            )
+        if v.viertel_ofen_guenstiger == 0:
+            teile.append(
+                f"In keiner der {v.viertel} Viertelstunden ist der Ofen die günstigere Quelle."
+            )
+        else:
+            wort = "wäre er" if not laeuft else "ist er"
+            teile.append(
+                f"In {v.viertel_ofen_guenstiger} der {v.viertel} Viertelstunden {wort} die "
+                "günstigere Quelle dieser Viertelstunde."
+            )
+        if not laeuft:
+            teile.append(
+                f"Dazu kommt die Zündung, die der Löser mit {_z(zuendstrafe_eur, 2)} EUR je "
+                "Ofenphase wiegt."
+            )
+    return " ".join(teile)
 
 
 def _floor(t: datetime, step_min: int) -> datetime:
