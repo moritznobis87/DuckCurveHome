@@ -56,6 +56,8 @@ export const AREAS: Area[] = [
       { href: "/waerme/bilanz", label: "Bilanz", dated: true },
       { href: "/waerme/raeume", label: "Räume", dated: true },
       { href: "/waerme/anlage", label: "Anlage" },
+      // Direkt neben der Anlage, denn es ist dieselbe Ansicht: dort der Augenblick, hier ein Tag.
+      { href: "/waerme/wiedergabe", label: "Wiedergabe" },
       { href: "/waerme/fahrplan", label: "Fahrplan" },
       { href: "/waerme/annahmen", label: "Annahmen", ownerOnly: true },
     ],

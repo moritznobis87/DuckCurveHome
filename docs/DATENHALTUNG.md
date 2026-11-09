@@ -126,6 +126,29 @@ Bei Überschneidung gewinnt der verdichtete Wert.
   letzten Tage. Wenn sich die Rechenregeln ändern - wie zuletzt beim Eigenverbrauch -, lässt sich
   die Historie nachziehen, statt mit einer Lücke zu leben.
 
+## Die Wiedergabe
+
+Seit dem 09.11.2026 liest auch die Seite „Wiedergabe" (`Wärme → Wiedergabe`) die Minutenreihe:
+`GET /anlage/wiedergabe?day=…&step_min=1|5|15` baut daraus einen Ortstag als Folge von
+Anlagenbildern, und die Oberfläche fährt mit einem Schieber darüber.
+
+* **Ein Bildweg, nicht zwei.** `application/anlage_replay.py` rekonstruiert aus jeder Minutenzeile
+  die *Eingänge* von `anlage.zusammensetzen` - Schnappschuss, Pufferzustand, Takt der Wärmepumpe,
+  Ofen - und ruft dann dieselbe Zusammensetzung wie die Live-Seite. Ein zweiter, direkter Weg von
+  der Zeile zum Bild wäre kürzer und wäre in einer Woche ein anderes Haus.
+* **Eine Abfrage je Tag**, nicht eine je Bild: die Zeilen kommen in einem Zug, einschließlich der
+  zwei Stunden Rückblick, die jedes Bild für die Nettoleistung des Speichers und die Zapferkennung
+  braucht. 288 Bilder sind sonst 288 Rundreisen.
+* **Lücken bleiben Lücken.** Fehlt zu einem Zeitpunkt jede Messung in der Toleranz, entsteht kein
+  Bild. Der bequeme Weg wäre, den letzten Wert weiterzuschreiben; dann liefe die Wiedergabe durch
+  einen Erfassungsausfall hindurch und zeigte ein ruhiges Haus. Ein ruhiges Haus und ein blindes
+  Messsystem sehen im Schema gleich aus.
+* **Beim laufenden Tag endet das Erwartete an jetzt.** Sonst zählte der noch nicht gewesene Abend
+  als fehlende Messung - gemessen am Vorführtag als „9 von 96 Bildern fehlen", wo keines fehlte.
+* **Zwei Größen kann der Rückblick nicht zeigen**, und er behauptet sie auch nicht: die
+  Ventilstellungen der Räume stehen nicht in der Minutentabelle (der Heizkreis bleibt dunkel), und
+  wie lange die Wärmepumpe vor dem ersten Bild schon lief, steht dort ebenso wenig.
+
 ## Was die Historie sichtbar macht
 
 Die Jahreskarte (`/jahr`) legt ein Kalenderjahr als Fläche aus: 365 Spalten zu je 24 Stunden. Sie
