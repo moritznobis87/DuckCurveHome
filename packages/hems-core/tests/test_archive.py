@@ -262,7 +262,9 @@ def test_ein_fahrplan_wird_ein_lauf_der_art_plan() -> None:
     ab = PLAN_ZEIT.replace(minute=0)
     lauf = plan_lauf(
         PLAN_ZEIT,
-        _intervalle(ab, 8, hp_release=1.0, stove_on=0.0, buffer_kwh=14.2, heat_kw=3.1),
+        _intervalle(
+            ab, 8, hp_release=1.0, stove_on=0.0, buffer_kwh=14.2, heat_kw=3.1, cost_eur=0.31
+        ),
         schritt_min=15,
         anbieter="milp_v1",
     )

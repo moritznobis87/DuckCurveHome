@@ -464,3 +464,48 @@ def test_in_der_vorfuehrung_faellt_auch_die_drossel_des_ofenlaufs() -> None:
         assert monotonic() - runner._stove_solve_at >= DEMO_SOLVE_S, (
             "die Drossel muss gefallen sein"
         )
+
+
+# ------------------------------------------------------------------ Was der Fahrplan verspricht
+
+
+def test_die_kosten_je_schritt_ergeben_die_summe_des_optimierers() -> None:
+    """Die Aufteilung ist dieselbe Rechnung wie die Summe, nur nicht zusammengezählt.
+
+    Geprüft an einem Fall mit beiden Erzeugern: liefen die beiden Rechnungen auseinander, stünde
+    in der Nachbetrachtung ein Versprechen, das der Optimierer so nie gegeben hat.
+    """
+    p = plan(prices=prices(45.0), temps=temps(-5.0), opt_cfg=GEDULDIG)
+    assert p.available and any(p.on) and any(p.hp_on)
+    assert len(p.kosten_eur) == len(p.hp_on)
+    cfg = HemsConfig()
+    strom = sum(
+        45.0 / 100.0 * cfg.heat_pump.nominal_electric_power_kw * STEP_MIN / 60
+        for an in p.hp_on
+        if an
+    )
+    assert sum(p.kosten_eur) == pytest.approx(strom + p.cost_eur, abs=0.01)
+    # Ein Schritt ohne Wärmepumpe und ohne Ofen kostet nichts, auch keinen Anlauf.
+    for eur, wp, ofen in zip(p.kosten_eur, p.hp_on, p.on, strict=True):
+        assert (eur == 0.0) == (not wp and not ofen)
+
+
+def test_bei_vollem_ueberschuss_zaehlt_die_entgangene_verguetung() -> None:
+    """Deckt die Sonne die ganze Maschine, kostet die Viertelstunde die Einspeisevergütung."""
+    cfg = HemsConfig().model_copy(
+        update={"stove": HemsConfig().stove.model_copy(update={"present": False})}
+    )
+    p = plan(cfg=cfg, pv_expected=lambda t: 9.0, opt_cfg=GEDULDIG)
+    assert any(p.hp_on)
+    je_schritt = (
+        cfg.tariff.feed_in_ct_kwh / 100.0 * cfg.heat_pump.nominal_electric_power_kw * STEP_MIN / 60
+    )
+    gelaufen = [eur for eur, an in zip(p.kosten_eur, p.hp_on, strict=True) if an]
+    assert gelaufen and all(eur == pytest.approx(je_schritt, abs=0.0002) for eur in gelaufen)
+
+
+def test_die_kosten_stehen_am_zwillingspunkt_und_enden_mit_dem_horizont() -> None:
+    p = plan(prices=prices(45.0), temps=temps(-5.0), opt_cfg=GEDULDIG)
+    z = p.twin_at(NOW)
+    assert z is not None and z.kosten_eur == p.kosten_eur[0]
+    assert p.twin_at(NOW + timedelta(hours=HORIZON_H + 1)) is None

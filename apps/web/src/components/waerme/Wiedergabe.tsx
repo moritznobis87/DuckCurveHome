@@ -6,7 +6,7 @@ import { Schema } from "@/components/anlage/Schema";
 import { Card, CardHead } from "@/components/ui/Card";
 import { api } from "@/lib/api/client";
 import type { AnlageReplay } from "@/lib/api/models";
-import { isoToday, istTagIso } from "@/lib/day";
+import { isoToday, istTagIso, langerTag, tagPlus } from "@/lib/day";
 import { hhmm } from "@/lib/format";
 import { Tagesband } from "./Tagesband";
 import { Tagesuhr } from "./Tagesuhr";
@@ -51,17 +51,6 @@ function de(x: number, n = 1): string {
  */
 const heute = isoToday;
 const uhr = hhmm;
-
-function tagPlus(tag: string, tage: number): string {
-  // Mittags gerechnet, damit kein Zeitzonenversatz den Tag kippt; das Ergebnis ist ein Datum.
-  const d = new Date(`${tag}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + tage);
-  return d.toISOString().slice(0, 10);
-}
-
-function langerTag(tag: string): string {
-  return new Date(`${tag}T12:00:00`).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-}
 
 function ruhigGewuenscht(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;

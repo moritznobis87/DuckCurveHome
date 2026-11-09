@@ -298,6 +298,16 @@ bleibt. **Was das nicht sagt, ist, wie gut das Modell ist**; dafür fehlt weiter
 Wärme (Abschnitt 5.2). Die fünf Linien in Euro brauchen zusätzlich die Löserläufe und bleiben
 Schritt 9.
 
+**Gebaut sind die fünf Linien** (10.11.2026), auf der Seite `Wärme → Nachbetrachtung`, mit einer
+sechsten: der Plan steht zweimal da, als erster Fahrplan des Tages und als jeweils letzter Stand,
+denn der Abstand zwischen beiden ist, was das Nachführen über den Tag gebracht hat. Alle Linien
+werden mit derselben anteiligen Rechnung über dieselben Viertelstunden bewertet. Beim Bauen hat
+sich gezeigt, was der Entwurf nicht vorhergesehen hatte: **die Linien liefern nicht dieselbe
+Wärme**, weil der Fahrplan gegen das Bedarfsmodell plant und die Maschine nach ihrer Kennlinie
+heizt. Der Eingriff der Maschine ist deshalb in Menge und Zeitpunkt zerlegt, und neben den Euro
+steht je Linie der mittlere Preis der Kilowattstunde. Von den zwei Perfect-Foresight-Läufen gibt
+es einen, mit dem heutigen Modell. Methode und Grenzen: `docs/NACHBETRACHTUNG.md`.
+
 Abgeschlossen wird **der Tag**, nach Mitternacht, wie es die PV-Bewertung schon tut; die
 Einzelläufe bleiben für die Detailansicht erhalten. Wärmepumpe und Ofen stehen in **einer**
 gemeinsamen Wärmerechnung; sobald die Wärmepumpenwärme gemessen ist, bleibt ihre Linie sauber, auch
@@ -420,7 +430,12 @@ Logzeile beim Start - eine Anforderung an niemanden sah genauso aus wie eine, di
    [OFEN_OPTIMIERUNG.md](../OFEN_OPTIMIERUNG.md#der-stundenvergleich-ist-nicht-die-entscheidung).
 7. Harte Komfortgrenze 1,0 K mit Rückfallebene.
 8. Raumsollwert stellen, K1 im Schatten.
-9. Nachbetrachtung: fünf Linien, zwei Perfect-Foresight-Läufe, Kostenzeile der Beschneidung.
+9. ~~Nachbetrachtung: fünf Linien~~, zwei Perfect-Foresight-Läufe, Kostenzeile der Beschneidung.
+   Gebaut am 10.11.2026: die Linien in Euro mit Kostentreppe und Tagesvergleich auf
+   `Wärme → Nachbetrachtung`, ein Vergleichslauf mit perfekter Voraussicht über denselben Planer
+   wie im Betrieb, und die Kosten je Viertelstunde im Fahrplanarchiv (`cost_eur`). Offen bleiben
+   der zweite Perfect-Foresight-Lauf mit gefittetem Modell und die Kostenzeile der Beschneidung;
+   die PV-Bewertung auf `/system` ist noch nicht darin aufgegangen.
    Voraussetzung geschaffen am 09.11.2026: der Fahrplan von damals liegt jetzt im Archiv.
    Vorgezogen am 08.11.2026: die Prognoseseite davon steht - Fehler je Reihe und je
    Vorlaufzeit aus dem Archiv, auf `/system`. Offen bleibt alles, was Euro sagt.

@@ -27,6 +27,7 @@ from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, house, rooms
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
+from dch_api.application import nachbetrachtung as nachbetrachtung_logic
 from dch_api.application import room_log as room_log_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
 from dch_api.application.config_loader import AppConfig
@@ -92,6 +93,7 @@ from dch_api.schemas import (
     InvoiceSummaryOut,
     KontaktwirkungOut,
     LiveStateOut,
+    NachbetrachtungOut,
     Period,
     PlanOut,
     PvTaxReportOut,
@@ -1150,6 +1152,38 @@ class LiveRuntime:
             raeume=raeume,
             geplant_wp=await absicht("hp_release"),
             geplant_ofen=await absicht("stove_on"),
+        )
+
+    async def nachbetrachtung(self, day: date) -> NachbetrachtungOut:
+        """Ein Ortstag in Euro, aus dem Minutenbestand und dem Fahrplanarchiv.
+
+        Gerechnet wird in einem Thread: der Vergleichslauf ist derselbe Löser wie im Betrieb und
+        darf bis zu seiner Zeitgrenze brauchen. Im Ereignisschleifen-Thread stünde so lange der
+        ganze Dienst.
+
+        Das Fahrplanarchiv ist Beiwerk wie in der Wiedergabe: scheitert die Abfrage, kommt die
+        Nachbetrachtung trotzdem, mit der Messung und ohne die Linien der Fahrpläne.
+        """
+        von, bis, daten_bis = nachbetrachtung_logic.fenster(day, BERLIN, self.now)
+        zeilen = await self.repos.minute_series(
+            von, max(daten_bis, von), list(nachbetrachtung_logic.REIHEN)
+        )
+        punkte: dict[str, nachbetrachtung_logic.Punkte] = {}
+        for groesse in nachbetrachtung_logic.GROESSEN:
+            try:
+                punkte[groesse] = await self.repos.forecast_history(
+                    PLAN, groesse, von, bis, vorlauf_h=nachbetrachtung_logic.VORLAUF_H
+                )
+            except Exception as exc:
+                log.warning("review without plan", groesse=groesse, error=repr(exc)[:200])
+        return await asyncio.to_thread(
+            nachbetrachtung_logic.zusammenstellen,
+            zeilen,
+            punkte,
+            self.hems,
+            day,
+            BERLIN,
+            jetzt=self.now,
         )
 
     async def kontaktwirkung(self, days: int) -> KontaktwirkungOut:

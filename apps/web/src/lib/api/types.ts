@@ -89,6 +89,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plan/nachbetrachtung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ein Ortstag in Euro: versprochen, gehalten, wirklich
+         * @description Was der Fahrplan für diesen Tag versprach, was er gehalten hätte und was der Tag kostete.
+         *
+         *     Die Antwort rechnet einen Vergleichslauf mit perfekter Voraussicht und braucht dafür so lange
+         *     wie ein Lauf des Optimierers, im schlechtesten Fall einige Sekunden. Für einen Tag in der
+         *     Zukunft gibt es nichts zu betrachten.
+         */
+        get: operations["nachbetrachtung_api_v1_plan_nachbetrachtung_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/push/key": {
         parameters: {
             query?: never;
@@ -1034,6 +1058,33 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * Abstand
+         * @description Der Abstand zwischen zwei Linien, mit seiner Bedeutung. Positiv heißt: teurer.
+         */
+        Abstand: {
+            /** Key */
+            key: string;
+            /** Name De */
+            name_de: string;
+            /** Von */
+            von: string;
+            /** Nach */
+            nach: string;
+            /** Eur */
+            eur?: number | null;
+            /**
+             * Satz De
+             * @default
+             */
+            satz_de: string;
+            /** Menge Eur */
+            menge_eur?: number | null;
+            /** Zeit Eur */
+            zeit_eur?: number | null;
+            /** Ofen Eur */
+            ofen_eur?: number | null;
+        };
         /** ActuatorCommandIn */
         ActuatorCommandIn: {
             /** State */
@@ -3776,6 +3827,53 @@ export interface components {
             /** Days */
             days: number;
         };
+        /**
+         * Linie
+         * @description Eine der Linien: ihre Summe, und je Viertelstunde, woraus sie entstand.
+         */
+        Linie: {
+            /** Key */
+            key: string;
+            /** Name De */
+            name_de: string;
+            /**
+             * Verfuegbar
+             * @default false
+             */
+            verfuegbar: boolean;
+            /**
+             * Grund De
+             * @default
+             */
+            grund_de: string;
+            /**
+             * Geschaetzt
+             * @default false
+             */
+            geschaetzt: boolean;
+            /** Eur */
+            eur?: number | null;
+            /** Strom Eur */
+            strom_eur?: number | null;
+            /** Ofen Eur */
+            ofen_eur?: number | null;
+            /** Wp Kwh */
+            wp_kwh?: number | null;
+            /** Ct Je Kwh */
+            ct_je_kwh?: number | null;
+            /** Wp H */
+            wp_h?: number | null;
+            /** Ofen H */
+            ofen_h?: number | null;
+            /** Wp Kwh Je */
+            wp_kwh_je?: (number | null)[];
+            /** Ofen Je */
+            ofen_je?: (number | null)[];
+            /** Eur Je */
+            eur_je?: (number | null)[];
+            /** Eur Kumuliert */
+            eur_kumuliert?: (number | null)[];
+        };
         /** LiveStateOut */
         LiveStateOut: {
             snapshot: components["schemas"]["EnergySnapshot"];
@@ -3873,6 +3971,88 @@ export interface components {
             count: number;
             /** Mb */
             mb: number;
+        };
+        /**
+         * NachbetrachtungOut
+         * @description Ein Ortstag in Euro: was der Fahrplan versprach, was er hielt, was der Tag kostete.
+         *
+         *     Sechs Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet
+         *     (`verglichen`): der erste Fahrplan des Tages mit seinen eigenen Kosten (`versprochen`) und mit
+         *     den eingetretenen Werten (`erster`), der jeweils letzte Stand des Fahrplans (`letzter`), die
+         *     Messung (`wirklich`), ein Vergleichslauf mit perfekter Voraussicht (`perfekt`) und dieselbe
+         *     Strommenge nach dem Wärmebedarf verteilt (`ohne_fuehrung`, geschätzt).
+         *
+         *     `abstaende` sind die Stufen dazwischen. Die ersten drei führen vom Versprechen zur
+         *     Wirklichkeit: Prognosefehler, Nachführen, Eingriff der Maschine. Positiv heißt teurer.
+         *
+         *     Eine Linie, die fehlt, hat `verfuegbar=false` und sagt in `grund_de`, warum. Das ist für
+         *     Tage vor dem 09.11.2026 der Normalfall bei allen Fahrplanlinien: aufbewahrt wird erst seitdem.
+         */
+        NachbetrachtungOut: {
+            /** Zeiten */
+            zeiten?: string[];
+            /**
+             * Schritt Min
+             * @default 15
+             */
+            schritt_min: number;
+            /** Verglichen */
+            verglichen?: boolean[];
+            /**
+             * N Verglichen
+             * @default 0
+             */
+            n_verglichen: number;
+            /** Preis Ct */
+            preis_ct?: (number | null)[];
+            /** Ueberschuss Kw */
+            ueberschuss_kw?: (number | null)[];
+            /** Linien */
+            linien?: components["schemas"]["Linie"][];
+            /** Abstaende */
+            abstaende?: components["schemas"]["Abstand"][];
+            /** Standby Kwh */
+            standby_kwh?: number | null;
+            /** Standby Eur */
+            standby_eur?: number | null;
+            /** Erster Plan Erstellt */
+            erster_plan_erstellt?: string | null;
+            /**
+             * Satz De
+             * @default
+             */
+            satz_de: string;
+            /** Hinweise De */
+            hinweise_de?: string[];
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Von
+             * Format: date-time
+             */
+            von: string;
+            /**
+             * Bis
+             * Format: date-time
+             */
+            bis: string;
+            /**
+             * Laeuft Noch
+             * @default false
+             */
+            laeuft_noch: boolean;
+            /** Wp Kw */
+            wp_kw: number;
+            /** Verguetung Ct */
+            verguetung_ct: number;
+            /**
+             * Hat Ofen
+             * @default false
+             */
+            hat_ofen: boolean;
         };
         /** NextExpected */
         NextExpected: {
@@ -3979,6 +4159,8 @@ export interface components {
             outdoor_temp_c?: number | null;
             /** Cop */
             cop?: number | null;
+            /** Planned Cost Eur */
+            planned_cost_eur?: number | null;
             /** Actual Pv Kw */
             actual_pv_kw?: number | null;
             /** Actual Hp Kw */
@@ -5646,6 +5828,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanOut"];
+                };
+            };
+        };
+    };
+    nachbetrachtung_api_v1_plan_nachbetrachtung_get: {
+        parameters: {
+            query: {
+                day: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NachbetrachtungOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 from dch_api.application import rooms as rooms_logic
 from dch_api.application.tibber_invoice import InvoiceFinding, MeasuredPeriod, TibberInvoice
 from hems_core.accounting import EnergyTotals, HeatForecastPoint, PvTaxTotals
+from hems_core.accounting.nachbetrachtung import Nachbetrachtung
 from hems_core.domain import (
     AutoProfile,
     BufferState,
@@ -65,6 +66,10 @@ class PlanIntervalOut(BaseModel):
     # Außentemperatur und ist der zweite Grund, warum die Morgenstunden teuer sind: hoher Preis
     # **und** schlechter COP.
     cop: float | None = None
+    # Was der Optimierer fuer diesen Schritt an Kosten gezaehlt hat: Strom der Waermepumpe und
+    # Ofen, ohne Strafterme. `None`, wo er nicht gerechnet hat. Das Versprechen des Fahrplans;
+    # es wird mit ihm aufbewahrt, und die Nachbetrachtung haelt den eingetretenen Tag dagegen.
+    planned_cost_eur: float | None = None
     # ---------------------------------------------------------------- Was wirklich geschah
     #
     # Der Fahrplan beginnt an der Ortsmitternacht und reicht zwei Tage. Mittags liegt also die
@@ -1419,3 +1424,29 @@ class KontaktwirkungOut(Kontaktwirkung):
     """
 
     days: int
+
+
+class NachbetrachtungOut(Nachbetrachtung):
+    """Ein Ortstag in Euro: was der Fahrplan versprach, was er hielt, was der Tag kostete.
+
+    Sechs Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet
+    (`verglichen`): der erste Fahrplan des Tages mit seinen eigenen Kosten (`versprochen`) und mit
+    den eingetretenen Werten (`erster`), der jeweils letzte Stand des Fahrplans (`letzter`), die
+    Messung (`wirklich`), ein Vergleichslauf mit perfekter Voraussicht (`perfekt`) und dieselbe
+    Strommenge nach dem Wärmebedarf verteilt (`ohne_fuehrung`, geschätzt).
+
+    `abstaende` sind die Stufen dazwischen. Die ersten drei führen vom Versprechen zur
+    Wirklichkeit: Prognosefehler, Nachführen, Eingriff der Maschine. Positiv heißt teurer.
+
+    Eine Linie, die fehlt, hat `verfuegbar=false` und sagt in `grund_de`, warum. Das ist für
+    Tage vor dem 09.11.2026 der Normalfall bei allen Fahrplanlinien: aufbewahrt wird erst seitdem.
+    """
+
+    day: date
+    von: datetime
+    bis: datetime
+    laeuft_noch: bool = False
+    #: Die elektrische Nennleistung, mit der jede Freigabe eines Fahrplans gerechnet ist.
+    wp_kw: float
+    verguetung_ct: float
+    hat_ofen: bool = False

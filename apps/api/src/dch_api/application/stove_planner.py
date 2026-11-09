@@ -97,6 +97,12 @@ class Zwillingspunkt:
     puffer_kwh: float | None
     aussen_c: float
     cop: float
+    #: Was diese Viertelstunde nach der Rechnung des Optimierers kostet: der Strom der
+    #: Wärmepumpe, wenn er sie laufen lässt, und der Ofen, wenn er ihn brennen lässt. Ohne die
+    #: Strafterme der Zielfunktion, denn die sind keine Euro auf einer Rechnung. `None`, wenn der
+    #: Optimierer nicht bis zum Ende kam. Das ist das Versprechen des Fahrplans, gegen das die
+    #: Nachbetrachtung den eingetretenen Tag hält.
+    kosten_eur: float | None = None
 
 
 @dataclass(frozen=True)
@@ -215,6 +221,8 @@ class StovePlan:
     cop: list[float] = field(default_factory=list)
     # Der geplante Pufferinhalt am Ende jedes Intervalls, aus derselben Bilanz wie die Fahrpläne.
     buffer_kwh: list[float] = field(default_factory=list)
+    # Die Kosten je Intervall, so wie der Optimierer sie gezählt hat; siehe `Zwillingspunkt`.
+    kosten_eur: list[float] = field(default_factory=list)
     # Die Ränder, zwischen denen der Inhalt liegen muss. Erst sie machen die Kurve lesbar: 9 kWh
     # sind viel oder wenig, je nachdem, ob der Behälter 12 oder 30 kWh hält.
     buffer_capacity_kwh: float | None = None
@@ -274,6 +282,7 @@ class StovePlan:
             puffer_kwh=self.buffer_kwh[i] if i < len(self.buffer_kwh) else None,
             aussen_c=self.outdoor_c[i],
             cop=self.cop[i],
+            kosten_eur=self.kosten_eur[i] if i < len(self.kosten_eur) else None,
         )
 
     def until(self, t: datetime) -> datetime | None:
@@ -508,6 +517,14 @@ def plan_stove(
         hp_on=list(result.on) or None,
     )
 
+    kosten = kosten_je_intervall(
+        intervals,
+        hp_on=result.on,
+        stove_on=result.stove_on,
+        electric_kw=cfg.heat_pump.nominal_electric_power_kw,
+        dt_h=dt_h,
+    )
+
     gerechnet = result.status in BRAUCHBAR
     if not gerechnet or not (result.stove_on or result.on):
         return StovePlan(
@@ -524,6 +541,7 @@ def plan_stove(
                 start=start,
                 hp_on=list(result.on),
                 buffer_kwh=list(result.buffer_kwh),
+                kosten_eur=kosten,
                 solve_ms=result.solve_ms,
                 mip_gap=result.mip_gap,
                 note_de=(
@@ -547,12 +565,46 @@ def plan_stove(
             starts=result.stove_starts,
             fuel_budget_kg=round(first_budget, 1),
             buffer_kwh=list(result.buffer_kwh),
+            kosten_eur=kosten,
             solve_ms=result.solve_ms,
             mip_gap=result.mip_gap,
             fenster=_je_fenster(intervals, result.stove_on, econ.kg_per_hour, budgets, dt_h),
         )
     )
     return replace(plan, note_de=_note(plan, zuendstrafe_eur=solver.stove_start_penalty_eur))
+
+
+def kosten_je_intervall(
+    intervals: Sequence[Interval],
+    *,
+    hp_on: Sequence[bool],
+    stove_on: Sequence[bool],
+    electric_kw: float,
+    dt_h: float,
+) -> list[float]:
+    """Was jeder Schritt des Fahrplans kostet, mit genau der Rechnung des Optimierers.
+
+    Dieselben zwei Ausdrücke, aus denen `optimize` seine Summen `energy_cost_eur` und
+    `stove_cost_eur` bildet, nur je Intervall statt als Summe: die Wärmepumpe zum Bezugspreis
+    oder, wenn der erwartete Überschuss ihre ganze Leistung deckt, zur entgangenen Vergütung; der
+    Ofen zu seinen Kosten je Betriebsstunde. Die Strafterme fehlen mit Absicht - ein Anlauf kostet
+    in der Zielfunktion 30 Cent, auf der Rechnung nichts.
+
+    **Alles oder nichts beim Überschuss** ist die Vereinfachung des Modells, nicht die Wahrheit:
+    deckt die Sonne zwei von viereinhalb Kilowatt, zählt der Optimierer den vollen Bezugspreis.
+    Hier wird das nicht verbessert, denn gefragt ist, was der Fahrplan *versprochen* hat. Die
+    Nachbetrachtung bewertet den eingetretenen Tag anteilig, und der Abstand steht dort.
+    """
+    out: list[float] = []
+    for i, iv in enumerate(intervals):
+        eur = 0.0
+        if i < len(hp_on) and hp_on[i]:
+            ct = iv.feed_in_ct_kwh if iv.surplus_kw >= electric_kw else iv.price_ct_kwh
+            eur += ct / 100.0 * electric_kw * dt_h
+        if i < len(stove_on) and stove_on[i]:
+            eur += iv.stove_eur_per_h * dt_h
+        out.append(round(eur, 4))
+    return out
 
 
 def stove_eur_per_h(cfg: HemsConfig, *, price_ct_kwh: float, cop: float) -> float:

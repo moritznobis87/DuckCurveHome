@@ -268,6 +268,9 @@ def build_plan(
                 buffer_kwh=z.puffer_kwh if z else None,
                 outdoor_temp_c=z.aussen_c if z else None,
                 cop=z.cop if z else None,
+                # Nur wo der Optimierer auch entschieden hat. Die Kosten gehören zu seinem
+                # Fahrplan; neben einer Entscheidung der Regel wären sie die Kosten von nichts.
+                planned_cost_eur=z.kosten_eur if z and geplant is not None else None,
                 actual_pv_kw=gemessen.pv_kw if gemessen else None,
                 actual_hp_kw=gemessen.waermepumpe_kw if gemessen else None,
                 actual_hp_release=gemessen.anforderung if gemessen else None,
@@ -343,6 +346,7 @@ def plan_als_lauf(plan: PlanOut, now: datetime) -> Lauf | None:
             "stove_on": None if i.planned_stove_on is None else float(i.planned_stove_on),
             "buffer_kwh": i.buffer_kwh,
             "heat_kw": waerme,
+            "cost_eur": i.planned_cost_eur,
         }
 
     return plan_lauf(
