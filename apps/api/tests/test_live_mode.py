@@ -119,9 +119,12 @@ def test_actuation_gates_are_independent(tmp_path: Path) -> None:
         role="api",
         actuation_enabled=False,
     )
-    # Vorgabe: bedienen ja, selbsttätig an der Wärmepumpe nein
+    # Vorgabe: bedienen ja, und seit dem 09.11.2026 auch selbsttätig an der Wärmepumpe. Der
+    # Hausherr hat den Schattenbetrieb beendet („die Planung live schalten"); festgehalten wird das
+    # hier, damit die Umstellung nicht unbemerkt zurückfällt. Die Rückfallebenen E0 und E1 liegen
+    # im Haus, siehe den Kommentar an `heat_pump_actuation_enabled`.
     assert Settings().actuation_enabled is True
-    assert Settings().heat_pump_actuation_enabled is False
+    assert Settings().heat_pump_actuation_enabled is True
     with TestClient(create_app(settings)) as c:
         r = c.post(
             "/api/v1/control/actuators/terrace_light",
@@ -174,3 +177,44 @@ def test_a_source_that_is_not_set_up_says_so_instead_of_vanishing(live_client: T
     assert sources["inexogy"]["online"] is False
     assert "DCH_INEXOGY_EMAIL" in sources["inexogy"]["detail_de"]
     assert "DCH_MYENERGI_SERIAL" in sources["myenergi"]["detail_de"]
+
+
+def test_der_schattenbetrieb_ist_von_aussen_zu_erkennen(tmp_path: Path) -> None:
+    """Ob K1 gestellt wird, muss in der Antwort stehen und nicht nur im Startprotokoll.
+
+    Gemeldet wurde das nicht, aber es ist die Kehrseite davon: bis zum 09.11.2026 stand
+    `heat_pump_actuation_enabled` in keinem Schema und keiner Antwort. Die Oberfläche sagte
+    „Wärmepumpe angefordert 9,8 h", ob der Kontakt gestellt wurde oder nicht - eine Anforderung an
+    niemanden sah genauso aus wie eine, die ankommt. Wer den Schalter umlegt, bekam keine
+    Bestätigung; wer ihn vergisst, keinen Hinweis.
+
+    Geprüft werden beide Lagen, denn nur zusammen sagen sie etwas: der Wert muss dem Schalter
+    folgen und nicht bloß vorhanden sein.
+    """
+
+    def zustand(*, schalten: bool) -> dict[str, object]:
+        settings = Settings(
+            mode="live",
+            database_url=f"sqlite+aiosqlite:///{tmp_path / f'schatten-{schalten}.sqlite'}",
+            db_create_all=True,
+            bridge_tokens=["geheim"],
+            api_token="api-geheim",
+            weather_refresh_min=0,
+            role="api",
+            heat_pump_actuation_enabled=schalten,
+        )
+        with TestClient(create_app(settings)) as c:
+            r = c.get("/api/v1/live/state", headers={"authorization": "Bearer api-geheim"})
+            assert r.status_code == 200, r.text
+            system: dict[str, object] = r.json()["system"]
+            return system
+
+    an = zustand(schalten=True)
+    assert an["hp_actuation"] is True
+    assert "stellt" in str(an["hp_actuation_de"])
+
+    aus = zustand(schalten=False)
+    assert aus["hp_actuation"] is False
+    # Der Satz muss den Unterschied tragen und nicht nur vorhanden sein: lesen ist nicht stellen.
+    assert "liest" in str(aus["hp_actuation_de"])
+    assert "stellt" not in str(aus["hp_actuation_de"])

@@ -255,7 +255,17 @@ export function Dock({ state, readOnly }: { state: LiveState | null; readOnly: b
         <Blatt
           titel="Wärmepumpe"
           status={hpStatus}
-          text={state?.decision?.explanation_de ?? "Warte auf die erste Entscheidung."}
+          // Die Begründung des Reglers sagt, was er entschieden hat. Ob die Entscheidung auch am
+          // Kontakt ankommt, ist eine zweite Frage, und sie stand nirgends: im Schattenbetrieb
+          // las dasselbe Blatt „Freigabe gesetzt", während K1 unberührt blieb.
+          text={[
+            state?.decision?.explanation_de ?? "Warte auf die erste Entscheidung.",
+            state?.system.hp_actuation
+              ? ""
+              : "Der Kontakt K1 wird dabei nicht gestellt, nur mitgelesen: die Wärmepumpe läuft in ihrer eigenen Regelung.",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           modus={hpModus}
           dauern={HP_DAUERN}
           dauerWort={(m) => (m === "on" ? "An für" : "Aus für")}

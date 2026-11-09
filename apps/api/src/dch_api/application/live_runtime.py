@@ -668,6 +668,7 @@ class LiveRuntime:
             planner_status=self.stove_plan.status,
             planner_note_de=self.stove_plan.note_de,
             planner_warn_de=self.stove_plan.warnung_de(),
+            hp_actuation=self.settings.heat_pump_actuation_enabled,
         )
         self._plan_at = now
         self.broker.publish("plan", self.plan.model_dump(mode="json"))
@@ -976,6 +977,12 @@ class LiveRuntime:
                 connection_label_de=self._connection_label(),
                 sources=self._sources(),
                 watch=self._watch(now),
+                hp_actuation=self.settings.heat_pump_actuation_enabled,
+                hp_actuation_de=(
+                    "stellt K1 selbst"
+                    if self.settings.heat_pump_actuation_enabled
+                    else "liest K1 nur mit"
+                ),
             ),
         )
 

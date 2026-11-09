@@ -526,7 +526,14 @@ export function Fahrplan() {
           geplanten. Bei sechs Spalten fiele sie allein in eine zweite Zeile und sähe aus wie ein
           Nachtrag. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-        <Stat label="Wärmepumpe angefordert" value={kennzahlen.wp} tone="ember" hint="im ganzen Horizont" />
+        {/* „Angefordert" braucht die Angabe, bei wem. Lief die Regelung im Schatten, war es eine
+            Anforderung an niemanden, und die Kachel sah genauso aus wie jetzt. */}
+        <Stat
+          label="Wärmepumpe angefordert"
+          value={kennzahlen.wp}
+          tone="ember"
+          hint={plan?.hp_actuation ? "im ganzen Horizont · K1 wird gestellt" : "im ganzen Horizont · K1 wird nur mitgelesen"}
+        />
         <Stat label="Wärmepumpe gelaufen" value={kennzahlen.gelaufen ?? "-"} tone="amber" hint={kennzahlen.gelaufenHinweis} />
         <Stat label="bewusst gemieden" value={kennzahlen.gemieden} tone="muted" hint="teure Stunden ohne Anforderung" />
         <Stat

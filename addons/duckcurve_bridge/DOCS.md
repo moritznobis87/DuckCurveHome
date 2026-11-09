@@ -563,11 +563,20 @@ Heartbeat als „gerade eben“ gilt und die Automation nicht auslöst, solange 
 existiert.
 
 Zusätzlich sollte das Gerät, das den Kontakt schaltet, einen **Auto-Off-Timer** haben (30 min) -
-Rückfallebene E0, unabhängig von jeder Software. Duck Curve Home sendet Freigaben ohnehin nur mit
-begrenzter Laufzeit; der Timer im Gerät ist die Absicherung für den Fall, dass gar nichts mehr kommt.
+Rückfallebene E0, unabhängig von jeder Software.
 
-Erst wenn E0 und E1 stehen, lohnt es sich, in der API `DCH_HEAT_PUMP_ACTUATION_ENABLED=true` zu setzen -
-bis dahin liest Duck Curve Home den Kontakt nur mit.
+**Für K1 sind E0 und E1 nicht zusätzliche Gurte, sondern die einzigen.** Hier stand bis zum
+09.11.2026, Duck Curve Home sende Freigaben ohnehin nur mit begrenzter Laufzeit. Das gilt für den
+MQTT-Weg und nicht für K1: die Wärmepumpen-Kontakte gehen zwingend über Home Assistant
+(`safety == "heat_pump"` schließt den MQTT-Weg aus), und dieser Weg ruft `switch.turn_on` ohne
+jede Frist. Gibt Duck Curve Home frei und verstummt, ist E2 die erste Ebene, die greift - und
+steht die Bridge selbst, bleiben nur E1 und E0.
+
+`DCH_HEAT_PUMP_ACTUATION_ENABLED` steht **seit dem 09.11.2026 auf `true`**, auf Anweisung des
+Hausherrn; vorher las Duck Curve Home den Kontakt nur mit. Wer die Rückfallebenen nicht hat, setzt
+die Variable auf `false`: die Regelung entscheidet dann weiter und zeigt alles an, schaltet aber
+nicht. Welcher Zustand gilt, steht in der Oberfläche auf der Seite „System" und in
+`GET /live/state` unter `system.hp_actuation`.
 
 ## Haustür: Gesichtsscan öffnet die Falle
 

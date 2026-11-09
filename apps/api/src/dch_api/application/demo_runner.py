@@ -587,6 +587,8 @@ class DemoRunner:
                 planner_status=self.stove_plan.status,
                 planner_note_de=self.stove_plan.note_de,
                 planner_warn_de=self.stove_plan.warnung_de(),
+                # Im Vorführhaus kommt die Entscheidung am Kontakt an, siehe `live_state`.
+                hp_actuation=True,
             )
             self._plan_at = now
             self.broker.publish("plan", self.plan.model_dump(mode="json"))
@@ -1120,6 +1122,12 @@ class DemoRunner:
                 sse_clients=self.broker.client_count,
                 version=VERSION,
                 connection_label_de="Demo-Modus" if self.settings.mode == "demo" else "live",
+                # In der Vorführung kommt die Entscheidung am Kontakt an, und zwar immer: das
+                # Vorführhaus hat kein Relais, das man schonen müsste, und der Schalter der
+                # Laufzeit gilt für echte Hardware. „Stellt K1" ist hier also die Wahrheit, nicht
+                # die Einstellung.
+                hp_actuation=True,
+                hp_actuation_de="stellt K1 im Vorführhaus",
             ),
         )
 

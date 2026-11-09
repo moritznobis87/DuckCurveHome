@@ -367,10 +367,21 @@ Schatten zuerst, aber gestuft, denn die beiden Stellgrößen sind unterschiedlic
 Automatik darüber nur standardmäßig abgeschaltet, das Wirkungsmodell existiert in `room_shift`, und
 die Schutzregeln sind reichlich.
 
-**K1 bleibt im Schatten**, bis die Auswertung aus Abschnitt 2 zeigt, was der Kontakt auslöst. Blind
-darauf zu stellen würde die Nachbetrachtung mit einer unbekannten Größe verunreinigen, und zwar in
-genau der Linie, an der das Gebäudemodell beurteilt werden soll. `heat_pump_actuation_enabled` ist
-ein Schalter und keine Arbeit.
+~~**K1 bleibt im Schatten**, bis die Auswertung aus Abschnitt 2 zeigt, was der Kontakt auslöst.~~
+**Beendet am 09.11.2026 auf Anweisung des Hausherrn** („die Planung live schalten"). Der Vorbehalt
+wurde ihm genannt und verworfen; `heat_pump_actuation_enabled` steht auf `true`, und die
+Regelentscheidung stellt K1 selbst.
+
+Was damit weiter gilt und was es kostet: die Auswertung aus Abschnitt 2 fehlt nach wie vor, also
+geht in die Nachbetrachtung von jetzt an eine unbekannte Größe ein - in genau der Linie, an der das
+Gebäudemodell beurteilt werden soll. Wer die Wirkung von K1 später aus dem Bestand bestimmt, muss
+den 09.11.2026 als Bruchstelle behandeln: davor hat der Kontakt getan, was das Haus wollte, danach
+auch, was DCH wollte. Schritt 3 der Reihenfolge wird dadurch nicht kleiner, sondern dringlicher.
+
+Sichtbar ist der Zustand jetzt überall, wo er die Lesart ändert: `SystemStatusOut.hp_actuation` und
+`PlanOut.hp_actuation`, auf der Seite „System", im Bedienblatt der Wärmepumpe und an der Kachel
+„Wärmepumpe angefordert". Vorher stand er in keinem Schema und keiner Antwort, nur in einer
+Logzeile beim Start - eine Anforderung an niemanden sah genauso aus wie eine, die ankommt.
 
 ## 14. Reihenfolge
 

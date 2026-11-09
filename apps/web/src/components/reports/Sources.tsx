@@ -50,6 +50,21 @@ export function Sources() {
 
   return (
     <div className="flex flex-col gap-2">
+      {/* Nicht eine Quelle, sondern eine Vollmacht: stellt diese Anlage den Wärmepumpen-Kontakt
+          selbst, oder liest sie ihn nur mit? Die Zeile steht oben, weil jede andere Zahl auf
+          dieser Seite anders zu lesen ist, je nachdem wie sie ausfällt. */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">
+        <span className="flex items-center gap-2">
+          <Dot tone={state.system.hp_actuation ? "ok" : "muted"} />
+          <span className="text-[14px] text-text-1">Wärmepumpen-Kontakt K1</span>
+        </span>
+        <span className="mono w-full text-[13px] leading-[1.5] text-text-3 sm:w-auto">
+          {state.system.hp_actuation_de}
+          {state.system.hp_actuation
+            ? " · Rückfallebenen E0 (Auto-Off im Relais) und E1 (Wächter in Home Assistant) liegen im Haus"
+            : " · der Regler entscheidet, der Kontakt bleibt unberührt"}
+        </span>
+      </div>
       {sources.map((s) => (
         <div
           key={s.name}
