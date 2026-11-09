@@ -2721,6 +2721,48 @@
             "type": "array",
             "title": "Frames"
           },
+          "preis_ct_kwh": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Preis Ct Kwh"
+          },
+          "geplant_wp": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Geplant Wp"
+          },
+          "geplant_ofen": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Geplant Ofen"
+          },
           "hinweise_de": {
             "items": {
               "type": "string"

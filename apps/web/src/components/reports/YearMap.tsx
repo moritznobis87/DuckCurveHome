@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api/client";
 import type { YearMap as YearMapData } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
@@ -58,8 +59,28 @@ export function YearMapReport() {
   const active = METRICS.find((m) => m.key === metric) ?? METRICS[0];
   const grid = useMemo(() => (data?.metrics as Record<string, Array<Array<number | null>>> | undefined)?.[metric] ?? [], [data, metric]);
   const option = useMemo(
-    () => yearMap(data?.days ?? [], grid, { unit: active.unit, ramp: [...active.ramp], diverging: "diverging" in active ? active.diverging : false, digits: "digits" in active ? active.digits : 2 }),
+    () =>
+      yearMap(data?.days ?? [], grid, {
+        unit: active.unit,
+        ramp: [...active.ramp],
+        diverging: "diverging" in active ? active.diverging : false,
+        digits: "digits" in active ? active.digits : 2,
+        klickHinweis: "Klick öffnet die Wiedergabe dieser Stunde",
+      }),
     [data, grid, active],
+  );
+  // Aus der Übersicht in den Augenblick: ein Feld ist ein Tag und eine Stunde, und die
+  // Wiedergabe kann genau dort beginnen. Die Karte zeigt, *dass* an einem Dienstag im Februar
+  // etwas anders war; die Wiedergabe zeigt, was.
+  const router = useRouter();
+  const zurWiedergabe = useCallback(
+    (x: number, y: number) => {
+      const tag = data?.days?.[Math.round(x)];
+      const stunde = Math.round(y);
+      if (!tag || !Number.isFinite(stunde) || stunde < 0 || stunde > 23) return;
+      router.push(`/waerme/wiedergabe?day=${tag}&t=${stunde}`);
+    },
+    [data, router],
   );
   const extremes = useMemo(() => {
     const flat = grid.flat().filter((v): v is number => typeof v === "number");
@@ -103,7 +124,7 @@ export function YearMapReport() {
       <Card style={{ padding: 16, height: "clamp(360px, calc(100dvh - 250px), 780px)" }}>
         <CardHead title={active.label} right={active.unit || undefined} />
         <div className="min-h-0 flex-1">
-          {loading && !data ? <Note>Jahr wird geladen …</Note> : data && data.hours_with_data === 0 ? <Note>Für {year} liegen keine Stundenwerte vor.</Note> : <EChart option={option} />}
+          {loading && !data ? <Note>Jahr wird geladen …</Note> : data && data.hours_with_data === 0 ? <Note>Für {year} liegen keine Stundenwerte vor.</Note> : <EChart option={option} onKlick={zurWiedergabe} className="cursor-pointer" />}
         </div>
       </Card>
 

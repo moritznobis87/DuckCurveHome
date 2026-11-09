@@ -641,6 +641,26 @@ button.haus-block-kopf:hover .haus-block-pfeil { color: var(--text-1); }
 .wg-datum { font-size: 13px; color: var(--text-1); background: transparent; border: 1px solid var(--line-1); border-radius: 6px; padding: 5px 8px; color-scheme: dark; }
 .wg-wahl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--text-3); background: transparent; border: 1px solid var(--line-1); border-radius: 999px; padding: 5px 10px; cursor: pointer; }
 .wg-wahl-an { color: var(--petrol); background: var(--amber); border-color: var(--amber); }
-/* Feste Höhe: drei Gitter mit zusammen 118 Punkten plus Achse. Ohne sie misst ECharts null. */
-.wg-band { height: 134px; }
-.wg-bandbeschriftung { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-left: 44px; font-size: 11px; letter-spacing: .06em; }
+/* Die Höhe des Bands setzt die Komponente selbst, je nachdem, ob es einen Ofen gibt. Ohne
+   feste Höhe misst ECharts null. */
+.wg-band { width: 100%; }
+/* Uhr und Band nebeneinander. Die Uhr hat eine feste Spalte; das Band nimmt den Rest und darf
+   nicht unter eine Breite fallen, in der die Zeitachse noch lesbar ist - dann bricht es um. */
+.wg-tag { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); grid-template-areas: "uhr band" "legende legende"; gap: 10px 28px; align-items: center; margin-top: 6px; }
+.wg-tag-band { grid-area: band; min-width: 0; }
+@media (max-width: 860px) { .wg-tag { grid-template-columns: minmax(0, 1fr); grid-template-areas: "uhr" "legende" "band"; justify-items: center; } .wg-tag-band { width: 100%; } }
+
+/* Die Tagesuhr. Schrift in Textfarben; die Farben gehören den Ringen. */
+/* `display: contents`: die Uhr und ihre Legende sind zwei Felder desselben Rasters. Die Legende
+   gehört unter Uhr *und* Band, denn beide sprechen dieselben Farben; unter der Uhr allein zog sie
+   die linke Spalte lang und ließ rechts ein Loch. */
+.uhr { display: contents; }
+.uhr-bild { grid-area: uhr; display: block; width: 100%; max-width: 300px; height: auto; justify-self: center; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.uhr-bild:active { cursor: grabbing; }
+.uhr-stunde { font-family: var(--font-mono); font-size: 11px; fill: var(--text-3); }
+.uhr-zeit { font-size: 38px; font-weight: 200; letter-spacing: -.03em; font-variant-numeric: tabular-nums; fill: var(--text-1); }
+.uhr-wert { font-size: 11.5px; font-weight: 300; fill: var(--text-2); }
+.uhr-legende { grid-area: legende; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 11.5px; line-height: 1.4; color: var(--text-3); }
+.uhr-legende li { display: flex; align-items: baseline; gap: 8px; }
+.uhr-marke { flex: none; width: 10px; height: 10px; border-radius: 2px; transform: translateY(1px); }
+.uhr-marke-umriss { background: transparent; border: 1px solid; }

@@ -19,6 +19,7 @@ der eBUS-Adapter. Bis dahin schreibt die Anzeige „Vorlauf ?" statt einer erfun
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 
 from dch_api.schemas import (
@@ -29,7 +30,6 @@ from dch_api.schemas import (
     AnlageStromOut,
     AnlageWaermepumpeOut,
     AnlageWarmwasserOut,
-    RoomsLiveOut,
     StoveLiveOut,
 )
 from hems_core.domain import (
@@ -187,12 +187,18 @@ def speicher(
     )
 
 
-def heizkreis(raeume: RoomsLiveOut) -> AnlageHeizkreisOut:
-    """Wie viele Räume nehmen gerade Wärme: ein Raum mit irgendeinem offenen Kreis zählt."""
-    bekannt = [r.valve for r in raeume.rooms if r.valve is not None]
+def heizkreis(ventile: Sequence[float | None]) -> AnlageHeizkreisOut:
+    """Wie viele Räume nehmen gerade Wärme: ein Raum mit irgendeinem offenen Kreis zählt.
+
+    Ein Eintrag je Raum, `None` für einen Raum ohne Messwert. Die Ventilstellungen und nicht das
+    ganze Raumobjekt, weil mehr hier nicht gebraucht wird - und weil die Wiedergabe sie aus der
+    Raumhistorie hat, in der es kein Live-Objekt gibt. Solange diese Funktion das Raumobjekt
+    verlangte, blieb der Heizkreis im Rückblick dunkel, obwohl die Daten da waren.
+    """
+    bekannt = [v for v in ventile if v is not None]
     offen = sum(1 for v in bekannt if v > 0)
     return AnlageHeizkreisOut(
-        rooms_total=len(raeume.rooms),
+        rooms_total=len(ventile),
         rooms_open=offen,
         open_share=round(sum(bekannt) / len(bekannt), 3) if bekannt else None,
         running=offen > 0,
@@ -226,7 +232,7 @@ def zusammensetzen(
     dhw_outlet: Measurement,
     dhw_inlet: Measurement,
     wp_vorlauf: Measurement,
-    raeume: RoomsLiveOut,
+    ventile: Sequence[float | None],
     zeilen: list[Zeile],
 ) -> AnlageOut:
     return AnlageOut(
@@ -236,6 +242,6 @@ def zusammensetzen(
         waermepumpe=waermepumpe(hp, snap, wp_vorlauf),
         ofen=ofen(stove, cfg.stove, stove_return, stove_pump),
         speicher=speicher(snap, buffer, cfg.buffer, zeilen, now),
-        heizkreis=heizkreis(raeume),
+        heizkreis=heizkreis(ventile),
         warmwasser=warmwasser(dhw_outlet, dhw_inlet, zeilen, now),
     )

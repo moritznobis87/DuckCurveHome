@@ -470,6 +470,9 @@ export function yearMap(
     max?: number;
     // Über vier Wochen gibt es keine Monatsanfänge zu beschriften; dort gehören Tage an die Achse.
     xLabel?: "month" | "day";
+    // Eine letzte, blasse Zeile im Hinweisfenster: was ein Klick auf dieses Feld tut. Nur wo ein
+    // Klick etwas tut; ein Versprechen ohne Wirkung wäre schlimmer als keines.
+    klickHinweis?: string;
   },
 ): EChartsCoreOption {
   const data: Array<[number, number, number]> = [];
@@ -507,7 +510,8 @@ export function yearMap(
           year: "numeric",
         });
         const hour = String(p.data[1]).padStart(2, "0");
-        return `<div style="color:rgba(255,255,255,.6)">${label}</div><div>${hour}:00 - ${hour}:59</div><div style="margin-top:3px">${de1(p.data[2], digits)} ${opts.unit}</div>`;
+        const klick = opts.klickHinweis ? `<div style="margin-top:5px;color:rgba(255,255,255,.48)">${opts.klickHinweis}</div>` : "";
+        return `<div style="color:rgba(255,255,255,.6)">${label}</div><div>${hour}:00 - ${hour}:59</div><div style="margin-top:3px">${de1(p.data[2], digits)} ${opts.unit}</div>${klick}`;
       },
     },
     // Die kompakte Variante braucht oben mehr Luft: dort liegt die Skala waagerecht über der

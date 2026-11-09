@@ -15,27 +15,29 @@ echarts.use([LineChart, BarChart, ScatterChart, PieChart, HeatmapChart, GraphicC
 
 /** Der eine Chart-Baustein: Thema an einer Stelle, setOption auf lebender Instanz (Live-Daten), Resize, Dispose.
  *
- *  `onZeitKlick` bekommt den x-Wert der angeklickten Stelle, umgerechnet aus Bildschirmpunkten in
- *  Datenkoordinaten des ersten Gitters. Gebraucht für den Spielkopf der Wiedergabe: dort ist das
- *  Tagesband selbst der Schieber, und ein Klick springt zu dieser Uhrzeit. Bewusst der Rohklick auf
- *  der Zeichenfläche und nicht `click` auf einer Reihe - getroffen werden soll der Zeitpunkt, nicht
- *  der Balken, und zwischen zwei Balken liegt bei 288 Bildern mehr Luft als Fläche.
+ *  `onKlick` bekommt die angeklickte Stelle, umgerechnet aus Bildschirmpunkten in die
+ *  Datenkoordinaten des ersten Gitters: auf einer Zeitachse die Zeit, auf einer Kategorienachse
+ *  die Nummer der Kategorie. Zwei Stellen brauchen das. Im Tagesband der Wiedergabe ist das Band
+ *  selbst der Schieber, und ein Klick springt zu dieser Uhrzeit. In der Jahreskarte ist ein Feld
+ *  ein Tag und eine Stunde, und ein Klick öffnet die Wiedergabe genau dort. Bewusst der Rohklick
+ *  auf der Zeichenfläche und nicht `click` auf einer Reihe - getroffen werden soll die Stelle,
+ *  nicht die Marke, und ein Feld ohne Wert hat gar keine Marke, die man treffen könnte.
  */
 export function EChart({
   option,
   className,
-  onZeitKlick,
+  onKlick,
 }: {
   option: EChartsCoreOption;
   className?: string;
-  onZeitKlick?: (x: number) => void;
+  onKlick?: (x: number, y: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.ECharts | null>(null);
   // In einer Referenz und nicht im Effekt-Abhängigkeitsfeld: sonst würde der Chart bei jedem
   // Neuzeichnen der Elternkomponente verworfen und neu angelegt, und die Wiedergabe flackerte.
-  const klick = useRef(onZeitKlick);
-  klick.current = onZeitKlick;
+  const klick = useRef(onKlick);
+  klick.current = onKlick;
 
   useEffect(() => {
     const el = ref.current;
@@ -52,7 +54,7 @@ export function EChart({
       if (!klick.current) return;
       const p = c.convertFromPixel({ gridIndex: 0 }, [e.offsetX, e.offsetY]);
       // Außerhalb des Gitters gibt ECharts NaN zurück; ein Klick auf den Rand ist kein Sprung.
-      if (Array.isArray(p) && Number.isFinite(p[0])) klick.current(Number(p[0]));
+      if (Array.isArray(p) && Number.isFinite(p[0])) klick.current(Number(p[0]), Number(p[1]));
     };
     c.getZr().on("click", aufKlick);
     return () => {

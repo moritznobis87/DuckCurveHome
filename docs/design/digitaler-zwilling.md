@@ -410,6 +410,7 @@ Logzeile beim Start - eine Anforderung an niemanden sah genauso aus wie eine, di
 7. Harte Komfortgrenze 1,0 K mit Rückfallebene.
 8. Raumsollwert stellen, K1 im Schatten.
 9. Nachbetrachtung: fünf Linien, zwei Perfect-Foresight-Läufe, Kostenzeile der Beschneidung.
+   Voraussetzung geschaffen am 09.11.2026: der Fahrplan von damals liegt jetzt im Archiv.
    Vorgezogen am 08.11.2026: die Prognoseseite davon steht - Fehler je Reihe und je
    Vorlaufzeit aus dem Archiv, auf `/system`. Offen bleibt alles, was Euro sagt.
 10. ~~Zeitschieber am Schema.~~ Gebaut am 09.11.2026: die Seite „Wiedergabe" unter
@@ -420,11 +421,25 @@ Logzeile beim Start - eine Anforderung an niemanden sah genauso aus wie eine, di
     Ein Bildweg, nicht zwei - sonst zeigte der Rückblick in einer Woche ein anderes Haus als der
     Augenblick.
 
-    Zwei Lücken bleiben und werden nicht gefüllt: die Ventilstellungen der Räume stehen nicht in
-    der Minutentabelle, der Heizkreis bleibt im Rückblick also dunkel, und wie lange die
-    Wärmepumpe vor dem ersten Bild schon lief, steht dort auch nicht. Beides sagt die Antwort in
-    `hinweise_de`, und die Seite zeigt es an. Fehlt zu einem Zeitpunkt jede Messung, entsteht kein
-    Bild: eine Lücke in der Erfassung bleibt sichtbar, statt als ruhiges Haus durchzulaufen.
+    Eine Lücke bleibt und wird nicht gefüllt: wie lange die Wärmepumpe vor dem ersten Bild schon
+    lief. Fehlt zu einem Zeitpunkt jede Messung, entsteht kein Bild: eine Lücke in der Erfassung
+    bleibt sichtbar, statt als ruhiges Haus durchzulaufen.
+
+    Nachgezogen am selben Tag, nach zwei eigenen Fehlbehauptungen. Erstens stand hier, die
+    Ventilstellungen stünden nicht in der Minutentabelle und der Heizkreis bleibe dunkel; sie
+    stehen dort, und der Heizkreis kommt jetzt aus der Raumhistorie. Zweitens wurde vorgeschlagen,
+    die Wiedergabe gegen „die Fahrpläne im Archiv" zu legen - die es nicht gab. **Fahrpläne werden
+    seit dem 09.11.2026 aufbewahrt** (Art `plan` im Prognosearchiv, stündlich), und die Wiedergabe
+    stellt die Absicht neben die Ausführung: in der Tagesuhr als Umriss-Ring unmittelbar über dem
+    gefüllten Ring des Betriebs, im Tagesband als blasse Zeile über der kräftigen. Wo Absicht
+    steht und darunter kein Betrieb, wollte der Fahrplan und die Maschine nicht - das ist die
+    K1-Frage aus Schritt 3 als Bild, noch nicht als Zahl. Für die Tage vor dem 09.11.2026 ist die
+    Absicht nicht nachholbar.
+
+    Dazu die **Tagesuhr**: der Ortstag als Ring, Mitternacht oben, Ringe für Preis, Sonne, Absicht
+    und Betrieb, der Zeiger am Spielkopf, zum Anfassen und Drehen. Sie ist zum Zurechtfinden da,
+    das Band daneben zum Ablesen. Und der Weg hinein: ein Klick auf ein Feld der Jahreskarte
+    öffnet die Wiedergabe dieses Tages an dieser Stunde.
 11. Lernen: H aus Ofenstunden, Gütegrad, Dämpfung, menschliche Durchsicht im ersten Winter.
 12. `shift_plan` entfernen.
 

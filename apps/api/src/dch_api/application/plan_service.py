@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from dch_api.application.stove_planner import Zwillingspunkt
 from dch_api.schemas import PlanIntervalOut, PlanOut, PriceWindowOut
 from hems_core.domain import HemsConfig
+from hems_core.forecasting import Lauf, plan_lauf
 from hems_core.planning import (
     PricePoint,
     PriceWindow,
@@ -279,4 +280,57 @@ def build_plan(
         next_cheap_window=_out(nxt) if nxt else None,
         buffer_capacity_kwh=buffer_capacity_kwh,
         buffer_min_kwh=buffer_min_kwh,
+    )
+
+
+#: Wie oft ein Fahrplan aufbewahrt wird. Gerechnet wird er alle Viertelstunde; abgelegt wird er
+#: je voller Stunde einmal. Jede Rechnung abzulegen wären rund 55 000 Punkte am Tag für eine
+#: Reihe, deren Nachbarn sich fast gleichen; stündlich sind es ein Viertel davon, und die
+#: Nachbetrachtung fragt ohnehin nach der Absicht des Tages und nicht nach der jeder Minute. Die
+#: Entscheidung jeder einzelnen Viertelstunde steht davon unabhängig in `control_decisions`.
+ABLAGE_JE_MIN = 60
+
+
+def ablage_faellig(zuletzt: datetime | None, now: datetime) -> bool:
+    """Ob dieser Fahrplan abgelegt wird: der erste nach dem Start und der erste jeder Stunde."""
+    if zuletzt is None:
+        return True
+    return now.replace(minute=0, second=0, microsecond=0) > zuletzt.replace(
+        minute=0, second=0, microsecond=0
+    )
+
+
+def plan_als_lauf(plan: PlanOut, now: datetime) -> Lauf | None:
+    """Den Fahrplan in die Form bringen, in der das Prognosearchiv ihn aufnimmt.
+
+    Drei Zustände, nicht zwei. `release` ist eine Freigabe, `off` und `avoid` sind ein Nein - das
+    eine vom Optimierer, das andere von der Preisregel, in der Absicht aber dasselbe: jetzt nicht.
+    `free` heißt, der Fahrplan sagt nichts, und dann wird auch nichts abgelegt. Ein Nein und ein
+    Schweigen in einen Topf zu werfen war schon im Regler ein Fehler; im Archiv wäre er nicht mehr
+    zu beheben.
+    """
+
+    def groessen(i: PlanIntervalOut) -> dict[str, float | None]:
+        frei: float | None = None
+        if i.planned_hp_state == "release":
+            frei = 1.0
+        elif i.planned_hp_state in ("off", "avoid"):
+            frei = 0.0
+        waerme = (
+            None
+            if i.heat_demand_kw is None
+            else round(i.heat_demand_kw + (i.dhw_demand_kw or 0.0), 3)
+        )
+        return {
+            "hp_release": frei,
+            "stove_on": None if i.planned_stove_on is None else float(i.planned_stove_on),
+            "buffer_kwh": i.buffer_kwh,
+            "heat_kw": waerme,
+        }
+
+    return plan_lauf(
+        now,
+        [(i.ts, groessen(i)) for i in plan.intervals],
+        schritt_min=15,
+        anbieter=plan.planner,
     )
