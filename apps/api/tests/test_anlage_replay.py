@@ -424,3 +424,25 @@ def test_ein_ende_mitten_im_raster_zaehlt_das_angebrochene_bild_mit() -> None:
     assert out.erwartet == 49
     assert len(out.frames) == 49, "vollständig erfasst heißt: so viele wie erwartet, nicht mehr"
     assert not any("fehlen" in h for h in out.hinweise_de)
+
+
+def test_standby_ist_im_rueckblick_kein_lauf() -> None:
+    """Die Schwelle ist die der Anlage, dieselbe wie auf der Live-Seite.
+
+    Die erste Fassung setzte eigene 0,05 kW. Eine Umwälzpumpe mit 80 W galt dann im Rückblick als
+    laufende Wärmepumpe und auf der Seite „Anlage" als stehende - zwei Wahrheiten über dieselbe
+    Minute, und zwar in dem Modul, dessen Kopf verspricht, es gebe nur einen Bildweg.
+    """
+    standby = bilder(tag(30, wp=0.08), CFG, von=VON, bis=VON + timedelta(minutes=15), step_min=15)
+    assert standby[0].waermepumpe.running is False
+    assert standby[0].waermepumpe.power_kw == 0.08, (
+        "die Leistung bleibt stehen, nur das Urteil ändert sich"
+    )
+    an_der_schwelle = bilder(
+        tag(30, wp=CFG.heat_pump.running_threshold_kw),
+        CFG,
+        von=VON,
+        bis=VON + timedelta(minutes=15),
+        step_min=15,
+    )
+    assert an_der_schwelle[0].waermepumpe.running is True, "größer oder gleich, wie im Tracker"

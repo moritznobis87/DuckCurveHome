@@ -42,7 +42,11 @@ verdrahtet (`docs/OPEN_QUESTIONS.md`).
 **Was K1 physikalisch auslöst, hat nie jemand gemessen.** Sollwertanhebung, Warmwasserladung, um
 wie viel Kelvin, wie lange sie nachläuft: im Projektplan seit September als offene Frage 25.8.
 Beide Reihen, `hp_release_contact` und `heat_pump_power_kw`, liegen minütlich und dauerhaft in
-`measurements_minute`. Eine Auswertung gibt es nicht.
+`measurements_minute`. ~~Eine Auswertung gibt es nicht.~~ Seit dem 09.11.2026 gibt es sie: eine
+Ereignisstudie über alle Schließvorgänge, mit Vergleich zur selben Tageszeit, auf der Seite
+`Wärme → Wirkung` (`docs/K1_WIRKUNG.md`). Sie sagt, ob und wann die Maschine nach dem Schließen
+anläuft und wie viel sie dann zieht. Was der Kontakt in der Maschine bewirkt, also Sollwertanhebung
+oder Warmwasserladung, beantwortet sie nicht.
 
 **Die zweite Stellgröße wirkt verlässlich.** Der Controme-Raumsollwert wird seit dem 23.10.2026
 geschrieben, 5 bis 30 Grad, auf Zehntel gerundet, mit Deckel 1,5 K, Schonfrist 10 Minuten,
@@ -398,6 +402,13 @@ Logzeile beim Start - eine Anforderung an niemanden sah genauso aus wie eine, di
    Vorarbeit am 08.11.2026: beide Reihen stehen auf der Seite „Fahrplan" untereinander, je
    Viertelstunde des laufenden Tages. Das ist die Ansicht, nicht die Auswertung - gezählt, gemittelt
    und beurteilt wird noch nichts.
+   Gebaut am 09.11.2026: die Ereignisstudie in `hems_core/thermal/kontaktwirkung.py`, der Endpunkt
+   `GET /anlage/kontaktwirkung` und die Seite `Wärme → Wirkung`. Gezählt wird jeder Schließvorgang
+   bei stehender Maschine, verglichen wird mit Momenten ohne Schließvorgang zur selben Tageszeit,
+   und ein Urteil gibt es erst, wenn sich die 95-Prozent-Bereiche beider Quoten nicht überlappen.
+   **Das Werkzeug ist da, das Ergebnis für das Haus noch nicht:** geprüft ist es an der Vorführung,
+   den Bestand des Hauses hat es am 09.11.2026 noch nicht gesehen. Methode und Grenzen:
+   `docs/K1_WIRKUNG.md`.
 4. Teilpaket `twin/` und Schichtenvertrag.
 5. Wärme als beobachtete Größe, COP als Ergebnis, Carnot mal Gütegrad.
 6. Der COP in den Löser: `planning/milp.py` rechnet heute mit festen Nennwerten.
@@ -447,7 +458,10 @@ Logzeile beim Start - eine Anforderung an niemanden sah genauso aus wie eine, di
 
 * **Was K1 auslöst, ist unbekannt.** Projektplan 25.8, offen seit September. Darauf ruht die
   Vollmacht des Fahrplans. Seit dem 08.11.2026 wenigstens sichtbar: Anforderung und gezogene
-  Leistung stehen auf der Seite „Fahrplan" untereinander.
+  Leistung stehen auf der Seite „Fahrplan" untereinander. Seit dem 09.11.2026 auswertbar: die Seite
+  „Wirkung" zählt die Schließvorgänge und stellt sie gegen Momente ohne K1. Unbekannt bleibt es,
+  bis sie im Haus genug Ereignisse für ein Urteil hat, und auch dann ist es ein Zusammenhang in
+  der Zeit und keine Ursache; der Pufferzustand geht nicht in den Vergleich ein.
 * **H und tau sind Schätzungen.** 0,22 kW/K und 25 h, laut `docs/SENSORIK.md` „nie mit der
   Wirklichkeit abgeglichen".
 * **Die Aufstellraumtemperatur des Puffers ist nicht gemessen**, der Verlustterm rechnet gegen die

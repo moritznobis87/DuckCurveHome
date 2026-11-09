@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, Anlage, AnlageReplay,
+import type { ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung,
   House, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
@@ -79,6 +79,8 @@ export const api = {
   /** Dieselben Bilder ueber einen vergangenen Ortstag: die Wiedergabe. Eine Abfrage je Tag. */
   anlageWiedergabe: (day: string, stepMin = 5) =>
     request<AnlageReplay>(`/anlage/wiedergabe?day=${day}&step_min=${stepMin}`),
+  /** Was K1 auslöst: die Ereignisstudie über 7, 30 oder 90 Tage. */
+  kontaktwirkung: (days = 30) => request<Kontaktwirkung>(`/anlage/kontaktwirkung?days=${days}`),
   // Dauerhaft, ohne Frist: derselbe Griff wie in Contromes eigener Oberflaeche.
   setRoomSetpoint: (id: number, setpointC: number) =>
     request<RoomSetpointResult>(`/rooms/${id}/setpoint`, { method: "POST", body: JSON.stringify({ setpoint_c: setpointC }) }),

@@ -68,9 +68,6 @@ Zeile = dict[str, float | str | None]
 #: Wie weit jedes Bild in die Minutenreihe zurücksieht. Dieselbe Spanne wie live: genug für die
 #: Nettoleistung des Speichers (eine Viertelstunde plus Lücke) und für eine laufende Zapfung.
 RUECKBLICK_MIN = 120
-#: Ab dieser elektrischen Leistung gilt die Wärmepumpe als laufend. Dieselbe Schwelle wie die
-#: Kennzahl „gelaufen" auf der Fahrplanseite; wer sie hier anders setzt, erzeugt zwei Wahrheiten.
-LAEUFT_AB_KW = 0.05
 #: Die Reihen, die ein Bild überhaupt braucht. Alles andere aus der Minutentabelle bleibt liegen.
 REIHEN: tuple[str, ...] = (
     "pv_power_kw",
@@ -187,8 +184,15 @@ class Takt:
     gestoppt: datetime | None = None
     starts: int = 0
 
-    def schritt(self, leistung: float | None, ts: datetime) -> HeatPumpState:
-        laeuft = (leistung or 0.0) > LAEUFT_AB_KW
+    def schritt(self, leistung: float | None, ts: datetime, laeuft_ab_kw: float) -> HeatPumpState:
+        """Ein Bild weiter. `laeuft_ab_kw` ist `heat_pump.running_threshold_kw`.
+
+        Dieselbe Schwelle und derselbe Vergleich wie im `HeatPumpTracker` der Laufzeit. Die erste
+        Fassung setzte hier eigene 0,05 kW: eine Umwälzpumpe mit 80 W galt dann im Rückblick als
+        laufende Wärmepumpe und auf der Seite „Anlage" als stehende. Der Kommentar darüber warnte
+        vor genau diesen zwei Wahrheiten und verglich mit der falschen Stelle.
+        """
+        laeuft = (leistung or 0.0) >= laeuft_ab_kw
         if self.laeuft is None:
             # Das erste Bild ist kein Wechsel. Weder ein Anlauf noch ein Stillstand beginnt hier,
             # also bleiben Anfang und Ende leer, bis wirklich einer zu sehen ist.
@@ -286,7 +290,9 @@ def bilder_mit_zeile(
             ts += schritt
             continue
         snap = schnappschuss(zeile, ts)
-        hp = takt.schritt(_zahl(zeile, "heat_pump_power_kw"), ts)
+        hp = takt.schritt(
+            _zahl(zeile, "heat_pump_power_kw"), ts, cfg.heat_pump.running_threshold_kw
+        )
         k1 = _zahl(zeile, "hp_release_contact")
         hp = hp.model_copy(update={"release_contact_on": bool(k1 and k1 > 0.5)})
         rueck = [

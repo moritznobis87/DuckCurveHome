@@ -25,6 +25,7 @@ from dch_api.schemas import (
     HouseOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
+    KontaktwirkungOut,
     LiveStateOut,
     Period,
     PlanOut,
@@ -61,6 +62,7 @@ class Runtime(Protocol):
     async def anlage(self) -> AnlageOut: ...
 
     async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut: ...
+    async def kontaktwirkung(self, days: int) -> KontaktwirkungOut: ...
     async def set_room_setpoint(
         self, room_id: int, setpoint_c: float
     ) -> tuple[bool, float, str]: ...
