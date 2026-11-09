@@ -81,6 +81,11 @@ function de(x: number, n = 1): string {
   return x.toFixed(n).replace(".", ",");
 }
 
+/** Viertelstunden als Stunden. Auch ausserhalb der Kennzahlen gebraucht, darum hier oben. */
+function viertelStunden(n: number): string {
+  return `${de(n / 4, 1)} h`;
+}
+
 function uhr(ts: string): string {
   const d = new Date(ts);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -182,6 +187,11 @@ export function Fahrplan() {
         value: [t(i.ts), i.actual_hp_release ? 1 : 0.12],
         itemStyle: { color: i.actual_hp_release ? C.heatPump : "rgba(255,255,255,.14)" },
       }));
+    // Der Ofenstreifen ist auf dieser Anlage fast immer leer, und das ist keine Panne: bei 450 Euro
+    // je Tonne liegt er dicht am Grenzpreis der Wärmepumpe und verliert an der Zündstrafe. Eine
+    // leere Leiste sagt das nicht, also sagt es der Hinweis - und die Zahlen dazu die Fußzeile.
+    const hatOfenFahrplan = iv.some((i) => i.planned_stove_on != null);
+    const ofenGeplant = iv.some((i) => i.planned_stove_on);
     const ofen = iv
       .filter((i) => i.planned_stove_on != null)
       .map((i) => ({
@@ -452,13 +462,21 @@ export function Fahrplan() {
         ...(hatWpIst ? [] : [leererHinweis(FLAECHEN[4].top + FLAECHEN[4].hoehe / 2, "keine Messung der Wärmepumpe")]),
         ...(hatAnforderung ? [] : [leererHinweis(FLAECHEN[6].top + 4, "kein Kontaktzustand gemessen")]),
         ...(hatIst ? [] : [leererHinweis(FLAECHEN[1].top + FLAECHEN[1].hoehe / 2, "keine Messung im Horizont")]),
+        ...(ofenGeplant
+          ? []
+          : [
+              leererHinweis(
+                FLAECHEN[7].top + 4,
+                hatOfenFahrplan ? "im Horizont nicht eingeplant, Begründung darunter" : "kein Ofenfahrplan",
+              ),
+            ]),
       ],
     };
   }, [plan]);
 
   const kennzahlen = useMemo(() => {
     const iv = plan?.intervals ?? [];
-    const viertel = (n: number) => `${de(n / 4, 1)} h`;
+    const viertel = viertelStunden;
     const preise = iv.map((i) => i.price_ct_kwh).filter((p): p is number => p != null);
     const waerme = iv
       .filter((i) => i.heat_demand_kw != null)
@@ -481,7 +499,10 @@ export function Fahrplan() {
         ? `seit Mitternacht · im selben Fenster geplant ${viertel(geplantImSelbenFenster)}`
         : "keine Messung",
       gemieden: viertel(iv.filter((i) => i.planned_hp_state === "avoid").length),
-      ofen: iv.some((i) => i.planned_stove_on != null) ? viertel(iv.filter((i) => i.planned_stove_on).length) : null,
+      // Null Ofenstunden sind eine Entscheidung, kein fehlender Fahrplan: die Kachel muss die
+      // beiden unterscheiden, sonst leuchtet sie "0,0 h · Volllast, 15 kg je Fuellung".
+      ofenFahrplan: iv.some((i) => i.planned_stove_on != null),
+      ofenViertel: iv.filter((i) => i.planned_stove_on).length,
       // Viertelstunden in Stunden: die Leistungen stehen je Viertelstunde, die Summe ist Arbeit.
       waerme: waerme > 0 ? de(waerme / 4, 0) : null,
       cop: cops.length ? `${de(Math.min(...cops), 1)} bis ${de(Math.max(...cops), 1)}` : null,
@@ -508,7 +529,18 @@ export function Fahrplan() {
         <Stat label="Wärmepumpe angefordert" value={kennzahlen.wp} tone="ember" hint="im ganzen Horizont" />
         <Stat label="Wärmepumpe gelaufen" value={kennzahlen.gelaufen ?? "-"} tone="amber" hint={kennzahlen.gelaufenHinweis} />
         <Stat label="bewusst gemieden" value={kennzahlen.gemieden} tone="muted" hint="teure Stunden ohne Anforderung" />
-        <Stat label="Ofen geplant" value={kennzahlen.ofen ?? "-"} tone={kennzahlen.ofen ? "ember" : "muted"} hint={kennzahlen.ofen ? "Volllast, 15 kg je Füllung" : "kein Fahrplan für den Ofen"} />
+        <Stat
+          label="Ofen geplant"
+          value={kennzahlen.ofenFahrplan ? viertelStunden(kennzahlen.ofenViertel) : "-"}
+          tone={kennzahlen.ofenViertel ? "ember" : "muted"}
+          hint={
+            !kennzahlen.ofenFahrplan
+              ? "kein Fahrplan für den Ofen"
+              : kennzahlen.ofenViertel
+                ? "Volllast, 15 kg je Füllung"
+                : "nicht eingeplant, Begründung unten"
+          }
+        />
         <Stat label="Wärmebedarf geplant" value={kennzahlen.waerme ?? "-"} unit="kWh" tone="mist" hint={kennzahlen.waerme ? "Modell v1, nicht gemessen" : "kein Fahrplan"} />
         <Stat label="COP im Horizont" value={kennzahlen.cop ?? "-"} tone="mist" hint="aus der Außentemperatur" />
         <Stat label="Preisspanne" value={kennzahlen.spanne} unit="ct" tone="amber" hint="im Horizont" />

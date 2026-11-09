@@ -321,13 +321,21 @@ class DemoRunner:
         return await self.accounting.heat_balance(period, anchor, self.now, temps)
 
     async def update_heat_config(self, patch: HeatConfigIn) -> HemsConfig:
-        """Im Demo-Betrieb wirkt die Änderung, überlebt aber keinen Neustart: nichts wird gespeichert."""
+        """Im Demo-Betrieb wirkt die Änderung, überlebt aber keinen Neustart: nichts wird gespeichert.
+
+        **Zwei Sperren, beide müssen fallen.** `_plan_at` macht den Fahrplan fällig, und das reicht
+        hier nicht: der Ofenlauf hat seine eigene Drossel von DEMO_SOLVE_S echten Sekunden. Ohne
+        den zweiten Griff würde der Plan neu gebaut, aber mit dem Ofenfahrplan von vorher - also
+        gerade die Zahl, die der geänderte Pelletpreis verschiebt, bliebe stehen.
+        """
         try:
             neu = apply_heat_patch(self.hems, patch.model_dump(exclude_none=True))
         except ValueError as exc:
             raise DchError("invalid_config", str(exc), 422) from exc
         self.hems = neu
         self.accounting.hems = neu
+        self._plan_at = None
+        self._stove_solve_at = monotonic() - DEMO_SOLVE_S
         return neu
 
     async def ev_report(self, period: Period, anchor: date) -> EvReportOut:

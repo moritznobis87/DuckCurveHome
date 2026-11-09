@@ -279,3 +279,36 @@ def test_ohne_ofen_gibt_es_keine_pelletkosten(client: TestClient) -> None:
     assert body["cost"]["stove_kg"] == 0.0
     assert body["cost"]["stove_eur"] == 0.0
     assert body["cost"]["stove_ct_per_kwh"] is None
+
+
+def test_eine_geaenderte_annahme_macht_den_fahrplan_faellig(client: TestClient) -> None:
+    """Nach einer Änderung ist der Fahrplan nicht alt, sondern falsch.
+
+    Gemeldet am 09.11.2026: „den Pelletpreis geändert, die Planung wurde aber nicht neu
+    gerechnet". Richtig beobachtet. Die Auswertungen rechnen bei jeder Abfrage neu und waren sofort
+    richtig; der Fahrplan wird im Takt gerechnet, und `update_heat_config` sagte dem Takt nichts.
+    Bis zu `plan_refresh_min` Minuten stand damit ein Fahrplan auf der Seite, der mit der alten
+    Annahme entstanden war - von außen nicht von „die Änderung wirkt nicht" zu unterscheiden.
+
+    Geprüft wird der Griff selbst und nicht das Ergebnis: die Regelschleife läuft im Test nicht,
+    und ein Löserlauf im Prüflauf wäre eine Messung der Maschine statt des Verhaltens.
+    """
+    runner = client.app.state.runner
+    runner._plan_at = datetime.now(UTC)
+    r = client.post("/api/v1/config/heat", json={"pellet_price_eur_per_t": 300.0}, headers=AUTH)
+    assert r.status_code == 200, r.text
+    assert runner._plan_at is None, "der nächste Regeltakt muss den Fahrplan neu rechnen"
+
+
+def test_eine_abgelehnte_aenderung_laesst_den_fahrplan_stehen(client: TestClient) -> None:
+    """Fällig wird er nur, wenn sich wirklich etwas geändert hat. Ein 422 ändert nichts."""
+    runner = client.app.state.runner
+    vorher = datetime.now(UTC)
+    runner._plan_at = vorher
+    assert (
+        client.post(
+            "/api/v1/config/heat", json={"stove_water_heat_kw": 99.0}, headers=AUTH
+        ).status_code
+        == 422
+    )
+    assert runner._plan_at == vorher

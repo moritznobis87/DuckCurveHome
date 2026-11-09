@@ -138,7 +138,13 @@ export function HeatSettings() {
     try {
       const neu = await api.setHeatConfig(patch as HeatConfigIn);
       uebernehmen(neu);
-      setMeldung("Übernommen. Die Auswertungen rechnen ab sofort damit, auch rückwirkend.");
+      // Der Fahrplan gehört in diesen Satz. Er wird nicht bei jeder Abfrage gerechnet, sondern im
+      // Takt; der Dienst macht ihn nach dieser Änderung fällig, und bis der Löser durch ist,
+      // steht auf der Fahrplanseite noch der alte. Ohne den Hinweis sieht das aus wie Wirkungslosigkeit.
+      setMeldung(
+        "Übernommen. Die Auswertungen rechnen ab sofort damit, auch rückwirkend; der Fahrplan wird " +
+          "neu gerechnet und steht in wenigen Sekunden auf der Seite „Fahrplan“.",
+      );
     } catch (e) {
       // Der Dienst prüft Widersprüche, die ein einzelnes Feld nicht sehen kann: der Wasseranteil
       // gegen die Gesamtleistung, die Zieltemperatur gegen die Grenzen des Puffers. Seine Begründung

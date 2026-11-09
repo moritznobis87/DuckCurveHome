@@ -390,6 +390,12 @@ ein Schalter und keine Arbeit.
 4. Teilpaket `twin/` und Schichtenvertrag.
 5. Wärme als beobachtete Größe, COP als Ergebnis, Carnot mal Gütegrad.
 6. Der COP in den Löser: `planning/milp.py` rechnet heute mit festen Nennwerten.
+   Gemessen am 09.11.2026, bevor dieser Schritt begonnen wurde: die Nennwerte (12 kW thermisch zu
+   4,5 kW elektrisch, starrer COP 2,67) benachteiligen die Wärmepumpe an milden Tagen. Mit der
+   Kennlinie statt der Nennwerte wird sie im Modell günstiger und der Ofen kommt *später* ins
+   Spiel, nicht früher. Der Schritt bleibt richtig, taugt aber nicht als Erklärung dafür, dass der
+   Ofen im Fahrplan nicht vorkommt; die steht in
+   [OFEN_OPTIMIERUNG.md](../OFEN_OPTIMIERUNG.md#der-stundenvergleich-ist-nicht-die-entscheidung).
 7. Harte Komfortgrenze 1,0 K mit Rückfallebene.
 8. Raumsollwert stellen, K1 im Schatten.
 9. Nachbetrachtung: fünf Linien, zwei Perfect-Foresight-Läufe, Kostenzeile der Beschneidung.
@@ -414,6 +420,17 @@ ein Schalter und keine Arbeit.
 * **Die Wettervorhersage wird nicht historisiert**, siehe Abschnitt 10. Bis Schritt 1 läuft, wächst
   der Verlust weiter.
 * **Der Behälterinhalt bleibt Annahme**, der Durchsatz je Leistungsstufe ungeeicht.
+* **Bei 450 Euro je Tonne steht der Ofen auf dem Break-even.** Gemessen am 09.11.2026: 10,6 ct/kWh
+  Pufferwärme gegen 10,8 ct/kWh am Grenzpreis der Wärmepumpe; die Zündstrafe entscheidet. Der
+  Fahrplan sieht ihn deshalb an gewöhnlichen Tagen nicht vor, und das ist eine Aussage über den
+  Pelletpreis, nicht über den Planer. Einzelheiten und die Gegenprobe in
+  [OFEN_OPTIMIERUNG.md](../OFEN_OPTIMIERUNG.md#der-stundenvergleich-ist-nicht-die-entscheidung).
+* **In der Vorführung schaltet niemand den Ofen.** Das Vorführhaus feuert ihn nach einer eigenen
+  Regel (6 kW thermisch, kalte Abende von 17 bis 21 Uhr, an jedem zweiten Tag) und meldet
+  `stove.present = False`; der Planer bekommt `stove_running=False` fest verdrahtet. Eine geplante
+  Ofenphase wäre dort also nie als Messung zu sehen. Im Haus ist der Weg vollständig
+  (`decide_switch`, `_apply_stove_plan`), in der Vorführung fehlt er - wer die Wirkung des Ofens
+  vorführen will, muss ihn dort erst anschließen.
 
 Nebenbei gefunden, nicht Teil dieses Entwurfs: `HEMS_CONTROL.md` behauptet, jeder Schaltbefehl
 trage den Auto-Off-Timer, der aber nur auf dem MQTT-Weg übersetzt wird, während K1 zwingend über
