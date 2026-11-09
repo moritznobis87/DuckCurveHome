@@ -5,7 +5,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from dch_api.application.plan_service import ablage_faellig, build_plan, plan_als_lauf
+from dch_api.application.plan_service import (
+    ablage_faellig,
+    build_plan,
+    ist_nachschlag,
+    plan_als_lauf,
+)
 from dch_api.application.stove_planner import Zwillingspunkt
 from hems_core.domain import HemsConfig
 from hems_core.forecasting import PLAN
@@ -223,7 +228,13 @@ def test_die_messung_steht_neben_der_absicht() -> None:
             }
         )
 
-    plan = build_plan(_pv, _hourly_prices(24), jetzt, HemsConfig(), ist=ist_nachschlag(rows, jetzt))
+    plan = build_plan(
+        _pv,
+        _hourly_prices(24),
+        jetzt,
+        HemsConfig(),
+        ist=ist_nachschlag(rows, jetzt, laeuft_ab_kw=0.5),
+    )
     gemessen = [i for i in plan.intervals if i.actual_pv_kw is not None]
     assert len(gemessen) == 24, "sechs Stunden sind vierundzwanzig Viertelstunden"
     assert all(i.actual_pv_kw == 2.0 for i in gemessen)
@@ -248,7 +259,7 @@ def test_die_laufende_viertelstunde_bleibt_draussen() -> None:
         {"ts": (DAY_START + timedelta(minutes=m)).isoformat(), "pv_power_kw": 3.0}
         for m in range(66)
     ]
-    nachschlag = ist_nachschlag(rows, jetzt)
+    nachschlag = ist_nachschlag(rows, jetzt, laeuft_ab_kw=0.5)
     assert nachschlag(DAY_START + timedelta(minutes=45)) is not None
     laufend = nachschlag(DAY_START + timedelta(hours=1))
     assert laufend is None, "die Viertelstunde ab 01:00 läuft noch"
@@ -272,8 +283,8 @@ def test_der_kontakt_wird_gemittelt_und_dann_gerundet() -> None:
             for m in range(15)
         ]
 
-    knapp = ist_nachschlag(reihe(4), jetzt)(DAY_START)
-    ueberwiegend = ist_nachschlag(reihe(12), jetzt)(DAY_START)
+    knapp = ist_nachschlag(reihe(4), jetzt, laeuft_ab_kw=0.5)(DAY_START)
+    ueberwiegend = ist_nachschlag(reihe(12), jetzt, laeuft_ab_kw=0.5)(DAY_START)
     assert knapp is not None and knapp.anforderung is False
     assert ueberwiegend is not None and ueberwiegend.anforderung is True
 
@@ -291,7 +302,7 @@ def test_ein_stummer_fuehler_zieht_die_anderen_nicht_mit() -> None:
         }
         for m in range(15)
     ]
-    punkt = ist_nachschlag(rows, jetzt)(DAY_START)
+    punkt = ist_nachschlag(rows, jetzt, laeuft_ab_kw=0.5)(DAY_START)
     assert punkt is not None
     assert punkt.pv_kw == 1.0
     assert punkt.waermepumpe_kw is None
@@ -330,3 +341,35 @@ def test_die_ablage_ist_stuendlich_und_beim_ersten_mal() -> None:
     # Nicht „sechzig Minuten später", sondern „in einer neuen Stunde": nach einem Neustart um
     # 10:50 gehört der Fahrplan von 11:05 schon zur nächsten.
     assert ablage_faellig(NOW + timedelta(minutes=50), NOW + timedelta(minutes=65)) is True
+
+
+def test_gelaufen_wird_je_minute_gezaehlt_und_gegen_die_schwelle_der_anlage() -> None:
+    """Standby ist kein Lauf, und fünf Minuten Lauf sind keine Viertelstunde.
+
+    Bis zum 09.11.2026 zählte die Kachel „gelaufen" in der Oberfläche jede Viertelstunde, deren
+    Mittel über 0,05 kW lag. Das ist zweimal falsch: die Umwälzpumpe zieht mehr als das, auch wenn
+    der Verdichter steht, und ein Mittel von 1 kW kann fünf Minuten bei 3 kW sein. Die Laufzeit im
+    Haus entscheidet „läuft" bei `running_threshold_kw`; dieselbe Schwelle gilt jetzt hier, je
+    Minute.
+    """
+    jetzt = DAY_START + timedelta(hours=1)
+
+    def zeilen(leistungen: list[float]) -> list[dict[str, float | str | None]]:
+        return [
+            {"ts": (DAY_START + timedelta(minutes=i)).isoformat(), "heat_pump_power_kw": w}
+            for i, w in enumerate(leistungen)
+        ]
+
+    standby = ist_nachschlag(zeilen([0.08] * 15), jetzt, laeuft_ab_kw=0.5)(DAY_START)
+    assert standby is not None
+    assert standby.waermepumpe_kw == 0.08, "der Strom fließt, und das bleibt sichtbar"
+    assert standby.laufminuten == 0.0, "aber der Verdichter steht"
+
+    kurz = ist_nachschlag(zeilen([3.0] * 5 + [0.08] * 10), jetzt, laeuft_ab_kw=0.5)(DAY_START)
+    assert kurz is not None
+    assert kurz.laufminuten == 5.0, "fünf Minuten Lauf, nicht eine Viertelstunde"
+
+    stumm = ist_nachschlag(
+        [{"ts": DAY_START.isoformat(), "pv_power_kw": 1.0}], jetzt, laeuft_ab_kw=0.5
+    )(DAY_START)
+    assert stumm is not None and stumm.laufminuten is None, "ohne Leistungswert keine Aussage"

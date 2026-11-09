@@ -8,10 +8,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from dch_api.application.anlage_replay import SCHRITTE
+from dch_api.application.kontaktwirkung import TAGE
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
 from dch_api.errors import DchError
-from dch_api.schemas import AnlageOut, AnlageReplayOut
+from dch_api.schemas import AnlageOut, AnlageReplayOut, KontaktwirkungOut
 
 router = APIRouter(prefix="/anlage", tags=["Anlage"])
 
@@ -47,3 +48,27 @@ async def wiedergabe(
             422,
         )
     return await runner.anlage_replay(day, step_min)
+
+
+@router.get(
+    "/kontaktwirkung",
+    response_model=KontaktwirkungOut,
+    summary="Was der Freigabekontakt K1 auslöst",
+)
+async def kontaktwirkung(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    days: Annotated[int, Query(description="Zeitraum in Tagen: 7, 30 oder 90")] = 30,
+) -> KontaktwirkungOut:
+    """Die Ereignisstudie zu K1: jeder Schließvorgang und was die Wärmepumpe danach tat.
+
+    Neben der Folgequote steht dieselbe Quote ohne Schließvorgang zur selben Tageszeit; erst der
+    Vergleich sagt, ob der Kontakt etwas auslöst oder die Maschine ohnehin angelaufen wäre. Bei
+    wenigen Ereignissen gibt es Zahlen, aber kein Urteil.
+    """
+    if days not in TAGE:
+        raise DchError(
+            "bad_days",
+            f"Den Zeitraum {days} Tage gibt es nicht; erlaubt sind {', '.join(map(str, TAGE))}.",
+            422,
+        )
+    return await runner.kontaktwirkung(days)

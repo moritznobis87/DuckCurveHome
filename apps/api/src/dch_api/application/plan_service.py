@@ -55,11 +55,17 @@ class Istpunkt:
     pv_kw: float | None = None
     waermepumpe_kw: float | None = None
     anforderung: bool | None = None
+    #: Minuten dieser Viertelstunde, in denen der Verdichter lief. Gezählt je Minute gegen die
+    #: Schwelle der Konfiguration, nicht aus dem Viertelstundenmittel geschlossen: fünf Minuten
+    #: bei 3 kW sind fünf Minuten Lauf, und ihr Mittel von 1 kW sähe aus wie eine Viertelstunde.
+    laufminuten: float | None = None
 
 
 def ist_nachschlag(
     rows: Iterable[Mapping[str, float | str | None]],
     jetzt: datetime,
+    *,
+    laeuft_ab_kw: float,
 ) -> Callable[[datetime], Istpunkt | None]:
     """Minutenwerte zu einem Nachschlagewerk über Viertelstunden verdichten.
 
@@ -71,6 +77,12 @@ def ist_nachschlag(
     Minute; über eine Viertelstunde ist sein Mittel der Anteil der Zeit, in der angefordert wurde.
     Mehr als die Hälfte heißt „angefordert". Ein Schwellwert verliert Information, aber eine
     Viertelstunde mit vier Minuten Anforderung als „angefordert" zu zeigen wäre schlechter.
+
+    **`laeuft_ab_kw` ist die Schwelle der Anlage, nicht eine eigene.** Die Laufzeit im Haus
+    entscheidet „läuft" bei `heat_pump.running_threshold_kw`; sie trennt den Verdichter von
+    Umwälzpumpe und Elektronik. Die Kachel „gelaufen" zählte bis zum 09.11.2026 in der Oberfläche
+    jede Viertelstunde mit mehr als 0,05 kW im Mittel - also auch den Standby, und zwar als volle
+    Viertelstunde. Zwei Schwellen für dasselbe Wort sind zwei Wahrheiten.
     """
     eimer: dict[datetime, dict[str, list[float]]] = {}
     grenze = jetzt.astimezone(UTC).replace(second=0, microsecond=0)
@@ -98,10 +110,14 @@ def ist_nachschlag(
         kontakt = mittel(fach, "hp_release_contact")
         pv = mittel(fach, "pv_power_kw")
         wp = mittel(fach, "heat_pump_power_kw")
+        leistungen = fach.get("heat_pump_power_kw")
         punkte[slot] = Istpunkt(
             pv_kw=None if pv is None else round(pv, 3),
             waermepumpe_kw=None if wp is None else round(wp, 3),
             anforderung=None if kontakt is None else kontakt > 0.5,
+            laufminuten=(
+                None if not leistungen else float(sum(1 for w in leistungen if w >= laeuft_ab_kw))
+            ),
         )
 
     def nachschlag(t: datetime) -> Istpunkt | None:
@@ -255,6 +271,7 @@ def build_plan(
                 actual_pv_kw=gemessen.pv_kw if gemessen else None,
                 actual_hp_kw=gemessen.waermepumpe_kw if gemessen else None,
                 actual_hp_release=gemessen.anforderung if gemessen else None,
+                actual_hp_run_min=gemessen.laufminuten if gemessen else None,
             )
         )
         t += timedelta(minutes=15)

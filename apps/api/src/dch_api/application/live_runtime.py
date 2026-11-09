@@ -26,6 +26,7 @@ import structlog
 from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, house, rooms
+from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import room_log as room_log_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
 from dch_api.application.config_loader import AppConfig
@@ -89,6 +90,7 @@ from dch_api.schemas import (
     HouseOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
+    KontaktwirkungOut,
     LiveStateOut,
     Period,
     PlanOut,
@@ -653,7 +655,7 @@ class LiveRuntime:
         except Exception as exc:
             log.warning("plan actuals not read", error=repr(exc)[:200])
             return lambda _t: None
-        return ist_nachschlag(rows, now)
+        return ist_nachschlag(rows, now, laeuft_ab_kw=self.hems.heat_pump.running_threshold_kw)
 
     async def refresh_plan(self) -> None:
         now = self.now
@@ -1148,6 +1150,14 @@ class LiveRuntime:
             raeume=raeume,
             geplant_wp=await absicht("hp_release"),
             geplant_ofen=await absicht("stove_on"),
+        )
+
+    async def kontaktwirkung(self, days: int) -> KontaktwirkungOut:
+        """Was K1 auslöst, aus dem dauerhaften Minutenbestand der letzten `days` Tage."""
+        von, bis = kontaktwirkung_logic.fenster(self.now, days)
+        zeilen = await self.repos.minute_series(von, bis, list(kontaktwirkung_logic.REIHEN))
+        return kontaktwirkung_logic.zusammenstellen(
+            zeilen, self.hems, BERLIN, tage=days, von=von, bis=bis
         )
 
     # ------------------------------------------------------------------ Hausplan

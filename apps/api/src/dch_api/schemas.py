@@ -24,6 +24,7 @@ from hems_core.forecasting import CorrectorState, ForecastScore
 from hems_core.forecasting.rueckblick import ReiheOut
 from hems_core.house import HousePlan
 from hems_core.thermal import CyclingStats, HeatTotals
+from hems_core.thermal.kontaktwirkung import Kontaktwirkung
 
 
 class PriceWindowOut(BaseModel):
@@ -84,6 +85,11 @@ class PlanIntervalOut(BaseModel):
     # ihrer eigenen Kennlinie, ob sie folgt. Beide Reihen nebeneinander zeigen zum ersten Mal, was
     # eine Anforderung auslöst - die Frage, die der Projektplan seit September offen führt.
     actual_hp_release: bool | None = None
+    # Minuten dieser Viertelstunde, in denen der Verdichter lief, gezaehlt je Minute gegen
+    # `heat_pump.running_threshold_kw`. Nicht dasselbe wie `actual_hp_kw > 0`: die Anlage zieht
+    # auch im Stillstand Strom (Umwaelzpumpe, Elektronik), und ein Viertelstundenmittel von 1 kW
+    # kann fuenf Minuten Lauf bei 3 kW sein. Die Kachel "gelaufen" summiert diese Minuten.
+    actual_hp_run_min: float | None = None
 
 
 class PlanOut(BaseModel):
@@ -1372,8 +1378,9 @@ class AnlageReplayOut(BaseModel):
     Vergleich macht die Luecke sichtbar, statt sie als dichtes Band erscheinen zu lassen.
 
     **Was der Rueckblick nicht zeigen kann**, steht in `hinweise_de` und nicht nur im Quelltext:
-    die Ventilstellungen der Raeume stehen nicht in der Minutentabelle, der Heizkreis bleibt also
-    dunkel, und beim ersten Bild ist unbekannt, wie lange die Waermepumpe schon lief.
+    beim ersten Bild ist unbekannt, wie lange die Waermepumpe schon lief, und fuer Tage vor dem
+    09.11.2026 gibt es keinen aufbewahrten Fahrplan. Der Heizkreis leuchtet, soweit die
+    Raumhistorie Ventilstellungen fuer den Tag hat.
     """
 
     day: date
@@ -1396,3 +1403,19 @@ class AnlageReplayOut(BaseModel):
     geplant_wp: list[bool | None] = Field(default_factory=list)
     geplant_ofen: list[bool | None] = Field(default_factory=list)
     hinweise_de: list[str] = Field(default_factory=list)
+
+
+class KontaktwirkungOut(Kontaktwirkung):
+    """Was der Freigabekontakt K1 auslöst: die Ereignisstudie über die letzten `days` Tage.
+
+    Jeder Schließvorgang ist ein Ereignis; `ereignisse` enthält zu jedem die Leistung der
+    Wärmepumpe von einer halben Stunde davor bis zwei Stunden danach, `faecher` legt sie am
+    Nullpunkt übereinander. `quote` ist der Anteil der Schließvorgänge bei stehender Maschine, auf
+    die binnen `folge_min` Minuten ein Anlauf folgte, `vergleich.quote` derselbe Anteil ohne
+    Schließvorgang zur selben Tageszeit.
+
+    Das Urteil steht in `urteil` und `urteil_de` und wird hier gefällt, nicht in der Oberfläche.
+    Es ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `hinweise_de`.
+    """
+
+    days: int

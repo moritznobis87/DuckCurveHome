@@ -489,12 +489,18 @@ export function Fahrplan() {
     // Tage; die Messung reicht nur bis jetzt. Nebeneinander gestellt wären 6,0 h Plan und 4,3 h
     // Messung ein Vergleich zwischen zwei Tagen und einem halben. Die Gegenzahl zählt deshalb nur
     // die Viertelstunden, für die es auch eine Messung gibt.
-    const mitMessung = iv.filter((i) => i.actual_hp_kw != null);
-    const gelaufen = mitMessung.filter((i) => (i.actual_hp_kw ?? 0) > 0.05).length;
+    //
+    // **Gezählt wird im Dienst, in Minuten, gegen die Schwelle der Anlage.** Hier stand bis zum
+    // 09.11.2026 „Viertelstunden mit mehr als 0,05 kW im Mittel". Das zählte den Standby der
+    // Umwälzpumpe als Lauf und fünf Minuten Verdichter als ganze Viertelstunde. Die Laufzeit im
+    // Haus entscheidet „läuft" bei `running_threshold_kw`; `actual_hp_run_min` zählt je Minute
+    // gegen dieselbe Schwelle.
+    const mitMessung = iv.filter((i) => i.actual_hp_run_min != null);
+    const laufMinuten = mitMessung.reduce((s, i) => s + (i.actual_hp_run_min ?? 0), 0);
     const geplantImSelbenFenster = mitMessung.filter((i) => i.planned_hp_state === "release").length;
     return {
       wp: viertel(iv.filter((i) => i.planned_hp_state === "release").length),
-      gelaufen: mitMessung.length ? viertel(gelaufen) : null,
+      gelaufen: mitMessung.length ? `${de(laufMinuten / 60, 1)} h` : null,
       gelaufenHinweis: mitMessung.length
         ? `seit Mitternacht · im selben Fenster geplant ${viertel(geplantImSelbenFenster)}`
         : "keine Messung",

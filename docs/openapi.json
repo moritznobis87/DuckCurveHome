@@ -738,6 +738,52 @@
         }
       }
     },
+    "/api/v1/anlage/kontaktwirkung": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Was der Freigabekontakt K1 auslöst",
+        "description": "Die Ereignisstudie zu K1: jeder Schließvorgang und was die Wärmepumpe danach tat.\n\nNeben der Folgequote steht dieselbe Quote ohne Schließvorgang zur selben Tageszeit; erst der\nVergleich sagt, ob der Kontakt etwas auslöst oder die Maschine ohnehin angelaufen wäre. Bei\nwenigen Ereignissen gibt es Zahlen, aber kein Urteil.",
+        "operationId": "kontaktwirkung_api_v1_anlage_kontaktwirkung_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Zeitraum in Tagen: 7, 30 oder 90",
+              "default": 30,
+              "title": "Days"
+            },
+            "description": "Zeitraum in Tagen: 7, 30 oder 90"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KontaktwirkungOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -2781,7 +2827,7 @@
           "frames"
         ],
         "title": "AnlageReplayOut",
-        "description": "Ein Ortstag als Folge von Anlagenbildern: die Wiedergabe.\n\nDieselben Bilder wie `GET /anlage`, nur aus der Minutenreihe nachgebaut und nicht aus dem\nAugenblick. Die Oberflaeche faehrt mit einem Schieber darueber; das Schema zeichnet jedes Bild\nso, wie es den Augenblick zeichnet.\n\n**Luecken sind Luecken.** Ein Zeitpunkt ohne Messung in der Toleranz liefert kein Bild, und es\nwird keines erfunden: `frames` ist deshalb nicht notwendig gleichmaessig und kann kuerzer sein\nals der Tag. `erwartet` sagt, wie viele Bilder ein vollstaendiger Tag haette - erst der\nVergleich macht die Luecke sichtbar, statt sie als dichtes Band erscheinen zu lassen.\n\n**Was der Rueckblick nicht zeigen kann**, steht in `hinweise_de` und nicht nur im Quelltext:\ndie Ventilstellungen der Raeume stehen nicht in der Minutentabelle, der Heizkreis bleibt also\ndunkel, und beim ersten Bild ist unbekannt, wie lange die Waermepumpe schon lief."
+        "description": "Ein Ortstag als Folge von Anlagenbildern: die Wiedergabe.\n\nDieselben Bilder wie `GET /anlage`, nur aus der Minutenreihe nachgebaut und nicht aus dem\nAugenblick. Die Oberflaeche faehrt mit einem Schieber darueber; das Schema zeichnet jedes Bild\nso, wie es den Augenblick zeichnet.\n\n**Luecken sind Luecken.** Ein Zeitpunkt ohne Messung in der Toleranz liefert kein Bild, und es\nwird keines erfunden: `frames` ist deshalb nicht notwendig gleichmaessig und kann kuerzer sein\nals der Tag. `erwartet` sagt, wie viele Bilder ein vollstaendiger Tag haette - erst der\nVergleich macht die Luecke sichtbar, statt sie als dichtes Band erscheinen zu lassen.\n\n**Was der Rueckblick nicht zeigen kann**, steht in `hinweise_de` und nicht nur im Quelltext:\nbeim ersten Bild ist unbekannt, wie lange die Waermepumpe schon lief, und fuer Tage vor dem\n09.11.2026 gibt es keinen aufbewahrten Fahrplan. Der Heizkreis leuchtet, soweit die\nRaumhistorie Ventilstellungen fuer den Tag hat."
       },
       "AnlageSpeicherOut": {
         "properties": {
@@ -5238,6 +5284,75 @@
         "title": "EnergyTotalsOut",
         "description": "Summen plus abgeleitete Kennzahlen als normale Felder (für JSON)."
       },
+      "Ereignis": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "lief_schon": {
+            "type": "boolean",
+            "title": "Lief Schon"
+          },
+          "auswertbar": {
+            "type": "boolean",
+            "title": "Auswertbar"
+          },
+          "gefolgt": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gefolgt"
+          },
+          "verzoegerung_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verzoegerung Min"
+          },
+          "kontakt_min": {
+            "type": "integer",
+            "title": "Kontakt Min"
+          },
+          "kw": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Kw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "lief_schon",
+          "auswertbar",
+          "gefolgt",
+          "verzoegerung_min",
+          "kontakt_min",
+          "kw"
+        ],
+        "title": "Ereignis",
+        "description": "Ein Schließvorgang und was die Maschine um ihn herum tat."
+      },
       "EvReportOut": {
         "properties": {
           "summary": {
@@ -5309,6 +5424,119 @@
           "avg_kw"
         ],
         "title": "EvSessionOut"
+      },
+      "Faecher": {
+        "properties": {
+          "minuten": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Minuten"
+          },
+          "mittel_kw": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Mittel Kw"
+          },
+          "median_kw": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Median Kw"
+          },
+          "q25_kw": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Q25 Kw"
+          },
+          "q75_kw": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Q75 Kw"
+          },
+          "anteil_laeuft": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Anteil Laeuft"
+          },
+          "n": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "N"
+          },
+          "anteil_angelaufen": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Anteil Angelaufen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "minuten",
+          "median_kw",
+          "q25_kw",
+          "q75_kw",
+          "anteil_laeuft",
+          "n"
+        ],
+        "title": "Faecher",
+        "description": "Alle auswertbaren Ereignisse übereinandergelegt, je Minute relativ zum Schließen."
       },
       "ForecastDayOut": {
         "properties": {
@@ -7846,6 +8074,200 @@
         "title": "Item",
         "description": "Ein Moebel, ein Geraet, ein Stueck Treppe. Welche Felder gelten, sagt `kind`; die Anzeige\nnimmt fuer fehlende Masse ihre Voreinstellungen. Geprueft wird hier nur, dass die Zahlen endlich\nsind und die Art bekannt ist."
       },
+      "KontaktwirkungOut": {
+        "properties": {
+          "von": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis"
+          },
+          "schwelle_kw": {
+            "type": "number",
+            "title": "Schwelle Kw"
+          },
+          "vor_min": {
+            "type": "integer",
+            "title": "Vor Min",
+            "default": 30
+          },
+          "nach_min": {
+            "type": "integer",
+            "title": "Nach Min",
+            "default": 120
+          },
+          "folge_min": {
+            "type": "integer",
+            "title": "Folge Min",
+            "default": 30
+          },
+          "ereignisse": {
+            "items": {
+              "$ref": "#/components/schemas/Ereignis"
+            },
+            "type": "array",
+            "title": "Ereignisse"
+          },
+          "faecher": {
+            "$ref": "#/components/schemas/Faecher"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N",
+            "default": 0
+          },
+          "n_lief_schon": {
+            "type": "integer",
+            "title": "N Lief Schon",
+            "default": 0
+          },
+          "n_auswertbar": {
+            "type": "integer",
+            "title": "N Auswertbar",
+            "default": 0
+          },
+          "gefolgt": {
+            "type": "integer",
+            "title": "Gefolgt",
+            "default": 0
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "quote_lo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Lo"
+          },
+          "quote_hi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Hi"
+          },
+          "vergleich": {
+            "$ref": "#/components/schemas/Vergleich"
+          },
+          "verzoegerung_median_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verzoegerung Median Min"
+          },
+          "nachlauf_median_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nachlauf Median Min"
+          },
+          "nachlauf_n": {
+            "type": "integer",
+            "title": "Nachlauf N",
+            "default": 0
+          },
+          "abdeckung_kontakt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abdeckung Kontakt"
+          },
+          "abdeckung_leistung": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abdeckung Leistung"
+          },
+          "urteil": {
+            "type": "string",
+            "title": "Urteil",
+            "default": "offen"
+          },
+          "urteil_de": {
+            "type": "string",
+            "title": "Urteil De",
+            "default": ""
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "von",
+          "bis",
+          "schwelle_kw",
+          "faecher",
+          "vergleich",
+          "days"
+        ],
+        "title": "KontaktwirkungOut",
+        "description": "Was der Freigabekontakt K1 auslöst: die Ereignisstudie über die letzten `days` Tage.\n\nJeder Schließvorgang ist ein Ereignis; `ereignisse` enthält zu jedem die Leistung der\nWärmepumpe von einer halben Stunde davor bis zwei Stunden danach, `faecher` legt sie am\nNullpunkt übereinander. `quote` ist der Anteil der Schließvorgänge bei stehender Maschine, auf\ndie binnen `folge_min` Minuten ein Anlauf folgte, `vergleich.quote` derselbe Anteil ohne\nSchließvorgang zur selben Tageszeit.\n\nDas Urteil steht in `urteil` und `urteil_de` und wird hier gefällt, nicht in der Oberfläche.\nEs ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `hinweise_de`."
+      },
       "LiveStateOut": {
         "properties": {
           "snapshot": {
@@ -8396,6 +8818,17 @@
               }
             ],
             "title": "Actual Hp Release"
+          },
+          "actual_hp_run_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Hp Run Min"
           }
         },
         "type": "object",
@@ -11201,6 +11634,88 @@
         ],
         "title": "VentilationRoomOut",
         "description": "Ein Raum, in dem während der Heizzeit ein Fenster offen stand."
+      },
+      "Vergleich": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "gefolgt": {
+            "type": "integer",
+            "title": "Gefolgt"
+          },
+          "quote_gesamt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Gesamt"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "ereignisse_gedeckt": {
+            "type": "integer",
+            "title": "Ereignisse Gedeckt"
+          },
+          "n_gleiche_stunde": {
+            "type": "integer",
+            "title": "N Gleiche Stunde",
+            "default": 0
+          },
+          "quote_lo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Lo"
+          },
+          "quote_hi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Hi"
+          },
+          "angelaufen_bis": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Angelaufen Bis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "gefolgt",
+          "quote_gesamt",
+          "quote",
+          "ereignisse_gedeckt"
+        ],
+        "title": "Vergleich",
+        "description": "Dieselbe Quote ohne Schließvorgang: wie oft läuft die Maschine von selbst an?"
       },
       "VorlaufOut": {
         "properties": {

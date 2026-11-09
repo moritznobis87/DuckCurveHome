@@ -373,6 +373,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/anlage/kontaktwirkung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Was der Freigabekontakt K1 auslöst
+         * @description Die Ereignisstudie zu K1: jeder Schließvorgang und was die Wärmepumpe danach tat.
+         *
+         *     Neben der Folgequote steht dieselbe Quote ohne Schließvorgang zur selben Tageszeit; erst der
+         *     Vergleich sagt, ob der Kontakt etwas auslöst oder die Maschine ohnehin angelaufen wäre. Bei
+         *     wenigen Ereignissen gibt es Zahlen, aber kein Urteil.
+         */
+        get: operations["kontaktwirkung_api_v1_anlage_kontaktwirkung_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -1140,8 +1164,9 @@ export interface components {
          *     Vergleich macht die Luecke sichtbar, statt sie als dichtes Band erscheinen zu lassen.
          *
          *     **Was der Rueckblick nicht zeigen kann**, steht in `hinweise_de` und nicht nur im Quelltext:
-         *     die Ventilstellungen der Raeume stehen nicht in der Minutentabelle, der Heizkreis bleibt also
-         *     dunkel, und beim ersten Bild ist unbekannt, wie lange die Waermepumpe schon lief.
+         *     beim ersten Bild ist unbekannt, wie lange die Waermepumpe schon lief, und fuer Tage vor dem
+         *     09.11.2026 gibt es keinen aufbewahrten Fahrplan. Der Heizkreis leuchtet, soweit die
+         *     Raumhistorie Ventilstellungen fuer den Tag hat.
          */
         AnlageReplayOut: {
             /**
@@ -2358,6 +2383,29 @@ export interface components {
              */
             battery_net_eur: number;
         };
+        /**
+         * Ereignis
+         * @description Ein Schließvorgang und was die Maschine um ihn herum tat.
+         */
+        Ereignis: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Lief Schon */
+            lief_schon: boolean;
+            /** Auswertbar */
+            auswertbar: boolean;
+            /** Gefolgt */
+            gefolgt: boolean | null;
+            /** Verzoegerung Min */
+            verzoegerung_min: number | null;
+            /** Kontakt Min */
+            kontakt_min: number;
+            /** Kw */
+            kw: (number | null)[];
+        };
         /** EvReportOut */
         EvReportOut: {
             summary: components["schemas"]["EnergySummaryOut"];
@@ -2386,6 +2434,28 @@ export interface components {
             cost_eur: number;
             /** Avg Kw */
             avg_kw: number;
+        };
+        /**
+         * Faecher
+         * @description Alle auswertbaren Ereignisse übereinandergelegt, je Minute relativ zum Schließen.
+         */
+        Faecher: {
+            /** Minuten */
+            minuten: number[];
+            /** Mittel Kw */
+            mittel_kw?: (number | null)[];
+            /** Median Kw */
+            median_kw: (number | null)[];
+            /** Q25 Kw */
+            q25_kw: (number | null)[];
+            /** Q75 Kw */
+            q75_kw: (number | null)[];
+            /** Anteil Laeuft */
+            anteil_laeuft: (number | null)[];
+            /** N */
+            n: number[];
+            /** Anteil Angelaufen */
+            anteil_angelaufen?: (number | null)[];
         };
         /** ForecastDayOut */
         ForecastDayOut: {
@@ -3613,6 +3683,99 @@ export interface components {
                 number
             ][] | null;
         };
+        /**
+         * KontaktwirkungOut
+         * @description Was der Freigabekontakt K1 auslöst: die Ereignisstudie über die letzten `days` Tage.
+         *
+         *     Jeder Schließvorgang ist ein Ereignis; `ereignisse` enthält zu jedem die Leistung der
+         *     Wärmepumpe von einer halben Stunde davor bis zwei Stunden danach, `faecher` legt sie am
+         *     Nullpunkt übereinander. `quote` ist der Anteil der Schließvorgänge bei stehender Maschine, auf
+         *     die binnen `folge_min` Minuten ein Anlauf folgte, `vergleich.quote` derselbe Anteil ohne
+         *     Schließvorgang zur selben Tageszeit.
+         *
+         *     Das Urteil steht in `urteil` und `urteil_de` und wird hier gefällt, nicht in der Oberfläche.
+         *     Es ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `hinweise_de`.
+         */
+        KontaktwirkungOut: {
+            /** Von */
+            von: string | null;
+            /** Bis */
+            bis: string | null;
+            /** Schwelle Kw */
+            schwelle_kw: number;
+            /**
+             * Vor Min
+             * @default 30
+             */
+            vor_min: number;
+            /**
+             * Nach Min
+             * @default 120
+             */
+            nach_min: number;
+            /**
+             * Folge Min
+             * @default 30
+             */
+            folge_min: number;
+            /** Ereignisse */
+            ereignisse?: components["schemas"]["Ereignis"][];
+            faecher: components["schemas"]["Faecher"];
+            /**
+             * N
+             * @default 0
+             */
+            n: number;
+            /**
+             * N Lief Schon
+             * @default 0
+             */
+            n_lief_schon: number;
+            /**
+             * N Auswertbar
+             * @default 0
+             */
+            n_auswertbar: number;
+            /**
+             * Gefolgt
+             * @default 0
+             */
+            gefolgt: number;
+            /** Quote */
+            quote?: number | null;
+            /** Quote Lo */
+            quote_lo?: number | null;
+            /** Quote Hi */
+            quote_hi?: number | null;
+            vergleich: components["schemas"]["Vergleich"];
+            /** Verzoegerung Median Min */
+            verzoegerung_median_min?: number | null;
+            /** Nachlauf Median Min */
+            nachlauf_median_min?: number | null;
+            /**
+             * Nachlauf N
+             * @default 0
+             */
+            nachlauf_n: number;
+            /** Abdeckung Kontakt */
+            abdeckung_kontakt?: number | null;
+            /** Abdeckung Leistung */
+            abdeckung_leistung?: number | null;
+            /**
+             * Urteil
+             * @default offen
+             */
+            urteil: string;
+            /**
+             * Urteil De
+             * @default
+             */
+            urteil_de: string;
+            /** Hinweise De */
+            hinweise_de?: string[];
+            /** Days */
+            days: number;
+        };
         /** LiveStateOut */
         LiveStateOut: {
             snapshot: components["schemas"]["EnergySnapshot"];
@@ -3822,6 +3985,8 @@ export interface components {
             actual_hp_kw?: number | null;
             /** Actual Hp Release */
             actual_hp_release?: boolean | null;
+            /** Actual Hp Run Min */
+            actual_hp_run_min?: number | null;
         };
         /** PlanOut */
         PlanOut: {
@@ -5242,6 +5407,33 @@ export interface components {
             kwh: number;
         };
         /**
+         * Vergleich
+         * @description Dieselbe Quote ohne Schließvorgang: wie oft läuft die Maschine von selbst an?
+         */
+        Vergleich: {
+            /** N */
+            n: number;
+            /** Gefolgt */
+            gefolgt: number;
+            /** Quote Gesamt */
+            quote_gesamt: number | null;
+            /** Quote */
+            quote: number | null;
+            /** Ereignisse Gedeckt */
+            ereignisse_gedeckt: number;
+            /**
+             * N Gleiche Stunde
+             * @default 0
+             */
+            n_gleiche_stunde: number;
+            /** Quote Lo */
+            quote_lo?: number | null;
+            /** Quote Hi */
+            quote_hi?: number | null;
+            /** Angelaufen Bis */
+            angelaufen_bis?: number[];
+        };
+        /**
          * VorlaufOut
          * @description Eine Sprosse der Vorlaufleiter mit ihrer Wertung.
          */
@@ -5837,6 +6029,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnlageReplayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    kontaktwirkung_api_v1_anlage_kontaktwirkung_get: {
+        parameters: {
+            query?: {
+                /** @description Zeitraum in Tagen: 7, 30 oder 90 */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KontaktwirkungOut"];
                 };
             };
             /** @description Validation Error */

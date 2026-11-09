@@ -209,3 +209,44 @@ def test_ein_tag_ohne_erfassung_ist_leer_und_sagt_es(client: TestClient) -> None
     body = r.json()
     assert body["frames"] == []
     assert "keine Minutenwerte" in body["hinweise_de"][0]
+
+
+# ------------------------------------------------------------------ Was K1 auslöst
+
+
+def test_die_kontaktwirkung_liefert_form_und_urteil(client: TestClient) -> None:
+    """Geprüft wird die Form: wie viele Ereignisse die Vorführung erlebt hat, hängt an ihrer Zeit."""
+    r = client.get("/api/v1/anlage/kontaktwirkung?days=7", headers=KOPF)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["days"] == 7
+    assert body["urteil"] in ("offen", "wirkt", "kein_unterschied", "seltener")
+    assert body["urteil_de"]
+    faecher = body["faecher"]
+    assert faecher["minuten"][0] == -body["vor_min"]
+    assert faecher["minuten"][-1] == body["nach_min"]
+    assert len(faecher["median_kw"]) == len(faecher["minuten"])
+    assert body["schwelle_kw"] == 0.5, "dieselbe Schwelle wie im Taktzähler der Anlage"
+    for e in body["ereignisse"]:
+        assert len(e["kw"]) == len(faecher["minuten"])
+    # Die Vorführung reicht keine sieben Tage zurück, und das steht da.
+    assert "Vorführung" in body["hinweise_de"][0]
+    assert any("keine Ursache" in h for h in body["hinweise_de"])
+
+
+def test_ein_unbekannter_zeitraum_wird_abgelehnt(client: TestClient) -> None:
+    r = client.get("/api/v1/anlage/kontaktwirkung?days=12", headers=KOPF)
+    assert r.status_code == 422
+    assert "Zeitraum" in r.text
+
+
+def test_die_kontaktwirkung_liest_im_echten_betrieb_den_minutenbestand(
+    live_client: TestClient,
+) -> None:
+    """Ohne eine einzige Minute im Bestand: kein Fehler, kein Urteil, und der Satz sagt warum."""
+    r = live_client.get("/api/v1/anlage/kontaktwirkung?days=30", headers=KOPF)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["n"] == 0
+    assert body["urteil"] == "offen"
+    assert "kein einziges Mal" in body["urteil_de"]

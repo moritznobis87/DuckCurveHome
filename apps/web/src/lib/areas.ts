@@ -58,6 +58,8 @@ export const AREAS: Area[] = [
       { href: "/waerme/anlage", label: "Anlage" },
       // Direkt neben der Anlage, denn es ist dieselbe Ansicht: dort der Augenblick, hier ein Tag.
       { href: "/waerme/wiedergabe", label: "Wiedergabe" },
+      // Die Auswertung zur Wiedergabe: dort ein Tag zum Ansehen, hier alle Schließvorgänge gezählt.
+      { href: "/waerme/wirkung", label: "Wirkung" },
       { href: "/waerme/fahrplan", label: "Fahrplan" },
       { href: "/waerme/annahmen", label: "Annahmen", ownerOnly: true },
     ],

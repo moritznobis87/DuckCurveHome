@@ -664,3 +664,40 @@ button.haus-block-kopf:hover .haus-block-pfeil { color: var(--text-1); }
 .uhr-legende li { display: flex; align-items: baseline; gap: 8px; }
 .uhr-marke { flex: none; width: 10px; height: 10px; border-radius: 2px; transform: translateY(1px); }
 .uhr-marke-umriss { background: transparent; border: 1px solid; }
+
+/* Die Seite „Wirkung". Schrift in Textfarben; die Farben gehören Punkten, Balken und Kurven. */
+.wk-kopf { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, 1fr); gap: 18px 40px; align-items: center; }
+@media (max-width: 900px) { .wk-kopf { grid-template-columns: minmax(0, 1fr); } }
+.wk-urteil { margin: 0; max-width: 60ch; font-size: clamp(17px, 2vw, 22px); font-weight: 300; line-height: 1.38; letter-spacing: -.01em; color: var(--text-1); }
+.wk-quoten { margin: 0; }
+.wk-quoten svg { display: block; width: 100%; max-width: 520px; height: auto; }
+.wk-quoten figcaption { margin-top: 4px; max-width: 520px; font-size: 11.5px; line-height: 1.45; color: var(--text-3); }
+.wk-q-name { font-size: 12.5px; fill: var(--text-2); }
+.wk-q-zahl { font-family: var(--font-mono); font-size: 17px; font-variant-numeric: tabular-nums; fill: var(--text-1); }
+.wk-q-klein { font-family: var(--font-mono); font-size: 10.5px; fill: var(--text-3); }
+.wk-q-achse { font-family: var(--font-mono); font-size: 10px; fill: var(--text-3); }
+.wk-legende { margin-top: 12px; }
+.wk-marke-linie { height: 2px; border-radius: 0; transform: translateY(-3px); }
+.wk-marke-strich { height: 3px; border-radius: 0; transform: translateY(-3px); }
+.wk-marke-gestrichelt { height: 0; background: transparent; border-top: 2px dashed; border-radius: 0; transform: translateY(-4px); }
+.wk-raster { display: flex; flex-direction: column; }
+.wk-zeile { display: grid; grid-template-columns: 112px minmax(0, 1fr) 104px; gap: 12px; align-items: center; padding: 3px 6px; border-radius: 4px; font-size: 11.5px; color: inherit; text-decoration: none; }
+a.wk-zeile:hover, a.wk-zeile:focus-visible { background: rgba(255, 255, 255, .06); outline: none; }
+.wk-kopfzeile { padding-bottom: 0; }
+.wk-zeit { color: var(--text-2); white-space: nowrap; }
+.wk-ergebnis { color: var(--text-3); white-space: nowrap; }
+a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: var(--text-1); }
+.wk-balken { display: block; width: 100%; height: 13px; }
+.wk-achse { position: relative; height: 16px; }
+.wk-achse > span { position: absolute; top: 0; transform: translateX(-50%); font-size: 10px; color: var(--text-3); white-space: nowrap; }
+.wk-achse > span:first-child { transform: none; }
+.wk-achse > span:last-child { transform: translateX(-100%); }
+.wk-gruppentitel { margin: 12px 0 4px 6px; font-size: 11px; }
+.wk-hinweise { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; max-width: 78ch; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+@media (max-width: 560px) { .wk-zeile { grid-template-columns: 92px minmax(0, 1fr) 78px; gap: 8px; font-size: 10.5px; } .wk-fein { display: none; } .wk-q-name { font-size: 15px; } .wk-q-zahl { font-size: 20px; } .wk-q-klein, .wk-q-achse { font-size: 13px; } }
+
+/* Die Kopfleiste der Unterseiten auf dem Telefon. Seit es sechs Bereichszeichen sind, schob der
+   Name daneben die Zeile um 39 Punkte aus dem Bild (gemessen am 09.11.2026 bei 390 Punkten Breite,
+   auf jeder Unterseite): das Zahnrad lag halb außerhalb, und die ganze Seite ließ sich seitlich
+   schieben. Die Kurve bleibt, der Name weicht - wie auf der Startseite. */
+@media (max-width: 500px) { .report-header .brand-name { display: none; } .report-header > div:first-child { gap: 12px; } }

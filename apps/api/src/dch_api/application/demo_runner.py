@@ -19,6 +19,7 @@ import structlog
 from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, demo_house, demo_rooms, rooms
+from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application.battery_control import BatteryMode
 from dch_api.application.demo_archive import DemoArchiv
 from dch_api.application.energy_accounting import EnergyAccounting
@@ -63,6 +64,7 @@ from dch_api.schemas import (
     HouseOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
+    KontaktwirkungOut,
     LiveStateOut,
     Period,
     PlanOut,
@@ -288,7 +290,11 @@ class DemoRunner:
     def _ist_nachschlag(self, now: datetime) -> Callable[[datetime], Istpunkt | None]:
         """Dieselbe Verdichtung wie im Livebetrieb, nur aus der Historie im Arbeitsspeicher."""
         start = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
-        return ist_nachschlag(self.history.series(start.astimezone(UTC), now), now)
+        return ist_nachschlag(
+            self.history.series(start.astimezone(UTC), now),
+            now,
+            laeuft_ab_kw=self.hems.heat_pump.running_threshold_kw,
+        )
 
     def _record_forecast_run(self, now: datetime) -> None:
         start = now - timedelta(hours=1)
@@ -978,6 +984,23 @@ class DemoRunner:
             raeume=await self.rooms_history(von - timedelta(minutes=step_min), bis, step_min),
             geplant_wp=absicht("hp_release"),
             geplant_ofen=absicht("stove_on"),
+        )
+
+    async def kontaktwirkung(self, days: int) -> KontaktwirkungOut:
+        """Was K1 im Vorführhaus auslöst, aus dem Gedächtnis der Vorführung.
+
+        Das reicht Stunden zurück und nicht Monate. Für ein Urteil ist das fast immer zu wenig,
+        und die Antwort sagt das: die Seite zeigt ihre Form, die Aussage braucht ein echtes Haus.
+        """
+        von, bis = kontaktwirkung_logic.fenster(self.now, days)
+        return kontaktwirkung_logic.zusammenstellen(
+            self.history.series(von, bis),
+            self.hems,
+            BERLIN,
+            tage=days,
+            von=von,
+            bis=bis,
+            reicht_h=float(self.settings.history_retention_hours),
         )
 
     async def house_plan(self) -> HouseOut:
