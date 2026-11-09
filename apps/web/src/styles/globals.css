@@ -623,3 +623,24 @@ button.haus-block-kopf:hover .haus-block-pfeil { color: var(--text-1); }
 .pruef-knopf { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--petrol); background: var(--amber); border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
 .pruef-knopf:disabled { background: var(--line-2); color: var(--text-2); cursor: default; }
 .pruefbericht { margin: 0; max-height: 60dvh; overflow: auto; padding: 12px 14px; border-radius: 6px; border: 1px solid var(--line-1); background: rgba(8,36,49,.6); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.55; color: var(--text-2); white-space: pre; }
+
+/* Die Wiedergabe: Bühne, Transportleiste, Tagesband.
+   Die Bühne selbst leiht sich die Rahmen der Anlage (`.anlage-buehne` und so weiter), damit das
+   Schema in beiden Ansichten in derselben Fassung sitzt. Eigene Klassen gibt es nur für das, was
+   die Anlage nicht hat: die Bedienung. */
+.wg-buehne { display: flex; flex-direction: column; gap: 10px; outline: none; }
+.wg-buehne:focus-visible { outline: 2px solid var(--amber); outline-offset: 6px; border-radius: 30px; }
+.wg-leiste { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.wg-spiel { width: 38px; height: 38px; flex: none; display: grid; place-items: center; font-size: 13px; color: var(--petrol); background: var(--amber); border: 0; border-radius: 999px; cursor: pointer; }
+.wg-uhr { flex: none; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--text-1); min-width: 5ch; }
+.wg-zaehler { flex: none; font-size: 11.5px; color: var(--text-3); min-width: 7ch; text-align: right; }
+/* Der Schieber nimmt den Rest der Zeile, fällt aber nie unter eine Breite, in der man zielen kann. */
+.wg-schieber { flex: 1 1 220px; min-width: 160px; accent-color: var(--amber); height: 26px; cursor: pointer; }
+.wg-knopf { width: 30px; height: 30px; flex: none; display: grid; place-items: center; font-size: 16px; line-height: 1; color: var(--text-2); background: transparent; border: 1px solid var(--line-1); border-radius: 6px; cursor: pointer; }
+.wg-knopf:disabled { color: var(--line-2); cursor: default; }
+.wg-datum { font-size: 13px; color: var(--text-1); background: transparent; border: 1px solid var(--line-1); border-radius: 6px; padding: 5px 8px; color-scheme: dark; }
+.wg-wahl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--text-3); background: transparent; border: 1px solid var(--line-1); border-radius: 999px; padding: 5px 10px; cursor: pointer; }
+.wg-wahl-an { color: var(--petrol); background: var(--amber); border-color: var(--amber); }
+/* Feste Höhe: drei Gitter mit zusammen 118 Punkten plus Achse. Ohne sie misst ECharts null. */
+.wg-band { height: 134px; }
+.wg-bandbeschriftung { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-left: 44px; font-size: 11px; letter-spacing: .06em; }

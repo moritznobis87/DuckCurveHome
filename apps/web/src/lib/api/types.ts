@@ -346,6 +346,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/anlage/wiedergabe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ein Ortstag als Folge von Anlagenbildern
+         * @description Dieselben Bilder wie `GET /anlage`, nur aus der Minutenreihe eines vergangenen Tages.
+         *
+         *     Die Oberflaeche faehrt mit einem Schieber darueber, und das Schema zeichnet jedes Bild so, wie
+         *     es den Augenblick zeichnet. Luecken in der Erfassung bleiben Luecken; `erwartet` sagt, wie
+         *     viele Bilder ein vollstaendiger Tag ergeben haette.
+         *
+         *     `step_min` ist auf drei Werte begrenzt und nicht frei: eine Schrittweite von sieben Minuten
+         *     ergaebe ein Band, dessen Raster zu keiner Uhrzeit passt.
+         */
+        get: operations["wiedergabe_api_v1_anlage_wiedergabe_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -1098,6 +1125,48 @@ export interface components {
             speicher: components["schemas"]["AnlageSpeicherOut"];
             heizkreis: components["schemas"]["AnlageHeizkreisOut"];
             warmwasser: components["schemas"]["AnlageWarmwasserOut"];
+        };
+        /**
+         * AnlageReplayOut
+         * @description Ein Ortstag als Folge von Anlagenbildern: die Wiedergabe.
+         *
+         *     Dieselben Bilder wie `GET /anlage`, nur aus der Minutenreihe nachgebaut und nicht aus dem
+         *     Augenblick. Die Oberflaeche faehrt mit einem Schieber darueber; das Schema zeichnet jedes Bild
+         *     so, wie es den Augenblick zeichnet.
+         *
+         *     **Luecken sind Luecken.** Ein Zeitpunkt ohne Messung in der Toleranz liefert kein Bild, und es
+         *     wird keines erfunden: `frames` ist deshalb nicht notwendig gleichmaessig und kann kuerzer sein
+         *     als der Tag. `erwartet` sagt, wie viele Bilder ein vollstaendiger Tag haette - erst der
+         *     Vergleich macht die Luecke sichtbar, statt sie als dichtes Band erscheinen zu lassen.
+         *
+         *     **Was der Rueckblick nicht zeigen kann**, steht in `hinweise_de` und nicht nur im Quelltext:
+         *     die Ventilstellungen der Raeume stehen nicht in der Minutentabelle, der Heizkreis bleibt also
+         *     dunkel, und beim ersten Bild ist unbekannt, wie lange die Waermepumpe schon lief.
+         */
+        AnlageReplayOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Step Min */
+            step_min: number;
+            /**
+             * Von
+             * Format: date-time
+             */
+            von: string;
+            /**
+             * Bis
+             * Format: date-time
+             */
+            bis: string;
+            /** Erwartet */
+            erwartet: number;
+            /** Frames */
+            frames: components["schemas"]["AnlageOut"][];
+            /** Hinweise De */
+            hinweise_de?: string[];
         };
         /**
          * AnlageSpeicherOut
@@ -5738,6 +5807,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnlageOut"];
+                };
+            };
+        };
+    };
+    wiedergabe_api_v1_anlage_wiedergabe_get: {
+        parameters: {
+            query: {
+                day: string;
+                /** @description Schrittweite in Minuten: 1, 5 oder 15 */
+                step_min?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnlageReplayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -18,7 +18,7 @@ import structlog
 
 from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
-from dch_api.application import demo_house, demo_rooms, rooms
+from dch_api.application import anlage_replay, demo_house, demo_rooms, rooms
 from dch_api.application.battery_control import BatteryMode
 from dch_api.application.demo_archive import DemoArchiv
 from dch_api.application.energy_accounting import EnergyAccounting
@@ -44,6 +44,7 @@ from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
     AlarmOut,
     AnlageOut,
+    AnlageReplayOut,
     BackfillResultOut,
     BatteryLiveOut,
     EnergySummaryOut,
@@ -922,6 +923,19 @@ class DemoRunner:
             zeilen=self.history.series(
                 now - timedelta(minutes=anlage_logic.RUECKBLICK_MIN), now + timedelta(minutes=1)
             ),
+        )
+
+    async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut:
+        """Die Wiedergabe aus dem Gedaechtnis der Vorfuehrung.
+
+        Es reicht so weit zurueck wie `history_retention_hours`, in der Vorfuehrung also Stunden
+        und nicht Jahre. Ein Tag, den die Vorfuehrung noch nicht erlebt hat, ergibt ein leeres
+        Band - und die Hinweiszeile sagt das, statt ein stehendes Haus zu zeigen.
+        """
+        von, bis = anlage_replay.fenster(day, BERLIN)
+        zeilen = self.history.series(von - timedelta(minutes=anlage_replay.RUECKBLICK_MIN), bis)
+        return anlage_replay.zusammenstellen(
+            zeilen, self.hems, day, BERLIN, step_min=step_min, jetzt=self.now
         )
 
     async def house_plan(self) -> HouseOut:

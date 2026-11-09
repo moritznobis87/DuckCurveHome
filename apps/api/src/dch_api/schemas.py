@@ -1357,3 +1357,30 @@ class AnlageOut(BaseModel):
     speicher: AnlageSpeicherOut
     heizkreis: AnlageHeizkreisOut
     warmwasser: AnlageWarmwasserOut
+
+
+class AnlageReplayOut(BaseModel):
+    """Ein Ortstag als Folge von Anlagenbildern: die Wiedergabe.
+
+    Dieselben Bilder wie `GET /anlage`, nur aus der Minutenreihe nachgebaut und nicht aus dem
+    Augenblick. Die Oberflaeche faehrt mit einem Schieber darueber; das Schema zeichnet jedes Bild
+    so, wie es den Augenblick zeichnet.
+
+    **Luecken sind Luecken.** Ein Zeitpunkt ohne Messung in der Toleranz liefert kein Bild, und es
+    wird keines erfunden: `frames` ist deshalb nicht notwendig gleichmaessig und kann kuerzer sein
+    als der Tag. `erwartet` sagt, wie viele Bilder ein vollstaendiger Tag haette - erst der
+    Vergleich macht die Luecke sichtbar, statt sie als dichtes Band erscheinen zu lassen.
+
+    **Was der Rueckblick nicht zeigen kann**, steht in `hinweise_de` und nicht nur im Quelltext:
+    die Ventilstellungen der Raeume stehen nicht in der Minutentabelle, der Heizkreis bleibt also
+    dunkel, und beim ersten Bild ist unbekannt, wie lange die Waermepumpe schon lief.
+    """
+
+    day: date
+    step_min: int
+    von: datetime
+    bis: datetime
+    #: Wie viele Bilder ein vollstaendig erfasster Tag ergeben haette.
+    erwartet: int
+    frames: list[AnlageOut]
+    hinweise_de: list[str] = Field(default_factory=list)

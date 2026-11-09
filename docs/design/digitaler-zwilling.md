@@ -412,7 +412,19 @@ Logzeile beim Start - eine Anforderung an niemanden sah genauso aus wie eine, di
 9. Nachbetrachtung: fünf Linien, zwei Perfect-Foresight-Läufe, Kostenzeile der Beschneidung.
    Vorgezogen am 08.11.2026: die Prognoseseite davon steht - Fehler je Reihe und je
    Vorlaufzeit aus dem Archiv, auf `/system`. Offen bleibt alles, was Euro sagt.
-10. Zeitschieber am Schema.
+10. ~~Zeitschieber am Schema.~~ Gebaut am 09.11.2026: die Seite „Wiedergabe" unter
+    `Wärme → Wiedergabe` fährt einen Ortstag durch dasselbe Anlagenschema, das die Seite „Anlage"
+    für den Augenblick zeichnet. `GET /anlage/wiedergabe?day=…&step_min=1|5|15` liefert die
+    Bilder; `application/anlage_replay.py` rekonstruiert die **Eingänge** von
+    `anlage.zusammensetzen` aus der Minutenreihe und ruft dann die vorhandene Zusammensetzung auf.
+    Ein Bildweg, nicht zwei - sonst zeigte der Rückblick in einer Woche ein anderes Haus als der
+    Augenblick.
+
+    Zwei Lücken bleiben und werden nicht gefüllt: die Ventilstellungen der Räume stehen nicht in
+    der Minutentabelle, der Heizkreis bleibt im Rückblick also dunkel, und wie lange die
+    Wärmepumpe vor dem ersten Bild schon lief, steht dort auch nicht. Beides sagt die Antwort in
+    `hinweise_de`, und die Seite zeigt es an. Fehlt zu einem Zeitpunkt jede Messung, entsteht kein
+    Bild: eine Lücke in der Erfassung bleibt sichtbar, statt als ruhiges Haus durchzulaufen.
 11. Lernen: H aus Ofenstunden, Gütegrad, Dämpfung, menschliche Durchsicht im ersten Winter.
 12. `shift_plan` entfernen.
 

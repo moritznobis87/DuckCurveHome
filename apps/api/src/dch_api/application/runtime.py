@@ -12,6 +12,7 @@ from dch_api.application.stove_control import StoveMode
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
     AnlageOut,
+    AnlageReplayOut,
     BackfillResultOut,
     BatteryLiveOut,
     EnergySummaryOut,
@@ -58,6 +59,8 @@ class Runtime(Protocol):
     async def rooms_live(self) -> RoomsLiveOut: ...
     async def house_plan(self) -> HouseOut: ...
     async def anlage(self) -> AnlageOut: ...
+
+    async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut: ...
     async def set_room_setpoint(
         self, room_id: int, setpoint_c: float
     ) -> tuple[bool, float, str]: ...

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -170,3 +170,42 @@ def test_der_vorlauf_erscheint_sobald_die_bruecke_ihn_schickt(live_client: TestC
         a = live_client.get("/api/v1/anlage", headers=KOPF).json()
 
     assert a["waermepumpe"]["flow_c"] == 38.5
+
+
+# ------------------------------------------------------------------ Die Wiedergabe
+
+
+def test_die_wiedergabe_liefert_bilder_desselben_schemas(client: TestClient) -> None:
+    """Der Endpunkt gibt dieselbe Form wie `GET /anlage`, nur viele davon.
+
+    Geprüft wird die Form und nicht der Inhalt: ob der Tag in der Vorführung schon erlebt wurde,
+    hängt an ihrer Laufzeit, und ein Prüflauf soll nicht davon abhängen, wie lange er dauert.
+    """
+    heute = date.today().isoformat()
+    r = client.get(f"/api/v1/anlage/wiedergabe?day={heute}&step_min=15", headers=KOPF)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["day"] == heute
+    assert body["step_min"] == 15
+    assert body["erwartet"] in (92, 96, 100), "24 Stunden, am Umstellungstag 23 oder 25"
+    assert isinstance(body["frames"], list)
+    assert body["hinweise_de"], "eine Wiedergabe sagt immer, was sie nicht zeigen kann"
+    for bild in body["frames"]:
+        assert set(bild) >= {"at", "strom", "waermepumpe", "ofen", "speicher", "heizkreis"}
+
+
+def test_eine_unsinnige_schrittweite_wird_abgelehnt(client: TestClient) -> None:
+    r = client.get(
+        f"/api/v1/anlage/wiedergabe?day={date.today().isoformat()}&step_min=7", headers=KOPF
+    )
+    assert r.status_code == 422
+    assert "Schrittweite" in r.text
+
+
+def test_ein_tag_ohne_erfassung_ist_leer_und_sagt_es(client: TestClient) -> None:
+    """Leer heißt „nichts erfasst", nicht „nichts geschah". Der Unterschied gehört in den Text."""
+    r = client.get("/api/v1/anlage/wiedergabe?day=2020-01-01&step_min=15", headers=KOPF)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["frames"] == []
+    assert "keine Minutenwerte" in body["hinweise_de"][0]

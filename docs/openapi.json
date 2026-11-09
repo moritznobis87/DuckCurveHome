@@ -682,6 +682,62 @@
         }
       }
     },
+    "/api/v1/anlage/wiedergabe": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Ein Ortstag als Folge von Anlagenbildern",
+        "description": "Dieselben Bilder wie `GET /anlage`, nur aus der Minutenreihe eines vergangenen Tages.\n\nDie Oberflaeche faehrt mit einem Schieber darueber, und das Schema zeichnet jedes Bild so, wie\nes den Augenblick zeichnet. Luecken in der Erfassung bleiben Luecken; `erwartet` sagt, wie\nviele Bilder ein vollstaendiger Tag ergeben haette.\n\n`step_min` ist auf drei Werte begrenzt und nicht frei: eine Schrittweite von sieben Minuten\nergaebe ein Band, dessen Raster zu keiner Uhrzeit passt.",
+        "operationId": "wiedergabe_api_v1_anlage_wiedergabe_get",
+        "parameters": [
+          {
+            "name": "day",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Day"
+            }
+          },
+          {
+            "name": "step_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Schrittweite in Minuten: 1, 5 oder 15",
+              "default": 5,
+              "title": "Step Min"
+            },
+            "description": "Schrittweite in Minuten: 1, 5 oder 15"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnlageReplayOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -2632,6 +2688,58 @@
         ],
         "title": "AnlageOut",
         "description": "Das Anlagenschema im Augenblick: alles, was die Seite „Anlage\" zeichnet, in einer Antwort.\n\nKeine Zeitreihe, kein Zeitraum: Das Bild ist der Augenblick, und seine Zahlen kommen aus dem\nLive-Zustand, aus den Räumen und aus zwei kurzen Rückblicken in die Minutenreihe für die\nNettoleistung des Speichers und die Zapferkennung."
+      },
+      "AnlageReplayOut": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "step_min": {
+            "type": "integer",
+            "title": "Step Min"
+          },
+          "von": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Bis"
+          },
+          "erwartet": {
+            "type": "integer",
+            "title": "Erwartet"
+          },
+          "frames": {
+            "items": {
+              "$ref": "#/components/schemas/AnlageOut"
+            },
+            "type": "array",
+            "title": "Frames"
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "step_min",
+          "von",
+          "bis",
+          "erwartet",
+          "frames"
+        ],
+        "title": "AnlageReplayOut",
+        "description": "Ein Ortstag als Folge von Anlagenbildern: die Wiedergabe.\n\nDieselben Bilder wie `GET /anlage`, nur aus der Minutenreihe nachgebaut und nicht aus dem\nAugenblick. Die Oberflaeche faehrt mit einem Schieber darueber; das Schema zeichnet jedes Bild\nso, wie es den Augenblick zeichnet.\n\n**Luecken sind Luecken.** Ein Zeitpunkt ohne Messung in der Toleranz liefert kein Bild, und es\nwird keines erfunden: `frames` ist deshalb nicht notwendig gleichmaessig und kann kuerzer sein\nals der Tag. `erwartet` sagt, wie viele Bilder ein vollstaendiger Tag haette - erst der\nVergleich macht die Luecke sichtbar, statt sie als dichtes Band erscheinen zu lassen.\n\n**Was der Rueckblick nicht zeigen kann**, steht in `hinweise_de` und nicht nur im Quelltext:\ndie Ventilstellungen der Raeume stehen nicht in der Minutentabelle, der Heizkreis bleibt also\ndunkel, und beim ersten Bild ist unbekannt, wie lange die Waermepumpe schon lief."
       },
       "AnlageSpeicherOut": {
         "properties": {

@@ -25,7 +25,7 @@ import structlog
 
 from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
-from dch_api.application import house, rooms
+from dch_api.application import anlage_replay, house, rooms
 from dch_api.application import room_log as room_log_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
 from dch_api.application.config_loader import AppConfig
@@ -73,6 +73,7 @@ from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
     AlarmOut,
     AnlageOut,
+    AnlageReplayOut,
     BackfillResultOut,
     BatteryLiveOut,
     EnergySummaryOut,
@@ -1091,6 +1092,21 @@ class LiveRuntime:
             wp_vorlauf=mess(anlage_logic.WP_VORLAUF),
             raeume=await self.rooms_live(),
             zeilen=zeilen,
+        )
+
+    async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut:
+        """Ein vergangener Ortstag als Folge von Anlagenbildern.
+
+        Eine Abfrage, nicht 288: die Minutenzeilen des Tages kommen in einem Zug, einschliesslich
+        des Rueckblicks davor, und die Bilder entstehen daraus im Arbeitsspeicher. Je Bild eine
+        Abfrage waere derselbe Tag in 288 Rundreisen durch die Datenbank.
+        """
+        von, bis = anlage_replay.fenster(day, BERLIN)
+        zeilen = await self.repos.minute_series(
+            von - timedelta(minutes=anlage_replay.RUECKBLICK_MIN), bis, list(anlage_replay.REIHEN)
+        )
+        return anlage_replay.zusammenstellen(
+            zeilen, self.hems, day, BERLIN, step_min=step_min, jetzt=self.now
         )
 
     # ------------------------------------------------------------------ Hausplan
