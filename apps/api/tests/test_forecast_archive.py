@@ -18,7 +18,7 @@ from sqlalchemy import func, select
 from dch_api.infrastructure.db import models as m
 from dch_api.infrastructure.db.engine import create_all_for_tests, make_engine
 from dch_api.infrastructure.db.repositories import SqlRepositories
-from hems_core.forecasting import PREIS, WETTER, Lauf, Punkt, kanonisch
+from hems_core.forecasting import PLAN, PREIS, WETTER, Lauf, Punkt, kanonisch, stand_vor
 
 BERLIN = ZoneInfo("Europe/Berlin")
 
@@ -174,3 +174,33 @@ async def test_das_loeschen_trennt_kanonisch_von_veraltet(repos: SqlRepositories
     async with repos.maker() as s:
         uebrig = (await s.execute(select(m.ForecastRun.id))).scalars().all()
     assert set(uebrig) == set(behalten)
+
+
+async def test_ein_abgelegter_fahrplan_laesst_sich_als_absicht_lesen(
+    repos: SqlRepositories,
+) -> None:
+    """Der ganze Weg: Fahrplan ablegen, und später fragen, was er für einen Zeitpunkt vorsah.
+
+    Zwei Läufe über dieselbe Stunde, der zweite widerruft den ersten. Gefragt wird einmal vor und
+    einmal nach dem zweiten Lauf - die Antwort muss sich ändern, und zwar genau an seiner
+    Erstellungszeit. Das ist die Zeile „geplant" der Wiedergabe.
+    """
+    ziel = datetime(2026, 11, 10, 9, 0, tzinfo=UTC)
+    for erstellt, wert in ((ziel - timedelta(hours=1), 1.0), (ziel + timedelta(minutes=5), 0.0)):
+        await repos.save_forecast_run(
+            Lauf(
+                art=PLAN,
+                anbieter="milp_v1",
+                erstellt=erstellt,
+                von=ziel,
+                bis=ziel,
+                schritt_min=15,
+                punkte=(Punkt(ts=ziel, variable="hp_release", wert=wert),),
+            )
+        )
+    punkte = await repos.forecast_history(
+        PLAN, "hp_release", ziel - timedelta(hours=1), ziel + timedelta(hours=1), vorlauf_h=3
+    )
+    stand = stand_vor(punkte, raster_min=15)
+    assert stand(ziel + timedelta(minutes=2)) == 1.0, "um 9:02 galt die Freigabe von 8:00"
+    assert stand(ziel + timedelta(minutes=8)) == 0.0, "um 9:08 der Widerruf von 9:05"

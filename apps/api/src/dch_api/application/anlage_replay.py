@@ -11,13 +11,20 @@ andere nicht, und am Ende zeigt die Wiedergabe ein anderes Haus als die Live-Sei
 rekonstruiert dieses Modul die **Eingänge** von `anlage.zusammensetzen` und ruft dann die
 vorhandene Zusammensetzung auf. Wer das Bild ändert, ändert beide Ansichten.
 
-**Was sich nicht rekonstruieren lässt, sagt das Bild selbst.** Zwei Lücken gibt es, und keine
-wird gefüllt:
+**Der Heizkreis kommt aus der Raumhistorie.** In der ersten Fassung dieses Moduls stand hier, die
+Ventilstellungen stünden nicht in der Minutentabelle, und der Heizkreis blieb im Rückblick dunkel.
+Das war falsch: sie stehen dort, in der JSON-Spalte `extra`, und `rooms_history` liest sie seit
+Wochen. Die Laufzeit holt diese Historie im selben Raster und gibt sie als Nachschlagefunktion
+herein; ohne sie (ein Haus ohne Raumregelung) bleibt der Heizkreis leer und sagt das auch.
 
-* **Der Heizkreis.** Die Ventilstellungen der Räume stehen nicht in der Minutentabelle. Im
-  Rückblick ist `rooms_total` deshalb null, und der Heizkreis bleibt dunkel. Eine Schätzung („es
-  war ja kalt, also war offen") wäre eine Erfindung an genau der Stelle, an der die Wiedergabe
-  überzeugen soll.
+**Neben den Bildern drei Reihen**, die das Anlagenbild nicht kennt und die Wiedergabe braucht: der
+Strompreis aus derselben Minutenzeile, und die Absicht des Fahrplans für Wärmepumpe und Ofen - was
+der jüngste aufbewahrte Fahrplan *vor* dem Zeitpunkt für ihn vorsah. So stehen Absicht und
+Ausführung im selben Raster nebeneinander.
+
+**Was sich nicht rekonstruieren lässt, sagt das Bild selbst.** Eine Lücke bleibt, und sie wird
+nicht gefüllt:
+
 * **Die Takthistorie der Wärmepumpe.** `running_since` kommt nicht aus einem Gedächtnis, sondern
   wird über die Bilder hinweg mitgezählt: sobald die Leistung die Schwelle übersteigt, beginnt der
   Lauf. Beim ersten Bild des Tages ist deshalb unbekannt, wie lange die Maschine schon lief, und
@@ -33,7 +40,8 @@ Reine Zusammensetzung, kein I/O. Die Zeilen holt die Laufzeit.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 
@@ -44,7 +52,7 @@ from dch_api.application.anlage import (
     WP_VORLAUF,
     zusammensetzen,
 )
-from dch_api.schemas import AnlageOut, AnlageReplayOut, RoomsLiveOut, StoveLiveOut
+from dch_api.schemas import AnlageOut, AnlageReplayOut, RoomHistoryOut, StoveLiveOut
 from hems_core.domain import (
     BufferTemperatures,
     EnergySnapshot,
@@ -220,6 +228,12 @@ def _naechste(zeilen: Sequence[Zeile], ts: datetime, *, toleranz_min: float) -> 
     return beste
 
 
+#: Zeitpunkt hinein, Ventilstellungen heraus: ein Eintrag je Raum, `None` ohne Messwert.
+Ventile = Callable[[datetime], Sequence[float | None]]
+#: Zeitpunkt hinein, Wert des jüngsten Fahrplans davor heraus. `None`, wenn keiner aufbewahrt ist.
+Absicht = Callable[[datetime], float | None]
+
+
 def bilder(
     zeilen: Sequence[Zeile],
     cfg: HemsConfig,
@@ -227,18 +241,40 @@ def bilder(
     von: datetime,
     bis: datetime,
     step_min: int,
+    ventile: Ventile | None = None,
 ) -> list[AnlageOut]:
-    """Die Bilder eines Zeitraums, eines je Schritt, in der Reihenfolge der Zeit.
+    """Die Bilder eines Zeitraums, eines je Schritt, in der Reihenfolge der Zeit."""
+    paare = bilder_mit_zeile(zeilen, cfg, von=von, bis=bis, step_min=step_min, ventile=ventile)
+    return [bild for bild, _ in paare]
+
+
+def bilder_mit_zeile(
+    zeilen: Sequence[Zeile],
+    cfg: HemsConfig,
+    *,
+    von: datetime,
+    bis: datetime,
+    step_min: int,
+    ventile: Ventile | None = None,
+) -> list[tuple[AnlageOut, Zeile]]:
+    """Die Bilder samt der Minutenzeile, aus der jedes entstand.
 
     `zeilen` sind die Minutenzeilen des Zeitraums **plus** `RUECKBLICK_MIN` davor; den Rückblick
     braucht jedes Bild für die Nettoleistung des Speichers und die Zapferkennung. Zeitpunkte ohne
     Messung in der Toleranz werden übersprungen und nicht erfunden - eine Lücke in der Wiedergabe
     ist eine Lücke in der Erfassung, und sie darf als solche zu sehen sein.
+
+    Die Zeile reist mit, weil die Antwort neben den Bildern Reihen hat, die das Anlagenbild nicht
+    kennt - den Strompreis vor allem. Sie über eine zweite Suche zu holen hieße, zwei Zuordnungen
+    von Zeitpunkt zu Zeile in Deckung halten zu müssen.
+
+    `ventile` gibt für einen Zeitpunkt die Ventilstellungen der Räume zurück, einen Eintrag je
+    Raum. Fehlt die Funktion, hat das Bild keine Räume, und der Heizkreis sagt „keine gemeldet".
     """
     if step_min <= 0:
         raise ValueError("step_min muss positiv sein")
     takt = Takt()
-    out: list[AnlageOut] = []
+    out: list[tuple[AnlageOut, Zeile]] = []
     schritt = timedelta(minutes=step_min)
     # Die Toleranz wächst mit der Schrittweite: bei 5 Minuten Schritt ist eine 4 Minuten alte
     # Messung noch dieses Bild, bei einer Minute Schritt wäre sie das Nachbarbild.
@@ -256,26 +292,46 @@ def bilder(
         rueck = [
             z for z in zeilen if ts - timedelta(minutes=RUECKBLICK_MIN) <= _zeit(z["ts"]) <= ts
         ]
-        out.append(
-            zusammensetzen(
-                now=ts,
-                snap=snap,
-                buffer=compute_buffer_state(snap.buffer_temps_c, cfg.buffer),
-                hp=hp,
-                cfg=cfg,
-                stove=ofen_zustand(zeile, cfg),
-                stove_return=_m(zeile, "stove_return_temp_c", ts),
-                stove_pump=_m(zeile, "stove_pump_pct", ts),
-                dhw_outlet=_m(zeile, DHW_OUTLET, ts),
-                dhw_inlet=_m(zeile, DHW_INLET, ts),
-                wp_vorlauf=_m(zeile, WP_VORLAUF, ts),
-                # Die Ventilstellungen stehen nicht in der Minutentabelle, siehe Modulkopf.
-                raeume=RoomsLiveOut(at=ts, named=False, rooms=[]),
-                zeilen=list(rueck),
-            )
+        bild = zusammensetzen(
+            now=ts,
+            snap=snap,
+            buffer=compute_buffer_state(snap.buffer_temps_c, cfg.buffer),
+            hp=hp,
+            cfg=cfg,
+            stove=ofen_zustand(zeile, cfg),
+            stove_return=_m(zeile, "stove_return_temp_c", ts),
+            stove_pump=_m(zeile, "stove_pump_pct", ts),
+            dhw_outlet=_m(zeile, DHW_OUTLET, ts),
+            dhw_inlet=_m(zeile, DHW_INLET, ts),
+            wp_vorlauf=_m(zeile, WP_VORLAUF, ts),
+            ventile=ventile(ts) if ventile is not None else [],
+            zeilen=list(rueck),
         )
+        out.append((bild, zeile))
         ts += schritt
     return out
+
+
+def ventile_aus(historie: RoomHistoryOut | None) -> Ventile | None:
+    """Die Raumhistorie als Nachschlagefunktion: Zeitpunkt hinein, Ventilstellungen heraus.
+
+    Zu einem Zeitpunkt gehört das Fenster, das an ihm **endet**, nicht das, das an ihm beginnt.
+    Das beginnende reicht bis zu einer Schrittweite in die Zukunft, und ein Bild soll zeigen, was
+    zu seiner Zeit bekannt war. Die Laufzeit holt die Historie deshalb einen Schritt früher.
+
+    Ein Zeitpunkt außerhalb der Historie gibt einen leeren Satz zurück: dann meldet das Bild keine
+    Räume, statt lauter geschlossene zu behaupten.
+    """
+    if historie is None or not historie.rooms:
+        return None
+    schritt = timedelta(minutes=historie.step_min)
+    index = {start + schritt: i for i, start in enumerate(historie.ts)}
+
+    def nachschlagen(ts: datetime) -> Sequence[float | None]:
+        i = index.get(ts)
+        return [] if i is None else [raum.valve[i] for raum in historie.rooms]
+
+    return nachschlagen
 
 
 #: Erlaubte Schrittweiten. Keine freie Zahl: ein Schritt von 7 Minuten ergibt ein Band, dessen
@@ -295,7 +351,14 @@ def fenster(day: date, tz: tzinfo) -> tuple[datetime, datetime]:
     return von.astimezone(UTC), bis.astimezone(UTC)
 
 
-def hinweise(frames: Sequence[AnlageOut], erwartet: int, *, laeuft_noch: bool) -> list[str]:
+def hinweise(
+    frames: Sequence[AnlageOut],
+    erwartet: int,
+    *,
+    laeuft_noch: bool,
+    mit_raeumen: bool = False,
+    absichten: int = 0,
+) -> list[str]:
     """Was an dieser Wiedergabe zu wissen ist, in Sätzen und nicht als Fehlercode.
 
     `laeuft_noch` heißt: der Tag ist der heutige und noch nicht vorbei. Dann ist `erwartet` schon
@@ -323,10 +386,25 @@ def hinweise(frames: Sequence[AnlageOut], erwartet: int, *, laeuft_noch: bool) -
             f"{fehlt} von {erwartet} Bildern fehlen: zu diesen Zeitpunkten lag keine Messung vor. "
             "Lücken werden nicht überbrückt, sondern übersprungen."
         )
-    out.append(
-        "Der Heizkreis bleibt im Rückblick dunkel: die Ventilstellungen der Räume stehen nicht in "
-        "der Minutentabelle, und geschätzt wird hier nichts."
-    )
+    if not mit_raeumen:
+        out.append(
+            "Für diesen Tag liegt keine Raumhistorie vor. Der Heizkreis meldet deshalb keine "
+            "Räume; geschätzt wird hier nichts."
+        )
+    # Die Absicht gibt es erst, seit Fahrpläne aufbewahrt werden. Für die Tage davor ist sie
+    # nicht nachholbar, und die Seite soll das sagen, statt eine leere Zeile zu zeigen, die nach
+    # „nichts geplant" aussieht.
+    if absichten == 0:
+        out.append(
+            "Zu diesem Tag ist kein Fahrplan aufbewahrt. Die Zeile der Absicht bleibt leer, und das "
+            "heißt nicht, dass nichts geplant war: aufbewahrt wird erst seit dem 09.11.2026."
+        )
+    elif absichten < len(frames):
+        out.append(
+            f"Die Absicht ist für {absichten} von {len(frames)} Bildern bekannt. Sie stammt aus "
+            "dem jüngsten aufbewahrten Fahrplan vor dem jeweiligen Zeitpunkt; aufbewahrt wird "
+            "stündlich."
+        )
     if frames[0].waermepumpe.running and frames[0].waermepumpe.running_since is None:
         out.append(
             "Die Wärmepumpe lief schon beim ersten Bild. Wie lange, steht in diesen Zeilen nicht, "
@@ -343,12 +421,17 @@ def zusammenstellen(
     *,
     step_min: int,
     jetzt: datetime | None = None,
+    raeume: RoomHistoryOut | None = None,
+    geplant_wp: Absicht | None = None,
+    geplant_ofen: Absicht | None = None,
 ) -> AnlageReplayOut:
-    """Die ganze Antwort: Fenster, Bilder, Hinweise. Beide Laufzeiten rufen nur das hier.
+    """Die ganze Antwort: Fenster, Bilder, Begleitreihen, Hinweise. Beide Laufzeiten rufen nur das.
 
     `zeilen` muss `RUECKBLICK_MIN` Minuten vor `von` beginnen, sonst fehlt den ersten Bildern die
     Nettoleistung des Speichers - sie wäre dann nicht falsch, sondern leer, und das sähe aus wie
-    ein stehender Speicher.
+    ein stehender Speicher. `raeume` ist die Raumhistorie im selben Raster, einen Schritt früher
+    begonnen (siehe `ventile_aus`). `geplant_wp` und `geplant_ofen` schlagen nach, was der jüngste
+    aufbewahrte Fahrplan vor einem Zeitpunkt für ihn vorsah.
     """
     von, bis = fenster(day, tz)
     # Beim laufenden Tag endet beides an jetzt: die Bilder und das Erwartete. Sonst zaehlte der
@@ -357,8 +440,22 @@ def zusammenstellen(
     # stand in der Kopfzeile "261 von 259 Bildern", gesehen am 09.11.2026.
     laeuft_noch = jetzt is not None and von <= jetzt < bis
     ende = min(bis, jetzt) if laeuft_noch and jetzt is not None else bis
-    rahmen = bilder(zeilen, cfg, von=von, bis=ende, step_min=step_min)
-    erwartet = max(int((ende - von).total_seconds() // (step_min * 60)), 0)
+    paare = bilder_mit_zeile(
+        zeilen, cfg, von=von, bis=ende, step_min=step_min, ventile=ventile_aus(raeume)
+    )
+    rahmen = [bild for bild, _ in paare]
+    # Aufgerundet, nicht abgerundet: Bilder entstehen zu jedem Rasterzeitpunkt *vor* dem Ende,
+    # und davon gibt es bei einem Ende mitten im Raster einen mehr, als ganze Schritte
+    # hineinpassen. Abgerundet stand am laufenden Tag "89 von 88 Bildern" da.
+    erwartet = max(math.ceil((ende - von).total_seconds() / (step_min * 60)), 0)
+
+    def absicht(f: Absicht | None) -> list[bool | None]:
+        if f is None:
+            return [None] * len(rahmen)
+        werte = [f(bild.at) for bild in rahmen]
+        return [None if w is None else w > 0.5 for w in werte]
+
+    wp, ofen = absicht(geplant_wp), absicht(geplant_ofen)
     return AnlageReplayOut(
         day=day,
         step_min=step_min,
@@ -366,5 +463,14 @@ def zusammenstellen(
         bis=bis,
         erwartet=erwartet,
         frames=rahmen,
-        hinweise_de=hinweise(rahmen, erwartet, laeuft_noch=laeuft_noch),
+        preis_ct_kwh=[_zahl(zeile, "electricity_price_ct_kwh") for _, zeile in paare],
+        geplant_wp=wp,
+        geplant_ofen=ofen,
+        hinweise_de=hinweise(
+            rahmen,
+            erwartet,
+            laeuft_noch=laeuft_noch,
+            mit_raeumen=any(bild.heizkreis.rooms_total > 0 for bild in rahmen),
+            absichten=sum(1 for w in wp if w is not None),
+        ),
     )

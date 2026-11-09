@@ -1383,4 +1383,16 @@ class AnlageReplayOut(BaseModel):
     #: Wie viele Bilder ein vollstaendig erfasster Tag ergeben haette.
     erwartet: int
     frames: list[AnlageOut]
+    #: Drei Begleitreihen, jede genau so lang wie `frames` und in derselben Reihenfolge. Sie
+    #: stehen neben den Bildern und nicht in ihnen, weil das Anlagenbild sie nicht kennt und auch
+    #: nicht kennen soll: es zeichnet, was fliesst, nicht was es kostet oder was vorgesehen war.
+    #:
+    #: `preis_ct_kwh` kommt aus derselben Minutenzeile wie das Bild. `geplant_wp` und
+    #: `geplant_ofen` sagen, was der juengste aufbewahrte Fahrplan **vor** dem Zeitpunkt fuer ihn
+    #: vorsah: `True` Freigabe beziehungsweise Brennen, `False` ausdruecklich nicht, `None` kein
+    #: aufbewahrter Fahrplan. Das dritte ist der Normalfall fuer jeden Tag vor dem 09.11.2026 und
+    #: von einem Nein streng zu unterscheiden.
+    preis_ct_kwh: list[float | None] = Field(default_factory=list)
+    geplant_wp: list[bool | None] = Field(default_factory=list)
+    geplant_ofen: list[bool | None] = Field(default_factory=list)
     hinweise_de: list[str] = Field(default_factory=list)

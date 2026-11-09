@@ -145,9 +145,49 @@ Anlagenbildern, und die Oberfläche fährt mit einem Schieber darüber.
   Messsystem sehen im Schema gleich aus.
 * **Beim laufenden Tag endet das Erwartete an jetzt.** Sonst zählte der noch nicht gewesene Abend
   als fehlende Messung - gemessen am Vorführtag als „9 von 96 Bildern fehlen", wo keines fehlte.
-* **Zwei Größen kann der Rückblick nicht zeigen**, und er behauptet sie auch nicht: die
-  Ventilstellungen der Räume stehen nicht in der Minutentabelle (der Heizkreis bleibt dunkel), und
-  wie lange die Wärmepumpe vor dem ersten Bild schon lief, steht dort ebenso wenig.
+* **Der Heizkreis kommt aus der Raumhistorie.** Hier stand am ersten Tag, die Ventilstellungen
+  stünden nicht in der Minutentabelle und der Heizkreis bleibe im Rückblick dunkel. Das war falsch:
+  sie stehen dort, in der JSON-Spalte `extra`, und `rooms_history` liest sie seit Wochen. Die
+  Wiedergabe holt sie im selben Raster; zu einem Bild gehört das Fenster, das an ihm **endet**.
+* **Eine Größe kann der Rückblick nicht zeigen**, und er behauptet sie auch nicht: wie lange die
+  Wärmepumpe vor dem ersten Bild schon lief.
+* **Neben den Bildern stehen drei Reihen** gleicher Länge: der Strompreis aus derselben
+  Minutenzeile, und die Absicht des Fahrplans für Wärmepumpe und Ofen (nächster Abschnitt).
+
+## Fahrpläne werden aufbewahrt
+
+Seit dem 09.11.2026 legt der Dienst auch seine Fahrpläne ab, in denselben Tabellen wie die
+Prognosen und als vierte Art `plan` neben `weather`, `pv` und `price`. Keine Migration: ein
+Fahrplan hat die Form eines Prognoselaufs - zu einer Zeit erstellt, über einen Horizont, je Raster
+ein Wert.
+
+**Warum.** Bis dahin überschrieb jeder Fahrplan den vorigen. Die Frage „was hatte der Fahrplan für
+diese Stunde vor" war für jeden vergangenen Tag unbeantwortbar, und zwar für immer: derselbe
+Verlust, den die Prognoseablage zwei Tage vorher beendet hatte, nur eine Ebene höher. Die
+Nachbetrachtung des Zwillings braucht beides, die Prognose von damals und die Absicht von damals.
+
+**Was liegt.** Je Viertelstunde bis zu vier Größen: `hp_release` (1 Freigabe, 0 ausdrücklich
+nicht), `stove_on`, `buffer_kwh` und `heat_kw` - die beiden letzten, damit sich später prüfen
+lässt, ob der Plan auf richtigen Annahmen stand. Sagt der Fahrplan zu einer Viertelstunde nichts,
+liegt kein Punkt da; ein Nein und ein Schweigen bleiben unterscheidbar.
+
+**Nur was bevorsteht.** Der Fahrplan der Oberfläche beginnt an der Ortsmitternacht, aber seine
+vergangenen Viertelstunden sind keine Absicht, sondern die Regel, wie sie *heute* antworten würde.
+Sie abzulegen hieße, eine Nachrechnung als Erinnerung zu archivieren.
+
+**Stündlich, nicht jede Viertelstunde.** Gerechnet wird alle 15 Minuten; abgelegt wird der erste
+Fahrplan jeder vollen Stunde und der erste nach einem Start. Jede Rechnung abzulegen wären rund
+55 000 Punkte am Tag für Nachbarn, die sich fast gleichen. Die Entscheidung jeder einzelnen
+Viertelstunde steht unabhängig davon in `control_decisions`. Aufbewahrung wie bei den Prognosen:
+alle Läufe dreißig Tage, je Ortstag ein kanonischer für immer.
+
+**Gelesen wird der Stand, nicht der Lauf.** `stand_vor` gibt für einen Zeitpunkt den Wert aus dem
+jüngsten Lauf, der *vor* ihm erstellt wurde. Ein Lauf von 9:10 darf über 9:00 nichts sagen, auch
+wenn er einen Punkt für 9:00 enthält - sonst zeigte die Wiedergabe als Absicht die Erkenntnis von
+später, und Absicht und Ausführung stimmten verdächtig gut überein.
+
+Die Vorführung hat keine Datenbank und hält ihre Fahrpläne in einer begrenzten Schlange; die
+Wiedergabe liest sie über denselben Weg.
 
 ## Was die Historie sichtbar macht
 

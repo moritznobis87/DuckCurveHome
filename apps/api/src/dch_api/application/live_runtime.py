@@ -50,8 +50,10 @@ from dch_api.application.myenergi_source import (
 from dch_api.application.plan_service import (
     IST_REIHEN,
     Istpunkt,
+    ablage_faellig,
     build_plan,
     ist_nachschlag,
+    plan_als_lauf,
 )
 from dch_api.application.push import Mitteilung, PushService
 from dch_api.application.room_automatik import (
@@ -130,6 +132,7 @@ from hems_core.domain import (
     apply_heat_patch,
 )
 from hems_core.forecasting import (
+    PLAN,
     PREIS,
     PV,
     WETTER,
@@ -137,6 +140,7 @@ from hems_core.forecasting import (
     kanonisch,
     preis_lauf,
     pv_lauf,
+    stand_vor,
     wetter_lauf,
 )
 from hems_core.planning import (
@@ -220,6 +224,7 @@ class LiveRuntime:
         self.decisions: deque[Decision] = deque(maxlen=100)
         self.plan: PlanOut | None = None
         self._plan_at: datetime | None = None
+        self._plan_abgelegt: datetime | None = None
         # Wann K1 zuletzt gesendet wurde: der Hardware-Timer läuft ab Befehl, nicht ab Entscheidung.
         self._k1_sent_at: datetime | None = None
         self._plan_status_vorher: str = ""  # damit nur der Wechsel ein Ereignis wird
@@ -671,6 +676,13 @@ class LiveRuntime:
             planner_warn_de=self.stove_plan.warnung_de(),
             hp_actuation=self.settings.heat_pump_actuation_enabled,
         )
+        # Der Fahrplan wird aufbewahrt, bevor der nächste ihn überschreibt. Bis zum 09.11.2026
+        # geschah das nicht, und „was hatte der Fahrplan für diese Stunde vor" war für jeden
+        # vergangenen Tag unbeantwortbar. Stündlich, nicht jede Viertelstunde; die Begründung
+        # steht an `ABLAGE_JE_MIN`.
+        if ablage_faellig(self._plan_abgelegt, now):
+            await self._lauf_ablegen(plan_als_lauf(self.plan, now))
+            self._plan_abgelegt = now
         self._plan_at = now
         self.broker.publish("plan", self.plan.model_dump(mode="json"))
 
@@ -1090,23 +1102,52 @@ class LiveRuntime:
             dhw_outlet=mess(anlage_logic.DHW_OUTLET),
             dhw_inlet=mess(anlage_logic.DHW_INLET),
             wp_vorlauf=mess(anlage_logic.WP_VORLAUF),
-            raeume=await self.rooms_live(),
+            ventile=[r.valve for r in (await self.rooms_live()).rooms],
             zeilen=zeilen,
         )
 
     async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut:
         """Ein vergangener Ortstag als Folge von Anlagenbildern.
 
-        Eine Abfrage, nicht 288: die Minutenzeilen des Tages kommen in einem Zug, einschliesslich
-        des Rueckblicks davor, und die Bilder entstehen daraus im Arbeitsspeicher. Je Bild eine
-        Abfrage waere derselbe Tag in 288 Rundreisen durch die Datenbank.
+        Vier Abfragen, nicht 288: die Minutenzeilen des Tages samt Rückblick, die Raumhistorie im
+        selben Raster und je eine für die Absicht von Wärmepumpe und Ofen. Die Bilder entstehen
+        daraus im Arbeitsspeicher. Je Bild eine Abfrage wäre derselbe Tag in 288 Rundreisen.
+
+        Raumhistorie und Absicht sind Beiwerk: scheitert eine davon, kommt die Wiedergabe trotzdem,
+        nur eben ohne Heizkreis oder ohne die Zeile der Absicht - und sagt das in ihren Hinweisen.
         """
         von, bis = anlage_replay.fenster(day, BERLIN)
+        schritt = timedelta(minutes=step_min)
         zeilen = await self.repos.minute_series(
             von - timedelta(minutes=anlage_replay.RUECKBLICK_MIN), bis, list(anlage_replay.REIHEN)
         )
+        raeume: RoomHistoryOut | None = None
+        try:
+            # Einen Schritt früher: zu einem Bild gehört das Fenster, das an ihm endet.
+            raeume = await self.rooms_history(von - schritt, bis, step_min)
+        except Exception as exc:
+            log.warning("replay without rooms", error=repr(exc)[:200])
+
+        async def absicht(groesse: str) -> anlage_replay.Absicht | None:
+            try:
+                # Drei Stunden Vorlauf reichen: abgelegt wird stündlich, und gefragt ist der
+                # jüngste Fahrplan vor dem Zeitpunkt, nicht der vom Vortag.
+                punkte = await self.repos.forecast_history(PLAN, groesse, von, bis, vorlauf_h=3)
+            except Exception as exc:
+                log.warning("replay without plan", groesse=groesse, error=repr(exc)[:200])
+                return None
+            return stand_vor(punkte, raster_min=15) if punkte else None
+
         return anlage_replay.zusammenstellen(
-            zeilen, self.hems, day, BERLIN, step_min=step_min, jetzt=self.now
+            zeilen,
+            self.hems,
+            day,
+            BERLIN,
+            step_min=step_min,
+            jetzt=self.now,
+            raeume=raeume,
+            geplant_wp=await absicht("hp_release"),
+            geplant_ofen=await absicht("stove_on"),
         )
 
     # ------------------------------------------------------------------ Hausplan
@@ -1698,7 +1739,7 @@ class LiveRuntime:
     # Prognose gekostet" für jeden vergangenen Tag unbeantwortbar, und zwar für immer.
 
     #: Die Arten, für die je Ortstag ein kanonischer Lauf aufbewahrt wird.
-    ARTEN: tuple[str, ...] = (WETTER, PV, PREIS)
+    ARTEN: tuple[str, ...] = (WETTER, PV, PREIS, PLAN)
 
     async def _lauf_ablegen(self, lauf: Lauf | None) -> None:
         """Einen Lauf ablegen, falls er einer ist.

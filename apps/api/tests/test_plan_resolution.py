@@ -5,9 +5,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from dch_api.application.plan_service import build_plan
+from dch_api.application.plan_service import ablage_faellig, build_plan, plan_als_lauf
 from dch_api.application.stove_planner import Zwillingspunkt
 from hems_core.domain import HemsConfig
+from hems_core.forecasting import PLAN
 from hems_core.planning import PricePoint
 from hems_core.simulation import BERLIN
 
@@ -295,3 +296,37 @@ def test_ein_stummer_fuehler_zieht_die_anderen_nicht_mit() -> None:
     assert punkt.pv_kw == 1.0
     assert punkt.waermepumpe_kw is None
     assert punkt.anforderung is None
+
+
+# ------------------------------------------------------------------ Der Fahrplan wird aufbewahrt
+
+
+def test_der_fahrplan_wird_ein_lauf_mit_drei_zustaenden() -> None:
+    """Freigabe ist eins, ein Nein ist null, und Schweigen ist gar kein Punkt.
+
+    Bis zum 09.11.2026 überschrieb jeder Fahrplan den vorigen, und die Absicht eines vergangenen
+    Tages war für immer weg. Abgelegt wird er in der Form, die das Prognosearchiv schon kennt; hier
+    wird festgehalten, dass dabei das Nein nicht mit dem Schweigen verschmilzt.
+    """
+    laeuft_bis = NOW + timedelta(hours=2)
+    plan = build_plan(
+        _pv, _hourly_prices(24), NOW, HemsConfig(), hp_on=lambda t: NOW <= t < laeuft_bis
+    )
+    lauf = plan_als_lauf(plan, NOW)
+    assert lauf is not None
+    assert lauf.art == PLAN and lauf.anbieter == "milp_v1"
+    frei = {p.ts: p.wert for p in lauf.punkte if p.variable == "hp_release"}
+    assert frei[NOW] == 1.0 and frei[NOW + timedelta(minutes=105)] == 1.0
+    assert frei[laeuft_bis] == 0.0, "nach dem Fenster sagt der Optimierer ausdrücklich nein"
+    assert min(frei) == NOW, "nichts vor der laufenden Viertelstunde: das wäre keine Absicht"
+
+
+def test_die_ablage_ist_stuendlich_und_beim_ersten_mal() -> None:
+    """Gerechnet wird alle Viertelstunde, aufbewahrt je voller Stunde einmal."""
+    assert ablage_faellig(None, NOW) is True, "der erste Fahrplan nach dem Start bleibt"
+    assert ablage_faellig(NOW, NOW + timedelta(minutes=15)) is False
+    assert ablage_faellig(NOW, NOW + timedelta(minutes=45)) is False
+    assert ablage_faellig(NOW, NOW + timedelta(minutes=60)) is True
+    # Nicht „sechzig Minuten später", sondern „in einer neuen Stunde": nach einem Neustart um
+    # 10:50 gehört der Fahrplan von 11:05 schon zur nächsten.
+    assert ablage_faellig(NOW + timedelta(minutes=50), NOW + timedelta(minutes=65)) is True

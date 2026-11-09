@@ -42,9 +42,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, time, tzinfo
+from datetime import date, datetime, time, timedelta, tzinfo
 
 from hems_core.forecasting.models import PvForecast, WeatherForecast
 from hems_core.planning.price_windows import PricePoint
@@ -213,3 +213,99 @@ def kanonisch[S](
     if davor:
         return max(davor, key=lambda z: z[1])[0]
     return min(des_tags, key=lambda z: z[1])[0]
+
+
+# ------------------------------------------------------------------ Der Fahrplan als Lauf
+#
+# Ein Fahrplan ist keine Prognose, aber er hat ihre Form: zu einer Zeit erstellt, über einen
+# Horizont, je Raster ein Wert. Und er hat ihr Schicksal: bis zum 09.11.2026 wurde er alle
+# Viertelstunde gerechnet und vom nächsten überschrieben. Die Frage „was hatte der Fahrplan für
+# diese Stunde vor" war damit für jeden vergangenen Tag unbeantwortbar - derselbe Verlust, den
+# dieses Modul für die Prognosen beendet hat, nur eine Ebene höher. Die Nachbetrachtung des
+# Zwillings (Abschnitt 9 des Entwurfs) braucht beides: die Prognose von damals und die Absicht
+# von damals.
+
+#: Die vierte Art neben Wetter, PV und Preis.
+PLAN = "plan"
+
+#: Was von einem Fahrplan bleibt. Die beiden Schaltabsichten, und die zwei Größen, an denen sich
+#: später prüfen lässt, ob der Plan auf richtigen Annahmen stand: der erwartete Pufferinhalt und
+#: der erwartete Wärmebedarf (Heizen plus Warmwasser).
+PLAN_GROESSEN: tuple[str, ...] = ("hp_release", "stove_on", "buffer_kwh", "heat_kw")
+
+
+def plan_lauf(
+    erstellt: datetime,
+    intervalle: Sequence[tuple[datetime, Mapping[str, float | None]]],
+    *,
+    schritt_min: int,
+    anbieter: str,
+) -> Lauf | None:
+    """Aus den Intervallen eines Fahrplans einen Lauf machen, oder `None`, wenn nichts darin steht.
+
+    `intervalle` sind Paare aus Intervallbeginn und den Größen dieses Intervalls. Was davon nicht in
+    `PLAN_GROESSEN` steht, wird überlesen; ein `None` wird nicht abgelegt, denn „der Plan sagt dazu
+    nichts" ist die Abwesenheit eines Punkts und kein Punkt ohne Wert.
+
+    **Nur was ab `erstellt` liegt.** Der Fahrplan der Oberfläche beginnt an der Ortsmitternacht,
+    aber seine vergangenen Viertelstunden sind keine Absicht, sondern die Regel, wie sie *heute*
+    antworten würde. Sie mit abzulegen hieße, eine Nachrechnung als Erinnerung zu archivieren.
+    Die laufende Viertelstunde gehört dazu: für sie gilt der Plan gerade.
+    """
+    grenze = erstellt - timedelta(minutes=schritt_min)
+    punkte = tuple(
+        Punkt(ts=ts, variable=name, wert=float(wert))
+        for ts, groessen in intervalle
+        if ts > grenze
+        for name, wert in groessen.items()
+        if name in PLAN_GROESSEN and wert is not None
+    )
+    if not punkte:
+        return None
+    zeiten = [p.ts for p in punkte]
+    return Lauf(
+        art=PLAN,
+        anbieter=anbieter,
+        erstellt=erstellt,
+        von=min(zeiten),
+        bis=max(zeiten),
+        schritt_min=schritt_min,
+        punkte=punkte,
+    )
+
+
+def stand_vor(
+    punkte: Iterable[tuple[datetime, datetime, float]], *, raster_min: int
+) -> Callable[[datetime], float | None]:
+    """Was der jüngste Lauf *vor* einem Zeitpunkt über diesen Zeitpunkt sagte.
+
+    `punkte` sind Tripel aus Erstellungszeit, Zielzeit und Wert, so wie die Ablage sie für eine
+    Größe herausgibt. Die Rückgabe ist eine Nachschlagefunktion: für einen Zeitpunkt `t` der Wert
+    des Rasterintervalls, in dem `t` liegt, aus dem jüngsten Lauf mit Erstellungszeit `<= t`.
+
+    **Nie ein Lauf von danach.** Das ist der ganze Sinn: gefragt ist die Absicht, mit der man in
+    diese Viertelstunde hineinging, nicht die Erkenntnis von später. Ein Lauf, der um 8:10
+    entstand, darf über 8:00 nichts sagen, auch wenn er einen Punkt für 8:00 enthält.
+
+    `None` heißt: kein Lauf vor `t` kannte dieses Intervall. Das ist der Normalfall für jeden Tag
+    vor dem Beginn der Ablage und kein Fehler.
+    """
+    je_ziel: dict[datetime, list[tuple[datetime, float]]] = {}
+    for erstellt, ziel, wert in punkte:
+        je_ziel.setdefault(ziel, []).append((erstellt, wert))
+    for liste in je_ziel.values():
+        liste.sort(key=lambda z: z[0])
+    raster_s = raster_min * 60
+
+    def nachschlagen(t: datetime) -> float | None:
+        # Abrunden über die Epoche und nicht über die Mitternacht: das Ergebnis hängt dann nicht
+        # an der Zeitzone, in der `t` gerade notiert ist.
+        ziel = datetime.fromtimestamp((t.timestamp() // raster_s) * raster_s, tz=t.tzinfo)
+        bester: float | None = None
+        for erstellt, wert in je_ziel.get(ziel, ()):
+            if erstellt > t:
+                break
+            bester = wert
+        return bester
+
+    return nachschlagen

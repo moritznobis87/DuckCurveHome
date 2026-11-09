@@ -20,7 +20,15 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from dch_api.application import anlage_replay
-from dch_api.application.anlage_replay import SCHRITTE, Zeile, bilder, fenster, zusammenstellen
+from dch_api.application.anlage_replay import (
+    SCHRITTE,
+    Zeile,
+    bilder,
+    fenster,
+    ventile_aus,
+    zusammenstellen,
+)
+from dch_api.schemas import RoomHistoryOut, RoomSeriesOut
 from hems_core.domain import HemsConfig
 
 BERLIN = ZoneInfo("Europe/Berlin")
@@ -156,12 +164,95 @@ def test_eine_laufende_pumpe_im_ersten_bild_erfindet_keinen_anfang() -> None:
     assert rahmen[0].waermepumpe.running_since is None
 
 
-def test_der_heizkreis_bleibt_dunkel_statt_geschlossen_zu_behaupten() -> None:
-    """Ohne Ventildaten ist „kein Raum offen" keine Messung, sondern eine fehlende."""
+def test_ohne_raumhistorie_meldet_der_heizkreis_keine_raeume() -> None:
+    """Ohne Ventildaten ist „kein Raum offen" keine Messung, sondern eine fehlende.
+
+    Das ist der Fall eines Hauses ohne Raumregelung. Der Heizkreis sagt dann „keine Räume
+    gemeldet" und nicht „alle zu".
+    """
     rahmen = bilder(tag(30), CFG, von=VON, bis=VON + timedelta(minutes=15), step_min=15)
     hk = rahmen[0].heizkreis
     assert hk.rooms_total == 0 and hk.running is False
     assert hk.open_share is None, "kein Anteil ohne Nenner"
+
+
+def _historie(
+    ventile: list[list[float | None]], *, ab: datetime, step_min: int = 15
+) -> RoomHistoryOut:
+    """Eine Raumhistorie mit je einer Ventilreihe je Raum."""
+    n = len(ventile[0])
+    return RoomHistoryOut(
+        start=ab,
+        end=ab + timedelta(minutes=step_min * n),
+        step_min=step_min,
+        ts=[ab + timedelta(minutes=step_min * i) for i in range(n)],
+        rooms=[
+            RoomSeriesOut(
+                id=i,
+                name=f"Raum {i}",
+                floor="EG",
+                circuits=1,
+                temp_c=[None] * n,
+                setpoint_c=[None] * n,
+                offset_k=[None] * n,
+                valve=reihe,
+                window=[None] * n,
+            )
+            for i, reihe in enumerate(ventile)
+        ],
+    )
+
+
+def test_der_heizkreis_leuchtet_aus_der_raumhistorie() -> None:
+    """Die erste Fassung behauptete, die Ventile stünden nicht in der Minutentabelle.
+
+    Sie stehen dort, in der JSON-Spalte `extra`, und `rooms_history` liest sie längst. Der dunkle
+    Heizkreis war also keine Grenze der Daten, sondern eine falsche Annahme im Modulkopf - und
+    weil `heizkreis()` das ganze Live-Raumobjekt verlangte, fiel sie nicht auf.
+    """
+    # Zwei Räume; im Fenster, das um VON+15 endet, ist einer halb offen und einer zu.
+    historie = _historie([[0.0, 0.5], [0.0, 0.0]], ab=VON - timedelta(minutes=15))
+    rahmen = bilder(
+        tag(60),
+        CFG,
+        von=VON,
+        bis=VON + timedelta(minutes=30),
+        step_min=15,
+        ventile=ventile_aus(historie),
+    )
+    erstes, zweites = rahmen[0].heizkreis, rahmen[1].heizkreis
+    assert erstes.rooms_total == 2 and erstes.rooms_open == 0 and erstes.running is False
+    assert zweites.rooms_open == 1 and zweites.running is True
+    assert zweites.open_share == 0.25
+
+
+def test_zu_einem_bild_gehoert_das_fenster_das_an_ihm_endet() -> None:
+    """Nicht das, das an ihm beginnt: das reichte eine Schrittweite in die Zukunft.
+
+    Ein Bild soll zeigen, was zu seiner Zeit bekannt war. Mit dem beginnenden Fenster stünde im
+    Bild von 8:00 die Ventilstellung von 8:00 bis 8:15.
+    """
+    historie = _historie([[0.1, 0.9]], ab=VON - timedelta(minutes=15))
+    nachschlagen = ventile_aus(historie)
+    assert nachschlagen is not None
+    assert list(nachschlagen(VON)) == [0.1], "das Fenster von VON-15 bis VON"
+    assert list(nachschlagen(VON + timedelta(minutes=15))) == [0.9]
+    assert list(nachschlagen(VON + timedelta(hours=5))) == [], "außerhalb: keine Räume, kein Nein"
+
+
+def test_ein_raum_ohne_messwert_zaehlt_als_raum_aber_nicht_als_zu() -> None:
+    historie = _historie([[None], [0.4]], ab=VON - timedelta(minutes=15))
+    rahmen = bilder(
+        tag(30),
+        CFG,
+        von=VON,
+        bis=VON + timedelta(minutes=15),
+        step_min=15,
+        ventile=ventile_aus(historie),
+    )
+    hk = rahmen[0].heizkreis
+    assert hk.rooms_total == 2 and hk.rooms_open == 1
+    assert hk.open_share == 0.4, "der Anteil rechnet nur über Räume mit Messwert"
 
 
 def test_eine_fehlende_spalte_wird_nicht_zu_null() -> None:
@@ -244,9 +335,57 @@ def test_ein_vergangener_tag_zaehlt_bis_mitternacht() -> None:
     assert any("fehlen" in h for h in out.hinweise_de)
 
 
-def test_der_heizkreis_hinweis_steht_in_jeder_antwort_mit_bildern() -> None:
+def test_ohne_raumhistorie_sagt_die_antwort_es() -> None:
     out = zusammenstellen(tag(60), CFG, TAG, BERLIN, step_min=15)
-    assert any("Heizkreis" in h for h in out.hinweise_de)
+    assert any("keine Raumhistorie" in h for h in out.hinweise_de)
+
+
+def test_mit_raumhistorie_entfaellt_der_hinweis() -> None:
+    historie = _historie([[0.3] * 8], ab=VON - timedelta(minutes=15))
+    out = zusammenstellen(tag(60), CFG, TAG, BERLIN, step_min=15, raeume=historie)
+    assert not any("Raumhistorie" in h for h in out.hinweise_de)
+    assert out.frames[0].heizkreis.running is True
+
+
+# ------------------------------------------------------------------ Die Begleitreihen
+
+
+def test_der_preis_steht_neben_jedem_bild() -> None:
+    """Aus derselben Minutenzeile wie das Bild, also immer gleich lang und in Deckung."""
+    out = zusammenstellen(tag(60), CFG, TAG, BERLIN, step_min=15)
+    assert len(out.preis_ct_kwh) == len(out.frames)
+    assert set(out.preis_ct_kwh) == {22.0}
+
+
+def test_die_absicht_kennt_drei_zustaende() -> None:
+    """Freigabe, ausdrückliches Nein, und: kein aufbewahrter Fahrplan.
+
+    Das dritte ist der Normalfall für jeden Tag vor dem Beginn der Ablage. Fiele es mit dem Nein
+    zusammen, sähe jeder alte Tag aus, als hätte der Fahrplan die Wärmepumpe durchgehend gesperrt.
+    """
+
+    def absicht(t: datetime) -> float | None:
+        minuten = int((t - VON).total_seconds() // 60)
+        return {0: 1.0, 15: 0.0}.get(minuten)
+
+    out = zusammenstellen(tag(60), CFG, TAG, BERLIN, step_min=15, geplant_wp=absicht)
+    assert out.geplant_wp[:3] == [True, False, None]
+    assert len(out.geplant_wp) == len(out.frames) == len(out.geplant_ofen)
+    assert set(out.geplant_ofen) == {None}, "für den Ofen wurde nichts hereingegeben"
+
+
+def test_ohne_aufbewahrten_fahrplan_sagt_die_antwort_dass_nichts_fehlt_was_war() -> None:
+    """Eine leere Zeile sähe aus wie „nichts geplant". Der Text muss den Unterschied machen."""
+    out = zusammenstellen(tag(60), CFG, TAG, BERLIN, step_min=15)
+    hinweis = next(h for h in out.hinweise_de if "kein Fahrplan aufbewahrt" in h)
+    assert "heißt nicht, dass nichts geplant war" in hinweis
+
+
+def test_mit_teilweiser_absicht_steht_die_abdeckung_da() -> None:
+    out = zusammenstellen(
+        tag(60), CFG, TAG, BERLIN, step_min=15, geplant_wp=lambda t: 1.0 if t == VON else None
+    )
+    assert any("1 von 5 Bildern" in h for h in out.hinweise_de)
 
 
 def test_eine_unsinnige_schrittweite_wird_abgelehnt() -> None:
@@ -271,3 +410,17 @@ def test_am_laufenden_tag_entsteht_kein_bild_hinter_jetzt() -> None:
     out = zusammenstellen(tag(13 * 60), CFG, TAG, BERLIN, step_min=15, jetzt=mittags)
     assert len(out.frames) <= out.erwartet, "nie mehr Bilder als mögliche"
     assert all(f.at <= mittags for f in out.frames), "kein Bild aus der Zukunft"
+
+
+def test_ein_ende_mitten_im_raster_zaehlt_das_angebrochene_bild_mit() -> None:
+    """Gesehen gegen die Vorführung: „89 von 88 Bildern".
+
+    Bilder entstehen zu jedem Rasterzeitpunkt vor dem Ende. Endet der Tag (weil er noch läuft) um
+    12:07, gibt es die Bilder 0:00 bis 12:00, also 49 - einen mehr, als volle Viertelstunden
+    hineinpassen. Die vorige Prüfung dieser Grenze fragte genau um 12:00, wo beides gleich ist.
+    """
+    krumm = VON + timedelta(hours=12, minutes=7)
+    out = zusammenstellen(tag(13 * 60), CFG, TAG, BERLIN, step_min=15, jetzt=krumm)
+    assert out.erwartet == 49
+    assert len(out.frames) == 49, "vollständig erfasst heißt: so viele wie erwartet, nicht mehr"
+    assert not any("fehlen" in h for h in out.hinweise_de)

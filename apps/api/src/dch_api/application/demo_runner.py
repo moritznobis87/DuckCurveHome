@@ -27,7 +27,12 @@ from dch_api.application.forecast_history import forecast_history
 from dch_api.application.ha_import import ImportResult
 from dch_api.application.invoice_service import InvoiceService
 from dch_api.application.live_feed import Takt
-from dch_api.application.plan_service import Istpunkt, ist_nachschlag
+from dch_api.application.plan_service import (
+    Istpunkt,
+    ablage_faellig,
+    ist_nachschlag,
+    plan_als_lauf,
+)
 from dch_api.application.room_automatik import (
     AutomatikConfig,
     RaumZustand,
@@ -97,6 +102,7 @@ from hems_core.domain import (
     SystemMode,
     apply_heat_patch,
 )
+from hems_core.forecasting import Lauf, stand_vor
 from hems_core.planning import (
     OptimizerConfig,
     PricePoint,
@@ -179,6 +185,11 @@ class DemoRunner:
         self.stove_plan: StovePlan = StovePlan()
         self._stove_solve_at = 0.0  # monotone Echtzeit des letzten Solverlaufs
         self._plan_at: datetime | None = None
+        # Das Fahrplan-Gedächtnis der Vorführung. Im Haus liegen die Läufe in `forecast_runs`;
+        # hier gibt es keine Datenbank, also eine begrenzte Schlange. 96 Läufe sind vier Tage bei
+        # stündlicher Ablage - mehr, als die Minutenhistorie der Vorführung ohnehin hält.
+        self._plan_abgelegt: datetime | None = None
+        self._plan_laeufe: deque[Lauf] = deque(maxlen=96)
         self._next_tick_at: datetime = self.house.now
         self._task: asyncio.Task[None] | None = None
         self._lock = asyncio.Lock()
@@ -591,6 +602,11 @@ class DemoRunner:
                 # Im Vorführhaus kommt die Entscheidung am Kontakt an, siehe `live_state`.
                 hp_actuation=True,
             )
+            if ablage_faellig(self._plan_abgelegt, now):
+                lauf = plan_als_lauf(self.plan, now)
+                if lauf is not None:
+                    self._plan_laeufe.append(lauf)
+                self._plan_abgelegt = now
             self._plan_at = now
             self.broker.publish("plan", self.plan.model_dump(mode="json"))
 
@@ -919,7 +935,7 @@ class DemoRunner:
             dhw_outlet=fehlt,
             dhw_inlet=fehlt,
             wp_vorlauf=fehlt,
-            raeume=await self.rooms_live(),
+            ventile=[r.valve for r in (await self.rooms_live()).rooms],
             zeilen=self.history.series(
                 now - timedelta(minutes=anlage_logic.RUECKBLICK_MIN), now + timedelta(minutes=1)
             ),
@@ -934,8 +950,34 @@ class DemoRunner:
         """
         von, bis = anlage_replay.fenster(day, BERLIN)
         zeilen = self.history.series(von - timedelta(minutes=anlage_replay.RUECKBLICK_MIN), bis)
+
+        def absicht(groesse: str) -> anlage_replay.Absicht | None:
+            punkte = [
+                (lauf.erstellt, p.ts, p.wert)
+                for lauf in self._plan_laeufe
+                for p in lauf.punkte
+                if p.variable == groesse and p.wert is not None and von <= p.ts < bis
+            ]
+            return stand_vor(punkte, raster_min=15) if punkte else None
+
+        # Die Vorführung hat keinen Ofen: ihr Anlagenbild bekommt ein leeres Ofenobjekt, und ihre
+        # Wiedergabe muss dasselbe zeigen. Mit der unveränderten Konfiguration stand im Rückblick
+        # ein Ofen „ohne Verbindung" und in der Legende „Pelletofen gebrannt" - ein anderes Haus
+        # als auf der Seite „Anlage", und genau das soll es nicht geben.
+        ohne_ofen = self.hems.model_copy(
+            update={"stove": self.hems.stove.model_copy(update={"present": False})}
+        )
         return anlage_replay.zusammenstellen(
-            zeilen, self.hems, day, BERLIN, step_min=step_min, jetzt=self.now
+            zeilen,
+            ohne_ofen,
+            day,
+            BERLIN,
+            step_min=step_min,
+            jetzt=self.now,
+            # Einen Schritt früher: zu einem Bild gehört das Fenster, das an ihm endet.
+            raeume=await self.rooms_history(von - timedelta(minutes=step_min), bis, step_min),
+            geplant_wp=absicht("hp_release"),
+            geplant_ofen=absicht("stove_on"),
         )
 
     async def house_plan(self) -> HouseOut:

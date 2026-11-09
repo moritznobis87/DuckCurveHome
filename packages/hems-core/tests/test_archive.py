@@ -11,6 +11,8 @@ from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from hems_core.forecasting.archive import (
+    PLAN,
+    PLAN_GROESSEN,
     PREIS,
     PV,
     WETTER,
@@ -18,8 +20,10 @@ from hems_core.forecasting.archive import (
     Punkt,
     fingerabdruck,
     kanonisch,
+    plan_lauf,
     preis_lauf,
     pv_lauf,
+    stand_vor,
     wetter_lauf,
 )
 from hems_core.forecasting.models import (
@@ -243,3 +247,88 @@ def test_ein_tag_ohne_lauf_hat_keinen_kanonischen() -> None:
     laeufe = [("a", datetime(2026, 11, 7, 5, 0, tzinfo=BERLIN))]
     assert kanonisch(laeufe, date(2026, 11, 8), 6, BERLIN) is None
     assert kanonisch([], date(2026, 11, 7), 6, BERLIN) is None
+
+
+# ------------------------------------------------------------------ Der Fahrplan als Lauf
+
+PLAN_ZEIT = datetime(2026, 11, 10, 8, 7, tzinfo=UTC)
+
+
+def _intervalle(ab: datetime, n: int, **groessen: float | None) -> list:  # type: ignore[type-arg]
+    return [(ab + timedelta(minutes=15 * i), dict(groessen)) for i in range(n)]
+
+
+def test_ein_fahrplan_wird_ein_lauf_der_art_plan() -> None:
+    ab = PLAN_ZEIT.replace(minute=0)
+    lauf = plan_lauf(
+        PLAN_ZEIT,
+        _intervalle(ab, 8, hp_release=1.0, stove_on=0.0, buffer_kwh=14.2, heat_kw=3.1),
+        schritt_min=15,
+        anbieter="milp_v1",
+    )
+    assert lauf is not None
+    assert lauf.art == PLAN and lauf.anbieter == "milp_v1"
+    assert {p.variable for p in lauf.punkte} == set(PLAN_GROESSEN)
+    assert lauf.erstellt == PLAN_ZEIT
+
+
+def test_vergangene_viertelstunden_des_plans_sind_keine_absicht() -> None:
+    """Der Plan der Oberfläche beginnt um Mitternacht; abgelegt wird nur, was noch bevorsteht.
+
+    Die vergangenen Viertelstunden rechnet die Regel nach, wie sie *heute* antworten würde. Sie
+    mit abzulegen hieße, eine Nachrechnung als Erinnerung zu archivieren - und genau die
+    Verwechslung, die die Seite „Fahrplan" in ihrer Fußzeile ausdrücklich ausschließt, stünde dann
+    für immer im Bestand. Die laufende Viertelstunde gehört dazu: für sie gilt der Plan gerade.
+    """
+    mitternacht = PLAN_ZEIT.replace(hour=0, minute=0)
+    lauf = plan_lauf(
+        PLAN_ZEIT, _intervalle(mitternacht, 48, hp_release=1.0), schritt_min=15, anbieter="x"
+    )
+    assert lauf is not None
+    assert lauf.von == PLAN_ZEIT.replace(minute=0), "die laufende Viertelstunde ist die erste"
+    assert all(p.ts >= PLAN_ZEIT.replace(minute=0) for p in lauf.punkte)
+
+
+def test_schweigen_wird_nicht_abgelegt() -> None:
+    """„Der Plan sagt dazu nichts" ist die Abwesenheit eines Punkts, kein Punkt ohne Wert."""
+    ab = PLAN_ZEIT.replace(minute=15)
+    lauf = plan_lauf(
+        PLAN_ZEIT, _intervalle(ab, 4, hp_release=None, stove_on=1.0), schritt_min=15, anbieter="x"
+    )
+    assert lauf is not None
+    assert {p.variable for p in lauf.punkte} == {"stove_on"}
+    leer = plan_lauf(PLAN_ZEIT, _intervalle(ab, 4, hp_release=None), schritt_min=15, anbieter="x")
+    assert leer is None, "ein Plan ohne jede Aussage ist kein Lauf"
+
+
+def test_stand_vor_nimmt_den_juengsten_lauf_davor() -> None:
+    """Gefragt ist die Absicht, mit der man in die Viertelstunde hineinging."""
+    ziel = datetime(2026, 11, 10, 9, 0, tzinfo=UTC)
+    punkte = [
+        (ziel - timedelta(hours=3), ziel, 0.0),
+        (ziel - timedelta(hours=1), ziel, 1.0),
+    ]
+    stand = stand_vor(punkte, raster_min=15)
+    assert stand(ziel) == 1.0, "der Lauf von vor einer Stunde gilt, nicht der von vor drei"
+    assert stand(ziel + timedelta(minutes=7)) == 1.0, "mitten im Intervall dasselbe"
+    assert stand(ziel + timedelta(minutes=15)) is None, "das nächste Intervall kennt keiner"
+
+
+def test_stand_vor_laesst_spaetere_laeufe_nicht_zurueckwirken() -> None:
+    """Ein Lauf von 9:10 darf über 9:00 nichts sagen, auch wenn er einen Punkt für 9:00 enthält.
+
+    Ohne diese Grenze zeigte die Wiedergabe als „Absicht" die Erkenntnis von später, und Absicht
+    und Ausführung stimmten verdächtig gut überein.
+    """
+    ziel = datetime(2026, 11, 10, 9, 0, tzinfo=UTC)
+    punkte = [
+        (ziel - timedelta(hours=1), ziel, 0.0),
+        (ziel + timedelta(minutes=10), ziel, 1.0),
+    ]
+    stand = stand_vor(punkte, raster_min=15)
+    assert stand(ziel + timedelta(minutes=5)) == 0.0, "um 9:05 gilt noch der Lauf von 8:00"
+    assert stand(ziel + timedelta(minutes=12)) == 1.0, "ab 9:10 der neue"
+
+
+def test_stand_vor_ohne_laeufe_sagt_nichts() -> None:
+    assert stand_vor([], raster_min=15)(PLAN_ZEIT) is None

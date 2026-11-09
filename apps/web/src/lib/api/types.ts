@@ -1165,6 +1165,12 @@ export interface components {
             erwartet: number;
             /** Frames */
             frames: components["schemas"]["AnlageOut"][];
+            /** Preis Ct Kwh */
+            preis_ct_kwh?: (number | null)[];
+            /** Geplant Wp */
+            geplant_wp?: (boolean | null)[];
+            /** Geplant Ofen */
+            geplant_ofen?: (boolean | null)[];
             /** Hinweise De */
             hinweise_de?: string[];
         };
