@@ -38,3 +38,15 @@ export function istTagIso(s: string | null | undefined): s is string {
 }
 
 export { isoDate };
+
+/** Ein Kalendertag plus oder minus einige Tage. Mittags gerechnet, damit kein Zeitzonenversatz den Tag kippt. */
+export function tagPlus(tag: string, tage: number): string {
+  const d = new Date(`${tag}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + tage);
+  return d.toISOString().slice(0, 10);
+}
+
+/** „Samstag, 7. November 2026" für einen Kalendertag. */
+export function langerTag(tag: string): string {
+  return new Date(`${tag}T12:00:00`).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}

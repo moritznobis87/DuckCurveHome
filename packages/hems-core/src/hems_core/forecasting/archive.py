@@ -230,8 +230,11 @@ PLAN = "plan"
 
 #: Was von einem Fahrplan bleibt. Die beiden Schaltabsichten, und die zwei Größen, an denen sich
 #: später prüfen lässt, ob der Plan auf richtigen Annahmen stand: der erwartete Pufferinhalt und
-#: der erwartete Wärmebedarf (Heizen plus Warmwasser).
-PLAN_GROESSEN: tuple[str, ...] = ("hp_release", "stove_on", "buffer_kwh", "heat_kw")
+#: der erwartete Wärmebedarf (Heizen plus Warmwasser). Seit dem 10.11.2026 dazu `cost_eur`: was
+#: der Optimierer für das Intervall an Kosten gezählt hat. Ohne sie ließe sich später nur sagen,
+#: was der Fahrplan vorhatte, nicht was er versprach. Ein Lauf von davor hat die Größe nicht;
+#: das ist dann kein Versprechen von null Euro, sondern keines.
+PLAN_GROESSEN: tuple[str, ...] = ("hp_release", "stove_on", "buffer_kwh", "heat_kw", "cost_eur")
 
 
 def plan_lauf(

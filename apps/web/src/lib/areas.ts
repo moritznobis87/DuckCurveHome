@@ -61,6 +61,8 @@ export const AREAS: Area[] = [
       // Die Auswertung zur Wiedergabe: dort ein Tag zum Ansehen, hier alle Schließvorgänge gezählt.
       { href: "/waerme/wirkung", label: "Wirkung" },
       { href: "/waerme/fahrplan", label: "Fahrplan" },
+      // Hinter dem Fahrplan, denn es ist seine Fortsetzung: dort was vorgesehen ist, hier was daraus wurde.
+      { href: "/waerme/nachbetrachtung", label: "Nachbetrachtung" },
       { href: "/waerme/annahmen", label: "Annahmen", ownerOnly: true },
     ],
   },

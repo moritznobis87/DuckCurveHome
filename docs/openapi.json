@@ -173,6 +173,50 @@
         }
       }
     },
+    "/api/v1/plan/nachbetrachtung": {
+      "get": {
+        "tags": [
+          "Planung"
+        ],
+        "summary": "Ein Ortstag in Euro: versprochen, gehalten, wirklich",
+        "description": "Was der Fahrplan für diesen Tag versprach, was er gehalten hätte und was der Tag kostete.\n\nDie Antwort rechnet einen Vergleichslauf mit perfekter Voraussicht und braucht dafür so lange\nwie ein Lauf des Optimierers, im schlechtesten Fall einige Sekunden. Für einen Tag in der\nZukunft gibt es nichts zu betrachten.",
+        "operationId": "nachbetrachtung_api_v1_plan_nachbetrachtung_get",
+        "parameters": [
+          {
+            "name": "day",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NachbetrachtungOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/push/key": {
       "get": {
         "tags": [
@@ -2408,6 +2452,84 @@
   },
   "components": {
     "schemas": {
+      "Abstand": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name_de": {
+            "type": "string",
+            "title": "Name De"
+          },
+          "von": {
+            "type": "string",
+            "title": "Von"
+          },
+          "nach": {
+            "type": "string",
+            "title": "Nach"
+          },
+          "eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eur"
+          },
+          "satz_de": {
+            "type": "string",
+            "title": "Satz De",
+            "default": ""
+          },
+          "menge_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Menge Eur"
+          },
+          "zeit_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zeit Eur"
+          },
+          "ofen_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ofen Eur"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name_de",
+          "von",
+          "nach"
+        ],
+        "title": "Abstand",
+        "description": "Der Abstand zwischen zwei Linien, mit seiner Bedeutung. Positiv heißt: teurer."
+      },
       "ActuatorCommandIn": {
         "properties": {
           "state": {
@@ -8268,6 +8390,173 @@
         "title": "KontaktwirkungOut",
         "description": "Was der Freigabekontakt K1 auslöst: die Ereignisstudie über die letzten `days` Tage.\n\nJeder Schließvorgang ist ein Ereignis; `ereignisse` enthält zu jedem die Leistung der\nWärmepumpe von einer halben Stunde davor bis zwei Stunden danach, `faecher` legt sie am\nNullpunkt übereinander. `quote` ist der Anteil der Schließvorgänge bei stehender Maschine, auf\ndie binnen `folge_min` Minuten ein Anlauf folgte, `vergleich.quote` derselbe Anteil ohne\nSchließvorgang zur selben Tageszeit.\n\nDas Urteil steht in `urteil` und `urteil_de` und wird hier gefällt, nicht in der Oberfläche.\nEs ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `hinweise_de`."
       },
+      "Linie": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name_de": {
+            "type": "string",
+            "title": "Name De"
+          },
+          "verfuegbar": {
+            "type": "boolean",
+            "title": "Verfuegbar",
+            "default": false
+          },
+          "grund_de": {
+            "type": "string",
+            "title": "Grund De",
+            "default": ""
+          },
+          "geschaetzt": {
+            "type": "boolean",
+            "title": "Geschaetzt",
+            "default": false
+          },
+          "eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eur"
+          },
+          "strom_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strom Eur"
+          },
+          "ofen_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ofen Eur"
+          },
+          "wp_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wp Kwh"
+          },
+          "ct_je_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ct Je Kwh"
+          },
+          "wp_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wp H"
+          },
+          "ofen_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ofen H"
+          },
+          "wp_kwh_je": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Wp Kwh Je"
+          },
+          "ofen_je": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Ofen Je"
+          },
+          "eur_je": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Eur Je"
+          },
+          "eur_kumuliert": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Eur Kumuliert"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name_de"
+        ],
+        "title": "Linie",
+        "description": "Eine der Linien: ihre Summe, und je Viertelstunde, woraus sie entstand."
+      },
       "LiveStateOut": {
         "properties": {
           "snapshot": {
@@ -8501,6 +8790,166 @@
         ],
         "title": "MemoryTypeOut",
         "description": "Eine Objektgruppe im Python-Haufen: Typ, Anzahl, flache Größe."
+      },
+      "NachbetrachtungOut": {
+        "properties": {
+          "zeiten": {
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "type": "array",
+            "title": "Zeiten"
+          },
+          "schritt_min": {
+            "type": "integer",
+            "title": "Schritt Min",
+            "default": 15
+          },
+          "verglichen": {
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array",
+            "title": "Verglichen"
+          },
+          "n_verglichen": {
+            "type": "integer",
+            "title": "N Verglichen",
+            "default": 0
+          },
+          "preis_ct": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Preis Ct"
+          },
+          "ueberschuss_kw": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Ueberschuss Kw"
+          },
+          "linien": {
+            "items": {
+              "$ref": "#/components/schemas/Linie"
+            },
+            "type": "array",
+            "title": "Linien"
+          },
+          "abstaende": {
+            "items": {
+              "$ref": "#/components/schemas/Abstand"
+            },
+            "type": "array",
+            "title": "Abstaende"
+          },
+          "standby_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standby Kwh"
+          },
+          "standby_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standby Eur"
+          },
+          "erster_plan_erstellt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erster Plan Erstellt"
+          },
+          "satz_de": {
+            "type": "string",
+            "title": "Satz De",
+            "default": ""
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          },
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "von": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Bis"
+          },
+          "laeuft_noch": {
+            "type": "boolean",
+            "title": "Laeuft Noch",
+            "default": false
+          },
+          "wp_kw": {
+            "type": "number",
+            "title": "Wp Kw"
+          },
+          "verguetung_ct": {
+            "type": "number",
+            "title": "Verguetung Ct"
+          },
+          "hat_ofen": {
+            "type": "boolean",
+            "title": "Hat Ofen",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "von",
+          "bis",
+          "wp_kw",
+          "verguetung_ct"
+        ],
+        "title": "NachbetrachtungOut",
+        "description": "Ein Ortstag in Euro: was der Fahrplan versprach, was er hielt, was der Tag kostete.\n\nSechs Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet\n(`verglichen`): der erste Fahrplan des Tages mit seinen eigenen Kosten (`versprochen`) und mit\nden eingetretenen Werten (`erster`), der jeweils letzte Stand des Fahrplans (`letzter`), die\nMessung (`wirklich`), ein Vergleichslauf mit perfekter Voraussicht (`perfekt`) und dieselbe\nStrommenge nach dem Wärmebedarf verteilt (`ohne_fuehrung`, geschätzt).\n\n`abstaende` sind die Stufen dazwischen. Die ersten drei führen vom Versprechen zur\nWirklichkeit: Prognosefehler, Nachführen, Eingriff der Maschine. Positiv heißt teurer.\n\nEine Linie, die fehlt, hat `verfuegbar=false` und sagt in `grund_de`, warum. Das ist für\nTage vor dem 09.11.2026 der Normalfall bei allen Fahrplanlinien: aufbewahrt wird erst seitdem."
       },
       "NextExpected": {
         "properties": {
@@ -8785,6 +9234,17 @@
               }
             ],
             "title": "Cop"
+          },
+          "planned_cost_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Cost Eur"
           },
           "actual_pv_kw": {
             "anyOf": [

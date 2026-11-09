@@ -20,6 +20,7 @@ from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, demo_house, demo_rooms, rooms
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
+from dch_api.application import nachbetrachtung as nachbetrachtung_logic
 from dch_api.application.battery_control import BatteryMode
 from dch_api.application.demo_archive import DemoArchiv
 from dch_api.application.energy_accounting import EnergyAccounting
@@ -66,6 +67,7 @@ from dch_api.schemas import (
     InvoiceSummaryOut,
     KontaktwirkungOut,
     LiveStateOut,
+    NachbetrachtungOut,
     Period,
     PlanOut,
     PvTaxReportOut,
@@ -984,6 +986,39 @@ class DemoRunner:
             raeume=await self.rooms_history(von - timedelta(minutes=step_min), bis, step_min),
             geplant_wp=absicht("hp_release"),
             geplant_ofen=absicht("stove_on"),
+        )
+
+    async def nachbetrachtung(self, day: date) -> NachbetrachtungOut:
+        """Ein Tag der Vorführung in Euro, aus ihrem Gedächtnis und ihren aufbewahrten Fahrplänen.
+
+        Beides reicht nur so weit zurück wie die Vorführung läuft. Ein Fahrplan vom Vorabend
+        fehlt ihr deshalb fast immer; der Vergleich beginnt dann mit ihrem ersten Fahrplan, und
+        die Antwort sagt, ab wann.
+        """
+        von, bis, daten_bis = nachbetrachtung_logic.fenster(day, BERLIN, self.now)
+        punkte: dict[str, nachbetrachtung_logic.Punkte] = {
+            groesse: [
+                (lauf.erstellt, p.ts, p.wert)
+                for lauf in self._plan_laeufe
+                for p in lauf.punkte
+                if p.variable == groesse and p.wert is not None and von <= p.ts < bis
+            ]
+            for groesse in nachbetrachtung_logic.GROESSEN
+        }
+        # Die Vorführung hat keinen Ofen; dieselbe Begründung wie in der Wiedergabe.
+        ohne_ofen = self.hems.model_copy(
+            update={"stove": self.hems.stove.model_copy(update={"present": False})}
+        )
+        return await asyncio.to_thread(
+            nachbetrachtung_logic.zusammenstellen,
+            self.history.series(von, max(daten_bis, von)),
+            punkte,
+            ohne_ofen,
+            day,
+            BERLIN,
+            jetzt=self.now,
+            # Kurze Zeitgrenze wie im Fahrplan der Vorführung: sie rechnet im Zeitraffer.
+            opt_cfg=OptimizerConfig(step_min=15, time_limit_s=2.0),
         )
 
     async def kontaktwirkung(self, days: int) -> KontaktwirkungOut:

@@ -189,6 +189,12 @@ später, und Absicht und Ausführung stimmten verdächtig gut überein.
 Die Vorführung hat keine Datenbank und hält ihre Fahrpläne in einer begrenzten Schlange; die
 Wiedergabe liest sie über denselben Weg.
 
+Seit dem 10.11.2026 liegt je Viertelstunde auch `cost_eur` dabei: was der Optimierer für das
+Intervall an Kosten gezählt hat, Strom der Wärmepumpe und Ofen, ohne die Strafterme. Das ist das
+Versprechen des Fahrplans, gegen das die Nachbetrachtung den eingetretenen Tag hält
+(`docs/NACHBETRACHTUNG.md`). Die Größe steht nur dort, wo der Optimierer entschieden hat. Ein
+Lauf von vor dem 10.11.2026 hat sie nicht; das ist kein Versprechen von null Euro, sondern keines.
+
 ## Was die Historie sichtbar macht
 
 Die Jahreskarte (`/jahr`) legt ein Kalenderjahr als Fläche aus: 365 Spalten zu je 24 Stunden. Sie

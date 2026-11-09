@@ -373,3 +373,37 @@ def test_gelaufen_wird_je_minute_gezaehlt_und_gegen_die_schwelle_der_anlage() ->
         [{"ts": DAY_START.isoformat(), "pv_power_kw": 1.0}], jetzt, laeuft_ab_kw=0.5
     )(DAY_START)
     assert stumm is not None and stumm.laufminuten is None, "ohne Leistungswert keine Aussage"
+
+
+def test_das_versprechen_wird_mit_dem_fahrplan_abgelegt_und_nur_wo_der_optimierer_fuehrt() -> None:
+    """Die Kosten gehören zur Entscheidung des Optimierers. Wo die Regel führt, gibt es keine.
+
+    Sonst stünden im Archiv Kosten neben einer Freigabe, die der Optimierer nie ausgesprochen hat,
+    und die Nachbetrachtung hielte sie für sein Versprechen.
+    """
+    bis = NOW + timedelta(hours=2)
+
+    def zwilling(t: datetime) -> Zwillingspunkt:
+        return Zwillingspunkt(
+            heizen_kw=2.0,
+            warmwasser_kw=0.5,
+            puffer_kwh=12.0,
+            aussen_c=4.0,
+            cop=3.0,
+            kosten_eur=0.25,
+        )
+
+    plan = build_plan(
+        _pv,
+        _hourly_prices(24),
+        NOW,
+        HemsConfig(),
+        hp_on=lambda t: True if NOW <= t < bis else None,
+        twin=zwilling,
+    )
+    mit = [i for i in plan.intervals if i.planned_cost_eur is not None]
+    assert {i.ts for i in mit} == {NOW + timedelta(minutes=15 * k) for k in range(8)}
+    lauf = plan_als_lauf(plan, NOW)
+    assert lauf is not None
+    kosten = {p.ts: p.wert for p in lauf.punkte if p.variable == "cost_eur"}
+    assert len(kosten) == 8 and set(kosten.values()) == {0.25}

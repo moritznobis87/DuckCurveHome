@@ -98,6 +98,7 @@ export type HouseContact = S["HouseContactOut"];
 export type Anlage = S["AnlageOut"];
 export type AnlageReplay = S["AnlageReplayOut"];
 export type Kontaktwirkung = S["KontaktwirkungOut"];
+export type Nachbetrachtung = S["NachbetrachtungOut"];
 export type AnlageStrom = S["AnlageStromOut"];
 export type AnlageSpeicher = S["AnlageSpeicherOut"];
 export type AnlageWarmwasser = S["AnlageWarmwasserOut"];
