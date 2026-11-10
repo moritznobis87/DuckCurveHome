@@ -6,16 +6,20 @@ import type { EnergySummary, Period } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
-import { C, donut, stackedBars } from "./charts";
+import { C, stackedBars } from "./charts";
 import { ChartLegend, CoverageNote, de1, ErrorBanner, eur, KpiGrid, pct, ReportShell, usePeriod } from "./ReportShell";
 import { PeriodStrip } from "./PeriodStrip";
 import { useMultiPeriod, useReport } from "./useReport";
 import { useRole } from "@/lib/live/useRole";
 
+// Die Wärmepumpe in ihrer Farbe, wie auf jeder anderen Seite. Sie war hier hell und der Haushalt
+// sandfarben; neben dem Orange der Wärmepumpe wäre Sand bei Deuteranopie dieselbe Farbe
+// (ΔE 0,2). Der Rest des Hauses ist deshalb hell: schlechtestes Paar ΔE 18,2 normal und 16,2
+// deutan (gemessen 10.11.2026 gegen die Kartenfläche).
 const CONSUMERS = [
-  { key: "heat_pump_kwh" as const, name: "Wärmepumpe", color: C.hp },
+  { key: "heat_pump_kwh" as const, name: "Wärmepumpe", color: C.heatPump },
   { key: "ev_kwh" as const, name: "Wallbox", color: C.ev },
-  { key: "base_kwh" as const, name: "Haushalt", color: C.base },
+  { key: "base_kwh" as const, name: "Haushalt", color: C.house },
 ];
 const SOURCES = [
   { key: "pv_direct_kwh" as const, name: "PV direkt", color: C.pv },
@@ -31,8 +35,6 @@ export function HouseReport() {
   const t = data?.totals;
   const consOpt = useMemo(() => stackedBars(data?.buckets ?? [], CONSUMERS), [data]);
   const srcOpt = useMemo(() => stackedBars(data?.buckets ?? [], SOURCES), [data]);
-  const consDonut = useMemo(() => donut(CONSUMERS.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), t ? `${de1(t.house_kwh, t.house_kwh >= 100 ? 0 : 1)} kWh` : "-", "Verbrauch"), [t]);
-  const srcDonut = useMemo(() => donut(SOURCES.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), pct(t?.autarky), "Autarkie"), [t]);
   const share = (part: number | undefined, whole: number | undefined) => (part != null && whole && whole > 0 ? `${Math.round((part / whole) * 100)} % des Verbrauchs` : undefined);
   const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "-");
 
@@ -55,24 +57,16 @@ export function HouseReport() {
           hint={t ? `${de1(t.import_kwh)} kWh${role === "owner" ? " · Rechnungen prüfen" : ""}` : undefined}
         />
       </KpiGrid>
-      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
+      {/* Zwei Fragen nebeneinander, jede als Verlauf. Daneben stand je ein Ring mit denselben
+          Anteilen, die schon in den Kacheln und im Verlauf stehen. */}
+      <div className="report-row" style={{ "--cols": "1fr 1fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Wer hat verbraucht?" right={<ChartLegend items={CONSUMERS} />} />
           <div className="min-h-0 flex-1"><EChart option={consOpt} /></div>
         </Card>
         <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Verbraucher" />
-          <div className="min-h-0 flex-1"><EChart option={consDonut} /></div>
-        </Card>
-      </div>
-      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
-        <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Woher kam der Strom?" right={<ChartLegend items={SOURCES} />} />
           <div className="min-h-0 flex-1"><EChart option={srcOpt} /></div>
-        </Card>
-        <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Herkunft" />
-          <div className="min-h-0 flex-1"><EChart option={srcDonut} /></div>
         </Card>
       </div>
       <PeriodStrip

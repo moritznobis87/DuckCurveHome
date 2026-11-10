@@ -282,7 +282,8 @@ def test_die_grundlast_steht_daneben_und_in_keiner_linie() -> None:
     assert linie(r, "wirklich").eur == 0.0
     assert r.standby_kwh == pytest.approx(0.16)
     assert r.standby_eur == pytest.approx(0.05, abs=0.005)
-    assert any("Grundlast" in h for h in r.hinweise_de)
+    assert any("Grundlast" in m for m in r.methode_de)
+    assert not any("Grundlast" in h for h in r.hinweise_de), "die Zahl steht unter der Tabelle"
 
 
 # ---------------------------------------------------------------------------- Der Satz

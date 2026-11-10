@@ -43,7 +43,8 @@ export function PeriodStrip({ title, rows, right, anchor }: { title: string; row
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.label} className="border-t border-line-1">
-              <td className="truncate py-2 pr-2 text-text-3">{r.label}</td>
+              {/* Am Handy bricht der Name um, statt abgeschnitten zu werden: sonst fehlt die Einheit. */}
+              <td className="truncate py-2 pr-2 text-text-3 max-[720px]:whitespace-normal">{r.label}</td>
               {ALL_PERIODS.map((p) => (
                 <td key={p} className="mono whitespace-nowrap py-2 pl-1 text-right" style={{ fontSize: 12, fontWeight: i === 0 ? 600 : 400, color: r.tone ? TONE[r.tone] : "var(--text-1)" }}>
                   {r.value(p)}

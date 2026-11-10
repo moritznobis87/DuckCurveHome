@@ -761,6 +761,13 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 .methode-absatz { margin: 0; max-width: 90ch; font-size: 13px; line-height: 1.55; color: var(--text-2); }
 .methode-inhalt ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; max-width: 90ch; font-size: 13px; line-height: 1.55; color: var(--text-2); }
 @media (prefers-reduced-motion: reduce) { .methode-pfeil { transition: none; } }
+/* Am Handy steht die Kurzfassung unter der Überschrift statt daneben; nebeneinander brach die
+   Überschrift in drei Zeilen um. */
+@media (max-width: 720px) {
+  .methode > summary { flex-wrap: wrap; row-gap: 4px; }
+  .methode > summary .kicker { white-space: nowrap; }
+  .methode-kurz { order: 3; flex-basis: 100%; }
+}
 
 /* Der Umschalter zwischen den Ansichten eines Reiters. Dieselbe Form wie die Zeitraumwahl im
    Kopf, denn es ist dieselbe Art Entscheidung: welche Sicht auf dieselbe Sache. */

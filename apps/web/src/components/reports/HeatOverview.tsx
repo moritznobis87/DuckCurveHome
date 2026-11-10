@@ -5,7 +5,7 @@ import { useCallback, useMemo } from "react";
 import { api } from "@/lib/api/client";
 import type { HeatBalance, HeatReport, Period, ShiftReport } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
-import { Methode, MethodeAbsatz } from "@/components/ui/Methode";
+import { MethodeAbsatz } from "@/components/ui/Methode";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
 import { bufferChart, C, heatBalanceChart, stackedBars } from "./charts";
@@ -39,7 +39,7 @@ const STROM = [
 ];
 
 const ERZEUGER = [
-  { key: "heat_pump_kwh" as const, name: "Wärmepumpe", color: C.hp },
+  { key: "heat_pump_kwh" as const, name: "Wärmepumpe", color: C.heatPump },
   { key: "stove_water_kwh" as const, name: "Ofen (Wasser)", color: C.stove },
   // Halbtransparentes Ofenbraun statt einer eigenen Farbe: derselbe Erzeuger, ein anderer Weg.
   { key: "stove_room_kwh" as const, name: "Ofen (Raum)", color: "rgba(181,101,29,.55)" },
@@ -56,7 +56,7 @@ const TAKTUNG = {
 /** Null ist eine Messung, „keine Daten" ist keine. Ohne Minuten im Zeitraum steht ein Strich. */
 const kwh = (n: number | null | undefined) => (n == null ? "-" : de1(n, 1));
 const feld = (d: HeatBalance | undefined, pick: (t: HeatBalance["totals"]) => number | null | undefined) =>
-  !d || d.totals.minutes === 0 ? "-" : `${kwh(pick(d.totals))} kWh`;
+  !d || d.totals.minutes === 0 ? "-" : kwh(pick(d.totals));
 const ct = (n: number | null | undefined) => (n == null ? "-" : `${de1(n, 1)} ct`);
 
 /** Minuten als Stunden und Minuten. „3:05 h" liest sich schneller als „185 min". */
@@ -79,7 +79,7 @@ function Zeile({ k, v }: { k: string; v: string }) {
 function Kernzahl({ wert, einheit, rechts }: { wert: string; einheit: string; rechts?: string }) {
   return (
     <div className="flex items-baseline gap-3">
-      <span className="mono text-[26px] leading-none text-text-1">{wert}</span>
+      <span className="mono whitespace-nowrap text-[26px] leading-none text-text-1">{wert}</span>
       <span className="text-[13px] text-text-3">{einheit}</span>
       {rechts ? <span className="mono ml-auto text-[11px] uppercase tracking-[.08em] text-text-3">{rechts}</span> : null}
     </div>
@@ -113,18 +113,20 @@ export function HeatOverview() {
   const pufferBild = useMemo(() => bufferChart(strom?.buffer_series ?? []), [strom]);
   const hatPuffer = (strom?.buffer_series.length ?? 0) > 0;
 
+  // Die Einheit steht in der Zeile und nicht in jeder Zelle, wie in den Tabellen der anderen
+  // Bereiche: vier Spalten mit „63,7 kWh" liefen am Handy ineinander.
   const zeilen: StripRow[] = [
-    { label: "Wärme gesamt", value: (x) => feld(alle[x], (s) => s.produced_kwh) },
-    { label: "davon Wärmepumpe", value: (x) => feld(alle[x], (s) => s.heat_pump_kwh) },
-    { label: "davon Ofen (Wasser)", value: (x) => feld(alle[x], (s) => s.stove_water_kwh) },
-    { label: "davon Ofen (Raum)", value: (x) => feld(alle[x], (s) => s.stove_room_kwh) },
-    { label: "Entnahme Heizung und Warmwasser", value: (x) => feld(alle[x], (s) => s.draw_kwh) },
-    { label: "Verlust an den Aufstellraum", value: (x) => feld(alle[x], (s) => s.loss_kwh) },
-    { label: "Strom der Wärmepumpe", value: (x) => feld(alle[x], (s) => s.electric_kwh) },
+    { label: "Wärme gesamt · kWh", value: (x) => feld(alle[x], (s) => s.produced_kwh) },
+    { label: "Wärmepumpe · kWh", value: (x) => feld(alle[x], (s) => s.heat_pump_kwh) },
+    { label: "Ofen ins Wasser · kWh", value: (x) => feld(alle[x], (s) => s.stove_water_kwh) },
+    { label: "Ofen in den Raum · kWh", value: (x) => feld(alle[x], (s) => s.stove_room_kwh) },
+    { label: "Entnahme · kWh", value: (x) => feld(alle[x], (s) => s.draw_kwh) },
+    { label: "Verlust · kWh", value: (x) => feld(alle[x], (s) => s.loss_kwh) },
+    { label: "Strom Wärmepumpe · kWh", value: (x) => feld(alle[x], (s) => s.electric_kwh) },
     { label: "Arbeitszahl", value: (x) => (alle[x]?.totals.cop_mean == null ? "-" : de1(alle[x]?.totals.cop_mean, 2)) },
-    { label: "nicht zuzuordnen", value: (x) => feld(alle[x], (s) => s.residual_kwh) },
+    { label: "nicht zuzuordnen · kWh", value: (x) => feld(alle[x], (s) => s.residual_kwh) },
     { label: "Strom bezahlt", value: (x) => eur(alle[x]?.cost.heat_pump_paid_eur) },
-    { label: "Pellets verbrannt", value: (x) => (alle[x] ? `${de1(alle[x]!.cost.stove_kg, 1)} kg` : "-") },
+    { label: "Pellets · kg", value: (x) => (alle[x] ? de1(alle[x]!.cost.stove_kg, 1) : "-") },
     { label: "Pellets im Wert von", value: (x) => eur(alle[x]?.cost.stove_eur) },
   ];
 
@@ -169,7 +171,7 @@ export function HeatOverview() {
         <Card style={{ padding: 16, minHeight: 320 }}>
           <CardHead title="Tagesverlauf" right={bilanz?.resolution_de} />
           {bilanz && bilanz.series.length > 0 ? (
-            <div className="mt-2 h-[340px]">
+            <div className="mt-2 h-[380px]">
               <EChart option={heatBalanceChart(bilanz.series)} />
             </div>
           ) : (
@@ -193,7 +195,7 @@ export function HeatOverview() {
         {/* Die Schichtung des Puffers gibt es nur je Tag; in einer Woche wäre sie ein Knäuel.
             Dann fehlt die Karte, statt mit einem Platzhalter die halbe Zeile zu belegen. */}
         {tag && hatPuffer ? (
-          <Card id="puffer" style={{ padding: 16, height: 300 }}>
+          <Card id="puffer" style={{ padding: 16, height: 360 }}>
             <CardHead title="Pufferspeicher" right="Temperaturen in vier Höhen · Leistung der Wärmepumpe" />
             <div className="min-h-0 flex-1">
               <EChart option={pufferBild} />
@@ -343,7 +345,10 @@ export function HeatOverview() {
 
       <PeriodStrip title="Wärme im Zeitraum" rows={zeilen} anchor={anchor} />
 
-      <Methode kurz="Kein Wärmemengenzähler im Haus: jede Wärmemenge auf dieser Seite ist aus Strom, Ofenbetrieb und Puffertemperaturen gerechnet.">
+      <CoverageNote meta={strom?.summary.meta}>
+        <MethodeAbsatz>
+          Im Haus gibt es keinen Wärmemengenzähler: jede Wärmemenge auf dieser Seite ist aus Strom, Ofenbetrieb und Puffertemperaturen gerechnet.
+        </MethodeAbsatz>
         <MethodeAbsatz>
           Gemessen werden der Strom der Wärmepumpe, der Betriebszustand des Ofens und vier Puffertemperaturen. Die Wärme der Wärmepumpe ist Strom mal Arbeitszahl. Die
           Arbeitszahl folgt der Kennlinie über der Außentemperatur und wird über das Verhältnis der Carnot-Zahlen auf den wirklichen Vorlauf umgerechnet: dieselbe Maschine
@@ -371,9 +376,7 @@ export function HeatOverview() {
           </Link>{" "}
           ändert, ändert jede Zahl auf dieser Seite, auch die vergangener Jahre.
         </MethodeAbsatz>
-      </Methode>
-
-      <CoverageNote meta={strom?.summary.meta} />
+      </CoverageNote>
     </ReportShell>
   );
 }

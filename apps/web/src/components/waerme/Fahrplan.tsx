@@ -5,6 +5,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import { api } from "@/lib/api/client";
 import type { Plan } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
+import { Methode, MethodeAbsatz } from "@/components/ui/Methode";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
 import { C, MONO } from "@/components/charts/palette";
@@ -647,18 +648,17 @@ export function Fahrplan() {
         <Tabelle plan={plan} />
       </Card>
 
-      <Card>
-        <CardHead title="Woher die Zahlen kommen" />
-        <p className="text-[13px] leading-[1.6] text-text-3">
+      <Methode title="Woher die Zahlen kommen" kurz="Preis und Sonne sind Prognosen, der Wärmebedarf ist ein Modell · links der Jetzt-Linie stehen Messung und Regel nebeneinander">
+        <MethodeAbsatz>
           Preis und PV-Erwartung sind Prognosen, der Wärmebedarf ist ein Modell: Heizgradstunden gegen die Wettervorhersage plus ein Warmwasserprofil über den Tag. Es ist derselbe Bedarf, gegen den der Optimierer rechnet, nicht ein zweiter daneben. Gemessen wird er noch nicht; das kommt mit dem Wärmemengenzähler über den eBUS-Anschluss. Der COP folgt aus der Außentemperatur, noch nicht aus der Vorlauftemperatur, denn die liefert bislang kein Fühler.
-        </p>
-        <p className="mt-3 text-[13px] leading-[1.6] text-text-3">
+        </MethodeAbsatz>
+        <MethodeAbsatz>
           Links der Jetzt-Linie stehen zwei verschiedene Dinge nebeneinander. Gemessen sind die PV-Leistung, die Leistung der Wärmepumpe und der Freigabekontakt; sie enden an der letzten abgeschlossenen Viertelstunde, denn die laufende ist erst zum Teil vorbei und sähe aus wie ein Einbruch. Der <em>geplante</em> Zustand der Wärmepumpe ist dort dagegen keine Erinnerung: der Optimierer rechnet ab jetzt, für die vergangenen Stunden greift die Preisregel, also steht da, was sie heute für diese Stunde sagen würde. Weicht der gemessene Kontakt davon ab, ist das deshalb kein Widerspruch, sondern der Abstand zwischen zwei verschiedenen Fragen.
-        </p>
-        <p className="mt-3 text-[13px] leading-[1.6] text-text-3">
+        </MethodeAbsatz>
+        <MethodeAbsatz>
           Was aus einem Fahrplan geworden ist, steht im Rückblick: dort liegt der aufbewahrte Fahrplan von damals neben der Messung, in Euro. Wie gut die Prognosen waren, steht unter <em>System → Prognose</em>. Noch nicht gebaut ist der Lernschritt, der das Hüllenmodell aus den Prognosefehlern nachzieht.
-        </p>
-      </Card>
+        </MethodeAbsatz>
+      </Methode>
     </div>
   );
 }

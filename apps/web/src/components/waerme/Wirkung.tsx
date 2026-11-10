@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { C } from "@/components/charts/palette";
 import { Card, CardHead } from "@/components/ui/Card";
+import { Methode } from "@/components/ui/Methode";
 import { Stat } from "@/components/ui/Stat";
 import { api } from "@/lib/api/client";
 import type { Kontaktwirkung } from "@/lib/api/models";
@@ -236,15 +237,26 @@ export function Wirkung() {
         </Card>
       ) : null}
 
+      {/* Was für diesen Zeitraum gilt, bleibt offen stehen; zugeklappt wäre es verschwiegen. */}
       {d && (d.hinweise_de?.length ?? 0) > 0 ? (
         <Card>
-          <CardHead title="Was diese Auswertung kann und was nicht" />
+          <CardHead title="Zu diesem Zeitraum" />
           <ul className="wk-hinweise">
             {(d.hinweise_de ?? []).map((h) => (
               <li key={h}>{h}</li>
             ))}
           </ul>
         </Card>
+      ) : null}
+
+      {d && (d.methode_de?.length ?? 0) > 0 ? (
+        <Methode title="Was die Auswertung kann" kurz="ein Zusammenhang in der Zeit, keine Ursache · Vergleich zur selben Tageszeit">
+          <ul>
+            {(d.methode_de ?? []).map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </Methode>
       ) : null}
     </div>
   );

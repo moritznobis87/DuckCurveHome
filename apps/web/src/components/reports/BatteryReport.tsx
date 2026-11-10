@@ -7,7 +7,7 @@ import { Card, CardHead } from "@/components/ui/Card";
 import { SpeicherCheck } from "./SpeicherCheck";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
-import { batteryDayChart, C, donut, stackedBars } from "./charts";
+import { batteryDayChart, C, stackedBars } from "./charts";
 import { ChartLegend, CoverageNote, de1, ErrorBanner, eur, KpiGrid, Note, pct, ReportShell, usePeriod } from "./ReportShell";
 import { BatteryControl } from "./BatteryControl";
 import { PeriodStrip } from "./PeriodStrip";
@@ -96,7 +96,6 @@ export function BatteryReport() {
   const eff = t && t.battery_charge_kwh > 0.5 ? Math.min(1, t.battery_discharge_kwh / t.battery_charge_kwh) : null;
   const chargeOpt = useMemo(() => stackedBars(data?.buckets ?? [], CHARGE), [data]);
   const dischargeOpt = useMemo(() => stackedBars(data?.buckets ?? [], DISCHARGE), [data]);
-  const donutOpt = useMemo(() => donut(CHARGE.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), pct(pvShare), "aus PV geladen"), [t, pvShare]);
   const dayOpt = useMemo(() => batteryDayChart(rows), [rows]);
   const val = (p: Period, f: (s: EnergySummary) => string) => (strip[p] ? f(strip[p] as EnergySummary) : "-");
 
@@ -145,7 +144,7 @@ export function BatteryReport() {
         />
       </KpiGrid>
       <BatteryControl />
-      <div className="report-row" style={{ "--cols": "5fr 3fr 4fr" } as React.CSSProperties}>
+      <div className="report-row" style={{ "--cols": "1fr 1fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Ladung nach Herkunft" right={<ChartLegend items={CHARGE} />} />
           <div className="min-h-0 flex-1"><EChart option={chargeOpt} /></div>
@@ -154,14 +153,10 @@ export function BatteryReport() {
           <CardHead title="Entladung ins Haus" />
           <div className="min-h-0 flex-1"><EChart option={dischargeOpt} /></div>
         </Card>
-        <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Herkunft der Ladung" />
-          <div className="min-h-0 flex-1"><EChart option={donutOpt} /></div>
-        </Card>
       </div>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
-        <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Ladezustand über den Tag" right={isDay ? "Minutenwerte · + Entladen, − Laden" : "nur in der Tagesansicht"} />
+        <Card style={{ padding: 16, height: 340 }}>
+          <CardHead title="Ladezustand über den Tag" right={isDay ? "oben der Ladezustand, unten die Leistung: + Entladen, − Laden" : "nur in der Tagesansicht"} />
           {isDay && rows.length > 0 ? <div className="min-h-0 flex-1"><EChart option={dayOpt} /></div> : <div className="flex flex-1 items-center justify-center"><Note>{isDay ? "Für diesen Tag liegen keine Minutenwerte vor; die Stundenbilanzen oben stammen dann aus dem Historienimport." : "Der Verlauf wird je Tag gezeigt; für längere Zeiträume gelten die Stundenbilanzen oben."}</Note></div>}
         </Card>
         <PeriodStrip

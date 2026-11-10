@@ -306,7 +306,7 @@ def test_mit_ofen_stehen_seine_kosten_in_den_linien_und_der_hinweis_zum_pelletpr
     assert cfg.stove.present
     r = logik.zusammenstellen(zeilen(), {}, cfg, TAG, BERLIN, jetzt=SPAETER, opt_cfg=GEDULDIG)
     assert r.hat_ofen
-    assert any("Pelletpreis" in h for h in r.hinweise_de)
+    assert any("Pelletpreis" in m for m in r.methode_de)
     assert next(x for x in r.linien if x.key == "wirklich").ofen_eur == 0.0
 
 

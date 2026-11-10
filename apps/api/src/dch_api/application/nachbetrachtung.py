@@ -434,14 +434,16 @@ def zusammenstellen(
             f"Für {templuecken} Viertelstunden fehlt die Außentemperatur; dort gilt die zuletzt "
             "gemessene. Sie geht in den Wert der Ofenwärme ein."
         )
+    methode = list(ergebnis.methode_de)
     if cfg.stove.present:
-        hinweise.append(
+        methode.append(
             "Der Ofen ist mit dem heute eingestellten Pelletpreis bewertet, auch für vergangene "
             "Tage. Wer den Preis ändert, ändert die Nachbetrachtung rückwirkend."
         )
     return NachbetrachtungOut(
-        **ergebnis.model_dump(exclude={"hinweise_de"}),
+        **ergebnis.model_dump(exclude={"hinweise_de", "methode_de"}),
         hinweise_de=hinweise,
+        methode_de=methode,
         day=day,
         von=von,
         bis=bis,

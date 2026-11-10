@@ -20,8 +20,8 @@ günstigen Stunden, und in denen hat das Haus seinen eigenen Rhythmus.
 **Was diese Auswertung nicht kann.** Sie zeigt einen Zusammenhang in der Zeit, keine Ursache. Der
 Regler schließt K1, wenn der Puffer Platz hat und der Strom günstig ist; dass die Maschine danach
 anläuft, kann auch am leeren Puffer liegen und nicht am Kontakt. Der Vergleich zur selben
-Tageszeit nimmt den Tagesrhythmus heraus, nicht den Pufferzustand. Das steht in den Hinweisen der
-Antwort und nicht nur hier. Die saubere Antwort wäre ein Versuch: den Kontakt zu zufälligen Zeiten
+Tageszeit nimmt den Tagesrhythmus heraus, nicht den Pufferzustand. Das steht in der Antwort
+(`methode_de`) und nicht nur hier. Die saubere Antwort wäre ein Versuch: den Kontakt zu zufälligen Zeiten
 schließen. Das ist ein Eingriff in den Betrieb und eine Entscheidung des Hausherrn.
 
 Reine Rechenlogik, kein I/O, keine Zeitzonen: die Ortsstunde eines Zeitpunkts gibt der Aufrufer
@@ -181,7 +181,12 @@ class Kontaktwirkung(BaseModel):
     #: `wirkt`, `kein_unterschied`, `seltener` oder `offen` (zu wenig für ein Urteil).
     urteil: str = "offen"
     urteil_de: str = ""
+    #: Was für diesen Zeitraum gilt und neben den Zahlen stehen muss: Lücken, ausgeschlossene
+    #: Ereignisse, fehlender Vergleich.
     hinweise_de: list[str] = Field(default_factory=list)
+    #: Wie gerechnet wird und was die Auswertung grundsätzlich nicht kann. Gilt für jeden
+    #: Zeitraum gleich; die Oberfläche darf es einklappen. Was nur heute gilt, steht nicht hier.
+    methode_de: list[str] = Field(default_factory=list)
 
 
 def wilson(treffer: int, n: int, z: float = 1.96) -> tuple[float, float] | None:
@@ -529,17 +534,33 @@ def auswerten(
     )
     urteil, satz = _urteil(roh)
     return roh.model_copy(
-        update={"urteil": urteil, "urteil_de": satz, "hinweise_de": _hinweise(roh)}
+        update={
+            "urteil": urteil,
+            "urteil_de": satz,
+            "hinweise_de": _hinweise(roh),
+            "methode_de": METHODE,
+        }
     )
 
 
+#: Die Methode in Sätzen. Dieselben Festlegungen wie die Konstanten am Kopf des Moduls.
+METHODE = [
+    f"Ein Schließvorgang zählt, wenn der Kontakt davor {RUHE_MIN} Minuten durchgehend offen war. "
+    f"Als Folge gilt ein Anlauf der Wärmepumpe binnen {FOLGE_MIN} Minuten; ausgewertet werden "
+    "nur Schließvorgänge, bei denen die Maschine stand.",
+    "Verglichen wird mit halben Stunden ohne Schließvorgang, in denen die Maschine ebenfalls "
+    "stand, und zwar zur selben Tageszeit. Ein Urteil gibt es erst, wenn sich die "
+    f"95-Prozent-Bereiche beider Quoten nicht überlappen, und nicht unter {MIN_EREIGNISSE} "
+    f"Ereignissen und {MIN_VERGLEICH} Vergleichsmomenten.",
+    "Die Auswertung zeigt einen Zusammenhang in der Zeit, keine Ursache. Der Regler schließt "
+    "K1, wenn der Puffer Platz hat und der Strom günstig ist; ein Anlauf danach kann auch am "
+    "leeren Puffer liegen. Der Vergleich zur selben Tageszeit nimmt den Tagesrhythmus heraus, "
+    "nicht den Pufferzustand.",
+]
+
+
 def _hinweise(k: Kontaktwirkung) -> list[str]:
-    out = [
-        "Die Auswertung zeigt einen Zusammenhang in der Zeit, keine Ursache. Der Regler schließt "
-        "K1, wenn der Puffer Platz hat und der Strom günstig ist; ein Anlauf danach kann auch am "
-        "leeren Puffer liegen. Der Vergleich zur selben Tageszeit nimmt den Tagesrhythmus heraus, "
-        "nicht den Pufferzustand."
-    ]
+    out: list[str] = []
     for name, anteil in (
         ("Der Kontaktzustand", k.abdeckung_kontakt),
         ("Die Leistung der Wärmepumpe", k.abdeckung_leistung),

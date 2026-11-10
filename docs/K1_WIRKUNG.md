@@ -1,6 +1,6 @@
 # Was der Freigabekontakt K1 auslöst
 
-Stand 09.11.2026. Seite `Wärme → Wirkung`, Endpunkt `GET /api/v1/anlage/kontaktwirkung?days=7|30|90`,
+Stand 10.11.2026. Seite `Wärme → Wirkung`, Endpunkt `GET /api/v1/anlage/kontaktwirkung?days=7|30|90`,
 Rechnung in `packages/hems-core/src/hems_core/thermal/kontaktwirkung.py`.
 
 ## Die Frage

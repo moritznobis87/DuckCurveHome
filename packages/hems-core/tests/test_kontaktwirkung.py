@@ -434,3 +434,16 @@ def test_ein_halb_leerer_zeitraum_hat_halbe_abdeckung() -> None:
     )
     assert k.abdeckung_kontakt == 0.5
     assert k.abdeckung_leistung == 0.5
+
+
+def test_die_methode_steht_getrennt_von_dem_was_fuer_den_zeitraum_gilt() -> None:
+    """Was immer gilt, darf die Oberfläche einklappen. Was nur hier gilt, nicht."""
+    k = werte(
+        reihe(400, lambda m: zwischen(m, 100, 160), lambda m: 4.0 if zwischen(m, 80, 200) else 0.0)
+    )
+    assert any("keine Ursache" in m for m in k.methode_de)
+    assert not any("keine Ursache" in h for h in k.hinweise_de)
+    assert any("schon laufende" in h for h in k.hinweise_de), "das gilt für diesen Zeitraum"
+    ohne = werte(reihe(TAG, lambda m: False, lambda m: 0.0))
+    assert ohne.hinweise_de == [], "ohne Besonderheit im Zeitraum gibt es keinen Hinweis"
+    assert ohne.methode_de == k.methode_de

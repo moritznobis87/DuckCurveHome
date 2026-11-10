@@ -3745,7 +3745,7 @@ export interface components {
          *     Schließvorgang zur selben Tageszeit.
          *
          *     Das Urteil steht in `urteil` und `urteil_de` und wird hier gefällt, nicht in der Oberfläche.
-         *     Es ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `hinweise_de`.
+         *     Es ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `methode_de`.
          */
         KontaktwirkungOut: {
             /** Von */
@@ -3824,6 +3824,8 @@ export interface components {
             urteil_de: string;
             /** Hinweise De */
             hinweise_de?: string[];
+            /** Methode De */
+            methode_de?: string[];
             /** Days */
             days: number;
         };
@@ -4023,6 +4025,8 @@ export interface components {
             satz_de: string;
             /** Hinweise De */
             hinweise_de?: string[];
+            /** Methode De */
+            methode_de?: string[];
             /**
              * Day
              * Format: date

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { isoDate, isoToday } from "@/lib/day";
 import type { Period } from "@/lib/api/models";
 import { AreaShell } from "@/components/layout/AreaShell";
+import { Methode, MethodeAbsatz } from "@/components/ui/Methode";
 
 export const PERIOD_LABEL: Record<Period, string> = { day: "Tag", week: "Woche", month: "Monat", year: "Jahr" };
 const PERIODS: Period[] = ["day", "week", "month", "year"];
@@ -139,19 +140,24 @@ export function ErrorBanner({ message }: { message: string }) {
   );
 }
 
-/** Fußnote zur Datenbasis: Abdeckung des Zeitraums und Beginn der Aufzeichnung. */
-export function CoverageNote({ meta, extra }: { meta: { coverage: number | null; data_since: string | null; estimated_note_de: string } | undefined; extra?: string }) {
+/**
+ * Die Datenbasis einer Berichtsseite und wie gerechnet wird, als eine einklappbare Zeile.
+ *
+ * Sichtbar bleibt, was für diesen Zeitraum gilt: die Abdeckung und seit wann aufgezeichnet wird.
+ * Wie die Quellen zugeordnet werden, stand vorher als derselbe Absatz ausgeschrieben unter jeder
+ * Berichtsseite; er ist für jede Seite gleich und steht jetzt hinter der Zeile. `extra` ist, was
+ * nur für diese Seite gilt, `children` sind weitere Absätze.
+ */
+export function CoverageNote({ meta, extra, children }: { meta: { coverage: number | null; data_since: string | null; estimated_note_de: string } | undefined; extra?: string; children?: React.ReactNode }) {
   if (!meta) return null;
   const since = meta.data_since ? new Date(meta.data_since).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : null;
   const cov = meta.coverage != null ? `Datenabdeckung ${Math.round(meta.coverage * 100)} %` : "noch keine Messdaten im Zeitraum";
   return (
-    <Note>
-      {cov}
-      {since ? ` · Aufzeichnung seit ${since}` : ""}
-      {" · "}
-      {meta.estimated_note_de}
-      {extra ? ` ${extra}` : ""}
-    </Note>
+    <Methode kurz={`${cov}${since ? ` · Aufzeichnung seit ${since}` : ""}`}>
+      {children}
+      {extra ? <MethodeAbsatz>{extra}</MethodeAbsatz> : null}
+      <MethodeAbsatz>{meta.estimated_note_de}</MethodeAbsatz>
+    </Methode>
   );
 }
 

@@ -168,7 +168,10 @@ class Nachbetrachtung(BaseModel):
     #: Wann der erste Fahrplan entstand, mit dem verglichen wird.
     erster_plan_erstellt: datetime | None = None
     satz_de: str = ""
+    #: Was für diesen Tag gilt und neben den Zahlen stehen muss.
     hinweise_de: list[str] = Field(default_factory=list)
+    #: Wie gerechnet wird. Gilt für jeden Tag gleich; die Oberfläche darf es einklappen.
+    methode_de: list[str] = Field(default_factory=list)
 
 
 def strom_eur(
@@ -534,6 +537,7 @@ def nachbetrachten(
         update={
             "satz_de": _satz(roh, laeuft_noch=laeuft_noch),
             "hinweise_de": _hinweise(roh, gemessen=sum(gemessen), laeuft_noch=laeuft_noch),
+            "methode_de": METHODE,
         }
     )
 
@@ -637,6 +641,25 @@ def _satz(n: Nachbetrachtung, *, laeuft_noch: bool) -> str:
     return f"{kopf}. Ein Fahrplan zum Vergleich ist für diesen Tag nicht aufbewahrt."
 
 
+#: Die Methode in Sätzen: was für jeden Tag gilt.
+METHODE = [
+    "Jede Linie wird mit derselben Rechnung über dieselben Viertelstunden bewertet. Verglichen "
+    "wird, wo der Preis bekannt ist, die Leistung gemessen wurde und der erste Fahrplan etwas "
+    "sagt.",
+    "Bewertet wird anteilig: was der Überschuss deckt, kostet die entgangene "
+    "Einspeisevergütung, der Rest den Bezugspreis. Eine Freigabe im Fahrplan zählt mit der "
+    "Nennleistung der Wärmepumpe. Der Batteriespeicher kommt in dieser Bewertung nicht vor.",
+    "Nur das Versprechen ist keine Nachrechnung: es steht so im Archiv, wie der Optimierer es "
+    "zählte, und der zählt gröber, alles oder nichts. Im Prognosefehler steckt deshalb auch der "
+    "Abstand zwischen beiden Rechnungen.",
+    "Der Vergleichslauf ist derselbe Planer wie im Betrieb, mit den eingetretenen Werten statt "
+    "der Prognosen. Perfekt sind seine Eingänge, nicht sein Modell: der Wärmebedarf kommt "
+    "weiter aus dem Bedarfsmodell.",
+    "Die Grundlast der Anlage im Stillstand steht in keiner Linie, sondern unter der Tabelle. "
+    "Sie hängt an keinem Fahrplan.",
+]
+
+
 def _hinweise(n: Nachbetrachtung, *, gemessen: int, laeuft_noch: bool) -> list[str]:
     out: list[str] = []
     gesamt = len(n.zeiten)
@@ -672,19 +695,6 @@ def _hinweise(n: Nachbetrachtung, *, gemessen: int, laeuft_noch: bool) -> list[s
                 "der aus zwei geschätzten Hauswerten kommt, und die Maschine heizt nach ihrer "
                 "eigenen Kennlinie."
             )
-    out.append(
-        "Bewertet wird anteilig: was der Überschuss deckt, kostet die entgangene "
-        "Einspeisevergütung, der Rest den Bezugspreis. Der Optimierer zählt gröber, alles oder "
-        "nichts; im Prognosefehler steckt deshalb auch der Abstand zwischen beiden Rechnungen. "
-        "Der Batteriespeicher kommt in dieser Bewertung nicht vor."
-    )
-    # Erst ab einem Betrag, der sich zeigen lässt: eine Anlage ohne Grundlast bekommt keinen Satz
-    # über null Kilowattstunden.
-    if n.standby_eur is not None and n.standby_kwh is not None and n.standby_kwh >= 0.05:
-        out.append(
-            f"Die Grundlast der Anlage im Stillstand ({_kwh(n.standby_kwh)}, {_eur(n.standby_eur)} "
-            "zum Bezugspreis) steht in keiner Linie. Sie hängt an keinem Fahrplan."
-        )
     for key in ("versprochen", "erster", "letzter", "perfekt"):
         x = je[key]
         if not x.verfuegbar and x.grund_de:

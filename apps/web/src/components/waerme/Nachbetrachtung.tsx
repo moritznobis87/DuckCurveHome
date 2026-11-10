@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { C } from "@/components/charts/palette";
 import { Card, CardHead } from "@/components/ui/Card";
+import { Methode } from "@/components/ui/Methode";
 import { api } from "@/lib/api/client";
 import type { Nachbetrachtung as Daten } from "@/lib/api/models";
 import { isoToday, istTagIso, langerTag, tagPlus } from "@/lib/day";
@@ -82,6 +83,8 @@ export function Nachbetrachtung() {
   const fehlend = (daten?.linien ?? []).filter((l) => !l.verfuegbar);
   const saetze = (daten?.abstaende ?? []).filter((a) => a.eur != null && a.satz_de);
   const gesamt = daten?.zeiten?.length ?? 0;
+  // Die Gründe fehlender Linien stehen schon in der Tabelle; hier nicht noch einmal.
+  const hinweise = (daten?.hinweise_de ?? []).filter((h) => !h.startsWith("Die Linie „"));
 
   return (
     <div className="flex flex-col gap-4">
@@ -229,18 +232,26 @@ export function Nachbetrachtung() {
         </Card>
       ) : null}
 
-      {daten && (daten.hinweise_de?.length ?? 0) > 0 ? (
+      {/* Was für diesen Tag gilt, bleibt offen stehen; zugeklappt wäre es verschwiegen. */}
+      {hinweise.length > 0 ? (
         <Card>
-          <CardHead title="Wie gerechnet wird, und was die Zahlen nicht sagen" />
+          <CardHead title="Zu diesem Tag" />
           <ul className="wk-hinweise">
-            {/* Die Gründe fehlender Linien stehen schon in der Tabelle; hier nicht noch einmal. */}
-            {(daten.hinweise_de ?? [])
-              .filter((h) => !h.startsWith("Die Linie „"))
-              .map((h) => (
-                <li key={h}>{h}</li>
-              ))}
+            {hinweise.map((h) => (
+              <li key={h}>{h}</li>
+            ))}
           </ul>
         </Card>
+      ) : null}
+
+      {daten && (daten.methode_de?.length ?? 0) > 0 ? (
+        <Methode kurz="jede Linie mit derselben Rechnung über dieselben Viertelstunden · Überschuss zur Vergütung, der Rest zum Bezugspreis">
+          <ul>
+            {(daten.methode_de ?? []).map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </Methode>
       ) : null}
     </div>
   );

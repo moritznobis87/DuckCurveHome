@@ -1420,7 +1420,7 @@ class KontaktwirkungOut(Kontaktwirkung):
     Schließvorgang zur selben Tageszeit.
 
     Das Urteil steht in `urteil` und `urteil_de` und wird hier gefällt, nicht in der Oberfläche.
-    Es ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `hinweise_de`.
+    Es ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `methode_de`.
     """
 
     days: int

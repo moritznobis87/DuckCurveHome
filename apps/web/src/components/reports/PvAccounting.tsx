@@ -7,8 +7,8 @@ import type { Period, PvTaxReport } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
-import { C, donut, moneyBars } from "./charts";
-import { de1, ErrorBanner, eur, KpiGrid, Note, pct, ReportShell, usePeriod } from "./ReportShell";
+import { C, moneyBars } from "./charts";
+import { de1, ErrorBanner, eur, KpiGrid, Note, ReportShell, usePeriod } from "./ReportShell";
 import { PeriodStrip } from "./PeriodStrip";
 import { useMultiPeriod, useReport } from "./useReport";
 
@@ -72,19 +72,6 @@ export function PvAccounting() {
       ),
     [rows],
   );
-  const donutOpt = useMemo(
-    () =>
-      donut(
-        [
-          { name: "Direkt verbraucht", value: t?.self_direct_kwh ?? 0, color: C.pv },
-          { name: "Über den Speicher", value: t?.self_battery_kwh ?? 0, color: C.battery },
-          { name: "Eingespeist", value: t?.export_kwh ?? 0, color: C.export },
-        ],
-        t ? `${de1(t.pv_kwh, t.pv_kwh >= 100 ? 0 : 1)} kWh` : "-",
-        "Erzeugung",
-      ),
-    [t],
-  );
 
   const val = (p: Period, f: (r: PvTaxReport) => string) => (strip[p] ? f(strip[p] as PvTaxReport) : "-");
   const sum = t ? rowOf("Summe", t) : null;
@@ -110,14 +97,10 @@ export function PvAccounting() {
         <Stat label="Umsatzsteuer gesamt" value={eur(t?.vat_payable_eur)} tone={vatOff ? "muted" : "amber"} hint={vatOff ? "Kleinunternehmer: keine USt" : "Einspeisung + Wertabgabe"} />
       </KpiGrid>
 
-      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
+      <div className="report-row" style={{ "--cols": "1fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 300 }}>
           <CardHead title="Erlös und Wertabgabe" right="Einspeisevergütung · Eigenverbrauch, jeweils netto" />
           <div className="min-h-0 flex-1">{rows.length ? <EChart option={barsOpt} /> : <Note>Für diesen Zeitraum liegen keine bewerteten Stunden vor.</Note>}</div>
-        </Card>
-        <Card style={{ padding: 16, height: 300 }}>
-          <CardHead title="Wohin ging die Erzeugung?" right={t ? `Eigenverbrauchsquote ${pct(t.self_consumption_share)}` : undefined} />
-          <div className="min-h-0 flex-1"><EChart option={donutOpt} /></div>
         </Card>
       </div>
 
