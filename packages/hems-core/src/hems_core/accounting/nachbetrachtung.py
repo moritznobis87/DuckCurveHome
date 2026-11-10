@@ -16,8 +16,13 @@ Die Linien:
   Das ist die Absicht, mit der man in die Viertelstunde hineinging.
 * `wirklich` - der gemessene Strom des Verdichters und der gemessene Ofenbetrieb.
 * `perfekt` - ein neu gerechneter Fahrplan, dem der Tag im Voraus bekannt war.
-* `ohne_fuehrung` - dieselbe Strommenge wie in Wirklichkeit, verteilt nach dem Wärmebedarf statt
-  nach dem Preis. Eine Schätzung, und so gekennzeichnet.
+
+**Was das Verschieben gegenüber einem Lauf ohne Preisblick gebracht hat, steht nicht hier.** Bis
+zum 10.11.2026 gab es dafür eine sechste Linie, und sie war die dritte Antwort auf dieselbe Frage
+neben `accounting.counterfactual` und einer Karte der Wärmeseite - jede mit einer anderen Zahl.
+Geblieben ist `counterfactual`: es rechnet aus den gemessenen Zählerflüssen der Stunde, kennt
+also den Batteriespeicher, und es kommt mit der Stundenbilanz über Monate aus. Die Nachbetrachtung
+zeigt sein Ergebnis für den Tag, rechnet es aber nicht noch einmal.
 
 Die Abstände, als Treppe vom Versprechen zur Wirklichkeit:
 
@@ -78,10 +83,6 @@ class Viertel:
     ofen_anteil: float | None = None
     #: Was eine Ofenstunde bei eingetretenem Preis und eingetretener Temperatur kostet.
     ofen_eur_je_h: float = 0.0
-    #: Wie viel Strom die Wärmepumpe in dieser Viertelstunde bräuchte, liefe sie dem Wärmebedarf
-    #: nach: Bedarf geteilt durch die Arbeitszahl, beides aus der eingetretenen Temperatur. Nur
-    #: das Verhältnis der Gewichte zählt, nicht ihre Höhe.
-    gewicht: float | None = None
 
 
 @dataclass(frozen=True)
@@ -181,30 +182,6 @@ def strom_eur(
     """
     aus_sonne = min(kwh, max(0.0, ueberschuss_kw) * dt_h)
     return ((kwh - aus_sonne) * preis_ct + aus_sonne * verguetung_ct) / 100.0
-
-
-def nach_bedarf(
-    gesamt_kwh: float, gewichte: Sequence[float | None], maske: Sequence[bool]
-) -> list[float | None]:
-    """Eine Strommenge nach dem Wärmebedarf über die verglichenen Viertelstunden verteilen.
-
-    Die Nulllinie: dieselbe Menge, nur dann, wann ein Thermostat sie gebraucht hätte. Fehlt ein
-    Gewicht oder sind alle null, wird gleichmäßig verteilt - das ist dann die Annahme „es war
-    immer gleich kalt", und sie ist schwächer als die mit Gewichten, aber keine Lücke.
-    """
-    drin = [i for i, m in enumerate(maske) if m]
-    out: list[float | None] = [None] * len(maske)
-    if not drin:
-        return out
-    g = [gewichte[i] for i in drin]
-    if any(w is None for w in g) or sum(w or 0.0 for w in g) <= 0:
-        for i in drin:
-            out[i] = gesamt_kwh / len(drin)
-        return out
-    summe = sum(w or 0.0 for w in g)
-    for i, w in zip(drin, g, strict=True):
-        out[i] = gesamt_kwh * (w or 0.0) / summe
-    return out
 
 
 @dataclass
@@ -474,32 +451,6 @@ def nachbetrachten(
         eur_kumuliert=s.kumuliert,
     )
 
-    # --- ohne Führung: dieselbe Menge, nach dem Bedarf verteilt. Der Ofen bleibt, wie er war.
-    ohne_fuehrung = Linie(
-        key="ohne_fuehrung",
-        name_de="ohne Preisblick",
-        geschaetzt=True,
-        grund_de="Für diesen Tag gibt es keine vollständige Messung.",
-    )
-    if n_verglichen:
-        verteilt = nach_bedarf(s.kwh, [v.gewicht for v in viertel], maske)
-        t = _bewerten(viertel, maske, verteilt, ist_ofen, verguetung_ct=verguetung_ct, dt_h=dt_h)
-        ohne_fuehrung = ohne_fuehrung.model_copy(
-            update={
-                "verfuegbar": True,
-                "grund_de": "",
-                "eur": round(t.strom + t.ofen, 2),
-                "strom_eur": round(t.strom, 2),
-                "ofen_eur": round(t.ofen, 2) if hat_ofen else None,
-                "wp_kwh": round(t.kwh, 2),
-                "ofen_h": wirklich.ofen_h,
-                "wp_kwh_je": [None if k is None else round(k, 3) for k in verteilt],
-                "ofen_je": ist_ofen,
-                "eur_je": t.je,
-                "eur_kumuliert": t.kumuliert,
-            }
-        )
-
     erster_l, letzter_l, perfekt_l = linie["erster"], linie["letzter"], linie["perfekt"]
     abstaende = [
         _abstand(
@@ -540,19 +491,6 @@ def nachbetrachten(
                 "Mitternacht."
             ),
         ),
-        _abstand(
-            "gebracht",
-            "gegenüber ohne Preisblick",
-            ohne_fuehrung,
-            wirklich,
-            lambda d: (
-                f"Nach dem Wärmebedarf verteilt hätte dieselbe Strommenge {_eur(d)} mehr "
-                "gekostet. So viel hat das Verschieben gebracht, geschätzt."
-                if d < 0
-                else f"Nach dem Wärmebedarf verteilt hätte dieselbe Strommenge {_eur(d)} weniger "
-                "gekostet. Das Verschieben hat an diesem Tag nichts gebracht, geschätzt."
-            ),
-        ),
     ]
 
     standby = [viertel[i].standby_kwh for i in range(n) if maske[i]]
@@ -575,7 +513,7 @@ def nachbetrachten(
                 else None
             }
         )
-        for x in (versprochen, erster_l, letzter_l, wirklich, perfekt_l, ohne_fuehrung)
+        for x in (versprochen, erster_l, letzter_l, wirklich, perfekt_l)
     ]
     roh = Nachbetrachtung(
         zeiten=[v.ts for v in viertel],
@@ -746,12 +684,6 @@ def _hinweise(n: Nachbetrachtung, *, gemessen: int, laeuft_noch: bool) -> list[s
         out.append(
             f"Die Grundlast der Anlage im Stillstand ({_kwh(n.standby_kwh)}, {_eur(n.standby_eur)} "
             "zum Bezugspreis) steht in keiner Linie. Sie hängt an keinem Fahrplan."
-        )
-    if je["ohne_fuehrung"].verfuegbar:
-        out.append(
-            "„Ohne Preisblick“ ist eine Schätzung: dieselbe Strommenge wie gemessen, verteilt "
-            "nach dem Wärmebedarf der eingetretenen Temperatur. Was ohne Führung wirklich "
-            "geschehen wäre, weiß niemand."
         )
     for key in ("versprochen", "erster", "letzter", "perfekt"):
         x = je[key]

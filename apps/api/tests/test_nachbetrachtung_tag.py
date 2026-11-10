@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from dch_api.application import nachbetrachtung as logik
 from dch_api.application.anlage import BUFFER_KEYS
+from dch_api.schemas import ShiftReportOut
 from hems_core.domain import HemsConfig
 from hems_core.planning import OptimizerConfig
 
@@ -255,13 +256,10 @@ def test_ein_tag_vor_der_ablage_hat_messung_und_vergleichslauf_aber_keine_fahrpl
     )
     je = {x.key: x for x in r.linien}
     assert r.n_verglichen == 96
-    assert je["wirklich"].verfuegbar and je["perfekt"].verfuegbar and je["ohne_fuehrung"].verfuegbar
+    assert je["wirklich"].verfuegbar and je["perfekt"].verfuegbar
     for key in ("versprochen", "erster", "letzter"):
         assert not je[key].verfuegbar
     assert r.erster_plan_erstellt is None
-    # Die Nulllinie: dieselbe Menge, über den Tag verteilt, also billiger als der teure Morgen.
-    assert je["ohne_fuehrung"].wp_kwh == je["wirklich"].wp_kwh
-    assert (je["ohne_fuehrung"].eur or 0.0) < (je["wirklich"].eur or 0.0)
 
 
 def test_ein_laufender_tag_vergleicht_nur_was_vorbei_ist() -> None:
@@ -331,7 +329,6 @@ def test_der_endpunkt_liefert_die_linien_der_vorfuehrung(client: TestClient) -> 
         "letzter",
         "wirklich",
         "perfekt",
-        "ohne_fuehrung",
     ]
     assert len(body["zeiten"]) in (92, 96, 100)
     assert len(body["verglichen"]) == len(body["zeiten"])
@@ -346,3 +343,52 @@ def test_ein_tag_in_der_zukunft_wird_abgelehnt(client: TestClient) -> None:
     r = client.get(f"/api/v1/plan/nachbetrachtung?day={morgen}", headers=KOPF)
     assert r.status_code == 422
     assert "Zukunft" in r.text
+
+
+# ---------------------------------------------------------------------------- Ohne Preisblick
+
+
+def _bericht(saving: float, tage: int, grund: str = "") -> ShiftReportOut:
+    return ShiftReportOut(
+        period="day",
+        start=VON,
+        end=BIS,
+        actual_eur=4.0,
+        naive_eur=4.0 + saving,
+        saving_eur=saving,
+        heat_pump_kwh=12.0,
+        shifted_kwh=5.0,
+        days_used=tage,
+        days_skipped=0 if tage else 1,
+        skipped_de=grund,
+        method_de="",
+    )
+
+
+def test_der_vergleich_ohne_preisblick_wird_durchgereicht_und_nicht_neu_gerechnet() -> None:
+    """Dieselbe Zahl wie auf der Kostenseite. Eine Rechnung, an mehreren Stellen gezeigt."""
+    r = logik.zusammenstellen(
+        zeilen(60), {}, OHNE_OFEN, TAG, BERLIN, jetzt=SPAETER, verschieben=_bericht(0.72, 1)
+    )
+    assert r.verschieben_eur == 0.72
+    assert "0,72 € gespart" in r.verschieben_de
+    assert "Kostenseite" in r.verschieben_de
+
+
+def test_hat_das_verschieben_gekostet_steht_auch_das_da() -> None:
+    assert "0,31 € mehr gekostet" in logik.verschieben_satz(_bericht(-0.31, 1))
+
+
+def test_ohne_gerechneten_tag_gibt_es_keine_zahl_aber_den_grund() -> None:
+    r = logik.zusammenstellen(
+        zeilen(60),
+        {},
+        OHNE_OFEN,
+        TAG,
+        BERLIN,
+        jetzt=SPAETER,
+        verschieben=_bericht(0.0, 0, "zu wenige Stunden"),
+    )
+    assert r.verschieben_eur is None
+    assert "zu wenige Stunden" in r.verschieben_de
+    assert logik.verschieben_satz(None) == ""

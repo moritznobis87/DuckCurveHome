@@ -157,9 +157,9 @@ export function Rueckblick() {
 
   return (
     <>
-      <div className="flex items-baseline justify-between gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
         <h2 className="kicker m-0">Rückblick · abgelegte Läufe gegen das Ist</h2>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-4">
             <Legend color={C.price} label="mittlerer Fehler" />
             <Legend color={C.alert} label="Rand (95 %)" punkt />
@@ -179,7 +179,7 @@ export function Rueckblick() {
         </div>
       </div>
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.max(1, reihen.length)}, 1fr)` }}>
+      <div className="report-row" style={{ "--cols": `repeat(${Math.max(1, reihen.length)}, minmax(0, 1fr))` } as React.CSSProperties}>
         {reihen.map((r) => (
           <Card key={r.key} style={{ padding: 16, height: 250 }}>
             <CardHead

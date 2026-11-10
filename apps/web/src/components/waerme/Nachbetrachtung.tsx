@@ -128,6 +128,16 @@ export function Nachbetrachtung() {
                   ))}
                 </ul>
               ) : null}
+              {/* Der Vergleich ohne Preisblick: gerechnet auf der Kostenseite, hier nur genannt. */}
+              {daten.verschieben_de ? (
+                <p className="nb-verweis">
+                  <span className="kicker">Ohne Preisblick</span>
+                  {daten.verschieben_de}{" "}
+                  <Link href={`/geld?period=day&anchor=${tag}`} className="text-amber">
+                    Zur Rechnung ›
+                  </Link>
+                </p>
+              ) : null}
             </div>
             <Kostentreppe d={daten} />
           </div>
@@ -143,7 +153,6 @@ export function Nachbetrachtung() {
               <li key={l.key}>
                 <Marke linie={l.key} />
                 {KURZ[l.key] ?? l.name_de}
-                {l.geschaetzt ? ", geschätzt" : ""}
               </li>
             ))}
             <li>

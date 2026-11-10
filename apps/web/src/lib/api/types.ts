@@ -3976,11 +3976,10 @@ export interface components {
          * NachbetrachtungOut
          * @description Ein Ortstag in Euro: was der Fahrplan versprach, was er hielt, was der Tag kostete.
          *
-         *     Sechs Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet
+         *     Fünf Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet
          *     (`verglichen`): der erste Fahrplan des Tages mit seinen eigenen Kosten (`versprochen`) und mit
          *     den eingetretenen Werten (`erster`), der jeweils letzte Stand des Fahrplans (`letzter`), die
-         *     Messung (`wirklich`), ein Vergleichslauf mit perfekter Voraussicht (`perfekt`) und dieselbe
-         *     Strommenge nach dem Wärmebedarf verteilt (`ohne_fuehrung`, geschätzt).
+         *     Messung (`wirklich`) und ein Vergleichslauf mit perfekter Voraussicht (`perfekt`).
          *
          *     `abstaende` sind die Stufen dazwischen. Die ersten drei führen vom Versprechen zur
          *     Wirklichkeit: Prognosefehler, Nachführen, Eingriff der Maschine. Positiv heißt teurer.
@@ -4053,6 +4052,13 @@ export interface components {
              * @default false
              */
             hat_ofen: boolean;
+            /** Verschieben Eur */
+            verschieben_eur?: number | null;
+            /**
+             * Verschieben De
+             * @default
+             */
+            verschieben_de: string;
         };
         /** NextExpected */
         NextExpected: {

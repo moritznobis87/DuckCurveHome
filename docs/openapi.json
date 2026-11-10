@@ -8938,6 +8938,22 @@
             "type": "boolean",
             "title": "Hat Ofen",
             "default": false
+          },
+          "verschieben_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verschieben Eur"
+          },
+          "verschieben_de": {
+            "type": "string",
+            "title": "Verschieben De",
+            "default": ""
           }
         },
         "type": "object",
@@ -8949,7 +8965,7 @@
           "verguetung_ct"
         ],
         "title": "NachbetrachtungOut",
-        "description": "Ein Ortstag in Euro: was der Fahrplan versprach, was er hielt, was der Tag kostete.\n\nSechs Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet\n(`verglichen`): der erste Fahrplan des Tages mit seinen eigenen Kosten (`versprochen`) und mit\nden eingetretenen Werten (`erster`), der jeweils letzte Stand des Fahrplans (`letzter`), die\nMessung (`wirklich`), ein Vergleichslauf mit perfekter Voraussicht (`perfekt`) und dieselbe\nStrommenge nach dem Wärmebedarf verteilt (`ohne_fuehrung`, geschätzt).\n\n`abstaende` sind die Stufen dazwischen. Die ersten drei führen vom Versprechen zur\nWirklichkeit: Prognosefehler, Nachführen, Eingriff der Maschine. Positiv heißt teurer.\n\nEine Linie, die fehlt, hat `verfuegbar=false` und sagt in `grund_de`, warum. Das ist für\nTage vor dem 09.11.2026 der Normalfall bei allen Fahrplanlinien: aufbewahrt wird erst seitdem."
+        "description": "Ein Ortstag in Euro: was der Fahrplan versprach, was er hielt, was der Tag kostete.\n\nFünf Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet\n(`verglichen`): der erste Fahrplan des Tages mit seinen eigenen Kosten (`versprochen`) und mit\nden eingetretenen Werten (`erster`), der jeweils letzte Stand des Fahrplans (`letzter`), die\nMessung (`wirklich`) und ein Vergleichslauf mit perfekter Voraussicht (`perfekt`).\n\n`abstaende` sind die Stufen dazwischen. Die ersten drei führen vom Versprechen zur\nWirklichkeit: Prognosefehler, Nachführen, Eingriff der Maschine. Positiv heißt teurer.\n\nEine Linie, die fehlt, hat `verfuegbar=false` und sagt in `grund_de`, warum. Das ist für\nTage vor dem 09.11.2026 der Normalfall bei allen Fahrplanlinien: aufbewahrt wird erst seitdem."
       },
       "NextExpected": {
         "properties": {

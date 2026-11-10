@@ -8,6 +8,9 @@ import { Card, CardHead } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
 import { C, MONO } from "@/components/charts/palette";
+import { hhmm } from "@/lib/format";
+import { isoToday } from "@/lib/day";
+import { hausTag, kurzDatum } from "./wirkung";
 
 /**
  * Die Seite „Fahrplan": der Horizont als Zeitreihen, nicht als Summe - Absicht und Messung.
@@ -86,16 +89,16 @@ function viertelStunden(n: number): string {
   return `${de(n / 4, 1)} h`;
 }
 
+/** Uhrzeit in der Zeit des Hauses, nicht des Geräts. */
 function uhr(ts: string): string {
-  const d = new Date(ts);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return hhmm(ts);
 }
 
 function tagUndUhr(ts: string): string {
-  const d = new Date(ts);
-  const heute = new Date();
-  const tage = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date(heute).setHours(0, 0, 0, 0)) / 86400000);
-  const wort = tage === 0 ? "heute" : tage === 1 ? "morgen" : tage === 2 ? "übermorgen" : d.toLocaleDateString("de-DE", { weekday: "short" });
+  // Der Abstand in Kalendertagen des Hauses: mittags gerechnet, damit kein Versatz den Tag kippt.
+  const mittag = (tag: string) => new Date(`${tag}T12:00:00Z`).getTime();
+  const tage = Math.round((mittag(hausTag(ts)) - mittag(isoToday())) / 86_400_000);
+  const wort = tage === 0 ? "heute" : tage === 1 ? "morgen" : tage === 2 ? "übermorgen" : kurzDatum(ts);
   return `${wort} ${uhr(ts)}`;
 }
 
@@ -207,10 +210,9 @@ export function Fahrplan() {
         {
           xAxis: t(w.start),
           itemStyle: { color: w.kind === "negative" ? "rgba(224,83,61,.14)" : "rgba(127,163,179,.14)" },
-          // Ein negatives Fenster liegt in aller Regel **innerhalb** eines Preistiefs. Beide oben
-          // links beschriftet, und sie drucken sich gegenseitig zu; das war auf dem ersten
-          // Bildschirmfoto zu sehen. Also eine Beschriftung oben, die andere unten.
-          label: { show: true, position: w.kind === "negative" ? ("insideBottomLeft" as const) : ("insideTopLeft" as const), formatter: w.kind === "negative" ? "NEGATIV" : "PREISTIEF", color: w.kind === "negative" ? C.alert : C.price, fontFamily: MONO, fontSize: 10, letterSpacing: 1 },
+          // Ohne Beschriftung im Band. Zwei kurze Preistiefs nebeneinander druckten ihre Namen
+          // ineinander („PREISTIEFPREISTIEF", gesehen am 10.11.2026), und ein negatives Fenster
+          // liegt meist in einem Preistief und überdruckte es. Die Bänder stehen in der Legende.
         },
         { xAxis: t(w.end) },
       ]);
@@ -237,7 +239,18 @@ export function Fahrplan() {
       max: t(plan.horizon_end),
       axisLine: { lineStyle: { color: C.axis } },
       axisTick: { show: labels },
-      axisLabel: labels ? { color: C.text, fontFamily: MONO, fontSize: 10 } : { show: false },
+      axisLabel: labels
+        ? {
+            color: C.text,
+            fontFamily: MONO,
+            fontSize: 10,
+            hideOverlap: true,
+            // In der Zeit des Hauses, und an der Tagesgrenze der Tag statt einer nackten Zahl:
+            // ECharts schrieb dort „10" und „11", und zwischen „10" und „06:00" liest niemand
+            // eine Zeitachse.
+            formatter: (v: number) => (hhmm(new Date(v)) === "00:00" ? kurzDatum(new Date(v).toISOString()) : hhmm(new Date(v))),
+          }
+        : { show: false },
       splitLine: { show: true, lineStyle: { color: C.gridline } },
     });
     const wert = (gridIndex: number, { min = 0, max }: { min?: number; max?: number } = {}) => ({
@@ -612,6 +625,16 @@ export function Fahrplan() {
             <span style={{ display: "inline-block", width: 14, height: 2, background: C.mist }} />
             PV erwartet
           </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span style={{ display: "inline-block", width: 14, height: 10, borderRadius: 2, background: "rgba(127,163,179,.32)" }} />
+            Preistief
+          </span>
+          {(plan?.windows ?? []).some((w) => w.kind === "negative") ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span style={{ display: "inline-block", width: 14, height: 10, borderRadius: 2, background: "rgba(224,83,61,.32)" }} />
+              negativer Preis
+            </span>
+          ) : null}
 
         </div>
 
@@ -633,7 +656,7 @@ export function Fahrplan() {
           Links der Jetzt-Linie stehen zwei verschiedene Dinge nebeneinander. Gemessen sind die PV-Leistung, die Leistung der Wärmepumpe und der Freigabekontakt; sie enden an der letzten abgeschlossenen Viertelstunde, denn die laufende ist erst zum Teil vorbei und sähe aus wie ein Einbruch. Der <em>geplante</em> Zustand der Wärmepumpe ist dort dagegen keine Erinnerung: der Optimierer rechnet ab jetzt, für die vergangenen Stunden greift die Preisregel, also steht da, was sie heute für diese Stunde sagen würde. Weicht der gemessene Kontakt davon ab, ist das deshalb kein Widerspruch, sondern der Abstand zwischen zwei verschiedenen Fragen.
         </p>
         <p className="mt-3 text-[13px] leading-[1.6] text-text-3">
-          Was hier noch fehlt: der aufbewahrte Fahrplan von damals, gegen den sich die Messung wirklich halten lässt, die Nachbetrachtung in Euro und der Lernschritt, der das Hüllenmodell aus den Prognosefehlern nachzieht. Wie gut die Prognosen waren, steht schon unter <em>System → Prognose</em>. Der Entwurf zum Rest steht in <code className="mono text-[12px]">docs/design/digitaler-zwilling.md</code>.
+          Was aus einem Fahrplan geworden ist, steht im Rückblick: dort liegt der aufbewahrte Fahrplan von damals neben der Messung, in Euro. Wie gut die Prognosen waren, steht unter <em>System → Prognose</em>. Noch nicht gebaut ist der Lernschritt, der das Hüllenmodell aus den Prognosefehlern nachzieht.
         </p>
       </Card>
     </div>

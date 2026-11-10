@@ -18,8 +18,8 @@ import { achse, euro, euroMitVorzeichen, treppe, type Stufe } from "./nachbetrac
  * Ob eine Stufe teurer oder günstiger macht, steht an ihrem Vorzeichen und an der Pfeilspitze
  * ihres Balkens; eine zweite Farbbedeutung im selben Bild müsste man erst lernen.
  *
- * **Geschätztes ist umrandet, nicht gefüllt.** „Ohne Preisblick" ist eine Rechnung über einen
- * Tag, den es nicht gab. Sie steht daneben und sieht anders aus als das Gemessene.
+ * **Geschätztes ist umrandet, nicht gefüllt.** Eine Linie, die der Dienst als Schätzung
+ * kennzeichnet, steht daneben und sieht anders aus als das Gemessene.
  */
 
 function farbe(s: Stufe): string {

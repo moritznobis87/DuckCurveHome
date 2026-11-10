@@ -27,7 +27,7 @@ export type Stufe = {
 const KETTE = ["prognosefehler", "nachfuehren", "eingriff"] as const;
 
 /**
- * Die Treppe vom Versprechen zur Wirklichkeit, und daneben die beiden Bezugslinien.
+ * Die Treppe vom Versprechen zur Wirklichkeit, und daneben der Vergleichslauf.
  *
  * Sie beginnt bei der ersten Linie, die es gibt. Fehlt das Versprechen, weil der Fahrplan vor der
  * Erweiterung der Ablage entstand, beginnt sie beim gehaltenen Fahrplan; fehlt jeder Fahrplan,
@@ -54,14 +54,12 @@ export function treppe(d: Nachbetrachtung): Stufe[] {
   if (ist?.eur != null) {
     out.push({ key: "wirklich", name: ist.name_de, art: "summe", von: 0, bis: ist.eur, eur: ist.eur, geschaetzt: false, satz: "" });
   }
-  for (const [key, zu] of [
-    ["perfekt", "voraussicht"],
-    ["ohne_fuehrung", "gebracht"],
-  ] as const) {
-    const l = linie.get(key);
-    if (l?.eur != null) {
-      out.push({ key, name: l.name_de, art: "bezug", von: 0, bis: l.eur, eur: l.eur, geschaetzt: l.geschaetzt, satz: abstand.get(zu)?.satz_de ?? "" });
-    }
+  // Daneben, nicht auf dem Weg: der Vergleichslauf. Was das Verschieben gegenüber einem Lauf ohne
+  // Preisblick gebracht hat, steht nicht in der Treppe; das rechnet die Kostenseite, und die
+  // Nachbetrachtung nennt nur ihr Ergebnis.
+  const perfekt = linie.get("perfekt");
+  if (perfekt?.eur != null) {
+    out.push({ key: "perfekt", name: perfekt.name_de, art: "bezug", von: 0, bis: perfekt.eur, eur: perfekt.eur, geschaetzt: perfekt.geschaetzt, satz: abstand.get("voraussicht")?.satz_de ?? "" });
   }
   return out;
 }
@@ -111,7 +109,7 @@ export function staerke(kwh: number | null | undefined, vollKwh: number): number
 }
 
 /** Die Linien, die im Tagesvergleich eine eigene Zeile bekommen, in dieser Reihenfolge. */
-export const ZEILEN = ["erster", "letzter", "wirklich", "perfekt", "ohne_fuehrung"] as const;
+export const ZEILEN = ["erster", "letzter", "wirklich", "perfekt"] as const;
 
 /** Die verfügbaren Linien für den Tagesvergleich. Das Versprechen fehlt: es ist derselbe Fahrplan wie „erster". */
 export function zeilen(d: Nachbetrachtung): Linie[] {

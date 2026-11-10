@@ -26,8 +26,8 @@ from datetime import date, datetime, timedelta, tzinfo
 from dch_api.application import anlage_replay
 from dch_api.application.anlage import BUFFER_KEYS
 from dch_api.application.stove_planner import BASE_LOAD_KW, STEP_MIN, plan_stove, stove_eur_per_h
-from dch_api.schemas import NachbetrachtungOut
-from hems_core.accounting.heat import cop_at, heat_demand_kw
+from dch_api.schemas import NachbetrachtungOut, ShiftReportOut
+from hems_core.accounting.heat import cop_at
 from hems_core.accounting.nachbetrachtung import Fahrplan, Viertel, nachbetrachten
 from hems_core.domain import HemsConfig
 from hems_core.planning import OptimizerConfig
@@ -354,8 +354,14 @@ def zusammenstellen(
     *,
     jetzt: datetime,
     opt_cfg: OptimizerConfig | None = None,
+    verschieben: ShiftReportOut | None = None,
 ) -> NachbetrachtungOut:
-    """Die Nachbetrachtung eines Ortstages aus Minutenzeilen und abgelegten Fahrplänen."""
+    """Die Nachbetrachtung eines Ortstages aus Minutenzeilen und abgelegten Fahrplänen.
+
+    `verschieben` ist der Vergleich mit einem Lauf ohne Preisblick für denselben Tag, so wie ihn
+    die Kostenseite rechnet. Er wird hier nur weitergereicht: eine Rechnung, an mehreren Stellen
+    gezeigt, statt je Seite eine eigene.
+    """
     von, bis, daten_bis = fenster(day, tz, jetzt)
     schwelle = cfg.heat_pump.running_threshold_kw
     # Der Tag und, für den Vergleichslauf, was danach schon gemessen ist.
@@ -368,16 +374,13 @@ def zusammenstellen(
     erster = erster_fahrplan(punkte, zeiten, von)
     letzter = letzter_stand(punkte, zeiten)
 
-    # Die Außentemperatur für Bedarf und Arbeitszahl: wo sie fehlt, die nächste bekannte.
+    # Die Außentemperatur für die Arbeitszahl im Wert der Ofenwärme: wo sie fehlt, die nächste
+    # bekannte.
     temps, templuecken = _auffuellen([e.aussen_c for e in tag])
     viertel: list[Viertel] = []
     for i, e in enumerate(tag):
         aussen = temps[i] if temps else None
         cop = cop_at(aussen, cfg.heat_demand) if aussen is not None else None
-        gewicht: float | None = None
-        if aussen is not None and cop:
-            heizen, warmwasser = heat_demand_kw(aussen, e.ts.astimezone(tz).hour, cfg.heat_demand)
-            gewicht = (heizen + warmwasser) / cop
         viertel.append(
             Viertel(
                 ts=e.ts,
@@ -390,7 +393,6 @@ def zusammenstellen(
                 ofen_eur_je_h=stove_eur_per_h(cfg, price_ct_kwh=e.preis_ct, cop=cop)
                 if cfg.stove.present and e.preis_ct is not None and cop
                 else 0.0,
-                gewicht=gewicht,
             )
         )
 
@@ -430,7 +432,7 @@ def zusammenstellen(
     if templuecken and temps:
         hinweise.append(
             f"Für {templuecken} Viertelstunden fehlt die Außentemperatur; dort gilt die zuletzt "
-            "gemessene. Sie geht in die Nulllinie und in den Wert der Ofenwärme ein."
+            "gemessene. Sie geht in den Wert der Ofenwärme ein."
         )
     if cfg.stove.present:
         hinweise.append(
@@ -447,6 +449,26 @@ def zusammenstellen(
         wp_kw=cfg.heat_pump.nominal_electric_power_kw,
         verguetung_ct=cfg.tariff.feed_in_ct_kwh,
         hat_ofen=cfg.stove.present,
+        verschieben_eur=verschieben.saving_eur if verschieben and verschieben.days_used else None,
+        verschieben_de=verschieben_satz(verschieben),
+    )
+
+
+def verschieben_satz(bericht: ShiftReportOut | None) -> str:
+    """Der Satz zum Vergleich ohne Preisblick, oder warum es keinen gibt."""
+    if bericht is None:
+        return ""
+    if not bericht.days_used:
+        grund = f" ({bericht.skipped_de})" if bericht.skipped_de else ""
+        return f"Für diesen Tag gibt es keinen Vergleich mit einem Lauf ohne Preisblick{grund}."
+    betrag = f"{abs(bericht.saving_eur):.2f}".replace(".", ",")
+    if bericht.saving_eur >= 0:
+        kern = f"hat das Verschieben in günstige Stunden {betrag} € gespart"
+    else:
+        kern = f"hat der Tag {betrag} € mehr gekostet"
+    return (
+        f"Gegenüber einem Lauf ohne Preisblick {kern}. Geschätzt aus der Stundenbilanz; Rechnung "
+        "und Annahmen stehen auf der Kostenseite."
     )
 
 

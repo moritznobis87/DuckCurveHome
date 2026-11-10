@@ -1019,6 +1019,7 @@ class DemoRunner:
             jetzt=self.now,
             # Kurze Zeitgrenze wie im Fahrplan der Vorführung: sie rechnet im Zeitraffer.
             opt_cfg=OptimizerConfig(step_min=15, time_limit_s=2.0),
+            verschieben=await self.accounting.shift_report("day", day, self.now),
         )
 
     async def kontaktwirkung(self, days: int) -> KontaktwirkungOut:

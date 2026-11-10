@@ -11,6 +11,7 @@ import { EChart } from "@/components/charts/EChart";
 import { dayBounds } from "@/components/charts/dayBounds";
 import { AreaShell } from "@/components/layout/AreaShell";
 import { Rueckblick } from "@/components/forecast/Rueckblick";
+import { KpiGrid } from "@/components/reports/ReportShell";
 
 const C = {
   pv: "#f2a900",
@@ -243,7 +244,7 @@ export function ForecastPage() {
   return (
     <AreaShell kicker="PV-Prognose gegen Ist · Korrekturfaktoren" right={<>
           {ev ? <span className="mono hidden whitespace-nowrap text-[12px] uppercase tracking-[.1em] text-text-3 min-[1400px]:inline">Stand {hhmm(ev.generated_at)} · {ev.sources[0]?.label_de}</span> : null}
-          {ev ? <span className="whitespace-nowrap"><Pill tone={ev.correction_active ? "amber" : "neutral"}>{ev.stage_de}{ev.correction_active ? " · aktiv" : " · lernt"}</Pill></span> : null}
+          {ev ? <span className="min-w-0 truncate"><Pill tone={ev.correction_active ? "amber" : "neutral"}>{ev.stage_de}{ev.correction_active ? " · aktiv" : " · lernt"}</Pill></span> : null}
         </>}>
 
       {error ? (
@@ -252,19 +253,22 @@ export function ForecastPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
+      {/* Dieselben Raster wie auf den Berichtsseiten. Vorher standen hier feste Spalten: auf dem
+          Telefon blieben fünf Kacheln und drei Diagramme nebeneinander, jede 60 bis 90 Punkte
+          breit, und die Beschriftungen brachen Buchstabe für Buchstabe (gesehen am 10.11.2026). */}
+      <KpiGrid cols={5}>
         <Stat label="Heute · Ist bis jetzt" value={todayScore ? de(todayScore.energy_actual_kwh, 1) : "-"} unit="kWh" tone="amber" />
         <Stat label="Heute · Day-ahead bis jetzt" value={todayScore ? de(todayScore.energy_forecast_kwh, 1) : "-"} unit="kWh" />
         <Stat label="Heute · Abweichung" value={todayScore ? pct(todayScore.energy_error_pct) : "-"} tone={todayScore?.energy_error_pct != null && Math.abs(todayScore.energy_error_pct) > 15 ? "ember" : undefined} />
         <Stat label="MAE · 7 Tage" value={mae7 == null ? "-" : de(mae7, 2)} unit="kW" />
         <Stat label="Tage innerhalb ±15 %" value={recent.length ? `${hits} / ${recent.length}` : "-"} tone="muted" />
-      </div>
+      </KpiGrid>
 
       <Card style={{ padding: 16, height: 340 }}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-baseline gap-5 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-1">
             <h2 className="kicker m-0 whitespace-nowrap">{range === "today" ? "Heute" : "Gestern"} · Prognose gegen Ist</h2>
-            <div className="flex gap-5 whitespace-nowrap">
+            <div className="flex flex-wrap gap-x-5 gap-y-1">
               <Legend color={C.pv} label="Ist (15-min-Mittel)" />
               <Legend color={C.ahead} label={`Day-ahead${day?.issued_at ? ` · ausgegeben ${hhmm(day.issued_at)}` : ""}`} dashed="dash" />
               {range === "today" ? <Legend color={C.corrected} label="Jüngster Lauf, korrigiert" dashed="dot" /> : null}
@@ -288,7 +292,7 @@ export function ForecastPage() {
         <div className="mt-1 min-h-0 flex-1">{dayOpt ? <EChart key={range} option={dayOpt} /> : null}</div>
       </Card>
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: "5fr 3fr 4fr" }}>
+      <div className="report-row" style={{ "--cols": "5fr 3fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <div className="flex items-baseline justify-between">
             <h2 className="kicker m-0">Tagesenergie · letzte {Math.min(14, ev?.daily.length ?? 0)} Tage</h2>
@@ -318,7 +322,7 @@ export function ForecastPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: "7fr 5fr" }}>
+      <div className="report-row" style={{ "--cols": "7fr 5fr" } as React.CSSProperties}>
         <Card accent style={{ padding: 18 }}>
           <CardHead title="Was sich für die nächste Prognose ändert" right={st?.updated_on ? `Tagesabschluss ${dayLabel(st.updated_on)}` : "noch kein Tagesabschluss"} />
           <ol className="m-0 mt-3 flex list-none flex-col gap-2 p-0">

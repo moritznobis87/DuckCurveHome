@@ -17,7 +17,15 @@ export type Tab = {
   dated?: boolean;
   /** Nur mit Vollzugriff sichtbar; die Seite selbst prueft es serverseitig noch einmal. */
   ownerOnly?: boolean;
+  /**
+   * Die Ansichten eines Reiters, wenn er mehr als eine hat: dieselbe Sache aus zwei Richtungen,
+   * etwa der Augenblick und ein ganzer Tag. Sie stehen als Umschalter unter der Reiterzeile und
+   * nicht als eigene Reiter daneben. Die erste Ansicht hat die Adresse des Reiters.
+   */
+  unter?: Ansicht[];
 };
+
+export type Ansicht = { href: string; label: string };
 
 export type Area = {
   key: "jetzt" | "haus" | "strom" | "waerme" | "geld" | "system";
@@ -51,18 +59,31 @@ export const AREAS: Area[] = [
     href: "/waerme",
     icon: "flame",
     label: "Wärme",
+    // Sechs Reiter, nicht neun. Bis zum 10.11.2026 standen hier Erzeuger, Bilanz, Räume, Anlage,
+    // Wiedergabe, Wirkung, Fahrplan, Nachbetrachtung und Annahmen nebeneinander: zwei Berichte
+    // über dieselbe Wärme mit verschiedenen Zahlen, und zweimal dieselbe Sache als zwei Reiter.
+    // Jetzt ist die Wärme eine Übersicht, die Wiedergabe ist die Anlage über einen Tag, und die
+    // Nachbetrachtung ist der Fahrplan im Rückblick.
     tabs: [
-      { href: "/waerme", label: "Erzeuger", dated: true },
-      { href: "/waerme/bilanz", label: "Bilanz", dated: true },
+      { href: "/waerme", label: "Übersicht", dated: true },
       { href: "/waerme/raeume", label: "Räume", dated: true },
-      { href: "/waerme/anlage", label: "Anlage" },
-      // Direkt neben der Anlage, denn es ist dieselbe Ansicht: dort der Augenblick, hier ein Tag.
-      { href: "/waerme/wiedergabe", label: "Wiedergabe" },
-      // Die Auswertung zur Wiedergabe: dort ein Tag zum Ansehen, hier alle Schließvorgänge gezählt.
+      {
+        href: "/waerme/anlage",
+        label: "Anlage",
+        unter: [
+          { href: "/waerme/anlage", label: "Jetzt" },
+          { href: "/waerme/wiedergabe", label: "Ein Tag" },
+        ],
+      },
+      {
+        href: "/waerme/fahrplan",
+        label: "Fahrplan",
+        unter: [
+          { href: "/waerme/fahrplan", label: "Voraus" },
+          { href: "/waerme/nachbetrachtung", label: "Rückblick" },
+        ],
+      },
       { href: "/waerme/wirkung", label: "Wirkung" },
-      { href: "/waerme/fahrplan", label: "Fahrplan" },
-      // Hinter dem Fahrplan, denn es ist seine Fortsetzung: dort was vorgesehen ist, hier was daraus wurde.
-      { href: "/waerme/nachbetrachtung", label: "Nachbetrachtung" },
       { href: "/waerme/annahmen", label: "Annahmen", ownerOnly: true },
     ],
   },
@@ -99,8 +120,19 @@ export function areaOf(pathname: string): Area {
   return AREAS.find((a) => a.href === seg) ?? AREAS[0]!;
 }
 
-/** Der aktive Reiter: der laengste Reiterpfad, mit dem der Pfad beginnt. */
+/**
+ * Der aktive Reiter: der laengste Pfad, mit dem der Pfad beginnt. Die Ansichten eines Reiters
+ * zaehlen mit - auf `/waerme/wiedergabe` ist der Reiter „Anlage" aktiv.
+ */
 export function tabOf(area: Area, pathname: string): Tab | undefined {
   const clean = pathname.replace(/\/+$/, "") || "/";
-  return [...area.tabs].sort((a, b) => b.href.length - a.href.length).find((t) => clean === t.href || clean.startsWith(`${t.href}/`));
+  const passt = (href: string) => clean === href || clean.startsWith(`${href}/`);
+  const paare = area.tabs.flatMap((t) => [t.href, ...(t.unter ?? []).map((u) => u.href)].map((href) => ({ href, tab: t })));
+  return paare.sort((a, b) => b.href.length - a.href.length).find((x) => passt(x.href))?.tab;
+}
+
+/** Die aktive Ansicht eines Reiters, oder `undefined`, wenn er nur eine hat. */
+export function ansichtOf(tab: Tab | undefined, pathname: string): Ansicht | undefined {
+  const clean = pathname.replace(/\/+$/, "") || "/";
+  return [...(tab?.unter ?? [])].sort((a, b) => b.href.length - a.href.length).find((u) => clean === u.href || clean.startsWith(`${u.href}/`));
 }

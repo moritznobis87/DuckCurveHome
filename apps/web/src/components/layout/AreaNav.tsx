@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AREAS, areaOf, tabOf } from "@/lib/areas";
+import { AREAS, ansichtOf, areaOf, tabOf } from "@/lib/areas";
 import { Icon } from "@/components/ui/Icon";
 import { useRole } from "@/lib/live/useRole";
 
@@ -87,5 +87,31 @@ export function AreaTabs({ period, anchor, right }: { period?: string; anchor?: 
       </div>
       {right ? <div className="kicker hidden truncate pb-2.5 md:block" style={{ fontSize: 11 }}>{right}</div> : null}
     </div>
+  );
+}
+
+/**
+ * Der Umschalter zwischen den Ansichten eines Reiters: „Jetzt | Ein Tag", „Voraus | Rückblick".
+ *
+ * Verweise und kein Zustand: jede Ansicht hat ihre eigene Adresse, damit ein Sprung von außen -
+ * aus der Jahreskarte in die Wiedergabe, aus der Übersicht in den Rückblick - genau dort landet.
+ * Ohne Ansichten zeichnet er nichts.
+ */
+export function AreaAnsichten() {
+  const pathname = usePathname() ?? "/";
+  const tab = tabOf(areaOf(pathname), pathname);
+  const aktiv = ansichtOf(tab, pathname);
+  if (!tab?.unter || tab.unter.length < 2) return null;
+  return (
+    <nav className="ansichten" aria-label={`Ansichten von ${tab.label}`}>
+      {tab.unter.map((u) => {
+        const an = aktiv?.href === u.href;
+        return (
+          <Link key={u.href} href={u.href} aria-current={an ? "page" : undefined} className={`ansicht${an ? " ansicht-an" : ""}`}>
+            {u.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

@@ -22,27 +22,28 @@ function tag(linien: Linie[], abstaende: Abstand[]): Nachbetrachtung {
     verguetung_ct: 8,
     hat_ofen: false,
     satz_de: "",
+    verschieben_de: "",
     linien,
     abstaende,
   };
 }
 
 const VOLL = tag(
-  [linie("versprochen", 1.35), linie("erster", 1.13), linie("letzter", 0.9), linie("wirklich", 4.59), linie("perfekt", 0.8), linie("ohne_fuehrung", 3.1, { geschaetzt: true })],
+  [linie("versprochen", 1.35), linie("erster", 1.13), linie("letzter", 0.9), linie("wirklich", 4.59), linie("perfekt", 0.8)],
   [
     abstand("prognosefehler", "versprochen", "erster", -0.22),
     abstand("nachfuehren", "erster", "letzter", -0.23),
     abstand("eingriff", "letzter", "wirklich", 3.69),
     abstand("voraussicht", "perfekt", "letzter", 0.1),
-    abstand("gebracht", "ohne_fuehrung", "wirklich", 1.49),
   ],
 );
 
 describe("treppe", () => {
   it("führt vom Versprechen über drei Stufen zur Wirklichkeit", () => {
     const t = treppe(VOLL);
-    expect(t.map((s) => s.key)).toEqual(["versprochen", "prognosefehler", "nachfuehren", "eingriff", "wirklich", "perfekt", "ohne_fuehrung"]);
-    expect(t.map((s) => s.art)).toEqual(["summe", "stufe", "stufe", "stufe", "summe", "bezug", "bezug"]);
+    expect(t.map((s) => s.key)).toEqual(["versprochen", "prognosefehler", "nachfuehren", "eingriff", "wirklich", "perfekt"]);
+    expect(t.map((s) => s.art)).toEqual(["summe", "stufe", "stufe", "stufe", "summe", "bezug"]);
+    expect(t[5]?.satz).toBe("Satz zu voraussicht");
     // Jede Stufe beginnt, wo die vorige endet, und die letzte endet auf der Wirklichkeit.
     expect(t[1]?.von).toBe(1.35);
     expect(t[2]?.von).toBeCloseTo(1.13);
@@ -63,13 +64,12 @@ describe("treppe", () => {
 
   it("zeigt ohne jeden Fahrplan nur die Wirklichkeit und zeichnet keine Stufe der Höhe null", () => {
     const nur = tag(
-      [linie("versprochen", null), linie("erster", null), linie("letzter", null), linie("wirklich", 4.59), linie("ohne_fuehrung", 3.1, { geschaetzt: true })],
-      [abstand("prognosefehler", "versprochen", "erster", null), abstand("nachfuehren", "erster", "letzter", null), abstand("eingriff", "letzter", "wirklich", null), abstand("gebracht", "ohne_fuehrung", "wirklich", 1.49)],
+      [linie("versprochen", null), linie("erster", null), linie("letzter", null), linie("wirklich", 4.59), linie("perfekt", 3.1)],
+      [abstand("prognosefehler", "versprochen", "erster", null), abstand("nachfuehren", "erster", "letzter", null), abstand("eingriff", "letzter", "wirklich", null), abstand("voraussicht", "perfekt", "letzter", null)],
     );
     const t = treppe(nur);
-    expect(t.map((s) => s.key)).toEqual(["wirklich", "ohne_fuehrung"]);
-    expect(t[1]?.geschaetzt).toBe(true);
-    expect(t[1]?.satz).toBe("Satz zu gebracht");
+    expect(t.map((s) => s.key)).toEqual(["wirklich", "perfekt"]);
+    expect(t[1]?.art).toBe("bezug");
   });
 
   it("bleibt leer, wenn nichts gemessen ist", () => {
