@@ -638,7 +638,11 @@ class LiveRuntime:
         )
         if not result.ok:
             await self.repos.add_event(
-                "warning", "actuator.failed", f"K1 → {decision.k1_release}: {result.error}", {}
+                "warning",
+                "actuator.failed",
+                "Die Anforderung an die Wärmepumpe ließ sich nicht "
+                f"{'setzen' if decision.k1_release else 'zurücknehmen'}: {result.error}",
+                {},
             )
 
     def _effective_mode(self, now: datetime) -> OperatingMode:
@@ -840,7 +844,7 @@ class LiveRuntime:
         self, key: str, state: bool, duration_min: int | None
     ) -> tuple[bool, bool | None, str | None]:
         if key in ("hp_release_contact", "hp_block_contact"):
-            return False, None, "Wärmepumpen-Kontakte nur über den Betriebsmodus."
+            return False, None, "Die Wärmepumpe lässt sich nur über den Betriebsmodus anfordern."
         if not self.settings.actuation_enabled:
             return False, None, "Steuerung ist in dieser Phase deaktiviert (nur lesen)."
         if not self.hub.online:
@@ -1001,9 +1005,9 @@ class LiveRuntime:
                 watch=self._watch(now),
                 hp_actuation=self.settings.heat_pump_actuation_enabled,
                 hp_actuation_de=(
-                    "stellt K1 selbst"
+                    "Duck Curve fordert selbst an"
                     if self.settings.heat_pump_actuation_enabled
-                    else "liest K1 nur mit"
+                    else "wird nur beobachtet"
                 ),
             ),
         )

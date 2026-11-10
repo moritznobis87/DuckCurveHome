@@ -405,7 +405,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Was der Freigabekontakt K1 auslöst
+         * Ob die Wärmepumpe der Anforderung folgt
          * @description Die Ereignisstudie zu K1: jeder Schließvorgang und was die Wärmepumpe danach tat.
          *
          *     Neben der Folgequote steht dieselbe Quote ohne Schließvorgang zur selben Tageszeit; erst der
@@ -5452,7 +5452,7 @@ export interface components {
             hp_actuation: boolean;
             /**
              * Hp Actuation De
-             * @default liest K1 nur mit
+             * @default wird nur beobachtet
              */
             hp_actuation_de: string;
         };

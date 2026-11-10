@@ -402,7 +402,7 @@ def test_die_hinweise_kennen_einzahl_und_mehrzahl() -> None:
             400, lambda m: zwischen(m, 100, 160), lambda m: None if zwischen(m, 102, 140) else 0.0
         )
     )
-    assert any(h.startswith("1 Schließvorgang ist nicht auswertbar") for h in eins.hinweise_de)
+    assert any(h.startswith("1 Anforderung ist nicht auswertbar") for h in eins.hinweise_de)
 
 
 def test_die_abdeckung_zaehlt_gegen_den_gefragten_zeitraum_und_wird_gemeldet() -> None:
@@ -418,7 +418,7 @@ def test_die_abdeckung_zaehlt_gegen_den_gefragten_zeitraum_und_wird_gemeldet() -
     )
     assert k.abdeckung_leistung == 1.0
     assert k.abdeckung_kontakt == 0.25
-    assert any("Der Kontaktzustand ist nur in 25 %" in h for h in k.hinweise_de)
+    assert any("Der Zustand der Anforderung ist nur in 25 %" in h for h in k.hinweise_de)
     assert not any("Die Leistung der Wärmepumpe ist nur" in h for h in k.hinweise_de)
     # Und die Folge davon: ohne durchgehend bekannten Kontakt gibt es keinen Vergleich.
     assert k.vergleich.n == 0

@@ -787,7 +787,7 @@
         "tags": [
           "Anlage"
         ],
-        "summary": "Was der Freigabekontakt K1 auslöst",
+        "summary": "Ob die Wärmepumpe der Anforderung folgt",
         "description": "Die Ereignisstudie zu K1: jeder Schließvorgang und was die Wärmepumpe danach tat.\n\nNeben der Folgequote steht dieselbe Quote ohne Schließvorgang zur selben Tageszeit; erst der\nVergleich sagt, ob der Kontakt etwas auslöst oder die Maschine ohnehin angelaufen wäre. Bei\nwenigen Ereignissen gibt es Zahlen, aber kein Urteil.",
         "operationId": "kontaktwirkung_api_v1_anlage_kontaktwirkung_get",
         "parameters": [
@@ -11830,7 +11830,7 @@
           "hp_actuation_de": {
             "type": "string",
             "title": "Hp Actuation De",
-            "default": "liest K1 nur mit"
+            "default": "wird nur beobachtet"
           }
         },
         "type": "object",

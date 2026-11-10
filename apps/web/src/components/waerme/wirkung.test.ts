@@ -72,7 +72,7 @@ describe("ergebnisText", () => {
 
 describe("Achse und Zahlen", () => {
   it("beschriftet den Nullpunkt mit dem, was dort geschieht", () => {
-    expect(achsenText(0)).toBe("K1 schließt");
+    expect(achsenText(0)).toBe("Anforderung");
     expect(achsenText(30)).toBe("+30 min");
     expect(achsenText(-30)).toBe("−30 min");
   });

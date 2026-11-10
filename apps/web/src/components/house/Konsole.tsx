@@ -292,8 +292,8 @@ export function Konsole({ live, state, rooms, plan, history, nowMs, offen, onKla
               <Zeile links="Laufzeit" rechts={<span className="haus-wort">{dauerText(lauf.minuten)}</span>} />
               <Zeile links="Starts" rechts={<span className="haus-wort">{hp?.starts_today ?? "-"}</span>} />
               <Zeile
-                links="PV-Freigabe"
-                unten="Kontakt K1 am Regler"
+                links="Anforderung"
+                unten="das Signal: jetzt mehr Wärme erzeugen"
                 rechts={<span className={hp?.release_contact_on ? "haus-wort offen" : "haus-wort"}>{hp?.release_contact_on ? "an" : "aus"}</span>}
               />
             </ul>

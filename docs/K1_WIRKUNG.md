@@ -11,6 +11,25 @@ Regelung. Der Projektplan führt das seit September als offene Frage 25.8. Beide
 `hp_release_contact` und `heat_pump_power_kw`, liegen minütlich und dauerhaft im Bestand; bis zum
 09.11.2026 hat sie niemand gegeneinandergestellt.
 
+## Wie es in der Oberfläche heißt
+
+K1 ist der Name des Kontakts im Schaltplan. Dieses Dokument, der Quelltext und die Kommentare
+benutzen ihn. **In der Oberfläche und in jedem Satz, den der Dienst ausgibt, steht er nicht**
+(Nutzer am 10.11.2026: „Kein Mensch versteht, was mit K1 gemeint ist“). Dort heißt die Sache nach
+dem, was sie bewirkt:
+
+| Im Quelltext | In der Oberfläche |
+|---|---|
+| K1, Freigabekontakt | die Anforderung (an die Wärmepumpe) |
+| der Kontakt schließt, Schließvorgang | eine Anforderung beginnt, eine Anforderung |
+| der Kontakt öffnet | die Anforderung endet |
+| K1 wird gestellt / nur mitgelesen | Duck Curve fordert selbst an / wird nur beobachtet |
+| mit K1, ohne K1 | angefordert, ohne Anforderung |
+
+Was die Anforderung technisch ist, steht einmal ausgeschrieben im einklappbaren Methodentext der
+Seite. Zwei Tests halten das fest: `apps/web/src/texte-ohne-k1.test.ts` für die Oberfläche und
+`apps/api/tests/test_texte_ohne_k1.py` für die Texte des Dienstes.
+
 ## Die Methode: eine Ereignisstudie
 
 Jeder Schließvorgang des Kontakts ist ein Ereignis. Um jedes Ereignis wird die Leistung der

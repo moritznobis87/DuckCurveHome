@@ -129,7 +129,7 @@ export function Antwortfaecher({ daten }: { daten: Kontaktwirkung }) {
           const med = f.mittel_kw?.[i];
           const a = f.q25_kw[i];
           const b = f.q75_kw[i];
-          const kopf = m === 0 ? "K1 schließt" : m > 0 ? `${m} min nach dem Schließen` : `${-m} min vor dem Schließen`;
+          const kopf = m === 0 ? "Anforderung beginnt" : m > 0 ? `${m} min nach Beginn der Anforderung` : `${-m} min vor der Anforderung`;
           const zeilen = [`<div style="margin-bottom:4px"><b>${kopf}</b></div>`];
           if (med == null) {
             zeilen.push(`<div style="opacity:.78">keine Messung</div>`);
@@ -141,7 +141,7 @@ export function Antwortfaecher({ daten }: { daten: Kontaktwirkung }) {
           const an = f.anteil_angelaufen?.[i];
           if (an != null) zeilen.push(`<div style="margin-top:4px">${marke(C.heatPump)}angelaufen ${prozentZahl(an)} %</div>`);
           const o = daten.vergleich.angelaufen_bis?.[m];
-          if (m >= 0 && o != null) zeilen.push(`<div>${marke(C.mist, true)}ohne K1 ${prozentZahl(o)} %</div>`);
+          if (m >= 0 && o != null) zeilen.push(`<div>${marke(C.mist, true)}ohne Anforderung ${prozentZahl(o)} %</div>`);
           return zeilen.join("");
         },
       },
@@ -250,7 +250,7 @@ export function Antwortfaecher({ daten }: { daten: Kontaktwirkung }) {
           },
         },
         {
-          name: "ohne K1",
+          name: "ohne Anforderung",
           type: "line" as const,
           step: "end" as const,
           showSymbol: false,

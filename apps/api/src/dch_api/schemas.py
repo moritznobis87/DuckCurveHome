@@ -235,7 +235,7 @@ class SystemStatusOut(BaseModel):
     #: angezeigt, der Kontakt bleibt unberührt und die Wärmepumpe läuft in ihrer eigenen Regelung.
     hp_actuation: bool = False
     #: Derselbe Zustand als Satz, damit die Oberfläche ihn nicht selbst formulieren muss.
-    hp_actuation_de: str = "liest K1 nur mit"
+    hp_actuation_de: str = "wird nur beobachtet"
 
 
 class StoveLiveOut(BaseModel):

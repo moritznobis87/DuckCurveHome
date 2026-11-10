@@ -56,13 +56,13 @@ export function Sources() {
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">
         <span className="flex items-center gap-2">
           <Dot tone={state.system.hp_actuation ? "ok" : "muted"} />
-          <span className="text-[14px] text-text-1">Wärmepumpen-Kontakt K1</span>
+          <span className="text-[14px] text-text-1">Anforderung an die Wärmepumpe</span>
         </span>
         <span className="mono w-full text-[13px] leading-[1.5] text-text-3 sm:w-auto">
           {state.system.hp_actuation_de}
           {state.system.hp_actuation
-            ? " · Rückfallebenen E0 (Auto-Off im Relais) und E1 (Wächter in Home Assistant) liegen im Haus"
-            : " · der Regler entscheidet, der Kontakt bleibt unberührt"}
+            ? " · zwei Sicherungen liegen im Haus: das Relais schaltet von selbst ab, und Home Assistant wacht darüber"
+            : " · der Regler entscheidet, geschaltet wird nichts"}
         </span>
       </div>
       {sources.map((s) => (

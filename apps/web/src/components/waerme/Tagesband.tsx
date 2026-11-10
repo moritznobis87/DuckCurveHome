@@ -200,7 +200,7 @@ export function Tagesband({ daten, zeitMs, onSprung }: { daten: AnlageReplay; ze
             `<div>${marke(C.pv)}Sonne ${b.strom.pv_kw == null ? "?" : `${de(b.strom.pv_kw)} kW`}</div>`,
             `<div>${marke(C.price)}Netz ${b.strom.grid_kw == null ? "?" : `${de(b.strom.grid_kw)} kW`}${preis == null ? "" : ` · ${de(preis, 1)} ct/kWh`}</div>`,
             `<div>${marke(C.heatPump)}Wärmepumpe ${b.waermepumpe.running ? `läuft${b.waermepumpe.power_kw == null ? "" : `, ${de(b.waermepumpe.power_kw)} kW`}` : "steht"}</div>`,
-            `<div style="opacity:.78;padding-left:14px">${absicht == null ? "kein aufbewahrter Fahrplan" : absicht ? "der Fahrplan sah Freigabe vor" : "der Fahrplan sah keine Freigabe vor"}</div>`,
+            `<div style="opacity:.78;padding-left:14px">${absicht == null ? "kein aufbewahrter Fahrplan" : absicht ? "der Fahrplan wollte anfordern" : "der Fahrplan wollte nicht anfordern"}</div>`,
           ];
           if (b.ofen.present) zeilen.push(`<div>${marke(C.stove)}Ofen ${b.ofen.running == null ? "?" : b.ofen.running ? "brennt" : "aus"}</div>`);
           return zeilen.join("");

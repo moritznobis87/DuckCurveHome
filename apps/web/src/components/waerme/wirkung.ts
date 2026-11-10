@@ -82,7 +82,7 @@ export function ergebnisText(e: Ereignis, folgeMin: number): string {
 
 /** Die Beschriftung einer Minute relativ zum Schließen. */
 export function achsenText(m: number): string {
-  if (m === 0) return "K1 schließt";
+  if (m === 0) return "Anforderung";
   return `${m > 0 ? "+" : "−"}${Math.abs(m)} min`;
 }
 

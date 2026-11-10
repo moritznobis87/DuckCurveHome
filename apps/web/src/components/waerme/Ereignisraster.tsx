@@ -34,7 +34,7 @@ function Zeile({ e, daten }: { e: Ereignis; daten: Kontaktwirkung }) {
   const ergebnis = ergebnisText(e, daten.folge_min);
   const wann = `${kurzDatum(e.at)} ${hhmm(e.at)}`;
   return (
-    <Link href={wiedergabeZiel(e.at)} className="wk-zeile" title={`${wann} · ${ergebnis} · K1 ${e.kontakt_min} min geschlossen. Öffnet die Wiedergabe.`}>
+    <Link href={wiedergabeZiel(e.at)} className="wk-zeile" title={`${wann} · ${ergebnis} · ${e.kontakt_min} min angefordert. Öffnet die Wiedergabe.`}>
       <span className="wk-zeit mono">{wann}</span>
       <svg className="wk-balken" viewBox={`0 0 ${breite} ${H}`} preserveAspectRatio="none" aria-hidden="true">
         {b.steht.map(([von, bis]) => (
@@ -71,7 +71,7 @@ export function Ereignisraster({ daten }: { daten: Kontaktwirkung }) {
             <span key={m} className={`mono${m !== 0 && m !== daten.nach_min ? " wk-fein" : ""}`} style={{ left: `${((m + daten.vor_min) / breite) * 100}%` }}>
               {m === 0 ? (
                 <>
-                  K1<span className="wk-fein"> schließt</span>
+                  Anforderung
                 </>
               ) : m === daten.nach_min ? (
                 achsenText(m)
@@ -104,12 +104,12 @@ export function Ereignisraster({ daten }: { daten: Kontaktwirkung }) {
         </li>
         <li>
           <span className="uhr-marke wk-marke-strich" style={{ background: C.mist }} />
-          K1 geschlossen
+          angefordert
         </li>
         <li>leer: keine Messung</li>
         {alle.length > MAX_ZEILEN ? (
           <li>
-            gezeigt sind die jüngsten {MAX_ZEILEN} von {alle.length} Schließvorgängen
+            gezeigt sind die jüngsten {MAX_ZEILEN} von {alle.length} Anforderungen
           </li>
         ) : null}
       </ul>
