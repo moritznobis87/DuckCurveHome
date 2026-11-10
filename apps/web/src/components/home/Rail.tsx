@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { LiveState, Plan } from "@/lib/api/models";
 import { celsius } from "@/lib/format";
+import { Ausblick } from "./Ausblick";
 import { planZeilen } from "./fahrplan";
 import { FUEHLER_POS, heatColor, pufferZustand, SCHICHT_GRENZEN } from "./puffer";
 
@@ -78,7 +79,8 @@ export function Rail({ state, plan, nowMs, kompakt = false }: { state: LiveState
             <span className="home-puffer-ort" style={{ left: `${FUEHLER_POS[3]}%` }}>unten</span>
           </span>
         </Link>
-        {zeilen.length ? <Plan zeilen={zeilen} warnung={plan?.planner_warn_de} /> : null}
+        {/* Am Handy das Bild der nächsten 24 Stunden statt dreier Uhrzeiten untereinander. */}
+        <Ausblick plan={plan} nowMs={nowMs} warnung={plan?.planner_warn_de} />
       </div>
     );
   }
