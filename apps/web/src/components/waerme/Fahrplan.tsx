@@ -351,7 +351,7 @@ export function Fahrplan() {
           zeilen.push(`<div>Wärmepumpe geplant <b style="color:${z.farbe}">${z.wort}</b></div>`);
           if (i.actual_hp_release != null) {
             zeilen.push(
-              `<div>Anforderung gemessen <b style="color:${i.actual_hp_release ? C.heatPump : "inherit"}">${i.actual_hp_release ? "geschlossen" : "offen"}</b></div>`,
+              `<div>Anforderung gemessen <b style="color:${i.actual_hp_release ? C.heatPump : "inherit"}">${i.actual_hp_release ? "ja" : "nein"}</b></div>`,
             );
           }
           if (i.actual_hp_kw != null) zeilen.push(zeile("Wärmepumpe gemessen", `${de(i.actual_hp_kw, 2)} kW`, C.heatPump));
@@ -474,7 +474,7 @@ export function Fahrplan() {
         ...(hatWaerme ? [] : [leererHinweis(FLAECHEN[2].top + FLAECHEN[2].hoehe / 2, "kein Wärmebedarf im Fahrplan")]),
         ...(hatPuffer ? [] : [leererHinweis(FLAECHEN[3].top + FLAECHEN[3].hoehe / 2, "kein Pufferverlauf im Fahrplan")]),
         ...(hatWpIst ? [] : [leererHinweis(FLAECHEN[4].top + FLAECHEN[4].hoehe / 2, "keine Messung der Wärmepumpe")]),
-        ...(hatAnforderung ? [] : [leererHinweis(FLAECHEN[6].top + 4, "kein Kontaktzustand gemessen")]),
+        ...(hatAnforderung ? [] : [leererHinweis(FLAECHEN[6].top + 4, "keine Anforderung gemessen")]),
         ...(hatIst ? [] : [leererHinweis(FLAECHEN[1].top + FLAECHEN[1].hoehe / 2, "keine Messung im Horizont")]),
         ...(ofenGeplant
           ? []
@@ -552,7 +552,7 @@ export function Fahrplan() {
           label="Wärmepumpe angefordert"
           value={kennzahlen.wp}
           tone="ember"
-          hint={plan?.hp_actuation ? "im ganzen Horizont · K1 wird gestellt" : "im ganzen Horizont · K1 wird nur mitgelesen"}
+          hint={plan?.hp_actuation ? "im ganzen Horizont · Duck Curve fordert selbst an" : "im ganzen Horizont · wird nur beobachtet, nicht geschaltet"}
         />
         <Stat label="Wärmepumpe gelaufen" value={kennzahlen.gelaufen ?? "-"} tone="amber" hint={kennzahlen.gelaufenHinweis} />
         <Stat label="bewusst gemieden" value={kennzahlen.gemieden} tone="muted" hint="teure Stunden ohne Anforderung" />
@@ -653,7 +653,7 @@ export function Fahrplan() {
           Preis und PV-Erwartung sind Prognosen, der Wärmebedarf ist ein Modell: Heizgradstunden gegen die Wettervorhersage plus ein Warmwasserprofil über den Tag. Es ist derselbe Bedarf, gegen den der Optimierer rechnet, nicht ein zweiter daneben. Gemessen wird er noch nicht; das kommt mit dem Wärmemengenzähler über den eBUS-Anschluss. Der COP folgt aus der Außentemperatur, noch nicht aus der Vorlauftemperatur, denn die liefert bislang kein Fühler.
         </MethodeAbsatz>
         <MethodeAbsatz>
-          Links der Jetzt-Linie stehen zwei verschiedene Dinge nebeneinander. Gemessen sind die PV-Leistung, die Leistung der Wärmepumpe und der Freigabekontakt; sie enden an der letzten abgeschlossenen Viertelstunde, denn die laufende ist erst zum Teil vorbei und sähe aus wie ein Einbruch. Der <em>geplante</em> Zustand der Wärmepumpe ist dort dagegen keine Erinnerung: der Optimierer rechnet ab jetzt, für die vergangenen Stunden greift die Preisregel, also steht da, was sie heute für diese Stunde sagen würde. Weicht der gemessene Kontakt davon ab, ist das deshalb kein Widerspruch, sondern der Abstand zwischen zwei verschiedenen Fragen.
+          Links der Jetzt-Linie stehen zwei verschiedene Dinge nebeneinander. Gemessen sind die PV-Leistung, die Leistung der Wärmepumpe und die Anforderung an sie; sie enden an der letzten abgeschlossenen Viertelstunde, denn die laufende ist erst zum Teil vorbei und sähe aus wie ein Einbruch. Der <em>geplante</em> Zustand der Wärmepumpe ist dort dagegen keine Erinnerung: der Optimierer rechnet ab jetzt, für die vergangenen Stunden greift die Preisregel, also steht da, was sie heute für diese Stunde sagen würde. Weicht der gemessene Kontakt davon ab, ist das deshalb kein Widerspruch, sondern der Abstand zwischen zwei verschiedenen Fragen.
         </MethodeAbsatz>
         <MethodeAbsatz>
           Was aus einem Fahrplan geworden ist, steht im Rückblick: dort liegt der aufbewahrte Fahrplan von damals neben der Messung, in Euro. Wie gut die Prognosen waren, steht unter <em>System → Prognose</em>. Noch nicht gebaut ist der Lernschritt, der das Hüllenmodell aus den Prognosefehlern nachzieht.

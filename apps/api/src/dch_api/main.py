@@ -136,7 +136,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             log.warning(
                 "heat pump actuation is live",
                 hinweis=(
-                    "K1 wird selbsttätig gestellt. Rückfallebenen E0 (Auto-Off im Relais) und "
+                    "Die Anforderung an die Wärmepumpe wird selbsttätig geschaltet. "
+                    "Rückfallebenen E0 (Auto-Off im Relais) und "
                     "E1 (Wächter-Automation in Home Assistant) liegen im Haus und werden hier "
                     "nicht geprüft."
                 ),

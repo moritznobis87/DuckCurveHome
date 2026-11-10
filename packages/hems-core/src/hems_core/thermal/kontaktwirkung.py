@@ -419,8 +419,8 @@ def _urteil(k: Kontaktwirkung) -> tuple[str, str]:
     """Das Urteil als Kennung und als Satz. Die Oberfläche urteilt nicht selbst."""
     if k.n == 0:
         return "offen", (
-            "Im Zeitraum hat der Kontakt kein einziges Mal geschlossen. Es gibt nichts auszuwerten; "
-            "sobald die Regelung K1 stellt, entstehen die Ereignisse von selbst."
+            "Im Zeitraum wurde die Wärmepumpe kein einziges Mal angefordert. Es gibt nichts "
+            "auszuwerten; sobald die Regelung selbst anfordert, entstehen die Ereignisse von selbst."
         )
     if (
         k.n_auswertbar < MIN_EREIGNISSE
@@ -429,22 +429,23 @@ def _urteil(k: Kontaktwirkung) -> tuple[str, str]:
         or k.quote_hi is None
     ):
         return "offen", (
-            f"Zu wenige Ereignisse für ein Urteil: {k.n_auswertbar} Schließvorgänge bei stehender "
-            f"Maschine, gebraucht werden mindestens {MIN_EREIGNISSE}. Die Zahlen stehen da, für "
-            "eine Aussage reichen sie noch nicht."
+            "Zu wenige Ereignisse für ein Urteil: "
+            + _zahl(k.n_auswertbar, "Anforderung", "Anforderungen")
+            + f" bei stehender Maschine, gebraucht werden mindestens {MIN_EREIGNISSE}. Die Zahlen "
+            "stehen da, für eine Aussage reichen sie noch nicht."
         )
     v = k.vergleich
     if v.quote is None or v.n_gleiche_stunde < MIN_VERGLEICH:
         return "offen", (
-            f"Nach dem Schließen läuft die Maschine in {_prozent(k.quote)} % der Fälle binnen "
-            f"{FOLGE_MIN} Minuten an. Ob das mehr ist als ohne K1, lässt sich nicht sagen: zur "
+            f"Nach einer Anforderung läuft die Maschine in {_prozent(k.quote)} % der Fälle binnen "
+            f"{FOLGE_MIN} Minuten an. Ob das mehr ist als ohne Anforderung, lässt sich nicht sagen: zur "
             f"selben Tageszeit gibt es nur {v.n_gleiche_stunde} Vergleichsmomente, gebraucht "
             f"werden mindestens {MIN_VERGLEICH}."
         )
     kern = (
-        f"{_prozent(k.quote)} % der Schließvorgänge führen binnen {FOLGE_MIN} Minuten zum Anlauf "
-        f"(95-Prozent-Bereich {_prozent(k.quote_lo)} bis {_prozent(k.quote_hi)} %), ohne K1 sind "
-        f"es zur selben Tageszeit {_prozent(v.quote)} %."
+        f"{_prozent(k.quote)} % der Anforderungen führen binnen {FOLGE_MIN} Minuten zum Anlauf "
+        f"(95-Prozent-Bereich {_prozent(k.quote_lo)} bis {_prozent(k.quote_hi)} %), ohne "
+        f"Anforderung sind es zur selben Tageszeit {_prozent(v.quote)} %."
     )
     # Die Bereiche dürfen sich nicht überlappen. Das ist strenger als ein üblicher Test auf dem
     # 5-Prozent-Niveau, und das mit Absicht: an diesem Urteil hängt, ob der Planer dem Kontakt
@@ -452,9 +453,12 @@ def _urteil(k: Kontaktwirkung) -> tuple[str, str]:
     v_lo = v.quote if v.quote_lo is None else v.quote_lo
     v_hi = v.quote if v.quote_hi is None else v.quote_hi
     if k.quote_lo > v_hi:
-        return "wirkt", f"Die Maschine folgt K1: {kern}"
+        return "wirkt", f"Die Maschine folgt der Anforderung: {kern}"
     if k.quote_hi < v_lo:
-        return "seltener", f"Nach dem Schließen läuft die Maschine seltener an als sonst: {kern}"
+        return (
+            "seltener",
+            f"Nach einer Anforderung läuft die Maschine seltener an als sonst: {kern}",
+        )
     return "kein_unterschied", f"Kein gesicherter Unterschied: {kern}"
 
 
@@ -545,15 +549,18 @@ def auswerten(
 
 #: Die Methode in Sätzen. Dieselben Festlegungen wie die Konstanten am Kopf des Moduls.
 METHODE = [
-    f"Ein Schließvorgang zählt, wenn der Kontakt davor {RUHE_MIN} Minuten durchgehend offen war. "
-    f"Als Folge gilt ein Anlauf der Wärmepumpe binnen {FOLGE_MIN} Minuten; ausgewertet werden "
-    "nur Schließvorgänge, bei denen die Maschine stand.",
-    "Verglichen wird mit halben Stunden ohne Schließvorgang, in denen die Maschine ebenfalls "
+    "Die Anforderung ist das Signal, mit dem die Regelung der Wärmepumpe sagt: jetzt mehr Wärme "
+    "erzeugen. Technisch schließt dafür ein Schaltkontakt an der Maschine. Sie nimmt das als "
+    "Bitte, nicht als Befehl; ob sie folgt, entscheidet ihre eigene Regelung.",
+    f"Eine Anforderung zählt, wenn davor {RUHE_MIN} Minuten lang keine anstand. Als Folge gilt "
+    f"ein Anlauf der Wärmepumpe binnen {FOLGE_MIN} Minuten; ausgewertet werden nur "
+    "Anforderungen, bei denen die Maschine stand.",
+    "Verglichen wird mit halben Stunden ohne Anforderung, in denen die Maschine ebenfalls "
     "stand, und zwar zur selben Tageszeit. Ein Urteil gibt es erst, wenn sich die "
     f"95-Prozent-Bereiche beider Quoten nicht überlappen, und nicht unter {MIN_EREIGNISSE} "
     f"Ereignissen und {MIN_VERGLEICH} Vergleichsmomenten.",
-    "Die Auswertung zeigt einen Zusammenhang in der Zeit, keine Ursache. Der Regler schließt "
-    "K1, wenn der Puffer Platz hat und der Strom günstig ist; ein Anlauf danach kann auch am "
+    "Die Auswertung zeigt einen Zusammenhang in der Zeit, keine Ursache. Der Regler fordert "
+    "an, wenn der Puffer Platz hat und der Strom günstig ist; ein Anlauf danach kann auch am "
     "leeren Puffer liegen. Der Vergleich zur selben Tageszeit nimmt den Tagesrhythmus heraus, "
     "nicht den Pufferzustand.",
 ]
@@ -562,28 +569,28 @@ METHODE = [
 def _hinweise(k: Kontaktwirkung) -> list[str]:
     out: list[str] = []
     for name, anteil in (
-        ("Der Kontaktzustand", k.abdeckung_kontakt),
+        ("Der Zustand der Anforderung", k.abdeckung_kontakt),
         ("Die Leistung der Wärmepumpe", k.abdeckung_leistung),
     ):
         if anteil is not None and anteil < MIN_ABDECKUNG_ZEITRAUM:
             out.append(
                 f"{name} ist nur in {_prozent(anteil)} % der Minuten des Zeitraums bekannt. Wo "
-                "die Messung fehlt, wird kein Schließvorgang gefunden und kein Vergleich "
+                "die Messung fehlt, wird keine Anforderung gefunden und kein Vergleich "
                 "gezogen; die Auswertung sieht also nur einen Teil des Zeitraums."
             )
     if k.n_lief_schon:
         out.append(
-            f"{k.n_lief_schon} von {k.n} Schließvorgängen trafen eine schon laufende Maschine. Sie "
+            f"{k.n_lief_schon} von {k.n} Anforderungen trafen eine schon laufende Maschine. Sie "
             "stehen im Raster, zählen aber nicht in die Folgequote: an ihnen lässt sich nicht "
-            "ablesen, ob der Kontakt etwas auslöst."
+            "ablesen, ob die Anforderung etwas auslöst."
         )
     unklar = k.n - k.n_lief_schon - k.n_auswertbar
     if unklar > 0:
         out.append(
             _zahl(
                 unklar,
-                "Schließvorgang ist nicht auswertbar",
-                "Schließvorgänge sind nicht auswertbar",
+                "Anforderung ist nicht auswertbar",
+                "Anforderungen sind nicht auswertbar",
             )
             + ": davor oder danach fehlt die Messung der Leistung."
         )
@@ -599,8 +606,8 @@ def _hinweise(k: Kontaktwirkung) -> list[str]:
         )
     if k.nachlauf_n:
         out.append(
-            f"Nach dem Öffnen lief die Maschine im Median noch {k.nachlauf_median_min:.0f} Minuten "
-            f"weiter ({_faelle(k.nachlauf_n)}). Das Öffnen hält sie also nicht an - es ist eine "
-            "Anforderung, die endet, keine Sperre, die beginnt."
+            f"Nach dem Ende der Anforderung lief die Maschine im Median noch "
+            f"{k.nachlauf_median_min:.0f} Minuten weiter ({_faelle(k.nachlauf_n)}). Das Ende hält "
+            "sie also nicht an: es endet eine Bitte, es beginnt keine Sperre."
         )
     return out

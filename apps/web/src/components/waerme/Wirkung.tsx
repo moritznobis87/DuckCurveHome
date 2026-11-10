@@ -85,7 +85,7 @@ function Quotenvergleich({ d }: { d: Kontaktwirkung }) {
   const v = d.vergleich;
   return (
     <figure className="wk-quoten">
-      <svg viewBox="0 0 444 132" role="img" aria-label={`Anlauf binnen ${d.folge_min} Minuten: mit K1 ${prozentZahl(d.quote)} Prozent, ohne K1 ${prozentZahl(v.quote)} Prozent.`}>
+      <svg viewBox="0 0 444 132" role="img" aria-label={`Anlauf binnen ${d.folge_min} Minuten: mit Anforderung ${prozentZahl(d.quote)} Prozent, ohne ${prozentZahl(v.quote)} Prozent.`}>
         {[0, 0.5, 1].map((a) => (
           <g key={a}>
             <line x1={x(a)} x2={x(a)} y1={14} y2={104} stroke="rgba(255,255,255,.09)" strokeWidth={1} />
@@ -94,8 +94,8 @@ function Quotenvergleich({ d }: { d: Kontaktwirkung }) {
             </text>
           </g>
         ))}
-        <Quote y={38} name="mit K1" farbe={C.heatPump} quote={d.quote ?? null} lo={d.quote_lo ?? null} hi={d.quote_hi ?? null} leer="kein auswertbarer Schließvorgang" />
-        <Quote y={82} name="ohne K1" farbe={C.mist} quote={v.quote ?? null} lo={v.quote_lo ?? null} hi={v.quote_hi ?? null} leer="kein Vergleich zur selben Tageszeit" />
+        <Quote y={38} name="angefordert" farbe={C.heatPump} quote={d.quote ?? null} lo={d.quote_lo ?? null} hi={d.quote_hi ?? null} leer="keine auswertbare Anforderung" />
+        <Quote y={82} name="sonst" farbe={C.mist} quote={v.quote ?? null} lo={v.quote_lo ?? null} hi={v.quote_hi ?? null} leer="kein Vergleich zur selben Tageszeit" />
       </svg>
       <figcaption>
         Anlauf binnen {d.folge_min} Minuten bei stehender Maschine. Punkt: beobachtete Quote. Balken: der Bereich, in dem die wahre Quote mit 95 Prozent
@@ -142,7 +142,7 @@ export function Wirkung() {
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHead title="Was löst K1 aus?" right={d?.von && d.bis ? <span className="mono text-[12px] text-text-3">{spanne(d.von, d.bis)}</span> : null} />
+        <CardHead title="Folgt die Wärmepumpe der Anforderung?" right={d?.von && d.bis ? <span className="mono text-[12px] text-text-3">{spanne(d.von, d.bis)}</span> : null} />
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-[12px] text-text-3">Zeitraum</span>
           {TAGE.map((t) => (
@@ -154,7 +154,7 @@ export function Wirkung() {
         </div>
 
         {fehler ? <p className="m-0 text-[13px] text-alert">{fehler}</p> : null}
-        {laden && !d ? <p className="m-0 text-[13px] text-text-3">Die Schließvorgänge werden gesucht.</p> : null}
+        {laden && !d ? <p className="m-0 text-[13px] text-text-3">Die Anforderungen werden gesucht.</p> : null}
 
         {d ? (
           <div className="wk-kopf">
@@ -170,7 +170,7 @@ export function Wirkung() {
       {d ? (
         <div className="kpi-handy grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           <Stat
-            label="Schließvorgänge"
+            label="Anforderungen"
             value={String(d.n)}
             hint={d.n === 0 ? "im Zeitraum keiner" : `${d.n_auswertbar} bei stehender Maschine, ${d.n_lief_schon} bei laufender`}
           />
@@ -178,10 +178,10 @@ export function Wirkung() {
             label="danach angelaufen"
             value={prozentZahl(d.quote)}
             unit={d.quote == null ? undefined : "%"}
-            hint={d.n_auswertbar ? `${d.gefolgt} von ${d.n_auswertbar} binnen ${d.folge_min} Minuten, ${nichtGefolgt} nicht` : "kein auswertbarer Schließvorgang"}
+            hint={d.n_auswertbar ? `${d.gefolgt} von ${d.n_auswertbar} binnen ${d.folge_min} Minuten, ${nichtGefolgt} nicht` : "keine auswertbare Anforderung"}
           />
           <Stat
-            label="ohne K1 angelaufen"
+            label="ohne Anforderung angelaufen"
             value={prozentZahl(v?.quote)}
             unit={v?.quote == null ? undefined : "%"}
             hint={v?.quote == null ? "kein Vergleich zur selben Tageszeit" : `zur selben Tageszeit, aus ${v.n_gleiche_stunde} Vergleichsmomenten`}
@@ -190,20 +190,20 @@ export function Wirkung() {
             label="Verzögerung"
             value={minuten(d.verzoegerung_median_min)}
             unit={d.verzoegerung_median_min == null ? undefined : "min"}
-            hint="Median vom Schließen bis zum Anlauf"
+            hint="Median von der Anforderung bis zum Anlauf"
           />
           <Stat
             label="Nachlauf"
             value={minuten(d.nachlauf_median_min)}
             unit={d.nachlauf_median_min == null ? undefined : "min"}
-            hint={d.nachlauf_n ? `Median nach dem Öffnen, ${d.nachlauf_n === 1 ? "1 Fall" : `${d.nachlauf_n} Fälle`}` : "kein Öffnen bei laufender Maschine"}
+            hint={d.nachlauf_n ? `Median nach dem Ende der Anforderung, ${d.nachlauf_n === 1 ? "1 Fall" : `${d.nachlauf_n} Fälle`}` : "kein Ende bei laufender Maschine"}
           />
         </div>
       ) : null}
 
       {d && d.n_auswertbar > 0 ? (
         <Card>
-          <CardHead title="Antwortfächer" right={`${d.n_auswertbar} Schließvorgänge bei stehender Maschine, am Nullpunkt übereinandergelegt`} />
+          <CardHead title="Antwortfächer" right={`${d.n_auswertbar} Anforderungen bei stehender Maschine, am Beginn übereinandergelegt`} />
           <Antwortfaecher daten={d} />
           <ul className="uhr-legende wk-legende">
             <li>
@@ -224,7 +224,7 @@ export function Wirkung() {
             )}
             <li>
               <span className="uhr-marke wk-marke-gestrichelt" style={{ borderColor: C.mist }} />
-              Anteil angelaufen ohne K1, zur selben Tageszeit
+              Anteil angelaufen ohne Anforderung, zur selben Tageszeit
             </li>
           </ul>
         </Card>
@@ -232,7 +232,7 @@ export function Wirkung() {
 
       {d && d.n > 0 ? (
         <Card>
-          <CardHead title="Jeder Schließvorgang" right="sortiert nach Verzögerung · eine Zeile öffnet die Wiedergabe dieses Augenblicks" />
+          <CardHead title="Jede Anforderung" right="sortiert nach Verzögerung · eine Zeile öffnet die Wiedergabe dieses Augenblicks" />
           <Ereignisraster daten={d} />
         </Card>
       ) : null}

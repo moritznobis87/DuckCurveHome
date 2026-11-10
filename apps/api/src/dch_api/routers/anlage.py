@@ -53,7 +53,7 @@ async def wiedergabe(
 @router.get(
     "/kontaktwirkung",
     response_model=KontaktwirkungOut,
-    summary="Was der Freigabekontakt K1 auslöst",
+    summary="Ob die Wärmepumpe der Anforderung folgt",
 )
 async def kontaktwirkung(
     runner: Annotated[Runtime, Depends(get_runner)],

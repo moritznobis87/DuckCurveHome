@@ -262,7 +262,7 @@ export function Dock({ state, readOnly }: { state: LiveState | null; readOnly: b
             state?.decision?.explanation_de ?? "Warte auf die erste Entscheidung.",
             state?.system.hp_actuation
               ? ""
-              : "Der Kontakt K1 wird dabei nicht gestellt, nur mitgelesen: die Wärmepumpe läuft in ihrer eigenen Regelung.",
+              : "Duck Curve schaltet dabei nichts, es beobachtet nur: die Wärmepumpe läuft in ihrer eigenen Regelung.",
           ]
             .filter(Boolean)
             .join(" ")}

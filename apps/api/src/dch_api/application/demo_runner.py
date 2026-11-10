@@ -623,7 +623,7 @@ class DemoRunner:
         self, key: str, state: bool, duration_min: int | None
     ) -> tuple[bool, bool | None, str | None]:
         if key in ("hp_release_contact", "hp_block_contact"):
-            return False, None, "Wärmepumpen-Kontakte nur über den Betriebsmodus."
+            return False, None, "Die Wärmepumpe lässt sich nur über den Betriebsmodus anfordern."
         ttl = duration_min * 60 if duration_min else None
         ok = self.house.set_actuator(key, state, ttl)
         observed = self.house.actuators.get(key)
@@ -1242,7 +1242,7 @@ class DemoRunner:
                 # Laufzeit gilt für echte Hardware. „Stellt K1" ist hier also die Wahrheit, nicht
                 # die Einstellung.
                 hp_actuation=True,
-                hp_actuation_de="stellt K1 im Vorführhaus",
+                hp_actuation_de="Duck Curve fordert im Vorführhaus selbst an",
             ),
         )
 

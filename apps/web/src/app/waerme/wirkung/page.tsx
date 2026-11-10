@@ -6,7 +6,7 @@ export const metadata = { title: "Wirkung · Duck Curve Home" };
 
 export default function Page() {
   return (
-    <AreaShell kicker="Was der Freigabekontakt auslöst · gemessen, nicht angenommen">
+    <AreaShell kicker="Folgt die Wärmepumpe der Anforderung? · gemessen, nicht angenommen">
       <Wirkung />
     </AreaShell>
   );
