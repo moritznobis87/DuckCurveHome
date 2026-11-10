@@ -30,7 +30,7 @@ import { Icon } from "@/components/ui/Icon";
  * (gefragt am 29.10.2026). Sie stehen jetzt unter dem Kreis, sobald ueberhaupt etwas davon
  * abgeht.
  */
-type Key = "pv" | "grid" | "house" | "bat" | "hp" | "ev";
+export type Key = "pv" | "grid" | "house" | "bat" | "hp" | "ev";
 
 const POS: Record<Key, { x: number; y: number }> = {
   pv: { x: 50, y: 13 },
@@ -41,7 +41,7 @@ const POS: Record<Key, { x: number; y: number }> = {
   ev: { x: 80, y: 78 },
 };
 
-const FARBE: Record<Key, string> = {
+export const FARBE: Record<Key, string> = {
   pv: "var(--pv)",
   grid: "var(--grid-in)",
   house: "var(--text-1)",
@@ -50,15 +50,15 @@ const FARBE: Record<Key, string> = {
   ev: "#8fc3d6",
 };
 
-function kante(a: Key, b: Key, kwValue: number, umkehren: boolean, farbe: string) {
+export function kante(a: Key, b: Key, kwValue: number, umkehren: boolean, farbe: string, lage: Record<Key, { x: number; y: number }> = POS) {
   const an = kwValue >= 0.05;
   const breite = an ? Math.min(6, 2.2 + kwValue * 0.6) : 2;
   const dauer = kwValue > 3 ? "1.4s" : kwValue > 0.8 ? "2.2s" : "3.4s";
-  const p = umkehren ? [POS[b], POS[a]] : [POS[a], POS[b]];
+  const p = umkehren ? [lage[b], lage[a]] : [lage[a], lage[b]];
   return { x1: p[0]!.x, y1: p[0]!.y, x2: p[1]!.x, y2: p[1]!.y, an, breite, dauer, farbe };
 }
 
-function frisch(m: Measurement | null | undefined): boolean {
+export function frisch(m: Measurement | null | undefined): boolean {
   return !!m && m.value !== null && (m.quality === "ok" || m.quality === "derived");
 }
 
@@ -108,7 +108,7 @@ function Knoten({ k, href, value, unit, label, sub, m, nowMs, gross = false, fue
  * Nur wenn die beiden ueberhaupt etwas nehmen: Steht alles still, ist die Grundlast der
  * Hausverbrauch, und die Zeile wuerde dieselbe Zahl ein zweites Mal sagen.
  */
-function grundlast(rest: number | null, andere: number): string | undefined {
+export function grundlast(rest: number | null, andere: number): string | undefined {
   if (rest === null || andere < 0.05) return undefined;
   return `davon ${kw(rest)} kW Grundlast`;
 }
@@ -165,98 +165,6 @@ export function FlowHero({ snapshot, nowMs, pvPeakKw }: { snapshot: EnergySnapsh
       <Knoten k="bat" href="/strom/speicher" value={soc != null ? String(Math.round(soc * 100)) : "-"} unit="%" label="Speicher" sub={v.charge >= 0.05 ? `lädt ${kw(v.charge)} kW` : v.discharge >= 0.05 ? `gibt ${kw(v.discharge)} kW` : undefined} m={s?.battery_soc} nowMs={nowMs} fuell={soc} />
       <Knoten k="hp" href="/waerme" value={kw(s?.heat_pump_power_kw.value)} unit="kW" label="Wärmepumpe" sub={v.hp >= 0.05 ? "läuft" : undefined} m={s?.heat_pump_power_kw} nowMs={nowMs} />
       <Knoten k="ev" href="/strom/wallbox" value={kw(s?.ev_power_kw.value)} unit="kW" label="Wallbox" sub={v.ev >= 0.05 ? "lädt" : undefined} m={s?.ev_power_kw} nowMs={nowMs} />
-    </div>
-  );
-}
-
-/**
- * Das Jetzt auf dem Telefon: zwei grosse Zahlen und vier Kacheln.
- *
- * **Warum nicht die Zeichnung.** Auf 390 Punkten Breite ueberlappen sechs Knoten mit Zahlen; die
- * Geometrie geht, die Zahlen bleiben.
- *
- * **Warum nicht die Liste von vorher.** Sechs gleich hohe Zeilen mit Balken sahen aus wie eine
- * Tabelle und fuellten den halben Bildschirm, bevor die Tageskurve ueberhaupt anfing (gesehen am
- * 25.10.2026 auf dem iPhone). Jetzt fuehren die beiden Zahlen, um die es geht - was die Sonne
- * gibt und was das Haus nimmt -, und der Rest steht als kompaktes Raster darunter. Was dazu
- * gehoert, steht beieinander: Die Farbe des Netzes sagt, in welche Richtung es fliesst.
- */
-export function FlowList({ snapshot }: { snapshot: EnergySnapshot | null }) {
-  const s = snapshot;
-  const soc = s?.battery_soc.value ?? null;
-  const num = (m?: Measurement | null) => (frisch(m) ? (m!.value as number) : 0);
-  const grid = num(s?.grid_power_kw);
-  const bat = num(s?.battery_power_kw);
-  const rest = frisch(s?.base_load_kw) ? (s!.base_load_kw.value as number) : null;
-  const einspeisung = grid < -0.05;
-
-  const Gross = ({ k, href, wert, wort, unten }: { k: Key; href: string; wert: string; wort: string; unten?: string }) => (
-    <Link href={href} className="home-jetzt-gross">
-      <span className="home-jetzt-kopf">
-        <Icon name={k === "pv" ? "sun" : "home"} size={16} color={FARBE[k]} />
-        <span>{wort}</span>
-      </span>
-      <span className="mono home-jetzt-zahl" style={{ color: k === "pv" ? FARBE.pv : "var(--text-1)" }}>
-        {wert} <span className="home-einheit">kW</span>
-      </span>
-      {unten ? <span className="home-jetzt-wort">{unten}</span> : null}
-    </Link>
-  );
-
-  const Klein = ({ k, href, wert, einheit, name, wort, farbe }: { k: Key; href: string; wert: string; einheit: string; name: string; wort: string; farbe?: string }) => (
-    <Link href={href} className="home-jetzt-klein">
-      <span className="home-jetzt-kopf">
-        <Icon name={k === "grid" ? "grid" : k === "bat" ? "battery" : k === "hp" ? "pump" : "car"} size={15} color={farbe ?? FARBE[k]} />
-        <span>{name}</span>
-      </span>
-      <span className="mono home-jetzt-klein-zahl">
-        {wert} <span className="home-einheit">{einheit}</span>
-      </span>
-      <span className="home-jetzt-wort">{wort}</span>
-    </Link>
-  );
-
-  return (
-    <div className="home-jetzt">
-      <div className="home-jetzt-reihe">
-        <Gross k="pv" href="/strom/pv" wert={kw(s?.pv_power_kw.value)} wort="Sonne" />
-        <Gross k="house" href="/strom" wert={kw(s?.house_power_kw.value)} wort="Haus" unten={grundlast(rest, num(s?.heat_pump_power_kw) + num(s?.ev_power_kw))} />
-      </div>
-      <div className="home-jetzt-raster">
-        <Klein
-          k="grid"
-          href="/strom"
-          wert={kw(Math.abs(grid))}
-          einheit="kW"
-          name="Netz"
-          wort={einspeisung ? "Einspeisung" : grid > 0.05 ? "Bezug" : "nichts"}
-          farbe={einspeisung ? "var(--grid-out)" : "var(--grid-in)"}
-        />
-        <Klein
-          k="bat"
-          href="/strom/speicher"
-          wert={soc != null ? String(Math.round(soc * 100)) : "-"}
-          einheit="%"
-          name="Speicher"
-          wort={bat < -0.05 ? `lädt ${kw(-bat)} kW` : bat > 0.05 ? `gibt ${kw(bat)} kW` : "hält"}
-        />
-        <Klein
-          k="hp"
-          href="/waerme"
-          wert={kw(s?.heat_pump_power_kw.value)}
-          einheit="kW"
-          name="Wärmepumpe"
-          wort={num(s?.heat_pump_power_kw) >= 0.05 ? "läuft" : "steht"}
-        />
-        <Klein
-          k="ev"
-          href="/strom/wallbox"
-          wert={kw(s?.ev_power_kw.value)}
-          einheit="kW"
-          name="Wallbox"
-          wort={num(s?.ev_power_kw) >= 0.05 ? "lädt" : "steht"}
-        />
-      </div>
     </div>
   );
 }

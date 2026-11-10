@@ -11,8 +11,9 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { useRuhe } from "@/lib/useRuhe";
 import { celsius, hhmm, longDate } from "@/lib/format";
 import { isoDay } from "@/lib/day";
-import { AreaIcons, Brand } from "@/components/layout/AreaNav";
-import { FlowHero, FlowList } from "./FlowHero";
+import { AreaIcons, Brand, Fussleiste } from "@/components/layout/AreaNav";
+import { FlowHandy } from "./FlowHandy";
+import { FlowHero } from "./FlowHero";
 import { Rail } from "./Rail";
 import { DayCurve } from "./DayCurve";
 import { Dock } from "./Dock";
@@ -188,7 +189,7 @@ export function Home() {
           <span className="mono home-aussen">{celsius(s?.outdoor_temp_c.value, 1)}<span className="home-aussen-wort">draußen</span></span>
           <span className="flex items-center gap-2" title={state?.system.connection_label_de}>
             <span className={`home-punkt ${degraded ? "home-punkt-aus" : ""}`} aria-hidden />
-            <span className="kicker" style={{ fontSize: 11, color: degraded ? "var(--alert)" : "var(--text-3)" }}>{degraded ? (lastFrameAt ? `unterbrochen · ${hhmm(new Date(lastFrameAt + offset))}` : "verbinde") : state?.system.mode === "demo" ? `demo${state.system.sim_speed !== 1 ? ` ${state.system.sim_speed}×` : ""}` : "live"}</span>
+            <span className="kicker home-status-wort" data-stoerung={degraded} style={{ fontSize: 11, color: degraded ? "var(--alert)" : "var(--text-3)" }}>{degraded ? (lastFrameAt ? `unterbrochen · ${hhmm(new Date(lastFrameAt + offset))}` : "verbinde") : state?.system.mode === "demo" ? `demo${state.system.sim_speed !== 1 ? ` ${state.system.sim_speed}×` : ""}` : "live"}</span>
           </span>
         </div>
       </header>
@@ -202,7 +203,7 @@ export function Home() {
       </div>
 
       <div className="home-hero" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>
-        {isMobile ? <FlowList snapshot={s ?? null} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} />}
+        {isMobile ? <FlowHandy snapshot={s ?? null} pvPeakKw={pvPeak} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} />}
         <Rail state={state} plan={plan} nowMs={now} kompakt={isMobile} />
       </div>
 
@@ -221,6 +222,8 @@ export function Home() {
         </div>
         <Dock state={state} readOnly={role !== "owner"} />
       </div>
+
+      <Fussleiste />
 
       {ruhe && tag === "heute" ? (
         <Ambiente state={state} plan={plan} zahlen={zahlen} morgenPvKwh={morgen.pvKwh} nowMs={minute} degraded={degraded} onWecken={wecken} />

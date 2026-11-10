@@ -485,11 +485,11 @@ export function RoomsReport() {
             <div className="flex items-center gap-2.5 pt-0.5">
               <span className="rooms-matrix-label shrink-0" />
               <div className="mono flex flex-1 justify-between text-[10px] text-text-3">
-                <span>00:00</span>
-                <span>06:00</span>
-                <span>12:00</span>
-                <span>18:00</span>
-                <span>24:00</span>
+                <span>00<span className="nur-breit">:00</span></span>
+                <span>06<span className="nur-breit">:00</span></span>
+                <span>12<span className="nur-breit">:00</span></span>
+                <span>18<span className="nur-breit">:00</span></span>
+                <span>24<span className="nur-breit">:00</span></span>
               </div>
               <span className="mono w-[62px] shrink-0 text-right text-[10px] text-text-3">Mittel</span>
             </div>

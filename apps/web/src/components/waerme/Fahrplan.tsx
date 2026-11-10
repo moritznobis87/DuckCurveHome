@@ -481,7 +481,7 @@ export function Fahrplan() {
           : [
               leererHinweis(
                 FLAECHEN[7].top + 4,
-                hatOfenFahrplan ? "im Horizont nicht eingeplant, Begründung darunter" : "kein Ofenfahrplan",
+                hatOfenFahrplan ? "nicht eingeplant, Begründung darunter" : "kein Ofenfahrplan",
               ),
             ]),
       ],
@@ -545,7 +545,7 @@ export function Fahrplan() {
       {/* Sieben Kacheln seit dem 08.11.2026, nicht sechs: die gemessene Laufzeit steht neben der
           geplanten. Bei sechs Spalten fiele sie allein in eine zweite Zeile und sähe aus wie ein
           Nachtrag. */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+      <div className="kpi-handy grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         {/* „Angefordert" braucht die Angabe, bei wem. Lief die Regelung im Schatten, war es eine
             Anforderung an niemanden, und die Kachel sah genauso aus wie jetzt. */}
         <Stat
@@ -691,7 +691,7 @@ function Tabelle({ plan }: { plan: Plan | null }) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-[12px]">
+      <table className="fp-entscheidungen w-full border-collapse text-[12px]">
         <thead>
           <tr className="text-left text-text-3">
             <th scope="col" className="border-b border-white/10 py-1.5 font-medium">Zeit</th>

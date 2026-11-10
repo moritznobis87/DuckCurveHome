@@ -7,6 +7,8 @@ import { GridComponent, GraphicComponent, LegendComponent, MarkAreaComponent, Ma
 import { LabelLayout } from "echarts/features";
 import { CanvasRenderer } from "echarts/renderers";
 import type { EChartsCoreOption } from "echarts/core";
+import { useIsMobile } from "@/lib/useIsMobile";
+import { fuerHandy } from "./handy";
 
 // Nur registrierte Bausteine zeichnen. Fehlt einer, bleibt die Reihe stillschweigend weg - das Gerüst
 // erscheint, die Daten nicht. HeatmapChart und VisualMapComponent tragen die Jahreskarte,
@@ -68,11 +70,15 @@ export function EChart({
     };
   }, []);
 
+  // Am Handy bekommt jedes Diagramm dieselbe Nachstellung: größere Achsenschrift, weniger
+  // Achsenwerte, Legende in einer Zeile. Siehe `handy.ts`.
+  const handy = useIsMobile();
+
   useEffect(() => {
     // visualMap muss ersetzt statt gemischt werden: beim Wechsel von einer divergierenden auf eine
     // sequenzielle Kennzahl bliebe sonst die Beschriftung der alten Pole stehen.
-    chart.current?.setOption(option, { replaceMerge: ["series", "grid", "xAxis", "yAxis", "visualMap"], lazyUpdate: true });
-  }, [option]);
+    chart.current?.setOption(handy ? fuerHandy(option) : option, { replaceMerge: ["series", "grid", "xAxis", "yAxis", "visualMap"], lazyUpdate: true });
+  }, [option, handy]);
 
   return <div ref={ref} className={className} style={{ width: "100%", height: "100%" }} />;
 }

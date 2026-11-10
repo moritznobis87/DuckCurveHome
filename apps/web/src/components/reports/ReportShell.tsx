@@ -48,6 +48,15 @@ export function anchorLabel(anchor: string, period: Period): string {
   return String(d.getFullYear());
 }
 
+/** Dasselbe in kurz, für die Zeitraumzeile am Handy: „Di., 10.11.", „KW 46", „Nov. 2026". */
+export function anchorKurz(anchor: string, period: Period): string {
+  const d = new Date(`${anchor}T12:00:00`);
+  if (period === "day") return d.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+  if (period === "week") return `KW ${isoWeek(d)}`;
+  if (period === "month") return d.toLocaleDateString("de-DE", { month: "short", year: "numeric" });
+  return String(d.getFullYear());
+}
+
 /** Zeitraum-Zustand mit URL-Synchronisation (?period=&anchor=), ohne useSearchParams (statisches Prerender). */
 export function usePeriod(initial: Period = "day"): { period: Period; anchor: string; setPeriod: (p: Period) => void; move: (dir: -1 | 1) => void; today: () => void } {
   const [period, setPeriodState] = useState<Period>(initial);
@@ -99,7 +108,10 @@ export function ReportShell({ title, kicker, period, anchor, onPeriod, onMove, o
           {right}
           <div className="report-nav flex items-center gap-1 rounded-[4px] border border-line-2 p-1">
             <button onClick={() => onMove(-1)} aria-label="Zurück" className="mono px-2.5 py-1 text-[13px] text-text-2 hover:text-text-1">‹</button>
-            <span className="report-anchor mono min-w-[190px] text-center text-[12px] text-text-1">{anchor ? anchorLabel(anchor, period) : "…"}</span>
+            <span className="report-anchor mono min-w-[190px] text-center text-[12px] text-text-1">
+              <span className="report-anchor-lang">{anchor ? anchorLabel(anchor, period) : "…"}</span>
+              <span className="report-anchor-kurz">{anchor ? anchorKurz(anchor, period) : "…"}</span>
+            </span>
             <button onClick={() => onMove(1)} aria-label="Weiter" className="mono px-2.5 py-1 text-[13px] text-text-2 hover:text-text-1">›</button>
             {!isToday ? <button onClick={onToday} className="mono px-2 py-1 text-[11px] uppercase tracking-[.08em] text-amber">heute</button> : null}
           </div>

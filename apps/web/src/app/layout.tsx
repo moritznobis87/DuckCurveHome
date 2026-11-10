@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
+// Die Handy-Ansicht ist eine eigene Schicht und kommt zuletzt, damit sie die Grundstile schlägt.
+import "@/styles/handy.css";
 
 export const metadata: Metadata = {
   title: "Duck Curve Home",

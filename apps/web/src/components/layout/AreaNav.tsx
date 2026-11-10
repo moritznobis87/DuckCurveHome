@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { AREAS, ansichtOf, areaOf, tabOf } from "@/lib/areas";
 import { Icon } from "@/components/ui/Icon";
@@ -29,8 +30,7 @@ export function AreaIcons({ size = 20 }: { size?: number }) {
             aria-label={a.label}
             aria-current={on ? "page" : undefined}
             title={a.label}
-            className="area-icon flex h-10 w-10 items-center justify-center rounded-[6px] transition-colors"
-            style={{ background: on ? "var(--amber)" : "transparent", color: on ? "var(--petrol)" : "var(--text-2)" }}
+            className={`area-icon flex h-10 w-10 items-center justify-center rounded-[6px] transition-colors${on ? " area-icon-an" : ""}`}
           >
             <Icon name={a.icon} size={size} />
           </Link>
@@ -67,9 +67,18 @@ export function AreaTabs({ period, anchor, right }: { period?: string; anchor?: 
   const tabs = area.tabs.filter((t) => !t.ownerOnly || role === "owner");
   if (tabs.length === 0) return null;
   const query = period && anchor ? `?period=${period}&anchor=${anchor}` : "";
+  // Am Handy ist die Reiterzeile eine rollbare Reihe. Der aktive Reiter soll darin zu sehen sein,
+  // auch wenn er der fünfte ist: sonst steht man auf „Annahmen" und sieht „Übersicht".
+  const reihe = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = reihe.current;
+    const an = el?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!el || !an || el.scrollWidth <= el.clientWidth) return;
+    el.scrollLeft = Math.max(0, an.offsetLeft - (el.clientWidth - an.offsetWidth) / 2);
+  }, [current?.href]);
   return (
     <div className="area-tabs flex items-baseline justify-between gap-6 border-b border-line-1">
-      <div className="area-tabs-row flex gap-6">
+      <div ref={reihe} className="area-tabs-row flex gap-6">
         {tabs.map((t) => {
           const on = current?.href === t.href;
           return (
@@ -77,8 +86,7 @@ export function AreaTabs({ period, anchor, right }: { period?: string; anchor?: 
               key={t.href}
               href={t.dated ? `${t.href}${query}` : t.href}
               aria-current={on ? "page" : undefined}
-              className="whitespace-nowrap pb-2.5 pt-2 text-[13px]"
-              style={{ color: on ? "var(--text-1)" : "var(--text-2)", borderBottom: `2px solid ${on ? "var(--amber)" : "transparent"}`, marginBottom: -1 }}
+              className={`area-tab whitespace-nowrap pb-2.5 pt-2 text-[13px]${on ? " area-tab-an" : ""}`}
             >
               {t.label}
             </Link>
@@ -114,4 +122,42 @@ export function AreaAnsichten() {
       })}
     </nav>
   );
+}
+
+/**
+ * Die Bereichsleiste des Handys: unten, wo der Daumen ist, mit Zeichen und Namen.
+ *
+ * Bis zum 10.11.2026 standen die Bereiche am Handy als sechs Zeichen ohne Namen in einem Kasten
+ * am oberen Rand, darunter Zeitwahl und Reiter: drei Zeilen Bedienung, bevor die erste Zahl kam,
+ * und alle außerhalb der Reichweite einer Hand. Unten kostet die Leiste eine Zeile, die immer da
+ * ist, und der Kopf der Seite wird frei für das, was die Seite sagt.
+ *
+ * Über 720 Punkten Breite ist sie ausgeblendet; dort bleibt die Leiste im Kopf.
+ */
+export function Fussleiste() {
+  const pathname = usePathname();
+  const role = useRole();
+  const active = areaOf(pathname ?? "/");
+  return (
+    <nav className="fussleiste" aria-label="Bereiche">
+      {AREAS.filter((a) => !a.ownerOnly || role === "owner").map((a) => {
+        const on = a.key === active.key;
+        return (
+          <Link key={a.key} href={a.href} aria-current={on ? "page" : undefined} className={`fussleiste-punkt${on ? " fussleiste-an" : ""}`}>
+            <span className="fussleiste-zeichen">
+              <Icon name={a.icon} size={22} strokeWidth={on ? 2.1 : 1.75} />
+            </span>
+            <span className="fussleiste-wort">{a.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** Der Name des Bereichs als Überschrift der Seite. Nur am Handy sichtbar; am Rechner sagt es die Leiste. */
+export function Bereichstitel() {
+  const pathname = usePathname();
+  const area = areaOf(pathname ?? "/");
+  return <span className="bereichstitel">{area.label}</span>;
 }

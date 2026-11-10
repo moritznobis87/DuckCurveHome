@@ -316,7 +316,7 @@ export function HeatOverview() {
                 rechts={`${Math.round(lueftung.open_minutes)} min offen${lueftung.share != null && lueftung.share >= 0.01 ? ` · ${de1(lueftung.share * 100, 0)} % der Entnahme` : ""}`}
               />
               {(lueftung.rooms ?? []).length ? (
-                <table className="w-full border-collapse text-[12px]">
+                <table className="fenster-tabelle w-full border-collapse text-[12px]">
                   <thead>
                     <tr className="kicker" style={{ fontSize: 10 }}>
                       <th className="pb-1 text-left font-medium">Raum</th>
