@@ -168,7 +168,7 @@ def test_buffer_full_prevents_start_and_stops_run() -> None:
     d = h2.step(2, grid=-5.0, temps=(63.0, 60.0, 50.0, 40.0))
     assert not d.k1_release
     assert ReasonCode.BUFFER_FULL in d.reasons or ReasonCode.BUFFER_FULL in d.blocked_by
-    assert "vollständig geladen" in d.explanation_de
+    assert "Pufferspeicher ist voll" in d.explanation_de
 
 
 def test_low_headroom_blocks_start() -> None:
@@ -191,7 +191,7 @@ def test_manual_force_release_and_expiry() -> None:
     d = h.step(1, grid=2.0, pv=0.0)
     assert d.k1_release
     assert d.controller_state is ControllerState.MANUAL
-    assert "manuell" in d.explanation_de.lower()
+    assert "von hand" in d.explanation_de.lower()
     d = h.step(31, grid=2.0, pv=0.0)
     assert not d.k1_release
     assert d.controller_state is not ControllerState.MANUAL
@@ -265,7 +265,7 @@ def test_hp_not_responding_backs_off() -> None:
     d = h.step(11, grid=-5.0)
     assert not d.k1_release
     assert ReasonCode.HP_NOT_RESPONDING in d.blocked_by
-    assert "nicht reagiert" in d.explanation_de
+    assert "nicht angelaufen" in d.explanation_de
 
 
 def test_never_both_contacts() -> None:

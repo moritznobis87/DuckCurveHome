@@ -207,7 +207,7 @@
 .home-wache-zeile[data-schwere="warn"] { color: var(--amber-soft); background: rgba(255,215,120,.10); }
 .home-wache-zeile span:last-child { color: var(--text-1); }
 .home-satz { margin: 0; font-size: clamp(20px, 2.1vw, 28px); font-weight: 500; letter-spacing: -.015em; line-height: 1.25; max-width: 70ch; }
-.home-satz-meta { white-space: nowrap; }
+.home-satz-meta { white-space: nowrap; font-size: 13px; color: var(--text-3); }
 
 .home-hero { display: grid; grid-template-columns: minmax(0, 1fr) 272px; gap: 18px; min-height: 0; }
 .home-fluss { position: relative; min-height: 0; }
@@ -761,6 +761,10 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 .area-tab-an { color: var(--text-1); border-bottom-color: var(--amber); }
 /* Nur am Handy sichtbar: Leiste unten, Bereichsname im Kopf, kurze Datumsangabe. */
 .fussleiste, .bereichstitel, .report-anchor-kurz { display: none; }
+
+/* Die Vorschau des Morgenbriefs: so, wie eine Mitteilung auf dem Telefon steht. */
+.morgenbrief-vorschau { display: flex; flex-direction: column; gap: 4px; max-width: 460px; padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,.07); font-size: 14px; line-height: 1.45; color: var(--text-1); }
+.morgenbrief-titel { font-weight: 600; }
 
 /* Die Raumliste im Bereich Haus: dieselbe Spalte wie die Bühne des Modells. */
 .haus-liste { display: flex; flex-direction: column; gap: 16px; min-width: 0; }

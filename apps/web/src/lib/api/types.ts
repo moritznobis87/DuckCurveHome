@@ -188,6 +188,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/push/morgenbrief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Der Morgenbrief: ob er kommt und was heute darin stünde */
+        get: operations["morgenbrief_api_v1_push_morgenbrief_get"];
+        /** Den Morgenbrief ein- oder ausschalten */
+        put: operations["set_morgenbrief_api_v1_push_morgenbrief_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/morgenbrief/senden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Den Morgenbrief jetzt senden
+         * @description Den Brief von heute sofort an alle angemeldeten Geräte schicken.
+         *
+         *     Zum Ansehen, wie er auf dem eigenen Telefon aussieht, ohne bis morgen früh zu warten. Der
+         *     Versand am Morgen bleibt davon unberührt.
+         */
+        post: operations["morgenbrief_senden_api_v1_push_morgenbrief_senden_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rooms": {
         parameters: {
             query?: never;
@@ -3974,6 +4015,39 @@ export interface components {
             /** Mb */
             mb: number;
         };
+        /** MorgenbriefIn */
+        MorgenbriefIn: {
+            /** Enabled */
+            enabled: boolean;
+        };
+        /**
+         * MorgenbriefOut
+         * @description Der Morgenbrief: ob er verschickt wird und was heute darin stünde.
+         *
+         *     Eine Mitteilung am Morgen mit dem, was der Tag bringt: erwartete Sonne, günstigste und
+         *     teuerste Zeit für Netzstrom, geplante Läufe der Wärmepumpe. `zeilen` ist der Brief, wie er
+         *     jetzt verschickt würde, damit die Seite ihn zeigen kann, bevor jemand ihn einschaltet.
+         */
+        MorgenbriefOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Uhrzeit */
+            uhrzeit: string;
+            /**
+             * Fuer De
+             * @default heute
+             */
+            fuer_de: string;
+            /** Titel */
+            titel?: string | null;
+            /** Zeilen */
+            zeilen?: string[];
+            /**
+             * Hinweis De
+             * @default
+             */
+            hinweis_de: string;
+        };
         /**
          * NachbetrachtungOut
          * @description Ein Ortstag in Euro: was der Fahrplan versprach, was er hielt, was der Tag kostete.
@@ -5960,6 +6034,79 @@ export interface operations {
         };
     };
     test_api_v1_push_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushResultOut"];
+                };
+            };
+        };
+    };
+    morgenbrief_api_v1_push_morgenbrief_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MorgenbriefOut"];
+                };
+            };
+        };
+    };
+    set_morgenbrief_api_v1_push_morgenbrief_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MorgenbriefIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MorgenbriefOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    morgenbrief_senden_api_v1_push_morgenbrief_senden_post: {
         parameters: {
             query?: never;
             header?: never;

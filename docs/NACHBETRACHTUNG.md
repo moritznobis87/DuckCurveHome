@@ -1,6 +1,6 @@
 # Die Nachbetrachtung: ein Tag in Euro
 
-Stand 10.11.2026. Seite `Wärme → Fahrplan → Rückblick` (`/waerme/nachbetrachtung`), Endpunkt
+Stand 10.11.2026. Seite `Technik → Fahrplan → Rückblick` (`/waerme/nachbetrachtung`), Endpunkt
 `GET /api/v1/plan/nachbetrachtung?day=YYYY-MM-DD`. Bewertung in
 `packages/hems-core/src/hems_core/accounting/nachbetrachtung.py`, Zusammenstellung und
 Vergleichslauf in `apps/api/src/dch_api/application/nachbetrachtung.py`.

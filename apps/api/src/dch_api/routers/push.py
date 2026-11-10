@@ -7,7 +7,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 
 from dch_api.application.push import Mitteilung, PushService
-from dch_api.schemas import PushKeyOut, PushResultOut, PushSubscribeIn, PushUnsubscribeIn
+from dch_api.application.runtime import Runtime
+from dch_api.dependencies import get_runner
+from dch_api.schemas import (
+    MorgenbriefIn,
+    MorgenbriefOut,
+    PushKeyOut,
+    PushResultOut,
+    PushSubscribeIn,
+    PushUnsubscribeIn,
+)
 
 router = APIRouter(prefix="/push", tags=["System"])
 
@@ -69,4 +78,50 @@ async def test(push: Annotated[PushService, Depends(get_push)]) -> PushResultOut
         message_de=f"Probe an {erreicht} von {gesamt} Geräten zugestellt."
         if gesamt
         else "Kein Gerät angemeldet.",
+    )
+
+
+@router.get(
+    "/morgenbrief",
+    response_model=MorgenbriefOut,
+    summary="Der Morgenbrief: ob er kommt und was heute darin stünde",
+)
+async def morgenbrief(runner: Annotated[Runtime, Depends(get_runner)]) -> MorgenbriefOut:
+    return await runner.morgenbrief()
+
+
+@router.put(
+    "/morgenbrief", response_model=MorgenbriefOut, summary="Den Morgenbrief ein- oder ausschalten"
+)
+async def set_morgenbrief(
+    body: MorgenbriefIn, runner: Annotated[Runtime, Depends(get_runner)]
+) -> MorgenbriefOut:
+    return await runner.set_morgenbrief(body.enabled)
+
+
+@router.post(
+    "/morgenbrief/senden", response_model=PushResultOut, summary="Den Morgenbrief jetzt senden"
+)
+async def morgenbrief_senden(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    push: Annotated[PushService, Depends(get_push)],
+) -> PushResultOut:
+    """Den Brief von heute sofort an alle angemeldeten Geräte schicken.
+
+    Zum Ansehen, wie er auf dem eigenen Telefon aussieht, ohne bis morgen früh zu warten. Der
+    Versand am Morgen bleibt davon unberührt.
+    """
+    stand = await runner.morgenbrief()
+    geraete = await push.count()
+    if not stand.zeilen or stand.titel is None:
+        return PushResultOut(ok=False, devices=geraete, message_de=stand.hinweis_de)
+    erreicht = await push.send(
+        Mitteilung(title=stand.titel, body="\n".join(stand.zeilen), tag="morgenbrief", url="/")
+    )
+    return PushResultOut(
+        ok=erreicht > 0,
+        devices=geraete,
+        message_de=f"Der Brief ging an {erreicht} von {geraete} Geräten."
+        if geraete
+        else "Kein Gerät ist für Mitteilungen angemeldet.",
     )

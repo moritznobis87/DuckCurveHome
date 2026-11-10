@@ -1130,6 +1130,29 @@ class PushResultOut(BaseModel):
     message_de: str
 
 
+class MorgenbriefOut(BaseModel):
+    """Der Morgenbrief: ob er verschickt wird und was heute darin stünde.
+
+    Eine Mitteilung am Morgen mit dem, was der Tag bringt: erwartete Sonne, günstigste und
+    teuerste Zeit für Netzstrom, geplante Läufe der Wärmepumpe. `zeilen` ist der Brief, wie er
+    jetzt verschickt würde, damit die Seite ihn zeigen kann, bevor jemand ihn einschaltet.
+    """
+
+    enabled: bool
+    #: Ortszeit, ab der der Brief verschickt wird.
+    uhrzeit: str
+    #: Für welchen Morgen die Vorschau gilt: „heute" oder „morgen".
+    fuer_de: str = "heute"
+    titel: str | None = None
+    zeilen: list[str] = Field(default_factory=list)
+    #: Warum es gerade keinen Brief gibt, sonst leer.
+    hinweis_de: str = ""
+
+
+class MorgenbriefIn(BaseModel):
+    enabled: bool
+
+
 class ShiftDayOut(BaseModel):
     """Ein Tag im Vergleichslauf. `note_de` ist leer, wenn gerechnet wurde."""
 

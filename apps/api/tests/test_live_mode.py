@@ -211,10 +211,11 @@ def test_der_schattenbetrieb_ist_von_aussen_zu_erkennen(tmp_path: Path) -> None:
 
     an = zustand(schalten=True)
     assert an["hp_actuation"] is True
-    assert "stellt" in str(an["hp_actuation_de"])
+    assert "fordert selbst an" in str(an["hp_actuation_de"])
 
     aus = zustand(schalten=False)
     assert aus["hp_actuation"] is False
-    # Der Satz muss den Unterschied tragen und nicht nur vorhanden sein: lesen ist nicht stellen.
-    assert "liest" in str(aus["hp_actuation_de"])
-    assert "stellt" not in str(aus["hp_actuation_de"])
+    # Der Satz muss den Unterschied sagen und nicht nur vorhanden sein: beobachten ist nicht
+    # anfordern. Seit dem 10.11.2026 ohne den Namen des Kontakts, siehe test_texte_ohne_k1.py.
+    assert "beobachtet" in str(aus["hp_actuation_de"])
+    assert "fordert" not in str(aus["hp_actuation_de"])
