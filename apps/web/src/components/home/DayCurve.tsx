@@ -6,6 +6,7 @@ import type { HeatReport, Plan } from "@/lib/api/models";
 import type { HistoryPoint } from "@/lib/live/store";
 import { hhmm } from "@/lib/format";
 import { EChart } from "@/components/charts/EChart";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { C, MONO } from "@/components/charts/palette";
 import { priceBounds } from "@/components/charts/dayBounds";
 import { TAGE, TAG_WORT, type Schatten, type Tag } from "./tage";
@@ -33,6 +34,12 @@ import { TAGE, TAG_WORT, type Schatten, type Tag } from "./tage";
  * alten passiert ist.
  */
 export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, start, end }: { tag: Tag; onTag: (t: Tag) => void; history: HistoryPoint[]; plan: Plan | null; heat: HeatReport | null; schatten: Schatten | null; nowMs: number; start: number; end: number }) {
+  // **Am Handy zwei Flächen.** Auf 390 Punkten lagen Leistung und Preis an zwei Achsen
+  // übereinander, die Preisstufen kreuzten Sonne und Haus, und über allem standen vier Mal
+  // „PREISTIEF" ineinander (gesehen am 10.11.2026). Dort steht die Leistung jetzt oben, der Preis
+  // als eigene niedrige Fläche darunter, an derselben Zeitachse; die Bänder laufen durch beide,
+  // ihr Name steht in der Legende.
+  const handy = useIsMobile();
   const option = useMemo<EChartsCoreOption>(() => {
     const hx = (ts: number) => (ts - start) / 3600000;
     const inDay = history.filter((p) => p.ts >= start && p.ts < end);
@@ -71,12 +78,13 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
     const baender = (plan?.windows ?? [])
       .filter((w) => (w.kind === "cheap" || w.kind === "negative") && new Date(w.start).getTime() < end && new Date(w.end).getTime() > start)
       .map((w) => [
-        { xAxis: Math.max(0, hx(new Date(w.start).getTime())), itemStyle: { color: w.kind === "negative" ? "rgba(224,83,61,.14)" : "rgba(127,163,179,.14)" }, label: { show: true, position: "insideTopLeft", formatter: w.kind === "negative" ? "NEGATIV" : "PREISTIEF", color: w.kind === "negative" ? C.alert : C.price, fontFamily: MONO, fontSize: 10, letterSpacing: 1 } },
+        { xAxis: Math.max(0, hx(new Date(w.start).getTime())), itemStyle: { color: w.kind === "negative" ? "rgba(224,83,61,.14)" : "rgba(127,163,179,.14)" }, label: { show: !handy, position: "insideTopLeft", formatter: w.kind === "negative" ? "NEGATIV" : "PREISTIEF", color: w.kind === "negative" ? C.alert : C.price, fontFamily: MONO, fontSize: 10, letterSpacing: 1 } },
         { xAxis: Math.min(24, hx(new Date(w.end).getTime())) },
       ]);
     const maxOf = (rows: Array<Array<number | null>>) => rows.reduce((m, p) => (typeof p[1] === "number" && Number.isFinite(p[1]) ? Math.max(m, p[1]) : m), 0);
     const powerMax = Math.max(3, Math.ceil((maxOf([...pv, ...haus, ...pvPrognose, ...waerme, ...schattenPv]) * 1.1) / 2) * 2);
     const { min: pMin, max: pMax, step: pStep } = priceBounds([...preisHist, ...preisVoraus]);
+    const preisAchse = handy ? 1 : 0;
     const jetzt = tag === "heute" ? { symbol: "none", silent: true, lineStyle: { color: "var(--amber-soft)", type: "dashed", width: 1.2 }, label: { show: false }, data: [{ xAxis: hx(nowMs) }] } : undefined;
     return {
       animation: false,
@@ -99,11 +107,18 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
           return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${t}</div>${rows}`;
         },
       },
-      grid: { left: 40, right: 44, top: 10, bottom: 24 },
-      xAxis: { type: "value", min: 0, max: 24, interval: 6, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => `${String(v % 24).padStart(2, "0")}:00` } },
+      grid: handy
+        ? [
+            { left: 44, right: 10, top: 10, bottom: PREIS_HOEHE + 22 + 22, outerBoundsMode: "none" },
+            { left: 44, right: 10, height: PREIS_HOEHE, bottom: 22, outerBoundsMode: "none" },
+          ]
+        : { left: 40, right: 44, top: 10, bottom: 24 },
+      xAxis: [0, 1].slice(0, handy ? 2 : 1).map((gridIndex) => ({ type: "value" as const, gridIndex, min: 0, max: 24, interval: 6, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: !handy || gridIndex === 1, color: C.text, fontFamily: MONO, fontSize: handy ? 11 : 10, formatter: (v: number) => `${String(v % 24).padStart(2, "0")}:00` } })),
       yAxis: [
-        { type: "value", min: 0, max: powerMax, interval: powerMax / 2, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => `${v} kW` } },
-        { type: "value", position: "right", min: pMin, max: pMax, interval: pStep, splitLine: { show: false }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => `${v} ct` } },
+        { type: "value", gridIndex: 0, min: 0, max: powerMax, interval: powerMax / 2, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: handy ? 11 : 10, formatter: (v: number) => `${v} kW` } },
+        handy
+          ? { type: "value", gridIndex: 1, min: pMin, max: pMax, interval: Math.max(pStep, (pMax - pMin) / 2), splitLine: { lineStyle: { color: C.gridline } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11, formatter: (v: number) => `${v} ct` } }
+          : { type: "value", position: "right", min: pMin, max: pMax, interval: pStep, splitLine: { show: false }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => `${v} ct` } },
       ],
       series: [
         { name: `Sonne ${schatten?.wort ?? ""}`.trim(), type: "line", yAxisIndex: 0, data: schattenPv, showSymbol: false, lineStyle: { color: C.pvSchatten, width: 1.6, opacity: 0.75 }, z: 1 },
@@ -111,17 +126,28 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
         { name: "Sonne, Prognose", type: "line", yAxisIndex: 0, data: pvPrognose, showSymbol: false, lineStyle: { color: C.pv, width: 1.5, type: [5, 5], opacity: 0.7 }, areaStyle: { color: "rgba(242,169,0,.08)" }, z: 2 },
         { name: "Haus", type: "line", yAxisIndex: 0, data: haus, showSymbol: false, lineStyle: { color: "rgba(255,255,255,.88)", width: 1.8 }, z: 4 },
         { name: "Wärmepumpe, erwartet", type: "line", step: "end", yAxisIndex: 0, data: waerme, showSymbol: false, lineStyle: { color: C.heatPump, width: 1.5, type: [5, 5], opacity: 0.9 }, z: 3 },
-        { name: "Strompreis", type: "line", step: "end", yAxisIndex: 1, data: preisHist, showSymbol: false, lineStyle: { color: C.price, width: 1.6 }, z: 3 },
-        { name: "Preis voraus", type: "line", step: "end", yAxisIndex: 1, data: preisVoraus, showSymbol: false, lineStyle: { color: C.price, width: 1.6, type: [5, 5], opacity: 0.8 }, z: 2 },
+        { name: "Strompreis", type: "line", step: "end", xAxisIndex: preisAchse, yAxisIndex: 1, data: preisHist, showSymbol: false, lineStyle: { color: C.price, width: 1.6 }, ...(handy ? { areaStyle: { color: "rgba(127,163,179,.10)" }, markArea: { silent: true, data: baender }, ...(jetzt ? { markLine: jetzt } : {}) } : {}), z: 3 },
+        { name: "Preis voraus", type: "line", step: "end", xAxisIndex: preisAchse, yAxisIndex: 1, data: preisVoraus, showSymbol: false, lineStyle: { color: C.price, width: 1.6, type: [5, 5], opacity: 0.8 }, z: 2 },
       ],
     };
-  }, [tag, history, plan, heat, schatten, nowMs, start, end]);
+  }, [tag, history, plan, heat, schatten, nowMs, start, end, handy]);
 
   const Legende = ({ color, label, dashed = false, flaeche = false }: { color: string; label: string; dashed?: boolean; flaeche?: boolean }) => (
     <span className="flex items-center gap-1.5 text-[12px] text-text-2">
       <span className="inline-block w-[14px]" style={flaeche ? { height: 8, background: color, borderRadius: 2, opacity: 0.6 } : { borderTop: `2px ${dashed ? "dashed" : "solid"} ${color}` }} />
       {label}
     </span>
+  );
+  const legende = (
+    <>
+          {tag !== "morgen" ? <Legende color={C.pv} label="Sonne" flaeche /> : null}
+          {tag !== "gestern" ? <Legende color={C.pv} label={tag === "morgen" ? "Sonne erwartet" : "Prognose"} dashed /> : null}
+          {schatten ? <Legende color={C.pvSchatten} label={schattenWort(schatten)} /> : null}
+          {tag !== "morgen" ? <Legende color="rgba(255,255,255,.88)" label="Haus" /> : null}
+          {tag === "morgen" ? <Legende color={C.heatPump} label="Wärmepumpe" dashed /> : null}
+          <Legende color={C.price} label="Strompreis" dashed={tag === "morgen"} />
+          {tag !== "gestern" ? <Legende color={C.price} label="Preistief" flaeche /> : null}
+    </>
   );
   return (
     <div className="home-kurve">
@@ -133,22 +159,19 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
             </button>
           ))}
         </div>
-        <div className="home-kurve-legende flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
-          {tag !== "morgen" ? <Legende color={C.pv} label="Sonne" flaeche /> : null}
-          {tag !== "gestern" ? <Legende color={C.pv} label={tag === "morgen" ? "Sonne erwartet" : "Prognose"} dashed /> : null}
-          {schatten ? <Legende color={C.pvSchatten} label={schattenWort(schatten)} /> : null}
-          {tag !== "morgen" ? <Legende color="rgba(255,255,255,.88)" label="Haus" /> : null}
-          {tag === "morgen" ? <Legende color={C.heatPump} label="Wärmepumpe" dashed /> : null}
-          <Legende color={C.price} label="Strompreis" dashed={tag === "morgen"} />
-          {tag !== "gestern" ? <Legende color={C.price} label="Preistief" flaeche /> : null}
-        </div>
+        <div className="home-kurve-legende flex flex-wrap items-center justify-end gap-x-4 gap-y-1">{legende}</div>
       </div>
-      <div className="min-h-0 flex-1">
+      <div className="home-kurve-bild min-h-0 flex-1">
         <EChart option={option} />
       </div>
+      {/* Am Handy steht die Legende unter dem Bild; neben dem Tagesschalter ist kein Platz. */}
+      <div className="home-kurve-legende-unten">{legende}</div>
     </div>
   );
 }
+
+/** Höhe der Preisfläche am Handy, in Punkten. */
+const PREIS_HOEHE = 58;
 
 /** „gestern 8,1 kWh": der Tag im Hintergrund und seine Sonne bis zur gleichen Uhrzeit. */
 function schattenWort(s: Schatten): string {

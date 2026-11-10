@@ -1,6 +1,6 @@
 "use client";
 
-import { AreaAnsichten, AreaIcons, AreaTabs, Brand } from "./AreaNav";
+import { AreaAnsichten, AreaIcons, AreaTabs, Bereichstitel, Brand, Fussleiste } from "./AreaNav";
 
 /**
  * Die Huelle jeder Unterseite: Marke, Bereichsleiste, rechts die Werkzeuge der Seite (meist die
@@ -16,6 +16,7 @@ export function AreaShell({ right, kicker, period, anchor, children }: { right?:
       <header className="report-header flex min-h-14 shrink-0 items-center justify-between gap-4 rounded-[6px] border border-line-2 px-4" style={{ background: "var(--surface-glass)", backdropFilter: "blur(18px)" }}>
         <div className="flex min-w-0 items-center gap-5">
           <Brand />
+          <Bereichstitel />
           <AreaIcons />
         </div>
         {right ? <div className="report-header-right flex shrink-0 items-center gap-3">{right}</div> : null}
@@ -23,6 +24,7 @@ export function AreaShell({ right, kicker, period, anchor, children }: { right?:
       <AreaTabs period={period} anchor={anchor} right={kicker} />
       <AreaAnsichten />
       {children}
+      <Fussleiste />
     </main>
   );
 }

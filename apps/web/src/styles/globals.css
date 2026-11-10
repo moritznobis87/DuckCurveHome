@@ -121,15 +121,6 @@
    Zwei grosse Zahlen fuehren, vier Kacheln folgen. Die alte Liste aus sechs gleich hohen Zeilen
    fuellte den halben Bildschirm und sah aus wie eine Tabelle; hier traegt die Groesse die
    Bedeutung. */
-.home-jetzt { display: flex; flex-direction: column; gap: 10px; }
-.home-jetzt-reihe { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.home-jetzt-gross { background: rgba(15,46,61,.55); border: 1px solid var(--line-1); border-radius: 8px; padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; }
-.home-jetzt-zahl { font-size: clamp(30px, 10vw, 40px); line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
-.home-jetzt-kopf { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-2); }
-.home-jetzt-raster { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.home-jetzt-klein { background: rgba(15,46,61,.4); border: 1px solid var(--line-1); border-radius: 8px; padding: 10px 12px 11px; display: flex; flex-direction: column; gap: 3px; text-decoration: none; color: inherit; }
-.home-jetzt-klein-zahl { font-size: 22px; line-height: 1; letter-spacing: -.03em; color: var(--text-1); white-space: nowrap; }
-.home-jetzt-wort { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- Puffer, liegend (Telefon) ----------
    Dieselben vier Fuehler, dieselbe Farbe, nur quer: links oben, rechts unten. Die stehende
@@ -322,14 +313,12 @@
   .home { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: min-content; }
   .home-hero { display: contents; }
   .home-kopf { order: 1; }
+  .fluss-h { order: 3; }
   .home-satz-zeile { order: 2; }
-  .home-jetzt { order: 3; }
   .home-kurve { order: 4; min-height: 230px; }
   .home-rail { order: 5; flex-direction: row; flex-wrap: wrap; }
   .home-fuss { order: 6; }
   .home-kachel { flex: 1 1 45%; }
-  .home-jetzt-klein { padding: 9px 12px 10px; }
-  .home-jetzt-gross { padding: 11px 14px 12px; }
   .home-kachel-plan { flex: 1 1 100%; }
   .home-fuss { flex-direction: column; align-items: stretch; }
   .home-heute { justify-content: space-between; gap: 12px; }
@@ -378,13 +367,6 @@
    nichts. */
 @media (max-height: 560px) and (min-width: 600px) {
   .home { padding-top: 10px; gap: 10px; }
-  /* Quer ist Breite da und Hoehe knapp: die vier Kacheln stehen nebeneinander statt zu zweit,
-     und alles wird flacher, damit die Tageskurve noch auf den Schirm kommt. */
-  .home-jetzt-raster { grid-template-columns: repeat(4, 1fr); }
-  .home-jetzt-zahl { font-size: 30px; }
-  .home-jetzt-klein-zahl { font-size: 18px; }
-  .home-jetzt-gross { padding: 8px 12px 10px; }
-  .home-jetzt-klein { padding: 7px 10px 8px; }
   .home-satz { font-size: 18px; }
   .home-satz-zeile { flex-direction: row; align-items: baseline; }
   .home-hero { grid-template-columns: minmax(0, 1fr) 240px; }
@@ -771,6 +753,15 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 
 /* Der Umschalter zwischen den Ansichten eines Reiters. Dieselbe Form wie die Zeitraumwahl im
    Kopf, denn es ist dieselbe Art Entscheidung: welche Sicht auf dieselbe Sache. */
+/* Bereichszeichen und Reiter: Farbe und Marke des aktiven stehen hier und nicht im Markup, damit
+   die Handy-Schicht (handy.css) sie umgestalten kann. */
+.area-icon { color: var(--text-2); }
+.area-icon-an { background: var(--amber); color: var(--petrol); }
+.area-tab { color: var(--text-2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.area-tab-an { color: var(--text-1); border-bottom-color: var(--amber); }
+/* Nur am Handy sichtbar: Leiste unten, Bereichsname im Kopf, kurze Datumsangabe. */
+.fussleiste, .bereichstitel, .report-anchor-kurz { display: none; }
+
 .ansichten { display: inline-flex; align-self: flex-start; gap: 4px; padding: 4px; border: 1px solid var(--line-2); border-radius: 4px; }
 .ansicht { padding: 6px 14px; border-radius: 3px; font-size: 12px; font-weight: 500; color: var(--text-2); text-decoration: none; white-space: nowrap; }
 .ansicht:hover { color: var(--text-1); }

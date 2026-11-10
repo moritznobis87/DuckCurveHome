@@ -192,7 +192,7 @@ export function CostReport() {
 
       <Card style={{ padding: 16, gap: 8 }}>
         <CardHead title="Aufstellung" right="Beträge in Euro · aus denselben Stundenbilanzen wie alle anderen Seiten" />
-        <table className="w-full border-collapse text-[13px]">
+        <table className="kosten-tabelle w-full border-collapse text-[13px]">
           <thead>
             <tr className="kicker" style={{ fontSize: 10 }}>
               <th className="pb-1 text-left font-medium">Posten</th>

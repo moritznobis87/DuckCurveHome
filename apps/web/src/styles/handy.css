@@ -1,0 +1,318 @@
+/* Duck Curve Home am Handy.
+
+   Bis zum 10.11.2026 war die Handy-Ansicht die Rechner-Ansicht in einer Spalte: dieselben
+   Kästen, dieselbe Schrift, dieselben Tabellen, nur schmaler. Das ergab bis zu viereinhalb
+   Bildschirme gleich schwerer Kästen mit 10-Punkt-Sperrschrift, und drei Zeilen Bedienung, bevor
+   die erste Zahl kam (Nutzerurteil 10.11.2026: „viel zu schlecht, muss neu gedacht werden").
+
+   Diese Datei ist die Antwort, an einer Stelle statt über achthundert Zeilen verstreut. Vier
+   Entscheidungen:
+
+   1. **Die Bereiche stehen unten**, wo der Daumen ist, mit Namen. Der Kopf gehört der Seite.
+   2. **Eine Zahl führt.** Die erste Kennzahl einer Seite steht groß über die ganze Breite, die
+      übrigen darunter zweispaltig in derselben Fläche, getrennt durch Haarlinien statt durch
+      sechs Rahmen.
+   3. **Flächen statt Rahmen.** Karten haben am Handy keinen Rand, einen großen Radius und heben
+      sich über die Helligkeit vom Grund ab. Überschriften sind lesbare Schrift, keine
+      Sperrschrift.
+   4. **Tabellen werden Listen.** Vier Spalten passen nicht auf 390 Punkte; gezeigt wird eine
+      Spalte, die man umschaltet.
+
+   Diese Datei steht ohne Ebene und schlägt damit jede Tailwind-Klasse; `!important` braucht es
+   nur gegen Stile, die im Markup stehen.
+
+   Die Grenze ist die Breite allein. Das Handy im Querformat (niedrig, aber breit) behält die
+   Spaltenansicht aus globals.css mit der Leiste im Kopf: unten nähme sie dort ein Sechstel der
+   Höhe. */
+
+/* ---------------------------------------------------------------------- Das Flussbild
+   Steht ohne Breitenabfrage: `FlowHandy` zeichnet nur, wo `useIsMobile` wahr ist, also auch am
+   Handy im Querformat. Höhe und Lage gehören zusammen: die untere Reihe steht bei 76 Prozent,
+   darunter brauchen Zahl, Name und Zustand 90 Punkte. */
+.fluss-h { position: relative; height: 394px; border-radius: 20px; overflow: hidden; background: radial-gradient(130% 70% at 50% 0%, #1a4658 0%, var(--surface-2) 62%); }
+.fluss-h-schein { position: absolute; left: 17%; top: 14%; width: 320px; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(242, 169, 0, 0.36) 0%, rgba(242, 169, 0, 0) 62%); transition: opacity 1.2s; }
+.fluss-h-leitungen { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.fluss-h-knoten, .fluss-h-haus { position: absolute; width: 0; height: 0; overflow: visible; color: inherit; text-decoration: none; }
+.fluss-h-ring { position: absolute; left: 0; top: 0; width: 52px; height: 52px; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1.5px solid; overflow: hidden; z-index: 2; }
+.fluss-h-ring svg { position: relative; }
+.fluss-h-fuell { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(127, 183, 200, 0.3); }
+.fluss-h-text { position: absolute; display: flex; flex-direction: column; gap: 1px; white-space: nowrap; z-index: 2; }
+.fluss-h-rechts .fluss-h-text { left: 36px; top: -3px; transform: translateY(-50%); align-items: flex-start; }
+.fluss-h-links .fluss-h-text { right: 36px; top: -3px; transform: translateY(-50%); align-items: flex-end; }
+.fluss-h-unten .fluss-h-text { top: 34px; left: 0; transform: translateX(-50%); align-items: center; }
+.fluss-h-zahl { font-size: 22px; line-height: 1.05; letter-spacing: -0.03em; }
+.fluss-h-einheit { margin-left: 4px; font-family: var(--font-sans); font-size: 12.5px; letter-spacing: 0; color: var(--text-3); }
+.fluss-h-name { font-size: 13px; line-height: 1.25; color: var(--text-2); }
+.fluss-h-wort { font-size: 12px; line-height: 1.2; color: var(--text-3); }
+.fluss-h-haus-ring { position: absolute; left: 0; top: 0; width: 108px; height: 108px; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 50%; border: 1.5px solid; background: var(--deep); box-shadow: 0 0 46px rgba(255, 255, 255, 0.09); z-index: 2; }
+.fluss-h-haus-zahl { font-size: 32px; line-height: 1; letter-spacing: -0.04em; }
+.fluss-h-haus-einheit { font-size: 12.5px; line-height: 1; color: var(--text-3); }
+.fluss-h-davon { position: absolute; left: calc(50% + 64px); right: 8px; transform: translateY(-50%); font-size: 11.5px; line-height: 1.3; color: var(--text-3); z-index: 2; }
+.fluss-h-knoten:focus-visible .fluss-h-ring, .fluss-h-haus:focus-visible .fluss-h-haus-ring { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18); }
+.home-kurve-legende-unten { display: none; }
+
+@media (max-width: 720px) {
+  /* ------------------------------------------------------------------ Grund und Seitenrand */
+  .dashboard-bg { background: var(--deep); }
+  .report-main, .home { padding: 10px 16px calc(86px + env(safe-area-inset-bottom)); }
+  .report-main { gap: 14px; font-size: 15px; }
+
+  /* ------------------------------------------------------------------ Bereichsleiste unten */
+  .fussleiste {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
+    background: rgba(8, 36, 49, 0.9);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    backdrop-filter: blur(20px) saturate(1.4);
+    border-top: 1px solid var(--line-1);
+  }
+  .fussleiste-punkt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 1px 0; color: var(--text-3); min-width: 0; }
+  .fussleiste-zeichen { display: flex; align-items: center; justify-content: center; width: 50px; height: 30px; border-radius: 15px; transition: background 0.15s, color 0.15s; }
+  .fussleiste-wort { font-size: 10.5px; line-height: 1; letter-spacing: 0.01em; white-space: nowrap; }
+  .fussleiste-an { color: var(--text-1); }
+  .fussleiste-an .fussleiste-zeichen { background: var(--amber); color: var(--petrol); }
+  .fussleiste-punkt:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; border-radius: 10px; box-shadow: none; }
+
+  /* ------------------------------------------------------------------ Kopf der Unterseiten */
+  .report-header { border: 0; border-radius: 0; background: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; padding: 4px 0 0; min-height: 0; gap: 12px; }
+  .report-header > div:first-child { gap: 10px; }
+  .report-header nav, .home-kopf nav { display: none; }
+  .report-header .brand-name { display: none; }
+  .bereichstitel { display: block; font-size: 26px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--text-1); }
+
+  /* Zeitraum: eine Zeile aus zwei Schaltern, links der Tag, rechts die Spanne. */
+  /* Der Tag steht neben dem Bereichsnamen, die Spanne als eigene Zeile darunter. Der Rahmen um
+     beide löst sich auf (`display: contents`), damit sie Kinder des Kopfes werden. */
+  .report-header { flex-wrap: wrap; align-items: center; }
+  .report-header > div:first-child { flex: 1 1 auto; min-width: 0; }
+  .report-header-right { display: contents; }
+  .report-header-right > * { order: 2; flex: 1 1 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+  .report-header-right > .report-nav { order: 1; flex: 0 0 auto; }
+  .report-header-right > .report-periods { order: 3; }
+  /* Ein Abzeichen im Kopf (Prognosestufe) bricht um, statt am Rand abgeschnitten zu werden. */
+  .report-header-right > .truncate { overflow: visible; }
+  .report-header-right > .truncate > * { display: inline-block; max-width: 100%; white-space: normal; line-height: 1.35; }
+  .report-nav, .report-periods { border: 0; border-radius: 11px; background: rgba(255, 255, 255, 0.07); padding: 3px; min-height: 40px; }
+  .report-periods { gap: 2px; }
+  .report-nav button { min-width: 34px; min-height: 34px; font-size: 16px; }
+  .report-nav .report-anchor { min-width: 0; flex: 0 1 auto; padding: 0 4px; font-size: 13.5px; white-space: nowrap; }
+  .report-anchor-lang { display: none; }
+  .report-anchor-kurz { display: inline; }
+  .report-periods button { flex: 1; min-height: 34px; padding: 0 4px; font-size: 13.5px; border-radius: 8px !important; }
+
+  /* Reiter: eine rollbare Reihe von Pillen, über den Seitenrand hinaus. */
+  .area-tabs { border-bottom: 0; margin: 0 -16px; overflow: visible; }
+  .area-tabs-row {
+    overflow-x: auto;
+    gap: 8px;
+    padding: 2px 16px;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 30px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 30px), transparent 100%);
+  }
+  .area-tabs-row::-webkit-scrollbar { display: none; }
+  .area-tab { padding: 9px 15px; margin: 0; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.07); font-size: 14px; line-height: 1.2; color: var(--text-2); }
+  .area-tab-an { background: var(--text-1); color: var(--deep); font-weight: 600; }
+
+  /* Ansichten eines Reiters: ein Schalter über die ganze Breite. */
+  .ansichten { display: flex; align-self: stretch; border: 0; border-radius: 11px; background: rgba(255, 255, 255, 0.07); padding: 3px; gap: 2px; }
+  .ansicht { flex: 1; text-align: center; padding: 9px 8px; border-radius: 8px; font-size: 14px; }
+
+  /* ------------------------------------------------------------------ Karten */
+  .card { border: 0; border-radius: 16px; padding: 16px; }
+  .card-head { flex-wrap: wrap; row-gap: 3px; }
+  .card-head h2.kicker { font-family: var(--font-sans); font-size: 16.5px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; text-transform: none; color: var(--text-1); }
+  .card-head .card-head-right { flex-basis: 100%; font-size: 13px; line-height: 1.4; white-space: normal; overflow: visible; text-overflow: clip; }
+
+  /* Kleine Schrift eine Stufe größer. Am Rechner liest man 12 Punkt aus sechzig Zentimetern, am
+     Handy aus dreißig, aber im Gehen. */
+  .report-main .text-\[10px\] { font-size: 11px; }
+  .report-main .text-\[11px\] { font-size: 12px; }
+  .report-main .text-\[12px\] { font-size: 13.5px; }
+  .report-main .text-\[13px\] { font-size: 14.5px; }
+
+  /* ------------------------------------------------------------------ Kennzahlen
+     Eine Fläche statt sechs Rahmen. Die erste Zahl führt; die übrigen stehen zweispaltig
+     darunter. Bleibt am Ende eine allein, nimmt sie die ganze Zeile. */
+  .kpi-grid, .kpi-handy { gap: 0 20px; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--surface-2); border-radius: 16px; padding: 4px 16px; }
+  .kpi-grid > .card, .kpi-handy > .card { background: none; border-radius: 0; padding: 13px 0 14px !important; gap: 5px !important; border-top: 1px solid var(--line-1); }
+  .kpi-grid > .card:first-child, .kpi-handy > .card:first-child { grid-column: 1 / -1; border-top: 0; padding: 14px 0 16px !important; gap: 8px !important; }
+  .kpi-grid > .card:last-child:nth-child(even), .kpi-handy > .card:last-child:nth-child(even) { grid-column: 1 / -1; }
+  .kpi-grid > .card > .kicker, .kpi-handy > .card > .kicker { font-size: 11px !important; letter-spacing: 0.1em; }
+  .kpi-grid > .card > .mono, .kpi-handy > .card > .mono { font-size: 25px; white-space: nowrap; }
+  .kpi-grid > .card > .mono > span, .kpi-handy > .card > .mono > span { font-size: 13.5px; }
+  .kpi-grid > .card:first-child > .mono, .kpi-handy > .card:first-child > .mono { font-size: 48px; letter-spacing: -0.04em; }
+  .kpi-grid > .card:first-child > .mono > span, .kpi-handy > .card:first-child > .mono > span { font-size: 18px; margin-left: 8px; }
+  .kpi-grid > .card > .line-clamp-2, .kpi-handy > .card > .line-clamp-2 { font-size: 13px; }
+  .kpi-grid > .card:first-child > .line-clamp-2, .kpi-handy > .card:first-child > .line-clamp-2 { font-size: 14.5px; color: var(--text-2); }
+
+  .report-row { gap: 14px; }
+
+  /* ------------------------------------------------------------------ Methode */
+  .methode { padding: 0; }
+  .methode > summary { padding: 15px 16px; }
+  .methode > summary .kicker { font-family: var(--font-sans); font-size: 15px; font-weight: 600; letter-spacing: -0.01em; text-transform: none; color: var(--text-1); }
+  .methode-kurz { font-size: 13px; }
+  .methode-inhalt { padding: 0 16px 16px; }
+  .methode-absatz, .methode-inhalt ul { font-size: 14.5px; line-height: 1.5; }
+
+  /* ------------------------------------------------------------------ Startseite
+     Reihenfolge: Kopf, der Satz, das Flussbild, die Kurve des Tages, Puffer und Fahrplan, die
+     Zahlen des Tages, die Schalter. */
+  .home { gap: 14px; }
+  .home-kopf { order: 1; flex-wrap: nowrap; align-items: center; gap: 12px; }
+  .home-kopf > div:first-child { flex: 0 1 auto; }
+  .home-uhr { gap: 10px; align-items: baseline; flex: none; }
+  .home .brand-name { font-size: 17px; }
+  /* „live" und „demo" sagt am Handy der Punkt; ausgeschrieben wird nur die Störung. */
+  .home-status-wort:not([data-stoerung="true"]) { display: none; }
+  .home-zeit { font-size: 20px; }
+  .home-aussen { font-size: 13.5px; }
+  .home-satz-block { order: 2; }
+  .home-satz { font-size: 21px; line-height: 1.27; font-weight: 500; letter-spacing: -0.015em; }
+  .home-satz-zeile { gap: 5px; }
+  .fluss-h { order: 3; }
+  .home-kurve { order: 4; min-height: 0; gap: 10px; padding: 14px 12px 12px; border-radius: 16px; background: var(--surface-2); }
+  .home-kurve-bild { flex: none; height: 262px; }
+  .home-kurve-legende-unten { display: flex; flex-wrap: wrap; gap: 5px 14px; padding: 0 2px; }
+  .home-tage { border: 0; border-radius: 11px; background: rgba(255, 255, 255, 0.07); padding: 3px; gap: 2px; flex: 1; }
+  .home-tag { flex: 1; padding: 8px 6px; border-radius: 8px; font-size: 14px; }
+  .home-rail { order: 5; gap: 14px; }
+  .home-fuss { order: 6; gap: 14px; }
+  .home-puffer-flach, .home-kachel { border: 0; border-radius: 16px; background: var(--surface-2); padding: 16px; }
+  .home-puffer-zahl { font-size: 30px; }
+  .home-puffer-fuehler { font-size: 14px; height: 19px; }
+  .home-puffer-ort { font-size: 11px; }
+  .home-tank-quer { height: 20px; border-radius: 6px; }
+  /* Die Zahlen des Tages: eine Fläche, zwei Spalten, wie die Kennzahlen der Unterseiten. */
+  .home-heute { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; background: var(--surface-2); border-radius: 16px; padding: 4px 16px; }
+  .home-heute-wert { flex-direction: column-reverse; gap: 5px; padding: 13px 0 14px; border-top: 1px solid var(--line-1); }
+  .home-heute-wert:nth-child(-n + 2) { border-top: 0; }
+  .home-heute-zahl { font-size: 25px; }
+  .home-heute-wort { font-size: 13px; color: var(--text-3); }
+  .home-dock { background: var(--surface-2); border-radius: 16px; padding: 14px 12px 12px; }
+  .home-dock-knopf { width: 48px; height: 48px; border-radius: 14px; }
+  .home-dock-item { width: 48px; }
+
+  /* ------------------------------------------------------------------ Umschalter und Listen
+     `.spannen` ist der Schalter der Zeitraumtabelle; dieselbe Form haben die Zeitwahl im Kopf
+     und der Tagesschalter der Startseite. */
+  .spannen { display: flex; gap: 2px; padding: 3px; border-radius: 11px; background: rgba(255, 255, 255, 0.07); }
+  .spanne { flex: 1; min-height: 34px; padding: 0 4px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
+  .spanne-an { background: var(--amber); color: var(--petrol); }
+  .spannen-liste { margin: 0; display: flex; flex-direction: column; }
+  .spannen-zeile { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 11px 0; border-top: 1px solid var(--line-1); }
+  .spannen-zeile:first-child { border-top: 0; padding-top: 2px; }
+  .spannen-zeile:last-child { padding-bottom: 0; }
+  .spannen-zeile dt { font-size: 14.5px; color: var(--text-2); min-width: 0; }
+  .spannen-zeile dd { margin: 0; font-size: 16px; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ Tabellen als Listen
+     Eine Tabelle mit fünf Spalten hat am Handy 60 Punkte je Spalte. Hier wird aus jeder Zeile ein
+     kleiner Block: oben, was die Zeile ist, und die Zahl, um die es geht; darunter der Rest. Die
+     Kopfzeile entfällt, deshalb tragen die Zellen, deren Einheit nichts sagt, ihr Wort bei sich. */
+  .kosten-tabelle, .kosten-tabelle tbody, .fp-entscheidungen, .fp-entscheidungen tbody, .nb-tabelle, .nb-tabelle tbody, .fenster-tabelle, .fenster-tabelle tbody { display: block; }
+  .kosten-tabelle thead, .fp-entscheidungen thead, .nb-tabelle thead, .fenster-tabelle thead { display: none; }
+
+  /* Kosten: Posten und Betrag, darunter Menge, Preis und der Verweis. */
+  .kosten-tabelle tr { display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "name name betrag" "menge preis seite"; gap: 3px 12px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--line-1); }
+  .kosten-tabelle tr:first-child { border-top: 0; }
+  .kosten-tabelle td { padding: 0 !important; border: 0 !important; text-align: left !important; white-space: nowrap; }
+  .kosten-tabelle td:nth-child(1) { grid-area: name; font-size: 15px; white-space: normal; }
+  .kosten-tabelle td:nth-child(2) { grid-area: menge; font-size: 13px; color: var(--text-3); }
+  .kosten-tabelle td:nth-child(3) { grid-area: preis; font-size: 13px; color: var(--text-3); }
+  .kosten-tabelle td:nth-child(4) { grid-area: betrag; justify-self: end; font-size: 17px; }
+  .kosten-tabelle td:nth-child(5) { grid-area: seite; justify-self: end; font-size: 13px; }
+
+  /* Fahrplan, die Entscheidungen: Zeit und Zustand, darunter die drei Zahlen, darunter warum. */
+  .fp-entscheidungen tr { display: grid; grid-template-columns: auto auto auto minmax(0, 1fr); gap: 4px 14px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--line-1); }
+  .fp-entscheidungen tr:first-child { border-top: 0; padding-top: 2px; }
+  .fp-entscheidungen td { padding: 0 !important; border: 0 !important; text-align: left !important; white-space: nowrap; font-size: 13.5px; }
+  .fp-entscheidungen td:nth-child(1) { grid-column: 1 / 4; grid-row: 1; font-size: 15px; color: var(--text-1); }
+  .fp-entscheidungen td:nth-child(5) { grid-column: 4; grid-row: 1; justify-self: end; font-size: 14px; }
+  .fp-entscheidungen td:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .fp-entscheidungen td:nth-child(3) { grid-column: 2; grid-row: 2; }
+  .fp-entscheidungen td:nth-child(4) { grid-column: 3; grid-row: 2; }
+  .fp-entscheidungen td:nth-child(6) { grid-column: 4; grid-row: 2; justify-self: end; color: var(--text-3); }
+  .fp-entscheidungen td:nth-child(6)::before { content: "Ofen "; }
+  .fp-entscheidungen td:nth-child(7) { grid-column: 1 / -1; grid-row: 3; white-space: normal; font-size: 13.5px; line-height: 1.4; }
+
+  /* Rückblick, die Linien: Name und Kosten, darunter Strom, Preis und Laufzeit in einer Zeile. */
+  .nb-tabelle-rahmen { overflow: visible; }
+  .nb-tabelle tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 14px; padding: 12px 0; border-top: 1px solid var(--line-1); }
+  .nb-tabelle tr:first-child { border-top: 0; padding-top: 2px; }
+  .nb-tabelle th[scope="row"] { flex: 1 1 calc(100% - 96px); padding: 0; border: 0; text-align: left; font-size: 15px; font-weight: 400; white-space: normal; color: var(--text-1); }
+  .nb-tabelle td { padding: 0; border: 0; font-size: 13px; color: var(--text-3); white-space: nowrap; }
+  .nb-tabelle td:nth-child(2) { margin-left: auto; font-size: 17px; color: var(--text-1); }
+
+  /* Offenes Fenster: Raum und Wärme, darunter die beiden Dauern mit ihrem Wort. */
+  .fenster-tabelle tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 14px; padding: 11px 0; border-top: 1px solid var(--line-1); }
+  .fenster-tabelle tr:first-child { border-top: 0; }
+  .fenster-tabelle td { padding: 0 !important; border: 0 !important; font-size: 13px; color: var(--text-3); white-space: nowrap; text-align: left !important; }
+  .fenster-tabelle td:nth-child(1) { flex: 1 1 calc(100% - 96px); font-size: 15px; color: var(--text-1); }
+  .fenster-tabelle td:nth-child(4) { order: -1; margin-left: auto; font-size: 16px; color: var(--text-1); }
+  .fenster-tabelle td:nth-child(1) { order: -2; }
+  .fenster-tabelle td:nth-child(2)::after { content: " offen"; font-family: var(--font-sans); }
+  .fenster-tabelle td:nth-child(3)::after { content: " davon geheizt"; font-family: var(--font-sans); }
+
+  /* ------------------------------------------------------------------ Kosten, die Kopfzeile
+     Vier Beträge nebeneinander liefen bei 34 Punkt Schrift ineinander. Jetzt wie die Kennzahlen:
+     der bezahlte Betrag führt, die übrigen stehen darunter. */
+  .cost-line { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+  .cost-line > * { padding: 13px 0 14px !important; border-left: 0 !important; border-right: 0 !important; border-top: 1px solid var(--line-1); gap: 5px; }
+  .cost-line > *:first-child { grid-column: 1 / -1; border-top: 0; padding-top: 2px !important; gap: 8px; }
+  .cost-line > *:last-child:nth-child(even) { grid-column: 1 / -1; }
+  .cost-line .mono { font-size: 25px; white-space: nowrap; }
+  .cost-line > *:first-child .mono { font-size: 48px; letter-spacing: -0.04em; }
+  .cost-line .line-clamp-2 { font-size: 13px; -webkit-line-clamp: 3; }
+
+  /* ------------------------------------------------------------------ Räume
+     Neun Kacheln von 250 Punkten Höhe waren fünf Bildschirme. Am Handy liegt der Tagesverlauf
+     neben der Zahl statt darunter: links Name, Temperatur und Ziel, rechts die Kurve des Tages. */
+  .rooms-grid { gap: 10px; }
+  .raum-kachel { grid-template-columns: minmax(0, 1fr) 42%; grid-template-rows: auto auto auto; grid-template-areas: "kopf kopf" "werte verlauf" "fuss fuss"; gap: 8px 16px; padding: 14px 16px 12px; border-radius: 16px; }
+  .raum-kopf { grid-area: kopf; }
+  .raum-kopf > span:first-child { font-size: 16.5px; font-weight: 600; }
+  .raum-werte { grid-area: werte; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 7px; }
+  .raum-werte .text-\[34px\] { font-size: 36px; }
+  .raum-ziel { flex-direction: row; align-items: center; gap: 8px; }
+  .raum-ziel > span { white-space: nowrap; font-size: 12px; }
+  .raum-ziel [aria-hidden="true"] { display: none; }
+  .raum-verlauf { grid-area: verlauf; justify-content: flex-end; }
+  .raum-fuss { grid-area: fuss; font-size: 12px; }
+  .raum-kachel-schale .raum-fuss { padding-right: 86px; }
+  .raum-protokoll-knopf { right: 14px; bottom: 9px; padding: 4px 9px; font-size: 11px; border-radius: 8px; }
+  /* Die Tabelle der Räume zeigt am Handy vier Spalten: Raum, Ist, Ziel, Abweichung. */
+  .rooms-table table { min-width: 0; }
+  .rooms-table th:nth-child(2), .rooms-table td:nth-child(2), .rooms-table th:nth-child(n + 6), .rooms-table td:nth-child(n + 6) { display: none; }
+  .rooms-table td, .rooms-table th { white-space: nowrap; }
+
+  /* Die Fahrplankacheln haben Spannen als Wert („2,8 bis 3,6"); die brauchen eine Stufe weniger. */
+  .kpi-handy > .card > .mono { font-size: 21px; }
+
+  .nur-breit { display: none; }
+
+  /* ------------------------------------------------------------------ Haus
+     Die Konsole liegt quer und rollt. Der Block mit den Alarmknöpfen braucht Platz für zwei
+     Knöpfe nebeneinander; Fenster und Blätter enden über der Bereichsleiste. */
+  .haus-block { min-width: 150px; border-radius: 14px; }
+  .haus-block:has(button) { min-width: 228px; }
+  .haus-pop { bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .haus-panel { bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .haus-buehne-huelle { min-height: 58dvh; border-radius: 16px; overflow: hidden; }
+
+  /* ------------------------------------------------------------------ Anlage
+     Das Schema ist eine Zeichnung im Querformat und rollt zur Seite. Der Hinweis sagt es, statt
+     dass die rechte Hälfte unbemerkt fehlt. */
+  .anlage-buehne { border-radius: 20px; box-shadow: none; }
+  .anlage-innen { border-radius: 19px; }
+  .anlage-buehne::after { content: "zur Seite wischen: Strom, Erzeuger, Speicher, Verbraucher  ›"; display: block; padding: 9px 12px 11px; text-align: center; font-size: 12.5px; color: var(--text-3); }
+  .anlage-fuss { grid-template-columns: minmax(0, 1fr); padding: 0; }
+}
