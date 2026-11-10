@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 
-from hems_core.balance import balance
+from hems_core.balance import balance, pv_bei_nacht
 from hems_core.domain import BufferTemperatures, EnergySnapshot, HemsConfig, Measurement, Quality
 from hems_core.protocol import RawReading
 
@@ -18,8 +19,13 @@ POWER_KEYS = (
 
 
 class LiveState:
-    def __init__(self, cfg: HemsConfig) -> None:
+    def __init__(
+        self, cfg: HemsConfig, sonnenhoehe: Callable[[datetime], float] | None = None
+    ) -> None:
         self.cfg = cfg
+        #: Sonnenhöhe in Grad am Ort des Hauses. Damit wird eine nachts fehlende Erzeugung zu
+        #: null statt zu einer Lücke (`pv_bei_nacht`). Ohne sie bleibt alles wie gemeldet.
+        self.sonnenhoehe = sonnenhoehe
         self.readings: dict[str, RawReading] = {}
         self.updated_at: datetime | None = None
 
@@ -55,7 +61,11 @@ class LiveState:
     def snapshot(self, now: datetime | None = None) -> EnergySnapshot:
         now = now or datetime.now(UTC)
         t = self.cfg.timeouts
-        pv = self._m("pv_power_kw", now, t.power_s)
+        pv = pv_bei_nacht(
+            self._m("pv_power_kw", now, t.power_s),
+            now,
+            self.sonnenhoehe(now) if self.sonnenhoehe else None,
+        )
         grid = self._m("grid_power_kw", now, t.power_s)
         bat = self._m("battery_power_kw", now, t.battery_s)
         hp = self._m("heat_pump_power_kw", now, t.power_s)

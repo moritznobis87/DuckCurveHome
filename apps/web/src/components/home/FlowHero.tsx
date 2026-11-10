@@ -108,12 +108,26 @@ function Knoten({ k, href, value, unit, label, sub, m, nowMs, gross = false, fue
  * Nur wenn die beiden ueberhaupt etwas nehmen: Steht alles still, ist die Grundlast der
  * Hausverbrauch, und die Zeile wuerde dieselbe Zahl ein zweites Mal sagen.
  */
+/**
+ * Was unter der Wärmepumpe steht: „läuft" nur, wenn sie nach der einen Festlegung des Hauses
+ * läuft (`running_threshold_kw`, vom Dienst entschieden).
+ *
+ * Bis zum 10.11.2026 stand hier „läuft", sobald 0,05 kW flossen. Die Maschine zieht im Stillstand
+ * rund 0,1 kW für Steuerung und Pumpe, und so stand unter dem Satz „Wärmepumpe aus" ein Knoten,
+ * der „läuft" sagte (gesehen im Haus am 10.11.2026). Was sie im Stillstand zieht, heißt
+ * Bereitschaft.
+ */
+export function wpWort(kwJetzt: number, laeuft: boolean | undefined): string {
+  if (laeuft) return "läuft";
+  return kwJetzt >= 0.05 ? "Bereitschaft" : "steht";
+}
+
 export function grundlast(rest: number | null, andere: number): string | undefined {
   if (rest === null || andere < 0.05) return undefined;
   return `davon ${kw(rest)} kW Grundlast`;
 }
 
-export function FlowHero({ snapshot, nowMs, pvPeakKw }: { snapshot: EnergySnapshot | null; nowMs: number; pvPeakKw: number }) {
+export function FlowHero({ snapshot, nowMs, pvPeakKw, wpLaeuft }: { snapshot: EnergySnapshot | null; nowMs: number; pvPeakKw: number; wpLaeuft?: boolean }) {
   const s = snapshot;
   const v = useMemo(() => {
     const num = (m?: Measurement | null) => (frisch(m) ? (m!.value as number) : 0);
@@ -163,7 +177,7 @@ export function FlowHero({ snapshot, nowMs, pvPeakKw }: { snapshot: EnergySnapsh
       <Knoten k="grid" href="/strom" value={kw(einspeisung ? v.exportKw : v.importKw)} unit="kW" label="Netz" sub={einspeisung && v.exportKw >= 0.05 ? "Einspeisung" : v.importKw >= 0.05 ? "Bezug" : undefined} m={s?.grid_power_kw} nowMs={nowMs} />
       <Knoten k="house" href="/strom" value={kw(s?.house_power_kw.value)} unit="kW" label="Haus" sub={grundlast(v.rest, v.hp + v.ev)} m={s?.house_power_kw} nowMs={nowMs} gross />
       <Knoten k="bat" href="/strom/speicher" value={soc != null ? String(Math.round(soc * 100)) : "-"} unit="%" label="Speicher" sub={v.charge >= 0.05 ? `lädt ${kw(v.charge)} kW` : v.discharge >= 0.05 ? `gibt ${kw(v.discharge)} kW` : undefined} m={s?.battery_soc} nowMs={nowMs} fuell={soc} />
-      <Knoten k="hp" href="/waerme" value={kw(s?.heat_pump_power_kw.value)} unit="kW" label="Wärmepumpe" sub={v.hp >= 0.05 ? "läuft" : undefined} m={s?.heat_pump_power_kw} nowMs={nowMs} />
+      <Knoten k="hp" href="/waerme" value={kw(s?.heat_pump_power_kw.value)} unit="kW" label="Wärmepumpe" sub={wpLaeuft || v.hp >= 0.05 ? wpWort(v.hp, wpLaeuft) : undefined} m={s?.heat_pump_power_kw} nowMs={nowMs} />
       <Knoten k="ev" href="/strom/wallbox" value={kw(s?.ev_power_kw.value)} unit="kW" label="Wallbox" sub={v.ev >= 0.05 ? "lädt" : undefined} m={s?.ev_power_kw} nowMs={nowMs} />
     </div>
   );

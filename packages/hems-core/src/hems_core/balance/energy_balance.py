@@ -15,6 +15,28 @@ from hems_core.domain.config import BalanceConfig, PvRuleConfig
 from hems_core.domain.measurement import Measurement
 from hems_core.domain.quality import Quality
 
+#: Unter dieser Sonnenhöhe erzeugt keine Anlage Strom. Drei Grad unter dem Horizont und nicht
+#: null: in der Dämmerung kommt noch Streulicht an, und dort soll eine fehlende Messung eine
+#: fehlende Messung bleiben.
+NACHT_UNTER_GRAD = -3.0
+
+
+def pv_bei_nacht(pv: Measurement, now: datetime, sonnenhoehe_grad: float | None) -> Measurement:
+    """Nachts ist eine fehlende Erzeugung null und keine Lücke.
+
+    Wechselrichter schlafen nachts, und manche Quellen melden dann nichts mehr oder „nicht
+    verfügbar". Ohne Erzeugung lässt sich der Hausverbrauch nicht aus Sonne, Netz und Speicher
+    bilden, und auf der Startseite stand beim Haus ein Strich, obwohl Netz und Wärmepumpe Werte
+    hatten (gesehen im Haus am 10.11.2026 um 20:46). Steht die Sonne sicher unter dem Horizont,
+    ist die Erzeugung bekannt, auch wenn niemand sie meldet: null.
+
+    Ein brauchbarer Messwert bleibt, wie er ist, auch nachts. Ohne bekannte Sonnenhöhe ändert
+    sich nichts. Die Herkunft des Werts sagt, dass er aus dem Sonnenstand folgt.
+    """
+    if pv.usable or sonnenhoehe_grad is None or sonnenhoehe_grad > NACHT_UNTER_GRAD:
+        return pv
+    return Measurement.derived(0.0, now, "nacht:sonne-unter-horizont")
+
 
 @dataclass(frozen=True)
 class BalanceResult:

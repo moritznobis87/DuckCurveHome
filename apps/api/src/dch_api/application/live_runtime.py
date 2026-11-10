@@ -144,6 +144,7 @@ from hems_core.forecasting import (
     kanonisch,
     preis_lauf,
     pv_lauf,
+    solar_elevation_deg,
     stand_vor,
     wetter_lauf,
 )
@@ -197,7 +198,11 @@ class LiveRuntime:
         self.hub = hub
         self.forecasts = forecasts
         self.broker = SseBroker()
-        self.live = LiveState(self.hems)
+        ort = config.site.location
+        self.live = LiveState(
+            self.hems,
+            sonnenhoehe=lambda t: solar_elevation_deg(t, ort.latitude, ort.longitude),
+        )
         self.tracker = HeatPumpTracker(self.hems.heat_pump)
         self.controller = HeatPumpController(self.hems)
         self.mode = OperatingMode(system_mode=SystemMode.AUTO, auto_profile=AutoProfile.SMART)

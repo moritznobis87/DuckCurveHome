@@ -35,6 +35,54 @@ def test_snapshot_derives_house_and_ages_values() -> None:
     assert later.house_power_kw.quality is Quality.UNAVAILABLE
 
 
+def test_nachts_ist_eine_fehlende_erzeugung_null_und_das_haus_hat_eine_zahl() -> None:
+    """Gesehen im Haus am 10.11.2026 um 20:46: Netz 0,6 kW, beim Haus ein Strich.
+
+    Die Erzeugung meldete nachts nichts, und ohne sie ließ sich der Hausverbrauch nicht bilden.
+    Steht die Sonne unter dem Horizont, ist die Erzeugung null, auch ungemeldet.
+    """
+    nacht = datetime(2026, 11, 10, 19, 46, tzinfo=UTC)
+    ohne_pv = [
+        RawReading(
+            key="pv_power_kw",
+            value=None,
+            observed_at=nacht,
+            quality=Quality.UNAVAILABLE,
+            source="ha:pv",
+        ),
+        reading("grid_power_kw", 0.6, nacht),
+        reading("battery_power_kw", 0.0, nacht),
+        reading("heat_pump_power_kw", 0.1, nacht),
+        reading("ev_power_kw", 0.0, nacht),
+    ]
+
+    ohne_sonnenstand = LiveState(HemsConfig())
+    ohne_sonnenstand.apply(ohne_pv)
+    alt = ohne_sonnenstand.snapshot(nacht)
+    assert alt.pv_power_kw.value is None and alt.house_power_kw.value is None
+
+    ls = LiveState(HemsConfig(), sonnenhoehe=lambda _t: -40.0)
+    ls.apply(ohne_pv)
+    snap = ls.snapshot(nacht)
+    assert snap.pv_power_kw.value == 0.0 and snap.pv_power_kw.quality is Quality.DERIVED
+    assert snap.pv_power_kw.source == "nacht:sonne-unter-horizont"
+    assert snap.house_power_kw.value == 0.6 and snap.house_power_kw.quality is Quality.DERIVED
+    assert snap.base_load_kw.value == 0.5
+
+    # Am Tag bleibt eine fehlende Erzeugung eine Lücke: dort ist sie nicht bekannt.
+    tag = LiveState(HemsConfig(), sonnenhoehe=lambda _t: 25.0)
+    tag.apply(ohne_pv)
+    assert tag.snapshot(nacht).house_power_kw.value is None
+
+    # Auch ein veralteter Wert weicht nachts der Null, ein frischer bleibt stehen.
+    alt_wert = LiveState(HemsConfig(), sonnenhoehe=lambda _t: -40.0)
+    alt_wert.apply([reading("pv_power_kw", 2.1, nacht - timedelta(hours=3))])
+    assert alt_wert.snapshot(nacht).pv_power_kw.value == 0.0
+    frisch = LiveState(HemsConfig(), sonnenhoehe=lambda _t: -40.0)
+    frisch.apply([reading("pv_power_kw", 0.02, nacht)])
+    assert frisch.snapshot(nacht).pv_power_kw.value == 0.02
+
+
 def test_newer_reading_wins_and_actuators_map() -> None:
     ls = LiveState(HemsConfig())
     ls.apply(

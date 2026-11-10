@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import type { EnergySnapshot, Measurement } from "@/lib/api/models";
 import { kw } from "@/lib/format";
 import { Icon } from "@/components/ui/Icon";
-import { FARBE, frisch, grundlast, kante, type Key } from "./FlowHero";
+import { FARBE, frisch, grundlast, kante, wpWort, type Key } from "./FlowHero";
 
 /**
  * Der Energiefluss als Bild, für das Handy gezeichnet.
@@ -29,9 +29,9 @@ const LAGE: Record<Key, { x: number; y: number }> = {
   pv: { x: 17, y: 14 },
   grid: { x: 83, y: 14 },
   house: { x: 50, y: 46 },
-  bat: { x: 17, y: 78 },
-  hp: { x: 50, y: 78 },
-  ev: { x: 83, y: 78 },
+  bat: { x: 17, y: 75 },
+  hp: { x: 50, y: 75 },
+  ev: { x: 83, y: 75 },
 };
 
 const ZEICHEN: Record<Key, string> = { pv: "sun", grid: "grid", house: "home", bat: "battery", hp: "pump", ev: "car" };
@@ -60,6 +60,9 @@ function Knoten({
   fuell?: number | null;
 }) {
   const ok = frisch(m);
+  // Ein Knoten ohne Zahl sagt, dass die Messung fehlt. Ein Strich mit Einheit („- kW") sah aus
+  // wie ein Wert, den es nicht gibt, und der Zustand darunter („hält", „steht") wie eine Auskunft.
+  const fehlt = !m || m.value === null;
   const f = ok ? (farbe ?? FARBE[k]) : "var(--text-3)";
   return (
     <Link
@@ -73,18 +76,20 @@ function Knoten({
         <Icon name={ZEICHEN[k]} size={24} color={f} />
       </span>
       <span className="fluss-h-text">
-        <span className="mono fluss-h-zahl" style={{ color: ok ? "var(--text-1)" : "var(--text-3)" }}>
-          {wert}
-          <span className="fluss-h-einheit">{einheit}</span>
-        </span>
+        {fehlt ? null : (
+          <span className="mono fluss-h-zahl" style={{ color: ok ? "var(--text-1)" : "var(--text-3)" }}>
+            {wert}
+            <span className="fluss-h-einheit">{einheit}</span>
+          </span>
+        )}
         <span className="fluss-h-name">{name}</span>
-        {wort ? <span className="fluss-h-wort">{wort}</span> : null}
+        {fehlt ? <span className="fluss-h-wort">kein Messwert</span> : wort ? <span className="fluss-h-wort">{wort}</span> : null}
       </span>
     </Link>
   );
 }
 
-export function FlowHandy({ snapshot, pvPeakKw }: { snapshot: EnergySnapshot | null; pvPeakKw: number }) {
+export function FlowHandy({ snapshot, pvPeakKw, wpLaeuft }: { snapshot: EnergySnapshot | null; pvPeakKw: number; wpLaeuft?: boolean }) {
   const s = snapshot;
   const v = useMemo(() => {
     const num = (m?: Measurement | null) => (frisch(m) ? (m!.value as number) : 0);
@@ -117,7 +122,20 @@ export function FlowHandy({ snapshot, pvPeakKw }: { snapshot: EnergySnapshot | n
   const sonne = Math.max(0, Math.min(1, v.pv / Math.max(1, pvPeakKw)));
   const soc = s?.battery_soc.value ?? null;
   const hausOk = frisch(s?.house_power_kw);
+  // Der Hausverbrauch wird aus Sonne, Netz und Speicher gebildet. Fehlt eine der drei, gibt es
+  // ihn nicht, und der Kreis sagt das in Worten statt mit einem Strich.
+  const hausFehlt = !s || s.house_power_kw.value === null;
   const davon = grundlast(v.rest, v.hp + v.ev);
+  // Welche der drei Eingänge fehlt, steht neben dem Kreis: dann ist klar, wo zu suchen ist.
+  const esFehlt = hausFehlt
+    ? [
+        ["Sonne", s?.pv_power_kw],
+        ["Netz", s?.grid_power_kw],
+        ["Speicher", s?.battery_power_kw],
+      ]
+        .filter(([, m]) => !frisch(m as Measurement | undefined))
+        .map(([name]) => name as string)
+    : [];
 
   return (
     <div className="fluss-h" role="group" aria-label="Energiefluss zwischen Sonne, Netz, Haus, Speicher, Wärmepumpe und Wallbox">
@@ -160,16 +178,22 @@ export function FlowHandy({ snapshot, pvPeakKw }: { snapshot: EnergySnapshot | n
       />
 
       {/* Das Haus: die Zahl steht im Kreis. Unter ihm laufen drei Leitungen, da ist kein Platz für Text. */}
-      <Link href="/strom" className="fluss-h-haus" style={{ left: `${LAGE.house.x}%`, top: `${LAGE.house.y}%` }} aria-label={`Haus: ${kw(s?.house_power_kw.value)} kW${davon ? `, ${davon}` : ""}. Details öffnen`}>
+      <Link href="/strom" className="fluss-h-haus" style={{ left: `${LAGE.house.x}%`, top: `${LAGE.house.y}%` }} aria-label={hausFehlt ? "Haus: Verbrauch nicht bekannt. Details öffnen" : `Haus: ${kw(s?.house_power_kw.value)} kW${davon ? `, ${davon}` : ""}. Details öffnen`}>
         <span className="fluss-h-haus-ring" style={{ borderColor: hausOk ? "var(--text-1)" : "var(--text-3)" }}>
-          <Icon name="home" size={20} color={hausOk ? "var(--text-2)" : "var(--text-3)"} />
-          <span className="mono fluss-h-haus-zahl" style={{ color: hausOk ? "var(--text-1)" : "var(--text-3)" }}>{kw(s?.house_power_kw.value)}</span>
-          <span className="fluss-h-haus-einheit">kW</span>
+          <Icon name="home" size={hausFehlt ? 26 : 20} color={hausOk ? "var(--text-2)" : "var(--text-3)"} />
+          {hausFehlt ? (
+            <span className="fluss-h-haus-fehlt">Verbrauch nicht bekannt</span>
+          ) : (
+            <>
+              <span className="mono fluss-h-haus-zahl" style={{ color: hausOk ? "var(--text-1)" : "var(--text-3)" }}>{kw(s?.house_power_kw.value)}</span>
+              <span className="fluss-h-haus-einheit">kW</span>
+            </>
+          )}
         </span>
       </Link>
-      {davon ? (
+      {davon || esFehlt.length ? (
         <span className="fluss-h-davon" style={{ top: `${LAGE.house.y}%` }}>
-          {davon}
+          {davon ?? `es fehlt: ${esFehlt.join(", ")}`}
         </span>
       ) : null}
 
@@ -184,7 +208,7 @@ export function FlowHandy({ snapshot, pvPeakKw }: { snapshot: EnergySnapshot | n
         seite="unten"
         fuell={soc}
       />
-      <Knoten k="hp" href="/waerme" wert={kw(s?.heat_pump_power_kw.value)} einheit="kW" name="Wärmepumpe" wort={v.hp >= 0.05 ? "läuft" : "steht"} m={s?.heat_pump_power_kw} seite="unten" />
+      <Knoten k="hp" href="/waerme" wert={kw(s?.heat_pump_power_kw.value)} einheit="kW" name="Wärmepumpe" wort={wpWort(v.hp, wpLaeuft)} m={s?.heat_pump_power_kw} seite="unten" />
       <Knoten k="ev" href="/strom/wallbox" wert={kw(s?.ev_power_kw.value)} einheit="kW" name="Wallbox" wort={v.ev >= 0.05 ? "lädt" : "steht"} m={s?.ev_power_kw} seite="unten" />
     </div>
   );

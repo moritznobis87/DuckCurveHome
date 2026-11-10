@@ -27,9 +27,10 @@
 
 /* ---------------------------------------------------------------------- Das Flussbild
    Steht ohne Breitenabfrage: `FlowHandy` zeichnet nur, wo `useIsMobile` wahr ist, also auch am
-   Handy im Querformat. Höhe und Lage gehören zusammen: die untere Reihe steht bei 76 Prozent,
-   darunter brauchen Zahl, Name und Zustand 90 Punkte. */
-.fluss-h { position: relative; height: 394px; border-radius: 20px; overflow: hidden; background: radial-gradient(130% 70% at 50% 0%, #1a4658 0%, var(--surface-2) 62%); }
+   Handy im Querformat. Höhe und Lage gehören zusammen: die untere Reihe steht bei 75 Prozent,
+   darunter brauchen Zahl, Name und Zustand gut 90 Punkte. Am Gerät fällt die Schrift höher aus
+   als in der Vorführung; mit 394 Punkten war die unterste Zeile angeschnitten (10.11.2026). */
+.fluss-h { position: relative; height: 410px; border-radius: 20px; overflow: hidden; background: radial-gradient(130% 70% at 50% 0%, #1a4658 0%, var(--surface-2) 62%); }
 .fluss-h-schein { position: absolute; left: 17%; top: 14%; width: 320px; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(242, 169, 0, 0.36) 0%, rgba(242, 169, 0, 0) 62%); transition: opacity 1.2s; }
 .fluss-h-leitungen { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .fluss-h-knoten, .fluss-h-haus { position: absolute; width: 0; height: 0; overflow: visible; color: inherit; text-decoration: none; }
@@ -47,6 +48,7 @@
 .fluss-h-haus-ring { position: absolute; left: 0; top: 0; width: 108px; height: 108px; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 50%; border: 1.5px solid; background: var(--deep); box-shadow: 0 0 46px rgba(255, 255, 255, 0.09); z-index: 2; }
 .fluss-h-haus-zahl { font-size: 32px; line-height: 1; letter-spacing: -0.04em; }
 .fluss-h-haus-einheit { font-size: 12.5px; line-height: 1; color: var(--text-3); }
+.fluss-h-haus-fehlt { max-width: 84px; text-align: center; font-size: 12px; line-height: 1.25; color: var(--text-3); }
 .fluss-h-davon { position: absolute; left: calc(50% + 64px); right: 8px; transform: translateY(-50%); font-size: 11.5px; line-height: 1.3; color: var(--text-3); z-index: 2; }
 .fluss-h-knoten:focus-visible .fluss-h-ring, .fluss-h-haus:focus-visible .fluss-h-haus-ring { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18); }
 .home-kurve-legende-unten { display: none; }

@@ -203,7 +203,7 @@ export function Home() {
       </div>
 
       <div className="home-hero" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>
-        {isMobile ? <FlowHandy snapshot={s ?? null} pvPeakKw={pvPeak} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} />}
+        {isMobile ? <FlowHandy snapshot={s ?? null} pvPeakKw={pvPeak} wpLaeuft={state?.heat_pump.running} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} wpLaeuft={state?.heat_pump.running} />}
         <Rail state={state} plan={plan} nowMs={now} kompakt={isMobile} />
       </div>
 
