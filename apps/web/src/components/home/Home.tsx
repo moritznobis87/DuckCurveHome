@@ -12,6 +12,7 @@ import { useRuhe } from "@/lib/useRuhe";
 import { celsius, hhmm, longDate } from "@/lib/format";
 import { isoDay } from "@/lib/day";
 import { AreaIcons, Brand, Fussleiste } from "@/components/layout/AreaNav";
+import { ausblick } from "./ausblick";
 import { FlowHandy } from "./FlowHandy";
 import { FlowHero } from "./FlowHero";
 import { Rail } from "./Rail";
@@ -113,6 +114,11 @@ export function Home() {
   // Die Kurve und die Tagesgrenzen brauchen die Sekunde nicht. Mit ihr rechnete die Zeichnung
   // jeden Takt neu; die Marke „jetzt" wandert ohnehin nur minutenweise.
   const minute = Math.floor(now / 60_000) * 60_000;
+  // Tag oder Nacht und wann die Sonne wiederkommt: aus der Erwartung des Fahrplans. Nur die
+  // Uhrzeit, ohne „morgen": ein Sonnenaufgang ist immer der nächste, und neben dem Mond ist
+  // kein Platz für mehr.
+  const blick = useMemo(() => ausblick(plan, minute), [plan, minute]);
+  const sonneAb = blick.nacht && blick.sonneWechsel ? hhmm(new Date(blick.sonneWechsel)) : null;
   const preis = s?.electricity_price_ct_kwh.value ?? null;
 
   // ---------------------------------------------------------------- Gestern, heute, morgen
@@ -203,7 +209,7 @@ export function Home() {
       </div>
 
       <div className="home-hero" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>
-        {isMobile ? <FlowHandy snapshot={s ?? null} pvPeakKw={pvPeak} wpLaeuft={state?.heat_pump.running} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} wpLaeuft={state?.heat_pump.running} />}
+        {isMobile ? <FlowHandy snapshot={s ?? null} pvPeakKw={pvPeak} wpLaeuft={state?.heat_pump.running} nacht={blick.nacht} sonneAb={sonneAb} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} wpLaeuft={state?.heat_pump.running} />}
         <Rail state={state} plan={plan} nowMs={now} kompakt={isMobile} />
       </div>
 

@@ -35,6 +35,8 @@ const LAGE: Record<Key, { x: number; y: number }> = {
 };
 
 const ZEICHEN: Record<Key, string> = { pv: "sun", grid: "grid", house: "home", bat: "battery", hp: "pump", ev: "car" };
+/** Die Farbe des Mondes: kühl und hell, klar nicht das Gelb der Sonne. */
+const MONDLICHT = "#b9cfdb";
 
 function Knoten({
   k,
@@ -47,6 +49,8 @@ function Knoten({
   seite,
   farbe,
   fuell,
+  zeichen,
+  ohneZahl = false,
 }: {
   k: Key;
   href: string;
@@ -58,12 +62,16 @@ function Knoten({
   seite: "rechts" | "links" | "unten";
   farbe?: string;
   fuell?: number | null;
+  /** Ein anderes Zeichen als das des Knotens, etwa der Mond an der Stelle der Sonne. */
+  zeichen?: string;
+  /** Der Knoten zeigt nur Name und Zustand: nachts ist „0,0 kW Sonne" keine Auskunft. */
+  ohneZahl?: boolean;
 }) {
   const ok = frisch(m);
   // Ein Knoten ohne Zahl sagt, dass die Messung fehlt. Ein Strich mit Einheit („- kW") sah aus
   // wie ein Wert, den es nicht gibt, und der Zustand darunter („hält", „steht") wie eine Auskunft.
-  const fehlt = !m || m.value === null;
-  const f = ok ? (farbe ?? FARBE[k]) : "var(--text-3)";
+  const fehlt = !ohneZahl && (!m || m.value === null);
+  const f = ok || ohneZahl ? (farbe ?? FARBE[k]) : "var(--text-3)";
   return (
     <Link
       href={href}
@@ -73,10 +81,10 @@ function Knoten({
     >
       <span className="fluss-h-ring" style={{ borderColor: f, background: `linear-gradient(color-mix(in srgb, ${f} 16%, transparent), color-mix(in srgb, ${f} 16%, transparent)), var(--deep)` }}>
         {typeof fuell === "number" ? <span className="fluss-h-fuell" style={{ height: `${Math.round(fuell * 100)}%` }} /> : null}
-        <Icon name={ZEICHEN[k]} size={24} color={f} />
+        <Icon name={zeichen ?? ZEICHEN[k]} size={24} color={f} />
       </span>
       <span className="fluss-h-text">
-        {fehlt ? null : (
+        {fehlt || ohneZahl ? null : (
           <span className="mono fluss-h-zahl" style={{ color: ok ? "var(--text-1)" : "var(--text-3)" }}>
             {wert}
             <span className="fluss-h-einheit">{einheit}</span>
@@ -89,7 +97,21 @@ function Knoten({
   );
 }
 
-export function FlowHandy({ snapshot, pvPeakKw, wpLaeuft }: { snapshot: EnergySnapshot | null; pvPeakKw: number; wpLaeuft?: boolean }) {
+export function FlowHandy({
+  snapshot,
+  pvPeakKw,
+  wpLaeuft,
+  nacht = false,
+  sonneAb,
+}: {
+  snapshot: EnergySnapshot | null;
+  pvPeakKw: number;
+  wpLaeuft?: boolean;
+  /** Es ist dunkel und nichts wird erzeugt: das Bild zeigt Nacht statt einer Sonne mit null. */
+  nacht?: boolean;
+  /** Wann die Sonne wiederkommt, als fertiger Text („07:45", „morgen 07:45"). */
+  sonneAb?: string | null;
+}) {
   const s = snapshot;
   const v = useMemo(() => {
     const num = (m?: Measurement | null) => (frisch(m) ? (m!.value as number) : 0);
@@ -120,6 +142,9 @@ export function FlowHandy({ snapshot, pvPeakKw, wpLaeuft }: { snapshot: EnergySn
     kante("house", "ev", v.ev, false, "#8fc3d6", LAGE),
   ];
   const sonne = Math.max(0, Math.min(1, v.pv / Math.max(1, pvPeakKw)));
+  // Nacht ist es nur, wenn auch wirklich nichts erzeugt wird: meldet die Anlage Leistung, hat
+  // die Messung recht und nicht die Erwartung.
+  const dunkel = nacht && v.pv < 0.05;
   const soc = s?.battery_soc.value ?? null;
   const hausOk = frisch(s?.house_power_kw);
   // Der Hausverbrauch wird aus Sonne, Netz und Speicher gebildet. Fehlt eine der drei, gibt es
@@ -138,7 +163,7 @@ export function FlowHandy({ snapshot, pvPeakKw, wpLaeuft }: { snapshot: EnergySn
     : [];
 
   return (
-    <div className="fluss-h" role="group" aria-label="Energiefluss zwischen Sonne, Netz, Haus, Speicher, Wärmepumpe und Wallbox">
+    <div className={`fluss-h${dunkel ? " fluss-h-nacht" : ""}`} role="group" aria-label="Energiefluss zwischen Sonne, Netz, Haus, Speicher, Wärmepumpe und Wallbox">
       <div className="fluss-h-schein" aria-hidden style={{ opacity: sonne }} />
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden className="fluss-h-leitungen">
         {kanten.map((e, i) => (
@@ -164,7 +189,11 @@ export function FlowHandy({ snapshot, pvPeakKw, wpLaeuft }: { snapshot: EnergySn
         ))}
       </svg>
 
-      <Knoten k="pv" href="/strom/pv" wert={kw(s?.pv_power_kw.value)} einheit="kW" name="Sonne" m={s?.pv_power_kw} seite="rechts" />
+      {dunkel ? (
+        <Knoten k="pv" href="/strom/pv" wert="0" einheit="kW" name="Nacht" wort={sonneAb ? `Sonne ab ${sonneAb}` : undefined} m={s?.pv_power_kw} seite="rechts" zeichen="moon" farbe={MONDLICHT} ohneZahl />
+      ) : (
+        <Knoten k="pv" href="/strom/pv" wert={kw(s?.pv_power_kw.value)} einheit="kW" name="Sonne" m={s?.pv_power_kw} seite="rechts" />
+      )}
       <Knoten
         k="grid"
         href="/strom"
