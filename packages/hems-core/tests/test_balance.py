@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from hc_helpers import T0, m
 
-from hems_core.balance import balance, pv_surplus_kw
-from hems_core.domain import BalanceConfig, PvRuleConfig, Quality
+from hems_core.balance import NACHT_UNTER_GRAD, balance, pv_bei_nacht, pv_surplus_kw
+from hems_core.domain import BalanceConfig, Measurement, PvRuleConfig, Quality
 
 
 def test_house_is_derived_from_supply() -> None:
@@ -100,3 +100,23 @@ def test_surplus_none_without_grid() -> None:
         )
         is None
     )
+
+
+def test_nachts_ist_fehlende_erzeugung_null() -> None:
+    fehlt = Measurement.missing(Quality.UNAVAILABLE, T0, "pv")
+    nachts = pv_bei_nacht(fehlt, T0, -20.0)
+    assert nachts.value == 0.0 and nachts.quality is Quality.DERIVED
+    assert nachts.source == "nacht:sonne-unter-horizont"
+    assert pv_bei_nacht(fehlt, T0, NACHT_UNTER_GRAD).value == 0.0
+
+
+def test_am_tag_und_in_der_daemmerung_bleibt_die_luecke() -> None:
+    fehlt = Measurement.missing(Quality.UNAVAILABLE, T0, "pv")
+    assert pv_bei_nacht(fehlt, T0, 30.0) is fehlt
+    assert pv_bei_nacht(fehlt, T0, -1.0) is fehlt, "Dämmerung: noch Streulicht möglich"
+    assert pv_bei_nacht(fehlt, T0, None) is fehlt, "ohne Sonnenstand ändert sich nichts"
+
+
+def test_ein_brauchbarer_wert_bleibt_auch_nachts() -> None:
+    gemessen = m(0.03)
+    assert pv_bei_nacht(gemessen, T0, -40.0) is gemessen
