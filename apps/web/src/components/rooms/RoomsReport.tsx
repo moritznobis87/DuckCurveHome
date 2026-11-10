@@ -283,8 +283,18 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen, onP
 
 // ------------------------------------------------------------------ Seite
 
-export function RoomsReport() {
-  const { period, anchor, setPeriod, move, today } = usePeriod("day");
+/**
+ * Was zu den Räumen zu zeigen ist, ohne Seitenkopf: die Kacheln, die Auswertung oder beides.
+ *
+ * Seit dem 11.11.2026 gibt es die Räume an zwei Stellen mit je einer Aufgabe. Im Bereich Haus
+ * stehen die **Kacheln** von heute, als Liste neben dem Modell: dort stellt man einen Raum. Unter
+ * Technik steht die **Auswertung** eines Tages (Abweichung über den Tag, Tabelle): dort sieht man,
+ * welcher Heizkreis die Vorlauftemperatur bestimmt. Vorher zeigten „Haus" und „Wärme → Räume"
+ * dieselben Räume mit denselben Zahlen in zwei Bereichen.
+ *
+ * `anchor` ist der Tag; leer heißt heute.
+ */
+export function Raumteile({ anchor, kacheln, auswertung }: { anchor: string; kacheln: boolean; auswertung: boolean }) {
   const [live, setLive] = useState<RoomsLive | null>(null);
   // Welcher Raum gerade gestellt wird. Nur die Kennung, nicht der Raum selbst: der Wert kommt aus
   // der laufenden Liste, damit das Fenster beim naechsten Takt nicht auf einem alten Stand steht.
@@ -314,6 +324,7 @@ export function RoomsReport() {
   const [error, setError] = useState<string | null>(null);
 
   const istHeute = !anchor || anchor === isoToday();
+  const tagIso = anchor || isoToday();
 
   const ladeLive = useCallback(async () => {
     try {
@@ -334,11 +345,10 @@ export function RoomsReport() {
   }, [ladeLive, istHeute]);
 
   useEffect(() => {
-    if (!anchor) return;
     let abgebrochen = false;
     void (async () => {
       try {
-        const d = await api.roomsDay(anchor, STEP_MIN);
+        const d = await api.roomsDay(tagIso, STEP_MIN);
         if (!abgebrochen) setTag(d);
       } catch {
         if (!abgebrochen) setTag(null);
@@ -347,7 +357,7 @@ export function RoomsReport() {
     return () => {
       abgebrochen = true;
     };
-  }, [anchor]);
+  }, [tagIso]);
 
   const serien = useMemo(() => new Map((tag?.rooms ?? []).map((r) => [r.id, r])), [tag]);
   const ts = useMemo(() => tag?.ts ?? [], [tag]);
@@ -408,16 +418,15 @@ export function RoomsReport() {
   );
 
   return (
-    <ReportShell title="Räume" kicker="Einzelraumregelung · Ist und Soll · Heizkreisverteiler" period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today} showPeriods={false}>
+    <>
       {error ? <ErrorBanner message={error} /> : null}
 
       {/* Die Legende stand zuerst im Seitenkopf und drängte den Untertitel ins Abschneiden. Sie
           gehört ohnehin über die Kacheln: dort wird sie gebraucht. */}
-      {raeume.length > 0 ? <Legende /> : null}
+      {kacheln && raeume.length > 0 ? <Legende /> : null}
 
       {/* Die Automatik steht ueber den Kacheln: Sie betrifft alle Raeume, und wer wissen will,
           warum ein Sollwert von selbst anders steht, soll es zuerst lesen. */}
-      {raeume.length > 0 ? <Automatik rooms={raeume} readOnly={role !== "owner"} /> : null}
 
       {live && !live.named && raeume.length > 0 ? (
         <Note>
@@ -436,7 +445,7 @@ export function RoomsReport() {
         </Card>
       ) : null}
 
-      {gruppen.map((g) => (
+      {(kacheln ? gruppen : []).map((g) => (
         <div key={g.floor} className="flex flex-col gap-3">
           <div className="flex items-baseline gap-3">
             <span className="kicker">{g.floor}</span>
@@ -460,7 +469,11 @@ export function RoomsReport() {
         </div>
       ))}
 
-      {matrix.length > 0 ? (
+      {/* Die Automatik steht nach den Räumen: wer die Seite öffnet, will einen Raum sehen oder
+          stellen. Was von selbst geschieht, liest man danach. */}
+      {kacheln && raeume.length > 0 ? <Automatik rooms={raeume} readOnly={role !== "owner"} /> : null}
+
+      {auswertung && matrix.length > 0 ? (
         <Card style={{ padding: "18px 20px 16px" }}>
           <CardHead
             title="Abweichung im Tagesverlauf"
@@ -497,9 +510,9 @@ export function RoomsReport() {
         </Card>
       ) : null}
 
-      {raeume.length > 0 ? (
+      {auswertung && raeume.length > 0 ? (
         <Card style={{ padding: "18px 20px 16px" }}>
-          <CardHead title="Dieselben Werte als Tabelle" />
+          <CardHead title="Die Räume als Tabelle" />
           <div className="rooms-table mt-3"><table className="w-full border-collapse text-[13px]">
             <thead>
               <tr className="text-left text-text-3">
@@ -571,6 +584,21 @@ export function RoomsReport() {
           );
         })()
       ) : null}
+    </>
+  );
+}
+
+/**
+ * Die Seite „Heizkreise" unter Technik: ein Tag in der Auswertung, mit Blättern.
+ *
+ * Die Kacheln zum Stellen stehen im Bereich Haus. Hier steht, was man über einen Tag wissen will,
+ * wenn man die Regelung beurteilt: wo welcher Raum wann vom Ziel abwich.
+ */
+export function RoomsReport() {
+  const { period, anchor, setPeriod, move, today } = usePeriod("day");
+  return (
+    <ReportShell title="Heizkreise" kicker="Einzelraumregelung · Abweichung vom Ziel über den Tag" period={period} anchor={anchor} onPeriod={setPeriod} onMove={move} onToday={today} showPeriods={false}>
+      <Raumteile anchor={anchor} kacheln={false} auswertung />
     </ReportShell>
   );
 }

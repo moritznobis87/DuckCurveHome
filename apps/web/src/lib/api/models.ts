@@ -80,6 +80,7 @@ export type TibberInvoice = S["TibberInvoice"];
 export type InvoicePosition = S["InvoicePosition"];
 export type PushKey = S["PushKeyOut"];
 export type PushResult = S["PushResultOut"];
+export type Morgenbrief = S["MorgenbriefOut"];
 export type PushSubscribeBody = S["PushSubscribeIn"];
 export type ShiftReport = S["ShiftReportOut"];
 export type ShiftDay = S["ShiftDayOut"];

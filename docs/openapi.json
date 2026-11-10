@@ -342,6 +342,88 @@
         }
       }
     },
+    "/api/v1/push/morgenbrief": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Der Morgenbrief: ob er kommt und was heute darin stünde",
+        "operationId": "morgenbrief_api_v1_push_morgenbrief_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MorgenbriefOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Den Morgenbrief ein- oder ausschalten",
+        "operationId": "set_morgenbrief_api_v1_push_morgenbrief_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MorgenbriefIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MorgenbriefOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/push/morgenbrief/senden": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Den Morgenbrief jetzt senden",
+        "description": "Den Brief von heute sofort an alle angemeldeten Geräte schicken.\n\nZum Ansehen, wie er auf dem eigenen Telefon aussieht, ohne bis morgen früh zu warten. Der\nVersand am Morgen bleibt davon unberührt.",
+        "operationId": "morgenbrief_senden_api_v1_push_morgenbrief_senden_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResultOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rooms": {
       "get": {
         "tags": [
@@ -8797,6 +8879,66 @@
         ],
         "title": "MemoryTypeOut",
         "description": "Eine Objektgruppe im Python-Haufen: Typ, Anzahl, flache Größe."
+      },
+      "MorgenbriefIn": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "MorgenbriefIn"
+      },
+      "MorgenbriefOut": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "uhrzeit": {
+            "type": "string",
+            "title": "Uhrzeit"
+          },
+          "fuer_de": {
+            "type": "string",
+            "title": "Fuer De",
+            "default": "heute"
+          },
+          "titel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titel"
+          },
+          "zeilen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Zeilen"
+          },
+          "hinweis_de": {
+            "type": "string",
+            "title": "Hinweis De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "uhrzeit"
+        ],
+        "title": "MorgenbriefOut",
+        "description": "Der Morgenbrief: ob er verschickt wird und was heute darin stünde.\n\nEine Mitteilung am Morgen mit dem, was der Tag bringt: erwartete Sonne, günstigste und\nteuerste Zeit für Netzstrom, geplante Läufe der Wärmepumpe. `zeilen` ist der Brief, wie er\njetzt verschickt würde, damit die Seite ihn zeigen kann, bevor jemand ihn einschaltet."
       },
       "NachbetrachtungOut": {
         "properties": {

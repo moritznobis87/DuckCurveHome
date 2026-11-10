@@ -27,6 +27,7 @@ from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, house, rooms
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
+from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
 from dch_api.application import room_log as room_log_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
@@ -93,6 +94,7 @@ from dch_api.schemas import (
     InvoiceSummaryOut,
     KontaktwirkungOut,
     LiveStateOut,
+    MorgenbriefOut,
     NachbetrachtungOut,
     Period,
     PlanOut,
@@ -232,6 +234,11 @@ class LiveRuntime:
         self.decision: Decision | None = None
         self.decisions: deque[Decision] = deque(maxlen=100)
         self.plan: PlanOut | None = None
+        # Der Morgenbrief: an, bis jemand ihn ausschaltet. An welchem Ortstag er zuletzt ging,
+        # steht in den Ereignissen und wird beim Start zurückgelesen, damit ein Neustart um
+        # halb acht keinen zweiten schickt.
+        self._brief_an: bool = True
+        self._brief_am: date | None = None
         self._plan_at: datetime | None = None
         self._plan_abgelegt: datetime | None = None
         # Wann K1 zuletzt gesendet wurde: der Hardware-Timer läuft ab Befehl, nicht ab Entscheidung.
@@ -491,6 +498,59 @@ class LiveRuntime:
         }
         zuletzt[BRIDGE] = self.hub.last_frame_at
         return zuletzt
+
+    # ------------------------------------------------------------------ Morgenbrief
+    async def _load_morgenbrief(self) -> None:
+        gespeichert = await self.repos.active_config("morgenbrief")
+        if gespeichert is not None:
+            self._brief_an = bool(gespeichert.get("enabled", True))
+        # Der Ortstag steht im Ereignis selbst und wird nicht aus seinem Zeitstempel gerechnet:
+        # so hängt er nicht davon ab, in welcher Zone die Datenbank ihn zurückgibt.
+        row = await self.repos.latest_event("brief.morgen")
+        tag = row.context.get("tag") if row is not None else None
+        self._brief_am = date.fromisoformat(tag) if isinstance(tag, str) else None
+
+    async def morgenbrief(self) -> MorgenbriefOut:
+        return brief_modul.vorschau(self._brief_an, self.plan, self.now, BERLIN)
+
+    async def set_morgenbrief(self, enabled: bool) -> MorgenbriefOut:
+        self._brief_an = enabled
+        await self.repos.save_config("morgenbrief", {"enabled": enabled})
+        await self.repos.add_event(
+            "info",
+            "brief.einstellung",
+            "Morgenbrief eingeschaltet" if enabled else "Morgenbrief ausgeschaltet",
+        )
+        return await self.morgenbrief()
+
+    async def _morgenbrief_tick(self, now: datetime) -> None:
+        """Den Brief verschicken, wenn es Zeit ist und er heute noch nicht ging.
+
+        Fehlt der Fahrplan um sieben noch, wird es bis neun jede Minute wieder versucht. Vermerkt
+        wird erst, wenn es einen Brief gab; sonst fiele er an einem Morgen mit spätem Fahrplan aus.
+        """
+        if not self._brief_an or self.push is None:
+            return
+        if not brief_modul.faellig(now, BERLIN, self._brief_am):
+            return
+        brief = brief_modul.aus_plan(self.plan, now, BERLIN)
+        if brief is None:
+            return
+        self._brief_am = now.astimezone(BERLIN).date()
+        await self.repos.add_event(
+            "info", "brief.morgen", brief.text, {"tag": self._brief_am.isoformat()}, at=now
+        )
+        await self.push.send(
+            Mitteilung(title=brief.titel, body=brief.text, tag="morgenbrief", url="/")
+        )
+
+    async def _brief_loop(self) -> None:
+        while True:
+            try:
+                await self._morgenbrief_tick(self.now)
+            except Exception as exc:
+                log.warning("morgenbrief failed", error=repr(exc)[:200])
+            await asyncio.sleep(60)
 
     async def _load_watch_state(self) -> None:
         """Den Stand des Wächters aus den Ereignissen zurückholen, damit ein Neustart nicht meldet."""
@@ -2303,6 +2363,7 @@ class LiveRuntime:
             self.mode = stored
         await self._load_calibration()
         await self._load_watch_state()
+        await self._load_morgenbrief()
         await self._load_shift_state()
         await self.forecasts.refresh_prices(self.now)
         await self.forecasts.refresh_weather(self.now)
@@ -2316,6 +2377,7 @@ class LiveRuntime:
                 asyncio.create_task(self._housekeeping_loop(), name="housekeeping"),
                 asyncio.create_task(self._accounting_loop(), name="accounting"),
                 asyncio.create_task(self._battery_loop(), name="battery"),
+                asyncio.create_task(self._brief_loop(), name="morgenbrief"),
                 asyncio.create_task(self._rollup_loop(), name="rollup"),
                 asyncio.create_task(self._rebuild_energy_once(), name="energy-rebuild"),
             ]

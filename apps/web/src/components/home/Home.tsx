@@ -12,7 +12,7 @@ import { useRuhe } from "@/lib/useRuhe";
 import { celsius, hhmm, longDate } from "@/lib/format";
 import { isoDay } from "@/lib/day";
 import { AreaIcons, Brand, Fussleiste } from "@/components/layout/AreaNav";
-import { ausblick } from "./ausblick";
+import { abschnitte, ausblick } from "./ausblick";
 import { FlowHandy } from "./FlowHandy";
 import { FlowHero } from "./FlowHero";
 import { Rail } from "./Rail";
@@ -180,7 +180,21 @@ export function Home() {
   const wache = state?.system.watch ?? [];
   const d = state?.decision;
   const satz = d?.explanation_de ?? (state ? "Das Haus ist da, die erste Entscheidung steht noch aus." : "Verbinde mit dem Haus …");
-  const modeWort = state?.operating_mode.override ? `manuell bis ${hhmm(state.operating_mode.override.ends_at)}` : state?.operating_mode.system_mode === "off" ? "aus · beobachten" : `auto · ${state?.operating_mode.auto_profile ?? "smart"}`;
+  // Die Zeile unter dem Satz, in Worten statt in Kennungen („Entscheidung 20:46 · auto · smart").
+  // Erst, wer gerade entscheidet; dann, was als Nächstes kommt oder seit wann der Satz gilt.
+  const modeWort = state?.operating_mode.override
+    ? `von Hand bis ${hhmm(state.operating_mode.override.ends_at)}`
+    : state?.operating_mode.system_mode === "off"
+      ? "Automatik aus, Duck Curve schaut nur zu"
+      : "Automatik";
+  const naechsterLauf = abschnitte(blick.zellen, (z) => z.wp)[0];
+  const laufStart = naechsterLauf && naechsterLauf[0] > 0 ? blick.zellen[naechsterLauf[0]]?.ts : undefined;
+  const dazu =
+    laufStart != null && !state?.heat_pump.running && !state?.operating_mode.override && state?.operating_mode.system_mode !== "off"
+      ? `nächster geplanter Lauf um ${hhmm(new Date(laufStart))}`
+      : d
+        ? `Stand ${hhmm(d.at)}`
+        : "";
 
   return (
     <main className={`home dashboard-bg ${isMobile ? "home-telefon" : ""}`}>
@@ -203,7 +217,7 @@ export function Home() {
       <div className="home-satz-block">
         <div className="home-satz-zeile">
           <p className="home-satz">{satz}</p>
-          <span className="kicker home-satz-meta" style={{ fontSize: 11, color: "var(--text-3)" }}>{d ? `Entscheidung ${hhmm(d.at)} · ${modeWort}` : modeWort}</span>
+          <span className="home-satz-meta">{[modeWort, dazu].filter(Boolean).join(" · ")}</span>
         </div>
         <Wache befunde={wache} />
       </div>

@@ -20,6 +20,7 @@ from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, demo_house, demo_rooms, rooms
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
+from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
 from dch_api.application.battery_control import BatteryMode
 from dch_api.application.demo_archive import DemoArchiv
@@ -67,6 +68,7 @@ from dch_api.schemas import (
     InvoiceSummaryOut,
     KontaktwirkungOut,
     LiveStateOut,
+    MorgenbriefOut,
     NachbetrachtungOut,
     Period,
     PlanOut,
@@ -186,6 +188,8 @@ class DemoRunner:
         )
         self.decision: Decision | None = None
         self.plan: PlanOut | None = None
+        #: In der Vorführung gibt es keinen Zeitplan, nur den Schalter und die Vorschau.
+        self._brief_an: bool = True
         self.stove_plan: StovePlan = StovePlan()
         self._stove_solve_at = 0.0  # monotone Echtzeit des letzten Solverlaufs
         self._plan_at: datetime | None = None
@@ -766,6 +770,13 @@ class DemoRunner:
                         urheber=urheber.AUTOMATIK.text(),
                     )
                 )
+
+    async def morgenbrief(self) -> MorgenbriefOut:
+        return brief_modul.vorschau(self._brief_an, self.plan, self.now, BERLIN)
+
+    async def set_morgenbrief(self, enabled: bool) -> MorgenbriefOut:
+        self._brief_an = enabled
+        return await self.morgenbrief()
 
     async def rooms_automatik(self) -> RoomShiftOut:
         self._shift_tick()
