@@ -131,10 +131,12 @@ describe("Sätze", () => {
 });
 
 describe("Ziele der Symbole", () => {
-  const reiter = new Set(AREAS.flatMap((a) => a.tabs.map((t) => t.href)));
-  it("führen alle auf einen Reiter, den es gibt", () => {
+  // Ein Ziel ist ein Reiter oder ein Bereich ohne Reiter (das Haus). Anker und Auswahl in der
+  // Adresse (`#puffer`, `?ansicht=liste`) gehören nicht zur Seite.
+  const seiten = new Set(AREAS.flatMap((a) => [a.href, ...a.tabs.map((t) => t.href)]));
+  it("führen alle auf eine Seite, die es gibt", () => {
     for (const z of Object.values(ZIELE)) {
-      expect(reiter.has(z.href.split("#")[0] ?? "")).toBe(true);
+      expect(seiten.has(z.href.split(/[#?]/)[0] ?? "")).toBe(true);
     }
   });
   it("sind dieselben wie auf der Startseite", () => {

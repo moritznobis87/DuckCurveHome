@@ -762,6 +762,9 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 /* Nur am Handy sichtbar: Leiste unten, Bereichsname im Kopf, kurze Datumsangabe. */
 .fussleiste, .bereichstitel, .report-anchor-kurz { display: none; }
 
+/* Die Raumliste im Bereich Haus: dieselbe Spalte wie die Bühne des Modells. */
+.haus-liste { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+button.ansicht { cursor: pointer; }
 .ansichten { display: inline-flex; align-self: flex-start; gap: 4px; padding: 4px; border: 1px solid var(--line-2); border-radius: 4px; }
 .ansicht { padding: 6px 14px; border-radius: 3px; font-size: 12px; font-weight: 500; color: var(--text-2); text-decoration: none; white-space: nowrap; }
 .ansicht:hover { color: var(--text-1); }

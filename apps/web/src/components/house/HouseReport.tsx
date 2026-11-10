@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AreaShell } from "@/components/layout/AreaShell";
 import { Card, CardHead } from "@/components/ui/Card";
+import { Raumteile } from "@/components/rooms/RoomsReport";
 import { Stellen } from "@/components/rooms/Stellen";
 import { api, ApiError } from "@/lib/api/client";
 import type { House, HouseContactPlan, RoomsLive } from "@/lib/api/models";
@@ -37,6 +38,18 @@ import { Konsole, type Klappe } from "./Konsole";
  * three.js wird erst im Browser geladen: Die Szene braucht WebGL und das Dokument, und das
  * halbe Megabyte soll nicht in jeder anderen Seite mitreisen.
  */
+/**
+ * Die zwei Ansichten des Hauses: die Räume als Liste und das Haus als Modell.
+ *
+ * Beides zeigt dieselben Räume. Bis zum 11.11.2026 waren es zwei Bereiche („Haus" und
+ * „Wärme → Räume") mit denselben Temperaturen und demselben Stellfenster. Jetzt ist es ein
+ * Bereich mit einem Schalter. Am Handy beginnt er mit der Liste, weil das Modell dort klein und
+ * mit dem Finger schwer zu treffen ist; am Tablet und an der Wand beginnt er mit dem Modell.
+ * Die Wahl steht in der Adresse (`?ansicht=`), damit ein Verweis genau dort landet.
+ */
+type Ansicht = "liste" | "modell";
+const HANDY = "(max-width: 720px)";
+
 const HAUS_MS = 10_000;
 const RAEUME_MS = 30_000;
 
@@ -55,6 +68,23 @@ export function HouseReport() {
   // Die Uhr des Servers: im Demo-Betrieb laeuft sie im Zeitraffer, und „seit 12 min" soll sich auf
   // sie beziehen und nicht auf die des Geraets.
   const [nowMs, setNowMs] = useState(() => Date.now());
+  // Leer bis zum ersten Zeichnen im Browser: die Wahl hängt an Adresse und Bildschirmbreite, und
+  // beides kennt der Server nicht.
+  const [ansicht, setAnsichtRoh] = useState<Ansicht | null>(null);
+  useEffect(() => {
+    const gewaehlt = new URLSearchParams(window.location.search).get("ansicht");
+    setAnsichtRoh(gewaehlt === "liste" || gewaehlt === "modell" ? gewaehlt : window.matchMedia(HANDY).matches ? "liste" : "modell");
+  }, []);
+  const setAnsicht = useCallback((a: Ansicht, fokus?: { deck: string; raum: string }) => {
+    const u = new URL(window.location.href);
+    u.searchParams.set("ansicht", a);
+    if (fokus) {
+      u.searchParams.set("deck", fokus.deck);
+      u.searchParams.set("fokus", fokus.raum);
+    }
+    window.history.replaceState(null, "", u);
+    setAnsichtRoh(a);
+  }, []);
   const buehne = useRef<HTMLDivElement>(null);
   const szene = useRef<HausSzene | null>(null);
   const history = useLiveStore((s) => s.history);
@@ -126,11 +156,12 @@ export function HouseReport() {
       szene.current = null;
     };
     // Die Szene haengt am Stand des Plans, nicht am Objekt: `planKennung` wechselt genau dann.
-  }, [planKennung]);
+    // Die Bühne gibt es nur in der Modellansicht; mit dem Wechsel entsteht und vergeht die Szene.
+  }, [planKennung, ansicht]);
 
   useEffect(() => {
     szene.current?.setLive(live);
-  }, [live, planKennung]);
+  }, [live, planKennung, ansicht]);
 
   const waehleDeck = (key: string) => {
     setSichtbar(key);
@@ -146,6 +177,13 @@ export function HouseReport() {
     const deck = plan?.decks.find((d) => d.key === ort.deck);
     const raum = deck?.rooms.find((r) => r.name === ort.raum && !r.part_of);
     if (!deck || !raum) return;
+    // Aus der Liste heraus führt der Sprung ins Modell: dort ist der Ort zu sehen. Die Szene
+    // entsteht mit dem Wechsel neu und liest Geschoss und Raum aus der Adresse.
+    if (ansicht !== "modell") {
+      setAnsicht("modell", { deck: deck.key, raum: raum.name });
+      setKlappe(null);
+      return;
+    }
     if (sichtbar !== "alle" && sichtbar !== deck.key) waehleDeck(deck.key);
     szene.current?.setFokus(deck.key, raum.name);
     setFokus({ deck: deck.key, raum });
@@ -180,7 +218,16 @@ export function HouseReport() {
     <AreaShell
       kicker={plan ? `${plan.name || "Hausplan"} · ${house?.source_de ?? ""}` : "Hausplan"}
       right={
-        plan ? (
+        <>
+          <div className="ansichten" role="tablist" aria-label="Ansicht">
+            <button role="tab" aria-selected={ansicht === "liste"} className={`ansicht${ansicht === "liste" ? " ansicht-an" : ""}`} onClick={() => setAnsicht("liste")}>
+              Liste
+            </button>
+            <button role="tab" aria-selected={ansicht === "modell"} className={`ansicht${ansicht === "modell" ? " ansicht-an" : ""}`} onClick={() => setAnsicht("modell")}>
+              Modell
+            </button>
+          </div>
+          {plan && ansicht === "modell" ? (
           <div className="haus-werkzeuge">
             <div className="haus-gruppe" role="tablist" aria-label="Geschoss">
               <button role="tab" aria-selected={sichtbar === "alle"} className={sichtbar === "alle" ? "an" : ""} onClick={() => waehleDeck("alle")}>
@@ -199,12 +246,13 @@ export function HouseReport() {
               <button className="rund" aria-label="Nach rechts drehen" onClick={() => szene.current?.drehen(1)}>↻</button>
             </div>
           </div>
-        ) : undefined
+          ) : null}
+        </>
       }
     >
       {fehler ? <p className="m-0 rounded-[4px] border border-line-2 px-3 py-2 text-[13px] text-text-2">{fehler}</p> : null}
 
-      {house && !plan ? (
+      {house && !plan && ansicht === "modell" ? (
         <Card style={{ padding: 20 }}>
           <CardHead title="Kein Hausplan" />
           <p className="m-0 max-w-[72ch] text-[13px] leading-[1.5] text-text-2">{house.error_de}</p>
@@ -230,6 +278,12 @@ export function HouseReport() {
             alarm={{ kannScharf, busy: alarmBusy, meldung: alarmMeldung, nurAnsicht: role !== "owner", onScharf: (m) => void scharf(m) }}
           />
 
+          {ansicht === "liste" ? (
+            <div className="haus-liste">
+              <Raumteile anchor="" kacheln auswertung={false} />
+            </div>
+          ) : null}
+          {ansicht === "modell" ? (
           <div className="haus-buehne-huelle">
             <div ref={buehne} className="haus-buehne" aria-label="Hausmodell" />
             <div className="haus-legende">
@@ -289,10 +343,15 @@ export function HouseReport() {
               </section>
             ) : null}
           </div>
+          ) : null}
         </div>
       ) : null}
 
-      {plan?.note_de ? <p className="m-0 max-w-[90ch] text-[11px] leading-[1.5] text-text-3">{plan.note_de}</p> : null}
+      {/* Die Liste braucht keinen Hausplan: die Räume kommen aus der Heizungsregelung. Fehlt der
+          Plan, steht sie allein da, ohne die Leiste mit Alarm und Fenstern. */}
+      {!plan && ansicht === "liste" ? <Raumteile anchor="" kacheln auswertung={false} /> : null}
+
+      {plan?.note_de && ansicht === "modell" ? <p className="m-0 max-w-[90ch] text-[11px] leading-[1.5] text-text-3">{plan.note_de}</p> : null}
 
       {stellt != null && rooms ? (
         (() => {

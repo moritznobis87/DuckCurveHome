@@ -205,7 +205,7 @@ export const ZIELE = {
   wp: { href: "/waerme#puffer", label: "Wärmepumpe und Puffer im Verlauf" },
   ofen: { href: "/waerme#ofen", label: "Pelletofen im Verlauf" },
   puffer: { href: "/waerme#puffer", label: "Pufferspeicher im Verlauf" },
-  heizung: { href: "/waerme/raeume", label: "Räume und Heizkreise" },
+  heizung: { href: "/haus?ansicht=liste", label: "Räume" },
   warmwasser: { href: "/waerme", label: "Wärmeübersicht mit Warmwasser" },
 } as const;
 export type Ziel = keyof typeof ZIELE;

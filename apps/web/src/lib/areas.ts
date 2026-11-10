@@ -28,7 +28,7 @@ export type Tab = {
 export type Ansicht = { href: string; label: string };
 
 export type Area = {
-  key: "jetzt" | "haus" | "strom" | "waerme" | "geld" | "system";
+  key: "jetzt" | "haus" | "energie" | "geld" | "technik";
   href: string;
   icon: IconName;
   label: string;
@@ -36,18 +36,36 @@ export type Area = {
   tabs: Tab[];
 };
 
+/**
+ * **Alltag vorn, Technik hinten** (seit dem 11.11.2026).
+ *
+ * Vorher standen Fahrplan, Wirkung, Annahmen und Prognose gleichberechtigt neben dem, was jemand
+ * im Haus täglich braucht, und die Räume lagen zwei Ebenen tief unter Wärme. Die Leiste hat jetzt
+ * vier Bereiche für den Alltag und einen für den, der die Anlage betreibt:
+ *
+ * - **Jetzt**: was gerade ist und was als Nächstes kommt.
+ * - **Haus**: die Räume, als Liste zum Stellen oder als Modell. Ohne Reiter.
+ * - **Energie**: was verbraucht und erzeugt wurde, Strom und Wärme nebeneinander.
+ * - **Geld**: was es gekostet hat.
+ * - **Technik**: wie die Anlage arbeitet und woran man sie einstellt.
+ *
+ * Die Adressen sind dieselben geblieben. Ein Bereich ist deshalb nicht mehr das erste Stück des
+ * Pfads: `/waerme` gehört zur Energie, `/waerme/anlage` zur Technik. Was nur der Hausherr sieht,
+ * steht am Reiter, nicht mehr am Bereich.
+ */
 export const AREAS: Area[] = [
   { key: "jetzt", href: "/", icon: "duck", label: "Jetzt", tabs: [] },
-  // Das Haus als Modell: ein Bereich ohne Reiter und ohne Zeitraum, weil er den Augenblick
-  // zeigt. Die Geometrie kommt von der Bruecke (haus.yaml), die Werte aus Raeumen und Live-Zustand.
+  // Das Haus: die Räume als Liste und als Modell, ein Schalter in der Seite und kein Reiter.
+  // Die Geometrie kommt von der Bruecke (haus.yaml), die Werte aus Raeumen und Live-Zustand.
   { key: "haus", href: "/haus", icon: "house", label: "Haus", tabs: [] },
   {
-    key: "strom",
+    key: "energie",
     href: "/strom",
     icon: "bolt",
-    label: "Strom",
+    label: "Energie",
     tabs: [
-      { href: "/strom", label: "Bilanz", dated: true },
+      { href: "/strom", label: "Strom", dated: true },
+      { href: "/waerme", label: "Wärme", dated: true },
       { href: "/strom/pv", label: "Photovoltaik", dated: true },
       { href: "/strom/speicher", label: "Speicher", dated: true },
       { href: "/strom/wallbox", label: "Wallbox", dated: true },
@@ -55,18 +73,24 @@ export const AREAS: Area[] = [
     ],
   },
   {
-    key: "waerme",
-    href: "/waerme",
-    icon: "flame",
-    label: "Wärme",
-    // Sechs Reiter, nicht neun. Bis zum 10.11.2026 standen hier Erzeuger, Bilanz, Räume, Anlage,
-    // Wiedergabe, Wirkung, Fahrplan, Nachbetrachtung und Annahmen nebeneinander: zwei Berichte
-    // über dieselbe Wärme mit verschiedenen Zahlen, und zweimal dieselbe Sache als zwei Reiter.
-    // Jetzt ist die Wärme eine Übersicht, die Wiedergabe ist die Anlage über einen Tag, und die
-    // Nachbetrachtung ist der Fahrplan im Rückblick.
+    key: "geld",
+    href: "/geld",
+    icon: "euro",
+    label: "Geld",
     tabs: [
-      { href: "/waerme", label: "Übersicht", dated: true },
-      { href: "/waerme/raeume", label: "Räume", dated: true },
+      { href: "/geld", label: "Kosten", dated: true },
+      { href: "/geld/pv-abrechnung", label: "PV-Abrechnung", dated: true, ownerOnly: true },
+      { href: "/geld/rechnungen", label: "Rechnungen", ownerOnly: true },
+    ],
+  },
+  {
+    key: "technik",
+    href: "/waerme/anlage",
+    icon: "gear",
+    label: "Technik",
+    // Erst die Anlage und ihr Fahrplan, dann die Auswertungen, dann das Einstellen. Die
+    // Wiedergabe ist die Anlage ueber einen Tag, die Nachbetrachtung der Fahrplan im Rueckblick.
+    tabs: [
       {
         href: "/waerme/anlage",
         label: "Anlage",
@@ -84,40 +108,32 @@ export const AREAS: Area[] = [
         ],
       },
       { href: "/waerme/wirkung", label: "Wirkung" },
+      { href: "/waerme/raeume", label: "Heizkreise", dated: true },
+      { href: "/system", label: "Prognose", ownerOnly: true },
+      { href: "/system/daten", label: "Daten prüfen", dated: true, ownerOnly: true },
       { href: "/waerme/annahmen", label: "Annahmen", ownerOnly: true },
-    ],
-  },
-  {
-    key: "geld",
-    href: "/geld",
-    icon: "euro",
-    label: "Geld",
-    tabs: [
-      { href: "/geld", label: "Kosten", dated: true },
-      { href: "/geld/pv-abrechnung", label: "PV-Abrechnung", dated: true, ownerOnly: true },
-      { href: "/geld/rechnungen", label: "Rechnungen", ownerOnly: true },
-    ],
-  },
-  {
-    key: "system",
-    href: "/system",
-    icon: "gear",
-    label: "System",
-    ownerOnly: true,
-    tabs: [
-      { href: "/system", label: "Prognose" },
-      { href: "/system/daten", label: "Daten prüfen", dated: true },
-      { href: "/system/mitteilungen", label: "Mitteilungen" },
-      { href: "/system/haustuer", label: "Haustür" },
-      { href: "/system/zugang", label: "Zugang und Sicherung" },
+      { href: "/system/mitteilungen", label: "Mitteilungen", ownerOnly: true },
+      { href: "/system/haustuer", label: "Haustür", ownerOnly: true },
+      { href: "/system/zugang", label: "Zugang und Sicherung", ownerOnly: true },
     ],
   },
 ];
 
-/** Der Bereich, zu dem ein Pfad gehoert. `/` ist Jetzt, alles andere nach dem ersten Segment. */
+/**
+ * Der Bereich, zu dem ein Pfad gehoert: der mit der laengsten passenden Adresse unter seinen
+ * Reitern und Ansichten. `/` ist Jetzt, und was niemandem gehoert, auch.
+ */
 export function areaOf(pathname: string): Area {
-  const seg = `/${pathname.split("/")[1] ?? ""}`;
-  return AREAS.find((a) => a.href === seg) ?? AREAS[0]!;
+  const clean = (pathname.split("?")[0] ?? "").replace(/\/+$/, "") || "/";
+  let bester: { area: Area; laenge: number } | null = null;
+  for (const area of AREAS) {
+    const adressen = [area.href, ...area.tabs.flatMap((t) => [t.href, ...(t.unter ?? []).map((u) => u.href)])];
+    for (const href of adressen) {
+      if (href === "/") continue;
+      if ((clean === href || clean.startsWith(`${href}/`)) && (!bester || href.length > bester.laenge)) bester = { area, laenge: href.length };
+    }
+  }
+  return bester?.area ?? AREAS[0]!;
 }
 
 /**

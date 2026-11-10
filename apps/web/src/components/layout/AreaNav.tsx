@@ -10,10 +10,10 @@ import { useRole } from "@/lib/live/useRole";
 /**
  * Die Bereichsleiste: fuenf Zeichen, kein Text.
  *
- * Entenkurve, Blitz, Flamme, Euro, Zahnrad. Der Name steht im `title` und fuer die Vorlesehilfe
- * im `aria-label`; auf dem Bildschirm genuegt das Zeichen, weil es nur vier sind und sie sich
- * nicht aehneln. Das Zahnrad sehen nur Hausherren: Gaesten einen Weg zu zeigen, der sie
- * umleitet, waere unhoeflich.
+ * Entenkurve, Haus, Blitz, Euro, Zahnrad. Der Name steht im `title` und fuer die Vorlesehilfe
+ * im `aria-label`; auf dem Bildschirm genuegt das Zeichen, weil es nur fuenf sind und sie sich
+ * nicht aehneln. Das Zahnrad ist die Technik und fuer alle sichtbar; was darin nur der Hausherr
+ * sehen darf, steht am Reiter.
  */
 export function AreaIcons({ size = 20 }: { size?: number }) {
   const pathname = usePathname();

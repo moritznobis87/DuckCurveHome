@@ -344,7 +344,7 @@ export function Konsole({ live, state, rooms, plan, history, nowMs, offen, onKla
               </p>
             ) : null}
             <p className="haus-pop-fuss">
-              Die Antriebe sind auf oder zu, nichts dazwischen. <Link href="/waerme/raeume">Räume im Tagesverlauf</Link>
+              Die Antriebe sind auf oder zu, nichts dazwischen. <Link href="/waerme/raeume">Heizkreise im Tagesverlauf</Link>
             </p>
           </>
         }
