@@ -1,11 +1,43 @@
 import type { EChartsCoreOption } from "echarts/core";
-import type { EnergyTotals, HeatBalancePoint, HeatForecastPoint } from "@/lib/api/models";
+import type { EnergyTotals, HeatBalancePoint } from "@/lib/api/models";
+import { hhmm } from "@/lib/format";
 
 export { C, MONO } from "@/components/charts/palette";
 import { C, MONO } from "@/components/charts/palette";
 const axisText = { color: C.text, fontFamily: MONO, fontSize: 11 };
 const tooltip = { backgroundColor: C.deep, borderColor: "rgba(255,255,255,.14)", borderRadius: 3, textStyle: { color: "rgba(255,255,255,.92)", fontFamily: MONO, fontSize: 12 } };
 const de1 = (n: number, d = 1) => n.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/**
+ * Zwei Flächen untereinander statt zweier Achsen in einer.
+ *
+ * Bis zum 10.11.2026 lagen in drei Diagrammen zwei Größen mit verschiedenen Einheiten im selben
+ * Gitter, die eine an der linken, die andere an der rechten Achse: Grad und Kilowatt, Prozent und
+ * Kilowatt, Kilowatt und Kilowattstunden. Zwei Kurven in einem Bild liest das Auge als
+ * Zusammenhang ihrer Kreuzungspunkte, und wo sie sich kreuzen, entscheidet allein die Skalierung.
+ * Die neueren Seiten zeichneten schon getrennte Flächen; jetzt tun es alle.
+ *
+ * Oben die Hauptgröße mit dem meisten Platz, unten die zweite, beide an derselben Zeitachse und
+ * mit einem gemeinsamen Zeiger. `unten` ist der Platz unter der zweiten Fläche, für Legende oder
+ * Zoomleiste.
+ *
+ * **In Pixeln und nicht in Prozent.** Die untere Fläche hat eine feste Höhe und der Abstand
+ * dazwischen auch; was die Karte an Höhe gewinnt oder verliert, geht an die obere. In Prozent
+ * schrumpfte die untere Fläche in einer flachen Karte auf 23 Pixel, und der Achsenname der
+ * unteren lag auf der untersten Zahl der oberen (gesehen am 10.11.2026).
+ *
+ * `outerBoundsMode: "none"`: ECharts 6 rückt ein Gitter sonst ein, sobald eine Beschriftung breiter
+ * ist als der Rand, und dann stehen zwei Flächen mit derselben Zeitachse nicht mehr übereinander.
+ */
+const ABSTAND_FLAECHEN = 34;
+function zweiFlaechen(unten: number, links = 48, oben = 24, hoeheUnten = 60): Array<Record<string, number | string>> {
+  return [
+    { left: links, right: 16, top: oben, bottom: unten + hoeheUnten + ABSTAND_FLAECHEN, outerBoundsMode: "none" },
+    { left: links, right: 16, height: hoeheUnten, bottom: unten, outerBoundsMode: "none" },
+  ];
+}
+const zeigerVerbunden = { link: [{ xAxisIndex: "all" as const }], label: { show: false } };
+const achsenname = (links: number) => ({ color: C.text, fontSize: 10, align: "right" as const, padding: [0, 6, 0, 0] as [number, number, number, number], width: links });
 
 export type BarSeries<K extends string = keyof EnergyTotals & string> = { key: K; name: string; color: string };
 
@@ -56,127 +88,53 @@ export function stackedBars<K extends string>(buckets: Array<{ label: string; to
   };
 }
 
-/** Anteile als Ring, Kennzahl in der Mitte, Legende darunter.
+/**
+ * Puffertemperaturen und Leistung der Wärmepumpe über den Tag (5-min-Raster).
  *
- * Die Legende ist nicht schmückend. Ohne sie trägt allein die Farbe, welches Segment welches ist,
- * und wer den Ring zum ersten Mal sieht, kann es nicht wissen - im Ausdruck, bei Farbenblindheit
- * oder auf dem Kioskbildschirm aus zwei Metern schon gar nicht. Der Ring gibt dafür etwas Radius
- * ab; das ist der günstigere Tausch. */
-export function donut(parts: Array<{ name: string; value: number; color: string }>, center: string, sub: string): EChartsCoreOption {
-  const total = parts.reduce((a, p) => a + p.value, 0);
-  return {
-    animation: false,
-    backgroundColor: "transparent",
-    textStyle: { fontFamily: MONO },
-    tooltip: { ...tooltip, formatter: (p: unknown) => { const q = p as { name: string; value: number; percent: number }; return `${q.name}: ${de1(q.value)} kWh · ${Math.round(q.percent)} %`; } },
-    legend: {
-      show: total > 0,
-      bottom: 0,
-      left: "center",
-      itemWidth: 10,
-      itemHeight: 8,
-      itemGap: 14,
-      icon: "roundRect",
-      textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 },
-    },
-    series: [
-      {
-        type: "pie",
-        radius: ["58%", "80%"],
-        center: ["50%", "44%"],
-        avoidLabelOverlap: false,
-        label: { show: false },
-        // 2 px Fläche zwischen den Segmenten: die Trennung liegt dann in der Geometrie und nicht
-        // allein in der Farbe.
-        itemStyle: { borderColor: C.deep, borderWidth: 2 },
-        data: total > 0 ? parts.map((p) => ({ name: p.name, value: Math.round(p.value * 100) / 100, itemStyle: { color: p.color } })) : [{ name: "keine Daten", value: 1, itemStyle: { color: "rgba(255,255,255,.08)" } }],
-      },
-    ],
-    graphic: [
-      { type: "text", left: "center", top: "37%", style: { text: center, fill: "rgba(255,255,255,.92)", font: `600 22px ${MONO}`, textAlign: "center" } },
-      { type: "text", left: "center", top: "51%", style: { text: sub, fill: C.text, font: `11px ${MONO}`, textAlign: "center" } },
-    ],
-  };
-}
-
-/** Wärmebedarfsprognose: Heizung + Warmwasser gestapelt (kW_th), Strombedarf als Linie, Außentemperatur rechts. */
-/** Positionen der Tageswechsel auf der Kategorienachse, benannt nach dem Wochentag danach. */
-function midnights(points: HeatForecastPoint[]): Array<{ xAxis: number; value: string }> {
-  const out: Array<{ xAxis: number; value: string }> = [];
-  points.forEach((p, i) => {
-    if (i === 0) return;
-    const d = new Date(p.ts);
-    const prev = new Date(points[i - 1]!.ts);
-    if (d.getDate() !== prev.getDate()) {
-      out.push({ xAxis: i, value: d.toLocaleDateString("de-DE", { weekday: "short" }) });
-    }
-  });
-  return out;
-}
-
-export function heatForecastChart(points: HeatForecastPoint[]): EChartsCoreOption {
-  const labels = points.map((p) => new Date(p.ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }));
-  return {
-    animation: false,
-    backgroundColor: "transparent",
-    textStyle: { fontFamily: MONO },
-    tooltip: { ...tooltip, trigger: "axis" },
-    legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14, pageIconColor: C.text, pageIconInactiveColor: "rgba(255,255,255,.15)", pageTextStyle: { color: C.text, fontFamily: MONO, fontSize: 10 } },
-    grid: { left: 48, right: 48, top: 26, bottom: 56 },
-    xAxis: { type: "category", data: labels, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, interval: "auto", hideOverlap: true } },
-    yAxis: [
-      { type: "value", name: "kW", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 3, min: 0 },
-      { type: "value", name: "°C", position: "right", nameTextStyle: { color: C.text, fontSize: 10, align: "left", padding: [0, 0, 0, 6] }, splitLine: { show: false }, axisLabel: axisText, splitNumber: 3 },
-    ],
-    series: [
-      { name: "Heizung (thermisch)", type: "bar", stack: "th", data: points.map((p) => p.heating_kw), itemStyle: { color: "rgba(242,169,0,.55)" }, barCategoryGap: "30%" },
-      { name: "Warmwasser (thermisch)", type: "bar", stack: "th", data: points.map((p) => p.dhw_kw), itemStyle: { color: "rgba(127,163,179,.7)", borderRadius: [2, 2, 0, 0] } },
-      { name: "Strombedarf WP", type: "line", data: points.map((p) => p.electric_kw), showSymbol: false, lineStyle: { color: C.hp, width: 2 }, z: 3 },
-      { name: "Außentemperatur", type: "line", yAxisIndex: 1, data: points.map((p) => p.outdoor_c), showSymbol: false, lineStyle: { color: C.grid, width: 1.5, type: [4, 4] }, z: 2,
-        // Tagesgrenzen als senkrechte Striche: über 48 Stunden ist sonst nicht zu sehen, wo der
-        // eine Tag endet. Angehängt an eine stille Reihe, damit sie nicht in der Legende auftaucht.
-        markLine: {
-          symbol: "none",
-          silent: true,
-          lineStyle: { color: "rgba(255,255,255,.28)", width: 1, type: "solid" },
-          label: { show: true, position: "insideEndTop", color: C.text, fontFamily: MONO, fontSize: 10, formatter: (p: { value: string }) => p.value },
-          data: midnights(points),
-        } },
-    ],
-  };
-}
-
-/** Puffertemperaturen und WP-Leistung über den Tag (5-min-Raster). */
+ * Zwei Flächen: oben die vier Fühler, unten die Leistung. Die vier Farben sind eine Reihe von
+ * warm nach kühl, wie die Schichtung selbst, und keine vier Kategorien; sie liegen fast immer in
+ * ihrer Reihenfolge übereinander. Der unterste Fühler war vorher dunkelblau und hob sich mit
+ * 1,41:1 kaum von der Karte ab; jetzt halten alle vier mindestens 3:1 (gemessen 10.11.2026).
+ */
 export function bufferChart(rows: Array<Record<string, number | string | null>>): EChartsCoreOption {
-  const labels = rows.map((r) => new Date(String(r.ts)).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }));
+  const labels = rows.map((r) => hhmm(new Date(String(r.ts))));
   const num = (k: string) => rows.map((r) => (typeof r[k] === "number" ? (r[k] as number) : null));
   const temps: Array<[string, string, string]> = [
     ["buffer_temp_top_c", "oben", "#f2a900"],
     ["buffer_temp_mid_top_c", "mitte oben", "#ffd778"],
     ["buffer_temp_mid_bottom_c", "mitte unten", "#7fa3b3"],
-    ["buffer_temp_bottom_c", "unten", "#1f4c66"],
+    ["buffer_temp_bottom_c", "unten", "#2f89b5"],
   ];
   // Brennphasen des Ofens als hinterlegte Bänder. Das ist der eigentliche Erkenntnisgewinn dieses
   // Diagramms: steigt die Puffertemperatur innerhalb eines Bandes, war es der Ofen und nicht die
   // Wärmepumpe. Vorher musste man das aus der Abwesenheit der WP-Leistung erschließen.
   const burns = runsOf(rows, "stove_running");
   const stoveBands = burns.map(([a, b]) => [{ xAxis: a }, { xAxis: b }]);
+  const zeit = (gridIndex: number, zeigen: boolean) => ({
+    type: "category" as const,
+    gridIndex,
+    data: labels,
+    axisLine: { lineStyle: { color: C.axis } },
+    axisTick: { show: false },
+    axisLabel: zeigen ? { ...axisText, fontSize: 10, interval: "auto" as const, hideOverlap: true } : { show: false },
+  });
 
   return {
     animation: false,
     backgroundColor: "transparent",
     textStyle: { fontFamily: MONO },
     tooltip: { ...tooltip, trigger: "axis" },
+    axisPointer: zeigerVerbunden,
     legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14, pageIconColor: C.text, pageIconInactiveColor: "rgba(255,255,255,.15)", pageTextStyle: { color: C.text, fontFamily: MONO, fontSize: 10 } },
-    grid: { left: 48, right: 48, top: 26, bottom: 56 },
-    xAxis: { type: "category", data: labels, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, axisLabel: { ...axisText, fontSize: 10, interval: "auto", hideOverlap: true } },
+    grid: zweiFlaechen(56),
+    xAxis: [zeit(0, false), zeit(1, true)],
     yAxis: [
-      { type: "value", name: "°C", min: 20, max: 70, interval: 10, nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText },
-      { type: "value", name: "kW", position: "right", min: 0, nameTextStyle: { color: C.text, fontSize: 10, align: "left", padding: [0, 0, 0, 6] }, splitLine: { show: false }, axisLabel: axisText, splitNumber: 3 },
+      { type: "value", gridIndex: 0, name: "°C", min: 20, max: 70, interval: 10, nameTextStyle: achsenname(48), splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText },
+      { type: "value", gridIndex: 1, name: "kW", min: 0, nameTextStyle: achsenname(48), splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 2 },
     ],
     series: [
-      ...temps.map(([k, name, color]) => ({ name, type: "line", data: num(k), showSymbol: false, connectNulls: true, lineStyle: { color, width: 2 }, z: 3 })),
-      { name: "WP-Leistung", type: "line", yAxisIndex: 1, step: "end", data: num("heat_pump_power_kw"), showSymbol: false, lineStyle: { color: C.hp, width: 1.5 }, areaStyle: { color: "rgba(228,236,239,.10)" }, z: 1 },
+      ...temps.map(([k, name, color]) => ({ name, type: "line", data: num(k), showSymbol: false, connectNulls: true, itemStyle: { color }, lineStyle: { color, width: 2 }, z: 3 })),
+      { name: "Wärmepumpe", type: "line", xAxisIndex: 1, yAxisIndex: 1, step: "end", data: num("heat_pump_power_kw"), showSymbol: false, itemStyle: { color: C.heatPump }, lineStyle: { color: C.heatPump, width: 1.5 }, areaStyle: { color: C.heatPump, opacity: 0.18 }, z: 1 },
       // Träger der Bänder: eine Reihe ohne Daten, damit sie in der Legende steht und abschaltbar
       // bleibt. markArea allein bekäme keinen Legendeneintrag.
       ...(stoveBands.length
@@ -208,9 +166,9 @@ export function lineOverDay(rows: Array<{ ts: number; value: number | null }>, n
     animation: false,
     backgroundColor: "transparent",
     textStyle: { fontFamily: MONO },
-    tooltip: { ...tooltip, trigger: "axis", formatter: (params: unknown) => { const ps = params as Array<{ value: [number, number | null] }>; const p = ps[0]; if (!p || p.value[1] == null) return ""; return `${new Date(p.value[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} · ${de1(p.value[1], 0)} ${unit}`; } },
+    tooltip: { ...tooltip, trigger: "axis", formatter: (params: unknown) => { const ps = params as Array<{ value: [number, number | null] }>; const p = ps[0]; if (!p || p.value[1] == null) return ""; return `${hhmm(new Date(p.value[0]))} · ${de1(p.value[1], 0)} ${unit}`; } },
     grid: { left: 48, right: 12, top: 24, bottom: 30 },
-    xAxis: { type: "time", axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { ...axisText, formatter: (v: number) => new Date(v).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) } },
+    xAxis: { type: "time", axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { ...axisText, formatter: (v: number) => hhmm(new Date(v)) } },
     yAxis: { type: "value", min: 0, max, name: unit, nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 3 },
     series: [{ name, type: "line", data: rows.map((r) => [r.ts, r.value]), showSymbol: false, connectNulls: true, lineStyle: { color, width: 2 }, areaStyle: { color: "rgba(127,163,179,.14)" } }],
   };
@@ -289,20 +247,29 @@ export function batteryDayChart(rows: Array<Record<string, number | string | nul
         const ps = params as Array<{ seriesName: string; value: [number, number | null]; color: string }>;
         const p0 = ps[0];
         if (!p0) return "";
-        const t = new Date(p0.value[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+        const t = hhmm(new Date(p0.value[0]));
         const rows2 = ps.filter((p) => p.value[1] != null).map((p) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:${p.color}">${p.seriesName}</span><span>${p.seriesName === "Ladezustand" ? `${Math.round(p.value[1] ?? 0)} %` : `${de1(p.value[1] ?? 0, 2)} kW`}</span></div>`).join("");
         return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${t}</div>${rows2}`;
       },
     },
     legend: { type: "scroll", bottom: 0, left: "center", textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 }, itemWidth: 14, itemHeight: 8, itemGap: 14, pageIconColor: C.text, pageIconInactiveColor: "rgba(255,255,255,.15)", pageTextStyle: { color: C.text, fontFamily: MONO, fontSize: 10 } },
-    grid: { left: 48, right: 48, top: 26, bottom: 56 },
-    xAxis: { type: "time", axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { ...axisText, fontSize: 10, formatter: (v: number) => new Date(v).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) } },
+    // Zwei Flächen statt zweier Achsen: oben der Ladezustand, unten die Leistung.
+    axisPointer: zeigerVerbunden,
+    grid: zweiFlaechen(56),
+    xAxis: [0, 1].map((gridIndex) => ({
+      type: "time",
+      gridIndex,
+      axisLine: { lineStyle: { color: C.axis } },
+      axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: gridIndex === 1 ? { ...axisText, fontSize: 10, hideOverlap: true, formatter: (v: number) => hhmm(new Date(v)) } : { show: false },
+    })),
     yAxis: [
-      { type: "value", min: 0, max: 100, interval: 25, name: "%", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText },
-      { type: "value", name: "kW", position: "right", nameTextStyle: { color: C.text, fontSize: 10, align: "left", padding: [0, 0, 0, 6] }, splitLine: { show: false }, axisLabel: axisText, splitNumber: 3 },
+      { type: "value", gridIndex: 0, min: 0, max: 100, interval: 25, name: "%", nameTextStyle: achsenname(48), splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText },
+      { type: "value", gridIndex: 1, name: "kW", nameTextStyle: achsenname(48), splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 2 },
     ],
     series: [
-      { name: "Leistung", type: "line", yAxisIndex: 1, step: "end", data: rows.map((r) => [ts(r), num(r, "battery_power_kw")]), showSymbol: false, lineStyle: { color: "rgba(127,163,179,.7)", width: 1 }, areaStyle: { color: "rgba(127,163,179,.12)" }, z: 1 },
+      { name: "Leistung", type: "line", xAxisIndex: 1, yAxisIndex: 1, step: "end", data: rows.map((r) => [ts(r), num(r, "battery_power_kw")]), showSymbol: false, lineStyle: { color: "rgba(127,163,179,.7)", width: 1 }, areaStyle: { color: "rgba(127,163,179,.12)" }, z: 1 },
       { name: "Ladezustand", type: "line", data: rows.map((r) => [ts(r), num(r, "battery_soc") != null ? (num(r, "battery_soc") as number) * 100 : null]), showSymbol: false, connectNulls: true, lineStyle: { color: C.pv, width: 2.5 }, z: 3 },
     ],
   };
@@ -628,7 +595,7 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
         const ps = params as Array<{ seriesName: string; value: [number, number | null]; color: string }>;
         const p0 = ps[0];
         if (!p0) return "";
-        const t = new Date(p0.value[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+        const t = hhmm(new Date(p0.value[0]));
         const body = ps
           .filter((p) => p.value[1] != null)
           .map((p) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:${p.color}">${p.seriesName}</span><span>${de1(p.value[1] ?? 0, 2)} kW</span></div>`)
@@ -700,7 +667,7 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
         dataBackground: { lineStyle: { color: C.axis }, areaStyle: { color: "rgba(255,255,255,.05)" } },
         selectedDataBackground: { lineStyle: { color: C.pv }, areaStyle: { color: "rgba(242,169,0,.14)" } },
         textStyle: { color: C.text, fontFamily: MONO, fontSize: 10 },
-        labelFormatter: (v: number) => new Date(v).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+        labelFormatter: (v: number) => hhmm(new Date(v)),
       },
     ],
     // Oben 46 statt 28: die Prozentachse setzt ihre „100" genau auf die obere Gitterkante, und die
@@ -711,7 +678,7 @@ export function powerOverlay(rows: Array<Record<string, number | string | null>>
       axisLine: { lineStyle: { color: C.axis } },
       axisTick: { show: false },
       splitLine: { show: false },
-      axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => new Date(v).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) },
+      axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => hhmm(new Date(v)) },
     },
     /**
      * Zwei Achsen, und die zweite ist der eigentliche Grund für diese Ansicht.
@@ -849,19 +816,26 @@ export function heatBalanceChart(points: HeatBalancePoint[]): EChartsCoreOption 
       formatter: (params: unknown) => {
         const ps = params as Array<{ seriesName: string; value: [number, number | null]; color: string }>;
         if (!ps.length) return "";
-        const t = new Date(ps[0]!.value[0]).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+        const t = hhmm(new Date(ps[0]!.value[0]));
         const rows = ps
           .filter((p) => typeof p.value[1] === "number")
-          .map((p) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:${p.color}">${p.seriesName}</span><span>${de1(p.value[1]!)} ${p.seriesName === "Puffer" ? "kWh" : "kW"}</span></div>`)
+          .map((p) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:${p.color}">${p.seriesName}</span><span>${de1(p.value[1]!)} ${p.seriesName === "Pufferinhalt" ? "kWh" : "kW"}</span></div>`)
           .join("");
         return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${t}</div>${rows}`;
       },
     },
     legend: {
+      // Eine Zeile, die sich blättern lässt: am Handy brach die Legende in drei Zeilen um und lag
+      // auf dem Diagramm.
+      type: "scroll",
       top: 0,
       left: 0,
+      right: 0,
       textStyle: { color: C.text, fontFamily: MONO, fontSize: 11 },
       inactiveColor: "rgba(255,255,255,.25)",
+      pageIconColor: C.text,
+      pageIconInactiveColor: "rgba(255,255,255,.15)",
+      pageTextStyle: { color: C.text, fontFamily: MONO, fontSize: 10 },
       itemWidth: 18,
       itemHeight: 2,
       data: [
@@ -870,34 +844,43 @@ export function heatBalanceChart(points: HeatBalancePoint[]): EChartsCoreOption 
         { name: "Ofen (Raum)", icon: "path://M0,0 H6 V3 H0 Z M10,0 H16 V3 H10 Z" },
         { name: "Entnahme" },
         { name: "Verlust an den Raum", icon: "path://M0,0 H6 V3 H0 Z M10,0 H16 V3 H10 Z" },
-        { name: "Puffer", icon: "path://M0,0 H6 V3 H0 Z M10,0 H16 V3 H10 Z" },
+        { name: "Pufferinhalt" },
       ],
     },
-    grid: { left: 52, right: 56, top: 44, bottom: 36 },
+    // Zwei Flächen: oben, was in den Puffer hinein- und aus ihm herausgeht, in Kilowatt; unten sein
+    // Inhalt in Kilowattstunden. Vorher lag der Inhalt gestrichelt über den Leistungen, an einer
+    // zweiten Achse rechts - eine Menge zwischen Leistungen.
+    axisPointer: zeigerVerbunden,
+    grid: zweiFlaechen(46, 52, 44, 72),
     dataZoom: [
-      { type: "inside", filterMode: "filter", start: 0, end: 100 },
-      { type: "slider", height: 16, bottom: 6, filterMode: "filter", start: 0, end: 100, borderColor: C.axis, fillerColor: "rgba(127,163,179,.14)", handleStyle: { color: C.axis }, textStyle: { color: C.text, fontFamily: MONO, fontSize: 10 } },
+      { type: "inside", xAxisIndex: [0, 1], filterMode: "filter", start: 0, end: 100 },
+      { type: "slider", xAxisIndex: [0, 1], height: 16, bottom: 6, filterMode: "filter", start: 0, end: 100, borderColor: C.axis, fillerColor: "rgba(127,163,179,.14)", handleStyle: { color: C.axis }, textStyle: { color: C.text, fontFamily: MONO, fontSize: 10 } },
     ],
-    xAxis: {
+    xAxis: [0, 1].map((gridIndex) => ({
       type: "time",
+      gridIndex,
       axisLine: { lineStyle: { color: C.axis } },
       axisTick: { show: false },
       splitLine: { show: false },
-      axisLabel: { ...axisText, formatter: (v: number) => new Date(v).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) },
-    },
+      axisLabel: gridIndex === 1 ? { ...axisText, hideOverlap: true, formatter: (v: number) => hhmm(new Date(v)) } : { show: false },
+    })),
     yAxis: [
-      { type: "value", name: "kW", nameTextStyle: { color: C.text, fontSize: 10, align: "right", padding: [0, 6, 0, 0] }, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 4 },
-      { type: "value", name: "kWh", nameLocation: "middle", nameGap: 34, nameRotate: 0, nameTextStyle: { color: C.text, fontSize: 10 }, splitLine: { show: false }, axisLabel: axisText, splitNumber: 3 },
+      { type: "value", gridIndex: 0, name: "kW", nameTextStyle: achsenname(52), splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 4 },
+      { type: "value", gridIndex: 1, name: "kWh", nameTextStyle: achsenname(52), splitLine: { lineStyle: { color: C.gridline } }, axisLabel: axisText, splitNumber: 2, scale: true },
     ],
     series: [
-      flaeche("Wärmepumpe", (p) => p.heat_pump_kw, C.hp, "rgba(228,236,239,.20)"),
+      // Die Wärmepumpe in ihrer Farbe, wie überall. Sie war hier hell, und die Entnahme sandfarben;
+      // mit dem Orange der Wärmepumpe wäre Sand bei Deuteranopie dieselbe Farbe (ΔE 0,2). Die
+      // Entnahme ist deshalb hell: schlechtestes Paar dieser Fläche ΔE 15,3 normal und 10,3 protan
+      // (gemessen 10.11.2026).
+      flaeche("Wärmepumpe", (p) => p.heat_pump_kw, C.heatPump, "rgba(224,150,107,.24)"),
       flaeche("Ofen (Wasser)", (p) => p.stove_water_kw, C.stove, "rgba(181,101,29,.28)"),
       // Die Raumwärme des Ofens geht nicht in den Puffer. Sie gehört deshalb nicht in den Stapel,
       // auch wenn sie vom selben Gerät kommt - gestrichelt daneben, in derselben Farbe.
       { name: "Ofen (Raum)", type: "line", data: reihe((p) => p.stove_room_kw), showSymbol: false, connectNulls: false, lineStyle: { color: C.stove, width: 1.5, type: "dashed", opacity: 0.9 }, itemStyle: { color: C.stove }, z: 3 },
-      { name: "Entnahme", type: "line", data: reihe((p) => p.draw_kw), showSymbol: false, connectNulls: false, lineStyle: { color: C.base, width: 2 }, itemStyle: { color: C.base }, z: 4 },
+      { name: "Entnahme", type: "line", data: reihe((p) => p.draw_kw), showSymbol: false, connectNulls: false, lineStyle: { color: C.house, width: 2 }, itemStyle: { color: C.house }, z: 4 },
       { name: "Verlust an den Raum", type: "line", data: reihe((p) => p.loss_kw), showSymbol: false, connectNulls: false, lineStyle: { color: C.alert, width: 1.5, type: "dashed" }, itemStyle: { color: C.alert }, z: 3 },
-      { name: "Puffer", type: "line", yAxisIndex: 1, data: reihe((p) => p.buffer_kwh), showSymbol: false, connectNulls: true, lineStyle: { color: C.battery, width: 1.5, type: "dashed" }, itemStyle: { color: C.battery }, z: 1 },
+      { name: "Pufferinhalt", type: "line", xAxisIndex: 1, yAxisIndex: 1, data: reihe((p) => p.buffer_kwh), showSymbol: false, connectNulls: true, lineStyle: { color: C.mist, width: 2 }, areaStyle: { color: C.mist, opacity: 0.14 }, itemStyle: { color: C.mist }, z: 1 },
     ],
   };
 }

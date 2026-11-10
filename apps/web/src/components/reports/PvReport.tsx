@@ -8,8 +8,8 @@ import { Card, CardHead } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
 import { dayBounds } from "@/components/charts/dayBounds";
-import { C, donut, pvForecastChart, stackedBars } from "./charts";
-import { CoverageNote, de1, ErrorBanner, eur, KpiGrid, pct, ReportShell, usePeriod } from "./ReportShell";
+import { C, pvForecastChart, stackedBars } from "./charts";
+import { ChartLegend, CoverageNote, de1, ErrorBanner, eur, KpiGrid, pct, ReportShell, usePeriod } from "./ReportShell";
 import { PeriodStrip } from "./PeriodStrip";
 import { isoToday, useMultiPeriod, useReport } from "./useReport";
 import { useRole } from "@/lib/live/useRole";
@@ -64,10 +64,6 @@ export function PvReport() {
   const [dayStart] = dayBounds(nowMs);
   const fc = useMemo(() => forecastKwh(plan, dayStart), [plan, dayStart]);
   const barsOpt = useMemo(() => stackedBars(data?.buckets ?? [], SERIES), [data]);
-  const donutOpt = useMemo(
-    () => donut(SERIES.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), t ? `${de1(t.pv_kwh, t.pv_kwh >= 100 ? 0 : 1)} kWh` : "-", "Erzeugung"),
-    [t],
-  );
   const fcOpt = useMemo(() => {
     const actual = rows.map((r) => ({ ts: new Date(String(r.ts)).getTime(), kw: typeof r.pv_power_kw === "number" ? (r.pv_power_kw as number) : null }));
     return pvForecastChart(actual, fc.points, dayStart, nowMs);
@@ -100,32 +96,28 @@ export function PvReport() {
         <Stat label="Prognose heute" value={de1(fc.today)} unit="kWh" hint={isToday ? (t ? `${de1(t.pv_kwh)} kWh bisher erzeugt` : "Tagesprognose") : "für heute, nicht für den gewählten Tag"} />
         <Stat label="Prognose morgen" value={fc.tomorrow > 0 ? de1(fc.tomorrow) : "-"} unit="kWh" hint={fc.tomorrow > 0 ? "aus Wetterprognose" : "noch nicht verfügbar"} />
       </KpiGrid>
-      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
+      {/* Verwendung und Vorschau nebeneinander. Neben der Verwendung stand ein Ring mit denselben
+          drei Anteilen, die in den Kacheln darüber stehen. */}
+      <div className="report-row" style={{ "--cols": "1fr 1fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 300 }}>
-          <CardHead title="Erzeugung und Verwendung" right="direkt genutzt · in Batterie · eingespeist" />
+          <CardHead title="Erzeugung und Verwendung" right={<ChartLegend items={SERIES} />} />
           <div className="min-h-0 flex-1"><EChart option={barsOpt} /></div>
         </Card>
         <Card style={{ padding: 16, height: 300 }}>
-          <CardHead title="Wohin ging der Strom?" />
-          <div className="min-h-0 flex-1"><EChart option={donutOpt} /></div>
-        </Card>
-      </div>
-      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
-        <Card style={{ padding: 16, height: 280 }}>
           <CardHead title={isToday ? "Heute und morgen" : "Prognose heute und morgen"} right={<Link href="/system" className="text-amber">Prognosegüte →</Link>} />
           <div className="min-h-0 flex-1"><EChart option={fcOpt} /></div>
         </Card>
-        <PeriodStrip
-          anchor={anchor}
-          title="PV im Überblick"
-          rows={[
-            { label: "Erzeugt · kWh", value: (p) => val(p, (s) => de1(s.totals.pv_kwh, s.totals.pv_kwh >= 100 ? 0 : 1)), tone: "amber" },
-            { label: "Eigenverbrauch", value: (p) => val(p, (s) => pct(s.totals.self_consumption_share)) },
-            { label: "Einspeiseerlös", value: (p) => val(p, (s) => eur(s.totals.export_revenue_eur)) },
-            { label: "Ersparnis", value: (p) => val(p, (s) => eur(s.totals.pv_direct_savings_eur + s.totals.battery_net_eur)) },
-          ]}
-        />
       </div>
+      <PeriodStrip
+        anchor={anchor}
+        title="PV im Überblick"
+        rows={[
+          { label: "Erzeugt · kWh", value: (p) => val(p, (s) => de1(s.totals.pv_kwh, s.totals.pv_kwh >= 100 ? 0 : 1)), tone: "amber" },
+          { label: "Eigenverbrauch", value: (p) => val(p, (s) => pct(s.totals.self_consumption_share)) },
+          { label: "Einspeiseerlös", value: (p) => val(p, (s) => eur(s.totals.export_revenue_eur)) },
+          { label: "Ersparnis", value: (p) => val(p, (s) => eur(s.totals.pv_direct_savings_eur + s.totals.battery_net_eur)) },
+        ]}
+      />
       <CoverageNote meta={data?.meta} extra="Ersparnis im Überblick = PV direkt plus Batterieentladung, jeweils gegen den Strompreis der Stunde." />
     </ReportShell>
   );

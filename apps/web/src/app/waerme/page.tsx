@@ -1,7 +1,7 @@
-import { HeatReport } from "@/components/reports/HeatReport";
+import { HeatOverview } from "@/components/reports/HeatOverview";
 
 export const metadata = { title: "Wärme · Duck Curve Home" };
 
 export default function Page() {
-  return <HeatReport />;
+  return <HeatOverview />;
 }

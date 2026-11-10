@@ -1,6 +1,6 @@
 # Die Nachbetrachtung: ein Tag in Euro
 
-Stand 10.11.2026. Seite `Wärme → Nachbetrachtung`, Endpunkt
+Stand 10.11.2026. Seite `Wärme → Fahrplan → Rückblick` (`/waerme/nachbetrachtung`), Endpunkt
 `GET /api/v1/plan/nachbetrachtung?day=YYYY-MM-DD`. Bewertung in
 `packages/hems-core/src/hems_core/accounting/nachbetrachtung.py`, Zusammenstellung und
 Vergleichslauf in `apps/api/src/dch_api/application/nachbetrachtung.py`.
@@ -20,7 +20,6 @@ Fahrplans über den Tag, oder an der Maschine, die den Kontakt nur als Anforderu
 | letzter Stand | Für jede Viertelstunde der jüngste Fahrplan, der vor ihr entstand | Fahrplanarchiv |
 | wirklich | Der gemessene Strom des Verdichters und der gemessene Ofenbetrieb | Minutenbestand |
 | mit perfekter Voraussicht | Ein neu gerechneter Fahrplan, dem der Tag im Voraus bekannt war | Vergleichslauf |
-| ohne Preisblick | Dieselbe Strommenge wie gemessen, nach dem Wärmebedarf verteilt. Geschätzt | Rechnung |
 
 **Der erste Fahrplan** ist der letzte Lauf vor der Ortsmitternacht: mit ihm ging das Haus in den
 Tag. Gibt es keinen, gilt der erste Lauf des Tages, und der Vergleich beginnt erst mit ihm.
@@ -29,9 +28,28 @@ Tag. Gibt es keinen, gilt der erste Lauf des Tages, und der Vergleich beginnt er
 
     versprochen + Prognosefehler + Nachführen + Eingriff der Maschine = wirklich
 
-Daneben stehen zwei Abstände, die nicht auf dem Weg liegen: was mit perfekter Voraussicht noch zu
-holen gewesen wäre (letzter Stand minus Vergleichslauf), und was das Verschieben gegenüber „ohne
-Preisblick“ gebracht hat.
+Daneben steht ein Abstand, der nicht auf dem Weg liegt: was mit perfekter Voraussicht noch zu
+holen gewesen wäre (letzter Stand minus Vergleichslauf).
+
+## Was das Verschieben gebracht hat, rechnet die Kostenseite
+
+Bis zum 10.11.2026 hatte die Nachbetrachtung eine sechste Linie, „ohne Preisblick“: die gemessene
+Strommenge, nach dem Wärmebedarf über den Tag verteilt. Dieselbe Frage beantwortete schon
+`hems_core.accounting.counterfactual` für die Kostenseite, mit einer anderen Rechnung und einer
+anderen Zahl. Zwei Antworten auf eine Frage sind eine zu viel.
+
+Geblieben ist die Rechnung der Kostenseite, aus zwei Gründen. Sie rechnet aus den Stundenflüssen
+der Zähler und kennt deshalb den Batteriespeicher, den die Nachbetrachtung nicht kennt. Und sie
+gilt für jeden Zeitraum, auch für Monat und Jahr, ohne einen Löserlauf. Die Nachbetrachtung nennt
+ihr Ergebnis für den Tag in einem Satz (`verschieben_eur`, `verschieben_de`) und verweist auf die
+Rechnung; dieselbe Zahl steht auf der Wärmeübersicht und auf der Kostenseite. Der Entwurf wollte
+es umgekehrt, siehe dort Abschnitt 9.
+
+## Was für den Tag gilt und was immer gilt
+
+Die Antwort trennt zwei Sorten Text. `hinweise_de` ist, was diesen Tag einschränkt: eine fehlende
+Linie, ein laufender Tag, Mengen, die weit auseinanderliegen. Das steht offen neben den Zahlen.
+`methode_de` ist, wie gerechnet wird, und gilt für jeden Tag gleich; die Seite klappt es ein.
 
 ## Eine Rechnung für alle
 
@@ -98,15 +116,14 @@ Für Tage davor fehlen Linien, und die Seite sagt, welche und warum:
 | 09.11.2026 bis zum Neustart mit dieser Fassung | vorhanden | fehlt |
 | danach | vorhanden | vorhanden |
 
-Messung, Vergleichslauf und „ohne Preisblick“ gibt es für jeden Tag, für den Minutenwerte
-vorliegen.
+Messung und Vergleichslauf gibt es für jeden Tag, für den Minutenwerte vorliegen.
 
 ## Grenzen
 
 * **Der Batteriespeicher kommt nicht vor.** Ob eine Kilowattstunde aus der Batterie kam, ändert
   an dieser Bewertung nichts. Das Modell des Optimierers kennt den Speicher ebenso wenig.
-* **„Ohne Preisblick“ ist eine Schätzung.** Was ohne Führung geschehen wäre, weiß niemand. Die
-  Linie verteilt die gemessene Menge nach dem Wärmebedarf der eingetretenen Temperatur.
+* **Der Vergleich ohne Preisblick ist eine Schätzung**, und er stammt aus einer anderen Rechnung
+  (siehe oben). Er steht deshalb nicht in der Treppe und nicht in der Tabelle der Linien.
 * **Das Bedarfsmodell steht auf zwei geschätzten Hauswerten.** Der Abstand zwischen geplanter und
   gemessener Strommenge misst vor allem dieses Modell, nicht den Fahrplan.
 * **Der Endstand des Puffers ist nicht bewertet.** Eine Linie, die den Puffer am Tagesende voller

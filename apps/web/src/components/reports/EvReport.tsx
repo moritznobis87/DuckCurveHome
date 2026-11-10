@@ -6,7 +6,7 @@ import type { EvReport as EvReportData, Period } from "@/lib/api/models";
 import { Card, CardHead } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { EChart } from "@/components/charts/EChart";
-import { C, donut, stackedBars } from "./charts";
+import { C, stackedBars } from "./charts";
 import { ChartLegend, CoverageNote, de1, ErrorBanner, eur, KpiGrid, Note, pct, ReportShell, usePeriod } from "./ReportShell";
 import { PeriodStrip } from "./PeriodStrip";
 import { useMultiPeriod, useReport } from "./useReport";
@@ -29,7 +29,6 @@ export function EvReport() {
   const paidCt = t && t.ev_grid_kwh > 0.01 ? (t.ev_cost_eur / t.ev_grid_kwh) * 100 : null;
   const effCt = t && t.ev_kwh > 0.01 ? ((t.ev_cost_eur + t.ev_opportunity_eur) / t.ev_kwh) * 100 : null;
   const barsOpt = useMemo(() => stackedBars(data?.summary.buckets ?? [], SOURCES), [data]);
-  const donutOpt = useMemo(() => donut(SOURCES.map((s) => ({ name: s.name, value: t ? t[s.key] : 0, color: s.color })), pct(pvShare), "Sonnenstrom"), [t, pvShare]);
   const sessions = useMemo(() => [...(data?.sessions ?? [])].sort((a, b) => b.start.localeCompare(a.start)), [data]);
   const val = (p: Period, f: (s: EvReportData) => string) => (strip[p] ? f(strip[p] as EvReportData) : "-");
 
@@ -44,14 +43,10 @@ export function EvReport() {
         <Stat label="Entgangene Vergütung" value={eur(t?.ev_opportunity_eur)} tone="muted" hint="nicht eingespeister PV-Strom" />
         <Stat label="Effektiv je kWh" value={effCt != null ? de1(effCt, 1) : "-"} unit="ct" hint="bezahlt + entgangen" />
       </KpiGrid>
-      <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
+      <div className="report-row" style={{ "--cols": "1fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 280 }}>
           <CardHead title="Geladene Energie nach Herkunft" right={<ChartLegend items={SOURCES} />} />
           <div className="min-h-0 flex-1"><EChart option={barsOpt} /></div>
-        </Card>
-        <Card style={{ padding: 16, height: 280 }}>
-          <CardHead title="Herkunft" />
-          <div className="min-h-0 flex-1"><EChart option={donutOpt} /></div>
         </Card>
       </div>
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>

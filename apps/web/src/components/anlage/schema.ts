@@ -206,6 +206,6 @@ export const ZIELE = {
   ofen: { href: "/waerme#ofen", label: "Pelletofen im Verlauf" },
   puffer: { href: "/waerme#puffer", label: "Pufferspeicher im Verlauf" },
   heizung: { href: "/waerme/raeume", label: "Räume und Heizkreise" },
-  warmwasser: { href: "/waerme/bilanz", label: "Wärmebilanz mit Warmwasser" },
+  warmwasser: { href: "/waerme", label: "Wärmeübersicht mit Warmwasser" },
 } as const;
 export type Ziel = keyof typeof ZIELE;

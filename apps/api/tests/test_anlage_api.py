@@ -231,7 +231,7 @@ def test_die_kontaktwirkung_liefert_form_und_urteil(client: TestClient) -> None:
         assert len(e["kw"]) == len(faecher["minuten"])
     # Die Vorführung reicht keine sieben Tage zurück, und das steht da.
     assert "Vorführung" in body["hinweise_de"][0]
-    assert any("keine Ursache" in h for h in body["hinweise_de"])
+    assert any("keine Ursache" in m for m in body["methode_de"])
 
 
 def test_ein_unbekannter_zeitraum_wird_abgelehnt(client: TestClient) -> None:

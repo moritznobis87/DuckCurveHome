@@ -23,12 +23,12 @@ import { laeufe } from "./tagesuhr";
  * **Jede Größe in ihrer eigenen Fläche.** Cent, Kilowatt und Euro in einem Gitter läsen sich als
  * Zusammenhang ihrer Kreuzungspunkte.
  *
- * **Die Farben** sind die der Kostentreppe: Fahrplan kühl, Wirklichkeit warm, Vergleichsrechnungen
+ * **Die Farben** sind die der Kostentreppe: Fahrplan kühl, Wirklichkeit warm, der Vergleichslauf
  * hell. Gemessen am 10.11.2026 gegen die Kartenfläche #123544, alle Paare: schlechtestes Paar
- * ΔE 15,8 normal und 10,3 protan. Ein viertes Grün für die perfekte Voraussicht fiel durch - gegen
- * das Orange der Wirklichkeit ΔE 0,8 bei Deuteranopie, also dieselbe Farbe. Deshalb drei Farben
- * und die Strichart: der erste Fahrplan gestrichelt, der letzte Stand durchgezogen, die Schätzung
- * gepunktet, und jede Kurve trägt ihren Namen am Ende.
+ * ΔE 15,8 normal und 10,3 protan. Ein Grün für die perfekte Voraussicht fiel durch - gegen das
+ * Orange der Wirklichkeit ΔE 0,8 bei Deuteranopie, also dieselbe Farbe. Deshalb drei Farben für
+ * vier Linien: der erste Fahrplan gestrichelt, der letzte Stand durchgezogen, und jede Kurve hat
+ * ihren Namen am Ende.
  */
 
 /** Ränder: links die Namen der Streifen, rechts die Namen am Ende der Kurven. */
@@ -41,18 +41,16 @@ export const KURZ: Record<string, string> = {
   letzter: "letzter Stand",
   wirklich: "wirklich",
   perfekt: "perfekte Voraussicht",
-  ohne_fuehrung: "ohne Preisblick",
 };
 /** Auf dem Telefon ist die Spalte der Namen schmaler; dort stehen sie kürzer. */
-const KNAPP: Record<string, string> = { erster: "erster Plan", letzter: "letzter Stand", wirklich: "wirklich", perfekt: "perfekt", ohne_fuehrung: "ohne Preis" };
+const KNAPP: Record<string, string> = { erster: "erster Plan", letzter: "letzter Stand", wirklich: "wirklich", perfekt: "perfekt" };
 
 /** Farbe und Strichart einer Linie. Dieselbe Zuordnung wie in der Kostentreppe. */
-export function strich(key: string): { color: string; type: "solid" | "dashed" | "dotted"; width: number } {
+export function strich(key: string): { color: string; type: "solid" | "dashed"; width: number } {
   if (key === "wirklich") return { color: C.heatPump, type: "solid", width: 2.5 };
   if (key === "letzter") return { color: C.mist, type: "solid", width: 2 };
   if (key === "erster") return { color: C.mist, type: "dashed", width: 1.6 };
-  if (key === "perfekt") return { color: C.house, type: "solid", width: 1.6 };
-  return { color: C.house, type: "dotted", width: 1.8 };
+  return { color: C.house, type: "solid", width: 1.6 };
 }
 
 function blass(hex: string, d: number): string {

@@ -1420,7 +1420,7 @@ class KontaktwirkungOut(Kontaktwirkung):
     Schließvorgang zur selben Tageszeit.
 
     Das Urteil steht in `urteil` und `urteil_de` und wird hier gefällt, nicht in der Oberfläche.
-    Es ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `hinweise_de`.
+    Es ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `methode_de`.
     """
 
     days: int
@@ -1429,11 +1429,10 @@ class KontaktwirkungOut(Kontaktwirkung):
 class NachbetrachtungOut(Nachbetrachtung):
     """Ein Ortstag in Euro: was der Fahrplan versprach, was er hielt, was der Tag kostete.
 
-    Sechs Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet
+    Fünf Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet
     (`verglichen`): der erste Fahrplan des Tages mit seinen eigenen Kosten (`versprochen`) und mit
     den eingetretenen Werten (`erster`), der jeweils letzte Stand des Fahrplans (`letzter`), die
-    Messung (`wirklich`), ein Vergleichslauf mit perfekter Voraussicht (`perfekt`) und dieselbe
-    Strommenge nach dem Wärmebedarf verteilt (`ohne_fuehrung`, geschätzt).
+    Messung (`wirklich`) und ein Vergleichslauf mit perfekter Voraussicht (`perfekt`).
 
     `abstaende` sind die Stufen dazwischen. Die ersten drei führen vom Versprechen zur
     Wirklichkeit: Prognosefehler, Nachführen, Eingriff der Maschine. Positiv heißt teurer.
@@ -1450,3 +1449,8 @@ class NachbetrachtungOut(Nachbetrachtung):
     wp_kw: float
     verguetung_ct: float
     hat_ofen: bool = False
+    #: Was das Verschieben gegenüber einem Lauf ohne Preisblick an diesem Tag gebracht hat:
+    #: dieselbe Zahl und dieselbe Rechnung wie `GET /energy/shift` für den Tag. Positiv heißt
+    #: gespart. `None`, wenn der Tag dafür zu wenig hergibt; `verschieben_de` sagt dann, warum.
+    verschieben_eur: float | None = None
+    verschieben_de: str = ""

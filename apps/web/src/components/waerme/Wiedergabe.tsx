@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Schema } from "@/components/anlage/Schema";
 import { Card, CardHead } from "@/components/ui/Card";
+import { Methode, MethodeAbsatz } from "@/components/ui/Methode";
 import { api } from "@/lib/api/client";
 import type { AnlageReplay } from "@/lib/api/models";
 import { isoToday, istTagIso, langerTag, tagPlus } from "@/lib/day";
@@ -281,39 +282,39 @@ export function Wiedergabe() {
         ) : null}
       </Card>
 
-      {bild ? (
+      {/* Was für diesen Tag gilt, bleibt offen stehen; zugeklappt wäre es verschwiegen. */}
+      {bild && ((daten?.hinweise_de?.length ?? 0) > 0 || !vollstaendig) ? (
         <Card>
-          <CardHead title="Was dieses Bild ist" />
-          <p className="m-0 text-[13px] leading-[1.6] text-text-2">
-            Dasselbe Schema wie unter <span className="mono">Wärme → Anlage</span>, nur aus der
-            Minutenreihe nachgebaut. Es gibt genau eine Zusammensetzung des Bildes; die Wiedergabe
-            stellt ihr die Eingänge von {uhr(bild.at)} hin, der Augenblick die von jetzt. Deshalb
-            kann hier nichts stehen, was dort nicht stünde - und nichts fehlen, was dort steht.
-          </p>
-          <p className="mt-2 mb-0 text-[13px] leading-[1.6] text-text-2">
-            Die Uhr zeigt den Tag als Ring: außen der Preis, dann die Sonne, dann was der Fahrplan
-            für die Wärmepumpe vorsah, und innen, was sie tat. Wo der Umriss der Absicht steht und
-            darunter nichts gefüllt ist, wollte der Fahrplan und die Maschine nicht. Das Band
-            rechts zeigt dasselbe mit Achsen. Die Uhr lässt sich anfassen und drehen.
-          </p>
-          <ul className="mt-2 mb-0 flex list-none flex-col gap-1.5 p-0 text-[13px] leading-[1.6] text-text-3">
+          <CardHead title="Zu diesem Tag" />
+          <ul className="wk-hinweise">
             {(daten?.hinweise_de ?? []).map((h) => (
-              <li key={h}>· {h}</li>
+              <li key={h}>{h}</li>
             ))}
+            {!vollstaendig ? (
+              <li>
+                Die fehlenden Bilder sind als Lücke zu sehen: der Ring bleibt dort offen, und im Band reißt die Linie ab. Überbrückt wird nichts, denn ein ruhiges Haus und ein blindes
+                Messsystem sähen im Schema gleich aus.
+              </li>
+            ) : null}
           </ul>
-          {!vollstaendig ? (
-            <p className="mt-2 mb-0 text-[12px] leading-[1.5] text-text-3">
-              Die fehlenden Bilder sind als Lücke zu sehen: der Ring bleibt dort offen, und im Band
-              reißt die Linie ab. Überbrückt wird nichts, denn ein ruhiges Haus und ein blindes
-              Messsystem sähen im Schema gleich aus.
-            </p>
-          ) : null}
-          <p className="mt-2 mb-0 text-[12px] leading-[1.5] text-text-3">
-            Tastatur: Leertaste spielt und hält, Pfeile gehen Bild für Bild, Pos1 und Ende springen
-            an die Ränder. Bei {de(daten?.step_min ?? 5, 0)} Minuten Schritt und {tempo}× läuft der
-            Tag in {de(anzahl / tempo, 0)} Sekunden durch.
-          </p>
         </Card>
+      ) : null}
+
+      {bild ? (
+        <Methode title="Was dieses Bild ist" kurz="dasselbe Schema wie unter Anlage, aus der Minutenreihe nachgebaut · Leertaste spielt, Pfeile gehen Bild für Bild">
+          <MethodeAbsatz>
+            Dasselbe Schema wie in der Ansicht <span className="mono">Jetzt</span>, nur aus der Minutenreihe nachgebaut. Es gibt genau eine Zusammensetzung des Bildes; die Wiedergabe stellt
+            ihr die Eingänge von {uhr(bild.at)} hin, der Augenblick die von jetzt. Deshalb kann hier nichts stehen, was dort nicht stünde, und nichts fehlen, was dort steht.
+          </MethodeAbsatz>
+          <MethodeAbsatz>
+            Die Uhr zeigt den Tag als Ring: außen der Preis, dann die Sonne, dann was der Fahrplan für die Wärmepumpe vorsah, und innen, was sie tat. Wo der Umriss der Absicht steht und
+            darunter nichts gefüllt ist, wollte der Fahrplan und die Maschine nicht. Das Band rechts zeigt dasselbe mit Achsen. Die Uhr lässt sich anfassen und drehen.
+          </MethodeAbsatz>
+          <MethodeAbsatz>
+            Tastatur: Leertaste spielt und hält, Pfeile gehen Bild für Bild, Pos1 und Ende springen an die Ränder. Bei {de(daten?.step_min ?? 5, 0)} Minuten Schritt und {tempo}× läuft der Tag
+            in {de(anzahl / tempo, 0)} Sekunden durch.
+          </MethodeAbsatz>
+        </Methode>
       ) : null}
     </div>
   );

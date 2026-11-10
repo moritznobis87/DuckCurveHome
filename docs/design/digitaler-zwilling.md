@@ -298,9 +298,10 @@ bleibt. **Was das nicht sagt, ist, wie gut das Modell ist**; dafür fehlt weiter
 Wärme (Abschnitt 5.2). Die fünf Linien in Euro brauchen zusätzlich die Löserläufe und bleiben
 Schritt 9.
 
-**Gebaut sind die fünf Linien** (10.11.2026), auf der Seite `Wärme → Nachbetrachtung`, mit einer
-sechsten: der Plan steht zweimal da, als erster Fahrplan des Tages und als jeweils letzter Stand,
-denn der Abstand zwischen beiden ist, was das Nachführen über den Tag gebracht hat. Alle Linien
+**Gebaut sind die Linien 1 bis 4** (10.11.2026), auf der Seite `Wärme → Fahrplan → Rückblick`. Der
+Plan steht dabei zweimal da, als erster Fahrplan des Tages und als jeweils letzter Stand, denn der
+Abstand zwischen beiden ist, was das Nachführen über den Tag gebracht hat; so sind es wieder fünf.
+Die Nulllinie (Linie 5) rechnet die Kostenseite, siehe unten. Alle Linien
 werden mit derselben anteiligen Rechnung über dieselben Viertelstunden bewertet. Beim Bauen hat
 sich gezeigt, was der Entwurf nicht vorhergesehen hatte: **die Linien liefern nicht dieselbe
 Wärme**, weil der Fahrplan gegen das Bedarfsmodell plant und die Maschine nach ihrer Kennlinie
@@ -321,6 +322,14 @@ lässt sich dieser Anteil nicht zuordnen und die fünf Linien verlieren ihre Tre
 `accounting/counterfactual.py` beantwortet eine engere Frage, nämlich ob dieselben
 Kilowattstunden billiger zu haben gewesen wären; es wird von Linie 4 abgelöst und bleibt nicht als
 zweite Wahrheit stehen.
+
+**Davon abgewichen am 10.11.2026.** Die Nachbetrachtung hatte zunächst eine eigene Nulllinie
+(Linie 5, „ohne Preisblick“), und damit standen zwei Zahlen für dieselbe Frage auf zwei Seiten.
+Entfernt wurde die Linie der Nachbetrachtung, nicht `counterfactual.py`: jene Rechnung nimmt die
+Stundenflüsse der Zähler, kennt also den Batteriespeicher, und gilt ohne Löserlauf für Monat und
+Jahr. Die Nachbetrachtung zeigt ihr Tagesergebnis in einem Satz und verweist auf die Kostenseite.
+Es bleibt bei einer Wahrheit, nur ist es die andere. Wird der Speicher Teil des Zwillings
+(Abschnitt 4), ist die Frage neu zu stellen.
 
 ## 10. Was gespeichert wird
 

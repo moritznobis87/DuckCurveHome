@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
-import { BarChart, HeatmapChart, LineChart, PieChart, ScatterChart } from "echarts/charts";
+import { BarChart, HeatmapChart, LineChart, ScatterChart } from "echarts/charts";
 import { GridComponent, GraphicComponent, LegendComponent, MarkAreaComponent, MarkLineComponent, TitleComponent, TooltipComponent, AxisPointerComponent, VisualMapComponent, DataZoomComponent, ToolboxComponent } from "echarts/components";
 import { LabelLayout } from "echarts/features";
 import { CanvasRenderer } from "echarts/renderers";
@@ -14,7 +14,7 @@ import type { EChartsCoreOption } from "echarts/core";
 // Beschriftung der einzelnen Flächen eines gestapelten Diagramms, LabelLayout die Namen am Ende
 // der Kurven in der Nachbetrachtung: ohne es lägen zwei Namen übereinander, wo zwei Kurven
 // auf demselben Betrag enden.
-echarts.use([LineChart, BarChart, ScatterChart, PieChart, HeatmapChart, GraphicComponent, LegendComponent, GridComponent, MarkAreaComponent, MarkLineComponent, TitleComponent, TooltipComponent, AxisPointerComponent, VisualMapComponent, DataZoomComponent, ToolboxComponent, LabelLayout, CanvasRenderer]);
+echarts.use([LineChart, BarChart, ScatterChart, HeatmapChart, GraphicComponent, LegendComponent, GridComponent, MarkAreaComponent, MarkLineComponent, TitleComponent, TooltipComponent, AxisPointerComponent, VisualMapComponent, DataZoomComponent, ToolboxComponent, LabelLayout, CanvasRenderer]);
 
 /** Der eine Chart-Baustein: Thema an einer Stelle, setOption auf lebender Instanz (Live-Daten), Resize, Dispose.
  *

@@ -1184,7 +1184,16 @@ class LiveRuntime:
             day,
             BERLIN,
             jetzt=self.now,
+            verschieben=await self._verschieben(day),
         )
+
+    async def _verschieben(self, day: date) -> ShiftReportOut | None:
+        """Der Vergleich ohne Preisblick für einen Tag, aus derselben Rechnung wie die Kostenseite."""
+        try:
+            return await self.accounting.shift_report("day", day, self.now)
+        except Exception as exc:
+            log.warning("review without shift", error=repr(exc)[:200])
+            return None
 
     async def kontaktwirkung(self, days: int) -> KontaktwirkungOut:
         """Was K1 auslöst, aus dem dauerhaften Minutenbestand der letzten `days` Tage."""

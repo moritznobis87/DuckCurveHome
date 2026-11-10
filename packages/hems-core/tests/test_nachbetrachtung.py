@@ -11,7 +11,6 @@ from hems_core.accounting.nachbetrachtung import (
     Linie,
     Nachbetrachtung,
     Viertel,
-    nach_bedarf,
     nachbetrachten,
     strom_eur,
 )
@@ -91,16 +90,6 @@ def test_deckt_die_sonne_einen_teil_wird_anteilig_gerechnet() -> None:
     # 1 kWh in der Viertelstunde, 2 kW Überschuss decken davon die Hälfte.
     eur = strom_eur(1.0, ueberschuss_kw=2.0, preis_ct=30.0, verguetung_ct=8.0, dt_h=0.25)
     assert eur == pytest.approx(0.5 * 0.30 + 0.5 * 0.08)
-
-
-def test_die_nulllinie_verteilt_nach_dem_bedarf_und_nur_im_vergleich() -> None:
-    verteilt = nach_bedarf(6.0, [1.0, 2.0, 9.0, 3.0], [True, True, False, True])
-    assert verteilt == [1.0, 2.0, None, 3.0]
-
-
-def test_ohne_gewichte_wird_gleichmaessig_verteilt() -> None:
-    assert nach_bedarf(6.0, [None, 1.0, 1.0], [True, True, True]) == [2.0, 2.0, 2.0]
-    assert nach_bedarf(6.0, [0.0, 0.0], [True, True]) == [3.0, 3.0]
 
 
 # ---------------------------------------------------------------------------- Die Treppe
@@ -253,23 +242,23 @@ def test_mit_perfekter_voraussicht_steht_da_was_noch_zu_holen_ist() -> None:
     assert "1,20 € weniger" in next(a for a in r.abstaende if a.key == "voraussicht").satz_de
 
 
-# ---------------------------------------------------------------------------- Nulllinie, Ofen
+# ---------------------------------------------------------------------------- Ofen, Grundlast
 
 
-def test_ohne_preisblick_ist_dieselbe_menge_und_als_schaetzung_gekennzeichnet() -> None:
-    n = 8
-    # Die Maschine lief in der billigen Hälfte; der Bedarf war über den Tag gleich.
-    viertel = tag(n, preis=[10.0] * 4 + [40.0] * 4, wp_kwh=[1.0] * 4 + [0.0] * 4, gewicht=1.0)
-    r = rechne(viertel)
-    ohne = linie(r, "ohne_fuehrung")
-    assert ohne.geschaetzt
-    assert ohne.wp_kwh == linie(r, "wirklich").wp_kwh == 4.0
-    assert ohne.eur == pytest.approx(4 * (0.5 * 0.10 + 0.5 * 0.40))
-    assert abstand(r, "gebracht") == pytest.approx(0.40 - 1.00)
-    assert (
-        "hat das Verschieben gebracht"
-        in next(a for a in r.abstaende if a.key == "gebracht").satz_de
-    )
+def test_fuenf_linien_und_keine_eigene_rechnung_zum_verschieben() -> None:
+    """Der Vergleich ohne Preisblick hat eine Stelle, und die ist nicht hier.
+
+    Bis zum 10.11.2026 stand hier eine sechste Linie, die dritte Antwort auf dieselbe Frage. Kehrt
+    sie zurück, gibt es wieder zwei Zahlen für eine Sache.
+    """
+    r = rechne(tag(8, wp_kwh=[1.0] * 8))
+    assert [x.key for x in r.linien] == ["versprochen", "erster", "letzter", "wirklich", "perfekt"]
+    assert [a.key for a in r.abstaende] == [
+        "prognosefehler",
+        "nachfuehren",
+        "eingriff",
+        "voraussicht",
+    ]
 
 
 def test_der_ofen_zaehlt_im_fahrplan_ganz_und_in_der_messung_nach_seinem_anteil() -> None:
@@ -293,7 +282,8 @@ def test_die_grundlast_steht_daneben_und_in_keiner_linie() -> None:
     assert linie(r, "wirklich").eur == 0.0
     assert r.standby_kwh == pytest.approx(0.16)
     assert r.standby_eur == pytest.approx(0.05, abs=0.005)
-    assert any("Grundlast" in h for h in r.hinweise_de)
+    assert any("Grundlast" in m for m in r.methode_de)
+    assert not any("Grundlast" in h for h in r.hinweise_de), "die Zahl steht unter der Tabelle"
 
 
 # ---------------------------------------------------------------------------- Der Satz
