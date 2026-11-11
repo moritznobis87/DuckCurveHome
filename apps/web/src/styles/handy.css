@@ -226,7 +226,10 @@
   .home .brand-name { font-size: 17px; }
   /* „live" und „demo" sagt am Handy der Punkt; ausgeschrieben wird nur die Störung. */
   .home-status-wort:not([data-stoerung="true"]) { display: none; }
-  .home-zeit { font-size: 20px; }
+  /* Keine eigene Uhr am Handy: die Uhrzeit steht in der Statusleiste des Geräts, bei iPhone und
+     Android gleichermaßen, und zweimal dieselbe Zahl übereinander ist eine zu viel (Nutzer am
+     11.11.2026). Die Wandanzeige und das Handy im Querformat behalten ihre Uhr. */
+  .home-zeit { display: none; }
   .home-aussen { font-size: 13.5px; }
   .home-satz-block { order: 2; }
   .home-satz { font-size: 21px; line-height: 1.27; font-weight: 500; letter-spacing: -0.015em; }
