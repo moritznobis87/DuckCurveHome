@@ -69,11 +69,51 @@ ob er verschickt wurde, an wen und mit welchem Ergebnis. Seitdem gilt:
 * **Ein angemeldetes Gerät meldet sich bei jedem Öffnen still noch einmal an.** Der Browser weiß
   nicht, ob der Dienst sein Abonnement noch kennt; nach einer neu aufgesetzten Datenbank hieße es
   sonst auf dem Telefon „angemeldet“, und es käme nie etwas an.
-* **Der Absender ist die eigene Adresse der Oberfläche**, solange `DCH_PUSH_SUBJECT` nicht gesetzt
-  ist. Das Gerät nennt sie beim Anmelden (`origin`), der Dienst merkt sie sich. Der frühere
-  Platzhalter endet auf `.invalid`; Apples Push-Dienst prüft den Absender strenger als andere
-  (Antwort `403 BadJwtToken`). Ob er diese Endung ablehnt, ist nicht belegt; mit einer echten
-  Adresse stellt sich die Frage nicht.
+* **Der Absender muss eine Adresse sein, deren Endung es im öffentlichen Netz gibt.** Das war
+  die Ursache: siehe den nächsten Abschnitt.
+
+## Warum auf dem iPhone nichts ankam: der Absender
+
+Jede Mitteilung weist sich beim Push-Dienst mit einer Absenderadresse aus (VAPID-Anspruch `sub`).
+Bis zum 12.11.2026 stand dort der Platzhalter `mailto:duck-curve-home@example.invalid`. Das
+Bildschirmfoto des Nutzers vom selben Tag zeigte „Dieses Gerät ist angemeldet“ und „Probe an 0
+von 1 Geräten zugestellt“: angemeldet, aber abgelehnt.
+
+**Messung am 12.11.2026** gegen Apples Push-Dienst (`web.push.apple.com`), mit Wegwerfschlüssel
+und erfundenem Gerät, je einmal dieselbe Mitteilung mit anderem Absender. Wird der Absender
+anerkannt, bemängelt die Antwort erst das erfundene Gerät (`400 BadWebPushToken`); wird er es
+nicht, heißt sie `403 BadJwtToken`.
+
+| Absender | Antwort |
+|---|---|
+| `mailto:…@example.invalid` (der alte Platzhalter) | 403 BadJwtToken |
+| `mailto:…@example.test`, `…@example.local`, `…@localhost`, `…@haus.example` | 403 BadJwtToken |
+| `https://localhost`, `https://haus.local`, `https://haus.invalid`, `https://haus.example` | 403 BadJwtToken |
+| `https://haus.lan`, `https://haus.home`, `https://haus.internal`, `https://haus.localhost`, `https://haus.onion` | 403 BadJwtToken |
+| `mailto:…@example.org`, `…@example.com`, `…@example.net`, `https://example.org` | angenommen |
+| `https://192.168.178.20` (blanke Adresse) | angenommen |
+| `https://haus.fritz.box`, `https://haus.home.arpa`, `https://abc.ts.net` | angenommen |
+| `https://haus.example.org:8443`, `http://haus.example.org`, `https://haus` | gar nicht verschickt: die Signaturbibliothek (`py_vapid` 1.9.6) wirft |
+
+Lesart: Apple nimmt nur Absender an, deren Endung im öffentlichen Netz vergeben ist, gleich ob
+Postadresse oder `https`. Das ist eine Folgerung aus den Antworten, keine Auskunft von Apple, und
+es gilt für den Tag der Messung. Andere Push-Dienste (Google, Mozilla) sind nicht gemessen.
+
+Was daraus folgt (`apps/api/src/dch_api/application/push.py`):
+
+* **Der Platzhalter heißt jetzt `mailto:duck-curve-home@example.org`.** `example.org` ist für
+  Beispiele reserviert, gehört niemandem und wird angenommen.
+* **Reihenfolge der Absender:** eine gesetzte Adresse (`DCH_PUSH_SUBJECT`), dann die eigene
+  Adresse der Oberfläche, die das Gerät beim Anmelden nennt (`origin`, ohne Port), dann der
+  Platzhalter. Was nach der Messung nicht taugt, wird vorab aussortiert (`tauglich`); eine
+  untaugliche gesetzte Adresse wird übergangen und im Protokoll vermerkt.
+* **Lehnt ein Push-Dienst einen Absender trotzdem ab, kommt der nächste dran**, und der
+  abgelehnte wird bei diesem Dienst nicht wieder versucht. Die Liste der vergebenen Endungen
+  steht nirgends im Code; ohne dieses Ausweichen fiele bei einem Haus mit ungewöhnlichem Namen
+  wieder jede Mitteilung aus.
+* **Gegenprobe am selben Tag** mit dem Versandweg des Dienstes selbst, in vier Lagen
+  (Voreinstellung; Herkunft mit unbekannter Endung; Herkunft `.local`; alter Platzhalter von
+  Hand gesetzt): jedes Mal kommt die Mitteilung am Absender vorbei bis zum erfundenen Gerät.
 
 ## Die Vorschau
 
@@ -89,8 +129,6 @@ schickt genau diese Vorschau; der Versand am Morgen bleibt davon unberührt.
   Überschuss da ist: der Hausverbrauch geht nicht ein.
 * **Die Uhrzeit ist fest.** Sieben Uhr steht im Quelltext, nicht in der Konfiguration.
 * **In der Vorführung** gibt es Schalter und Vorschau, aber keinen Versand nach Zeitplan.
-* **Geprüft am 12.11.2026** mit Tests und an der Vorführung. Auf einem echten Telefon ist noch
-  kein Brief angekommen. Warum im Haus am 12.11.2026 nichts ankam, ist von hier aus nicht zu
-  sehen; die drei wahrscheinlichen Gründe in dieser Reihenfolge: das Telefon war nie angemeldet,
-  der Dienst lief noch mit dem Stand vor dem Morgenbrief, oder der Push-Dienst lehnt ab. Die
-  Probe auf der Seite unterscheidet jetzt die drei.
+* **Geprüft am 12.11.2026** mit Tests, an der Vorführung und gegen Apples Push-Dienst mit einem
+  erfundenen Gerät. Auf einem echten Telefon ist damit noch keine Mitteilung angekommen: dass
+  der Absender die einzige Ursache war, zeigt erst die Probe im Haus nach dem Neustart.

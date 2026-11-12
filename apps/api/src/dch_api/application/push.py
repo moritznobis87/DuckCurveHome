@@ -24,6 +24,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 import structlog
 from cryptography.hazmat.primitives import serialization
@@ -57,10 +58,53 @@ class Abo(Protocol):
     auth: str
 
 
-#: Der Platzhalter aus den Einstellungen. Eine echte Adresse gehört nicht ins Repository.
-PLATZHALTER = "mailto:duck-curve-home@example.invalid"
+#: Der Absender, wenn es keinen besseren gibt, und zugleich die Voreinstellung in den
+#: Einstellungen. Eine echte Adresse gehört nicht ins Repository; `example.org` ist für Beispiele
+#: reserviert, und Apples Push-Dienst nimmt es an (gemessen am 12.11.2026, siehe `tauglich`).
+PLATZHALTER = "mailto:duck-curve-home@example.org"
 #: Eine Herkunft, wie der Browser sie nennt: https, ein Rechnername, höchstens ein Port.
-HERKUNFT = re.compile(r"^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\d{1,5})?$")
+HERKUNFT = re.compile(r"^https://(?P<rechner>[a-z0-9]([a-z0-9.-]*[a-z0-9])?)(:\d{1,5})?$")
+#: Ein Absender in der Form, die die Signaturbibliothek annimmt: Postadresse oder https ohne Port.
+ABSENDER = re.compile(r"^(mailto:[^@\s]+@|https://)(?P<rechner>[a-z0-9]([a-z0-9.-]*[a-z0-9])?)$")
+#: Endungen, die es im öffentlichen Netz nicht gibt. Die Liste ist nicht vollständig und muss es
+#: nicht sein: sie erspart nur einen Versuch, der sicher scheitert (siehe `tauglich`).
+NICHT_OEFFENTLICH = (
+    ".invalid",
+    ".test",
+    ".example",
+    ".localhost",
+    ".local",
+    ".lan",
+    ".home",
+    ".internal",
+    ".onion",
+)
+
+
+def tauglich(absender: str) -> bool:
+    """Kann diese Adresse Absender einer Mitteilung sein?
+
+    **Gemessen am 12.11.2026 gegen Apples Push-Dienst** (`web.push.apple.com`, Wegwerfschlüssel,
+    erfundenes Gerät). Mit einem Absender, dessen Endung es im öffentlichen Netz nicht gibt,
+    antwortet er `403 BadJwtToken`, gleich ob als Postadresse oder als `https`-Adresse:
+    `.invalid`, `.test`, `.example`, `.local`, `.localhost`, `.lan`, `.home`, `.internal`,
+    `.onion`, `localhost`. Angenommen (die Antwort bemängelt dann erst das erfundene Gerät) werden
+    `example.org`, `example.com`, `example.net`, eine blanke IP-Adresse, `fritz.box`,
+    `home.arpa`, `ts.net`. Der frühere Platzhalter endete auf `.invalid`: deshalb kam im Haus
+    auf keinem iPhone je eine Mitteilung an.
+
+    Die Signaturbibliothek ist ihrerseits wählerisch: `https` mit Port, `http` und ein Name ohne
+    Punkt lässt sie nicht zu und wirft, bevor irgendetwas verschickt wird.
+
+    Apple prüft offenbar, ob die Endung im öffentlichen Netz vergeben ist. Die ganze Liste der
+    vergebenen Endungen steht hier nicht; was durch diese Prüfung rutscht und doch abgelehnt
+    wird, fängt `PushService._zustellen` ab, indem es den nächsten Absender versucht.
+    """
+    treffer = ABSENDER.fullmatch(absender.strip().lower())
+    if treffer is None:
+        return False
+    rechner = treffer.group("rechner")
+    return "." in rechner and not rechner.endswith(NICHT_OEFFENTLICH)
 
 
 @dataclass(frozen=True)
@@ -81,6 +125,11 @@ class Zustellung:
     grund: str = ""
 
     @property
+    def absender_abgelehnt(self) -> bool:
+        """Der Push-Dienst erkennt nicht an, als wer sich der Dienst ausweist."""
+        return self.status == 403 and "BadJwtToken" in self.grund
+
+    @property
     def satz_de(self) -> str:
         wer = self.label or "Gerät"
         if self.ok:
@@ -89,6 +138,13 @@ class Zustellung:
             return (
                 f"{wer}: Das Abonnement gibt es beim Push-Dienst nicht mehr. Es ist gelöscht; "
                 "bitte auf dem Gerät neu einschalten."
+            )
+        if self.absender_abgelehnt:
+            return (
+                f"{wer}: Der Push-Dienst erkennt den Absender der Mitteilung nicht an "
+                "(403 BadJwtToken). Das liegt am Dienst im Haus, nicht am Gerät: entweder ist "
+                "als Absender (DCH_PUSH_SUBJECT) eine Adresse gesetzt, die es im öffentlichen "
+                "Netz nicht gibt, oder die Uhr des Rechners geht falsch."
             )
         if self.status == 403:
             return (
@@ -196,6 +252,9 @@ class PushService:
         #: Der letzte Grund je Endpunkt, warum eine Mitteilung nicht ankam. Im Arbeitsspeicher:
         #: nach einem Neustart zeigt die nächste Probe ihn wieder.
         self._letzter_fehler: dict[str, str] = {}
+        #: Absender, die ein Push-Dienst abgelehnt hat, als Paar (Dienst, Absender). Sie werden
+        #: bei diesem Dienst nicht noch einmal versucht, solange der Dienst im Haus läuft.
+        self._absender_abgelehnt: set[tuple[str, str]] = set()
 
     async def keys(self) -> tuple[str, str]:
         """Das Paar des Dienstes, beim ersten Mal erzeugt. Unter Schloss, damit zwei gleichzeitige
@@ -212,27 +271,43 @@ class PushService:
     async def public_key(self) -> str:
         return (await self.keys())[1]
 
-    async def absender(self) -> str:
-        """Wer die Mitteilung schickt, für den VAPID-Anspruch `sub`.
+    async def absender_kandidaten(self) -> list[str]:
+        """Als wer sich der Dienst ausweisen kann (VAPID-Anspruch `sub`), der beste zuerst.
 
-        Eine gesetzte Adresse (`DCH_PUSH_SUBJECT`) gilt. Sonst die eigene Herkunft der
-        Oberfläche, sobald sich ein Gerät angemeldet hat: sie ist eine gültige Adresse, und der
-        Push-Dienst kennt sie ohnehin, denn das Abonnement hängt an ihr. Der Platzhalter mit der
-        reservierten Endung `.invalid` bleibt nur, solange es nichts Besseres gibt. Apple ist
-        beim Absender strenger als andere Dienste; ob es diese Endung ablehnt, ist nicht belegt,
-        und mit einer echten Herkunft stellt sich die Frage nicht.
+        1. Eine gesetzte Adresse (`DCH_PUSH_SUBJECT`), wenn sie taugt.
+        2. Die eigene Herkunft der Oberfläche, wie das angemeldete Gerät sie genannt hat: eine
+           wahre Angabe, und der Push-Dienst kennt sie ohnehin, denn das Abonnement hängt an ihr.
+           Sie taugt aber nicht immer: ein Haus, das unter `haus.local` erreichbar ist, lehnt
+           Apple als Absender ab.
+        3. Der Platzhalter. Er ist keine Auskunft über irgendwen, wird aber angenommen.
+
+        Was `tauglich` nicht aussortiert und der Push-Dienst trotzdem ablehnt, überspringt
+        `_zustellen` beim Versand.
         """
+        kandidaten: list[str] = []
         if self.subject != PLATZHALTER:
-            return self.subject
-        return await self.store.push_origin() or self.subject
+            if tauglich(self.subject):
+                kandidaten.append(self.subject)
+            else:
+                log.warning("push subject unusable, falling back", subject=self.subject[:80])
+        herkunft = await self.store.push_origin()
+        if herkunft and tauglich(herkunft):
+            kandidaten.append(herkunft)
+        kandidaten.append(PLATZHALTER)
+        return list(dict.fromkeys(kandidaten))
+
+    async def absender(self) -> str:
+        return (await self.absender_kandidaten())[0]
 
     async def subscribe(
         self, endpoint: str, p256dh: str, auth: str, label: str = "", origin: str = ""
     ) -> None:
         await self.store.add_push_subscription(endpoint, p256dh, auth, label)
         self._letzter_fehler.pop(endpoint, None)
-        if HERKUNFT.fullmatch(origin):
-            await self.store.save_push_origin(origin)
+        treffer = HERKUNFT.fullmatch(origin.strip().lower())
+        if treffer is not None:
+            # Ohne Port: die Signaturbibliothek nimmt als Absender keine Adresse mit Port an.
+            await self.store.save_push_origin(f"https://{treffer.group('rechner')}")
 
     async def unsubscribe(self, endpoint: str) -> bool:
         self._letzter_fehler.pop(endpoint, None)
@@ -263,10 +338,10 @@ class PushService:
         if not abos:
             return []
         privat, _ = await self.keys()
-        absender = await self.absender()
+        kandidaten = await self.absender_kandidaten()
         bericht: list[Zustellung] = []
         for abo in abos:
-            z = await asyncio.to_thread(self._send_one, abo, mitteilung, privat, absender)
+            z = await self._zustellen(abo, mitteilung, privat, kandidaten)
             bericht.append(z)
             if z.weg:
                 await self.store.drop_push_subscription(abo.endpoint)
@@ -279,6 +354,28 @@ class PushService:
             else:
                 self._letzter_fehler[abo.endpoint] = z.satz_de
         return bericht
+
+    async def _zustellen(
+        self, abo: Abo, mitteilung: Mitteilung, privat: str, kandidaten: list[str]
+    ) -> Zustellung:
+        """Eine Mitteilung an ein Gerät; lehnt der Push-Dienst den Absender ab, mit dem nächsten.
+
+        Welchen Absender ein Push-Dienst annimmt, lässt sich nicht vollständig vorhersagen
+        (siehe `tauglich`). Deshalb wird es nicht vorhergesagt, sondern versucht. Die Reihenfolge
+        der Kandidaten bleibt; wen ein Dienst einmal abgelehnt hat, der wird bei ihm übersprungen.
+        """
+        dienst = urlsplit(abo.endpoint).netloc
+        reihe = [k for k in kandidaten if (dienst, k) not in self._absender_abgelehnt]
+        z = Zustellung(str(getattr(abo, "label", "") or ""), ok=False, grund="kein Absender")
+        # Hat der Dienst alle abgelehnt, wird der letzte trotzdem versucht: dann steht der Grund
+        # in der Antwort, statt dass gar nichts verschickt wird.
+        for absender in reihe or kandidaten[-1:]:
+            z = await asyncio.to_thread(self._send_one, abo, mitteilung, privat, absender)
+            if not z.absender_abgelehnt:
+                break
+            self._absender_abgelehnt.add((dienst, absender))
+            log.warning("push sender rejected", dienst=dienst, absender=absender[:80])
+        return z
 
     def _send_one(self, abo: Abo, mitteilung: Mitteilung, privat: str, absender: str) -> Zustellung:
         """Eine Mitteilung an ein Gerät. Läuft in einem Faden: `pywebpush` ist synchron."""
