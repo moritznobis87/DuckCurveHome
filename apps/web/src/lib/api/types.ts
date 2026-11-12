@@ -188,6 +188,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/push/geraete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die angemeldeten Geräte und ihr Stand
+         * @description Welche Geräte angemeldet sind, wann zuletzt eine Mitteilung angenommen wurde und woran
+         *     die letzte gescheitert ist. Die Adresse des Geräts beim Push-Dienst bleibt im Dienst; die
+         *     Seite braucht sie nicht.
+         */
+        get: operations["geraete_api_v1_push_geraete_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/push/morgenbrief": {
         parameters: {
             query?: never;
@@ -4047,6 +4069,16 @@ export interface components {
              * @default
              */
             hinweis_de: string;
+            /**
+             * Zuletzt De
+             * @default
+             */
+            zuletzt_de: string;
+            /**
+             * Geraete
+             * @default 0
+             */
+            geraete: number;
         };
         /**
          * NachbetrachtungOut
@@ -4386,6 +4418,33 @@ export interface components {
             label_de: string;
         };
         /**
+         * PushGeraetOut
+         * @description Ein angemeldetes Gerät, soweit der Dienst es kennt: ein Wort und der Stand der Zustellung.
+         */
+        PushGeraetOut: {
+            /** Label */
+            label: string;
+            /** Seit */
+            seit?: string | null;
+            /** Zuletzt Ok */
+            zuletzt_ok?: string | null;
+            /**
+             * Fehlversuche
+             * @default 0
+             */
+            fehlversuche: number;
+            /**
+             * Letzter Fehler De
+             * @default
+             */
+            letzter_fehler_de: string;
+        };
+        /** PushGeraeteOut */
+        PushGeraeteOut: {
+            /** Devices */
+            devices?: components["schemas"]["PushGeraetOut"][];
+        };
+        /**
          * PushKeyOut
          * @description Der öffentliche Schlüssel des Dienstes und die Zahl der angemeldeten Geräte.
          *
@@ -4406,6 +4465,8 @@ export interface components {
             devices: number;
             /** Message De */
             message_de: string;
+            /** Details De */
+            details_de?: string[];
         };
         /** PushSubscribeIn */
         PushSubscribeIn: {
@@ -4420,6 +4481,11 @@ export interface components {
              * @default
              */
             label: string;
+            /**
+             * Origin
+             * @default
+             */
+            origin: string;
         };
         /** PushUnsubscribeIn */
         PushUnsubscribeIn: {
@@ -6049,6 +6115,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PushResultOut"];
+                };
+            };
+        };
+    };
+    geraete_api_v1_push_geraete_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushGeraeteOut"];
                 };
             };
         };

@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
+import type { PushGeraet } from "@/lib/api/models";
+import { hhmm } from "@/lib/format";
+import { kurzDatum } from "@/components/waerme/wirkung";
+import { abonnement, anmeldung, pushLage, type PushLage } from "@/lib/push/lage";
 
 /**
  * Mitteilungen auf dieses Gerät.
@@ -16,8 +20,13 @@ import { api } from "@/lib/api/client";
  * **Auf dem iPhone erst nach dem Hinzufügen zum Home-Bildschirm.** Safari erlaubt Mitteilungen
  * nur einer installierten Web-App. Steht die Seite nur im Browser, fehlt die Schaltfläche nicht,
  * sondern sie sagt, was zu tun ist: Teilen, „Zum Home-Bildschirm", von dort öffnen.
+ *
+ * **Der Grund steht da.** Bis zum 12.11.2026 hieß eine gescheiterte Probe „an 0 von 1 Geräten
+ * zugestellt", und warum, stand im Protokoll des Dienstes. An dem Tag kam im Haus keine einzige
+ * Mitteilung an, und die Seite konnte nicht sagen, woran es lag. Jetzt zeigt sie je Gerät, wann
+ * zuletzt eine Mitteilung angenommen wurde und was der Push-Dienst zur letzten gesagt hat.
  */
-type Lage = "prüfe" | "geht-nicht" | "aus" | "an" | "verboten";
+type Lage = "prüfe" | PushLage;
 
 /** Der öffentliche Schlüssel kommt base64url; die Browser-API will rohe Bytes. */
 function schluesselBytes(b64: string): Uint8Array<ArrayBuffer> {
@@ -28,17 +37,6 @@ function schluesselBytes(b64: string): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(roh.length);
   for (let i = 0; i < roh.length; i++) bytes[i] = roh.charCodeAt(i);
   return bytes;
-}
-
-/** Ein Wort, an dem man das Gerät in der Liste wiedererkennt. Mehr wird nicht gespeichert. */
-function geraeteWort(): string {
-  const ua = navigator.userAgent;
-  if (/iPhone/.test(ua)) return "iPhone";
-  if (/iPad/.test(ua)) return "iPad";
-  if (/Android/.test(ua)) return "Android";
-  if (/Macintosh/.test(ua)) return "Mac";
-  if (/Windows/.test(ua)) return "Windows";
-  return "Gerät";
 }
 
 /**
@@ -57,53 +55,74 @@ function hinweis(e: unknown): string {
   return `Das hat nicht geklappt: ${text}`;
 }
 
-const UNTERSTUETZT = (): boolean =>
-  typeof window !== "undefined" &&
-  "serviceWorker" in navigator &&
-  "PushManager" in window &&
-  "Notification" in window;
+function wann(iso: string | null | undefined): string {
+  return iso ? `${kurzDatum(iso)}, ${hhmm(iso)}` : "";
+}
+
+/** Eine Zeile je Gerät: was es ist, seit wann, und wie es um die Zustellung steht. */
+function Geraet({ g }: { g: PushGeraet }) {
+  const stand = g.letzter_fehler_de
+    ? g.letzter_fehler_de.replace(`${g.label}: `, "")
+    : g.zuletzt_ok
+      ? `Zuletzt angenommen am ${wann(g.zuletzt_ok)}.`
+      : (g.fehlversuche ?? 0) > 0
+        ? `Noch keine Mitteilung angenommen, ${g.fehlversuche} ${g.fehlversuche === 1 ? "Versuch" : "Versuche"} gescheitert. Eine Probe zeigt den Grund.`
+        : "Noch keine Mitteilung verschickt.";
+  const schlecht = Boolean(g.letzter_fehler_de) || (!g.zuletzt_ok && (g.fehlversuche ?? 0) > 0);
+  return (
+    <li className="geraet">
+      <span className="geraet-name">{g.label}</span>
+      <span className="geraet-seit">{g.seit ? `angemeldet seit ${kurzDatum(g.seit)}` : ""}</span>
+      <span className="geraet-stand" data-schlecht={schlecht}>{stand}</span>
+    </li>
+  );
+}
 
 export function Mitteilungen() {
   const [lage, setLage] = useState<Lage>("prüfe");
-  const [geraete, setGeraete] = useState<number | null>(null);
+  const [geraete, setGeraete] = useState<PushGeraet[] | null>(null);
   const [meldung, setMeldung] = useState<string | null>(null);
+  const [details, setDetails] = useState<string[]>([]);
   const [laeuft, setLaeuft] = useState(false);
 
-  const zaehlen = useCallback(async () => {
+  const ladeGeraete = useCallback(async () => {
     try {
-      setGeraete((await api.pushKey()).devices);
+      setGeraete((await api.pushGeraete()).devices ?? []);
     } catch {
       setGeraete(null);
     }
   }, []);
 
   useEffect(() => {
-    if (!UNTERSTUETZT()) {
-      setLage("geht-nicht");
-      return;
-    }
-    if (Notification.permission === "denied") {
-      setLage("verboten");
-      void zaehlen();
-      return;
-    }
     void (async () => {
-      const reg = await navigator.serviceWorker.getRegistration();
-      const abo = reg ? await reg.pushManager.getSubscription() : null;
-      setLage(abo ? "an" : "aus");
-      await zaehlen();
+      const jetzt = await pushLage();
+      setLage(jetzt);
+      if (jetzt === "an") {
+        // Der Browser hat ein Abonnement. Ob der Dienst es noch kennt, weiß er nicht: nach einer
+        // neu aufgesetzten Datenbank stünde hier „angemeldet", und es käme nie etwas an. Deshalb
+        // meldet sich das Gerät bei jedem Öffnen der Seite still noch einmal; dasselbe Gerät
+        // bleibt dabei ein Gerät.
+        try {
+          const abo = await abonnement();
+          if (abo) await api.pushSubscribe(anmeldung(abo));
+        } catch {
+          // Die Liste darunter zeigt, was der Dienst weiß.
+        }
+      }
+      await ladeGeraete();
     })();
-  }, [zaehlen]);
+  }, [ladeGeraete]);
 
   const einschalten = async () => {
     setLaeuft(true);
     setMeldung(null);
+    setDetails([]);
     try {
       // Die Erlaubnis muss aus einer Berührung kommen; deshalb steht sie hier und nicht im Effekt.
       const erlaubnis = await Notification.requestPermission();
       if (erlaubnis !== "granted") {
         setLage(erlaubnis === "denied" ? "verboten" : "aus");
-        setMeldung("Ohne Erlaubnis des Browsers geht es nicht.");
+        setMeldung("Ohne Erlaubnis des Geräts geht es nicht.");
         return;
       }
       const reg = await navigator.serviceWorker.register("/sw.js");
@@ -115,16 +134,10 @@ export function Mitteilungen() {
           userVisibleOnly: true,
           applicationServerKey: schluesselBytes(public_key),
         }));
-      const daten = abo.toJSON();
-      const antwort = await api.pushSubscribe({
-        endpoint: abo.endpoint,
-        p256dh: daten.keys?.p256dh ?? "",
-        auth: daten.keys?.auth ?? "",
-        label: geraeteWort(),
-      });
+      const antwort = await api.pushSubscribe(anmeldung(abo));
       setLage("an");
-      setGeraete(antwort.devices);
-      setMeldung(antwort.message_de);
+      setMeldung(`${antwort.message_de} Am besten gleich eine Probe senden.`);
+      await ladeGeraete();
     } catch (e) {
       setMeldung(hinweis(e));
     } finally {
@@ -135,15 +148,15 @@ export function Mitteilungen() {
   const ausschalten = async () => {
     setLaeuft(true);
     setMeldung(null);
+    setDetails([]);
     try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      const abo = reg ? await reg.pushManager.getSubscription() : null;
+      const abo = await abonnement();
       if (abo) {
         await api.pushUnsubscribe(abo.endpoint);
         await abo.unsubscribe();
       }
       setLage("aus");
-      await zaehlen();
+      await ladeGeraete();
       setMeldung("Dieses Gerät bekommt keine Mitteilungen mehr.");
     } catch (e) {
       setMeldung(hinweis(e));
@@ -155,10 +168,12 @@ export function Mitteilungen() {
   const probe = async () => {
     setLaeuft(true);
     setMeldung(null);
+    setDetails([]);
     try {
       const antwort = await api.pushTest();
-      setGeraete(antwort.devices);
       setMeldung(antwort.message_de);
+      setDetails(antwort.details_de ?? []);
+      await ladeGeraete();
     } catch (e) {
       setMeldung(hinweis(e));
     } finally {
@@ -173,22 +188,33 @@ export function Mitteilungen() {
       <div className="flex flex-col gap-1">
         <span className="kicker" style={{ fontSize: 11 }}>Mitteilungen</span>
         <span className="text-[15px] leading-[1.6] text-text-2">
-          Wenn eine Quelle schweigt, meldet sich Duck Curve Home auf den angemeldeten Geräten. Was
-          gemeldet wird und ab wann, steht im Wächter; hier wird nur bestimmt, wer es erfährt.
+          Wenn eine Quelle schweigt, meldet sich Duck Curve Home auf den angemeldeten Geräten, und
+          morgens kommt der Morgenbrief. Jedes Gerät meldet sich einzeln an, hier auf dieser Seite.
         </span>
       </div>
 
+      {lage === "ios-browser" ? (
+        <div className="flex flex-col gap-2 text-[14px] leading-[1.6] text-text-2">
+          <span>Auf dem iPhone und iPad gehen Mitteilungen nur in der App vom Home-Bildschirm, nicht im Browser:</span>
+          <ol className="m-0 flex flex-col gap-1 pl-5">
+            <li>Unten auf Teilen tippen, dann „Zum Home-Bildschirm".</li>
+            <li>Duck Curve Home vom Home-Bildschirm öffnen.</li>
+            <li>Dort wieder hierher: Technik, Mitteilungen, „Auf diesem Gerät einschalten".</li>
+          </ol>
+        </div>
+      ) : null}
+
       {lage === "geht-nicht" ? (
         <p className="m-0 text-[14px] leading-[1.6] text-text-3">
-          Dieser Browser kann keine Mitteilungen empfangen. Auf dem iPhone und iPad geht es erst,
-          wenn die Seite über Teilen → „Zum Home-Bildschirm" hinzugefügt und von dort geöffnet wird.
+          Dieser Browser kann keine Mitteilungen empfangen.
         </p>
       ) : null}
 
       {lage === "verboten" ? (
         <p className="m-0 text-[14px] leading-[1.6]" style={{ color: "var(--amber-soft)" }}>
-          Der Browser hat Mitteilungen für diese Seite abgelehnt. Das lässt sich nur in seinen
-          Einstellungen zurücknehmen, nicht von hier aus.
+          Mitteilungen sind für Duck Curve Home auf diesem Gerät abgelehnt. Das lässt sich nur in
+          den Einstellungen des Geräts zurücknehmen (auf dem iPhone: Einstellungen, Mitteilungen,
+          Duck Curve), nicht von hier aus.
         </p>
       ) : null}
 
@@ -209,19 +235,42 @@ export function Mitteilungen() {
             </button>
           </>
         ) : null}
-        {geraete !== null ? (
-          <span className="mono text-[13px] text-text-3">
-            {geraete === 1 ? "1 Gerät angemeldet" : `${geraete} Geräte angemeldet`}
-          </span>
+        {lage !== "an" && geraete && geraete.length > 0 ? (
+          <button type="button" className={knopf} onClick={probe} disabled={laeuft}>
+            Probe an die angemeldeten Geräte
+          </button>
         ) : null}
       </div>
 
       {meldung ? <p className="m-0 text-[14px] leading-[1.6] text-text-2">{meldung}</p> : null}
+      {details.length > 0 ? (
+        <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[14px] leading-[1.6] text-text-2">
+          {details.map((d) => <li key={d}>{d}</li>)}
+        </ul>
+      ) : null}
+
+      {geraete !== null ? (
+        <div className="flex flex-col gap-2">
+          <span className="kicker" style={{ fontSize: 11 }}>
+            {geraete.length === 0 ? "Kein Gerät angemeldet" : geraete.length === 1 ? "1 Gerät angemeldet" : `${geraete.length} Geräte angemeldet`}
+          </span>
+          {geraete.length === 0 ? (
+            <span className="text-[14px] leading-[1.6]" style={{ color: "var(--amber-soft)" }}>
+              Solange kein Gerät angemeldet ist, gehen weder Störungen noch der Morgenbrief an jemanden.
+            </span>
+          ) : (
+            <ul className="geraete">
+              {geraete.map((g, i) => <Geraet key={`${g.label}-${g.seit ?? i}`} g={g} />)}
+            </ul>
+          )}
+        </div>
+      ) : null}
 
       <p className="m-0 text-[13px] leading-[1.6] text-text-3">
-        Eine Probe lohnt sich: Der Weg hat viele Glieder - Browser, Push-Dienst, Schlüssel,
-        Service Worker -, und jedes kann still versagen. Ohne Probe merkt man das erst, wenn die
-        erste echte Meldung ausbleibt, also genau dann, wenn sie gebraucht wird.
+        Eine Probe lohnt sich nach jedem Einschalten. „Angenommen" heißt: Der Push-Dienst von
+        Apple oder Google hat die Mitteilung entgegengenommen. Kommt trotzdem nichts, liegt es am
+        Gerät selbst: Fokus oder „Nicht stören", oder die Mitteilungen der App sind in den
+        Einstellungen abgeschaltet.
       </p>
     </div>
   );

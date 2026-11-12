@@ -1,4 +1,4 @@
-"""Mitteilungen: Schlüssel holen, Gerät anmelden, Gerät abmelden, Probe senden."""
+"""Mitteilungen: Schlüssel holen, Gerät anmelden, Gerät abmelden, Probe senden, Geräte ansehen."""
 
 from __future__ import annotations
 
@@ -6,12 +6,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 
-from dch_api.application.push import Mitteilung, PushService
+from dch_api.application.push import Mitteilung, PushService, Zustellung
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
 from dch_api.schemas import (
     MorgenbriefIn,
     MorgenbriefOut,
+    PushGeraeteOut,
+    PushGeraetOut,
     PushKeyOut,
     PushResultOut,
     PushSubscribeIn,
@@ -35,7 +37,7 @@ async def key(push: Annotated[PushService, Depends(get_push)]) -> PushKeyOut:
 async def subscribe(
     body: PushSubscribeIn, push: Annotated[PushService, Depends(get_push)]
 ) -> PushResultOut:
-    await push.subscribe(body.endpoint, body.p256dh, body.auth, body.label)
+    await push.subscribe(body.endpoint, body.p256dh, body.auth, body.label, body.origin)
     return PushResultOut(
         ok=True, devices=await push.count(), message_de="Dieses Gerät bekommt jetzt Mitteilungen."
     )
@@ -63,7 +65,7 @@ async def test(push: Annotated[PushService, Depends(get_push)]) -> PushResultOut
     still versagen. Ohne eine Probe merkt man das erst, wenn die erste echte Meldung ausbleibt,
     also genau dann, wenn sie gebraucht wird.
     """
-    erreicht = await push.send(
+    bericht = await push.send_bericht(
         Mitteilung(
             title="Duck Curve Home",
             body="Probe: Mitteilungen kommen an.",
@@ -71,13 +73,50 @@ async def test(push: Annotated[PushService, Depends(get_push)]) -> PushResultOut
             url="/",
         )
     )
-    gesamt = await push.count()
+    return _ergebnis("Die Probe", bericht, await push.count())
+
+
+def _ergebnis(was: str, bericht: list[Zustellung], jetzt_angemeldet: int) -> PushResultOut:
+    """Aus dem Bericht je Gerät die Antwort für die Seite: ein Satz und der Grund je Gerät.
+
+    „Angenommen" heißt: Der Push-Dienst von Apple, Google oder Mozilla hat die Mitteilung
+    entgegengenommen. Ob das Gerät sie zeigt, entscheidet es selbst (Fokus, Nicht stören,
+    Mitteilungen für die App abgeschaltet); das sieht der Dienst nicht, und so steht es da.
+    """
+    if not bericht:
+        return PushResultOut(
+            ok=False,
+            devices=jetzt_angemeldet,
+            message_de="Kein Gerät ist für Mitteilungen angemeldet.",
+        )
+    erreicht = sum(1 for z in bericht if z.ok)
+    wort = "1 Gerät" if len(bericht) == 1 else f"{len(bericht)} Geräte"
     return PushResultOut(
         ok=erreicht > 0,
-        devices=gesamt,
-        message_de=f"Probe an {erreicht} von {gesamt} Geräten zugestellt."
-        if gesamt
-        else "Kein Gerät angemeldet.",
+        devices=jetzt_angemeldet,
+        message_de=f"{was} ging an {wort}; der Push-Dienst hat {erreicht} davon angenommen.",
+        details_de=[z.satz_de for z in bericht],
+    )
+
+
+@router.get(
+    "/geraete", response_model=PushGeraeteOut, summary="Die angemeldeten Geräte und ihr Stand"
+)
+async def geraete(push: Annotated[PushService, Depends(get_push)]) -> PushGeraeteOut:
+    """Welche Geräte angemeldet sind, wann zuletzt eine Mitteilung angenommen wurde und woran
+    die letzte gescheitert ist. Die Adresse des Geräts beim Push-Dienst bleibt im Dienst; die
+    Seite braucht sie nicht."""
+    return PushGeraeteOut(
+        devices=[
+            PushGeraetOut(
+                label=str(getattr(abo, "label", "") or "Gerät"),
+                seit=getattr(abo, "created_at", None),
+                zuletzt_ok=getattr(abo, "last_ok_at", None),
+                fehlversuche=int(getattr(abo, "failures", 0) or 0),
+                letzter_fehler_de=fehler,
+            )
+            for abo, fehler in await push.geraete()
+        ]
     )
 
 
@@ -86,17 +125,24 @@ async def test(push: Annotated[PushService, Depends(get_push)]) -> PushResultOut
     response_model=MorgenbriefOut,
     summary="Der Morgenbrief: ob er kommt und was heute darin stünde",
 )
-async def morgenbrief(runner: Annotated[Runtime, Depends(get_runner)]) -> MorgenbriefOut:
-    return await runner.morgenbrief()
+async def morgenbrief(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    push: Annotated[PushService, Depends(get_push)],
+) -> MorgenbriefOut:
+    stand = await runner.morgenbrief()
+    return stand.model_copy(update={"geraete": await push.count()})
 
 
 @router.put(
     "/morgenbrief", response_model=MorgenbriefOut, summary="Den Morgenbrief ein- oder ausschalten"
 )
 async def set_morgenbrief(
-    body: MorgenbriefIn, runner: Annotated[Runtime, Depends(get_runner)]
+    body: MorgenbriefIn,
+    runner: Annotated[Runtime, Depends(get_runner)],
+    push: Annotated[PushService, Depends(get_push)],
 ) -> MorgenbriefOut:
-    return await runner.set_morgenbrief(body.enabled)
+    stand = await runner.set_morgenbrief(body.enabled)
+    return stand.model_copy(update={"geraete": await push.count()})
 
 
 @router.post(
@@ -115,13 +161,7 @@ async def morgenbrief_senden(
     geraete = await push.count()
     if not stand.zeilen or stand.titel is None:
         return PushResultOut(ok=False, devices=geraete, message_de=stand.hinweis_de)
-    erreicht = await push.send(
+    bericht = await push.send_bericht(
         Mitteilung(title=stand.titel, body="\n".join(stand.zeilen), tag="morgenbrief", url="/")
     )
-    return PushResultOut(
-        ok=erreicht > 0,
-        devices=geraete,
-        message_de=f"Der Brief ging an {erreicht} von {geraete} Geräten."
-        if geraete
-        else "Kein Gerät ist für Mitteilungen angemeldet.",
-    )
+    return _ergebnis("Der Brief", bericht, await push.count())

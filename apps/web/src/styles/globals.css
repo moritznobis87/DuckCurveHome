@@ -766,6 +766,21 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 .morgenbrief-vorschau { display: flex; flex-direction: column; gap: 4px; max-width: 460px; padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,.07); font-size: 14px; line-height: 1.45; color: var(--text-1); }
 .morgenbrief-titel { font-weight: 600; }
 
+/* Die angemeldeten Geräte: Name, seit wann, und wie es um die Zustellung steht. */
+.geraete { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-1); }
+.geraet { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line-1); font-size: 14px; line-height: 1.5; }
+.geraet-name { font-weight: 600; color: var(--text-1); }
+.geraet-seit { color: var(--text-3); font-size: 13px; text-align: right; }
+.geraet-stand { grid-column: 1 / -1; color: var(--text-2); }
+.geraet-stand[data-schlecht="true"] { color: var(--amber-soft); }
+
+/* Der Hinweis auf der Startseite des Telefons: dieses Gerät bekommt noch keine Mitteilungen. */
+.mitteil-hinweis { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--surface-2); font-size: 14px; line-height: 1.45; color: var(--text-1); }
+.mitteil-hinweis-knoepfe { display: flex; align-items: center; gap: 10px; }
+.mitteil-hinweis-los { padding: 8px 14px; border-radius: 999px; background: var(--amber); color: var(--petrol); font-weight: 600; font-size: 13px; text-decoration: none; }
+.mitteil-hinweis-zu { padding: 8px 10px; border: 0; background: none; color: var(--text-3); font-size: 13px; cursor: pointer; }
+.mitteil-hinweis-los:focus-visible, .mitteil-hinweis-zu:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
 /* Die Raumliste im Bereich Haus: dieselbe Spalte wie die Bühne des Modells. */
 .haus-liste { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 button.ansicht { cursor: pointer; }

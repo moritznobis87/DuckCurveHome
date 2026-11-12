@@ -1118,6 +1118,9 @@ class PushSubscribeIn(BaseModel):
     auth: str
     #: Ein Wort, an dem man das Gerät später wiedererkennt („iPhone", „iPad Küche").
     label: str = ""
+    #: Die Herkunft der Seite (`location.origin`). Sie wird der Absender der Mitteilungen,
+    #: solange keine eigene Adresse gesetzt ist.
+    origin: str = ""
 
 
 class PushUnsubscribeIn(BaseModel):
@@ -1128,6 +1131,25 @@ class PushResultOut(BaseModel):
     ok: bool
     devices: int
     message_de: str
+    #: Je Gerät ein Satz, was aus der Mitteilung geworden ist und warum.
+    details_de: list[str] = Field(default_factory=list)
+
+
+class PushGeraetOut(BaseModel):
+    """Ein angemeldetes Gerät, soweit der Dienst es kennt: ein Wort und der Stand der Zustellung."""
+
+    label: str
+    seit: datetime | None = None
+    zuletzt_ok: datetime | None = None
+    #: Fehlgeschlagene Versuche seit der letzten angenommenen Mitteilung.
+    fehlversuche: int = 0
+    #: Der letzte Grund eines Fehlschlags, sonst leer. Nach einem Neustart leer bis zur
+    #: nächsten Probe.
+    letzter_fehler_de: str = ""
+
+
+class PushGeraeteOut(BaseModel):
+    devices: list[PushGeraetOut] = Field(default_factory=list)
 
 
 class MorgenbriefOut(BaseModel):
@@ -1147,6 +1169,11 @@ class MorgenbriefOut(BaseModel):
     zeilen: list[str] = Field(default_factory=list)
     #: Warum es gerade keinen Brief gibt, sonst leer.
     hinweis_de: str = ""
+    #: Wann der Brief zuletzt verschickt wurde und an wie viele Geräte, als Satz. Leer in der
+    #: Vorführung, die keinen Zeitplan hat.
+    zuletzt_de: str = ""
+    #: Wie viele Geräte für Mitteilungen angemeldet sind. Bei null geht der Brief an niemanden.
+    geraete: int = 0
 
 
 class MorgenbriefIn(BaseModel):

@@ -89,8 +89,10 @@ class Settings(BaseSettings):
     heat_pump_actuation_enabled: bool = True
     plan_refresh_min: int = 15
     # Wer die Mitteilung schickt. Web Push verlangt im VAPID-Anspruch eine Adresse, unter der der
-    # Absender erreichbar waere; Push-Dienste pruefen nur die Form. Eine echte Adresse gehoert
-    # nicht ins Repository, also steht hier ein Platzhalter - wer will, setzt DCH_PUSH_SUBJECT.
+    # Absender erreichbar waere. Eine echte Adresse gehoert nicht ins Repository, also steht hier
+    # ein Platzhalter (derselbe wie `application.push.PLATZHALTER`). Solange er steht, nimmt der
+    # Dienst die Adresse der Oberflaeche, die das angemeldete Geraet nennt; wer will, setzt
+    # DCH_PUSH_SUBJECT.
     push_subject: str = "mailto:duck-curve-home@example.invalid"
 
     # Live-Modus

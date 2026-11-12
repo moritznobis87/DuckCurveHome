@@ -26,14 +26,19 @@ NAECHSTER_MORGEN_OHNE_PLAN = datetime(2026, 9, 9, 5, 10, tzinfo=UTC)
 
 
 class FakePush:
-    """Nimmt entgegen, was gesendet würde."""
+    """Nimmt entgegen, was gesendet würde. `geraete` sind angemeldet, `nimmt_an` davon erreichbar."""
 
     def __init__(self) -> None:
         self.gesendet: list[Mitteilung] = []
+        self.geraete = 1
+        self.nimmt_an = 1
+
+    async def count(self) -> int:
+        return self.geraete
 
     async def send(self, mitteilung: Mitteilung) -> int:
         self.gesendet.append(mitteilung)
-        return 1
+        return self.nimmt_an
 
 
 async def baue(tmp_path: Path, plan: PlanOut | None) -> tuple[LiveRuntime, FakePush]:
@@ -170,3 +175,53 @@ def test_die_vorschau_gilt_fuer_den_naechsten_morgen() -> None:
     assert brief_modul.naechster_versand(um(7, 40), berlin) == um(7, 40)
     assert brief_modul.naechster_versand(um(9), berlin) == um(7, tag=11)
     assert brief_modul.naechster_versand(um(23, 44), berlin) == um(7, tag=11)
+
+
+async def test_ohne_angemeldetes_geraet_gilt_der_brief_nicht_als_verschickt(
+    tmp_path: Path, client: TestClient
+) -> None:
+    """Wer sich um halb acht anmeldet, bekommt den Brief von heute noch."""
+    rt, push = await baue(tmp_path, fahrplan(client))
+    push.geraete = 0
+    await rt._morgenbrief_tick(SIEBEN_ZEHN)
+    assert push.gesendet == []
+    assert rt._brief_am is None
+    assert (await rt.repos.latest_event("brief.morgen")) is None
+    assert (await rt.morgenbrief()).zuletzt_de == "Bisher ist kein Morgenbrief verschickt worden."
+
+    push.geraete = 1
+    await rt._morgenbrief_tick(SIEBEN_ZEHN.replace(minute=30))
+    assert len(push.gesendet) == 1
+    assert (await rt.morgenbrief()).zuletzt_de == (
+        "Zuletzt verschickt am 4.9.2026, angekommen bei 1 von 1 Gerät."
+    )
+
+
+async def test_nimmt_kein_geraet_an_steht_es_da_und_es_wird_nicht_jede_minute_geschickt(
+    tmp_path: Path, client: TestClient
+) -> None:
+    plan = fahrplan(client)
+    rt, push = await baue(tmp_path, plan)
+    push.geraete, push.nimmt_an = 2, 0
+    await rt._morgenbrief_tick(SIEBEN_ZEHN)
+    await rt._morgenbrief_tick(SIEBEN_ZEHN.replace(minute=11))
+    assert len(push.gesendet) == 1
+    satz = (await rt.morgenbrief()).zuletzt_de
+    assert satz.startswith("Zuletzt verschickt am 4.9.2026, aber von 2 Geräten hat keines")
+
+    # Der Stand übersteht einen Neustart: er steht im Ereignis, nicht nur im Arbeitsspeicher.
+    neu, _ = await baue(tmp_path, plan)
+    assert (await neu.morgenbrief()).zuletzt_de == satz
+    ereignis = await neu.repos.latest_event("brief.morgen")
+    assert ereignis is not None and ereignis.severity == "warning"
+
+
+def test_zuletzt_satz_ohne_zahlen_aus_der_zeit_davor() -> None:
+    from datetime import date
+
+    assert brief_modul.zuletzt_satz(date(2026, 11, 12), None, None) == (
+        "Zuletzt verschickt am 12.11.2026."
+    )
+    assert brief_modul.zuletzt_satz(date(2026, 11, 12), 2, 3) == (
+        "Zuletzt verschickt am 12.11.2026, angekommen bei 2 von 3 Geräten."
+    )

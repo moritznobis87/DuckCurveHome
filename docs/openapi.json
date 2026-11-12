@@ -342,6 +342,28 @@
         }
       }
     },
+    "/api/v1/push/geraete": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Die angemeldeten Geräte und ihr Stand",
+        "description": "Welche Geräte angemeldet sind, wann zuletzt eine Mitteilung angenommen wurde und woran\ndie letzte gescheitert ist. Die Adresse des Geräts beim Push-Dienst bleibt im Dienst; die\nSeite braucht sie nicht.",
+        "operationId": "geraete_api_v1_push_geraete_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushGeraeteOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/push/morgenbrief": {
       "get": {
         "tags": [
@@ -8930,6 +8952,16 @@
             "type": "string",
             "title": "Hinweis De",
             "default": ""
+          },
+          "zuletzt_de": {
+            "type": "string",
+            "title": "Zuletzt De",
+            "default": ""
+          },
+          "geraete": {
+            "type": "integer",
+            "title": "Geraete",
+            "default": 0
           }
         },
         "type": "object",
@@ -9728,6 +9760,67 @@
         ],
         "title": "PriceWindowOut"
       },
+      "PushGeraetOut": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "seit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seit"
+          },
+          "zuletzt_ok": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zuletzt Ok"
+          },
+          "fehlversuche": {
+            "type": "integer",
+            "title": "Fehlversuche",
+            "default": 0
+          },
+          "letzter_fehler_de": {
+            "type": "string",
+            "title": "Letzter Fehler De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "PushGeraetOut",
+        "description": "Ein angemeldetes Gerät, soweit der Dienst es kennt: ein Wort und der Stand der Zustellung."
+      },
+      "PushGeraeteOut": {
+        "properties": {
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/PushGeraetOut"
+            },
+            "type": "array",
+            "title": "Devices"
+          }
+        },
+        "type": "object",
+        "title": "PushGeraeteOut"
+      },
       "PushKeyOut": {
         "properties": {
           "public_key": {
@@ -9760,6 +9853,13 @@
           "message_de": {
             "type": "string",
             "title": "Message De"
+          },
+          "details_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Details De"
           }
         },
         "type": "object",
@@ -9787,6 +9887,11 @@
           "label": {
             "type": "string",
             "title": "Label",
+            "default": ""
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin",
             "default": ""
           }
         },
