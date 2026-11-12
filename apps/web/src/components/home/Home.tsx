@@ -8,6 +8,7 @@ import { startLiveClient } from "@/lib/live/sseClient";
 import { startReloadPolicy } from "@/lib/live/reloadPolicy";
 import { useRole } from "@/lib/live/useRole";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { MitteilungsHinweis } from "./MitteilungsHinweis";
 import { useRuhe } from "@/lib/useRuhe";
 import { celsius, hhmm, longDate } from "@/lib/format";
 import { isoDay } from "@/lib/day";
@@ -220,6 +221,7 @@ export function Home() {
           <span className="home-satz-meta">{[modeWort, dazu].filter(Boolean).join(" · ")}</span>
         </div>
         <Wache befunde={wache} />
+        {isMobile ? <MitteilungsHinweis /> : null}
       </div>
 
       <div className="home-hero" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>

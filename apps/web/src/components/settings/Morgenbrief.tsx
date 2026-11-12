@@ -21,6 +21,7 @@ export function Morgenbrief() {
   const [stand, setStand] = useState<Stand | null>(null);
   const [laeuft, setLaeuft] = useState(false);
   const [meldung, setMeldung] = useState<string | null>(null);
+  const [details, setDetails] = useState<string[]>([]);
 
   const lade = useCallback(async () => {
     try {
@@ -48,8 +49,11 @@ export function Morgenbrief() {
   const sende = async () => {
     setLaeuft(true);
     setMeldung(null);
+    setDetails([]);
     try {
-      setMeldung((await api.morgenbriefSenden()).message_de);
+      const antwort = await api.morgenbriefSenden();
+      setMeldung(antwort.message_de);
+      setDetails(antwort.details_de ?? []);
     } catch {
       setMeldung("Der Brief ließ sich nicht verschicken.");
     } finally {
@@ -88,7 +92,18 @@ export function Morgenbrief() {
           </>
         ) : null}
       </div>
+      {stand && stand.enabled && (stand.geraete ?? 0) === 0 ? (
+        <p className="m-0 text-[14px] leading-[1.6]" style={{ color: "var(--amber-soft)" }}>
+          Zurzeit ist kein Gerät für Mitteilungen angemeldet. Der Brief geht deshalb an niemanden; oben auf dieser Seite lässt sich dieses Gerät anmelden.
+        </p>
+      ) : null}
+      {stand?.zuletzt_de ? <p className="m-0 text-[13px] leading-[1.6] text-text-3">{stand.zuletzt_de}</p> : null}
       {meldung ? <p className="m-0 text-[14px] leading-[1.6] text-text-2">{meldung}</p> : null}
+      {details.length > 0 ? (
+        <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[14px] leading-[1.6] text-text-2">
+          {details.map((d) => <li key={d}>{d}</li>)}
+        </ul>
+      ) : null}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
-  House, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+  House, PushGeraete, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -139,6 +139,7 @@ export const api = {
   pushUnsubscribe: (endpoint: string) =>
     request<PushResult>("/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
   pushTest: () => request<PushResult>("/push/test", { method: "POST" }),
+  pushGeraete: () => request<PushGeraete>("/push/geraete"),
   // Der Morgenbrief: ob er kommt, was heute darin stünde, und ein Versand zur Probe.
   morgenbrief: () => request<Morgenbrief>("/push/morgenbrief"),
   setMorgenbrief: (enabled: boolean) => request<Morgenbrief>("/push/morgenbrief", { method: "PUT", body: JSON.stringify({ enabled }) }),

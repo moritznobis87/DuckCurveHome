@@ -239,6 +239,9 @@ class LiveRuntime:
         # halb acht keinen zweiten schickt.
         self._brief_an: bool = True
         self._brief_am: date | None = None
+        #: Bei wie vielen von wie vielen Geräten der letzte Brief ankam; `None`, wenn unbekannt.
+        self._brief_erreicht: int | None = None
+        self._brief_geraete: int | None = None
         self._plan_at: datetime | None = None
         self._plan_abgelegt: datetime | None = None
         # Wann K1 zuletzt gesendet wurde: der Hardware-Timer läuft ab Befehl, nicht ab Entscheidung.
@@ -507,11 +510,21 @@ class LiveRuntime:
         # Der Ortstag steht im Ereignis selbst und wird nicht aus seinem Zeitstempel gerechnet:
         # so hängt er nicht davon ab, in welcher Zone die Datenbank ihn zurückgibt.
         row = await self.repos.latest_event("brief.morgen")
-        tag = row.context.get("tag") if row is not None else None
+        kontext = row.context if row is not None else {}
+        tag = kontext.get("tag")
         self._brief_am = date.fromisoformat(tag) if isinstance(tag, str) else None
+        erreicht, geraete = kontext.get("erreicht"), kontext.get("geraete")
+        self._brief_erreicht = erreicht if isinstance(erreicht, int) else None
+        self._brief_geraete = geraete if isinstance(geraete, int) else None
 
     async def morgenbrief(self) -> MorgenbriefOut:
-        return brief_modul.vorschau(self._brief_an, self.plan, self.now, BERLIN)
+        return brief_modul.vorschau(
+            self._brief_an,
+            self.plan,
+            self.now,
+            BERLIN,
+            brief_modul.zuletzt_satz(self._brief_am, self._brief_erreicht, self._brief_geraete),
+        )
 
     async def set_morgenbrief(self, enabled: bool) -> MorgenbriefOut:
         self._brief_an = enabled
@@ -528,6 +541,12 @@ class LiveRuntime:
 
         Fehlt der Fahrplan um sieben noch, wird es bis neun jede Minute wieder versucht. Vermerkt
         wird erst, wenn es einen Brief gab; sonst fiele er an einem Morgen mit spätem Fahrplan aus.
+
+        **Ohne angemeldetes Gerät gilt der Brief nicht als verschickt.** Bis zum 12.11.2026 wurde
+        der Tag auch dann vermerkt, und wer sich um halb acht anmeldete, bekam an dem Morgen
+        nichts mehr, obwohl im Protokoll ein Brief stand. Nimmt dagegen kein Gerät ihn an, wird
+        nicht jede Minute neu geschickt: der Push-Dienst lehnt aus demselben Grund wieder ab.
+        Vermerkt wird dann, dass er bei niemandem ankam, und die Seite sagt es.
         """
         if not self._brief_an or self.push is None:
             return
@@ -536,12 +555,20 @@ class LiveRuntime:
         brief = brief_modul.aus_plan(self.plan, now, BERLIN)
         if brief is None:
             return
+        geraete = await self.push.count()
+        if geraete == 0:
+            return
         self._brief_am = now.astimezone(BERLIN).date()
-        await self.repos.add_event(
-            "info", "brief.morgen", brief.text, {"tag": self._brief_am.isoformat()}, at=now
-        )
-        await self.push.send(
+        erreicht = await self.push.send(
             Mitteilung(title=brief.titel, body=brief.text, tag="morgenbrief", url="/")
+        )
+        self._brief_erreicht, self._brief_geraete = erreicht, geraete
+        await self.repos.add_event(
+            "info" if erreicht else "warning",
+            "brief.morgen",
+            brief.text,
+            {"tag": self._brief_am.isoformat(), "erreicht": erreicht, "geraete": geraete},
+            at=now,
         )
 
     async def _brief_loop(self) -> None:

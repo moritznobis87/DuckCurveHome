@@ -314,7 +314,14 @@ def test_ein_echter_widerspruch_heisst_weiterhin_unloesbar() -> None:
 
 
 def test_ein_fertiger_lauf_sagt_wie_weit_er_vom_besten_entfernt_ist() -> None:
-    """`mip_gap` macht ein „timeout" erst beurteilbar: 0,2 % sind gleichgültig, 30 % nicht."""
-    r = optimize(ivs([10.0] * 96), **BASE, cfg=OptimizerConfig(time_limit_s=30.0))
+    """`mip_gap` macht ein „timeout" erst beurteilbar: 0,2 % sind gleichgültig, 30 % nicht.
+
+    Zwölf Stunden, nicht vierundzwanzig: Bei gleichem Preis in jedem Viertel sind sehr viele
+    Fahrpläne gleich gut, und der volle Tag braucht je nach Rechner 20 bis 35 Sekunden. Am
+    12.11.2026 lief er auf einer langsameren Maschine in die Grenze von 30 Sekunden (Abstand
+    3,8 %) und die Prüfung schlug fehl, obwohl am Code nichts geändert war. Zwölf Stunden sind
+    in rund drei Sekunden fertig und zeigen dasselbe.
+    """
+    r = optimize(ivs([10.0] * 48), **BASE, cfg=OptimizerConfig(time_limit_s=30.0))
     assert r.status == "optimal"
     assert r.mip_gap is None or r.mip_gap >= 0.0

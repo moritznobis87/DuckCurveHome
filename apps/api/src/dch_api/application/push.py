@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
@@ -56,6 +57,49 @@ class Abo(Protocol):
     auth: str
 
 
+#: Der Platzhalter aus den Einstellungen. Eine echte Adresse gehört nicht ins Repository.
+PLATZHALTER = "mailto:duck-curve-home@example.invalid"
+#: Eine Herkunft, wie der Browser sie nennt: https, ein Rechnername, höchstens ein Port.
+HERKUNFT = re.compile(r"^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\d{1,5})?$")
+
+
+@dataclass(frozen=True)
+class Zustellung:
+    """Was aus einer Mitteilung an ein Gerät geworden ist, mit dem Grund, wenn sie nicht ankam.
+
+    Bis zum 12.11.2026 gab `send` nur eine Zahl zurück, und der Grund stand im Protokoll des
+    Dienstes. Auf der Seite hieß eine gescheiterte Probe schlicht „nicht angekommen", und wer
+    wissen wollte, warum, hätte das Protokoll lesen müssen (Nutzer am 12.11.2026: „Ich bekomme
+    gar keine Push-Nachrichten"). Jetzt steht der Grund da, wo die Probe ausgelöst wird.
+    """
+
+    label: str
+    ok: bool
+    #: Der Push-Dienst kennt das Abonnement nicht mehr; es ist gelöscht.
+    weg: bool = False
+    status: int | None = None
+    grund: str = ""
+
+    @property
+    def satz_de(self) -> str:
+        wer = self.label or "Gerät"
+        if self.ok:
+            return f"{wer}: angenommen. Kommt nichts an, liegt es an den Einstellungen des Geräts."
+        if self.weg:
+            return (
+                f"{wer}: Das Abonnement gibt es beim Push-Dienst nicht mehr. Es ist gelöscht; "
+                "bitte auf dem Gerät neu einschalten."
+            )
+        if self.status == 403:
+            return (
+                f"{wer}: Der Push-Dienst lehnt die Mitteilung ab (403 {self.grund}). Meist hilft "
+                "es, die Mitteilungen auf dem Gerät aus- und wieder einzuschalten."
+            )
+        if self.status is not None:
+            return f"{wer}: Der Push-Dienst antwortet mit {self.status} {self.grund}".rstrip() + "."
+        return f"{wer}: Die Mitteilung ließ sich nicht verschicken ({self.grund})."
+
+
 class PushStore(Protocol):
     """Was der Dienst zum Speichern braucht. `SqlRepositories` erfüllt das; im Demo-Modus
     übernimmt `MemoryPushStore`, damit die Oberfläche auch ohne Datenbank zu bedienen ist."""
@@ -68,6 +112,8 @@ class PushStore(Protocol):
     async def push_subscriptions(self) -> list[Any]: ...
     async def drop_push_subscription(self, endpoint: str) -> bool: ...
     async def push_delivered(self, endpoint: str, ok: bool) -> None: ...
+    async def push_origin(self) -> str | None: ...
+    async def save_push_origin(self, origin: str) -> None: ...
 
 
 @dataclass
@@ -87,6 +133,13 @@ class MemoryPushStore:
     def __init__(self) -> None:
         self._key: tuple[str, str] | None = None
         self._abos: dict[str, _Eintrag] = {}
+        self._herkunft: str | None = None
+
+    async def push_origin(self) -> str | None:
+        return self._herkunft
+
+    async def save_push_origin(self, origin: str) -> None:
+        self._herkunft = origin
 
     async def push_key(self) -> tuple[str, str] | None:
         return self._key
@@ -140,6 +193,9 @@ class PushService:
         self.store = store
         self.subject = subject
         self._lock = asyncio.Lock()
+        #: Der letzte Grund je Endpunkt, warum eine Mitteilung nicht ankam. Im Arbeitsspeicher:
+        #: nach einem Neustart zeigt die nächste Probe ihn wieder.
+        self._letzter_fehler: dict[str, str] = {}
 
     async def keys(self) -> tuple[str, str]:
         """Das Paar des Dienstes, beim ersten Mal erzeugt. Unter Schloss, damit zwei gleichzeitige
@@ -156,17 +212,48 @@ class PushService:
     async def public_key(self) -> str:
         return (await self.keys())[1]
 
-    async def subscribe(self, endpoint: str, p256dh: str, auth: str, label: str = "") -> None:
+    async def absender(self) -> str:
+        """Wer die Mitteilung schickt, für den VAPID-Anspruch `sub`.
+
+        Eine gesetzte Adresse (`DCH_PUSH_SUBJECT`) gilt. Sonst die eigene Herkunft der
+        Oberfläche, sobald sich ein Gerät angemeldet hat: sie ist eine gültige Adresse, und der
+        Push-Dienst kennt sie ohnehin, denn das Abonnement hängt an ihr. Der Platzhalter mit der
+        reservierten Endung `.invalid` bleibt nur, solange es nichts Besseres gibt. Apple ist
+        beim Absender strenger als andere Dienste; ob es diese Endung ablehnt, ist nicht belegt,
+        und mit einer echten Herkunft stellt sich die Frage nicht.
+        """
+        if self.subject != PLATZHALTER:
+            return self.subject
+        return await self.store.push_origin() or self.subject
+
+    async def subscribe(
+        self, endpoint: str, p256dh: str, auth: str, label: str = "", origin: str = ""
+    ) -> None:
         await self.store.add_push_subscription(endpoint, p256dh, auth, label)
+        self._letzter_fehler.pop(endpoint, None)
+        if HERKUNFT.fullmatch(origin):
+            await self.store.save_push_origin(origin)
 
     async def unsubscribe(self, endpoint: str) -> bool:
+        self._letzter_fehler.pop(endpoint, None)
         return await self.store.drop_push_subscription(endpoint)
 
     async def count(self) -> int:
         return len(await self.store.push_subscriptions())
 
+    async def geraete(self) -> list[tuple[Any, str]]:
+        """Die angemeldeten Geräte, je mit dem letzten Grund eines Fehlschlags (oder leer)."""
+        return [
+            (abo, self._letzter_fehler.get(abo.endpoint, ""))
+            for abo in await self.store.push_subscriptions()
+        ]
+
     async def send(self, mitteilung: Mitteilung) -> int:
-        """An alle angemeldeten Geräte. Gibt zurück, wie viele es erreicht hat.
+        """An alle angemeldeten Geräte. Gibt zurück, wie viele es erreicht hat."""
+        return sum(1 for z in await self.send_bericht(mitteilung) if z.ok)
+
+    async def send_bericht(self, mitteilung: Mitteilung) -> list[Zustellung]:
+        """An alle angemeldeten Geräte, mit dem Ergebnis je Gerät.
 
         Ein Endpunkt, den der Push-Dienst mit 404 oder 410 beantwortet, gibt es nicht mehr: Das
         Gerät wurde zurückgesetzt oder die Erlaubnis entzogen. Er wird sofort gelöscht, sonst
@@ -174,23 +261,30 @@ class PushService:
         """
         abos = await self.store.push_subscriptions()
         if not abos:
-            return 0
+            return []
         privat, _ = await self.keys()
-        erreicht = 0
+        absender = await self.absender()
+        bericht: list[Zustellung] = []
         for abo in abos:
-            ok, weg = await asyncio.to_thread(self._send_one, abo, mitteilung, privat)
-            if weg:
+            z = await asyncio.to_thread(self._send_one, abo, mitteilung, privat, absender)
+            bericht.append(z)
+            if z.weg:
                 await self.store.drop_push_subscription(abo.endpoint)
+                self._letzter_fehler.pop(abo.endpoint, None)
                 log.info("push subscription gone", endpoint=abo.endpoint[:40])
                 continue
-            await self.store.push_delivered(abo.endpoint, ok)
-            erreicht += 1 if ok else 0
-        return erreicht
+            await self.store.push_delivered(abo.endpoint, z.ok)
+            if z.ok:
+                self._letzter_fehler.pop(abo.endpoint, None)
+            else:
+                self._letzter_fehler[abo.endpoint] = z.satz_de
+        return bericht
 
-    def _send_one(self, abo: Abo, mitteilung: Mitteilung, privat: str) -> tuple[bool, bool]:
-        """(zugestellt, Endpunkt gibt es nicht mehr). Läuft in einem Faden: `pywebpush` ist synchron."""
+    def _send_one(self, abo: Abo, mitteilung: Mitteilung, privat: str, absender: str) -> Zustellung:
+        """Eine Mitteilung an ein Gerät. Läuft in einem Faden: `pywebpush` ist synchron."""
         from pywebpush import WebPushException, webpush
 
+        label = str(getattr(abo, "label", "") or "")
         try:
             webpush(
                 subscription_info={
@@ -199,16 +293,19 @@ class PushService:
                 },
                 data=mitteilung.payload(),
                 vapid_private_key=privat,
-                vapid_claims={"sub": self.subject},
+                vapid_claims={"sub": absender},
                 ttl=TTL_S,
             )
         except WebPushException as exc:
-            status = getattr(getattr(exc, "response", None), "status_code", None)
+            antwort = getattr(exc, "response", None)
+            status = getattr(antwort, "status_code", None)
+            # Der Rumpf sagt, was der Dienst auszusetzen hat (Apple: {"reason":"BadJwtToken"}).
+            grund = str(getattr(antwort, "text", "") or "").strip()[:120]
             if status in (404, 410):
-                return False, True
+                return Zustellung(label, ok=False, weg=True, status=status, grund=grund)
             log.warning("push failed", status=status, error=str(exc)[:200])
-            return False, False
+            return Zustellung(label, ok=False, status=status, grund=grund or str(exc)[:120])
         except Exception as exc:  # Netz, DNS, alles andere
             log.warning("push error", error=str(exc)[:200])
-            return False, False
-        return True, False
+            return Zustellung(label, ok=False, grund=str(exc)[:120])
+        return Zustellung(label, ok=True)

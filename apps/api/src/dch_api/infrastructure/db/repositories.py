@@ -1156,6 +1156,16 @@ class SqlRepositories:
             await s.commit()
         return True
 
+    async def push_origin(self) -> str | None:
+        """Die Herkunft der Oberfläche, wie das zuletzt angemeldete Gerät sie genannt hat."""
+        gespeichert = await self.active_config("push_origin")
+        herkunft = gespeichert.get("origin") if gespeichert else None
+        return herkunft if isinstance(herkunft, str) and herkunft else None
+
+    async def save_push_origin(self, origin: str) -> None:
+        if await self.push_origin() != origin:
+            await self.save_config("push_origin", {"origin": origin})
+
     async def push_delivered(self, endpoint: str, ok: bool) -> None:
         async with self.maker() as s:
             row = await s.get(m.PushSubscription, endpoint)
