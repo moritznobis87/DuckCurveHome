@@ -90,10 +90,12 @@ class Settings(BaseSettings):
     plan_refresh_min: int = 15
     # Wer die Mitteilung schickt. Web Push verlangt im VAPID-Anspruch eine Adresse, unter der der
     # Absender erreichbar waere. Eine echte Adresse gehoert nicht ins Repository, also steht hier
-    # ein Platzhalter (derselbe wie `application.push.PLATZHALTER`). Solange er steht, nimmt der
-    # Dienst die Adresse der Oberflaeche, die das angemeldete Geraet nennt; wer will, setzt
-    # DCH_PUSH_SUBJECT.
-    push_subject: str = "mailto:duck-curve-home@example.invalid"
+    # ein Platzhalter (derselbe wie `application.push.PLATZHALTER`). Bis zum 12.11.2026 endete er
+    # auf `.invalid`, und Apples Push-Dienst lehnte damit jede Mitteilung ab (403 BadJwtToken):
+    # er nimmt nur Absender an, deren Endung im oeffentlichen Netz vergeben ist. Solange der
+    # Platzhalter steht, versucht der Dienst zuerst die Adresse der Oberflaeche, die das
+    # angemeldete Geraet nennt; wer will, setzt DCH_PUSH_SUBJECT.
+    push_subject: str = "mailto:duck-curve-home@example.org"
 
     # Live-Modus
     database_url: str = Field(default="", validation_alias="DATABASE_URL")

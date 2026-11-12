@@ -19,6 +19,7 @@ from dch_api.application.push import (
     Mitteilung,
     PushService,
     erzeuge_paar,
+    tauglich,
 )
 from dch_api.main import create_app
 from dch_api.settings import Settings
@@ -133,14 +134,11 @@ async def test_der_grund_einer_ablehnung_steht_im_bericht_und_bei_dem_geraet(
     assert all(grund == "" for _, grund in await push.geraete())
 
 
-async def test_der_absender_ist_die_eigene_adresse_der_oberflaeche(
+async def test_der_absender_ist_die_eigene_adresse_der_oberflaeche_wenn_sie_taugt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Solange niemand eine Adresse setzt, nennt der Dienst die Herkunft der Seite als Absender.
-
-    Der Platzhalter endet auf `.invalid`. Apples Push-Dienst prüft den Absender strenger als
-    andere; die eigene Herkunft ist eine gültige Adresse und dem Push-Dienst ohnehin bekannt.
-    """
+    """Solange niemand eine Adresse setzt, nennt der Dienst die Herkunft der Seite als Absender,
+    wenn der Push-Dienst sie annehmen kann, und sonst den Platzhalter."""
     absender: list[str] = []
 
     import pywebpush
@@ -151,20 +149,105 @@ async def test_der_absender_ist_die_eigene_adresse_der_oberflaeche(
     monkeypatch.setattr(pywebpush, "webpush", fake)
 
     push = PushService(MemoryPushStore(), PLATZHALTER)
-    # Was keine Herkunft ist, wird nicht übernommen: der Wert kommt aus dem Browser.
-    await push.subscribe("https://push.example/a", "p", "a", "iPhone", "javascript:alert(1)")
-    await push.send(Mitteilung(title="t", body="b"))
-    await push.subscribe("https://push.example/a", "p", "a", "iPhone", "http://haus.example")
-    await push.send(Mitteilung(title="t", body="b"))
-    await push.subscribe("https://push.example/a", "p", "a", "iPhone", "https://haus.example")
-    await push.send(Mitteilung(title="t", body="b"))
-    assert absender == [PLATZHALTER, PLATZHALTER, "https://haus.example"]
+    erwartet = [
+        # Was keine Herkunft ist, wird nicht übernommen: der Wert kommt aus dem Browser.
+        ("javascript:alert(1)", PLATZHALTER),
+        ("http://haus.example.org", PLATZHALTER),
+        # Der Port fällt weg: mit ihm wirft die Signaturbibliothek, bevor etwas verschickt wird.
+        ("https://haus.fritz.box:8443", "https://haus.fritz.box"),
+        ("https://Haus.Example.org", "https://haus.example.org"),
+        # Ein Haus, das nur im eigenen Netz so heißt: gemerkt, aber nicht als Absender benutzt.
+        ("https://haus.local", PLATZHALTER),
+    ]
+    for herkunft, _ in erwartet:
+        await push.subscribe("https://push.example/a", "p", "a", "iPhone", herkunft)
+        await push.send(Mitteilung(title="t", body="b"))
+    assert absender == [soll for _, soll in erwartet]
 
-    # Eine gesetzte Adresse gilt immer.
-    eigen = PushService(MemoryPushStore(), "mailto:haus@example.org")
-    await eigen.subscribe("https://push.example/a", "p", "a", "iPhone", "https://haus.example")
+    # Eine gesetzte Adresse gilt, wenn sie taugt.
+    eigen = PushService(MemoryPushStore(), "mailto:haus@example.net")
+    await eigen.subscribe("https://push.example/a", "p", "a", "iPhone", "https://haus.example.org")
     await eigen.send(Mitteilung(title="t", body="b"))
-    assert absender[-1] == "mailto:haus@example.org"
+    assert absender[-1] == "mailto:haus@example.net"
+
+    # Der alte Platzhalter, in einer Umgebung noch von Hand gesetzt, wird übergangen: mit ihm
+    # kam am 12.11.2026 auf keinem iPhone etwas an.
+    alt = PushService(MemoryPushStore(), "mailto:duck-curve-home@example.invalid")
+    await alt.subscribe("https://push.example/a", "p", "a", "iPhone")
+    await alt.send(Mitteilung(title="t", body="b"))
+    assert absender[-1] == PLATZHALTER
+
+
+@pytest.mark.parametrize(
+    ("absender", "geht"),
+    [
+        # Gemessen am 12.11.2026 gegen web.push.apple.com: abgelehnt mit 403 BadJwtToken ...
+        ("mailto:duck-curve-home@example.invalid", False),
+        ("mailto:x@example.test", False),
+        ("mailto:x@example.local", False),
+        ("mailto:x@localhost", False),
+        ("mailto:x@haus.example", False),
+        ("https://localhost", False),
+        ("https://haus.local", False),
+        ("https://haus.invalid", False),
+        ("https://haus.lan", False),
+        ("https://haus.home", False),
+        ("https://haus.internal", False),
+        ("https://haus.localhost", False),
+        ("https://haus.onion", False),
+        # ... und angenommen:
+        ("mailto:duck-curve-home@example.org", True),
+        ("mailto:duck-curve-home@example.com", True),
+        ("mailto:x@example.net", True),
+        ("https://example.org", True),
+        ("https://192.168.178.20", True),
+        ("https://haus.fritz.box", True),
+        ("https://haus.home.arpa", True),
+        ("https://abc.ts.net", True),
+        # Diese lässt schon die Signaturbibliothek nicht zu:
+        ("https://haus.example.org:8443", False),
+        ("http://haus.example.org", False),
+        ("https://haus", False),
+        ("", False),
+    ],
+)
+def test_welcher_absender_taugt(absender: str, geht: bool) -> None:
+    assert tauglich(absender) is geht
+
+
+async def test_lehnt_der_push_dienst_den_absender_ab_kommt_der_naechste_dran(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Welche Endungen ein Push-Dienst annimmt, steht nirgends vollständig. Rutscht eine Adresse
+    durch die Vorprüfung und wird doch abgelehnt, darf deshalb keine Mitteilung ausfallen."""
+    versuche: list[str] = []
+
+    import pywebpush
+
+    class Antwort:
+        status_code = 403
+        text = '{"reason":"BadJwtToken"}'
+
+    def fake(vapid_claims: dict[str, Any], **kw: Any) -> None:
+        versuche.append(str(vapid_claims["sub"]))
+        if vapid_claims["sub"] != PLATZHALTER:
+            exc = pywebpush.WebPushException("abgelehnt")
+            exc.response = Antwort()  # type: ignore[assignment]
+            raise exc
+
+    monkeypatch.setattr(pywebpush, "webpush", fake)
+    push = PushService(MemoryPushStore(), PLATZHALTER)
+    # Die Endung gibt es nicht, sie steht aber auch nicht auf der Liste der bekannten.
+    await push.subscribe("https://push.example/a", "p", "a", "iPhone", "https://haus.heimnetz")
+    bericht = await push.send_bericht(Mitteilung(title="t", body="b"))
+    assert [z.ok for z in bericht] == [True]
+    assert versuche == ["https://haus.heimnetz", PLATZHALTER]
+    assert all(grund == "" for _, grund in await push.geraete())
+
+    # Beim nächsten Mal wird der abgelehnte Absender bei diesem Dienst nicht wieder versucht.
+    versuche.clear()
+    assert await push.send(Mitteilung(title="t", body="b")) == 1
+    assert versuche == [PLATZHALTER]
 
 
 def test_der_platzhalter_ist_der_aus_den_einstellungen() -> None:
