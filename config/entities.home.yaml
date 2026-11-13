@@ -106,6 +106,24 @@ actuators:
 # NICHT mehr aus Home Assistant - die passenden `sensors:`-Einträge oben bleiben als Fallback
 # für source_mode: home_assistant stehen. Alles, was hier NICHT steht, läuft unverändert über HA.
 mqtt:
+  # --- Wärmepumpe über eBUS (Add-on „Duck Curve eBUS", ab Bridge 0.14.0) ---
+  # ebusd lauscht am Adapter und legt die Werte unter ebusd/<kreis>/<name> auf den Broker. Die
+  # Namen stammen aus der Bus-Beschreibung einer anderen Anlage derselben Gerätefamilie; welche
+  # diese Wärmepumpe wirklich meldet, steht nach dem ersten Lauf im Protokoll der Bridge
+  # ("ebusd meldet ..."). Die zwei Zuordnungen unten sind deshalb ein begründeter erster Versuch,
+  # keine geprüfte Tatsache:
+  #   energymgr/ext_temp    Außentemperatur, vom Regler reihum gemeldet. Kommt sie, ersetzt sie
+  #                         die Wetterstation aus Home Assistant; kommt sie nicht (oder nicht
+  #                         mehr), springt die Wetterstation wieder ein.
+  #   heatpump/coolat_data  Vorlauf der Wärmepumpe (LWT). Der Rücklauf (EWT_temp) hat noch
+  #                         keinen Schlüssel im Dienst.
+  - kind: ebusd
+    prefix: ebusd
+    label: Wärmepumpe (eBUS)
+    components:
+      "energymgr/ext_temp": outdoor_temp_c
+      "heatpump/coolat_data":
+        LWT_temp: flow_temp_c
   # --- Nicht über MQTT: die Geräte der ersten Generation ---
   # Der Wärmepumpen-Zähler (Shelly 3EM), der Wärmepumpenschalter und die Kaffeemaschine bleiben bei
   # Home Assistant. Grund: beim Gen-1-Shelly schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die

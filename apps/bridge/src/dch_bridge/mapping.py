@@ -66,7 +66,10 @@ class MqttDeviceMap(BaseModel):
 
     prefix: str  # shellies/shellyem3-XXXX (Gen 1) oder shellyplus1-XXXX (Gen 2)
     generation: Literal[1, 2] = 2
-    kind: Literal["em3", "generic"] = "generic"  # em3 = dreiphasiger Zähler der ersten Generation
+    # em3 = dreiphasiger Zähler der ersten Generation; ebusd = die Wärmepumpe über eBUS, kein
+    # Shelly: `prefix` ist dann das Thema von ebusd (meist "ebusd") und `components` ordnet
+    # "<kreis>/<name>" einem Schlüssel zu, siehe `sources/ebusd_mqtt.py`.
+    kind: Literal["em3", "generic", "ebusd"] = "generic"
     key_prefix: str = ""  # nur für kind em3: heat_pump → heat_pump_power_kw, …
     components: dict[str, str | dict[str, str]] = Field(default_factory=dict)
     label: str = ""

@@ -501,6 +501,41 @@ nachziehen, sonst lehnt es die Datei mit `Input should be 'box', 'cylinder', ...
 der Dienst sie laengst kennt. Die Zahl im Protokoll (`bridge starting ... version`) sagt, welcher
 Stand laeuft.
 
+## Wärmepumpe über eBUS (ab 0.14.0)
+
+Die Wärmepumpe (ELCO Aerotop Split) spricht auf den Klemmen B und T einen eBUS-Dialekt. Ein
+Netzwerk-Adapter hängt an diesem Bus, das Add-on **Duck Curve eBUS** aus demselben Repository
+lässt ebusd daran lauschen, und ebusd legt die Werte unter `ebusd/<kreis>/<name>` auf den
+Mosquitto-Broker. Die Bridge liest sie dort, wie die Shellys, ohne Home Assistant.
+
+In der Zuordnung steht dafür ein Eintrag mit `kind: ebusd`:
+
+```yaml
+mqtt:
+  - kind: ebusd
+    prefix: ebusd                       # das Thema, unter dem ebusd veröffentlicht
+    components:
+      "energymgr/ext_temp": outdoor_temp_c
+      "heatpump/coolat_data":           # eine Nachricht mit mehreren Werten
+        LWT_temp: flow_temp_c
+```
+
+**Welche Namen die Wärmepumpe meldet, steht im Protokoll.** Je Name schreibt die Bridge beim
+ersten Mal eine Zeile `ebusd meldet name=... werte={...} zugeordnet=...`. Aus diesen Zeilen wird
+die Zuordnung gemacht; die zwei Einträge oben sind ein erster Versuch.
+
+**Kommt ein Wert nicht (mehr), springt Home Assistant ein.** Steht der Schlüssel auch unter
+`sensors`, liefert die Bridge die Entität aus Home Assistant, solange der Bus dazu schweigt. Für
+die Außentemperatur heißt das: meldet die Wärmepumpe ihren Fühler, gilt er; sonst die
+Wetterstation.
+
+**Ältere Bridge, neue Zuordnung.** Eine Bridge vor 0.14.0 kennt `kind: ebusd` nicht und lehnt die
+Zuordnung aus dem Repository ab. Sie arbeitet dann mit ihrem letzten guten Stand weiter und
+schreibt das ins Protokoll; es fällt nichts aus, aber die neuen Werte kommen erst nach dem
+Update des Add-ons.
+
+Gelesen wird nur. Die Bridge schickt nichts an ebusd.
+
 ## Werte, die stillstehen (ab 0.12.0)
 
 Home Assistant setzt den Zeitstempel eines Sensors nur fort, wenn die Integration den Wert erneut
