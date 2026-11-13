@@ -9,6 +9,11 @@ erweitertes Protokoll und spielt im Takt eines echten Busses zwei Telegramme:
 - eine abgehörte Frage mit Antwort (`heatpump/coolat_data`): Vorlauf 35,2, Rücklauf 30,1,
   Verdampfer 2,5 und Kältemittel 40,0 °C.
 
+Dazu drei Telegramme, wie sie am 13.11.2026 um 23:30 im Haus über den Bus gingen (aus dem
+Protokoll des Add-ons, bei laufender Maschine): die Leistungsaufnahme (1,448 kW), der Rundruf
+mit den Temperaturen 759e und 769e (47,6 und 36,5 °C) und der Rundruf der Außentemperatur
+(4,7 °C). Sie prüfen die eigenen Zeilen des Add-ons (`aerotop_split.csv`).
+
 Es schreibt mit, was ebusd an den Adapter schickt. Im Nur-Lese-Betrieb sind das genau zwei
 Nachrichten an den Adapter selbst (`c081` Anmeldung, `cc80` Abfrage der Fassung) und nichts für
 den Bus.
@@ -74,6 +79,24 @@ def frage_und_antwort() -> bytes:
     return q + bytes([crc8(q)]) + b"\x00" + a + bytes([crc8(a)]) + b"\x00"
 
 
+def telegramm(frage: str, antwort: str | None = None) -> bytes:
+    """Ein Telegramm aus Hex, so wie es im Protokoll von ebusd steht (ohne Prüfsummen)."""
+    q = bytes.fromhex(frage)
+    out = q + bytes([crc8(q)])
+    if antwort is not None:
+        a = bytes.fromhex(antwort)
+        out += b"\x00" + a + bytes([crc8(a)]) + b"\x00"
+    return out
+
+
+#: Aus dem Protokoll des Hauses, 13.11.2026 23:30.
+HAUS = (
+    telegramm("131e2000027c4f", "0301a805"),
+    telegramm("13fe20100f759edc0100769e6d0100779e000000"),
+    telegramm("13fe20100576472f0000"),
+)
+
+
 def main() -> None:
     dauer = float(sys.argv[1]) if len(sys.argv) > 1 else 60.0
     assert crc8(bytes.fromhex("1008b5110101")) == 0x89
@@ -113,6 +136,8 @@ def main() -> None:
             sende(rundruf())
         elif n % 25 == 12:
             sende(frage_und_antwort())
+        elif n % 25 in (5, 9, 17):
+            sende(HAUS[(5, 9, 17).index(n % 25)])
         else:
             time.sleep(RUHETAKT_S)
     print("Übungsadapter fertig", flush=True)

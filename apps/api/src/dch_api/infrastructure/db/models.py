@@ -78,6 +78,11 @@ class MeasurementMinute(Base):
     buffer_temp_bottom_c: Mapped[float | None] = mapped_column(Float)
     hp_release_contact: Mapped[float | None] = mapped_column(Float)
     flow_temp_c: Mapped[float | None] = mapped_column(Float)
+    # Die Wärmepumpe über eBUS; siehe `infrastructure/history.py`.
+    heat_pump_flow_l_min: Mapped[float | None] = mapped_column(Float)
+    heat_pump_return_temp_c: Mapped[float | None] = mapped_column(Float)
+    heat_pump_flow_setpoint_c: Mapped[float | None] = mapped_column(Float)
+    heat_pump_bus_power_kw: Mapped[float | None] = mapped_column(Float)
     # Pelletofen. Eigene Spalten auch für Größen, die nicht jede Firmware füllt: eine leere
     # Spalte kostet in Postgres nur ein Bit in der NULL-Maske, eine zweite Migration mehr.
     stove_state: Mapped[float | None] = mapped_column(Float)

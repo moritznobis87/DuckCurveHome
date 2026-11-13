@@ -314,6 +314,63 @@ Folgerungen: Die Kette steht an der echten Anlage. Die Bus-Beschreibung passt zu
 was fehlt, braucht es eigene Zeilen für diese Anlage, geprüft an genau diesen Telegrammen. Der
 nächste Schritt dafür ist ein Protokoll bei laufender Maschine.
 
+**Zweites Protokoll, 13.11.2026, 23:30, die Maschine läuft** (Betriebszustand „Heating“).
+
+| Größe | stehend (23:20) | laufend (23:30) | Woher |
+|---|---|---|---|
+| Durchfluss | 0,0 | 28,9 bis 30,9 | `heatpump_flowmeter`. Einheit in der Bus-Beschreibung „L“; als Liter je Minute gelesen passt der Wert zu einer 9-kW-Maschine. |
+| Strömungsschalter | offen | geschlossen | `heatpump_flow_switch` |
+| Vorlauf | 32,3 °C | 39,9 °C | `coolat_data`, Feld `LWT_temp` |
+| Rücklauf laut `coolat_data` | -30,9 °C | -30,9 °C | Feld `EWT_temp`: unverändert, also nicht belegt |
+| Verdampfer, Flüssigkeitsleitung | 5,3; 28,0 °C | 2,3; 36,6 °C | `coolat_data` |
+| Leistungsaufnahme | 0 W | 1448 W | Kennung `7c4f`, eigene Zeile `hp_power` |
+| Sauggas, Heißgas | 15,0; 23,2 °C | 3,3; 46,4 °C | Kennungen `7217`, `7317`, eigene Zeile `hp_kaeltekreis` |
+| Temperatur `759e` | 48,3 °C | 47,6 und 47,4 °C | Rundruf des Reglers, eigene Zeile `system_temps` |
+| Temperatur `769e` | 33,5 °C | 36,5 und 36,9 °C | ebenso |
+| Hauptpumpe | 0 | 1 | Kennung `c200`, eigene Zeile `pumpe_status` |
+| Vorlauf-Sollwert | 45,0 °C | 45,0 °C | `hybrid_LWT_setpoint` |
+| Außentemperatur | 4,6 °C | 4,6 °C (Rundruf: 4,7) | `heatpump_ext_unit_info`, Rundruf `7647` |
+
+**Eigene Zeilen für diese Anlage** stehen in `addons/duckcurve_ebusd/aerotop_split.csv` und kommen
+mit dem Add-on (ab 0.2.0) neben die Bus-Beschreibung. Sie lesen nur mit. Jede ist mit ebusd 26.1
+an den Telegrammen aus den beiden Protokollen geprüft: `131e2000027c4f / 0301a805` ergibt 1,448 kW,
+`13fe20100f759edc0100769e6d0100779e000000` ergibt 47,6 und 36,5 °C, `13fe20100576472f0000` ergibt
+4,7 °C. Die Namen der Kennungen `7c4f`, `7217`, `7317`, `7647` und `c200` stammen aus [B7], wo sie
+unter anderer Adresse stehen. Die Rundrufe unter `2010` sind Listen; je nach Größe folgen der
+Kennung zwei oder drei Bytes Wert.
+
+**Welche Temperatur ist der Rücklauf?** Offen, mit einer begründeten Zuordnung:
+
+* Für `769e` sprechen drei Beobachtungen bei laufender Maschine. Er liegt 3,4 K unter dem Vorlauf
+  (36,5 gegen 39,9 °C). Er liegt dicht an der Flüssigkeitsleitung (36,6 °C), die das Kältemittel
+  nach dem Wärmetauscher hat. Und er ergibt eine stimmige Bilanz: 30 l/min mal 3,4 K sind rund
+  7,1 kW Wärme, bei 1,448 kW Aufnahme eine Arbeitszahl um 4,9 bei 4,6 °C draußen und 40 °C
+  Vorlauf.
+* Für `759e` spricht nur, dass [B7] ihn in einer auskommentierten Zeile für die Aerotop Split
+  „return temp“ nennt. Dagegen: 47,6 °C liegen über dem Vorlauf und über dem Sollwert von 45 °C;
+  wäre das der Rücklauf, liefe die Maschine nicht. Wahrscheinlicher ist ein Speicherfühler.
+
+`769e` ist deshalb als `heat_pump_return_temp_c` zugeordnet, mit diesem Vorbehalt. Bestätigen
+lässt es sich am Bediengerät der Wärmepumpe (Rücklauftemperatur ablesen und vergleichen) oder
+an einigen Stunden Verlauf: der Rücklauf folgt dem unteren Puffer.
+
+**Was davon in den Dienst geht** (`config/entities.home.yaml`, Minutentabelle seit der Migration
+`a7d3e9c52b18`): Außentemperatur, Vorlauf, Durchfluss (`heat_pump_flow_l_min`), Rücklauf
+(`heat_pump_return_temp_c`), Vorlauf-Sollwert (`heat_pump_flow_setpoint_c`) und die
+Leistungsaufnahme nach Auskunft der Maschine (`heat_pump_bus_power_kw`, neben der gemessenen
+`heat_pump_power_kw`). Angezeigt wird davon noch nichts außer Außentemperatur und Vorlauf; die
+Reihen laufen ab jetzt mit, damit Wärmeleistung und Arbeitszahl später über Tage gerechnet und
+gegen den Stromzähler gehalten werden können.
+
+**Wie oft die Werte kommen.** Gemessen am nachgestellten Adapter über eine Minute: ebusd gibt die
+Werte im Fünf-Sekunden-Takt an den Broker, aber nicht jeden Wert in jedem Takt; die Abstände je
+Wert lagen zwischen 5 und 55 Sekunden. Für Temperaturen reicht das. Für Leistung und Durchfluss
+heißt es: das Minutenmittel entsteht aus wenigen Stichproben.
+
+**Nicht gesichert:** dass der Durchfluss Liter je Minute sind und wie genau der Geber ist; dass
+`7c4f` die ganze Leistungsaufnahme ist (Vergleich mit dem Zähler steht aus); die Zuordnung des
+Rücklaufs. Eine daraus gerechnete Wärmeleistung ist bis dahin eine Abschätzung.
+
 Was die Quellen zum Betrieb sagen:
 
 * Der Adapter (eBUS Adapter Shield C6) ist galvanisch getrennt, die Polung der zwei Adern spielt

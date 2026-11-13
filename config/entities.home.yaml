@@ -109,16 +109,18 @@ actuators:
 mqtt:
   # --- Wärmepumpe über eBUS (Add-on „Duck Curve eBUS", ab Bridge 0.14.0) ---
   # ebusd lauscht am Adapter und legt die Werte unter ebusd/<kreis>/<name> auf den Broker.
-  # Stand 13.11.2026, 23:20, erster Lauf an der Wärmepumpe (docs/SENSORIK.md): der Bus meldet
-  #   heatpump/heatpump_ext_unit_info   Außentemperatur des Außengeräts (4,6 °C) und dessen
-  #                                     Nennleistung (9 kW)
-  #   heatpump/coolat_data              Vorlauf (32,3 °C bei stehender Maschine), Verdampfer,
-  #                                     Kältemittel. Das Feld EWT_temp (Rücklauf) zeigte -30,9 °C
-  #                                     und ist an dieser Anlage nicht zu gebrauchen.
-  # Nicht in dieser Form kommt energymgr/ext_temp: der Rundruf der Außentemperatur hat an
-  # dieser Anlage ein anderes Telegramm (2010 statt 200f) und wird von der Bus-Beschreibung
-  # nicht erkannt. Die Außentemperatur kommt deshalb vom Außengerät. Schweigt der Bus,
-  # springt die Wetterstation aus Home Assistant wieder ein.
+  # Stand 13.11.2026, zwei Protokolle des Hauses (23:20 stehend, 23:30 laufend), siehe
+  # docs/SENSORIK.md. Was davon woher kommt:
+  #   heatpump_ext_unit_info  Außentemperatur des Außengeräts (4,6 °C). Schweigt der Bus,
+  #                           springt die Wetterstation aus Home Assistant wieder ein.
+  #   coolat_data             Vorlauf (32,3 stehend, 39,9 laufend). Das Feld EWT_temp zeigt
+  #                           immer -30,9 °C und ist an dieser Anlage nicht belegt.
+  #   heatpump_flowmeter      Durchflussmesser: 0 stehend, rund 30 Liter je Minute laufend.
+  #   hybrid_LWT_setpoint     Vorlauf-Sollwert des Reglers (45,0 °C).
+  # Aus den eigenen Zeilen des Add-ons (ab 0.2.0, aerotop_split.csv):
+  #   hp_power                Leistungsaufnahme nach Auskunft der Maschine (1,448 kW laufend).
+  #   system_temps.t_769e     Rücklauf. Begründet, nicht bestätigt: 3,4 K unter dem Vorlauf,
+  #                           nahe der Flüssigkeitsleitung, ergibt eine Arbeitszahl um 4,9.
   - kind: ebusd
     prefix: ebusd
     label: Wärmepumpe (eBUS)
@@ -127,6 +129,12 @@ mqtt:
         ext_temp: outdoor_temp_c
       "heatpump/coolat_data":
         LWT_temp: flow_temp_c
+      "heatpump/heatpump_flowmeter": heat_pump_flow_l_min
+      "energymgr/hybrid_LWT_setpoint": heat_pump_flow_setpoint_c
+      "heatpump/hp_power":
+        power_kw: heat_pump_bus_power_kw
+      "energymgr/system_temps":
+        t_769e: heat_pump_return_temp_c
   # --- Nicht über MQTT: die Geräte der ersten Generation ---
   # Der Wärmepumpen-Zähler (Shelly 3EM), der Wärmepumpenschalter und die Kaffeemaschine bleiben bei
   # Home Assistant. Grund: beim Gen-1-Shelly schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die
