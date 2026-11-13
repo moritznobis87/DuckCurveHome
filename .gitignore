@@ -24,3 +24,6 @@ test-results/
 .DS_Store
 .idea/
 .vscode/
+
+# PlatformIO (hardware/)
+.pio/

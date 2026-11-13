@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 600" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-label="Schaltbild: Der ESP32 steuert über zwei I2C-Portexpander fünf Doppel-H-Brücken mit zehn Ventilen. Alle Motoren hängen an einer gemeinsamen 3,3-Volt-Schiene hinter einem einzigen Strommesser. Elf Temperaturfühler hängen an einem 1-Wire-Bus.">
+        
+  <style>
+    .g { fill: #ffffff; }
+    .k { fill: #ffffff; stroke: #102e3c; stroke-width: 1.4; }
+    .l { fill: none; stroke: #102e3c; stroke-width: 1.4; }
+    .l.funk { stroke-dasharray: 5 4; }
+    .l.strom { stroke: #b06c00; stroke-width: 2.4; }
+    .l.fuehler { stroke: #1f7a94; stroke-width: 2; }
+    .p { fill: #102e3c; }
+    .p.strom { fill: #b06c00; }
+    .n { fill: #1f7a94; }
+    .t { fill: #102e3c; font-size: 12.5px; font-weight: 600; }
+    .u { fill: #4a6876; font-size: 11px; }
+    .b { fill: #4a6876; font-size: 11.5px; }
+    .b.strom { fill: #b06c00; font-weight: 500; }
+    .b.fuehler { fill: #1f7a94; font-weight: 500; }
+    @media (prefers-color-scheme: dark) {
+      .g { fill: #0f2e3d; }
+      .k { fill: #0f2e3d; stroke: #eaf1f3; }
+      .l { stroke: #eaf1f3; }
+      .l.strom { stroke: #f2a900; }
+      .l.fuehler { stroke: #7fd0e6; }
+      .p { fill: #eaf1f3; }
+      .p.strom { fill: #f2a900; }
+      .n { fill: #7fd0e6; }
+      .t { fill: #eaf1f3; }
+      .u, .b { fill: #9db7c2; }
+      .b.strom { fill: #f2a900; }
+      .b.fuehler { fill: #7fd0e6; }
+    }
+  </style>
+  <rect class="g" x="0" y="0" width="980" height="600"/>
+        <defs>
+          <marker id="pf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="p" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="pfs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="p strom" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+
+        <!-- Kern -->
+        <rect class="k" x="400" y="16" width="250" height="40" rx="3"/>
+        <text class="t" x="525" y="41" text-anchor="middle">Duck Curve Home · MQTT</text>
+        <path class="l funk" d="M370,150 V84 H525 V58" marker-end="url(#pf)"/>
+        <text class="b" x="440" y="78">WLAN</text>
+
+        <!-- Versorgung -->
+        <rect class="k" x="20" y="90" width="150" height="50" rx="3"/>
+        <text class="t" x="95" y="120" text-anchor="middle">Netzteil 5 V</text>
+        <path class="l" d="M170,115 H300 V148" marker-end="url(#pf)"/>
+        <text class="b" x="182" y="108">5 V über USB</text>
+
+        <path class="l strom" d="M95,140 V183" marker-end="url(#pfs)"/>
+        <rect class="k" x="20" y="185" width="150" height="50" rx="3"/>
+        <text class="t" x="95" y="207" text-anchor="middle">Regler 3,3 V</text>
+        <text class="u" x="95" y="224" text-anchor="middle">nur für die Motoren</text>
+
+        <path class="l strom" d="M95,235 V278" marker-end="url(#pfs)"/>
+        <rect class="k" x="20" y="280" width="150" height="56" rx="3"/>
+        <text class="t" x="95" y="303" text-anchor="middle">INA219 · 0x40</text>
+        <text class="u" x="95" y="321" text-anchor="middle">misst den Motorstrom</text>
+
+        <!-- Motorschiene -->
+        <path class="l strom" d="M95,336 V500 H660 V134"/>
+        <path class="l strom" d="M660,134 H688" marker-end="url(#pfs)"/>
+        <path class="l strom" d="M660,202 H688" marker-end="url(#pfs)"/>
+        <path class="l strom" d="M660,270 H688" marker-end="url(#pfs)"/>
+        <path class="l strom" d="M660,338 H688" marker-end="url(#pfs)"/>
+        <path class="l strom" d="M660,406 H688" marker-end="url(#pfs)"/>
+        <text class="b strom" x="290" y="492">Motorschiene 3,3 V: ein Strommesser für alle Antriebe</text>
+
+        <!-- ESP32 -->
+        <rect class="k" x="240" y="150" width="170" height="186" rx="3"/>
+        <text class="t" x="325" y="180" text-anchor="middle">ESP32-S3</text>
+        <text class="u" x="325" y="197" text-anchor="middle">DevKitC-1</text>
+        <text class="u" x="402" y="224" text-anchor="end">GPIO 8, 9</text>
+        <text class="u" x="248" y="326">GPIO 4</text>
+        <text class="u" x="402" y="326" text-anchor="end">GPIO 5</text>
+
+        <!-- I2C -->
+        <path class="l" d="M410,220 H478" marker-end="url(#pf)"/>
+        <path class="l" d="M445,220 V390 H478" marker-end="url(#pf)"/>
+        <text class="b" x="418" y="212">I2C</text>
+        <path class="l" d="M240,308 H172" marker-end="url(#pf)"/>
+        <text class="b" x="194" y="300">I2C</text>
+
+        <!-- Portexpander -->
+        <rect class="k" x="480" y="180" width="140" height="80" rx="3"/>
+        <text class="t" x="550" y="208" text-anchor="middle">MCP23017 A</text>
+        <text class="u" x="550" y="226" text-anchor="middle">0x20 · 16 Ausgänge</text>
+        <text class="u" x="550" y="243" text-anchor="middle">Ventile 1 bis 8</text>
+        <rect class="k" x="480" y="362" width="140" height="56" rx="3"/>
+        <text class="t" x="550" y="386" text-anchor="middle">MCP23017 B</text>
+        <text class="u" x="550" y="404" text-anchor="middle">0x21 · Ventile 9, 10</text>
+
+        <!-- Steuerleitungen -->
+        <path class="l" d="M620,196 H630 V106 H688" marker-end="url(#pf)"/>
+        <path class="l" d="M620,212 H636 V174 H688" marker-end="url(#pf)"/>
+        <path class="l" d="M620,228 H642 V242 H688" marker-end="url(#pf)"/>
+        <path class="l" d="M620,244 H648 V310 H688" marker-end="url(#pf)"/>
+        <path class="l" d="M620,378 H688" marker-end="url(#pf)"/>
+        <text class="b" x="548" y="98">IN1, IN2 je Ventil</text>
+
+        <!-- Freigabe -->
+        <path class="l" d="M380,336 V460 H755 V420" marker-end="url(#pf)"/>
+        <text class="b" x="420" y="452">Freigabe an alle Treiber (nSLEEP)</text>
+
+        <!-- Treiber und Ventile -->
+        <rect class="k" x="690" y="90" width="130" height="56" rx="3"/>
+        <text class="t" x="755" y="114" text-anchor="middle">DRV8833 Nr. 1</text>
+        <text class="u" x="755" y="132" text-anchor="middle">2 H-Brücken</text>
+        <rect class="k" x="690" y="158" width="130" height="56" rx="3"/>
+        <text class="t" x="755" y="182" text-anchor="middle">DRV8833 Nr. 2</text>
+        <text class="u" x="755" y="200" text-anchor="middle">2 H-Brücken</text>
+        <rect class="k" x="690" y="226" width="130" height="56" rx="3"/>
+        <text class="t" x="755" y="250" text-anchor="middle">DRV8833 Nr. 3</text>
+        <text class="u" x="755" y="268" text-anchor="middle">2 H-Brücken</text>
+        <rect class="k" x="690" y="294" width="130" height="56" rx="3"/>
+        <text class="t" x="755" y="318" text-anchor="middle">DRV8833 Nr. 4</text>
+        <text class="u" x="755" y="336" text-anchor="middle">2 H-Brücken</text>
+        <rect class="k" x="690" y="362" width="130" height="56" rx="3"/>
+        <text class="t" x="755" y="386" text-anchor="middle">DRV8833 Nr. 5</text>
+        <text class="u" x="755" y="404" text-anchor="middle">2 H-Brücken</text>
+
+        <text class="b" x="845" y="82" text-anchor="middle">2 Adern</text>
+        <path class="l" d="M820,104 H868" marker-end="url(#pf)"/><rect class="k" x="870" y="92" width="90" height="24" rx="3"/><text class="t" x="915" y="109" text-anchor="middle">V1</text>
+        <path class="l" d="M820,132 H868" marker-end="url(#pf)"/><rect class="k" x="870" y="120" width="90" height="24" rx="3"/><text class="t" x="915" y="137" text-anchor="middle">V2</text>
+        <path class="l" d="M820,172 H868" marker-end="url(#pf)"/><rect class="k" x="870" y="160" width="90" height="24" rx="3"/><text class="t" x="915" y="177" text-anchor="middle">V3</text>
+        <path class="l" d="M820,200 H868" marker-end="url(#pf)"/><rect class="k" x="870" y="188" width="90" height="24" rx="3"/><text class="t" x="915" y="205" text-anchor="middle">V4</text>
+        <path class="l" d="M820,240 H868" marker-end="url(#pf)"/><rect class="k" x="870" y="228" width="90" height="24" rx="3"/><text class="t" x="915" y="245" text-anchor="middle">V5</text>
+        <path class="l" d="M820,268 H868" marker-end="url(#pf)"/><rect class="k" x="870" y="256" width="90" height="24" rx="3"/><text class="t" x="915" y="273" text-anchor="middle">V6</text>
+        <path class="l" d="M820,308 H868" marker-end="url(#pf)"/><rect class="k" x="870" y="296" width="90" height="24" rx="3"/><text class="t" x="915" y="313" text-anchor="middle">V7</text>
+        <path class="l" d="M820,336 H868" marker-end="url(#pf)"/><rect class="k" x="870" y="324" width="90" height="24" rx="3"/><text class="t" x="915" y="341" text-anchor="middle">V8</text>
+        <path class="l" d="M820,376 H868" marker-end="url(#pf)"/><rect class="k" x="870" y="364" width="90" height="24" rx="3"/><text class="t" x="915" y="381" text-anchor="middle">V9</text>
+        <path class="l" d="M820,404 H868" marker-end="url(#pf)"/><rect class="k" x="870" y="392" width="90" height="24" rx="3"/><text class="t" x="915" y="409" text-anchor="middle">V10</text>
+
+        <!-- 1-Wire -->
+        <path class="l fuehler" d="M270,336 V560 H930"/>
+        <text class="b fuehler" x="282" y="548">1-Wire: elf Fühler DS18B20</text>
+        <circle class="n" cx="330" cy="560" r="5"/><text class="u" x="330" y="582" text-anchor="middle">VL</text>
+        <circle class="n" cx="390" cy="560" r="5"/><text class="u" x="390" y="582" text-anchor="middle">R1</text>
+        <circle class="n" cx="450" cy="560" r="5"/><text class="u" x="450" y="582" text-anchor="middle">R2</text>
+        <circle class="n" cx="510" cy="560" r="5"/><text class="u" x="510" y="582" text-anchor="middle">R3</text>
+        <circle class="n" cx="570" cy="560" r="5"/><text class="u" x="570" y="582" text-anchor="middle">R4</text>
+        <circle class="n" cx="630" cy="560" r="5"/><text class="u" x="630" y="582" text-anchor="middle">R5</text>
+        <circle class="n" cx="690" cy="560" r="5"/><text class="u" x="690" y="582" text-anchor="middle">R6</text>
+        <circle class="n" cx="750" cy="560" r="5"/><text class="u" x="750" y="582" text-anchor="middle">R7</text>
+        <circle class="n" cx="810" cy="560" r="5"/><text class="u" x="810" y="582" text-anchor="middle">R8</text>
+        <circle class="n" cx="870" cy="560" r="5"/><text class="u" x="870" y="582" text-anchor="middle">R9</text>
+        <circle class="n" cx="930" cy="560" r="5"/><text class="u" x="930" y="582" text-anchor="middle">R10</text>
+      </svg>
