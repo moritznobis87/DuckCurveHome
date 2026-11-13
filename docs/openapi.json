@@ -12091,6 +12091,22 @@
             "type": "array",
             "title": "Watch"
           },
+          "outdoor_shown_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outdoor Shown C"
+          },
+          "outdoor_source_de": {
+            "type": "string",
+            "title": "Outdoor Source De",
+            "default": ""
+          },
           "hp_actuation": {
             "type": "boolean",
             "title": "Hp Actuation",

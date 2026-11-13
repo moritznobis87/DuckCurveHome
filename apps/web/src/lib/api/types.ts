@@ -5594,6 +5594,13 @@ export interface components {
             sources?: components["schemas"]["SourceStatusOut"][];
             /** Watch */
             watch?: components["schemas"]["WatchFindingOut"][];
+            /** Outdoor Shown C */
+            outdoor_shown_c?: number | null;
+            /**
+             * Outdoor Source De
+             * @default
+             */
+            outdoor_source_de: string;
             /**
              * Hp Actuation
              * @default false

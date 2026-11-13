@@ -229,6 +229,12 @@ class SystemStatusOut(BaseModel):
     sources: list[SourceStatusOut] = Field(default_factory=list)
     #: Was gerade schweigt. Leer ist der Normalfall und bedeutet: Alles meldet sich.
     watch: list[WatchFindingOut] = Field(default_factory=list)
+    #: Die Außentemperatur, die die Oberfläche zeigen soll, nach der Gegenprobe gegen den
+    #: Wetterdienst (`hems_core.watch.aussen`). `outdoor_source_de` ist leer, wenn das der
+    #: Messwert ist, und nennt sonst die Quelle, die an seine Stelle tritt. `None`: keine Prüfung
+    #: (Vorführung); dann gilt der Messwert aus dem Snapshot.
+    outdoor_shown_c: float | None = None
+    outdoor_source_de: str = ""
     #: Stellt DCH den Wärmepumpen-Kontakt K1 selbst, oder liest es ihn nur mit?
     #
     #: **Warum das nach außen gehört.** Der Zustand stand bis zum 09.11.2026 in keinem Schema und
