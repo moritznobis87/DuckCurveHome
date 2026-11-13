@@ -6,7 +6,7 @@ Was gemessen wird, was geschätzt wird und was zu kaufen wäre, um aus Schätzun
 
 | Gerät | Typ | Anmerkung |
 | --- | --- | --- |
-| Wärmepumpe | **ELCO AEROTOP SPLIT WH 09-11** (Luft/Wasser, 4-11 kW) | Regler LOGON B WP61 = Siemens RVS 61.843. Ansteuerung über K1-Kontakt (SG-Ready-ähnlich) |
+| Wärmepumpe | **ELCO AEROTOP SPLIT WH 09-11** (Luft/Wasser, 4-11 kW) | Regelung der Ariston-Gruppe mit BridgeNet-Bus (eBUS) auf den Klemmen B und T, am 13.11.2026 am Gerät bestätigt; die frühere Angabe „LOGON B WP61 = Siemens RVS 61.843“ war nie geprüft und trifft nicht zu, siehe „Warum kein Bus hilft“. Ansteuerung über K1-Kontakt (SG-Ready-ähnlich) |
 | Pelletofen | **MCZ Star Hydromatic** (wasserführend) | speist denselben Puffer |
 | Pufferspeicher | 1000 l Kombipuffer | WP und Ofen speisen ein, Heizung und Warmwasser entnehmen |
 
@@ -245,6 +245,16 @@ Dann ist es BridgeNet, und der Adapter kommt parallel auf genau diese zwei Adern
 „LOGON B“ auf dem Regler und heißen die Klemmen CL+ und CL-, ist es BSB, und der Adapter passt
 nicht. Die Vorlauftemperaturregelung des Heizkreises mit ihrem eigenen Außenfühler ist ein
 zweites Gerät und kann ein Siemens-Regler sein, auch wenn die Wärmepumpe keiner ist.
+
+**Ergebnis des Versuchs, 13.11.2026 abends.** Der Hausherr hat nachgesehen und angeklemmt: Das
+Bediengerät der Wärmepumpe hängt an zwei Adern auf den Klemmen **B und T**, die es zugleich mit
+Strom versorgen, wie bei eBUS üblich. Der Adapter sitzt parallel auf diesen Klemmen und meldet in
+seiner Weboberfläche „eBUS signal: acquired“. Damit ist entschieden, was oben offen stand: **die
+Aerotop Split spricht elektrisch eBUS, der Adapter erreicht sie.** Die Zeile „Regler LOGON B
+WP61 = Siemens RVS 61.843“ in der Tabelle am Anfang gilt für diese Wärmepumpe nicht. Noch nicht
+gezeigt ist, welche Werte ebusd mit der BridgeNet-Konfiguration tatsächlich liest; das ist der
+nächste Schritt. Der Empfang des Adapters im WLAN war beim Versuch mäßig (54 %), und der Bus der
+Ariston-Gruppe ist empfindlich gegen Verzögerung: bleiben Werte aus, ist das die erste Spur.
 
 Was die Quellen zum Betrieb sagen:
 
