@@ -121,6 +121,9 @@ mqtt:
   #   hp_power                Leistungsaufnahme nach Auskunft der Maschine (1,448 kW laufend).
   #   system_temps.t_769e     Rücklauf. Begründet, nicht bestätigt: 3,4 K unter dem Vorlauf,
   #                           nahe der Flüssigkeitsleitung, ergibt eine Arbeitszahl um 4,9.
+  #                           Braucht Add-on 0.2.1 und Bridge 0.14.1 (Bedingung `kennung_2`).
+  #   hp_betrieb              Verdichterfrequenz in Hz und Betriebszustand als Zahl
+  #                           (3 heizt, 9 taut ab, 15 steht), ab Add-on 0.2.1.
   - kind: ebusd
     prefix: ebusd
     label: Wärmepumpe (eBUS)
@@ -134,7 +137,11 @@ mqtt:
       "heatpump/hp_power":
         power_kw: heat_pump_bus_power_kw
       "energymgr/system_temps":
+        kennung_2: "=76 9e"   # Bedingung: an dieser Stelle der Liste steht wirklich 769e
         t_769e: heat_pump_return_temp_c
+      "heatpump/hp_betrieb":
+        compressor_hz: heat_pump_compressor_hz
+        mode: heat_pump_mode_code
   # --- Nicht über MQTT: die Geräte der ersten Generation ---
   # Der Wärmepumpen-Zähler (Shelly 3EM), der Wärmepumpenschalter und die Kaffeemaschine bleiben bei
   # Home Assistant. Grund: beim Gen-1-Shelly schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die

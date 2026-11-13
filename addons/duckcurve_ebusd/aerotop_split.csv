@@ -13,5 +13,7 @@
 g,heatpump,hp_power,Leistungsaufnahme der Waermepumpe,,1e,2000,7c4f,,s,IGN:1,,,,power_kw,s,UIN,1000,kW,
 g,heatpump,hp_kaeltekreis,Sauggas und Heissgas am Verdichter,,1e,2000,7217731762476347,,s,IGN:1,,,,suction_temp,s,SIN,10,°C,,discharge_temp,s,SIN,10,°C,
 b,energymgr,aussen_rundruf,Aussentemperatur im Rundruf,,fe,2010,7647,temp,,SIN,10,°C,
-b,energymgr,system_temps,Zwei Temperaturen im Rundruf (Kennungen 759e und 769e),,fe,2010,759e,t_759e,,SIN,10,°C,,,,IGN:3,,,,t_769e,,SIN,10,°C,
+b,energymgr,system_temps,Zwei Temperaturen im Rundruf (Kennungen 759e und 769e),,fe,2010,759e,t_759e,,SIN,10,°C,,,,IGN:1,,,,kennung_2,,HEX:2,,,,t_769e,,SIN,10,°C,
 b,energymgr,pumpe_status,Hauptpumpe und zwei Zustandswerte im Rundruf,,fe,2010,c200,main_pump,,UIN,,,,,,IGN:2,,,,wert_c74b,,UIN,,,,,,IGN:2,,,,wert_c94b,,UIN,,,
+g,heatpump,hp_betrieb,Aussentemperatur Durchfluss Betriebszustand Verdichterfrequenz,,1e,2000,78106e13ca46cb46,,s,IGN:1,,,,ext_temp,s,SIN,10,°C,,flow,s,UIN,10,l/min,,mode,s,UCH,,,,compressor_hz,s,UCH,,Hz,
+g,energymgr,speicher_info,Speichertemperatur des Reglers (nur wenn das Bediengeraet sie abfragt),,18,2000,150318031c117017,,s,IGN:1,,,,w_1503,s,UCH,,,,aux1_out,s,UCH,,,,w_1c11,s,UCH,,,,store_temp,s,SIN,10,°C,
