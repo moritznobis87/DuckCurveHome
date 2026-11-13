@@ -20,6 +20,7 @@ from dch_bridge.mapping import ActuatorMap, EntityMap, normalize
 from dch_bridge.outbox import Outbox
 from dch_bridge.settings import BridgeSettings, ist_entitaet
 from dch_bridge.sources.controme import ContromeRooms, RaumInfo
+from dch_bridge.sources.ebusd_mqtt import EbusdDevice
 from dch_bridge.sources.mcz_maestro import MaestroStove, stove_url
 from dch_bridge.sources.nuki_lock import NukiLock
 from dch_bridge.sources.opener import HomeAssistantOpener, NukiBridgeOpener, Opener
@@ -36,7 +37,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.13.1"
+VERSION = "0.14.0"
 log = structlog.get_logger("bridge")
 
 
@@ -178,6 +179,16 @@ class Bridge:
                         stale_s=settings.mqtt_stale_s,
                         comparator=self.comparator,
                         label=dev.label or "Shelly 3EM",
+                    )
+                )
+            elif dev.kind == "ebusd":
+                # Auch ohne Zuordnung: dann lauscht die Quelle nur und schreibt ins Protokoll,
+                # welche Namen der Bus meldet.
+                out.append(
+                    EbusdDevice(
+                        topic_prefix=dev.prefix,
+                        components=dev.components,
+                        label=dev.label or "Wärmepumpe (eBUS)",
                     )
                 )
             elif dev.components:

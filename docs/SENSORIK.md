@@ -256,6 +256,32 @@ gezeigt ist, welche Werte ebusd mit der BridgeNet-Konfiguration tatsächlich lie
 nächste Schritt. Der Empfang des Adapters im WLAN war beim Versuch mäßig (54 %), und der Bus der
 Ariston-Gruppe ist empfindlich gegen Verzögerung: bleiben Werte aus, ist das die erste Spur.
 
+**Der Weg der Werte, gebaut am 13.11.2026.** Auf Wunsch des Hausherrn läuft ebusd nicht als
+fremdes Add-on, sondern als eigenes: `addons/duckcurve_ebusd` verpackt ebusd 26.1 (fertig gebaut
+aus dem Abbild seines Autors), lädt die Bus-Beschreibung [B3] in der Fassung `f2c9a631` mit
+Prüfsumme und startet ebusd **nur lesend**. Die Werte gehen als JSON auf den Mosquitto-Broker;
+die Bridge liest sie dort mit `apps/bridge/src/dch_bridge/sources/ebusd_mqtt.py`. Home Assistant
+ist an diesem Weg nicht beteiligt.
+
+Gemessen am selben Abend, ohne Heizung, mit einem nachgestellten Adapter
+(`tools/ebus_uebungsadapter.py`):
+
+| Was | Ergebnis |
+|---|---|
+| ebusd lädt die Bus-Beschreibung | 356 Nachrichten, davon 65, die sich nur durch Zuhören ergeben, keine wird von selbst abgefragt |
+| Rundruf der Außentemperatur | `ebusd/energymgr/ext_temp` mit `{"0": {"name": "", "value": 8.6}}` |
+| Abgehörte Frage mit Antwort | `ebusd/heatpump/coolat_data` mit `LWT_temp`, `EWT_temp`, `evaporator_temp`, `coolant_temp` |
+| Fühler fehlt (Rohwort 0x7FFF) | ebusd meldet 3276,7; die Bridge verwirft es |
+| Nur lesend, an den Adapter geschickt | zwei Nachrichten an den Adapter selbst (`c081`, `cc80`), nichts für den Bus |
+| Ganze Kette mit der Zuordnung des Hauses | `outdoor_temp_c = 8,6` und `flow_temp_c = 35,2` in der Bridge |
+
+Das zeigt, dass die Kette hält, wenn die Wärmepumpe diese Telegramme sendet. **Ob sie das tut,
+ist nicht gezeigt**: die Bus-Beschreibung stammt von einer Ariston-Hybridanlage. Die Bridge
+schreibt deshalb jeden Namen, den der Bus meldet, einmal ins Protokoll (`ebusd meldet`); die
+Zuordnung in `config/entities.home.yaml` (Außentemperatur, Vorlauf) ist bis dahin ein erster
+Versuch. Kommt die Außentemperatur vom Bus, ersetzt sie die Wetterstation; kommt sie nicht,
+bleibt es bei der Wetterstation.
+
 Was die Quellen zum Betrieb sagen:
 
 * Der Adapter (eBUS Adapter Shield C6) ist galvanisch getrennt, die Polung der zwei Adern spielt

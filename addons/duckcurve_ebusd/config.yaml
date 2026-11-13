@@ -1,0 +1,45 @@
+name: Duck Curve eBUS
+version: "0.1.0"
+slug: duckcurve_ebusd
+description: Liest den eBUS der Wärmepumpe über einen Netzwerk-Adapter mit ebusd und legt die Werte auf den Mosquitto-Broker, wo die Duck Curve Bridge sie abholt. Voreingestellt nur lesend.
+url: https://github.com/moritznobis87/DuckCurveHome
+arch: [aarch64, amd64]
+startup: services
+boot: auto
+init: false
+hassio_api: false
+# Die Zugangsdaten zum Broker liefert der Supervisor, wenn unten keine stehen.
+services:
+  - mqtt:want
+map:
+  - config:ro
+options:
+  # Der Adapter, so wie seine eigene Seite ihn nennt ("ebusd device string"), z. B. ens:192.168.1.50
+  adapter: ""
+  # Nur lauschen, nie selbst auf den Bus schreiben. Zum Einstieg die einzige richtige Wahl.
+  read_only: true
+  # Wie lange ebusd auf den Adapter wartet. Der Bus der Ariston-Gruppe ist empfindlich gegen
+  # Verzögerung; über WLAN haben sich 120 ms bewährt.
+  latency_ms: 120
+  mqtt_host: "core-mosquitto"
+  mqtt_port: 1883
+  mqtt_username: ""
+  mqtt_password: ""
+  mqtt_topic: "ebusd"
+  # Fassung der Bus-Beschreibung (Ariston/Chaffoteaux/Elco BridgeNet). Leer heißt: die geprüfte.
+  config_ref: ""
+  log_level: "notice"
+  # Weitere Schalter für ebusd, je einer pro Eintrag. Nur zur Fehlersuche.
+  extra_args: []
+schema:
+  adapter: str
+  read_only: bool
+  latency_ms: int(0,1000)
+  mqtt_host: str
+  mqtt_port: port
+  mqtt_username: str?
+  mqtt_password: password?
+  mqtt_topic: str
+  config_ref: str?
+  log_level: list(error|notice|info|debug)
+  extra_args: ["str"]
