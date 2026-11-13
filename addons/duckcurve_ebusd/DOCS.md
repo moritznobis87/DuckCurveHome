@@ -16,6 +16,12 @@ festgelegten, geprüften Fassung geladen und mit einer Prüfsumme verglichen. Si
 anderen Anlage derselben Gerätefamilie erarbeitet; welche ihrer Werte die eigene Wärmepumpe
 meldet, zeigt erst der Betrieb.
 
+Dazu kommen eigene Zeilen für die Wärmepumpe dieses Hauses (`aerotop_split.csv`, ab 0.2.0):
+Leistungsaufnahme, Sauggas und Heißgas, die Außentemperatur im Rundruf und zwei Temperaturen des
+Reglers. Sie sind aus dem Protokoll des Hauses gelesen und an dessen Telegrammen geprüft; auch
+sie lesen nur mit. Sie liegen im Abbild und werden bei jedem Start neben die Bus-Beschreibung
+gelegt.
+
 ## Voraussetzungen
 
 1. Ein Netzwerk-Adapter am Bus der Wärmepumpe (eBUS Adapter Shield C6), im WLAN, mit fester

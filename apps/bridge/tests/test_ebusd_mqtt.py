@@ -127,13 +127,18 @@ def test_gelesen_wird_nur() -> None:
     assert d.observed("outdoor_temp_c") is None
 
 
+def einzelwert(zahl: float) -> bytes:
+    return f'{{\n     "0": {{"name": "", "value": {zahl}}}}}'.encode()
+
+
 def test_die_zuordnung_des_hauses_liest_was_die_waermepumpe_wirklich_meldet() -> None:
-    """`config/entities.home.yaml` mit den Nachrichten des ersten Laufs am 13.11.2026.
+    """`config/entities.home.yaml` mit den Werten aus dem Protokoll des Hauses, 13.11.2026 23:30,
+    bei laufender Maschine.
 
     Die Außentemperatur kommt vom Außengerät (`heatpump_ext_unit_info`), nicht aus dem Rundruf
     `energymgr/ext_temp`: den sendet diese Anlage in einer Form, die die Bus-Beschreibung nicht
-    erkennt. Der Vorlauf kommt aus `coolat_data`; dessen Rücklauf zeigte -30,9 °C und ist nicht
-    zugeordnet.
+    erkennt. Leistung und Rücklauf kommen aus den eigenen Zeilen des Add-ons
+    (`aerotop_split.csv`), die an genau diesen Telegrammen mit ebusd geprüft sind.
     """
     datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
     karte = EntityMap.load(datei)
@@ -145,6 +150,40 @@ def test_die_zuordnung_des_hauses_liest_was_die_waermepumpe_wirklich_meldet() ->
     assert "outdoor_temp_c" in {s.key for s in karte.sensors}
     d = EbusdDevice(topic_prefix=ebus[0].prefix, components=ebus[0].components)
     d.apply("ebusd/heatpump/heatpump_ext_unit_info", HAUS_AUSSENGERAET, T0)
-    d.apply("ebusd/heatpump/coolat_data", HAUS_KUEHLKREIS, T0)
-    d.apply("ebusd/heatpump/heatpump_flowmeter", b'{\n     "0": {"name": "", "value": 0.0}}', T0)
-    assert werte(d, T0) == {"outdoor_temp_c": 4.6, "flow_temp_c": 32.3}
+    d.apply(
+        "ebusd/heatpump/coolat_data",
+        HAUS_KUEHLKREIS.replace(b"32.3", b"39.9").replace(b"28.0", b"36.6"),
+        T0,
+    )
+    d.apply("ebusd/heatpump/heatpump_flowmeter", einzelwert(29.8), T0)
+    d.apply("ebusd/energymgr/hybrid_LWT_setpoint", einzelwert(45.0), T0)
+    d.apply("ebusd/heatpump/hp_power", b'{\n     "power_kw": {"value": 1.448}}', T0)
+    d.apply(
+        "ebusd/energymgr/system_temps",
+        b'{\n     "t_759e": {"value": 47.4},\n     "t_769e": {"value": 36.9}}',
+        T0,
+    )
+    # Mitgelesen, aber nicht zugeordnet: bleibt im Zustand sichtbar und geht nicht weiter.
+    d.apply("ebusd/heatpump/hp_kaeltekreis", b'{"suction_temp": {"value": 3.3}}', T0)
+    assert werte(d, T0) == {
+        "outdoor_temp_c": 4.6,
+        "flow_temp_c": 39.9,
+        "heat_pump_flow_l_min": 29.8,
+        "heat_pump_flow_setpoint_c": 45.0,
+        "heat_pump_bus_power_kw": 1.448,
+        "heat_pump_return_temp_c": 36.9,
+    }
+    assert "heatpump/hp_kaeltekreis" in d.status()["gesehen"]
+
+
+def test_was_die_bridge_vom_bus_liefert_hat_im_dienst_einen_platz() -> None:
+    """Jeder zugeordnete Schlüssel der Wärmepumpe ist eine Reihe der Minutentabelle. Sonst käme
+    der Wert an, stünde eine Minute im Zustand und wäre danach für immer weg."""
+    quelle = (
+        Path(__file__).resolve().parents[3] / "apps/api/src/dch_api/infrastructure/history.py"
+    ).read_text(encoding="utf-8")
+    datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
+    ebus = next(m for m in EntityMap.load(datei).mqtt if m.kind == "ebusd")
+    d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
+    fehlend = sorted(k for k in d.owned_keys if f'"{k}"' not in quelle)
+    assert not fehlend, f"ohne Reihe in der Minutentabelle: {fehlend}"

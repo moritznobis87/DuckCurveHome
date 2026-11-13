@@ -77,6 +77,14 @@ else
   fi
 fi
 
+# Die eigenen Zeilen für die Wärmepumpe dieses Hauses liegen im Abbild und kommen bei jedem
+# Start neben die geladene Bus-Beschreibung: so wirkt ein Update des Add-ons, ohne dass die
+# Bus-Beschreibung neu geladen werden muss. Eigene Dateien unter $LOCAL bleiben unberührt.
+if [ "$CONFIGPATH" != "$LOCAL" ] && [ -r /etc/duckcurve/aerotop_split.csv ]; then
+  cp /etc/duckcurve/aerotop_split.csv "$CONFIGPATH/aerotop_split.csv" \
+    && log "Eigene Zeilen für die Aerotop Split dazugelegt."
+fi
+
 ARGS=(--foreground --updatecheck=off "--device=$ADAPTER" "--latency=$(opt latency_ms 120)"
   "--configpath=$CONFIGPATH" "--log=all:$(opt log_level notice)"
   "--mqtthost=$MQTT_HOST" "--mqttport=$MQTT_PORT" "--mqtttopic=$(opt mqtt_topic ebusd)" --mqttjson)

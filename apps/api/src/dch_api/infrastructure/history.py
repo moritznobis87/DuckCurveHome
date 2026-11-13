@@ -34,6 +34,13 @@ SERIES = (
     # in der Spalte: NaN ist in JSON nicht darstellbar und wuerde jedes Minutenmittel vergiften, in
     # dem es einmal auftaucht. Die Anzeige sagt dafuer "Vorlauf ?", und das ist dieselbe Aussage.
     "flow_temp_c",
+    # Die Wärmepumpe über ihren eigenen Bus (eBUS, seit dem 13.11.2026). Vier Größen, die es
+    # vorher nicht gab und aus denen sich zum ersten Mal eine Wärmeleistung rechnen lässt:
+    # Durchfluss mal Spreizung zwischen Vorlauf (`flow_temp_c`) und Rücklauf.
+    "heat_pump_flow_l_min",  # Durchflussmesser der Wärmepumpe, Liter je Minute
+    "heat_pump_return_temp_c",  # Rücklauf; die Zuordnung der Kennung ist begründet, nicht bestätigt
+    "heat_pump_flow_setpoint_c",  # Vorlauf-Sollwert, den der Regler der Maschine vorgibt
+    "heat_pump_bus_power_kw",  # Leistungsaufnahme nach eigener Auskunft der Maschine
     # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
     # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
     "stove_state",  # Zustandscode der Maestro-Firmware

@@ -61,3 +61,28 @@ def test_der_uebungsadapter_rechnet_die_pruefsumme_des_busses() -> None:
     # Rundruf: 9 Bytes und die Prüfsumme. Frage und Antwort: 13 + Prüfsumme + Quittung, dann
     # 10 + Prüfsumme + Quittung.
     assert len(modul.rundruf()) == 10 and len(modul.frage_und_antwort()) == 27
+
+
+def test_die_eigenen_zeilen_fuer_die_aerotop_haben_die_form_die_ebusd_liest() -> None:
+    """`aerotop_split.csv`: acht Spalten Kopf, dann je Feld sechs. Eine verrutschte Spalte liest
+    ebusd nicht als Fehler, sondern als anderes Feld (am 13.11.2026 an `pumpe_status` gesehen:
+    ein Byte zu viel übersprungen, „invalid position").
+
+    Ob die Zeilen die Telegramme des Hauses richtig entschlüsseln, prüft kein Test hier: das ist
+    mit ebusd selbst an den Telegrammen aus dem Protokoll geschehen (docs/SENSORIK.md).
+    """
+    zeilen = [
+        z
+        for z in (ADDON / "aerotop_split.csv").read_text(encoding="utf-8").splitlines()
+        if z and not z.startswith("#")
+    ]
+    namen = set()
+    for z in zeilen:
+        spalten = z.split(",")
+        assert spalten[0] in {"g", "b"}, "nur mitlesen, nie fragen oder schreiben"
+        assert (len(spalten) - 8) % 6 == 0, z
+        namen.add(f"{spalten[1]}/{spalten[2]}")
+    assert {"heatpump/hp_power", "energymgr/system_temps", "energymgr/aussen_rundruf"} <= namen
+    dockerfile = (ADDON / "Dockerfile").read_text(encoding="utf-8")
+    assert "COPY aerotop_split.csv /etc/duckcurve/aerotop_split.csv" in dockerfile
+    assert "/etc/duckcurve/aerotop_split.csv" in (ADDON / "run.sh").read_text(encoding="utf-8")
