@@ -21,6 +21,16 @@ KUEHLKREIS = (
     b'     "evaporator_temp": {"value": 2.5},\n     "coolant_temp": {"value": 40.0}}'
 )
 FUEHLER_FEHLT = b'{\n     "0": {"name": "", "value": 3276.7}}'
+#: Erster Lauf an der Wärmepumpe, 13.11.2026 23:20. Die Zahlen stehen so im Protokoll des Add-ons
+#: (`heatpump_ext_unit_info ...: 4.6;9` und `coolat_data: 32.3;-30.9;5.3;28.0`); die Form ist die
+#: der oben aufgezeichneten Nachricht mit benannten Feldern.
+HAUS_AUSSENGERAET = (
+    b'{\n     "ext_temp": {"value": 4.6},\n     "inverter_nominal_power": {"value": 9}}'
+)
+HAUS_KUEHLKREIS = (
+    b'{\n     "LWT_temp": {"value": 32.3},\n     "EWT_temp": {"value": -30.9},\n'
+    b'     "evaporator_temp": {"value": 5.3},\n     "coolant_temp": {"value": 28.0}}'
+)
 ZUORDNUNG = {
     "energymgr/ext_temp": "outdoor_temp_c",
     "heatpump/coolat_data": {"LWT_temp": "flow_temp_c"},
@@ -117,15 +127,24 @@ def test_gelesen_wird_nur() -> None:
     assert d.observed("outdoor_temp_c") is None
 
 
-def test_die_zuordnung_des_hauses_kennt_die_waermepumpe() -> None:
-    """`config/entities.home.yaml` trägt das Gerät ein, und die Schlüssel zählen als über den
-    Broker geliefert: nur dann lässt die Bridge Home Assistant bei frischen Werten aus."""
+def test_die_zuordnung_des_hauses_liest_was_die_waermepumpe_wirklich_meldet() -> None:
+    """`config/entities.home.yaml` mit den Nachrichten des ersten Laufs am 13.11.2026.
+
+    Die Außentemperatur kommt vom Außengerät (`heatpump_ext_unit_info`), nicht aus dem Rundruf
+    `energymgr/ext_temp`: den sendet diese Anlage in einer Form, die die Bus-Beschreibung nicht
+    erkennt. Der Vorlauf kommt aus `coolat_data`; dessen Rücklauf zeigte -30,9 °C und ist nicht
+    zugeordnet.
+    """
     datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
     karte = EntityMap.load(datei)
     ebus = [m for m in karte.mqtt if m.kind == "ebusd"]
     assert len(ebus) == 1 and ebus[0].prefix == "ebusd"
+    # Die Schlüssel zählen als über den Broker geliefert: nur dann lässt die Bridge Home
+    # Assistant bei frischen Werten aus. Die Wetterstation bleibt als Rückfallebene eingetragen.
     assert {"outdoor_temp_c", "flow_temp_c"} <= karte.mqtt_keys()
+    assert "outdoor_temp_c" in {s.key for s in karte.sensors}
     d = EbusdDevice(topic_prefix=ebus[0].prefix, components=ebus[0].components)
-    d.apply("ebusd/energymgr/ext_temp", AUSSEN, T0)
-    d.apply("ebusd/heatpump/coolat_data", KUEHLKREIS, T0)
-    assert werte(d, T0) == {"outdoor_temp_c": 8.6, "flow_temp_c": 35.2}
+    d.apply("ebusd/heatpump/heatpump_ext_unit_info", HAUS_AUSSENGERAET, T0)
+    d.apply("ebusd/heatpump/coolat_data", HAUS_KUEHLKREIS, T0)
+    d.apply("ebusd/heatpump/heatpump_flowmeter", b'{\n     "0": {"name": "", "value": 0.0}}', T0)
+    assert werte(d, T0) == {"outdoor_temp_c": 4.6, "flow_temp_c": 32.3}
