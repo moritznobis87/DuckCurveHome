@@ -41,6 +41,8 @@ SERIES = (
     "heat_pump_return_temp_c",  # Rücklauf; die Zuordnung der Kennung ist begründet, nicht bestätigt
     "heat_pump_flow_setpoint_c",  # Vorlauf-Sollwert, den der Regler der Maschine vorgibt
     "heat_pump_bus_power_kw",  # Leistungsaufnahme nach eigener Auskunft der Maschine
+    "heat_pump_compressor_hz",  # Verdichterfrequenz: wie weit die Maschine gerade moduliert
+    "heat_pump_mode_code",  # Betriebszustand als Zahl der Maschine: 3 heizt, 9 taut ab, 15 steht
     # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
     # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
     "stove_state",  # Zustandscode der Maestro-Firmware

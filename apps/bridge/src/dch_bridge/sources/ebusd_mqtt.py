@@ -28,6 +28,19 @@ Assistant ein (die Bridge prüft das mit `fresh`), und sonst lässt der Dienst d
 **Fehlt ein Fühler, meldet der Bus 3276,7** (das Rohwort 0x7FFF, durch zehn). Das ist kein
 Messwert und wird verworfen, wie alles außerhalb der Grenzen einer Temperatur.
 
+**Eine Zuordnung kann eine Bedingung tragen.** Der Regler dieser Anlage meldet manche Werte in
+Listen (Kennung, Wert, Kennung, Wert, ...), und ebusd liest eine Liste mit einer festen
+Schablone. Ändert sich die Zusammensetzung der Liste, liest die Schablone an der alten Stelle
+etwas anderes, und zwar ohne Fehler: am 14.11.2026 stand so einmal „Hauptpumpe 0; 46; 48715" im
+Protokoll. Deshalb legt die Schablone die Kennung vor dem Wert als eigenes Feld offen, und die
+Zuordnung verlangt mit `"=..."`, dass sie stimmt:
+
+    "energymgr/system_temps":
+      kennung_2: "=76 9e"                 # nur wenn hier wirklich die Kennung 769e steht
+      t_769e: heat_pump_return_temp_c
+
+Stimmt die Bedingung nicht, geht aus dieser Nachricht nichts weiter.
+
 Gelesen wird nur. Diese Quelle schickt nichts an ebusd und damit nichts auf den Bus.
 """
 
@@ -51,6 +64,35 @@ EINZELWERT = "0"
 #: Was als Temperatur gelten darf. Der Marker für einen fehlenden Fühler (3276,7) liegt weit
 #: außerhalb, ebenso ein vertauschtes Byte.
 TEMPERATUR_C = (-60.0, 150.0)
+#: So beginnt in der Zuordnung eine Bedingung statt eines Schlüssels.
+BEDINGUNG = "="
+
+
+def ist_bedingung(ziel: str) -> bool:
+    return ziel.startswith(BEDINGUNG)
+
+
+def schluessel(components: dict[str, str | dict[str, str]]) -> set[str]:
+    """Die Domänenschlüssel einer Zuordnung, ohne die Bedingungen."""
+    out: set[str] = set()
+    for ziel in components.values():
+        ziele = {ziel} if isinstance(ziel, str) else set(ziel.values())
+        out |= {z for z in ziele if not ist_bedingung(z)}
+    return out
+
+
+def rohwerte(payload: bytes | str) -> dict[str, object] | None:
+    """Alle Felder einer ebusd-Nachricht, Zahlen wie Wörter. `None`: nicht lesbar."""
+    try:
+        roh = json.loads(payload)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(roh, dict):
+        return None
+    return {
+        str(name): (inhalt.get("value") if isinstance(inhalt, dict) else inhalt)
+        for name, inhalt in roh.items()
+    }
 
 
 def felder(payload: bytes | str) -> dict[str, float] | None:
@@ -59,20 +101,14 @@ def felder(payload: bytes | str) -> dict[str, float] | None:
     Wörter (etwa der Betriebszustand „Heating") sind keine Messwerte und fehlen im Ergebnis; eine
     Nachricht, die nur Wörter enthält, ergibt ein leeres Verzeichnis und ist trotzdem gültig.
     """
-    try:
-        roh = json.loads(payload)
-    except (ValueError, TypeError):
+    roh = rohwerte(payload)
+    if roh is None:
         return None
-    if not isinstance(roh, dict):
-        return None
-    out: dict[str, float] = {}
-    for name, inhalt in roh.items():
-        wert = inhalt.get("value") if isinstance(inhalt, dict) else inhalt
-        if isinstance(wert, bool) or not isinstance(wert, int | float):
-            continue
-        if math.isfinite(wert):
-            out[str(name)] = float(wert)
-    return out
+    return {
+        name: float(wert)
+        for name, wert in roh.items()
+        if not isinstance(wert, bool) and isinstance(wert, int | float) and math.isfinite(wert)
+    }
 
 
 @dataclass
@@ -110,10 +146,7 @@ class EbusdDevice:
 
     @property
     def owned_keys(self) -> set[str]:
-        out: set[str] = set()
-        for ziel in self.components.values():
-            out |= {ziel} if isinstance(ziel, str) else set(ziel.values())
-        return out
+        return schluessel(self.components)
 
     def topics(self) -> list[str]:
         return [f"{self.topic_prefix}/#"]
@@ -145,7 +178,18 @@ class EbusdDevice:
         if ziel is None:
             return True
         zuordnung = {EINZELWERT: ziel} if isinstance(ziel, str) else ziel
+        bedingungen = {f: z[len(BEDINGUNG) :] for f, z in zuordnung.items() if ist_bedingung(z)}
+        if bedingungen:
+            roh = rohwerte(payload) or {}
+            verfehlt = {f: roh.get(f) for f, soll in bedingungen.items() if str(roh.get(f)) != soll}
+            if verfehlt:
+                # Die Nachricht hat eine andere Zusammensetzung als die Schablone annimmt.
+                self.rejected += 1
+                log.debug("ebusd condition not met", name=name, verfehlt=verfehlt)
+                return True
         for feld, key in zuordnung.items():
+            if ist_bedingung(key):
+                continue
             wert = werte.get(feld)
             if wert is None and isinstance(ziel, str) and len(werte) == 1:
                 # Ein einzelner Wert, der doch einen Namen hat.

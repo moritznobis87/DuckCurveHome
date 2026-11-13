@@ -356,9 +356,9 @@ an einigen Stunden Verlauf: der Rücklauf folgt dem unteren Puffer.
 
 **Was davon in den Dienst geht** (`config/entities.home.yaml`, Minutentabelle seit der Migration
 `a7d3e9c52b18`): Außentemperatur, Vorlauf, Durchfluss (`heat_pump_flow_l_min`), Rücklauf
-(`heat_pump_return_temp_c`), Vorlauf-Sollwert (`heat_pump_flow_setpoint_c`) und die
+(`heat_pump_return_temp_c`), Vorlauf-Sollwert (`heat_pump_flow_setpoint_c`), die
 Leistungsaufnahme nach Auskunft der Maschine (`heat_pump_bus_power_kw`, neben der gemessenen
-`heat_pump_power_kw`). Angezeigt wird davon noch nichts außer Außentemperatur und Vorlauf; die
+`heat_pump_power_kw`) und, seit dem dritten Protokoll, Verdichterfrequenz und Betriebszustand. Angezeigt wird davon noch nichts außer Außentemperatur und Vorlauf; die
 Reihen laufen ab jetzt mit, damit Wärmeleistung und Arbeitszahl später über Tage gerechnet und
 gegen den Stromzähler gehalten werden können.
 
@@ -370,6 +370,29 @@ heißt es: das Minutenmittel entsteht aus wenigen Stichproben.
 **Nicht gesichert:** dass der Durchfluss Liter je Minute sind und wie genau der Geber ist; dass
 `7c4f` die ganze Leistungsaufnahme ist (Vergleich mit dem Zähler steht aus); die Zuordnung des
 Rücklaufs. Eine daraus gerechnete Wärmeleistung ist bis dahin eine Abschätzung.
+
+**Drittes Protokoll, 14.11.2026, 00:06, nach dem Lauf, Add-on 0.2.0.** Die eigenen Zeilen wirken:
+`hp_power: 0.000`, `hp_kaeltekreis: 20.6;54.6`, `system_temps: 52.6;39.6`. Dazu drei Befunde.
+
+* **Verdichterfrequenz und Betriebszustand stehen in einem weiteren Telegramm.**
+  `131e20000878106e13ca46cb46 / 070f210000000f00`: Außentemperatur 3,3 °C, Durchfluss 0,
+  Zustand 15, Frequenz 0 Hz. Eigene Zeile `hp_betrieb` (ab Add-on 0.2.1); beides geht in die
+  Minutentabelle (`heat_pump_compressor_hz`, `heat_pump_mode_code`, Migration `b8e4f0d63c29`).
+  Damit wird Abtauen (Zustand 9) zum ersten Mal sichtbar.
+* **Der Regler kennt eine Speichertemperatur.** `1018200008150318031c117017 / 060f0000001702`:
+  Kennung `7017`, 53,5 °C, in [B7] `dhw_store_temp`. Das Bediengerät fragt sie nur ab, wenn
+  eine bestimmte Seite offen ist; sie kommt also nicht verlässlich. Eigene Zeile
+  `speicher_info`, nicht zugeordnet. `759e` stand zur selben Zeit bei 52,6 °C: das stützt die
+  Lesart, dass `759e` ein Speicherfühler ist und nicht der Rücklauf.
+* **Eine Liste kann ihre Zusammensetzung ändern.** Einmal stand `pumpe_status: 0;46;48715` im
+  Protokoll: dieselbe erste Kennung, anderer Inhalt, ohne Fehler gelesen. ebusd liest Listen
+  mit einer festen Schablone und merkt das nicht. Für den Rücklauf legt die Schablone deshalb
+  die Kennung vor dem Wert offen (`kennung_2`), und die Zuordnung verlangt, dass dort `76 9e`
+  steht (Bridge ab 0.14.1). `pumpe_status` ist nicht zugeordnet und bleibt ungeschützt.
+
+Der Rücklauf bleibt unbestätigt. Nach dem Lauf standen `769e` bei 39,6 und der Vorlauf bei
+46,8 °C; bei stehender Pumpe sagt dieser Abstand nichts. Über die Zuordnung entscheidet der
+Vergleich bei laufender Maschine: mit der Anzeige am Bediengerät oder mit dem unteren Puffer.
 
 Was die Quellen zum Betrieb sagen:
 

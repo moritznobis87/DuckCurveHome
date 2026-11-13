@@ -127,6 +127,44 @@ def test_gelesen_wird_nur() -> None:
     assert d.observed("outdoor_temp_c") is None
 
 
+#: Mit ebusd 26.1 und `aerotop_split.csv` aus Telegrammen des Hauses vom 14.11.2026, 00:06,
+#: aufgezeichnet: `13fe20100f759e0e0200769e8c0100779e000000` und
+#: `131e20000878106e13ca46cb46 / 070f210000000f00`.
+SYSTEM_TEMPS = (
+    b'{\n     "t_759e": {"value": 52.6},\n     "kennung_2": {"value": "76 9e"},\n'
+    b'     "t_769e": {"value": 39.6}}'
+)
+HP_BETRIEB = (
+    b'{\n     "ext_temp": {"value": 3.3},\n     "flow": {"value": 0.0},\n'
+    b'     "mode": {"value": 15},\n     "compressor_hz": {"value": 0}}'
+)
+
+
+def test_eine_liste_mit_anderer_zusammensetzung_wird_nicht_gelesen() -> None:
+    """Der Regler meldet manche Werte in Listen, und ebusd liest sie mit einer festen Schablone.
+
+    Am 14.11.2026 stand einmal „Hauptpumpe 0; 46; 48715" im Protokoll: eine Liste mit derselben
+    ersten Kennung, aber anderem Inhalt, ohne Fehler gelesen. Die Zuordnung des Rücklaufs
+    verlangt deshalb, dass vor dem Wert wirklich die Kennung 769e steht.
+    """
+    zuordnung = {
+        "energymgr/system_temps": {"kennung_2": "=76 9e", "t_769e": "heat_pump_return_temp_c"}
+    }
+    d = EbusdDevice(topic_prefix="ebusd", components=dict(zuordnung))
+    # Die Bedingung ist kein Schlüssel.
+    assert d.owned_keys == {"heat_pump_return_temp_c"}
+    anders = SYSTEM_TEMPS.replace(b"76 9e", b"c9 4b")
+    d.apply("ebusd/energymgr/system_temps", anders, T0)
+    assert werte(d, T0) == {} and d.rejected == 1
+    d.apply("ebusd/energymgr/system_temps", SYSTEM_TEMPS, T0)
+    assert werte(d, T0) == {"heat_pump_return_temp_c": 39.6}
+    # Fehlt das Feld der Bedingung ganz (älteres Add-on), geht ebenfalls nichts weiter.
+    alt = b'{"t_759e": {"value": 47.4}, "t_769e": {"value": 36.9}}'
+    d2 = EbusdDevice(topic_prefix="ebusd", components=dict(zuordnung))
+    d2.apply("ebusd/energymgr/system_temps", alt, T0)
+    assert werte(d2, T0) == {}
+
+
 def einzelwert(zahl: float) -> bytes:
     return f'{{\n     "0": {{"name": "", "value": {zahl}}}}}'.encode()
 
@@ -158,11 +196,8 @@ def test_die_zuordnung_des_hauses_liest_was_die_waermepumpe_wirklich_meldet() ->
     d.apply("ebusd/heatpump/heatpump_flowmeter", einzelwert(29.8), T0)
     d.apply("ebusd/energymgr/hybrid_LWT_setpoint", einzelwert(45.0), T0)
     d.apply("ebusd/heatpump/hp_power", b'{\n     "power_kw": {"value": 1.448}}', T0)
-    d.apply(
-        "ebusd/energymgr/system_temps",
-        b'{\n     "t_759e": {"value": 47.4},\n     "t_769e": {"value": 36.9}}',
-        T0,
-    )
+    d.apply("ebusd/energymgr/system_temps", SYSTEM_TEMPS, T0)
+    d.apply("ebusd/heatpump/hp_betrieb", HP_BETRIEB, T0)
     # Mitgelesen, aber nicht zugeordnet: bleibt im Zustand sichtbar und geht nicht weiter.
     d.apply("ebusd/heatpump/hp_kaeltekreis", b'{"suction_temp": {"value": 3.3}}', T0)
     assert werte(d, T0) == {
@@ -171,7 +206,9 @@ def test_die_zuordnung_des_hauses_liest_was_die_waermepumpe_wirklich_meldet() ->
         "heat_pump_flow_l_min": 29.8,
         "heat_pump_flow_setpoint_c": 45.0,
         "heat_pump_bus_power_kw": 1.448,
-        "heat_pump_return_temp_c": 36.9,
+        "heat_pump_return_temp_c": 39.6,
+        "heat_pump_compressor_hz": 0.0,
+        "heat_pump_mode_code": 15.0,
     }
     assert "heatpump/hp_kaeltekreis" in d.status()["gesehen"]
 

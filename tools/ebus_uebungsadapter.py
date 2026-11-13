@@ -94,6 +94,8 @@ HAUS = (
     telegramm("131e2000027c4f", "0301a805"),
     telegramm("13fe20100f759edc0100769e6d0100779e000000"),
     telegramm("13fe20100576472f0000"),
+    # 14.11.2026 00:06: Außentemperatur, Durchfluss, Zustand 15, Verdichter 0 Hz.
+    telegramm("131e20000878106e13ca46cb46", "070f210000000f00"),
 )
 
 
@@ -136,8 +138,8 @@ def main() -> None:
             sende(rundruf())
         elif n % 25 == 12:
             sende(frage_und_antwort())
-        elif n % 25 in (5, 9, 17):
-            sende(HAUS[(5, 9, 17).index(n % 25)])
+        elif n % 25 in (5, 9, 17, 21):
+            sende(HAUS[(5, 9, 17, 21).index(n % 25)])
         else:
             time.sleep(RUHETAKT_S)
     print("Übungsadapter fertig", flush=True)

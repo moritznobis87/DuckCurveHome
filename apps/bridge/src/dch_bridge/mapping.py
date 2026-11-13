@@ -109,7 +109,9 @@ class EntityMap(BaseModel):
                 out |= {f"{dev.key_prefix}_power_kw", f"{dev.key_prefix}_energy_kwh"}
             for target in dev.components.values():
                 out |= {target} if isinstance(target, str) else set(target.values())
-        return out
+        # Bei `kind: ebusd` kann eine Zuordnung eine Bedingung tragen ("=76 9e"); das ist kein
+        # Schlüssel. Siehe `sources/ebusd_mqtt.py`.
+        return {k for k in out if not k.startswith("=")}
 
 
 UNIT_SCALE: dict[str, float] = {

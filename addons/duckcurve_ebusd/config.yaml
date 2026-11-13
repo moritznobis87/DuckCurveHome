@@ -1,5 +1,5 @@
 name: Duck Curve eBUS
-version: "0.2.0"
+version: "0.2.1"
 slug: duckcurve_ebusd
 description: Liest den eBUS der Wärmepumpe über einen Netzwerk-Adapter mit ebusd und legt die Werte auf den Mosquitto-Broker, wo die Duck Curve Bridge sie abholt. Voreingestellt nur lesend.
 url: https://github.com/moritznobis87/DuckCurveHome
