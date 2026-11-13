@@ -174,12 +174,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Probemitteilung senden
-         * @description Eine Probe an alle angemeldeten Geräte.
+         * Probe: das aktuelle Briefing senden
+         * @description Eine Probe an alle angemeldeten Geräte, und zwar das aktuelle Morning Briefing.
          *
          *     Der Weg hat viele Glieder - Browser, Push-Dienst, Schlüssel, Service Worker -, und jedes kann
          *     still versagen. Ohne eine Probe merkt man das erst, wenn die erste echte Meldung ausbleibt,
          *     also genau dann, wenn sie gebraucht wird.
+         *
+         *     Bis zum 13.11.2026 kam als Probe der feste Satz „Probe: Mitteilungen kommen an." Der zeigt,
+         *     dass der Weg steht, aber nicht, wie die Mitteilung aussieht, um die es geht. Jetzt kommt
+         *     dasselbe, was die Seite als Vorschau zeigt. Nur wenn es gerade kein Briefing gibt, bleibt
+         *     der feste Satz, denn die Probe muss immer etwas schicken können.
          */
         post: operations["test_api_v1_push_test_post"];
         delete?: never;
@@ -217,9 +222,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Der Morgenbrief: ob er kommt und was heute darin stünde */
+        /** Das Morning Briefing: ob es kommt und was heute darin steht */
         get: operations["morgenbrief_api_v1_push_morgenbrief_get"];
-        /** Den Morgenbrief ein- oder ausschalten */
+        /** Das Morning Briefing ein- oder ausschalten */
         put: operations["set_morgenbrief_api_v1_push_morgenbrief_put"];
         post?: never;
         delete?: never;
@@ -238,7 +243,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Den Morgenbrief jetzt senden
+         * Das Morning Briefing jetzt senden
          * @description Den Brief von heute sofort an alle angemeldeten Geräte schicken.
          *
          *     Zum Ansehen, wie er auf dem eigenen Telefon aussieht, ohne bis morgen früh zu warten. Der
@@ -4277,6 +4282,10 @@ export interface components {
             cop?: number | null;
             /** Planned Cost Eur */
             planned_cost_eur?: number | null;
+            /** Planned Hp Cost Eur */
+            planned_hp_cost_eur?: number | null;
+            /** Planned Pellet Cost Eur */
+            planned_pellet_cost_eur?: number | null;
             /** Actual Pv Kw */
             actual_pv_kw?: number | null;
             /** Actual Hp Kw */

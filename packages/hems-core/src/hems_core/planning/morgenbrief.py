@@ -1,19 +1,36 @@
-"""Der Morgenbrief: was der Tag bringt, in drei Zeilen aufs Handy.
+"""Das Morning Briefing: was der Tag bringt, in vier kurzen Zeilen aufs Handy.
 
-Die Startseite sagt das auch, aber dazu muss man sie öffnen. Der Brief kommt von selbst, um
+Die Startseite sagt das auch, aber dazu muss man sie öffnen. Das Briefing kommt von selbst, um
 sieben, und sagt, was sich an diesem Tag zu wissen lohnt, bevor man das Haus verlässt:
 
-- wie viel Sonne zu erwarten ist und wann am meisten,
-- wann Netzstrom am günstigsten und wann am teuersten ist,
-- wann die Wärmepumpe laufen soll.
+    Morning Briefing
+    ☀️ 12 kWh erwartet, im Wesentlichen zwischen 10:15 und 14:15 Uhr
+    ⚡ Ø 28 ct, am günstigsten 13:00 bis 15:00 Uhr (19 ct)
+    🔥 62 kWh Wärme: Wärmepumpe 5 h, Ofen 3 h
+    💶 Wärme: 2,10 € Strom; 1,40 € Pellets
 
-Das sind dieselben Auskünfte wie im Ausblick der Startseite (`apps/web/.../home/ausblick.ts`),
-mit denselben Festlegungen: ein Fenster ist zwei Stunden lang, ein Preisfenster gibt es erst ab
-vier Cent Unterschied, ein Sonnenfenster erst ab einem Kilowatt im Mittel. Der Ausblick schaut 24
-Stunden voraus; der Brief schaut auf den Rest des heutigen Tages, denn „morgen 02:00" ist morgens
-um sieben keine Auskunft für heute.
+**Die Form ist ein Nutzerwunsch vom 13.11.2026.** Vorher hieß die Mitteilung „Heute im Haus" und
+bestand aus drei ganzen Sätzen („Sonne: rund 12 kWh erwartet, am meisten von …"). Gewünscht:
+der Titel „Morning Briefing", kürzere Texte, je Zeile ein Zeichen vorweg, bei der Sonne die
+Menge mit dem Wort „erwartet" und der Zeitraum als „im Wesentlichen zwischen X und Y Uhr", beim
+Strom eine Kennzahl des Preises, bei der Wärme eine kurze Kennzahl und darunter die erwarteten
+Wärmekosten, geteilt in Strom und Pellets.
 
-Reine Rechnung, kein I/O. Sätze in Alltagssprache, ohne Wörter des Reglers.
+Was die Zeilen bedeuten:
+
+- **Sonne.** Die erwartete Erzeugung im Rest des Tages. „Im Wesentlichen" ist die kürzeste
+  zusammenhängende Zeit, in der vier Fünftel davon anfallen (`ANTEIL_WESENTLICH`).
+- **Strom.** Der mittlere Preis im Rest des Tages und die günstigsten zwei Stunden am Stück,
+  denn so lange läuft, was sich verschieben lässt. Liegen billigster und teuerster Preis
+  weniger als vier Cent auseinander, gibt es kein Fenster.
+- **Wärme.** Der Wärmebedarf (Heizen und Warmwasser), gegen den der Fahrplan rechnet, und wie
+  lange Wärmepumpe und Ofen dafür laufen sollen.
+- **Kosten.** Was der Fahrplan für diese Wärme ausgibt: Strom der Wärmepumpe und Pellets.
+
+Alles gilt für den Rest des heutigen Tages, nicht für die nächsten 24 Stunden: „morgen 02:00"
+ist morgens um sieben keine Auskunft für heute.
+
+Reine Rechnung, kein I/O. Alltagssprache, ohne Wörter des Reglers.
 """
 
 from __future__ import annotations
@@ -23,28 +40,38 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, tzinfo
 from itertools import pairwise
 
+TITEL = "Morning Briefing"
 SCHRITT = timedelta(minutes=15)
 #: Ein Fenster für alles, was warten kann: zwei Stunden.
 FENSTER = 8
 #: Unter dieser Spanne zwischen billigstem und teuerstem Preis lohnt kein Hinweis.
 MIN_SPANNE_CT = 4.0
-#: Ein Sonnenfenster wird nur genannt, wenn die Erwartung darin im Mittel so hoch ist.
-SONNENFENSTER_AB_KW = 1.0
 #: Unter so vielen Kilowattstunden am Tag heißt es „kaum Sonne".
 WENIG_SONNE_KWH = 2.0
-#: So viele Läufe der Wärmepumpe nennt der Brief einzeln.
-MAX_LAEUFE = 3
+#: „Im Wesentlichen": die kürzeste Zeit, in der dieser Anteil der Sonnenenergie anfällt.
+ANTEIL_WESENTLICH = 0.8
 
 
 @dataclass(frozen=True)
 class Viertel:
-    """Eine Viertelstunde des Fahrplans, soweit der Brief sie braucht."""
+    """Eine Viertelstunde des Fahrplans, soweit das Briefing sie braucht.
+
+    `None` heißt überall: dazu sagt der Fahrplan nichts. Das ist etwas anderes als null, und
+    eine Zeile, deren Zahlen fehlen, steht nicht im Briefing.
+    """
 
     ts: datetime
     preis_ct: float | None
     pv_kw: float
     #: Der Optimierer hat hier einen Lauf der Wärmepumpe geplant.
     wp: bool
+    #: Soll der Ofen brennen? `None`: es gibt keinen Ofenfahrplan.
+    ofen: bool | None = None
+    #: Wärmebedarf aus Heizen und Warmwasser.
+    waerme_kw: float | None = None
+    #: Was der Fahrplan in dieser Viertelstunde für Wärme ausgibt.
+    strom_eur: float | None = None
+    pellet_eur: float | None = None
 
 
 @dataclass(frozen=True)
@@ -61,41 +88,62 @@ def _uhr(t: datetime, tz: tzinfo) -> str:
     return t.astimezone(tz).strftime("%H:%M")
 
 
-def _bestes(
-    reihe: Sequence[Viertel], wert: str, *, kleinstes: bool
-) -> tuple[datetime, datetime, float] | None:
-    """Die zwei Stunden am Stück mit dem kleinsten oder größten Mittel. Lücken zählen nicht."""
+def _euro(betrag: float) -> str:
+    return f"{betrag:.2f}".replace(".", ",") + " €"
+
+
+def _dauer(viertel: int) -> str:
+    """„45 min", „5 h", „4:15 h"."""
+    stunden, minuten = divmod(viertel * 15, 60)
+    if stunden == 0:
+        return f"{minuten} min"
+    return f"{stunden} h" if minuten == 0 else f"{stunden}:{minuten:02d} h"
+
+
+def _guenstigstes(reihe: Sequence[Viertel]) -> tuple[datetime, datetime, float] | None:
+    """Die zwei Stunden am Stück mit dem kleinsten mittleren Preis. Lücken zählen nicht."""
     bestes: tuple[datetime, datetime, float] | None = None
     for i in range(len(reihe) - FENSTER + 1):
         stueck = reihe[i : i + FENSTER]
-        werte = [getattr(v, wert) for v in stueck]
-        if any(w is None for w in werte):
+        preise = [v.preis_ct for v in stueck if v.preis_ct is not None]
+        if len(preise) < FENSTER:
             continue
         if any(b.ts - a.ts != SCHRITT for a, b in pairwise(stueck)):
             continue
-        mittel = sum(werte) / FENSTER
-        besser = bestes is None or (mittel < bestes[2] if kleinstes else mittel > bestes[2])
-        if besser:
+        mittel = sum(preise) / FENSTER
+        if bestes is None or mittel < bestes[2]:
             bestes = (stueck[0].ts, stueck[-1].ts + SCHRITT, mittel)
     return bestes
 
 
-def _laeufe(reihe: Sequence[Viertel]) -> list[tuple[datetime, datetime]]:
-    out: list[tuple[datetime, datetime]] = []
-    for v in reihe:
-        if not v.wp:
-            continue
-        if out and out[-1][1] == v.ts:
-            out[-1] = (out[-1][0], v.ts + SCHRITT)
-        else:
-            out.append((v.ts, v.ts + SCHRITT))
-    return out
+def _im_wesentlichen(reihe: Sequence[Viertel]) -> tuple[datetime, datetime] | None:
+    """Die kürzeste zusammenhängende Zeit, in der `ANTEIL_WESENTLICH` der Sonne anfällt.
+
+    Bei gleicher Länge die mit der meisten Energie. Eine Lücke in der Reihe trennt: ein Fenster
+    reicht nicht über sie hinweg.
+    """
+    ziel = sum(v.pv_kw for v in reihe) * ANTEIL_WESENTLICH
+    if ziel <= 0:
+        return None
+    bestes: tuple[int, float, datetime, datetime] | None = None
+    for i in range(len(reihe)):
+        summe = 0.0
+        for j in range(i, len(reihe)):
+            if j > i and reihe[j].ts - reihe[j - 1].ts != SCHRITT:
+                break
+            summe += reihe[j].pv_kw
+            if summe >= ziel:
+                laenge = j - i + 1
+                if bestes is None or (laenge, -summe) < (bestes[0], -bestes[1]):
+                    bestes = (laenge, summe, reihe[i].ts, reihe[j].ts + SCHRITT)
+                break
+    return (bestes[2], bestes[3]) if bestes else None
 
 
 def morgenbrief(
     viertel: Sequence[Viertel], *, jetzt: datetime, tz: tzinfo, hat_fahrplan: bool = True
 ) -> Brief | None:
-    """Der Brief für den Rest des heutigen Tages, oder `None`, wenn es nichts zu sagen gibt."""
+    """Das Briefing für den Rest des heutigen Tages, oder `None`, wenn es nichts zu sagen gibt."""
     heute = jetzt.astimezone(tz).date()
     reihe = sorted(
         (v for v in viertel if v.ts + SCHRITT > jetzt and v.ts.astimezone(tz).date() == heute),
@@ -108,54 +156,59 @@ def morgenbrief(
     # --- Sonne
     kwh = sum(v.pv_kw for v in reihe) * 0.25
     if kwh < WENIG_SONNE_KWH:
-        zeilen.append("Sonne: heute kaum etwas zu erwarten.")
+        zeilen.append("☀️ kaum Sonne erwartet")
     else:
-        sonnig = _bestes(reihe, "pv_kw", kleinstes=False)
+        spanne = _im_wesentlichen(reihe)
         wann = (
-            f", am meisten von {_uhr(sonnig[0], tz)} bis {_uhr(sonnig[1], tz)}"
-            if sonnig and sonnig[2] >= SONNENFENSTER_AB_KW
+            f", im Wesentlichen zwischen {_uhr(spanne[0], tz)} und {_uhr(spanne[1], tz)} Uhr"
+            if spanne
             else ""
         )
-        zeilen.append(f"Sonne: rund {kwh:.0f} kWh erwartet{wann}.")
+        zeilen.append(f"☀️ {kwh:.0f} kWh erwartet{wann}")
 
-    # --- Preis
-    mit_preis = [v for v in reihe if v.preis_ct is not None]
-    if len(mit_preis) >= FENSTER:
-        preise = [v.preis_ct for v in mit_preis if v.preis_ct is not None]
-        tief, hoch = min(preise), max(preise)
-        if hoch - tief < MIN_SPANNE_CT:
-            mitte = sum(preise) / len(preise)
-            zeilen.append(f"Strom: der Preis bleibt heute nahezu gleich, um {mitte:.0f} ct.")
+    # --- Strompreis
+    preise = [v.preis_ct for v in reihe if v.preis_ct is not None]
+    if len(preise) >= FENSTER:
+        mittel = sum(preise) / len(preise)
+        guenstig = _guenstigstes(reihe) if max(preise) - min(preise) >= MIN_SPANNE_CT else None
+        if guenstig:
+            zeilen.append(
+                f"⚡ Ø {mittel:.0f} ct, am günstigsten {_uhr(guenstig[0], tz)} bis "
+                f"{_uhr(guenstig[1], tz)} Uhr ({guenstig[2]:.0f} ct)"
+            )
         else:
-            teuerste = max(mit_preis, key=lambda v: v.preis_ct or 0.0)
-            guenstig = _bestes(reihe, "preis_ct", kleinstes=True)
-            teuer = f"am teuersten um {_uhr(teuerste.ts, tz)} ({hoch:.0f} ct)"
-            if guenstig:
-                zeilen.append(
-                    f"Strom: am günstigsten von {_uhr(guenstig[0], tz)} bis "
-                    f"{_uhr(guenstig[1], tz)} (rund {guenstig[2]:.0f} ct), {teuer}."
-                )
-            else:
-                zeilen.append(f"Strom: {teuer}, am günstigsten sind {tief:.0f} ct.")
+            zeilen.append(f"⚡ Ø {mittel:.0f} ct, kaum Schwankung")
 
-    # --- Wärmepumpe
+    # --- Wärme
+    bedarf = [v.waerme_kw for v in reihe if v.waerme_kw is not None]
+    wp = sum(1 for v in reihe if v.wp)
+    ofen = sum(1 for v in reihe if v.ofen)
+    teile: list[str] = []
     if hat_fahrplan:
-        laeufe = _laeufe(reihe)
-        if not laeufe:
-            zeilen.append("Wärmepumpe: heute kein Lauf geplant.")
+        if wp:
+            teile.append(f"Wärmepumpe {_dauer(wp)}")
+        if ofen:
+            teile.append(f"Ofen {_dauer(ofen)}")
+    if bedarf:
+        menge = f"🔥 {sum(bedarf) * 0.25:.0f} kWh Wärme"
+        if teile:
+            zeilen.append(f"{menge}: {', '.join(teile)}")
+        elif hat_fahrplan:
+            zeilen.append(f"{menge}, kein Lauf geplant")
         else:
-            genannt = [f"{_uhr(a, tz)} bis {_uhr(b, tz)}" for a, b in laeufe[:MAX_LAEUFE]]
-            liste = (
-                genannt[0] if len(genannt) == 1 else ", ".join(genannt[:-1]) + " und " + genannt[-1]
-            )
-            mehr = len(laeufe) - MAX_LAEUFE
-            rest = (
-                f" und {mehr} weitere Male"
-                if mehr > 1
-                else " und ein weiteres Mal"
-                if mehr == 1
-                else ""
-            )
-            zeilen.append(f"Wärmepumpe: geplant von {liste}{rest}.")
+            zeilen.append(menge)
+    elif hat_fahrplan:
+        zeilen.append(f"🔥 {', '.join(teile)}" if teile else "🔥 kein Lauf geplant")
 
-    return Brief(titel="Heute im Haus", zeilen=tuple(zeilen))
+    # --- Kosten der Wärme
+    strom = [v.strom_eur for v in reihe if v.strom_eur is not None]
+    pellets = [v.pellet_eur for v in reihe if v.pellet_eur is not None]
+    if hat_fahrplan and strom:
+        kosten = f"💶 Wärme: {_euro(sum(strom))} Strom"
+        # Pellets nur, wo es einen Ofenfahrplan gibt. Dann aber auch mit null: „0,00 € Pellets"
+        # ist die Auskunft, dass der Ofen heute aus bleibt.
+        if pellets and any(v.ofen is not None for v in reihe):
+            kosten += f"; {_euro(sum(pellets))} Pellets"
+        zeilen.append(kosten)
+
+    return Brief(titel=TITEL, zeilen=tuple(zeilen))

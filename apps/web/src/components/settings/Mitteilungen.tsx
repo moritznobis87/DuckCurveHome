@@ -189,7 +189,7 @@ export function Mitteilungen() {
         <span className="kicker" style={{ fontSize: 11 }}>Mitteilungen</span>
         <span className="text-[15px] leading-[1.6] text-text-2">
           Wenn eine Quelle schweigt, meldet sich Duck Curve Home auf den angemeldeten Geräten, und
-          morgens kommt der Morgenbrief. Jedes Gerät meldet sich einzeln an, hier auf dieser Seite.
+          morgens kommt das Morning Briefing. Jedes Gerät meldet sich einzeln an, hier auf dieser Seite.
         </span>
       </div>
 
@@ -256,7 +256,7 @@ export function Mitteilungen() {
           </span>
           {geraete.length === 0 ? (
             <span className="text-[14px] leading-[1.6]" style={{ color: "var(--amber-soft)" }}>
-              Solange kein Gerät angemeldet ist, gehen weder Störungen noch der Morgenbrief an jemanden.
+              Solange kein Gerät angemeldet ist, gehen weder Störungen noch das Morning Briefing an jemanden.
             </span>
           ) : (
             <ul className="geraete">
@@ -267,7 +267,8 @@ export function Mitteilungen() {
       ) : null}
 
       <p className="m-0 text-[13px] leading-[1.6] text-text-3">
-        Eine Probe lohnt sich nach jedem Einschalten. „Angenommen" heißt: Der Push-Dienst von
+        Eine Probe lohnt sich nach jedem Einschalten. Sie schickt das aktuelle Morning Briefing, so
+        wie es unten steht. „Angenommen" heißt: Der Push-Dienst von
         Apple oder Google hat die Mitteilung entgegengenommen. Kommt trotzdem nichts, liegt es am
         Gerät selbst: Fokus oder „Nicht stören", oder die Mitteilungen der App sind in den
         Einstellungen abgeschaltet.

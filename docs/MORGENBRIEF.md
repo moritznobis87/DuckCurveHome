@@ -1,37 +1,61 @@
-# Der Morgenbrief
+# Das Morning Briefing
 
-Stand 12.11.2026. Rechnung und Sätze in
+Stand 13.11.2026. Rechnung und Zeilen in
 `packages/hems-core/src/hems_core/planning/morgenbrief.py`, Versand und Vorschau in
 `apps/api/src/dch_api/application/morgenbrief.py`, Endpunkte unter `/api/v1/push/morgenbrief`,
-Einstellung auf der Seite `Technik → Mitteilungen`.
+Einstellung auf der Seite `Technik → Mitteilungen`. Im Quelltext heißt es weiter `morgenbrief`;
+auf dem Telefon und in der Oberfläche heißt es „Morning Briefing“.
 
-## Was er ist
+## Was es ist
 
-Eine Mitteilung am Morgen mit dem, was der Tag bringt, in höchstens drei Zeilen:
+Eine Mitteilung am Morgen mit dem, was der Tag bringt, in vier kurzen Zeilen:
 
-    Heute im Haus
-    Sonne: rund 12 kWh erwartet, am meisten von 11:30 bis 13:30.
-    Strom: am günstigsten von 13:00 bis 15:00 (rund 19 ct), am teuersten um 18:00 (47 ct).
-    Wärmepumpe: geplant von 12:00 bis 14:30.
+    Morning Briefing
+    ☀️ 12 kWh erwartet, im Wesentlichen zwischen 10:15 und 14:15 Uhr
+    ⚡ Ø 28 ct, am günstigsten 13:00 bis 15:00 Uhr (19 ct)
+    🔥 62 kWh Wärme: Wärmepumpe 5 h, Ofen 3 h
+    💶 Wärme: 2,10 € Strom; 1,40 € Pellets
 
-Dieselben Auskünfte stehen im Ausblick der Startseite. Der Brief kommt von selbst, bevor jemand
-das Haus verlässt, und er gilt für den Rest des heutigen Tages, nicht für die nächsten 24 Stunden:
-„morgen 02:00“ ist morgens um sieben keine Auskunft für heute.
+**Die Form ist ein Nutzerwunsch vom 13.11.2026.** Vorher hieß die Mitteilung „Heute im Haus“ und
+bestand aus drei ganzen Sätzen. Gewünscht: der Titel „Morning Briefing“, kürzere Texte, je Zeile
+ein Zeichen vorweg; bei der Sonne die Menge mit dem Wort „erwartet“ und der Zeitraum als „im
+Wesentlichen zwischen X und Y Uhr“; beim Strom eine Kennzahl des Preises; bei der Wärme eine kurze
+Kennzahl und darunter die erwarteten Wärmekosten, geteilt in Strom und Pellets.
 
-## Die Festlegungen
+Das Briefing kommt von selbst, bevor jemand das Haus verlässt, und es gilt für den Rest des
+heutigen Tages, nicht für die nächsten 24 Stunden: „morgen 02:00“ ist morgens um sieben keine
+Auskunft für heute.
 
-| Festlegung | Wert | Warum |
+## Die vier Zeilen
+
+| Zeile | Was sie sagt | Festlegung |
 |---|---|---|
-| Versand | ab 07:00 Ortszeit, Versuche bis 09:00 | Fehlt der Fahrplan um sieben, kommt der Brief, sobald er da ist. Nach neun ist es kein Morgenbrief mehr. |
-| Ein Fenster | zwei Stunden am Stück | So lange läuft, was sich verschieben lässt: Waschmaschine, Spülmaschine, Trockner. |
-| Preisfenster | erst ab 4 ct zwischen billigstem und teuerstem Preis | Darunter lohnt kein Verschieben; dann heißt es „nahezu gleich“. |
-| Sonnenfenster | erst ab 1 kW im Mittel | Darunter ist „am meisten Sonne“ keine Empfehlung. |
-| Kaum Sonne | unter 2 kWh am Tag | |
-| Läufe der Wärmepumpe | nur was der Optimierer geplant hat, höchstens drei einzeln genannt | Wo die Preisregel einspringt, steht kein Fahrplan. |
+| ☀️ Sonne | Erwartete Erzeugung im Rest des Tages; „im Wesentlichen“ ist die kürzeste zusammenhängende Zeit, in der vier Fünftel davon anfallen. | Unter 2 kWh heißt es „kaum Sonne erwartet“, ohne Zeit. |
+| ⚡ Strom | Mittlerer Preis im Rest des Tages und die günstigsten zwei Stunden am Stück mit ihrem mittleren Preis. | Zwei Stunden, weil so lange läuft, was sich verschieben lässt. Liegen billigster und teuerster Preis weniger als 4 ct auseinander: „kaum Schwankung“. |
+| 🔥 Wärme | Wärmebedarf aus Heizen und Warmwasser, gegen den der Fahrplan rechnet, und wie lange Wärmepumpe und Ofen dafür laufen sollen. | Laufzeiten nur, wo der Optimierer geplant hat. Wo die Preisregel einspringt, steht kein Fahrplan. |
+| 💶 Kosten | Was der Fahrplan für diese Wärme ausgibt: Strom der Wärmepumpe und Pellets. | Pellets stehen nur da, wenn es einen Ofenfahrplan gibt, dann auch mit 0,00 €. |
 
-Die ersten vier Werte sind dieselben wie im Ausblick der Startseite
-(`apps/web/src/components/home/ausblick.ts`). Sie stehen an zwei Stellen, einmal für den Dienst und
-einmal für die Oberfläche; wer einen ändert, ändert den anderen mit.
+Eine Zeile, deren Zahlen fehlen, steht nicht im Briefing: ohne Preise keine ⚡-Zeile, ohne
+Fahrplan des Optimierers keine Laufzeiten und keine Kosten.
+
+**Strom und Pellets** (`strom_und_pellets` in `apps/api/src/dch_api/application/stove_planner.py`,
+im Fahrplan je Viertelstunde als `planned_hp_cost_eur` und `planned_pellet_cost_eur`): Strom ist
+der Strom der Wärmepumpe, gerechnet wie der Optimierer ihn zählt (Bezugspreis, oder die entgangene
+Einspeisevergütung, wenn der erwartete Überschuss die ganze Maschine deckt). Pellets sind die
+Pellets, die der Ofen verbrennt, zum eingetragenen Pelletpreis. **Die Summe der beiden ist nicht
+die Zahl `planned_cost_eur` der Fahrplan-Seite**: dort zählt der Ofen mit seinem Eigenstrom und
+abzüglich der angerechneten Raumwärme. Das ist die richtige Zahl für die Wahl zwischen Ofen und
+Wärmepumpe und die falsche für die Frage, was die Pellets heute kosten. Der Eigenstrom des Ofens
+(um 0,1 kW) fehlt im Briefing in beiden Zahlen.
+
+Der Ausblick der Startseite (`apps/web/src/components/home/ausblick.ts`) benutzt dieselben
+Schwellen für den Preis (zwei Stunden, 4 ct). Beim Sonnenfenster gehen die beiden seit dem
+13.11.2026 auseinander: der Ausblick nennt die zwei besten Stunden, das Briefing die Zeit, in der
+vier Fünftel der Energie anfallen.
+
+| Versand | Wert | Warum |
+|---|---|---|
+| Uhrzeit | ab 07:00 Ortszeit, Versuche bis 09:00 | Fehlt der Fahrplan um sieben, kommt das Briefing, sobald er da ist. Nach neun ist es kein Morning Briefing mehr. |
 
 ## Einmal, auch nach einem Neustart
 
@@ -46,14 +70,14 @@ sind; ein eigenes Abonnement gibt es nicht.
 ## Ob er ankommt
 
 Am 12.11.2026 meldete der Nutzer: „Ich bekomme gar keine Push-Nachrichten auf mein Handy. Da war
-doch ein Morgenbrief geplant.“ Der Brief war eingeschaltet. Was fehlte, war jede Auskunft darüber,
+doch ein Morning Briefing geplant.“ Der Brief war eingeschaltet. Was fehlte, war jede Auskunft darüber,
 ob er verschickt wurde, an wen und mit welchem Ergebnis. Seitdem gilt:
 
 * **Ohne angemeldetes Gerät gilt der Brief nicht als verschickt.** Vorher wurde der Tag auch dann
   vermerkt; wer sich um halb acht anmeldete, bekam an dem Morgen nichts mehr.
 * **Das Ereignis `brief.morgen` hält fest, bei wie vielen Geräten er ankam** (`erreicht`,
   `geraete`). Die Seite sagt daraus „Zuletzt verschickt am …, angekommen bei 1 von 1 Gerät“ oder
-  „Bisher ist kein Morgenbrief verschickt worden“. Nimmt kein Gerät ihn an, steht das da, und es
+  „Bisher ist kein Morning Briefing verschickt worden“. Nimmt kein Gerät ihn an, steht das da, und es
   wird nicht jede Minute neu geschickt: der Push-Dienst lehnt aus demselben Grund wieder ab.
 * **Jedes Gerät meldet sich einzeln an**, auf `Technik → Mitteilungen`. Auf iPhone und iPad geht
   das nur in der App vom Home-Bildschirm. Auf der Startseite des Telefons steht beim Hausherrn
@@ -115,20 +139,36 @@ Was daraus folgt (`apps/api/src/dch_api/application/push.py`):
   (Voreinstellung; Herkunft mit unbekannter Endung; Herkunft `.local`; alter Platzhalter von
   Hand gesetzt): jedes Mal kommt die Mitteilung am Absender vorbei bis zum erfundenen Gerät.
 
-## Die Vorschau
+## Vorschau und Probe: immer das aktuelle Briefing
 
-Die Seite zeigt den Brief, wie er als Nächstes verschickt würde: vor sieben den von heute,
-zwischen sieben und neun den von jetzt, danach den von morgen früh. „Jetzt zur Probe senden“
-schickt genau diese Vorschau; der Versand am Morgen bleibt davon unberührt.
+Nutzerwunsch 13.11.2026: Wer die Mitteilungen testet, soll „nicht einfach nur eine Testmitteilung“
+bekommen, „sondern die aktuelle Meldung, die an diesem Tag rausgeschickt worden wäre,
+beziehungsweise das aktuelle Morning Briefing“.
+
+Seitdem gilt eine Regel für drei Stellen, die Vorschau auf der Seite, „Probe senden“ unter
+Mitteilungen (`POST /push/test`) und „Jetzt senden“ beim Briefing (`POST /push/morgenbrief/senden`):
+gezeigt und verschickt wird das Briefing von heute, wie es jetzt aussähe, also für den Rest des
+Tages. Bleiben vom Tag weniger als zwei Stunden, ist es das von morgen früh, und die Seite sagt
+das. Gibt es gar keines (kein Fahrplan), schickt „Probe senden“ den festen Satz von früher, denn
+die Probe muss immer etwas schicken können; die Antwort sagt, dass es so war. Der Versand am
+Morgen bleibt von jeder Probe unberührt.
+
+Vorher zeigte die Seite nach neun Uhr das Briefing von morgen früh, und die Probe unter
+Mitteilungen schickte „Probe: Mitteilungen kommen an.“
 
 ## Grenzen
 
 * **Die Preise für morgen** kommen am frühen Nachmittag. Davor zeigt die Vorschau für morgen
   keinen Brief oder einen ohne Preiszeile.
-* **Das Sonnenfenster ist die Zeit der höchsten erwarteten Erzeugung**, keine Zusage, dass
+* **Die Zeit der Sonne ist die Zeit der meisten erwarteten Erzeugung**, keine Zusage, dass
   Überschuss da ist: der Hausverbrauch geht nicht ein.
+* **Eine Probe am Nachmittag ist nicht das Briefing von sieben Uhr.** Sie gilt für den Rest des
+  Tages ab jetzt: weniger Sonne, weniger Wärme, weniger Kosten. Das Briefing von sieben lässt
+  sich nachmittags nicht nachrechnen, weil der Fahrplan des Optimierers erst ab jetzt reicht.
+* **Die Kosten sind das Versprechen des Fahrplans**, nicht die Rechnung. Was der Tag wirklich
+  gekostet hat, steht in der Nachbetrachtung.
 * **Die Uhrzeit ist fest.** Sieben Uhr steht im Quelltext, nicht in der Konfiguration.
 * **In der Vorführung** gibt es Schalter und Vorschau, aber keinen Versand nach Zeitplan.
-* **Geprüft am 12.11.2026** mit Tests, an der Vorführung und gegen Apples Push-Dienst mit einem
-  erfundenen Gerät. Auf einem echten Telefon ist damit noch keine Mitteilung angekommen: dass
-  der Absender die einzige Ursache war, zeigt erst die Probe im Haus nach dem Neustart.
+* **Geprüft am 13.11.2026** mit Tests und an der Vorführung (alle vier Zeilen, Probe mit dem
+  Briefing als Inhalt). Der Absender wurde am 12.11.2026 gegen Apples Push-Dienst mit einem
+  erfundenen Gerät geprüft. Auf einem echten Telefon ist das neue Briefing noch nicht angekommen.

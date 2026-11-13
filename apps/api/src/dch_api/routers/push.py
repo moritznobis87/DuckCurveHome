@@ -57,23 +57,34 @@ async def unsubscribe(
     )
 
 
-@router.post("/test", response_model=PushResultOut, summary="Probemitteilung senden")
-async def test(push: Annotated[PushService, Depends(get_push)]) -> PushResultOut:
-    """Eine Probe an alle angemeldeten Geräte.
+@router.post("/test", response_model=PushResultOut, summary="Probe: das aktuelle Briefing senden")
+async def test(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    push: Annotated[PushService, Depends(get_push)],
+) -> PushResultOut:
+    """Eine Probe an alle angemeldeten Geräte, und zwar das aktuelle Morning Briefing.
 
     Der Weg hat viele Glieder - Browser, Push-Dienst, Schlüssel, Service Worker -, und jedes kann
     still versagen. Ohne eine Probe merkt man das erst, wenn die erste echte Meldung ausbleibt,
     also genau dann, wenn sie gebraucht wird.
+
+    Bis zum 13.11.2026 kam als Probe der feste Satz „Probe: Mitteilungen kommen an." Der zeigt,
+    dass der Weg steht, aber nicht, wie die Mitteilung aussieht, um die es geht. Jetzt kommt
+    dasselbe, was die Seite als Vorschau zeigt. Nur wenn es gerade kein Briefing gibt, bleibt
+    der feste Satz, denn die Probe muss immer etwas schicken können.
     """
-    bericht = await push.send_bericht(
-        Mitteilung(
-            title="Duck Curve Home",
-            body="Probe: Mitteilungen kommen an.",
-            tag="probe",
-            url="/",
+    stand = await runner.morgenbrief()
+    if stand.zeilen and stand.titel:
+        mitteilung = Mitteilung(
+            title=stand.titel, body="\n".join(stand.zeilen), tag="morgenbrief", url="/"
         )
-    )
-    return _ergebnis("Die Probe", bericht, await push.count())
+        was = "Das aktuelle Morning Briefing"
+    else:
+        mitteilung = Mitteilung(
+            title="Duck Curve Home", body="Probe: Mitteilungen kommen an.", tag="probe", url="/"
+        )
+        was = "Eine einfache Probe (gerade gibt es kein Morning Briefing)"
+    return _ergebnis(was, await push.send_bericht(mitteilung), await push.count())
 
 
 def _ergebnis(was: str, bericht: list[Zustellung], jetzt_angemeldet: int) -> PushResultOut:
@@ -123,7 +134,7 @@ async def geraete(push: Annotated[PushService, Depends(get_push)]) -> PushGeraet
 @router.get(
     "/morgenbrief",
     response_model=MorgenbriefOut,
-    summary="Der Morgenbrief: ob er kommt und was heute darin stünde",
+    summary="Das Morning Briefing: ob es kommt und was heute darin steht",
 )
 async def morgenbrief(
     runner: Annotated[Runtime, Depends(get_runner)],
@@ -134,7 +145,9 @@ async def morgenbrief(
 
 
 @router.put(
-    "/morgenbrief", response_model=MorgenbriefOut, summary="Den Morgenbrief ein- oder ausschalten"
+    "/morgenbrief",
+    response_model=MorgenbriefOut,
+    summary="Das Morning Briefing ein- oder ausschalten",
 )
 async def set_morgenbrief(
     body: MorgenbriefIn,
@@ -146,7 +159,7 @@ async def set_morgenbrief(
 
 
 @router.post(
-    "/morgenbrief/senden", response_model=PushResultOut, summary="Den Morgenbrief jetzt senden"
+    "/morgenbrief/senden", response_model=PushResultOut, summary="Das Morning Briefing jetzt senden"
 )
 async def morgenbrief_senden(
     runner: Annotated[Runtime, Depends(get_runner)],
@@ -164,4 +177,4 @@ async def morgenbrief_senden(
     bericht = await push.send_bericht(
         Mitteilung(title=stand.titel, body="\n".join(stand.zeilen), tag="morgenbrief", url="/")
     )
-    return _ergebnis("Der Brief", bericht, await push.count())
+    return _ergebnis("Das Morning Briefing", bericht, await push.count())

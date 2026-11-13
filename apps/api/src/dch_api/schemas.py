@@ -70,6 +70,12 @@ class PlanIntervalOut(BaseModel):
     # Ofen, ohne Strafterme. `None`, wo er nicht gerechnet hat. Das Versprechen des Fahrplans;
     # es wird mit ihm aufbewahrt, und die Nachbetrachtung haelt den eingetretenen Tag dagegen.
     planned_cost_eur: float | None = None
+    # Dieselbe Viertelstunde nach dem, wofuer das Geld ausgegeben wird: der Strom der
+    # Waermepumpe und die Pellets, die der Ofen verbrennt, zum eingetragenen Pelletpreis. Die
+    # Summe ist nicht `planned_cost_eur`: dort zaehlt der Ofen mit Eigenstrom und abzueglich der
+    # angerechneten Raumwaerme. Fuer das Morning Briefing.
+    planned_hp_cost_eur: float | None = None
+    planned_pellet_cost_eur: float | None = None
     # ---------------------------------------------------------------- Was wirklich geschah
     #
     # Der Fahrplan beginnt an der Ortsmitternacht und reicht zwei Tage. Mittags liegt also die

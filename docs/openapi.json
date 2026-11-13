@@ -325,8 +325,8 @@
         "tags": [
           "System"
         ],
-        "summary": "Probemitteilung senden",
-        "description": "Eine Probe an alle angemeldeten Geräte.\n\nDer Weg hat viele Glieder - Browser, Push-Dienst, Schlüssel, Service Worker -, und jedes kann\nstill versagen. Ohne eine Probe merkt man das erst, wenn die erste echte Meldung ausbleibt,\nalso genau dann, wenn sie gebraucht wird.",
+        "summary": "Probe: das aktuelle Briefing senden",
+        "description": "Eine Probe an alle angemeldeten Geräte, und zwar das aktuelle Morning Briefing.\n\nDer Weg hat viele Glieder - Browser, Push-Dienst, Schlüssel, Service Worker -, und jedes kann\nstill versagen. Ohne eine Probe merkt man das erst, wenn die erste echte Meldung ausbleibt,\nalso genau dann, wenn sie gebraucht wird.\n\nBis zum 13.11.2026 kam als Probe der feste Satz „Probe: Mitteilungen kommen an.\" Der zeigt,\ndass der Weg steht, aber nicht, wie die Mitteilung aussieht, um die es geht. Jetzt kommt\ndasselbe, was die Seite als Vorschau zeigt. Nur wenn es gerade kein Briefing gibt, bleibt\nder feste Satz, denn die Probe muss immer etwas schicken können.",
         "operationId": "test_api_v1_push_test_post",
         "responses": {
           "200": {
@@ -369,7 +369,7 @@
         "tags": [
           "System"
         ],
-        "summary": "Der Morgenbrief: ob er kommt und was heute darin stünde",
+        "summary": "Das Morning Briefing: ob es kommt und was heute darin steht",
         "operationId": "morgenbrief_api_v1_push_morgenbrief_get",
         "responses": {
           "200": {
@@ -388,7 +388,7 @@
         "tags": [
           "System"
         ],
-        "summary": "Den Morgenbrief ein- oder ausschalten",
+        "summary": "Das Morning Briefing ein- oder ausschalten",
         "operationId": "set_morgenbrief_api_v1_push_morgenbrief_put",
         "requestBody": {
           "content": {
@@ -429,7 +429,7 @@
         "tags": [
           "System"
         ],
-        "summary": "Den Morgenbrief jetzt senden",
+        "summary": "Das Morning Briefing jetzt senden",
         "description": "Den Brief von heute sofort an alle angemeldeten Geräte schicken.\n\nZum Ansehen, wie er auf dem eigenen Telefon aussieht, ohne bis morgen früh zu warten. Der\nVersand am Morgen bleibt davon unberührt.",
         "operationId": "morgenbrief_senden_api_v1_push_morgenbrief_senden_post",
         "responses": {
@@ -9449,6 +9449,28 @@
               }
             ],
             "title": "Planned Cost Eur"
+          },
+          "planned_hp_cost_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Hp Cost Eur"
+          },
+          "planned_pellet_cost_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Pellet Cost Eur"
           },
           "actual_pv_kw": {
             "anyOf": [
