@@ -207,7 +207,7 @@ export function Home() {
         <div className="home-uhr" suppressHydrationWarning>
           <span className="home-datum">{nowMs ? longDate(new Date(nowMs)) : ""}</span>
           <span className="mono home-zeit">{nowMs ? hhmm(new Date(nowMs)) : ""}</span>
-          <span className="mono home-aussen">{celsius(s?.outdoor_temp_c.value, 1)}<span className="home-aussen-wort">draußen</span></span>
+          <span className="mono home-aussen" title={state?.system.outdoor_source_de ? "Der Messwert aus dem Haus ist alt oder unglaubwürdig; gezeigt wird der Wert des Wetterdienstes." : undefined}>{celsius(state?.system.outdoor_shown_c ?? s?.outdoor_temp_c.value, 1)}<span className="home-aussen-wort">{state?.system.outdoor_source_de || "draußen"}</span></span>
           <span className="flex items-center gap-2" title={state?.system.connection_label_de}>
             <span className={`home-punkt ${degraded ? "home-punkt-aus" : ""}`} aria-hidden />
             <span className="kicker home-status-wort" data-stoerung={degraded} style={{ fontSize: 11, color: degraded ? "var(--alert)" : "var(--text-3)" }}>{degraded ? (lastFrameAt ? `unterbrochen · ${hhmm(new Date(lastFrameAt + offset))}` : "verbinde") : state?.system.mode === "demo" ? `demo${state.system.sim_speed !== 1 ? ` ${state.system.sim_speed}×` : ""}` : "live"}</span>

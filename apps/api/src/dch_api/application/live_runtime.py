@@ -162,6 +162,8 @@ from hems_core.simulation import BERLIN
 from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
 from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 from hems_core.watch import BRIDGE, RULES, back_text, findings
+from hems_core.watch.aussen import Aussenpruefung
+from hems_core.watch.aussen import pruefe as pruefe_aussen
 
 log = structlog.get_logger("live")
 VERSION = "0.1.0-phase2"
@@ -443,6 +445,38 @@ class LiveRuntime:
                 text_de=f.text_de,
             )
             for f in findings(self._last_seen(), now, self.started_at)
+        ]
+
+    def _aussen(self, now: datetime) -> Aussenpruefung:
+        """Die Außentemperatur gegen den Wetterdienst halten; siehe `hems_core.watch.aussen`.
+
+        Aus dem Rohbestand und nicht aus dem Snapshot, aus demselben Grund wie beim Wächter:
+        hier zählt, **wann** der Wert kam.
+        """
+        roh = self.live.readings.get("outdoor_temp_c")
+        return pruefe_aussen(
+            roh.value if roh is not None else None,
+            roh.observed_at if roh is not None else None,
+            self.forecasts.outdoor_temp_c(now),
+            now,
+            BERLIN,
+        )
+
+    @staticmethod
+    def _aussen_befund(aussen: Aussenpruefung) -> list[WatchFindingOut]:
+        """Der Befund der Gegenprobe als Zeile des Wächters. Ohne Mitteilung aufs Telefon:
+        `_watch_notify` geht nur über die Regeln für schweigende Quellen."""
+        if not aussen.text_de:
+            return []
+        return [
+            WatchFindingOut(
+                name="outdoor_check",
+                title_de="Die Außentemperatur",
+                severity="warn",
+                since=None,
+                silent_min=round(aussen.alter_min or 0.0, 1),
+                text_de=aussen.text_de,
+            )
         ]
 
     async def _watch_notify(self, now: datetime) -> None:
@@ -1070,6 +1104,7 @@ class LiveRuntime:
     def live_state(self) -> LiveStateOut:
         snap, buffer, hp = self._states()
         now = snap.timestamp
+        aussen = self._aussen(now)
         return LiveStateOut(
             snapshot=snap,
             buffer=buffer,
@@ -1089,7 +1124,9 @@ class LiveRuntime:
                 version=VERSION,
                 connection_label_de=self._connection_label(),
                 sources=self._sources(),
-                watch=self._watch(now),
+                watch=[*self._watch(now), *self._aussen_befund(aussen)],
+                outdoor_shown_c=aussen.angezeigt_c,
+                outdoor_source_de=aussen.quelle_de,
                 hp_actuation=self.settings.heat_pump_actuation_enabled,
                 hp_actuation_de=(
                     "Duck Curve fordert selbst an"

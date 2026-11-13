@@ -98,3 +98,50 @@ def test_eine_quelle_die_es_nie_gab_wird_nicht_gemeldet(client: TestClient) -> N
         ws.send_text(telemetrie(1, datetime.now(UTC)))
         json.loads(ws.receive_text())
         assert "price" not in befunde(client)
+
+
+def aussen(seq: int, wert: float, beobachtet: datetime) -> str:
+    return TelemetryFrame(
+        seq=seq,
+        sent_at=datetime.now(UTC),
+        items=[
+            RawReading(
+                key="outdoor_temp_c", value=wert, observed_at=beobachtet, source="ha:wetterstation"
+            )
+        ],
+    ).model_dump_json()
+
+
+def test_eine_stehengebliebene_aussentemperatur_wird_durch_den_wetterdienst_ersetzt(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Der Fall vom 13.11.2026: 2,2 °C auf der Startseite bei 8 bis 9 Grad draußen.
+
+    Der Wert kam frisch gestempelt aus Home Assistant und war trotzdem falsch. Die Gegenprobe
+    gegen den Wetterdienst zeigt dessen Wert, sagt es im Wächter, und lässt den Messwert im
+    Snapshot stehen: gespeichert wird, was gemessen wurde.
+    """
+    runner = client.app.state.runner  # type: ignore[attr-defined]
+    monkeypatch.setattr(runner.forecasts, "outdoor_temp_c", lambda at: 8.6)
+    jetzt = datetime.now(UTC)
+    with client.websocket_connect("/bridge/ws", headers={"authorization": "Bearer geheim"}) as ws:
+        ws.send_text(hello())
+        json.loads(ws.receive_text())
+        ws.send_text(aussen(1, 2.2, jetzt - timedelta(minutes=5)))
+        assert json.loads(ws.receive_text()) == {"type": "ack", "seq": 1}
+
+        state = client.get("/api/v1/live/state", headers=KOPF).json()
+        assert state["system"]["outdoor_shown_c"] == 8.6
+        assert state["system"]["outdoor_source_de"] == "Wetterdienst"
+        assert state["snapshot"]["outdoor_temp_c"]["value"] == 2.2
+        befund = befunde(client)["outdoor_check"]
+        assert befund["severity"] == "warn"
+        assert "weicht um 6 Grad vom Wetterdienst ab" in str(befund["text_de"])
+
+        # Ein glaubwürdiger Wert steht für sich: kein Befund, keine fremde Quelle.
+        ws.send_text(aussen(2, 8.1, jetzt))
+        assert json.loads(ws.receive_text()) == {"type": "ack", "seq": 2}
+        state = client.get("/api/v1/live/state", headers=KOPF).json()
+        assert state["system"]["outdoor_shown_c"] == 8.1
+        assert state["system"]["outdoor_source_de"] == ""
+        assert "outdoor_check" not in befunde(client)

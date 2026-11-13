@@ -226,6 +226,10 @@
   .home .brand-name { font-size: 17px; }
   /* „live" und „demo" sagt am Handy der Punkt; ausgeschrieben wird nur die Störung. */
   .home-status-wort:not([data-stoerung="true"]) { display: none; }
+  /* Ist die Verbindung unterbrochen, steht rechts das Wort dazu mit der Uhrzeit. Daneben hat die
+     Außentemperatur keinen Platz mehr (sie schob sich am 13.11.2026 über den Namen), und sie
+     wäre ohnehin von vorhin. */
+  .home-uhr:has(.home-status-wort[data-stoerung="true"]) .home-aussen { display: none; }
   /* Keine eigene Uhr am Handy: die Uhrzeit steht in der Statusleiste des Geräts, bei iPhone und
      Android gleichermaßen, und zweimal dieselbe Zahl übereinander ist eine zu viel (Nutzer am
      11.11.2026). Die Wandanzeige und das Handy im Querformat behalten ihre Uhr. */

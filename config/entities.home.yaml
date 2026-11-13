@@ -71,6 +71,10 @@ sensors:
   # - { key: flow_temp_c, entity: sensor.vorlauf_temperature, unit: "°C", stale_after_s: 900 }
 
   # --- Umgebung ---
+  # Kein Fuehler am Haus, sondern eine Wetterstation aus Home Assistant. Am 13.11.2026 stand der
+  # Wert bei 2,2 Grad, waehrend es draussen 8 bis 9 hatte; seitdem prueft der Dienst ihn gegen den
+  # Wetterdienst (docs/SENSORIK.md, "Die Aussentemperatur"). Sobald der Bus der Waermepumpe
+  # gelesen wird, kommt hier die Entitaet ihres Aussenfuehlers hin.
   - { key: outdoor_temp_c,     entity: sensor.geilenkirchen_air_base_temperatur,          unit: "°C", stale_after_s: 3600 }
 
   # Strompreis kommt serverseitig direkt von Tibber (DCH_TIBBER_TOKEN) - hier nichts mappen.

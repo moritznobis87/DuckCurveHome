@@ -221,6 +221,64 @@ Protokoll, und der Ausschluss oben betrifft BSB-LAN am Siemens-Regler. Ob der C6
 erreicht, entscheidet der Versuch am Gerät, nicht dieses Dokument. Wer ihn gemacht hat, schreibt
 das Ergebnis hierher.
 
+**Nachtrag 13.11.2026: der Adapter passt vermutlich doch, aber aus einem anderen Grund.** Der
+Adapter ist angekommen. Die Recherche vom selben Tag spricht dafür, dass die Aerotop **Split**
+gar keinen Siemens-Regler mit BSB hat, sondern die Regelung der Ariston-Gruppe, zu der ELCO
+gehört, und deren Bus „BridgeNet“ ist ein eBUS-Dialekt:
+
+* Das Raumgerät REMOCON PLUS wird laut Händlerbeschreibung „über 2 Drahtverbindung via BridgeNet
+  BUS“ an die Wärmepumpe angebunden [B1].
+* Die Erstinbetriebnahme-Liste der Aerotop Split verlangt die Prüfung der „BUS-Verbindung
+  zwischen interner Einheit, externer Einheit und Systeminterface“ [B2]. „Systeminterface“ ist
+  das Wort der Ariston-Geräte, nicht der Siemens-Regler.
+* Für ebusd gibt es eine Konfiguration für den „Ariston/Chaffoteaux/Elco Bridgenet Bus“ [B3], und
+  eine Ableitung davon für eine Wärmepumpe derselben Gruppe sagt, sie benutze „the same BridgeNet
+  eBUS protocol as the Ariston Nimbus / Elco Aerotop heat pumps“ [B4].
+* Das erklärt auch, warum BSB-LAN die Split-Baureihe ausschließt: nicht weil ihr Siemens-Regler
+  verschlossen wäre, sondern weil sie keinen hat.
+
+Damit steht die Zeile in der Tabelle oben („Regler LOGON B WP61 = Siemens RVS 61.843“) in Frage.
+Sie ist nie am Gerät geprüft worden. **Am Gerät zu klären, bevor irgendetwas angeklemmt wird:**
+Hängt das Raumgerät der Wärmepumpe an zwei Adern auf einer Klemme „BUS“ (bei den baugleichen
+Ariston-Geräten mit B und T bezeichnet; für dieses Gerät im Installationshandbuch nachsehen)?
+Dann ist es BridgeNet, und der Adapter kommt parallel auf genau diese zwei Adern. Steht dagegen
+„LOGON B“ auf dem Regler und heißen die Klemmen CL+ und CL-, ist es BSB, und der Adapter passt
+nicht. Die Vorlauftemperaturregelung des Heizkreises mit ihrem eigenen Außenfühler ist ein
+zweites Gerät und kann ein Siemens-Regler sein, auch wenn die Wärmepumpe keiner ist.
+
+Was die Quellen zum Betrieb sagen:
+
+* Der Adapter (eBUS Adapter Shield C6) ist galvanisch getrennt, die Polung der zwei Adern spielt
+  keine Rolle, Strom kommt über USB-C (mindestens 1 W, empfohlen 2 W). Eingerichtet wird er über
+  einen eigenen WLAN-Zugangspunkt „EBUS“ oder WPS und die Weboberfläche easi>; ebusd spricht ihn
+  über `ens:<Adresse>:9999` an [B5].
+* Die automatische Geräteerkennung von ebusd greift bei der Ariston-Gruppe nicht. Die Datei
+  `ariston.csv` aus [B3] kommt in einen sonst leeren Konfigurationsordner [B3].
+* Der Bus der Ariston-Gruppe ist empfindlicher gegen Verzögerung als andere; über WLAN wurden
+  Latenz und Wiederholungen hochgesetzt (ein Bericht nennt `--latency=120`) [B3][B6].
+* Die Konfiguration ist vor allem zum Lesen gedacht. Schreibregeln gibt es, sie sind an einer
+  einzelnen Anlage erprobt, und ein falscher Wert kann die Anlage auf Vorgaben zurückfallen
+  lassen [B3]. Für dieses Haus gilt deshalb: zuerst nur lesen.
+* Die Energiezähler, die eine Nimbus liefert, lesen bei einer verwandten Wärmepumpe alle null
+  [B4]. Ob die Aerotop Split eine Wärmemenge meldet, zeigt erst der Versuch.
+
+Was `ariston.csv` [B7] an Werten der Wärmepumpe kennt (Kreis `heatpump`): die Außentemperatur
+(`heatpump_ext_temp`), Vorlauf und Rücklauf (`heatpump_LWT_temp`, `heatpump_EWT_temp`), die
+Verdichterfrequenz (`heatpump_compr_frequency`), die elektrische Leistung
+(`heatpump_power_consumption`) und den Betriebszustand (`heatpump_mode`). Drei Zeilen tragen
+ELCO im Namen (`elco_hp_LWT_temp`, `elco_hp_EWT_temp`, `elco_hp_return_temp`), sind aber
+auskommentiert. Ob diese Namen an dieser Anlage Werte liefern, zeigt erst der Versuch.
+
+[B1] regotherm.de, „ELCO Raumgerät REMOCON PLUS“, https://www.regotherm.de/detail/index/sArticle/63790
+[B2] ELCO Aerotop Split, Schnellstartanleitung, S. 35, https://www.manualslib.de/manual/500262/Elco-Aerotop-Split.html?page=35
+[B3] wrongisthenewright/ebusd-configuration-ariston-bridgenet, README, https://github.com/wrongisthenewright/ebusd-configuration-ariston-bridgenet
+[B4] SietseWijnker/atag-energion-ebusd, README, https://github.com/SietseWijnker/atag-energion-ebusd
+[B5] eBUS Adapter Shield C6, Dokumentation, https://adapter.ebusd.eu/v5-c6/
+[B6] Home Assistant Community, „Ariston Group integration via eBusd“, https://community.home-assistant.io/t/ariston-group-integration-via-ebusd/738887
+[B7] wrongisthenewright/ebusd-configuration-ariston-bridgenet, `ariston.csv`, https://github.com/wrongisthenewright/ebusd-configuration-ariston-bridgenet/blob/main/ariston.csv
+
+Alle abgerufen am 13.11.2026.
+
 Zwei Dinge gelten unabhängig davon. Erstens: **eine gerechnete Wärmemenge ist keine Messung.**
 Meldet der Bus eine intern aus Verdichtermodell und Temperaturen abgeleitete Zahl, ist sie das
 Modell des Herstellers, und sie löst den Kreisschluss aus `docs/design/digitaler-zwilling.md`
@@ -414,3 +472,29 @@ Rechnungsprüfung.
 | --- | --- | --- | --- | --- | --- |
 | Wärmepumpe | | | | | |
 | Pelletofen | | | | | |
+
+## Die Außentemperatur: woher sie kommt und wie sie geprüft wird
+
+Stand 13.11.2026. Die Außentemperatur (`outdoor_temp_c`) kommt **nicht von einem Fühler am Haus**,
+sondern von einer Wetterstation, die in Home Assistant eingebunden ist; die Zuordnung steht in
+`config/entities.home.yaml`. Am 13.11.2026 um 12:49 zeigte die Startseite 2,2 °C, während es
+draußen 8 bis 9 Grad hatte. Warum der Wert falsch war (alt oder stehengeblieben), ließ sich von
+außen nicht feststellen.
+
+Seitdem hält der Dienst den Messwert gegen die Vorhersage des Wetterdienstes für die laufende
+Stunde (`packages/hems-core/src/hems_core/watch/aussen.py`):
+
+| Festlegung | Wert | Herkunft |
+|---|---|---|
+| Messwert gilt als veraltet | älter als 90 Minuten | gesetzt; die Station meldet stündlich |
+| Messwert gilt als unglaubwürdig | mehr als 5 Grad neben dem Wetterdienst | gesetzt, nicht gemessen |
+
+Trifft eines zu, zeigt die Startseite den Wert des Wetterdienstes mit dem Wort „Wetterdienst“
+statt „draußen“, und der Wächter sagt in einem Satz, warum. **Gespeichert wird weiter der
+Messwert**: die Prüfung ändert die Anzeige, nicht die Reihe und nicht den Fahrplan (der rechnet
+ohnehin mit der Vorhersage). Eine Mitteilung aufs Telefon gibt es nicht.
+
+Offen: Im Haus gibt es zwei echte Außenfühler, den der Wärmepumpe und den der
+Vorlauftemperaturregelung. Sobald der Bus der Wärmepumpe gelesen wird (siehe „Warum kein Bus
+hilft“, Nachtrag 13.11.2026), tritt ihr Fühler an die Stelle der Wetterstation. Die Grenze von
+fünf Grad gehört dann neu angesehen: ein Fühler in der Sonne liegt leicht darüber.
