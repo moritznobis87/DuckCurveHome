@@ -282,6 +282,38 @@ Zuordnung in `config/entities.home.yaml` (Außentemperatur, Vorlauf) ist bis dah
 Versuch. Kommt die Außentemperatur vom Bus, ersetzt sie die Wetterstation; kommt sie nicht,
 bleibt es bei der Wetterstation.
 
+**Erster Lauf an der Wärmepumpe, 13.11.2026, 23:20.** Das Add-on läuft im Haus, nur lesend, und
+ebusd hört den Bus: „signal acquired“, drei sprechende Geräte (Adressen 00, 10, 13), Zugang zum
+Broker vom Supervisor. Aus 43 Sekunden Protokoll:
+
+| Was ebusd erkennt | Wert | Bemerkung |
+|---|---|---|
+| `heatpump/heatpump_ext_unit_info` | 4,6 °C; 9 kW | Außentemperatur des Außengeräts und seine Nennleistung. Die 9 kW passen zum Typ WH 09-11. **Das ist jetzt die Außentemperatur des Hauses.** |
+| `heatpump/coolat_data` | 32,3; -30,9; 5,3; 28,0 °C | Vorlauf, Rücklauf, Verdampfer, Kältemittel. Der Vorlauf ist plausibel (Maschine steht) und ist zugeordnet. **Der Rücklauf ist es nicht** und bleibt unbenutzt. |
+| `energymgr/hybrid_LWT_setpoint` | 45,0 °C | Der Vorlauf-Sollwert, den der Regler der Maschine vorgibt. Noch ohne Schlüssel im Dienst; für den Zwilling die wertvollste neue Zahl. |
+| `heatpump/heatpump_mode`, `heatpump_info` | `Soft_fail` | Betriebszustand 15. Der Name stammt aus der fremden Liste; an einer verwandten Anlage tritt er bei stehendem Verdichter ohne Durchfluss auf [B4]. Hier stand die Maschine (Durchfluss 0, Strömungsschalter offen). Kein Fehler, sondern ein falsches Wort für „steht“. |
+| `heatpump/heatpump_flowmeter`, `heatpump_flow_switch` | 0,0; offen | |
+| `energymgr/heat_request` | aus; aus; aus | |
+| `energymgr/setpoint_temp` | 10,0; 10,0; 10,0 °C | |
+| `broadcast/cast_date` | 23:37, 13.11.2026 | Um 23:20:11 Ortszeit. **Die Uhr des Reglers geht rund 17 Minuten vor.** |
+
+Was ebusd nicht erkennt, obwohl es regelmäßig kommt:
+
+* **Der Rundruf der Außentemperatur.** `13fe20100576472f0000`: Kennung `7647`, Wert `002f` =
+  4,7 °C, ein Byte dahinter. Die Bus-Beschreibung erwartet ihn unter `200f` ohne das Byte. An
+  dieser Anlage tragen die Rundrufe `2010` Listen aus Kennung (2 Bytes), Wert (2 Bytes) und einem
+  weiteren Byte; so gelesen stimmt der Wert mit dem des Außengeräts überein (4,7 gegen 4,6).
+* **Die Leistungsaufnahme.** `131e2000027c4f / 03010000`: Kennung `7c4f`, Antwort null. In der
+  Bus-Beschreibung steht diese Abfrage nur zusammen mit einer zweiten Kennung; allein ist sie
+  auskommentiert. Bei stehender Maschine ist null plausibel; ob es Watt sind, zeigt der
+  Vergleich mit dem Zähler, sobald sie läuft.
+* Vier Schreibtelegramme im Fünf-Sekunden-Takt (`131e2020...`) und mehrere Listen unter `2010`,
+  deren Kennungen in der Bus-Beschreibung fehlen.
+
+Folgerungen: Die Kette steht an der echten Anlage. Die Bus-Beschreibung passt zum Teil; für das,
+was fehlt, braucht es eigene Zeilen für diese Anlage, geprüft an genau diesen Telegrammen. Der
+nächste Schritt dafür ist ein Protokoll bei laufender Maschine.
+
 Was die Quellen zum Betrieb sagen:
 
 * Der Adapter (eBUS Adapter Shield C6) ist galvanisch getrennt, die Polung der zwei Adern spielt
@@ -530,7 +562,9 @@ statt „draußen“, und der Wächter sagt in einem Satz, warum. **Gespeichert 
 Messwert**: die Prüfung ändert die Anzeige, nicht die Reihe und nicht den Fahrplan (der rechnet
 ohnehin mit der Vorhersage). Eine Mitteilung aufs Telefon gibt es nicht.
 
-Offen: Im Haus gibt es zwei echte Außenfühler, den der Wärmepumpe und den der
-Vorlauftemperaturregelung. Sobald der Bus der Wärmepumpe gelesen wird (siehe „Warum kein Bus
-hilft“, Nachtrag 13.11.2026), tritt ihr Fühler an die Stelle der Wetterstation. Die Grenze von
-fünf Grad gehört dann neu angesehen: ein Fühler in der Sonne liegt leicht darüber.
+**Seit dem Abend des 13.11.2026 kommt die Außentemperatur vom Außengerät der Wärmepumpe** über
+eBUS (siehe „Warum kein Bus hilft“, erster Lauf an der Wärmepumpe). Die Wetterstation bleibt
+eingetragen und springt ein, solange der Bus schweigt. Die Gegenprobe gegen den Wetterdienst
+läuft weiter. Die Grenze von fünf Grad gehört jetzt neu angesehen: ein Fühler am Außengerät
+liegt in der Sonne oder im Abluftstrom der laufenden Maschine leicht daneben. Dafür braucht es
+einige Tage Messung, nicht eine Vermutung.
