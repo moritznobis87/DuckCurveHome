@@ -532,7 +532,7 @@ class LiveRuntime:
         await self.repos.add_event(
             "info",
             "brief.einstellung",
-            "Morgenbrief eingeschaltet" if enabled else "Morgenbrief ausgeschaltet",
+            "Morning Briefing eingeschaltet" if enabled else "Morning Briefing ausgeschaltet",
         )
         return await self.morgenbrief()
 

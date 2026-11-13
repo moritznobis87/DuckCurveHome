@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, tzinfo
 
 from dch_api.schemas import MorgenbriefOut, PlanOut
-from hems_core.planning.morgenbrief import Brief, Viertel, morgenbrief
+from hems_core.planning.morgenbrief import TITEL, Brief, Viertel, morgenbrief
 
 #: Die Ortsstunde, ab der der Brief verschickt wird.
 BRIEF_STUNDE = 7
@@ -30,6 +30,14 @@ def aus_plan(plan: PlanOut | None, jetzt: datetime, tz: tzinfo) -> Brief | None:
             pv_kw=max(0.0, iv.expected_pv_kw),
             # Nur was der Optimierer geplant hat. Wo die Preisregel einspringt, steht kein Lauf.
             wp=iv.reason_code == "planned_optimizer" and iv.planned_hp_state == "release",
+            ofen=iv.planned_stove_on,
+            waerme_kw=(
+                None
+                if iv.heat_demand_kw is None and iv.dhw_demand_kw is None
+                else (iv.heat_demand_kw or 0.0) + (iv.dhw_demand_kw or 0.0)
+            ),
+            strom_eur=iv.planned_hp_cost_eur,
+            pellet_eur=iv.planned_pellet_cost_eur,
         )
         for iv in plan.intervals
     ]
@@ -43,20 +51,10 @@ def faellig(jetzt: datetime, tz: tzinfo, zuletzt_am: object) -> bool:
     return BRIEF_STUNDE <= lokal.hour < BRIEF_BIS_STUNDE and zuletzt_am != lokal.date()
 
 
-def naechster_versand(jetzt: datetime, tz: tzinfo) -> datetime:
-    """Der Zeitpunkt, für den die Vorschau gilt: der nächste Morgen, an dem ein Brief ginge.
-
-    Abends um elf ist „der Rest von heute" eine Viertelstunde, und dafür gibt es keinen Brief.
-    Wer die Seite dann öffnet, will sehen, was morgen früh kommt. Zwischen sieben und neun ist
-    es der Brief von jetzt, davor der von heute um sieben, danach der von morgen um sieben.
-    """
+def morgen_frueh(jetzt: datetime, tz: tzinfo) -> datetime:
+    """Der nächste Morgen um sieben, Ortszeit."""
     lokal = jetzt.astimezone(tz)
-    if BRIEF_STUNDE <= lokal.hour < BRIEF_BIS_STUNDE:
-        return jetzt
-    ziel = lokal.replace(hour=BRIEF_STUNDE, minute=0, second=0, microsecond=0)
-    if lokal.hour >= BRIEF_BIS_STUNDE:
-        ziel += timedelta(days=1)
-    return ziel
+    return lokal.replace(hour=BRIEF_STUNDE, minute=0, second=0, microsecond=0) + timedelta(days=1)
 
 
 def zuletzt_satz(am: date | None, erreicht: int | None, geraete: int | None) -> str:
@@ -64,10 +62,10 @@ def zuletzt_satz(am: date | None, erreicht: int | None, geraete: int | None) -> 
 
     Ohne diesen Satz ist ein Brief, der nicht kommt, nicht von einem zu unterscheiden, der nie
     verschickt wurde (Nutzer am 12.11.2026: „Ich bekomme gar keine Push-Nachrichten. Da war
-    doch ein Morgenbrief geplant."). Die Zahlen fehlen bei Briefen aus der Zeit davor.
+    doch ein Morning Briefing geplant."). Die Zahlen fehlen bei Briefen aus der Zeit davor.
     """
     if am is None:
-        return "Bisher ist kein Morgenbrief verschickt worden."
+        return "Bisher ist kein Morning Briefing verschickt worden."
     tag = f"{am.day}.{am.month}.{am.year}"
     if erreicht is None or geraete is None:
         return f"Zuletzt verschickt am {tag}."
@@ -83,22 +81,30 @@ def zuletzt_satz(am: date | None, erreicht: int | None, geraete: int | None) -> 
 def vorschau(
     an: bool, plan: PlanOut | None, jetzt: datetime, tz: tzinfo, zuletzt_de: str = ""
 ) -> MorgenbriefOut:
-    """Was der Dienst über den Brief sagt: ob er kommt, und wie der nächste aussähe."""
-    wann = naechster_versand(jetzt, tz)
-    morgen = wann.astimezone(tz).date() > jetzt.astimezone(tz).date()
-    brief = aus_plan(plan, wann, tz)
+    """Das aktuelle Briefing: das von heute, wie es jetzt verschickt würde.
+
+    **Seit dem 13.11.2026 ist das eine Regel für alles**, die Vorschau auf der Seite und beide
+    Probeknöpfe (Nutzerwunsch: die Probe soll „nicht einfach nur eine Testmitteilung" sein,
+    „sondern die aktuelle Meldung, die an diesem Tag rausgeschickt worden wäre, beziehungsweise
+    das aktuelle Morning Briefing"). Vorher zeigte die Seite nach neun Uhr das Briefing von
+    morgen früh, und die Probe unter „Mitteilungen" schickte einen festen Satz.
+
+    Das Briefing gilt für den Rest des heutigen Tages. Spät am Abend ist davon zu wenig übrig
+    (unter zwei Stunden); dann steht hier das von morgen früh, und `fuer_de` sagt es.
+    """
+    brief = aus_plan(plan, jetzt, tz)
+    morgen = brief is None
+    if brief is None:
+        brief = aus_plan(plan, morgen_frueh(jetzt, tz), tz)
     return MorgenbriefOut(
         enabled=an,
         uhrzeit=f"{BRIEF_STUNDE:02d}:00",
         fuer_de="morgen" if morgen else "heute",
-        titel=brief.titel if brief else None,
+        titel=brief.titel if brief else TITEL,
         zeilen=list(brief.zeilen) if brief else [],
         hinweis_de=""
         if brief
-        else (
-            "Für morgen reicht der Fahrplan noch nicht; die Preise kommen am frühen Nachmittag."
-            if morgen
-            else "Für heute gibt es gerade keinen Brief: der Fahrplan reicht dafür nicht."
-        ),
+        else "Gerade gibt es kein Briefing: der Fahrplan reicht dafür nicht. Die Preise für "
+        "morgen kommen am frühen Nachmittag.",
         zuletzt_de=zuletzt_de,
     )

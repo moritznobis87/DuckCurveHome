@@ -271,6 +271,8 @@ def build_plan(
                 # Nur wo der Optimierer auch entschieden hat. Die Kosten gehören zu seinem
                 # Fahrplan; neben einer Entscheidung der Regel wären sie die Kosten von nichts.
                 planned_cost_eur=z.kosten_eur if z and geplant is not None else None,
+                planned_hp_cost_eur=z.strom_eur if z and geplant is not None else None,
+                planned_pellet_cost_eur=z.pellet_eur if z and geplant is not None else None,
                 actual_pv_kw=gemessen.pv_kw if gemessen else None,
                 actual_hp_kw=gemessen.waermepumpe_kw if gemessen else None,
                 actual_hp_release=gemessen.anforderung if gemessen else None,

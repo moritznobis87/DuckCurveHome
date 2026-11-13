@@ -9,7 +9,7 @@ import { abonnement, anmeldung, pushLage } from "@/lib/push/lage";
  * Auf dem Telefon: sagen, dass dieses Gerät noch keine Mitteilungen bekommt.
  *
  * Anlass (Nutzer am 12.11.2026): „Ich bekomme gar keine Push-Nachrichten auf mein Handy. Da war
- * doch ein Morgenbrief geplant." Der Brief war eingeschaltet, aber jedes Gerät muss sich einzeln
+ * doch ein Morning Briefing geplant." Der Brief war eingeschaltet, aber jedes Gerät muss sich einzeln
  * anmelden, und die Stelle dafür lag unter Technik. Wer das nicht weiß, wartet auf einen Brief,
  * der an niemanden geht.
  *
@@ -73,8 +73,8 @@ export function MitteilungsHinweis() {
     <div className="mitteil-hinweis" role="note">
       <span className="mitteil-hinweis-text">
         {art === "aus"
-          ? "Dieses Telefon bekommt noch keine Mitteilungen, auch nicht den Morgenbrief."
-          : "Für Mitteilungen und den Morgenbrief muss Duck Curve Home auf den Home-Bildschirm: Teilen, „Zum Home-Bildschirm“, von dort öffnen."}
+          ? "Dieses Telefon bekommt noch keine Mitteilungen, auch nicht das Morning Briefing."
+          : "Für Mitteilungen und das Morning Briefing muss Duck Curve Home auf den Home-Bildschirm: Teilen, „Zum Home-Bildschirm“, von dort öffnen."}
       </span>
       <span className="mitteil-hinweis-knoepfe">
         <Link href="/system/mitteilungen" className="mitteil-hinweis-los">{art === "aus" ? "Einschalten" : "So geht es"}</Link>

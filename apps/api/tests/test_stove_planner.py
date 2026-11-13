@@ -25,6 +25,7 @@ from dch_api.application.stove_planner import (
 )
 from dch_api.main import create_app
 from dch_api.settings import Settings
+from hems_core.accounting.stove_cost import stove_economics
 from hems_core.domain import BufferState, BufferStatus, HemsConfig
 from hems_core.planning import OptimizerConfig
 from hems_core.planning.price_windows import PricePoint
@@ -488,6 +489,31 @@ def test_die_kosten_je_schritt_ergeben_die_summe_des_optimierers() -> None:
     # Ein Schritt ohne Wärmepumpe und ohne Ofen kostet nichts, auch keinen Anlauf.
     for eur, wp, ofen in zip(p.kosten_eur, p.hp_on, p.on, strict=True):
         assert (eur == 0.0) == (not wp and not ofen)
+
+
+def test_die_waermekosten_teilen_sich_in_strom_und_pellets() -> None:
+    """Für das Morning Briefing: was die Wärme kostet, nach Strom und Pellets getrennt.
+
+    Strom ist der Strom der Wärmepumpe, wie in den Kosten je Schritt. Pellets sind die Pellets,
+    die der Ofen verbrennt, zum eingetragenen Preis. Das ist mit Absicht nicht die Zahl, mit
+    der der Optimierer den Ofen bewertet: dort kommen Eigenstrom dazu und die angerechnete
+    Raumwärme ab.
+    """
+    p = plan(prices=prices(45.0), temps=temps(-5.0), opt_cfg=GEDULDIG)
+    assert p.available and any(p.on) and any(p.hp_on)
+    assert len(p.strom_eur) == len(p.pellet_eur) == len(p.hp_on)
+    cfg = HemsConfig()
+    strom_je_schritt = 45.0 / 100.0 * cfg.heat_pump.nominal_electric_power_kw * STEP_MIN / 60
+    pellets_je_schritt = stove_economics(cfg.stove).pellet_eur_per_hour * STEP_MIN / 60
+    for s_eur, p_eur, wp, ofen in zip(p.strom_eur, p.pellet_eur, p.hp_on, p.on, strict=True):
+        assert s_eur == pytest.approx(strom_je_schritt if wp else 0.0, abs=0.0002)
+        assert p_eur == pytest.approx(pellets_je_schritt if ofen else 0.0, abs=0.0002)
+    # Die Pellets des Tages sind Kilogramm mal Preis.
+    assert sum(p.pellet_eur) == pytest.approx(
+        p.pellet_kg * cfg.stove.pellet_price_eur_per_t / 1000.0, rel=0.01
+    )
+    z = p.twin_at(NOW)
+    assert z is not None and z.strom_eur == p.strom_eur[0] and z.pellet_eur == p.pellet_eur[0]
 
 
 def test_bei_vollem_ueberschuss_zaehlt_die_entgangene_verguetung() -> None:

@@ -9,7 +9,7 @@ export const metadata = { title: "Mitteilungen · Duck Curve Home" };
 export default async function Page() {
   await requireOwner();
   return (
-    <AreaShell kicker="Was aufs Handy kommt: Störungen und der Morgenbrief">
+    <AreaShell kicker="Was aufs Handy kommt: Störungen und das Morning Briefing">
       <section className="flex max-w-[760px] flex-col gap-3">
         <h2 className="m-0 text-[18px] font-semibold">Mitteilungen</h2>
         <Mitteilungen />
