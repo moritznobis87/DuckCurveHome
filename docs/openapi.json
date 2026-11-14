@@ -10706,6 +10706,28 @@
             ],
             "title": "Zusatz Kw"
           },
+          "heizanforderung_anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heizanforderung Anteil"
+          },
+          "flag_1b45_anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag 1B45 Anteil"
+          },
           "zuletzt": {
             "anyOf": [
               {
@@ -13105,6 +13127,27 @@
               }
             ],
             "title": "Arbeitszahl"
+          },
+          "heizanforderung": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heizanforderung"
+          },
+          "raum_soll_c": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Measurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "zusatz_kw": {
             "anyOf": [

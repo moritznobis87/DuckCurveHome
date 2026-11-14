@@ -16,6 +16,8 @@ import type { ReglerKennzahlen } from "@/lib/api/models";
 const de = (n: number | null | undefined, stellen = 1): string => (n == null ? "?" : n.toFixed(stellen).replace(".", ","));
 const mitVorzeichen = (n: number | null | undefined): string => (n == null ? "?" : `${n >= 0 ? "+" : "−"}${Math.abs(n).toFixed(1).replace(".", ",")}`);
 
+const anteil = (n: number | null | undefined): string => (n == null ? "?" : `${Math.round(n * 100)} %`);
+
 export function Kennzahlen({ aktuell }: { aktuell: number | null | undefined }) {
   const [d, setD] = useState<ReglerKennzahlen | null>(null);
 
@@ -43,7 +45,7 @@ export function Kennzahlen({ aktuell }: { aktuell: number | null | undefined }) 
     <div className="card kl-karte">
       <h2 className="kl-titel">Was der Regler meldet, letzte {d?.tage} Tage</h2>
       <p className="m-0 kl-klein">
-        Der Regler sendet eine Kennzahl, kein Wort. Was sie bedeutet, ist für diese Anlage noch nicht entschlüsselt; hier steht, was die Maschine unter jeder Zahl getan hat.
+        Der Regler sendet eine Kennzahl, kein Wort. Bestätigt sind 0 (Bereitschaft) und 2 (Heizen); für die übrigen steht hier, was die Maschine unter der Zahl getan hat.
       </p>
       <div className="kl-rollt">
         <table className="kl-tabelle">
@@ -57,6 +59,8 @@ export function Kennzahlen({ aktuell }: { aktuell: number | null | undefined }) 
               <th scope="col">Speicher oben</th>
               <th scope="col">Speicher Mitte unten</th>
               <th scope="col">Zähler über Maschine</th>
+              <th scope="col">Heizanforderung</th>
+              <th scope="col">Kennung 1b45</th>
               <th scope="col">angefordert</th>
             </tr>
           </thead>
@@ -74,14 +78,16 @@ export function Kennzahlen({ aktuell }: { aktuell: number | null | undefined }) 
                 <td className="mono">{z.oben_k_h == null ? "?" : `${mitVorzeichen(z.oben_k_h)} K/h`}</td>
                 <td className="mono">{z.unten_k_h == null ? "?" : `${mitVorzeichen(z.unten_k_h)} K/h`}</td>
                 <td className="mono">{z.zusatz_kw == null ? "?" : `${mitVorzeichen(z.zusatz_kw)} kW`}</td>
-                <td className="mono">{z.angefordert_anteil == null ? "?" : `${Math.round(z.angefordert_anteil * 100)} %`}</td>
+                <td className="mono">{anteil(z.heizanforderung_anteil)}</td>
+                <td className="mono">{anteil(z.flag_1b45_anteil)}</td>
+                <td className="mono">{anteil(z.angefordert_anteil)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <p className="m-0 kl-klein">
-        „Speicher oben“ und „Mitte unten“: wie schnell der Fühler im Lauf wärmer wurde, ab zwanzig Minuten Lauf. „Zähler über Maschine“: was der Zähler im Lauf mehr aufnahm, als die Maschine für sich meldet; mehrere Kilowatt sprechen für den Heizstab. „Angefordert“: Anteil der Minuten, in denen Duck Curve Home die Maschine eingeschaltet hatte.
+        „Speicher oben“ und „Mitte unten“: wie schnell der Fühler im Lauf wärmer wurde, ab zwanzig Minuten Lauf. „Zähler über Maschine“: was der Zähler im Lauf mehr aufnahm, als die Maschine für sich meldet; mehrere Kilowatt sprechen für den Heizstab. „Heizanforderung“: Anteil der Minuten, in denen der Regler für die erste Zone Wärme anforderte. „Kennung 1b45“: Anteil der Minuten, in denen diese Kennung des Busses gesetzt war; was sie bedeutet, ist offen, sie liegt neben der des Heizstabs. „Angefordert“: Anteil der Minuten, in denen Duck Curve Home die Maschine eingeschaltet hatte.
       </p>
     </div>
   );

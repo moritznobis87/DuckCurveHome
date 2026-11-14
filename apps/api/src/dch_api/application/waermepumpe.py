@@ -83,23 +83,33 @@ ZUSTAND_KEY = "heat_pump_mode_code"
 
 #: Die Kennzahl, die der Regler im Rundruf sendet (Kennung c94b des Busses).
 #:
-#: **Was sie bedeutet, ist für diese Anlage nicht entschlüsselt.** Die fremde Bus-Beschreibung
-#: nennt die Kennung `hybrid_status` und gibt jeder Zahl ein Wort. Die Liste stammt von einer
-#: anderen Anlage der Herstellergruppe, und am 14.11.2026 stand damit im Haus „Puffer kühlen"
-#: an einer Maschine, die im November den Puffer heizt (Kennzahl 20). Seitdem zeigt die Seite
-#: die Zahl und ein Wort nur dort, wo es im Haus bestätigt ist. Bestätigt ist bisher allein die
-#: 0: sie stand in allen drei Protokollen bei stehender Maschine.
+#: **Ein Wort bekommt eine Zahl nur, wenn sie im Haus bestätigt ist.** Die fremde
+#: Bus-Beschreibung nennt die Kennung `hybrid_status` und gibt jeder Zahl ein Wort; die Liste
+#: stammt von einer anderen Anlage der Herstellergruppe. Ungeprüft übernommen stand damit am
+#: 14.11.2026 im Haus „Puffer kühlen" (Kennzahl 20) an einer Maschine, die heizt.
 #:
-#: Gesehen wurden außerdem 16 (Lauf in der Nacht vom 13. auf den 14.11.) und 20 (Lauf am
-#: Vormittag des 14.11.). Was die Maschine unter welcher Zahl tut, zählt `reglerkennzahl.py` aus
-#: den gespeicherten Minuten aus; daraus wird diese Tabelle gefüllt, nicht aus der fremden Liste.
+#: Bestätigt sind:
+#:
+#: * 0, Bereitschaft: in drei Protokollen bei stehender Maschine.
+#: * 2, Heizen: am 14.11.2026 um 16:41:18 sprang die Kennzahl von 22 auf 2, in dem Telegramm,
+#:   in dem die Hauptpumpe anging; die Heizanforderung der Zone 1 stand auf „an", und zehn
+#:   Sekunden später meldete die Maschine „Heating". Die fremde Liste nennt die 2 „Heating
+#:   Cycle"; an dieser Stelle stimmt sie.
+#:
+#: Gesehen, aber nicht zugeordnet: 16 (Lauf in der Nacht vom 13. auf den 14.11.), 20 (Lauf am
+#: Vormittag des 14.11., mit knapp 6 kW neben dem Verdichter), 22 (stehend, Sekunden vor dem
+#: Start). Die fremde Liste nennt die 3 „DHW Cycle"; Warmwasser ist im Haus noch nicht gesehen.
+#: Was die Maschine unter welcher Zahl tut, zählt `reglerkennzahl.py` aus.
 KREIS_KEY = "heat_pump_cycle_code"
-KREIS_DE: dict[int, str] = {0: "Bereitschaft"}
-#: Wohin die Maschine unter einer Kennzahl einspeist: „oben" (Warmwasser) oder „tiefer"
-#: (Heizbetrieb), nach Auskunft des Hausherrn vom 14.11.2026. **Leer, bis eine Kennzahl im Haus
-#: einer der beiden Betriebsarten zugeordnet ist.** Die Zeichnung führt den Vorlauf solange oben
-#: in den Speicher und behauptet damit nichts; der Hinweis darunter sagt es.
-EINSPEISUNG: dict[int, str] = {}
+KREIS_DE: dict[int, str] = {0: "Bereitschaft", 2: "Heizen"}
+#: Wohin die Maschine unter einer Kennzahl einspeist: im Heizbetrieb tiefer in den Speicher,
+#: bei der Warmwasserbereitung oben (Auskunft des Hausherrn, 14.11.2026). Eingetragen ist nur,
+#: was zugeordnet ist; für alle anderen Kennzahlen führt die Zeichnung den Vorlauf oben in den
+#: Speicher und behauptet damit nichts, und der Hinweis darunter sagt es.
+EINSPEISUNG: dict[int, str] = {2: "tiefer"}
+#: Heizanforderung und Raum-Sollwert der ersten Zone, wie der Regler sie im Rundruf sendet.
+ANFORDERUNG_KEY = "heat_pump_heat_request"
+RAUM_SOLL_KEY = "heat_pump_room_setpoint_c"
 
 
 #: Ab dieser Bridge kommt die Lage des Busses mit (`DeviceHealthFrame`, Quelle `ebusd`).
@@ -266,6 +276,8 @@ def zusammensetzen(
     zustand = mess(ZUSTAND_KEY)
     kreis = mess(KREIS_KEY)
     kreis_code = round(kreis.value) if kreis.usable and kreis.value is not None else None
+    anforderung = mess(ANFORDERUNG_KEY)
+    raum_soll = mess(RAUM_SOLL_KEY)
     code = round(zustand.value) if zustand.usable and zustand.value is not None else None
     hz = werte["verdichter_hz"]
     if code is not None:
@@ -352,6 +364,10 @@ def zusammensetzen(
         waermeleistung_kw=waerme,
         arbeitszahl=zahl,
         zusatz_kw=zusatz,
+        heizanforderung=anforderung.value >= 0.5
+        if anforderung.usable and anforderung.value is not None
+        else None,
+        raum_soll_c=raum_soll,
         kreis_code=kreis_code,
         kreis_de=None if kreis_code is None else KREIS_DE.get(kreis_code, f"Kennzahl {kreis_code}"),
         einspeisung=einspeisung,
@@ -381,6 +397,8 @@ def vorfuehrung(
         return {
             "heat_pump_mode_code": 3.0,
             "heat_pump_cycle_code": 2.0,
+            "heat_pump_heat_request": 1.0,
+            "heat_pump_room_setpoint_c": 21.0,
             "heat_pump_compressor_hz": round(30.0 + 12.0 * max(leistung_kw, 0.5), 0),
             "heat_pump_flow_l_min": 29.5,
             "flow_temp_c": round(vorlauf, 1),
@@ -396,6 +414,8 @@ def vorfuehrung(
     return {
         "heat_pump_mode_code": 15.0,
         "heat_pump_cycle_code": 0.0,
+        "heat_pump_heat_request": 0.0,
+        "heat_pump_room_setpoint_c": 21.0,
         "heat_pump_compressor_hz": 0.0,
         "heat_pump_flow_l_min": 0.0,
         "flow_temp_c": round(puffer_unten_c + 1.5, 1),

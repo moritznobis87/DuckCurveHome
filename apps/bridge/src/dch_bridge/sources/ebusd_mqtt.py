@@ -81,6 +81,10 @@ def schluessel(components: dict[str, str | dict[str, str]]) -> set[str]:
     return out
 
 
+#: Schalter, wie ebusd sie ausgibt, als Zahl.
+SCHALTER: dict[str, float] = {"on": 1.0, "off": 0.0}
+
+
 def rohwerte(payload: bytes | str) -> dict[str, object] | None:
     """Alle Felder einer ebusd-Nachricht, Zahlen wie Wörter. `None`: nicht lesbar."""
     try:
@@ -100,10 +104,18 @@ def felder(payload: bytes | str) -> dict[str, float] | None:
 
     Wörter (etwa der Betriebszustand „Heating") sind keine Messwerte und fehlen im Ergebnis; eine
     Nachricht, die nur Wörter enthält, ergibt ein leeres Verzeichnis und ist trotzdem gültig.
+
+    Zwei Wörter sind die Ausnahme: `on` und `off`. So gibt ebusd Schalter aus, etwa die
+    Heizanforderung einer Zone (`{"z1_heat_request": {"value": "on"}}`), und ein Schalter ist
+    ein Wert: 1 und 0.
     """
     roh = rohwerte(payload)
     if roh is None:
         return None
+    roh = {
+        name: SCHALTER.get(wert, wert) if isinstance(wert, str) else wert
+        for name, wert in roh.items()
+    }
     return {
         name: float(wert)
         for name, wert in roh.items()

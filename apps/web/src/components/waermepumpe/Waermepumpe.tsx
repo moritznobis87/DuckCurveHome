@@ -65,7 +65,14 @@ export function Waermepumpe() {
     <section className="wp-seite">
       <div className="wp-kopf">
         <p className="wp-satz">{satz(daten)}</p>
-        <span className="wp-stand">Stand {hhmm(daten.now)}{fehler ? ` · ${fehler}` : ""}</span>
+        <span className="wp-stand">
+          Stand {hhmm(daten.now)}
+          {/* Was der Regler vorgibt, soweit er es sendet: fordert die erste Zone Wärme an, und
+              auf welchen Raum-Sollwert regelt er. */}
+          {daten.heizanforderung != null ? ` · Heizanforderung ${daten.heizanforderung ? "an" : "aus"}` : ""}
+          {daten.raum_soll_c?.value != null ? ` · Raum-Sollwert ${zahl(daten.raum_soll_c.value)} °C` : ""}
+          {fehler ? ` · ${fehler}` : ""}
+        </span>
       </div>
 
       {daten.zusatz_kw != null ? (

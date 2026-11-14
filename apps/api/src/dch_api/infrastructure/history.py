@@ -49,7 +49,12 @@ SERIES = (
     "heat_pump_discharge_temp_c",  # Heißgas nach dem Verdichter
     "heat_pump_liquid_temp_c",  # Flüssigkeitsleitung zurück zum Außengerät
     "heat_pump_tank_temp_c",  # Speicherfühler der Wärmepumpe (Kennung 759e, Lesart nicht bestätigt)
-    "heat_pump_cycle_code",  # Betriebsart des Reglers als Zahl: 2 Heizen, 3 Warmwasser, 16 PV
+    "heat_pump_cycle_code",  # Kennzahl des Reglers (c94b): 0 steht, 2 Heizen; weitere offen
+    "heat_pump_heat_request",  # Heizanforderung der ersten Zone laut Regler: 1 an, 0 aus
+    "heat_pump_room_setpoint_c",  # Raum-Sollwert der ersten Zone laut Regler
+    "heat_pump_flag_1b45",  # Kennung 1b45 des Busses, Bedeutung offen (neben 1c45 Heizstab)
+    "heat_pump_cmd_mode_code",  # Vorgabe des Reglers an die Maschine, Kennung cd46: 0 aus, 3 Heizen
+    "heat_pump_cmd_target_c",  # Vorgabe des Reglers an die Maschine, Kennung 6a47, Bedeutung offen
     # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
     # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
     "stove_state",  # Zustandscode der Maestro-Firmware

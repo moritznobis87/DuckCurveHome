@@ -734,31 +734,58 @@ Add-on fragt nicht.
 Liste mit der Hauptpumpe (`13fe20100cc2000100c74b8e00c94b1000`) und allein
 (`13fe201004c94b0000`). Im Haus gesehen:
 
-| Wann | Maschine | `c94b` |
-|---|---|---|
-| 13.11.2026, 23:20 und 14.11., 00:06 | steht | 0 |
-| 13.11.2026, 23:30 | läuft | 16 |
-| 14.11.2026, 11:18 | läuft, Zähler 8,84 kW | 20 |
+| Wann | Maschine | `c94b` | Stand |
+|---|---|---|---|
+| 13.11.2026, 23:20 und 14.11., 00:06 | steht | 0 | bestätigt: Bereitschaft |
+| 13.11.2026, 23:30 | läuft | 16 | nicht zugeordnet |
+| 14.11.2026, 11:18 | läuft, Zähler 8,84 kW | 20 | nicht zugeordnet |
+| 14.11.2026, 16:40 | steht, Heizanforderung an | 22 | nicht zugeordnet |
+| 14.11.2026, 16:41:18 | Hauptpumpe geht an | 2 | bestätigt: Heizen |
 
-**Die Wörter der fremden Liste gelten für diese Anlage nicht.** Sie nennt die Kennung
-`hybrid_status` und gibt jeder Zahl ein Wort (2 Heizen, 3 Warmwasser, 16 PV-Nutzung, 20 Puffer
-kühlen und Warmwasser). Die Liste stammt von einer Hybridanlage derselben Herstellergruppe. Am
-14.11.2026 zeigte die Seite damit „Puffer kühlen“ an einer Maschine, die im November den Puffer
-heizt. Der Fehler lag darin, die Wörter ungeprüft zu übernehmen. Seitdem zeigt die Seite die
-Zahl; ein Wort hat nur die 0 („Bereitschaft“), die in drei Protokollen bei stehender Maschine
-stand. Ob die Zahl überhaupt eine Aufzählung ist oder einzelne Bits meint (16 und 20
-unterscheiden sich um genau ein Bit), ist offen.
+**Die 2 ist Heizbetrieb.** Im Protokoll vom 14.11.2026 springt die Kennzahl um 16:41:18 von 22
+auf 2, in genau dem Telegramm, in dem die Hauptpumpe angeht (`pumpe_status 1;…;2`). Die
+Heizanforderung der ersten Zone stand auf „an“ (`heat_request on;off;off`), der Durchfluss
+stieg von 0 auf 29 l/min, und zehn Sekunden später meldete die Maschine „Heating“.
 
-**Entschlüsselt wird sie aus dem Haus, nicht aus der Liste.** Der Dienst zählt aus den
-gespeicherten Minuten aus, was die Maschine unter jeder Kennzahl tat
+**Die Wörter der fremden Liste sind kein Beleg.** Sie nennt die Kennung `hybrid_status` und
+gibt jeder Zahl ein Wort (2 Heating Cycle, 3 DHW Cycle, 16 Photovoltaic Integration, 20 Buffer
+Cooling and DHW; die 22 kennt sie nicht). Die Liste stammt von einer Hybridanlage derselben
+Herstellergruppe. Ungeprüft übernommen stand damit am 14.11.2026 „Puffer kühlen“ an einer
+Maschine, die heizt. Seitdem bekommt eine Zahl ein Wort erst, wenn sie im Haus bestätigt ist.
+Für die 0 und die 2 stimmt die Liste; das macht ihre 3 (Warmwasser) glaubwürdig, aber
+**Warmwasser ist im Haus noch nicht gesehen**.
+
+**Die übrigen werden aus dem Haus entschlüsselt.** Der Dienst zählt aus den gespeicherten
+Minuten aus, was die Maschine unter jeder Kennzahl tat
 (`apps/api/src/dch_api/application/reglerkennzahl.py`, `GET /api/v1/waermepumpe/kennzahlen`):
 Minuten, Lauf, Vorlauf, Sollwert, Erwärmung des Speichers am obersten Fühler und am Fühler
-Mitte unten, Abstand zwischen Zähler und Maschine, Anforderung durch Duck Curve Home. Die
-Tabelle steht unter der Zeichnung. Sie deutet nichts: ein kühler Speicher wird auch im
-Heizbetrieb oben wärmer, und ein Sollwert allein sagt nichts. Wer sie gelesen hat, trägt die
-Zuordnung in `waermepumpe.KREIS_DE` und `EINSPEISUNG` ein; erst dann führt die Zeichnung den
-Vorlauf bei Warmwasser oben und im Heizbetrieb seitlich auf halber Höhe in das Glas. **Wo am
-Speicher der untere Anschluss sitzt, ist nicht vermessen**; „halbe Höhe“ ist die Zeichnung.
+Mitte unten, Abstand zwischen Zähler und Maschine, Heizanforderung, Kennung 1b45, Anforderung
+durch Duck Curve Home. Die Tabelle steht unter der Zeichnung. Sie deutet nichts: ein kühler
+Speicher wird auch im Heizbetrieb oben wärmer, und ein Sollwert allein sagt nichts. Wer sie
+gelesen hat, trägt die Zuordnung in `waermepumpe.KREIS_DE` und `EINSPEISUNG` ein.
+
+**Die Zeichnung** führt den Vorlauf im Heizbetrieb (2) seitlich auf halber Höhe in das Glas;
+für alle anderen Kennzahlen bleibt er oben und der Hinweis darunter sagt, dass der
+Einspeisepunkt nicht bekannt ist. **Wo am Speicher der untere Anschluss sitzt, ist nicht
+vermessen**; „halbe Höhe“ ist die Zeichnung.
+
+**Was der Regler sonst noch von selbst sendet** (Protokoll vom 14.11.2026, 16:40 bis 16:41):
+
+| Auf dem Bus | Inhalt | Was damit geschieht |
+|---|---|---|
+| `heat_request` | Heizanforderung je Zone, an/aus | Zone 1 gespeichert und angezeigt |
+| `setpoint_temp` | Raum-Sollwert je Zone (22,0 am Tag, 10,0 in der Nacht) | Zone 1 gespeichert und angezeigt |
+| `hybrid_LWT_setpoint` | Vorlauf-Sollwert, 45,0 °C | schon zugeordnet |
+| `13fe2010041b45…` | Kennung `1b45`: nachts 0, am Nachmittag 1 | gespeichert, Bedeutung offen; sie liegt neben `1c45`, dem Heizstab |
+| `131e20200dc33e…` | Vorgaben des Reglers an die Maschine: `c446` Modulation 100 %, `cd46` 0 vor und 3 nach dem Start, `6a47` 60,0 vor und 55,0 nach dem Start | `cd46` und `6a47` gespeichert; `cd46` folgt der Liste der Betriebszustände (3 Heizen), `6a47` ist offen |
+| `heatpump_flow_switch` | Strömungswächter, offen/geschlossen | nicht zugeordnet; der Durchfluss sagt dasselbe |
+| `energymgr_aux1_out`, `heatpump_3way_valve_heat_cool` | fragt das Bediengerät ab: Ausgang AUX 1 aus, Ventil Heizen/Kühlen auf Heizen | nicht zugeordnet |
+| `13fe20100f6197…` bis `6797` | sieben Temperaturen: 45,0; 45,0; 60,0; 40,0; 40,0; 40,0; 40,0 | nicht entschlüsselt, vermutlich Sollwerte |
+| `13fe2010…c194…` bis `c794`, `d194…` bis `d794` | je sieben Werte 1 oder 2 | nicht entschlüsselt |
+
+Die zwei neuen eigenen Zeilen (`flag_1b45`, `wp_vorgabe`; Add-on ab 0.2.3) sind mit ebusd 26.1
+an den Telegrammen des Hauses geprüft. Schalter gibt ebusd als Wort aus (`on`, `off`); die
+Bridge liest sie ab 0.14.4 als 1 und 0. Neue Minutenreihen: Migration `e1b7c3a96f5c`.
 
 Das Add-on liest die Kennzahl ab 0.2.2 mit zwei eigenen Zeilen (`pumpe_status` mit den
 Kennungen der Folgewerte als eigene Felder, `betriebsart`); beide sind mit ebusd 26.1 an den

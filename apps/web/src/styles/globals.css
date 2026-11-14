@@ -839,7 +839,7 @@ button.ansicht { cursor: pointer; }
 .kl-tabelle tr[data-gemessen="false"] td { color: var(--text-3); }
 .kl-tabelle tr[data-aktuell="true"] td { color: var(--amber); }
 .kl-rollt { overflow-x: auto; }
-.kl-rollt .kl-tabelle { min-width: 760px; }
+.kl-rollt .kl-tabelle { min-width: 940px; }
 .kl-liste { font-size: 14px; color: var(--text-2); }
 .kl-liste summary { cursor: pointer; padding: 6px 0; }
 .kl-liste[open] summary { margin-bottom: 8px; }

@@ -4896,6 +4896,10 @@ export interface components {
             angefordert_anteil?: number | null;
             /** Zusatz Kw */
             zusatz_kw?: number | null;
+            /** Heizanforderung Anteil */
+            heizanforderung_anteil?: number | null;
+            /** Flag 1B45 Anteil */
+            flag_1b45_anteil?: number | null;
             /** Zuletzt */
             zuletzt?: string | null;
         };
@@ -6047,6 +6051,9 @@ export interface components {
             waermeleistung_kw?: number | null;
             /** Arbeitszahl */
             arbeitszahl?: number | null;
+            /** Heizanforderung */
+            heizanforderung?: boolean | null;
+            raum_soll_c?: components["schemas"]["Measurement"] | null;
             /** Zusatz Kw */
             zusatz_kw?: number | null;
             /** Kreis Code */
