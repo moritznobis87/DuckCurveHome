@@ -278,9 +278,12 @@ def zusammensetzen(
     laeuft_laut_zaehler: bool,
     mess: Callable[[str], Measurement],
     bus_stumm_de: str | None = None,
+    verhaeltnis: float | None = None,
 ) -> WaermepumpeOut:
     """`bus_stumm_de` ist der Satz für den Fall, dass kein Wert vom Bus da ist (`bus_auskunft`);
-    ohne ihn steht dort die allgemeine Frage nach Add-on und Adapter."""
+    ohne ihn steht dort die allgemeine Frage nach Add-on und Adapter. `verhaeltnis` ist das
+    gewöhnliche Verhältnis von Zähler zu eigener Angabe der Maschine aus der Kennlinie; ohne
+    es gilt als Heizstab nur, was der Verdichter allein sicher nicht aufnimmt."""
     werte = {feld: mess(key) for feld, key in KEYS.items()}
     zustand = mess(ZUSTAND_KEY)
     kreis = mess(KREIS_KEY)
@@ -335,7 +338,9 @@ def zusammensetzen(
     if waerme is not None and aufnahme is not None and aufnahme >= MIN_LEISTUNG_KW:
         zahl = round(waerme / aufnahme, 1)
     zusatz = kennlinie_kern.zusatz_kw(
-        zaehler.value if zaehler.usable else None, bus.value if bus.usable else None
+        zaehler.value if zaehler.usable else None,
+        bus.value if bus.usable else None,
+        verhaeltnis,
     )
 
     hinweise: list[str] = []

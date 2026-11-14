@@ -1283,7 +1283,17 @@ class LiveRuntime:
             laeuft_laut_zaehler=hp.running,
             mess=lambda key: self.live.measurement(key, now, wp_logic.STALE_S),
             bus_stumm_de=wp_logic.bus_auskunft(stand, BERLIN),
+            verhaeltnis=self._verhaeltnis_zaehler(),
         )
+
+    def _verhaeltnis_zaehler(self) -> float | None:
+        """Das gewöhnliche Verhältnis von Zähler zu eigener Angabe der Maschine, aus der zuletzt
+        gerechneten Kennlinie mit dem längsten Rückblick. `None`, bevor eine gerechnet wurde."""
+        for tage in sorted(self._kennlinie, reverse=True):
+            bilanz = self._kennlinie[tage].bilanz
+            if bilanz is not None and bilanz.verhaeltnis is not None:
+                return bilanz.verhaeltnis
+        return None
 
     async def reglerkennzahlen(self, tage: int) -> ReglerKennzahlenOut:
         """Was die Maschine unter welcher Kennzahl ihres Reglers tat, aus den Minuten der
@@ -1312,14 +1322,14 @@ class LiveRuntime:
         zeilen = await self.repos.minute_series(
             now - timedelta(days=tage), now, list(kennlinie_logic.REIHEN)
         )
-        minuten = kennlinie_logic.minuten(zeilen)
+        punkte, bilanz = kennlinie_kern.auswerten(kennlinie_logic.minuten(zeilen))
         aus = kennlinie_logic.zusammensetzen(
             now=now,
             tage=tage,
-            punkte=kennlinie_kern.messpunkte(minuten),
+            punkte=punkte,
             heat=self.hems.heat_demand,
             buffer=self.hems.buffer,
-            zusatz_min=kennlinie_kern.zusatz_minuten(minuten),
+            bilanz=bilanz,
         )
         self._kennlinie[tage] = aus
         return aus

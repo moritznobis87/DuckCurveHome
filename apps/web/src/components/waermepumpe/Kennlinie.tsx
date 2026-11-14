@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
-import type { Kennlinie as Daten } from "@/lib/api/models";
+import type { Kennlinie as Daten, KennlinienBilanz } from "@/lib/api/models";
 import { farbe } from "@/components/anlage/schema";
 import { EChart } from "@/components/charts/EChart";
 import { Stat } from "@/components/ui/Stat";
+import { dauer, fehlend, halbeFenster, teile } from "./bilanz";
 import { copNach, gesamt, mitte, optionAussen, optionFeld, optionVorlauf, vergleich, vergleichsVorlauf, zahl } from "./kennlinie";
 
 /**
@@ -19,6 +20,55 @@ import { copNach, gesamt, mitte, optionAussen, optionFeld, optionVorlauf, vergle
  * mit der Kennlinie, mit der der Fahrplan heute rechnet. Übernommen wird nichts von selbst.
  */
 const TAGE = [7, 30, 90, 180] as const;
+
+/**
+ * Wo die Minuten geblieben sind. Ein Balken über die Minuten im Heizbetrieb, geteilt in das,
+ * was brauchbar war, und das, was nicht zählte, mit dem Grund. Die Namen stehen in der Legende
+ * daneben, die Farbe allein sagt nichts.
+ */
+function Bilanz({ b }: { b: KennlinienBilanz }) {
+  const t = teile(b);
+  const werte = fehlend(b);
+  const halb = halbeFenster(b);
+  return (
+    <div className="card kl-karte">
+      <h2 className="kl-titel">Wo die Minuten geblieben sind</h2>
+      {t.length ? (
+        <>
+          <div className="kl-bilanz" role="img" aria-label={`Von ${dauer(b.heizen)} im Heizbetrieb: ${t.map((x) => `${x.name} ${dauer(x.minuten)}`).join(", ")}`}>
+            {t.map((x) => (
+              <span key={x.art} className="kl-bilanz-teil" data-art={x.art} style={{ flexGrow: x.minuten }} title={`${x.name}: ${dauer(x.minuten)}`} />
+            ))}
+          </div>
+          <ul className="kl-bilanz-legende">
+            {t.map((x) => (
+              <li key={x.art}>
+                <span className="kl-bilanz-punkt" data-art={x.art} aria-hidden="true" />
+                <span className="kl-bilanz-name">{x.name}</span>
+                <span className="mono">{dauer(x.minuten)}</span>
+                <span className="kl-bilanz-anteil mono">{Math.round(x.anteil * 100)} %</span>
+                <span className="kl-bilanz-wozu">{x.wozu}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p className="m-0 kl-klein">{b.satz_de}</p>
+      )}
+      {werte.length ? (
+        <p className="m-0 kl-klein">
+          Gefehlt hat: {werte.map((w) => `${w.name} (${dauer(w.minuten)})`).join(", ")}. Kommt ein Wert dauerhaft nicht, liegt es an der Zuordnung auf dem Bus und nicht an der Wärmepumpe.
+        </p>
+      ) : null}
+      {t.length ? (
+        <p className="m-0 kl-klein">
+          Aus den brauchbaren Minuten {b.punkte === 1 ? "wurde 1 Messpunkt" : `wurden ${b.punkte} Messpunkte`}
+          {halb ? `; ${halb} angefangene Fenster hatten zu wenige davon` : ""}.
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export function Kennlinie() {
   const [tage, setTage] = useState<number>(30);
@@ -102,6 +152,8 @@ export function Kennlinie() {
         />
       </div>
 
+      {daten.bilanz && !n ? <Bilanz b={daten.bilanz} /> : null}
+
       {f ? (
         <div className="card kl-formel">
           <span className="kicker">Ausgleich nach kleinsten Quadraten</span>
@@ -169,6 +221,8 @@ export function Kennlinie() {
           <p className="m-0 kl-klein">„Verlängert“ heißt: bei dieser Temperatur wurde noch nicht gemessen, die Zahl folgt aus der Formel. Der Fahrplan rechnet weiter mit seiner Annahme; übernommen wird nichts von selbst.</p>
         </div>
       ) : null}
+
+      {daten.bilanz && n ? <Bilanz b={daten.bilanz} /> : null}
 
       {n ? (
         <details className="kl-liste">

@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 
 from dch_api.schemas import (
     KennlinienAnnahmeOut,
+    KennlinienBilanzOut,
     KennlinienFitOut,
     KennlinienPunktOut,
     KennlinieOut,
@@ -76,13 +77,63 @@ def geltung(f: kern.Ausgleich) -> str:
     )
 
 
+def _minuten(n: int) -> str:
+    return "1 Minute" if n == 1 else f"{n} Minuten"
+
+
+def bilanz_satz(b: kern.Bilanz) -> str:
+    """Die Bilanz als Satz: wie lange geheizt wurde und wohin die Minuten gingen."""
+    if b.minuten == 0:
+        return "Für diesen Zeitraum sind keine Minutenwerte gespeichert."
+    if b.heizen == 0:
+        return "In diesem Zeitraum hat die Wärmepumpe nach den gespeicherten Werten nicht geheizt."
+    teile = [f"Die Wärmepumpe heizte {_minuten(b.heizen)}."]
+    if b.gueltig:
+        teile.append(
+            f"{_minuten(b.gueltig)} davon {'ist' if b.gueltig == 1 else 'sind'} brauchbar."
+        )
+    else:
+        teile.append("Keine davon ist brauchbar.")
+    if b.ohne_wert:
+        haeufig = sorted(b.fehlt.items(), key=lambda kv: -kv[1])
+        wem = ", ".join(f"{name} ({n})" for name, n in haeufig)
+        teile.append(f"In {_minuten(b.ohne_wert)} fehlte ein Wert: {wem}.")
+    if b.zusatz:
+        teile.append(
+            f"{_minuten(b.zusatz)} {'zählt' if b.zusatz == 1 else 'zählen'} nicht, weil neben "
+            "dem Verdichter etwas anderes "
+            "Strom aufnahm, vermutlich der elektrische Heizstab."
+        )
+    if b.ohne_waerme:
+        teile.append(
+            f"In {_minuten(b.ohne_waerme)} ließ sich keine Wärme rechnen: kaum Durchfluss "
+            "oder kein Unterschied zwischen Vorlauf und Rücklauf."
+        )
+    halb = b.fenster - b.punkte - b.unglaubwuerdig
+    if halb > 0:
+        teile.append(
+            f"{halb} Fenster {'hatte' if halb == 1 else 'hatten'} weniger als "
+            f"{kern.FENSTER_GUELTIG_MIN} brauchbare Minuten und "
+            f"{'zählt' if halb == 1 else 'zählen'} deshalb nicht."
+        )
+    if b.unglaubwuerdig:
+        teile.append(
+            f"{b.unglaubwuerdig} Fenster {'ergab' if b.unglaubwuerdig == 1 else 'ergaben'} eine "
+            f"Arbeitszahl außerhalb von {de(kern.COP_GRENZEN[0], 0)} bis "
+            f"{de(kern.COP_GRENZEN[1], 0)} und {'gilt' if b.unglaubwuerdig == 1 else 'gelten'} "
+            "als Messfehler."
+        )
+    return " ".join(teile)
+
+
 def fehlt(punkte: Sequence[kern.Messpunkt], f: kern.Ausgleich | None) -> str | None:
     """Was dem Ausgleich noch fehlt: Punkte, oder Streuung in einer der beiden Temperaturen."""
     n = len(punkte)
     if n == 0:
         return (
-            "Noch kein Messpunkt. Einer entsteht, wenn die Wärmepumpe zwanzig Minuten am Stück "
-            "heizt: zehn Minuten Anlauf, dann ein Fenster von zehn Minuten."
+            "Noch kein Messpunkt. Einer entsteht, wenn die Wärmepumpe nach zehn Minuten Anlauf "
+            f"in einem Fenster von zehn Minuten mindestens {kern.FENSTER_GUELTIG_MIN} Minuten "
+            "lang heizt und alle Werte da sind."
         )
     if f is None:
         return (
@@ -125,22 +176,33 @@ def zusammensetzen(
     heat: HeatDemandConfig,
     buffer: BufferConfig,
     vorfuehrung: bool = False,
-    zusatz_min: int = 0,
+    bilanz: kern.Bilanz | None = None,
 ) -> KennlinieOut:
     f = kern.ausgleich(punkte)
     hinweise = [
         "Jeder Punkt ist ein Fenster von zehn Minuten im Heizbetrieb, frühestens zehn Minuten "
         "nach dem Start. Abtauen zählt nicht mit: das ist die Arbeitszahl im Heizbetrieb, nicht "
-        "die eines Tages.",
+        "die eines Tages. Warmwasser zählt mit; die Maschine unterscheidet es nicht vom Heizen, "
+        "es zeigt sich am höheren Vorlauf.",
         "Wärme aus Durchfluss mal Spreizung, Strom vom Zähler an der Zuleitung. Der "
         "Durchflussgeber ist nicht geeicht; ein Fehler dort verschiebt alle Punkte gemeinsam, "
         "die Form der Kennlinie bleibt.",
     ]
-    if zusatz_min:
+    if bilanz is not None and bilanz.zusatz:
+        if bilanz.verhaeltnis is not None:
+            woran = (
+                f"der Zähler dort mindestens {de(kern.ZUSATZ_KW, 1)} kW über dem lag, was er "
+                "sonst im Verhältnis zur Angabe der Maschine misst"
+            )
+        else:
+            woran = (
+                f"der Zähler dort über {de(kern.ZUSATZ_ABSOLUT_KW, 1)} kW maß, mehr als der "
+                "Verdichter allein aufnimmt"
+            )
         hinweise.append(
-            f"{zusatz_min} Minuten zählen nicht mit, weil der Zähler dort mindestens "
-            f"{de(kern.ZUSATZ_KW, 1)} kW mehr aufnahm, als die Maschine für sich meldet: neben "
-            "dem Verdichter lief etwas anderes, vermutlich der elektrische Heizstab."
+            f"{_minuten(bilanz.zusatz)} {'zählt' if bilanz.zusatz == 1 else 'zählen'} nicht mit, "
+            f"weil {woran}: neben dem Verdichter "
+            "lief etwas anderes, vermutlich der elektrische Heizstab."
         )
     if vorfuehrung:
         hinweise.insert(
@@ -161,7 +223,30 @@ def zusammensetzen(
             for t, c in sorted(heat.cop_curve, key=lambda p: p[0])
         ],
         annahme_vorlauf_c=buffer.target_temperature_c,
+        bilanz=None
+        if bilanz is None
+        else KennlinienBilanzOut(**bilanz.__dict__, satz_de=bilanz_satz(bilanz)),
         hinweise_de=hinweise,
+    )
+
+
+def vorfuehrung_bilanz(punkte: Sequence[kern.Messpunkt]) -> kern.Bilanz:
+    """Eine Bilanz, die zu den erzeugten Punkten passt, damit die Vorführung sie zeigen kann."""
+    n = len(punkte)
+    gueltig = n * kern.FENSTER_MIN + n // 3 * 4
+    anlauf, zusatz, ohne_wert, ohne_waerme = n * 4, n // 2 * 3, n * 2, n // 4
+    return kern.Bilanz(
+        minuten=(gueltig + anlauf + zusatz + ohne_wert + ohne_waerme) * 5,
+        heizen=gueltig + anlauf + zusatz + ohne_wert + ohne_waerme,
+        anlauf=anlauf,
+        zusatz=zusatz,
+        ohne_wert=ohne_wert,
+        ohne_waerme=ohne_waerme,
+        gueltig=gueltig,
+        fenster=n + n // 3,
+        punkte=n,
+        verhaeltnis=1.04,
+        fehlt={"Rücklauf": ohne_wert - n // 2, "Vorlauf": n // 2} if n else {},
     )
 
 

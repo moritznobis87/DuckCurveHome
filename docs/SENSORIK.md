@@ -943,7 +943,8 @@ ableiten. Seite: Technik → Wärmepumpe → Kennlinie (`/waerme/waermepumpe/ken
 `GET /api/v1/waermepumpe/kennlinie?tage=30`.
 
 **Ein Messpunkt** ist ein Fenster von zehn Minuten auf dem Raster der Uhr, in dem die Maschine
-in jeder Minute heizt (Zustand 3), schon länger als zehn Minuten läuft und alle Werte da sind.
+in mindestens acht Minuten heizt (Zustand 3, 4 oder 6), schon länger als zehn Minuten läuft und
+alle Werte da sind. Kurze Lücken einer Reihe (bis fünf Minuten) werden überbrückt.
 Arbeitszahl = Summe der Wärme (Durchfluss mal Spreizung mal 4,186 kJ/(kg K)) durch Summe des
 Stroms am Zähler. Mit den Zahlen vom 14.11.2026, 10:20 (30,1 l/min, 36,2 und 30,0 °C, 3,16 kW)
 sind das 13,0 kW und 4,1; dieselbe Rechnung prüft `packages/hems-core/tests/test_kennlinie.py`.
@@ -951,7 +952,11 @@ sind das 13,0 kW und 4,1; dieselbe Rechnung prüft `packages/hems-core/tests/tes
 | Festlegung | Wert | Herkunft |
 |---|---|---|
 | Länge eines Fensters | 10 Minuten | gesetzt; der Bus meldet im Abstand von Sekunden bis zu einer Minute, darunter stehen Werte nebeneinander, die nicht zusammengehören |
+| Brauchbare Minuten je Fenster | mindestens 8 von 10 | gesetzt; eine einzelne Minute ohne Wert soll kein Fenster kosten |
+| Überbrückte Lücke einer Reihe | bis 5 Minuten, Gerade zwischen den Nachbarwerten | gesetzt; der Betriebszustand gilt so lange unverändert weiter |
 | Anlauf, der nicht zählt | 10 Minuten nach dem Start | gesetzt, nicht gemessen |
+| Heizstab, feste Grenze | Zähler ab 5,5 kW | gesetzt aus zwei Beobachtungen im Haus: 3,16 kW bei 65 Hz ohne, 8,84 kW bei 64 Hz mit Zusatz |
+| Heizstab, gemessen am Gewöhnlichen | Zähler 1,5 kW über Verhältnis mal Angabe der Maschine | gesetzt; das Verhältnis ist der Median über mindestens 30 Minuten im Lauf |
 | Arbeitszahl gilt als Messfehler | unter 1 oder über 9 | gesetzt |
 | Ausgleich ab | 12 Punkten | gesetzt |
 | Einfluss der Außentemperatur bestimmbar ab | 4 K Spanne der Punkte | gesetzt, nicht gemessen |
@@ -977,8 +982,43 @@ seiner Kennlinie.
 * Der Durchflussgeber ist nicht geeicht. Ein Fehler dort verschiebt alle Punkte gemeinsam.
 * Die Kennzahl des Reglers wird gespeichert, ist aber nicht entschlüsselt; nach Heizen und
   Warmwasser wird deshalb noch nicht getrennt.
-* Minuten mit Heizstab (Zähler mindestens 1,5 kW über der Maschine) zählen nicht mit.
+* Minuten mit Heizstab zählen nicht mit (Grenzen in der Tabelle oben). Dass es der Heizstab
+  ist, ist ein Schluss aus der Leistung, kein gelesener Wert.
+* Warmwasser zählt mit: die Maschine meldet dafür denselben Zustand wie für das Heizen.
 * Der Fahrplan rechnet weiter mit seiner Annahme (`cop_curve`); übernommen wird nichts von
   selbst.
 * Punkte gibt es erst seit dem 14.11.2026, als die Buswerte den Dienst erreichten. Die Seite ist
   bisher nur in der Vorführung geprüft, deren Punkte erzeugt sind.
+
+### Stunden Lauf, kein Punkt (14.11.2026)
+
+Am Abend des ersten Tages meldete der Hausherr: die Wärmepumpe lief Stunden, die Seite zeigte
+keinen einzigen Messpunkt und sagte nicht, warum. Die Minuten des Hauses kann die Sitzung nicht
+lesen; welche Ursache im Haus den Ausschlag gab, ist deshalb **nicht festgestellt**. Im Code
+standen zwei Regeln, die jede für sich alle Punkte verhindern konnten:
+
+1. **Jeder Wert in jeder Minute.** Ein Fenster zählte nur, wenn in allen zehn Minuten alle
+   Werte da waren. Die Minutenwerte sind Mittel über die Meldungen der Minute
+   (`minute_series`); ohne Meldung ist die Minute leer. Gezählt in den vier Busprotokollen
+   des Hauses (13.11. 23:20 und 23:30, 14.11. 00:06 und 16:40, je rund 40 Sekunden):
+   Durchfluss 7 bis 9 Meldungen, Betriebszustand 1 bis 4, Vorlauf (`coolat_data`) 1 bis 2,
+   Leistung der Maschine (`hp_power`) 0 bis 2, die Liste mit dem Rücklauf (`system_temps`)
+   0 bis 2, und der Rücklauf steht darin nur, wenn die Kennung an der erwarteten Stelle liegt.
+   Vier Ausschnitte sind keine Statistik; sie zeigen aber, dass eine Minute ohne Rücklauf
+   oder Vorlauf nichts Ungewöhnliches ist, und zehn lückenlose Minuten am Stück selten.
+2. **Zähler gegen Maschine, unmittelbar.** Als Heizstab galt jede Minute, in der der Zähler
+   1,5 kW über der eigenen Angabe der Maschine lag. Ob die Maschine ihre ganze Aufnahme
+   meldet, ist nicht bekannt (zwei Vergleiche im Haus: 3,16 gegen 2,95 kW und 8,84 gegen
+   3,1 kW). Meldete sie grundsätzlich weniger, fiele jede Minute heraus.
+
+Geändert: Lücken bis fünf Minuten werden überbrückt, ein Fenster braucht acht brauchbare
+Minuten, und der Heizstab wird an der festen Grenze und am gewöhnlichen Verhältnis gemessen
+(Tabelle oben). Dazu zählt die Rechnung mit, wo die Minuten im Heizbetrieb geblieben sind
+(Anlauf, Heizstab, Wert fehlte und welcher, keine Wärme, brauchbar), und die Seite zeigt das
+als Balken unter „Wo die Minuten geblieben sind“. Bleibt die Kennlinie im Haus leer, steht
+dort der Grund. Geprüft mit Tests (`test_kennlinie.py`, `test_kennlinie_api.py`,
+`bilanz.test.ts`) und in der Vorführung, nicht im Haus.
+
+Die Seite der Wärmepumpe („Jetzt“) vermutet einen Heizstab nach derselben Regel. Das
+gewöhnliche Verhältnis nimmt sie aus der zuletzt gerechneten Kennlinie; bevor jemand die
+Kennlinie geöffnet hat, gilt nur die feste Grenze.

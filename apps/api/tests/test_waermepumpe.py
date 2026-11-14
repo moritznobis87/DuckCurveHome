@@ -364,6 +364,31 @@ def test_nimmt_der_zaehler_viel_mehr_auf_als_die_maschine_steht_es_da(client: Te
     assert normal.zusatz_kw is None and not any("Heizstab" in h for h in normal.hinweise_de)
 
 
+def test_meldet_die_maschine_weniger_als_der_zaehler_ist_das_noch_kein_heizstab(
+    client: TestClient,
+) -> None:
+    """Ob die Maschine ihre ganze Aufnahme meldet, ist nicht bekannt. Liegt ihre Angabe dauernd
+    unter dem Zähler, darf die Seite nicht dauernd einen Heizstab vermuten: ohne das gewöhnliche
+    Verhältnis gilt nur, was der Verdichter allein sicher nicht aufnimmt."""
+    bus = {**HAUS_LAEUFT, "heat_pump_bus_power_kw": 1.45, "heat_pump_flow_l_min": 30.2}
+
+    def seite(zaehler: float, verhaeltnis: float | None = None) -> object:
+        return wp.zusammensetzen(
+            now=JETZT,
+            snap=schnappschuss(client, zaehler),
+            laeuft_laut_zaehler=True,
+            mess=mess_aus(bus),
+            verhaeltnis=verhaeltnis,
+        )
+
+    assert seite(3.16).zusatz_kw is None  # type: ignore[attr-defined]
+    assert seite(5.0).zusatz_kw is None  # type: ignore[attr-defined]
+    assert seite(8.84).zusatz_kw == 7.39  # type: ignore[attr-defined]
+    # Mit dem Verhältnis aus der Kennlinie zählt der Abstand zum Gewöhnlichen.
+    assert seite(3.16, 2.18).zusatz_kw is None  # type: ignore[attr-defined]
+    assert seite(5.0, 2.18).zusatz_kw == 1.84  # type: ignore[attr-defined]
+
+
 def test_ein_alter_zustand_entscheidet_nichts_mehr(client: TestClient) -> None:
     """14.11.2026, 16:52 im Haus: die Seite zeigte „steht", null Hertz und einen stehenden
     Lüfter, während die Maschine seit elf Minuten lief. Der Betriebszustand stammte aus einem

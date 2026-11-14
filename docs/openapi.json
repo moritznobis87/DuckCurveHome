@@ -8485,6 +8485,16 @@
             ],
             "title": "Annahme Vorlauf C"
           },
+          "bilanz": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KennlinienBilanzOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "hinweise_de": {
             "items": {
               "type": "string"
@@ -8521,6 +8531,88 @@
         ],
         "title": "KennlinienAnnahmeOut",
         "description": "Ein Punkt der Kennlinie, mit der der Fahrplan bisher rechnet."
+      },
+      "KennlinienBilanzOut": {
+        "properties": {
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          },
+          "heizen": {
+            "type": "integer",
+            "title": "Heizen"
+          },
+          "anlauf": {
+            "type": "integer",
+            "title": "Anlauf"
+          },
+          "zusatz": {
+            "type": "integer",
+            "title": "Zusatz"
+          },
+          "ohne_wert": {
+            "type": "integer",
+            "title": "Ohne Wert"
+          },
+          "ohne_waerme": {
+            "type": "integer",
+            "title": "Ohne Waerme"
+          },
+          "gueltig": {
+            "type": "integer",
+            "title": "Gueltig"
+          },
+          "fenster": {
+            "type": "integer",
+            "title": "Fenster"
+          },
+          "punkte": {
+            "type": "integer",
+            "title": "Punkte"
+          },
+          "unglaubwuerdig": {
+            "type": "integer",
+            "title": "Unglaubwuerdig"
+          },
+          "fehlt": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Fehlt"
+          },
+          "verhaeltnis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verhaeltnis"
+          },
+          "satz_de": {
+            "type": "string",
+            "title": "Satz De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "minuten",
+          "heizen",
+          "anlauf",
+          "zusatz",
+          "ohne_wert",
+          "ohne_waerme",
+          "gueltig",
+          "fenster",
+          "punkte",
+          "unglaubwuerdig"
+        ],
+        "title": "KennlinienBilanzOut",
+        "description": "Wo die Minuten des Zeitraums geblieben sind (`hems_core.thermal.kennlinie.Bilanz`).\n\nVon den Minuten, in denen die Maschine heizte, zählt nur ein Teil: nicht der Anlauf, nicht\ndie mit Heizstab, nicht die ohne einen nötigen Wert. Die Zahlen hier addieren sich zu\n`heizen`; eine leere Kennlinie zeigt damit, woran es liegt."
       },
       "KennlinienFitOut": {
         "properties": {

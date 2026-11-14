@@ -237,6 +237,8 @@
   .kl-chart-feld { height: 320px; }
   .kl-liste, .kl-karte { overflow-x: auto; }
   .kl-tabelle { font-size: 13px; }
+  .kl-bilanz-legende li { grid-template-columns: 12px minmax(0, 1fr) max-content 40px; }
+  .kl-bilanz-wozu { grid-column: 2 / -1; }
   .wp-buehne { padding: 10px; }
   /* Ist die Verbindung unterbrochen, steht rechts das Wort dazu mit der Uhrzeit. Daneben hat die
      Außentemperatur keinen Platz mehr (sie schob sich am 13.11.2026 über den Namen), und sie

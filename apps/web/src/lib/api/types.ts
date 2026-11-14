@@ -3899,6 +3899,7 @@ export interface components {
             annahme?: components["schemas"]["KennlinienAnnahmeOut"][];
             /** Annahme Vorlauf C */
             annahme_vorlauf_c?: number | null;
+            bilanz?: components["schemas"]["KennlinienBilanzOut"] | null;
             /** Hinweise De */
             hinweise_de?: string[];
         };
@@ -3911,6 +3912,47 @@ export interface components {
             aussen_c: number;
             /** Cop */
             cop: number;
+        };
+        /**
+         * KennlinienBilanzOut
+         * @description Wo die Minuten des Zeitraums geblieben sind (`hems_core.thermal.kennlinie.Bilanz`).
+         *
+         *     Von den Minuten, in denen die Maschine heizte, zählt nur ein Teil: nicht der Anlauf, nicht
+         *     die mit Heizstab, nicht die ohne einen nötigen Wert. Die Zahlen hier addieren sich zu
+         *     `heizen`; eine leere Kennlinie zeigt damit, woran es liegt.
+         */
+        KennlinienBilanzOut: {
+            /** Minuten */
+            minuten: number;
+            /** Heizen */
+            heizen: number;
+            /** Anlauf */
+            anlauf: number;
+            /** Zusatz */
+            zusatz: number;
+            /** Ohne Wert */
+            ohne_wert: number;
+            /** Ohne Waerme */
+            ohne_waerme: number;
+            /** Gueltig */
+            gueltig: number;
+            /** Fenster */
+            fenster: number;
+            /** Punkte */
+            punkte: number;
+            /** Unglaubwuerdig */
+            unglaubwuerdig: number;
+            /** Fehlt */
+            fehlt?: {
+                [key: string]: number;
+            };
+            /** Verhaeltnis */
+            verhaeltnis?: number | null;
+            /**
+             * Satz De
+             * @default
+             */
+            satz_de: string;
         };
         /**
          * KennlinienFitOut

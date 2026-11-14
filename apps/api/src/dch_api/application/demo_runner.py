@@ -972,13 +972,15 @@ class DemoRunner:
 
     async def kennlinie(self, tage: int) -> KennlinieOut:
         """Die Kennlinie der Vorführung: erzeugte Punkte, derselbe Ausgleich wie im Haus."""
+        punkte = kennlinie_logic.vorfuehrung(self.now, tage)
         return kennlinie_logic.zusammensetzen(
             now=self.now,
             tage=tage,
-            punkte=kennlinie_logic.vorfuehrung(self.now, tage),
+            punkte=punkte,
             heat=self.hems.heat_demand,
             buffer=self.hems.buffer,
             vorfuehrung=True,
+            bilanz=kennlinie_logic.vorfuehrung_bilanz(punkte),
         )
 
     async def waermepumpe(self) -> WaermepumpeOut:
