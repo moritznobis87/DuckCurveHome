@@ -2,6 +2,7 @@
 
 import type { Measurement, Waermepumpe } from "@/lib/api/models";
 import { farbe } from "@/components/anlage/schema";
+import { PufferGlas } from "@/components/puffer/Glas";
 import { BLOCK, PLAN, SCHILD, TANK, type Lage, type Punkt, aufnahme, brauchbar, messwert, pfad, zahl } from "./bild";
 
 /**
@@ -102,25 +103,15 @@ function Innengeraet({ d, ruhig }: { d: Waermepumpe; ruhig: boolean }) {
   );
 }
 
-const SCHICHT = ["oben", "Mitte oben", "Mitte unten", "unten"] as const;
-
-function Speicher({ d }: { d: Waermepumpe }) {
-  const band = TANK.h / 4;
+function Speicher({ d, ruhig }: { d: Waermepumpe; ruhig: boolean }) {
+  const fuehler = d.puffer_c ?? [];
   return (
     <g>
       {/* Rechts von der Mitte: in der Mitte kommt in beiden Lagen der Vorlauf von oben an. */}
       <text x={TANK.x + TANK.w / 2 + 14} y={26} fontSize={13} fontWeight={600} fill="var(--text-1)">Speicher</text>
       <Schild x={0} y={0} w={98} name={`Fühler WP ${UNSICHER}`} wert={messwert(d.speicherfuehler_c)} einheit="°C" m={d.speicherfuehler_c} />
-      <clipPath id="wp-tank"><rect x={TANK.x} y={TANK.y} width={TANK.w} height={TANK.h} rx={18} /></clipPath>
-      <g clipPath="url(#wp-tank)">
-        {SCHICHT.map((_, i) => (
-          <rect key={i} x={TANK.x} y={TANK.y + i * band} width={TANK.w} height={band + 1} fill={farbe(d.puffer_c?.[i]?.value)} opacity={brauchbar(d.puffer_c?.[i]) ? 0.92 : 0.35} />
-        ))}
-      </g>
-      <rect x={TANK.x} y={TANK.y} width={TANK.w} height={TANK.h} rx={18} fill="none" stroke="var(--line-2)" strokeWidth={2} />
-      {SCHICHT.map((name, i) => (
-        <Schild key={name} x={0} y={TANK.y + i * band + (band - SCHILD.h) / 2} w={98} name={name} wert={messwert(d.puffer_c?.[i])} einheit="°C" m={d.puffer_c?.[i] ?? null} />
-      ))}
+      {/* Der Speicher sieht überall gleich aus: das Glas mit den vier Fühlern auf ihrer Höhe. */}
+      <PufferGlas temps={fuehler.map((m) => m?.value)} x={TANK.x} y={TANK.y} breite={TANK.w} hoehe={TANK.h} werte="links" schrift={13} ruhig={ruhig} gedimmt={fuehler.length > 0 && !fuehler.every((m) => brauchbar(m))} />
     </g>
   );
 }
@@ -138,7 +129,7 @@ export function Bild({ d, lage, ruhig }: { d: Waermepumpe; lage: Lage; ruhig: bo
       <Leitung punkte={p.ruecklauf} temperatur={d.ruecklauf_c.value} fliesst={wasser} ruhig={ruhig} name="Rücklauf vom Speicher" />
       <g transform={`translate(${p.aussen[0]} ${p.aussen[1]})`}><Aussengeraet d={d} ruhig={ruhig} /></g>
       <g transform={`translate(${p.innen[0]} ${p.innen[1]})`}><Innengeraet d={d} ruhig={ruhig} /></g>
-      <g transform={`translate(${p.speicher[0]} ${p.speicher[1]})`}><Speicher d={d} /></g>
+      <g transform={`translate(${p.speicher[0]} ${p.speicher[1]})`}><Speicher d={d} ruhig={ruhig} /></g>
       <Schild x={p.schild.heissgas[0]} y={p.schild.heissgas[1]} name="Heißgas" wert={messwert(d.heissgas_c)} einheit="°C" m={d.heissgas_c} />
       <Schild x={p.schild.fluessig[0]} y={p.schild.fluessig[1]} name="Flüssigkeit" wert={messwert(d.fluessig_c)} einheit="°C" m={d.fluessig_c} />
       <Schild x={p.schild.vorlauf[0]} y={p.schild.vorlauf[1]} name="Vorlauf" wert={messwert(d.vorlauf_c)} einheit="°C" m={d.vorlauf_c} />

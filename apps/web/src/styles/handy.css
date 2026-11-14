@@ -257,9 +257,7 @@
   .home-fuss { order: 6; gap: 14px; }
   .home-puffer-flach, .home-kachel { border: 0; border-radius: 16px; background: var(--surface-2); padding: 16px; }
   .home-puffer-zahl { font-size: 30px; }
-  .home-puffer-fuehler { font-size: 14px; height: 19px; }
-  .home-puffer-ort { font-size: 11px; }
-  .home-tank-quer { height: 20px; border-radius: 6px; }
+  .home-puffer-wort { font-size: 13px; }
   /* Die Zahlen des Tages: eine Fläche, zwei Spalten, wie die Kennzahlen der Unterseiten. */
   .home-heute { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; background: var(--surface-2); border-radius: 16px; padding: 4px 16px; }
   .home-heute-wert { flex-direction: column-reverse; gap: 5px; padding: 13px 0 14px; border-top: 1px solid var(--line-1); }
