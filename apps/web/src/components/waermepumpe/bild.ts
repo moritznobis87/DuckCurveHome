@@ -19,8 +19,10 @@ export const BLOCK = {
   speicher: { w: 250, h: 250 },
 } as const;
 
-/** Der Behälter im Block „Speicher": links daneben stehen die Fühler. */
-export const TANK = { x: 110, y: 40, w: 110, h: 190 } as const;
+/** Das Glas im Block „Speicher" (`puffer/Glas`): links daneben stehen die vier Temperaturen. */
+export const TANK = { x: 133, y: 40, w: 64, h: 190 } as const;
+/** Die Mitte des Glases im Block: dort kommt der Vorlauf an. */
+const MITTE = TANK.x + TANK.w / 2;
 
 type Plan = {
   viewBox: string;
@@ -57,8 +59,10 @@ export const PLAN: Record<Lage, Plan> = {
     speicher: [20, 740],
     heissgas: [[150, 260], [150, 370]],
     fluessig: [[300, 370], [300, 260]],
-    vorlauf: [[150, 620], [150, 740 + TANK.y]],
-    ruecklauf: [[240, 740 + TANK.y + TANK.h - 24], [300, 740 + TANK.y + TANK.h - 24], [300, 620]],
+    // Der Vorlauf verlässt das Innengerät links und kommt mittig auf dem Glas an: ein Versatz
+    // unter den beiden Schildern.
+    vorlauf: [[150, 620], [150, 712], [20 + MITTE, 712], [20 + MITTE, 740 + TANK.y]],
+    ruecklauf: [[20 + TANK.x + TANK.w, 740 + TANK.y + TANK.h - 24], [300, 740 + TANK.y + TANK.h - 24], [300, 620]],
     schild: { heissgas: [14, 296], fluessig: [164, 296], vorlauf: [14, 660], ruecklauf: [164, 660] },
   },
 };

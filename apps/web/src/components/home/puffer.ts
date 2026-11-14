@@ -48,19 +48,10 @@ export function pufferZustand(
   return { vollstaendig, veraltet, wort: "hält" };
 }
 
-// ----------------------------------------------------------------- Der Tank als Bild
+// ----------------------------------------------------------------- Farbe einer Temperatur
 
-/**
- * Wo die vier Fuehler sitzen: in der Mitte ihrer Schicht, in Prozent vom oberen Ende.
- *
- * Dieselben vier Zahlen tragen den Farbverlauf, die Beschriftung und - als Grenzen dazwischen -
- * die Trennlinien. Sie stehen hier und nicht in der Zeichnung, weil es drei Zeichnungen gibt:
- * den stehenden Tank am iPad, den liegenden am Telefon und den grossen im Ambiente.
- */
-export const FUEHLER_POS = [12.5, 37.5, 62.5, 87.5] as const;
-/** Die Grenzen zwischen den Schichten. */
-export const SCHICHT_GRENZEN = [25, 50, 75] as const;
-
+// Der Speicher selbst wird nur noch an einer Stelle gezeichnet (`components/puffer/Glas`), mit
+// der Farbskala des Wassers aus dem Anlagenschema. Die Skala hier färbt die Punkte der Räume.
 const STOPS: Array<[number, [number, number, number]]> = [
   [25, [0x1f, 0x4c, 0x66]],
   [40, [0x7f, 0xa3, 0xb3]],
@@ -70,7 +61,7 @@ const STOPS: Array<[number, [number, number, number]]> = [
 ];
 const rgb = (c: [number, number, number]) => `rgb(${c[0]},${c[1]},${c[2]})`;
 
-/** Farbe einer Puffertemperatur, von kalt-petrol bis heiss-rot. */
+/** Farbe einer Temperatur, von kalt-petrol bis heiss-rot. */
 export function heatColor(t: number): string {
   const first = STOPS[0]!;
   const last = STOPS[STOPS.length - 1]!;
