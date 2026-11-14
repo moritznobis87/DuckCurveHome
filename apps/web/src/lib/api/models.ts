@@ -90,6 +90,19 @@ export type Kennlinie = Omit<KennlinieRoh, "punkte" | "annahme" | "hinweise_de" 
   annahme: S["KennlinienAnnahmeOut"][];
   hinweise_de: string[];
 };
+export type BetriebRoh = S["BetriebOut"];
+export type BetriebTag = S["BetriebTagOut"];
+export type BetriebLauf = S["BetriebLaufOut"];
+export type BetriebStunde = S["BetriebStundeOut"];
+export type BetriebKlasse = S["BetriebKlasseOut"];
+export type Betrieb = Omit<BetriebRoh, "tage" | "laeufe" | "stunden" | "klassen" | "saetze_de" | "hinweise_de"> & {
+  tage: BetriebTag[];
+  laeufe: BetriebLauf[];
+  stunden: BetriebStunde[];
+  klassen: BetriebKlasse[];
+  saetze_de: string[];
+  hinweise_de: string[];
+};
 export type KennlinienFit = S["KennlinienFitOut"];
 export type KennlinienBilanz = Omit<S["KennlinienBilanzOut"], "fehlt" | "satz_de"> & { fehlt: Record<string, number>; satz_de: string };
 export type KennlinienPunkt = S["KennlinienPunktOut"];

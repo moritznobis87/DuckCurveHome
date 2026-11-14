@@ -43,15 +43,19 @@ def de(zahl: float, stellen: int = 2) -> str:
     return f"{zahl:.{stellen}f}".replace(".", ",")
 
 
-def minuten(zeilen: Sequence[dict[str, float | str | None]]) -> list[kern.Minute]:
-    """Die gespeicherten Minutenzeilen als Eingabe der Rechnung."""
+def minuten(
+    zeilen: Sequence[dict[str, float | str | None]], reihen: dict[str, str] | None = None
+) -> list[kern.Minute]:
+    """Die gespeicherten Minutenzeilen als Eingabe der Rechnung. `reihen` nennt, welche Reihe
+    in welches Feld gehört; ohne Angabe die der Kennlinie."""
+    reihen = REIHEN if reihen is None else reihen
     aus: list[kern.Minute] = []
     for zeile in zeilen:
         ts = zeile.get("ts")
         if not isinstance(ts, str):
             continue
         werte: dict[str, float | None] = {}
-        for reihe, feld in REIHEN.items():
+        for reihe, feld in reihen.items():
             v = zeile.get(reihe)
             werte[feld] = float(v) if isinstance(v, int | float) and math.isfinite(v) else None
         aus.append(kern.Minute(ts=datetime.fromisoformat(ts), **werte))

@@ -110,6 +110,7 @@ export function Waermepumpe() {
         ) : null}
         {daten.hinweise_de?.map((h) => <p key={h} className="m-0">{h}</p>)}
         <p className="m-0 wp-links">
+          <Link href="/waerme/waermepumpe/betrieb">Betrieb über Tage ›</Link>
           <Link href="/waerme/waermepumpe/kennlinie">Gemessene Kennlinie ›</Link>
           <Link href="/waerme/nachbetrachtung">Was die Wärme gekostet hat ›</Link>
           <Link href="/waerme/fahrplan">Fahrplan ›</Link>

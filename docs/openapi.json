@@ -1050,6 +1050,54 @@
         }
       }
     },
+    "/api/v1/waermepumpe/betrieb": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Der Betrieb über Tage",
+        "description": "Läufe, Starts und Lauflängen, Abtauen, die Arbeitszahl je Tag mit und ohne Abtauen und\ndie Heizkurve, die der Regler der Maschine vorgibt. Eine Auszählung gespeicherter Minuten.",
+        "operationId": "betrieb_api_v1_waermepumpe_betrieb_get",
+        "parameters": [
+          {
+            "name": "tage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 90,
+              "minimum": 1,
+              "description": "Rückblick in Tagen",
+              "default": 14,
+              "title": "Tage"
+            },
+            "description": "Rückblick in Tagen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetriebOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -3761,6 +3809,446 @@
         ],
         "title": "BatteryModeIn",
         "description": "`off` heißt: DCH sendet nichts und lässt dem Speicher seine eigene Regelung."
+      },
+      "BetriebHeizkurveOut": {
+        "properties": {
+          "a": {
+            "type": "number",
+            "title": "A"
+          },
+          "b": {
+            "type": "number",
+            "title": "B"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "r2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R2"
+          },
+          "aussen_von_c": {
+            "type": "number",
+            "title": "Aussen Von C"
+          },
+          "aussen_bis_c": {
+            "type": "number",
+            "title": "Aussen Bis C"
+          },
+          "formel_de": {
+            "type": "string",
+            "title": "Formel De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a",
+          "b",
+          "n",
+          "aussen_von_c",
+          "aussen_bis_c",
+          "formel_de"
+        ],
+        "title": "BetriebHeizkurveOut",
+        "description": "Sollwert = a + b * Außentemperatur, nach kleinsten Quadraten über die Stunden."
+      },
+      "BetriebKlasseOut": {
+        "properties": {
+          "von_min": {
+            "type": "integer",
+            "title": "Von Min"
+          },
+          "bis_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis Min"
+          },
+          "laeufe": {
+            "type": "integer",
+            "title": "Laeufe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "von_min",
+          "laeufe"
+        ],
+        "title": "BetriebKlasseOut",
+        "description": "Eine Klasse der Lauflängen: von einschließlich, bis ausschließlich (`None`: nach oben offen)."
+      },
+      "BetriebLaufOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          },
+          "abtau_min": {
+            "type": "integer",
+            "title": "Abtau Min"
+          },
+          "abtauungen": {
+            "type": "integer",
+            "title": "Abtauungen"
+          },
+          "zusatz_min": {
+            "type": "integer",
+            "title": "Zusatz Min"
+          },
+          "strom_kwh": {
+            "type": "number",
+            "title": "Strom Kwh"
+          },
+          "waerme_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waerme Kwh"
+          },
+          "angeschnitten": {
+            "type": "boolean",
+            "title": "Angeschnitten",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "minuten",
+          "abtau_min",
+          "abtauungen",
+          "zusatz_min",
+          "strom_kwh"
+        ],
+        "title": "BetriebLaufOut",
+        "description": "Ein Lauf des Verdichters, vom Anlaufen bis zum Halt."
+      },
+      "BetriebOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "von": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Bis"
+          },
+          "zeitraum_tage": {
+            "type": "integer",
+            "title": "Zeitraum Tage"
+          },
+          "tage": {
+            "items": {
+              "$ref": "#/components/schemas/BetriebTagOut"
+            },
+            "type": "array",
+            "title": "Tage"
+          },
+          "laeufe": {
+            "items": {
+              "$ref": "#/components/schemas/BetriebLaufOut"
+            },
+            "type": "array",
+            "title": "Laeufe"
+          },
+          "stunden": {
+            "items": {
+              "$ref": "#/components/schemas/BetriebStundeOut"
+            },
+            "type": "array",
+            "title": "Stunden"
+          },
+          "heizkurve": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BetriebHeizkurveOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "klassen": {
+            "items": {
+              "$ref": "#/components/schemas/BetriebKlasseOut"
+            },
+            "type": "array",
+            "title": "Klassen"
+          },
+          "starts": {
+            "type": "integer",
+            "title": "Starts",
+            "default": 0
+          },
+          "lauf_min": {
+            "type": "integer",
+            "title": "Lauf Min",
+            "default": 0
+          },
+          "abtau_min": {
+            "type": "integer",
+            "title": "Abtau Min",
+            "default": 0
+          },
+          "abtauungen": {
+            "type": "integer",
+            "title": "Abtauungen",
+            "default": 0
+          },
+          "zusatz_min": {
+            "type": "integer",
+            "title": "Zusatz Min",
+            "default": 0
+          },
+          "cop_gesamt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Gesamt"
+          },
+          "cop_heizen": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Heizen"
+          },
+          "lauf_median_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lauf Median Min"
+          },
+          "saetze_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Saetze De"
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "von",
+          "bis",
+          "zeitraum_tage"
+        ],
+        "title": "BetriebOut",
+        "description": "Der Betrieb der Wärmepumpe über Tage: Läufe, Abtauen, Takten, Heizkurve des Reglers.\n\nEine Auszählung gespeicherter Minuten. Was sie taugt, steht in `hinweise_de`."
+      },
+      "BetriebStundeOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          },
+          "aussen_c": {
+            "type": "number",
+            "title": "Aussen C"
+          },
+          "soll_c": {
+            "type": "number",
+            "title": "Soll C"
+          },
+          "vorlauf_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vorlauf C"
+          },
+          "ventil": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ventil"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "minuten",
+          "aussen_c",
+          "soll_c"
+        ],
+        "title": "BetriebStundeOut",
+        "description": "Eine Stunde im Heizbetrieb: was der Regler als Vorlauf verlangte, bei welchem Wetter."
+      },
+      "BetriebTagOut": {
+        "properties": {
+          "tag": {
+            "type": "string",
+            "format": "date",
+            "title": "Tag"
+          },
+          "starts": {
+            "type": "integer",
+            "title": "Starts"
+          },
+          "lauf_min": {
+            "type": "integer",
+            "title": "Lauf Min"
+          },
+          "abtau_min": {
+            "type": "integer",
+            "title": "Abtau Min"
+          },
+          "abtauungen": {
+            "type": "integer",
+            "title": "Abtauungen"
+          },
+          "zusatz_min": {
+            "type": "integer",
+            "title": "Zusatz Min"
+          },
+          "strom_kwh": {
+            "type": "number",
+            "title": "Strom Kwh"
+          },
+          "waerme_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waerme Kwh"
+          },
+          "strom_lauf_kwh": {
+            "type": "number",
+            "title": "Strom Lauf Kwh",
+            "default": 0.0
+          },
+          "cop_tag": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Tag"
+          },
+          "cop_heizen": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Heizen"
+          },
+          "lauf_median_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lauf Median Min"
+          },
+          "aussen_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aussen C"
+          },
+          "waerme_min": {
+            "type": "integer",
+            "title": "Waerme Min",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag",
+          "starts",
+          "lauf_min",
+          "abtau_min",
+          "abtauungen",
+          "zusatz_min",
+          "strom_kwh"
+        ],
+        "title": "BetriebTagOut",
+        "description": "Ein Ortstag der Wärmepumpe (`hems_core.thermal.betrieb.Tag`)."
       },
       "BinCorrection": {
         "properties": {

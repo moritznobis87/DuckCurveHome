@@ -1,5 +1,5 @@
 import type { ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
-  House, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+  House, Betrieb, BetriebRoh, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -79,6 +79,10 @@ export const api = {
   // Die Technikseite der Wärmepumpe: alle Messwerte des Augenblicks samt Abschätzung.
   waermepumpe: () => request<Waermepumpe>("/waermepumpe"),
   reglerkennzahlen: (tage = 7) => request<ReglerKennzahlen>(`/waermepumpe/kennzahlen?tage=${tage}`),
+  betrieb: async (tage: number): Promise<Betrieb> => {
+    const d = await request<BetriebRoh>(`/waermepumpe/betrieb?tage=${tage}`);
+    return { ...d, tage: d.tage ?? [], laeufe: d.laeufe ?? [], stunden: d.stunden ?? [], klassen: d.klassen ?? [], saetze_de: d.saetze_de ?? [], hinweise_de: d.hinweise_de ?? [] };
+  },
   kennlinie: async (tage: number): Promise<Kennlinie> => {
     const d = await request<KennlinieRoh>(`/waermepumpe/kennlinie?tage=${tage}`);
     const bilanz = d.bilanz ? { ...d.bilanz, fehlt: d.bilanz.fehlt ?? {}, satz_de: d.bilanz.satz_de ?? "" } : null;

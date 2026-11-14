@@ -853,6 +853,7 @@ button.ansicht { cursor: pointer; }
 .kl-bilanz-anteil, .kl-bilanz-wozu { color: var(--text-3); }
 .kl-bilanz-anteil { text-align: right; }
 .kl-bilanz-wozu { font-size: 13px; }
+.bt-saetze { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; line-height: 1.5; color: var(--text-1); max-width: 860px; }
 .kl-liste { font-size: 14px; color: var(--text-2); }
 .kl-liste summary { cursor: pointer; padding: 6px 0; }
 .kl-liste[open] summary { margin-bottom: 8px; }

@@ -1380,6 +1380,103 @@ class KennlinieOut(BaseModel):
     hinweise_de: list[str] = Field(default_factory=list)
 
 
+class BetriebTagOut(BaseModel):
+    """Ein Ortstag der Wärmepumpe (`hems_core.thermal.betrieb.Tag`)."""
+
+    tag: date
+    starts: int
+    lauf_min: int
+    abtau_min: int
+    abtauungen: int
+    #: Minuten, in denen neben dem Verdichter etwas anderes Strom aufnahm (erschlossen).
+    zusatz_min: int
+    strom_kwh: float
+    waerme_kwh: float | None = None
+    strom_lauf_kwh: float = 0.0
+    #: Wärme durch Strom über alle Minuten im Lauf, Abtauen und Heizstab eingeschlossen.
+    cop_tag: float | None = None
+    #: Dasselbe nur aus den Fenstern der Kennlinie: eingeschwungen, ohne Abtauen und Heizstab.
+    cop_heizen: float | None = None
+    lauf_median_min: float | None = None
+    aussen_c: float | None = None
+    waerme_min: int = 0
+
+
+class BetriebLaufOut(BaseModel):
+    """Ein Lauf des Verdichters, vom Anlaufen bis zum Halt."""
+
+    start: datetime
+    minuten: int
+    abtau_min: int
+    abtauungen: int
+    zusatz_min: int
+    strom_kwh: float
+    waerme_kwh: float | None = None
+    #: Der Lauf reicht über den Rand der Daten oder an eine Lücke: seine Länge ist unvollständig.
+    angeschnitten: bool = False
+
+
+class BetriebStundeOut(BaseModel):
+    """Eine Stunde im Heizbetrieb: was der Regler als Vorlauf verlangte, bei welchem Wetter."""
+
+    at: datetime
+    minuten: int
+    aussen_c: float
+    soll_c: float
+    vorlauf_c: float | None = None
+    ventil: int | None = None
+
+
+class BetriebHeizkurveOut(BaseModel):
+    """Sollwert = a + b * Außentemperatur, nach kleinsten Quadraten über die Stunden."""
+
+    a: float
+    b: float
+    n: int
+    r2: float | None = None
+    aussen_von_c: float
+    aussen_bis_c: float
+    formel_de: str
+
+
+class BetriebKlasseOut(BaseModel):
+    """Eine Klasse der Lauflängen: von einschließlich, bis ausschließlich (`None`: nach oben offen)."""
+
+    von_min: int
+    bis_min: int | None = None
+    laeufe: int
+
+
+class BetriebOut(BaseModel):
+    """Der Betrieb der Wärmepumpe über Tage: Läufe, Abtauen, Takten, Heizkurve des Reglers.
+
+    Eine Auszählung gespeicherter Minuten. Was sie taugt, steht in `hinweise_de`.
+    """
+
+    now: datetime
+    von: datetime
+    bis: datetime
+    zeitraum_tage: int
+    tage: list[BetriebTagOut] = Field(default_factory=list)
+    #: Die jüngsten Läufe, der neueste zuletzt.
+    laeufe: list[BetriebLaufOut] = Field(default_factory=list)
+    stunden: list[BetriebStundeOut] = Field(default_factory=list)
+    heizkurve: BetriebHeizkurveOut | None = None
+    klassen: list[BetriebKlasseOut] = Field(default_factory=list)
+    #: Die Summen des Zeitraums.
+    starts: int = 0
+    lauf_min: int = 0
+    abtau_min: int = 0
+    abtauungen: int = 0
+    zusatz_min: int = 0
+    cop_gesamt: float | None = None
+    cop_heizen: float | None = None
+    lauf_median_min: float | None = None
+    #: Was die Auszählung sagt, je Thema ein Satz.
+    saetze_de: list[str] = Field(default_factory=list)
+    hinweise_de: list[str] = Field(default_factory=list)
+
+
 class ShiftDayOut(BaseModel):
     """Ein Tag im Vergleichslauf. `note_de` ist leer, wenn gerechnet wurde."""
 
