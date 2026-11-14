@@ -11,6 +11,10 @@ import { farbe } from "@/components/anlage/schema";
  * unten kalt, und jede Zahl auf der Höhe ihres Fühlers.
  *
  * Die Farbe ist die des Wassers im Anlagenschema (`farbe`), dieselbe wie in den Rohren.
+ *
+ * **Eine Ausnahme in der Lage, nicht in der Art:** auf der Startseite am Telefon liegt das Glas
+ * (`home/Rail`), damit die Kachel flach bleibt. Farbskala, Verlauf und die Stelle der Zahlen
+ * kommen auch dort von hier.
  */
 
 /** Wo die vier Fühler sitzen: in der Mitte ihrer Schicht, als Anteil von oben. */

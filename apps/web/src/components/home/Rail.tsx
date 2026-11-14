@@ -6,6 +6,7 @@ import { celsius } from "@/lib/format";
 import { Ausblick } from "./Ausblick";
 import { planZeilen } from "./fahrplan";
 import { PufferGlasBild } from "@/components/puffer/Glas";
+import { FUEHLER, gradzahl, stufen } from "@/components/puffer/glas";
 import { pufferZustand } from "./puffer";
 
 /**
@@ -39,20 +40,42 @@ export function Rail({ state, plan, nowMs, kompakt = false }: { state: LiveState
   const pufferWort = `${celsius(s?.buffer_temps_c.top.value)} oben, ${zustand}`;
 
   // **Der Speicher sieht ueberall gleich aus** (Nutzerwunsch 14.11.2026): das Glas aus dem
-  // Anlagenschema, stehend, mit den vier Fuehlern auf ihrer Hoehe (`puffer/Glas`). Am Telefon lag
-  // er bis dahin als Balken quer; jetzt steht dort dasselbe Glas, nur kleiner.
+  // Anlagenschema, stehend, mit den vier Fuehlern auf ihrer Hoehe (`puffer/Glas`).
+  //
+  // **Nur am Telefon liegt er** (Nutzerwunsch am selben Tag, nachdem dort kurz das stehende Glas
+  // stand: „sonst streckt man die Seite unnötig"). Liegend ist die Kachel so flach wie die
+  // Kacheln darueber. Es ist dasselbe Glas auf die Seite gelegt: dieselbe Farbskala, derselbe
+  // weiche Verlauf, jede Zahl an der Stelle ihres Fuehlers, links oben und rechts unten.
   const gedimmt = !vollstaendig || veraltet;
   if (kompakt) {
+    const verlauf = stufen(fuehler);
+    const quer = verlauf.length ? `linear-gradient(90deg, ${verlauf.map((st) => `${st.farbe} ${st.bei * 100}%`).join(", ")})` : "var(--surface-3)";
     return (
       <div className="home-rail">
-        <Link href="/waerme" className="home-puffer-flach home-puffer-steht" aria-label={`Puffer ${soc != null ? Math.round(soc * 100) : "-"} %, ${pufferWort}`}>
-          <PufferGlasBild className="home-glas-handy" temps={fuehler} breite={36} hoehe={128} schrift={13} gedimmt={gedimmt} />
-          <span className="home-puffer-text">
+        <Link href="/waerme" className="home-puffer-flach" aria-label={`Puffer ${soc != null ? Math.round(soc * 100) : "-"} %, ${pufferWort}`}>
+          <span className="home-puffer-kopf">
             <span className="kicker" style={{ fontSize: 11 }}>Puffer</span>
             <span className="mono home-puffer-zahl">
               {soc != null ? String(Math.round(soc * 100)) : "-"} <span className="home-einheit">%</span>
+              <span className="home-puffer-wort">{zustand}</span>
             </span>
-            <span className="home-puffer-wort">{zustand}</span>
+          </span>
+          <span className="home-glas-quer" style={{ background: quer, opacity: gedimmt ? 0.5 : 1 }} aria-hidden />
+          {/* Jede Zahl steht unter ihrer Farbe, nicht in einer gleichmaessigen Reihe. */}
+          <span className="home-puffer-fuehler" aria-hidden>
+            {fuehler.map((v, i) => {
+              const zahl = gradzahl(v);
+              return (
+                <span key={i} className="mono home-puffer-wert" style={{ left: `${FUEHLER[i]! * 100}%` }}>
+                  {zahl ?? "-"}
+                  {zahl != null ? <span className="home-puffer-grad">°</span> : null}
+                </span>
+              );
+            })}
+          </span>
+          <span className="home-puffer-orte" aria-hidden>
+            <span className="home-puffer-ort" style={{ left: `${FUEHLER[0] * 100}%` }}>oben</span>
+            <span className="home-puffer-ort" style={{ left: `${FUEHLER[3] * 100}%` }}>unten</span>
           </span>
         </Link>
         {/* Am Handy das Bild der nächsten 24 Stunden statt dreier Uhrzeiten untereinander. */}

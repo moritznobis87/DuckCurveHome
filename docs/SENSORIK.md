@@ -682,8 +682,10 @@ vier Zeichnungen mit zwei Farbskalen: als eckigen Tank auf der Startseite, als l
 am Telefon, als Glas im Anlagenschema und als vier Farbbänder auf dieser Seite; 60 Grad waren
 hier gelb und dort orange. Geblieben ist das Glas (`apps/web/src/components/puffer/`), stehend,
 mit weichem Verlauf und jeder Zahl auf der Höhe ihres Fühlers, in der Farbskala des Wassers aus
-dem Anlagenschema. Es steht auf der Startseite (breit und am Telefon), in der Abendansicht, im
-Anlagenschema und hier.
+dem Anlagenschema. Es steht auf der Startseite an der Wandanzeige, in der Abendansicht, im
+Anlagenschema und hier. Auf der Startseite am Telefon liegt dasselbe Glas auf der Seite
+(Nutzerwunsch 14.11.2026, nachdem dort kurz das stehende stand: die Kachel bleibt so flach,
+143 statt 162 Punkte); Farbskala, Verlauf und die Stelle der Zahlen sind dieselben.
 
 **Was gerechnet wird.** Spreizung = Vorlauf minus Rücklauf. Wärmeleistung = Durchfluss mal
 Spreizung mal 4,186 kJ/(kg K), ein Liter als ein Kilogramm. Arbeitszahl = Wärmeleistung durch
