@@ -737,6 +737,26 @@ Dazu steht, wann zuletzt ein Wert über den Broker kam.
 | Folgende Meldungen | alle 5 Minuten | gesetzt |
 | ebusd gilt als verstummt | nach 10 Minuten ohne Nachricht | gesetzt; gemessen kommen im Betrieb alle 5 bis 55 Sekunden Nachrichten |
 
+**Die Ursache, 14.11.2026, 09:33 bis 09:40.** Mit Bridge 0.14.2 stand im Haus der zweite
+Satz: Die Bridge kündigt den Bus nicht an. Ihr Protokoll zeigte dann den Grund:
+`entity map loaded origin=datei:/config/duckcurve/entities.yaml`, vier Geräte am Broker
+(Pufferspeicher und drei Lichter), kein Bus. Im Haus liegt eine eigene Zuordnung, und die hatte
+bis 0.14.2 Vorrang vor dem Repository (`apps/bridge/src/dch_bridge/entities_source.py`).
+
+Die Datei ist kein vergessener Altbestand. Sie meldet 25 Sensoren, das Repository 15; nur in ihr
+stehen die Alarmanlage und ein Fensterkontakt, deren Namen nicht ins öffentliche Repository
+gehören. Löschen wäre also falsch gewesen, und der Abgleich von Hand (den Abschnitt für den Bus
+hineinkopieren) hätte bei jeder Änderung am Bus wieder angestanden; ein Tippfehler in der Datei
+hält zudem die ganze Bridge an, samt Haustür.
+
+**Seit 0.14.3 ergänzt die Datei das Repository.** Was in ihr steht, gilt unverändert; was nur im
+Repository steht, kommt hinzu. Gegen den Stand des Hauses gerechnet (die Schlüssel aus der Zeile
+`telemetry keys` des Protokolls gegen `EntityMap.keys()` der Datei auf `main`) kommen genau die
+zwölf Größen des Busses und ein Fensterkontakt dazu. Die Bridge meldet die Herkunft ihrer
+Zuordnung außerdem als Zustand der Quelle `zuordnung`, und der Satz auf der Seite nennt sie.
+**Im Haus bestätigt ist das noch nicht**; geprüft ist es mit nachgestellten Dateien
+(`apps/bridge/tests/test_entities_source.py`).
+
 ### Die Fußleiste am Telefon rollte mit
 
 Ebenfalls am 14.11.2026 gemeldet: auf dem iPhone, in der Anwendung vom Home-Bildschirm, stand die

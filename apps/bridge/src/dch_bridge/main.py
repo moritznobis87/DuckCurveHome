@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 import structlog
 
 from dch_bridge.door import DoorService
-from dch_bridge.entities_source import load_entity_map
+from dch_bridge.entities_source import herkunft, load_entity_map
 from dch_bridge.home_assistant.rest_client import HaRestClient
 from dch_bridge.home_assistant.ws_client import EntityState, HaWsClient
 from dch_bridge.house_source import HousePlanSource
@@ -37,7 +37,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.14.2"
+VERSION = "0.14.3"
 log = structlog.get_logger("bridge")
 
 
@@ -135,6 +135,9 @@ class Bridge:
         self.mqtt: MqttHub | None = None
         self.comparator: Comparator | None = None
         self._mqtt_owned: set[str] = set()
+        #: Woher die Zuordnung stammt (`entities_source.herkunft`); `run()` trägt es ein. Die Cloud
+        #: bekommt es als Zustand der Quelle `zuordnung`.
+        self.zuordnung: dict[str, str] = {}
         devices = self._mqtt_devices()
         if devices:
             self.mqtt = MqttHub(
@@ -616,9 +619,20 @@ class Bridge:
             await asyncio.sleep(warte)
             warte = 300.0
             now = datetime.now(UTC)
+            if self.zuordnung:
+                # Woher die Zuordnung stammt. Eine Datei in /config oder der Zwischenspeicher sind
+                # erlaubt, aber sie sind der häufigste Grund, warum eine Änderung nicht ankommt.
+                aus_dem_repository = "repository" in self.zuordnung.get("herkunft", "")
+                with contextlib.suppress(Exception):
+                    await self.uplink.emit_health(
+                        now,
+                        "zuordnung",
+                        "ok" if aus_dem_repository else "degraded",
+                        {"lage": self.zuordnung.get("herkunft", ""), **self.zuordnung},
+                    )
             stand = self.ebus_lage(now)
             if stand is None:
-                return
+                continue
             lage, einzel = stand
             log.info("ebus lage", lage=lage, **einzel)
             with contextlib.suppress(Exception):
@@ -685,8 +699,7 @@ class Bridge:
             tasks.append(asyncio.create_task(self.door.run(), name="door-probe"))
         if self.mqtt is not None or self.stove is not None or self.door is not None:
             tasks.append(asyncio.create_task(self._source_status_loop(), name="source-status"))
-        if any(dev.kind == "ebusd" for dev in self.map.mqtt):
-            tasks.append(asyncio.create_task(self._ebus_lage_loop(), name="ebus-lage"))
+        tasks.append(asyncio.create_task(self._ebus_lage_loop(), name="ebus-lage"))
         try:
             await asyncio.gather(*tasks)
         finally:
@@ -716,14 +729,26 @@ def run() -> None:
     if not settings.api_token:
         log.error("DCH_BRIDGE_API_TOKEN fehlt - Bridge startet nicht")
         sys.exit(2)
+    gruende: list[str] = []
     try:
         entity_map, origin = load_entity_map(
-            settings.entities_file, settings.entities_url, settings.entities_cache
+            settings.entities_file,
+            settings.entities_url,
+            settings.entities_cache,
+            gruende=gruende,
         )
     except Exception as exc:
         log.error("Entity-Mapping nicht ladbar - Bridge startet nicht", error=str(exc)[:300])
         sys.exit(2)
     log.info("entity map loaded", origin=origin, digest=entity_map.digest())
+    if origin.startswith("datei:"):
+        # Kein Fehler, aber die häufigste Ursache für „meine Änderung kommt nicht an": es gilt
+        # allein die Datei, weil sie es so verlangt oder weil das Repository nicht erreichbar war.
+        log.warning(
+            "Zuordnung allein aus der Datei in /config - was im Repository dazukam, fehlt",
+            datei=str(settings.entities_file),
+            grund=gruende[-1] if gruende else "ersetzt_repository oder keine Adresse",
+        )
     # Beim Start sagen, nicht erst beim Druck auf den Knopf: Scharfschalten ist freigegeben, aber
     # das Ziel taugt nicht. Die Bridge laeuft trotzdem weiter - das Lesen der Anlage haengt an der
     # Entity-Zuordnung und nicht an dieser Option.
@@ -742,6 +767,9 @@ def run() -> None:
         )
         settings = settings.model_copy(update={"source_mode": "home_assistant"})
     bridge = Bridge(settings, entity_map)
+    bridge.zuordnung = herkunft(
+        origin, gruende, kennt_bus=any(dev.kind == "ebusd" for dev in entity_map.mqtt)
+    )
     with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(bridge.run())
 

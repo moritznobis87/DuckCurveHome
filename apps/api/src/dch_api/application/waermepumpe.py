@@ -101,6 +101,9 @@ class BusStand:
     einzelheiten: dict[str, str] = field(default_factory=dict)
     #: Wann zuletzt irgendein Wert vom Bus kam, gleich wie alt.
     zuletzt: datetime | None = None
+    #: Woher die Bridge ihre Zuordnung hat (ab 0.14.3): `herkunft` (datei, repository,
+    #: zwischenspeicher, datei+repository, datei+zwischenspeicher), `ort`, gegebenenfalls `grund`.
+    zuordnung: dict[str, str] = field(default_factory=dict)
 
 
 def _version(text: str | None) -> tuple[int, ...]:
@@ -164,10 +167,41 @@ def bus_auskunft(stand: BusStand, tz: tzinfo) -> str:
         return "Die Brücke im Haus ist gerade nicht verbunden; ohne sie kommt kein Wert." + nach
     version = stand.bridge_version or "unbekannt"
     if BUS_KENNZEICHEN not in stand.angekuendigt:
-        return (
+        ohne = (
             f"Die Brücke im Haus (Version {version}) arbeitet mit einer Zuordnung, die den Bus der "
-            "Wärmepumpe nicht kennt. Ihr Protokoll sagt beim Start, warum sie die neue nicht "
-            "geladen hat." + nach
+            "Wärmepumpe nicht kennt. "
+        )
+        art, wo = stand.zuordnung.get("herkunft"), stand.zuordnung.get("ort", "")
+        grund = stand.zuordnung.get("grund")
+        klammer = f" ({grund})" if grund else ""
+        if art == "datei":
+            # Ab 0.14.3 gilt die Datei nur noch allein, wenn sie es verlangt oder das Repository
+            # beim Start nicht zu erreichen war.
+            warum = (
+                f"das Repository war beim Start nicht zu erreichen{klammer}; Brücke neu starten."
+                if grund
+                else "sie schließt das Repository mit „ersetzt_repository“ aus; die Zeile "
+                "entfernen und die Brücke neu starten."
+            )
+            return (
+                ohne + f"Es gilt allein die Datei {wo} in Home Assistant, und dort fehlt der "
+                f"Bus: {warum}" + nach
+            )
+        if art == "zwischenspeicher":
+            return (
+                ohne + f"Die aktuelle konnte sie beim Start nicht aus dem Repository holen{klammer}"
+                " und nimmt deshalb ihren letzten Abruf. Brücke neu starten; bleibt es dabei, "
+                "erreicht Home Assistant die Adresse nicht." + nach
+            )
+        if art is not None:
+            return (
+                ohne + "Weder ihre Datei in Home Assistant noch die Zuordnung unter der Adresse "
+                "„entities_url“ in ihren Einstellungen enthält ihn." + nach
+            )
+        return (
+            ohne + "Vermutlich liegt in Home Assistant eine eigene Datei "
+            "/config/duckcurve/entities.yaml ohne den Bus. Ab Version 0.14.3 nimmt die Brücke die "
+            "Zuordnung aus dem Repository zu dieser Datei dazu: das Update genügt." + nach
         )
     if stand.lage is not None:
         einzel = {"thema": "ebusd", "nachrichten": "?", "namen": "?", "source_mode": "?"}
