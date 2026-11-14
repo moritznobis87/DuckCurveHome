@@ -148,6 +148,15 @@ mqtt:
       "heatpump/hp_betrieb":
         compressor_hz: heat_pump_compressor_hz
         mode: heat_pump_mode_code
+      # Betriebsart des Reglers (Kennung c94b; ab Add-on 0.2.2): 0 Bereitschaft, 2 Heizen,
+      # 3 Warmwasser, 16 PV-Nutzung. Sie kommt in einer Liste mit der Hauptpumpe und allein;
+      # die Liste wird nur gelesen, wenn ihre Kennungen stimmen.
+      "energymgr/pumpe_status":
+        kennung_2: "=c7 4b"
+        kennung_3: "=c9 4b"
+        wert_c94b: heat_pump_cycle_code
+      "energymgr/betriebsart":
+        code: heat_pump_cycle_code
   # --- Nicht über MQTT: die Geräte der ersten Generation ---
   # Der Wärmepumpen-Zähler (Shelly 3EM), der Wärmepumpenschalter und die Kaffeemaschine bleiben bei
   # Home Assistant. Grund: beim Gen-1-Shelly schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die

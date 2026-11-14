@@ -26,6 +26,7 @@ import structlog
 from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, house, rooms
+from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
@@ -93,6 +94,7 @@ from dch_api.schemas import (
     HouseOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
+    KennlinieOut,
     KontaktwirkungOut,
     LiveStateOut,
     MorgenbriefOut,
@@ -162,6 +164,7 @@ from hems_core.planning import (
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
 from hems_core.simulation import BERLIN
 from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
+from hems_core.thermal import kennlinie as kennlinie_kern
 from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 from hems_core.watch import BRIDGE, RULES, back_text, findings
 from hems_core.watch.aussen import Aussenpruefung
@@ -200,6 +203,7 @@ class LiveRuntime:
         self.settings = settings
         self.config = config
         self.hems = config.hems
+        self._kennlinie: dict[int, KennlinieOut] = {}
         self.repos = repos
         self.hub = hub
         self.forecasts = forecasts
@@ -1277,6 +1281,29 @@ class LiveRuntime:
             mess=lambda key: self.live.measurement(key, now, wp_logic.STALE_S),
             bus_stumm_de=wp_logic.bus_auskunft(stand, BERLIN),
         )
+
+    async def kennlinie(self, tage: int) -> KennlinieOut:
+        """Die gemessene Kennlinie aus den gespeicherten Minuten der letzten `tage` Tage.
+
+        Die Antwort wird fünf Minuten gehalten: ein Messpunkt entsteht frühestens alle zehn
+        Minuten, und der Rückblick liest für dreißig Tage gut vierzigtausend Zeilen.
+        """
+        now = self.now
+        gemerkt = self._kennlinie.get(tage)
+        if gemerkt is not None and now - gemerkt.now < timedelta(minutes=5):
+            return gemerkt
+        zeilen = await self.repos.minute_series(
+            now - timedelta(days=tage), now, list(kennlinie_logic.REIHEN)
+        )
+        aus = kennlinie_logic.zusammensetzen(
+            now=now,
+            tage=tage,
+            punkte=kennlinie_kern.messpunkte(kennlinie_logic.minuten(zeilen)),
+            heat=self.hems.heat_demand,
+            buffer=self.hems.buffer,
+        )
+        self._kennlinie[tage] = aus
+        return aus
 
     async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut:
         """Ein vergangener Ortstag als Folge von Anlagenbildern.

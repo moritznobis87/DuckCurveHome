@@ -82,7 +82,13 @@ def test_die_eigenen_zeilen_fuer_die_aerotop_haben_die_form_die_ebusd_liest() ->
         assert spalten[0] in {"g", "b"}, "nur mitlesen, nie fragen oder schreiben"
         assert (len(spalten) - 8) % 6 == 0, z
         namen.add(f"{spalten[1]}/{spalten[2]}")
-    assert {"heatpump/hp_power", "energymgr/system_temps", "energymgr/aussen_rundruf"} <= namen
+    assert {
+        "heatpump/hp_power",
+        "energymgr/system_temps",
+        "energymgr/aussen_rundruf",
+        "energymgr/pumpe_status",
+        "energymgr/betriebsart",
+    } <= namen
     dockerfile = (ADDON / "Dockerfile").read_text(encoding="utf-8")
     assert "COPY aerotop_split.csv /etc/duckcurve/aerotop_split.csv" in dockerfile
     assert "/etc/duckcurve/aerotop_split.csv" in (ADDON / "run.sh").read_text(encoding="utf-8")

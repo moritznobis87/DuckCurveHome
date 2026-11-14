@@ -19,6 +19,7 @@ import structlog
 from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, demo_house, demo_rooms, rooms
+from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
@@ -67,6 +68,7 @@ from dch_api.schemas import (
     HouseOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
+    KennlinieOut,
     KontaktwirkungOut,
     LiveStateOut,
     MorgenbriefOut,
@@ -960,6 +962,17 @@ class DemoRunner:
             zeilen=self.history.series(
                 now - timedelta(minutes=anlage_logic.RUECKBLICK_MIN), now + timedelta(minutes=1)
             ),
+        )
+
+    async def kennlinie(self, tage: int) -> KennlinieOut:
+        """Die Kennlinie der Vorführung: erzeugte Punkte, derselbe Ausgleich wie im Haus."""
+        return kennlinie_logic.zusammensetzen(
+            now=self.now,
+            tage=tage,
+            punkte=kennlinie_logic.vorfuehrung(self.now, tage),
+            heat=self.hems.heat_demand,
+            buffer=self.hems.buffer,
+            vorfuehrung=True,
         )
 
     async def waermepumpe(self) -> WaermepumpeOut:

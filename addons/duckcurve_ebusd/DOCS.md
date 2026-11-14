@@ -18,6 +18,7 @@ meldet, zeigt erst der Betrieb.
 
 Dazu kommen eigene Zeilen für die Wärmepumpe dieses Hauses (`aerotop_split.csv`, ab 0.2.0):
 Leistungsaufnahme, Sauggas und Heißgas, Verdichterfrequenz und Betriebszustand (ab 0.2.1), die
+Betriebsart des Reglers (Heizen, Warmwasser, PV-Nutzung; ab 0.2.2), die
 Außentemperatur im Rundruf, zwei Temperaturen des Reglers und seine Speichertemperatur. Sie sind aus dem Protokoll des Hauses gelesen und an dessen Telegrammen geprüft; auch
 sie lesen nur mit. Sie liegen im Abbild und werden bei jedem Start neben die Bus-Beschreibung
 gelegt.

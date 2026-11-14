@@ -232,6 +232,11 @@
   .wp-menue { width: 100%; padding: 20px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; border-bottom: 0; }
   .wp-menue-ziele { grid-template-columns: minmax(0, 1fr); }
   .wp-satz { font-size: 19px; }
+  .kl-paar { grid-template-columns: minmax(0, 1fr); }
+  .kl-chart { height: 280px; }
+  .kl-chart-feld { height: 320px; }
+  .kl-liste, .kl-karte { overflow-x: auto; }
+  .kl-tabelle { font-size: 13px; }
   .wp-buehne { padding: 10px; }
   /* Ist die Verbindung unterbrochen, steht rechts das Wort dazu mit der Uhrzeit. Daneben hat die
      Außentemperatur keinen Platz mehr (sie schob sich am 13.11.2026 über den Namen), und sie

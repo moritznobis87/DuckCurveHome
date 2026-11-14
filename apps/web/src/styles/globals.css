@@ -810,3 +810,27 @@ button.ansicht { cursor: pointer; }
 .wp-menue-ziel-titel { font-size: 16px; font-weight: 600; color: var(--text-1); }
 .wp-menue-ziel-satz { font-size: 13px; line-height: 1.4; color: var(--text-3); }
 .wp-menue-zu { align-self: center; padding: 10px 18px; border: 0; background: none; color: var(--text-2); font-size: 14px; cursor: pointer; }
+
+/* Die gemessene Kennlinie der Wärmepumpe. */
+.kl-wahl { display: flex; gap: 6px; flex-wrap: wrap; }
+.kl-knopf { padding: 7px 13px; border: 1px solid var(--line-1); border-radius: 999px; background: none; color: var(--text-2); font-size: 13px; cursor: pointer; }
+.kl-knopf[aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: var(--petrol); font-weight: 600; }
+.kl-knopf:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.kl-formel { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
+.kl-formel-zeile { margin: 0; font-size: clamp(15px, 1.7vw, 20px); color: var(--text-1); overflow-wrap: anywhere; }
+.kl-klein { font-size: 13px; line-height: 1.5; color: var(--text-3); max-width: 760px; }
+.kl-paar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.kl-karte { display: flex; flex-direction: column; gap: 10px; padding: 16px; min-width: 0; }
+.kl-titel { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-1); }
+.kl-chart { width: 100%; height: 320px; }
+.kl-chart-feld { height: 380px; }
+.kl-skala { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-3); font-family: var(--font-mono); }
+.kl-skala span { white-space: nowrap; }
+.kl-skala-band { flex: 0 1 180px; height: 8px; border-radius: 4px; }
+.kl-tabelle { width: 100%; border-collapse: collapse; font-size: 14px; }
+.kl-tabelle th { text-align: left; font-weight: 500; font-size: 12px; color: var(--text-3); padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line-1); }
+.kl-tabelle td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line-1); color: var(--text-1); }
+.kl-tabelle tr[data-gemessen="false"] td { color: var(--text-3); }
+.kl-liste { font-size: 14px; color: var(--text-2); }
+.kl-liste summary { cursor: pointer; padding: 6px 0; }
+.kl-liste[open] summary { margin-bottom: 8px; }

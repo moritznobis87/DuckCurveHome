@@ -79,6 +79,16 @@ export type InvoiceFinding = S["InvoiceFinding"];
 export type TibberInvoice = S["TibberInvoice"];
 export type InvoicePosition = S["InvoicePosition"];
 export type Waermepumpe = S["WaermepumpeOut"];
+/** Die Antwort, wie sie kommt: Listen mit Vorgabe sind im Schema wahlfrei. */
+export type KennlinieRoh = S["KennlinieOut"];
+/** Die Antwort, wie die Seite sie benutzt: die Listen sind immer da (`api.kennlinie` füllt sie). */
+export type Kennlinie = Omit<KennlinieRoh, "punkte" | "annahme" | "hinweise_de"> & {
+  punkte: S["KennlinienPunktOut"][];
+  annahme: S["KennlinienAnnahmeOut"][];
+  hinweise_de: string[];
+};
+export type KennlinienFit = S["KennlinienFitOut"];
+export type KennlinienPunkt = S["KennlinienPunktOut"];
 export type PushKey = S["PushKeyOut"];
 export type PushResult = S["PushResultOut"];
 export type PushGeraete = S["PushGeraeteOut"];
