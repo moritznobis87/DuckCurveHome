@@ -60,7 +60,10 @@ function Aussengeraet({ d, ruhig }: { d: Waermepumpe; ruhig: boolean }) {
       <text x={16} y={26} fontSize={13} fontWeight={600} fill="var(--text-1)">Außengerät</text>
       <Schild x={14} y={40} w={140} name="Außenluft" wert={messwert(d.aussen_c)} einheit="°C" m={d.aussen_c} />
       <Schild x={176} y={40} w={140} name="Sauggas" wert={messwert(d.sauggas_c)} einheit="°C" m={d.sauggas_c} />
-      {/* Der Lüfter: ein Ring und drei Flügel. Er dreht, wenn der Verdichter arbeitet. */}
+      {/* Der Lüfter: ein Ring und drei Flügel. **Er wird nicht gemessen**; der Bus sendet seinen
+          Zustand nicht von selbst. Die Zeichnung dreht ihn mit dem Verdichter und sagt das dazu.
+          In einer Pause läuft er draußen oft weiter (14.11.2026, 16:52: Verdichter aus, Lüfter
+          dreht), und die Zeichnung zeigte ihn stehend, als wäre das eine Messung. */}
       <circle cx={95} cy={142} r={50} fill="var(--deep)" stroke="var(--line-2)" strokeWidth={2} />
       <g className={dreht ? "wp-dreht" : undefined} style={{ transformOrigin: "95px 142px" }}>
         {[0, 120, 240].map((winkel) => (
@@ -68,6 +71,7 @@ function Aussengeraet({ d, ruhig }: { d: Waermepumpe; ruhig: boolean }) {
         ))}
         <circle cx={95} cy={142} r={7} fill="var(--surface-3)" stroke="var(--line-2)" />
       </g>
+      <text x={95} y={201} textAnchor="middle" fontSize={9} fill="var(--text-3)">Lüfter · nicht gemessen</text>
       {/* Der Verdichter mit seiner Frequenz. */}
       <circle cx={246} cy={136} r={36} fill="var(--deep)" stroke={d.laeuft ? "var(--heat-pump)" : "var(--line-2)"} strokeWidth={2.5} />
       <text x={246} y={134} textAnchor="middle" fontSize={20} fill="var(--text-1)" fontFamily="var(--font-mono)" opacity={brauchbar(d.verdichter_hz) ? 1 : 0.55}>{messwert(d.verdichter_hz, 0)}</text>

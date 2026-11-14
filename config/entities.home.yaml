@@ -148,6 +148,10 @@ mqtt:
       "heatpump/hp_betrieb":
         compressor_hz: heat_pump_compressor_hz
         mode: heat_pump_mode_code
+      # Der Betriebszustand allein, als Wort (ab Bridge 0.14.5 als Zahl gelesen). Das
+      # Bediengerät fragt ihn alle zehn Sekunden ab; die Liste darüber geht nur gelegentlich
+      # über den Bus. Am 14.11.2026 zeigte die Seite deshalb „steht", während die Maschine lief.
+      "heatpump/heatpump_mode": heat_pump_mode_code
       # Kennzahl des Reglers (Kennung c94b; ab Add-on 0.2.2). Im Haus bestätigt: 0 stehend,
       # 2 Heizbetrieb (14.11.2026, 16:41: Sprung auf 2 mit dem Start der Pumpe, bei
       # Heizanforderung der Zone 1). Gesehen, aber nicht zugeordnet: 16, 20, 22. Sie kommt in
