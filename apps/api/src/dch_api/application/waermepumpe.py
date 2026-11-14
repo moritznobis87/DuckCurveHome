@@ -15,10 +15,11 @@ Herkunft und Vorbehalte je Größe: `docs/SENSORIK.md`.
 - Arbeitszahl = Wärmeleistung durch Leistungsaufnahme, mit dem Zähler, wo er einen Wert hat,
   sonst mit der Auskunft der Maschine.
 
-Drei Dinge daran sind nicht gesichert (Stand 14.11.2026): Der Durchflussgeber ist nicht geeicht
-und seine Einheit als Liter je Minute gelesen. Welche Kennung des Busses der Rücklauf ist, ist
-begründet, nicht bestätigt. Und die Werte kommen nicht gleichzeitig, sondern im Abstand von
-Sekunden bis zu einer Minute. Eine Arbeitszahl aus diesen Zahlen ist deshalb ein Anhalt.
+Zwei Dinge daran sind nicht gesichert (Stand 14.11.2026): Der Durchflussgeber ist nicht geeicht
+und seine Einheit als Liter je Minute gelesen. Und die Werte kommen nicht gleichzeitig, sondern
+im Abstand von Sekunden bis zu einer Minute. Die Zuordnung des Rücklaufs (Kennung 769e) war als
+unbestätigt gekennzeichnet; der Hausherr hat am 14.11.2026 entschieden, sie als gegeben zu
+nehmen (`docs/SENSORIK.md`). Eine Arbeitszahl aus diesen Zahlen ist deshalb ein Anhalt.
 
 Reine Zusammensetzung, kein I/O.
 """
@@ -347,8 +348,7 @@ def zusammensetzen(
     else:
         hinweise.append(
             "Wärmeleistung und Arbeitszahl sind Abschätzungen: Der Durchflussgeber der Maschine "
-            "ist nicht geeicht, und welcher Wert des Busses der Rücklauf ist, ist begründet, "
-            "aber nicht bestätigt."
+            "ist nicht geeicht."
         )
         if zusatz is not None and zaehler.value is not None and bus.value is not None:
             hinweise.append(

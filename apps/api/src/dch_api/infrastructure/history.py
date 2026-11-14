@@ -38,7 +38,7 @@ SERIES = (
     # vorher nicht gab und aus denen sich zum ersten Mal eine Wärmeleistung rechnen lässt:
     # Durchfluss mal Spreizung zwischen Vorlauf (`flow_temp_c`) und Rücklauf.
     "heat_pump_flow_l_min",  # Durchflussmesser der Wärmepumpe, Liter je Minute
-    "heat_pump_return_temp_c",  # Rücklauf; die Zuordnung der Kennung ist begründet, nicht bestätigt
+    "heat_pump_return_temp_c",  # Rücklauf (Kennung 769e; gilt seit dem 14.11.2026 als gegeben)
     "heat_pump_flow_setpoint_c",  # Vorlauf-Sollwert, den der Regler der Maschine vorgibt
     "heat_pump_bus_power_kw",  # Leistungsaufnahme nach eigener Auskunft der Maschine
     "heat_pump_compressor_hz",  # Verdichterfrequenz: wie weit die Maschine gerade moduliert
