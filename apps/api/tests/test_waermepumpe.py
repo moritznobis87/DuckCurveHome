@@ -171,6 +171,25 @@ def test_die_auskunft_folgt_dem_weg_der_werte() -> None:
     # Die Bridge läuft, aber mit einer Zuordnung ohne den Bus (alter Stand im Zwischenspeicher).
     alt = satz(bridge_online=True, bridge_version="0.13.1", angekuendigt=frozenset({"pv_power_kw"}))
     assert "Version 0.13.1" in alt and "Zuordnung" in alt
+    # Am 14.11.2026 stand im Haus genau dieser Satz: Version 0.14.2, Zuordnung ohne Bus. Das
+    # Protokoll zeigte dann die eigene Datei in /config; der Satz nennt sie und das Update.
+    assert "/config/duckcurve/entities.yaml" in alt and "Update genügt" in alt
+    # Ab 0.14.3 ergänzt die Datei das Repository, und die Bridge sagt, woher ihre Zuordnung
+    # stammt. Fehlt der Bus dann noch, hat es einen dieser Gründe.
+    ohne = {"bridge_online": True, "bridge_version": "0.14.3", "angekuendigt": frozenset({"x"})}
+    datei = {"herkunft": "datei", "ort": "/config/duckcurve/entities.yaml"}
+    verboten = satz(**ohne, zuordnung=datei)
+    assert "allein die Datei /config/duckcurve/entities.yaml" in verboten
+    assert "ersetzt_repository" in verboten
+    kein_netz = satz(**ohne, zuordnung={**datei, "grund": "timed out"})
+    assert "nicht zu erreichen (timed out)" in kein_netz and "ersetzt_repository" not in kein_netz
+    lager = satz(
+        **ohne,
+        zuordnung={"herkunft": "zwischenspeicher", "ort": "/data/x", "grund": "timed out"},
+    )
+    assert "letzten Abruf" in lager and "(timed out)" in lager
+    for art in ("repository", "datei+repository", "datei+zwischenspeicher"):
+        assert "entities_url" in satz(**ohne, zuordnung={"herkunft": art, "ort": "x"})
     # Eine Bridge vor 0.14.2 kann die Stelle nicht nennen; der Satz sagt, wo sie steht.
     vor = satz(bridge_online=True, bridge_version="0.14.1", angekuendigt=bus)
     assert "ab Version 0.14.2" in vor and "Protokoll" in vor

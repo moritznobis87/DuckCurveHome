@@ -1251,6 +1251,7 @@ class LiveRuntime:
         snap, _, hp = self._states()
         # Für den Fall, dass der Bus schweigt: was Dienst und Bridge über den Weg wissen.
         bus = self.hub.health_by_source.get("ebusd")
+        woher = self.hub.health_by_source.get("zuordnung")
         zeiten = [
             r.observed_at
             for key in (*wp_logic.KEYS.values(), wp_logic.ZUSTAND_KEY)
@@ -1267,6 +1268,7 @@ class LiveRuntime:
             lage=bus.details.get("lage") if bus is not None else None,
             einzelheiten=dict(bus.details) if bus is not None else {},
             zuletzt=max(zeiten) if zeiten else None,
+            zuordnung=dict(woher.details) if woher is not None else {},
         )
         return wp_logic.zusammensetzen(
             now=now,

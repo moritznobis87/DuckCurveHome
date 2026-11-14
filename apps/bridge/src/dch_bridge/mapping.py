@@ -90,6 +90,35 @@ class EntityMap(BaseModel):
     def digest(self) -> str:
         return hashlib.sha256(self.model_dump_json().encode()).hexdigest()[:16]
 
+    def ergaenzt_um(self, grund: EntityMap) -> EntityMap:
+        """Diese Zuordnung (die Datei im Haus) über die aus dem Repository gelegt.
+
+        Was hier steht, gilt unverändert. Was nur im Repository steht, kommt hinzu: ein Sensor
+        oder Aktor mit neuem Schlüssel und einer Entität, die hier noch niemand benutzt, und ein
+        Gerät am Broker mit neuem Thema. Die Datei im Haus kann so behalten, was nicht ins
+        Repository gehört (Alarmanlage, Namen von Räumen), und bekommt trotzdem, was dort
+        dazukommt, etwa den Bus der Wärmepumpe.
+        """
+        entitaeten = {s.entity for s in self.sensors} | {a.entity for a in self.actuators}
+        sensoren = {s.key for s in self.sensors}
+        aktoren = {a.key for a in self.actuators}
+        themen = {m.prefix for m in self.mqtt}
+        return EntityMap(
+            sensors=[
+                *self.sensors,
+                *(s for s in grund.sensors if s.key not in sensoren and s.entity not in entitaeten),
+            ],
+            actuators=[
+                *self.actuators,
+                *(
+                    a
+                    for a in grund.actuators
+                    if a.key not in aktoren and a.entity not in entitaeten
+                ),
+            ],
+            mqtt=[*self.mqtt, *(m for m in grund.mqtt if m.prefix not in themen)],
+        )
+
     def by_entity(self) -> dict[str, SensorMap | ActuatorMap]:
         out: dict[str, SensorMap | ActuatorMap] = {s.entity: s for s in self.sensors}
         out.update({a.entity: a for a in self.actuators})
