@@ -1233,6 +1233,13 @@ class WaermepumpeOut(BaseModel):
     #: Was der Zähler mehr aufnimmt, als die Maschine für sich meldet, wenn es deutlich mehr
     #: ist (ab 1,5 kW): neben dem Verdichter läuft dann etwas anderes, vermutlich der Heizstab.
     zusatz_kw: float | None = None
+    #: Was das eBUS-Add-on ab 0.3.0 selbst abfragt. Ventil und Heizstab als Zahl des Reglers:
+    #: laut Bus-Beschreibung Ventil 0 Warmwasser, 1 Heizung; Heizstab 1 an. Im Haus noch nicht
+    #: gegengeprüft, deshalb keine Wörter.
+    ventil_code: int | None = None
+    heizstab_code: int | None = None
+    verdichter_a: Measurement | None = None
+    luefter_drehzahl: Measurement | None = None
     #: Die Betriebsart des Reglers (Kennung c94b des Busses) als Zahl und als Wort.
     kreis_code: int | None = None
     kreis_de: str | None = None
@@ -1268,6 +1275,10 @@ class ReglerKennzahlOut(BaseModel):
     #: (Bedeutung offen; sie liegt neben der Kennung des Heizstabs).
     heizanforderung_anteil: float | None = None
     flag_1b45_anteil: float | None = None
+    #: Anteil der Minuten, in denen das Umschaltventil auf 1 stand und in denen der Regler den
+    #: Heizstab als an meldete (beide abgefragt seit dem 14.11.2026).
+    ventil_1_anteil: float | None = None
+    heizstab_anteil: float | None = None
     zuletzt: datetime | None = None
 
 
@@ -1287,6 +1298,8 @@ class KennlinienPunktOut(BaseModel):
     cop: float
     waerme_kw: float
     strom_kw: float
+    #: Stellung des Umschaltventils im Fenster, wenn sie einheitlich war (Zahl des Reglers).
+    ventil: int | None = None
 
 
 class KennlinienFitOut(BaseModel):

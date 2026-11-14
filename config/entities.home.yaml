@@ -181,6 +181,17 @@ mqtt:
         kennung_4: "=6a 47"
         modus: heat_pump_cmd_mode_code
         ziel: heat_pump_cmd_target_c
+      # Was das Add-on ab 0.3.0 selbst abfragt (Option `abfragen`), weil es sonst nie über den
+      # Bus geht. Zahlen, keine Wörter: was 0 und 1 in diesem Haus heißen, zeigt erst der
+      # Vergleich mit Speicher und Zähler (docs/SENSORIK.md, "Was das Add-on selbst abfragt").
+      "energymgr/ventil_ww":
+        stellung: heat_pump_valve_code
+      "energymgr/heizstab":
+        an: heat_pump_heater_code
+      "heatpump/verdichter_strom":
+        strom_a: heat_pump_compressor_a
+      "heatpump/luefter":
+        drehzahl: heat_pump_fan_speed
   # --- Nicht über MQTT: die Geräte der ersten Generation ---
   # Der Wärmepumpen-Zähler (Shelly 3EM), der Wärmepumpenschalter und die Kaffeemaschine bleiben bei
   # Home Assistant. Grund: beim Gen-1-Shelly schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die

@@ -236,6 +236,7 @@ export function Kennlinie() {
                 <th scope="col">Wärme</th>
                 <th scope="col">Strom</th>
                 <th scope="col">Arbeitszahl</th>
+                <th scope="col">Ventil</th>
               </tr>
             </thead>
             <tbody>
@@ -250,6 +251,7 @@ export function Kennlinie() {
                     <td className="mono">{zahl(p.waerme_kw)} kW</td>
                     <td className="mono">{zahl(p.strom_kw, 2)} kW</td>
                     <td className="mono">{zahl(p.cop, 2)}</td>
+                    <td className="mono">{p.ventil ?? "?"}</td>
                   </tr>
                 ))}
             </tbody>

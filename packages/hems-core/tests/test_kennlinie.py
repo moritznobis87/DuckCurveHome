@@ -189,6 +189,17 @@ def test_ein_fenster_zaehlt_mit_acht_von_zehn_minuten() -> None:
     assert k.messpunkte(sieben) == []
 
 
+def test_ein_punkt_nennt_die_stellung_des_umschaltventils_wenn_sie_einheitlich_war() -> None:
+    """Die Stellung fragt das eBUS-Add-on ab 0.3.0 ab, etwa alle halbe Minute. Mit ihr lassen
+    sich Heizen und Warmwasser später trennen; ein Fenster, in dem umgeschaltet wurde, gehört zu
+    keinem von beiden."""
+    einheitlich = [minute(i, ventil=1.0 if i % 2 == 0 else None) for i in range(30)]
+    assert [p.ventil for p in k.messpunkte(einheitlich)] == [1, 1]
+    gewechselt = [minute(i, ventil=1.0 if i < 15 else 0.0) for i in range(30)]
+    assert [p.ventil for p in k.messpunkte(gewechselt)] == [None, 0]
+    assert [p.ventil for p in k.messpunkte([minute(i) for i in range(30)])] == [None, None]
+
+
 def test_alle_heizzustaende_der_maschine_zaehlen_abtauen_und_kuehlen_nicht() -> None:
     for modus, erwartet in ((3.0, 2), (4.0, 2), (6.0, 2), (9.0, 0), (2.0, 0), (15.0, 0)):
         assert len(k.messpunkte([minute(i, modus=modus) for i in range(30)])) == erwartet

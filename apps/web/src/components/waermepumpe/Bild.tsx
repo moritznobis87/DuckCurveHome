@@ -53,25 +53,29 @@ function Leitung({ punkte, temperatur, fliesst, dick = 7, ruhig, name }: { punkt
 function Aussengeraet({ d, ruhig }: { d: Waermepumpe; ruhig: boolean }) {
   const { w, h } = BLOCK.aussen;
   const strom = aufnahme(d);
-  const dreht = d.laeuft && !ruhig;
+  // Der Lüfter dreht nach seiner abgefragten Drehzahl, wenn es sie gibt; sonst mit dem Verdichter.
+  const drehzahl = brauchbar(d.luefter_drehzahl) ? (d.luefter_drehzahl?.value ?? null) : null;
+  const luefterAn = drehzahl != null ? drehzahl > 0 : d.laeuft;
+  const dreht = luefterAn && !ruhig;
   return (
     <g>
       <rect width={w} height={h} rx={14} fill="var(--surface-2)" stroke="var(--line-2)" />
       <text x={16} y={26} fontSize={13} fontWeight={600} fill="var(--text-1)">Außengerät</text>
       <Schild x={14} y={40} w={140} name="Außenluft" wert={messwert(d.aussen_c)} einheit="°C" m={d.aussen_c} />
       <Schild x={176} y={40} w={140} name="Sauggas" wert={messwert(d.sauggas_c)} einheit="°C" m={d.sauggas_c} />
-      {/* Der Lüfter: ein Ring und drei Flügel. **Er wird nicht gemessen**; der Bus sendet seinen
-          Zustand nicht von selbst. Die Zeichnung dreht ihn mit dem Verdichter und sagt das dazu.
+      {/* Der Lüfter: ein Ring und drei Flügel. Der Bus sendet seinen Zustand nicht von selbst;
+          seit dem Add-on 0.3.0 wird seine Drehzahl abgefragt. Fehlt sie, dreht ihn die Zeichnung
+          mit dem Verdichter und sagt dazu, dass er nicht gemessen ist.
           In einer Pause läuft er draußen oft weiter (14.11.2026, 16:52: Verdichter aus, Lüfter
           dreht), und die Zeichnung zeigte ihn stehend, als wäre das eine Messung. */}
       <circle cx={95} cy={142} r={50} fill="var(--deep)" stroke="var(--line-2)" strokeWidth={2} />
       <g className={dreht ? "wp-dreht" : undefined} style={{ transformOrigin: "95px 142px" }}>
         {[0, 120, 240].map((winkel) => (
-          <path key={winkel} d="M95 142 C 108 122, 126 112, 136 118 C 130 136, 114 146, 95 142 Z" fill={d.laeuft ? "var(--mist)" : "var(--line-2)"} opacity={0.85} transform={`rotate(${winkel} 95 142)`} />
+          <path key={winkel} d="M95 142 C 108 122, 126 112, 136 118 C 130 136, 114 146, 95 142 Z" fill={luefterAn ? "var(--mist)" : "var(--line-2)"} opacity={0.85} transform={`rotate(${winkel} 95 142)`} />
         ))}
         <circle cx={95} cy={142} r={7} fill="var(--surface-3)" stroke="var(--line-2)" />
       </g>
-      <text x={95} y={201} textAnchor="middle" fontSize={9} fill="var(--text-3)">Lüfter · nicht gemessen</text>
+      <text x={95} y={201} textAnchor="middle" fontSize={9} fill="var(--text-3)">{drehzahl != null ? `Lüfter · Drehzahl ${Math.round(drehzahl)}` : "Lüfter · nicht gemessen"}</text>
       {/* Der Verdichter mit seiner Frequenz. */}
       <circle cx={246} cy={136} r={36} fill="var(--deep)" stroke={d.laeuft ? "var(--heat-pump)" : "var(--line-2)"} strokeWidth={2.5} />
       <text x={246} y={134} textAnchor="middle" fontSize={20} fill="var(--text-1)" fontFamily="var(--font-mono)" opacity={brauchbar(d.verdichter_hz) ? 1 : 0.55}>{messwert(d.verdichter_hz, 0)}</text>

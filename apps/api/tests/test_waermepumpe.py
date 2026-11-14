@@ -389,6 +389,54 @@ def test_meldet_die_maschine_weniger_als_der_zaehler_ist_das_noch_kein_heizstab(
     assert seite(5.0, 2.18).zusatz_kw == 1.84  # type: ignore[attr-defined]
 
 
+def test_was_das_add_on_abfragt_steht_als_zahl_auf_der_seite(client: TestClient) -> None:
+    """Ventil, Heizstab, Verdichterstrom und Lüfter fragt das eBUS-Add-on ab 0.3.0 selbst ab.
+    Ventil und Heizstab bleiben Zahlen: was 0 und 1 in diesem Haus heißen, ist nicht bestätigt
+    (die Lehre aus „Puffer kühlen“)."""
+    bus = {
+        **HAUS_LAEUFT,
+        "heat_pump_valve_code": 1.0,
+        "heat_pump_heater_code": 0.0,
+        "heat_pump_compressor_a": 7.8,
+        "heat_pump_fan_speed": 600.0,
+    }
+    aus = wp.zusammensetzen(
+        now=JETZT, snap=schnappschuss(client, 3.16), laeuft_laut_zaehler=True, mess=mess_aus(bus)
+    )
+    assert aus.ventil_code == 1 and aus.heizstab_code == 0
+    assert aus.verdichter_a is not None and aus.verdichter_a.value == 7.8
+    assert aus.luefter_drehzahl is not None and aus.luefter_drehzahl.value == 600.0
+    # Ohne Abfragen (Add-on älter, oder der Bus antwortet nicht) fehlen sie, ohne Fehler.
+    ohne = wp.zusammensetzen(
+        now=JETZT,
+        snap=schnappschuss(client, 3.16),
+        laeuft_laut_zaehler=True,
+        mess=mess_aus(HAUS_LAEUFT),
+    )
+    assert ohne.ventil_code is None and ohne.heizstab_code is None
+    assert ohne.verdichter_a is not None and ohne.verdichter_a.value is None
+
+    from datetime import timedelta
+
+    from dch_api.application import reglerkennzahl as rk
+
+    # Die Auszählung stellt Kennzahl, Ventil und Heizstab nebeneinander: unter der 2 stand das
+    # Ventil immer auf 1, unter der 3 nie, und der Heizstab lief nur unter der 3 zur Hälfte.
+    zeilen: list[dict[str, float | str | None]] = [
+        {
+            "ts": (JETZT + timedelta(minutes=i)).isoformat(),
+            "heat_pump_cycle_code": 2.0 if i < 20 else 3.0,
+            "heat_pump_mode_code": 3.0,
+            "heat_pump_valve_code": 1.0 if i < 20 else 0.0,
+            "heat_pump_heater_code": 1.0 if i >= 30 else 0.0,
+        }
+        for i in range(40)
+    ]
+    nach = {z.code: z for z in rk.auswerten(zeilen)}
+    assert nach[2].ventil_1_anteil == 1.0 and nach[2].heizstab_anteil == 0.0
+    assert nach[3].ventil_1_anteil == 0.0 and nach[3].heizstab_anteil == 0.5
+
+
 def test_ein_alter_zustand_entscheidet_nichts_mehr(client: TestClient) -> None:
     """14.11.2026, 16:52 im Haus: die Seite zeigte „steht", null Hertz und einen stehenden
     Lüfter, während die Maschine seit elf Minuten lief. Der Betriebszustand stammte aus einem

@@ -4014,6 +4014,8 @@ export interface components {
             waerme_kw: number;
             /** Strom Kw */
             strom_kw: number;
+            /** Ventil */
+            ventil?: number | null;
         };
         /**
          * KontaktwirkungOut
@@ -4942,6 +4944,10 @@ export interface components {
             heizanforderung_anteil?: number | null;
             /** Flag 1B45 Anteil */
             flag_1b45_anteil?: number | null;
+            /** Ventil 1 Anteil */
+            ventil_1_anteil?: number | null;
+            /** Heizstab Anteil */
+            heizstab_anteil?: number | null;
             /** Zuletzt */
             zuletzt?: string | null;
         };
@@ -6098,6 +6104,12 @@ export interface components {
             raum_soll_c?: components["schemas"]["Measurement"] | null;
             /** Zusatz Kw */
             zusatz_kw?: number | null;
+            /** Ventil Code */
+            ventil_code?: number | null;
+            /** Heizstab Code */
+            heizstab_code?: number | null;
+            verdichter_a?: components["schemas"]["Measurement"] | null;
+            luefter_drehzahl?: components["schemas"]["Measurement"] | null;
             /** Kreis Code */
             kreis_code?: number | null;
             /** Kreis De */

@@ -33,6 +33,7 @@ REIHEN: dict[str, str] = {
     "heat_pump_mode_code": "modus",
     "heat_pump_compressor_hz": "hz",
     "heat_pump_bus_power_kw": "strom_maschine_kw",
+    "heat_pump_valve_code": "ventil",
 }
 TAGE_STANDARD = 30
 TAGE_HOECHSTENS = 180

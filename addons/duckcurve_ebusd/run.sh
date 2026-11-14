@@ -26,8 +26,10 @@ fcd8816cb24c03649c2f938ac6936b7ceb2ff0f5590c5c979d420a8259fe130d  _templates.csv
 CONFIG_REPO="https://raw.githubusercontent.com/wrongisthenewright/ebusd-configuration-ariston-bridgenet"
 
 log() { echo "[duckcurve-ebusd] $*"; }
-fatal() { log "FEHLER: $*"; sleep 60; exit 1; }
-opt() { jq -r --arg k "$1" --arg d "${2-}" '.[$k] // $d | if . == null then $d else tostring end' "$OPTIONS"; }
+fatal() { log "FEHLER: $*"; sleep "${DCH_EBUSD_FEHLERPAUSE:-60}"; exit 1; }
+# Nicht `.[$k] // $d`: für jq ist auch `false` "nichts", und aus einem ausgeschalteten Schalter
+# würde die Voreinstellung (so stand es bis 0.2.3: `read_only: false` blieb wirkungslos).
+opt() { jq -r --arg k "$1" --arg d "${2-}" 'if has($k) and .[$k] != null then .[$k] | tostring else $d end' "$OPTIONS"; }
 
 [ -r "$OPTIONS" ] || fatal "Keine Optionen unter $OPTIONS."
 log "Add-on ${DCH_ADDON_VERSION:-?}, $(ebusd --version 2>/dev/null | head -n 1)"
@@ -77,25 +79,97 @@ else
   fi
 fi
 
+# --- Arbeitsfassung: ebusd liest nie die Quelle selbst, sondern eine Kopie, die bei jedem Start
+# neu entsteht. So lässt sich aus ihr entfernen, was ebusd nicht können soll, ohne die geladene
+# oder die eigene Bus-Beschreibung anzufassen.
+QUELLE="$CONFIGPATH"
+CONFIGPATH="$DATA/ebusd-config/aktiv"
+rm -rf "$CONFIGPATH" && mkdir -p "$CONFIGPATH" && cp "$QUELLE"/*.csv "$CONFIGPATH"/ \
+  || fatal "Kann die Arbeitsfassung der Bus-Beschreibung nicht anlegen ($CONFIGPATH)."
+EIGENE="${DCH_EBUSD_EIGENE:-/etc/duckcurve}"
+
 # Die eigenen Zeilen für die Wärmepumpe dieses Hauses liegen im Abbild und kommen bei jedem
-# Start neben die geladene Bus-Beschreibung: so wirkt ein Update des Add-ons, ohne dass die
-# Bus-Beschreibung neu geladen werden muss. Eigene Dateien unter $LOCAL bleiben unberührt.
-if [ "$CONFIGPATH" != "$LOCAL" ] && [ -r /etc/duckcurve/aerotop_split.csv ]; then
-  cp /etc/duckcurve/aerotop_split.csv "$CONFIGPATH/aerotop_split.csv" \
+# Start dazu: so wirkt ein Update des Add-ons, ohne dass die Bus-Beschreibung neu geladen werden
+# muss. Wer eigene Dateien unter $LOCAL hat, bekommt sie nicht dazugemischt.
+if [ "$QUELLE" != "$LOCAL" ] && [ -r "$EIGENE/aerotop_split.csv" ]; then
+  cp "$EIGENE/aerotop_split.csv" "$CONFIGPATH/aerotop_split.csv" \
     && log "Eigene Zeilen für die Aerotop Split dazugelegt."
 fi
+
+READ_ONLY="$(opt read_only true)"
+ABFRAGEN="$(opt abfragen false)"
+
+# Zeilen zum Stellen zählen und entfernen. Die erste Spalte nennt die Art; mehrere stehen mit
+# Semikolon nebeneinander ("r;w"), ein Stern davor setzt Vorgaben. Was mit w beginnt, stellt.
+# "uw" beginnt mit u: das ist eine mitgelesene fremde Stellnachricht und bleibt.
+stellzeilen() {
+  cat "$CONFIGPATH"/*.csv | awk -F, '!/^#/ && NF { n = split($1, t, ";"); for (i = 1; i <= n; i++) { x = t[i]; sub(/^\*/, "", x); if (x ~ /^w/) c++ } } END { print c + 0 }'
+}
+ohne_stellen() {
+  awk -F, 'BEGIN { OFS = "," }
+    /^#/ || !NF { print; next }
+    { n = split($1, t, ";"); neu = ""
+      for (i = 1; i <= n; i++) { x = t[i]; sub(/^\*/, "", x); if (x !~ /^w/) neu = (neu == "" ? t[i] : neu ";" t[i]) }
+      if (neu == "") next
+      $1 = neu; print }' "$1" > "$1.neu" && mv "$1.neu" "$1"
+}
 
 ARGS=(--foreground --updatecheck=off "--device=$ADAPTER" "--latency=$(opt latency_ms 120)"
   "--configpath=$CONFIGPATH" "--log=all:$(opt log_level notice)"
   "--mqtthost=$MQTT_HOST" "--mqttport=$MQTT_PORT" "--mqtttopic=$(opt mqtt_topic ebusd)" --mqttjson)
 [ -n "$MQTT_USER" ] && ARGS+=("--mqttuser=$MQTT_USER" "--mqttpass=$MQTT_PASS")
-if [ "$(opt read_only true)" = "true" ]; then
+if [ "$ABFRAGEN" = "true" ] && [ -r "$EIGENE/aerotop_abfragen.csv" ]; then
+  # Die geladene Bus-Beschreibung kennt dieselben Kennungen unter anderem Namen, und ebusd nimmt
+  # eine Kennung nur einmal ("duplicate ID", im Probelauf am 14.11.2026 gesehen: die Zeilen zum
+  # Abfragen fielen stillschweigend weg). Deshalb weichen die fremden Zeilen den eigenen.
+  for datei in "$CONFIGPATH"/*.csv; do
+    awk -F, 'NR == FNR { if ($1 ~ /^r[1-9]$/) k[tolower($6 FS $7 FS $8)] = 1; next }
+      !($1 ~ /^r/ && (tolower($6 FS $7 FS $8) in k))' "$EIGENE/aerotop_abfragen.csv" "$datei" > "$datei.neu" \
+      && mv "$datei.neu" "$datei" || fatal "Kann $(basename "$datei") nicht für die Abfragen vorbereiten."
+  done
+  cp "$EIGENE/aerotop_abfragen.csv" "$CONFIGPATH/aerotop_abfragen.csv" \
+    || fatal "Kann die Zeilen zum Abfragen nicht dazulegen."
+  # ebusd selbst fragen, ob es die Zeilen nimmt. Lehnt es sie ab, liefe es sonst ohne sie weiter
+  # und niemand sähe es.
+  # Am Rückgabewert lässt sich das nicht ablesen (er ist mit dieser Bus-Beschreibung immer 1,
+  # wegen "max message ID length exceeded"), wohl aber an der Ausgabe: ebusd nennt, wie viele
+  # Zeilen zum Abfragen es gefunden hat.
+  pruefung="$(ebusd --checkconfig "--configpath=$CONFIGPATH" 2>&1)"
+  soll="$(grep -c '^r[1-9],' "$EIGENE/aerotop_abfragen.csv")"
+  ist="$(echo "$pruefung" | sed -n 's/.*[ (]\([0-9][0-9]*\) poll.*/\1/p' | tail -n 1)"
+  if [ "$ist" != "$soll" ] || echo "$pruefung" | grep -q "ERR:"; then
+    log "ebusd nimmt die Zeilen zum Abfragen nicht an (${ist:-keine} von $soll). Es wird nur gelauscht. Die Meldung:"
+    echo "$pruefung" | grep "ERR:\|found messages" | head -n 5 | while IFS= read -r zeile; do log "  $zeile"; done
+    rm -f "$CONFIGPATH/aerotop_abfragen.csv"
+    ABFRAGEN="false"
+  fi
+else
+  ABFRAGEN="false"
+fi
+if [ "$READ_ONLY" = "true" ] && [ "$ABFRAGEN" != "true" ]; then
   ARGS+=(--readonly)
   log "Nur lesend: ebusd schreibt nichts auf den Bus."
+elif [ "$READ_ONLY" = "true" ]; then
+  vorher="$(stellzeilen)"
+  for datei in "$CONFIGPATH"/*.csv; do
+    ohne_stellen "$datei" || fatal "Kann die Zeilen zum Stellen nicht aus $(basename "$datei") entfernen."
+  done
+  [ "$(stellzeilen)" = "0" ] || fatal "In der Bus-Beschreibung stehen noch Zeilen zum Stellen. Nicht gestartet."
+  ARGS+=("--pollinterval=$(opt abfrage_takt_s 10)")
+  log "Abfragen an: ebusd fragt $(grep -c '^r[1-9],' "$CONFIGPATH/aerotop_abfragen.csv") Werte reihum ab, alle $(opt abfrage_takt_s 10) s einen."
+  log "Stellen kann ebusd nichts: $vorher Zeilen zum Stellen aus der Bus-Beschreibung entfernt, keine übrig."
 else
+  if [ "$ABFRAGEN" = "true" ]; then ARGS+=("--pollinterval=$(opt abfrage_takt_s 10)"); fi
   log "ACHTUNG: read_only ist aus. ebusd darf auf den Bus schreiben (Werte abfragen und, wenn jemand es verlangt, stellen)."
 fi
-while IFS= read -r extra; do [ -n "$extra" ] && ARGS+=("$extra"); done < <(jq -r '.extra_args // [] | .[]' "$OPTIONS")
+while IFS= read -r extra; do
+  [ -n "$extra" ] || continue
+  # Diese beiden Schalter öffnen einen Weg, beliebige Telegramme zu senden. Mit read_only nie.
+  case "$extra" in --enablehex*|--enabledefine*)
+    [ "$READ_ONLY" = "true" ] && fatal "extra_args enthält $extra. Das verträgt sich nicht mit read_only." ;;
+  esac
+  ARGS+=("$extra")
+done < <(jq -r '.extra_args // [] | .[]' "$OPTIONS")
 
 # Das Passwort gehört nicht ins Protokoll.
 log "ebusd ${ARGS[*]//--mqttpass=*/--mqttpass=***}"

@@ -38,6 +38,8 @@ REIHEN = (
     "hp_release_contact",
     "heat_pump_heat_request",
     "heat_pump_flag_1b45",
+    "heat_pump_valve_code",
+    "heat_pump_heater_code",
 )
 TAGE_STANDARD = 7
 TAGE_HOECHSTENS = 60
@@ -67,6 +69,10 @@ class _Summe:
     heizt_n: int = 0
     flagge: int = 0
     flagge_n: int = 0
+    ventil_1: int = 0
+    ventil_n: int = 0
+    stab_an: int = 0
+    stab_n: int = 0
     zuletzt: datetime | None = None
 
 
@@ -115,6 +121,14 @@ def auswerten(zeilen: Sequence[dict[str, float | str | None]]) -> list[ReglerKen
         if flagge is not None:
             s.flagge_n += 1
             s.flagge += 1 if flagge >= 0.5 else 0
+        ventil = _zahl(zeile.get("heat_pump_valve_code"))
+        if ventil is not None:
+            s.ventil_n += 1
+            s.ventil_1 += 1 if ventil >= 0.5 else 0
+        stab = _zahl(zeile.get("heat_pump_heater_code"))
+        if stab is not None:
+            s.stab_n += 1
+            s.stab_an += 1 if stab >= 0.5 else 0
         if laeuft:
             s.lauf += 1
             vorlauf = _zahl(zeile.get("flow_temp_c"))
@@ -165,6 +179,8 @@ def auswerten(zeilen: Sequence[dict[str, float | str | None]]) -> list[ReglerKen
             zusatz_kw=round(s.zusatz / s.zusatz_n, 2) if s.zusatz_n else None,
             heizanforderung_anteil=round(s.heizt_an / s.heizt_n, 2) if s.heizt_n else None,
             flag_1b45_anteil=round(s.flagge / s.flagge_n, 2) if s.flagge_n else None,
+            ventil_1_anteil=round(s.ventil_1 / s.ventil_n, 2) if s.ventil_n else None,
+            heizstab_anteil=round(s.stab_an / s.stab_n, 2) if s.stab_n else None,
             zuletzt=s.zuletzt,
         )
         for code, s in sorted(summen.items(), key=lambda kv: -kv[1].minuten)

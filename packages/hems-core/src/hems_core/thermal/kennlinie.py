@@ -123,6 +123,9 @@ class Minute:
     #: Die Leistungsaufnahme nach Auskunft der Maschine selbst. Mit ihr lässt sich erkennen, ob
     #: der Zähler noch etwas anderes misst als den Verdichter.
     strom_maschine_kw: float | None = None
+    #: Die Stellung des Umschaltventils als Zahl des Reglers (abgefragt seit dem 14.11.2026).
+    #: Laut Bus-Beschreibung 0 Warmwasser, 1 Heizung; im Haus noch nicht gegengeprüft.
+    ventil: float | None = None
 
 
 def zusatz_kw(
@@ -185,6 +188,8 @@ class Messpunkt:
     cop: float
     waerme_kw: float
     strom_kw: float
+    #: Die Stellung des Umschaltventils, wenn sie in allen Minuten des Fensters dieselbe war.
+    ventil: int | None = None
 
 
 @dataclass(frozen=True)
@@ -222,7 +227,9 @@ PFLICHT = {
     "strom_kw": "Zähler",
 }
 #: Alle Reihen, deren letzter Wert kurz weiter gilt.
-_REIHEN = (*PFLICHT, "modus", "hz", "strom_maschine_kw")
+_REIHEN = (*PFLICHT, "modus", "hz", "strom_maschine_kw", "ventil")
+#: Davon die Zustände: zwischen zwei Zuständen liegt kein dritter, der alte gilt weiter.
+_ZUSTAENDE = frozenset({"modus", "ventil"})
 
 
 @dataclass
@@ -275,7 +282,7 @@ def auffuellen(minuten: Sequence[Minute]) -> list[Minute]:
                 for j in offen:
                     anteil = (reihe[j].ts - davor[0]).total_seconds() / spanne
                     nach[j][name] = (
-                        davor[1] if name == "modus" else davor[1] + (wert - davor[1]) * anteil
+                        davor[1] if name in _ZUSTAENDE else davor[1] + (wert - davor[1]) * anteil
                     )
             davor = (m.ts, wert)
             offen = []
@@ -372,8 +379,10 @@ def auswerten(minuten: Sequence[Minute]) -> tuple[list[Messpunkt], Bilanz]:
             b.unglaubwuerdig += 1
             continue
         n = len(teile)
+        stellungen = {None if m.ventil is None else round(m.ventil) for m, _ in teile}
         punkte.append(
             Messpunkt(
+                ventil=stellungen.pop() if len(stellungen) == 1 else None,
                 at=start,
                 minuten=n,
                 aussen_c=round(sum(m.aussen_c or 0.0 for m, _ in teile) / n, 2),

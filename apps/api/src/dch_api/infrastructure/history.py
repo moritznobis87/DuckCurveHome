@@ -55,6 +55,11 @@ SERIES = (
     "heat_pump_flag_1b45",  # Kennung 1b45 des Busses, Bedeutung offen (neben 1c45 Heizstab)
     "heat_pump_cmd_mode_code",  # Vorgabe des Reglers an die Maschine, Kennung cd46: 0 aus, 3 Heizen
     "heat_pump_cmd_target_c",  # Vorgabe des Reglers an die Maschine, Kennung 6a47, Bedeutung offen
+    # Was das eBUS-Add-on ab 0.3.0 selbst abfragt. Zahlen, deren Bedeutung im Haus noch offen ist.
+    "heat_pump_valve_code",  # Umschaltventil (0601): laut Bus-Beschreibung 0 Warmwasser, 1 Heizung
+    "heat_pump_heater_code",  # elektrische Zusatzheizung (1c45): laut Bus-Beschreibung 1 an
+    "heat_pump_compressor_a",  # Strom des Verdichters in Ampere (714f)
+    "heat_pump_fan_speed",  # Drehzahl des Lüfters (6e4f), Einheit nicht belegt
     # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
     # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
     "stove_state",  # Zustandscode der Maestro-Firmware
