@@ -115,3 +115,29 @@ def test_was_die_punkte_nicht_hergeben_wird_nicht_erfunden() -> None:
     gefuehrt = [punkt(-6.0 + i, 50.0 - 1.2 * i, 3.0 + 0.15 * i, i) for i in range(13)]
     f = k.ausgleich(gefuehrt)
     assert f is not None and f.art == "aussen" and f.c_vorlauf == 0.0
+
+
+def test_minuten_mit_heizstab_gehoeren_nicht_in_die_kennlinie() -> None:
+    """Am 14.11.2026 um 11:18 standen im Haus 8,84 kW am Zähler bei 64 Hz, eine Stunde nach
+    3,16 kW bei 65 Hz: neben dem Verdichter lief etwas anderes, und die Arbeitszahl fiel auf
+    1,6. Ein solches Fenster sagt nichts über die Wärmepumpe."""
+    mit_stab = [minute(i, strom_kw=8.84, strom_maschine_kw=3.1) for i in range(30)]
+    assert k.messpunkte(mit_stab) == []
+    assert k.zusatz_minuten(mit_stab) == 30
+    assert k.zusatz_kw(8.84, 3.1) == 5.74
+    # Ohne Heizstab weicht der Zähler um Lüfter, Pumpe und Regler ab; das ist kein Zusatz.
+    ohne = [minute(i, strom_kw=3.16, strom_maschine_kw=2.95) for i in range(30)]
+    assert len(k.messpunkte(ohne)) == 2 and k.zusatz_minuten(ohne) == 0
+    assert k.zusatz_kw(3.16, 2.95) is None
+    # Meldet die Maschine ihre Aufnahme nicht, lässt sich nichts erkennen; die Minute zählt.
+    assert len(k.messpunkte([minute(i) for i in range(30)])) == 2
+    assert k.zusatz_kw(8.84, None) is None and k.zusatz_kw(None, 3.1) is None
+    # Zehn Minuten Heizstab mitten im Lauf: nur das betroffene Fenster fällt heraus, der Lauf
+    # selbst ist nicht unterbrochen.
+    teils = [
+        minute(i, strom_kw=8.8 if 20 <= i < 30 else 3.16, strom_maschine_kw=3.0) for i in range(40)
+    ]
+    assert [p.at for p in k.messpunkte(teils)] == [
+        T0 + timedelta(minutes=10),
+        T0 + timedelta(minutes=30),
+    ]

@@ -837,6 +837,9 @@ button.ansicht { cursor: pointer; }
 .kl-tabelle th { text-align: left; font-weight: 500; font-size: 12px; color: var(--text-3); padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line-1); }
 .kl-tabelle td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line-1); color: var(--text-1); }
 .kl-tabelle tr[data-gemessen="false"] td { color: var(--text-3); }
+.kl-tabelle tr[data-aktuell="true"] td { color: var(--amber); }
+.kl-rollt { overflow-x: auto; }
+.kl-rollt .kl-tabelle { min-width: 760px; }
 .kl-liste { font-size: 14px; color: var(--text-2); }
 .kl-liste summary { cursor: pointer; padding: 6px 0; }
 .kl-liste[open] summary { margin-bottom: 8px; }

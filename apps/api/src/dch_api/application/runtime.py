@@ -33,6 +33,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    ReglerKennzahlenOut,
     RoomEffectOut,
     RoomHistoryOut,
     RoomLogOut,
@@ -67,6 +68,8 @@ class Runtime(Protocol):
     async def waermepumpe(self) -> WaermepumpeOut: ...
 
     async def kennlinie(self, tage: int) -> KennlinieOut: ...
+
+    async def reglerkennzahlen(self, tage: int) -> ReglerKennzahlenOut: ...
 
     async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut: ...
     async def kontaktwirkung(self, days: int) -> KontaktwirkungOut: ...

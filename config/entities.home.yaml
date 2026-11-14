@@ -148,9 +148,11 @@ mqtt:
       "heatpump/hp_betrieb":
         compressor_hz: heat_pump_compressor_hz
         mode: heat_pump_mode_code
-      # Betriebsart des Reglers (Kennung c94b; ab Add-on 0.2.2): 0 Bereitschaft, 2 Heizen,
-      # 3 Warmwasser, 16 PV-Nutzung. Sie kommt in einer Liste mit der Hauptpumpe und allein;
-      # die Liste wird nur gelesen, wenn ihre Kennungen stimmen.
+      # Kennzahl des Reglers (Kennung c94b; ab Add-on 0.2.2). Was die Zahlen bedeuten, ist für
+      # diese Anlage nicht entschlüsselt: die Wörter der fremden Liste passen nicht (bei 20 stand
+      # dort „Puffer kühlen", 14.11.2026). Gesehen: 0 stehend, 16 und 20 laufend. Sie kommt in
+      # einer Liste mit der Hauptpumpe und allein; die Liste wird nur gelesen, wenn ihre
+      # Kennungen stimmen.
       "energymgr/pumpe_status":
         kennung_2: "=c7 4b"
         kennung_3: "=c9 4b"

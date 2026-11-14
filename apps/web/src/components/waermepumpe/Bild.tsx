@@ -86,8 +86,8 @@ function Innengeraet({ d, ruhig }: { d: Waermepumpe; ruhig: boolean }) {
     <g>
       <rect width={w} height={h} rx={14} fill="var(--surface-2)" stroke="var(--line-2)" />
       <text x={16} y={26} fontSize={13} fontWeight={600} fill="var(--text-1)">Innengerät</text>
-      {/* Die Betriebsart des Reglers: aus ihr folgt, wohin der Vorlauf in den Speicher führt. */}
-      <Schild x={14} y={40} w={128} name="Betriebsart" wert={d.kreis_de ?? "?"} einheit="" />
+      {/* Die Kennzahl des Reglers. Ein Wort steht nur da, wo es im Haus bestätigt ist. */}
+      <Schild x={14} y={40} w={128} name="Regler meldet" wert={d.kreis_de ?? "?"} einheit="" />
       <Schild x={150} y={40} w={136} name="Vorlauf soll" wert={messwert(d.vorlauf_soll_c)} einheit="°C" m={d.vorlauf_soll_c} />
       {/* Der Wärmetauscher: hier geht die Wärme vom Kältemittel ins Wasser. */}
       <rect x={30} y={92} width={56} height={84} rx={6} fill="var(--deep)" stroke="var(--line-2)" />

@@ -718,43 +718,82 @@ Wärmeseite.
 Nicht geprüft: die Seite mit den echten Werten des Hauses. Geprüft ist sie in der Vorführung, am
 Telefon (390 Punkte) und an der Wandanzeige (1280 Punkte), im Lauf und im Stillstand.
 
-### Wohin die Wärmepumpe einspeist: die Betriebsart des Reglers
+### Wohin die Wärmepumpe einspeist: die Kennzahl des Reglers
 
 Stand 14.11.2026. Am Morgen lief die Maschine mit 36,2 °C Vorlauf, während der Speicher oben
 36,1 °C hatte: sie speiste also nicht oben ein. Der Hausherr: bei der Warmwasserbereitung führt
 das Umschaltventil den Vorlauf oben in den Speicher, im Heizbetrieb tiefer.
 
 **Die Stellung des Ventils sendet der Bus nicht von selbst.** Die fremde Bus-Beschreibung kennt
-sie (Kennung `0601`, `heatpump_3way_valve_dhw_heat`, 0 Warmwasser, 1 Heizen), aber nur als
-Antwort auf eine Frage; in den drei Protokollen des Hauses kommt die Kennung in keinem Telegramm
-vor (gesucht in allen mitgeschriebenen Telegrammen, 14.11.2026). Sie zu lesen hieße, auf dem Bus
-zu fragen; das Add-on fragt nicht.
+sie (Kennung `0601`, `heatpump_3way_valve_dhw_heat`), aber nur als Antwort auf eine Frage; in
+den Protokollen des Hauses kommt die Kennung in keinem Telegramm vor (gesucht in allen
+mitgeschriebenen Telegrammen, 14.11.2026). Sie zu lesen hieße, auf dem Bus zu fragen; das
+Add-on fragt nicht.
 
-**Was der Regler von selbst sendet, ist seine Betriebsart** (Kennung `c94b`, in der fremden
-Beschreibung `hybrid_status`): 0 Bereitschaft, 2 Heizen, 3 Warmwasser, 16 PV-Nutzung, 19 Puffer
-heizen und Warmwasser. Sie kommt im Rundruf in einer Liste mit der Hauptpumpe
-(`13fe20100cc2000100c74b8e00c94b1000`) und allein (`13fe201004c94b0000`). Im Haus gesehen:
+**Was der Regler von selbst sendet, ist eine Kennzahl** (Kennung `c94b`), im Rundruf in einer
+Liste mit der Hauptpumpe (`13fe20100cc2000100c74b8e00c94b1000`) und allein
+(`13fe201004c94b0000`). Im Haus gesehen:
 
 | Wann | Maschine | `c94b` |
 |---|---|---|
-| 13.11.2026, 23:20 und 14.11., 00:06 | steht | 0, Bereitschaft |
-| 13.11.2026, 23:30 | läuft | 16, PV-Nutzung |
+| 13.11.2026, 23:20 und 14.11., 00:06 | steht | 0 |
+| 13.11.2026, 23:30 | läuft | 16 |
+| 14.11.2026, 11:18 | läuft, Zähler 8,84 kW | 20 |
 
-Die 16 passt dazu, dass Duck Curve Home die Maschine in dieser Nacht über den Kontakt
-freigegeben hatte, den der Regler als Eingang für Solarstrom kennt. Heizen (2) und Warmwasser
-(3) sind im Haus **noch nicht gesehen**.
+**Die Wörter der fremden Liste gelten für diese Anlage nicht.** Sie nennt die Kennung
+`hybrid_status` und gibt jeder Zahl ein Wort (2 Heizen, 3 Warmwasser, 16 PV-Nutzung, 20 Puffer
+kühlen und Warmwasser). Die Liste stammt von einer Hybridanlage derselben Herstellergruppe. Am
+14.11.2026 zeigte die Seite damit „Puffer kühlen“ an einer Maschine, die im November den Puffer
+heizt. Der Fehler lag darin, die Wörter ungeprüft zu übernehmen. Seitdem zeigt die Seite die
+Zahl; ein Wort hat nur die 0 („Bereitschaft“), die in drei Protokollen bei stehender Maschine
+stand. Ob die Zahl überhaupt eine Aufzählung ist oder einzelne Bits meint (16 und 20
+unterscheiden sich um genau ein Bit), ist offen.
 
-Das Add-on liest die Betriebsart ab 0.2.2 mit zwei eigenen Zeilen (`pumpe_status` mit den
+**Entschlüsselt wird sie aus dem Haus, nicht aus der Liste.** Der Dienst zählt aus den
+gespeicherten Minuten aus, was die Maschine unter jeder Kennzahl tat
+(`apps/api/src/dch_api/application/reglerkennzahl.py`, `GET /api/v1/waermepumpe/kennzahlen`):
+Minuten, Lauf, Vorlauf, Sollwert, Erwärmung des Speichers am obersten Fühler und am Fühler
+Mitte unten, Abstand zwischen Zähler und Maschine, Anforderung durch Duck Curve Home. Die
+Tabelle steht unter der Zeichnung. Sie deutet nichts: ein kühler Speicher wird auch im
+Heizbetrieb oben wärmer, und ein Sollwert allein sagt nichts. Wer sie gelesen hat, trägt die
+Zuordnung in `waermepumpe.KREIS_DE` und `EINSPEISUNG` ein; erst dann führt die Zeichnung den
+Vorlauf bei Warmwasser oben und im Heizbetrieb seitlich auf halber Höhe in das Glas. **Wo am
+Speicher der untere Anschluss sitzt, ist nicht vermessen**; „halbe Höhe“ ist die Zeichnung.
+
+Das Add-on liest die Kennzahl ab 0.2.2 mit zwei eigenen Zeilen (`pumpe_status` mit den
 Kennungen der Folgewerte als eigene Felder, `betriebsart`); beide sind mit ebusd 26.1 an den
 Telegrammen des Hauses geprüft. Die Bridge liest die Liste nur, wenn die Kennungen stimmen. Der
 Dienst speichert sie als Minutenreihe `heat_pump_cycle_code` (Migration `d0a6b2f85e4b`).
 
-Auf der Seite steht sie im Innengerät, und die Zeichnung führt den Vorlauf danach: bei
-Warmwasser (3), Legionellenschutz (4) und Frostschutz Warmwasser (15) oben in das Glas, bei
-Heizen (2) und Estrichtrocknung (7) seitlich auf halber Höhe. **Wo genau am Speicher der untere
-Anschluss sitzt, ist nicht vermessen**; „halbe Höhe“ ist die Zeichnung, nicht der Stutzen. Für
-die übrigen Betriebsarten, auch die PV-Nutzung, ist nicht bekannt, wohin eingespeist wird; die
-Seite sagt das und lässt die Leitung oben.
+### Der Zähler misst mehr als die Maschine: vermutlich der Heizstab
+
+14.11.2026, 11:18, im Haus: 8,84 kW am Zähler bei 64 Hz Verdichterfrequenz, Vorlauf 43,2 °C,
+Rücklauf 36,3 °C, Verdampfer 1,5 °C bei 7,0 °C draußen, Heißgas 73,2 °C; die Seite rechnete
+daraus eine Arbeitszahl von 1,6. Eine Stunde vorher (10:20) waren es bei 65 Hz 3,16 kW.
+
+* **Kein Abtauen.** Der Hausherr vermutete es. Beim Abtauen wäre der Verdampfer warm und der
+  Vorlauf kälter als der Rücklauf; hier war der Verdampfer kälter als die Außenluft und das
+  Wasser wurde um 6,9 K erwärmt.
+* **Knapp 6 kW neben dem Verdichter.** Derselbe Verdichter nimmt bei fast gleicher Frequenz
+  nicht das Dreifache auf. An der Zuleitung, die der Zähler misst, läuft also etwas anderes
+  mit, vermutlich der elektrische Heizstab der Inneneinheit. **Nicht bestätigt:** die Kennung
+  des Heizstabs (`1c45`, `heatpump_electric_heater`) kommt auf dem Bus nur auf Nachfrage, und
+  welche Stufen er hat, steht in keiner Unterlage, die hier vorliegt.
+* Der Hausherr hält eine laufende Warmwasserbereitung für die Ursache.
+
+Was die Maschine für sich meldet (`hp_power`, Kennung 7c4f), lag um 11:18 nicht vor; der
+Vergleich ist deshalb erst künftig möglich. Dafür gibt es jetzt:
+
+| Festlegung | Wert | Herkunft |
+|---|---|---|
+| Zusatz gilt als erkannt | Zähler mindestens 1,5 kW über der Maschine | gesetzt: unter der kleinsten Stufe eines Heizstabs, über Lüfter, Umwälzpumpe und Regler; nicht gemessen |
+
+Die Seite der Wärmepumpe weist den Zusatz aus, sobald er erkannt ist, und sagt, dass die
+Arbeitszahl ihn enthält. Die Kennlinie lässt solche Minuten aus und nennt ihre Zahl
+(`kennlinie.ZUSATZ_KW`): ein Heizstab hat die Arbeitszahl eins und gehört nicht in die Kennlinie
+des Verdichters. **Offen:** ob `hp_power` die ganze Aufnahme der Maschine ohne Heizstab ist.
+Läge sie grundsätzlich weit unter dem Zähler, fielen alle Minuten heraus; die Zahl der
+ausgelassenen Minuten auf der Kennlinien-Seite zeigt das.
 
 ### Wenn der Bus schweigt
 
@@ -861,7 +900,9 @@ seiner Kennlinie.
 * Abtauen zählt nicht mit: das ist die Arbeitszahl im Heizbetrieb, nicht die eines Tages.
 * Der Durchflussgeber ist nicht geeicht, die Zuordnung des Rücklaufs nicht bestätigt. Ein Fehler
   dort verschiebt alle Punkte gemeinsam.
-* Die Betriebsart (Heizen, Warmwasser) wird gespeichert, aber noch nicht getrennt ausgewertet.
+* Die Kennzahl des Reglers wird gespeichert, ist aber nicht entschlüsselt; nach Heizen und
+  Warmwasser wird deshalb noch nicht getrennt.
+* Minuten mit Heizstab (Zähler mindestens 1,5 kW über der Maschine) zählen nicht mit.
 * Der Fahrplan rechnet weiter mit seiner Annahme (`cop_curve`); übernommen wird nichts von
   selbst.
 * Punkte gibt es erst seit dem 14.11.2026, als die Buswerte den Dienst erreichten. Die Seite ist

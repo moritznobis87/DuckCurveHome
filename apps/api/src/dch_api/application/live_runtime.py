@@ -30,6 +30,7 @@ from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
+from dch_api.application import reglerkennzahl as kennzahl_logic
 from dch_api.application import room_log as room_log_logic
 from dch_api.application import waermepumpe as wp_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
@@ -102,6 +103,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    ReglerKennzahlenOut,
     RoomEffectOut,
     RoomHistoryOut,
     RoomLiveOut,
@@ -204,6 +206,7 @@ class LiveRuntime:
         self.config = config
         self.hems = config.hems
         self._kennlinie: dict[int, KennlinieOut] = {}
+        self._kennzahlen: dict[int, ReglerKennzahlenOut] = {}
         self.repos = repos
         self.hub = hub
         self.forecasts = forecasts
@@ -1282,6 +1285,20 @@ class LiveRuntime:
             bus_stumm_de=wp_logic.bus_auskunft(stand, BERLIN),
         )
 
+    async def reglerkennzahlen(self, tage: int) -> ReglerKennzahlenOut:
+        """Was die Maschine unter welcher Kennzahl ihres Reglers tat, aus den Minuten der
+        letzten `tage` Tage. Fünf Minuten gehalten, wie die Kennlinie."""
+        now = self.now
+        gemerkt = self._kennzahlen.get(tage)
+        if gemerkt is not None and now - gemerkt.now < timedelta(minutes=5):
+            return gemerkt
+        zeilen = await self.repos.minute_series(
+            now - timedelta(days=tage), now, list(kennzahl_logic.REIHEN)
+        )
+        aus = kennzahl_logic.zusammensetzen(now, tage, zeilen)
+        self._kennzahlen[tage] = aus
+        return aus
+
     async def kennlinie(self, tage: int) -> KennlinieOut:
         """Die gemessene Kennlinie aus den gespeicherten Minuten der letzten `tage` Tage.
 
@@ -1295,12 +1312,14 @@ class LiveRuntime:
         zeilen = await self.repos.minute_series(
             now - timedelta(days=tage), now, list(kennlinie_logic.REIHEN)
         )
+        minuten = kennlinie_logic.minuten(zeilen)
         aus = kennlinie_logic.zusammensetzen(
             now=now,
             tage=tage,
-            punkte=kennlinie_kern.messpunkte(kennlinie_logic.minuten(zeilen)),
+            punkte=kennlinie_kern.messpunkte(minuten),
             heat=self.hems.heat_demand,
             buffer=self.hems.buffer,
+            zusatz_min=kennlinie_kern.zusatz_minuten(minuten),
         )
         self._kennlinie[tage] = aus
         return aus

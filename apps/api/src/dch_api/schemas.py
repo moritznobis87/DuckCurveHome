@@ -1227,6 +1227,9 @@ class WaermepumpeOut(BaseModel):
     spreizung_k: float | None = None
     waermeleistung_kw: float | None = None
     arbeitszahl: float | None = None
+    #: Was der Zähler mehr aufnimmt, als die Maschine für sich meldet, wenn es deutlich mehr
+    #: ist (ab 1,5 kW): neben dem Verdichter läuft dann etwas anderes, vermutlich der Heizstab.
+    zusatz_kw: float | None = None
     #: Die Betriebsart des Reglers (Kennung c94b des Busses) als Zahl und als Wort.
     kreis_code: int | None = None
     kreis_de: str | None = None
@@ -1238,6 +1241,33 @@ class WaermepumpeOut(BaseModel):
     #: des Weges es hängt, soweit Dienst und Bridge das wissen (`waermepumpe.bus_auskunft`).
     bus_stumm_de: str | None = None
     hinweise_de: list[str] = Field(default_factory=list)
+
+
+class ReglerKennzahlOut(BaseModel):
+    """Was in den Minuten geschah, in denen der Regler diese Kennzahl sendete."""
+
+    code: int
+    minuten: int
+    #: Minuten davon, in denen der Verdichter lief.
+    lauf_min: int
+    #: Mittel über die Minuten im Lauf.
+    vorlauf_c: float | None = None
+    vorlauf_soll_c: float | None = None
+    #: Wie schnell der Speicher im Lauf wärmer wurde, am obersten Fühler und am Fühler Mitte
+    #: unten, in Kelvin je Stunde. `None` unter zwanzig Minuten Lauf.
+    oben_k_h: float | None = None
+    unten_k_h: float | None = None
+    #: Anteil der Minuten, in denen Duck Curve Home die Maschine angefordert hatte.
+    angefordert_anteil: float | None = None
+    #: Was der Zähler im Lauf im Mittel mehr aufnahm, als die Maschine für sich meldete.
+    zusatz_kw: float | None = None
+    zuletzt: datetime | None = None
+
+
+class ReglerKennzahlenOut(BaseModel):
+    now: datetime
+    tage: int
+    zeilen: list[ReglerKennzahlOut] = Field(default_factory=list)
 
 
 class KennlinienPunktOut(BaseModel):

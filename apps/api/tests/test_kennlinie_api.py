@@ -103,4 +103,4 @@ def test_die_vorfuehrung_zeigt_eine_kennlinie_mit_ausgleich(client: TestClient) 
     assert client.get("/api/v1/waermepumpe/kennlinie", params={"tage": 0}).status_code == 422
     # Die Technikseite der Vorführung nennt die Betriebsart.
     wp = client.get("/api/v1/waermepumpe").json()
-    assert wp["kreis_de"] in ("Heizen", "Bereitschaft")
+    assert wp["kreis_de"] in ("Kennzahl 2", "Bereitschaft")

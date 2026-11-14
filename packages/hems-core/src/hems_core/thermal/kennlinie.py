@@ -14,6 +14,9 @@ zusammengehören; über zehn Minuten mittelt sich das heraus.
 **Warum der Anlauf fehlt.** Nach dem Start heizt die Maschine erst sich selbst und ihr Wasser
 auf. Die Arbeitszahl dieser Minuten sagt etwas über den Start, nichts über die Kennlinie.
 
+**Ohne Heizstab.** Misst der Zähler deutlich mehr, als die Maschine für sich meldet, läuft die
+elektrische Zusatzheizung mit. Solche Minuten zählen nicht (`ZUSATZ_KW`).
+
 **Was der Punkt nicht ist.** Abtauphasen fallen heraus (die Maschine heizt dann nicht), also
 ist das die Arbeitszahl im Heizbetrieb, nicht die eines Tages. Und sie erbt die Vorbehalte der
 Messung: der Durchflussgeber ist nicht geeicht, die Zuordnung des Rücklaufs nicht bestätigt
@@ -50,6 +53,14 @@ MIN_SPREIZUNG_K = 0.5
 #: Unter dieser Leistungsaufnahme läuft der Verdichter nicht.
 MIN_LEISTUNG_KW = 0.3
 
+#: Nimmt der Zähler an der Zuleitung so viel mehr auf, als die Maschine für sich meldet, läuft
+#: neben dem Verdichter etwas anderes, vermutlich der elektrische Heizstab. Am 14.11.2026 um
+#: 11:18 standen im Haus 8,84 kW am Zähler bei 64 Hz; eine Stunde vorher waren es bei 65 Hz
+#: 3,16 kW. Solche Minuten gehören nicht in die Kennlinie der Wärmepumpe: ein Heizstab hat die
+#: Arbeitszahl eins. Gesetzt auf 1,5 kW, unter der kleinsten Stufe eines Heizstabs und über dem,
+#: was Lüfter, Umwälzpumpe und Regler aufnehmen.
+ZUSATZ_KW = 1.5
+
 #: Der Betriebszustand „heizt" der Maschine (`heat_pump_mode_code`). Abtauen ist 9.
 MODUS_HEIZT = 3
 #: Länge eines Fensters in Minuten; Fenster liegen auf dem Raster der Uhr.
@@ -81,6 +92,18 @@ class Minute:
     strom_kw: float | None
     modus: float | None = None
     hz: float | None = None
+    #: Die Leistungsaufnahme nach Auskunft der Maschine selbst. Mit ihr lässt sich erkennen, ob
+    #: der Zähler noch etwas anderes misst als den Verdichter.
+    strom_maschine_kw: float | None = None
+
+
+def zusatz_kw(zaehler_kw: float | None, maschine_kw: float | None) -> float | None:
+    """Was der Zähler mehr misst, als die Maschine für sich meldet, wenn es mehr als `ZUSATZ_KW`
+    ist. `None`: kein Zusatz erkennbar, oder einer der beiden Werte fehlt."""
+    if zaehler_kw is None or maschine_kw is None:
+        return None
+    mehr = zaehler_kw - maschine_kw
+    return round(mehr, 2) if mehr >= ZUSATZ_KW else None
 
 
 @dataclass(frozen=True)
@@ -141,6 +164,8 @@ def _waerme_kw(m: Minute) -> float | None:
         or m.strom_kw is None
     ):
         return None
+    if zusatz_kw(m.strom_kw, m.strom_maschine_kw) is not None:
+        return None  # der Heizstab läuft mit: keine Minute der Wärmepumpe allein
     spreizung = m.vorlauf_c - m.ruecklauf_c
     if (
         m.durchfluss_l_min < MIN_DURCHFLUSS
@@ -149,6 +174,11 @@ def _waerme_kw(m: Minute) -> float | None:
     ):
         return None
     return m.durchfluss_l_min * spreizung * KW_JE_L_MIN_K
+
+
+def zusatz_minuten(minuten: Sequence[Minute]) -> int:
+    """In wie vielen Minuten neben dem Verdichter etwas anderes Strom nahm."""
+    return sum(1 for m in minuten if zusatz_kw(m.strom_kw, m.strom_maschine_kw) is not None)
 
 
 def messpunkte(minuten: Sequence[Minute]) -> list[Messpunkt]:

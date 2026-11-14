@@ -531,6 +531,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/waermepumpe/kennzahlen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die Kennzahlen des Reglers
+         * @description Was die Wärmepumpe unter welcher Kennzahl ihres Reglers tat: Minuten, Lauf, Vorlauf,
+         *     Sollwert, Erwärmung des Speichers oben und unten. Belege, keine Deutung.
+         */
+        get: operations["kennzahlen_api_v1_waermepumpe_kennzahlen_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -4853,6 +4874,44 @@ export interface components {
          */
         ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "planned_pause" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
         /**
+         * ReglerKennzahlOut
+         * @description Was in den Minuten geschah, in denen der Regler diese Kennzahl sendete.
+         */
+        ReglerKennzahlOut: {
+            /** Code */
+            code: number;
+            /** Minuten */
+            minuten: number;
+            /** Lauf Min */
+            lauf_min: number;
+            /** Vorlauf C */
+            vorlauf_c?: number | null;
+            /** Vorlauf Soll C */
+            vorlauf_soll_c?: number | null;
+            /** Oben K H */
+            oben_k_h?: number | null;
+            /** Unten K H */
+            unten_k_h?: number | null;
+            /** Angefordert Anteil */
+            angefordert_anteil?: number | null;
+            /** Zusatz Kw */
+            zusatz_kw?: number | null;
+            /** Zuletzt */
+            zuletzt?: string | null;
+        };
+        /** ReglerKennzahlenOut */
+        ReglerKennzahlenOut: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /** Tage */
+            tage: number;
+            /** Zeilen */
+            zeilen?: components["schemas"]["ReglerKennzahlOut"][];
+        };
+        /**
          * ReiheOut
          * @description Eine Reihe im Rückblick: ihre Wertung über alles und je Vorlaufklasse.
          */
@@ -5988,6 +6047,8 @@ export interface components {
             waermeleistung_kw?: number | null;
             /** Arbeitszahl */
             arbeitszahl?: number | null;
+            /** Zusatz Kw */
+            zusatz_kw?: number | null;
             /** Kreis Code */
             kreis_code?: number | null;
             /** Kreis De */
@@ -6792,6 +6853,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KennlinieOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    kennzahlen_api_v1_waermepumpe_kennzahlen_get: {
+        parameters: {
+            query?: {
+                /** @description Rückblick in Tagen */
+                tage?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReglerKennzahlenOut"];
                 };
             };
             /** @description Validation Error */
