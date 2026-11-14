@@ -362,3 +362,44 @@ def test_nimmt_der_zaehler_viel_mehr_auf_als_die_maschine_steht_es_da(client: Te
         now=JETZT, snap=schnappschuss(client, 3.3), laeuft_laut_zaehler=True, mess=mess_aus(bus)
     )
     assert normal.zusatz_kw is None and not any("Heizstab" in h for h in normal.hinweise_de)
+
+
+def test_ein_alter_zustand_entscheidet_nichts_mehr(client: TestClient) -> None:
+    """14.11.2026, 16:52 im Haus: die Seite zeigte „steht", null Hertz und einen stehenden
+    Lüfter, während die Maschine seit elf Minuten lief. Der Betriebszustand stammte aus einem
+    Telegramm, das nur gelegentlich über den Bus geht, und galt eine Viertelstunde als frisch."""
+    from datetime import timedelta
+
+    alt = JETZT - timedelta(seconds=wp.ZUSTAND_STALE_S + 30)
+
+    def mess(key: str) -> Measurement:
+        if key in ("heat_pump_mode_code", "heat_pump_compressor_hz"):
+            # Der Stand von vor dem Start: Zustand 15, null Hertz.
+            wert = 15.0 if key == "heat_pump_mode_code" else 0.0
+            return Measurement.ok(wert, alt, "mqtt:ebusd")
+        return (
+            mess_aus(HAUS_LAEUFT | {"heat_pump_mode_code": 0.0})(key)
+            if key in HAUS_LAEUFT
+            else Measurement.missing(Quality.UNAVAILABLE, JETZT, key)
+        )
+
+    aus = wp.zusammensetzen(
+        now=JETZT, snap=schnappschuss(client, 3.0), laeuft_laut_zaehler=True, mess=mess
+    )
+    # Der Zähler sagt, dass sie läuft; der alte Zustand widerspricht nicht mehr.
+    assert aus.laeuft and aus.zustand_code is None and aus.zustand_de == "läuft"
+    # Und statt der Null von vorhin steht bei der Frequenz kein Wert.
+    assert aus.verdichter_hz.value is None
+    assert aus.waermeleistung_kw is not None
+
+    # Derselbe Zustand, frisch: dann gilt er.
+    frisch = wp.zusammensetzen(
+        now=JETZT,
+        snap=schnappschuss(client, 0.3),
+        laeuft_laut_zaehler=True,
+        mess=mess_aus({**HAUS_LAEUFT, "heat_pump_mode_code": 15.0, "heat_pump_compressor_hz": 0.0}),
+    )
+    assert not frisch.laeuft and frisch.verdichter_hz.value == 0.0
+    # Verdichter aus, aber das Wasser läuft um: eine Pause, keine stehende Maschine.
+    assert frisch.zustand_de == "pausiert: Verdichter aus, Umwälzpumpe läuft"
+    assert frisch.waermeleistung_kw is None

@@ -83,6 +83,32 @@ def schluessel(components: dict[str, str | dict[str, str]]) -> set[str]:
 
 #: Schalter, wie ebusd sie ausgibt, als Zahl.
 SCHALTER: dict[str, float] = {"on": 1.0, "off": 0.0}
+#: Der Betriebszustand der Maschine, wie ebusd ihn als Wort ausgibt (`heatpump/heatpump_mode`,
+#: Kennung ca46), mit der Zahl, die auf dem Bus steht. Die Zuordnung stammt aus der fremden
+#: Bus-Beschreibung; im Haus gesehen sind „Soft_fail" (15, bei stehender Maschine) und
+#: „Heating" (3). Das Bediengerät fragt den Zustand alle zehn Sekunden ab; die Liste mit
+#: Zustand und Verdichterfrequenz zusammen (`hp_betrieb`) geht nur gelegentlich über den Bus.
+#: Am 14.11.2026 zeigte die Seite deshalb „steht", während die Maschine lief.
+BETRIEBSZUSTAND: dict[str, float] = {
+    "OFF": 0.0,
+    "Stand_by": 1.0,
+    "Cooling": 2.0,
+    "Heating": 3.0,
+    "Heating_boost": 4.0,
+    "Cooling_boost": 5.0,
+    "Heating_rating": 6.0,
+    "Cooling_rating": 7.0,
+    "Antifreeze": 8.0,
+    "Defrost": 9.0,
+    "Overtemp_prot": 10.0,
+    "Timeguard": 11.0,
+    "System_error": 12.0,
+    "Reset_service": 13.0,
+    "Coolant_recovery": 14.0,
+    "Soft_fail": 15.0,
+}
+#: Die Wörter, die als Zahl gelesen werden. Jedes andere Wort bleibt ein Wort.
+WOERTER: dict[str, float] = {**SCHALTER, **BETRIEBSZUSTAND}
 
 
 def rohwerte(payload: bytes | str) -> dict[str, object] | None:
@@ -105,15 +131,15 @@ def felder(payload: bytes | str) -> dict[str, float] | None:
     Wörter (etwa der Betriebszustand „Heating") sind keine Messwerte und fehlen im Ergebnis; eine
     Nachricht, die nur Wörter enthält, ergibt ein leeres Verzeichnis und ist trotzdem gültig.
 
-    Zwei Wörter sind die Ausnahme: `on` und `off`. So gibt ebusd Schalter aus, etwa die
-    Heizanforderung einer Zone (`{"z1_heat_request": {"value": "on"}}`), und ein Schalter ist
-    ein Wert: 1 und 0.
+    Ausnahmen (`WOERTER`): `on` und `off`, so gibt ebusd Schalter aus, etwa die Heizanforderung
+    einer Zone (`{"z1_heat_request": {"value": "on"}}`), und ein Schalter ist ein Wert, 1 und 0.
+    Und die Wörter des Betriebszustands der Maschine; hinter jedem steht auf dem Bus eine Zahl.
     """
     roh = rohwerte(payload)
     if roh is None:
         return None
     roh = {
-        name: SCHALTER.get(wert, wert) if isinstance(wert, str) else wert
+        name: WOERTER.get(wert, wert) if isinstance(wert, str) else wert
         for name, wert in roh.items()
     }
     return {

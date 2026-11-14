@@ -697,7 +697,7 @@ Augenblick kommen.
 
 | Festlegung | Wert | Herkunft |
 |---|---|---|
-| Ein Buswert gilt als veraltet | nach 15 Minuten | gesetzt; gemessen lagen bis 55 s zwischen zwei Meldungen |
+| Ein Buswert gilt als veraltet | nach 5 Minuten (bis 14.11.2026: 15) | gesetzt; gemessen lagen bis 55 s zwischen zwei Meldungen |
 | Pumpe gilt als stehend | unter 2 l/min | gesetzt; gemessen 0,0 im Stillstand und rund 30 im Lauf |
 | Keine Wärmeleistung | Spreizung unter 0,5 K | gesetzt, nicht gemessen |
 | Keine Arbeitszahl | Leistungsaufnahme unter 0,3 kW | gesetzt, nicht gemessen |
@@ -791,6 +791,41 @@ Das Add-on liest die Kennzahl ab 0.2.2 mit zwei eigenen Zeilen (`pumpe_status` m
 Kennungen der Folgewerte als eigene Felder, `betriebsart`); beide sind mit ebusd 26.1 an den
 Telegrammen des Hauses geprüft. Die Bridge liest die Liste nur, wenn die Kennungen stimmen. Der
 Dienst speichert sie als Minutenreihe `heat_pump_cycle_code` (Migration `d0a6b2f85e4b`).
+
+### Die Seite zeigte „steht“, während die Maschine lief
+
+14.11.2026, 16:52, im Haus: die Seite zeigte null Hertz, einen stehenden Lüfter und „steht“,
+während die Maschine seit 16:41 lief und der Lüfter draußen drehte.
+
+* **Der Betriebszustand war alt.** Zustand und Verdichterfrequenz kamen bis dahin nur aus der
+  Liste `hp_betrieb` (`78106e13ca46cb46`). Im Protokoll von 23:30 am Vortag stand sie; im
+  Protokoll von 16:40 bis 16:41 kommt sie nicht vor. Sie geht nur gelegentlich über den Bus,
+  vermutlich fragt das Bediengerät sie ab, solange eine bestimmte Seite angezeigt wird (nicht
+  geprüft). Der Dienst hielt einen Buswert 15 Minuten für frisch, also auch den Zustand von vor
+  dem Start.
+* **Der Lüfter wird nicht gemessen.** Seine Kennung (`1445`) kommt nur auf Nachfrage. Die
+  Zeichnung drehte ihn mit dem Verdichter und zeigte ihn sonst stehend, als wäre das ein
+  Messwert.
+
+Geändert: Ein Buswert gilt fünf Minuten als frisch, der Zustand der Maschine drei
+(`STALE_S`, `ZUSTAND_STALE_S`); danach entscheidet der Zähler, ob sie läuft, und bei der Frequenz
+steht kein Wert statt der alten Null. Der Betriebszustand kommt zusätzlich aus
+`heatpump/heatpump_mode`: das Bediengerät fragt ihn alle zehn Sekunden ab, ebusd gibt ihn als
+Wort aus, und die Bridge liest das Wort ab 0.14.5 als die Zahl, die auf dem Bus steht. Der
+Lüfter ist in der Zeichnung als „nicht gemessen“ beschriftet. Ist der Verdichter aus und das
+Wasser läuft um, heißt der Zustand „pausiert“, nicht „steht“.
+
+**Eine Verdichterfrequenz gibt es damit nur noch zeitweise.** Sie steht allein in der
+gelegentlichen Liste. Ob sie sich ohne Nachfrage verlässlich lesen lässt, ist offen.
+
+Um 16:52 selbst nahm die Maschine 0,34 kW auf (kurz davor rund 3 kW, Auskunft des Hausherrn),
+der Verdampfer hatte -4,7 °C bei 6,0 °C draußen und zwei Minuten später 6,5 °C. Das passt zu
+einer Pause, in der der Lüfter den Verdampfer mit Außenluft abtaut; **bestätigt ist das nicht**.
+
+| Festlegung | Wert | Herkunft |
+|---|---|---|
+| Ein Buswert gilt als veraltet | nach 5 Minuten | gesetzt; die Temperaturen kommen einmal je Minute |
+| Der Zustand der Maschine gilt als veraltet | nach 3 Minuten | gesetzt; das Bediengerät fragt ihn alle 10 Sekunden ab |
 
 ### Der Zähler misst mehr als die Maschine: vermutlich der Heizstab
 

@@ -54,7 +54,7 @@ def test_die_aufgezeichneten_nachrichten_werden_gelesen() -> None:
         "coolant_temp": 40.0,
     }
     # Wörter sind keine Messwerte, Unlesbares ist keine Nachricht.
-    assert felder(b'{"heatpump_mode": {"value": "Heating"}}') == {}
+    assert felder(b'{"ventil": {"value": "heat"}}') == {}
     assert felder(b"kein json") is None
     assert felder(b"[1, 2]") is None
 
@@ -369,11 +369,20 @@ def test_was_der_regler_vorgibt_wird_gelesen() -> None:
         "z1_heat_request": 1.0,
         "z2_heat_request": 0.0,
     }
-    assert felder(b'{"heatpump_mode": {"value": "Heating"}}') == {}
+    assert felder(b'{"ventil": {"value": "heat"}}') == {}
+    # Der Betriebszustand kommt als Wort, hinter dem auf dem Bus eine Zahl steht.
+    assert felder(b'{"0": {"name": "", "value": "Heating"}}') == {"0": 3.0}
+    assert felder(b'{"0": {"name": "", "value": "Soft_fail"}}') == {"0": 15.0}
 
     datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
     ebus = next(m for m in EntityMap.load(datei).mqtt if m.kind == "ebusd")
     d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
+    # Das Bediengerät fragt den Zustand alle zehn Sekunden ab (Protokoll vom 14.11.2026,
+    # 16:41:29: „heatpump_mode QQ=10: Heating"). Daraus wird derselbe Schlüssel wie aus der
+    # Liste mit der Verdichterfrequenz, die nur gelegentlich kommt.
+    d.apply("ebusd/heatpump/heatpump_mode", b'{\n     "0": {"name": "", "value": "Heating"}}', T0)
+    assert werte(d, T0) == {"heat_pump_mode_code": 3.0}
+    d.values.clear()
     d.apply(
         "ebusd/energymgr/heat_request",
         b'{\n     "z1_heat_request": {"value": "on"},\n     "z2_heat_request": {"value": "off"},\n'

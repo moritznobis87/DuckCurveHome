@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, tzinfo
 
 from dch_api.schemas import WaermepumpeOut
-from hems_core.domain import EnergySnapshot, Measurement
+from hems_core.domain import EnergySnapshot, Measurement, Quality
 from hems_core.thermal import kennlinie as kennlinie_kern
 from hems_core.thermal.kennlinie import (
     KW_JE_L_MIN_K,
@@ -40,8 +40,16 @@ from hems_core.thermal.kennlinie import (
 )
 
 #: So alt darf ein Wert vom Bus sein. ebusd gibt nicht jeden Wert in jedem Takt weiter; gemessen
-#: lagen bis zu 55 Sekunden zwischen zwei Meldungen desselben Werts.
-STALE_S = 900.0
+#: lagen bis zu 55 Sekunden zwischen zwei Meldungen desselben Werts, und die Temperaturen kommen
+#: einmal je Minute. Fünf Minuten sind fünf verpasste Runden.
+STALE_S = 300.0
+#: Für den Zustand der Maschine (Betriebszustand, Verdichterfrequenz) gilt eine engere Grenze.
+#: Beide kamen bis zum 14.11.2026 nur aus einem Telegramm, das der Bus bloß gelegentlich führt
+#: (das Bediengerät fragt es ab, wenn eine bestimmte Seite angezeigt wird). Um 16:52 zeigte die
+#: Seite damit „steht" und einen stehenden Lüfter, während die Maschine seit elf Minuten lief:
+#: der Zustand war alt, galt aber noch als frisch. Ein Zustand, der älter ist als drei Minuten,
+#: entscheidet nichts mehr; dann zählt, was der Zähler sagt.
+ZUSTAND_STALE_S = 180.0
 # Die Wärmerechnung und ihre Grenzen stehen im Kern, weil die Kennlinie dieselben braucht:
 # `hems_core.thermal.kennlinie`. Hier nur unter ihrem alten Namen weitergereicht.
 __all__ = ["KW_JE_L_MIN_K", "MIN_DURCHFLUSS", "MIN_LEISTUNG_KW", "MIN_SPREIZUNG_K"]
@@ -278,8 +286,20 @@ def zusammensetzen(
     kreis_code = round(kreis.value) if kreis.usable and kreis.value is not None else None
     anforderung = mess(ANFORDERUNG_KEY)
     raum_soll = mess(RAUM_SOLL_KEY)
-    code = round(zustand.value) if zustand.usable and zustand.value is not None else None
+
+    def frisch(m: Measurement) -> bool:
+        return (
+            m.usable
+            and m.value is not None
+            and (now - m.observed_at).total_seconds() <= ZUSTAND_STALE_S
+        )
+
+    code = round(zustand.value) if frisch(zustand) and zustand.value is not None else None
     hz = werte["verdichter_hz"]
+    if not frisch(hz):
+        # Eine alte Frequenz ist keine: lieber ein Fragezeichen als die Null von vorhin.
+        hz = Measurement.missing(Quality.STALE, hz.observed_at, hz.source)
+        werte["verdichter_hz"] = hz
     if code is not None:
         laeuft = code in ARBEITET
     elif hz.usable and hz.value is not None:
@@ -355,7 +375,11 @@ def zusammensetzen(
         now=now,
         laeuft=laeuft,
         zustand_code=code,
-        zustand_de=zustand_wort(code, laeuft),
+        # Verdichter aus, aber das Wasser läuft noch um: das ist keine stehende Maschine. So sieht
+        # eine Pause aus, auch die, in der der Lüfter den Verdampfer mit Außenluft abtaut.
+        zustand_de="pausiert: Verdichter aus, Umwälzpumpe läuft"
+        if not laeuft and pumpe_laeuft
+        else zustand_wort(code, laeuft),
         pumpe_laeuft=bool(pumpe_laeuft),
         aussen_c=snap.outdoor_temp_c,
         leistung_zaehler_kw=zaehler,
