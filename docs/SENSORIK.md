@@ -934,6 +934,55 @@ neu öffnen, dann auf dieser und auf einer anderen langen Seite rollen.
 [F1] Apple Developer Forums, „iOS17 PWA `position: fixed` element breaks after a while“,
 https://developer.apple.com/forums/thread/744327, abgerufen 14.11.2026.
 
+## Was das Add-on selbst abfragt
+
+Stand 14.11.2026, Entscheidung des Hausherrn („Cool, mach das“ auf die Frage, ob das Add-on
+Ventilstellung, Heizstab und Verdichterstrom aktiv abfragen darf, ohne etwas zu verstellen).
+
+Vier Größen gehen nie von selbst über den Bus, weil das Bediengerät sie nicht abfragt. Seit
+„Duck Curve eBUS“ 0.3.0 fragt ebusd sie reihum, alle zehn Sekunden eine
+(`addons/duckcurve_ebusd/aerotop_abfragen.csv`):
+
+| Größe | Kennung, Ziel | Schlüssel | Was die Bus-Beschreibung sagt | Stand im Haus |
+|---|---|---|---|---|
+| Umschaltventil | 0601, Regler (18) | `heat_pump_valve_code` | 0 Warmwasser, 1 Heizung | offen |
+| elektrische Zusatzheizung | 1c45, Regler (18) | `heat_pump_heater_code` | 0 aus, 1 an | offen |
+| Strom des Verdichters | 714f, Wärmepumpe (1e) | `heat_pump_compressor_a` | Zehntel Ampere | offen |
+| Drehzahl des Lüfters | 6e4f, Wärmepumpe (1e) | `heat_pump_fan_speed` | Zahl ohne Einheit | offen |
+
+**Zahlen, keine Wörter.** Die Bedeutungen stammen aus der Bus-Beschreibung einer verwandten
+Anlage. Nach „Puffer kühlen“ (Abschnitt „Die Kennzahl des Reglers“) zeigt die Oberfläche für
+Ventil und Heizstab die Zahl und nennt die Lesart der Liste als Hinweis. Bestätigt wird sie am
+Verlauf: die Tabelle „Was der Regler meldet“ stellt je Kennzahl des Reglers daneben, wie oft
+das Ventil auf 1 stand, wie oft der Heizstab gemeldet war, was der Zähler über der Maschine lag
+und welcher Teil des Speichers wärmer wurde. Steht das Ventil auf 0, während der Speicher oben
+wärmer wird, und auf 1, während er tiefer wärmer wird, ist die Lesart bestätigt; dasselbe gilt
+für den Heizstab, wenn „gemeldet“ mit dem Mehr am Zähler zusammenfällt.
+
+**Aufbau der Antwort.** Ein Byte Status, dann der Wert. So antworten Regler und Wärmepumpe im
+Haus auf einzelne Abfragen des Bediengeräts (Protokolle vom 13. und 14.11.2026: Durchfluss
+6e13, Betriebszustand ca46, Ventil Heizen/Kühlen 0701). Für die vier Kennungen ist das
+übertragen, nicht gesehen. Für 714f nennt die fremde Liste kein Statusbyte; das hält die
+Sitzung für ein Versehen der Liste, belegt ist es nicht. Antwortet die Maschine anders, steht
+im Protokoll des Add-ons ein `ERR:` statt `sent poll-read`.
+
+**Nichts verstellen.** Abfragen heißt senden; damit daraus kein Weg zum Verstellen wird,
+entfernt das Add-on beim Start jede Zeile zum Stellen aus seiner Arbeitsfassung der
+Bus-Beschreibung (67 in der geprüften Fassung). Probelauf mit ebusd 26.1 am Übungsadapter
+(`tools/ebus_uebungsadapter.py`, der seitdem auch antwortet): die vier Fragen gingen reihum
+hinaus, die Antworten kamen als Werte am Broker und als Schlüssel in der Bridge an, und eine
+Stellnachricht über den Broker führte zu keinem Telegramm; in der Gegenprobe mit den Zeilen
+zum Stellen sendete ebusd `31fe2020...`. Einzelheiten: `addons/duckcurve_ebusd/DOCS.md`.
+
+**Was damit geschieht.** Die Seite der Wärmepumpe zeigt die vier Werte, der Lüfter der
+Zeichnung dreht nach seiner Drehzahl statt mit dem Verdichter, und die Kennlinie merkt sich
+je Messpunkt die Stellung des Ventils, wenn sie im Fenster einheitlich war. Getrennt nach
+Heizen und Warmwasser wird erst, wenn die Lesart bestätigt ist; der gemeldete Heizstab
+entscheidet aus demselben Grund noch nicht darüber, welche Minuten zählen.
+
+**Nicht geprüft:** an der echten Wärmepumpe. Offen ist auch, ob die Abfragen den Bus stören;
+das Add-on lässt sich mit `abfragen: false` auf reines Lauschen zurückstellen.
+
 ## Die gemessene Kennlinie der Wärmepumpe
 
 Stand 14.11.2026, Nutzerwunsch: Messpunkte der Arbeitszahl über Außen- und Vorlauftemperatur

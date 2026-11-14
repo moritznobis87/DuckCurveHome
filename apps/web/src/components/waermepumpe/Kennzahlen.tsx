@@ -61,6 +61,8 @@ export function Kennzahlen({ aktuell }: { aktuell: number | null | undefined }) 
               <th scope="col">Zähler über Maschine</th>
               <th scope="col">Heizanforderung</th>
               <th scope="col">Kennung 1b45</th>
+              <th scope="col">Ventil auf 1</th>
+              <th scope="col">Heizstab gemeldet</th>
               <th scope="col">angefordert</th>
             </tr>
           </thead>
@@ -80,6 +82,8 @@ export function Kennzahlen({ aktuell }: { aktuell: number | null | undefined }) 
                 <td className="mono">{z.zusatz_kw == null ? "?" : `${mitVorzeichen(z.zusatz_kw)} kW`}</td>
                 <td className="mono">{anteil(z.heizanforderung_anteil)}</td>
                 <td className="mono">{anteil(z.flag_1b45_anteil)}</td>
+                <td className="mono">{anteil(z.ventil_1_anteil)}</td>
+                <td className="mono">{anteil(z.heizstab_anteil)}</td>
                 <td className="mono">{anteil(z.angefordert_anteil)}</td>
               </tr>
             ))}

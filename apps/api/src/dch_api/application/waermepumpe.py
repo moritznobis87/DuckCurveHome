@@ -87,7 +87,13 @@ KEYS = {
     "durchfluss_l_min": "heat_pump_flow_l_min",
     "vorlauf_soll_c": "heat_pump_flow_setpoint_c",
     "speicherfuehler_c": "heat_pump_tank_temp_c",
+    # Abgefragt vom eBUS-Add-on ab 0.3.0.
+    "verdichter_a": "heat_pump_compressor_a",
+    "luefter_drehzahl": "heat_pump_fan_speed",
 }
+#: Ebenfalls abgefragt, als Zahl des Reglers: Umschaltventil und elektrische Zusatzheizung.
+VENTIL_KEY = "heat_pump_valve_code"
+HEIZSTAB_KEY = "heat_pump_heater_code"
 ZUSTAND_KEY = "heat_pump_mode_code"
 
 #: Die Kennzahl, die der Regler im Rundruf sendet (Kennung c94b des Busses).
@@ -290,6 +296,8 @@ def zusammensetzen(
     kreis_code = round(kreis.value) if kreis.usable and kreis.value is not None else None
     anforderung = mess(ANFORDERUNG_KEY)
     raum_soll = mess(RAUM_SOLL_KEY)
+    ventil = mess(VENTIL_KEY)
+    heizstab = mess(HEIZSTAB_KEY)
 
     def frisch(m: Measurement) -> bool:
         return (
@@ -397,6 +405,10 @@ def zusammensetzen(
         if anforderung.usable and anforderung.value is not None
         else None,
         raum_soll_c=raum_soll,
+        ventil_code=round(ventil.value) if ventil.usable and ventil.value is not None else None,
+        heizstab_code=round(heizstab.value)
+        if heizstab.usable and heizstab.value is not None
+        else None,
         kreis_code=kreis_code,
         kreis_de=None if kreis_code is None else KREIS_DE.get(kreis_code, f"Kennzahl {kreis_code}"),
         einspeisung=einspeisung,
@@ -439,6 +451,10 @@ def vorfuehrung(
             "heat_pump_discharge_temp_c": round(vorlauf + 28.0, 1),
             "heat_pump_liquid_temp_c": round(ruecklauf + 0.6, 1),
             "heat_pump_tank_temp_c": round(puffer_oben_c, 1),
+            "heat_pump_valve_code": 1.0,
+            "heat_pump_heater_code": 0.0,
+            "heat_pump_compressor_a": round(1.2 + 2.1 * max(leistung_kw, 0.5), 1),
+            "heat_pump_fan_speed": 600.0,
         }
     return {
         "heat_pump_mode_code": 15.0,
@@ -456,4 +472,8 @@ def vorfuehrung(
         "heat_pump_discharge_temp_c": round(aussen_c + 12.0, 1),
         "heat_pump_liquid_temp_c": round(puffer_unten_c - 2.0, 1),
         "heat_pump_tank_temp_c": round(puffer_oben_c, 1),
+        "heat_pump_valve_code": 1.0,
+        "heat_pump_heater_code": 0.0,
+        "heat_pump_compressor_a": 0.0,
+        "heat_pump_fan_speed": 0.0,
     }

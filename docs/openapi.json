@@ -8730,6 +8730,17 @@
           "strom_kw": {
             "type": "number",
             "title": "Strom Kw"
+          },
+          "ventil": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ventil"
           }
         },
         "type": "object",
@@ -10819,6 +10830,28 @@
               }
             ],
             "title": "Flag 1B45 Anteil"
+          },
+          "ventil_1_anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ventil 1 Anteil"
+          },
+          "heizstab_anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heizstab Anteil"
           },
           "zuletzt": {
             "anyOf": [
@@ -13251,6 +13284,48 @@
               }
             ],
             "title": "Zusatz Kw"
+          },
+          "ventil_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ventil Code"
+          },
+          "heizstab_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heizstab Code"
+          },
+          "verdichter_a": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Measurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "luefter_drehzahl": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Measurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "kreis_code": {
             "anyOf": [

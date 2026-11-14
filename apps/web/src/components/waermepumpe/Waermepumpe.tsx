@@ -71,6 +71,9 @@ export function Waermepumpe() {
               auf welchen Raum-Sollwert regelt er. */}
           {daten.heizanforderung != null ? ` · Heizanforderung ${daten.heizanforderung ? "an" : "aus"}` : ""}
           {daten.raum_soll_c?.value != null ? ` · Raum-Sollwert ${zahl(daten.raum_soll_c.value)} °C` : ""}
+          {daten.ventil_code != null ? ` · Umschaltventil Stellung ${daten.ventil_code}` : ""}
+          {daten.heizstab_code != null ? ` · Heizstab meldet ${daten.heizstab_code}` : ""}
+          {daten.verdichter_a?.value != null ? ` · Verdichter ${zahl(daten.verdichter_a.value)} A` : ""}
           {fehler ? ` · ${fehler}` : ""}
         </span>
       </div>
@@ -102,6 +105,9 @@ export function Waermepumpe() {
 
       <div className="wp-fuss">
         <p className="m-0">† Fühler WP: die Zuordnung dieses Werts ist begründet, am Gerät aber noch nicht bestätigt.</p>
+        {daten.ventil_code != null || daten.heizstab_code != null ? (
+          <p className="m-0">Umschaltventil und Heizstab stehen als Zahl des Reglers da. Laut Busbeschreibung heißt beim Ventil 0 Warmwasser und 1 Heizung, beim Heizstab 1 an; für dieses Haus ist das noch nicht gegengeprüft. Die Tabelle oben zeigt, was der Speicher unter jeder Stellung tut.</p>
+        ) : null}
         {daten.hinweise_de?.map((h) => <p key={h} className="m-0">{h}</p>)}
         <p className="m-0 wp-links">
           <Link href="/waerme/waermepumpe/kennlinie">Gemessene Kennlinie ›</Link>

@@ -1,0 +1,19 @@
+# Duck Curve eBUS: die Werte, die das Add-on selbst abfragt (Option `abfragen`).
+#
+# Mitlesen allein reicht fuer vier Groessen nicht: das Bediengeraet fragt sie nie ab, also gehen
+# sie nie ueber den Bus. Hier fragt ebusd sie reihum selbst (`r1`, `r2`: eins ist oefter dran).
+# Gefragt wird nur; eine Zeile zum Stellen gibt es in dieser Datei nicht und darf es nie geben
+# (der Test `test_addon_ebusd.py` wacht darueber).
+#
+# Aufbau der Antwort: ein Byte Status, dann der Wert. So antworten Regler (18) und Waermepumpe
+# (1e) im Haus auf jede einzelne Abfrage des Bediengeraets (Protokolle vom 13. und 14.11.2026:
+# Durchfluss 6e13, Betriebszustand ca46, Ventil Heizen/Kuehlen 0701). Fuer die vier Kennungen
+# hier ist das uebertragen, nicht im Haus gesehen: bis zur ersten Antwort gelten sie als ungeprueft.
+#
+# Kennungen aus der Bus-Beschreibung der Ariston-Gruppe (dort 0601 "0=dhw;1=heat", 1c45 an/aus,
+# 714f Strom in Zehntel Ampere, 6e4f Drehzahl). Die Bedeutungen der Zahlen sind deren Angabe;
+# was sie in diesem Haus heissen, zeigt der Vergleich mit Speicher und Zaehler.
+r1,energymgr,ventil_ww,Umschaltventil Warmwasser oder Heizung,,18,2000,0601,,s,IGN:1,,,,stellung,s,UCH,,,
+r1,energymgr,heizstab,Elektrische Zusatzheizung,,18,2000,1c45,,s,IGN:1,,,,an,s,UCH,,,
+r2,heatpump,verdichter_strom,Strom des Verdichters,,1e,2000,714f,,s,IGN:1,,,,strom_a,s,UIN,10,A,
+r2,heatpump,luefter,Drehzahl des Luefters,,1e,2000,6e4f,,s,IGN:1,,,,drehzahl,s,UIN,,,
