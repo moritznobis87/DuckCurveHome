@@ -198,8 +198,13 @@ def test_die_zuordnung_des_hauses_liest_was_die_waermepumpe_wirklich_meldet() ->
     d.apply("ebusd/heatpump/hp_power", b'{\n     "power_kw": {"value": 1.448}}', T0)
     d.apply("ebusd/energymgr/system_temps", SYSTEM_TEMPS, T0)
     d.apply("ebusd/heatpump/hp_betrieb", HP_BETRIEB, T0)
+    d.apply(
+        "ebusd/heatpump/hp_kaeltekreis",
+        b'{"suction_temp": {"value": 3.3}, "discharge_temp": {"value": 46.4}}',
+        T0,
+    )
     # Mitgelesen, aber nicht zugeordnet: bleibt im Zustand sichtbar und geht nicht weiter.
-    d.apply("ebusd/heatpump/hp_kaeltekreis", b'{"suction_temp": {"value": 3.3}}', T0)
+    d.apply("ebusd/energymgr/speicher_info", b'{"store_temp": {"value": 53.5}}', T0)
     assert werte(d, T0) == {
         "outdoor_temp_c": 4.6,
         "flow_temp_c": 39.9,
@@ -209,8 +214,13 @@ def test_die_zuordnung_des_hauses_liest_was_die_waermepumpe_wirklich_meldet() ->
         "heat_pump_return_temp_c": 39.6,
         "heat_pump_compressor_hz": 0.0,
         "heat_pump_mode_code": 15.0,
+        "heat_pump_evaporator_temp_c": 5.3,
+        "heat_pump_liquid_temp_c": 36.6,
+        "heat_pump_suction_temp_c": 3.3,
+        "heat_pump_discharge_temp_c": 46.4,
+        "heat_pump_tank_temp_c": 52.6,
     }
-    assert "heatpump/hp_kaeltekreis" in d.status()["gesehen"]
+    assert "energymgr/speicher_info" in d.status()["gesehen"]
 
 
 def test_was_die_bridge_vom_bus_liefert_hat_im_dienst_einen_platz() -> None:

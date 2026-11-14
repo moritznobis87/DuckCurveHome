@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { EnergySnapshot, Measurement } from "@/lib/api/models";
 import { ageLabel, kw } from "@/lib/format";
 import { Icon } from "@/components/ui/Icon";
+import { WpMenue } from "./WpMenue";
 
 /**
  * Der Energiefluss als Bild der Startseite.
@@ -71,7 +72,7 @@ export function frisch(m: Measurement | null | undefined): boolean {
  */
 const SEITE: Record<Key, "unten" | "rechts"> = { pv: "rechts", grid: "unten", house: "unten", bat: "unten", hp: "unten", ev: "unten" };
 
-function Knoten({ k, href, value, unit, label, sub, m, nowMs, gross = false, fuell }: { k: Key; href: string; value: string; unit: string; label: string; sub?: string; m: Measurement | null | undefined; nowMs: number; gross?: boolean; fuell?: number | null }) {
+function Knoten({ k, href, value, unit, label, sub, m, nowMs, gross = false, fuell, onOeffnen }: { k: Key; href: string; value: string; unit: string; label: string; sub?: string; m: Measurement | null | undefined; nowMs: number; gross?: boolean; fuell?: number | null; onOeffnen?: () => void }) {
   const pos = POS[k];
   const ok = frisch(m);
   const age = m ? ageLabel(m.observed_at, nowMs) : null;
@@ -81,7 +82,9 @@ function Knoten({ k, href, value, unit, label, sub, m, nowMs, gross = false, fue
       href={href}
       className={`home-knoten home-knoten-${SEITE[k]} ${gross ? "home-knoten-gross" : ""}`}
       style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-      aria-label={`${label}: ${value} ${unit}${sub ? `, ${sub}` : ""}. Details oeffnen`}
+      aria-label={`${label}: ${value} ${unit}${sub ? `, ${sub}` : ""}. ${onOeffnen ? "Auswahl öffnen" : "Details öffnen"}`}
+      aria-haspopup={onOeffnen ? "dialog" : undefined}
+      onClick={onOeffnen ? (e) => { e.preventDefault(); onOeffnen(); } : undefined}
       title={age ? `Stand ${age}` : undefined}
     >
       <span className="home-ring" style={{ borderColor: farbe, background: `linear-gradient(color-mix(in srgb, ${farbe} 14%, transparent), color-mix(in srgb, ${farbe} 14%, transparent)), var(--petrol)` }}>
@@ -129,6 +132,7 @@ export function grundlast(rest: number | null, andere: number): string | undefin
 
 export function FlowHero({ snapshot, nowMs, pvPeakKw, wpLaeuft }: { snapshot: EnergySnapshot | null; nowMs: number; pvPeakKw: number; wpLaeuft?: boolean }) {
   const s = snapshot;
+  const [menue, setMenue] = useState(false);
   const v = useMemo(() => {
     const num = (m?: Measurement | null) => (frisch(m) ? (m!.value as number) : 0);
     const pv = num(s?.pv_power_kw);
@@ -177,8 +181,9 @@ export function FlowHero({ snapshot, nowMs, pvPeakKw, wpLaeuft }: { snapshot: En
       <Knoten k="grid" href="/strom" value={kw(einspeisung ? v.exportKw : v.importKw)} unit="kW" label="Netz" sub={einspeisung && v.exportKw >= 0.05 ? "Einspeisung" : v.importKw >= 0.05 ? "Bezug" : undefined} m={s?.grid_power_kw} nowMs={nowMs} />
       <Knoten k="house" href="/strom" value={kw(s?.house_power_kw.value)} unit="kW" label="Haus" sub={grundlast(v.rest, v.hp + v.ev)} m={s?.house_power_kw} nowMs={nowMs} gross />
       <Knoten k="bat" href="/strom/speicher" value={soc != null ? String(Math.round(soc * 100)) : "-"} unit="%" label="Speicher" sub={v.charge >= 0.05 ? `lädt ${kw(v.charge)} kW` : v.discharge >= 0.05 ? `gibt ${kw(v.discharge)} kW` : undefined} m={s?.battery_soc} nowMs={nowMs} fuell={soc} />
-      <Knoten k="hp" href="/waerme" value={kw(s?.heat_pump_power_kw.value)} unit="kW" label="Wärmepumpe" sub={wpLaeuft || v.hp >= 0.05 ? wpWort(v.hp, wpLaeuft) : undefined} m={s?.heat_pump_power_kw} nowMs={nowMs} />
+      <Knoten k="hp" href="/waerme/waermepumpe" value={kw(s?.heat_pump_power_kw.value)} unit="kW" label="Wärmepumpe" sub={wpLaeuft || v.hp >= 0.05 ? wpWort(v.hp, wpLaeuft) : undefined} m={s?.heat_pump_power_kw} nowMs={nowMs} onOeffnen={() => setMenue(true)} />
       <Knoten k="ev" href="/strom/wallbox" value={kw(s?.ev_power_kw.value)} unit="kW" label="Wallbox" sub={v.ev >= 0.05 ? "lädt" : undefined} m={s?.ev_power_kw} nowMs={nowMs} />
+      <WpMenue offen={menue} onZu={() => setMenue(false)} zeile={`${kw(s?.heat_pump_power_kw.value)} kW · ${wpWort(v.hp, wpLaeuft)}`} />
     </div>
   );
 }

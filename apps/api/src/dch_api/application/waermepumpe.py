@@ -1,0 +1,212 @@
+"""Die Wärmepumpe im Augenblick: alles, was ihr eigener Bus und der Zähler melden, an einer Stelle.
+
+**Woher die Werte kommen.** Seit dem 13.11.2026 hängt ein Adapter am Bus der Wärmepumpe (ELCO
+Aerotop Split), und die Bridge liefert, was dort mitzulesen ist: Außentemperatur, Verdampfer,
+Sauggas, Heißgas, Flüssigkeitsleitung, Verdichterfrequenz, Vorlauf, Rücklauf, Durchfluss,
+Sollwert und die Leistungsaufnahme nach Auskunft der Maschine. Die gemessene Leistungsaufnahme
+kommt weiter vom Zähler an der Zuleitung, die Puffertemperaturen von den eigenen Fühlern.
+Herkunft und Vorbehalte je Größe: `docs/SENSORIK.md`.
+
+**Was hier gerechnet wird, ist eine Abschätzung, und so heißt es auch.**
+
+- Spreizung = Vorlauf minus Rücklauf.
+- Wärmeleistung = Durchfluss mal Spreizung mal Wärmekapazität des Wassers (4,186 kJ/(kg K),
+  ein Liter als ein Kilogramm gerechnet).
+- Arbeitszahl = Wärmeleistung durch Leistungsaufnahme, mit dem Zähler, wo er einen Wert hat,
+  sonst mit der Auskunft der Maschine.
+
+Drei Dinge daran sind nicht gesichert (Stand 14.11.2026): Der Durchflussgeber ist nicht geeicht
+und seine Einheit als Liter je Minute gelesen. Welche Kennung des Busses der Rücklauf ist, ist
+begründet, nicht bestätigt. Und die Werte kommen nicht gleichzeitig, sondern im Abstand von
+Sekunden bis zu einer Minute. Eine Arbeitszahl aus diesen Zahlen ist deshalb ein Anhalt.
+
+Reine Zusammensetzung, kein I/O.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from datetime import datetime
+
+from dch_api.schemas import WaermepumpeOut
+from hems_core.domain import EnergySnapshot, Measurement
+
+#: So alt darf ein Wert vom Bus sein. ebusd gibt nicht jeden Wert in jedem Takt weiter; gemessen
+#: lagen bis zu 55 Sekunden zwischen zwei Meldungen desselben Werts.
+STALE_S = 900.0
+#: Wärmekapazität von Wasser in kWh je Liter und Kelvin, auf die Minute umgelegt:
+#: 4,186 kJ/(kg K) / 60 s.
+KW_JE_L_MIN_K = 4.186 / 60.0
+#: Unter diesem Durchfluss steht die Pumpe; der Geber zeigt dann null oder Rauschen.
+MIN_DURCHFLUSS = 2.0
+#: Unter dieser Spreizung ist die Rechnung mehr Messfehler als Wärme.
+MIN_SPREIZUNG_K = 0.5
+#: Unter dieser Leistungsaufnahme läuft der Verdichter nicht; eine Arbeitszahl gibt es dann nicht.
+MIN_LEISTUNG_KW = 0.3
+
+#: Der Betriebszustand, wie die Maschine ihn als Zahl meldet. Die Wörter der fremden Liste sind
+#: Englisch und an einer Stelle irreführend: 15 heißt dort „Soft_fail" und ist an dieser Anlage
+#: der gewöhnliche Stillstand.
+ZUSTAND_DE: dict[int, str] = {
+    0: "aus",
+    1: "in Bereitschaft",
+    2: "kühlt",
+    3: "heizt",
+    4: "heizt mit voller Leistung",
+    5: "kühlt mit voller Leistung",
+    8: "schützt vor Frost",
+    9: "taut ab",
+    10: "schützt sich vor Übertemperatur",
+    11: "wartet die Sperrzeit ab",
+    12: "meldet eine Störung",
+    15: "steht",
+}
+#: Zustände, in denen der Verdichter arbeitet.
+ARBEITET = frozenset({2, 3, 4, 5, 9})
+
+KEYS = {
+    "verdampfer_c": "heat_pump_evaporator_temp_c",
+    "sauggas_c": "heat_pump_suction_temp_c",
+    "heissgas_c": "heat_pump_discharge_temp_c",
+    "fluessig_c": "heat_pump_liquid_temp_c",
+    "verdichter_hz": "heat_pump_compressor_hz",
+    "leistung_bus_kw": "heat_pump_bus_power_kw",
+    "vorlauf_c": "flow_temp_c",
+    "ruecklauf_c": "heat_pump_return_temp_c",
+    "durchfluss_l_min": "heat_pump_flow_l_min",
+    "vorlauf_soll_c": "heat_pump_flow_setpoint_c",
+    "speicherfuehler_c": "heat_pump_tank_temp_c",
+}
+ZUSTAND_KEY = "heat_pump_mode_code"
+
+
+def zustand_wort(code: int | None, laeuft: bool) -> str:
+    if code is None:
+        return "läuft" if laeuft else "steht"
+    return ZUSTAND_DE.get(code, f"Zustand {code}")
+
+
+def zusammensetzen(
+    *,
+    now: datetime,
+    snap: EnergySnapshot,
+    laeuft_laut_zaehler: bool,
+    mess: Callable[[str], Measurement],
+) -> WaermepumpeOut:
+    werte = {feld: mess(key) for feld, key in KEYS.items()}
+    zustand = mess(ZUSTAND_KEY)
+    code = round(zustand.value) if zustand.usable and zustand.value is not None else None
+    hz = werte["verdichter_hz"]
+    if code is not None:
+        laeuft = code in ARBEITET
+    elif hz.usable and hz.value is not None:
+        laeuft = hz.value > 0
+    else:
+        laeuft = laeuft_laut_zaehler
+
+    vor, rueck, fluss = werte["vorlauf_c"], werte["ruecklauf_c"], werte["durchfluss_l_min"]
+    spreizung: float | None = None
+    waerme: float | None = None
+    zahl: float | None = None
+    if vor.usable and rueck.usable and vor.value is not None and rueck.value is not None:
+        spreizung = round(vor.value - rueck.value, 1)
+    pumpe_laeuft = fluss.usable and fluss.value is not None and fluss.value >= MIN_DURCHFLUSS
+    if (
+        pumpe_laeuft
+        and laeuft
+        and fluss.value is not None
+        and spreizung is not None
+        and spreizung >= MIN_SPREIZUNG_K
+    ):
+        waerme = round(fluss.value * spreizung * KW_JE_L_MIN_K, 2)
+    zaehler = snap.heat_pump_power_kw
+    bus = werte["leistung_bus_kw"]
+    aufnahme = (
+        zaehler.value
+        if zaehler.usable and zaehler.value is not None
+        else bus.value
+        if bus.usable
+        else None
+    )
+    if waerme is not None and aufnahme is not None and aufnahme >= MIN_LEISTUNG_KW:
+        zahl = round(waerme / aufnahme, 1)
+
+    hinweise: list[str] = []
+    if not any(m.usable for m in werte.values()):
+        hinweise.append(
+            "Vom Bus der Wärmepumpe kommt gerade nichts. Läuft das Add-on „Duck Curve eBUS“, "
+            "und ist der Adapter erreichbar?"
+        )
+    else:
+        hinweise.append(
+            "Wärmeleistung und Arbeitszahl sind Abschätzungen: Der Durchflussgeber der Maschine "
+            "ist nicht geeicht, und welcher Wert des Busses der Rücklauf ist, ist begründet, "
+            "aber nicht bestätigt."
+        )
+        if laeuft and waerme is None:
+            hinweise.append(
+                "Für eine Wärmeleistung fehlt gerade ein Wert: Durchfluss, Vorlauf oder Rücklauf."
+            )
+    t = snap.buffer_temps_c
+    return WaermepumpeOut(
+        now=now,
+        laeuft=laeuft,
+        zustand_code=code,
+        zustand_de=zustand_wort(code, laeuft),
+        pumpe_laeuft=bool(pumpe_laeuft),
+        aussen_c=snap.outdoor_temp_c,
+        leistung_zaehler_kw=zaehler,
+        puffer_c=[t.top, t.mid_top, t.mid_bottom, t.bottom],
+        spreizung_k=spreizung,
+        waermeleistung_kw=waerme,
+        arbeitszahl=zahl,
+        hinweise_de=hinweise,
+        **werte,
+    )
+
+
+def vorfuehrung(
+    *,
+    laeuft: bool,
+    aussen_c: float,
+    leistung_kw: float,
+    puffer_oben_c: float,
+    puffer_unten_c: float,
+) -> dict[str, float]:
+    """Was der Bus in der Vorführung meldete: stimmige Zahlen aus dem Zustand des Modellhauses.
+
+    Die Vorführung hat keinen Bus. Damit die Seite dort nicht leer ist, entstehen die Größen aus
+    dem, was das Modell weiß, mit runden Annahmen: Arbeitszahl 4,2, Durchfluss 29,5 l/min.
+    """
+    if laeuft:
+        waerme = max(leistung_kw, 0.5) * 4.2
+        ruecklauf = max(puffer_unten_c, 24.0)
+        vorlauf = ruecklauf + waerme / (29.5 * KW_JE_L_MIN_K)
+        return {
+            "heat_pump_mode_code": 3.0,
+            "heat_pump_compressor_hz": round(30.0 + 12.0 * max(leistung_kw, 0.5), 0),
+            "heat_pump_flow_l_min": 29.5,
+            "flow_temp_c": round(vorlauf, 1),
+            "heat_pump_return_temp_c": round(ruecklauf, 1),
+            "heat_pump_flow_setpoint_c": 45.0,
+            "heat_pump_bus_power_kw": round(leistung_kw * 0.97, 3),
+            "heat_pump_evaporator_temp_c": round(aussen_c - 4.5, 1),
+            "heat_pump_suction_temp_c": round(aussen_c - 1.5, 1),
+            "heat_pump_discharge_temp_c": round(vorlauf + 28.0, 1),
+            "heat_pump_liquid_temp_c": round(ruecklauf + 0.6, 1),
+            "heat_pump_tank_temp_c": round(puffer_oben_c, 1),
+        }
+    return {
+        "heat_pump_mode_code": 15.0,
+        "heat_pump_compressor_hz": 0.0,
+        "heat_pump_flow_l_min": 0.0,
+        "flow_temp_c": round(puffer_unten_c + 1.5, 1),
+        "heat_pump_return_temp_c": round(puffer_unten_c + 0.5, 1),
+        "heat_pump_flow_setpoint_c": 45.0,
+        "heat_pump_bus_power_kw": 0.0,
+        "heat_pump_evaporator_temp_c": round(aussen_c + 0.5, 1),
+        "heat_pump_suction_temp_c": round(aussen_c + 2.0, 1),
+        "heat_pump_discharge_temp_c": round(aussen_c + 12.0, 1),
+        "heat_pump_liquid_temp_c": round(puffer_unten_c - 2.0, 1),
+        "heat_pump_tank_temp_c": round(puffer_oben_c, 1),
+    }

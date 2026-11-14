@@ -43,6 +43,12 @@ SERIES = (
     "heat_pump_bus_power_kw",  # Leistungsaufnahme nach eigener Auskunft der Maschine
     "heat_pump_compressor_hz",  # Verdichterfrequenz: wie weit die Maschine gerade moduliert
     "heat_pump_mode_code",  # Betriebszustand als Zahl der Maschine: 3 heizt, 9 taut ab, 15 steht
+    # Der Kältekreis und der Speicherfühler der Maschine, für die Technikseite der Wärmepumpe.
+    "heat_pump_evaporator_temp_c",  # Verdampfer am Außengerät
+    "heat_pump_suction_temp_c",  # Sauggas vor dem Verdichter
+    "heat_pump_discharge_temp_c",  # Heißgas nach dem Verdichter
+    "heat_pump_liquid_temp_c",  # Flüssigkeitsleitung zurück zum Außengerät
+    "heat_pump_tank_temp_c",  # Speicherfühler der Wärmepumpe (Kennung 759e, Lesart nicht bestätigt)
     # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
     # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
     "stove_state",  # Zustandscode der Maestro-Firmware

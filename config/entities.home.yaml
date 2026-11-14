@@ -132,6 +132,11 @@ mqtt:
         ext_temp: outdoor_temp_c
       "heatpump/coolat_data":
         LWT_temp: flow_temp_c
+        evaporator_temp: heat_pump_evaporator_temp_c
+        coolant_temp: heat_pump_liquid_temp_c
+      "heatpump/hp_kaeltekreis":
+        suction_temp: heat_pump_suction_temp_c
+        discharge_temp: heat_pump_discharge_temp_c
       "heatpump/heatpump_flowmeter": heat_pump_flow_l_min
       "energymgr/hybrid_LWT_setpoint": heat_pump_flow_setpoint_c
       "heatpump/hp_power":
@@ -139,6 +144,7 @@ mqtt:
       "energymgr/system_temps":
         kennung_2: "=76 9e"   # Bedingung: an dieser Stelle der Liste steht wirklich 769e
         t_769e: heat_pump_return_temp_c
+        t_759e: heat_pump_tank_temp_c
       "heatpump/hp_betrieb":
         compressor_hz: heat_pump_compressor_hz
         mode: heat_pump_mode_code

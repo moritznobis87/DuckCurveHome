@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { EnergySnapshot, Measurement } from "@/lib/api/models";
 import { kw } from "@/lib/format";
 import { Icon } from "@/components/ui/Icon";
 import { FARBE, frisch, grundlast, kante, wpWort, type Key } from "./FlowHero";
+import { WpMenue } from "./WpMenue";
 
 /**
  * Der Energiefluss als Bild, für das Handy gezeichnet.
@@ -51,6 +52,7 @@ function Knoten({
   fuell,
   zeichen,
   ohneZahl = false,
+  onOeffnen,
 }: {
   k: Key;
   href: string;
@@ -66,6 +68,8 @@ function Knoten({
   zeichen?: string;
   /** Der Knoten zeigt nur Name und Zustand: nachts ist „0,0 kW Sonne" keine Auskunft. */
   ohneZahl?: boolean;
+  /** Statt zu springen eine Auswahl öffnen. Der Verweis bleibt, für den Fall ohne JavaScript. */
+  onOeffnen?: () => void;
 }) {
   const ok = frisch(m);
   // Ein Knoten ohne Zahl sagt, dass die Messung fehlt. Ein Strich mit Einheit („- kW") sah aus
@@ -77,7 +81,9 @@ function Knoten({
       href={href}
       className={`fluss-h-knoten fluss-h-${seite}`}
       style={{ left: `${LAGE[k].x}%`, top: `${LAGE[k].y}%` }}
-      aria-label={`${name}: ${wert} ${einheit}${wort ? `, ${wort}` : ""}. Details öffnen`}
+      aria-label={`${name}: ${wert} ${einheit}${wort ? `, ${wort}` : ""}. ${onOeffnen ? "Auswahl öffnen" : "Details öffnen"}`}
+      aria-haspopup={onOeffnen ? "dialog" : undefined}
+      onClick={onOeffnen ? (e) => { e.preventDefault(); onOeffnen(); } : undefined}
     >
       <span className="fluss-h-ring" style={{ borderColor: f, background: `linear-gradient(color-mix(in srgb, ${f} 16%, transparent), color-mix(in srgb, ${f} 16%, transparent)), var(--deep)` }}>
         {typeof fuell === "number" ? <span className="fluss-h-fuell" style={{ height: `${Math.round(fuell * 100)}%` }} /> : null}
@@ -112,6 +118,7 @@ export function FlowHandy({
   /** Wann die Sonne wiederkommt, als fertiger Text („07:45", „morgen 07:45"). */
   sonneAb?: string | null;
 }) {
+  const [menue, setMenue] = useState(false);
   const s = snapshot;
   const v = useMemo(() => {
     const num = (m?: Measurement | null) => (frisch(m) ? (m!.value as number) : 0);
@@ -237,8 +244,9 @@ export function FlowHandy({
         seite="unten"
         fuell={soc}
       />
-      <Knoten k="hp" href="/waerme" wert={kw(s?.heat_pump_power_kw.value)} einheit="kW" name="Wärmepumpe" wort={wpWort(v.hp, wpLaeuft)} m={s?.heat_pump_power_kw} seite="unten" />
+      <Knoten k="hp" href="/waerme/waermepumpe" wert={kw(s?.heat_pump_power_kw.value)} einheit="kW" name="Wärmepumpe" wort={wpWort(v.hp, wpLaeuft)} m={s?.heat_pump_power_kw} seite="unten" onOeffnen={() => setMenue(true)} />
       <Knoten k="ev" href="/strom/wallbox" wert={kw(s?.ev_power_kw.value)} einheit="kW" name="Wallbox" wort={v.ev >= 0.05 ? "lädt" : "steht"} m={s?.ev_power_kw} seite="unten" />
+      <WpMenue offen={menue} onZu={() => setMenue(false)} zeile={`${kw(s?.heat_pump_power_kw.value)} kW · ${wpWort(v.hp, wpLaeuft)}`} />
     </div>
   );
 }

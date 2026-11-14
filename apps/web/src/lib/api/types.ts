@@ -489,6 +489,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/waermepumpe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die Wärmepumpe im Augenblick
+         * @description Außengerät, Kältekreis, Innengerät und Speicher, je mit Zeitpunkt und Güte des Werts,
+         *     dazu Spreizung, Wärmeleistung und Arbeitszahl als Abschätzung.
+         */
+        get: operations["waermepumpe_api_v1_waermepumpe_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -5793,6 +5814,55 @@ export interface components {
             wertung: components["schemas"]["Wertung"];
         };
         /**
+         * WaermepumpeOut
+         * @description Die Wärmepumpe im Augenblick, für ihre Technikseite.
+         *
+         *     Jede Größe ist ein Messwert mit Zeitpunkt und Güte: fehlt einer, steht auf der Seite ein
+         *     Fragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende sind
+         *     Abschätzungen; warum, steht in `hinweise_de` und in `application/waermepumpe.py`.
+         */
+        WaermepumpeOut: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /** Laeuft */
+            laeuft: boolean;
+            /** Zustand Code */
+            zustand_code?: number | null;
+            /** Zustand De */
+            zustand_de: string;
+            /**
+             * Pumpe Laeuft
+             * @default false
+             */
+            pumpe_laeuft: boolean;
+            aussen_c: components["schemas"]["Measurement"];
+            verdampfer_c: components["schemas"]["Measurement"];
+            sauggas_c: components["schemas"]["Measurement"];
+            heissgas_c: components["schemas"]["Measurement"];
+            fluessig_c: components["schemas"]["Measurement"];
+            verdichter_hz: components["schemas"]["Measurement"];
+            leistung_bus_kw: components["schemas"]["Measurement"];
+            leistung_zaehler_kw: components["schemas"]["Measurement"];
+            vorlauf_c: components["schemas"]["Measurement"];
+            ruecklauf_c: components["schemas"]["Measurement"];
+            durchfluss_l_min: components["schemas"]["Measurement"];
+            vorlauf_soll_c: components["schemas"]["Measurement"];
+            speicherfuehler_c: components["schemas"]["Measurement"];
+            /** Puffer C */
+            puffer_c?: components["schemas"]["Measurement"][];
+            /** Spreizung K */
+            spreizung_k?: number | null;
+            /** Waermeleistung Kw */
+            waermeleistung_kw?: number | null;
+            /** Arbeitszahl */
+            arbeitszahl?: number | null;
+            /** Hinweise De */
+            hinweise_de?: string[];
+        };
+        /**
          * WallLine
          * @description Ein Stueck Wandlinie: `x` fuer eine Nord-Sued-Wand, `z` fuer eine Ost-West-Wand, `a..b`
          *     laengs der Wand. Genau eines von `x` und `z` ist gesetzt.
@@ -6542,6 +6612,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    waermepumpe_api_v1_waermepumpe_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WaermepumpeOut"];
                 };
             };
         };

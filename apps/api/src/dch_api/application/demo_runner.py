@@ -22,6 +22,7 @@ from dch_api.application import anlage_replay, demo_house, demo_rooms, rooms
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
+from dch_api.application import waermepumpe as wp_logic
 from dch_api.application.battery_control import BatteryMode
 from dch_api.application.demo_archive import DemoArchiv
 from dch_api.application.energy_accounting import EnergyAccounting
@@ -88,6 +89,7 @@ from dch_api.schemas import (
     StoveLiveOut,
     SystemEventOut,
     SystemStatusOut,
+    WaermepumpeOut,
     YearMapOut,
 )
 from dch_api.settings import Settings
@@ -958,6 +960,29 @@ class DemoRunner:
             zeilen=self.history.series(
                 now - timedelta(minutes=anlage_logic.RUECKBLICK_MIN), now + timedelta(minutes=1)
             ),
+        )
+
+    async def waermepumpe(self) -> WaermepumpeOut:
+        """Die Wärmepumpe der Vorführung. Einen Bus hat sie nicht; die Größen entstehen aus dem
+        Zustand des Modellhauses (`wp_logic.vorfuehrung`), damit die Seite dort zu sehen ist."""
+        now = self.now
+        t = self.snapshot.buffer_temps_c
+        werte = wp_logic.vorfuehrung(
+            laeuft=self.hp.running,
+            aussen_c=self.snapshot.outdoor_temp_c.value_or(8.0),
+            leistung_kw=self.hp.power_kw,
+            puffer_oben_c=t.top.value_or(45.0),
+            puffer_unten_c=t.bottom.value_or(32.0),
+        )
+
+        def mess(key: str) -> Measurement:
+            wert = werte.get(key)
+            if wert is None:
+                return Measurement.missing(Quality.UNAVAILABLE, now, "demo")
+            return Measurement.ok(wert, now, "demo:ebus")
+
+        return wp_logic.zusammensetzen(
+            now=now, snap=self.snapshot, laeuft_laut_zaehler=self.hp.running, mess=mess
         )
 
     async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut:
