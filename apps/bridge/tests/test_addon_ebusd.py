@@ -88,6 +88,8 @@ def test_die_eigenen_zeilen_fuer_die_aerotop_haben_die_form_die_ebusd_liest() ->
         "energymgr/aussen_rundruf",
         "energymgr/pumpe_status",
         "energymgr/betriebsart",
+        "energymgr/flag_1b45",
+        "heatpump/wp_vorgabe",
     } <= namen
     dockerfile = (ADDON / "Dockerfile").read_text(encoding="utf-8")
     assert "COPY aerotop_split.csv /etc/duckcurve/aerotop_split.csv" in dockerfile

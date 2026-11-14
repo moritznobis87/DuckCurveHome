@@ -18,7 +18,8 @@ meldet, zeigt erst der Betrieb.
 
 Dazu kommen eigene Zeilen für die Wärmepumpe dieses Hauses (`aerotop_split.csv`, ab 0.2.0):
 Leistungsaufnahme, Sauggas und Heißgas, Verdichterfrequenz und Betriebszustand (ab 0.2.1), die
-Kennzahl des Reglers (ab 0.2.2; was die Zahlen bedeuten, ist für diese Anlage noch offen), die
+Kennzahl des Reglers (ab 0.2.2; bestätigt sind 0 Bereitschaft und 2 Heizen), die Kennung 1b45
+und die Vorgaben des Reglers an die Maschine (ab 0.2.3, Bedeutung teils offen), die
 Außentemperatur im Rundruf, zwei Temperaturen des Reglers und seine Speichertemperatur. Sie sind aus dem Protokoll des Hauses gelesen und an dessen Telegrammen geprüft; auch
 sie lesen nur mit. Sie liegen im Abbild und werden bei jedem Start neben die Bus-Beschreibung
 gelegt.

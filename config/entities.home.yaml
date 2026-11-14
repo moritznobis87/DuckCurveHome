@@ -148,9 +148,9 @@ mqtt:
       "heatpump/hp_betrieb":
         compressor_hz: heat_pump_compressor_hz
         mode: heat_pump_mode_code
-      # Kennzahl des Reglers (Kennung c94b; ab Add-on 0.2.2). Was die Zahlen bedeuten, ist für
-      # diese Anlage nicht entschlüsselt: die Wörter der fremden Liste passen nicht (bei 20 stand
-      # dort „Puffer kühlen", 14.11.2026). Gesehen: 0 stehend, 16 und 20 laufend. Sie kommt in
+      # Kennzahl des Reglers (Kennung c94b; ab Add-on 0.2.2). Im Haus bestätigt: 0 stehend,
+      # 2 Heizbetrieb (14.11.2026, 16:41: Sprung auf 2 mit dem Start der Pumpe, bei
+      # Heizanforderung der Zone 1). Gesehen, aber nicht zugeordnet: 16, 20, 22. Sie kommt in
       # einer Liste mit der Hauptpumpe und allein; die Liste wird nur gelesen, wenn ihre
       # Kennungen stimmen.
       "energymgr/pumpe_status":
@@ -159,6 +159,24 @@ mqtt:
         wert_c94b: heat_pump_cycle_code
       "energymgr/betriebsart":
         code: heat_pump_cycle_code
+      # Was der Regler vorgibt (Protokoll vom 14.11.2026, 16:41, Start in den Heizbetrieb):
+      # Heizanforderung der ersten Zone (an/aus; als Zahl ab Bridge 0.14.4) und ihr
+      # Raum-Sollwert (22,0 °C am Tag, 10,0 °C in der Nacht).
+      "energymgr/heat_request":
+        z1_heat_request: heat_pump_heat_request
+      "energymgr/setpoint_temp":
+        z1_setpoint_temp: heat_pump_room_setpoint_c
+      # Zum Mitschreiben, Bedeutung offen (eigene Zeilen des Add-ons ab 0.2.3): die Kennung 1b45
+      # neben der des Heizstabs, und die Vorgaben des Reglers an die Maschine (cd46 wechselte
+      # beim Start von 0 auf 3, 6a47 von 60,0 auf 55,0).
+      "energymgr/flag_1b45":
+        wert: heat_pump_flag_1b45
+      "heatpump/wp_vorgabe":
+        kennung_2: "=c4 46"
+        kennung_3: "=cd 46"
+        kennung_4: "=6a 47"
+        modus: heat_pump_cmd_mode_code
+        ziel: heat_pump_cmd_target_c
   # --- Nicht über MQTT: die Geräte der ersten Generation ---
   # Der Wärmepumpen-Zähler (Shelly 3EM), der Wärmepumpenschalter und die Kaffeemaschine bleiben bei
   # Home Assistant. Grund: beim Gen-1-Shelly schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die

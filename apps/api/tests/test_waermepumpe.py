@@ -250,8 +250,14 @@ def test_die_kennzahl_des_reglers_bekommt_nur_ein_wort_das_im_haus_bestaetigt_is
     assert mit(0.0, heat_pump_flow_l_min=0.0).kreis_de == "Bereitschaft"  # type: ignore[attr-defined]
     ohne = mit(None)
     assert (ohne.kreis_code, ohne.kreis_de, ohne.einspeisung) == (None, None, None)  # type: ignore[attr-defined]
-    # Kein Wort der fremden Liste ist übrig; was dazukommt, kommt aus der Auszählung im Haus.
-    assert wp.KREIS_DE == {0: "Bereitschaft"} and wp.EINSPEISUNG == {}
+    # Ein Wort hat nur, was im Haus bestätigt ist: die 0 im Stillstand und die 2, die am
+    # 14.11.2026 um 16:41 mit dem Start der Pumpe bei Heizanforderung der Zone 1 kam.
+    assert wp.KREIS_DE == {0: "Bereitschaft", 2: "Heizen"} and wp.EINSPEISUNG == {2: "tiefer"}
+    heizen = mit(2.0, heat_pump_heat_request=1.0, heat_pump_room_setpoint_c=22.0)
+    assert (heizen.kreis_de, heizen.einspeisung) == ("Heizen", "tiefer")  # type: ignore[attr-defined]
+    assert heizen.heizanforderung is True and heizen.raum_soll_c.value == 22.0  # type: ignore[attr-defined]
+    assert mit(2.0, heat_pump_heat_request=0.0).heizanforderung is False  # type: ignore[attr-defined]
+    assert ohne.heizanforderung is None  # type: ignore[attr-defined]
 
     # Ist eine Kennzahl einmal zugeordnet, führt die Zeichnung den Vorlauf danach, aber nur,
     # solange die Pumpe läuft.

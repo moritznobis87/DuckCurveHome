@@ -36,6 +36,8 @@ REIHEN = (
     "buffer_temp_top_c",
     "buffer_temp_mid_bottom_c",
     "hp_release_contact",
+    "heat_pump_heat_request",
+    "heat_pump_flag_1b45",
 )
 TAGE_STANDARD = 7
 TAGE_HOECHSTENS = 60
@@ -61,6 +63,10 @@ class _Summe:
     paar_min: float = 0.0
     zusatz: float = 0.0
     zusatz_n: int = 0
+    heizt_an: int = 0
+    heizt_n: int = 0
+    flagge: int = 0
+    flagge_n: int = 0
     zuletzt: datetime | None = None
 
 
@@ -101,6 +107,14 @@ def auswerten(zeilen: Sequence[dict[str, float | str | None]]) -> list[ReglerKen
         if kontakt is not None:
             s.angefordert_n += 1
             s.angefordert += 1 if kontakt >= 0.5 else 0
+        heizt = _zahl(zeile.get("heat_pump_heat_request"))
+        if heizt is not None:
+            s.heizt_n += 1
+            s.heizt_an += 1 if heizt >= 0.5 else 0
+        flagge = _zahl(zeile.get("heat_pump_flag_1b45"))
+        if flagge is not None:
+            s.flagge_n += 1
+            s.flagge += 1 if flagge >= 0.5 else 0
         if laeuft:
             s.lauf += 1
             vorlauf = _zahl(zeile.get("flow_temp_c"))
@@ -149,6 +163,8 @@ def auswerten(zeilen: Sequence[dict[str, float | str | None]]) -> list[ReglerKen
             if s.angefordert_n
             else None,
             zusatz_kw=round(s.zusatz / s.zusatz_n, 2) if s.zusatz_n else None,
+            heizanforderung_anteil=round(s.heizt_an / s.heizt_n, 2) if s.heizt_n else None,
+            flag_1b45_anteil=round(s.flagge / s.flagge_n, 2) if s.flagge_n else None,
             zuletzt=s.zuletzt,
         )
         for code, s in sorted(summen.items(), key=lambda kv: -kv[1].minuten)

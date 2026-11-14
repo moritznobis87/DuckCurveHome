@@ -21,3 +21,11 @@ b,energymgr,betriebsart,Betriebsart des Reglers allein im Rundruf (c94b),,fe,201
 b,energymgr,pumpe_status,Hauptpumpe und Betriebsart des Reglers im Rundruf (c94b),,fe,2010,c200,main_pump,,UIN,,,,kennung_2,,HEX:2,,,,wert_c74b,,UIN,,,,kennung_3,,HEX:2,,,,wert_c94b,,UIN,,,
 g,heatpump,hp_betrieb,Aussentemperatur Durchfluss Betriebszustand Verdichterfrequenz,,1e,2000,78106e13ca46cb46,,s,IGN:1,,,,ext_temp,s,SIN,10,°C,,flow,s,UIN,10,l/min,,mode,s,UCH,,,,compressor_hz,s,UCH,,Hz,
 g,energymgr,speicher_info,Speichertemperatur des Reglers (nur wenn das Bediengeraet sie abfragt),,18,2000,150318031c117017,,s,IGN:1,,,,w_1503,s,UCH,,,,aux1_out,s,UCH,,,,w_1c11,s,UCH,,,,store_temp,s,SIN,10,°C,
+# Aus dem Protokoll vom 14.11.2026, 16:41 (Start der Maschine in den Heizbetrieb):
+# 1b45 kommt im Rundruf; die Kennung daneben (1c45) nennt ariston.csv den elektrischen Heizstab.
+# Was 1b45 bedeutet, ist offen (nachts 0, am Nachmittag 1); sie wird mitgeschrieben.
+b,energymgr,flag_1b45,Kennung 1b45 im Rundruf (Bedeutung offen; neben 1c45 Heizstab),,fe,2010,1b45,wert,,UIN,,,
+# Der Regler (13) schickt der Maschine (1e) Vorgaben: c446 nennt ariston.csv die Modulation des
+# Verdichters; cd46 wechselte beim Start von 0 auf 3 (in der Liste der Maschine: 3 Heizen),
+# 6a47 von 60,0 auf 55,0. c33e ist offen. Die Werte stehen im Teil des Fragenden (m).
+g,heatpump,wp_vorgabe,Vorgaben des Reglers an die Maschine,,1e,2020,c33e,wert_c33e,m,UCH,,,,kennung_2,m,HEX:2,,,,modulation,m,UCH,,%,,kennung_3,m,HEX:2,,,,modus,m,UCH,,,,kennung_4,m,HEX:2,,,,ziel,m,UIN,10,°C,

@@ -1227,6 +1227,9 @@ class WaermepumpeOut(BaseModel):
     spreizung_k: float | None = None
     waermeleistung_kw: float | None = None
     arbeitszahl: float | None = None
+    #: Was der Regler vorgibt: fordert die erste Zone Wärme an, und mit welchem Raum-Sollwert.
+    heizanforderung: bool | None = None
+    raum_soll_c: Measurement | None = None
     #: Was der Zähler mehr aufnimmt, als die Maschine für sich meldet, wenn es deutlich mehr
     #: ist (ab 1,5 kW): neben dem Verdichter läuft dann etwas anderes, vermutlich der Heizstab.
     zusatz_kw: float | None = None
@@ -1261,6 +1264,10 @@ class ReglerKennzahlOut(BaseModel):
     angefordert_anteil: float | None = None
     #: Was der Zähler im Lauf im Mittel mehr aufnahm, als die Maschine für sich meldete.
     zusatz_kw: float | None = None
+    #: Anteil der Minuten mit Heizanforderung der ersten Zone, und mit gesetzter Kennung 1b45
+    #: (Bedeutung offen; sie liegt neben der Kennung des Heizstabs).
+    heizanforderung_anteil: float | None = None
+    flag_1b45_anteil: float | None = None
     zuletzt: datetime | None = None
 
 

@@ -357,3 +357,53 @@ def test_die_betriebsart_des_reglers_wird_nur_aus_der_richtigen_liste_gelesen() 
     # Allein im Rundruf: Warmwasser.
     d.apply("ebusd/energymgr/betriebsart", b'{\n     "code": {"value": 3}}', T0)
     assert werte(d, T0)["heat_pump_cycle_code"] == 3.0
+
+
+def test_was_der_regler_vorgibt_wird_gelesen() -> None:
+    """Die Nachrichten sind die, die ebusd 26.1 am 14.11.2026 aus den Telegrammen des Hauses auf
+    den Broker gelegt hat: Heizanforderung der Zonen (`13fe20100c0191...`), Raum-Sollwerte
+    (`13fe20100f6996...`), die Kennung 1b45 (`13fe2010041b450100`) und die Vorgaben des Reglers
+    an die Maschine vor und nach dem Start (`131e20200dc33e...`)."""
+    # Ein Schalter ist ein Wert; ein anderes Wort bleibt keines.
+    assert felder(b'{"z1_heat_request": {"value": "on"}, "z2_heat_request": {"value": "off"}}') == {
+        "z1_heat_request": 1.0,
+        "z2_heat_request": 0.0,
+    }
+    assert felder(b'{"heatpump_mode": {"value": "Heating"}}') == {}
+
+    datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
+    ebus = next(m for m in EntityMap.load(datei).mqtt if m.kind == "ebusd")
+    d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
+    d.apply(
+        "ebusd/energymgr/heat_request",
+        b'{\n     "z1_heat_request": {"value": "on"},\n     "z2_heat_request": {"value": "off"},\n'
+        b'     "z3_heat_request": {"value": "off"}}',
+        T0,
+    )
+    d.apply(
+        "ebusd/energymgr/setpoint_temp",
+        b'{"z1_setpoint_temp": {"value": 22.0}, "z2_setpoint_temp": {"value": 22.0}}',
+        T0,
+    )
+    d.apply("ebusd/energymgr/flag_1b45", b'{\n     "wert": {"value": 1}}', T0)
+    vorgabe = (
+        b'{\n     "wert_c33e": {"value": null},\n     "kennung_2": {"value": "c4 46"},\n'
+        b'     "modulation": {"value": 100},\n     "kennung_3": {"value": "cd 46"},\n'
+        b'     "modus": {"value": 3},\n     "kennung_4": {"value": "6a 47"},\n'
+        b'     "ziel": {"value": 55.0}}'
+    )
+    d.apply("ebusd/heatpump/wp_vorgabe", vorgabe, T0)
+    assert werte(d, T0) == {
+        "heat_pump_heat_request": 1.0,
+        "heat_pump_room_setpoint_c": 22.0,
+        "heat_pump_flag_1b45": 1.0,
+        "heat_pump_cmd_mode_code": 3.0,
+        "heat_pump_cmd_target_c": 55.0,
+    }
+    # Dieselbe Nachricht mit anderen Kennungen wird nicht gelesen.
+    d.apply(
+        "ebusd/heatpump/wp_vorgabe",
+        vorgabe.replace(b"cd 46", b"ca 46").replace(b"55.0", b"12.0"),
+        T0,
+    )
+    assert werte(d, T0)["heat_pump_cmd_target_c"] == 55.0
