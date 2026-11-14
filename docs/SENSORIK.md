@@ -707,3 +707,46 @@ Wärmeseite.
 
 Nicht geprüft: die Seite mit den echten Werten des Hauses. Geprüft ist sie in der Vorführung, am
 Telefon (390 Punkte) und an der Wandanzeige (1280 Punkte), im Lauf und im Stillstand.
+
+### Wenn der Bus schweigt
+
+Am Morgen des 14.11.2026 stand im Haus an jedem Buswert der Seite ein Fragezeichen, obwohl beide
+Add-ons aktualisiert und neu gestartet waren; nur Außenluft und Zähler hatten Werte. Die Ursache
+ist **offen** (Stand 14.11.2026, 09:30): Der Weg von ebusd über einen echten Broker bis zu den
+Messwerten der Bridge ist nachgestellt und lief, ein Fehler im Dienst war nicht zu finden, und ins
+Haus sieht von außen niemand. Genau das war der Mangel: Die Seite sagte nicht, an welcher Stelle
+es hängt.
+
+Seitdem tut sie es. Die Bridge (ab 0.14.2) meldet die Lage des Busses als Zustand der Quelle
+`ebusd` (`DeviceHealthFrame`; die Wörter und ihre Bedeutung stehen in
+`addons/duckcurve_bridge/DOCS.md`), der Dienst merkt sich je Quelle den letzten Stand und
+schreibt nur den Wechsel ins Ereignisprotokoll. Ist kein einziger Buswert da, steht über der
+Zeichnung ein Satz (`waermepumpe.bus_auskunft`), der die erste Stelle nennt, an der es hängt:
+
+1. Die Bridge ist nicht verbunden.
+2. Die Bridge kündigt den Schlüssel `heat_pump_flow_l_min` nicht an: sie arbeitet mit einer
+   Zuordnung ohne den Bus.
+3. Das Wort der Bridge: Broker, ebusd, Signal, Zuordnung oder Weitergabe.
+4. Eine Bridge vor 0.14.2 hat kein Wort; der Satz verweist auf ihr Protokoll.
+
+Dazu steht, wann zuletzt ein Wert über den Broker kam.
+
+| Festlegung | Wert | Herkunft |
+|---|---|---|
+| Erste Meldung nach dem Start der Bridge | nach 90 Sekunden | gesetzt; ebusd gibt manche Werte nur einmal je Minute weiter |
+| Folgende Meldungen | alle 5 Minuten | gesetzt |
+| ebusd gilt als verstummt | nach 10 Minuten ohne Nachricht | gesetzt; gemessen kommen im Betrieb alle 5 bis 55 Sekunden Nachrichten |
+
+### Die Fußleiste am Telefon rollte mit
+
+Ebenfalls am 14.11.2026 gemeldet: auf dem iPhone, in der Anwendung vom Home-Bildschirm, stand die
+Fußleiste mitten im Bild und rollte mit dem Inhalt. **Nicht nachgestellt.** Im nachgestellten
+Telefon (Chromium, 390 Punkte) bleibt sie beim Rollen fest (gemessen: oben 603, unten 664 bei
+Rollstand 0 und 400), und kein Vorfahr der Leiste hat eine Eigenschaft, die `position: fixed`
+umlenkt. Bekannt ist ein Fehler von iOS mit genau diesem Bild bei Anwendungen vom
+Home-Bildschirm, die einige Stunden im Hintergrund lagen [F1]; eine Abhilfe im Code nennt die
+Quelle nicht. Ob es dieser Fehler ist, zeigt die Gegenprobe im Haus: Anwendung ganz schließen und
+neu öffnen, dann auf dieser und auf einer anderen langen Seite rollen.
+
+[F1] Apple Developer Forums, „iOS17 PWA `position: fixed` element breaks after a while“,
+https://developer.apple.com/forums/thread/744327, abgerufen 14.11.2026.

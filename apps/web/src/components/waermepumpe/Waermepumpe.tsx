@@ -67,6 +67,12 @@ export function Waermepumpe() {
         <span className="wp-stand">Stand {hhmm(daten.now)}{fehler ? ` · ${fehler}` : ""}</span>
       </div>
 
+      {daten.bus_stumm_de ? (
+        <p className="wp-stumm" role="status">
+          <strong>Vom Bus der Wärmepumpe ist kein Wert da.</strong> {daten.bus_stumm_de}
+        </p>
+      ) : null}
+
       <div className="kpi-grid kpi-handy" style={{ "--cols": 4 } as React.CSSProperties}>
         <Stat label="Wärme, abgeschätzt" value={zahl(daten.waermeleistung_kw)} unit="kW" tone={daten.waermeleistung_kw != null ? "amber" : "muted"} hint={daten.laeuft ? "Durchfluss mal Spreizung" : "nur bei laufender Maschine"} />
         <Stat label={strom.quelle ? `Strom, ${strom.quelle}` : "Strom"} value={zahl(strom.kw, 2)} unit="kW" tone={strom.kw != null ? undefined : "muted"} />

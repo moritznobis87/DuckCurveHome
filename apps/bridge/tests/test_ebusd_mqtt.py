@@ -234,3 +234,95 @@ def test_was_die_bridge_vom_bus_liefert_hat_im_dienst_einen_platz() -> None:
     d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
     fehlend = sorted(k for k in d.owned_keys if f'"{k}"' not in quelle)
     assert not fehlend, f"ohne Reihe in der Minutentabelle: {fehlend}"
+
+
+def test_die_lage_nennt_die_erste_stelle_an_der_es_haengt() -> None:
+    """Broker, ebusd, Bus, Zuordnung, Weitergabe: in der Reihenfolge des Weges.
+
+    Am 14.11.2026 zeigte die Seite der Wärmepumpe im Haus lauter Fragezeichen, und von außen war
+    nicht zu sehen, an welcher dieser Stellen es lag. Seitdem sagt es die Bridge.
+    """
+    from dch_bridge.sources.ebusd_mqtt import LAGEN, STUMM_S
+
+    d = geraet()
+    assert d.lage(verbunden=False, weitergabe=True, now=T0) == "broker_getrennt"
+    # Angemeldet, aber unter dem Thema kommt nichts: das Add-on läuft nicht oder spricht woanders.
+    assert d.lage(verbunden=True, weitergabe=True, now=T0) == "kein_wort"
+    # ebusd läuft, hört aber den Bus nicht.
+    d.apply("ebusd/global/signal", b"false", T0)
+    d.apply("ebusd/heatpump/unbekannt", b'{"0": {"name": "", "value": 1}}', T0)
+    assert d.lage(verbunden=True, weitergabe=True, now=T0) == "kein_signal"
+    # Signal da, Nachrichten da, aber keine, die zugeordnet ist.
+    d.apply("ebusd/global/signal", b"true", T0)
+    assert d.lage(verbunden=True, weitergabe=True, now=T0) == "nicht_zugeordnet"
+    d.apply("ebusd/heatpump/coolat_data", KUEHLKREIS, T0)
+    assert d.lage(verbunden=True, weitergabe=False, now=T0) == "nur_mitlesen"
+    assert d.lage(verbunden=True, weitergabe=True, now=T0) == "ok"
+    # Zehn Minuten ohne ein Wort: verstummt, auch wenn die alten Werte noch als frisch gelten.
+    spaeter = T0 + timedelta(seconds=STUMM_S + 1)
+    assert d.fresh("flow_temp_c", spaeter)
+    assert d.lage(verbunden=True, weitergabe=True, now=spaeter) == "verstummt"
+    # Jede Lage hat eine Einstufung, und nur eine heißt in Ordnung.
+    assert [wort for wort, stufe in LAGEN.items() if stufe == "ok"] == ["ok"]
+    for wort in (
+        "broker_getrennt",
+        "kein_wort",
+        "kein_signal",
+        "nicht_zugeordnet",
+        "nur_mitlesen",
+        "verstummt",
+        "abgeschaltet",
+    ):
+        assert LAGEN[wort] in ("degraded", "down")
+
+
+def test_die_bridge_meldet_die_lage_des_busses_in_die_cloud(tmp_path: Path) -> None:
+    """Die ganze Bridge, wie sie im Haus läuft: mit der Zuordnung des Hauses, ohne Broker.
+
+    Ohne Verbindung zum Broker heißt die Lage `broker_getrennt`, mit Verbindung und ohne
+    Nachricht `kein_wort`, mit einer zugeordneten Nachricht `ok`. Und was gemeldet wird, steht
+    als Zustand der Quelle `ebusd` zum Versand bereit.
+    """
+    import asyncio
+
+    from dch_bridge.main import VERSION, Bridge
+    from dch_bridge.settings import BridgeSettings
+    from hems_core.protocol import DeviceHealthFrame
+
+    haus = EntityMap.load(Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml")
+    settings = BridgeSettings(api_token="t", outbox_path=tmp_path / "outbox.sqlite")
+    b = Bridge(settings, haus)
+    assert b.mqtt is not None
+    stand = b.ebus_lage(T0)
+    assert stand is not None
+    lage, einzel = stand
+    assert lage == "broker_getrennt"
+    assert einzel["bridge"] == VERSION and einzel["thema"] == "ebusd"
+
+    b.mqtt.connected = True
+    assert b.ebus_lage(T0) == ("kein_wort", einzel)
+    bus = next(d for d in b.mqtt.devices if isinstance(d, EbusdDevice))
+    bus.apply("ebusd/heatpump/heatpump_flowmeter", einzelwert(29.8), T0)
+    lage, einzel = b.ebus_lage(T0) or ("", {})
+    assert lage == "ok"
+    assert (einzel["nachrichten"], einzel["namen"], einzel["werte"]) == ("1", "1", "1")
+
+    # Im Modus home_assistant gibt es die Quelle nicht; auch das ist eine Auskunft.
+    aus = Bridge(
+        BridgeSettings(
+            api_token="t", outbox_path=tmp_path / "o2.sqlite", source_mode="home_assistant"
+        ),
+        haus,
+    )
+    assert (aus.ebus_lage(T0) or ("", {}))[0] == "abgeschaltet"
+    # Eine Zuordnung ohne Bus meldet nichts.
+    ohne = Bridge(
+        BridgeSettings(api_token="t", outbox_path=tmp_path / "o3.sqlite"),
+        EntityMap.model_validate({"sensors": []}),
+    )
+    assert ohne.ebus_lage(T0) is None
+
+    asyncio.run(b.uplink.emit_health(T0, "ebusd", "down", {"lage": "kein_wort"}))
+    wartend = list(b.uplink._events)
+    assert len(wartend) == 1 and isinstance(wartend[0], DeviceHealthFrame)
+    assert wartend[0].source == "ebusd" and wartend[0].details == {"lage": "kein_wort"}

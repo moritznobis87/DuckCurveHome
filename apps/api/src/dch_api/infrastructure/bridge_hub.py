@@ -51,6 +51,11 @@ class BridgeHub:
         self.on_telemetry: TelemetryHandler | None = None
         self.on_event: Callable[[EventFrame | DeviceHealthFrame], Awaitable[None]] | None = None
         self.health: DeviceHealthFrame | None = None
+        #: Der letzte gemeldete Zustand je Quelle der Bridge (etwa `ebusd`), und was sie beim
+        #: Handschlag über sich gesagt hat. Beides braucht, wer erklären will, warum ein Wert fehlt.
+        self.health_by_source: dict[str, DeviceHealthFrame] = {}
+        self.bridge_version: str | None = None
+        self.keys: frozenset[str] = frozenset()
 
     @property
     def online(self) -> bool:
@@ -65,6 +70,9 @@ class BridgeHub:
                 await self._ws.close(code=4001, reason="superseded")
         self._ws = ws
         self.bridge_id = hello.bridge_id
+        self.bridge_version = hello.bridge_version
+        self.keys = frozenset(hello.keys)
+        self.health_by_source = {}
         self.connected_at = datetime.now(UTC)
         self.last_frame_at = self.connected_at
         # Bei einer neuen Verbindung zählt die Sicht der Bridge: ihre Nummerierung kann neu beginnen
@@ -115,8 +123,16 @@ class BridgeHub:
         elif isinstance(frame, HeartbeatFrame):
             pass
         elif isinstance(frame, DeviceHealthFrame):
+            # Ein Stand, kein Vorfall: die Bridge meldet ihn regelmäßig. Weitergereicht (und damit
+            # ins Ereignisprotokoll geschrieben) wird nur der Wechsel.
+            vorher = self.health_by_source.get(frame.source)
             self.health = frame
-            if self.on_event is not None:
+            self.health_by_source[frame.source] = frame
+            gleich = vorher is not None and (vorher.status, vorher.details.get("lage")) == (
+                frame.status,
+                frame.details.get("lage"),
+            )
+            if self.on_event is not None and not gleich:
                 await self.on_event(frame)
         elif isinstance(frame, EventFrame) and self.on_event is not None:
             await self.on_event(frame)

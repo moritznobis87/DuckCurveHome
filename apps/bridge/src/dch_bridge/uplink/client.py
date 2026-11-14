@@ -20,6 +20,7 @@ from hems_core.protocol import (
     BacklogFrame,
     CommandFrame,
     CommandResultFrame,
+    DeviceHealthFrame,
     EventFrame,
     HeartbeatFrame,
     HelloFrame,
@@ -64,7 +65,7 @@ class UplinkClient:
         self._ws: ClientConnection | None = None
         self._send_lock = asyncio.Lock()
         self._stop = asyncio.Event()
-        self._events: deque[EventFrame] = deque(maxlen=MAX_PENDING_EVENTS)
+        self._events: deque[EventFrame | DeviceHealthFrame] = deque(maxlen=MAX_PENDING_EVENTS)
 
     # ------------------------------------------------------------------ Senden
     async def _send(self, payload: object) -> None:
@@ -106,6 +107,25 @@ class UplinkClient:
             context=context,
         )
         self._events.append(frame)
+        if self.connected:
+            await self._flush_events()
+
+    async def emit_health(
+        self, at: datetime, source: str, status: str, details: dict[str, str]
+    ) -> None:
+        """Den Zustand einer Quelle melden (`ok`, `degraded`, `down`), mit dem Grund in `details`.
+
+        Anders als ein Ereignis ist das ein Stand, kein Vorfall: die Cloud merkt sich je Quelle den
+        letzten und schreibt nur einen Wechsel ins Protokoll. Deshalb darf er regelmäßig kommen.
+        """
+        self._events.append(
+            DeviceHealthFrame(
+                at=at,
+                source=source,
+                status=status if status in ("ok", "degraded", "down") else "degraded",
+                details=details,
+            )
+        )
         if self.connected:
             await self._flush_events()
 

@@ -92,3 +92,37 @@ async def test_repeated_sequence_within_one_connection_is_reported() -> None:
     await hub.handle(telemetry(1, 1.0))
     await hub.handle(telemetry(1, 2.0))
     assert len(seen) == 1 and hub.skipped == 1
+
+
+@pytest.mark.asyncio
+async def test_der_zustand_einer_quelle_wird_gemerkt_und_nur_der_wechsel_weitergereicht() -> None:
+    """Die Bridge meldet die Lage des Busses alle fünf Minuten. Das Ereignisprotokoll bekommt
+    davon nur den Wechsel, sonst stünde dort zwölfmal in der Stunde dasselbe."""
+    from hems_core.protocol import DeviceHealthFrame
+
+    hub = BridgeHub("test")
+    gemeldet: list[str] = []
+
+    async def on_event(frame: object) -> None:
+        assert isinstance(frame, DeviceHealthFrame)
+        gemeldet.append(frame.details["lage"])
+
+    hub.on_event = on_event  # type: ignore[assignment]
+    await hub.serve(FakeWs(), hello())  # type: ignore[arg-type]
+    assert hub.bridge_version == "t" and hub.keys == frozenset({"pv_power_kw"})
+
+    def stand(lage: str, status: str) -> DeviceHealthFrame:
+        return DeviceHealthFrame(
+            at=datetime.now(UTC),
+            source="ebusd",
+            status=status,  # type: ignore[arg-type]
+            details={"lage": lage},
+        )
+
+    for lage, status in [("kein_wort", "down"), ("kein_wort", "down"), ("ok", "ok"), ("ok", "ok")]:
+        await hub.handle(stand(lage, status))
+    assert gemeldet == ["kein_wort", "ok"]
+    assert hub.health_by_source["ebusd"].details["lage"] == "ok"
+    # Eine neue Verbindung beginnt ohne Vorwissen: was vorher galt, muss nicht mehr gelten.
+    await hub.serve(FakeWs(), hello())  # type: ignore[arg-type]
+    assert hub.health_by_source == {}

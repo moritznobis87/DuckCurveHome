@@ -109,7 +109,7 @@ def test_ohne_zaehler_gilt_die_auskunft_der_maschine_und_ohne_bus_steht_es_da(
     # Ohne Bus entscheidet der Zähler, ob sie läuft, und es wird nichts gerechnet.
     assert stumm.laeuft and stumm.zustand_de == "läuft"
     assert stumm.waermeleistung_kw is None and stumm.vorlauf_c.value is None
-    assert any("Vom Bus der Wärmepumpe kommt gerade nichts" in h for h in stumm.hinweise_de)
+    assert "Vom Bus der Wärmepumpe kommt gerade nichts" in (stumm.bus_stumm_de or "")
 
 
 def test_abtauen_und_unbekannte_zustaende_haben_ein_wort() -> None:
@@ -135,3 +135,69 @@ def test_die_vorfuehrung_zeigt_eine_stimmige_waermepumpe(client: TestClient) -> 
     )
     assert laeuft["flow_temp_c"] > laeuft["heat_pump_return_temp_c"]
     assert set(laeuft) >= set(wp.KEYS.values()) - {"flow_temp_c"} | {wp.ZUSTAND_KEY}
+
+
+def test_schweigt_der_bus_nennt_die_seite_die_stelle_an_der_es_haengt(client: TestClient) -> None:
+    """Am 14.11.2026 stand im Haus an jedem Buswert ein Fragezeichen und nirgends ein Grund."""
+    aus = wp.zusammensetzen(
+        now=JETZT,
+        snap=schnappschuss(client, 3.3),
+        laeuft_laut_zaehler=True,
+        mess=mess_aus({}),
+        bus_stumm_de="Der Grund.",
+    )
+    assert aus.bus_stumm_de == "Der Grund."
+    # Kommt auch nur ein Wert, ist der Bus nicht stumm.
+    aus = wp.zusammensetzen(
+        now=JETZT,
+        snap=schnappschuss(client, 3.3),
+        laeuft_laut_zaehler=True,
+        mess=mess_aus({"heat_pump_flow_l_min": 29.8}),
+        bus_stumm_de="Der Grund.",
+    )
+    assert aus.bus_stumm_de is None
+
+
+def test_die_auskunft_folgt_dem_weg_der_werte() -> None:
+    from zoneinfo import ZoneInfo
+
+    tz = ZoneInfo("Europe/Berlin")
+    bus = frozenset({"pv_power_kw", wp.BUS_KENNZEICHEN})
+
+    def satz(**kw: object) -> str:
+        return wp.bus_auskunft(wp.BusStand(**kw), tz)  # type: ignore[arg-type]
+
+    assert "nicht verbunden" in satz(bridge_online=False)
+    # Die Bridge läuft, aber mit einer Zuordnung ohne den Bus (alter Stand im Zwischenspeicher).
+    alt = satz(bridge_online=True, bridge_version="0.13.1", angekuendigt=frozenset({"pv_power_kw"}))
+    assert "Version 0.13.1" in alt and "Zuordnung" in alt
+    # Eine Bridge vor 0.14.2 kann die Stelle nicht nennen; der Satz sagt, wo sie steht.
+    vor = satz(bridge_online=True, bridge_version="0.14.1", angekuendigt=bus)
+    assert "ab Version 0.14.2" in vor and "Protokoll" in vor
+    # Ab 0.14.2 kommt das Wort der Bridge, und jedes hat seinen Satz.
+    einzel = {"thema": "ebusd", "nachrichten": "412", "namen": "23", "source_mode": "compare"}
+    for lage, wort in [
+        ("broker_getrennt", "Mosquitto"),
+        ("kein_wort", "unter „ebusd“"),
+        ("verstummt", "nichts mehr"),
+        ("kein_signal", "Signal"),
+        ("nicht_zugeordnet", "412 bisher, 23 verschiedene"),
+        ("nur_mitlesen", "„compare“"),
+        ("abgeschaltet", "„compare“"),
+    ]:
+        text = satz(
+            bridge_online=True,
+            bridge_version="0.14.2",
+            angekuendigt=bus,
+            lage=lage,
+            einzelheiten=einzel,
+        )
+        assert wort in text, (lage, text)
+        assert "{" not in text
+    # Ohne Meldung der Bridge: sie kommt noch.
+    assert "fünf Minuten" in satz(bridge_online=True, bridge_version="0.14.2", angekuendigt=bus)
+    # Wann zuletzt etwas kam, steht in Ortszeit dabei (22:30 UTC ist 23:30 in Berlin).
+    mit = satz(bridge_online=False, zuletzt=JETZT)
+    assert mit.endswith("Der letzte Wert vom Bus kam am 13.11. um 23:30 Uhr.")
+    # Ein unbekanntes Wort einer neueren Bridge wirft nichts um.
+    assert satz(bridge_online=True, bridge_version="0.15.0", angekuendigt=bus, lage="neu")

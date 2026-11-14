@@ -1249,11 +1249,31 @@ class LiveRuntime:
         """Die Wärmepumpe im Augenblick: was ihr Bus, der Zähler und die Pufferfühler melden."""
         now = self.now
         snap, _, hp = self._states()
+        # Für den Fall, dass der Bus schweigt: was Dienst und Bridge über den Weg wissen.
+        bus = self.hub.health_by_source.get("ebusd")
+        zeiten = [
+            r.observed_at
+            for key in (*wp_logic.KEYS.values(), wp_logic.ZUSTAND_KEY)
+            if (r := self.live.readings.get(key)) is not None
+            and r.value is not None
+            # Den Vorlauf gibt es auch aus Home Assistant; als Lebenszeichen des Busses zählt
+            # nur, was über den Broker kam.
+            and (r.source or "").startswith("mqtt:")
+        ]
+        stand = wp_logic.BusStand(
+            bridge_online=self.hub.online,
+            bridge_version=self.hub.bridge_version,
+            angekuendigt=self.hub.keys,
+            lage=bus.details.get("lage") if bus is not None else None,
+            einzelheiten=dict(bus.details) if bus is not None else {},
+            zuletzt=max(zeiten) if zeiten else None,
+        )
         return wp_logic.zusammensetzen(
             now=now,
             snap=snap,
             laeuft_laut_zaehler=hp.running,
             mess=lambda key: self.live.measurement(key, now, wp_logic.STALE_S),
+            bus_stumm_de=wp_logic.bus_auskunft(stand, BERLIN),
         )
 
     async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut:
