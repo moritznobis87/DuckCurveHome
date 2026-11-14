@@ -840,6 +840,19 @@ button.ansicht { cursor: pointer; }
 .kl-tabelle tr[data-aktuell="true"] td { color: var(--amber); }
 .kl-rollt { overflow-x: auto; }
 .kl-rollt .kl-tabelle { min-width: 940px; }
+.kl-bilanz { display: flex; gap: 2px; height: 22px; width: 100%; }
+.kl-bilanz-teil { flex: 1 1 0; min-width: 4px; border-radius: 4px; background: var(--kl-teil); }
+.kl-bilanz-teil[data-art="gueltig"], .kl-bilanz-punkt[data-art="gueltig"] { --kl-teil: var(--amber); }
+.kl-bilanz-teil[data-art="anlauf"], .kl-bilanz-punkt[data-art="anlauf"] { --kl-teil: color-mix(in oklab, var(--text-3) 70%, transparent); }
+.kl-bilanz-teil[data-art="ohne_wert"], .kl-bilanz-punkt[data-art="ohne_wert"] { --kl-teil: var(--alert); }
+.kl-bilanz-teil[data-art="zusatz"], .kl-bilanz-punkt[data-art="zusatz"] { --kl-teil: var(--heat-pump); }
+.kl-bilanz-teil[data-art="ohne_waerme"], .kl-bilanz-punkt[data-art="ohne_waerme"] { --kl-teil: var(--line-2); }
+.kl-bilanz-legende { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; color: var(--text-1); }
+.kl-bilanz-legende li { display: grid; grid-template-columns: 12px 108px 96px 44px minmax(0, 1fr); column-gap: 10px; align-items: baseline; }
+.kl-bilanz-punkt { width: 10px; height: 10px; border-radius: 3px; background: var(--kl-teil); align-self: center; }
+.kl-bilanz-anteil, .kl-bilanz-wozu { color: var(--text-3); }
+.kl-bilanz-anteil { text-align: right; }
+.kl-bilanz-wozu { font-size: 13px; }
 .kl-liste { font-size: 14px; color: var(--text-2); }
 .kl-liste summary { cursor: pointer; padding: 6px 0; }
 .kl-liste[open] summary { margin-bottom: 8px; }

@@ -3,8 +3,8 @@
 **Woraus ein Messpunkt entsteht.** Aus den Minutenwerten, die der Bus der Maschine und der
 Zähler liefern: Durchfluss, Vorlauf, Rücklauf, Leistungsaufnahme, Außentemperatur. Die Wärme
 einer Minute ist Durchfluss mal Spreizung mal Wärmekapazität des Wassers; die Arbeitszahl
-eines Fensters ist die Summe der Wärme durch die Summe des Stroms. Ein Fenster zählt nur, wenn
-die Maschine in jeder seiner Minuten heizt, schon eine Weile läuft und alle Werte da sind.
+eines Fensters ist die Summe der Wärme durch die Summe des Stroms. Ein Fenster zählt, wenn die
+Maschine in mindestens acht seiner zehn Minuten eingeschwungen heizt und die Werte da sind.
 
 **Warum Fenster und nicht Minuten.** Die Werte kommen nicht gleichzeitig (der Bus meldet im
 Abstand von Sekunden bis zu einer Minute), und Wasser hat eine Laufzeit vom Vorlauf- zum
@@ -14,8 +14,12 @@ zusammengehören; über zehn Minuten mittelt sich das heraus.
 **Warum der Anlauf fehlt.** Nach dem Start heizt die Maschine erst sich selbst und ihr Wasser
 auf. Die Arbeitszahl dieser Minuten sagt etwas über den Start, nichts über die Kennlinie.
 
-**Ohne Heizstab.** Misst der Zähler deutlich mehr, als die Maschine für sich meldet, läuft die
-elektrische Zusatzheizung mit. Solche Minuten zählen nicht (`ZUSATZ_KW`).
+**Ohne Heizstab.** Läuft neben dem Verdichter die elektrische Zusatzheizung, zählt die Minute
+nicht (`zusatz`).
+
+**Die Bilanz.** `auswerten` gibt neben den Punkten zurück, wo die übrigen Minuten geblieben
+sind: im Anlauf, beim Heizstab, ohne Wert, ohne Wärme. Eine leere Kennlinie soll sagen, woran
+es liegt.
 
 **Was der Punkt nicht ist.** Abtauphasen fallen heraus (die Maschine heizt dann nicht), also
 ist das die Arbeitszahl im Heizbetrieb, nicht die eines Tages. Und sie erbt den Vorbehalt der
@@ -38,7 +42,7 @@ Reine Funktionen, kein I/O.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from typing import Literal
 
@@ -52,18 +56,43 @@ MIN_SPREIZUNG_K = 0.5
 #: Unter dieser Leistungsaufnahme läuft der Verdichter nicht.
 MIN_LEISTUNG_KW = 0.3
 
-#: Nimmt der Zähler an der Zuleitung so viel mehr auf, als die Maschine für sich meldet, läuft
-#: neben dem Verdichter etwas anderes, vermutlich der elektrische Heizstab. Am 14.11.2026 um
-#: 11:18 standen im Haus 8,84 kW am Zähler bei 64 Hz; eine Stunde vorher waren es bei 65 Hz
-#: 3,16 kW. Solche Minuten gehören nicht in die Kennlinie der Wärmepumpe: ein Heizstab hat die
-#: Arbeitszahl eins. Gesetzt auf 1,5 kW, unter der kleinsten Stufe eines Heizstabs und über dem,
-#: was Lüfter, Umwälzpumpe und Regler aufnehmen.
+#: **Der Heizstab.** Läuft neben dem Verdichter die elektrische Zusatzheizung, gehört die Minute
+#: nicht in die Kennlinie der Wärmepumpe: ein Heizstab hat die Arbeitszahl eins. Am 14.11.2026
+#: um 11:18 standen im Haus 8,84 kW am Zähler bei 64 Hz; eine Stunde vorher waren es bei 65 Hz
+#: 3,16 kW. Erkannt wird das auf zwei Wegen:
+#:
+#: * Der Zähler misst mehr, als der Verdichter allein aufnehmen kann (`ZUSATZ_ABSOLUT_KW`).
+#:   Gesetzt aus dem, was im Haus gesehen wurde: bis rund 3,5 kW im gewöhnlichen Lauf.
+#: * Der Zähler liegt deutlich über dem, was die Maschine für sich meldet, **gemessen an ihrem
+#:   gewöhnlichen Verhältnis** (`ZUSATZ_KW`). Das Verhältnis wird aus den Minuten selbst
+#:   bestimmt (Median), weil nicht bekannt ist, ob die Maschine ihre ganze Aufnahme meldet oder
+#:   nur einen Teil. Die erste Fassung verglich die beiden Zahlen unmittelbar; meldet die
+#:   Maschine grundsätzlich weniger, als der Zähler misst, fiel damit jede Minute heraus, und
+#:   die Kennlinie blieb leer (im Haus gesehen am 14.11.2026).
+ZUSATZ_ABSOLUT_KW = 5.5
 ZUSATZ_KW = 1.5
+#: Ab so vielen Minuten mit beiden Angaben gilt das Verhältnis als bestimmt.
+VERHAELTNIS_MIN = 30
 
-#: Der Betriebszustand „heizt" der Maschine (`heat_pump_mode_code`). Abtauen ist 9.
+#: Die Betriebszustände der Maschine, in denen sie heizt (`heat_pump_mode_code`): Heizen, Heizen
+#: mit voller Leistung, Heizen im Nennpunkt. Abtauen ist 9.
 MODUS_HEIZT = 3
+MODI_HEIZEN = frozenset({3, 4, 6})
 #: Länge eines Fensters in Minuten; Fenster liegen auf dem Raster der Uhr.
 FENSTER_MIN = 10
+#: So viele Minuten eines Fensters müssen gültig sein. Nicht alle zehn: eine einzelne Minute
+#: ohne Wert darf kein ganzes Fenster kosten.
+FENSTER_GUELTIG_MIN = 8
+#: Über so viele Minuten ohne Wert wird eine Reihe überbrückt: zwischen dem Wert davor und dem
+#: danach liegt die Gerade, am Ende der Reihe gilt der letzte weiter. Der Bus sendet Vorlauf,
+#: Rücklauf und die Leistung der Maschine nur etwa alle halbe Minute bis Minute (gezählt in vier
+#: Protokollen vom 13. und 14.11.2026: je ein bis zwei Meldungen in vierzig Sekunden), der
+#: Rücklauf steht dazu in einer Liste, deren Zusammensetzung wechselt. Rutscht eine Meldung über
+#: die Minutengrenze, hat eine Minute keinen Wert, obwohl nichts fehlt. Die erste Fassung
+#: verlangte jeden Wert in jeder Minute und fand im Haus nach Stunden Lauf kein einziges
+#: vollständiges Fenster (14.11.2026). Gesetzt: fünf Minuten; im eingeschwungenen Lauf ändern
+#: sich die Temperaturen in dieser Zeit um Zehntel, nicht um Grade.
+AUFFUELLEN_MIN = 5
 #: So lange muss die Maschine schon laufen, bevor ihre Minuten zählen.
 ANLAUF_MIN = 10
 #: Eine Arbeitszahl außerhalb dieser Grenzen ist ein Messfehler, kein Betriebspunkt.
@@ -96,13 +125,53 @@ class Minute:
     strom_maschine_kw: float | None = None
 
 
-def zusatz_kw(zaehler_kw: float | None, maschine_kw: float | None) -> float | None:
-    """Was der Zähler mehr misst, als die Maschine für sich meldet, wenn es mehr als `ZUSATZ_KW`
-    ist. `None`: kein Zusatz erkennbar, oder einer der beiden Werte fehlt."""
-    if zaehler_kw is None or maschine_kw is None:
+def zusatz_kw(
+    zaehler_kw: float | None, maschine_kw: float | None, verhaeltnis: float | None = None
+) -> float | None:
+    """Wie viel der Zähler über dem liegt, was dem Verdichter zuzurechnen ist, wenn es für den
+    Heizstab reicht; sonst `None`.
+
+    Mit `verhaeltnis` (dem gewöhnlichen Verhältnis von Zähler zu Maschine) zählt der Abstand
+    zum Gewöhnlichen. Ohne es wird nur behauptet, was sicher ist: mehr als `ZUSATZ_ABSOLUT_KW`
+    nimmt der Verdichter allein nicht auf.
+    """
+    if zaehler_kw is None or maschine_kw is None or maschine_kw < MIN_LEISTUNG_KW:
         return None
-    mehr = zaehler_kw - maschine_kw
-    return round(mehr, 2) if mehr >= ZUSATZ_KW else None
+    if verhaeltnis is not None:
+        mehr = zaehler_kw - verhaeltnis * maschine_kw
+        return round(mehr, 2) if mehr >= ZUSATZ_KW else None
+    if zaehler_kw >= ZUSATZ_ABSOLUT_KW and zaehler_kw - maschine_kw >= ZUSATZ_KW:
+        return round(zaehler_kw - maschine_kw, 2)
+    return None
+
+
+def zusatz(m: Minute, verhaeltnis: float | None) -> bool:
+    """Läuft in dieser Minute neben dem Verdichter etwas anderes mit, vermutlich der Heizstab?"""
+    if m.strom_kw is None:
+        return False
+    if m.strom_kw >= ZUSATZ_ABSOLUT_KW:
+        return True
+    return (
+        verhaeltnis is not None
+        and zusatz_kw(m.strom_kw, m.strom_maschine_kw, verhaeltnis) is not None
+    )
+
+
+def verhaeltnis_zaehler_maschine(minuten: Sequence[Minute]) -> float | None:
+    """Wie viel der Zähler gewöhnlich über dem liegt, was die Maschine für sich meldet: der
+    Median des Verhältnisses über die Minuten im Lauf. `None`, solange es zu wenige sind."""
+    werte = sorted(
+        m.strom_kw / m.strom_maschine_kw
+        for m in minuten
+        if m.strom_kw is not None
+        and m.strom_maschine_kw is not None
+        and m.strom_maschine_kw >= MIN_LEISTUNG_KW
+        and MIN_LEISTUNG_KW <= m.strom_kw < ZUSATZ_ABSOLUT_KW
+    )
+    if len(werte) < VERHAELTNIS_MIN:
+        return None
+    mitte = len(werte) // 2
+    return werte[mitte] if len(werte) % 2 else (werte[mitte - 1] + werte[mitte]) / 2
 
 
 @dataclass(frozen=True)
@@ -144,10 +213,83 @@ class Ausgleich:
         return self.a + self.b_aussen * aussen_c + self.c_vorlauf * vorlauf_c
 
 
+#: Die Größen, ohne die sich keine Wärme rechnen lässt, mit ihrem Namen für die Bilanz.
+PFLICHT = {
+    "aussen_c": "Außentemperatur",
+    "vorlauf_c": "Vorlauf",
+    "ruecklauf_c": "Rücklauf",
+    "durchfluss_l_min": "Durchfluss",
+    "strom_kw": "Zähler",
+}
+#: Alle Reihen, deren letzter Wert kurz weiter gilt.
+_REIHEN = (*PFLICHT, "modus", "hz", "strom_maschine_kw")
+
+
+@dataclass
+class Bilanz:
+    """Wo die Minuten geblieben sind. Damit eine leere Kennlinie sagt, woran es liegt."""
+
+    minuten: int = 0
+    #: Minuten, in denen die Maschine heizte.
+    heizen: int = 0
+    #: davon im Anlauf nach einem Start,
+    anlauf: int = 0
+    #: mit Heizstab,
+    zusatz: int = 0
+    #: ohne einen der nötigen Werte (welcher, steht in `fehlt`),
+    ohne_wert: int = 0
+    #: mit allen Werten, aber ohne rechenbare Wärme (Pumpe steht, keine Spreizung),
+    ohne_waerme: int = 0
+    #: und die übrigen: gültig.
+    gueltig: int = 0
+    #: Fenster mit mindestens einer gültigen Minute, und wie viele davon voll genug waren.
+    fenster: int = 0
+    punkte: int = 0
+    #: Fenster, deren Arbeitszahl außerhalb des Glaubwürdigen lag.
+    unglaubwuerdig: int = 0
+    #: Das gewöhnliche Verhältnis von Zähler zu Maschine, wenn es bestimmt ist.
+    verhaeltnis: float | None = None
+    fehlt: dict[str, int] = field(default_factory=dict)
+
+
+def auffuellen(minuten: Sequence[Minute]) -> list[Minute]:
+    """Die Minuten in zeitlicher Folge, kurze Lücken einer Reihe überbrückt.
+
+    Zwischen zwei Werten, die höchstens `AUFFUELLEN_MIN` Minuten ohne Wert trennen, liegt die
+    Gerade; der Betriebszustand ist ein Zustand und keine Größe, er gilt so lange einfach
+    weiter. Am Ende einer Reihe gilt der letzte Wert weiter, ebenso lange. Eine Reihe, die länger
+    schweigt, bleibt leer."""
+    reihe = sorted(minuten, key=lambda x: x.ts)
+    grenze = timedelta(minutes=AUFFUELLEN_MIN + 1, seconds=30)
+    nach: list[dict[str, float]] = [{} for _ in reihe]
+    for name in _REIHEN:
+        davor: tuple[datetime, float] | None = None
+        offen: list[int] = []
+        for i, m in enumerate(reihe):
+            wert = getattr(m, name)
+            if wert is None:
+                offen.append(i)
+                continue
+            if davor is not None and offen and m.ts - davor[0] <= grenze:
+                spanne = (m.ts - davor[0]).total_seconds()
+                for j in offen:
+                    anteil = (reihe[j].ts - davor[0]).total_seconds() / spanne
+                    nach[j][name] = (
+                        davor[1] if name == "modus" else davor[1] + (wert - davor[1]) * anteil
+                    )
+            davor = (m.ts, wert)
+            offen = []
+        if davor is not None:
+            for j in offen:
+                if reihe[j].ts - davor[0] <= grenze - timedelta(minutes=1):
+                    nach[j][name] = davor[1]
+    return [replace(m, **n) if n else m for m, n in zip(reihe, nach, strict=True)]
+
+
 def _heizt(m: Minute) -> bool:
     """Läuft der Verdichter im Heizbetrieb? Der Zustand der Maschine entscheidet, wo er da ist."""
     if m.modus is not None:
-        return round(m.modus) == MODUS_HEIZT
+        return round(m.modus) in MODI_HEIZEN
     if m.hz is not None:
         return m.hz > 0
     return m.strom_kw is not None and m.strom_kw >= MIN_LEISTUNG_KW
@@ -163,8 +305,6 @@ def _waerme_kw(m: Minute) -> float | None:
         or m.strom_kw is None
     ):
         return None
-    if zusatz_kw(m.strom_kw, m.strom_maschine_kw) is not None:
-        return None  # der Heizstab läuft mit: keine Minute der Wärmepumpe allein
     spreizung = m.vorlauf_c - m.ruecklauf_c
     if (
         m.durchfluss_l_min < MIN_DURCHFLUSS
@@ -175,36 +315,53 @@ def _waerme_kw(m: Minute) -> float | None:
     return m.durchfluss_l_min * spreizung * KW_JE_L_MIN_K
 
 
-def zusatz_minuten(minuten: Sequence[Minute]) -> int:
-    """In wie vielen Minuten neben dem Verdichter etwas anderes Strom nahm."""
-    return sum(1 for m in minuten if zusatz_kw(m.strom_kw, m.strom_maschine_kw) is not None)
-
-
-def messpunkte(minuten: Sequence[Minute]) -> list[Messpunkt]:
-    """Die Fenster im eingeschwungenen Heizbetrieb, in zeitlicher Reihenfolge."""
+def auswerten(minuten: Sequence[Minute]) -> tuple[list[Messpunkt], Bilanz]:
+    """Die Messpunkte und die Bilanz der Minuten, aus denen sie entstanden oder nicht entstanden."""
+    reihe = auffuellen(minuten)
+    b = Bilanz(minuten=len(reihe), verhaeltnis=verhaeltnis_zaehler_maschine(reihe))
     fenster: dict[datetime, list[tuple[Minute, float]]] = {}
     laeuft_seit = 0
     davor: datetime | None = None
-    for m in sorted(minuten, key=lambda x: x.ts):
+    for m in reihe:
         luecke = davor is not None and m.ts - davor > timedelta(minutes=1, seconds=30)
         davor = m.ts
-        if luecke or not _heizt(m):
+        heizt = _heizt(m)
+        if heizt:
+            b.heizen += 1
+        if luecke or not heizt:
             # Eine Lücke in den Daten zählt wie ein Halt: was in ihr war, weiß niemand.
-            laeuft_seit = 1 if _heizt(m) else 0
+            laeuft_seit = 1 if heizt else 0
+            if heizt:
+                b.anlauf += 1
             continue
         laeuft_seit += 1
-        waerme = _waerme_kw(m)
-        if laeuft_seit <= ANLAUF_MIN or waerme is None:
+        if laeuft_seit <= ANLAUF_MIN:
+            b.anlauf += 1
             continue
+        if zusatz(m, b.verhaeltnis):
+            b.zusatz += 1
+            continue
+        fehlend = [wort for name, wort in PFLICHT.items() if getattr(m, name) is None]
+        if fehlend:
+            b.ohne_wert += 1
+            for wort in fehlend:
+                b.fehlt[wort] = b.fehlt.get(wort, 0) + 1
+            continue
+        waerme = _waerme_kw(m)
+        if waerme is None:
+            b.ohne_waerme += 1
+            continue
+        b.gueltig += 1
         start = m.ts.replace(
             minute=m.ts.minute - m.ts.minute % FENSTER_MIN, second=0, microsecond=0
         )
         fenster.setdefault(start, []).append((m, waerme))
 
     punkte: list[Messpunkt] = []
+    b.fenster = len(fenster)
     for start in sorted(fenster):
         teile = fenster[start]
-        if len(teile) < FENSTER_MIN:
+        if len(teile) < FENSTER_GUELTIG_MIN:
             continue
         strom = sum(m.strom_kw or 0.0 for m, _ in teile)
         waerme = sum(w for _, w in teile)
@@ -212,6 +369,7 @@ def messpunkte(minuten: Sequence[Minute]) -> list[Messpunkt]:
             continue
         cop = waerme / strom
         if not COP_GRENZEN[0] <= cop <= COP_GRENZEN[1]:
+            b.unglaubwuerdig += 1
             continue
         n = len(teile)
         punkte.append(
@@ -225,7 +383,13 @@ def messpunkte(minuten: Sequence[Minute]) -> list[Messpunkt]:
                 strom_kw=round(strom / n, 3),
             )
         )
-    return punkte
+    b.punkte = len(punkte)
+    return punkte, b
+
+
+def messpunkte(minuten: Sequence[Minute]) -> list[Messpunkt]:
+    """Die Fenster im eingeschwungenen Heizbetrieb, in zeitlicher Reihenfolge."""
+    return auswerten(minuten)[0]
 
 
 def _loese(matrix: list[list[float]], rechts: list[float]) -> list[float] | None:

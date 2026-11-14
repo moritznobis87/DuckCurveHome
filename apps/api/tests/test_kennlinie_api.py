@@ -39,6 +39,57 @@ def test_aus_gespeicherten_minuten_werden_messpunkte() -> None:
     assert all(abs(p.cop - 4.12) < 0.02 and p.aussen_c == 6.5 for p in punkte)
 
 
+def test_eine_leere_kennlinie_sagt_wo_die_minuten_geblieben_sind() -> None:
+    """14.11.2026: Stunden Lauf, kein Punkt, und die Seite sagte nur „noch kein Messpunkt“.
+    Jetzt steht da, wie lange geheizt wurde und woran die Minuten scheiterten."""
+    zeilen = [zeile(i, heat_pump_return_temp_c=None) for i in range(60)]
+    punkte, bilanz = kern.auswerten(logik.minuten(zeilen))
+    aus = logik.zusammensetzen(
+        now=JETZT,
+        tage=30,
+        punkte=punkte,
+        heat=HeatDemandConfig(),
+        buffer=BufferConfig(),
+        bilanz=bilanz,
+    )
+    assert aus.punkte == [] and aus.bilanz is not None
+    b = aus.bilanz
+    assert (b.heizen, b.anlauf, b.ohne_wert, b.gueltig) == (60, 10, 50, 0)
+    assert b.fehlt == {"Rücklauf": 50}
+    assert b.satz_de == (
+        "Die Wärmepumpe heizte 60 Minuten. Keine davon ist brauchbar. "
+        "In 50 Minuten fehlte ein Wert: Rücklauf (50)."
+    )
+    assert (aus.fehlt_de or "").startswith("Noch kein Messpunkt.")
+
+    # Mit Punkten nennt der Satz, was brauchbar war und was nicht zählte.
+    gemischt = [zeile(i, heat_pump_power_kw=8.8 if 30 <= i < 34 else 3.16) for i in range(60)]
+    punkte, bilanz = kern.auswerten(logik.minuten(gemischt))
+    aus = logik.zusammensetzen(
+        now=JETZT,
+        tage=30,
+        punkte=punkte,
+        heat=HeatDemandConfig(),
+        buffer=BufferConfig(),
+        bilanz=bilanz,
+    )
+    assert aus.bilanz is not None and aus.bilanz.satz_de == (
+        "Die Wärmepumpe heizte 60 Minuten. 46 Minuten davon sind brauchbar. "
+        "4 Minuten zählen nicht, weil neben dem Verdichter etwas anderes Strom aufnahm, "
+        "vermutlich der elektrische Heizstab. "
+        "1 Fenster hatte weniger als 8 brauchbare Minuten und zählt deshalb nicht."
+    )
+    assert any("über 5,5 kW maß" in h for h in aus.hinweise_de)
+    # Kein Lauf im Zeitraum: das steht da, statt einer leeren Bilanz.
+    steht = [zeile(i, heat_pump_mode_code=15.0) for i in range(30)]
+    assert logik.bilanz_satz(kern.auswerten(logik.minuten(steht))[1]) == (
+        "In diesem Zeitraum hat die Wärmepumpe nach den gespeicherten Werten nicht geheizt."
+    )
+    assert logik.bilanz_satz(kern.Bilanz()) == (
+        "Für diesen Zeitraum sind keine Minutenwerte gespeichert."
+    )
+
+
 def test_die_antwort_sagt_was_dem_ausgleich_fehlt() -> None:
     def antwort(punkte: list[kern.Messpunkt]) -> object:
         return logik.zusammensetzen(
@@ -96,6 +147,11 @@ def test_die_vorfuehrung_zeigt_eine_kennlinie_mit_ausgleich(client: TestClient) 
     # Die erzeugten Punkte folgen 6,4 + 0,09 * außen - 0,065 * Vorlauf; der Ausgleich findet das.
     assert abs(d["fit"]["b_aussen"] - 0.09) < 0.02 and abs(d["fit"]["c_vorlauf"] + 0.065) < 0.01
     assert d["hinweise_de"][0].startswith("Vorführung")
+    # Auch die Vorführung zeigt eine Bilanz, und ihre Teile ergeben die Minuten im Heizbetrieb.
+    b = d["bilanz"]
+    assert b["punkte"] == 120 and b["heizen"] == (
+        b["anlauf"] + b["zusatz"] + b["ohne_wert"] + b["ohne_waerme"] + b["gueltig"]
+    )
     # Zweimal gefragt, zweimal dasselbe: die Streuung ist kein Zufall.
     assert (
         client.get("/api/v1/waermepumpe/kennlinie", params={"tage": 30}).json()["fit"] == d["fit"]

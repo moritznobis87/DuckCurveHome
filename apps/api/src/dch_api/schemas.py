@@ -1318,6 +1318,32 @@ class KennlinienAnnahmeOut(BaseModel):
     cop: float
 
 
+class KennlinienBilanzOut(BaseModel):
+    """Wo die Minuten des Zeitraums geblieben sind (`hems_core.thermal.kennlinie.Bilanz`).
+
+    Von den Minuten, in denen die Maschine heizte, zählt nur ein Teil: nicht der Anlauf, nicht
+    die mit Heizstab, nicht die ohne einen nötigen Wert. Die Zahlen hier addieren sich zu
+    `heizen`; eine leere Kennlinie zeigt damit, woran es liegt.
+    """
+
+    minuten: int
+    heizen: int
+    anlauf: int
+    zusatz: int
+    ohne_wert: int
+    ohne_waerme: int
+    gueltig: int
+    #: Fenster mit mindestens einer gültigen Minute; `punkte` davon waren voll genug.
+    fenster: int
+    punkte: int
+    unglaubwuerdig: int
+    #: Welcher Wert in wie vielen Minuten fehlte (eine Minute kann mehrere nennen).
+    fehlt: dict[str, int] = Field(default_factory=dict)
+    #: Das gewöhnliche Verhältnis von Zähler zu eigener Angabe der Maschine, wenn bestimmt.
+    verhaeltnis: float | None = None
+    satz_de: str = ""
+
+
 class KennlinieOut(BaseModel):
     """Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.
 
@@ -1336,6 +1362,8 @@ class KennlinieOut(BaseModel):
     #: Die Kennlinie des Fahrplans, gültig bei `annahme_vorlauf_c`.
     annahme: list[KennlinienAnnahmeOut] = Field(default_factory=list)
     annahme_vorlauf_c: float | None = None
+    #: Wo die Minuten geblieben sind; fehlt, wenn es keine Minutenreihen gibt.
+    bilanz: KennlinienBilanzOut | None = None
     hinweise_de: list[str] = Field(default_factory=list)
 
 

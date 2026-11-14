@@ -81,7 +81,8 @@ export const api = {
   reglerkennzahlen: (tage = 7) => request<ReglerKennzahlen>(`/waermepumpe/kennzahlen?tage=${tage}`),
   kennlinie: async (tage: number): Promise<Kennlinie> => {
     const d = await request<KennlinieRoh>(`/waermepumpe/kennlinie?tage=${tage}`);
-    return { ...d, punkte: d.punkte ?? [], annahme: d.annahme ?? [], hinweise_de: d.hinweise_de ?? [] };
+    const bilanz = d.bilanz ? { ...d.bilanz, fehlt: d.bilanz.fehlt ?? {}, satz_de: d.bilanz.satz_de ?? "" } : null;
+    return { ...d, bilanz, punkte: d.punkte ?? [], annahme: d.annahme ?? [], hinweise_de: d.hinweise_de ?? [] };
   },
   /** Dieselben Bilder ueber einen vergangenen Ortstag: die Wiedergabe. Eine Abfrage je Tag. */
   anlageWiedergabe: (day: string, stepMin = 5) =>
