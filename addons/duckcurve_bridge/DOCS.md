@@ -529,6 +529,23 @@ die Zuordnung gemacht; die zwei Einträge oben sind ein erster Versuch.
 die Außentemperatur heißt das: meldet die Wärmepumpe ihren Fühler, gilt er; sonst die
 Wetterstation.
 
+**Kommt nichts an, sagt die Bridge, wo es hängt (ab 0.14.2).** Neunzig Sekunden nach dem
+Start und dann alle fünf Minuten meldet sie der Cloud die Lage des Busses, und die Seite
+Technik → Wärmepumpe macht daraus einen Satz. Dieselbe Zeile steht im Protokoll (`ebus lage`):
+
+| `lage` | Bedeutung | Nachsehen |
+|---|---|---|
+| `broker_getrennt` | Die Bridge kommt nicht an den Broker | `mqtt_host`, `mqtt_username`, `mqtt_password` |
+| `kein_wort` | Angemeldet, aber unter dem Thema kam noch nie etwas | Läuft „Duck Curve eBUS“? Derselbe Broker, dasselbe Thema (`ebusd`)? |
+| `verstummt` | Seit zehn Minuten keine Nachricht mehr | Protokoll des Add-ons „Duck Curve eBUS“ |
+| `kein_signal` | ebusd läuft, hört aber den Bus nicht | Adapter eingeschaltet, im WLAN, an B und T? |
+| `nicht_zugeordnet` | Nachrichten kommen, aber keine zugeordnete | Zeilen `ebusd meldet` gegen die Zuordnung halten |
+| `nur_mitlesen`, `abgeschaltet` | `source_mode` steht nicht auf `mqtt` | Einstellung ändern, neu starten |
+| `ok` | Werte kommen und gehen weiter | nichts |
+
+Dazu die Zahlen, an denen sich das nachprüfen lässt: `nachrichten` (bisher gelesen), `namen`
+(verschiedene Nachrichten), `werte` (zugeordnete, frische Werte).
+
 **Ältere Bridge, neue Zuordnung.** Eine Bridge vor 0.14.0 kennt `kind: ebusd` nicht und lehnt die
 Zuordnung aus dem Repository ab. Sie arbeitet dann mit ihrem letzten guten Stand weiter und
 schreibt das ins Protokoll; es fällt nichts aus, aber die neuen Werte kommen erst nach dem

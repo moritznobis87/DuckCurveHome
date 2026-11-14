@@ -1227,6 +1227,9 @@ class WaermepumpeOut(BaseModel):
     spreizung_k: float | None = None
     waermeleistung_kw: float | None = None
     arbeitszahl: float | None = None
+    #: Gesetzt, wenn vom Bus der Maschine kein einziger Wert da ist: ein Satz, an welcher Stelle
+    #: des Weges es hängt, soweit Dienst und Bridge das wissen (`waermepumpe.bus_auskunft`).
+    bus_stumm_de: str | None = None
     hinweise_de: list[str] = Field(default_factory=list)
 
 

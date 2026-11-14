@@ -20,7 +20,7 @@ from dch_bridge.mapping import ActuatorMap, EntityMap, normalize
 from dch_bridge.outbox import Outbox
 from dch_bridge.settings import BridgeSettings, ist_entitaet
 from dch_bridge.sources.controme import ContromeRooms, RaumInfo
-from dch_bridge.sources.ebusd_mqtt import EbusdDevice
+from dch_bridge.sources.ebusd_mqtt import LAGEN, EbusdDevice
 from dch_bridge.sources.mcz_maestro import MaestroStove, stove_url
 from dch_bridge.sources.nuki_lock import NukiLock
 from dch_bridge.sources.opener import HomeAssistantOpener, NukiBridgeOpener, Opener
@@ -37,7 +37,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.14.1"
+VERSION = "0.14.2"
 log = structlog.get_logger("bridge")
 
 
@@ -579,6 +579,53 @@ class Bridge:
             if connected:
                 self._released_contacts_after_offline = False
 
+    def ebus_lage(self, now: datetime) -> tuple[str, dict[str, str]] | None:
+        """Wo die Werte der Wärmepumpe gerade hängen. `None`: die Zuordnung kennt keinen Bus.
+
+        Das Wort stammt aus `ebusd_mqtt.LAGEN`; die Einzelheiten sind die Zahlen, an denen man
+        es nachprüfen kann. Die Cloud macht daraus den Satz auf der Seite der Wärmepumpe.
+        """
+        if not any(dev.kind == "ebusd" for dev in self.map.mqtt):
+            return None
+        einzel = {"bridge": VERSION, "source_mode": self.settings.source_mode}
+        geraet = next(
+            (d for d in (self.mqtt.devices if self.mqtt else []) if isinstance(d, EbusdDevice)),
+            None,
+        )
+        if self.mqtt is None or geraet is None:
+            return "abgeschaltet", einzel
+        einzel |= {
+            "nachrichten": str(geraet.messages),
+            "namen": str(len(geraet.gesehen)),
+            "werte": str(sum(1 for key in geraet.values if geraet.fresh(key, now))),
+            "thema": geraet.topic_prefix,
+        }
+        return (
+            geraet.lage(verbunden=self.mqtt.connected, weitergabe=self.mqtt.forward, now=now),
+            einzel,
+        )
+
+    async def _ebus_lage_loop(self) -> None:
+        """Die Lage des Busses in die Cloud melden: bald nach dem Start, dann alle fünf Minuten.
+
+        Bald, nicht sofort: ebusd gibt manche Werte nur einmal in der Minute weiter, und eine
+        Meldung „kein Wort" nach zehn Sekunden wäre falscher Alarm.
+        """
+        warte = 90.0
+        while True:
+            await asyncio.sleep(warte)
+            warte = 300.0
+            now = datetime.now(UTC)
+            stand = self.ebus_lage(now)
+            if stand is None:
+                return
+            lage, einzel = stand
+            log.info("ebus lage", lage=lage, **einzel)
+            with contextlib.suppress(Exception):
+                await self.uplink.emit_health(
+                    now, "ebusd", LAGEN.get(lage, "degraded"), {"lage": lage, **einzel}
+                )
+
     async def _source_status_loop(self) -> None:
         """Alle 5 Minuten Kennzahlen der Direktquellen ins Protokoll (Nachrichten, verworfen, Reconnects)."""
         while True:
@@ -638,6 +685,8 @@ class Bridge:
             tasks.append(asyncio.create_task(self.door.run(), name="door-probe"))
         if self.mqtt is not None or self.stove is not None or self.door is not None:
             tasks.append(asyncio.create_task(self._source_status_loop(), name="source-status"))
+        if any(dev.kind == "ebusd" for dev in self.map.mqtt):
+            tasks.append(asyncio.create_task(self._ebus_lage_loop(), name="ebus-lage"))
         try:
             await asyncio.gather(*tasks)
         finally:

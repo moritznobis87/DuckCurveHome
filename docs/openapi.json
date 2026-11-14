@@ -12647,6 +12647,17 @@
             ],
             "title": "Arbeitszahl"
           },
+          "bus_stumm_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bus Stumm De"
+          },
           "hinweise_de": {
             "items": {
               "type": "string"

@@ -111,6 +111,24 @@ def felder(payload: bytes | str) -> dict[str, float] | None:
     }
 
 
+#: Kam so lange keine Nachricht mehr von ebusd, gilt es als verstummt. ebusd gibt im Betrieb alle
+#: paar Sekunden etwas weiter, auch bei stehender Maschine (gemessen: 5 bis 55 Sekunden je Name).
+STUMM_S = 600.0
+
+#: Die Lagen der Quelle und wie ernst sie sind (`DeviceHealthFrame.status`). `abgeschaltet` setzt
+#: die Bridge selbst: bei `source_mode: home_assistant` gibt es die Quelle gar nicht.
+LAGEN: dict[str, str] = {
+    "ok": "ok",
+    "nur_mitlesen": "degraded",
+    "nicht_zugeordnet": "degraded",
+    "kein_signal": "degraded",
+    "kein_wort": "down",
+    "verstummt": "down",
+    "broker_getrennt": "down",
+    "abgeschaltet": "down",
+}
+
+
 @dataclass
 class _Wert:
     value: float
@@ -202,6 +220,26 @@ class EbusdDevice:
                 continue
             self.values[key] = _Wert(round(wert, 3), now)
         return True
+
+    def lage(self, *, verbunden: bool, weitergabe: bool, now: datetime) -> str:
+        """Woran es liegt, wenn von der Wärmepumpe nichts ankommt, als ein Wort aus `LAGEN`.
+
+        Die Reihenfolge ist die des Weges: erst der Broker, dann ebusd, dann der Bus, dann die
+        Zuordnung. Genannt wird die erste Stelle, an der es hängt.
+        """
+        if not verbunden:
+            return "broker_getrennt"
+        if self.messages == 0 or self.last_message_at is None:
+            return "kein_wort"
+        if (now - self.last_message_at).total_seconds() > STUMM_S:
+            return "verstummt"
+        if self.signal is False:
+            return "kein_signal"
+        if not any(self.fresh(key, now) for key in self.values):
+            return "nicht_zugeordnet"
+        if not weitergabe:
+            return "nur_mitlesen"
+        return "ok"
 
     def emit(self, now: datetime) -> list[RawReading]:
         frisch = timedelta(seconds=self.stale_s)

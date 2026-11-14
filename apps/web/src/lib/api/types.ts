@@ -5859,6 +5859,8 @@ export interface components {
             waermeleistung_kw?: number | null;
             /** Arbeitszahl */
             arbeitszahl?: number | null;
+            /** Bus Stumm De */
+            bus_stumm_de?: string | null;
             /** Hinweise De */
             hinweise_de?: string[];
         };

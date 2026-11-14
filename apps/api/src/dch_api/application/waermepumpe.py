@@ -26,7 +26,8 @@ Reine Zusammensetzung, kein I/O.
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import datetime, tzinfo
 
 from dch_api.schemas import WaermepumpeOut
 from hems_core.domain import EnergySnapshot, Measurement
@@ -80,6 +81,112 @@ KEYS = {
 ZUSTAND_KEY = "heat_pump_mode_code"
 
 
+#: Ab dieser Bridge kommt die Lage des Busses mit (`DeviceHealthFrame`, Quelle `ebusd`).
+BRIDGE_MIT_LAGE = (0, 14, 2)
+#: Daran, dass die Bridge diesen Schlüssel ankündigt, ist zu erkennen, dass ihre Zuordnung den
+#: Bus kennt. Er steht seit dem ersten Stand der Zuordnung darin.
+BUS_KENNZEICHEN = "heat_pump_flow_l_min"
+
+
+@dataclass(frozen=True)
+class BusStand:
+    """Was der Dienst über den Weg der Buswerte weiß, wenn keiner da ist."""
+
+    bridge_online: bool
+    bridge_version: str | None = None
+    #: Die Schlüssel, die die Bridge beim Handschlag angekündigt hat.
+    angekuendigt: frozenset[str] = frozenset()
+    #: Das Wort der Bridge (`ebusd_mqtt.LAGEN`), `None`, solange sie keines gemeldet hat.
+    lage: str | None = None
+    einzelheiten: dict[str, str] = field(default_factory=dict)
+    #: Wann zuletzt irgendein Wert vom Bus kam, gleich wie alt.
+    zuletzt: datetime | None = None
+
+
+def _version(text: str | None) -> tuple[int, ...]:
+    teile: list[int] = []
+    for teil in (text or "").split("."):
+        if not teil.isdigit():
+            break
+        teile.append(int(teil))
+    return tuple(teile)
+
+
+#: Die Lage der Bridge als Satz. Jeder nennt die Stelle und was dort nachzusehen ist.
+LAGE_DE: dict[str, str] = {
+    "broker_getrennt": (
+        "Die Brücke im Haus kommt nicht an den Mosquitto-Broker. Adresse, Benutzer und Passwort "
+        "stehen in den Einstellungen des Add-ons „Duck Curve Bridge“."
+    ),
+    "kein_wort": (
+        "Die Brücke ist am Broker angemeldet, aber unter „{thema}“ kommt dort nichts an. Läuft "
+        "das Add-on „Duck Curve eBUS“, und ist bei ihm derselbe Broker und dasselbe Thema "
+        "eingestellt?"
+    ),
+    "verstummt": (
+        "Am Broker kommt vom Add-on „Duck Curve eBUS“ nichts mehr an. Läuft es noch, und "
+        "erreicht es den Adapter?"
+    ),
+    "kein_signal": (
+        "Das Add-on „Duck Curve eBUS“ läuft, hört aber kein Signal vom Bus der Wärmepumpe. Ist "
+        "der Adapter eingeschaltet und im WLAN?"
+    ),
+    "nicht_zugeordnet": (
+        "Vom Bus kommen Nachrichten ({nachrichten} bisher, {namen} verschiedene), aber keine, "
+        "die einem Wert dieser Seite zugeordnet ist."
+    ),
+    "nur_mitlesen": (
+        "Die Brücke liest die Werte vom Bus, gibt sie aber nicht weiter: in ihren Einstellungen "
+        "steht „source_mode“ auf „{source_mode}“ statt auf „mqtt“."
+    ),
+    "abgeschaltet": (
+        "Die Brücke liest den Broker nicht: in ihren Einstellungen steht „source_mode“ auf "
+        "„{source_mode}“ statt auf „mqtt“."
+    ),
+    "ok": (
+        "Die Brücke meldet, dass Werte vom Bus bei ihr ankommen. Hier sind sie noch nicht; das "
+        "sollte sich binnen einer Minute geben."
+    ),
+}
+
+
+def bus_auskunft(stand: BusStand, tz: tzinfo) -> str:
+    """Ein Satz, warum kein Wert vom Bus da ist. Genannt wird die erste Stelle, an der es hängt.
+
+    Der Weg ist: Adapter am Bus, Add-on „Duck Curve eBUS", Broker, Bridge, Dienst. Der Dienst
+    sieht nur sein Ende und was die Bridge über ihres sagt; mehr behauptet der Satz nicht.
+    """
+    nach = ""
+    if stand.zuletzt is not None:
+        ort = stand.zuletzt.astimezone(tz)
+        nach = f" Der letzte Wert vom Bus kam am {ort:%d.%m.} um {ort:%H:%M} Uhr."
+    if not stand.bridge_online:
+        return "Die Brücke im Haus ist gerade nicht verbunden; ohne sie kommt kein Wert." + nach
+    version = stand.bridge_version or "unbekannt"
+    if BUS_KENNZEICHEN not in stand.angekuendigt:
+        return (
+            f"Die Brücke im Haus (Version {version}) arbeitet mit einer Zuordnung, die den Bus der "
+            "Wärmepumpe nicht kennt. Ihr Protokoll sagt beim Start, warum sie die neue nicht "
+            "geladen hat." + nach
+        )
+    if stand.lage is not None:
+        einzel = {"thema": "ebusd", "nachrichten": "?", "namen": "?", "source_mode": "?"}
+        einzel |= stand.einzelheiten
+        satz = LAGE_DE.get(stand.lage)
+        if satz is not None:
+            return satz.format(**einzel) + nach
+    if _version(stand.bridge_version) < BRIDGE_MIT_LAGE:
+        return (
+            f"Die Brücke im Haus (Version {version}) kennt den Bus der Wärmepumpe, liefert aber "
+            "keinen Wert. Woran es liegt, sagt sie ab Version 0.14.2; bis dahin steht es in ihrem "
+            "Protokoll in den Zeilen mit „mqtt“ und „ebusd“." + nach
+        )
+    return (
+        "Die Brücke im Haus kennt den Bus der Wärmepumpe, hat aber noch nicht gemeldet, woran es "
+        "liegt. Das kommt spätestens fünf Minuten nach ihrem Start." + nach
+    )
+
+
 def zustand_wort(code: int | None, laeuft: bool) -> str:
     if code is None:
         return "läuft" if laeuft else "steht"
@@ -92,7 +199,10 @@ def zusammensetzen(
     snap: EnergySnapshot,
     laeuft_laut_zaehler: bool,
     mess: Callable[[str], Measurement],
+    bus_stumm_de: str | None = None,
 ) -> WaermepumpeOut:
+    """`bus_stumm_de` ist der Satz für den Fall, dass kein Wert vom Bus da ist (`bus_auskunft`);
+    ohne ihn steht dort die allgemeine Frage nach Add-on und Adapter."""
     werte = {feld: mess(key) for feld, key in KEYS.items()}
     zustand = mess(ZUSTAND_KEY)
     code = round(zustand.value) if zustand.usable and zustand.value is not None else None
@@ -132,8 +242,9 @@ def zusammensetzen(
         zahl = round(waerme / aufnahme, 1)
 
     hinweise: list[str] = []
-    if not any(m.usable for m in werte.values()):
-        hinweise.append(
+    stumm: str | None = None
+    if not any(m.usable for m in werte.values()) and not zustand.usable:
+        stumm = bus_stumm_de or (
             "Vom Bus der Wärmepumpe kommt gerade nichts. Läuft das Add-on „Duck Curve eBUS“, "
             "und ist der Adapter erreichbar?"
         )
@@ -160,6 +271,7 @@ def zusammensetzen(
         spreizung_k=spreizung,
         waermeleistung_kw=waerme,
         arbeitszahl=zahl,
+        bus_stumm_de=stumm,
         hinweise_de=hinweise,
         **werte,
     )
