@@ -1,5 +1,5 @@
 import type { ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
-  House, PushGeraete, PushKey, PushResult, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+  House, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -76,6 +76,8 @@ export const api = {
   house: () => request<House>("/haus"),
   // Das Anlagenschema: der Augenblick der Wasser- und Stromseite, in einer Antwort.
   anlage: () => request<Anlage>("/anlage"),
+  // Die Technikseite der Wärmepumpe: alle Messwerte des Augenblicks samt Abschätzung.
+  waermepumpe: () => request<Waermepumpe>("/waermepumpe"),
   /** Dieselben Bilder ueber einen vergangenen Ortstag: die Wiedergabe. Eine Abfrage je Tag. */
   anlageWiedergabe: (day: string, stepMin = 5) =>
     request<AnlageReplay>(`/anlage/wiedergabe?day=${day}&step_min=${stepMin}`),

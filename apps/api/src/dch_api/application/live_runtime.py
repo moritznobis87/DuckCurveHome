@@ -30,6 +30,7 @@ from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
 from dch_api.application import room_log as room_log_logic
+from dch_api.application import waermepumpe as wp_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
 from dch_api.application.config_loader import AppConfig
 from dch_api.application.energy_accounting import (
@@ -115,6 +116,7 @@ from dch_api.schemas import (
     StoveLiveOut,
     SystemEventOut,
     SystemStatusOut,
+    WaermepumpeOut,
     WatchFindingOut,
     YearMapOut,
 )
@@ -1241,6 +1243,17 @@ class LiveRuntime:
             wp_vorlauf=mess(anlage_logic.WP_VORLAUF),
             ventile=[r.valve for r in (await self.rooms_live()).rooms],
             zeilen=zeilen,
+        )
+
+    async def waermepumpe(self) -> WaermepumpeOut:
+        """Die Wärmepumpe im Augenblick: was ihr Bus, der Zähler und die Pufferfühler melden."""
+        now = self.now
+        snap, _, hp = self._states()
+        return wp_logic.zusammensetzen(
+            now=now,
+            snap=snap,
+            laeuft_laut_zaehler=hp.running,
+            mess=lambda key: self.live.measurement(key, now, wp_logic.STALE_S),
         )
 
     async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut:

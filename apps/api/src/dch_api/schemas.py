@@ -17,6 +17,7 @@ from hems_core.domain import (
     Decision,
     EnergySnapshot,
     HeatPumpState,
+    Measurement,
     OperatingMode,
     Quality,
     SystemMode,
@@ -1190,6 +1191,43 @@ class MorgenbriefOut(BaseModel):
 
 class MorgenbriefIn(BaseModel):
     enabled: bool
+
+
+class WaermepumpeOut(BaseModel):
+    """Die Wärmepumpe im Augenblick, für ihre Technikseite.
+
+    Jede Größe ist ein Messwert mit Zeitpunkt und Güte: fehlt einer, steht auf der Seite ein
+    Fragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende sind
+    Abschätzungen; warum, steht in `hinweise_de` und in `application/waermepumpe.py`.
+    """
+
+    now: datetime
+    laeuft: bool
+    zustand_code: int | None = None
+    zustand_de: str
+    pumpe_laeuft: bool = False
+    # Außengerät und Kältekreis
+    aussen_c: Measurement
+    verdampfer_c: Measurement
+    sauggas_c: Measurement
+    heissgas_c: Measurement
+    fluessig_c: Measurement
+    verdichter_hz: Measurement
+    leistung_bus_kw: Measurement
+    leistung_zaehler_kw: Measurement
+    # Innengerät und Wasserseite
+    vorlauf_c: Measurement
+    ruecklauf_c: Measurement
+    durchfluss_l_min: Measurement
+    vorlauf_soll_c: Measurement
+    # Speicher: der Fühler, den die Wärmepumpe selbst hat, und die vier eigenen, oben nach unten.
+    speicherfuehler_c: Measurement
+    puffer_c: list[Measurement] = Field(default_factory=list)
+    # Gerechnet, als Abschätzung
+    spreizung_k: float | None = None
+    waermeleistung_kw: float | None = None
+    arbeitszahl: float | None = None
+    hinweise_de: list[str] = Field(default_factory=list)
 
 
 class ShiftDayOut(BaseModel):

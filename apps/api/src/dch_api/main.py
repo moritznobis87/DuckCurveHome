@@ -32,6 +32,7 @@ from dch_api.routers import (
     push,
     rooms,
     system,
+    waermepumpe,
 )
 from dch_api.settings import Settings, get_settings
 
@@ -196,6 +197,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         rooms.router,
         house.router,
         anlage.router,
+        waermepumpe.router,
         forecast.router,
         energy.router,
         export.router,

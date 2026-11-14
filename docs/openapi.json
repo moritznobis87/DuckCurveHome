@@ -932,6 +932,28 @@
         }
       }
     },
+    "/api/v1/waermepumpe": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Die Wärmepumpe im Augenblick",
+        "description": "Außengerät, Kältekreis, Innengerät und Speicher, je mit Zeitpunkt und Güte des Werts,\ndazu Spreizung, Wärmeleistung und Arbeitszahl als Abschätzung.",
+        "operationId": "waermepumpe_api_v1_waermepumpe_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaermepumpeOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -12514,6 +12536,146 @@
         ],
         "title": "VorlaufOut",
         "description": "Eine Sprosse der Vorlaufleiter mit ihrer Wertung."
+      },
+      "WaermepumpeOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "laeuft": {
+            "type": "boolean",
+            "title": "Laeuft"
+          },
+          "zustand_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zustand Code"
+          },
+          "zustand_de": {
+            "type": "string",
+            "title": "Zustand De"
+          },
+          "pumpe_laeuft": {
+            "type": "boolean",
+            "title": "Pumpe Laeuft",
+            "default": false
+          },
+          "aussen_c": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "verdampfer_c": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "sauggas_c": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "heissgas_c": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "fluessig_c": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "verdichter_hz": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "leistung_bus_kw": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "leistung_zaehler_kw": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "vorlauf_c": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "ruecklauf_c": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "durchfluss_l_min": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "vorlauf_soll_c": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "speicherfuehler_c": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "puffer_c": {
+            "items": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "type": "array",
+            "title": "Puffer C"
+          },
+          "spreizung_k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spreizung K"
+          },
+          "waermeleistung_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waermeleistung Kw"
+          },
+          "arbeitszahl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arbeitszahl"
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "laeuft",
+          "zustand_de",
+          "aussen_c",
+          "verdampfer_c",
+          "sauggas_c",
+          "heissgas_c",
+          "fluessig_c",
+          "verdichter_hz",
+          "leistung_bus_kw",
+          "leistung_zaehler_kw",
+          "vorlauf_c",
+          "ruecklauf_c",
+          "durchfluss_l_min",
+          "vorlauf_soll_c",
+          "speicherfuehler_c"
+        ],
+        "title": "WaermepumpeOut",
+        "description": "Die Wärmepumpe im Augenblick, für ihre Technikseite.\n\nJede Größe ist ein Messwert mit Zeitpunkt und Güte: fehlt einer, steht auf der Seite ein\nFragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende sind\nAbschätzungen; warum, steht in `hinweise_de` und in `application/waermepumpe.py`."
       },
       "WallLine": {
         "properties": {

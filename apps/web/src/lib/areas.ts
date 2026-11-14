@@ -99,6 +99,8 @@ export const AREAS: Area[] = [
           { href: "/waerme/wiedergabe", label: "Ein Tag" },
         ],
       },
+      // Die Wärmepumpe allein, mit allem, was ihr eigener Bus meldet (seit dem 14.11.2026).
+      { href: "/waerme/waermepumpe", label: "Wärmepumpe" },
       {
         href: "/waerme/fahrplan",
         label: "Fahrplan",

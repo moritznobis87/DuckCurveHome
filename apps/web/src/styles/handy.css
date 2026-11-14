@@ -226,6 +226,13 @@
   .home .brand-name { font-size: 17px; }
   /* „live" und „demo" sagt am Handy der Punkt; ausgeschrieben wird nur die Störung. */
   .home-status-wort:not([data-stoerung="true"]) { display: none; }
+  /* Die Auswahl an der Wärmepumpe kommt am Telefon von unten, dort, wo der Daumen ist, und die
+     vier Ziele stehen untereinander: zwei Spalten wären bei 390 Punkten zwei abgeschnittene Sätze. */
+  .wp-menue-grund { align-items: flex-end; padding: 0; }
+  .wp-menue { width: 100%; padding: 20px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; border-bottom: 0; }
+  .wp-menue-ziele { grid-template-columns: minmax(0, 1fr); }
+  .wp-satz { font-size: 19px; }
+  .wp-buehne { padding: 10px; }
   /* Ist die Verbindung unterbrochen, steht rechts das Wort dazu mit der Uhrzeit. Daneben hat die
      Außentemperatur keinen Platz mehr (sie schob sich am 13.11.2026 über den Namen), und sie
      wäre ohnehin von vorhin. */

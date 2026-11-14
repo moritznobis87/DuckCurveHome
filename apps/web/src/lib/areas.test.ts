@@ -41,7 +41,7 @@ describe("Bereiche", () => {
   it("hat keinen Bereich nur fuer den Hausherrn, aber Reiter", () => {
     expect(AREAS.filter((a) => a.ownerOnly)).toEqual([]);
     const technik = AREAS.find((a) => a.key === "technik")!;
-    expect(technik.tabs.filter((t) => !t.ownerOnly).map((t) => t.label)).toEqual(["Anlage", "Fahrplan", "Wirkung", "Heizkreise"]);
+    expect(technik.tabs.filter((t) => !t.ownerOnly).map((t) => t.label)).toEqual(["Anlage", "Wärmepumpe", "Fahrplan", "Wirkung", "Heizkreise"]);
     expect(technik.tabs.filter((t) => t.href.startsWith("/system")).every((t) => t.ownerOnly)).toBe(true);
   });
 

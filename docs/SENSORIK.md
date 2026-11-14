@@ -648,3 +648,62 @@ eingetragen und springt ein, solange der Bus schweigt. Die Gegenprobe gegen den 
 läuft weiter. Die Grenze von fünf Grad gehört jetzt neu angesehen: ein Fühler am Außengerät
 liegt in der Sonne oder im Abluftstrom der laufenden Maschine leicht daneben. Dafür braucht es
 einige Tage Messung, nicht eine Vermutung.
+
+## Die Technikseite der Wärmepumpe
+
+Stand 14.11.2026. Unter Technik gibt es den Reiter „Wärmepumpe“ (`/waerme/waermepumpe`): eine
+Zeichnung aus Außengerät, Innengerät und Speicher mit den vier Leitungen dazwischen, und jeder
+Messwert steht dort, wo er an der Anlage entsteht. Der Dienst setzt die Seite in
+`apps/api/src/dch_api/application/waermepumpe.py` zusammen und gibt sie unter
+`GET /api/v1/waermepumpe` aus; die Zeichnung liegt in `apps/web/src/components/waermepumpe/`.
+
+| Wo in der Zeichnung | Größe | Herkunft |
+|---|---|---|
+| Außengerät | Außenluft | Bus, `heatpump_ext_unit_info.ext_temp` |
+| Außengerät | Verdampfer | Bus, `coolat_data.evaporator_temp` |
+| Außengerät | Sauggas | Bus, eigene Zeile `hp_kaeltekreis.suction_temp` |
+| Außengerät | Verdichterfrequenz | Bus, eigene Zeile `hp_betrieb.compressor_hz` |
+| Außengerät | Strom | Zähler an der Zuleitung; fehlt er, die Auskunft der Maschine (`hp_power`) |
+| Leitung zum Innengerät | Heißgas | Bus, eigene Zeile `hp_kaeltekreis.discharge_temp` |
+| Leitung zum Außengerät | Flüssigkeit | Bus, `coolat_data.coolant_temp` |
+| Innengerät | Vorlauf soll | Bus, `hybrid_LWT_setpoint` |
+| Innengerät | Durchfluss | Bus, `heatpump_flowmeter` |
+| Innengerät | Betriebszustand | Bus, eigene Zeile `hp_betrieb.mode` |
+| Leitung zum Speicher | Vorlauf | Bus, `coolat_data.LWT_temp` |
+| Leitung vom Speicher | Rücklauf † | Bus, eigene Zeile `system_temps.t_769e` |
+| Speicher | Fühler der Wärmepumpe † | Bus, eigene Zeile `system_temps.t_759e` |
+| Speicher | vier Schichten | die eigenen Pufferfühler, wie im Anlagenschema |
+
+† Die Zuordnung ist begründet, am Gerät aber nicht bestätigt (siehe oben, „Welche Temperatur
+ist der Rücklauf?“). Die Seite kennzeichnet beide Werte mit demselben Zeichen.
+
+**Was gerechnet wird.** Spreizung = Vorlauf minus Rücklauf. Wärmeleistung = Durchfluss mal
+Spreizung mal 4,186 kJ/(kg K), ein Liter als ein Kilogramm. Arbeitszahl = Wärmeleistung durch
+Leistungsaufnahme. Mit den Zahlen des zweiten Protokolls (29,8 l/min, 39,9 und 36,5 °C,
+1,448 kW) sind das 3,4 K, 7,07 kW und 4,9; dieselbe Rechnung prüft
+`apps/api/tests/test_waermepumpe.py`. Beides heißt auf der Seite „abgeschätzt“, weil der
+Durchflussgeber nicht geeicht ist, der Rücklauf nicht bestätigt ist und die Werte nicht im selben
+Augenblick kommen.
+
+| Festlegung | Wert | Herkunft |
+|---|---|---|
+| Ein Buswert gilt als veraltet | nach 15 Minuten | gesetzt; gemessen lagen bis 55 s zwischen zwei Meldungen |
+| Pumpe gilt als stehend | unter 2 l/min | gesetzt; gemessen 0,0 im Stillstand und rund 30 im Lauf |
+| Keine Wärmeleistung | Spreizung unter 0,5 K | gesetzt, nicht gemessen |
+| Keine Arbeitszahl | Leistungsaufnahme unter 0,3 kW | gesetzt, nicht gemessen |
+
+**Gespeichert** werden seit diesem Stand zusätzlich Verdampfer, Sauggas, Heißgas, Flüssigkeit und
+der Speicherfühler der Wärmepumpe als Minutenreihen (Migration `c9f5a1e74d3a`). Die Seite selbst
+zeigt nur den Augenblick; ein Verlauf der Arbeitszahl über Tage gegen den Zähler steht aus.
+
+**Die Vorführung** hat keinen Bus. Dort entstehen die Größen aus dem Zustand des Modellhauses
+(`vorfuehrung` im selben Modul, Arbeitszahl fest 4,2, Durchfluss fest 29,5 l/min). Das Modellhaus
+hat eine größere Maschine als das echte; die Zahlen dort sind stimmig, nicht die des Hauses.
+
+**Der Weg dorthin.** Ein Tipp auf die Wärmepumpe der Startseite öffnet eine Auswahl mit vier
+Zielen: Technik (diese Seite), Kosten (Nachbetrachtung), Fahrplan und Verbrauch
+(`apps/web/src/components/home/WpMenue.tsx`). Vorher führte der Tipp ohne Umweg auf die
+Wärmeseite.
+
+Nicht geprüft: die Seite mit den echten Werten des Hauses. Geprüft ist sie in der Vorführung, am
+Telefon (390 Punkte) und an der Wandanzeige (1280 Punkte), im Lauf und im Stillstand.
