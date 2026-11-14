@@ -326,3 +326,34 @@ def test_die_bridge_meldet_die_lage_des_busses_in_die_cloud(tmp_path: Path) -> N
     wartend = list(b.uplink._events)
     assert len(wartend) == 1 and isinstance(wartend[0], DeviceHealthFrame)
     assert wartend[0].source == "ebusd" and wartend[0].details == {"lage": "kein_wort"}
+
+
+def test_die_betriebsart_des_reglers_wird_nur_aus_der_richtigen_liste_gelesen() -> None:
+    """Der Regler sendet seine Betriebsart (Kennung c94b) in einer Liste mit der Hauptpumpe und
+    allein. Die Nachrichten sind die, die ebusd 26.1 am 14.11.2026 aus den Telegrammen des Hauses
+    auf den Broker gelegt hat (`13fe20100cc2000100c74b8e00c94b1000`, laufend, PV-Nutzung).
+
+    Am 13.11.2026 kam dieselbe Nachricht einmal anders zusammengesetzt (`0;46;48715`); mit den
+    Kennungen als eigene Felder liest die Bridge sie dann nicht.
+    """
+    datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
+    ebus = next(m for m in EntityMap.load(datei).mqtt if m.kind == "ebusd")
+    d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
+    laufend = (
+        b'{\n     "main_pump": {"value": 1},\n     "kennung_2": {"value": "c7 4b"},\n'
+        b'     "wert_c74b": {"value": 142},\n     "kennung_3": {"value": "c9 4b"},\n'
+        b'     "wert_c94b": {"value": 16}}'
+    )
+    d.apply("ebusd/energymgr/pumpe_status", laufend, T0)
+    assert werte(d, T0)["heat_pump_cycle_code"] == 16.0
+    # Anders zusammengesetzt: die Kennungen stimmen nicht, der Wert bleibt der alte.
+    verrutscht = laufend.replace(b"c9 4b", b"2e 00").replace(b'"value": 16', b'"value": 48715')
+    d.apply("ebusd/energymgr/pumpe_status", verrutscht, T0)
+    assert werte(d, T0)["heat_pump_cycle_code"] == 16.0
+    # Ein Add-on vor 0.2.2 schickt die Liste ohne Kennungen; auch die wird nicht gelesen.
+    alt = b'{"main_pump": {"value": 0}, "wert_c74b": {"value": 190}, "wert_c94b": {"value": 0}}'
+    d.apply("ebusd/energymgr/pumpe_status", alt, T0)
+    assert werte(d, T0)["heat_pump_cycle_code"] == 16.0
+    # Allein im Rundruf: Warmwasser.
+    d.apply("ebusd/energymgr/betriebsart", b'{\n     "code": {"value": 3}}', T0)
+    assert werte(d, T0)["heat_pump_cycle_code"] == 3.0

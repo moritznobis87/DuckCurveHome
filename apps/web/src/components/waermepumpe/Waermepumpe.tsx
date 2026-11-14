@@ -88,6 +88,7 @@ export function Waermepumpe() {
         <p className="m-0">† Die Zuordnung dieses Werts ist begründet, am Gerät aber noch nicht bestätigt.</p>
         {daten.hinweise_de?.map((h) => <p key={h} className="m-0">{h}</p>)}
         <p className="m-0 wp-links">
+          <Link href="/waerme/waermepumpe/kennlinie">Gemessene Kennlinie ›</Link>
           <Link href="/waerme/nachbetrachtung">Was die Wärme gekostet hat ›</Link>
           <Link href="/waerme/fahrplan">Fahrplan ›</Link>
           <Link href="/waerme/anlage">Die ganze Anlage ›</Link>

@@ -31,19 +31,19 @@ from datetime import datetime, tzinfo
 
 from dch_api.schemas import WaermepumpeOut
 from hems_core.domain import EnergySnapshot, Measurement
+from hems_core.thermal.kennlinie import (
+    KW_JE_L_MIN_K,
+    MIN_DURCHFLUSS,
+    MIN_LEISTUNG_KW,
+    MIN_SPREIZUNG_K,
+)
 
 #: So alt darf ein Wert vom Bus sein. ebusd gibt nicht jeden Wert in jedem Takt weiter; gemessen
 #: lagen bis zu 55 Sekunden zwischen zwei Meldungen desselben Werts.
 STALE_S = 900.0
-#: Wärmekapazität von Wasser in kWh je Liter und Kelvin, auf die Minute umgelegt:
-#: 4,186 kJ/(kg K) / 60 s.
-KW_JE_L_MIN_K = 4.186 / 60.0
-#: Unter diesem Durchfluss steht die Pumpe; der Geber zeigt dann null oder Rauschen.
-MIN_DURCHFLUSS = 2.0
-#: Unter dieser Spreizung ist die Rechnung mehr Messfehler als Wärme.
-MIN_SPREIZUNG_K = 0.5
-#: Unter dieser Leistungsaufnahme läuft der Verdichter nicht; eine Arbeitszahl gibt es dann nicht.
-MIN_LEISTUNG_KW = 0.3
+# Die Wärmerechnung und ihre Grenzen stehen im Kern, weil die Kennlinie dieselben braucht:
+# `hems_core.thermal.kennlinie`. Hier nur unter ihrem alten Namen weitergereicht.
+__all__ = ["KW_JE_L_MIN_K", "MIN_DURCHFLUSS", "MIN_LEISTUNG_KW", "MIN_SPREIZUNG_K"]
 
 #: Der Betriebszustand, wie die Maschine ihn als Zahl meldet. Die Wörter der fremden Liste sind
 #: Englisch und an einer Stelle irreführend: 15 heißt dort „Soft_fail" und ist an dieser Anlage
@@ -79,6 +79,35 @@ KEYS = {
     "speicherfuehler_c": "heat_pump_tank_temp_c",
 }
 ZUSTAND_KEY = "heat_pump_mode_code"
+
+#: Die Betriebsart des Reglers (Kennung c94b des Busses), wie er sie im Rundruf nennt. Die
+#: Wörter der fremden Liste sind Englisch („hybrid_status"); gesehen wurden im Haus bisher 0 im
+#: Stillstand und 16 im Lauf der Nacht vom 13. auf den 14.11.2026.
+KREIS_KEY = "heat_pump_cycle_code"
+KREIS_DE: dict[int, str] = {
+    0: "Bereitschaft",
+    1: "Frostschutz",
+    2: "Heizen",
+    3: "Warmwasser",
+    4: "Legionellenschutz",
+    5: "Entlüften",
+    7: "Estrichtrocknung",
+    8: "keine Wärmeerzeugung",
+    9: "Handbetrieb",
+    10: "Störung oder Handbetrieb",
+    11: "Start",
+    12: "aus",
+    14: "Kühlen",
+    15: "Frostschutz Warmwasser",
+    16: "PV-Nutzung",
+    17: "Entfeuchten",
+    19: "Puffer heizen und Warmwasser",
+    20: "Puffer kühlen und Warmwasser",
+}
+#: Wohin die Maschine in dieser Betriebsart einspeist (Auskunft des Hausherrn, 14.11.2026): bei
+#: der Warmwasserbereitung oben in den Speicher, im Heizbetrieb tiefer. Für die übrigen
+#: Betriebsarten ist es nicht bekannt, auch nicht für die PV-Nutzung; dort steht nichts.
+EINSPEISUNG: dict[int, str] = {3: "oben", 4: "oben", 15: "oben", 2: "tiefer", 7: "tiefer"}
 
 
 #: Ab dieser Bridge kommt die Lage des Busses mit (`DeviceHealthFrame`, Quelle `ebusd`).
@@ -239,6 +268,8 @@ def zusammensetzen(
     ohne ihn steht dort die allgemeine Frage nach Add-on und Adapter."""
     werte = {feld: mess(key) for feld, key in KEYS.items()}
     zustand = mess(ZUSTAND_KEY)
+    kreis = mess(KREIS_KEY)
+    kreis_code = round(kreis.value) if kreis.usable and kreis.value is not None else None
     code = round(zustand.value) if zustand.usable and zustand.value is not None else None
     hz = werte["verdichter_hz"]
     if code is not None:
@@ -292,6 +323,13 @@ def zusammensetzen(
             hinweise.append(
                 "Für eine Wärmeleistung fehlt gerade ein Wert: Durchfluss, Vorlauf oder Rücklauf."
             )
+        if pumpe_laeuft and kreis_code is not None and kreis_code not in EINSPEISUNG:
+            hinweise.append(
+                "Wohin die Wärmepumpe gerade in den Speicher einspeist, ist für die Betriebsart "
+                f"„{KREIS_DE.get(kreis_code, kreis_code)}“ nicht bekannt. Die Stellung des "
+                "Umschaltventils selbst sendet der Bus nicht."
+            )
+    einspeisung = EINSPEISUNG.get(kreis_code) if kreis_code is not None and pumpe_laeuft else None
     t = snap.buffer_temps_c
     return WaermepumpeOut(
         now=now,
@@ -305,6 +343,11 @@ def zusammensetzen(
         spreizung_k=spreizung,
         waermeleistung_kw=waerme,
         arbeitszahl=zahl,
+        kreis_code=kreis_code,
+        kreis_de=None
+        if kreis_code is None
+        else KREIS_DE.get(kreis_code, f"Betriebsart {kreis_code}"),
+        einspeisung=einspeisung,
         bus_stumm_de=stumm,
         hinweise_de=hinweise,
         **werte,
@@ -330,6 +373,7 @@ def vorfuehrung(
         vorlauf = ruecklauf + waerme / (29.5 * KW_JE_L_MIN_K)
         return {
             "heat_pump_mode_code": 3.0,
+            "heat_pump_cycle_code": 2.0,
             "heat_pump_compressor_hz": round(30.0 + 12.0 * max(leistung_kw, 0.5), 0),
             "heat_pump_flow_l_min": 29.5,
             "flow_temp_c": round(vorlauf, 1),
@@ -344,6 +388,7 @@ def vorfuehrung(
         }
     return {
         "heat_pump_mode_code": 15.0,
+        "heat_pump_cycle_code": 0.0,
         "heat_pump_compressor_hz": 0.0,
         "heat_pump_flow_l_min": 0.0,
         "flow_temp_c": round(puffer_unten_c + 1.5, 1),

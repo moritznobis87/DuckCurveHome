@@ -33,6 +33,9 @@ type Plan = {
   heissgas: Punkt[];
   fluessig: Punkt[];
   vorlauf: Punkt[];
+  /** Der Vorlauf im Heizbetrieb: die Maschine speist dann nicht oben, sondern tiefer in den
+   *  Speicher ein (Auskunft des Hausherrn, 14.11.2026). Er endet seitlich auf halber Höhe. */
+  vorlaufTiefer: Punkt[];
   ruecklauf: Punkt[];
   /** Linke obere Ecke der Schilder an den Leitungen. */
   schild: { heissgas: Punkt; fluessig: Punkt; vorlauf: Punkt; ruecklauf: Punkt };
@@ -49,6 +52,7 @@ export const PLAN: Record<Lage, Plan> = {
     heissgas: [[260, 100], [260, 50], [450, 50], [450, 100]],
     fluessig: [[450, 350], [450, 400], [260, 400], [260, 350]],
     vorlauf: [[660, 100], [660, 50], [1015, 50], [1015, 100 + TANK.y]],
+    vorlaufTiefer: [[660, 100], [660, 50], [1100, 50], [1100, 100 + TANK.y + TANK.h / 2], [850 + TANK.x + TANK.w, 100 + TANK.y + TANK.h / 2]],
     ruecklauf: [[1015, 100 + TANK.y + TANK.h], [1015, 400], [660, 400], [660, 350]],
     schild: { heissgas: [293, 31], fluessig: [293, 381], vorlauf: [776, 31], ruecklauf: [776, 381] },
   },
@@ -62,6 +66,7 @@ export const PLAN: Record<Lage, Plan> = {
     // Der Vorlauf verlässt das Innengerät links und kommt mittig auf dem Glas an: ein Versatz
     // unter den beiden Schildern.
     vorlauf: [[150, 620], [150, 712], [20 + MITTE, 712], [20 + MITTE, 740 + TANK.y]],
+    vorlaufTiefer: [[150, 620], [150, 712], [272, 712], [272, 740 + TANK.y + TANK.h / 2], [20 + TANK.x + TANK.w, 740 + TANK.y + TANK.h / 2]],
     ruecklauf: [[20 + TANK.x + TANK.w, 740 + TANK.y + TANK.h - 24], [300, 740 + TANK.y + TANK.h - 24], [300, 620]],
     schild: { heissgas: [14, 296], fluessig: [164, 296], vorlauf: [14, 660], ruecklauf: [164, 660] },
   },

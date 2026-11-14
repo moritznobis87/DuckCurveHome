@@ -49,6 +49,7 @@ SERIES = (
     "heat_pump_discharge_temp_c",  # Heißgas nach dem Verdichter
     "heat_pump_liquid_temp_c",  # Flüssigkeitsleitung zurück zum Außengerät
     "heat_pump_tank_temp_c",  # Speicherfühler der Wärmepumpe (Kennung 759e, Lesart nicht bestätigt)
+    "heat_pump_cycle_code",  # Betriebsart des Reglers als Zahl: 2 Heizen, 3 Warmwasser, 16 PV
     # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
     # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
     "stove_state",  # Zustandscode der Maestro-Firmware

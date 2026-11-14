@@ -220,3 +220,34 @@ def test_die_auskunft_folgt_dem_weg_der_werte() -> None:
     assert mit.endswith("Der letzte Wert vom Bus kam am 13.11. um 23:30 Uhr.")
     # Ein unbekanntes Wort einer neueren Bridge wirft nichts um.
     assert satz(bridge_online=True, bridge_version="0.15.0", angekuendigt=bus, lage="neu")
+
+
+def test_die_betriebsart_des_reglers_sagt_wohin_die_maschine_einspeist(client: TestClient) -> None:
+    """Warmwasser oben, Heizen tiefer (Auskunft des Hausherrn, 14.11.2026). Für die PV-Nutzung,
+    die in der Nacht vom 13. auf den 14.11. auf dem Bus stand, ist es nicht bekannt."""
+
+    def mit(code: float | None, **werte: float) -> object:
+        bus = {**HAUS_LAEUFT, **werte}
+        if code is not None:
+            bus["heat_pump_cycle_code"] = code
+        return wp.zusammensetzen(
+            now=JETZT,
+            snap=schnappschuss(client, 1.448),
+            laeuft_laut_zaehler=True,
+            mess=mess_aus(bus),
+        )
+
+    heizen = mit(2.0)
+    assert (heizen.kreis_code, heizen.kreis_de, heizen.einspeisung) == (2, "Heizen", "tiefer")  # type: ignore[attr-defined]
+    warmwasser = mit(3.0)
+    assert (warmwasser.kreis_de, warmwasser.einspeisung) == ("Warmwasser", "oben")  # type: ignore[attr-defined]
+    pv = mit(16.0)
+    assert pv.kreis_de == "PV-Nutzung" and pv.einspeisung is None  # type: ignore[attr-defined]
+    assert any("PV-Nutzung" in h and "nicht bekannt" in h for h in pv.hinweise_de)  # type: ignore[attr-defined]
+    # Steht die Pumpe, speist niemand ein, gleich was der Regler meldet.
+    steht = mit(2.0, heat_pump_flow_l_min=0.0)
+    assert steht.einspeisung is None  # type: ignore[attr-defined]
+    # Ohne Meldung des Reglers steht nichts da, und eine unbekannte Zahl bleibt eine Zahl.
+    ohne = mit(None)
+    assert (ohne.kreis_code, ohne.kreis_de, ohne.einspeisung) == (None, None, None)  # type: ignore[attr-defined]
+    assert mit(13.0).kreis_de == "Betriebsart 13"  # type: ignore[attr-defined]

@@ -716,6 +716,44 @@ Wärmeseite.
 Nicht geprüft: die Seite mit den echten Werten des Hauses. Geprüft ist sie in der Vorführung, am
 Telefon (390 Punkte) und an der Wandanzeige (1280 Punkte), im Lauf und im Stillstand.
 
+### Wohin die Wärmepumpe einspeist: die Betriebsart des Reglers
+
+Stand 14.11.2026. Am Morgen lief die Maschine mit 36,2 °C Vorlauf, während der Speicher oben
+36,1 °C hatte: sie speiste also nicht oben ein. Der Hausherr: bei der Warmwasserbereitung führt
+das Umschaltventil den Vorlauf oben in den Speicher, im Heizbetrieb tiefer.
+
+**Die Stellung des Ventils sendet der Bus nicht von selbst.** Die fremde Bus-Beschreibung kennt
+sie (Kennung `0601`, `heatpump_3way_valve_dhw_heat`, 0 Warmwasser, 1 Heizen), aber nur als
+Antwort auf eine Frage; in den drei Protokollen des Hauses kommt die Kennung in keinem Telegramm
+vor (gesucht in allen mitgeschriebenen Telegrammen, 14.11.2026). Sie zu lesen hieße, auf dem Bus
+zu fragen; das Add-on fragt nicht.
+
+**Was der Regler von selbst sendet, ist seine Betriebsart** (Kennung `c94b`, in der fremden
+Beschreibung `hybrid_status`): 0 Bereitschaft, 2 Heizen, 3 Warmwasser, 16 PV-Nutzung, 19 Puffer
+heizen und Warmwasser. Sie kommt im Rundruf in einer Liste mit der Hauptpumpe
+(`13fe20100cc2000100c74b8e00c94b1000`) und allein (`13fe201004c94b0000`). Im Haus gesehen:
+
+| Wann | Maschine | `c94b` |
+|---|---|---|
+| 13.11.2026, 23:20 und 14.11., 00:06 | steht | 0, Bereitschaft |
+| 13.11.2026, 23:30 | läuft | 16, PV-Nutzung |
+
+Die 16 passt dazu, dass Duck Curve Home die Maschine in dieser Nacht über den Kontakt
+freigegeben hatte, den der Regler als Eingang für Solarstrom kennt. Heizen (2) und Warmwasser
+(3) sind im Haus **noch nicht gesehen**.
+
+Das Add-on liest die Betriebsart ab 0.2.2 mit zwei eigenen Zeilen (`pumpe_status` mit den
+Kennungen der Folgewerte als eigene Felder, `betriebsart`); beide sind mit ebusd 26.1 an den
+Telegrammen des Hauses geprüft. Die Bridge liest die Liste nur, wenn die Kennungen stimmen. Der
+Dienst speichert sie als Minutenreihe `heat_pump_cycle_code` (Migration `d0a6b2f85e4b`).
+
+Auf der Seite steht sie im Innengerät, und die Zeichnung führt den Vorlauf danach: bei
+Warmwasser (3), Legionellenschutz (4) und Frostschutz Warmwasser (15) oben in das Glas, bei
+Heizen (2) und Estrichtrocknung (7) seitlich auf halber Höhe. **Wo genau am Speicher der untere
+Anschluss sitzt, ist nicht vermessen**; „halbe Höhe“ ist die Zeichnung, nicht der Stutzen. Für
+die übrigen Betriebsarten, auch die PV-Nutzung, ist nicht bekannt, wohin eingespeist wird; die
+Seite sagt das und lässt die Leitung oben.
+
 ### Wenn der Bus schweigt
 
 Am Morgen des 14.11.2026 stand im Haus an jedem Buswert der Seite ein Fragezeichen, obwohl beide
@@ -778,3 +816,51 @@ neu öffnen, dann auf dieser und auf einer anderen langen Seite rollen.
 
 [F1] Apple Developer Forums, „iOS17 PWA `position: fixed` element breaks after a while“,
 https://developer.apple.com/forums/thread/744327, abgerufen 14.11.2026.
+
+## Die gemessene Kennlinie der Wärmepumpe
+
+Stand 14.11.2026, Nutzerwunsch: Messpunkte der Arbeitszahl über Außen- und Vorlauftemperatur
+sammeln, darstellen und daraus die eigene Kennlinie nach der Methode der kleinsten Quadrate
+ableiten. Seite: Technik → Wärmepumpe → Kennlinie (`/waerme/waermepumpe/kennlinie`), Rechnung:
+`packages/hems-core/src/hems_core/thermal/kennlinie.py`, Antwort:
+`GET /api/v1/waermepumpe/kennlinie?tage=30`.
+
+**Ein Messpunkt** ist ein Fenster von zehn Minuten auf dem Raster der Uhr, in dem die Maschine
+in jeder Minute heizt (Zustand 3), schon länger als zehn Minuten läuft und alle Werte da sind.
+Arbeitszahl = Summe der Wärme (Durchfluss mal Spreizung mal 4,186 kJ/(kg K)) durch Summe des
+Stroms am Zähler. Mit den Zahlen vom 14.11.2026, 10:20 (30,1 l/min, 36,2 und 30,0 °C, 3,16 kW)
+sind das 13,0 kW und 4,1; dieselbe Rechnung prüft `packages/hems-core/tests/test_kennlinie.py`.
+
+| Festlegung | Wert | Herkunft |
+|---|---|---|
+| Länge eines Fensters | 10 Minuten | gesetzt; der Bus meldet im Abstand von Sekunden bis zu einer Minute, darunter stehen Werte nebeneinander, die nicht zusammengehören |
+| Anlauf, der nicht zählt | 10 Minuten nach dem Start | gesetzt, nicht gemessen |
+| Arbeitszahl gilt als Messfehler | unter 1 oder über 9 | gesetzt |
+| Ausgleich ab | 12 Punkten | gesetzt |
+| Einfluss der Außentemperatur bestimmbar ab | 4 K Spanne der Punkte | gesetzt, nicht gemessen |
+| Einfluss des Vorlaufs bestimmbar ab | 5 K Spanne der Punkte | gesetzt, nicht gemessen |
+
+**Der Ausgleich** ist eine Ebene, COP = a + b · Außentemperatur + c · Vorlauftemperatur,
+bestimmt nach kleinsten Quadraten. Eine Ebene, weil sie die einfachste Form ist, die beide
+Abhängigkeiten enthält, und ihre Zahlen sich lesen lassen. Geben die Punkte einen der beiden
+Einflüsse nicht her (zu geringe Spanne, oder beide Temperaturen ändern sich im Gleichschritt),
+fällt der Term weg, und die Seite sagt, was fehlt. Die Formel gilt nur im gemessenen Bereich;
+die Seite nennt ihn und kennzeichnet, was darüber hinaus nur verlängert ist.
+
+**Die Darstellung.** Drei Ansichten derselben Punkte statt einer dreidimensionalen Fläche, die
+sich nicht ablesen lässt: Arbeitszahl über der Außentemperatur (Punkte in der Farbe ihres
+Vorlaufs, Ausgleichsgeraden für bis zu drei Vorläufe, dazu die Kennlinie des Fahrplans),
+Arbeitszahl über der Vorlauftemperatur, und das Kennfeld mit beiden Temperaturen als Achsen und
+der Arbeitszahl als Farbe. Darunter die Messung gegen die Annahme des Fahrplans, je Stützstelle
+seiner Kennlinie.
+
+**Grenzen und offene Punkte.**
+
+* Abtauen zählt nicht mit: das ist die Arbeitszahl im Heizbetrieb, nicht die eines Tages.
+* Der Durchflussgeber ist nicht geeicht, die Zuordnung des Rücklaufs nicht bestätigt. Ein Fehler
+  dort verschiebt alle Punkte gemeinsam.
+* Die Betriebsart (Heizen, Warmwasser) wird gespeichert, aber noch nicht getrennt ausgewertet.
+* Der Fahrplan rechnet weiter mit seiner Annahme (`cop_curve`); übernommen wird nichts von
+  selbst.
+* Punkte gibt es erst seit dem 14.11.2026, als die Buswerte den Dienst erreichten. Die Seite ist
+  bisher nur in der Vorführung geprüft, deren Punkte erzeugt sind.

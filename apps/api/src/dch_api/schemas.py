@@ -1227,9 +1227,78 @@ class WaermepumpeOut(BaseModel):
     spreizung_k: float | None = None
     waermeleistung_kw: float | None = None
     arbeitszahl: float | None = None
+    #: Die Betriebsart des Reglers (Kennung c94b des Busses) als Zahl und als Wort.
+    kreis_code: int | None = None
+    kreis_de: str | None = None
+    #: Wohin die Maschine gerade in den Speicher einspeist, soweit die Betriebsart es sagt:
+    #: bei Warmwasser oben, im Heizbetrieb tiefer. `None`: steht, oder die Betriebsart sagt es
+    #: nicht.
+    einspeisung: Literal["oben", "tiefer"] | None = None
     #: Gesetzt, wenn vom Bus der Maschine kein einziger Wert da ist: ein Satz, an welcher Stelle
     #: des Weges es hängt, soweit Dienst und Bridge das wissen (`waermepumpe.bus_auskunft`).
     bus_stumm_de: str | None = None
+    hinweise_de: list[str] = Field(default_factory=list)
+
+
+class KennlinienPunktOut(BaseModel):
+    """Ein Fenster im eingeschwungenen Heizbetrieb (`hems_core.thermal.kennlinie`)."""
+
+    at: datetime
+    minuten: int
+    aussen_c: float
+    vorlauf_c: float
+    cop: float
+    waerme_kw: float
+    strom_kw: float
+
+
+class KennlinienFitOut(BaseModel):
+    """COP = a + b_aussen * Außentemperatur + c_vorlauf * Vorlauftemperatur, kleinste Quadrate.
+
+    `art` sagt, welche Terme sich aus den Punkten bestimmen ließen: `ebene` beide, `aussen`
+    oder `vorlauf` nur einer, `mittel` keiner.
+    """
+
+    art: Literal["ebene", "aussen", "vorlauf", "mittel"]
+    a: float
+    b_aussen: float
+    c_vorlauf: float
+    n: int
+    rmse: float
+    r2: float | None = None
+    aussen_von_c: float
+    aussen_bis_c: float
+    vorlauf_von_c: float
+    vorlauf_bis_c: float
+    formel_de: str
+    geltung_de: str
+
+
+class KennlinienAnnahmeOut(BaseModel):
+    """Ein Punkt der Kennlinie, mit der der Fahrplan bisher rechnet."""
+
+    aussen_c: float
+    cop: float
+
+
+class KennlinieOut(BaseModel):
+    """Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.
+
+    Die Punkte sind Abschätzungen aus Durchfluss, Spreizung und Zähler; warum, steht in
+    `hinweise_de`.
+    """
+
+    now: datetime
+    von: datetime
+    bis: datetime
+    tage: int
+    punkte: list[KennlinienPunktOut] = Field(default_factory=list)
+    fit: KennlinienFitOut | None = None
+    #: Was dem Ausgleich noch fehlt, wenn es keinen gibt oder ein Term fehlt.
+    fehlt_de: str | None = None
+    #: Die Kennlinie des Fahrplans, gültig bei `annahme_vorlauf_c`.
+    annahme: list[KennlinienAnnahmeOut] = Field(default_factory=list)
+    annahme_vorlauf_c: float | None = None
     hinweise_de: list[str] = Field(default_factory=list)
 
 

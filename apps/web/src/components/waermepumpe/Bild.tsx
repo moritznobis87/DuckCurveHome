@@ -86,6 +86,8 @@ function Innengeraet({ d, ruhig }: { d: Waermepumpe; ruhig: boolean }) {
     <g>
       <rect width={w} height={h} rx={14} fill="var(--surface-2)" stroke="var(--line-2)" />
       <text x={16} y={26} fontSize={13} fontWeight={600} fill="var(--text-1)">Innengerät</text>
+      {/* Die Betriebsart des Reglers: aus ihr folgt, wohin der Vorlauf in den Speicher führt. */}
+      <Schild x={14} y={40} w={128} name="Betriebsart" wert={d.kreis_de ?? "?"} einheit="" />
       <Schild x={150} y={40} w={136} name="Vorlauf soll" wert={messwert(d.vorlauf_soll_c)} einheit="°C" m={d.vorlauf_soll_c} />
       {/* Der Wärmetauscher: hier geht die Wärme vom Kältemittel ins Wasser. */}
       <rect x={30} y={92} width={56} height={84} rx={6} fill="var(--deep)" stroke="var(--line-2)" />
@@ -120,12 +122,15 @@ export function Bild({ d, lage, ruhig }: { d: Waermepumpe; lage: Lage; ruhig: bo
   const p = PLAN[lage];
   const kaelte = d.laeuft;
   const wasser = d.pumpe_laeuft;
+  const tiefer = d.einspeisung === "tiefer";
   return (
     <svg className="wp-bild" data-lage={lage} viewBox={p.viewBox} role="img" aria-label={`Die Wärmepumpe ${d.zustand_de}. Vorlauf ${messwert(d.vorlauf_c)} Grad, Rücklauf ${messwert(d.ruecklauf_c)} Grad, Durchfluss ${messwert(d.durchfluss_l_min)} Liter je Minute.`}>
       {/* Erst die Leitungen, dann die Kästen: die Enden verschwinden unter den Rändern. */}
       <Leitung punkte={p.heissgas} temperatur={d.heissgas_c.value} fliesst={kaelte} dick={5} ruhig={ruhig} name="Heißgas vom Außengerät zum Innengerät" />
       <Leitung punkte={p.fluessig} temperatur={d.fluessig_c.value} fliesst={kaelte} dick={5} ruhig={ruhig} name="Flüssigkeitsleitung zurück zum Außengerät" />
-      <Leitung punkte={p.vorlauf} temperatur={d.vorlauf_c.value} fliesst={wasser} ruhig={ruhig} name="Vorlauf zum Speicher" />
+      {/* Wohin der Vorlauf führt, sagt die Betriebsart des Reglers: bei Warmwasser oben in den
+          Speicher, im Heizbetrieb tiefer. Ohne Auskunft bleibt die Leitung oben, wie gezeichnet. */}
+      <Leitung punkte={tiefer ? p.vorlaufTiefer : p.vorlauf} temperatur={d.vorlauf_c.value} fliesst={wasser} ruhig={ruhig} name={tiefer ? "Vorlauf, speist auf halber Höhe in den Speicher" : "Vorlauf zum Speicher"} />
       <Leitung punkte={p.ruecklauf} temperatur={d.ruecklauf_c.value} fliesst={wasser} ruhig={ruhig} name="Rücklauf vom Speicher" />
       <g transform={`translate(${p.aussen[0]} ${p.aussen[1]})`}><Aussengeraet d={d} ruhig={ruhig} /></g>
       <g transform={`translate(${p.innen[0]} ${p.innen[1]})`}><Innengeraet d={d} ruhig={ruhig} /></g>

@@ -954,6 +954,54 @@
         }
       }
     },
+    "/api/v1/waermepumpe/kennlinie": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Die gemessene Kennlinie",
+        "description": "Arbeitszahl über Außen- und Vorlauftemperatur: Messpunkte aus dem Heizbetrieb, die\nAusgleichsfläche nach kleinsten Quadraten und die Kennlinie, mit der der Fahrplan rechnet.",
+        "operationId": "kennlinie_api_v1_waermepumpe_kennlinie_get",
+        "parameters": [
+          {
+            "name": "tage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 180,
+              "minimum": 1,
+              "description": "Rückblick in Tagen",
+              "default": 30,
+              "title": "Tage"
+            },
+            "description": "Rückblick in Tagen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KennlinieOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -8322,6 +8370,241 @@
         "title": "Item",
         "description": "Ein Moebel, ein Geraet, ein Stueck Treppe. Welche Felder gelten, sagt `kind`; die Anzeige\nnimmt fuer fehlende Masse ihre Voreinstellungen. Geprueft wird hier nur, dass die Zahlen endlich\nsind und die Art bekannt ist."
       },
+      "KennlinieOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "von": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Bis"
+          },
+          "tage": {
+            "type": "integer",
+            "title": "Tage"
+          },
+          "punkte": {
+            "items": {
+              "$ref": "#/components/schemas/KennlinienPunktOut"
+            },
+            "type": "array",
+            "title": "Punkte"
+          },
+          "fit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KennlinienFitOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fehlt_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fehlt De"
+          },
+          "annahme": {
+            "items": {
+              "$ref": "#/components/schemas/KennlinienAnnahmeOut"
+            },
+            "type": "array",
+            "title": "Annahme"
+          },
+          "annahme_vorlauf_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annahme Vorlauf C"
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "von",
+          "bis",
+          "tage"
+        ],
+        "title": "KennlinieOut",
+        "description": "Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.\n\nDie Punkte sind Abschätzungen aus Durchfluss, Spreizung und Zähler; warum, steht in\n`hinweise_de`."
+      },
+      "KennlinienAnnahmeOut": {
+        "properties": {
+          "aussen_c": {
+            "type": "number",
+            "title": "Aussen C"
+          },
+          "cop": {
+            "type": "number",
+            "title": "Cop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aussen_c",
+          "cop"
+        ],
+        "title": "KennlinienAnnahmeOut",
+        "description": "Ein Punkt der Kennlinie, mit der der Fahrplan bisher rechnet."
+      },
+      "KennlinienFitOut": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "ebene",
+              "aussen",
+              "vorlauf",
+              "mittel"
+            ],
+            "title": "Art"
+          },
+          "a": {
+            "type": "number",
+            "title": "A"
+          },
+          "b_aussen": {
+            "type": "number",
+            "title": "B Aussen"
+          },
+          "c_vorlauf": {
+            "type": "number",
+            "title": "C Vorlauf"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "rmse": {
+            "type": "number",
+            "title": "Rmse"
+          },
+          "r2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R2"
+          },
+          "aussen_von_c": {
+            "type": "number",
+            "title": "Aussen Von C"
+          },
+          "aussen_bis_c": {
+            "type": "number",
+            "title": "Aussen Bis C"
+          },
+          "vorlauf_von_c": {
+            "type": "number",
+            "title": "Vorlauf Von C"
+          },
+          "vorlauf_bis_c": {
+            "type": "number",
+            "title": "Vorlauf Bis C"
+          },
+          "formel_de": {
+            "type": "string",
+            "title": "Formel De"
+          },
+          "geltung_de": {
+            "type": "string",
+            "title": "Geltung De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "a",
+          "b_aussen",
+          "c_vorlauf",
+          "n",
+          "rmse",
+          "aussen_von_c",
+          "aussen_bis_c",
+          "vorlauf_von_c",
+          "vorlauf_bis_c",
+          "formel_de",
+          "geltung_de"
+        ],
+        "title": "KennlinienFitOut",
+        "description": "COP = a + b_aussen * Außentemperatur + c_vorlauf * Vorlauftemperatur, kleinste Quadrate.\n\n`art` sagt, welche Terme sich aus den Punkten bestimmen ließen: `ebene` beide, `aussen`\noder `vorlauf` nur einer, `mittel` keiner."
+      },
+      "KennlinienPunktOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          },
+          "aussen_c": {
+            "type": "number",
+            "title": "Aussen C"
+          },
+          "vorlauf_c": {
+            "type": "number",
+            "title": "Vorlauf C"
+          },
+          "cop": {
+            "type": "number",
+            "title": "Cop"
+          },
+          "waerme_kw": {
+            "type": "number",
+            "title": "Waerme Kw"
+          },
+          "strom_kw": {
+            "type": "number",
+            "title": "Strom Kw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "minuten",
+          "aussen_c",
+          "vorlauf_c",
+          "cop",
+          "waerme_kw",
+          "strom_kw"
+        ],
+        "title": "KennlinienPunktOut",
+        "description": "Ein Fenster im eingeschwungenen Heizbetrieb (`hems_core.thermal.kennlinie`)."
+      },
       "KontaktwirkungOut": {
         "properties": {
           "von": {
@@ -12646,6 +12929,43 @@
               }
             ],
             "title": "Arbeitszahl"
+          },
+          "kreis_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kreis Code"
+          },
+          "kreis_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kreis De"
+          },
+          "einspeisung": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "oben",
+                  "tiefer"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Einspeisung"
           },
           "bus_stumm_de": {
             "anyOf": [

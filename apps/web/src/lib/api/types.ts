@@ -510,6 +510,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/waermepumpe/kennlinie": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die gemessene Kennlinie
+         * @description Arbeitszahl über Außen- und Vorlauftemperatur: Messpunkte aus dem Heizbetrieb, die
+         *     Ausgleichsfläche nach kleinsten Quadraten und die Kennlinie, mit der der Fahrplan rechnet.
+         */
+        get: operations["kennlinie_api_v1_waermepumpe_kennlinie_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -3824,6 +3845,114 @@ export interface components {
             ][] | null;
         };
         /**
+         * KennlinieOut
+         * @description Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.
+         *
+         *     Die Punkte sind Abschätzungen aus Durchfluss, Spreizung und Zähler; warum, steht in
+         *     `hinweise_de`.
+         */
+        KennlinieOut: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /**
+             * Von
+             * Format: date-time
+             */
+            von: string;
+            /**
+             * Bis
+             * Format: date-time
+             */
+            bis: string;
+            /** Tage */
+            tage: number;
+            /** Punkte */
+            punkte?: components["schemas"]["KennlinienPunktOut"][];
+            fit?: components["schemas"]["KennlinienFitOut"] | null;
+            /** Fehlt De */
+            fehlt_de?: string | null;
+            /** Annahme */
+            annahme?: components["schemas"]["KennlinienAnnahmeOut"][];
+            /** Annahme Vorlauf C */
+            annahme_vorlauf_c?: number | null;
+            /** Hinweise De */
+            hinweise_de?: string[];
+        };
+        /**
+         * KennlinienAnnahmeOut
+         * @description Ein Punkt der Kennlinie, mit der der Fahrplan bisher rechnet.
+         */
+        KennlinienAnnahmeOut: {
+            /** Aussen C */
+            aussen_c: number;
+            /** Cop */
+            cop: number;
+        };
+        /**
+         * KennlinienFitOut
+         * @description COP = a + b_aussen * Außentemperatur + c_vorlauf * Vorlauftemperatur, kleinste Quadrate.
+         *
+         *     `art` sagt, welche Terme sich aus den Punkten bestimmen ließen: `ebene` beide, `aussen`
+         *     oder `vorlauf` nur einer, `mittel` keiner.
+         */
+        KennlinienFitOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "ebene" | "aussen" | "vorlauf" | "mittel";
+            /** A */
+            a: number;
+            /** B Aussen */
+            b_aussen: number;
+            /** C Vorlauf */
+            c_vorlauf: number;
+            /** N */
+            n: number;
+            /** Rmse */
+            rmse: number;
+            /** R2 */
+            r2?: number | null;
+            /** Aussen Von C */
+            aussen_von_c: number;
+            /** Aussen Bis C */
+            aussen_bis_c: number;
+            /** Vorlauf Von C */
+            vorlauf_von_c: number;
+            /** Vorlauf Bis C */
+            vorlauf_bis_c: number;
+            /** Formel De */
+            formel_de: string;
+            /** Geltung De */
+            geltung_de: string;
+        };
+        /**
+         * KennlinienPunktOut
+         * @description Ein Fenster im eingeschwungenen Heizbetrieb (`hems_core.thermal.kennlinie`).
+         */
+        KennlinienPunktOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Minuten */
+            minuten: number;
+            /** Aussen C */
+            aussen_c: number;
+            /** Vorlauf C */
+            vorlauf_c: number;
+            /** Cop */
+            cop: number;
+            /** Waerme Kw */
+            waerme_kw: number;
+            /** Strom Kw */
+            strom_kw: number;
+        };
+        /**
          * KontaktwirkungOut
          * @description Was der Freigabekontakt K1 auslöst: die Ereignisstudie über die letzten `days` Tage.
          *
@@ -5859,6 +5988,12 @@ export interface components {
             waermeleistung_kw?: number | null;
             /** Arbeitszahl */
             arbeitszahl?: number | null;
+            /** Kreis Code */
+            kreis_code?: number | null;
+            /** Kreis De */
+            kreis_de?: string | null;
+            /** Einspeisung */
+            einspeisung?: ("oben" | "tiefer") | null;
             /** Bus Stumm De */
             bus_stumm_de?: string | null;
             /** Hinweise De */
@@ -6634,6 +6769,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WaermepumpeOut"];
+                };
+            };
+        };
+    };
+    kennlinie_api_v1_waermepumpe_kennlinie_get: {
+        parameters: {
+            query?: {
+                /** @description Rückblick in Tagen */
+                tage?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KennlinieOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
