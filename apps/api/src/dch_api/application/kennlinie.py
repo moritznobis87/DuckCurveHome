@@ -133,8 +133,8 @@ def zusammensetzen(
         "nach dem Start. Abtauen zählt nicht mit: das ist die Arbeitszahl im Heizbetrieb, nicht "
         "die eines Tages.",
         "Wärme aus Durchfluss mal Spreizung, Strom vom Zähler an der Zuleitung. Der "
-        "Durchflussgeber ist nicht geeicht und die Zuordnung des Rücklaufs nicht bestätigt; ein "
-        "Fehler dort verschiebt alle Punkte gemeinsam, die Form der Kennlinie bleibt.",
+        "Durchflussgeber ist nicht geeicht; ein Fehler dort verschiebt alle Punkte gemeinsam, "
+        "die Form der Kennlinie bleibt.",
     ]
     if zusatz_min:
         hinweise.append(

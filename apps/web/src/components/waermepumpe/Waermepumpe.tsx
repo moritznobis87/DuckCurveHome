@@ -101,7 +101,7 @@ export function Waermepumpe() {
       <Kennzahlen aktuell={daten.kreis_code} />
 
       <div className="wp-fuss">
-        <p className="m-0">† Die Zuordnung dieses Werts ist begründet, am Gerät aber noch nicht bestätigt.</p>
+        <p className="m-0">† Fühler WP: die Zuordnung dieses Werts ist begründet, am Gerät aber noch nicht bestätigt.</p>
         {daten.hinweise_de?.map((h) => <p key={h} className="m-0">{h}</p>)}
         <p className="m-0 wp-links">
           <Link href="/waerme/waermepumpe/kennlinie">Gemessene Kennlinie ›</Link>

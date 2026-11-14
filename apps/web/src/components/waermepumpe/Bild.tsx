@@ -142,7 +142,7 @@ export function Bild({ d, lage, ruhig }: { d: Waermepumpe; lage: Lage; ruhig: bo
       <Schild x={p.schild.heissgas[0]} y={p.schild.heissgas[1]} name="Heißgas" wert={messwert(d.heissgas_c)} einheit="°C" m={d.heissgas_c} />
       <Schild x={p.schild.fluessig[0]} y={p.schild.fluessig[1]} name="Flüssigkeit" wert={messwert(d.fluessig_c)} einheit="°C" m={d.fluessig_c} />
       <Schild x={p.schild.vorlauf[0]} y={p.schild.vorlauf[1]} name="Vorlauf" wert={messwert(d.vorlauf_c)} einheit="°C" m={d.vorlauf_c} />
-      <Schild x={p.schild.ruecklauf[0]} y={p.schild.ruecklauf[1]} name={`Rücklauf ${UNSICHER}`} wert={messwert(d.ruecklauf_c)} einheit="°C" m={d.ruecklauf_c} />
+      <Schild x={p.schild.ruecklauf[0]} y={p.schild.ruecklauf[1]} name="Rücklauf" wert={messwert(d.ruecklauf_c)} einheit="°C" m={d.ruecklauf_c} />
     </svg>
   );
 }

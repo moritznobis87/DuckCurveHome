@@ -18,10 +18,9 @@ auf. Die Arbeitszahl dieser Minuten sagt etwas über den Start, nichts über die
 elektrische Zusatzheizung mit. Solche Minuten zählen nicht (`ZUSATZ_KW`).
 
 **Was der Punkt nicht ist.** Abtauphasen fallen heraus (die Maschine heizt dann nicht), also
-ist das die Arbeitszahl im Heizbetrieb, nicht die eines Tages. Und sie erbt die Vorbehalte der
-Messung: der Durchflussgeber ist nicht geeicht, die Zuordnung des Rücklaufs nicht bestätigt
-(`docs/SENSORIK.md`). Ein systematischer Fehler dort verschiebt alle Punkte gemeinsam; die
-Form der Kennlinie bleibt.
+ist das die Arbeitszahl im Heizbetrieb, nicht die eines Tages. Und sie erbt den Vorbehalt der
+Messung: der Durchflussgeber ist nicht geeicht (`docs/SENSORIK.md`). Ein systematischer Fehler
+dort verschiebt alle Punkte gemeinsam; die Form der Kennlinie bleibt.
 
 **Der Ausgleich.** Kleinste Quadrate über die Ebene
 

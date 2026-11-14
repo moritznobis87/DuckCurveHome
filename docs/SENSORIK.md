@@ -350,9 +350,23 @@ Kennung zwei oder drei Bytes Wert.
   „return temp“ nennt. Dagegen: 47,6 °C liegen über dem Vorlauf und über dem Sollwert von 45 °C;
   wäre das der Rücklauf, liefe die Maschine nicht. Wahrscheinlicher ist ein Speicherfühler.
 
-`769e` ist deshalb als `heat_pump_return_temp_c` zugeordnet, mit diesem Vorbehalt. Bestätigen
-lässt es sich am Bediengerät der Wärmepumpe (Rücklauftemperatur ablesen und vergleichen) oder
-an einigen Stunden Verlauf: der Rücklauf folgt dem unteren Puffer.
+`769e` ist deshalb als `heat_pump_return_temp_c` zugeordnet. Bestätigen lässt es sich am
+Bediengerät der Wärmepumpe (Rücklauftemperatur ablesen und vergleichen) oder an einigen Stunden
+Verlauf: der Rücklauf folgt dem unteren Puffer.
+
+**Seit dem 14.11.2026 gilt die Zuordnung als gegeben** (Entscheidung des Hausherrn: „das wird
+schon richtig so sein“); das Zeichen † am Rücklauf und der Vorbehalt in den Hinweisen der Seiten
+sind entfernt. Dafür spricht der Verlauf dieses Tages: in vier Ablesungen lag `769e` beim
+untersten Pufferfühler oder knapp darunter.
+
+| 14.11.2026 | `769e` | Puffer unten | Maschine |
+|---|---|---|---|
+| 10:20 | 30,0 °C | 29,5 °C | läuft |
+| 11:18 | 36,3 °C | 38 °C | läuft |
+| 16:52 | 27,5 °C | 28 °C | Pause, Pumpe läuft |
+| 16:54 | 27,6 °C | 28 °C | läuft |
+
+Am Bediengerät verglichen wurde der Wert nicht.
 
 **Was davon in den Dienst geht** (`config/entities.home.yaml`, Minutentabelle seit der Migration
 `a7d3e9c52b18`): Außentemperatur, Vorlauf, Durchfluss (`heat_pump_flow_l_min`), Rücklauf
@@ -670,12 +684,12 @@ Messwert steht dort, wo er an der Anlage entsteht. Der Dienst setzt die Seite in
 | Innengerät | Durchfluss | Bus, `heatpump_flowmeter` |
 | Innengerät | Betriebszustand | Bus, eigene Zeile `hp_betrieb.mode` |
 | Leitung zum Speicher | Vorlauf | Bus, `coolat_data.LWT_temp` |
-| Leitung vom Speicher | Rücklauf † | Bus, eigene Zeile `system_temps.t_769e` |
+| Leitung vom Speicher | Rücklauf | Bus, eigene Zeile `system_temps.t_769e` |
 | Speicher | Fühler der Wärmepumpe † | Bus, eigene Zeile `system_temps.t_759e` |
 | Speicher | vier Schichten | die eigenen Pufferfühler, wie im Anlagenschema |
 
-† Die Zuordnung ist begründet, am Gerät aber nicht bestätigt (siehe oben, „Welche Temperatur
-ist der Rücklauf?“). Die Seite kennzeichnet beide Werte mit demselben Zeichen.
+† Die Zuordnung des Speicherfühlers ist begründet, am Gerät aber nicht bestätigt. Der Rücklauf
+trug dasselbe Zeichen bis zum 14.11.2026 (siehe oben, „Welche Temperatur ist der Rücklauf?“).
 
 **Der Speicher sieht überall gleich aus** (Nutzerwunsch 14.11.2026). Bis dahin gab es ihn in
 vier Zeichnungen mit zwei Farbskalen: als eckigen Tank auf der Startseite, als liegenden Balken
@@ -692,7 +706,7 @@ Spreizung mal 4,186 kJ/(kg K), ein Liter als ein Kilogramm. Arbeitszahl = Wärme
 Leistungsaufnahme. Mit den Zahlen des zweiten Protokolls (29,8 l/min, 39,9 und 36,5 °C,
 1,448 kW) sind das 3,4 K, 7,07 kW und 4,9; dieselbe Rechnung prüft
 `apps/api/tests/test_waermepumpe.py`. Beides heißt auf der Seite „abgeschätzt“, weil der
-Durchflussgeber nicht geeicht ist, der Rücklauf nicht bestätigt ist und die Werte nicht im selben
+Durchflussgeber nicht geeicht ist und die Werte nicht im selben
 Augenblick kommen.
 
 | Festlegung | Wert | Herkunft |
@@ -960,8 +974,7 @@ seiner Kennlinie.
 **Grenzen und offene Punkte.**
 
 * Abtauen zählt nicht mit: das ist die Arbeitszahl im Heizbetrieb, nicht die eines Tages.
-* Der Durchflussgeber ist nicht geeicht, die Zuordnung des Rücklaufs nicht bestätigt. Ein Fehler
-  dort verschiebt alle Punkte gemeinsam.
+* Der Durchflussgeber ist nicht geeicht. Ein Fehler dort verschiebt alle Punkte gemeinsam.
 * Die Kennzahl des Reglers wird gespeichert, ist aber nicht entschlüsselt; nach Heizen und
   Warmwasser wird deshalb noch nicht getrennt.
 * Minuten mit Heizstab (Zähler mindestens 1,5 kW über der Maschine) zählen nicht mit.
