@@ -983,6 +983,39 @@ entscheidet aus demselben Grund noch nicht darüber, welche Minuten zählen.
 **Nicht geprüft:** an der echten Wärmepumpe. Offen ist auch, ob die Abfragen den Bus stören;
 das Add-on lässt sich mit `abfragen: false` auf reines Lauschen zurückstellen.
 
+## Der Betrieb über Tage: Läufe, Abtauen, Takten, Heizkurve
+
+Stand 14.11.2026. Seite: Technik → Wärmepumpe → Betrieb (`/waerme/waermepumpe/betrieb`),
+Rechnung: `packages/hems-core/src/hems_core/thermal/betrieb.py`, Antwort:
+`GET /api/v1/waermepumpe/betrieb?tage=14`. Eine Auszählung der gespeicherten Minuten, mit
+denselben Reihen wie die Kennlinie und dazu dem Vorlauf-Sollwert des Reglers
+(`heat_pump_flow_setpoint_c`). Gesteuert wird von hier nichts.
+
+| Was | Wie es entsteht |
+|---|---|
+| Lauf | Vom Anlaufen des Verdichters (Zustand 3, 4 oder 6; ohne Zustand: Frequenz, dann Leistung) bis zum Halt. Ein Abtauen (Zustand 9) mittendrin beendet ihn nicht. Eine Lücke in den Daten über 90 Sekunden beendet ihn. |
+| Lauflänge | Nur von Läufen, deren Anfang und Ende in den Daten liegen. Klassen: unter 10, 10 bis 20, 20 bis 40, 40 bis 90, ab 90 Minuten (gesetzt; unter zehn Minuten kommt ein Lauf nicht aus dem Anlauf, den die Kennlinie verwirft). |
+| Abtauen | Minuten im Zustand 9, und wie oft der Zustand begann. |
+| Wärme einer Minute | Durchfluss mal (Vorlauf minus Rücklauf) mal 4,186 kJ/(kg K), **mit Vorzeichen**: beim Abtauen holt die Maschine Wärme aus dem Heizwasser, die Minute zählt negativ. |
+| Arbeitszahl über alles | Summe der Wärme durch Summe des Stroms über alle Minuten im Lauf, für die sich eine Wärme rechnen ließ. Enthält Anlauf, Abtauen und Heizstab. Ab 0,5 kWh Strom am Tag (gesetzt). |
+| Arbeitszahl im Heizbetrieb | Aus den Fenstern der Kennlinie desselben Tages: eingeschwungen, ohne Abtauen und Heizstab. |
+| Heizstab | Erschlossen wie in der Kennlinie (Zähler über dem Gewöhnlichen), nicht gelesen. |
+| Heizkurve des Reglers | Je Stunde mit mindestens zehn Minuten Heizbetrieb das Mittel von Außentemperatur und Vorlauf-Sollwert; durch die Stunden eine Gerade nach kleinsten Quadraten, ab sechs Stunden und drei Grad Spanne draußen (beides gesetzt). |
+
+**Grenzen und offene Punkte.**
+
+* Geprüft mit Tests (`test_betrieb.py`, `test_betrieb_api.py`, `betrieb.test.ts`) und in der
+  Vorführung, deren Minuten erzeugt sind. Im Haus noch nicht angesehen.
+* Den Zustand „taut ab“ sendet die Maschine nur, wenn das Bediengerät ihn gerade abfragt (etwa
+  alle zehn Sekunden). Ein Abtauen sollte damit sichtbar sein; gesehen wurde im Haus noch
+  keines, bestätigt ist die Zahl 9 für diese Maschine also nicht.
+* Die Arbeitszahl über alles kann über der im Heizbetrieb liegen: kurze Läufe am milden
+  Nachmittag stehen nur in der ersten, weil sie kein Fenster der Kennlinie füllen.
+* Warmwasser und Heizen sind in der Heizkurve nicht getrennt. Verlangt der Regler für
+  Warmwasser mehr, liegen diese Stunden über der Geraden und ziehen sie nach oben. Getrennt
+  wird, sobald die Stellung des Umschaltventils im Haus bestätigt ist.
+* Der Durchflussgeber ist nicht geeicht; ein Fehler dort verschiebt alle Arbeitszahlen gemeinsam.
+
 ## Die gemessene Kennlinie der Wärmepumpe
 
 Stand 14.11.2026, Nutzerwunsch: Messpunkte der Arbeitszahl über Außen- und Vorlauftemperatur

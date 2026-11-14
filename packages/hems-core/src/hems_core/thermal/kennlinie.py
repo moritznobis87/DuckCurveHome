@@ -126,6 +126,9 @@ class Minute:
     #: Die Stellung des Umschaltventils als Zahl des Reglers (abgefragt seit dem 14.11.2026).
     #: Laut Bus-Beschreibung 0 Warmwasser, 1 Heizung; im Haus noch nicht gegengeprüft.
     ventil: float | None = None
+    #: Der Vorlauf-Sollwert, den der Regler der Maschine vorgibt. Die Kennlinie braucht ihn
+    #: nicht; aus ihm entsteht die Heizkurve des Reglers (`betrieb.py`).
+    vorlauf_soll_c: float | None = None
 
 
 def zusatz_kw(
@@ -227,7 +230,7 @@ PFLICHT = {
     "strom_kw": "Zähler",
 }
 #: Alle Reihen, deren letzter Wert kurz weiter gilt.
-_REIHEN = (*PFLICHT, "modus", "hz", "strom_maschine_kw", "ventil")
+_REIHEN = (*PFLICHT, "modus", "hz", "strom_maschine_kw", "ventil", "vorlauf_soll_c")
 #: Davon die Zustände: zwischen zwei Zuständen liegt kein dritter, der alte gilt weiter.
 _ZUSTAENDE = frozenset({"modus", "ventil"})
 
@@ -293,7 +296,7 @@ def auffuellen(minuten: Sequence[Minute]) -> list[Minute]:
     return [replace(m, **n) if n else m for m, n in zip(reihe, nach, strict=True)]
 
 
-def _heizt(m: Minute) -> bool:
+def heizt(m: Minute) -> bool:
     """Läuft der Verdichter im Heizbetrieb? Der Zustand der Maschine entscheidet, wo er da ist."""
     if m.modus is not None:
         return round(m.modus) in MODI_HEIZEN
@@ -332,13 +335,13 @@ def auswerten(minuten: Sequence[Minute]) -> tuple[list[Messpunkt], Bilanz]:
     for m in reihe:
         luecke = davor is not None and m.ts - davor > timedelta(minutes=1, seconds=30)
         davor = m.ts
-        heizt = _heizt(m)
-        if heizt:
+        im_lauf = heizt(m)
+        if im_lauf:
             b.heizen += 1
-        if luecke or not heizt:
+        if luecke or not im_lauf:
             # Eine Lücke in den Daten zählt wie ein Halt: was in ihr war, weiß niemand.
-            laeuft_seit = 1 if heizt else 0
-            if heizt:
+            laeuft_seit = 1 if im_lauf else 0
+            if im_lauf:
                 b.anlauf += 1
             continue
         laeuft_seit += 1

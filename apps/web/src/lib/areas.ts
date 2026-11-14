@@ -103,10 +103,11 @@ export const AREAS: Area[] = [
       {
         href: "/waerme/waermepumpe",
         label: "Wärmepumpe",
-        // Der Augenblick und die gemessene Kennlinie: dieselbe Maschine, einmal jetzt, einmal
-        // über Wochen.
+        // Der Augenblick, der Betrieb über Tage und die gemessene Kennlinie: dieselbe Maschine,
+        // einmal jetzt, einmal als Tagebuch, einmal als Kennlinie über Wochen.
         unter: [
           { href: "/waerme/waermepumpe", label: "Jetzt" },
+          { href: "/waerme/waermepumpe/betrieb", label: "Betrieb" },
           { href: "/waerme/waermepumpe/kennlinie", label: "Kennlinie" },
         ],
       },

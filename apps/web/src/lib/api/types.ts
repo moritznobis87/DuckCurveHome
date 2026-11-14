@@ -552,6 +552,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/waermepumpe/betrieb": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Der Betrieb über Tage
+         * @description Läufe, Starts und Lauflängen, Abtauen, die Arbeitszahl je Tag mit und ohne Abtauen und
+         *     die Heizkurve, die der Regler der Maschine vorgibt. Eine Auszählung gespeicherter Minuten.
+         */
+        get: operations["betrieb_api_v1_waermepumpe_betrieb_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -1606,6 +1627,199 @@ export interface components {
             duration_min: number;
             /** Reserve Soc */
             reserve_soc?: number | null;
+        };
+        /**
+         * BetriebHeizkurveOut
+         * @description Sollwert = a + b * Außentemperatur, nach kleinsten Quadraten über die Stunden.
+         */
+        BetriebHeizkurveOut: {
+            /** A */
+            a: number;
+            /** B */
+            b: number;
+            /** N */
+            n: number;
+            /** R2 */
+            r2?: number | null;
+            /** Aussen Von C */
+            aussen_von_c: number;
+            /** Aussen Bis C */
+            aussen_bis_c: number;
+            /** Formel De */
+            formel_de: string;
+        };
+        /**
+         * BetriebKlasseOut
+         * @description Eine Klasse der Lauflängen: von einschließlich, bis ausschließlich (`None`: nach oben offen).
+         */
+        BetriebKlasseOut: {
+            /** Von Min */
+            von_min: number;
+            /** Bis Min */
+            bis_min?: number | null;
+            /** Laeufe */
+            laeufe: number;
+        };
+        /**
+         * BetriebLaufOut
+         * @description Ein Lauf des Verdichters, vom Anlaufen bis zum Halt.
+         */
+        BetriebLaufOut: {
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Minuten */
+            minuten: number;
+            /** Abtau Min */
+            abtau_min: number;
+            /** Abtauungen */
+            abtauungen: number;
+            /** Zusatz Min */
+            zusatz_min: number;
+            /** Strom Kwh */
+            strom_kwh: number;
+            /** Waerme Kwh */
+            waerme_kwh?: number | null;
+            /**
+             * Angeschnitten
+             * @default false
+             */
+            angeschnitten: boolean;
+        };
+        /**
+         * BetriebOut
+         * @description Der Betrieb der Wärmepumpe über Tage: Läufe, Abtauen, Takten, Heizkurve des Reglers.
+         *
+         *     Eine Auszählung gespeicherter Minuten. Was sie taugt, steht in `hinweise_de`.
+         */
+        BetriebOut: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /**
+             * Von
+             * Format: date-time
+             */
+            von: string;
+            /**
+             * Bis
+             * Format: date-time
+             */
+            bis: string;
+            /** Zeitraum Tage */
+            zeitraum_tage: number;
+            /** Tage */
+            tage?: components["schemas"]["BetriebTagOut"][];
+            /** Laeufe */
+            laeufe?: components["schemas"]["BetriebLaufOut"][];
+            /** Stunden */
+            stunden?: components["schemas"]["BetriebStundeOut"][];
+            heizkurve?: components["schemas"]["BetriebHeizkurveOut"] | null;
+            /** Klassen */
+            klassen?: components["schemas"]["BetriebKlasseOut"][];
+            /**
+             * Starts
+             * @default 0
+             */
+            starts: number;
+            /**
+             * Lauf Min
+             * @default 0
+             */
+            lauf_min: number;
+            /**
+             * Abtau Min
+             * @default 0
+             */
+            abtau_min: number;
+            /**
+             * Abtauungen
+             * @default 0
+             */
+            abtauungen: number;
+            /**
+             * Zusatz Min
+             * @default 0
+             */
+            zusatz_min: number;
+            /** Cop Gesamt */
+            cop_gesamt?: number | null;
+            /** Cop Heizen */
+            cop_heizen?: number | null;
+            /** Lauf Median Min */
+            lauf_median_min?: number | null;
+            /** Saetze De */
+            saetze_de?: string[];
+            /** Hinweise De */
+            hinweise_de?: string[];
+        };
+        /**
+         * BetriebStundeOut
+         * @description Eine Stunde im Heizbetrieb: was der Regler als Vorlauf verlangte, bei welchem Wetter.
+         */
+        BetriebStundeOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Minuten */
+            minuten: number;
+            /** Aussen C */
+            aussen_c: number;
+            /** Soll C */
+            soll_c: number;
+            /** Vorlauf C */
+            vorlauf_c?: number | null;
+            /** Ventil */
+            ventil?: number | null;
+        };
+        /**
+         * BetriebTagOut
+         * @description Ein Ortstag der Wärmepumpe (`hems_core.thermal.betrieb.Tag`).
+         */
+        BetriebTagOut: {
+            /**
+             * Tag
+             * Format: date
+             */
+            tag: string;
+            /** Starts */
+            starts: number;
+            /** Lauf Min */
+            lauf_min: number;
+            /** Abtau Min */
+            abtau_min: number;
+            /** Abtauungen */
+            abtauungen: number;
+            /** Zusatz Min */
+            zusatz_min: number;
+            /** Strom Kwh */
+            strom_kwh: number;
+            /** Waerme Kwh */
+            waerme_kwh?: number | null;
+            /**
+             * Strom Lauf Kwh
+             * @default 0
+             */
+            strom_lauf_kwh: number;
+            /** Cop Tag */
+            cop_tag?: number | null;
+            /** Cop Heizen */
+            cop_heizen?: number | null;
+            /** Lauf Median Min */
+            lauf_median_min?: number | null;
+            /** Aussen C */
+            aussen_c?: number | null;
+            /**
+             * Waerme Min
+             * @default 0
+             */
+            waerme_min: number;
         };
         /** BinCorrection */
         BinCorrection: {
@@ -6946,6 +7160,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReglerKennzahlenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    betrieb_api_v1_waermepumpe_betrieb_get: {
+        parameters: {
+            query?: {
+                /** @description Rückblick in Tagen */
+                tage?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetriebOut"];
                 };
             };
             /** @description Validation Error */

@@ -26,6 +26,7 @@ import structlog
 from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, house, rooms
+from dch_api.application import betrieb as betrieb_logic
 from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
@@ -84,6 +85,7 @@ from dch_api.schemas import (
     AnlageReplayOut,
     BackfillResultOut,
     BatteryLiveOut,
+    BetriebOut,
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
@@ -166,6 +168,7 @@ from hems_core.planning import (
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
 from hems_core.simulation import BERLIN
 from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
+from hems_core.thermal import betrieb as betrieb_kern
 from hems_core.thermal import kennlinie as kennlinie_kern
 from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 from hems_core.watch import BRIDGE, RULES, back_text, findings
@@ -207,6 +210,7 @@ class LiveRuntime:
         self.hems = config.hems
         self._kennlinie: dict[int, KennlinieOut] = {}
         self._kennzahlen: dict[int, ReglerKennzahlenOut] = {}
+        self._betrieb: dict[int, BetriebOut] = {}
         self.repos = repos
         self.hub = hub
         self.forecasts = forecasts
@@ -1307,6 +1311,24 @@ class LiveRuntime:
         )
         aus = kennzahl_logic.zusammensetzen(now, tage, zeilen)
         self._kennzahlen[tage] = aus
+        return aus
+
+    async def betrieb(self, tage: int) -> BetriebOut:
+        """Läufe, Abtauen, Lauflängen und die Heizkurve des Reglers aus den Minuten der letzten
+        `tage` Tage. Fünf Minuten gehalten, wie die Kennlinie."""
+        now = self.now
+        gemerkt = self._betrieb.get(tage)
+        if gemerkt is not None and now - gemerkt.now < timedelta(minutes=5):
+            return gemerkt
+        zeilen = await self.repos.minute_series(
+            now - timedelta(days=tage), now, list(betrieb_logic.REIHEN)
+        )
+        aus = betrieb_logic.zusammensetzen(
+            now=now,
+            tage=tage,
+            betrieb=betrieb_kern.auswerten(betrieb_logic.minuten(zeilen), BERLIN),
+        )
+        self._betrieb[tage] = aus
         return aus
 
     async def kennlinie(self, tage: int) -> KennlinieOut:

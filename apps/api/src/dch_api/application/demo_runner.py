@@ -19,6 +19,7 @@ import structlog
 from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, demo_house, demo_rooms, rooms
+from dch_api.application import betrieb as betrieb_logic
 from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
@@ -58,6 +59,7 @@ from dch_api.schemas import (
     AnlageReplayOut,
     BackfillResultOut,
     BatteryLiveOut,
+    BetriebOut,
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
@@ -125,6 +127,7 @@ from hems_core.planning import (
 )
 from hems_core.simulation import BERLIN, DemoConfig, DemoHouse, new_demo_house
 from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
+from hems_core.thermal import betrieb as betrieb_kern
 from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 
 log = structlog.get_logger("demo")
@@ -969,6 +972,16 @@ class DemoRunner:
     async def reglerkennzahlen(self, tage: int) -> ReglerKennzahlenOut:
         """Die Auszählung der Vorführung, aus erzeugten Minuten."""
         return kennzahl_logic.zusammensetzen(self.now, tage, kennzahl_logic.vorfuehrung(self.now))
+
+    async def betrieb(self, tage: int) -> BetriebOut:
+        """Der Betrieb der Vorführung: erzeugte Minuten, dieselbe Auszählung wie im Haus."""
+        minuten = betrieb_logic.vorfuehrung(self.now, tage, BERLIN)
+        return betrieb_logic.zusammensetzen(
+            now=self.now,
+            tage=tage,
+            betrieb=betrieb_kern.auswerten(minuten, BERLIN),
+            vorfuehrung=True,
+        )
 
     async def kennlinie(self, tage: int) -> KennlinieOut:
         """Die Kennlinie der Vorführung: erzeugte Punkte, derselbe Ausgleich wie im Haus."""
