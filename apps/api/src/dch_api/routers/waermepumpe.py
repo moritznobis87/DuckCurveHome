@@ -7,9 +7,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from dch_api.application import kennlinie as kennlinie_logic
+from dch_api.application import reglerkennzahl as kennzahl_logic
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
-from dch_api.schemas import KennlinieOut, WaermepumpeOut
+from dch_api.schemas import KennlinieOut, ReglerKennzahlenOut, WaermepumpeOut
 
 router = APIRouter(prefix="/waermepumpe", tags=["Anlage"])
 
@@ -32,3 +33,16 @@ async def kennlinie(
     """Arbeitszahl über Außen- und Vorlauftemperatur: Messpunkte aus dem Heizbetrieb, die
     Ausgleichsfläche nach kleinsten Quadraten und die Kennlinie, mit der der Fahrplan rechnet."""
     return await runner.kennlinie(tage)
+
+
+@router.get("/kennzahlen", response_model=ReglerKennzahlenOut, summary="Die Kennzahlen des Reglers")
+async def kennzahlen(
+    runner: Annotated[Runtime, Depends(get_runner)],
+    tage: Annotated[
+        int,
+        Query(ge=1, le=kennzahl_logic.TAGE_HOECHSTENS, description="Rückblick in Tagen"),
+    ] = kennzahl_logic.TAGE_STANDARD,
+) -> ReglerKennzahlenOut:
+    """Was die Wärmepumpe unter welcher Kennzahl ihres Reglers tat: Minuten, Lauf, Vorlauf,
+    Sollwert, Erwärmung des Speichers oben und unten. Belege, keine Deutung."""
+    return await runner.reglerkennzahlen(tage)

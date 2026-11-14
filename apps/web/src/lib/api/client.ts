@@ -1,5 +1,5 @@
 import type { ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
-  House, Kennlinie, KennlinieRoh, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+  House, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -78,6 +78,7 @@ export const api = {
   anlage: () => request<Anlage>("/anlage"),
   // Die Technikseite der Wärmepumpe: alle Messwerte des Augenblicks samt Abschätzung.
   waermepumpe: () => request<Waermepumpe>("/waermepumpe"),
+  reglerkennzahlen: (tage = 7) => request<ReglerKennzahlen>(`/waermepumpe/kennzahlen?tage=${tage}`),
   kennlinie: async (tage: number): Promise<Kennlinie> => {
     const d = await request<KennlinieRoh>(`/waermepumpe/kennlinie?tage=${tage}`);
     return { ...d, punkte: d.punkte ?? [], annahme: d.annahme ?? [], hinweise_de: d.hinweise_de ?? [] };

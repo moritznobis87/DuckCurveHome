@@ -31,6 +31,7 @@ REIHEN: dict[str, str] = {
     "heat_pump_power_kw": "strom_kw",
     "heat_pump_mode_code": "modus",
     "heat_pump_compressor_hz": "hz",
+    "heat_pump_bus_power_kw": "strom_maschine_kw",
 }
 TAGE_STANDARD = 30
 TAGE_HOECHSTENS = 180
@@ -124,6 +125,7 @@ def zusammensetzen(
     heat: HeatDemandConfig,
     buffer: BufferConfig,
     vorfuehrung: bool = False,
+    zusatz_min: int = 0,
 ) -> KennlinieOut:
     f = kern.ausgleich(punkte)
     hinweise = [
@@ -134,6 +136,12 @@ def zusammensetzen(
         "Durchflussgeber ist nicht geeicht und die Zuordnung des Rücklaufs nicht bestätigt; ein "
         "Fehler dort verschiebt alle Punkte gemeinsam, die Form der Kennlinie bleibt.",
     ]
+    if zusatz_min:
+        hinweise.append(
+            f"{zusatz_min} Minuten zählen nicht mit, weil der Zähler dort mindestens "
+            f"{de(kern.ZUSATZ_KW, 1)} kW mehr aufnahm, als die Maschine für sich meldet: neben "
+            "dem Verdichter lief etwas anderes, vermutlich der elektrische Heizstab."
+        )
     if vorfuehrung:
         hinweise.insert(
             0, "Vorführung: die Punkte sind aus dem Modellhaus erzeugt, nicht gemessen."

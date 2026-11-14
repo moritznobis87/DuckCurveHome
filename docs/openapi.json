@@ -1002,6 +1002,54 @@
         }
       }
     },
+    "/api/v1/waermepumpe/kennzahlen": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Die Kennzahlen des Reglers",
+        "description": "Was die Wärmepumpe unter welcher Kennzahl ihres Reglers tat: Minuten, Lauf, Vorlauf,\nSollwert, Erwärmung des Speichers oben und unten. Belege, keine Deutung.",
+        "operationId": "kennzahlen_api_v1_waermepumpe_kennzahlen_get",
+        "parameters": [
+          {
+            "name": "tage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 60,
+              "minimum": 1,
+              "description": "Rückblick in Tagen",
+              "default": 7,
+              "title": "Tage"
+            },
+            "description": "Rückblick in Tagen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReglerKennzahlenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -10578,6 +10626,134 @@
         ],
         "title": "ReasonCode"
       },
+      "ReglerKennzahlOut": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code"
+          },
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          },
+          "lauf_min": {
+            "type": "integer",
+            "title": "Lauf Min"
+          },
+          "vorlauf_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vorlauf C"
+          },
+          "vorlauf_soll_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vorlauf Soll C"
+          },
+          "oben_k_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oben K H"
+          },
+          "unten_k_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unten K H"
+          },
+          "angefordert_anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Angefordert Anteil"
+          },
+          "zusatz_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zusatz Kw"
+          },
+          "zuletzt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zuletzt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "minuten",
+          "lauf_min"
+        ],
+        "title": "ReglerKennzahlOut",
+        "description": "Was in den Minuten geschah, in denen der Regler diese Kennzahl sendete."
+      },
+      "ReglerKennzahlenOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "tage": {
+            "type": "integer",
+            "title": "Tage"
+          },
+          "zeilen": {
+            "items": {
+              "$ref": "#/components/schemas/ReglerKennzahlOut"
+            },
+            "type": "array",
+            "title": "Zeilen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "tage"
+        ],
+        "title": "ReglerKennzahlenOut"
+      },
       "ReiheOut": {
         "properties": {
           "key": {
@@ -12929,6 +13105,17 @@
               }
             ],
             "title": "Arbeitszahl"
+          },
+          "zusatz_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zusatz Kw"
           },
           "kreis_code": {
             "anyOf": [

@@ -8,6 +8,7 @@ import { hhmm } from "@/lib/format";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { Stat } from "@/components/ui/Stat";
 import { Bild } from "./Bild";
+import { Kennzahlen } from "./Kennzahlen";
 import { aufnahme, satz, zahl } from "./bild";
 
 /**
@@ -67,6 +68,12 @@ export function Waermepumpe() {
         <span className="wp-stand">Stand {hhmm(daten.now)}{fehler ? ` · ${fehler}` : ""}</span>
       </div>
 
+      {daten.zusatz_kw != null ? (
+        <p className="wp-stumm" role="status">
+          <strong>Neben dem Verdichter laufen rund {zahl(daten.zusatz_kw)} kW.</strong> Der Zähler misst deutlich mehr, als die Maschine für sich meldet; vermutlich ist der elektrische Heizstab an. Die Arbeitszahl unten enthält ihn.
+        </p>
+      ) : null}
+
       {daten.bus_stumm_de ? (
         <p className="wp-stumm" role="status">
           <strong>Vom Bus der Wärmepumpe ist kein Wert da.</strong> {daten.bus_stumm_de}
@@ -83,6 +90,8 @@ export function Waermepumpe() {
       <div className="card wp-buehne">
         <Bild d={daten} lage={handy ? "hoch" : "breit"} ruhig={ruhig} />
       </div>
+
+      <Kennzahlen aktuell={daten.kreis_code} />
 
       <div className="wp-fuss">
         <p className="m-0">† Die Zuordnung dieses Werts ist begründet, am Gerät aber noch nicht bestätigt.</p>

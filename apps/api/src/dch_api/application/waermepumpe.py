@@ -31,6 +31,7 @@ from datetime import datetime, tzinfo
 
 from dch_api.schemas import WaermepumpeOut
 from hems_core.domain import EnergySnapshot, Measurement
+from hems_core.thermal import kennlinie as kennlinie_kern
 from hems_core.thermal.kennlinie import (
     KW_JE_L_MIN_K,
     MIN_DURCHFLUSS,
@@ -80,34 +81,25 @@ KEYS = {
 }
 ZUSTAND_KEY = "heat_pump_mode_code"
 
-#: Die Betriebsart des Reglers (Kennung c94b des Busses), wie er sie im Rundruf nennt. Die
-#: Wörter der fremden Liste sind Englisch („hybrid_status"); gesehen wurden im Haus bisher 0 im
-#: Stillstand und 16 im Lauf der Nacht vom 13. auf den 14.11.2026.
+#: Die Kennzahl, die der Regler im Rundruf sendet (Kennung c94b des Busses).
+#:
+#: **Was sie bedeutet, ist für diese Anlage nicht entschlüsselt.** Die fremde Bus-Beschreibung
+#: nennt die Kennung `hybrid_status` und gibt jeder Zahl ein Wort. Die Liste stammt von einer
+#: anderen Anlage der Herstellergruppe, und am 14.11.2026 stand damit im Haus „Puffer kühlen"
+#: an einer Maschine, die im November den Puffer heizt (Kennzahl 20). Seitdem zeigt die Seite
+#: die Zahl und ein Wort nur dort, wo es im Haus bestätigt ist. Bestätigt ist bisher allein die
+#: 0: sie stand in allen drei Protokollen bei stehender Maschine.
+#:
+#: Gesehen wurden außerdem 16 (Lauf in der Nacht vom 13. auf den 14.11.) und 20 (Lauf am
+#: Vormittag des 14.11.). Was die Maschine unter welcher Zahl tut, zählt `reglerkennzahl.py` aus
+#: den gespeicherten Minuten aus; daraus wird diese Tabelle gefüllt, nicht aus der fremden Liste.
 KREIS_KEY = "heat_pump_cycle_code"
-KREIS_DE: dict[int, str] = {
-    0: "Bereitschaft",
-    1: "Frostschutz",
-    2: "Heizen",
-    3: "Warmwasser",
-    4: "Legionellenschutz",
-    5: "Entlüften",
-    7: "Estrichtrocknung",
-    8: "keine Wärmeerzeugung",
-    9: "Handbetrieb",
-    10: "Störung oder Handbetrieb",
-    11: "Start",
-    12: "aus",
-    14: "Kühlen",
-    15: "Frostschutz Warmwasser",
-    16: "PV-Nutzung",
-    17: "Entfeuchten",
-    19: "Puffer heizen und Warmwasser",
-    20: "Puffer kühlen und Warmwasser",
-}
-#: Wohin die Maschine in dieser Betriebsart einspeist (Auskunft des Hausherrn, 14.11.2026): bei
-#: der Warmwasserbereitung oben in den Speicher, im Heizbetrieb tiefer. Für die übrigen
-#: Betriebsarten ist es nicht bekannt, auch nicht für die PV-Nutzung; dort steht nichts.
-EINSPEISUNG: dict[int, str] = {3: "oben", 4: "oben", 15: "oben", 2: "tiefer", 7: "tiefer"}
+KREIS_DE: dict[int, str] = {0: "Bereitschaft"}
+#: Wohin die Maschine unter einer Kennzahl einspeist: „oben" (Warmwasser) oder „tiefer"
+#: (Heizbetrieb), nach Auskunft des Hausherrn vom 14.11.2026. **Leer, bis eine Kennzahl im Haus
+#: einer der beiden Betriebsarten zugeordnet ist.** Die Zeichnung führt den Vorlauf solange oben
+#: in den Speicher und behauptet damit nichts; der Hinweis darunter sagt es.
+EINSPEISUNG: dict[int, str] = {}
 
 
 #: Ab dieser Bridge kommt die Lage des Busses mit (`DeviceHealthFrame`, Quelle `ebusd`).
@@ -250,6 +242,10 @@ def bus_auskunft(stand: BusStand, tz: tzinfo) -> str:
     )
 
 
+def _de(zahl: float, stellen: int) -> str:
+    return f"{zahl:.{stellen}f}".replace(".", ",")
+
+
 def zustand_wort(code: int | None, laeuft: bool) -> str:
     if code is None:
         return "läuft" if laeuft else "steht"
@@ -305,6 +301,9 @@ def zusammensetzen(
     )
     if waerme is not None and aufnahme is not None and aufnahme >= MIN_LEISTUNG_KW:
         zahl = round(waerme / aufnahme, 1)
+    zusatz = kennlinie_kern.zusatz_kw(
+        zaehler.value if zaehler.usable else None, bus.value if bus.usable else None
+    )
 
     hinweise: list[str] = []
     stumm: str | None = None
@@ -319,15 +318,24 @@ def zusammensetzen(
             "ist nicht geeicht, und welcher Wert des Busses der Rücklauf ist, ist begründet, "
             "aber nicht bestätigt."
         )
+        if zusatz is not None and zaehler.value is not None and bus.value is not None:
+            hinweise.append(
+                f"Der Zähler misst {_de(zaehler.value, 2)} kW, die Maschine meldet für sich "
+                f"{_de(bus.value, 2)} kW. Rund {_de(zusatz, 1)} kW nimmt etwas anderes an "
+                "derselben Zuleitung auf, vermutlich der elektrische Heizstab. Die Arbeitszahl "
+                "oben rechnet mit dem Zähler und enthält ihn."
+            )
         if laeuft and waerme is None:
             hinweise.append(
                 "Für eine Wärmeleistung fehlt gerade ein Wert: Durchfluss, Vorlauf oder Rücklauf."
             )
         if pumpe_laeuft and kreis_code is not None and kreis_code not in EINSPEISUNG:
             hinweise.append(
-                "Wohin die Wärmepumpe gerade in den Speicher einspeist, ist für die Betriebsart "
-                f"„{KREIS_DE.get(kreis_code, kreis_code)}“ nicht bekannt. Die Stellung des "
-                "Umschaltventils selbst sendet der Bus nicht."
+                f"Der Regler meldet die Kennzahl {kreis_code}. Was sie bedeutet, ist für diese "
+                "Anlage noch nicht entschlüsselt, und die Stellung des Umschaltventils sendet der "
+                "Bus nicht. Ob die Wärmepumpe gerade oben oder tiefer in den Speicher einspeist, "
+                "zeigt die Zeichnung deshalb nicht; die Tabelle darunter sammelt, was die Maschine "
+                "unter jeder Kennzahl tut."
             )
     einspeisung = EINSPEISUNG.get(kreis_code) if kreis_code is not None and pumpe_laeuft else None
     t = snap.buffer_temps_c
@@ -343,10 +351,9 @@ def zusammensetzen(
         spreizung_k=spreizung,
         waermeleistung_kw=waerme,
         arbeitszahl=zahl,
+        zusatz_kw=zusatz,
         kreis_code=kreis_code,
-        kreis_de=None
-        if kreis_code is None
-        else KREIS_DE.get(kreis_code, f"Betriebsart {kreis_code}"),
+        kreis_de=None if kreis_code is None else KREIS_DE.get(kreis_code, f"Kennzahl {kreis_code}"),
         einspeisung=einspeisung,
         bus_stumm_de=stumm,
         hinweise_de=hinweise,
