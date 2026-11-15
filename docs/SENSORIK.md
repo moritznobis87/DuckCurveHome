@@ -711,9 +711,13 @@ Anlagenschema und hier. Auf der Startseite am Telefon liegt dasselbe Glas auf de
 Spreizung mal 4,186 kJ/(kg K), ein Liter als ein Kilogramm. Arbeitszahl = Wärmeleistung durch
 Leistungsaufnahme. Mit den Zahlen des zweiten Protokolls (29,8 l/min, 39,9 und 36,5 °C,
 1,448 kW) sind das 3,4 K, 7,07 kW und 4,9; dieselbe Rechnung prüft
-`apps/api/tests/test_waermepumpe.py`. Beides heißt auf der Seite „abgeschätzt“, weil der
-Durchflussgeber nicht geeicht ist und die Werte nicht im selben
-Augenblick kommen.
+`apps/api/tests/test_waermepumpe.py`. Beides hieß auf der Seite bis zum 15.11.2026
+„abgeschätzt“, weil der Durchflussgeber nicht geeicht ist und die Werte nicht im selben
+Augenblick kommen. Der Hausherr fragte an dem Tag, warum das Wort noch dasteht; er hält die
+Messung für richtig, wie schon bei Vorlauf und Rücklauf. Seitdem heißen die Kacheln
+„Wärmeleistung“ und „Arbeitszahl“, und unter der Zeichnung steht, woraus sie gerechnet sind.
+Die beiden Vorbehalte gelten sachlich weiter: sie stehen hier und in den Hinweisen der Seiten
+„Kennlinie“ und „Betrieb“, nicht mehr an jeder Zahl.
 
 | Festlegung | Wert | Herkunft |
 |---|---|---|

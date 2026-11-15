@@ -13891,7 +13891,7 @@
           "speicherfuehler_c"
         ],
         "title": "WaermepumpeOut",
-        "description": "Die Wärmepumpe im Augenblick, für ihre Technikseite.\n\nJede Größe ist ein Messwert mit Zeitpunkt und Güte: fehlt einer, steht auf der Seite ein\nFragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende sind\nAbschätzungen; warum, steht in `hinweise_de` und in `application/waermepumpe.py`."
+        "description": "Die Wärmepumpe im Augenblick, für ihre Technikseite.\n\nJede Größe ist ein Messwert mit Zeitpunkt und Güte: fehlt einer, steht auf der Seite ein\nFragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende\nentstehen aus diesen Messwerten; wie, steht in `hinweise_de` und in\n`application/waermepumpe.py`."
       },
       "WallLine": {
         "properties": {

@@ -22,7 +22,7 @@ import { aufnahme, satz, zahl } from "./bild";
  *
  * **Vier Zahlen oben, die Zeichnung darunter.** Die vier beantworten, was man von einer
  * Wärmepumpe wissen will: wie viel Wärme, aus wie viel Strom, mit welcher Arbeitszahl, bei
- * welcher Spreizung. Wärme und Arbeitszahl sind Abschätzungen, und so steht es an der Kachel.
+ * welcher Spreizung. Wärme und Arbeitszahl sind aus Messwerten gerechnet; wie, steht unter der Zeichnung.
  */
 const LIVE_MS = 10_000;
 
@@ -91,9 +91,9 @@ export function Waermepumpe() {
       ) : null}
 
       <div className="kpi-grid kpi-handy" style={{ "--cols": 4 } as React.CSSProperties}>
-        <Stat label="Wärme, abgeschätzt" value={zahl(daten.waermeleistung_kw)} unit="kW" tone={daten.waermeleistung_kw != null ? "amber" : "muted"} hint={daten.laeuft ? "Durchfluss mal Spreizung" : "nur bei laufender Maschine"} />
+        <Stat label="Wärmeleistung" value={zahl(daten.waermeleistung_kw)} unit="kW" tone={daten.waermeleistung_kw != null ? "amber" : "muted"} hint={daten.laeuft ? "Durchfluss mal Spreizung" : "nur bei laufender Maschine"} />
         <Stat label={strom.quelle ? `Strom, ${strom.quelle}` : "Strom"} value={zahl(strom.kw, 2)} unit="kW" tone={strom.kw != null ? undefined : "muted"} />
-        <Stat label="Arbeitszahl, abgeschätzt" value={zahl(daten.arbeitszahl)} tone={daten.arbeitszahl != null ? undefined : "muted"} hint="Wärme je Strom, im Augenblick" />
+        <Stat label="Arbeitszahl" value={zahl(daten.arbeitszahl)} tone={daten.arbeitszahl != null ? undefined : "muted"} hint="Wärme je Strom, im Augenblick" />
         <Stat label="Spreizung" value={zahl(daten.spreizung_k)} unit="K" tone={daten.spreizung_k != null ? undefined : "muted"} hint="Vorlauf minus Rücklauf" />
       </div>
 

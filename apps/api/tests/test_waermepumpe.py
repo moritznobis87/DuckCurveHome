@@ -67,7 +67,10 @@ def test_die_zahlen_des_hauses_ergeben_die_abschaetzung_aus_den_unterlagen(
     assert aus.waermeleistung_kw == 7.07
     assert aus.arbeitszahl == 4.9
     assert aus.vorlauf_c.value == 39.9 and aus.heissgas_c.value == 46.4
-    assert any("Abschätzungen" in h for h in aus.hinweise_de)
+    # Die Seite sagt, woraus gerechnet ist, und nennt die Zahlen nicht mehr „abgeschätzt“
+    # (Nachfrage des Hausherrn am 15.11.2026).
+    assert any("Durchfluss mal Spreizung" in h for h in aus.hinweise_de)
+    assert not any("bschätz" in h for h in aus.hinweise_de)
 
 
 def test_im_stillstand_gibt_es_keine_waermeleistung_und_das_wort_heisst_steht(
