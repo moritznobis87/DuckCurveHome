@@ -2,8 +2,9 @@
 
 Liest den Bus der Wärmepumpe und legt die Werte auf den Mosquitto-Broker. Die Duck Curve Bridge
 holt sie dort ab. Home Assistant braucht dafür nur den Broker, keine weitere Integration. Das
-Add-on verstellt nichts an der Heizung; seit 0.3.0 fragt es einige Werte selbst ab (Abschnitt
-„Abfragen, ohne zu verstellen“).
+Ab Werk verstellt das Add-on nichts an der Heizung; seit 0.3.0 fragt es Werte selbst ab
+(Abschnitt „Abfragen, ohne zu verstellen“), und seit 0.5.0 kann es, wenn eingeschaltet, eine
+feste Auswahl von Einstellungen stellen (Abschnitt „Stellen“).
 
 ## Was hier läuft
 
@@ -41,7 +42,7 @@ gelegt. Ab 0.3.0 kommen vier Fragen dazu (`aerotop_abfragen.csv`).
 3. Im **Protokoll** sollte nach wenigen Sekunden stehen:
 
        [duckcurve-ebusd] Bus-Beschreibung geladen und geprüft (Fassung f2c9a631c1b0).
-       [duckcurve-ebusd] Abfragen an: ebusd fragt 17 Werte reihum ab, alle 10 s einen.
+       [duckcurve-ebusd] Abfragen an: ebusd fragt 27 Werte reihum ab, alle 10 s einen.
        [duckcurve-ebusd] Stellen kann ebusd nichts: 67 Zeilen zum Stellen aus der Bus-Beschreibung entfernt, keine übrig.
        ... [bus notice] signal acquired
        ... [mqtt notice] connection established
@@ -60,6 +61,7 @@ gelegt. Ab 0.3.0 kommen vier Fragen dazu (`aerotop_abfragen.csv`).
 | `read_only` | an | Nichts verstellen. ebusd kennt dann keine einzige Zeile zum Stellen (siehe unten). |
 | `abfragen` | an | Vier Werte selbst abfragen, die sonst nie über den Bus gehen. Aus heißt: nur lauschen, kein Wort auf dem Bus. |
 | `abfrage_takt_s` | 10 | Abstand zwischen zwei Abfragen in Sekunden (5 bis 300). Je Abfrage ist ein Wert dran. |
+| `stellen` | aus | Vierzehn Einstellungen des Reglers stellen können, nichts sonst (ab 0.5.0, siehe „Stellen“). Wirkt nur zusammen mit `abfragen`. |
 | `latency_ms` | 120 | Wie lange ebusd auf den Adapter wartet. Über WLAN nicht verkleinern. |
 | `mqtt_host`, `mqtt_port` | `core-mosquitto`, 1883 | Der Broker. |
 | `mqtt_username`, `mqtt_password` | leer | Leer heißt: der Supervisor nennt den Zugang. Sonst dieselben Werte wie in der Bridge. |
@@ -110,7 +112,7 @@ fragt das Add-on es entsprechend seltener selbst (im Probelauf am 15.11.2026 ges
 stellt alle zehn Sekunden eine Frage, so wie es das Bediengerät ohnehin mehrmals je Sekunde
 tut. Im Protokoll steht dazu:
 
-    [duckcurve-ebusd] Abfragen an: ebusd fragt 17 Werte reihum ab, alle 10 s einen.
+    [duckcurve-ebusd] Abfragen an: ebusd fragt 27 Werte reihum ab, alle 10 s einen.
     [duckcurve-ebusd] Stellen kann ebusd nichts: 67 Zeilen zum Stellen aus der Bus-Beschreibung entfernt, keine übrig.
 
 **Warum es trotzdem nichts verstellen kann.** Wer abfragt, sendet; der Schalter `--readonly`
@@ -140,6 +142,46 @@ wie vor 0.3.0.
 Abfrage mit einem Byte Status und dann dem Wert antworten, ist an Abfragen des Bediengeräts im
 Haus gesehen (Durchfluss, Betriebszustand, Ventil Heizen/Kühlen); für die vier Kennungen hier
 ist es übertragen.
+
+## Stellen (ab 0.5.0)
+
+Mit `stellen: true` kann das Add-on vierzehn Einstellungen des Reglers ändern: Steilheit und
+Verschiebung der Heizkurve, kleinster, größter und fester Vorlauf, Einfluss der
+Raumtemperatur, Raumtemperatur Tag und Nacht, Warmwasser Komfort- und Spartemperatur,
+Betriebsart des Warmwassers, Legionellenprogramm, Heizbetrieb (Green oder Standard) und
+Flüstermodus. Die Liste steht in `aerotop_stellen.csv` und ist die ganze Liste: alle Zeilen zum
+Stellen der fremden Bus-Beschreibung (67 in der geprüften Fassung) bleiben entfernt, und das
+Startskript startet nicht, wenn die Zahl der Zeilen zum Stellen danach nicht genau vierzehn ist.
+
+**Ab Werk aus.** Dass dieses Add-on etwas an der Heizung verändern kann, schaltet jemand
+bewusst ein. Im Protokoll steht dann:
+
+    [duckcurve-ebusd] ACHTUNG, Stellen an: ebusd kann 14 Einstellungen des Reglers stellen, und nur diese. 67 andere Zeilen zum Stellen sind aus der Bus-Beschreibung entfernt.
+
+**Wer stellt.** Nur die Seite „Regler“ von Duck Curve Home, über den Dienst und die Bridge
+(ab 0.15.0). Der Dienst prüft vorher: die Einstellung steht in seiner Liste, ist gerade gelesen,
+wurde mit dem Bediengerät verglichen, der Wert liegt in den Grenzen, und es waren heute nicht
+mehr als zwölf Änderungen. Am Broker selbst kann allerdings jeder, der dort schreiben darf,
+dieselben vierzehn Themen (`ebusd/energymgr/e_.../set`) beschreiben, ohne diese Prüfungen; der
+Broker gehört deshalb zu dem, was im Haus geschützt sein muss.
+
+**Wie eine Einstellung geändert wird.** Als Rundruf mit dem Dienst 2020, der Kennung und dem
+Wert, so wie das Bediengerät es tut. Danach lässt die Bridge sie sofort neu lesen; gestellt ist
+sie, wenn der Regler den neuen Wert meldet. Was einmal gestellt ist, bleibt am Regler stehen,
+auch wenn Add-on, Bridge oder Dienst ausfallen.
+
+**Geprüft** am 15.11.2026 mit ebusd 26.1 am Übungsadapter, der sich gestellte Werte merkt:
+`e_steilheit` auf 1,3 ging als `31fe2020046a718200` hinaus und kam beim Nachlesen als 1,30
+zurück, ebenso `e_verschiebung` (−2,5) und `e_heizbetrieb` (0). Eine Einstellung außerhalb der
+Liste (`e_heizkurve_art`) und eine fremde (`dhw_status`) lehnte ebusd ab („write message not
+found“), und nichts ging hinaus.
+
+**Nicht geprüft:** an der echten Wärmepumpe. Ob der Regler einen Rundruf von ebusd (Adresse 31)
+als Änderung annimmt, zeigt erst der Versuch; nimmt er ihn nicht, bleibt der alte Wert stehen,
+und die Seite sagt das. Die Zeile für den Heizbetrieb (Kennung 1c22) steht in der
+Bus-Beschreibung nur zum Lesen und ist nach dem Muster der übrigen gebildet. Wie viele
+Schreibvorgänge der Speicher des Reglers verträgt, ist nicht bekannt; deshalb die Grenze von
+zwölf Änderungen je Einstellung und Tag im Dienst.
 
 ## Wenn etwas nicht geht
 

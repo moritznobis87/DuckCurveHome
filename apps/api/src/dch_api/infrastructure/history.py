@@ -74,6 +74,16 @@ SERIES = (
     "heat_pump_set_dhw_eco_c",
     "heat_pump_set_dhw_mode",
     "heat_pump_set_silent",
+    "heat_pump_set_room_influence",
+    "heat_pump_set_temp_range",
+    "heat_pump_set_flow_correction_k",
+    "heat_pump_set_dhw_cleansing",
+    "heat_pump_set_dhw_pv_delta_k",
+    "heat_pump_set_heat_mode",
+    "heat_pump_set_comfort_level",
+    "heat_pump_set_pump_mode",
+    "heat_pump_set_disable_below_c",
+    "heat_pump_set_summer_above_c",
     # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
     # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
     "stove_state",  # Zustandscode der Maestro-Firmware

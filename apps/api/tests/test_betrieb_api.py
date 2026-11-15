@@ -95,8 +95,8 @@ def test_die_vorfuehrung_zeigt_takten_abtauen_und_die_heizkurve(client: TestClie
     d = r.json()
     assert d["zeitraum_tage"] == 14 and len(d["tage"]) >= 14
     assert d["starts"] > 30 and d["abtauungen"] > 0 and d["zusatz_min"] > 0
-    # Die erzeugte Maschine folgt 44 - 0,7 * außen; die Auszählung findet das.
-    assert abs(d["heizkurve"]["a"] - 44.0) < 0.5 and abs(d["heizkurve"]["b"] + 0.7) < 0.05
+    # Die erzeugte Maschine folgt 35,7 - 0,7 * außen; die Auszählung findet das.
+    assert abs(d["heizkurve"]["a"] - 35.7) < 0.5 and abs(d["heizkurve"]["b"] + 0.7) < 0.05
     # Anlauf, Abtauen und Heizstab kosten: über alles liegt die Arbeitszahl unter der im
     # eingeschwungenen Heizbetrieb.
     assert 3.0 < d["cop_gesamt"] < d["cop_heizen"] < 6.0

@@ -37,7 +37,7 @@ from dch_bridge.uplink.client import UplinkClient
 from hems_core.control import DoorPolicy
 from hems_core.protocol import CommandFrame, CommandResultFrame, RawReading
 
-VERSION = "0.14.5"
+VERSION = "0.15.0"
 log = structlog.get_logger("bridge")
 
 
@@ -365,6 +365,8 @@ class Bridge:
             return await self._setze_raum(cmd)
         if cmd.actuator_key.startswith("alarm:"):
             return await self._alarm(cmd)
+        if cmd.actuator_key.startswith("ebus:"):
+            return await self._stelle_ebus(cmd)
         a = self._actuator(cmd.actuator_key)
         # Aktoren, die einem MQTT-Gerät gehören, werden direkt am Broker geschaltet - kein Umweg über
         # Home Assistant. Ausgenommen die Sicherheitsklasse heat_pump: dort bleibt der Weg über HA,
@@ -443,6 +445,44 @@ class Bridge:
                 error=str(exc)[:200],
                 at=datetime.now(UTC),
             )
+
+    async def _stelle_ebus(self, cmd: CommandFrame) -> CommandResultFrame:
+        """`ebus:<Schlüssel>:stellen` mit einem Wert: eine Einstellung des Reglers der
+        Wärmepumpe stellen (ab 0.15.0).
+
+        Die Bridge reicht den Wert an ebusd weiter und lässt die Einstellung neu lesen. Grenzen
+        prüft der Dienst vorher; ob ebusd stellen darf, entscheidet das Add-on. `ok` heißt hier
+        nur: der Befehl ist am Broker angekommen. Dass der Regler ihn genommen hat, zeigt der neu
+        gelesene Wert.
+        """
+        teile = cmd.actuator_key.split(":")
+        fehler: str | None = None
+        if len(teile) != 3 or teile[2] != "stellen" or not teile[1]:
+            fehler = f"unbekannter Befehl an den Bus: {cmd.actuator_key}"
+        elif self.mqtt is None:
+            fehler = "Diese Bridge hat keinen Broker eingerichtet; der Bus ist nicht erreichbar."
+        elif cmd.value is None:
+            fehler = "Kein Wert im Befehl."
+        if fehler is None:
+            assert self.mqtt is not None and cmd.value is not None
+            try:
+                await self.mqtt.stellen(teile[1], cmd.value)
+            except LookupError:
+                fehler = (
+                    f"Die Zuordnung dieser Bridge kennt keine stellbare Einstellung {teile[1]}. "
+                    "Nach einer Änderung der Zuordnung braucht die Bridge einen Neustart."
+                )
+            except Exception as exc:
+                fehler = str(exc)[:300]
+        if fehler is None:
+            log.info("ebus setting sent", key=teile[1], value=cmd.value)
+        return CommandResultFrame(
+            command_id=cmd.command_id,
+            ok=fehler is None,
+            observed_state=None,
+            error=fehler,
+            at=datetime.now(UTC),
+        )
 
     async def _setze_raum(self, cmd: CommandFrame) -> CommandResultFrame:
         """`room:<id>:soll` mit einem Wert: die Solltemperatur eines Raums stellen.

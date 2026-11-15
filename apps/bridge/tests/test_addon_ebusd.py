@@ -30,6 +30,9 @@ def test_schema_und_optionen_decken_sich() -> None:
     # Abgefragt wird seit 0.3.0 (Entscheidung des Hausherrn vom 14.11.2026), höchstens alle 5 s.
     assert config["options"]["abfragen"] is True
     assert config["options"]["abfrage_takt_s"] == 10
+    # Stellen ist ab Werk aus: dass das Add-on etwas an der Heizung verändern kann, schaltet
+    # jemand bewusst ein.
+    assert config["options"]["stellen"] is False
     assert config["schema"]["abfrage_takt_s"] == "int(5,300)"
 
 
@@ -116,9 +119,10 @@ def test_die_zeilen_zum_abfragen_fragen_nur_und_sind_zugeordnet() -> None:
         for z in (ADDON / "aerotop_abfragen.csv").read_text(encoding="utf-8").splitlines()
         if z and not z.startswith("#")
     ]
-    # Fünf Größen der Maschine und (ab 0.4.0) zwölf Einstellungen des Reglers, diese selten.
-    assert len(zeilen) == 17
-    assert sum(1 for z in zeilen if z[0] == "r9") == 12
+    # Fünf Größen der Maschine und die Einstellungen des Reglers (zwölf ab 0.4.0, 22 ab 0.5.0),
+    # diese selten.
+    assert len(zeilen) == 27
+    assert sum(1 for z in zeilen if z[0] == "r9") == 22
     assert all(z[2].startswith("e_") and z[5] == "18" for z in zeilen if z[0] == "r9")
     for spalten in zeilen:
         assert re.fullmatch(r"r[1-9]", spalten[0]), spalten[0]
@@ -170,6 +174,7 @@ r;w,energymgr,beides,Lesen und Stellen,,18,2000,aa11,,s,UCH,,,
 uw,energymgr,mitgelesen,Fremde Stellnachricht,,fe,2020,bb22,,m,UCH,,,
 b,energymgr,rundruf,Rundruf,,fe,2010,7647,temp,m,UIN,,,
 g,heatpump,hp_betrieb,Mitlesen,,1e,2000,78106e13ca46cb46,,s,IGN:1,,,,mode,s,UCH,,,
+b,energymgr,heat_slope,Steilheit mitgelesen,,fe,2020,6a71,,s,UIN,100,,
 """
 
 
@@ -222,13 +227,15 @@ def test_mit_abfragen_fragt_ebusd_und_kennt_keine_zeile_zum_stellen(tmp_path: Pa
     assert "--pollinterval=10" in aufruf and "--readonly" not in aufruf
     assert "Stellen kann ebusd nichts: 3 Zeilen zum Stellen" in lauf.stdout
     # w und *w sind weg, aus "r;w" wurde "r", die mitgelesene fremde Stellnachricht bleibt.
-    assert arten(aktiv / "fremd.csv") == ["r", "r", "uw", "b"]
+    assert arten(aktiv / "fremd.csv") == ["r", "r", "uw", "b", "b"]
     # Auch die Zeile zum Mitlesen von Betriebszustand und Frequenz weicht: die Frage liest mit.
     assert "78106e13ca46cb46" not in (aktiv / "fremd.csv").read_text(encoding="utf-8")
     # Die fremde Zeile mit derselben Kennung wie eine eigene Frage ist gewichen ("duplicate ID").
     fremd = (aktiv / "fremd.csv").read_text(encoding="utf-8")
     assert "0601" not in fremd and "ca46" in fremd
-    assert arten(aktiv / "aerotop_abfragen.csv") == ["r1", "r1", "r1", "r2", "r2"] + ["r9"] * 12
+    assert arten(aktiv / "aerotop_abfragen.csv") == ["r1", "r1", "r1", "r2", "r2"] + ["r9"] * 22
+    # Ohne den Schalter `stellen` liegt die Liste der stellbaren Einstellungen nicht dabei.
+    assert not (aktiv / "aerotop_stellen.csv").exists()
     # Die Quelle bleibt, wie sie war.
     assert (tmp_path / "lokal" / "fremd.csv").read_text(encoding="utf-8") == FREMD
 
@@ -261,3 +268,41 @@ def test_schalter_die_beliebige_telegramme_erlauben_vertragen_sich_nicht_mit_rea
     lauf, _ = addon_start(tmp_path, read_only=True, abfragen=True, extra_args=["--enablehex"])
     assert lauf.returncode == 1 and "verträgt sich nicht mit read_only" in lauf.stdout
     assert not any(z.startswith("EBUSD --foreground") for z in lauf.stdout.splitlines())
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="das Startskript braucht jq")
+def test_mit_stellen_kennt_ebusd_genau_die_eigene_liste_und_keine_andere_zeile(
+    tmp_path: Path,
+) -> None:
+    """Ab 0.5.0 kann das Add-on eine feste Auswahl von Einstellungen stellen, wenn sein Schalter
+    `stellen` an ist. Die fremden Zeilen zum Stellen fallen weiterhin alle heraus; dazu kommt nur
+    die eigene Liste, und das Skript zählt nach. Im Probelauf mit dem echten ebusd (15.11.2026)
+    stellte es `e_steilheit` (31fe2020046a718200) und lehnte `e_heizkurve_art` und die fremde
+    Zeile `dhw_status` ab."""
+    lauf, aktiv = addon_start(tmp_path, read_only=True, abfragen=True, stellen=True)
+    assert lauf.returncode == 0, lauf.stdout + lauf.stderr
+    assert "ACHTUNG, Stellen an: ebusd kann 14 Einstellungen des Reglers stellen" in lauf.stdout
+    # In der fremden Datei steht keine Zeile zum Stellen mehr, in der eigenen genau vierzehn.
+    assert "w" not in arten(aktiv / "fremd.csv")
+    # Die fremde Zeile, die denselben Rundruf mitliest wie eine eigene zum Stellen, ist gewichen.
+    assert ",6a71," not in (aktiv / "fremd.csv").read_text(encoding="utf-8")
+    eigene = [
+        z.split(",")
+        for z in (aktiv / "aerotop_stellen.csv").read_text(encoding="utf-8").splitlines()
+        if z and not z.startswith("#")
+    ]
+    assert len(eigene) == 14
+    for spalten in eigene:
+        # Ein Rundruf mit dem Dienst 2020 an eine Einstellung des Reglers, nichts anderes.
+        assert spalten[:3] == ["w", "energymgr", spalten[2]] and spalten[2].startswith("e_")
+        assert spalten[5] == "fe" and spalten[6] == "2020" and len(spalten[7]) == 4
+    aufruf = next(z for z in lauf.stdout.splitlines() if z.startswith("EBUSD "))
+    assert "--readonly" not in aufruf and "--enablehex" not in aufruf
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="das Startskript braucht jq")
+def test_stellen_ohne_abfragen_bleibt_beim_lauschen(tmp_path: Path) -> None:
+    lauf, aktiv = addon_start(tmp_path, read_only=True, abfragen=False, stellen=True)
+    aufruf = next(z for z in lauf.stdout.splitlines() if z.startswith("EBUSD "))
+    assert "--readonly" in aufruf and not (aktiv / "aerotop_stellen.csv").exists()
+    assert "Die Option stellen wirkt nur zusammen mit abfragen" in lauf.stdout

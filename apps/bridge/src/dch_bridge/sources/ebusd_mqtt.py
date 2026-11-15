@@ -107,6 +107,19 @@ BETRIEBSZUSTAND: dict[str, float] = {
     "Coolant_recovery": 14.0,
     "Soft_fail": 15.0,
 }
+#: An dieser Stelle im Thema erkennt die Bridge eine Einstellung des Reglers, die sich stellen
+#: lässt: `energymgr/e_steilheit`. Alles andere wird nur gelesen.
+STELL_VORSILBE = "/e_"
+
+
+def zahl_text(wert: float) -> str:
+    """Eine Zahl, wie ebusd sie als Wert annimmt: ganze Zahlen ohne Komma (eine Kennzahl ist
+    für ebusd `1`, nicht `1.0`), sonst mit höchstens zwei Stellen."""
+    if abs(wert - round(wert)) < 1e-9:
+        return str(round(wert))
+    return f"{wert:.2f}".rstrip("0").rstrip(".")
+
+
 #: Die Wörter, die als Zahl gelesen werden. Jedes andere Wort bleibt ein Wort.
 WOERTER: dict[str, float] = {**SCHALTER, **BETRIEBSZUSTAND}
 
@@ -297,7 +310,26 @@ class EbusdDevice:
         return items
 
     def command(self, key: str, state: bool, ttl_s: float | None) -> tuple[str, str] | None:
-        return None  # gelesen wird nur
+        return None  # geschaltet wird hier nichts; eine Einstellung stellt `stellen`
+
+    def stellen(self, key: str, wert: float) -> tuple[tuple[str, str], tuple[str, str]] | None:
+        """Eine Einstellung des Reglers stellen: das Thema und der Wert für ebusd, dazu das
+        Thema, das sie gleich danach neu lesen lässt. `None`, wenn dieser Schlüssel keine
+        Einstellung ist.
+
+        Gestellt wird nur, was in der Zuordnung unter `<kreis>/e_<name>` steht: das sind die
+        Einstellungen des Reglers (`STELL_VORSILBE`). Ein Messwert wie der Vorlauf hat einen
+        Schlüssel, aber kein Thema zum Stellen, und bekommt hier keines. Ob ebusd den Befehl
+        ausführt, entscheidet das Add-on: es kennt nur die Zeilen seiner eigenen Liste, und nur
+        mit seinem Schalter `stellen`.
+        """
+        for thema, ziel in self.components.items():
+            if not isinstance(ziel, dict) or STELL_VORSILBE not in thema:
+                continue
+            if list(ziel.items()) == [("wert", key)]:
+                basis = f"{self.topic_prefix}/{thema}"
+                return (f"{basis}/set", zahl_text(wert)), (f"{basis}/get", "")
+        return None
 
     def poll(self) -> tuple[str, str] | None:
         return None  # nichts abfragen: jede Abfrage wäre ein Telegramm auf dem Bus

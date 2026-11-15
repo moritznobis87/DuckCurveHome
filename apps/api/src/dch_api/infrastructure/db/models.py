@@ -112,6 +112,16 @@ class MeasurementMinute(Base):
     heat_pump_set_dhw_eco_c: Mapped[float | None] = mapped_column(Float)
     heat_pump_set_dhw_mode: Mapped[float | None] = mapped_column(Float)
     heat_pump_set_silent: Mapped[float | None] = mapped_column(Float)
+    heat_pump_set_room_influence: Mapped[float | None] = mapped_column(Float)
+    heat_pump_set_temp_range: Mapped[float | None] = mapped_column(Float)
+    heat_pump_set_flow_correction_k: Mapped[float | None] = mapped_column(Float)
+    heat_pump_set_dhw_cleansing: Mapped[float | None] = mapped_column(Float)
+    heat_pump_set_dhw_pv_delta_k: Mapped[float | None] = mapped_column(Float)
+    heat_pump_set_heat_mode: Mapped[float | None] = mapped_column(Float)
+    heat_pump_set_comfort_level: Mapped[float | None] = mapped_column(Float)
+    heat_pump_set_pump_mode: Mapped[float | None] = mapped_column(Float)
+    heat_pump_set_disable_below_c: Mapped[float | None] = mapped_column(Float)
+    heat_pump_set_summer_above_c: Mapped[float | None] = mapped_column(Float)
     # Pelletofen. Eigene Spalten auch für Größen, die nicht jede Firmware füllt: eine leere
     # Spalte kostet in Postgres nur ein Bit in der NULL-Maske, eine zweite Migration mehr.
     stove_state: Mapped[float | None] = mapped_column(Float)

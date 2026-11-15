@@ -1006,10 +1006,10 @@ das Add-on lässt sich mit `abfragen: false` auf reines Lauschen zurückstellen.
 
 Stand 15.11.2026. Frage des Hausherrn: ob sich von hier aus in die Regelung eingreifen lässt
 (Regelungsparameter, Vorlauftemperatur). Antwort der Sitzung: technisch ja, in drei Stufen, und
-gebaut ist bisher nur die erste.
+gebaut sind die ersten beiden.
 
-**Stufe 1, gebaut: lesen.** Das Add-on „Duck Curve eBUS“ fragt ab 0.4.0 zwölf Einstellungen ab,
-jede etwa alle zehn Minuten. Seite: Technik → Wärmepumpe → Regler
+**Stufe 1, gebaut: lesen.** Das Add-on „Duck Curve eBUS“ fragt ab 0.4.0 zwölf Einstellungen ab
+(ab 0.5.0 sind es 22), jede etwa alle zehn bis fünfzehn Minuten. Seite: Technik → Wärmepumpe → Regler
 (`/waerme/waermepumpe/regler`), Antwort: `GET /api/v1/waermepumpe/einstellungen`, Liste:
 `apps/api/src/dch_api/application/regler.py`.
 
@@ -1034,16 +1034,76 @@ Einstellung galt, und das ist der Beleg, sobald eine von hier aus verstellt wird
 gingen hinaus, die Antworten kamen als Schlüssel in der Bridge an (darunter eine negative
 Verschiebung und die Steilheit mit zwei Nachkommastellen).
 
-**Stufe 2, nicht gebaut: einen Wert von Hand stellen.** Braucht die ausdrückliche Entscheidung
-des Hausherrn, weil das Add-on dann zum ersten Mal etwas an der Heizung verstellen kann.
-Vorgesehen: genau eine Einstellung, deren Kennung in Stufe 1 bestätigt ist, enge Grenzen, der
-alte Wert daneben und ein Knopf zum Zurückstellen. Drei Gründe für die Vorsicht: die Kennungen
-sind ungeprüft; eine gestellte Einstellung bleibt stehen, auch wenn diese Software ausfällt
-(anders als der Schaltkontakt); und wie viele Schreibvorgänge der Speicher des Reglers
-verträgt, ist nicht bekannt, deshalb wenige Male am Tag und nie im Minutentakt.
+**Stufe 2, gebaut am 15.11.2026: stellen von Hand.** Auftrag des Hausherrn: eine eigene Seite,
+auf der sich die Einstellungen des Geräts grafisch verstellen lassen, die Heizkurve als Kurve
+zum Anfassen, die Zahlen „wie bei einem digitalen Mischpult“, dazu die Schaltung des Heizstabs
+über den Green Mode. Das ist seine Entscheidung, dass von hier gestellt werden darf.
+
+*Was gelesen und was stellbar ist.* 22 Einstellungen werden gelesen, 14 davon lassen sich
+stellen (Liste mit Grenzen und Raster: `apps/api/src/dch_api/application/regler.py`; aus ihr
+entstehen die Zeilen des Add-ons, ein Test hält sie gleich):
+
+| Gruppe | Stellbar (Grenzen, Schritt) | Nur gelesen |
+|---|---|---|
+| Heizkurve | Steilheit (0,2 bis 3,5; 0,1), Verschiebung (−7 bis +7 K; 0,5), Vorlauf höchstens (25 bis 60 °C; 1), mindestens (20 bis 45; 1), fest (20 bis 60; 1), Einfluss der Raumtemperatur (0 bis 20; 1) | Art der Vorlaufregelung, Temperaturbereich, Korrektur des Vorlaufs |
+| Raum | Raumtemperatur Tag und Nacht (10 bis 30 °C; 0,5) | |
+| Warmwasser | Komforttemperatur (35 bis 60 °C; 1), Spartemperatur (20 bis 55; 1), Betriebsart (0 bis 2), Legionellenprogramm (0, 1) | Zuschlag bei Sonnenstrom |
+| Betrieb | Heizbetrieb Green oder Standard (0, 1), Flüstermodus (0, 1) | Komfortstufe, Umwälzpumpe, Wärmepumpe aus unter, Sommerbetrieb ab |
+
+Die Grenzen sind gesetzt, nicht aus einem Handbuch dieser Maschine: weit genug für die Werte,
+die die Bus-Beschreibung für die Gerätefamilie nennt, eng genug, dass ein verrutschter Regler
+keinen Unsinn stellt. Die Art der Vorlaufregelung bleibt bewusst nur lesbar: ein falscher Wert
+dort macht aus der Kurve einen Ein-Aus-Betrieb.
+
+*Der Heizstab und der Green Mode.* Nach Auskunft des Hausherrn verhindert der Betrieb „Green“,
+dass der elektrische Heizstab für die Heizung zuschaltet. Die Bus-Beschreibung kennt die
+Kennung dazu (1c22, 0 Green, 1 Standard) nur zum Lesen; die Zeile zum Stellen ist nach dem
+Muster der übrigen gebildet. Beides ist an dieser Anlage nicht gesehen: weder dass 1c22 diese
+Einstellung ist, noch dass Green den Heizstab verhindert. Zeigen wird es der Verlauf: der
+gemeldete Heizstab (`heat_pump_heater_code`) und das Mehr am Zähler, vor und nach dem
+Umstellen.
+
+*Die Sicherungen.*
+
+1. **Im Add-on** ist das Stellen ab Werk aus (`stellen: false`). Eingeschaltet kennt ebusd
+   genau die vierzehn Zeilen der eigenen Liste; alle anderen Zeilen zum Stellen bleiben entfernt.
+2. **Im Dienst** wird ein Wert nur angenommen, wenn die Einstellung stellbar ist, gerade
+   gelesen wurde, mit dem Bediengerät verglichen ist, in ihren Grenzen und auf ihrem Raster
+   liegt und heute noch nicht zwölfmal gestellt wurde (`regler.pruefen`, jede Ablehnung ein Satz).
+3. **Der Vergleich mit dem Bediengerät** ist ein Vermerk je Einstellung, den jemand auf der
+   Seite setzt („Am Gerät steht …“). Ohne ihn bewegt sich der Regler auf der Seite nicht. So
+   wird die offene Frage, ob eine Kennung an dieser Anlage bedeutet, was die Liste sagt, vor
+   dem ersten Stellen von einem Menschen beantwortet.
+4. **Auf der Seite** ist jede Bewegung zuerst ein Entwurf; „Übernehmen“ zeigt, was sich von
+   welchem auf welchen Wert ändert, und erst „Jetzt stellen“ schickt es ab.
+5. **Gestellt ist, was der Regler meldet.** Nach dem Senden wird neu gelesen; bis der Regler
+   den Wert so meldet, steht er als „gesendet“ da, nach einer halben Stunde ohne Rückmeldung
+   verschwindet er wieder. Jede Änderung steht mit altem und neuem Wert und Urheber im
+   Ereignisprotokoll (`regler.gestellt`) und auf der Seite, und die gelesenen Werte stehen als
+   Minutenreihen in der Datenbank (Migrationen `a3d9e5c18b7e`, `b4e0f6d29c8f`).
+
+*Der Weg eines Werts.* Seite → Dienst (`POST /api/v1/waermepumpe/einstellungen/<Schlüssel>`) →
+Bridge ab 0.15.0 (Befehl `ebus:<Schlüssel>:stellen`) → Broker (`ebusd/energymgr/e_.../set`) →
+ebusd → Rundruf mit dem Dienst 2020 auf dem Bus. Die Bridge stellt nur, was in ihrer Zuordnung
+unter `energymgr/e_...` steht.
+
+*Die Heizkurve auf der Seite ist eine Näherung*: Vorlauf = Raum + Steilheit × (Raum − außen) +
+Verschiebung, begrenzt auf den kleinsten und größten Vorlauf. Die Formel dieses Reglers ist
+nicht bekannt. Die Näherung zeigt Richtung und ungefähre Weite einer Änderung; daneben stehen
+als Punkte die Stunden, in denen der Regler wirklich einen Vorlauf verlangt hat. Weichen Punkte
+und Kurve deutlich ab, stimmt die Näherung für diese Maschine nicht, und das ist dann der Befund.
+
+*Geprüft:* mit Tests (`test_regler_api.py` samt dem Weg über eine Platzhalter-Bridge,
+`test_ebusd_mqtt.py`, `test_addon_ebusd.py`, `regler.test.ts`), mit ebusd 26.1 am Übungsadapter
+(Stellen, Nachlesen, Ablehnen des nicht Erlaubten) und in der Vorführung (vergleichen, Kurve
+ziehen, Schieber, Schalter, Übersicht, Stellen, Protokoll; breit und am Handy).
+
+*Nicht geprüft:* an der echten Wärmepumpe. Offen ist vor allem, ob der Regler einen Rundruf
+von ebusd als Änderung annimmt, ob die Kennungen stimmen (dafür der Vergleich), und was der
+Speicher des Reglers an Schreibvorgängen verträgt.
 
 **Stufe 3, nicht gebaut: Automatik.** Der Fahrplan verschiebt den Vorlauf oder das Warmwasser
-selbst, mit Preis und Sonne.
+selbst, mit Preis und Sonne. Erst nachdem Stufe 2 an der Anlage erprobt ist.
 
 ## Der Betrieb über Tage: Läufe, Abtauen, Takten, Heizkurve
 

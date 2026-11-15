@@ -416,3 +416,70 @@ def test_was_der_regler_vorgibt_wird_gelesen() -> None:
         T0,
     )
     assert werte(d, T0)["heat_pump_cmd_target_c"] == 55.0
+
+
+def test_eine_einstellung_des_reglers_laesst_sich_stellen_ein_messwert_nicht() -> None:
+    """Ab Bridge 0.15.0: der Dienst schickt `ebus:<Schlüssel>:stellen`, die Bridge macht daraus
+    das Thema für ebusd und lässt die Einstellung gleich neu lesen. Gestellt wird nur, was in der
+    Zuordnung als Einstellung steht (`<kreis>/e_<name>`); der Vorlauf hat einen Schlüssel, aber
+    kein Thema zum Stellen."""
+    from dch_bridge.sources.ebusd_mqtt import zahl_text
+
+    datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
+    ebus = next(m for m in EntityMap.load(datei).mqtt if m.kind == "ebusd")
+    d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
+    assert d.stellen("heat_pump_set_slope", 1.3) == (
+        ("ebusd/energymgr/e_steilheit/set", "1.3"),
+        ("ebusd/energymgr/e_steilheit/get", ""),
+    )
+    assert d.stellen("heat_pump_set_offset_k", -2.5) == (
+        ("ebusd/energymgr/e_verschiebung/set", "-2.5"),
+        ("ebusd/energymgr/e_verschiebung/get", ""),
+    )
+    # Eine Kennzahl geht als ganze Zahl hinaus: `1.0` nimmt ebusd für sie nicht.
+    assert d.stellen("heat_pump_set_heat_mode", 0.0) == (
+        ("ebusd/energymgr/e_heizbetrieb/set", "0"),
+        ("ebusd/energymgr/e_heizbetrieb/get", ""),
+    )
+    assert zahl_text(52.0) == "52" and zahl_text(0.75) == "0.75" and zahl_text(-7.0) == "-7"
+    # Messwerte und Unbekanntes lassen sich nicht stellen.
+    for key in ("flow_temp_c", "heat_pump_valve_code", "heat_pump_compressor_hz", "gibt_es_nicht"):
+        assert d.stellen(key, 1.0) is None, key
+    # Schalten lässt sich über den Bus weiterhin nichts.
+    assert d.command("heat_pump_set_slope", True, None) is None
+
+
+def test_der_hub_stellt_und_laesst_gleich_neu_lesen() -> None:
+    import asyncio
+
+    from dch_bridge.sources.shelly_mqtt import MqttHub
+
+    gesendet: list[tuple[str, str]] = []
+
+    class Sitzung:
+        async def publish(self, topic: str, payload: object, qos: int = 0) -> None:
+            gesendet.append((topic, str(payload)))
+
+    datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
+    ebus = next(m for m in EntityMap.load(datei).mqtt if m.kind == "ebusd")
+    d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
+
+    async def senke(_: object) -> None:
+        return None
+
+    hub = MqttHub(session_factory=lambda: None, devices=[d], on_readings=senke)  # type: ignore[arg-type]
+    hub._session = Sitzung()  # type: ignore[assignment]
+
+    async def lauf() -> None:
+        await hub.stellen("heat_pump_set_dhw_comfort_c", 50.0, nachlesen_s=0.0)
+        try:
+            await hub.stellen("flow_temp_c", 40.0, nachlesen_s=0.0)
+        except LookupError:
+            gesendet.append(("abgelehnt", "flow_temp_c"))
+
+    asyncio.run(lauf())
+    assert gesendet == [
+        ("ebusd/energymgr/e_ww_komfort/set", "50"),
+        ("ebusd/energymgr/e_ww_komfort/get", ""),
+        ("abgelehnt", "flow_temp_c"),
+    ]

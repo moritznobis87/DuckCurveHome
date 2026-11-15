@@ -564,6 +564,16 @@ Update des Add-ons.
 
 Gelesen wird nur. Die Bridge schickt nichts an ebusd.
 
+**Einstellungen des Reglers stellen (ab 0.15.0).** Der Dienst kann der Bridge den Befehl
+`ebus:<Schlüssel>:stellen` mit einem Wert schicken; sie macht daraus das Thema
+`ebusd/energymgr/e_<name>/set` für ebusd und lässt die Einstellung anderthalb Sekunden später
+neu lesen (`.../get`). Gestellt wird nur, was in der Zuordnung unter `energymgr/e_...` steht,
+also die Einstellungen des Reglers; einen Messwert wie den Vorlauf lehnt die Bridge ab. Ob
+ebusd den Befehl ausführt, entscheidet das Add-on „Duck Curve eBUS“ mit seinem Schalter
+`stellen` (ab Werk aus). Eine Bestätigung gibt es von der Bridge nicht: dass der Regler den
+Wert genommen hat, zeigt der neu gelesene Wert. Grenzen und die übrigen Prüfungen liegen im
+Dienst (`docs/SENSORIK.md`, „Die Einstellungen des Reglers“).
+
 ## Werte, die stillstehen (ab 0.12.0)
 
 Home Assistant setzt den Zeitstempel eines Sensors nur fort, wenn die Integration den Wert erneut

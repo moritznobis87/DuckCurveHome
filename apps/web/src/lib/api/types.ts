@@ -594,6 +594,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/waermepumpe/einstellungen/{schluessel}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eine Einstellung des Reglers stellen
+         * @description Eine Einstellung aus der festen Liste der stellbaren stellen. Abgelehnt wird, was nicht
+         *     in der Liste steht, gerade nicht gelesen ist, nicht mit dem Bediengerät verglichen wurde,
+         *     außerhalb der Grenzen liegt oder heute schon zu oft gestellt wurde; der Grund steht in der
+         *     Antwort. Gestellt ist der Wert erst, wenn der Regler ihn zurückmeldet.
+         */
+        post: operations["einstellung_stellen_api_v1_waermepumpe_einstellungen__schluessel__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/waermepumpe/einstellungen/{schluessel}/bestaetigen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eine Einstellung als mit dem Bediengerät verglichen vermerken
+         * @description Festhalten, dass die Zahl auf der Seite mit der am Bediengerät übereinstimmt (oder das
+         *     zurücknehmen). Erst danach lässt sich die Einstellung stellen.
+         */
+        post: operations["einstellung_bestaetigen_api_v1_waermepumpe_einstellungen__schluessel__bestaetigen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -5153,6 +5197,32 @@ export interface components {
          */
         ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "planned_pause" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
         /**
+         * ReglerAenderungOut
+         * @description Eine Zeile des Protokolls: wer wann was gestellt hat.
+         */
+        ReglerAenderungOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Schluessel */
+            schluessel: string;
+            /** Name De */
+            name_de: string;
+            /** Von De */
+            von_de: string;
+            /** Auf De */
+            auf_de: string;
+            /** Urheber De */
+            urheber_de?: string | null;
+        };
+        /** ReglerBestaetigenIn */
+        ReglerBestaetigenIn: {
+            /** Bestaetigt */
+            bestaetigt: boolean;
+        };
+        /**
          * ReglerEinstellungOut
          * @description Eine Einstellung des Reglers der Wärmepumpe, gelesen über den Bus.
          */
@@ -5178,10 +5248,47 @@ export interface components {
             wert: components["schemas"]["Measurement"];
             /** Lesart De */
             lesart_de?: string | null;
+            /**
+             * Art
+             * @default zahl
+             * @enum {string}
+             */
+            art: "zahl" | "wahl" | "schalter";
+            /**
+             * Stellbar
+             * @default false
+             */
+            stellbar: boolean;
+            /** Von */
+            von?: number | null;
+            /** Bis */
+            bis?: number | null;
+            /** Schritt */
+            schritt?: number | null;
+            /** Wahl */
+            wahl?: {
+                [key: string]: string;
+            };
+            /**
+             * Bestaetigt
+             * @default false
+             */
+            bestaetigt: boolean;
+            /**
+             * Muster
+             * @default false
+             */
+            muster: boolean;
+            /**
+             * Hinweis De
+             * @default
+             */
+            hinweis_de: string;
+            gesendet?: components["schemas"]["ReglerGesendetOut"] | null;
         };
         /**
          * ReglerEinstellungenOut
-         * @description Was am Regler der Wärmepumpe eingestellt ist. Gelesen, nicht gestellt.
+         * @description Was am Regler der Wärmepumpe eingestellt ist, und was sich davon stellen lässt.
          */
         ReglerEinstellungenOut: {
             /**
@@ -5195,8 +5302,35 @@ export interface components {
             satz_de: string;
             /** Werte */
             werte?: components["schemas"]["ReglerEinstellungOut"][];
+            /**
+             * Stellen Moeglich
+             * @default false
+             */
+            stellen_moeglich: boolean;
+            /** Hindernis De */
+            hindernis_de?: string | null;
+            /**
+             * Stellen Je Tag
+             * @default 0
+             */
+            stellen_je_tag: number;
+            /** Protokoll */
+            protokoll?: components["schemas"]["ReglerAenderungOut"][];
             /** Hinweise De */
             hinweise_de?: string[];
+        };
+        /**
+         * ReglerGesendetOut
+         * @description Ein Stellbefehl, der hinausgegangen ist und dessen Rückmeldung noch aussteht.
+         */
+        ReglerGesendetOut: {
+            /** Wert */
+            wert: number;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
         };
         /**
          * ReglerKennzahlOut
@@ -5243,6 +5377,23 @@ export interface components {
             tage: number;
             /** Zeilen */
             zeilen?: components["schemas"]["ReglerKennzahlOut"][];
+        };
+        /** ReglerStellenIn */
+        ReglerStellenIn: {
+            /** Wert */
+            wert: number;
+        };
+        /**
+         * ReglerStellenOut
+         * @description Die Antwort auf einen Stellbefehl oder eine Bestätigung: ob es ging, ein Satz dazu, und
+         *     der Stand danach.
+         */
+        ReglerStellenOut: {
+            /** Ok */
+            ok: boolean;
+            /** Message De */
+            message_de: string;
+            einstellungen: components["schemas"]["ReglerEinstellungenOut"];
         };
         /**
          * ReiheOut
@@ -7289,6 +7440,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReglerEinstellungenOut"];
+                };
+            };
+        };
+    };
+    einstellung_stellen_api_v1_waermepumpe_einstellungen__schluessel__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schluessel: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReglerStellenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReglerStellenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einstellung_bestaetigen_api_v1_waermepumpe_einstellungen__schluessel__bestaetigen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schluessel: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReglerBestaetigenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReglerStellenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
