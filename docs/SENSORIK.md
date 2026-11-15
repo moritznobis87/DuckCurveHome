@@ -685,11 +685,17 @@ Messwert steht dort, wo er an der Anlage entsteht. Der Dienst setzt die Seite in
 | Innengerät | Betriebszustand | Bus, eigene Zeile `hp_betrieb.mode` |
 | Leitung zum Speicher | Vorlauf | Bus, `coolat_data.LWT_temp` |
 | Leitung vom Speicher | Rücklauf | Bus, eigene Zeile `system_temps.t_769e` |
-| Speicher | Fühler der Wärmepumpe † | Bus, eigene Zeile `system_temps.t_759e` |
+| Speicher | Fühler der Wärmepumpe | Bus, eigene Zeile `system_temps.t_759e` |
 | Speicher | vier Schichten | die eigenen Pufferfühler, wie im Anlagenschema |
 
-† Die Zuordnung des Speicherfühlers ist begründet, am Gerät aber nicht bestätigt. Der Rücklauf
-trug dasselbe Zeichen bis zum 14.11.2026 (siehe oben, „Welche Temperatur ist der Rücklauf?“).
+**Der Speicherfühler der Wärmepumpe (`759e`) gilt seit dem 15.11.2026 als gegeben.** Auskunft
+des Hausherrn: der Wert ist richtig gemessen, und der Fühler sitzt genau in der Mitte zwischen
+dem obersten eigenen Fühler und der Oberkante des Speichers. Die Sitzung hat „Stütze des
+Speichers“ in seiner Nachricht als Oberkante gelesen; dafür spricht, dass der Wert stets nahe am
+obersten eigenen Fühler lag (48,3 gegen 47,6 und 47,4 °C am 13.11.2026). Die Zeichnung zeigt
+ihn auf dieser Höhe (`FUEHLER_WP = 0,0625` von oben, zwischen 0 und dem obersten Fühler bei
+0,125) und ohne Kreuz. Bis dahin trug er, wie der Rücklauf bis zum 14.11.2026 (siehe oben,
+„Welche Temperatur ist der Rücklauf?“), das Zeichen für „begründet, nicht bestätigt“.
 
 **Der Speicher sieht überall gleich aus** (Nutzerwunsch 14.11.2026). Bis dahin gab es ihn in
 vier Zeichnungen mit zwei Farbskalen: als eckigen Tank auf der Startseite, als liegenden Balken

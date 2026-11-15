@@ -104,7 +104,7 @@ export function Waermepumpe() {
       <Kennzahlen aktuell={daten.kreis_code} />
 
       <div className="wp-fuss">
-        <p className="m-0">† Fühler WP: die Zuordnung dieses Werts ist begründet, am Gerät aber noch nicht bestätigt.</p>
+        <p className="m-0">Fühler WP: der Speicherfühler der Wärmepumpe. Er sitzt über dem obersten eigenen Fühler, auf halbem Weg zur Oberkante des Speichers.</p>
         {daten.ventil_code != null || daten.heizstab_code != null ? (
           <p className="m-0">Umschaltventil und Heizstab stehen als Zahl des Reglers da. Laut Busbeschreibung heißt beim Ventil 0 Warmwasser und 1 Heizung, beim Heizstab 1 an; für dieses Haus ist das noch nicht gegengeprüft. Die Tabelle oben zeigt, was der Speicher unter jeder Stellung tut.</p>
         ) : null}

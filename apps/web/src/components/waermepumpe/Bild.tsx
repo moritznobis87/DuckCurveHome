@@ -21,10 +21,12 @@ import { BLOCK, PLAN, SCHILD, TANK, type Lage, type Punkt, aufnahme, brauchbar, 
  * **Farbe ist Temperatur**, mit derselben Skala wie das Anlagenschema. Text steht immer in den
  * Textfarben; ein Wert, der fehlt oder veraltet ist, steht blass da und als Fragezeichen.
  *
- * **Das Kreuz** hinter „Rücklauf" und „Fühler WP" heißt: Diese Zuordnung ist begründet, aber am
- * Gerät noch nicht bestätigt (docs/SENSORIK.md).
+ * **Der Fühler der Wärmepumpe** im Speicher sitzt über dem obersten eigenen Fühler, auf halbem
+ * Weg zur Oberkante (Auskunft des Hausherrn vom 15.11.2026). Die Zeichnung zeigt ihn dort.
  */
-const UNSICHER = "†";
+/** Höhe des Fühlers der Wärmepumpe im Speicher, als Anteil von oben: die Mitte zwischen der
+ *  Oberkante (0) und dem obersten eigenen Fühler (0,125). */
+export const FUEHLER_WP = 0.0625;
 
 function Schild({ x, y, w = SCHILD.w, h = SCHILD.h, name, wert, einheit, m, gross = false }: { x: number; y: number; w?: number; h?: number; name: string; wert: string; einheit: string; m?: Measurement | null; gross?: boolean }) {
   const da = m === undefined ? wert !== "?" : brauchbar(m);
@@ -119,7 +121,10 @@ function Speicher({ d, ruhig }: { d: Waermepumpe; ruhig: boolean }) {
     <g>
       {/* Rechts von der Mitte: in der Mitte kommt in beiden Lagen der Vorlauf von oben an. */}
       <text x={TANK.x + TANK.w / 2 + 14} y={26} fontSize={13} fontWeight={600} fill="var(--text-1)">Speicher</text>
-      <Schild x={0} y={0} w={98} name={`Fühler WP ${UNSICHER}`} wert={messwert(d.speicherfuehler_c)} einheit="°C" m={d.speicherfuehler_c} />
+      <Schild x={0} y={0} w={98} name="Fühler WP" wert={messwert(d.speicherfuehler_c)} einheit="°C" m={d.speicherfuehler_c} />
+      {/* Wo er sitzt: eine Linie vom Schild an den Rand des Speichers, auf seine Höhe. */}
+      <path d={`M98 ${SCHILD.h / 2} H 116 L ${TANK.x - 2} ${TANK.y + TANK.h * FUEHLER_WP}`} fill="none" stroke="var(--line-2)" strokeWidth={1.5} />
+      <circle cx={TANK.x} cy={TANK.y + TANK.h * FUEHLER_WP} r={3.5} fill="var(--text-2)" stroke="var(--surface-2)" strokeWidth={1.5} />
       {/* Der Speicher sieht überall gleich aus: das Glas mit den vier Fühlern auf ihrer Höhe. */}
       <PufferGlas temps={fuehler.map((m) => m?.value)} x={TANK.x} y={TANK.y} breite={TANK.w} hoehe={TANK.h} werte="links" schrift={13} ruhig={ruhig} gedimmt={fuehler.length > 0 && !fuehler.every((m) => brauchbar(m))} />
     </g>
