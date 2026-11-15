@@ -192,6 +192,32 @@ mqtt:
         strom_a: heat_pump_compressor_a
       "heatpump/luefter":
         drehzahl: heat_pump_fan_speed
+      # Die Einstellungen des Reglers, gelesen ab Add-on 0.4.0 (selten abgefragt). Für die Seite
+      # "Regler": was eingestellt ist, bevor irgendetwas davon verstellt werden kann.
+      "energymgr/e_steilheit":
+        wert: heat_pump_set_slope
+      "energymgr/e_verschiebung":
+        wert: heat_pump_set_offset_k
+      "energymgr/e_vorlauf_max":
+        wert: heat_pump_set_flow_max_c
+      "energymgr/e_vorlauf_min":
+        wert: heat_pump_set_flow_min_c
+      "energymgr/e_vorlauf_fest":
+        wert: heat_pump_set_flow_fixed_c
+      "energymgr/e_heizkurve_art":
+        wert: heat_pump_set_curve_type
+      "energymgr/e_raum_tag":
+        wert: heat_pump_set_room_day_c
+      "energymgr/e_raum_nacht":
+        wert: heat_pump_set_room_night_c
+      "energymgr/e_ww_komfort":
+        wert: heat_pump_set_dhw_comfort_c
+      "energymgr/e_ww_spar":
+        wert: heat_pump_set_dhw_eco_c
+      "energymgr/e_ww_art":
+        wert: heat_pump_set_dhw_mode
+      "energymgr/e_fluester":
+        wert: heat_pump_set_silent
   # --- Nicht über MQTT: die Geräte der ersten Generation ---
   # Der Wärmepumpen-Zähler (Shelly 3EM), der Wärmepumpenschalter und die Kaffeemaschine bleiben bei
   # Home Assistant. Grund: beim Gen-1-Shelly schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die

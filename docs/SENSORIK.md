@@ -1002,6 +1002,49 @@ entscheidet aus demselben Grund noch nicht darüber, welche Minuten zählen.
 **Nicht geprüft:** an der echten Wärmepumpe. Offen ist auch, ob die Abfragen den Bus stören;
 das Add-on lässt sich mit `abfragen: false` auf reines Lauschen zurückstellen.
 
+## Die Einstellungen des Reglers, gelesen
+
+Stand 15.11.2026. Frage des Hausherrn: ob sich von hier aus in die Regelung eingreifen lässt
+(Regelungsparameter, Vorlauftemperatur). Antwort der Sitzung: technisch ja, in drei Stufen, und
+gebaut ist bisher nur die erste.
+
+**Stufe 1, gebaut: lesen.** Das Add-on „Duck Curve eBUS“ fragt ab 0.4.0 zwölf Einstellungen ab,
+jede etwa alle zehn Minuten. Seite: Technik → Wärmepumpe → Regler
+(`/waerme/waermepumpe/regler`), Antwort: `GET /api/v1/waermepumpe/einstellungen`, Liste:
+`apps/api/src/dch_api/application/regler.py`.
+
+| Gruppe | Einstellung | Kennung | Schlüssel |
+|---|---|---|---|
+| Heizkurve | Steilheit | 6a71 | `heat_pump_set_slope` |
+| Heizkurve | Verschiebung | 6471 | `heat_pump_set_offset_k` |
+| Heizkurve | Vorlauf höchstens, mindestens, fest | 6071, 6171, 6571 | `heat_pump_set_flow_max_c`, `_min_c`, `_fixed_c` |
+| Heizkurve | Art der Vorlaufregelung | c079 | `heat_pump_set_curve_type` |
+| Raum | Raumtemperatur Tag, Nacht | 6271, 6371 | `heat_pump_set_room_day_c`, `_night_c` |
+| Warmwasser | Komfort- und Spartemperatur | 6126, 6226 | `heat_pump_set_dhw_comfort_c`, `_eco_c` |
+| Warmwasser | Betriebsart | c028 | `heat_pump_set_dhw_mode` |
+| Sonstiges | Flüstermodus | 0320 | `heat_pump_set_silent` |
+
+Kennungen und Zahlenformate stammen aus der Bus-Beschreibung einer verwandten Anlage (Zone 1
+und Warmwasser). **Keine davon ist im Haus bestätigt.** Die Seite ist dafür da, dass der
+Hausherr ihre Zahlen mit dem Bediengerät vergleicht. Kennzahlen (Art der Vorlaufregelung,
+Betriebsart, Flüstermodus) stehen als Zahl da, die Lesart der Liste als Hinweis daneben. Die
+Seite zeigt den zuletzt gelesenen Stand, gültig eine halbe Stunde. Gespeichert werden die
+Werte als Minutenreihen (Migration `a3d9e5c18b7e`): so lässt sich später sagen, wann welche
+Einstellung galt, und das ist der Beleg, sobald eine von hier aus verstellt wird. Probelauf mit ebusd 26.1 am Übungsadapter: alle zwölf Fragen
+gingen hinaus, die Antworten kamen als Schlüssel in der Bridge an (darunter eine negative
+Verschiebung und die Steilheit mit zwei Nachkommastellen).
+
+**Stufe 2, nicht gebaut: einen Wert von Hand stellen.** Braucht die ausdrückliche Entscheidung
+des Hausherrn, weil das Add-on dann zum ersten Mal etwas an der Heizung verstellen kann.
+Vorgesehen: genau eine Einstellung, deren Kennung in Stufe 1 bestätigt ist, enge Grenzen, der
+alte Wert daneben und ein Knopf zum Zurückstellen. Drei Gründe für die Vorsicht: die Kennungen
+sind ungeprüft; eine gestellte Einstellung bleibt stehen, auch wenn diese Software ausfällt
+(anders als der Schaltkontakt); und wie viele Schreibvorgänge der Speicher des Reglers
+verträgt, ist nicht bekannt, deshalb wenige Male am Tag und nie im Minutentakt.
+
+**Stufe 3, nicht gebaut: Automatik.** Der Fahrplan verschiebt den Vorlauf oder das Warmwasser
+selbst, mit Preis und Sonne.
+
 ## Der Betrieb über Tage: Läufe, Abtauen, Takten, Heizkurve
 
 Stand 14.11.2026. Seite: Technik → Wärmepumpe → Betrieb (`/waerme/waermepumpe/betrieb`),

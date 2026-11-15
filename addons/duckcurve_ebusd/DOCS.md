@@ -41,7 +41,7 @@ gelegt. Ab 0.3.0 kommen vier Fragen dazu (`aerotop_abfragen.csv`).
 3. Im **Protokoll** sollte nach wenigen Sekunden stehen:
 
        [duckcurve-ebusd] Bus-Beschreibung geladen und geprüft (Fassung f2c9a631c1b0).
-       [duckcurve-ebusd] Abfragen an: ebusd fragt 5 Werte reihum ab, alle 10 s einen.
+       [duckcurve-ebusd] Abfragen an: ebusd fragt 17 Werte reihum ab, alle 10 s einen.
        [duckcurve-ebusd] Stellen kann ebusd nichts: 67 Zeilen zum Stellen aus der Bus-Beschreibung entfernt, keine übrig.
        ... [bus notice] signal acquired
        ... [mqtt notice] connection established
@@ -96,11 +96,21 @@ Haus heißen, zeigt erst der Vergleich mit Speicher und Zähler; bis dahin zeigt
 die Zahl. Die Zeilen stehen in `aerotop_abfragen.csv`; mit `abfrage_takt_s: 10` sind Ventil,
 Heizstab und Betriebszustand je etwa alle 40 Sekunden dran, Strom und Drehzahl seltener.
 
+**Ab 0.4.0 dazu die Einstellungen des Reglers**, nur gelesen und selten (jede etwa alle
+zehn Minuten): Steilheit und Verschiebung der Heizkurve, kleinster, größter und fester Vorlauf,
+Art der Vorlaufregelung, Raumtemperatur Tag und Nacht, Warmwasser Komfort- und Spartemperatur,
+Betriebsart des Warmwassers, Flüstermodus (Themen `ebusd/energymgr/e_...`). Die Seite „Regler“
+zeigt sie. Kennungen und Zahlenformate stammen aus der Bus-Beschreibung für verwandte Geräte;
+ob sie stimmen, zeigt der Vergleich mit dem Bediengerät. Verstellt wird damit nichts.
+
+ebusd zählt eine mitgehörte Antwort wie eine eigene Abfrage: fragt der Regler etwas ohnehin oft,
+fragt das Add-on es entsprechend seltener selbst (im Probelauf am 15.11.2026 gesehen).
+
 **Was sich dabei ändert.** ebusd meldet sich als eigener Teilnehmer am Bus (Adresse 31) und
 stellt alle zehn Sekunden eine Frage, so wie es das Bediengerät ohnehin mehrmals je Sekunde
 tut. Im Protokoll steht dazu:
 
-    [duckcurve-ebusd] Abfragen an: ebusd fragt 5 Werte reihum ab, alle 10 s einen.
+    [duckcurve-ebusd] Abfragen an: ebusd fragt 17 Werte reihum ab, alle 10 s einen.
     [duckcurve-ebusd] Stellen kann ebusd nichts: 67 Zeilen zum Stellen aus der Bus-Beschreibung entfernt, keine übrig.
 
 **Warum es trotzdem nichts verstellen kann.** Wer abfragt, sendet; der Schalter `--readonly`

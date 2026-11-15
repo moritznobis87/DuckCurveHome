@@ -172,7 +172,15 @@ def _sections(text: str) -> list[str]:
     return ["\n".join(sec) for sec in out]
 
 
-def parse_dump(payload: bytes, rules: dict[str, EntityRule], kind: Kind = "auto") -> ParsedDump:
+def parse_dump(
+    payload: bytes,
+    rules: dict[str, EntityRule],
+    kind: Kind = "auto",
+    now: datetime | None = None,
+) -> ParsedDump:
+    """`now` bestimmt, welche Zustände noch als Rohwerte übernommen werden (die der letzten
+    `RAW_RETENTION`). Ohne Angabe die Uhr; ein Test gibt es an, damit er nicht vom Tag abhängt,
+    an dem er läuft."""
     text = _open_text(payload)
     sections = _sections(text) or [text]
     out: ParsedDump | None = None
@@ -200,7 +208,7 @@ def parse_dump(payload: bytes, rules: dict[str, EntityRule], kind: Kind = "auto"
         if sec_kind == "statistics":
             _parse_statistics(reader, rules, out)
         else:
-            _parse_states(reader, rules, out)
+            _parse_states(reader, rules, out, now)
     assert out is not None
     return out
 
@@ -342,11 +350,14 @@ def _parse_statistics(
 
 
 def _parse_states(
-    reader: csv.DictReader[str], rules: dict[str, EntityRule], out: ParsedDump
+    reader: csv.DictReader[str],
+    rules: dict[str, EntityRule],
+    out: ParsedDump,
+    now: datetime | None = None,
 ) -> None:
     per_entity: dict[str, list[tuple[float, float]]] = {}
     units: dict[str, str | None] = {}
-    now = datetime.now(UTC)
+    now = now or datetime.now(UTC)
     for row in reader:
         row = {(k or "").strip().lower(): v for k, v in row.items()}
         ent = (row.get("entity_id") or "").strip()

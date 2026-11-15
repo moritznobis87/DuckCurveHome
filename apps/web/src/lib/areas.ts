@@ -109,6 +109,8 @@ export const AREAS: Area[] = [
           { href: "/waerme/waermepumpe", label: "Jetzt" },
           { href: "/waerme/waermepumpe/betrieb", label: "Betrieb" },
           { href: "/waerme/waermepumpe/kennlinie", label: "Kennlinie" },
+          // Was am Regler eingestellt ist, gelesen über den Bus. Verstellt wird dort nichts.
+          { href: "/waerme/waermepumpe/regler", label: "Regler" },
         ],
       },
       {

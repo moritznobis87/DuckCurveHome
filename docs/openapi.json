@@ -1098,6 +1098,28 @@
         }
       }
     },
+    "/api/v1/waermepumpe/einstellungen": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Die Einstellungen des Reglers",
+        "description": "Heizkurve, Raumtemperaturen und Warmwasser, wie sie am Regler eingestellt sind: über\nden Bus gelesen, je mit Zeitpunkt. Verstellt wird damit nichts.",
+        "operationId": "einstellungen_api_v1_waermepumpe_einstellungen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReglerEinstellungenOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -11216,6 +11238,99 @@
           "toggle_rate_exceeded"
         ],
         "title": "ReasonCode"
+      },
+      "ReglerEinstellungOut": {
+        "properties": {
+          "schluessel": {
+            "type": "string",
+            "title": "Schluessel"
+          },
+          "name_de": {
+            "type": "string",
+            "title": "Name De"
+          },
+          "gruppe_de": {
+            "type": "string",
+            "title": "Gruppe De"
+          },
+          "kennung": {
+            "type": "string",
+            "title": "Kennung"
+          },
+          "einheit": {
+            "type": "string",
+            "title": "Einheit",
+            "default": ""
+          },
+          "stellen": {
+            "type": "integer",
+            "title": "Stellen",
+            "default": 1
+          },
+          "wert": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "lesart_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lesart De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schluessel",
+          "name_de",
+          "gruppe_de",
+          "kennung",
+          "wert"
+        ],
+        "title": "ReglerEinstellungOut",
+        "description": "Eine Einstellung des Reglers der Wärmepumpe, gelesen über den Bus."
+      },
+      "ReglerEinstellungenOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "gelesen": {
+            "type": "integer",
+            "title": "Gelesen"
+          },
+          "satz_de": {
+            "type": "string",
+            "title": "Satz De"
+          },
+          "werte": {
+            "items": {
+              "$ref": "#/components/schemas/ReglerEinstellungOut"
+            },
+            "type": "array",
+            "title": "Werte"
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "gelesen",
+          "satz_de"
+        ],
+        "title": "ReglerEinstellungenOut",
+        "description": "Was am Regler der Wärmepumpe eingestellt ist. Gelesen, nicht gestellt."
       },
       "ReglerKennzahlOut": {
         "properties": {

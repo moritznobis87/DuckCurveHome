@@ -11,7 +11,13 @@ from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import reglerkennzahl as kennzahl_logic
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
-from dch_api.schemas import BetriebOut, KennlinieOut, ReglerKennzahlenOut, WaermepumpeOut
+from dch_api.schemas import (
+    BetriebOut,
+    KennlinieOut,
+    ReglerEinstellungenOut,
+    ReglerKennzahlenOut,
+    WaermepumpeOut,
+)
 
 router = APIRouter(prefix="/waermepumpe", tags=["Anlage"])
 
@@ -60,3 +66,14 @@ async def betrieb(
     """Läufe, Starts und Lauflängen, Abtauen, die Arbeitszahl je Tag mit und ohne Abtauen und
     die Heizkurve, die der Regler der Maschine vorgibt. Eine Auszählung gespeicherter Minuten."""
     return await runner.betrieb(tage)
+
+
+@router.get(
+    "/einstellungen",
+    response_model=ReglerEinstellungenOut,
+    summary="Die Einstellungen des Reglers",
+)
+async def einstellungen(runner: Annotated[Runtime, Depends(get_runner)]) -> ReglerEinstellungenOut:
+    """Heizkurve, Raumtemperaturen und Warmwasser, wie sie am Regler eingestellt sind: über
+    den Bus gelesen, je mit Zeitpunkt. Verstellt wird damit nichts."""
+    return await runner.regler_einstellungen()

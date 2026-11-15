@@ -114,6 +114,21 @@ ANTWORTEN = {
     "1e20006e4f": "03005802",  # Lüfter: 600
     # Die Liste, die im Haus der Regler abfragt: 6,5 °C draußen, 30,1 l/min, Zustand 3, 64 Hz.
     "1e200078106e13ca46cb46": "070041002d010340",
+    # Die Einstellungen des Reglers (ab Add-on 0.4.0): Steilheit 1,20, Verschiebung -2,0 K,
+    # Vorlauf höchstens 55,0 und mindestens 20,0 °C, fest 40,0 °C, Art 2, Raum 22,0 und 10,0 °C,
+    # Warmwasser 52,0 und 40,0 °C, Betriebsart 1, Flüstermodus 0.
+    "1820006a71": "03007800",
+    "1820006471": "0200ec",
+    "1820006071": "03002602",
+    "1820006171": "0300c800",
+    "1820006571": "03009001",
+    "182000c079": "020002",
+    "1820006271": "0300dc00",
+    "1820006371": "03006400",
+    "1820006126": "03000802",
+    "1820006226": "03009001",
+    "182000c028": "020001",
+    "1820000320": "020000",
 }
 
 

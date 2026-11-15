@@ -34,6 +34,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    ReglerEinstellungenOut,
     ReglerKennzahlenOut,
     RoomEffectOut,
     RoomHistoryOut,
@@ -73,6 +74,8 @@ class Runtime(Protocol):
     async def reglerkennzahlen(self, tage: int) -> ReglerKennzahlenOut: ...
 
     async def betrieb(self, tage: int) -> BetriebOut: ...
+
+    async def regler_einstellungen(self) -> ReglerEinstellungenOut: ...
 
     async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut: ...
     async def kontaktwirkung(self, days: int) -> KontaktwirkungOut: ...

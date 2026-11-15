@@ -853,6 +853,11 @@ button.ansicht { cursor: pointer; }
 .kl-bilanz-anteil, .kl-bilanz-wozu { color: var(--text-3); }
 .kl-bilanz-anteil { text-align: right; }
 .kl-bilanz-wozu { font-size: 13px; }
+.rg-gruppen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.rg-tabelle td { vertical-align: top; }
+.rg-tabelle td.rg-wert { font-size: 16px; color: var(--amber); white-space: nowrap; }
+.rg-tabelle tr[data-gemessen="false"] td.rg-wert { color: var(--text-3); }
+.rg-lesart { display: block; font-size: 12px; color: var(--text-3); }
 .bt-saetze { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; line-height: 1.5; color: var(--text-1); max-width: 860px; }
 .kl-liste { font-size: 14px; color: var(--text-2); }
 .kl-liste summary { cursor: pointer; padding: 6px 0; }

@@ -233,6 +233,7 @@
   .wp-menue-ziele { grid-template-columns: minmax(0, 1fr); }
   .wp-satz { font-size: 19px; }
   .kl-paar { grid-template-columns: minmax(0, 1fr); }
+  .rg-gruppen { grid-template-columns: minmax(0, 1fr); }
   .kl-chart { height: 280px; }
   .kl-chart-feld { height: 320px; }
   .kl-liste, .kl-karte { overflow-x: auto; }

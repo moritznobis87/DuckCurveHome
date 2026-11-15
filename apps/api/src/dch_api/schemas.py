@@ -1289,6 +1289,31 @@ class ReglerKennzahlenOut(BaseModel):
     zeilen: list[ReglerKennzahlOut] = Field(default_factory=list)
 
 
+class ReglerEinstellungOut(BaseModel):
+    """Eine Einstellung des Reglers der Wärmepumpe, gelesen über den Bus."""
+
+    schluessel: str
+    name_de: str
+    gruppe_de: str
+    #: Die Kennung des Busses, unter der sie gelesen wird.
+    kennung: str
+    einheit: str = ""
+    stellen: int = 1
+    wert: Measurement
+    #: Was die Bus-Beschreibung zu dieser Zahl sagt, bei Kennzahlen. Nicht im Haus bestätigt.
+    lesart_de: str | None = None
+
+
+class ReglerEinstellungenOut(BaseModel):
+    """Was am Regler der Wärmepumpe eingestellt ist. Gelesen, nicht gestellt."""
+
+    now: datetime
+    gelesen: int
+    satz_de: str
+    werte: list[ReglerEinstellungOut] = Field(default_factory=list)
+    hinweise_de: list[str] = Field(default_factory=list)
+
+
 class KennlinienPunktOut(BaseModel):
     """Ein Fenster im eingeschwungenen Heizbetrieb (`hems_core.thermal.kennlinie`)."""
 
