@@ -48,7 +48,7 @@ SERIES = (
     "heat_pump_suction_temp_c",  # Sauggas vor dem Verdichter
     "heat_pump_discharge_temp_c",  # Heißgas nach dem Verdichter
     "heat_pump_liquid_temp_c",  # Flüssigkeitsleitung zurück zum Außengerät
-    "heat_pump_tank_temp_c",  # Speicherfühler der Wärmepumpe (Kennung 759e, Lesart nicht bestätigt)
+    "heat_pump_tank_temp_c",  # Speicherfühler der Wärmepumpe (759e), über dem obersten eigenen
     "heat_pump_cycle_code",  # Kennzahl des Reglers (c94b): 0 steht, 2 Heizen; weitere offen
     "heat_pump_heat_request",  # Heizanforderung der ersten Zone laut Regler: 1 an, 0 aus
     "heat_pump_room_setpoint_c",  # Raum-Sollwert der ersten Zone laut Regler

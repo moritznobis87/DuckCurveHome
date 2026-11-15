@@ -105,6 +105,13 @@ ebusd 26.1 am Übungsadapter: eine Stellnachricht über den Broker
 (`ebusd/energymgr/dhw_status/set`) führte zu keinem Telegramm; in der Gegenprobe mit
 `read_only: false` sendete ebusd daraufhin `31fe2020...`.
 
+**Die Bridge einmal neu starten.** Sie liest die Zuordnung der Werte nur beim Start. Ohne
+Neustart kennt sie die vier neuen Themen nicht und gibt sie nicht weiter: auf der Seite der
+Wärmepumpe steht dann weiter „Lüfter · nicht gemessen“, auch wenn das Add-on fragt und Antwort
+bekommt. (Am 15.11.2026 stand das im Haus so da, und die erste Anleitung hatte den Neustart
+nicht genannt; ob er die Ursache war, ist nicht festgestellt.)
+Der Dienst muss die Fassung mit den vier Reihen haben (neu ausrollen).
+
 **Wenn ebusd die Fragen nicht annimmt**, steht im Protokoll `ebusd nimmt die Zeilen zum Abfragen
 nicht an`, und das Add-on lauscht nur. **Wenn der Bus die Fragen nicht beantwortet**, zeigt die
 Seite der Wärmepumpe für Ventil, Heizstab, Strom und Lüfter weiter nichts an, und im Protokoll
