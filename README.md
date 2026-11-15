@@ -67,6 +67,7 @@ curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '
 
 ## Weitere Dokumente
 
+- [docs/HAUSGERAET.md](docs/HAUSGERAET.md) - Plan für das eigene Gerät im Haus: Dienste, Kiosk, Marke, Wartung, Auslieferung
 - [docs/ALFRED.md](docs/ALFRED.md) - Alfred: was er kann, was das Haus nie verlässt, Einrichtung mit Mistral
 - [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) - offene Rückfragen mit Annahmen
 - [docs/RECHNUNGSPRUEFUNG.md](docs/RECHNUNGSPRUEFUNG.md) - Tibber-Rechnungen prüfen (`/haus/rechnungen`, Endpunkt für Automatisierungen)
