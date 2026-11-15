@@ -95,6 +95,7 @@ export function wissen(pfad: string): string {
 export const TEXTE = {
   name: "Alfred",
   ansprechen: "Alfred fragen",
+  ansprechenHalten: "Alfred fragen. Gedrückt halten, um zu sprechen.",
   schliessen: "Schließen",
   begruessung: "Hallo, ich bin Alfred. Ich erkläre, was du hier siehst, und beantworte Fragen zu deinem Haus.",
   seiteErklaeren: "Was zeigt diese Seite?",
@@ -103,7 +104,7 @@ export const TEXTE = {
   antwortWasKannAlfredOhneModell:
     "Im Moment erkläre ich die Seiten und sage, wo was steht. Eine Tibber-Rechnung kannst du als PDF auf mich ziehen: Ich prüfe sie, lege sie ab und fasse das Ergebnis zusammen. Sobald ein Sprachmodell eingerichtet ist, beantworte ich auch Fragen zu deinen Daten.",
   antwortWasKannAlfred:
-    "Ich beantworte Fragen zu deinen Daten: Verbrauch, Kosten, PV, Wärmepumpe, Speicher, Rechnungen, Prognosen. Ich vergleiche Zeiträume und mache einen Wochenrückblick. Lichter und Raumtemperaturen schlage ich vor. Geschaltet wird erst, wenn du den Vorschlag geprüft und mit OK bestätigt hast. Eine Stromrechnung kannst du als PDF auf mich ziehen; Tibber-Rechnungen prüfe und lege ich ab, die anderer Anbieter lese ich. Bei der Einrichtung schlage ich die Zuordnung der Sensoren vor. Ich rechne nichts selbst, die Zahlen kommen aus denselben Auswertungen wie auf den Seiten.",
+    "Ich beantworte Fragen zu deinen Daten: Verbrauch, Kosten, PV, Wärmepumpe, Speicher, Rechnungen, Prognosen. Ich vergleiche Zeiträume und mache einen Wochenrückblick. Lichter und Raumtemperaturen schlage ich vor. Geschaltet wird erst, wenn du den Vorschlag geprüft und mit OK bestätigt hast. Eine Stromrechnung kannst du als PDF auf mich ziehen; Tibber-Rechnungen prüfe und lege ich ab, die anderer Anbieter lese ich. Bei der Einrichtung schlage ich die Zuordnung der Sensoren vor. Du musst nicht tippen: Halte die Ente gedrückt, sprich und lass los. Ich rechne nichts selbst, die Zahlen kommen aus denselben Auswertungen wie auf den Seiten.",
   beispiele: ["Wie war die Woche?", "Warum war der letzte Monat teurer?", "Folgt die Wärmepumpe der Anforderung?"],
   frageFeld: "Frage an Alfred …",
   frageSenden: "Fragen",
@@ -117,7 +118,18 @@ export const TEXTE = {
     "KI-Assistent ({anbieter}). Er kann irren. Für Fragen gehen Zahlen deines Hauses an {anbieter}, keine Alarm-, Tür- oder Standortdaten. Er schaltet nichts ohne deine Bestätigung.",
   mikrofon: "Frage sprechen",
   mikrofonLaeuft: "Ich höre zu …",
-  mikrofonHinweis: "Die Spracheingabe übernimmt der Browser; bei Safari wertet Apple die Aufnahme aus.",
+  mikrofonHinweis:
+    "Die Spracheingabe übernimmt der Browser; je nach Browser wertet Apple oder Google die Aufnahme aus. An Duck Curve geht nur der erkannte Text. Du kannst auch die Ente gedrückt halten.",
+  haltenLaeuft: "Ich höre zu … Lass die Ente los, wenn du fertig bist.",
+  sprachWartet: "Einen Moment …",
+  sprachNichtsGehoert: "Ich habe nichts verstanden. Halte die Ente gedrückt, solange du sprichst, und lass dann los.",
+  sprachNichtErlaubt:
+    "Ich darf das Mikrofon nicht benutzen. Erlaube es in den Einstellungen des Browsers, oder tipp ins Feld und nutz das Mikrofon der Tastatur.",
+  sprachNichtAngelaufen:
+    "Ich konnte nicht zuhören. Kam gerade eine Frage nach dem Mikrofon, erlaube es und halte die Ente noch einmal gedrückt. Sonst tipp ins Feld und nutz das Mikrofon der Tastatur.",
+  sprachKeineAntwort: "Die Spracherkennung dieses Browsers antwortet nicht. Tipp ins Feld und nutz das Mikrofon der Tastatur.",
+  sprachFehler: "Die Spracherkennung hat nicht geklappt. Tipp ins Feld und nutz das Mikrofon der Tastatur.",
+  sprachOhneBrowser: "Dieser Browser kann keine Spracheingabe. Tipp ins Feld und nutz das Mikrofon der Tastatur.",
   vorschlagTitel: "Vorschläge, noch nicht ausgeführt",
   vorschlagPruefen: "Prüfen …",
   bestaetigungTitel: "Wirklich ausführen?",

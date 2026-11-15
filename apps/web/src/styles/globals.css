@@ -823,7 +823,17 @@ button.ansicht { cursor: pointer; }
    Stapelkontext oder overflow: hidden. Im Druck verschwindet Alfred. */
 .alfred { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .alfred-button { width: 56px; height: 56px; padding: 6px; border: 1px solid var(--line-2); border-radius: 50%; background: var(--paper); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35); cursor: pointer; transition: transform 160ms ease; }
-.alfred-button img { display: block; width: 100%; height: 100%; }
+.alfred-button img { display: block; width: 100%; height: 100%; pointer-events: none; }
+/* Halten heißt sprechen: Kein Lupen-, Auswahl- oder Bildmenü des Systems beim langen Drücken. */
+.alfred-button { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+/* Alfred hört zu: ein Ring, der atmet. Losgelassen und wartend steht er still. */
+.alfred.hoert .alfred-button { transform: scale(1.08); border-color: var(--amber); animation: alfred-hoert 1.1s ease-in-out infinite; }
+.alfred.wartet .alfred-button { animation: none; box-shadow: 0 0 0 4px rgba(242, 169, 0, 0.35); }
+@keyframes alfred-hoert {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(242, 169, 0, 0.45), 0 6px 22px rgba(0, 0, 0, 0.35); }
+  50% { box-shadow: 0 0 0 12px rgba(242, 169, 0, 0.12), 0 6px 22px rgba(0, 0, 0, 0.35); }
+}
+@media (prefers-reduced-motion: reduce) { .alfred.hoert .alfred-button { animation: none; box-shadow: 0 0 0 4px rgba(242, 169, 0, 0.45); } }
 /* Eine Datei schwebt über Alfred: Knopf und Panel zeigen, dass sie hier abgelegt werden kann. */
 .alfred.zieht .alfred-button { outline: 3px dashed var(--amber); outline-offset: 4px; transform: scale(1.08); }
 .alfred.zieht .alfred-feld { border-color: var(--amber); }
