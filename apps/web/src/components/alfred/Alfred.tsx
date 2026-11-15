@@ -80,17 +80,50 @@ type Erkennung = {
   lang: string;
   interimResults: boolean;
   maxAlternatives: number;
+  onstart: (() => void) | null;
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
   start: () => void;
   stop: () => void;
+  abort: () => void;
 };
-function erkennungBauen(): Erkennung | null {
+function erkennungsKlasse(): (new () => Erkennung) | null {
   if (typeof window === "undefined") return null;
   const w = window as unknown as { SpeechRecognition?: new () => Erkennung; webkitSpeechRecognition?: new () => Erkennung };
-  const Klasse = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+function erkennungBauen(): Erkennung | null {
+  const Klasse = erkennungsKlasse();
   return Klasse ? new Klasse() : null;
+}
+
+/** So lange muss die Ente gedrückt sein, bis Alfred zuhört. Kürzer ist ein Tippen und öffnet das
+ *  Panel; länger als das Tippen, aber kürzer als das lange Drücken des Systems (iOS: 500 ms). */
+export const HALTEN_MS = 350;
+/** So lange wartet Alfred nach dem Loslassen auf den erkannten Text. Safari und Chrome erkennen
+ *  auf einem Server; danach gilt die Erkennung als stumm. Ohne diese Wache bliebe „Ich höre zu"
+ *  stehen, wo die Erkennung zwar angeboten wird, aber nie antwortet (iOS-Web-App vom Home-Bildschirm). */
+export const WACHE_MS = 5000;
+
+/** Ein Zuhören, vom Start bis zum Text oder zur Meldung. Lebt in einem Ref, weil die Ereignisse
+ *  der Erkennung nach dem Rendern eintreffen, in dem sie begonnen hat. */
+type Zuhoeren = {
+  erkennung: Erkennung;
+  art: "halten" | "knopf";
+  /** Die Erkennung hat gemeldet, dass sie hört. Vorher läuft womöglich die Frage nach dem Mikrofon. */
+  gestartet: boolean;
+  fehler: string | null;
+  fertig: boolean;
+  wache: ReturnType<typeof setTimeout> | null;
+};
+
+/** Was Alfred sagt, wenn ein Zuhören ohne Text endet. `aborted` hat Alfred selbst ausgelöst. */
+function sprachMeldung(fehler: string | null): string | null {
+  if (fehler === "aborted") return null;
+  if (fehler === null || fehler === "no-speech") return TEXTE.sprachNichtsGehoert;
+  if (fehler === "not-allowed" || fehler === "service-not-allowed" || fehler === "audio-capture") return TEXTE.sprachNichtErlaubt;
+  return TEXTE.sprachFehler;
 }
 
 export function Alfred() {
@@ -106,7 +139,10 @@ export function Alfred() {
   const [fuehrtAus, setFuehrtAus] = useState<string | null>(null);
   //: Der Vorschlag, dessen Bestätigung gerade offen steht, oder null.
   const [bestaetigen, setBestaetigen] = useState<Vorschlag | null>(null);
-  const [hoert, setHoert] = useState(false);
+  //: Ob Alfred zuhört, und wie: mit gedrückter Ente, über den Mikrofonknopf, oder losgelassen und
+  //: wartend auf den erkannten Text.
+  const [ohr, setOhr] = useState<"halten" | "knopf" | "wartet" | null>(null);
+  const hoert = ohr !== null;
   const [werkzeug, setWerkzeug] = useState<"rechnung" | "zuordnung" | null>(null);
   const [liste, setListe] = useState("");
   const [zuordnung, setZuordnung] = useState<Zuordnungsergebnis | null>(null);
@@ -114,7 +150,13 @@ export function Alfred() {
   const huelle = useRef<HTMLDivElement>(null);
   const knopf = useRef<HTMLButtonElement>(null);
   const datei = useRef<HTMLInputElement>(null);
-  const erkennung = useRef<Erkennung | null>(null);
+  const zuhoeren = useRef<Zuhoeren | null>(null);
+  //: Läuft, solange die Ente gedrückt ist und noch nicht als gehalten gilt.
+  const haltenUhr = useRef<ReturnType<typeof setTimeout> | null>(null);
+  //: Die Ente wurde gehalten: Der Klick, den der Browser beim Loslassen schickt, öffnet nichts.
+  const gehalten = useRef(false);
+  const statusAngefragt = useRef(false);
+  const lebt = useRef(true);
   const ende = useRef<HTMLDivElement>(null);
   const feldKennung = useId();
   const [kannSprechen, setKannSprechen] = useState(false);
@@ -127,7 +169,35 @@ export function Alfred() {
   const [ziehen, setZiehen] = useState(false);
   const anbieter = zustand?.anbieter ?? "dem Anbieter";
 
-  useEffect(() => setKannSprechen(erkennungBauen() !== null), []);
+  useEffect(() => setKannSprechen(erkennungsKlasse() !== null), []);
+  /** Beendet ein Zuhören genau einmal, egal ob Text, Fehler, Ende oder Wache zuerst kommt.
+   *  `meldung` sagt Alfred, wenn es ohne Text endete. */
+  const beenden = useCallback((z: Zuhoeren, meldung: string | null) => {
+    if (z.fertig) return;
+    z.fertig = true;
+    if (z.wache) clearTimeout(z.wache);
+    if (zuhoeren.current === z) zuhoeren.current = null;
+    if (!lebt.current) return;
+    setOhr(null);
+    if (meldung) setNachrichten((bisher) => [...bisher, { kennung: naechsteKennung(), wer: "alfred", inhalt: meldung }]);
+  }, []);
+
+  /** Bricht ein laufendes Zuhören ab, ohne dass etwas gefragt wird: Panel zu, Komponente weg. */
+  const zuhoerenAbbrechen = useCallback(() => {
+    const z = zuhoeren.current;
+    if (!z) return;
+    beenden(z, null);
+    z.erkennung.abort();
+  }, [beenden]);
+
+  useEffect(() => {
+    lebt.current = true;
+    return () => {
+      lebt.current = false;
+      if (haltenUhr.current) clearTimeout(haltenUhr.current);
+      zuhoerenAbbrechen();
+    };
+  }, [zuhoerenAbbrechen]);
 
   // Die jüngste Nachricht ins Bild rollen; jsdom kennt scrollIntoView nicht, daher optional.
   useEffect(() => {
@@ -136,9 +206,9 @@ export function Alfred() {
 
   const zumachen = useCallback(() => {
     setOffen(false);
-    erkennung.current?.stop();
+    zuhoerenAbbrechen();
     knopf.current?.focus();
-  }, []);
+  }, [zuhoerenAbbrechen]);
 
   // Escape und Klick daneben schließen; nur bei offenem Panel registriert.
   useEffect(() => {
@@ -150,7 +220,9 @@ export function Alfred() {
       else zumachen();
     };
     const daneben = (e: PointerEvent) => {
-      if (!huelle.current?.contains(e.target as Node)) setOffen(false);
+      if (huelle.current?.contains(e.target as Node)) return;
+      setOffen(false);
+      zuhoerenAbbrechen();
     };
     document.addEventListener("keydown", taste);
     document.addEventListener("pointerdown", daneben);
@@ -158,29 +230,31 @@ export function Alfred() {
       document.removeEventListener("keydown", taste);
       document.removeEventListener("pointerdown", daneben);
     };
-  }, [offen, zumachen, bestaetigen]);
+  }, [offen, zumachen, bestaetigen, zuhoerenAbbrechen]);
 
-  // Einmal beim ersten Öffnen: Ist ein Modell eingerichtet? Liest nur eine Einstellung.
-  useEffect(() => {
-    if (!offen || zustand !== null) return;
-    let lebt = true;
+  // Einmal je Seitenaufruf: Ist ein Modell eingerichtet? Liest nur eine Einstellung. Gefragt wird
+  // beim ersten Öffnen oder schon beim Drücken der Ente, damit beim Halten die Antwort da ist.
+  const statusHolen = useCallback(() => {
+    if (statusAngefragt.current) return;
+    statusAngefragt.current = true;
     fetch("/api/dch/alfred/status", { cache: "no-store" })
       .then((a) => (a.ok ? a.json() : { bereit: false }))
-      .then((d: { bereit?: boolean; anbieter?: string | null }) => lebt && setZustand({ bereit: Boolean(d.bereit), anbieter: d.anbieter ?? null }))
-      .catch(() => lebt && setZustand({ bereit: false, anbieter: null }));
-    return () => {
-      lebt = false;
-    };
-  }, [offen, zustand]);
+      .then((d: { bereit?: boolean; anbieter?: string | null }) => lebt.current && setZustand({ bereit: Boolean(d.bereit), anbieter: d.anbieter ?? null }))
+      .catch(() => lebt.current && setZustand({ bereit: false, anbieter: null }));
+  }, []);
+  useEffect(() => {
+    if (offen) statusHolen();
+  }, [offen, statusHolen]);
 
   const sagen = (inhalt: string, quelle?: "modell", link?: Nachricht["link"]) =>
     setNachrichten((bisher) => [...bisher, { kennung: naechsteKennung(), wer: "alfred", inhalt, ...(quelle ? { quelle } : {}), ...(link ? { link } : {}) }]);
 
-  const aufmachen = () => {
-    if (offen) return zumachen();
+  const oeffnen = () => {
+    if (offen) return;
     if (nachrichten.length === 0) setNachrichten([{ kennung: naechsteKennung(), wer: "alfred", inhalt: TEXTE.begruessung }]);
     setOffen(true);
   };
+  const aufmachen = () => (offen ? zumachen() : oeffnen());
 
   const seiteErklaeren = () => sagen(ortBestimmen(pfad).text ?? TEXTE.keineSeitenhilfe);
 
@@ -248,22 +322,112 @@ export function Alfred() {
     }
   };
 
-  const sprechen = () => {
-    if (hoert) return erkennung.current?.stop();
+  /** Beginnt zuzuhören. Den Text macht die Erkennung des Browsers; an den Dienst geht nur er. */
+  const zuhoerenBeginnen = (art: "halten" | "knopf") => {
+    if (zuhoeren.current || laeuft) return;
     const e = erkennungBauen();
-    if (!e) return;
+    if (!e) return sagen(TEXTE.sprachOhneBrowser);
     e.lang = "de-DE";
     e.interimResults = false;
     e.maxAlternatives = 1;
-    e.onresult = (ereignis) => {
-      const text = ereignis.results[0]?.[0]?.transcript ?? "";
-      if (text) void fragen(text);
+    const z: Zuhoeren = { erkennung: e, art, gestartet: false, fehler: null, fertig: false, wache: null };
+    e.onstart = () => {
+      z.gestartet = true;
+      // Am Android-Telefon ein kurzes Zucken: Jetzt sprechen. iOS kennt das nicht.
+      if (art === "halten" && "vibrate" in navigator) navigator.vibrate(20);
     };
-    e.onend = () => setHoert(false);
-    e.onerror = () => setHoert(false);
-    erkennung.current = e;
-    setHoert(true);
-    e.start();
+    e.onresult = (ereignis) => {
+      const text = (ereignis.results[0]?.[0]?.transcript ?? "").trim();
+      if (!text || z.fertig) return;
+      beenden(z, null);
+      void jetzt.current.fragen(text);
+    };
+    e.onerror = (ereignis) => {
+      z.fehler = ereignis?.error ?? "unbekannt";
+    };
+    e.onend = () => beenden(z, sprachMeldung(z.fehler));
+    zuhoeren.current = z;
+    setOhr(art);
+    try {
+      e.start();
+    } catch {
+      beenden(z, TEXTE.sprachFehler);
+    }
+  };
+
+  /** Hört auf zuzuhören: Ente losgelassen oder Mikrofon erneut gedrückt. Der Text kommt danach. */
+  const zuhoerenBeenden = () => {
+    const z = zuhoeren.current;
+    if (!z || z.fertig || z.wache) return;
+    if (!z.gestartet) {
+      // Nie angelaufen: Die Frage nach dem Mikrofon steht noch offen, oder die Erkennung wird nur
+      // angeboten und antwortet nicht. Warten hilft in keinem der beiden Fälle.
+      beenden(z, TEXTE.sprachNichtAngelaufen);
+      z.erkennung.abort();
+      return;
+    }
+    // Wache und Zustand vor stop(): Endet die Erkennung sofort, räumt `beenden` beides wieder ab.
+    setOhr("wartet");
+    z.wache = setTimeout(() => {
+      beenden(z, TEXTE.sprachKeineAntwort);
+      z.erkennung.abort();
+    }, WACHE_MS);
+    z.erkennung.stop();
+  };
+
+  const sprechen = () => (hoert ? zuhoerenBeenden() : zuhoerenBeginnen("knopf"));
+
+  //: Halten zum Sprechen gibt es nur mit Vollzugriff, denn Gäste fragen nicht (siehe oben).
+  const kannHalten = rolle === "owner";
+
+  /** Die Ente ist lange genug gedrückt: Panel auf und zuhören, solange sie gedrückt bleibt. */
+  const haltenBeginnt = () => {
+    oeffnen();
+    if (zustand?.bereit === false) return sagen(TEXTE.frageOhneModell);
+    zuhoerenBeginnen("halten");
+  };
+
+  // Die Uhr fürs Halten und die Ereignisse der Erkennung kommen Renderdurchgänge nach ihrem Start.
+  // Sie rufen deshalb die Fassung aus dem jüngsten Durchgang, mit dem jüngsten Zustand.
+  const jetzt = useRef({ fragen, haltenBeginnt });
+  useEffect(() => {
+    jetzt.current = { fragen, haltenBeginnt };
+  });
+
+  const enteDruecken = (e: React.PointerEvent<HTMLButtonElement>) => {
+    gehalten.current = false;
+    if (!kannHalten || (e.pointerType === "mouse" && e.button !== 0)) return;
+    statusHolen();
+    // Das Loslassen kommt dann bei der Ente an, auch wenn der Finger etwas verrutscht.
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // jsdom und ältere Browser kennen es nicht; dann endet das Halten am Ende des Satzes.
+    }
+    if (haltenUhr.current) clearTimeout(haltenUhr.current);
+    haltenUhr.current = setTimeout(() => {
+      haltenUhr.current = null;
+      gehalten.current = true;
+      jetzt.current.haltenBeginnt();
+    }, HALTEN_MS);
+  };
+
+  const enteLoslassen = () => {
+    if (haltenUhr.current) {
+      clearTimeout(haltenUhr.current);
+      haltenUhr.current = null;
+    }
+    if (zuhoeren.current?.art === "halten") zuhoerenBeenden();
+  };
+
+  const enteKlick = () => {
+    // Nach dem Halten schickt der Browser beim Loslassen noch einen Klick. Der darf das eben
+    // geöffnete Panel nicht wieder schließen.
+    if (gehalten.current) {
+      gehalten.current = false;
+      return;
+    }
+    aufmachen();
   };
 
   const rechnungPruefen = async (f: File) => {
@@ -317,7 +481,7 @@ export function Alfred() {
 
   return (
     <div
-      className={`alfred${ziehen ? " zieht" : ""}`}
+      className={`alfred${ziehen ? " zieht" : ""}${hoert ? " hoert" : ""}${ohr === "wartet" ? " wartet" : ""}`}
       ref={huelle}
       onDragOver={(e) => {
         if (!darfAblegen || !hatDatei(e.dataTransfer)) return;
@@ -508,7 +672,7 @@ export function Alfred() {
 
           {laeuft || hoert ? (
             <p className="alfred-schritt" aria-live="polite">
-              {hoert ? TEXTE.mikrofonLaeuft : (schritt ?? TEXTE.frageLaeuft)}
+              {ohr === "halten" ? TEXTE.haltenLaeuft : ohr === "wartet" ? TEXTE.sprachWartet : hoert ? TEXTE.mikrofonLaeuft : (schritt ?? TEXTE.frageLaeuft)}
             </p>
           ) : null}
 
@@ -516,9 +680,26 @@ export function Alfred() {
         </div>
       ) : null}
 
-      <button type="button" ref={knopf} className="alfred-button" onClick={aufmachen} title={TEXTE.ansprechen} aria-label={TEXTE.ansprechen} aria-expanded={offen} aria-controls={offen ? feldKennung : undefined}>
+      {/* Tippen öffnet das Panel, Halten heißt sprechen (Push-to-Talk). Das Kontextmenü, das
+          Android beim langen Drücken öffnen will, bleibt dabei zu. */}
+      <button
+        type="button"
+        ref={knopf}
+        className="alfred-button"
+        onClick={enteKlick}
+        onPointerDown={enteDruecken}
+        onPointerUp={enteLoslassen}
+        onPointerCancel={enteLoslassen}
+        onContextMenu={(e) => {
+          if (kannHalten) e.preventDefault();
+        }}
+        title={kannHalten && kannSprechen ? TEXTE.ansprechenHalten : TEXTE.ansprechen}
+        aria-label={TEXTE.ansprechen}
+        aria-expanded={offen}
+        aria-controls={offen ? feldKennung : undefined}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/ente-maskottchen.svg" alt="" aria-hidden="true" />
+        <img src="/brand/ente-maskottchen.svg" alt="" aria-hidden="true" draggable={false} />
       </button>
     </div>
   );
