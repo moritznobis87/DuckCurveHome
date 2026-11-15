@@ -15,6 +15,7 @@ from dch_api.dependencies import require_api_token
 from dch_api.errors import DchError, install_error_handlers
 from dch_api.infrastructure.logging import configure_logging
 from dch_api.routers import (
+    alfred,
     anlage,
     bridge,
     config,
@@ -190,6 +191,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(bridge.router)
     protected = [Depends(require_api_token)]
     for r in (
+        alfred.router,
         live.router,
         history.router,
         plan.router,

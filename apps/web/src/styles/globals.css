@@ -825,3 +825,50 @@ button.ansicht { cursor: pointer; }
 .wp-menue-ziel-titel { font-size: 16px; font-weight: 600; color: var(--text-1); }
 .wp-menue-ziel-satz { font-size: 13px; line-height: 1.4; color: var(--text-3); }
 .wp-menue-zu { align-self: center; padding: 10px 18px; border: 0; background: none; color: var(--text-2); font-size: 14px; cursor: pointer; }
+
+/* --- Alfred (components/alfred) -------------------------------------------------------------
+   Der Knopf sitzt unten rechts über allem; am Handy über der Bereichsleiste (handy.css). Das Panel
+   ist fest verankert und braucht kein Portal: Auf dem Weg liegt kein Element mit eigenem
+   Stapelkontext oder overflow: hidden. Im Druck verschwindet Alfred. */
+.alfred { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.alfred-button { width: 56px; height: 56px; padding: 6px; border: 1px solid var(--line-2); border-radius: 50%; background: var(--paper); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35); cursor: pointer; transition: transform 160ms ease; }
+.alfred-button img { display: block; width: 100%; height: 100%; }
+.alfred-button:hover { transform: translateY(-2px); }
+.alfred-button:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.alfred-feld { display: flex; flex-direction: column; gap: 10px; width: min(400px, calc(100vw - 32px)); max-height: min(640px, calc(100dvh - 120px)); overflow-y: auto; overscroll-behavior: contain; padding: 14px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--surface-1); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45); color: var(--text-1); }
+.alfred-kopf { display: flex; align-items: center; justify-content: space-between; }
+.alfred-name { font-weight: 600; font-size: 15px; }
+.alfred-zu { width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font-size: 22px; line-height: 1; cursor: pointer; }
+.alfred-zu:hover { background: var(--surface-3); }
+.alfred-feld > * { flex-shrink: 0; }
+/* Kein eigener Rollbalken: Das ganze Panel rollt. Zwei verschachtelte Rollbereiche quetschten am
+   Handy den Verlauf auf eine Zeile, sobald die Knöpfe darunter Platz brauchten. */
+.alfred-verlauf { display: flex; flex-direction: column; gap: 8px; }
+.alfred-sprechblase { margin: 0; padding: 9px 12px; border-radius: 10px; font-size: 14px; line-height: 1.5; white-space: pre-line; }
+.alfred-sprechblase.von-alfred { align-self: flex-start; max-width: 92%; background: var(--surface-2); }
+.alfred-sprechblase.von-nutzer { align-self: flex-end; max-width: 85%; background: color-mix(in srgb, var(--amber) 22%, var(--surface-2)); }
+.alfred-ki { display: block; margin-bottom: 3px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--amber-soft); }
+.alfred-vorschlaege, .alfred-werkzeuge { display: flex; flex-wrap: wrap; gap: 6px; }
+.alfred-vorschlaege button, .alfred-werkzeuge button, .alfred-zuordnung button, .alfred-vorschlaege-liste button { padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 999px; background: none; color: var(--text-2); font-size: 13px; cursor: pointer; }
+.alfred-vorschlaege button:hover, .alfred-werkzeuge button:hover, .alfred-zuordnung button:hover { color: var(--text-1); border-color: var(--mist); }
+.alfred-werkzeuge button[aria-pressed="true"] { color: var(--text-1); border-color: var(--amber); }
+.alfred-feld button:disabled { opacity: 0.5; cursor: default; }
+.alfred-feld button:focus-visible, .alfred-feld input:focus-visible, .alfred-feld textarea:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.alfred-frage { display: flex; gap: 6px; }
+.alfred-frage input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font-size: 14px; }
+.alfred-frage button { padding: 8px 12px; border: 0; border-radius: 8px; background: var(--amber); color: var(--deep); font-size: 14px; font-weight: 600; cursor: pointer; }
+.alfred-frage .alfred-mikro { display: grid; place-items: center; padding: 8px; background: var(--surface-3); color: var(--text-1); }
+.alfred-frage .alfred-mikro.an { background: var(--alert); }
+.alfred-zuordnung { display: flex; flex-direction: column; gap: 6px; }
+.alfred-zuordnung textarea { padding: 8px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font: 12px/1.4 "IBM Plex Mono", monospace; resize: vertical; }
+.alfred-zuordnung-ergebnis { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text-2); }
+.alfred-zuordnung-ergebnis pre { margin: 0; padding: 8px; overflow-x: auto; border-radius: 8px; background: var(--deep); color: var(--text-1); font: 11px/1.45 "IBM Plex Mono", monospace; }
+.alfred-zuordnung-ergebnis p { margin: 0; }
+.alfred-vorschlaege-liste { padding: 10px; border: 1px solid var(--amber); border-radius: 10px; }
+.alfred-vorschlaege-liste .titel { margin: 0 0 6px; font-size: 12px; color: var(--amber-soft); }
+.alfred-vorschlaege-liste ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.alfred-vorschlaege-liste li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+.alfred-vorschlaege-liste li button { border-color: var(--amber); color: var(--text-1); }
+.alfred-schritt { margin: 0; font-size: 13px; color: var(--text-2); }
+.alfred-stufe { margin: 0; font-size: 11px; line-height: 1.45; color: var(--text-3); }
+@media print { .alfred { display: none; } }

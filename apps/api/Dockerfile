@@ -21,6 +21,9 @@ COPY --from=deps /app/.venv /app/.venv
 COPY packages/hems-core /app/packages/hems-core
 COPY apps/api /app/apps/api
 COPY config /app/config
+# Die Methodenpapiere, in denen Alfred nachschlaegt. Gelesen wird nur, was alfred/papiere.py freigibt.
+COPY docs /app/docs
+COPY HEMS_CONTROL.md /app/HEMS_CONTROL.md
 COPY apps/api/docker-entrypoint.sh /app/docker-entrypoint.sh
 ENV PATH="/app/.venv/bin:$PATH" DCH_HOST= DCH_PORT=8000
 RUN chmod a+x /app/docker-entrypoint.sh

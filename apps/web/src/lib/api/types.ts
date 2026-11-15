@@ -21,6 +21,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/alfred/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kann Alfred antworten?
+         * @description Liest nur Einstellungen; kein Modell, keine Kosten. Die Oberflaeche zeigt das Eingabefeld nur
+         *     bei `bereit` und nennt im Panel den Anbieter.
+         */
+        get: operations["zustand_api_v1_alfred_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alfred/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eine Frage an den Helfer
+         * @description Ohne eingerichtetes Modell `bereit=False` statt eines Fehlers; die Oberflaeche zeigt dann
+         *     ihre vorbereiteten Texte.
+         */
+        post: operations["frage_api_v1_alfred_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alfred/ask/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eine Frage an den Helfer, mit Fortschritt
+         * @description Dieselbe Frage wie POST /alfred/ask, mit Ereignissen: `schritt` je laufendem Werkzeug
+         *     (nur der Name - den Satz dazu hat die Oberflaeche), zuletzt `antwort` oder `fehler`.
+         *
+         *     POST statt EventSource, weil EventSource nur GET ohne Rumpf kann und die Hilfetexte mitgehen.
+         */
+        post: operations["frage_mit_fortschritt_api_v1_alfred_ask_stream_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alfred/rechnung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stromrechnung eines anderen Anbieters lesen und gegen die eigene Messung halten
+         * @description Das PDF als Rumpf (`application/pdf`). An den Anbieter gehen nur geschwaerzte Zeilen mit
+         *     Mengen, Preisen und Zeitraeumen; gespeichert wird nichts (alfred/rechnung.py).
+         */
+        post: operations["rechnung_lesen_api_v1_alfred_rechnung_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alfred/zuordnung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Entitätszuordnung für ein neues Haus vorschlagen
+         * @description Aus einer eingefuegten Entitaetenliste einen gepruefen YAML-Ausschnitt fuer `sensors:`.
+         *     Schreibt nichts; die Datei liegt in Home Assistant.
+         */
+        post: operations["zuordnung_vorschlagen_api_v1_alfred_zuordnung_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/live/state": {
         parameters: {
             query?: never;
@@ -1231,6 +1338,83 @@ export interface components {
             /** Observed At */
             observed_at: string | null;
         };
+        /** AlfredAntwortOut */
+        AlfredAntwortOut: {
+            /** Bereit */
+            bereit: boolean;
+            /** Antwort */
+            antwort: string;
+            /** Vorschlaege */
+            vorschlaege?: components["schemas"]["AlfredVorschlagOut"][];
+        };
+        /** AlfredFrageIn */
+        AlfredFrageIn: {
+            /** Frage */
+            frage: string;
+            /**
+             * Wissen
+             * @default
+             */
+            wissen: string;
+            /** Verlauf */
+            verlauf?: components["schemas"]["AlfredWechselIn"][];
+        };
+        /**
+         * AlfredVorschlagOut
+         * @description Ein Vorschlag, noch nicht ausgeführt. `art` sagt, welcher Endpunkt ihn beim Drücken ausführt:
+         *     `schalten` → POST /control/actuators/{ziel}, `sollwert` → POST /rooms/{ziel}/setpoint.
+         */
+        AlfredVorschlagOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "schalten" | "sollwert";
+            /** Ziel */
+            ziel: string | number;
+            /** Name */
+            name: string;
+            /** An */
+            an?: boolean | null;
+            /** Alt */
+            alt?: number | null;
+            /** Neu */
+            neu?: number | null;
+        };
+        /**
+         * AlfredWechselIn
+         * @description Ein früherer Wechsel des Gesprächs. Ungeprüfte Eingabe aus dem Browser: Begrenzt werden Rolle,
+         *     Länge und - in `AlfredFrageIn` - die Zahl; der Dienst nimmt davon nur die letzten.
+         */
+        AlfredWechselIn: {
+            /**
+             * Wer
+             * @enum {string}
+             */
+            wer: "alfred" | "nutzer";
+            /** Inhalt */
+            inhalt: string;
+        };
+        /**
+         * AlfredZuordnungIn
+         * @description Eine eingefügte Entitätenliste aus Home Assistant (Entwicklerwerkzeuge → Zustände).
+         */
+        AlfredZuordnungIn: {
+            /** Liste */
+            liste: string;
+        };
+        /**
+         * AlfredZustandOut
+         * @description Ob Alfred antworten kann, und an wen Fragen gehen (KI-Verordnung Art. 50).
+         */
+        AlfredZustandOut: {
+            /** Bereit */
+            bereit: boolean;
+            /** Anbieter */
+            anbieter?: string | null;
+            /** Modell */
+            modell?: string | null;
+        };
         /**
          * AnlageHeizkreisOut
          * @description Der Heizkreis: wie viele Räume gerade Wärme nehmen. Eine Leistung gibt es nicht; die
@@ -1564,6 +1748,15 @@ export interface components {
             duration_min: number;
             /** Reserve Soc */
             reserve_soc?: number | null;
+        };
+        /** Befund */
+        Befund: {
+            /** Stufe */
+            stufe: string;
+            /** Titel */
+            titel: string;
+            /** Text */
+            text: string;
         };
         /** BinCorrection */
         BinCorrection: {
@@ -2700,6 +2893,28 @@ export interface components {
             energy_actual_kwh: number;
             /** Energy Error Pct */
             energy_error_pct: number | null;
+        };
+        /**
+         * GeleseneRechnung
+         * @description Was das Modell gelesen hat, nach Pruefung der Typen.
+         */
+        GeleseneRechnung: {
+            /** Anbieter */
+            anbieter?: string | null;
+            /** Von */
+            von?: string | null;
+            /** Bis */
+            bis?: string | null;
+            /** Kwh */
+            kwh?: number | null;
+            /** Arbeitspreis Ct Kwh */
+            arbeitspreis_ct_kwh?: number | null;
+            /** Grundpreis Eur Monat */
+            grundpreis_eur_monat?: number | null;
+            /** Brutto Eur */
+            brutto_eur?: number | null;
+            /** Netto Eur */
+            netto_eur?: number | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4723,6 +4938,20 @@ export interface components {
          * @enum {string}
          */
         ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "planned_pause" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
+        /** Rechnungsergebnis */
+        Rechnungsergebnis: {
+            gelesen: components["schemas"]["GeleseneRechnung"];
+            /** Mittlerer Preis Ct Kwh */
+            mittlerer_preis_ct_kwh: number | null;
+            /** Gemessen Kwh */
+            gemessen_kwh: number | null;
+            /** Abdeckung */
+            abdeckung: number | null;
+            /** Befunde */
+            befunde: components["schemas"]["Befund"][];
+            /** Zeilen Gesendet */
+            zeilen_gesendet: number;
+        };
         /**
          * ReiheOut
          * @description Eine Reihe im Rückblick: ihre Wertung über alles und je Vorlaufklasse.
@@ -5946,6 +6175,32 @@ export interface components {
             /** Data Since */
             data_since: string | null;
         };
+        /** Zuordnungsergebnis */
+        Zuordnungsergebnis: {
+            /** Zeilen */
+            zeilen: components["schemas"]["Zuordnungszeile"][];
+            /** Verworfen */
+            verworfen: string[];
+            /** Offen */
+            offen: string[];
+            /** Yaml */
+            yaml: string;
+            /** Zeilen Gesendet */
+            zeilen_gesendet: number;
+        };
+        /** Zuordnungszeile */
+        Zuordnungszeile: {
+            /** Schluessel */
+            schluessel: string;
+            /** Entitaet */
+            entitaet: string;
+            /** Einheit */
+            einheit: string;
+            /** Grund */
+            grund: string;
+            /** Yaml */
+            yaml: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -5973,6 +6228,145 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    zustand_api_v1_alfred_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlfredZustandOut"];
+                };
+            };
+        };
+    };
+    frage_api_v1_alfred_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlfredFrageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlfredAntwortOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    frage_mit_fortschritt_api_v1_alfred_ask_stream_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlfredFrageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rechnung_lesen_api_v1_alfred_rechnung_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rechnungsergebnis"];
+                };
+            };
+        };
+    };
+    zuordnung_vorschlagen_api_v1_alfred_zuordnung_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlfredZuordnungIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Zuordnungsergebnis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -1557,3 +1557,54 @@ class NachbetrachtungOut(Nachbetrachtung):
     #: gespart. `None`, wenn der Tag dafür zu wenig hergibt; `verschieben_de` sagt dann, warum.
     verschieben_eur: float | None = None
     verschieben_de: str = ""
+
+
+# --- Alfred (docs/ALFRED.md) ---------------------------------------------------------------------
+
+
+class AlfredWechselIn(BaseModel):
+    """Ein früherer Wechsel des Gesprächs. Ungeprüfte Eingabe aus dem Browser: Begrenzt werden Rolle,
+    Länge und - in `AlfredFrageIn` - die Zahl; der Dienst nimmt davon nur die letzten."""
+
+    wer: Literal["alfred", "nutzer"]
+    inhalt: str = Field(max_length=4000)
+
+
+class AlfredFrageIn(BaseModel):
+    frage: str = Field(min_length=1, max_length=1000)
+    #: Die Hilfetexte der Oberfläche zu dem Ort, an dem gefragt wurde. Die einzige zulässige Quelle
+    #: über die Bedienung; begrenzt, damit niemand den Systemtext und damit die Kosten aufbläht.
+    wissen: str = Field(default="", max_length=8000)
+    verlauf: list[AlfredWechselIn] = Field(default_factory=list, max_length=20)
+
+
+class AlfredVorschlagOut(BaseModel):
+    """Ein Vorschlag, noch nicht ausgeführt. `art` sagt, welcher Endpunkt ihn beim Drücken ausführt:
+    `schalten` → POST /control/actuators/{ziel}, `sollwert` → POST /rooms/{ziel}/setpoint."""
+
+    art: Literal["schalten", "sollwert"]
+    ziel: str | int
+    name: str
+    an: bool | None = None
+    alt: float | None = None
+    neu: float | None = None
+
+
+class AlfredAntwortOut(BaseModel):
+    bereit: bool
+    antwort: str
+    vorschlaege: list[AlfredVorschlagOut] = Field(default_factory=list)
+
+
+class AlfredZustandOut(BaseModel):
+    """Ob Alfred antworten kann, und an wen Fragen gehen (KI-Verordnung Art. 50)."""
+
+    bereit: bool
+    anbieter: str | None = None
+    modell: str | None = None
+
+
+class AlfredZuordnungIn(BaseModel):
+    """Eine eingefügte Entitätenliste aus Home Assistant (Entwicklerwerkzeuge → Zustände)."""
+
+    liste: str = Field(min_length=1, max_length=60_000)

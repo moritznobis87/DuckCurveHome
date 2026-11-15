@@ -1,0 +1,188 @@
+# Alfred
+
+Stand 15.11.2026. Alfred ist das Maskottchen aus dem Schwesterprojekt Duck Curve (dort
+`docs/alfred.md`) und hier der Helfer von Duck Curve Home: ein Knopf unten rechts, ein Panel
+darüber. Übernommen sind seine Entscheidungen, nicht sein Code. Die Werkzeuge sind andere, denn
+hier geht es um ein Haus und nicht um Projektbewertungen.
+
+| Datei | Rolle |
+|---|---|
+| `apps/api/src/dch_api/alfred/dienst.py` | Mistral-Anbindung, Systemtext, Werkzeugschleife mit ihren drei Grenzen |
+| `apps/api/src/dch_api/alfred/werkzeuge.py` | die einzige Stelle, an der Daten des Hauses zum Modell gelangen |
+| `apps/api/src/dch_api/alfred/leitfaeden.py` | Leitfäden für Auswertungsfragen |
+| `apps/api/src/dch_api/alfred/papiere.py` | Nachschlagen in den freigegebenen Methodenpapieren |
+| `apps/api/src/dch_api/alfred/rechnung.py` | Stromrechnungen anderer Anbieter lesen |
+| `apps/api/src/dch_api/alfred/zuordnung.py` | Sensorzuordnung für ein neues Haus vorschlagen |
+| `apps/api/src/dch_api/routers/alfred.py` | `/api/v1/alfred/*`, Tagesgrenze |
+| `apps/web/src/components/alfred/` | Panel, Strom-Leser, Hilfetexte, Tests |
+| `apps/api/tests/test_alfred.py` | 24 Prüfungen des Dienstes |
+
+## Was Alfred kann
+
+**Ohne Sprachmodell:** Er erklärt die Seite, auf der man steht, und sagt, was er kann. Das sind
+vorbereitete Texte, und nichts verlässt das Haus. Das Eingabefeld erscheint dann nicht. Ein Feld,
+das nichts beantwortet, ist schlimmer als keines.
+
+**Mit Sprachmodell** (`DCH_ALFRED_SCHLUESSEL` gesetzt, Anbieter Mistral):
+
+1. **Fragen an die eigenen Daten.** „Was hat die Wärmepumpe im Oktober gekostet?“, „Warum war der
+   letzte Monat teurer?“, „Folgt die Wärmepumpe der Anforderung?“ Alfred ruft dafür Werkzeuge auf
+   (Tabelle unten) und gibt deren Ergebnis wieder.
+2. **Wochenrückblick.** „Wie war die Woche?“ führt über das Werkzeug `wochenrueckblick` und den
+   gleichnamigen Leitfaden zu Verbrauch, PV, Autarkie, Kosten, Verschiebung und Auffälligkeiten.
+   Die Frage steht als Beispiel im Panel.
+3. **Rechnungen anderer Anbieter lesen.** Ein PDF hochladen. Alfred liest die Werte, und der Dienst
+   prüft sie fest gegen den eigenen Zähler. Siehe unten.
+4. **Einrichtung.** Eine Entitätenliste aus Home Assistant einfügen. Alfred schlägt die Zuordnung zu
+   den Messgrößen vor, und heraus kommt ein geprüfter YAML-Ausschnitt für `entities.yaml`.
+5. **Sprache.** Ein Mikrofonknopf neben dem Eingabefeld, wenn der Browser Spracherkennung kann
+   (Safari, Chrome). Die Erkennung übernimmt der Browser; bei Safari wertet Apple die Aufnahme aus,
+   und das Panel sagt das im Tooltip. Gesprochene Befehle wie „Mach das Terrassenlicht an“ werden
+   zu Vorschlägen und nicht zu Schaltungen.
+
+Gäste sehen nur die vorbereiteten Texte. Das BFF lässt für sie kein POST durch, das Panel blendet
+das Eingabefeld deshalb gar nicht erst ein.
+
+## Entscheidungen
+
+**Das Rechnen bleibt beim Dienst.** Jedes Werkzeug liest über das `Runtime`-Protokoll, also über
+dieselben Funktionen, die die Seiten füllen. Eine Zahl in Alfreds Antwort ist dieselbe wie auf dem
+Bildschirm. Das Modell wählt Werkzeuge und erklärt Ergebnisse, es rechnet nie selbst.
+
+**Was nie hinausgeht.** Alarmanlage, Tür- und Fensterkontakte, Haustür und Zutritte. Sie sagen, ob
+jemand zu Hause ist und ob das Haus offen steht. Für sie gibt es kein Werkzeug, und
+`werkzeuge.kompakt` streicht die Felder zusätzlich (`GESPERRT`), falls sie in einem anderen
+Ergebnis mitreisen. Ebenso wenig gehen der Standort des Hauses und interne Kennungen hinaus.
+Alles, was hinausgeht, läuft durch `werkzeuge.ausfuehren`. Wer wissen will, was Mistral erfährt,
+liest diese eine Datei.
+
+**Alfred schaltet nicht.** `schalten_vorschlagen` und `sollwert_vorschlagen` hängen einen
+Vorschlag an die Antwort. Geschaltet wird erst, wenn jemand auf „Ausführen“ drückt, und zwar über
+dieselben Endpunkte wie die Schalter der Seiten (`POST /control/actuators/{key}`,
+`POST /rooms/{id}/setpoint`), mit deren Prüfungen und mit dem Gerät als Urheber im Protokoll.
+Vorschlagbar sind nur die Aktoren in `SCHALTBAR` (Lichter, Kaffeemaschine) und Raumsollwerte
+innerhalb der Grenzen des Endpunkts. Wärmepumpe, Ofen, Speicher, Alarmanlage und Haustür stehen
+bewusst nicht darin. Dort entscheidet der Regler, und eine Schaltung aus einem Satz, den ein
+Sprachmodell formuliert hat, wäre eine Abkürzung an den Rückfallebenen vorbei. Ein Test hält fest,
+dass `SCHALTBAR` eine Teilmenge der Steuerung ist und die Wärmepumpenkontakte nicht enthält.
+
+**Die Vorschläge stehen neben dem Text, nicht darin.** Ein Vorschlag ist etwas, worauf man drückt.
+Stünde er im Fließtext, müsste die Oberfläche ihn aus einem formulierten Satz zurückgewinnen, und
+„meistens richtig“ ist für einen Knopf, der schaltet, zu wenig.
+
+**Die Wegbeschreibung kommt aus `AREAS`.** Welche Reiter es gibt, liest Alfred aus derselben Liste,
+aus der die Leiste gebaut wird (`hilfetexte.ts::wegweiser`). Im Schwesterprojekt waren zwei von
+vierzehn aus dem Kopf geschriebenen Hilfetexten falsch, und ein Modell erfindet plausible Knöpfe
+noch überzeugender. Die Seitentexte sagen deshalb nur, was eine Seite zeigt, und keine Knöpfe darin.
+Ein Test prüft, dass jeder Reiter einen Text hat und kein Text für eine Adresse existiert, die es
+nicht gibt.
+
+**Drei Grenzen, alle im Code.** `RUNDEN_MAX` = 3, `WERKZEUGE_MAX` = 8, `GESAMTZEIT_S` = 60. Ist
+eine erreicht, geht die nächste Anfrage ohne Werkzeugliste hinaus, und das Modell muss antworten.
+Es gibt also nie einen Abbruch, höchstens eine Antwort ohne die letzte Auskunft. Ein Aufruf mit
+denselben Argumenten läuft je Frage nur einmal. Jedes Ergebnis wird gerundet, lange Zeitreihen
+werden ausgedünnt, und es bleibt unter 9000 Zeichen.
+
+**Leitfäden für Auswertungsfragen.** Auf „warum war es teurer?“ kann ein Modell zwei Sätze
+antworten, die gut klingen und weder Menge noch Preis nennen. Ein Leitfaden schreibt vor, welche
+Werkzeuge die Frage braucht und was in der Antwort stehen muss. Kein Leitfaden fällt ein Urteil.
+
+| Leitfaden | Beantwortet |
+|---|---|
+| `warum_teurer` | Warum war ein Zeitraum teurer als ein anderer? |
+| `lohnt_verschieben` | Hat sich das Verschieben der Wärmepumpe gelohnt? |
+| `folgt_waermepumpe` | Folgt die Wärmepumpe der Anforderung? |
+| `stimmt_die_rechnung` | Passt die Rechnung zur eigenen Messung? |
+| `wochenrueckblick` | Wie war die Woche? |
+| `prognose_daneben` | Warum lag die Prognose daneben? |
+
+**Nachschlagen nur in einer Positivliste.** `papiere.PAPIERE` nennt die Methodenpapiere, die Alfred
+zitieren darf: Regelung, Wirkung der Anforderung, Nachbetrachtung, Ofen-Optimierung,
+PV-Abrechnung, Prognose und Wärmemodell. Betriebspapiere (DEPLOYMENT, CONFIGURATION,
+OPEN_QUESTIONS, TUEROEFFNUNG) sind nicht erreichbar, und ein neu angelegtes Papier ist es zunächst
+auch nicht. Kein RAG: Gezählt wird, wie viele Suchwörter in Überschrift (doppelt) und Text
+vorkommen. Das ist erklärbar und reicht für sechs Papiere.
+
+**Ein Anbieter, eine Form.** Mistral nimmt den Systemtext als erste Nachricht und den Schlüssel als
+Bearer, OpenAI ebenso; andere kompatible Anbieter erreicht man über `DCH_ALFRED_URL`. Eine zweite
+Form (etwa Anthropic) kommt dazu, wenn sie gebraucht wird. Die Oberfläche kennt keinen Anbieter.
+Sie zeigt nur seinen Namen, weil Art. 50 der KI-Verordnung verlangt, dass eine KI-Antwort als
+solche erkennbar ist und klar ist, wohin die Daten gehen. Jede Modellantwort trägt die Marke
+„KI-Antwort“.
+
+**Das Vorgabemodell ist nicht das kleinste.** Im Schwesterprojekt erfand `mistral-small` auf eine
+Bedienfrage einen Reiter und ein Feld, die es nicht gibt. Vorgabe ist deshalb
+`mistral-medium-latest`. Der Aufpreis liegt bei Bruchteilen eines Cents je Frage.
+
+**Der Gesprächsverlauf lebt im Browser.** Er geht mit jeder Frage mit, gespeichert wird er
+nirgends, und wer das Panel schließt, fängt neu an. Der Dienst nimmt die letzten
+`DCH_ALFRED_VERLAUF_MAX` Wechsel, schneidet eine führende Alfred-Zeile ab (ein Gespräch fängt beim
+Nutzer an) und schickt frühere Werkzeugergebnisse nicht erneut mit.
+
+**Eine Tagesgrenze im Prozess.** Je Gerät `DCH_ALFRED_FRAGEN_PRO_TAG`. Sie soll die Rechnung vor
+einer Schleife schützen und rechnet nichts ab. Geprüft wird vor dem ersten Byte, weil ein
+begonnener Strom seinen Status nicht mehr ändern kann.
+
+**Kein lokales Modell.** Auf einem Raspberry Pi antwortete selbst ein 8B-Modell mit wenigen Wörtern
+je Sekunde, und vor dem ersten Wort lägen Minuten. Zudem liefe es neben der Regelung der
+Wärmepumpe. Wer lokal will, stellt ein eigenes Gerät mit schnellem Speicher hin und trägt dessen
+OpenAI-kompatible Adresse in `DCH_ALFRED_URL` ein; der Code bleibt derselbe.
+
+## Rechnungen anderer Anbieter
+
+Die Tibber-Prüfung (`application/tibber_invoice.py`) liest mit festen Regeln und irrt nicht. Für
+jeden anderen Anbieter müsste man einen eigenen Leser bauen. Hier liest das Modell, und alles
+danach ist wieder fest:
+
+1. **Was das Haus verlässt, ist eine Positivliste.** `relevante_zeilen` behält nur Zeilen mit einer
+   Ziffer und einem Schlüsselwort (kWh, ct, €, Arbeitspreis, Zeitraum …). `schwaerzen` tilgt darin
+   IBAN, Mailadressen, Telefonnummern und Ziffernfolgen ab acht Stellen (Kunden-, Zähler- und
+   Marktlokationsnummern). Name und Anschrift stehen in Zeilen ohne Schlüsselwort und gehen gar
+   nicht erst mit. Das geschieht deterministisch gegen Muster und nicht durch ein Modell, das
+   gelegentlich einen Namen übersieht, ohne dass jemand erfährt welchen.
+2. Das Modell antwortet mit einem festen JSON-Objekt. `lesen` prüft jedes Feld, und Unlesbares
+   wird `None` statt falsch.
+3. `pruefen` rechnet den mittleren Preis, holt den eigenen Netzbezug für den Zeitraum (ganze Monate
+   auf einmal, Ränder tageweise) und legt Befunde an: Abweichung über 5 %, lückenhafte Messung,
+   unplausibler Preis.
+
+Gespeichert wird nichts. Eine Ablage bräuchte eine eigene Entscheidung darüber, was darin stehen
+darf.
+
+## Einrichtung: Sensoren zuordnen
+
+Für ein neues Haus ist `entities.yaml` die mühsamste Stelle. Alfred schlägt aus einer eingefügten
+Entitätenliste vor, welche Entität welche Messgröße ist. `zuordnung.pruefen` verwirft jede Zeile,
+deren Schlüssel nicht im Katalog steht, deren Entität nicht in der Liste vorkommt, deren Einheit
+nicht passt oder die einen Schlüssel doppelt belegt. Heraus kommt ein YAML-Ausschnitt zum Prüfen
+und Kopieren. Geschrieben wird nichts.
+
+Im Katalog stehen nur Messgrößen. Aktoren, Alarmanlage und Kontakte fehlen absichtlich: Eine
+falsche Zuordnung dort schaltet etwas Falsches oder meldet ein offenes Fenster als geschlossen.
+
+## Werkzeuge
+
+| Werkzeug | Liest |
+|---|---|
+| `jetzt` | Live-Zustand ohne Alarm |
+| `energiebilanz` | `energy_summary` |
+| `waerme` / `waermebilanz` | `heat_report` / `heat_balance` |
+| `verschiebung` | `shift_report` |
+| `wallbox` / `pv_abrechnung` | `ev_report` / `pv_report` |
+| `nachbetrachtung` | `nachbetrachtung` |
+| `fahrplan` | aktueller Plan |
+| `waermepumpe` / `kontaktwirkung` | Bus der Wärmepumpe / ob sie der Anforderung folgt |
+| `raeume` | Räume ohne Fensterkontakte |
+| `entscheidungen` | letzte Regler-Entscheidungen |
+| `prognoseguete` / `tagesdiagnose` | Prognose gegen Ist / Tag als Text |
+| `rechnungen` / `rechnung` | geprüfte Tibber-Rechnungen, ohne Rechnungsnummer nach außen |
+| `wochenrueckblick` | Summen der Woche aus Bilanz, Wärme, Verschiebung, Kontaktwirkung |
+| `leitfaden` / `nachschlagen` | siehe oben |
+| `schalten_vorschlagen` / `sollwert_vorschlagen` | schreiben nichts |
+
+## Einrichten
+
+1. Bei Mistral (console.mistral.ai) einen API-Schlüssel anlegen.
+2. In Railway beim Service **api** `DCH_ALFRED_SCHLUESSEL` setzen. Mehr ist nicht nötig, denn
+   Anbieter und Modell haben Vorgaben.
+3. Neu ausrollen. `GET /api/v1/alfred/status` meldet dann `bereit: true, anbieter: "Mistral"`.

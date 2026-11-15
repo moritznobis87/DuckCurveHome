@@ -385,3 +385,13 @@
   .anlage-buehne::after { content: "zur Seite wischen: Strom, Erzeuger, Speicher, Verbraucher  ›"; display: block; padding: 9px 12px 11px; text-align: center; font-size: 12.5px; color: var(--text-3); }
   .anlage-fuss { grid-template-columns: minmax(0, 1fr); padding: 0; }
 }
+
+/* Alfred über der Bereichsleiste statt auf ihr. */
+@media (max-width: 720px) {
+  .alfred { right: 14px; bottom: calc(86px + env(safe-area-inset-bottom)); }
+  .alfred-button { width: 48px; height: 48px; }
+  .alfred-feld { max-height: calc(100dvh - 200px); }
+  /* Die Beispielfragen in einer Zeile zum Wischen statt in fünf Zeilen untereinander. */
+  .alfred-vorschlaege { flex-wrap: nowrap; overflow-x: auto; margin: 0 -14px; padding: 0 14px; scrollbar-width: none; }
+  .alfred-vorschlaege button { flex: 0 0 auto; }
+}

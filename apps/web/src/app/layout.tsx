@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 // Die Handy-Ansicht ist eine eigene Schicht und kommt zuletzt, damit sie die Grundstile schlägt.
 import "@/styles/handy.css";
+import { Alfred } from "@/components/alfred/Alfred";
 
 export const metadata: Metadata = {
   title: "Duck Curve Home",
@@ -30,7 +31,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de">
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Auf jeder Seite derselbe Helfer; auf /locked und /pair blendet er sich selbst aus. */}
+        <Alfred />
+      </body>
     </html>
   );
 }
