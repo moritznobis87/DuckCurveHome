@@ -122,6 +122,9 @@ export const TEXTE = {
     "Die Spracheingabe übernimmt der Browser; je nach Browser wertet Apple oder Google die Aufnahme aus. An Duck Curve geht nur der erkannte Text. Du kannst auch die Ente gedrückt halten.",
   haltenLaeuft: "Ich höre zu … Lass die Ente los, wenn du fertig bist.",
   sprachWartet: "Einen Moment …",
+  sprachGehoert: "Ich höre: „{text}“",
+  sprachWiederholt:
+    "Die Spracherkennung klappt hier gerade nicht. Tipp ins Feld und nutz das Mikrofon der Tastatur. Die kleine Zeile darunter sagt, woran es hängt.",
   sprachNichtsGehoert: "Ich habe nichts verstanden. Halte die Ente gedrückt, solange du sprichst, und lass dann los.",
   sprachNichtErlaubt:
     "Ich darf das Mikrofon nicht benutzen. Erlaube es in den Einstellungen des Browsers, oder tipp ins Feld und nutz das Mikrofon der Tastatur.",

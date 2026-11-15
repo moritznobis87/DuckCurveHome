@@ -30,6 +30,8 @@ export interface Nachricht {
   quelle?: "modell";
   /** Ein Verweis unter dem Text, etwa auf die volle Auswertung einer Rechnung. */
   link?: { href: string; text: string };
+  /** Klein unter dem Text: was die Spracherkennung getan hat, wenn sie keinen Text lieferte. */
+  technik?: string;
 }
 
 type Zustand = { bereit: boolean; anbieter: string | null };
@@ -81,7 +83,9 @@ type Erkennung = {
   interimResults: boolean;
   maxAlternatives: number;
   onstart: (() => void) | null;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onaudiostart: (() => void) | null;
+  onspeechstart: (() => void) | null;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal?: boolean }> }) => void) | null;
   onend: (() => void) | null;
   onerror: ((e: { error?: string }) => void) | null;
   start: () => void;
@@ -105,6 +109,11 @@ export const HALTEN_MS = 350;
  *  auf einem Server; danach gilt die Erkennung als stumm. Ohne diese Wache bliebe „Ich höre zu"
  *  stehen, wo die Erkennung zwar angeboten wird, aber nie antwortet (iOS-Web-App vom Home-Bildschirm). */
 export const WACHE_MS = 5000;
+/** Liegt beim Loslassen schon ein Zwischentext vor, wartet Alfred nur so lange auf den endgültigen.
+ *  Safari unter iOS liefert ihn nicht immer, dann gilt der letzte Zwischentext. */
+export const NACHLAUF_MS = 1500;
+/** Länger hört Alfred nie zu, auch wenn das Loslassen nicht ankommt. */
+export const HOEREN_MAX_MS = 30_000;
 
 /** Ein Zuhören, vom Start bis zum Text oder zur Meldung. Lebt in einem Ref, weil die Ereignisse
  *  der Erkennung nach dem Rendern eintreffen, in dem sie begonnen hat. */
@@ -113,10 +122,41 @@ type Zuhoeren = {
   art: "halten" | "knopf";
   /** Die Erkennung hat gemeldet, dass sie hört. Vorher läuft womöglich die Frage nach dem Mikrofon. */
   gestartet: boolean;
+  /** Das Mikrofon nimmt auf (`audiostart`), und es wurde Sprache erkannt (`speechstart`). */
+  ton: boolean;
+  sprache: boolean;
+  /** Der bisher erkannte Text, auch ein Zwischenstand. Er wird gefragt, wenn kein endgültiger kommt. */
+  text: string;
   fehler: string | null;
   fertig: boolean;
+  /** Der Finger hat die Ente verlassen oder das Mikrofon wurde erneut gedrückt. */
+  losgelassen: boolean;
+  /** Das System hat die Berührung übernommen (`pointercancel`), der Finger lag womöglich noch auf. */
+  abgebrochen: boolean;
+  beginn: number;
   wache: ReturnType<typeof setTimeout> | null;
+  hoechstens: ReturnType<typeof setTimeout> | null;
 };
+
+/** Läuft die Seite als Web-App vom Home-Bildschirm? Dort stellt Safari die Erkennung womöglich
+ *  nicht bereit (WebKit-Fehler 225298). */
+function alsWebApp(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia?.("(display-mode: standalone)").matches === true || (navigator as { standalone?: boolean }).standalone === true;
+}
+
+/** Eine Zeile dazu, was die Erkennung getan hat. Ohne Entwicklerwerkzeuge am Telefon ist das der
+ *  einzige Weg zu sehen, woran es hängt: angelaufen, Ton, Sprache, Text, Fehler, Dauer. */
+export function technikZeile(z: Pick<Zuhoeren, "art" | "gestartet" | "ton" | "sprache" | "text" | "fehler" | "losgelassen" | "abgebrochen" | "beginn">, jetzt: number, webApp: boolean): string {
+  const ja = (b: boolean) => (b ? "✓" : "–");
+  const teile = [`Start ${ja(z.gestartet)}`, `Ton ${ja(z.ton)}`, `Sprache ${ja(z.sprache)}`, `Text ${ja(z.text !== "")}`];
+  if (z.fehler) teile.push(`Fehler ${z.fehler}`);
+  teile.push(`${((jetzt - z.beginn) / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })}\u00a0s`);
+  if (z.art === "halten") teile.push(z.losgelassen ? "nach dem Loslassen" : "vor dem Loslassen");
+  if (z.abgebrochen) teile.push("Berührung vom System übernommen");
+  teile.push(webApp ? "Web-App" : "Browser");
+  return teile.join(" · ");
+}
 
 /** Was Alfred sagt, wenn ein Zuhören ohne Text endet. `aborted` hat Alfred selbst ausgelöst. */
 function sprachMeldung(fehler: string | null): string | null {
@@ -143,6 +183,8 @@ export function Alfred() {
   //: wartend auf den erkannten Text.
   const [ohr, setOhr] = useState<"halten" | "knopf" | "wartet" | null>(null);
   const hoert = ohr !== null;
+  //: Was die Erkennung bisher verstanden hat, live im Panel: So sieht man, ob sie überhaupt hört.
+  const [gehoert, setGehoert] = useState("");
   const [werkzeug, setWerkzeug] = useState<"rechnung" | "zuordnung" | null>(null);
   const [liste, setListe] = useState("");
   const [zuordnung, setZuordnung] = useState<Zuordnungsergebnis | null>(null);
@@ -176,10 +218,21 @@ export function Alfred() {
     if (z.fertig) return;
     z.fertig = true;
     if (z.wache) clearTimeout(z.wache);
+    if (z.hoechstens) clearTimeout(z.hoechstens);
     if (zuhoeren.current === z) zuhoeren.current = null;
     if (!lebt.current) return;
     setOhr(null);
-    if (meldung) setNachrichten((bisher) => [...bisher, { kennung: naechsteKennung(), wer: "alfred", inhalt: meldung }]);
+    setGehoert("");
+    if (!meldung) return;
+    const technik = technikZeile(z, Date.now(), alsWebApp());
+    setNachrichten((bisher) => {
+      const letzte = bisher.at(-1);
+      // Derselbe Fehler noch einmal: einmal deutlicher werden, danach nichts mehr stapeln. Die
+      // Technikzeile zeigt dann den jüngsten Versuch.
+      if (letzte?.wer === "alfred" && letzte.inhalt === TEXTE.sprachWiederholt) return [...bisher.slice(0, -1), { ...letzte, technik }];
+      const inhalt = letzte?.wer === "alfred" && letzte.inhalt === meldung ? TEXTE.sprachWiederholt : meldung;
+      return [...bisher, { kennung: naechsteKennung(), wer: "alfred", inhalt, technik }];
+    });
   }, []);
 
   /** Bricht ein laufendes Zuhören ab, ohne dass etwas gefragt wird: Panel zu, Komponente weg. */
@@ -328,26 +381,46 @@ export function Alfred() {
     const e = erkennungBauen();
     if (!e) return sagen(TEXTE.sprachOhneBrowser);
     e.lang = "de-DE";
-    e.interimResults = false;
+    // Zwischenergebnisse an: Safari unter iOS meldet einen Text oft nur als Zwischenstand und nie
+    // als endgültig. Ohne sie bliebe dort jede Frage leer.
+    e.interimResults = true;
     e.maxAlternatives = 1;
-    const z: Zuhoeren = { erkennung: e, art, gestartet: false, fehler: null, fertig: false, wache: null };
+    const z: Zuhoeren = {
+      erkennung: e, art, gestartet: false, ton: false, sprache: false, text: "", fehler: null, fertig: false,
+      losgelassen: false, abgebrochen: false, beginn: Date.now(), wache: null, hoechstens: null,
+    };
     e.onstart = () => {
       z.gestartet = true;
       // Am Android-Telefon ein kurzes Zucken: Jetzt sprechen. iOS kennt das nicht.
       if (art === "halten" && "vibrate" in navigator) navigator.vibrate(20);
     };
+    e.onaudiostart = () => {
+      z.ton = true;
+    };
+    e.onspeechstart = () => {
+      z.sprache = true;
+    };
     e.onresult = (ereignis) => {
-      const text = (ereignis.results[0]?.[0]?.transcript ?? "").trim();
-      if (!text || z.fertig) return;
-      beenden(z, null);
-      void jetzt.current.fragen(text);
+      if (z.fertig) return;
+      const ergebnisse = Array.from(ereignis.results);
+      const text = ergebnisse.map((r) => r[0]?.transcript ?? "").join(" ").replace(/\s+/g, " ").trim();
+      if (text) {
+        z.text = text;
+        setGehoert(text);
+      }
+      if (z.text && ergebnisse.at(-1)?.isFinal) return textFragen(z);
+      // Nach dem Loslassen kam noch ein Zwischentext: nicht mehr lange auf den endgültigen warten.
+      if (z.losgelassen) wacheStellen(z);
     };
     e.onerror = (ereignis) => {
       z.fehler = ereignis?.error ?? "unbekannt";
     };
-    e.onend = () => beenden(z, sprachMeldung(z.fehler));
+    // Endet die Erkennung mit einem Zwischentext, gilt er. Safari endet unter iOS auch so.
+    e.onend = () => (z.text ? textFragen(z) : beenden(z, sprachMeldung(z.fehler)));
     zuhoeren.current = z;
     setOhr(art);
+    setGehoert("");
+    z.hoechstens = setTimeout(() => zuhoerenBeenden(), HOEREN_MAX_MS);
     try {
       e.start();
     } catch {
@@ -355,11 +428,34 @@ export function Alfred() {
     }
   };
 
+  /** Fragt mit dem bisher erkannten Text, auch einem Zwischenstand, und gibt das Mikrofon frei. */
+  const textFragen = (z: Zuhoeren) => {
+    const text = z.text;
+    beenden(z, null);
+    z.erkennung.abort();
+    void jetzt.current.fragen(text);
+  };
+
+  /** Die Wache nach dem Loslassen: Liegt schon ein Zwischentext vor, gilt er nach kurzer Zeit.
+   *  Ohne Text gilt die Erkennung nach längerer Zeit als stumm. */
+  const wacheStellen = (z: Zuhoeren) => {
+    if (z.wache) clearTimeout(z.wache);
+    z.wache = setTimeout(
+      () => {
+        if (z.text) return textFragen(z);
+        beenden(z, TEXTE.sprachKeineAntwort);
+        z.erkennung.abort();
+      },
+      z.text ? NACHLAUF_MS : WACHE_MS,
+    );
+  };
+
   /** Hört auf zuzuhören: Ente losgelassen oder Mikrofon erneut gedrückt. Der Text kommt danach. */
   const zuhoerenBeenden = () => {
     const z = zuhoeren.current;
-    if (!z || z.fertig || z.wache) return;
-    if (!z.gestartet) {
+    if (!z || z.fertig || z.losgelassen) return;
+    z.losgelassen = true;
+    if (!z.gestartet && !z.text) {
       // Nie angelaufen: Die Frage nach dem Mikrofon steht noch offen, oder die Erkennung wird nur
       // angeboten und antwortet nicht. Warten hilft in keinem der beiden Fälle.
       beenden(z, TEXTE.sprachNichtAngelaufen);
@@ -368,10 +464,7 @@ export function Alfred() {
     }
     // Wache und Zustand vor stop(): Endet die Erkennung sofort, räumt `beenden` beides wieder ab.
     setOhr("wartet");
-    z.wache = setTimeout(() => {
-      beenden(z, TEXTE.sprachKeineAntwort);
-      z.erkennung.abort();
-    }, WACHE_MS);
+    wacheStellen(z);
     z.erkennung.stop();
   };
 
@@ -418,6 +511,26 @@ export function Alfred() {
       haltenUhr.current = null;
     }
     if (zuhoeren.current?.art === "halten") zuhoerenBeenden();
+  };
+
+  /** Das System hat die Berührung übernommen (iOS tut das etwa, wenn der Finger verrutscht und es
+   *  ein Scrollen vermutet). Der Finger liegt dann womöglich noch auf der Ente: Alfred hört weiter
+   *  zu, bis er sich hebt. Die Touch-Ereignisse kommen auch nach `pointercancel` noch an. */
+  const enteAbgebrochen = () => {
+    if (haltenUhr.current) {
+      clearTimeout(haltenUhr.current);
+      haltenUhr.current = null;
+    }
+    const z = zuhoeren.current;
+    if (z?.art !== "halten") return;
+    z.abgebrochen = true;
+    const heben = () => {
+      window.removeEventListener("touchend", heben);
+      window.removeEventListener("pointerup", heben);
+      if (zuhoeren.current === z) zuhoerenBeenden();
+    };
+    window.addEventListener("touchend", heben);
+    window.addEventListener("pointerup", heben);
   };
 
   const enteKlick = () => {
@@ -516,6 +629,7 @@ export function Alfred() {
               <p key={n.kennung} className={`alfred-sprechblase ${n.wer === "alfred" ? "von-alfred" : "von-nutzer"}${n.quelle === "modell" ? " ki" : ""}`}>
                 {n.quelle === "modell" ? <span className="alfred-ki">{TEXTE.kiMarke}</span> : null}
                 {mitFettdruck(n.inhalt)}
+                {n.technik ? <span className="alfred-technik">{n.technik}</span> : null}
                 {n.link ? (
                   // Das Panel geht zu, damit es die Auswertung nicht verdeckt; das Gespräch bleibt.
                   <Link className="alfred-link" href={n.link.href} onClick={() => setOffen(false)}>
@@ -672,7 +786,15 @@ export function Alfred() {
 
           {laeuft || hoert ? (
             <p className="alfred-schritt" aria-live="polite">
-              {ohr === "halten" ? TEXTE.haltenLaeuft : ohr === "wartet" ? TEXTE.sprachWartet : hoert ? TEXTE.mikrofonLaeuft : (schritt ?? TEXTE.frageLaeuft)}
+              {hoert && gehoert
+                ? ersetze(TEXTE.sprachGehoert, { text: gehoert })
+                : ohr === "halten"
+                  ? TEXTE.haltenLaeuft
+                  : ohr === "wartet"
+                    ? TEXTE.sprachWartet
+                    : hoert
+                      ? TEXTE.mikrofonLaeuft
+                      : (schritt ?? TEXTE.frageLaeuft)}
             </p>
           ) : null}
 
@@ -689,7 +811,7 @@ export function Alfred() {
         onClick={enteKlick}
         onPointerDown={enteDruecken}
         onPointerUp={enteLoslassen}
-        onPointerCancel={enteLoslassen}
+        onPointerCancel={enteAbgebrochen}
         onContextMenu={(e) => {
           if (kannHalten) e.preventDefault();
         }}

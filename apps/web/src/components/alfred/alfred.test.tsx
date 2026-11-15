@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AREAS } from "@/lib/areas";
-import { Alfred, HALTEN_MS, WACHE_MS, rechnungZusammenfassung, tibberZusammenfassung } from "./Alfred";
+import { Alfred, HALTEN_MS, NACHLAUF_MS, WACHE_MS, rechnungZusammenfassung, technikZeile, tibberZusammenfassung } from "./Alfred";
 import { SEITEN, TEXTE, ortBestimmen, wegweiser, wissen } from "./hilfetexte";
 import { schrittText, stromLesen, verlaufFuerServer, vorschlagAenderung, vorschlagAufruf, vorschlagText } from "./strom";
 
@@ -276,7 +276,9 @@ class FalscheErkennung {
   interimResults = true;
   maxAlternatives = 0;
   onstart: (() => void) | null = null;
-  onresult: ((e: { results: { transcript: string }[][] }) => void) | null = null;
+  onaudiostart: (() => void) | null = null;
+  onspeechstart: (() => void) | null = null;
+  onresult: ((e: { results: ({ transcript: string }[] & { isFinal?: boolean })[] }) => void) | null = null;
   onend: (() => void) | null = null;
   onerror: ((e: { error?: string }) => void) | null = null;
   start = vi.fn();
@@ -287,6 +289,8 @@ class FalscheErkennung {
   }
 }
 const letzte = () => FalscheErkennung.alle.at(-1)!;
+/** Ein Ergebnis der Erkennung; ohne `final` ein Zwischenstand. */
+const ergebnis = (transcript: string, final = false) => ({ results: [Object.assign([{ transcript }], { isFinal: final })] });
 
 describe("Halten zum Sprechen", () => {
   const fetchMock = vi.fn();
@@ -459,6 +463,72 @@ describe("Halten zum Sprechen", () => {
     expect(screen.getByText(TEXTE.sprachOhneBrowser)).toBeInTheDocument();
   });
 
+  it("Safari unter iOS: Ein Zwischentext erscheint live und gilt kurz nach dem Loslassen, auch ohne Ende", async () => {
+    render(<Alfred />);
+    await halten();
+    const e = letzte();
+    expect(e.interimResults).toBe(true);
+    act(() => {
+      e.onstart?.();
+      e.onresult?.(ergebnis("Mach das"));
+    });
+    expect(screen.getByText("Ich höre: „Mach das“")).toBeInTheDocument();
+    act(() => e.onresult?.(ergebnis("Mach das Terrassenlicht an")));
+    loslassen();
+    expect(gefragt).toEqual([]);
+    // Kein endgültiges Ergebnis, kein Ende: Nach dem Nachlauf gilt der letzte Zwischentext.
+    await act(() => vi.advanceTimersByTimeAsync(NACHLAUF_MS));
+    await screen.findByText("vorgeschlagen");
+    expect(gefragt).toEqual(["Mach das Terrassenlicht an"]);
+    expect(e.abort).toHaveBeenCalled();
+  });
+
+  it("ein endgültiges Ergebnis fragt sofort, ohne auf das Loslassen zu warten", async () => {
+    render(<Alfred />);
+    await halten();
+    await act(async () => {
+      letzte().onstart?.();
+      letzte().onresult?.(ergebnis("Wie war die Woche?", true));
+    });
+    await screen.findByText("vorgeschlagen");
+    expect(gefragt).toEqual(["Wie war die Woche?"]);
+    // Das Loslassen danach fragt nicht noch einmal.
+    loslassen();
+    expect(gefragt).toHaveLength(1);
+  });
+
+  it("übernimmt das System die Berührung, hört Alfred weiter zu, bis der Finger sich hebt", async () => {
+    render(<Alfred />);
+    await halten();
+    const e = letzte();
+    act(() => e.onstart?.());
+    fireEvent.pointerCancel(ente(), { pointerId: 1, pointerType: "touch" });
+    expect(e.stop).not.toHaveBeenCalled();
+    expect(screen.getByText(TEXTE.haltenLaeuft)).toBeInTheDocument();
+    fireEvent.touchEnd(window);
+    expect(e.stop).toHaveBeenCalledOnce();
+    // Kam nichts an, steht in der Technikzeile, dass das System die Berührung übernommen hatte.
+    act(() => e.onend?.());
+    expect(screen.getByText(TEXTE.sprachNichtsGehoert)).toBeInTheDocument();
+    expect(screen.getByText(/Berührung vom System übernommen/)).toBeInTheDocument();
+  });
+
+  it("derselbe Fehler stapelt sich nicht: einmal deutlicher, dann nur die Technikzeile neu", async () => {
+    render(<Alfred />);
+    for (let i = 0; i < 3; i++) {
+      await halten();
+      act(() => {
+        letzte().onstart?.();
+        letzte().onaudiostart?.();
+      });
+      loslassen();
+      act(() => letzte().onend?.());
+    }
+    expect(screen.getAllByText(TEXTE.sprachNichtsGehoert)).toHaveLength(1);
+    expect(screen.getAllByText(TEXTE.sprachWiederholt)).toHaveLength(1);
+    expect(screen.getAllByText(/Start ✓ · Ton ✓ · Sprache – · Text –/)).toHaveLength(2);
+  });
+
   it("Gäste halten nicht: Die Ente öffnet nur das Panel", async () => {
     rolle = "guest";
     render(<Alfred />);
@@ -467,6 +537,16 @@ describe("Halten zum Sprechen", () => {
     expect(FalscheErkennung.alle).toHaveLength(0);
     loslassen();
     expect(screen.getByRole("dialog", { name: TEXTE.name })).toBeInTheDocument();
+  });
+});
+
+describe("Technikzeile", () => {
+  it("sagt, wie weit die Erkennung kam", () => {
+    const z = { art: "halten" as const, gestartet: true, ton: true, sprache: false, text: "", fehler: "no-speech", losgelassen: true, abgebrochen: false, beginn: 1000 };
+    expect(technikZeile(z, 2800, true)).toBe("Start ✓ · Ton ✓ · Sprache – · Text – · Fehler no-speech · 1,8\u00a0s · nach dem Loslassen · Web-App");
+    expect(technikZeile({ ...z, art: "knopf", fehler: null, abgebrochen: true }, 1500, false)).toBe(
+      "Start ✓ · Ton ✓ · Sprache – · Text – · 0,5\u00a0s · Berührung vom System übernommen · Browser",
+    );
   });
 });
 
