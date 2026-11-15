@@ -116,7 +116,10 @@ def test_die_zeilen_zum_abfragen_fragen_nur_und_sind_zugeordnet() -> None:
         for z in (ADDON / "aerotop_abfragen.csv").read_text(encoding="utf-8").splitlines()
         if z and not z.startswith("#")
     ]
-    assert len(zeilen) == 5
+    # Fünf Größen der Maschine und (ab 0.4.0) zwölf Einstellungen des Reglers, diese selten.
+    assert len(zeilen) == 17
+    assert sum(1 for z in zeilen if z[0] == "r9") == 12
+    assert all(z[2].startswith("e_") and z[5] == "18" for z in zeilen if z[0] == "r9")
     for spalten in zeilen:
         assert re.fullmatch(r"r[1-9]", spalten[0]), spalten[0]
         assert spalten[5] in {"18", "1e"} and spalten[6] == "2000"
@@ -225,7 +228,7 @@ def test_mit_abfragen_fragt_ebusd_und_kennt_keine_zeile_zum_stellen(tmp_path: Pa
     # Die fremde Zeile mit derselben Kennung wie eine eigene Frage ist gewichen ("duplicate ID").
     fremd = (aktiv / "fremd.csv").read_text(encoding="utf-8")
     assert "0601" not in fremd and "ca46" in fremd
-    assert arten(aktiv / "aerotop_abfragen.csv") == ["r1", "r1", "r1", "r2", "r2"]
+    assert arten(aktiv / "aerotop_abfragen.csv") == ["r1", "r1", "r1", "r2", "r2"] + ["r9"] * 12
     # Die Quelle bleibt, wie sie war.
     assert (tmp_path / "lokal" / "fremd.csv").read_text(encoding="utf-8") == FREMD
 

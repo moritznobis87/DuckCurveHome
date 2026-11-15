@@ -60,6 +60,20 @@ SERIES = (
     "heat_pump_heater_code",  # elektrische Zusatzheizung (1c45): laut Bus-Beschreibung 1 an
     "heat_pump_compressor_a",  # Strom des Verdichters in Ampere (714f)
     "heat_pump_fan_speed",  # Drehzahl des Lüfters (6e4f), Einheit nicht belegt
+    # Die Einstellungen des Reglers, gelesen ab Add-on 0.4.0 (`application/regler.py`). Sie
+    # ändern sich selten; der Verlauf belegt, wann welche Einstellung galt.
+    "heat_pump_set_slope",
+    "heat_pump_set_offset_k",
+    "heat_pump_set_flow_max_c",
+    "heat_pump_set_flow_min_c",
+    "heat_pump_set_flow_fixed_c",
+    "heat_pump_set_curve_type",
+    "heat_pump_set_room_day_c",
+    "heat_pump_set_room_night_c",
+    "heat_pump_set_dhw_comfort_c",
+    "heat_pump_set_dhw_eco_c",
+    "heat_pump_set_dhw_mode",
+    "heat_pump_set_silent",
     # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
     # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
     "stove_state",  # Zustandscode der Maestro-Firmware

@@ -23,3 +23,19 @@ r1,energymgr,ventil_ww,Umschaltventil Warmwasser oder Heizung,,18,2000,0601,,s,I
 r1,energymgr,heizstab,Elektrische Zusatzheizung,,18,2000,1c45,,s,IGN:1,,,,an,s,UCH,,,
 r2,heatpump,verdichter_strom,Strom des Verdichters,,1e,2000,714f,,s,IGN:1,,,,strom_a,s,UIN,10,A,
 r2,heatpump,luefter,Drehzahl des Luefters,,1e,2000,6e4f,,s,IGN:1,,,,drehzahl,s,UIN,,,
+# Ab 0.4.0: die Einstellungen des Reglers, nur gelesen. Sie aendern sich selten und sind
+# deshalb selten dran (`r9`). Kennungen und Zahlenformate aus der Bus-Beschreibung der
+# Ariston-Gruppe (Zone 1 und Warmwasser); im Haus zu pruefen, indem jemand die Seite "Regler"
+# mit dem Bediengeraet vergleicht. Auch hier gilt: nur Fragen, keine Zeile zum Stellen.
+r9,energymgr,e_steilheit,Heizkurve Steilheit,,18,2000,6a71,,s,IGN:1,,,,wert,s,UIN,100,,
+r9,energymgr,e_verschiebung,Heizkurve Verschiebung,,18,2000,6471,,s,IGN:1,,,,wert,s,SCH,10,K,
+r9,energymgr,e_vorlauf_max,Vorlauf hoechstens,,18,2000,6071,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_vorlauf_min,Vorlauf mindestens,,18,2000,6171,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_vorlauf_fest,Vorlauf fest,,18,2000,6571,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_heizkurve_art,Art der Vorlaufregelung,,18,2000,c079,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_raum_tag,Raum Tag,,18,2000,6271,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_raum_nacht,Raum Nacht,,18,2000,6371,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_ww_komfort,Warmwasser Komfort,,18,2000,6126,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_ww_spar,Warmwasser Spar,,18,2000,6226,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_ww_art,Warmwasser Betriebsart,,18,2000,c028,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_fluester,Fluestermodus,,18,2000,0320,,s,IGN:1,,,,wert,s,UCH,,,

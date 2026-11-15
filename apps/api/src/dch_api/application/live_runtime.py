@@ -31,6 +31,7 @@ from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
+from dch_api.application import regler as regler_logic
 from dch_api.application import reglerkennzahl as kennzahl_logic
 from dch_api.application import room_log as room_log_logic
 from dch_api.application import waermepumpe as wp_logic
@@ -105,6 +106,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    ReglerEinstellungenOut,
     ReglerKennzahlenOut,
     RoomEffectOut,
     RoomHistoryOut,
@@ -1312,6 +1314,14 @@ class LiveRuntime:
         aus = kennzahl_logic.zusammensetzen(now, tage, zeilen)
         self._kennzahlen[tage] = aus
         return aus
+
+    async def regler_einstellungen(self) -> ReglerEinstellungenOut:
+        """Was am Regler eingestellt ist, aus den zuletzt über den Bus gelesenen Werten."""
+        now = self.now
+        return regler_logic.zusammensetzen(
+            now=now,
+            mess=lambda key: self.live.measurement(key, now, regler_logic.STALE_S),
+        )
 
     async def betrieb(self, tage: int) -> BetriebOut:
         """Läufe, Abtauen, Lauflängen und die Heizkurve des Reglers aus den Minuten der letzten

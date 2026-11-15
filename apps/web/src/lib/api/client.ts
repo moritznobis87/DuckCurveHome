@@ -1,5 +1,5 @@
 import type { ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
-  House, Betrieb, BetriebRoh, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+  House, Betrieb, BetriebRoh, ReglerEinstellungen, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -79,6 +79,10 @@ export const api = {
   // Die Technikseite der Wärmepumpe: alle Messwerte des Augenblicks samt Abschätzung.
   waermepumpe: () => request<Waermepumpe>("/waermepumpe"),
   reglerkennzahlen: (tage = 7) => request<ReglerKennzahlen>(`/waermepumpe/kennzahlen?tage=${tage}`),
+  reglerEinstellungen: async (): Promise<ReglerEinstellungen> => {
+    const d = await request<ReglerEinstellungen>("/waermepumpe/einstellungen");
+    return { ...d, werte: d.werte ?? [], hinweise_de: d.hinweise_de ?? [] };
+  },
   betrieb: async (tage: number): Promise<Betrieb> => {
     const d = await request<BetriebRoh>(`/waermepumpe/betrieb?tage=${tage}`);
     return { ...d, tage: d.tage ?? [], laeufe: d.laeufe ?? [], stunden: d.stunden ?? [], klassen: d.klassen ?? [], saetze_de: d.saetze_de ?? [], hinweise_de: d.hinweise_de ?? [] };

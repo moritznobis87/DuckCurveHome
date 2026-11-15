@@ -24,6 +24,7 @@ from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
+from dch_api.application import regler as regler_logic
 from dch_api.application import reglerkennzahl as kennzahl_logic
 from dch_api.application import waermepumpe as wp_logic
 from dch_api.application.battery_control import BatteryMode
@@ -79,6 +80,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    ReglerEinstellungenOut,
     ReglerKennzahlenOut,
     RoomEffectOut,
     RoomHistoryOut,
@@ -972,6 +974,16 @@ class DemoRunner:
     async def reglerkennzahlen(self, tage: int) -> ReglerKennzahlenOut:
         """Die Auszählung der Vorführung, aus erzeugten Minuten."""
         return kennzahl_logic.zusammensetzen(self.now, tage, kennzahl_logic.vorfuehrung(self.now))
+
+    async def regler_einstellungen(self) -> ReglerEinstellungenOut:
+        """Die Einstellungen der Vorführung: erfunden, damit die Seite zu sehen ist."""
+        now = self.now
+        werte = regler_logic.vorfuehrung()
+        return regler_logic.zusammensetzen(
+            now=now,
+            mess=lambda key: Measurement.ok(werte[key], now, "demo:ebus"),
+            vorfuehrung=True,
+        )
 
     async def betrieb(self, tage: int) -> BetriebOut:
         """Der Betrieb der Vorführung: erzeugte Minuten, dieselbe Auszählung wie im Haus."""

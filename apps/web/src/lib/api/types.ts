@@ -573,6 +573,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/waermepumpe/einstellungen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die Einstellungen des Reglers
+         * @description Heizkurve, Raumtemperaturen und Warmwasser, wie sie am Regler eingestellt sind: über
+         *     den Bus gelesen, je mit Zeitpunkt. Verstellt wird damit nichts.
+         */
+        get: operations["einstellungen_api_v1_waermepumpe_einstellungen_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -5132,6 +5153,52 @@ export interface components {
          */
         ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "planned_pause" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
         /**
+         * ReglerEinstellungOut
+         * @description Eine Einstellung des Reglers der Wärmepumpe, gelesen über den Bus.
+         */
+        ReglerEinstellungOut: {
+            /** Schluessel */
+            schluessel: string;
+            /** Name De */
+            name_de: string;
+            /** Gruppe De */
+            gruppe_de: string;
+            /** Kennung */
+            kennung: string;
+            /**
+             * Einheit
+             * @default
+             */
+            einheit: string;
+            /**
+             * Stellen
+             * @default 1
+             */
+            stellen: number;
+            wert: components["schemas"]["Measurement"];
+            /** Lesart De */
+            lesart_de?: string | null;
+        };
+        /**
+         * ReglerEinstellungenOut
+         * @description Was am Regler der Wärmepumpe eingestellt ist. Gelesen, nicht gestellt.
+         */
+        ReglerEinstellungenOut: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /** Gelesen */
+            gelesen: number;
+            /** Satz De */
+            satz_de: string;
+            /** Werte */
+            werte?: components["schemas"]["ReglerEinstellungOut"][];
+            /** Hinweise De */
+            hinweise_de?: string[];
+        };
+        /**
          * ReglerKennzahlOut
          * @description Was in den Minuten geschah, in denen der Regler diese Kennzahl sendete.
          */
@@ -7202,6 +7269,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einstellungen_api_v1_waermepumpe_einstellungen_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReglerEinstellungenOut"];
                 };
             };
         };
