@@ -646,3 +646,83 @@ def test_schaltvorschlag_kennt_den_heutigen_zustand(client: TestClient) -> None:
         )
     )
     assert k.vorschlaege and "war_an" in k.vorschlaege[0]
+
+
+# --- Rechnung per Drag-and-drop -------------------------------------------------------------------
+
+
+def _pdf(text: str) -> bytes:
+    from test_tibber_invoice import minimal_pdf
+
+    return minimal_pdf(text.splitlines())
+
+
+def test_tibber_rechnung_wird_ohne_modell_erkannt_und_abgelegt(client: TestClient) -> None:
+    from test_tibber_invoice import build_invoice
+
+    antwort = client.post(
+        "/api/v1/alfred/rechnung?file_name=Rechnung.pdf",
+        content=_pdf(build_invoice()),
+        headers={"content-type": "application/pdf"},
+    )
+    assert antwort.status_code == 200, antwort.text
+    daten = antwort.json()
+    assert daten["art"] == "tibber" and daten["andere"] is None
+    assert daten["link"] == "/geld/rechnungen?nr=5085697"
+    assert daten["tibber"]["kwh"] > 0 and daten["tibber"]["urteil"] in ("ok", "info", "warning")
+    # Abgelegt wie auf der Rechnungsseite: Sie steht danach im Verlauf.
+    verlauf = client.get("/api/v1/import/tibber-invoices").json()
+    assert [r["number"] for r in verlauf] == ["5085697"]
+
+
+def test_tibber_rechnung_geht_nicht_an_das_modell(
+    mit_modell: TestClient, modell_einsetzen: Callable[[Modell], None]
+) -> None:
+    from test_tibber_invoice import build_invoice
+
+    m = Modell([_nachricht("{}")])
+    modell_einsetzen(m)
+    antwort = mit_modell.post(
+        "/api/v1/alfred/rechnung",
+        content=_pdf(build_invoice()),
+        headers={"content-type": "application/pdf"},
+    )
+    assert antwort.json()["art"] == "tibber"
+    assert m.anfragen == []
+
+
+def test_andere_rechnung_geht_geschwaerzt_an_das_modell(
+    mit_modell: TestClient, modell_einsetzen: Callable[[Modell], None]
+) -> None:
+    gelesen = {
+        "anbieter": "Stadtwerke",
+        "von": "2026-08-01",
+        "bis": "2026-08-31",
+        "kwh": 312,
+        "brutto_eur": 109.84,
+    }
+    m = Modell([_nachricht(json.dumps(gelesen))])
+    modell_einsetzen(m)
+    antwort = mit_modell.post(
+        "/api/v1/alfred/rechnung",
+        content=_pdf(RECHNUNG),
+        headers={"content-type": "application/pdf"},
+    )
+    assert antwort.status_code == 200, antwort.text
+    daten = antwort.json()
+    assert daten["art"] == "andere" and daten["link"] is None
+    assert daten["andere"]["gelesen"]["kwh"] == 312
+    gesendet = m.rumpf(0)["messages"][1]["content"]
+    assert "312 kWh" in gesendet
+    for verboten in ("Mustermann", "Musterweg", "DE89", "123456789"):
+        assert verboten not in gesendet
+
+
+def test_andere_rechnung_ohne_modell_sagt_warum(client: TestClient) -> None:
+    antwort = client.post(
+        "/api/v1/alfred/rechnung",
+        content=_pdf(RECHNUNG),
+        headers={"content-type": "application/pdf"},
+    )
+    assert antwort.status_code == 409
+    assert "keine Tibber-Rechnung" in antwort.json()["error"]["message"]

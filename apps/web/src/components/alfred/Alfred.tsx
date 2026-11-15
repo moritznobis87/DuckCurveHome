@@ -15,6 +15,7 @@
 // das nichts beantwortet, ist schlimmer als keines.
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useRole } from "@/lib/live/useRole";
@@ -27,6 +28,8 @@ export interface Nachricht {
   inhalt: string;
   /** "modell" trägt die KI-Marke. Vorbereitete Texte haben keine. */
   quelle?: "modell";
+  /** Ein Verweis unter dem Text, etwa auf die volle Auswertung einer Rechnung. */
+  link?: { href: string; text: string };
 }
 
 type Zustand = { bereit: boolean; anbieter: string | null };
@@ -38,6 +41,20 @@ type Rechnungsergebnis = {
   abdeckung: number | null;
   befunde: { stufe: string; titel: string; text: string }[];
 };
+
+type TibberZusammenfassung = {
+  zeitraum: string;
+  kwh: number;
+  brutto_eur: number;
+  ct_kwh_brutto: number;
+  gemessen_kwh: number | null;
+  abdeckung: number | null;
+  urteil: string;
+  befunde: { stufe: string; titel: string; text: string }[];
+  schon_bekannt: boolean;
+};
+
+type RechnungsAntwort = { art: "tibber" | "andere"; tibber: TibberZusammenfassung | null; andere: Rechnungsergebnis | null; link: string | null };
 
 type Zuordnungsergebnis = { zeilen: { schluessel: string; entitaet: string; grund: string }[]; verworfen: string[]; offen: string[]; yaml: string };
 
@@ -103,6 +120,11 @@ export function Alfred() {
   const [kannSprechen, setKannSprechen] = useState(false);
 
   const darfFragen = Boolean(zustand?.bereit) && rolle === "owner";
+  //: Rechnungen ablegen geht auch ohne Sprachmodell (Tibber prüft der Dienst selbst), aber nur mit
+  //: Vollzugriff: Rechnungen sind Gästen verschlossen, und das BFF lässt für sie kein POST durch.
+  const darfAblegen = rolle === "owner";
+  //: Ob gerade eine Datei über Alfred gezogen wird.
+  const [ziehen, setZiehen] = useState(false);
   const anbieter = zustand?.anbieter ?? "dem Anbieter";
 
   useEffect(() => setKannSprechen(erkennungBauen() !== null), []);
@@ -151,8 +173,8 @@ export function Alfred() {
     };
   }, [offen, zustand]);
 
-  const sagen = (inhalt: string, quelle?: "modell") =>
-    setNachrichten((bisher) => [...bisher, { kennung: naechsteKennung(), wer: "alfred", inhalt, ...(quelle ? { quelle } : {}) }]);
+  const sagen = (inhalt: string, quelle?: "modell", link?: Nachricht["link"]) =>
+    setNachrichten((bisher) => [...bisher, { kennung: naechsteKennung(), wer: "alfred", inhalt, ...(quelle ? { quelle } : {}), ...(link ? { link } : {}) }]);
 
   const aufmachen = () => {
     if (offen) return zumachen();
@@ -249,10 +271,19 @@ export function Alfred() {
     setSchritt(TEXTE.rechnungLaeuft);
     setNachrichten((bisher) => [...bisher, { kennung: naechsteKennung(), wer: "nutzer", inhalt: f.name }]);
     try {
-      const antwort = await fetch("/api/dch/alfred/rechnung", { method: "POST", headers: { "content-type": "application/pdf" }, body: f });
-      const daten = (await antwort.json().catch(() => null)) as (Rechnungsergebnis & { error?: { message?: string } }) | null;
+      const antwort = await fetch(`/api/dch/alfred/rechnung?file_name=${encodeURIComponent(f.name)}`, {
+        method: "POST",
+        headers: { "content-type": "application/pdf" },
+        body: f,
+      });
+      const daten = (await antwort.json().catch(() => null)) as (RechnungsAntwort & { error?: { message?: string } }) | null;
       if (!antwort.ok || !daten) return sagen(daten?.error?.message ?? TEXTE.frageFehler);
-      sagen(rechnungZusammenfassung(daten), "modell");
+      if (daten.art === "tibber" && daten.tibber) {
+        // Fest geprüft, ohne Sprachmodell: keine KI-Marke. Die volle Auswertung steht auf der Seite.
+        sagen(tibberZusammenfassung(daten.tibber), undefined, daten.link ? { href: daten.link, text: TEXTE.rechnungZurAuswertung } : undefined);
+      } else if (daten.andere) {
+        sagen(rechnungZusammenfassung(daten.andere), "modell");
+      }
     } catch {
       sagen(TEXTE.frageFehler);
     } finally {
@@ -285,7 +316,28 @@ export function Alfred() {
   const hatGefragt = nachrichten.some((n) => n.wer === "nutzer");
 
   return (
-    <div className="alfred" ref={huelle}>
+    <div
+      className={`alfred${ziehen ? " zieht" : ""}`}
+      ref={huelle}
+      onDragOver={(e) => {
+        if (!darfAblegen || !hatDatei(e.dataTransfer)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        setZiehen(true);
+      }}
+      onDragLeave={(e) => {
+        if (!huelle.current?.contains(e.relatedTarget as Node | null)) setZiehen(false);
+      }}
+      onDrop={(e) => {
+        if (!darfAblegen) return;
+        e.preventDefault();
+        setZiehen(false);
+        const f = Array.from(e.dataTransfer.files).find(istPdf);
+        if (!offen) aufmachen();
+        if (f) void rechnungPruefen(f);
+        else sagen(TEXTE.rechnungKeinPdf);
+      }}
+    >
       {offen ? (
         <div className="alfred-feld" id={feldKennung} role="dialog" aria-label={TEXTE.name}>
           <div className="alfred-kopf">
@@ -300,6 +352,12 @@ export function Alfred() {
               <p key={n.kennung} className={`alfred-sprechblase ${n.wer === "alfred" ? "von-alfred" : "von-nutzer"}${n.quelle === "modell" ? " ki" : ""}`}>
                 {n.quelle === "modell" ? <span className="alfred-ki">{TEXTE.kiMarke}</span> : null}
                 {mitFettdruck(n.inhalt)}
+                {n.link ? (
+                  // Das Panel geht zu, damit es die Auswertung nicht verdeckt; das Gespräch bleibt.
+                  <Link className="alfred-link" href={n.link.href} onClick={() => setOffen(false)}>
+                    {n.link.text}
+                  </Link>
+                ) : null}
               </p>
             ))}
             <div ref={ende} />
@@ -371,14 +429,16 @@ export function Alfred() {
             </div>
           )}
 
-          {darfFragen ? (
+          {darfAblegen ? (
             <div className="alfred-werkzeuge">
               <button type="button" disabled={laeuft} aria-pressed={werkzeug === "rechnung"} onClick={() => { setWerkzeug("rechnung"); datei.current?.click(); }}>
                 {TEXTE.rechnungKnopf}
               </button>
-              <button type="button" disabled={laeuft} aria-pressed={werkzeug === "zuordnung"} onClick={() => setWerkzeug(werkzeug === "zuordnung" ? null : "zuordnung")}>
-                {TEXTE.zuordnungKnopf}
-              </button>
+              {darfFragen ? (
+                <button type="button" disabled={laeuft} aria-pressed={werkzeug === "zuordnung"} onClick={() => setWerkzeug(werkzeug === "zuordnung" ? null : "zuordnung")}>
+                  {TEXTE.zuordnungKnopf}
+                </button>
+              ) : null}
               <input
                 ref={datei}
                 type="file"
@@ -392,7 +452,9 @@ export function Alfred() {
               />
             </div>
           ) : null}
-          {darfFragen && werkzeug === "rechnung" ? <p className="alfred-stufe">{ersetze(TEXTE.rechnungHinweis, { anbieter })}</p> : null}
+          {darfAblegen && werkzeug === "rechnung" ? (
+            <p className="alfred-stufe">{darfFragen ? ersetze(TEXTE.rechnungHinweis, { anbieter }) : TEXTE.rechnungHinweisOhneModell}</p>
+          ) : null}
 
           {darfFragen && werkzeug === "zuordnung" ? (
             <div className="alfred-zuordnung">
@@ -460,6 +522,29 @@ export function Alfred() {
       </button>
     </div>
   );
+}
+
+/** Ob beim Ziehen Dateien dabei sind; welche, verrät der Browser erst beim Ablegen. */
+function hatDatei(d: DataTransfer | null): boolean {
+  return Boolean(d && Array.from(d.types ?? []).includes("Files"));
+}
+
+function istPdf(f: File): boolean {
+  return f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+}
+
+/** Das Ergebnis der festen Tibber-Prüfung als Text. Gerechnet hat der Dienst, nicht das Modell. */
+export function tibberZusammenfassung(t: TibberZusammenfassung): string {
+  const zahl = (x: number | null | undefined, stellen = 0) => (x == null ? "?" : x.toLocaleString("de-DE", { maximumFractionDigits: stellen }));
+  const urteil: Record<string, string> = { ok: "alles stimmig", info: "stimmig, mit Hinweisen", warning: "auffällig", error: "fehlerhaft" };
+  const zeilen = [
+    `**Tibber-Rechnung ${t.zeitraum}**: ${zahl(t.kwh)} kWh, ${zahl(t.brutto_eur, 2)} € brutto, im Mittel ${zahl(t.ct_kwh_brutto, 2)} ct/kWh. Ergebnis: ${urteil[t.urteil] ?? t.urteil}.`,
+  ];
+  // Ohne Abdeckung keine Zeile „0 kWh": Dass es keinen Vergleichswert gibt, sagt der Befund.
+  if (t.gemessen_kwh != null && (t.abdeckung ?? 0) > 0) zeilen.push(`Eigene Messung: ${zahl(t.gemessen_kwh)} kWh (Abdeckung ${zahl((t.abdeckung ?? 0) * 100)} %).`);
+  for (const b of t.befunde) zeilen.push(`${b.stufe === "warning" ? "⚠ " : ""}${b.titel}: ${b.text}`);
+  if (t.schon_bekannt) zeilen.push("Diese Rechnung lag schon vor; ihr Stand ist ersetzt.");
+  return zeilen.join("\n");
 }
 
 /** Das Ergebnis der Rechnungsprüfung als Text. Die gelesenen Werte stammen vom Modell (daher die

@@ -23,11 +23,14 @@ from __future__ import annotations
 import io
 import re
 from datetime import date, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel
 
 from dch_api.application.runtime import Runtime
+
+if TYPE_CHECKING:
+    from dch_api.schemas import InvoiceReportOut
 
 #: Hoechstzahl der Zeilen, die an das Modell gehen. Eine Rechnung hat selten mehr als hundert
 #: relevante; die Grenze haelt eine Datei mit Anhang davon ab, die Rechnung zu sprengen.
@@ -262,3 +265,75 @@ async def pruefen(runner: Runtime, gelesen: GeleseneRechnung, zeilen: int) -> Re
         befunde=befunde,
         zeilen_gesendet=zeilen,
     )
+
+
+# ---------------------------------------------------------------------------
+# Tibber-Rechnungen: erkannt und geprueft ohne Sprachmodell
+# ---------------------------------------------------------------------------
+
+
+class TibberZusammenfassung(BaseModel):
+    """Das Ergebnis der festen Tibber-Pruefung, so knapp, wie Alfred es im Panel sagt. Die volle
+    Auswertung steht auf der Rechnungsseite, auf die `AlfredRechnungOut.link` zeigt."""
+
+    zeitraum: str
+    von: date
+    bis: date
+    kwh: float
+    brutto_eur: float
+    ct_kwh_brutto: float
+    gemessen_kwh: float | None
+    abdeckung: float | None
+    urteil: str
+    befunde: list[Befund]
+    #: Dieselbe Rechnung lag schon vor; der Stand wurde ersetzt.
+    schon_bekannt: bool
+
+
+class AlfredRechnungOut(BaseModel):
+    """`tibber`: erkannt, geprueft und abgelegt wie auf der Rechnungsseite, ohne Sprachmodell.
+    `andere`: vom Sprachmodell gelesen, fest gegen die eigene Messung gehalten, nicht gespeichert."""
+
+    art: Literal["tibber", "andere"]
+    tibber: TibberZusammenfassung | None = None
+    andere: Rechnungsergebnis | None = None
+    #: Die Seite mit der vollen Auswertung, nur bei `tibber`.
+    link: str | None = None
+
+
+#: Welche Befunde der Tibber-Pruefung Alfred nennt: alles ausser `ok`, damit die Zusammenfassung
+#: das sagt, worauf es ankommt, und nicht die zwanzig Posten, die stimmen.
+_STUFEN = {"error": "warning", "warning": "warning", "info": "info"}
+
+
+def tibber_zusammenfassung(bericht: InvoiceReportOut) -> TibberZusammenfassung:
+    r = bericht.invoice
+    return TibberZusammenfassung(
+        zeitraum=r.period_label,
+        von=r.period_start,
+        bis=r.period_end,
+        kwh=r.kwh,
+        brutto_eur=r.total_gross_eur,
+        ct_kwh_brutto=r.avg_ct_kwh_gross,
+        gemessen_kwh=bericht.measured.import_kwh if bericht.measured else None,
+        abdeckung=bericht.measured.coverage if bericht.measured else None,
+        urteil=bericht.verdict,
+        befunde=[
+            Befund(stufe=_STUFEN[f.severity], titel=f.title_de, text=f.detail_de)
+            for f in bericht.findings
+            if f.severity in _STUFEN
+        ],
+        schon_bekannt=bericht.already_known,
+    )
+
+
+def ist_tibber(payload: bytes) -> bool:
+    """Ob die feste Tibber-Pruefung das PDF lesen kann. Deterministisch, ohne Modell: Was sie liest,
+    ist eine Tibber-Rechnung; alles andere geht an den Weg fuer andere Anbieter."""
+    from dch_api.application.tibber_invoice import InvoiceParseError, parse_pdf
+
+    try:
+        parse_pdf(payload)
+    except InvoiceParseError:
+        return False
+    return True

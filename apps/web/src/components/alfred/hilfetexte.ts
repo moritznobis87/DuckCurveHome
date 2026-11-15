@@ -96,9 +96,9 @@ export const TEXTE = {
   wasKannAlfred: "Was kannst du?",
   keineSeitenhilfe: "Zu dieser Seite habe ich noch keinen Hilfetext.",
   antwortWasKannAlfredOhneModell:
-    "Im Moment kann ich die Seiten erklären und sagen, wo was steht. Sobald ein Sprachmodell eingerichtet ist, beantworte ich auch Fragen zu deinen Daten.",
+    "Im Moment erkläre ich die Seiten und sage, wo was steht. Eine Tibber-Rechnung kannst du als PDF auf mich ziehen: Ich prüfe sie, lege sie ab und fasse das Ergebnis zusammen. Sobald ein Sprachmodell eingerichtet ist, beantworte ich auch Fragen zu deinen Daten.",
   antwortWasKannAlfred:
-    "Ich beantworte Fragen zu deinen Daten: Verbrauch, Kosten, PV, Wärmepumpe, Speicher, Rechnungen, Prognosen. Ich vergleiche Zeiträume und mache einen Wochenrückblick. Lichter und Raumtemperaturen schlage ich vor. Geschaltet wird erst, wenn du den Vorschlag geprüft und mit OK bestätigt hast. Außerdem lese ich Stromrechnungen anderer Anbieter und schlage bei der Einrichtung die Zuordnung der Sensoren vor. Ich rechne nichts selbst, die Zahlen kommen aus denselben Auswertungen wie auf den Seiten.",
+    "Ich beantworte Fragen zu deinen Daten: Verbrauch, Kosten, PV, Wärmepumpe, Speicher, Rechnungen, Prognosen. Ich vergleiche Zeiträume und mache einen Wochenrückblick. Lichter und Raumtemperaturen schlage ich vor. Geschaltet wird erst, wenn du den Vorschlag geprüft und mit OK bestätigt hast. Eine Stromrechnung kannst du als PDF auf mich ziehen; Tibber-Rechnungen prüfe und lege ich ab, die anderer Anbieter lese ich. Bei der Einrichtung schlage ich die Zuordnung der Sensoren vor. Ich rechne nichts selbst, die Zahlen kommen aus denselben Auswertungen wie auf den Seiten.",
   beispiele: ["Wie war die Woche?", "Warum war der letzte Monat teurer?", "Folgt die Wärmepumpe der Anforderung?"],
   frageFeld: "Frage an Alfred …",
   frageSenden: "Fragen",
@@ -122,10 +122,14 @@ export const TEXTE = {
   bestaetigungOk: "OK, ausführen",
   vorschlagLaeuft: "Läuft …",
   vorschlagFehler: "Das ließ sich nicht ausführen.",
-  rechnungKnopf: "Rechnung eines anderen Anbieters prüfen",
+  rechnungKnopf: "Rechnung prüfen (PDF)",
+  rechnungZurAuswertung: "Zur vollen Auswertung →",
+  rechnungKeinPdf: "Das war keine PDF-Datei. Zieh mir bitte eine Rechnung als PDF herüber.",
+  rechnungHinweisOhneModell:
+    "Tibber-Rechnungen prüft der Dienst selbst und legt sie ab, nichts verlässt das Haus. Rechnungen anderer Anbieter brauchen ein Sprachmodell. Du kannst das PDF auch einfach auf mich ziehen.",
   rechnungLaeuft: "Ich lese die Rechnung …",
   rechnungHinweis:
-    "An {anbieter} gehen nur Zeilen mit Mengen, Preisen und Zeiträumen, Namen, Anschrift, Kunden- und Zählernummern und IBAN sind geschwärzt. Gespeichert wird nichts.",
+    "Tibber-Rechnungen prüft der Dienst selbst und legt sie ab, nichts verlässt das Haus. Bei anderen Anbietern gehen nur Zeilen mit Mengen, Preisen und Zeiträumen an {anbieter}; Namen, Anschrift, Kunden- und Zählernummern und IBAN sind geschwärzt, gespeichert wird nichts. Du kannst das PDF auch einfach auf mich ziehen.",
   zuordnungKnopf: "Einrichtung: Sensoren zuordnen",
   zuordnungFeld: "Entitätenliste aus Home Assistant einfügen (Entwicklerwerkzeuge → Zustände)",
   zuordnungSenden: "Zuordnung vorschlagen",

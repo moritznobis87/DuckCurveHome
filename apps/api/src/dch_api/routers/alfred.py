@@ -20,14 +20,16 @@ from collections import defaultdict
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Annotated, Any
+from urllib.parse import quote
 
 import structlog
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sse_starlette.sse import EventSourceResponse
 
 from dch_api.alfred import dienst, rechnung, zuordnung
 from dch_api.alfred.werkzeuge import Kontext, NurLesen
 from dch_api.application.runtime import Runtime
+from dch_api.application.tibber_invoice import InvoiceParseError
 from dch_api.dependencies import get_runner
 from dch_api.errors import DchError
 from dch_api.schemas import (
@@ -183,23 +185,60 @@ async def frage_mit_fortschritt(
     return EventSourceResponse(strom(), ping=15)
 
 
+#: Die Seite mit der vollen Auswertung einer Tibber-Rechnung.
+RECHNUNGSSEITE = "/geld/rechnungen"
+
+
 @router.post(
     "/rechnung",
-    response_model=rechnung.Rechnungsergebnis,
-    summary="Stromrechnung eines anderen Anbieters lesen und gegen die eigene Messung halten",
+    response_model=rechnung.AlfredRechnungOut,
+    summary="Eine Stromrechnung erkennen, prüfen und zusammenfassen",
 )
 async def rechnung_lesen(
-    request: Request, runner: Annotated[Runtime, Depends(get_runner)]
-) -> rechnung.Rechnungsergebnis:
-    """Das PDF als Rumpf (`application/pdf`). An den Anbieter gehen nur geschwaerzte Zeilen mit
-    Mengen, Preisen und Zeitraeumen; gespeichert wird nichts (alfred/rechnung.py)."""
+    request: Request,
+    runner: Annotated[Runtime, Depends(get_runner)],
+    file_name: Annotated[str | None, Query(max_length=255)] = None,
+) -> rechnung.AlfredRechnungOut:
+    """Das PDF als Rumpf (`application/pdf`), etwa per Drag-and-drop auf Alfred.
+
+    **Erst die feste Erkennung, dann das Modell.** Liest die Tibber-Pruefung das PDF, ist es eine
+    Tibber-Rechnung: Sie wird geprueft und abgelegt wie auf der Rechnungsseite (dieselbe Funktion,
+    dieselbe Ablage), ohne Sprachmodell, ohne dass etwas das Haus verlaesst und auch ohne
+    eingerichteten Schluessel. Die Antwort nennt die Rechnungsseite, auf der die volle Auswertung
+    steht.
+
+    Nur wenn sie es nicht kann, liest das Sprachmodell (andere Anbieter, `alfred/rechnung.py`):
+    Dann gehen nur geschwaerzte Zeilen mit Mengen, Preisen und Zeitraeumen hinaus, und gespeichert
+    wird nichts.
+
+    Das Ablegen einer Tibber-Rechnung ist ein Schreiben, aber keines, das ein Modell ausloest: Der
+    Mensch hat die Datei hineingezogen, so wie er sie auf der Rechnungsseite hochladen wuerde.
+    """
     settings = _settings(request)
-    _bereit_oder_fehler(settings)
     payload = await request.body()
     if not payload:
         raise DchError("leer", "Keine Datei erhalten.", 400)
     if len(payload) > PDF_MAX:
         raise DchError("zu_gross", "Die Datei ist größer als 10 MB.", 413)
+
+    if rechnung.ist_tibber(payload):
+        try:
+            bericht = await runner.check_invoice(payload, file_name)
+        except InvoiceParseError as fehler:
+            raise DchError("invoice_unreadable", str(fehler), 422) from fehler
+        return rechnung.AlfredRechnungOut(
+            art="tibber",
+            tibber=rechnung.tibber_zusammenfassung(bericht),
+            link=f"{RECHNUNGSSEITE}?nr={quote(bericht.invoice.number)}",
+        )
+
+    if not dienst.aktiv(settings):
+        raise DchError(
+            "alfred_aus",
+            "Das ist keine Tibber-Rechnung. Rechnungen anderer Anbieter liest Alfred nur mit "
+            "eingerichtetem Sprachmodell.",
+            409,
+        )
     try:
         text = rechnung.pdf_text(payload)
     except ValueError as fehler:
@@ -219,7 +258,8 @@ async def rechnung_lesen(
             {"grund": str(fehler)},
         ) from fehler
     # Auch hier nur lesend: die Pruefung braucht den Zaehler, sonst nichts.
-    return await rechnung.pruefen(NurLesen(runner), rechnung.lesen(roh), len(zeilen))
+    ergebnis = await rechnung.pruefen(NurLesen(runner), rechnung.lesen(roh), len(zeilen))
+    return rechnung.AlfredRechnungOut(art="andere", andere=ergebnis)
 
 
 @router.post(

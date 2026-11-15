@@ -15,12 +15,13 @@ hier geht es um ein Haus und nicht um Projektbewertungen.
 | `apps/api/src/dch_api/alfred/zuordnung.py` | Sensorzuordnung für ein neues Haus vorschlagen |
 | `apps/api/src/dch_api/routers/alfred.py` | `/api/v1/alfred/*`, Tagesgrenze |
 | `apps/web/src/components/alfred/` | Panel, Strom-Leser, Hilfetexte, Tests |
-| `apps/api/tests/test_alfred.py` | 31 Prüfungen des Dienstes, davon 7 zur Sicherheitsschicht |
+| `apps/api/tests/test_alfred.py` | 35 Prüfungen des Dienstes, davon 7 zur Sicherheitsschicht und 4 zu Rechnungen per Drag-and-drop |
 
 ## Was Alfred kann
 
 **Ohne Sprachmodell:** Er erklärt die Seite, auf der man steht, und sagt, was er kann. Das sind
-vorbereitete Texte, und nichts verlässt das Haus. Das Eingabefeld erscheint dann nicht. Ein Feld,
+vorbereitete Texte, und nichts verlässt das Haus. Eine Tibber-Rechnung, die man als PDF auf ihn
+zieht, prüft und legt er auch ohne Modell ab (siehe unten). Das Eingabefeld erscheint dann nicht. Ein Feld,
 das nichts beantwortet, ist schlimmer als keines.
 
 **Mit Sprachmodell** (`DCH_ALFRED_SCHLUESSEL` gesetzt, Anbieter Mistral):
@@ -31,8 +32,10 @@ das nichts beantwortet, ist schlimmer als keines.
 2. **Wochenrückblick.** „Wie war die Woche?“ führt über das Werkzeug `wochenrueckblick` und den
    gleichnamigen Leitfaden zu Verbrauch, PV, Autarkie, Kosten, Verschiebung und Auffälligkeiten.
    Die Frage steht als Beispiel im Panel.
-3. **Rechnungen anderer Anbieter lesen.** Ein PDF hochladen. Alfred liest die Werte, und der Dienst
-   prüft sie fest gegen den eigenen Zähler. Siehe unten.
+3. **Rechnungen per Drag-and-drop.** Ein PDF auf Alfreds Knopf oder sein Panel ziehen, oder
+   „Rechnung prüfen (PDF)“ wählen. Ist es eine Tibber-Rechnung, wird sie geprüft und abgelegt wie
+   auf der Rechnungsseite, und Alfred fasst das Ergebnis zusammen und verlinkt die volle
+   Auswertung. Rechnungen anderer Anbieter liest das Modell. Siehe unten.
 4. **Einrichtung.** Eine Entitätenliste aus Home Assistant einfügen. Alfred schlägt die Zuordnung zu
    den Messgrößen vor, und heraus kommt ein geprüfter YAML-Ausschnitt für `entities.yaml`.
 5. **Sprache.** Ein Mikrofonknopf neben dem Eingabefeld, wenn der Browser Spracherkennung kann
@@ -154,11 +157,25 @@ je Sekunde, und vor dem ersten Wort lägen Minuten. Zudem liefe es neben der Reg
 Wärmepumpe. Wer lokal will, stellt ein eigenes Gerät mit schnellem Speicher hin und trägt dessen
 OpenAI-kompatible Adresse in `DCH_ALFRED_URL` ein; der Code bleibt derselbe.
 
-## Rechnungen anderer Anbieter
+## Rechnungen per Drag-and-drop
 
-Die Tibber-Prüfung (`application/tibber_invoice.py`) liest mit festen Regeln und irrt nicht. Für
-jeden anderen Anbieter müsste man einen eigenen Leser bauen. Hier liest das Modell, und alles
-danach ist wieder fest:
+`POST /alfred/rechnung` nimmt das PDF. Was danach passiert, entscheidet keine KI.
+
+**Erst die feste Erkennung.** Kann die Tibber-Prüfung (`application/tibber_invoice.py`) das PDF
+lesen, ist es eine Tibber-Rechnung. Dann läuft dieselbe Funktion wie auf der Rechnungsseite
+(`runner.check_invoice`): Die Rechnung wird nachgerechnet, gegen den eigenen Zähler gehalten und
+abgelegt. Das geschieht ohne Sprachmodell, ohne dass etwas das Haus verlässt und auch ohne
+eingerichteten Schlüssel. Die Antwort trägt eine knappe Zusammenfassung (Menge, Betrag, mittlerer
+Preis, Urteil, alle Befunde außer „ok“) und den Link
+`/geld/rechnungen?nr=<Rechnungsnummer>`. Die Rechnungsseite öffnet dann genau diese Rechnung.
+Die Zusammenfassung trägt keine KI-Marke, weil kein Modell beteiligt war.
+
+Das Ablegen ist ein Schreiben, aber keines, das ein Modell auslöst: Der Mensch hat die Datei
+hineingezogen, wie er sie auf der Rechnungsseite hochladen würde. Gäste können nichts ablegen,
+weil das BFF für sie kein POST durchlässt und das Panel das Ablegen gar nicht annimmt.
+
+**Erst danach das Modell, für andere Anbieter.** Für jeden anderen Anbieter müsste man einen
+eigenen Leser bauen. Hier liest das Modell, und alles danach ist wieder fest:
 
 1. **Was das Haus verlässt, ist eine Positivliste.** `relevante_zeilen` behält nur Zeilen mit einer
    Ziffer und einem Schlüsselwort (kWh, ct, €, Arbeitspreis, Zeitraum …). `schwaerzen` tilgt darin

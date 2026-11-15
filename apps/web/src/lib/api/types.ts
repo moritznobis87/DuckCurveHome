@@ -96,9 +96,21 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Stromrechnung eines anderen Anbieters lesen und gegen die eigene Messung halten
-         * @description Das PDF als Rumpf (`application/pdf`). An den Anbieter gehen nur geschwaerzte Zeilen mit
-         *     Mengen, Preisen und Zeitraeumen; gespeichert wird nichts (alfred/rechnung.py).
+         * Eine Stromrechnung erkennen, prüfen und zusammenfassen
+         * @description Das PDF als Rumpf (`application/pdf`), etwa per Drag-and-drop auf Alfred.
+         *
+         *     **Erst die feste Erkennung, dann das Modell.** Liest die Tibber-Pruefung das PDF, ist es eine
+         *     Tibber-Rechnung: Sie wird geprueft und abgelegt wie auf der Rechnungsseite (dieselbe Funktion,
+         *     dieselbe Ablage), ohne Sprachmodell, ohne dass etwas das Haus verlaesst und auch ohne
+         *     eingerichteten Schluessel. Die Antwort nennt die Rechnungsseite, auf der die volle Auswertung
+         *     steht.
+         *
+         *     Nur wenn sie es nicht kann, liest das Sprachmodell (andere Anbieter, `alfred/rechnung.py`):
+         *     Dann gehen nur geschwaerzte Zeilen mit Mengen, Preisen und Zeitraeumen hinaus, und gespeichert
+         *     wird nichts.
+         *
+         *     Das Ablegen einer Tibber-Rechnung ist ein Schreiben, aber keines, das ein Modell ausloest: Der
+         *     Mensch hat die Datei hineingezogen, so wie er sie auf der Rechnungsseite hochladen wuerde.
          */
         post: operations["rechnung_lesen_api_v1_alfred_rechnung_post"];
         delete?: never;
@@ -1358,6 +1370,22 @@ export interface components {
             wissen: string;
             /** Verlauf */
             verlauf?: components["schemas"]["AlfredWechselIn"][];
+        };
+        /**
+         * AlfredRechnungOut
+         * @description `tibber`: erkannt, geprueft und abgelegt wie auf der Rechnungsseite, ohne Sprachmodell.
+         *     `andere`: vom Sprachmodell gelesen, fest gegen die eigene Messung gehalten, nicht gespeichert.
+         */
+        AlfredRechnungOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "tibber" | "andere";
+            tibber?: components["schemas"]["TibberZusammenfassung"] | null;
+            andere?: components["schemas"]["Rechnungsergebnis"] | null;
+            /** Link */
+            link?: string | null;
         };
         /**
          * AlfredVorschlagOut
@@ -5954,6 +5982,41 @@ export interface components {
             /** Avg Ct Kwh Gross */
             avg_ct_kwh_gross: number;
         };
+        /**
+         * TibberZusammenfassung
+         * @description Das Ergebnis der festen Tibber-Pruefung, so knapp, wie Alfred es im Panel sagt. Die volle
+         *     Auswertung steht auf der Rechnungsseite, auf die `AlfredRechnungOut.link` zeigt.
+         */
+        TibberZusammenfassung: {
+            /** Zeitraum */
+            zeitraum: string;
+            /**
+             * Von
+             * Format: date
+             */
+            von: string;
+            /**
+             * Bis
+             * Format: date
+             */
+            bis: string;
+            /** Kwh */
+            kwh: number;
+            /** Brutto Eur */
+            brutto_eur: number;
+            /** Ct Kwh Brutto */
+            ct_kwh_brutto: number;
+            /** Gemessen Kwh */
+            gemessen_kwh: number | null;
+            /** Abdeckung */
+            abdeckung: number | null;
+            /** Urteil */
+            urteil: string;
+            /** Befunde */
+            befunde: components["schemas"]["Befund"][];
+            /** Schon Bekannt */
+            schon_bekannt: boolean;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -6322,7 +6385,9 @@ export interface operations {
     };
     rechnung_lesen_api_v1_alfred_rechnung_post: {
         parameters: {
-            query?: never;
+            query?: {
+                file_name?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6335,7 +6400,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Rechnungsergebnis"];
+                    "application/json": components["schemas"]["AlfredRechnungOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

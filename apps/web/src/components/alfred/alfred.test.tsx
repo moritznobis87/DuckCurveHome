@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AREAS } from "@/lib/areas";
-import { Alfred, rechnungZusammenfassung } from "./Alfred";
+import { Alfred, rechnungZusammenfassung, tibberZusammenfassung } from "./Alfred";
 import { SEITEN, TEXTE, ortBestimmen, wegweiser, wissen } from "./hilfetexte";
 import { schrittText, stromLesen, verlaufFuerServer, vorschlagAenderung, vorschlagAufruf, vorschlagText } from "./strom";
 
@@ -213,6 +213,55 @@ describe("Panel", () => {
     await screen.findByText(TEXTE.frageTagesgrenze);
   });
 
+  it("eine Tibber-Rechnung per Drag-and-drop: auch ohne Modell, mit Zusammenfassung und Link", async () => {
+    const gesendet: { url: string; init?: RequestInit }[] = [];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url.endsWith("/alfred/status")) return Promise.resolve(Response.json({ bereit: false }));
+      gesendet.push({ url, init });
+      return Promise.resolve(
+        Response.json({
+          art: "tibber",
+          link: "/geld/rechnungen?nr=5085697",
+          andere: null,
+          tibber: {
+            zeitraum: "Oktober 2026",
+            kwh: 412,
+            brutto_eur: 120.5,
+            ct_kwh_brutto: 29.25,
+            gemessen_kwh: 410,
+            abdeckung: 0.99,
+            urteil: "ok",
+            befunde: [],
+            schon_bekannt: false,
+          },
+        }),
+      );
+    });
+    render(<Alfred />);
+    const pdf = new File(["%PDF"], "Rechnung Oktober.pdf", { type: "application/pdf" });
+    const ziel = screen.getByRole("button", { name: TEXTE.ansprechen }).parentElement!;
+    fireEvent.dragOver(ziel, { dataTransfer: { types: ["Files"], files: [pdf], dropEffect: "none" } });
+    expect(ziel).toHaveClass("zieht");
+    await act(async () => {
+      fireEvent.drop(ziel, { dataTransfer: { types: ["Files"], files: [pdf] } });
+    });
+    await screen.findByText(/Tibber-Rechnung Oktober 2026/);
+    // Fest geprüft, ohne Modell: keine KI-Marke, aber ein Link zur vollen Auswertung.
+    expect(screen.queryByText(TEXTE.kiMarke)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: TEXTE.rechnungZurAuswertung })).toHaveAttribute("href", "/geld/rechnungen?nr=5085697");
+    expect(gesendet).toHaveLength(1);
+    expect(gesendet[0]!.url).toBe("/api/dch/alfred/rechnung?file_name=Rechnung%20Oktober.pdf");
+    expect(gesendet[0]!.init?.body).toBe(pdf);
+  });
+
+  it("Gäste können nichts ablegen", () => {
+    rolle = "guest";
+    render(<Alfred />);
+    const ziel = screen.getByRole("button", { name: TEXTE.ansprechen }).parentElement!;
+    fireEvent.drop(ziel, { dataTransfer: { types: ["Files"], files: [new File(["%PDF"], "r.pdf", { type: "application/pdf" })] } });
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("/alfred/rechnung"), expect.anything());
+  });
+
   it("auf /locked gibt es Alfred nicht", () => {
     pfad = "/locked";
     const { container } = render(<Alfred />);
@@ -221,6 +270,28 @@ describe("Panel", () => {
 });
 
 describe("Rechnung", () => {
+  it("fasst eine Tibber-Prüfung zusammen und nennt nur die Befunde, auf die es ankommt", () => {
+    const text = tibberZusammenfassung({
+      zeitraum: "Oktober 2026",
+      kwh: 412,
+      brutto_eur: 120.5,
+      ct_kwh_brutto: 29.25,
+      gemessen_kwh: 380,
+      abdeckung: 0.97,
+      urteil: "warning",
+      befunde: [{ stufe: "warning", titel: "Menge", text: "Rechnung 412 kWh, gemessen 380 kWh." }],
+      schon_bekannt: true,
+    });
+    expect(text).toContain("**Tibber-Rechnung Oktober 2026**: 412 kWh, 120,5 € brutto, im Mittel 29,25 ct/kWh. Ergebnis: auffällig.");
+    expect(text).toContain("⚠ Menge: Rechnung 412 kWh, gemessen 380 kWh.");
+    expect(text).toContain("lag schon vor");
+    const ohneMessung = tibberZusammenfassung({
+      zeitraum: "Juni 2026", kwh: 251, brutto_eur: 97.54, ct_kwh_brutto: 34.24, gemessen_kwh: 0, abdeckung: 0,
+      urteil: "info", befunde: [], schon_bekannt: false,
+    });
+    expect(ohneMessung).not.toContain("Eigene Messung");
+  });
+
   it("fasst gelesene Werte und Befunde zusammen", () => {
     const text = rechnungZusammenfassung({
       gelesen: { anbieter: "Stadtwerke", von: "2026-08-01", bis: "2026-08-31", kwh: 312, brutto_eur: 109.84, arbeitspreis_ct_kwh: 31.2 },

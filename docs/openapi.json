@@ -138,16 +138,45 @@
         "tags": [
           "Alfred"
         ],
-        "summary": "Stromrechnung eines anderen Anbieters lesen und gegen die eigene Messung halten",
-        "description": "Das PDF als Rumpf (`application/pdf`). An den Anbieter gehen nur geschwaerzte Zeilen mit\nMengen, Preisen und Zeitraeumen; gespeichert wird nichts (alfred/rechnung.py).",
+        "summary": "Eine Stromrechnung erkennen, prüfen und zusammenfassen",
+        "description": "Das PDF als Rumpf (`application/pdf`), etwa per Drag-and-drop auf Alfred.\n\n**Erst die feste Erkennung, dann das Modell.** Liest die Tibber-Pruefung das PDF, ist es eine\nTibber-Rechnung: Sie wird geprueft und abgelegt wie auf der Rechnungsseite (dieselbe Funktion,\ndieselbe Ablage), ohne Sprachmodell, ohne dass etwas das Haus verlaesst und auch ohne\neingerichteten Schluessel. Die Antwort nennt die Rechnungsseite, auf der die volle Auswertung\nsteht.\n\nNur wenn sie es nicht kann, liest das Sprachmodell (andere Anbieter, `alfred/rechnung.py`):\nDann gehen nur geschwaerzte Zeilen mit Mengen, Preisen und Zeitraeumen hinaus, und gespeichert\nwird nichts.\n\nDas Ablegen einer Tibber-Rechnung ist ein Schreiben, aber keines, das ein Modell ausloest: Der\nMensch hat die Datei hineingezogen, so wie er sie auf der Rechnungsseite hochladen wuerde.",
         "operationId": "rechnung_lesen_api_v1_alfred_rechnung_post",
+        "parameters": [
+          {
+            "name": "file_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "File Name"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Rechnungsergebnis"
+                  "$ref": "#/components/schemas/AlfredRechnungOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -3031,6 +3060,55 @@
           "frage"
         ],
         "title": "AlfredFrageIn"
+      },
+      "AlfredRechnungOut": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "tibber",
+              "andere"
+            ],
+            "title": "Art"
+          },
+          "tibber": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TibberZusammenfassung"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "andere": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rechnungsergebnis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art"
+        ],
+        "title": "AlfredRechnungOut",
+        "description": "`tibber`: erkannt, geprueft und abgelegt wie auf der Rechnungsseite, ohne Sprachmodell.\n`andere`: vom Sprachmodell gelesen, fest gegen die eigene Messung gehalten, nicht gespeichert."
       },
       "AlfredVorschlagOut": {
         "properties": {
@@ -12868,6 +12946,89 @@
           "avg_ct_kwh_gross"
         ],
         "title": "TibberInvoice"
+      },
+      "TibberZusammenfassung": {
+        "properties": {
+          "zeitraum": {
+            "type": "string",
+            "title": "Zeitraum"
+          },
+          "von": {
+            "type": "string",
+            "format": "date",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "format": "date",
+            "title": "Bis"
+          },
+          "kwh": {
+            "type": "number",
+            "title": "Kwh"
+          },
+          "brutto_eur": {
+            "type": "number",
+            "title": "Brutto Eur"
+          },
+          "ct_kwh_brutto": {
+            "type": "number",
+            "title": "Ct Kwh Brutto"
+          },
+          "gemessen_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemessen Kwh"
+          },
+          "abdeckung": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abdeckung"
+          },
+          "urteil": {
+            "type": "string",
+            "title": "Urteil"
+          },
+          "befunde": {
+            "items": {
+              "$ref": "#/components/schemas/Befund"
+            },
+            "type": "array",
+            "title": "Befunde"
+          },
+          "schon_bekannt": {
+            "type": "boolean",
+            "title": "Schon Bekannt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "zeitraum",
+          "von",
+          "bis",
+          "kwh",
+          "brutto_eur",
+          "ct_kwh_brutto",
+          "gemessen_kwh",
+          "abdeckung",
+          "urteil",
+          "befunde",
+          "schon_bekannt"
+        ],
+        "title": "TibberZusammenfassung",
+        "description": "Das Ergebnis der festen Tibber-Pruefung, so knapp, wie Alfred es im Panel sagt. Die volle\nAuswertung steht auf der Rechnungsseite, auf die `AlfredRechnungOut.link` zeigt."
       },
       "ValidationError": {
         "properties": {
