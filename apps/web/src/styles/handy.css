@@ -233,7 +233,14 @@
   .wp-menue-ziele { grid-template-columns: minmax(0, 1fr); }
   .wp-satz { font-size: 19px; }
   .kl-paar { grid-template-columns: minmax(0, 1fr); }
-  .rg-gruppen { grid-template-columns: minmax(0, 1fr); }
+  .rg-schalterfeld { grid-template-columns: minmax(0, 1fr); }
+  .rg-zuege { margin: 0 -14px; padding: 0 14px 8px; gap: 14px; scroll-snap-type: x proximity; }
+  .rg-zuggruppe { scroll-snap-align: start; }
+  .rg-kanal { width: 88px; }
+  .rg-kurve-werte { margin-left: 0; }
+  .rg-beschriftung { font-size: 15px; }
+  .rg-achse, .rg-griff-text { font-size: 14px; }
+  .rg-leiste { bottom: calc(86px + env(safe-area-inset-bottom)); }
   .kl-chart { height: 280px; }
   .kl-chart-feld { height: 320px; }
   .kl-liste, .kl-karte { overflow-x: auto; }

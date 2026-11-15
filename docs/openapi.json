@@ -1120,6 +1120,112 @@
         }
       }
     },
+    "/api/v1/waermepumpe/einstellungen/{schluessel}": {
+      "post": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Eine Einstellung des Reglers stellen",
+        "description": "Eine Einstellung aus der festen Liste der stellbaren stellen. Abgelehnt wird, was nicht\nin der Liste steht, gerade nicht gelesen ist, nicht mit dem Bediengerät verglichen wurde,\naußerhalb der Grenzen liegt oder heute schon zu oft gestellt wurde; der Grund steht in der\nAntwort. Gestellt ist der Wert erst, wenn der Regler ihn zurückmeldet.",
+        "operationId": "einstellung_stellen_api_v1_waermepumpe_einstellungen__schluessel__post",
+        "parameters": [
+          {
+            "name": "schluessel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Schluessel"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReglerStellenIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReglerStellenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/waermepumpe/einstellungen/{schluessel}/bestaetigen": {
+      "post": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Eine Einstellung als mit dem Bediengerät verglichen vermerken",
+        "description": "Festhalten, dass die Zahl auf der Seite mit der am Bediengerät übereinstimmt (oder das\nzurücknehmen). Erst danach lässt sich die Einstellung stellen.",
+        "operationId": "einstellung_bestaetigen_api_v1_waermepumpe_einstellungen__schluessel__bestaetigen_post",
+        "parameters": [
+          {
+            "name": "schluessel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Schluessel"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReglerBestaetigenIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReglerStellenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -11239,6 +11345,65 @@
         ],
         "title": "ReasonCode"
       },
+      "ReglerAenderungOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "schluessel": {
+            "type": "string",
+            "title": "Schluessel"
+          },
+          "name_de": {
+            "type": "string",
+            "title": "Name De"
+          },
+          "von_de": {
+            "type": "string",
+            "title": "Von De"
+          },
+          "auf_de": {
+            "type": "string",
+            "title": "Auf De"
+          },
+          "urheber_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urheber De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "schluessel",
+          "name_de",
+          "von_de",
+          "auf_de"
+        ],
+        "title": "ReglerAenderungOut",
+        "description": "Eine Zeile des Protokolls: wer wann was gestellt hat."
+      },
+      "ReglerBestaetigenIn": {
+        "properties": {
+          "bestaetigt": {
+            "type": "boolean",
+            "title": "Bestaetigt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bestaetigt"
+        ],
+        "title": "ReglerBestaetigenIn"
+      },
       "ReglerEinstellungOut": {
         "properties": {
           "schluessel": {
@@ -11280,6 +11445,86 @@
               }
             ],
             "title": "Lesart De"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "zahl",
+              "wahl",
+              "schalter"
+            ],
+            "title": "Art",
+            "default": "zahl"
+          },
+          "stellbar": {
+            "type": "boolean",
+            "title": "Stellbar",
+            "default": false
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis"
+          },
+          "schritt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schritt"
+          },
+          "wahl": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Wahl"
+          },
+          "bestaetigt": {
+            "type": "boolean",
+            "title": "Bestaetigt",
+            "default": false
+          },
+          "muster": {
+            "type": "boolean",
+            "title": "Muster",
+            "default": false
+          },
+          "hinweis_de": {
+            "type": "string",
+            "title": "Hinweis De",
+            "default": ""
+          },
+          "gesendet": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReglerGesendetOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -11315,6 +11560,34 @@
             "type": "array",
             "title": "Werte"
           },
+          "stellen_moeglich": {
+            "type": "boolean",
+            "title": "Stellen Moeglich",
+            "default": false
+          },
+          "hindernis_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hindernis De"
+          },
+          "stellen_je_tag": {
+            "type": "integer",
+            "title": "Stellen Je Tag",
+            "default": 0
+          },
+          "protokoll": {
+            "items": {
+              "$ref": "#/components/schemas/ReglerAenderungOut"
+            },
+            "type": "array",
+            "title": "Protokoll"
+          },
           "hinweise_de": {
             "items": {
               "type": "string"
@@ -11330,7 +11603,27 @@
           "satz_de"
         ],
         "title": "ReglerEinstellungenOut",
-        "description": "Was am Regler der Wärmepumpe eingestellt ist. Gelesen, nicht gestellt."
+        "description": "Was am Regler der Wärmepumpe eingestellt ist, und was sich davon stellen lässt."
+      },
+      "ReglerGesendetOut": {
+        "properties": {
+          "wert": {
+            "type": "number",
+            "title": "Wert"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wert",
+          "at"
+        ],
+        "title": "ReglerGesendetOut",
+        "description": "Ein Stellbefehl, der hinausgegangen ist und dessen Rückmeldung noch aussteht."
       },
       "ReglerKennzahlOut": {
         "properties": {
@@ -11503,6 +11796,42 @@
           "tage"
         ],
         "title": "ReglerKennzahlenOut"
+      },
+      "ReglerStellenIn": {
+        "properties": {
+          "wert": {
+            "type": "number",
+            "title": "Wert"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wert"
+        ],
+        "title": "ReglerStellenIn"
+      },
+      "ReglerStellenOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "message_de": {
+            "type": "string",
+            "title": "Message De"
+          },
+          "einstellungen": {
+            "$ref": "#/components/schemas/ReglerEinstellungenOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "message_de",
+          "einstellungen"
+        ],
+        "title": "ReglerStellenOut",
+        "description": "Die Antwort auf einen Stellbefehl oder eine Bestätigung: ob es ging, ein Satz dazu, und\nder Stand danach."
       },
       "ReiheOut": {
         "properties": {

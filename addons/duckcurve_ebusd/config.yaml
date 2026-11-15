@@ -1,7 +1,7 @@
 name: Duck Curve eBUS
-version: "0.4.0"
+version: "0.5.0"
 slug: duckcurve_ebusd
-description: Liest den eBUS der Wärmepumpe über einen Netzwerk-Adapter mit ebusd und legt die Werte auf den Mosquitto-Broker, wo die Duck Curve Bridge sie abholt. Stellt nichts; fragt auf Wunsch einige Werte ab.
+description: Liest den eBUS der Wärmepumpe über einen Netzwerk-Adapter mit ebusd und legt die Werte auf den Mosquitto-Broker, wo die Duck Curve Bridge sie abholt. Fragt Werte ab und stellt, wenn eingeschaltet, eine feste Auswahl von Einstellungen.
 url: https://github.com/moritznobis87/DuckCurveHome
 arch: [aarch64, amd64]
 startup: services
@@ -26,6 +26,10 @@ options:
   abfragen: true
   # Abstand zwischen zwei Abfragen in Sekunden. Je Abfrage ist ein Wert dran.
   abfrage_takt_s: 10
+  # Einstellungen des Reglers stellen können (Heizkurve, Warmwasser, Betriebsart): eine feste
+  # Liste von 14, nichts sonst. Aus heißt: das Add-on kann an der Heizung nichts verändern.
+  # Einschalten ist eine bewusste Entscheidung; gestellt wird nur über die Seite "Regler".
+  stellen: false
   # Wie lange ebusd auf den Adapter wartet. Der Bus der Ariston-Gruppe ist empfindlich gegen
   # Verzögerung; über WLAN haben sich 120 ms bewährt.
   latency_ms: 120
@@ -44,6 +48,7 @@ schema:
   read_only: bool
   abfragen: bool
   abfrage_takt_s: int(5,300)
+  stellen: bool
   latency_ms: int(0,1000)
   mqtt_host: str
   mqtt_port: port

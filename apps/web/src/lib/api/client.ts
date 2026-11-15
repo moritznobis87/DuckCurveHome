@@ -1,5 +1,5 @@
 import type { ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
-  House, Betrieb, BetriebRoh, ReglerEinstellungen, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
+  House, Betrieb, BetriebRoh, ReglerEinstellungen, ReglerStellen, ReglerStellenRoh, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
   constructor(
@@ -42,6 +42,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+const reglerVoll = (d: ReglerEinstellungen): ReglerEinstellungen => ({ ...d, werte: (d.werte ?? []).map((w) => ({ ...w, wahl: w.wahl ?? {} })), hinweise_de: d.hinweise_de ?? [], protokoll: d.protokoll ?? [] });
+
 export const api = {
   liveState: () => request<LiveState>("/live/state"),
   history: (range: "today" | "yesterday" | "24h") => request<History>(`/history?range=${range}`),
@@ -79,9 +81,16 @@ export const api = {
   // Die Technikseite der Wärmepumpe: alle Messwerte des Augenblicks samt Abschätzung.
   waermepumpe: () => request<Waermepumpe>("/waermepumpe"),
   reglerkennzahlen: (tage = 7) => request<ReglerKennzahlen>(`/waermepumpe/kennzahlen?tage=${tage}`),
-  reglerEinstellungen: async (): Promise<ReglerEinstellungen> => {
-    const d = await request<ReglerEinstellungen>("/waermepumpe/einstellungen");
-    return { ...d, werte: d.werte ?? [], hinweise_de: d.hinweise_de ?? [] };
+  reglerEinstellungen: async (): Promise<ReglerEinstellungen> => reglerVoll(await request<ReglerEinstellungen>("/waermepumpe/einstellungen")),
+  /** Eine Einstellung des Reglers stellen. Gestellt ist sie erst, wenn der Regler sie zurückmeldet. */
+  reglerStellen: async (schluessel: string, wert: number): Promise<ReglerStellen> => {
+    const d = await request<ReglerStellenRoh>(`/waermepumpe/einstellungen/${schluessel}`, { method: "POST", body: JSON.stringify({ wert }) });
+    return { ok: d.ok, message_de: d.message_de, einstellungen: reglerVoll(d.einstellungen as ReglerEinstellungen) };
+  },
+  /** Vermerken, dass eine Einstellung mit dem Bediengerät verglichen ist (oder das zurücknehmen). */
+  reglerBestaetigen: async (schluessel: string, bestaetigt: boolean): Promise<ReglerStellen> => {
+    const d = await request<ReglerStellenRoh>(`/waermepumpe/einstellungen/${schluessel}/bestaetigen`, { method: "POST", body: JSON.stringify({ bestaetigt }) });
+    return { ok: d.ok, message_de: d.message_de, einstellungen: reglerVoll(d.einstellungen as ReglerEinstellungen) };
   },
   betrieb: async (tage: number): Promise<Betrieb> => {
     const d = await request<BetriebRoh>(`/waermepumpe/betrieb?tage=${tage}`);

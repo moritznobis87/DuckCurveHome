@@ -1,0 +1,25 @@
+# Duck Curve eBUS: die Einstellungen, die das Add-on stellen kann (Option `stellen`, ab 0.5.0).
+#
+# Das ist die ganze Liste. Jede andere Zeile zum Stellen entfernt das Startskript aus der
+# Bus-Beschreibung, und es startet nicht, wenn danach eine andere uebrig ist als diese hier.
+# Eine Zeile ist ein Rundruf mit dem Dienst 2020, der Kennung und dem Wert: so aendert auch das
+# Bediengeraet eine Einstellung. Grenzen und Raster prueft der Dienst, bevor er einen Wert
+# hierher schickt (apps/api/src/dch_api/application/regler.py); die Zeilen entstehen aus
+# derselben Liste (`zeile_stellen`), ein Test haelt beide gleich.
+#
+# e_heizbetrieb (1c22) steht in der Bus-Beschreibung nur zum Lesen; die Zeile hier ist nach dem
+# Muster der uebrigen gebildet.
+w,energymgr,e_steilheit,Steilheit,,fe,2020,6a71,wert,m,UIN,100,,
+w,energymgr,e_verschiebung,Verschiebung,,fe,2020,6471,wert,m,SCH,10,K,
+w,energymgr,e_vorlauf_max,Vorlauf hoechstens,,fe,2020,6071,wert,m,SIN,10,°C,
+w,energymgr,e_vorlauf_min,Vorlauf mindestens,,fe,2020,6171,wert,m,SIN,10,°C,
+w,energymgr,e_vorlauf_fest,Vorlauf fest,,fe,2020,6571,wert,m,SIN,10,°C,
+w,energymgr,e_raumeinfluss,Einfluss der Raumtemperatur,,fe,2020,c279,wert,m,UCH,,,
+w,energymgr,e_raum_tag,Raumtemperatur Tag,,fe,2020,6271,wert,m,SIN,10,°C,
+w,energymgr,e_raum_nacht,Raumtemperatur Nacht,,fe,2020,6371,wert,m,SIN,10,°C,
+w,energymgr,e_ww_komfort,Komforttemperatur,,fe,2020,6126,wert,m,SIN,10,°C,
+w,energymgr,e_ww_spar,Spartemperatur,,fe,2020,6226,wert,m,SIN,10,°C,
+w,energymgr,e_ww_art,Betriebsart,,fe,2020,c028,wert,m,UCH,,,
+w,energymgr,e_ww_legionellen,Legionellenprogramm,,fe,2020,0b20,wert,m,UCH,,,
+w,energymgr,e_heizbetrieb,Heizbetrieb,,fe,2020,1c22,wert,m,UCH,,,
+w,energymgr,e_fluester,Fluestermodus,,fe,2020,0320,wert,m,UCH,,,

@@ -853,11 +853,103 @@ button.ansicht { cursor: pointer; }
 .kl-bilanz-anteil, .kl-bilanz-wozu { color: var(--text-3); }
 .kl-bilanz-anteil { text-align: right; }
 .kl-bilanz-wozu { font-size: 13px; }
-.rg-gruppen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+/* --- Der Regler der Wärmepumpe: Heizkurve zum Anfassen und ein Pult mit Kanalzügen --- */
+.rg-seite { padding-bottom: 12px; }
 .rg-tabelle td { vertical-align: top; }
 .rg-tabelle td.rg-wert { font-size: 16px; color: var(--amber); white-space: nowrap; }
 .rg-tabelle tr[data-gemessen="false"] td.rg-wert { color: var(--text-3); }
 .rg-lesart { display: block; font-size: 12px; color: var(--text-3); }
+.rg-anleitung { margin: 0; max-width: 820px; font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.rg-meldungen { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--surface-2); font-size: 14px; line-height: 1.5; color: var(--text-1); max-width: 820px; }
+.rg-meldungen p[data-ok="false"] { color: var(--alert); }
+.rg-leise { justify-self: start; padding: 6px 12px; border: 1px solid var(--line-2); border-radius: 999px; background: none; color: var(--text-2); font-size: 13px; cursor: pointer; }
+.rg-leise:hover:not(:disabled) { color: var(--text-1); border-color: var(--text-3); }
+.rg-haupt { padding: 9px 18px; border: 1px solid var(--amber); border-radius: 999px; background: var(--amber); color: var(--petrol); font-size: 14px; font-weight: 600; cursor: pointer; }
+.rg-haupt:disabled, .rg-leise:disabled { opacity: 0.5; cursor: default; }
+.rg-haupt:focus-visible, .rg-leise:focus-visible, .rg-vergleich:focus-visible, .rg-stufen button:focus-visible, .rg-tasten button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+/* Die Heizkurve */
+.rg-kurve svg { display: block; width: 100%; height: auto; user-select: none; }
+.rg-raster { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; }
+.rg-achse { fill: var(--text-3); font-family: var(--font-mono); font-size: 11px; }
+.rg-aussen { fill: rgba(0, 0, 0, 0.22); }
+.rg-gemessen { fill: var(--mist); opacity: 0.55; }
+.rg-ist-linie { fill: none; stroke: var(--text-3); stroke-width: 1.5; stroke-dasharray: 5 5; }
+.rg-soll-linie { fill: none; stroke: var(--heat-pump); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.rg-soll-linie[data-geaendert="true"] { stroke: var(--amber); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--amber) 60%, transparent)); }
+.rg-grenze { stroke: var(--text-3); stroke-width: 1.5; stroke-dasharray: 2 4; }
+.rg-griff { cursor: grab; outline: none; touch-action: none; }
+.rg-griff[data-frei="false"] { cursor: default; }
+.rg-griff[data-zieht="true"] { cursor: grabbing; }
+.rg-griff-flaeche { fill: var(--surface-3); stroke: var(--amber); stroke-width: 2; transition: fill 0.12s; }
+.rg-griff:hover[data-frei="true"] .rg-griff-flaeche, .rg-griff[data-zieht="true"] .rg-griff-flaeche { fill: var(--amber); }
+.rg-griff:focus-visible .rg-griff-flaeche { stroke-width: 3.5; stroke: #fff; }
+.rg-griff[data-frei="false"] .rg-griff-flaeche { stroke: var(--line-2); fill: var(--surface-2); }
+.rg-griff-zeichen { fill: none; stroke: var(--text-1); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.rg-griff:hover[data-frei="true"] .rg-griff-zeichen, .rg-griff[data-zieht="true"] .rg-griff-zeichen { stroke: var(--petrol); }
+.rg-griff[data-frei="false"] .rg-griff-zeichen { stroke: var(--text-3); }
+.rg-griff-text { fill: var(--text-1); font-family: var(--font-mono); font-size: 11px; pointer-events: none; }
+.rg-griff:hover[data-frei="true"] .rg-griff-text, .rg-griff[data-zieht="true"] .rg-griff-text { fill: var(--petrol); }
+.rg-griff[data-frei="false"] .rg-griff-text { fill: var(--text-3); }
+.rg-beschriftung { fill: var(--text-1); font-size: 12px; paint-order: stroke; stroke: var(--surface-1); stroke-width: 4px; pointer-events: none; }
+.rg-kurve-fuss { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin-top: 6px; font-size: 12px; color: var(--text-3); }
+.rg-kurve-werte { margin-left: auto; color: var(--text-2); }
+.rg-legende { display: inline-block; width: 18px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 3px solid var(--heat-pump); }
+.rg-legende-ist { border-top: 2px dashed var(--text-3); }
+.rg-legende-gemessen { width: 7px; height: 7px; border: 0; border-radius: 50%; background: var(--mist); opacity: 0.7; }
+
+/* Das Pult */
+.rg-pult { background: linear-gradient(180deg, var(--surface-2), var(--deep)); }
+.rg-zuege { display: flex; gap: 22px; overflow-x: auto; padding-bottom: 6px; }
+.rg-zuggruppe { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; border: 1px solid var(--line-1); border-radius: 14px; background: rgba(0, 0, 0, 0.18); }
+.rg-gruppenname { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); }
+.rg-zugreihe { display: flex; gap: 10px; }
+.rg-kanal { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 96px; flex: none; }
+.rg-anzeige { width: 100%; padding: 6px 4px; border: 1px solid var(--line-1); border-radius: 8px; background: #06151c; color: var(--heat-pump); font-size: 15px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rg-kanal[data-geaendert="true"] .rg-anzeige { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 60%, transparent); box-shadow: 0 0 10px color-mix(in srgb, var(--amber) 25%, transparent); }
+.rg-kanal[data-frei="false"] .rg-anzeige { color: var(--text-3); }
+.rg-bahn { position: relative; width: 56px; height: 190px; margin: 6px 0; cursor: grab; touch-action: pan-x; outline: none; }
+.rg-bahn[data-zieht="true"] { cursor: grabbing; }
+.rg-kanal[data-frei="false"] .rg-bahn { cursor: default; }
+.rg-rille { position: absolute; left: 50%; top: 0; bottom: 0; width: 8px; transform: translateX(-50%); border-radius: 4px; background: #06151c; box-shadow: inset 0 0 0 1px var(--line-1); overflow: hidden; }
+.rg-fuellung { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, var(--heat-pump), color-mix(in srgb, var(--heat-pump) 45%, transparent)); }
+.rg-kanal[data-geaendert="true"] .rg-fuellung { background: linear-gradient(180deg, var(--amber), color-mix(in srgb, var(--amber) 45%, transparent)); }
+.rg-kanal[data-frei="false"] .rg-fuellung { background: var(--line-2); }
+.rg-skala span { position: absolute; left: 4px; right: 4px; height: 1px; background: linear-gradient(90deg, var(--line-2) 0 10px, transparent 10px calc(100% - 10px), var(--line-2) calc(100% - 10px)); }
+.rg-ist { position: absolute; left: 0; right: 0; height: 2px; margin-bottom: -1px; background: linear-gradient(90deg, var(--text-2) 0 14px, transparent 14px calc(100% - 14px), var(--text-2) calc(100% - 14px)); }
+.rg-knopf { position: absolute; left: 50%; width: 44px; height: 26px; margin-bottom: -13px; transform: translateX(-50%); border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.25); background: linear-gradient(180deg, #d8dee1 0 46%, #20333c 46% 54%, #b9c2c6 54%); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5); }
+.rg-kanal[data-geaendert="true"] .rg-knopf { background: linear-gradient(180deg, #ffd27a 0 46%, #20333c 46% 54%, var(--amber) 54%); }
+.rg-kanal[data-frei="false"] .rg-knopf { background: linear-gradient(180deg, #5d6e76 0 46%, #20333c 46% 54%, #4b5a61 54%); box-shadow: none; }
+.rg-bahn:focus-visible .rg-knopf { outline: 2px solid var(--amber); outline-offset: 2px; }
+.rg-tasten { display: flex; gap: 6px; }
+.rg-tasten button { width: 34px; height: 30px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font-size: 17px; line-height: 1; cursor: pointer; }
+.rg-tasten button:disabled { color: var(--text-3); cursor: default; opacity: 0.6; }
+.rg-name { min-height: 34px; font-size: 12.5px; line-height: 1.3; text-align: center; color: var(--text-1); }
+.rg-kanal-fuss { display: block; min-height: 30px; font-size: 11.5px; line-height: 1.3; text-align: center; color: var(--text-3); }
+.rg-vergleich { padding: 5px 8px; border: 1px dashed color-mix(in srgb, var(--amber) 70%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--amber) 9%, transparent); color: var(--text-1); font-size: 11.5px; line-height: 1.25; cursor: pointer; }
+.rg-vergleich:hover { background: color-mix(in srgb, var(--amber) 20%, transparent); }
+.rg-wartet { color: var(--amber); }
+
+/* Die Schalter */
+.rg-schalterfeld { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.rg-schalter { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line-1); border-radius: 12px; background: rgba(0, 0, 0, 0.14); }
+.rg-schalter[data-geaendert="true"] { border-color: color-mix(in srgb, var(--amber) 60%, transparent); }
+.rg-schaltername { font-size: 14px; color: var(--text-1); }
+.rg-schaltername em { font-style: normal; font-size: 12px; color: var(--text-3); }
+.rg-stufen { display: flex; flex-wrap: wrap; gap: 6px; }
+.rg-stufen button { padding: 8px 12px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface-2); color: var(--text-2); font-size: 13px; cursor: pointer; border-bottom-width: 3px; }
+.rg-stufen button[data-ist="true"] { border-bottom-color: var(--text-2); }
+.rg-stufen button[aria-checked="true"] { background: var(--heat-pump); border-color: var(--heat-pump); color: var(--petrol); font-weight: 600; }
+.rg-schalter[data-geaendert="true"] .rg-stufen button[aria-checked="true"] { background: var(--amber); border-color: var(--amber); }
+.rg-stufen button:disabled { cursor: default; opacity: 0.55; }
+.rg-schalterhinweis { font-size: 12px; line-height: 1.45; color: var(--text-3); }
+.rg-schalter .rg-kanal-fuss { text-align: left; min-height: 0; }
+.rg-vermerke { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Die Leiste mit dem Entwurf: bleibt am unteren Rand stehen, solange es etwas zu übernehmen gibt. */
+.rg-leiste { position: sticky; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--amber) 55%, transparent); border-radius: 16px; background: color-mix(in srgb, var(--deep) 92%, var(--amber)); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); font-size: 14px; color: var(--text-1); }
+.rg-uebersicht ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 3px; }
+.rg-leistenknoepfe { display: flex; gap: 8px; margin-left: auto; }
 .bt-saetze { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; line-height: 1.5; color: var(--text-1); max-width: 860px; }
 .kl-liste { font-size: 14px; color: var(--text-2); }
 .kl-liste summary { cursor: pointer; padding: 6px 0; }

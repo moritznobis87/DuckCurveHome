@@ -91,7 +91,10 @@ export type Kennlinie = Omit<KennlinieRoh, "punkte" | "annahme" | "hinweise_de" 
   hinweise_de: string[];
 };
 export type ReglerEinstellung = S["ReglerEinstellungOut"];
-export type ReglerEinstellungen = Omit<S["ReglerEinstellungenOut"], "werte" | "hinweise_de"> & { werte: ReglerEinstellung[]; hinweise_de: string[] };
+export type ReglerEinstellungen = Omit<S["ReglerEinstellungenOut"], "werte" | "hinweise_de" | "protokoll"> & { werte: ReglerEinstellung[]; hinweise_de: string[]; protokoll: S["ReglerAenderungOut"][] };
+export type ReglerAenderung = S["ReglerAenderungOut"];
+export type ReglerStellenRoh = S["ReglerStellenOut"];
+export type ReglerStellen = { ok: boolean; message_de: string; einstellungen: ReglerEinstellungen };
 export type BetriebRoh = S["BetriebOut"];
 export type BetriebTag = S["BetriebTagOut"];
 export type BetriebLauf = S["BetriebLaufOut"];

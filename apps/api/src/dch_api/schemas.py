@@ -1289,6 +1289,13 @@ class ReglerKennzahlenOut(BaseModel):
     zeilen: list[ReglerKennzahlOut] = Field(default_factory=list)
 
 
+class ReglerGesendetOut(BaseModel):
+    """Ein Stellbefehl, der hinausgegangen ist und dessen Rückmeldung noch aussteht."""
+
+    wert: float
+    at: datetime
+
+
 class ReglerEinstellungOut(BaseModel):
     """Eine Einstellung des Reglers der Wärmepumpe, gelesen über den Bus."""
 
@@ -1302,16 +1309,65 @@ class ReglerEinstellungOut(BaseModel):
     wert: Measurement
     #: Was die Bus-Beschreibung zu dieser Zahl sagt, bei Kennzahlen. Nicht im Haus bestätigt.
     lesart_de: str | None = None
+    #: Wie sie sich bedienen lässt: eine Zahl auf einer Skala, eine Auswahl, ein Schalter.
+    art: Literal["zahl", "wahl", "schalter"] = "zahl"
+    #: Lässt sie sich von hier stellen, und in welchen Grenzen und Schritten.
+    stellbar: bool = False
+    von: float | None = None
+    bis: float | None = None
+    schritt: float | None = None
+    #: Die Stufen einer Auswahl oder eines Schalters: Zahl des Reglers und Lesart der Liste.
+    wahl: dict[str, str] = Field(default_factory=dict)
+    #: Jemand hat den Wert mit dem Bediengerät verglichen. Ohne das wird nicht gestellt.
+    bestaetigt: bool = False
+    #: Die Zeile zum Stellen ist nach dem Muster der übrigen gebildet, nicht aus der Liste.
+    muster: bool = False
+    hinweis_de: str = ""
+    #: Gesendet, aber vom Regler noch nicht so zurückgemeldet.
+    gesendet: ReglerGesendetOut | None = None
+
+
+class ReglerAenderungOut(BaseModel):
+    """Eine Zeile des Protokolls: wer wann was gestellt hat."""
+
+    at: datetime
+    schluessel: str
+    name_de: str
+    von_de: str
+    auf_de: str
+    urheber_de: str | None = None
 
 
 class ReglerEinstellungenOut(BaseModel):
-    """Was am Regler der Wärmepumpe eingestellt ist. Gelesen, nicht gestellt."""
+    """Was am Regler der Wärmepumpe eingestellt ist, und was sich davon stellen lässt."""
 
     now: datetime
     gelesen: int
     satz_de: str
     werte: list[ReglerEinstellungOut] = Field(default_factory=list)
+    #: Kann der Dienst gerade einen Stellbefehl loswerden. Wenn nicht, sagt `hindernis_de`, warum.
+    stellen_moeglich: bool = False
+    hindernis_de: str | None = None
+    stellen_je_tag: int = 0
+    protokoll: list[ReglerAenderungOut] = Field(default_factory=list)
     hinweise_de: list[str] = Field(default_factory=list)
+
+
+class ReglerStellenIn(BaseModel):
+    wert: float
+
+
+class ReglerBestaetigenIn(BaseModel):
+    bestaetigt: bool
+
+
+class ReglerStellenOut(BaseModel):
+    """Die Antwort auf einen Stellbefehl oder eine Bestätigung: ob es ging, ein Satz dazu, und
+    der Stand danach."""
+
+    ok: bool
+    message_de: str
+    einstellungen: ReglerEinstellungenOut
 
 
 class KennlinienPunktOut(BaseModel):

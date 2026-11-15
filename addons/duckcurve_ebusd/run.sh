@@ -98,6 +98,7 @@ fi
 
 READ_ONLY="$(opt read_only true)"
 ABFRAGEN="$(opt abfragen false)"
+STELLEN="$(opt stellen false)"
 
 # Zeilen zum Stellen zählen und entfernen. Die erste Spalte nennt die Art; mehrere stehen mit
 # Semikolon nebeneinander ("r;w"), ein Stern davor setzt Vorgaben. Was mit w beginnt, stellt.
@@ -151,6 +152,9 @@ fi
 if [ "$READ_ONLY" = "true" ] && [ "$ABFRAGEN" != "true" ]; then
   ARGS+=(--readonly)
   log "Nur lesend: ebusd schreibt nichts auf den Bus."
+  if [ "$STELLEN" = "true" ]; then
+    log "Die Option stellen wirkt nur zusammen mit abfragen. Es wird nur gelauscht."
+  fi
 elif [ "$READ_ONLY" = "true" ]; then
   vorher="$(stellzeilen)"
   for datei in "$CONFIGPATH"/*.csv; do
@@ -159,7 +163,30 @@ elif [ "$READ_ONLY" = "true" ]; then
   [ "$(stellzeilen)" = "0" ] || fatal "In der Bus-Beschreibung stehen noch Zeilen zum Stellen. Nicht gestartet."
   ARGS+=("--pollinterval=$(opt abfrage_takt_s 10)")
   log "Abfragen an: ebusd fragt $(grep -c '^r[1-9],' "$CONFIGPATH/aerotop_abfragen.csv") Werte reihum ab, alle $(opt abfrage_takt_s 10) s einen."
-  log "Stellen kann ebusd nichts: $vorher Zeilen zum Stellen aus der Bus-Beschreibung entfernt, keine übrig."
+  if [ "$STELLEN" = "true" ] && [ -r "$EIGENE/aerotop_stellen.csv" ]; then
+    # Erst jetzt, nachdem jede fremde Zeile zum Stellen entfernt ist, kommt die eigene Liste
+    # dazu. Danach muss die Zahl der Zeilen zum Stellen genau die der eigenen Liste sein.
+    cp "$EIGENE/aerotop_stellen.csv" "$CONFIGPATH/aerotop_stellen.csv" \
+      || fatal "Kann die Liste der stellbaren Einstellungen nicht dazulegen."
+    # Die fremde Bus-Beschreibung liest dieselben Rundrufe mit (wenn das Bediengerät eine
+    # Einstellung ändert) und versteht den eigenen Rundruf dann falsch: im Probelauf stand nach
+    # jedem Stellen ein "ERR: invalid position" im Protokoll, obwohl nichts fehlte. Diese
+    # Zeilen zum Mitlesen weichen deshalb.
+    for datei in "$CONFIGPATH"/*.csv; do
+      [ "$(basename "$datei")" = "aerotop_stellen.csv" ] && continue
+      awk -F, 'NR == FNR { if ($1 == "w") k[tolower($6 FS $7 FS $8)] = 1; next }
+        !($1 ~ /^[gub]/ && (tolower($6 FS $7 FS $8) in k))' "$EIGENE/aerotop_stellen.csv" "$datei" > "$datei.neu" \
+        && mv "$datei.neu" "$datei" || fatal "Kann $(basename "$datei") nicht für das Stellen vorbereiten."
+    done
+    erlaubt="$(grep -c '^w,' "$EIGENE/aerotop_stellen.csv")"
+    [ "$(stellzeilen)" = "$erlaubt" ] || fatal "Die Zahl der Zeilen zum Stellen stimmt nicht mit der eigenen Liste überein. Nicht gestartet."
+    if echo "$(ebusd --checkconfig "--configpath=$CONFIGPATH" 2>&1)" | grep -q "ERR:"; then
+      fatal "ebusd nimmt die Liste der stellbaren Einstellungen nicht an. Nicht gestartet."
+    fi
+    log "ACHTUNG, Stellen an: ebusd kann $erlaubt Einstellungen des Reglers stellen, und nur diese. $vorher andere Zeilen zum Stellen sind aus der Bus-Beschreibung entfernt."
+  else
+    log "Stellen kann ebusd nichts: $vorher Zeilen zum Stellen aus der Bus-Beschreibung entfernt, keine übrig."
+  fi
 else
   if [ "$ABFRAGEN" = "true" ]; then ARGS+=("--pollinterval=$(opt abfrage_takt_s 10)"); fi
   log "ACHTUNG: read_only ist aus. ebusd darf auf den Bus schreiben (Werte abfragen und, wenn jemand es verlangt, stellen)."

@@ -179,7 +179,8 @@ def vorfuehrung(now: datetime, tage: int, tz: tzinfo) -> list[kl.Minute]:
 
     Die Vorführung hat keinen Bus. Damit die Seite dort zu sehen ist, entstehen die Minuten aus
     festen Regeln, bei jedem Aufruf dieselben: das Wetter schwingt über die Tage und den Tag,
-    der Regler verlangt 44 Grad Vorlauf bei null Grad und je Grad wärmer 0,7 Grad weniger, die
+    der Regler verlangt 35,7 Grad Vorlauf bei null Grad und je Grad wärmer 0,7 Grad weniger
+    (das ist die Heizkurve der Seite „Regler“: Raum 21 Grad, Steilheit 0,7, keine Verschiebung), die
     Maschine läuft morgens und abends lang und taktet am Nachmittag, taut unter drei Grad alle
     fünfzig Minuten ab, und an einem kalten Morgen läuft zwanzig Minuten der Heizstab mit. In
     den ersten Minuten eines Laufs kommt erst ein Teil der Wärme an: so kostet das Takten in
@@ -199,7 +200,7 @@ def vorfuehrung(now: datetime, tage: int, tz: tzinfo) -> list[kl.Minute]:
         tag, im_tag = divmod(i, 1440)
         stunde = im_tag / 60.0
         aussen = 4.0 + 5.0 * math.sin(tag / 4.0) + 3.5 * math.sin((stunde - 9.0) * math.pi / 12.0)
-        soll = 44.0 - 0.7 * aussen
+        soll = 35.7 - 0.7 * aussen
         # Morgens und abends ein langer Lauf, am Nachmittag kurze Takte, nachts Ruhe.
         if 5.0 <= stunde < 8.5 or 17.0 <= stunde < 20.5:
             laeuft = True

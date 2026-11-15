@@ -129,6 +129,19 @@ ANTWORTEN = {
     "1820006226": "03009001",
     "182000c028": "020001",
     "1820000320": "020000",
+    # Ab Add-on 0.5.0 dazu: Raumeinfluss 0, Temperaturbereich 0, Korrektur 0,0 K,
+    # Legionellenprogramm 0, Zuschlag bei Sonnenstrom 5,0 K, Heizbetrieb 1, Komfortstufe 2,
+    # Pumpe 2, Wärmepumpe aus unter -20,0 °C, Sommerbetrieb ab 18,0 °C.
+    "182000c279": "020000",
+    "1820000081": "020000",
+    "1820007d2b": "03000000",
+    "1820000b20": "020000",
+    "182000762d": "03003200",
+    "1820001c22": "020001",
+    "182000c728": "020002",
+    "182000c32a": "020002",
+    "1820007226": "030038ff",
+    "1820007971": "0300b400",
 }
 
 
@@ -211,7 +224,22 @@ def main() -> None:
                         schluessel = kopf[1:4].hex() + kopf[5:].hex()
                         antwort = ANTWORTEN.get(schluessel)
                         gut = crc8(kopf) == frage[-1]
-                        if antwort is None or not gut or kopf[1] == 0xFE:
+                        if gut and kopf[1:4] == bytes.fromhex("fe2020") and len(kopf) > 7:
+                            # Ein Rundruf zum Stellen: Kennung und Wert. Der Übungsadapter
+                            # merkt sich den Wert, damit die nächste Frage ihn zurückgibt, so
+                            # wie ein Regler eine geänderte Einstellung meldet.
+                            kennung, wert = kopf[5:7].hex(), kopf[7:].hex()
+                            ANTWORTEN[f"182000{kennung}"] = f"{len(kopf) - 7 + 1:02x}00{wert}"
+                            print(
+                                "EBUSD STELLT:",
+                                kopf.hex(),
+                                "Kennung",
+                                kennung,
+                                "Wert",
+                                wert,
+                                flush=True,
+                            )
+                        elif antwort is None or not gut or kopf[1] == 0xFE:
                             print(
                                 "OHNE ANTWORT:",
                                 kopf.hex(),

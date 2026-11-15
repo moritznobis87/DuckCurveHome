@@ -891,6 +891,28 @@ class MqttHub:
             return dev.observed(key)
         raise LookupError(f"kein MQTT-Gerät für {key}")
 
+    async def stellen(self, key: str, wert: float, nachlesen_s: float = 1.5) -> None:
+        """Eine Einstellung über den Broker stellen und gleich danach neu lesen lassen.
+
+        Eine Bestätigung gibt es hier nicht: ebusd meldet nicht, ob der Regler den Wert genommen
+        hat. Das zeigt erst der neu gelesene Wert, der wie jeder andere als Messwert ankommt.
+        """
+        session = self._session
+        if session is None:
+            raise RuntimeError("keine MQTT-Verbindung")
+        for dev in self.devices:
+            bauen = getattr(dev, "stellen", None)
+            gebaut = bauen(key, wert) if bauen is not None else None
+            if gebaut is None:
+                continue
+            (thema, text), (lesen, leer) = gebaut
+            await session.publish(thema, text, qos=self.qos)
+            self.commands += 1
+            await asyncio.sleep(nachlesen_s)
+            await session.publish(lesen, leer, qos=self.qos)
+            return
+        raise LookupError(f"keine stellbare Einstellung unter {key}")
+
     async def run(self) -> None:
         await asyncio.gather(self._connect_loop(), self._emit_loop(), self._poll_loop())
 
