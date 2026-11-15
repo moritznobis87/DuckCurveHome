@@ -81,6 +81,49 @@ def schluessel(components: dict[str, str | dict[str, str]]) -> set[str]:
     return out
 
 
+#: Schalter, wie ebusd sie ausgibt, als Zahl.
+SCHALTER: dict[str, float] = {"on": 1.0, "off": 0.0}
+#: Der Betriebszustand der Maschine, wie ebusd ihn als Wort ausgibt (`heatpump/heatpump_mode`,
+#: Kennung ca46), mit der Zahl, die auf dem Bus steht. Die Zuordnung stammt aus der fremden
+#: Bus-Beschreibung; im Haus gesehen sind „Soft_fail" (15, bei stehender Maschine) und
+#: „Heating" (3). Das Bediengerät fragt den Zustand alle zehn Sekunden ab; die Liste mit
+#: Zustand und Verdichterfrequenz zusammen (`hp_betrieb`) geht nur gelegentlich über den Bus.
+#: Am 14.11.2026 zeigte die Seite deshalb „steht", während die Maschine lief.
+BETRIEBSZUSTAND: dict[str, float] = {
+    "OFF": 0.0,
+    "Stand_by": 1.0,
+    "Cooling": 2.0,
+    "Heating": 3.0,
+    "Heating_boost": 4.0,
+    "Cooling_boost": 5.0,
+    "Heating_rating": 6.0,
+    "Cooling_rating": 7.0,
+    "Antifreeze": 8.0,
+    "Defrost": 9.0,
+    "Overtemp_prot": 10.0,
+    "Timeguard": 11.0,
+    "System_error": 12.0,
+    "Reset_service": 13.0,
+    "Coolant_recovery": 14.0,
+    "Soft_fail": 15.0,
+}
+#: An dieser Stelle im Thema erkennt die Bridge eine Einstellung des Reglers, die sich stellen
+#: lässt: `energymgr/e_steilheit`. Alles andere wird nur gelesen.
+STELL_VORSILBE = "/e_"
+
+
+def zahl_text(wert: float) -> str:
+    """Eine Zahl, wie ebusd sie als Wert annimmt: ganze Zahlen ohne Komma (eine Kennzahl ist
+    für ebusd `1`, nicht `1.0`), sonst mit höchstens zwei Stellen."""
+    if abs(wert - round(wert)) < 1e-9:
+        return str(round(wert))
+    return f"{wert:.2f}".rstrip("0").rstrip(".")
+
+
+#: Die Wörter, die als Zahl gelesen werden. Jedes andere Wort bleibt ein Wort.
+WOERTER: dict[str, float] = {**SCHALTER, **BETRIEBSZUSTAND}
+
+
 def rohwerte(payload: bytes | str) -> dict[str, object] | None:
     """Alle Felder einer ebusd-Nachricht, Zahlen wie Wörter. `None`: nicht lesbar."""
     try:
@@ -100,10 +143,18 @@ def felder(payload: bytes | str) -> dict[str, float] | None:
 
     Wörter (etwa der Betriebszustand „Heating") sind keine Messwerte und fehlen im Ergebnis; eine
     Nachricht, die nur Wörter enthält, ergibt ein leeres Verzeichnis und ist trotzdem gültig.
+
+    Ausnahmen (`WOERTER`): `on` und `off`, so gibt ebusd Schalter aus, etwa die Heizanforderung
+    einer Zone (`{"z1_heat_request": {"value": "on"}}`), und ein Schalter ist ein Wert, 1 und 0.
+    Und die Wörter des Betriebszustands der Maschine; hinter jedem steht auf dem Bus eine Zahl.
     """
     roh = rohwerte(payload)
     if roh is None:
         return None
+    roh = {
+        name: WOERTER.get(wert, wert) if isinstance(wert, str) else wert
+        for name, wert in roh.items()
+    }
     return {
         name: float(wert)
         for name, wert in roh.items()
@@ -259,7 +310,26 @@ class EbusdDevice:
         return items
 
     def command(self, key: str, state: bool, ttl_s: float | None) -> tuple[str, str] | None:
-        return None  # gelesen wird nur
+        return None  # geschaltet wird hier nichts; eine Einstellung stellt `stellen`
+
+    def stellen(self, key: str, wert: float) -> tuple[tuple[str, str], tuple[str, str]] | None:
+        """Eine Einstellung des Reglers stellen: das Thema und der Wert für ebusd, dazu das
+        Thema, das sie gleich danach neu lesen lässt. `None`, wenn dieser Schlüssel keine
+        Einstellung ist.
+
+        Gestellt wird nur, was in der Zuordnung unter `<kreis>/e_<name>` steht: das sind die
+        Einstellungen des Reglers (`STELL_VORSILBE`). Ein Messwert wie der Vorlauf hat einen
+        Schlüssel, aber kein Thema zum Stellen, und bekommt hier keines. Ob ebusd den Befehl
+        ausführt, entscheidet das Add-on: es kennt nur die Zeilen seiner eigenen Liste, und nur
+        mit seinem Schalter `stellen`.
+        """
+        for thema, ziel in self.components.items():
+            if not isinstance(ziel, dict) or STELL_VORSILBE not in thema:
+                continue
+            if list(ziel.items()) == [("wert", key)]:
+                basis = f"{self.topic_prefix}/{thema}"
+                return (f"{basis}/set", zahl_text(wert)), (f"{basis}/get", "")
+        return None
 
     def poll(self) -> tuple[str, str] | None:
         return None  # nichts abfragen: jede Abfrage wäre ein Telegramm auf dem Bus

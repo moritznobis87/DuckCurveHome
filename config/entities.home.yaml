@@ -148,6 +148,96 @@ mqtt:
       "heatpump/hp_betrieb":
         compressor_hz: heat_pump_compressor_hz
         mode: heat_pump_mode_code
+      # Der Betriebszustand allein, als Wort (ab Bridge 0.14.5 als Zahl gelesen). Das
+      # Bediengerät fragt ihn alle zehn Sekunden ab; die Liste darüber geht nur gelegentlich
+      # über den Bus. Am 14.11.2026 zeigte die Seite deshalb „steht", während die Maschine lief.
+      "heatpump/heatpump_mode": heat_pump_mode_code
+      # Kennzahl des Reglers (Kennung c94b; ab Add-on 0.2.2). Im Haus bestätigt: 0 stehend,
+      # 2 Heizbetrieb (14.11.2026, 16:41: Sprung auf 2 mit dem Start der Pumpe, bei
+      # Heizanforderung der Zone 1). Gesehen, aber nicht zugeordnet: 16, 20, 22. Sie kommt in
+      # einer Liste mit der Hauptpumpe und allein; die Liste wird nur gelesen, wenn ihre
+      # Kennungen stimmen.
+      "energymgr/pumpe_status":
+        kennung_2: "=c7 4b"
+        kennung_3: "=c9 4b"
+        wert_c94b: heat_pump_cycle_code
+      "energymgr/betriebsart":
+        code: heat_pump_cycle_code
+      # Was der Regler vorgibt (Protokoll vom 14.11.2026, 16:41, Start in den Heizbetrieb):
+      # Heizanforderung der ersten Zone (an/aus; als Zahl ab Bridge 0.14.4) und ihr
+      # Raum-Sollwert (22,0 °C am Tag, 10,0 °C in der Nacht).
+      "energymgr/heat_request":
+        z1_heat_request: heat_pump_heat_request
+      "energymgr/setpoint_temp":
+        z1_setpoint_temp: heat_pump_room_setpoint_c
+      # Zum Mitschreiben, Bedeutung offen (eigene Zeilen des Add-ons ab 0.2.3): die Kennung 1b45
+      # neben der des Heizstabs, und die Vorgaben des Reglers an die Maschine (cd46 wechselte
+      # beim Start von 0 auf 3, 6a47 von 60,0 auf 55,0).
+      "energymgr/flag_1b45":
+        wert: heat_pump_flag_1b45
+      "heatpump/wp_vorgabe":
+        kennung_2: "=c4 46"
+        kennung_3: "=cd 46"
+        kennung_4: "=6a 47"
+        modus: heat_pump_cmd_mode_code
+        ziel: heat_pump_cmd_target_c
+      # Was das Add-on ab 0.3.0 selbst abfragt (Option `abfragen`), weil es sonst nie über den
+      # Bus geht. Zahlen, keine Wörter: was 0 und 1 in diesem Haus heißen, zeigt erst der
+      # Vergleich mit Speicher und Zähler (docs/SENSORIK.md, "Was das Add-on selbst abfragt").
+      "energymgr/ventil_ww":
+        stellung: heat_pump_valve_code
+      "energymgr/heizstab":
+        an: heat_pump_heater_code
+      "heatpump/verdichter_strom":
+        strom_a: heat_pump_compressor_a
+      "heatpump/luefter":
+        drehzahl: heat_pump_fan_speed
+      # Die Einstellungen des Reglers, gelesen ab Add-on 0.4.0 (selten abgefragt). Für die Seite
+      # "Regler": was eingestellt ist, bevor irgendetwas davon verstellt werden kann.
+      "energymgr/e_steilheit":
+        wert: heat_pump_set_slope
+      "energymgr/e_verschiebung":
+        wert: heat_pump_set_offset_k
+      "energymgr/e_vorlauf_max":
+        wert: heat_pump_set_flow_max_c
+      "energymgr/e_vorlauf_min":
+        wert: heat_pump_set_flow_min_c
+      "energymgr/e_vorlauf_fest":
+        wert: heat_pump_set_flow_fixed_c
+      "energymgr/e_heizkurve_art":
+        wert: heat_pump_set_curve_type
+      "energymgr/e_raum_tag":
+        wert: heat_pump_set_room_day_c
+      "energymgr/e_raum_nacht":
+        wert: heat_pump_set_room_night_c
+      "energymgr/e_ww_komfort":
+        wert: heat_pump_set_dhw_comfort_c
+      "energymgr/e_ww_spar":
+        wert: heat_pump_set_dhw_eco_c
+      "energymgr/e_ww_art":
+        wert: heat_pump_set_dhw_mode
+      "energymgr/e_fluester":
+        wert: heat_pump_set_silent
+      "energymgr/e_raumeinfluss":
+        wert: heat_pump_set_room_influence
+      "energymgr/e_temperaturbereich":
+        wert: heat_pump_set_temp_range
+      "energymgr/e_vorlauf_korrektur":
+        wert: heat_pump_set_flow_correction_k
+      "energymgr/e_ww_legionellen":
+        wert: heat_pump_set_dhw_cleansing
+      "energymgr/e_ww_pv_delta":
+        wert: heat_pump_set_dhw_pv_delta_k
+      "energymgr/e_heizbetrieb":
+        wert: heat_pump_set_heat_mode
+      "energymgr/e_komfortstufe":
+        wert: heat_pump_set_comfort_level
+      "energymgr/e_pumpe":
+        wert: heat_pump_set_pump_mode
+      "energymgr/e_wp_aus_unter":
+        wert: heat_pump_set_disable_below_c
+      "energymgr/e_sommer_ab":
+        wert: heat_pump_set_summer_above_c
   # --- Nicht über MQTT: die Geräte der ersten Generation ---
   # Der Wärmepumpen-Zähler (Shelly 3EM), der Wärmepumpenschalter und die Kaffeemaschine bleiben bei
   # Home Assistant. Grund: beim Gen-1-Shelly schaltet aktiviertes MQTT den CoIoT-Kanal ab, über den die

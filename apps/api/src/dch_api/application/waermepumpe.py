@@ -7,7 +7,7 @@ Sollwert und die Leistungsaufnahme nach Auskunft der Maschine. Die gemessene Lei
 kommt weiter vom Zähler an der Zuleitung, die Puffertemperaturen von den eigenen Fühlern.
 Herkunft und Vorbehalte je Größe: `docs/SENSORIK.md`.
 
-**Was hier gerechnet wird, ist eine Abschätzung, und so heißt es auch.**
+**Was hier gerechnet wird.**
 
 - Spreizung = Vorlauf minus Rücklauf.
 - Wärmeleistung = Durchfluss mal Spreizung mal Wärmekapazität des Wassers (4,186 kJ/(kg K),
@@ -15,10 +15,13 @@ Herkunft und Vorbehalte je Größe: `docs/SENSORIK.md`.
 - Arbeitszahl = Wärmeleistung durch Leistungsaufnahme, mit dem Zähler, wo er einen Wert hat,
   sonst mit der Auskunft der Maschine.
 
-Drei Dinge daran sind nicht gesichert (Stand 14.11.2026): Der Durchflussgeber ist nicht geeicht
-und seine Einheit als Liter je Minute gelesen. Welche Kennung des Busses der Rücklauf ist, ist
-begründet, nicht bestätigt. Und die Werte kommen nicht gleichzeitig, sondern im Abstand von
-Sekunden bis zu einer Minute. Eine Arbeitszahl aus diesen Zahlen ist deshalb ein Anhalt.
+Zwei Dinge daran sind nicht gesichert (Stand 14.11.2026): Der Durchflussgeber ist nicht geeicht
+und seine Einheit als Liter je Minute gelesen. Und die Werte kommen nicht gleichzeitig, sondern
+im Abstand von Sekunden bis zu einer Minute. Die Zuordnung des Rücklaufs (Kennung 769e) war als
+unbestätigt gekennzeichnet; der Hausherr hat am 14.11.2026 entschieden, sie als gegeben zu
+nehmen (`docs/SENSORIK.md`). Bis zum 15.11.2026 hießen Wärmeleistung und Arbeitszahl auf der
+Seite deshalb „abgeschätzt“; auf seine Nachfrage hin steht dort jetzt nur noch, woraus sie
+gerechnet sind. Die beiden Vorbehalte stehen weiter hier und in der Dokumentation.
 
 Reine Zusammensetzung, kein I/O.
 """
@@ -30,20 +33,29 @@ from dataclasses import dataclass, field
 from datetime import datetime, tzinfo
 
 from dch_api.schemas import WaermepumpeOut
-from hems_core.domain import EnergySnapshot, Measurement
+from hems_core.domain import EnergySnapshot, Measurement, Quality
+from hems_core.thermal import kennlinie as kennlinie_kern
+from hems_core.thermal.kennlinie import (
+    KW_JE_L_MIN_K,
+    MIN_DURCHFLUSS,
+    MIN_LEISTUNG_KW,
+    MIN_SPREIZUNG_K,
+)
 
 #: So alt darf ein Wert vom Bus sein. ebusd gibt nicht jeden Wert in jedem Takt weiter; gemessen
-#: lagen bis zu 55 Sekunden zwischen zwei Meldungen desselben Werts.
-STALE_S = 900.0
-#: Wärmekapazität von Wasser in kWh je Liter und Kelvin, auf die Minute umgelegt:
-#: 4,186 kJ/(kg K) / 60 s.
-KW_JE_L_MIN_K = 4.186 / 60.0
-#: Unter diesem Durchfluss steht die Pumpe; der Geber zeigt dann null oder Rauschen.
-MIN_DURCHFLUSS = 2.0
-#: Unter dieser Spreizung ist die Rechnung mehr Messfehler als Wärme.
-MIN_SPREIZUNG_K = 0.5
-#: Unter dieser Leistungsaufnahme läuft der Verdichter nicht; eine Arbeitszahl gibt es dann nicht.
-MIN_LEISTUNG_KW = 0.3
+#: lagen bis zu 55 Sekunden zwischen zwei Meldungen desselben Werts, und die Temperaturen kommen
+#: einmal je Minute. Fünf Minuten sind fünf verpasste Runden.
+STALE_S = 300.0
+#: Für den Zustand der Maschine (Betriebszustand, Verdichterfrequenz) gilt eine engere Grenze.
+#: Beide kamen bis zum 14.11.2026 nur aus einem Telegramm, das der Bus bloß gelegentlich führt
+#: (das Bediengerät fragt es ab, wenn eine bestimmte Seite angezeigt wird). Um 16:52 zeigte die
+#: Seite damit „steht" und einen stehenden Lüfter, während die Maschine seit elf Minuten lief:
+#: der Zustand war alt, galt aber noch als frisch. Ein Zustand, der älter ist als drei Minuten,
+#: entscheidet nichts mehr; dann zählt, was der Zähler sagt.
+ZUSTAND_STALE_S = 180.0
+# Die Wärmerechnung und ihre Grenzen stehen im Kern, weil die Kennlinie dieselben braucht:
+# `hems_core.thermal.kennlinie`. Hier nur unter ihrem alten Namen weitergereicht.
+__all__ = ["KW_JE_L_MIN_K", "MIN_DURCHFLUSS", "MIN_LEISTUNG_KW", "MIN_SPREIZUNG_K"]
 
 #: Der Betriebszustand, wie die Maschine ihn als Zahl meldet. Die Wörter der fremden Liste sind
 #: Englisch und an einer Stelle irreführend: 15 heißt dort „Soft_fail" und ist an dieser Anlage
@@ -77,8 +89,44 @@ KEYS = {
     "durchfluss_l_min": "heat_pump_flow_l_min",
     "vorlauf_soll_c": "heat_pump_flow_setpoint_c",
     "speicherfuehler_c": "heat_pump_tank_temp_c",
+    # Abgefragt vom eBUS-Add-on ab 0.3.0.
+    "verdichter_a": "heat_pump_compressor_a",
+    "luefter_drehzahl": "heat_pump_fan_speed",
 }
+#: Ebenfalls abgefragt, als Zahl des Reglers: Umschaltventil und elektrische Zusatzheizung.
+VENTIL_KEY = "heat_pump_valve_code"
+HEIZSTAB_KEY = "heat_pump_heater_code"
 ZUSTAND_KEY = "heat_pump_mode_code"
+
+#: Die Kennzahl, die der Regler im Rundruf sendet (Kennung c94b des Busses).
+#:
+#: **Ein Wort bekommt eine Zahl nur, wenn sie im Haus bestätigt ist.** Die fremde
+#: Bus-Beschreibung nennt die Kennung `hybrid_status` und gibt jeder Zahl ein Wort; die Liste
+#: stammt von einer anderen Anlage der Herstellergruppe. Ungeprüft übernommen stand damit am
+#: 14.11.2026 im Haus „Puffer kühlen" (Kennzahl 20) an einer Maschine, die heizt.
+#:
+#: Bestätigt sind:
+#:
+#: * 0, Bereitschaft: in drei Protokollen bei stehender Maschine.
+#: * 2, Heizen: am 14.11.2026 um 16:41:18 sprang die Kennzahl von 22 auf 2, in dem Telegramm,
+#:   in dem die Hauptpumpe anging; die Heizanforderung der Zone 1 stand auf „an", und zehn
+#:   Sekunden später meldete die Maschine „Heating". Die fremde Liste nennt die 2 „Heating
+#:   Cycle"; an dieser Stelle stimmt sie.
+#:
+#: Gesehen, aber nicht zugeordnet: 16 (Lauf in der Nacht vom 13. auf den 14.11.), 20 (Lauf am
+#: Vormittag des 14.11., mit knapp 6 kW neben dem Verdichter), 22 (stehend, Sekunden vor dem
+#: Start). Die fremde Liste nennt die 3 „DHW Cycle"; Warmwasser ist im Haus noch nicht gesehen.
+#: Was die Maschine unter welcher Zahl tut, zählt `reglerkennzahl.py` aus.
+KREIS_KEY = "heat_pump_cycle_code"
+KREIS_DE: dict[int, str] = {0: "Bereitschaft", 2: "Heizen"}
+#: Wohin die Maschine unter einer Kennzahl einspeist: im Heizbetrieb tiefer in den Speicher,
+#: bei der Warmwasserbereitung oben (Auskunft des Hausherrn, 14.11.2026). Eingetragen ist nur,
+#: was zugeordnet ist; für alle anderen Kennzahlen führt die Zeichnung den Vorlauf oben in den
+#: Speicher und behauptet damit nichts, und der Hinweis darunter sagt es.
+EINSPEISUNG: dict[int, str] = {2: "tiefer"}
+#: Heizanforderung und Raum-Sollwert der ersten Zone, wie der Regler sie im Rundruf sendet.
+ANFORDERUNG_KEY = "heat_pump_heat_request"
+RAUM_SOLL_KEY = "heat_pump_room_setpoint_c"
 
 
 #: Ab dieser Bridge kommt die Lage des Busses mit (`DeviceHealthFrame`, Quelle `ebusd`).
@@ -101,6 +149,9 @@ class BusStand:
     einzelheiten: dict[str, str] = field(default_factory=dict)
     #: Wann zuletzt irgendein Wert vom Bus kam, gleich wie alt.
     zuletzt: datetime | None = None
+    #: Woher die Bridge ihre Zuordnung hat (ab 0.14.3): `herkunft` (datei, repository,
+    #: zwischenspeicher, datei+repository, datei+zwischenspeicher), `ort`, gegebenenfalls `grund`.
+    zuordnung: dict[str, str] = field(default_factory=dict)
 
 
 def _version(text: str | None) -> tuple[int, ...]:
@@ -164,10 +215,41 @@ def bus_auskunft(stand: BusStand, tz: tzinfo) -> str:
         return "Die Brücke im Haus ist gerade nicht verbunden; ohne sie kommt kein Wert." + nach
     version = stand.bridge_version or "unbekannt"
     if BUS_KENNZEICHEN not in stand.angekuendigt:
-        return (
+        ohne = (
             f"Die Brücke im Haus (Version {version}) arbeitet mit einer Zuordnung, die den Bus der "
-            "Wärmepumpe nicht kennt. Ihr Protokoll sagt beim Start, warum sie die neue nicht "
-            "geladen hat." + nach
+            "Wärmepumpe nicht kennt. "
+        )
+        art, wo = stand.zuordnung.get("herkunft"), stand.zuordnung.get("ort", "")
+        grund = stand.zuordnung.get("grund")
+        klammer = f" ({grund})" if grund else ""
+        if art == "datei":
+            # Ab 0.14.3 gilt die Datei nur noch allein, wenn sie es verlangt oder das Repository
+            # beim Start nicht zu erreichen war.
+            warum = (
+                f"das Repository war beim Start nicht zu erreichen{klammer}; Brücke neu starten."
+                if grund
+                else "sie schließt das Repository mit „ersetzt_repository“ aus; die Zeile "
+                "entfernen und die Brücke neu starten."
+            )
+            return (
+                ohne + f"Es gilt allein die Datei {wo} in Home Assistant, und dort fehlt der "
+                f"Bus: {warum}" + nach
+            )
+        if art == "zwischenspeicher":
+            return (
+                ohne + f"Die aktuelle konnte sie beim Start nicht aus dem Repository holen{klammer}"
+                " und nimmt deshalb ihren letzten Abruf. Brücke neu starten; bleibt es dabei, "
+                "erreicht Home Assistant die Adresse nicht." + nach
+            )
+        if art is not None:
+            return (
+                ohne + "Weder ihre Datei in Home Assistant noch die Zuordnung unter der Adresse "
+                "„entities_url“ in ihren Einstellungen enthält ihn." + nach
+            )
+        return (
+            ohne + "Vermutlich liegt in Home Assistant eine eigene Datei "
+            "/config/duckcurve/entities.yaml ohne den Bus. Ab Version 0.14.3 nimmt die Brücke die "
+            "Zuordnung aus dem Repository zu dieser Datei dazu: das Update genügt." + nach
         )
     if stand.lage is not None:
         einzel = {"thema": "ebusd", "nachrichten": "?", "namen": "?", "source_mode": "?"}
@@ -187,6 +269,10 @@ def bus_auskunft(stand: BusStand, tz: tzinfo) -> str:
     )
 
 
+def _de(zahl: float, stellen: int) -> str:
+    return f"{zahl:.{stellen}f}".replace(".", ",")
+
+
 def zustand_wort(code: int | None, laeuft: bool) -> str:
     if code is None:
         return "läuft" if laeuft else "steht"
@@ -200,13 +286,34 @@ def zusammensetzen(
     laeuft_laut_zaehler: bool,
     mess: Callable[[str], Measurement],
     bus_stumm_de: str | None = None,
+    verhaeltnis: float | None = None,
 ) -> WaermepumpeOut:
     """`bus_stumm_de` ist der Satz für den Fall, dass kein Wert vom Bus da ist (`bus_auskunft`);
-    ohne ihn steht dort die allgemeine Frage nach Add-on und Adapter."""
+    ohne ihn steht dort die allgemeine Frage nach Add-on und Adapter. `verhaeltnis` ist das
+    gewöhnliche Verhältnis von Zähler zu eigener Angabe der Maschine aus der Kennlinie; ohne
+    es gilt als Heizstab nur, was der Verdichter allein sicher nicht aufnimmt."""
     werte = {feld: mess(key) for feld, key in KEYS.items()}
     zustand = mess(ZUSTAND_KEY)
-    code = round(zustand.value) if zustand.usable and zustand.value is not None else None
+    kreis = mess(KREIS_KEY)
+    kreis_code = round(kreis.value) if kreis.usable and kreis.value is not None else None
+    anforderung = mess(ANFORDERUNG_KEY)
+    raum_soll = mess(RAUM_SOLL_KEY)
+    ventil = mess(VENTIL_KEY)
+    heizstab = mess(HEIZSTAB_KEY)
+
+    def frisch(m: Measurement) -> bool:
+        return (
+            m.usable
+            and m.value is not None
+            and (now - m.observed_at).total_seconds() <= ZUSTAND_STALE_S
+        )
+
+    code = round(zustand.value) if frisch(zustand) and zustand.value is not None else None
     hz = werte["verdichter_hz"]
+    if not frisch(hz):
+        # Eine alte Frequenz ist keine: lieber ein Fragezeichen als die Null von vorhin.
+        hz = Measurement.missing(Quality.STALE, hz.observed_at, hz.source)
+        werte["verdichter_hz"] = hz
     if code is not None:
         laeuft = code in ARBEITET
     elif hz.usable and hz.value is not None:
@@ -240,6 +347,11 @@ def zusammensetzen(
     )
     if waerme is not None and aufnahme is not None and aufnahme >= MIN_LEISTUNG_KW:
         zahl = round(waerme / aufnahme, 1)
+    zusatz = kennlinie_kern.zusatz_kw(
+        zaehler.value if zaehler.usable else None,
+        bus.value if bus.usable else None,
+        verhaeltnis,
+    )
 
     hinweise: list[str] = []
     stumm: str | None = None
@@ -250,20 +362,39 @@ def zusammensetzen(
         )
     else:
         hinweise.append(
-            "Wärmeleistung und Arbeitszahl sind Abschätzungen: Der Durchflussgeber der Maschine "
-            "ist nicht geeicht, und welcher Wert des Busses der Rücklauf ist, ist begründet, "
-            "aber nicht bestätigt."
+            "Wärmeleistung aus Durchfluss mal Spreizung zwischen Vorlauf und Rücklauf, "
+            "Arbeitszahl daraus geteilt durch den Strom am Zähler."
         )
+        if zusatz is not None and zaehler.value is not None and bus.value is not None:
+            hinweise.append(
+                f"Der Zähler misst {_de(zaehler.value, 2)} kW, die Maschine meldet für sich "
+                f"{_de(bus.value, 2)} kW. Rund {_de(zusatz, 1)} kW nimmt etwas anderes an "
+                "derselben Zuleitung auf, vermutlich der elektrische Heizstab. Die Arbeitszahl "
+                "oben rechnet mit dem Zähler und enthält ihn."
+            )
         if laeuft and waerme is None:
             hinweise.append(
                 "Für eine Wärmeleistung fehlt gerade ein Wert: Durchfluss, Vorlauf oder Rücklauf."
             )
+        if pumpe_laeuft and kreis_code is not None and kreis_code not in EINSPEISUNG:
+            hinweise.append(
+                f"Der Regler meldet die Kennzahl {kreis_code}. Was sie bedeutet, ist für diese "
+                "Anlage noch nicht entschlüsselt, und die Stellung des Umschaltventils sendet der "
+                "Bus nicht. Ob die Wärmepumpe gerade oben oder tiefer in den Speicher einspeist, "
+                "zeigt die Zeichnung deshalb nicht; die Tabelle darunter sammelt, was die Maschine "
+                "unter jeder Kennzahl tut."
+            )
+    einspeisung = EINSPEISUNG.get(kreis_code) if kreis_code is not None and pumpe_laeuft else None
     t = snap.buffer_temps_c
     return WaermepumpeOut(
         now=now,
         laeuft=laeuft,
         zustand_code=code,
-        zustand_de=zustand_wort(code, laeuft),
+        # Verdichter aus, aber das Wasser läuft noch um: das ist keine stehende Maschine. So sieht
+        # eine Pause aus, auch die, in der der Lüfter den Verdampfer mit Außenluft abtaut.
+        zustand_de="pausiert: Verdichter aus, Umwälzpumpe läuft"
+        if not laeuft and pumpe_laeuft
+        else zustand_wort(code, laeuft),
         pumpe_laeuft=bool(pumpe_laeuft),
         aussen_c=snap.outdoor_temp_c,
         leistung_zaehler_kw=zaehler,
@@ -271,6 +402,18 @@ def zusammensetzen(
         spreizung_k=spreizung,
         waermeleistung_kw=waerme,
         arbeitszahl=zahl,
+        zusatz_kw=zusatz,
+        heizanforderung=anforderung.value >= 0.5
+        if anforderung.usable and anforderung.value is not None
+        else None,
+        raum_soll_c=raum_soll,
+        ventil_code=round(ventil.value) if ventil.usable and ventil.value is not None else None,
+        heizstab_code=round(heizstab.value)
+        if heizstab.usable and heizstab.value is not None
+        else None,
+        kreis_code=kreis_code,
+        kreis_de=None if kreis_code is None else KREIS_DE.get(kreis_code, f"Kennzahl {kreis_code}"),
+        einspeisung=einspeisung,
         bus_stumm_de=stumm,
         hinweise_de=hinweise,
         **werte,
@@ -296,6 +439,9 @@ def vorfuehrung(
         vorlauf = ruecklauf + waerme / (29.5 * KW_JE_L_MIN_K)
         return {
             "heat_pump_mode_code": 3.0,
+            "heat_pump_cycle_code": 2.0,
+            "heat_pump_heat_request": 1.0,
+            "heat_pump_room_setpoint_c": 21.0,
             "heat_pump_compressor_hz": round(30.0 + 12.0 * max(leistung_kw, 0.5), 0),
             "heat_pump_flow_l_min": 29.5,
             "flow_temp_c": round(vorlauf, 1),
@@ -307,9 +453,16 @@ def vorfuehrung(
             "heat_pump_discharge_temp_c": round(vorlauf + 28.0, 1),
             "heat_pump_liquid_temp_c": round(ruecklauf + 0.6, 1),
             "heat_pump_tank_temp_c": round(puffer_oben_c, 1),
+            "heat_pump_valve_code": 1.0,
+            "heat_pump_heater_code": 0.0,
+            "heat_pump_compressor_a": round(1.2 + 2.1 * max(leistung_kw, 0.5), 1),
+            "heat_pump_fan_speed": 600.0,
         }
     return {
         "heat_pump_mode_code": 15.0,
+        "heat_pump_cycle_code": 0.0,
+        "heat_pump_heat_request": 0.0,
+        "heat_pump_room_setpoint_c": 21.0,
         "heat_pump_compressor_hz": 0.0,
         "heat_pump_flow_l_min": 0.0,
         "flow_temp_c": round(puffer_unten_c + 1.5, 1),
@@ -321,4 +474,8 @@ def vorfuehrung(
         "heat_pump_discharge_temp_c": round(aussen_c + 12.0, 1),
         "heat_pump_liquid_temp_c": round(puffer_unten_c - 2.0, 1),
         "heat_pump_tank_temp_c": round(puffer_oben_c, 1),
+        "heat_pump_valve_code": 1.0,
+        "heat_pump_heater_code": 0.0,
+        "heat_pump_compressor_a": 0.0,
+        "heat_pump_fan_speed": 0.0,
     }

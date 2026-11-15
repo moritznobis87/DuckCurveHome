@@ -6,7 +6,8 @@ import { celsius, hhmm, kw, longDate } from "@/lib/format";
 import { Icon } from "@/components/ui/Icon";
 import { aussicht, bild, bogen, sonnenlauf } from "./ambiente";
 import { planZeilen } from "./fahrplan";
-import { FUEHLER_POS, heatColor, pufferZustand, SCHICHT_GRENZEN } from "./puffer";
+import { PufferGlasBild } from "@/components/puffer/Glas";
+import { pufferZustand } from "./puffer";
 import type { Kennzahl } from "./tage";
 import { schwerster } from "./Wache";
 
@@ -170,23 +171,13 @@ function Abend({ state, plan, morgenPvKwh, nowMs }: { state: LiveState | null; p
   const s = state?.snapshot;
   const temps = s ? [s.buffer_temps_c.top, s.buffer_temps_c.mid_top, s.buffer_temps_c.mid_bottom, s.buffer_temps_c.bottom] : [];
   const { vollstaendig, veraltet, wort } = pufferZustand(temps, nowMs, !!state?.heat_pump.running, state?.buffer.status);
-  const stufen = temps.map((m, i) => `${heatColor(m.value ?? 20)} ${FUEHLER_POS[i]}%`).join(", ");
   const soc = state?.buffer.soc ?? null;
   const zeilen = planZeilen(plan, nowMs);
   const preis = s?.electricity_price_ct_kwh.value ?? null;
   return (
     <div className="ambiente-abend">
       <div className="ambiente-puffer">
-        <span className="ambiente-tank" aria-hidden style={{ background: vollstaendig ? `linear-gradient(180deg, ${stufen})` : "var(--surface-3)", opacity: vollstaendig && !veraltet ? 1 : 0.45 }}>
-          {SCHICHT_GRENZEN.map((y) => <span key={y} className="home-tank-marke" style={{ top: `${y}%` }} />)}
-        </span>
-        <span className="ambiente-tank-werte" aria-hidden>
-          {temps.map((m, i) => (
-            <span key={i} className="mono ambiente-tank-wert" style={{ top: `${FUEHLER_POS[i]}%` }}>
-              {m.value == null ? "-" : `${Math.round(m.value)} °C`}
-            </span>
-          ))}
-        </span>
+        <PufferGlasBild className="ambiente-glas" temps={temps.map((m) => m.value)} breite={72} hoehe={300} schrift={17} gedimmt={!vollstaendig || veraltet} />
         <span className="ambiente-puffer-text">
           <span className="kicker ambiente-vorschau-wort">PUFFER</span>
           <span className="mono ambiente-knoten-zahl">

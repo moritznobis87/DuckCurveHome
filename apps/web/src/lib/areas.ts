@@ -100,7 +100,19 @@ export const AREAS: Area[] = [
         ],
       },
       // Die Wärmepumpe allein, mit allem, was ihr eigener Bus meldet (seit dem 14.11.2026).
-      { href: "/waerme/waermepumpe", label: "Wärmepumpe" },
+      {
+        href: "/waerme/waermepumpe",
+        label: "Wärmepumpe",
+        // Der Augenblick, der Betrieb über Tage und die gemessene Kennlinie: dieselbe Maschine,
+        // einmal jetzt, einmal als Tagebuch, einmal als Kennlinie über Wochen.
+        unter: [
+          { href: "/waerme/waermepumpe", label: "Jetzt" },
+          { href: "/waerme/waermepumpe/betrieb", label: "Betrieb" },
+          { href: "/waerme/waermepumpe/kennlinie", label: "Kennlinie" },
+          // Was am Regler eingestellt ist, gelesen über den Bus. Verstellt wird dort nichts.
+          { href: "/waerme/waermepumpe/regler", label: "Regler" },
+        ],
+      },
       {
         href: "/waerme/fahrplan",
         label: "Fahrplan",

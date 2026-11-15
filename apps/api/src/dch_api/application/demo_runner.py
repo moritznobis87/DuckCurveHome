@@ -19,9 +19,13 @@ import structlog
 from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, demo_house, demo_rooms, rooms
+from dch_api.application import betrieb as betrieb_logic
+from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
+from dch_api.application import regler as regler_logic
+from dch_api.application import reglerkennzahl as kennzahl_logic
 from dch_api.application import waermepumpe as wp_logic
 from dch_api.application.battery_control import BatteryMode
 from dch_api.application.demo_archive import DemoArchiv
@@ -56,6 +60,7 @@ from dch_api.schemas import (
     AnlageReplayOut,
     BackfillResultOut,
     BatteryLiveOut,
+    BetriebOut,
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
@@ -67,6 +72,7 @@ from dch_api.schemas import (
     HouseOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
+    KennlinieOut,
     KontaktwirkungOut,
     LiveStateOut,
     MorgenbriefOut,
@@ -74,6 +80,10 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    ReglerAenderungOut,
+    ReglerEinstellungenOut,
+    ReglerKennzahlenOut,
+    ReglerStellenOut,
     RoomEffectOut,
     RoomHistoryOut,
     RoomLiveOut,
@@ -121,6 +131,7 @@ from hems_core.planning import (
 )
 from hems_core.simulation import BERLIN, DemoConfig, DemoHouse, new_demo_house
 from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
+from hems_core.thermal import betrieb as betrieb_kern
 from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 
 log = structlog.get_logger("demo")
@@ -139,6 +150,11 @@ VERSION = "0.1.0-phase1"
 class DemoRunner:
     def __init__(self, settings: Settings, hems: HemsConfig | None = None) -> None:
         self.settings = settings
+        # Die Einstellungen des Reglers der Vorführung: erfunden, und was dort gestellt wird,
+        # steht nur hier. Verglichen ist anfangs nichts, wie im Haus.
+        self._regler_demo: dict[str, float] = regler_logic.vorfuehrung()
+        self._regler_demo_bestaetigt: set[str] = set()
+        self._regler_demo_protokoll: list[ReglerAenderungOut] = []
         # Der Eigenverbrauch des Wechselrichters ist in der Vorfuehrung aus. Das Haus hat ihn
         # gemessen (siehe BatteryConfig.inverter_idle_kw), das simulierte Speichermodell kennt ihn
         # aber nicht: Es laedt verlustfrei in den Ladestand. Ihn hier trotzdem abzuziehen hiesse,
@@ -960,6 +976,90 @@ class DemoRunner:
             zeilen=self.history.series(
                 now - timedelta(minutes=anlage_logic.RUECKBLICK_MIN), now + timedelta(minutes=1)
             ),
+        )
+
+    async def reglerkennzahlen(self, tage: int) -> ReglerKennzahlenOut:
+        """Die Auszählung der Vorführung, aus erzeugten Minuten."""
+        return kennzahl_logic.zusammensetzen(self.now, tage, kennzahl_logic.vorfuehrung(self.now))
+
+    async def regler_einstellungen(self) -> ReglerEinstellungenOut:
+        """Die Einstellungen der Vorführung: erfunden, damit die Seite zu sehen und zu bedienen
+        ist. Was hier gestellt wird, steht nur im Arbeitsspeicher dieser Vorführung."""
+        now = self.now
+        werte = self._regler_demo
+        return regler_logic.zusammensetzen(
+            now=now,
+            mess=lambda key: Measurement.ok(werte[key], now, "demo:ebus"),
+            bestaetigt=dict.fromkeys(self._regler_demo_bestaetigt, True),
+            stellen_moeglich=True,
+            protokoll=list(reversed(self._regler_demo_protokoll[-30:])),
+            vorfuehrung=True,
+        )
+
+    async def regler_stellen(self, schluessel: str, wert: float) -> ReglerStellenOut:
+        """Wie im Haus geprüft, aber gestellt wird nur der Wert der Vorführung."""
+        now = self.now
+        e = regler_logic.NACH_KEY.get(schluessel)
+        alt = self._regler_demo.get(schluessel)
+        grund = regler_logic.pruefen(
+            e,
+            wert,
+            gelesen=None if alt is None else Measurement.ok(alt, now, "demo:ebus"),
+            bestaetigt=schluessel in self._regler_demo_bestaetigt,
+            heute_gestellt=0,
+        )
+        if grund is not None:
+            raise DchError("regler_abgelehnt", grund, 404 if e is None else 409)
+        assert e is not None
+        self._regler_demo[schluessel] = wert
+        zeile = regler_logic.aenderung(
+            now, {"key": schluessel, "from": alt, "to": wert}, "Vorführung"
+        )
+        if zeile is not None:
+            self._regler_demo_protokoll.append(zeile)
+        return ReglerStellenOut(
+            ok=True,
+            message_de=f"{e.name_de}: {regler_logic.text(e, wert)} gestellt (Vorführung).",
+            einstellungen=await self.regler_einstellungen(),
+        )
+
+    async def regler_bestaetigen(self, schluessel: str, bestaetigt: bool) -> ReglerStellenOut:
+        e = regler_logic.NACH_KEY.get(schluessel)
+        if e is None:
+            raise DchError("regler_unbekannt", "Diese Einstellung ist nicht bekannt.", 404)
+        if bestaetigt:
+            self._regler_demo_bestaetigt.add(schluessel)
+        else:
+            self._regler_demo_bestaetigt.discard(schluessel)
+        return ReglerStellenOut(
+            ok=True,
+            message_de=f"{e.name_de} ist als verglichen vermerkt."
+            if bestaetigt
+            else f"Der Vermerk für {e.name_de} ist zurückgenommen.",
+            einstellungen=await self.regler_einstellungen(),
+        )
+
+    async def betrieb(self, tage: int) -> BetriebOut:
+        """Der Betrieb der Vorführung: erzeugte Minuten, dieselbe Auszählung wie im Haus."""
+        minuten = betrieb_logic.vorfuehrung(self.now, tage, BERLIN)
+        return betrieb_logic.zusammensetzen(
+            now=self.now,
+            tage=tage,
+            betrieb=betrieb_kern.auswerten(minuten, BERLIN),
+            vorfuehrung=True,
+        )
+
+    async def kennlinie(self, tage: int) -> KennlinieOut:
+        """Die Kennlinie der Vorführung: erzeugte Punkte, derselbe Ausgleich wie im Haus."""
+        punkte = kennlinie_logic.vorfuehrung(self.now, tage)
+        return kennlinie_logic.zusammensetzen(
+            now=self.now,
+            tage=tage,
+            punkte=punkte,
+            heat=self.hems.heat_demand,
+            buffer=self.hems.buffer,
+            vorfuehrung=True,
+            bilanz=kennlinie_logic.vorfuehrung_bilanz(punkte),
         )
 
     async def waermepumpe(self) -> WaermepumpeOut:

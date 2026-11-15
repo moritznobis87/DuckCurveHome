@@ -629,6 +629,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/waermepumpe/kennlinie": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die gemessene Kennlinie
+         * @description Arbeitszahl über Außen- und Vorlauftemperatur: Messpunkte aus dem Heizbetrieb, die
+         *     Ausgleichsfläche nach kleinsten Quadraten und die Kennlinie, mit der der Fahrplan rechnet.
+         */
+        get: operations["kennlinie_api_v1_waermepumpe_kennlinie_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/waermepumpe/kennzahlen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die Kennzahlen des Reglers
+         * @description Was die Wärmepumpe unter welcher Kennzahl ihres Reglers tat: Minuten, Lauf, Vorlauf,
+         *     Sollwert, Erwärmung des Speichers oben und unten. Belege, keine Deutung.
+         */
+        get: operations["kennzahlen_api_v1_waermepumpe_kennzahlen_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/waermepumpe/betrieb": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Der Betrieb über Tage
+         * @description Läufe, Starts und Lauflängen, Abtauen, die Arbeitszahl je Tag mit und ohne Abtauen und
+         *     die Heizkurve, die der Regler der Maschine vorgibt. Eine Auszählung gespeicherter Minuten.
+         */
+        get: operations["betrieb_api_v1_waermepumpe_betrieb_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/waermepumpe/einstellungen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die Einstellungen des Reglers
+         * @description Heizkurve, Raumtemperaturen und Warmwasser, wie sie am Regler eingestellt sind: über
+         *     den Bus gelesen, je mit Zeitpunkt. Verstellt wird damit nichts.
+         */
+        get: operations["einstellungen_api_v1_waermepumpe_einstellungen_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/waermepumpe/einstellungen/{schluessel}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eine Einstellung des Reglers stellen
+         * @description Eine Einstellung aus der festen Liste der stellbaren stellen. Abgelehnt wird, was nicht
+         *     in der Liste steht, gerade nicht gelesen ist, nicht mit dem Bediengerät verglichen wurde,
+         *     außerhalb der Grenzen liegt oder heute schon zu oft gestellt wurde; der Grund steht in der
+         *     Antwort. Gestellt ist der Wert erst, wenn der Regler ihn zurückmeldet.
+         */
+        post: operations["einstellung_stellen_api_v1_waermepumpe_einstellungen__schluessel__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/waermepumpe/einstellungen/{schluessel}/bestaetigen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eine Einstellung als mit dem Bediengerät verglichen vermerken
+         * @description Festhalten, dass die Zahl auf der Seite mit der am Bediengerät übereinstimmt (oder das
+         *     zurücknehmen). Erst danach lässt sich die Einstellung stellen.
+         */
+        post: operations["einstellung_bestaetigen_api_v1_waermepumpe_einstellungen__schluessel__bestaetigen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -1787,6 +1915,199 @@ export interface components {
             titel: string;
             /** Text */
             text: string;
+        };
+        /**
+         * BetriebHeizkurveOut
+         * @description Sollwert = a + b * Außentemperatur, nach kleinsten Quadraten über die Stunden.
+         */
+        BetriebHeizkurveOut: {
+            /** A */
+            a: number;
+            /** B */
+            b: number;
+            /** N */
+            n: number;
+            /** R2 */
+            r2?: number | null;
+            /** Aussen Von C */
+            aussen_von_c: number;
+            /** Aussen Bis C */
+            aussen_bis_c: number;
+            /** Formel De */
+            formel_de: string;
+        };
+        /**
+         * BetriebKlasseOut
+         * @description Eine Klasse der Lauflängen: von einschließlich, bis ausschließlich (`None`: nach oben offen).
+         */
+        BetriebKlasseOut: {
+            /** Von Min */
+            von_min: number;
+            /** Bis Min */
+            bis_min?: number | null;
+            /** Laeufe */
+            laeufe: number;
+        };
+        /**
+         * BetriebLaufOut
+         * @description Ein Lauf des Verdichters, vom Anlaufen bis zum Halt.
+         */
+        BetriebLaufOut: {
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Minuten */
+            minuten: number;
+            /** Abtau Min */
+            abtau_min: number;
+            /** Abtauungen */
+            abtauungen: number;
+            /** Zusatz Min */
+            zusatz_min: number;
+            /** Strom Kwh */
+            strom_kwh: number;
+            /** Waerme Kwh */
+            waerme_kwh?: number | null;
+            /**
+             * Angeschnitten
+             * @default false
+             */
+            angeschnitten: boolean;
+        };
+        /**
+         * BetriebOut
+         * @description Der Betrieb der Wärmepumpe über Tage: Läufe, Abtauen, Takten, Heizkurve des Reglers.
+         *
+         *     Eine Auszählung gespeicherter Minuten. Was sie taugt, steht in `hinweise_de`.
+         */
+        BetriebOut: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /**
+             * Von
+             * Format: date-time
+             */
+            von: string;
+            /**
+             * Bis
+             * Format: date-time
+             */
+            bis: string;
+            /** Zeitraum Tage */
+            zeitraum_tage: number;
+            /** Tage */
+            tage?: components["schemas"]["BetriebTagOut"][];
+            /** Laeufe */
+            laeufe?: components["schemas"]["BetriebLaufOut"][];
+            /** Stunden */
+            stunden?: components["schemas"]["BetriebStundeOut"][];
+            heizkurve?: components["schemas"]["BetriebHeizkurveOut"] | null;
+            /** Klassen */
+            klassen?: components["schemas"]["BetriebKlasseOut"][];
+            /**
+             * Starts
+             * @default 0
+             */
+            starts: number;
+            /**
+             * Lauf Min
+             * @default 0
+             */
+            lauf_min: number;
+            /**
+             * Abtau Min
+             * @default 0
+             */
+            abtau_min: number;
+            /**
+             * Abtauungen
+             * @default 0
+             */
+            abtauungen: number;
+            /**
+             * Zusatz Min
+             * @default 0
+             */
+            zusatz_min: number;
+            /** Cop Gesamt */
+            cop_gesamt?: number | null;
+            /** Cop Heizen */
+            cop_heizen?: number | null;
+            /** Lauf Median Min */
+            lauf_median_min?: number | null;
+            /** Saetze De */
+            saetze_de?: string[];
+            /** Hinweise De */
+            hinweise_de?: string[];
+        };
+        /**
+         * BetriebStundeOut
+         * @description Eine Stunde im Heizbetrieb: was der Regler als Vorlauf verlangte, bei welchem Wetter.
+         */
+        BetriebStundeOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Minuten */
+            minuten: number;
+            /** Aussen C */
+            aussen_c: number;
+            /** Soll C */
+            soll_c: number;
+            /** Vorlauf C */
+            vorlauf_c?: number | null;
+            /** Ventil */
+            ventil?: number | null;
+        };
+        /**
+         * BetriebTagOut
+         * @description Ein Ortstag der Wärmepumpe (`hems_core.thermal.betrieb.Tag`).
+         */
+        BetriebTagOut: {
+            /**
+             * Tag
+             * Format: date
+             */
+            tag: string;
+            /** Starts */
+            starts: number;
+            /** Lauf Min */
+            lauf_min: number;
+            /** Abtau Min */
+            abtau_min: number;
+            /** Abtauungen */
+            abtauungen: number;
+            /** Zusatz Min */
+            zusatz_min: number;
+            /** Strom Kwh */
+            strom_kwh: number;
+            /** Waerme Kwh */
+            waerme_kwh?: number | null;
+            /**
+             * Strom Lauf Kwh
+             * @default 0
+             */
+            strom_lauf_kwh: number;
+            /** Cop Tag */
+            cop_tag?: number | null;
+            /** Cop Heizen */
+            cop_heizen?: number | null;
+            /** Lauf Median Min */
+            lauf_median_min?: number | null;
+            /** Aussen C */
+            aussen_c?: number | null;
+            /**
+             * Waerme Min
+             * @default 0
+             */
+            waerme_min: number;
         };
         /** BinCorrection */
         BinCorrection: {
@@ -4069,6 +4390,158 @@ export interface components {
             ][] | null;
         };
         /**
+         * KennlinieOut
+         * @description Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.
+         *
+         *     Die Punkte sind Abschätzungen aus Durchfluss, Spreizung und Zähler; warum, steht in
+         *     `hinweise_de`.
+         */
+        KennlinieOut: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /**
+             * Von
+             * Format: date-time
+             */
+            von: string;
+            /**
+             * Bis
+             * Format: date-time
+             */
+            bis: string;
+            /** Tage */
+            tage: number;
+            /** Punkte */
+            punkte?: components["schemas"]["KennlinienPunktOut"][];
+            fit?: components["schemas"]["KennlinienFitOut"] | null;
+            /** Fehlt De */
+            fehlt_de?: string | null;
+            /** Annahme */
+            annahme?: components["schemas"]["KennlinienAnnahmeOut"][];
+            /** Annahme Vorlauf C */
+            annahme_vorlauf_c?: number | null;
+            bilanz?: components["schemas"]["KennlinienBilanzOut"] | null;
+            /** Hinweise De */
+            hinweise_de?: string[];
+        };
+        /**
+         * KennlinienAnnahmeOut
+         * @description Ein Punkt der Kennlinie, mit der der Fahrplan bisher rechnet.
+         */
+        KennlinienAnnahmeOut: {
+            /** Aussen C */
+            aussen_c: number;
+            /** Cop */
+            cop: number;
+        };
+        /**
+         * KennlinienBilanzOut
+         * @description Wo die Minuten des Zeitraums geblieben sind (`hems_core.thermal.kennlinie.Bilanz`).
+         *
+         *     Von den Minuten, in denen die Maschine heizte, zählt nur ein Teil: nicht der Anlauf, nicht
+         *     die mit Heizstab, nicht die ohne einen nötigen Wert. Die Zahlen hier addieren sich zu
+         *     `heizen`; eine leere Kennlinie zeigt damit, woran es liegt.
+         */
+        KennlinienBilanzOut: {
+            /** Minuten */
+            minuten: number;
+            /** Heizen */
+            heizen: number;
+            /** Anlauf */
+            anlauf: number;
+            /** Zusatz */
+            zusatz: number;
+            /** Ohne Wert */
+            ohne_wert: number;
+            /** Ohne Waerme */
+            ohne_waerme: number;
+            /** Gueltig */
+            gueltig: number;
+            /** Fenster */
+            fenster: number;
+            /** Punkte */
+            punkte: number;
+            /** Unglaubwuerdig */
+            unglaubwuerdig: number;
+            /** Fehlt */
+            fehlt?: {
+                [key: string]: number;
+            };
+            /** Verhaeltnis */
+            verhaeltnis?: number | null;
+            /**
+             * Satz De
+             * @default
+             */
+            satz_de: string;
+        };
+        /**
+         * KennlinienFitOut
+         * @description COP = a + b_aussen * Außentemperatur + c_vorlauf * Vorlauftemperatur, kleinste Quadrate.
+         *
+         *     `art` sagt, welche Terme sich aus den Punkten bestimmen ließen: `ebene` beide, `aussen`
+         *     oder `vorlauf` nur einer, `mittel` keiner.
+         */
+        KennlinienFitOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "ebene" | "aussen" | "vorlauf" | "mittel";
+            /** A */
+            a: number;
+            /** B Aussen */
+            b_aussen: number;
+            /** C Vorlauf */
+            c_vorlauf: number;
+            /** N */
+            n: number;
+            /** Rmse */
+            rmse: number;
+            /** R2 */
+            r2?: number | null;
+            /** Aussen Von C */
+            aussen_von_c: number;
+            /** Aussen Bis C */
+            aussen_bis_c: number;
+            /** Vorlauf Von C */
+            vorlauf_von_c: number;
+            /** Vorlauf Bis C */
+            vorlauf_bis_c: number;
+            /** Formel De */
+            formel_de: string;
+            /** Geltung De */
+            geltung_de: string;
+        };
+        /**
+         * KennlinienPunktOut
+         * @description Ein Fenster im eingeschwungenen Heizbetrieb (`hems_core.thermal.kennlinie`).
+         */
+        KennlinienPunktOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Minuten */
+            minuten: number;
+            /** Aussen C */
+            aussen_c: number;
+            /** Vorlauf C */
+            vorlauf_c: number;
+            /** Cop */
+            cop: number;
+            /** Waerme Kw */
+            waerme_kw: number;
+            /** Strom Kw */
+            strom_kw: number;
+            /** Ventil */
+            ventil?: number | null;
+        };
+        /**
          * KontaktwirkungOut
          * @description Was der Freigabekontakt K1 auslöst: die Ereignisstudie über die letzten `days` Tage.
          *
@@ -4981,6 +5454,205 @@ export interface components {
             befunde: components["schemas"]["Befund"][];
             /** Zeilen Gesendet */
             zeilen_gesendet: number;
+        };
+        /**
+         * ReglerAenderungOut
+         * @description Eine Zeile des Protokolls: wer wann was gestellt hat.
+         */
+        ReglerAenderungOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Schluessel */
+            schluessel: string;
+            /** Name De */
+            name_de: string;
+            /** Von De */
+            von_de: string;
+            /** Auf De */
+            auf_de: string;
+            /** Urheber De */
+            urheber_de?: string | null;
+        };
+        /** ReglerBestaetigenIn */
+        ReglerBestaetigenIn: {
+            /** Bestaetigt */
+            bestaetigt: boolean;
+        };
+        /**
+         * ReglerEinstellungOut
+         * @description Eine Einstellung des Reglers der Wärmepumpe, gelesen über den Bus.
+         */
+        ReglerEinstellungOut: {
+            /** Schluessel */
+            schluessel: string;
+            /** Name De */
+            name_de: string;
+            /** Gruppe De */
+            gruppe_de: string;
+            /** Kennung */
+            kennung: string;
+            /**
+             * Einheit
+             * @default
+             */
+            einheit: string;
+            /**
+             * Stellen
+             * @default 1
+             */
+            stellen: number;
+            wert: components["schemas"]["Measurement"];
+            /** Lesart De */
+            lesart_de?: string | null;
+            /**
+             * Art
+             * @default zahl
+             * @enum {string}
+             */
+            art: "zahl" | "wahl" | "schalter";
+            /**
+             * Stellbar
+             * @default false
+             */
+            stellbar: boolean;
+            /** Von */
+            von?: number | null;
+            /** Bis */
+            bis?: number | null;
+            /** Schritt */
+            schritt?: number | null;
+            /** Wahl */
+            wahl?: {
+                [key: string]: string;
+            };
+            /**
+             * Bestaetigt
+             * @default false
+             */
+            bestaetigt: boolean;
+            /**
+             * Muster
+             * @default false
+             */
+            muster: boolean;
+            /**
+             * Hinweis De
+             * @default
+             */
+            hinweis_de: string;
+            gesendet?: components["schemas"]["ReglerGesendetOut"] | null;
+        };
+        /**
+         * ReglerEinstellungenOut
+         * @description Was am Regler der Wärmepumpe eingestellt ist, und was sich davon stellen lässt.
+         */
+        ReglerEinstellungenOut: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /** Gelesen */
+            gelesen: number;
+            /** Satz De */
+            satz_de: string;
+            /** Werte */
+            werte?: components["schemas"]["ReglerEinstellungOut"][];
+            /**
+             * Stellen Moeglich
+             * @default false
+             */
+            stellen_moeglich: boolean;
+            /** Hindernis De */
+            hindernis_de?: string | null;
+            /**
+             * Stellen Je Tag
+             * @default 0
+             */
+            stellen_je_tag: number;
+            /** Protokoll */
+            protokoll?: components["schemas"]["ReglerAenderungOut"][];
+            /** Hinweise De */
+            hinweise_de?: string[];
+        };
+        /**
+         * ReglerGesendetOut
+         * @description Ein Stellbefehl, der hinausgegangen ist und dessen Rückmeldung noch aussteht.
+         */
+        ReglerGesendetOut: {
+            /** Wert */
+            wert: number;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+        };
+        /**
+         * ReglerKennzahlOut
+         * @description Was in den Minuten geschah, in denen der Regler diese Kennzahl sendete.
+         */
+        ReglerKennzahlOut: {
+            /** Code */
+            code: number;
+            /** Minuten */
+            minuten: number;
+            /** Lauf Min */
+            lauf_min: number;
+            /** Vorlauf C */
+            vorlauf_c?: number | null;
+            /** Vorlauf Soll C */
+            vorlauf_soll_c?: number | null;
+            /** Oben K H */
+            oben_k_h?: number | null;
+            /** Unten K H */
+            unten_k_h?: number | null;
+            /** Angefordert Anteil */
+            angefordert_anteil?: number | null;
+            /** Zusatz Kw */
+            zusatz_kw?: number | null;
+            /** Heizanforderung Anteil */
+            heizanforderung_anteil?: number | null;
+            /** Flag 1B45 Anteil */
+            flag_1b45_anteil?: number | null;
+            /** Ventil 1 Anteil */
+            ventil_1_anteil?: number | null;
+            /** Heizstab Anteil */
+            heizstab_anteil?: number | null;
+            /** Zuletzt */
+            zuletzt?: string | null;
+        };
+        /** ReglerKennzahlenOut */
+        ReglerKennzahlenOut: {
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            /** Tage */
+            tage: number;
+            /** Zeilen */
+            zeilen?: components["schemas"]["ReglerKennzahlOut"][];
+        };
+        /** ReglerStellenIn */
+        ReglerStellenIn: {
+            /** Wert */
+            wert: number;
+        };
+        /**
+         * ReglerStellenOut
+         * @description Die Antwort auf einen Stellbefehl oder eine Bestätigung: ob es ging, ein Satz dazu, und
+         *     der Stand danach.
+         */
+        ReglerStellenOut: {
+            /** Ok */
+            ok: boolean;
+            /** Message De */
+            message_de: string;
+            einstellungen: components["schemas"]["ReglerEinstellungenOut"];
         };
         /**
          * ReiheOut
@@ -6112,8 +6784,9 @@ export interface components {
          * @description Die Wärmepumpe im Augenblick, für ihre Technikseite.
          *
          *     Jede Größe ist ein Messwert mit Zeitpunkt und Güte: fehlt einer, steht auf der Seite ein
-         *     Fragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende sind
-         *     Abschätzungen; warum, steht in `hinweise_de` und in `application/waermepumpe.py`.
+         *     Fragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende
+         *     entstehen aus diesen Messwerten; wie, steht in `hinweise_de` und in
+         *     `application/waermepumpe.py`.
          */
         WaermepumpeOut: {
             /**
@@ -6153,6 +6826,23 @@ export interface components {
             waermeleistung_kw?: number | null;
             /** Arbeitszahl */
             arbeitszahl?: number | null;
+            /** Heizanforderung */
+            heizanforderung?: boolean | null;
+            raum_soll_c?: components["schemas"]["Measurement"] | null;
+            /** Zusatz Kw */
+            zusatz_kw?: number | null;
+            /** Ventil Code */
+            ventil_code?: number | null;
+            /** Heizstab Code */
+            heizstab_code?: number | null;
+            verdichter_a?: components["schemas"]["Measurement"] | null;
+            luefter_drehzahl?: components["schemas"]["Measurement"] | null;
+            /** Kreis Code */
+            kreis_code?: number | null;
+            /** Kreis De */
+            kreis_de?: string | null;
+            /** Einspeisung */
+            einspeisung?: ("oben" | "tiefer") | null;
             /** Bus Stumm De */
             bus_stumm_de?: string | null;
             /** Hinweise De */
@@ -7104,6 +7794,192 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WaermepumpeOut"];
+                };
+            };
+        };
+    };
+    kennlinie_api_v1_waermepumpe_kennlinie_get: {
+        parameters: {
+            query?: {
+                /** @description Rückblick in Tagen */
+                tage?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KennlinieOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    kennzahlen_api_v1_waermepumpe_kennzahlen_get: {
+        parameters: {
+            query?: {
+                /** @description Rückblick in Tagen */
+                tage?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReglerKennzahlenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    betrieb_api_v1_waermepumpe_betrieb_get: {
+        parameters: {
+            query?: {
+                /** @description Rückblick in Tagen */
+                tage?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetriebOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einstellungen_api_v1_waermepumpe_einstellungen_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReglerEinstellungenOut"];
+                };
+            };
+        };
+    };
+    einstellung_stellen_api_v1_waermepumpe_einstellungen__schluessel__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schluessel: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReglerStellenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReglerStellenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einstellung_bestaetigen_api_v1_waermepumpe_einstellungen__schluessel__bestaetigen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schluessel: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReglerBestaetigenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReglerStellenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

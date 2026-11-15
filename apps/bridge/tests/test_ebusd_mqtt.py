@@ -54,7 +54,7 @@ def test_die_aufgezeichneten_nachrichten_werden_gelesen() -> None:
         "coolant_temp": 40.0,
     }
     # Wörter sind keine Messwerte, Unlesbares ist keine Nachricht.
-    assert felder(b'{"heatpump_mode": {"value": "Heating"}}') == {}
+    assert felder(b'{"ventil": {"value": "heat"}}') == {}
     assert felder(b"kein json") is None
     assert felder(b"[1, 2]") is None
 
@@ -326,3 +326,160 @@ def test_die_bridge_meldet_die_lage_des_busses_in_die_cloud(tmp_path: Path) -> N
     wartend = list(b.uplink._events)
     assert len(wartend) == 1 and isinstance(wartend[0], DeviceHealthFrame)
     assert wartend[0].source == "ebusd" and wartend[0].details == {"lage": "kein_wort"}
+
+
+def test_die_betriebsart_des_reglers_wird_nur_aus_der_richtigen_liste_gelesen() -> None:
+    """Der Regler sendet seine Betriebsart (Kennung c94b) in einer Liste mit der Hauptpumpe und
+    allein. Die Nachrichten sind die, die ebusd 26.1 am 14.11.2026 aus den Telegrammen des Hauses
+    auf den Broker gelegt hat (`13fe20100cc2000100c74b8e00c94b1000`, laufend, PV-Nutzung).
+
+    Am 13.11.2026 kam dieselbe Nachricht einmal anders zusammengesetzt (`0;46;48715`); mit den
+    Kennungen als eigene Felder liest die Bridge sie dann nicht.
+    """
+    datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
+    ebus = next(m for m in EntityMap.load(datei).mqtt if m.kind == "ebusd")
+    d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
+    laufend = (
+        b'{\n     "main_pump": {"value": 1},\n     "kennung_2": {"value": "c7 4b"},\n'
+        b'     "wert_c74b": {"value": 142},\n     "kennung_3": {"value": "c9 4b"},\n'
+        b'     "wert_c94b": {"value": 16}}'
+    )
+    d.apply("ebusd/energymgr/pumpe_status", laufend, T0)
+    assert werte(d, T0)["heat_pump_cycle_code"] == 16.0
+    # Anders zusammengesetzt: die Kennungen stimmen nicht, der Wert bleibt der alte.
+    verrutscht = laufend.replace(b"c9 4b", b"2e 00").replace(b'"value": 16', b'"value": 48715')
+    d.apply("ebusd/energymgr/pumpe_status", verrutscht, T0)
+    assert werte(d, T0)["heat_pump_cycle_code"] == 16.0
+    # Ein Add-on vor 0.2.2 schickt die Liste ohne Kennungen; auch die wird nicht gelesen.
+    alt = b'{"main_pump": {"value": 0}, "wert_c74b": {"value": 190}, "wert_c94b": {"value": 0}}'
+    d.apply("ebusd/energymgr/pumpe_status", alt, T0)
+    assert werte(d, T0)["heat_pump_cycle_code"] == 16.0
+    # Allein im Rundruf: Warmwasser.
+    d.apply("ebusd/energymgr/betriebsart", b'{\n     "code": {"value": 3}}', T0)
+    assert werte(d, T0)["heat_pump_cycle_code"] == 3.0
+
+
+def test_was_der_regler_vorgibt_wird_gelesen() -> None:
+    """Die Nachrichten sind die, die ebusd 26.1 am 14.11.2026 aus den Telegrammen des Hauses auf
+    den Broker gelegt hat: Heizanforderung der Zonen (`13fe20100c0191...`), Raum-Sollwerte
+    (`13fe20100f6996...`), die Kennung 1b45 (`13fe2010041b450100`) und die Vorgaben des Reglers
+    an die Maschine vor und nach dem Start (`131e20200dc33e...`)."""
+    # Ein Schalter ist ein Wert; ein anderes Wort bleibt keines.
+    assert felder(b'{"z1_heat_request": {"value": "on"}, "z2_heat_request": {"value": "off"}}') == {
+        "z1_heat_request": 1.0,
+        "z2_heat_request": 0.0,
+    }
+    assert felder(b'{"ventil": {"value": "heat"}}') == {}
+    # Der Betriebszustand kommt als Wort, hinter dem auf dem Bus eine Zahl steht.
+    assert felder(b'{"0": {"name": "", "value": "Heating"}}') == {"0": 3.0}
+    assert felder(b'{"0": {"name": "", "value": "Soft_fail"}}') == {"0": 15.0}
+
+    datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
+    ebus = next(m for m in EntityMap.load(datei).mqtt if m.kind == "ebusd")
+    d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
+    # Das Bediengerät fragt den Zustand alle zehn Sekunden ab (Protokoll vom 14.11.2026,
+    # 16:41:29: „heatpump_mode QQ=10: Heating"). Daraus wird derselbe Schlüssel wie aus der
+    # Liste mit der Verdichterfrequenz, die nur gelegentlich kommt.
+    d.apply("ebusd/heatpump/heatpump_mode", b'{\n     "0": {"name": "", "value": "Heating"}}', T0)
+    assert werte(d, T0) == {"heat_pump_mode_code": 3.0}
+    d.values.clear()
+    d.apply(
+        "ebusd/energymgr/heat_request",
+        b'{\n     "z1_heat_request": {"value": "on"},\n     "z2_heat_request": {"value": "off"},\n'
+        b'     "z3_heat_request": {"value": "off"}}',
+        T0,
+    )
+    d.apply(
+        "ebusd/energymgr/setpoint_temp",
+        b'{"z1_setpoint_temp": {"value": 22.0}, "z2_setpoint_temp": {"value": 22.0}}',
+        T0,
+    )
+    d.apply("ebusd/energymgr/flag_1b45", b'{\n     "wert": {"value": 1}}', T0)
+    vorgabe = (
+        b'{\n     "wert_c33e": {"value": null},\n     "kennung_2": {"value": "c4 46"},\n'
+        b'     "modulation": {"value": 100},\n     "kennung_3": {"value": "cd 46"},\n'
+        b'     "modus": {"value": 3},\n     "kennung_4": {"value": "6a 47"},\n'
+        b'     "ziel": {"value": 55.0}}'
+    )
+    d.apply("ebusd/heatpump/wp_vorgabe", vorgabe, T0)
+    assert werte(d, T0) == {
+        "heat_pump_heat_request": 1.0,
+        "heat_pump_room_setpoint_c": 22.0,
+        "heat_pump_flag_1b45": 1.0,
+        "heat_pump_cmd_mode_code": 3.0,
+        "heat_pump_cmd_target_c": 55.0,
+    }
+    # Dieselbe Nachricht mit anderen Kennungen wird nicht gelesen.
+    d.apply(
+        "ebusd/heatpump/wp_vorgabe",
+        vorgabe.replace(b"cd 46", b"ca 46").replace(b"55.0", b"12.0"),
+        T0,
+    )
+    assert werte(d, T0)["heat_pump_cmd_target_c"] == 55.0
+
+
+def test_eine_einstellung_des_reglers_laesst_sich_stellen_ein_messwert_nicht() -> None:
+    """Ab Bridge 0.15.0: der Dienst schickt `ebus:<Schlüssel>:stellen`, die Bridge macht daraus
+    das Thema für ebusd und lässt die Einstellung gleich neu lesen. Gestellt wird nur, was in der
+    Zuordnung als Einstellung steht (`<kreis>/e_<name>`); der Vorlauf hat einen Schlüssel, aber
+    kein Thema zum Stellen."""
+    from dch_bridge.sources.ebusd_mqtt import zahl_text
+
+    datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
+    ebus = next(m for m in EntityMap.load(datei).mqtt if m.kind == "ebusd")
+    d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
+    assert d.stellen("heat_pump_set_slope", 1.3) == (
+        ("ebusd/energymgr/e_steilheit/set", "1.3"),
+        ("ebusd/energymgr/e_steilheit/get", ""),
+    )
+    assert d.stellen("heat_pump_set_offset_k", -2.5) == (
+        ("ebusd/energymgr/e_verschiebung/set", "-2.5"),
+        ("ebusd/energymgr/e_verschiebung/get", ""),
+    )
+    # Eine Kennzahl geht als ganze Zahl hinaus: `1.0` nimmt ebusd für sie nicht.
+    assert d.stellen("heat_pump_set_heat_mode", 0.0) == (
+        ("ebusd/energymgr/e_heizbetrieb/set", "0"),
+        ("ebusd/energymgr/e_heizbetrieb/get", ""),
+    )
+    assert zahl_text(52.0) == "52" and zahl_text(0.75) == "0.75" and zahl_text(-7.0) == "-7"
+    # Messwerte und Unbekanntes lassen sich nicht stellen.
+    for key in ("flow_temp_c", "heat_pump_valve_code", "heat_pump_compressor_hz", "gibt_es_nicht"):
+        assert d.stellen(key, 1.0) is None, key
+    # Schalten lässt sich über den Bus weiterhin nichts.
+    assert d.command("heat_pump_set_slope", True, None) is None
+
+
+def test_der_hub_stellt_und_laesst_gleich_neu_lesen() -> None:
+    import asyncio
+
+    from dch_bridge.sources.shelly_mqtt import MqttHub
+
+    gesendet: list[tuple[str, str]] = []
+
+    class Sitzung:
+        async def publish(self, topic: str, payload: object, qos: int = 0) -> None:
+            gesendet.append((topic, str(payload)))
+
+    datei = Path(__file__).resolve().parents[3] / "config" / "entities.home.yaml"
+    ebus = next(m for m in EntityMap.load(datei).mqtt if m.kind == "ebusd")
+    d = EbusdDevice(topic_prefix=ebus.prefix, components=ebus.components)
+
+    async def senke(_: object) -> None:
+        return None
+
+    hub = MqttHub(session_factory=lambda: None, devices=[d], on_readings=senke)  # type: ignore[arg-type]
+    hub._session = Sitzung()  # type: ignore[assignment]
+
+    async def lauf() -> None:
+        await hub.stellen("heat_pump_set_dhw_comfort_c", 50.0, nachlesen_s=0.0)
+        try:
+            await hub.stellen("flow_temp_c", 40.0, nachlesen_s=0.0)
+        except LookupError:
+            gesendet.append(("abgelehnt", "flow_temp_c"))
+
+    asyncio.run(lauf())
+    assert gesendet == [
+        ("ebusd/energymgr/e_ww_komfort/set", "50"),
+        ("ebusd/energymgr/e_ww_komfort/get", ""),
+        ("abgelehnt", "flow_temp_c"),
+    ]

@@ -232,6 +232,21 @@
   .wp-menue { width: 100%; padding: 20px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; border-bottom: 0; }
   .wp-menue-ziele { grid-template-columns: minmax(0, 1fr); }
   .wp-satz { font-size: 19px; }
+  .kl-paar { grid-template-columns: minmax(0, 1fr); }
+  .rg-schalterfeld { grid-template-columns: minmax(0, 1fr); }
+  .rg-zuege { margin: 0 -14px; padding: 0 14px 8px; gap: 14px; scroll-snap-type: x proximity; }
+  .rg-zuggruppe { scroll-snap-align: start; }
+  .rg-kanal { width: 88px; }
+  .rg-kurve-werte { margin-left: 0; }
+  .rg-beschriftung { font-size: 15px; }
+  .rg-achse, .rg-griff-text { font-size: 14px; }
+  .rg-leiste { bottom: calc(86px + env(safe-area-inset-bottom)); }
+  .kl-chart { height: 280px; }
+  .kl-chart-feld { height: 320px; }
+  .kl-liste, .kl-karte { overflow-x: auto; }
+  .kl-tabelle { font-size: 13px; }
+  .kl-bilanz-legende li { grid-template-columns: 12px minmax(0, 1fr) max-content 40px; }
+  .kl-bilanz-wozu { grid-column: 2 / -1; }
   .wp-buehne { padding: 10px; }
   /* Ist die Verbindung unterbrochen, steht rechts das Wort dazu mit der Uhrzeit. Daneben hat die
      Außentemperatur keinen Platz mehr (sie schob sich am 13.11.2026 über den Namen), und sie
@@ -259,7 +274,7 @@
   .home-puffer-zahl { font-size: 30px; }
   .home-puffer-fuehler { font-size: 14px; height: 19px; }
   .home-puffer-ort { font-size: 11px; }
-  .home-tank-quer { height: 20px; border-radius: 6px; }
+  .home-glas-quer { height: 22px; border-radius: 11px; }
   /* Die Zahlen des Tages: eine Fläche, zwei Spalten, wie die Kennzahlen der Unterseiten. */
   .home-heute { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; background: var(--surface-2); border-radius: 16px; padding: 4px 16px; }
   .home-heute-wert { flex-direction: column-reverse; gap: 5px; padding: 13px 0 14px; border-top: 1px solid var(--line-1); }

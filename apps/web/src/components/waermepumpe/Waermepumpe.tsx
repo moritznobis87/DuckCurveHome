@@ -8,6 +8,7 @@ import { hhmm } from "@/lib/format";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { Stat } from "@/components/ui/Stat";
 import { Bild } from "./Bild";
+import { Kennzahlen } from "./Kennzahlen";
 import { aufnahme, satz, zahl } from "./bild";
 
 /**
@@ -21,7 +22,7 @@ import { aufnahme, satz, zahl } from "./bild";
  *
  * **Vier Zahlen oben, die Zeichnung darunter.** Die vier beantworten, was man von einer
  * Wärmepumpe wissen will: wie viel Wärme, aus wie viel Strom, mit welcher Arbeitszahl, bei
- * welcher Spreizung. Wärme und Arbeitszahl sind Abschätzungen, und so steht es an der Kachel.
+ * welcher Spreizung. Wärme und Arbeitszahl sind aus Messwerten gerechnet; wie, steht unter der Zeichnung.
  */
 const LIVE_MS = 10_000;
 
@@ -64,8 +65,24 @@ export function Waermepumpe() {
     <section className="wp-seite">
       <div className="wp-kopf">
         <p className="wp-satz">{satz(daten)}</p>
-        <span className="wp-stand">Stand {hhmm(daten.now)}{fehler ? ` · ${fehler}` : ""}</span>
+        <span className="wp-stand">
+          Stand {hhmm(daten.now)}
+          {/* Was der Regler vorgibt, soweit er es sendet: fordert die erste Zone Wärme an, und
+              auf welchen Raum-Sollwert regelt er. */}
+          {daten.heizanforderung != null ? ` · Heizanforderung ${daten.heizanforderung ? "an" : "aus"}` : ""}
+          {daten.raum_soll_c?.value != null ? ` · Raum-Sollwert ${zahl(daten.raum_soll_c.value)} °C` : ""}
+          {daten.ventil_code != null ? ` · Umschaltventil Stellung ${daten.ventil_code}` : ""}
+          {daten.heizstab_code != null ? ` · Heizstab meldet ${daten.heizstab_code}` : ""}
+          {daten.verdichter_a?.value != null ? ` · Verdichter ${zahl(daten.verdichter_a.value)} A` : ""}
+          {fehler ? ` · ${fehler}` : ""}
+        </span>
       </div>
+
+      {daten.zusatz_kw != null ? (
+        <p className="wp-stumm" role="status">
+          <strong>Neben dem Verdichter laufen rund {zahl(daten.zusatz_kw)} kW.</strong> Der Zähler misst deutlich mehr, als die Maschine für sich meldet; vermutlich ist der elektrische Heizstab an. Die Arbeitszahl unten enthält ihn.
+        </p>
+      ) : null}
 
       {daten.bus_stumm_de ? (
         <p className="wp-stumm" role="status">
@@ -74,9 +91,9 @@ export function Waermepumpe() {
       ) : null}
 
       <div className="kpi-grid kpi-handy" style={{ "--cols": 4 } as React.CSSProperties}>
-        <Stat label="Wärme, abgeschätzt" value={zahl(daten.waermeleistung_kw)} unit="kW" tone={daten.waermeleistung_kw != null ? "amber" : "muted"} hint={daten.laeuft ? "Durchfluss mal Spreizung" : "nur bei laufender Maschine"} />
+        <Stat label="Wärmeleistung" value={zahl(daten.waermeleistung_kw)} unit="kW" tone={daten.waermeleistung_kw != null ? "amber" : "muted"} hint={daten.laeuft ? "Durchfluss mal Spreizung" : "nur bei laufender Maschine"} />
         <Stat label={strom.quelle ? `Strom, ${strom.quelle}` : "Strom"} value={zahl(strom.kw, 2)} unit="kW" tone={strom.kw != null ? undefined : "muted"} />
-        <Stat label="Arbeitszahl, abgeschätzt" value={zahl(daten.arbeitszahl)} tone={daten.arbeitszahl != null ? undefined : "muted"} hint="Wärme je Strom, im Augenblick" />
+        <Stat label="Arbeitszahl" value={zahl(daten.arbeitszahl)} tone={daten.arbeitszahl != null ? undefined : "muted"} hint="Wärme je Strom, im Augenblick" />
         <Stat label="Spreizung" value={zahl(daten.spreizung_k)} unit="K" tone={daten.spreizung_k != null ? undefined : "muted"} hint="Vorlauf minus Rücklauf" />
       </div>
 
@@ -84,10 +101,17 @@ export function Waermepumpe() {
         <Bild d={daten} lage={handy ? "hoch" : "breit"} ruhig={ruhig} />
       </div>
 
+      <Kennzahlen aktuell={daten.kreis_code} />
+
       <div className="wp-fuss">
-        <p className="m-0">† Die Zuordnung dieses Werts ist begründet, am Gerät aber noch nicht bestätigt.</p>
+        <p className="m-0">Fühler WP: der Speicherfühler der Wärmepumpe. Er sitzt über dem obersten eigenen Fühler, auf halbem Weg zur Oberkante des Speichers.</p>
+        {daten.ventil_code != null || daten.heizstab_code != null ? (
+          <p className="m-0">Umschaltventil und Heizstab stehen als Zahl des Reglers da. Laut Busbeschreibung heißt beim Ventil 0 Warmwasser und 1 Heizung, beim Heizstab 1 an; für dieses Haus ist das noch nicht gegengeprüft. Die Tabelle oben zeigt, was der Speicher unter jeder Stellung tut.</p>
+        ) : null}
         {daten.hinweise_de?.map((h) => <p key={h} className="m-0">{h}</p>)}
         <p className="m-0 wp-links">
+          <Link href="/waerme/waermepumpe/betrieb">Betrieb über Tage ›</Link>
+          <Link href="/waerme/waermepumpe/kennlinie">Gemessene Kennlinie ›</Link>
           <Link href="/waerme/nachbetrachtung">Was die Wärme gekostet hat ›</Link>
           <Link href="/waerme/fahrplan">Fahrplan ›</Link>
           <Link href="/waerme/anlage">Die ganze Anlage ›</Link>

@@ -1,0 +1,53 @@
+# Duck Curve eBUS: die Werte, die das Add-on selbst abfragt (Option `abfragen`).
+#
+# Mitlesen allein reicht fuer einige Groessen nicht: das Bediengeraet fragt sie nie ab, also gehen
+# sie nie ueber den Bus. Hier fragt ebusd sie reihum selbst (`r1`, `r2`: eins ist oefter dran).
+# Gefragt wird nur; eine Zeile zum Stellen gibt es in dieser Datei nicht und darf es nie geben
+# (der Test `test_addon_ebusd.py` wacht darueber).
+#
+# Aufbau der Antwort: ein Byte Status, dann der Wert. So antworten Regler (18) und Waermepumpe
+# (1e) im Haus auf jede einzelne Abfrage des Bediengeraets (Protokolle vom 13. und 14.11.2026:
+# Durchfluss 6e13, Betriebszustand ca46, Ventil Heizen/Kuehlen 0701). Fuer die vier Kennungen
+# hier ist das uebertragen, nicht im Haus gesehen: bis zur ersten Antwort gelten sie als ungeprueft.
+#
+# Kennungen aus der Bus-Beschreibung der Ariston-Gruppe (dort 0601 "0=dhw;1=heat", 1c45 an/aus,
+# 714f Strom in Zehntel Ampere, 6e4f Drehzahl). Die Bedeutungen der Zahlen sind deren Angabe;
+# was sie in diesem Haus heissen, zeigt der Vergleich mit Speicher und Zaehler.
+# Betriebszustand und Verdichterfrequenz: dieselbe Frage, die der Regler der Maschine stellt
+# (im Haus gesehen, mit Antwort), nur stellt er sie selten. Ohne eigene Abfrage hatte die Seite
+# die Frequenz nur zufaellig (15.11.2026: "der Umrichter hat keine Frequenz mehr"). Name und
+# Felder wie die Zeile zum Mitlesen in aerotop_split.csv, die dieser hier weicht; so gilt
+# dieselbe Zuordnung, ob der Regler fragt oder das Add-on.
+r1,heatpump,hp_betrieb,Aussentemperatur Durchfluss Betriebszustand Verdichterfrequenz,,1e,2000,78106e13ca46cb46,,s,IGN:1,,,,ext_temp,s,SIN,10,°C,,flow,s,UIN,10,l/min,,mode,s,UCH,,,,compressor_hz,s,UCH,,Hz,
+r1,energymgr,ventil_ww,Umschaltventil Warmwasser oder Heizung,,18,2000,0601,,s,IGN:1,,,,stellung,s,UCH,,,
+r1,energymgr,heizstab,Elektrische Zusatzheizung,,18,2000,1c45,,s,IGN:1,,,,an,s,UCH,,,
+r2,heatpump,verdichter_strom,Strom des Verdichters,,1e,2000,714f,,s,IGN:1,,,,strom_a,s,UIN,10,A,
+r2,heatpump,luefter,Drehzahl des Luefters,,1e,2000,6e4f,,s,IGN:1,,,,drehzahl,s,UIN,,,
+# Ab 0.4.0: die Einstellungen des Reglers, nur gelesen. Sie aendern sich selten und sind
+# deshalb selten dran (`r9`). Kennungen und Zahlenformate aus der Bus-Beschreibung der
+# Ariston-Gruppe (Zone 1 und Warmwasser); im Haus zu pruefen, indem jemand die Seite "Regler"
+# mit dem Bediengeraet vergleicht. Auch hier gilt: nur Fragen, keine Zeile zum Stellen.
+# Die Zeilen entstehen aus der Liste in apps/api/src/dch_api/application/regler.py
+# (`zeile_lesen`); ein Test haelt beide gleich.
+r9,energymgr,e_steilheit,Steilheit,,18,2000,6a71,,s,IGN:1,,,,wert,s,UIN,100,,
+r9,energymgr,e_verschiebung,Verschiebung,,18,2000,6471,,s,IGN:1,,,,wert,s,SCH,10,K,
+r9,energymgr,e_vorlauf_max,Vorlauf hoechstens,,18,2000,6071,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_vorlauf_min,Vorlauf mindestens,,18,2000,6171,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_vorlauf_fest,Vorlauf fest,,18,2000,6571,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_raumeinfluss,Einfluss der Raumtemperatur,,18,2000,c279,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_heizkurve_art,Art der Vorlaufregelung,,18,2000,c079,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_temperaturbereich,Temperaturbereich,,18,2000,0081,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_vorlauf_korrektur,Korrektur des Vorlaufs,,18,2000,7d2b,,s,IGN:1,,,,wert,s,SIN,10,K,
+r9,energymgr,e_raum_tag,Raumtemperatur Tag,,18,2000,6271,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_raum_nacht,Raumtemperatur Nacht,,18,2000,6371,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_ww_komfort,Komforttemperatur,,18,2000,6126,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_ww_spar,Spartemperatur,,18,2000,6226,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_ww_art,Betriebsart,,18,2000,c028,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_ww_legionellen,Legionellenprogramm,,18,2000,0b20,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_ww_pv_delta,Zuschlag bei Sonnenstrom,,18,2000,762d,,s,IGN:1,,,,wert,s,SIN,10,K,
+r9,energymgr,e_heizbetrieb,Heizbetrieb,,18,2000,1c22,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_fluester,Fluestermodus,,18,2000,0320,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_komfortstufe,Komfortstufe,,18,2000,c728,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_pumpe,Umwaelzpumpe,,18,2000,c32a,,s,IGN:1,,,,wert,s,UCH,,,
+r9,energymgr,e_wp_aus_unter,Waermepumpe aus unter,,18,2000,7226,,s,IGN:1,,,,wert,s,SIN,10,°C,
+r9,energymgr,e_sommer_ab,Sommerbetrieb ab,,18,2000,7971,,s,IGN:1,,,,wert,s,SIN,10,°C,

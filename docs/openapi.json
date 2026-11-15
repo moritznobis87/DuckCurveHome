@@ -1151,6 +1151,278 @@
         }
       }
     },
+    "/api/v1/waermepumpe/kennlinie": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Die gemessene Kennlinie",
+        "description": "Arbeitszahl über Außen- und Vorlauftemperatur: Messpunkte aus dem Heizbetrieb, die\nAusgleichsfläche nach kleinsten Quadraten und die Kennlinie, mit der der Fahrplan rechnet.",
+        "operationId": "kennlinie_api_v1_waermepumpe_kennlinie_get",
+        "parameters": [
+          {
+            "name": "tage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 180,
+              "minimum": 1,
+              "description": "Rückblick in Tagen",
+              "default": 30,
+              "title": "Tage"
+            },
+            "description": "Rückblick in Tagen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KennlinieOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/waermepumpe/kennzahlen": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Die Kennzahlen des Reglers",
+        "description": "Was die Wärmepumpe unter welcher Kennzahl ihres Reglers tat: Minuten, Lauf, Vorlauf,\nSollwert, Erwärmung des Speichers oben und unten. Belege, keine Deutung.",
+        "operationId": "kennzahlen_api_v1_waermepumpe_kennzahlen_get",
+        "parameters": [
+          {
+            "name": "tage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 60,
+              "minimum": 1,
+              "description": "Rückblick in Tagen",
+              "default": 7,
+              "title": "Tage"
+            },
+            "description": "Rückblick in Tagen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReglerKennzahlenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/waermepumpe/betrieb": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Der Betrieb über Tage",
+        "description": "Läufe, Starts und Lauflängen, Abtauen, die Arbeitszahl je Tag mit und ohne Abtauen und\ndie Heizkurve, die der Regler der Maschine vorgibt. Eine Auszählung gespeicherter Minuten.",
+        "operationId": "betrieb_api_v1_waermepumpe_betrieb_get",
+        "parameters": [
+          {
+            "name": "tage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 90,
+              "minimum": 1,
+              "description": "Rückblick in Tagen",
+              "default": 14,
+              "title": "Tage"
+            },
+            "description": "Rückblick in Tagen"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetriebOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/waermepumpe/einstellungen": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Die Einstellungen des Reglers",
+        "description": "Heizkurve, Raumtemperaturen und Warmwasser, wie sie am Regler eingestellt sind: über\nden Bus gelesen, je mit Zeitpunkt. Verstellt wird damit nichts.",
+        "operationId": "einstellungen_api_v1_waermepumpe_einstellungen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReglerEinstellungenOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/waermepumpe/einstellungen/{schluessel}": {
+      "post": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Eine Einstellung des Reglers stellen",
+        "description": "Eine Einstellung aus der festen Liste der stellbaren stellen. Abgelehnt wird, was nicht\nin der Liste steht, gerade nicht gelesen ist, nicht mit dem Bediengerät verglichen wurde,\naußerhalb der Grenzen liegt oder heute schon zu oft gestellt wurde; der Grund steht in der\nAntwort. Gestellt ist der Wert erst, wenn der Regler ihn zurückmeldet.",
+        "operationId": "einstellung_stellen_api_v1_waermepumpe_einstellungen__schluessel__post",
+        "parameters": [
+          {
+            "name": "schluessel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Schluessel"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReglerStellenIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReglerStellenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/waermepumpe/einstellungen/{schluessel}/bestaetigen": {
+      "post": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Eine Einstellung als mit dem Bediengerät verglichen vermerken",
+        "description": "Festhalten, dass die Zahl auf der Seite mit der am Bediengerät übereinstimmt (oder das\nzurücknehmen). Erst danach lässt sich die Einstellung stellen.",
+        "operationId": "einstellung_bestaetigen_api_v1_waermepumpe_einstellungen__schluessel__bestaetigen_post",
+        "parameters": [
+          {
+            "name": "schluessel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Schluessel"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReglerBestaetigenIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReglerStellenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -4143,6 +4415,446 @@
           "text"
         ],
         "title": "Befund"
+      },
+      "BetriebHeizkurveOut": {
+        "properties": {
+          "a": {
+            "type": "number",
+            "title": "A"
+          },
+          "b": {
+            "type": "number",
+            "title": "B"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "r2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R2"
+          },
+          "aussen_von_c": {
+            "type": "number",
+            "title": "Aussen Von C"
+          },
+          "aussen_bis_c": {
+            "type": "number",
+            "title": "Aussen Bis C"
+          },
+          "formel_de": {
+            "type": "string",
+            "title": "Formel De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a",
+          "b",
+          "n",
+          "aussen_von_c",
+          "aussen_bis_c",
+          "formel_de"
+        ],
+        "title": "BetriebHeizkurveOut",
+        "description": "Sollwert = a + b * Außentemperatur, nach kleinsten Quadraten über die Stunden."
+      },
+      "BetriebKlasseOut": {
+        "properties": {
+          "von_min": {
+            "type": "integer",
+            "title": "Von Min"
+          },
+          "bis_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis Min"
+          },
+          "laeufe": {
+            "type": "integer",
+            "title": "Laeufe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "von_min",
+          "laeufe"
+        ],
+        "title": "BetriebKlasseOut",
+        "description": "Eine Klasse der Lauflängen: von einschließlich, bis ausschließlich (`None`: nach oben offen)."
+      },
+      "BetriebLaufOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          },
+          "abtau_min": {
+            "type": "integer",
+            "title": "Abtau Min"
+          },
+          "abtauungen": {
+            "type": "integer",
+            "title": "Abtauungen"
+          },
+          "zusatz_min": {
+            "type": "integer",
+            "title": "Zusatz Min"
+          },
+          "strom_kwh": {
+            "type": "number",
+            "title": "Strom Kwh"
+          },
+          "waerme_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waerme Kwh"
+          },
+          "angeschnitten": {
+            "type": "boolean",
+            "title": "Angeschnitten",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "minuten",
+          "abtau_min",
+          "abtauungen",
+          "zusatz_min",
+          "strom_kwh"
+        ],
+        "title": "BetriebLaufOut",
+        "description": "Ein Lauf des Verdichters, vom Anlaufen bis zum Halt."
+      },
+      "BetriebOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "von": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Bis"
+          },
+          "zeitraum_tage": {
+            "type": "integer",
+            "title": "Zeitraum Tage"
+          },
+          "tage": {
+            "items": {
+              "$ref": "#/components/schemas/BetriebTagOut"
+            },
+            "type": "array",
+            "title": "Tage"
+          },
+          "laeufe": {
+            "items": {
+              "$ref": "#/components/schemas/BetriebLaufOut"
+            },
+            "type": "array",
+            "title": "Laeufe"
+          },
+          "stunden": {
+            "items": {
+              "$ref": "#/components/schemas/BetriebStundeOut"
+            },
+            "type": "array",
+            "title": "Stunden"
+          },
+          "heizkurve": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BetriebHeizkurveOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "klassen": {
+            "items": {
+              "$ref": "#/components/schemas/BetriebKlasseOut"
+            },
+            "type": "array",
+            "title": "Klassen"
+          },
+          "starts": {
+            "type": "integer",
+            "title": "Starts",
+            "default": 0
+          },
+          "lauf_min": {
+            "type": "integer",
+            "title": "Lauf Min",
+            "default": 0
+          },
+          "abtau_min": {
+            "type": "integer",
+            "title": "Abtau Min",
+            "default": 0
+          },
+          "abtauungen": {
+            "type": "integer",
+            "title": "Abtauungen",
+            "default": 0
+          },
+          "zusatz_min": {
+            "type": "integer",
+            "title": "Zusatz Min",
+            "default": 0
+          },
+          "cop_gesamt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Gesamt"
+          },
+          "cop_heizen": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Heizen"
+          },
+          "lauf_median_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lauf Median Min"
+          },
+          "saetze_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Saetze De"
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "von",
+          "bis",
+          "zeitraum_tage"
+        ],
+        "title": "BetriebOut",
+        "description": "Der Betrieb der Wärmepumpe über Tage: Läufe, Abtauen, Takten, Heizkurve des Reglers.\n\nEine Auszählung gespeicherter Minuten. Was sie taugt, steht in `hinweise_de`."
+      },
+      "BetriebStundeOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          },
+          "aussen_c": {
+            "type": "number",
+            "title": "Aussen C"
+          },
+          "soll_c": {
+            "type": "number",
+            "title": "Soll C"
+          },
+          "vorlauf_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vorlauf C"
+          },
+          "ventil": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ventil"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "minuten",
+          "aussen_c",
+          "soll_c"
+        ],
+        "title": "BetriebStundeOut",
+        "description": "Eine Stunde im Heizbetrieb: was der Regler als Vorlauf verlangte, bei welchem Wetter."
+      },
+      "BetriebTagOut": {
+        "properties": {
+          "tag": {
+            "type": "string",
+            "format": "date",
+            "title": "Tag"
+          },
+          "starts": {
+            "type": "integer",
+            "title": "Starts"
+          },
+          "lauf_min": {
+            "type": "integer",
+            "title": "Lauf Min"
+          },
+          "abtau_min": {
+            "type": "integer",
+            "title": "Abtau Min"
+          },
+          "abtauungen": {
+            "type": "integer",
+            "title": "Abtauungen"
+          },
+          "zusatz_min": {
+            "type": "integer",
+            "title": "Zusatz Min"
+          },
+          "strom_kwh": {
+            "type": "number",
+            "title": "Strom Kwh"
+          },
+          "waerme_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waerme Kwh"
+          },
+          "strom_lauf_kwh": {
+            "type": "number",
+            "title": "Strom Lauf Kwh",
+            "default": 0.0
+          },
+          "cop_tag": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Tag"
+          },
+          "cop_heizen": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cop Heizen"
+          },
+          "lauf_median_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lauf Median Min"
+          },
+          "aussen_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aussen C"
+          },
+          "waerme_min": {
+            "type": "integer",
+            "title": "Waerme Min",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag",
+          "starts",
+          "lauf_min",
+          "abtau_min",
+          "abtauungen",
+          "zusatz_min",
+          "strom_kwh"
+        ],
+        "title": "BetriebTagOut",
+        "description": "Ein Ortstag der Wärmepumpe (`hems_core.thermal.betrieb.Tag`)."
       },
       "BinCorrection": {
         "properties": {
@@ -8897,6 +9609,344 @@
         "title": "Item",
         "description": "Ein Moebel, ein Geraet, ein Stueck Treppe. Welche Felder gelten, sagt `kind`; die Anzeige\nnimmt fuer fehlende Masse ihre Voreinstellungen. Geprueft wird hier nur, dass die Zahlen endlich\nsind und die Art bekannt ist."
       },
+      "KennlinieOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "von": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Bis"
+          },
+          "tage": {
+            "type": "integer",
+            "title": "Tage"
+          },
+          "punkte": {
+            "items": {
+              "$ref": "#/components/schemas/KennlinienPunktOut"
+            },
+            "type": "array",
+            "title": "Punkte"
+          },
+          "fit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KennlinienFitOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fehlt_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fehlt De"
+          },
+          "annahme": {
+            "items": {
+              "$ref": "#/components/schemas/KennlinienAnnahmeOut"
+            },
+            "type": "array",
+            "title": "Annahme"
+          },
+          "annahme_vorlauf_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annahme Vorlauf C"
+          },
+          "bilanz": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KennlinienBilanzOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "von",
+          "bis",
+          "tage"
+        ],
+        "title": "KennlinieOut",
+        "description": "Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.\n\nDie Punkte sind Abschätzungen aus Durchfluss, Spreizung und Zähler; warum, steht in\n`hinweise_de`."
+      },
+      "KennlinienAnnahmeOut": {
+        "properties": {
+          "aussen_c": {
+            "type": "number",
+            "title": "Aussen C"
+          },
+          "cop": {
+            "type": "number",
+            "title": "Cop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aussen_c",
+          "cop"
+        ],
+        "title": "KennlinienAnnahmeOut",
+        "description": "Ein Punkt der Kennlinie, mit der der Fahrplan bisher rechnet."
+      },
+      "KennlinienBilanzOut": {
+        "properties": {
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          },
+          "heizen": {
+            "type": "integer",
+            "title": "Heizen"
+          },
+          "anlauf": {
+            "type": "integer",
+            "title": "Anlauf"
+          },
+          "zusatz": {
+            "type": "integer",
+            "title": "Zusatz"
+          },
+          "ohne_wert": {
+            "type": "integer",
+            "title": "Ohne Wert"
+          },
+          "ohne_waerme": {
+            "type": "integer",
+            "title": "Ohne Waerme"
+          },
+          "gueltig": {
+            "type": "integer",
+            "title": "Gueltig"
+          },
+          "fenster": {
+            "type": "integer",
+            "title": "Fenster"
+          },
+          "punkte": {
+            "type": "integer",
+            "title": "Punkte"
+          },
+          "unglaubwuerdig": {
+            "type": "integer",
+            "title": "Unglaubwuerdig"
+          },
+          "fehlt": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Fehlt"
+          },
+          "verhaeltnis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verhaeltnis"
+          },
+          "satz_de": {
+            "type": "string",
+            "title": "Satz De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "minuten",
+          "heizen",
+          "anlauf",
+          "zusatz",
+          "ohne_wert",
+          "ohne_waerme",
+          "gueltig",
+          "fenster",
+          "punkte",
+          "unglaubwuerdig"
+        ],
+        "title": "KennlinienBilanzOut",
+        "description": "Wo die Minuten des Zeitraums geblieben sind (`hems_core.thermal.kennlinie.Bilanz`).\n\nVon den Minuten, in denen die Maschine heizte, zählt nur ein Teil: nicht der Anlauf, nicht\ndie mit Heizstab, nicht die ohne einen nötigen Wert. Die Zahlen hier addieren sich zu\n`heizen`; eine leere Kennlinie zeigt damit, woran es liegt."
+      },
+      "KennlinienFitOut": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "ebene",
+              "aussen",
+              "vorlauf",
+              "mittel"
+            ],
+            "title": "Art"
+          },
+          "a": {
+            "type": "number",
+            "title": "A"
+          },
+          "b_aussen": {
+            "type": "number",
+            "title": "B Aussen"
+          },
+          "c_vorlauf": {
+            "type": "number",
+            "title": "C Vorlauf"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "rmse": {
+            "type": "number",
+            "title": "Rmse"
+          },
+          "r2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R2"
+          },
+          "aussen_von_c": {
+            "type": "number",
+            "title": "Aussen Von C"
+          },
+          "aussen_bis_c": {
+            "type": "number",
+            "title": "Aussen Bis C"
+          },
+          "vorlauf_von_c": {
+            "type": "number",
+            "title": "Vorlauf Von C"
+          },
+          "vorlauf_bis_c": {
+            "type": "number",
+            "title": "Vorlauf Bis C"
+          },
+          "formel_de": {
+            "type": "string",
+            "title": "Formel De"
+          },
+          "geltung_de": {
+            "type": "string",
+            "title": "Geltung De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "a",
+          "b_aussen",
+          "c_vorlauf",
+          "n",
+          "rmse",
+          "aussen_von_c",
+          "aussen_bis_c",
+          "vorlauf_von_c",
+          "vorlauf_bis_c",
+          "formel_de",
+          "geltung_de"
+        ],
+        "title": "KennlinienFitOut",
+        "description": "COP = a + b_aussen * Außentemperatur + c_vorlauf * Vorlauftemperatur, kleinste Quadrate.\n\n`art` sagt, welche Terme sich aus den Punkten bestimmen ließen: `ebene` beide, `aussen`\noder `vorlauf` nur einer, `mittel` keiner."
+      },
+      "KennlinienPunktOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          },
+          "aussen_c": {
+            "type": "number",
+            "title": "Aussen C"
+          },
+          "vorlauf_c": {
+            "type": "number",
+            "title": "Vorlauf C"
+          },
+          "cop": {
+            "type": "number",
+            "title": "Cop"
+          },
+          "waerme_kw": {
+            "type": "number",
+            "title": "Waerme Kw"
+          },
+          "strom_kw": {
+            "type": "number",
+            "title": "Strom Kw"
+          },
+          "ventil": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ventil"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "minuten",
+          "aussen_c",
+          "vorlauf_c",
+          "cop",
+          "waerme_kw",
+          "strom_kw"
+        ],
+        "title": "KennlinienPunktOut",
+        "description": "Ein Fenster im eingeschwungenen Heizbetrieb (`hems_core.thermal.kennlinie`)."
+      },
       "KontaktwirkungOut": {
         "properties": {
           "von": {
@@ -10930,6 +11980,494 @@
           "zeilen_gesendet"
         ],
         "title": "Rechnungsergebnis"
+      },
+      "ReglerAenderungOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "schluessel": {
+            "type": "string",
+            "title": "Schluessel"
+          },
+          "name_de": {
+            "type": "string",
+            "title": "Name De"
+          },
+          "von_de": {
+            "type": "string",
+            "title": "Von De"
+          },
+          "auf_de": {
+            "type": "string",
+            "title": "Auf De"
+          },
+          "urheber_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urheber De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "schluessel",
+          "name_de",
+          "von_de",
+          "auf_de"
+        ],
+        "title": "ReglerAenderungOut",
+        "description": "Eine Zeile des Protokolls: wer wann was gestellt hat."
+      },
+      "ReglerBestaetigenIn": {
+        "properties": {
+          "bestaetigt": {
+            "type": "boolean",
+            "title": "Bestaetigt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bestaetigt"
+        ],
+        "title": "ReglerBestaetigenIn"
+      },
+      "ReglerEinstellungOut": {
+        "properties": {
+          "schluessel": {
+            "type": "string",
+            "title": "Schluessel"
+          },
+          "name_de": {
+            "type": "string",
+            "title": "Name De"
+          },
+          "gruppe_de": {
+            "type": "string",
+            "title": "Gruppe De"
+          },
+          "kennung": {
+            "type": "string",
+            "title": "Kennung"
+          },
+          "einheit": {
+            "type": "string",
+            "title": "Einheit",
+            "default": ""
+          },
+          "stellen": {
+            "type": "integer",
+            "title": "Stellen",
+            "default": 1
+          },
+          "wert": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "lesart_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lesart De"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "zahl",
+              "wahl",
+              "schalter"
+            ],
+            "title": "Art",
+            "default": "zahl"
+          },
+          "stellbar": {
+            "type": "boolean",
+            "title": "Stellbar",
+            "default": false
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis"
+          },
+          "schritt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schritt"
+          },
+          "wahl": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Wahl"
+          },
+          "bestaetigt": {
+            "type": "boolean",
+            "title": "Bestaetigt",
+            "default": false
+          },
+          "muster": {
+            "type": "boolean",
+            "title": "Muster",
+            "default": false
+          },
+          "hinweis_de": {
+            "type": "string",
+            "title": "Hinweis De",
+            "default": ""
+          },
+          "gesendet": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReglerGesendetOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "schluessel",
+          "name_de",
+          "gruppe_de",
+          "kennung",
+          "wert"
+        ],
+        "title": "ReglerEinstellungOut",
+        "description": "Eine Einstellung des Reglers der Wärmepumpe, gelesen über den Bus."
+      },
+      "ReglerEinstellungenOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "gelesen": {
+            "type": "integer",
+            "title": "Gelesen"
+          },
+          "satz_de": {
+            "type": "string",
+            "title": "Satz De"
+          },
+          "werte": {
+            "items": {
+              "$ref": "#/components/schemas/ReglerEinstellungOut"
+            },
+            "type": "array",
+            "title": "Werte"
+          },
+          "stellen_moeglich": {
+            "type": "boolean",
+            "title": "Stellen Moeglich",
+            "default": false
+          },
+          "hindernis_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hindernis De"
+          },
+          "stellen_je_tag": {
+            "type": "integer",
+            "title": "Stellen Je Tag",
+            "default": 0
+          },
+          "protokoll": {
+            "items": {
+              "$ref": "#/components/schemas/ReglerAenderungOut"
+            },
+            "type": "array",
+            "title": "Protokoll"
+          },
+          "hinweise_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hinweise De"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "gelesen",
+          "satz_de"
+        ],
+        "title": "ReglerEinstellungenOut",
+        "description": "Was am Regler der Wärmepumpe eingestellt ist, und was sich davon stellen lässt."
+      },
+      "ReglerGesendetOut": {
+        "properties": {
+          "wert": {
+            "type": "number",
+            "title": "Wert"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wert",
+          "at"
+        ],
+        "title": "ReglerGesendetOut",
+        "description": "Ein Stellbefehl, der hinausgegangen ist und dessen Rückmeldung noch aussteht."
+      },
+      "ReglerKennzahlOut": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code"
+          },
+          "minuten": {
+            "type": "integer",
+            "title": "Minuten"
+          },
+          "lauf_min": {
+            "type": "integer",
+            "title": "Lauf Min"
+          },
+          "vorlauf_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vorlauf C"
+          },
+          "vorlauf_soll_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vorlauf Soll C"
+          },
+          "oben_k_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oben K H"
+          },
+          "unten_k_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unten K H"
+          },
+          "angefordert_anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Angefordert Anteil"
+          },
+          "zusatz_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zusatz Kw"
+          },
+          "heizanforderung_anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heizanforderung Anteil"
+          },
+          "flag_1b45_anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag 1B45 Anteil"
+          },
+          "ventil_1_anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ventil 1 Anteil"
+          },
+          "heizstab_anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heizstab Anteil"
+          },
+          "zuletzt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zuletzt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "minuten",
+          "lauf_min"
+        ],
+        "title": "ReglerKennzahlOut",
+        "description": "Was in den Minuten geschah, in denen der Regler diese Kennzahl sendete."
+      },
+      "ReglerKennzahlenOut": {
+        "properties": {
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Now"
+          },
+          "tage": {
+            "type": "integer",
+            "title": "Tage"
+          },
+          "zeilen": {
+            "items": {
+              "$ref": "#/components/schemas/ReglerKennzahlOut"
+            },
+            "type": "array",
+            "title": "Zeilen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "now",
+          "tage"
+        ],
+        "title": "ReglerKennzahlenOut"
+      },
+      "ReglerStellenIn": {
+        "properties": {
+          "wert": {
+            "type": "number",
+            "title": "Wert"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wert"
+        ],
+        "title": "ReglerStellenIn"
+      },
+      "ReglerStellenOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "message_de": {
+            "type": "string",
+            "title": "Message De"
+          },
+          "einstellungen": {
+            "$ref": "#/components/schemas/ReglerEinstellungenOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "message_de",
+          "einstellungen"
+        ],
+        "title": "ReglerStellenOut",
+        "description": "Die Antwort auf einen Stellbefehl oder eine Bestätigung: ob es ging, ein Satz dazu, und\nder Stand danach."
       },
       "ReiheOut": {
         "properties": {
@@ -13366,6 +14904,117 @@
             ],
             "title": "Arbeitszahl"
           },
+          "heizanforderung": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heizanforderung"
+          },
+          "raum_soll_c": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Measurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "zusatz_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zusatz Kw"
+          },
+          "ventil_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ventil Code"
+          },
+          "heizstab_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heizstab Code"
+          },
+          "verdichter_a": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Measurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "luefter_drehzahl": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Measurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kreis_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kreis Code"
+          },
+          "kreis_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kreis De"
+          },
+          "einspeisung": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "oben",
+                  "tiefer"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Einspeisung"
+          },
           "bus_stumm_de": {
             "anyOf": [
               {
@@ -13405,7 +15054,7 @@
           "speicherfuehler_c"
         ],
         "title": "WaermepumpeOut",
-        "description": "Die Wärmepumpe im Augenblick, für ihre Technikseite.\n\nJede Größe ist ein Messwert mit Zeitpunkt und Güte: fehlt einer, steht auf der Seite ein\nFragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende sind\nAbschätzungen; warum, steht in `hinweise_de` und in `application/waermepumpe.py`."
+        "description": "Die Wärmepumpe im Augenblick, für ihre Technikseite.\n\nJede Größe ist ein Messwert mit Zeitpunkt und Güte: fehlt einer, steht auf der Seite ein\nFragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende\nentstehen aus diesen Messwerten; wie, steht in `hinweise_de` und in\n`application/waermepumpe.py`."
       },
       "WallLine": {
         "properties": {

@@ -38,7 +38,7 @@ SERIES = (
     # vorher nicht gab und aus denen sich zum ersten Mal eine Wärmeleistung rechnen lässt:
     # Durchfluss mal Spreizung zwischen Vorlauf (`flow_temp_c`) und Rücklauf.
     "heat_pump_flow_l_min",  # Durchflussmesser der Wärmepumpe, Liter je Minute
-    "heat_pump_return_temp_c",  # Rücklauf; die Zuordnung der Kennung ist begründet, nicht bestätigt
+    "heat_pump_return_temp_c",  # Rücklauf (Kennung 769e; gilt seit dem 14.11.2026 als gegeben)
     "heat_pump_flow_setpoint_c",  # Vorlauf-Sollwert, den der Regler der Maschine vorgibt
     "heat_pump_bus_power_kw",  # Leistungsaufnahme nach eigener Auskunft der Maschine
     "heat_pump_compressor_hz",  # Verdichterfrequenz: wie weit die Maschine gerade moduliert
@@ -48,7 +48,42 @@ SERIES = (
     "heat_pump_suction_temp_c",  # Sauggas vor dem Verdichter
     "heat_pump_discharge_temp_c",  # Heißgas nach dem Verdichter
     "heat_pump_liquid_temp_c",  # Flüssigkeitsleitung zurück zum Außengerät
-    "heat_pump_tank_temp_c",  # Speicherfühler der Wärmepumpe (Kennung 759e, Lesart nicht bestätigt)
+    "heat_pump_tank_temp_c",  # Speicherfühler der Wärmepumpe (759e), über dem obersten eigenen
+    "heat_pump_cycle_code",  # Kennzahl des Reglers (c94b): 0 steht, 2 Heizen; weitere offen
+    "heat_pump_heat_request",  # Heizanforderung der ersten Zone laut Regler: 1 an, 0 aus
+    "heat_pump_room_setpoint_c",  # Raum-Sollwert der ersten Zone laut Regler
+    "heat_pump_flag_1b45",  # Kennung 1b45 des Busses, Bedeutung offen (neben 1c45 Heizstab)
+    "heat_pump_cmd_mode_code",  # Vorgabe des Reglers an die Maschine, Kennung cd46: 0 aus, 3 Heizen
+    "heat_pump_cmd_target_c",  # Vorgabe des Reglers an die Maschine, Kennung 6a47, Bedeutung offen
+    # Was das eBUS-Add-on ab 0.3.0 selbst abfragt. Zahlen, deren Bedeutung im Haus noch offen ist.
+    "heat_pump_valve_code",  # Umschaltventil (0601): laut Bus-Beschreibung 0 Warmwasser, 1 Heizung
+    "heat_pump_heater_code",  # elektrische Zusatzheizung (1c45): laut Bus-Beschreibung 1 an
+    "heat_pump_compressor_a",  # Strom des Verdichters in Ampere (714f)
+    "heat_pump_fan_speed",  # Drehzahl des Lüfters (6e4f), Einheit nicht belegt
+    # Die Einstellungen des Reglers, gelesen ab Add-on 0.4.0 (`application/regler.py`). Sie
+    # ändern sich selten; der Verlauf belegt, wann welche Einstellung galt.
+    "heat_pump_set_slope",
+    "heat_pump_set_offset_k",
+    "heat_pump_set_flow_max_c",
+    "heat_pump_set_flow_min_c",
+    "heat_pump_set_flow_fixed_c",
+    "heat_pump_set_curve_type",
+    "heat_pump_set_room_day_c",
+    "heat_pump_set_room_night_c",
+    "heat_pump_set_dhw_comfort_c",
+    "heat_pump_set_dhw_eco_c",
+    "heat_pump_set_dhw_mode",
+    "heat_pump_set_silent",
+    "heat_pump_set_room_influence",
+    "heat_pump_set_temp_range",
+    "heat_pump_set_flow_correction_k",
+    "heat_pump_set_dhw_cleansing",
+    "heat_pump_set_dhw_pv_delta_k",
+    "heat_pump_set_heat_mode",
+    "heat_pump_set_comfort_level",
+    "heat_pump_set_pump_mode",
+    "heat_pump_set_disable_below_c",
+    "heat_pump_set_summer_above_c",
     # Pelletofen (MCZ Maestro). Zweite Wärmequelle am selben Puffer: ohne sie ist der Anteil
     # der Wärmepumpe an einer Pufferladung nicht zu beziffern.
     "stove_state",  # Zustandscode der Maestro-Firmware

@@ -12,8 +12,12 @@ Verbindet Home Assistant **ausgehend** mit der Duck-Curve-Home-API. Kein offener
    `entities_url`, standardmäßig `config/entities.home.yaml` auf `main`) - eine Änderung dort wirkt nach
    einem Neustart des Add-ons, ohne dass eine Datei kopiert werden muss. Die Antwort wird unter
    `/data/entities.cache.yaml` abgelegt, damit die Bridge auch ohne Internet startet.
-   Wer ein eigenes Mapping fahren will, legt `/config/duckcurve/entities.yaml` an (Vorlage:
-   `addons/duckcurve_bridge/entities.example.yaml`); diese Datei übersteuert das Repository vollständig.
+   Was nur das eigene Haus betrifft (Alarmanlage, Namen von Räumen), steht in
+   `/config/duckcurve/entities.yaml` (Vorlage: `addons/duckcurve_bridge/entities.example.yaml`).
+   **Ab 0.14.3 ergänzt diese Datei das Repository, sie ersetzt es nicht mehr:** was in ihr steht,
+   gilt; was nur im Repository steht, kommt hinzu (ein Sensor oder Aktor mit neuem Schlüssel und
+   noch nicht benutzter Entität, ein Gerät am Broker mit neuem Thema). Wer das Repository ganz
+   ausschließen will, schreibt `ersetzt_repository: true` in die Datei.
    Im Protokoll steht beim Start, woher das Mapping kam: `entity map loaded origin=…`.
 4. Optionen setzen: `api_ws_url` (Railway-API) und `api_token` (in Duck Curve Home erzeugt).
 5. Starten. Im Protokoll erscheint „uplink connected“. In Home Assistant entsteht die Entität
@@ -546,12 +550,29 @@ Technik → Wärmepumpe macht daraus einen Satz. Dieselbe Zeile steht im Protoko
 Dazu die Zahlen, an denen sich das nachprüfen lässt: `nachrichten` (bisher gelesen), `namen`
 (verschiedene Nachrichten), `werte` (zugeordnete, frische Werte).
 
+**Woher die Zuordnung stammt, meldet die Bridge ebenfalls (ab 0.14.3)**, als Zustand der Quelle
+`zuordnung`: `repository`, `datei+repository` (die Datei im Haus, ergänzt um das Repository),
+`datei+zwischenspeicher` und `zwischenspeicher` (der Abruf ist gescheitert, mit dem Grund) oder
+`datei` (die Datei allein, weil sie es verlangt oder weil weder Repository noch Zwischenspeicher
+da waren; dann steht beim Start eine Warnung im Protokoll). Kennt die Zuordnung den Bus nicht,
+nennt die Seite der Wärmepumpe diese Herkunft und was zu tun ist.
+
 **Ältere Bridge, neue Zuordnung.** Eine Bridge vor 0.14.0 kennt `kind: ebusd` nicht und lehnt die
 Zuordnung aus dem Repository ab. Sie arbeitet dann mit ihrem letzten guten Stand weiter und
 schreibt das ins Protokoll; es fällt nichts aus, aber die neuen Werte kommen erst nach dem
 Update des Add-ons.
 
 Gelesen wird nur. Die Bridge schickt nichts an ebusd.
+
+**Einstellungen des Reglers stellen (ab 0.15.0).** Der Dienst kann der Bridge den Befehl
+`ebus:<Schlüssel>:stellen` mit einem Wert schicken; sie macht daraus das Thema
+`ebusd/energymgr/e_<name>/set` für ebusd und lässt die Einstellung anderthalb Sekunden später
+neu lesen (`.../get`). Gestellt wird nur, was in der Zuordnung unter `energymgr/e_...` steht,
+also die Einstellungen des Reglers; einen Messwert wie den Vorlauf lehnt die Bridge ab. Ob
+ebusd den Befehl ausführt, entscheidet das Add-on „Duck Curve eBUS“ mit seinem Schalter
+`stellen` (ab Werk aus). Eine Bestätigung gibt es von der Bridge nicht: dass der Regler den
+Wert genommen hat, zeigt der neu gelesene Wert. Grenzen und die übrigen Prüfungen liegen im
+Dienst (`docs/SENSORIK.md`, „Die Einstellungen des Reglers“).
 
 ## Werte, die stillstehen (ab 0.12.0)
 

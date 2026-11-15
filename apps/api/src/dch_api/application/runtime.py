@@ -15,6 +15,7 @@ from dch_api.schemas import (
     AnlageReplayOut,
     BackfillResultOut,
     BatteryLiveOut,
+    BetriebOut,
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
@@ -25,6 +26,7 @@ from dch_api.schemas import (
     HouseOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
+    KennlinieOut,
     KontaktwirkungOut,
     LiveStateOut,
     MorgenbriefOut,
@@ -32,6 +34,9 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    ReglerEinstellungenOut,
+    ReglerKennzahlenOut,
+    ReglerStellenOut,
     RoomEffectOut,
     RoomHistoryOut,
     RoomLogOut,
@@ -64,6 +69,18 @@ class Runtime(Protocol):
     async def house_plan(self) -> HouseOut: ...
     async def anlage(self) -> AnlageOut: ...
     async def waermepumpe(self) -> WaermepumpeOut: ...
+
+    async def kennlinie(self, tage: int) -> KennlinieOut: ...
+
+    async def reglerkennzahlen(self, tage: int) -> ReglerKennzahlenOut: ...
+
+    async def betrieb(self, tage: int) -> BetriebOut: ...
+
+    async def regler_einstellungen(self) -> ReglerEinstellungenOut: ...
+
+    async def regler_stellen(self, schluessel: str, wert: float) -> ReglerStellenOut: ...
+
+    async def regler_bestaetigen(self, schluessel: str, bestaetigt: bool) -> ReglerStellenOut: ...
 
     async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut: ...
     async def kontaktwirkung(self, days: int) -> KontaktwirkungOut: ...

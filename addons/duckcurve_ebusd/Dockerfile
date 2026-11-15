@@ -17,5 +17,7 @@ COPY --from=ebusd /usr/bin/ebusd /usr/bin/ebusd
 COPY --from=ebusd /usr/bin/ebusctl /usr/bin/ebusctl
 COPY run.sh /run.sh
 COPY aerotop_split.csv /etc/duckcurve/aerotop_split.csv
+COPY aerotop_abfragen.csv /etc/duckcurve/aerotop_abfragen.csv
+COPY aerotop_stellen.csv /etc/duckcurve/aerotop_stellen.csv
 RUN chmod a+x /run.sh
 CMD ["/run.sh"]

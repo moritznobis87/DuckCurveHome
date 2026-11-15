@@ -65,7 +65,7 @@ describe("die Zeichnung", () => {
   it("jede Leitung, jeder Block und jedes Schild liegt in beiden Lagen im Bild", () => {
     for (const lage of ["breit", "hoch"] as const) {
       const p = PLAN[lage];
-      for (const leitung of [p.heissgas, p.fluessig, p.vorlauf, p.ruecklauf]) {
+      for (const leitung of [p.heissgas, p.fluessig, p.vorlauf, p.vorlaufTiefer, p.ruecklauf]) {
         expect(leitung.length).toBeGreaterThan(1);
         for (const [x, y] of leitung) expect(innerhalb(lage, x, y)).toBe(true);
       }
@@ -86,6 +86,11 @@ describe("die Zeichnung", () => {
       expect(ende[0]).toBeGreaterThanOrEqual(sx + TANK.x);
       expect(ende[0]).toBeLessThanOrEqual(sx + TANK.x + TANK.w);
       expect(anfang[1]).toBeGreaterThan(sy + TANK.y + TANK.h / 2);
+      // Im Heizbetrieb endet der Vorlauf seitlich am Glas, auf halber Höhe, und beginnt dort,
+      // wo auch der andere beginnt: am Innengerät.
+      const tief = p.vorlaufTiefer[p.vorlaufTiefer.length - 1]!;
+      expect(tief).toEqual([sx + TANK.x + TANK.w, sy + TANK.y + TANK.h / 2]);
+      expect(p.vorlaufTiefer[0]).toEqual(p.vorlauf[0]);
     }
   });
 

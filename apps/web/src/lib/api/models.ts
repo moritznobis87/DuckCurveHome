@@ -79,6 +79,38 @@ export type InvoiceFinding = S["InvoiceFinding"];
 export type TibberInvoice = S["TibberInvoice"];
 export type InvoicePosition = S["InvoicePosition"];
 export type Waermepumpe = S["WaermepumpeOut"];
+export type ReglerKennzahlen = S["ReglerKennzahlenOut"];
+export type ReglerKennzahl = S["ReglerKennzahlOut"];
+/** Die Antwort, wie sie kommt: Listen mit Vorgabe sind im Schema wahlfrei. */
+export type KennlinieRoh = S["KennlinieOut"];
+/** Die Antwort, wie die Seite sie benutzt: die Listen sind immer da (`api.kennlinie` füllt sie). */
+export type Kennlinie = Omit<KennlinieRoh, "punkte" | "annahme" | "hinweise_de" | "bilanz"> & {
+  bilanz?: KennlinienBilanz | null;
+  punkte: S["KennlinienPunktOut"][];
+  annahme: S["KennlinienAnnahmeOut"][];
+  hinweise_de: string[];
+};
+export type ReglerEinstellung = S["ReglerEinstellungOut"];
+export type ReglerEinstellungen = Omit<S["ReglerEinstellungenOut"], "werte" | "hinweise_de" | "protokoll"> & { werte: ReglerEinstellung[]; hinweise_de: string[]; protokoll: S["ReglerAenderungOut"][] };
+export type ReglerAenderung = S["ReglerAenderungOut"];
+export type ReglerStellenRoh = S["ReglerStellenOut"];
+export type ReglerStellen = { ok: boolean; message_de: string; einstellungen: ReglerEinstellungen };
+export type BetriebRoh = S["BetriebOut"];
+export type BetriebTag = S["BetriebTagOut"];
+export type BetriebLauf = S["BetriebLaufOut"];
+export type BetriebStunde = S["BetriebStundeOut"];
+export type BetriebKlasse = S["BetriebKlasseOut"];
+export type Betrieb = Omit<BetriebRoh, "tage" | "laeufe" | "stunden" | "klassen" | "saetze_de" | "hinweise_de"> & {
+  tage: BetriebTag[];
+  laeufe: BetriebLauf[];
+  stunden: BetriebStunde[];
+  klassen: BetriebKlasse[];
+  saetze_de: string[];
+  hinweise_de: string[];
+};
+export type KennlinienFit = S["KennlinienFitOut"];
+export type KennlinienBilanz = Omit<S["KennlinienBilanzOut"], "fehlt" | "satz_de"> & { fehlt: Record<string, number>; satz_de: string };
+export type KennlinienPunkt = S["KennlinienPunktOut"];
 export type PushKey = S["PushKeyOut"];
 export type PushResult = S["PushResultOut"];
 export type PushGeraete = S["PushGeraeteOut"];

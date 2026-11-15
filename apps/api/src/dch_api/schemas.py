@@ -1197,8 +1197,9 @@ class WaermepumpeOut(BaseModel):
     """Die Wärmepumpe im Augenblick, für ihre Technikseite.
 
     Jede Größe ist ein Messwert mit Zeitpunkt und Güte: fehlt einer, steht auf der Seite ein
-    Fragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende sind
-    Abschätzungen; warum, steht in `hinweise_de` und in `application/waermepumpe.py`.
+    Fragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende
+    entstehen aus diesen Messwerten; wie, steht in `hinweise_de` und in
+    `application/waermepumpe.py`.
     """
 
     now: datetime
@@ -1223,13 +1224,338 @@ class WaermepumpeOut(BaseModel):
     # Speicher: der Fühler, den die Wärmepumpe selbst hat, und die vier eigenen, oben nach unten.
     speicherfuehler_c: Measurement
     puffer_c: list[Measurement] = Field(default_factory=list)
-    # Gerechnet, als Abschätzung
+    # Gerechnet aus den Messwerten darüber
     spreizung_k: float | None = None
     waermeleistung_kw: float | None = None
     arbeitszahl: float | None = None
+    #: Was der Regler vorgibt: fordert die erste Zone Wärme an, und mit welchem Raum-Sollwert.
+    heizanforderung: bool | None = None
+    raum_soll_c: Measurement | None = None
+    #: Was der Zähler mehr aufnimmt, als die Maschine für sich meldet, wenn es deutlich mehr
+    #: ist (ab 1,5 kW): neben dem Verdichter läuft dann etwas anderes, vermutlich der Heizstab.
+    zusatz_kw: float | None = None
+    #: Was das eBUS-Add-on ab 0.3.0 selbst abfragt. Ventil und Heizstab als Zahl des Reglers:
+    #: laut Bus-Beschreibung Ventil 0 Warmwasser, 1 Heizung; Heizstab 1 an. Im Haus noch nicht
+    #: gegengeprüft, deshalb keine Wörter.
+    ventil_code: int | None = None
+    heizstab_code: int | None = None
+    verdichter_a: Measurement | None = None
+    luefter_drehzahl: Measurement | None = None
+    #: Die Betriebsart des Reglers (Kennung c94b des Busses) als Zahl und als Wort.
+    kreis_code: int | None = None
+    kreis_de: str | None = None
+    #: Wohin die Maschine gerade in den Speicher einspeist, soweit die Betriebsart es sagt:
+    #: bei Warmwasser oben, im Heizbetrieb tiefer. `None`: steht, oder die Betriebsart sagt es
+    #: nicht.
+    einspeisung: Literal["oben", "tiefer"] | None = None
     #: Gesetzt, wenn vom Bus der Maschine kein einziger Wert da ist: ein Satz, an welcher Stelle
     #: des Weges es hängt, soweit Dienst und Bridge das wissen (`waermepumpe.bus_auskunft`).
     bus_stumm_de: str | None = None
+    hinweise_de: list[str] = Field(default_factory=list)
+
+
+class ReglerKennzahlOut(BaseModel):
+    """Was in den Minuten geschah, in denen der Regler diese Kennzahl sendete."""
+
+    code: int
+    minuten: int
+    #: Minuten davon, in denen der Verdichter lief.
+    lauf_min: int
+    #: Mittel über die Minuten im Lauf.
+    vorlauf_c: float | None = None
+    vorlauf_soll_c: float | None = None
+    #: Wie schnell der Speicher im Lauf wärmer wurde, am obersten Fühler und am Fühler Mitte
+    #: unten, in Kelvin je Stunde. `None` unter zwanzig Minuten Lauf.
+    oben_k_h: float | None = None
+    unten_k_h: float | None = None
+    #: Anteil der Minuten, in denen Duck Curve Home die Maschine angefordert hatte.
+    angefordert_anteil: float | None = None
+    #: Was der Zähler im Lauf im Mittel mehr aufnahm, als die Maschine für sich meldete.
+    zusatz_kw: float | None = None
+    #: Anteil der Minuten mit Heizanforderung der ersten Zone, und mit gesetzter Kennung 1b45
+    #: (Bedeutung offen; sie liegt neben der Kennung des Heizstabs).
+    heizanforderung_anteil: float | None = None
+    flag_1b45_anteil: float | None = None
+    #: Anteil der Minuten, in denen das Umschaltventil auf 1 stand und in denen der Regler den
+    #: Heizstab als an meldete (beide abgefragt seit dem 14.11.2026).
+    ventil_1_anteil: float | None = None
+    heizstab_anteil: float | None = None
+    zuletzt: datetime | None = None
+
+
+class ReglerKennzahlenOut(BaseModel):
+    now: datetime
+    tage: int
+    zeilen: list[ReglerKennzahlOut] = Field(default_factory=list)
+
+
+class ReglerGesendetOut(BaseModel):
+    """Ein Stellbefehl, der hinausgegangen ist und dessen Rückmeldung noch aussteht."""
+
+    wert: float
+    at: datetime
+
+
+class ReglerEinstellungOut(BaseModel):
+    """Eine Einstellung des Reglers der Wärmepumpe, gelesen über den Bus."""
+
+    schluessel: str
+    name_de: str
+    gruppe_de: str
+    #: Die Kennung des Busses, unter der sie gelesen wird.
+    kennung: str
+    einheit: str = ""
+    stellen: int = 1
+    wert: Measurement
+    #: Was die Bus-Beschreibung zu dieser Zahl sagt, bei Kennzahlen. Nicht im Haus bestätigt.
+    lesart_de: str | None = None
+    #: Wie sie sich bedienen lässt: eine Zahl auf einer Skala, eine Auswahl, ein Schalter.
+    art: Literal["zahl", "wahl", "schalter"] = "zahl"
+    #: Lässt sie sich von hier stellen, und in welchen Grenzen und Schritten.
+    stellbar: bool = False
+    von: float | None = None
+    bis: float | None = None
+    schritt: float | None = None
+    #: Die Stufen einer Auswahl oder eines Schalters: Zahl des Reglers und Lesart der Liste.
+    wahl: dict[str, str] = Field(default_factory=dict)
+    #: Jemand hat den Wert mit dem Bediengerät verglichen. Ohne das wird nicht gestellt.
+    bestaetigt: bool = False
+    #: Die Zeile zum Stellen ist nach dem Muster der übrigen gebildet, nicht aus der Liste.
+    muster: bool = False
+    hinweis_de: str = ""
+    #: Gesendet, aber vom Regler noch nicht so zurückgemeldet.
+    gesendet: ReglerGesendetOut | None = None
+
+
+class ReglerAenderungOut(BaseModel):
+    """Eine Zeile des Protokolls: wer wann was gestellt hat."""
+
+    at: datetime
+    schluessel: str
+    name_de: str
+    von_de: str
+    auf_de: str
+    urheber_de: str | None = None
+
+
+class ReglerEinstellungenOut(BaseModel):
+    """Was am Regler der Wärmepumpe eingestellt ist, und was sich davon stellen lässt."""
+
+    now: datetime
+    gelesen: int
+    satz_de: str
+    werte: list[ReglerEinstellungOut] = Field(default_factory=list)
+    #: Kann der Dienst gerade einen Stellbefehl loswerden. Wenn nicht, sagt `hindernis_de`, warum.
+    stellen_moeglich: bool = False
+    hindernis_de: str | None = None
+    stellen_je_tag: int = 0
+    protokoll: list[ReglerAenderungOut] = Field(default_factory=list)
+    hinweise_de: list[str] = Field(default_factory=list)
+
+
+class ReglerStellenIn(BaseModel):
+    wert: float
+
+
+class ReglerBestaetigenIn(BaseModel):
+    bestaetigt: bool
+
+
+class ReglerStellenOut(BaseModel):
+    """Die Antwort auf einen Stellbefehl oder eine Bestätigung: ob es ging, ein Satz dazu, und
+    der Stand danach."""
+
+    ok: bool
+    message_de: str
+    einstellungen: ReglerEinstellungenOut
+
+
+class KennlinienPunktOut(BaseModel):
+    """Ein Fenster im eingeschwungenen Heizbetrieb (`hems_core.thermal.kennlinie`)."""
+
+    at: datetime
+    minuten: int
+    aussen_c: float
+    vorlauf_c: float
+    cop: float
+    waerme_kw: float
+    strom_kw: float
+    #: Stellung des Umschaltventils im Fenster, wenn sie einheitlich war (Zahl des Reglers).
+    ventil: int | None = None
+
+
+class KennlinienFitOut(BaseModel):
+    """COP = a + b_aussen * Außentemperatur + c_vorlauf * Vorlauftemperatur, kleinste Quadrate.
+
+    `art` sagt, welche Terme sich aus den Punkten bestimmen ließen: `ebene` beide, `aussen`
+    oder `vorlauf` nur einer, `mittel` keiner.
+    """
+
+    art: Literal["ebene", "aussen", "vorlauf", "mittel"]
+    a: float
+    b_aussen: float
+    c_vorlauf: float
+    n: int
+    rmse: float
+    r2: float | None = None
+    aussen_von_c: float
+    aussen_bis_c: float
+    vorlauf_von_c: float
+    vorlauf_bis_c: float
+    formel_de: str
+    geltung_de: str
+
+
+class KennlinienAnnahmeOut(BaseModel):
+    """Ein Punkt der Kennlinie, mit der der Fahrplan bisher rechnet."""
+
+    aussen_c: float
+    cop: float
+
+
+class KennlinienBilanzOut(BaseModel):
+    """Wo die Minuten des Zeitraums geblieben sind (`hems_core.thermal.kennlinie.Bilanz`).
+
+    Von den Minuten, in denen die Maschine heizte, zählt nur ein Teil: nicht der Anlauf, nicht
+    die mit Heizstab, nicht die ohne einen nötigen Wert. Die Zahlen hier addieren sich zu
+    `heizen`; eine leere Kennlinie zeigt damit, woran es liegt.
+    """
+
+    minuten: int
+    heizen: int
+    anlauf: int
+    zusatz: int
+    ohne_wert: int
+    ohne_waerme: int
+    gueltig: int
+    #: Fenster mit mindestens einer gültigen Minute; `punkte` davon waren voll genug.
+    fenster: int
+    punkte: int
+    unglaubwuerdig: int
+    #: Welcher Wert in wie vielen Minuten fehlte (eine Minute kann mehrere nennen).
+    fehlt: dict[str, int] = Field(default_factory=dict)
+    #: Das gewöhnliche Verhältnis von Zähler zu eigener Angabe der Maschine, wenn bestimmt.
+    verhaeltnis: float | None = None
+    satz_de: str = ""
+
+
+class KennlinieOut(BaseModel):
+    """Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.
+
+    Die Punkte sind Abschätzungen aus Durchfluss, Spreizung und Zähler; warum, steht in
+    `hinweise_de`.
+    """
+
+    now: datetime
+    von: datetime
+    bis: datetime
+    tage: int
+    punkte: list[KennlinienPunktOut] = Field(default_factory=list)
+    fit: KennlinienFitOut | None = None
+    #: Was dem Ausgleich noch fehlt, wenn es keinen gibt oder ein Term fehlt.
+    fehlt_de: str | None = None
+    #: Die Kennlinie des Fahrplans, gültig bei `annahme_vorlauf_c`.
+    annahme: list[KennlinienAnnahmeOut] = Field(default_factory=list)
+    annahme_vorlauf_c: float | None = None
+    #: Wo die Minuten geblieben sind; fehlt, wenn es keine Minutenreihen gibt.
+    bilanz: KennlinienBilanzOut | None = None
+    hinweise_de: list[str] = Field(default_factory=list)
+
+
+class BetriebTagOut(BaseModel):
+    """Ein Ortstag der Wärmepumpe (`hems_core.thermal.betrieb.Tag`)."""
+
+    tag: date
+    starts: int
+    lauf_min: int
+    abtau_min: int
+    abtauungen: int
+    #: Minuten, in denen neben dem Verdichter etwas anderes Strom aufnahm (erschlossen).
+    zusatz_min: int
+    strom_kwh: float
+    waerme_kwh: float | None = None
+    strom_lauf_kwh: float = 0.0
+    #: Wärme durch Strom über alle Minuten im Lauf, Abtauen und Heizstab eingeschlossen.
+    cop_tag: float | None = None
+    #: Dasselbe nur aus den Fenstern der Kennlinie: eingeschwungen, ohne Abtauen und Heizstab.
+    cop_heizen: float | None = None
+    lauf_median_min: float | None = None
+    aussen_c: float | None = None
+    waerme_min: int = 0
+
+
+class BetriebLaufOut(BaseModel):
+    """Ein Lauf des Verdichters, vom Anlaufen bis zum Halt."""
+
+    start: datetime
+    minuten: int
+    abtau_min: int
+    abtauungen: int
+    zusatz_min: int
+    strom_kwh: float
+    waerme_kwh: float | None = None
+    #: Der Lauf reicht über den Rand der Daten oder an eine Lücke: seine Länge ist unvollständig.
+    angeschnitten: bool = False
+
+
+class BetriebStundeOut(BaseModel):
+    """Eine Stunde im Heizbetrieb: was der Regler als Vorlauf verlangte, bei welchem Wetter."""
+
+    at: datetime
+    minuten: int
+    aussen_c: float
+    soll_c: float
+    vorlauf_c: float | None = None
+    ventil: int | None = None
+
+
+class BetriebHeizkurveOut(BaseModel):
+    """Sollwert = a + b * Außentemperatur, nach kleinsten Quadraten über die Stunden."""
+
+    a: float
+    b: float
+    n: int
+    r2: float | None = None
+    aussen_von_c: float
+    aussen_bis_c: float
+    formel_de: str
+
+
+class BetriebKlasseOut(BaseModel):
+    """Eine Klasse der Lauflängen: von einschließlich, bis ausschließlich (`None`: nach oben offen)."""
+
+    von_min: int
+    bis_min: int | None = None
+    laeufe: int
+
+
+class BetriebOut(BaseModel):
+    """Der Betrieb der Wärmepumpe über Tage: Läufe, Abtauen, Takten, Heizkurve des Reglers.
+
+    Eine Auszählung gespeicherter Minuten. Was sie taugt, steht in `hinweise_de`.
+    """
+
+    now: datetime
+    von: datetime
+    bis: datetime
+    zeitraum_tage: int
+    tage: list[BetriebTagOut] = Field(default_factory=list)
+    #: Die jüngsten Läufe, der neueste zuletzt.
+    laeufe: list[BetriebLaufOut] = Field(default_factory=list)
+    stunden: list[BetriebStundeOut] = Field(default_factory=list)
+    heizkurve: BetriebHeizkurveOut | None = None
+    klassen: list[BetriebKlasseOut] = Field(default_factory=list)
+    #: Die Summen des Zeitraums.
+    starts: int = 0
+    lauf_min: int = 0
+    abtau_min: int = 0
+    abtauungen: int = 0
+    zusatz_min: int = 0
+    cop_gesamt: float | None = None
+    cop_heizen: float | None = None
+    lauf_median_min: float | None = None
+    #: Was die Auszählung sagt, je Thema ein Satz.
+    saetze_de: list[str] = Field(default_factory=list)
     hinweise_de: list[str] = Field(default_factory=list)
 
 

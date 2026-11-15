@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
 from fastapi.testclient import TestClient
 
 from dch_api.application import waermepumpe as wp
@@ -66,7 +67,10 @@ def test_die_zahlen_des_hauses_ergeben_die_abschaetzung_aus_den_unterlagen(
     assert aus.waermeleistung_kw == 7.07
     assert aus.arbeitszahl == 4.9
     assert aus.vorlauf_c.value == 39.9 and aus.heissgas_c.value == 46.4
-    assert any("Abschätzungen" in h for h in aus.hinweise_de)
+    # Die Seite sagt, woraus gerechnet ist, und nennt die Zahlen nicht mehr „abgeschätzt“
+    # (Nachfrage des Hausherrn am 15.11.2026).
+    assert any("Durchfluss mal Spreizung" in h for h in aus.hinweise_de)
+    assert not any("bschätz" in h for h in aus.hinweise_de)
 
 
 def test_im_stillstand_gibt_es_keine_waermeleistung_und_das_wort_heisst_steht(
@@ -171,6 +175,25 @@ def test_die_auskunft_folgt_dem_weg_der_werte() -> None:
     # Die Bridge läuft, aber mit einer Zuordnung ohne den Bus (alter Stand im Zwischenspeicher).
     alt = satz(bridge_online=True, bridge_version="0.13.1", angekuendigt=frozenset({"pv_power_kw"}))
     assert "Version 0.13.1" in alt and "Zuordnung" in alt
+    # Am 14.11.2026 stand im Haus genau dieser Satz: Version 0.14.2, Zuordnung ohne Bus. Das
+    # Protokoll zeigte dann die eigene Datei in /config; der Satz nennt sie und das Update.
+    assert "/config/duckcurve/entities.yaml" in alt and "Update genügt" in alt
+    # Ab 0.14.3 ergänzt die Datei das Repository, und die Bridge sagt, woher ihre Zuordnung
+    # stammt. Fehlt der Bus dann noch, hat es einen dieser Gründe.
+    ohne = {"bridge_online": True, "bridge_version": "0.14.3", "angekuendigt": frozenset({"x"})}
+    datei = {"herkunft": "datei", "ort": "/config/duckcurve/entities.yaml"}
+    verboten = satz(**ohne, zuordnung=datei)
+    assert "allein die Datei /config/duckcurve/entities.yaml" in verboten
+    assert "ersetzt_repository" in verboten
+    kein_netz = satz(**ohne, zuordnung={**datei, "grund": "timed out"})
+    assert "nicht zu erreichen (timed out)" in kein_netz and "ersetzt_repository" not in kein_netz
+    lager = satz(
+        **ohne,
+        zuordnung={"herkunft": "zwischenspeicher", "ort": "/data/x", "grund": "timed out"},
+    )
+    assert "letzten Abruf" in lager and "(timed out)" in lager
+    for art in ("repository", "datei+repository", "datei+zwischenspeicher"):
+        assert "entities_url" in satz(**ohne, zuordnung={"herkunft": art, "ort": "x"})
     # Eine Bridge vor 0.14.2 kann die Stelle nicht nennen; der Satz sagt, wo sie steht.
     vor = satz(bridge_online=True, bridge_version="0.14.1", angekuendigt=bus)
     assert "ab Version 0.14.2" in vor and "Protokoll" in vor
@@ -201,3 +224,258 @@ def test_die_auskunft_folgt_dem_weg_der_werte() -> None:
     assert mit.endswith("Der letzte Wert vom Bus kam am 13.11. um 23:30 Uhr.")
     # Ein unbekanntes Wort einer neueren Bridge wirft nichts um.
     assert satz(bridge_online=True, bridge_version="0.15.0", angekuendigt=bus, lage="neu")
+
+
+def test_die_kennzahl_des_reglers_bekommt_nur_ein_wort_das_im_haus_bestaetigt_ist(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Am 14.11.2026 stand im Haus „Puffer kühlen" an einer Maschine, die im November den
+    Puffer heizt: das Wort der fremden Liste zur Kennzahl 20. Seitdem steht die Zahl da, und ein
+    Wort nur für die 0, die in drei Protokollen bei stehender Maschine stand."""
+
+    def mit(code: float | None, **werte: float) -> object:
+        bus = {**HAUS_LAEUFT, **werte}
+        if code is not None:
+            bus["heat_pump_cycle_code"] = code
+        return wp.zusammensetzen(
+            now=JETZT,
+            snap=schnappschuss(client, 1.448),
+            laeuft_laut_zaehler=True,
+            mess=mess_aus(bus),
+        )
+
+    zwanzig = mit(20.0)
+    assert (zwanzig.kreis_code, zwanzig.kreis_de) == (20, "Kennzahl 20")  # type: ignore[attr-defined]
+    # Keine Zuordnung, keine Behauptung: die Zeichnung zeigt nicht, wohin eingespeist wird.
+    assert zwanzig.einspeisung is None  # type: ignore[attr-defined]
+    assert any("Kennzahl 20" in h and "nicht entschlüsselt" in h for h in zwanzig.hinweise_de)  # type: ignore[attr-defined]
+    assert "kühlen" not in " ".join(zwanzig.hinweise_de)  # type: ignore[attr-defined]
+    assert mit(0.0, heat_pump_flow_l_min=0.0).kreis_de == "Bereitschaft"  # type: ignore[attr-defined]
+    ohne = mit(None)
+    assert (ohne.kreis_code, ohne.kreis_de, ohne.einspeisung) == (None, None, None)  # type: ignore[attr-defined]
+    # Ein Wort hat nur, was im Haus bestätigt ist: die 0 im Stillstand und die 2, die am
+    # 14.11.2026 um 16:41 mit dem Start der Pumpe bei Heizanforderung der Zone 1 kam.
+    assert wp.KREIS_DE == {0: "Bereitschaft", 2: "Heizen"} and wp.EINSPEISUNG == {2: "tiefer"}
+    heizen = mit(2.0, heat_pump_heat_request=1.0, heat_pump_room_setpoint_c=22.0)
+    assert (heizen.kreis_de, heizen.einspeisung) == ("Heizen", "tiefer")  # type: ignore[attr-defined]
+    assert heizen.heizanforderung is True and heizen.raum_soll_c.value == 22.0  # type: ignore[attr-defined]
+    assert mit(2.0, heat_pump_heat_request=0.0).heizanforderung is False  # type: ignore[attr-defined]
+    assert ohne.heizanforderung is None  # type: ignore[attr-defined]
+
+    # Ist eine Kennzahl einmal zugeordnet, führt die Zeichnung den Vorlauf danach, aber nur,
+    # solange die Pumpe läuft.
+    monkeypatch.setattr(wp, "EINSPEISUNG", {20: "tiefer", 16: "oben"})
+    assert mit(20.0).einspeisung == "tiefer"  # type: ignore[attr-defined]
+    assert mit(16.0).einspeisung == "oben"  # type: ignore[attr-defined]
+    assert mit(20.0, heat_pump_flow_l_min=0.0).einspeisung is None  # type: ignore[attr-defined]
+    assert not any("nicht entschlüsselt" in h for h in mit(20.0).hinweise_de)  # type: ignore[attr-defined]
+
+
+def test_die_auszaehlung_zeigt_was_die_maschine_unter_jeder_kennzahl_tat(
+    client: TestClient,
+) -> None:
+    from datetime import timedelta
+
+    from dch_api.application import reglerkennzahl as rk
+
+    def zeile(i: int, code: float, **werte: float | None) -> dict[str, float | str | None]:
+        return {
+            "ts": (JETZT + timedelta(minutes=i)).isoformat(),
+            "heat_pump_cycle_code": code,
+            **werte,
+        }
+
+    zeilen: list[dict[str, float | str | None]] = []
+    # 30 Minuten Stillstand unter der 0.
+    zeilen += [zeile(i, 0.0, heat_pump_mode_code=15.0, hp_release_contact=0.0) for i in range(30)]
+    # 40 Minuten Lauf unter der 20: Vorlauf 38, Sollwert 45, der Speicher wird unten wärmer
+    # (0,1 K je Minute), oben nicht. Angefordert von Duck Curve Home.
+    zeilen += [
+        zeile(
+            30 + i,
+            20.0,
+            heat_pump_mode_code=3.0,
+            flow_temp_c=38.0,
+            heat_pump_flow_setpoint_c=45.0,
+            buffer_temp_top_c=50.0,
+            buffer_temp_mid_bottom_c=34.0 + 0.1 * i,
+            hp_release_contact=1.0,
+        )
+        for i in range(40)
+    ]
+    # Eine Minute, in der die Kennzahl wechselte (Mittel 10), und eine ohne Kennzahl: zählen nicht.
+    zeilen.append(zeile(70, 10.0 + 0.4, heat_pump_mode_code=3.0))
+    zeilen.append({"ts": (JETZT + timedelta(minutes=71)).isoformat()})
+    # Zehn Minuten Lauf unter der 16: zu kurz für eine Erwärmungsrate.
+    zeilen += [
+        zeile(
+            72 + i,
+            16.0,
+            heat_pump_mode_code=3.0,
+            flow_temp_c=55.0,
+            buffer_temp_top_c=50.0 + i,
+            buffer_temp_mid_bottom_c=40.0,
+        )
+        for i in range(10)
+    ]
+
+    aus = {z.code: z for z in rk.auswerten(zeilen)}
+    assert set(aus) == {0, 20, 16}
+    assert (aus[0].minuten, aus[0].lauf_min, aus[0].vorlauf_c, aus[0].angefordert_anteil) == (
+        30,
+        0,
+        None,
+        0.0,
+    )
+    z = aus[20]
+    assert (z.minuten, z.lauf_min, z.vorlauf_c, z.vorlauf_soll_c, z.angefordert_anteil) == (
+        40,
+        40,
+        38.0,
+        45.0,
+        1.0,
+    )
+    assert z.oben_k_h == 0.0 and z.unten_k_h == 6.0
+    assert (aus[16].lauf_min, aus[16].oben_k_h, aus[16].unten_k_h) == (10, None, None)
+    # Die häufigste Kennzahl steht zuerst.
+    assert [x.code for x in rk.auswerten(zeilen)] == [20, 0, 16]
+
+    r = client.get("/api/v1/waermepumpe/kennzahlen")
+    assert r.status_code == 200
+    vor = {x["code"]: x for x in r.json()["zeilen"]}
+    # In der Vorführung wird der Speicher unter der 2 unten wärmer und unter der 3 oben.
+    assert vor[2]["unten_k_h"] > 3 and vor[2]["oben_k_h"] == 0
+    assert vor[3]["oben_k_h"] > 3 and vor[3]["unten_k_h"] == 0
+    assert vor[0]["lauf_min"] == 0
+
+
+def test_nimmt_der_zaehler_viel_mehr_auf_als_die_maschine_steht_es_da(client: TestClient) -> None:
+    """14.11.2026, 11:18 im Haus: 8,84 kW am Zähler bei 64 Hz, Arbeitszahl 1,6, und die Seite
+    sagte nichts dazu. Der Hausherr vermutete ein Abtauen; es war etwas, das neben dem
+    Verdichter Strom nahm."""
+    bus = {**HAUS_LAEUFT, "heat_pump_bus_power_kw": 3.1, "heat_pump_flow_l_min": 30.2}
+    aus = wp.zusammensetzen(
+        now=JETZT, snap=schnappschuss(client, 8.84), laeuft_laut_zaehler=True, mess=mess_aus(bus)
+    )
+    assert aus.zusatz_kw == 5.74
+    satz = next(h for h in aus.hinweise_de if "Heizstab" in h)
+    assert "8,84 kW" in satz and "3,10 kW" in satz and "Rund 5,7 kW" in satz
+    # Im gewöhnlichen Lauf weichen Zähler und Maschine um Lüfter und Pumpe ab: kein Zusatz.
+    normal = wp.zusammensetzen(
+        now=JETZT, snap=schnappschuss(client, 3.3), laeuft_laut_zaehler=True, mess=mess_aus(bus)
+    )
+    assert normal.zusatz_kw is None and not any("Heizstab" in h for h in normal.hinweise_de)
+
+
+def test_meldet_die_maschine_weniger_als_der_zaehler_ist_das_noch_kein_heizstab(
+    client: TestClient,
+) -> None:
+    """Ob die Maschine ihre ganze Aufnahme meldet, ist nicht bekannt. Liegt ihre Angabe dauernd
+    unter dem Zähler, darf die Seite nicht dauernd einen Heizstab vermuten: ohne das gewöhnliche
+    Verhältnis gilt nur, was der Verdichter allein sicher nicht aufnimmt."""
+    bus = {**HAUS_LAEUFT, "heat_pump_bus_power_kw": 1.45, "heat_pump_flow_l_min": 30.2}
+
+    def seite(zaehler: float, verhaeltnis: float | None = None) -> object:
+        return wp.zusammensetzen(
+            now=JETZT,
+            snap=schnappschuss(client, zaehler),
+            laeuft_laut_zaehler=True,
+            mess=mess_aus(bus),
+            verhaeltnis=verhaeltnis,
+        )
+
+    assert seite(3.16).zusatz_kw is None  # type: ignore[attr-defined]
+    assert seite(5.0).zusatz_kw is None  # type: ignore[attr-defined]
+    assert seite(8.84).zusatz_kw == 7.39  # type: ignore[attr-defined]
+    # Mit dem Verhältnis aus der Kennlinie zählt der Abstand zum Gewöhnlichen.
+    assert seite(3.16, 2.18).zusatz_kw is None  # type: ignore[attr-defined]
+    assert seite(5.0, 2.18).zusatz_kw == 1.84  # type: ignore[attr-defined]
+
+
+def test_was_das_add_on_abfragt_steht_als_zahl_auf_der_seite(client: TestClient) -> None:
+    """Ventil, Heizstab, Verdichterstrom und Lüfter fragt das eBUS-Add-on ab 0.3.0 selbst ab.
+    Ventil und Heizstab bleiben Zahlen: was 0 und 1 in diesem Haus heißen, ist nicht bestätigt
+    (die Lehre aus „Puffer kühlen“)."""
+    bus = {
+        **HAUS_LAEUFT,
+        "heat_pump_valve_code": 1.0,
+        "heat_pump_heater_code": 0.0,
+        "heat_pump_compressor_a": 7.8,
+        "heat_pump_fan_speed": 600.0,
+    }
+    aus = wp.zusammensetzen(
+        now=JETZT, snap=schnappschuss(client, 3.16), laeuft_laut_zaehler=True, mess=mess_aus(bus)
+    )
+    assert aus.ventil_code == 1 and aus.heizstab_code == 0
+    assert aus.verdichter_a is not None and aus.verdichter_a.value == 7.8
+    assert aus.luefter_drehzahl is not None and aus.luefter_drehzahl.value == 600.0
+    # Ohne Abfragen (Add-on älter, oder der Bus antwortet nicht) fehlen sie, ohne Fehler.
+    ohne = wp.zusammensetzen(
+        now=JETZT,
+        snap=schnappschuss(client, 3.16),
+        laeuft_laut_zaehler=True,
+        mess=mess_aus(HAUS_LAEUFT),
+    )
+    assert ohne.ventil_code is None and ohne.heizstab_code is None
+    assert ohne.verdichter_a is not None and ohne.verdichter_a.value is None
+
+    from datetime import timedelta
+
+    from dch_api.application import reglerkennzahl as rk
+
+    # Die Auszählung stellt Kennzahl, Ventil und Heizstab nebeneinander: unter der 2 stand das
+    # Ventil immer auf 1, unter der 3 nie, und der Heizstab lief nur unter der 3 zur Hälfte.
+    zeilen: list[dict[str, float | str | None]] = [
+        {
+            "ts": (JETZT + timedelta(minutes=i)).isoformat(),
+            "heat_pump_cycle_code": 2.0 if i < 20 else 3.0,
+            "heat_pump_mode_code": 3.0,
+            "heat_pump_valve_code": 1.0 if i < 20 else 0.0,
+            "heat_pump_heater_code": 1.0 if i >= 30 else 0.0,
+        }
+        for i in range(40)
+    ]
+    nach = {z.code: z for z in rk.auswerten(zeilen)}
+    assert nach[2].ventil_1_anteil == 1.0 and nach[2].heizstab_anteil == 0.0
+    assert nach[3].ventil_1_anteil == 0.0 and nach[3].heizstab_anteil == 0.5
+
+
+def test_ein_alter_zustand_entscheidet_nichts_mehr(client: TestClient) -> None:
+    """14.11.2026, 16:52 im Haus: die Seite zeigte „steht", null Hertz und einen stehenden
+    Lüfter, während die Maschine seit elf Minuten lief. Der Betriebszustand stammte aus einem
+    Telegramm, das nur gelegentlich über den Bus geht, und galt eine Viertelstunde als frisch."""
+    from datetime import timedelta
+
+    alt = JETZT - timedelta(seconds=wp.ZUSTAND_STALE_S + 30)
+
+    def mess(key: str) -> Measurement:
+        if key in ("heat_pump_mode_code", "heat_pump_compressor_hz"):
+            # Der Stand von vor dem Start: Zustand 15, null Hertz.
+            wert = 15.0 if key == "heat_pump_mode_code" else 0.0
+            return Measurement.ok(wert, alt, "mqtt:ebusd")
+        return (
+            mess_aus(HAUS_LAEUFT | {"heat_pump_mode_code": 0.0})(key)
+            if key in HAUS_LAEUFT
+            else Measurement.missing(Quality.UNAVAILABLE, JETZT, key)
+        )
+
+    aus = wp.zusammensetzen(
+        now=JETZT, snap=schnappschuss(client, 3.0), laeuft_laut_zaehler=True, mess=mess
+    )
+    # Der Zähler sagt, dass sie läuft; der alte Zustand widerspricht nicht mehr.
+    assert aus.laeuft and aus.zustand_code is None and aus.zustand_de == "läuft"
+    # Und statt der Null von vorhin steht bei der Frequenz kein Wert.
+    assert aus.verdichter_hz.value is None
+    assert aus.waermeleistung_kw is not None
+
+    # Derselbe Zustand, frisch: dann gilt er.
+    frisch = wp.zusammensetzen(
+        now=JETZT,
+        snap=schnappschuss(client, 0.3),
+        laeuft_laut_zaehler=True,
+        mess=mess_aus({**HAUS_LAEUFT, "heat_pump_mode_code": 15.0, "heat_pump_compressor_hz": 0.0}),
+    )
+    assert not frisch.laeuft and frisch.verdichter_hz.value == 0.0
+    # Verdichter aus, aber das Wasser läuft um: eine Pause, keine stehende Maschine.
+    assert frisch.zustand_de == "pausiert: Verdichter aus, Umwälzpumpe läuft"
+    assert frisch.waermeleistung_kw is None

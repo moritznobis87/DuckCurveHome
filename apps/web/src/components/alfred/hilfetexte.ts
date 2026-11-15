@@ -33,7 +33,12 @@ export const SEITEN: Record<string, string> = {
   "/waerme/anlage":
     "Anlage zeigt das Anlagenschema im Augenblick; die Ansicht Ein Tag spielt einen ganzen Tag als Folge von Bildern ab.",
   "/waerme/wiedergabe": "Ein Tag spielt das Anlagenschema über einen ganzen Tag ab.",
-  "/waerme/waermepumpe": "Wärmepumpe zeigt die Wärmepumpe allein, mit allem, was ihr eigener Bus meldet.",
+  "/waerme/waermepumpe":
+    "Wärmepumpe zeigt die Wärmepumpe allein, mit allem, was ihr eigener Bus meldet. Die Ansichten Betrieb, Kennlinie und Regler zeigen dieselbe Maschine über Tage, über Wochen und ihre Einstellungen.",
+  "/waerme/waermepumpe/betrieb": "Betrieb zeigt die Läufe der Wärmepumpe über Tage: Laufzeiten, Abtauen, Takten und die Heizkurve des Reglers.",
+  "/waerme/waermepumpe/kennlinie": "Kennlinie zeigt die gemessene Arbeitszahl der Wärmepumpe über Wochen.",
+  "/waerme/waermepumpe/regler":
+    "Regler zeigt, was am Regler der Wärmepumpe eingestellt ist: oben die Heizkurve als Kurve, darunter ein Pult. Was sich stellen lässt, lässt sich dort verstellen; was nicht, ist blass.",
   "/waerme/fahrplan":
     "Fahrplan zeigt den Plan voraus: Preisfenster, PV-Überschuss und wann die Wärmepumpe laufen soll. Die Ansicht Rückblick ist die Nachbetrachtung.",
   "/waerme/nachbetrachtung":

@@ -26,9 +26,13 @@ import structlog
 from dch_api import urheber
 from dch_api.application import anlage as anlage_logic
 from dch_api.application import anlage_replay, house, rooms
+from dch_api.application import betrieb as betrieb_logic
+from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
+from dch_api.application import regler as regler_logic
+from dch_api.application import reglerkennzahl as kennzahl_logic
 from dch_api.application import room_log as room_log_logic
 from dch_api.application import waermepumpe as wp_logic
 from dch_api.application.battery_control import BatteryController, BatteryMode
@@ -82,6 +86,7 @@ from dch_api.schemas import (
     AnlageReplayOut,
     BackfillResultOut,
     BatteryLiveOut,
+    BetriebOut,
     EnergySummaryOut,
     EvReportOut,
     ForecastEvaluationOut,
@@ -93,6 +98,7 @@ from dch_api.schemas import (
     HouseOut,
     InvoiceReportOut,
     InvoiceSummaryOut,
+    KennlinieOut,
     KontaktwirkungOut,
     LiveStateOut,
     MorgenbriefOut,
@@ -100,6 +106,9 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    ReglerEinstellungenOut,
+    ReglerKennzahlenOut,
+    ReglerStellenOut,
     RoomEffectOut,
     RoomHistoryOut,
     RoomLiveOut,
@@ -162,6 +171,8 @@ from hems_core.planning import (
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
 from hems_core.simulation import BERLIN
 from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
+from hems_core.thermal import betrieb as betrieb_kern
+from hems_core.thermal import kennlinie as kennlinie_kern
 from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 from hems_core.watch import BRIDGE, RULES, back_text, findings
 from hems_core.watch.aussen import Aussenpruefung
@@ -200,6 +211,11 @@ class LiveRuntime:
         self.settings = settings
         self.config = config
         self.hems = config.hems
+        self._kennlinie: dict[int, KennlinieOut] = {}
+        self._kennzahlen: dict[int, ReglerKennzahlenOut] = {}
+        self._betrieb: dict[int, BetriebOut] = {}
+        #: Gesendete Einstellungen des Reglers, deren Rückmeldung aussteht: Wert und Zeitpunkt.
+        self._regler_gesendet: dict[str, tuple[float, datetime]] = {}
         self.repos = repos
         self.hub = hub
         self.forecasts = forecasts
@@ -1251,6 +1267,7 @@ class LiveRuntime:
         snap, _, hp = self._states()
         # Für den Fall, dass der Bus schweigt: was Dienst und Bridge über den Weg wissen.
         bus = self.hub.health_by_source.get("ebusd")
+        woher = self.hub.health_by_source.get("zuordnung")
         zeiten = [
             r.observed_at
             for key in (*wp_logic.KEYS.values(), wp_logic.ZUSTAND_KEY)
@@ -1267,6 +1284,7 @@ class LiveRuntime:
             lage=bus.details.get("lage") if bus is not None else None,
             einzelheiten=dict(bus.details) if bus is not None else {},
             zuletzt=max(zeiten) if zeiten else None,
+            zuordnung=dict(woher.details) if woher is not None else {},
         )
         return wp_logic.zusammensetzen(
             now=now,
@@ -1274,7 +1292,209 @@ class LiveRuntime:
             laeuft_laut_zaehler=hp.running,
             mess=lambda key: self.live.measurement(key, now, wp_logic.STALE_S),
             bus_stumm_de=wp_logic.bus_auskunft(stand, BERLIN),
+            verhaeltnis=self._verhaeltnis_zaehler(),
         )
+
+    def _verhaeltnis_zaehler(self) -> float | None:
+        """Das gewöhnliche Verhältnis von Zähler zu eigener Angabe der Maschine, aus der zuletzt
+        gerechneten Kennlinie mit dem längsten Rückblick. `None`, bevor eine gerechnet wurde."""
+        for tage in sorted(self._kennlinie, reverse=True):
+            bilanz = self._kennlinie[tage].bilanz
+            if bilanz is not None and bilanz.verhaeltnis is not None:
+                return bilanz.verhaeltnis
+        return None
+
+    async def reglerkennzahlen(self, tage: int) -> ReglerKennzahlenOut:
+        """Was die Maschine unter welcher Kennzahl ihres Reglers tat, aus den Minuten der
+        letzten `tage` Tage. Fünf Minuten gehalten, wie die Kennlinie."""
+        now = self.now
+        gemerkt = self._kennzahlen.get(tage)
+        if gemerkt is not None and now - gemerkt.now < timedelta(minutes=5):
+            return gemerkt
+        zeilen = await self.repos.minute_series(
+            now - timedelta(days=tage), now, list(kennzahl_logic.REIHEN)
+        )
+        aus = kennzahl_logic.zusammensetzen(now, tage, zeilen)
+        self._kennzahlen[tage] = aus
+        return aus
+
+    async def regler_einstellungen(self) -> ReglerEinstellungenOut:
+        """Was am Regler eingestellt ist, aus den zuletzt über den Bus gelesenen Werten, dazu
+        was sich davon gerade stellen lässt und was zuletzt gestellt wurde."""
+        now = self.now
+
+        def mess(key: str) -> Measurement:
+            return self.live.measurement(key, now, regler_logic.STALE_S)
+
+        self._regler_gesendet = regler_logic.offen(self._regler_gesendet, mess, now)
+        hindernis = self._regler_hindernis()
+        protokoll = []
+        for ev in await self.repos.events_by_code(
+            regler_logic.EREIGNIS, now - timedelta(days=60), limit=30
+        ):
+            wer = urheber.aus_kontext(ev.context)
+            zeile = regler_logic.aenderung(ev.at, ev.context, wer.name if wer else None)
+            if zeile is not None:
+                protokoll.append(zeile)
+        return regler_logic.zusammensetzen(
+            now=now,
+            mess=mess,
+            bestaetigt=await self.repos.active_config(regler_logic.BESTAETIGT_ART),
+            stellen_moeglich=hindernis is None,
+            hindernis_de=hindernis,
+            gesendet=self._regler_gesendet,
+            protokoll=protokoll,
+        )
+
+    def _regler_hindernis(self) -> str | None:
+        """Warum der Dienst gerade keinen Stellbefehl loswird, als Satz. Ob das Add-on stellen
+        darf, weiß der Dienst nicht: das zeigt sich daran, ob der Regler den Wert zurückmeldet."""
+        if not self.settings.actuation_enabled:
+            return "Die Steuerung ist in diesem Dienst ausgeschaltet."
+        if not self.hub.online:
+            return "Die Bridge ist nicht verbunden."
+        if wp_logic._version(self.hub.bridge_version) < regler_logic.BRIDGE_AB:
+            return (
+                f"Die Bridge läuft in Fassung {self.hub.bridge_version or '?'}; Einstellungen "
+                "weitergeben kann sie ab 0.15.0."
+            )
+        return None
+
+    async def regler_stellen(self, schluessel: str, wert: float) -> ReglerStellenOut:
+        """Eine Einstellung des Reglers stellen. Die Sicherungen stehen in `regler.pruefen`.
+
+        Wie beim Sollwert eines Raums bekommt die Anzeige keinen Wert geschenkt: der neue Wert
+        steht erst da, wenn der Regler ihn meldet. Bis dahin führt die Antwort ihn als gesendet.
+        Jede Änderung steht mit altem und neuem Wert und Urheber im Ereignisprotokoll.
+        """
+        now = self.now
+        e = regler_logic.NACH_KEY.get(schluessel)
+        gelesen = self.live.measurement(schluessel, now, regler_logic.STALE_S)
+        bestaetigt = await self.repos.active_config(regler_logic.BESTAETIGT_ART) or {}
+        tagesbeginn = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
+        heute = [
+            ev
+            for ev in await self.repos.events_by_code(regler_logic.EREIGNIS, tagesbeginn)
+            if ev.context.get("key") == schluessel
+        ]
+        grund = regler_logic.pruefen(
+            e,
+            wert,
+            gelesen=gelesen,
+            bestaetigt=schluessel in bestaetigt,
+            heute_gestellt=len(heute),
+        )
+        if grund is not None:
+            raise DchError("regler_abgelehnt", grund, 404 if e is None else 409)
+        assert e is not None
+        hindernis = self._regler_hindernis()
+        if hindernis is not None:
+            raise DchError("regler_nicht_moeglich", hindernis, 409)
+        result = await self.hub.send_command(
+            regler_logic.BEFEHL.format(key=schluessel), True, None, None, value=wert
+        )
+        if not result.ok:
+            return ReglerStellenOut(
+                ok=False,
+                message_de=result.error or "Die Bridge hat den Befehl nicht angenommen.",
+                einstellungen=await self.regler_einstellungen(),
+            )
+        vorher = gelesen.value
+        await self.repos.add_event(
+            "info",
+            regler_logic.EREIGNIS,
+            f"Regler: {e.gruppe_de}, {e.name_de} von {regler_logic.text(e, vorher)} auf "
+            f"{regler_logic.text(e, wert)} gestellt",
+            {"key": schluessel, "name": e.name_de, "from": vorher, "to": wert},
+        )
+        self._regler_gesendet[schluessel] = (wert, now)
+        log.info("regler setting sent", key=schluessel, to=wert, before=vorher)
+        return ReglerStellenOut(
+            ok=True,
+            message_de=(
+                f"{e.name_de}: {regler_logic.text(e, wert)} gesendet. Gestellt ist es, wenn der "
+                "Regler den Wert zurückmeldet."
+            ),
+            einstellungen=await self.regler_einstellungen(),
+        )
+
+    async def regler_bestaetigen(self, schluessel: str, bestaetigt: bool) -> ReglerStellenOut:
+        """Festhalten, dass jemand eine Einstellung mit dem Bediengerät verglichen hat (oder das
+        zurücknehmen). Bestätigen lässt sich nur, was gerade gelesen ist: sonst gäbe es nichts
+        zu vergleichen."""
+        now = self.now
+        e = regler_logic.NACH_KEY.get(schluessel)
+        if e is None:
+            raise DchError("regler_unbekannt", "Diese Einstellung ist nicht bekannt.", 404)
+        gelesen = self.live.measurement(schluessel, now, regler_logic.STALE_S)
+        if bestaetigt and (not gelesen.usable or gelesen.value is None):
+            raise DchError(
+                "regler_nicht_gelesen",
+                f"„{e.name_de}“ ist gerade nicht gelesen; es gibt nichts zu vergleichen.",
+                409,
+            )
+        stand = dict(await self.repos.active_config(regler_logic.BESTAETIGT_ART) or {})
+        if bestaetigt:
+            stand[schluessel] = {"at": now.isoformat(), "wert": gelesen.value}
+        else:
+            stand.pop(schluessel, None)
+        await self.repos.save_config(
+            regler_logic.BESTAETIGT_ART,
+            stand,
+            comment=f"{e.name_de}: {'mit dem Bediengerät verglichen' if bestaetigt else 'Bestätigung zurückgenommen'}",
+        )
+        return ReglerStellenOut(
+            ok=True,
+            message_de=(
+                f"{e.name_de} ist als verglichen vermerkt."
+                if bestaetigt
+                else f"Der Vermerk für {e.name_de} ist zurückgenommen."
+            ),
+            einstellungen=await self.regler_einstellungen(),
+        )
+
+    async def betrieb(self, tage: int) -> BetriebOut:
+        """Läufe, Abtauen, Lauflängen und die Heizkurve des Reglers aus den Minuten der letzten
+        `tage` Tage. Fünf Minuten gehalten, wie die Kennlinie."""
+        now = self.now
+        gemerkt = self._betrieb.get(tage)
+        if gemerkt is not None and now - gemerkt.now < timedelta(minutes=5):
+            return gemerkt
+        zeilen = await self.repos.minute_series(
+            now - timedelta(days=tage), now, list(betrieb_logic.REIHEN)
+        )
+        aus = betrieb_logic.zusammensetzen(
+            now=now,
+            tage=tage,
+            betrieb=betrieb_kern.auswerten(betrieb_logic.minuten(zeilen), BERLIN),
+        )
+        self._betrieb[tage] = aus
+        return aus
+
+    async def kennlinie(self, tage: int) -> KennlinieOut:
+        """Die gemessene Kennlinie aus den gespeicherten Minuten der letzten `tage` Tage.
+
+        Die Antwort wird fünf Minuten gehalten: ein Messpunkt entsteht frühestens alle zehn
+        Minuten, und der Rückblick liest für dreißig Tage gut vierzigtausend Zeilen.
+        """
+        now = self.now
+        gemerkt = self._kennlinie.get(tage)
+        if gemerkt is not None and now - gemerkt.now < timedelta(minutes=5):
+            return gemerkt
+        zeilen = await self.repos.minute_series(
+            now - timedelta(days=tage), now, list(kennlinie_logic.REIHEN)
+        )
+        punkte, bilanz = kennlinie_kern.auswerten(kennlinie_logic.minuten(zeilen))
+        aus = kennlinie_logic.zusammensetzen(
+            now=now,
+            tage=tage,
+            punkte=punkte,
+            heat=self.hems.heat_demand,
+            buffer=self.hems.buffer,
+            bilanz=bilanz,
+        )
+        self._kennlinie[tage] = aus
+        return aus
 
     async def anlage_replay(self, day: date, step_min: int) -> AnlageReplayOut:
         """Ein vergangener Ortstag als Folge von Anlagenbildern.

@@ -18,6 +18,12 @@ Es schreibt mit, was ebusd an den Adapter schickt. Im Nur-Lese-Betrieb sind das 
 Nachrichten an den Adapter selbst (`c081` Anmeldung, `cc80` Abfrage der Fassung) und nichts für
 den Bus.
 
+Seit dem Add-on 0.3.0 fragt ebusd auf Wunsch vier Werte selbst ab. Dafür spielt das Skript auch
+die Gegenseite: es gibt ebusd den Bus frei, gibt jedes gesendete Byte zurück, wie ein Adapter am
+Bus es hört, und antwortet auf die vier Fragen aus `ANTWORTEN` als Regler oder Wärmepumpe. Jede
+Frage steht als `EBUSD FRAGT` im Protokoll, jede andere als `OHNE ANTWORT`: so zeigt sich auch,
+ob ebusd etwas sendet, das es nicht senden soll.
+
 Aufruf:  python3 tools/ebus_uebungsadapter.py [Sekunden]
 
 Dann das Add-on (oder ebusd) mit `ens:<dieser Rechner>:9999` starten.
@@ -99,6 +105,67 @@ HAUS = (
 )
 
 
+#: Was Regler (18) und Wärmepumpe (1e) auf die Fragen des Add-ons antworten: Ziel, Befehl und
+#: Kennung der Frage, dazu die Antwort ohne Prüfsumme (Länge, ein Byte Status, der Wert).
+ANTWORTEN = {
+    "1820000601": "020001",  # Umschaltventil: Stellung 1
+    "1820001c45": "020000",  # Heizstab: 0
+    "1e2000714f": "03004e00",  # Strom des Verdichters: 7,8 A
+    "1e20006e4f": "03005802",  # Lüfter: 600
+    # Die Liste, die im Haus der Regler abfragt: 6,5 °C draußen, 30,1 l/min, Zustand 3, 64 Hz.
+    "1e200078106e13ca46cb46": "070041002d010340",
+    # Die Einstellungen des Reglers (ab Add-on 0.4.0): Steilheit 1,20, Verschiebung -2,0 K,
+    # Vorlauf höchstens 55,0 und mindestens 20,0 °C, fest 40,0 °C, Art 2, Raum 22,0 und 10,0 °C,
+    # Warmwasser 52,0 und 40,0 °C, Betriebsart 1, Flüstermodus 0.
+    "1820006a71": "03007800",
+    "1820006471": "0200ec",
+    "1820006071": "03002602",
+    "1820006171": "0300c800",
+    "1820006571": "03009001",
+    "182000c079": "020002",
+    "1820006271": "0300dc00",
+    "1820006371": "03006400",
+    "1820006126": "03000802",
+    "1820006226": "03009001",
+    "182000c028": "020001",
+    "1820000320": "020000",
+    # Ab Add-on 0.5.0 dazu: Raumeinfluss 0, Temperaturbereich 0, Korrektur 0,0 K,
+    # Legionellenprogramm 0, Zuschlag bei Sonnenstrom 5,0 K, Heizbetrieb 1, Komfortstufe 2,
+    # Pumpe 2, Wärmepumpe aus unter -20,0 °C, Sommerbetrieb ab 18,0 °C.
+    "182000c279": "020000",
+    "1820000081": "020000",
+    "1820007d2b": "03000000",
+    "1820000b20": "020000",
+    "182000762d": "03003200",
+    "1820001c22": "020001",
+    "182000c728": "020002",
+    "182000c32a": "020002",
+    "1820007226": "030038ff",
+    "1820007971": "0300b400",
+}
+
+
+def paar(befehl: int, wert: int) -> bytes:
+    """Eine Nachricht des erweiterten Protokolls: vier Bit Befehl, acht Bit Wert, in zwei Bytes."""
+    return bytes([0xC0 | (befehl << 2) | (wert >> 6), 0x80 | (wert & 0x3F)])
+
+
+def zerlegen(daten: bytes) -> list[tuple[int, int]]:
+    """Was ebusd schickt, als Folge von (Befehl, Wert): 0 Anmeldung, 1 Senden, 2 Bus anfordern,
+    3 Auskunft. Ein einzelnes Byte unter 0x80 ist ein gesendetes Byte in Kurzform."""
+    aus: list[tuple[int, int]] = []
+    i = 0
+    while i < len(daten):
+        b = daten[i]
+        if b & 0xC0 == 0xC0 and i + 1 < len(daten):
+            aus.append(((b >> 2) & 0x0F, ((b & 0x03) << 6) | (daten[i + 1] & 0x3F)))
+            i += 2
+        else:
+            aus.append((1, b))
+            i += 1
+    return aus
+
+
 def main() -> None:
     dauer = float(sys.argv[1]) if len(sys.argv) > 1 else 60.0
     assert crc8(bytes.fromhex("1008b5110101")) == 0x89
@@ -110,24 +177,99 @@ def main() -> None:
     conn, _ = srv.accept()
     print("ebusd verbunden", flush=True)
 
+    # Der Bus gehört immer einem: entweder der Schleife unten, die den Ruhetakt und die
+    # abgehörten Telegramme spielt, oder ebusd, solange es selbst fragt.
+    bus = threading.Lock()
+    frage: bytearray | None = None
+    frei_um = 0.0
+
+    def gehoert(roh: bytes) -> None:
+        conn.sendall(erweitert(roh))
+
+    def freigeben() -> None:
+        nonlocal frage
+        frage = None
+        if bus.locked():
+            bus.release()
+
     def lesen() -> None:
+        nonlocal frage, frei_um
         while True:
             d = conn.recv(256)
             if not d:
                 return
-            print("VON EBUSD:", d.hex(), flush=True)
-            if d[:1] == b"\xc0":  # Anmeldung: ein echter Adapter antwortet mit „zurückgesetzt"
-                conn.sendall(bytes([0xC0, 0x81]))
-            if d[:1] == b"\xcc":  # Auskunft verlangt: Länge 2, dann zwei Bytes
-                for wert in (2, 1, 1):
-                    conn.sendall(bytes([0xC0 | (3 << 2) | (wert >> 6), 0x80 | (wert & 0x3F)]))
+            for befehl, wert in zerlegen(d):
+                if befehl == 0:  # Anmeldung: ein echter Adapter antwortet mit „zurückgesetzt"
+                    print("VON EBUSD: Anmeldung", flush=True)
+                    conn.sendall(paar(0, 1))
+                elif befehl == 3:  # Auskunft verlangt: Länge 2, dann zwei Bytes
+                    print("VON EBUSD: Auskunft", flush=True)
+                    for teil in (2, 1, 1):
+                        conn.sendall(paar(3, teil))
+                elif befehl == 2:  # ebusd will senden: Bus freigeben, sobald er ruht
+                    bus.acquire()
+                    frei_um = time.time() + 0.6
+                    frage = bytearray([wert])
+                    conn.sendall(paar(2, wert))
+                elif befehl == 1:
+                    gehoert(bytes([wert]))  # ein Adapter hört, was er selbst sendet
+                    if wert == 0xAA:  # ebusd schließt mit dem Ruhezeichen
+                        freigeben()
+                        continue
+                    if frage is None:
+                        continue
+                    frage.append(wert)
+                    if len(frage) >= 5 and len(frage) == 6 + frage[4]:
+                        kopf = bytes(frage[:-1])
+                        schluessel = kopf[1:4].hex() + kopf[5:].hex()
+                        antwort = ANTWORTEN.get(schluessel)
+                        gut = crc8(kopf) == frage[-1]
+                        if gut and kopf[1:4] == bytes.fromhex("fe2020") and len(kopf) > 7:
+                            # Ein Rundruf zum Stellen: Kennung und Wert. Der Übungsadapter
+                            # merkt sich den Wert, damit die nächste Frage ihn zurückgibt, so
+                            # wie ein Regler eine geänderte Einstellung meldet.
+                            kennung, wert = kopf[5:7].hex(), kopf[7:].hex()
+                            ANTWORTEN[f"182000{kennung}"] = f"{len(kopf) - 7 + 1:02x}00{wert}"
+                            print(
+                                "EBUSD STELLT:",
+                                kopf.hex(),
+                                "Kennung",
+                                kennung,
+                                "Wert",
+                                wert,
+                                flush=True,
+                            )
+                        elif antwort is None or not gut or kopf[1] == 0xFE:
+                            print(
+                                "OHNE ANTWORT:",
+                                kopf.hex(),
+                                "" if gut else "(Prüfsumme falsch)",
+                                flush=True,
+                            )
+                        else:
+                            print("EBUSD FRAGT:", kopf.hex(), "->", antwort, flush=True)
+                            a = bytes.fromhex(antwort)
+                            for b in b"\x00" + a + bytes([crc8(a)]):
+                                gehoert(bytes([b]))
+                                time.sleep(BYTE_S)
+                        frage = bytearray()  # was jetzt noch kommt, ist die Quittung
 
     threading.Thread(target=lesen, daemon=True).start()
 
     def sende(teil: bytes) -> None:
-        for b in teil:
-            conn.sendall(erweitert(bytes([b])))
-            time.sleep(BYTE_S)
+        with bus:
+            for b in teil:
+                conn.sendall(erweitert(bytes([b])))
+                time.sleep(BYTE_S)
+
+    def waechter() -> None:
+        # Lässt ebusd den Bus nicht von selbst los, bekommt ihn die Schleife nach 0,6 s zurück.
+        while True:
+            time.sleep(0.1)
+            if bus.locked() and frage is not None and time.time() > frei_um:
+                freigeben()
+
+    threading.Thread(target=waechter, daemon=True).start()
 
     ende = time.time() + dauer
     n = 0

@@ -350,9 +350,23 @@ Kennung zwei oder drei Bytes Wert.
   „return temp“ nennt. Dagegen: 47,6 °C liegen über dem Vorlauf und über dem Sollwert von 45 °C;
   wäre das der Rücklauf, liefe die Maschine nicht. Wahrscheinlicher ist ein Speicherfühler.
 
-`769e` ist deshalb als `heat_pump_return_temp_c` zugeordnet, mit diesem Vorbehalt. Bestätigen
-lässt es sich am Bediengerät der Wärmepumpe (Rücklauftemperatur ablesen und vergleichen) oder
-an einigen Stunden Verlauf: der Rücklauf folgt dem unteren Puffer.
+`769e` ist deshalb als `heat_pump_return_temp_c` zugeordnet. Bestätigen lässt es sich am
+Bediengerät der Wärmepumpe (Rücklauftemperatur ablesen und vergleichen) oder an einigen Stunden
+Verlauf: der Rücklauf folgt dem unteren Puffer.
+
+**Seit dem 14.11.2026 gilt die Zuordnung als gegeben** (Entscheidung des Hausherrn: „das wird
+schon richtig so sein“); das Zeichen † am Rücklauf und der Vorbehalt in den Hinweisen der Seiten
+sind entfernt. Dafür spricht der Verlauf dieses Tages: in vier Ablesungen lag `769e` beim
+untersten Pufferfühler oder knapp darunter.
+
+| 14.11.2026 | `769e` | Puffer unten | Maschine |
+|---|---|---|---|
+| 10:20 | 30,0 °C | 29,5 °C | läuft |
+| 11:18 | 36,3 °C | 38 °C | läuft |
+| 16:52 | 27,5 °C | 28 °C | Pause, Pumpe läuft |
+| 16:54 | 27,6 °C | 28 °C | läuft |
+
+Am Bediengerät verglichen wurde der Wert nicht.
 
 **Was davon in den Dienst geht** (`config/entities.home.yaml`, Minutentabelle seit der Migration
 `a7d3e9c52b18`): Außentemperatur, Vorlauf, Durchfluss (`heat_pump_flow_l_min`), Rücklauf
@@ -670,24 +684,44 @@ Messwert steht dort, wo er an der Anlage entsteht. Der Dienst setzt die Seite in
 | Innengerät | Durchfluss | Bus, `heatpump_flowmeter` |
 | Innengerät | Betriebszustand | Bus, eigene Zeile `hp_betrieb.mode` |
 | Leitung zum Speicher | Vorlauf | Bus, `coolat_data.LWT_temp` |
-| Leitung vom Speicher | Rücklauf † | Bus, eigene Zeile `system_temps.t_769e` |
-| Speicher | Fühler der Wärmepumpe † | Bus, eigene Zeile `system_temps.t_759e` |
+| Leitung vom Speicher | Rücklauf | Bus, eigene Zeile `system_temps.t_769e` |
+| Speicher | Fühler der Wärmepumpe | Bus, eigene Zeile `system_temps.t_759e` |
 | Speicher | vier Schichten | die eigenen Pufferfühler, wie im Anlagenschema |
 
-† Die Zuordnung ist begründet, am Gerät aber nicht bestätigt (siehe oben, „Welche Temperatur
-ist der Rücklauf?“). Die Seite kennzeichnet beide Werte mit demselben Zeichen.
+**Der Speicherfühler der Wärmepumpe (`759e`) gilt seit dem 15.11.2026 als gegeben.** Auskunft
+des Hausherrn: der Wert ist richtig gemessen, und der Fühler sitzt genau in der Mitte zwischen
+dem obersten eigenen Fühler und der Oberkante des Speichers. Die Sitzung hat „Stütze des
+Speichers“ in seiner Nachricht als Oberkante gelesen; dafür spricht, dass der Wert stets nahe am
+obersten eigenen Fühler lag (48,3 gegen 47,6 und 47,4 °C am 13.11.2026). Die Zeichnung zeigt
+ihn auf dieser Höhe (`FUEHLER_WP = 0,0625` von oben, zwischen 0 und dem obersten Fühler bei
+0,125) und ohne Kreuz. Bis dahin trug er, wie der Rücklauf bis zum 14.11.2026 (siehe oben,
+„Welche Temperatur ist der Rücklauf?“), das Zeichen für „begründet, nicht bestätigt“.
+
+**Der Speicher sieht überall gleich aus** (Nutzerwunsch 14.11.2026). Bis dahin gab es ihn in
+vier Zeichnungen mit zwei Farbskalen: als eckigen Tank auf der Startseite, als liegenden Balken
+am Telefon, als Glas im Anlagenschema und als vier Farbbänder auf dieser Seite; 60 Grad waren
+hier gelb und dort orange. Geblieben ist das Glas (`apps/web/src/components/puffer/`), stehend,
+mit weichem Verlauf und jeder Zahl auf der Höhe ihres Fühlers, in der Farbskala des Wassers aus
+dem Anlagenschema. Es steht auf der Startseite an der Wandanzeige, in der Abendansicht, im
+Anlagenschema und hier. Auf der Startseite am Telefon liegt dasselbe Glas auf der Seite
+(Nutzerwunsch 14.11.2026, nachdem dort kurz das stehende stand: die Kachel bleibt so flach,
+143 statt 162 Punkte); Farbskala, Verlauf und die Stelle der Zahlen sind dieselben.
 
 **Was gerechnet wird.** Spreizung = Vorlauf minus Rücklauf. Wärmeleistung = Durchfluss mal
 Spreizung mal 4,186 kJ/(kg K), ein Liter als ein Kilogramm. Arbeitszahl = Wärmeleistung durch
 Leistungsaufnahme. Mit den Zahlen des zweiten Protokolls (29,8 l/min, 39,9 und 36,5 °C,
 1,448 kW) sind das 3,4 K, 7,07 kW und 4,9; dieselbe Rechnung prüft
-`apps/api/tests/test_waermepumpe.py`. Beides heißt auf der Seite „abgeschätzt“, weil der
-Durchflussgeber nicht geeicht ist, der Rücklauf nicht bestätigt ist und die Werte nicht im selben
-Augenblick kommen.
+`apps/api/tests/test_waermepumpe.py`. Beides hieß auf der Seite bis zum 15.11.2026
+„abgeschätzt“, weil der Durchflussgeber nicht geeicht ist und die Werte nicht im selben
+Augenblick kommen. Der Hausherr fragte an dem Tag, warum das Wort noch dasteht; er hält die
+Messung für richtig, wie schon bei Vorlauf und Rücklauf. Seitdem heißen die Kacheln
+„Wärmeleistung“ und „Arbeitszahl“, und unter der Zeichnung steht, woraus sie gerechnet sind.
+Die beiden Vorbehalte gelten sachlich weiter: sie stehen hier und in den Hinweisen der Seiten
+„Kennlinie“ und „Betrieb“, nicht mehr an jeder Zahl.
 
 | Festlegung | Wert | Herkunft |
 |---|---|---|
-| Ein Buswert gilt als veraltet | nach 15 Minuten | gesetzt; gemessen lagen bis 55 s zwischen zwei Meldungen |
+| Ein Buswert gilt als veraltet | nach 5 Minuten (bis 14.11.2026: 15) | gesetzt; gemessen lagen bis 55 s zwischen zwei Meldungen |
 | Pumpe gilt als stehend | unter 2 l/min | gesetzt; gemessen 0,0 im Stillstand und rund 30 im Lauf |
 | Keine Wärmeleistung | Spreizung unter 0,5 K | gesetzt, nicht gemessen |
 | Keine Arbeitszahl | Leistungsaufnahme unter 0,3 kW | gesetzt, nicht gemessen |
@@ -707,6 +741,145 @@ Wärmeseite.
 
 Nicht geprüft: die Seite mit den echten Werten des Hauses. Geprüft ist sie in der Vorführung, am
 Telefon (390 Punkte) und an der Wandanzeige (1280 Punkte), im Lauf und im Stillstand.
+
+### Wohin die Wärmepumpe einspeist: die Kennzahl des Reglers
+
+Stand 14.11.2026. Am Morgen lief die Maschine mit 36,2 °C Vorlauf, während der Speicher oben
+36,1 °C hatte: sie speiste also nicht oben ein. Der Hausherr: bei der Warmwasserbereitung führt
+das Umschaltventil den Vorlauf oben in den Speicher, im Heizbetrieb tiefer.
+
+**Die Stellung des Ventils sendet der Bus nicht von selbst.** Die fremde Bus-Beschreibung kennt
+sie (Kennung `0601`, `heatpump_3way_valve_dhw_heat`), aber nur als Antwort auf eine Frage; in
+den Protokollen des Hauses kommt die Kennung in keinem Telegramm vor (gesucht in allen
+mitgeschriebenen Telegrammen, 14.11.2026). Sie zu lesen hieße, auf dem Bus zu fragen; das
+Add-on fragt nicht.
+
+**Was der Regler von selbst sendet, ist eine Kennzahl** (Kennung `c94b`), im Rundruf in einer
+Liste mit der Hauptpumpe (`13fe20100cc2000100c74b8e00c94b1000`) und allein
+(`13fe201004c94b0000`). Im Haus gesehen:
+
+| Wann | Maschine | `c94b` | Stand |
+|---|---|---|---|
+| 13.11.2026, 23:20 und 14.11., 00:06 | steht | 0 | bestätigt: Bereitschaft |
+| 13.11.2026, 23:30 | läuft | 16 | nicht zugeordnet |
+| 14.11.2026, 11:18 | läuft, Zähler 8,84 kW | 20 | nicht zugeordnet |
+| 14.11.2026, 16:40 | steht, Heizanforderung an | 22 | nicht zugeordnet |
+| 14.11.2026, 16:41:18 | Hauptpumpe geht an | 2 | bestätigt: Heizen |
+
+**Die 2 ist Heizbetrieb.** Im Protokoll vom 14.11.2026 springt die Kennzahl um 16:41:18 von 22
+auf 2, in genau dem Telegramm, in dem die Hauptpumpe angeht (`pumpe_status 1;…;2`). Die
+Heizanforderung der ersten Zone stand auf „an“ (`heat_request on;off;off`), der Durchfluss
+stieg von 0 auf 29 l/min, und zehn Sekunden später meldete die Maschine „Heating“.
+
+**Die Wörter der fremden Liste sind kein Beleg.** Sie nennt die Kennung `hybrid_status` und
+gibt jeder Zahl ein Wort (2 Heating Cycle, 3 DHW Cycle, 16 Photovoltaic Integration, 20 Buffer
+Cooling and DHW; die 22 kennt sie nicht). Die Liste stammt von einer Hybridanlage derselben
+Herstellergruppe. Ungeprüft übernommen stand damit am 14.11.2026 „Puffer kühlen“ an einer
+Maschine, die heizt. Seitdem bekommt eine Zahl ein Wort erst, wenn sie im Haus bestätigt ist.
+Für die 0 und die 2 stimmt die Liste; das macht ihre 3 (Warmwasser) glaubwürdig, aber
+**Warmwasser ist im Haus noch nicht gesehen**.
+
+**Die übrigen werden aus dem Haus entschlüsselt.** Der Dienst zählt aus den gespeicherten
+Minuten aus, was die Maschine unter jeder Kennzahl tat
+(`apps/api/src/dch_api/application/reglerkennzahl.py`, `GET /api/v1/waermepumpe/kennzahlen`):
+Minuten, Lauf, Vorlauf, Sollwert, Erwärmung des Speichers am obersten Fühler und am Fühler
+Mitte unten, Abstand zwischen Zähler und Maschine, Heizanforderung, Kennung 1b45, Anforderung
+durch Duck Curve Home. Die Tabelle steht unter der Zeichnung. Sie deutet nichts: ein kühler
+Speicher wird auch im Heizbetrieb oben wärmer, und ein Sollwert allein sagt nichts. Wer sie
+gelesen hat, trägt die Zuordnung in `waermepumpe.KREIS_DE` und `EINSPEISUNG` ein.
+
+**Die Zeichnung** führt den Vorlauf im Heizbetrieb (2) seitlich auf halber Höhe in das Glas;
+für alle anderen Kennzahlen bleibt er oben und der Hinweis darunter sagt, dass der
+Einspeisepunkt nicht bekannt ist. **Wo am Speicher der untere Anschluss sitzt, ist nicht
+vermessen**; „halbe Höhe“ ist die Zeichnung.
+
+**Was der Regler sonst noch von selbst sendet** (Protokoll vom 14.11.2026, 16:40 bis 16:41):
+
+| Auf dem Bus | Inhalt | Was damit geschieht |
+|---|---|---|
+| `heat_request` | Heizanforderung je Zone, an/aus | Zone 1 gespeichert und angezeigt |
+| `setpoint_temp` | Raum-Sollwert je Zone (22,0 am Tag, 10,0 in der Nacht) | Zone 1 gespeichert und angezeigt |
+| `hybrid_LWT_setpoint` | Vorlauf-Sollwert, 45,0 °C | schon zugeordnet |
+| `13fe2010041b45…` | Kennung `1b45`: nachts 0, am Nachmittag 1 | gespeichert, Bedeutung offen; sie liegt neben `1c45`, dem Heizstab |
+| `131e20200dc33e…` | Vorgaben des Reglers an die Maschine: `c446` Modulation 100 %, `cd46` 0 vor und 3 nach dem Start, `6a47` 60,0 vor und 55,0 nach dem Start | `cd46` und `6a47` gespeichert; `cd46` folgt der Liste der Betriebszustände (3 Heizen), `6a47` ist offen |
+| `heatpump_flow_switch` | Strömungswächter, offen/geschlossen | nicht zugeordnet; der Durchfluss sagt dasselbe |
+| `energymgr_aux1_out`, `heatpump_3way_valve_heat_cool` | fragt das Bediengerät ab: Ausgang AUX 1 aus, Ventil Heizen/Kühlen auf Heizen | nicht zugeordnet |
+| `13fe20100f6197…` bis `6797` | sieben Temperaturen: 45,0; 45,0; 60,0; 40,0; 40,0; 40,0; 40,0 | nicht entschlüsselt, vermutlich Sollwerte |
+| `13fe2010…c194…` bis `c794`, `d194…` bis `d794` | je sieben Werte 1 oder 2 | nicht entschlüsselt |
+
+Die zwei neuen eigenen Zeilen (`flag_1b45`, `wp_vorgabe`; Add-on ab 0.2.3) sind mit ebusd 26.1
+an den Telegrammen des Hauses geprüft. Schalter gibt ebusd als Wort aus (`on`, `off`); die
+Bridge liest sie ab 0.14.4 als 1 und 0. Neue Minutenreihen: Migration `e1b7c3a96f5c`.
+
+Das Add-on liest die Kennzahl ab 0.2.2 mit zwei eigenen Zeilen (`pumpe_status` mit den
+Kennungen der Folgewerte als eigene Felder, `betriebsart`); beide sind mit ebusd 26.1 an den
+Telegrammen des Hauses geprüft. Die Bridge liest die Liste nur, wenn die Kennungen stimmen. Der
+Dienst speichert sie als Minutenreihe `heat_pump_cycle_code` (Migration `d0a6b2f85e4b`).
+
+### Die Seite zeigte „steht“, während die Maschine lief
+
+14.11.2026, 16:52, im Haus: die Seite zeigte null Hertz, einen stehenden Lüfter und „steht“,
+während die Maschine seit 16:41 lief und der Lüfter draußen drehte.
+
+* **Der Betriebszustand war alt.** Zustand und Verdichterfrequenz kamen bis dahin nur aus der
+  Liste `hp_betrieb` (`78106e13ca46cb46`). Im Protokoll von 23:30 am Vortag stand sie; im
+  Protokoll von 16:40 bis 16:41 kommt sie nicht vor. Sie geht nur gelegentlich über den Bus,
+  vermutlich fragt das Bediengerät sie ab, solange eine bestimmte Seite angezeigt wird (nicht
+  geprüft). Der Dienst hielt einen Buswert 15 Minuten für frisch, also auch den Zustand von vor
+  dem Start.
+* **Der Lüfter wird nicht gemessen.** Seine Kennung (`1445`) kommt nur auf Nachfrage. Die
+  Zeichnung drehte ihn mit dem Verdichter und zeigte ihn sonst stehend, als wäre das ein
+  Messwert.
+
+Geändert: Ein Buswert gilt fünf Minuten als frisch, der Zustand der Maschine drei
+(`STALE_S`, `ZUSTAND_STALE_S`); danach entscheidet der Zähler, ob sie läuft, und bei der Frequenz
+steht kein Wert statt der alten Null. Der Betriebszustand kommt zusätzlich aus
+`heatpump/heatpump_mode`: das Bediengerät fragt ihn alle zehn Sekunden ab, ebusd gibt ihn als
+Wort aus, und die Bridge liest das Wort ab 0.14.5 als die Zahl, die auf dem Bus steht. Der
+Lüfter ist in der Zeichnung als „nicht gemessen“ beschriftet. Ist der Verdichter aus und das
+Wasser läuft um, heißt der Zustand „pausiert“, nicht „steht“.
+
+**Eine Verdichterfrequenz gibt es damit nur noch zeitweise.** Sie steht allein in der
+gelegentlichen Liste. Ob sie sich ohne Nachfrage verlässlich lesen lässt, ist offen.
+
+Um 16:52 selbst nahm die Maschine 0,34 kW auf (kurz davor rund 3 kW, Auskunft des Hausherrn),
+der Verdampfer hatte -4,7 °C bei 6,0 °C draußen und zwei Minuten später 6,5 °C. Das passt zu
+einer Pause, in der der Lüfter den Verdampfer mit Außenluft abtaut; **bestätigt ist das nicht**.
+
+| Festlegung | Wert | Herkunft |
+|---|---|---|
+| Ein Buswert gilt als veraltet | nach 5 Minuten | gesetzt; die Temperaturen kommen einmal je Minute |
+| Der Zustand der Maschine gilt als veraltet | nach 3 Minuten | gesetzt; das Bediengerät fragt ihn alle 10 Sekunden ab |
+
+### Der Zähler misst mehr als die Maschine: vermutlich der Heizstab
+
+14.11.2026, 11:18, im Haus: 8,84 kW am Zähler bei 64 Hz Verdichterfrequenz, Vorlauf 43,2 °C,
+Rücklauf 36,3 °C, Verdampfer 1,5 °C bei 7,0 °C draußen, Heißgas 73,2 °C; die Seite rechnete
+daraus eine Arbeitszahl von 1,6. Eine Stunde vorher (10:20) waren es bei 65 Hz 3,16 kW.
+
+* **Kein Abtauen.** Der Hausherr vermutete es. Beim Abtauen wäre der Verdampfer warm und der
+  Vorlauf kälter als der Rücklauf; hier war der Verdampfer kälter als die Außenluft und das
+  Wasser wurde um 6,9 K erwärmt.
+* **Knapp 6 kW neben dem Verdichter.** Derselbe Verdichter nimmt bei fast gleicher Frequenz
+  nicht das Dreifache auf. An der Zuleitung, die der Zähler misst, läuft also etwas anderes
+  mit, vermutlich der elektrische Heizstab der Inneneinheit. **Nicht bestätigt:** die Kennung
+  des Heizstabs (`1c45`, `heatpump_electric_heater`) kommt auf dem Bus nur auf Nachfrage, und
+  welche Stufen er hat, steht in keiner Unterlage, die hier vorliegt.
+* Der Hausherr hält eine laufende Warmwasserbereitung für die Ursache.
+
+Was die Maschine für sich meldet (`hp_power`, Kennung 7c4f), lag um 11:18 nicht vor; der
+Vergleich ist deshalb erst künftig möglich. Dafür gibt es jetzt:
+
+| Festlegung | Wert | Herkunft |
+|---|---|---|
+| Zusatz gilt als erkannt | Zähler mindestens 1,5 kW über der Maschine | gesetzt: unter der kleinsten Stufe eines Heizstabs, über Lüfter, Umwälzpumpe und Regler; nicht gemessen |
+
+Die Seite der Wärmepumpe weist den Zusatz aus, sobald er erkannt ist, und sagt, dass die
+Arbeitszahl ihn enthält. Die Kennlinie lässt solche Minuten aus und nennt ihre Zahl
+(`kennlinie.ZUSATZ_KW`): ein Heizstab hat die Arbeitszahl eins und gehört nicht in die Kennlinie
+des Verdichters. **Offen:** ob `hp_power` die ganze Aufnahme der Maschine ohne Heizstab ist.
+Läge sie grundsätzlich weit unter dem Zähler, fielen alle Minuten heraus; die Zahl der
+ausgelassenen Minuten auf der Kennlinien-Seite zeigt das.
 
 ### Wenn der Bus schweigt
 
@@ -737,6 +910,26 @@ Dazu steht, wann zuletzt ein Wert über den Broker kam.
 | Folgende Meldungen | alle 5 Minuten | gesetzt |
 | ebusd gilt als verstummt | nach 10 Minuten ohne Nachricht | gesetzt; gemessen kommen im Betrieb alle 5 bis 55 Sekunden Nachrichten |
 
+**Die Ursache, 14.11.2026, 09:33 bis 09:40.** Mit Bridge 0.14.2 stand im Haus der zweite
+Satz: Die Bridge kündigt den Bus nicht an. Ihr Protokoll zeigte dann den Grund:
+`entity map loaded origin=datei:/config/duckcurve/entities.yaml`, vier Geräte am Broker
+(Pufferspeicher und drei Lichter), kein Bus. Im Haus liegt eine eigene Zuordnung, und die hatte
+bis 0.14.2 Vorrang vor dem Repository (`apps/bridge/src/dch_bridge/entities_source.py`).
+
+Die Datei ist kein vergessener Altbestand. Sie meldet 25 Sensoren, das Repository 15; nur in ihr
+stehen die Alarmanlage und ein Fensterkontakt, deren Namen nicht ins öffentliche Repository
+gehören. Löschen wäre also falsch gewesen, und der Abgleich von Hand (den Abschnitt für den Bus
+hineinkopieren) hätte bei jeder Änderung am Bus wieder angestanden; ein Tippfehler in der Datei
+hält zudem die ganze Bridge an, samt Haustür.
+
+**Seit 0.14.3 ergänzt die Datei das Repository.** Was in ihr steht, gilt unverändert; was nur im
+Repository steht, kommt hinzu. Gegen den Stand des Hauses gerechnet (die Schlüssel aus der Zeile
+`telemetry keys` des Protokolls gegen `EntityMap.keys()` der Datei auf `main`) kommen genau die
+zwölf Größen des Busses und ein Fensterkontakt dazu. Die Bridge meldet die Herkunft ihrer
+Zuordnung außerdem als Zustand der Quelle `zuordnung`, und der Satz auf der Seite nennt sie.
+**Im Haus bestätigt ist das noch nicht**; geprüft ist es mit nachgestellten Dateien
+(`apps/bridge/tests/test_entities_source.py`).
+
 ### Die Fußleiste am Telefon rollte mit
 
 Ebenfalls am 14.11.2026 gemeldet: auf dem iPhone, in der Anwendung vom Home-Bildschirm, stand die
@@ -750,3 +943,286 @@ neu öffnen, dann auf dieser und auf einer anderen langen Seite rollen.
 
 [F1] Apple Developer Forums, „iOS17 PWA `position: fixed` element breaks after a while“,
 https://developer.apple.com/forums/thread/744327, abgerufen 14.11.2026.
+
+## Was das Add-on selbst abfragt
+
+Stand 14.11.2026, Entscheidung des Hausherrn („Cool, mach das“ auf die Frage, ob das Add-on
+Ventilstellung, Heizstab und Verdichterstrom aktiv abfragen darf, ohne etwas zu verstellen).
+
+Vier Größen gehen nie von selbst über den Bus, weil das Bediengerät sie nicht abfragt. Seit
+„Duck Curve eBUS“ 0.3.0 fragt ebusd sie reihum, alle zehn Sekunden eine
+(`addons/duckcurve_ebusd/aerotop_abfragen.csv`):
+
+| Größe | Kennung, Ziel | Schlüssel | Was die Bus-Beschreibung sagt | Stand im Haus |
+|---|---|---|---|---|
+| Umschaltventil | 0601, Regler (18) | `heat_pump_valve_code` | 0 Warmwasser, 1 Heizung | offen |
+| elektrische Zusatzheizung | 1c45, Regler (18) | `heat_pump_heater_code` | 0 aus, 1 an | offen |
+| Strom des Verdichters | 714f, Wärmepumpe (1e) | `heat_pump_compressor_a` | Zehntel Ampere | offen |
+| Drehzahl des Lüfters | 6e4f, Wärmepumpe (1e) | `heat_pump_fan_speed` | Zahl ohne Einheit | offen |
+
+**Dazu ab 0.3.1 Betriebszustand und Verdichterfrequenz.** Beide kamen bisher nur aus einer
+Liste, die der Regler der Maschine selten abfragt (`hp_betrieb`, Kennungen 7810 6e13 ca46 cb46).
+Die Seite hält einen Zustand höchstens drei Minuten für gültig (seit dem 14.11.2026, nachdem
+ein alter Zustand „steht“ gezeigt hatte, während die Maschine lief); die Frequenz stand
+deshalb meist als Fragezeichen da, und am 15.11.2026 meldete der Hausherr nach einem Neustart
+der Bridge: „der Umrichter im Verdichter hat keine Frequenz mehr“. Das Add-on stellt dieselbe
+Frage jetzt selbst, etwa alle 40 Sekunden. Dass die Maschine sie beantwortet, ist im Haus
+gesehen (auf die Frage des Reglers); dass sie auch dem Add-on antwortet, noch nicht.
+
+**Zahlen, keine Wörter.** Die Bedeutungen stammen aus der Bus-Beschreibung einer verwandten
+Anlage. Nach „Puffer kühlen“ (Abschnitt „Die Kennzahl des Reglers“) zeigt die Oberfläche für
+Ventil und Heizstab die Zahl und nennt die Lesart der Liste als Hinweis. Bestätigt wird sie am
+Verlauf: die Tabelle „Was der Regler meldet“ stellt je Kennzahl des Reglers daneben, wie oft
+das Ventil auf 1 stand, wie oft der Heizstab gemeldet war, was der Zähler über der Maschine lag
+und welcher Teil des Speichers wärmer wurde. Steht das Ventil auf 0, während der Speicher oben
+wärmer wird, und auf 1, während er tiefer wärmer wird, ist die Lesart bestätigt; dasselbe gilt
+für den Heizstab, wenn „gemeldet“ mit dem Mehr am Zähler zusammenfällt.
+
+**Aufbau der Antwort.** Ein Byte Status, dann der Wert. So antworten Regler und Wärmepumpe im
+Haus auf einzelne Abfragen des Bediengeräts (Protokolle vom 13. und 14.11.2026: Durchfluss
+6e13, Betriebszustand ca46, Ventil Heizen/Kühlen 0701). Für die vier Kennungen ist das
+übertragen, nicht gesehen. Für 714f nennt die fremde Liste kein Statusbyte; das hält die
+Sitzung für ein Versehen der Liste, belegt ist es nicht. Antwortet die Maschine anders, steht
+im Protokoll des Add-ons ein `ERR:` statt `sent poll-read`.
+
+**Nichts verstellen.** Abfragen heißt senden; damit daraus kein Weg zum Verstellen wird,
+entfernt das Add-on beim Start jede Zeile zum Stellen aus seiner Arbeitsfassung der
+Bus-Beschreibung (67 in der geprüften Fassung). Probelauf mit ebusd 26.1 am Übungsadapter
+(`tools/ebus_uebungsadapter.py`, der seitdem auch antwortet): die vier Fragen gingen reihum
+hinaus, die Antworten kamen als Werte am Broker und als Schlüssel in der Bridge an, und eine
+Stellnachricht über den Broker führte zu keinem Telegramm; in der Gegenprobe mit den Zeilen
+zum Stellen sendete ebusd `31fe2020...`. Einzelheiten: `addons/duckcurve_ebusd/DOCS.md`.
+
+**Was damit geschieht.** Die Seite der Wärmepumpe zeigt die vier Werte, der Lüfter der
+Zeichnung dreht nach seiner Drehzahl statt mit dem Verdichter, und die Kennlinie merkt sich
+je Messpunkt die Stellung des Ventils, wenn sie im Fenster einheitlich war. Getrennt nach
+Heizen und Warmwasser wird erst, wenn die Lesart bestätigt ist; der gemeldete Heizstab
+entscheidet aus demselben Grund noch nicht darüber, welche Minuten zählen.
+
+**Nicht geprüft:** an der echten Wärmepumpe. Offen ist auch, ob die Abfragen den Bus stören;
+das Add-on lässt sich mit `abfragen: false` auf reines Lauschen zurückstellen.
+
+## Die Einstellungen des Reglers, gelesen
+
+Stand 15.11.2026. Frage des Hausherrn: ob sich von hier aus in die Regelung eingreifen lässt
+(Regelungsparameter, Vorlauftemperatur). Antwort der Sitzung: technisch ja, in drei Stufen, und
+gebaut sind die ersten beiden.
+
+**Stufe 1, gebaut: lesen.** Das Add-on „Duck Curve eBUS“ fragt ab 0.4.0 zwölf Einstellungen ab
+(ab 0.5.0 sind es 22), jede etwa alle zehn bis fünfzehn Minuten. Seite: Technik → Wärmepumpe → Regler
+(`/waerme/waermepumpe/regler`), Antwort: `GET /api/v1/waermepumpe/einstellungen`, Liste:
+`apps/api/src/dch_api/application/regler.py`.
+
+| Gruppe | Einstellung | Kennung | Schlüssel |
+|---|---|---|---|
+| Heizkurve | Steilheit | 6a71 | `heat_pump_set_slope` |
+| Heizkurve | Verschiebung | 6471 | `heat_pump_set_offset_k` |
+| Heizkurve | Vorlauf höchstens, mindestens, fest | 6071, 6171, 6571 | `heat_pump_set_flow_max_c`, `_min_c`, `_fixed_c` |
+| Heizkurve | Art der Vorlaufregelung | c079 | `heat_pump_set_curve_type` |
+| Raum | Raumtemperatur Tag, Nacht | 6271, 6371 | `heat_pump_set_room_day_c`, `_night_c` |
+| Warmwasser | Komfort- und Spartemperatur | 6126, 6226 | `heat_pump_set_dhw_comfort_c`, `_eco_c` |
+| Warmwasser | Betriebsart | c028 | `heat_pump_set_dhw_mode` |
+| Sonstiges | Flüstermodus | 0320 | `heat_pump_set_silent` |
+
+Kennungen und Zahlenformate stammen aus der Bus-Beschreibung einer verwandten Anlage (Zone 1
+und Warmwasser). **Keine davon ist im Haus bestätigt.** Die Seite ist dafür da, dass der
+Hausherr ihre Zahlen mit dem Bediengerät vergleicht. Kennzahlen (Art der Vorlaufregelung,
+Betriebsart, Flüstermodus) stehen als Zahl da, die Lesart der Liste als Hinweis daneben. Die
+Seite zeigt den zuletzt gelesenen Stand, gültig eine halbe Stunde. Gespeichert werden die
+Werte als Minutenreihen (Migration `a3d9e5c18b7e`): so lässt sich später sagen, wann welche
+Einstellung galt, und das ist der Beleg, sobald eine von hier aus verstellt wird. Probelauf mit ebusd 26.1 am Übungsadapter: alle zwölf Fragen
+gingen hinaus, die Antworten kamen als Schlüssel in der Bridge an (darunter eine negative
+Verschiebung und die Steilheit mit zwei Nachkommastellen).
+
+**Stufe 2, gebaut am 15.11.2026: stellen von Hand.** Auftrag des Hausherrn: eine eigene Seite,
+auf der sich die Einstellungen des Geräts grafisch verstellen lassen, die Heizkurve als Kurve
+zum Anfassen, die Zahlen „wie bei einem digitalen Mischpult“, dazu die Schaltung des Heizstabs
+über den Green Mode. Das ist seine Entscheidung, dass von hier gestellt werden darf.
+
+*Was gelesen und was stellbar ist.* 22 Einstellungen werden gelesen, 14 davon lassen sich
+stellen (Liste mit Grenzen und Raster: `apps/api/src/dch_api/application/regler.py`; aus ihr
+entstehen die Zeilen des Add-ons, ein Test hält sie gleich):
+
+| Gruppe | Stellbar (Grenzen, Schritt) | Nur gelesen |
+|---|---|---|
+| Heizkurve | Steilheit (0,2 bis 3,5; 0,1), Verschiebung (−7 bis +7 K; 0,5), Vorlauf höchstens (25 bis 60 °C; 1), mindestens (20 bis 45; 1), fest (20 bis 60; 1), Einfluss der Raumtemperatur (0 bis 20; 1) | Art der Vorlaufregelung, Temperaturbereich, Korrektur des Vorlaufs |
+| Raum | Raumtemperatur Tag und Nacht (10 bis 30 °C; 0,5) | |
+| Warmwasser | Komforttemperatur (35 bis 60 °C; 1), Spartemperatur (20 bis 55; 1), Betriebsart (0 bis 2), Legionellenprogramm (0, 1) | Zuschlag bei Sonnenstrom |
+| Betrieb | Heizbetrieb Green oder Standard (0, 1), Flüstermodus (0, 1) | Komfortstufe, Umwälzpumpe, Wärmepumpe aus unter, Sommerbetrieb ab |
+
+Die Grenzen sind gesetzt, nicht aus einem Handbuch dieser Maschine: weit genug für die Werte,
+die die Bus-Beschreibung für die Gerätefamilie nennt, eng genug, dass ein verrutschter Regler
+keinen Unsinn stellt. Die Art der Vorlaufregelung bleibt bewusst nur lesbar: ein falscher Wert
+dort macht aus der Kurve einen Ein-Aus-Betrieb.
+
+*Der Heizstab und der Green Mode.* Nach Auskunft des Hausherrn verhindert der Betrieb „Green“,
+dass der elektrische Heizstab für die Heizung zuschaltet. Die Bus-Beschreibung kennt die
+Kennung dazu (1c22, 0 Green, 1 Standard) nur zum Lesen; die Zeile zum Stellen ist nach dem
+Muster der übrigen gebildet. Beides ist an dieser Anlage nicht gesehen: weder dass 1c22 diese
+Einstellung ist, noch dass Green den Heizstab verhindert. Zeigen wird es der Verlauf: der
+gemeldete Heizstab (`heat_pump_heater_code`) und das Mehr am Zähler, vor und nach dem
+Umstellen.
+
+*Die Sicherungen.*
+
+1. **Im Add-on** ist das Stellen ab Werk aus (`stellen: false`). Eingeschaltet kennt ebusd
+   genau die vierzehn Zeilen der eigenen Liste; alle anderen Zeilen zum Stellen bleiben entfernt.
+2. **Im Dienst** wird ein Wert nur angenommen, wenn die Einstellung stellbar ist, gerade
+   gelesen wurde, mit dem Bediengerät verglichen ist, in ihren Grenzen und auf ihrem Raster
+   liegt und heute noch nicht zwölfmal gestellt wurde (`regler.pruefen`, jede Ablehnung ein Satz).
+3. **Der Vergleich mit dem Bediengerät** ist ein Vermerk je Einstellung, den jemand auf der
+   Seite setzt („Am Gerät steht …“). Ohne ihn bewegt sich der Regler auf der Seite nicht. So
+   wird die offene Frage, ob eine Kennung an dieser Anlage bedeutet, was die Liste sagt, vor
+   dem ersten Stellen von einem Menschen beantwortet.
+4. **Auf der Seite** ist jede Bewegung zuerst ein Entwurf; „Übernehmen“ zeigt, was sich von
+   welchem auf welchen Wert ändert, und erst „Jetzt stellen“ schickt es ab.
+5. **Gestellt ist, was der Regler meldet.** Nach dem Senden wird neu gelesen; bis der Regler
+   den Wert so meldet, steht er als „gesendet“ da, nach einer halben Stunde ohne Rückmeldung
+   verschwindet er wieder. Jede Änderung steht mit altem und neuem Wert und Urheber im
+   Ereignisprotokoll (`regler.gestellt`) und auf der Seite, und die gelesenen Werte stehen als
+   Minutenreihen in der Datenbank (Migrationen `a3d9e5c18b7e`, `b4e0f6d29c8f`).
+
+*Der Weg eines Werts.* Seite → Dienst (`POST /api/v1/waermepumpe/einstellungen/<Schlüssel>`) →
+Bridge ab 0.15.0 (Befehl `ebus:<Schlüssel>:stellen`) → Broker (`ebusd/energymgr/e_.../set`) →
+ebusd → Rundruf mit dem Dienst 2020 auf dem Bus. Die Bridge stellt nur, was in ihrer Zuordnung
+unter `energymgr/e_...` steht.
+
+*Die Heizkurve auf der Seite ist eine Näherung*: Vorlauf = Raum + Steilheit × (Raum − außen) +
+Verschiebung, begrenzt auf den kleinsten und größten Vorlauf. Die Formel dieses Reglers ist
+nicht bekannt. Die Näherung zeigt Richtung und ungefähre Weite einer Änderung; daneben stehen
+als Punkte die Stunden, in denen der Regler wirklich einen Vorlauf verlangt hat. Weichen Punkte
+und Kurve deutlich ab, stimmt die Näherung für diese Maschine nicht, und das ist dann der Befund.
+
+*Geprüft:* mit Tests (`test_regler_api.py` samt dem Weg über eine Platzhalter-Bridge,
+`test_ebusd_mqtt.py`, `test_addon_ebusd.py`, `regler.test.ts`), mit ebusd 26.1 am Übungsadapter
+(Stellen, Nachlesen, Ablehnen des nicht Erlaubten) und in der Vorführung (vergleichen, Kurve
+ziehen, Schieber, Schalter, Übersicht, Stellen, Protokoll; breit und am Handy).
+
+*Nicht geprüft:* an der echten Wärmepumpe. Offen ist vor allem, ob der Regler einen Rundruf
+von ebusd als Änderung annimmt, ob die Kennungen stimmen (dafür der Vergleich), und was der
+Speicher des Reglers an Schreibvorgängen verträgt.
+
+**Stufe 3, nicht gebaut: Automatik.** Der Fahrplan verschiebt den Vorlauf oder das Warmwasser
+selbst, mit Preis und Sonne. Erst nachdem Stufe 2 an der Anlage erprobt ist.
+
+## Der Betrieb über Tage: Läufe, Abtauen, Takten, Heizkurve
+
+Stand 14.11.2026. Seite: Technik → Wärmepumpe → Betrieb (`/waerme/waermepumpe/betrieb`),
+Rechnung: `packages/hems-core/src/hems_core/thermal/betrieb.py`, Antwort:
+`GET /api/v1/waermepumpe/betrieb?tage=14`. Eine Auszählung der gespeicherten Minuten, mit
+denselben Reihen wie die Kennlinie und dazu dem Vorlauf-Sollwert des Reglers
+(`heat_pump_flow_setpoint_c`). Gesteuert wird von hier nichts.
+
+| Was | Wie es entsteht |
+|---|---|
+| Lauf | Vom Anlaufen des Verdichters (Zustand 3, 4 oder 6; ohne Zustand: Frequenz, dann Leistung) bis zum Halt. Ein Abtauen (Zustand 9) mittendrin beendet ihn nicht. Eine Lücke in den Daten über 90 Sekunden beendet ihn. |
+| Lauflänge | Nur von Läufen, deren Anfang und Ende in den Daten liegen. Klassen: unter 10, 10 bis 20, 20 bis 40, 40 bis 90, ab 90 Minuten (gesetzt; unter zehn Minuten kommt ein Lauf nicht aus dem Anlauf, den die Kennlinie verwirft). |
+| Abtauen | Minuten im Zustand 9, und wie oft der Zustand begann. |
+| Wärme einer Minute | Durchfluss mal (Vorlauf minus Rücklauf) mal 4,186 kJ/(kg K), **mit Vorzeichen**: beim Abtauen holt die Maschine Wärme aus dem Heizwasser, die Minute zählt negativ. |
+| Arbeitszahl über alles | Summe der Wärme durch Summe des Stroms über alle Minuten im Lauf, für die sich eine Wärme rechnen ließ. Enthält Anlauf, Abtauen und Heizstab. Ab 0,5 kWh Strom am Tag (gesetzt). |
+| Arbeitszahl im Heizbetrieb | Aus den Fenstern der Kennlinie desselben Tages: eingeschwungen, ohne Abtauen und Heizstab. |
+| Heizstab | Erschlossen wie in der Kennlinie (Zähler über dem Gewöhnlichen), nicht gelesen. |
+| Heizkurve des Reglers | Je Stunde mit mindestens zehn Minuten Heizbetrieb das Mittel von Außentemperatur und Vorlauf-Sollwert; durch die Stunden eine Gerade nach kleinsten Quadraten, ab sechs Stunden und drei Grad Spanne draußen (beides gesetzt). |
+
+**Grenzen und offene Punkte.**
+
+* Geprüft mit Tests (`test_betrieb.py`, `test_betrieb_api.py`, `betrieb.test.ts`) und in der
+  Vorführung, deren Minuten erzeugt sind. Im Haus noch nicht angesehen.
+* Den Zustand „taut ab“ sendet die Maschine nur, wenn das Bediengerät ihn gerade abfragt (etwa
+  alle zehn Sekunden). Ein Abtauen sollte damit sichtbar sein; gesehen wurde im Haus noch
+  keines, bestätigt ist die Zahl 9 für diese Maschine also nicht.
+* Die Arbeitszahl über alles kann über der im Heizbetrieb liegen: kurze Läufe am milden
+  Nachmittag stehen nur in der ersten, weil sie kein Fenster der Kennlinie füllen.
+* Warmwasser und Heizen sind in der Heizkurve nicht getrennt. Verlangt der Regler für
+  Warmwasser mehr, liegen diese Stunden über der Geraden und ziehen sie nach oben. Getrennt
+  wird, sobald die Stellung des Umschaltventils im Haus bestätigt ist.
+* Der Durchflussgeber ist nicht geeicht; ein Fehler dort verschiebt alle Arbeitszahlen gemeinsam.
+
+## Die gemessene Kennlinie der Wärmepumpe
+
+Stand 14.11.2026, Nutzerwunsch: Messpunkte der Arbeitszahl über Außen- und Vorlauftemperatur
+sammeln, darstellen und daraus die eigene Kennlinie nach der Methode der kleinsten Quadrate
+ableiten. Seite: Technik → Wärmepumpe → Kennlinie (`/waerme/waermepumpe/kennlinie`), Rechnung:
+`packages/hems-core/src/hems_core/thermal/kennlinie.py`, Antwort:
+`GET /api/v1/waermepumpe/kennlinie?tage=30`.
+
+**Ein Messpunkt** ist ein Fenster von zehn Minuten auf dem Raster der Uhr, in dem die Maschine
+in mindestens acht Minuten heizt (Zustand 3, 4 oder 6), schon länger als zehn Minuten läuft und
+alle Werte da sind. Kurze Lücken einer Reihe (bis fünf Minuten) werden überbrückt.
+Arbeitszahl = Summe der Wärme (Durchfluss mal Spreizung mal 4,186 kJ/(kg K)) durch Summe des
+Stroms am Zähler. Mit den Zahlen vom 14.11.2026, 10:20 (30,1 l/min, 36,2 und 30,0 °C, 3,16 kW)
+sind das 13,0 kW und 4,1; dieselbe Rechnung prüft `packages/hems-core/tests/test_kennlinie.py`.
+
+| Festlegung | Wert | Herkunft |
+|---|---|---|
+| Länge eines Fensters | 10 Minuten | gesetzt; der Bus meldet im Abstand von Sekunden bis zu einer Minute, darunter stehen Werte nebeneinander, die nicht zusammengehören |
+| Brauchbare Minuten je Fenster | mindestens 8 von 10 | gesetzt; eine einzelne Minute ohne Wert soll kein Fenster kosten |
+| Überbrückte Lücke einer Reihe | bis 5 Minuten, Gerade zwischen den Nachbarwerten | gesetzt; der Betriebszustand gilt so lange unverändert weiter |
+| Anlauf, der nicht zählt | 10 Minuten nach dem Start | gesetzt, nicht gemessen |
+| Heizstab, feste Grenze | Zähler ab 5,5 kW | gesetzt aus zwei Beobachtungen im Haus: 3,16 kW bei 65 Hz ohne, 8,84 kW bei 64 Hz mit Zusatz |
+| Heizstab, gemessen am Gewöhnlichen | Zähler 1,5 kW über Verhältnis mal Angabe der Maschine | gesetzt; das Verhältnis ist der Median über mindestens 30 Minuten im Lauf |
+| Arbeitszahl gilt als Messfehler | unter 1 oder über 9 | gesetzt |
+| Ausgleich ab | 12 Punkten | gesetzt |
+| Einfluss der Außentemperatur bestimmbar ab | 4 K Spanne der Punkte | gesetzt, nicht gemessen |
+| Einfluss des Vorlaufs bestimmbar ab | 5 K Spanne der Punkte | gesetzt, nicht gemessen |
+
+**Der Ausgleich** ist eine Ebene, COP = a + b · Außentemperatur + c · Vorlauftemperatur,
+bestimmt nach kleinsten Quadraten. Eine Ebene, weil sie die einfachste Form ist, die beide
+Abhängigkeiten enthält, und ihre Zahlen sich lesen lassen. Geben die Punkte einen der beiden
+Einflüsse nicht her (zu geringe Spanne, oder beide Temperaturen ändern sich im Gleichschritt),
+fällt der Term weg, und die Seite sagt, was fehlt. Die Formel gilt nur im gemessenen Bereich;
+die Seite nennt ihn und kennzeichnet, was darüber hinaus nur verlängert ist.
+
+**Die Darstellung.** Drei Ansichten derselben Punkte statt einer dreidimensionalen Fläche, die
+sich nicht ablesen lässt: Arbeitszahl über der Außentemperatur (Punkte in der Farbe ihres
+Vorlaufs, Ausgleichsgeraden für bis zu drei Vorläufe, dazu die Kennlinie des Fahrplans),
+Arbeitszahl über der Vorlauftemperatur, und das Kennfeld mit beiden Temperaturen als Achsen und
+der Arbeitszahl als Farbe. Darunter die Messung gegen die Annahme des Fahrplans, je Stützstelle
+seiner Kennlinie.
+
+**Grenzen und offene Punkte.**
+
+* Abtauen zählt nicht mit: das ist die Arbeitszahl im Heizbetrieb, nicht die eines Tages.
+* Der Durchflussgeber ist nicht geeicht. Ein Fehler dort verschiebt alle Punkte gemeinsam.
+* Die Kennzahl des Reglers wird gespeichert, ist aber nicht entschlüsselt; nach Heizen und
+  Warmwasser wird deshalb noch nicht getrennt.
+* Minuten mit Heizstab zählen nicht mit (Grenzen in der Tabelle oben). Dass es der Heizstab
+  ist, ist ein Schluss aus der Leistung, kein gelesener Wert.
+* Warmwasser zählt mit: die Maschine meldet dafür denselben Zustand wie für das Heizen.
+* Der Fahrplan rechnet weiter mit seiner Annahme (`cop_curve`); übernommen wird nichts von
+  selbst.
+* Punkte gibt es erst seit dem 14.11.2026, als die Buswerte den Dienst erreichten. Die Seite ist
+  bisher nur in der Vorführung geprüft, deren Punkte erzeugt sind.
+
+### Stunden Lauf, kein Punkt (14.11.2026)
+
+Am Abend des ersten Tages meldete der Hausherr: die Wärmepumpe lief Stunden, die Seite zeigte
+keinen einzigen Messpunkt und sagte nicht, warum. Die Minuten des Hauses kann die Sitzung nicht
+lesen; welche Ursache im Haus den Ausschlag gab, ist deshalb **nicht festgestellt**. Im Code
+standen zwei Regeln, die jede für sich alle Punkte verhindern konnten:
+
+1. **Jeder Wert in jeder Minute.** Ein Fenster zählte nur, wenn in allen zehn Minuten alle
+   Werte da waren. Die Minutenwerte sind Mittel über die Meldungen der Minute
+   (`minute_series`); ohne Meldung ist die Minute leer. Gezählt in den vier Busprotokollen
+   des Hauses (13.11. 23:20 und 23:30, 14.11. 00:06 und 16:40, je rund 40 Sekunden):
+   Durchfluss 7 bis 9 Meldungen, Betriebszustand 1 bis 4, Vorlauf (`coolat_data`) 1 bis 2,
+   Leistung der Maschine (`hp_power`) 0 bis 2, die Liste mit dem Rücklauf (`system_temps`)
+   0 bis 2, und der Rücklauf steht darin nur, wenn die Kennung an der erwarteten Stelle liegt.
+   Vier Ausschnitte sind keine Statistik; sie zeigen aber, dass eine Minute ohne Rücklauf
+   oder Vorlauf nichts Ungewöhnliches ist, und zehn lückenlose Minuten am Stück selten.
+2. **Zähler gegen Maschine, unmittelbar.** Als Heizstab galt jede Minute, in der der Zähler
+   1,5 kW über der eigenen Angabe der Maschine lag. Ob die Maschine ihre ganze Aufnahme
+   meldet, ist nicht bekannt (zwei Vergleiche im Haus: 3,16 gegen 2,95 kW und 8,84 gegen
+   3,1 kW). Meldete sie grundsätzlich weniger, fiele jede Minute heraus.
+
+Geändert: Lücken bis fünf Minuten werden überbrückt, ein Fenster braucht acht brauchbare
+Minuten, und der Heizstab wird an der festen Grenze und am gewöhnlichen Verhältnis gemessen
+(Tabelle oben). Dazu zählt die Rechnung mit, wo die Minuten im Heizbetrieb geblieben sind
+(Anlauf, Heizstab, Wert fehlte und welcher, keine Wärme, brauchbar), und die Seite zeigt das
+als Balken unter „Wo die Minuten geblieben sind“. Bleibt die Kennlinie im Haus leer, steht
+dort der Grund. Geprüft mit Tests (`test_kennlinie.py`, `test_kennlinie_api.py`,
+`bilanz.test.ts`) und in der Vorführung, nicht im Haus.
+
+Die Seite der Wärmepumpe („Jetzt“) vermutet einen Heizstab nach derselben Regel. Das
+gewöhnliche Verhältnis nimmt sie aus der zuletzt gerechneten Kennlinie; bevor jemand die
+Kennlinie geöffnet hat, gilt nur die feste Grenze.

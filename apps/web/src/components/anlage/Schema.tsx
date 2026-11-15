@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
 import type { Anlage } from "@/lib/api/models";
+import { PufferGlas } from "@/components/puffer/Glas";
 import {
   batterieWort,
   dauerText,
@@ -178,18 +179,6 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           <stop offset=".25" stopColor="#fff" stopOpacity=".06" />
           <stop offset="1" stopColor="#fff" stopOpacity=".02" />
         </linearGradient>
-        <linearGradient id="anlage-puffer" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={farbe(t[0])} />
-          <stop offset=".33" stopColor={farbe(t[1])} />
-          <stop offset=".66" stopColor={farbe(t[2])} />
-          <stop offset="1" stopColor={farbe(t[3])} />
-        </linearGradient>
-        <linearGradient id="anlage-reflex" x1="0" x2="1">
-          <stop offset="0" stopColor="#fff" stopOpacity=".22" />
-          <stop offset=".18" stopColor="#fff" stopOpacity=".05" />
-          <stop offset=".55" stopColor="#fff" stopOpacity="0" />
-          <stop offset="1" stopColor="#000" stopOpacity=".18" />
-        </linearGradient>
         <radialGradient id="anlage-sonne">
           <stop offset="0" stopColor="#ffd778" stopOpacity=".9" />
           <stop offset=".35" stopColor="#f2a900" stopOpacity=".35" />
@@ -213,9 +202,6 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
         <filter id="anlage-schatten" x="-20%" y="-20%" width="140%" height="160%">
           <feDropShadow dx="0" dy="14" stdDeviation="14" floodColor="#000" floodOpacity=".38" />
         </filter>
-        <clipPath id="anlage-pclip">
-          <rect x="824" y="92" width="72" height="470" rx="36" />
-        </clipPath>
       </defs>
 
       <text className="anlage-cap" x="60" y="54">
@@ -378,25 +364,8 @@ export function Schema({ a, nowMs, ruhig }: { a: Anlage; nowMs: number; ruhig: b
           {p.usable_kwh != null ? `${Math.round(p.usable_kwh)} kWh nutzbar · ` : ""}
           {Math.round(p.volume_liters)} l
         </text>
-        <g clipPath="url(#anlage-pclip)">
-          <rect x="824" y="92" width="72" height="470" fill="url(#anlage-puffer)" />
-          {!ruhig ? (
-            <rect x="824" y="60" width="72" height="140" fill="#fff" opacity=".07">
-              <animate attributeName="y" values="60;500;60" dur="14s" repeatCount="indefinite" calcMode="spline" keySplines=".4 0 .6 1;.4 0 .6 1" />
-            </rect>
-          ) : null}
-          <rect x="824" y="92" width="72" height="470" fill="url(#anlage-reflex)" />
-        </g>
-        <rect className="anlage-glasrand" x="824" y="92" width="72" height="470" rx="36" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="1.2" />
-        <rect x="826" y="94" width="68" height="466" rx="34" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="1" />
-        {[150, 268, 386, 504].map((y, i) => (
-          <g key={y}>
-            <line x1="900" y1={y} x2="912" y2={y} stroke="rgba(255,255,255,.3)" />
-            <text className="anlage-temp" x="918" y={y + 4}>
-              {grad(t[i])}
-            </text>
-          </g>
-        ))}
+        {/* Das Glas selbst ist die eine Zeichnung des Speichers, die es gibt (`puffer/Glas`). */}
+        <PufferGlas temps={t} x={824} y={92} breite={72} hoehe={470} ruhig={ruhig} randKlasse="anlage-glasrand" />
       </g>
       </Symbol>
 
