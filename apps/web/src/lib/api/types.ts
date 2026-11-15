@@ -1376,6 +1376,8 @@ export interface components {
             name: string;
             /** An */
             an?: boolean | null;
+            /** War An */
+            war_an?: boolean | null;
             /** Alt */
             alt?: number | null;
             /** Neu */

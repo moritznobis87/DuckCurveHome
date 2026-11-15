@@ -98,7 +98,7 @@ export const TEXTE = {
   antwortWasKannAlfredOhneModell:
     "Im Moment kann ich die Seiten erklären und sagen, wo was steht. Sobald ein Sprachmodell eingerichtet ist, beantworte ich auch Fragen zu deinen Daten.",
   antwortWasKannAlfred:
-    "Ich beantworte Fragen zu deinen Daten: Verbrauch, Kosten, PV, Wärmepumpe, Speicher, Rechnungen, Prognosen. Ich vergleiche Zeiträume und mache einen Wochenrückblick. Lichter und Raumtemperaturen schlage ich vor, geschaltet wird aber erst, wenn du den Knopf drückst. Außerdem lese ich Stromrechnungen anderer Anbieter und schlage bei der Einrichtung die Zuordnung der Sensoren vor. Ich rechne nichts selbst, die Zahlen kommen aus denselben Auswertungen wie auf den Seiten.",
+    "Ich beantworte Fragen zu deinen Daten: Verbrauch, Kosten, PV, Wärmepumpe, Speicher, Rechnungen, Prognosen. Ich vergleiche Zeiträume und mache einen Wochenrückblick. Lichter und Raumtemperaturen schlage ich vor. Geschaltet wird erst, wenn du den Vorschlag geprüft und mit OK bestätigt hast. Außerdem lese ich Stromrechnungen anderer Anbieter und schlage bei der Einrichtung die Zuordnung der Sensoren vor. Ich rechne nichts selbst, die Zahlen kommen aus denselben Auswertungen wie auf den Seiten.",
   beispiele: ["Wie war die Woche?", "Warum war der letzte Monat teurer?", "Folgt die Wärmepumpe der Anforderung?"],
   frageFeld: "Frage an Alfred …",
   frageSenden: "Fragen",
@@ -114,7 +114,12 @@ export const TEXTE = {
   mikrofonLaeuft: "Ich höre zu …",
   mikrofonHinweis: "Die Spracheingabe übernimmt der Browser; bei Safari wertet Apple die Aufnahme aus.",
   vorschlagTitel: "Vorschläge, noch nicht ausgeführt",
-  vorschlagAusfuehren: "Ausführen",
+  vorschlagPruefen: "Prüfen …",
+  bestaetigungTitel: "Wirklich ausführen?",
+  bestaetigungHinweis:
+    "Das hat Alfred vorgeschlagen, ein KI-Assistent. Ausgeführt wird genau, was hier steht, nicht was in seiner Antwort steht. Im Protokoll erscheint es als „über Alfred“.",
+  bestaetigungAbbrechen: "Abbrechen",
+  bestaetigungOk: "OK, ausführen",
   vorschlagLaeuft: "Läuft …",
   vorschlagFehler: "Das ließ sich nicht ausführen.",
   rechnungKnopf: "Rechnung eines anderen Anbieters prüfen",

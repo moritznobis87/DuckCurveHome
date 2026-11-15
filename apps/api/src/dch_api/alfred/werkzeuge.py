@@ -27,12 +27,15 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, cast
 
+import structlog
 from pydantic import BaseModel
 
 from dch_api.alfred.leitfaeden import LEITFAEDEN, leitfaden
 from dch_api.alfred.papiere import nachschlagen
 from dch_api.application.runtime import Runtime
 from hems_core.simulation import BERLIN
+
+log = structlog.get_logger("alfred")
 
 #: Schaltbare Verbraucher, die Alfred vorschlagen darf, mit Anzeigename. Eine Liste und keine
 #: Regel: "alles ausser den gefaehrlichen" waere beim naechsten neuen Aktor stillschweigend zu
@@ -44,6 +47,14 @@ SCHALTBAR: dict[str, str] = {
     "garden_fence_light": "Licht Gartenzaun",
     "coffee_machine": "Kaffeemaschine",
 }
+
+#: Das Band, in dem Alfred Raumsollwerte vorschlagen darf, und der groesste Schritt. Enger als der
+#: Endpunkt (5 bis 30 Grad), weil dort ein Mensch dreht, der weiss, was er will. Ein Vorschlag aus
+#: einem Satz, den ein Sprachmodell verstanden zu haben glaubt, bleibt im Wohnbereich und in
+#: kleinen Schritten - auch dann noch, wenn jemand den Bestaetigungsknopf zu schnell drueckt.
+SOLL_ALFRED_MIN = 16.0
+SOLL_ALFRED_MAX = 24.0
+SOLL_ALFRED_SCHRITT_K = 3.0
 
 #: Felder, die nie an das Modell gehen, gleich in welchem Ergebnis sie stehen (siehe oben).
 GESPERRT = frozenset(
@@ -81,12 +92,78 @@ class WerkzeugError(Exception):
     Internes enthalten."""
 
 
+#: Was Alfred vom Dienst sehen darf: Lesefunktionen, sonst nichts. Eine Liste und keine Regel
+#: ("alles ausser set_*"): `switch_actuator`, `arm_alarm`, `import_history` heissen nicht set_, und
+#: die naechste schreibende Funktion hiesse vielleicht auch anders. Eine neue Lesefunktion, die
+#: hier fehlt, faellt im Test sofort auf; eine schreibende, die hier fehlt, faellt nie auf - und
+#: genau so soll es sein.
+LESEN = frozenset(
+    {
+        "now",
+        "plan",
+        "live_state",
+        "energy_summary",
+        "heat_report",
+        "heat_balance",
+        "shift_report",
+        "ev_report",
+        "pv_report",
+        "nachbetrachtung",
+        "waermepumpe",
+        "kontaktwirkung",
+        "rooms_live",
+        "recent_decisions",
+        "forecast_evaluation",
+        "diagnose_day",
+        "invoices",
+        "invoice",
+    }
+)
+
+
+class SchreibsperreError(PermissionError):
+    """Ein Werkzeug hat versucht, an eine Funktion ausserhalb von `LESEN` zu kommen."""
+
+
+class NurLesen:
+    """Der Dienst, wie Alfred ihn sieht: nur die Funktionen aus `LESEN`.
+
+    **Das ist die eigentliche Sicherheitsschicht.** Kein Werkzeug schreibt, und das steht in
+    jedem Docstring - aber ein Docstring haelt niemanden auf. Dieser Filter tut es: Selbst ein
+    fehlerhaftes oder spaeter hinzugefuegtes Werkzeug, selbst ein Modell, das ein Werkzeug mit
+    boesen Argumenten ruft, erreicht kein `switch_actuator`, kein `set_room_setpoint`, kein
+    `arm_alarm`. Geschaltet wird ausschliesslich ueber die Endpunkte der Oberflaeche, und dorthin
+    fuehrt aus Alfred kein Weg ausser dem Knopf, den ein Mensch drueckt.
+    """
+
+    __slots__ = ("_dienst",)
+
+    def __init__(self, dienst: Runtime) -> None:
+        object.__setattr__(self, "_dienst", dienst)
+
+    def __getattr__(self, name: str) -> Any:
+        if name not in LESEN:
+            raise SchreibsperreError(f"Alfred darf {name!r} nicht benutzen.")
+        return getattr(object.__getattribute__(self, "_dienst"), name)
+
+    def __setattr__(self, name: str, wert: Any) -> None:
+        raise SchreibsperreError("Alfred darf am Dienst nichts setzen.")
+
+
 @dataclass
 class Kontext:
-    """Was ein Werkzeug braucht: den Zugang zu den Daten und die Vorschlagsliste dieser Frage."""
+    """Was ein Werkzeug braucht: den Zugang zu den Daten und die Vorschlagsliste dieser Frage.
+
+    `runner` ist immer der gefilterte Dienst (`NurLesen`), auch wenn der Aufrufer den echten
+    uebergibt: Die Huelle entsteht hier und nicht beim Aufrufer, damit niemand sie vergessen kann.
+    """
 
     runner: Runtime
     vorschlaege: list[dict[str, Any]] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.runner, NurLesen):
+            self.runner = cast(Runtime, NurLesen(self.runner))
 
 
 @dataclass(frozen=True)
@@ -399,7 +476,16 @@ async def _schalten_vorschlagen(k: Kontext, verbraucher: str, an: bool) -> dict[
             + (". Die Angabe passt auf mehrere." if treffer else ".")
         )
     schluessel, name = treffer[0]
-    vorschlag = {"art": "schalten", "ziel": schluessel, "name": name, "an": bool(an)}
+    # Der heutige Zustand, damit die Bestaetigung "aus -> ein" zeigen kann und nicht nur "ein".
+    messung = k.runner.live_state().snapshot.actuators.get(schluessel)
+    war_an = None if messung is None or messung.value is None else bool(messung.value)
+    vorschlag = {
+        "art": "schalten",
+        "ziel": schluessel,
+        "name": name,
+        "an": bool(an),
+        "war_an": war_an,
+    }
     if vorschlag not in k.vorschlaege:
         k.vorschlaege.append(vorschlag)
     return {
@@ -424,13 +510,21 @@ async def _sollwert_vorschlagen(k: Kontext, raum: str, grad: float) -> dict[str,
         wert = float(grad)
     except (TypeError, ValueError) as fehler:
         raise WerkzeugError("Die Temperatur ist keine Zahl.") from fehler
-    if not math.isfinite(wert) or not rooms_logic.SOLL_MIN <= wert <= rooms_logic.SOLL_MAX:
+    untere = max(rooms_logic.SOLL_MIN, SOLL_ALFRED_MIN)
+    obere = min(rooms_logic.SOLL_MAX, SOLL_ALFRED_MAX)
+    if not math.isfinite(wert) or not untere <= wert <= obere:
         raise WerkzeugError(
-            f"Sollwerte liegen zwischen {rooms_logic.SOLL_MIN} und {rooms_logic.SOLL_MAX} Grad."
+            f"Alfred schlaegt nur Sollwerte zwischen {untere:g} und {obere:g} Grad vor. "
+            "Andere Werte stellt der Anwender selbst auf der Seite Haus."
         )
     # Auf halbe Grad wie der Endpunkt: Ein Knopf, der 21,3 verspricht, wo 21,5 gestellt wird,
     # verspraeche etwas anderes, als die Anwendung tut.
     wert = round(wert * 2) / 2
+    if r.setpoint_c is not None and abs(wert - r.setpoint_c) > SOLL_ALFRED_SCHRITT_K:
+        raise WerkzeugError(
+            f"Alfred aendert einen Sollwert um hoechstens {SOLL_ALFRED_SCHRITT_K:g} Grad "
+            f"(jetzt {r.setpoint_c:g}). Groessere Schritte stellt der Anwender selbst."
+        )
     vorschlag = {
         "art": "sollwert",
         "ziel": r.id,
@@ -696,6 +790,11 @@ async def ausfuehren(name: str, argumente: dict[str, Any], kontext: Kontext) -> 
         return await werkzeug.ausfuehrung(kontext, **argumente)
     except WerkzeugError as fehler:
         return {"fehler": str(fehler)}
+    except SchreibsperreError:
+        # Darf nie vorkommen: Kein Werkzeug soll an eine schreibende Funktion. Kommt es doch vor,
+        # ist das ein Fehler im Code und gehoert laut ins Protokoll, nicht still in die Antwort.
+        log.warning("alfred_schreibsperre", werkzeug=name)
+        return {"fehler": "Das ist Alfred nicht erlaubt."}
     except TypeError:
         return {"fehler": "Dem Aufruf fehlt eine Angabe."}
     except Exception:

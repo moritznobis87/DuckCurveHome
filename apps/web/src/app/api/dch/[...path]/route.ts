@@ -53,6 +53,9 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     headers["x-dch-urheber-name"] = session.name;
     headers["x-dch-urheber-geraet"] = session.name;
     headers["x-dch-urheber-rolle"] = session.role;
+    // Ein Vorschlag von Alfred, im Panel bestätigt: Das Protokoll soll zeigen, dass ein
+    // Sprachmodell den Anstoß gab. Nur dieser eine Wert wird durchgereicht, kein freier Text.
+    if (req.headers.get("x-dch-ueber") === "alfred") headers["x-dch-urheber-ueber"] = "alfred";
   }
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;

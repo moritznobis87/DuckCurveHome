@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AREAS } from "@/lib/areas";
 import { Alfred, rechnungZusammenfassung } from "./Alfred";
 import { SEITEN, TEXTE, ortBestimmen, wegweiser, wissen } from "./hilfetexte";
-import { schrittText, stromLesen, verlaufFuerServer, vorschlagAufruf, vorschlagText } from "./strom";
+import { schrittText, stromLesen, verlaufFuerServer, vorschlagAenderung, vorschlagAufruf, vorschlagText } from "./strom";
 
 let pfad = "/strom";
 let rolle: "owner" | "guest" = "owner";
@@ -90,6 +90,9 @@ describe("Strom", () => {
       rumpf: { setpoint_c: 22.5 },
     });
     expect(vorschlagText({ art: "sollwert", ziel: 3, name: "Bad", alt: 21, neu: 22.5 })).toBe("Bad: Soll 21 → 22,5 °C");
+    expect(vorschlagAenderung({ art: "sollwert", ziel: 3, name: "Bad", alt: 21, neu: 22.5 })).toBe("Bad: Solltemperatur 21 °C → 22,5 °C");
+    // Ein unbekannter Ausgangszustand wird nicht erraten.
+    expect(vorschlagAenderung({ art: "schalten", ziel: "x", name: "Licht", an: false, war_an: null })).toBe("Licht: ? → aus");
   });
 });
 
@@ -123,7 +126,9 @@ describe("Panel", () => {
     expect(screen.queryByLabelText(TEXTE.frageFeld)).not.toBeInTheDocument();
   });
 
-  it("mit Modell: Frage, Schritt, KI-Antwort und ein Vorschlag, der erst auf Knopfdruck schaltet", async () => {
+  /** Ein Modell, das "Licht an" mit einem Vorschlag beantwortet - und im Text etwas anderes
+   *  behauptet als im Vorschlag steht. Die Bestätigung muss den Vorschlag zeigen, nicht den Text. */
+  function lichtModell(geschaltet: RequestInit[]): void {
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {
       if (url.endsWith("/alfred/status")) return Promise.resolve(Response.json({ bereit: true, anbieter: "Mistral" }));
       if (url.endsWith("/alfred/ask/stream")) {
@@ -132,29 +137,62 @@ describe("Panel", () => {
         expect(rumpf.wissen).toContain("Bereich Energie, Reiter Strom");
         return Promise.resolve(
           strom(
-            'event: schritt\ndata: {"werkzeug": "schalten_vorschlagen"}\n\nevent: antwort\ndata: {"bereit": true, "antwort": "Ich habe es **vorgeschlagen**.", "vorschlaege": [{"art": "schalten", "ziel": "terrace_light", "name": "Licht Terrasse", "an": true}]}\n\n',
+            'event: schritt\ndata: {"werkzeug": "schalten_vorschlagen"}\n\nevent: antwort\ndata: {"bereit": true, "antwort": "Ich habe den Innenhof **vorgeschlagen**.", "vorschlaege": [{"art": "schalten", "ziel": "terrace_light", "name": "Licht Terrasse", "an": true, "war_an": false}]}\n\n',
           ),
         );
       }
       if (url.endsWith("/control/actuators/terrace_light")) {
-        expect(JSON.parse(String(init?.body))).toEqual({ state: true });
+        geschaltet.push(init ?? {});
         return Promise.resolve(Response.json({ ok: true, message_de: "Licht Terrasse eingeschaltet." }));
       }
       return Promise.reject(new Error(url));
     });
+  }
+
+  async function lichtFragen(): Promise<void> {
     render(<Alfred />);
     fireEvent.click(screen.getByRole("button", { name: TEXTE.ansprechen }));
-    const feld = await screen.findByLabelText(TEXTE.frageFeld);
-    fireEvent.change(feld, { target: { value: "Licht an" } });
+    fireEvent.change(await screen.findByLabelText(TEXTE.frageFeld), { target: { value: "Licht an" } });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: TEXTE.frageSenden }));
     });
     await screen.findByText("vorgeschlagen");
+  }
+
+  it("ein Vorschlag schaltet nicht von selbst, und Abbrechen schaltet nie", async () => {
+    const geschaltet: RequestInit[] = [];
+    lichtModell(geschaltet);
+    await lichtFragen();
     expect(screen.getByText(TEXTE.kiMarke)).toBeInTheDocument();
     // Noch nichts geschaltet: nur Status und Frage gingen hinaus.
     expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(["/api/dch/alfred/status", "/api/dch/alfred/ask/stream"]);
-    fireEvent.click(screen.getByRole("button", { name: TEXTE.vorschlagAusfuehren }));
+
+    fireEvent.click(screen.getByRole("button", { name: TEXTE.vorschlagPruefen }));
+    const dialog = screen.getByRole("alertdialog");
+    // Gezeigt wird der Vorschlag aus dem Dienst, mit vorher und nachher - nicht der Antworttext.
+    expect(dialog).toHaveTextContent("Licht Terrasse: aus → ein");
+    expect(screen.getByRole("button", { name: TEXTE.bestaetigungAbbrechen })).toHaveFocus();
+
+    fireEvent.click(screen.getByRole("button", { name: TEXTE.bestaetigungAbbrechen }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    // Escape bricht eine offene Bestätigung ab, ohne das Panel zu schließen.
+    fireEvent.click(screen.getByRole("button", { name: TEXTE.vorschlagPruefen }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: TEXTE.name })).toBeInTheDocument();
+    expect(geschaltet).toHaveLength(0);
+  });
+
+  it("erst OK schaltet, und zwar mit dem Vermerk „über Alfred“", async () => {
+    const geschaltet: RequestInit[] = [];
+    lichtModell(geschaltet);
+    await lichtFragen();
+    fireEvent.click(screen.getByRole("button", { name: TEXTE.vorschlagPruefen }));
+    fireEvent.click(screen.getByRole("button", { name: TEXTE.bestaetigungOk }));
     await screen.findByText("Licht Terrasse eingeschaltet.");
+    expect(geschaltet).toHaveLength(1);
+    expect(JSON.parse(String(geschaltet[0]!.body))).toEqual({ state: true });
+    expect((geschaltet[0]!.headers as Record<string, string>)["x-dch-ueber"]).toBe("alfred");
     await waitFor(() => expect(screen.queryByText(TEXTE.vorschlagTitel)).not.toBeInTheDocument());
   });
 

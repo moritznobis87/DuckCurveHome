@@ -1586,6 +1586,8 @@ class AlfredVorschlagOut(BaseModel):
     ziel: str | int
     name: str
     an: bool | None = None
+    #: Zustand vor dem Schalten, aus dem Live-Zustand; `None`, wenn keiner gemeldet ist.
+    war_an: bool | None = None
     alt: float | None = None
     neu: float | None = None
 

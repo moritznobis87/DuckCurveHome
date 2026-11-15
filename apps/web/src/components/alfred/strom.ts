@@ -16,6 +16,8 @@ export interface Vorschlag {
   ziel: string | number;
   name: string;
   an?: boolean | null;
+  /** Zustand vor dem Schalten, aus dem Live-Zustand; null, wenn keiner gemeldet ist. */
+  war_an?: boolean | null;
   alt?: number | null;
   neu?: number | null;
 }
@@ -90,6 +92,17 @@ export function vorschlagText(v: Vorschlag): string {
   if (v.art === "schalten") return `${v.name} ${v.an ? "einschalten" : "ausschalten"}`;
   const zahl = (x: number | null | undefined) => (x == null ? "?" : x.toLocaleString("de-DE", { maximumFractionDigits: 1 }));
   return `${v.name}: Soll ${zahl(v.alt)} → ${zahl(v.neu)} °C`;
+}
+
+/** Was genau sich ändert, für die Bestätigung: vorher und nachher, aus den Feldern des Vorschlags.
+ *  Unbekanntes steht als „?" und wird nicht erraten. */
+export function vorschlagAenderung(v: Vorschlag): string {
+  const zahl = (x: number | null | undefined) => (x == null ? "?" : `${x.toLocaleString("de-DE", { maximumFractionDigits: 1 })} °C`);
+  if (v.art === "schalten") {
+    const vorher = v.war_an == null ? "?" : v.war_an ? "ein" : "aus";
+    return `${v.name}: ${vorher} → ${v.an ? "ein" : "aus"}`;
+  }
+  return `${v.name}: Solltemperatur ${zahl(v.alt)} → ${zahl(v.neu)}`;
 }
 
 /** Wohin ein Vorschlag beim Drücken geht - dieselben Endpunkte wie die Schalter der Oberfläche,

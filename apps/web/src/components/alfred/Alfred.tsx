@@ -19,7 +19,7 @@ import { usePathname } from "next/navigation";
 
 import { useRole } from "@/lib/live/useRole";
 import { TEXTE, ortBestimmen, wissen } from "./hilfetexte";
-import { schrittText, stromLesen, verlaufFuerServer, vorschlagAufruf, vorschlagText, type Vorschlag } from "./strom";
+import { schrittText, stromLesen, verlaufFuerServer, vorschlagAenderung, vorschlagAufruf, vorschlagText, type Vorschlag } from "./strom";
 
 export interface Nachricht {
   kennung: string;
@@ -87,6 +87,8 @@ export function Alfred() {
   const [schritt, setSchritt] = useState<string | null>(null);
   const [vorschlaege, setVorschlaege] = useState<Vorschlag[]>([]);
   const [fuehrtAus, setFuehrtAus] = useState<string | null>(null);
+  //: Der Vorschlag, dessen Bestätigung gerade offen steht, oder null.
+  const [bestaetigen, setBestaetigen] = useState<Vorschlag | null>(null);
   const [hoert, setHoert] = useState(false);
   const [werkzeug, setWerkzeug] = useState<"rechnung" | "zuordnung" | null>(null);
   const [liste, setListe] = useState("");
@@ -119,7 +121,12 @@ export function Alfred() {
   // Escape und Klick daneben schließen; nur bei offenem Panel registriert.
   useEffect(() => {
     if (!offen) return;
-    const taste = (e: KeyboardEvent) => e.key === "Escape" && zumachen();
+    // Steht die Bestätigung offen, bricht Escape sie ab und schließt nicht das ganze Panel.
+    const taste = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (bestaetigen) setBestaetigen(null);
+      else zumachen();
+    };
     const daneben = (e: PointerEvent) => {
       if (!huelle.current?.contains(e.target as Node)) setOffen(false);
     };
@@ -129,7 +136,7 @@ export function Alfred() {
       document.removeEventListener("keydown", taste);
       document.removeEventListener("pointerdown", daneben);
     };
-  }, [offen, zumachen]);
+  }, [offen, zumachen, bestaetigen]);
 
   // Einmal beim ersten Öffnen: Ist ein Modell eingerichtet? Liest nur eine Einstellung.
   useEffect(() => {
@@ -200,7 +207,13 @@ export function Alfred() {
     setFuehrtAus(schluessel);
     try {
       const { pfad: ziel, rumpf } = vorschlagAufruf(v);
-      const antwort = await fetch(ziel, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(rumpf) });
+      // `x-dch-ueber: alfred` lässt das BFF als Urheberzusatz durch: Im Protokoll steht dann
+      // „über Alfred" und nicht nur der Gerätename.
+      const antwort = await fetch(ziel, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-dch-ueber": "alfred" },
+        body: JSON.stringify(rumpf),
+      });
       const daten = (await antwort.json().catch(() => null)) as { ok?: boolean; message_de?: string } | null;
       if (!antwort.ok || daten?.ok === false) throw new Error(daten?.message_de ?? String(antwort.status));
       setVorschlaege((bisher) => bisher.filter((x) => `${x.art}-${x.ziel}` !== schluessel));
@@ -299,12 +312,44 @@ export function Alfred() {
                 {vorschlaege.map((v) => (
                   <li key={`${v.art}-${v.ziel}`}>
                     <span className="was">{vorschlagText(v)}</span>
-                    <button type="button" disabled={fuehrtAus !== null} onClick={() => void ausfuehren(v)}>
-                      {fuehrtAus === `${v.art}-${v.ziel}` ? TEXTE.vorschlagLaeuft : TEXTE.vorschlagAusfuehren}
+                    <button type="button" disabled={fuehrtAus !== null || bestaetigen !== null} onClick={() => setBestaetigen(v)}>
+                      {fuehrtAus === `${v.art}-${v.ziel}` ? TEXTE.vorschlagLaeuft : TEXTE.vorschlagPruefen}
                     </button>
                   </li>
                 ))}
               </ul>
+            </div>
+          ) : null}
+
+          {/* Die letzte Schicht vor dem Schalten: ein Mensch liest, was genau passiert, und sagt ja.
+              Gezeigt werden die geprüften Felder des Vorschlags aus dem Dienst - nicht der Text der
+              Antwort, denn den hat das Modell formuliert und der darf etwas anderes behaupten.
+              „Abbrechen" hat den Fokus: Wer nur Enter drückt, hat nichts geschaltet. */}
+          {bestaetigen ? (
+            <div className="alfred-bestaetigung" role="alertdialog" aria-modal="true" aria-labelledby={`${feldKennung}-frage`} aria-describedby={`${feldKennung}-was`}>
+              <p className="frage" id={`${feldKennung}-frage`}>
+                {TEXTE.bestaetigungTitel}
+              </p>
+              <p className="was" id={`${feldKennung}-was`}>
+                {vorschlagAenderung(bestaetigen)}
+              </p>
+              <p className="hinweis">{TEXTE.bestaetigungHinweis}</p>
+              <div className="knoepfe">
+                <button type="button" autoFocus onClick={() => setBestaetigen(null)}>
+                  {TEXTE.bestaetigungAbbrechen}
+                </button>
+                <button
+                  type="button"
+                  className="ok"
+                  onClick={() => {
+                    const v = bestaetigen;
+                    setBestaetigen(null);
+                    void ausfuehren(v);
+                  }}
+                >
+                  {TEXTE.bestaetigungOk}
+                </button>
+              </div>
             </div>
           ) : null}
 

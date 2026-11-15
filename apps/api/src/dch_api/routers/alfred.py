@@ -26,7 +26,7 @@ from fastapi import APIRouter, Depends, Request
 from sse_starlette.sse import EventSourceResponse
 
 from dch_api.alfred import dienst, rechnung, zuordnung
-from dch_api.alfred.werkzeuge import Kontext
+from dch_api.alfred.werkzeuge import Kontext, NurLesen
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
 from dch_api.errors import DchError
@@ -218,7 +218,8 @@ async def rechnung_lesen(
             502,
             {"grund": str(fehler)},
         ) from fehler
-    return await rechnung.pruefen(runner, rechnung.lesen(roh), len(zeilen))
+    # Auch hier nur lesend: die Pruefung braucht den Zaehler, sonst nichts.
+    return await rechnung.pruefen(NurLesen(runner), rechnung.lesen(roh), len(zeilen))
 
 
 @router.post(

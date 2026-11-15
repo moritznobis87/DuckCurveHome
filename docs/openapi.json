@@ -3068,6 +3068,17 @@
             ],
             "title": "An"
           },
+          "war_an": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "War An"
+          },
           "alt": {
             "anyOf": [
               {

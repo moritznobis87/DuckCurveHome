@@ -869,6 +869,13 @@ button.ansicht { cursor: pointer; }
 .alfred-vorschlaege-liste ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .alfred-vorschlaege-liste li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
 .alfred-vorschlaege-liste li button { border-color: var(--amber); color: var(--text-1); }
+.alfred-bestaetigung { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 2px solid var(--amber); border-radius: 10px; background: var(--surface-2); }
+.alfred-bestaetigung .frage { margin: 0; font-weight: 600; font-size: 15px; }
+.alfred-bestaetigung .was { margin: 0; font-size: 16px; color: var(--amber-soft); }
+.alfred-bestaetigung .hinweis { margin: 0; font-size: 12px; line-height: 1.45; color: var(--text-2); }
+.alfred-bestaetigung .knoepfe { display: flex; justify-content: flex-end; gap: 8px; }
+.alfred-bestaetigung button { padding: 8px 14px; border: 1px solid var(--line-2); border-radius: 8px; background: none; color: var(--text-1); font-size: 14px; cursor: pointer; }
+.alfred-bestaetigung button.ok { border-color: var(--amber); background: var(--amber); color: var(--deep); font-weight: 600; }
 .alfred-schritt { margin: 0; font-size: 13px; color: var(--text-2); }
 .alfred-stufe { margin: 0; font-size: 11px; line-height: 1.45; color: var(--text-3); }
 @media print { .alfred { display: none; } }
