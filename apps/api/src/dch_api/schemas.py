@@ -1197,8 +1197,9 @@ class WaermepumpeOut(BaseModel):
     """Die Wärmepumpe im Augenblick, für ihre Technikseite.
 
     Jede Größe ist ein Messwert mit Zeitpunkt und Güte: fehlt einer, steht auf der Seite ein
-    Fragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende sind
-    Abschätzungen; warum, steht in `hinweise_de` und in `application/waermepumpe.py`.
+    Fragezeichen an seiner Stelle und keine Null. Die drei gerechneten Größen am Ende
+    entstehen aus diesen Messwerten; wie, steht in `hinweise_de` und in
+    `application/waermepumpe.py`.
     """
 
     now: datetime
@@ -1223,7 +1224,7 @@ class WaermepumpeOut(BaseModel):
     # Speicher: der Fühler, den die Wärmepumpe selbst hat, und die vier eigenen, oben nach unten.
     speicherfuehler_c: Measurement
     puffer_c: list[Measurement] = Field(default_factory=list)
-    # Gerechnet, als Abschätzung
+    # Gerechnet aus den Messwerten darüber
     spreizung_k: float | None = None
     waermeleistung_kw: float | None = None
     arbeitszahl: float | None = None

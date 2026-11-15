@@ -103,7 +103,7 @@ function Innengeraet({ d, ruhig }: { d: Waermepumpe; ruhig: boolean }) {
       <rect x={30} y={92} width={56} height={84} rx={6} fill="var(--deep)" stroke="var(--line-2)" />
       <path d="M38 104 L78 114 L38 124 L78 134 L38 144 L78 154 L38 164" fill="none" stroke={d.laeuft ? "var(--heat-pump)" : "var(--line-2)"} strokeWidth={2.5} strokeLinejoin="round" />
       <text x={58} y={192} textAnchor="middle" fontSize={10.5} fill="var(--text-3)">Wärmetauscher</text>
-      <Schild x={100} y={92} w={186} h={56} name="Wärme, abgeschätzt" wert={zahl(d.waermeleistung_kw)} einheit="kW" gross />
+      <Schild x={100} y={92} w={186} h={56} name="Wärmeleistung" wert={zahl(d.waermeleistung_kw)} einheit="kW" gross />
       {/* Die Umwälzpumpe. Sie dreht, wenn der Durchflussgeber etwas meldet. */}
       <circle cx={262} cy={176} r={16} fill="var(--deep)" stroke={d.pumpe_laeuft ? "var(--mist)" : "var(--line-2)"} strokeWidth={2} />
       <g className={dreht ? "wp-dreht" : undefined} style={{ transformOrigin: "262px 176px" }}>

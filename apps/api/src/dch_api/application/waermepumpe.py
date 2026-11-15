@@ -7,7 +7,7 @@ Sollwert und die Leistungsaufnahme nach Auskunft der Maschine. Die gemessene Lei
 kommt weiter vom Zähler an der Zuleitung, die Puffertemperaturen von den eigenen Fühlern.
 Herkunft und Vorbehalte je Größe: `docs/SENSORIK.md`.
 
-**Was hier gerechnet wird, ist eine Abschätzung, und so heißt es auch.**
+**Was hier gerechnet wird.**
 
 - Spreizung = Vorlauf minus Rücklauf.
 - Wärmeleistung = Durchfluss mal Spreizung mal Wärmekapazität des Wassers (4,186 kJ/(kg K),
@@ -19,7 +19,9 @@ Zwei Dinge daran sind nicht gesichert (Stand 14.11.2026): Der Durchflussgeber is
 und seine Einheit als Liter je Minute gelesen. Und die Werte kommen nicht gleichzeitig, sondern
 im Abstand von Sekunden bis zu einer Minute. Die Zuordnung des Rücklaufs (Kennung 769e) war als
 unbestätigt gekennzeichnet; der Hausherr hat am 14.11.2026 entschieden, sie als gegeben zu
-nehmen (`docs/SENSORIK.md`). Eine Arbeitszahl aus diesen Zahlen ist deshalb ein Anhalt.
+nehmen (`docs/SENSORIK.md`). Bis zum 15.11.2026 hießen Wärmeleistung und Arbeitszahl auf der
+Seite deshalb „abgeschätzt“; auf seine Nachfrage hin steht dort jetzt nur noch, woraus sie
+gerechnet sind. Die beiden Vorbehalte stehen weiter hier und in der Dokumentation.
 
 Reine Zusammensetzung, kein I/O.
 """
@@ -360,8 +362,8 @@ def zusammensetzen(
         )
     else:
         hinweise.append(
-            "Wärmeleistung und Arbeitszahl sind Abschätzungen: Der Durchflussgeber der Maschine "
-            "ist nicht geeicht."
+            "Wärmeleistung aus Durchfluss mal Spreizung zwischen Vorlauf und Rücklauf, "
+            "Arbeitszahl daraus geteilt durch den Strom am Zähler."
         )
         if zusatz is not None and zaehler.value is not None and bus.value is not None:
             hinweise.append(
