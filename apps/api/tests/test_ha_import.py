@@ -102,7 +102,8 @@ def test_states_step_function_and_raw_readings() -> None:
     rows.append(
         f"sensor.myenergi_hub_14117600_power_grid,unavailable,{(base + timedelta(minutes=25)).timestamp()}"
     )
-    dump = parse_dump("\n".join(rows).encode(), RULES)
+    # Auch die Uhr fest: Ob ein Zustand noch als Rohwert gilt, misst der Parser an `now`.
+    dump = parse_dump("\n".join(rows).encode(), RULES, now=base + timedelta(hours=1))
     assert dump.kind == "states"
     pv = dump.minutes["pv_power_kw"]
     assert pv[base] == pytest.approx(3.0) and pv[base + timedelta(minutes=9)] == pytest.approx(3.0)
