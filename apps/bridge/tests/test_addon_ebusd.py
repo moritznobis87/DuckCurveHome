@@ -108,7 +108,7 @@ def test_die_eigenen_zeilen_fuer_die_aerotop_haben_die_form_die_ebusd_liest() ->
 
 
 def test_die_zeilen_zum_abfragen_fragen_nur_und_sind_zugeordnet() -> None:
-    """`aerotop_abfragen.csv`: die vier Werte, die das Add-on ab 0.3.0 selbst abfragt. Jede Zeile
+    """`aerotop_abfragen.csv`: die Werte, die das Add-on ab 0.3.0 selbst abfragt. Jede Zeile
     ist eine Frage (`r1` bis `r9`, Dienst 2000). Eine Zeile zum Stellen (`w`, Dienst 2020) darf
     hier nie stehen: es ist die einzige Datei, mit der das Add-on von sich aus sendet."""
     zeilen = [
@@ -116,7 +116,7 @@ def test_die_zeilen_zum_abfragen_fragen_nur_und_sind_zugeordnet() -> None:
         for z in (ADDON / "aerotop_abfragen.csv").read_text(encoding="utf-8").splitlines()
         if z and not z.startswith("#")
     ]
-    assert len(zeilen) == 4
+    assert len(zeilen) == 5
     for spalten in zeilen:
         assert re.fullmatch(r"r[1-9]", spalten[0]), spalten[0]
         assert spalten[5] in {"18", "1e"} and spalten[6] == "2000"
@@ -128,6 +128,19 @@ def test_die_zeilen_zum_abfragen_fragen_nur_und_sind_zugeordnet() -> None:
     ebus = next(m for m in karte["mqtt"] if m.get("kind") == "ebusd")
     for spalten in zeilen:
         assert f"{spalten[1]}/{spalten[2]}" in ebus["components"]
+
+    # Betriebszustand und Frequenz (ab 0.3.1): dieselbe Frage, die der Regler stellt, mit
+    # denselben Feldern wie die Zeile zum Mitlesen. Nur die Art unterscheidet sich; so gilt
+    # dieselbe Zuordnung, ob der Regler fragt oder das Add-on.
+    def betrieb(datei: str) -> list[str]:
+        return next(
+            z.split(",")
+            for z in (ADDON / datei).read_text(encoding="utf-8").splitlines()
+            if ",hp_betrieb," in z and not z.startswith("#")
+        )
+
+    assert betrieb("aerotop_abfragen.csv")[0] == "r1" and betrieb("aerotop_split.csv")[0] == "g"
+    assert betrieb("aerotop_abfragen.csv")[1:] == betrieb("aerotop_split.csv")[1:]
     assert "COPY aerotop_abfragen.csv /etc/duckcurve/aerotop_abfragen.csv" in (
         ADDON / "Dockerfile"
     ).read_text(encoding="utf-8")
@@ -153,6 +166,7 @@ r;w,energymgr,beides,Lesen und Stellen,,18,2000,aa11,,s,UCH,,,
 *w,energymgr,,,,fe,2020
 uw,energymgr,mitgelesen,Fremde Stellnachricht,,fe,2020,bb22,,m,UCH,,,
 b,energymgr,rundruf,Rundruf,,fe,2010,7647,temp,m,UIN,,,
+g,heatpump,hp_betrieb,Mitlesen,,1e,2000,78106e13ca46cb46,,s,IGN:1,,,,mode,s,UCH,,,
 """
 
 
@@ -206,10 +220,12 @@ def test_mit_abfragen_fragt_ebusd_und_kennt_keine_zeile_zum_stellen(tmp_path: Pa
     assert "Stellen kann ebusd nichts: 3 Zeilen zum Stellen" in lauf.stdout
     # w und *w sind weg, aus "r;w" wurde "r", die mitgelesene fremde Stellnachricht bleibt.
     assert arten(aktiv / "fremd.csv") == ["r", "r", "uw", "b"]
+    # Auch die Zeile zum Mitlesen von Betriebszustand und Frequenz weicht: die Frage liest mit.
+    assert "78106e13ca46cb46" not in (aktiv / "fremd.csv").read_text(encoding="utf-8")
     # Die fremde Zeile mit derselben Kennung wie eine eigene Frage ist gewichen ("duplicate ID").
     fremd = (aktiv / "fremd.csv").read_text(encoding="utf-8")
     assert "0601" not in fremd and "ca46" in fremd
-    assert arten(aktiv / "aerotop_abfragen.csv") == ["r1", "r1", "r2", "r2"]
+    assert arten(aktiv / "aerotop_abfragen.csv") == ["r1", "r1", "r1", "r2", "r2"]
     # Die Quelle bleibt, wie sie war.
     assert (tmp_path / "lokal" / "fremd.csv").read_text(encoding="utf-8") == FREMD
 
@@ -231,6 +247,8 @@ def test_ein_ausgeschalteter_schalter_wird_als_aus_gelesen(tmp_path: Path) -> No
     aufruf = next(z for z in lauf.stdout.splitlines() if z.startswith("EBUSD "))
     assert "--readonly" not in aufruf and "ACHTUNG: read_only ist aus" in lauf.stdout
     assert "w" in arten(aktiv / "fremd.csv")
+    # Ohne Abfragen bleibt die Zeile zum Mitlesen, wo sie ist.
+    assert "g" in arten(aktiv / "fremd.csv")
 
 
 @pytest.mark.skipif(shutil.which("jq") is None, reason="das Startskript braucht jq")

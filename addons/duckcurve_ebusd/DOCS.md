@@ -2,7 +2,7 @@
 
 Liest den Bus der Wärmepumpe und legt die Werte auf den Mosquitto-Broker. Die Duck Curve Bridge
 holt sie dort ab. Home Assistant braucht dafür nur den Broker, keine weitere Integration. Das
-Add-on verstellt nichts an der Heizung; seit 0.3.0 fragt es vier Werte selbst ab (Abschnitt
+Add-on verstellt nichts an der Heizung; seit 0.3.0 fragt es einige Werte selbst ab (Abschnitt
 „Abfragen, ohne zu verstellen“).
 
 ## Was hier läuft
@@ -41,7 +41,7 @@ gelegt. Ab 0.3.0 kommen vier Fragen dazu (`aerotop_abfragen.csv`).
 3. Im **Protokoll** sollte nach wenigen Sekunden stehen:
 
        [duckcurve-ebusd] Bus-Beschreibung geladen und geprüft (Fassung f2c9a631c1b0).
-       [duckcurve-ebusd] Abfragen an: ebusd fragt 4 Werte reihum ab, alle 10 s einen.
+       [duckcurve-ebusd] Abfragen an: ebusd fragt 5 Werte reihum ab, alle 10 s einen.
        [duckcurve-ebusd] Stellen kann ebusd nichts: 67 Zeilen zum Stellen aus der Bus-Beschreibung entfernt, keine übrig.
        ... [bus notice] signal acquired
        ... [mqtt notice] connection established
@@ -83,17 +83,24 @@ abfragt. Seit 0.3.0 fragt ebusd sie selbst (Entscheidung des Hausherrn vom 14.11
 | `ebusd/energymgr/heizstab` | 1c45, Regler | elektrische Zusatzheizung: 0 aus, 1 an |
 | `ebusd/heatpump/verdichter_strom` | 714f, Wärmepumpe | Strom des Verdichters in Ampere |
 | `ebusd/heatpump/luefter` | 6e4f, Wärmepumpe | Drehzahl des Lüfters |
+| `ebusd/heatpump/hp_betrieb` | Liste 7810 6e13 ca46 cb46, Wärmepumpe | Außentemperatur, Durchfluss, Betriebszustand, Verdichterfrequenz (ab 0.3.1) |
 
-Die Bedeutungen stammen aus der Bus-Beschreibung für verwandte Geräte. Was die Zahlen in diesem
+Die letzte Zeile ist keine neue Größe: es ist die Frage, die der Regler der Maschine selbst
+stellt (im Haus gesehen, mit Antwort), nur stellt er sie selten. Die Seite der Wärmepumpe hatte
+die Verdichterfrequenz deshalb nur zufällig; am 15.11.2026 fehlte sie nach einem Neustart der
+Bridge ganz („der Umrichter hat keine Frequenz mehr“). Ab 0.3.1 fragt das Add-on sie mit und
+liest weiter mit, wenn der Regler fragt.
+
+Die Bedeutungen der vier Zeilen davor stammen aus der Bus-Beschreibung für verwandte Geräte. Was die Zahlen in diesem
 Haus heißen, zeigt erst der Vergleich mit Speicher und Zähler; bis dahin zeigt die Oberfläche
-die Zahl. Die Zeilen stehen in `aerotop_abfragen.csv`; mit `abfrage_takt_s: 10` ist das Ventil
-und der Heizstab je etwa alle 30 Sekunden dran, Strom und Drehzahl je etwa jede Minute.
+die Zahl. Die Zeilen stehen in `aerotop_abfragen.csv`; mit `abfrage_takt_s: 10` sind Ventil,
+Heizstab und Betriebszustand je etwa alle 40 Sekunden dran, Strom und Drehzahl seltener.
 
 **Was sich dabei ändert.** ebusd meldet sich als eigener Teilnehmer am Bus (Adresse 31) und
 stellt alle zehn Sekunden eine Frage, so wie es das Bediengerät ohnehin mehrmals je Sekunde
 tut. Im Protokoll steht dazu:
 
-    [duckcurve-ebusd] Abfragen an: ebusd fragt 4 Werte reihum ab, alle 10 s einen.
+    [duckcurve-ebusd] Abfragen an: ebusd fragt 5 Werte reihum ab, alle 10 s einen.
     [duckcurve-ebusd] Stellen kann ebusd nichts: 67 Zeilen zum Stellen aus der Bus-Beschreibung entfernt, keine übrig.
 
 **Warum es trotzdem nichts verstellen kann.** Wer abfragt, sendet; der Schalter `--readonly`
@@ -151,3 +158,7 @@ Software der Bridge machte daraus `heat_pump_valve_code = 1`, `heat_pump_heater_
 `heat_pump_compressor_a = 7,8` und `heat_pump_fan_speed = 600`. Zwei Fehler zeigte erst dieser
 Lauf: ebusd nimmt eine Kennung nur einmal (die fremden Zeilen mit denselben Kennungen müssen
 weichen), und sein Rückgabewert bei der Prüfung der Bus-Beschreibung taugt nicht als Urteil.
+
+Am 15.11.2026 derselbe Lauf mit 0.3.1: die fünfte Frage ging hinaus
+(`sent poll-read heatpump hp_betrieb QQ=31: 6.5;30.1;3;64`), und dieselbe Zeile las weiter mit,
+wenn der Regler fragte (`received poll-read heatpump hp_betrieb QQ=13: ...`).

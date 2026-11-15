@@ -1,6 +1,6 @@
 # Duck Curve eBUS: die Werte, die das Add-on selbst abfragt (Option `abfragen`).
 #
-# Mitlesen allein reicht fuer vier Groessen nicht: das Bediengeraet fragt sie nie ab, also gehen
+# Mitlesen allein reicht fuer einige Groessen nicht: das Bediengeraet fragt sie nie ab, also gehen
 # sie nie ueber den Bus. Hier fragt ebusd sie reihum selbst (`r1`, `r2`: eins ist oefter dran).
 # Gefragt wird nur; eine Zeile zum Stellen gibt es in dieser Datei nicht und darf es nie geben
 # (der Test `test_addon_ebusd.py` wacht darueber).
@@ -13,6 +13,12 @@
 # Kennungen aus der Bus-Beschreibung der Ariston-Gruppe (dort 0601 "0=dhw;1=heat", 1c45 an/aus,
 # 714f Strom in Zehntel Ampere, 6e4f Drehzahl). Die Bedeutungen der Zahlen sind deren Angabe;
 # was sie in diesem Haus heissen, zeigt der Vergleich mit Speicher und Zaehler.
+# Betriebszustand und Verdichterfrequenz: dieselbe Frage, die der Regler der Maschine stellt
+# (im Haus gesehen, mit Antwort), nur stellt er sie selten. Ohne eigene Abfrage hatte die Seite
+# die Frequenz nur zufaellig (15.11.2026: "der Umrichter hat keine Frequenz mehr"). Name und
+# Felder wie die Zeile zum Mitlesen in aerotop_split.csv, die dieser hier weicht; so gilt
+# dieselbe Zuordnung, ob der Regler fragt oder das Add-on.
+r1,heatpump,hp_betrieb,Aussentemperatur Durchfluss Betriebszustand Verdichterfrequenz,,1e,2000,78106e13ca46cb46,,s,IGN:1,,,,ext_temp,s,SIN,10,°C,,flow,s,UIN,10,l/min,,mode,s,UCH,,,,compressor_hz,s,UCH,,Hz,
 r1,energymgr,ventil_ww,Umschaltventil Warmwasser oder Heizung,,18,2000,0601,,s,IGN:1,,,,stellung,s,UCH,,,
 r1,energymgr,heizstab,Elektrische Zusatzheizung,,18,2000,1c45,,s,IGN:1,,,,an,s,UCH,,,
 r2,heatpump,verdichter_strom,Strom des Verdichters,,1e,2000,714f,,s,IGN:1,,,,strom_a,s,UIN,10,A,
