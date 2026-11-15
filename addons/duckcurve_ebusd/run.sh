@@ -121,10 +121,12 @@ ARGS=(--foreground --updatecheck=off "--device=$ADAPTER" "--latency=$(opt latenc
 if [ "$ABFRAGEN" = "true" ] && [ -r "$EIGENE/aerotop_abfragen.csv" ]; then
   # Die geladene Bus-Beschreibung kennt dieselben Kennungen unter anderem Namen, und ebusd nimmt
   # eine Kennung nur einmal ("duplicate ID", im Probelauf am 14.11.2026 gesehen: die Zeilen zum
-  # Abfragen fielen stillschweigend weg). Deshalb weichen die fremden Zeilen den eigenen.
+  # Abfragen fielen stillschweigend weg). Deshalb weichen den eigenen Fragen alle anderen
+  # Zeilen mit derselben Kennung, auch eine eigene zum Mitlesen: eine Frage liest auch mit,
+  # wenn ein anderer sie stellt.
   for datei in "$CONFIGPATH"/*.csv; do
     awk -F, 'NR == FNR { if ($1 ~ /^r[1-9]$/) k[tolower($6 FS $7 FS $8)] = 1; next }
-      !($1 ~ /^r/ && (tolower($6 FS $7 FS $8) in k))' "$EIGENE/aerotop_abfragen.csv" "$datei" > "$datei.neu" \
+      !($1 ~ /^[rgub]/ && (tolower($6 FS $7 FS $8) in k))' "$EIGENE/aerotop_abfragen.csv" "$datei" > "$datei.neu" \
       && mv "$datei.neu" "$datei" || fatal "Kann $(basename "$datei") nicht für die Abfragen vorbereiten."
   done
   cp "$EIGENE/aerotop_abfragen.csv" "$CONFIGPATH/aerotop_abfragen.csv" \

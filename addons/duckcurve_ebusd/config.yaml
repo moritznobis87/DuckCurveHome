@@ -1,7 +1,7 @@
 name: Duck Curve eBUS
-version: "0.3.0"
+version: "0.3.1"
 slug: duckcurve_ebusd
-description: Liest den eBUS der Wärmepumpe über einen Netzwerk-Adapter mit ebusd und legt die Werte auf den Mosquitto-Broker, wo die Duck Curve Bridge sie abholt. Stellt nichts; fragt auf Wunsch vier Werte ab.
+description: Liest den eBUS der Wärmepumpe über einen Netzwerk-Adapter mit ebusd und legt die Werte auf den Mosquitto-Broker, wo die Duck Curve Bridge sie abholt. Stellt nichts; fragt auf Wunsch einige Werte ab.
 url: https://github.com/moritznobis87/DuckCurveHome
 arch: [aarch64, amd64]
 startup: services
@@ -19,8 +19,9 @@ options:
   # Nichts an der Heizung verstellen. Solange das an ist, kennt ebusd keine einzige Zeile zum
   # Stellen: sie werden beim Start aus der Bus-Beschreibung entfernt.
   read_only: true
-  # Vier Werte selbst abfragen, die sonst nie über den Bus gehen: Umschaltventil, Heizstab,
-  # Strom des Verdichters, Drehzahl des Lüfters. Aus heißt: nur lauschen, kein Wort auf dem Bus.
+  # Werte selbst abfragen, die sonst nie oder nur selten über den Bus gehen: Umschaltventil,
+  # Heizstab, Strom des Verdichters, Drehzahl des Lüfters, Betriebszustand mit Frequenz.
+  # Aus heißt: nur lauschen, kein Wort auf dem Bus.
   abfragen: true
   # Abstand zwischen zwei Abfragen in Sekunden. Je Abfrage ist ein Wert dran.
   abfrage_takt_s: 10

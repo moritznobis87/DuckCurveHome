@@ -112,6 +112,8 @@ ANTWORTEN = {
     "1820001c45": "020000",  # Heizstab: 0
     "1e2000714f": "03004e00",  # Strom des Verdichters: 7,8 A
     "1e20006e4f": "03005802",  # Lüfter: 600
+    # Die Liste, die im Haus der Regler abfragt: 6,5 °C draußen, 30,1 l/min, Zustand 3, 64 Hz.
+    "1e200078106e13ca46cb46": "070041002d010340",
 }
 
 

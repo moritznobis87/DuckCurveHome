@@ -956,6 +956,15 @@ Vier Größen gehen nie von selbst über den Bus, weil das Bediengerät sie nich
 | Strom des Verdichters | 714f, Wärmepumpe (1e) | `heat_pump_compressor_a` | Zehntel Ampere | offen |
 | Drehzahl des Lüfters | 6e4f, Wärmepumpe (1e) | `heat_pump_fan_speed` | Zahl ohne Einheit | offen |
 
+**Dazu ab 0.3.1 Betriebszustand und Verdichterfrequenz.** Beide kamen bisher nur aus einer
+Liste, die der Regler der Maschine selten abfragt (`hp_betrieb`, Kennungen 7810 6e13 ca46 cb46).
+Die Seite hält einen Zustand höchstens drei Minuten für gültig (seit dem 14.11.2026, nachdem
+ein alter Zustand „steht“ gezeigt hatte, während die Maschine lief); die Frequenz stand
+deshalb meist als Fragezeichen da, und am 15.11.2026 meldete der Hausherr nach einem Neustart
+der Bridge: „der Umrichter im Verdichter hat keine Frequenz mehr“. Das Add-on stellt dieselbe
+Frage jetzt selbst, etwa alle 40 Sekunden. Dass die Maschine sie beantwortet, ist im Haus
+gesehen (auf die Frage des Reglers); dass sie auch dem Add-on antwortet, noch nicht.
+
 **Zahlen, keine Wörter.** Die Bedeutungen stammen aus der Bus-Beschreibung einer verwandten
 Anlage. Nach „Puffer kühlen“ (Abschnitt „Die Kennzahl des Reglers“) zeigt die Oberfläche für
 Ventil und Heizstab die Zahl und nennt die Lesart der Liste als Hinweis. Bestätigt wird sie am
