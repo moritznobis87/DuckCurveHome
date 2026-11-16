@@ -139,18 +139,26 @@ struct Wurzel: View {
         .seitengrund()
         .preferredColorScheme(.dark)
         .onChange(of: lage) { _, neu in
-            // Ein Wecker, der im Hintergrund alle fuenf Sekunden feuert, kostet Batterie, ohne
-            // etwas zu bewirken.
             switch neu {
-            case .active: haus.beimZurueckkommen()
-            case .background, .inactive: haus.beimWegbleiben()
-            @unknown default: break
+            case .active:
+                haus.beimZurueckkommen()
+                // Eine angetippte Mitteilung fuehrt auf ihre Seite. Geprueft wird das Ziel in
+                // `Mitteilungen`; hier wird nur gesprungen. Sie kann ankommen, bevor die
+                // Oberflaeche da ist - darum wird hier abgeholt und nicht dort zugestellt.
+                if let ziel = Zielsprung.abholen() { wegweiser.gehe(ziel) }
+            case .background, .inactive:
+                // Ein Wecker, der im Hintergrund alle fuenf Sekunden feuert, kostet Batterie,
+                // ohne etwas zu bewirken.
+                haus.beimWegbleiben()
+            @unknown default:
+                break
             }
         }
         .task {
             haus.starte()
         }
         // Die Blaetter gehoeren in beide Gerippe, also hierher und nicht in eines von beiden.
+        // `Blatt` ist `Identifiable`, also nimmt SwiftUIs eigenes `sheet(item:)` es direkt.
         .sheet(item: Binding(get: { wegweiser.blatt }, set: { wegweiser.blatt = $0 })) { blatt in
             switch blatt {
             case .waermepumpe: Waermepumpenblatt()
@@ -163,123 +171,5 @@ struct Wurzel: View {
                 EmptyView()
             }
         }
-        // Eine angetippte Mitteilung fuehrt auf ihre Seite. Geprueft wird das Ziel in
-        // `Mitteilungen`; hier wird nur gesprungen.
-        .onChange(of: lage) { _, neu in
-            if neu == .active, let ziel = Zielsprung.abholen() {
-                wegweiser.gehe(ziel)
-            }
-        }
-    }
-}
-
-extension View {
-    /// `sheet(item:)` fuer einen `Identifiable`-Gegenstand.
-    func sheet<Gegenstand: Identifiable, Inhalt: View>(
-        item: Binding<Gegenstand?>, @ViewBuilder inhalt: @escaping (Gegenstand) -> Inhalt
-    ) -> some View {
-        sheet(
-            isPresented: Binding(
-                get: { item.wrappedValue != nil },
-                set: { if !$0 { item.wrappedValue = nil } }
-            )
-        ) {
-            if let g = item.wrappedValue {
-                inhalt(g)
-            }
-        }
-    }
-}
-
-/// Die Reiterzeile eines Bereichs.
-///
-/// Rollt waagrecht, weil die Technik elf Reiter hat und die auf kein Geraet in eine Zeile passen.
-/// Der aktive Reiter wird beim Wechsel in den Blick gerollt - sonst steht man in der Technik auf
-/// „Zugang und Sicherung" und sieht die Leiste bei „Anlage".
-struct Reiterzeile: View {
-    let bereich: Bereich
-    let aktiv: Reiter?
-    let darfAlles: Bool
-    let waehle: (Reiter) -> Void
-
-    var body: some View {
-        ScrollViewReader { roller in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 2) {
-                    ForEach(sichtbare) { r in
-                        knopf(r)
-                            .id(r.weg)
-                    }
-                }
-                .padding(.horizontal, 12)
-            }
-            .onChange(of: aktiv?.weg) { _, neu in
-                guard let neu else { return }
-                withAnimation(.easeOut(duration: Marken.dauer)) {
-                    roller.scrollTo(neu, anchor: .center)
-                }
-            }
-        }
-    }
-
-    private var sichtbare: [Reiter] {
-        darfAlles ? bereich.reiter : bereich.reiter.filter { !$0.nurHausherr }
-    }
-
-    private func knopf(_ r: Reiter) -> some View {
-        let istAktiv = aktiv?.weg == r.weg
-        return Button {
-            waehle(r)
-        } label: {
-            VStack(spacing: 5) {
-                Text(r.name)
-                    .font(istAktiv ? Schrift.karte : Schrift.klein)
-                    .foregroundStyle(istAktiv ? Farbe.text1 : Farbe.text3)
-                    .lineLimit(1)
-                // Der Strich unter dem aktiven Reiter, in Amber wie im Dashboard.
-                Rectangle()
-                    .fill(istAktiv ? Farbe.amber : .clear)
-                    .frame(height: 2)
-            }
-            .padding(.horizontal, 10)
-            .padding(.top, 8)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(istAktiv ? [.isSelected, .isButton] : .isButton)
-    }
-}
-
-/// Der Umschalter zwischen den Ansichten eines Reiters: „Jetzt | Ein Tag".
-///
-/// Steht unter der Reiterzeile und nicht daneben - `areas.ts`: es ist dieselbe Sache aus zwei
-/// Richtungen, kein weiterer Gegenstand.
-struct Ansichtswahl: View {
-    let ansichten: [Ansicht]
-    let aktiv: Ansicht?
-    let waehle: (Ansicht) -> Void
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(ansichten) { a in
-                let istAktiv = aktiv?.weg == a.weg
-                Button {
-                    waehle(a)
-                } label: {
-                    Text(a.name)
-                        .font(Schrift.klein)
-                        .foregroundStyle(istAktiv ? Farbe.deep : Farbe.text2)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(istAktiv ? Farbe.amberWeich : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(istAktiv ? [.isSelected, .isButton] : .isButton)
-            }
-        }
-        .padding(2)
-        .background(Farbe.flaeche2)
-        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
     }
 }

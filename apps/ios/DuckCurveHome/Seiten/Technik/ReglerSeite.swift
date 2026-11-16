@@ -88,13 +88,22 @@ struct ReglerSeite: View {
         }
         .task { await lade() }
         .task { kennzahlen = try? await haus.api.reglerKennzahlen(tage: 7) }
-        .alert(item: $nachfrage) { n in
-            Alert(
-                title: Text("\(n.einstellung.nameDe) stellen?"),
-                message: Text(nachfragesatz(n)),
-                primaryButton: .default(Text("Stellen")) { stelle(n) },
-                secondaryButton: .cancel(Text("Abbrechen"))
-            )
+        // **Nachgefragt wird jedes Mal.** An einer Heizungsanlage ist das keine Umstaendlichkeit:
+        // eine Heizkurvensteilheit, die versehentlich von 0,4 auf 1,4 geht, merkt man im Februar
+        // an der Rechnung. Im Satz stehen der alte und der neue Wert, damit die Frage zu
+        // beantworten ist, ohne sie wegzuklicken.
+        .alert(
+            nachfrage.map { "\($0.einstellung.nameDe) stellen?" } ?? "",
+            isPresented: Binding(
+                get: { nachfrage != nil },
+                set: { if !$0 { nachfrage = nil } }
+            ),
+            presenting: nachfrage
+        ) { n in
+            Button("Stellen") { stelle(n) }
+            Button("Abbrechen", role: .cancel) {}
+        } message: { n in
+            Text(nachfragesatz(n))
         }
     }
 
@@ -381,28 +390,5 @@ struct Einstellungszeile: View {
                 .font(Schrift.winzig)
                 .foregroundStyle(Farbe.text3)
         }
-    }
-}
-
-extension View {
-    /// `alert(item:)` - in SwiftUI nur noch mit `isPresented` und getrenntem Inhalt vorhanden.
-    func alert<Gegenstand: Identifiable>(
-        item: Binding<Gegenstand?>, inhalt: @escaping (Gegenstand) -> Alert
-    ) -> some View {
-        // Der Umweg ueber einen eigenen Zustand: `alert(_:isPresented:presenting:actions:)` wäre
-        // die neue Form, braucht aber einen Titel ausserhalb des Inhalts - und der Titel haengt
-        // hier am Gegenstand.
-        background(
-            EmptyView()
-                .alert(isPresented: Binding(
-                    get: { item.wrappedValue != nil },
-                    set: { if !$0 { item.wrappedValue = nil } }
-                )) {
-                    if let g = item.wrappedValue {
-                        return inhalt(g)
-                    }
-                    return Alert(title: Text(""))
-                }
-        )
     }
 }
