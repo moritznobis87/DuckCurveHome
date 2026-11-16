@@ -26,13 +26,13 @@ public struct Bereich: Sendable, Hashable, Identifiable {
 
     public var schluessel: Schluessel
     public var weg: String
-    public var zeichen: Zeichen
+    public var zeichen: Bereichszeichen
     public var name: String
     public var reiter: [Reiter]
 
     public var id: Schluessel { schluessel }
 
-    public init(schluessel: Schluessel, weg: String, zeichen: Zeichen, name: String, reiter: [Reiter] = []) {
+    public init(schluessel: Schluessel, weg: String, zeichen: Bereichszeichen, name: String, reiter: [Reiter] = []) {
         self.schluessel = schluessel
         self.weg = weg
         self.zeichen = zeichen
@@ -77,9 +77,12 @@ public struct Ansicht: Sendable, Hashable, Identifiable {
     }
 }
 
-/// Die Zeichen der Bereichsleiste. Als Aufzaehlung, damit die Oberflaeche sie auf Symbole
-/// abbilden kann, ohne dass der Kern SwiftUI kennt.
-public enum Zeichen: String, Sendable, Hashable {
+/// Das Zeichen eines Bereichs in der Leiste. Als Aufzaehlung, damit die Oberflaeche sie auf eine
+/// Zeichnung abbilden kann, ohne dass der Kern SwiftUI kennt.
+///
+/// Heisst nicht `Zeichen`: so heisst in der App die Ansicht, die eine Zeichnung zeichnet, und
+/// zwei Typen dieses Namens in einem Modulraum sind nicht mehr eindeutig zu nennen.
+public enum Bereichszeichen: String, Sendable, Hashable {
     case ente, haus, blitz, euro, zahnrad
 }
 

@@ -202,3 +202,84 @@ public enum Vorschau {
         )
     }
 }
+
+// MARK: - Plan und Prognose
+
+extension Vorschau {
+    /// Ein Preisfenster.
+    public static func fenster(
+        _ von: String, _ bis: String, _ art: PriceWindowOutKindWahl, mittel: Double = 12.0
+    ) -> PriceWindowOut {
+        PriceWindowOut(
+            start: von, end: bis, kind: art, avgCtKwh: mittel,
+            labelDe: art == .negative ? "Preis negativ" : art == .cheap ? "Preistief" : "teuer"
+        )
+    }
+
+    /// Ein Plan ueber einige Stunden, im Viertelstundenraster.
+    ///
+    /// Die Erwartung folgt derselben Glocke wie die Messung in `verlaufszeilen`, damit Prognose
+    /// und Messung in einem Diagramm plausibel nebeneinanderliegen - eine Prognose, die weit
+    /// neben der Messung steht, sieht in einer Vorschau wie ein Fehler aus.
+    public static func plan(
+        ab: Date = Kalender.haus.startOfDay(for: jetzt),
+        stunden: Int = 24,
+        fenster: [PriceWindowOut] = []
+    ) -> PlanOut {
+        let felder = (0..<(stunden * 4)).map { i -> PlanIntervalOut in
+            let t = ab.addingTimeInterval(Double(i) * 900)
+            let h = Double(Kalender.haus.component(.hour, from: t))
+                + Double(Kalender.haus.component(.minute, from: t)) / 60
+            let sonne = max(0, 5.1 * exp(-pow((h - 12.5) / 3.1, 2)))
+            let preis = 24.0 - 9.0 * exp(-pow((h - 13.0) / 2.6, 2)) + 11.0 * exp(-pow((h - 19.0) / 1.9, 2))
+            let laeuft = h >= 11.0 && h < 13.8
+            return PlanIntervalOut(
+                ts: Zeit.iso(t),
+                expectedPvKw: (sonne * 100).rounded() / 100,
+                priceCtKwh: (preis * 10).rounded() / 10,
+                plannedHpState: laeuft ? .release : .free,
+                plannedStoveOn: false,
+                reasonCode: laeuft ? "pv_surplus" : "none",
+                noteDe: laeuft ? "Überschuss erwartet." : nil,
+                heatDemandKw: 4.2,
+                dhwDemandKw: 0.0,
+                bufferKwh: 13.8,
+                outdoorTempC: 6.3,
+                cop: 3.4
+            )
+        }
+        return PlanOut(
+            createdAt: Zeit.iso(jetzt),
+            planner: "vorschau",
+            plannerStatus: "ok",
+            plannerNoteDe: "Ein Plan für die Vorschau.",
+            hpActuation: false,
+            horizonStart: Zeit.iso(ab),
+            horizonEnd: Zeit.iso(ab.addingTimeInterval(Double(stunden) * 3600)),
+            windows: fenster,
+            intervals: felder,
+            pvForecastTodayKwh: 16.4,
+            nextCheapWindow: fenster.first { $0.kind == .cheap },
+            bufferCapacityKwh: 18.6,
+            bufferMinKwh: 4.0
+        )
+    }
+
+    /// Die Waermelastprognose: was die Waermepumpe nach dem Wetter brauchen wird.
+    public static func waermeprognose(ab: Date, stunden: Int = 24) -> [HeatForecastPoint] {
+        (0..<stunden).map { h in
+            let t = ab.addingTimeInterval(Double(h) * 3600)
+            let aussen = 6.3 - 4.0 * cos(Double(h) / 24 * 2 * .pi)
+            let heizen = max(0, (20.0 - aussen) * 0.42)
+            let cop = 4.6 - (20.0 - aussen) * 0.07
+            return HeatForecastPoint(
+                ts: Zeit.iso(t),
+                outdoorC: (aussen * 10).rounded() / 10,
+                heatingKw: (heizen * 100).rounded() / 100,
+                dhwKw: h == 6 ? 1.4 : 0.0,
+                cop: (cop * 100).rounded() / 100,
+                electricKw: ((heizen / max(1, cop)) * 100).rounded() / 100
+            )
+        }
+    }
+}
