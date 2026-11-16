@@ -33,11 +33,14 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install pillow
 
+      - run: pip install pyyaml
+
       - name: Erzeugte Dateien gegen ihre Quellen halten
         run: |
           python3 tools/gen-swift.py --pruefen
           python3 tools/gen-zeichen.py --pruefen
           python3 tools/gen-appicon.py --pruefen
+          python3 tools/xcodeproj-pruefen.py
 
       - name: Kern bauen und testen, Oberflaeche parsen
         run: tools/ios-pruefen.sh
@@ -51,9 +54,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: brew install xcodegen
-      - run: xcodegen generate
-        working-directory: apps/ios
+      # **Gebaut wird das eingecheckte Projekt, nicht ein frisch erzeugtes.** Das ist das,
+      # was beim Oeffnen in Xcode wirklich vor einem liegt; ein hier erzeugtes waere ein
+      # anderes Projekt, und sein gruener Haken sagte nichts ueber das im Repository.
       - name: Uebersetzen fuer den Simulator
         run: |
           xcodebuild build \
@@ -65,3 +68,20 @@ jobs:
       - name: Den Kern auch auf Apples Toolchain testen
         run: swift test
         working-directory: apps/ios/DuckCurveKit
+
+      # Nachrichtlich, nicht als Schranke: XcodeGen auf dem Laeufer kann eine andere Fassung
+      # sein als die, mit der das Projekt erzeugt wurde, und dann weicht die Datei ab, ohne
+      # dass etwas faul ist. Die harte Pruefung macht `tools/xcodeproj-pruefen.py` im
+      # Linux-Lauf: sie vergleicht Inhalt statt Bytes und ist von der Fassung unabhaengig.
+      - name: Hinweis - weicht das eingecheckte Projekt von project.yml ab?
+        continue-on-error: true
+        run: |
+          brew install xcodegen
+          cd apps/ios && xcodegen generate
+          cd "$GITHUB_WORKSPACE"
+          if ! git diff --quiet -- apps/ios/DuckCurveHome.xcodeproj apps/ios/DuckCurveHome/Info.plist; then
+            echo "::warning::Das eingecheckte Xcode-Projekt weicht von project.yml ab."
+            git diff --stat -- apps/ios/DuckCurveHome.xcodeproj apps/ios/DuckCurveHome/Info.plist
+          else
+            echo "Deckt sich mit project.yml."
+          fi

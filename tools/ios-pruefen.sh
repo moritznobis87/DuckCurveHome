@@ -38,6 +38,9 @@ blau "1/5  Erzeugte Dateien gegen ihre Quellen halten"
 python3 tools/gen-swift.py --pruefen
 python3 tools/gen-zeichen.py --pruefen
 gruen "Schema und Zeichen sind auf dem Stand von docs/openapi.json und Icon.tsx."
+# Das Xcode-Projekt liegt eingecheckt im Repository, damit Xcode ohne XcodeGen aufgeht. Dafuer
+# muss es gegen project.yml bewacht werden - sonst wird eine neue Datei stumm nicht gebaut.
+python3 tools/xcodeproj-pruefen.py
 
 blau "2/5  Den Kern bauen"
 (cd apps/ios/DuckCurveKit && "$SWIFT" build)

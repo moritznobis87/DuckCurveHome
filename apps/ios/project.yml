@@ -8,7 +8,12 @@
 #     brew install xcodegen
 #     cd apps/ios && xcodegen generate && open DuckCurveHome.xcodeproj
 #
-# Erzeugt wird in `.gitignore` ausgeschlossen - erzeugte Dinge gehoeren nicht ins Repository.
+# **Das erzeugte Projekt liegt trotzdem im Repository.** Das war erst anders - erzeugte Dinge
+# gehoeren nicht eingecheckt, und das gilt weiter fuer alles andere. Hier ueberwiegt ein
+# praktischer Grund: wer Xcode frisch installiert hat, hat XcodeGen nicht, und ein `Pull` ist
+# ein Schritt statt vier. Damit die eingecheckte Fassung nicht still veraltet, haelt
+# `tools/xcodeproj-pruefen.py` sie gegen diese Datei und gegen die Platte - in
+# `tools/ios-pruefen.sh` und in der CI. Wer hier etwas verstellt, erzeugt neu und checkt mit ein.
 #
 # **Was hier festgelegt ist und warum.** Die drei Zeilen, bei denen Nachlesen teurer ist als
 # Lesen, stehen unten einzeln begruendet: das Mindestsystem, die Ausrichtung je Geraet und die

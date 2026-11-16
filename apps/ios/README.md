@@ -9,12 +9,25 @@ Alle 29 Seiten des Dashboards sind da, unter denselben Adressen.
 ## Bauen
 
 ```bash
-brew install xcodegen
-cd apps/ios && xcodegen generate && open DuckCurveHome.xcodeproj
+open apps/ios/DuckCurveHome.xcodeproj
 ```
 
-Dann in Xcode unter *Signing & Capabilities* das eigene Team wählen und auf ein Gerät laufen
-lassen.
+Das ist alles. Dann in Xcode unter *Signing & Capabilities* das eigene Team wählen und auf ein
+Gerät laufen lassen.
+
+**Den Ordner `apps/ios` zu öffnen genügt nicht.** Xcode zeigt dann die Dateien, hat aber kein
+Schema und kein Ziel – der Knopf zum Bauen bleibt grau. Gebaut wird aus
+`DuckCurveHome.xcodeproj`.
+
+XcodeGen brauchen Sie nur, wenn Sie [`project.yml`](project.yml) ändern oder Dateien anlegen –
+dann muss das Projekt neu entstehen:
+
+```bash
+brew install xcodegen && cd apps/ios && xcodegen generate
+```
+
+Ob das nötig ist, sagt Ihnen `tools/xcodeproj-pruefen.py`, ohne dass XcodeGen installiert sein
+muss. Es läuft in `tools/ios-pruefen.sh` und in der CI mit.
 
 **Ohne Homebrew** geht es auch – XcodeGen ist selbst ein Swift-Paket, und den Compiler bringt
 Xcode mit:
