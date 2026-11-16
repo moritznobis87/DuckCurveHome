@@ -22,7 +22,7 @@ struct AnlageSeite: View {
             if let a = anlage {
                 kopf(a)
                 strom(a.strom)
-                speicher(a.speicher)
+                speicher(a.speicher, stand: a.at)
                 waermepumpe(a.waermepumpe)
                 ofenkarte(a.ofen)
                 heizkreis(a.heizkreis)
@@ -67,14 +67,20 @@ struct AnlageSeite: View {
         }
     }
 
-    private func speicher(_ s: AnlageSpeicherOut) -> some View {
-        Karte(kicker: "Pufferspeicher", titel: s.netWord) {
+    /// **`stand` kommt von der Antwort, nicht vom Fuehler.** `/anlage` liefert die vier
+    /// Temperaturen als nackte Zahlen und einen Zeitstempel fuer die ganze Antwort; der
+    /// Ereignisstrom liefert dieselben Werte als `Messwert` mit eigener Guete. `Pufferglas`
+    /// zeichnet Messwerte, weil ein fehlender Fuehler anders aussehen muss als ein kalter -
+    /// also werden die Zahlen hier dazu gemacht, mit dem einen Zeitstempel, den es gibt.
+    private func speicher(_ s: AnlageSpeicherOut, stand: String) -> some View {
+        let fuehler = Messwert.ausZahlen(s.tempsC, beobachtet: stand, quelle: "anlage")
+        return Karte(kicker: "Pufferspeicher", titel: s.netWord) {
             HStack(alignment: .top, spacing: 16) {
                 Pufferglas(
-                    temperaturen: s.tempsC,
+                    temperaturen: fuehler,
                     soc: s.soc,
                     zustand: Pufferzustand.aus(
-                        fuehler: s.tempsC, jetzt: haus.jetzt,
+                        fuehler: fuehler, jetzt: haus.jetzt,
                         laedt: (s.netKw ?? 0) > 0.1,
                         status: haus.zustand?.buffer.status
                     )
@@ -157,9 +163,9 @@ struct AnlageSeite: View {
             VStack(spacing: 0) {
                 Zeile(
                     wort: "offen", wert: "\(h.roomsOpen) von \(h.roomsTotal)",
-                    farbe: h.roomsOpen == 0 && h.running ? Farbe.achtung : Farbe.text1,
                     dazu: h.roomsOpen == 0 && h.running
-                        ? "die Pumpe läuft gegen geschlossene Ventile" : nil
+                        ? "die Pumpe läuft gegen geschlossene Ventile" : nil,
+                    farbe: h.roomsOpen == 0 && h.running ? Farbe.achtung : Farbe.text1
                 )
                 Zeile(wort: "Anteil", wert: Formate.prozent(h.openShare))
             }

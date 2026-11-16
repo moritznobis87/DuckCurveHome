@@ -223,8 +223,11 @@ struct Zeile: View {
     let wort: String
     let wert: String
     var einheit: String?
-    var farbe: Color = Farbe.text1
+    // **Reihenfolge mit Bedacht:** `dazu` ist Inhalt, `farbe` ist Darstellung, und die
+    // Reihenfolge der Felder ist hier die Reihenfolge der Argumente - ein getauschtes Paar
+    // uebersetzt nicht. Inhalt zuerst, wie auch bei `Kachel`.
     var dazu: String?
+    var farbe: Color = Farbe.text1
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {

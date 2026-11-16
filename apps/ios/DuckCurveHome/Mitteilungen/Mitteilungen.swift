@@ -111,7 +111,10 @@ final class Mitteilungen: NSObject {
     private func meldeBeimDienstAn(_ token: String) async {
         guard let haus else { return }
         do {
-            _ = try await haus.api.meldeApnsAn(token: token, name: haus.zugang.geraetename)
+            _ = try await haus.api.meldeApnsAn(
+                token: token, name: haus.zugang.geraetename,
+                sandbox: Bauart.istEntwicklung
+            )
             stand = .angemeldet
         } catch let f as ApiFehler {
             // Ein Dienst, der den Weg noch nicht kennt, ist kein Fehler des Geraets - das soll
@@ -180,34 +183,6 @@ enum Zielsprung {
 #if canImport(UIKit)
     import UIKit
 #endif
-
-extension Api {
-    /// Dieses Geraet fuer APNs anmelden.
-    ///
-    /// Der Rumpf ist absichtlich derselbe Zuschnitt wie bei Web Push (`PushSubscribeIn`): eine
-    /// Adresse, ein Name, eine Herkunft. Nur dass die Adresse hier ein Geraetetoken ist und die
-    /// beiden Schluessel fehlen - APNs verschluesselt selbst.
-    public func meldeApnsAn(token: String, name: String) async throws -> PushResultOut {
-        try await hole(
-            "/push/apns/subscribe", verfahren: "POST",
-            rumpf: try JSONEncoder().encode([
-                "token": Mischwert.text(token),
-                "label": .text(name),
-                // Die Umgebung muss mitkommen: ein Token aus einem Entwicklungsbau gilt bei
-                // Apple an einer anderen Adresse als eines aus dem App Store, und wer das
-                // verwechselt, bekommt „BadDeviceToken" ohne weitere Auskunft.
-                "sandbox": .ja(Bauart.istEntwicklung),
-            ])
-        )
-    }
-
-    public func meldeApnsAb(token: String) async throws -> PushResultOut {
-        try await hole(
-            "/push/apns/unsubscribe", verfahren: "POST",
-            rumpf: try JSONEncoder().encode(["token": Mischwert.text(token)])
-        )
-    }
-}
 
 /// Ob dieser Bau aus der Entwicklung kommt.
 ///

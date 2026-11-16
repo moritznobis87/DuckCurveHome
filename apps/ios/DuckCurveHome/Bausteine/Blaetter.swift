@@ -199,8 +199,7 @@ struct Raumblatt: View {
                     .foregroundStyle(Farbe.text1)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(
-                    [Formate.hhmm(iso: e.at), e.quelle, e.urheber]
-                        .compactMap { $0 }
+                    [Formate.hhmm(iso: e.at), quellenwort(e.quelle), e.urheber ?? ""]
                         .filter { !$0.isEmpty }
                         .joined(separator: " · ")
                 )
@@ -215,6 +214,24 @@ struct Raumblatt: View {
             }
         }
         .padding(.vertical, 6)
+    }
+
+    /// Woher die Änderung kam.
+    ///
+    /// `quelle` ist im Schema eine Aufzählung und kein Text – das war der Grund, warum die
+    /// Zeile nicht übersetzte: eine Reihe aus Text, Aufzählung und wahlfreiem Text wird zu
+    /// `[Any]`, und darauf gibt es kein `compactMap` zu Zeichenketten.
+    ///
+    /// `.unbekannt` bleibt leer und fällt aus der Zeile. Diesen Fall trägt jede erzeugte
+    /// Aufzählung für Werte, die eine neuere Fassung des Dienstes kennt und diese App noch
+    /// nicht; „—unbekannt—" in der Zeile stehen zu lassen wäre schlechter als nichts.
+    private func quellenwort(_ q: RoomLogEntryOutQuelleWahl) -> String {
+        switch q {
+        case .app: return "App"
+        case .automatik: return "Automatik"
+        case .extern: return "extern"
+        case .unbekannt: return ""
+        }
     }
 
     private func holeWirkung() async {

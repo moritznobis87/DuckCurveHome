@@ -476,3 +476,38 @@ extension URLSession {
         #endif
     }
 }
+
+extension Api {
+    /// Dieses Gerät für APNs anmelden.
+    ///
+    /// Der Rumpf hat denselben Zuschnitt wie bei Web Push (`PushSubscribeIn`): eine Adresse,
+    /// ein Name, eine Herkunft. Nur dass die Adresse hier ein Gerätetoken ist und die beiden
+    /// Schlüssel fehlen – APNs verschlüsselt selbst.
+    ///
+    /// **`sandbox` ist ein Parameter und keine Abfrage von `#if DEBUG`.** Diese Entscheidung
+    /// hängt an der Signatur des Baus und gehört damit in die App; der Kern baut auch dort,
+    /// wo es kein Bundle gibt, und soll nicht wissen, wie er signiert wurde. Die App übergibt
+    /// `Bauart.istEntwicklung`. Wer es verwechselt, bekommt von Apple „BadDeviceToken" ohne
+    /// weitere Auskunft, denn ein Token aus einem Entwicklungsbau gilt an einer anderen
+    /// Adresse als eines aus dem App Store.
+    public func meldeApnsAn(
+        token: String, name: String, sandbox: Bool
+    ) async throws -> PushResultOut {
+        try await hole(
+            "/push/apns/subscribe", verfahren: "POST",
+            rumpf: try JSONEncoder().encode([
+                "token": Mischwert.text(token),
+                "label": .text(name),
+                "sandbox": .ja(sandbox),
+            ])
+        )
+    }
+
+    /// Dieses Gerät abmelden.
+    public func meldeApnsAb(token: String) async throws -> PushResultOut {
+        try await hole(
+            "/push/apns/unsubscribe", verfahren: "POST",
+            rumpf: try JSONEncoder().encode(["token": Mischwert.text(token)])
+        )
+    }
+}

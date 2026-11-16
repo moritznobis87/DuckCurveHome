@@ -134,8 +134,8 @@ struct WaermeSeite: View {
             Zeile(
                 wort: "nicht erklärt", wert: Formate.zahl(b.gainUnexplainedKwh, stellen: 1),
                 einheit: "kWh",
-                farbe: (b.gainUnexplainedKwh ?? 0) > 1 ? Farbe.achtung : Farbe.text1,
-                dazu: "Gewinn ohne bekannte Quelle"
+                dazu: "Gewinn ohne bekannte Quelle",
+                farbe: (b.gainUnexplainedKwh ?? 0) > 1 ? Farbe.achtung : Farbe.text1
             )
         }
     }

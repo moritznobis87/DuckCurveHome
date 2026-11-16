@@ -32,7 +32,7 @@ struct KennlinieSeite: View {
                 if let fit = k.fit {
                     kennzahlenKarte(fit, k)
                     bild(k, fit)
-                } else if !(k.punkte?.isEmpty ?? true) {
+                } else if !k.punkte.isEmpty {
                     bild(k, nil)
                 }
                 if let b = k.bilanz {
@@ -214,7 +214,7 @@ struct KennlinieSeite: View {
                     Rectangle().fill(Farbe.text1).frame(width: 12, height: 2)
                     Text("gemessen").font(Schrift.winzig).foregroundStyle(Farbe.text3)
                 }
-                if !(k.annahme?.isEmpty ?? true) {
+                if !k.annahme.isEmpty {
                     HStack(spacing: 5) {
                         Rectangle().fill(Farbe.mist).frame(width: 12, height: 1.5)
                         Text("angenommen").font(Schrift.winzig).foregroundStyle(Farbe.text3)
