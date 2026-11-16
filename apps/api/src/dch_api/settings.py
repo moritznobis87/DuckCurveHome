@@ -97,6 +97,25 @@ class Settings(BaseSettings):
     # angemeldete Geraet nennt; wer will, setzt DCH_PUSH_SUBJECT.
     push_subject: str = "mailto:duck-curve-home@example.org"
 
+    # ---------------------------------------------------------------- Mitteilungen an die App
+    #
+    # Der Weg zur iOS-App laeuft ueber APNs und braucht einen Signierschluessel aus einem
+    # Apple-Developer-Konto. Das ist die einzige Stelle dieses Projekts, an der etwas von aussen
+    # beschafft werden muss, das sich nicht selbst erzeugen laesst: das VAPID-Paar fuer Web Push
+    # legt der Dienst selbst an (siehe application/push.py), einen APNs-Schluessel nicht.
+    #
+    # Fehlt einer der vier Werte, bleibt der Weg zu, Web Push laeuft unberuehrt weiter, und die
+    # App sagt auf ihrer Seite „Mitteilungen", was fehlt. Wie man ihn bekommt, steht in
+    # apps/ios/README.md.
+    #: Der Inhalt der .p8-Datei, mit echten Zeilenumbruechen.
+    apns_key_p8: str = ""
+    #: Die Schluesselkennung, zehn Zeichen (der Teil im Dateinamen: AuthKey_ABC123DEFG.p8).
+    apns_key_id: str = ""
+    #: Die Teamkennung aus dem Developer-Konto.
+    apns_team_id: str = ""
+    #: Die Bundle-Kennung der App. Muss zu project.yml passen.
+    apns_topic: str = "home.duckcurve.app"
+
     # Live-Modus
     database_url: str = Field(default="", validation_alias="DATABASE_URL")
     db_create_all: bool = False  # nur SQLite/Tests: Schema ohne Alembic anlegen

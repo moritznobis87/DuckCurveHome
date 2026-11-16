@@ -150,6 +150,44 @@ struct Wurzel: View {
         .task {
             haus.starte()
         }
+        // Die Blaetter gehoeren in beide Gerippe, also hierher und nicht in eines von beiden.
+        .sheet(item: Binding(get: { wegweiser.blatt }, set: { wegweiser.blatt = $0 })) { blatt in
+            switch blatt {
+            case .waermepumpe: Waermepumpenblatt()
+            case .ofen: Ofenblatt()
+            case .batterie: Batterieblatt()
+            case .entscheidungen: Entscheidungsblatt()
+            case .zugang: Einrichten()
+            case .raum:
+                // Das Raumblatt braucht den Raum und kommt darum aus der Hausseite selbst.
+                EmptyView()
+            }
+        }
+        // Eine angetippte Mitteilung fuehrt auf ihre Seite. Geprueft wird das Ziel in
+        // `Mitteilungen`; hier wird nur gesprungen.
+        .onChange(of: lage) { _, neu in
+            if neu == .active, let ziel = Zielsprung.abholen() {
+                wegweiser.gehe(ziel)
+            }
+        }
+    }
+}
+
+extension View {
+    /// `sheet(item:)` fuer einen `Identifiable`-Gegenstand.
+    func sheet<Gegenstand: Identifiable, Inhalt: View>(
+        item: Binding<Gegenstand?>, @ViewBuilder inhalt: @escaping (Gegenstand) -> Inhalt
+    ) -> some View {
+        sheet(
+            isPresented: Binding(
+                get: { item.wrappedValue != nil },
+                set: { if !$0 { item.wrappedValue = nil } }
+            )
+        ) {
+            if let g = item.wrappedValue {
+                inhalt(g)
+            }
+        }
     }
 }
 

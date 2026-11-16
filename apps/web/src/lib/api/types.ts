@@ -147,6 +147,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/push/apns/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dieses Gerät der App anmelden (APNs)
+         * @description Ein Gerät der iOS-App anmelden.
+         *
+         *     **Warum ein eigener Weg neben `/push/subscribe`.** Eine iOS-App kann Web Push nicht
+         *     empfangen; Apple lässt Mitteilungen nur über APNs zu. Die Adresse ist dort kein Endpunkt beim
+         *     Push-Dienst des Browsers, sondern ein Gerätetoken des Betriebssystems - und es gibt keine
+         *     beiden Schlüssel, denn APNs verschlüsselt selbst.
+         *
+         *     Gespeichert wird das Gerät trotzdem als Abonnement wie jedes andere. Was es unterscheidet,
+         *     steht in seiner Adresse (`apns://…`), und `PushService` sieht daran, welchen Weg eine
+         *     Mitteilung nimmt.
+         */
+        post: operations["apns_subscribe_api_v1_push_apns_subscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/apns/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dieses Gerät der App abmelden (APNs) */
+        post: operations["apns_unsubscribe_api_v1_push_apns_unsubscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/push/unsubscribe": {
         parameters: {
             query?: never;
@@ -1564,6 +1610,32 @@ export interface components {
             tapping: boolean | null;
             /** Tapping Since */
             tapping_since: string | null;
+        };
+        /**
+         * ApnsSubscribeIn
+         * @description Ein Gerät der iOS-App anmelden.
+         *
+         *     Derselbe Zuschnitt wie `PushSubscribeIn`, nur dass die Adresse ein Gerätetoken ist und die
+         *     beiden Schlüssel fehlen: APNs verschlüsselt selbst.
+         */
+        ApnsSubscribeIn: {
+            /** Token */
+            token: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Sandbox
+             * @default false
+             */
+            sandbox: boolean;
+        };
+        /** ApnsUnsubscribeIn */
+        ApnsUnsubscribeIn: {
+            /** Token */
+            token: string;
         };
         /**
          * AutoProfile
@@ -6821,6 +6893,72 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PushSubscribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apns_subscribe_api_v1_push_apns_subscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApnsSubscribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apns_unsubscribe_api_v1_push_apns_unsubscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApnsUnsubscribeIn"];
             };
         };
         responses: {

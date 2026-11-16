@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from dch_api import urheber
+from dch_api.application.apns import ApnsVersender
 from dch_api.application.config_loader import load_app_config
 from dch_api.dependencies import require_api_token
 from dch_api.errors import DchError, install_error_handlers
@@ -36,6 +37,9 @@ from dch_api.routers import (
 )
 from dch_api.settings import Settings, get_settings
 
+#: Fuer alles, was ausserhalb von `create_app` protokolliert.
+start_log = structlog.get_logger("start")
+
 API_PREFIX = "/api/v1"
 
 
@@ -48,7 +52,9 @@ async def _start_demo(app: FastAPI, settings: Settings) -> None:
     # Ohne Datenbank: Die Anmeldungen leben nur, solange der Vorgang lebt. Fuer den Demo-Modus ist
     # das richtig - dort soll nichts von gestern uebrig sein -, und die Oberflaeche ist damit auch
     # ohne Datenbank zu bedienen.
-    app.state.push = PushService(MemoryPushStore(), settings.push_subject)
+    app.state.push = PushService(
+        MemoryPushStore(), settings.push_subject, apns_versender(settings)
+    )
     app.state.hems = runner.hems
     await runner.start()
 
@@ -96,7 +102,7 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
         from dch_api.integrations.inexogy import InexogyClient
 
         inexogy = InexogyClient(settings.inexogy_email, settings.inexogy_password)
-    push = PushService(repos, settings.push_subject)
+    push = PushService(repos, settings.push_subject, apns_versender(settings))
     runtime = LiveRuntime(
         settings, cfg, repos, hub, forecasts, myenergi=myenergi, inexogy=inexogy, push=push
     )
@@ -219,3 +225,26 @@ def run() -> None:
 
     s = get_settings()
     uvicorn.run("dch_api.main:app", host=s.host, port=s.port, log_level=s.log_level.lower())
+
+
+def apns_versender(settings: Settings) -> ApnsVersender | None:
+    """Den Weg zur App aufbauen - oder `None`, wenn kein Schluessel eingetragen ist.
+
+    Kein Fehler, wenn er fehlt: ein Haus ohne iOS-App braucht ihn nicht, und Web Push laeuft
+    unberuehrt weiter. Was fehlt, sagt die App auf ihrer Seite „Mitteilungen".
+    """
+    from dch_api.application.apns import ApnsSchluessel
+
+    schluessel = ApnsSchluessel(
+        p8=settings.apns_key_p8,
+        key_id=settings.apns_key_id,
+        team_id=settings.apns_team_id,
+        topic=settings.apns_topic,
+    )
+    if not schluessel.vollstaendig:
+        if schluessel.p8.strip() or schluessel.key_id.strip() or schluessel.team_id.strip():
+            # Teilweise eingetragen ist ein Versehen und kein Verzicht - das soll auffallen.
+            start_log.warning("apns key incomplete", fehlt=schluessel.fehlt_de())
+        return None
+    start_log.info("apns ready", topic=schluessel.topic)
+    return ApnsVersender(schluessel)

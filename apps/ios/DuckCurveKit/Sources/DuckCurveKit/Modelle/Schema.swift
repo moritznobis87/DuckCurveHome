@@ -1183,6 +1183,42 @@ public struct AnlageWarmwasserOut: Codable, Sendable, Hashable {
     }
 }
 
+/// Ein Gerät der iOS-App anmelden.
+///
+/// Derselbe Zuschnitt wie `PushSubscribeIn`, nur dass die Adresse ein Gerätetoken ist und die
+/// beiden Schlüssel fehlen: APNs verschlüsselt selbst.
+public struct ApnsSubscribeIn: Codable, Sendable, Hashable {
+    public var token: String
+    public var label: String?
+    public var sandbox: Bool?
+
+    public init(token: String, label: String? = nil, sandbox: Bool? = nil) {
+        self.token = token
+        self.label = label
+        self.sandbox = sandbox
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.token = try c.decode(String.self, forKey: .token)
+        self.label = try c.decodeIfPresent(String.self, forKey: .label)
+        self.sandbox = try c.decodeIfPresent(Bool.self, forKey: .sandbox)
+    }
+}
+
+public struct ApnsUnsubscribeIn: Codable, Sendable, Hashable {
+    public var token: String
+
+    public init(token: String) {
+        self.token = token
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.token = try c.decode(String.self, forKey: .token)
+    }
+}
+
 /// Ergebnis eines manuell angestoßenen myenergi-Historienabrufs.
 public struct BackfillResultOut: Codable, Sendable, Hashable {
     public var ok: Bool

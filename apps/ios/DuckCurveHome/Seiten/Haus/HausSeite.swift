@@ -40,21 +40,24 @@ struct HausSeite: View {
         // Die Raumtemperaturen kommen nicht im Ereignisstrom - sie werden nachgeholt, aber nicht
         // im Sekundentakt: ein Fussbodenheizkreis bewegt sich in Stunden, nicht in Sekunden.
         .task { await haltFrisch() }
-        .sheet(item: raumblatt) { id in
-            if let r = raeume?.rooms.first(where: { $0.id == id }) {
+        .sheet(isPresented: raumOffen) {
+            if case .raum(let id) = wegweiser.blatt,
+               let r = raeume?.rooms.first(where: { $0.id == id })
+            {
                 Raumblatt(raum: r) { await lade() }
             }
         }
     }
 
-    private var raumblatt: Binding<Int?> {
+    /// Nur das Raumblatt - die uebrigen Blaetter haengen an der Wurzel.
+    private var raumOffen: Binding<Bool> {
         Binding(
             get: {
-                if case .raum(let id) = wegweiser.blatt { return id }
-                return nil
+                if case .raum = wegweiser.blatt { return true }
+                return false
             },
-            set: { neu in
-                wegweiser.blatt = neu.map { Blatt.raum($0) }
+            set: { offen in
+                if !offen, case .raum = wegweiser.blatt { wegweiser.blatt = nil }
             }
         )
     }
@@ -302,24 +305,6 @@ struct Alarmkarte: View {
                 rueckmeldung = error.localizedDescription
             }
             laeuft = false
-        }
-    }
-}
-
-extension View {
-    /// `sheet(item:)` mit einem `Binding<Int?>` - SwiftUI will dafuer einen `Identifiable`.
-    func sheet<Inhalt: View>(
-        item: Binding<Int?>, @ViewBuilder inhalt: @escaping (Int) -> Inhalt
-    ) -> some View {
-        sheet(
-            isPresented: Binding(
-                get: { item.wrappedValue != nil },
-                set: { if !$0 { item.wrappedValue = nil } }
-            )
-        ) {
-            if let wert = item.wrappedValue {
-                inhalt(wert)
-            }
         }
     }
 }

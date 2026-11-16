@@ -282,9 +282,9 @@ struct ZugangSeite: View {
                             ForEach(Array(g.devices.enumerated()), id: \.offset) { i, d in
                                 if i > 0 { Divider().overlay(Farbe.linie1) }
                                 Zeile(
-                                    wort: d.label ?? "ohne Namen",
-                                    wert: Formate.hhmm(iso: d.createdAt),
-                                    dazu: d.origin
+                                    wort: d.label,
+                                    wert: d.zuletztOk.map { Formate.hhmm(iso: $0) } ?? Formate.leer,
+                                    dazu: d.seit.map { "seit \(Formate.hhmm(iso: $0))" }
                                 )
                             }
                         }

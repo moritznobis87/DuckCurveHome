@@ -1136,6 +1136,29 @@ class PushSubscribeIn(BaseModel):
     origin: str = ""
 
 
+class ApnsSubscribeIn(BaseModel):
+    """Ein Gerät der iOS-App anmelden.
+
+    Derselbe Zuschnitt wie `PushSubscribeIn`, nur dass die Adresse ein Gerätetoken ist und die
+    beiden Schlüssel fehlen: APNs verschlüsselt selbst.
+    """
+
+    #: Das Gerätetoken, wie APNs es vergibt - 64 Hexzeichen.
+    token: str = Field(min_length=8, max_length=200)
+    #: Ein Wort, an dem man das Gerät später wiedererkennt („iPad Flur").
+    label: str = ""
+    #: Ob das Token aus einem Entwicklungsbau kommt.
+    #:
+    #: Das muss mitkommen und lässt sich nicht erraten: ein Token aus Xcode gilt bei Apple an
+    #: einer anderen Adresse als eines aus dem App Store, und wer das verwechselt, bekommt
+    #: `BadDeviceToken` ohne weitere Auskunft.
+    sandbox: bool = False
+
+
+class ApnsUnsubscribeIn(BaseModel):
+    token: str = Field(min_length=8, max_length=200)
+
+
 class PushUnsubscribeIn(BaseModel):
     endpoint: str
 
