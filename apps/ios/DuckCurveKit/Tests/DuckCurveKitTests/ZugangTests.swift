@@ -164,10 +164,23 @@ final class VerbindungspolitikTests: XCTestCase {
     func testAufsichtErkenntStille() {
         let jetzt = Date(timeIntervalSince1970: 1_000_000)
         XCTAssertFalse(Verbindungspolitik.istVerstummt(letzterRahmen: jetzt.addingTimeInterval(-5), jetzt: jetzt))
-        XCTAssertFalse(Verbindungspolitik.istVerstummt(letzterRahmen: jetzt.addingTimeInterval(-15), jetzt: jetzt))
-        XCTAssertTrue(Verbindungspolitik.istVerstummt(letzterRahmen: jetzt.addingTimeInterval(-16), jetzt: jetzt))
+        XCTAssertFalse(Verbindungspolitik.istVerstummt(letzterRahmen: jetzt.addingTimeInterval(-40), jetzt: jetzt))
+        XCTAssertTrue(Verbindungspolitik.istVerstummt(letzterRahmen: jetzt.addingTimeInterval(-41), jetzt: jetzt))
         // Solange nie ein Rahmen kam, ist nichts verstummt - es hat nur nicht angefangen.
         XCTAssertFalse(Verbindungspolitik.istVerstummt(letzterRahmen: nil, jetzt: jetzt))
+    }
+
+    /// **Die Schwelle muss ueber dem Ping des Dienstes liegen.** `routers/live.py` setzt
+    /// `ping=15`; ein ruhiges Haus schickt sonst nichts. Eine Schwelle von 15 Sekunden hiesse:
+    /// jedes Zittern im Netz loest einen Neuaufbau aus, an einer Wandanzeige dauernd.
+    func testDieSchwelleLiegtUeberDemPingDesDienstes() {
+        let pingDesDienstes: Double = 15
+        XCTAssertGreaterThan(
+            Verbindungspolitik.stilleBisAbriss, pingDesDienstes * 2,
+            "ein einzelner ausgefallener Ping darf kein Abriss sein"
+        )
+        // Aber auch nicht so hoch, dass ein echter Abriss minutenlang unbemerkt bleibt.
+        XCTAssertLessThan(Verbindungspolitik.stilleBisAbriss, 90)
     }
 
     /// Ein `retry:` aus dem Strom ist ein Wunsch, kein Befehl.

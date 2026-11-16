@@ -81,11 +81,21 @@ done <<< "$DATEIEN"
 [[ $FEHLER -eq 0 ]] || exit 1
 gruen "$ANZAHL Dateien der Oberflaeche sind syntaktisch in Ordnung."
 
+blau "4b/5  Gegen den echten Dienst (wenn einer laeuft)"
+# Der Pruefstand antwortet mit dem, was fuer richtig gehalten wird - und wenn das falsch ist,
+# antwortet er falsch mit. Der Demo-Dienst antwortet mit dem, was wirklich kommt.
+if curl -fsS --max-time 2 http://localhost:8000/health >/dev/null 2>&1; then
+    (cd apps/ios/DuckCurveKit && DCH_DEMO=http://localhost:8000 "$SWIFT" test --filter DemoLaufTests)
+    gruen "Die erzeugten Modelle lesen die Antworten des echten Dienstes."
+else
+    gruen "Uebersprungen: kein Dienst auf Port 8000. Starten mit tools/ios-demo.sh"
+fi
+
 blau "5/5  Was dieser Lauf nicht prueft"
 cat <<'ENDE'
   - Ob die Oberflaeche typpruefend uebersetzt (braucht macOS und Xcode).
   - Ob sie richtig aussieht (braucht ein Geraet oder den Simulator).
-  - Das Glasmodell in SceneKit und die Diagramme in Swift Charts.
+  - Die Diagramme in Swift Charts und das Glasmodell als Zeichnung.
   Auf einem Mac:  xcodegen generate && xcodebuild -scheme DuckCurveHome \
       -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' build
 ENDE

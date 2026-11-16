@@ -92,11 +92,27 @@ targets:
           - Marke/IBMPlexSans-SemiBold.otf
           - Marke/IBMPlexMono-Regular.otf
         ITSAppUsesNonExemptEncryption: false
-        # Kein HTTP ohne TLS - auch nicht im Heimnetz. Wer den Dienst im LAN ohne Zertifikat
-        # betreibt, traegt den Gastgeber hier als Ausnahme ein; eine App, die HTTP generell
-        # erlaubt, erlaubt es auch unterwegs.
+        # Kein HTTP ohne TLS - mit genau zwei Ausnahmen, und beide sind begruendet.
+        #
+        # **`localhost`**, damit sich die App gegen den Demo-Dienst ausprobieren laesst
+        # (`docker compose up` horcht auf http://localhost:8000). Ohne diese Ausnahme meldet die
+        # App „nicht erreichbar", und zwar ohne den Grund zu nennen: das Betriebssystem bricht
+        # die Verbindung ab, bevor sie zustande kommt. Eine Ausnahme fuer den eigenen Rechner
+        # gibt nichts preis - weiter als bis zum Simulator kommt sie nicht.
+        #
+        # **Das lokale Netz**, damit ein Geraet den Dienst auf einem Rechner im Haus erreicht.
+        # Das ist die Lage, in der dieses Projekt entsteht: ein Dienst im Heimnetz, oft noch
+        # ohne Zertifikat. `NSAllowsLocalNetworking` gilt nur fuer Namen ohne Punkt und fuer
+        # `.local` - unterwegs bleibt HTTP verboten, und das ist der Punkt.
+        #
+        # Wer den Dienst oeffentlich betreibt, braucht keine der beiden: Railway liefert HTTPS.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: false
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            localhost:
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: home.duckcurve.app

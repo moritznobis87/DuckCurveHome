@@ -40,9 +40,26 @@ public struct Verbindungspolitik: Sendable {
     /// Mehr als das wird nie gewartet. 30 Sekunden ist die Spanne, nach der jemand, der vor der
     /// Anzeige steht, von sich aus zum Tablet greift.
     public static let hoechsteWartezeit: Double = 30.0
-    /// Ohne Rahmen so lange gilt die Verbindung als tot, auch wenn das Betriebssystem sie noch
-    /// offen haelt. Der Dienst schickt oefter als das.
-    public static let stilleBisAbriss: Double = 15.0
+    /// Ohne ein Byte so lange gilt die Verbindung als tot, auch wenn das Betriebssystem sie noch
+    /// offen haelt.
+    ///
+    /// **Diese Zahl haengt an einer Zahl des Dienstes, und sie war erst falsch.** Hier stand 15,
+    /// uebernommen aus `sseClient.ts`. Am laufenden Dienst nachgemessen sieht es so aus:
+    ///
+    /// - `EventSourceResponse(..., ping=15)` in `routers/live.py`: alle 15 Sekunden ein
+    ///   Kommentar-Ping, damit die Verbindung durch Zwischenstellen nicht einschlaeft.
+    /// - Ein `heartbeat`-Ereignis erst nach fuenf Sekunden leerer Warteschlange.
+    /// - Augenblicksbilder gedrosselt: hoechstens alle fuenf Sekunden, und nur bei Aenderung -
+    ///   bei einem ruhigen Haus laengstens alle sechzig (`Takt` in `live_feed.py`).
+    ///
+    /// Ein ruhiges Haus schickt also **nur den Ping**, und zwar genau im Abstand der alten
+    /// Schwelle. Jedes Zittern im Netz haette die Anzeige grundlos neu verbinden lassen - an
+    /// einer Wand, die Wochen laeuft, dauernd. Vierzig Sekunden sind gut zweieinhalb Pings: ein
+    /// ausgefallener Ping ist noch kein Abriss, zwei sind einer.
+    ///
+    /// Das Dashboard hat diesen Fehler auch, nur faellt er dort nicht auf: sein Waechter sieht
+    /// auf den letzten `snapshot`, und im Browser steht ohnehin jemand davor, der neu laedt.
+    public static let stilleBisAbriss: Double = 40.0
 
     /// Wie oft hintereinander es schiefgegangen ist.
     public private(set) var fehlversuche = 0
