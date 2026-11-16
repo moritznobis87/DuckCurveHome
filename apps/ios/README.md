@@ -34,6 +34,22 @@ Auf einem Mac zusätzlich:
 xcodegen generate && xcodebuild -scheme DuckCurveHome -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' build
 ```
 
+## Vorschauen
+
+Alle Vorschauen stehen in [`DuckCurveHome/App/Vorschauen.swift`](DuckCurveHome/App/Vorschauen.swift),
+nicht je eine neben ihrer Seite: jede braucht dieselbe Umgebung, und dreißigmal dieselben drei
+Zeilen sind dreißig Stellen, an denen eine fehlt.
+
+Der Hauszustand darin ist mit Beispieldaten gefüllt und **verbindet sich nicht** – alles aus dem
+Ereignisstrom ist da (Flussbild, Puffer, Tageskurve, Dock, der Satz des Reglers), und was eine
+Seite sich selbst holt, kommt nicht. Sie zeigt dann ihren Leerzustand, und auch der ist einen
+Blick wert: eine Seite, die ohne Daten schlecht aussieht, sieht am ersten Tag im Haus schlecht
+aus.
+
+Die Beispieldaten liegen im Kern (`Vorschau`) und nicht in der Oberfläche. Ein Beispielhaus, das
+nur in Vorschauen vorkommt, veraltet still, sobald sich ein Feld des Schemas ändert; eines, das
+in 211 Tests mitläuft, nicht.
+
 ## Wie das Projekt geschnitten ist
 
 Die Linie läuft nicht zwischen „Modell" und „Ansicht", sondern zwischen **was sich ohne macOS

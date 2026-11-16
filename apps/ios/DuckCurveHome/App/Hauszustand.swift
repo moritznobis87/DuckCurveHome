@@ -32,9 +32,9 @@ final class Hauszustand {
     var fehler: ApiFehler?
 
     /// Wann der letzte Rahmen kam, nach der Uhr des Geraets.
-    private(set) var letzterRahmen: Date?
+    fileprivate(set) var letzterRahmen: Date?
     /// Serverzeit minus Geraetezeit.
-    private(set) var versatz: TimeInterval = 0
+    fileprivate(set) var versatz: TimeInterval = 0
 
     // MARK: - Zugang
 
@@ -51,9 +51,43 @@ final class Hauszustand {
     private var horcher: Task<Void, Never>?
     private var aufsicht: Task<Void, Never>?
 
-    init(zugang: Zugang) {
+    /// Nur fuer Vorschauen: dieser Zustand verbindet sich nicht.
+    ///
+    /// Ohne das haengt jede SwiftUI-Vorschau an einem Netz, das es im Vorschaufenster nicht
+    /// gibt, und zeigt bestenfalls „Wird geholt …". Xcode baut Vorschauen bei jedem Tastendruck
+    /// neu - eine, die eine Sekunde auf einen Zeitablauf wartet, ist keine.
+    private let nurVorschau: Bool
+
+    init(zugang: Zugang, nurVorschau: Bool = false) {
         self.zugang = zugang
         self.api = Api(zugang: zugang)
+        self.nurVorschau = nurVorschau
+    }
+
+    /// Ein Haus mit Beispieldaten, fuer die Vorschauen in Xcode.
+    ///
+    /// Die Werte kommen aus `Vorschau` im Kern - denselben, mit denen auch die Tests rechnen.
+    /// Das ist der Grund, warum sie dort und nicht hier stehen: ein Beispielhaus, das nur in
+    /// Vorschauen vorkommt, veraltet still, sobald sich ein Feld des Schemas aendert. Eines, das
+    /// in 211 Tests mitlaeuft, nicht.
+    @MainActor
+    static func vorschau(
+        pv: Double? = 4.2, laeuft: Bool = true, tag: String = "2026-02-24"
+    ) -> Hauszustand {
+        let h = Hauszustand(zugang: Vorschau.zugang, nurVorschau: true)
+        h.zustand = Vorschau.liveZustand(pv: pv, laeuft: laeuft)
+        h.plan = Vorschau.plan(
+            ab: Tag.zeitraum(tag)?.von ?? Vorschau.jetzt,
+            fenster: [
+                Vorschau.fenster("\(tag)T11:00:00+01:00", "\(tag)T14:00:00+01:00", .cheap)
+            ]
+        )
+        h.raster = Vorschau.minutenraster(tag: tag)
+        h.verbindung = .live
+        h.letzterRahmen = Date()
+        // Die Uhr des Beispielhauses steht auf dem Nachmittag, zu dem die Zahlen passen.
+        h.versatz = Vorschau.jetzt.timeIntervalSince(Date())
+        return h
     }
 
     // MARK: - Die Zeit des Hauses
@@ -72,6 +106,7 @@ final class Hauszustand {
 
     /// Den Ereignisstrom oeffnen und die Erstladung anstossen.
     func starte() {
+        guard !nurVorschau else { return }
         guard zugang.istEingerichtet else { return }
         guard horcher == nil else { return }
         let strom = LiveStrom(zugang: zugang)
@@ -118,6 +153,7 @@ final class Hauszustand {
 
     /// Sie ist wieder da. Sofort verbinden, ohne Wartezeit - der Benutzer sieht hin.
     func beimZurueckkommen() {
+        guard !nurVorschau else { return }
         guard zugang.istEingerichtet else { return }
         if horcher == nil {
             starte()
@@ -189,6 +225,7 @@ final class Hauszustand {
     /// Wiederverbindung, und die Aufsicht erzwingt eine, sobald fuenfzehn Sekunden kein Rahmen
     /// kam. Wer gerade den 12. Oktober liest, soll davon nichts merken.
     func ersteLadung() async {
+        guard !nurVorschau else { return }
         async let zustandHolen = try? api.liveZustand()
         async let planHolen = try? api.plan()
 
