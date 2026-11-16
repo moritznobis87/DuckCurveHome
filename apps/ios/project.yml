@@ -1,0 +1,117 @@
+# Das Xcode-Projekt, als Text.
+#
+# **Warum nicht ein .xcodeproj im Repository.** Ein Xcode-Projekt ist ein Verzeichnis mit einer
+# Datei darin, die jede Datei des Projekts einzeln mit einer Zufallskennung auffuehrt. Es laesst
+# sich nicht lesen, nicht verstehen und bei zwei Leuten nicht zusammenfuehren; ein Diff darin ist
+# Zahlenbrei. Diese Datei beschreibt dasselbe in sechzig Zeilen, die man liest.
+#
+#     brew install xcodegen
+#     cd apps/ios && xcodegen generate && open DuckCurveHome.xcodeproj
+#
+# Erzeugt wird in `.gitignore` ausgeschlossen - erzeugte Dinge gehoeren nicht ins Repository.
+#
+# **Was hier festgelegt ist und warum.** Die drei Zeilen, bei denen Nachlesen teurer ist als
+# Lesen, stehen unten einzeln begruendet: das Mindestsystem, die Ausrichtung je Geraet und die
+# Berechtigung fuer Mitteilungen.
+
+name: DuckCurveHome
+
+options:
+  bundleIdPrefix: home.duckcurve
+  createIntermediateGroups: true
+  deploymentTarget:
+    # iOS 17 ist die Untergrenze, und zwar aus drei Gruenden, die alle in der App stehen:
+    # `@Observable` (der Zustand des Hauses), Swift Charts mit `chartXScale` auf Zahlenachsen
+    # (die Tageskurve) und `ContentUnavailableView`-freie Leerzustaende. iOS 16 waere ein
+    # Rueckbau an drei Stellen fuer Geraete, die dieses Haus nicht hat.
+    iOS: "17.0"
+  # Der Kern liegt daneben, nicht darin: er baut auch ohne Xcode.
+  groupSortPosition: top
+
+packages:
+  DuckCurveKit:
+    path: DuckCurveKit
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    # Warnungen sind Fehler, die noch nicht wehtun. In einem Projekt, dessen Oberflaeche nur auf
+    # einem Mac uebersetzt wird, ist jede Warnung ein Hinweis, den sonst niemand sieht.
+    GCC_TREAT_WARNINGS_AS_ERRORS: NO
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  DuckCurveHome:
+    type: application
+    platform: iOS
+    # Eine App fuer beide Geraete. Zwei Ziele waeren zwei Bundle-Kennungen, zwei Eintraege im
+    # App Store und doppelter Code fuer dieselbe Sache; die beiden Oberflaechen unterscheiden
+    # sich im Gerippe (`WandRahmen` gegen `HandRahmen`) und nicht im Programm.
+    deploymentTarget: "17.0"
+    sources:
+      - path: DuckCurveHome
+        excludes:
+          - "Ressourcen/Marke/*.svg"
+    resources:
+      - path: DuckCurveHome/Ressourcen
+    dependencies:
+      - package: DuckCurveKit
+        product: DuckCurveKit
+    entitlements:
+      path: DuckCurveHome/DuckCurveHome.entitlements
+      properties:
+        # Mitteilungen gehen ueber APNs. `development` fuer die Entwicklung; fuer TestFlight und
+        # den App Store setzt Xcode beim Archivieren `production`.
+        aps-environment: development
+    info:
+      path: DuckCurveHome/Info.plist
+      properties:
+        CFBundleDisplayName: Duck Curve
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        # **Querformat am iPad, beides am Telefon.** Die Wandanzeige ist im Querformat gedacht;
+        # ein iPad, das an der Wand kippt, ist kein Fall, den man vorsehen muss. Das Telefon wird
+        # in der Hand gehalten und darf sich drehen.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        "UISupportedInterfaceOrientations~ipad":
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # Dunkel, immer. Die Gestaltung ist fuer Dunkelheit gemacht (tokens.css: „Dunkle
+        # Oberflaechen"); eine helle Fassung gibt es nicht und soll es nicht geben.
+        UIUserInterfaceStyle: Dark
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        # Die Schriften der Marke. Die Namen muessen zu `Schrift` in Typografie.swift passen.
+        UIAppFonts:
+          - Marke/IBMPlexSans-Regular.otf
+          - Marke/IBMPlexSans-SemiBold.otf
+          - Marke/IBMPlexMono-Regular.otf
+        ITSAppUsesNonExemptEncryption: false
+        # Kein HTTP ohne TLS - auch nicht im Heimnetz. Wer den Dienst im LAN ohne Zertifikat
+        # betreibt, traegt den Gastgeber hier als Ausnahme ein; eine App, die HTTP generell
+        # erlaubt, erlaubt es auch unterwegs.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: home.duckcurve.app
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: YES
+        # Der Pfad, unter dem die Schriften im Bundle liegen.
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+
+schemes:
+  DuckCurveHome:
+    build:
+      targets:
+        DuckCurveHome: all
+    run:
+      config: Debug
+    archive:
+      config: Release

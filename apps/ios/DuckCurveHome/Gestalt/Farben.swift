@@ -89,59 +89,18 @@ public enum Farbe {
     public static let seitengrund = grundVerlauf
 }
 
-/// Die Guete eines Messwerts als Farbe und Wort.
+/// Die Guete eines Messwerts als Farbe.
 ///
-/// Jeder Wert aus dem Dienst traegt eine Guete (`ok`, `stale`, `unavailable`, `unknown`,
-/// `derived`, `inconsistent`). Die Anzeige muss das zeigen, ohne es zu einer Stoerung
-/// aufzublasen: ein Wert, der eine Minute alt ist, ist kein Alarm.
+/// Was eine Guete *bedeutet* - ob der Wert traegt, wie er heisst, wie alt er ist - steht im Kern
+/// (`Zustand/Guete.swift`), weil es eine Entscheidung ist und keine Formatierung. Hier bleibt nur
+/// die Farbe.
 extension Quality {
-    /// Ist der Wert gut genug, um als Zahl zu gelten?
-    ///
-    /// `derived` zaehlt mit: ein aus der Bilanz gerechneter Wert ist kein schlechterer Wert,
-    /// sondern ein anderer Weg zur selben Zahl.
-    public var traegt: Bool {
-        self == .ok || self == .derived
-    }
-
     public var farbe: Color {
-        switch self {
-        case .ok, .derived: return Farbe.text1
-        case .stale: return Farbe.achtung
-        case .unavailable, .unknown: return Farbe.text3
-        case .inconsistent: return Farbe.alarm
-        case .unbekannt: return Farbe.text3
+        switch stufe {
+        case .gut: return Farbe.text1
+        case .alt: return Farbe.achtung
+        case .fehlt: return Farbe.text3
+        case .falsch: return Farbe.alarm
         }
-    }
-
-    /// Das Wort, das neben dem Wert stehen kann - oder `nil`, wenn nichts zu sagen ist.
-    public var wort: String? {
-        switch self {
-        case .ok, .derived: return nil
-        case .stale: return "alt"
-        case .unavailable: return "fehlt"
-        case .unknown: return "unbekannt"
-        case .inconsistent: return "widersprüchlich"
-        case .unbekannt: return nil
-        }
-    }
-}
-
-extension Messwert {
-    /// Der Wert, wenn er traegt - sonst `nil`.
-    ///
-    /// Das ist die Stelle, an der die Anzeige entscheidet, ob eine Zahl dasteht oder ein
-    /// Bindestrich. Ein `stale`-Wert wird gezeigt, aber gedaempft: er war einmal richtig.
-    public var belastbar: Double? {
-        quality.traegt ? value : nil
-    }
-
-    public var zeitpunkt: Date? {
-        Zeit.ausIso(observedAt)
-    }
-
-    /// Wie alt der Wert ist, in Worten - oder `nil`, solange er frisch ist.
-    public func alter(jetzt: Date) -> String? {
-        guard let z = zeitpunkt else { return nil }
-        return Formate.alter(beobachtetAm: z, jetzt: jetzt)
     }
 }

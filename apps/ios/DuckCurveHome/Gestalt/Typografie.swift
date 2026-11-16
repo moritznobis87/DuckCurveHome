@@ -14,9 +14,20 @@ import SwiftUI
 /// bekommen. Nur die ganz grossen Zahlen (das Ambiente, die fuehrende Zahl einer Seite) sind
 /// feste Groessen: sie sind schon so gross, dass eine weitere Stufe den Umbruch zerlegt.
 public enum Schrift {
-    /// Der Name, unter dem die Schrift im Bundle liegt. Muss zu `Info.plist` passen.
+    /// Die PostScript-Namen der Schriften, aus den Dateien gelesen.
+    ///
+    /// **Hier steckt eine Falle, die niemand im Code sieht.** `Font.custom` nimmt einen Namen und
+    /// faellt stillschweigend auf die Systemschrift zurueck, wenn er nicht stimmt - keine
+    /// Warnung, kein Fehler, nur eine App, die „fast richtig" aussieht. Und der Name ist nicht
+    /// der Dateiname: aus `IBMPlexSans-SemiBold.otf` kommt
+    ///
+    ///     Familie:     IBM Plex Sans SmBld
+    ///     PostScript:  IBMPlexSans-SmBld
+    ///
+    /// Also `SmBld` und nicht `SemiBold`. Nachgelesen wurde das in der Namenstabelle der
+    /// Schriftdatei selbst, nicht im Dateinamen - der luegt hier.
     static let sans = "IBMPlexSans"
-    static let sansHalbfett = "IBMPlexSans-SemiBold"
+    static let sansHalbfett = "IBMPlexSans-SmBld"
     static let mono = "IBMPlexMono"
 
     // MARK: - Text
