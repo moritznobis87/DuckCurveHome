@@ -553,14 +553,28 @@ struct Entscheidungsblatt: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(\.dismiss) private var schliessen
 
+    /// Was vor dem Verbinden war - der Strom liefert nur, was seitdem kam.
+    @State private var archiv: [Decision] = []
+
+    /// Die laufenden zuerst, dann das Archiv ohne Doppelte.
+    private var alle: [Decision] {
+        var gesehen = Set(haus.entscheidungen.compactMap(\.id))
+        var aus = haus.entscheidungen
+        for d in archiv {
+            guard let id = d.id else { continue }
+            if gesehen.insert(id).inserted { aus.append(d) }
+        }
+        return aus
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
-                    if haus.entscheidungen.isEmpty {
-                        Karte { Leer(satz: "Seit dem Verbinden hat der Regler nicht entschieden.") }
+                    if alle.isEmpty {
+                        Karte { Leer(satz: "Der Regler hat noch nicht entschieden.") }
                     }
-                    ForEach(Array(haus.entscheidungen.enumerated()), id: \.offset) { _, d in
+                    ForEach(Array(alle.enumerated()), id: \.offset) { _, d in
                         Karte {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(alignment: .firstTextBaseline) {
@@ -602,5 +616,6 @@ struct Entscheidungsblatt: View {
                 }
             }
         }
+        .task { archiv = (try? await haus.api.entscheidungen()) ?? [] }
     }
 }

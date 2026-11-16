@@ -24,6 +24,7 @@ struct ReglerSeite: View {
     @State private var nachfrage: Nachfrage?
     @State private var laeuft: String?
     @State private var rueckmeldung: String?
+    @State private var kennzahlen: ReglerKennzahlenOut?
 
     /// Die Nachfrage vor einem Griff.
     private struct Nachfrage: Identifiable {
@@ -60,6 +61,9 @@ struct ReglerSeite: View {
                         }
                     }
                 }
+                if let k = kennzahlen, let zeilen = k.zeilen, !zeilen.isEmpty {
+                    kennzahlenkarte(k, zeilen)
+                }
                 if let protokoll = e.protokoll, !protokoll.isEmpty {
                     Karte(kicker: "Was geändert wurde") {
                         VStack(spacing: 0) {
@@ -83,12 +87,59 @@ struct ReglerSeite: View {
             }
         }
         .task { await lade() }
+        .task { kennzahlen = try? await haus.api.reglerKennzahlen(tage: 7) }
         .alert(item: $nachfrage) { n in
             Alert(
                 title: Text("\(n.einstellung.nameDe) stellen?"),
                 message: Text(nachfragesatz(n)),
                 primaryButton: .default(Text("Stellen")) { stelle(n) },
                 secondaryButton: .cancel(Text("Abbrechen"))
+            )
+        }
+    }
+
+    /// Was der Regler in den letzten Tagen wirklich getan hat, nach Betriebszustand.
+    ///
+    /// **Das ist die Gegenprobe zu den Einstellungen darüber.** Dort steht, was eingestellt ist;
+    /// hier steht, wie viele Minuten die Anlage in welchem Zustand war und mit welchem Vorlauf.
+    /// Eine Heizkurve, die auf dem Papier stimmt, und ein Vorlauf, der ständig fünf Kelvin
+    /// darüber liegt, sind zwei verschiedene Auskünfte.
+    private func kennzahlenkarte(
+        _ k: ReglerKennzahlenOut, _ zeilen: [ReglerKennzahlOut]
+    ) -> some View {
+        Karte(kicker: "Was der Regler tat", titel: "\(k.tage) Tage") {
+            Tabelle(
+                zeilennamen: zeilen.map { "Zustand \($0.code)" },
+                spalten: [
+                    .init(
+                        name: "Minuten",
+                        zellen: zeilen.map { Formate.zahl(Double($0.minuten), stellen: 0) }
+                    ),
+                    .init(
+                        name: "davon gelaufen",
+                        zellen: zeilen.map { Formate.zahl(Double($0.laufMin), stellen: 0) }
+                    ),
+                    .init(
+                        name: "Vorlauf",
+                        zellen: zeilen.map { Formate.celsius($0.vorlaufC, stellen: 1) }
+                    ),
+                    .init(
+                        name: "Sollvorlauf",
+                        zellen: zeilen.map { Formate.celsius($0.vorlaufSollC, stellen: 1) }
+                    ),
+                    .init(
+                        name: "angefordert",
+                        zellen: zeilen.map { Formate.prozent($0.angefordertAnteil) }
+                    ),
+                    .init(
+                        name: "Heizstab",
+                        zellen: zeilen.map { Formate.prozent($0.heizstabAnteil) }
+                    ),
+                    .init(
+                        name: "zuletzt",
+                        zellen: zeilen.map { $0.zuletzt.map { Formate.hhmm(iso: $0) } ?? Formate.leer }
+                    ),
+                ]
             )
         }
     }

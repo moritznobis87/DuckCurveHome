@@ -164,3 +164,26 @@ Nicht alles ließ sich übernehmen, und nicht alles sollte:
   sich zwischen Linux und iOS, und ein Test, der nur auf dem Prüfrechner gilt, ist keiner.
 - **Ein eigener ISO-Leser**, weil `Date.ISO8601FormatStyle` zwei der vier Formen nicht liest, die
   der Dienst liefert.
+
+## Was noch fehlt
+
+Zehn der 62 Endpunkte ruft die App nicht. Fünf davon mit Absicht, fünf sind Lücken:
+
+| | |
+|---|---|
+| `push/key`, `push/subscribe`, `push/unsubscribe` | Web Push, nur für den Browser. Die App geht über APNs. |
+| `demo`, `health` | Werkzeuge, keine Seiten. Die Demo steuert man mit `curl`. |
+| `import/tibber-invoice` | Eine Rechnung als PDF hochladen und prüfen. Gelesene Rechnungen zeigt die App; das Hochladen fehlt. Rechnungen kommen laut [`docs/RECHNUNGSPRUEFUNG.md`](../../docs/RECHNUNGSPRUEFUNG.md) ohnehin über den Dienst herein. |
+| `config/heat` | Die Annahmen **ändern**. Die App zeigt sie; geändert werden sie im Dashboard. Eine Zahl, die in jede Euro-Zahl eingeht, hinter einem Stepper auf einem Telefon zu haben, wäre leichtfertig. |
+| `system/speicher` | Die Speicherwerte einzeln. Dasselbe steht im Anlagenschema. |
+
+## Was nur auf einem Gerät zu prüfen ist
+
+Dieses Verzeichnis ist so geschnitten, dass möglichst viel ohne Mac geprüft werden kann – aber
+die Grenze läuft irgendwo, und sie läuft hier:
+
+- **Ob die Oberfläche typprüfend übersetzt.** Der Parser findet Klammern und Kommata, keine
+  falschen Typen. Der erste `xcodebuild` wird Fehler finden.
+- **Ob sie richtig aussieht.** Abstände, Umbrüche, das Glasmodell, die Diagramme.
+- **Ob APNs wirklich ankommt.** Dafür braucht es den Signierschlüssel, ein Gerät und eine echte
+  Mitteilung. Der Weg dorthin ist getestet, die letzte Meile nicht.

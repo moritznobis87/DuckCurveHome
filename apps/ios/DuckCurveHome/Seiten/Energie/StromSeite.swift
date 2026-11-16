@@ -153,13 +153,16 @@ struct PvSeite: View {
 /// laedt, verschiebt Kosten statt sie zu sparen - und ob er das tut, steht in
 /// `grid_to_battery_dark_kwh`.
 struct SpeicherSeite: View {
-    @Environment(Hauszustand.self) private var haus
-    @State private var bericht: String?
-
     var body: some View {
         Berichtsseite { z, api in
-            try await api.energieUebersicht(z.spanne.rawValue, anker: z.anker)
-        } inhalt: { b in
+            // Zwei Antworten: die Zahlen, und der Pruefbericht dazu. Der ist reiner Text - er
+            // haelt den gemeldeten Ladestand gegen Hausverbrauch und Leistung und sagt, wo es
+            // nicht aufgeht. Eine Datenstruktur waere er nicht, er ist eine Antwort zum Lesen.
+            async let zahlen = api.energieUebersicht(z.spanne.rawValue, anker: z.anker)
+            async let pruefung = try? api.speicherPruefung(z.spanne.rawValue, anker: z.anker)
+            return try await (zahlen: zahlen, pruefung: pruefung)
+        } inhalt: { paar in
+            let b = paar.zahlen
             Kachelfeld(kacheln: kennzahlen(b), kicker: "Speicher")
             Karte(kicker: "Woher die Ladung kam") {
                 Balkenbild(stuecke: [
@@ -183,6 +186,16 @@ struct SpeicherSeite: View {
                     ],
                     gestapelt: false
                 )
+            }
+            if let p = paar.pruefung, !p.isEmpty {
+                Karte(kicker: "Nachgerechnet") {
+                    ScrollView(.horizontal, showsIndicators: true) {
+                        Text(p)
+                            .font(Schrift.zahlKlein)
+                            .foregroundStyle(Farbe.text2)
+                            .textSelection(.enabled)
+                    }
+                }
             }
             Methode([
                 b.meta.estimatedNoteDe,

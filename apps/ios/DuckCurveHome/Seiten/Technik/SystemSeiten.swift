@@ -8,10 +8,16 @@ import SwiftUI
 /// die eine Liste nicht beantwortet: ob ein Raum die Nacht hält, oder ob er morgens von unten
 /// anfängt.
 struct HeizkreiseSeite: View {
+    @Environment(Hauszustand.self) private var haus
+    @State private var automatik: RoomShiftOut?
+
     var body: some View {
         Berichtsseite(spannen: [.tag]) { z, api in
             try await api.raeumeTag(z.anker, schrittMin: 15)
         } inhalt: { verlauf in
+            if let a = automatik {
+                Automatikkarte(automatik: a) { neu in automatik = neu }
+            }
             if verlauf.rooms.isEmpty {
                 Karte { Leer(satz: "Für diesen Tag sind keine Raumwerte da.") }
             } else {
@@ -62,6 +68,7 @@ struct HeizkreiseSeite: View {
                 ])
             }
         }
+        .task { automatik = try? await haus.api.raumAutomatik() }
     }
 
     private func mittel(_ werte: [Double?]) -> Double? {
@@ -438,60 +445,146 @@ struct PrognoseSeite: View {
     }
 }
 
-/// Daten prüfen: wie lückenlos die Messwerte sind.
+/// Daten prüfen: wie lückenlos die Messwerte sind, was der Bestand wiegt, und die Tagesdiagnose.
 ///
 /// **Die wichtigste Seite für das Vertrauen in alle anderen.** Jede Zahl dieser App steht auf
 /// Minutenwerten; wo die fehlen, rechnet der Dienst mit weniger, als er zu haben scheint. Die
 /// längste Lücke je Reihe sagt, wie schlimm es war.
 struct DatenSeite: View {
+    @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
+
+    @State private var abdeckung: CoverageOut?
+    @State private var bestand: StorageReportOut?
+    @State private var diagnose: String?
+    @State private var fehler: ApiFehler?
+
     var body: some View {
-        Berichtsseite(spannen: [.tag, .woche, .monat]) { z, api in
-            let tage: Int =
-                switch z.spanne {
-                case .tag: 1
-                case .woche: 7
-                case .monat: 31
-                case .jahr: 365
+        let z = wegweiser.zeitraum(jetzt: haus.jetzt)
+        Seite(zeitraum: Zeitraumleiste(spannen: [.tag, .woche, .monat])) {
+            if let fehler {
+                Stoerung(fehler: fehler) { Task { await lade(z) } }
+            }
+            if let a = abdeckung {
+                Karte(kicker: "Abdeckung") {
+                    if a.series.isEmpty {
+                        Leer(satz: "Keine Reihen gemeldet.")
+                    } else {
+                        Tabelle(
+                            zeilennamen: a.series.map(\.labelDe),
+                            spalten: [
+                                .init(
+                                    name: "vollständig",
+                                    zellen: a.series.map { Formate.prozent($0.coverage) }
+                                ),
+                                .init(
+                                    name: "Minuten",
+                                    zellen: a.series.map {
+                                        "\(Formate.zahl(Double($0.minutesSeen), stellen: 0)) / "
+                                            + Formate.zahl(Double($0.minutesExpected), stellen: 0)
+                                    }
+                                ),
+                                .init(
+                                    name: "lückige Stunden",
+                                    zellen: a.series.map { String($0.incompleteHours) }
+                                ),
+                                .init(
+                                    name: "längste Lücke",
+                                    zellen: a.series.map {
+                                        Formate.zahl($0.longestOutageH, stellen: 1) + " h"
+                                    }
+                                ),
+                                .init(
+                                    name: "zuletzt",
+                                    zellen: a.series.map {
+                                        $0.lastAt.map { Formate.hhmm(iso: $0) } ?? Formate.leer
+                                    }
+                                ),
+                            ]
+                        )
+                    }
                 }
-            return try await api.abdeckung(anker: z.anker, tage: tage)
-        } inhalt: { a in
-            Karte(kicker: "Abdeckung") {
-                if a.series.isEmpty {
-                    Leer(satz: "Keine Reihen gemeldet.")
-                } else {
+            }
+            if let b = bestand {
+                datenbestand(b)
+            }
+            if let d = diagnose, !d.isEmpty {
+                // **Reiner Text, und das soll er bleiben.** Die Tagesdiagnose ist eine Tabelle
+                // zum Lesen, keine Datenstruktur - der Dienst schickt sie darum ohne
+                // JSON-Umschlag. Sie in Zeilen zu zerlegen und neu zu setzen hiesse, sie zu
+                // interpretieren.
+                Karte(kicker: "Tagesdiagnose") {
+                    ScrollView(.horizontal, showsIndicators: true) {
+                        Text(d)
+                            .font(Schrift.zahlKlein)
+                            .foregroundStyle(Farbe.text2)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+            Methode([
+                abdeckung?.noteDe,
+                bestand?.noteDe,
+                "Eine Reihe mit 100 Prozent hat in jeder Minute des Zeitraums einen Wert. "
+                    + "Alles darunter heißt: die Berichte rechnen mit weniger.",
+            ])
+        }
+        .task(id: z) { await lade(z) }
+    }
+
+    /// Was der Bestand wiegt - und wie lange Rohwerte bleiben.
+    ///
+    /// Die Aufbewahrungsfrist steht dabei, weil sie die Antwort auf die Frage ist, die sich an
+    /// eine Lücke von vor drei Wochen anschliesst: nachsehen kann man dort nicht mehr.
+    private func datenbestand(_ b: StorageReportOut) -> some View {
+        Karte(kicker: "Datenbestand", titel: megabyte(b.totalBytes)) {
+            VStack(alignment: .leading, spacing: 10) {
+                Zeile(
+                    wort: "Rohwerte bleiben", wert: "\(b.rawRetentionDays)", einheit: "Tage",
+                    dazu: "danach nur noch Minutenmittel"
+                )
+                if !b.tables.isEmpty {
                     Tabelle(
-                        zeilennamen: a.series.map(\.labelDe),
+                        zeilennamen: b.tables.map(\.name),
                         spalten: [
-                            .init(name: "vollständig", zellen: a.series.map { Formate.prozent($0.coverage) }),
+                            .init(name: "gesamt", zellen: b.tables.map { megabyte($0.totalBytes) }),
+                            .init(name: "Daten", zellen: b.tables.map { megabyte($0.tableBytes) }),
+                            .init(name: "Index", zellen: b.tables.map { megabyte($0.indexBytes) }),
                             .init(
-                                name: "Minuten",
-                                zellen: a.series.map {
-                                    "\(Formate.zahl(Double($0.minutesSeen), stellen: 0)) / "
-                                        + Formate.zahl(Double($0.minutesExpected), stellen: 0)
-                                }
-                            ),
-                            .init(
-                                name: "lückige Stunden",
-                                zellen: a.series.map { String($0.incompleteHours) }
-                            ),
-                            .init(
-                                name: "längste Lücke",
-                                zellen: a.series.map { Formate.zahl($0.longestOutageH, stellen: 1) + " h" }
-                            ),
-                            .init(
-                                name: "zuletzt",
-                                zellen: a.series.map { $0.lastAt.map { Formate.hhmm(iso: $0) } ?? Formate.leer }
+                                name: "Zeilen",
+                                zellen: b.tables.map { Formate.zahl(Double($0.rowsEstimate), stellen: 0) }
                             ),
                         ]
                     )
                 }
             }
-            Methode([
-                a.noteDe,
-                "Eine Reihe mit 100 Prozent hat in jeder Minute des Zeitraums einen Wert. "
-                    + "Alles darunter heißt: die Berichte rechnen mit weniger.",
-            ])
         }
+    }
+
+    private func megabyte(_ bytes: Int) -> String {
+        let mb = Double(bytes) / 1_048_576
+        if mb >= 1024 {
+            return Formate.zahl(mb / 1024, stellen: 2) + Formate.schmalesLeerzeichen + "GB"
+        }
+        return Formate.zahl(mb, stellen: 1) + Formate.schmalesLeerzeichen + "MB"
+    }
+
+    private func lade(_ z: Zeitraum) async {
+        let tage: Int =
+            switch z.spanne {
+            case .tag: 1
+            case .woche: 7
+            case .monat: 31
+            case .jahr: 365
+            }
+        async let a = try? haus.api.abdeckung(anker: z.anker, tage: tage)
+        async let b = try? haus.api.datenbestand()
+        // Die Tagesdiagnose gibt es nur für einen Tag - für eine Woche wäre sie sieben Tabellen.
+        async let d = z.spanne == .tag ? try? haus.api.diagnose(tag: z.anker) : nil
+        abdeckung = await a
+        bestand = await b
+        diagnose = await d
+        fehler = abdeckung == nil ? .netz("Die Abdeckung ist nicht erreichbar.") : nil
     }
 }
 
@@ -723,3 +816,149 @@ extension StoveConfig: AlsZeilen {}
 extension ControlConfig: AlsZeilen {}
 extension BatteryConfig: AlsZeilen {}
 extension BalanceConfig: AlsZeilen {}
+
+
+/// Die Automatik für die thermische Masse.
+///
+/// **Was sie tut.** Sie hebt die Sollwerte der Räume vor einem Preistief an und senkt sie danach:
+/// das Haus wird zum Speicher, und die Wärme, die abends gebraucht wird, ist mittags für
+/// weniger Geld hineingegangen. Der Versatz ist klein - ein halbes Grad reicht, weil ein Haus
+/// viel Masse hat.
+///
+/// **Sie ist aus, bis jemand sie einschaltet.** Das ist Absicht: eine Automatik, die ohne
+/// Zutun an den Sollwerten der Wohnräume dreht, ist etwas, das man ausdrücklich gewollt haben
+/// muss.
+struct Automatikkarte: View {
+    @Environment(Hauszustand.self) private var haus
+    let automatik: RoomShiftOut
+    let geaendert: (RoomShiftOut) -> Void
+
+    @State private var laeuft = false
+
+    var body: some View {
+        Karte(kicker: "Automatik für die thermische Masse", titel: titel) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(automatik.reasonDe)
+                    .font(Schrift.klein)
+                    .foregroundStyle(Farbe.text2)
+                    .fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: 0) {
+                    Zeile(
+                        wort: "Anhebung", wert: Formate.zahl(automatik.deltaK, stellen: 1),
+                        einheit: "K", dazu: "vor dem Preistief"
+                    )
+                    Zeile(
+                        wort: "Absenkung", wert: Formate.zahl(automatik.drawK, stellen: 1),
+                        einheit: "K", dazu: "danach, zum Entladen"
+                    )
+                    Zeile(
+                        wort: "Vorlauf", wert: Formate.zahl(automatik.leadH, stellen: 1),
+                        einheit: "h", dazu: "so früh fängt sie an"
+                    )
+                    Zeile(
+                        wort: "lohnt ab", wert: Formate.zahl(automatik.minSpreadCt, stellen: 1),
+                        einheit: "ct", dazu: "Preisunterschied im Tag"
+                    )
+                    if let spanne = automatik.spreadCt {
+                        Zeile(
+                            wort: "heute", wert: Formate.zahl(spanne, stellen: 1), einheit: "ct",
+                            farbe: spanne >= automatik.minSpreadCt ? Farbe.mist : Farbe.text3
+                        )
+                    }
+                    if let von = automatik.windowStart, let bis = automatik.windowEnd {
+                        Zeile(
+                            wort: "Fenster",
+                            wert: "\(Formate.hhmm(iso: von)) – \(Formate.hhmm(iso: bis))"
+                        )
+                    }
+                    Zeile(
+                        wort: "Versatz jetzt", wert: Formate.zahl(automatik.offsetK, stellen: 1),
+                        einheit: "K",
+                        farbe: abs(automatik.offsetK) > 0.05 ? Farbe.amber : Farbe.text1
+                    )
+                }
+                if let raeume = automatik.rooms, !raeume.isEmpty {
+                    raumliste(raeume)
+                }
+                if let protokoll = automatik.log, !protokoll.isEmpty {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Zuletzt").font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                        ForEach(Array(protokoll.prefix(5).enumerated()), id: \.offset) { _, e in
+                            Text("\(Formate.hhmm(iso: e.at)) · \(e.textDe)")
+                                .font(Schrift.winzig)
+                                .foregroundStyle(Farbe.text3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                if haus.darfSchalten {
+                    Button {
+                        schalte(!automatik.enabled)
+                    } label: {
+                        Text(automatik.enabled ? "Automatik ausschalten" : "Automatik einschalten")
+                            .font(Schrift.klein)
+                            .foregroundStyle(automatik.enabled ? Farbe.text2 : Farbe.deep)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(automatik.enabled ? Farbe.flaeche3 : Farbe.amberWeich)
+                            .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(laeuft)
+                    .opacity(laeuft ? 0.6 : 1)
+                }
+                if let hinweis = automatik.noteDe, !hinweis.isEmpty {
+                    Text(hinweis)
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private var titel: String {
+        if !automatik.enabled { return "aus" }
+        if automatik.active == true { return "greift gerade · \(automatik.phase)" }
+        return "an · \(automatik.phase)"
+    }
+
+    /// Welche Räume mitmachen - und was die Automatik an ihnen wirklich geschrieben hat.
+    ///
+    /// Der geschriebene Sollwert steht neben dem Grundwert, weil sie auseinanderlaufen können:
+    /// wer von Hand stellt, während die Automatik läuft, verschiebt den Grundwert, und der
+    /// geschriebene folgt erst beim nächsten Schritt.
+    private func raumliste(_ raeume: [RoomShiftRoomOut]) -> some View {
+        Tabelle(
+            zeilennamen: raeume.map(\.name),
+            spalten: [
+                .init(
+                    name: "Grundwert",
+                    zellen: raeume.map { Formate.celsius($0.baseSetpointC, stellen: 1) }
+                ),
+                .init(
+                    name: "Versatz",
+                    zellen: raeume.map { Formate.zahl($0.offsetK, stellen: 1) + " K" }
+                ),
+                .init(
+                    name: "geschrieben",
+                    zellen: raeume.map { Formate.celsius($0.writtenSetpointC, stellen: 1) }
+                ),
+                .init(
+                    name: "wann",
+                    zellen: raeume.map { Formate.hhmm(iso: $0.writtenAt) }
+                ),
+            ]
+        )
+    }
+
+    private func schalte(_ an: Bool) {
+        laeuft = true
+        Task {
+            if let neu = try? await haus.api.stelleRaumAutomatik(RoomShiftIn(enabled: an)) {
+                geaendert(neu)
+            }
+            laeuft = false
+        }
+    }
+}
