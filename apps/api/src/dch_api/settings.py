@@ -177,6 +177,23 @@ class Settings(BaseSettings):
     # verschiedene Begriffe von "der Lauf von gestern" waeren eine Fehlerquelle, die niemand findet.
     forecast_canonical_hour: int = 6
 
+    # Alfred, der Helfer in der Oberflaeche (docs/ALFRED.md).
+    #
+    # Ohne Schluessel bleibt Alfred bei den vorbereiteten Texten und das Eingabefeld erscheint gar
+    # nicht erst. Der Anbieter ist Mistral; dieselbe Form (Systemtext als erste Nachricht, Bearer)
+    # sprechen auch OpenAI und weitere, dort genuegt eine andere Adresse in DCH_ALFRED_URL.
+    alfred_anbieter: Literal["mistral", "openai"] = "mistral"
+    alfred_schluessel: str = ""
+    # Leer heisst: die Vorgabe des Anbieters (alfred.dienst.VORGABE_MODELL).
+    alfred_modell: str = ""
+    alfred_url: str = ""
+    # Zeitlimit einer einzelnen Modellanfrage in Sekunden.
+    alfred_zeitlimit_s: float = 30.0
+    # Schutz der Rechnung vor einer Schleife, kein Abrechnen: gezaehlt wird im Prozess, je Geraet.
+    alfred_fragen_pro_tag: int = 100
+    # Wie viele fruehere Wechsel eines Gespraechs mitgehen. Der Faden lebt nur im Browser.
+    alfred_verlauf_max: int = 6
+
     @field_validator("cors_origins", "bridge_tokens", mode="before")
     @classmethod
     def _lists(cls, value: object) -> list[str]:

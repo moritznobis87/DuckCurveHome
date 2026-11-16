@@ -44,7 +44,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Any, Literal
 
 #: Wärmekapazität von Wasser, auf Liter je Minute und Kelvin umgelegt: 4,186 kJ/(kg K) / 60 s,
 #: ein Liter als ein Kilogramm gerechnet. Ergibt Kilowatt.
@@ -271,7 +271,9 @@ def auffuellen(minuten: Sequence[Minute]) -> list[Minute]:
     schweigt, bleibt leer."""
     reihe = sorted(minuten, key=lambda x: x.ts)
     grenze = timedelta(minutes=AUFFUELLEN_MIN + 1, seconds=30)
-    nach: list[dict[str, float]] = [{} for _ in reihe]
+    # `Any` und nicht `float`: mypy liest `replace(m, **n)` sonst so, als koennte jeder Wert auch
+    # in das erste Feld von `Minute` (den Zeitpunkt) gehen. Hineingeschrieben werden nur Zahlen.
+    nach: list[dict[str, Any]] = [{} for _ in reihe]
     for name in _REIHEN:
         davor: tuple[datetime, float] | None = None
         offen: list[int] = []

@@ -91,9 +91,7 @@ class ApnsSchluessel:
 
     @property
     def vollstaendig(self) -> bool:
-        return all(
-            teil.strip() for teil in (self.p8, self.key_id, self.team_id, self.topic)
-        )
+        return all(teil.strip() for teil in (self.p8, self.key_id, self.team_id, self.topic))
 
     def fehlt_de(self) -> str:
         """Was fehlt, in einem Satz - für die Seite „Mitteilungen" in der App."""
@@ -137,7 +135,9 @@ def signiere(schluessel: ApnsSchluessel, jetzt: float | None = None) -> str:
 
     privat = serialization.load_pem_private_key(schluessel.p8.encode(), password=None)
     if not isinstance(privat, ec.EllipticCurvePrivateKey):
-        raise ValueError("Der APNs-Schlüssel ist kein EC-Schlüssel (erwartet: P-256 aus der .p8-Datei).")
+        raise ValueError(
+            "Der APNs-Schlüssel ist kein EC-Schlüssel (erwartet: P-256 aus der .p8-Datei)."
+        )
     der = privat.sign(anfang.encode(), ec.ECDSA(hashes.SHA256()))
     r, s = asym_utils.decode_dss_signature(der)
     roh = r.to_bytes(32, "big") + s.to_bytes(32, "big")

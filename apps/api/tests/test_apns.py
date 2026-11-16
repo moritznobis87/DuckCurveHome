@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import base64
 import json
-from typing import Any
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -43,10 +42,10 @@ def entpacke(b64: str) -> bytes:
 def schluessel() -> ApnsSchluessel:
     """Ein echter P-256-Schlüssel in der Form, in der Apple die .p8-Datei ausgibt."""
     privat = ec.generate_private_key(ec.SECP256R1())
-    p8 = privat.private_bytes(
-        Encoding.PEM, PrivateFormat.PKCS8, NoEncryption()
-    ).decode()
-    return ApnsSchluessel(p8=p8, key_id="ABC123DEFG", team_id="1234567890", topic="home.duckcurve.app")
+    p8 = privat.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption()).decode()
+    return ApnsSchluessel(
+        p8=p8, key_id="ABC123DEFG", team_id="1234567890", topic="home.duckcurve.app"
+    )
 
 
 # --------------------------------------------------------------------------- Das Signierzeichen
@@ -70,7 +69,9 @@ def test_signierzeichen_hat_die_form_die_apple_erwartet(schluessel: ApnsSchluess
     assert signatur[0] != 0x30 or len(signatur) == 64
 
 
-def test_signatur_laesst_sich_mit_dem_oeffentlichen_teil_pruefen(schluessel: ApnsSchluessel) -> None:
+def test_signatur_laesst_sich_mit_dem_oeffentlichen_teil_pruefen(
+    schluessel: ApnsSchluessel,
+) -> None:
     """Die Probe, dass die Umkodierung von DER nach r||s die Signatur nicht zerstört hat."""
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import utils as asym_utils
@@ -159,7 +160,12 @@ def test_wann_ein_geraet_geloescht_wird(status: int, grund: str, weg: bool) -> N
 def test_ein_schluesselfehler_loescht_kein_geraet() -> None:
     """Nicht das Gerät ist schuld, sondern der Schlüssel. Ein abgelaufener Schlüssel darf nicht
     alle angemeldeten Geräte aus der Liste räumen."""
-    for grund in ("InvalidProviderToken", "ExpiredProviderToken", "MissingProviderToken", "TopicDisallowed"):
+    for grund in (
+        "InvalidProviderToken",
+        "ExpiredProviderToken",
+        "MissingProviderToken",
+        "TopicDisallowed",
+    ):
         antwort = ApnsAntwort(403, grund)
         assert antwort.schluessel_schuld
         assert not antwort.weg
@@ -245,7 +251,12 @@ async def test_eine_mitteilung_nimmt_den_weg_ihrer_adresse() -> None:
     await dienst.subscribe_apns("abc123", label="iPad Flur")
 
     bericht = await dienst.send_bericht(
-        Mitteilung(title="Der Puffer ist kalt", body="Seit zwei Stunden", tag="puffer", url="/waerme/anlage")
+        Mitteilung(
+            title="Der Puffer ist kalt",
+            body="Seit zwei Stunden",
+            tag="puffer",
+            url="/waerme/anlage",
+        )
     )
     assert len(bericht) == 1
     assert bericht[0].ok
@@ -323,7 +334,9 @@ def test_ein_zu_kurzes_token_wird_abgewiesen() -> None:
         assert klient.post("/api/v1/push/apns/subscribe", json={"token": "ab"}).status_code == 422
 
 
-def test_der_versender_entsteht_nur_mit_vollstaendigem_schluessel(schluessel: ApnsSchluessel) -> None:
+def test_der_versender_entsteht_nur_mit_vollstaendigem_schluessel(
+    schluessel: ApnsSchluessel,
+) -> None:
     from dch_api.main import apns_versender
 
     assert apns_versender(Settings(mode="demo")) is None

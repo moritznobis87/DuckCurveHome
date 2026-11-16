@@ -27,16 +27,18 @@ wie vom echten Dienst, damit auch der Weg durch `ApiFehler` geprueft wird.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any
 
 TOKEN = "pruefstand"
 JETZT = "2026-02-24T14:35:00Z"
 
 
-def messwert(wert, guete="ok"):
+def messwert(wert: float | None, guete: str = "ok") -> dict[str, Any]:
     return {
         "value": wert,
         "observed_at": JETZT,
@@ -45,7 +47,9 @@ def messwert(wert, guete="ok"):
     }
 
 
-def augenblick(pv=4.2, wp=2.1, preis=18.4, zeit=JETZT):
+def augenblick(
+    pv: float = 4.2, wp: float = 2.1, preis: float = 18.4, zeit: str = JETZT
+) -> dict[str, Any]:
     return {
         "timestamp": zeit,
         "pv_power_kw": messwert(pv),
@@ -71,7 +75,7 @@ def augenblick(pv=4.2, wp=2.1, preis=18.4, zeit=JETZT):
     }
 
 
-def live_zustand(pv=4.2, zeit=JETZT):
+def live_zustand(pv: float = 4.2, zeit: str = JETZT) -> dict[str, Any]:
     return {
         "snapshot": augenblick(pv=pv, zeit=zeit),
         "buffer": {
@@ -139,7 +143,7 @@ PLAN = {
 class Hand(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
-    def log_message(self, *_):
+    def log_message(self, *_: Any) -> None:
         pass  # kein Gerede im Testlauf
 
     # ---------------------------------------------------------------- Werkzeug
@@ -148,7 +152,7 @@ class Hand(BaseHTTPRequestHandler):
         kopf = self.headers.get("authorization", "")
         return kopf == f"Bearer {TOKEN}"
 
-    def _sende_json(self, rumpf, status=200):
+    def _sende_json(self, rumpf: Any, status: int = 200) -> None:
         roh = json.dumps(rumpf).encode("utf-8")
         self.send_response(status)
         self.send_header("content-type", "application/json")
@@ -156,7 +160,7 @@ class Hand(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(roh)
 
-    def _sende_text(self, text, status=200):
+    def _sende_text(self, text: str, status: int = 200) -> None:
         roh = text.encode("utf-8")
         self.send_response(status)
         self.send_header("content-type", "text/plain; charset=utf-8")
@@ -164,12 +168,12 @@ class Hand(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(roh)
 
-    def _fehler(self, code, meldung, status):
+    def _fehler(self, code: str, meldung: str, status: int) -> None:
         self._sende_json({"error": {"code": code, "message": meldung, "details": None}}, status)
 
     # ------------------------------------------------------------------- Wege
 
-    def do_GET(self):  # noqa: N802
+    def do_GET(self) -> None:
         weg = self.path.split("?")[0]
         frage = self.path.split("?")[1] if "?" in self.path else ""
 
@@ -188,20 +192,24 @@ class Hand(BaseHTTPRequestHandler):
         if weg == "/api/v1/history":
             zeilen = []
             for i in range(5):
-                zeilen.append({
-                    "ts": f"2026-02-24T12:{i:02d}:00Z",
-                    "pv_power_kw": 3.0 + i * 0.5,
-                    "house_power_kw": 1.2,
-                    "grid_power_kw": None,
-                    "electricity_price_ct_kwh": 18.4,
-                    "hp_release_contact": 1,
-                })
-            return self._sende_json({
-                "start": "2026-02-24T12:00:00Z",
-                "end": "2026-02-24T12:05:00Z",
-                "resolution_s": 60,
-                "rows": zeilen,
-            })
+                zeilen.append(
+                    {
+                        "ts": f"2026-02-24T12:{i:02d}:00Z",
+                        "pv_power_kw": 3.0 + i * 0.5,
+                        "house_power_kw": 1.2,
+                        "grid_power_kw": None,
+                        "electricity_price_ct_kwh": 18.4,
+                        "hp_release_contact": 1,
+                    }
+                )
+            return self._sende_json(
+                {
+                    "start": "2026-02-24T12:00:00Z",
+                    "end": "2026-02-24T12:05:00Z",
+                    "resolution_s": 60,
+                    "rows": zeilen,
+                }
+            )
 
         if weg == "/api/v1/energy/diagnose":
             return self._sende_text(f"Diagnose für {frage}\nSpalte  Wert\nPV      14,2 kWh\n")
@@ -218,7 +226,7 @@ class Hand(BaseHTTPRequestHandler):
 
         return self._fehler("not_found", f"Kein Weg {weg}.", 404)
 
-    def do_POST(self):  # noqa: N802
+    def do_POST(self) -> None:
         weg = self.path.split("?")[0]
         if not self._token_ok():
             return self._fehler("unauthorized", "Kein gültiges API-Token.", 401)
@@ -230,38 +238,40 @@ class Hand(BaseHTTPRequestHandler):
             # wirklich mitreist und nicht nur in `Zugang.kopfzeilen` steht.
             raum_id = int(weg.split("/")[4])
             soll = json.loads(rumpf or b"{}").get("setpoint_c")
-            return self._sende_json({
-                "ok": True,
-                "room": {
-                    "id": raum_id,
-                    "name": "Wohnzimmer",
-                    "floor": "EG",
-                    "circuits": 2,
-                    "temp_c": 21.3,
+            return self._sende_json(
+                {
+                    "ok": True,
+                    "room": {
+                        "id": raum_id,
+                        "name": "Wohnzimmer",
+                        "floor": "EG",
+                        "circuits": 2,
+                        "temp_c": 21.3,
+                        "setpoint_c": soll,
+                        "offset_k": 0.0,
+                        "target_c": soll,
+                        "humidity_pct": 44.0,
+                        "valve": 1.0,
+                        "window": 0.0,
+                        "deviation_k": -0.2,
+                        "observed_at": JETZT,
+                        "quality": "ok",
+                    },
                     "setpoint_c": soll,
-                    "offset_k": 0.0,
-                    "target_c": soll,
-                    "humidity_pct": 44.0,
-                    "valve": 1.0,
-                    "window": 0.0,
-                    "deviation_k": -0.2,
-                    "observed_at": JETZT,
-                    "quality": "ok",
-                },
-                "setpoint_c": soll,
-                "message_de": "Gestellt.",
-                "urheber_art": self.headers.get("x-dch-urheber-art"),
-                "urheber_id": self.headers.get("x-dch-urheber-id"),
-                "urheber_name": self.headers.get("x-dch-urheber-name"),
-                "urheber_rolle": self.headers.get("x-dch-urheber-rolle"),
-                "content_type": self.headers.get("content-type"),
-            })
+                    "message_de": "Gestellt.",
+                    "urheber_art": self.headers.get("x-dch-urheber-art"),
+                    "urheber_id": self.headers.get("x-dch-urheber-id"),
+                    "urheber_name": self.headers.get("x-dch-urheber-name"),
+                    "urheber_rolle": self.headers.get("x-dch-urheber-rolle"),
+                    "content_type": self.headers.get("content-type"),
+                }
+            )
 
         return self._fehler("not_found", f"Kein Weg {weg}.", 404)
 
     # ---------------------------------------------------------------- Der Strom
 
-    def _strom(self):
+    def _strom(self) -> None:
         """Der Ereignisstrom - absichtlich in schlechten Stuecken.
 
         Ein Dienst, der jeden Rahmen in einem Stueck schickt, prueft den Leser nicht. Hier wird
@@ -275,7 +285,7 @@ class Hand(BaseHTTPRequestHandler):
         self.send_header("connection", "keep-alive")
         self.end_headers()
 
-        def schicke(roh: bytes):
+        def schicke(roh: bytes) -> None:
             self.wfile.write(roh)
             self.wfile.flush()
 
@@ -294,7 +304,7 @@ class Hand(BaseHTTPRequestHandler):
             schicke(b"event: plan\nid: 2\ndata: " + json.dumps(PLAN).encode() + b"\n\n")
             schicke(b"event: heartbeat\ndata: " + JETZT.encode() + b"\n\n")
             # Ein Ereignis, das die App nicht kennt - sie darf daran nicht scheitern.
-            schicke(b"event: kuenftiges\ndata: {\"neu\":true}\n\n")
+            schicke(b'event: kuenftiges\ndata: {"neu":true}\n\n')
 
             zweiter = json.dumps(live_zustand(pv=5.5, zeit="2026-02-24T14:36:00Z")).encode()
             schicke(b"event: snapshot\nid: 3\ndata: " + zweiter + b"\n\n")
@@ -308,10 +318,8 @@ def main() -> int:
     dienst = ThreadingHTTPServer(("127.0.0.1", port), Hand)
     dienst.daemon_threads = True
     print(f"Prüfstand auf http://127.0.0.1:{port} (Token: {TOKEN})", flush=True)
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         dienst.serve_forever()
-    except KeyboardInterrupt:
-        pass
     return 0
 
 

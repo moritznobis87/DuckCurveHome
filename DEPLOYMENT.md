@@ -37,6 +37,7 @@ Home Assistant OS (Haus)                          Railway
    | `DCH_HEAT_PUMP_ACTUATION_ENABLED` | `true` (Vorgabe seit 09.11.2026): die Regelentscheidung stellt K1 selbst. Setzt E0 und E1 aus Schritt 6 voraus. Auf `false` läuft sie im Schatten weiter, entscheidet und zeigt an, schaltet aber nicht |
    | `DCH_MIGRATE_ON_START` | `true` (Standard): Alembic-Migration läuft beim Containerstart, bevor die API hochfährt |
    | `DCH_CORS_ORIGINS` | `[]` (Web spricht serverseitig über das BFF) |
+   | `DCH_ALFRED_SCHLUESSEL` | optional: API-Schlüssel von Mistral (console.mistral.ai → API Keys). Ohne ihn bleibt Alfred bei vorbereiteten Texten. Anbieter und Modell haben Vorgaben (`mistral`, `mistral-medium-latest`), siehe `docs/ALFRED.md` |
 
 3. Variablen **web**:
 

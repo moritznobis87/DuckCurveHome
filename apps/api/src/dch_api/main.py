@@ -16,6 +16,7 @@ from dch_api.dependencies import require_api_token
 from dch_api.errors import DchError, install_error_handlers
 from dch_api.infrastructure.logging import configure_logging
 from dch_api.routers import (
+    alfred,
     anlage,
     bridge,
     config,
@@ -52,9 +53,7 @@ async def _start_demo(app: FastAPI, settings: Settings) -> None:
     # Ohne Datenbank: Die Anmeldungen leben nur, solange der Vorgang lebt. Fuer den Demo-Modus ist
     # das richtig - dort soll nichts von gestern uebrig sein -, und die Oberflaeche ist damit auch
     # ohne Datenbank zu bedienen.
-    app.state.push = PushService(
-        MemoryPushStore(), settings.push_subject, apns_versender(settings)
-    )
+    app.state.push = PushService(MemoryPushStore(), settings.push_subject, apns_versender(settings))
     app.state.hems = runner.hems
     await runner.start()
 
@@ -196,6 +195,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(bridge.router)
     protected = [Depends(require_api_token)]
     for r in (
+        alfred.router,
         live.router,
         history.router,
         plan.router,

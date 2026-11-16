@@ -29,6 +29,203 @@
         }
       }
     },
+    "/api/v1/alfred/status": {
+      "get": {
+        "tags": [
+          "Alfred"
+        ],
+        "summary": "Kann Alfred antworten?",
+        "description": "Liest nur Einstellungen; kein Modell, keine Kosten. Die Oberflaeche zeigt das Eingabefeld nur\nbei `bereit` und nennt im Panel den Anbieter.",
+        "operationId": "zustand_api_v1_alfred_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlfredZustandOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alfred/ask": {
+      "post": {
+        "tags": [
+          "Alfred"
+        ],
+        "summary": "Eine Frage an den Helfer",
+        "description": "Ohne eingerichtetes Modell `bereit=False` statt eines Fehlers; die Oberflaeche zeigt dann\nihre vorbereiteten Texte.",
+        "operationId": "frage_api_v1_alfred_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlfredFrageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlfredAntwortOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alfred/ask/stream": {
+      "post": {
+        "tags": [
+          "Alfred"
+        ],
+        "summary": "Eine Frage an den Helfer, mit Fortschritt",
+        "description": "Dieselbe Frage wie POST /alfred/ask, mit Ereignissen: `schritt` je laufendem Werkzeug\n(nur der Name - den Satz dazu hat die Oberflaeche), zuletzt `antwort` oder `fehler`.\n\nPOST statt EventSource, weil EventSource nur GET ohne Rumpf kann und die Hilfetexte mitgehen.",
+        "operationId": "frage_mit_fortschritt_api_v1_alfred_ask_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlfredFrageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alfred/rechnung": {
+      "post": {
+        "tags": [
+          "Alfred"
+        ],
+        "summary": "Eine Stromrechnung erkennen, prüfen und zusammenfassen",
+        "description": "Das PDF als Rumpf (`application/pdf`), etwa per Drag-and-drop auf Alfred.\n\n**Erst die feste Erkennung, dann das Modell.** Liest die Tibber-Pruefung das PDF, ist es eine\nTibber-Rechnung: Sie wird geprueft und abgelegt wie auf der Rechnungsseite (dieselbe Funktion,\ndieselbe Ablage), ohne Sprachmodell, ohne dass etwas das Haus verlaesst und auch ohne\neingerichteten Schluessel. Die Antwort nennt die Rechnungsseite, auf der die volle Auswertung\nsteht.\n\nNur wenn sie es nicht kann, liest das Sprachmodell (andere Anbieter, `alfred/rechnung.py`):\nDann gehen nur geschwaerzte Zeilen mit Mengen, Preisen und Zeitraeumen hinaus, und gespeichert\nwird nichts.\n\nDas Ablegen einer Tibber-Rechnung ist ein Schreiben, aber keines, das ein Modell ausloest: Der\nMensch hat die Datei hineingezogen, so wie er sie auf der Rechnungsseite hochladen wuerde.",
+        "operationId": "rechnung_lesen_api_v1_alfred_rechnung_post",
+        "parameters": [
+          {
+            "name": "file_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "File Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlfredRechnungOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alfred/zuordnung": {
+      "post": {
+        "tags": [
+          "Alfred"
+        ],
+        "summary": "Entitätszuordnung für ein neues Haus vorschlagen",
+        "description": "Aus einer eingefuegten Entitaetenliste einen gepruefen YAML-Ausschnitt fuer `sensors:`.\nSchreibt nichts; die Datei liegt in Home Assistant.",
+        "operationId": "zuordnung_vorschlagen_api_v1_alfred_zuordnung_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlfredZuordnungIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Zuordnungsergebnis"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/live/state": {
       "get": {
         "tags": [
@@ -3165,6 +3362,264 @@
         "title": "AlarmOut",
         "description": "Die Alarmanlage, so weit sie dieses Werkzeug angeht.\n\n**Scharf ja, unscharf nein.** Die Anzeige hängt in der Küche, Gäste gehen daran vorbei, und\nihr Zugang ist ein Sitzungskeks auf einem Gerät - schwächer als ein Code am Bedienteil.\nDeshalb kennt diese Schnittstelle nur das Schärfen. Wer entschärfen will, tut es dort, wo es\nhingehört, und `can_arm` sagt, ob überhaupt geschaltet werden darf."
       },
+      "AlfredAntwortOut": {
+        "properties": {
+          "bereit": {
+            "type": "boolean",
+            "title": "Bereit"
+          },
+          "antwort": {
+            "type": "string",
+            "title": "Antwort"
+          },
+          "vorschlaege": {
+            "items": {
+              "$ref": "#/components/schemas/AlfredVorschlagOut"
+            },
+            "type": "array",
+            "title": "Vorschlaege"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bereit",
+          "antwort"
+        ],
+        "title": "AlfredAntwortOut"
+      },
+      "AlfredFrageIn": {
+        "properties": {
+          "frage": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Frage"
+          },
+          "wissen": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Wissen",
+            "default": ""
+          },
+          "verlauf": {
+            "items": {
+              "$ref": "#/components/schemas/AlfredWechselIn"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Verlauf"
+          }
+        },
+        "type": "object",
+        "required": [
+          "frage"
+        ],
+        "title": "AlfredFrageIn"
+      },
+      "AlfredRechnungOut": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "tibber",
+              "andere"
+            ],
+            "title": "Art"
+          },
+          "tibber": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TibberZusammenfassung"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "andere": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rechnungsergebnis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art"
+        ],
+        "title": "AlfredRechnungOut",
+        "description": "`tibber`: erkannt, geprueft und abgelegt wie auf der Rechnungsseite, ohne Sprachmodell.\n`andere`: vom Sprachmodell gelesen, fest gegen die eigene Messung gehalten, nicht gespeichert."
+      },
+      "AlfredVorschlagOut": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "schalten",
+              "sollwert"
+            ],
+            "title": "Art"
+          },
+          "ziel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Ziel"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "an": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "An"
+          },
+          "war_an": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "War An"
+          },
+          "alt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt"
+          },
+          "neu": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neu"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "ziel",
+          "name"
+        ],
+        "title": "AlfredVorschlagOut",
+        "description": "Ein Vorschlag, noch nicht ausgeführt. `art` sagt, welcher Endpunkt ihn beim Drücken ausführt:\n`schalten` → POST /control/actuators/{ziel}, `sollwert` → POST /rooms/{ziel}/setpoint."
+      },
+      "AlfredWechselIn": {
+        "properties": {
+          "wer": {
+            "type": "string",
+            "enum": [
+              "alfred",
+              "nutzer"
+            ],
+            "title": "Wer"
+          },
+          "inhalt": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Inhalt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wer",
+          "inhalt"
+        ],
+        "title": "AlfredWechselIn",
+        "description": "Ein früherer Wechsel des Gesprächs. Ungeprüfte Eingabe aus dem Browser: Begrenzt werden Rolle,\nLänge und - in `AlfredFrageIn` - die Zahl; der Dienst nimmt davon nur die letzten."
+      },
+      "AlfredZuordnungIn": {
+        "properties": {
+          "liste": {
+            "type": "string",
+            "maxLength": 60000,
+            "minLength": 1,
+            "title": "Liste"
+          }
+        },
+        "type": "object",
+        "required": [
+          "liste"
+        ],
+        "title": "AlfredZuordnungIn",
+        "description": "Eine eingefügte Entitätenliste aus Home Assistant (Entwicklerwerkzeuge → Zustände)."
+      },
+      "AlfredZustandOut": {
+        "properties": {
+          "bereit": {
+            "type": "boolean",
+            "title": "Bereit"
+          },
+          "anbieter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anbieter"
+          },
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bereit"
+        ],
+        "title": "AlfredZustandOut",
+        "description": "Ob Alfred antworten kann, und an wen Fragen gehen (KI-Verordnung Art. 50)."
+      },
       "AnlageHeizkreisOut": {
         "properties": {
           "rooms_total": {
@@ -4061,6 +4516,29 @@
         ],
         "title": "BatteryModeIn",
         "description": "`off` heißt: DCH sendet nichts und lässt dem Speicher seine eigene Regelung."
+      },
+      "Befund": {
+        "properties": {
+          "stufe": {
+            "type": "string",
+            "title": "Stufe"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stufe",
+          "titel",
+          "text"
+        ],
+        "title": "Befund"
       },
       "BetriebHeizkurveOut": {
         "properties": {
@@ -6908,6 +7386,103 @@
           "energy_error_pct"
         ],
         "title": "ForecastScore"
+      },
+      "GeleseneRechnung": {
+        "properties": {
+          "anbieter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anbieter"
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis"
+          },
+          "kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kwh"
+          },
+          "arbeitspreis_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arbeitspreis Ct Kwh"
+          },
+          "grundpreis_eur_monat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grundpreis Eur Monat"
+          },
+          "brutto_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brutto Eur"
+          },
+          "netto_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Netto Eur"
+          }
+        },
+        "type": "object",
+        "title": "GeleseneRechnung",
+        "description": "Was das Modell gelesen hat, nach Pruefung der Typen."
       },
       "HTTPValidationError": {
         "properties": {
@@ -11469,6 +12044,67 @@
         ],
         "title": "ReasonCode"
       },
+      "Rechnungsergebnis": {
+        "properties": {
+          "gelesen": {
+            "$ref": "#/components/schemas/GeleseneRechnung"
+          },
+          "mittlerer_preis_ct_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mittlerer Preis Ct Kwh"
+          },
+          "gemessen_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemessen Kwh"
+          },
+          "abdeckung": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abdeckung"
+          },
+          "befunde": {
+            "items": {
+              "$ref": "#/components/schemas/Befund"
+            },
+            "type": "array",
+            "title": "Befunde"
+          },
+          "zeilen_gesendet": {
+            "type": "integer",
+            "title": "Zeilen Gesendet"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gelesen",
+          "mittlerer_preis_ct_kwh",
+          "gemessen_kwh",
+          "abdeckung",
+          "befunde",
+          "zeilen_gesendet"
+        ],
+        "title": "Rechnungsergebnis"
+      },
       "ReglerAenderungOut": {
         "properties": {
           "at": {
@@ -13973,6 +14609,89 @@
         ],
         "title": "TibberInvoice"
       },
+      "TibberZusammenfassung": {
+        "properties": {
+          "zeitraum": {
+            "type": "string",
+            "title": "Zeitraum"
+          },
+          "von": {
+            "type": "string",
+            "format": "date",
+            "title": "Von"
+          },
+          "bis": {
+            "type": "string",
+            "format": "date",
+            "title": "Bis"
+          },
+          "kwh": {
+            "type": "number",
+            "title": "Kwh"
+          },
+          "brutto_eur": {
+            "type": "number",
+            "title": "Brutto Eur"
+          },
+          "ct_kwh_brutto": {
+            "type": "number",
+            "title": "Ct Kwh Brutto"
+          },
+          "gemessen_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemessen Kwh"
+          },
+          "abdeckung": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abdeckung"
+          },
+          "urteil": {
+            "type": "string",
+            "title": "Urteil"
+          },
+          "befunde": {
+            "items": {
+              "$ref": "#/components/schemas/Befund"
+            },
+            "type": "array",
+            "title": "Befunde"
+          },
+          "schon_bekannt": {
+            "type": "boolean",
+            "title": "Schon Bekannt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "zeitraum",
+          "von",
+          "bis",
+          "kwh",
+          "brutto_eur",
+          "ct_kwh_brutto",
+          "gemessen_kwh",
+          "abdeckung",
+          "urteil",
+          "befunde",
+          "schon_bekannt"
+        ],
+        "title": "TibberZusammenfassung",
+        "description": "Das Ergebnis der festen Tibber-Pruefung, so knapp, wie Alfred es im Panel sagt. Die volle\nAuswertung steht auf der Rechnungsseite, auf die `AlfredRechnungOut.link` zeigt."
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -14648,6 +15367,81 @@
         ],
         "title": "YearMapOut",
         "description": "Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.\n\nDie Stunde ist Ortszeit, nicht UTC - sonst wanderte die Sonne im Bild um eine Stunde, sobald die\nZeitumstellung kommt. `null` heißt „keine Messdaten\", nicht „null Kilowattstunden\"; beides zu\nunterscheiden ist der halbe Nutzen der Darstellung."
+      },
+      "Zuordnungsergebnis": {
+        "properties": {
+          "zeilen": {
+            "items": {
+              "$ref": "#/components/schemas/Zuordnungszeile"
+            },
+            "type": "array",
+            "title": "Zeilen"
+          },
+          "verworfen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Verworfen"
+          },
+          "offen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Offen"
+          },
+          "yaml": {
+            "type": "string",
+            "title": "Yaml"
+          },
+          "zeilen_gesendet": {
+            "type": "integer",
+            "title": "Zeilen Gesendet"
+          }
+        },
+        "type": "object",
+        "required": [
+          "zeilen",
+          "verworfen",
+          "offen",
+          "yaml",
+          "zeilen_gesendet"
+        ],
+        "title": "Zuordnungsergebnis"
+      },
+      "Zuordnungszeile": {
+        "properties": {
+          "schluessel": {
+            "type": "string",
+            "title": "Schluessel"
+          },
+          "entitaet": {
+            "type": "string",
+            "title": "Entitaet"
+          },
+          "einheit": {
+            "type": "string",
+            "title": "Einheit"
+          },
+          "grund": {
+            "type": "string",
+            "title": "Grund"
+          },
+          "yaml": {
+            "type": "string",
+            "title": "Yaml"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schluessel",
+          "entitaet",
+          "einheit",
+          "grund",
+          "yaml"
+        ],
+        "title": "Zuordnungszeile"
       }
     }
   }

@@ -195,3 +195,30 @@ def test_ohne_kopfzeile_bleibt_das_feld_leer(client: TestClient) -> None:
     eigene = [e for e in eintraege if e["quelle"] == "app"]
     # Leer heisst unbekannt, nicht „niemand" - und auf keinen Fall ein erfundener Name.
     assert eigene and eigene[-1]["urheber"] == ""
+
+
+def test_ueber_alfred_steht_im_text_und_ueberlebt_das_ereignis() -> None:
+    a = u.aus_kopfzeilen({"x-dch-urheber-name": "iPad Flur", "x-dch-urheber-ueber": "alfred"})
+    assert a is not None and a.ueber == "alfred"
+    assert a.text() == "iPad Flur, über Alfred"
+    assert u.aus_kontext(a.als_kontext()) == a
+
+
+def test_ueber_nimmt_nur_bekannte_wege() -> None:
+    # Ein freier Text aus einer Kopfzeile beschriftete sonst jedes Ereignis.
+    a = u.aus_kopfzeilen({"x-dch-urheber-name": "iPad Flur", "x-dch-urheber-ueber": "hacker"})
+    assert a is not None and a.ueber == "" and a.text() == "iPad Flur"
+    assert "urheber.ueber" not in a.als_kontext()
+
+
+def test_ein_vorschlag_von_alfred_steht_so_im_raumprotokoll(client: TestClient) -> None:
+    raeume = client.get("/api/v1/rooms", headers=KOPF).json()["rooms"]
+    rid = raeume[0]["id"]
+    client.post(
+        f"/api/v1/rooms/{rid}/setpoint",
+        json={"setpoint_c": 21.5},
+        headers={**KOPF, "x-dch-urheber-name": "iPad Flur", "x-dch-urheber-ueber": "alfred"},
+    )
+    eintraege = client.get(f"/api/v1/rooms/{rid}/log?hours=2", headers=KOPF).json()["entries"]
+    eigene = [e for e in eintraege if e["quelle"] == "app"]
+    assert eigene and eigene[-1]["urheber"] == "iPad Flur, über Alfred"

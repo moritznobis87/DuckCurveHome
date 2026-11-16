@@ -44,6 +44,13 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_WEATHER_REFRESH_MIN` | `60` | Open-Meteo-Abruf; `0` deaktiviert Wetter |
 | `DCH_PRICE_REFRESH_MIN` | `30` | Tibber-Abruf (13-15 Uhr immer halbstündlich) |
 | `DCH_RAW_RETENTION_DAYS` | `14` | Aufbewahrung der **Rohwerte**. Minutenmittel und Stundenbilanzen bleiben dauerhaft, siehe `docs/DATENHALTUNG.md` |
+| `DCH_ALFRED_SCHLUESSEL` | - | API-Schlüssel des Sprachmodells für Alfred (`docs/ALFRED.md`). Leer = Alfred bleibt bei vorbereiteten Texten, das Eingabefeld erscheint nicht. Ein Geheimnis: nur in der Umgebung des Dienstes |
+| `DCH_ALFRED_ANBIETER` | `mistral` | `mistral` oder `openai`; beide sprechen dieselbe Form. Weitere kompatible Anbieter über `DCH_ALFRED_URL` |
+| `DCH_ALFRED_MODELL` | *(Vorgabe des Anbieters)* | Leer = `mistral-medium-latest` bzw. `gpt-4o-mini`. Bewusst nicht die kleinste Stufe: kleine Modelle erfinden eher Bedienschritte |
+| `DCH_ALFRED_URL` | *(Vorgabe des Anbieters)* | Andere Adresse in derselben Form (z. B. ein eigener OpenAI-kompatibler Endpunkt) |
+| `DCH_ALFRED_ZEITLIMIT_S` | `30` | Zeitlimit einer einzelnen Modellanfrage |
+| `DCH_ALFRED_FRAGEN_PRO_TAG` | `100` | Fragen je Gerät und Tag, im Prozess gezählt. Schutz vor einer Schleife, keine Abrechnung |
+| `DCH_ALFRED_VERLAUF_MAX` | `6` | Frühere Gesprächswechsel, die mitgehen; der Verlauf lebt nur im Browser |
 | `DCH_API_URL` (web) | `http://localhost:8000` | Ziel der BFF-Route `/api/dch/*` |
 | `DCH_API_TOKEN` (web) | - | wird als Bearer an die API weitergereicht |
 | `DCH_SESSION_SECRET` (web) | - | ≥ 32 Zeichen; aktiviert die Kiosk-Anmeldung |

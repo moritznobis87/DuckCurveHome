@@ -248,9 +248,7 @@ def erzeuge_paar() -> tuple[str, str]:
 
 
 class PushService:
-    def __init__(
-        self, store: PushStore, subject: str, apns: ApnsVersender | None = None
-    ) -> None:
+    def __init__(self, store: PushStore, subject: str, apns: ApnsVersender | None = None) -> None:
         self.store = store
         self.subject = subject
         #: Der Weg zur App. `None` heisst: der Dienst verschickt nur Web Push.

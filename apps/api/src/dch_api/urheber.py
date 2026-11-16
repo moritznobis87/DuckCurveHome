@@ -66,12 +66,19 @@ class Urheber:
     geraet: str = ""
     #: Die Rolle der Sitzung, soweit bekannt (`owner` oder `guest`). Nur zur Einordnung.
     rolle: str = ""
+    #: Auf welchem Weg es ausgeloest wurde, wenn nicht ueber die gewoehnlichen Schalter: heute nur
+    #: `alfred` (ein Vorschlag des Helfers, bestaetigt im Panel). Damit steht im Protokoll, dass
+    #: ein Sprachmodell den Anstoss gab - der Mensch hat bestaetigt, aber nicht selbst gestellt.
+    ueber: str = ""
 
     def text(self) -> str:
         """Eine Zeile für die Anzeige: „Moritz, am iPad Flur" oder einfach „iPad Flur"."""
-        if self.geraet and self.geraet != self.name:
-            return f"{self.name}, am {self.geraet}"
-        return self.name
+        zeile = (
+            f"{self.name}, am {self.geraet}"
+            if self.geraet and self.geraet != self.name
+            else self.name
+        )
+        return f"{zeile}, über Alfred" if self.ueber == "alfred" else zeile
 
     def als_kontext(self) -> dict[str, str]:
         """Die Felder als flache Punktschlüssel, wie sie in einem Ereignis stehen."""
@@ -80,6 +87,8 @@ class Urheber:
             out[f"{PRAEFIX}.geraet"] = self.geraet
         if self.rolle:
             out[f"{PRAEFIX}.rolle"] = self.rolle
+        if self.ueber:
+            out[f"{PRAEFIX}.ueber"] = self.ueber
         return out
 
 
@@ -91,6 +100,17 @@ SYSTEM = Urheber(art="system", id="system", name="System")
 
 def _kurz(wert: object, grenze: int) -> str:
     return str(wert).strip()[:grenze] if wert is not None else ""
+
+
+#: Die Wege, die `ueber` kennt. Eine Liste und kein freier Text: Was dort steht, landet in jedem
+#: Ereignis, und ein beliebiger Wert aus einer Kopfzeile waere eine Einladung, das Protokoll zu
+#: beschriften.
+UEBER = frozenset({"alfred"})
+
+
+def _ueber(wert: object) -> str:
+    text = _kurz(wert, 16).lower()
+    return text if text in UEBER else ""
 
 
 def kennung(name: str) -> str:
@@ -128,6 +148,7 @@ def aus_kopfzeilen(headers: Mapping[str, str]) -> Urheber | None:
         name=name,
         geraet=geraet,
         rolle=_kurz(headers.get("x-dch-urheber-rolle"), 16),
+        ueber=_ueber(headers.get("x-dch-urheber-ueber")),
     )
 
 
@@ -144,6 +165,7 @@ def aus_kontext(context: Mapping[str, object]) -> Urheber | None:
         name=name,
         geraet=_kurz(context.get(f"{PRAEFIX}.geraet"), MAX_NAME),
         rolle=_kurz(context.get(f"{PRAEFIX}.rolle"), 16),
+        ueber=_ueber(context.get(f"{PRAEFIX}.ueber")),
     )
 
 

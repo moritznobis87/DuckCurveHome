@@ -38,6 +38,7 @@ tools/demo.sh                      # API mit Reload + Next.js Dev-Server
 | `apps/bridge` + `addons/duckcurve_bridge` | Bridge als Home-Assistant-Add-on: Shelly 3EM direkt über MQTT (Mosquitto), übrige Entitäten über HA, schaltet mit TTL, ausgehende WSS-Verbindung mit SQLite-Outbox |
 | `apps/web` | Next.js-Dashboard (iPad-Querformat, Dark Mode, Duck-Curve-Design-System) in fünf Bereichen, vier für den Alltag und einer für den Betrieb: Jetzt (`/`, die Wandanzeige, am Handy mit Flussbild und Ausblick auf 24 Stunden), Haus (`/haus`, die Räume als Liste zum Stellen oder als Glasmodell mit Temperaturen, Kontakten und Alarm), Energie (Strom, Wärme, Photovoltaik, Speicher, Wallbox, Jahreskarte), Geld (Kosten, PV-Abrechnung, Rechnungen) und Technik (Anlage, Wärmepumpe, Fahrplan, Wirkung, Heizkreise; für den Hausherrn dazu Prognose, Daten prüfen, Annahmen, Mitteilungen, Haustür, Zugang). Die Adressen folgen weiter dem Gegenstand (`/strom`, `/waerme`, `/system`); welcher Bereich eine Seite zeigt, steht in `apps/web/src/lib/areas.ts`. Die Reiter eines Bereichs teilen sich den Zeitraum; alte Adressen leiten um. Unter 720 px Breite eine eigene Handy-Ansicht (`apps/web/src/styles/handy.css`): Bereichsleiste unten, Energiefluss als Bild, eine führende Zahl je Seite, Tabellen als Listen |
 | `apps/ios` | **iPhone und iPad**: eine App, zwei Oberflächen - die Wandanzeige im Querformat und die Handansicht. Alle 29 Seiten, unter denselben Adressen. `DuckCurveKit` ist der Kern ohne SwiftUI und baut auch ohne macOS (211 Tests); die Oberfläche braucht Xcode. Bauen: `cd apps/ios && xcodegen generate`. Siehe [`apps/ios/README.md`](apps/ios/README.md) |
+| `apps/api/src/dch_api/alfred` + `apps/web/src/components/alfred` | Alfred, der Helfer unten rechts: erklärt die Seiten und beantwortet mit Mistral Fragen zu den Daten des Hauses, über Werkzeuge, die dieselben Auswertungen lesen wie die Seiten. Schaltet nichts ohne Knopfdruck ([docs/ALFRED.md](docs/ALFRED.md)) |
 | `docs/` | Projektplan, OpenAPI-Schema, Architekturentscheidungen |
 | `hardware/verteilerregler` | Prototyp eines eigenen Reglers am Heizkreisverteiler: Firmware für den ESP32-S3 (PlatformIO), Schaltbild, Stücklisten. Fährt zehn stufenlose Motorantriebe, misst den Motorstrom und liest die Rücklauffühler; gerechnet wird im Kern. Übersetzt, nie an Hardware gelaufen |
 
@@ -70,6 +71,7 @@ curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '
 
 ## Weitere Dokumente
 
+- [docs/ALFRED.md](docs/ALFRED.md) - Alfred: was er kann, was das Haus nie verlässt, Einrichtung mit Mistral
 - [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) - offene Rückfragen mit Annahmen
 - [docs/RECHNUNGSPRUEFUNG.md](docs/RECHNUNGSPRUEFUNG.md) - Tibber-Rechnungen prüfen (`/haus/rechnungen`, Endpunkt für Automatisierungen)
 - [docs/HA_EXPORT.md](docs/HA_EXPORT.md) - Historie aus dem Home-Assistant-Recorder exportieren und importieren (`POST /api/v1/import/ha`)

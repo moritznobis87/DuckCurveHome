@@ -124,9 +124,14 @@ export function InvoiceCheck() {
     }
   }, []);
 
-  // Beim Öffnen die neueste Rechnung zeigen, damit Befunde und Preisbestandteile nicht leer bleiben
+  // Beim Öffnen die Rechnung aus `?nr=` zeigen (so verlinkt Alfred nach dem Prüfen), sonst die
+  // neueste, damit Befunde und Preisbestandteile nicht leer bleiben. Eine unbekannte Nummer fällt
+  // still auf die neueste zurück.
   useEffect(() => {
-    if (selected === null && items.length > 0) void open(items[0]!.number);
+    if (selected !== null || items.length === 0) return;
+    const gewuenscht = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("nr");
+    const treffer = items.find((i) => i.number === gewuenscht);
+    void open((treffer ?? items[0]!).number);
   }, [items, selected, open]);
 
   const upload = useCallback(
