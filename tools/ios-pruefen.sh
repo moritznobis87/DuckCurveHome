@@ -41,6 +41,10 @@ gruen "Schema und Zeichen sind auf dem Stand von docs/openapi.json und Icon.tsx.
 # Das Xcode-Projekt liegt eingecheckt im Repository, damit Xcode ohne XcodeGen aufgeht. Dafuer
 # muss es gegen project.yml bewacht werden - sonst wird eine neue Datei stumm nicht gebaut.
 python3 tools/xcodeproj-pruefen.py
+# Die Typfehler, die ein Parser nicht sieht und ein Mac erst beim Uebersetzen meldet. Prueft
+# die fuenf Arten, die in zwei echten Uebersetzungslaeufen aufgetreten sind - gegen das Schema,
+# ohne Swift.
+python3 tools/ios-typpruefen.py
 
 blau "2/5  Den Kern bauen"
 (cd apps/ios/DuckCurveKit && "$SWIFT" build)
@@ -66,7 +70,14 @@ else
 fi
 
 blau "4/5  Die Oberflaeche parsen (SwiftUI, nicht uebersetzbar ohne macOS)"
-DATEIEN=$(find apps/ios/DuckCurveHome apps/ios/Widget -name '*.swift' 2>/dev/null | sort)
+# **Nur Orte durchsuchen, die es gibt.** Hier stand `apps/ios/Widget` auf Vorrat - ein
+# Verzeichnis, das nie angelegt wurde. `find` gibt dafuer 1 zurueck, und mit `set -euo pipefail`
+# bricht das Skript an dieser Zuweisung ab: der Schritt meldet seine Kopfzeile und parst dann
+# keine einzige Datei. Ein Pruefskript, das stumm vor der Pruefung aufhoert, ist schlimmer als
+# keines - es sagt nichts und sieht dabei aus wie Arbeit.
+SUCHORTE=(apps/ios/DuckCurveHome)
+[[ -d apps/ios/Widget ]] && SUCHORTE+=(apps/ios/Widget)
+DATEIEN=$(find "${SUCHORTE[@]}" -name '*.swift' | sort)
 if [[ -z "$DATEIEN" ]]; then
     echo "  Keine Quelldateien der Oberflaeche gefunden." >&2
     exit 1

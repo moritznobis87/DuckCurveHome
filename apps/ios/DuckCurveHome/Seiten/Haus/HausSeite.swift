@@ -138,8 +138,12 @@ struct HausSeite: View {
                     kontakte: Dictionary(
                         (hausplan?.contacts ?? []).map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a }
                     ),
-                    alarmScharf: haus.zustand?.alarm?.state == "armed_away"
-                        || haus.zustand?.alarm?.state == "armed_home"
+                    // **`state` ist eine Zahl, kein Wort.** Hier stand ein Vergleich mit
+                    // „armed_away" - das war geraten und falsch. Der Dienst schickt eine
+                    // Stufe (`live_runtime.py`, `ALARM_WORT`): 0 unscharf, 1 zu Hause
+                    // scharf, 2 unterwegs scharf, 3 schaltet, 4 ausgeloest. Das Dashboard
+                    // liest es in `house/live.ts` genauso - alles ab 1 ist scharf.
+                    alarmScharf: (haus.zustand?.alarm?.state ?? 0) >= 1
                 )
                 .frame(height: 420)
             } else if let fehlertext = hausplan?.errorDe, !fehlertext.isEmpty {

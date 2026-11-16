@@ -212,7 +212,7 @@ struct WiedergabeSeite: View {
                     }
                 }
                 Methode(
-                    (w.hinweiseDe ?? []) + [
+                    w.hinweiseDe + [
                         "Aufgelöst in \(w.stepMin) Minuten, \(w.frames.count) Augenblicke.",
                     ]
                 )
@@ -297,15 +297,15 @@ struct WiedergabeSeite: View {
                         wert: Formate.celsius(a.speicher.tempsC.first?.belastbar, stellen: 1)
                     )
                     Zeile(wort: "offene Kreise", wert: "\(a.heizkreis.roomsOpen) von \(a.heizkreis.roomsTotal)")
-                    if let preise = w.preisCtKwh, Int(stelle) < preise.count,
-                       let p = preise[Int(stelle)]
+                    if Int(stelle) < w.preisCtKwh.count,
+                       let p = w.preisCtKwh[Int(stelle)]
                     {
                         Zeile(wort: "Strompreis", wert: Formate.zahl(p, stellen: 1), einheit: "ct/kWh")
                     }
-                    if let geplant = w.geplantWp, Int(stelle) < geplant.count,
-                       let g = geplant[Int(stelle)]
+                    if Int(stelle) < w.geplantWp.count,
+                       let g = w.geplantWp[Int(stelle)]
                     {
-                        Zeile(wort: "geplant", wert: g ? "freigegeben" : "nicht freigegeben")
+                        Zeile(wort: "w.geplantWp", wert: g ? "freigegeben" : "nicht freigegeben")
                     }
                 }
             }
@@ -880,10 +880,10 @@ struct Automatikkarte: View {
                 if let raeume = automatik.rooms, !raeume.isEmpty {
                     raumliste(raeume)
                 }
-                if let protokoll = automatik.log, !protokoll.isEmpty {
+                if !automatik.log.isEmpty {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Zuletzt").font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                        ForEach(Array(protokoll.prefix(5).enumerated()), id: \.offset) { _, e in
+                        ForEach(Array(automatik.log.prefix(5).enumerated()), id: \.offset) { _, e in
                             Text("\(Formate.hhmm(iso: e.at)) · \(e.textDe)")
                                 .font(Schrift.winzig)
                                 .foregroundStyle(Farbe.text3)

@@ -142,7 +142,7 @@ struct Glasmodell: View {
         }
 
         // 4. Die Kontakte: ein Strich, der leuchtet, wenn er offen ist.
-        for k in deck.contacts ?? [] {
+        for k in deck.contacts {
             zeichneKontakt(k, y: y, in: &gestalt, maß: maß)
         }
 
@@ -200,7 +200,7 @@ struct Glasmodell: View {
     ) {
         let zustand = kontakte[k.key]
         let offen = zustand?.open == true
-        let senkrecht = k.side == "w" || k.side == "o"
+        let senkrecht = k.side == .w || k.side == .o
         let hoehe = (k.door ?? false) ? 2.05 : 1.3
         let von = senkrecht ? punkt(k.at, y, k.a, maß) : punkt(k.a, y, k.at, maß)
         let bis = senkrecht ? punkt(k.at, y, k.b, maß) : punkt(k.b, y, k.at, maß)

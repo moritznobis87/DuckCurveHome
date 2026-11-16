@@ -118,16 +118,16 @@ struct RechnungenSeite: View {
                     }
                 }
             }
-            if let positionen = b.invoice.positions, !positionen.isEmpty {
+            if !b.invoice.positions.isEmpty {
                 Karte(kicker: "Positionen") {
                     Tabelle(
-                        zeilennamen: positionen.map(\.label),
+                        zeilennamen: b.invoice.positions.map(\.label),
                         spalten: [
                             .init(
                                 name: "ct/kWh",
-                                zellen: positionen.map { Formate.zahl($0.ctPerKwh, stellen: $0.ctDecimals) }
+                                zellen: b.invoice.positions.map { Formate.zahl($0.ctPerKwh, stellen: $0.ctDecimals) }
                             ),
-                            .init(name: "Betrag", zellen: positionen.map { Formate.euro($0.amountEur) }),
+                            .init(name: "Betrag", zellen: b.invoice.positions.map { Formate.euro($0.amountEur) }),
                         ]
                     )
                 }

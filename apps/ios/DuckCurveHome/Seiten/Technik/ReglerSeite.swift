@@ -75,7 +75,7 @@ struct ReglerSeite: View {
                     }
                 }
                 Methode(
-                    (e.hinweiseDe ?? []) + [
+                    e.hinweiseDe + [
                         e.hindernisDe,
                         e.stellenJeTag.map { "Höchstens \($0) Griffe am Tag." },
                         "Gelesen über den eBUS. Gestellt ist eine Einstellung erst, wenn der "
@@ -180,7 +180,7 @@ struct ReglerSeite: View {
     private func gruppen(_ e: ReglerEinstellungenOut) -> [Gruppe] {
         var reihenfolge: [String] = []
         var nach: [String: [ReglerEinstellungOut]] = [:]
-        for w in e.werte ?? [] {
+        for w in e.werte {
             if nach[w.gruppeDe] == nil {
                 nach[w.gruppeDe] = []
                 reihenfolge.append(w.gruppeDe)

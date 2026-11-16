@@ -41,6 +41,7 @@ jobs:
           python3 tools/gen-zeichen.py --pruefen
           python3 tools/gen-appicon.py --pruefen
           python3 tools/xcodeproj-pruefen.py
+          python3 tools/ios-typpruefen.py
 
       - name: Kern bauen und testen, Oberflaeche parsen
         run: tools/ios-pruefen.sh

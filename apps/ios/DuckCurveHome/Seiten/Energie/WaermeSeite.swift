@@ -148,20 +148,20 @@ struct WaermebilanzSeite: View {
             try await api.waermebilanz(z.spanne.rawValue, anker: z.anker)
         } inhalt: { b in
             Kachelfeld(kacheln: kennzahlen(b), kicker: "Wärmebilanz")
-            if let eimer = b.buckets, !eimer.isEmpty {
+            if !b.buckets.isEmpty {
                 Karte(kicker: "Woher die Wärme kam") {
                     Balkenbild(stuecke: [
                         .init(
                             name: "Wärmepumpe", farbe: Farbe.waermepumpe,
-                            werte: eimer.map { ($0.labelDe, $0.heatPumpKwh ?? 0) }
+                            werte: b.buckets.map { ($0.labelDe, $0.heatPumpKwh ?? 0) }
                         ),
                         .init(
                             name: "Ofen ins Wasser", farbe: Farbe.ofen,
-                            werte: eimer.map { ($0.labelDe, $0.stoveWaterKwh ?? 0) }
+                            werte: b.buckets.map { ($0.labelDe, $0.stoveWaterKwh ?? 0) }
                         ),
                         .init(
                             name: "Ofen in den Raum", farbe: Farbe.amberWeich,
-                            werte: eimer.map { ($0.labelDe, $0.stoveRoomKwh ?? 0) }
+                            werte: b.buckets.map { ($0.labelDe, $0.stoveRoomKwh ?? 0) }
                         ),
                     ])
                 }
@@ -169,33 +169,33 @@ struct WaermebilanzSeite: View {
                     Balkenbild(stuecke: [
                         .init(
                             name: "entnommen", farbe: Farbe.mist,
-                            werte: eimer.map { ($0.labelDe, $0.drawKwh ?? 0) }
+                            werte: b.buckets.map { ($0.labelDe, $0.drawKwh ?? 0) }
                         ),
                         .init(
                             name: "Verlust", farbe: Farbe.alarm,
-                            werte: eimer.map { ($0.labelDe, $0.lossKwh ?? 0) }
+                            werte: b.buckets.map { ($0.labelDe, $0.lossKwh ?? 0) }
                         ),
                     ])
                 }
                 Karte(kicker: "Die Zahlen") {
                     Tabelle(
-                        zeilennamen: eimer.map(\.labelDe),
+                        zeilennamen: b.buckets.map(\.labelDe),
                         spalten: [
                             .init(
                                 name: "Wärmepumpe",
-                                zellen: eimer.map { Formate.zahl($0.heatPumpKwh ?? 0, stellen: 1) }
+                                zellen: b.buckets.map { Formate.zahl($0.heatPumpKwh ?? 0, stellen: 1) }
                             ),
                             .init(
                                 name: "Strom",
-                                zellen: eimer.map { Formate.zahl($0.electricKwh ?? 0, stellen: 1) }
+                                zellen: b.buckets.map { Formate.zahl($0.electricKwh ?? 0, stellen: 1) }
                             ),
                             .init(
                                 name: "Arbeitszahl",
-                                zellen: eimer.map { Formate.zahl($0.copMean, stellen: 2) }
+                                zellen: b.buckets.map { Formate.zahl($0.copMean, stellen: 2) }
                             ),
                             .init(
                                 name: "Verlust",
-                                zellen: eimer.map { Formate.zahl($0.lossKwh ?? 0, stellen: 1) }
+                                zellen: b.buckets.map { Formate.zahl($0.lossKwh ?? 0, stellen: 1) }
                             ),
                         ]
                     )
@@ -228,6 +228,6 @@ struct WaermebilanzSeite: View {
     }
 
     private func summe(_ b: HeatBalanceOut, _ feld: (HeatBucketOut) -> Double?) -> Double {
-        (b.buckets ?? []).reduce(0) { $0 + (feld($1) ?? 0) }
+        b.buckets.reduce(0) { $0 + (feld($1) ?? 0) }
     }
 }

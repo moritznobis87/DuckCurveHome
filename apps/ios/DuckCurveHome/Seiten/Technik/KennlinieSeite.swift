@@ -38,17 +38,17 @@ struct KennlinieSeite: View {
                 if let b = k.bilanz {
                     bilanz(b)
                 }
-                if let a = k.annahme, !a.isEmpty {
+                if !k.annahme.isEmpty {
                     Karte(
                         kicker: "Angenommene Kurve",
                         titel: k.annahmeVorlaufC.map { "bei \(Formate.celsius($0)) Vorlauf" }
                     ) {
                         Tabelle(
-                            zeilennamen: a.map { Formate.celsius($0.aussenC) },
+                            zeilennamen: k.annahme.map { Formate.celsius($0.aussenC) },
                             spalten: [
                                 .init(
                                     name: "Arbeitszahl",
-                                    zellen: a.map { Formate.zahl($0.cop, stellen: 2) }
+                                    zellen: k.annahme.map { Formate.zahl($0.cop, stellen: 2) }
                                 )
                             ]
                         )
@@ -62,7 +62,7 @@ struct KennlinieSeite: View {
                         .padding(.top, 6)
                     }
                 }
-                Methode(k.hinweiseDe ?? [])
+                Methode(k.hinweiseDe)
             } else if fehler == nil {
                 Karte { Leer(satz: "Wird geholt …") }
             }
@@ -114,7 +114,7 @@ struct KennlinieSeite: View {
         Karte(kicker: "Messpunkte") {
             VStack(alignment: .leading, spacing: 8) {
                 Chart {
-                    ForEach(Array((k.punkte ?? []).enumerated()), id: \.offset) { _, p in
+                    ForEach(Array(k.punkte.enumerated()), id: \.offset) { _, p in
                         PointMark(
                             x: .value("draußen", p.aussenC),
                             y: .value("Arbeitszahl", p.cop)
@@ -134,7 +134,7 @@ struct KennlinieSeite: View {
                             .lineStyle(StrokeStyle(lineWidth: 1.8))
                         }
                     }
-                    ForEach(k.annahme ?? [], id: \.aussenC) { a in
+                    ForEach(k.annahme, id: \.aussenC) { a in
                         LineMark(
                             x: .value("draußen", a.aussenC),
                             y: .value("Arbeitszahl", a.cop),
@@ -263,8 +263,8 @@ struct KennlinieSeite: View {
                     Divider().overlay(Farbe.linie1).padding(.vertical, 4)
                     Zeile(
                         wort: "brauchbar", wert: Formate.zahl(Double(b.gueltig), stellen: 0),
-                        farbe: Farbe.mist,
-                        dazu: "in \(b.fenster) Fenstern, daraus \(b.punkte) Punkte"
+                        dazu: "in \(b.fenster) Fenstern, daraus \(b.punkte) Punkte",
+                        farbe: Farbe.mist
                     )
                 }
                 if let satz = b.satzDe, !satz.isEmpty {

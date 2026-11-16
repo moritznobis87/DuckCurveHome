@@ -15,7 +15,10 @@ struct KostenSeite: View {
             async let kosten = api.energieUebersicht(z.spanne.rawValue, anker: z.anker)
             async let verschiebung = try? api.energieVerschiebung(z.spanne.rawValue, anker: z.anker)
             return try await (kosten: kosten, verschiebung: verschiebung)
-        } inhalt: { paar in
+        // **Der Typ muss dastehen.** `Berichtsseite` leitet `Antwort` aus der Abfrage ab;
+        // bei einem benannten Paar, dessen zweite Haelfte aus `try?` kommt, schafft der
+        // Compiler das nicht mehr und meldet „cannot infer type of closure parameter".
+        } inhalt: { (paar: (kosten: EnergySummaryOut, verschiebung: ShiftReportOut?)) in
             Kachelfeld(kacheln: kennzahlen(paar.kosten, paar.verschiebung), kicker: "Geld")
             if let v = paar.verschiebung {
                 Karte(kicker: "Der Vergleichslauf", titel: "Was der Preisblick gebracht hat") {

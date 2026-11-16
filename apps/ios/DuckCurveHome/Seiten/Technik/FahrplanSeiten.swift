@@ -258,7 +258,7 @@ struct NachbetrachtungSeite: View {
                     r.verschiebenDe,
                     r.laeuftNoch == true ? "Der Tag läuft noch – die Zahlen sind vorläufig." : nil,
                     r.ersterPlanErstellt.map { "Der erste Plan des Tages entstand \(Formate.hhmm(iso: $0))." },
-                ] + (r.hinweiseDe ?? []))
+                ] + r.hinweiseDe)
             }
         }
         .task(id: tag) { await lade() }
@@ -405,7 +405,7 @@ struct WirkungSeite: View {
                         }
                     }
                 }
-                Methode([w.methodeDe] + (w.hinweiseDe ?? []))
+                Methode([w.methodeDe] + w.hinweiseDe)
             } else if fehler == nil {
                 Karte { Leer(satz: "Wird gerechnet …") }
             }

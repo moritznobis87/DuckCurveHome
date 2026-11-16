@@ -96,7 +96,7 @@ struct WaermepumpeSeite: View {
                         }
                     }
                 }
-                Methode(w.hinweiseDe ?? [], titel: "Hinweise des Busses")
+                Methode(w.hinweiseDe, titel: "Hinweise des Busses")
             } else if fehler == nil {
                 Karte { Leer(satz: "Wird geholt …") }
             }
@@ -108,8 +108,15 @@ struct WaermepumpeSeite: View {
     private func kennzahlen(_ w: WaermepumpeOut) -> [Kacheldaten] {
         [
             Kacheldaten(
-                "Leistung", Formate.kw(w.leistungZaehlerKw ?? w.leistungBusKw.belastbar), einheit: "kW",
-                dazu: w.leistungZaehlerKw != nil ? "am Zähler" : "über den Bus",
+                // Der Zaehler fuehrt, der Bus hilft aus. **Beide Felder sind `Messwert` und
+                // nicht wahlfrei** - wahlfrei ist erst die Zahl darin (`.belastbar` ist nil,
+                // wenn die Guete sie nicht traegt). Hier stand `w.leistungZaehlerKw ?? …`,
+                // was zweierlei verwechselt: den Messwert mit seiner Zahl, und „kein Wert"
+                // mit „kein Messwert".
+                "Leistung",
+                Formate.kw(w.leistungZaehlerKw.belastbar ?? w.leistungBusKw.belastbar),
+                einheit: "kW",
+                dazu: w.leistungZaehlerKw.belastbar != nil ? "am Zähler" : "über den Bus",
                 farbe: Farbe.waermepumpe
             ),
             Kacheldaten(
@@ -165,10 +172,10 @@ struct BetriebSeite: View {
             }
             if let b = betrieb {
                 Kachelfeld(kacheln: kennzahlen(b), kicker: "\(b.zeitraumTage) Tage")
-                if let saetze = b.saetzeDe, !saetze.isEmpty {
+                if !b.saetzeDe.isEmpty {
                     Karte(kicker: "Was auffällt") {
                         VStack(alignment: .leading, spacing: 6) {
-                            ForEach(Array(saetze.enumerated()), id: \.offset) { _, s in
+                            ForEach(Array(b.saetzeDe.enumerated()), id: \.offset) { _, s in
                                 Text(s)
                                     .font(Schrift.klein)
                                     .foregroundStyle(Farbe.text1)
@@ -177,40 +184,40 @@ struct BetriebSeite: View {
                         }
                     }
                 }
-                if let klassen = b.klassen, !klassen.isEmpty {
+                if !b.klassen.isEmpty {
                     Karte(kicker: "Wie lange die Läufe dauerten") {
                         Balkenbild(
                             stuecke: [
                                 .init(
                                     name: "Läufe", farbe: Farbe.waermepumpe,
-                                    werte: klassen.map { (klassenname($0), Double($0.laeufe)) }
+                                    werte: b.klassen.map { (klassenname($0), Double($0.laeufe)) }
                                 )
                             ],
                             einheit: "Läufe", gestapelt: false, hoehe: 150
                         )
                     }
                 }
-                if let tageliste = b.tage, !tageliste.isEmpty {
+                if !b.tage.isEmpty {
                     Karte(kicker: "Nach Tagen") {
                         Tabelle(
-                            zeilennamen: tageliste.map { Tag.kurz($0.tag) },
+                            zeilennamen: b.tage.map { Tag.kurz($0.tag) },
                             spalten: [
-                                .init(name: "Starts", zellen: tageliste.map { String($0.starts) }),
+                                .init(name: "Starts", zellen: b.tage.map { String($0.starts) }),
                                 .init(
                                     name: "Laufzeit",
-                                    zellen: tageliste.map { Formate.dauer(minuten: $0.laufMin) }
+                                    zellen: b.tage.map { Formate.dauer(minuten: $0.laufMin) }
                                 ),
                                 .init(
                                     name: "Abtauen",
-                                    zellen: tageliste.map { Formate.dauer(minuten: $0.abtauMin) }
+                                    zellen: b.tage.map { Formate.dauer(minuten: $0.abtauMin) }
                                 ),
                                 .init(
                                     name: "Strom",
-                                    zellen: tageliste.map { Formate.zahl($0.stromKwh, stellen: 1) }
+                                    zellen: b.tage.map { Formate.zahl($0.stromKwh, stellen: 1) }
                                 ),
                                 .init(
                                     name: "Arbeitszahl",
-                                    zellen: tageliste.map { Formate.zahl($0.copTag, stellen: 2) }
+                                    zellen: b.tage.map { Formate.zahl($0.copTag, stellen: 2) }
                                 ),
                             ]
                         )
@@ -219,7 +226,7 @@ struct BetriebSeite: View {
                 if let hk = b.heizkurve {
                     heizkurve(hk)
                 }
-                Methode(b.hinweiseDe ?? [])
+                Methode(b.hinweiseDe)
             } else if fehler == nil {
                 Karte { Leer(satz: "Wird geholt …") }
             }

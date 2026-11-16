@@ -33,8 +33,16 @@ public enum Formate {
     /// Rundet kaufmaennisch (wie `Intl.NumberFormat`), setzt das Komma und das echte Minuszeichen.
     /// Eine Zahl, die zu `-0,0` gerundet wuerde, wird `0,0`: ein Vorzeichen an einer Null ist eine
     /// Aussage, die die Messung nicht hergibt.
-    public static func zahl(_ wert: Double, stellen: Int) -> String {
-        guard wert.isFinite else { return leer }
+    ///
+    /// **Nimmt `Double?`, und das war erst anders.** Diese Funktion war die einzige der vierzehn
+    /// hier, die ein nicht-wahlfreies `Double` verlangte - und genau deshalb hat sie beim ersten
+    /// Uebersetzungslauf der Oberflaeche vierzehn Fehler erzeugt. Fast jede Zahl, die aus dem
+    /// Dienst kommt, ist wahlfrei: ein Zaehler, der schweigt, liefert `null`, und das ist kein
+    /// Sonderfall, sondern der Alltag. Eine Schnittstelle, in der dreizehn Funktionen das
+    /// aushalten und eine nicht, ist eine Falle - und sie hat zugeschnappt. Fehlt der Wert,
+    /// steht hier derselbe Strich wie bei den Geschwistern.
+    public static func zahl(_ wert: Double?, stellen: Int) -> String {
+        guard let wert, wert.isFinite else { return leer }
         let faktor = pow(10.0, Double(stellen))
         let gerundet = (wert * faktor).rounded() / faktor
         let negativ = gerundet < 0

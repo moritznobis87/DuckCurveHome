@@ -10,6 +10,7 @@
 		05FB739969DE812D7DA39011 /* Leiste.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */; };
 		11B372029B73A0C0A76B506E /* Schluesselbund.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A347595B312F69C774E01EE /* Schluesselbund.swift */; };
 		1423F68C39EC71F5598C2C47 /* GeldSeiten.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA38BD9FC62B1F89035ABAE /* GeldSeiten.swift */; };
+		1D59B9232C5BB1FFA8750A3A /* Reiterzeile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */; };
 		2269D6D973CDD5E90BAAF30A /* HausSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F329F096F927AD179434D9 /* HausSeite.swift */; };
 		226B4A492629F3CED2C25DE8 /* IBMPlexSans-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = B10C35D7E84A91C914895209 /* IBMPlexSans-Regular.otf */; };
 		22D992662C89DE566BA89939 /* SystemSeiten.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E942EE0CAD6144F59FB8B7A /* SystemSeiten.swift */; };
@@ -52,6 +53,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reiterzeile.swift; sourceTree = "<group>"; };
 		1569F6F6326D9C4B70474A60 /* Mitteilungen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mitteilungen.swift; sourceTree = "<group>"; };
 		19D6E643E59B9205E637CF97 /* Seitenwahl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Seitenwahl.swift; sourceTree = "<group>"; };
 		1B67D80E0116B660F33FAFC6 /* Zeichen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Zeichen.swift; sourceTree = "<group>"; };
@@ -151,6 +153,7 @@
 				B98C536116288281EBEE7975 /* HandRahmen.swift */,
 				404A42E4106E511C51916C29 /* Hauszustand.swift */,
 				EB7FB5A5CC63F033E8AC7820 /* Navigation.swift */,
+				0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */,
 				7A347595B312F69C774E01EE /* Schluesselbund.swift */,
 				19D6E643E59B9205E637CF97 /* Seitenwahl.swift */,
 				70D0DC76B4C835ABDEB44904 /* Vorschauen.swift */,
@@ -403,6 +406,7 @@
 				EB7278D68E6A4B5E3D2B4F5D /* Pufferspeicher.swift in Sources */,
 				498B36D3AD10F973FA6BE8CD /* RechnungenSeite.swift in Sources */,
 				D742805330F9AD247E8CAB72 /* ReglerSeite.swift in Sources */,
+				1D59B9232C5BB1FFA8750A3A /* Reiterzeile.swift in Sources */,
 				11B372029B73A0C0A76B506E /* Schluesselbund.swift in Sources */,
 				FDC1EC6D16D2BB418720477D /* Seitenwahl.swift in Sources */,
 				A414B4F48D8F7D73D8DE92B8 /* StromSeite.swift in Sources */,

@@ -93,3 +93,20 @@ final class FormateTests: XCTestCase {
         XCTAssertEqual(Formate.prozent(.infinity), "-")
     }
 }
+
+extension FormateTests {
+    /// `zahl` nimmt seit dem ersten Uebersetzungslauf `Double?` – und muss sich dabei wie die
+    /// dreizehn Geschwister verhalten, sonst ist die Falle nur verschoben.
+    func testZahlOhneWertGibtDenStrich() {
+        XCTAssertEqual(Formate.zahl(nil, stellen: 1), Formate.zahl(Double.nan, stellen: 1))
+        // Derselbe Strich wie bei den anderen, nicht „0,0" und nicht leer.
+        XCTAssertEqual(Formate.zahl(nil, stellen: 2), Formate.kw(nil))
+        XCTAssertFalse(Formate.zahl(nil, stellen: 0).isEmpty)
+    }
+
+    func testZahlMitWertBleibtWieVorher() {
+        XCTAssertEqual(Formate.zahl(3.14159, stellen: 2), "3,14")
+        XCTAssertEqual(Formate.zahl(-0.04, stellen: 1), "0,0")
+        XCTAssertEqual(Formate.zahl(Optional(2.5), stellen: 1), "2,5")
+    }
+}

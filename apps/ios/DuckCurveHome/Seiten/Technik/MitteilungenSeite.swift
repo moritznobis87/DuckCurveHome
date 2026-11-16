@@ -148,9 +148,9 @@ struct MitteilungenSeite: View {
                 if let titel = b.titel, !titel.isEmpty {
                     Text(titel).font(Schrift.karte).foregroundStyle(Farbe.text1)
                 }
-                if let zeilen = b.zeilen, !zeilen.isEmpty {
+                if !b.zeilen.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        ForEach(Array(zeilen.enumerated()), id: \.offset) { _, z in
+                        ForEach(Array(b.zeilen.enumerated()), id: \.offset) { _, z in
                             Text(z)
                                 .font(Schrift.klein)
                                 .foregroundStyle(Farbe.text2)
