@@ -14,7 +14,24 @@ cd apps/ios && xcodegen generate && open DuckCurveHome.xcodeproj
 ```
 
 Dann in Xcode unter *Signing & Capabilities* das eigene Team wählen und auf ein Gerät laufen
-lassen. Das Projekt selbst liegt nicht im Repository – es entsteht aus
+lassen.
+
+**Ohne Homebrew** geht es auch – XcodeGen ist selbst ein Swift-Paket, und den Compiler bringt
+Xcode mit:
+
+```bash
+git clone https://github.com/yonaskolb/XcodeGen.git && cd XcodeGen
+swift run xcodegen generate --spec ../DuckCurveHome/apps/ios/project.yml
+```
+
+**Und ohne Mac.** XcodeGen baut auf Linux (nachgemessen mit Swift 6.1.2, 37 Sekunden) und
+erzeugt dieselbe `project.pbxproj` – das Format ist eine Textdatei, keine Apple-Eigenheit. Wer
+also nur das Projekt braucht und keinen Mac hat, kommt auch dort hin. Ein `USER` muss gesetzt
+sein, sonst bricht XcodeGen mit *„Couldn't find current username"* ab:
+
+```bash
+USER=${USER:-buildbot} xcodegen generate --spec apps/ios/project.yml --project apps/ios
+``` Das Projekt selbst liegt nicht im Repository – es entsteht aus
 [`project.yml`](project.yml), sechzig Zeilen, die man lesen kann. Ein `.xcodeproj` ist ein
 Verzeichnis voller Zufallskennungen, in dem ein Diff Zahlenbrei ist.
 

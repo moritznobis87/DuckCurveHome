@@ -34,3 +34,6 @@ test-results/
 *.xcodeproj/
 *.xcworkspace/
 DerivedData/
+# Entsteht aus project.yml (Abschnitt `info:`) und ist keine Quelle. Eingecheckt waere sie eine
+# zweite Wahrheit ueber dieselbe Sache - und die auseinanderlaufende waere die eingecheckte.
+apps/ios/DuckCurveHome/Info.plist
