@@ -41,7 +41,7 @@ prüfen lässt** und was nicht:
 
 | | |
 |---|---|
-| `DuckCurveKit/` | Ein Swift-Paket ohne SwiftUI. Baut und testet auf Linux, auf einem Mac, in jeder CI. Hier liegen die Modelle, der API-Client, der Leser des Ereignisstroms, die Formate, das Rechnen der Diagramme und die Geometrie des Hausmodells. **240 Tests.** |
+| `DuckCurveKit/` | Ein Swift-Paket ohne SwiftUI. Baut und testet auf Linux, auf einem Mac, in jeder CI. Hier liegen die Modelle, der API-Client, der Leser des Ereignisstroms, die Formate, das Rechnen der Diagramme und die Geometrie des Hausmodells. **211 Tests.** |
 | `DuckCurveHome/` | Die Oberfläche. Lässt sich nur auf einem Mac übersetzen – geparst wird sie überall. |
 | `pruefstand/` | Ein Dienst zum Draufhalten: echtes HTTP, echter Ereignisstrom, absichtlich mitten im JSON zerhackt. |
 

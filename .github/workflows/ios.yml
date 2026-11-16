@@ -1,0 +1,67 @@
+name: ios
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "apps/ios/**"
+      - "tools/gen-swift.py"
+      - "tools/gen-zeichen.py"
+      - "tools/gen-appicon.py"
+      - "tools/ios-pruefen.sh"
+      - "docs/openapi.json"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "apps/ios/**"
+      - "tools/gen-swift.py"
+      - "tools/gen-zeichen.py"
+      - "tools/gen-appicon.py"
+      - "tools/ios-pruefen.sh"
+      - "docs/openapi.json"
+      - ".github/workflows/ios.yml"
+
+jobs:
+  # Der Kern baut und testet ohne macOS. Das ist der ganze Zweck seines Zuschnitts, und darum
+  # laeuft er hier auf einem Linux-Laeufer: schneller, billiger, und immer verfuegbar.
+  kern:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with: { swift-version: "6.1" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pillow
+
+      - name: Erzeugte Dateien gegen ihre Quellen halten
+        run: |
+          python3 tools/gen-swift.py --pruefen
+          python3 tools/gen-zeichen.py --pruefen
+          python3 tools/gen-appicon.py --pruefen
+
+      - name: Kern bauen und testen, Oberflaeche parsen
+        run: tools/ios-pruefen.sh
+
+  # Die Oberflaeche laesst sich nur auf einem Mac uebersetzen. Dieser Lauf ist der einzige Ort,
+  # an dem das ohne ein Geraet geschieht - und er ist der Grund, warum der Kern so gross ist:
+  # was hier bricht, haette sonst niemand gesehen.
+  oberflaeche:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: brew install xcodegen
+      - run: xcodegen generate
+        working-directory: apps/ios
+      - name: Uebersetzen fuer den Simulator
+        run: |
+          xcodebuild build \
+            -project apps/ios/DuckCurveHome.xcodeproj \
+            -scheme DuckCurveHome \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Den Kern auch auf Apples Toolchain testen
+        run: swift test
+        working-directory: apps/ios/DuckCurveKit
