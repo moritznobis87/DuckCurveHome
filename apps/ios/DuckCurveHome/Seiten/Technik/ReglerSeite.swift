@@ -61,13 +61,13 @@ struct ReglerSeite: View {
                         }
                     }
                 }
-                if let k = kennzahlen, let zeilen = k.zeilen, !zeilen.isEmpty {
-                    kennzahlenkarte(k, zeilen)
+                if let k = kennzahlen, !k.zeilen.isEmpty {
+                    kennzahlenkarte(k, k.zeilen)
                 }
-                if let protokoll = e.protokoll, !protokoll.isEmpty {
+                if !e.protokoll.isEmpty {
                     Karte(kicker: "Was geändert wurde") {
                         VStack(spacing: 0) {
-                            ForEach(Array(protokoll.enumerated()), id: \.offset) { i, a in
+                            ForEach(Array(e.protokoll.enumerated()), id: \.offset) { i, a in
                                 if i > 0 { Divider().overlay(Farbe.linie1) }
                                 aenderung(a)
                             }
@@ -160,7 +160,7 @@ struct ReglerSeite: View {
                 .foregroundStyle(Farbe.text1)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
-                Text("gelesen \(Formate.hhmm(iso: e.gelesen))")
+                Text("Stand \(Formate.hhmm(iso: e.now))")
                     .font(Schrift.winzig).foregroundStyle(Farbe.text3)
                 if e.stellenMoeglich != true {
                     Text("Stellen ist gesperrt")

@@ -72,12 +72,16 @@ struct KostenSeite: View {
                     einheit: "€"
                 )
             }
-            Methode([
-                paar.verschiebung?.methodDe,
-                paar.verschiebung?.assumptionsDe,
-                paar.verschiebung?.skippedDe,
-                paar.kosten.meta.estimatedNoteDe,
-            ])
+            // **`assumptionsDe` ist eine Reihe von Saetzen, kein Satz.** Hier stand sie
+            // zwischen drei Zeichenketten, und damit wurde die Reihe `[Any]` - darauf passt
+            // `[String?]` nicht. Die Annahmen werden angehaengt, nicht eingereiht.
+            Methode(
+                [
+                    paar.verschiebung?.methodDe,
+                    paar.verschiebung?.skippedDe,
+                    paar.kosten.meta.estimatedNoteDe,
+                ] + (paar.verschiebung?.assumptionsDe ?? []).map { Optional($0) }
+            )
         }
     }
 
@@ -118,7 +122,10 @@ struct PvAbrechnungSeite: View {
     var body: some View {
         Berichtsseite(spannen: [.monat, .jahr]) { z, api in
             try await api.energiePv(z.spanne.rawValue, anker: z.anker)
-        } inhalt: { b in
+        // Auch hier muss der Typ dastehen: `kennzahlen` ist in dieser Datei zweimal
+        // vorhanden, und solange `Antwort` nicht feststeht, kann der Compiler nicht
+        // entscheiden, welche gemeint ist - und leitet `()` ab.
+        } inhalt: { (b: PvTaxReportOut) in
             Kachelfeld(kacheln: kennzahlen(b), kicker: "PV-Abrechnung")
             Karte(kicker: "Einspeisung") {
                 VStack(spacing: 0) {

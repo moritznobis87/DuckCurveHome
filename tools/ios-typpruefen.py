@@ -7,6 +7,14 @@ typprüfen. Ein Parser findet Klammern und Kommata; er findet nicht, dass ein Fe
 Argumente in der falschen Reihenfolge stehen. Genau das waren die Fehler des ersten und
 zweiten Übersetzungslaufs: 33 Fehler, kein einziger syntaktischer.
 
+**Was es nicht kann, und das ist eine harte Grenze.** Es löst keine Typen auf. Es kennt
+Feldnamen und alle Typen, mit denen ein Name irgendwo deklariert ist – nicht aber den Typ des
+Empfängers in `e.protokoll`. Darum gilt die Regel „nie wahlfrei" über **alle** Deklarationen
+eines Namens: sonst gäbe es Fehlalarme. Der Preis ist eine Lücke, und sie ist real – ein
+echter Fehler an `e.protokoll` blieb unentdeckt, weil zwei Ansichten ein `@State private var
+protokoll: DoorLogOut?` haben und der Name damit irgendwo wahlfrei ist. Diese Lücke zu
+schließen heißt, Typen aufzulösen, und das ist ein Compiler. Dafür ist der Mac da.
+
 Dieses Skript ist kein Compiler und gibt sich nicht dafür aus. Es prüft die **sechs
 Fehlerarten**, die in zwei Läufen tatsächlich aufgetreten sind, mechanisch gegen
 `Schema.swift`. Sein Test ist, dass es die 33 bekannten Fehler findet.
@@ -171,9 +179,16 @@ def main() -> int:
                     maengel.append((kurz, nr, f".{feld}? - im Schema nie wahlfrei "
                                               f"({sorted(felder[feld])})"))
 
-            # 2. if let / guard let auf so einem Feld
-            for m in re.finditer(r"\b(?:if|guard)\s+let\s+\w+\s*=\s*" + KETTE + r"\b",
-                                 ohne_text):
+            # 2. if let / guard let auf so einem Feld.
+            #
+            # **Jede Bindung der Kette, nicht nur die erste.** `if let k = kennzahlen, let
+            # zeilen = k.zeilen` hat zwei - und der Fehler sass in der zweiten. Der erste
+            # Entwurf sah nur bis zum ersten Komma und hat sie durchgelassen.
+            if re.search(r"\b(?:if|guard)\s+let\b", ohne_text):
+                bindungen = r"\blet\s+\w+\s*=\s*" + KETTE + r"\b"
+            else:
+                bindungen = r"(?!x)x"  # nichts
+            for m in re.finditer(bindungen, ohne_text):
                 kette, feld = m.group(1), m.group(2)
                 # Folgt `(` oder `[`, ist es ein Aufruf oder ein Indexzugriff und kein Feld:
                 # bei `Fahrplan.zeilen(…).first` und `e.wahl[…]` kommt das Wahlfreie von dort.
