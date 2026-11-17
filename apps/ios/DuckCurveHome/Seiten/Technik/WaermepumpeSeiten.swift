@@ -10,6 +10,8 @@ import SwiftUI
 struct WaermepumpeSeite: View {
     @Environment(Hauszustand.self) private var haus
 
+    @Environment(\.horizontalSizeClass) private var breite
+
     @State private var wp: WaermepumpeOut?
     @State private var fehler: ApiFehler?
 
@@ -19,6 +21,19 @@ struct WaermepumpeSeite: View {
                 Stoerung(fehler: fehler) { Task { await lade() } }
             }
             if let w = wp {
+                // **Die Zeichnung zuerst.** Sie gibt den achtzehn Zahlen darunter einen Ort:
+                // Heissgas ist die Leitung nach oben, Fluessig die zurueck, der Verdichter
+                // sitzt im Aussengeraet. Wer eine Zahl sucht, findet sie hier schneller als
+                // in einer Liste - und sieht nebenbei, ob ueberhaupt etwas fliesst.
+                Karte {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(Wpbild.satz(w))
+                            .font(Schrift.klein)
+                            .foregroundStyle(Farbe.text1)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Waermepumpenbild(wp: w, lage: breite == .compact ? .hoch : .breit)
+                    }
+                }
                 Kachelfeld(kacheln: kennzahlen(w), kicker: w.zustandDe)
                 if let busStumm = w.busStummDe, !busStumm.isEmpty {
                     Karte { Leer(satz: "Der Bus schweigt.", dazu: busStumm) }

@@ -282,4 +282,34 @@ extension Vorschau {
             )
         }
     }
+
+    /// Eine Wärmepumpe mit Beispielwerten – für die Zeichnung und ihre Tests.
+    public static func waermepumpe(
+        laeuft: Bool = true,
+        pumpe: Bool? = true,
+        luefter: Double? = 420,
+        einspeisung: WaermepumpeOutEinspeisungWahl? = .oben,
+        zaehler: Double? = 1.84,
+        bus: Double? = 1.92,
+        waerme: Double? = 6.3
+    ) -> WaermepumpeOut {
+        func m(_ v: Double?, _ g: Quality = .ok) -> Messwert {
+            Messwert(value: v, observedAt: Zeit.iso(jetzt), quality: v == nil ? .unavailable : g,
+                     source: "demo:ebus")
+        }
+        return WaermepumpeOut(
+            now: Zeit.iso(jetzt), laeuft: laeuft,
+            zustandDe: laeuft ? "heizt" : "steht",
+            pumpeLaeuft: pumpe,
+            aussenC: m(4.2), verdampferC: m(1.1), sauggasC: m(3.4),
+            heissgasC: m(68.0), fluessigC: m(31.5), verdichterHz: m(laeuft ? 54 : 0),
+            leistungBusKw: m(bus), leistungZaehlerKw: m(zaehler),
+            vorlaufC: m(38.4), ruecklaufC: m(33.1), durchflussLMin: m(17.2),
+            vorlaufSollC: m(39.0), speicherfuehlerC: m(44.8),
+            pufferC: puffertemperaturen().vonObenNachUnten,
+            waermeleistungKw: waerme,
+            luefterDrehzahl: luefter.map { m($0) },
+            kreisDe: "Heizkreis 1", einspeisung: einspeisung
+        )
+    }
 }
