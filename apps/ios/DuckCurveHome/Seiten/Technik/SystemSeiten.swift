@@ -9,9 +9,11 @@ import SwiftUI
 /// anfängt.
 struct HeizkreiseSeite: View {
     @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
     @State private var automatik: RoomShiftOut?
 
     var body: some View {
+        let z = wegweiser.zeitraum(jetzt: haus.jetzt)
         Berichtsseite(spannen: [.tag]) { z, api in
             try await api.raeumeTag(z.anker, schrittMin: 15)
         } inhalt: { verlauf in
@@ -21,7 +23,19 @@ struct HeizkreiseSeite: View {
             if verlauf.rooms.isEmpty {
                 Karte { Leer(satz: "Für diesen Tag sind keine Raumwerte da.") }
             } else {
-                Karte(kicker: "Temperaturen", titel: "\(verlauf.rooms.count) Räume") {
+                // **Die Hauptkarte, und zwar zuerst.** Nicht die Temperaturen, sondern die
+                // Abweichung vom Ziel: zehn Raeume zwischen 18 und 21 Grad sind als Kurven
+                // ein flaches Band. So macht es das Dashboard (`rooms/RoomsReport.tsx`), und
+                // es beantwortet die Frage, die diese Seite stellt - welcher Raum bestimmt
+                // die Vorlauftemperatur.
+                Karte(kicker: "Abweichung im Tagesverlauf",
+                      titel: "\(verlauf.rooms.count) Räume") {
+                    Abweichungsmatrix(
+                        verlauf: verlauf,
+                        bisStelle: Raumabweichung.gewesen(tag: z.anker, jetzt: haus.jetzt)
+                    )
+                }
+                Karte(kicker: "Temperaturen") {
                     Raumverlaufsbild(verlauf: verlauf)
                 }
                 Karte(kicker: "Ventile") {
@@ -97,6 +111,9 @@ private struct Raumverlaufsbild: View {
             }
         }
         .chartXScale(domain: 0...24)
+        // Ohne Vorgabe nimmt Swift Charts die Null dazu, und die Kurven verschmelzen im
+        // oberen Drittel. Die Spanne wird im Kern gerechnet und ist dort geprueft.
+        .chartYScale(domain: Achse.spanne(werte: verlauf.rooms.flatMap(\.tempC)) ?? 15...25)
         .chartXAxis {
             AxisMarks(values: Array(stride(from: 0.0, through: 24, by: 4))) { w in
                 AxisGridLine().foregroundStyle(Farbe.rasterlinie)

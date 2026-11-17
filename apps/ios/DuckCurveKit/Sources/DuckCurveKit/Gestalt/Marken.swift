@@ -142,12 +142,14 @@ public enum Marken {
 
     /// Die Farbe zu einer Abweichung in Kelvin. Die Schwellen sind dieselben wie im Dashboard.
     public static func abweichungsfarbe(kelvin: Double?) -> Farbwert {
+        // **Ohne Wert gibt es keine Farbe.** Hier stand `abwNull` - ein stummer Fuehler sah
+        // damit aus wie ein Raum, der genau am Ziel steht. Das ist die unangenehmste Sorte
+        // Falschaussage: sie beruhigt. Wer keinen Wert hat, zeichnet eine Schraffur und ruft
+        // diese Funktion gar nicht.
         guard let k = kelvin, k.isFinite else { return abwNull }
-        if k <= -1.0 { return abwKalt2 }
-        if k <= -0.3 { return abwKalt1 }
-        if k < 0.3 { return abwNull }
-        if k < 1.0 { return abwWarm1 }
-        return abwWarm2
+        // Die Grenzen sind die des Dashboards (`rooms/palette.ts`); sie stehen in
+        // `Raumabweichung.stufe` und werden hier nur nachgeschlagen.
+        return abweichung[Raumabweichung.stufe(k)]
     }
 
     // MARK: - Form

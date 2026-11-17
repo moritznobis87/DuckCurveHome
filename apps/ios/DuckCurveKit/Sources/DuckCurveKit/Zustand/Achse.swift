@@ -19,4 +19,28 @@ public enum Achse {
         let schritt = Int((Double(alle.count) / Double(hoechstens)).rounded(.up))
         return alle.enumerated().compactMap { i, w in i % schritt == 0 ? w : nil }
     }
+
+    /// Die Spanne einer Werteachse: so eng wie möglich, so weit wie nötig.
+    ///
+    /// **Ohne Vorgabe nimmt Swift Charts die Null dazu.** Zehn Räume zwischen 18 und 21 Grad
+    /// landen dann auf einer Achse von 0 bis 30, und die Kurven, auf die es ankommt,
+    /// verschmelzen zu einem flachen Band im oberen Drittel. Bei Raumtemperaturen ist die
+    /// Null keine Bezugsgröße – niemand fragt, ob ein Zimmer wärmer als Eis ist.
+    ///
+    /// `mindestens` verhindert das Gegenteil: ein Tag, an dem sich nichts rührt, bekäme sonst
+    /// eine Achse über ein Zehntelgrad, auf der jedes Messrauschen wie ein Ereignis aussieht.
+    public static func spanne(
+        werte: [Double?], rand: Double = 1, mindestens: Double = 4
+    ) -> ClosedRange<Double>? {
+        let da = werte.compactMap { $0 }.filter { $0.isFinite }
+        guard let klein = da.min(), let gross = da.max() else { return nil }
+        var von = (klein - rand).rounded(.down)
+        var bis = (gross + rand).rounded(.up)
+        let fehlt = mindestens - (bis - von)
+        if fehlt > 0 {
+            von -= (fehlt / 2).rounded(.up)
+            bis += (fehlt / 2).rounded(.up)
+        }
+        return von...bis
+    }
 }

@@ -296,6 +296,25 @@ def main() -> int:
                 if typen and all(t.rstrip("?") == "Int" for t in typen):
                     maengel.append((kurz, nr, f".{feld} ist schon Int - das Runden ist falsch"))
 
+        # 10. Ein deutsches Anführungszeichen, mit ASCII geschlossen.
+        #
+        # **Mein eigener Fehler, dreimal gemacht.** `„am Ziel"` in einem Swift-Text: das
+        # öffnende Zeichen ist U+201E, das schließende ein ASCII-Anführungszeichen – und das
+        # beendet den String. Der Compiler meldet es („unterminated string literal"), aber
+        # erst nach einer Runde; hier kostet es eine Sekunde. Richtig ist U+201C.
+        for nr, roh in enumerate(text.splitlines(), 1):
+            # **Kommentare zuerst weg.** In einem `//`-Kommentar ist ein ASCII-Zeichen
+            # harmlos; dort steht die Erklaerung des Fehlers, nicht der Fehler. Beim ersten
+            # Entwurf dieser Regel waren alle drei Treffer genau das.
+            zeile = re.sub(r"//.*$", "", roh)
+            if "\u201e" in zeile and '"' in zeile.split("\u201e", 1)[1]:
+                # Nur melden, wenn kein schliessendes U+201C folgt.
+                rest = zeile.split("\u201e", 1)[1]
+                if "\u201c" not in rest.split('"', 1)[0]:
+                    maengel.append((kurz, nr, "„…\" – ein deutsches Anführungszeichen mit "
+                                              "ASCII geschlossen; das beendet den String "
+                                              "(richtig: “)"))
+
         # 5. Reihenfolge der Argumente, mit echtem Klammernzählen
         for name, zuerst, danach in REIHENFOLGE:
             for versatz, rumpf in aufrufe(text, name):
@@ -340,7 +359,7 @@ def main() -> int:
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der neun geprüften Fehlerarten gefunden.")
+    print("Keine der zehn geprüften Fehlerarten gefunden.")
     return 0
 
 
