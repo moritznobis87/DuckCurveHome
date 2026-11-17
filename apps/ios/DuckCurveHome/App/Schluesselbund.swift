@@ -27,7 +27,7 @@ enum Schluesselbund {
     static func lies() -> Zugang {
         let einst = UserDefaults.standard
         let roh = einst.string(forKey: Einstellung.adresse) ?? ""
-        let url = URL(string: roh) ?? URL(string: "https://nicht.eingerichtet.invalid")!
+        let url = URL(string: roh) ?? Zugang.nichtEingerichtet
         return Zugang(
             grund: url,
             praefix: einst.string(forKey: Einstellung.praefix) ?? "/api/v1",

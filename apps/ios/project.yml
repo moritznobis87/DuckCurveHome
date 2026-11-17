@@ -65,12 +65,26 @@ targets:
     dependencies:
       - package: DuckCurveKit
         product: DuckCurveKit
-    entitlements:
-      path: DuckCurveHome/DuckCurveHome.entitlements
-      properties:
-        # Mitteilungen gehen ueber APNs. `development` fuer die Entwicklung; fuer TestFlight und
-        # den App Store setzt Xcode beim Archivieren `production`.
-        aps-environment: development
+    # **Keine Berechtigungen - und das ist eine Entscheidung mit Preis.**
+    #
+    # Hier stand `aps-environment: development` fuer die Mitteilungen ueber APNs. Ein
+    # persoenliches Entwicklerkonto (eine Apple-ID ohne bezahltes Programm, 99 EUR im Jahr)
+    # darf diese Berechtigung nicht fuehren; Xcode bricht die Signierung ab:
+    #
+    #     Personal development teams do not support the Push Notifications capability.
+    #
+    # Damit laesst sich die App auf dem eigenen Geraet nicht starten - und auf dem eigenen
+    # Geraet zu laufen ist mehr wert als eine Mitteilung, die ein persoenliches Konto ohnehin
+    # nicht bekommen koennte. Der Dienst behaelt seinen APNs-Weg; nur dieses Geraet meldet
+    # sich nicht mehr an, und die Seite „Mitteilungen" sagt es.
+    #
+    # **Zum Zurueckholen** mit einem bezahlten Konto: die vier Zeilen unten wieder einruecken
+    # und `xcodegen generate` laufen lassen.
+    #
+    # entitlements:
+    #   path: DuckCurveHome/DuckCurveHome.entitlements
+    #   properties:
+    #     aps-environment: development
     info:
       path: DuckCurveHome/Info.plist
       properties:

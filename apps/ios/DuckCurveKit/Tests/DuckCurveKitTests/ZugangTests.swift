@@ -222,4 +222,34 @@ final class ApiFehlerTests: XCTestCase {
         let f = ApiFehler(code: "buffer_cold", meldung: "Der Puffer ist zu kalt für diesen Griff.", status: 409)
         XCTAssertEqual(f.rat, "Der Puffer ist zu kalt für diesen Griff.")
     }
+
+    // MARK: - Was als eingerichtet zaehlt
+
+    /// **Der Fehler, der auf dem Geraet eine Stunde gekostet hat.** Der Platzhalter hat einen
+    /// Hostnamen; die alte Pruefung sah nur danach und hielt ihn fuer eine Adresse. Die App
+    /// uebersprang das Einrichten und sprach mit `nicht.eingerichtet.invalid`.
+    func testDerPlatzhalterGiltNichtAlsEingerichtet() {
+        let z = Zugang(grund: Zugang.nichtEingerichtet, token: "", geraetename: "x")
+        XCTAssertFalse(z.istEingerichtet)
+    }
+
+    func testJedeInvalidEndungGiltNichtAlsEingerichtet() {
+        // Nicht nur dieser eine Name: `.invalid` ist reserviert und loest nie auf (RFC 2606).
+        for roh in ["https://irgendwas.invalid", "http://a.b.invalid", "https://x.invalid"] {
+            let z = Zugang(grund: URL(string: roh)!, token: "", geraetename: "x")
+            XCTAssertFalse(z.istEingerichtet, roh)
+        }
+    }
+
+    func testEineEchteAdresseGiltAlsEingerichtet() {
+        for roh in ["http://192.168.1.42:8000", "https://haus.example.com", "http://localhost:8000"] {
+            let z = Zugang(grund: URL(string: roh)!, token: "", geraetename: "x")
+            XCTAssertTrue(z.istEingerichtet, roh)
+        }
+    }
+
+    func testEineAdresseOhneGastgeberGiltNicht() {
+        let z = Zugang(grund: URL(string: "file:///tmp/x")!, token: "", geraetename: "x")
+        XCTAssertFalse(z.istEingerichtet)
+    }
 }

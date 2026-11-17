@@ -132,9 +132,24 @@ public struct Zugang: Sendable, Hashable, Codable {
         return k
     }
 
-    /// Ob dieser Zugang eingerichtet ist. Ohne Adresse laeuft nichts.
+    /// Die Adresse, die „noch nichts eingerichtet" bedeutet.
+    ///
+    /// `.invalid` ist dafür reserviert (RFC 2606): ein Name, der nie auflöst. Genau das ist
+    /// hier gewollt – ein Platzhalter, der niemals versehentlich jemanden anspricht.
+    public static let nichtEingerichtet = URL(string: "https://nicht.eingerichtet.invalid")!
+
+    /// Ob dieser Zugang eingerichtet ist. Ohne Adresse läuft nichts.
+    ///
+    /// **Ein Hostname allein genügt nicht, und das war ein Fehler.** Hier stand nur die Prüfung
+    /// auf einen nicht-leeren Hostnamen – und der Platzhalter oben hat einen. Die App hielt ihn
+    /// für eine Adresse, übersprang das Einrichten und sprach auf dem Gerät stundenlang mit
+    /// `nicht.eingerichtet.invalid`: „A server with the specified hostname could not be found."
+    /// Von außen sah es aus wie ein Netzproblem und war keines.
+    ///
+    /// Geprüft wird darum die ganze reservierte Endung und nicht nur dieser eine Name: wer
+    /// später einen zweiten Platzhalter einführt, fällt nicht in dieselbe Grube.
     public var istEingerichtet: Bool {
         guard let gastgeber = grund.host, !gastgeber.isEmpty else { return false }
-        return true
+        return !gastgeber.hasSuffix(".invalid")
     }
 }

@@ -47,6 +47,9 @@ final class Mitteilungen: NSObject {
     func verbinde(mit haus: Hauszustand) {
         self.haus = haus
         UNUserNotificationCenter.current().delegate = self
+        #if canImport(UIKit)
+            Systemanschluss.mitteilungen = self
+        #endif
         Task { await pruefeStand() }
     }
 
@@ -91,6 +94,24 @@ final class Mitteilungen: NSObject {
         #if canImport(UIKit)
             UIApplication.shared.registerForRemoteNotifications()
         #endif
+    }
+
+    /// Apple hat die Anmeldung abgelehnt.
+    ///
+    /// **Der haeufigste Grund ist kein Netzfehler, sondern die Signatur.** Ein persoenliches
+    /// Entwicklerkonto (eine Apple-ID ohne bezahltes Programm) darf die Berechtigung
+    /// `aps-environment` nicht fuehren; ohne sie lehnt Apple hier ab. Das ist kein Fehler des
+    /// Hauses und auch keiner des Geraets - und solange es hier stumm blieb, sah die Seite
+    /// aus, als warte sie noch.
+    func anmeldungScheiterte(_ fehler: Error) {
+        let text = (fehler as NSError).localizedDescription
+        stand = .fehler(
+            text.contains("aps-environment") || text.contains("no valid")
+                ? "Diese Fassung der App ist ohne Push-Berechtigung signiert. "
+                    + "Mitteilungen brauchen ein bezahltes Apple-Entwicklerprogramm; "
+                    + "alles andere in der App geht ohne."
+                : text
+        )
     }
 
     /// Das Token ist da - jetzt kennt der Dienst dieses Geraet.

@@ -36,6 +36,7 @@
 		A12C880295C6B5FFA2CC04B9 /* Zeichen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B67D80E0116B660F33FAFC6 /* Zeichen.swift */; };
 		A414B4F48D8F7D73D8DE92B8 /* StromSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6833877D0B3131B03C55F6 /* StromSeite.swift */; };
 		BA80D620296C3F558A781A8A /* Dock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442E48F860C3E272065F1773 /* Dock.swift */; };
+		BF90E13714A06E92ACA5FEBA /* Systemanschluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65970F2409A3493784FE0F3 /* Systemanschluss.swift */; };
 		C43C83AB55DE4450DB127E05 /* Einrichten.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */; };
 		CF1E38EE14DAA9FB117D4E38 /* MitteilungenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47987C6C791253041485C3B7 /* MitteilungenSeite.swift */; };
 		D742805330F9AD247E8CAB72 /* ReglerSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */; };
@@ -62,7 +63,6 @@
 		2195B41CC96C7867CA119D73 /* WandRahmen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WandRahmen.swift; sourceTree = "<group>"; };
 		24A791D7B98D4B9ACA0194CC /* IBMPlexMono-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.otf"; sourceTree = "<group>"; };
 		27DFE093B98D4839CAEC9644 /* KennlinieSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KennlinieSeite.swift; sourceTree = "<group>"; };
-		328FFB58673F2E54CA9DA9B7 /* DuckCurveHome.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DuckCurveHome.entitlements; sourceTree = "<group>"; };
 		3B2CB1649CD728391A247327 /* Pufferspeicher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pufferspeicher.swift; sourceTree = "<group>"; };
 		404A42E4106E511C51916C29 /* Hauszustand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hauszustand.swift; sourceTree = "<group>"; };
 		442E48F860C3E272065F1773 /* Dock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dock.swift; sourceTree = "<group>"; };
@@ -93,6 +93,7 @@
 		B98C536116288281EBEE7975 /* HandRahmen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandRahmen.swift; sourceTree = "<group>"; };
 		BF4037BAFC1759DC6E851D10 /* DuckCurveHome.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DuckCurveHome.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C2585D3A39663A8ECC169086 /* WaermepumpeSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaermepumpeSeiten.swift; sourceTree = "<group>"; };
+		C65970F2409A3493784FE0F3 /* Systemanschluss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Systemanschluss.swift; sourceTree = "<group>"; };
 		D30DAA240E8C7E2CE0D0D58B /* Bericht.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bericht.swift; sourceTree = "<group>"; };
 		D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Leiste.swift; sourceTree = "<group>"; };
 		DC1727717E97B2E078703BAB /* DuckCurveKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = DuckCurveKit; path = DuckCurveKit; sourceTree = SOURCE_ROOT; };
@@ -229,7 +230,6 @@
 				BF92AD50E626E87B53CE88EE /* Mitteilungen */,
 				CB385DF539C979F0D937B7AE /* Ressourcen */,
 				F5EA3A126DC1B0B547A9BA67 /* Seiten */,
-				328FFB58673F2E54CA9DA9B7 /* DuckCurveHome.entitlements */,
 				E21D9B15AC2FE60F410BCD9E /* Info.plist */,
 			);
 			path = DuckCurveHome;
@@ -257,6 +257,7 @@
 			isa = PBXGroup;
 			children = (
 				1569F6F6326D9C4B70474A60 /* Mitteilungen.swift */,
+				C65970F2409A3493784FE0F3 /* Systemanschluss.swift */,
 			);
 			path = Mitteilungen;
 			sourceTree = "<group>";
@@ -411,6 +412,7 @@
 				FDC1EC6D16D2BB418720477D /* Seitenwahl.swift in Sources */,
 				A414B4F48D8F7D73D8DE92B8 /* StromSeite.swift in Sources */,
 				22D992662C89DE566BA89939 /* SystemSeiten.swift in Sources */,
+				BF90E13714A06E92ACA5FEBA /* Systemanschluss.swift in Sources */,
 				3119991C0311A68EED64E790 /* Tageskurve.swift in Sources */,
 				F01A3D3524E63BA7DE6D02B7 /* Typografie.swift in Sources */,
 				FB410072136231AA663DAAD2 /* Vorschauen.swift in Sources */,
@@ -428,7 +430,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = DuckCurveHome/DuckCurveHome.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = DuckCurveHome/Info.plist;
@@ -509,7 +510,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = DuckCurveHome/DuckCurveHome.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = DuckCurveHome/Info.plist;

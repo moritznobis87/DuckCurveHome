@@ -21,6 +21,10 @@ import SwiftUI
 struct DuckCurveHomeApp: App {
     @State private var haus = Hauszustand(zugang: Schluesselbund.lies())
     @State private var mitteilungen = Mitteilungen()
+    #if canImport(UIKit)
+        // Ohne diesen Anschluss kommt das Geraetetoken von Apple nirgends an.
+        @UIApplicationDelegateAdaptor(Systemanschluss.self) private var anschluss
+    #endif
 
     var body: some Scene {
         WindowGroup {
