@@ -3,11 +3,16 @@ import SwiftUI
 
 /// Anlage: der Augenblick der Wasser- und Stromseite in einer Antwort.
 ///
-/// Das Dashboard zeichnet hier ein Anlagenschema - Puffer, Waermepumpe, Ofen, Heizkreise,
-/// Warmwasser, mit Leitungen dazwischen. In der App stehen dieselben Werte als Gruppen mit dem
-/// Glas des Puffers in der Mitte: ein Schema auf 390 Punkten Breite ist ein Gewirr, und auf dem
-/// iPad ist der Unterschied zur Gruppenansicht kleiner, als er aussieht - abgelesen wird ohnehin
-/// Gruppe fuer Gruppe.
+/// **Oben das Schema, darunter die Zahlen.** Hier stand, ein Schema auf 390 Punkten Breite sei
+/// ein Gewirr und der Unterschied zur Gruppenansicht auf dem iPad kleiner, als er aussehe.
+/// Beides war eine Ausrede fuer etwas, das ich nicht gebaut hatte: das Dashboard zeigt an
+/// dieser Stelle eine Buehne, auf der man *sieht*, was fliesst - und genau deshalb heisst die
+/// Seite Anlage und nicht Anlagenwerte. Gemeldet hat es der Nutzer, nicht der Arbeitsvorrat;
+/// der fuehrte die Seite mit vier kleinen Punkten und setzte dabei voraus, es gebe ein Schema.
+///
+/// Das Bild steht in voller Groesse da und wird geschoben (Nutzerwunsch 17.11.2026). Die
+/// Gruppen darunter bleiben: auf einem Telefon liest man eine Zahl schneller aus einer Zeile
+/// als aus einer Zeichnung, und sie tragen Werte, die im Schema keinen Platz haben.
 struct AnlageSeite: View {
     @Environment(Hauszustand.self) private var haus
 
@@ -21,6 +26,10 @@ struct AnlageSeite: View {
             }
             if let a = anlage {
                 kopf(a)
+                Karte(kicker: "Die Anlage", titel: Anlagenschema.erzeugerSatz(a, jetzt: haus.jetzt)) {
+                    Anlagenbild(anlage: a, jetzt: haus.jetzt)
+                }
+                lesehilfe
                 strom(a.strom)
                 speicher(a.speicher, stand: a.at)
                 waermepumpe(a.waermepumpe)
@@ -33,6 +42,54 @@ struct AnlageSeite: View {
         }
         .task { await lade() }
         .task { await haltFrisch() }
+    }
+
+    /// Die drei Bloecke unter dem Bild. **Zwei davon sind Inhalt und keine Bildbeschreibung:**
+    /// wie die vier Kreise gebaut sind, und was gemessen und was gerechnet ist.
+    private var lesehilfe: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Karte(kicker: "Lesen") {
+                VStack(alignment: .leading, spacing: 6) {
+                    satz(
+                        "Das Licht wandert in Fliessrichtung. Je mehr Leistung, desto schneller und desto mehr Punkte; ein Rohr ohne Fluss steht still und ist duenn.")
+                    satz(
+                        "Die Farbe eines Rohrs ist die Temperatur seines Wassers, nach derselben Skala wie das Glas. Ruecklaeufe sind schmaler und blasser, damit die Schleife als Paar lesbar bleibt.")
+                    satz(
+                        "Ein Punkt an einer Pumpe heisst: sie laeuft. Beim Strom traegt jeder Lichtpunkt die Farbe seiner Quelle, im Verhaeltnis der Anteile.")
+                }
+            }
+            Karte(kicker: "Vier getrennte Systeme") {
+                VStack(alignment: .leading, spacing: 6) {
+                    satz("Der Ofen speist ganz oben ein und holt unten zurueck.")
+                    satz("Die Waermepumpe speist in der Mitte ein und holt unten zurueck.")
+                    satz("Der Heizkreis nimmt aus der Mitte und gibt unten zurueck.")
+                    satz(
+                        "Das Trinkwasser laeuft unten kalt nach und wird ganz oben warm entnommen.")
+                    satz(
+                        "Ofen und Waermepumpe holen ihren Ruecklauf gemeinsam an der untersten Spitze - darum ist es dort ein Rohr und erst danach zwei.")
+                }
+            }
+            Karte(kicker: "Gemessen und gerechnet") {
+                VStack(alignment: .leading, spacing: 6) {
+                    satz(
+                        "Die Waerme der Waermepumpe wird nicht gemessen. Vorlauftemperatur und Arbeitszahl kommen von ihrem eigenen Bus; die Leistung ist daraus gerechnet.")
+                    satz(
+                        "Die Waerme des Ofens ist aus seiner Leistungsstufe nach Datenblatt geschaetzt.")
+                    satz(
+                        "Die Nettoleistung des Speichers kommt aus den vier Fuehlern ueber die letzte Viertelstunde.")
+                    satz(
+                        "Warmwasser wird am Anlegefuehler des Auslasses erkannt, nicht gemessen: es steht da, dass gezapft wird und seit wann, nicht wie viel.")
+                }
+            }
+        }
+    }
+
+    private func satz(_ text: String) -> some View {
+        Text(text)
+            .font(Schrift.klein)
+            .foregroundStyle(Farbe.text2)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func kopf(_ a: AnlageOut) -> some View {

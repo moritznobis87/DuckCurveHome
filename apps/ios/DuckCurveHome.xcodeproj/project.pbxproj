@@ -27,6 +27,7 @@
 		512F02FA33052F129D25DBD5 /* Energiefluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F3D8B5A242C08D8BEF8DE76 /* Energiefluss.swift */; };
 		512F2413B7056CF4CF62009B /* DuckCurveKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3A62E496A87A8D94CA123EEF /* DuckCurveKit */; };
 		56C0AE84FC921B660B63E93D /* Navigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7FB5A5CC63F033E8AC7820 /* Navigation.swift */; };
+		643D9FDBE5C78B85C63D5ACA /* Anlagenrohre.swift in Sources */ = {isa = PBXBuildFile; fileRef = 136B81A72166E32541A4ABF9 /* Anlagenrohre.swift */; };
 		6A49193A6C88C9D4267FF1C9 /* WaermepumpeSeiten.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2585D3A39663A8ECC169086 /* WaermepumpeSeiten.swift */; };
 		6A6AE4891268B8CE7EF864AC /* Blaetter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB4AE3BBF422749B5EDD958 /* Blaetter.swift */; };
 		6FCF3DE35A951A727A3F0312 /* Ausblickkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7679B32D01774CCA129F24A6 /* Ausblickkarte.swift */; };
@@ -39,6 +40,7 @@
 		A032CFA7AF0A6774C96282C7 /* Bericht.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30DAA240E8C7E2CE0D0D58B /* Bericht.swift */; };
 		A12C880295C6B5FFA2CC04B9 /* Zeichen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B67D80E0116B660F33FAFC6 /* Zeichen.swift */; };
 		A414B4F48D8F7D73D8DE92B8 /* StromSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6833877D0B3131B03C55F6 /* StromSeite.swift */; };
+		A828EF6E284B4E612A9201C9 /* Anlagenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B121AA23E50590AAD07F502 /* Anlagenbild.swift */; };
 		B5B0CB533E0FCE256C33E295 /* Waermepumpenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */; };
 		BA80D620296C3F558A781A8A /* Dock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442E48F860C3E272065F1773 /* Dock.swift */; };
 		BF90E13714A06E92ACA5FEBA /* Systemanschluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65970F2409A3493784FE0F3 /* Systemanschluss.swift */; };
@@ -64,6 +66,7 @@
 /* Begin PBXFileReference section */
 		0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Waermepumpenbild.swift; sourceTree = "<group>"; };
 		0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reiterzeile.swift; sourceTree = "<group>"; };
+		136B81A72166E32541A4ABF9 /* Anlagenrohre.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenrohre.swift; sourceTree = "<group>"; };
 		1569F6F6326D9C4B70474A60 /* Mitteilungen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mitteilungen.swift; sourceTree = "<group>"; };
 		19D6E643E59B9205E637CF97 /* Seitenwahl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Seitenwahl.swift; sourceTree = "<group>"; };
 		1B67D80E0116B660F33FAFC6 /* Zeichen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Zeichen.swift; sourceTree = "<group>"; };
@@ -80,6 +83,7 @@
 		4E942EE0CAD6144F59FB8B7A /* SystemSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSeiten.swift; sourceTree = "<group>"; };
 		4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alfredblatt.swift; sourceTree = "<group>"; };
 		4FE935C11F91B3B4788FA2C8 /* Karte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Karte.swift; sourceTree = "<group>"; };
+		5B121AA23E50590AAD07F502 /* Anlagenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenbild.swift; sourceTree = "<group>"; };
 		5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Einrichten.swift; sourceTree = "<group>"; };
 		5D1A02B0F1DB5D6D6AFA0B27 /* WaermeSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaermeSeite.swift; sourceTree = "<group>"; };
 		5E28F2036D3D5B7885BC4F87 /* Ansichtswahl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ansichtswahl.swift; sourceTree = "<group>"; };
@@ -148,6 +152,8 @@
 		304A7B322587ABC509023368 /* Diagramme */ = {
 			isa = PBXGroup;
 			children = (
+				5B121AA23E50590AAD07F502 /* Anlagenbild.swift */,
+				136B81A72166E32541A4ABF9 /* Anlagenrohre.swift */,
 				98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */,
 				9AA49FDBA50756C197DFFDBC /* Tageskurve.swift */,
 				5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */,
@@ -416,6 +422,8 @@
 				3EF3EF537DB4E937E636B504 /* Abweichungsmatrix.swift in Sources */,
 				8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */,
 				92BED5F9FA7987479E09055C /* AnlageSeite.swift in Sources */,
+				A828EF6E284B4E612A9201C9 /* Anlagenbild.swift in Sources */,
+				643D9FDBE5C78B85C63D5ACA /* Anlagenrohre.swift in Sources */,
 				4F4C0F0A21CF2F94D2FCC3C3 /* Ansichtswahl.swift in Sources */,
 				6FCF3DE35A951A727A3F0312 /* Ausblickkarte.swift in Sources */,
 				A032CFA7AF0A6774C96282C7 /* Bericht.swift in Sources */,

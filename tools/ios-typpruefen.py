@@ -417,7 +417,14 @@ def main() -> int:
         text = open(pfad, encoding="utf-8").read()
         if "import DuckCurveKit" in text:
             continue
-        benutzt = sorted({n for n in kerntypen if re.search(rf"\b{n}\b", text)})
+        # **Ohne Kommentare und Zeichenketten.** Eine Datei, die `Punkt` nur in einem
+        # Dokumentationssatz erwaehnt ("Der Punkt bei `anteil`"), braucht den Kern nicht -
+        # genau das hat diese Regel am 17.11. gemeldet. Die Regeln 1 bis 8 raeumen beides
+        # laengst weg, bevor sie suchen; hier fehlte es.
+        ohne = re.sub(r'"(?:[^"\\]|\\.)*"', '""', text)
+        ohne = re.sub(r"//[^\n]*", "", ohne)
+        ohne = re.sub(r"/\*.*?\*/", "", ohne, flags=re.S)
+        benutzt = sorted({n for n in kerntypen if re.search(rf"\b{n}\b", ohne)})
         if benutzt:
             maengel.append((os.path.relpath(pfad, APP), 1,
                             f"benutzt {benutzt[:4]} aus dem Kern, ohne `import DuckCurveKit`"))
