@@ -147,13 +147,30 @@ final class MarkenTests: XCTestCase {
         XCTAssertGreaterThan(abs(kalt.blau - warm.blau) * 255, 120, "Der Blauanteil trennt die Enden nicht mehr.")
     }
 
+    /// **Dieser Test hielt meine falschen Grenzen fest.** Er erwartete bei −0,5 K noch
+    /// „kalt“, weil die Fassung davor bei −0,3 trennte. Das Dashboard prueft
+    /// `k >= von && k < bis` (`rooms/palette.ts`), und damit gehoert genau −0,5 schon zu
+    /// „am Ziel“. Die Kanten stehen jetzt ausdruecklich da, denn an ihnen sass der Fehler.
     func testAbweichungsfarbeTrifftDieStufen() {
         XCTAssertEqual(Marken.abweichungsfarbe(kelvin: -2.0), Marken.abwKalt2)
-        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: -0.5), Marken.abwKalt1)
+        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: -1.0), Marken.abwKalt1)
         XCTAssertEqual(Marken.abweichungsfarbe(kelvin: 0.0), Marken.abwNull)
-        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: 0.5), Marken.abwWarm1)
+        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: 1.0), Marken.abwWarm1)
         XCTAssertEqual(Marken.abweichungsfarbe(kelvin: 2.0), Marken.abwWarm2)
-        // Ohne Messwert bleibt die Stufe gedeckt und behauptet keine Abweichung.
+
+        // Die Kanten, genau wie in der Vorlage: die untere gehoert zur Stufe, die obere nicht.
+        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: -1.5), Marken.abwKalt1)
+        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: -1.51), Marken.abwKalt2)
+        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: -0.5), Marken.abwNull)
+        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: -0.51), Marken.abwKalt1)
+        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: 0.5), Marken.abwWarm1)
+        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: 0.49), Marken.abwNull)
+        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: 1.5), Marken.abwWarm2)
+        XCTAssertEqual(Marken.abweichungsfarbe(kelvin: 1.49), Marken.abwWarm1)
+
+        // Ohne Messwert bleibt die Stufe gedeckt. **Die Matrix ruft hier gar nicht an**: ein
+        // fehlender Wert wird schraffiert, nicht eingefaerbt - sonst sieht ein stummer
+        // Fuehler aus wie ein Raum am Ziel.
         XCTAssertEqual(Marken.abweichungsfarbe(kelvin: nil), Marken.abwNull)
         XCTAssertEqual(Marken.abweichungsfarbe(kelvin: .nan), Marken.abwNull)
     }
