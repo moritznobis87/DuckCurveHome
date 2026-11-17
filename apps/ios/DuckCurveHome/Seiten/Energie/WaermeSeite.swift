@@ -13,9 +13,12 @@ struct WaermeSeite: View {
         } inhalt: { b in
             Kachelfeld(kacheln: kennzahlen(b), kicker: "Wärme")
             if let takten = taktenzahlen(b.cycling) {
-                Karte(kicker: "Takten", titel: b.cycling.verdict) {
+                Karte(kicker: "Takten", titel: b.cycling.verdict?.wort) {
                     VStack(spacing: 0) {
-                        ForEach(takten) { z in z }
+                        // `Zeile` ist eine Ansicht und nichts, was eine Kennung traegt -
+                        // `ForEach` braucht aber eine. Die Stelle in der Reihe ist hier die
+                        // richtige: die Zeilen sind fest, sie werden nicht umsortiert.
+                        ForEach(Array(takten.enumerated()), id: \.offset) { _, z in z }
                     }
                 }
             }
@@ -66,7 +69,7 @@ struct WaermeSeite: View {
     private func taktenzahlen(_ c: CyclingStats) -> [Zeile]? {
         guard let laeufe = c.runs, laeufe > 0 else { return nil }
         return [
-            Zeile(wort: "Läufe", wert: Formate.zahl(laeufe, stellen: 0)),
+            Zeile(wort: "Läufe", wert: Formate.zahl(Double(laeufe), stellen: 0)),
             Zeile(wort: "Starts je Tag", wert: Formate.zahl(c.startsPerDay, stellen: 1)),
             Zeile(
                 wort: "mittlere Laufzeit",
@@ -74,7 +77,7 @@ struct WaermeSeite: View {
             ),
             Zeile(
                 wort: "kürzester Lauf",
-                wert: Formate.dauer(minuten: c.shortestRunMin.map { Int($0.rounded()) })
+                wert: Formate.dauer(minuten: c.shortestRunMin)
             ),
             Zeile(
                 wort: "mittlere Pause",
@@ -82,7 +85,7 @@ struct WaermeSeite: View {
             ),
             Zeile(wort: "Laufanteil", wert: Formate.prozent(c.dutyCycle)),
             Zeile(
-                wort: "kurze Läufe", wert: Formate.zahl(c.shortRuns, stellen: 0),
+                wort: "kurze Läufe", wert: Formate.zahl(c.shortRuns.map(Double.init), stellen: 0),
                 dazu: c.shortShare.map { "\(Formate.prozent($0)) aller Läufe" }
             ),
         ]
@@ -94,15 +97,15 @@ struct WaermeSeite: View {
                 VStack(spacing: 0) {
                     Zeile(
                         wort: "Laufzeit",
-                        wert: Formate.dauer(minuten: o.runningMinutes.map { Int($0.rounded()) })
+                        wert: Formate.dauer(minuten: o.runningMinutes)
                     )
-                    Zeile(wort: "Läufe", wert: Formate.zahl(o.runs, stellen: 0))
-                    Zeile(wort: "Zündungen", wert: Formate.zahl(o.ignitions, stellen: 0))
+                    Zeile(wort: "Läufe", wert: Formate.zahl(o.runs.map(Double.init), stellen: 0))
+                    Zeile(wort: "Zündungen", wert: Formate.zahl(o.ignitions.map(Double.init), stellen: 0))
                     Zeile(wort: "Pellets", wert: Formate.zahl(o.pelletKg, stellen: 1), einheit: "kg")
                     Zeile(wort: "Pelletkosten", wert: Formate.euro(o.pelletEur))
                     Zeile(
                         wort: "Warmwasser",
-                        wert: Formate.dauer(minuten: o.dhwMinutes.map { Int($0.rounded()) })
+                        wert: Formate.dauer(minuten: o.dhwMinutes)
                     )
                 }
             } else {

@@ -261,6 +261,29 @@ def main() -> int:
                                           f"als Element in einem Literal - anhängen, nicht "
                                           f"einreihen"))
 
+        # 8. Eine ganze Zahl da, wo `Formate` eine Dezimalzahl erwartet.
+        #
+        # Die `Formate`-Funktionen nehmen `Double?`. Swift wandelt `Int` **nicht** von sich aus
+        # um - anders als bei `[String]` zu `[String?]`. Viele Felder des Schemas sind aber
+        # `Int`: Läufe, Starts, Minuten, Zündungen. Dazu der Gegenfall: `Int($0.rounded())` auf
+        # einem Feld, das schon `Int` ist. Beides war im achten Lauf an sechs Stellen, und der
+        # Compiler hatte nur drei davon erreicht.
+        for nr, zeile in enumerate(text.splitlines(), 1):
+            ohne = re.sub(r"//.*$", "", re.sub(r'"(?:[^"\\]|\\.)*"', '""', zeile))
+            for m in re.finditer(r"Formate\.(zahl|prozent|kw|kwh|euro|ct|celsius)\("
+                                 r"\s*[\w.]*?\.(\w+)\s*[,)]", ohne):
+                feld = m.group(2)
+                typen = felder.get(feld, set())
+                if typen and all(t.rstrip("?") == "Int" for t in typen):
+                    maengel.append((kurz, nr, f"Formate.{m.group(1)}(… .{feld} …) - {feld} ist "
+                                              f"Int, erwartet wird Double; `Double(…)` bzw. "
+                                              f"`.map(Double.init)`"))
+            for m in re.finditer(r"\.(\w+)\.map \{ Int\(\$0\.rounded\(\)\) \}", ohne):
+                feld = m.group(1)
+                typen = felder.get(feld, set())
+                if typen and all(t.rstrip("?") == "Int" for t in typen):
+                    maengel.append((kurz, nr, f".{feld} ist schon Int - das Runden ist falsch"))
+
         # 5. Reihenfolge der Argumente, mit echtem Klammernzählen
         for name, zuerst, danach in REIHENFOLGE:
             for versatz, rumpf in aufrufe(text, name):
@@ -270,13 +293,42 @@ def main() -> int:
                     maengel.append((kurz, nr, f"{name}(…): „{danach}“ steht vor „{zuerst}“ - "
                                               f"die Felder sind die Argumente"))
 
+    # 9. Eine Datei, die den Kern benutzt, ohne ihn einzubinden.
+    #
+    # `Typografie.swift` benutzte `Formate` und hatte nur `import SwiftUI`. Das faellt beim
+    # Parsen nicht auf - ein unbekannter Name ist syntaktisch einwandfrei - und erst der
+    # Compiler sagt „cannot find 'Formate' in scope".
+    ART = r"(?:struct|enum|final class|class|actor|protocol)"
+    kerntypen: set[str] = set()
+    for r, _, ds in os.walk(KERN):
+        for d in ds:
+            if d.endswith(".swift"):
+                kerntypen |= set(re.findall(
+                    rf"public {ART} (\w+)",
+                    open(os.path.join(r, d), encoding="utf-8").read()))
+    # **Namen, die die App selbst vergibt, zaehlen nicht.** `Seite`, `Fehler` und `Namen` gibt
+    # es im Kern und in der Oberflaeche; eine Datei, die nur die eigene `Seite` benutzt,
+    # braucht den Kern nicht. Ohne diesen Abzug schluege die Regel irgendwann falsch an.
+    eigene: set[str] = set()
+    for pfad in dateien:
+        eigene |= set(re.findall(rf"^{ART} (\w+)", open(pfad, encoding="utf-8").read(), re.M))
+    kerntypen -= eigene
+    for pfad in dateien:
+        text = open(pfad, encoding="utf-8").read()
+        if "import DuckCurveKit" in text:
+            continue
+        benutzt = sorted({n for n in kerntypen if re.search(rf"\b{n}\b", text)})
+        if benutzt:
+            maengel.append((os.path.relpath(pfad, APP), 1,
+                            f"benutzt {benutzt[:4]} aus dem Kern, ohne `import DuckCurveKit`"))
+
     print(f"{len(dateien)} Dateien geprüft, {len(felder)} Schemafelder als Maßstab.")
     if maengel:
         print(f"\n{len(maengel)} Fund(e):", file=sys.stderr)
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der sieben geprüften Fehlerarten gefunden.")
+    print("Keine der neun geprüften Fehlerarten gefunden.")
     return 0
 
 

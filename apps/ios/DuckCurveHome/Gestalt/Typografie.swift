@@ -1,3 +1,4 @@
+import DuckCurveKit
 import SwiftUI
 
 /// Die Schriften: IBM Plex Sans fuer Text, IBM Plex Mono fuer Zahlen.

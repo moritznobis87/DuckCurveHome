@@ -195,8 +195,8 @@ struct ReglerSeite: View {
     }
 
     private func nachfragesatz(_ n: Nachfrage) -> String {
-        let alt = wertAlsText(n.einstellung, n.einstellung.wert.value)
-        let neu = wertAlsText(n.einstellung, n.neu)
+        let alt = n.einstellung.wertAlsText(n.einstellung.wert.value)
+        let neu = n.einstellung.wertAlsText(n.neu)
         var satz = "Von \(alt) auf \(neu).\n\nDas wird am Regler selbst geändert, nicht nur hier."
         if let hinweis = n.einstellung.hinweisDe, !hinweis.isEmpty {
             satz += "\n\n\(hinweis)"
@@ -224,18 +224,6 @@ struct ReglerSeite: View {
     }
 
     // MARK: - Werte lesen und schreiben
-
-    /// Einen Wert als Text, so wie der Regler ihn meint.
-    ///
-    /// Drei Formen: eine Auswahl (dann steht das Wort dazu in `wahl`), eine Zahl mit Einheit,
-    /// oder ein Ja/Nein. Die Lesart des Dienstes (`lesartDe`) schlaegt alles - er kennt den
-    /// Regler besser als diese Seite.
-    private func wertAlsText(_ e: ReglerEinstellungOut, _ zahl: Double?) -> String {
-        guard let zahl else { return Formate.leer }
-        if let wort = e.wahl[String(Int(zahl))] { return wort }
-        let text = Formate.zahl(zahl, stellen: e.stellen ?? 1)
-        return e.einheit.map { "\(text)\(Formate.schmalesLeerzeichen)\($0)" } ?? text
-    }
 
     private func stelle(_ n: Nachfrage) {
         laeuft = n.einstellung.schluessel
@@ -326,7 +314,7 @@ struct Einstellungszeile: View {
                         // *was* unterwegs ist - so wie das Dashboard (`Regler.tsx`: „gesendet
                         // 21,0 °C, wartet auf den Regler").
                         if let g = einstellung.gesendet {
-                            Text("gesendet \(wertAlsText(einstellung, g.wert)), wartet auf den Regler")
+                            Text("gesendet \(einstellung.wertAlsText(g.wert)), wartet auf den Regler")
                                 .font(Schrift.winzig).foregroundStyle(Farbe.achtung)
                         }
                     }
