@@ -503,6 +503,93 @@ extension Api {
         )
     }
 
+    // MARK: - Alfred
+
+    /// Kann Alfred antworten? Liest nur Einstellungen; kein Modell, keine Kosten.
+    public func alfredZustand() async throws -> AlfredZustandOut {
+        try await hole("/alfred/status")
+    }
+
+    /// Eine Frage an den Helfer, ohne Fortschritt.
+    ///
+    /// Ohne eingerichtetes Modell kommt `bereit == false` statt eines Fehlers zurueck - die
+    /// Oberflaeche zeigt dann ihre vorbereiteten Texte.
+    public func alfredFrage(_ frage: AlfredFrageIn) async throws -> AlfredAntwortOut {
+        try await hole("/alfred/ask", verfahren: "POST", rumpf: try rumpf(frage))
+    }
+
+    /// Dieselbe Frage, mit Fortschritt: je laufendem Werkzeug ein Name.
+    ///
+    /// **POST und kein `EventSource`.** Die Frage traegt die Hilfetexte im Rumpf; ein
+    /// Ereignisstrom ueber GET koennte sie nicht mitnehmen. Der Dienst antwortet darum mit
+    /// `text/event-stream` im Rumpf eines POST, und gelesen wird er mit demselben
+    /// ``Rohstrom``, der den Live-Strom des Hauses liest.
+    ///
+    /// Der Dienst meldet nur den **Namen** des Werkzeugs; den Satz dazu hat die Oberflaeche
+    /// (``Alfred/schrittText(_:)``). Ein unbekanntes Werkzeug ist kein Fehler: der Dienst darf
+    /// wachsen, ohne dass die App im selben Zug nachzieht.
+    public func alfredFrageMitFortschritt(
+        _ frage: AlfredFrageIn, schritt: @escaping @Sendable (String) -> Void
+    ) async throws -> AlfredAntwortOut {
+        guard let url = zugang.adresse("/alfred/ask/stream", [:]) else {
+            throw ApiFehler(code: "adresse", meldung: "Die Adresse des Hauses ist unbrauchbar.", status: 0)
+        }
+        var anfrage = URLRequest(url: url)
+        anfrage.httpMethod = "POST"
+        anfrage.cachePolicy = .reloadIgnoringLocalCacheData
+        for (k, v) in zugang.kopfzeilen { anfrage.setValue(v, forHTTPHeaderField: k) }
+        anfrage.setValue("application/json", forHTTPHeaderField: "content-type")
+        anfrage.setValue("text/event-stream", forHTTPHeaderField: "accept")
+        anfrage.httpBody = try rumpf(frage)
+
+        var leser = SseLeser()
+        let strom = Rohstrom()
+        for try await stueck in strom.oeffne(anfrage, in: sitzung) {
+            for ereignis in leser.nimm(stueck) {
+                guard let daten = ereignis.daten.data(using: .utf8) else { continue }
+                switch ereignis.art {
+                case "schritt":
+                    if let s = try? Self.leser.decode(AlfredSchritt.self, from: daten) {
+                        schritt(s.werkzeug)
+                    }
+                case "antwort":
+                    if let a = try? Self.leser.decode(AlfredAntwortOut.self, from: daten) {
+                        return a
+                    }
+                case "fehler":
+                    let u = try? Self.leser.decode(FehlerUmschlag.self, from: daten)
+                    throw ApiFehler(
+                        code: u?.error?.code ?? "alfred",
+                        meldung: u?.error?.message ?? "Alfred konnte nicht antworten.",
+                        status: 200)
+                default:
+                    break
+                }
+            }
+        }
+        // Der Strom endete ohne Antwort - abgebrochene Verbindung, Zeitueberschreitung.
+        throw ApiFehler(
+            code: "abbruch", meldung: "Die Verbindung zu Alfred ist abgerissen.", status: 0)
+    }
+
+    /// Eine Stromrechnung als PDF: erkennen, pruefen, zusammenfassen.
+    ///
+    /// **Erst die feste Erkennung, dann das Modell.** Liest die Tibber-Pruefung das PDF, wird
+    /// es ohne Sprachmodell geprueft und abgelegt - nichts verlaesst das Haus, auch ohne
+    /// eingerichteten Schluessel.
+    public func alfredRechnung(pdf: Data) async throws -> AlfredRechnungOut {
+        try await hole(
+            "/alfred/rechnung", verfahren: "POST", rumpf: pdf, rumpfArt: "application/pdf")
+    }
+
+    /// Einrichtung: aus einer eingefuegten Entitaetenliste einen YAML-Ausschnitt vorschlagen.
+    /// Schreibt nichts; die Datei liegt in Home Assistant.
+    public func alfredZuordnung(liste: String) async throws -> Zuordnungsergebnis {
+        try await hole(
+            "/alfred/zuordnung", verfahren: "POST",
+            rumpf: try rumpf(AlfredZuordnungIn(liste: liste)))
+    }
+
     /// Dieses Gerät abmelden.
     public func meldeApnsAb(token: String) async throws -> PushResultOut {
         try await hole(

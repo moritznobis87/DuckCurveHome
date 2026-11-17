@@ -31,6 +31,7 @@
 		6A6AE4891268B8CE7EF864AC /* Blaetter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB4AE3BBF422749B5EDD958 /* Blaetter.swift */; };
 		6FCF3DE35A951A727A3F0312 /* Ausblickkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7679B32D01774CCA129F24A6 /* Ausblickkarte.swift */; };
 		7A6C6E5925D48EE511579D9D /* Glasmodell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE2E906879843FBFF8C04AC /* Glasmodell.swift */; };
+		8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */; };
 		92BED5F9FA7987479E09055C /* AnlageSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201BD07AEDBDDA5B2E91E375 /* AnlageSeite.swift */; };
 		9791AE7D34591424DCAAD5DB /* Farben.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E127C736AC8ABEDFAB4437 /* Farben.swift */; };
 		99BBBD49F3FD5777A26147A2 /* Mitteilungen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1569F6F6326D9C4B70474A60 /* Mitteilungen.swift */; };
@@ -76,6 +77,7 @@
 		47987C6C791253041485C3B7 /* MitteilungenSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MitteilungenSeite.swift; sourceTree = "<group>"; };
 		4A6833877D0B3131B03C55F6 /* StromSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StromSeite.swift; sourceTree = "<group>"; };
 		4E942EE0CAD6144F59FB8B7A /* SystemSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSeiten.swift; sourceTree = "<group>"; };
+		4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alfredblatt.swift; sourceTree = "<group>"; };
 		4FE935C11F91B3B4788FA2C8 /* Karte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Karte.swift; sourceTree = "<group>"; };
 		5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Einrichten.swift; sourceTree = "<group>"; };
 		5D1A02B0F1DB5D6D6AFA0B27 /* WaermeSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaermeSeite.swift; sourceTree = "<group>"; };
@@ -240,6 +242,7 @@
 		866D63D465051E0AAD1981CC /* DuckCurveHome */ = {
 			isa = PBXGroup;
 			children = (
+				B9729E59F135561143EB2AB2 /* Alfred */,
 				572A922A1F1C8D06C77E7086 /* App */,
 				293399FB5A3036DFA261178D /* Bausteine */,
 				304A7B322587ABC509023368 /* Diagramme */,
@@ -269,6 +272,14 @@
 				9FE2E906879843FBFF8C04AC /* Glasmodell.swift */,
 			);
 			path = Haus3D;
+			sourceTree = "<group>";
+		};
+		B9729E59F135561143EB2AB2 /* Alfred */ = {
+			isa = PBXGroup;
+			children = (
+				4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */,
+			);
+			path = Alfred;
 			sourceTree = "<group>";
 		};
 		BF92AD50E626E87B53CE88EE /* Mitteilungen */ = {
@@ -400,6 +411,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3EF3EF537DB4E937E636B504 /* Abweichungsmatrix.swift in Sources */,
+				8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */,
 				92BED5F9FA7987479E09055C /* AnlageSeite.swift in Sources */,
 				4F4C0F0A21CF2F94D2FCC3C3 /* Ansichtswahl.swift in Sources */,
 				6FCF3DE35A951A727A3F0312 /* Ausblickkarte.swift in Sources */,

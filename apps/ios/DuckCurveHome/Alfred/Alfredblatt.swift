@@ -1,0 +1,383 @@
+import DuckCurveKit
+import SwiftUI
+import UniformTypeIdentifiers
+
+/// Alfred als Blatt über der Anwendung.
+///
+/// **Ohne Sprachmodell erklärt er die Seiten** – vorbereitete Texte aus dem Kern, nichts
+/// verlässt das Haus. Mit Modell beantwortet er Fragen zu den Daten dieses Hauses.
+///
+/// **Geschaltet wird erst auf Bestätigung, und zwar genau das, was dasteht.** Ein Vorschlag
+/// des Modells ist ein Vorschlag; was er bewirkt, rechnet ``Alfred/ausfuehrung(_:)`` im Kern
+/// aus den Feldern des Vorschlags, nicht aus seinem Antworttext. Die Bestätigung zeigt die
+/// Änderung noch einmal in Worten, und sie sagt dazu, dass ein KI-Assistent sie
+/// vorgeschlagen hat.
+///
+/// **Was hier noch fehlt**, und darum hier steht statt nirgends: die Spracheingabe (an der
+/// Wand hält man die Ente gedrückt und spricht) und die Sensorzuordnung bei der Einrichtung.
+/// Beides braucht mehr als eine Ansicht – das Mikrofon eine Berechtigung und das Speech
+/// Framework, die Zuordnung eine eingefügte Liste aus Home Assistant, die man an einem Telefon
+/// nicht einfügt.
+struct Alfredblatt: View {
+    @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
+    @Environment(\.dismiss) private var schliessen
+
+    @State private var zustand: AlfredZustandOut?
+    @State private var nachrichten: [Alfred.Nachricht] = []
+    @State private var vorschlaege: [AlfredVorschlagOut] = []
+    @State private var frage: String = ""
+    @State private var laeuft = false
+    @State private var schritt: String?
+    @State private var zuPruefen: AlfredVorschlagOut?
+    @State private var fuehrtAus = false
+    @State private var zeigtDateiwahl = false
+
+    @FocusState private var amFeld: Bool
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Farbe.grundVerlauf.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    gespraech
+                    fuss
+                }
+            }
+            .navigationTitle(Alfred.Texte.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(Alfred.Texte.schliessen) { schliessen() }
+                }
+            }
+        }
+        .task { await ladeZustand() }
+        .fileImporter(isPresented: $zeigtDateiwahl, allowedContentTypes: [.pdf]) { ergebnis in
+            Task { await lies(ergebnis) }
+        }
+        .confirmationDialog(
+            Alfred.Texte.bestaetigungTitel,
+            isPresented: Binding(get: { zuPruefen != nil }, set: { if !$0 { zuPruefen = nil } }),
+            titleVisibility: .visible
+        ) {
+            if let v = zuPruefen {
+                Button(Alfred.Texte.bestaetigungOk) { Task { await fuehreAus(v) } }
+            }
+            Button(Alfred.Texte.bestaetigungAbbrechen, role: .cancel) { zuPruefen = nil }
+        } message: {
+            if let v = zuPruefen {
+                Text("\(Alfred.vorschlagAenderung(v))\n\n\(Alfred.Texte.bestaetigungHinweis)")
+            }
+        }
+    }
+
+    // MARK: - Das Gespräch
+
+    private var gespraech: some View {
+        ScrollViewReader { blick in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(nachrichten) { n in
+                        blase(n).id(n.id)
+                    }
+                    if laeuft {
+                        Text(schritt ?? Alfred.Texte.frageLaeuft)
+                            .font(Schrift.klein)
+                            .foregroundStyle(Farbe.text3)
+                            .id("laeuft")
+                    }
+                    if !vorschlaege.isEmpty {
+                        vorschlagskarte
+                    }
+                    schnellfragen
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .onChange(of: nachrichten.count) {
+                withAnimation { blick.scrollTo(nachrichten.last?.id, anchor: .bottom) }
+            }
+        }
+    }
+
+    private func blase(_ n: Alfred.Nachricht) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if n.ausModell {
+                Text(Alfred.Texte.kiMarke)
+                    .font(Schrift.kicker)
+                    .foregroundStyle(Farbe.kicker)
+            }
+            Text(fettgedruckt(n.inhalt))
+                .font(Schrift.text)
+                .foregroundStyle(n.wer == .nutzer ? Farbe.text1 : Farbe.text2)
+                .fixedSize(horizontal: false, vertical: true)
+            if let weg = n.weg {
+                Button(Alfred.Texte.rechnungZurAuswertung) {
+                    wegweiser.gehe(weg)
+                    schliessen()
+                }
+                .font(Schrift.klein)
+                .foregroundStyle(Farbe.amber)
+            }
+        }
+        .padding(.horizontal, n.wer == .nutzer ? 12 : 0)
+        .padding(.vertical, n.wer == .nutzer ? 8 : 0)
+        .background(
+            n.wer == .nutzer
+                ? AnyShapeStyle(Farbe.flaeche3) : AnyShapeStyle(Color.clear),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+        .frame(maxWidth: .infinity, alignment: n.wer == .nutzer ? .trailing : .leading)
+    }
+
+    /// Kurzer Text aus `**fett**` – mehr Auszeichnung schreibt Alfred nicht.
+    private func fettgedruckt(_ text: String) -> AttributedString {
+        (try? AttributedString(markdown: text)) ?? AttributedString(text)
+    }
+
+    private var schnellfragen: some View {
+        Umbruchzeile(abstand: 8, zeilenabstand: 8) {
+            knopf(Alfred.Texte.seiteErklaeren) {
+                sage(.nutzer, Alfred.Texte.seiteErklaeren)
+                sage(.alfred, Alfred.antwortSeite(weg: wegweiser.weg))
+            }
+            knopf(Alfred.Texte.wasKannAlfred) {
+                sage(.nutzer, Alfred.Texte.wasKannAlfred)
+                sage(.alfred, Alfred.antwortWasKannAlfred(zustand))
+            }
+            knopf(Alfred.Texte.rechnungKnopf) { zeigtDateiwahl = true }
+            if zustand?.bereit == true {
+                ForEach(Alfred.Texte.beispiele, id: \.self) { b in
+                    knopf(b) { Task { await frageStellen(b) } }
+                }
+            }
+        }
+    }
+
+    private func knopf(_ wort: String, _ tun: @escaping () -> Void) -> some View {
+        Button(action: tun) {
+            Text(wort)
+                .font(Schrift.klein)
+                .foregroundStyle(Farbe.text2)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 7)
+                .background(Farbe.flaeche3, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(laeuft)
+    }
+
+    // MARK: - Vorschläge
+
+    private var vorschlagskarte: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(Alfred.Texte.vorschlagTitel)
+                .font(Schrift.kicker)
+                .foregroundStyle(Farbe.kicker)
+            ForEach(Array(vorschlaege.enumerated()), id: \.offset) { _, v in
+                HStack(spacing: 10) {
+                    Text(Alfred.vorschlagText(v))
+                        .font(Schrift.klein)
+                        .foregroundStyle(Farbe.text1)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 6)
+                    // Ein Vorschlag, den diese Fassung nicht ausfuehren kann, bekommt keinen
+                    // Knopf - und keine Erklaerung, die so tut, als koennte sie es doch.
+                    if Alfred.ausfuehrung(v) != nil {
+                        Button("Prüfen …") { zuPruefen = v }
+                            .font(Schrift.klein)
+                            .foregroundStyle(Farbe.amber)
+                            .disabled(fuehrtAus)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Farbe.flaeche2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Farbe.amber.opacity(0.35), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Der Fuß
+
+    private var fuss: some View {
+        VStack(spacing: 8) {
+            Divider().overlay(Farbe.linie1)
+            if zustand?.bereit == true {
+                HStack(spacing: 8) {
+                    TextField(Alfred.Texte.frageFeld, text: $frage, axis: .vertical)
+                        .font(Schrift.text)
+                        .textFieldStyle(.plain)
+                        .lineLimit(1...4)
+                        .focused($amFeld)
+                        .submitLabel(.send)
+                        .onSubmit { Task { await frageStellen(frage) } }
+                    Button(Alfred.Texte.frageSenden) {
+                        Task { await frageStellen(frage) }
+                    }
+                    .font(Schrift.karte)
+                    .foregroundStyle(Farbe.amber)
+                    .disabled(laeuft || frage.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                .padding(.horizontal, 16)
+            }
+            Text(Alfred.hinweis(zustand))
+                .font(Schrift.winzig)
+                .foregroundStyle(Farbe.text3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
+        }
+        .background(Farbe.flaeche1)
+    }
+
+    // MARK: - Tun
+
+    private func sage(_ wer: AlfredWechselInWerWahl, _ text: String, ausModell: Bool = false, weg: String? = nil) {
+        nachrichten.append(
+            Alfred.Nachricht(wer: wer, inhalt: text, ausModell: ausModell, weg: weg))
+    }
+
+    private func ladeZustand() async {
+        zustand = try? await haus.api.alfredZustand()
+        if nachrichten.isEmpty {
+            sage(.alfred, Alfred.Texte.begruessung)
+        }
+    }
+
+    private func frageStellen(_ text: String) async {
+        let sauber = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sauber.isEmpty, !laeuft else { return }
+        guard zustand?.bereit == true else {
+            sage(.alfred, Alfred.Texte.frageOhneModell)
+            return
+        }
+        frage = ""
+        amFeld = false
+        sage(.nutzer, sauber)
+        laeuft = true
+        schritt = nil
+        vorschlaege = []
+
+        let eingabe = AlfredFrageIn(
+            frage: sauber,
+            wissen: Alfred.wissen(weg: wegweiser.weg),
+            verlauf: Alfred.verlaufFuerDienst(nachrichten)
+        )
+        // **Der Fortschritt laeuft ueber einen Strom und nicht ueber einen Rueckruf, der
+        // `self` einfaengt.** Eine Ansicht ist auf dem Hauptakteur zu Hause; der Rueckruf des
+        // Clients ist `@Sendable` und darf sie nicht mitnehmen. Die Fortsetzung eines
+        // `AsyncStream` darf er, und die Schleife, die daraus Text macht, laeuft wieder auf
+        // dem Hauptakteur.
+        let (fortschritt, weiter) = AsyncStream<String>.makeStream()
+        let anzeige = Task { @MainActor in
+            for await werkzeug in fortschritt { schritt = Alfred.schrittText(werkzeug) }
+        }
+        do {
+            let antwort = try await haus.api.alfredFrageMitFortschritt(eingabe) { werkzeug in
+                weiter.yield(werkzeug)
+            }
+            sage(.alfred, antwort.antwort, ausModell: true)
+            vorschlaege = antwort.vorschlaege
+        } catch {
+            sage(.alfred, Alfred.Texte.frageFehler)
+        }
+        weiter.finish()
+        anzeige.cancel()
+        laeuft = false
+        schritt = nil
+    }
+
+    private func fuehreAus(_ v: AlfredVorschlagOut) async {
+        guard let was = Alfred.ausfuehrung(v) else { return }
+        zuPruefen = nil
+        fuehrtAus = true
+        do {
+            switch was {
+            case .schalten(let schluessel, let an):
+                _ = try await haus.api.schalte(schluessel, an: an)
+            case .sollwert(let raum, let grad):
+                _ = try await haus.api.stelleRaum(raum, sollwertC: grad)
+            }
+            sage(.alfred, "Erledigt: \(Alfred.vorschlagAenderung(v))")
+            vorschlaege.removeAll { $0 == v }
+        } catch {
+            sage(.alfred, Alfred.Texte.vorschlagFehler)
+        }
+        fuehrtAus = false
+    }
+
+    private func lies(_ ergebnis: Result<URL, any Error>) async {
+        guard case .success(let url) = ergebnis else { return }
+        // Eine Datei aus der Dateiauswahl liegt ausserhalb der Sandkiste: ohne diesen Zugriff
+        // kommt ein leeres `Data` zurueck, und die Rechnung waere „nicht lesbar".
+        let darf = url.startAccessingSecurityScopedResource()
+        defer { if darf { url.stopAccessingSecurityScopedResource() } }
+        guard let pdf = try? Data(contentsOf: url), !pdf.isEmpty else {
+            sage(.alfred, Alfred.Texte.rechnungKeinPdf)
+            return
+        }
+        laeuft = true
+        schritt = Alfred.Texte.rechnungLaeuft
+        do {
+            let r = try await haus.api.alfredRechnung(pdf: pdf)
+            sage(.alfred, rechnungssatz(r), ausModell: r.art == .andere, weg: r.link)
+        } catch {
+            sage(.alfred, Alfred.Texte.frageFehler)
+        }
+        laeuft = false
+        schritt = nil
+    }
+
+    /// Was von einer gelesenen Rechnung im Gespräch steht.
+    ///
+    /// Eine Tibber-Rechnung hat der Dienst selbst geprüft und abgelegt – sie trägt darum keine
+    /// KI-Marke. Bei anderen Anbietern hat das Modell gelesen, und das steht dann auch dabei.
+    private func rechnungssatz(_ r: AlfredRechnungOut) -> String {
+        if let t = r.tibber {
+            return
+                "\(t.zeitraum): \(Formate.kwh(t.kwh)) für \(Formate.euro(t.bruttoEur)), das sind \(Formate.ct(t.ctKwhBrutto)). \(t.urteil)"
+                + (t.schonBekannt ? " Diese Rechnung lag schon vor." : " Sie ist abgelegt.")
+        }
+        if let a = r.andere {
+            let g = a.gelesen
+            return
+                "Gelesen: \(g.anbieter ?? "unbekannter Anbieter"), \(Formate.kwh(g.kwh)) für \(Formate.euro(g.bruttoEur))."
+                + (a.befunde.isEmpty ? "" : " " + a.befunde.map(\.titel).joined(separator: " · "))
+        }
+        return Alfred.Texte.rechnungKeinPdf
+    }
+}
+
+/// Der Knopf, der Alfred ruft: die Ente, unten rechts über der Seite.
+///
+/// **Über der Seite und nicht in der Leiste.** Die Bereichsleiste unten gehört den fünf
+/// Bereichen; ein sechstes Zeichen darin wäre ein Bereich, und Alfred ist keiner. Im
+/// Dashboard schwebt er an derselben Stelle.
+struct Entenknopf: View {
+    @State private var zeigtAlfred = false
+
+    var body: some View {
+        Button {
+            zeigtAlfred = true
+        } label: {
+            Zeichen(.ente, groesse: 28, farbe: Farbe.deep)
+                .frame(width: 52, height: 52)
+                .background(Circle().fill(Farbe.amber))
+                .shadow(color: .black.opacity(0.35), radius: 10, y: 3)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Alfred.Texte.ansprechen)
+        .padding(.trailing, 16)
+        .padding(.bottom, 14)
+        .sheet(isPresented: $zeigtAlfred) {
+            Alfredblatt()
+        }
+    }
+}

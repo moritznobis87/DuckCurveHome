@@ -62,6 +62,7 @@ struct WandRahmen: View {
             }
             Seitenwahl(weg: wegweiser.weg)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .bottomTrailing) { Entenknopf() }
         }
         .opacity(haus.gestoert ? 0.72 : 1)
         .animation(.easeInOut(duration: 0.4), value: haus.gestoert)

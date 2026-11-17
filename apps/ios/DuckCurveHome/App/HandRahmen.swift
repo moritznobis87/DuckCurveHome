@@ -36,6 +36,9 @@ struct HandRahmen: View {
             }
             Seitenwahl(weg: wegweiser.weg)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Alfred schwebt ueber der Seite, nicht in der Leiste: die gehoert den fuenf
+                // Bereichen, und er ist keiner.
+                .overlay(alignment: .bottomTrailing) { Entenknopf() }
             Bereichsleiste(wegweiser: wegweiser)
         }
     }
