@@ -13,8 +13,8 @@ nicht abgehakt.
 |---|---|
 | verglichen | **28 von 28 Seiten** |
 | Punkte gesamt | 167 |
-| davon erledigt | **26** |
-| offen | **141** |
+| davon erledigt | **40** |
+| offen | **127**, davon 1 nach Prüfung keine Lücke |
 
 ## Erledigt
 
@@ -23,6 +23,10 @@ nicht abgehakt.
   Uhrzeit, der Hinweis auf die Börse um 13 Uhr), die Tagesbilanz wird auch für heute geholt und
   alle fünf Minuten erneuert, am Telefon steht der ``Ausblick`` statt dreier Uhrzeiten, und die
   Warnung des Planers steht unter den Planzeilen.
+- **`/waerme` · 14 von 14 Punkten** (17.11.) – die Seite holt jetzt auch die Wärmebilanz und
+  den Nutzen des Verschiebens: drei der sechs Kopfzahlen gab es nicht, dazu Tagesverlauf,
+  Pufferbild mit den Brennphasen des Ofens, Strom nach Herkunft, Kostenkarte, neun Ofenzeilen,
+  Fensterkarte und der Spannenvergleich über Tag, Woche, Monat und Jahr.
 - **`/waerme/fahrplan` · 16 von 16 Punkten** (17.11.) – acht Flächen über dem ganzen Horizont
   statt einer über 24 Stunden, mit allem Gemessenen (PV, Leistung der Wärmepumpe, Anforderung),
   Warmwasser im Bedarf, Pufferverlauf mit Decke und Reserve, vier unterscheidbaren Zuständen,
@@ -32,16 +36,17 @@ nicht abgehakt.
   Bedarfs). Dazu zwei Fehler aus den Screenshots: die festverdrahtete Preisachse bis 40 ct und
   die fehlende Tagesangabe an Uhrzeiten im Zweitagehorizont.
 
-## Zwei Läufe, zwei Güten
+## Zwei Läufe, und beide tragen jetzt
 
-Die Liste entstand in zwei Durchgängen, und sie sind **nicht gleich belastbar**:
+Die Liste entstand in zwei Durchgängen. Der erste hatte keine Zeilenangaben – dort starb die
+Prüfstufe an einer Nutzungsgrenze, und die Einträge waren die Behauptung je eines Lesers.
+**Das ist am 17.11. nachgeholt**: Jeder seiner 68 Punkte wurde gegen Dashboard und App
+gehalten, mit Datei und Zeile. Das Ergebnis war unbequem – **57 bestätigt, 10 teilweise, einer
+keine Lücke**. Die Hoffnung, ein guter Teil werde sich als andere Gliederung erweisen, hat
+sich nicht erfüllt.
 
-- **Die 12 Wärmeseiten** (zweiter Lauf) tragen zu jedem Punkt die Vorlage mit Datei und Zeile
-  und die Swift-Datei, in die es gehört. Damit lässt sich bauen, ohne zu suchen.
-- **Die übrigen 15 Seiten** (erster Lauf) haben das nicht: dort starb die Prüfstufe an einer
-  Nutzungsgrenze, und die Einträge sind die Behauptung je eines Lesers, ohne Zeilenangabe.
-  Vor dem Bauen gehört jeder dieser Punkte am Code nachgesehen; erfahrungsgemäß ist ein Teil
-  davon keine Lücke, sondern eine andere Gliederung oder ein anderer Name.
+Damit tragen beide Läufe: jeder offene Punkt nennt die Vorlage, die Stelle in der App und die
+Datei, in die es gehört.
 
 **Keiner der Punkte beider Läufe ist bisher umgesetzt.** Was schon gebaut wurde – die
 Zeichnung der Wärmepumpe, der aufrechte Puffer, die Rahmung des Hausmodells – stand nicht in
@@ -49,296 +54,386 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
 
 ## Die Punkte, nach Seite
 
-### `/geld`  ·  8 Punkte, davon 3 spürbar
+### `/geld`  ·  8 Punkte, davon 3 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · endpunkt — Die Webseite holt zusaetzlich /energy/heat und rechnet die Pelletkosten in "Bezahlt" ein, zeigt sie als eigene Zeile der Aufstellung mit Menge in kg und haengt den Pellet-Hinweis an die Methode an; die App fragt den Endpunkt gar nicht ab, Pellets kommen auf der Kostenseite nicht vor.
-  - Web: `apps/web/src/components/reports/CostReport.tsx:62,66,112,210,236`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift - KostenSeite holt nur energieUebersicht und energieVerschiebung (Z. 13-16), kein energieWaerme; "Pellet" steht in der ganzen Datei nicht.`
-- **spürbar** · kennzahl — Die Webseite zeigt die Kennzahl "Gespart" (pv_direct_savings_eur + battery_net_eur) und darunter die Karte "Woraus die Ersparnis besteht" mit zwei Balken (Sonne direkt genutzt, Speicher statt Netz netto); in der App gibt es weder die Summe noch die Aufteilung - dort heisst "gespart" nur die Ersparnis des Vergleichslaufs, eine andere Groesse.
-  - Web: `apps/web/src/components/reports/CostReport.tsx:69,114,124-148`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift - weder pvDirectSavingsEur noch batteryNetEur werden in KostenSeite benutzt (Kacheln Z. 95-118, Karten Z. 22-78); die Felder gibt es im Modell (Schema.swift:3014,3022).`
-- **spürbar** · abschnitt — Die Webseite hat die Karte "Aufstellung": je Posten Menge, Durchschnittspreis in ct/kWh, Betrag und ein Verweis auf die Herkunftsseite - Netzstrom Haushalt, Waermepumpe, Wallbox, Speichergeraet, Pellets, Einspeisung sowie die entgangene Verguetung. Die App zeigt von diesen Posten nur eine Kachel "Waermepumpe" in Euro; Haushalt, Wallbox, Speichergeraet und die entgangene Verguetung fehlen ganz, ebenso Menge und ct/kWh je Posten.
-  - Web: `apps/web/src/components/reports/CostReport.tsx:193-223 (Zeilen 206-212)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift - KostenSeite benutzt evCostEur, batteryDeviceCostEur, heatPumpGridKwh, evGridKwh, batteryDeviceGridKwh und die *OpportunityEur-Felder nirgends; nach der Verschiebungskarte folgt nur das Balkenbild "Nach Zeitraum" (Z. 56-77) und die Methode.`
-- **mittel** · kennzahl — Die Webseite nennt zum Vergleichslauf, wie belastbar er ist: wie viele der verschobenen kWh von wie vielen kWh Waermestrom ueberhaupt stammen, wie viele Tage gerechnet wurden und wie viele ohne Aussage blieben - und sie ersetzt die Zahl durch "Fuer diesen Zeitraum reicht es nicht fuer eine Aussage", wenn days_used 0 ist. Die App zeigt die Eurobetraege und shiftedKwh, aber keine Tageszahlen, keinen Bezug auf heatPumpKwh und keinen Hinweis, wenn kein Tag gerechnet werden konnte.
-  - Web: `apps/web/src/components/reports/CostReport.tsx:162-171`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:23-55 - die Karte "Was der Preisblick gebracht hat" zeigt actualEur, naiveEur, savingEur, savingCtPerKwh, shiftedKwh; daysUsed, daysSkipped und heatPumpKwh werden in der Datei nicht gelesen, die Karte erscheint auch bei daysUsed = 0.`
-- **mittel** · abschnitt — Die Webseite stellt unten die Kennzahlen Bezahlt, Bekommen, Gespart, Netzbezug und Durchschnittspreis fuer Tag, Woche, Monat und Jahr des Ankertags nebeneinander (vier gleichzeitig geladene Abfragen). Die App zeigt immer nur die eine gewaehlte Spanne; einen solchen Spannenvergleich gibt es auf der Kostenseite nicht.
-  - Web: `apps/web/src/components/reports/CostReport.tsx:64,225-235 (apps/web/src/components/reports/PeriodStrip.tsx:32-93)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift - KostenSeite laedt genau einen Zeitraum (Berichtsseite, Z. 11-16); in der App gibt es ueberhaupt kein Gegenstueck zu PeriodStrip.`
-- **mittel** · zustand — Unter der Webseite steht die Datengueteangabe: "Datenabdeckung NN %" bzw. "noch keine Messdaten im Zeitraum" und "Aufzeichnung seit TT.MM.JJJJ". Die App zeigt aus demselben meta-Objekt nur estimatedNoteDe; Abdeckung und Aufzeichnungsbeginn fehlen.
-  - Web: `apps/web/src/components/reports/CostReport.tsx:236 (CoverageNote, apps/web/src/components/reports/ReportShell.tsx:163-174)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:79-86 - Methode([...]) enthaelt nur methodDe, skippedDe, estimatedNoteDe und die Annahmen; meta.coverage und meta.dataSince werden nicht gezeigt (in StromSeite.swift:25 tut die App das sehr wohl).`
-- **klein** · bedienung — Die Zeitraumleiste der Webseite hat neben Zurueck/Weiter eine Schaltflaeche "heute", die vom durchblaetterten Zeitraum direkt auf den laufenden zurueckspringt. Die App bietet nur Schrittweise vor und zurueck.
-  - Web: `apps/web/src/components/reports/ReportShell.tsx:116 (onToday, von CostReport.tsx:107 uebergeben)`
-  - iOS: `apps/ios/DuckCurveHome/App/Seitenwahl.swift:195-228 - Zeitraumleiste.blaettern hat nur "Zurueck" und "Vorwaerts"; kein Sprung auf den laufenden Zeitraum.`
-- **klein** · kennzahl — Die Webseite zeigt die Kachel "Energie je Tag": bezahlt minus bekommen, geteilt durch die bewerteten Tage des Zeitraums, mit Angabe wie viele Tage bewertet wurden. In der App gibt es diese Kennzahl nicht.
-  - Web: `apps/web/src/components/reports/CostReport.tsx:70-71,115`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:95-118 - kennzahlen(...) liefert gespart, unterm Strich, Bezug, Einspeisung, Waermepumpe, mittlerer Bezugspreis; totals.minutes wird nicht ausgewertet.`
+- **spürbar** — Pelletkosten fehlen in Bezahlt und in der Aufstellung
+  - Befund: Das Web holt `api.energyHeat` (CostReport.tsx:62) und rechnet `heat.stove.pellet_eur` in "Bezahlt" ein (CostReport.tsx:66-67), nennt sie im Hinweis der Kachel (CostReport.tsx:112), als eigene Aufstellungszeile mit kg (CostReport.tsx:210) und haengt `heat.stove.note_de` an die Methode (CostReport.tsx:236). Die KostenSeite holt nur `energieUebersicht` und `energieVerschiebung` (GeldSeiten.swift:15-16); `grep -i pellet` ueber `DuckCurveHome/Seiten/Geld/` findet null Treffer, und `energieWaerme` wird nur in WaermeSeite.swift:12 und JetztSeite.swift:230 gerufen, nie in GeldSeiten.swift. Der Endpunkt existiert im Kern (Api.swift:188), es fehlt also nur der Aufruf.
+  - Vorlage: `apps/web/src/components/reports/CostReport.tsx:62,66-67,112,210,236`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:15-16 (nur zwei Abfragen), :90 (netto = importCostEur - exportRevenueEur, ohne Pellets)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
+- **spürbar** — Kennzahl Gespart und Karte Woraus die Ersparnis besteht fehlen
+  - Befund: Web: `gespart = pv_direct_savings_eur + battery_net_eur` (CostReport.tsx:69) als Kachel "Gespart" (CostReport.tsx:114) und darunter die Karte "Woraus die Ersparnis besteht" mit zwei Balken (CostReport.tsx:124-148). In der App wird keines der beiden Felder auf der KostenSeite gelesen: `grep -rn "pvDirectSavings\|batteryNetEur" DuckCurveHome/` trifft nur StromSeite.swift:143 ("ersparte Kosten", PV-Seite) und StromSeite.swift:229 ("unterm Strich", Speicherseite) - zwei verschiedene Seiten, nie zusammen und nie als Summe. Die Felder sind im Modell vorhanden (Schema.swift:3014,3022). Die Kachel "gespart" der App (GeldSeiten.swift:95) ist `v.savingEur` aus dem Vergleichslauf, eine andere Groesse.
+  - Vorlage: `apps/web/src/components/reports/CostReport.tsx:69,114,124-148`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:88-114 (kennzahlen ohne beide Felder), :95 ("gespart" = savingEur)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
+- **spürbar** — Karte Aufstellung fehlt ganz, inklusive Menge und ct/kWh
+  - Befund: Web: Tabelle "Aufstellung" mit sieben Posten je Menge, Ø Preis, Betrag und Verweis auf die Herkunftsseite (CostReport.tsx:193-223, Zeilen 206-212), inklusive des Haushaltsrestes nach Abzug der Geraete (CostReport.tsx:101-102) und der Summe der entgangenen Verguetung (CostReport.tsx:212). In der App existiert nichts davon: `grep -rn "Aufstellung\|Posten\|Haushalt"` ueber `DuckCurveHome/` findet keinen Treffer, `batteryDeviceCostEur`, `heatPumpGridKwh`, `batteryDeviceGridKwh`, `heatPumpOpportunityEur` und `batteryDeviceOpportunityEur` werden in der ganzen App nirgends gelesen (nur `evCostEur`/`evGridKwh`/`evOpportunityEur` auf StromSeite.swift:282-285, Wallboxseite). Nach der Verschiebungskarte folgt direkt "Nach Zeitraum" (GeldSeiten.swift:58-74). Kleine Praezisierung zur Formulierung des Punkts: neben "Wärmepumpe" (GeldSeiten.swift:107) gibt es auch Kacheln "Bezug" und "Einspeisung" (:103-105), aber nur in Euro, ohne Menge, ct/kWh und Verweis, und ohne Haushaltsrest.
+  - Vorlage: `apps/web/src/components/reports/CostReport.tsx:193-223 (Zeilen 206-212), 101-102`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:58-74 (direkt das Balkenbild), :101-112 (Kacheln statt Aufstellung)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
+- **mittel** — Belastbarkeit des Vergleichslaufs: Tage und heatPumpKwh fehlen
+  - Befund: Web: "{shifted_kwh} von {heat_pump_kwh} kWh verschoben · {days_used} Tage gerechnet" und "{days_skipped} ohne Aussage ({skipped_de})" (CostReport.tsx:166-172), und bei `days_used == 0` ersetzt der Satz "Für diesen Zeitraum reicht es nicht für eine Aussage." die Zahl (CostReport.tsx:162-165). `grep -rn "daysUsed\|daysSkipped"` ueber `DuckCurveHome/` findet null Treffer, `heatPumpKwh` nur auf Strom- und Waermeseiten (StromSeite.swift:77, WaermeSeite.swift:42,159,189,214), nie in GeldSeiten.swift - alle drei Felder gibt es im Modell (Schema.swift:7676,7679,7680). Die Karte haengt nur an `if let v = paar.verschiebung` (GeldSeiten.swift:23) und erscheint damit auch bei daysUsed = 0. `skippedDe` steht immerhin in der Methode (GeldSeiten.swift:81), aber als Begruendungstext, nicht als Ersatz der Zahl und ohne Tageszahl.
+  - Vorlage: `apps/web/src/components/reports/CostReport.tsx:162-172`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:23-43 (Karte "Was der Preisblick gebracht hat"), :81 (skippedDe)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
+- **mittel** — Spannenvergleich (PeriodStrip) fehlt in der ganzen App
+  - Befund: Web: `useMultiPeriod` laedt alle vier Spannen zum Ankertag gleichzeitig mit `Promise.allSettled` (useReport.ts:55-77, aufgerufen in CostReport.tsx:64) und `PeriodStrip` stellt fuenf Zeilen - Bezahlt, Bekommen, Gespart, Netzbezug, Ø Bezugspreis - nebeneinander (CostReport.tsx:225-235, PeriodStrip.tsx:32-93). Die App hat kein Gegenstueck: `Berichtsseite` holt genau eine Antwort fuer den gewaehlten Zeitraum (Bericht.swift:48-59, aufgerufen GeldSeiten.swift:12-17), und `grep -rn "Spannenvergleich\|PeriodStrip\|Zeitraumstreifen\|alleSpannen\|multiPeriod"` ueber `DuckCurveHome/` und `DuckCurveKit/Sources/` findet keinen Treffer. Es fehlt also nicht nur die Karte, sondern der Mechanismus fuer mehrere Spannen gleichzeitig.
+  - Vorlage: `apps/web/src/components/reports/CostReport.tsx:64,225-235; apps/web/src/components/reports/PeriodStrip.tsx:32-93; apps/web/src/components/reports/useReport.ts:55-77`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Bericht.swift:48-59 (genau eine Abfrage je Zeitraum)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Bericht.swift (neuer Spannenstreifen) + apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift (Einbau)`
+- **mittel** — Datenabdeckung und Aufzeichnungsbeginn fehlen unter der Kostenseite
+  - Befund: Web: `CoverageNote` zeigt "Datenabdeckung NN %" bzw. "noch keine Messdaten im Zeitraum" und "Aufzeichnung seit TT.MM.JJJJ" aus `meta.coverage` und `meta.data_since` (ReportShell.tsx:163-174, eingehaengt CostReport.tsx:236). Die App gibt dem `Methode`-Baustein nur `methodDe`, `skippedDe`, `estimatedNoteDe` und die Annahmen (GeldSeiten.swift:78-84); `grep -rn "coverage\|dataSince"` ueber `DuckCurveHome/` zeigt, dass beide Felder (Schema.swift:2835-2836) auf der Kostenseite nirgends gelesen werden. Dass der Zielzustand erreichbar ist, belegen RechnungenSeite.swift:122 ("abgedeckter Zeitraum") und StromSeite.swift:25 ("Daten seit …"). Kleine Praezisierung: StromSeite.swift:25 zeigt nur `dataSince`, nicht die Abdeckung - fuer die ist RechnungenSeite.swift:122 die Vorlage.
+  - Vorlage: `apps/web/src/components/reports/ReportShell.tsx:163-174; apps/web/src/components/reports/CostReport.tsx:236`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:78-84 (Methode ohne coverage/dataSince)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
+- **klein** — Zeitraumleiste ohne Sprung auf heute
+  - Befund: Web: neben ‹ und › steht eine Schaltflaeche "heute", solange der Ankertag nicht der laufende ist (ReportShell.tsx:116, `onToday` aus CostReport.tsx:107, `today` aus `usePeriod` CostReport.tsx:60). Die App hat in `Zeitraumleiste.blaettern` nur "Zurück" und "Vorwärts" (Seitenwahl.swift:197-228); der Zeitraumname dazwischen ist ein reiner `Text` ohne Button (Seitenwahl.swift:211-215), und `grep -n "heute\|Heute"` in Seitenwahl.swift findet keinen Treffer. `z.istAktuell(jetzt:)` wird dort nur benutzt, um den Vorwaertsknopf zu sperren (Seitenwahl.swift:198,224) - die Information liegt also schon vor, es fehlt nur der Rueckweg.
+  - Vorlage: `apps/web/src/components/reports/ReportShell.tsx:116; apps/web/src/components/reports/CostReport.tsx:60,107`
+  - In der App: `apps/ios/DuckCurveHome/App/Seitenwahl.swift:197-228 (blaettern), :211-215 (Zeitraumname ohne Button)`
+  - bauen in: `apps/ios/DuckCurveHome/App/Seitenwahl.swift`
+- **klein** — Kennzahl Energie je Tag fehlt
+  - Befund: Web: `tage = totals.minutes / 1440` und `jeTag = (bezahlt - bekommen) / tage` (CostReport.tsx:70-71) als vierte Kachel "Energie je Tag" mit dem Hinweis, wie viele Tage bewertet wurden (CostReport.tsx:115). In der App liefert `kennzahlen` sechs Kacheln - gespart, unterm Strich, Bezug, Einspeisung, Wärmepumpe, mittlerer Bezugspreis (GeldSeiten.swift:88-114); `grep -rn "totals.minutes\|\.minutes"` ueber `DuckCurveHome/Seiten/Geld/` findet keinen Treffer, obwohl `minutes` im Modell steht (Schema.swift:2975). Auch `grep -rn "je Tag"` ueber die App trifft nur WaermeSeite.swift:73 und WaermepumpeSeiten.swift:266 ("Starts je Tag"), also etwas anderes.
+  - Vorlage: `apps/web/src/components/reports/CostReport.tsx:70-71,115`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:88-114 (kennzahlen), :90 (netto ohne Teilung durch Tage)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
 
-### `/haus`  ·  7 Punkte, davon 1 spürbar
+### `/haus`  ·  7 Punkte, davon 1 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · abschnitt — Die Webseite zeigt neben dem Haus einen Block "Fenster und Türen" mit der Zahl der offenen Kontakte, einem Satz dazu ("alles zu" / "Küche und 2 weitere") und aufgeklappt jedem Kontakt mit Namen, Raum, Zustand (offen/zu/keine Meldung) und "offen seit 12 min"; auf der iOS-Seite gibt es weder Zahl noch Liste - offene Kontakte sind nur als leuchtende Striche im Modell zu sehen.
-  - Web: `apps/web/src/components/house/Konsole.tsx:186-224 (Block `kontakte`, `offeneKontakte.length`, `offenSatz`, Liste mit `seitText(k.observed_at, nowMs)`)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift:23-38 - die Seite besteht aus Kopf, Störung, Alarmkarte und entweder Raumliste (87-106) oder Modell (130-160); die Kontakte gehen allein als Wörterbuch an `Glasmodell` (139), das sie in apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift:197-225 nur als Striche zeichnet. Eine Zahl, ein Zustandswort oder ein Alter steht nirgends in der Datei (nur im Vorlesetext, Glasmodell.swift:266-276).`
-- **mittel** · abschnitt — Die Webseite zeigt neben dem Haus einen Pufferblock: Ladestand in Prozent, die vier Schichttemperaturen mit Alter ("vor 2 d", wenn ein Fühler nicht frisch ist), die nutzbare Energie von der Kapazität in kWh, das Zustandswort mit dem freien Platz ("noch 23 % Platz") und unten Rechenweg und Volumen in Litern; die iOS-Seite zeigt zum Puffer nichts.
-  - Web: `apps/web/src/components/house/Konsole.tsx:226-277 (`live.pufferSoc`, `schichtZeilen`, `state.buffer.usable_energy_kwh` von `capacity_kwh`, `statusWort`, `headroom_soc`, `methodeText`, `volume_liters`)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift - vollständig gelesen: kein Puffer. `usableEnergy`, `headroom` oder `capacityKwh` kommen in apps/ios/DuckCurveHome gar nicht vor (einzige Fundstelle ist der Grundtext "im Puffer ist kein Platz" in Bausteine/Blaetter.swift:497).`
-- **mittel** · diagramm — Die Webseite zeigt neben dem Haus einen Wärmepumpenblock mit der Tageskurve der Leistung als kleines Diagramm und dazu Strom heute, Laufzeit, Starts, dem Anforderungskontakt, der Begründung der letzten Entscheidung und der Betriebsart; die iOS-Seite zeigt zur Wärmepumpe nichts.
-  - Web: `apps/web/src/components/house/Konsole.tsx:279-306 (`<Tageskurve werte={verdichte(history.map((p) => p.hp), 96)} ...>` aus :111-131, Zeilen "heute", "Laufzeit", "Starts", "Anforderung", `decision.explanation_de`, "Betrieb")`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift:23-38 und 130-160 - weder `heatPump` noch `decision` noch ein `Chart` erscheinen in der Datei; die Seite holt nur `raeume()` und `haus()` (164-174).`
-- **mittel** · bedienung — Im Modell der Webseite öffnet ein Tippen auf einen Raum eine Tafel mit großer Temperatur, Ziel, Heizkreis, den Fenstern und Türen genau dieses Raums ("keine Kontakte in diesem Raum") und einem Knopf "Sollwert stellen"; das iOS-Modell lässt sich nur drehen, Räume sind nicht antippbar.
-  - Web: `apps/web/src/components/house/HouseReport.tsx:295-343 (Tafel `haus-panel` mit `fokusWerte`, `fokusKontakte`, Knopf "Sollwert stellen") in Verbindung mit `onFokus: setFokus` (:142)`
-  - iOS: `apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift:38-57 - die einzige Gestik ist `DragGesture` zum Drehen; es gibt kein Tippen, keinen Fokus und keine Raumtafel. In apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift wird das Raumblatt nur aus der Liste geöffnet (Zeile 95-97), und das Raumblatt selbst nennt keine Fenster-/Türkontakte (Bausteine/Blaetter.swift:70-97).`
-- **klein** · abschnitt — Die Webseite zeigt einen Block "Heizkreise" mit der Zahl der offenen Kreise, der Liste der betroffenen Räume mit Ventilwort und Temperatur und dem Satz zum Raum, der alle Kreise offen hat und trotzdem unter dem Ziel liegt (er bestimmt die nötige Vorlauftemperatur mit); auf der iOS-Seite stehen Ventilstände nur je Raumzeile, Zahl und dieser Hinweis fehlen.
-  - Web: `apps/web/src/components/house/Konsole.tsx:308-351 (`live.kreiseOffen`, `kreisZeilen`, `anDerGrenze`-Satz)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift:228-239 - `Raumzeile.unterzeile` nennt "Ventil offen"/"Ventil 40 %" je Raum; eine Summe über die offenen Kreise oder ein Satz über den bestimmenden Raum steht in der Datei nicht.`
-- **klein** · bedienung — Im Modell der Webseite wählt man das Geschoss (Alle / Erdgeschoss / Obergeschoss), und unter dem Bild steht eine Legende (kalt-warm, "gelb: unter Ziel · tippen: Raum"); das iOS-Modell zeichnet immer alle Geschosse übereinander und hat keine Legende.
-  - Web: `apps/web/src/components/house/HouseReport.tsx:232-243 (Geschoss-Reiter mit `waehleDeck`) und :289-294 (Legende)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift:130-160 - `modell` übergibt den ganzen Plan an `Glasmodell`, ohne Auswahl; apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift:112-121 zeichnet in `zeichne` stets alle `plan.decks`. Eine Legende steht in keiner der beiden Dateien.`
-- **klein** · abschnitt — Die Webseite nennt im Kopf, welcher Hausplan gezeigt wird und woher er kommt ("Hausplan · von der Brücke"), und setzt unter das Modell die Anmerkung des Plans (`note_de`); die iOS-Seite zeigt im Kopf nur "Stand hh:mm".
-  - Web: `apps/web/src/components/house/HouseReport.tsx:219 (`kicker={plan ? `${plan.name || "Hausplan"} · ${house?.source_de ?? ""}` : "Hausplan"}`) und :354 (`{plan?.note_de ...}`)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift:65-83 - `kopf` enthält Ansichtswahl und `Stand \(Formate.hhmm(at))`; `plan.name`, `sourceDe` und `noteDe` kommen in der Datei nicht vor (nur `errorDe`/`present` im Leerfall, 149-158).`
+- **spürbar** — Block "Fenster und Türen": Zahl, Satz, Kontaktliste fehlt
+  - Befund: Gesucht in ganz apps/ios/DuckCurveHome nach "Kontakt", "kontakt", "Fenster", "Tür", "HouseContactOut", "open ==" und "observedAt": HouseContactOut wird nur an einer Stelle benutzt (Glasmodell.swift:24, gefüllt aus HausSeite.swift:138-140) und dort ausschliesslich als Strich gezeichnet (Glasmodell.swift:234-262). Eine Zahl der offenen Kontakte, ein Zustandswort (offen/zu/keine Meldung) oder ein Alter steht nirgends; die einzige Textform ist der Vorlesesatz Glasmodell.swift:303-313 ("Offen: …"), der nicht sichtbar ist. Die Felder sind vorhanden (Schema.swift:4428-4455: room, door, open, observedAt, quality), werden aber nicht gelesen. Hinweis: die iOS-Zeilenangaben des Punkts sind veraltet (Kontaktzeichnung 234-262 statt 197-225, Vorlesetext 303-313 statt 266-276).
+  - Vorlage: `apps/web/src/components/house/Konsole.tsx:186-224`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift:23-38`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift`
+- **mittel** — Pufferblock auf /haus; Platz und Rechenweg fehlen ganz · **teilweise**
+  - Befund: Auf der iOS-/haus-Seite steht wirklich nichts zum Puffer (HausSeite.swift:23-38 kennt nur Kopf, Störung, Alarmkarte, Raumliste, Modell; "Puffer" kommt in der Datei nicht vor). Das Meiste des Blocks steht aber auf anderen Seiten der App: Pufferglas (Bausteine/Pufferspeicher.swift:19-76) zeigt Ladestand und die vier Schichttemperaturen mit gedämpfter Farbe bei alten Fühlern, dazu das Zustandswort mit Alter ("Werte vor 2 d", DuckCurveKit/Sources/DuckCurveKit/Zustand/Puffer.swift:41-51) - auf "/" (Bausteine/Leiste.swift:19-28) und auf /waerme/anlage (Seiten/Technik/AnlageSeite.swift:76-104), dort zusätzlich "nutzbar", "Fassung" (capacityKwh) und "Volumen" (volumeLiters). Es fehlt: der Block auf /haus selbst, und app-weit der freie Platz (headroomSoc) und der Rechenweg (buffer.method) - Suche nach "headroom", "usableEnergy", "method" findet in DuckCurveHome nur Blaetter.swift:497 ("im Puffer ist kein Platz" als Reason-Code), die Felder liegen ungenutzt in Schema.swift:2129-2156.
+  - Vorlage: `apps/web/src/components/house/Konsole.tsx:226-277`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/AnlageSeite.swift:76-104`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift`
+- **mittel** — Wärmepumpenblock auf /haus; Tageskurve und Zeilen stehen anderswo · **teilweise**
+  - Befund: Dass die iOS-/haus-Seite zur Wärmepumpe nichts zeigt, stimmt: in HausSeite.swift kommen "heatPump", "decision" und "Chart" nicht vor, geholt werden nur raeume() und haus() (HausSeite.swift:164-174). Der Inhalt des Blocks steht aber in der App: das Wärmepumpenblatt (Bausteine/Blaetter.swift:331-357) nennt Zustand, Leistung, "läuft seit"/"aus seit", "Starts heute" (startsToday), Freigabekontakt K1 (releaseContactOn) und "Betrieb" (haus.betriebswort, App/Hauszustand.swift:273-277), dazu die Begründung der letzten Entscheidung (Blaetter.swift:416-430, decision.explanationDe); erreichbar über das Dock auf "/" (Bausteine/Dock.swift:64) und das Flussbild (Bausteine/Energiefluss.swift:274). Die gemessene Tageskurve der Wärmepumpenleistung gibt es auf /waerme/fahrplan (Diagramme/Fahrplanzeichnung.swift:53), Strom und Laufanteil auf /waerme (Seiten/Energie/WaermeSeite.swift:52,86). Es fehlt: der Block neben dem Haus und, als Zeile zusammen mit dem Rest, "Strom heute" und "Laufzeit heute" der Pumpe.
+  - Vorlage: `apps/web/src/components/house/Konsole.tsx:279-306`
+  - In der App: `apps/ios/DuckCurveHome/Bausteine/Blaetter.swift:331-357`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift`
+- **mittel** — Räume im Modell nicht antippbar, Kontakte im Raumblatt fehlen · **teilweise**
+  - Befund: Bestätigt für die Bedienung: die einzige Gestik am Glasmodell ist DragGesture zum Drehen (Haus3D/Glasmodell.swift:44-52), es gibt keinen Fokus und keine Raumtafel; das Raumblatt wird nur aus der Liste geöffnet (HausSeite.swift:95-97). Der Inhalt der Tafel steht aber im Raumblatt: Temperatur, Sollwert am Regler, wirksamer Sollwert, Abweichung, Ventil und Heizkreise (Bausteine/Blaetter.swift:70-96) sowie der Regler "Sollwert stellen" mit geschätzter Wirkung (Blaetter.swift:100-110). Es fehlt also zweierlei: das Tippen auf einen Raum im Modell und die Fenster/Türen genau dieses Raums - Suche nach "Fenster" und "Kontakt" in Blaetter.swift findet im Raumblatt nichts, der einzige Fenster-Hinweis je Raum ist "Fenster offen" aus dem Rohwert window in HausSeite.swift:230, nicht die Kontaktliste.
+  - Vorlage: `apps/web/src/components/house/HouseReport.tsx:295-343`
+  - In der App: `apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift:44-52`
+  - bauen in: `apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift`
+- **klein** — Heizkreise: Zahl offener Kreise und Grenzraum-Satz · **teilweise**
+  - Befund: Auf /haus stimmt es: Raumzeile.unterzeile nennt "Ventil offen"/"Ventil 40 %" je Raum (HausSeite.swift:228-239), eine Summe oder ein Satz steht in der Datei nicht. Die Zahl der offenen Kreise gibt es aber in der App: "offen 3 von 10" samt Anteil auf /waerme/anlage (Seiten/Technik/AnlageSeite.swift:162-174, roomsOpen/roomsTotal) und in der Wiedergabe (Seiten/Technik/SystemSeiten.swift:316). Der konkrete Satz über den Raum, der alle Kreise offen hat und trotzdem unter dem Ziel liegt (web: anDerGrenze), fehlt dagegen überall - Suche nach "Grenze", "bestimmt", "Vorlauftemperatur" findet nur den allgemeinen Erklärsatz der Abweichungsmatrix (Bausteine/Abweichungsmatrix.swift:31-32), der keinen Raum nennt.
+  - Vorlage: `apps/web/src/components/house/Konsole.tsx:308-351`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/AnlageSeite.swift:162-174`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift`
+- **klein** — Keine Geschosswahl und keine Legende am Modell
+  - Befund: Glasmodell.zeichne zeichnet in einer Schleife immer alle plan.decks (Haus3D/Glasmodell.swift:149-158), und HausSeite übergibt den ganzen Plan ohne Auswahl (HausSeite.swift:132-148); die einzige Wahl im Kopf ist Liste/Modell (HausSeite.swift:65-83). Suche nach "Geschoss" in DuckCurveHome findet nur die Gruppierung der Raumliste (HausSeite.swift:108-126) und den Vorlesesatz "Hausmodell mit n Geschossen" (Glasmodell.swift:305) - keinen Umschalter. Suche nach "Legende" findet nur Diagramme/Fahrplanzeichnung.swift:364-398 und Diagramme/Tageskurve.swift:250-300; am Hausmodell steht keine Farbskala und kein "gelb: unter Ziel". Die Zeilenangabe des Punkts für die Deck-Schleife ist veraltet (149-158 statt 112-121).
+  - Vorlage: `apps/web/src/components/house/HouseReport.tsx:232-243,289-294`
+  - In der App: `apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift:149-158`
+  - bauen in: `apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift`
+- **klein** — Kopf nennt Planname und Herkunft nicht, Anmerkung fehlt
+  - Befund: Der Kopf enthält nur Ansichtswahl und "Stand hh:mm" (HausSeite.swift:65-83). Suche nach "sourceDe", "noteDe", "plan.name" und "Hausplan" in apps/ios/DuckCurveHome: sourceDe kommt gar nicht vor (nur params.roomSourceDe in WaermeSeite.swift:207), die noteDe-Treffer gehören zu anderen Modellen (Batterie, Fahrplan, System), "Hausplan" steht nur in zwei Leer-/Fehlersätzen (HausSeite.swift:150,170). Vom HouseOut werden nur plan, contacts, errorDe und present gelesen (HausSeite.swift:132-158). Die Felder gibt es im Schema: HouseOut.sourceDe (Schema.swift:4479), HousePlan.name und HousePlan.noteDe (Schema.swift:4519-4521).
+  - Vorlage: `apps/web/src/components/house/HouseReport.tsx:219,354`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift:65-83`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift`
 
-### `/strom`  ·  4 Punkte
+### `/strom`  ·  4 Punkte  ·  *gegengeprüft 17.11.*
 
-- **mittel** · kennzahl — Die Webseite zeigt den Netzbezug als Geldbetrag (import_cost_eur) als eigene Kachel neben den Kilowattstunden; die iOS-Seite nennt den Bezug nur in kWh und gar keinen Euro-Betrag.
-  - Web: `apps/web/src/components/reports/HouseReport.tsx:51-58`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48 (kennzahlen(_:) der StromSeite: Autarkie, Sonne, Netz, Einspeisung, Haus, Eigenverbrauch - kein Geldwert; importCostEur kommt in der ganzen Datei nicht vor)`
-- **mittel** · abschnitt — Die Webseite hat den Abschnitt "Strom im Überblick": dieselben Größen (Verbrauch, Autarkie, Netzkosten, Einspeiseerlös) für Tag, Woche, Monat und Jahr des Ankertags nebeneinander, vier Abfragen auf einmal. Die iOS-Seite kann nur die eine gewählte Spanne zeigen; der Einspeiseerlös steht dort überhaupt nicht.
-  - Web: `apps/web/src/components/reports/HouseReport.tsx:72-81 (PeriodStrip) mit apps/web/src/components/reports/useReport.ts:55-76 (useMultiPeriod)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:9-28 (StromSeite holt nur energieUebersicht für den aktuellen Zeitraum; kein Mehrspannen-Abschnitt, und in apps/ios/DuckCurveHome/Seiten/Bericht.swift gibt es kein Gegenstück zu PeriodStrip)`
-- **mittel** · zustand — Die Webseite zeigt unter jeder Auswertung die Datengüte des Zeitraums: "Datenabdeckung 93 %" bzw. "noch keine Messdaten im Zeitraum" (meta.coverage). Die iOS-Seite druckt nur estimatedNoteDe und dataSince, die Abdeckung nie - obwohl das Feld im Modell liegt.
-  - Web: `apps/web/src/components/reports/ReportShell.tsx:163-174 (CoverageNote), aufgerufen in HouseReport.tsx:82`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:23-26 (Methode([estimatedNoteDe, dataSince])); coverage steckt in apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:2836, wird aber in keiner Energie-Seite gelesen`
-- **klein** · kennzahl — Die Webseite zeigt Wärmepumpe, Wallbox und Haushalt (Rest) als eigene Kacheln mit Summe in kWh und Anteil am Hausverbrauch ("45 % des Verbrauchs"). Auf der iOS-Seite kommen die drei nur als Balkenreihen je Zeitschritt vor - keine Summe, kein Anteil, und in der Tabelle "Die Zahlen" fehlen die Spalten.
-  - Web: `apps/web/src/components/reports/HouseReport.tsx:46-48 mit share() in Zeile 38`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48 und 86-99 (Tabelle: Sonne, Haus, Bezug, Einspeisung)`
+- **mittel** — Netzbezug in Euro fehlt als Kachel auf /strom
+  - Befund: Web hat die eigene Kachel apps/web/src/components/reports/HouseReport.tsx:51-58 (label "Netzbezug", value eur(t?.import_cost_eur), hint mit import_kwh). In apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48 stehen nur Autarkie, Sonne, Netz (kWh), Einspeisung, Haus, Eigenverbrauch; grep nach importCostEur/import_cost_eur ueber apps/ios/ findet in der Datei keinen Treffer, nur apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:63,90,103. Das Feld gibt es im Schema (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:3003, 3053), ist auf dieser Seite also nur ungenutzt. Keine Verlagerung: die Vorlage zeigt den Betrag auch auf /geld (apps/web/src/components/reports/CostReport.tsx:112), die iOS-Geldseite ist deren Gegenstueck, nicht der Ersatz fuer diese Kachel.
+  - Vorlage: `apps/web/src/components/reports/HouseReport.tsx:51-58`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **mittel** — Abschnitt "Strom im Ueberblick" (vier Spannen) fehlt ganz
+  - Befund: Web: apps/web/src/components/reports/HouseReport.tsx:72-81 setzt PeriodStrip mit den vier Zeilen Verbrauch, Autarkie, Netzkosten, Einspeiseerloes; die vier Abfragen auf einmal macht apps/web/src/components/reports/useReport.ts:55-76 (useMultiPeriod, Promise.allSettled ueber ALL_PERIODS), gezeichnet in apps/web/src/components/reports/PeriodStrip.tsx:32-93. iOS holt in apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:10-11 nur energieUebersicht(z.spanne.rawValue, anker:) fuer die eine gewaehlte Spanne; apps/ios/DuckCurveHome/Seiten/Bericht.swift:15-60 kennt kein Gegenstueck zu PeriodStrip (Spanne.allCases kommt nur in Bericht.swift:17 als Liste der anwaehlbaren Spannen vor, nicht als Mehrfachabfrage). Auch der Einspeiseerloes fehlt dort: exportRevenueEur (Schema.swift:3004, 3054) kommt in StromSeite.swift nicht vor, nur in Geld/GeldSeiten.swift:68,90,105.
+  - Vorlage: `apps/web/src/components/reports/HouseReport.tsx:72-81`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:10-11`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift (Baustein nach apps/ios/DuckCurveHome/Seiten/Bericht.swift)`
+- **mittel** — Datenabdeckung des Zeitraums wird nie gedruckt
+  - Befund: Web: apps/web/src/components/reports/ReportShell.tsx:163-174 (CoverageNote) macht aus meta.coverage "Datenabdeckung NN %" bzw. "noch keine Messdaten im Zeitraum" und steht in HouseReport.tsx:82. iOS: apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:23-26 uebergibt der Methode nur estimatedNoteDe und dataSince. Das Feld liegt im Modell (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:2836, EnergyMetaOut.coverage, benutzt von EnergySummaryOut.meta in Schema.swift:2949). Grep nach coverage/Coverage/Abdeckung ueber apps/ios/DuckCurveHome/ findet nur Geld/RechnungenSeite.swift:122 (Rechnungs-Meta) und Technik/SystemSeiten.swift:500-521 sowie FahrplanSeiten.swift:342 (CoverageOut vom Endpunkt /system/coverage, ein anderes Feld) - in keiner Energie-Seite.
+  - Vorlage: `apps/web/src/components/reports/ReportShell.tsx:163-174`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:23-26`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift (bzw. Methode in apps/ios/DuckCurveHome/Seiten/Bericht.swift:263-286)`
+- **klein** — Waermepumpe, Wallbox, Haushalt ohne Summe und Anteil
+  - Befund: Web: apps/web/src/components/reports/HouseReport.tsx:46-48 gibt den drei je eine Kachel mit kWh und dem Hinweis aus share() in HouseReport.tsx:38 ("NN % des Verbrauchs"). iOS: apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48 hat keine solche Kachel; heatPumpKwh, evKwh und baseKwh kommen auf der Seite nur als Balkenreihen je Zeitschritt vor (StromSeite.swift:69-84), und die Tabelle StromSeite.swift:86-99 hat die Spalten Sonne, Haus, Bezug, Einspeisung - ohne die drei. Grep nach "des Verbrauchs"/"Anteil am" in apps/ios/DuckCurveHome/Seiten/ trifft nur StromSeite.swift:34 (Autarkie), eine Anteilsangabe fuer die drei gibt es in der App nirgends. Die Summen allein stehen auf Unterseiten, die die Vorlage ebenso hat (WaermeSeite.swift:52 "Strom dafuer", StromSeite.swift:277 "geladen").
+  - Vorlage: `apps/web/src/components/reports/HouseReport.tsx:46-48`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48, 86-99`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
 
-### `/system`  ·  6 Punkte, davon 4 spürbar
+### `/system`  ·  6 Punkte, davon 4 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · diagramm — Die Webseite zeichnet den Tag im 15-Minuten-Raster (Ist, Day-ahead und der juengste korrigierte Lauf) und laesst zwischen Heute und Gestern umschalten; die iOS-Seite zeigt keinen Tagesverlauf und wertet b.today/b.yesterday mit ihren Punkten ueberhaupt nicht aus.
-  - Web: `apps/web/src/components/forecast/ForecastPage.tsx:42-87 (dayOption mit actual/ahead/corrected) und :267-293 (Karte mit Heute/Gestern-Umschalter)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:346-443 - PrognoseSeite liest nur stageDe, correctionActive, runsKept, horizons, daily und notesDe; today/yesterday (ForecastDayOut.points mit actualKw/dayAheadKw/correctedKw) kommen in der ganzen Datei nicht vor, obwohl die Datei ab Zeile 86 Swift Charts verwendet`
-- **spürbar** · abschnitt — Die Webseite listet die Prognosequellen mit Gewicht, MAE 7 Tage und Status (aktiv/aus) sowie den Gesamtwert Ist/Prognose; in der App fehlt die Quellenliste vollstaendig.
-  - Web: `apps/web/src/components/forecast/ForecastPage.tsx:342-363 (Tabelle Quelle/Gewicht/MAE 7 d/Status) und :246 (Kopfzeile mit sources[0].label_de)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:346-443 - b.sources wird nirgends gelesen; das Feld existiert im Modell (DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:3356, SourceOut mit weight/mae7dKw/active)`
-- **spürbar** · abschnitt — Die Webseite zeigt die gelernten Korrekturfaktoren nach Sonnenhoehe (Faktor heute, gestern, letztes Ist/Prognose, Lerntage je Klasse) samt Lerntagen, Halbwertszeit und Tagesabschluss; die App sagt nur ja/nein zu "Korrektur aktiv" und zeigt vom Korrektor sonst nichts.
-  - Web: `apps/web/src/components/forecast/ForecastPage.tsx:142-180 (factorOption ueber ev.corrector.bins) und :314-322 (Karte "Korrekturfaktoren nach Sonnenhoehe" mit days_learned und half_life_days)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:364-372 - nur Zeile "Korrektur aktiv"; b.corrector (CorrectorState mit bins, kGlobal, daysLearned, halfLifeDays, updatedOn, Schema.swift) wird in der Datei nie benutzt`
-- **spürbar** · kennzahl — Im Rueckblick zeigt die Webseite je Reihe den Fehler nach Vorlaufklasse - mittlerer Fehler als Balken, der Rand (95 %) als Punkt darueber, dazu die Zahl der Paare und den Bias; die App zeigt je Reihe nur eine Gesamtzahl und laesst die ganze Aufschluesselung nach Vorlauf samt p95 weg.
-  - Web: `apps/web/src/components/forecast/Rueckblick.tsx:36-99 (mae und p95 je je_vorlauf, n Paare) und :182-198 (Karte je Reihe mit Bias und Paarzahl)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:422-437 - Tabelle mit gesamt.mae, Einheit und Laeufe; reihe.jeVorlauf und wertung.p95/bias/n (Schema.swift, VorlaufOut/Wertung) werden nicht gelesen`
-- **mittel** · kennzahl — Den systematischen Fehler (Bias) zeigt die Webseite an drei Stellen - je Tag, je Vorlauf-Horizont und als Mittel der letzten 7 Tage; in der App kommt Bias auf der Prognoseseite nicht vor, dort steht nur der Betrag des Fehlers.
-  - Web: `apps/web/src/components/forecast/ForecastPage.tsx:103 und :129 (Bias in den Auswertungen je Tag und je Horizont), :240 und :365 ("Bias 7 Tage")`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:375-414 - die Spalten der Horizont- und Tagestabelle sind maeKw, energyForecastKwh, energyActualKwh und energyErrorPct; biasKw (ForecastScore, Schema.swift) wird nicht ausgegeben`
-- **klein** · bedienung — Die Webseite laesst den Zeitraum des Rueckblicks waehlen (3, 7, 14, 30 Tage); die App holt fest 7 Tage, ohne Wahlmoeglichkeit.
-  - Web: `apps/web/src/components/forecast/Rueckblick.tsx:167-178 (Knopfreihe 3/7/14/30 d, setTage)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:449 - prognoseVerlauf(tage: 7) fest verdrahtet; die Seite baut keine Tagewahl ein, obwohl der Baustein Tagewahl in derselben Datei (Zeile 599) verwendet wird`
+- **spürbar** — Tagesverlauf 15-min mit Heute/Gestern-Umschalter fehlt
+  - Befund: Web zeichnet den Tag aus day.points mit actual_kw/day_ahead_kw/corrected_kw (ForecastPage.tsx:45-47, Serien :82-84) und schaltet Heute/Gestern (:231, :283-289). In der App ist ForecastEvaluationOut nur in SystemSeiten.swift:366 gebunden; grep ueber DuckCurveHome/ nach today, yesterday, actualKw, dayAheadKw, correctedKw, latestKw findet ausser Leiste.swift:159 (todayKwh, andere Groesse) keinen Treffer - b.today/b.yesterday werden nirgends gelesen. Swift Charts ist vorhanden (SystemSeiten.swift:1 import Charts, Chart bei :100 fuer Raumverlaufsbild), nur nicht fuer die Prognose.
+  - Vorlage: `apps/web/src/components/forecast/ForecastPage.tsx:42-87,231,267-293`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:370-466`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **spürbar** — Quellenliste mit Gewicht, MAE 7 d, Status fehlt ganz
+  - Befund: Web hat die Tabelle Quelle/Gewicht/MAE 7 d/Status aus ev.sources (ForecastPage.tsx:344-363), die Kopfzeile mit sources[0].label_de (:246), die Kachel MAE 7 Tage aus sources[0].mae_7d_kw (:239,:263) und im Kartenkopf Ist/Prognose gesamt = corrector.k_global (:343). In der App taucht b.sources nicht auf: grep nach sources, mae7dKw, kGlobal, Quellen, Gewicht ueber DuckCurveHome/ ist leer (nur WaermeSeite.swift:140 Quelle in anderem Sinn); SourceStatusOut wird auch auf /system/daten und /system/mitteilungen nicht benutzt. Das Feld existiert (Schema.swift:3356 sources, SourceOut Schema.swift:7741-7745 mit weight/mae7dKw/active).
+  - Vorlage: `apps/web/src/components/forecast/ForecastPage.tsx:344-363,246,239,263`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:375-407`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **spürbar** — Korrekturfaktoren nach Sonnenhoehe fehlen komplett
+  - Befund: Web baut factorOption ueber ev.corrector.bins mit factor, previous, last_ratio und days (ForecastPage.tsx:144-146,160,170-177) und zeigt die Karte Korrekturfaktoren nach Sonnenhoehe mit days_learned und half_life_days (:315) sowie updated_on als Tagesabschluss (:327). Die App hat nur Zeile(wort: "Korrektur aktiv") in SystemSeiten.swift:399-402; grep nach corrector, Corrector, bins, daysLearned, halfLifeDays, lastRatio, Sonnenhoeh, Halbwertszeit ueber DuckCurveHome/ ergibt nur Blaetter.swift:152, und das ist halfLifeH eines Raums, nicht der Korrektor. CorrectorState (Schema.swift:2286-2293) und BinCorrection (Schema.swift:1925-1931) sind im Modell da, werden aber nirgends gelesen.
+  - Vorlage: `apps/web/src/components/forecast/ForecastPage.tsx:142-180,314-322,327`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:398-405`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **spürbar** — Rueckblick ohne Aufschluesselung je Vorlauf, ohne p95
+  - Befund: Web zeichnet je Reihe mittlerer Fehler als Balken und Rand (95 %) als Punkt darueber aus reihe.je_vorlauf[].wertung.mae/p95/n (Rueckblick.tsx:37-41,82-98), nennt die Paarzahl im Tooltip (:65) und Bias plus Paarzahl im Kartenkopf (:189). Die App zeigt eine Tabelle mit genau drei Spalten: gesamt.mae, Einheit, Laeufe (SystemSeiten.swift:452-462). jeVorlauf existiert auf ReiheOut (Schema.swift:6898), Wertung traegt n/mae/bias/rmse/p95 (Schema.swift:8850-8855); grep nach jeVorlauf, p95, Vorlauf, Bias, Rand ueber DuckCurveHome/ findet keinen davon im Prognosezusammenhang (die Vorlauf-Treffer sind alle Vorlauftemperatur der Waermepumpe).
+  - Vorlage: `apps/web/src/components/forecast/Rueckblick.tsx:36-99,182-198`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:450-464`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **mittel** — Bias kommt in der App gar nicht vor
+  - Befund: Bias steht im Web an mehreren Stellen: je Tag im Kartenkopf des Tagesdiagramms (ForecastPage.tsx:280 day.score.bias_kw), je Horizont im Tooltip und als zweiter Balken (:129,:137, Legende :311), als Mittel der letzten 7 Tage aus daily[].bias_kw (:240, ausgegeben :365) und je Reihe im Rueckblick (Rueckblick.tsx:189 gesamt.bias). Die App gibt in der Horizonttabelle nur maeKw (SystemSeiten.swift:413-417) und in der Tagestabelle energyForecastKwh, energyActualKwh, energyErrorPct, maeKw (:426-441) aus; grep nach biasKw, Bias, systematisch, Schieflage ueber DuckCurveHome/ ist leer, obwohl ForecastScore.biasKw (Schema.swift:3492) und DailyScoreOut.biasKw (Schema.swift:2487) da sind. Kleine Korrektur an der Fundstelle: das zitierte ForecastPage.tsx:103 zeigt Abweichung und MAE, nicht Bias - der Tagesbias steht bei :280 und :240.
+  - Vorlage: `apps/web/src/components/forecast/ForecastPage.tsx:280,129,137,240,365`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:408-445`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **klein** — Zeitraumwahl 3/7/14/30 Tage fehlt, 7 fest verdrahtet
+  - Befund: Web hat die Knopfreihe 3/7/14/30 d mit setTage (Rueckblick.tsx:167-178), und tage haengt im Ladeeffekt (:139,:154). Die App ruft prognoseVerlauf(tage: 7) fest (SystemSeiten.swift:472, Signatur DuckCurveKit/Sources/DuckCurveKit/Netz/Api.swift:361 mit Standardwert 7) und baut keine Wahl ein - PrognoseSeite hat nur @State bewertung, verlauf, fehler (:366-368), kein tage. Der Baustein dafuer liegt bereit: struct Tagewahl in WaermepumpeSeiten.swift:377, in derselben Datei schon benutzt von HaustuerSeite (SystemSeiten.swift:641).
+  - Vorlage: `apps/web/src/components/forecast/Rueckblick.tsx:167-178`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:472`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
 
-### `/waerme`  ·  14 Punkte, davon 5 spürbar
+### `/geld/pv-abrechnung`  ·  6 Punkte, davon 1 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · endpunkt — Die Webseite holt drei Antworten: /energy/waermebilanz (Leitquelle fuer Waermemenge, Arbeitszahl, Waermepreis), /energy/heat (nur noch Strom nach Herkunft, Taktung, Ofen) und /energy/shift. Die iOS-Seite holt ausschliesslich api.energieWaerme (/energy/heat). Damit fehlt auf der Seite alles, was nur in HeatBalanceOut steht: totals.producedKwh / drawKwh / lossKwh / residualKwh / copMean, cost (HeatCostOut), ventilation (VentilationOut), params (HeatParamsOut), series und buckets. api.waermebilanz und api.energieVerschiebung sind im Client schon da (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Netz/Api.swift:192 und :184) - sie werden hier nur nicht gerufen. (Die Bilanz selbst zeigt die App unter /waerme/bilanz; auf dieser Seite soll sie aber neben Strom, Taktung und Ofen stehen.)
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:91-95`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **spürbar** · abschnitt — Karte "Was die Waerme gekostet hat": als Kernzahl cost.heat_pump_ct_per_kwh in "ct je kWh Waerme", darunter fuenf Zeilen - "Waermepumpe: bezahlter Netzstrom" (heat_pump_paid_eur, Euro), "Waermepumpe: entgangene Verguetung" (heat_pump_opportunity_eur), "Pellets: verbrannte Menge" (stove_kg, 1 Stelle, kg), "Pellets: Wert zum hinterlegten Preis" (stove_eur), "Ofen: je kWh Waerme" (stove_ct_per_kwh, ct) - und als Fussnote cost.cheaper_de. In der App kommt auf dieser Seite kein Eurobetrag und kein Waermepreis vor; nur der Ofen hat "Pelletkosten" aus StoveOut.pelletEur.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:214-225`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **spürbar** · abschnitt — Karte "Hat sich das Verschieben gelohnt?" (rechts "geschaetzt") aus /energy/shift: Kernzahl ist der Betrag von saving_eur, die Unterzeile sagt je nach Vorzeichen "gespart gegenueber einem Lauf ohne Preisblick" oder "mehr bezahlt als ohne Preisblick"; darunter bei days_used > 0 drei Zeilen - "in andere Stunden verschoben" (shifted_kwh von heat_pump_kwh), "je verschobener kWh" (saving_ct_per_kwh), "gerechnete Tage" (days_used); bei days_used == 0 stattdessen skipped_de bzw. der Ersatzsatz "Dafuer braucht es einen Tag mit genug gemessenen Stunden und laufender Waermepumpe." Dazu die Verweise auf /geld (mit Zeitraum) und, am Tag, auf /waerme/nachbetrachtung?day=. Auf der iOS-Seite fehlt die Karte ganz.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:248-273`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **spürbar** · diagramm — Am Tag die Karte "Tagesverlauf" (Kopf rechts resolution_de) mit dem Bilanzdiagramm aus bilanz.series: oben in kW drei gestapelte Flaechen (Waermepumpe, Ofen (Wasser), Ofen (Raum)) plus die Linien Entnahme und "Verlust an den Raum", unten in einer zweiten Flaeche der Pufferinhalt in kWh; Luecken werden nicht ueberbrueckt (connectNulls false). Leerfall: "Fuer diesen Tag liegen keine Minutenwerte vor." Die iOS-Seite hat auf /waerme ueberhaupt kein Diagramm, und b.summary.buckets wie HeatBalanceOut.series bleiben ungenutzt.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:170-180 mit apps/web/src/components/reports/charts.ts:793-880`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **spürbar** · diagramm — Karte "Pufferspeicher" (nur am Tag, nur wenn buffer_series Werte hat; Kopf rechts "Temperaturen in vier Hoehen · Leistung der Waermepumpe"): oben die vier Schichttemperaturen buffer_temp_top_c / mid_top / mid_bottom / bottom_c als Linien auf fester Skala 20-70 °C, unten als Treppenflaeche heat_pump_power_kw, und als hinterlegte Baender die Brennphasen des Ofens (zusammenhaengende Abschnitte mit stove_running wahr, Legendeneintrag "Ofen brennt"). Genau daran liest man ab, ob eine Temperatursteigung vom Ofen kam. HeatReportOut.bufferSeries wird in der App nirgends ausgewertet.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:197-204 mit apps/web/src/components/reports/charts.ts:99-145`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **mittel** · diagramm — Karte "Strom der Waermepumpe nach Herkunft": je Zeitstueck aus summary.buckets ein gestapelter Balken aus heat_pump_pv_kwh ("aus PV"), heat_pump_battery_kwh ("aus Batterie") und heat_pump_grid_kwh ("aus Netz"), mit Farblegende im Kartenkopf. Die App zeigt diese Aufteilung auf keiner Waermeseite - weder als Diagramm noch als Zahl; summary.buckets bleibt ungenutzt.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:35-39 und 205-210`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **mittel** · abschnitt — Karte "Bei offenem Fenster" (Kopf rechts "geschaetzt, nach offenen Heizkreisen verteilt"), nur wenn ventilation.kwh > 0,01 oder open_minutes > 0: Kernzahl ventilation.kwh "kWh in Raeume mit offenem Fenster", rechts "NN min offen" und bei share >= 0,01 "· NN % der Entnahme"; darunter eine Tabelle je Raum mit Raum, "Fenster offen" (open_minutes), "davon geheizt" (heating_minutes) und "Waerme" (kWh), dazu ventilation.note_de. In der App fehlt der Abschnitt; VentilationOut wird nirgends ausgewertet.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:310-342`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **mittel** · abschnitt — Abschnitt "Waerme im Zeitraum": dieselben zwoelf Groessen fuer Tag, Woche, Monat und Jahr des Ankertags nebeneinander (vier gleichzeitige Abfragen von /energy/waermebilanz) - Waerme gesamt, Waermepumpe, Ofen ins Wasser, Ofen in den Raum, Entnahme, Verlust, Strom Waermepumpe, Arbeitszahl, nicht zuzuordnen, Strom bezahlt, Pellets kg, Pellets im Wert von. Null gilt dabei als Messung, fehlende Minuten (totals.minutes == 0) als Strich. Die App zeigt immer nur die eine gewaehlte Spanne; einen Spannenvergleich gibt es in Bericht.swift noch gar nicht.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:118-131 und 346, mit apps/web/src/components/reports/PeriodStrip.tsx:32-93 und apps/web/src/components/reports/useReport.ts (useMultiPeriod)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **mittel** · kennzahl — Drei der sechs Kopfkacheln fehlen: "Bezahlt" (cost.heat_pump_paid_eur in Euro, dazu "NN kWh Netz · Ø NN ct" aus heat_pump_grid_kwh und paid/grid*100), "Waermepreis" (cost.heat_pump_ct_per_kwh in ct/kWh, dazu "Waermepumpe · Ofen NN ct") und "Entnahme" (totals.draw_kwh in kWh, dazu "Heizung und Warmwasser · Verlust NN kWh"). Ausserdem traegt die Webkachel "Strom Waermepumpe" den Zusatz "NN % Sonnenstrom" ((pv+battery)/heat_pump), die App-Kachel "Strom dafuer" nennt den Anteil nicht.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:140-166`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **mittel** · kennzahl — In der Ofenkarte zeigt die Webseite neun Zeilen plus die Leistungsstufen; der App fehlen davon: "davon mit Feuer" (burning_minutes als h:mm), "laengste Phase" (longest_run_min), "Spreizung" (spread_k in K), "Rauchgas max." (fume_temp_max_c in °C), "Betriebsstunden" (operating_hours in h), die Zeile "Leistungsstufen: 1: 0:45 h  2: 1:10 h …" aus minutes_by_level (nach Stufe sortiert) sowie fuel_note_de (nur wenn auger_revolutions gesetzt ist). Auch die Kopfangabe "N Brennphasen" (runs) und note_de stehen dort. Alle Felder liegen in StoveOut.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:279-305`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **klein** · abschnitt — Fuer Woche, Monat und Jahr steht statt des Tagesverlaufs die Karte "Waerme je Tag" bzw. "Waerme je Monat": gestapelte Balken aus bilanz.buckets (Waermepumpe, Ofen (Wasser), Ofen (Raum)) mit Farblegende und Leerhinweis "Fuer diesen Zeitraum liegen keine Werte vor." Die App hat dieses Bild nur auf /waerme/bilanz (WaermebilanzSeite, Karte "Woher die Waerme kam"), auf /waerme nicht.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:182-192`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **klein** · kennzahl — Im Kopf der Taktungskarte steht, auf welcher Datenbasis das Urteil beruht: "NN h bewertet" aus cycling.covered_hours (nur wenn gesetzt). Die App zeigt in der Takt-Karte nur das Urteilswort als Titel; coveredHours liegt in CyclingStats und wird nicht benutzt.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:228`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **klein** · abschnitt — Der letzte Methodenabsatz nennt die geltenden Annahmen mit Zahlen: "Gerechnet wird mit: Kennlinie -7 °C: 2,4 · 2 °C: 3,0 … , gueltig bei NN °C Vorlauf; Puffer NNN l mit NN W/K Verlust (buffer_loss_kw_per_k * 1000); Ofen N,N kW, davon N,N kW ins Wasser; Pellets N,NN kWh/kg zu NNN €/t" - alles aus bilanz.params - samt Verweis auf /waerme/annahmen und dem Satz, dass eine Aenderung auch vergangene Jahre aendert. Die Methodenkarte der App bringt nur die note_de-Saetze des Dienstes, keine Zahl aus HeatParamsOut.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:370-378`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
-- **klein** · zustand — Unter der Auswertung steht die Datenguete als eigene, einklappbare Zeile: "Datenabdeckung NN %" bzw. "noch keine Messdaten im Zeitraum" und "Aufzeichnung seit TT.MM.JJJJ" aus summary.meta.coverage und data_since. Die App druckt aus demselben meta-Objekt nur estimatedNoteDe.
-  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:348 mit apps/web/src/components/reports/ReportShell.tsx:163-174`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **spürbar** — Diagramm "Erloes und Wertabgabe" fehlt in der App
+  - Befund: Im Web steht die Karte mit dem Balkendiagramm in apps/web/src/components/reports/PvAccounting.tsx:100-105, die Reihen (Einspeisevverguetung netto, Eigenverbrauch Wert netto) in :64-74 und der Leerhinweis als <Note> in :103. In der App hat PvAbrechnungSeite (apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:121-227) kein Diagramm: grep auf "Balkenbild" in GeldSeiten.swift trifft nur :46 und :59, beide in KostenSeite; api.energiePv wird nur an GeldSeiten.swift:124 gerufen (einziger Treffer im ganzen Projekt), es gibt also keine zweite Seite, die das zeigen koennte. Kleine Praezisierung: moneyBars setzt stack: "total" (apps/web/src/components/reports/charts.ts:393), die zwei Reihen stehen also gestapelt, nicht nebeneinander - in der App also Balkenbild(..., einheit: "€", gestapelt: true).
+  - Vorlage: `apps/web/src/components/reports/PvAccounting.tsx:64-74,100-105`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:159-183`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
+- **mittel** — Tabelle hat vier statt sieben Spalten
+  - Befund: Web COLUMNS hat sieben Spalten (apps/web/src/components/reports/PvAccounting.tsx:29-37): Einspeisung kWh, Verguetung netto, USt darauf erhalten (:32), Eigenverbrauch kWh, Wertabgabe netto (:34), USt darauf geschuldet (:35), Zahllast (:36). Die App-Tabelle hat genau vier (GeldSeiten.swift:160-182): eingespeist, Verguetung, Eigenverbrauch, USt. zu zahlen. exportVatEur und selfVatEur stehen in der App nur als Gesamtsumme in den Karten (GeldSeiten.swift:137 bzw. :156), selfValueNetEur nur in GeldSeiten.swift:155 und als Kachel-Beisatz :219. Je bucket fehlen damit drei Spalten, nicht zwei - zum genannten exportVatEur und selfValueNetEur kommt selfVatEur ("USt darauf, geschuldet"). Alle drei Felder liegen am bucket an: Schema.swift:6447, 6452, 6453 (PvTaxBucketOut.totals, Schema.swift:6340-6344).
+  - Vorlage: `apps/web/src/components/reports/PvAccounting.tsx:29-37,122-131`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:160-182`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
+- **mittel** — Methodensatz steht schon, Datenabdeckung fehlt · **teilweise**
+  - Befund: Der Punkt ist zur Haelfte ueberholt: b.meta.methodDe steht inzwischen in der Methodenkarte der App (apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:199, mit dem Kommentar :195-198, der die Verwechslung mit estimatedNoteDe festhaelt). Es fehlt nur noch die Abdeckung: Web schreibt "Datenabdeckung NN %" bzw. "Fuer diesen Zeitraum liegen keine Messdaten vor" aus data.meta.coverage (apps/web/src/components/reports/PvAccounting.tsx:166). In der App wird meta.coverage nirgends gelesen - grep auf "coverage" in DuckCurveHome/ trifft nur RechnungenSeite.swift:122 (anderes meta) und SystemSeiten.swift:494,500,521; das Feld ist da: Schema.swift:6370 (PvTaxMetaOut.coverage, optional).
+  - Vorlage: `apps/web/src/components/reports/PvAccounting.tsx:163-172`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:184-201`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
+- **mittel** — Zeitraumvergleich Tag/Woche/Monat/Jahr fehlt ganz
+  - Befund: Web holt ueber useMultiPeriod alle vier Spannen zum Ankertag parallel (apps/web/src/components/reports/PvAccounting.tsx:56 mit useReport.ts:55-77) und stellt fuenf Kennzahlen als PeriodStrip nebeneinander (PvAccounting.tsx:151-161, Bauteil PeriodStrip.tsx:32-60). In der App laedt Berichtsseite genau einen Zeitraum (Bericht.swift:29-59, Aufruf GeldSeiten.swift:123-124) und bietet hier nur .monat und .jahr an (:123). Ein Vergleichsbauteil existiert nicht: grep auf "Vergleich" in DuckCurveHome/ trifft in GeldSeiten.swift nur den "Vergleichslauf" der KostenSeite (:24,:9); in Bausteine/ und Diagramme/ gibt es kein Gegenstueck zu PeriodStrip.
+  - Vorlage: `apps/web/src/components/reports/PvAccounting.tsx:56,151-161`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:123-124`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
+- **klein** — Summenzeile und Rundungshinweis fehlen der Tabelle
+  - Befund: Web baut aus b.totals eine hervorgehobene Summenzeile ueber alle sieben Spalten (apps/web/src/components/reports/PvAccounting.tsx:77 sum = rowOf("Summe", t), gerendert :132-141) und schliesst mit dem Rundungshinweis :145-148. Die App-Tabelle bekommt nur die buckets (GeldSeiten.swift:161-181), b.totals wird dort nicht uebergeben. Auch der Satz fehlt: grep auf "ungerundet", "Summenzeile" und "Summe" in DuckCurveHome/ liefert keinen Treffer in GeldSeiten.swift. Zu beachten: das Bauteil Tabelle (Bericht.swift:153-256) kennt nur zeilennamen und spalten, keine abgesetzte Summenzeile - sie muss dort erst vorgesehen oder als zusaetzliche Zeile mit Hervorhebung geloest werden.
+  - Vorlage: `apps/web/src/components/reports/PvAccounting.tsx:77,132-148`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:159-183`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
+- **klein** — Mittlerer Wert je kWh des Eigenverbrauchs fehlt
+  - Befund: Web haengt an die Kachel "Wert des Eigenverbrauchs" den Beisatz `netto, Ø x,xx ct/kWh` aus totals.self_ct_kwh (apps/web/src/components/reports/PvAccounting.tsx:96 mit dem Helfer ct() :15). In der App kommt selfCtKwh nirgends vor: grep -rn "selfCtKwh" ueber apps/ios trifft ausschliesslich Schema.swift:6454,6473,6480,6493,6514, also nur die Modelldefinition. Die Kachelreihe kennzahlen(_:) (GeldSeiten.swift:205-226) zeigt bei "selbst verbraucht" nur selfValueNetEur brutto/netto (:217-220) und als Satz nur feedInCtKwh als "Verguetungssatz" (:221-223), was der Einspeisesatz ist, nicht der Eigenverbrauchswert; die Karte "Eigenverbrauch" (:141-158) liest das Feld ebenfalls nicht.
+  - Vorlage: `apps/web/src/components/reports/PvAccounting.tsx:96`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:141-158,205-226`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift`
 
-### `/geld/pv-abrechnung`  ·  6 Punkte, davon 1 spürbar
+### `/geld/rechnungen`  ·  9 Punkte, davon 3 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · diagramm — Die Webseite hat das Diagramm "Erloes und Wertabgabe": je Zeitraumstueck zwei Balken, Einspeiseverguetung netto und Wert des Eigenverbrauchs netto, mit Leerhinweis "Fuer diesen Zeitraum liegen keine bewerteten Stunden vor". Die App zeigt auf der PV-Abrechnung ueberhaupt kein Diagramm.
-  - Web: `apps/web/src/components/reports/PvAccounting.tsx:64-74,100-105`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:124-199 - PvAbrechnungSeite besteht aus Kachelfeld, zwei Karten mit Zeilen, einer Tabelle und der Methode; Balkenbild wird nicht benutzt.`
-- **mittel** · kennzahl — In der Aufstellung der Webseite stehen je Zeitraumstueck sieben Spalten, darunter "USt darauf (erhalten)" aus der Einspeisung und "Wertabgabe netto" des Eigenverbrauchs. Die Tabelle der App hat nur vier Spalten; die Umsatzsteuer der Einspeisung und der Nettowert der Wertabgabe fehlen je Zeitraum (sie stehen nur als Gesamtsumme in den Karten).
-  - Web: `apps/web/src/components/reports/PvAccounting.tsx:29-37 (Spalten "USt darauf · erhalten" Z. 32, "Wertabgabe · netto" Z. 34),122-131`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:155-180 - Tabelle mit den Spalten eingespeist, Verguetung, Eigenverbrauch, USt. zu zahlen; exportVatEur und selfValueNetEur werden je bucket nicht gezeigt.`
-- **mittel** · abschnitt — Unter der Webseite steht der Methodensatz des Dienstes (meta.method_de) samt "Datenabdeckung NN %" bzw. "Fuer diesen Zeitraum liegen keine Messdaten vor". Die Methodenkarte der App bringt nur Steuersatz, Schaetzanteil und den Steuerberatungs-Vorbehalt; method_de und die Abdeckung fehlen.
-  - Web: `apps/web/src/components/reports/PvAccounting.tsx:163-172`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:182-198 - Methode([...]) ohne b.meta.methodDe und ohne b.meta.coverage (beide im Modell: Schema.swift:6363-6371).`
-- **mittel** · abschnitt — Die Webseite zeigt dieselben Kennzahlen (Einspeisung, Verguetung netto, Eigenverbrauch, Wert netto, Umsatzsteuer) zusaetzlich fuer Tag, Woche, Monat und Jahr des Ankertags nebeneinander. Die App zeigt nur die gewaehlte Spanne.
-  - Web: `apps/web/src/components/reports/PvAccounting.tsx:56,151-161`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:126-128 - PvAbrechnungSeite laedt genau einen Zeitraum; ein Spannenvergleich existiert in der App nicht.`
-- **klein** · kennzahl — Die Aufstellung der Webseite schliesst mit einer hervorgehobenen Summenzeile ueber alle Spalten und dem Hinweis, dass die Summe aus ungerundeten Stundenwerten stammt und die Addition der Zeilen um Cent abweichen kann. Die Tabelle der App hat keine Summenzeile.
-  - Web: `apps/web/src/components/reports/PvAccounting.tsx:77,132-148`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:154-181 - die Tabelle enthaelt nur die buckets, keine Zeile aus b.totals.`
-- **klein** · kennzahl — Die Webseite nennt zum Eigenverbrauch den mittleren Wert je Kilowattstunde (self_ct_kwh, "netto, Ø x,xx ct/kWh"). Die App zeigt diesen Satz nicht.
-  - Web: `apps/web/src/components/reports/PvAccounting.tsx:96`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:139-153,201-222 - weder die Karte "Eigenverbrauch" noch kennzahlen(...) lesen totals.selfCtKwh (Feld vorhanden: Schema.swift:6454).`
+- **spürbar** — Kein PDF-Einlesen und Pruefzustand in der App
+  - Befund: Gesucht in ganz apps/ios/DuckCurveHome/ nach fileImporter, UIDocumentPicker, UTType, PhotosPicker, ".pdf" und pruefeRechnung - kein Treffer. Die Seite ruft nur ladeListe (RechnungenSeite.swift:213-224) und ladeBericht (RechnungenSeite.swift:226-232); haus.api.pruefeRechnung existiert im Kern (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Netz/Api.swift:403) und wird von keiner View aufgerufen. Der Leerzustand verweist auf den Dienst (RechnungenSeite.swift:28-32), genau wie behauptet.
+  - Vorlage: `apps/web/src/components/reports/InvoiceCheck.tsx:54-93,137-159,212`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:26-33,213-232`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift`
+- **spürbar** — Keine vier Kennzahlen ueber den ganzen Bestand
+  - Befund: InvoiceSummaryOut kommt in der ganzen App nur an drei Stellen vor (RechnungenSeite.swift:15,52,216); gesucht nach reduce in apps/ios/DuckCurveHome/Seiten/Geld/ - kein Treffer, also wird nirgends ueber liste summiert. kennzahlen(_:) (RechnungenSeite.swift:199-211) liest ausschliesslich b.invoice der einen gewaehlten Rechnung; die Liste selbst ist eine reine Aufzaehlung (RechnungenSeite.swift:52-73) ohne Anzahl, Zeitspanne von-bis, Summe brutto oder mengengewichteten Durchschnitt.
+  - Vorlage: `apps/web/src/components/reports/InvoiceCheck.tsx:194-196,219-224`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:34-46,199-211`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift`
+- **spürbar** — Keine drei Verlaufsdiagramme ueber alle Rechnungen
+  - Befund: Die Seite besteht aus Stoerung, Leer, Karte mit Liste und pruefung(_:) - Kachelfeld, Befundkarte, Messkarte, Positionstabelle, Methode (RechnungenSeite.swift:21-50,104-151); kein Balkenbild, keine TageskurveBild, kein anderes Bild. Gesucht nach Invoice und rechnung in apps/ios/DuckCurveHome/Diagramme/ und Bausteine/ - nur ein Treffer in Energiefluss.swift, der nichts mit Rechnungen zu tun hat. Balkenbild existiert als Baustein (apps/ios/DuckCurveHome/Seiten/Bericht.swift:66) und wird hier nicht benutzt.
+  - Vorlage: `apps/web/src/components/reports/InvoiceCheck.tsx:161-188,229-243`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:21-50,104-151`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift`
+- **mittel** — Preisbestandteile nur als Tabelle, group ungenutzt
+  - Befund: Die Positionen stehen als Tabelle mit ct/kWh und Betrag (RechnungenSeite.swift:130-143); gesucht nach ".group" in ganz apps/ios/DuckCurveHome/ - kein Treffer, obwohl InvoicePosition.group ein nicht-optionales Feld ist (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:4700,4707). Damit fehlen das Diagramm und die Gruppierung; die Werte selbst sind in der Tabelle sichtbar, einen Hinweis "Rechnung auswaehlen" gibt es nicht, weil die Karte ohne Bericht gar nicht erscheint.
+  - Vorlage: `apps/web/src/components/reports/InvoiceCheck.tsx:189-192,244-251`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:130-143`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift`
+- **mittel** — Abrechnungszeitraum als Datum und Zaehlerstaende fehlen
+  - Befund: Gesucht in ganz apps/ios/DuckCurveHome/ nach meterStart, meterEnd, meterEstimated, periodStart, periodEnd sowie nach "Zaehlerstand/Zählerstand" - kein einziger Treffer, obwohl alle fuenf Felder in TibberInvoice vorhanden sind (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:8296-8303,8318-8325). Die App zeigt tatsaechlich nur periodLabel und issuedOn in der Zeile (RechnungenSeite.swift:58-59) und periodLabel als dazu-Text an der Brutto-Kachel (RechnungenSeite.swift:202).
+  - Vorlage: `apps/web/src/components/reports/InvoiceCheck.tsx:322-326`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:52-73,199-211`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift`
+- **klein** — Keine Quote stimmig, kein Hinweis bei fehlendem Abgleich
+  - Befund: Die App zeigt alle Befunde in einer Karte "Was aufgefallen ist" hinter if !b.findings.isEmpty mit einer ForEach ueber alle (RechnungenSeite.swift:107-115); gesucht nach "stimmig" und "Kein Abgleich" in ganz apps/ios/DuckCurveHome/ - kein Treffer. Es gibt auch keine Trennung in rechnerische Pruefung und Abgleich mit eigenen Daten wie im Dashboard (computed/compared, InvoiceCheck.tsx:201-202). Die Messkarte (RechnungenSeite.swift:116-129) steht nur, wenn b.measured da ist, sonst ohne Satz.
+  - Vorlage: `apps/web/src/components/reports/InvoiceCheck.tsx:307-320`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:107-115`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift`
+- **klein** — Abweichung mit Vorzeichen fehlt am Befund
+  - Befund: befund(_:) liest nur f.expected und f.actual (RechnungenSeite.swift:183-194); gesucht nach ".delta" in apps/ios/DuckCurveHome/Seiten/Geld/ und nach "Abweichung" in ganz apps/ios/DuckCurveHome/ - der einzige Treffer auf dieser Seite ist der Methodensatz "Eine Abweichung ist eine Frage, kein Beweis" (RechnungenSeite.swift:148), keine Zahl. InvoiceFinding.delta ist vorhanden (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:4661,4671).
+  - Vorlage: `apps/web/src/components/reports/InvoiceCheck.tsx:44`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:183-194`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift`
+- **klein** — Keine Vorauswahl der neuesten Rechnung
+  - Befund: gewaehlt startet als nil (RechnungenSeite.swift:16), wird nur im Button der Zeile gesetzt und dort sogar wieder abgewaehlt (RechnungenSeite.swift:53-55), und ladeBericht gibt bei nil sofort nil zurueck (RechnungenSeite.swift:226-230). In ladeListe (RechnungenSeite.swift:213-224) wird gewaehlt nicht belegt - also bleibt der untere Teil leer, bis man tippt. Das Dashboard waehlt dagegen ?nr= oder items[0] vor (InvoiceCheck.tsx:130-135).
+  - Vorlage: `apps/web/src/components/reports/InvoiceCheck.tsx:127-135`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:16,53-55,226-230`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift`
+- **klein** — Fehler beim Laden einer einzelnen Rechnung verschluckt
+  - Befund: ladeBericht schreibt bericht = try? await haus.api.rechnung(nummer) (RechnungenSeite.swift:231) - der Fehler wird vom try? verworfen und fehler nicht gesetzt; fehler wird nur in ladeListe belegt (RechnungenSeite.swift:218-222), und Stoerung haengt an dieser Variable (RechnungenSeite.swift:23-25). Die in ABGLEICH.md genannten Zeilen 198-204 sind veraltet, die Stelle ist jetzt 226-232.
+  - Vorlage: `apps/web/src/components/reports/InvoiceCheck.tsx:117-125`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:226-232`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift`
 
-### `/geld/rechnungen`  ·  9 Punkte, davon 3 spürbar
+### `/strom/jahr`  ·  4 Punkte, davon 1 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · bedienung — Auf der Webseite kann man eine Tibber-Rechnung als PDF hineinziehen oder auswaehlen - auch mehrere auf einmal -, sie wird geprueft, der Zustand "Rechnung wird geprueft …" angezeigt und pro Datei ein Fehler gemeldet. Die App bietet kein Einlesen; sie verweist im Leerzustand darauf, dass Rechnungen ueber den Dienst hereinkommen, obwohl der API-Client die Pruefung kann.
-  - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:54-93,137-159,210-218`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:26-33,185-204 - nur ladeListe/ladeBericht; api.pruefeRechnung (DuckCurveKit/Sources/DuckCurveKit/Netz/Api.swift:402-408) wird von der Seite nicht aufgerufen, kein Dateiauswahl- oder Ladezustand.`
-- **spürbar** · kennzahl — Die Webseite zeigt vier Kennzahlen ueber alle Rechnungen zusammen: Anzahl geprueft (mit Zeitspanne von-bis), Anzahl beanstandet, Summe brutto (ueber x kWh) und mengengewichteter Durchschnittspreis brutto. Die App zeigt Kennzahlen nur zur einzelnen gewaehlten Rechnung, keine Summe ueber den Bestand.
-  - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:194-196,219-224`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:34-46,171-183 - die Liste ist eine reine Aufzaehlung, Kachelfeld entsteht erst aus dem Bericht einer gewaehlten Rechnung; ueber `liste` wird nichts summiert.`
-- **spürbar** · diagramm — Die Webseite zeigt drei Verlaufsdiagramme ueber alle Rechnungen: abgerechnete Menge gegen eigene Messung, Rechnungsbetrag gestapelt aus Arbeitspreis, Grundgebuehr und Steuer, sowie den Durchschnittspreis brutto Rechnung gegen Messung. Die App hat auf dieser Seite kein Diagramm.
-  - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:161-188,229-243`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:21-50,95-142 - die Seite besteht aus Liste, Kachelfeld, Befundkarte, Messkarte, Positionstabelle und Methode; kein Balkenbild oder anderes Diagramm.`
-- **mittel** · diagramm — Die Webseite zeigt die Preisbestandteile der gewaehlten Rechnung als Diagramm, nach Gruppe (position.group) geordnet, mit Hinweis "Eine Rechnung in der Liste auswaehlen", wenn keine gewaehlt ist. Die App listet die Positionen nur als Tabelle und laesst das Feld group ungenutzt.
-  - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:189-192,244-251`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:121-134 - Tabelle mit ct/kWh und Betrag; $0.group wird nicht gelesen (Feld vorhanden: Schema.swift:4700).`
-- **mittel** · kennzahl — Die Webseite nennt zur gewaehlten Rechnung den abgerechneten Zeitraum als Datum von-bis und die Zaehlerstaende am Anfang und Ende samt der Angabe, ob sie abgelesen oder errechnet sind. Die App zeigt nur das Zeitraum-Etikett und das Ausstellungsdatum.
-  - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:322-326`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:52-73,171-183 - meterStart, meterEnd, meterEstimated, periodStart und periodEnd werden nirgends gezeigt (Felder vorhanden: Schema.swift:4783-4786).`
-- **klein** · kennzahl — Die Webseite sagt zur rechnerischen Pruefung, wie viele Punkte von wie vielen stimmig sind, und schreibt beim Abgleich mit den eigenen Daten "Kein Abgleich moeglich", wenn es dazu keinen Befund gibt. Die App zeigt die Befunde ohne Zaehlung und laesst die Karte ganz weg, wenn keine Befunde da sind.
-  - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:307-320`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:98-106 - `if !b.findings.isEmpty` und eine ForEach ueber alle Befunde; keine Quote und kein Hinweis bei fehlendem Abgleich.`
-- **klein** · kennzahl — Die Webseite zeigt bei jedem Befund neben Erwartung und Rechnungswert auch die Abweichung mit Vorzeichen. Die App zeigt nur erwartet und auf der Rechnung.
-  - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:44`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:155-166 - befund(...) liest f.expected und f.actual, f.delta nicht (Feld vorhanden: Schema.swift:4661).`
-- **klein** · bedienung — Die Webseite waehlt beim Oeffnen selbst eine Rechnung aus - die aus ?nr= verlinkte, sonst die neueste -, damit Befunde und Preisbestandteile nicht leer bleiben. In der App bleibt der untere Teil leer, bis man eine Zeile antippt.
-  - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:127-135`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:16,44-49 - `gewaehlt` startet als nil, der Bericht wird erst nach einem Tippen geholt; eine Vorauswahl gibt es nicht.`
-- **klein** · zustand — Scheitert das Laden einer einzelnen Rechnung, zeigt die Webseite dafuer eine Fehlermeldung. Die App verschluckt den Fehler und laesst die Seite einfach ohne Pruefbericht stehen.
-  - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:117-125 (setError bei api.tibberInvoice)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:198-204 - `bericht = try? await haus.api.rechnung(nummer)`, kein Setzen von `fehler`; Stoerung (Z. 23-25) greift nur beim Laden der Liste.`
+- **spürbar** — Raster liest Tag×Stunde als Wochen, nur Stunden 0-6 sichtbar
+  - Befund: Der Dienst liefert `metrics: dict[str, list[list[float|None]]]` als „Kennzahl → [Tag][Stunde 0-23]" (apps/api/src/dch_api/schemas.py:617, Klassendoku 607-612 „365 Spalten, 24 Zeilen"), und das Web durchlaeuft genau das mit `for (let h = 0; h < 24; h++) { const v = grid[d]?.[h] }` (apps/web/src/components/reports/charts.ts:447-451). Die iOS-Seite benennt dieselbe aeussere Achse `wochen` (apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:176-178 „Der Dienst liefert sie als Wochenzeilen") und zeichnet je Spalte nur `ForEach(0..<7)` mit `wochen[woche][tag]` (ebd. 163-168, 181) - die innere Achse ist aber die Stunde, also bleiben je Tag die Stunden 0-6 und die uebrigen 17 fehlen im Bild. Auch die Kennzahlen zaehlen auf dieser falschen Grundlage („Tage mit Werten" = Zahl der Stundenwerte, ebd. 106, 117).
+  - Vorlage: `apps/web/src/components/reports/charts.ts:443-452`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:163-168,176-181`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift`
+- **mittel** — Felder der Karte nicht antippbar, keine Wiedergabe der Stunde
+  - Befund: Im Web traegt das Diagramm `onKlick={zurWiedergabe}` (apps/web/src/components/reports/YearMap.tsx:127), das aus Feldkoordinate x/y Tag und Stunde macht und `router.push("/waerme/wiedergabe?day=…&t=…")` ausfuehrt (ebd. 76-84), und das Hinweisfenster kuendigt es an (`klickHinweis: "Klick oeffnet die Wiedergabe dieser Stunde"`, ebd. 68; ausgewertet in charts.ts:440-442). In der iOS-Datei ist `feld(woche:tag:)` ein blosses `RoundedRectangle` mit `.fill`/`.frame`/`.accessibilityHidden` (JahreskarteSeite.swift:180-186); gesucht nach `onTapGesture`, `Button`, `gehe`, `wiedergabe` und `wegweiser` in der ganzen Datei - die einzigen Buttons sind die Kennzahlreiter (57) und die Jahrespfeile (75,78), und das eingebundene `wegweiser` (13) wird nirgends benutzt.
+  - Vorlage: `apps/web/src/components/reports/YearMap.tsx:68,76-84,127`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:180-186`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift`
+- **mittel** — Keine zweiseitige Netz-Skala, kein 98. Perzentil
+  - Befund: Web: `grid_net_kwh` ist Vorgabe (`useState<MetricKey>("grid_net_kwh")`, apps/web/src/components/reports/YearMap.tsx:37) und als einzige Kennzahl `diverging: true` mit `RAMP_NET` (ebd. 17), bernstein→neutral→mist (charts.ts:412-413); die Grenze ist `robustMax` = 98. Perzentil, bei divergierend ueber die Absolutwerte (charts.ts:418-424, 457-459). iOS: `farbe(_:)` normiert stattdessen auf `alle.max()` und klemmt mit `min(1, max(0, wert / hoechster))` (JahreskarteSeite.swift:190-196), womit jeder negative Wert auf Stufe 0 faellt - dieselbe Farbe wie die schwaechste Bezugsstunde. Die Skala ist die einseitige fuenfstufige `Marken.waerme` „kalt nach heiss" (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Gestalt/Marken.swift:129-132 ueber Farben.swift:72) mit der Legende nur „wenig"/„viel" (JahreskarteSeite.swift:127-136). Nach `Perzentil`, `perzentil`, `robust` und einer zweiten Rampe im ganzen iOS-Baum gesucht: kein Treffer.
+  - Vorlage: `apps/web/src/components/reports/YearMap.tsx:17,37 und apps/web/src/components/reports/charts.ts:413-424,457-459`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:127-136,190-196`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift`
+- **klein** — Kein Satz fuer ein Jahr ohne Stundenwerte, kein Werteumfang min-max
+  - Befund: Web: bei `data.hours_with_data === 0` steht statt des Diagramms „Fuer {year} liegen keine Stundenwerte vor." (apps/web/src/components/reports/YearMap.tsx:127), und die Fussnote nennt `Werteumfang {min} bis {max}` aus `extremes` (ebd. 85-89, 137). iOS: der `else`-Zweig greift nur, solange `karte == nil` ist, also waehrend des Holens („Wird geholt …", JahreskarteSeite.swift:39-41); sobald eine Antwort da ist, wird `Raster` gezeichnet, auch wenn `hoursWithData == 0` - ein Zweig fuer diesen Fall fehlt in 26-41. Nach `Werteumfang`, `Perzentil`, `Stundenwerte` und `hoursWithData` im ganzen iOS-Baum gesucht: `hoursWithData` erscheint nur als Zaehler in `Methode` (36) und in der Kachel „Stunden erfasst" (123), nie als Bedingung; ein Mindestwert kommt nirgends vor - die Kennzahlen zeigen nur `werte.max()` als „bester Tag" (118-122).
+  - Vorlage: `apps/web/src/components/reports/YearMap.tsx:85-89,127,137`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:26-41,118-123`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift`
 
-### `/strom/jahr`  ·  4 Punkte, davon 1 spürbar
+### `/strom/pv`  ·  3 Punkte, davon 1 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · diagramm — Die Webkarte ist ein Jahr als Tag × Stunde: je Tag alle 24 Stunden, 365 Spalten mal 24 Zeilen (Kicker "365 Tage × 24 Stunden"). Die iOS-Karte liest dieselbe Antwort als Wochen aus sieben Tagen und zeichnet darum nur sieben Felder je Tag - sichtbar sind die Stunden 0 bis 6, die übrigen 17 Stunden jedes Tages fehlen im Bild.
-  - Web: `apps/web/src/components/reports/YearMap.tsx:61-71 und apps/web/src/components/reports/charts.ts:447-451 (Schleife h = 0..23); Antwortform in apps/api/src/dch_api/schemas.py:607-620 ("metrics: Kennzahl → [Tag][Stunde 0-23]")`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:160-186 (Raster: HStack über wochen.count, innen ForEach(0..<7) - Index 0-6 der Stundenreihe)`
-- **mittel** · bedienung — Auf der Webseite öffnet ein Klick auf ein Feld die Wiedergabe genau dieser Stunde (/waerme/wiedergabe?day=…&t=…), und das Hinweisfenster sagt es auch an. Die Felder der iOS-Karte sind nicht antippbar.
-  - Web: `apps/web/src/components/reports/YearMap.tsx:68, 75-84, 127 (onKlick={zurWiedergabe})`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:180-186 (feld(woche:tag:) ist ein RoundedRectangle ohne Geste, zusätzlich accessibilityHidden)`
-- **mittel** · diagramm — Für die Kennzahl "Netz" (grid_net_kwh, die Vorgabe der Webseite) benutzt die Webkarte eine zweiseitige Skala: Bezug blau, Einspeisung bernstein, und die Obergrenze ist das 98. Perzentil, damit ein Ausreißer nicht das Jahr einfärbt. Die iOS-Karte hat eine einzige Skala "wenig → viel" und schneidet negative Werte auf die unterste Stufe ab - eingespeiste Stunden sind damit von den schwächsten Bezugsstunden nicht zu unterscheiden.
-  - Web: `apps/web/src/components/reports/YearMap.tsx:17, 37, 63-70 mit RAMP_NET und robustMax in apps/web/src/components/reports/charts.ts:413-424`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:188-200 (farbe(_:) normiert auf das Maximum, min(1, max(0, wert/hoechster))) und 127-136 (skala: nur "wenig"/"viel")`
-- **klein** · zustand — Die Webseite sagt es, wenn ein Jahr keine Stundenwerte hat ("Für 2023 liegen keine Stundenwerte vor."), und nennt unter der Karte den Werteumfang von min bis max. Die iOS-Seite zeichnet in diesem Fall ein leeres Raster ohne Satz; der Leerzustand greift nur, solange noch nichts geholt ist.
-  - Web: `apps/web/src/components/reports/YearMap.tsx:85-89, 127, 137`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:26-41 (if let karte … else Leer(satz: "Wird geholt …") - kein Zweig für hoursWithData == 0)`
+- **spürbar** — Prognoseteil fehlt: Prognose heute, morgen, Kurve · **teilweise**
+  - Befund: Auf der PV-Seite selbst stimmt es: StromSeite.swift:105-107 fragt ausschliesslich energieUebersicht, und api.plan() (Api.swift:167) bzw. api.verlauf() (Api.swift:133) kommen in der ganzen Datei nicht vor - Suche nach plan(, verlauf, Prognose, pvForecast, expectedPvKw in DuckCurveHome/Seiten/Energie/ ergibt keinen Treffer. Zwei der drei Darstellungen gibt es aber schon, nur auf der Startseite: die Kurve erwartete gegen gemessene PV steht in JetztSeite.swift:114-128 ueber Tageskurve.swift:164-171 (k.pvErwartet aus plan.intervals, mit Tagwahl heute/morgen statt beides in einem Bild), und "Sonne erwartet" in kWh fuer morgen in Tageskacheln.swift:91-93 mit der Summe aus Tageskacheln.swift:115-125; dazu das Band "Sonne erwartet" in Ausblickkarte.swift:103-108, eingebunden ueber Leiste.swift:32. Wirklich nirgends in der App: die Tagesprognose fuer heute als Zahl - pvForecastTodayKwh wird in keinem App-Code gelesen, nur in Vorschau.swift:261 und in Tests (NetzLaufTests.swift:55, FahrplanbildTests.swift:40).
+  - Vorlage: `apps/web/src/components/reports/PvReport.tsx:96-97, 106-109 (Stat "Prognose heute"/"Prognose morgen", Karte "Heute und morgen"), Summen in :24-36`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:103-127 (PvSeite holt nur api.energieUebersicht, kein api.plan(), kein api.verlauf())`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **mittel** — Kein Mehrspannen-Vergleich "PV im Ueberblick", keine zusammengesetzte Ersparnis
+  - Befund: Einen Baustein wie PeriodStrip gibt es in der App nicht: Suche nach PeriodStrip, Spannenstreifen, Ueberblick und "im Ueberblick" ueber alle .swift unter apps/ios ergibt keinen Treffer, und DuckCurveHome/Bausteine/ enthaelt nichts Entsprechendes. Es holt auch keine Seite mehr als eine Spanne zugleich - jeder Aufruf von energieUebersicht nimmt z.spanne.rawValue (StromSeite.swift:11, 106, 161; GeldSeiten.swift:15) oder fest "day" (JetztSeite.swift:211, 219, 239); ein Gegenstueck zu useMultiPeriod fehlt. Die zusammengesetzte Ersparnis fehlt ebenfalls: pvDirectSavingsEur steht nur in StromSeite.swift:143 ("ersparte Kosten"), batteryNetEur nur in StromSeite.swift:229 auf der Speicherseite ("unterm Strich"); die Summe der beiden kommt in keiner Datei vor.
+  - Vorlage: `apps/web/src/components/reports/PvReport.tsx:111-120 (PeriodStrip "PV im Ueberblick", Ersparnis = pv_direct_savings_eur + battery_net_eur), Baustein apps/web/src/components/reports/PeriodStrip.tsx:32-93`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:103-127 (PvSeite: Kachelfeld, ein Balkenbild, Methode - kein Streifen)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **klein** — Kachel "eingespeist" ohne Erloes und ohne Verguetungssatz
+  - Befund: Die Kachel in StromSeite.swift:137-140 traegt nur exportKwh und kein dazu:. Beide Felder gibt es im Schema und in genau der Antwort, die PvSeite schon laedt: exportRevenueEur in Schema.swift:3004 (EnergyTotalsOut) und feedInCtKwh in Schema.swift:2834 (EnergyMetaOut, haengt an EnergySummaryOut.meta, Schema.swift:2949). Benutzt werden sie in der App nur auf den Geldseiten - exportRevenueEur in GeldSeiten.swift:68, 90, 105 ("Einspeisung" auf /geld) und ein Verguetungssatz in GeldSeiten.swift:222, dort aber aus PvTaxTotals auf /geld/pv-abrechnung, nicht aus meta. Auf /strom/pv kommt keines von beiden vor; Suche nach exportRevenueEur, export_revenue, feedInCtKwh, Erloes und Verguetungssatz unter DuckCurveHome/Seiten/Energie/ ergibt keinen Treffer. Euro ist auf der Seite nicht tabu - "ersparte Kosten" steht in StromSeite.swift:143 -, es ist also eine reine Anzeigeluecke.
+  - Vorlage: `apps/web/src/components/reports/PvReport.tsx:90 (hint `Erloes ${eur(t.export_revenue_eur)} bei ${de1(data?.meta.feed_in_ct_kwh, 1)} ct`)`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:137-140 (Kacheldaten "eingespeist" mit exportKwh, ohne dazu:)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
 
-### `/strom/pv`  ·  3 Punkte, davon 1 spürbar
+### `/strom/speicher`  ·  6 Punkte, davon 2 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · abschnitt — Der ganze Prognoseteil fehlt: die Webseite zeigt "Prognose heute" und "Prognose morgen" in kWh und daneben die Kurve "Heute und morgen" - erwartete PV-Leistung aus dem Fahrplan gegen die gemessene Leistung des Tages. Die iOS-PV-Seite fragt weder den Fahrplan (plan) noch den Verlauf (history) ab und hat keine der drei Darstellungen.
-  - Web: `apps/web/src/components/reports/PvReport.tsx:46-61, 96-97, 106-109 mit pvForecastChart in apps/web/src/components/reports/charts.ts:178`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:103-148 (PvSeite: nur energieUebersicht, danach Kacheln, ein Balkenbild und Methode - kein api.plan(), kein api.verlauf())`
-- **mittel** · abschnitt — Die Webseite hat den Abschnitt "PV im Überblick" (Erzeugt, Eigenverbrauch, Einspeiseerlös, Ersparnis = PV direkt plus Batterieentladung) für Tag, Woche, Monat und Jahr nebeneinander. Auf der iOS-Seite gibt es keinen Mehrspannen-Vergleich und auch die zusammengesetzte Ersparnis nicht.
-  - Web: `apps/web/src/components/reports/PvReport.tsx:111-120`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:103-148 (PvSeite hat nur Kachelfeld, ein Balkenbild, Methode)`
-- **klein** · kennzahl — Die Webseite nennt an der Kachel "Eingespeist" den Erlös in Euro und den Vergütungssatz ("Erlös 12,40 € bei 8,2 ct"). Die iOS-Seite zeigt die eingespeisten kWh ohne Erlös und ohne Satz.
-  - Web: `apps/web/src/components/reports/PvReport.tsx:90`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:129-147 (kennzahlen(_:) der PvSeite: exportKwh ohne exportRevenueEur/feedInCtKwh)`
+- **spürbar** — Verlust im Geraet mit Kosten und entgangenem Erloes fehlt
+  - Befund: Web zeigt die Kachel in apps/web/src/components/reports/BatteryReport.tsx:138-144 (battery_device_kwh, battery_device_cost_eur, battery_device_opportunity_eur). Gesucht in der App nach batteryDevice, battery_device, "Verlust", "Ger" ueber apps/ios/DuckCurveHome/ - kein Treffer (batteryDevice* nur in apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:2991-3010, von keiner Seite gelesen; "Verlust" nur in Waermebildern, z.B. apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift:425). Nur der Pruefbericht im Kartentext (apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:190-199) beruehrt den Begriff qualitativ ueber eine andere Groesse (Ladestandsdifferenz, packages/hems-core/src/hems_core/accounting/battery_check.py:566-567) - ohne kWh-Kachel und ohne Euro.
+  - Vorlage: `apps/web/src/components/reports/BatteryReport.tsx:138-144`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:208-233`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **spürbar** — Ladezustand ueber den Tag als Minutenverlauf fehlt ganz
+  - Befund: Web holt die Minutenzeilen (apps/web/src/components/reports/BatteryReport.tsx:58-81) und zeichnet SoC ueber Leistung (BatteryReport.tsx:157-161, apps/web/src/components/reports/charts.ts:236). Die SpeicherSeite holt nur energieUebersicht und speicherPruefung (apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:157-163), kein api.verlauf/verlaufTag. batterySoc kommt in der App nur als Augenblickswert vor (apps/ios/DuckCurveHome/Seiten/Technik/AnlageSeite.swift:56, apps/ios/DuckCurveHome/Bausteine/Energiefluss.swift:233,267); die Tageskurve fuehrt PV, Haus, Waermepumpe und Preis, aber keine Batterie (kein Treffer fuer soc/batter in apps/ios/DuckCurveHome/Diagramme/Tageskurve.swift), Fahrplanzeichnung ebenfalls nicht.
+  - Vorlage: `apps/web/src/components/reports/BatteryReport.tsx:157-161`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:155-206`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **mittel** — Vollzyklen fehlen, Kapazitaet steht im Pruefbericht · **teilweise**
+  - Befund: Vollzyklen fehlen wirklich: gesucht nach Zyklen, Vollzyk, batteryCapacityKwh in apps/ios/DuckCurveHome/ - kein Treffer (battery_capacity_kwh nur in apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:2833 und in Tests), web rechnet sie in apps/web/src/components/reports/BatteryReport.tsx:94 und zeigt sie in :115 und :168. Die Kapazitaet dagegen steht auf der iOS-Seite: der Pruefbericht im Kartentext (apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:190-199) beginnt mit "Kapazitaet x.x kWh" (apps/api/src/dch_api/application/energy_accounting.py:623). Das capacityKwh in apps/ios/DuckCurveHome/Seiten/Technik/AnlageSeite.swift:92 ist der Waermepuffer, nicht die Batterie.
+  - Vorlage: `apps/web/src/components/reports/BatteryReport.tsx:94, 103, 115`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:208-233`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **mittel** — Untergrenze des Ladestands laesst sich nirgends stellen
+  - Befund: Web stellt reserve_soc auf dieser Seite (apps/web/src/components/reports/BatteryControl.tsx:103-117, send() mit reserve_soc in :54, eingehaengt in BatteryReport.tsx:146). Die SpeicherSeite der App hat keine Bedienung (apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:155-206). Einziger Sendeweg der App ist apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:536-537: BatteryModeIn(mode: art, durationMin: 240), reserveSoc bleibt nil; dort wird die Reserve nur angezeigt (MitteilungenSeite.swift:462-464). Gesucht nach reserveSoc/Untergrenze in der ganzen App - sonst nur Schema und ein unverwandter Achsenbegriff in Fahrplanbild.swift.
+  - Vorlage: `apps/web/src/components/reports/BatteryControl.tsx:103-117`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:536-537`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **klein** — PV-Anteil als Prozent fehlt, Wirkungsgrad im Pruefbericht · **teilweise**
+  - Befund: Der PV-Anteil der Ladung als Prozentwert fehlt wirklich: apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:208-233 nennt nur pvToBatteryKwh und gridToBatteryKwh in kWh; Formate.prozent kommt auf der Speicherseite nicht vor (im Strombereich nur in der Wallbox-Tabelle, StromSeite.swift:255), waehrend Web ihn in apps/web/src/components/reports/BatteryReport.tsx:95 rechnet und in :124 und :169 zeigt. Der Wirkungsgrad dagegen steht im Pruefbericht, den die App als Karte "Nachgerechnet" zeigt (StromSeite.swift:190-199): "Ladewirkungsgrad x %" aus packages/hems-core/src/hems_core/accounting/battery_check.py:639-643 - im Web ist die Kachel ohnehin nur die Ausweichanzeige, wenn der Ladestandsvergleich fehlt (BatteryReport.tsx:134).
+  - Vorlage: `apps/web/src/components/reports/BatteryReport.tsx:95-96, 124, 134`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:208-233`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **klein** — Mehrspannen-Streifen Speicher im Ueberblick fehlt
+  - Befund: Web haelt Tag, Woche, Monat, Jahr nebeneinander (apps/web/src/components/reports/BatteryReport.tsx:54 useMultiPeriod und :162-171 PeriodStrip, Bauteil apps/web/src/components/reports/PeriodStrip.tsx:32). Die SpeicherSeite laedt genau einen Zeitraum ueber Berichtsseite (apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:157-163, Gerippe in apps/ios/DuckCurveHome/Seiten/Bericht.swift:29-59, das nur wegweiser.zeitraum holt). Gesucht nach "berblick" in apps/ios/DuckCurveHome/ - kein Treffer; ein vergleichbarer Mehrspannen-Block existiert in der App nur fuer Waerme (apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift:50 und :317), nicht fuer den Speicher.
+  - Vorlage: `apps/web/src/components/reports/BatteryReport.tsx:162-171`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:155-206`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
 
-### `/strom/speicher`  ·  7 Punkte, davon 2 spürbar
+**Keine Lücke, nach Prüfung am Code:**
 
-- **spürbar** · kennzahl — Die Webseite zeigt "Verlust im Gerät": die Energie, die der Wandler als Ladung sah und die die Zellen nie erreichte (battery_device_kwh), dazu was sie gekostet hat und was dadurch entgangen ist. Auf der iOS-Seite kommt das nirgends vor.
-  - Web: `apps/web/src/components/reports/BatteryReport.tsx:138-144`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:208-233 (kennzahlen(_:) der SpeicherSeite; batteryDeviceKwh/batteryDeviceCostEur/batteryDeviceOpportunityEur stehen in keiner Seite der App)`
-- **spürbar** · diagramm — Die Webseite zeigt "Ladezustand über den Tag": zwei übereinanderliegende Flächen aus Minutenwerten - oben der Ladestand in Prozent, unten die Speicherleistung (+ Entladen, − Laden). Die iOS-Seite holt für den Speicher keine Minutenreihe und hat diesen Verlauf nicht.
-  - Web: `apps/web/src/components/reports/BatteryReport.tsx:58-81, 157-161 mit batteryDayChart in apps/web/src/components/reports/charts.ts:236-275`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:155-206 (SpeicherSeite holt nur energieUebersicht und speicherPruefung; kein api.verlauf/verlaufTag, kein Verlaufsbild)`
-- **mittel** · kennzahl — Die Webseite zeigt "Vollzyklen" (Entladung geteilt durch die Kapazität, dazu die Kapazität selbst im Seitenkopf). Die iOS-Seite nennt weder Vollzyklen noch die Kapazität.
-  - Web: `apps/web/src/components/reports/BatteryReport.tsx:94, 103, 115`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:208-233 (keine Zyklenzahl; meta.batteryCapacityKwh wird von keiner Seite der App gelesen)`
-- **mittel** · bedienung — Die Webseite lässt auf dieser Seite die Untergrenze des Ladestands stellen (aus / 6 / 10 / 15 / 20 %, reserve_soc) und zeigt dazu Betriebsart, Ladestand und die Rückmeldung des Geräts. Die iOS-Speicherseite hat keine Steuerung, und auch das Batterieblatt der App sendet nur die Betriebsart ohne reserveSoc - die Untergrenze lässt sich in der App nirgends stellen.
-  - Web: `apps/web/src/components/reports/BatteryControl.tsx:103-117 (Untergrenze), eingehängt in BatteryReport.tsx:146`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:155-206 (SpeicherSeite ohne jede Bedienung); apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:532-538 (stelle(_:) sendet BatteryModeIn(mode:durationMin:), reserveSoc bleibt nil)`
-- **mittel** · zustand — Die Webseite warnt an den Herkunftskacheln, wenn ein Teil des Zeitraums nur als Stundenmittel vorliegt: "Aufteilung für 23 % des Zeitraums geschätzt" (coarse_minutes). Die iOS-Seite zeigt diesen Güte-Hinweis nicht.
-  - Web: `apps/web/src/components/reports/BatteryReport.tsx:92-93, verwendet in 106, 112, 124`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:200-204 (Methode der SpeicherSeite: nur estimatedNoteDe und ein Satz zur Herkunft; coarseMinutes kommt in keiner Seite vor)`
-- **klein** · kennzahl — Die Webseite zeigt den PV-Anteil der Ladung als Prozentwert und, wenn der Ladestandsvergleich nicht möglich ist, den Wirkungsgrad (Entladen geteilt durch Geladen). Die iOS-Seite nennt nur die absoluten kWh aus Sonne und Netz, keinen der beiden Anteile.
-  - Web: `apps/web/src/components/reports/BatteryReport.tsx:95-96, 124, 134`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:208-233`
-- **klein** · abschnitt — Die Webseite hat den Abschnitt "Speicher im Überblick" (Ersparnis netto, Entladen, Vollzyklen, PV-Anteil) für Tag, Woche, Monat und Jahr nebeneinander; die iOS-Seite zeigt immer nur die gewählte Spanne.
-  - Web: `apps/web/src/components/reports/BatteryReport.tsx:162-171`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:155-206`
+- ~~Guetehinweis zu Stundenmitteln steht in der Methode~~ – Der Hinweis steht auf der iOS-Seite, nur anders platziert: apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:200-204 zeigt meta.estimatedNoteDe, und dieser Text traegt den Stundenmittel-Zusatz selbst - apps/api/src/dch_api/application/energy_accounting.py:1181 haengt coarse_note(totals) an, das in :359-363 "Fuer n Stunden (x %) liegen nur Stundenmittel aus dem Historienimport vor ... die Aufteilung auf PV und Netz ist geschaetzt" liefert. Das Dashboard zeigt denselben Satz ebenfalls in der Methode (apps/web/src/components/reports/ReportShell.tsx:171) und wiederholt ihn zusaetzlich an den Herkunftskacheln (BatteryReport.tsx:92-93, 106, 112, 124). Es fehlt also nur die Wiederholung an der Kachel, nicht der Hinweis.
 
-### `/strom/wallbox`  ·  5 Punkte, davon 2 spürbar
+### `/strom/wallbox`  ·  5 Punkte, davon 2 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · diagramm — Die Webseite zeigt die geladene Energie als gestapelte Balken je Zeitschritt nach Herkunft (aus PV, aus Batterie, aus Netz). Die iOS-Seite hat überhaupt kein Diagramm - nur Kacheln und die Tabelle der Ladevorgänge.
-  - Web: `apps/web/src/components/reports/EvReport.tsx:14-18, 46-51`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:237-272 (WallboxSeite: Kachelfeld, Karte mit Tabelle, Methode - kein Balkenbild)`
-- **spürbar** · kennzahl — Die Webseite zeigt den Sonnenanteil des Zeitraums als Prozentwert und rechnet dafür die Ladung aus der Batterie mit (ev_battery_kwh, Hinweis "PV 7,2 · Batt. 3,1 kWh"). Die iOS-Seite kennt nur Sonne und Netz in kWh; der Batterieanteil und der Prozentwert fehlen ganz.
-  - Web: `apps/web/src/components/reports/EvReport.tsx:28, 40`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:274-289 (kennzahlen(_:) der WallboxSeite: evKwh, Anzahl, evPvKwh, evGridKwh, evCostEur, evOpportunityEur; evBatteryKwh wird in keiner Seite gelesen)`
-- **mittel** · kennzahl — Die Webseite zeigt zwei Preiskennzahlen: "Effektiv je kWh" in ct (Bezahltes plus Entgangenes je geladener kWh) und den mittleren bezahlten Preis des Netzanteils ("Ø 31,2 ct/kWh bezahlt"). Beides fehlt auf der iOS-Seite.
-  - Web: `apps/web/src/components/reports/EvReport.tsx:29-30, 41, 44`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:274-289`
-- **klein** · kennzahl — In der Tabelle der Ladevorgänge zeigt die Webseite zusätzlich die Dauer je Vorgang ("1 h 25 min") und stellt die jüngste Ladung nach oben; die iOS-Tabelle nennt nur Beginn und Ende und übernimmt die Reihenfolge des Dienstes.
-  - Web: `apps/web/src/components/reports/EvReport.tsx:32, 63, 71, 75`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:243-269 (Zeilenname "hh:mm – hh:mm", Spalten kWh, Sonnenanteil, Netz, Kosten, mittlere Leistung; keine Dauer, keine Sortierung)`
-- **klein** · abschnitt — Die Webseite hat den Abschnitt "Wallbox im Überblick" (Geladen, Sonnenanteil, Bezahlt, Ladevorgänge) für Tag, Woche, Monat und Jahr nebeneinander; die iOS-Seite zeigt immer nur die gewählte Spanne.
-  - Web: `apps/web/src/components/reports/EvReport.tsx:91-100`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:237-272`
+- **spürbar** — Kein Balkenbild der Ladung nach Herkunft
+  - Befund: WallboxSeite besteht aus Kachelfeld, Karte mit Tabelle und Methode - kein Chart (StromSeite.swift:237-272); gesucht nach Balkenbild, Chart, Stapel, gestapelt und buckets im ganzen Seitenbaum: StromSeite.swift nennt buckets nur in der StromSeite selbst (StromSeite.swift:52-81, 88-96, 113-117), nie in der WallboxSeite, und 'Balkenbild' kommt in StromSeite.swift an den Zeilen 15, 18, 110, 168, 180 vor, also ausschliesslich oberhalb von Zeile 236. Der Baustein ist da und passt genau (Bericht.swift:66-116, BarMark mit stacking .standard je Beschriftung), und die Felder je Bucket gibt es (Schema.swift:3001 evBatteryKwh in den Totals, die auch die Buckets tragen) - es fehlt nur der Aufruf. Das 'Verbrauch'-Bild auf /strom (StromSeite.swift:69-83) zeigt evKwh als einen Stapelteil des Hausverbrauchs, nicht die Herkunft der Ladung, ist also nicht dasselbe Bild.
+  - Vorlage: `apps/web/src/components/reports/EvReport.tsx:14-18, 31, 46-51`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:241-271`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **spürbar** — Sonnenanteil in Prozent und Batterieanteil fehlen
+  - Befund: Die sechs Kacheln der WallboxSeite sind geladen, Ladevorgaenge, aus der Sonne (evPvKwh, kWh), aus dem Netz (evGridKwh, kWh), Kosten, entgangene Einspeisung (StromSeite.swift:276-288) - kein Prozentwert fuer den Zeitraum und kein Batterieanteil. evBatteryKwh existiert im Schema (Schema.swift:3001, Codingschluessel ev_battery_kwh Schema.swift:3051), wird aber in der gesamten App nicht gelesen: grep nach evBatteryKwh in apps/ios trifft nur Schema.swift und ABGLEICH.md, und grep nach evKwh/evPvKwh/evGridKwh/evCostEur/evOpportunityEur in DuckCurveHome trifft nur StromSeite.swift:81 und 277-285. Einzige Einschraenkung: einen Prozentwert gibt es auf der Seite in der Spalte 'Sonnenanteil' je Ladevorgang (StromSeite.swift:253-256, Feld pvShare aus Schema.swift:3241), also je Vorgang, nicht fuer den Zeitraum und ohne Batterie - die Kennzahl selbst fehlt.
+  - Vorlage: `apps/web/src/components/reports/EvReport.tsx:28, 40`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:274-289`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **mittel** — Effektivpreis je kWh und mittlerer bezahlter Netzpreis fehlen
+  - Befund: Die Vorlage rechnet effCt = (ev_cost_eur + ev_opportunity_eur) / ev_kwh (EvReport.tsx:30, Kachel Zeile 44) und paidCt = ev_cost_eur / ev_grid_kwh (EvReport.tsx:29, als Hinweis an der Netzkachel Zeile 41). In der App kommt keine der beiden Groessen vor: grep ohne Gross-Kleinschreibung nach effektiv, ct/kWh, 'je kWh' und bezahlt in apps/ios/DuckCurveHome trifft ct/kWh nur in GeldSeiten.swift:110 und 222, RechnungenSeite.swift:125/136/205, SystemSeiten.swift:320, FahrplanSeiten.swift:248, Ausblickkarte.swift:45, Leiste.swift:168 und Fahrplanzeichnung.swift:29 - alles Preis- und Rechnungsseiten, keine Wallbox. Die Kachel 'aus dem Netz' (StromSeite.swift:282) hat gar kein dazu-Feld, die Kachel 'Kosten' (StromSeite.swift:283) nur den Euro-Betrag. Formate.ct gibt es (Formate.swift:93), es wird hier nur nicht gerufen.
+  - Vorlage: `apps/web/src/components/reports/EvReport.tsx:29-30, 41, 44`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:274-289`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **klein** — Tabelle ohne Dauer und ohne jüngste Ladung oben
+  - Befund: Die iOS-Tabelle hat die Zeilennamen 'hh:mm – hh:mm' aus Formate.hhmm (StromSeite.swift:248-250) und die fuenf Spalten kWh, Sonnenanteil, Netz, Kosten, mittlere Leistung (StromSeite.swift:251-266) - keine Dauerspalte; die Vorlage fuehrt Dauer als eigene Spalte und rechnet sie aus start/end (EvReport.tsx:61, 71, 75). Sortiert wird nichts: grep nach sorted und reversed in StromSeite.swift bleibt leer, b.sessions wird in der Reihenfolge des Dienstes gemappt, waehrend die Vorlage absteigend nach start sortiert (EvReport.tsx:32). Der Baustein fuer die Dauer ist vorhanden und wird anderswo genutzt (Formate.dauer(minuten:) in Formate.swift:105-111, z. B. WaermepumpeSeiten.swift:234); EvSessionOut hat kein Dauerfeld (Schema.swift:3237-3254), die Minuten muessen also wie im Web aus start und end gerechnet werden.
+  - Vorlage: `apps/web/src/components/reports/EvReport.tsx:32, 61, 71, 75`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:243-269`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
+- **klein** — Abschnitt Wallbox im Überblick über vier Spannen fehlt
+  - Befund: Die Vorlage holt alle vier Spannen zum selben Anker (useMultiPeriod, EvReport.tsx:26, 33) und stellt Geladen, Sonnenanteil, Bezahlt und Ladevorgaenge nebeneinander (EvReport.tsx:91-100). Die WallboxSeite holt genau eine Antwort zum gewaehlten Zeitraum (StromSeite.swift:239-240 ueber Berichtsseite, Bericht.swift:29-51) und zeigt auch nur diese; grep nach PeriodStrip, Spannenstreifen, 'im Überblick' und useMultiPeriod in apps/ios trifft nichts. Dasselbe Muster gibt es in der App schon, aber nur auf der Waermeseite: WaermeSeite.swift:50 holt alle Spanne.allCases, WaermeSeite.swift:182 und 313-317 stellen sie als Tabellenspalten nebeneinander - auf der Wallboxseite fehlt es.
+  - Vorlage: `apps/web/src/components/reports/EvReport.tsx:91-100`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:237-272`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift`
 
-### `/system/daten`  ·  4 Punkte, davon 2 spürbar
+### `/system/daten`  ·  4 Punkte, davon 2 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · diagramm — Die Webseite legt die Messreihen des Tages uebereinander auf eine kW-Achse (Erzeugung, Haus, Netz, Speicher, dazu gestrichelt Ladestand und amtlicher Zaehler) mit waehlbarem Zeitfenster, samt Leerzustand "Fuer diesen Tag liegen keine Minutenwerte vor"; die iOS-Seite zeigt keine Messreihen und fragt den Tagesverlauf gar nicht ab.
-  - Web: `apps/web/src/components/reports/DataCheck.tsx:38 (api.historyDay) und :71-86 (Karte "Leistungen ueber den Tag" mit powerOverlay und Leerzustand)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:453-591 - DatenSeite holt in lade() nur abdeckung, datenbestand und diagnose; verlaufTag(_:) aus DuckCurveKit/Sources/DuckCurveKit/Netz/Api.swift:155 wird auf dieser Seite nicht gerufen`
-- **spürbar** · abschnitt — Die Webseite zeigt die Karte "Quellen - liefert gerade, was liefern soll?": je Quelle ein Punkt online/offline mit dem fertigen Satz des Dienstes (Zaehler, Abfragen, Alter des letzten Messwerts) und darueber die Zeile, ob die Anforderung an die Waermepumpe wirklich geschaltet wird. Die iOS-Seite hat dazu nichts.
-  - Web: `apps/web/src/components/reports/DataCheck.tsx:91-96 (Karte "Quellen") mit apps/web/src/components/reports/Sources.tsx:47-81 (state.system.sources, online, detail_de, hp_actuation)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:453-591 - kein Zugriff auf haus.zustand?.system.sources; SourceStatusOut (Schema.swift:8199) wird in der ganzen App nirgends angezeigt`
-- **mittel** · diagramm — Die Webseite zeigt die Abdeckung als Flaeche aus Tagen und Stunden (Minuten je Stunde, 0 bis 60, 28 Tage) und unterscheidet dabei leere Zelle (keine Minutenzeile, Ausfall des Dienstes) von roter Zelle (Reihe fehlt); die App fasst dieselben Daten nur je Reihe zu einer Zeile zusammen, das Muster je Stunde fehlt.
-  - Web: `apps/web/src/components/reports/CoverageMap.tsx:104-131 (yearMap ueber series.hours, "Kommen die Daten an? 28 Tage")`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:478-520 - Tabelle mit vollstaendig, Minuten, lueckige Stunden, laengste Luecke, zuletzt; die Stundenwerte je Reihe (CoverageSeriesOut.hours) werden nicht dargestellt`
-- **mittel** · bedienung — Die Webseite bietet die Minutenwerte des angezeigten Tages als CSV zum Herunterladen an; in der App gibt es keinen Export.
-  - Web: `apps/web/src/components/reports/DataCheck.tsx:52-56 und :100-110 (Verweis "Minutenwerte dieses Tages als CSV" auf /api/dch/export/minutes)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:453-591 - kein Knopf und kein ShareLink; in apps/ios/DuckCurveHome gibt es ueberhaupt keinen Aufruf eines Export-Endpunkts`
+- **spürbar** — Messreihen des Tages als kW-Überlagerung fehlen
+  - Befund: Die DatenSeite holt in lade() nur abdeckung, datenbestand und diagnose (apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:612-628); verlaufTag(_:) (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Netz/Api.swift:155) wird nur in apps/ios/DuckCurveHome/Seiten/Jetzt/JetztSeite.swift:214,250 und apps/ios/DuckCurveHome/App/Hauszustand.swift:250 gerufen. Die einzige Tageszeichnung der App (apps/ios/DuckCurveHome/Diagramme/Tageskurve.swift:56-110) kennt nur pv, pvErwartet, haus, waermepumpe, schatten, preis (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Zustand/Tageskurve.swift:77-99) - Netz, Speicher, Ladestand und amtlicher Zaehler kommen in ihr nicht vor (grep netz/batterie in Tageskurve.swift: kein Treffer). Erschwerend: Minutenraster.punktAusZeile (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Zustand/Verlauf.swift:77-90) liest battery_soc und grid_power_meter_kw gar nicht ein, waehrend die Webreihen genau daraus bestehen (apps/web/src/components/reports/charts.ts:754, 765-768).
+  - Vorlage: `apps/web/src/components/reports/DataCheck.tsx:38, 71-86; apps/web/src/components/reports/charts.ts:720-774`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:612-628`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (dazu eine neue Zeichnung in apps/ios/DuckCurveHome/Diagramme/ und zwei Felder in apps/ios/DuckCurveKit/Sources/DuckCurveKit/Zustand/Verlauf.swift)`
+- **spürbar** — Karte Quellen: online je Quelle plus Schaltzeile · **teilweise**
+  - Befund: Der Quellenteil fehlt wirklich: SourceStatusOut (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:7775) wird in der ganzen App nirgends verwendet (grep SourceStatusOut trifft nur Schema.swift:7775, 8199, 8222, 8247), detailDe wird nur in apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:180 fuer einen anderen Typ gelesen; von den drei Quellen steht nur die Bruecke verkuerzt auf einer anderen Seite (apps/ios/DuckCurveHome/App/Einrichten.swift:287, "Bruecke verbunden/nicht verbunden", ohne Zaehler, Abfragen, Alter). Die mitgenannte Schaltzeile ist dagegen schon da, nur anderswo: apps/ios/DuckCurveHome/Bausteine/Blaetter.swift:353-354 zeigt hpActuation als "Schalten freigegeben/gesperrt" mit hpActuationDe, ebenso apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift:48 und apps/ios/DuckCurveKit/Sources/DuckCurveKit/Zustand/Fahrplankacheln.swift:47.
+  - Vorlage: `apps/web/src/components/reports/DataCheck.tsx:91-96; apps/web/src/components/reports/Sources.tsx:47-81`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:505-571 (keine Quellenkarte); Teilstueck vorhanden in apps/ios/DuckCurveHome/Bausteine/Blaetter.swift:353-354`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **mittel** — Abdeckung je Stunde als Flaeche fehlt
+  - Befund: Das Feld traegt die Stundenwerte (CoverageSeriesOut.hours, apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:2365), wird aber nirgends gelesen: der einzige Treffer fuer .hours ausserhalb des Schemas ist ein Doc-Kommentar in apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Mischwert.swift:10. Die App fasst stattdessen je Reihe eine Tabellenzeile zusammen (apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:511-546: vollstaendig, Minuten, lueckige Stunden, laengste Luecke, zuletzt). Ein Tagesraster kann die App zwar zeichnen, aber nur fuer Energiemengen und nicht fuer Abdeckung je Stunde (apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:11-33, YearMapOut); die Unterscheidung leere gegen rote Zelle gibt es dort nicht.
+  - Vorlage: `apps/web/src/components/reports/CoverageMap.tsx:34-43, 104-131`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:511-546`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **mittel** — CSV-Export der Minutenwerte fehlt ganz
+  - Befund: Auf der DatenSeite steht nur Abdeckung, Datenbestand, Tagesdiagnose und Methode (apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:505-571), kein Knopf und kein Verweis. Gesucht nach ShareLink, fileExporter, UIActivity, Transferable, UTType, ".csv", "export/minutes", "export/hours" und "/export" in apps/ios/DuckCurveHome und apps/ios/DuckCurveKit/Sources: kein Treffer; apps/ios/DuckCurveKit/Sources/DuckCurveKit/Netz/Api.swift enthaelt das Wort export ueberhaupt nicht, es gibt also auch keine Client-Methode dafuer. Die Treffer auf "export" in den Seiten sind durchweg exportKwh/exportRevenueEur, also Einspeisung, nicht Herunterladen.
+  - Vorlage: `apps/web/src/components/reports/DataCheck.tsx:52-56, 100-110`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:505-571`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (dazu eine Export-Methode in apps/ios/DuckCurveKit/Sources/DuckCurveKit/Netz/Api.swift)`
 
-### `/system/haustuer`  ·  1 Punkte
+### `/system/haustuer`  ·  1 Punkte  ·  *gegengeprüft 17.11.*
 
-- **mittel** · kennzahl — Die Webseite ordnet jeden Eintrag einem Tag zu (Heute, Gestern, sonst Wochentag und Datum als Ueberschrift der Gruppe); die App zeigt je Eintrag nur die Uhrzeit, so dass bei 7, 30 oder 90 Tagen nicht zu erkennen ist, an welchem Tag jemand vor der Tuer stand.
-  - Web: `apps/web/src/components/settings/DoorLog.tsx:24-32 (dayLabel) und :121-134 (Gruppen je Tag mit Ueberschrift)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:636-658 - eintrag(_:) setzt nur Formate.hhmm(iso: e.at); die Liste ab Zeile 618 ist flach, ohne Tagesgruppe und ohne Datum`
+- **mittel** — Tuerprotokoll ohne Tagesgruppe und ohne Datum
+  - Befund: Web gruppiert wirklich je Kalendertag: groupByDay in apps/web/src/components/settings/DoorLog.tsx:48-57, dayLabel (Heute/Gestern/sonst Wochentag + Tag + Monat) in :24-32, und :121-134 zeichnet je Gruppe eine eigene Kachel mit dayLabel als Ueberschrift. Die iOS-Seite HaustuerSeite (apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:632-707) baut ab :657-668 eine flache VStack-Liste direkt ueber p.entries, ohne jede Gruppierung, und eintrag(_:) gibt als einzige Zeitangabe Formate.hhmm(iso: e.at) aus (:691), also nur hh:mm (Formate.swift:131-134). Ich habe im ganzen Bereich :631-708 nach Tag, Datum, Heute, Gestern, wochentag, gruppiert und Dictionary(grouping gesucht - kein Treffer; die vorhandenen Helfer Tag.nameRelativ (Tag.swift:102-108) und Formate.langesDatum (Formate.swift:167-171) werden hier nicht benutzt. Die Spanne stimmt ebenfalls: Tagewahl bietet 7, 30, 90 (:641), waehrend das Web nur 7, 14, 30 kennt (DoorLog.tsx:22), der Zeitraum ohne Datum ist in der App also noch laenger. Nur die Zeilenangaben des Punktes sind leicht verschoben (nicht :636-658 und :618, sondern :632-707 mit Liste :657-668 und eintrag :677-696).
+  - Vorlage: `apps/web/src/components/settings/DoorLog.tsx:24-32, :48-57, :121-134`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:657-668 (flache Liste), :691 (nur hhmm)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
 
-### `/system/mitteilungen`  ·  3 Punkte
+### `/system/mitteilungen`  ·  3 Punkte  ·  *gegengeprüft 17.11.*
 
-- **mittel** · zustand — Nach einer Probe und nach dem Versand des Briefings zeigt die Webseite die Einzelheiten je Gerat (details_de), also woran eine Zustellung scheiterte; die App zeigt nur den einen Satz message_de.
-  - Web: `apps/web/src/components/settings/Mitteilungen.tsx:175-176 und :246-250 (details_de als Liste) sowie apps/web/src/components/settings/Morgenbrief.tsx:55-56 und :106-110`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:211-241 - probe() und sendeBrief() uebernehmen nur a.messageDe; detailsDe (PushResultOut, Schema.swift) wird in der ganzen App nicht gelesen`
-- **mittel** · zustand — Ist kein Gerat angemeldet, warnt die Webseite ausdruecklich ("Kein Gerat angemeldet" und: dann gehen weder Stoerungen noch das Morning Briefing an jemanden, beim Briefing zusaetzlich aus stand.geraete); die App laesst die Geratekarte in diesem Fall einfach weg und sagt nichts.
-  - Web: `apps/web/src/components/settings/Mitteilungen.tsx:252-267 (Leerzustand mit Warnsatz) und apps/web/src/components/settings/Morgenbrief.tsx:99-103 (Warnung bei geraete == 0)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:29-38 - die Karte steht unter `if let g = geraete, !g.devices.isEmpty`, es gibt keinen else-Zweig; b.geraete aus MorgenbriefOut wird in morgenbrief(_:) (Zeile 139-180) nicht ausgewertet`
-- **klein** · bedienung — Die Webseite laesst auch dann eine Probe an die angemeldeten Gerate schicken, wenn dieses Gerat selbst nicht angemeldet ist; in der App gibt es den Probeknopf nur im Zustand "angemeldet".
-  - Web: `apps/web/src/components/settings/Mitteilungen.tsx:238-242 ("Probe an die angemeldeten Gerate", wenn lage != "an" und Gerate vorhanden)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:58-72 - "Probe senden" steht allein im Fall .angemeldet des switch ueber mitteilungen.stand; in den Faellen .ungefragt, .erlaubt, .abgelehnt und .fehler gibt es keinen Probeknopf`
+- **mittel** — details_de je Gerät nach Probe und Briefversand fehlt
+  - Befund: Web setzt und zeigt die Liste zweimal: apps/web/src/components/settings/Mitteilungen.tsx:175 (setDetails(antwort.details_de ?? [])) und :246-250 (ul mit details.map), sowie apps/web/src/components/settings/Morgenbrief.tsx:56 und :106-110. In der App nehmen probe() (apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:218-229) und sendeBrief() (:239-247) nur a.messageDe in rueckmeldung; das Feld existiert im Modell (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:6236 detailsDe in PushResultOut, Schlüssel details_de :6242), wird aber nirgends gelesen: grep nach detailsDe und details_de über apps/ios/ trifft außer ABGLEICH.md nur Schema.swift:6236/6242/6245/6249/6257 und Binärdateien in .build. Hinweis: die Zeilenangabe 211-241 in ABGLEICH.md ist um ~7 Zeilen verschoben, die beiden Funktionen stehen bei :218-247.
+  - Vorlage: `apps/web/src/components/settings/Mitteilungen.tsx:175,246-250; apps/web/src/components/settings/Morgenbrief.tsx:56,106-110`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:218-229 und :239-247 (fehlt); Feld vorhanden: apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:6236`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift`
+- **mittel** — Warnsatz bei keinem angemeldeten Gerät fehlt · **teilweise**
+  - Befund: Zwei Teile. Der nackte Satz steht schon in der App, nur auf einer anderen Seite: apps/ios/DuckCurveHome/App/Einrichten.swift:296-299 zeigt in ZugangSeite die Karte "Angemeldete Geräte für Mitteilungen" mit Leer(satz: "Kein Gerät angemeldet.") – also auf /system/zugang, nicht auf /system/mitteilungen. Es fehlt (a) dieser Leerzustand auf der Mitteilungenseite selbst: apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:29-38 hängt die Gerätekarte an `if let g = geraete, !g.devices.isEmpty` ohne else-Zweig, und :161/283/295/476/480/575 sind die einzigen Leer(…) der Datei, keines davon für Geräte; und (b) überall der Warnsatz, dass dann nichts bei jemandem ankommt (Web: apps/web/src/components/settings/Mitteilungen.tsx:255 Kicker "Kein Gerät angemeldet" plus :257-260 "gehen weder Störungen noch das Morning Briefing an jemanden", und apps/web/src/components/settings/Morgenbrief.tsx:99-103 bei stand.geraete == 0). Gesucht in apps/ios/ nach "Kein Gerät", "niemand", "Störung/Stoerung", "geht an", "anmelden": die Stoerung-Treffer sind nur die Fehleransicht, kein Warntext. b.geraete aus MorgenbriefOut (Schema.swift:5607/5617) wird in morgenbrief(_:) (:142-185) nicht ausgewertet; grep nach `.geraete` in DuckCurveHome/ trifft nur geraetename/geraetekennung und die Zustandsvariablen.
+  - Vorlage: `apps/web/src/components/settings/Mitteilungen.tsx:252-267; apps/web/src/components/settings/Morgenbrief.tsx:99-103`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:29-38 und :142-185 (fehlt); Teil vorhanden: apps/ios/DuckCurveHome/App/Einrichten.swift:296-299`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift`
+- **klein** — Probe an andere Geräte ohne eigene Anmeldung fehlt
+  - Befund: Web hat den zweiten Probeknopf unabhängig von der eigenen Lage: apps/web/src/components/settings/Mitteilungen.tsx:238-242 rendert "Probe an die angemeldeten Geräte" bei `lage !== "an" && geraete && geraete.length > 0` (derselbe probe()-Aufruf wie :230-232). In der App steht knopf("Probe senden") allein im Fall .angemeldet des switch über mitteilungen.stand: apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:85, switch bei :66-98; die Fälle .ungefragt (:67-70), .abgelehnt (:71-78), .erlaubt (:79-82) und .fehler (:93-97) bieten nur Text oder den Erlaubnisknopf. Auch die Gerätekarte (:29-38) hat keinen Knopf. grep nach "Probe" und mitteilungProbe über apps/ios/ findet in der App nur :85, :221 und :224 – also genau den einen Pfad.
+  - Vorlage: `apps/web/src/components/settings/Mitteilungen.tsx:238-242`
+  - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:66-98 (Probeknopf nur :85, Gerätekarte :29-38 ohne Knopf)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift`
 
-### `/system/zugang`  ·  1 Punkte, davon 1 spürbar
+### `/system/zugang`  ·  1 Punkte, davon 1 spürbar  ·  *gegengeprüft 17.11.*
 
-- **spürbar** · bedienung — Die Webseite bietet die jaehrliche Sicherung an: Minutenwerte und Stundenbilanz des laufenden und des vorigen Jahres zum Herunterladen (die Stundenbilanz traegt die Grundlagen der PV-Abrechnung); in der App gibt es keine Moeglichkeit, die Daten herauszuholen.
-  - Web: `apps/web/src/app/system/zugang/page.tsx:134-149 (je Jahr "Minutenwerte" und "Stundenbilanz" auf /api/dch/export/minutes bzw. /export/hours)`
-  - iOS: `apps/ios/DuckCurveHome/App/Einrichten.swift:235-336 - ZugangSeite hat die Karten Dieses Gerat, Verbindung, Angemeldete Gerate und Aendern; kein Export, kein ShareLink, und in apps/ios/DuckCurveHome wird kein Export-Endpunkt aufgerufen`
+- **spürbar** — Kein Datenexport (Minutenwerte/Stundenbilanz) in der App
+  - Befund: Die Webseite hat den Abschnitt "Sicherung" (page.tsx:127) und bietet je Jahr (laufendes und voriges) zwei Download-Links auf /api/dch/export/minutes (page.tsx:138-139) und /api/dch/export/hours (page.tsx:141-142), mit dem Hinweis, dass die Stundenbilanz die Grundlagen der PV-Abrechnung traegt (page.tsx:146-151). In der App rendert Seitenwahl.swift:91-92 fuer /system/zugang die ZugangSeite (Einrichten.swift:254-356); sie hat genau die Karten "Dieses Gerät" (261), "Verbindung" (281), "Angemeldete Geräte für Mitteilungen" (297) und "Ändern" (318) plus Methode-Block - keine Sicherungskarte. Gesucht habe ich im ganzen iOS-Baum (DuckCurveHome und DuckCurveKit/Sources) nach ShareLink, UIActivityViewController, fileExporter, Transferable (null Treffer), nach openURL und Link( (null Treffer), nach export/minutes, export/hours und /export (null Treffer), sowie nach Sicherung, Minutenwerte, Stundenbilanz, herunterlad, download, backup, csv, gzip, archiv, exportier, FileManager, UTType - die Treffer sind ausschliesslich Kommentare, Modellfelder (Schema.swift exportKwh/exportRevenueEur, also Einspeise-Kennzahlen, nicht Dateiexport), der Reitername "Zugang und Sicherung" (Bereiche.swift:148) und unverwandte Dinge (Entscheidungsarchiv MitteilungenSeite.swift:557). Api.swift hat 63 oeffentliche Funktionen, keine davon beruehrt einen Export-Endpunkt (docs/openapi.json kennt /export gar nicht, der Web-Weg laeuft als CSV-Strom ueber den Proxy apps/web/src/app/api/dch/[...path]). Der Reiter heisst in der App also "Zugang und Sicherung", ohne dass es eine Sicherung gibt.
+  - Vorlage: `apps/web/src/app/system/zugang/page.tsx:127-151`
+  - In der App: `apps/ios/DuckCurveHome/App/Einrichten.swift:254-356`
+  - bauen in: `apps/ios/DuckCurveHome/App/Einrichten.swift`
 
 ### `/waerme/anlage`  ·  4 Punkte
 
