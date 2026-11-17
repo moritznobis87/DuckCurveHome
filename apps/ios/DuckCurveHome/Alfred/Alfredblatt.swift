@@ -287,9 +287,7 @@ struct Alfredblatt: View {
             for await werkzeug in fortschritt { schritt = Alfred.schrittText(werkzeug) }
         }
         do {
-            let antwort = try await haus.api.alfredFrageMitFortschritt(eingabe) { werkzeug in
-                weiter.yield(werkzeug)
-            }
+            let antwort = try await frageMitRueckfallebene(eingabe, weiter: weiter)
             sage(.alfred, antwort.antwort, ausModell: true)
             vorschlaege = antwort.vorschlaege
         } catch {
@@ -299,6 +297,28 @@ struct Alfredblatt: View {
         anzeige.cancel()
         laeuft = false
         schritt = nil
+    }
+
+    /// Erst der Weg mit Fortschritt, und wenn der nicht geht, der ohne.
+    ///
+    /// **Warum es die Rueckfallebene gibt.** Der Fortschritt ist eine Annehmlichkeit, die
+    /// Antwort ist die Sache. Scheitert der Ereignisstrom - ein Gegenstueck, das ihn nicht
+    /// kennt, etwas dazwischen, das ihn puffert -, ist eine Antwort ohne Zwischenstand immer
+    /// noch besser als ein Blatt, auf dem „Ich denke nach ..." stehen bleibt. Genau das stand
+    /// am 17.11. auf dem Geraet, weil der Strom an einer falschen Sitzung hing.
+    private func frageMitRueckfallebene(
+        _ eingabe: AlfredFrageIn, weiter: AsyncStream<String>.Continuation
+    ) async throws -> AlfredAntwortOut {
+        do {
+            return try await haus.api.alfredFrageMitFortschritt(eingabe) { werkzeug in
+                weiter.yield(werkzeug)
+            }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            schritt = Alfred.Texte.frageLaeuft
+            return try await haus.api.alfredFrage(eingabe)
+        }
     }
 
     private func fuehreAus(_ v: AlfredVorschlagOut) async {

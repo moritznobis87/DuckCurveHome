@@ -540,11 +540,28 @@ extension Api {
         for (k, v) in zugang.kopfzeilen { anfrage.setValue(v, forHTTPHeaderField: k) }
         anfrage.setValue("application/json", forHTTPHeaderField: "content-type")
         anfrage.setValue("text/event-stream", forHTTPHeaderField: "accept")
+        anfrage.setValue("no-cache", forHTTPHeaderField: "cache-control")
+        // Eine Frage mit Werkzeugen dauert laenger als die ueblichen sechzig Sekunden: das
+        // Modell holt erst Bilanzen, dann antwortet es. Zwei Minuten sind die Grenze, nach
+        // der niemand mehr wartet.
+        anfrage.timeoutInterval = 120
         anfrage.httpBody = try rumpf(frage)
 
-        var leser = SseLeser()
+        // **Eine eigene Sitzung, in der der Strom selbst der Zusteller ist.** Hier stand
+        // `sitzung` - die geteilte Sitzung dieses Clients, deren Zusteller niemand ist. Damit
+        // rief `URLSession` die Rueckmeldungen von ``Rohstrom`` nie auf: kein Byte kam an, der
+        // Strom lieferte nichts und endete nie, und die Oberflaeche stand fuer immer auf „Ich
+        // denke nach ...". Gemeldet am 17.11. von einem Geraet, auf dem Alfred eine Frage
+        // schickte und keine Antwort bekam.
+        //
+        // `LiveStrom` macht es seit jeher richtig; beim Mitbenutzen von `Rohstrom` ist mir
+        // entgangen, dass die halbe Einrichtung in der Sitzung steckt.
         let strom = Rohstrom()
-        for try await stueck in strom.oeffne(anfrage, in: sitzung) {
+        let stromsitzung = URLSession(configuration: .ephemeral, delegate: strom, delegateQueue: nil)
+        defer { stromsitzung.invalidateAndCancel() }
+
+        var leser = SseLeser()
+        for try await stueck in strom.oeffne(anfrage, in: stromsitzung) {
             for ereignis in leser.nimm(stueck) {
                 guard let daten = ereignis.daten.data(using: .utf8) else { continue }
                 switch ereignis.art {
