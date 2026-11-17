@@ -32,7 +32,7 @@ enum Schluesselbund {
             grund: url,
             praefix: einst.string(forKey: Einstellung.praefix) ?? "/api/v1",
             token: token() ?? "",
-            geraetename: einst.string(forKey: Einstellung.geraetename) ?? Geraet.vorschlag,
+            geraetename: einst.string(forKey: Einstellung.geraetename) ?? Geraet.ersatz,
             rolle: einst.string(forKey: Einstellung.rolle) == "gast" ? .gast : .hausherr
         )
     }

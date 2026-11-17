@@ -15,7 +15,7 @@ struct Einrichten: View {
 
     @State private var adresse: String = ""
     @State private var token: String = ""
-    @State private var geraetename: String = Geraet.vorschlag
+    @State private var geraetename: String = ""
     @State private var rolle: Zugang.Rolle = .hausherr
     @State private var praefix: String = "/api/v1"
     @State private var pruefe = false
@@ -47,6 +47,9 @@ struct Einrichten: View {
             .navigationTitle("Mit dem Haus verbinden")
         }
         .onAppear {
+            // Hier, nicht bei der Deklaration: `Geraet.vorschlag` fragt das System und darf
+            // darum nur vom Hauptfaden aus gelesen werden - `onAppear` ist einer.
+            if geraetename.isEmpty { geraetename = Geraet.vorschlag }
             // Was schon eingerichtet war, steht als Vorgabe da - etwa wenn nur das Token
             // abgelaufen ist.
             if haus.zugang.grund.host != nil {
@@ -177,7 +180,7 @@ struct Einrichten: View {
         }
     }
 
-    private func pruefeUndSpeichere() {
+    @MainActor private func pruefeUndSpeichere() {
         fehler = nil
         geprueft = nil
         guard let url = URL(string: adresse.trimmingCharacters(in: .whitespaces)),
@@ -216,13 +219,30 @@ struct Einrichten: View {
     }
 }
 
-/// Der Name, den dieses Geraet vorschlaegt.
+/// Der Name, den dieses Gerät vorschlägt.
 enum Geraet {
-    static var vorschlag: String {
+    /// Was dasteht, wenn niemand gefragt hat.
+    ///
+    /// Dieser Name reist mit jeder Anfrage als `x-dch-urheber-name` und steht spaeter im
+    /// Protokoll des Dienstes. Er bleibt nur, bis jemand das Einrichten oeffnet - dort wird
+    /// er vom Vorschlag ersetzt und ist von Hand aenderbar.
+    static let ersatz = "Gerät"
+
+    /// Der Vorschlag des Systems - **nur vom Hauptfaden aus.**
+    ///
+    /// `UIDevice` ist dem Hauptfaden zugeordnet; ein Zugriff von woanders ist in Swift 6 eine
+    /// Warnung und spaeter ein Fehler. Darum steht hier `@MainActor` und nicht etwa ein
+    /// `assumeIsolated`, das zur Laufzeit abstuerzen wuerde.
+    ///
+    /// **Es liefert weniger, als der Name verspricht.** Seit iOS 16 gibt `UIDevice.name` nur
+    /// noch den Modellnamen heraus („iPhone"), nicht den, den der Benutzer seinem Geraet
+    /// gegeben hat - dafuer braucht eine App eine eigene Berechtigung von Apple. Als Vorgabe
+    /// fuer ein Feld, das man ohnehin ueberschreibt, genuegt das.
+    @MainActor static var vorschlag: String {
         #if canImport(UIKit)
             return UIDevice.current.name
         #else
-            return "iPhone"
+            return ersatz
         #endif
     }
 }

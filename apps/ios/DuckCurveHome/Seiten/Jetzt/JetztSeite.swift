@@ -93,9 +93,13 @@ struct JetztSeite: View {
         let vonHand = haus.zustand?.operatingMode.override != nil
         let aus = haus.zustand?.operatingMode.systemMode == .off
         if !laeuft, !vonHand, !aus,
+           // Der Baukoerper steht mit Namen da und nicht angehaengt: in einer
+           // `if`-Bedingung ist ein angehaengter nicht vom Rumpf des `if` zu unterscheiden -
+           // fuer den Compiler eine Warnung, fuer den Leser schlimmer.
            let naechster = Fahrplan.phasen(
-               haus.plan, jetzt: haus.jetzt, bis: haus.jetzt.addingTimeInterval(24 * 3600)
-           ) { $0.reasonCode == "planned_optimizer" && $0.plannedHpState == .release }.first,
+               haus.plan, jetzt: haus.jetzt, bis: haus.jetzt.addingTimeInterval(24 * 3600),
+               wenn: { $0.reasonCode == "planned_optimizer" && $0.plannedHpState == .release }
+           ).first,
            naechster.von > haus.jetzt
         {
             teile.append("nächster geplanter Lauf um \(Formate.hhmm(naechster.von))")

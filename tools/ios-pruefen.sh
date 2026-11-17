@@ -47,7 +47,11 @@ python3 tools/xcodeproj-pruefen.py
 python3 tools/ios-typpruefen.py
 
 blau "2/5  Den Kern bauen"
-(cd apps/ios/DuckCurveKit && "$SWIFT" build)
+# **Warnungen sind hier Fehler.** Das ist der eine Teil des Projekts, bei dem sich das
+# durchhalten laesst: er baut auf jedem Rechner, also faellt eine neue Warnung sofort auf -
+# und zwar bei dem, der sie verursacht hat, nicht Wochen spaeter. In der Oberflaeche geht das
+# nicht, weil sie nur auf einem Mac uebersetzt; dort bleibt es eine Durchsicht von Hand.
+(cd apps/ios/DuckCurveKit && "$SWIFT" build -Xswiftc -warnings-as-errors)
 
 blau "3/5  Den Kern testen"
 if [[ $SCHNELL -eq 1 ]]; then

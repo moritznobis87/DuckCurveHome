@@ -166,14 +166,14 @@ public enum Hausgeometrie {
                 )
             }
         }
-        for w in deck.walls ?? [] {
+        for w in deck.walls {
             melde(w.x != nil, w.x ?? w.z ?? 0, w.a, w.b, false)
         }
 
         var aus: [Wandstueck] = []
         for s in schluessel {
             guard let w = linien[s] else { continue }
-            let luecken: [Intervall] = (deck.gaps ?? []).compactMap { l in
+            let luecken: [Intervall] = deck.gaps.compactMap { l in
                 if w.senkrecht {
                     guard let x = l.x, abs(x - w.konst) < 0.06 else { return nil }
                 } else {
