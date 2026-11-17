@@ -17,14 +17,19 @@ struct Leiste: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Karte(kicker: "Pufferspeicher") {
-                // Am Telefon niedriger als an der Wand, aber immer stehend: die Schichtung
-                // eines Puffers ist vertikal, und liegend sagt sie nichts.
-                Pufferglas(
-                    temperaturen: fuehler,
-                    soc: haus.zustand?.buffer.soc,
-                    zustand: zustand
-                )
-                .frame(maxWidth: .infinity, minHeight: kompakt ? 150 : 210)
+                // Am Telefon liegt er, an der Wand steht er - so wie im Dashboard
+                // (`home/Rail.tsx`, kompakter Zweig, Nutzerwunsch 14.11.2026: „sonst streckt
+                // man die Seite unnötig"). Auf einer Rolle ist ein Glas von 300 Punkten Hoehe
+                // alles, was man sieht.
+                if kompakt {
+                    Pufferflach(
+                        temperaturen: fuehler, soc: haus.zustand?.buffer.soc, zustand: zustand)
+                } else {
+                    Pufferglas(
+                        temperaturen: fuehler, soc: haus.zustand?.buffer.soc, zustand: zustand
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 210)
+                }
             }
             if kompakt {
                 // Am Telefon das Bild der naechsten 24 Stunden statt dreier Uhrzeiten

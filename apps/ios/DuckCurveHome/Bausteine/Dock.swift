@@ -37,13 +37,17 @@ struct Dock: View {
                     .foregroundStyle(Farbe.text3)
                     .transition(.opacity)
             }
-            HStack(spacing: 14) {
+            // **Umbruch und kein `HStack`.** Sechs Knoepfe zu 54 Punkten mit 14 Punkten
+            // Abstand brauchen 394 Punkte; in einer Karte auf einem 390er Telefon stehen 326
+            // zur Verfuegung. Eine `ScrollView` zentriert zu breiten Inhalt, und damit rutschte
+            // die **ganze Seite** um 18 Punkte nach links - der Satz oben, die Karten, alles.
+            // Auf den Screenshots vom 17.11. sah es aus, als haette die Seite keinen Rand.
+            Umbruchzeile(abstand: 14, zeilenabstand: 10) {
                 waermepumpenknopf
                 ofenknopf
                 ForEach(Self.schalter, id: \.schluessel) { s in
                     schaltknopf(s)
                 }
-                Spacer(minLength: 0)
             }
         }
         .animation(.easeInOut(duration: Marken.dauer), value: rueckmeldung)

@@ -7,11 +7,14 @@ import SwiftUI
 /// **Der Speicher sieht überall gleich aus** (Nutzerwunsch 14.11.2026): dasselbe Glas auf der
 /// Startseite, im Anlagenschema und auf der Wärmeseite.
 ///
-/// **Und er steht immer.** Hier gab es eine liegende Fassung fürs Telefon, mit dem Argument,
-/// ein stehendes Glas nehme dort zu viel Höhe. Das war meine Erfindung – im Dashboard
-/// (`puffer/Glas.tsx`) gibt es sie nicht, und sie war falsch: die Schichtung eines Puffers
-/// *ist* vertikal. Oben heiß, unten kalt, und genau das ist die Auskunft. Liegend bedeutete das
-/// Bild nichts mehr; es sah aus wie ein Verlaufsbalken.
+/// **An der Wand steht er, am Telefon liegt er.** Hier stand einmal, die liegende Fassung sei
+/// meine Erfindung und im Dashboard gebe es sie nicht. Das war falsch, und der Satz hat eine
+/// richtige Lösung verdrängt: `home/Rail.tsx` legt den Speicher im kompakten Zweig hin
+/// (`home-puffer-flach`), auf Nutzerwunsch vom 14.11.2026 und mit dessen Begründung – „sonst
+/// streckt man die Seite unnötig". Am Telefon ist die Startseite eine Rolle, und ein Glas von
+/// 300 Punkten Höhe schiebt alles Folgende unter den Rand. Liegend ist es dasselbe Glas auf
+/// der Seite: dieselbe Farbskala, jede Zahl an der Stelle ihres Fühlers, links oben, rechts
+/// unten.
 ///
 /// **Die vier Fühler stehen neben dem Glas, auf ihrer Höhe**, jeder mit einem Strich dorthin –
 /// so wie im Dashboard. Vorher standen sie als weiße Pillen *im* Wasser und verdeckten genau
@@ -157,3 +160,110 @@ struct Pufferglas: View {
         .background(Farbe.flaeche1)
     }
 #endif
+
+
+/// Derselbe Speicher, auf die Seite gelegt – die Fassung fürs Telefon.
+///
+/// Links oben, rechts unten: die Leserichtung ersetzt die Höhe. Die vier Zahlen stehen an der
+/// Stelle ihres Fühlers über dem Band, die Worte „oben" und „unten" darunter an den Enden.
+struct Pufferflach: View {
+    let temperaturen: [Messwert]
+    let soc: Double?
+    let zustand: Pufferzustand
+
+    /// Dieselben vier Höhen wie im stehenden Glas, hier als Stellen von links nach rechts.
+    private let stellen: [Double] = [0.12, 0.38, 0.62, 0.88]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            kopf
+            band
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Pufferspeicher: \(zustand.traegt ? Formate.prozent(soc) : "kein Füllstand"), \(zustand.wort)")
+    }
+
+    private var kopf: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Zahl(
+                wert: zustand.traegt ? Formate.prozent(soc) : Formate.leer,
+                schrift: Schrift.zahlGross,
+                farbe: zustand.traegt ? Farbe.text1 : Farbe.text3
+            )
+            Text(zustand.wort)
+                .font(Schrift.klein)
+                .foregroundStyle(zustand.veraltet ? Farbe.achtung : Farbe.text3)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var band: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            zahlenzeile
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(LinearGradient(stops: verlauf, startPoint: .leading, endPoint: .trailing))
+                .frame(height: 26)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(Farbe.linie2, lineWidth: 1)
+                )
+                .opacity(zustand.traegt ? 1 : 0.5)
+            orte
+        }
+    }
+
+    private var zahlenzeile: some View {
+        GeometryReader { raum in
+            ForEach(Array(temperaturen.enumerated()), id: \.offset) { i, m in
+                if i < stellen.count {
+                    HStack(spacing: 1) {
+                        Text(m.belastbar.map { Formate.zahl($0, stellen: 0) } ?? Formate.leer)
+                            .foregroundStyle(m.quality.traegt ? Farbe.text1 : Farbe.text3)
+                        if m.belastbar != nil {
+                            Text("°").foregroundStyle(Farbe.text3)
+                        }
+                    }
+                    .font(Schrift.zahlKlein)
+                    .position(x: stellen[i] * raum.size.width, y: raum.size.height / 2)
+                }
+            }
+        }
+        .frame(height: 15)
+    }
+
+    private var orte: some View {
+        GeometryReader { raum in
+            Text("oben")
+                .font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                .position(x: stellen[0] * raum.size.width, y: raum.size.height / 2)
+            Text("unten")
+                .font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                .position(x: stellen[3] * raum.size.width, y: raum.size.height / 2)
+        }
+        .frame(height: 13)
+    }
+
+    /// Derselbe Verlauf wie im stehenden Glas, nur von links nach rechts.
+    private var verlauf: [Gradient.Stop] {
+        let werte = temperaturen.map(\.belastbar)
+        guard werte.contains(where: { $0 != nil }) else {
+            return [
+                .init(color: Farbe.flaeche3, location: 0),
+                .init(color: Farbe.flaeche2, location: 1),
+            ]
+        }
+        var stops: [Gradient.Stop] = []
+        for (i, wert) in werte.enumerated() where i < stellen.count {
+            guard let wert else { continue }
+            stops.append(.init(color: Color(Marken.wasserfarbe(wert)), location: stellen[i]))
+        }
+        if let erster = stops.first {
+            stops.insert(.init(color: erster.color, location: 0), at: 0)
+        }
+        if let letzter = stops.last {
+            stops.append(.init(color: letzter.color, location: 1))
+        }
+        return stops
+    }
+}

@@ -34,6 +34,9 @@ public enum Schrift {
     // MARK: - Text
 
     /// Die Ueberschrift einer Seite.
+    /// Der Name der Anwendung im Kopf. 16 Punkte halbfett, wie `brand-name` im Dashboard.
+    public static let marke = Font.custom(sansHalbfett, size: 16, relativeTo: .headline)
+
     public static let titel = Font.custom(sansHalbfett, size: 21, relativeTo: .title3)
     /// Die Ueberschrift einer Karte.
     public static let karte = Font.custom(sansHalbfett, size: 15, relativeTo: .headline)

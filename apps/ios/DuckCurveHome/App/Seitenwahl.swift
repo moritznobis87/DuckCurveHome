@@ -150,10 +150,17 @@ struct Seite<Inhalt: View>: View {
                 VStack(alignment: .leading, spacing: breite == .compact ? 12 : 14) {
                     inhalt()
                 }
+                // **Die Breite steht fest, bevor der Rand kommt.** Ohne diesen Rahmen bestimmt
+                // das breiteste Kind die Spalte: ein `HStack`, der 68 Punkte zu breit ist,
+                // macht die Spalte 68 Punkte breiter als der Schirm, und eine `ScrollView`
+                // zentriert zu breiten Inhalt. Die Folge war keine abgeschnittene Karte,
+                // sondern eine Seite ohne Rand - jedes Element 18 Punkte zu weit links,
+                // sichtbar am 17.11. auf dem Telefon. Jetzt ueberlaeuft im Zweifel ein Kind,
+                // und nicht die Seite.
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
                 .padding(.top, 4)
                 .padding(.bottom, 24)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

@@ -40,35 +40,59 @@ struct HandRahmen: View {
         }
     }
 
-    /// Der Kopf gehoert der Seite: ihr Name, und rechts der Zustand der Verbindung.
+    /// Der Kopf: die Marke, die Temperatur draussen, der Zustand der Verbindung.
     ///
-    /// Die Uhr steht hier nicht. Am Telefon steht sie schon in der Statusleiste des Systems, und
-    /// sie zweimal zu zeigen nimmt der Seite eine Zeile, die sie braucht.
+    /// **Was hier vorher stand.** Der Name der Seite in der Systemschrift, gross und links -
+    /// „Jetzt". Das war an zwei Stellen falsch. Erstens sagt die Bereichsleiste unten schon,
+    /// wo man ist, und die Reiterzeile darunter sagt es genauer; der Name war eine dritte
+    /// Antwort auf eine Frage, die niemand gestellt hat. Zweitens war er in San Francisco
+    /// gesetzt und nicht in der Schrift dieser Anwendung - die einzige Stelle der App, an der
+    /// das noch so war, und die erste, die man sieht.
+    ///
+    /// **Jetzt wie die Wandanzeige** (`apps/web/src/components/layout/AreaNav.tsx`, `Brand`,
+    /// und `home/Home.tsx:202-213`): links die Kurve und der Name, rechts die Temperatur
+    /// draussen und der Punkt. Die Uhr steht nicht dabei - am Telefon steht sie zwei
+    /// Millimeter darueber in der Statusleiste des Systems.
     private var kopf: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(seitenname)
-                .font(Schrift.titel)
-                .foregroundStyle(Farbe.text1)
-            Spacer(minLength: 8)
-            if haus.gestoert {
-                Verbindungspunkt()
+            Button {
+                wegweiser.gehe("/")
+            } label: {
+                HStack(spacing: 7) {
+                    Zeichen(.ente, groesse: 26, farbe: Farbe.amber)
+                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 5 }
+                    Text("Duck Curve")
+                        .font(Schrift.marke)
+                        .foregroundStyle(Farbe.text1)
+                }
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Duck Curve Home, zur Startseite")
+
+            Spacer(minLength: 8)
+
+            if let grad = aussen {
+                HStack(spacing: 5) {
+                    Text(Formate.celsius(grad, stellen: 1))
+                        .font(Schrift.zahlKlein)
+                        .foregroundStyle(Farbe.text2)
+                    Text(haus.zustand?.system.outdoorSourceDe ?? "draußen")
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            Verbindungspunkt()
         }
         .padding(.horizontal, 16)
-        .padding(.top, 4)
+        .padding(.top, 2)
         .padding(.bottom, 8)
     }
 
-    private var seitenname: String {
-        if let r = wegweiser.reiter {
-            if let a = wegweiser.ansicht, wegweiser.bereich.schluessel == .technik {
-                // In der Technik ist der Reiter der Gegenstand und die Ansicht die Richtung:
-                // „Wärmepumpe · Betrieb".
-                return r.name == a.name ? r.name : "\(r.name) · \(a.name)"
-            }
-            return r.name
-        }
-        return wegweiser.bereich.name
+    /// Der Messwert aus dem Haus, und wenn der alt ist, der des Wetterdienstes - das
+    /// entscheidet der Dienst und sagt es im Wort daneben.
+    private var aussen: Double? {
+        haus.zustand?.system.outdoorShownC ?? haus.augenblick?.outdoorTempC.belastbar
     }
 }
 
