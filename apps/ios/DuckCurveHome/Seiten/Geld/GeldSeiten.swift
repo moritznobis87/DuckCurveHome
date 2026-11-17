@@ -192,7 +192,11 @@ struct PvAbrechnungSeite: View {
                         ? "Vom Eigenverbrauch sind \(Formate.kwh($0)) geschätzt, nicht gemessen."
                         : nil
                 } ?? nil,
-                b.meta.estimatedNoteDe,
+                // **`PvTaxMetaOut` heisst sein Feld `methodDe`, nicht `estimatedNoteDe`.**
+                // Die Verwechslung lag nahe: auf der Geld-Seite darueber ist `meta` ein
+                // `EnergyMetaOut`, und dort gibt es `estimatedNoteDe` wirklich. Zwei Typen,
+                // beide „meta", verschiedene Felder.
+                b.meta.methodDe,
                 "Diese Seite ist eine Rechenhilfe und keine Steuerberatung.",
             ])
         }
