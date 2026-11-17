@@ -66,6 +66,12 @@ final class Sprachhoerer {
 
     /// Zuhören, bis ``beende()`` gerufen wird. `fertig` bekommt den erkannten Text, oder `nil`.
     func beginne(fertig: @escaping (String?) -> Void) async {
+        // **Ein zweites Halten waehrend der Wache beendet die erste Aufnahme.** Nach dem
+        // Loslassen wartet der Hoerer bis zu drei Sekunden auf das endgueltige Ergebnis - und
+        // drei Sekunden sind bei einem Haltenknopf lang. Wer in dieser Zeit noch einmal
+        // drueckt, bekam vorher gar nichts: der Druck lief in den Riegel und verschwand ohne
+        // jede Rueckmeldung.
+        if lage == .wartet { brich() }
         guard lage == .still else { return }
         // **Vor dem ersten `await`.** Ab hier zählt ein Loslassen, auch wenn noch kein Ton
         // fließt.

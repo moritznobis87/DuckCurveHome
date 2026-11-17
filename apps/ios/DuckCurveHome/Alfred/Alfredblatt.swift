@@ -13,11 +13,10 @@ import UniformTypeIdentifiers
 /// Änderung noch einmal in Worten, und sie sagt dazu, dass ein KI-Assistent sie
 /// vorgeschlagen hat.
 ///
-/// **Was hier noch fehlt**, und darum hier steht statt nirgends: die Spracheingabe (an der
-/// Wand hält man die Ente gedrückt und spricht) und die Sensorzuordnung bei der Einrichtung.
-/// Beides braucht mehr als eine Ansicht – das Mikrofon eine Berechtigung und das Speech
-/// Framework, die Zuordnung eine eingefügte Liste aus Home Assistant, die man an einem Telefon
-/// nicht einfügt.
+/// **Was hier noch fehlt**, und darum hier steht statt nirgends: die Sensorzuordnung bei der
+/// Einrichtung. Sie braucht eine aus Home Assistant eingefügte Entitätenliste, und die fügt
+/// man an einem Telefon nicht ein. Die Spracheingabe gibt es inzwischen – sie hängt an der
+/// Ente, siehe ``Entenknopf``.
 struct Alfredblatt: View {
     /// Eine Frage, die schon gestellt ist, wenn das Blatt aufgeht - gesprochen, mit gedrückter
     /// Ente. Sie wird beim Öffnen abgeschickt, ohne dass noch jemand tippen muss.
@@ -267,16 +266,17 @@ struct Alfredblatt: View {
         }
         frage = ""
         amFeld = false
+        // **Der Verlauf vor der eigenen Frage.** Wird er danach genommen, steht die Frage
+        // zweimal in der Anfrage: einmal als `frage` und einmal als letzter Wechsel des
+        // Verlaufs. Das Modell liest sie dann doppelt und antwortet entsprechend.
+        let verlauf = Alfred.verlaufFuerDienst(nachrichten)
         sage(.nutzer, sauber)
         laeuft = true
         schritt = nil
         vorschlaege = []
 
         let eingabe = AlfredFrageIn(
-            frage: sauber,
-            wissen: Alfred.wissen(weg: wegweiser.weg),
-            verlauf: Alfred.verlaufFuerDienst(nachrichten)
-        )
+            frage: sauber, wissen: Alfred.wissen(weg: wegweiser.weg), verlauf: verlauf)
         // **Der Fortschritt laeuft ueber einen Strom und nicht ueber einen Rueckruf, der
         // `self` einfaengt.** Eine Ansicht ist auf dem Hauptakteur zu Hause; der Rueckruf des
         // Clients ist `@Sendable` und darf sie nicht mitnehmen. Die Fortsetzung eines
@@ -381,13 +381,21 @@ struct Entenknopf: View {
 
     @State private var zeigtAlfred = false
     @State private var gefragt: String?
-    /// Ob ein Sprachmodell eingerichtet ist. Einmal beim Erscheinen geholt; `nil` heisst:
-    /// noch nicht gefragt.
+    /// Ob ein Sprachmodell eingerichtet ist. `nil` heisst: noch nicht beantwortet.
     @State private var bereit: Bool?
     @State private var hoerer = Sprachhoerer()
-    @State private var druecktSeit: Date?
+    /// **Der Finger liegt – als `@GestureState` und nicht als `@State`.** Eine Geste kann
+    /// abgebrochen werden, und dann kommt kein `onEnded`: iOS storniert die Berührungen,
+    /// sobald ein Systemdialog über dem Fenster liegt – und genau das tut der erste Griff
+    /// nach dem Mikrofon. Ein `@State`, das nur `onEnded` zurücksetzt, bliebe danach auf
+    /// „gedrückt" stehen; die Ente reagierte beim nächsten Mal nicht, und das Mikrofon liefe
+    /// weiter, weil niemand das Ende meldet. `@GestureState` setzt sich beim Abbruch selbst
+    /// zurück, und ``loslassen()`` hängt an diesem Zurücksetzen statt an `onEnded`.
+    @GestureState private var druck = false
     @State private var gehalten = false
     @State private var haltenAufgabe: Task<Void, Never>?
+    /// Das Blatt soll aufgehen, sobald der Finger weg ist – nicht darunter hervor.
+    @State private var oeffnenNachLoslassen = false
 
     /// So lange muss die Ente gedrückt sein, bis Alfred zuhört.
     private static let haltenMs: UInt64 = 350
@@ -399,6 +407,13 @@ struct Entenknopf: View {
             .padding(.trailing, 16)
             .padding(.bottom, 14)
             .task { bereit = try? await haus.api.alfredZustand().bereit }
+            .onChange(of: druck) { _, liegt in
+                if liegt { druecken() } else { loslassen() }
+            }
+            // Geht das Blatt auf, waehrend noch aufgenommen wird, hoert hier niemand mehr zu.
+            .onChange(of: zeigtAlfred) { _, auf in
+                if auf { hoerer.brich() }
+            }
             .sheet(isPresented: $zeigtAlfred) {
                 Alfredblatt(starttext: gefragt)
             }
@@ -495,39 +510,54 @@ struct Entenknopf: View {
     /// Abheben, auch wenn der Finger dabei ein Stück wandert.
     private var griff: some Gesture {
         DragGesture(minimumDistance: 0)
-            .onChanged { _ in
-                guard druecktSeit == nil else { return }
-                druecktSeit = Date()
-                gehalten = false
-                haltenAufgabe = Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(Int(Self.haltenMs)))
-                    guard !Task.isCancelled, druecktSeit != nil else { return }
-                    gehalten = true
-                    await hoeren()
-                }
+            .updating($druck) { _, liegt, _ in liegt = true }
+    }
+
+    /// Der Finger ist aufgesetzt: die Uhr fürs Halten läuft.
+    private func druecken() {
+        gehalten = false
+        oeffnenNachLoslassen = false
+        haltenAufgabe?.cancel()
+        haltenAufgabe = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(Int(Self.haltenMs)))
+            guard !Task.isCancelled else { return }
+            gehalten = true
+            await hoeren()
+        }
+    }
+
+    /// Der Finger ist weg – losgelassen **oder** die Geste wurde abgebrochen. Beide Wege
+    /// kommen hier an, und beide müssen aufräumen.
+    private func loslassen() {
+        haltenAufgabe?.cancel()
+        haltenAufgabe = nil
+        if gehalten {
+            hoerer.beende()
+            if oeffnenNachLoslassen {
+                gefragt = nil
+                zeigtAlfred = true
             }
-            .onEnded { _ in
-                haltenAufgabe?.cancel()
-                haltenAufgabe = nil
-                druecktSeit = nil
-                if gehalten {
-                    hoerer.beende()
-                } else {
-                    gefragt = nil
-                    zeigtAlfred = true
-                }
-                gehalten = false
-            }
+        } else {
+            gefragt = nil
+            zeigtAlfred = true
+        }
+        gehalten = false
+        oeffnenNachLoslassen = false
     }
 
     private func hoeren() async {
         // **Erst fragen, ob jemand zuhoeren kann.** Ohne eingerichtetes Sprachmodell
         // aufzunehmen hiesse: das Mikrofon einschalten, den Satz erkennen und ihn dann
-        // wegwerfen. Stattdessen geht das Blatt auf und sagt, woran es liegt - so wie an
-        // der Wand (`Alfred.tsx`, `haltenBeginnt`).
-        guard bereit == true else {
-            gefragt = nil
-            zeigtAlfred = true
+        // wegwerfen.
+        //
+        // **Und notfalls jetzt fragen.** Der Zustand wird beim Erscheinen geholt; scheitert
+        // dieser eine Aufruf - der Dienst im Haus antwortet beim Start regelmaessig noch
+        // nicht -, bliebe die Spracheingabe sonst fuer den ganzen Programmlauf stumm, ohne
+        // dass irgendwo ein Grund stuende.
+        if bereit == nil { bereit = try? await haus.api.alfredZustand().bereit }
+        guard bereit != false else {
+            // Das Blatt geht auf, sobald der Finger weg ist, und sagt dort, woran es liegt.
+            oeffnenNachLoslassen = true
             return
         }
         await hoerer.beginne { gesagt in
