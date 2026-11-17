@@ -1,142 +1,44 @@
 #!/usr/bin/env python3
-"""Das App-Symbol aus der Marke erzeugen.
+"""Das App-Symbol: die Marken-Ente, aus der Markendatei gezeichnet.
 
-**Warum erzeugt und nicht als Datei abgelegt.** Ein PNG im Repository ist ein Binärklumpen ohne
-Herkunft: niemand sieht, woraus es entstanden ist, und wenn die Marke sich ändert, merkt es keiner.
-Dieses Werkzeug zeichnet dasselbe, was `apps/web/public/brand/duck-curve-mark.svg` zeigt - die
-Entenkurve über ihren Lastbalken -, auf ein Quadrat und in die Farben aus `tokens.css`.
+    tools/gen-appicon.py            # schreiben
+    tools/gen-appicon.py --pruefen  # nur pruefen, ob es zur Quelle passt
 
-    tools/gen-appicon.py
-    tools/gen-appicon.py --pruefen
+**Warum nicht die Entenkurve.** Hier stand sie: die Lastkurve als Linie, darunter Balken.
+Auf dem Startbildschirm ist ein Symbol 60 Punkte gross, und dann sind die Balken weg und die
+Kurve ein Kringel - ein Diagramm ist kein Zeichen. Im Dashboard ist genau dieser Fehler
+schon einmal gemacht und wieder behoben worden; der Kommentar in `apps/web/public/favicon.svg`
+sagt es deutlich: „genau der Fehler der Entenkurve, die vorher hier stand. Diese Ente ist
+reine Flaeche."
 
-**Das Quadrat ist die eigentliche Arbeit.** Die Marke ist 1800 auf 1000 breit und lebt davon, daß
-die Kurve Platz nach rechts hat. Auf einem Quadrat wird daraus ein Gedränge, wenn man sie nur
-skaliert. Gezeichnet wird darum der Teil, der die Marke ausmacht: der Bauch der Kurve und die
-Spitze am Abend, mit den Balken darunter - und ohne das lange Auslaufen nach rechts.
+**Darum dieselbe Ente wie ueberall.** Sie wird aus `favicon.svg` gelesen und nicht
+abgezeichnet - eine Quelle, wie bei `gen-zeichen.py` und `gen-swift.py`. Aendert sich die
+Marke, aendert sich das Symbol beim naechsten Lauf mit.
 
-Apple braucht genau ein Bild: 1024 auf 1024, ohne Alphakanal, ohne eigene Rundung (die legt das
-System darüber). Alle übrigen Größen rechnet Xcode selbst.
+**Was anders ist als im Favicon:** keine runden Ecken. iOS legt seine eigene Maske darueber;
+eine mitgezeichnete Rundung ergaebe einen hellen Saum. Die Flaeche geht bis an den Rand.
 """
 
 from __future__ import annotations
 
 import argparse
+import io
+import math
+import re
 import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
 WURZEL = Path(__file__).resolve().parent.parent
+QUELLE = WURZEL / "apps" / "web" / "public" / "favicon.svg"
 ZIEL = (
-    WURZEL / "apps" / "ios" / "DuckCurveHome" / "Ressourcen" / "Assets.xcassets"
-    / "AppIcon.appiconset"
+    WURZEL / "apps" / "ios" / "DuckCurveHome" / "Ressourcen"
+    / "Assets.xcassets" / "AppIcon.appiconset"
 )
-
 KANTE = 1024
-
-# Die Farben aus apps/web/src/styles/tokens.css.
-PETROL = (0x0F, 0x2E, 0x3D)
-DEEP = (0x08, 0x24, 0x31)
-AMBER = (0xF2, 0xA9, 0x00)
-MIST = (0x7F, 0xA3, 0xB3)
-
-# Die Kurve aus duck-curve-mark.svg, im Koordinatensystem der Marke (0..560 in x, 0..270 in y).
-# Jede Zeile ist eine kubische Bezier: zwei Griffe und ein Ziel. Der Anfang steht darüber.
-KURVE_START = (48.0, 171.0)
-KURVE = [
-    ((104.0, 118.0), (146.0, 181.0), (206.0, 183.0)),
-    ((300.0, 186.0), (316.0, 112.0), (369.0, 37.0)),
-    ((395.0, 0.0), (437.0, 7.0), (447.0, 42.0)),
-]
-
-# Die Lastbalken darunter: (x, obere Kante). Nur die, die unter dem gezeichneten Stück liegen.
-BALKEN = [
-    (54, 202), (76, 196), (98, 195), (120, 198), (142, 204), (164, 211),
-    (186, 216), (208, 218), (230, 216), (252, 211), (274, 201), (296, 188),
-    (318, 171), (340, 151), (362, 130), (384, 113), (406, 101), (428, 111),
-    (450, 124),
-]
-BALKEN_UNTEN = 270
-
-
-def bezier(p0, p1, p2, p3, schritte=120):
-    """Punkte auf einer kubischen Bezier-Kurve."""
-    aus = []
-    for i in range(schritte + 1):
-        t = i / schritte
-        u = 1 - t
-        x = u**3 * p0[0] + 3 * u**2 * t * p1[0] + 3 * u * t**2 * p2[0] + t**3 * p3[0]
-        y = u**3 * p0[1] + 3 * u**2 * t * p1[1] + 3 * u * t**2 * p2[1] + t**3 * p3[1]
-        aus.append((x, y))
-    return aus
-
-
-def dichter(punkte, abstand=0.35):
-    """Die Stützpunkte so verdichten, dass zwei benachbarte Kreise sich überlappen."""
-    aus = [punkte[0]]
-    for a, b in zip(punkte, punkte[1:]):
-        laenge = ((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** 0.5
-        n = max(1, int(laenge / abstand))
-        for i in range(1, n + 1):
-            t = i / n
-            aus.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
-    return aus
-
-
-def zeichne() -> Image.Image:
-    # Vierfach gezeichnet und dann verkleinert: PIL kennt keine Kantenglättung für Linien, und
-    # eine Kurve mit harten Rändern sieht auf einem Retina-Bildschirm nach Pixelbrei aus.
-    gross = KANTE * 4
-    bild = Image.new("RGB", (gross, gross), PETROL)
-    stift = ImageDraw.Draw(bild)
-
-    # Ein ruhiger Verlauf nach unten, wie `--bg-gradient`. Zeilenweise, das genügt für zwei Töne.
-    for y in range(gross):
-        t = y / gross
-        farbe = tuple(int(DEEP[k] + (PETROL[k] - DEEP[k]) * (1 - t * 0.55)) for k in range(3))
-        stift.line([(0, y), (gross, y)], fill=farbe)
-
-    # Das gezeichnete Stück der Marke: x von 40 bis 460, y von 0 bis 270.
-    links, rechts, oben, unten = 40.0, 460.0, -6.0, 270.0
-    breite = rechts - links
-    hoehe = unten - oben
-    # Auf 86 Prozent der Breite, mittig. Die Marke ist breiter als hoch, auf einem Quadrat bleibt
-    # also oben und unten Luft - das ist der Grund, warum hier nach der Breite skaliert wird und
-    # nicht nach der groesseren der beiden Kanten: sonst sitzt sie verloren in der Mitte.
-    maß = gross * 0.86 / breite
-    dx = (gross - breite * maß) / 2 - links * maß
-    dy = (gross - hoehe * maß) / 2 - oben * maß
-
-    def auf(p):
-        return (p[0] * maß + dx, p[1] * maß + dy)
-
-    # Die Balken zuerst, sie liegen hinter der Kurve.
-    # Dicker als in der Vorlage: auf dem Startbildschirm ist ein Symbol 60 Punkte gross, und ein
-    # Balken von fuenf Einheiten waere dort ein Drittel Pixel breit - er verschwaende zu Dunst.
-    balkenbreite = max(2, int(8 * maß))
-    for x, o in BALKEN:
-        a = auf((x, o))
-        b = auf((x, BALKEN_UNTEN))
-        stift.line([a, b], fill=MIST, width=balkenbreite)
-
-    # Die Kurve darüber.
-    punkte = [KURVE_START]
-    stelle = KURVE_START
-    for g1, g2, ziel in KURVE:
-        punkte.extend(bezier(stelle, g1, g2, ziel)[1:])
-        stelle = ziel
-    # **Als Punktspur und nicht als Linienzug.** `ImageDraw.line` mit `joint="curve"` setzt an
-    # jeder Ecke ein eigenes Polygon; wo zwei davon in flachem Winkel aufeinandertreffen, bleibt
-    # ein Zacken stehen. Über eine Kurve aus dreihundert Stützpunkten ergibt das einen Rand wie
-    # eine Raupe - sichtbar auch nach dem Verkleinern. Ein Kreis je Stützpunkt hat diese Ecken
-    # nicht, und bei dieser Dichte überlappen sie sich zu einem glatten Band mit runden Enden.
-    r = max(2, 7.5 * maß)
-    for p in dichter(punkte):
-        m = auf(p)
-        stift.ellipse([m[0] - r, m[1] - r, m[0] + r, m[1] + r], fill=AMBER)
-
-    return bild.resize((KANTE, KANTE), Image.LANCZOS)
-
+# Vierfach zeichnen und verkleinern: PIL kann Polygone nicht glaetten, das Verkleinern schon.
+UEBER = 4
 
 CONTENTS = """{
   "images" : [
@@ -153,7 +55,6 @@ CONTENTS = """{
   }
 }
 """
-
 ASSETS_CONTENTS = """{
   "info" : {
     "author" : "tools/gen-appicon.py",
@@ -163,26 +64,194 @@ ASSETS_CONTENTS = """{
 """
 
 
+# ────────────────────────────────── SVG lesen ───────────────────────────────
+
+def zahlen(text: str) -> list[float]:
+    """Alle Zahlen eines Pfadstuecks, auch `12-3` und `.5.5` ohne Trenner."""
+    return [float(t) for t in re.findall(r"-?\d*\.?\d+(?:[eE][-+]?\d+)?", text)]
+
+
+def kurve(p0, p1, p2, p3, schritte: int = 48):
+    """Eine kubische Bezierkurve als Punktzug."""
+    aus = []
+    for i in range(1, schritte + 1):
+        t = i / schritte
+        u = 1 - t
+        aus.append((
+            u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+            u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
+        ))
+    return aus
+
+
+def pfad_zu_punkten(d: str) -> list[list[tuple[float, float]]]:
+    """Ein `d`-Attribut zu Polygonzuegen.
+
+    Es werden die Befehle gelesen, die in den Markendateien vorkommen: M/m, L/l, H/h, V/v,
+    C/c, S/s, Z/z. Mehr braucht es nicht, und mehr zu koennen hiesse, Fehler stillschweigend
+    hinzunehmen - ein unbekannter Befehl wirft.
+    """
+    zuege: list[list[tuple[float, float]]] = []
+    jetzt: list[tuple[float, float]] = []
+    x = y = 0.0
+    anfang = (0.0, 0.0)
+    # Der zweite Kontrollpunkt der letzten Kurve - fuer `s`/`S`.
+    letzte_c2: tuple[float, float] | None = None
+
+    for befehl, rest in re.findall(r"([MmLlHhVvCcSsZz])([^MmLlHhVvCcSsZz]*)", d):
+        w = zahlen(rest)
+        rel = befehl.islower()
+        gross = befehl.upper()
+
+        if gross == "Z":
+            if jetzt:
+                zuege.append(jetzt)
+                jetzt = []
+            x, y = anfang
+            letzte_c2 = None
+            continue
+
+        if gross == "M":
+            for i in range(0, len(w), 2):
+                nx, ny = (x + w[i], y + w[i + 1]) if rel else (w[i], w[i + 1])
+                if i == 0:
+                    if jetzt:
+                        zuege.append(jetzt)
+                    jetzt = [(nx, ny)]
+                    anfang = (nx, ny)
+                else:
+                    jetzt.append((nx, ny))
+                x, y = nx, ny
+            letzte_c2 = None
+        elif gross in ("L", "H", "V"):
+            schritt = {"L": 2, "H": 1, "V": 1}[gross]
+            for i in range(0, len(w), schritt):
+                if gross == "L":
+                    nx, ny = (x + w[i], y + w[i + 1]) if rel else (w[i], w[i + 1])
+                elif gross == "H":
+                    nx, ny = (x + w[i], y) if rel else (w[i], y)
+                else:
+                    nx, ny = (x, y + w[i]) if rel else (x, w[i])
+                jetzt.append((nx, ny))
+                x, y = nx, ny
+            letzte_c2 = None
+        elif gross == "C":
+            for i in range(0, len(w), 6):
+                a = w[i:i + 6]
+                pts = [(x + a[k], y + a[k + 1]) if rel else (a[k], a[k + 1]) for k in (0, 2, 4)]
+                jetzt += kurve((x, y), pts[0], pts[1], pts[2])
+                letzte_c2 = pts[1]
+                x, y = pts[2]
+        elif gross == "S":
+            for i in range(0, len(w), 4):
+                a = w[i:i + 4]
+                # Der erste Kontrollpunkt ist die Spiegelung des letzten zweiten.
+                c1 = (2 * x - letzte_c2[0], 2 * y - letzte_c2[1]) if letzte_c2 else (x, y)
+                c2 = (x + a[0], y + a[1]) if rel else (a[0], a[1])
+                e = (x + a[2], y + a[3]) if rel else (a[2], a[3])
+                jetzt += kurve((x, y), c1, c2, e)
+                letzte_c2 = c2
+                x, y = e
+        else:
+            raise ValueError(f"Unbekannter Pfadbefehl: {befehl}")
+
+    if jetzt:
+        zuege.append(jetzt)
+    return zuege
+
+
+def kreis_zu_punkten(cx: float, cy: float, r: float, schritte: int = 180):
+    return [[
+        (cx + r * math.cos(2 * math.pi * i / schritte),
+         cy + r * math.sin(2 * math.pi * i / schritte))
+        for i in range(schritte)
+    ]]
+
+
+def formen(svg: str) -> list[tuple[str, list[list[tuple[float, float]]]]]:
+    """Die Formen der Datei, in ihrer Reihenfolge, mit ihrer Farbe.
+
+    Nur die Gruppe mit der Ente wird gelesen; die weisse Kachel darunter faellt weg, denn das
+    Symbol bekommt seine Flaeche bis an den Rand.
+    """
+    # Kommentare raus - darin stehen Pfade als Prosa.
+    svg = re.sub(r"<!--.*?-->", "", svg, flags=re.S)
+    g = re.search(r'<g transform="translate\(([-\d.]+)\s+([-\d.]+)\)\s*scale\(([\d.]+)\)"\s*>'
+                  r"(.*?)</g>", svg, re.S)
+    if not g:
+        raise ValueError("Die Gruppe mit der Ente steht nicht wie erwartet in der Datei.")
+    vx, vy, s = float(g.group(1)), float(g.group(2)), float(g.group(3))
+
+    def um(zuege):
+        return [[(vx + s * px, vy + s * py) for px, py in z] for z in zuege]
+
+    aus = []
+    for stueck in re.findall(r"<(path|circle)\b([^>]*)/?>", g.group(4)):
+        art, attr = stueck
+        farbe = (re.search(r'fill="([^"]+)"', attr) or [None, "#000000"])[1]
+        if art == "path":
+            d = re.search(r'\sd="([^"]+)"', attr).group(1)
+            aus.append((farbe, um(pfad_zu_punkten(d))))
+        else:
+            cx = float(re.search(r'cx="([-\d.]+)"', attr).group(1))
+            cy = float(re.search(r'cy="([-\d.]+)"', attr).group(1))
+            r = float(re.search(r'r="([-\d.]+)"', attr).group(1))
+            aus.append((farbe, um(kreis_zu_punkten(cx, cy, r))))
+    return aus
+
+
+# ────────────────────────────────── zeichnen ────────────────────────────────
+
+def zeichne() -> Image.Image:
+    svg = QUELLE.read_text(encoding="utf-8")
+    kachel = (re.search(r'<rect[^>]*fill="(#[0-9A-Fa-f]{6})"', svg) or [None, "#FFFFFF"])[1]
+    sicht = re.search(r'viewBox="([-\d.\s]+)"', svg).group(1).split()
+    vb = [float(t) for t in sicht]
+    # Die Kachel geht bis an den Rand: iOS legt seine eigene Rundung darueber.
+    bild = Image.new("RGB", (KANTE * UEBER, KANTE * UEBER), kachel)
+    stift = ImageDraw.Draw(bild)
+    massstab = KANTE * UEBER / vb[2]
+
+    for farbe, zuege in formen(svg):
+        for zug in zuege:
+            if len(zug) < 3:
+                continue
+            stift.polygon(
+                [((px - vb[0]) * massstab, (py - vb[1]) * massstab) for px, py in zug],
+                fill=farbe,
+            )
+    return bild.resize((KANTE, KANTE), Image.LANCZOS)
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--pruefen", action="store_true", help="nur pruefen, ob es da ist")
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--pruefen", action="store_true", help="nur pruefen, nichts schreiben")
     args = ap.parse_args()
 
     png = ZIEL / "AppIcon.png"
+    neu = zeichne()
+    puffer = io.BytesIO()
+    neu.save(puffer, "PNG", optimize=True)
+    roh = puffer.getvalue()
+
     if args.pruefen:
         if not png.exists():
-            print(f"{png.relative_to(WURZEL)} fehlt. Erzeugen mit: tools/gen-appicon.py", file=sys.stderr)
+            print(f"{png} fehlt - erzeugen mit tools/gen-appicon.py", file=sys.stderr)
             return 1
-        print(f"{png.relative_to(WURZEL)} ist da.")
+        if png.read_bytes() != roh:
+            print(f"{png} passt nicht mehr zu {QUELLE.name} - neu erzeugen mit "
+                  f"tools/gen-appicon.py", file=sys.stderr)
+            return 1
+        print(f"{png.relative_to(WURZEL)} ist auf dem Stand von {QUELLE.name}.")
         return 0
 
     ZIEL.mkdir(parents=True, exist_ok=True)
-    zeichne().save(png, "PNG")
+    png.write_bytes(roh)
     (ZIEL / "Contents.json").write_text(CONTENTS, encoding="utf-8")
     (ZIEL.parent / "Contents.json").write_text(ASSETS_CONTENTS, encoding="utf-8")
-    print(f"{png.relative_to(WURZEL)}: {KANTE}×{KANTE}")
+    print(f"{png.relative_to(WURZEL)} geschrieben ({len(roh)} Bytes), aus {QUELLE.name}.")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
