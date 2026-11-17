@@ -141,10 +141,29 @@ struct RechnungenSeite: View {
         }
     }
 
+    /// Die Farbe des Punktes vor einem Befund.
+    ///
+    /// **Hier stand ein Vergleich mit „alarm", und der war doppelt falsch:** `severity` ist
+    /// eine Aufzaehlung und keine Zeichenkette, und „alarm" ist keiner ihrer Werte. Sie kennt
+    /// `ok`, `info`, `warning`, `error`. Der Punkt waere also immer gelb geblieben, auch wenn
+    /// der Typ gepasst haette - ein Fehler, den man am Bildschirm nicht sieht.
+    ///
+    /// Die Zuordnung ist die des Dashboards (`reports/InvoiceCheck.tsx`, `Dot`): Fehler und
+    /// Warnung rot, Hinweis grau, alles andere gelb. Dass dort auch ein `ok` gelb wird und
+    /// nicht gruen, ist auffaellig - es bleibt trotzdem so, denn zwei Oberflaechen, die
+    /// dieselbe Pruefung verschieden einfaerben, sind schlimmer als eine fragliche Farbe.
+    private func befundfarbe(_ s: InvoiceFindingSeverityWahl) -> Color {
+        switch s {
+        case .error, .warning: return Farbe.alarm
+        case .info: return Farbe.mist
+        case .ok, .unbekannt: return Farbe.amber
+        }
+    }
+
     private func befund(_ f: InvoiceFinding) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Circle()
-                .fill(f.severity == "alarm" ? Farbe.alarm : Farbe.achtung)
+                .fill(befundfarbe(f.severity))
                 .frame(width: 6, height: 6)
                 .padding(.top, 6)
             VStack(alignment: .leading, spacing: 3) {

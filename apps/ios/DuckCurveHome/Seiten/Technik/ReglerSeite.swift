@@ -320,8 +320,13 @@ struct Einstellungszeile: View {
                             Text("verglichen")
                                 .font(Schrift.winzig).foregroundStyle(Farbe.mist)
                         }
-                        if einstellung.gesendet == true {
-                            Text("gesendet, noch nicht zurückgemeldet")
+                        // **`gesendet` ist kein Ja/Nein, sondern der gesendete Wert mit
+                        // seinem Zeitstempel** (`ReglerGesendetOut`). Hier stand
+                        // `== true`. Da der Wert nun schon dasteht, sagt die Zeile auch,
+                        // *was* unterwegs ist - so wie das Dashboard (`Regler.tsx`: „gesendet
+                        // 21,0 °C, wartet auf den Regler").
+                        if let g = einstellung.gesendet {
+                            Text("gesendet \(wertAlsText(einstellung, g.wert)), wartet auf den Regler")
                                 .font(Schrift.winzig).foregroundStyle(Farbe.achtung)
                         }
                     }
