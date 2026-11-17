@@ -160,7 +160,10 @@ def main() -> int:
     # Eine Kette wie `haus.zustand?.system.watch` ist als Ganzes wahlfrei - das `?` steht
     # weiter vorn. Wer nur das letzte Feld ansieht, meldet hier einen Fehler, der keiner ist.
     # Genau das ist beim ersten Entwurf dieses Skripts passiert.
-    KETTE = r"((?:\w+(?:\(\))?[.?]+)*)(\w+)"
+    # `$0` muss als Kettenanfang mitgelesen werden. Ohne ihn war ein grosser Teil des Codes
+    # unsichtbar: dieses Projekt schreibt fast jede Reihenverarbeitung als `.map { $0.feld }`,
+    # und genau dort sass der Fehler des zehnten Laufs.
+    KETTE = r"((?:(?:\w+|\$\d+)(?:\(\))?[.?]+)*)(\w+)"
 
     for pfad in dateien:
         kurz = os.path.relpath(pfad, APP)
@@ -251,7 +254,7 @@ def main() -> int:
         # das Literal `[Any]` oder `[[String]]` - und passt auf keine Signatur. Gemeint war
         # jedes Mal: anhängen, nicht einreihen.
         for nr, zeile in enumerate(text.splitlines(), 1):
-            m = re.match(r"^\s*[\w.?]*\.(\w+),\s*$", zeile)
+            m = re.match(r"^\s*[\w.?$]*\.(\w+),\s*$", zeile)
             if not m:
                 continue
             feld = m.group(1)
@@ -264,7 +267,7 @@ def main() -> int:
         # 7b. Dieselbe Verwechslung, andere Stelle: eine Reihe in `Text(…)`.
         for nr, zeile in enumerate(text.splitlines(), 1):
             ohne = re.sub(r"//.*$", "", zeile)
-            for m in re.finditer(r"\bText\(\s*[\w.]*?\.(\w+)\s*\)", ohne):
+            for m in re.finditer(r"\bText\(\s*[\w.$]*?\.(\w+)\s*\)", ohne):
                 typen = felder.get(m.group(1), set())
                 if typen and all(t.startswith("[") for t in typen):
                     maengel.append((kurz, nr, f"Text(… .{m.group(1)}) - das ist eine Reihe "
@@ -280,7 +283,7 @@ def main() -> int:
         for nr, zeile in enumerate(text.splitlines(), 1):
             ohne = re.sub(r"//.*$", "", re.sub(r'"(?:[^"\\]|\\.)*"', '""', zeile))
             for m in re.finditer(r"Formate\.(zahl|prozent|kw|kwh|euro|ct|celsius)\("
-                                 r"\s*[\w.]*?\.(\w+)\s*[,)]", ohne):
+                                 r"\s*[\w.$]*?\.(\w+)\s*[,)]", ohne):
                 feld = m.group(2)
                 typen = felder.get(feld, set())
                 if typen and all(t.rstrip("?") == "Int" for t in typen):

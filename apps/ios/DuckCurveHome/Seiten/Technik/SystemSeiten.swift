@@ -514,7 +514,7 @@ struct DatenSeite: View {
                                 .init(
                                     name: "längste Lücke",
                                     zellen: a.series.map {
-                                        Formate.zahl($0.longestOutageH, stellen: 1) + " h"
+                                        Formate.zahl(Double($0.longestOutageH), stellen: 1) + " h"
                                     }
                                 ),
                                 .init(
