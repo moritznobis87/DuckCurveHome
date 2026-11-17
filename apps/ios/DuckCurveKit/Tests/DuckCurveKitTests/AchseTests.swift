@@ -66,4 +66,37 @@ final class AchseTests: XCTestCase {
         XCTAssertNil(Achse.spanne(werte: [nil, nil]))
         XCTAssertNil(Achse.spanne(werte: [Double.nan]))
     }
+
+    // MARK: - anteil / wert
+
+    func testAnteilLiegtZwischenNullUndEins() {
+        XCTAssertEqual(Achse.anteil(10, in: 10...50), 0, accuracy: 1e-9)
+        XCTAssertEqual(Achse.anteil(30, in: 10...50), 0.5, accuracy: 1e-9)
+        XCTAssertEqual(Achse.anteil(50, in: 10...50), 1, accuracy: 1e-9)
+    }
+
+    /// Der Fehler, um den es ging: 49,1 ct auf einer Achse bis 40 lief oben aus dem Bild.
+    func testWerteAusserhalbLandenAufDemRandUndNichtDarueber() {
+        XCTAssertEqual(Achse.anteil(60, in: 10...50), 1, accuracy: 1e-9)
+        XCTAssertEqual(Achse.anteil(-5, in: 10...50), 0, accuracy: 1e-9)
+    }
+
+    func testEineSpanneOhneBreiteLiegtInDerMitte() {
+        XCTAssertEqual(Achse.anteil(7, in: 7...7), 0.5, accuracy: 1e-9)
+        XCTAssertEqual(Achse.anteil(Double.nan, in: 0...1), 0.5, accuracy: 1e-9)
+    }
+
+    func testWertIstDieUmkehrungVonAnteil() {
+        let spanne = -3.0...21.0
+        for ct in [-3.0, 0.0, 7.5, 21.0] {
+            XCTAssertEqual(
+                Achse.wert(anteil: Achse.anteil(ct, in: spanne), in: spanne), ct, accuracy: 1e-9)
+        }
+    }
+
+    func testNegativePreiseBleibenInDerSpanne() {
+        let spanne = Achse.spanne(werte: [-4.2, 0, 12.0], rand: 2, mindestens: 10)!
+        XCTAssertTrue(spanne.contains(-4.2))
+        XCTAssertEqual(Achse.anteil(-4.2, in: spanne), 0.1, accuracy: 0.1)
+    }
 }

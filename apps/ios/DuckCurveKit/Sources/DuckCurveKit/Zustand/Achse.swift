@@ -43,4 +43,25 @@ public enum Achse {
         }
         return von...bis
     }
+
+    /// Wo ein Wert innerhalb einer Spanne liegt: 0 am unteren, 1 am oberen Rand.
+    ///
+    /// **Wofür das da ist.** Zwei Größen in einem Diagramm, die nichts miteinander zu tun
+    /// haben – ein Freigabeband von 0 bis 1 und ein Strompreis in ct/kWh – brauchen eine
+    /// gemeinsame Achse. Im Fahrplan stand dafür `preis / 40`: eine festverdrahtete Zahl,
+    /// die bei 49 ct oben aus dem Bild lief und über die Überschrift zeichnete. Werte
+    /// außerhalb der Spanne werden darum auf den Rand gelegt, nicht darüber hinaus.
+    public static func anteil(_ wert: Double, in spanne: ClosedRange<Double>) -> Double {
+        let breite = spanne.upperBound - spanne.lowerBound
+        guard breite > 0, wert.isFinite else { return 0.5 }
+        return min(1, max(0, (wert - spanne.lowerBound) / breite))
+    }
+
+    /// Der Wert zu einem Anteil – die Umkehrung von ``anteil(_:in:)``.
+    ///
+    /// Die Achsenbeschriftung steht an 0, 0,5 und 1 und muss dort den Preis nennen, nicht
+    /// den Anteil.
+    public static func wert(anteil: Double, in spanne: ClosedRange<Double>) -> Double {
+        spanne.lowerBound + anteil * (spanne.upperBound - spanne.lowerBound)
+    }
 }

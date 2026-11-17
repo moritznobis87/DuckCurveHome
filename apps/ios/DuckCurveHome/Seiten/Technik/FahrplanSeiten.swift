@@ -105,6 +105,9 @@ struct FahrplanSeite: View {
             guard h >= -0.5, h <= 24 else { return nil }
             return (h, iv.priceCtKwh, iv.plannedHpState == .release)
         }
+        // Der Preis hat keine natuerliche Obergrenze. Festverdrahtete 40 ct hiessen: an einem
+        // Tag mit 49 ct laeuft die Kurve oben aus dem Bild und zeichnet ueber die Ueberschrift.
+        let spanne = Achse.spanne(werte: felder.map(\.preis), rand: 2, mindestens: 10) ?? 0...40
         return VStack(alignment: .leading, spacing: 6) {
             Chart {
                 ForEach(Array(felder.enumerated()), id: \.offset) { _, f in
@@ -122,7 +125,7 @@ struct FahrplanSeite: View {
                     if let preis = f.preis {
                         LineMark(
                             x: .value("Stunde", f.stunde),
-                            y: .value("Preis", preis / 40)
+                            y: .value("Preis", Achse.anteil(preis, in: spanne))
                         )
                         .foregroundStyle(Farbe.preis)
                         .lineStyle(StrokeStyle(lineWidth: 1.5))
@@ -135,7 +138,18 @@ struct FahrplanSeite: View {
             }
             .chartXScale(domain: 0...24)
             .chartYScale(domain: 0...1)
-            .chartYAxis(.hidden)
+            .chartYAxis {
+                AxisMarks(position: .leading, values: [0, 0.5, 1]) { w in
+                    AxisGridLine().foregroundStyle(Farbe.rasterlinie)
+                    AxisValueLabel {
+                        if let a = w.as(Double.self) {
+                            Text(Formate.ct(Achse.wert(anteil: a, in: spanne)))
+                                .font(Schrift.achse)
+                                .foregroundStyle(Farbe.text3)
+                        }
+                    }
+                }
+            }
             .chartXAxis {
                 AxisMarks(values: Array(stride(from: 0.0, through: 24, by: 4))) { w in
                     AxisGridLine().foregroundStyle(Farbe.rasterlinie)
@@ -154,33 +168,40 @@ struct FahrplanSeite: View {
                 }
                 HStack(spacing: 5) {
                     Rectangle().fill(Farbe.preis).frame(width: 12, height: 2)
-                    Text("Preis, 0 bis 40 ct").font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                    Text("Börsenpreis, Achse links").font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
                 }
             }
         }
     }
 
+    /// Die Viertelstunden an den Preisenden – so wie es das Dashboard zeigt.
+    ///
+    /// Nicht alle 96 und nicht die naechsten 32: an einem ruhigen Tag steht in fast allen
+    /// dasselbe, und auf dem Telefon stand das als zweiunddreissig Zeilen „aus" untereinander.
     private func plantabelle(_ p: PlanOut) -> some View {
-        // Nur die naechsten acht Stunden: 96 Zeilen liest niemand, und was in 20 Stunden gilt,
-        // wird vorher dreimal neu gerechnet.
-        let kuenftig = p.intervals.compactMap { iv -> (PlanIntervalOut, Date)? in
-            guard let t = Zeit.ausIso(iv.ts), t >= haus.jetzt.addingTimeInterval(-900),
-                  t <= haus.jetzt.addingTimeInterval(8 * 3600)
-            else { return nil }
-            return (iv, t)
+        let zeilen = Planauswahl.raender(p.intervals)
+        return VStack(alignment: .leading, spacing: 8) {
+            if zeilen.isEmpty {
+                Text("Noch kein Plan mit Preisen.")
+                    .font(Schrift.klein).foregroundStyle(Farbe.text3)
+            } else {
+                Tabelle(
+                    zeilennamen: zeilen.map { Formate.hhmm(iso: $0.ts) },
+                    spalten: [
+                        .init(name: "Pumpe", zellen: zeilen.map { zustandswort($0.plannedHpState) }),
+                        .init(name: "Preis", zellen: zeilen.map { Formate.zahl($0.priceCtKwh, stellen: 1) }),
+                        .init(name: "Sonne", zellen: zeilen.map { Formate.zahl($0.expectedPvKw, stellen: 1) }),
+                        .init(name: "Wärmebedarf", zellen: zeilen.map { Formate.zahl(Planauswahl.bedarf($0), stellen: 1) }),
+                        .init(name: "Arbeitszahl", zellen: zeilen.map { Formate.zahl($0.cop, stellen: 2) }),
+                        .init(name: "Puffer", zellen: zeilen.map { Formate.zahl($0.bufferKwh, stellen: 1) }),
+                        .init(name: "Grund", zellen: zeilen.map { $0.noteDe ?? grundwort($0.reasonCode) }),
+                    ]
+                )
+                Text("Die drei teuersten und die drei billigsten Viertelstunden des Plans.")
+                    .font(Schrift.winzig).foregroundStyle(Farbe.text3)
+            }
         }
-        return Tabelle(
-            zeilennamen: kuenftig.map { Formate.hhmm($0.1) },
-            spalten: [
-                .init(name: "Pumpe", zellen: kuenftig.map { zustandswort($0.0.plannedHpState) }),
-                .init(name: "Preis", zellen: kuenftig.map { Formate.zahl($0.0.priceCtKwh, stellen: 1) }),
-                .init(name: "Sonne", zellen: kuenftig.map { Formate.zahl($0.0.expectedPvKw, stellen: 1) }),
-                .init(name: "Wärmebedarf", zellen: kuenftig.map { Formate.zahl($0.0.heatDemandKw, stellen: 1) }),
-                .init(name: "Arbeitszahl", zellen: kuenftig.map { Formate.zahl($0.0.cop, stellen: 2) }),
-                .init(name: "Puffer", zellen: kuenftig.map { Formate.zahl($0.0.bufferKwh, stellen: 1) }),
-                .init(name: "Grund", zellen: kuenftig.map { $0.0.noteDe ?? grundwort($0.0.reasonCode) }),
-            ]
-        )
     }
 
     private func zustandswort(_ z: PlanIntervalOutPlannedHpStateWahl) -> String {
