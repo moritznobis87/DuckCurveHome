@@ -1,51 +1,38 @@
 # Was die App noch nicht zeigt
 
 **Die Adressen sind vollständig, der Inhalt ist es nicht.** Alle 28 Inhaltsseiten des
-Dashboards haben in der App eine Entsprechung unter derselben Adresse – das ist nachgemessen.
-Ob dort auch *dasselbe steht*, sagt eine Adressliste nicht, und die Antwort lautet: auf
-mehreren Seiten nein.
+Dashboards haben in der App eine Entsprechung unter derselben Adresse. Ob dort auch dasselbe
+*steht*, sagt eine Adressliste nicht – und die Antwort lautet auf den meisten Seiten nein.
 
-## Woher diese Liste kommt, und was sie nicht ist
-
-Sie entstand maschinell: je Bereich ein Leser, der die Quelle der Webseite
-(`apps/web/src/app/<adresse>/page.tsx` samt ihren Komponenten) gegen die SwiftUI-Ansicht
-hielt, die `apps/ios/DuckCurveHome/App/Seitenwahl.swift` für diese Adresse zurückgibt.
-
-**Jeder Eintrag ist die Behauptung eines einzelnen Lesers und von niemandem geprüft.** Der
-Lauf hatte eine zweite Stufe – je Lücke zwei Skeptiker, die sie widerlegen sollten – und diese
-Stufe ist vollständig ausgefallen: alle 156 Prüfagenten scheiterten an einer
-Nutzungsgrenze. Was hier steht, ist also **Verdacht, nicht Befund.** Vor dem Umsetzen gehört
-jeder Punkt am Code nachgesehen; erfahrungsgemäß ist ein Teil davon keine Lücke, sondern eine
-andere Gliederung oder ein anderer Name für dieselbe Sache.
+Diese Liste ist der Arbeitsvorrat. Sie wird abgearbeitet; erledigte Punkte werden gestrichen,
+nicht abgehakt.
 
 ## Abdeckung
 
 | | |
 |---|---|
-| verglichen | 15 von 28 Seiten |
-| nicht verglichen | 12 Seiten – der ganze Wärmebereich |
-| Verdachtsfälle | 78 |
-| davon spürbar / mittel / klein | 23 / 31 / 24 |
-| davon geprüft | **0** |
+| verglichen | **28 von 28 Seiten** |
+| Punkte gesamt | **167** |
+| davon spürbar / mittel / klein | 45 / 63 / 59 |
 
-Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
+## Zwei Läufe, zwei Güten
 
-- `/waerme`
-- `/waerme/anlage`
-- `/waerme/annahmen`
-- `/waerme/raeume`
-- `/waerme/waermepumpe`
-- `/waerme/waermepumpe/betrieb`
-- `/waerme/waermepumpe/kennlinie`
-- `/waerme/waermepumpe/regler`
-- `/waerme/fahrplan`
-- `/waerme/nachbetrachtung`
-- `/waerme/wiedergabe`
-- `/waerme/wirkung`
+Die Liste entstand in zwei Durchgängen, und sie sind **nicht gleich belastbar**:
 
-## Die Verdachtsfälle, nach Seite
+- **Die 12 Wärmeseiten** (zweiter Lauf) tragen zu jedem Punkt die Vorlage mit Datei und Zeile
+  und die Swift-Datei, in die es gehört. Damit lässt sich bauen, ohne zu suchen.
+- **Die übrigen 15 Seiten** (erster Lauf) haben das nicht: dort starb die Prüfstufe an einer
+  Nutzungsgrenze, und die Einträge sind die Behauptung je eines Lesers, ohne Zeilenangabe.
+  Vor dem Bauen gehört jeder dieser Punkte am Code nachgesehen; erfahrungsgemäß ist ein Teil
+  davon keine Lücke, sondern eine andere Gliederung oder ein anderer Name.
 
-### `/`
+**Keiner der Punkte beider Läufe ist bisher umgesetzt.** Was schon gebaut wurde – die
+Zeichnung der Wärmepumpe, der aufrechte Puffer, die Rahmung des Hausmodells – stand nicht in
+dieser Liste, sondern kam aus Screenshots vom Gerät.
+
+## Die Punkte, nach Seite
+
+### `/`  ·  10 Punkte, davon 2 spürbar
 
 - **spürbar** · kennzahl — Die Webseite zeigt unter der Kurve die Autarkie des Tages ("ohne Netz", in Prozent) als eine der vier Kennzahlen; die iOS-Seite hat an dieser Stelle "im Haus" in kWh und nennt die Autarkie nirgends.
   - Web: `apps/web/src/components/home/tage.ts:125 (`{ wert: t?.autarky != null ? String(Math.round(t.autarky * 100)) : "-", einheit: "%", wort: "ohne Netz" }`), eingesetzt in apps/web/src/components/home/Home.tsx:179/236-243`
@@ -78,7 +65,7 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/home/Rail.tsx:99 und :115 (`{warnung ? <span ...>{warnung}</span> : null}` in der Kachel "Nächste 24 h")`
   - iOS: `apps/ios/DuckCurveHome/Bausteine/Leiste.swift:27-47 - die Karte "Als Nächstes" rendert nur `Planzeile.wort`/`.wann`; `plannerWarnDe` kommt in der Datei nicht vor (in der App nur auf apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift:18).`
 
-### `/geld`
+### `/geld`  ·  8 Punkte, davon 3 spürbar
 
 - **spürbar** · endpunkt — Die Webseite holt zusaetzlich /energy/heat und rechnet die Pelletkosten in "Bezahlt" ein, zeigt sie als eigene Zeile der Aufstellung mit Menge in kg und haengt den Pellet-Hinweis an die Methode an; die App fragt den Endpunkt gar nicht ab, Pellets kommen auf der Kostenseite nicht vor.
   - Web: `apps/web/src/components/reports/CostReport.tsx:62,66,112,210,236`
@@ -105,7 +92,7 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/reports/CostReport.tsx:70-71,115`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:95-118 - kennzahlen(...) liefert gespart, unterm Strich, Bezug, Einspeisung, Waermepumpe, mittlerer Bezugspreis; totals.minutes wird nicht ausgewertet.`
 
-### `/haus`
+### `/haus`  ·  7 Punkte, davon 1 spürbar
 
 - **spürbar** · abschnitt — Die Webseite zeigt neben dem Haus einen Block "Fenster und Türen" mit der Zahl der offenen Kontakte, einem Satz dazu ("alles zu" / "Küche und 2 weitere") und aufgeklappt jedem Kontakt mit Namen, Raum, Zustand (offen/zu/keine Meldung) und "offen seit 12 min"; auf der iOS-Seite gibt es weder Zahl noch Liste - offene Kontakte sind nur als leuchtende Striche im Modell zu sehen.
   - Web: `apps/web/src/components/house/Konsole.tsx:186-224 (Block `kontakte`, `offeneKontakte.length`, `offenSatz`, Liste mit `seitText(k.observed_at, nowMs)`)`
@@ -129,7 +116,7 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/house/HouseReport.tsx:219 (`kicker={plan ? `${plan.name || "Hausplan"} · ${house?.source_de ?? ""}` : "Hausplan"}`) und :354 (`{plan?.note_de ...}`)`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift:65-83 - `kopf` enthält Ansichtswahl und `Stand \(Formate.hhmm(at))`; `plan.name`, `sourceDe` und `noteDe` kommen in der Datei nicht vor (nur `errorDe`/`present` im Leerfall, 149-158).`
 
-### `/strom`
+### `/strom`  ·  4 Punkte
 
 - **mittel** · kennzahl — Die Webseite zeigt den Netzbezug als Geldbetrag (import_cost_eur) als eigene Kachel neben den Kilowattstunden; die iOS-Seite nennt den Bezug nur in kWh und gar keinen Euro-Betrag.
   - Web: `apps/web/src/components/reports/HouseReport.tsx:51-58`
@@ -144,7 +131,7 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/reports/HouseReport.tsx:46-48 mit share() in Zeile 38`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48 und 86-99 (Tabelle: Sonne, Haus, Bezug, Einspeisung)`
 
-### `/system`
+### `/system`  ·  6 Punkte, davon 4 spürbar
 
 - **spürbar** · diagramm — Die Webseite zeichnet den Tag im 15-Minuten-Raster (Ist, Day-ahead und der juengste korrigierte Lauf) und laesst zwischen Heute und Gestern umschalten; die iOS-Seite zeigt keinen Tagesverlauf und wertet b.today/b.yesterday mit ihren Punkten ueberhaupt nicht aus.
   - Web: `apps/web/src/components/forecast/ForecastPage.tsx:42-87 (dayOption mit actual/ahead/corrected) und :267-293 (Karte mit Heute/Gestern-Umschalter)`
@@ -165,7 +152,52 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/forecast/Rueckblick.tsx:167-178 (Knopfreihe 3/7/14/30 d, setTage)`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:449 - prognoseVerlauf(tage: 7) fest verdrahtet; die Seite baut keine Tagewahl ein, obwohl der Baustein Tagewahl in derselben Datei (Zeile 599) verwendet wird`
 
-### `/geld/pv-abrechnung`
+### `/waerme`  ·  14 Punkte, davon 5 spürbar
+
+- **spürbar** · endpunkt — Die Webseite holt drei Antworten: /energy/waermebilanz (Leitquelle fuer Waermemenge, Arbeitszahl, Waermepreis), /energy/heat (nur noch Strom nach Herkunft, Taktung, Ofen) und /energy/shift. Die iOS-Seite holt ausschliesslich api.energieWaerme (/energy/heat). Damit fehlt auf der Seite alles, was nur in HeatBalanceOut steht: totals.producedKwh / drawKwh / lossKwh / residualKwh / copMean, cost (HeatCostOut), ventilation (VentilationOut), params (HeatParamsOut), series und buckets. api.waermebilanz und api.energieVerschiebung sind im Client schon da (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Netz/Api.swift:192 und :184) - sie werden hier nur nicht gerufen. (Die Bilanz selbst zeigt die App unter /waerme/bilanz; auf dieser Seite soll sie aber neben Strom, Taktung und Ofen stehen.)
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:91-95`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **spürbar** · abschnitt — Karte "Was die Waerme gekostet hat": als Kernzahl cost.heat_pump_ct_per_kwh in "ct je kWh Waerme", darunter fuenf Zeilen - "Waermepumpe: bezahlter Netzstrom" (heat_pump_paid_eur, Euro), "Waermepumpe: entgangene Verguetung" (heat_pump_opportunity_eur), "Pellets: verbrannte Menge" (stove_kg, 1 Stelle, kg), "Pellets: Wert zum hinterlegten Preis" (stove_eur), "Ofen: je kWh Waerme" (stove_ct_per_kwh, ct) - und als Fussnote cost.cheaper_de. In der App kommt auf dieser Seite kein Eurobetrag und kein Waermepreis vor; nur der Ofen hat "Pelletkosten" aus StoveOut.pelletEur.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:214-225`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **spürbar** · abschnitt — Karte "Hat sich das Verschieben gelohnt?" (rechts "geschaetzt") aus /energy/shift: Kernzahl ist der Betrag von saving_eur, die Unterzeile sagt je nach Vorzeichen "gespart gegenueber einem Lauf ohne Preisblick" oder "mehr bezahlt als ohne Preisblick"; darunter bei days_used > 0 drei Zeilen - "in andere Stunden verschoben" (shifted_kwh von heat_pump_kwh), "je verschobener kWh" (saving_ct_per_kwh), "gerechnete Tage" (days_used); bei days_used == 0 stattdessen skipped_de bzw. der Ersatzsatz "Dafuer braucht es einen Tag mit genug gemessenen Stunden und laufender Waermepumpe." Dazu die Verweise auf /geld (mit Zeitraum) und, am Tag, auf /waerme/nachbetrachtung?day=. Auf der iOS-Seite fehlt die Karte ganz.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:248-273`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **spürbar** · diagramm — Am Tag die Karte "Tagesverlauf" (Kopf rechts resolution_de) mit dem Bilanzdiagramm aus bilanz.series: oben in kW drei gestapelte Flaechen (Waermepumpe, Ofen (Wasser), Ofen (Raum)) plus die Linien Entnahme und "Verlust an den Raum", unten in einer zweiten Flaeche der Pufferinhalt in kWh; Luecken werden nicht ueberbrueckt (connectNulls false). Leerfall: "Fuer diesen Tag liegen keine Minutenwerte vor." Die iOS-Seite hat auf /waerme ueberhaupt kein Diagramm, und b.summary.buckets wie HeatBalanceOut.series bleiben ungenutzt.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:170-180 mit apps/web/src/components/reports/charts.ts:793-880`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **spürbar** · diagramm — Karte "Pufferspeicher" (nur am Tag, nur wenn buffer_series Werte hat; Kopf rechts "Temperaturen in vier Hoehen · Leistung der Waermepumpe"): oben die vier Schichttemperaturen buffer_temp_top_c / mid_top / mid_bottom / bottom_c als Linien auf fester Skala 20-70 °C, unten als Treppenflaeche heat_pump_power_kw, und als hinterlegte Baender die Brennphasen des Ofens (zusammenhaengende Abschnitte mit stove_running wahr, Legendeneintrag "Ofen brennt"). Genau daran liest man ab, ob eine Temperatursteigung vom Ofen kam. HeatReportOut.bufferSeries wird in der App nirgends ausgewertet.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:197-204 mit apps/web/src/components/reports/charts.ts:99-145`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **mittel** · diagramm — Karte "Strom der Waermepumpe nach Herkunft": je Zeitstueck aus summary.buckets ein gestapelter Balken aus heat_pump_pv_kwh ("aus PV"), heat_pump_battery_kwh ("aus Batterie") und heat_pump_grid_kwh ("aus Netz"), mit Farblegende im Kartenkopf. Die App zeigt diese Aufteilung auf keiner Waermeseite - weder als Diagramm noch als Zahl; summary.buckets bleibt ungenutzt.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:35-39 und 205-210`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **mittel** · abschnitt — Karte "Bei offenem Fenster" (Kopf rechts "geschaetzt, nach offenen Heizkreisen verteilt"), nur wenn ventilation.kwh > 0,01 oder open_minutes > 0: Kernzahl ventilation.kwh "kWh in Raeume mit offenem Fenster", rechts "NN min offen" und bei share >= 0,01 "· NN % der Entnahme"; darunter eine Tabelle je Raum mit Raum, "Fenster offen" (open_minutes), "davon geheizt" (heating_minutes) und "Waerme" (kWh), dazu ventilation.note_de. In der App fehlt der Abschnitt; VentilationOut wird nirgends ausgewertet.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:310-342`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **mittel** · abschnitt — Abschnitt "Waerme im Zeitraum": dieselben zwoelf Groessen fuer Tag, Woche, Monat und Jahr des Ankertags nebeneinander (vier gleichzeitige Abfragen von /energy/waermebilanz) - Waerme gesamt, Waermepumpe, Ofen ins Wasser, Ofen in den Raum, Entnahme, Verlust, Strom Waermepumpe, Arbeitszahl, nicht zuzuordnen, Strom bezahlt, Pellets kg, Pellets im Wert von. Null gilt dabei als Messung, fehlende Minuten (totals.minutes == 0) als Strich. Die App zeigt immer nur die eine gewaehlte Spanne; einen Spannenvergleich gibt es in Bericht.swift noch gar nicht.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:118-131 und 346, mit apps/web/src/components/reports/PeriodStrip.tsx:32-93 und apps/web/src/components/reports/useReport.ts (useMultiPeriod)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **mittel** · kennzahl — Drei der sechs Kopfkacheln fehlen: "Bezahlt" (cost.heat_pump_paid_eur in Euro, dazu "NN kWh Netz · Ø NN ct" aus heat_pump_grid_kwh und paid/grid*100), "Waermepreis" (cost.heat_pump_ct_per_kwh in ct/kWh, dazu "Waermepumpe · Ofen NN ct") und "Entnahme" (totals.draw_kwh in kWh, dazu "Heizung und Warmwasser · Verlust NN kWh"). Ausserdem traegt die Webkachel "Strom Waermepumpe" den Zusatz "NN % Sonnenstrom" ((pv+battery)/heat_pump), die App-Kachel "Strom dafuer" nennt den Anteil nicht.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:140-166`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **mittel** · kennzahl — In der Ofenkarte zeigt die Webseite neun Zeilen plus die Leistungsstufen; der App fehlen davon: "davon mit Feuer" (burning_minutes als h:mm), "laengste Phase" (longest_run_min), "Spreizung" (spread_k in K), "Rauchgas max." (fume_temp_max_c in °C), "Betriebsstunden" (operating_hours in h), die Zeile "Leistungsstufen: 1: 0:45 h  2: 1:10 h …" aus minutes_by_level (nach Stufe sortiert) sowie fuel_note_de (nur wenn auger_revolutions gesetzt ist). Auch die Kopfangabe "N Brennphasen" (runs) und note_de stehen dort. Alle Felder liegen in StoveOut.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:279-305`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **klein** · abschnitt — Fuer Woche, Monat und Jahr steht statt des Tagesverlaufs die Karte "Waerme je Tag" bzw. "Waerme je Monat": gestapelte Balken aus bilanz.buckets (Waermepumpe, Ofen (Wasser), Ofen (Raum)) mit Farblegende und Leerhinweis "Fuer diesen Zeitraum liegen keine Werte vor." Die App hat dieses Bild nur auf /waerme/bilanz (WaermebilanzSeite, Karte "Woher die Waerme kam"), auf /waerme nicht.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:182-192`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **klein** · kennzahl — Im Kopf der Taktungskarte steht, auf welcher Datenbasis das Urteil beruht: "NN h bewertet" aus cycling.covered_hours (nur wenn gesetzt). Die App zeigt in der Takt-Karte nur das Urteilswort als Titel; coveredHours liegt in CyclingStats und wird nicht benutzt.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:228`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **klein** · abschnitt — Der letzte Methodenabsatz nennt die geltenden Annahmen mit Zahlen: "Gerechnet wird mit: Kennlinie -7 °C: 2,4 · 2 °C: 3,0 … , gueltig bei NN °C Vorlauf; Puffer NNN l mit NN W/K Verlust (buffer_loss_kw_per_k * 1000); Ofen N,N kW, davon N,N kW ins Wasser; Pellets N,NN kWh/kg zu NNN €/t" - alles aus bilanz.params - samt Verweis auf /waerme/annahmen und dem Satz, dass eine Aenderung auch vergangene Jahre aendert. Die Methodenkarte der App bringt nur die note_de-Saetze des Dienstes, keine Zahl aus HeatParamsOut.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:370-378`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+- **klein** · zustand — Unter der Auswertung steht die Datenguete als eigene, einklappbare Zeile: "Datenabdeckung NN %" bzw. "noch keine Messdaten im Zeitraum" und "Aufzeichnung seit TT.MM.JJJJ" aus summary.meta.coverage und data_since. Die App druckt aus demselben meta-Objekt nur estimatedNoteDe.
+  - Vorlage: `apps/web/src/components/reports/HeatOverview.tsx:348 mit apps/web/src/components/reports/ReportShell.tsx:163-174`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/WaermeSeite.swift`
+
+### `/geld/pv-abrechnung`  ·  6 Punkte, davon 1 spürbar
 
 - **spürbar** · diagramm — Die Webseite hat das Diagramm "Erloes und Wertabgabe": je Zeitraumstueck zwei Balken, Einspeiseverguetung netto und Wert des Eigenverbrauchs netto, mit Leerhinweis "Fuer diesen Zeitraum liegen keine bewerteten Stunden vor". Die App zeigt auf der PV-Abrechnung ueberhaupt kein Diagramm.
   - Web: `apps/web/src/components/reports/PvAccounting.tsx:64-74,100-105`
@@ -186,7 +218,7 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/reports/PvAccounting.tsx:96`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:139-153,201-222 - weder die Karte "Eigenverbrauch" noch kennzahlen(...) lesen totals.selfCtKwh (Feld vorhanden: Schema.swift:6454).`
 
-### `/geld/rechnungen`
+### `/geld/rechnungen`  ·  9 Punkte, davon 3 spürbar
 
 - **spürbar** · bedienung — Auf der Webseite kann man eine Tibber-Rechnung als PDF hineinziehen oder auswaehlen - auch mehrere auf einmal -, sie wird geprueft, der Zustand "Rechnung wird geprueft …" angezeigt und pro Datei ein Fehler gemeldet. Die App bietet kein Einlesen; sie verweist im Leerzustand darauf, dass Rechnungen ueber den Dienst hereinkommen, obwohl der API-Client die Pruefung kann.
   - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:54-93,137-159,210-218`
@@ -216,7 +248,7 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/reports/InvoiceCheck.tsx:117-125 (setError bei api.tibberInvoice)`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Geld/RechnungenSeite.swift:198-204 - `bericht = try? await haus.api.rechnung(nummer)`, kein Setzen von `fehler`; Stoerung (Z. 23-25) greift nur beim Laden der Liste.`
 
-### `/strom/jahr`
+### `/strom/jahr`  ·  4 Punkte, davon 1 spürbar
 
 - **spürbar** · diagramm — Die Webkarte ist ein Jahr als Tag × Stunde: je Tag alle 24 Stunden, 365 Spalten mal 24 Zeilen (Kicker "365 Tage × 24 Stunden"). Die iOS-Karte liest dieselbe Antwort als Wochen aus sieben Tagen und zeichnet darum nur sieben Felder je Tag - sichtbar sind die Stunden 0 bis 6, die übrigen 17 Stunden jedes Tages fehlen im Bild.
   - Web: `apps/web/src/components/reports/YearMap.tsx:61-71 und apps/web/src/components/reports/charts.ts:447-451 (Schleife h = 0..23); Antwortform in apps/api/src/dch_api/schemas.py:607-620 ("metrics: Kennzahl → [Tag][Stunde 0-23]")`
@@ -231,7 +263,7 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/reports/YearMap.tsx:85-89, 127, 137`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:26-41 (if let karte … else Leer(satz: "Wird geholt …") - kein Zweig für hoursWithData == 0)`
 
-### `/strom/pv`
+### `/strom/pv`  ·  3 Punkte, davon 1 spürbar
 
 - **spürbar** · abschnitt — Der ganze Prognoseteil fehlt: die Webseite zeigt "Prognose heute" und "Prognose morgen" in kWh und daneben die Kurve "Heute und morgen" - erwartete PV-Leistung aus dem Fahrplan gegen die gemessene Leistung des Tages. Die iOS-PV-Seite fragt weder den Fahrplan (plan) noch den Verlauf (history) ab und hat keine der drei Darstellungen.
   - Web: `apps/web/src/components/reports/PvReport.tsx:46-61, 96-97, 106-109 mit pvForecastChart in apps/web/src/components/reports/charts.ts:178`
@@ -243,7 +275,7 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/reports/PvReport.tsx:90`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:129-147 (kennzahlen(_:) der PvSeite: exportKwh ohne exportRevenueEur/feedInCtKwh)`
 
-### `/strom/speicher`
+### `/strom/speicher`  ·  7 Punkte, davon 2 spürbar
 
 - **spürbar** · kennzahl — Die Webseite zeigt "Verlust im Gerät": die Energie, die der Wandler als Ladung sah und die die Zellen nie erreichte (battery_device_kwh), dazu was sie gekostet hat und was dadurch entgangen ist. Auf der iOS-Seite kommt das nirgends vor.
   - Web: `apps/web/src/components/reports/BatteryReport.tsx:138-144`
@@ -267,7 +299,7 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/reports/BatteryReport.tsx:162-171`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:155-206`
 
-### `/strom/wallbox`
+### `/strom/wallbox`  ·  5 Punkte, davon 2 spürbar
 
 - **spürbar** · diagramm — Die Webseite zeigt die geladene Energie als gestapelte Balken je Zeitschritt nach Herkunft (aus PV, aus Batterie, aus Netz). Die iOS-Seite hat überhaupt kein Diagramm - nur Kacheln und die Tabelle der Ladevorgänge.
   - Web: `apps/web/src/components/reports/EvReport.tsx:14-18, 46-51`
@@ -285,7 +317,7 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/reports/EvReport.tsx:91-100`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:237-272`
 
-### `/system/daten`
+### `/system/daten`  ·  4 Punkte, davon 2 spürbar
 
 - **spürbar** · diagramm — Die Webseite legt die Messreihen des Tages uebereinander auf eine kW-Achse (Erzeugung, Haus, Netz, Speicher, dazu gestrichelt Ladestand und amtlicher Zaehler) mit waehlbarem Zeitfenster, samt Leerzustand "Fuer diesen Tag liegen keine Minutenwerte vor"; die iOS-Seite zeigt keine Messreihen und fragt den Tagesverlauf gar nicht ab.
   - Web: `apps/web/src/components/reports/DataCheck.tsx:38 (api.historyDay) und :71-86 (Karte "Leistungen ueber den Tag" mit powerOverlay und Leerzustand)`
@@ -300,13 +332,13 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/reports/DataCheck.tsx:52-56 und :100-110 (Verweis "Minutenwerte dieses Tages als CSV" auf /api/dch/export/minutes)`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:453-591 - kein Knopf und kein ShareLink; in apps/ios/DuckCurveHome gibt es ueberhaupt keinen Aufruf eines Export-Endpunkts`
 
-### `/system/haustuer`
+### `/system/haustuer`  ·  1 Punkte
 
 - **mittel** · kennzahl — Die Webseite ordnet jeden Eintrag einem Tag zu (Heute, Gestern, sonst Wochentag und Datum als Ueberschrift der Gruppe); die App zeigt je Eintrag nur die Uhrzeit, so dass bei 7, 30 oder 90 Tagen nicht zu erkennen ist, an welchem Tag jemand vor der Tuer stand.
   - Web: `apps/web/src/components/settings/DoorLog.tsx:24-32 (dayLabel) und :121-134 (Gruppen je Tag mit Ueberschrift)`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:636-658 - eintrag(_:) setzt nur Formate.hhmm(iso: e.at); die Liste ab Zeile 618 ist flach, ohne Tagesgruppe und ohne Datum`
 
-### `/system/mitteilungen`
+### `/system/mitteilungen`  ·  3 Punkte
 
 - **mittel** · zustand — Nach einer Probe und nach dem Versand des Briefings zeigt die Webseite die Einzelheiten je Gerat (details_de), also woran eine Zustellung scheiterte; die App zeigt nur den einen Satz message_de.
   - Web: `apps/web/src/components/settings/Mitteilungen.tsx:175-176 und :246-250 (details_de als Liste) sowie apps/web/src/components/settings/Morgenbrief.tsx:55-56 und :106-110`
@@ -318,9 +350,267 @@ Nicht verglichen (drei Lesergruppen fielen vor dem Lauf aus):
   - Web: `apps/web/src/components/settings/Mitteilungen.tsx:238-242 ("Probe an die angemeldeten Gerate", wenn lage != "an" und Gerate vorhanden)`
   - iOS: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:58-72 - "Probe senden" steht allein im Fall .angemeldet des switch ueber mitteilungen.stand; in den Faellen .ungefragt, .erlaubt, .abgelehnt und .fehler gibt es keinen Probeknopf`
 
-### `/system/zugang`
+### `/system/zugang`  ·  1 Punkte, davon 1 spürbar
 
 - **spürbar** · bedienung — Die Webseite bietet die jaehrliche Sicherung an: Minutenwerte und Stundenbilanz des laufenden und des vorigen Jahres zum Herunterladen (die Stundenbilanz traegt die Grundlagen der PV-Abrechnung); in der App gibt es keine Moeglichkeit, die Daten herauszuholen.
   - Web: `apps/web/src/app/system/zugang/page.tsx:134-149 (je Jahr "Minutenwerte" und "Stundenbilanz" auf /api/dch/export/minutes bzw. /export/hours)`
   - iOS: `apps/ios/DuckCurveHome/App/Einrichten.swift:235-336 - ZugangSeite hat die Karten Dieses Gerat, Verbindung, Angemeldete Gerate und Aendern; kein Export, kein ShareLink, und in apps/ios/DuckCurveHome wird kein Export-Endpunkt aufgerufen`
+
+### `/waerme/anlage`  ·  4 Punkte
+
+- **mittel** · bedienung — Im Schema ist jedes Geraet ein Verweis: PV -> /strom/pv, Netz -> /strom, Speicher -> /strom/speicher, Haushalt -> /strom, Waermepumpe und Puffer -> /waerme#puffer, Ofen -> /waerme#ofen, Heizung -> /haus?ansicht=liste, Warmwasser -> /waerme, jeweils mit Beschriftung "<Name>. Details oeffnen". Die Karten der App (Strom, Pufferspeicher, Waermepumpe, Pelletofen, Heizkreise, Warmwasser) sind nicht antippbar und fuehren nirgendwohin.
+  - Vorlage: `apps/web/src/components/anlage/schema.ts:197-211 mit apps/web/src/components/anlage/Schema.tsx:114-121`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/AnlageSeite.swift`
+- **mittel** · abschnitt — Unter dem Bild stehen drei Erklaerblocks, die die App gar nicht hat: "Lesen" (wie Lichtwanderung, Rohrfarbe und Pumpenpunkt zu lesen sind), "Vier getrennte Systeme" (Ofen speist oben ein und holt unten zurueck, Waermepumpe speist in der Mitte ein, Heizkreis nimmt aus der Mitte und gibt unten zurueck, Trinkwasser laeuft unten kalt nach und wird oben entnommen, Ofen und Waermepumpe holen den Ruecklauf gemeinsam an der untersten Spitze) und "Gemessen und gerechnet" (Waerme der Waermepumpe wird nicht gemessen, Vorlauf und COP kommen vom Bus; Ofen aus der Stufe nach Datenblatt geschaetzt; Nettoleistung des Speichers aus den vier Fuehlern ueber die letzte Viertelstunde; Warmwasser wird am Anlegefuehler erkannt, nicht gemessen - sagt dass und seit wann, nicht wie viel). Mindestens die beiden letzten Blocks sind Inhalt und nicht Bildbeschreibung; die iOS-Seite hat keinen einzigen erklaerenden Satz.
+  - Vorlage: `apps/web/src/components/anlage/Anlage.tsx:91-124`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/AnlageSeite.swift`
+- **klein** · zustand — Die Webseite unterscheidet beim Ofen drei Zustaende: nicht present -> "nicht angebunden", present aber running == null -> "keine Verbindung", sonst "Stufe N" bzw. "brennt", dazu "· Pumpe NN %". Die App schreibt in den Kartentitel (o.running ?? false) ? "laeuft" : "aus" - ein Ofen, der gerade nicht meldet, steht dort also als "aus", was eine Behauptung ueber einen nicht gemeldeten Zustand ist.
+  - Vorlage: `apps/web/src/components/anlage/schema.ts:174-180`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/AnlageSeite.swift`
+- **klein** · zustand — Fuer die Heizung sagt die Webseite bei rooms_total == 0 "keine Raeume gemeldet" (statt einer Zahl) und sonst "Raeume nehmen Waerme" / "kein Raum nimmt Waerme". Die App zeigt in diesem Fall "0 von 0" und "Anteil -", ohne den Hinweis, dass gar keine Raeume gemeldet sind.
+  - Vorlage: `apps/web/src/components/anlage/schema.ts:192-195 mit apps/web/src/components/anlage/Schema.tsx:382-392`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/AnlageSeite.swift`
+
+### `/waerme/annahmen`  ·  3 Punkte, davon 1 spürbar
+
+- **spürbar** · bedienung — Die Webseite laesst die Annahmen stellen; die App zeigt sie nur. Zu bauen: dreizehn Zahlenfelder (stove_nominal_heat_kw, stove_water_heat_kw, stove_min_heat_kw, stove_min_water_heat_kw, stove_combustion_efficiency, pellet_kwh_per_kg, pellet_price_eur_per_t, buffer_volume_liters, buffer_target_temperature_c, buffer_loss_kw_per_k, buffer_ambient_c, buffer_loss_useful_fraction, indoor_target_c) mit je eigener Schrittweite, dazu die COP-Kennlinie als eine Textzeile im Format "Temperatur:COP" mit Komma getrennt (Pruefung vor dem Senden, sonst die Meldung "Die Kennlinie wird als Temperatur:COP geschrieben, Stuetzpunkte mit Komma getrennt."), ein Knopf "Uebernehmen" / "wird uebernommen …", nach Erfolg der Satz "Uebernommen. Die Auswertungen rechnen ab sofort damit, auch rueckwirkend; der Fahrplan wird neu gerechnet und steht in wenigen Sekunden auf der Seite Fahrplan." und bei Ablehnung die Begruendung des Dienstes (er prueft Widersprueche wie Wasseranteil gegen Gesamtleistung). Nur gesetzte Felder gehen in das Patch. api.stelleWaerme(HeatConfigIn) liegt im iOS-Client bereit (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Netz/Api.swift:387) und wird nicht benutzt; die App schreibt in ihrer Methodenkarte stattdessen, geaendert werde "im Dashboard".
+  - Vorlage: `apps/web/src/components/settings/HeatSettings.tsx:29-43 und 120-201`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **mittel** · abschnitt — Die Webseite benennt jede Annahme als Satz mit Einheit und Erklaerung: "Ofen: Leistung bei Volllast (kW)", "Ofen: davon ins Wasser - Der Rest heizt den Aufstellraum.", "Verbrennungswirkungsgrad (0 bis 1) - Datenblatt, Volllast. Bei Teillast ist er meist besser.", "Heizwert der Pellets (kWh/kg) - ENplus A1 liegt zwischen 4,9 und 5,3. Steht auf dem Lieferschein.", "Zieltemperatur des Puffers (°C) - Zugleich der Vorlauf, bei dem die COP-Kennlinie gilt.", "Verlustbeiwert des Puffers (kW/K) - 0,004 kW/K sind 4 Watt je Kelvin Uebertemperatur.", "Aufstellraum des Puffers (°C) - Nicht der Wohnraum … unbeheizter Technikraum 15 bis 18, Keller 10 bis 14.", "davon nutzbar fuers Haus (0 bis 1) - 0 heisst ganz verloren, 1 heisst voll nutzbar.", "Raumtemperatur des Hauses (°C) - Fuer den Heizbedarf aus Heizgradstunden.", dazu der Absatz zur COP-Kennlinie (Stuetzpunkte aufsteigend, gilt bei der Zieltemperatur, Umrechnung ueber Carnot, kein zweidimensionales Kennfeld). Die App listet die Schluessel des Schemas mit ersetzten Unterstrichen ("buffer loss kw per k") ohne Einheit und ohne Hinweis - Werteliste/alsZeilen kennt nur Schluessel und Wert.
+  - Vorlage: `apps/web/src/components/settings/HeatSettings.tsx:29-43 und 175-188`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **klein** · abschnitt — Die Webseite begruendet die Seite oben und unten: oben "Es gibt keinen Waermemengenzaehler im Haus. Die Waermebilanz wird deshalb gerechnet …; jede Aenderung wirkt sofort und rueckwirkend, weil Messwerte gespeichert sind und keine Rechenergebnisse", unten der Verweis, dass auf der Waermebilanz die Zeile "nicht zuzuordnen" steht und diese Felder genau dazu dienen, sie klein zu bekommen (Link auf /waerme/bilanz). Die Methodenkarte der App sagt nur, die Werte seien gesetzt und nicht gemessen und wuerden im Dashboard geaendert - der fehlende Waermemengenzaehler und der Bezug zur Restzeile fehlen.
+  - Vorlage: `apps/web/src/app/waerme/annahmen/page.tsx:14-27`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+
+### `/waerme/fahrplan`  ·  16 Punkte, davon 2 spürbar
+
+- **spürbar** · diagramm — Die drei gemessenen Reihen fehlen im Bild ganz: PV gemessen (actual_pv_kw) als gefuellte Flaeche unter der gestrichelten Erwartung, die gemessene elektrische Leistung der Waermepumpe (actual_hp_kw) als eigene Flaeche in kW, und der gemessene Freigabekontakt (actual_hp_release) als Streifen direkt unter dem geplanten Zustand. Alle drei enden an der letzten abgeschlossenen Viertelstunde und sind davor luecklos; fehlende Werte bleiben null/Luecke, nicht 0 kW. Die App zeichnet nur Plan und Preis; actualPvKw/actualHpKw/actualHpRelease werden in keiner Ansicht benutzt (Modell: DuckCurveKit/Modelle/Schema.swift:5907-5909).
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:402-411 (PV gemessen), :453-464 (WP gemessen), :468 (Anforderung gemessen), Flaechenraster :113-122`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.bild, Zeile 101-161)`
+- **spürbar** · kennzahl — Kachel „Waermepumpe gelaufen“: Summe von actual_hp_run_min der Viertelstunden mit Messung, in Stunden mit einer Stelle, Hinweis „seit Mitternacht · im selben Fenster geplant X,X h“ (dieselbe Teilmenge, also nur die Viertelstunden mit Messung, darin planned_hp_state == release als Viertelstunden/4). Ohne Messung steht „-“ und als Hinweis „keine Messung“. Das ist die Gegenzahl zur geplanten Anforderung und die eigentliche Frage der Waermeseite.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:512-520 (Rechnung), :557 (Kachel)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 53-82)`
+- **mittel** · diagramm — Der Waermebedarf als eigene Flaeche aus zwei gestapelten Reihen: Heizen (heat_demand_kw, Farbe Haus) und Warmwasser (dhw_demand_kw, Farbe Warmwasser), Achse gestaucht auf die Untergrenze der Summe in 0,5-kW-Stufen. Warmwasser kommt in der App ueberhaupt nicht vor: die Plantabelle zeigt nur heatDemandKw, dhwDemandKw wird nirgends gelesen. Auch die Zerlegung „Heizen X · Warmwasser Y“ und die Summe fehlen damit.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:415-437 (Flaechen), :339-345 (Summe und Zerlegung), :178-181 (Untergrenze)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.plantabelle, Zeile 163-184)`
+- **mittel** · diagramm — Der Pufferverlauf ueber den Horizont (buffer_kwh je Viertelstunde) als eigene Flaeche, mit der Decke bei buffer_capacity_kwh und der rot hinterlegten Zone von 0 bis buffer_min_kwh, beschriftet „RESERVE“. Die App nennt Kapazitaet und Mindestmenge nur als Kachelzahl und den Pufferstand nur als Tabellenspalte der naechsten acht Stunden - der Verlauf, an dem man sieht, warum eine teure Stunde ohne Anforderung bleiben darf, fehlt.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:438-449 (Flaeche), :223-231 (Reservezone), :302 (Decke)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.bild, Zeile 101-161)`
+- **mittel** · abschnitt — Der gezeigte Zeitraum ist der ganze Horizont des Planers (horizon_start bis horizon_end, also zwei Tage, Achse mit Tagesgrenze als Datum statt nackter Zahl) und im Kopf steht „heute 00:00 bis uebermorgen 00:00 · <planner>“. Die App schneidet das Bild auf -0,5 bis +24 Stunden und die Tabelle auf die naechsten acht Stunden; der zweite Tag des Fahrplans ist in der App nicht zu sehen.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:236-240 (Achse am Horizont), :577-586 (Kopfzeile mit Horizont und Planer), :98-104 (heute/morgen/uebermorgen)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.bild Zeile 102-107, plantabelle Zeile 166-171)`
+- **mittel** · diagramm — Der geplante Zustand der Waermepumpe als Streifen mit vier unterscheidbaren Werten: release „angefordert“ (Farbe Waermepumpe, Hoehe 1), avoid „gemieden“ (Alarm, 0,55), free „frei“ (weiss 30 %, 0,3), off „aus“ (weiss 14 %, 0,12) - Farbe, Balkenhoehe und Wort zusammen, dazu die Legende mit allen vier Woertern. Das Bild der App zeichnet nur Rechtecke fuer release; gemieden, frei und aus sehen dort gleich (naemlich leer) aus.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:51-56 (Zustaende), :465 (Streifen), :599-604 (Legende)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.bild, Zeile 108-135)`
+- **mittel** · kennzahl — Der Pelletofen kommt auf der Seite der App nicht vor. Im Dashboard: Streifen „Pelletofen geplant“ (planned_stove_on, brennt/aus/Luecke), Kachel „Ofen geplant“ mit Viertelstunden/4 in h und drei verschiedenen Hinweisen („kein Fahrplan fuer den Ofen“ wenn planned_stove_on durchgehend null, „Volllast, 15 kg je Fuellung“ bei Stunden > 0, „nicht eingeplant, Begruendung unten“ bei 0 Stunden mit Fahrplan), Tabellenspalte „Ofen“ mit brennt/aus/-, und Legendeneintrag „Ofen brennt“.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:559-570 (Kachel), :469 (Streifen), :702 und :719-721 (Tabellenspalte)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf Zeile 53-82, plantabelle Zeile 163-184)`
+- **klein** · kennzahl — Kachel „bewusst gemieden“: Zahl der Viertelstunden mit planned_hp_state == avoid, geteilt durch 4, in Stunden, Hinweis „teure Stunden ohne Anforderung“, gedaempfte Farbe.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:521 (Rechnung), :558 (Kachel)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 53-82)`
+- **klein** · kennzahl — Kachel „Waermebedarf geplant“ in kWh: Summe aus heat_demand_kw + dhw_demand_kw ueber alle Viertelstunden mit Bedarf, geteilt durch 4, ohne Dezimalstelle, Hinweis „Modell v1, nicht gemessen“ (ohne Fahrplan „kein Fahrplan“). Die App zeigt den Bedarf nur je Viertelstunde in der Tabelle, nie als Arbeit ueber den Horizont.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:495-497 und :527 (Rechnung), :571 (Kachel)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 53-82)`
+- **klein** · kennzahl — Kachel „COP im Horizont“: kleinster bis groesster cop-Wert des Horizonts als „2,4 bis 3,8“, Hinweis „aus der Aussentemperatur“. Die App zeigt den COP nur als Spalte „Arbeitszahl“ der naechsten acht Stunden, nicht als Spanne.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:498 und :528 (Rechnung), :572 (Kachel)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 53-82)`
+- **klein** · kennzahl — Kachel „Preisspanne“: kleinster bis groesster price_ct_kwh des Horizonts, ohne Dezimalstelle, Einheit ct, Hinweis „im Horizont“ (ohne Preise „-“).
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:529 (Rechnung), :573 (Kachel)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 53-82)`
+- **klein** · kennzahl — Die angeforderte Dauer ueber den ganzen Horizont: Viertelstunden mit planned_hp_state == release, geteilt durch 4, als Stunden („6,0 h“). Die App zaehlt stattdessen Phasen („geplante Laeufe“) und nur fuer die naechsten 24 Stunden - die geplante Laufzeit in Stunden, die man der gemessenen gegenueberstellen kann, steht nirgends.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:516 (Rechnung), :551-556 (Kachel)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 61-67)`
+- **klein** · diagramm — Die Preisfenster als Baender hinter der Preiskurve: windows mit kind == cheap (blaugrau, 14 % Deckung) und kind == negative (rot, 14 %), ohne Beschriftung im Band, dafuer in der Legende („Preistief“, und „negativer Preis“ nur wenn es ein solches Fenster gibt). Die App listet die Fenster als Zeilen, markiert sie aber nicht im Bild.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:208-219 (Baender), :629-638 (Legende)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.bild Zeile 101-161, fenster Zeile 84-98)`
+- **klein** · abschnitt — Die Karte „Die Entscheidungen“ zeigt nicht die naechsten Stunden, sondern die drei teuersten und die drei billigsten Viertelstunden des ganzen Horizonts (nach price_ct_kwh sortiert, Doppelte entfernt, dann chronologisch), jede mit Zeit als „heute/morgen/uebermorgen HH:MM“ und note_de bzw. reason_code als „Warum“. Die App zeigt stattdessen die naechsten acht Stunden der Reihe nach; die Extremstunden des zweiten Tages, um die es im Fahrplan geht, kommen darin nicht vor.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:679-688 (Auswahl), :646-649 (Kartenkopf)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.plantabelle, Zeile 163-184)`
+- **klein** · zustand — Leere Flaechen sagen, warum sie leer sind - ein Wort in der Mitte der Flaeche statt einer leeren Achse: „kein Waermebedarf im Fahrplan“, „kein Pufferverlauf im Fahrplan“, „keine Messung der Waermepumpe“, „keine Anforderung gemessen“, „keine Messung im Horizont“, und beim Ofen „nicht eingeplant, Begruendung darunter“ bzw. „kein Ofenfahrplan“.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:473-487 (Auswahl), :667-675 (Darstellung)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.body, Zeile 14-51)`
+- **klein** · kennzahl — Aussentemperatur und Prognosefehler der Sonne je Viertelstunde: „Aussen 6,3 °C · COP 3,21“ (outdoor_temp_c mit cop) und bei vorhandener Messung „PV gemessen 2,4 kW“ mit dem Satz „0,4 kW mehr als erwartet“ bzw. „wie erwartet“ unter 0,05 kW Abstand. outdoorTempC des Planintervalls wird in der App auf dieser Seite nicht gezeigt.
+  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:331-338 (PV-Abweichung), :347-350 (Aussen und COP)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.plantabelle, Zeile 163-184)`
+
+### `/waerme/nachbetrachtung`  ·  6 Punkte, davon 3 spürbar
+
+- **spürbar** · abschnitt — Die Karte „Die Linien in Zahlen“ fehlt vollstaendig, und damit die vier Vergleichslinien selbst (erster Fahrplan, letzter Stand, wirklich, perfekte Voraussicht). Je verfuegbarer Linie eine Zeile mit name_de (plus „· geschaetzt“ wenn geschaetzt), eur, bei hat_ofen ofen_eur („davon Ofen“), wp_kwh, ct_je_kwh („im Mittel“, mit Erklaerung dass es nicht an der Menge haengt), wp_h, bei hat_ofen ofen_h; Kopf rechts „ueber die N verglichenen Viertelstunden“. Die App zeigt nur die Abstaende zwischen den Linien, nie die Linien mit ihren Betraegen - r.linien wird in der ganzen App nicht gelesen (Modell: Schema.swift:5327-5343).
+  - Vorlage: `apps/web/src/components/waerme/Nachbetrachtung.tsx:179-233`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (NachbetrachtungSeite, Zeile 209-373)`
+- **spürbar** · diagramm — Die Kostentreppe: der Weg vom Versprechen des ersten Fahrplans zur Wirklichkeit als Stufenbild auf einer gemeinsamen Euro-Achse. Erste Zeile die Summe der Anfangslinie, darauf die Stufen prognosefehler, nachfuehren, eingriff (jede beginnt, wo die vorige endet, Faden zur naechsten Zeile, Betrag mit Vorzeichen, Pfeilspitze je Richtung), dann „wirklich“ als Summe, abgetrennt unter „zum Vergleich gerechnet“ die Linie perfekt (gestrichelter Umriss, weil geschaetzt). Bei der Stufe eingriff steht daneben die Zerlegung „Menge +0,31 € · Zeitpunkt −0,80 € · Ofen …“. Eine fehlende Stufe wird weggelassen, nicht als Null gezeichnet.
+  - Vorlage: `apps/web/src/components/waerme/Kostentreppe.tsx:67-102, Rechnung in apps/web/src/components/waerme/nachbetrachtung.ts:139-183`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (NachbetrachtungSeite, Zeile 231-255)`
+- **spürbar** · diagramm — Die Karte „Der Tag, Linie fuer Linie“ (Tagesvergleich) fehlt ganz: oben der eingetretene Preis (preis_ct) und, wenn ueberschuss_kw > 0,05 vorkommt, der Ueberschuss; in der Mitte je Linie ein Streifen mit vier Helligkeitsstufen nach wp_kwh_je im Verhaeltnis zu wp_kw * schritt_min/60 (Stufe 0 = schwacher Grund „aus“, nichts = keine Aussage) und bei hat_ofen ein schmaler Ofenrand aus ofen_je; unten die aufgelaufenen Kosten eur_kumuliert aller Linien als Kurven. Nicht verglichene Viertelstunden (verglichen == false) liegen unter einem Schleier mit dem Wort „nicht verglichen“. Dazu die Legende mit den Linienmarken, „Strom der Waermepumpe je Viertelstunde, bis X kWh“ und „Ofen brennt“.
+  - Vorlage: `apps/web/src/components/waerme/Tagesvergleich.tsx:67-308, Legende in apps/web/src/components/waerme/Nachbetrachtung.tsx:150-177`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (NachbetrachtungSeite, Zeile 217-272)`
+- **mittel** · zustand — Fehlende Linien mit Begruendung: jede Linie mit verfuegbar == false bekommt unter der Tabelle eine Zeile „<name_de> fehlt“ und dahinter grund_de (zum Beispiel, dass der Fahrplan vor der Erweiterung der Ablage entstand). Ohne das sieht ein Tag ohne Versprechen aus wie ein Tag ohne Abweichung.
+  - Vorlage: `apps/web/src/components/waerme/Nachbetrachtung.tsx:83 (Auswahl), :222-231 (Darstellung)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (NachbetrachtungSeite, Zeile 231-272)`
+- **klein** · kennzahl — Im Kartenkopf „N von M Viertelstunden verglichen“, wobei M die Laenge von zeiten ist - die App zeigt nur n_verglichen als Kachel („verglichene Schritte“) ohne die Gesamtzahl, man sieht also nicht, wie viel vom Tag ueberhaupt bewertet wurde.
+  - Vorlage: `apps/web/src/components/waerme/Nachbetrachtung.tsx:85 (gesamt), :96-99 (Kopfzeile)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (NachbetrachtungSeite.kennzahlen, Zeile 296-318)`
+- **klein** · bedienung — Ein Datumsfeld zwischen den Pfeilen, mit dem man direkt auf einen beliebigen Tag springt (max = heute); die App kann nur Tag fuer Tag blaettern. Dazu rechts der Verweis „diesen Tag in der Wiedergabe ansehen“ auf /waerme/wiedergabe?day=<tag> und im Absatz „Ohne Preisblick“ der Verweis „Zur Rechnung ›“ auf /geld?period=day&anchor=<tag>.
+  - Vorlage: `apps/web/src/components/waerme/Nachbetrachtung.tsx:103-115 (Datumsfeld und Wiedergabe-Verweis), :135-143 (Verweis zur Rechnung)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (NachbetrachtungSeite.tagwahl, Zeile 277-294)`
+
+### `/waerme/raeume`  ·  5 Punkte, davon 1 spürbar
+
+- **spürbar** · diagramm — Die Hauptkarte der Webseite ist "Abweichung im Tagesverlauf" (Kopf rechts: "Je Raum und Viertelstunde die Abweichung vom Zielwert. Der Raum, der zuerst abfaellt, bestimmt die noetige Vorlauftemperatur fuer alle."): eine Zeile je Raum, je Viertelstunde ein Feld, gefaerbt nach Ist minus Ziel, wobei Ziel = setpoint_c + offset_k je Fenster ist; fuenfstufige zweiseitige Skala (unter -1,5 K, -1,5 bis -0,5, -0,5 bis +0,5 "am Ziel", +0,5 bis +1,5, ueber +1,5), fehlender Messwert schraffiert und nicht grau, noch nicht gemessene Fenster in einem eigenen, blassen Ton; rechts je Zeile das Tagesmittel der Abweichung in K mit Vorzeichen, unten eine Zeitachse 00/06/12/18/24 und die Spaltenueberschrift "Mittel". Die iOS-Seite zeichnet stattdessen absolute Temperaturkurven aller Raeume und ein Ventilband - die Abweichung vom Ziel kommt auf der Seite nirgends vor, obwohl offsetK in RoomSeriesOut liegt.
+  - Vorlage: `apps/web/src/components/rooms/RoomsReport.tsx:476-508 mit apps/web/src/components/rooms/logic.ts:60-72 und apps/web/src/components/rooms/palette.ts:12-42`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **mittel** · kennzahl — Die Tabelle "Die Raeume als Tabelle" hat sieben Spalten: Raum, Etage (floor, sonst "-"), Ist (temp_c, 1 Stelle), Ziel (target_c bzw. setpoint_c), Abweichung (deviation_k mit Vorzeichen in K), "Ventil am Tag" (Tagesmittel der Ventilreihe als Prozent, "zu" bei 0, "kein Messwert" bei null) und Kreise (circuits). Der App-Tabelle "Im Tagesmittel" fehlen Etage, Ziel, Abweichung und Kreise; ausserdem zeigt sie als Temperatur und Sollwert das Tagesmittel, waehrend die Webseite den Ist- und Zielwert des Augenblicks (am vergangenen Tag: den letzten gemessenen Wert des Tages) nennt.
+  - Vorlage: `apps/web/src/components/rooms/RoomsReport.tsx:513-547`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **mittel** · endpunkt — Die Webseite holt neben /rooms/history auch /rooms (alle 30 s, aber nur am laufenden Tag) und braucht es fuer drei Dinge: die Ist-, Ziel- und Abweichungsspalte des laufenden Tages samt circuits und floor, den Zeitpunkt live.at als Grenze "bis wohin der Tag gemessen ist" (Serveruhr, nicht Browseruhr - dahinter wird "noch nicht" gezeichnet statt "kein Messwert"), und den Hinweis bei live.named == false: "Die Raeume heissen hier nach ihrer Kennung in der Heizungsregelung. Die Namensliste kommt als eigene Meldung der Bruecke und steht nach ihrem naechsten Start zur Verfuegung." Die iOS-Seite ruft nur api.raeumeTag; api.raeume() bleibt auf dieser Seite ungenutzt.
+  - Vorlage: `apps/web/src/components/rooms/RoomsReport.tsx:325-345, 367-372 und 431-437`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **klein** · abschnitt — Unter der Auswertung steht der erklaerende Absatz: geregelt wird auf Sollwert plus Offset (der Offset ist die Summe mehrerer benannter Anpassungen, nicht nur der Witterung, deshalb stehen beide Zahlen einzeln), die Antriebe am Verteiler sind auf oder zu - ein Zwischenwert im Streifen heisst "ein Teil der Kreise" oder "einen Teil des Fensters", nicht "halb offen". Die Methodenkarte der App nennt nur die Aufloesung und dass Luecken nicht ueberbrueckt werden; beide Saetze fehlen, obwohl ihr Ventilband genau diesen Zwischenwert zeichnet.
+  - Vorlage: `apps/web/src/components/rooms/RoomsReport.tsx:549-558`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **klein** · zustand — Sind keine Raeume da, sagt die Webseite warum: Karte "Keine Raeume" mit "Es liegen keine Werte der Einzelraumregelung vor. Die Bruecke liest sie, sobald in ihrer Konfiguration die Adresse des Controme-Servers eingetragen ist." Die App zeigt nur "Fuer diesen Tag sind keine Raumwerte da." und nennt die Ursache nicht.
+  - Vorlage: `apps/web/src/components/rooms/RoomsReport.tsx:439-446`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+
+### `/waerme/waermepumpe`  ·  3 Punkte
+
+- **mittel** · zustand — Der Warnsatz zur Zusatzheizung. Wenn `zusatz_kw` gesetzt ist, steht auf der Webseite ein eigener Hinweisabsatz (role=status): „Neben dem Verdichter laufen rund X kW. Der Zaehler misst deutlich mehr, als die Maschine fuer sich meldet; vermutlich ist der elektrische Heizstab an. Die Arbeitszahl unten enthaelt ihn." Die App zeigt `zusatzKw` nur als Zahl in der Zeile „Zusatzheizung" (WaermepumpeSeiten.swift:96-101) und sagt nirgends, dass die Arbeitszahl darueber den Heizstab mit enthaelt - also wird eine COP von 1,8 als Maschinenfehler gelesen statt als Heizstabbetrieb. Gebraucht wird ein Hinweisabsatz ueber den Kacheln, Bedingung `w.zusatzKw != nil`.
+  - Vorlage: `apps/web/src/components/waermepumpe/Waermepumpe.tsx:81-85`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/WaermepumpeSeiten.swift`
+- **klein** · abschnitt — Die Legende zu den Reglerzahlen im Fuss. Die Webseite erklaert, was die nackten Zahlen von Umschaltventil und Heizstab bedeuten: „Umschaltventil und Heizstab stehen als Zahl des Reglers da. Laut Busbeschreibung heisst beim Ventil 0 Warmwasser und 1 Heizung, beim Heizstab 1 an; fuer dieses Haus ist das noch nicht gegengeprueft." Die App zeigt in „Regler und Kontakte" nur `String(v)` bzw. `String(h)` (WaermepumpeSeiten.swift:90-95) ohne jede Deutung und ohne den Vorbehalt. Dazu fehlt der zweite Fusssatz „Fuehler WP: der Speicherfuehler der Waermepumpe. Er sitzt ueber dem obersten eigenen Fuehler, auf halbem Weg zur Oberkante des Speichers." - in der App heisst die Zeile nur „Speicherfuehler". Beide Saetze sind feste Texte, Bedingung fuer den ersten: `w.ventilCode != nil || w.heizstabCode != nil`.
+  - Vorlage: `apps/web/src/components/waermepumpe/Waermepumpe.tsx:106-110`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/WaermepumpeSeiten.swift`
+- **klein** · kennzahl — Der Zeitstempel des Standes. Die Webseite schreibt in die Kopfzeile „Stand {hhmm(daten.now)}". Die App zeigt auf dieser Seite nirgends `w.now` - bei einer Seite, die sich alle zehn Sekunden selbst nachlaedt (WaermepumpeSeiten.swift:157-163), ist nicht zu sehen, ob die Werte von jetzt oder von vor einer Stunde sind. Die Nachbarseiten der App machen es vor: AnlageSeite.swift:38-39 und ReglerSeite.swift:163 setzen „Stand \(Formate.hhmm(iso: …))".
+  - Vorlage: `apps/web/src/components/waermepumpe/Waermepumpe.tsx:68-69`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/WaermepumpeSeiten.swift`
+
+### `/waerme/wiedergabe`  ·  10 Punkte, davon 1 spürbar
+
+- **spürbar** · diagramm — Das Tagesband fehlt ganz: der ganze Tag als Zeile unter dem Bild, fuenf Flaechen auf einer Zeitachse - Sonne und Netz in kW (strom.pv_kw, strom.grid_kw), der Preis in ct (preis_ct_kwh), dann drei Zeitleisten: was der Fahrplan vorsah (geplant_wp, blass und flacher), was die Waermepumpe tat (waermepumpe.running, kraeftig) und, wenn vorhanden, der Ofen - zusammenhaengende Laeufe statt eines Balkens je Bild, Luecken bleiben Luecken. Der Spielkopf steht als Linie darin, und ein Tippen ins Band springt an diese Stelle. Ohne das sieht man in der App nur den einen Augenblick und nie den Tag.
+  - Vorlage: `apps/web/src/components/waerme/Tagesband.tsx:46-110 und weiter, eingebunden in apps/web/src/components/waerme/Wiedergabe.tsx:278`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (WiedergabeSeite, Zeile 192-343)`
+- **mittel** · diagramm — Die Tagesuhr fehlt: der Ortstag als Ring, Mitternacht oben, im Uhrzeigersinn, mit fuenf Ringen von aussen nach innen - Preis (fuenf Helligkeiten ueber die Tagesspanne), Sonne (fuenf Helligkeiten bis zum Tagesmaximum), geplant (geplant_wp, an/aus), gelaufen (waermepumpe.running) und, wenn vorhanden, Ofen. Drei Zustaende je Stelle: Farbe = ja, blasse Spur = gemessen aber nein, nichts = keine Messung. Der Ring ist der Griff: anfassen und drehen faehrt durch den Tag, die Mitte nennt die Zeit unter dem Zeiger.
+  - Vorlage: `apps/web/src/components/waerme/Tagesuhr.tsx:36-120 und weiter, eingebunden in apps/web/src/components/waerme/Wiedergabe.tsx:276`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (WiedergabeSeite, Zeile 192-343)`
+- **mittel** · abschnitt — Das Dashboard stellt je Augenblick dieselbe vollstaendige Anlagenansicht hin wie die Seite Anlage (gleiche Komponente, nur mit der Zeit des Bildes als Uhr). Die App zeigt zehn Zeilen und laesst vom Augenblick den Rest weg: Netzleistung und Batterie (strom.grid_kw, strom.battery_kw, battery_soc, die Anteile aus Sonne/Netz/Speicher), den Ofen (ofen.present/running), das Warmwasser und die uebrigen drei Pufferfuehler (speicher.temps_c, die App zeigt nur den obersten). Die Gruppen von AnlageSeite.swift (strom/speicher/ofenkarte/warmwasser) sind die Vorlage, in der App gibt es sie fuer den Augenblick, fuer die Wiedergabe nicht.
+  - Vorlage: `apps/web/src/components/waerme/Wiedergabe.tsx:226-240 (Schema je Bild), Inhalt in apps/web/src/components/anlage/Schema.tsx`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (WiedergabeSeite.werte, Zeile 281-314)`
+- **mittel** · bedienung — Die Wahl der Schrittweite: drei Knoepfe 1 min / 5 min / 15 min, die den Tag neu holen (step_min). Der iOS-Client kann das bereits (api.anlageWiedergabe(tag:schrittMin:) mit Vorgabe 5, Api.swift:263), die Seite bietet es nicht an - ein Tag ist in der App immer in 5-Minuten-Schritten, eine Minutenauflösung fuer einen einzelnen Vorfall gibt es nicht.
+  - Vorlage: `apps/web/src/components/waerme/Wiedergabe.tsx:38 (Stufen), :214-219 (Knoepfe), :99 (Abruf)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (WiedergabeSeite.tagwahl Zeile 228-255, lade Zeile 331-343)`
+- **mittel** · zustand — Die Vollstaendigkeit des Tages: im Kartenkopf „<frames.length> von <erwartet> Bildern · <step_min>-Minuten-Schritt“, und wenn frames < erwartet eine zusaetzliche Zeile in der Karte „Zu diesem Tag“: dass die fehlenden Bilder als Luecke zu sehen sind, der Ring dort offen bleibt, das Band abreisst und nichts ueberbrueckt wird, weil ein ruhiges Haus und ein blindes Messsystem gleich aussaehen. Die App nennt nur „<frames.count> Augenblicke“ in der Methode; erwartet wird nicht gelesen.
+  - Vorlage: `apps/web/src/components/waerme/Wiedergabe.tsx:189 (Pruefung), :194-203 (Kopfzeile), :286-301 (Hinweis)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (WiedergabeSeite, Zeile 214-218)`
+- **mittel** · bedienung — Einstieg mit Tag und Uhrzeit: die Seite liest ?day=YYYY-MM-DD&t=<stunde> aus der Adresse und stellt den Spielkopf auf das erste Bild an oder nach dieser Stunde (gezaehlt ab von der Antwort, einmal je Ladung). Darauf zeigen die Zeilen des Ereignisrasters der Wirkung und die Jahreskarte. Die App beginnt immer bei gestern 00:00 und kann keine Stunde annehmen - Seitenwahl.swift schneidet den Fragezeichenteil des Weges ohnehin ab.
+  - Vorlage: `apps/web/src/components/waerme/Wiedergabe.tsx:62-65 und :86-112 (Sprung aus der Adresse), Ziel gebaut in apps/web/src/components/waerme/wirkung.ts:120-122`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (WiedergabeSeite, Zeile 192-343)`
+- **klein** · bedienung — Die Wahl des Tempos: vier Knoepfe 2× / 6× / 12× / 24× (Bilder je Sekunde, Vorgabe 12) und in der Methode der Satz, wie lange der Tag damit braucht („bei 5 Minuten Schritt und 12× laeuft der Tag in N Sekunden durch“). Die App spielt fest mit vier Bildern je Sekunde (250 ms Pause) und bietet keine Wahl.
+  - Vorlage: `apps/web/src/components/waerme/Wiedergabe.tsx:37 (Stufen), :260-270 (Knoepfe), :313-316 (Satz)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (WiedergabeSeite.spiele, Zeile 317-329)`
+- **klein** · bedienung — Der Abspieler haelt am Tagesende an (letztes Bild bleibt stehen, Knopf springt auf Pause), damit niemand unbemerkt einen zweiten Durchlauf fuer einen zweiten Tag haelt. Die App setzt die Stelle am Ende auf 0 und laeuft endlos weiter.
+  - Vorlage: `apps/web/src/components/waerme/Wiedergabe.tsx:128-142`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (WiedergabeSeite.spiele, Zeile 317-329)`
+- **klein** · bedienung — In der Spielleiste stehen neben Knopf und Schieber die Uhrzeit des Bildes und der Bildzaehler „<i+1>/<anzahl>“; ein Griff an den Schieber haelt das Abspielen an („wer hinfasst, will hinsehen“). Dazu das Datumsfeld oben, mit dem man direkt auf einen beliebigen Tag bis heute springt - die App blaettert nur Tag fuer Tag, zeigt keinen Zaehler und spielt beim Schieben weiter.
+  - Vorlage: `apps/web/src/components/waerme/Wiedergabe.tsx:205-220 (Datumsfeld), :242-259 (Leiste mit Uhr und Zaehler), :151-158 (Griff haelt an)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (WiedergabeSeite.tagwahl Zeile 228-255, schieber Zeile 257-268)`
+- **klein** · zustand — Ein Tag ohne Bilder sagt es: wenn die Antwort da ist, aber frames leer, steht hinweise_de[0] als Satz in der Karte. In der App bleibt in diesem Fall dauerhaft „Wird geholt …“ stehen, weil die Bedingung „wiedergabe != nil und frames nicht leer“ sonst nichts zeigt. Ausserdem traegt die Zeile zur geplanten Freigabe in der App den Variablennamen „w.geplantWp“ als Wort (SystemSeiten.swift:308); im Dashboard heisst diese Groesse „geplant“ beziehungsweise „was der Fahrplan vorsah“.
+  - Vorlage: `apps/web/src/components/waerme/Wiedergabe.tsx:224 (leerer Tag), Benennung in apps/web/src/components/waerme/Tagesband.tsx:68-74`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift (WiedergabeSeite, Zeile 207-221 und 305-310)`
+
+### `/waerme/wirkung`  ·  8 Punkte, davon 3 spürbar
+
+- **spürbar** · kennzahl — Die Gegenprobe fehlt: Kachel „ohne Anforderung angelaufen“ mit vergleich.quote in Prozent und dem Hinweis „zur selben Tageszeit, aus <vergleich.n_gleiche_stunde> Vergleichsmomenten“ (ohne Wert: „kein Vergleich zur selben Tageszeit“), samt vergleich.quote_lo/quote_hi. Die App zeigt nur die Quote mit Anforderung - ohne die Vergleichsquote ist das Urteil nicht nachvollziehbar; vergleich wird in der App nirgends gelesen.
+  - Vorlage: `apps/web/src/components/waerme/Wirkung.tsx:183-188`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (WirkungSeite.kennzahlen, Zeile 425-453)`
+- **spürbar** · diagramm — Der Antwortfaecher fehlt ganz: alle auswertbaren Schliessvorgaenge am Nullpunkt uebereinandergelegt, Achse von -vor_min bis +nach_min. Oben die Leistung in kW - jede einzelne Antwort als duenne Kurve (bis 80, Deckung 1,1/sqrt(n) zwischen 0,1 und 0,55), darueber faecher.mittel_kw als kraeftige Linie, das Band faecher.q25_kw bis q75_kw nur wo faecher.n >= 8, und die gestrichelte Schwellenlinie „laeuft ab X kW“. Unten der Anteil, der bis zu dieser Minute angelaufen ist (faecher.anteil_angelaufen in Prozent, Treppe) und gestrichelt dieselbe Kurve ohne Anforderung (vergleich.angelaufen_bis), dazu das markierte Folgefenster „zaehlt als Folge: <folge_min> min“. Dazu die vierteilige Legende. faecher wird in der App nicht gelesen (Modell: Schema.swift:3279, 5217).
+  - Vorlage: `apps/web/src/components/waerme/Antwortfaecher.tsx:52-272, Karte und Legende in apps/web/src/components/waerme/Wirkung.tsx:204-231`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (WirkungSeite, Zeile 381-474)`
+- **spürbar** · abschnitt — Die Karte „Jede Anforderung“ (Ereignisraster) fehlt ganz: je Ereignis eine Zeile mit Datum und Uhrzeit, daneben ein Balken von -vor_min bis +nach_min - gefuellt wo die Pumpe lief (kw >= schwelle_kw), schwacher Grund wo sie gemessen stand, leer wo die Messung fehlt -, darunter ein schmaler Strich ueber kontakt_min, und am Nullpunkt die Senkrechte. Rechts der Ergebnistext („sofort“, „nach N min“, „erst nach N min“, „kein Anlauf“, „lief schon“, „Messung fehlt“). Gruppiert in angelaufen / nicht angelaufen / lief schon / Messung fehlt, darin nach verzoegerung_min sortiert, je Gruppe Titel und Anzahl; gezeigt die juengsten 80 mit Hinweis auf die Gesamtzahl. Jede Zeile fuehrt in die Wiedergabe dieses Tages zu dieser Stunde. ereignisse wird in der App nicht gelesen.
+  - Vorlage: `apps/web/src/components/waerme/Ereignisraster.tsx:303-390, Gruppierung und Texte in apps/web/src/components/waerme/wirkung.ts:19-81, Sprungziel :120-122`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (WirkungSeite, Zeile 381-474)`
+- **mittel** · diagramm — Der Quotenvergleich als Bild: zwei Zeilen („angefordert“ in der Waermepumpenfarbe, „sonst“ in Mist) auf einer Spur von 0 bis 100 Prozent mit Marken bei 0/50/100, Punkt auf der beobachteten Quote, Balken von quote_lo bis quote_hi, rechts daneben die Zahl und darunter „lo bis hi %“; ohne Quote der Satz, warum sie fehlt. Bildunterschrift: „Anlauf binnen <folge_min> Minuten bei stehender Maschine. Punkt: beobachtete Quote. Balken: der Bereich, in dem die wahre Quote mit 95 Prozent Sicherheit liegt. Ein Urteil gibt es erst, wenn sich die Balken nicht ueberlappen.“ Die App nennt den Vertrauensbereich nur als Beitext der Quotenkachel.
+  - Vorlage: `apps/web/src/components/waerme/Wirkung.tsx:54-106 (Bild), :159-167 (Kopf mit Urteil daneben)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (WirkungSeite, Zeile 394-403)`
+- **mittel** · kennzahl — Das Folgefenster folge_min steht nirgends in der App, und damit fehlt der Bezug der Quote: „danach angelaufen“ traegt den Hinweis „<gefolgt> von <n_auswertbar> binnen <folge_min> Minuten, <n_auswertbar - gefolgt> nicht“ (ohne auswertbare Anforderung: „keine auswertbare Anforderung“). Auch die Zahl der nicht gefolgten Faelle fehlt. Die Kachel „Anforderungen“ zeigt n mit „<n_auswertbar> bei stehender Maschine, <n_lief_schon> bei laufender“ bzw. „im Zeitraum keiner“ bei n == 0.
+  - Vorlage: `apps/web/src/components/waerme/Wirkung.tsx:140 (nichtGefolgt), :172-182 (beide Kacheln)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (WirkungSeite.kennzahlen, Zeile 425-453)`
+- **klein** · kennzahl — Der ausgewertete Zeitraum im Klartext rechts im Kartenkopf: von/bis als „10. Oktober bis 9. November“ in der Zeit des Hauses. Die App schreibt nur „30 Tage“ als Kicker; w.von und w.bis werden nicht gezeigt.
+  - Vorlage: `apps/web/src/components/waerme/Wirkung.tsx:145 (Kopf), Formatierung in apps/web/src/components/waerme/wirkung.ts:115-117`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (WirkungSeite, Zeile 403)`
+- **klein** · kennzahl — Das Urteil in Worten: offen → „noch offen“, wirkt → „die Maschine folgt“, kein_unterschied → „kein gesicherter Unterschied“, seltener → „seltener als sonst“, dargestellt als „Urteil · <Wort>“ ueber dem Urteilssatz. Die App setzt w.urteil roh als Kartentitel, es steht dort also „kein_unterschied“.
+  - Vorlage: `apps/web/src/components/waerme/Wirkung.tsx:33-38 (Woerter), :162-163 (Darstellung)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (WirkungSeite, Zeile 396)`
+- **klein** · zustand — Beim Wechsel des Zeitraums steht neben den Knoepfen „wird neu gerechnet“, solange die neue Rechnung laeuft und die alten Zahlen noch stehen; vor der ersten Antwort steht „Die Anforderungen werden gesucht.“ Die App zeigt beim Wechsel von 30 auf 90 Tage weiter die alten Zahlen ohne jeden Hinweis (die Leermeldung „Wird gerechnet …“ erscheint nur, wenn noch gar nichts geladen ist).
+  - Vorlage: `apps/web/src/components/waerme/Wirkung.tsx:153 (Hinweis beim Nachrechnen), :157 (erste Ladung)`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (WirkungSeite.body, Zeile 388-423)`
+
+### `/waerme/waermepumpe/betrieb`  ·  7 Punkte, davon 3 spürbar
+
+- **spürbar** · diagramm — Das Diagramm „Laufstunden je Tag": gestapelte Balken je Tag aus drei Teilen - Heizen, Abtauen, Heizstab, in Stunden. Die Teile rechnet `stundenTeile` (betrieb.ts:49-52): heizen = max(0, lauf_min − abtau_min − zusatz_min), abtauen = abtau_min/60, heizstab = zusatz_min/60; zusammen ergeben sie die Laufzeit. Achse „Stunden", x-Achse die Tage als „14.11.". Die App hat kein Diagramm je Tag; `b.tage` wird nur als Tabelle verwendet (WaermepumpeSeiten.swift:211-236). Alle drei Felder liegen in BetriebTagOut (Schema.swift:1859-1862). Baubar mit Balkenbild(gestapelt: true) wie in WaermepumpeSeiten.swift:200-208.
+  - Vorlage: `apps/web/src/components/waermepumpe/betrieb.ts:93-115`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/WaermepumpeSeiten.swift`
+- **spürbar** · diagramm — Das Diagramm „Arbeitszahl je Tag" mit ZWEI Linien: „im Heizbetrieb" (`cop_heizen`) und „ueber alles" (`cop_tag`), Luecken nicht verbunden (connectNulls: false), y-Achse von min(2, …) bis max(5, …) nach `copAchse` (betrieb.ts:118-122). Dazu der Erklaersatz unter dem Bild: „Ueber alles" enthaelt jeden Anlauf, das Abtauen und den Heizstab; „im Heizbetrieb" zaehlt nur eingeschwungene Fenster. Liegt die erste Linie darunter, ist der Abstand, was Takten und Abtauen an dem Tag gekostet haben.' Die App zeigt die Arbeitszahl je Tag nur als Tabellenspalte (`copTag`, WaermepumpeSeiten.swift:229-232) und `copHeizen` ueberhaupt nicht - damit fehlt genau der Vergleich, um den es hier geht. Felder: BetriebTagOut.copTag/copHeizen (Schema.swift:1866-1867).
+  - Vorlage: `apps/web/src/components/waermepumpe/betrieb.ts:124-155`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/WaermepumpeSeiten.swift`
+- **spürbar** · diagramm — In der Heizkurve fehlen die Messpunkte. Die Webseite zeichnet `daten.stunden` als zwei Streureihen ueber der Aussentemperatur - „Sollwert" (aussen_c / soll_c, jede Stunde im Heizbetrieb) und, wo vorhanden, „erreicht" (aussen_c / vorlauf_c, als Raute) - und legt die Ausgleichsgerade nur darueber. Die App zeichnet ausschliesslich die Gerade aus `hk.a + hk.b·x` (WaermepumpeSeiten.swift:289-347); `b.stunden` wird auf der Seite nie benutzt. Ohne Punkte ist nicht zu sehen, ob die Gerade zwanzig oder zweitausend Messungen glaettet und wo der Regler fuer Warmwasser ausreisst. Felder: BetriebStundeOut.aussenC/sollC/vorlaufC (Schema.swift:1821-1823). Dazu der Fusssatz „aus N Stunden, erklaert X % der Streuung. Jeder Punkt ist eine Stunde im Heizbetrieb. Liegen Punkte weit ueber der Geraden, hat der Regler dort fuer Warmwasser mehr verlangt." (Betrieb.tsx:122-125).
+  - Vorlage: `apps/web/src/components/waermepumpe/betrieb.ts:184-236`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/WaermepumpeSeiten.swift`
+- **mittel** · abschnitt — Sechs Spalten der Tagestabelle. Web: Tag, draussen, Starts, Lauf, Lauf im Mittel, Abtauen, Heizstab, Strom, Waerme, Arbeitszahl, im Heizbetrieb - und die Tage umgekehrt, der neueste oben. App (WaermepumpeSeiten.swift:213-233): nur Starts, Laufzeit, Abtauen, Strom, Arbeitszahl, in Originalreihenfolge. Es fehlen: „draussen" (`aussenC`, als „X °C"), „Lauf im Mittel" (`laufMedianMin` als Dauer), die Anzahl der Abtauungen hinter der Dauer („1 h 10 min · 4-mal", `abtauungen`), „Heizstab" (`zusatzMin` als Dauer, 0 wenn null), „Waerme" (`waermeKwh` in kWh) und „im Heizbetrieb" (`copHeizen`, zwei Stellen). Alle Felder sind in BetriebTagOut vorhanden (Schema.swift:1856-1870).
+  - Vorlage: `apps/web/src/components/waermepumpe/Betrieb.tsx:141-168`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/WaermepumpeSeiten.swift`
+- **mittel** · kennzahl — Drei abgeleitete Groessen der Kopfkacheln. (1) „Abtauen" als ANTEIL der Laufzeit in Prozent: `abtauAnteil = abtau_min / lauf_min` (betrieb.ts:61-63), Zusatz „der Laufzeit · N-mal"; die App zeigt nur die absolute Dauer (WaermepumpeSeiten.swift:273-276), und 70 min Abtauen heissen bei 4 h Laufzeit etwas anderes als bei 40 h. (2) Der Anteil kurzer Laeufe als Zusatz der Kachel „Ein Lauf dauert": `kurzAnteil` = Laeufe der Klasse von_min==0 durch alle Laeufe (betrieb.ts:66-70), gezeigt als „X % unter zehn Minuten" - das ist die Taktzahl, um die es laut Seitenkopf geht. (3) `cop_heizen` als Zusatz der Arbeitszahl-Kachel („im Heizbetrieb 3,85"); BetriebOut.copHeizen (Schema.swift:1744) wird in der App nie gelesen. Ausserdem rechnet die Webseite „Starts je Tag" nur ueber Tage MIT Betrieb (betrieb.ts:55-58), die App ueber alle Tage des Zeitraums (WaermepumpeSeiten.swift:249-252) - bei einem milden Zeitraum drueckt das die Zahl.
+  - Vorlage: `apps/web/src/components/waermepumpe/Betrieb.tsx:73-78`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/WaermepumpeSeiten.swift`
+- **klein** · zustand — Die Leerzustaende statt verschwindender Karten. Web: wenn es keinen vollstaendigen Lauf gibt, steht in der Karte „Noch kein vollstaendiger Lauf: ein Lauf zaehlt, wenn sein Anfang und sein Ende in den Daten liegen."; gibt es keine Heizstunden, steht „Noch keine Stunde im Heizbetrieb mit Sollwert und Aussentemperatur."; und wenn es Laeufe gibt, steht die Zahl darunter („N vollstaendige Laeufe. Die ersten zehn Minuten eines Laufs sind Anlauf; ein Lauf, der kuerzer ist, kommt nie in den Bereich, in dem die Maschine gut arbeitet."). Die App blendet die Karten in diesen Faellen einfach aus (`if !b.klassen.isEmpty`, WaermepumpeSeiten.swift:198; `if let hk = b.heizkurve`, Zeile 237) - der Leser sieht nicht, ob nichts da ist oder etwas fehlt. Vorbild in der App: Leer(satz:dazu:) wie in WaermepumpeSeiten.swift:24.
+  - Vorlage: `apps/web/src/components/waermepumpe/Betrieb.tsx:108-129`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/WaermepumpeSeiten.swift`
+- **klein** · bedienung — Der Zeitraum 14 Tage. Web: TAGE = [7, 14, 30, 90], Standard 14 (Betrieb.tsx:20, 23). App: Tagewahl(moeglich: [7, 30, 90]), Standard 7 (WaermepumpeSeiten.swift:174, 180). 14 Tage ist der Zeitraum, mit dem die Webseite auch die Heizkurve der Reglerseite fuettert; er fehlt in der App ganz.
+  - Vorlage: `apps/web/src/components/waermepumpe/Betrieb.tsx:20`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/WaermepumpeSeiten.swift`
+
+### `/waerme/waermepumpe/kennlinie`  ·  8 Punkte, davon 2 spürbar
+
+- **spürbar** · diagramm — Das zweite Diagramm „Arbeitszahl ueber der Vorlauftemperatur": dieselben Punkte, x-Achse `vorlauf_c` statt `aussen_c`, dazu die Ausgleichsgerade bei mittlerer Aussentemperatur (Legende „Ausgleich bei X °C draussen", Punkte als Gerade von fit.vorlauf_von_c bis fit.vorlauf_bis_c mit copNach(f, ta, tv)). Der Grund steht im Kopfkommentar von kennlinie.ts:19-21: solange das Wetter steht, ist das die einzige Ansicht, in der sich etwas bewegt - eine Pufferladung durchlaeuft zwanzig Grad Vorlauf an einem Vormittag. Die App hat nur das eine Streubild ueber der Aussentemperatur (KennlinieSeite.swift:113-173).
+  - Vorlage: `apps/web/src/components/waermepumpe/kennlinie.ts:182-222`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/KennlinieSeite.swift`
+- **spürbar** · diagramm — Das Kennfeld „beide Temperaturen zugleich": die Ausgleichsflaeche von oben als Rasterbild - x = ganze Grad draussen, y = Vorlauf in Zweiergrad-Schritten (`raster`, kennlinie.ts:225-231), Farbe = `copNach(fit, ta, tv)` mit der Skala COP_FARBEN (kennlinie.ts:246), darueber ein Kreis je belegtem Feld, dessen Groesse mit der Wurzel der Punktzahl waechst (`belegung`, kennlinie.ts:234-243). Nur bei `fit.art == "ebene"`, sonst der Ersatztext „Das Kennfeld entsteht, sobald sich der Einfluss beider Temperaturen bestimmen laesst: wenn die Messpunkte draussen mindestens vier und im Vorlauf mindestens fuenf Grad auseinanderliegen, und nicht im Gleichschritt." (Kennlinie.tsx:194) und der Fusssatz „Die Farbe ist die Arbeitszahl nach dem Ausgleich. Ein Kreis steht, wo gemessen wurde; je groesser, desto mehr Punkte." (Kennlinie.tsx:191). Die App hat davon nichts.
+  - Vorlage: `apps/web/src/components/waermepumpe/kennlinie.ts:249-301`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/KennlinieSeite.swift`
+- **mittel** · abschnitt — Die Tabelle „Messung gegen die Annahme des Fahrplans". Die App zeigt in der Karte „Angenommene Kurve" nur zwei Spalten: Aussentemperatur und angenommene Arbeitszahl (KennlinieSeite.swift:41-64). Die Webseite stellt daneben die GEMESSENE Zahl und sagt, ob sie belegt ist: Spalten draussen | Annahme (X °C Vorlauf) | Messung (Y °C Vorlauf) | Stand. Die Rechnung steht in `vergleich`/`vergleichsVorlauf` (kennlinie.ts:63-88): Messung = copNach(fit, a.aussen_c, tv) mit tv = annahme_vorlauf_c, wenn der Ausgleich den Vorlauf kennt, sonst Median der gemessenen Vorlaeufe; `gemessen` ist wahr, wenn tv und a.aussen_c im Geltungsbereich des Fits liegen, sonst steht „verlaengert". Dazu der Fusssatz „Verlaengert heisst: bei dieser Temperatur wurde noch nicht gemessen, die Zahl folgt aus der Formel. Der Fahrplan rechnet weiter mit seiner Annahme; uebernommen wird nichts von selbst."
+  - Vorlage: `apps/web/src/components/waermepumpe/Kennlinie.tsx:198-223`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/KennlinieSeite.swift`
+- **mittel** · abschnitt — Die Messpunkte als Tabelle, aufklappbar, Titel „Die Messpunkte als Tabelle (N)". Spalten: Zeit (Tag.Monat Stunde:Minute), draussen °C, Vorlauf °C, Waerme kW, Strom kW (zwei Stellen), Arbeitszahl (zwei Stellen), Ventil (`p.ventil ?? "?"`); die Punkte umgekehrt, der neueste oben, hoechstens 200. Die App zeigt die Punkte nur als Streubild (KennlinieSeite.swift:113-173) - ein einzelner Ausreisser ist dort nicht nachzulesen. Alle Felder in KennlinienPunktOut (Schema.swift:5154-5162).
+  - Vorlage: `apps/web/src/components/waermepumpe/Kennlinie.tsx:227-260`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/KennlinieSeite.swift`
+- **mittel** · kennzahl — Die Arbeitszahl im Mittel ueber alle Punkte und der Kopfsatz. `gesamt(punkte)` (kennlinie.ts:33-38) rechnet Summe(waerme_kw · minuten) / Summe(strom_kw · minuten), ausdruecklich NICHT das Mittel der einzelnen COPs - ein Fenster mit 4 kW zaehlt mehr als eines mit 1 kW. Die Webseite zeigt das als Kachel „Arbeitszahl im Mittel" (Zusatz „Waerme durch Strom, alle Punkte") und als Kopfsatz: „Nach N Messpunkten macht die Waermepumpe bei {Median aussen} °C draussen und {Median Vorlauf} °C Vorlauf aus einer Kilowattstunde Strom {copNach(f, ta, tv)} Kilowattstunden Waerme." (Kennlinie.tsx:108-113, mit `mitte` aus kennlinie.ts:40-45); ohne Fit der Ersatzsatz „N Messpunkte bisher, Arbeitszahl im Mittel X." Die App zeigt in der Karte nur Fit-Groessen (Art, rmse, r2, n, Geltungsbereiche, KennlinieSeite.swift:73-105) und nirgends, was die Maschine im Schnitt wirklich geleistet hat.
+  - Vorlage: `apps/web/src/components/waermepumpe/Kennlinie.tsx:100-113`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/KennlinieSeite.swift`
+- **mittel** · diagramm — Der Faecher der Ausgleichsgeraden. Die Webseite zeichnet im Streubild bis zu DREI Geraden, je eine fuer runde Fuenfer-Vorlaeufe innerhalb des Geltungsbereichs (`vorlaufStufen`, kennlinie.ts:48-55: ab ceil(vorlauf_von/5)·5 in Schritten von 5, bei mehr als drei Stufen die erste, die mittlere und die letzte), jede in der Farbe ihres Vorlaufs und mit Endbeschriftung „35 °C Vorlauf"; nur wenn der Fit keinen Vorlaufterm hat, bleibt es bei einer Geraden. Die App zeichnet immer genau eine Gerade, mit dem Vorlauf in der Mitte des Geltungsbereichs (KennlinieSeite.swift:229-239). Damit ist die Abhaengigkeit vom Vorlauf - der halbe Gegenstand der Seite - im Bild nicht ablesbar, obwohl `fit.cVorlauf` da ist.
+  - Vorlage: `apps/web/src/components/waermepumpe/kennlinie.ts:126-144`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/KennlinieSeite.swift`
+- **klein** · abschnitt — Die Bilanz als Anteile mit Begruendung. Die App listet die Minuten als rohe Zahlen (KennlinieSeite.swift:249-269). Die Webseite macht daraus einen Balken ueber die Heizminuten mit fuenf Teilen in fester Folge und je einem Satz, WARUM der Teil nicht zaehlt (bilanz.ts:15-22): brauchbar „eingeschwungen, alle Werte da", Anlauf „die ersten zehn Minuten nach jedem Start", Heizstab „neben dem Verdichter nahm etwas anderes Strom auf", keine Waerme „kaum Durchfluss oder keine Spreizung", Wert fehlte „ein noetiger Wert kam laenger nicht vom Bus" - jeweils mit Dauer und Prozentanteil (`teile`, bilanz.ts:24-28). Dazu zwei Saetze, die der App fehlen: „Gefehlt hat: {Name} ({Dauer}), … Kommt ein Wert dauerhaft nicht, liegt es an der Zuordnung auf dem Bus und nicht an der Waermepumpe." (`fehlend`, nach Dauer sortiert, bilanz.ts:39-44) und „Aus den brauchbaren Minuten wurden N Messpunkte; M angefangene Fenster hatten zu wenige davon." (`halbeFenster` = max(0, fenster − punkte − unglaubwuerdig), bilanz.ts:47-49) - die App zeigt `b.fenster` und `b.punkte`, aber nicht die halben Fenster.
+  - Vorlage: `apps/web/src/components/waermepumpe/Kennlinie.tsx:29-70`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/KennlinieSeite.swift`
+- **klein** · bedienung — Der Zeitraum 180 Tage. Web: TAGE = [7, 30, 90, 180] (Kennlinie.tsx:22). App: Tagewahl(moeglich: [7, 30, 90]) (KennlinieSeite.swift:24). Gerade bei der Kennlinie ist der lange Zeitraum der, der genug Punkte ueber genug Aussentemperaturen zusammenbekommt - also der, bei dem das Kennfeld ueberhaupt entsteht.
+  - Vorlage: `apps/web/src/components/waermepumpe/Kennlinie.tsx:22`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/KennlinieSeite.swift`
+
+### `/waerme/waermepumpe/regler`  ·  5 Punkte, davon 1 spürbar
+
+- **spürbar** · diagramm — Die Heizkurve als Bild - auf der Reglerseite der App fehlt sie vollstaendig. Web: Vorlauf ueber der Aussentemperatur (x −15…22 °C, y 15…65 °C) nach der Naeherung `vorlauf = raum + steilheit·(raum − aussen) + verschiebung`, begrenzt auf min/max (regler.ts:138-141), gezeichnet aus den fuenf Einstellungen heat_pump_set_slope / _offset_k / _room_day_c / _flow_min_c / _flow_max_c (regler.ts:114-120). Dazu gehoeren: die abgedunkelten Baender ausserhalb von min/max, die duenne gestrichelte Ist-Linie, sobald der Entwurf abweicht, die Legende („Entwurf" / „am Regler"), der Ersatztext, wenn eine der fuenf Einstellungen fehlt (Heizkurve.tsx:42), und die Ableseleiste „bei −10 °C X °C · bei 0 °C Y °C · bei 10 °C Z °C" (Heizkurve.tsx:167-169). Als Punkte liegen darin die Stunden, in denen der Regler wirklich einen Vorlauf verlangt hat - dafuer holt die Webseite auf DIESER Seite einen zweiten Endpunkt, `api.betrieb(14)`, und nimmt daraus `stunden.map(s => ({aussen_c, soll_c}))` (Regler.tsx:50-56); die App fragt /waermepumpe/betrieb auf der Reglerseite nie ab. Vier Griffe stellen die Kurve direkt: runder Griff bei −10 °C fuer die Steilheit (`steilheitDurch`, regler.ts:144-147), eckiger bei 18 °C fuer die Verschiebung (`verschiebungDurch`, regler.ts:150), zwei Griffe am rechten Rand fuer min und max Vorlauf. Ein Griff, dessen Einstellung gesperrt ist, bleibt blass und unbeweglich. Erklaersatz darunter: Regler.tsx:151.
+  - Vorlage: `apps/web/src/components/waermepumpe/Heizkurve.tsx:36-171`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/ReglerSeite.swift`
+- **mittel** · zustand — Warum sich eine Einstellung nicht bewegen laesst, und wann sie gelesen wurde. Die Webseite schreibt unter jeden Kanalzug genau eines von fuenf Dingen (`fuss`, Regler.tsx:103-115, mit `sperre` regler.ts:56-62): „gesendet 21,0 °C, wartet auf den Regler" | den Knopf „Am Geraet steht 0,45" | „nur lesen" | „nicht gelesen" | „Stellen nicht moeglich" | „gelesen 14:32" (`standText`, regler.ts:50-53, aus `wert.observed_at`, sonst „nicht gelesen"). Die App zeigt nur den gesendeten Wert (ReglerSeite.swift:316-319) und laesst den Stepper bei fehlender Erlaubnis einfach weg (Zeile 328) - ohne ein Wort dazu, warum. Dabei ist „nicht gelesen" etwas voellig anderes als „gesperrt": im ersten Fall steht ein Fragezeichen, weil der Bus schweigt. Der Lesezeitpunkt fehlt in der App je Einstellung ganz, obwohl `w.wert.observedAt` da ist.
+  - Vorlage: `apps/web/src/components/waermepumpe/regler.ts:50-62`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/ReglerSeite.swift`
+- **mittel** · abschnitt — Sechs Spalten der Reglerkennzahlen-Tabelle. Die App hat die Tabelle („Was der Regler tat", ReglerSeite.swift:116-154) mit Minuten, davon gelaufen, Vorlauf, Sollvorlauf, angefordert, Heizstab, zuletzt. Die Vorlage hat dreizehn Spalten; es fehlen: „Speicher oben" (`obenKH`, mit Vorzeichen als „+2,3 K/h"), „Speicher Mitte unten" (`untenKH`, ebenso), „Zaehler ueber Maschine" (`zusatzKw`, mit Vorzeichen als kW), „Heizanforderung" (`heizanforderungAnteil` in %), „Kennung 1b45" (`flag1b45Anteil` in %) und „Ventil auf 1" (`ventil1Anteil` in %). Genau diese sechs sind die Belege, aus denen sich die Bedeutung einer unbekannten Reglerzahl ablesen laesst - ohne sie ist die Tabelle nur noch eine Minutenzaehlung. Alle Felder in ReglerKennzahlOut (Schema.swift:6764-6778). Dazu die Spaltenerklaerung im Fuss (Kennzahlen.tsx:93-95: „Speicher oben und Mitte unten: wie schnell der Fuehler im Lauf waermer wurde, ab zwanzig Minuten Lauf …") und der Satz darueber, dass nur 0 (Bereitschaft) und 2 (Heizen) bestaetigt sind (Kennzahlen.tsx:47-49). In der Webseite steht die Tabelle auf /waerme/waermepumpe; die App hat sie auf der Reglerseite, darum die fehlenden Spalten hier.
+  - Vorlage: `apps/web/src/components/waermepumpe/Kennzahlen.tsx:52-95`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/ReglerSeite.swift`
+- **klein** · kennzahl — Der Vergleichsstand und seine Anleitung. Web-Kopfzeile: „{verglichen} von {stellbar.length} stellbaren Einstellungen mit dem Bediengeraet verglichen" (verglichen = stellbare mit `bestaetigt`, Regler.tsx:66, 122). Und solange nicht alle verglichen sind, darunter der Absatz: „Bevor sich eine Einstellung bewegen laesst, einmal am Bediengeraet nachsehen: Steht dort dieselbe Zahl wie hier, den Knopf ‚Am Geraet steht …' unter dem Regler druecken. Steht dort etwas anderes, ist die Kennung fuer diese Anlage falsch gelesen; dann bitte nicht druecken." (Regler.tsx:131-135). Die App hat den Haken je Zeile („Verglichen" / „Haken weg", ReglerSeite.swift:374-376), aber weder die Zaehlung noch die Anleitung - also auch nicht den Hinweis, dass ein Haken bei abweichender Zahl gerade NICHT gesetzt werden darf. Der Kopf der App (ReglerSeite.swift:156-171) hat dafuer Platz.
+  - Vorlage: `apps/web/src/components/waermepumpe/Regler.tsx:122-135`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/ReglerSeite.swift`
+- **klein** · zustand — Der Vermerk „Stellbefehl nach Muster gebildet". Wo `w.muster` gesetzt ist, schreibt die Webseite hinter den Namen der Einstellung ein kursives „· Stellbefehl nach Muster gebildet" - der Dienst hat den Schreibbefehl also nicht aus der Busbeschreibung, sondern nach Muster geraten, und das ist an einer Heizungsanlage eine Warnung. `muster` ist in ReglerEinstellungOut vorhanden (Schema.swift:6627), wird in ReglerSeite.swift aber nirgends gelesen; die Zeile zeigt nur Kennung, „verglichen" und „gesendet …" (ReglerSeite.swift:304-320). Gehoert in dieselbe HStack.
+  - Vorlage: `apps/web/src/components/waermepumpe/Regler.tsx:180-183`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/ReglerSeite.swift`
 
