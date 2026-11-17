@@ -80,6 +80,15 @@ targets:
         # **Querformat am iPad, beides am Telefon.** Die Wandanzeige ist im Querformat gedacht;
         # ein iPad, das an der Wand kippt, ist kein Fall, den man vorsehen muss. Das Telefon wird
         # in der Hand gehalten und darf sich drehen.
+        # **Ohne diesen Satz bleibt die App am Telefon leer.** Seit iOS 14 fragt das System,
+        # bevor eine App ein Geraet im selben Netz anspricht - und der Dienst dieses Hauses
+        # steht im selben Netz. Fehlt der Schluessel, zeigt iOS keinen Grund an oder
+        # verweigert gleich; in beiden Faellen laeuft die Anzeige ins Leere, ohne dass
+        # irgendwo ein Fehler steht. Im Simulator faellt das nicht auf: dort ist der Dienst
+        # auf `localhost` und das ist kein fremdes Geraet.
+        NSLocalNetworkUsageDescription:
+          Duck Curve Home spricht mit dem Dienst in Ihrem Haus. Der läuft im selben Netz –
+          ohne diese Erlaubnis bleibt die Anzeige leer.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

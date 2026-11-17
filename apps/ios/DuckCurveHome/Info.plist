@@ -39,6 +39,8 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Duck Curve Home spricht mit dem Dienst in Ihrem Haus. Der läuft im selben Netz – ohne diese Erlaubnis bleibt die Anzeige leer.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Marke/IBMPlexSans-Regular.otf</string>
