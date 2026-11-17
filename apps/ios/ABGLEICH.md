@@ -13,8 +13,8 @@ nicht abgehakt.
 |---|---|
 | verglichen | **28 von 28 Seiten** |
 | Punkte gesamt | 167 |
-| davon erledigt | **10** |
-| offen | **157** |
+| davon erledigt | **26** |
+| offen | **141** |
 
 ## Erledigt
 
@@ -23,8 +23,14 @@ nicht abgehakt.
   Uhrzeit, der Hinweis auf die Börse um 13 Uhr), die Tagesbilanz wird auch für heute geholt und
   alle fünf Minuten erneuert, am Telefon steht der ``Ausblick`` statt dreier Uhrzeiten, und die
   Warnung des Planers steht unter den Planzeilen.
-- **`/waerme/fahrplan` · 2 von 16 Punkten** (17.11.) – die Preisachse wird gerechnet statt
-  geraten, und die Tabelle zeigt die sechs Viertelstunden an den Preisenden statt 32 Zeilen.
+- **`/waerme/fahrplan` · 16 von 16 Punkten** (17.11.) – acht Flächen über dem ganzen Horizont
+  statt einer über 24 Stunden, mit allem Gemessenen (PV, Leistung der Wärmepumpe, Anforderung),
+  Warmwasser im Bedarf, Pufferverlauf mit Decke und Reserve, vier unterscheidbaren Zuständen,
+  dem Ofen, den Preisfenstern im Bild und Hinweisen in leeren Flächen; die sieben Kacheln der
+  Vorlage; die Entscheidungen statt 32 Zeilen „aus"; und statt des Hinweisfensters eine
+  Auskunft, die der Finger steuert (Außentemperatur, COP, Prognosefehler, Zerlegung des
+  Bedarfs). Dazu zwei Fehler aus den Screenshots: die festverdrahtete Preisachse bis 40 ct und
+  die fehlende Tagesangabe an Uhrzeiten im Zweitagehorizont.
 
 ## Zwei Läufe, zwei Güten
 
@@ -360,57 +366,6 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
 - **klein** · abschnitt — Die Webseite begruendet die Seite oben und unten: oben "Es gibt keinen Waermemengenzaehler im Haus. Die Waermebilanz wird deshalb gerechnet …; jede Aenderung wirkt sofort und rueckwirkend, weil Messwerte gespeichert sind und keine Rechenergebnisse", unten der Verweis, dass auf der Waermebilanz die Zeile "nicht zuzuordnen" steht und diese Felder genau dazu dienen, sie klein zu bekommen (Link auf /waerme/bilanz). Die Methodenkarte der App sagt nur, die Werte seien gesetzt und nicht gemessen und wuerden im Dashboard geaendert - der fehlende Waermemengenzaehler und der Bezug zur Restzeile fehlen.
   - Vorlage: `apps/web/src/app/waerme/annahmen/page.tsx:14-27`
   - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
-
-### `/waerme/fahrplan`  ·  16 Punkte, davon 2 spürbar
-
-- **spürbar** · diagramm — Die drei gemessenen Reihen fehlen im Bild ganz: PV gemessen (actual_pv_kw) als gefuellte Flaeche unter der gestrichelten Erwartung, die gemessene elektrische Leistung der Waermepumpe (actual_hp_kw) als eigene Flaeche in kW, und der gemessene Freigabekontakt (actual_hp_release) als Streifen direkt unter dem geplanten Zustand. Alle drei enden an der letzten abgeschlossenen Viertelstunde und sind davor luecklos; fehlende Werte bleiben null/Luecke, nicht 0 kW. Die App zeichnet nur Plan und Preis; actualPvKw/actualHpKw/actualHpRelease werden in keiner Ansicht benutzt (Modell: DuckCurveKit/Modelle/Schema.swift:5907-5909).
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:402-411 (PV gemessen), :453-464 (WP gemessen), :468 (Anforderung gemessen), Flaechenraster :113-122`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.bild, Zeile 101-161)`
-- **spürbar** · kennzahl — Kachel „Waermepumpe gelaufen“: Summe von actual_hp_run_min der Viertelstunden mit Messung, in Stunden mit einer Stelle, Hinweis „seit Mitternacht · im selben Fenster geplant X,X h“ (dieselbe Teilmenge, also nur die Viertelstunden mit Messung, darin planned_hp_state == release als Viertelstunden/4). Ohne Messung steht „-“ und als Hinweis „keine Messung“. Das ist die Gegenzahl zur geplanten Anforderung und die eigentliche Frage der Waermeseite.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:512-520 (Rechnung), :557 (Kachel)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 53-82)`
-- **mittel** · diagramm — Der Waermebedarf als eigene Flaeche aus zwei gestapelten Reihen: Heizen (heat_demand_kw, Farbe Haus) und Warmwasser (dhw_demand_kw, Farbe Warmwasser), Achse gestaucht auf die Untergrenze der Summe in 0,5-kW-Stufen. Warmwasser kommt in der App ueberhaupt nicht vor: die Plantabelle zeigt nur heatDemandKw, dhwDemandKw wird nirgends gelesen. Auch die Zerlegung „Heizen X · Warmwasser Y“ und die Summe fehlen damit.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:415-437 (Flaechen), :339-345 (Summe und Zerlegung), :178-181 (Untergrenze)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.plantabelle, Zeile 163-184)`
-- **mittel** · diagramm — Der Pufferverlauf ueber den Horizont (buffer_kwh je Viertelstunde) als eigene Flaeche, mit der Decke bei buffer_capacity_kwh und der rot hinterlegten Zone von 0 bis buffer_min_kwh, beschriftet „RESERVE“. Die App nennt Kapazitaet und Mindestmenge nur als Kachelzahl und den Pufferstand nur als Tabellenspalte der naechsten acht Stunden - der Verlauf, an dem man sieht, warum eine teure Stunde ohne Anforderung bleiben darf, fehlt.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:438-449 (Flaeche), :223-231 (Reservezone), :302 (Decke)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.bild, Zeile 101-161)`
-- **mittel** · abschnitt — Der gezeigte Zeitraum ist der ganze Horizont des Planers (horizon_start bis horizon_end, also zwei Tage, Achse mit Tagesgrenze als Datum statt nackter Zahl) und im Kopf steht „heute 00:00 bis uebermorgen 00:00 · <planner>“. Die App schneidet das Bild auf -0,5 bis +24 Stunden und die Tabelle auf die naechsten acht Stunden; der zweite Tag des Fahrplans ist in der App nicht zu sehen.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:236-240 (Achse am Horizont), :577-586 (Kopfzeile mit Horizont und Planer), :98-104 (heute/morgen/uebermorgen)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.bild Zeile 102-107, plantabelle Zeile 166-171)`
-- **mittel** · diagramm — Der geplante Zustand der Waermepumpe als Streifen mit vier unterscheidbaren Werten: release „angefordert“ (Farbe Waermepumpe, Hoehe 1), avoid „gemieden“ (Alarm, 0,55), free „frei“ (weiss 30 %, 0,3), off „aus“ (weiss 14 %, 0,12) - Farbe, Balkenhoehe und Wort zusammen, dazu die Legende mit allen vier Woertern. Das Bild der App zeichnet nur Rechtecke fuer release; gemieden, frei und aus sehen dort gleich (naemlich leer) aus.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:51-56 (Zustaende), :465 (Streifen), :599-604 (Legende)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.bild, Zeile 108-135)`
-- **mittel** · kennzahl — Der Pelletofen kommt auf der Seite der App nicht vor. Im Dashboard: Streifen „Pelletofen geplant“ (planned_stove_on, brennt/aus/Luecke), Kachel „Ofen geplant“ mit Viertelstunden/4 in h und drei verschiedenen Hinweisen („kein Fahrplan fuer den Ofen“ wenn planned_stove_on durchgehend null, „Volllast, 15 kg je Fuellung“ bei Stunden > 0, „nicht eingeplant, Begruendung unten“ bei 0 Stunden mit Fahrplan), Tabellenspalte „Ofen“ mit brennt/aus/-, und Legendeneintrag „Ofen brennt“.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:559-570 (Kachel), :469 (Streifen), :702 und :719-721 (Tabellenspalte)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf Zeile 53-82, plantabelle Zeile 163-184)`
-- **klein** · kennzahl — Kachel „bewusst gemieden“: Zahl der Viertelstunden mit planned_hp_state == avoid, geteilt durch 4, in Stunden, Hinweis „teure Stunden ohne Anforderung“, gedaempfte Farbe.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:521 (Rechnung), :558 (Kachel)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 53-82)`
-- **klein** · kennzahl — Kachel „Waermebedarf geplant“ in kWh: Summe aus heat_demand_kw + dhw_demand_kw ueber alle Viertelstunden mit Bedarf, geteilt durch 4, ohne Dezimalstelle, Hinweis „Modell v1, nicht gemessen“ (ohne Fahrplan „kein Fahrplan“). Die App zeigt den Bedarf nur je Viertelstunde in der Tabelle, nie als Arbeit ueber den Horizont.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:495-497 und :527 (Rechnung), :571 (Kachel)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 53-82)`
-- **klein** · kennzahl — Kachel „COP im Horizont“: kleinster bis groesster cop-Wert des Horizonts als „2,4 bis 3,8“, Hinweis „aus der Aussentemperatur“. Die App zeigt den COP nur als Spalte „Arbeitszahl“ der naechsten acht Stunden, nicht als Spanne.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:498 und :528 (Rechnung), :572 (Kachel)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 53-82)`
-- **klein** · kennzahl — Kachel „Preisspanne“: kleinster bis groesster price_ct_kwh des Horizonts, ohne Dezimalstelle, Einheit ct, Hinweis „im Horizont“ (ohne Preise „-“).
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:529 (Rechnung), :573 (Kachel)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 53-82)`
-- **klein** · kennzahl — Die angeforderte Dauer ueber den ganzen Horizont: Viertelstunden mit planned_hp_state == release, geteilt durch 4, als Stunden („6,0 h“). Die App zaehlt stattdessen Phasen („geplante Laeufe“) und nur fuer die naechsten 24 Stunden - die geplante Laufzeit in Stunden, die man der gemessenen gegenueberstellen kann, steht nirgends.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:516 (Rechnung), :551-556 (Kachel)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.kopf, Zeile 61-67)`
-- **klein** · diagramm — Die Preisfenster als Baender hinter der Preiskurve: windows mit kind == cheap (blaugrau, 14 % Deckung) und kind == negative (rot, 14 %), ohne Beschriftung im Band, dafuer in der Legende („Preistief“, und „negativer Preis“ nur wenn es ein solches Fenster gibt). Die App listet die Fenster als Zeilen, markiert sie aber nicht im Bild.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:208-219 (Baender), :629-638 (Legende)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.bild Zeile 101-161, fenster Zeile 84-98)`
-- **klein** · abschnitt — Die Karte „Die Entscheidungen“ zeigt nicht die naechsten Stunden, sondern die drei teuersten und die drei billigsten Viertelstunden des ganzen Horizonts (nach price_ct_kwh sortiert, Doppelte entfernt, dann chronologisch), jede mit Zeit als „heute/morgen/uebermorgen HH:MM“ und note_de bzw. reason_code als „Warum“. Die App zeigt stattdessen die naechsten acht Stunden der Reihe nach; die Extremstunden des zweiten Tages, um die es im Fahrplan geht, kommen darin nicht vor.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:679-688 (Auswahl), :646-649 (Kartenkopf)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.plantabelle, Zeile 163-184)`
-- **klein** · zustand — Leere Flaechen sagen, warum sie leer sind - ein Wort in der Mitte der Flaeche statt einer leeren Achse: „kein Waermebedarf im Fahrplan“, „kein Pufferverlauf im Fahrplan“, „keine Messung der Waermepumpe“, „keine Anforderung gemessen“, „keine Messung im Horizont“, und beim Ofen „nicht eingeplant, Begruendung darunter“ bzw. „kein Ofenfahrplan“.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:473-487 (Auswahl), :667-675 (Darstellung)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.body, Zeile 14-51)`
-- **klein** · kennzahl — Aussentemperatur und Prognosefehler der Sonne je Viertelstunde: „Aussen 6,3 °C · COP 3,21“ (outdoor_temp_c mit cop) und bei vorhandener Messung „PV gemessen 2,4 kW“ mit dem Satz „0,4 kW mehr als erwartet“ bzw. „wie erwartet“ unter 0,05 kW Abstand. outdoorTempC des Planintervalls wird in der App auf dieser Seite nicht gezeigt.
-  - Vorlage: `apps/web/src/components/waerme/Fahrplan.tsx:331-338 (PV-Abweichung), :347-350 (Aussen und COP)`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift (FahrplanSeite.plantabelle, Zeile 163-184)`
 
 ### `/waerme/nachbetrachtung`  ·  6 Punkte, davon 3 spürbar
 
