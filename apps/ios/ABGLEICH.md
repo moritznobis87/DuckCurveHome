@@ -12,8 +12,19 @@ nicht abgehakt.
 | | |
 |---|---|
 | verglichen | **28 von 28 Seiten** |
-| Punkte gesamt | **167** |
-| davon spürbar / mittel / klein | 45 / 63 / 59 |
+| Punkte gesamt | 167 |
+| davon erledigt | **10** |
+| offen | **157** |
+
+## Erledigt
+
+- **`/` · 10 von 10 Punkten** (17.11.) – die vier Kacheln kommen aus `Tageskacheln` im Kern
+  (Autarkie, bezahltes Geld, Mittelpreis, erwartete Wärme thermisch, günstigste Stunde mit
+  Uhrzeit, der Hinweis auf die Börse um 13 Uhr), die Tagesbilanz wird auch für heute geholt und
+  alle fünf Minuten erneuert, am Telefon steht der ``Ausblick`` statt dreier Uhrzeiten, und die
+  Warnung des Planers steht unter den Planzeilen.
+- **`/waerme/fahrplan` · 2 von 16 Punkten** (17.11.) – die Preisachse wird gerechnet statt
+  geraten, und die Tabelle zeigt die sechs Viertelstunden an den Preisenden statt 32 Zeilen.
 
 ## Zwei Läufe, zwei Güten
 
@@ -31,39 +42,6 @@ Zeichnung der Wärmepumpe, der aufrechte Puffer, die Rahmung des Hausmodells –
 dieser Liste, sondern kam aus Screenshots vom Gerät.
 
 ## Die Punkte, nach Seite
-
-### `/`  ·  10 Punkte, davon 2 spürbar
-
-- **spürbar** · kennzahl — Die Webseite zeigt unter der Kurve die Autarkie des Tages ("ohne Netz", in Prozent) als eine der vier Kennzahlen; die iOS-Seite hat an dieser Stelle "im Haus" in kWh und nennt die Autarkie nirgends.
-  - Web: `apps/web/src/components/home/tage.ts:125 (`{ wert: t?.autarky != null ? String(Math.round(t.autarky * 100)) : "-", einheit: "%", wort: "ohne Netz" }`), eingesetzt in apps/web/src/components/home/Home.tsx:179/236-243`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Jetzt/JetztSeite.swift - die vier Kacheln entstehen in `kennzahlen` (Zeilen 139-179) aus `zustand.todayKwh` bzw. `gesternKwh` (181-189); kein `autarky` in der ganzen Datei, und auch sonst nur auf der Stromseite (apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:34).`
-- **spürbar** · kennzahl — Die Webseite zeigt als dritte Kennzahl, was der Tag an Netzstrom gekostet hat ("bezahlt bis jetzt" heute, "bezahlt" gestern, in Euro); auf der iOS-Seite steht dort "für die Wärme" in kWh, Geld kommt auf der Jetzt-Seite nicht vor.
-  - Web: `apps/web/src/components/home/tage.ts:126 (`{ wert: de(t?.import_cost_eur ?? null, 2), einheit: "€", wort: tag === "heute" ? "bezahlt bis jetzt" : "bezahlt" }`)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Jetzt/JetztSeite.swift:158-179 - die vier Kacheln für gestern/heute sind Sonne, Haus, Wärme und Preis/Netz; `importCostEur` oder ein Eurobetrag steht in der ganzen Datei nicht.`
-- **mittel** · endpunkt — Die Webseite holt für den laufenden Tag die Tagesbilanz (`/energy/summary?span=day`) und hält sie alle fünf Minuten frisch - daraus kommen Autarkie, bezahlte Kosten und der Mittelpreis; die iOS-Seite fragt diesen Endpunkt nur für gestern ab und rechnet heute allein aus den Live-Summen.
-  - Web: `apps/web/src/components/home/Home.tsx:59-70 (`useTagesbilanz` mit `api.energySummary("day", day)`) und :128 (`const bilanzHeute = useTagesbilanz(heute)`)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Jetzt/JetztSeite.swift:232-257 - `ladeFuerTag()` ruft `haus.api.energieUebersicht("day", anker:)` nur im Zweig `.gestern` (Zeile 246); für `.heute` wird `bilanz = nil` gesetzt (238) und die Kacheln nehmen `zustand.todayKwh` (159).`
-- **mittel** · abschnitt — Am Telefon zeigt die Webseite unter dem Energiefluss den Abschnitt "Die nächsten 24 Stunden": aktueller Preis mit Einordnung ("Strom ist gerade günstig/teuer"), die Spanne von tiefstem zu höchstem Preis mit der Stelle, an der man gerade steht, drei Bänder (Preis, erwartete Sonne, geplante Wärmepumpe/Ofen) an einer Zeitachse ab jetzt, dazu Sätze zum günstigsten Fenster mit Mittelpreis, zur meisten Sonne und der Hinweis auf Waschmaschine/Spülmaschine/Trockner; die iOS-Seite hat an dieser Stelle nur die drei Planzeilen.
-  - Web: `apps/web/src/components/home/Rail.tsx:82 (`<Ausblick plan={plan} nowMs={nowMs} warnung={plan?.planner_warn_de} />` im kompakten Zweig) mit apps/web/src/components/home/Ausblick.tsx:86-220`
-  - iOS: `apps/ios/DuckCurveHome/Bausteine/Leiste.swift:16-49 - die Leiste hat nur die Pufferkarte und die Karte "Als Nächstes" mit `Fahrplan.zeilen`; `kompakt` legt bloß das Pufferglas quer (Zeile 23). Weder Preis-Einordnung noch Bänder noch die Sätze existieren in der App (keine Fundstelle für "günstig"/"Waschmaschine" in apps/ios/DuckCurveHome).`
-- **mittel** · kennzahl — Für gestern zeigt die Webseite als vierte Zahl den mittleren Bezugspreis des Tages ("Strom im Mittel", aus `avg_import_price_ct`); die iOS-Seite zeigt dort stattdessen die Netzbezugsmenge in kWh, einen Mittelpreis gibt es nicht.
-  - Web: `apps/web/src/components/home/tage.ts:119-122 (`tag === "heute" ? ... : { wert: de(t?.avg_import_price_ct ?? null, 1), einheit: "ct", wort: "Strom im Mittel" }`)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Jetzt/JetztSeite.swift:170-176 - für `.gestern` steht in der vierten Kachel "aus dem Netz" mit `quelle["grid_in"]`; `gesternKwh` (181-189) liest aus der Tagesbilanz nur pv/house/heat_pump/importKwh, nicht `avgImportPriceCt`.`
-- **mittel** · kennzahl — Für morgen zeigt die Webseite den mittleren Börsenpreis des Tages ("Strom im Mittel"); die iOS-Seite zeigt nur tiefsten und höchsten Preis, einen Mittelwert nicht.
-  - Web: `apps/web/src/components/home/tage.ts:97-98 und :109 (`mittel` aus allen bekannten Preisen des Morgen-Fensters, Kachel "Strom im Mittel")`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Jetzt/JetztSeite.swift:141-157 (Zweig `.morgen`: Sonne, Strom für die Wärme, "tiefster Preis", "höchster Preis") mit `preisSpanne` (191-197), das nur `min()` und `max()` rechnet.`
-- **klein** · kennzahl — Für morgen nennt die Webseite bei der günstigsten Stunde auch, wann sie beginnt ("günstigste Stunde ab 13:00"), und färbt sie bei negativem Preis gelb; die iOS-Seite zeigt nur den tiefsten Preis als Zahl, ohne Uhrzeit.
-  - Web: `apps/web/src/components/home/tage.ts:99-101 und :110-115 (`guenstigste` als Punkt mit `ts`, Wort `günstigste Stunde ab ${uhr(guenstigste.ts)}`, `gelb: guenstigste.ct < 0`)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Jetzt/JetztSeite.swift:155 (`Kacheldaten("tiefster Preis", preisSpanne.tief, einheit: "ct/kWh")`); `preisSpanne` (191-197) verwirft die Zeitstempel, es wird nur `compactMap(\.priceCtKwh)` gerechnet.`
-- **klein** · zustand — Solange die Börse die Preise für morgen noch nicht veröffentlicht hat, sagt die Webseite das im Wort der Kachel ("Preise kommen gegen 13 Uhr"); die iOS-Seite zeigt dann nur einen Strich ohne Erklärung.
-  - Web: `apps/web/src/components/home/tage.ts:109 (`wort: ct.length ? "Strom im Mittel" : "Preise kommen gegen 13 Uhr"`)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Jetzt/JetztSeite.swift:191-197 - `preisSpanne` gibt bei leeren Preisen `(Formate.leer, Formate.leer)` zurück, die Kachelwörter bleiben "tiefster Preis"/"höchster Preis" (155-156); kein Hinweistext in der Datei.`
-- **klein** · kennzahl — Für morgen zeigt die Webseite die erwartete Wärmemenge (thermisch, Heizung plus Warmwasser) als Zahl und den Strom dafür als Zusatz im Wort; die iOS-Seite zeigt nur den Strom für die Wärme, die erwartete Wärme selbst fehlt.
-  - Web: `apps/web/src/components/home/tage.ts:76-86 (`waermeSumme` mit `thermisch` und `elektrisch`) und :104-108 (Kachel `wert: thermisch`, `wort: "Wärme erwartet · X kWh Strom"`)`
-  - iOS: `apps/ios/DuckCurveHome/Seiten/Jetzt/JetztSeite.swift:150-154 - einzige Wärmekachel ist "Strom für die Wärme" mit `waermeKwh24h`, das in `ladeFuerTag()` (252-255) allein aus `forecastElectricKwh24h` kommt; `heating_kw`/`dhw_kw` werden nicht summiert.`
-- **klein** · zustand — Die Webseite setzt die Warnung des Planers (`planner_warn_de`) unter die Planzeilen, also dorthin, wo der Plan gezeigt wird; die iOS-Karte "Als Nächstes" zeigt sie nicht.
-  - Web: `apps/web/src/components/home/Rail.tsx:99 und :115 (`{warnung ? <span ...>{warnung}</span> : null}` in der Kachel "Nächste 24 h")`
-  - iOS: `apps/ios/DuckCurveHome/Bausteine/Leiste.swift:27-47 - die Karte "Als Nächstes" rendert nur `Planzeile.wort`/`.wann`; `plannerWarnDe` kommt in der Datei nicht vor (in der App nur auf apps/ios/DuckCurveHome/Seiten/Technik/FahrplanSeiten.swift:18).`
 
 ### `/geld`  ·  8 Punkte, davon 3 spürbar
 

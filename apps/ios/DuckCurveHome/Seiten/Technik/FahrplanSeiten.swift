@@ -32,7 +32,10 @@ struct FahrplanSeite: View {
                     Karte(kicker: "Der Plan") {
                         bild(p)
                     }
-                    Karte(kicker: "Viertelstunde für Viertelstunde") {
+                    Karte(
+                        kicker: "Die Entscheidungen",
+                        titel: "die teuersten und die billigsten Viertelstunden, mit Begründung"
+                    ) {
                         plantabelle(p)
                     }
                 }
@@ -187,21 +190,30 @@ struct FahrplanSeite: View {
                     .font(Schrift.klein).foregroundStyle(Farbe.text3)
             } else {
                 Tabelle(
-                    zeilennamen: zeilen.map { Formate.hhmm(iso: $0.ts) },
+                    // „03:15" allein steht im Horizont zweimal: er reicht ueber zwei Tage.
+                    zeilennamen: zeilen.map { Formate.tagUndUhr(iso: $0.ts, jetzt: haus.jetzt) },
                     spalten: [
-                        .init(name: "Pumpe", zellen: zeilen.map { zustandswort($0.plannedHpState) }),
-                        .init(name: "Preis", zellen: zeilen.map { Formate.zahl($0.priceCtKwh, stellen: 1) }),
-                        .init(name: "Sonne", zellen: zeilen.map { Formate.zahl($0.expectedPvKw, stellen: 1) }),
-                        .init(name: "Wärmebedarf", zellen: zeilen.map { Formate.zahl(Planauswahl.bedarf($0), stellen: 1) }),
-                        .init(name: "Arbeitszahl", zellen: zeilen.map { Formate.zahl($0.cop, stellen: 2) }),
-                        .init(name: "Puffer", zellen: zeilen.map { Formate.zahl($0.bufferKwh, stellen: 1) }),
-                        .init(name: "Grund", zellen: zeilen.map { $0.noteDe ?? grundwort($0.reasonCode) }),
+                        .init(name: "Preis", zellen: zeilen.map { Formate.ct($0.priceCtKwh) }),
+                        .init(
+                            name: "Bedarf",
+                            zellen: zeilen.map { Formate.kwMitEinheit(Planauswahl.bedarf($0)) }),
+                        .init(name: "Puffer", zellen: zeilen.map { Formate.kwh($0.bufferKwh) }),
+                        .init(
+                            name: "Wärmepumpe",
+                            zellen: zeilen.map { zustandswort($0.plannedHpState) }),
+                        .init(name: "Ofen", zellen: zeilen.map { ofenwort($0.plannedStoveOn) }),
+                        .init(
+                            name: "Warum",
+                            zellen: zeilen.map { $0.noteDe ?? grundwort($0.reasonCode) }),
                     ]
                 )
-                Text("Die drei teuersten und die drei billigsten Viertelstunden des Plans.")
-                    .font(Schrift.winzig).foregroundStyle(Farbe.text3)
             }
         }
+    }
+
+    private func ofenwort(_ an: Bool?) -> String {
+        guard let an else { return Formate.leer }
+        return an ? "brennt" : "aus"
     }
 
     private func zustandswort(_ z: PlanIntervalOutPlannedHpStateWahl) -> String {

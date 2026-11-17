@@ -109,4 +109,43 @@ extension FormateTests {
         XCTAssertEqual(Formate.zahl(-0.04, stellen: 1), "0,0")
         XCTAssertEqual(Formate.zahl(Optional(2.5), stellen: 1), "2,5")
     }
+
+    // MARK: - tagUndUhr
+
+    func testTagUndUhrNenntDenTagSolangeErEinWortHat() {
+        let jetzt = Zeit.ausIso("2026-11-17T09:30:00+01:00")!
+        XCTAssertEqual(
+            Formate.tagUndUhr(Zeit.ausIso("2026-11-17T14:05:00+01:00"), jetzt: jetzt),
+            "heute 14:05")
+        XCTAssertEqual(
+            Formate.tagUndUhr(Zeit.ausIso("2026-11-18T03:15:00+01:00"), jetzt: jetzt),
+            "morgen 03:15")
+        XCTAssertEqual(
+            Formate.tagUndUhr(Zeit.ausIso("2026-11-19T03:15:00+01:00"), jetzt: jetzt),
+            "übermorgen 03:15")
+        XCTAssertEqual(
+            Formate.tagUndUhr(Zeit.ausIso("2026-11-16T23:45:00+01:00"), jetzt: jetzt),
+            "gestern 23:45")
+    }
+
+    func testWeiterWegStehtDasKurzeDatum() {
+        let jetzt = Zeit.ausIso("2026-11-17T09:30:00+01:00")!
+        XCTAssertEqual(
+            Formate.tagUndUhr(Zeit.ausIso("2026-11-21T08:00:00+01:00"), jetzt: jetzt),
+            "Sa, 21.11. 08:00")
+    }
+
+    func testTagUndUhrHaeltEinenFehlendenWertAus() {
+        let jetzt = Zeit.ausIso("2026-11-17T09:30:00+01:00")!
+        XCTAssertEqual(Formate.tagUndUhr(nil, jetzt: jetzt), Formate.leer)
+        XCTAssertEqual(Formate.tagUndUhr(iso: "unfug", jetzt: jetzt), Formate.leer)
+    }
+
+    func testAbstandZweierTageUeberwindetDieZeitumstellung() {
+        // 25. Oktober 2026 ist der Tag der Umstellung auf Winterzeit.
+        XCTAssertEqual(Tag.abstand("2026-10-26", "2026-10-25"), 1)
+        XCTAssertEqual(Tag.abstand("2026-10-25", "2026-10-26"), -1)
+        XCTAssertEqual(Tag.abstand("2026-11-17", "2026-11-17"), 0)
+        XCTAssertNil(Tag.abstand("unfug", "2026-11-17"))
+    }
 }

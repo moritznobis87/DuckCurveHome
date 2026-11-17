@@ -133,6 +133,30 @@ public enum Formate {
         return hhmm(d)
     }
 
+    /// „morgen 03:15“ - eine Uhrzeit mit dem Tag davor, wo mehr als ein Tag im Bild ist.
+    ///
+    /// **Warum nicht nur die Uhrzeit.** Der Fahrplan reicht ueber zwei Tage. „03:15" allein
+    /// steht dort zweimal und sagt nicht, welche der beiden Nacht gemeint ist. Gerechnet wird
+    /// der Abstand in Kalendertagen des Hauses, mittags, damit kein Zeitversatz den Tag kippt.
+    /// Ab drei Tagen Abstand steht das kurze Datum.
+    public static func tagUndUhr(_ zeitpunkt: Date?, jetzt: Date) -> String {
+        guard let zeitpunkt else { return leer }
+        let wort: String
+        switch Tag.abstand(Tag.iso(zeitpunkt), Tag.iso(jetzt)) {
+        case .some(0): wort = "heute"
+        case .some(1): wort = "morgen"
+        case .some(2): wort = "übermorgen"
+        case .some(-1): wort = "gestern"
+        default: wort = Tag.kurz(Tag.iso(zeitpunkt))
+        }
+        return "\(wort) \(hhmm(zeitpunkt))"
+    }
+
+    public static func tagUndUhr(iso: String?, jetzt: Date) -> String {
+        guard let iso, let d = Zeit.ausIso(iso) else { return leer }
+        return tagUndUhr(d, jetzt: jetzt)
+    }
+
     /// „13:42:07“ - nur im Protokoll, wo die Sekunde etwas aussagt.
     public static func hhmmss(_ zeitpunkt: Date?) -> String {
         guard let zeitpunkt else { return leer }

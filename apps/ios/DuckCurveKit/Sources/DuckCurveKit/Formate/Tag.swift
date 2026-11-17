@@ -66,6 +66,15 @@ public enum Tag {
         return Kalender.haus.date(from: c)
     }
 
+    /// Abstand zweier Kalendertage in Tagen. `abstand("2026-11-18", "2026-11-17")` ist 1.
+    ///
+    /// Gerechnet wird von Mittag zu Mittag: an einer Zeitumstellung sind zwei Tagesanfaenge
+    /// 23 oder 25 Stunden auseinander, und eine Division durch 24 kippte dann um einen Tag.
+    public static func abstand(_ tag: String, _ von: String) -> Int? {
+        guard let a = date(tag), let b = date(von) else { return nil }
+        return Kalender.haus.dateComponents([.day], from: b, to: a).day
+    }
+
     /// Anfang und Ende eines Tages in der Hauszeit - der Zeitraum, mit dem die Historie abgefragt wird.
     public static func zeitraum(_ tag: String) -> (von: Date, bis: Date)? {
         guard let mittag = date(tag) else { return nil }
