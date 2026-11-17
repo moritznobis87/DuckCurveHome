@@ -23,6 +23,8 @@ struct Glasmodell: View {
     /// Die Kontakte, nach Schluessel.
     let kontakte: [String: HouseContactOut]
     var alarmScharf: Bool = false
+    /// Welches Deck gezeigt wird. `nil` heisst: alle uebereinander.
+    var sichtbaresDeck: String?
 
     /// Die Drehung des Grundrisses. Die Vorgabe zeigt die Suedwestecke - dort ist die Terrasse.
     @State private var drehung: Double = 0.62
@@ -60,73 +62,60 @@ struct Glasmodell: View {
 
     /// Wie viele Punkte ein Meter ist, und wo die Mitte liegt.
     ///
-    /// Gerechnet ueber alle Ecken aller Decks bei **jeder** Drehung in Achtelschritten - sonst
-    /// wandert das Haus beim Drehen aus dem Bild, und zwar genau dann, wenn man es gerade ansieht.
+    /// **Fuer die aktuelle Drehung, und das war einmal anders.** Der Massstab kam aus der
+    /// Vereinigung ueber acht Drehungen, damit das Haus beim Ziehen nicht atmet. Der Preis
+    /// dafuer war, dass immer die unguenstigste Drehung die Groesse bestimmt: ein langes,
+    /// winkelfoermiges Haus steht quer gesehen fast doppelt so breit da wie ueber Eck, und
+    /// damit war es in jeder anderen Drehung klein. Auf dem Telefon fuellte es ein Drittel der
+    /// Karte, der Rest war leer, und die Namen der Raeume lagen uebereinander, weil zwischen
+    /// den beiden Decks keine dreissig Punkte blieben (Screenshot vom 17.11.).
+    ///
+    /// Jetzt fuellt es die Karte in jeder Drehung. Beim Ziehen wird es dadurch groesser und
+    /// kleiner - das ist eine ruhige, stetige Bewegung und kein Springen, denn die Ausdehnung
+    /// aendert sich stetig mit dem Winkel.
     private func masstab(in flaeche: CGSize) -> (punkteJeMeter: Double, mitte: CGPoint) {
         var links = Double.infinity, rechts = -Double.infinity
         var unten = Double.infinity, oben = -Double.infinity
-
-        for schritt in 0..<8 {
-            let th = Double(schritt) / 8 * 2 * .pi
-            for (stelle, deck) in plan.decks.enumerated() {
-                let y = Double(stelle) * (deckhoehe + abstand)
-                for ecke in deck.shell where ecke.count >= 2 {
-                    for hoehe in [y, y + deckhoehe] {
-                        let p = G.bildschirm(x: ecke[0], y: hoehe, z: ecke[1], drehung: th)
-                        links = min(links, p.sx)
-                        rechts = max(rechts, p.sx)
-                        unten = min(unten, p.su)
-                        oben = max(oben, p.su)
-                    }
+        for (stelle, deck) in gezeigteDecks.enumerated() {
+            let y = Double(stelle) * (deckhoehe + abstand)
+            for ecke in deck.shell where ecke.count >= 2 {
+                for hoehe in [y, y + deckhoehe] {
+                    let p = G.bildschirm(x: ecke[0], y: hoehe, z: ecke[1], drehung: drehung)
+                    links = min(links, p.sx)
+                    rechts = max(rechts, p.sx)
+                    unten = min(unten, p.su)
+                    oben = max(oben, p.su)
                 }
             }
         }
         guard links.isFinite, rechts > links, oben > unten else {
             return (12, CGPoint(x: flaeche.width / 2, y: flaeche.height / 2))
         }
-        let rand = 16.0
+        let rand = 14.0
         let maß = min(
             (flaeche.width - 2 * rand) / (rechts - links),
             (flaeche.height - 2 * rand) / (oben - unten)
         )
-
-        // **Hier fehlte die Mitte, und das war der ganze Fehler.** Der Massstab wurde richtig
-        // aus der Ausdehnung gerechnet; zurueckgegeben wurde dann die Mitte der
-        // Zeichenflaeche - als laege das Haus um den Nullpunkt. Es liegt aber im ersten
-        // Quadranten (Meter ab einer Hausecke), und so rutschte die ganze Zeichnung um ihren
-        // halben Schwerpunkt nach unten rechts aus dem Bild.
-        //
-        // Der Massstab kommt weiter aus der Vereinigung ueber alle Drehungen, damit das Haus
-        // beim Ziehen nicht atmet. Die **Mitte** dagegen wird fuer die *aktuelle* Drehung
-        // gerechnet: so steht es immer mittig, und weil der Massstab fuer den unguenstigsten
-        // Fall gilt, passt jede einzelne Drehung sicher hinein.
-        var jLinks = Double.infinity, jRechts = -Double.infinity
-        var jUnten = Double.infinity, jOben = -Double.infinity
-        for (stelle, deck) in plan.decks.enumerated() {
-            let y = Double(stelle) * (deckhoehe + abstand)
-            for ecke in deck.shell where ecke.count >= 2 {
-                for hoehe in [y, y + deckhoehe] {
-                    let p = G.bildschirm(x: ecke[0], y: hoehe, z: ecke[1], drehung: drehung)
-                    jLinks = min(jLinks, p.sx)
-                    jRechts = max(jRechts, p.sx)
-                    jUnten = min(jUnten, p.su)
-                    jOben = max(jOben, p.su)
-                }
-            }
-        }
-        guard jLinks.isFinite, jRechts > jLinks, jOben > jUnten else {
-            return (maß, CGPoint(x: flaeche.width / 2, y: flaeche.height / 2))
-        }
-        let mitteSx = (jLinks + jRechts) / 2
-        let mitteSu = (jUnten + jOben) / 2
         // `punkt` rechnet x = mitte.x + sx*maß und y = mitte.y - su*maß - daher die Vorzeichen.
         return (
             maß,
             CGPoint(
-                x: flaeche.width / 2 - mitteSx * maß,
-                y: flaeche.height / 2 + mitteSu * maß
+                x: flaeche.width / 2 - (links + rechts) / 2 * maß,
+                y: flaeche.height / 2 + (unten + oben) / 2 * maß
             )
         )
+    }
+
+    /// Welche Decks gezeichnet werden - alle, oder genau eines.
+    private var gezeigteDecks: [Deck] {
+        guard let sichtbaresDeck else { return plan.decks }
+        return plan.decks.filter { $0.key == sichtbaresDeck }
+    }
+
+    /// Die Hoehe, auf der ein Deck liegt. Wird nur eines gezeigt, liegt es unten.
+    private func hoehe(von deck: Deck) -> Double {
+        guard let i = gezeigteDecks.firstIndex(where: { $0.key == deck.key }) else { return 0 }
+        return Double(i) * (deckhoehe + abstand)
     }
 
     /// Ein Punkt im Haus auf die Zeichenebene.
@@ -151,9 +140,8 @@ struct Glasmodell: View {
         maß: (punkteJeMeter: Double, mitte: CGPoint)
     ) {
         // Von unten nach oben: so deckt das obere Deck das untere, nicht umgekehrt.
-        for (stelle, deck) in plan.decks.enumerated() {
-            let y = Double(stelle) * (deckhoehe + abstand)
-            zeichneDeck(deck, y: y, in: &gestalt, maß: maß)
+        for deck in gezeigteDecks {
+            zeichneDeck(deck, y: hoehe(von: deck), in: &gestalt, maß: maß)
         }
     }
 
@@ -183,25 +171,71 @@ struct Glasmodell: View {
             zeichneKontakt(k, y: y, in: &gestalt, maß: maß)
         }
 
-        // 5. Die Namen der Raeume, auf dem Boden.
+        // 5. Die Namen der Raeume - aber nur, wo sie hinpassen.
+        //
+        // **Was hier vorher stand.** Jeder Raum bekam seinen Namen und seine Temperatur in die
+        // Mitte gezeichnet, ohne zu fragen, ob dort Platz ist. Auf dem Telefon ergab das einen
+        // Haufen aus dreizehn Woertern in der Bildmitte, in dem kein einziges zu lesen war
+        // (Screenshot vom 17.11.): „Schlafen" ueber „Ankleide" ueber „Bad" ueber „18,3 °C".
+        //
+        // Ein Raum, dessen Grundflaeche auf dem Schirm schmaler ist als sein Name, bekommt
+        // keinen. Das ist kein Verlust: er steht in der Liste, die einen Fingerbreit entfernt
+        // ist, und ein unlesbares Wort ist schlechter als keines.
         for raum in deck.rooms where !(raum.minor ?? false) && !(raum.tech ?? false) {
-            let mitte = punkt((raum.x0 + raum.x1) / 2, y + 0.02, (raum.z0 + raum.z1) / 2, maß)
-            let name = raum.name
-            let temperatur = raum.roomId.flatMap { raeume[$0]?.tempC }
-            var text = gestalt.resolve(
-                Text(name).font(Schrift.winzig).foregroundStyle(Farbe.text1)
-            )
-            text.shading = .color(Farbe.text1)
-            gestalt.draw(text, at: CGPoint(x: mitte.x, y: mitte.y - 6), anchor: .center)
-            if let t = temperatur {
-                let zahl = gestalt.resolve(
-                    Text(Formate.celsius(t, stellen: 1))
-                        .font(Schrift.zahlKlein)
-                        .foregroundStyle(Farbe.text2)
-                )
-                gestalt.draw(zahl, at: CGPoint(x: mitte.x, y: mitte.y + 6), anchor: .center)
-            }
+            beschrifte(raum, y: y, in: &gestalt, maß: maß)
         }
+    }
+
+    private func beschrifte(
+        _ raum: Room, y: Double, in gestalt: inout GraphicsContext,
+        maß: (punkteJeMeter: Double, mitte: CGPoint)
+    ) {
+        // Die Grundflaeche des Raumes auf dem Schirm - nicht seine Breite in Metern: unter der
+        // Kavalierprojektion wird aus einem quadratischen Zimmer ein schmales Parallelogramm.
+        let ecken = [
+            punkt(raum.x0, y + 0.02, raum.z0, maß), punkt(raum.x1, y + 0.02, raum.z0, maß),
+            punkt(raum.x1, y + 0.02, raum.z1, maß), punkt(raum.x0, y + 0.02, raum.z1, maß),
+        ]
+        let xs = ecken.map(\.x)
+        let ys = ecken.map(\.y)
+        guard let links = xs.min(), let rechts = xs.max(),
+            let oben = ys.min(), let unten = ys.max()
+        else { return }
+        let breite = rechts - links
+        let hoehe = unten - oben
+        let mitte = CGPoint(x: (links + rechts) / 2, y: (oben + unten) / 2)
+
+        var name = gestalt.resolve(
+            Text(raum.name).font(Schrift.winzig).foregroundStyle(Farbe.text1))
+        name.shading = .color(Farbe.text1)
+        let namensmass = name.measure(in: CGSize(width: 400, height: 100))
+        guard namensmass.width + 4 <= breite, namensmass.height + 2 <= hoehe else { return }
+
+        let temperatur = raum.roomId.flatMap { raeume[$0]?.tempC }
+        guard let t = temperatur else {
+            gestalt.draw(name, at: mitte, anchor: .center)
+            return
+        }
+        let zahl = gestalt.resolve(
+            Text(Formate.celsius(t, stellen: 1))
+                .font(Schrift.zahlKlein)
+                .foregroundStyle(Farbe.text2))
+        let zahlmass = zahl.measure(in: CGSize(width: 400, height: 100))
+        // Zwei Zeilen nur, wenn zwei Zeilen hineinpassen. Sonst fuehrt der Name - wo man ist,
+        // ist die erste Frage; wie warm es dort ist, die zweite.
+        guard namensmass.height + zahlmass.height + 3 <= hoehe,
+            zahlmass.width + 4 <= breite
+        else {
+            gestalt.draw(name, at: mitte, anchor: .center)
+            return
+        }
+        let versatz = (namensmass.height + zahlmass.height + 1) / 2
+        gestalt.draw(
+            name, at: CGPoint(x: mitte.x, y: mitte.y - versatz + namensmass.height / 2),
+            anchor: .center)
+        gestalt.draw(
+            zahl, at: CGPoint(x: mitte.x, y: mitte.y + versatz - zahlmass.height / 2),
+            anchor: .center)
     }
 
     private func zeichneWand(
@@ -225,7 +259,7 @@ struct Glasmodell: View {
         for p in ecken.dropFirst() { pfad.addLine(to: p) }
         pfad.closeSubpath()
         // Aussenwaende heller: `geometrie.ts` nennt es so, und es gibt dem Glas seine Form.
-        gestalt.fill(pfad, with: .color(Farbe.mist.opacity(w.aussen ? 0.12 : 0.07)))
+        gestalt.fill(pfad, with: .color(Farbe.mist.opacity(w.aussen ? 0.17 : 0.09)))
         gestalt.stroke(
             pfad, with: .color(Farbe.linie2.opacity(w.aussen ? 1 : 0.6)), lineWidth: 0.6
         )

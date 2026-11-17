@@ -14,6 +14,8 @@ struct HausSeite: View {
     @Environment(Wegweiser.self) private var wegweiser
 
     @State private var ansicht: Ansichtswahlart = .liste
+    /// Welches Deck das Modell zeigt. Leer heisst: alle uebereinander.
+    @State private var deck: String = ""
     @State private var raeume: RoomsLiveOut?
     @State private var hausplan: HouseOut?
     @State private var fehler: ApiFehler?
@@ -130,6 +132,22 @@ struct HausSeite: View {
     private var modell: some View {
         Karte {
             if let plan = hausplan?.plan {
+                // **Ein Stockwerk nach dem anderen, wie im Dashboard** (`HouseReport.tsx:233`:
+                // „Alle" und je ein Reiter fuer jedes Deck). Uebereinander liegen zwei
+                // Grundrisse, deren Raeume auf fast dieselbe Stelle des Schirms fallen - und
+                // dann liegen auch ihre Namen uebereinander. Wer ein Stockwerk waehlt, sieht
+                // es allein und gross.
+                if plan.decks.count > 1 {
+                    Ansichtswahl(
+                        ansichten: [Ansicht(weg: "", name: "Alle")]
+                            + plan.decks.map { Ansicht(weg: $0.key, name: $0.name) },
+                        aktiv: Ansicht(
+                            weg: deck,
+                            name: plan.decks.first { $0.key == deck }?.name ?? "Alle")
+                    ) { a in
+                        deck = a.weg
+                    }
+                }
                 Glasmodell(
                     plan: plan,
                     raeume: Dictionary(
@@ -143,7 +161,8 @@ struct HausSeite: View {
                     // Stufe (`live_runtime.py`, `ALARM_WORT`): 0 unscharf, 1 zu Hause
                     // scharf, 2 unterwegs scharf, 3 schaltet, 4 ausgeloest. Das Dashboard
                     // liest es in `house/live.ts` genauso - alles ab 1 ist scharf.
-                    alarmScharf: (haus.zustand?.alarm?.state ?? 0) >= 1
+                    alarmScharf: (haus.zustand?.alarm?.state ?? 0) >= 1,
+                    sichtbaresDeck: deck.isEmpty ? nil : deck
                 )
                 .frame(height: 420)
             } else if let fehlertext = hausplan?.errorDe, !fehlertext.isEmpty {
