@@ -426,8 +426,18 @@ struct Entenknopf: View {
             .animation(.easeInOut(duration: 0.18), value: hoerer.lage)
             .contentShape(Circle())
             .gesture(griff)
+            // **Ein Zug ist fuer VoiceOver keine Handlung.** Vorher war das ein echter
+            // `Button`, den ein Doppeltippen ausloeste; jetzt traegt ein Bild eine Geste, und
+            // die wird der Bedienungshilfe nicht angeboten. Ohne diese drei Zeilen las
+            // VoiceOver „Alfred fragen, Bild" und ein Doppeltippen tat nichts.
+            .accessibilityElement()
             .accessibilityLabel(Alfred.Texte.ansprechen)
             .accessibilityHint(Alfred.Texte.haltenHinweis)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction {
+                gefragt = nil
+                zeigtAlfred = true
+            }
     }
 
     /// Was bisher verstanden wurde, über der Ente, solange der Finger liegt.

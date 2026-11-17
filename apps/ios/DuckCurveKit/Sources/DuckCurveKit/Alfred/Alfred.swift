@@ -285,6 +285,9 @@ public enum Alfred {
             "Ich habe nichts verstanden. Halte die Ente gedrückt, solange du sprichst, und lass dann los."
         public static let sprachNichtErlaubt =
             "Ich darf Mikrofon oder Spracherkennung nicht benutzen. Erlaube beides in den Einstellungen unter Duck Curve, oder tipp deine Frage ins Feld."
+        /// Der Finger war schneller als der Erlaubnisdialog - beim ersten Mal immer.
+        public static let sprachJetztErlaubt =
+            "Jetzt darf ich zuhören. Halte die Ente noch einmal gedrückt und sprich."
         public static let sprachNichtAngelaufen =
             "Ich konnte nicht zuhören. Versuch es noch einmal, oder tipp deine Frage ins Feld."
         public static let sprachKeineSprache =

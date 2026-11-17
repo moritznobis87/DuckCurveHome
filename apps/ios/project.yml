@@ -121,12 +121,14 @@ targets:
         # Text daraus, und iOS fragt fuer jedes einzeln. Fehlt einer, stuerzt die App beim
         # ersten Druecken ab - ohne Fehlermeldung, nur mit einem Protokolleintrag, den
         # niemand liest.
+        # Diese beiden Saetze zeigt iOS woertlich im Erlaubnisdialog - also mit Umlauten,
+        # anders als die Kommentare dieser Datei.
         NSMicrophoneUsageDescription:
-          Zum Sprechen mit Alfred. Die Aufnahme laeuft nur, solange Sie die Ente gedrueckt
+          Zum Sprechen mit Alfred. Die Aufnahme läuft nur, solange Sie die Ente gedrückt
           halten.
         NSSpeechRecognitionUsageDescription:
-          Damit aus dem Gesprochenen eine Frage wird. Wo das Geraet es kann, erkennt es selbst
-          und die Aufnahme verlaesst das Telefon nicht.
+          Damit aus dem Gesprochenen eine Frage wird. Wo das Gerät es kann, erkennt es selbst
+          und die Aufnahme verlässt das Telefon nicht.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

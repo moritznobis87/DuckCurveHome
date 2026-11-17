@@ -10,17 +10,24 @@ import SwiftUI
 /// einen Lebenslauf: fragen, ob man darf; den Hörer einschalten; Zwischenergebnisse liefern;
 /// beim Loslassen anhalten und auf das *letzte* warten. Jeder dieser Schritte kann schiefgehen,
 /// und jeder muss das Mikrofon und die Tonsitzung wieder freigeben – auch der, der schiefgeht.
-/// In einer Ansicht verstreut wäre das genau die Art Code, die beim zweiten Mal nicht mehr
-/// anläuft.
+///
+/// **Das Loslassen kann vor dem Anlaufen kommen, und beim ersten Mal tut es das immer.**
+/// `beginne` wartet auf zwei Systemdialoge; der Finger ist lange vorher weg. Stünde die Lage
+/// erst nach dem Warten auf „hört", liefe das Loslassen ins Leere, und das Mikrofon bliebe
+/// danach offen – für immer, denn niemand hält es mehr an. Darum wird die Lage **vor** dem
+/// ersten `await` gesetzt, und ein Loslassen während des Anlaufens wird gemerkt und nachgeholt.
+///
+/// **Aufgeräumt wird an einer Stelle.** Jeder Ausgang – das reguläre Ende, ein Fehler beim
+/// Anlaufen, ein Abbruch – geht durch ``raeumeAuf()``. Der erste Entwurf hatte zwei Ausgänge,
+/// und der für den Fehlerfall ließ Tonsitzung und Abgriff stehen.
 ///
 /// **Was das Gerät erkennt und was es verschickt.** `requiresOnDeviceRecognition` wird gesetzt,
 /// wo das Gerät es kann; dann verlässt die Aufnahme das Telefon nicht. Kann es das Modell für
-/// Deutsch nicht, erkennt Apple auf seinen Rechnern – das ist dieselbe Abmachung wie beim
-/// Diktatknopf der Tastatur, und es steht im Hinweis unter dem Gespräch.
+/// Deutsch nicht, erkennt Apple auf seinen Rechnern – dieselbe Abmachung wie beim Diktatknopf
+/// der Tastatur.
 ///
-/// **Es gibt keinen Test dafür.** Mikrofon und Spracherkennung gibt es unter Linux nicht, und
-/// dieser Typ ist fast nur Ablauf. Was sich prüfen lässt – die Texte, die er zurückgibt –
-/// steht im Kern.
+/// **Es gibt keinen Test dafür.** Mikrofon und Spracherkennung gibt es unter Linux nicht. Was
+/// sich prüfen lässt – die Texte, die er zurückgibt – steht im Kern.
 @MainActor
 @Observable
 final class Sprachhoerer {
@@ -28,7 +35,9 @@ final class Sprachhoerer {
     /// Wo die Aufnahme gerade steht.
     enum Lage: Equatable {
         case still
-        /// Der Hörer läuft, der Finger liegt auf der Ente.
+        /// Erlaubnis und Hörer laufen an. Der Finger liegt, aber es wird noch nichts gehört.
+        case startet
+        /// Der Hörer läuft.
         case hoert
         /// Losgelassen, das letzte Ergebnis steht aus.
         case wartet
@@ -44,8 +53,12 @@ final class Sprachhoerer {
     private var anfrage: SFSpeechAudioBufferRecognitionRequest?
     private var aufgabe: SFSpeechRecognitionTask?
     private let maschine = AVAudioEngine()
-    /// Was beim Loslassen mit dem letzten Text geschehen soll.
+    /// Was beim Loslassen mit dem erkannten Text geschehen soll.
     private var fertig: ((String?) -> Void)?
+    /// Der Finger ist gegangen, bevor der Hörer stand.
+    private var losgelassen = false
+    /// Die Wache nach dem Loslassen – sie gehört genau einer Aufnahme und wird mit ihr beendet.
+    private var wache: Task<Void, Never>?
 
     var laeuft: Bool { lage != .still }
 
@@ -54,6 +67,10 @@ final class Sprachhoerer {
     /// Zuhören, bis ``beende()`` gerufen wird. `fertig` bekommt den erkannten Text, oder `nil`.
     func beginne(fertig: @escaping (String?) -> Void) async {
         guard lage == .still else { return }
+        // **Vor dem ersten `await`.** Ab hier zählt ein Loslassen, auch wenn noch kein Ton
+        // fließt.
+        lage = .startet
+        losgelassen = false
         self.fertig = fertig
         text = ""
         meldung = nil
@@ -66,22 +83,40 @@ final class Sprachhoerer {
             scheitere(Alfred.Texte.sprachNichtErlaubt)
             return
         }
+        // Der Finger war schneller als der Erlaubnisdialog - beim ersten Mal der Normalfall.
+        // Nichts aufnehmen, aber sagen, dass es jetzt ginge.
+        if losgelassen {
+            scheitere(Alfred.Texte.sprachJetztErlaubt)
+            return
+        }
         do {
             try starteMaschine(erkenner)
-            lage = .hoert
         } catch {
+            raeumeAuf()
             scheitere(Alfred.Texte.sprachNichtAngelaufen)
+            return
         }
+        lage = .hoert
+        // Zwischen `starteMaschine` und hier kann der Finger gegangen sein.
+        if losgelassen { beende() }
     }
 
     /// Beide Erlaubnisse: die Spracherkennung und das Mikrofon. Eine allein reicht nicht.
+    ///
+    /// Beide Rückrufe sind ausdrücklich `@Sendable`. Ohne das leitet der Compiler sie in einer
+    /// `@MainActor`-Klasse als hauptakteurgebunden ab – und die Frameworks rufen sie auf ihrer
+    /// eigenen Warteschlange.
     private func darfHoeren() async -> Bool {
         let sprache = await withCheckedContinuation { weiter in
-            SFSpeechRecognizer.requestAuthorization { weiter.resume(returning: $0) }
+            SFSpeechRecognizer.requestAuthorization { @Sendable stand in
+                weiter.resume(returning: stand)
+            }
         }
         guard sprache == .authorized else { return false }
         return await withCheckedContinuation { weiter in
-            AVAudioApplication.requestRecordPermission { weiter.resume(returning: $0) }
+            AVAudioApplication.requestRecordPermission { @Sendable darf in
+                weiter.resume(returning: darf)
+            }
         }
     }
 
@@ -102,19 +137,29 @@ final class Sprachhoerer {
         // eine Ausnahme, die kein `try` fängt.
         guard format.channelCount > 0 else { throw Hoerfehler.keinEingang }
         eingang.removeTap(onBus: 0)
-        eingang.installTap(onBus: 0, bufferSize: 1024, format: format) { puffer, _ in
-            neu.append(puffer)
+        // **`nonisolated(unsafe)` und `@Sendable`, und beides mit Grund.** Der Abgriff läuft
+        // auf dem Echtzeitfaden der Tonmaschine, nicht auf dem Hauptakteur; ein Verschluss,
+        // den der Compiler als hauptakteurgebunden ableitet, ist dort eine Grenzverletzung.
+        // `append` ist von Apple genau für diesen Aufruf vorgesehen.
+        nonisolated(unsafe) let fuerAbgriff = neu
+        eingang.installTap(onBus: 0, bufferSize: 1024, format: format) { @Sendable puffer, _ in
+            fuerAbgriff.append(puffer)
         }
         maschine.prepare()
         try maschine.start()
 
-        aufgabe = erkenner.recognitionTask(with: neu) { [weak self] ergebnis, fehler in
-            guard let self else { return }
+        aufgabe = erkenner.recognitionTask(with: neu) { @Sendable [weak self] ergebnis, fehler in
+            // Nur Sendbares über die Grenze: `SFSpeechRecognitionResult` und `any Error` sind
+            // es nicht.
             let satz = ergebnis?.bestTranscription.formattedString
             let endgueltig = ergebnis?.isFinal ?? false
+            let schiefgegangen = fehler != nil
             Task { @MainActor in
+                guard let self else { return }
                 if let satz { self.text = satz }
-                if endgueltig || fehler != nil { self.loese(fehler: fehler) }
+                if endgueltig || schiefgegangen {
+                    self.loese(schiefgegangen: schiefgegangen)
+                }
             }
         }
     }
@@ -125,17 +170,30 @@ final class Sprachhoerer {
 
     /// Die Ente ist losgelassen: anhalten und auf das letzte Ergebnis warten.
     func beende() {
-        guard lage == .hoert else { return }
+        switch lage {
+        case .still, .wartet:
+            return
+        case .startet:
+            // Der Hörer steht noch nicht. ``beginne`` holt das Ende nach, sobald er steht -
+            // oder bricht ab, wenn er gar nicht erst anläuft.
+            losgelassen = true
+            return
+        case .hoert:
+            break
+        }
         lage = .wartet
         maschine.inputNode.removeTap(onBus: 0)
         maschine.stop()
         anfrage?.endAudio()
-        // Eine Wache: antwortet die Erkennung nach dem Anhalten nicht mehr, gilt das, was
-        // bis dahin verstanden wurde. Ohne sie bliebe „Einen Moment …" stehen.
-        Task { @MainActor [weak self] in
+        // **Eine Wache, und sie gehört dieser Aufnahme.** Antwortet die Erkennung nach dem
+        // Anhalten nicht mehr, gilt das, was bis dahin verstanden wurde. Der erste Entwurf
+        // liess sie frei laufen: ein zweites Drücken innerhalb von drei Sekunden - bei einem
+        // Haltenknopf der Normalfall - wurde dann von der Wache der ersten Aufnahme beendet.
+        wache?.cancel()
+        wache = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(3))
-            guard let self, self.lage == .wartet else { return }
-            self.loese(fehler: nil)
+            guard !Task.isCancelled, let self, self.lage == .wartet else { return }
+            self.loese(schiefgegangen: false)
         }
     }
 
@@ -143,32 +201,7 @@ final class Sprachhoerer {
     func brich() {
         guard lage != .still else { return }
         fertig = nil
-        loese(fehler: nil)
-    }
-
-    /// Das Ende, von welcher Seite auch immer: aufräumen, einmal melden.
-    private func loese(fehler: (any Error)?) {
-        guard lage != .still else { return }
-        aufgabe?.cancel()
-        aufgabe = nil
-        anfrage = nil
-        if maschine.isRunning {
-            maschine.inputNode.removeTap(onBus: 0)
-            maschine.stop()
-        }
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        lage = .still
-
-        let gesagt = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let ruf = fertig
-        fertig = nil
-        if gesagt.isEmpty {
-            // Ein Fehler der Erkennung und „nichts gesagt" sind zwei verschiedene Sätze.
-            meldung = fehler == nil ? Alfred.Texte.sprachNichtsGehoert : Alfred.Texte.sprachFehler
-            ruf?(nil)
-        } else {
-            ruf?(gesagt)
-        }
+        loese(schiefgegangen: false)
     }
 
     /// Die Meldung ist gelesen. Ohne das bliebe der Hinweis stehen und käme beim nächsten
@@ -177,9 +210,46 @@ final class Sprachhoerer {
         meldung = nil
     }
 
+    // MARK: - Aufräumen
+
+    /// Mikrofon, Abgriff, Erkennung und Tonsitzung freigeben. **Jeder Ausgang kommt hier
+    /// vorbei** – auch der, der schiefgegangen ist.
+    private func raeumeAuf() {
+        wache?.cancel()
+        wache = nil
+        aufgabe?.cancel()
+        aufgabe = nil
+        anfrage = nil
+        maschine.inputNode.removeTap(onBus: 0)
+        if maschine.isRunning { maschine.stop() }
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    /// Das Ende, von welcher Seite auch immer: aufräumen, einmal melden.
+    private func loese(schiefgegangen: Bool) {
+        guard lage != .still else { return }
+        raeumeAuf()
+        lage = .still
+        losgelassen = false
+
+        let gesagt = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ruf = fertig
+        fertig = nil
+        if gesagt.isEmpty {
+            // Ein Fehler der Erkennung und „nichts gesagt" sind zwei verschiedene Sätze.
+            meldung = schiefgegangen ? Alfred.Texte.sprachFehler : Alfred.Texte.sprachNichtsGehoert
+            ruf?(nil)
+        } else {
+            ruf?(gesagt)
+        }
+    }
+
+    /// Es ist gar nicht erst angelaufen: aufräumen, Grund nennen, niemanden fragen.
     private func scheitere(_ satz: String) {
+        raeumeAuf()
         meldung = satz
         lage = .still
+        losgelassen = false
         let ruf = fertig
         fertig = nil
         ruf?(nil)
