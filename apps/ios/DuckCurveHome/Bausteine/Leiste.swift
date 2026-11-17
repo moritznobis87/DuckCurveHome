@@ -7,8 +7,9 @@ import SwiftUI
 /// Strompreis standen hier als zwei weitere Kacheln und sind weg (Nutzerwunsch 22.10.2026): der
 /// Strompreis steht ohnehin in der Tageskurve, die Raeume haben ihre Seite.
 ///
-/// Dazu die naechsten 24 Stunden in drei Zeilen, weil die Frage „was hat das Haus vor" sonst nur
-/// im Satz oben beantwortet waere - und der sagt nur das Naechste.
+/// Dazu, was das Haus vorhat: an der Wand drei Zeilen mit Uhrzeiten, am Telefon das Bild der
+/// naechsten 24 Stunden (``Ausblickkarte``). Beides, weil die Frage „was hat das Haus vor" sonst
+/// nur im Satz oben beantwortet waere - und der sagt nur das Naechste.
 struct Leiste: View {
     @Environment(Hauszustand.self) private var haus
     var kompakt: Bool = false
@@ -25,8 +26,15 @@ struct Leiste: View {
                 )
                 .frame(maxWidth: .infinity, minHeight: kompakt ? 150 : 210)
             }
-            if !zeilen.isEmpty {
-                Karte(kicker: "Als Nächstes") {
+            if kompakt {
+                // Am Telefon das Bild der naechsten 24 Stunden statt dreier Uhrzeiten
+                // untereinander - so macht es die Wandanzeige (`Rail.tsx`, kompakter Zweig).
+                Ausblickkarte(
+                    ausblick: Ausblick.baue(haus.plan, jetzt: haus.jetzt), jetzt: haus.jetzt,
+                    warnung: haus.plan?.plannerWarnDe
+                )
+            } else if !zeilen.isEmpty {
+                Karte(kicker: "Nächste 24 h") {
                     VStack(spacing: 0) {
                         ForEach(zeilen) { z in
                             HStack {
@@ -42,6 +50,16 @@ struct Leiste: View {
                             if z.id != zeilen.last?.id {
                                 Divider().overlay(Farbe.linie1)
                             }
+                        }
+                        // Die Warnung des Planers steht dort, wo der Plan steht - vorher stand
+                        // sie nur auf der Fahrplanseite.
+                        if let w = haus.plan?.plannerWarnDe, !w.isEmpty {
+                            Text(w)
+                                .font(Schrift.winzig)
+                                .foregroundStyle(Farbe.amberWeich)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 6)
                         }
                     }
                 }

@@ -21,7 +21,6 @@ struct JetztSeite: View {
     @State private var tag: Kurventag = .heute
     @State private var vortag: [Verlaufspunkt] = []
     @State private var waermeprognose: [HeatForecastPoint] = []
-    @State private var waermeKwh24h: Double = 0
     @State private var bilanz: EnergySummaryOut?
     @State private var geholterVortag = ""
 
@@ -57,6 +56,7 @@ struct JetztSeite: View {
         }
         .task(id: tag) { await ladeFuerTag() }
         .task(id: haus.heute) { await ladeVortag() }
+        .task(id: tag) { await haltBilanzFrisch() }
     }
 
     // MARK: - Der Satz
@@ -140,64 +140,35 @@ struct JetztSeite: View {
         }
     }
 
+    /// Vier Zahlen, gerechnet im Kern (``Tageskacheln``) und hier nur eingefaerbt.
+    ///
+    /// **Was hier vorher stand.** Sonne, „im Haus", „fuer die Waerme" und je nach Tag Netzbezug
+    /// oder Preis - also drei andere Zahlen als die Wandanzeige. Autarkie, das bezahlte Geld und
+    /// der Mittelpreis kamen auf der Seite nicht vor.
     private var kennzahlen: [Kacheldaten] {
-        switch tag {
-        case .morgen:
-            return [
-                Kacheldaten(
-                    "aus der Sonne", Formate.zahl(haus.plan?.pvForecastTodayKwh ?? 0, stellen: 1),
-                    einheit: "kWh", farbe: Farbe.pv
-                ),
-                // Die Energie rechnet der Dienst (`forecast_electric_kwh_24h`) und nicht diese
-                // Seite: eine Summe von Leistungen ist keine Energie, und das Raster der
-                // Prognose ist nicht immer stuendlich.
-                Kacheldaten(
-                    "Strom für die Wärme",
-                    Formate.zahl(waermeKwh24h, stellen: 1),
-                    einheit: "kWh"
-                ),
-                Kacheldaten("tiefster Preis", preisSpanne.tief, einheit: "ct/kWh"),
-                Kacheldaten("höchster Preis", preisSpanne.hoch, einheit: "ct/kWh"),
-            ]
-        default:
-            let heute = haus.zustand?.todayKwh ?? [:]
-            let quelle: [String: Double] = tag == .gestern ? gesternKwh : heute
-            return [
-                Kacheldaten(
-                    "aus der Sonne", Formate.zahl(quelle["pv"] ?? 0, stellen: 1),
-                    einheit: "kWh", farbe: Farbe.pv
-                ),
-                Kacheldaten("im Haus", Formate.zahl(quelle["house"] ?? 0, stellen: 1), einheit: "kWh"),
-                Kacheldaten(
-                    "für die Wärme", Formate.zahl(quelle["heat_pump"] ?? 0, stellen: 1), einheit: "kWh"
-                ),
-                Kacheldaten(
-                    tag == .gestern ? "aus dem Netz" : "Strompreis",
-                    tag == .gestern
-                        ? Formate.zahl(quelle["grid_in"] ?? 0, stellen: 1)
-                        : Formate.zahl(haus.augenblick?.electricityPriceCtKwh.belastbar ?? 0, stellen: 1),
-                    einheit: tag == .gestern ? "kWh" : "ct/kWh"
-                ),
-            ]
+        Tageskacheln.kennzahlen(
+            tag: tag, bilanz: bilanz?.totals,
+            preisJetzt: haus.augenblick?.electricityPriceCtKwh.belastbar,
+            morgen: morgendaten
+        )
+        .map {
+            Kacheldaten(
+                $0.wort, $0.wert, einheit: $0.einheit, dazu: $0.dazu,
+                farbe: $0.gelb ? Farbe.pv : Farbe.text1)
         }
     }
 
-    private var gesternKwh: [String: Double] {
-        guard let b = bilanz else { return [:] }
-        return [
-            "pv": b.totals.pvKwh ?? 0,
-            "house": b.totals.houseKwh ?? 0,
-            "heat_pump": b.totals.heatPumpKwh ?? 0,
-            "grid_in": b.totals.importKwh ?? 0,
-        ]
-    }
-
-    private var preisSpanne: (tief: String, hoch: String) {
-        let preise = (haus.plan?.intervals ?? []).compactMap(\.priceCtKwh)
-        guard let t = preise.min(), let h = preise.max() else {
-            return (Formate.leer, Formate.leer)
+    /// Was von morgen bekannt ist: Sonne und Preise aus dem Fahrplan, Waerme aus der Prognose.
+    private var morgendaten: Tageskacheln.Morgen {
+        guard tag == .morgen, let f = Tageskacheln.fenster(.morgen, jetzt: haus.jetzt) else {
+            return .init()
         }
-        return (Formate.zahl(t, stellen: 1), Formate.zahl(h, stellen: 1))
+        let iv = haus.plan?.intervals ?? []
+        return .init(
+            pvKwh: Tageskacheln.pvSumme(iv, von: f.von, bis: f.bis),
+            waerme: Tageskacheln.waermeSumme(waermeprognose, von: f.von, bis: f.bis),
+            preise: Tageskacheln.preise(iv, von: f.von, bis: f.bis)
+        )
     }
 
     // MARK: - Nachladen
@@ -238,8 +209,10 @@ struct JetztSeite: View {
         case .heute:
             geholtesRaster = []
             waermeprognose = []
-            waermeKwh24h = 0
-            bilanz = nil
+            // Autarkie, bezahltes Geld und Mittelpreis stehen nur in der Tagesbilanz. Sie wird
+            // auch fuer den laufenden Tag geholt - vorher lief sie nur fuer gestern, und heute
+            // standen darum drei Striche.
+            bilanz = try? await haus.api.energieUebersicht("day", anker: haus.heute)
         case .gestern:
             let gestern = Tag.plus(haus.heute, -1)
             if let h = try? await haus.api.verlaufTag(gestern) {
@@ -251,11 +224,24 @@ struct JetztSeite: View {
             waermeprognose = []
         case .morgen:
             geholtesRaster = []
+            bilanz = nil
             // Die Waermelastprognose reicht 48 Stunden und wird nur geholt, wenn jemand nach
             // morgen fragt - sonst ist es eine Anfrage, die niemand liest.
             if let w = try? await haus.api.energieWaerme("day", anker: haus.heute) {
                 waermeprognose = w.forecast
-                waermeKwh24h = w.forecastElectricKwh24h
+            }
+        }
+    }
+
+    /// Die Tagesbilanz des laufenden Tages veraltet, waehrend die Seite steht: bezahltes Geld und
+    /// Autarkie wachsen mit jeder Viertelstunde. Die Wandanzeige holt sie alle fuenf Minuten neu.
+    private func haltBilanzFrisch() async {
+        guard tag == .heute else { return }
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 300_000_000_000)
+            guard !Task.isCancelled, tag == .heute else { return }
+            if let b = try? await haus.api.energieUebersicht("day", anker: haus.heute) {
+                bilanz = b
             }
         }
     }
