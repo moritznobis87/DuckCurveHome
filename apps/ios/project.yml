@@ -94,6 +94,19 @@ targets:
         # **Querformat am iPad, beides am Telefon.** Die Wandanzeige ist im Querformat gedacht;
         # ein iPad, das an der Wand kippt, ist kein Fall, den man vorsehen muss. Das Telefon wird
         # in der Hand gehalten und darf sich drehen.
+        # **Ohne diesen Eintrag bekommt die App nicht den ganzen Bildschirm.**
+        #
+        # Eine App ohne Startbildschirm gilt iOS als Altlast und laeuft in einem Ersatzfenster:
+        # schwarze Balken oben und unten, der Inhalt links und rechts abgeschnitten, die Leiste
+        # mitten im Bild. Genau so sah es am iPhone aus. Ein leeres Woerterbuch genuegt - es
+        # sagt „ja, diese App kennt moderne Bildschirme"; gezeichnet wird nichts weiter als die
+        # Flaeche.
+        #
+        # Die Farbe ist `Marken.deep`, dieselbe wie `Farbe.grund`. Ohne sie waere der
+        # Startbildschirm das Systemschwarz und beim Erscheinen der App gaebe es einen Sprung.
+        UILaunchScreen:
+          UIColorName: Startgrund
+
         # **Ohne diesen Satz bleibt die App am Telefon leer.** Seit iOS 14 fragt das System,
         # bevor eine App ein Geraet im selben Netz anspricht - und der Dienst dieses Hauses
         # steht im selben Netz. Fehlt der Schluessel, zeigt iOS keinen Grund an oder
