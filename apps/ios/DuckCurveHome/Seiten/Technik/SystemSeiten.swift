@@ -294,7 +294,7 @@ struct WiedergabeSeite: View {
                     Zeile(wort: "Puffer", wert: Formate.prozent(a.speicher.soc))
                     Zeile(
                         wort: "Puffer oben",
-                        wert: Formate.celsius(a.speicher.tempsC.first?.belastbar, stellen: 1)
+                        wert: Formate.celsius(a.speicher.tempsC.first ?? nil, stellen: 1)
                     )
                     Zeile(wort: "offene Kreise", wert: "\(a.heizkreis.roomsOpen) von \(a.heizkreis.roomsTotal)")
                     if Int(stelle) < w.preisCtKwh.count,

@@ -253,12 +253,21 @@ struct NachbetrachtungSeite: View {
                         }
                     }
                 }
-                Methode([
-                    r.methodeDe,
-                    r.verschiebenDe,
-                    r.laeuftNoch == true ? "Der Tag läuft noch – die Zahlen sind vorläufig." : nil,
-                    r.ersterPlanErstellt.map { "Der erste Plan des Tages entstand \(Formate.hhmm(iso: $0))." },
-                ] + r.hinweiseDe)
+                // **`methodeDe` und `hinweiseDe` sind Reihen von Saetzen, keine Saetze.**
+                // Standen sie in derselben Reihe wie die drei wahlfreien Einzelsaetze, wurde
+                // daraus `[Any]`. Sie werden angehaengt; `Methode` wirft das Leere ohnehin weg.
+                Methode(
+                    r.methodeDe.map { Optional($0) }
+                        + [
+                            r.verschiebenDe,
+                            r.laeuftNoch == true
+                                ? "Der Tag läuft noch – die Zahlen sind vorläufig." : nil,
+                            r.ersterPlanErstellt.map {
+                                "Der erste Plan des Tages entstand \(Formate.hhmm(iso: $0))."
+                            },
+                        ]
+                        + r.hinweiseDe.map { Optional($0) }
+                )
             }
         }
         .task(id: tag) { await lade() }
@@ -405,7 +414,7 @@ struct WirkungSeite: View {
                         }
                     }
                 }
-                Methode([w.methodeDe] + w.hinweiseDe)
+                Methode(w.methodeDe + w.hinweiseDe)
             } else if fehler == nil {
                 Karte { Leer(satz: "Wird gerechnet …") }
             }

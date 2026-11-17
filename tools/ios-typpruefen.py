@@ -243,6 +243,24 @@ def main() -> int:
                                           f"Sammlung nur nicht-wahlfrei deklariert "
                                           f"({sorted(sammlungen)})"))
 
+        # 7. Ein Reihenfeld als Element eines Reihenliterals.
+        #
+        # Dreimal vorgekommen: `[Formate.hhmm(…), e.quelle, e.urheber]`,
+        # `[… , paar.verschiebung?.assumptionsDe, …]`, `[w.methodeDe]`. Steht ein Feld, das
+        # laut Schema eine Reihe ist, als *Element* in einem Literal neben Einzelwerten, wird
+        # das Literal `[Any]` oder `[[String]]` - und passt auf keine Signatur. Gemeint war
+        # jedes Mal: anhängen, nicht einreihen.
+        for nr, zeile in enumerate(text.splitlines(), 1):
+            m = re.match(r"^\s*[\w.?]*\.(\w+),\s*$", zeile)
+            if not m:
+                continue
+            feld = m.group(1)
+            typen = felder.get(feld, set())
+            if typen and all(t.startswith("[") for t in typen):
+                maengel.append((kurz, nr, f".{feld} ist eine Reihe ({sorted(typen)}) und steht "
+                                          f"als Element in einem Literal - anhängen, nicht "
+                                          f"einreihen"))
+
         # 5. Reihenfolge der Argumente, mit echtem Klammernzählen
         for name, zuerst, danach in REIHENFOLGE:
             for versatz, rumpf in aufrufe(text, name):
@@ -258,7 +276,7 @@ def main() -> int:
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der sechs geprüften Fehlerarten gefunden.")
+    print("Keine der sieben geprüften Fehlerarten gefunden.")
     return 0
 
 
