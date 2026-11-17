@@ -358,11 +358,25 @@ struct PrognoseSeite: View {
             if let b = bewertung {
                 Karte(kicker: "Stand", titel: b.stageDe) {
                     VStack(alignment: .leading, spacing: 8) {
+                        // **Eine Reihe von Saetzen, nicht ein Satz.** Hier stand
+                        // `Text(b.nextChangesDe)`. Das Dashboard nummeriert sie
+                        // (`forecast/ForecastPage.tsx`), und die Nummer traegt eine Auskunft:
+                        // die Reihenfolge ist die, in der es wirkt.
                         if !b.nextChangesDe.isEmpty {
-                            Text(b.nextChangesDe)
-                                .font(Schrift.klein)
-                                .foregroundStyle(Farbe.text1)
-                                .fixedSize(horizontal: false, vertical: true)
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(Array(b.nextChangesDe.enumerated()), id: \.offset) {
+                                    i, satz in
+                                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                        Text(String(format: "%02d", i + 1))
+                                            .font(Schrift.zahlKlein)
+                                            .foregroundStyle(Farbe.text3)
+                                        Text(satz)
+                                            .font(Schrift.klein)
+                                            .foregroundStyle(Farbe.text1)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                            }
                         }
                         VStack(spacing: 0) {
                             Zeile(
@@ -454,6 +468,18 @@ struct DatenSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
 
+    /// „gesehen / erwartet" als ein Feld.
+    ///
+    /// **Als Ausdruck in der Tabelle gab der Compiler auf** („unable to type-check this
+    /// expression in reasonable time"). Zeichenkettenverkettung mit Interpolation und zwei
+    /// Umwandlungen darin oeffnet ihm zu viele Moeglichkeiten; als Funktion mit angeschriebenen
+    /// Typen ist es eindeutig - und lesbarer.
+    private func minutenpaar(_ s: CoverageSeriesOut) -> String {
+        let gesehen = Formate.zahl(Double(s.minutesSeen), stellen: 0)
+        let erwartet = Formate.zahl(Double(s.minutesExpected), stellen: 0)
+        return "\(gesehen) / \(erwartet)"
+    }
+
     @State private var abdeckung: CoverageOut?
     @State private var bestand: StorageReportOut?
     @State private var diagnose: String?
@@ -479,10 +505,7 @@ struct DatenSeite: View {
                                 ),
                                 .init(
                                     name: "Minuten",
-                                    zellen: a.series.map {
-                                        "\(Formate.zahl(Double($0.minutesSeen), stellen: 0)) / "
-                                            + Formate.zahl(Double($0.minutesExpected), stellen: 0)
-                                    }
+                                    zellen: a.series.map(minutenpaar)
                                 ),
                                 .init(
                                     name: "lückige Stunden",
@@ -877,8 +900,11 @@ struct Automatikkarte: View {
                         farbe: abs(automatik.offsetK) > 0.05 ? Farbe.amber : Farbe.text1
                     )
                 }
-                if let raeume = automatik.rooms, !raeume.isEmpty {
-                    raumliste(raeume)
+                // **`rooms` sind die Raumnummern, `active` sind die Raeume.** Hier stand
+                // `rooms` - eine Reihe von `Int`. Die Liste zeigt Namen und geschriebene
+                // Werte, also das, was die Automatik wirklich gestellt hat: `active`.
+                if !automatik.active.isEmpty {
+                    raumliste(automatik.active)
                 }
                 if !automatik.log.isEmpty {
                     VStack(alignment: .leading, spacing: 3) {
@@ -919,8 +945,10 @@ struct Automatikkarte: View {
 
     private var titel: String {
         if !automatik.enabled { return "aus" }
-        if automatik.active == true { return "greift gerade · \(automatik.phase)" }
-        return "an · \(automatik.phase)"
+        // `active` ist keine Ja/Nein-Angabe, sondern die Reihe der Raeume, an denen gerade
+        // geschrieben ist. „Greift gerade" heisst: diese Reihe ist nicht leer.
+        if !automatik.active.isEmpty { return "greift gerade · \(automatik.phase.wort)" }
+        return "an · \(automatik.phase.wort)"
     }
 
     /// Welche Räume mitmachen - und was die Automatik an ihnen wirklich geschrieben hat.

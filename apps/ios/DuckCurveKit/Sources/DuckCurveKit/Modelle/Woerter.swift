@@ -36,3 +36,19 @@ extension CyclingStatsVerdictWahl {
         }
     }
 }
+
+extension RoomShiftOutPhaseWahl {
+    /// Die Phase der Raumautomatik als Wort.
+    ///
+    /// Die Rohwerte sind schon deutsch (`laden`, `zehren`, `aus`) – bis auf den Rückfall, den
+    /// jede erzeugte Aufzählung trägt und dessen Rohwert „—unbekannt—" niemandem hilft. Darum
+    /// nicht `rawValue` in der Anzeige, sondern das hier.
+    public var wort: String {
+        switch self {
+        case .laden: return "laden"
+        case .zehren: return "zehren"
+        case .aus: return "aus"
+        case .unbekannt: return "unbekannt"
+        }
+    }
+}

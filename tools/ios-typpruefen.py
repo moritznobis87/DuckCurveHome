@@ -261,6 +261,15 @@ def main() -> int:
                                           f"als Element in einem Literal - anhängen, nicht "
                                           f"einreihen"))
 
+        # 7b. Dieselbe Verwechslung, andere Stelle: eine Reihe in `Text(…)`.
+        for nr, zeile in enumerate(text.splitlines(), 1):
+            ohne = re.sub(r"//.*$", "", zeile)
+            for m in re.finditer(r"\bText\(\s*[\w.]*?\.(\w+)\s*\)", ohne):
+                typen = felder.get(m.group(1), set())
+                if typen and all(t.startswith("[") for t in typen):
+                    maengel.append((kurz, nr, f"Text(… .{m.group(1)}) - das ist eine Reihe "
+                                              f"({sorted(typen)}) und kein Satz"))
+
         # 8. Eine ganze Zahl da, wo `Formate` eine Dezimalzahl erwartet.
         #
         # Die `Formate`-Funktionen nehmen `Double?`. Swift wandelt `Int` **nicht** von sich aus

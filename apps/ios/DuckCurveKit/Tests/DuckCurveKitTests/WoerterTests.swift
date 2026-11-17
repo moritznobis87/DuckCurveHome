@@ -54,4 +54,13 @@ final class WoerterTests: XCTestCase {
         XCTAssertEqual(CyclingStatsVerdictWahl.unbekannt.wort, "zu wenig Daten")
         XCTAssertEqual(CyclingStatsVerdictWahl.unknown.wort, "zu wenig Daten")
     }
+
+    func testDiePhasenwoerterSindDeutschUndNichtDerRueckfall() {
+        XCTAssertEqual(RoomShiftOutPhaseWahl.laden.wort, "laden")
+        XCTAssertEqual(RoomShiftOutPhaseWahl.zehren.wort, "zehren")
+        XCTAssertEqual(RoomShiftOutPhaseWahl.aus.wort, "aus")
+        // Der Rohwert waere hier „—unbekannt—" und hilft niemandem.
+        XCTAssertEqual(RoomShiftOutPhaseWahl.unbekannt.wort, "unbekannt")
+        XCTAssertFalse(RoomShiftOutPhaseWahl.unbekannt.wort.contains("—"))
+    }
 }
