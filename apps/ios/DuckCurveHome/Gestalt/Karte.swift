@@ -37,22 +37,45 @@ struct Karte<Inhalt: View>: View {
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
     }
 
+    /// Die Kopfzeile.
+    ///
+    /// **Der Kicker fällt nie weg, und das war einmal anders.** Hier stand
+    /// `if let kicker, titel == nil || !schmal` – am Telefon verschwand der Kicker also,
+    /// sobald ein Titel dastand. Das trifft 23 Karten der App, und es nimmt ihnen genau das
+    /// Falsche: Aus „Alarm · unscharf" wurde „unscharf", aus „Takten · zu wenig Daten" wurde
+    /// „zu wenig Daten", aus „Pufferspeicher · lädt" wurde „lädt". Der Zustand blieb stehen,
+    /// die Sache verschwand – und eine Karte, die nur „unscharf" heißt, sagt nicht, was
+    /// unscharf ist.
+    ///
+    /// Gedacht war es gegen zwei Überschriften auf schmalem Schirm. Die Lösung dafür ist
+    /// nicht, eine wegzulassen, sondern sie nebeneinander zu setzen: der Kicker führt, der
+    /// Titel steht rechts und leiser. So macht es auch das Dashboard, wo die Einordnung
+    /// (`rechts={…}`) neben der Kernzahl steht und nicht an ihrer Stelle.
     private var kopf: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                // Am Handy keine Sperrschrift: dort wird der Kicker zur Ueberschrift.
-                if let kicker, titel == nil || !schmal {
-                    if schmal, titel == nil {
-                        Text(kicker).font(Schrift.karte).foregroundStyle(Farbe.text1)
-                    } else {
-                        Kicker(wort: kicker)
+            if schmal, let kicker, let titel {
+                Text(kicker).font(Schrift.karte).foregroundStyle(Farbe.text1)
+                Spacer(minLength: 8)
+                Text(titel)
+                    .font(Schrift.klein)
+                    .foregroundStyle(Farbe.text3)
+                    .multilineTextAlignment(.trailing)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    if let kicker {
+                        // Am Handy keine Sperrschrift: dort wird der Kicker zur Ueberschrift.
+                        if schmal {
+                            Text(kicker).font(Schrift.karte).foregroundStyle(Farbe.text1)
+                        } else {
+                            Kicker(wort: kicker)
+                        }
+                    }
+                    if let titel {
+                        Text(titel).font(Schrift.karte).foregroundStyle(Farbe.text1)
                     }
                 }
-                if let titel {
-                    Text(titel).font(Schrift.karte).foregroundStyle(Farbe.text1)
-                }
+                Spacer(minLength: 8)
             }
-            Spacer(minLength: 8)
             if let beiwerk {
                 beiwerk
             }

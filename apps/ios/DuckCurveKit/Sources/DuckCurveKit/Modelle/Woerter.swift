@@ -52,3 +52,33 @@ extension RoomShiftOutPhaseWahl {
         }
     }
 }
+
+/// Das Urteil einer geprüften Rechnung.
+///
+/// **Die Wörter sind die des Dashboards** (`reports/InvoiceCheck.tsx`, `TONE`), und das war
+/// nicht so. Die App kannte `ok`, `warn`, `fail` und `alarm` – drei davon schickt der Dienst
+/// nie – und ließ `info` und `error` durchfallen. In der Liste der Rechnungen stand dann das
+/// englische Rohwort: „error", „info". Dasselbe Muster wie bei der Schwere eines Befunds:
+/// die Vokabel geraten, statt sie nachzulesen.
+public enum Rechnungsurteil: String, Sendable, CaseIterable {
+    case ok, info, warning, error
+
+    /// Was in der Liste steht.
+    public var wort: String {
+        switch self {
+        case .ok: return "geprüft, alles stimmig"
+        case .info: return "geprüft, mit Hinweisen"
+        case .warning: return "auffällig"
+        case .error: return "Rechenfehler"
+        }
+    }
+
+    /// Ob es nach einem Fehler aussieht – das entscheidet über die Farbe.
+    public var istBefund: Bool { self == .warning || self == .error }
+
+    /// Aus dem Wort des Dienstes. Unbekanntes bleibt `nil`: dann steht es roh da, und das ist
+    /// ehrlicher, als es in eine der vier Schubladen zu zwingen.
+    public static func aus(_ roh: String) -> Rechnungsurteil? {
+        Rechnungsurteil(rawValue: roh)
+    }
+}

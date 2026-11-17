@@ -76,6 +76,22 @@ struct Balkenbild: View {
     var gestapelt: Bool = true
     var hoehe: CGFloat = 180
 
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
+
+    /// Die Woerter der x-Achse, in ihrer Reihenfolge und ohne Wiederholung.
+    private var achsenwoerter: [String] {
+        var gesehen = Set<String>()
+        var aus: [String] = []
+        for s in stuecke {
+            for w in s.werte where !gesehen.contains(w.beschriftung) {
+                gesehen.insert(w.beschriftung)
+                aus.append(w.beschriftung)
+            }
+        }
+        return aus
+    }
+
     var body: some View {
         if stuecke.allSatisfy({ $0.werte.isEmpty }) {
             Leer(satz: "Keine Werte in diesem Zeitraum.")
@@ -111,7 +127,11 @@ struct Balkenbild: View {
                 }
             }
             .chartXAxis {
-                AxisMarks { wert in
+                // **Nicht jede Beschriftung, sondern die, die passen.** Swift Charts setzt an
+                // eine Achse aus Woertern alle - bei einem Monat dreissig, und auf 390 Punkten
+                // ist das ein Ziffernstreifen. Am Telefon sind sechs genug, am iPad zwoelf.
+                AxisMarks(values: Achse.beschriftungen(achsenwoerter, hoechstens: schmal ? 6 : 12)) {
+                    wert in
                     AxisValueLabel {
                         if let s = wert.as(String.self) {
                             Text(s).font(Schrift.achse).foregroundStyle(Farbe.text3)

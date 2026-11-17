@@ -63,4 +63,35 @@ final class WoerterTests: XCTestCase {
         XCTAssertEqual(RoomShiftOutPhaseWahl.unbekannt.wort, "unbekannt")
         XCTAssertFalse(RoomShiftOutPhaseWahl.unbekannt.wort.contains("—"))
     }
+
+    func testDieRechnungsurteileSindDieDesDashboards() {
+        XCTAssertEqual(Rechnungsurteil.ok.wort, "geprüft, alles stimmig")
+        XCTAssertEqual(Rechnungsurteil.info.wort, "geprüft, mit Hinweisen")
+        XCTAssertEqual(Rechnungsurteil.warning.wort, "auffällig")
+        XCTAssertEqual(Rechnungsurteil.error.wort, "Rechenfehler")
+    }
+
+    /// **Die beiden, die roh auf dem Bildschirm standen.** Der Dienst schickt `info` und
+    /// `error`; die App kannte sie nicht und zeigte das englische Wort.
+    func testInfoUndErrorWerdenErkannt() {
+        XCTAssertEqual(Rechnungsurteil.aus("info"), .info)
+        XCTAssertEqual(Rechnungsurteil.aus("error"), .error)
+        XCTAssertEqual(Rechnungsurteil.aus("warning"), .warning)
+        XCTAssertEqual(Rechnungsurteil.aus("ok"), .ok)
+    }
+
+    /// Die erfundenen Woerter gibt es nicht - und sollen auch nicht stillschweigend etwas
+    /// anderes werden.
+    func testErfundeneWoerterBleibenUnbekannt() {
+        for roh in ["warn", "fail", "alarm", "", "OK"] {
+            XCTAssertNil(Rechnungsurteil.aus(roh), roh)
+        }
+    }
+
+    func testNurFehlerUndWarnungSindEinBefund() {
+        XCTAssertTrue(Rechnungsurteil.error.istBefund)
+        XCTAssertTrue(Rechnungsurteil.warning.istBefund)
+        XCTAssertFalse(Rechnungsurteil.info.istBefund)
+        XCTAssertFalse(Rechnungsurteil.ok.istBefund)
+    }
 }

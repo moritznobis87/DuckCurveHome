@@ -72,22 +72,31 @@ struct RechnungenSeite: View {
         .buttonStyle(.plain)
     }
 
-    /// Das Urteil der Pruefung, als Wort mit Farbe. Ein Haken allein sagt nicht, was geprueft
-    /// wurde - und ein rotes Kreuz ohne Zahl sagt nicht, wie schlimm es ist.
+    /// Das Urteil der Prüfung, als Wort mit Farbe.
+    ///
+    /// **Hier standen erfundene Vokabeln.** Die Fassung davor kannte `ok`, `warn`, `fail` und
+    /// `alarm`; der Dienst schickt `ok`, `info`, `warning`, `error`. Drei meiner vier Wörter
+    /// gibt es nicht, und die beiden häufigsten des Dienstes fielen durch den `default` – in
+    /// der Liste stand dann das englische Rohwort „error" und „info". Die Wörter stehen jetzt
+    /// im Kern und sind dort gegen die Vorlage geprüft.
+    ///
+    /// Die Zahl der Befunde bleibt, wo es welche gibt: „auffällig" sagt, dass etwas ist,
+    /// „2 Befunde" sagt, wie viel. Das Dashboard hat beides an verschiedenen Stellen; auf
+    /// einer Zeile ist die Zahl die nützlichere Auskunft.
     private func urteil(_ wort: String, probleme: Int) -> some View {
+        guard let u = Rechnungsurteil.aus(wort) else {
+            // Ein Wort, das der Dienst neu eingeführt hat: roh zeigen ist ehrlicher, als es
+            // in eine der vier Schubladen zu zwingen.
+            return Text(wort).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+        }
+        let text = u.istBefund && probleme > 0
+            ? (probleme == 1 ? "1 Befund" : "\(probleme) Befunde")
+            : u.wort
         let farbe: Color =
-            switch wort {
-            case "ok": Farbe.mist
-            case "warn", "warning": Farbe.achtung
-            case "fail", "alarm": Farbe.alarm
-            default: Farbe.text3
-            }
-        let text: String =
-            switch wort {
-            case "ok": "geprüft, in Ordnung"
-            case "warn", "warning": probleme == 1 ? "1 Hinweis" : "\(probleme) Hinweise"
-            case "fail", "alarm": probleme == 1 ? "1 Befund" : "\(probleme) Befunde"
-            default: wort
+            switch u {
+            case .error, .warning: Farbe.alarm
+            case .info: Farbe.mist
+            case .ok: Farbe.text3
             }
         return Text(text).font(Schrift.winzig).foregroundStyle(farbe)
     }
