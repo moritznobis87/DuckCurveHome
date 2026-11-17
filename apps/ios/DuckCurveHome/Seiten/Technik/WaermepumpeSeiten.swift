@@ -33,11 +33,22 @@ struct WaermepumpeSeite: View {
                             wort: "Verdichter", wert: Formate.zahl(w.verdichterHz.belastbar, stellen: 0),
                             einheit: "Hz"
                         )
+                        // **Das `if let` und das `.belastbar` sagen zwei verschiedene Dinge.**
+                        // Wahlfrei ist hier das *Feld*: nicht jede Pumpe meldet diese beiden
+                        // Groessen ueberhaupt - dann faellt die Zeile weg. Wahlfrei ist auch die
+                        // *Zahl* im Messwert: gemeldet, aber alt oder unglaubwuerdig - dann
+                        // steht die Zeile da und zeigt einen Strich, wie die Zeilen darueber.
                         if let a = w.verdichterA {
-                            Zeile(wort: "Verdichterstrom", wert: Formate.zahl(a, stellen: 1), einheit: "A")
+                            Zeile(
+                                wort: "Verdichterstrom",
+                                wert: Formate.zahl(a.belastbar, stellen: 1), einheit: "A"
+                            )
                         }
                         if let l = w.luefterDrehzahl {
-                            Zeile(wort: "Lüfter", wert: Formate.zahl(l, stellen: 0), einheit: "1/min")
+                            Zeile(
+                                wort: "Lüfter",
+                                wert: Formate.zahl(l.belastbar, stellen: 0), einheit: "1/min"
+                            )
                         }
                     }
                 }

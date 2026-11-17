@@ -41,13 +41,13 @@ struct KostenSeite: View {
                         )
                     }
                 }
-                if let tage = v.days, !tage.isEmpty {
+                if !v.days.isEmpty {
                     Karte(kicker: "Nach Tagen") {
                         Balkenbild(
                             stuecke: [
                                 .init(
                                     name: "gespart", farbe: Farbe.mist,
-                                    werte: tage.map { ($0.day, $0.savingEur) }
+                                    werte: v.days.map { ($0.day, $0.savingEur) }
                                 )
                             ],
                             einheit: "€", gestapelt: false

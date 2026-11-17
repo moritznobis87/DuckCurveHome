@@ -216,6 +216,33 @@ def main() -> int:
                     maengel.append((kurz, nr, f".{feld} ist {art} "
                                               f"({sorted(felder[feld])})"))
 
+        # 6. `if let x = …feld, !x.isEmpty` - die Verwendung verrät den Typ.
+        #
+        # **Das schließt die Lücke von Runde drei und vier, ohne Typen aufzulösen.** Die Regel
+        # „nie wahlfrei" gilt über alle Deklarationen eines Namens, und daran scheiterte sie
+        # zweimal: `days` heißt in zwei erzeugten Modellen `Int?` und in einem dritten
+        # `[ShiftDayOut]`, `protokoll` ist in zwei Ansichten ein `@State … DoorLogOut?`. Beide
+        # echten Fehler blieben deshalb unentdeckt.
+        #
+        # Der Ausweg: wird die ausgepackte Größe im selben Atemzug mit `!x.isEmpty` geprüft,
+        # ist sie eine Sammlung. Ein `Int?` hat kein `isEmpty`. Also zählen hier nur die
+        # Deklarationen, die Sammlungen sind - und wenn darunter keine wahlfreie ist, kann der
+        # Empfänger nur die nicht-wahlfreie Reihe sein. Kein Typsystem, nur ein Ausschluss.
+        for m in re.finditer(
+            r"\b(?:if|guard)\s+let\s+(\w+)\s*=\s*(\w[\w.?()\[\]]*?)\.(\w+)\s*,"
+            r"\s*!\1\.isEmpty\b", text
+        ):
+            name, kette, feld = m.group(1), m.group(2), m.group(3)
+            if "?" in kette or feld not in felder:
+                continue
+            sammlungen = {t for t in felder[feld]
+                          if t.startswith("[") or t.rstrip("?") in ("String",)}
+            if sammlungen and all(not t.endswith("?") for t in sammlungen):
+                nr = text[:m.start()].count("\n") + 1
+                maengel.append((kurz, nr, f"if let … = .{feld}, !…isEmpty - {feld} ist als "
+                                          f"Sammlung nur nicht-wahlfrei deklariert "
+                                          f"({sorted(sammlungen)})"))
+
         # 5. Reihenfolge der Argumente, mit echtem Klammernzählen
         for name, zuerst, danach in REIHENFOLGE:
             for versatz, rumpf in aufrufe(text, name):
@@ -231,7 +258,7 @@ def main() -> int:
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der fünf geprüften Fehlerarten gefunden.")
+    print("Keine der sechs geprüften Fehlerarten gefunden.")
     return 0
 
 
