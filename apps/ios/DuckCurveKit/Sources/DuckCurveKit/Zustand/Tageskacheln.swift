@@ -13,27 +13,6 @@ import Foundation
 /// 13 Uhr" ist keine Fehlermeldung, sondern der Fahrplan der Börse.
 public enum Tageskacheln {
 
-    /// Eine der vier Zahlen: Wert, Einheit, Wort.
-    public struct Kennzahl: Sendable, Hashable {
-        public let wort: String
-        public let wert: String
-        public let einheit: String
-        /// Ein zweiter, kleiner Satz - der Strom zur erwarteten Wärme steht dort.
-        public let dazu: String?
-        /// Gelb für die Sonne und für einen negativen Preis: beides ist ein Gewinn.
-        public let gelb: Bool
-
-        public init(
-            wort: String, wert: String, einheit: String, dazu: String? = nil, gelb: Bool = false
-        ) {
-            self.wort = wort
-            self.wert = wert
-            self.einheit = einheit
-            self.dazu = dazu
-            self.gelb = gelb
-        }
-    }
-
     /// Wärmemenge eines Fensters: thermisch, und der Strom dafür.
     public struct Waermemenge: Sendable, Hashable {
         public let thermisch: Double
@@ -79,8 +58,8 @@ public enum Tageskacheln {
         let letzte: Kennzahl =
             tag == .heute
             ? Kennzahl(
-                wort: "Strom gerade", wert: Formate.zahl(preisJetzt, stellen: 1), einheit: "ct/kWh",
-                gelb: (preisJetzt ?? 0) < 0)
+                wort: "Strom gerade", wert: Formate.zahl(preisJetzt, stellen: 1),
+                einheit: "ct/kWh", ton: (preisJetzt ?? 0) < 0 ? .sonne : .normal)
             : Kennzahl(
                 wort: "Strom im Mittel",
                 wert: Formate.zahl(bilanz?.avgImportPriceCt, stellen: 1), einheit: "ct/kWh")
@@ -88,7 +67,7 @@ public enum Tageskacheln {
         return [
             Kennzahl(
                 wort: "Sonne geerntet", wert: Formate.zahl(bilanz?.pvKwh, stellen: 1),
-                einheit: "kWh", gelb: true),
+                einheit: "kWh", ton: .sonne),
             Kennzahl(wort: "ohne Netz", wert: autarkie(bilanz?.autarky), einheit: "%"),
             Kennzahl(
                 wort: tag == .heute ? "bezahlt bis jetzt" : "bezahlt",
@@ -110,8 +89,8 @@ public enum Tageskacheln {
 
         return [
             Kennzahl(
-                wort: "Sonne erwartet", wert: Formate.zahl(m.pvKwh, stellen: 1), einheit: "kWh",
-                gelb: true),
+                wort: "Sonne erwartet", wert: Formate.zahl(m.pvKwh, stellen: 1),
+                einheit: "kWh", ton: .sonne),
             Kennzahl(
                 wort: "Wärme erwartet", wert: Formate.zahl(m.waerme?.thermisch, stellen: 1),
                 einheit: "kWh",
@@ -123,7 +102,7 @@ public enum Tageskacheln {
                 wort: guenstigste.map { "günstigste Stunde ab \(Formate.hhmm($0.zeit))" }
                     ?? "günstigste Stunde",
                 wert: Formate.zahl(guenstigste?.ct, stellen: 1), einheit: "ct/kWh",
-                gelb: (guenstigste?.ct ?? 0) < 0),
+                ton: (guenstigste?.ct ?? 0) < 0 ? .sonne : .normal),
         ]
     }
 

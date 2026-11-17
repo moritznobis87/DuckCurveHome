@@ -35,7 +35,7 @@ final class TageskachelnTests: XCTestCase {
         XCTAssertEqual(k.count, 4)
         XCTAssertEqual(k[0].wort, "Sonne geerntet")
         XCTAssertEqual(k[0].wert, "13,4")
-        XCTAssertTrue(k[0].gelb)
+        XCTAssertEqual(k[0].ton, .sonne)
         XCTAssertEqual(k[1].wort, "ohne Netz")
         XCTAssertEqual(k[1].wert, "73")
         XCTAssertEqual(k[1].einheit, "%")
@@ -58,14 +58,14 @@ final class TageskachelnTests: XCTestCase {
     func testEinNegativerPreisIstEinGewinnUndStehtGelbDa() {
         let k = Tageskacheln.kennzahlen(
             tag: .heute, bilanz: nil, preisJetzt: -3.2, morgen: .init())
-        XCTAssertTrue(k[3].gelb)
+        XCTAssertEqual(k[3].ton, .sonne)
     }
 
     func testOhneBilanzStehenStricheUndDieZeileSpringtNicht() {
         let k = Tageskacheln.kennzahlen(tag: .heute, bilanz: nil, preisJetzt: nil, morgen: .init())
         XCTAssertEqual(k.count, 4)
         XCTAssertEqual(k.map(\.wert), [Formate.leer, Formate.leer, Formate.leer, Formate.leer])
-        XCTAssertFalse(k[3].gelb, "Ein fehlender Preis ist kein negativer Preis.")
+        XCTAssertEqual(k[3].ton, .normal, "Ein fehlender Preis ist kein negativer Preis.")
     }
 
     func testAutarkieWirdAufGanzeProzentGerundet() {
@@ -97,7 +97,7 @@ final class TageskachelnTests: XCTestCase {
         XCTAssertEqual(k[2].wert, "19,0", "(18 - 2,5 + 41,5) / 3")
         XCTAssertEqual(k[3].wort, "günstigste Stunde ab 13:00")
         XCTAssertEqual(k[3].wert, Formate.minus + "2,5")
-        XCTAssertTrue(k[3].gelb)
+        XCTAssertEqual(k[3].ton, .sonne)
     }
 
     func testOhneVeroeffentlichtePreiseSagtDieKachelWarum() {

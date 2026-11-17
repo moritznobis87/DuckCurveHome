@@ -44,6 +44,7 @@
 		C43C83AB55DE4450DB127E05 /* Einrichten.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */; };
 		CF1E38EE14DAA9FB117D4E38 /* MitteilungenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47987C6C791253041485C3B7 /* MitteilungenSeite.swift */; };
 		D742805330F9AD247E8CAB72 /* ReglerSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */; };
+		D894CFE0B631F5092301D588 /* Waermebilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */; };
 		DDF398D3D35EB0582927AD6B /* IBMPlexSans-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7ADD7B3C58332C88E4C1E7F8 /* IBMPlexSans-SemiBold.otf */; };
 		E26B292CEE7ED47EAE3A8894 /* KennlinieSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27DFE093B98D4839CAEC9644 /* KennlinieSeite.swift */; };
 		E3D65B399947BD156AFF98E4 /* FahrplanSeiten.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24AB59B19DC4867BB539095 /* FahrplanSeiten.swift */; };
@@ -78,6 +79,7 @@
 		5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Einrichten.swift; sourceTree = "<group>"; };
 		5D1A02B0F1DB5D6D6AFA0B27 /* WaermeSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaermeSeite.swift; sourceTree = "<group>"; };
 		5E28F2036D3D5B7885BC4F87 /* Ansichtswahl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ansichtswahl.swift; sourceTree = "<group>"; };
+		5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Waermebilder.swift; sourceTree = "<group>"; };
 		70D0DC76B4C835ABDEB44904 /* Vorschauen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vorschauen.swift; sourceTree = "<group>"; };
 		71D659D49C85D23F490706A6 /* RechnungenSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RechnungenSeite.swift; sourceTree = "<group>"; };
 		75F329F096F927AD179434D9 /* HausSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HausSeite.swift; sourceTree = "<group>"; };
@@ -142,6 +144,7 @@
 			children = (
 				98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */,
 				9AA49FDBA50756C197DFFDBC /* Tageskurve.swift */,
+				5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */,
 			);
 			path = Diagramme;
 			sourceTree = "<group>";
@@ -432,6 +435,7 @@
 				F01A3D3524E63BA7DE6D02B7 /* Typografie.swift in Sources */,
 				FB410072136231AA663DAAD2 /* Vorschauen.swift in Sources */,
 				9A1C3FB9FF91FD7A101C7D83 /* WaermeSeite.swift in Sources */,
+				D894CFE0B631F5092301D588 /* Waermebilder.swift in Sources */,
 				6A49193A6C88C9D4267FF1C9 /* WaermepumpeSeiten.swift in Sources */,
 				B5B0CB533E0FCE256C33E295 /* Waermepumpenbild.swift in Sources */,
 				F6805480CB4D065F2BD42F0A /* WandRahmen.swift in Sources */,

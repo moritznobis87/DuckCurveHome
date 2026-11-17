@@ -126,6 +126,13 @@ struct Kacheldaten: Identifiable {
 
     var id: String { wort }
 
+    /// Aus einer ``Kennzahl`` des Kerns. Die einzige Stelle, an der ein Ton zu einer Farbe
+    /// wird - vorher stand diese Abbildung in jeder Seite neu, und auf der Startseite anders
+    /// als auf der Fahrplanseite.
+    init(_ k: Kennzahl) {
+        self.init(k.wort, k.wert, einheit: k.einheit, dazu: k.dazu, farbe: Farbe.ton(k.ton))
+    }
+
     init(_ wort: String, _ wert: String, einheit: String? = nil, dazu: String? = nil, farbe: Color = Farbe.text1) {
         self.wort = wort
         self.wert = wert

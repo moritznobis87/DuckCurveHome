@@ -70,6 +70,13 @@ public enum Farbe {
     // Thermisch
     public static let ventilOffen = Color(Marken.ventilOffen)
     public static let waerme = Marken.waerme.map(Color.init)
+    public static let pufferschichten = Marken.pufferschichten.map(Color.init)
+
+    /// Die Farbe einer Pufferschicht, von oben (0) nach unten. Ausserhalb der vier: die
+    /// unterste - lieber dieselbe Farbe zweimal als eine weisse Linie ohne Bedeutung.
+    public static func pufferschicht(_ stelle: Int) -> Color {
+        pufferschichten[min(max(0, stelle), pufferschichten.count - 1)]
+    }
     public static let abweichung = Marken.abweichung.map(Color.init)
 
     /// Die Farbe zu einer Abweichung vom Sollwert, in Kelvin.
@@ -77,8 +84,10 @@ public enum Farbe {
     ///
     /// Im Dashboard steht an jeder Kachel ein Wort dafuer, nicht eine Farbe - damit dieselbe
     /// Rolle auf allen Seiten dieselbe Farbe bekommt. Die Zuordnung steht hier und nur hier.
-    public static func ton(_ t: Fahrplankacheln.Ton) -> Color {
+    public static func ton(_ t: Kennzahl.Ton) -> Color {
         switch t {
+        case .normal: return text1
+        case .sonne: return pv
         case .glut: return waermepumpe
         case .bernstein: return amber
         case .gedaempft: return text3

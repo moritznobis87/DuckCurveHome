@@ -62,11 +62,7 @@ struct FahrplanSeite: View {
     /// Stunden sein - die Stunden sind das, was man der gemessenen Laufzeit gegenueberstellt.
     private func kopf(_ p: PlanOut) -> some View {
         Kachelfeld(
-            kacheln: Fahrplankacheln.kacheln(p).map {
-                Kacheldaten(
-                    $0.wort, $0.wert, einheit: $0.einheit, dazu: $0.dazu,
-                    farbe: Farbe.ton($0.ton))
-            },
+            kacheln: Fahrplankacheln.kacheln(p).map(Kacheldaten.init),
             kicker: "Voraus"
         )
     }

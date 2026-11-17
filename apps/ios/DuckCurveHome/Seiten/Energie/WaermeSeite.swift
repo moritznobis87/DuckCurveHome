@@ -1,117 +1,323 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Wärme: was die Waermepumpe geleistet hat, und mit welcher Arbeitszahl.
+/// Alles, was die Wärmeseite braucht - in einem Rutsch geholt.
 ///
-/// **Die Arbeitszahl fuehrt.** Nicht die Kilowattstunden: wie viel Waerme ein Haus im Februar
-/// braucht, sagt etwas ueber das Wetter; wie viel Strom sie gekostet hat, sagt etwas ueber die
-/// Anlage. Nur die zweite Zahl laesst sich verbessern.
+/// **Drei Antworten, nicht eine.** Die Seite hat bisher nur `/energy/heat` geholt. Die Wärme
+/// selbst, die Kosten, die Lüftung und die Annahmen stehen in `/energy/waermebilanz`, der
+/// Nutzen des Verschiebens in `/energy/shift`. Beide Methoden lagen im Client bereit und
+/// wurden nie gerufen.
+///
+/// **Die vier Spannen dazu.** Der Vergleich „Wärme im Zeitraum" stellt Tag, Woche, Monat und
+/// Jahr nebeneinander; das sind vier weitere Abfragen derselben Bilanz. Scheitert eine, fehlt
+/// ihre Spalte - die Seite bleibt stehen.
+struct Waermedaten: Sendable {
+    let bilanz: HeatBalanceOut
+    let strom: HeatReportOut
+    let schieben: ShiftReportOut?
+    let jeSpanne: [Spanne: HeatBalanceOut]
+}
+
+/// Wärme: wer geliefert hat, was es gekostet hat, wie die Anlage lief.
+///
+/// **Die Wärme kommt aus der Bilanz, und nur von dort.** Wärmemenge, Arbeitszahl und
+/// Wärmepreis stehen auf dieser Seite genau einmal. Aus `/energy/heat` kommt nur, was gemessen
+/// ist: der Strom der Wärmepumpe nach Herkunft, die Taktung, der Ofen. Die Vorlage
+/// (`apps/web/src/components/reports/HeatOverview.tsx`) hat dafür zwei Seiten
+/// zusammengelegt, die für denselben Tag verschiedene Zahlen nannten.
 struct WaermeSeite: View {
     var body: some View {
         Berichtsseite { z, api in
-            try await api.energieWaerme(z.spanne.rawValue, anker: z.anker)
-        } inhalt: { b in
-            Kachelfeld(kacheln: kennzahlen(b), kicker: "Wärme")
-            if let takten = taktenzahlen(b.cycling) {
-                Karte(kicker: "Takten", titel: b.cycling.verdict?.wort) {
-                    VStack(spacing: 0) {
-                        // `Zeile` ist eine Ansicht und nichts, was eine Kennung traegt -
-                        // `ForEach` braucht aber eine. Die Stelle in der Reihe ist hier die
-                        // richtige: die Zeilen sind fest, sie werden nicht umsortiert.
-                        ForEach(Array(takten.enumerated()), id: \.offset) { _, z in z }
-                    }
-                }
-            }
-            Karte(kicker: "Der Ofen") {
-                ofen(b.stove)
-            }
-            Karte(kicker: "Bilanz des Puffers") {
-                pufferbilanz(b.bufferBalance)
-            }
-            Methode([
-                b.modelNoteDe,
-                b.cycling.noteDe,
-                b.bufferBalance.noteDe,
-                b.priceQuality.noteDe,
-                b.summary.meta.estimatedNoteDe,
-            ])
+            async let bilanz = api.waermebilanz(z.spanne.rawValue, anker: z.anker)
+            async let strom = api.energieWaerme(z.spanne.rawValue, anker: z.anker)
+            async let spannen = holeSpannen(anker: z.anker, api: api)
+            // Der Nutzen des Verschiebens darf fehlen - er ist eine Schaetzung und kein Teil
+            // der Seite. Die drei oben laufen waehrenddessen schon.
+            let schieben = try? await api.energieVerschiebung(z.spanne.rawValue, anker: z.anker)
+            return Waermedaten(
+                bilanz: try await bilanz, strom: try await strom, schieben: schieben,
+                jeSpanne: await spannen
+            )
+        } inhalt: { d in
+            inhalt(d)
         }
     }
 
-    private func kennzahlen(_ b: HeatReportOut) -> [Kacheldaten] {
-        let strom = b.summary.totals.heatPumpKwh ?? 0
-        return [
-            Kacheldaten(
-                "Arbeitszahl", Formate.zahl(b.copEst, stellen: 2),
-                dazu: "Wärme je Kilowattstunde Strom"
-            ),
-            Kacheldaten(
-                "Wärme", Formate.zahl(b.thermalKwhEst, stellen: 1), einheit: "kWh",
-                farbe: Farbe.waermepumpe
-            ),
-            Kacheldaten("Strom dafür", Formate.zahl(strom, stellen: 1), einheit: "kWh"),
-            Kacheldaten(
-                "Wärmeverlust des Hauses", Formate.zahl(b.heatLossKwPerK, stellen: 2),
-                einheit: "kW/K", dazu: "je Kelvin Unterschied nach draußen"
-            ),
-            Kacheldaten(
-                "Preisvorteil", Formate.zahl(b.priceQuality.advantageCt, stellen: 2), einheit: "ct/kWh",
-                dazu: "gegenüber dem Durchschnitt des Hauses"
-            ),
-            Kacheldaten(
-                "in den nächsten 24 h", Formate.zahl(b.forecastElectricKwh24h, stellen: 1),
-                einheit: "kWh", dazu: "erwarteter Strombedarf"
-            ),
-        ]
-    }
-
-    /// Die Takt-Kennzahlen - aber nur, wenn ueberhaupt Laeufe erfasst sind.
-    private func taktenzahlen(_ c: CyclingStats) -> [Zeile]? {
-        guard let laeufe = c.runs, laeufe > 0 else { return nil }
-        return [
-            Zeile(wort: "Läufe", wert: Formate.zahl(Double(laeufe), stellen: 0)),
-            Zeile(wort: "Starts je Tag", wert: Formate.zahl(c.startsPerDay, stellen: 1)),
-            Zeile(
-                wort: "mittlere Laufzeit",
-                wert: Formate.dauer(minuten: c.meanRunMin.map { Int($0.rounded()) })
-            ),
-            Zeile(
-                wort: "kürzester Lauf",
-                wert: Formate.dauer(minuten: c.shortestRunMin)
-            ),
-            Zeile(
-                wort: "mittlere Pause",
-                wert: Formate.dauer(minuten: c.meanPauseMin.map { Int($0.rounded()) })
-            ),
-            Zeile(wort: "Laufanteil", wert: Formate.prozent(c.dutyCycle)),
-            Zeile(
-                wort: "kurze Läufe", wert: Formate.zahl(c.shortRuns.map(Double.init), stellen: 0),
-                dazu: c.shortShare.map { "\(Formate.prozent($0)) aller Läufe" }
-            ),
-        ]
-    }
-
-    private func ofen(_ o: StoveOut) -> some View {
-        Group {
-            if o.available == true {
-                VStack(spacing: 0) {
-                    Zeile(
-                        wort: "Laufzeit",
-                        wert: Formate.dauer(minuten: o.runningMinutes)
-                    )
-                    Zeile(wort: "Läufe", wert: Formate.zahl(o.runs.map(Double.init), stellen: 0))
-                    Zeile(wort: "Zündungen", wert: Formate.zahl(o.ignitions.map(Double.init), stellen: 0))
-                    Zeile(wort: "Pellets", wert: Formate.zahl(o.pelletKg, stellen: 1), einheit: "kg")
-                    Zeile(wort: "Pelletkosten", wert: Formate.euro(o.pelletEur))
-                    Zeile(
-                        wort: "Warmwasser",
-                        wert: Formate.dauer(minuten: o.dhwMinutes)
-                    )
+    /// Die vier Spannen nebeneinander. `try?` je Spanne: eine fehlende Spalte ist besser als
+    /// eine Seite, die an ihr scheitert.
+    private func holeSpannen(anker: String, api: Api) async -> [Spanne: HeatBalanceOut] {
+        await withTaskGroup(of: (Spanne, HeatBalanceOut?).self) { gruppe in
+            for s in Spanne.allCases {
+                gruppe.addTask {
+                    (s, try? await api.waermebilanz(s.rawValue, anker: anker))
                 }
+            }
+            var aus: [Spanne: HeatBalanceOut] = [:]
+            for await (s, b) in gruppe {
+                if let b { aus[s] = b }
+            }
+            return aus
+        }
+    }
+
+    @ViewBuilder private func inhalt(_ d: Waermedaten) -> some View {
+        let tag = d.bilanz.period == .day
+
+        Kachelfeld(
+            kacheln: Waermeuebersicht.kacheln(bilanz: d.bilanz, strom: d.strom)
+                .map(Kacheldaten.init),
+            kicker: "Wärme"
+        )
+
+        // Der Tag als Verlauf, jeder laengere Zeitraum als Balken. Beides zugleich waere
+        // dieselbe Zufuhr zweimal: einmal je Minute, einmal je Stunde.
+        if tag {
+            Karte(kicker: "Tagesverlauf", titel: d.bilanz.resolutionDe) {
+                Waermeverlauf(punkte: d.bilanz.series)
+            }
+            if !pufferreihe(d).isEmpty {
+                Karte(
+                    kicker: "Pufferspeicher",
+                    titel: "Temperaturen in vier Höhen · Leistung der Wärmepumpe"
+                ) {
+                    Pufferbild(reihe: pufferreihe(d))
+                }
+            }
+        } else {
+            Karte(kicker: d.bilanz.period == .year ? "Wärme je Monat" : "Wärme je Tag") {
+                if d.bilanz.buckets.isEmpty {
+                    Leer(satz: "Für diesen Zeitraum liegen keine Werte vor.")
+                } else {
+                    Balkenbild(stuecke: erzeuger(d.bilanz))
+                }
+            }
+        }
+
+        Karte(kicker: "Strom der Wärmepumpe nach Herkunft") {
+            if d.strom.summary.buckets.isEmpty {
+                Leer(satz: "Für diesen Zeitraum liegen keine Werte vor.")
             } else {
+                Balkenbild(stuecke: herkunft(d.strom))
+            }
+        }
+
+        Karte(kicker: "Was die Wärme gekostet hat") {
+            VStack(alignment: .leading, spacing: 8) {
+                kernzahl(Waermeuebersicht.kostenkernzahl(d.bilanz.cost))
+                VStack(spacing: 0) {
+                    ForEach(Waermeuebersicht.kostenzeilen(d.bilanz.cost)) { z in
+                        Zeile(wort: z.wort, wert: z.wert)
+                    }
+                }
+                if let satz = d.bilanz.cost?.cheaperDe, !satz.isEmpty {
+                    Text(satz).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+
+        Karte(kicker: "Taktung", titel: Waermeuebersicht.taktkopf(d.strom.cycling)) {
+            VStack(alignment: .leading, spacing: 8) {
+                kernzahl(
+                    Kennzahl(
+                        wort: "Starts je Tag",
+                        wert: Formate.zahl(d.strom.cycling.startsPerDay, stellen: 1)),
+                    rechts: d.strom.cycling.verdict?.wort
+                )
+                VStack(spacing: 0) {
+                    ForEach(Waermeuebersicht.taktzeilen(d.strom.cycling)) { z in
+                        Zeile(wort: z.wort, wert: z.wert)
+                    }
+                }
+                if let satz = d.strom.cycling.noteDe, !satz.isEmpty {
+                    Text(satz).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+
+        // Dieselbe Zahl wie auf „Geld": eine Rechnung, an zwei Stellen gezeigt.
+        Karte(kicker: "Hat sich das Verschieben gelohnt?", titel: "geschätzt") {
+            let k = Waermeuebersicht.schieben(d.schieben)
+            VStack(alignment: .leading, spacing: 8) {
+                kernzahl(Kennzahl(wort: k.bedeutung, wert: k.kernzahl, ton: .bernstein))
+                if !k.zeilen.isEmpty {
+                    VStack(spacing: 0) {
+                        ForEach(k.zeilen) { z in Zeile(wort: z.wort, wert: z.wert) }
+                    }
+                }
+                if let h = k.hinweis {
+                    Text(h).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+
+        if d.strom.stove.available == true {
+            Karte(kicker: "Pelletofen", titel: Waermeuebersicht.ofenkopf(d.strom.stove)) {
+                ofenkarte(d.strom.stove)
+            }
+        } else {
+            Karte(kicker: "Pelletofen") {
                 Leer(satz: "In diesem Zeitraum hat der Ofen nicht gemeldet.")
             }
         }
+
+        // Nur zeigen, wenn es etwas zu zeigen gibt: eine Karte, die jeden Tag „null" sagt,
+        // liest nach einer Woche niemand mehr.
+        if let l = d.bilanz.ventilation, Waermeuebersicht.zeigtFenster(l) {
+            Karte(
+                kicker: "Bei offenem Fenster",
+                titel: "geschätzt, nach offenen Heizkreisen verteilt"
+            ) {
+                fensterkarte(l)
+            }
+        }
+
+        Karte(kicker: "Bilanz des Puffers") {
+            pufferbilanz(d.strom.bufferBalance)
+        }
+
+        Karte(kicker: "Wärme im Zeitraum") {
+            spannenvergleich(d.jeSpanne)
+        }
+
+        Methode(
+            [
+                "Im Haus gibt es keinen Wärmemengenzähler: jede Wärmemenge auf dieser Seite ist aus Strom, Ofenbetrieb und Puffertemperaturen gerechnet.",
+                d.bilanz.noteDe,
+                d.strom.modelNoteDe,
+                d.strom.bufferBalance.noteDe,
+                d.strom.priceQuality.noteDe,
+                Waermeuebersicht.annahmensatz(d.bilanz.params),
+                Waermeuebersicht.abdeckungssatz(d.strom.summary.meta),
+                d.strom.summary.meta.estimatedNoteDe,
+            ])
+    }
+
+    // MARK: - Bausteine
+
+    /// Die große Zahl einer Karte mit ihrer Unterzeile.
+    private func kernzahl(_ k: Kennzahl, rechts: String? = nil) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(k.wert)
+                .font(Schrift.zahlGross)
+                .foregroundStyle(Farbe.ton(k.ton))
+            Text(k.wort)
+                .font(Schrift.klein)
+                .foregroundStyle(Farbe.text3)
+                .fixedSize(horizontal: false, vertical: true)
+            if let rechts {
+                Spacer(minLength: 6)
+                Text(rechts).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+            }
+        }
+    }
+
+    private func pufferreihe(_ d: Waermedaten) -> [Waermeuebersicht.Pufferpunkt] {
+        Waermeuebersicht.pufferreihe(d.strom.bufferSeries)
+    }
+
+    private func erzeuger(_ b: HeatBalanceOut) -> [Balkenbild.Stueck] {
+        [
+            .init(
+                name: "Wärmepumpe", farbe: Farbe.waermepumpe,
+                werte: b.buckets.map { ($0.labelDe, $0.heatPumpKwh ?? 0) }),
+            .init(
+                name: "Ofen (Wasser)", farbe: Farbe.ofen,
+                werte: b.buckets.map { ($0.labelDe, $0.stoveWaterKwh ?? 0) }),
+            .init(
+                name: "Ofen (Raum)", farbe: Farbe.ofen.opacity(0.55),
+                werte: b.buckets.map { ($0.labelDe, $0.stoveRoomKwh ?? 0) }),
+        ]
+    }
+
+    private func herkunft(_ r: HeatReportOut) -> [Balkenbild.Stueck] {
+        // `EnergyBucketOut` heisst das Wort `label` und nicht `labelDe` - anders als
+        // `HeatBucketOut` zwei Funktionen weiter oben. Zwei Modelle, zwei Namen fuer dasselbe.
+        let b = r.summary.buckets
+        return [
+            .init(
+                name: "aus PV", farbe: Farbe.pv,
+                werte: b.map { ($0.label, $0.totals.heatPumpPvKwh ?? 0) }),
+            .init(
+                name: "aus Batterie", farbe: Farbe.batterie,
+                werte: b.map { ($0.label, $0.totals.heatPumpBatteryKwh ?? 0) }),
+            .init(
+                name: "aus Netz", farbe: Farbe.netzBezug,
+                werte: b.map { ($0.label, $0.totals.heatPumpGridKwh ?? 0) }),
+        ]
+    }
+
+    private func ofenkarte(_ o: StoveOut) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            kernzahl(
+                Kennzahl(
+                    wort: "Laufzeit", wert: Waermeuebersicht.dauer(minuten: o.runningMinutes),
+                    ton: .glut))
+            VStack(spacing: 0) {
+                ForEach(Waermeuebersicht.ofenzeilen(o)) { z in
+                    Zeile(wort: z.wort, wert: z.wert)
+                }
+            }
+            let stufen = Waermeuebersicht.ofenstufen(o)
+            if !stufen.isEmpty {
+                Umbruchzeile(abstand: 12, zeilenabstand: 4) {
+                    Text("Leistungsstufen:").font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                    ForEach(Array(stufen.enumerated()), id: \.offset) { _, s in
+                        Text("\(s.stufe): \(s.dauer)")
+                            .font(Schrift.zahlKlein).foregroundStyle(Farbe.text2)
+                    }
+                }
+            }
+            ForEach([o.noteDe, Waermeuebersicht.ofenbrennstoffsatz(o)].compactMap { $0 }, id: \.self) {
+                satz in
+                Text(satz).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func fensterkarte(_ l: VentilationOut) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            kernzahl(
+                Kennzahl(
+                    wort: "kWh in Räume mit offenem Fenster",
+                    wert: Formate.zahl(l.kwh, stellen: 1)),
+                rechts: Waermeuebersicht.fensterkopf(l)
+            )
+            if !l.rooms.isEmpty {
+                Tabelle(
+                    zeilennamen: l.rooms.map(\.name),
+                    spalten: [
+                        .init(
+                            name: "Fenster offen",
+                            zellen: l.rooms.map { "\($0.openMinutes) min" }),
+                        .init(
+                            name: "davon geheizt",
+                            zellen: l.rooms.map { "\($0.heatingMinutes) min" }),
+                        .init(
+                            name: "Wärme",
+                            zellen: l.rooms.map { Formate.kwh($0.kwh) }),
+                    ]
+                )
+            }
+            if !l.noteDe.isEmpty {
+                Text(l.noteDe).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// Dieselben zwölf Größen für Tag, Woche, Monat und Jahr nebeneinander.
+    private func spannenvergleich(_ je: [Spanne: HeatBalanceOut]) -> some View {
+        let zeilen = Waermeuebersicht.spannenzeilen(je)
+        return Tabelle(
+            zeilennamen: zeilen.map(\.wort),
+            spalten: Spanne.allCases.enumerated().map { i, s in
+                .init(name: s.name, zellen: zeilen.map { $0.werte[i] })
+            }
+        )
     }
 
     /// Die Bilanz des Puffers: was hineinging, was herauskam, und was sich nicht erklaeren laesst.

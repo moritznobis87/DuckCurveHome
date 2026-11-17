@@ -13,26 +13,12 @@ import Foundation
 /// Stunden sein. Die Stunden sind das, was man der gemessenen Laufzeit gegenüberstellen kann.
 public enum Fahrplankacheln {
 
-    public struct Kachel: Sendable, Hashable, Identifiable {
-        public let wort: String
-        public let wert: String
-        public let einheit: String?
-        public let dazu: String?
-        /// Welche Rolle die Zahl hat - die Ansicht wählt daraus die Farbe.
-        public let ton: Ton
-        public var id: String { wort }
-    }
-
-    public enum Ton: String, Sendable, Hashable {
-        case glut, bernstein, gedaempft, nebel
-    }
-
     /// Viertelstunden als Stunden: „6,0 h".
     public static func viertelstunden(_ anzahl: Int) -> String {
         "\(Formate.zahl(Double(anzahl) / 4, stellen: 1)) h"
     }
 
-    public static func kacheln(_ plan: PlanOut?) -> [Kachel] {
+    public static func kacheln(_ plan: PlanOut?) -> [Kennzahl] {
         let iv = plan?.intervals ?? []
         let preise = iv.compactMap(\.priceCtKwh)
         let cops = iv.compactMap(\.cop)
@@ -54,7 +40,7 @@ public enum Fahrplankacheln {
         let ofenviertel = iv.filter { $0.plannedStoveOn == true }.count
 
         return [
-            Kachel(
+            Kennzahl(
                 wort: "Wärmepumpe angefordert",
                 wert: viertelstunden(iv.filter { $0.plannedHpState == .release }.count),
                 einheit: nil,
@@ -62,7 +48,7 @@ public enum Fahrplankacheln {
                     ? "im ganzen Horizont · Duck Curve fordert selbst an"
                     : "im ganzen Horizont · wird nur beobachtet, nicht geschaltet",
                 ton: .glut),
-            Kachel(
+            Kennzahl(
                 wort: "Wärmepumpe gelaufen",
                 wert: mitMessung.isEmpty
                     ? Formate.leer : "\(Formate.zahl(laufMinuten / 60, stellen: 1)) h",
@@ -71,13 +57,13 @@ public enum Fahrplankacheln {
                     ? "keine Messung"
                     : "seit Mitternacht · im selben Fenster geplant \(viertelstunden(geplantImSelbenFenster))",
                 ton: .bernstein),
-            Kachel(
+            Kennzahl(
                 wort: "bewusst gemieden",
                 wert: viertelstunden(iv.filter { $0.plannedHpState == .avoid }.count),
                 einheit: nil, dazu: "teure Stunden ohne Anforderung", ton: .gedaempft),
             // Null Ofenstunden sind eine Entscheidung, kein fehlender Fahrplan: die Kachel muss
             // beides unterscheiden, sonst leuchtet sie „0,0 h · Volllast, 15 kg je Füllung".
-            Kachel(
+            Kennzahl(
                 wort: "Ofen geplant",
                 wert: ofenfahrplan ? viertelstunden(ofenviertel) : Formate.leer,
                 einheit: nil,
@@ -86,16 +72,16 @@ public enum Fahrplankacheln {
                     : (ofenviertel > 0
                         ? "Volllast, 15 kg je Füllung" : "nicht eingeplant, Begründung unten"),
                 ton: ofenviertel > 0 ? .glut : .gedaempft),
-            Kachel(
+            Kennzahl(
                 wort: "Wärmebedarf geplant",
                 wert: waerme > 0 ? Formate.zahl(waerme / 4, stellen: 0) : Formate.leer,
                 einheit: "kWh",
                 dazu: waerme > 0 ? "Modell v1, nicht gemessen" : "kein Fahrplan", ton: .nebel),
-            Kachel(
+            Kennzahl(
                 wort: "COP im Horizont",
                 wert: spanne(cops, stellen: 1), einheit: nil, dazu: "aus der Außentemperatur",
                 ton: .nebel),
-            Kachel(
+            Kennzahl(
                 wort: "Preisspanne", wert: spanne(preise, stellen: 0), einheit: "ct",
                 dazu: "im Horizont", ton: .bernstein),
         ]

@@ -114,6 +114,18 @@ public enum Marken {
     /// und ein offener Heizkreis ist weder das eine noch das andere.
     public static let ventilOffen = Farbwert(0xCFD8DC)
 
+    /// Die vier Schichten des Puffers, warm nach kuehl - wie die Schichtung selbst.
+    ///
+    /// **Keine vier Kategorienfarben, sondern eine Folge.** Die Linien liegen fast immer in
+    /// ihrer Reihenfolge uebereinander; eine Folge liest man als eine Sache in vier Hoehen,
+    /// vier bunte Linien als vier Sachen. Der unterste Fuehler war im Dashboard einmal
+    /// dunkelblau und hob sich mit 1,41:1 kaum von der Karte ab; jetzt halten alle vier
+    /// mindestens 3:1 (gemessen 10.11.2026). Entspricht den vier Farben in
+    /// `apps/web/src/components/reports/charts.ts`, Funktion `bufferChart`.
+    public static let pufferschichten: [Farbwert] = [
+        amber, amberWeich, mist, Farbwert(0x2F89B5),
+    ]
+
     /// Die Waermeskala der Jahreskarte und des Puffers, kalt nach heiss.
     public static let waerme: [Farbwert] = [
         Farbwert(0x1F4C66), Farbwert(0x7FA3B3), Farbwert(0xFFD778), Farbwert(0xF2A900), Farbwert(0xE0533D),

@@ -151,11 +151,7 @@ struct JetztSeite: View {
             preisJetzt: haus.augenblick?.electricityPriceCtKwh.belastbar,
             morgen: morgendaten
         )
-        .map {
-            Kacheldaten(
-                $0.wort, $0.wert, einheit: $0.einheit, dazu: $0.dazu,
-                farbe: $0.gelb ? Farbe.pv : Farbe.text1)
-        }
+        .map(Kacheldaten.init)
     }
 
     /// Was von morgen bekannt ist: Sonne und Preise aus dem Fahrplan, Waerme aus der Prognose.
