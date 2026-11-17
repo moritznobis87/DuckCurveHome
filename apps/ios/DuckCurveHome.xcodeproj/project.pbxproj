@@ -21,6 +21,7 @@
 		3E30EAB4C6F63E5AD9D2F86C /* DuckCurveHomeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0518C11F936494CF844C1F /* DuckCurveHomeApp.swift */; };
 		3EF3EF537DB4E937E636B504 /* Abweichungsmatrix.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0BCDE5FB8D6F9AFCC77CB33 /* Abweichungsmatrix.swift */; };
 		498B36D3AD10F973FA6BE8CD /* RechnungenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71D659D49C85D23F490706A6 /* RechnungenSeite.swift */; };
+		4E765D4786033C74B93D66B6 /* Fahrplanzeichnung.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */; };
 		4F4C0F0A21CF2F94D2FCC3C3 /* Ansichtswahl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E28F2036D3D5B7885BC4F87 /* Ansichtswahl.swift */; };
 		50E9B830BB427C2DCAA0BF73 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 90D7A2BB3C0E19C96527B863 /* Assets.xcassets */; };
 		512F02FA33052F129D25DBD5 /* Energiefluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F3D8B5A242C08D8BEF8DE76 /* Energiefluss.swift */; };
@@ -90,6 +91,7 @@
 		90D7A2BB3C0E19C96527B863 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		90E127C736AC8ABEDFAB4437 /* Farben.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Farben.swift; sourceTree = "<group>"; };
 		926698EEDAB57A85461E370A /* Typografie.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typografie.swift; sourceTree = "<group>"; };
+		98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fahrplanzeichnung.swift; sourceTree = "<group>"; };
 		9AA49FDBA50756C197DFFDBC /* Tageskurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tageskurve.swift; sourceTree = "<group>"; };
 		9FE2E906879843FBFF8C04AC /* Glasmodell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glasmodell.swift; sourceTree = "<group>"; };
 		AAA38BD9FC62B1F89035ABAE /* GeldSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeldSeiten.swift; sourceTree = "<group>"; };
@@ -138,6 +140,7 @@
 		304A7B322587ABC509023368 /* Diagramme */ = {
 			isa = PBXGroup;
 			children = (
+				98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */,
 				9AA49FDBA50756C197DFFDBC /* Tageskurve.swift */,
 			);
 			path = Diagramme;
@@ -401,6 +404,7 @@
 				C43C83AB55DE4450DB127E05 /* Einrichten.swift in Sources */,
 				512F02FA33052F129D25DBD5 /* Energiefluss.swift in Sources */,
 				E3D65B399947BD156AFF98E4 /* FahrplanSeiten.swift in Sources */,
+				4E765D4786033C74B93D66B6 /* Fahrplanzeichnung.swift in Sources */,
 				9791AE7D34591424DCAAD5DB /* Farben.swift in Sources */,
 				1423F68C39EC71F5598C2C47 /* GeldSeiten.swift in Sources */,
 				7A6C6E5925D48EE511579D9D /* Glasmodell.swift in Sources */,

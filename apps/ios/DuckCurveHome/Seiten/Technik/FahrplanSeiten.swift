@@ -1,4 +1,3 @@
-import Charts
 import DuckCurveKit
 import SwiftUI
 
@@ -29,8 +28,11 @@ struct FahrplanSeite: View {
                     }
                 }
                 if !p.intervals.isEmpty {
-                    Karte(kicker: "Der Plan") {
-                        bild(p)
+                    Karte(
+                        kicker: "Horizont",
+                        titel: "\(Formate.tagUndUhr(iso: p.horizonStart, jetzt: haus.jetzt)) bis \(Formate.tagUndUhr(iso: p.horizonEnd, jetzt: haus.jetzt)) · \(p.planner)"
+                    ) {
+                        Fahrplanzeichnung(bild: Fahrplanbild.baue(p), plan: p, jetzt: haus.jetzt)
                     }
                     Karte(
                         kicker: "Die Entscheidungen",
@@ -53,33 +55,18 @@ struct FahrplanSeite: View {
         }
     }
 
+    /// Die sieben Zahlen der Vorlage, gerechnet in ``Fahrplankacheln``.
+    ///
+    /// Vorher standen hier vier andere: erwartete Sonne, die *Zahl* der geplanten Laeufe, das
+    /// naechste Preistief und die Puffergroesse. Drei Laeufe koennen zwanzig Minuten oder acht
+    /// Stunden sein - die Stunden sind das, was man der gemessenen Laufzeit gegenueberstellt.
     private func kopf(_ p: PlanOut) -> some View {
         Kachelfeld(
-            kacheln: [
+            kacheln: Fahrplankacheln.kacheln(p).map {
                 Kacheldaten(
-                    "aus der Sonne erwartet", Formate.zahl(p.pvForecastTodayKwh, stellen: 1),
-                    einheit: "kWh", farbe: Farbe.pv
-                ),
-                Kacheldaten(
-                    "geplante Läufe",
-                    String(
-                        Fahrplan.phasen(p, jetzt: haus.jetzt, bis: haus.jetzt.addingTimeInterval(24 * 3600)) {
-                            $0.plannedHpState == .release
-                        }.count
-                    )
-                ),
-                Kacheldaten(
-                    "nächstes Preistief",
-                    p.nextCheapWindow.map { Formate.hhmm(iso: $0.start) } ?? Formate.leer,
-                    dazu: p.nextCheapWindow.flatMap { w in
-                        w.avgCtKwh.map { "im Mittel \(Formate.ct($0))" }
-                    }
-                ),
-                Kacheldaten(
-                    "Puffer, nutzbar", Formate.zahl(p.bufferCapacityKwh, stellen: 1), einheit: "kWh",
-                    dazu: p.bufferMinKwh.map { "mindestens \(Formate.kwh($0))" }
-                ),
-            ],
+                    $0.wort, $0.wert, einheit: $0.einheit, dazu: $0.dazu,
+                    farbe: Farbe.ton($0.ton))
+            },
             kicker: "Voraus"
         )
     }
@@ -98,84 +85,6 @@ struct FahrplanSeite: View {
             Text(Formate.ct(w.avgCtKwh)).font(Schrift.zahlKlein).foregroundStyle(Farbe.text2)
         }
         .padding(.vertical, 6)
-    }
-
-    /// Der Plan als Band: wann die Pumpe freigegeben ist, über dem Preis.
-    private func bild(_ p: PlanOut) -> some View {
-        let felder = p.intervals.compactMap { iv -> (stunde: Double, preis: Double?, frei: Bool)? in
-            guard let t = Zeit.ausIso(iv.ts) else { return nil }
-            let h = t.timeIntervalSince(haus.jetzt) / 3600
-            guard h >= -0.5, h <= 24 else { return nil }
-            return (h, iv.priceCtKwh, iv.plannedHpState == .release)
-        }
-        // Der Preis hat keine natuerliche Obergrenze. Festverdrahtete 40 ct hiessen: an einem
-        // Tag mit 49 ct laeuft die Kurve oben aus dem Bild und zeichnet ueber die Ueberschrift.
-        let spanne = Achse.spanne(werte: felder.map(\.preis), rand: 2, mindestens: 10) ?? 0...40
-        return VStack(alignment: .leading, spacing: 6) {
-            Chart {
-                ForEach(Array(felder.enumerated()), id: \.offset) { _, f in
-                    if f.frei {
-                        RectangleMark(
-                            xStart: .value("von", f.stunde),
-                            xEnd: .value("bis", f.stunde + 0.25),
-                            yStart: .value("u", 0),
-                            yEnd: .value("o", 1)
-                        )
-                        .foregroundStyle(Farbe.waermepumpe.opacity(0.55))
-                    }
-                }
-                ForEach(Array(felder.enumerated()), id: \.offset) { _, f in
-                    if let preis = f.preis {
-                        LineMark(
-                            x: .value("Stunde", f.stunde),
-                            y: .value("Preis", Achse.anteil(preis, in: spanne))
-                        )
-                        .foregroundStyle(Farbe.preis)
-                        .lineStyle(StrokeStyle(lineWidth: 1.5))
-                        .interpolationMethod(.stepEnd)
-                    }
-                }
-                RuleMark(x: .value("jetzt", 0))
-                    .foregroundStyle(Farbe.text2)
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
-            }
-            .chartXScale(domain: 0...24)
-            .chartYScale(domain: 0...1)
-            .chartYAxis {
-                AxisMarks(position: .leading, values: [0, 0.5, 1]) { w in
-                    AxisGridLine().foregroundStyle(Farbe.rasterlinie)
-                    AxisValueLabel {
-                        if let a = w.as(Double.self) {
-                            Text(Formate.ct(Achse.wert(anteil: a, in: spanne)))
-                                .font(Schrift.achse)
-                                .foregroundStyle(Farbe.text3)
-                        }
-                    }
-                }
-            }
-            .chartXAxis {
-                AxisMarks(values: Array(stride(from: 0.0, through: 24, by: 4))) { w in
-                    AxisGridLine().foregroundStyle(Farbe.rasterlinie)
-                    AxisValueLabel {
-                        if let h = w.as(Double.self) {
-                            Text("+\(Int(h)) h").font(Schrift.achse).foregroundStyle(Farbe.text3)
-                        }
-                    }
-                }
-            }
-            .frame(height: 110)
-            HStack(spacing: 14) {
-                HStack(spacing: 5) {
-                    Rectangle().fill(Farbe.waermepumpe.opacity(0.55)).frame(width: 12, height: 8)
-                    Text("Freigabe geplant").font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                }
-                HStack(spacing: 5) {
-                    Rectangle().fill(Farbe.preis).frame(width: 12, height: 2)
-                    Text("Börsenpreis, Achse links").font(Schrift.winzig)
-                        .foregroundStyle(Farbe.text3)
-                }
-            }
-        }
     }
 
     /// Die Viertelstunden an den Preisenden – so wie es das Dashboard zeigt.

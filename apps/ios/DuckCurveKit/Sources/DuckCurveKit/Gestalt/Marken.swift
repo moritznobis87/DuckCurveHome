@@ -69,6 +69,25 @@ public enum Marken {
     /// und Netzbezug duerfen nicht ohne Zweitkodierung in dieselbe Grafik.
     public static let ofen = Farbwert(0xB5651D)
 
+    /// Der Hausverbrauch als Summe, nicht als Quelle - und das Heizen, denn es ist der Verlust
+    /// der Huelle. Eigene Farbe, weil er in der Pruefansicht neben PV, Netz und Speicher steht;
+    /// dort scheitert das Sandfarbene des Haushalts an der PV (ΔE 9,3). Geprueft: schlechtestes
+    /// Paar dieser vier ΔE 18,5 normal / 15,1 CVD. Entspricht `house` in palette.ts.
+    public static let haus = Farbwert(0xCFD8DC)
+
+    /// Das Warmwasser im gestapelten Waermebedarf. Das Heizen nimmt die Farbe des Hauses, das
+    /// Warmwasser bekommt sein eigenes Blau: ΔE 21,9 normal / 18,1 protan gegen `flaeche2`. Es
+    /// ist das einzige **gestapelte** Paar der Fahrplanseite und damit das einzige, an dem diese
+    /// Liste streng sein muss. Entspricht `dhw` in palette.ts.
+    public static let warmwasser = Farbwert(0x4AA3C7)
+
+    /// Der Pufferinhalt: eine einzelne Linie in einer eigenen Flaeche. Ihr naechster Nachbar auf
+    /// der Fahrplanseite ist der Strompreis drei Flaechen hoeher, ΔE 14,6 normal / 13,7 deutan -
+    /// knapp unter der Grenze 15, die hier sonst gilt. Zulaessig, weil die beiden nie im selben
+    /// Gitter stehen: eigene Achse in kWh, eigener Titel, eine Luecke dazwischen.
+    /// Entspricht `puffer` in palette.ts.
+    public static let puffer = Farbwert(0x8FBF6B)
+
     public static let wallbox = Farbwert(0x5C8FA3)
     public static let preis = mist
     public static let last = Farbwert(0xFFFFFF, deckung: 0.62)

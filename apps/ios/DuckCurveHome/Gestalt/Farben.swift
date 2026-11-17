@@ -55,6 +55,9 @@ public enum Farbe {
     public static let batterie = Color(Marken.batterie)
     public static let waermepumpe = Color(Marken.waermepumpe)
     public static let ofen = Color(Marken.ofen)
+    public static let haus = Color(Marken.haus)
+    public static let warmwasser = Color(Marken.warmwasser)
+    public static let puffer = Color(Marken.puffer)
     public static let wallbox = Color(Marken.wallbox)
     public static let preis = Color(Marken.preis)
     public static let last = Color(Marken.last)
@@ -70,6 +73,19 @@ public enum Farbe {
     public static let abweichung = Marken.abweichung.map(Color.init)
 
     /// Die Farbe zu einer Abweichung vom Sollwert, in Kelvin.
+    /// Der Ton einer Kachel, wie die Vorlage ihn nennt (`tone` in `Stat`).
+    ///
+    /// Im Dashboard steht an jeder Kachel ein Wort dafuer, nicht eine Farbe - damit dieselbe
+    /// Rolle auf allen Seiten dieselbe Farbe bekommt. Die Zuordnung steht hier und nur hier.
+    public static func ton(_ t: Fahrplankacheln.Ton) -> Color {
+        switch t {
+        case .glut: return waermepumpe
+        case .bernstein: return amber
+        case .gedaempft: return text3
+        case .nebel: return mist
+        }
+    }
+
     public static func abweichung(kelvin: Double?) -> Color {
         Color(Marken.abweichungsfarbe(kelvin: kelvin))
     }
