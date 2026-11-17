@@ -1,67 +1,88 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Der Pufferspeicher als Glas: ein Tank, der von oben nach unten die Farbe seiner vier Fuehler zeigt.
+/// Der Pufferspeicher als Glas: ein Tank, der von oben nach unten die Farbe seiner vier Fühler
+/// zeigt.
 ///
-/// **Der Speicher sieht ueberall gleich aus** (Nutzerwunsch 14.11.2026): dasselbe Glas auf der
-/// Startseite, im Anlagenschema und auf der Waermeseite. Stehend am iPad, liegend am Telefon -
-/// dort nimmt ein stehendes Glas die halbe Hoehe fuer eine Zahl.
+/// **Der Speicher sieht überall gleich aus** (Nutzerwunsch 14.11.2026): dasselbe Glas auf der
+/// Startseite, im Anlagenschema und auf der Wärmeseite.
 ///
-/// **Die vier Fuehler stehen auf ihrer Hoehe**, nicht in einer Legende daneben. Ein Speicher ist
-/// geschichtet: oben heiss, unten kalt, und genau das ist die Auskunft. Wo ein Fuehler fehlt,
-/// steht kein Punkt - und nicht einer in Grau, der wie eine Messung aussieht.
+/// **Und er steht immer.** Hier gab es eine liegende Fassung fürs Telefon, mit dem Argument,
+/// ein stehendes Glas nehme dort zu viel Höhe. Das war meine Erfindung – im Dashboard
+/// (`puffer/Glas.tsx`) gibt es sie nicht, und sie war falsch: die Schichtung eines Puffers
+/// *ist* vertikal. Oben heiß, unten kalt, und genau das ist die Auskunft. Liegend bedeutete das
+/// Bild nichts mehr; es sah aus wie ein Verlaufsbalken.
+///
+/// **Die vier Fühler stehen neben dem Glas, auf ihrer Höhe**, jeder mit einem Strich dorthin –
+/// so wie im Dashboard. Vorher standen sie als weiße Pillen *im* Wasser und verdeckten genau
+/// das, was sie beschriften. Wo ein Fühler fehlt, steht ein Strich und keine Zahl.
 struct Pufferglas: View {
     let temperaturen: [Messwert]
     let soc: Double?
     let zustand: Pufferzustand
-    var liegend: Bool = false
-    /// Die Hoehe der vier Fuehler im Speicher, von oben nach unten. Aus `puffer/glas.ts`.
+    /// Die Höhe der vier Fühler im Speicher, von oben nach unten. Aus `puffer/glas.ts`.
     private let hoehen: [Double] = [0.12, 0.38, 0.62, 0.88]
+    /// Die Breite des Tanks. Das Dashboard zeichnet 56 auf 300 – ein schmales, hohes Glas.
+    private let tankbreite: CGFloat = 60
 
     var body: some View {
-        if liegend {
-            HStack(spacing: 14) {
-                glas
-                    .frame(width: 150, height: 74)
-                werte
-            }
-        } else {
-            VStack(spacing: 10) {
-                glas
-                    .frame(maxWidth: 128, maxHeight: .infinity)
-                werte
-            }
+        HStack(alignment: .center, spacing: 18) {
+            tank
+                .frame(width: tankbreite + 46)
+            werte
+            Spacer(minLength: 0)
         }
     }
 
     // MARK: - Das Glas
 
-    private var glas: some View {
+    private var tank: some View {
         GeometryReader { raum in
-            ZStack {
+            let h = raum.size.height
+            ZStack(alignment: .topLeading) {
                 form
-                    .fill(
-                        LinearGradient(
-                            stops: verlauf,
-                            startPoint: liegend ? .trailing : .top,
-                            endPoint: liegend ? .leading : .bottom
-                        )
-                    )
+                    .fill(LinearGradient(stops: verlauf, startPoint: .top, endPoint: .bottom))
+                    .frame(width: tankbreite, height: h)
                 form
                     .strokeBorder(Farbe.linie2, lineWidth: 1)
-                fuehlerpunkte(in: raum.size)
+                    .frame(width: tankbreite, height: h)
+                ForEach(Array(temperaturen.enumerated()), id: \.offset) { i, m in
+                    if i < hoehen.count {
+                        fuehler(m, bei: hoehen[i], hoehe: h)
+                    }
+                }
             }
         }
     }
 
-    private var form: RoundedRectangle {
-        RoundedRectangle(cornerRadius: liegend ? 16 : 14, style: .continuous)
+    /// Ein Fühler: ein Strich aus dem Glas heraus und die Zahl daneben.
+    private func fuehler(_ m: Messwert, bei anteil: Double, hoehe: CGFloat) -> some View {
+        let y = anteil * hoehe
+        return Group {
+            Rectangle()
+                .fill(Farbe.linie2)
+                .frame(width: 10, height: 1)
+                .position(x: tankbreite + 5, y: y)
+            HStack(spacing: 1) {
+                Text(m.belastbar.map { Formate.zahl($0, stellen: 0) } ?? Formate.leer)
+                    .foregroundStyle(m.quality.traegt ? Farbe.text1 : Farbe.text3)
+                if m.belastbar != nil {
+                    Text("°").foregroundStyle(Farbe.text3)
+                }
+            }
+            .font(Schrift.zahlKlein)
+            .position(x: tankbreite + 32, y: y)
+        }
     }
 
-    /// Der Farbverlauf des Wassers: die Farbe jedes Fuehlers auf seiner Hoehe.
+    private var form: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+    }
+
+    /// Der Farbverlauf des Wassers: die Farbe jedes Fühlers auf seiner Höhe.
     ///
-    /// Wo Werte fehlen, bleibt das Glas gedeckt - ein Verlauf aus zwei Messungen und zwei
-    /// Vermutungen waere ein Bild, das mehr behauptet, als gemessen ist.
+    /// Wo Werte fehlen, bleibt das Glas gedeckt – ein Verlauf aus zwei Messungen und zwei
+    /// Vermutungen wäre ein Bild, das mehr behauptet, als gemessen ist.
     private var verlauf: [Gradient.Stop] {
         let werte = temperaturen.map(\.belastbar)
         guard werte.contains(where: { $0 != nil }) else {
@@ -73,7 +94,9 @@ struct Pufferglas: View {
         var stops: [Gradient.Stop] = []
         for (i, wert) in werte.enumerated() where i < hoehen.count {
             guard let wert else { continue }
-            stops.append(.init(color: wasserfarbe(wert), location: hoehen[i]))
+            // Die Skala steht im Kern und ist dort geprueft - sie ist dieselbe wie die der
+            // Rohre im Anlagenschema und die der Jahreskarte.
+            stops.append(.init(color: Color(Marken.wasserfarbe(wert)), location: hoehen[i]))
         }
         // Die Raender fortsetzen, damit oben und unten keine harte Kante entsteht.
         if let erster = stops.first {
@@ -85,56 +108,10 @@ struct Pufferglas: View {
         return stops
     }
 
-    /// Die Farbskala des Wassers, aus `tokens.css` (`--heat-0` bis `--heat-4`).
-    ///
-    /// 25 °C ist kalt, 70 °C ist heiss. Zwischen den Stufen wird gemischt - eine Stufenskala
-    /// waere hier falsch, denn ein Speicher hat keine Stufen.
-    private func wasserfarbe(_ grad: Double) -> Color {
-        let stufen: [(Double, Farbwert)] = [
-            (25, Marken.waerme[0]), (40, Marken.waerme[1]), (50, Marken.waerme[2]),
-            (60, Marken.waerme[3]), (70, Marken.waerme[4]),
-        ]
-        guard let erste = stufen.first, let letzte = stufen.last else { return Farbe.flaeche3 }
-        if grad <= erste.0 { return Color(erste.1) }
-        if grad >= letzte.0 { return Color(letzte.1) }
-        for i in 1..<stufen.count where grad <= stufen[i].0 {
-            let (g0, f0) = stufen[i - 1]
-            let (g1, f1) = stufen[i]
-            let t = (grad - g0) / (g1 - g0)
-            return Color(
-                Farbwert(
-                    rot: f0.rot + (f1.rot - f0.rot) * t,
-                    gruen: f0.gruen + (f1.gruen - f0.gruen) * t,
-                    blau: f0.blau + (f1.blau - f0.blau) * t
-                )
-            )
-        }
-        return Color(letzte.1)
-    }
-
-    /// Die vier Fuehler als Punkte mit ihrer Zahl.
-    private func fuehlerpunkte(in flaeche: CGSize) -> some View {
-        ForEach(Array(temperaturen.enumerated()), id: \.offset) { i, m in
-            if i < hoehen.count, let wert = m.belastbar {
-                Text(Formate.celsius(wert))
-                    .font(Schrift.zahlKlein)
-                    .foregroundStyle(Farbe.deep)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 1)
-                    .background(Color.white.opacity(0.72))
-                    .clipShape(Capsule())
-                    .position(
-                        x: liegend ? (1 - hoehen[i]) * flaeche.width : flaeche.width / 2,
-                        y: liegend ? flaeche.height / 2 : hoehen[i] * flaeche.height
-                    )
-            }
-        }
-    }
-
     // MARK: - Fuellstand und Wort
 
     private var werte: some View {
-        VStack(alignment: liegend ? .leading : .center, spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
             Zahl(
                 wert: zustand.traegt ? Formate.prozent(soc) : Formate.leer,
                 schrift: Schrift.zahlGross,
@@ -143,7 +120,7 @@ struct Pufferglas: View {
             Text(zustand.wort)
                 .font(Schrift.winzig)
                 .foregroundStyle(zustand.veraltet ? Farbe.achtung : Farbe.text3)
-                .multilineTextAlignment(liegend ? .leading : .center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Pufferspeicher: \(zustand.traegt ? Formate.prozent(soc) : "kein Füllstand"), \(zustand.wort)")

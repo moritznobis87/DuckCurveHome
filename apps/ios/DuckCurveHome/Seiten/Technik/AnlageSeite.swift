@@ -85,7 +85,8 @@ struct AnlageSeite: View {
                         status: haus.zustand?.buffer.status
                     )
                 )
-                .frame(width: 118, height: 210)
+                // Breit genug fuer Tank, Zahlen daneben und den Fuellstand.
+                .frame(minWidth: 220, maxWidth: .infinity, minHeight: 210)
                 VStack(spacing: 0) {
                     Zeile(wort: "nutzbar", wert: Formate.zahl(s.usableKwh, stellen: 1), einheit: "kWh")
                     Zeile(wort: "Fassung", wert: Formate.zahl(s.capacityKwh, stellen: 1), einheit: "kWh")

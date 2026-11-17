@@ -100,6 +100,43 @@ public enum Marken {
         Farbwert(0x1F4C66), Farbwert(0x7FA3B3), Farbwert(0xFFD778), Farbwert(0xF2A900), Farbwert(0xE0533D),
     ]
 
+    /// Die Stützstellen der Wassertemperatur, in Grad.
+    ///
+    /// **Dieselben wie im Dashboard** (`anlage/schema.ts`, `STOPS`) – und das war nicht so.
+    /// Die Farben stimmten, die Temperaturen daneben nicht: ich hatte `7FA3B3` auf 40 °C und
+    /// `FFD778` auf 50 °C gelegt statt auf 35 und 45. Bei den Temperaturen, die ein Puffer
+    /// wirklich hat (um die 40 °C), landete damit alles im blassen Übergang zwischen den
+    /// beiden – ein Glas in Creme statt in Gold. Dieselbe Skala in zwei Oberflächen muss
+    /// dieselben Zahlen an denselben Stellen zeigen, sonst ist es nicht dieselbe Skala.
+    public static let wasserstufen: [(grad: Double, farbe: Farbwert)] = [
+        (10, Farbwert(0x1A3A52)), (25, Farbwert(0x1F4C66)), (35, Farbwert(0x7FA3B3)),
+        (45, Farbwert(0xFFD778)), (55, Farbwert(0xF2A900)), (65, Farbwert(0xE0533D)),
+    ]
+
+    /// Die Farbe einer Wassertemperatur – für das Glas und für die Rohre.
+    ///
+    /// Zwischen den Stützstellen wird gemischt: ein Speicher hat keine Stufen. Ohne Wert
+    /// kommt das neutrale Blaugrau der Skala, wie im Dashboard.
+    public static func wasserfarbe(_ grad: Double?) -> Farbwert {
+        guard let grad, grad.isFinite else { return Farbwert(0x7FA3B3) }
+        guard let erste = wasserstufen.first, let letzte = wasserstufen.last else {
+            return Farbwert(0x7FA3B3)
+        }
+        if grad <= erste.grad { return erste.farbe }
+        if grad >= letzte.grad { return letzte.farbe }
+        for i in 1..<wasserstufen.count where grad <= wasserstufen[i].grad {
+            let (g0, f0) = wasserstufen[i - 1]
+            let (g1, f1) = wasserstufen[i]
+            let t = (grad - g0) / (g1 - g0)
+            return Farbwert(
+                rot: f0.rot + (f1.rot - f0.rot) * t,
+                gruen: f0.gruen + (f1.gruen - f0.gruen) * t,
+                blau: f0.blau + (f1.blau - f0.blau) * t
+            )
+        }
+        return letzte.farbe
+    }
+
     /// Die fuenf Stufen der Abweichung, kalt nach warm.
     public static let abweichung: [Farbwert] = [abwKalt2, abwKalt1, abwNull, abwWarm1, abwWarm2]
 

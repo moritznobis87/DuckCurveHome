@@ -16,13 +16,14 @@ struct Leiste: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Karte(kicker: "Pufferspeicher") {
+                // Am Telefon niedriger als an der Wand, aber immer stehend: die Schichtung
+                // eines Puffers ist vertikal, und liegend sagt sie nichts.
                 Pufferglas(
                     temperaturen: fuehler,
                     soc: haus.zustand?.buffer.soc,
-                    zustand: zustand,
-                    liegend: kompakt
+                    zustand: zustand
                 )
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: kompakt ? 150 : 210)
             }
             if !zeilen.isEmpty {
                 Karte(kicker: "Als Nächstes") {

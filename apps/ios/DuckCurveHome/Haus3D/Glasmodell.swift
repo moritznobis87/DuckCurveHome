@@ -89,7 +89,44 @@ struct Glasmodell: View {
             (flaeche.width - 2 * rand) / (rechts - links),
             (flaeche.height - 2 * rand) / (oben - unten)
         )
-        return (maß, CGPoint(x: flaeche.width / 2, y: flaeche.height / 2))
+
+        // **Hier fehlte die Mitte, und das war der ganze Fehler.** Der Massstab wurde richtig
+        // aus der Ausdehnung gerechnet; zurueckgegeben wurde dann die Mitte der
+        // Zeichenflaeche - als laege das Haus um den Nullpunkt. Es liegt aber im ersten
+        // Quadranten (Meter ab einer Hausecke), und so rutschte die ganze Zeichnung um ihren
+        // halben Schwerpunkt nach unten rechts aus dem Bild.
+        //
+        // Der Massstab kommt weiter aus der Vereinigung ueber alle Drehungen, damit das Haus
+        // beim Ziehen nicht atmet. Die **Mitte** dagegen wird fuer die *aktuelle* Drehung
+        // gerechnet: so steht es immer mittig, und weil der Massstab fuer den unguenstigsten
+        // Fall gilt, passt jede einzelne Drehung sicher hinein.
+        var jLinks = Double.infinity, jRechts = -Double.infinity
+        var jUnten = Double.infinity, jOben = -Double.infinity
+        for (stelle, deck) in plan.decks.enumerated() {
+            let y = Double(stelle) * (deckhoehe + abstand)
+            for ecke in deck.shell where ecke.count >= 2 {
+                for hoehe in [y, y + deckhoehe] {
+                    let p = G.bildschirm(x: ecke[0], y: hoehe, z: ecke[1], drehung: drehung)
+                    jLinks = min(jLinks, p.sx)
+                    jRechts = max(jRechts, p.sx)
+                    jUnten = min(jUnten, p.su)
+                    jOben = max(jOben, p.su)
+                }
+            }
+        }
+        guard jLinks.isFinite, jRechts > jLinks, jOben > jUnten else {
+            return (maß, CGPoint(x: flaeche.width / 2, y: flaeche.height / 2))
+        }
+        let mitteSx = (jLinks + jRechts) / 2
+        let mitteSu = (jUnten + jOben) / 2
+        // `punkt` rechnet x = mitte.x + sx*maß und y = mitte.y - su*maß - daher die Vorzeichen.
+        return (
+            maß,
+            CGPoint(
+                x: flaeche.width / 2 - mitteSx * maß,
+                y: flaeche.height / 2 + mitteSu * maß
+            )
+        )
     }
 
     /// Ein Punkt im Haus auf die Zeichenebene.
