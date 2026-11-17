@@ -271,6 +271,27 @@ public enum Alfred {
         public static let bestaetigungOk = "OK, ausführen"
         public static let vorschlagLaeuft = "Läuft …"
         public static let vorschlagFehler = "Das ließ sich nicht ausführen."
+        // MARK: Sprechen
+        //
+        // **Die Ente gedrückt halten, sprechen, loslassen.** Dieselbe Geste wie im Dashboard,
+        // wo sie seit dem 14.11.2026 steht. Was sie am Telefon anders macht: dort erkennt der
+        // Browser und schickt die Aufnahme je nach Hersteller an Apple oder Google; hier
+        // erkennt das Gerät, und bei einem Modell, das es kann, verlässt die Aufnahme das
+        // Telefon nicht.
+        public static let haltenHinweis = "Ente gedrückt halten, sprechen, loslassen."
+        public static let haltenLaeuft = "Ich höre zu … Lass die Ente los, wenn du fertig bist."
+        public static let sprachWartet = "Einen Moment …"
+        public static let sprachNichtsGehoert =
+            "Ich habe nichts verstanden. Halte die Ente gedrückt, solange du sprichst, und lass dann los."
+        public static let sprachNichtErlaubt =
+            "Ich darf Mikrofon oder Spracherkennung nicht benutzen. Erlaube beides in den Einstellungen unter Duck Curve, oder tipp deine Frage ins Feld."
+        public static let sprachNichtAngelaufen =
+            "Ich konnte nicht zuhören. Versuch es noch einmal, oder tipp deine Frage ins Feld."
+        public static let sprachKeineSprache =
+            "Für Deutsch ist auf diesem Gerät keine Spracherkennung eingerichtet. Tipp deine Frage ins Feld."
+        public static let sprachFehler =
+            "Die Spracherkennung hat nicht geklappt. Tipp deine Frage ins Feld."
+
         public static let rechnungKnopf = "Rechnung prüfen (PDF)"
         public static let rechnungZurAuswertung = "Zur vollen Auswertung"
         public static let rechnungKeinPdf = "Das war keine PDF-Datei. Schick mir bitte eine Rechnung als PDF."

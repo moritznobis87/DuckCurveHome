@@ -116,6 +116,17 @@ targets:
         NSLocalNetworkUsageDescription:
           Duck Curve Home spricht mit dem Dienst in Ihrem Haus. Der läuft im selben Netz –
           ohne diese Erlaubnis bleibt die Anzeige leer.
+        # **Alfred hoert zu, wenn man die Ente gedrueckt haelt.** Beide Schluessel werden
+        # gebraucht und nicht nur einer: das Mikrofon nimmt auf, die Spracherkennung macht
+        # Text daraus, und iOS fragt fuer jedes einzeln. Fehlt einer, stuerzt die App beim
+        # ersten Druecken ab - ohne Fehlermeldung, nur mit einem Protokolleintrag, den
+        # niemand liest.
+        NSMicrophoneUsageDescription:
+          Zum Sprechen mit Alfred. Die Aufnahme laeuft nur, solange Sie die Ente gedrueckt
+          halten.
+        NSSpeechRecognitionUsageDescription:
+          Damit aus dem Gesprochenen eine Frage wird. Wo das Geraet es kann, erkennt es selbst
+          und die Aufnahme verlaesst das Telefon nicht.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

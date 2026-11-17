@@ -41,6 +41,10 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Duck Curve Home spricht mit dem Dienst in Ihrem Haus. Der läuft im selben Netz – ohne diese Erlaubnis bleibt die Anzeige leer.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Zum Sprechen mit Alfred. Die Aufnahme laeuft nur, solange Sie die Ente gedrueckt halten.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Damit aus dem Gesprochenen eine Frage wird. Wo das Geraet es kann, erkennt es selbst und die Aufnahme verlaesst das Telefon nicht.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Marke/IBMPlexSans-Regular.otf</string>

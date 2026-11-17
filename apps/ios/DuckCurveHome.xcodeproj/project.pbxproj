@@ -48,6 +48,7 @@
 		D742805330F9AD247E8CAB72 /* ReglerSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */; };
 		D894CFE0B631F5092301D588 /* Waermebilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */; };
 		DDF398D3D35EB0582927AD6B /* IBMPlexSans-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7ADD7B3C58332C88E4C1E7F8 /* IBMPlexSans-SemiBold.otf */; };
+		E13E305715ECAA8F56FA9AA0 /* Sprachhoerer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6B45FF83ECE21C1CE755D2 /* Sprachhoerer.swift */; };
 		E26B292CEE7ED47EAE3A8894 /* KennlinieSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27DFE093B98D4839CAEC9644 /* KennlinieSeite.swift */; };
 		E3D65B399947BD156AFF98E4 /* FahrplanSeiten.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24AB59B19DC4867BB539095 /* FahrplanSeiten.swift */; };
 		EB7278D68E6A4B5E3D2B4F5D /* Pufferspeicher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2CB1649CD728391A247327 /* Pufferspeicher.swift */; };
@@ -107,6 +108,7 @@
 		BF4037BAFC1759DC6E851D10 /* DuckCurveHome.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DuckCurveHome.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C2585D3A39663A8ECC169086 /* WaermepumpeSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaermepumpeSeiten.swift; sourceTree = "<group>"; };
 		C65970F2409A3493784FE0F3 /* Systemanschluss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Systemanschluss.swift; sourceTree = "<group>"; };
+		CF6B45FF83ECE21C1CE755D2 /* Sprachhoerer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sprachhoerer.swift; sourceTree = "<group>"; };
 		D30DAA240E8C7E2CE0D0D58B /* Bericht.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bericht.swift; sourceTree = "<group>"; };
 		D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Leiste.swift; sourceTree = "<group>"; };
 		DC1727717E97B2E078703BAB /* DuckCurveKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = DuckCurveKit; path = DuckCurveKit; sourceTree = SOURCE_ROOT; };
@@ -278,6 +280,7 @@
 			isa = PBXGroup;
 			children = (
 				4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */,
+				CF6B45FF83ECE21C1CE755D2 /* Sprachhoerer.swift */,
 			);
 			path = Alfred;
 			sourceTree = "<group>";
@@ -443,6 +446,7 @@
 				1D59B9232C5BB1FFA8750A3A /* Reiterzeile.swift in Sources */,
 				11B372029B73A0C0A76B506E /* Schluesselbund.swift in Sources */,
 				FDC1EC6D16D2BB418720477D /* Seitenwahl.swift in Sources */,
+				E13E305715ECAA8F56FA9AA0 /* Sprachhoerer.swift in Sources */,
 				A414B4F48D8F7D73D8DE92B8 /* StromSeite.swift in Sources */,
 				22D992662C89DE566BA89939 /* SystemSeiten.swift in Sources */,
 				BF90E13714A06E92ACA5FEBA /* Systemanschluss.swift in Sources */,

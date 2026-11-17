@@ -19,6 +19,10 @@ import UniformTypeIdentifiers
 /// Framework, die Zuordnung eine eingefügte Liste aus Home Assistant, die man an einem Telefon
 /// nicht einfügt.
 struct Alfredblatt: View {
+    /// Eine Frage, die schon gestellt ist, wenn das Blatt aufgeht - gesprochen, mit gedrückter
+    /// Ente. Sie wird beim Öffnen abgeschickt, ohne dass noch jemand tippen muss.
+    var starttext: String?
+
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
     @Environment(\.dismiss) private var schliessen
@@ -52,7 +56,10 @@ struct Alfredblatt: View {
                 }
             }
         }
-        .task { await ladeZustand() }
+        .task {
+            await ladeZustand()
+            if let starttext, !starttext.isEmpty { await frageStellen(starttext) }
+        }
         .fileImporter(isPresented: $zeigtDateiwahl, allowedContentTypes: [.pdf]) { ergebnis in
             Task { await lies(ergebnis) }
         }
@@ -355,29 +362,168 @@ struct Alfredblatt: View {
     }
 }
 
-/// Der Knopf, der Alfred ruft: die Ente, unten rechts über der Seite.
+/// Der Knopf, der Alfred ruft: das Maskottchen, unten rechts über der Seite.
 ///
 /// **Über der Seite und nicht in der Leiste.** Die Bereichsleiste unten gehört den fünf
 /// Bereichen; ein sechstes Zeichen darin wäre ein Bereich, und Alfred ist keiner. Im
 /// Dashboard schwebt er an derselben Stelle.
+///
+/// **Die Ente und nicht die Kurve.** Oben links im Kopf steht die Marke – der Kurvenzug, der
+/// dem Haus den Namen gibt. Hier steht das Maskottchen: dieselbe Ente wie im Dashboard
+/// (`brand/ente-maskottchen.svg`) und auf dem Programmsymbol. Zwei Zeichen, zwei Aufgaben;
+/// hier wird jemand angesprochen, nicht eine Marke gezeigt.
+///
+/// **Tippen öffnet, Halten spricht.** Dieselbe Geste wie an der Wand: 350 Millisekunden
+/// gedrückt, dann hört Alfred zu, solange der Finger liegen bleibt. Kürzer ist ein Tippen und
+/// öffnet nur das Blatt. Länger als ein Tippen, kürzer als das lange Drücken des Systems.
 struct Entenknopf: View {
+    @Environment(Hauszustand.self) private var haus
+
     @State private var zeigtAlfred = false
+    @State private var gefragt: String?
+    /// Ob ein Sprachmodell eingerichtet ist. Einmal beim Erscheinen geholt; `nil` heisst:
+    /// noch nicht gefragt.
+    @State private var bereit: Bool?
+    @State private var hoerer = Sprachhoerer()
+    @State private var druecktSeit: Date?
+    @State private var gehalten = false
+    @State private var haltenAufgabe: Task<Void, Never>?
+
+    /// So lange muss die Ente gedrückt sein, bis Alfred zuhört.
+    private static let haltenMs: UInt64 = 350
 
     var body: some View {
-        Button {
-            zeigtAlfred = true
-        } label: {
-            Zeichen(.ente, groesse: 28, farbe: Farbe.deep)
-                .frame(width: 52, height: 52)
-                .background(Circle().fill(Farbe.amber))
-                .shadow(color: .black.opacity(0.35), radius: 10, y: 3)
+        ente
+            .overlay(alignment: .topTrailing) { hoerzeichen }
+            .overlay(alignment: .bottomTrailing) { mitschrift }
+            .padding(.trailing, 16)
+            .padding(.bottom, 14)
+            .task { bereit = try? await haus.api.alfredZustand().bereit }
+            .sheet(isPresented: $zeigtAlfred) {
+                Alfredblatt(starttext: gefragt)
+            }
+            .alert(
+                Alfred.Texte.name,
+                isPresented: Binding(
+                    get: { hoerer.meldung != nil && !zeigtAlfred },
+                    set: { if !$0 { hoerer.loescheMeldung() } })
+            ) {
+                Button("Verstanden", role: .cancel) { hoerer.loescheMeldung() }
+            } message: {
+                Text(hoerer.meldung ?? "")
+            }
+    }
+
+    private var ente: some View {
+        Image("Ente")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 38, height: 38)
+            .padding(7)
+            .background(Circle().fill(Farbe.papier))
+            .shadow(color: .black.opacity(0.35), radius: 10, y: 3)
+            .scaleEffect(hoerer.lage == .hoert ? 1.12 : 1)
+            .animation(.easeInOut(duration: 0.18), value: hoerer.lage)
+            .contentShape(Circle())
+            .gesture(griff)
+            .accessibilityLabel(Alfred.Texte.ansprechen)
+            .accessibilityHint(Alfred.Texte.haltenHinweis)
+    }
+
+    /// Was bisher verstanden wurde, über der Ente, solange der Finger liegt.
+    ///
+    /// **Ohne das wäre „Texterkennung" ein Versprechen ohne Beleg.** Man hält die Ente, redet
+    /// in ein Telefon, das nichts anzeigt, und erfährt erst nach dem Loslassen, ob überhaupt
+    /// etwas angekommen ist. Hier stehen die Worte, während sie kommen – und wer sieht, dass
+    /// nichts kommt, lässt los und tippt.
+    @ViewBuilder private var mitschrift: some View {
+        if hoerer.laeuft {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(hoerer.lage == .wartet ? Alfred.Texte.sprachWartet : Alfred.Texte.haltenLaeuft)
+                    .font(Schrift.winzig)
+                    .foregroundStyle(Farbe.text3)
+                if !hoerer.text.isEmpty {
+                    Text(hoerer.text)
+                        .font(Schrift.text)
+                        .foregroundStyle(Farbe.text1)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: 260, alignment: .leading)
+            .background(
+                Farbe.flaeche2, in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Farbe.amber.opacity(0.4), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.4), radius: 12, y: 4)
+            // Über der Ente und nach links aus ihr heraus: sie sitzt am rechten Rand, und
+            // ein Kasten, der dort beginnt, stünde zur Hälfte neben dem Schirm.
+            .offset(y: -62)
+            .fixedSize()
+            .allowsHitTesting(false)
+            .transition(.opacity)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Alfred.Texte.ansprechen)
-        .padding(.trailing, 16)
-        .padding(.bottom, 14)
-        .sheet(isPresented: $zeigtAlfred) {
-            Alfredblatt()
+    }
+
+    /// Ein Punkt, solange zugehört wird – damit man es auch sieht, wenn das Blatt noch zu ist.
+    @ViewBuilder private var hoerzeichen: some View {
+        if hoerer.laeuft {
+            Circle()
+                .fill(Farbe.alarm)
+                .frame(width: 11, height: 11)
+                .overlay(Circle().strokeBorder(Farbe.grund, lineWidth: 2))
+                .offset(x: 2, y: -2)
+        }
+    }
+
+    /// **Ein `DragGesture` mit Abstand null und keine `LongPressGesture`.** Die lange Geste
+    /// meldet ihren Beginn, aber kein Loslassen – gebraucht wird genau das Loslassen. Mit
+    /// einem Zug ab Null bekommt man beides: `onChanged` beim Aufsetzen, `onEnded` beim
+    /// Abheben, auch wenn der Finger dabei ein Stück wandert.
+    private var griff: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in
+                guard druecktSeit == nil else { return }
+                druecktSeit = Date()
+                gehalten = false
+                haltenAufgabe = Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(Int(Self.haltenMs)))
+                    guard !Task.isCancelled, druecktSeit != nil else { return }
+                    gehalten = true
+                    await hoeren()
+                }
+            }
+            .onEnded { _ in
+                haltenAufgabe?.cancel()
+                haltenAufgabe = nil
+                druecktSeit = nil
+                if gehalten {
+                    hoerer.beende()
+                } else {
+                    gefragt = nil
+                    zeigtAlfred = true
+                }
+                gehalten = false
+            }
+    }
+
+    private func hoeren() async {
+        // **Erst fragen, ob jemand zuhoeren kann.** Ohne eingerichtetes Sprachmodell
+        // aufzunehmen hiesse: das Mikrofon einschalten, den Satz erkennen und ihn dann
+        // wegwerfen. Stattdessen geht das Blatt auf und sagt, woran es liegt - so wie an
+        // der Wand (`Alfred.tsx`, `haltenBeginnt`).
+        guard bereit == true else {
+            gefragt = nil
+            zeigtAlfred = true
+            return
+        }
+        await hoerer.beginne { gesagt in
+            guard let gesagt else { return }
+            gefragt = gesagt
+            zeigtAlfred = true
         }
     }
 }

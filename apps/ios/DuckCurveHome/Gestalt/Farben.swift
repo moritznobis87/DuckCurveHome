@@ -31,6 +31,8 @@ public enum Farbe {
     public static let amber = Color(Marken.amber)
     public static let amberWeich = Color(Marken.amberWeich)
     public static let mist = Color(Marken.mist)
+    /// Das Weiss der Marke - die helle Kachel, auf der das Maskottchen steht.
+    public static let papier = Color(Marken.papier)
 
     // Flaechen
     public static let grund = Color(Marken.grund)
