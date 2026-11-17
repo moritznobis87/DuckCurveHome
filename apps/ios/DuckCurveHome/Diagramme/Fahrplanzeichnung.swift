@@ -95,7 +95,7 @@ struct Fahrplanzeichnung: View {
                         }
                         Text(z.wert)
                             .font(z.eingerueckt ? Schrift.winzig : Schrift.zahlKlein)
-                            .foregroundStyle(z.rolle == .neutral ? Farbe.text1 : farbe(z.rolle))
+                            .foregroundStyle(farbe(z.rolle))
                     }
                     .padding(.leading, z.eingerueckt ? 12 : 0)
                 }
@@ -337,6 +337,11 @@ struct Fahrplanzeichnung: View {
         Fahrplanbild.spanne(0, bis: bild.wpGemessen.map(\.wert)) ?? 0...3
     }
 
+    /// Jede Rolle hat genau eine Farbe - auch die der Auskunftszeilen.
+    ///
+    /// **Ohne `default`, und das ist Absicht.** Als ``Fahrplanbild/Rolle`` um sechs Faelle
+    /// wuchs, hat der Compiler genau hier angehalten. Ein `default` haette das verschluckt und
+    /// sechs Zeilen stillschweigend weiss gefaerbt.
     private func farbe(_ r: Fahrplanbild.Rolle) -> Color {
         switch r {
         case .angefordert: return Farbe.waermepumpe
@@ -345,6 +350,12 @@ struct Fahrplanzeichnung: View {
         case .aus: return Farbe.text1.opacity(0.14)
         case .ofenAn: return Farbe.ofen
         case .ofenAus: return Farbe.text1.opacity(0.14)
+        case .pv: return Farbe.pv
+        case .puffer: return Farbe.puffer
+        case .wpGemessen: return Farbe.waermepumpe
+        case .heizen: return Farbe.haus
+        case .warmwasser: return Farbe.warmwasser
+        case .neutral: return Farbe.text1
         }
     }
 

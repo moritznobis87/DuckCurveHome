@@ -245,9 +245,10 @@ public struct Fahrplanbild: Sendable {
         if let heizen = i.heatDemandKw {
             let warm = i.dhwDemandKw ?? 0
             zeile("Wärmebedarf", Formate.kwMitEinheit(heizen + warm))
-            zeile(
-                "", "Heizen \(Formate.kw(heizen)) · Warmwasser \(Formate.kw(warm))", .heizen,
-                eingerueckt: true)
+            // Zwei Zeilen und nicht eine: so traegt jede Zahl ihre eigene Farbe, wie die beiden
+            // Flaechen des Stapels darueber. In einer Zeile waere eine der beiden falsch gefaerbt.
+            zeile("Heizen", Formate.kwMitEinheit(heizen), .heizen, eingerueckt: true)
+            zeile("Warmwasser", Formate.kwMitEinheit(warm), .warmwasser, eingerueckt: true)
         }
         if let puffer = i.bufferKwh {
             zeile("Puffer danach", Formate.kwh(puffer), .puffer)

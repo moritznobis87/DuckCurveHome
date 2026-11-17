@@ -33,7 +33,12 @@ Was es prüft:
    Fällt auf, wenn ein Feld laut Schema eine Zahl ist.
 5. **Ein `Messwert` da, wo eine Zahl hingehört** (`Formate.zahl(w.waermeleistungKw, …)`). Ein
    `Messwert` trägt Wert, Güte und Zeitstempel; die Zahl daraus heißt `.belastbar`.
-6. **`dazu` und `farbe` in der falschen Reihenfolge.** Bei `Zeile` und `Kacheldaten` sind die
+6. **Ein unvollständiger `switch` über eine Aufzählung** (`switch rolle` ohne sechs ihrer
+   Fälle, ohne `default:`). Der Fehler des elften Laufs: `Fahrplanbild.Rolle` bekam sechs Fälle
+   dazu, die Ansicht blieb bei sechs. Syntaktisch einwandfrei, für den Compiler ein Abbruch.
+   Gemeldet wird nur, wenn die Fallnamen eine **echte Teilmenge genau einer** Aufzählung sind;
+   passen sie auf mehrere oder auf eine genau, bleibt es still.
+7. **`dazu` und `farbe` in der falschen Reihenfolge.** Bei `Zeile` und `Kacheldaten` sind die
    Felder die Argumente. Hier zählt echtes Klammernzählen: mein erster Versuch benutzte ein
    Muster für eine Klammerebene und hat deshalb einen Aufruf übersehen, der eine zweite hatte.
 """
@@ -51,6 +56,70 @@ APP = os.path.join(WURZEL, "apps", "ios", "DuckCurveHome")
 
 # Argumente, deren Reihenfolge festliegt, weil die Felder die Argumente sind.
 REIHENFOLGE = [("Zeile", "dazu", "farbe"), ("Kacheldaten", "dazu", "farbe")]
+
+
+def klammerblock(text: str, auf: int) -> str:
+    """Der Inhalt zwischen `text[auf]` (einer `{`) und der passenden `}`.
+
+    Echtes Zaehlen und nicht ein Muster: der Rumpf eines `switch` enthaelt Verschlusse,
+    Wortzwischenraeume und weitere Klammern. Zeichenketten werden uebersprungen, damit eine
+    `{` in einem Text nicht zaehlt.
+    """
+    tiefe = 0
+    i = auf
+    while i < len(text):
+        c = text[i]
+        if c == '"':
+            i += 1
+            while i < len(text) and text[i] != '"':
+                i += 2 if text[i] == "\\" else 1
+        elif c == "{":
+            tiefe += 1
+        elif c == "}":
+            tiefe -= 1
+            if tiefe == 0:
+                return text[auf + 1:i]
+        i += 1
+    return text[auf + 1:]
+
+
+def ausserhalb_trennen(zeile: str) -> list[str]:
+    """Am Komma trennen, aber nur ausserhalb von Klammern."""
+    stuecke: list[str] = []
+    tiefe = 0
+    jetzt = ""
+    for c in zeile:
+        if c in "([<":
+            tiefe += 1
+        elif c in ")]>":
+            tiefe -= 1
+        if c == "," and tiefe <= 0:
+            stuecke.append(jetzt)
+            jetzt = ""
+        else:
+            jetzt += c
+    stuecke.append(jetzt)
+    return stuecke
+
+
+def flache_ebene(koerper: str) -> str:
+    """Derselbe Text, aber alles in weiteren Klammerebenen durch Leerzeichen ersetzt.
+
+    Damit traegt ein `switch` nur seine eigenen Fallmarken - nicht die eines zweiten, der in
+    einem seiner Faelle steht.
+    """
+    aus = []
+    tiefe = 0
+    for c in koerper:
+        if c == "{":
+            tiefe += 1
+            aus.append(" ")
+        elif c == "}":
+            tiefe -= 1
+            aus.append(" ")
+        else:
+            aus.append(c if tiefe == 0 or c == "\n" else " ")
+    return "".join(aus)
 
 
 def schema_lesen() -> tuple[dict[str, set[str]], set[str]]:
@@ -353,13 +422,84 @@ def main() -> int:
             maengel.append((os.path.relpath(pfad, APP), 1,
                             f"benutzt {benutzt[:4]} aus dem Kern, ohne `import DuckCurveKit`"))
 
+    # 11. Ein `switch` ueber eine Aufzaehlung des Kerns, der nicht alle Faelle kennt.
+    #
+    # **Der Fehler des elften Laufs.** `Fahrplanbild.Rolle` bekam sechs Faelle dazu, und der
+    # `switch` in `Fahrplanzeichnung.farbe(_:)` blieb bei sechs. Der Parser sieht daran nichts:
+    # ein unvollstaendiger `switch` ist syntaktisch einwandfrei. Erst Xcode sagt „switch must be
+    # exhaustive" - und das kostet eine Runde ueber den Mac.
+    #
+    # **Ohne Typauflösung, also vorsichtig.** Gemeldet wird nur, wenn die Fallnamen des `switch`
+    # eine **echte Teilmenge** der Faelle **genau einer** Aufzaehlung sind - des Kerns oder der
+    # App - und kein `default:` dasteht. Passen sie auf mehrere, bleibt es still: dann weiss
+    # dieses Skript nicht, welche gemeint ist, und ein Fehlalarm waere schlimmer als die Luecke.
+    # Jede Aufzaehlung einzeln, nicht nach Namen zusammengelegt: `Rolle` gibt es in dieser
+    # Anwendung zweimal (Zugangsrolle und Zeichenrolle). Sie zu vereinen hat im ersten Entwurf
+    # dieser Regel neun Fehlalarme erzeugt.
+    aufzaehlungen: list[tuple[str, set[str]]] = []
+    for wurzel in (KERN, APP):
+        for r, _, ds in os.walk(wurzel):
+            for d in ds:
+                if not d.endswith(".swift"):
+                    continue
+                quelle = open(os.path.join(r, d), encoding="utf-8").read()
+                for m in re.finditer(r"\benum (\w+)[^{]*\{", quelle):
+                    # Nur die oberste Ebene des Rumpfes: ein `case let (x, y)` in einem
+                    # verschachtelten `switch` ist kein Fall dieser Aufzaehlung.
+                    koerper = flache_ebene(klammerblock(quelle, m.end() - 1))
+                    faelle: set[str] = set()
+                    for zeile in koerper.splitlines():
+                        z = re.sub(r"//.*$", "", zeile).strip()
+                        if not z.startswith("case "):
+                            continue
+                        for stueck in ausserhalb_trennen(z[5:]):
+                            # Ein Fall mit Nutzlast (`case netz(String)`) zaehlt mit - die
+                            # Namen seiner Werte nicht. `case kurve(griff1: P, nach: P)` ist
+                            # **ein** Fall; am Komma zu trennen machte daraus drei, und genau
+                            # das hat im ersten Entwurf einen vollstaendigen `switch`
+                            # angemeckert.
+                            name = re.match(r"\s*(\w+)", stueck)
+                            if name:
+                                faelle.add(name.group(1))
+                    if len(faelle) >= 2:
+                        aufzaehlungen.append((m.group(1), faelle))
+
+    for pfad in dateien:
+        kurz = os.path.relpath(pfad, APP)
+        text = open(pfad, encoding="utf-8").read()
+        for m in re.finditer(r"\bswitch\b[^{\n]*\{", text):
+            koerper = klammerblock(text, m.end() - 1)
+            # Nur die Fallmarken dieser Ebene: ein `switch` in einem `switch` hat seine eigenen.
+            flach = flache_ebene(koerper)
+            if re.search(r"^\s*default\s*:", flach, re.M):
+                continue
+            marken: set[str] = set()
+            for zeile in flach.splitlines():
+                z = re.sub(r"//.*$", "", zeile).strip()
+                if not z.startswith("case ."):
+                    continue
+                marken |= set(re.findall(r"\.(\w+)", z.split(":")[0]))
+            if len(marken) < 2:
+                continue
+            # Deckt sich die Markenmenge mit *irgendeiner* Aufzaehlung genau, ist der `switch`
+            # vollstaendig - fuer die, die er meint.
+            if any(marken == f for _, f in aufzaehlungen):
+                continue
+            passend = [(n, f) for n, f in aufzaehlungen if marken < f]
+            if len(passend) == 1:
+                name, faelle = passend[0]
+                nr = text[:m.start()].count("\n") + 1
+                maengel.append((kurz, nr, f"switch ueber {name} ohne `default:` kennt "
+                                          f"{len(marken)} von {len(faelle)} Faellen - "
+                                          f"es fehlen {sorted(faelle - marken)}"))
+
     print(f"{len(dateien)} Dateien geprüft, {len(felder)} Schemafelder als Maßstab.")
     if maengel:
         print(f"\n{len(maengel)} Fund(e):", file=sys.stderr)
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der zehn geprüften Fehlerarten gefunden.")
+    print("Keine der elf geprüften Fehlerarten gefunden.")
     return 0
 
 

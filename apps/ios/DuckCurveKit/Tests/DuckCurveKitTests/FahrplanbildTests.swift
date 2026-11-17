@@ -213,7 +213,11 @@ final class FahrplanbildTests: XCTestCase {
         XCTAssertTrue(paare.contains("PV gemessen=\(Formate.kwMitEinheit(2.4))"))
         XCTAssertTrue(paare.contains("=\(Formate.kwMitEinheit(0.4)) mehr als erwartet"))
         XCTAssertTrue(paare.contains("Wärmebedarf=\(Formate.kwMitEinheit(2.5))"))
-        XCTAssertTrue(paare.contains("=Heizen 2,1 · Warmwasser 0,4"))
+        XCTAssertTrue(paare.contains("Heizen=\(Formate.kwMitEinheit(2.1))"))
+        XCTAssertTrue(paare.contains("Warmwasser=\(Formate.kwMitEinheit(0.4))"))
+        XCTAssertEqual(
+            a.zeilen.filter(\.eingerueckt).map(\.rolle), [.neutral, .heizen, .warmwasser],
+            "Jede Zahl traegt ihre eigene Farbe.")
         XCTAssertTrue(paare.contains("Puffer danach=\(Formate.kwh(6.2))"))
         XCTAssertTrue(paare.contains("Wärmepumpe geplant=angefordert"))
         XCTAssertTrue(paare.contains("Anforderung gemessen=ja"))
