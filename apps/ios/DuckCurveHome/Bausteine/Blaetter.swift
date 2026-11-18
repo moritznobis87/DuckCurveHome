@@ -19,7 +19,6 @@ struct Raumblatt: View {
     @State private var laeuft = false
     @State private var rueckmeldung: String?
     @State private var fehler: ApiFehler?
-    @State private var protokoll: RoomLogOut?
 
     init(raum: RoomLiveOut, danach: @escaping () async -> Void) {
         self.raum = raum
@@ -37,9 +36,6 @@ struct Raumblatt: View {
                     regler
                     if let w = wirkung {
                         wirkungskarte(w)
-                    }
-                    if let p = protokoll {
-                        protokollkarte(p)
                     }
                     if let r = rueckmeldung {
                         Text(r).font(Schrift.klein).foregroundStyle(Farbe.text2)
@@ -64,7 +60,6 @@ struct Raumblatt: View {
             }
         }
         .task(id: soll) { await holeWirkung() }
-        .task { protokoll = try? await haus.api.raumProtokoll(raum.id, stunden: 48) }
     }
 
     private var jetztzustand: some View {
@@ -170,69 +165,6 @@ struct Raumblatt: View {
         }
     }
 
-    /// Was in diesem Raum in den letzten 48 Stunden geschah.
-    ///
-    /// **Wer gestellt hat, steht dabei.** Das ist der Zweck des Protokolls: eine Temperatur, die
-    /// nicht stimmt, hat meistens einen Grund, und der ist oft ein Griff von jemandem. Der
-    /// Urheber kommt aus denselben Kopfzeilen, die auch diese App mitschickt - und er nennt ein
-    /// Gerät, keinen Menschen.
-    private func protokollkarte(_ p: RoomLogOut) -> some View {
-        Karte(kicker: "Was geschah", titel: "48 Stunden") {
-            if p.entries.isEmpty {
-                Leer(satz: "In diesen zwei Tagen wurde hier nichts gestellt.")
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(p.entries.enumerated()), id: \.offset) { i, e in
-                        if i > 0 { Divider().overlay(Farbe.linie1) }
-                        protokollzeile(e)
-                    }
-                }
-            }
-        }
-    }
-
-    private func protokollzeile(_ e: RoomLogEntryOut) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(e.text)
-                    .font(Schrift.klein)
-                    .foregroundStyle(Farbe.text1)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(
-                    [Formate.hhmm(iso: e.at), quellenwort(e.quelle), e.urheber ?? ""]
-                        .filter { !$0.isEmpty }
-                        .joined(separator: " · ")
-                )
-                .font(Schrift.winzig)
-                .foregroundStyle(Farbe.text3)
-            }
-            Spacer(minLength: 8)
-            if let von = e.fromC, let nach = e.toC {
-                Text("\(Formate.celsius(von, stellen: 1)) → \(Formate.celsius(nach, stellen: 1))")
-                    .font(Schrift.zahlKlein)
-                    .foregroundStyle(Farbe.text2)
-            }
-        }
-        .padding(.vertical, 6)
-    }
-
-    /// Woher die Änderung kam.
-    ///
-    /// `quelle` ist im Schema eine Aufzählung und kein Text – das war der Grund, warum die
-    /// Zeile nicht übersetzte: eine Reihe aus Text, Aufzählung und wahlfreiem Text wird zu
-    /// `[Any]`, und darauf gibt es kein `compactMap` zu Zeichenketten.
-    ///
-    /// `.unbekannt` bleibt leer und fällt aus der Zeile. Diesen Fall trägt jede erzeugte
-    /// Aufzählung für Werte, die eine neuere Fassung des Dienstes kennt und diese App noch
-    /// nicht; „—unbekannt—" in der Zeile stehen zu lassen wäre schlechter als nichts.
-    private func quellenwort(_ q: RoomLogEntryOutQuelleWahl) -> String {
-        switch q {
-        case .app: return "App"
-        case .automatik: return "Automatik"
-        case .extern: return "extern"
-        case .unbekannt: return ""
-        }
-    }
 
     private func holeWirkung() async {
         let delta = soll - (raum.setpointC ?? soll)

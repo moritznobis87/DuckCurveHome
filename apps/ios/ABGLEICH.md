@@ -99,6 +99,16 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
 
 ### `/haus`  ·  7 Punkte, davon 1 spürbar  ·  *gegengeprüft 17.11.*
 
+> **Nachtrag 18.11.** Die Raumliste ist jetzt die Kachelwand der Vorlage: je Raum die große
+> Temperatur, „Ziel 18,8 °C“, das Abzeichen („am Ziel“ / „+1,9 K“ in der Stufenfarbe), der
+> Tagesverlauf der Abweichung mit gestrichelter Ziellinie, der Ventilstreifen zu 24 Stunden mit
+> der Achse 00/12/24 und „±3 K“, die Fußzeile „Ventil 1 von 4 offen · 45 % rF“ und ein Knopf
+> **Protokoll**. Darüber stehen die Legende (Abweichungsskala, „Ventil offen“, „kein Messwert“)
+> und je Geschoss die Zeile „3 Räume · alle am Ziel“. Dafür holt die Seite nun auch
+> `/rooms/history` – das fehlte vorher, und daran fehlte die ganze Kurve
+> (`Seiten/Haus/Raumkachel.swift`, `Seiten/Haus/Raumprotokollblatt.swift`,
+> `DuckCurveKit/.../Zustand/Raumkarte.swift`, `.../Raumprotokoll.swift`, 37 neue Tests).
+
 - **spürbar** — Block "Fenster und Türen": Zahl, Satz, Kontaktliste fehlt
   - Befund: Gesucht in ganz apps/ios/DuckCurveHome nach "Kontakt", "kontakt", "Fenster", "Tür", "HouseContactOut", "open ==" und "observedAt": HouseContactOut wird nur an einer Stelle benutzt (Glasmodell.swift:24, gefüllt aus HausSeite.swift:138-140) und dort ausschliesslich als Strich gezeichnet (Glasmodell.swift:234-262). Eine Zahl der offenen Kontakte, ein Zustandswort (offen/zu/keine Meldung) oder ein Alter steht nirgends; die einzige Textform ist der Vorlesesatz Glasmodell.swift:303-313 ("Offen: …"), der nicht sichtbar ist. Die Felder sind vorhanden (Schema.swift:4428-4455: room, door, open, observedAt, quality), werden aber nicht gelesen. Hinweis: die iOS-Zeilenangaben des Punkts sind veraltet (Kontaktzeichnung 234-262 statt 197-225, Vorlesetext 303-313 statt 266-276).
   - Vorlage: `apps/web/src/components/house/Konsole.tsx:186-224`
@@ -119,13 +129,21 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
   - Vorlage: `apps/web/src/components/house/HouseReport.tsx:295-343`
   - In der App: `apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift:44-52`
   - bauen in: `apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift`
-- **klein** — Heizkreise: Zahl offener Kreise und Grenzraum-Satz · **teilweise**
-  - Befund: Auf /haus stimmt es: Raumzeile.unterzeile nennt "Ventil offen"/"Ventil 40 %" je Raum (HausSeite.swift:228-239), eine Summe oder ein Satz steht in der Datei nicht. Die Zahl der offenen Kreise gibt es aber in der App: "offen 3 von 10" samt Anteil auf /waerme/anlage (Seiten/Technik/AnlageSeite.swift:162-174, roomsOpen/roomsTotal) und in der Wiedergabe (Seiten/Technik/SystemSeiten.swift:316). Der konkrete Satz über den Raum, der alle Kreise offen hat und trotzdem unter dem Ziel liegt (web: anDerGrenze), fehlt dagegen überall - Suche nach "Grenze", "bestimmt", "Vorlauftemperatur" findet nur den allgemeinen Erklärsatz der Abweichungsmatrix (Bausteine/Abweichungsmatrix.swift:31-32), der keinen Raum nennt.
+- **klein** — Heizkreise: Zahl offener Kreise · **teilweise**, Grenzraum-Satz seit 18.11. gebaut
+  - Nachtrag 18.11.: Der Grenzraum ist da. Jede Kachel, deren Kreise im Tagesmittel zu 85 % offen
+    standen und die trotzdem unter dem Ziel liegt, trägt das Abzeichen „! an der Grenze“ – und ein
+    offenes Fenster nimmt die Anklage zurück, weil die Kälte dann schon erklärt ist
+    (`Zustand/Raumkarte.swift`, `anDerGrenze`, mit Tests). Offen bleibt die **Summe** über das
+    Haus („offen 3 von 10“) auf dieser Seite.
+  - Befund (17.11., vor dem Umbau): Auf /haus stimmt es: Raumzeile.unterzeile nennt "Ventil offen"/"Ventil 40 %" je Raum (HausSeite.swift:228-239), eine Summe oder ein Satz steht in der Datei nicht. Die Zahl der offenen Kreise gibt es aber in der App: "offen 3 von 10" samt Anteil auf /waerme/anlage (Seiten/Technik/AnlageSeite.swift:162-174, roomsOpen/roomsTotal) und in der Wiedergabe (Seiten/Technik/SystemSeiten.swift:316). Der konkrete Satz über den Raum, der alle Kreise offen hat und trotzdem unter dem Ziel liegt (web: anDerGrenze), fehlt dagegen überall - Suche nach "Grenze", "bestimmt", "Vorlauftemperatur" findet nur den allgemeinen Erklärsatz der Abweichungsmatrix (Bausteine/Abweichungsmatrix.swift:31-32), der keinen Raum nennt.
   - Vorlage: `apps/web/src/components/house/Konsole.tsx:308-351`
   - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/AnlageSeite.swift:162-174`
   - bauen in: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift`
-- **klein** — Keine Geschosswahl und keine Legende am Modell
-  - Befund: Glasmodell.zeichne zeichnet in einer Schleife immer alle plan.decks (Haus3D/Glasmodell.swift:149-158), und HausSeite übergibt den ganzen Plan ohne Auswahl (HausSeite.swift:132-148); die einzige Wahl im Kopf ist Liste/Modell (HausSeite.swift:65-83). Suche nach "Geschoss" in DuckCurveHome findet nur die Gruppierung der Raumliste (HausSeite.swift:108-126) und den Vorlesesatz "Hausmodell mit n Geschossen" (Glasmodell.swift:305) - keinen Umschalter. Suche nach "Legende" findet nur Diagramme/Fahrplanzeichnung.swift:364-398 und Diagramme/Tageskurve.swift:250-300; am Hausmodell steht keine Farbskala und kein "gelb: unter Ziel". Die Zeilenangabe des Punkts für die Deck-Schleife ist veraltet (149-158 statt 112-121).
+- **klein** — Keine Legende am Modell · **teilweise**, Geschosswahl und Legende der Liste gebaut
+  - Nachtrag 18.11.: Die Geschosswahl steht am Modell („Alle“ und je ein Deck, am Telefon zuerst
+    ein einzelnes), und über der Raumliste steht die Legende der Abweichungsskala. Was fehlt, ist
+    die Farbskala **am Modell** selbst.
+  - Befund (17.11., vor dem Umbau): Glasmodell.zeichne zeichnet in einer Schleife immer alle plan.decks (Haus3D/Glasmodell.swift:149-158), und HausSeite übergibt den ganzen Plan ohne Auswahl (HausSeite.swift:132-148); die einzige Wahl im Kopf ist Liste/Modell (HausSeite.swift:65-83). Suche nach "Geschoss" in DuckCurveHome findet nur die Gruppierung der Raumliste (HausSeite.swift:108-126) und den Vorlesesatz "Hausmodell mit n Geschossen" (Glasmodell.swift:305) - keinen Umschalter. Suche nach "Legende" findet nur Diagramme/Fahrplanzeichnung.swift:364-398 und Diagramme/Tageskurve.swift:250-300; am Hausmodell steht keine Farbskala und kein "gelb: unter Ziel". Die Zeilenangabe des Punkts für die Deck-Schleife ist veraltet (149-158 statt 112-121).
   - Vorlage: `apps/web/src/components/house/HouseReport.tsx:232-243,289-294`
   - In der App: `apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift:149-158`
   - bauen in: `apps/ios/DuckCurveHome/Haus3D/Glasmodell.swift`

@@ -62,6 +62,13 @@ public enum Schrift {
     /// Die Zahl in einer Kachel.
     public static let zahlGross = Font.custom(mono, size: 27, relativeTo: .title2)
     /// Die fuehrende Zahl einer Seite am Handy, und die Uhr im Kopf.
+    /// Die grosse Zahl einer Raumkachel.
+    ///
+    /// **Kleiner als die fuehrende Zahl des Docks, groesser als jede andere.** Auf einer
+    /// Raumkachel stehen neben ihr das Ziel und ein Abzeichen; mit 40 Punkten draengte sie beide
+    /// aus der Spalte. Die Vorlage nennt 34 am Schirm und 36 am Telefon (`handy.css:368`).
+    public static let zahlRaum = Font.custom(mono, size: 34, relativeTo: .title)
+
     public static let zahlFuehrend = Font.custom(mono, size: 40)
     /// Die Zahlen des Ambiente-Bildes.
     public static let zahlAmbiente = Font.custom(mono, size: 64)

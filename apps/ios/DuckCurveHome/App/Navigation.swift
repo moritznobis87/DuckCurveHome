@@ -82,6 +82,8 @@ enum Blatt: Identifiable, Hashable {
     case ofen
     case batterie
     case raum(Int)
+    /// Das Protokoll eines Raums – zwei Tage Kurve und jede Sollwertänderung.
+    case raumprotokoll(Int)
     case zugang
     case entscheidungen
 
@@ -91,6 +93,7 @@ enum Blatt: Identifiable, Hashable {
         case .ofen: return "ofen"
         case .batterie: return "bat"
         case .raum(let i): return "raum-\(i)"
+        case .raumprotokoll(let i): return "raumlog-\(i)"
         case .zugang: return "zugang"
         case .entscheidungen: return "entscheidungen"
         }
@@ -166,8 +169,8 @@ struct Wurzel: View {
             case .batterie: Batterieblatt()
             case .entscheidungen: Entscheidungsblatt()
             case .zugang: Einrichten()
-            case .raum:
-                // Das Raumblatt braucht den Raum und kommt darum aus der Hausseite selbst.
+            case .raum, .raumprotokoll:
+                // Beide Raumblaetter brauchen den Raum und kommen darum aus der Hausseite selbst.
                 EmptyView()
             }
         }

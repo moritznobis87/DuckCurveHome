@@ -25,6 +25,12 @@ struct HausSeite: View {
     private var schmal: Bool { breite == .compact }
     @State private var raeume: RoomsLiveOut?
     @State private var hausplan: HouseOut?
+    /// Die Tageszeitreihe aller Raeume – die Kurve und der Ventilstreifen jeder Kachel.
+    ///
+    /// **Ohne sie war die Liste eine Liste.** Bis zum 18.11.2026 holte diese Seite nur
+    /// `/rooms` und `/house`; der Tagesverlauf lag die ganze Zeit unter `/rooms/history` und
+    /// wurde nur von der Technikseite gelesen. Es fehlte kein Feld, es fehlte ein Aufruf.
+    @State private var tag: RoomHistoryOut?
     @State private var fehler: ApiFehler?
 
     private enum Ansichtswahlart: String { case liste, modell }
@@ -56,9 +62,28 @@ struct HausSeite: View {
                 Raumblatt(raum: r) { await lade() }
             }
         }
+        .sheet(isPresented: protokollOffen) {
+            if case .raumprotokoll(let id) = wegweiser.blatt {
+                let r = raeume?.rooms.first { $0.id == id }
+                Raumprotokollblatt(
+                    raumId: id, name: r?.name ?? "Raum \(id)", etage: r?.floor ?? "")
+            }
+        }
     }
 
-    /// Nur das Raumblatt - die uebrigen Blaetter haengen an der Wurzel.
+    private var protokollOffen: Binding<Bool> {
+        Binding(
+            get: {
+                if case .raumprotokoll = wegweiser.blatt { return true }
+                return false
+            },
+            set: { offen in
+                if !offen, case .raumprotokoll = wegweiser.blatt { wegweiser.blatt = nil }
+            }
+        )
+    }
+
+    /// Nur die Raumblaetter - die uebrigen Blaetter haengen an der Wurzel.
     private var raumOffen: Binding<Bool> {
         Binding(
             get: {
@@ -96,42 +121,74 @@ struct HausSeite: View {
     private var raumliste: some View {
         Group {
             if let r = raeume, !r.rooms.isEmpty {
-                ForEach(geschosse(r.rooms), id: \.name) { gruppe in
-                    Karte(kicker: gruppe.name) {
-                        VStack(spacing: 0) {
-                            ForEach(Array(gruppe.raeume.enumerated()), id: \.offset) { i, raum in
-                                if i > 0 { Divider().overlay(Farbe.linie1) }
-                                Raumzeile(raum: raum) {
-                                    wegweiser.blatt = .raum(raum.id)
-                                }
-                            }
+                Raumlegende()
+                ForEach(Raumabweichung.nachEtage(r.rooms), id: \.etage) { gruppe in
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Die Deckzeile: welches Geschoss, und was an ihm auffaellt.
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Kicker(wort: gruppe.etage)
+                            Text(Raumabweichung.etagenText(gruppe.raeume))
+                                .font(Schrift.zahlKlein)
+                                .foregroundStyle(Farbe.text3)
+                            Spacer(minLength: 0)
+                        }
+                        ForEach(gruppe.raeume, id: \.id) { raum in
+                            Raumkachel(
+                                raum: raum,
+                                serie: serien[raum.id],
+                                proStunde: proStunde,
+                                gewesen: gewesen,
+                                schrittMin: tag?.stepMin ?? 15,
+                                // **Auch ein Gast darf die Kachel antippen.** Das Blatt zeigt
+                                // ihm die Zahlen und laesst den Knopf zum Stellen gesperrt; ihm
+                                // den Weg schon hier zu nehmen, hiesse, ihm das Lesen zu nehmen.
+                                stellen: { wegweiser.blatt = .raum(raum.id) },
+                                protokoll: { wegweiser.blatt = .raumprotokoll(raum.id) }
+                            )
                         }
                     }
                 }
+                if r.named == false {
+                    Karte {
+                        Leer(
+                            satz: "Die Räume heißen nach ihrer Kennung in der Regelung.",
+                            dazu: "Die Namensliste kommt als eigene Meldung der Brücke und steht nach ihrem nächsten Start zur Verfügung."
+                        )
+                    }
+                }
             } else if fehler == nil {
-                Karte { Leer(satz: "Keine Räume gemeldet.") }
+                Karte {
+                    Leer(
+                        satz: "Keine Räume gemeldet.",
+                        dazu: "Die Brücke liest die Einzelraumregelung, sobald in ihrer Konfiguration die Adresse des Controme-Servers steht."
+                    )
+                }
             }
         }
     }
 
-    private struct Geschoss: Identifiable {
-        let name: String
-        let raeume: [RoomLiveOut]
-        var id: String { name }
+    /// Die Tagesreihen nach Raumkennung.
+    private var serien: [Int: RoomSeriesOut] {
+        Dictionary((tag?.rooms ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
     }
 
-    /// Nach Geschoss gruppiert, in der Reihenfolge, in der sie im Haus liegen.
-    private func geschosse(_ alle: [RoomLiveOut]) -> [Geschoss] {
-        var reihenfolge: [String] = []
-        var nach: [String: [RoomLiveOut]] = [:]
-        for r in alle {
-            if nach[r.floor] == nil {
-                nach[r.floor] = []
-                reihenfolge.append(r.floor)
-            }
-            nach[r.floor]?.append(r)
-        }
-        return reihenfolge.map { Geschoss(name: $0, raeume: nach[$0] ?? []) }
+    /// Wie viele Fenster auf eine Stunde gehen.
+    ///
+    /// **Aus der Antwort, nicht aus der Anfrage.** Liefert der Dienst einem Tag eine andere
+    /// Breite, soll der Streifen trotzdem Stunden zeigen.
+    private var proStunde: Int {
+        max(1, Int((60.0 / Double(tag?.stepMin ?? 15)).rounded()))
+    }
+
+    /// Wie viele Fenster des Tages schon gewesen sind.
+    ///
+    /// **Die Uhr des Hauses, nicht die des Geräts**: im Vorführbetrieb läuft sie im Zeitraffer,
+    /// und ein halb schraffierter Tag wäre dort schlicht falsch.
+    private var gewesen: Int? {
+        guard let t = tag, let jetzt = raeume.flatMap({ Zeit.ausIso($0.at) }) else { return nil }
+        guard let tagIso = t.start.split(separator: "T").first else { return nil }
+        return Raumabweichung.gewesen(
+            tag: String(tagIso), jetzt: jetzt, schrittMin: t.stepMin)
     }
 
     // MARK: - Modell
@@ -200,8 +257,10 @@ struct HausSeite: View {
     private func lade() async {
         async let r = try? haus.api.raeume()
         async let p = try? haus.api.haus()
+        async let t = try? haus.api.raeumeTag(Tag.heute(), schrittMin: 15)
         raeume = await r
         hausplan = await p
+        tag = await t
         if raeume == nil, hausplan == nil {
             fehler = .netz("Räume und Hausplan nicht erreichbar.")
         } else {
@@ -215,73 +274,8 @@ struct HausSeite: View {
             guard !Task.isCancelled else { return }
             if let r = try? await haus.api.raeume() { raeume = r }
             if let p = try? await haus.api.haus() { hausplan = p }
+            if let t = try? await haus.api.raeumeTag(Tag.heute(), schrittMin: 15) { tag = t }
         }
-    }
-}
-
-/// Eine Zeile der Raumliste: Name, Temperatur, Abweichung, Ventil.
-struct Raumzeile: View {
-    let raum: RoomLiveOut
-    let tippen: () -> Void
-
-    var body: some View {
-        Button(action: tippen) {
-            HStack(spacing: 12) {
-                // Der Punkt in der Farbe der Abweichung: die Spalte, die man von oben nach unten
-                // liest, ohne Zahlen zu vergleichen.
-                Circle()
-                    .fill(Farbe.abweichung(kelvin: raum.deviationK))
-                    .frame(width: 10, height: 10)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(raum.name).font(Schrift.klein).foregroundStyle(Farbe.text1)
-                    if let hinweis = unterzeile {
-                        Text(hinweis).font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                    }
-                }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 1) {
-                    Zahl(
-                        wert: Formate.celsius(raum.tempC, stellen: 1),
-                        schrift: Schrift.zahl,
-                        farbe: raum.quality.traegt ? Farbe.text1 : Farbe.text3
-                    )
-                    if let soll = raum.targetC {
-                        Text("Soll \(Formate.celsius(soll, stellen: 1))")
-                            .font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                    }
-                }
-            }
-            .padding(.vertical, 7)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(vorlesen)
-        .accessibilityAddTraits(.isButton)
-    }
-
-    /// Was unter dem Namen steht: offenes Fenster, offenes Ventil, Versatz.
-    private var unterzeile: String? {
-        var teile: [String] = []
-        if raum.window ?? 0 > 0.5 { teile.append("Fenster offen") }
-        if let v = raum.valve, v > 0.02 {
-            teile.append(v >= 0.98 ? "Ventil offen" : "Ventil \(Formate.prozent(v))")
-        }
-        if let o = raum.offsetK, abs(o) >= 0.05 {
-            teile.append("Versatz \(Formate.zahl(o, stellen: 1)) K")
-        }
-        if let f = raum.humidityPct { teile.append("\(Formate.prozent(f / 100)) feucht") }
-        return teile.isEmpty ? nil : teile.joined(separator: " · ")
-    }
-
-    private var vorlesen: String {
-        var s = "\(raum.name): \(Formate.celsius(raum.tempC, stellen: 1))"
-        if let soll = raum.targetC { s += ", Sollwert \(Formate.celsius(soll, stellen: 1))" }
-        if let a = raum.deviationK, abs(a) >= 0.1 {
-            s += ", \(Formate.zahl(abs(a), stellen: 1)) Kelvin \(a > 0 ? "zu warm" : "zu kalt")"
-        }
-        if let u = unterzeile { s += ", \(u)" }
-        return s + ". Antippen zum Stellen."
     }
 }
 

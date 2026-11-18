@@ -93,4 +93,110 @@ public enum Raumabweichung {
         let sekunden = jetzt.timeIntervalSince(spanne.von)
         return Int(sekunden / Double(schrittMin * 60))
     }
+
+    // MARK: - Die Worte
+
+    /// Eine Temperaturdifferenz mit Vorzeichen: „+1,9 K", „−0,4 K".
+    ///
+    /// Mit echtem Minus und schmalem Leerzeichen vor der Einheit, wie überall im Haus.
+    public static func kelvin(_ k: Double) -> String {
+        let vorzeichen = k > 0 ? "+" : Formate.minus
+        return vorzeichen + Formate.zahl(abs(k), stellen: 1) + Formate.schmalesLeerzeichen + "K"
+    }
+
+    /// Die Abweichung als Text: **„am Ziel" innerhalb des Bandes**, sonst mit Vorzeichen.
+    ///
+    /// Nicht „auf Soll": geregelt wird auf Sollwert *plus Versatz*, und der Sollwert allein ist
+    /// eine Zahl, auf die niemand regelt.
+    public static func abweichungText(_ k: Double?) -> String {
+        guard let k else { return "kein Messwert" }
+        return abs(k) <= band ? "am Ziel" : kelvin(k)
+    }
+
+    /// Wie weit die Heizkreise offen sind – für einen Augenblick, nicht für einen Zeitraum.
+    ///
+    /// **Die Antriebe kennen kein Dazwischen**; der Anteil entsteht aus der Zahl der Kreise. In
+    /// einem Augenblick ist er deshalb immer ein glatter Bruch, und „1 von 4 offen" sagt mehr
+    /// als „25 %".
+    public static func ventilText(_ anteil: Double?, kreise: Int) -> String {
+        guard let anteil else { return "kein Messwert" }
+        if anteil <= 0 { return "zu" }
+        guard kreise > 0 else { return anteilText(anteil) }
+        let offen = anteil * Double(kreise)
+        guard abs(offen - offen.rounded()) <= 0.01 else { return anteilText(anteil) }
+        return "\(Int(offen.rounded())) von \(kreise) offen"
+    }
+
+    /// Derselbe Anteil über einen Zeitraum – und da ist er kein Bruch mehr.
+    ///
+    /// Über eine Viertelstunde gemittelt heißt 0,57 weder „0,57 Kreise" noch „57 % offen" an
+    /// einem Ventil, das nur auf und zu kennt, sondern: so viel von allem, was offen sein
+    /// könnte, war offen. Der Prozentsatz ist dafür die einzige ehrliche Form.
+    public static func anteilText(_ anteil: Double?) -> String {
+        guard let anteil else { return "kein Messwert" }
+        if anteil <= 0 { return "zu" }
+        return Formate.zahl(anteil * 100, stellen: 0) + Formate.schmalesLeerzeichen + "%"
+    }
+
+    /// Der Fensterkontakt als Satz. **Ohne Kontakt steht nichts da** – nicht „zu", denn das
+    /// wäre eine Behauptung über einen Raum, an dem niemand misst.
+    public static func fensterText(offen: Double?, seitMin: Int?) -> String? {
+        guard let offen, offen >= 0.5 else { return nil }
+        guard let seitMin, seitMin >= 5 else { return "Fenster offen" }
+        if seitMin < 60 { return "Fenster offen seit \(seitMin) min" }
+        let h = seitMin / 60
+        let m = seitMin % 60
+        return "Fenster offen seit \(h) h" + (m > 0 ? " \(m) min" : "")
+    }
+
+    /// Wie lange das Fenster schon offen steht, in Minuten – aus dem Ende der Reihe rückwärts.
+    ///
+    /// **Warum nicht aus einem Zeitstempel.** Die Messreihe sagt, *dass* der Kontakt offen ist,
+    /// nicht *seit wann*; einen Wechselzeitpunkt überträgt die Telemetrie nicht. Die Zeitreihe
+    /// weiß es trotzdem, auf die Breite eines Fensters genau. Das reicht für den Satz, um den
+    /// es geht: „kalt, weil seit einer halben Stunde gelüftet wird".
+    public static func offenSeitMin(_ werte: [Double?], schrittMin: Int, bis: Int) -> Int? {
+        var i = min(bis, werte.count - 1)
+        // Noch nicht gemessene Fenster am Ende überspringen.
+        while i >= 0, werte[i] == nil { i -= 1 }
+        guard i >= 0, (werte[i] ?? 0) >= 0.5 else { return nil }
+        var zahl = 0
+        while i >= 0, (werte[i] ?? 0) >= 0.5 {
+            zahl += 1
+            i -= 1
+        }
+        return zahl * schrittMin
+    }
+
+    /// Die Zeile über einer Etage: „3 Räume · alle am Ziel".
+    ///
+    /// Sie nennt nur, was auffällt. Steht nichts Auffälliges da, steht da, dass nichts
+    /// auffällt – eine Etage ohne Zeile wäre eine Etage, über die niemand etwas gesagt hat.
+    public static func etagenText(_ raeume: [RoomLiveOut]) -> String {
+        let n = raeume.count
+        var teile: [String] = []
+        let kalt = raeume.filter { ($0.deviationK ?? 0) < -band && $0.deviationK != nil }.count
+        let stumm = raeume.filter { $0.tempC == nil }.count
+        if kalt > 0 { teile.append("\(kalt) unter dem Ziel") }
+        if stumm > 0 { teile.append("\(stumm) ohne Messwert") }
+        if teile.isEmpty { teile.append("alle am Ziel") }
+        return "\(n) \(n == 1 ? "Raum" : "Räume") · " + teile.joined(separator: " · ")
+    }
+
+    /// Die Räume nach Etage, **in der Reihenfolge, in der sie kommen**.
+    ///
+    /// Nicht alphabetisch: die Reihenfolge ist die der Anlage, und sortiert läge das
+    /// Dachgeschoss vor dem Erdgeschoss.
+    public static func nachEtage(_ raeume: [RoomLiveOut]) -> [(etage: String, raeume: [RoomLiveOut])] {
+        var aus: [(etage: String, raeume: [RoomLiveOut])] = []
+        for r in raeume {
+            let name = r.floor.isEmpty ? "ohne Etagenangabe" : r.floor
+            if let i = aus.firstIndex(where: { $0.etage == name }) {
+                aus[i].raeume.append(r)
+            } else {
+                aus.append((etage: name, raeume: [r]))
+            }
+        }
+        return aus
+    }
 }
