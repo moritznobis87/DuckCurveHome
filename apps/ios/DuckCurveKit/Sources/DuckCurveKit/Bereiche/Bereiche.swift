@@ -47,6 +47,14 @@ public struct Reiter: Sendable, Hashable, Identifiable {
     public var name: String
     /// Der Reiter kennt einen Zeitraum und bekommt ihn beim Wechsel mit.
     public var mitZeitraum: Bool
+    /// Welche Spannen dieser Reiter anbietet.
+    ///
+    /// **Warum das hier steht und nicht in der Seite.** Die Zeitraumwahl steht am Telefon im
+    /// Gerippe, ueber den Reitern - dort, wo die Vorlage sie hat (`handy.css:151`). Das Gerippe
+    /// kennt die Seite nicht, nur den Weg; stuende die Auswahl in der Seite, muesste sie von
+    /// unten nach oben gereicht werden. Hier steht sie einmal, und die Seite liest sie von
+    /// derselben Stelle.
+    public var spannen: [Spanne]
     /// Nur mit Vollzugriff sichtbar.
     public var nurHausherr: Bool
     /// Die Ansichten eines Reiters, wenn er mehr als eine hat: dieselbe Sache aus zwei
@@ -56,10 +64,11 @@ public struct Reiter: Sendable, Hashable, Identifiable {
 
     public var id: String { weg }
 
-    public init(weg: String, name: String, mitZeitraum: Bool = false, nurHausherr: Bool = false, unter: [Ansicht] = []) {
+    public init(weg: String, name: String, mitZeitraum: Bool = false, spannen: [Spanne] = Spanne.allCases, nurHausherr: Bool = false, unter: [Ansicht] = []) {
         self.weg = weg
         self.name = name
         self.mitZeitraum = mitZeitraum
+        self.spannen = spannen
         self.nurHausherr = nurHausherr
         self.unter = unter
     }
@@ -107,7 +116,9 @@ public enum Bereiche {
             schluessel: .geld, weg: "/geld", zeichen: .euro, name: "Geld",
             reiter: [
                 Reiter(weg: "/geld", name: "Kosten", mitZeitraum: true),
-                Reiter(weg: "/geld/pv-abrechnung", name: "PV-Abrechnung", mitZeitraum: true, nurHausherr: true),
+                Reiter(
+                    weg: "/geld/pv-abrechnung", name: "PV-Abrechnung", mitZeitraum: true,
+                    spannen: [.monat, .jahr], nurHausherr: true),
                 Reiter(weg: "/geld/rechnungen", name: "Rechnungen", nurHausherr: true),
             ]
         ),
@@ -139,9 +150,11 @@ public enum Bereiche {
                     ]
                 ),
                 Reiter(weg: "/waerme/wirkung", name: "Wirkung"),
-                Reiter(weg: "/waerme/raeume", name: "Heizkreise", mitZeitraum: true),
+                Reiter(weg: "/waerme/raeume", name: "Heizkreise", mitZeitraum: true, spannen: [.tag]),
                 Reiter(weg: "/system", name: "Prognose", nurHausherr: true),
-                Reiter(weg: "/system/daten", name: "Daten prüfen", mitZeitraum: true, nurHausherr: true),
+                Reiter(
+                    weg: "/system/daten", name: "Daten prüfen", mitZeitraum: true,
+                    spannen: [.tag, .woche, .monat], nurHausherr: true),
                 Reiter(weg: "/waerme/annahmen", name: "Annahmen", nurHausherr: true),
                 Reiter(weg: "/system/mitteilungen", name: "Mitteilungen", nurHausherr: true),
                 Reiter(weg: "/system/haustuer", name: "Haustür", nurHausherr: true),
@@ -149,6 +162,15 @@ public enum Bereiche {
             ]
         ),
     ]
+
+    /// Welche Spannen die Seite zu einem Weg anbietet - `nil`, wenn sie keinen Zeitraum kennt.
+    ///
+    /// Die Ansichten eines Reiters erben seine Spannen: „Ein Tag" unter „Anlage" ist dieselbe
+    /// Seite in einer anderen Richtung, nicht ein eigener Bereich mit eigener Zeitwahl.
+    public static func spannen(fuer weg: String) -> [Spanne]? {
+        guard let r = reiterVon(bereichVon(weg), weg), r.mitZeitraum else { return nil }
+        return r.spannen
+    }
 
     /// Der Bereich, zu dem ein Weg gehoert: der mit der laengsten passenden Adresse unter seinen
     /// Reitern und Ansichten. `/` ist Jetzt, und was niemandem gehoert, auch.

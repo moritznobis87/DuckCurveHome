@@ -119,3 +119,38 @@ final class BereicheTests: XCTestCase {
         XCTAssertFalse(Bereiche.nurHausherr("/waerme/anlage"))
     }
 }
+
+/// Welche Zeitspannen eine Seite anbietet.
+///
+/// **Die Auswahl steht am Reiter, nicht in der Seite** – das Gerippe zeichnet sie am Telefon
+/// über den Reitern und kennt nur den Weg. Diese Tests halten fest, dass beide dasselbe lesen.
+final class SpannenTests: XCTestCase {
+    func testEineSeiteOhneZeitraumBekommtKeineWahl() {
+        XCTAssertNil(Bereiche.spannen(fuer: "/"))
+        XCTAssertNil(Bereiche.spannen(fuer: "/haus"))
+        XCTAssertNil(Bereiche.spannen(fuer: "/waerme/anlage"))
+        XCTAssertNil(Bereiche.spannen(fuer: "/strom/jahr"), "die Jahreskarte ist ein Jahr")
+    }
+
+    func testDieBerichtsseitenKennenAlleVier() {
+        for weg in ["/strom", "/waerme", "/strom/pv", "/strom/speicher", "/strom/wallbox", "/geld"] {
+            XCTAssertEqual(Bereiche.spannen(fuer: weg), Spanne.allCases, weg)
+        }
+    }
+
+    /// **Die Ausnahmen, und warum es sie gibt.** Heizkreise zeigen Minutenwerte eines Tages –
+    /// über eine Woche gelegt ergäbe das ein Bild, in dem nichts mehr zu erkennen ist. Die
+    /// PV-Abrechnung ist ein Beleg und kennt nur Monat und Jahr.
+    func testDieAusnahmen() {
+        XCTAssertEqual(Bereiche.spannen(fuer: "/waerme/raeume"), [.tag])
+        XCTAssertEqual(Bereiche.spannen(fuer: "/geld/pv-abrechnung"), [.monat, .jahr])
+        XCTAssertEqual(Bereiche.spannen(fuer: "/system/daten"), [.tag, .woche, .monat])
+    }
+
+    /// Eine Ansicht erbt die Spannen ihres Reiters: „Ein Tag" unter „Anlage" ist dieselbe Seite
+    /// in einer anderen Richtung.
+    func testEineAnsichtErbtVonIhremReiter() {
+        XCTAssertNil(Bereiche.spannen(fuer: "/waerme/wiedergabe"))
+        XCTAssertEqual(Bereiche.spannen(fuer: "/strom?anker=2026-11-18"), Spanne.allCases)
+    }
+}

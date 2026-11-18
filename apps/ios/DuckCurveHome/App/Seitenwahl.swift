@@ -141,13 +141,16 @@ struct Seite<Inhalt: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let zeitraum {
+            // **Am Telefon steht die Zeitwahl im Gerippe**, ueber den Reitern und neben dem
+            // Namen des Bereichs - so wie in der Vorlage (`handy.css:146-161`). Hier stand sie
+            // unter den Reitern, und der Name des Bereichs stand nirgends.
+            if let zeitraum, breite != .compact {
                 zeitraum
-                    .padding(.horizontal, breite == .compact ? 16 : 16)
+                    .padding(.horizontal, 16)
                     .padding(.bottom, 8)
             }
             ScrollView {
-                VStack(alignment: .leading, spacing: breite == .compact ? 12 : 14) {
+                VStack(alignment: .leading, spacing: 14) {
                     inhalt()
                 }
                 // **Die Breite steht fest, bevor der Rand kommt.** Ohne diesen Rahmen bestimmt
@@ -177,59 +180,115 @@ extension Seite where Inhalt == EmptyView {
 ///
 /// Links die Spanne (Tag, Woche, Monat, Jahr), rechts das Blaettern. „Vorwaerts" ist aus, wenn
 /// der Zeitraum schon der laufende ist - ein Bericht ueber morgen ist keiner.
+///
+/// **Am Telefon steht sie nicht hier.** Dort zerfaellt sie in zwei Teile, die an zwei Stellen
+/// des Gerippes stehen: der Datumskasten neben dem Bereichsnamen, die Spannen als breiter
+/// Schalter darunter - und beides ueber den Reitern (`handy.css:146-161`). Das zeichnet
+/// ``HandRahmen``; diese Ansicht ist die der Wand.
 struct Zeitraumleiste: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
 
-    /// Welche Spannen diese Seite anbietet. Die Jahreskarte kennt nur das Jahr.
-    var spannen: [Spanne] = Spanne.allCases
+    /// Welche Spannen diese Seite anbietet. Ohne Angabe die des Reiters.
+    var spannen: [Spanne]?
+
+    private var welche: [Spanne] {
+        spannen ?? Bereiche.spannen(fuer: wegweiser.weg) ?? Spanne.allCases
+    }
 
     var body: some View {
         let z = wegweiser.zeitraum(jetzt: haus.jetzt)
         HStack(spacing: 10) {
-            if spannen.count > 1 {
-                Ansichtswahl(
-                    ansichten: spannen.map { Ansicht(weg: $0.rawValue, name: $0.name) },
-                    aktiv: Ansicht(weg: z.spanne.rawValue, name: z.spanne.name)
-                ) { a in
-                    guard let neu = Spanne(rawValue: a.weg) else { return }
-                    wegweiser.setzeZeitraum(z.mit(neu))
-                }
+            if welche.count > 1 {
+                Spannenwahl(spannen: welche)
             }
             Spacer(minLength: 4)
-            blaettern(z)
+            Datumskasten()
         }
     }
+}
 
-    private func blaettern(_ z: Zeitraum) -> some View {
+/// Die Wahl der Spanne: Tag, Woche, Monat, Jahr.
+struct Spannenwahl: View {
+    @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
+
+    let spannen: [Spanne]
+
+    var body: some View {
+        let z = wegweiser.zeitraum(jetzt: haus.jetzt)
+        Ansichtswahl(
+            ansichten: spannen.map { Ansicht(weg: $0.rawValue, name: $0.name) },
+            aktiv: Ansicht(weg: z.spanne.rawValue, name: z.spanne.name)
+        ) { a in
+            guard let neu = Spanne(rawValue: a.weg) else { return }
+            wegweiser.setzeZeitraum(z.mit(neu))
+        }
+    }
+}
+
+/// Der Kasten zum Blaettern: zurueck, der Zeitraum, vorwaerts.
+struct Datumskasten: View {
+    @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
+
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
+
+    var body: some View {
+        let z = wegweiser.zeitraum(jetzt: haus.jetzt)
         let aktuell = z.istAktuell(jetzt: haus.jetzt)
-        return HStack(spacing: 8) {
+        HStack(spacing: schmal ? 2 : 8) {
             Button {
                 wegweiser.setzeZeitraum(z.verschoben(-1))
             } label: {
-                Text("‹").font(Schrift.karte).frame(width: 28, height: 28)
+                Text("‹")
+                    .font(schmal ? Schrift.sans(16) : Schrift.karte)
+                    .frame(width: schmal ? 34 : 28, height: schmal ? 34 : 28)
             }
             .buttonStyle(.plain)
             .foregroundStyle(Farbe.text2)
             .accessibilityLabel("Zurück")
 
             Text(z.kurz)
-                .font(Schrift.zahlKlein)
+                .font(schmal ? Schrift.mono(13.5) : Schrift.zahlKlein)
                 .foregroundStyle(Farbe.text1)
-                .frame(minWidth: 92)
+                .lineLimit(1)
+                .padding(.horizontal, schmal ? 4 : 0)
+                .frame(minWidth: schmal ? 0 : 92)
                 .accessibilityLabel(z.name)
 
             Button {
                 wegweiser.setzeZeitraum(z.verschoben(1))
             } label: {
-                Text("›").font(Schrift.karte).frame(width: 28, height: 28)
+                Text("›")
+                    .font(schmal ? Schrift.sans(16) : Schrift.karte)
+                    .frame(width: schmal ? 34 : 28, height: schmal ? 34 : 28)
             }
             .buttonStyle(.plain)
             .foregroundStyle(aktuell ? Farbe.text3 : Farbe.text2)
             .disabled(aktuell)
             .accessibilityLabel("Vorwärts")
+
+            // **„heute" nur, wenn man nicht heute ist** (`ReportShell.tsx:114`): ein Knopf, der
+            // nichts tut, ist einer zu viel.
+            if !aktuell {
+                Button {
+                    wegweiser.setzeZeitraum(Zeitraum.heute(z.spanne, jetzt: haus.jetzt))
+                } label: {
+                    Text("HEUTE")
+                        .font(Schrift.kicker)
+                        .kerning(0.6)
+                        .foregroundStyle(Farbe.amber)
+                        .padding(.horizontal, 6)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Zu heute")
+            }
         }
-        .background(Farbe.flaeche2)
-        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+        .padding(schmal ? 3 : 0)
+        .background(schmal ? Color.white.opacity(0.07) : Farbe.flaeche2)
+        .clipShape(
+            RoundedRectangle(cornerRadius: schmal ? 11 : Marken.radius3, style: .continuous))
     }
 }

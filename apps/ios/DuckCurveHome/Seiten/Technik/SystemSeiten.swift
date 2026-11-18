@@ -14,7 +14,7 @@ struct HeizkreiseSeite: View {
 
     var body: some View {
         let z = wegweiser.zeitraum(jetzt: haus.jetzt)
-        Berichtsseite(spannen: [.tag]) { z, api in
+        Berichtsseite { z, api in
             try await api.raeumeTag(z.anker, schrittMin: 15)
         } inhalt: { verlauf in
             if let a = automatik {
@@ -504,7 +504,7 @@ struct DatenSeite: View {
 
     var body: some View {
         let z = wegweiser.zeitraum(jetzt: haus.jetzt)
-        Seite(zeitraum: Zeitraumleiste(spannen: [.tag, .woche, .monat])) {
+        Seite(zeitraum: Zeitraumleiste()) {
             if let fehler {
                 Stoerung(fehler: fehler) { Task { await lade(z) } }
             }

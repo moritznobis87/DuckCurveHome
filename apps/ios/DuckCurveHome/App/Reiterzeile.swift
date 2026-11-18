@@ -29,20 +29,31 @@ struct Reiterzeile: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 2) {
+            HStack(spacing: 8) {
                 ForEach(sichtbar) { r in
                     knopf(r, gewaehlt: r.weg == aktiv?.weg)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 2)
         }
         // Ohne das wächst die Zeile am Telefon in die Höhe des Rollbereichs.
-        .frame(height: 40)
-        .background(Farbe.flaeche1)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Farbe.linie1).frame(height: 1)
-        }
+        .frame(height: 44)
+        // **Keine Trennlinie darunter** (`handy.css:163`: `border-bottom: 0`). Pillen brauchen
+        // keinen Strich, der sie von der Seite trennt - sie liegen ohnehin auf ihr.
+        .mask(
+            // Am Rand ausblenden, damit eine angeschnittene Pille nicht wie ein Fehler aussieht,
+            // sondern wie „da geht es weiter" (`handy.css:168-169`).
+            LinearGradient(
+                stops: [
+                    .init(color: .clear, location: 0),
+                    .init(color: .black, location: 0.035),
+                    .init(color: .black, location: 0.92),
+                    .init(color: .clear, location: 1),
+                ],
+                startPoint: .leading, endPoint: .trailing
+            )
+        )
     }
 
     private func knopf(_ r: Reiter, gewaehlt: Bool) -> some View {
@@ -50,13 +61,16 @@ struct Reiterzeile: View {
             if !gewaehlt { waehle(r) }
         } label: {
             Text(r.name)
-                .font(Schrift.klein)
-                .foregroundStyle(gewaehlt ? Farbe.text1 : Farbe.text3)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .font(Schrift.sans(14))
+                .fontWeight(gewaehlt ? .semibold : .regular)
+                // **Weiss auf dunkel fuer den gewaehlten Reiter** (`handy.css:175`). Eine Pille,
+                // die nur eine Spur heller ist als ihre Nachbarinnen, sagt nicht, wo man ist.
+                .foregroundStyle(gewaehlt ? Farbe.deep : Farbe.text2)
+                .lineLimit(1)
+                .padding(.horizontal, 15)
+                .padding(.vertical, 9)
                 .background(
-                    RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous)
-                        .fill(gewaehlt ? Farbe.flaeche3 : Color.clear)
+                    Capsule().fill(gewaehlt ? Farbe.text1 : Color.white.opacity(0.07))
                 )
         }
         .buttonStyle(.plain)

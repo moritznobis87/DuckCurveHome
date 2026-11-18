@@ -51,8 +51,14 @@ struct JetztSeite: View {
                 }
             }
             kurve
-            Kachelfeld(kacheln: kennzahlen, kicker: tagwort)
-            Karte(kicker: "Schalten") {
+            // **Vier gleich grosse Zahlen in zwei Spalten, ohne Ueberschrift**
+            // (`handy.css:279-283`). „Eine Zahl fuehrt" gilt in der Vorlage fuer die
+            // Kennzahlen der Unterseiten, nicht fuer die Startseite: hier sind es vier Zahlen
+            // desselben Tages, und keine davon fuehrt.
+            Kachelfeld(kacheln: kennzahlen, ersteFuehrt: false, art: .start)
+            // Ohne Ueberschrift: das Dock erklaert sich durch seine Knoepfe, und am Telefon
+            // ist jede Zeile Ueberschrift eine Zeile weniger Inhalt (`Dock.tsx:228`).
+            Karte {
                 Dock()
             }
         }
@@ -66,12 +72,18 @@ struct JetztSeite: View {
     private var satzblock: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(haus.satz)
-                .font(Schrift.satz)
+                // 21 Punkte mit Strichstaerke 500 (`handy.css:261`). Es ist der erste Satz der
+                // App und traegt die Begruendung des Hauses; in 19 Punkten normal stand er da
+                // wie eine Bildunterschrift.
+                .font(Schrift.sans(21, relativeTo: .title3))
+                .fontWeight(.medium)
+                .kerning(-0.3)
+                .lineSpacing(2)
                 .foregroundStyle(Farbe.text1)
                 .fixedSize(horizontal: false, vertical: true)
             if !unterzeile.isEmpty {
                 Text(unterzeile)
-                    .font(Schrift.winzig)
+                    .font(Schrift.sans(13))
                     .foregroundStyle(Farbe.text3)
             }
             Wache(befunde: haus.zustand?.system.watch ?? [])
@@ -114,7 +126,10 @@ struct JetztSeite: View {
     // MARK: - Die Kurve
 
     private var kurve: some View {
-        Karte(kicker: "Der Tag", beiwerk: AnyView(Tagwahl(tag: $tag))) {
+        // Der Tagesschalter steht ueber dem Bild und ueber die ganze Breite, nicht als
+        // Beiwerk neben einer Ueberschrift (`handy.css:267-268`, `DayCurve.tsx:152`).
+        Karte(beiwerk: schmal ? nil : AnyView(Tagwahl(tag: $tag))) {
+            if schmal { Tagwahl(tag: $tag) }
             TageskurveBild(
                 kurve: Tageskurve.baue(
                     tag: tag,
@@ -134,13 +149,6 @@ struct JetztSeite: View {
 
     // MARK: - Die vier Zahlen
 
-    private var tagwort: String {
-        switch tag {
-        case .gestern: return "Gestern"
-        case .heute: return "Heute"
-        case .morgen: return "Morgen erwartet"
-        }
-    }
 
     /// Vier Zahlen, gerechnet im Kern (``Tageskacheln``) und hier nur eingefaerbt.
     ///

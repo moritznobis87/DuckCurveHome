@@ -170,6 +170,8 @@ struct Kopfzeile: View {
 /// Der Punkt, der sagt, ob die Anzeige noch lebt.
 struct Verbindungspunkt: View {
     @Environment(Hauszustand.self) private var haus
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -180,9 +182,14 @@ struct Verbindungspunkt: View {
                 // Unterschied zwischen „lebt" und „eingefroren" - ein stehendes Bild sagt das
                 // nicht von sich aus.
                 .opacity(haus.gestoert ? 1 : 0.85)
-            Text(wort)
-                .font(Schrift.winzig)
-                .foregroundStyle(haus.gestoert ? Farbe.alarm : Farbe.text3)
+            // **Am Telefon nur der Punkt, solange es laeuft** (`handy.css:227-228`): „live"
+            // steht neunundneunzig Prozent der Zeit da und sagt damit nichts. Ausgeschrieben
+            // wird einzig die Stoerung - die will man lesen.
+            if !schmal || haus.gestoert {
+                Text(wort)
+                    .font(Schrift.winzig)
+                    .foregroundStyle(haus.gestoert ? Farbe.alarm : Farbe.text3)
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(haus.zustand?.system.connectionLabelDe ?? wort)

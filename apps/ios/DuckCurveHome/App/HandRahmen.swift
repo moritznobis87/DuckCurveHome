@@ -23,6 +23,15 @@ struct HandRahmen: View {
     var body: some View {
         VStack(spacing: 0) {
             kopf
+            // **Die Spannen stehen ueber den Reitern** (`handy.css:151`: die Zeitraumzeile
+            // bekommt `order: 3` und steht damit vor den Reitern, die als eigener Block folgen).
+            // Sie gehoeren zum Bereich und nicht zur Seite: wer von „Strom" auf „Waerme"
+            // wechselt, behaelt seinen Tag.
+            if let spannen = Bereiche.spannen(fuer: wegweiser.weg), spannen.count > 1 {
+                Spannenwahl(spannen: spannen)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+            }
             if !wegweiser.bereich.reiter.isEmpty {
                 Reiterzeile(
                     bereich: wegweiser.bereich,
@@ -32,7 +41,6 @@ struct HandRahmen: View {
                     wegweiser.gehe(r.weg)
                     wegweiser.merkeReiter()
                 }
-                Divider().overlay(Farbe.linie1)
             }
             Seitenwahl(weg: wegweiser.weg)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -64,32 +72,52 @@ struct HandRahmen: View {
                 HStack(spacing: 7) {
                     Zeichen(.ente, groesse: 26, farbe: Farbe.amber)
                         .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 5 }
-                    Text("Duck Curve")
-                        .font(Schrift.marke)
+                    // **Auf einer Unterseite steht dort ihr Bereich, nicht die Marke**
+                    // (`handy.css:140-141`: `.brand-name` verschwindet, `.bereichstitel`
+                    // erscheint in 26 Punkten). Die Marke steht auf der Startseite; auf
+                    // „Energie" will man lesen, dass man in der Energie ist.
+                    Text(aufStartseite ? "Duck Curve" : wegweiser.bereich.name)
+                        .font(aufStartseite ? Schrift.marke : Schrift.sans(26, relativeTo: .title))
+                        .fontWeight(aufStartseite ? .regular : .semibold)
+                        .kerning(aufStartseite ? 0 : -0.65)
                         .foregroundStyle(Farbe.text1)
+                        .lineLimit(1)
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Duck Curve Home, zur Startseite")
+            .accessibilityLabel(
+                aufStartseite
+                    ? "Duck Curve Home, zur Startseite"
+                    : "\(wegweiser.bereich.name), zur Startseite")
 
             Spacer(minLength: 8)
 
-            if let grad = aussen {
-                HStack(spacing: 5) {
-                    Text(Formate.celsius(grad, stellen: 1))
-                        .font(Schrift.zahlKlein)
-                        .foregroundStyle(Farbe.text2)
-                    Text(haus.zustand?.system.outdoorSourceDe ?? "draußen")
-                        .font(Schrift.winzig)
-                        .foregroundStyle(Farbe.text3)
+            // Auf einer Seite mit Zeitraum steht rechts der Datumskasten; auf der Startseite
+            // die Temperatur draussen und der Punkt der Verbindung.
+            if Bereiche.spannen(fuer: wegweiser.weg) != nil {
+                Datumskasten()
+            } else {
+                if let grad = aussen {
+                    HStack(spacing: 5) {
+                        Text(Formate.celsius(grad, stellen: 1))
+                            .font(Schrift.zahlKlein)
+                            .foregroundStyle(Farbe.text2)
+                        Text(haus.zustand?.system.outdoorSourceDe ?? "draußen")
+                            .font(Schrift.winzig)
+                            .foregroundStyle(Farbe.text3)
+                    }
+                    .accessibilityElement(children: .combine)
                 }
-                .accessibilityElement(children: .combine)
+                Verbindungspunkt()
             }
-            Verbindungspunkt()
         }
         .padding(.horizontal, 16)
         .padding(.top, 2)
-        .padding(.bottom, 8)
+        .padding(.bottom, 10)
+    }
+
+    private var aufStartseite: Bool {
+        wegweiser.bereich.schluessel == .jetzt
     }
 
     /// Der Messwert aus dem Haus, und wenn der alt ist, der des Wetterdienstes - das

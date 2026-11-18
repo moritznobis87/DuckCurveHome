@@ -21,15 +21,24 @@ struct Ansichtswahl: View {
     /// keine Abfrage auslösen.
     let waehle: (Ansicht) -> Void
 
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
+
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: schmal ? 2 : 2) {
             ForEach(ansichten) { a in
                 knopf(a, gewaehlt: a.weg == aktiv.weg)
             }
         }
-        .padding(2)
-        .background(Farbe.flaeche2)
-        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+        .padding(schmal ? 3 : 2)
+        .background(schmal ? Color.white.opacity(0.07) : Farbe.flaeche2)
+        .clipShape(
+            RoundedRectangle(cornerRadius: schmal ? 11 : Marken.radius3, style: .continuous))
+        // **Am Telefon ueber die ganze Breite** (`handy.css:177-179`: `.ansichten` mit
+        // `align-self: stretch`, jede Ansicht `flex: 1`). Ein Schalter von 120 Punkten in einer
+        // 390 Punkte breiten Zeile ist mit dem Daumen schwer zu treffen; ueber die ganze Breite
+        // hat jede Haelfte 190 Punkte.
+        .frame(maxWidth: schmal ? .infinity : nil)
     }
 
     private func knopf(_ a: Ansicht, gewaehlt: Bool) -> some View {
@@ -37,13 +46,20 @@ struct Ansichtswahl: View {
             if !gewaehlt { waehle(a) }
         } label: {
             Text(a.name)
-                .font(Schrift.klein)
-                .foregroundStyle(gewaehlt ? Farbe.text1 : Farbe.text3)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 5)
+                // **Bernstein auf Petrol fuer das Gewaehlte** (`globals.css:781`,
+                // `.ansicht-an`). Vorher war es eine Spur heller als der Grund - auf einem
+                // Telefon im Sonnenlicht nicht zu sehen, und auf dem Bildschirmfoto nicht zu
+                // unterscheiden.
+                .font(schmal ? Schrift.sans(14) : Schrift.klein)
+                .fontWeight(gewaehlt ? .medium : .regular)
+                .foregroundStyle(gewaehlt ? Farbe.petrol : Farbe.text2)
+                .lineLimit(1)
+                .frame(maxWidth: schmal ? .infinity : nil)
+                .padding(.horizontal, schmal ? 8 : 11)
+                .padding(.vertical, schmal ? 9 : 5)
                 .background(
-                    RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous)
-                        .fill(gewaehlt ? Farbe.flaeche3 : Color.clear)
+                    RoundedRectangle(cornerRadius: schmal ? 8 : Marken.radius2, style: .continuous)
+                        .fill(gewaehlt ? Farbe.amber : Color.clear)
                 )
         }
         .buttonStyle(.plain)

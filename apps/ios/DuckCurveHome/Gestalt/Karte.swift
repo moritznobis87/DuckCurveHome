@@ -83,7 +83,9 @@ struct Karte<Inhalt: View>: View {
     }
 
     private var radius: CGFloat {
-        schmal ? 20 : Marken.radius3
+        // 16 am Telefon (`handy.css:182`). Zwanzig hat dort allein das Flussbild, und eine
+        // Karte mit demselben Radius wie das Bild sieht aus wie ein zweites Bild.
+        schmal ? 16 : Marken.radius3
     }
 
     private var flaeche: Color {
@@ -123,6 +125,8 @@ struct Kacheldaten: Identifiable {
     /// Ein zweiter Satz unter dem Wort, wo einer noetig ist.
     var dazu: String?
     var farbe: Color = Farbe.text1
+    /// Wohin ein Tippen fuehrt, wenn die Kachel irgendwohin fuehrt.
+    var weg: String?
 
     var id: String { wort }
 
@@ -133,12 +137,16 @@ struct Kacheldaten: Identifiable {
         self.init(k.wort, k.wert, einheit: k.einheit, dazu: k.dazu, farbe: Farbe.ton(k.ton))
     }
 
-    init(_ wort: String, _ wert: String, einheit: String? = nil, dazu: String? = nil, farbe: Color = Farbe.text1) {
+    init(
+        _ wort: String, _ wert: String, einheit: String? = nil, dazu: String? = nil,
+        farbe: Color = Farbe.text1, weg: String? = nil
+    ) {
         self.wort = wort
         self.wert = wert
         self.einheit = einheit
         self.dazu = dazu
         self.farbe = farbe
+        self.weg = weg
     }
 }
 
@@ -148,30 +156,94 @@ struct Kacheldaten: Identifiable {
 /// Wert alt oder abgeleitet ist, steht das klein dabei - nicht als Warnzeichen, sondern als
 /// Auskunft.
 struct Kachel: View {
+    /// **In beiden Gestalten steht das Wort ueber der Zahl.** Am Telefon dreht die Vorlage
+    /// beide Raster um (`handy.css:280`: `flex-direction: column-reverse` fuer die Zahlen des
+    /// Tages; `Stat.tsx:9-11` setzt den Kicker ohnehin zuerst). Die App hatte es umgekehrt, und
+    /// damit stand ueber jeder Zahl eine Zahl: beim Ueberfliegen einer Spalte findet das Auge
+    /// erst den Namen und dann den Wert, nicht andersherum.
+    ///
+    /// Unterschieden sind sie in der Schrift und in der Fuehrung: auf der Startseite ein
+    /// schlichtes Wort in 13 Punkten und vier gleich grosse Zahlen (`handy.css:279-283`), auf
+    /// einer Berichtsseite ein gesperrter Kicker und eine fuehrende Zahl in 48 Punkten
+    /// (`handy.css:197-207`).
+    enum Art { case start, bericht }
+
     let daten: Kacheldaten
     /// Gross: die fuehrende Zahl einer Seite.
     var fuehrend: Bool = false
+    var art: Art = .start
+
+    @Environment(Wegweiser.self) private var wegweiser
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Zahl(
-                wert: daten.wert,
-                einheit: daten.einheit,
-                schrift: fuehrend ? Schrift.zahlFuehrend : Schrift.zahlGross,
-                einheitSchrift: fuehrend ? Schrift.klein : Schrift.winzig,
-                farbe: daten.farbe
-            )
-            Text(daten.wort)
-                .font(Schrift.klein)
-                .foregroundStyle(Farbe.text2)
-            if let dazu = daten.dazu {
-                Text(dazu)
-                    .font(Schrift.winzig)
+        if let weg = daten.weg {
+            Button { wegweiser.gehe(weg) } label: { inhalt }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(.isButton)
+        } else {
+            inhalt
+        }
+    }
+
+    private var inhalt: some View {
+        VStack(alignment: .leading, spacing: abstand) {
+            if art == .bericht {
+                Kicker(wort: daten.wort)
+            } else {
+                Text(daten.wort)
+                    .font(Schrift.sans(13))
                     .foregroundStyle(Farbe.text3)
+            }
+            zahl
+            hinweis
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private var abstand: CGFloat {
+        art == .bericht ? (fuehrend ? 8 : 5) : 5
+    }
+
+    private var zahl: some View {
+        Zahl(
+            wert: daten.wert,
+            einheit: daten.einheit,
+            schrift: schrift,
+            einheitSchrift: einheitSchrift,
+            farbe: daten.farbe
+        )
+        .kerning(art == .bericht && fuehrend ? -1.9 : 0)
+    }
+
+    private var schrift: Font {
+        switch art {
+        case .start: return fuehrend ? Schrift.zahlFuehrend : Schrift.mono(25, relativeTo: .title2)
+        case .bericht: return fuehrend ? Schrift.mono(48, relativeTo: .largeTitle) : Schrift.mono(25, relativeTo: .title2)
+        }
+    }
+
+    private var einheitSchrift: Font {
+        switch art {
+        case .start: return fuehrend ? Schrift.klein : Schrift.sans(13.5)
+        case .bericht: return fuehrend ? Schrift.sans(18) : Schrift.sans(13.5)
+        }
+    }
+
+    @ViewBuilder private var hinweis: some View {
+        if let dazu = daten.dazu {
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                // Ein Pfeil sagt, dass die Zeile irgendwohin fuehrt (`Stat.tsx:16`).
+                if daten.weg != nil {
+                    Text("›").font(Schrift.sans(13)).foregroundStyle(Farbe.amber)
+                }
+                Text(dazu)
+                    .font(art == .bericht ? Schrift.sans(fuehrend ? 14.5 : 13) : Schrift.winzig)
+                    .foregroundStyle(art == .bericht && fuehrend ? Farbe.text2 : Farbe.text3)
+                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -187,6 +259,9 @@ struct Kachelfeld: View {
     /// Die erste Kachel ueber die ganze Breite - `handy.css`, Entscheidung 2: „Eine Zahl fuehrt."
     var ersteFuehrt: Bool = true
     var spalten: Int = 2
+    /// Die Gestalt der Kacheln. Auf einer Berichtsseite fuehrt das Wort, auf der Startseite die
+    /// Zahl - siehe ``Kachel/Art``.
+    var art: Kachel.Art = .bericht
 
     @Environment(\.horizontalSizeClass) private var breite
 
@@ -196,7 +271,7 @@ struct Kachelfeld: View {
         Karte(kicker: kicker) {
             if schmal, ersteFuehrt, let erste = kacheln.first {
                 VStack(spacing: 0) {
-                    Kachel(daten: erste, fuehrend: true)
+                    Kachel(daten: erste, fuehrend: true, art: art)
                         .padding(.bottom, kacheln.count > 1 ? 12 : 0)
                     if kacheln.count > 1 {
                         Divider().overlay(Farbe.linie1)
@@ -211,7 +286,7 @@ struct Kachelfeld: View {
     }
 
     private func gitter(_ welche: [Kacheldaten]) -> some View {
-        let reihen = welche.chunked(spalten)
+        let reihen = zeilen(welche)
         return VStack(spacing: 0) {
             ForEach(Array(reihen.enumerated()), id: \.offset) { stelle, reihe in
                 if stelle > 0 {
@@ -219,11 +294,11 @@ struct Kachelfeld: View {
                 }
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(reihe) { daten in
-                        Kachel(daten: daten)
+                        Kachel(daten: daten, art: art)
                     }
                     // Die letzte Reihe auffuellen, damit eine einzelne Kachel nicht die ganze
                     // Breite nimmt und neben ihren Nachbarinnen falsch aussieht.
-                    if reihe.count < spalten {
+                    if reihe.count < spalten, reihe.count > 1 || welche.count % spalten == 0 {
                         ForEach(0..<(spalten - reihe.count), id: \.self) { _ in
                             Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
                         }
@@ -231,6 +306,16 @@ struct Kachelfeld: View {
                 }
             }
         }
+    }
+
+    /// Die Kacheln in Zeilen.
+    ///
+    /// **Eine einzelne letzte Kachel nimmt die ganze Breite** (`handy.css:200`:
+    /// `.kpi-grid > .card:last-child:nth-child(even)`). Sie neben einer leeren Haelfte stehen
+    /// zu lassen sieht aus wie eine, die fehlt - und gerade die letzte ist oft die mit dem
+    /// laengsten Satz darunter („53,8 kWh · Rechnungen pruefen").
+    private func zeilen(_ welche: [Kacheldaten]) -> [[Kacheldaten]] {
+        welche.chunked(spalten)
     }
 }
 

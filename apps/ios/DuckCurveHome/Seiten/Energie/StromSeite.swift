@@ -1,48 +1,119 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Strom: was verbraucht und erzeugt wurde, über den gewählten Zeitraum.
+/// Strom: was verbraucht wurde, wer es verbraucht hat, und woher es kam.
 ///
-/// Die fuehrende Zahl ist die Autarkie - nicht die Erzeugung. Erzeugt wird viel oder wenig, je
-/// nach Jahreszeit; was das Haus daraus macht, ist die Frage, die diese Anlage stellt.
+/// **Die fuehrende Zahl ist der Verbrauch.** Hier stand die Autarkie, mit der Begruendung, die
+/// Erzeugung sei die falsche fuehrende Zahl - das stimmt, aber die Vorlage stellt auch nicht die
+/// Erzeugung voran, sondern den Verbrauch (`reports/HouseReport.tsx:45`). Der Unterschied ist
+/// nicht Geschmack: „59,2 kWh, davon die Waermepumpe 49 Prozent" ist der Anfang jeder Frage, die
+/// man an diese Seite hat. Die Autarkie ist eine Folge davon und steht als fuenfte Kachel.
+///
+/// **Was hier nicht mehr steht:** „aus der Sonne", „eingespeist" und „Eigenverbrauch". Das sind
+/// Zahlen der Erzeugung, und die haben ihren eigenen Reiter (``PvSeite``). „aus der Sonne"
+/// (6,9 kWh Erzeugung) stand ausserdem dicht neben den 6,6 kWh der Autarkiezeile, die etwas
+/// ganz anderes sind - Sonne und Speicher, die ins Haus gingen.
 struct StromSeite: View {
+    @Environment(Wegweiser.self) private var wegweiser
+    @Environment(Hauszustand.self) private var haus
+
     var body: some View {
         Berichtsseite { z, api in
             try await api.energieUebersicht(z.spanne.rawValue, anker: z.anker)
         } inhalt: { bericht in
-            Kachelfeld(kacheln: kennzahlen(bericht), kicker: "Strom")
-            Karte(kicker: "Woher der Strom kam") {
-                Balkenbild(stuecke: herkunft(bericht))
-            }
-            Karte(kicker: "Wohin er ging") {
+            // Ohne Ueberschrift: der aktive Reiter sagt, wo man ist (`ReportShell.tsx:99`).
+            Kachelfeld(kacheln: kennzahlen(bericht))
+            Karte(kicker: "Wer hat verbraucht?") {
                 Balkenbild(stuecke: verbrauch(bericht))
             }
-            Karte(kicker: "Die Zahlen") {
-                tabelle(bericht)
+            Karte(kicker: "Woher kam der Strom?") {
+                Balkenbild(stuecke: herkunft(bericht))
             }
             Methode([
+                "Haushalt (Rest) = Hausverbrauch ohne Wärmepumpe und Wallbox. Verbraucher erhalten die Quellen anteilig an ihrer Leistung je Minute.",
+                abdeckung(bericht),
                 bericht.meta.estimatedNoteDe,
-                bericht.meta.dataSince.map { "Daten seit \(Formate.hhmm(iso: $0) == Formate.leer ? $0 : $0)." },
+                bericht.meta.dataSince.map { "Aufzeichnung seit \(Tag.lang(String($0.prefix(10))))." },
             ])
         }
     }
 
+    /// Wie lueckenlos die Minutenwerte des Zeitraums sind.
+    ///
+    /// **Sie stand nirgends.** Jede Zahl dieser Seite steht auf Minutenwerten; wo die fehlen,
+    /// rechnet der Dienst mit weniger, als er zu haben scheint. Das Feld lag ungelesen im
+    /// Modell.
+    private func abdeckung(_ b: EnergySummaryOut) -> String? {
+        guard let anteil = b.meta.coverage else { return nil }
+        if anteil <= 0 { return "Noch keine Messdaten im Zeitraum." }
+        return "Datenabdeckung \(Formate.prozent(anteil))."
+    }
+
+    /// Die sechs Kennzahlen der Vorlage, in ihrer Reihenfolge.
     private func kennzahlen(_ b: EnergySummaryOut) -> [Kacheldaten] {
         let t = b.totals
+        let haus = t.houseKwh ?? 0
         return [
             Kacheldaten(
-                "Autarkie", Formate.prozent(t.autarky), dazu: "Anteil des Verbrauchs ohne Netz"
+                "Verbrauch gesamt", Formate.zahl(haus, stellen: 1), einheit: "kWh",
+                dazu: (t.minutes ?? 0) > 0
+                    ? "\(Int((Double(t.minutes ?? 0) / 60).rounded())) h bewertet" : "keine Daten"
             ),
-            Kacheldaten("aus der Sonne", Formate.zahl(t.pvKwh ?? 0, stellen: 1), einheit: "kWh", farbe: Farbe.pv),
-            Kacheldaten("aus dem Netz", Formate.zahl(t.importKwh ?? 0, stellen: 1), einheit: "kWh"),
             Kacheldaten(
-                "eingespeist", Formate.zahl(t.exportKwh ?? 0, stellen: 1), einheit: "kWh",
-                farbe: Farbe.netzEinspeisung
+                "Wärmepumpe", Formate.zahl(t.heatPumpKwh ?? 0, stellen: 1), einheit: "kWh",
+                dazu: anteil(t.heatPumpKwh, haus)
             ),
-            Kacheldaten("im Haus", Formate.zahl(t.houseKwh ?? 0, stellen: 1), einheit: "kWh"),
             Kacheldaten(
-                "Eigenverbrauch", Formate.prozent(t.selfConsumptionShare),
-                dazu: "Anteil der Erzeugung, der im Haus blieb"
+                "Wallbox", Formate.zahl(t.evKwh ?? 0, stellen: 1), einheit: "kWh",
+                dazu: anteil(t.evKwh, haus), farbe: Farbe.mist
+            ),
+            Kacheldaten(
+                "Haushalt (Rest)", Formate.zahl(t.baseKwh ?? 0, stellen: 1), einheit: "kWh",
+                dazu: anteil(t.baseKwh, haus), farbe: Farbe.text3
+            ),
+            Kacheldaten(
+                "Autarkie", Formate.prozent(t.autarky),
+                // Eine Zahl, kein Erklaersatz: wie viele Kilowattstunden ohne das Netz
+                // auskamen. Der Satz stand davor und sagte nur, was das Wort schon sagt.
+                dazu: "\(Formate.zahl((t.pvDirectKwh ?? 0) + (t.batteryToHouseKwh ?? 0), stellen: 1)) kWh ohne Netz",
+                farbe: Farbe.amber
+            ),
+            // **Kosten sehen alle; nur der Weg zur Rechnungspruefung bleibt dem Hausherrn**
+            // (`HouseReport.tsx:50`).
+            Kacheldaten(
+                "Netzbezug", Formate.euro(t.importCostEur),
+                dazu: netzzeile(t), farbe: Farbe.alarm,
+                weg: darfPruefen ? "/geld/rechnungen" : nil
+            ),
+        ]
+    }
+
+    private var darfPruefen: Bool { haus.darfSchalten }
+
+    private func netzzeile(_ t: EnergyTotalsOut) -> String {
+        let kwh = "\(Formate.zahl(t.importKwh ?? 0, stellen: 1)) kWh"
+        return darfPruefen ? "\(kwh) · Rechnungen prüfen" : kwh
+    }
+
+    private func anteil(_ teil: Double?, _ ganzes: Double) -> String? {
+        guard let teil, ganzes > 0 else { return nil }
+        return "\(Formate.prozent(teil / ganzes)) des Verbrauchs"
+    }
+
+    /// Wer verbraucht hat - in derselben Reihenfolge wie die Kacheln darueber.
+    private func verbrauch(_ b: EnergySummaryOut) -> [Balkenbild.Stueck] {
+        [
+            Balkenbild.Stueck(
+                name: "Wärmepumpe", farbe: Farbe.waermepumpe,
+                werte: b.buckets.map { ($0.label, $0.totals.heatPumpKwh ?? 0) }
+            ),
+            Balkenbild.Stueck(
+                name: "Wallbox", farbe: Farbe.diagrammWallbox,
+                werte: b.buckets.map { ($0.label, $0.totals.evKwh ?? 0) }
+            ),
+            Balkenbild.Stueck(
+                name: "Haushalt", farbe: Farbe.diagrammHaushalt,
+                werte: b.buckets.map { ($0.label, $0.totals.baseKwh ?? 0) }
             ),
         ]
     }
@@ -56,46 +127,14 @@ struct StromSeite: View {
                 werte: b.buckets.map { ($0.label, $0.totals.pvDirectKwh ?? 0) }
             ),
             Balkenbild.Stueck(
-                name: "aus dem Speicher", farbe: Farbe.batterie,
+                name: "aus dem Speicher", farbe: Farbe.diagrammSpeicher,
                 werte: b.buckets.map { ($0.label, $0.totals.batteryToHouseKwh ?? 0) }
             ),
             Balkenbild.Stueck(
-                name: "aus dem Netz", farbe: Farbe.netzBezug,
+                name: "aus dem Netz", farbe: Farbe.diagrammNetz,
                 werte: b.buckets.map { ($0.label, $0.totals.gridToHouseKwh ?? 0) }
             ),
         ]
-    }
-
-    private func verbrauch(_ b: EnergySummaryOut) -> [Balkenbild.Stueck] {
-        [
-            Balkenbild.Stueck(
-                name: "Grundlast", farbe: Farbe.last,
-                werte: b.buckets.map { ($0.label, $0.totals.baseKwh ?? 0) }
-            ),
-            Balkenbild.Stueck(
-                name: "Wärmepumpe", farbe: Farbe.waermepumpe,
-                werte: b.buckets.map { ($0.label, $0.totals.heatPumpKwh ?? 0) }
-            ),
-            Balkenbild.Stueck(
-                name: "Wallbox", farbe: Farbe.wallbox,
-                werte: b.buckets.map { ($0.label, $0.totals.evKwh ?? 0) }
-            ),
-        ]
-    }
-
-    private func tabelle(_ b: EnergySummaryOut) -> some View {
-        Tabelle(
-            zeilennamen: b.buckets.map(\.label),
-            spalten: [
-                .init(name: "Sonne", zellen: b.buckets.map { Formate.zahl($0.totals.pvKwh ?? 0, stellen: 1) }),
-                .init(name: "Haus", zellen: b.buckets.map { Formate.zahl($0.totals.houseKwh ?? 0, stellen: 1) }),
-                .init(name: "Bezug", zellen: b.buckets.map { Formate.zahl($0.totals.importKwh ?? 0, stellen: 1) }),
-                .init(
-                    name: "Einspeisung",
-                    zellen: b.buckets.map { Formate.zahl($0.totals.exportKwh ?? 0, stellen: 1) }
-                ),
-            ]
-        )
     }
 }
 

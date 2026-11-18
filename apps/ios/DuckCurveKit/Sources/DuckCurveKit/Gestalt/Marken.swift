@@ -114,6 +114,31 @@ public enum Marken {
     /// und ein offener Heizkreis ist weder das eine noch das andere.
     public static let ventilOffen = Farbwert(0xCFD8DC)
 
+    // MARK: - Die Farben der Diagramme
+    //
+    // **Warum sie nicht die des Flussbilds sind.** Im Fluss steht jede Groesse fuer sich, in
+    // einem gestapelten Balken stehen drei uebereinander - und was uebereinander liegt, muss
+    // sich unterscheiden lassen. `charts/palette.ts` hat das durchgerechnet (CIEDE2000, normal
+    // und bei Farbfehlsichtigkeit) und dabei zwei Werte verworfen, die die App noch benutzt:
+    //
+    // * **Wallbox** war #5C8FA3 und lag nur 7,5 vom Strompreis und 11,4 vom Haushalt entfernt.
+    //   Unter 15 sind zwei Flaechen auch mit normalem Farbsehen kaum zu trennen - auf der
+    //   Hausseite hatten die Balken drei Segmente, von denen zwei wie eines aussahen.
+    // * **Netzbezug** ist im Diagramm rot und nicht nebelfarben: dort ist er eine Menge, die
+    //   Geld kostet, und steht neben Sonne und Speicher, die keines kosten.
+
+    /// Netzbezug im Diagramm.
+    public static let diagrammNetz = Farbwert(0xE0533D)
+    /// Wallbox im Diagramm.
+    public static let diagrammWallbox = Farbwert(0x2F89B5)
+    /// Speicher im Diagramm.
+    public static let diagrammSpeicher = Farbwert(0x7FA3B3)
+    /// Der Haushalt ohne Waermepumpe und Wallbox.
+    ///
+    /// Hell und nicht sandfarben: neben dem Orange der Waermepumpe waere Sand bei Deuteranopie
+    /// dieselbe Farbe (Abstand 0,2).
+    public static let diagrammHaushalt = Farbwert(0xCFD8DC)
+
     /// Die vier Schichten des Puffers, warm nach kuehl - wie die Schichtung selbst.
     ///
     /// **Keine vier Kategorienfarben, sondern eine Folge.** Die Linien liegen fast immer in

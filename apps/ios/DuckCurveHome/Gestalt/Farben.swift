@@ -71,6 +71,13 @@ public enum Farbe {
 
     // Thermisch
     public static let ventilOffen = Color(Marken.ventilOffen)
+
+    /// Die Farben der gestapelten Diagramme - andere als die des Flussbilds, weil sie
+    /// uebereinander liegen. Begruendung an `Marken`.
+    public static let diagrammNetz = Color(Marken.diagrammNetz)
+    public static let diagrammWallbox = Color(Marken.diagrammWallbox)
+    public static let diagrammSpeicher = Color(Marken.diagrammSpeicher)
+    public static let diagrammHaushalt = Color(Marken.diagrammHaushalt)
     public static let waerme = Marken.waerme.map(Color.init)
     public static let pufferschichten = Marken.pufferschichten.map(Color.init)
 

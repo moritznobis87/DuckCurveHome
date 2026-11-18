@@ -9,7 +9,7 @@ import SwiftUI
 /// Vergleichslauf (`/energy/shift`).
 struct KostenSeite: View {
     var body: some View {
-        Berichtsseite(spannen: [.tag, .woche, .monat, .jahr]) { z, api in
+        Berichtsseite { z, api in
             // Zwei Antworten, weil es zwei Fragen sind: was es gekostet hat, und was es ohne
             // Preisblick gekostet hätte.
             async let kosten = api.energieUebersicht(z.spanne.rawValue, anker: z.anker)
@@ -120,7 +120,7 @@ struct KostenSeite: View {
 /// kein Energiebericht, sondern ein Beleg.
 struct PvAbrechnungSeite: View {
     var body: some View {
-        Berichtsseite(spannen: [.monat, .jahr]) { z, api in
+        Berichtsseite { z, api in
             try await api.energiePv(z.spanne.rawValue, anker: z.anker)
         // Auch hier muss der Typ dastehen: `kennzahlen` ist in dieser Datei zweimal
         // vorhanden, und solange `Antwort` nicht feststeht, kann der Compiler nicht

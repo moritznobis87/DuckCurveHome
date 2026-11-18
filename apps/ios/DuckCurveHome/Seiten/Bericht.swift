@@ -14,7 +14,11 @@ import SwiftUI
 /// an einer Wandanzeige, die ueber eine Woche blaettert, ist das unerträglich.
 struct Berichtsseite<Antwort: Sendable, Inhalt: View>: View {
     /// Welche Spannen diese Seite anbietet.
-    var spannen: [Spanne] = Spanne.allCases
+    ///
+    /// **Ohne Angabe die des Reiters** (`Bereiche.spannen(fuer:)`). Sie stand bis zum
+    /// 18.11.2026 an jeder Seite einzeln, und seit die Wahl am Telefon im Gerippe steht, haette
+    /// es sie damit an zwei Stellen gegeben - eine davon waere irgendwann falsch gewesen.
+    var spannen: [Spanne]?
     /// Die Abfrage. Bekommt Zeitraum und API, liefert die Antwort.
     let hole: (Zeitraum, Api) async throws -> Antwort
     @ViewBuilder let inhalt: (Antwort) -> Inhalt
@@ -269,17 +273,30 @@ struct Methode: View {
         self.titel = titel
     }
 
+    @State private var offen = false
+
+    /// **Zugeklappt, bis jemand fragt.** Sechs Berichtsseiten endeten mit 150 bis 210 Woertern
+    /// Methode, immer aufgeklappt - und was immer dasteht, liest niemand. Die Kurzzeile oben
+    /// sagt, ob die Zahlen tragen; der Rest steht darunter, wenn man ihn will
+    /// (`components/ui/Methode.tsx`).
     var body: some View {
         if !saetze.isEmpty {
-            Karte(kicker: titel) {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(saetze.enumerated()), id: \.offset) { _, s in
-                        Text(s)
-                            .font(Schrift.winzig)
-                            .foregroundStyle(Farbe.text3)
-                            .fixedSize(horizontal: false, vertical: true)
+            Karte {
+                DisclosureGroup(isExpanded: $offen) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(Array(saetze.enumerated()), id: \.offset) { _, s in
+                            Text(s)
+                                .font(Schrift.winzig)
+                                .foregroundStyle(Farbe.text3)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
+                    .padding(.top, 8)
+                } label: {
+                    Kicker(wort: titel)
                 }
+                .tint(Farbe.text3)
             }
         }
     }
