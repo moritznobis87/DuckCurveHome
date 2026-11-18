@@ -171,8 +171,9 @@ struct Pufferflach: View {
     let soc: Double?
     let zustand: Pufferzustand
 
-    /// Dieselben vier Höhen wie im stehenden Glas, hier als Stellen von links nach rechts.
-    private let stellen: [Double] = [0.12, 0.38, 0.62, 0.88]
+    /// Dieselben vier Höhen wie im stehenden Glas, hier als Stellen von links nach rechts
+    /// (`puffer/glas.ts:21`).
+    private let stellen: [Double] = [0.125, 0.375, 0.625, 0.875]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -184,31 +185,37 @@ struct Pufferflach: View {
             "Pufferspeicher: \(zustand.traegt ? Formate.prozent(soc) : "kein Füllstand"), \(zustand.wort)")
     }
 
+    /// **„Puffer" steht in der Kachel, nicht über ihr** (`Rail.tsx:56-57`): links der Kicker,
+    /// rechts die Zahl mit ihrem Zustandswort. Als Kartenüberschrift darüber war es eine Zeile
+    /// mehr für dasselbe Wort.
     private var kopf: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Kicker(wort: "Puffer")
+            Spacer(minLength: 8)
             Zahl(
                 wert: zustand.traegt ? Formate.prozent(soc) : Formate.leer,
-                schrift: Schrift.zahlGross,
+                schrift: Schrift.mono(30, relativeTo: .title),
                 farbe: zustand.traegt ? Farbe.text1 : Farbe.text3
             )
             Text(zustand.wort)
-                .font(Schrift.klein)
+                .font(Schrift.sans(13))
                 .foregroundStyle(zustand.veraltet ? Farbe.achtung : Farbe.text3)
-            Spacer(minLength: 0)
         }
     }
 
+    /// **Die Zahlen stehen unter dem Band, nicht darüber** (`Rail.tsx:61-73`). Das Band ist die
+    /// Sache, die Zahlen sind ihre Beschriftung - und eine Beschriftung steht unter dem Bild.
     private var band: some View {
         VStack(alignment: .leading, spacing: 3) {
-            zahlenzeile
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .fill(LinearGradient(stops: verlauf, startPoint: .leading, endPoint: .trailing))
-                .frame(height: 26)
+                .frame(height: 22)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
                         .strokeBorder(Farbe.linie2, lineWidth: 1)
                 )
                 .opacity(zustand.traegt ? 1 : 0.5)
+            zahlenzeile
             orte
         }
     }

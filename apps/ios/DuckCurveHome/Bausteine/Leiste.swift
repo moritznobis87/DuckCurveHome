@@ -12,6 +12,7 @@ import SwiftUI
 /// nur im Satz oben beantwortet waere - und der sagt nur das Naechste.
 struct Leiste: View {
     @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
     var kompakt: Bool = false
 
     var body: some View {
@@ -26,15 +27,21 @@ struct Leiste: View {
                     warnung: haus.plan?.plannerWarnDe
                 )
             }
-            Karte(kicker: "Pufferspeicher") {
-                // Am Telefon liegt er, an der Wand steht er - so wie im Dashboard
-                // (`home/Rail.tsx`, kompakter Zweig, Nutzerwunsch 14.11.2026: „sonst streckt
-                // man die Seite unnötig"). Auf einer Rolle ist ein Glas von 300 Punkten Hoehe
-                // alles, was man sieht.
-                if kompakt {
+            // Am Telefon liegt er, an der Wand steht er - so wie im Dashboard
+            // (`home/Rail.tsx`, kompakter Zweig, Nutzerwunsch 14.11.2026: „sonst streckt
+            // man die Seite unnötig"). Auf einer Rolle ist ein Glas von 300 Punkten Hoehe
+            // alles, was man sieht.
+            if kompakt {
+                // **Die Kachel fuehrt zur Waerme** (`Rail.tsx:55`). Sie zeigt vier
+                // Temperaturen und einen Ladestand; wer darauf tippt, will mehr davon.
+                Karte {
                     Pufferflach(
                         temperaturen: fuehler, soc: haus.zustand?.buffer.soc, zustand: zustand)
-                } else {
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { wegweiser.gehe("/waerme") }
+            } else {
+                Karte(kicker: "Pufferspeicher") {
                     Pufferglas(
                         temperaturen: fuehler, soc: haus.zustand?.buffer.soc, zustand: zustand
                     )

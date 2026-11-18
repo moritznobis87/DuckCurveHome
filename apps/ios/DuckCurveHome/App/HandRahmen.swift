@@ -97,7 +97,9 @@ struct HandRahmen: View {
             if Bereiche.spannen(fuer: wegweiser.weg) != nil {
                 Datumskasten()
             } else {
-                if let grad = aussen {
+                // **Bei Stoerung faellt die Temperatur weg** (`handy.css:251-254`): sie schob
+                // sich am 13.11.2026 ueber den Namen, und sie waere ohnehin von vorhin.
+                if let grad = aussen, !haus.gestoert {
                     HStack(spacing: 5) {
                         Text(Formate.celsius(grad, stellen: 1))
                             .font(Schrift.zahlKlein)

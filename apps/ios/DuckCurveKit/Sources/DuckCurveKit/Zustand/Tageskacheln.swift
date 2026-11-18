@@ -59,10 +59,10 @@ public enum Tageskacheln {
             tag == .heute
             ? Kennzahl(
                 wort: "Strom gerade", wert: Formate.zahl(preisJetzt, stellen: 1),
-                einheit: "ct/kWh", ton: (preisJetzt ?? 0) < 0 ? .sonne : .normal)
+                einheit: "ct", ton: (preisJetzt ?? 0) < 0 ? .sonne : .normal)
             : Kennzahl(
                 wort: "Strom im Mittel",
-                wert: Formate.zahl(bilanz?.avgImportPriceCt, stellen: 1), einheit: "ct/kWh")
+                wert: Formate.zahl(bilanz?.avgImportPriceCt, stellen: 1), einheit: "ct")
 
         return [
             Kennzahl(
@@ -97,11 +97,11 @@ public enum Tageskacheln {
                 dazu: m.waerme.map { "\(Formate.zahl($0.elektrisch, stellen: 1)) kWh Strom" }),
             Kennzahl(
                 wort: ct.isEmpty ? "Preise kommen gegen 13 Uhr" : "Strom im Mittel",
-                wert: Formate.zahl(mittel, stellen: 1), einheit: "ct/kWh"),
+                wert: Formate.zahl(mittel, stellen: 1), einheit: "ct"),
             Kennzahl(
                 wort: guenstigste.map { "günstigste Stunde ab \(Formate.hhmm($0.zeit))" }
                     ?? "günstigste Stunde",
-                wert: Formate.zahl(guenstigste?.ct, stellen: 1), einheit: "ct/kWh",
+                wert: Formate.zahl(guenstigste?.ct, stellen: 1), einheit: "ct",
                 ton: (guenstigste?.ct ?? 0) < 0 ? .sonne : .normal),
         ]
     }

@@ -35,7 +35,10 @@ struct TageskurveBild: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            legende
+            // **Am Telefon steht die Legende unter dem Bild** (`handy.css:54,266`). Oben
+            // drängt sie das Bild nach unten und beantwortet eine Frage, die man erst hat,
+            // wenn man die Kurven gesehen hat.
+            if !schmal { legende }
             if kurve.leer {
                 Leer(
                     satz: tag == .morgen
@@ -48,6 +51,7 @@ struct TageskurveBild: View {
                 preisflaeche
                 zeitachse
             }
+            if schmal { legende }
         }
     }
 
@@ -248,7 +252,9 @@ struct TageskurveBild: View {
     /// `DayCurve.tsx`: „Eine Kurve allein sagt nicht, ob der Tag gut war; erst der Vortag macht
     /// aus 13,4 kWh eine Auskunft."
     private var legende: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 14) {
+        // **Sie darf umbrechen** (`handy.css:266`: `flex-wrap: wrap`). Sechs Einträge auf
+        // 390 Punkten sind zwei Zeilen; in einer Zeile sind es sechs abgeschnittene Wörter.
+        Umbruchzeile(abstand: 14, zeilenabstand: 5) {
             if let gelesen = abgelesen {
                 Text(gelesen)
                     .font(Schrift.zahlKlein)
@@ -266,7 +272,6 @@ struct TageskurveBild: View {
                     }
                 }
             }
-            Spacer(minLength: 0)
         }
         .frame(minHeight: 16)
     }

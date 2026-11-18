@@ -37,6 +37,9 @@ struct JetztSeite: View {
                     pvSpitzeKw: pvSpitze, wpLaeuft: haus.zustand?.heatPump.running,
                     nacht: istNacht, sonneAb: sonneAb, fassung: .hand
                 )
+                // **Bei unterbrochener Verbindung blasser** (`Home.tsx:227`). Das Bild zeigt
+                // dann Zahlen von vorhin, und es soll aussehen, als meinte es sie nicht mehr.
+                .opacity(haus.gestoert ? 0.6 : 1)
                 Leiste(kompakt: true)
             } else {
                 HStack(alignment: .top, spacing: 14) {
