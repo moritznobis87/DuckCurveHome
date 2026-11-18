@@ -45,13 +45,21 @@ struct Raumkachel: View {
         Karte {
             VStack(alignment: .leading, spacing: 9) {
                 kopf
-                HStack(alignment: .bottom, spacing: 14) {
+                // **Zwei Anordnungen, und beide stehen in der Vorlage.** Am Telefon stehen die
+                // Zahlen links und der Verlauf rechts daneben, weil eine Kachel dort die ganze
+                // Breite hat und sonst zu hoch wuerde (`handy.css:364`: 1fr und 42 %). Auf dem
+                // iPad stehen drei Kacheln nebeneinander, jede rund 300 Punkte breit; dort ist
+                // nebeneinander kein Platz, und der Verlauf liegt unter den Zahlen und nimmt die
+                // ganze Kachelbreite (`globals.css:147`: vier Zeilen uebereinander).
+                if schmal {
+                    HStack(alignment: .bottom, spacing: 14) {
+                        zahlen
+                        Spacer(minLength: 6)
+                        verlauf.frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                } else {
                     zahlen
-                    Spacer(minLength: 6)
-                    // Die Breite teilt sich wie in der Vorlage am Telefon: die Zahlen nehmen,
-                    // was sie brauchen, der Verlauf den Rest (`handy.css:364`: 1fr und 42 %).
                     verlauf
-                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 Divider().overlay(Farbe.linie1)
                 fuss

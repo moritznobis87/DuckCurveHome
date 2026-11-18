@@ -132,19 +132,21 @@ struct HausSeite: View {
                                 .foregroundStyle(Farbe.text3)
                             Spacer(minLength: 0)
                         }
-                        ForEach(gruppe.raeume, id: \.id) { raum in
-                            Raumkachel(
-                                raum: raum,
-                                serie: serien[raum.id],
-                                proStunde: proStunde,
-                                gewesen: gewesen,
-                                schrittMin: tag?.stepMin ?? 15,
-                                // **Auch ein Gast darf die Kachel antippen.** Das Blatt zeigt
-                                // ihm die Zahlen und laesst den Knopf zum Stellen gesperrt; ihm
-                                // den Weg schon hier zu nehmen, hiesse, ihm das Lesen zu nehmen.
-                                stellen: { wegweiser.blatt = .raum(raum.id) },
-                                protokoll: { wegweiser.blatt = .raumprotokoll(raum.id) }
-                            )
+                        LazyVGrid(columns: spalten, spacing: 12) {
+                            ForEach(gruppe.raeume, id: \.id) { raum in
+                                Raumkachel(
+                                    raum: raum,
+                                    serie: serien[raum.id],
+                                    proStunde: proStunde,
+                                    gewesen: gewesen,
+                                    schrittMin: tag?.stepMin ?? 15,
+                                    // **Auch ein Gast darf die Kachel antippen.** Das Blatt zeigt
+                                    // ihm die Zahlen und laesst den Knopf zum Stellen gesperrt; ihm
+                                    // den Weg schon hier zu nehmen, hiesse, ihm das Lesen zu nehmen.
+                                    stellen: { wegweiser.blatt = .raum(raum.id) },
+                                    protokoll: { wegweiser.blatt = .raumprotokoll(raum.id) }
+                                )
+                            }
                         }
                     }
                 }
@@ -165,6 +167,16 @@ struct HausSeite: View {
                 }
             }
         }
+    }
+
+    /// **Ein Gitter, nicht eine Spalte.** Am Telefon steht eine Kachel je Zeile; auf 1100
+    /// Punkten Breite stuende sie allein mit einer leeren Mitte, und die Vorlage setzt dort ein
+    /// Gitter mit Spalten von mindestens 260 Punkten (`globals.css:115`). Die Kachel ist zu
+    /// dicht, um gedehnt zu werden.
+    private var spalten: [GridItem] {
+        schmal
+            ? [GridItem(.flexible())]
+            : [GridItem(.adaptive(minimum: 290), spacing: 12)]
     }
 
     /// Die Tagesreihen nach Raumkennung.
