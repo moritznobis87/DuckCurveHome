@@ -305,4 +305,83 @@ final class HausgeometrieTests: XCTestCase {
         XCTAssertEqual(G.wandlinie(WallLine(z: 3, a: 0, b: 4)).senkrecht, false)
         XCTAssertEqual(G.wandlinie(WallLine(z: 3, a: 0, b: 4)).konst, 3)
     }
+
+    // MARK: - Koerper
+
+    func testEinQuaderZeigtDenDeckelUndHoechstensZweiSeiten() {
+        let f = Hausgeometrie.quader(
+            x: 3, y: 0, z: 2, b: 1, hoehe: 0.8, t: 0.6, drehung: 0.62)
+        XCTAssertEqual(f.filter(\.obenauf).count, 1, "Genau ein Deckel.")
+        XCTAssertLessThanOrEqual(f.count, 3, "Von einem Quader sieht man hoechstens drei Seiten.")
+        XCTAssertGreaterThanOrEqual(f.count, 2)
+    }
+
+    func testDieFlaechenKommenVonHintenNachVorn() {
+        let f = Hausgeometrie.quader(
+            x: 0, y: 0, z: 0, b: 2, hoehe: 1, t: 2, drehung: 0.4)
+        let tiefen = f.map(\.tiefe)
+        XCTAssertEqual(tiefen, tiefen.sorted(), "Sonst malt der Spaetere den Frueheren zu.")
+    }
+
+    func testDerDeckelIstDasHellsteUndJedeSeiteDunkler() {
+        let f = Hausgeometrie.quader(
+            x: 0, y: 0, z: 0, b: 1, hoehe: 1, t: 1, drehung: 0.62)
+        let deckel = f.first { $0.obenauf }!
+        XCTAssertEqual(deckel.licht, 1)
+        for seite in f where !seite.obenauf {
+            XCTAssertLessThan(seite.licht, 1)
+            XCTAssertGreaterThan(seite.licht, 0)
+        }
+    }
+
+    func testEinKoerperOhneHoeheHatNurSeinenDeckel() {
+        let f = Hausgeometrie.quader(x: 0, y: 0, z: 0, b: 2, hoehe: 0, t: 2, drehung: 0.62)
+        XCTAssertEqual(f.filter(\.obenauf).count, 1)
+        XCTAssertTrue(
+            f.filter { !$0.obenauf }.allSatisfy { seite in
+                let hoehen = Set(seite.ecken.map(\.y))
+                return hoehen.count == 1
+            }, "Eine Seite ohne Hoehe ist eine Linie und keine Flaeche.")
+    }
+
+    func testDerDeckelLiegtAufDerAngegebenenHoehe() {
+        let f = Hausgeometrie.quader(
+            x: 1, y: 2.6, z: 1, b: 1, hoehe: 0.4, t: 1, drehung: 0)
+        let deckel = f.first { $0.obenauf }!
+        XCTAssertTrue(deckel.ecken.allSatisfy { abs($0.y - 3.0) < 1e-9 })
+    }
+
+    func testEinGedrehterQuaderBehaeltSeineGrundflaeche() {
+        let gerade = Hausgeometrie.quader(
+            x: 0, y: 0, z: 0, b: 2, hoehe: 1, t: 1, drehung: 0, winkel: 0)
+        let schraeg = Hausgeometrie.quader(
+            x: 0, y: 0, z: 0, b: 2, hoehe: 1, t: 1, drehung: 0, winkel: .pi / 4)
+        func flaeche(_ e: [(x: Double, y: Double, z: Double)]) -> Double {
+            var s = 0.0
+            for i in e.indices {
+                let a = e[i], b = e[(i + 1) % e.count]
+                s += a.x * b.z - b.x * a.z
+            }
+            return abs(s) / 2
+        }
+        XCTAssertEqual(
+            flaeche(gerade.first { $0.obenauf }!.ecken),
+            flaeche(schraeg.first { $0.obenauf }!.ecken), accuracy: 1e-9)
+    }
+
+    func testEinZylinderHatSoVieleSeitenWieEckenSichtbarSind() {
+        let f = Hausgeometrie.zylinder(
+            x: 0, y: 0, z: 0, halbmesser: 0.5, hoehe: 1, drehung: 0.62, ecken: 12)
+        XCTAssertEqual(f.filter(\.obenauf).count, 1)
+        // Von zwoelf Seiten ist etwa die Haelfte zugewandt.
+        let seiten = f.filter { !$0.obenauf }.count
+        XCTAssertGreaterThan(seiten, 3)
+        XCTAssertLessThan(seiten, 9)
+    }
+
+    func testEinGrundrissMitWenigerAlsDreiEckenIstKeinKoerper() {
+        XCTAssertTrue(
+            Hausgeometrie.prisma(
+                grundriss: [(0, 0), (1, 1)], y: 0, hoehe: 1, drehung: 0).isEmpty)
+    }
 }

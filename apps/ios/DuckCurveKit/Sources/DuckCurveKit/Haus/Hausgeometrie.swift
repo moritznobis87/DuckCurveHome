@@ -253,6 +253,107 @@ public enum Hausgeometrie {
         return (v.0 / l, v.1 / l, v.2 / l)
     }
 
+    // MARK: - Koerper
+
+    /// Eine sichtbare Flaeche eines Koerpers, in Modellkoordinaten.
+    public struct Flaeche: Sendable {
+        /// Die Ecken im Umlauf, als (x, y, z) in Metern.
+        public let ecken: [(x: Double, y: Double, z: Double)]
+        /// Wie weit vorn die Flaeche liegt. Groesser heisst naeher am Betrachter.
+        public let tiefe: Double
+        /// Die waagerechte Deckflaeche - sie bekommt das meiste Licht.
+        public let obenauf: Bool
+        /// Wie stark die Flaeche beleuchtet ist, 0 bis 1. Deckel hell, Seiten gestuft.
+        public let licht: Double
+    }
+
+    /// Ein senkrechtes Prisma ueber einem Grundriss: die sichtbaren Flaechen, von hinten
+    /// nach vorn.
+    ///
+    /// **Warum Malerreihenfolge und keine Tiefenpruefung.** Eine Zeichenflaeche kennt keine
+    /// Tiefe; sie malt, was man ihr gibt, in der Reihenfolge, in der man es gibt. Also werden
+    /// die abgewandten Flaechen weggelassen und die uebrigen nach ihrem Abstand zum
+    /// Betrachter sortiert. Fuer einen einzelnen konvexen Koerper ist das genau richtig -
+    /// zwischen zwei Koerpern entscheidet die Reihenfolge, in der die Zeichnung sie aufruft.
+    ///
+    /// Das Licht faellt von vorn oben links, wie im Dashboard: die Deckflaeche am hellsten,
+    /// dann die Seiten nach ihrer Neigung zum Licht.
+    public static func prisma(
+        grundriss: [(x: Double, z: Double)], y: Double, hoehe: Double, drehung th: Double
+    ) -> [Flaeche] {
+        guard grundriss.count >= 3, hoehe >= 0 else { return [] }
+        let blick = strahl(drehung: th)
+        var aus: [Flaeche] = []
+
+        func tiefeVon(_ ecken: [(x: Double, y: Double, z: Double)]) -> Double {
+            let n = Double(ecken.count)
+            let mx = ecken.reduce(0) { $0 + $1.x } / n
+            let my = ecken.reduce(0) { $0 + $1.y } / n
+            let mz = ecken.reduce(0) { $0 + $1.z } / n
+            return mx * blick.0 + my * blick.1 + mz * blick.2
+        }
+
+        // Der Deckel: immer sichtbar, denn der Blick kommt von oben.
+        let deckel = grundriss.map { (x: $0.x, y: y + hoehe, z: $0.z) }
+        aus.append(
+            Flaeche(ecken: deckel, tiefe: tiefeVon(deckel), obenauf: true, licht: 1))
+
+        // Die Seiten: eine je Kante, und nur die dem Betrachter zugewandten.
+        for i in grundriss.indices {
+            let a = grundriss[i]
+            let b = grundriss[(i + 1) % grundriss.count]
+            // Die Normale einer senkrechten Wand steht waagerecht auf ihrer Kante. Welche der
+            // beiden Richtungen nach aussen zeigt, sagt der Umlaufsinn des Grundrisses; der
+            // wird darum unten einmal geradegezogen.
+            let nx = -(b.z - a.z)
+            let nz = b.x - a.x
+            let laenge = max(sqrt(nx * nx + nz * nz), 1e-9)
+            let zugewandt = (nx / laenge) * blick.0 + (nz / laenge) * blick.2
+            guard zugewandt > 0.001 else { continue }
+            let ecken: [(x: Double, y: Double, z: Double)] = [
+                (a.x, y, a.z), (b.x, y, b.z), (b.x, y + hoehe, b.z), (a.x, y + hoehe, a.z),
+            ]
+            // Je staerker die Wand dem Blick zugewandt ist, desto heller - aber nie so hell
+            // wie der Deckel, sonst verliert der Koerper seine Form.
+            aus.append(
+                Flaeche(
+                    ecken: ecken, tiefe: tiefeVon(ecken), obenauf: false,
+                    licht: 0.42 + 0.3 * zugewandt))
+        }
+        return aus.sorted { $0.tiefe < $1.tiefe }
+    }
+
+    /// Ein achsenparalleler Quader. `b` ist die Breite in x, `t` die Tiefe in z.
+    public static func quader(
+        x: Double, y: Double, z: Double, b: Double, hoehe: Double, t: Double,
+        drehung th: Double, winkel: Double = 0
+    ) -> [Flaeche] {
+        let halbB = b / 2
+        let halbT = t / 2
+        let ecken: [(x: Double, z: Double)] = [
+            (-halbB, -halbT), (halbB, -halbT), (halbB, halbT), (-halbB, halbT),
+        ]
+        let c = cos(winkel)
+        let s = sin(winkel)
+        let gedreht = ecken.map { e in
+            (x: x + e.x * c - e.z * s, z: z + e.x * s + e.z * c)
+        }
+        return prisma(grundriss: gedreht, y: y, hoehe: hoehe, drehung: th)
+    }
+
+    /// Ein stehender Zylinder, als Vieleck. Zwoelf Ecken reichen: bei den Groessen dieses
+    /// Hauses ist der Unterschied zu einem Kreis kleiner als eine Linienbreite.
+    public static func zylinder(
+        x: Double, y: Double, z: Double, halbmesser r: Double, hoehe: Double,
+        drehung th: Double, ecken n: Int = 12
+    ) -> [Flaeche] {
+        let grundriss = (0..<max(3, n)).map { i -> (x: Double, z: Double) in
+            let w = Double(i) / Double(max(3, n)) * 2 * .pi
+            return (x: x + cos(w) * r, z: z + sin(w) * r)
+        }
+        return prisma(grundriss: grundriss, y: y, hoehe: hoehe, drehung: th)
+    }
+
     // MARK: - Temperaturfarbe
 
     /// Farbstopps der Raumboeden, von kalt nach warm.
