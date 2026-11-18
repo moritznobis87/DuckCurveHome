@@ -67,6 +67,21 @@ public enum Schrift {
     /// **Kleiner als die fuehrende Zahl des Docks, groesser als jede andere.** Auf einer
     /// Raumkachel stehen neben ihr das Ziel und ein Abzeichen; mit 40 Punkten draengte sie beide
     /// aus der Spalte. Die Vorlage nennt 34 am Schirm und 36 am Telefon (`handy.css:368`).
+    /// Eine Schrift in genau der Groesse, die die Vorlage nennt.
+    ///
+    /// **Warum nicht eine der benannten Groessen.** Die Vorlage nennt fuer einzelne Stellen
+    /// Groessen, die zwischen den Stufen der App liegen (14,5 fuer die Saetze des Ausblicks,
+    /// 15,5 fuer den Satz neben dem Preis). Sie auf die naechste Stufe zu runden hiesse, die
+    /// Rangfolge zu aendern, die dort gemeint ist. `relativeTo` bleibt dabei, damit „Groesserer
+    /// Text" weiter wirkt.
+    public static func sans(_ groesse: CGFloat, relativeTo: Font.TextStyle = .body) -> Font {
+        Font.custom(Self.sans, size: groesse, relativeTo: relativeTo)
+    }
+
+    public static func mono(_ groesse: CGFloat, relativeTo: Font.TextStyle = .body) -> Font {
+        Font.custom(Self.mono, size: groesse, relativeTo: relativeTo)
+    }
+
     public static let zahlRaum = Font.custom(mono, size: 34, relativeTo: .title)
 
     public static let zahlFuehrend = Font.custom(mono, size: 40)

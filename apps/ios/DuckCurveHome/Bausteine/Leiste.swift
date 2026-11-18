@@ -16,6 +16,16 @@ struct Leiste: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // **Erst was kommt, dann was war.** Am Telefon steht der Ausblick vor dem Puffer und
+            // vor der Kurve des Tages (`handy.css:270`: `.home-rail .ausblick { order: -1 }`).
+            // An der Wand stehen beide nebeneinander in der Leiste, und dort fuehrt der Puffer:
+            // er ist das zweite Bild der Seite.
+            if kompakt {
+                Ausblickkarte(
+                    ausblick: Ausblick.baue(haus.plan, jetzt: haus.jetzt), jetzt: haus.jetzt,
+                    warnung: haus.plan?.plannerWarnDe
+                )
+            }
             Karte(kicker: "Pufferspeicher") {
                 // Am Telefon liegt er, an der Wand steht er - so wie im Dashboard
                 // (`home/Rail.tsx`, kompakter Zweig, Nutzerwunsch 14.11.2026: „sonst streckt
@@ -31,14 +41,7 @@ struct Leiste: View {
                     .frame(maxWidth: .infinity, minHeight: 210)
                 }
             }
-            if kompakt {
-                // Am Telefon das Bild der naechsten 24 Stunden statt dreier Uhrzeiten
-                // untereinander - so macht es die Wandanzeige (`Rail.tsx`, kompakter Zweig).
-                Ausblickkarte(
-                    ausblick: Ausblick.baue(haus.plan, jetzt: haus.jetzt), jetzt: haus.jetzt,
-                    warnung: haus.plan?.plannerWarnDe
-                )
-            } else if !zeilen.isEmpty {
+            if !kompakt, !zeilen.isEmpty {
                 Karte(kicker: "Nächste 24 h") {
                     VStack(spacing: 0) {
                         ForEach(zeilen) { z in

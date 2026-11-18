@@ -30,10 +30,12 @@ struct JetztSeite: View {
         Seite {
             satzblock
             if schmal {
+                // **Am Telefon das Hochformat-Bild** (`FlowHandy.tsx`): sechs Knoten mit Zahlen
+                // in der Anordnung der Wandanzeige liefen auf 390 Punkten Breite ineinander.
                 Energiefluss(
                     augenblick: haus.augenblick, jetzt: haus.jetzt,
                     pvSpitzeKw: pvSpitze, wpLaeuft: haus.zustand?.heatPump.running,
-                    nacht: istNacht, sonneAb: sonneAb
+                    nacht: istNacht, sonneAb: sonneAb, fassung: .hand
                 )
                 Leiste(kompakt: true)
             } else {

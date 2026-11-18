@@ -53,28 +53,69 @@ enum Flussknoten: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Die Lage im Bild, in Anteilen der Flaeche. Uebernommen aus `FlowHero.tsx`.
-    var lage: UnitPoint {
-        switch self {
-        case .pv: return UnitPoint(x: 0.50, y: 0.13)
-        case .netz: return UnitPoint(x: 0.11, y: 0.48)
-        case .haus: return UnitPoint(x: 0.50, y: 0.48)
-        case .batterie: return UnitPoint(x: 0.89, y: 0.48)
-        case .waermepumpe: return UnitPoint(x: 0.20, y: 0.78)
-        case .wallbox: return UnitPoint(x: 0.80, y: 0.78)
+    /// Zwei Anordnungen, und beide stehen in der Vorlage.
+    ///
+    /// **Die Wandanzeige ist fuer das Querformat gemacht** (`FlowHero.tsx`): Netz, Haus und
+    /// Speicher in einer Reihe, Sonne darueber, Waermepumpe und Wallbox darunter. Am Telefon
+    /// liefen damit sechs Knoten mit Zahlen auf 390 Punkten Breite ineinander - das Dashboard
+    /// hat dafuer am 25.10.2026 ein eigenes Bild bekommen (`FlowHandy.tsx`), und die App hatte
+    /// bis zum 18.11.2026 nur das Wandbild, auch auf dem Telefon.
+    ///
+    /// **Die Hand folgt dem Hochformat.** Oben, woher der Strom kommt: Sonne links, Netz rechts.
+    /// In der Mitte das Haus, gross, mit seiner Zahl im Kreis, damit unter ihm Platz fuer die
+    /// Leitungen bleibt. Unten, wohin er geht: Speicher, Waermepumpe, Wallbox, je in einem
+    /// Drittel der Breite, die Beschriftung darunter. So kreuzt keine Leitung ein Wort, und drei
+    /// Namen nebeneinander haben je 119 Punkte.
+    enum Fassung { case wand, hand }
+
+    /// Die Lage im Bild, in Anteilen der Flaeche.
+    func lage(_ fassung: Fassung) -> UnitPoint {
+        switch fassung {
+        case .wand:
+            switch self {
+            case .pv: return UnitPoint(x: 0.50, y: 0.13)
+            case .netz: return UnitPoint(x: 0.11, y: 0.48)
+            case .haus: return UnitPoint(x: 0.50, y: 0.48)
+            case .batterie: return UnitPoint(x: 0.89, y: 0.48)
+            case .waermepumpe: return UnitPoint(x: 0.20, y: 0.78)
+            case .wallbox: return UnitPoint(x: 0.80, y: 0.78)
+            }
+        case .hand:
+            switch self {
+            case .pv: return UnitPoint(x: 0.17, y: 0.14)
+            case .netz: return UnitPoint(x: 0.83, y: 0.14)
+            case .haus: return UnitPoint(x: 0.50, y: 0.46)
+            case .batterie: return UnitPoint(x: 0.17, y: 0.75)
+            case .waermepumpe: return UnitPoint(x: 0.50, y: 0.75)
+            case .wallbox: return UnitPoint(x: 0.83, y: 0.75)
+            }
         }
     }
 
     /// Auf welcher Seite die Beschriftung haengt: dort, wo keine Leitung ankommt.
     ///
     /// `FlowHero.tsx` begruendet es: so endet kein Strich zwischen Zahl und Zeichen und keiner
-    /// kreuzt ein Wort. Bei der Sonne rechts (die Leitung geht nach unten), sonst unten.
-    var textseite: Textseite {
-        self == .pv ? .rechts : .unten
+    /// kreuzt ein Wort. An der Wand bei der Sonne rechts (die Leitung geht nach unten), sonst
+    /// unten. In der Hand haengen die beiden oberen Knoten nach aussen - die Sonne links im Bild
+    /// traegt ihren Text rechts, das Netz rechts im Bild traegt ihn links -, die drei unteren
+    /// tragen ihn unter sich.
+    func textseite(_ fassung: Fassung) -> Textseite {
+        switch fassung {
+        case .wand: return self == .pv ? .rechts : .unten
+        case .hand:
+            switch self {
+            case .pv: return .rechts
+            case .netz: return .links
+            default: return .unten
+            }
+        }
     }
 
-    enum Textseite { case unten, rechts }
+    enum Textseite { case unten, rechts, links }
 }
+
+/// Die Farbe des Mondes: kuehl und hell, klar nicht das Gelb der Sonne.
+let mondlicht = Color(Farbwert(0xB9CFDB))
 
 /// Der Energiefluss als Bild.
 ///
@@ -98,6 +139,8 @@ struct Energiefluss: View {
     var nacht: Bool = false
     /// Wann die Sonne wiederkommt, nachts.
     var sonneAb: String?
+    /// Welche der beiden Anordnungen gezeichnet wird.
+    var fassung: Flussknoten.Fassung = .wand
 
     @Environment(Wegweiser.self) private var wegweiser
 
@@ -105,12 +148,19 @@ struct Energiefluss: View {
         GeometryReader { raum in
             ZStack {
                 himmel
-                sonnenschein(in: raum.size)
-                Leitungen(flaeche: raum.size, kanten: kanten)
+                if nacht { Sterne() } else { sonnenschein(in: raum.size) }
+                Leitungen(flaeche: raum.size, kanten: kanten, fassung: fassung)
                 ForEach(Flussknoten.allCases) { k in
                     Knoten(
                         knoten: k,
-                        wert: wert(k),
+                        name: name(k),
+                        wertText: wertText(k),
+                        einheit: einheit(k),
+                        zeichen: zeichen(k),
+                        farbeUeber: farbeUeber(k),
+                        ohneZahl: ohneZahl(k),
+                        ohneNamen: fassung == .hand && k == .haus,
+                        seite: k.textseite(fassung),
                         messwert: messwert(k),
                         jetzt: jetzt,
                         gross: k == .haus,
@@ -120,9 +170,24 @@ struct Energiefluss: View {
                         tippe(k)
                     }
                     .position(
-                        x: k.lage.x * raum.size.width,
-                        y: k.lage.y * raum.size.height
+                        x: k.lage(fassung).x * raum.size.width,
+                        y: k.lage(fassung).y * raum.size.height
                     )
+                }
+                // **Unter dem Haus ist kein Platz.** In der Hand laufen dort drei Leitungen zu
+                // Speicher, Waermepumpe und Wallbox; die Grundlast steht deshalb rechts neben
+                // dem Kreis, auf seiner Hoehe (`handy.css:52`).
+                if fassung == .hand, let g = grundlast {
+                    Text(g)
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(width: max(0, raum.size.width * 0.5 - 72), alignment: .leading)
+                        .position(
+                            x: raum.size.width * 0.5 + 64 + max(0, raum.size.width * 0.5 - 72) / 2,
+                            y: Flussknoten.haus.lage(fassung).y * raum.size.height
+                        )
+                        .allowsHitTesting(false)
                 }
             }
         }
@@ -144,27 +209,25 @@ struct Energiefluss: View {
         )
     }
 
-    @ViewBuilder private func sonnenschein(in flaeche: CGSize) -> some View {
-        if !nacht {
-            let pv = augenblick?.pvPowerKw.belastbar ?? 0
-            let staerke = min(1, max(0, pv / max(1, pvSpitzeKw)))
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Farbe.amber.opacity(0.36 * staerke), Farbe.amber.opacity(0)],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 160
-                    )
+    private func sonnenschein(in flaeche: CGSize) -> some View {
+        let pv = augenblick?.pvPowerKw.belastbar ?? 0
+        let staerke = min(1, max(0, pv / max(1, pvSpitzeKw)))
+        return Circle()
+            .fill(
+                RadialGradient(
+                    colors: [Farbe.amber.opacity(0.36 * staerke), Farbe.amber.opacity(0)],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: 160
                 )
-                .frame(width: 320, height: 320)
-                .position(
-                    x: Flussknoten.pv.lage.x * flaeche.width,
-                    y: Flussknoten.pv.lage.y * flaeche.height
-                )
-                .allowsHitTesting(false)
-                .animation(.easeInOut(duration: 1.2), value: staerke)
-        }
+            )
+            .frame(width: 320, height: 320)
+            .position(
+                x: Flussknoten.pv.lage(fassung).x * flaeche.width,
+                y: Flussknoten.pv.lage(fassung).y * flaeche.height
+            )
+            .allowsHitTesting(false)
+            .animation(.easeInOut(duration: 1.2), value: staerke)
     }
 
     // MARK: - Die Leitungen
@@ -179,14 +242,25 @@ struct Energiefluss: View {
         let netz = s.gridPowerKw.belastbar ?? 0
         let batterie = s.batteryPowerKw.belastbar ?? 0
         return [
-            Kante(von: .pv, nach: .haus, kw: s.pvPowerKw.belastbar ?? 0, farbe: Farbe.pv),
+            // **Nur der Anteil, der wirklich ins Haus geht** (`FlowHandy.tsx:131`): bei starker
+            // Einspeisung liefe sonst eine dicke, schnelle Leitung zum Haus, waehrend der Strom
+            // in Wahrheit ins Netz geht.
+            Kante(
+                von: .pv, nach: .haus,
+                kw: min(
+                    s.pvPowerKw.belastbar ?? 0,
+                    (s.housePowerKw.belastbar ?? 0) + max(0, -(s.batteryPowerKw.belastbar ?? 0))
+                ),
+                farbe: Farbe.pv
+            ),
             Kante(
                 von: netz >= 0 ? .netz : .haus, nach: netz >= 0 ? .haus : .netz,
                 kw: abs(netz), farbe: netz >= 0 ? Farbe.netzBezug : Farbe.netzEinspeisung
             ),
             Kante(
                 von: batterie >= 0 ? .batterie : .haus, nach: batterie >= 0 ? .haus : .batterie,
-                kw: abs(batterie), farbe: Flussknoten.batterie.farbe
+                // Die Leitung ist dunkler als der Ring: #7FB7C8 gegen #9FD0DF (`FlowHandy.tsx:147`).
+                kw: abs(batterie), farbe: Color(Farbwert(0x7FB7C8))
             ),
             Kante(
                 von: .haus, nach: .waermepumpe, kw: s.heatPumpPowerKw.belastbar ?? 0,
@@ -220,6 +294,53 @@ struct Energiefluss: View {
         return (k == .netz || k == .batterie) ? abs(m) : m
     }
 
+    /// Der Name am Knoten. **Nachts heisst die Sonne „Nacht".**
+    private func name(_ k: Flussknoten) -> String {
+        k == .pv && dunkel ? "Nacht" : k.name
+    }
+
+    /// An der Stelle der Sonne steht nachts ein Mond.
+    private func zeichen(_ k: Flussknoten) -> Zeichenart {
+        k == .pv && dunkel ? .mond : k.zeichen
+    }
+
+    private func farbeUeber(_ k: Flussknoten) -> Color? {
+        if k == .pv, dunkel { return mondlicht }
+        // Die Farbe des Netzes sagt die Richtung: Bernstein hinaus, Nebel herein.
+        if k == .netz, let v = augenblick?.gridPowerKw.belastbar, v < 0 {
+            return Farbe.netzEinspeisung
+        }
+        return nil
+    }
+
+    /// **„0,0 kW Sonne" ist nachts keine Auskunft.** Der Knoten zeigt dann nur Name und Zustand.
+    private func ohneZahl(_ k: Flussknoten) -> Bool {
+        k == .pv && dunkel
+    }
+
+    /// Nacht ist es nur, wenn auch wirklich nichts erzeugt wird: meldet die Anlage Leistung, hat
+    /// die Messung recht und nicht die Erwartung.
+    private var dunkel: Bool {
+        nacht && (augenblick?.pvPowerKw.belastbar ?? 0) < 0.05
+    }
+
+    /// Die Zahl am Knoten, fertig gesetzt.
+    ///
+    /// **Der Speicher zeigt in der Hand seinen Ladestand, nicht seine Leistung.** Die Leistung
+    /// steht im Wort darunter („laedt 1,2 kW"), und der Kreis ist ohnehin bis zu diesem Stand
+    /// gefuellt - die Zahl daneben sagt dann dasselbe wie das Bild.
+    private func wertText(_ k: Flussknoten) -> String {
+        if fassung == .hand, k == .batterie {
+            guard let soc = ladestand else { return Formate.leer }
+            return String(Int((soc * 100).rounded()))
+        }
+        return Formate.kw(wert(k))
+    }
+
+    private func einheit(_ k: Flussknoten) -> String {
+        fassung == .hand && k == .batterie ? "%" : "kW"
+    }
+
     /// Das Wort unter dem Knoten, wo es eines braucht.
     private func dazu(_ k: Flussknoten) -> String? {
         guard let s = augenblick else { return nil }
@@ -230,20 +351,46 @@ struct Energiefluss: View {
             return v > 0 ? "Bezug" : "Einspeisung"
         case .batterie:
             guard let v = s.batteryPowerKw.belastbar else { return nil }
+            if fassung == .hand {
+                // In der Hand traegt der Knoten den Ladestand als Zahl; das Wort sagt, was der
+                // Speicher gerade tut, und mit wie viel.
+                if abs(v) < 0.05 { return "hält" }
+                return (v > 0 ? "gibt " : "lädt ") + Formate.kwMitEinheit(abs(v))
+            }
             let soc = s.batterySoc.belastbar.map { Formate.prozent($0 > 1 ? $0 / 100 : $0) }
             if abs(v) < 0.05 { return soc }
             return [v > 0 ? "entlädt" : "lädt", soc].compactMap { $0 }.joined(separator: " · ")
         case .waermepumpe:
-            guard let laeuft = wpLaeuft else { return nil }
-            return laeuft ? "läuft" : "aus"
+            // **Drei Worte, nicht zwei** (`FlowHero.tsx`, `wpWort`): „läuft", wenn der Dienst es
+            // meldet; „Bereitschaft", wenn sie Strom nimmt, ohne zu laufen - das ist die Pumpe
+            // des Kreises oder die Abtauung, und es ist keine Stoerung; sonst „steht". Hier
+            // stand „aus", und das ist das Wort eines Schalters, nicht einer Anlage.
+            if wpLaeuft == true { return "läuft" }
+            return (s.heatPumpPowerKw.belastbar ?? 0) >= 0.05 ? "Bereitschaft" : "steht"
         case .pv:
-            return nacht ? sonneAb.map { "Sonne ab \($0)" } : nil
+            return dunkel ? sonneAb.map { "Sonne ab \($0)" } : nil
         case .haus:
-            return uebrig
+            // In der Hand steht die Grundlast neben dem Kreis, nicht unter ihm.
+            return fassung == .hand ? nil : uebrig
         case .wallbox:
-            guard let v = s.evPowerKw.belastbar, v >= 0.05 else { return nil }
-            return "lädt"
+            guard let v = s.evPowerKw.belastbar else { return nil }
+            return v >= 0.05 ? "lädt" : "steht"
         }
+    }
+
+    /// Die Grundlast neben dem Hauskreis.
+    ///
+    /// **Die Zahl kommt vom Dienst, nicht aus einer Differenz** (`FlowHero.tsx`, `grundlast`):
+    /// `base_load_kw` ist die gemessene Grundlast. Sie steht nur da, wenn ueberhaupt etwas
+    /// abzuziehen ist - ohne Waermepumpe und Wallbox waere „davon 0,5 kW Grundlast" neben
+    /// „0,5 kW" im Kreis dieselbe Zahl zweimal.
+    private var grundlast: String? {
+        guard let s = augenblick,
+              let rest = s.baseLoadKw.belastbar
+        else { return nil }
+        let andere = (s.heatPumpPowerKw.belastbar ?? 0) + (s.evPowerKw.belastbar ?? 0)
+        guard andere >= 0.05 else { return nil }
+        return "davon \(Formate.kwMitEinheit(rest)) Grundlast"
     }
 
     /// Was vom Hausverbrauch bleibt, wenn Waermepumpe und Wallbox abgezogen sind.
@@ -307,11 +454,12 @@ struct Kante {
 struct Leitungen: View {
     let flaeche: CGSize
     let kanten: [Kante]
+    let fassung: Flussknoten.Fassung
 
     var body: some View {
         ZStack {
             ForEach(Array(kanten.enumerated()), id: \.offset) { _, kante in
-                Leitung(kante: kante, flaeche: flaeche)
+                Leitung(kante: kante, flaeche: flaeche, fassung: fassung)
             }
         }
         .allowsHitTesting(false)
@@ -322,6 +470,7 @@ struct Leitungen: View {
 struct Leitung: View {
     let kante: Kante
     let flaeche: CGSize
+    let fassung: Flussknoten.Fassung
 
     @State private var versatz: CGFloat = 0
 
@@ -332,7 +481,7 @@ struct Leitung: View {
         }
         ZStack {
             pfad.stroke(
-                kante.farbe.opacity(kante.an ? 0.3 : 0.14),
+                kante.farbe.opacity(kante.an ? 0.22 : 0.14),
                 style: StrokeStyle(lineWidth: kante.breite, lineCap: .round)
             )
             if kante.an {
@@ -359,14 +508,26 @@ struct Leitung: View {
     }
 
     private func punkt(_ k: Flussknoten) -> CGPoint {
-        CGPoint(x: k.lage.x * flaeche.width, y: k.lage.y * flaeche.height)
+        CGPoint(x: k.lage(fassung).x * flaeche.width, y: k.lage(fassung).y * flaeche.height)
     }
 }
 
 /// Ein Knoten: Kreis mit Zeichen, daneben Zahl und Wort.
 struct Knoten: View {
     let knoten: Flussknoten
-    let wert: Double?
+    /// Der Name, wie er dasteht - nachts heisst die Sonne „Nacht".
+    let name: String
+    /// Die Zahl, fertig gesetzt.
+    let wertText: String
+    let einheit: String
+    let zeichen: Zeichenart
+    /// Eine andere Farbe als die des Knotens, etwa das Mondlicht oder die Einspeisung.
+    var farbeUeber: Color?
+    /// Der Knoten zeigt nur Name und Zustand: nachts ist „0,0 kW Sonne" keine Auskunft.
+    var ohneZahl: Bool = false
+    /// Der Knoten traegt gar keinen Text neben sich - der Hauskreis in der Hand.
+    var ohneNamen: Bool = false
+    let seite: Flussknoten.Textseite
     let messwert: Messwert?
     let jetzt: Date
     var gross: Bool = false
@@ -384,7 +545,17 @@ struct Knoten: View {
     }
 
     private var farbe: Color {
-        belastbar ? knoten.farbe : Farbe.text3
+        // Ein Knoten ohne Zahl sagt nicht, dass die Messung fehlt: nachts ist der Mond in
+        // seiner Farbe richtig, auch wenn kein Wert dasteht.
+        guard belastbar || ohneZahl else { return Farbe.text3 }
+        return farbeUeber ?? knoten.farbe
+    }
+
+    /// **Ein Knoten ohne Zahl sagt, dass die Messung fehlt.** Ein Strich mit Einheit („- kW")
+    /// sah aus wie ein Wert, den es nicht gibt, und der Zustand darunter („haelt", „steht")
+    /// wie eine Auskunft.
+    private var fehlt: Bool {
+        !ohneZahl && (messwert == nil || messwert?.value == nil)
     }
 
     private var kante: CGFloat { gross ? 108 : 52 }
@@ -419,23 +590,27 @@ struct Knoten: View {
                 }
                 .clipShape(Circle())
             }
-            Circle()
-                .fill(farbe.opacity(0.14))
+            // **Der grosse Kreis bleibt ungetoent** (`handy.css:48`): er ist der Knoten der
+            // Summe und steht in der Grundfarbe des Hauses, dafuer mit einem weissen Schein.
+            if !gross {
+                Circle().fill(farbe.opacity(0.16))
+            }
             Circle()
                 .strokeBorder(farbe, lineWidth: 1.5)
             if gross {
                 grosserInhalt
             } else {
-                Zeichen(knoten.zeichen, groesse: 26, farbe: farbe)
+                Zeichen(zeichen, groesse: 24, farbe: farbe)
             }
         }
         .frame(width: kante, height: kante)
+        .shadow(color: gross ? .white.opacity(0.09) : .clear, radius: 23)
     }
 
     /// Im grossen Kreis steht die Zahl selbst, nicht das Zeichen: er ist der Knoten der Summe.
     private var grosserInhalt: some View {
         VStack(spacing: 1) {
-            Text(Formate.kw(wert))
+            Text(wertText)
                 .font(Schrift.custom(32))
                 .foregroundStyle(belastbar ? Farbe.text1 : Farbe.text3)
                 .monospacedDigit()
@@ -446,37 +621,51 @@ struct Knoten: View {
     }
 
     @ViewBuilder private var text: some View {
-        let inhalt = VStack(alignment: knoten.textseite == .rechts ? .leading : .center, spacing: 1) {
-            if !gross {
+        let ausrichtung: HorizontalAlignment =
+            switch seite {
+            case .rechts: .leading
+            case .links: .trailing
+            case .unten: .center
+            }
+        let inhalt = VStack(alignment: ausrichtung, spacing: 1) {
+            if !gross, !ohneZahl, !fehlt {
                 Zahl(
-                    wert: Formate.kw(wert),
-                    einheit: "kW",
+                    wert: wertText,
+                    einheit: einheit,
                     schrift: Schrift.custom(22),
                     farbe: belastbar ? Farbe.text1 : Farbe.text3
                 )
             }
-            Text(knoten.name)
-                .font(Schrift.klein)
-                .foregroundStyle(Farbe.text2)
-            if let zeile = unterzeile {
-                Text(zeile)
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3)
+            // **Unter dem Hauskreis steht in der Hand nichts** (`FlowHandy.tsx:216`): er traegt
+            // seine Zahl in sich, und unter ihm laufen drei Leitungen - da ist kein Platz fuer
+            // Text. An der Wand liegen Waermepumpe und Wallbox weiter aussen, dort passt es.
+            if !ohneNamen {
+                Text(name)
+                    .font(Schrift.klein)
+                    .foregroundStyle(Farbe.text2)
+                if let zeile = unterzeile {
+                    Text(zeile)
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
+                }
             }
         }
         .fixedSize()
 
-        switch knoten.textseite {
+        switch seite {
         case .rechts:
-            inhalt.offset(x: kante / 2 + 14 + breiteSchaetzung / 2, y: 0)
+            inhalt.offset(x: kante / 2 + 10 + breiteSchaetzung / 2, y: 0)
+        case .links:
+            inhalt.offset(x: -(kante / 2 + 10 + breiteSchaetzung / 2), y: 0)
         case .unten:
-            inhalt.offset(x: 0, y: kante / 2 + 10 + hoeheSchaetzung / 2)
+            inhalt.offset(x: 0, y: kante / 2 + 8 + hoeheSchaetzung / 2)
         }
     }
 
     /// Die Zeile unter dem Namen: das Wort dazu, und das Alter, wenn der Wert nicht traegt.
     private var unterzeile: String? {
         var teile: [String] = []
+        if fehlt { return "kein Messwert" }
         if let dazu { teile.append(dazu) }
         if !belastbar, let alter { teile.append(alter) }
         if !belastbar, let wort = messwert?.quality.wort, alter == nil { teile.append(wort) }
@@ -487,10 +676,15 @@ struct Knoten: View {
     // haengt an einem Kreis und nicht in einem Fluss, und eine Messung je Bild waere hier
     // zwei Durchlaeufe des Layouts fuer ein Ergebnis, das sich nie aendert.
     private var breiteSchaetzung: CGFloat { 96 }
-    private var hoeheSchaetzung: CGFloat { unterzeile == nil ? 38 : 52 }
+    private var hoeheSchaetzung: CGFloat {
+        let zahl: CGFloat = (gross || ohneZahl || fehlt) ? 0 : 24
+        return zahl + 16 + (unterzeile == nil ? 0 : 14)
+    }
 
     private var vorlesen: String {
-        var s = "\(knoten.name): \(Formate.kw(wert)) Kilowatt"
+        var s = ohneZahl || fehlt
+            ? name
+            : "\(name): \(wertText) \(einheit == "%" ? "Prozent" : "Kilowatt")"
         if let dazu { s += ", \(dazu)" }
         if !belastbar, let alter { s += ", \(alter)" }
         return s + ". Details öffnen."
@@ -503,5 +697,42 @@ extension Schrift {
     /// aus dem Kreis.
     static func custom(_ groesse: CGFloat) -> Font {
         Font.custom(mono, fixedSize: groesse)
+    }
+}
+
+/// Der Sternenhimmel der Nacht.
+///
+/// **Gesetzte Punkte, keine Zufallszahlen**, damit das Bild bei jedem Laden dasselbe ist
+/// (`handy.css:56-73`, dieselben zehn Stellen). Sie stehen nur im oberen Teil: darunter liegen
+/// die Knoten, und ein Stern hinter einer Zahl ist Schmutz auf dem Glas.
+struct Sterne: View {
+    /// Stelle in Anteilen der Flaeche, Halbmesser in Punkten, Deckkraft.
+    private static let orte: [(x: Double, y: Double, r: Double, deckung: Double)] = [
+        (0.34, 0.09, 1.2, 0.80),
+        (0.47, 0.22, 1.0, 0.55),
+        (0.58, 0.07, 1.4, 0.70),
+        (0.66, 0.31, 1.0, 0.45),
+        (0.41, 0.38, 1.0, 0.40),
+        (0.52, 0.46, 1.2, 0.35),
+        (0.08, 0.44, 1.0, 0.45),
+        (0.93, 0.52, 1.0, 0.40),
+        (0.27, 0.58, 1.3, 0.50),
+        (0.74, 0.66, 1.0, 0.40),
+    ]
+
+    var body: some View {
+        Canvas { g, groesse in
+            // Der Himmel endet bei 54 Prozent der Hoehe: `inset: 0 0 46% 0` in der Vorlage.
+            let hoehe = groesse.height * 0.54
+            for ort in Self.orte {
+                let mitte = CGPoint(x: ort.x * groesse.width, y: ort.y * hoehe)
+                let kreis = Path(
+                    ellipseIn: CGRect(
+                        x: mitte.x - ort.r, y: mitte.y - ort.r,
+                        width: ort.r * 2, height: ort.r * 2))
+                g.fill(kreis, with: .color(.white.opacity(ort.deckung * 0.85)))
+            }
+        }
+        .allowsHitTesting(false)
     }
 }

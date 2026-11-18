@@ -14,6 +14,8 @@ import SwiftUI
 /// Schaltzustand haben keine gemeinsame Skala. Sie teilen nur die Zeitachse - jedes Band hat
 /// seine eigene Höhe und seinen eigenen Maßstab, und der steht rechts in seinem Kopf.
 struct Ausblickkarte: View {
+    @Environment(Wegweiser.self) private var wegweiser
+
     let ausblick: Ausblick
     let jetzt: Date
     var warnung: String?
@@ -24,8 +26,11 @@ struct Ausblickkarte: View {
 
     var body: some View {
         if ausblick.tragfaehig {
-            Karte(kicker: "Die nächsten 24 Stunden") {
-                VStack(alignment: .leading, spacing: 12) {
+            // **Rechts in der Kopfzeile der Weg zum Fahrplan** (`Ausblick.tsx:123-126`). Er
+            // fehlte: von der Startseite fuehrte kein Weg dorthin, obwohl die Karte den Plan
+            // zeigt und die Seite es gibt.
+            Karte(kicker: "Die nächsten 24 Stunden", beiwerk: AnyView(fahrplanknopf)) {
+                VStack(alignment: .leading, spacing: 14) {
                     preiszeile
                     baender
                     saetze
@@ -35,20 +40,39 @@ struct Ausblickkarte: View {
         }
     }
 
+    /// Der Weg zum Fahrplan, rechts in der Kopfzeile.
+    private var fahrplanknopf: some View {
+        Button {
+            wegweiser.gehe("/waerme/fahrplan")
+        } label: {
+            Text("Fahrplan ›")
+                .font(Schrift.sans(13))
+                .foregroundStyle(Farbe.amber)
+                .lineLimit(1)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Fahrplan öffnen")
+    }
+
     // MARK: - Der Preis und wo er liegt
 
     @ViewBuilder private var preiszeile: some View {
         if let p = ausblick.preisJetzt {
-            VStack(alignment: .leading, spacing: 7) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+            VStack(alignment: .leading, spacing: 9) {
+                // **Die Zeile darf umbrechen** (`handy.css:86`): „Strom ist gerade weder
+                // guenstig noch teuer" neben einer Zahl von 34 Punkten passt auf 390 Punkten
+                // Breite nicht in eine Zeile, und gequetscht steht er dort seit jeher.
+                Umbruchzeile(abstand: 12, zeilenabstand: 4) {
                     Zahl(
                         wert: Formate.zahl(p, stellen: 1), einheit: "ct/kWh",
-                        schrift: Schrift.zahlGross, einheitSchrift: Schrift.klein,
+                        schrift: Schrift.mono(34, relativeTo: .title),
+                        einheitSchrift: Schrift.sans(13.5),
                         farbe: p < 0 ? Farbe.pv : Farbe.text1
                     )
+                    .tracking(-1.2)
                     if let lage = ausblick.lage {
                         Text(lage.satz)
-                            .font(Schrift.klein)
+                            .font(Schrift.sans(15.5))
                             .foregroundStyle(Farbe.text2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -63,20 +87,36 @@ struct Ausblickkarte: View {
         if let stelle = ausblick.stelle, let lo = ausblick.preisMin, let hi = ausblick.preisMax {
             HStack(spacing: 8) {
                 Text(Formate.zahl(lo, stellen: 0))
-                    .font(Schrift.achse).foregroundStyle(Farbe.text3)
+                    .font(Schrift.mono(12)).foregroundStyle(Farbe.text3)
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Farbe.flaeche3).frame(height: 4)
+                        // **Die Spur verlaeuft von blass nach kraeftig** (`handy.css:91`): sie
+                        // ist selbst schon die Auskunft „links billig, rechts teuer".
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(Farbwert(0x7FA3B3, deckung: 0.22)),
+                                        Color(Farbwert(0x7FA3B3, deckung: 0.85)),
+                                    ],
+                                    startPoint: .leading, endPoint: .trailing
+                                )
+                            )
+                            .frame(height: 6)
+                        // Der Punkt traegt die eigentliche Auskunft und steht deshalb in der
+                        // hellsten Farbe, mit einem Ring in der Kartenflaeche, damit er auf dem
+                        // Verlauf freisteht. Vorher war er blaugrau auf blaugrau.
                         Circle()
-                            .fill(Farbe.preis)
-                            .frame(width: 9, height: 9)
-                            .offset(x: (g.size.width - 9) * stelle)
+                            .fill(Farbe.text1)
+                            .frame(width: 14, height: 14)
+                            .overlay(Circle().strokeBorder(Farbe.flaeche2, lineWidth: 3))
+                            .offset(x: g.size.width * stelle - 7)
                     }
-                    .frame(height: 9)
+                    .frame(height: 14)
                 }
-                .frame(height: 9)
+                .frame(height: 14)
                 Text("\(Formate.zahl(hi, stellen: 0)) ct")
-                    .font(Schrift.achse).foregroundStyle(Farbe.text3)
+                    .font(Schrift.mono(12)).foregroundStyle(Farbe.text3)
             }
             .accessibilityElement()
             .accessibilityLabel(
@@ -88,7 +128,7 @@ struct Ausblickkarte: View {
     // MARK: - Die Bänder
 
     private var baender: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             band(
                 "Strompreis",
                 rechts: ausblick.preisMin.flatMap { lo in
@@ -111,7 +151,7 @@ struct Ausblickkarte: View {
                 band(
                     ausblick.braende.isEmpty ? "Wärmepumpe geplant" : "Wärmepumpe und Ofen geplant",
                     rechts: nil,
-                    hoehe: ausblick.braende.isEmpty ? hoeheBand : hoeheBand * 2 + 2
+                    hoehe: ausblick.braende.isEmpty ? hoeheBand + 2 : hoeheBand * 2 + 2
                 ) { flaeche, zellenbreite in
                     schaltbild(flaeche, zellenbreite)
                 }
@@ -127,10 +167,10 @@ struct Ausblickkarte: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 8) {
-                Text(titel).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                Text(titel).font(Schrift.sans(12.5)).foregroundStyle(Farbe.text2)
                 Spacer(minLength: 4)
                 if let rechts {
-                    Text(rechts).font(Schrift.achse).foregroundStyle(Farbe.text3)
+                    Text(rechts).font(Schrift.mono(11.5)).foregroundStyle(Farbe.text3)
                 }
             }
             Canvas { ctx, groesse in
@@ -145,6 +185,9 @@ struct Ausblickkarte: View {
                 }
             }
             .frame(height: hoehe)
+            // **Der Boden, auf dem die Flaechen stehen** (`handy.css:97`): ohne ihn enden
+            // Stufenkurve und Sonnenflaeche im Nichts.
+            Rectangle().fill(Farbe.linie1).frame(height: 1)
         }
     }
 
@@ -152,7 +195,12 @@ struct Ausblickkarte: View {
         var satz = Pfadsatz()
         if let g = ausblick.guenstig {
             satz.flaechen.append(
-                .init(pfad: Path(fensterRechteck(g.von, g.bis, f, zb)), farbe: Farbe.pv.opacity(0.16)))
+                // Das Fenster ist weiches Bernstein, nicht das Gelb der Sonne (`Ausblick.tsx:151`):
+                // sonst sieht die Marke im Preisband aus wie die im Sonnenband - und derselbe
+                // Punkt vor dem Satz darunter ist schon richtig gesetzt.
+                .init(
+                    pfad: Path(fensterRechteck(g.von, g.bis, f, zb)),
+                    farbe: Farbe.amberWeich.opacity(0.16)))
         }
         guard let lo = ausblick.preisMin, let hi = ausblick.preisMax else { return satz }
         let spanne = max(1, hi - lo)
@@ -222,9 +270,15 @@ struct Ausblickkarte: View {
             ZStack(alignment: .topLeading) {
                 Text("jetzt").font(Schrift.achse).foregroundStyle(Farbe.text2)
                 ForEach(ausblick.achsenmarken) { m in
+                    // **Mittig ueber ihrer Zeit** (`handy.css:99`: `translateX(-50%)`). Mit der
+                    // linken Kante auf der Stelle stand „12 Uhr" rund 19 Punkte zu weit rechts.
+                    // Ein Rahmen der Breite null zentriert den Text ueber dem Punkt, ohne dass
+                    // seine Breite gemessen werden muesste.
                     Text(m.text)
                         .font(Schrift.achse)
                         .foregroundStyle(Farbe.text3)
+                        .fixedSize()
+                        .frame(width: 0)
                         .offset(x: g.size.width * m.anteil)
                 }
             }
@@ -235,16 +289,19 @@ struct Ausblickkarte: View {
     // MARK: - Die Sätze
 
     private var saetze: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 9) {
             ForEach(ausblick.saetze(jetzt: jetzt)) { s in
-                HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Circle()
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    // Ein Quadrat mit weichen Ecken, nicht ein Punkt: es ist die Marke der
+                    // Flaeche im Band darueber, und die ist eckig (`handy.css:103`).
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                         .fill(farbe(s.marke))
-                        .frame(width: 6, height: 6)
+                        .frame(width: 10, height: 10)
                         .offset(y: -1)
                     Text(s.text)
-                        .font(Schrift.klein)
-                        .foregroundStyle(Farbe.text2)
+                        .font(Schrift.sans(14.5))
+                        .foregroundStyle(Farbe.text1)
+                        .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -261,17 +318,19 @@ struct Ausblickkarte: View {
     }
 
     private var fuss: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 14) {
             if let s = ausblick.verschiebesatz {
-                Text(s).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                Text(s).font(Schrift.sans(13)).foregroundStyle(Farbe.text3)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if let s = ausblick.preissatz(jetzt: jetzt) {
-                Text(s).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                Text(s).font(Schrift.sans(13)).foregroundStyle(Farbe.text3)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if let warnung, !warnung.isEmpty {
-                Text(warnung).font(Schrift.winzig).foregroundStyle(Farbe.achtung)
+                // Weiches Bernstein, nicht das harte: eine Warnung des Planers ist ein Hinweis
+                // und kein Alarm (`handy.css:105`).
+                Text(warnung).font(Schrift.sans(13)).foregroundStyle(Farbe.amberWeich)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
