@@ -15,7 +15,14 @@ struct HausSeite: View {
 
     @State private var ansicht: Ansichtswahlart = .liste
     /// Welches Deck das Modell zeigt. Leer heisst: alle uebereinander.
+    ///
+    /// **Am Telefon steht zuerst ein einzelnes Deck**, so wie im Dashboard unter 720 Punkten
+    /// Breite: zwei Grundrisse uebereinander sind auf dieser Flaeche nicht zu lesen.
     @State private var deck: String = ""
+    @State private var deckGewaehlt = false
+
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
     @State private var raeume: RoomsLiveOut?
     @State private var hausplan: HouseOut?
     @State private var fehler: ApiFehler?
@@ -146,6 +153,12 @@ struct HausSeite: View {
                             name: plan.decks.first { $0.key == deck }?.name ?? "Alle")
                     ) { a in
                         deck = a.weg
+                        deckGewaehlt = true
+                    }
+                    .onAppear {
+                        if !deckGewaehlt, schmal, let erstes = plan.decks.first {
+                            deck = erstes.key
+                        }
                     }
                 }
                 Glasmodell(
@@ -162,9 +175,13 @@ struct HausSeite: View {
                     // scharf, 2 unterwegs scharf, 3 schaltet, 4 ausgeloest. Das Dashboard
                     // liest es in `house/live.ts` genauso - alles ab 1 ist scharf.
                     alarmScharf: (haus.zustand?.alarm?.state ?? 0) >= 1,
-                    sichtbaresDeck: deck.isEmpty ? nil : deck
+                    sichtbaresDeck: deck.isEmpty ? nil : deck,
+                    waermepumpeKw: haus.augenblick?.heatPumpPowerKw.belastbar,
+                    wallboxKw: haus.augenblick?.evPowerKw.belastbar,
+                    pufferSoc: haus.zustand?.buffer.soc
                 )
-                .frame(height: 420)
+                .frame(height: 460)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             } else if let fehlertext = hausplan?.errorDe, !fehlertext.isEmpty {
                 Leer(satz: "Der Hausplan ist nicht lesbar.", dazu: fehlertext)
             } else if hausplan?.present == false {
