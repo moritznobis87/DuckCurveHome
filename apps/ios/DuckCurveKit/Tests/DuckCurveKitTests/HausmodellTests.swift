@@ -235,3 +235,103 @@ final class HausmodellTests: XCTestCase {
             Hausmodell.ton(nil).hex, "#0F3243", "Ohne Angabe der dunkle Ton, wie in der Vorlage.")
     }
 }
+
+/// Der Fussboden: die Heizschlange und die Fliesen.
+final class FussbodenTests: XCTestCase {
+    // MARK: - Die Heizschlange
+
+    /// **Eine Schlange, kein Kamm.** Das Rohr hat einen Anfang und ein Ende; zwischen zwei
+    /// Bahnen reisst es nicht ab.
+    func testDerWegHaengtZusammen() {
+        let weg = Hausmodell.heizschlange(x0: 0, z0: 0, x1: 4, z1: 3)
+        XCTAssertGreaterThanOrEqual(weg.count, 4)
+        // Je zwei Punkte eine Bahn; zwischen zwei Bahnen wechselt nur die Tiefe.
+        for i in stride(from: 1, to: weg.count - 1, by: 2) {
+            XCTAssertEqual(weg[i].x, weg[i + 1].x, accuracy: 0.001, "der Bogen laeuft senkrecht")
+        }
+    }
+
+    /// Hin und zurück: jede zweite Bahn läuft andersherum.
+    func testJedeZweiteBahnLaeuftZurueck() {
+        let weg = Hausmodell.heizschlange(x0: 0, z0: 0, x1: 4, z1: 3)
+        XCTAssertLessThan(weg[0].x, weg[1].x, "die erste Bahn nach rechts")
+        XCTAssertGreaterThan(weg[2].x, weg[3].x, "die zweite zurueck")
+    }
+
+    /// Der Rand bleibt frei, und zwar auf allen vier Seiten.
+    func testDerRandBleibtFrei() {
+        let weg = Hausmodell.heizschlange(x0: 1, z0: 2, x1: 5, z1: 6)
+        for p in weg {
+            XCTAssertGreaterThanOrEqual(p.x, 1.29)
+            XCTAssertLessThanOrEqual(p.x, 4.71)
+            XCTAssertGreaterThanOrEqual(p.z, 2.29)
+            XCTAssertLessThanOrEqual(p.z, 5.71)
+        }
+    }
+
+    /// Ein Raum, in den keine Schlange passt, bekommt keine - statt einer entarteten.
+    func testEinZuKleinerRaumBekommtKeine() {
+        XCTAssertTrue(Hausmodell.heizschlange(x0: 0, z0: 0, x1: 0.5, z1: 3).isEmpty)
+        XCTAssertTrue(Hausmodell.heizschlange(x0: 0, z0: 0, x1: 3, z1: 0.5).isEmpty)
+    }
+
+    /// Ein tieferer Raum bekommt mehr Bahnen, rund eine je halben Meter.
+    func testMehrTiefeMehrBahnen() {
+        let flach = Hausmodell.heizschlange(x0: 0, z0: 0, x1: 4, z1: 2).count
+        let tief = Hausmodell.heizschlange(x0: 0, z0: 0, x1: 4, z1: 6).count
+        XCTAssertGreaterThan(tief, flach)
+        XCTAssertGreaterThanOrEqual(flach, 4, "mindestens zwei Bahnen")
+    }
+
+    // MARK: - Die Glut
+
+    /// **Ein geschlossenes Ventil leuchtet nicht.** Das ist die ganze Auskunft des Bildes:
+    /// wo gerade geheizt wird.
+    func testZuIstDunkel() {
+        XCTAssertEqual(Hausmodell.heizglut(ventil: 0, takt: 0, versatz: 0), 0)
+        XCTAssertEqual(Hausmodell.heizglut(ventil: nil, takt: 0, versatz: 0), 0)
+    }
+
+    func testMehrVentilMehrGlut() {
+        let wenig = Hausmodell.heizglut(ventil: 0.25, takt: 0, versatz: 0)
+        let viel = Hausmodell.heizglut(ventil: 1, takt: 0, versatz: 0)
+        XCTAssertGreaterThan(viel, wenig)
+        XCTAssertGreaterThan(wenig, 0)
+        XCTAssertLessThanOrEqual(viel, 1)
+    }
+
+    /// Es atmet, und nicht das ganze Haus im Gleichtakt.
+    func testEsAtmetUndVersetzt() {
+        let a = Hausmodell.heizglut(ventil: 1, takt: 0, versatz: 0)
+        let b = Hausmodell.heizglut(ventil: 1, takt: 1.1, versatz: 0)
+        XCTAssertNotEqual(a, b, accuracy: 0.0001)
+        XCTAssertNotEqual(
+            Hausmodell.heizglut(ventil: 1, takt: 0.5, versatz: 0),
+            Hausmodell.heizglut(ventil: 1, takt: 0.5, versatz: 2.3), accuracy: 0.0001)
+    }
+
+    // MARK: - Die Fliesen
+
+    /// Ein Schachbrett: zwei Töne, abwechselnd, und beide kommen vor.
+    func testZweiToeneAbwechselnd() {
+        let f = Hausmodell.fliesen(x0: 0, z0: 0, x1: 4, z1: 4)
+        XCTAssertFalse(f.isEmpty)
+        XCTAssertTrue(f.contains { $0.hell })
+        XCTAssertTrue(f.contains { !$0.hell })
+    }
+
+    /// Keine Fliese liegt ausserhalb ihres Raums - sonst stehen sie auf der Wand.
+    func testKeineFlieseLiegtDraussen() {
+        let f = Hausmodell.fliesen(x0: 1, z0: 2, x1: 5, z1: 7)
+        for k in f {
+            XCTAssertGreaterThanOrEqual(k.x, 1.05)
+            XCTAssertLessThanOrEqual(k.x, 4.95)
+            XCTAssertGreaterThanOrEqual(k.z, 2.05)
+            XCTAssertLessThanOrEqual(k.z, 6.95)
+        }
+    }
+
+    func testEinWinzigerRaumBekommtKeine() {
+        XCTAssertTrue(Hausmodell.fliesen(x0: 0, z0: 0, x1: 0.1, z1: 0.1).isEmpty)
+    }
+}

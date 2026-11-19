@@ -96,6 +96,91 @@ public enum Hausmodell {
     ///
     /// Die Höhenangabe jedes Teils ist seine **Unterkante** über dem Gelände; die Bodenplatte
     /// ist darin schon enthalten, wo die Vorlage sie einrechnet.
+    // MARK: - Der Fussboden
+
+    /// Die Heizschlange eines Raums: der Weg des Rohrs, in Raumkoordinaten.
+    ///
+    /// **Sie ist die Antwort auf „wo wird gerade geheizt".** Ein Grundriss, in dem alle Räume
+    /// gleich aussehen, sagt das nicht; das Dashboard legt deshalb in jeden Raum die Schlange
+    /// seines Heizkreises und lässt sie leuchten, solange sein Ventil offen ist
+    /// (`house/HouseScene.ts`, `schleifenTextur` und `heizMat.opacity`).
+    ///
+    /// **Die Masse sind die der Vorlage**: 0,3 m Rand zum Raum, die Bahnen rund einen halben
+    /// Meter auseinander, mindestens zwei. Es ist keine Zeichnung der wirklichen Verlegung -
+    /// die kennt niemand -, sondern das Bild, das jeder von einer Fussbodenheizung hat.
+    public static func heizschlange(
+        x0: Double, z0: Double, x1: Double, z1: Double
+    ) -> [(x: Double, z: Double)] {
+        let breite = x1 - x0
+        let tiefe = z1 - z0
+        let rand = 0.3
+        guard breite > 2 * rand + 0.2, tiefe > 2 * rand + 0.2 else { return [] }
+        let bahnen = max(2, Int(((tiefe - 0.6) / 0.5).rounded()) + 1)
+        let dz = (tiefe - 2 * rand) / Double(bahnen - 1)
+        let links = x0 + rand
+        let rechts = x1 - rand
+        var weg: [(x: Double, z: Double)] = []
+        for i in 0..<bahnen {
+            let z = z0 + rand + Double(i) * dz
+            // Hin und zurück: eine Schlange, kein Kamm - das Rohr hat einen Anfang und ein
+            // Ende, und dazwischen reisst es nicht ab.
+            if i % 2 == 0 {
+                weg.append((links, z))
+                weg.append((rechts, z))
+            } else {
+                weg.append((rechts, z))
+                weg.append((links, z))
+            }
+        }
+        return weg
+    }
+
+    /// Wie hell die Schlange leuchtet - 0, wenn das Ventil zu ist.
+    ///
+    /// Die Vorlage rechnet `(0,22 + 0,5 · Ventil)` und lässt es langsam atmen, je Raum um
+    /// seine eigene Lage versetzt, damit nicht das ganze Haus im Gleichtakt pulst
+    /// (`HouseScene.ts:1336`).
+    public static func heizglut(ventil: Double?, takt: Double, versatz: Double) -> Double {
+        guard let v = ventil, v > 0 else { return 0 }
+        return (0.22 + 0.5 * min(1, v)) * (0.8 + 0.2 * sin(takt * 1.4 + versatz))
+    }
+
+    /// Die Fliesen eines Bodens: die Mittelpunkte der Felder und ihre Helligkeit.
+    ///
+    /// **Ein Schachbrett, um 45 Grad gedreht, 36 Zentimeter je Feld** (`HouseScene.ts`,
+    /// `fliesenTextur` mit `repeat.set(b / 0.36, …)` und `rotation = π/4`). Zwei Töne, beide
+    /// fast durchsichtig: der Boden soll eine Oberfläche bekommen, keine Musterung.
+    public static let fliesenkante = 0.36
+
+    public static func fliesen(
+        x0: Double, z0: Double, x1: Double, z1: Double
+    ) -> [(x: Double, z: Double, hell: Bool)] {
+        let kante = fliesenkante
+        let rand = 0.06
+        let a = (x: x0 + rand, z: z0 + rand)
+        let b = (x: x1 - rand, z: z1 - rand)
+        guard b.x > a.x, b.z > a.z else { return [] }
+        // Die Diagonale des Raums: so weit muss das gedrehte Raster reichen.
+        let mx = (a.x + b.x) / 2
+        let mz = (a.z + b.z) / 2
+        let weite = ((b.x - a.x) * (b.x - a.x) + (b.z - a.z) * (b.z - a.z)).squareRoot()
+        let zahl = Int((weite / kante).rounded(.up)) + 1
+        let wurzel = (0.5).squareRoot()
+        var aus: [(x: Double, z: Double, hell: Bool)] = []
+        for i in -zahl...zahl {
+            for j in -zahl...zahl {
+                // Um 45 Grad gedreht: die Achsen des Rasters laufen diagonal.
+                let u = Double(i) * kante
+                let v = Double(j) * kante
+                let x = mx + (u - v) * wurzel
+                let z = mz + (u + v) * wurzel
+                guard x >= a.x, x <= b.x, z >= a.z, z <= b.z else { continue }
+                aus.append((x, z, (i + j) % 2 == 0))
+            }
+        }
+        return aus
+    }
+
     public static func teile(_ it: Item) -> [Teil] {
         let x = it.x ?? 0
         let z = it.z ?? 0

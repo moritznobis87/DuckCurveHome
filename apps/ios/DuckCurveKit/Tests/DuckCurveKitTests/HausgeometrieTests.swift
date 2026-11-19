@@ -384,4 +384,28 @@ final class HausgeometrieTests: XCTestCase {
             Hausgeometrie.prisma(
                 grundriss: [(0, 0), (1, 1)], y: 0, hoehe: 1, drehung: 0).isEmpty)
     }
+
+    // MARK: - Treffer
+
+    func testDrinnenUndDraussen() {
+        let quadrat = [(x: 0.0, y: 0.0), (x: 4.0, y: 0.0), (x: 4.0, y: 4.0), (x: 0.0, y: 4.0)]
+        XCTAssertTrue(Hausgeometrie.imVieleck((x: 2, y: 2), quadrat))
+        XCTAssertFalse(Hausgeometrie.imVieleck((x: 5, y: 2), quadrat))
+        XCTAssertFalse(Hausgeometrie.imVieleck((x: 2, y: -1), quadrat))
+    }
+
+    /// **Ein schiefes Viereck, und genau darum geht es.** Auf dem Schirm ist ein Raum kein
+    /// Rechteck mehr: jede Ecke geht einzeln durch die Projektion. Ein Rechteckvergleich träfe
+    /// daneben, sobald das Haus gedreht ist - und gedreht ist es immer.
+    func testEinSchiefesViereck() {
+        let schief = [(x: 0.0, y: 0.0), (x: 6.0, y: 2.0), (x: 5.0, y: 6.0), (x: -1.0, y: 4.0)]
+        XCTAssertTrue(Hausgeometrie.imVieleck((x: 2.5, y: 3), schief))
+        // Rechts aussen, aber innerhalb des umschliessenden Rechtecks.
+        XCTAssertFalse(Hausgeometrie.imVieleck((x: 5.8, y: 5.5), schief))
+    }
+
+    func testZuWenigEckenTrifftNie() {
+        XCTAssertFalse(Hausgeometrie.imVieleck((x: 0, y: 0), []))
+        XCTAssertFalse(Hausgeometrie.imVieleck((x: 0, y: 0), [(x: 0.0, y: 0.0), (x: 1.0, y: 1.0)]))
+    }
 }

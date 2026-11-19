@@ -269,7 +269,10 @@ struct HausSeite: View {
                     sichtbaresDeck: deck.isEmpty ? nil : deck,
                     waermepumpeKw: haus.augenblick?.heatPumpPowerKw.belastbar,
                     wallboxKw: haus.augenblick?.evPowerKw.belastbar,
-                    pufferSoc: haus.zustand?.buffer.soc
+                    pufferSoc: haus.zustand?.buffer.soc,
+                    // Derselbe Weg wie aus der Liste: ein Tipp auf einen Raum öffnet sein
+                    // Blatt, und dort steht der Regler.
+                    tippeRaum: { id in wegweiser.blatt = .raum(id) }
                 )
                 .frame(height: 460)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
