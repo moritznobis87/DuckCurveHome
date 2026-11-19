@@ -266,21 +266,30 @@ struct Tabelle: View {
 /// eine Behauptung.
 struct Methode: View {
     let saetze: [String]
+    /// Die Zeile, die **immer** dasteht - auch zugeklappt.
+    ///
+    /// **Sie ist der Grund, warum der Deckel zugehen darf.** Zugeklappt verschwindet alles
+    /// darunter, und was eine Zahl an diesem Tag einschränkt, darf nicht verschwinden: eine
+    /// Seite mit 61 Prozent Datenabdeckung sieht aus wie eine mit hundert. Die Vorlage trennt
+    /// das darum ausdrücklich (`components/ui/Methode.tsx`: `kurz` steht im `summary`,
+    /// `CoverageNote` setzt die Abdeckung dorthin).
+    let kurz: String?
     var titel: String = "Wie das gerechnet ist"
 
-    init(_ saetze: [String?], titel: String = "Wie das gerechnet ist") {
+    @State private var offen = false
+    @Environment(\.horizontalSizeClass) private var breite
+
+    init(_ saetze: [String?], kurz: String? = nil, titel: String = "Wie das gerechnet ist") {
         self.saetze = saetze.compactMap { $0 }.filter { !$0.isEmpty }
+        self.kurz = (kurz?.isEmpty ?? true) ? nil : kurz
         self.titel = titel
     }
 
-    @State private var offen = false
-
-    /// **Zugeklappt, bis jemand fragt.** Sechs Berichtsseiten endeten mit 150 bis 210 Woertern
-    /// Methode, immer aufgeklappt - und was immer dasteht, liest niemand. Die Kurzzeile oben
-    /// sagt, ob die Zahlen tragen; der Rest steht darunter, wenn man ihn will
+    /// **Zugeklappt, bis jemand fragt.** Sechs Berichtsseiten endeten mit 150 bis 210 Wörtern
+    /// Methode, immer aufgeklappt - und was immer dasteht, liest niemand
     /// (`components/ui/Methode.tsx`).
     var body: some View {
-        if !saetze.isEmpty {
+        if !saetze.isEmpty || kurz != nil {
             Karte {
                 DisclosureGroup(isExpanded: $offen) {
                     VStack(alignment: .leading, spacing: 6) {
@@ -294,7 +303,25 @@ struct Methode: View {
                     }
                     .padding(.top, 8)
                 } label: {
-                    Kicker(wort: titel)
+                    VStack(alignment: .leading, spacing: 3) {
+                        // **Keine Sperrschrift am Telefon.** `Karte` schaltet ihre Kopfzeile
+                        // dort auf lesbare Schrift um („Ueberschriften sind lesbare Schrift,
+                        // keine Sperrschrift"); diese hier ist zugleich der einzige Griff, mit
+                        // dem die Karte aufgeht, und der soll nicht die kleinste Schrift der
+                        // Seite sein.
+                        if breite == .compact {
+                            Text(titel).font(Schrift.karte).foregroundStyle(Farbe.text1)
+                        } else {
+                            Kicker(wort: titel)
+                        }
+                        if let kurz {
+                            Text(kurz)
+                                .font(Schrift.winzig)
+                                .foregroundStyle(Farbe.text3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .tint(Farbe.text3)
             }

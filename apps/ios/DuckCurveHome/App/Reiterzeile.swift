@@ -27,23 +27,42 @@ struct Reiterzeile: View {
         bereich.reiter.filter { darfAlles || !$0.nurHausherr }
     }
 
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
+
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(sichtbar) { r in
-                    knopf(r, gewaehlt: r.weg == aktiv?.weg)
+        ScrollViewReader { leser in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(sichtbar) { r in
+                        knopf(r, gewaehlt: r.weg == aktiv?.weg)
+                            .id(r.weg)
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 2)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 2)
+            // **Zum gewaehlten Reiter rollen.** Technik hat fuer den Hausherrn elf Reiter, und
+            // die Zeile faengt immer links an: wer aus einer Mitteilung direkt auf den neunten
+            // springt, sieht eine Zeile ohne eine einzige markierte Pille und glaubt, er sei
+            // woanders.
+            .onAppear { zeige(leser, sofort: true) }
+            .onChange(of: aktiv?.weg) { _, _ in zeige(leser, sofort: false) }
         }
         // Ohne das wächst die Zeile am Telefon in die Höhe des Rollbereichs.
         .frame(height: 44)
         // **Keine Trennlinie darunter** (`handy.css:163`: `border-bottom: 0`). Pillen brauchen
         // keinen Strich, der sie von der Seite trennt - sie liegen ohnehin auf ihr.
-        .mask(
-            // Am Rand ausblenden, damit eine angeschnittene Pille nicht wie ein Fehler aussieht,
-            // sondern wie „da geht es weiter" (`handy.css:168-169`).
+        .mask(rand)
+    }
+
+    /// Am Rand ausblenden, damit eine angeschnittene Pille nicht wie ein Fehler aussieht,
+    /// sondern wie „da geht es weiter" (`handy.css:168-169`).
+    ///
+    /// **Nur am Telefon.** Am iPad passen die Reiter in eine Zeile; dort frisst die Maske in
+    /// Pillen, die gar nicht angeschnitten sind.
+    @ViewBuilder private var rand: some View {
+        if schmal {
             LinearGradient(
                 stops: [
                     .init(color: .clear, location: 0),
@@ -53,7 +72,20 @@ struct Reiterzeile: View {
                 ],
                 startPoint: .leading, endPoint: .trailing
             )
-        )
+        } else {
+            Rectangle()
+        }
+    }
+
+    private func zeige(_ leser: ScrollViewProxy, sofort: Bool) {
+        guard let weg = aktiv?.weg else { return }
+        if sofort {
+            leser.scrollTo(weg, anchor: .center)
+        } else {
+            withAnimation(.easeInOut(duration: Marken.dauer)) {
+                leser.scrollTo(weg, anchor: .center)
+            }
+        }
     }
 
     private func knopf(_ r: Reiter, gewaehlt: Bool) -> some View {

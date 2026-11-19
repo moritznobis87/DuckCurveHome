@@ -51,14 +51,29 @@ final class Wegweiser {
 
     // MARK: - Zeitraum
 
+    /// Der Zeitraum des Bereichs, beschnitten auf das, was die Seite anbietet.
+    ///
+    /// **Zwei Dinge, die hier zusammengehoeren.**
+    ///
+    /// Erstens **schreibt dieser Zugriff nichts.** Er wird aus vier Bodys gelesen - der Seite,
+    /// dem Datumskasten, der Spannenwahl und der Heizkreisseite -, und ein Getter, der dabei
+    /// beobachteten Zustand anlegt, ist „Modifying state during view update": alle lesenden
+    /// Ansichten werden im selben Durchlauf wieder ungueltig. Die Vorgabe ist deshalb eine
+    /// Rechnung und kein Eintrag; eingetragen wird erst, wenn jemand stellt.
+    ///
+    /// Zweitens **gilt sie nur, soweit die Seite sie anbietet.** Der Zeitraum haengt am
+    /// Bereich, die Spannen haengen am Reiter: wer unter Technik „Daten pruefen" auf Monat
+    /// stellt und dann auf „Heizkreise" wechselt, haette sonst „Nov. 2026" im Kopf, keinen
+    /// Schalter (also keinen Weg zurueck) und eine Seite, die trotzdem nur einen Tag laedt.
+    /// Kennt die Seite die Spanne nicht, faellt sie auf die erste, die die Seite kennt.
     func zeitraum(jetzt: Date) -> Zeitraum {
-        if let z = zeitraeume[bereich.schluessel] { return z }
-        // Die Vorgabe haengt am Bereich: Energie und Geld fangen beim Tag an, die Jahreskarte
-        // beim Jahr.
+        // Die Vorgabe haengt am Bereich: Energie fangen beim Tag an, Geld beim Monat.
         let vorgabe: Spanne = bereich.schluessel == .geld ? .monat : .tag
-        let neu = Zeitraum.heute(vorgabe, jetzt: jetzt)
-        zeitraeume[bereich.schluessel] = neu
-        return neu
+        let z = zeitraeume[bereich.schluessel] ?? Zeitraum.heute(vorgabe, jetzt: jetzt)
+        guard let moeglich = Bereiche.spannen(fuer: weg), !moeglich.contains(z.spanne) else {
+            return z
+        }
+        return z.mit(moeglich.first ?? .tag)
     }
 
     func setzeZeitraum(_ z: Zeitraum) {

@@ -161,7 +161,13 @@ struct Energiefluss: View {
                         ohneZahl: ohneZahl(k),
                         ohneNamen: fassung == .hand && k == .haus,
                         seite: k.textseite(fassung),
-                        messwert: messwert(k),
+                        // **Die Guete gehoert zu der Zahl, die dasteht** (`FlowHandy.tsx:243`:
+                        // `m={s?.battery_soc}`). In der Hand zeigt der Speicher seinen
+                        // Ladestand; haengt sein „kein Messwert" an der Leistung, sagt er
+                        // „- %" neben „laedt 1,2 kW" - oder verschweigt den Ladestand, waehrend
+                        // der Kreis sichtbar bis dorthin gefuellt ist.
+                        messwert: fassung == .hand && k == .batterie
+                            ? augenblick?.batterySoc : messwert(k),
                         jetzt: jetzt,
                         gross: k == .haus,
                         fuellung: k == .batterie ? ladestand : nil,
@@ -177,7 +183,7 @@ struct Energiefluss: View {
                 // **Unter dem Haus ist kein Platz.** In der Hand laufen dort drei Leitungen zu
                 // Speicher, Waermepumpe und Wallbox; die Grundlast steht deshalb rechts neben
                 // dem Kreis, auf seiner Hoehe (`handy.css:52`).
-                if fassung == .hand, let g = grundlast {
+                if fassung == .hand, let g = grundlast ?? fehlendeEingaenge {
                     Text(g)
                         .font(Schrift.winzig)
                         .foregroundStyle(Farbe.text3)
@@ -288,9 +294,14 @@ struct Energiefluss: View {
     }
 
     private func wert(_ k: Flussknoten) -> Double? {
+        // **Der rohe Wert, nicht der belastbare** (`FlowHandy.tsx:201`: `kw(m.value)`, und
+        // `frisch` nur fuer die Farbe). Ein Messwert mit Guete `stale` traegt eine Zahl - der
+        // Dienst schickt sie mit -, und die zeigt die Vorlage, nur grau und mit dem Alter
+        // daneben. Hier stand `belastbar`, und damit wurde aus „1,8 kW, vor 7 min" ein Strich:
+        // genau die Form, die `fehlt` abschaffen sollte, nur an einer anderen Stelle.
+        guard let m = messwert(k)?.value else { return nil }
         // Netz und Speicher zeigen den Betrag: die Richtung steht in der Leitung und im Wort
         // darunter, und ein Minuszeichen daneben hiesse dasselbe zweimal.
-        guard let m = messwert(k)?.belastbar else { return nil }
         return (k == .netz || k == .batterie) ? abs(m) : m
     }
 
@@ -376,6 +387,17 @@ struct Energiefluss: View {
             guard let v = s.evPowerKw.belastbar else { return nil }
             return v >= 0.05 ? "lädt" : "steht"
         }
+    }
+
+    /// **Welcher der drei Eingaenge fehlt** (`FlowHandy.tsx:161-170`): der Hausverbrauch wird
+    /// aus Sonne, Netz und Speicher gebildet; fehlt einer, gibt es ihn nicht - und dann steht
+    /// neben dem Kreis, wo zu suchen ist.
+    private var fehlendeEingaenge: String? {
+        guard let s = augenblick, s.housePowerKw.value == nil else { return nil }
+        let fehlend = [
+            ("Sonne", s.pvPowerKw), ("Netz", s.gridPowerKw), ("Speicher", s.batteryPowerKw),
+        ].filter { $0.1.belastbar == nil }.map(\.0)
+        return fehlend.isEmpty ? nil : "es fehlt: " + fehlend.joined(separator: ", ")
     }
 
     /// Die Grundlast neben dem Hauskreis.
@@ -608,15 +630,26 @@ struct Knoten: View {
     }
 
     /// Im grossen Kreis steht die Zahl selbst, nicht das Zeichen: er ist der Knoten der Summe.
-    private var grosserInhalt: some View {
-        VStack(spacing: 1) {
-            Text(wertText)
-                .font(Schrift.custom(32))
-                .foregroundStyle(belastbar ? Farbe.text1 : Farbe.text3)
-                .monospacedDigit()
-            Text("kW")
+    @ViewBuilder private var grosserInhalt: some View {
+        if fehlt {
+            // **Ein Strich mit Einheit sieht aus wie ein Wert, den es nicht gibt**
+            // (`FlowHandy.tsx:220-221`). Der Hauskreis traegt in der Hand keinen Text neben
+            // sich; sagt er es nicht selbst, sagt es niemand.
+            Text("Verbrauch nicht bekannt")
                 .font(Schrift.winzig)
                 .foregroundStyle(Farbe.text3)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: kante - 24)
+        } else {
+            VStack(spacing: 1) {
+                Text(wertText)
+                    .font(Schrift.custom(32))
+                    .foregroundStyle(belastbar ? Farbe.text1 : Farbe.text3)
+                    .monospacedDigit()
+                Text(einheit)
+                    .font(Schrift.winzig)
+                    .foregroundStyle(Farbe.text3)
+            }
         }
     }
 

@@ -92,26 +92,28 @@ struct HandRahmen: View {
 
             Spacer(minLength: 8)
 
-            // Auf einer Seite mit Zeitraum steht rechts der Datumskasten; auf der Startseite
-            // die Temperatur draussen und der Punkt der Verbindung.
+            // Auf einer Seite mit Zeitraum steht rechts der Datumskasten, sonst die
+            // Temperatur draussen. **Der Punkt steht immer da**: er ist am Telefon die einzige
+            // Stelle, an der eine unterbrochene Verbindung sichtbar wird - die Wandanzeige
+            // blasst dafuer die ganze Seite ab, die Hand tut das nicht. Ihn auf jeder Seite
+            // mit Zeitraum wegzulassen hiesse, auf zehn von dreissig Seiten alte Zahlen als
+            // aktuelle zu zeigen.
             if Bereiche.spannen(fuer: wegweiser.weg) != nil {
                 Datumskasten()
-            } else {
+            } else if let grad = aussen, !haus.gestoert {
                 // **Bei Stoerung faellt die Temperatur weg** (`handy.css:251-254`): sie schob
                 // sich am 13.11.2026 ueber den Namen, und sie waere ohnehin von vorhin.
-                if let grad = aussen, !haus.gestoert {
-                    HStack(spacing: 5) {
-                        Text(Formate.celsius(grad, stellen: 1))
-                            .font(Schrift.zahlKlein)
-                            .foregroundStyle(Farbe.text2)
-                        Text(haus.zustand?.system.outdoorSourceDe ?? "draußen")
-                            .font(Schrift.winzig)
-                            .foregroundStyle(Farbe.text3)
-                    }
-                    .accessibilityElement(children: .combine)
+                HStack(spacing: 5) {
+                    Text(Formate.celsius(grad, stellen: 1))
+                        .font(Schrift.zahlKlein)
+                        .foregroundStyle(Farbe.text2)
+                    Text(haus.zustand?.system.outdoorSourceDe ?? "draußen")
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
                 }
-                Verbindungspunkt()
+                .accessibilityElement(children: .combine)
             }
+            Verbindungspunkt()
         }
         .padding(.horizontal, 16)
         .padding(.top, 2)

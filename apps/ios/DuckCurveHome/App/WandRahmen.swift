@@ -184,8 +184,10 @@ struct Verbindungspunkt: View {
                 .opacity(haus.gestoert ? 1 : 0.85)
             // **Am Telefon nur der Punkt, solange es laeuft** (`handy.css:227-228`): „live"
             // steht neunundneunzig Prozent der Zeit da und sagt damit nichts. Ausgeschrieben
-            // wird einzig die Stoerung - die will man lesen.
-            if !schmal || haus.gestoert {
+            // wird, was nicht selbstverstaendlich ist: die Stoerung - und der Vorfuehrbetrieb.
+            // **„demo 60×" ist keine Stoerung** (`verbindung` ist dort `.live`), aber jede Zahl
+            // der App ist dann erfunden, und das Wort ist die einzige Stelle, die es sagt.
+            if !schmal || haus.gestoert || vorfuehrung {
                 Text(wort)
                     .font(Schrift.winzig)
                     .foregroundStyle(haus.gestoert ? Farbe.alarm : Farbe.text3)
@@ -193,6 +195,10 @@ struct Verbindungspunkt: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(haus.zustand?.system.connectionLabelDe ?? wort)
+    }
+
+    private var vorfuehrung: Bool {
+        haus.zustand?.system.mode == "demo"
     }
 
     private var wort: String {

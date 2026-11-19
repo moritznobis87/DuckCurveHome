@@ -29,12 +29,18 @@ struct StromSeite: View {
             Karte(kicker: "Woher kam der Strom?") {
                 Balkenbild(stuecke: herkunft(bericht))
             }
-            Methode([
-                "Haushalt (Rest) = Hausverbrauch ohne Wärmepumpe und Wallbox. Verbraucher erhalten die Quellen anteilig an ihrer Leistung je Minute.",
-                abdeckung(bericht),
-                bericht.meta.estimatedNoteDe,
-                bericht.meta.dataSince.map { "Aufzeichnung seit \(Tag.lang(String($0.prefix(10))))." },
-            ])
+            Methode(
+                [
+                    "Haushalt (Rest) = Hausverbrauch ohne Wärmepumpe und Wallbox. Verbraucher erhalten die Quellen anteilig an ihrer Leistung je Minute.",
+                    bericht.meta.estimatedNoteDe,
+                ],
+                // Die Abdeckung steht in der Kurzzeile und nicht im Rumpf: sie schränkt jede
+                // Zahl dieser Seite ein, und zugeklappt wäre sie verschwiegen.
+                kurz: [
+                    abdeckung(bericht),
+                    bericht.meta.dataSince.map { "Aufzeichnung seit \(Tag.lang(String($0.prefix(10))))" },
+                ].compactMap { $0 }.joined(separator: " · ")
+            )
         }
     }
 
@@ -45,31 +51,31 @@ struct StromSeite: View {
     /// Modell.
     private func abdeckung(_ b: EnergySummaryOut) -> String? {
         guard let anteil = b.meta.coverage else { return nil }
-        if anteil <= 0 { return "Noch keine Messdaten im Zeitraum." }
-        return "Datenabdeckung \(Formate.prozent(anteil))."
+        if anteil <= 0 { return "Noch keine Messdaten im Zeitraum" }
+        return "Datenabdeckung \(Formate.prozent(anteil))"
     }
 
     /// Die sechs Kennzahlen der Vorlage, in ihrer Reihenfolge.
     private func kennzahlen(_ b: EnergySummaryOut) -> [Kacheldaten] {
         let t = b.totals
-        let haus = t.houseKwh ?? 0
+        let gesamt = t.houseKwh ?? 0
         return [
             Kacheldaten(
-                "Verbrauch gesamt", Formate.zahl(haus, stellen: 1), einheit: "kWh",
+                "Verbrauch gesamt", Formate.zahl(gesamt, stellen: 1), einheit: "kWh",
                 dazu: (t.minutes ?? 0) > 0
                     ? "\(Int((Double(t.minutes ?? 0) / 60).rounded())) h bewertet" : "keine Daten"
             ),
             Kacheldaten(
                 "Wärmepumpe", Formate.zahl(t.heatPumpKwh ?? 0, stellen: 1), einheit: "kWh",
-                dazu: anteil(t.heatPumpKwh, haus)
+                dazu: anteil(t.heatPumpKwh, gesamt)
             ),
             Kacheldaten(
                 "Wallbox", Formate.zahl(t.evKwh ?? 0, stellen: 1), einheit: "kWh",
-                dazu: anteil(t.evKwh, haus), farbe: Farbe.mist
+                dazu: anteil(t.evKwh, gesamt), farbe: Farbe.mist
             ),
             Kacheldaten(
                 "Haushalt (Rest)", Formate.zahl(t.baseKwh ?? 0, stellen: 1), einheit: "kWh",
-                dazu: anteil(t.baseKwh, haus), farbe: Farbe.text3
+                dazu: anteil(t.baseKwh, gesamt), farbe: Farbe.text3
             ),
             Kacheldaten(
                 "Autarkie", Formate.prozent(t.autarky),

@@ -47,8 +47,17 @@ public enum Schrift {
 
     /// Die Sperrschrift ueber einer Karte: „HEUTE", „PUFFER".
     ///
-    /// Am Handy nicht verwenden - `handy.css` hat sie dort absichtlich abgeschafft
-    /// („Ueberschriften sind lesbare Schrift, keine Sperrschrift").
+    /// **Ueber einer Karte am Handy nicht verwenden** - `handy.css` hat sie dort absichtlich
+    /// abgeschafft („Ueberschriften sind lesbare Schrift, keine Sperrschrift"), und ``Karte``
+    /// schaltet ihre Kopfzeile darum selbst auf 15 Punkte um.
+    ///
+    /// **Auf einer Kennzahlkachel gilt das nicht**, und das ist keine Nachlaessigkeit: die
+    /// Vorlage stellt am Handy ausdruecklich nur die Kartenkoepfe um und laesst den Kicker in
+    /// der Kachel gesperrt (`handy.css:184` gegen `handy.css:201`
+    /// `.kpi-grid > .card > .kicker`). Der Grund ist der Unterschied der beiden: eine
+    /// Ueberschrift fuehrt einen Abschnitt und wird gelesen, ein Kachelwort beschriftet eine
+    /// Zahl und wird gestreift - und gestreift wird es leichter, wenn es sich von der Zahl
+    /// darunter auch in der Form unterscheidet.
     public static let kicker = Font.custom(sansHalbfett, size: 10.5, relativeTo: .caption2)
 
     /// Der Satz der Startseite: die Erklaerung des Reglers, gross und ruhig.

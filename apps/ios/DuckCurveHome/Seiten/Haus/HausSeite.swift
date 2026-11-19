@@ -96,23 +96,45 @@ struct HausSeite: View {
         )
     }
 
+    /// **Am Telefon zwei Zeilen, an der Wand eine.**
+    ///
+    /// Der Umschalter nimmt am Telefon die ganze Breite (`handy.css:177`), und neben einem
+    /// `Spacer` teilen sich beide den Platz: der Schalter stuende dann mitten in der Zeile und
+    /// „Stand 14:32" irgendwo rechts daneben. Also steht der Stand darueber und der Schalter
+    /// allein auf seiner Zeile.
     private var kopf: some View {
-        HStack {
-            Ansichtswahl(
-                ansichten: [
-                    Ansicht(weg: "liste", name: "Liste"),
-                    Ansicht(weg: "modell", name: "Modell"),
-                ],
-                aktiv: Ansicht(weg: ansicht.rawValue, name: "")
-            ) { a in
-                ansicht = Ansichtswahlart(rawValue: a.weg) ?? .liste
+        VStack(alignment: .leading, spacing: 8) {
+            if schmal {
+                if let r = raeume, let at = Zeit.ausIso(r.at) {
+                    Text("Stand \(Formate.hhmm(at))")
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                ansichtswahl
+            } else {
+                HStack {
+                    ansichtswahl
+                    Spacer(minLength: 8)
+                    if let r = raeume, let at = Zeit.ausIso(r.at) {
+                        Text("Stand \(Formate.hhmm(at))")
+                            .font(Schrift.winzig)
+                            .foregroundStyle(Farbe.text3)
+                    }
+                }
             }
-            Spacer(minLength: 8)
-            if let r = raeume, let at = Zeit.ausIso(r.at) {
-                Text("Stand \(Formate.hhmm(at))")
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3)
-            }
+        }
+    }
+
+    private var ansichtswahl: some View {
+        Ansichtswahl(
+            ansichten: [
+                Ansicht(weg: "liste", name: "Liste"),
+                Ansicht(weg: "modell", name: "Modell"),
+            ],
+            aktiv: Ansicht(weg: ansicht.rawValue, name: "")
+        ) { a in
+            ansicht = Ansichtswahlart(rawValue: a.weg) ?? .liste
         }
     }
 

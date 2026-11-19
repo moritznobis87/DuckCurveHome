@@ -219,7 +219,10 @@ struct Kachel: View {
     private var schrift: Font {
         switch art {
         case .start: return fuehrend ? Schrift.zahlFuehrend : Schrift.mono(25, relativeTo: .title2)
-        case .bericht: return fuehrend ? Schrift.mono(48, relativeTo: .largeTitle) : Schrift.mono(25, relativeTo: .title2)
+        // **Die fuehrende Zahl hat eine feste Groesse.** `Typografie` begruendet es am Kopf:
+        // sie ist schon so gross, dass eine weitere Stufe den Umbruch zerlegt - „1.234,5" in
+        // 80 Punkten passt auf kein Telefon. Die Zahlen daneben wachsen mit.
+        case .bericht: return fuehrend ? Schrift.custom(48) : Schrift.mono(25, relativeTo: .title2)
         }
     }
 
@@ -298,7 +301,12 @@ struct Kachelfeld: View {
                     }
                     // Die letzte Reihe auffuellen, damit eine einzelne Kachel nicht die ganze
                     // Breite nimmt und neben ihren Nachbarinnen falsch aussieht.
-                    if reihe.count < spalten, reihe.count > 1 || welche.count % spalten == 0 {
+                    // Nur am Telefon (`handy.css:200`): am iPad steht das Raster in einer
+                    // Karte mit Rand, und eine Kachel, die dort ploetzlich doppelt so breit
+                    // ist wie ihre Nachbarinnen, sieht aus wie ein Fehler im Raster.
+                    if reihe.count < spalten, !schmal || reihe.count > 1
+                        || welche.count % spalten == 0
+                    {
                         ForEach(0..<(spalten - reihe.count), id: \.self) { _ in
                             Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
                         }

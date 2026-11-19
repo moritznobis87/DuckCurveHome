@@ -64,10 +64,11 @@ struct Raumprotokollblatt: View {
         .task(id: stunden) { await hole() }
     }
 
+    /// Oben die Etage, darunter der Umschalter ueber die ganze Breite - er ist am Telefon
+    /// dehnbar und stuende neben einem `Spacer` in der Mitte der Zeile.
     private var spanneWahl: some View {
-        HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             if !etage.isEmpty { Kicker(wort: etage) }
-            Spacer(minLength: 8)
             Ansichtswahl(
                 ansichten: [
                     Ansicht(weg: "24", name: "24 h"),
