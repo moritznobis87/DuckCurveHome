@@ -15,8 +15,19 @@ reine Flaeche."
 abgezeichnet - eine Quelle, wie bei `gen-zeichen.py` und `gen-swift.py`. Aendert sich die
 Marke, aendert sich das Symbol beim naechsten Lauf mit.
 
-**Was anders ist als im Favicon:** keine runden Ecken. iOS legt seine eigene Maske darueber;
-eine mitgezeichnete Rundung ergaebe einen hellen Saum. Die Flaeche geht bis an den Rand.
+**Was anders ist als im Favicon.** Die Formen der Ente kommen aus der Quelle, die Buehne
+nicht - auf dem Startbildschirm ist die weisse Kachel des Favicons ein greller Fleck ohne Tiefe:
+
+- Der Grund ist Petrol mit einem Verlauf, die Ente darauf hell. Koerper- und Kachelfarbe der
+  Quelle tauschen die Plaetze, der Schnabel behaelt seine.
+- Hinter dem Kopf steht die Sonne, in der Farbe des Schnabels. Sie ist der Bezug zum Thema,
+  und sie ist Flaeche: bei 60 Punkten bleibt sie ein Kreis und wird kein Kringel.
+- Die Ente bekommt einen Fluegel, einen Ton dunkler als der Koerper. Im Favicon waere er bei
+  16 Pixeln Matsch; hier nimmt er der Ente das Gestempelte.
+- Die Ente ist kleiner gesetzt. Schnabel und Schwanz hielten im Favicon nur ein Zehntel
+  Abstand zum Rand, und die Rundung von iOS kam ihnen zu nah.
+- Keine runden Ecken. iOS legt seine eigene Maske darueber; eine mitgezeichnete Rundung
+  ergaebe einen Saum. Der Grund geht bis an den Rand.
 """
 
 from __future__ import annotations
@@ -39,6 +50,25 @@ ZIEL = (
 KANTE = 1024
 # Vierfach zeichnen und verkleinern: PIL kann Polygone nicht glaetten, das Verkleinern schon.
 UEBER = 4
+
+# ─────────────────────────── was nur das Symbol hat ─────────────────────────
+# Alle Masse gelten fuer die Kante von 1024.
+
+# Der Grund: Petrol, oben heller als unten.
+GRUND_OBEN = (0x1D, 0x52, 0x69)
+GRUND_UNTEN = (0x0A, 0x22, 0x2E)
+# Die Sonne: Mitte x, Mitte y, Halbmesser. Am Rand hat sie die Farbe des Schnabels, zur Mitte
+# hin wird sie heller. Sie reicht ueber die Kerbe am Schwanz hinaus: endete sie knapp davor,
+# bliebe dort ein duenner dunkler Spalt stehen.
+SONNE = (660.0, 355.0, 240.0)
+SONNE_MITTE = (0xFF, 0xC5, 0x33)
+SONNE_RINGE = 64
+# Wohin die Ente kommt: Verschiebung x, y und Massstab, auf die Koordinaten der Quelle
+# angewandt. Die Lage, die sie im Favicon hat, wird nicht uebernommen.
+ENTE = (-40.0, 215.0, 0.74)
+# Der Fluegel, in den Koordinaten der Ente. Er liegt ganz im Koerper.
+FLUEGEL = "M520 545c95-30 215-15 330 50-30 120-150 185-270 160-85-18-110-120-60-210z"
+FLUEGEL_FARBE = "#C9DCE5"
 
 CONTENTS = """{
   "images" : [
@@ -169,10 +199,10 @@ def kreis_zu_punkten(cx: float, cy: float, r: float, schritte: int = 180):
 
 
 def formen(svg: str) -> list[tuple[str, list[list[tuple[float, float]]]]]:
-    """Die Formen der Datei, in ihrer Reihenfolge, mit ihrer Farbe.
+    """Die Formen der Ente, in ihrer Reihenfolge, mit ihrer Farbe.
 
-    Nur die Gruppe mit der Ente wird gelesen; die weisse Kachel darunter faellt weg, denn das
-    Symbol bekommt seine Flaeche bis an den Rand.
+    Nur die Gruppe mit der Ente wird gelesen, und zwar in ihren eigenen Koordinaten: Kachel
+    und Lage gehoeren dem Favicon, das Symbol setzt die Ente selbst (`ENTE`).
     """
     # Kommentare raus - darin stehen Pfade als Prosa.
     svg = re.sub(r"<!--.*?-->", "", svg, flags=re.S)
@@ -180,45 +210,69 @@ def formen(svg: str) -> list[tuple[str, list[list[tuple[float, float]]]]]:
                   r"(.*?)</g>", svg, re.S)
     if not g:
         raise ValueError("Die Gruppe mit der Ente steht nicht wie erwartet in der Datei.")
-    vx, vy, s = float(g.group(1)), float(g.group(2)), float(g.group(3))
-
-    def um(zuege):
-        return [[(vx + s * px, vy + s * py) for px, py in z] for z in zuege]
-
     aus = []
     for stueck in re.findall(r"<(path|circle)\b([^>]*)/?>", g.group(4)):
         art, attr = stueck
         farbe = (re.search(r'fill="([^"]+)"', attr) or [None, "#000000"])[1]
         if art == "path":
             d = re.search(r'\sd="([^"]+)"', attr).group(1)
-            aus.append((farbe, um(pfad_zu_punkten(d))))
+            aus.append((farbe, pfad_zu_punkten(d)))
         else:
             cx = float(re.search(r'cx="([-\d.]+)"', attr).group(1))
             cy = float(re.search(r'cy="([-\d.]+)"', attr).group(1))
             r = float(re.search(r'r="([-\d.]+)"', attr).group(1))
-            aus.append((farbe, um(kreis_zu_punkten(cx, cy, r))))
+            aus.append((farbe, kreis_zu_punkten(cx, cy, r)))
     return aus
 
 
 # ────────────────────────────────── zeichnen ────────────────────────────────
 
+def rgb(farbe: str) -> tuple[int, int, int]:
+    """`#RRGGBB` als drei Zahlen."""
+    return tuple(int(farbe[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def misch(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[int, int, int]:
+    """Zwischen zwei Farben: bei 0 ganz `a`, bei 1 ganz `b`."""
+    return tuple(round(a[k] + (b[k] - a[k]) * t) for k in range(3))
+
+
 def zeichne() -> Image.Image:
     svg = QUELLE.read_text(encoding="utf-8")
     kachel = (re.search(r'<rect[^>]*fill="(#[0-9A-Fa-f]{6})"', svg) or [None, "#FFFFFF"])[1]
-    sicht = re.search(r'viewBox="([-\d.\s]+)"', svg).group(1).split()
-    vb = [float(t) for t in sicht]
-    # Die Kachel geht bis an den Rand: iOS legt seine eigene Rundung darueber.
-    bild = Image.new("RGB", (KANTE * UEBER, KANTE * UEBER), kachel)
-    stift = ImageDraw.Draw(bild)
-    massstab = KANTE * UEBER / vb[2]
+    ente = formen(svg)
+    # Koerper, Schnabel, Auge - auf diese Reihenfolge stuetzt sich alles Weitere. Kommt die
+    # Marke einmal anders daher, soll das auffallen und nicht ein falsches Symbol ergeben.
+    if len(ente) != 3:
+        raise ValueError(f"Erwartet sind Koerper, Schnabel und Auge - gefunden: {len(ente)} Formen.")
+    koerper, schnabel = ente[0][0], ente[1][0]
+    # Die Ente steht hell auf dunklem Grund: Koerper und Kachel tauschen die Farbe, und das
+    # Auge, das im Favicon die Kachel durchscheinen liess, wird damit dunkel.
+    tausch = {koerper.upper(): kachel, kachel.upper(): koerper}
+    ente.insert(1, (FLUEGEL_FARBE, pfad_zu_punkten(FLUEGEL)))
 
-    for farbe, zuege in formen(svg):
+    kante = KANTE * UEBER
+    bild = Image.new("RGB", (kante, kante))
+    stift = ImageDraw.Draw(bild)
+
+    for y in range(kante):
+        stift.line([(0, y), (kante, y)], fill=misch(GRUND_OBEN, GRUND_UNTEN, y / (kante - 1)))
+
+    # Die Sonne als Ringe von aussen nach innen - PIL kennt keinen Verlauf im Kreis.
+    sx, sy, sr = (w * UEBER for w in SONNE)
+    for i in range(SONNE_RINGE):
+        t = i / SONNE_RINGE
+        r = sr * (1 - t)
+        stift.ellipse([sx - r, sy - r, sx + r, sy + r], fill=misch(rgb(schnabel), SONNE_MITTE, t))
+
+    vx, vy, s = ENTE
+    for farbe, zuege in ente:
         for zug in zuege:
             if len(zug) < 3:
                 continue
             stift.polygon(
-                [((px - vb[0]) * massstab, (py - vb[1]) * massstab) for px, py in zug],
-                fill=farbe,
+                [((vx + s * px) * UEBER, (vy + s * py) * UEBER) for px, py in zug],
+                fill=tausch.get(farbe.upper(), farbe),
             )
     return bild.resize((KANTE, KANTE), Image.LANCZOS)
 
