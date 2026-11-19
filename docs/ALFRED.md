@@ -14,7 +14,7 @@ hier geht es um ein Haus und nicht um Projektbewertungen.
 | `apps/api/src/dch_api/alfred/rechnung.py` | Stromrechnungen anderer Anbieter lesen |
 | `apps/api/src/dch_api/alfred/zuordnung.py` | Sensorzuordnung für ein neues Haus vorschlagen |
 | `apps/api/src/dch_api/routers/alfred.py` | `/api/v1/alfred/*`, Tagesgrenze |
-| `apps/web/src/components/alfred/` | Panel, Strom-Leser, Hilfetexte, Tests |
+| `apps/web/src/components/alfred/` | Panel mit Halten zum Sprechen, Strom-Leser, Hilfetexte, Tests |
 | `apps/api/tests/test_alfred.py` | 35 Prüfungen des Dienstes, davon 7 zur Sicherheitsschicht und 4 zu Rechnungen per Drag-and-drop |
 
 ## Was Alfred kann
@@ -38,10 +38,11 @@ das nichts beantwortet, ist schlimmer als keines.
    Auswertung. Rechnungen anderer Anbieter liest das Modell. Siehe unten.
 4. **Einrichtung.** Eine Entitätenliste aus Home Assistant einfügen. Alfred schlägt die Zuordnung zu
    den Messgrößen vor, und heraus kommt ein geprüfter YAML-Ausschnitt für `entities.yaml`.
-5. **Sprache.** Ein Mikrofonknopf neben dem Eingabefeld, wenn der Browser Spracherkennung kann
-   (Safari, Chrome). Die Erkennung übernimmt der Browser; bei Safari wertet Apple die Aufnahme aus,
-   und das Panel sagt das im Tooltip. Gesprochene Befehle wie „Mach das Terrassenlicht an“ werden
-   zu Vorschlägen und nicht zu Schaltungen.
+5. **Sprache.** Die Ente gedrückt halten, sprechen, loslassen. Kurz tippen öffnet wie bisher das
+   Panel. Daneben steht ein Mikrofonknopf am Eingabefeld. Die Erkennung übernimmt der Browser, an
+   den Dienst geht nur der erkannte Text. Je nach Browser wertet Apple (Safari) oder Google
+   (Chrome) die Aufnahme aus, und das Panel sagt das im Tooltip. Gesprochene Befehle wie „Mach das
+   Terrassenlicht an“ werden zu Vorschlägen und nicht zu Schaltungen. Siehe „Halten zum Sprechen“.
 
 Gäste sehen nur die vorbereiteten Texte. Das BFF lässt für sie kein POST durch, das Panel blendet
 das Eingabefeld deshalb gar nicht erst ein.
@@ -94,6 +95,35 @@ an eine Anweisung hält.
    reicht nur genau diesen Wert als `x-dch-urheber-ueber` weiter, und der Urheber im Ereignis
    lautet dann „iPad Flur, über Alfred“ (`urheber.Urheber.ueber`). So ist später zu sehen, dass
    ein Sprachmodell den Anstoß gab. Ein Mensch hat bestätigt, aber nicht selbst gestellt.
+
+**Halten zum Sprechen, und nie ein stummer Knopf.** Wer an der Wand steht, will nicht tippen.
+Nach 350 ms gilt die Ente als gehalten (`HALTEN_MS`). Das ist länger als ein Tippen und kürzer als
+das lange Drücken des Systems (iOS: 500 ms). Lupe, Textauswahl, Bildmenü und das Kontextmenü von
+Android sind an der Ente abgeschaltet. Den Klick, den der Browser nach dem Loslassen schickt,
+schluckt Alfred, sonst ginge das eben geöffnete Panel wieder zu. Ob ein Modell eingerichtet ist,
+fragt Alfred schon beim Drücken und nicht erst beim Öffnen, damit beim Halten die Antwort da ist.
+Gäste halten nicht, für sie öffnet die Ente nur das Panel.
+
+Die Erkennung des Browsers ist nicht überall verlässlich. In der Web-App vom Home-Bildschirm stellt
+Safari sie laut WebKit-Fehler 225298 nicht bereit, obwohl es sie anbietet. Alfred meldet deshalb
+jeden Ausgang und nennt dabei den Weg, der immer geht: ins Feld tippen und das Mikrofon der
+Bildschirmtastatur nehmen. Das erkennt auf neueren Geräten auf dem Gerät.
+
+| Ausgang | Erkennung | Alfred sagt |
+|---|---|---|
+| beim Loslassen nie angelaufen | kein `start`-Ereignis | „Ich konnte nicht zuhören …“, mit Hinweis auf die Mikrofonfrage |
+| nach dem Loslassen kein Text | 5 s still (`WACHE_MS`) | „Die Spracherkennung dieses Browsers antwortet nicht …“ |
+| Mikrofon verweigert | `not-allowed`, `service-not-allowed`, `audio-capture` | „Ich darf das Mikrofon nicht benutzen …“ |
+| nichts gesagt | `no-speech` oder Ende ohne Text | „Ich habe nichts verstanden …“ |
+| Browser ohne Erkennung | keine Klasse | „Dieser Browser kann keine Spracheingabe …“ |
+
+Jedes Zuhören endet genau einmal (`beenden`). Ein Text, der nach der Wache doch noch kommt, fragt
+nichts mehr. Die Erkennung läuft nicht im Dauermodus, denn Safari hat dort bekannte Fehler: Nach
+dem ersten Satz endet sie von selbst, auch wenn die Ente noch gedrückt ist. Eine lange Pause
+beendet also die Frage. Ton geht nicht an den Dienst. Mit der Bandbreite hat das nichts zu tun,
+fünf Sekunden Sprache sind etwa 15 KB. Es soll nur kein zweiter Empfänger die Stimmen aus dem Haus
+hören. Wer die Home-Bildschirm-App ohne Tastatur will, bräuchte Erkennung beim Anbieter (bei
+Mistral etwa Voxtral), und das wäre eine eigene Entscheidung.
 
 **Die Vorschläge stehen neben dem Text, nicht darin.** Ein Vorschlag ist etwas, worauf man drückt.
 Stünde er im Fließtext, müsste die Oberfläche ihn aus einem formulierten Satz zurückgewinnen, und

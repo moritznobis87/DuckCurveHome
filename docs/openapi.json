@@ -476,6 +476,89 @@
         }
       }
     },
+    "/api/v1/push/apns/subscribe": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Dieses Gerät der App anmelden (APNs)",
+        "description": "Ein Gerät der iOS-App anmelden.\n\n**Warum ein eigener Weg neben `/push/subscribe`.** Eine iOS-App kann Web Push nicht\nempfangen; Apple lässt Mitteilungen nur über APNs zu. Die Adresse ist dort kein Endpunkt beim\nPush-Dienst des Browsers, sondern ein Gerätetoken des Betriebssystems - und es gibt keine\nbeiden Schlüssel, denn APNs verschlüsselt selbst.\n\nGespeichert wird das Gerät trotzdem als Abonnement wie jedes andere. Was es unterscheidet,\nsteht in seiner Adresse (`apns://…`), und `PushService` sieht daran, welchen Weg eine\nMitteilung nimmt.",
+        "operationId": "apns_subscribe_api_v1_push_apns_subscribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApnsSubscribeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/push/apns/unsubscribe": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Dieses Gerät der App abmelden (APNs)",
+        "operationId": "apns_unsubscribe_api_v1_push_apns_unsubscribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApnsUnsubscribeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/push/unsubscribe": {
       "post": {
         "tags": [
@@ -4136,6 +4219,47 @@
         ],
         "title": "AnlageWarmwasserOut",
         "description": "Das Trinkwasser: ein Anlegefühler am warmen Auslass, sonst nichts.\n\n`present` ist falsch, solange kein Fühler meldet; dann bleibt die Kachel gedimmt und sagt das.\n`tapping` ist **erkannt**, nicht gemessen: Das Rohr springt auf, sobald warmes Wasser läuft,\nsiehe `hems_core.thermal.anlage.zapfung`. Es sagt, dass und seit wann, nicht wie viel."
+      },
+      "ApnsSubscribeIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 8,
+            "title": "Token"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "sandbox": {
+            "type": "boolean",
+            "title": "Sandbox",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "ApnsSubscribeIn",
+        "description": "Ein Gerät der iOS-App anmelden.\n\nDerselbe Zuschnitt wie `PushSubscribeIn`, nur dass die Adresse ein Gerätetoken ist und die\nbeiden Schlüssel fehlen: APNs verschlüsselt selbst."
+      },
+      "ApnsUnsubscribeIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 8,
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "ApnsUnsubscribeIn"
       },
       "AutoProfile": {
         "type": "string",

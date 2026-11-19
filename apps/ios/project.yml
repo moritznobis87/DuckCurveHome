@@ -1,0 +1,187 @@
+# Das Xcode-Projekt, als Text.
+#
+# **Warum nicht ein .xcodeproj im Repository.** Ein Xcode-Projekt ist ein Verzeichnis mit einer
+# Datei darin, die jede Datei des Projekts einzeln mit einer Zufallskennung auffuehrt. Es laesst
+# sich nicht lesen, nicht verstehen und bei zwei Leuten nicht zusammenfuehren; ein Diff darin ist
+# Zahlenbrei. Diese Datei beschreibt dasselbe in sechzig Zeilen, die man liest.
+#
+#     brew install xcodegen
+#     cd apps/ios && xcodegen generate && open DuckCurveHome.xcodeproj
+#
+# **Das erzeugte Projekt liegt trotzdem im Repository.** Das war erst anders - erzeugte Dinge
+# gehoeren nicht eingecheckt, und das gilt weiter fuer alles andere. Hier ueberwiegt ein
+# praktischer Grund: wer Xcode frisch installiert hat, hat XcodeGen nicht, und ein `Pull` ist
+# ein Schritt statt vier. Damit die eingecheckte Fassung nicht still veraltet, haelt
+# `tools/xcodeproj-pruefen.py` sie gegen diese Datei und gegen die Platte - in
+# `tools/ios-pruefen.sh` und in der CI. Wer hier etwas verstellt, erzeugt neu und checkt mit ein.
+#
+# **Was hier festgelegt ist und warum.** Die drei Zeilen, bei denen Nachlesen teurer ist als
+# Lesen, stehen unten einzeln begruendet: das Mindestsystem, die Ausrichtung je Geraet und die
+# Berechtigung fuer Mitteilungen.
+
+name: DuckCurveHome
+
+options:
+  bundleIdPrefix: home.duckcurve
+  createIntermediateGroups: true
+  deploymentTarget:
+    # iOS 17 ist die Untergrenze, und zwar aus drei Gruenden, die alle in der App stehen:
+    # `@Observable` (der Zustand des Hauses), Swift Charts mit `chartXScale` auf Zahlenachsen
+    # (die Tageskurve) und `ContentUnavailableView`-freie Leerzustaende. iOS 16 waere ein
+    # Rueckbau an drei Stellen fuer Geraete, die dieses Haus nicht hat.
+    iOS: "17.0"
+  # Der Kern liegt daneben, nicht darin: er baut auch ohne Xcode.
+  groupSortPosition: top
+
+packages:
+  DuckCurveKit:
+    path: DuckCurveKit
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    # Warnungen sind Fehler, die noch nicht wehtun. In einem Projekt, dessen Oberflaeche nur auf
+    # einem Mac uebersetzt wird, ist jede Warnung ein Hinweis, den sonst niemand sieht.
+    GCC_TREAT_WARNINGS_AS_ERRORS: NO
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  DuckCurveHome:
+    type: application
+    platform: iOS
+    # Eine App fuer beide Geraete. Zwei Ziele waeren zwei Bundle-Kennungen, zwei Eintraege im
+    # App Store und doppelter Code fuer dieselbe Sache; die beiden Oberflaechen unterscheiden
+    # sich im Gerippe (`WandRahmen` gegen `HandRahmen`) und nicht im Programm.
+    deploymentTarget: "17.0"
+    sources:
+      - path: DuckCurveHome
+        excludes:
+          - "Ressourcen/Marke/*.svg"
+    resources:
+      - path: DuckCurveHome/Ressourcen
+    dependencies:
+      - package: DuckCurveKit
+        product: DuckCurveKit
+    # **Keine Berechtigungen - und das ist eine Entscheidung mit Preis.**
+    #
+    # Hier stand `aps-environment: development` fuer die Mitteilungen ueber APNs. Ein
+    # persoenliches Entwicklerkonto (eine Apple-ID ohne bezahltes Programm, 99 EUR im Jahr)
+    # darf diese Berechtigung nicht fuehren; Xcode bricht die Signierung ab:
+    #
+    #     Personal development teams do not support the Push Notifications capability.
+    #
+    # Damit laesst sich die App auf dem eigenen Geraet nicht starten - und auf dem eigenen
+    # Geraet zu laufen ist mehr wert als eine Mitteilung, die ein persoenliches Konto ohnehin
+    # nicht bekommen koennte. Der Dienst behaelt seinen APNs-Weg; nur dieses Geraet meldet
+    # sich nicht mehr an, und die Seite „Mitteilungen" sagt es.
+    #
+    # **Zum Zurueckholen** mit einem bezahlten Konto: die vier Zeilen unten wieder einruecken
+    # und `xcodegen generate` laufen lassen.
+    #
+    # entitlements:
+    #   path: DuckCurveHome/DuckCurveHome.entitlements
+    #   properties:
+    #     aps-environment: development
+    info:
+      path: DuckCurveHome/Info.plist
+      properties:
+        CFBundleDisplayName: Duck Curve
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        # **Querformat am iPad, beides am Telefon.** Die Wandanzeige ist im Querformat gedacht;
+        # ein iPad, das an der Wand kippt, ist kein Fall, den man vorsehen muss. Das Telefon wird
+        # in der Hand gehalten und darf sich drehen.
+        # **Ohne diesen Eintrag bekommt die App nicht den ganzen Bildschirm.**
+        #
+        # Eine App ohne Startbildschirm gilt iOS als Altlast und laeuft in einem Ersatzfenster:
+        # schwarze Balken oben und unten, der Inhalt links und rechts abgeschnitten, die Leiste
+        # mitten im Bild. Genau so sah es am iPhone aus. Ein leeres Woerterbuch genuegt - es
+        # sagt „ja, diese App kennt moderne Bildschirme"; gezeichnet wird nichts weiter als die
+        # Flaeche.
+        #
+        # Die Farbe ist `Marken.deep`, dieselbe wie `Farbe.grund`. Ohne sie waere der
+        # Startbildschirm das Systemschwarz und beim Erscheinen der App gaebe es einen Sprung.
+        UILaunchScreen:
+          UIColorName: Startgrund
+
+        # **Ohne diesen Satz bleibt die App am Telefon leer.** Seit iOS 14 fragt das System,
+        # bevor eine App ein Geraet im selben Netz anspricht - und der Dienst dieses Hauses
+        # steht im selben Netz. Fehlt der Schluessel, zeigt iOS keinen Grund an oder
+        # verweigert gleich; in beiden Faellen laeuft die Anzeige ins Leere, ohne dass
+        # irgendwo ein Fehler steht. Im Simulator faellt das nicht auf: dort ist der Dienst
+        # auf `localhost` und das ist kein fremdes Geraet.
+        NSLocalNetworkUsageDescription:
+          Duck Curve Home spricht mit dem Dienst in Ihrem Haus. Der läuft im selben Netz –
+          ohne diese Erlaubnis bleibt die Anzeige leer.
+        # **Alfred hoert zu, wenn man die Ente gedrueckt haelt.** Beide Schluessel werden
+        # gebraucht und nicht nur einer: das Mikrofon nimmt auf, die Spracherkennung macht
+        # Text daraus, und iOS fragt fuer jedes einzeln. Fehlt einer, stuerzt die App beim
+        # ersten Druecken ab - ohne Fehlermeldung, nur mit einem Protokolleintrag, den
+        # niemand liest.
+        # Diese beiden Saetze zeigt iOS woertlich im Erlaubnisdialog - also mit Umlauten,
+        # anders als die Kommentare dieser Datei.
+        NSMicrophoneUsageDescription:
+          Zum Sprechen mit Alfred. Die Aufnahme läuft nur, solange Sie die Ente gedrückt
+          halten.
+        NSSpeechRecognitionUsageDescription:
+          Damit aus dem Gesprochenen eine Frage wird. Wo das Gerät es kann, erkennt es selbst
+          und die Aufnahme verlässt das Telefon nicht.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        "UISupportedInterfaceOrientations~ipad":
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # Dunkel, immer. Die Gestaltung ist fuer Dunkelheit gemacht (tokens.css: „Dunkle
+        # Oberflaechen"); eine helle Fassung gibt es nicht und soll es nicht geben.
+        UIUserInterfaceStyle: Dark
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        # Die Schriften der Marke. Die Namen muessen zu `Schrift` in Typografie.swift passen.
+        UIAppFonts:
+          - Marke/IBMPlexSans-Regular.otf
+          - Marke/IBMPlexSans-SemiBold.otf
+          - Marke/IBMPlexMono-Regular.otf
+        ITSAppUsesNonExemptEncryption: false
+        # Kein HTTP ohne TLS - mit genau zwei Ausnahmen, und beide sind begruendet.
+        #
+        # **`localhost`**, damit sich die App gegen den Demo-Dienst ausprobieren laesst
+        # (`docker compose up` horcht auf http://localhost:8000). Ohne diese Ausnahme meldet die
+        # App „nicht erreichbar", und zwar ohne den Grund zu nennen: das Betriebssystem bricht
+        # die Verbindung ab, bevor sie zustande kommt. Eine Ausnahme fuer den eigenen Rechner
+        # gibt nichts preis - weiter als bis zum Simulator kommt sie nicht.
+        #
+        # **Das lokale Netz**, damit ein Geraet den Dienst auf einem Rechner im Haus erreicht.
+        # Das ist die Lage, in der dieses Projekt entsteht: ein Dienst im Heimnetz, oft noch
+        # ohne Zertifikat. `NSAllowsLocalNetworking` gilt nur fuer Namen ohne Punkt und fuer
+        # `.local` - unterwegs bleibt HTTP verboten, und das ist der Punkt.
+        #
+        # Wer den Dienst oeffentlich betreibt, braucht keine der beiden: Railway liefert HTTPS.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            localhost:
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: home.duckcurve.app
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: YES
+        # Der Pfad, unter dem die Schriften im Bundle liegen.
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+
+schemes:
+  DuckCurveHome:
+    build:
+      targets:
+        DuckCurveHome: all
+    run:
+      config: Debug
+    archive:
+      config: Release

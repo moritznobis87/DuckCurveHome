@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AREAS } from "@/lib/areas";
-import { Alfred, rechnungZusammenfassung, tibberZusammenfassung } from "./Alfred";
+import { Alfred, HALTEN_MS, WACHE_MS, rechnungZusammenfassung, tibberZusammenfassung } from "./Alfred";
 import { SEITEN, TEXTE, ortBestimmen, wegweiser, wissen } from "./hilfetexte";
 import { schrittText, stromLesen, verlaufFuerServer, vorschlagAenderung, vorschlagAufruf, vorschlagText } from "./strom";
 
@@ -266,6 +266,207 @@ describe("Panel", () => {
     pfad = "/locked";
     const { container } = render(<Alfred />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+/** Eine Spracherkennung zum Fernsteuern: Der Test löst ihre Ereignisse selbst aus. */
+class FalscheErkennung {
+  static alle: FalscheErkennung[] = [];
+  lang = "";
+  interimResults = true;
+  maxAlternatives = 0;
+  onstart: (() => void) | null = null;
+  onresult: ((e: { results: { transcript: string }[][] }) => void) | null = null;
+  onend: (() => void) | null = null;
+  onerror: ((e: { error?: string }) => void) | null = null;
+  start = vi.fn();
+  stop = vi.fn();
+  abort = vi.fn();
+  constructor() {
+    FalscheErkennung.alle.push(this);
+  }
+}
+const letzte = () => FalscheErkennung.alle.at(-1)!;
+
+describe("Halten zum Sprechen", () => {
+  const fetchMock = vi.fn();
+  const gefragt: string[] = [];
+  const ente = () => screen.getByRole("button", { name: TEXTE.ansprechen });
+  /** Ente drücken und halten. Die Antwort auf die Statusfrage kommt, während sie noch gedrückt ist. */
+  const halten = async () => {
+    fireEvent.pointerDown(ente(), { pointerId: 1, pointerType: "touch" });
+    await act(() => vi.advanceTimersByTimeAsync(HALTEN_MS / 2));
+    await act(() => vi.advanceTimersByTimeAsync(HALTEN_MS / 2));
+  };
+  /** Loslassen, und der Klick, den der Browser danach schickt. */
+  const loslassen = () => {
+    fireEvent.pointerUp(ente(), { pointerId: 1, pointerType: "touch" });
+    fireEvent.click(ente());
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    pfad = "/strom";
+    rolle = "owner";
+    gefragt.length = 0;
+    FalscheErkennung.alle = [];
+    fetchMock.mockReset();
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url.endsWith("/alfred/status")) return Promise.resolve(Response.json({ bereit: true, anbieter: "Mistral" }));
+      if (url.endsWith("/alfred/ask/stream")) {
+        gefragt.push((JSON.parse(String(init?.body)) as { frage: string }).frage);
+        return Promise.resolve(
+          strom(
+            'event: antwort\ndata: {"bereit": true, "antwort": "Das Terrassenlicht ist **vorgeschlagen**.", "vorschlaege": [{"art": "schalten", "ziel": "terrace_light", "name": "Licht Terrasse", "an": true, "war_an": false}]}\n\n',
+          ),
+        );
+      }
+      return Promise.reject(new Error(url));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("webkitSpeechRecognition", FalscheErkennung);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("Ente halten hört zu, Loslassen schickt den erkannten Text als Frage, geschaltet wird nichts", async () => {
+    render(<Alfred />);
+    expect(ente()).toHaveAttribute("title", TEXTE.ansprechenHalten);
+    await halten();
+    // Schon beim Drücken gefragt: Ist ein Modell da? Und das Panel steht offen und sagt, was passiert.
+    expect(fetchMock).toHaveBeenCalledWith("/api/dch/alfred/status", expect.anything());
+    expect(screen.getByRole("dialog", { name: TEXTE.name })).toBeInTheDocument();
+    expect(screen.getByText(TEXTE.haltenLaeuft)).toBeInTheDocument();
+    expect(ente().parentElement).toHaveClass("hoert");
+    const e = letzte();
+    expect(e.start).toHaveBeenCalledOnce();
+    expect(e.lang).toBe("de-DE");
+
+    act(() => e.onstart?.());
+    loslassen();
+    expect(e.stop).toHaveBeenCalledOnce();
+    expect(screen.getByText(TEXTE.sprachWartet)).toBeInTheDocument();
+    // Der Klick nach dem Halten schließt das eben geöffnete Panel nicht.
+    expect(screen.getByRole("dialog", { name: TEXTE.name })).toBeInTheDocument();
+
+    await act(async () => {
+      e.onresult?.({ results: [[{ transcript: " Mach das Terrassenlicht an " }]] });
+      e.onend?.();
+    });
+    await screen.findByText("vorgeschlagen");
+    expect(gefragt).toEqual(["Mach das Terrassenlicht an"]);
+    expect(screen.getByText("Mach das Terrassenlicht an")).toBeInTheDocument();
+    // Ein Sprachbefehl wird ein Vorschlag wie jede Frage: Nur Status und Frage gingen hinaus.
+    expect(screen.getByRole("button", { name: TEXTE.vorschlagPruefen })).toBeInTheDocument();
+    expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(["/api/dch/alfred/status", "/api/dch/alfred/ask/stream"]);
+    expect(ente().parentElement).not.toHaveClass("hoert");
+  });
+
+  it("kurz tippen öffnet nur das Panel und hört nicht zu", async () => {
+    render(<Alfred />);
+    fireEvent.pointerDown(ente(), { pointerId: 1, pointerType: "touch" });
+    loslassen();
+    await act(() => vi.advanceTimersByTimeAsync(HALTEN_MS * 3));
+    expect(screen.getByRole("dialog", { name: TEXTE.name })).toBeInTheDocument();
+    expect(FalscheErkennung.alle).toHaveLength(0);
+    // Ein zweites Tippen schließt wieder: Vom Halten bleibt nichts hängen.
+    fireEvent.pointerDown(ente(), { pointerId: 1, pointerType: "touch" });
+    loslassen();
+    expect(screen.queryByRole("dialog", { name: TEXTE.name })).not.toBeInTheDocument();
+  });
+
+  it("läuft die Erkennung nie an, endet das Zuhören beim Loslassen mit einem Hinweis", async () => {
+    // So verhält sich Safari, wenn die Erkennung angeboten wird, aber nicht antwortet (Web-App vom
+    // Home-Bildschirm), und auch, solange die Frage nach dem Mikrofon offen steht.
+    render(<Alfred />);
+    await halten();
+    loslassen();
+    expect(letzte().abort).toHaveBeenCalledOnce();
+    expect(screen.getByText(TEXTE.sprachNichtAngelaufen)).toBeInTheDocument();
+    expect(ente().parentElement).not.toHaveClass("hoert");
+    expect(gefragt).toEqual([]);
+  });
+
+  it("kommt nach dem Loslassen kein Text, beendet die Wache das Zuhören, und ein später Text fragt nichts", async () => {
+    render(<Alfred />);
+    await halten();
+    const e = letzte();
+    act(() => e.onstart?.());
+    loslassen();
+    await act(() => vi.advanceTimersByTimeAsync(WACHE_MS));
+    expect(e.abort).toHaveBeenCalledOnce();
+    expect(screen.getByText(TEXTE.sprachKeineAntwort)).toBeInTheDocument();
+    expect(ente().parentElement).not.toHaveClass("hoert");
+    await act(async () => {
+      e.onresult?.({ results: [[{ transcript: "zu spät" }]] });
+      e.onend?.();
+    });
+    expect(gefragt).toEqual([]);
+  });
+
+  it("ein verweigertes Mikrofon und Stille haben je einen eigenen Satz", async () => {
+    render(<Alfred />);
+    await halten();
+    act(() => {
+      letzte().onerror?.({ error: "not-allowed" });
+      letzte().onend?.();
+    });
+    expect(screen.getByText(TEXTE.sprachNichtErlaubt)).toBeInTheDocument();
+    loslassen();
+
+    await halten();
+    act(() => {
+      letzte().onstart?.();
+      letzte().onerror?.({ error: "no-speech" });
+      letzte().onend?.();
+    });
+    expect(screen.getByText(TEXTE.sprachNichtsGehoert)).toBeInTheDocument();
+    expect(gefragt).toEqual([]);
+  });
+
+  it("der Mikrofonknopf im Panel nimmt denselben Weg", async () => {
+    render(<Alfred />);
+    fireEvent.click(ente());
+    const mikro = await screen.findByRole("button", { name: TEXTE.mikrofon });
+    fireEvent.click(mikro);
+    const e = letzte();
+    expect(e.start).toHaveBeenCalledOnce();
+    expect(screen.getByText(TEXTE.mikrofonLaeuft, { selector: ".alfred-schritt" })).toBeInTheDocument();
+    await act(async () => {
+      e.onstart?.();
+      e.onresult?.({ results: [[{ transcript: "Licht an" }]] });
+      e.onend?.();
+    });
+    await screen.findByText("vorgeschlagen");
+    expect(gefragt).toEqual(["Licht an"]);
+  });
+
+  it("ohne Modell sagt Alfred das, statt zuzuhören", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(Response.json({ bereit: false })));
+    render(<Alfred />);
+    await halten();
+    expect(screen.getByText(TEXTE.frageOhneModell)).toBeInTheDocument();
+    expect(FalscheErkennung.alle).toHaveLength(0);
+  });
+
+  it("ohne Spracherkennung im Browser gibt es einen Hinweis statt Stille", async () => {
+    vi.stubGlobal("webkitSpeechRecognition", undefined);
+    render(<Alfred />);
+    expect(ente()).toHaveAttribute("title", TEXTE.ansprechen);
+    await halten();
+    expect(screen.getByText(TEXTE.sprachOhneBrowser)).toBeInTheDocument();
+  });
+
+  it("Gäste halten nicht: Die Ente öffnet nur das Panel", async () => {
+    rolle = "guest";
+    render(<Alfred />);
+    await halten();
+    expect(screen.queryByRole("dialog", { name: TEXTE.name })).not.toBeInTheDocument();
+    expect(FalscheErkennung.alle).toHaveLength(0);
+    loslassen();
+    expect(screen.getByRole("dialog", { name: TEXTE.name })).toBeInTheDocument();
   });
 });
 
