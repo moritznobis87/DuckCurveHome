@@ -184,6 +184,11 @@ zusätzlich von selbst.
 
 ## Kiosk und Startbild
 
+**Für das eigene Haus nicht nötig.** Das Gerät läuft ohne Display im Technikschrank; angezeigt wird
+auf dem iPad an der Wand und auf dem Handy. Kiosk und Startbild sind für Geräte gedacht, an denen ein
+Bildschirm hängt (HDMI-Monitor oder Touchscreen), etwa später bei Kunden. Ohne `--kiosk` richtet das
+Skript nichts davon ein; das Startbild schadet ohne Display nicht, `--ohne-marke` lässt es weg.
+
 Mit `--kiosk` startet das Gerät ohne Desktop direkt in die Anwendung: `cage` zeigt genau ein
 Programm, Chromium im Kioskmodus, als Benutzer `kiosk` ohne Rechte. Bis die Dienste bereit sind,
 zeigt es eine Duck-Curve-Ladeseite statt einer Fehlerseite des Browsers. Chromium-Richtlinien
@@ -193,9 +198,9 @@ Downloads), Textkonsole, SysRq und Strg+Alt+Entf sind aus.
 Ohne `--ohne-marke` ersetzt das Skript das Startbild durch das Duck-Curve-Symbol, schaltet
 Regenbogen, Himbeeren und Kernelmeldungen ab und den Diagnosebildschirm des Bootloaders aus.
 
-**Am Gerät noch zu prüfen**, weil es hier keine Hardware dafür gab: ob das Touch Display 2 an der
-IO-Platine läuft und wie es ins Querformat gedreht wird, ob `cage` den Wechsel auf die Textkonsole
-wirklich sperrt, und ob beim Start irgendwo noch etwas Fremdes aufblitzt (den Start einmal filmen).
+**Am ersten Gerät mit Display zu prüfen**, weil es hier keine Hardware dafür gab: ob `cage` den
+Wechsel auf die Textkonsole wirklich sperrt, ob ein Touchscreen ohne Drehen richtig herum steht, und
+ob beim Start irgendwo noch etwas Fremdes aufblitzt (den Start einmal filmen).
 
 ## Was noch fehlt (Stufe 2 und später)
 
