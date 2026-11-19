@@ -104,6 +104,12 @@ public struct Tageskurve: Sendable {
     /// aus 13,4 kWh eine Auskunft."
     public var pvKwh: Double?
     public var schattenKwh: Double?
+    /// Wie der Tag des Schattens heisst: „gestern" hinter heute, „heute" hinter morgen.
+    ///
+    /// **Der Tag gehoert in die Legende** (`DayCurve.tsx:176-180`): „gestern 6,9 kWh" sagt,
+    /// womit verglichen wird; „Vortag" sagt es nicht, wenn man vor der Morgenkurve steht und
+    /// der Vortag heute ist.
+    public var schattenwort: String?
 
     public init() {}
 
@@ -213,6 +219,10 @@ public struct Tageskurve: Sendable {
         // ------------------------------------------------------------- Die Summen
         k.pvKwh = energie(k.pv, bis: k.jetztStunde)
         k.schattenKwh = energie(k.schatten, bis: k.jetztStunde)
+        // Hinter heute liegt gestern, hinter morgen heute (`home/tage.ts`).
+        if !k.schatten.isEmpty {
+            k.schattenwort = tag == .morgen ? "heute" : "gestern"
+        }
         return k
     }
 

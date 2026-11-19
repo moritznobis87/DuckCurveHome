@@ -21,6 +21,9 @@ struct Dock: View {
     @State private var laeuft: Set<String> = []
     @State private var fehlgeschlagen: Set<String> = []
 
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
+
     /// Die Schalter, die nur an und aus kennen.
     private static let schalter: [(schluessel: String, name: String, kurz: String, zeichen: Zeichenart, dauerMin: Int?)] = [
         ("coffee_machine", "Kaffeemaschine", "Kaffee", .kaffee, 120),
@@ -42,12 +45,23 @@ struct Dock: View {
             // zur Verfuegung. Eine `ScrollView` zentriert zu breiten Inhalt, und damit rutschte
             // die **ganze Seite** um 18 Punkte nach links - der Satz oben, die Karten, alles.
             // Auf den Screenshots vom 17.11. sah es aus, als haette die Seite keinen Rand.
-            Umbruchzeile(abstand: 14, zeilenabstand: 10) {
-                waermepumpenknopf
-                ofenknopf
+            // **Erst die Schalter, dann die Anlagen** (`Dock.tsx:231-249`), getrennt durch
+            // einen Strich: links, was nur an und aus kennt, rechts, was mehr kann. Die App
+            // hatte die Reihenfolge umgekehrt - und damit stand die Waermepumpe, die ein Blatt
+            // oeffnet, zwischen vier Knoepfen, die schalten.
+            Umbruchzeile(abstand: schmal ? 14 : 10, zeilenabstand: 10) {
                 ForEach(Self.schalter, id: \.schluessel) { s in
                     schaltknopf(s)
                 }
+                if !schmal {
+                    Rectangle()
+                        .fill(Farbe.linie2)
+                        .frame(width: 1, height: 36)
+                        .padding(.horizontal, 4)
+                        .padding(.top, 12)
+                }
+                waermepumpenknopf
+                ofenknopf
             }
         }
         .animation(.easeInOut(duration: Marken.dauer), value: rueckmeldung)
@@ -157,13 +171,25 @@ struct Knopf: View {
         return leuchtet ? farbe : Farbe.text3
     }
 
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
+
     var body: some View {
         VStack(spacing: 4) {
             Button(action: tippen) {
                 Zeichen(zeichen, groesse: 26, farbe: inhaltsfarbe)
-                    .frame(width: 54, height: 54)
+                    .frame(width: 60, height: 60)
                     .background(
-                        Circle().strokeBorder(randfarbe, lineWidth: 1.5)
+                        // **An der Wand ein abgerundetes Quadrat, am Telefon ein Kreis**
+                        // (`globals.css:261`: 60 Punkte, Radius 16). Sieben Kreise
+                        // nebeneinander sind eine Perlenkette; sieben Felder sind eine
+                        // Tastatur, und darum geht es hier.
+                        RoundedRectangle(cornerRadius: schmal ? 30 : 16, style: .continuous)
+                            .fill(Farbe.flaeche1.opacity(0.6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: schmal ? 30 : 16, style: .continuous)
+                                    .strokeBorder(randfarbe, lineWidth: schmal ? 1.5 : 1)
+                            )
                     )
                     // Das Leuchten ist die eigentliche Auskunft: an einer Wand sieht man es
                     // aus drei Metern, eine Beschriftung nicht.
@@ -175,11 +201,15 @@ struct Knopf: View {
             .accessibilityValue(an == nil ? "unbekannt" : (leuchtet ? "an" : "aus"))
             .accessibilityAddTraits(.isButton)
 
-            Text(kurz)
-                .font(Schrift.winzig)
+            // An der Wand gesperrt und gross geschrieben (`globals.css:259`), am Telefon
+            // gewoehnliche Schrift: dort liest man sie, hier streift man sie.
+            Text(schmal ? kurz : kurz.uppercased())
+                .font(schmal ? Schrift.winzig : Schrift.sans(10))
+                .kerning(schmal ? 0 : 0.4)
                 .foregroundStyle(leuchtet ? Farbe.text2 : Farbe.text3)
                 .accessibilityHidden(true)
         }
+        .frame(width: 60)
     }
 }
 

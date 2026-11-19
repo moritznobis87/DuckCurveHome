@@ -41,12 +41,18 @@ struct Leiste: View {
                 .contentShape(Rectangle())
                 .onTapGesture { wegweiser.gehe("/waerme") }
             } else {
-                Karte(kicker: "Pufferspeicher") {
+                // Die Pufferkachel dehnt sich, die Planzeilen bleiben so hoch wie ihr Inhalt
+                // (`globals.css:236,238,242`: `flex: 1 1 0` gegen `flex: none`).
+                Karte(kicker: "Puffer") {
+                    // **Keine Mindesthoehe am Tank** (`globals.css:240-241`, woertlich: „das
+                    // liess ihn an der Wand ueber die Kachel hinauslaufen"). Die Kachel nimmt,
+                    // was die Planzeilen uebrig lassen, und das Glas fuellt sie.
                     Pufferglas(
                         temperaturen: fuehler, soc: haus.zustand?.buffer.soc, zustand: zustand
                     )
-                    .frame(maxWidth: .infinity, minHeight: 210)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .frame(maxHeight: .infinity)
             }
             if !kompakt, !zeilen.isEmpty {
                 Karte(kicker: "Nächste 24 h") {

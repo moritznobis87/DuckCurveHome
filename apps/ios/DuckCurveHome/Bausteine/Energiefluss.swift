@@ -147,8 +147,16 @@ struct Energiefluss: View {
     var body: some View {
         GeometryReader { raum in
             ZStack {
-                himmel
-                if nacht { Sterne() } else { sonnenschein(in: raum.size) }
+                // **An der Wand sitzt das Bild offen auf der Seite** (`globals.css:212`:
+                // `.home-fluss` ist nur `position: relative`). Himmel, Sterne und die gerundete
+                // Ecke sind die Fassung fuers Telefon, wo das Bild eine Karte unter anderen
+                // Karten ist und sich von ihnen abheben muss.
+                if fassung == .hand {
+                    himmel
+                    if nacht { Sterne() } else { sonnenschein(in: raum.size) }
+                } else {
+                    sonnenschein(in: raum.size)
+                }
                 Leitungen(flaeche: raum.size, kanten: kanten, fassung: fassung)
                 ForEach(Flussknoten.allCases) { k in
                     Knoten(
@@ -162,13 +170,12 @@ struct Energiefluss: View {
                         ohneNamen: fassung == .hand && k == .haus,
                         fassung: fassung,
                         seite: k.textseite(fassung),
-                        // **Die Guete gehoert zu der Zahl, die dasteht** (`FlowHandy.tsx:243`:
-                        // `m={s?.battery_soc}`). In der Hand zeigt der Speicher seinen
-                        // Ladestand; haengt sein „kein Messwert" an der Leistung, sagt er
-                        // „- %" neben „laedt 1,2 kW" - oder verschweigt den Ladestand, waehrend
-                        // der Kreis sichtbar bis dorthin gefuellt ist.
-                        messwert: fassung == .hand && k == .batterie
-                            ? augenblick?.batterySoc : messwert(k),
+                        // **Die Guete gehoert zu der Zahl, die dasteht** (`FlowHero.tsx:183`
+                        // und `FlowHandy.tsx:243`: beide `m={s?.battery_soc}`). Der Speicher
+                        // zeigt seinen Ladestand; haengt sein „kein Messwert" an der Leistung,
+                        // sagt er „- %" neben „laedt 1,2 kW" - oder verschweigt den Ladestand,
+                        // waehrend der Kreis sichtbar bis dorthin gefuellt ist.
+                        messwert: k == .batterie ? augenblick?.batterySoc : messwert(k),
                         jetzt: jetzt,
                         gross: k == .haus,
                         fuellung: k == .batterie ? ladestand : nil,
@@ -205,7 +212,8 @@ struct Energiefluss: View {
         // `minmax(0, 1fr)`).
         .frame(height: fassung == .hand ? 410 : nil)
         .frame(maxHeight: fassung == .hand ? nil : .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(
+            RoundedRectangle(cornerRadius: fassung == .hand ? 20 : 0, style: .continuous))
     }
 
     // MARK: - Hintergrund
@@ -225,16 +233,24 @@ struct Energiefluss: View {
     private func sonnenschein(in flaeche: CGSize) -> some View {
         let pv = augenblick?.pvPowerKw.belastbar ?? 0
         let staerke = min(1, max(0, pv / max(1, pvSpitzeKw)))
+        // An der Wand wächst der Schein mit dem Bild - `min(520px, 60%)` mit 0,26
+        // (`globals.css:214`); in der Hand ist er ein fester Kreis von 320 Punkten mit 0,36
+        // (`handy.css:34`). Beides ist dieselbe Sache in zwei Größen: der Lichtschein hat die
+        // Stärke der PV-Leistung, und an einem grauen Tag ist er fast aus.
+        let weite: CGFloat = fassung == .hand ? 320 : min(520, flaeche.width * 0.6)
+        let deckung: Double = fassung == .hand ? 0.36 : 0.26
         return Circle()
             .fill(
                 RadialGradient(
-                    colors: [Farbe.amber.opacity(0.36 * staerke), Farbe.amber.opacity(0)],
+                    colors: [
+                        Farbe.amber.opacity(deckung * staerke), Farbe.amber.opacity(0),
+                    ],
                     center: .center,
                     startRadius: 0,
-                    endRadius: 160
+                    endRadius: weite * 0.31
                 )
             )
-            .frame(width: 320, height: 320)
+            .frame(width: weite, height: weite)
             .position(
                 x: Flussknoten.pv.lage(fassung).x * flaeche.width,
                 y: Flussknoten.pv.lage(fassung).y * flaeche.height
@@ -608,7 +624,9 @@ struct Knoten: View {
     private var ring: some View {
         ZStack {
             Circle()
-                .fill(gross ? Farbe.deep : Farbe.petrol)
+                // An der Wand stehen alle Kreise auf Petrol (`globals.css:223`); `deep` ist
+                // die Farbe des Hauskreises am Telefon (`handy.css:48`).
+                .fill(gross && fassung == .hand ? Farbe.deep : Farbe.petrol)
             if let fuellung {
                 // Der Ladestand als Flaeche von unten, nicht als Ring: so ist er auch bei 52
                 // Punkten Durchmesser als Ladung zu lesen.
@@ -719,26 +737,21 @@ struct Knoten: View {
 
         switch seite {
         case .rechts:
-            inhalt.offset(x: kante / 2 + 10 + breiteSchaetzung / 2, y: 0)
+            inhalt.offset(x: kante / 2 + randabstand + breiteSchaetzung / 2, y: 0)
         case .links:
-            inhalt.offset(x: -(kante / 2 + 10 + breiteSchaetzung / 2), y: 0)
+            inhalt.offset(x: -(kante / 2 + randabstand + breiteSchaetzung / 2), y: 0)
         case .unten:
-            inhalt.offset(x: 0, y: kante / 2 + 8 + hoeheSchaetzung / 2)
+            inhalt.offset(x: 0, y: kante / 2 + randabstand + hoeheSchaetzung / 2)
         }
     }
 
-    /// Die Groesse der Zahl neben dem Kreis.
+    /// Wie weit der Text vom Rand des Kreises steht.
     ///
-    /// Die Vorlage rechnet sie aus der Schirmbreite (`globals.css:230-231`:
-    /// `clamp(22px, 2.6vw, 34px)`, gross `clamp(34px, 4.2vw, 56px)`); auf einem iPad im
-    /// Querformat sind das 31 und 50 Punkte. Die Einheit daneben ist 0,42 davon
-    /// (`globals.css:232`).
-    private var zahlgroesse: CGFloat {
-        switch (gross, fassung) {
-        case (true, .wand): return 50
-        case (false, .wand): return 31
-        default: return 22
-        }
+    /// An der Wand 14 Punkte zur Seite und 8 nach unten (`globals.css:228-229`), in der Hand
+    /// 10 beziehungsweise 8 (`handy.css:41-43`, gerechnet von der Mitte).
+    private var randabstand: CGFloat {
+        if fassung == .wand { return seite == .unten ? 8 : 14 }
+        return seite == .unten ? 8 : 10
     }
 
     /// Die eine Zeile der Wandanzeige: Name, Zustand, und bei altem Wert sein Alter.
@@ -759,17 +772,30 @@ struct Knoten: View {
         if fehlt { return "kein Messwert" }
         if let dazu { teile.append(dazu) }
         if !belastbar, let alter { teile.append(alter) }
-        if !belastbar, let wort = messwert?.quality.wort, alter == nil { teile.append(wort) }
+        // Nur das Alter, nie ein Guetewort: „veraltet" neben einer Zahl sagt weniger als
+        // „vor 7 min", und im Bild ist kein Platz fuer beides (`FlowHero.tsx:101`).
         return teile.isEmpty ? nil : teile.joined(separator: " · ")
     }
 
     // Die Versatzrechnung braucht ein Mass. Feste Schaetzungen statt einer Messung: der Text
     // haengt an einem Kreis und nicht in einem Fluss, und eine Messung je Bild waere hier
     // zwei Durchlaeufe des Layouts fuer ein Ergebnis, das sich nie aendert.
-    private var breiteSchaetzung: CGFloat { 96 }
+    private var breiteSchaetzung: CGFloat { fassung == .wand ? 120 : 96 }
+
+    /// Wie hoch der Textblock ist - aus den Groessen gerechnet, die wirklich gesetzt werden.
+    ///
+    /// **Eine Schaetzung und keine Messung**, weil der Text an einem Kreis haengt und nicht in
+    /// einem Fluss: eine Messung je Bild waere zwei Durchlaeufe des Layouts fuer ein Ergebnis,
+    /// das sich nie aendert. Sie muss aber mitwachsen - hier stand sie fest auf den Groessen
+    /// der Handfassung, und mit 50 Punkten Zahl an der Wand landete die Hauszahl im Kreis
+    /// statt acht Punkte darunter.
     private var hoeheSchaetzung: CGFloat {
-        let zahl: CGFloat = (gross || ohneZahl || fehlt) ? 0 : 24
-        return zahl + 16 + (unterzeile == nil ? 0 : 14)
+        let zahl: CGFloat = (gross && fassung == .hand) || ohneZahl || fehlt ? 0 : zahlgroesse
+        if fassung == .wand {
+            // Zahl (Zeilenhoehe 1), 2 Punkte Spalt, eine Zeile Text zu 13 Punkten.
+            return zahl + (zahl > 0 ? 2 : 0) + 17
+        }
+        return zahl + (zahl > 0 ? 1 : 0) + 17 + (unterzeile == nil ? 0 : 15)
     }
 
     private var vorlesen: String {

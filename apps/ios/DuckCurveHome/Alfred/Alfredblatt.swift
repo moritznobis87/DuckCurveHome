@@ -424,8 +424,7 @@ struct Entenknopf: View {
         ente
             .overlay(alignment: .topTrailing) { hoerzeichen }
             .overlay(alignment: .bottomTrailing) { mitschrift }
-            .padding(.trailing, 16)
-            .padding(.bottom, 14)
+            .padding(20)
             .task { bereit = try? await haus.api.alfredZustand().bereit }
             .onChange(of: druck) { _, liegt in
                 if liegt { druecken() } else { loslassen() }

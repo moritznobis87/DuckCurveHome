@@ -451,8 +451,11 @@ struct TageskurveBild: View {
     private var eintraege: [Legendeneintrag] {
         var aus: [Legendeneintrag] = []
         if !kurve.pv.isEmpty {
-            let kwh = kurve.pvKwh.map { " \(Formate.kwh($0))" } ?? ""
-            aus.append(Legendeneintrag(wort: "Sonne\(kwh)", farbe: Farbe.pv, flaeche: true))
+            // **Die Kilowattstunden stehen nur am Vortag.** Das ist die ganze Begründung für
+            // den Schatten: „Eine Kurve allein sagt nicht, ob der Tag gut war; erst der Vortag
+            // macht aus 13,4 kWh eine Auskunft." Zweimal eine Zahl, und der Vergleich geht
+            // verloren (`DayCurve.tsx:143`).
+            aus.append(Legendeneintrag(wort: "Sonne", farbe: Farbe.pv, flaeche: true))
         }
         if !kurve.pvErwartet.isEmpty {
             aus.append(
@@ -462,7 +465,8 @@ struct TageskurveBild: View {
         }
         if !kurve.schatten.isEmpty {
             let kwh = kurve.schattenKwh.map { " \(Formate.kwh($0))" } ?? ""
-            aus.append(Legendeneintrag(wort: "gestern\(kwh)", farbe: Farbe.pvSchatten))
+            aus.append(
+                Legendeneintrag(wort: "\(kurve.schattenwort ?? "Vortag")\(kwh)", farbe: Farbe.pvSchatten))
         }
         if !kurve.haus.isEmpty {
             aus.append(Legendeneintrag(wort: "Haus", farbe: Farbe.last))

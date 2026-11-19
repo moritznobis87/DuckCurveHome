@@ -93,14 +93,18 @@ struct Zeichen: View {
 }
 
 /// Die Marke: die Entenkurve, wie sie im Kopf der Anzeige steht.
+///
+/// **Sie heisst „Duck Curve"**, nicht „Duck Curve Home" (`AreaNav.tsx:46-51`, `Brand`). Der
+/// lange Name steht im App-Symbol und im Fenstertitel; im Kopf nimmt er die Breite, die das
+/// Datum braucht. `Schrift.marke` ist eigens dafuer da und war unbenutzt.
 struct Marke: View {
-    var groesse: CGFloat = 22
+    var groesse: CGFloat = 30
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Zeichen(.ente, groesse: groesse, farbe: Farbe.amber)
-            Text("Duck Curve Home")
-                .font(Schrift.karte)
+            Text("Duck Curve")
+                .font(Schrift.marke)
                 .foregroundStyle(Farbe.text1)
         }
         .accessibilityElement(children: .ignore)

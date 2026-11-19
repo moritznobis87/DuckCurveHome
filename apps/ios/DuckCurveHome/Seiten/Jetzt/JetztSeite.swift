@@ -50,9 +50,15 @@ struct JetztSeite: View {
     /// clamp(170px, 24vh, 260px) auto`.
     private var wand: some View {
         GeometryReader { raum in
-            VStack(alignment: .leading, spacing: 12) {
-                satzblock
-                HStack(alignment: .top, spacing: 18) {
+            // **Zwei Stufen, nach der Höhe des Schirms** (`globals.css:269-274`): unter 820
+            // Punkten – und so hoch ist ein 10,9-Zoll-iPad im Querformat genau – rücken die
+            // Blöcke auf 8 Punkte zusammen, der Rand auf 14, und der Satz wird kleiner. Sonst
+            // drückt der Fuß die Kurve unter den Rand, und abgeschnitten wird hier nichts
+            // weggerollt, sondern ist weg.
+            let eng = raum.size.height < 820
+            VStack(alignment: .leading, spacing: eng ? 8 : 12) {
+                satzzeile(breit: raum.size.width, eng: eng)
+                HStack(alignment: .center, spacing: 18) {
                     Energiefluss(
                         augenblick: haus.augenblick, jetzt: haus.jetzt,
                         pvSpitzeKw: pvSpitze, wpLaeuft: haus.zustand?.heatPump.running,
@@ -60,8 +66,11 @@ struct JetztSeite: View {
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     // Die Leiste ist 272 Punkte breit (`globals.css:211`).
+                    // Die Leiste dehnt sich über die ganze Zeilenhöhe - darauf beruht, dass
+                    // der Puffer „die ganze Hoehe" bekommt (`globals.css:242`).
                     Leiste()
                         .frame(width: 272)
+                        .frame(maxHeight: .infinity)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .opacity(haus.gestoert ? 0.6 : 1)
@@ -70,7 +79,7 @@ struct JetztSeite: View {
                 fuss
             }
             .padding(.horizontal, 32)
-            .padding(.top, 22)
+            .padding(.top, eng ? 14 : 22)
             .padding(.bottom, 14)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
@@ -138,7 +147,45 @@ struct JetztSeite: View {
         }
     }
 
-    // MARK: - Der Satz    // MARK: - Der Satz
+    /// Der Satz der Wandanzeige, mit dem Stand rechts auf derselben Grundlinie.
+    ///
+    /// **Untereinander ist die Telefonfassung** (`globals.css:201` gegen `:300`): dort steht
+    /// der Stand unter dem Satz, weil drei Satzzeilen auf dem iPhone die Kurve unter den
+    /// ersten Bildschirm schoben. An der Wand ist daneben Platz, und eine Zeile weniger ist
+    /// eine Zeile mehr für das Bild.
+    private func satzzeile(breit: CGFloat, eng: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 24) {
+                Text(haus.satz)
+                    // `clamp(20px, 2.1vw, 28px)`, auf niedrigen Schirmen
+                    // `clamp(18px, 1.9vw, 24px)` (`globals.css:208`, `:271`).
+                    .font(Schrift.sans(
+                        eng ? min(24, max(18, breit * 0.019)) : min(28, max(20, breit * 0.021)),
+                        relativeTo: .title2))
+                    .fontWeight(.medium)
+                    .kerning(-0.35)
+                    .foregroundStyle(Farbe.text1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    // Begrenzte Zeilenlänge: über die volle Breite findet das Auge den Anfang
+                    // der nächsten Zeile nicht wieder (`globals.css:208`, `max-width: 70ch`).
+                    .frame(maxWidth: 820, alignment: .leading)
+                Spacer(minLength: 12)
+                if !unterzeile.isEmpty {
+                    Text(unterzeile)
+                        .font(Schrift.sans(13))
+                        .foregroundStyle(Farbe.text3)
+                        .lineLimit(1)
+                }
+            }
+            Wache(befunde: haus.zustand?.system.watch ?? [])
+            if let f = haus.fehler {
+                Stoerung(fehler: f) { Task { await haus.ersteLadung() } }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Der Satz
 
     private var satzblock: some View {
         VStack(alignment: .leading, spacing: 6) {
