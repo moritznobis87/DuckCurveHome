@@ -27,32 +27,103 @@ struct JetztSeite: View {
     private var schmal: Bool { breite == .compact }
 
     var body: some View {
-        Seite {
-            satzblock
-            if schmal {
-                // **Am Telefon das Hochformat-Bild** (`FlowHandy.tsx`): sechs Knoten mit Zahlen
-                // in der Anordnung der Wandanzeige liefen auf 390 Punkten Breite ineinander.
-                Energiefluss(
-                    augenblick: haus.augenblick, jetzt: haus.jetzt,
-                    pvSpitzeKw: pvSpitze, wpLaeuft: haus.zustand?.heatPump.running,
-                    nacht: istNacht, sonneAb: sonneAb, fassung: .hand
-                )
-                // **Bei unterbrochener Verbindung blasser** (`Home.tsx:227`). Das Bild zeigt
-                // dann Zahlen von vorhin, und es soll aussehen, als meinte es sie nicht mehr.
-                .opacity(haus.gestoert ? 0.6 : 1)
-                Leiste(kompakt: true)
-            } else {
-                HStack(alignment: .top, spacing: 14) {
+        gerippe
+            .task(id: tag) { await ladeFuerTag() }
+            .task(id: haus.heute) { await ladeVortag() }
+            .task(id: tag) { await haltBilanzFrisch() }
+    }
+
+    @ViewBuilder private var gerippe: some View {
+        if schmal { hand } else { wand }
+    }
+
+    // MARK: - Die Wandanzeige
+
+    /// **Ein Bild, kein Rollbereich.**
+    ///
+    /// Die Vorlage legt die Startseite auf genau einen Schirm: `height: 100dvh`,
+    /// `overflow: hidden`, fünf Reihen (`globals.css:190`). Vier davon nehmen, was sie
+    /// brauchen – Kopf, Satz, Kurve, Fuß –, und das Flussbild bekommt den Rest. Die App rollte
+    /// hier, und damit war die Wandanzeige keine: wer im Vorbeigehen hinsieht, scrollt nicht.
+    ///
+    /// Die Reihenhöhen stehen in der Vorlage als `grid-template-rows: auto auto minmax(0,1fr)
+    /// clamp(170px, 24vh, 260px) auto`.
+    private var wand: some View {
+        GeometryReader { raum in
+            VStack(alignment: .leading, spacing: 12) {
+                satzblock
+                HStack(alignment: .top, spacing: 18) {
                     Energiefluss(
                         augenblick: haus.augenblick, jetzt: haus.jetzt,
                         pvSpitzeKw: pvSpitze, wpLaeuft: haus.zustand?.heatPump.running,
                         nacht: istNacht, sonneAb: sonneAb
                     )
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Die Leiste ist 272 Punkte breit (`globals.css:211`).
                     Leiste()
-                        .frame(width: 260)
+                        .frame(width: 272)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .opacity(haus.gestoert ? 0.6 : 1)
+                kurve
+                    .frame(height: kurvenhoehe(raum.size.height))
+                fuss
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 22)
+            .padding(.bottom, 14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    /// `clamp(170px, 24vh, 260px)` (`globals.css:190`).
+    private func kurvenhoehe(_ hoehe: CGFloat) -> CGFloat {
+        min(260, max(170, hoehe * 0.24))
+    }
+
+    /// Der Fuß: links die vier Zahlen des Tages, rechts das Dock.
+    ///
+    /// **Ohne Karten.** `.home-fuss` ist eine Zeile und keine Fläche (`globals.css:251-255`);
+    /// die vier Zahlen stehen frei auf dem Grund, mit 32 Punkten Abstand, und das Dock steht
+    /// rechts daneben. In einer Karte wären es zwei weitere Kästen auf einem Schirm, der schon
+    /// voll ist.
+    private var fuss: some View {
+        HStack(alignment: .bottom, spacing: 24) {
+            HStack(alignment: .firstTextBaseline, spacing: 32) {
+                ForEach(kennzahlen) { k in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Zahl(
+                            wert: k.wert, einheit: k.einheit,
+                            schrift: Schrift.custom(26), einheitSchrift: Schrift.sans(12),
+                            farbe: k.farbe
+                        )
+                        Text(k.wort)
+                            .font(Schrift.sans(12))
+                            .foregroundStyle(Farbe.text2)
+                    }
                 }
             }
+            Spacer(minLength: 16)
+            Dock()
+        }
+    }
+
+    // MARK: - Die Handfassung
+
+    private var hand: some View {
+        Seite {
+            satzblock
+            // **Am Telefon das Hochformat-Bild** (`FlowHandy.tsx`): sechs Knoten mit Zahlen
+            // in der Anordnung der Wandanzeige liefen auf 390 Punkten Breite ineinander.
+            Energiefluss(
+                augenblick: haus.augenblick, jetzt: haus.jetzt,
+                pvSpitzeKw: pvSpitze, wpLaeuft: haus.zustand?.heatPump.running,
+                nacht: istNacht, sonneAb: sonneAb, fassung: .hand
+            )
+            // **Bei unterbrochener Verbindung blasser** (`Home.tsx:227`). Das Bild zeigt
+            // dann Zahlen von vorhin, und es soll aussehen, als meinte es sie nicht mehr.
+            .opacity(haus.gestoert ? 0.6 : 1)
+            Leiste(kompakt: true)
             kurve
             // **Vier gleich grosse Zahlen in zwei Spalten, ohne Ueberschrift**
             // (`handy.css:279-283`). „Eine Zahl fuehrt" gilt in der Vorlage fuer die
@@ -65,12 +136,9 @@ struct JetztSeite: View {
                 Dock()
             }
         }
-        .task(id: tag) { await ladeFuerTag() }
-        .task(id: haus.heute) { await ladeVortag() }
-        .task(id: tag) { await haltBilanzFrisch() }
     }
 
-    // MARK: - Der Satz
+    // MARK: - Der Satz    // MARK: - Der Satz
 
     private var satzblock: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -128,22 +196,25 @@ struct JetztSeite: View {
 
     // MARK: - Die Kurve
 
-    private var kurve: some View {
-        // Der Tagesschalter steht ueber dem Bild und ueber die ganze Breite, nicht als
-        // Beiwerk neben einer Ueberschrift (`handy.css:267-268`, `DayCurve.tsx:152`).
-        Karte(beiwerk: schmal ? nil : AnyView(Tagwahl(tag: $tag))) {
-            if schmal { Tagwahl(tag: $tag) }
-            TageskurveBild(
-                kurve: Tageskurve.baue(
-                    tag: tag,
-                    raster: tag == .heute ? haus.raster.punkte : geholtesRaster,
-                    vortag: tag == .heute ? vortag : [],
-                    plan: haus.plan,
-                    waermeprognose: waermeprognose,
-                    jetzt: haus.jetzt
-                ),
-                tag: tag
-            )
+    @ViewBuilder private var kurve: some View {
+        let bild = TageskurveBild(
+            kurve: Tageskurve.baue(
+                tag: tag,
+                raster: tag == .heute ? haus.raster.punkte : geholtesRaster,
+                vortag: tag == .heute ? vortag : [],
+                plan: haus.plan,
+                waermeprognose: waermeprognose,
+                jetzt: haus.jetzt
+            ),
+            tag: tag,
+            tagwahl: AnyView(Tagwahl(tag: $tag))
+        )
+        if schmal {
+            Karte { bild }
+        } else {
+            // **An der Wand ohne Karte** (`globals.css:249`: `.home-kurve` ist eine Spalte,
+            // keine Fläche). Sie steht auf dem Grund wie das Flussbild darüber.
+            bild
         }
     }
 

@@ -78,6 +78,8 @@ public enum Farbe {
     public static let diagrammWallbox = Color(Marken.diagrammWallbox)
     public static let diagrammSpeicher = Color(Marken.diagrammSpeicher)
     public static let diagrammHaushalt = Color(Marken.diagrammHaushalt)
+    /// Die Sonne des Vortags.
+    public static let pvSchatten = Color(Marken.pvSchatten)
     public static let waerme = Marken.waerme.map(Color.init)
     public static let pufferschichten = Marken.pufferschichten.map(Color.init)
 

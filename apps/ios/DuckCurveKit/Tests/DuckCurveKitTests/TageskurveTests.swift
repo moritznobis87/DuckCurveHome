@@ -219,8 +219,11 @@ final class TageskurveTests: XCTestCase {
         let g = k.preisgrenzen
         XCTAssertLessThan(g.unten, 0)
         XCTAssertGreaterThan(g.oben, 38)
-        // Ohne Preise eine brauchbare Vorgabe statt einer Achse von 0 bis 0.
-        XCTAssertEqual(Tageskurve().preisgrenzen.oben, 40)
+        // Ohne Preise eine brauchbare Vorgabe statt einer Achse von 0 bis 0. Seit dem
+        // 19.11.2026 dieselbe wie in der Vorlage (`dayBounds.ts:23`: 0 bis 45 in Schritten
+        // von 15) - vorher 40, was dort nirgends steht.
+        XCTAssertEqual(Tageskurve().preisgrenzen.oben, 45)
+        XCTAssertEqual(Tageskurve().preisgrenzen.schritt, 15)
     }
 
     func testLeerErkanntWennNichtsDaIst() {
@@ -228,5 +231,70 @@ final class TageskurveTests: XCTestCase {
         var k = Tageskurve()
         k.haus = [Kurvenpunkt(stunde: 1, wert: 1)]
         XCTAssertFalse(k.leer)
+    }
+}
+
+/// Die Preisachse: so eng wie möglich, auf runden Zahlen, und die Null nur, wenn es sie braucht.
+final class PreisachseTests: XCTestCase {
+    private func kurve(_ preise: [Double]) -> Tageskurve {
+        var k = Tageskurve()
+        k.preis = preise.enumerated().map {
+            Kurvenpunkt(stunde: Double($0.offset), wert: $0.element)
+        }
+        return k
+    }
+
+    /// **Der Fehler, den dieser Test festhält.** Die Achse reichte immer bis zur Null, und an
+    /// einem gewöhnlichen Tag zwischen 38 und 52 ct lag die ganze Kurve damit im oberen
+    /// Viertel - auf dem iPad am 19.11.2026 eine flache Linie am oberen Rand.
+    func testEinGewoehnlicherTagBekommtKeineNull() {
+        let g = kurve([38, 41, 52, 47]).preisgrenzen
+        XCTAssertGreaterThan(g.unten, 30, "die Null gehört hier nicht auf die Achse")
+        XCTAssertLessThanOrEqual(g.unten, 38)
+        XCTAssertGreaterThanOrEqual(g.oben, 52)
+        XCTAssertLessThan(g.oben - g.unten, 25)
+    }
+
+    /// Negative Preise sind der Grund für das halbe Projekt: dort muss die Achse unter die Null.
+    func testNegativePreiseReissenDieAchseAuf() {
+        let g = kurve([-3, 5, 12]).preisgrenzen
+        XCTAssertLessThan(g.unten, 0)
+        XCTAssertGreaterThanOrEqual(g.oben, 12)
+    }
+
+    /// Höchstens sieben Abschnitte, und die Marken liegen auf Vielfachen der Schrittweite.
+    func testDieMarkenSindRundUndNichtZuViele() {
+        for preise in [[38.0, 52.0], [0.5, 1.2], [-20.0, 140.0], [21.0, 21.2]] {
+            let k = kurve(preise)
+            let g = k.preisgrenzen
+            let marken = k.preismarken
+            XCTAssertLessThanOrEqual(marken.count, 8, "\(preise)")
+            XCTAssertGreaterThanOrEqual(marken.count, 3, "\(preise)")
+            XCTAssertEqual(marken.first ?? .nan, g.unten, accuracy: 0.001)
+            for m in marken {
+                let vielfaches = (m - g.unten) / g.schritt
+                XCTAssertEqual(vielfaches, vielfaches.rounded(), accuracy: 0.001, "\(m)")
+            }
+        }
+    }
+
+    /// Ohne Preise bleibt eine brauchbare Achse stehen, statt auf null zusammenzufallen.
+    func testOhnePreiseEineVorgabe() {
+        let g = kurve([]).preisgrenzen
+        XCTAssertEqual(g.unten, 0)
+        XCTAssertEqual(g.oben, 45)
+    }
+
+    /// Der Weg auf die Leistungsachse und zurück muss denselben Preis ergeben - sonst steht die
+    /// rechte Achse woanders als die Kurve, die sie beschriftet.
+    func testHinUndZurueck() {
+        let k = kurve([38, 41, 52, 47])
+        for ct in [38.0, 44.5, 52.0] {
+            XCTAssertEqual(k.leistungAufPreis(k.preisAufLeistung(ct)), ct, accuracy: 0.001)
+        }
+        // Die untere Grenze liegt auf dem Boden der Leistungsachse, die obere auf ihrer Decke.
+        let g = k.preisgrenzen
+        XCTAssertEqual(k.preisAufLeistung(g.unten), 0, accuracy: 0.001)
+        XCTAssertEqual(k.preisAufLeistung(g.oben), k.leistungsgrenze, accuracy: 0.001)
     }
 }

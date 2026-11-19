@@ -139,6 +139,15 @@ public enum Marken {
     /// dieselbe Farbe (Abstand 0,2).
     public static let diagrammHaushalt = Farbwert(0xCFD8DC)
 
+    /// Die Sonne eines anderen Tages: hinter heute liegt gestern.
+    ///
+    /// Dieselbe Familie wie `pv`, nur dunkler - nach dem Maßstab der übrigen Farben zu nah.
+    /// **Hier ist das der Sinn:** es ist dieselbe Größe an einem anderen Tag, und wer die
+    /// beiden für verwandt hält, hat richtig gelesen. Unterschieden werden sie an der Form
+    /// (keine Fläche, dünner, hinter allem) und in der Legende, die den Tag nennt
+    /// (`charts/palette.ts`, `pvSchatten`).
+    public static let pvSchatten = Farbwert(0xC8902F)
+
     /// Die vier Schichten des Puffers, warm nach kuehl - wie die Schichtung selbst.
     ///
     /// **Keine vier Kategorienfarben, sondern eine Folge.** Die Linien liegen fast immer in
