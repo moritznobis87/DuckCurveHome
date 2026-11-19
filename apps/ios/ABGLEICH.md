@@ -13,8 +13,8 @@ nicht abgehakt.
 |---|---|
 | verglichen | **28 von 28 Seiten** |
 | Punkte gesamt | 167 |
-| davon erledigt | **40** |
-| offen | **127**, davon 1 nach Prüfung keine Lücke |
+| davon erledigt | **43** |
+| offen | **124**, davon 1 nach Prüfung keine Lücke |
 
 ## Erledigt
 
@@ -35,6 +35,38 @@ nicht abgehakt.
   Auskunft, die der Finger steuert (Außentemperatur, COP, Prognosefehler, Zerlegung des
   Bedarfs). Dazu zwei Fehler aus den Screenshots: die festverdrahtete Preisachse bis 40 ct und
   die fehlende Tagesangabe an Uhrzeiten im Zweitagehorizont.
+
+- **`/strom` · 3 von 4 Punkten** (18.11.) – die Seite führt jetzt den Verbrauch an und sagt,
+  wer ihn hatte: „Verbrauch gesamt" mit den bewerteten Stunden, Wärmepumpe, Wallbox und
+  Haushalt je mit ihrem Anteil, Autarkie mit den Kilowattstunden ohne Netz, Netzbezug in Euro
+  mit dem Weg zur Rechnungsprüfung. Dazu die Datenabdeckung in der (jetzt zugeklappten)
+  Methode. Offen bleibt der Spannenvergleich „Strom im Überblick".
+
+## Was zwei Bildschirmfotos zeigten, die Liste aber nicht
+
+Am 18.11. hat der Nutzer die Startseite und die Energieseite nebeneinandergehalten, Vorlage
+gegen App. Beide Seiten standen in dieser Liste als **vollständig** bzw. mit vier kleinen
+Punkten – und beide sahen grundlegend anders aus als die Vorlage.
+
+**Der Grund ist derselbe bei beiden: verglichen wurde gegen die falsche Datei.** Das Dashboard
+hat für das Telefon ein **eigenes** Flussbild (`home/FlowHandy.tsx`, seit dem 25.10.2026), weil
+die Anordnung der Wandanzeige auf 390 Punkten Breite ineinanderläuft. Die App hatte die
+Wandanzeige portiert (`FlowHero.tsx`) und zeigte sie auch am Telefon; der Abgleich las
+`FlowHero.tsx`, fand sie getreu übersetzt und hakte die Seite ab. Dasselbe beim Kopf der
+Berichtsseiten: dass er am Telefon den **Bereichsnamen** trägt und die Zeitwahl **über** den
+Reitern steht, steht nicht im TSX, sondern in `handy.css` – und die wurde nicht gelesen.
+
+**Was daraus folgt**, für den Rest dieser Liste: eine Seite ist erst verglichen, wenn
+`handy.css` zu ihr gelesen ist und geprüft wurde, ob die Vorlage für das Telefon eine zweite
+Datei hat. Eine Seite, deren TSX getreu übersetzt ist, kann am Telefon trotzdem eine andere
+Seite sein.
+
+Nachgezogen am 18.11. (nicht als Punkte gezählt, weil sie in der Liste nie standen): das
+Flussbild im Hochformat samt Mond, Sternen und den Zustandsworten; die Reihenfolge Ausblick vor
+Puffer; der Verweis „Fahrplan ›"; Größen und Farben des Ausblicks; der Bereichsname im Kopf;
+die zerlegte Zeitwahl über den Reitern; Reiter als Pillen; Umschalter in voller Breite und in
+Bernstein; das Wort über der Zahl auf jeder Kachel; die liegende Pufferkachel; die Legende der
+Tageskurve unter dem Bild.
 
 ## Zwei Läufe, und beide tragen jetzt
 
@@ -153,9 +185,17 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
   - In der App: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift:65-83`
   - bauen in: `apps/ios/DuckCurveHome/Seiten/Haus/HausSeite.swift`
 
-### `/strom`  ·  4 Punkte  ·  *gegengeprüft 17.11.*
+### `/strom`  ·  1 Punkt  ·  *gegengeprüft 17.11., drei Punkte erledigt 18.11.*
 
-- **mittel** — Netzbezug in Euro fehlt als Kachel auf /strom
+> **Erledigt am 18.11.** Die Netzbezug-Kachel in Euro samt Weg zur Rechnungsprüfung, die
+> Datenabdeckung in der Methode, und die drei Verbraucher mit ihrem Anteil. Die Seite führt
+> jetzt mit dem Verbrauch statt mit der Autarkie, und was zur Erzeugung gehört („aus der
+> Sonne", „eingespeist", „Eigenverbrauch") steht unter Photovoltaik, wo die Vorlage es hat.
+> Nachgezogen wurde dabei auch, was in dieser Liste nie stand: die Reihenfolge der beiden
+> Diagramme, ihre Namen, und die Farben der gestapelten Balken – die Wallbox hatte genau den
+> Ton, den `charts/palette.ts` verworfen hat, weil zwei von drei Segmenten wie eines aussahen.
+
+- ~~**mittel** — Netzbezug in Euro fehlt als Kachel auf /strom~~ · **erledigt 18.11.**
   - Befund: Web hat die eigene Kachel apps/web/src/components/reports/HouseReport.tsx:51-58 (label "Netzbezug", value eur(t?.import_cost_eur), hint mit import_kwh). In apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48 stehen nur Autarkie, Sonne, Netz (kWh), Einspeisung, Haus, Eigenverbrauch; grep nach importCostEur/import_cost_eur ueber apps/ios/ findet in der Datei keinen Treffer, nur apps/ios/DuckCurveHome/Seiten/Geld/GeldSeiten.swift:63,90,103. Das Feld gibt es im Schema (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:3003, 3053), ist auf dieser Seite also nur ungenutzt. Keine Verlagerung: die Vorlage zeigt den Betrag auch auf /geld (apps/web/src/components/reports/CostReport.tsx:112), die iOS-Geldseite ist deren Gegenstueck, nicht der Ersatz fuer diese Kachel.
   - Vorlage: `apps/web/src/components/reports/HouseReport.tsx:51-58`
   - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48`
@@ -165,12 +205,12 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
   - Vorlage: `apps/web/src/components/reports/HouseReport.tsx:72-81`
   - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:10-11`
   - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift (Baustein nach apps/ios/DuckCurveHome/Seiten/Bericht.swift)`
-- **mittel** — Datenabdeckung des Zeitraums wird nie gedruckt
+- ~~**mittel** — Datenabdeckung des Zeitraums wird nie gedruckt~~ · **erledigt 18.11.**
   - Befund: Web: apps/web/src/components/reports/ReportShell.tsx:163-174 (CoverageNote) macht aus meta.coverage "Datenabdeckung NN %" bzw. "noch keine Messdaten im Zeitraum" und steht in HouseReport.tsx:82. iOS: apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:23-26 uebergibt der Methode nur estimatedNoteDe und dataSince. Das Feld liegt im Modell (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:2836, EnergyMetaOut.coverage, benutzt von EnergySummaryOut.meta in Schema.swift:2949). Grep nach coverage/Coverage/Abdeckung ueber apps/ios/DuckCurveHome/ findet nur Geld/RechnungenSeite.swift:122 (Rechnungs-Meta) und Technik/SystemSeiten.swift:500-521 sowie FahrplanSeiten.swift:342 (CoverageOut vom Endpunkt /system/coverage, ein anderes Feld) - in keiner Energie-Seite.
   - Vorlage: `apps/web/src/components/reports/ReportShell.tsx:163-174`
   - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:23-26`
   - bauen in: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift (bzw. Methode in apps/ios/DuckCurveHome/Seiten/Bericht.swift:263-286)`
-- **klein** — Waermepumpe, Wallbox, Haushalt ohne Summe und Anteil
+- ~~**klein** — Waermepumpe, Wallbox, Haushalt ohne Summe und Anteil~~ · **erledigt 18.11.**
   - Befund: Web: apps/web/src/components/reports/HouseReport.tsx:46-48 gibt den drei je eine Kachel mit kWh und dem Hinweis aus share() in HouseReport.tsx:38 ("NN % des Verbrauchs"). iOS: apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48 hat keine solche Kachel; heatPumpKwh, evKwh und baseKwh kommen auf der Seite nur als Balkenreihen je Zeitschritt vor (StromSeite.swift:69-84), und die Tabelle StromSeite.swift:86-99 hat die Spalten Sonne, Haus, Bezug, Einspeisung - ohne die drei. Grep nach "des Verbrauchs"/"Anteil am" in apps/ios/DuckCurveHome/Seiten/ trifft nur StromSeite.swift:34 (Autarkie), eine Anteilsangabe fuer die drei gibt es in der App nirgends. Die Summen allein stehen auf Unterseiten, die die Vorlage ebenso hat (WaermeSeite.swift:52 "Strom dafuer", StromSeite.swift:277 "geladen").
   - Vorlage: `apps/web/src/components/reports/HouseReport.tsx:46-48`
   - In der App: `apps/ios/DuckCurveHome/Seiten/Energie/StromSeite.swift:30-48, 86-99`
