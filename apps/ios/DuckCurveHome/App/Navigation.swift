@@ -94,6 +94,8 @@ final class Wegweiser {
 /// Ein Blatt ueber der Seite: was beim Tippen auf eine Zahl aufgeht.
 enum Blatt: Identifiable, Hashable {
     case waermepumpe
+    /// Die Auswahl, die ein Tipp auf die Waermepumpe im Flussbild oeffnet.
+    case waermepumpenmenue
     case ofen
     case batterie
     case raum(Int)
@@ -105,6 +107,7 @@ enum Blatt: Identifiable, Hashable {
     var id: String {
         switch self {
         case .waermepumpe: return "wp"
+        case .waermepumpenmenue: return "wp-menue"
         case .ofen: return "ofen"
         case .batterie: return "bat"
         case .raum(let i): return "raum-\(i)"
@@ -180,6 +183,7 @@ struct Wurzel: View {
         .sheet(item: Binding(get: { wegweiser.blatt }, set: { wegweiser.blatt = $0 })) { blatt in
             switch blatt {
             case .waermepumpe: Waermepumpenblatt()
+            case .waermepumpenmenue: Wpmenue()
             case .ofen: Ofenblatt()
             case .batterie: Batterieblatt()
             case .entscheidungen: Entscheidungsblatt()

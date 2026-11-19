@@ -9,6 +9,19 @@ import Foundation
 /// (wo der Vorlauf einspeist, wo der Fühler der Wärmepumpe sitzt) sind Auskünfte des
 /// Hausherrn und keine Gestaltung, die man nachempfinden darf.
 public enum Wpbild {
+    /// Das Zustandswort der Waermepumpe: „laeuft", „Bereitschaft", „steht".
+    ///
+    /// **Drei Worte, nicht zwei** (`FlowHero.tsx`, `wpWort`). Die Maschine zieht im Stillstand
+    /// rund 0,1 kW fuer Steuerung und Umwaelzpumpe. „Laeuft" waere dafuer falsch, „aus" auch -
+    /// sie ist bereit und wartet. Erst wenn der Dienst sagt, dass sie laeuft, laeuft sie.
+    ///
+    /// Es steht hier und nicht in der Ansicht, weil zwei Stellen es brauchen: der Knoten im
+    /// Flussbild und die Zeile ueber dem Waermepumpenmenue.
+    public static func wort(kw: Double?, laeuft: Bool?) -> String {
+        if laeuft == true { return "läuft" }
+        return (kw ?? 0) >= 0.05 ? "Bereitschaft" : "steht"
+    }
+
     /// Zwei Lagen, eine Zeichnung: an der Wand nebeneinander, am Telefon untereinander.
     public enum Lage: Sendable { case breit, hoch }
 

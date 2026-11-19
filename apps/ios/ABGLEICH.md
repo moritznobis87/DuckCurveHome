@@ -61,6 +61,13 @@ Reitern steht, steht nicht im TSX, sondern in `handy.css` – und die wurde nich
 Datei hat. Eine Seite, deren TSX getreu übersetzt ist, kann am Telefon trotzdem eine andere
 Seite sein.
 
+**Am 19.11. derselbe Fall ein drittes Mal, diesmal von aussen gemeldet:** ein Tipp auf die
+Wärmepumpe im Flussbild öffnet im Dashboard eine Auswahl aus vier Zielen (`home/WpMenue.tsx`,
+Nutzerwunsch 14.11.2026: „Wer auf die Wärmepumpe tippt, will eines von mehreren Dingen wissen,
+und welches, weiß nur er"). Die App sprang direkt in das Blatt mit Zustand und Stellen – also
+in eines der vier, ohne zu fragen. Der Abgleich hat `WpMenue.tsx` nicht gelesen, weil die
+Datei an keiner Seite hängt, sondern an einem Knoten in einem Bild.
+
 Nachgezogen am 18.11. (nicht als Punkte gezählt, weil sie in der Liste nie standen): das
 Flussbild im Hochformat samt Mond, Sternen und den Zustandsworten; die Reihenfolge Ausblick vor
 Puffer; der Verweis „Fahrplan ›"; Größen und Farben des Ausblicks; der Bereichsname im Kopf;

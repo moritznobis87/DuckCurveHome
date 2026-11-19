@@ -438,9 +438,12 @@ struct Energiefluss: View {
     }
 
     private func tippe(_ k: Flussknoten) {
-        // Die Waermepumpe oeffnet ein Blatt: sie kann mehr als an und aus.
+        // **Die Waermepumpe fragt, wohin** (`FlowHandy.tsx:247`, `onOeffnen`). Wer auf sie
+        // tippt, will eines von vier Dingen wissen, und welches, weiss nur er. Hier sprang die
+        // App bis zum 19.11.2026 direkt in das Blatt mit Zustand und Stellen - also in eines
+        // der vier, ohne zu fragen. Das Blatt haengt weiter am Dock.
         if k == .waermepumpe {
-            wegweiser.blatt = .waermepumpe
+            wegweiser.blatt = .waermepumpenmenue
         } else if k == .batterie {
             wegweiser.blatt = .batterie
         } else {
