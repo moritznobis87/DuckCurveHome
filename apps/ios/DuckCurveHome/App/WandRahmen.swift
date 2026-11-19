@@ -225,25 +225,8 @@ struct Verbindungspunkt: View {
         .accessibilityLabel(haus.zustand?.system.connectionLabelDe ?? wort)
     }
 
-    private var vorfuehrung: Bool {
-        haus.zustand?.system.mode == "demo"
-    }
+    private var vorfuehrung: Bool { haus.vorfuehrung }
 
-    private var wort: String {
-        switch haus.verbindung {
-        case .live:
-            guard let s = haus.zustand?.system else { return "live" }
-            if s.mode == "demo" {
-                return s.simSpeed != 1 ? "demo \(Formate.zahl(s.simSpeed, stellen: 0))×" : "demo"
-            }
-            return "live"
-        case .verbindet:
-            return "verbinde"
-        case .verbindetNeu:
-            guard let letzter = haus.letzterRahmen else { return "verbinde" }
-            return "unterbrochen · \(Formate.hhmm(letzter.addingTimeInterval(haus.versatz)))"
-        case .aus:
-            return haus.fehler == nil ? "angehalten" : "nicht verbunden"
-        }
-    }
+    private var wort: String { haus.verbindungswort }
+
 }

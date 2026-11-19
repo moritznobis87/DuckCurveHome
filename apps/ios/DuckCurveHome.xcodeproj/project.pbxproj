@@ -45,6 +45,7 @@
 		A866580B4F770F9C1E2A1F23 /* Wpmenue.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA88BF1FF2F8B10E21AE2C1D /* Wpmenue.swift */; };
 		B5B0CB533E0FCE256C33E295 /* Waermepumpenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */; };
 		BA80D620296C3F558A781A8A /* Dock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442E48F860C3E272065F1773 /* Dock.swift */; };
+		BF25DAE57629F583E2BC4442 /* Ambiente.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06738C7E03178A104B308ABA /* Ambiente.swift */; };
 		BF90E13714A06E92ACA5FEBA /* Systemanschluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65970F2409A3493784FE0F3 /* Systemanschluss.swift */; };
 		BFEA1309C0F0923E9EC869A2 /* Umbruchzeile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D48D7AA0788028340C51B9 /* Umbruchzeile.swift */; };
 		C43C83AB55DE4450DB127E05 /* Einrichten.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */; };
@@ -68,6 +69,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		06738C7E03178A104B308ABA /* Ambiente.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ambiente.swift; sourceTree = "<group>"; };
 		0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Waermepumpenbild.swift; sourceTree = "<group>"; };
 		0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reiterzeile.swift; sourceTree = "<group>"; };
 		136B81A72166E32541A4ABF9 /* Anlagenrohre.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenrohre.swift; sourceTree = "<group>"; };
@@ -146,6 +148,7 @@
 			isa = PBXGroup;
 			children = (
 				F0BCDE5FB8D6F9AFCC77CB33 /* Abweichungsmatrix.swift */,
+				06738C7E03178A104B308ABA /* Ambiente.swift */,
 				7679B32D01774CCA129F24A6 /* Ausblickkarte.swift */,
 				8EB4AE3BBF422749B5EDD958 /* Blaetter.swift */,
 				442E48F860C3E272065F1773 /* Dock.swift */,
@@ -433,6 +436,7 @@
 			files = (
 				3EF3EF537DB4E937E636B504 /* Abweichungsmatrix.swift in Sources */,
 				8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */,
+				BF25DAE57629F583E2BC4442 /* Ambiente.swift in Sources */,
 				92BED5F9FA7987479E09055C /* AnlageSeite.swift in Sources */,
 				A828EF6E284B4E612A9201C9 /* Anlagenbild.swift in Sources */,
 				643D9FDBE5C78B85C63D5ACA /* Anlagenrohre.swift in Sources */,

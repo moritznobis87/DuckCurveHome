@@ -23,19 +23,36 @@ struct Pufferglas: View {
     let temperaturen: [Messwert]
     let soc: Double?
     let zustand: Pufferzustand
-    /// Die Höhe der vier Fühler im Speicher, von oben nach unten. Aus `puffer/glas.ts`.
-    private let hoehen: [Double] = [0.12, 0.38, 0.62, 0.88]
-    /// Die Breite des Tanks. Das Dashboard zeichnet 56 auf 300 – ein schmales, hohes Glas.
-    private let tankbreite: CGFloat = 60
+    /// Die Breite des Tanks. Das Dashboard zeichnet 72 auf 300 – ein schmales, hohes Glas
+    /// (`Ambiente.tsx:180`); auf der Startseite ist es schmaler.
+    var breite: CGFloat = 60
+    /// Die Schrift der vier Fühlerzahlen. Im Ruhebild grösser, weil man dort weiter weg steht.
+    var zahlschrift: Font = Schrift.zahlKlein
+    /// Blass, wenn die Werte unvollständig oder veraltet sind (`Glas.tsx:44`, `opacity .5`).
+    var gedimmt: Bool = false
+    /// Ob Füllstand und Wort rechts danebenstehen. Das Ruhebild setzt sie selbst, grösser.
+    var mitWerten: Bool = true
+
+    /// Die Höhe der vier Fühler im Speicher, von oben nach unten. Aus `puffer/glas.ts:22`.
+    private let hoehen: [Double] = [0.125, 0.375, 0.625, 0.875]
 
     var body: some View {
         HStack(alignment: .center, spacing: 18) {
             tank
-                .frame(width: tankbreite + 46)
-            werte
-            Spacer(minLength: 0)
+                .frame(width: breite + randbreite)
+                .opacity(gedimmt ? 0.5 : 1)
+            if mitWerten {
+                werte
+                Spacer(minLength: 0)
+            }
         }
     }
+
+    /// Der Platz rechts vom Glas für Strich und Zahl.
+    ///
+    /// Die Vorlage rechnet ihn aus der Schriftgrösse: `randBreite(s) = round(20 + s * 2.6)`
+    /// (`puffer/glas.ts`). Bei 13 Punkten sind das 54, bei 17 Punkten 64.
+    private var randbreite: CGFloat { 46 }
 
     // MARK: - Das Glas
 
@@ -45,10 +62,25 @@ struct Pufferglas: View {
             ZStack(alignment: .topLeading) {
                 form
                     .fill(LinearGradient(stops: verlauf, startPoint: .top, endPoint: .bottom))
-                    .frame(width: tankbreite, height: h)
+                    .frame(width: breite, height: h)
+                // **Der Glanz macht aus der Farbfläche ein Glas** (`Glas.tsx:66-72`): links ein
+                // heller Streifen, rechts ein dunkler. Ohne ihn ist der Tank ein Balken.
                 form
-                    .strokeBorder(Farbe.linie2, lineWidth: 1)
-                    .frame(width: tankbreite, height: h)
+                    .fill(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white.opacity(0.22), location: 0),
+                                .init(color: .white.opacity(0.05), location: 0.18),
+                                .init(color: .white.opacity(0), location: 0.55),
+                                .init(color: .black.opacity(0.18), location: 1),
+                            ],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .frame(width: breite, height: h)
+                form
+                    .strokeBorder(Color.white.opacity(0.28), lineWidth: 1.2)
+                    .frame(width: breite, height: h)
                 ForEach(Array(temperaturen.enumerated()), id: \.offset) { i, m in
                     if i < hoehen.count {
                         fuehler(m, bei: hoehen[i], hoehe: h)
@@ -65,7 +97,7 @@ struct Pufferglas: View {
             Rectangle()
                 .fill(Farbe.linie2)
                 .frame(width: 10, height: 1)
-                .position(x: tankbreite + 5, y: y)
+                .position(x: breite + 5, y: y)
             HStack(spacing: 1) {
                 Text(m.belastbar.map { Formate.zahl($0, stellen: 0) } ?? Formate.leer)
                     .foregroundStyle(m.quality.traegt ? Farbe.text1 : Farbe.text3)
@@ -73,13 +105,16 @@ struct Pufferglas: View {
                     Text("°").foregroundStyle(Farbe.text3)
                 }
             }
-            .font(Schrift.zahlKlein)
-            .position(x: tankbreite + 32, y: y)
+            .font(zahlschrift)
+            .position(x: breite + 32, y: y)
         }
     }
 
+    /// **Eine Kapsel, kein Kasten** (`puffer/glas.ts`: `rx = breite / 2`). Die Vorlage rundet
+    /// den Tank oben und unten zum Halbkreis; ein Radius von 14 Punkten machte daraus eine
+    /// Kachel mit weichen Ecken.
     private var form: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 14, style: .continuous)
+        RoundedRectangle(cornerRadius: breite / 2, style: .continuous)
     }
 
     /// Der Farbverlauf des Wassers: die Farbe jedes Fühlers auf seiner Höhe.
