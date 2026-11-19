@@ -186,7 +186,6 @@ extension Seite where Inhalt == EmptyView {
 /// Schalter darunter - und beides ueber den Reitern (`handy.css:146-161`). Das zeichnet
 /// ``HandRahmen``; diese Ansicht ist die der Wand.
 struct Zeitraumleiste: View {
-    @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
 
     /// Welche Spannen diese Seite anbietet. Ohne Angabe die des Reiters.
@@ -197,7 +196,6 @@ struct Zeitraumleiste: View {
     }
 
     var body: some View {
-        let z = wegweiser.zeitraum(jetzt: haus.jetzt)
         HStack(spacing: 10) {
             if welche.count > 1 {
                 Spannenwahl(spannen: welche)
