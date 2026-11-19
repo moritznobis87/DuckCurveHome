@@ -36,21 +36,7 @@ struct HausSeite: View {
     private enum Ansichtswahlart: String { case liste, modell }
 
     var body: some View {
-        Seite {
-            kopf
-            if let fehler {
-                Stoerung(fehler: fehler) { Task { await lade() } }
-            }
-            if let alarm = haus.zustand?.alarm {
-                Alarmkarte(alarm: alarm)
-            }
-            switch ansicht {
-            case .liste:
-                raumliste
-            case .modell:
-                modell
-            }
-        }
+        gerippe
         .task { await lade() }
         // Die Raumtemperaturen kommen nicht im Ereignisstrom - sie werden nachgeholt, aber nicht
         // im Sekundentakt: ein Fussbodenheizkreis bewegt sich in Stunden, nicht in Sekunden.
@@ -102,6 +88,164 @@ struct HausSeite: View {
     /// `Spacer` teilen sich beide den Platz: der Schalter stuende dann mitten in der Zeile und
     /// „Stand 14:32" irgendwo rechts daneben. Also steht der Stand darueber und der Schalter
     /// allein auf seiner Zeile.
+    @ViewBuilder private var gerippe: some View {
+        if schmal || ansicht == .liste {
+            Seite {
+                kopf
+                if let fehler {
+                    Stoerung(fehler: fehler) { Task { await lade() } }
+                }
+                if let alarm = haus.zustand?.alarm {
+                    Alarmkarte(alarm: alarm)
+                }
+                switch ansicht {
+                case .liste: raumliste
+                case .modell: modell
+                }
+            }
+        } else {
+            wandmodell
+        }
+    }
+
+    // MARK: - Das Modell an der Wand
+
+    /// **Links die Leiste, rechts die Bühne - und beides füllt den Schirm.**
+    ///
+    /// `globals.css:447`: `.haus-seite` ist ein Raster aus 216 Punkten und dem Rest. Die App
+    /// hatte stattdessen eine Alarmkarte über die ganze Breite und darunter eine Karte mit dem
+    /// Modell darin, und sie rollte: das Modell bekam ein Drittel des Schirms, und die fünf
+    /// Zahlen, die daneben gehören, standen nicht da.
+    private var wandmodell: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            werkzeuge
+            if let fehler {
+                Stoerung(fehler: fehler) { Task { await lade() } }
+            }
+            HStack(alignment: .top, spacing: 14) {
+                Hauskonsolenleiste(
+                    raeume: raeume?.rooms ?? [], plan: hausplan?.plan,
+                    kontakte: hausplan?.contacts ?? []
+                )
+                .frame(width: 216)
+                buehne
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if let satz = hausplan?.plan?.noteDe, !satz.isEmpty {
+                Text(satz)
+                    .font(Schrift.sans(11))
+                    .foregroundStyle(Farbe.text3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 32)
+        .padding(.top, 4)
+        .padding(.bottom, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// Die Bühne: das Modell, randvoll, mit der Legende in ihrer unteren linken Ecke.
+    @ViewBuilder private var buehne: some View {
+        if let plan = hausplan?.plan {
+            ZStack(alignment: .bottomLeading) {
+                Glasmodell(
+                    plan: plan,
+                    raeume: Dictionary(
+                        (raeume?.rooms ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }
+                    ),
+                    kontakte: Dictionary(
+                        (hausplan?.contacts ?? []).map { ($0.key, $0) },
+                        uniquingKeysWith: { a, _ in a }
+                    ),
+                    alarmScharf: (haus.zustand?.alarm?.state ?? 0) >= 1,
+                    sichtbaresDeck: deck.isEmpty ? nil : deck,
+                    waermepumpeKw: haus.augenblick?.heatPumpPowerKw.belastbar,
+                    wallboxKw: haus.augenblick?.evPowerKw.belastbar,
+                    pufferSoc: haus.zustand?.buffer.soc,
+                    tippeRaum: { id in wegweiser.blatt = .raum(id) }
+                )
+                legende
+                    .padding(.leading, 14)
+                    .padding(.bottom, 12)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous)
+                    .strokeBorder(Farbe.linie1, lineWidth: 1)
+            )
+        } else {
+            Karte { modellhinweis }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    /// Die Werkzeuge der Seite: Ansicht, Geschoss, Drehung - alle als Pillen, rechts oben.
+    ///
+    /// **Sie gehören in die Kopfzeile** (`HouseReport.tsx:219-248`, der `right`-Platz der
+    /// Hülle). Das Gerippe der App hat dafür keinen Platz; hier stehen sie als eigene Zeile
+    /// über der Bühne, in derselben Gestalt: gesperrte Großschrift, das Gewählte in Bernstein.
+    private var werkzeuge: some View {
+        HStack(spacing: 6) {
+            Spacer(minLength: 0)
+            pillen(
+                [Ansicht(weg: "liste", name: "Liste"), Ansicht(weg: "modell", name: "Modell")],
+                aktiv: ansicht.rawValue
+            ) { a in ansicht = Ansichtswahlart(rawValue: a) ?? .liste }
+            if let plan = hausplan?.plan, plan.decks.count > 1 {
+                pillen(
+                    [Ansicht(weg: "", name: "Alle")]
+                        + plan.decks.map { Ansicht(weg: $0.key, name: $0.name) },
+                    aktiv: deck
+                ) { a in
+                    deck = a
+                    deckGewaehlt = true
+                }
+            }
+        }
+    }
+
+    private func pillen(
+        _ ansichten: [Ansicht], aktiv: String, waehle: @escaping (String) -> Void
+    ) -> some View {
+        HStack(spacing: 0) {
+            ForEach(ansichten) { a in
+                let an = a.weg == aktiv
+                Button { if !an { waehle(a.weg) } } label: {
+                    Text(a.name.uppercased())
+                        .font(Schrift.mono(10.5))
+                        .kerning(1.3)
+                        .foregroundStyle(an ? Farbe.petrol : Farbe.text2)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(an ? Farbe.amber : .clear, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(an ? [.isButton, .isSelected] : .isButton)
+            }
+        }
+        .padding(3)
+        .background(Farbe.flaeche1.opacity(0.72), in: Capsule())
+        .overlay(Capsule().strokeBorder(Farbe.linie2, lineWidth: 1))
+    }
+
+    /// „KALT ▬▬ WARM · GELB: UNTER ZIEL · TIPPEN: RAUM" (`HouseReport.tsx:288-294`).
+    private var legende: some View {
+        HStack(spacing: 8) {
+            Kicker(wort: "kalt")
+            LinearGradient(
+                colors: Marken.wasserstufen.map { Color($0.farbe) },
+                startPoint: .leading, endPoint: .trailing
+            )
+            .frame(width: 96, height: 8)
+            .clipShape(Capsule())
+            Kicker(wort: "warm")
+            Kicker(wort: "gelb: unter Ziel · tippen: Raum")
+                .padding(.leading, 8)
+        }
+        .allowsHitTesting(false)
+    }
+
     private var kopf: some View {
         VStack(alignment: .leading, spacing: 8) {
             if schmal {
