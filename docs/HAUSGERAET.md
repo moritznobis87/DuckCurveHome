@@ -1,6 +1,8 @@
 # Das Hausgerät: Duck Curve Home auf einem eigenen Rechner
 
-Stand 15.11.2026. **Plan, nichts davon ist gebaut.** Ausgangspunkt ist Profil A aus Abschnitt 15 des
+Stand 19.11.2026. **Stufe 1 ist gebaut** (Home Assistant bleibt, Datenbank, Regelung und Oberfläche
+auf dem Gerät): Installation und Bedienung in [`deploy/haus/README.md`](../deploy/haus/README.md). Der
+Rest dieses Papiers ist Plan. Ausgangspunkt ist Profil A aus Abschnitt 15 des
 [Projektplans](PROJECT_PLAN.md): alles im Haus auf einem Mini-Rechner, Railway entfällt. Dieses Papier
 ergänzt, was dort fehlt: Geschwindigkeit von unterwegs, Transferdienst, Betriebssystem, Kioskmodus, Marke,
 Wartungszugänge und wie ein Gerät zum Kunden kommt. Der Umbau ist vorgemerkt, aber noch nicht freigegeben
@@ -204,9 +206,9 @@ mehr wie ein eigenes Produkt. Für die ersten Geräte ist der normale Pi 5 einfa
 
 | Baustein | Inhalt |
 |---|---|
-| `deploy/haus/compose.yaml` | die Dienste aus Abschnitt 3 |
-| `deploy/haus/einrichten.sh` | richtet ein frisches Pi OS Lite ein: Docker, Benutzer, Kiosk, Richtlinien, Marke, Firewall, Overlay; beliebig oft wiederholbar |
-| `deploy/haus/marke/` | Plymouth-Theme, Ladeseite, Boot-Einstellungen |
+| `deploy/haus/compose.yaml` | **gebaut (Stufe 1):** postgres, api, web, caddy, cloudflared; Mosquitto, eBUS und Bridge folgen in Stufe 2 |
+| `deploy/haus/einrichten.sh`, `deploy/haus/dch` | **gebaut:** Docker, Dienste, Sicherung, Bootloader, Kiosk, Marke, Übernahme von Railway; offen: Firewall, Overlay |
+| `deploy/haus/marke/`, `deploy/haus/kiosk/` | **gebaut:** Plymouth-Theme, Ladeseite, Chromium-Richtlinien |
 | `deploy/haus/erststart/` | Erststart-Dienst: Hostname, Schlüssel, Wartungsnetz, Bootloader |
 | `deploy/haus/werkstatt/` | Werkstatt-Stick: Abbild schreiben, prüfen, melden |
 | Image-Bau | aus dem Einrichtungsskript ein Abbild (pi-gen oder `rpi-image-gen`), erst wenn das Skript steht |

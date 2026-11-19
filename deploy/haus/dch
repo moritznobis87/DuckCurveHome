@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+# dch - Duck Curve Home auf dem Hausgeraet bedienen (deploy/haus/README.md).
+#
+#   dch status                  Dienste, Gesundheit, Version
+#   dch logs [dienst]           Protokoll folgen (api, web, postgres, caddy, ...)
+#   dch neustart                Dienste neu starten (nach einer Aenderung an .env)
+#   dch stoppen                 Dienste anhalten
+#   dch aktualisieren [version] Images ziehen und neu starten; mit Version wird sie festgehalten
+#   dch selbst-aktualisieren    Quelltext holen und die Einrichtung erneut ausfuehren
+#   dch sichern                 Datenbank jetzt sichern
+#   dch sicherungen             vorhandene Sicherungen auflisten
+#   dch wiederherstellen DATEI  Datenbank aus einer Sicherung wiederherstellen
+#   dch uebernehmen URL         Datenbank von Railway (oder einem anderen Postgres) uebernehmen
+#   dch koppeln                 Einstellungen fuer das Bridge-Add-on und Pairing-Links anzeigen
+#
+# Laeuft als root (sudo). Alles liegt unter /opt/duckcurve, Sicherungen unter
+# /var/lib/duckcurve/sicherung.
+
+set -euo pipefail
+
+BASIS=${DCH_BASIS:-/opt/duckcurve}
+SICHERUNG=${DCH_SICHERUNG:-/var/lib/duckcurve/sicherung}
+ENVDATEI="$BASIS/.env"
+
+fehler() { echo "dch: $*" >&2; exit 1; }
+hinweis() { echo "==> $*"; }
+
+[ -f "$BASIS/compose.yaml" ] || fehler "$BASIS/compose.yaml fehlt - ist das Geraet eingerichtet (einrichten.sh)?"
+[ -f "$ENVDATEI" ] || fehler "$ENVDATEI fehlt."
+
+wert() {
+	# Ein Wert aus .env, ohne die Datei als Skript auszufuehren.
+	sed -n "s/^$1=//p" "$ENVDATEI" | tail -n 1 | sed 's/^"\(.*\)"$/\1/'
+}
+
+compose() {
+	local profile=()
+	[ "$(wert DCH_FERNZUGANG)" = "1" ] && profile+=(--profile fernzugang)
+	local dateien=(-f "$BASIS/compose.yaml")
+	[ -f "$BASIS/compose.bauen.yaml" ] && dateien+=(-f "$BASIS/compose.bauen.yaml")
+	docker compose --project-directory "$BASIS" "${dateien[@]}" "${profile[@]}" "$@"
+}
+
+warten_auf_postgres() {
+
+	for _ in $(seq 1 60); do
+		compose exec -T postgres pg_isready -U dch -d dch >/dev/null 2>&1 && return 0
+		sleep 2
+	done
+	fehler "Die Datenbank antwortet nicht."
+}
+
+befehl=${1:-status}
+shift || true
+
+case "$befehl" in
+status)
+	compose ps
+	echo
+	if curl -fsS -m 5 http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+		hinweis "Oberflaeche antwortet (http://127.0.0.1:3000)."
+	else
+		hinweis "Oberflaeche antwortet NICHT."
+	fi
+	hinweis "Version: $(wert DCH_VERSION)"
+	;;
+
+logs)
+	compose logs -f --tail 200 "$@"
+	;;
+
+neustart)
+	compose up -d --remove-orphans
+	;;
+
+stoppen)
+	compose stop
+	;;
+
+aktualisieren)
+	if [ $# -ge 1 ]; then
+		[[ "$1" =~ ^[A-Za-z0-9._-]+$ ]] || fehler "Ungueltige Version: $1"
+		if grep -q '^DCH_VERSION=' "$ENVDATEI"; then
+			sed -i "s/^DCH_VERSION=.*/DCH_VERSION=$1/" "$ENVDATEI"
+		else
+			echo "DCH_VERSION=$1" >>"$ENVDATEI"
+		fi
+	fi
+	# Vor jedem Update eine Sicherung: Eine Migration ist nur additiv (Projektplan 23.4), aber eine
+	# Sicherung von vor fuenf Minuten kostet nichts.
+	"$0" sichern
+	if [ -f "$BASIS/compose.bauen.yaml" ]; then
+		hinweis "Images werden auf dem Geraet gebaut (das dauert)."
+		git -C "$BASIS/quelle" pull --ff-only
+		compose build
+	else
+		compose pull
+	fi
+	compose up -d --remove-orphans
+	docker image prune -f >/dev/null
+	hinweis "Aktualisiert auf $(wert DCH_VERSION)."
+	;;
+
+selbst-aktualisieren)
+	quelle=$(readlink -f "$BASIS/quelle" 2>/dev/null || true)
+	[ -d "$quelle/.git" ] || fehler "Kein Quelltext unter $BASIS/quelle."
+	git -C "$quelle" pull --ff-only
+	# shellcheck disable=SC2046
+	exec "$quelle/deploy/haus/einrichten.sh" $(cat "$BASIS/einrichtung.conf" 2>/dev/null || true)
+	;;
+
+sichern)
+	mkdir -p "$SICHERUNG"
+	chmod 700 "$SICHERUNG"
+	warten_auf_postgres
+	ziel="$SICHERUNG/dch-$(date +%Y%m%d-%H%M%S).dump"
+	compose exec -T postgres pg_dump -U dch -d dch -Fc --no-owner >"$ziel.teil"
+	mv "$ziel.teil" "$ziel"
+	hinweis "Gesichert: $ziel ($(du -h "$ziel" | cut -f1))"
+	behalten=$(wert DCH_SICHERUNG_BEHALTEN)
+	behalten=${behalten:-14}
+	# Aeltere Sicherungen loeschen, die neuesten $behalten bleiben.
+	ls -1t "$SICHERUNG"/dch-*.dump 2>/dev/null | tail -n +"$((behalten + 1))" | xargs -r rm -f
+	extern=$(wert DCH_SICHERUNG_ZIEL)
+	if [ -n "$extern" ]; then
+		if command -v rclone >/dev/null; then
+			rclone copy "$ziel" "$extern" && hinweis "Kopie ausser Haus: $extern"
+		else
+			echo "dch: DCH_SICHERUNG_ZIEL ist gesetzt, aber rclone fehlt (apt install rclone)." >&2
+		fi
+	fi
+	;;
+
+sicherungen)
+	ls -1lht "$SICHERUNG"/dch-*.dump 2>/dev/null || echo "Noch keine Sicherung."
+	;;
+
+wiederherstellen)
+	datei=${1:-}
+	[ -f "$datei" ] || fehler "Aufruf: dch wiederherstellen <datei.dump>"
+	read -r -p "Die Datenbank wird durch $datei ersetzt. Fortfahren? [ja/nein] " antwort
+	[ "$antwort" = "ja" ] || fehler "Abgebrochen."
+	"$0" sichern
+	compose stop api web
+	warten_auf_postgres
+	compose exec -T postgres pg_restore -U dch -d dch --clean --if-exists --no-owner --no-acl <"$datei" ||
+		echo "dch: pg_restore meldete Warnungen (meist harmlos, etwa fehlende Rollen)." >&2
+	compose up -d
+	hinweis "Wiederhergestellt aus $datei."
+	;;
+
+uebernehmen)
+	quelle_url=${1:-}
+	[ -n "$quelle_url" ] || fehler "Aufruf: dch uebernehmen 'postgresql://...' (DATABASE_URL des Railway-Postgres, oeffentliche Adresse)"
+	mkdir -p "$SICHERUNG"
+	ziel="$SICHERUNG/uebernahme-$(date +%Y%m%d-%H%M%S).dump"
+	hinweis "Lade die Datenbank herunter ..."
+	# Mit dem pg_dump aus dem Postgres-Image dieses Stacks: Er muss mindestens so neu sein wie der
+	# Server, von dem er liest.
+	docker run --rm -e QUELLE="$quelle_url" postgres:17 \
+		sh -c 'pg_dump "$QUELLE" -Fc --no-owner --no-acl' >"$ziel.teil"
+	mv "$ziel.teil" "$ziel"
+	hinweis "Heruntergeladen: $ziel ($(du -h "$ziel" | cut -f1))"
+	"$0" wiederherstellen "$ziel"
+	;;
+
+koppeln)
+	name=$(wert DCH_HOSTNAME)
+	ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+	cat <<TEXT
+Bridge-Add-on in Home Assistant (Einstellungen -> Add-ons -> Duck Curve Home Bridge -> Konfiguration):
+  api_ws_url:  ws://${ip:-<IP dieses Geraets>}:8001/bridge/ws
+  api_token:   $(wert DCH_BRIDGE_TOKENS | cut -d, -f1 | tr -d '[]" ')
+  Die IP-Adresse im Router fest vergeben, damit sie sich nicht aendert.
+
+iPad oder Handy im Heimnetz:
+  1. Stammzertifikat holen:  http://${name}.local/zertifikat
+     (iPad: Profil installieren, dann Einstellungen -> Allgemein -> Info ->
+      Zertifikatsvertrauenseinstellungen -> fuer "Caddy Local Authority" einschalten)
+  2. Koppeln:               https://${name}.local/pair?token=$(wert DCH_KIOSK_TOKEN)&name=iPad-Flur
+TEXT
+	;;
+
+*)
+	sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+	exit 1
+	;;
+esac
