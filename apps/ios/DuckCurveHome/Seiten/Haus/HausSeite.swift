@@ -423,16 +423,26 @@ struct HausSeite: View {
                 )
                 .frame(height: 460)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            } else if let fehlertext = hausplan?.errorDe, !fehlertext.isEmpty {
-                Leer(satz: "Der Hausplan ist nicht lesbar.", dazu: fehlertext)
-            } else if hausplan?.present == false {
-                Leer(
-                    satz: "Für dieses Haus liegt kein Plan vor.",
-                    dazu: "Der Plan kommt von der Brücke (haus.yaml)."
-                )
             } else {
-                Leer(satz: "Wird geholt …")
+                modellhinweis
             }
+        }
+    }
+
+    /// Was an der Stelle des Modells steht, solange es keines gibt.
+    ///
+    /// Eine Stelle für beide Fassungen: die Wandfassung zeigt denselben Satz in ihrer Bühne,
+    /// und zwei Stellen mit denselben drei Sätzen laufen auseinander.
+    @ViewBuilder private var modellhinweis: some View {
+        if let fehlertext = hausplan?.errorDe, !fehlertext.isEmpty {
+            Leer(satz: "Der Hausplan ist nicht lesbar.", dazu: fehlertext)
+        } else if hausplan?.present == false {
+            Leer(
+                satz: "Für dieses Haus liegt kein Plan vor.",
+                dazu: "Der Plan kommt von der Brücke (haus.yaml)."
+            )
+        } else {
+            Leer(satz: "Wird geholt …")
         }
     }
 

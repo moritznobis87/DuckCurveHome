@@ -766,6 +766,20 @@ struct Knoten: View {
         return teile.joined(separator: " · ")
     }
 
+    /// Die Groesse der Zahl neben dem Kreis.
+    ///
+    /// Die Vorlage rechnet sie aus der Schirmbreite (`globals.css:230-231`:
+    /// `clamp(22px, 2.6vw, 34px)`, gross `clamp(34px, 4.2vw, 56px)`); auf einem iPad im
+    /// Querformat sind das 31 und 50 Punkte. Die Einheit daneben ist 0,42 davon
+    /// (`globals.css:232`).
+    private var zahlgroesse: CGFloat {
+        switch (gross, fassung) {
+        case (true, .wand): return 50
+        case (false, .wand): return 31
+        default: return 22
+        }
+    }
+
     /// Die Zeile unter dem Namen: das Wort dazu, und das Alter, wenn der Wert nicht traegt.
     private var unterzeile: String? {
         var teile: [String] = []
