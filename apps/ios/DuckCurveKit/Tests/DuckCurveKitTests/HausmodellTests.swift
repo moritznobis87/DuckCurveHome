@@ -261,18 +261,19 @@ final class FussbodenTests: XCTestCase {
     /// Der Rand bleibt frei, und zwar auf allen vier Seiten.
     func testDerRandBleibtFrei() {
         let weg = Hausmodell.heizschlange(x0: 1, z0: 2, x1: 5, z1: 6)
+        // 0,25 m Einzug und 0,3 m Rand darin: zusammen 0,55 m zur Wand.
         for p in weg {
-            XCTAssertGreaterThanOrEqual(p.x, 1.29)
-            XCTAssertLessThanOrEqual(p.x, 4.71)
-            XCTAssertGreaterThanOrEqual(p.z, 2.29)
-            XCTAssertLessThanOrEqual(p.z, 5.71)
+            XCTAssertGreaterThanOrEqual(p.x, 1.54)
+            XCTAssertLessThanOrEqual(p.x, 4.46)
+            XCTAssertGreaterThanOrEqual(p.z, 2.54)
+            XCTAssertLessThanOrEqual(p.z, 5.46)
         }
     }
 
     /// Ein Raum, in den keine Schlange passt, bekommt keine - statt einer entarteten.
     func testEinZuKleinerRaumBekommtKeine() {
-        XCTAssertTrue(Hausmodell.heizschlange(x0: 0, z0: 0, x1: 0.5, z1: 3).isEmpty)
-        XCTAssertTrue(Hausmodell.heizschlange(x0: 0, z0: 0, x1: 3, z1: 0.5).isEmpty)
+        XCTAssertTrue(Hausmodell.heizschlange(x0: 0, z0: 0, x1: 1.2, z1: 3).isEmpty)
+        XCTAssertTrue(Hausmodell.heizschlange(x0: 0, z0: 0, x1: 3, z1: 1.2).isEmpty)
     }
 
     /// Ein tieferer Raum bekommt mehr Bahnen, rund eine je halben Meter.

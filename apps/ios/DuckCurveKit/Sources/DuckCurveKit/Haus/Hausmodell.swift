@@ -111,17 +111,22 @@ public enum Hausmodell {
     public static func heizschlange(
         x0: Double, z0: Double, x1: Double, z1: Double
     ) -> [(x: Double, z: Double)] {
-        let breite = x1 - x0
-        let tiefe = z1 - z0
+        // **Zweimal eingezogen, wie in der Vorlage**: die Fläche der Schlange ist einen
+        // halben Meter kleiner als der Raum (`PlaneGeometry(b - 0.5, t - 0.5)`), und darin
+        // hält die Zeichnung noch 0,3 m Rand. Zusammen 0,55 m zur Wand - ein Rohr liegt nicht
+        // an der Wand, und die Bahnen zählt die Vorlage aus der eingezogenen Tiefe.
+        let einzug = 0.25
         let rand = 0.3
+        let breite = (x1 - x0) - 2 * einzug
+        let tiefe = (z1 - z0) - 2 * einzug
         guard breite > 2 * rand + 0.2, tiefe > 2 * rand + 0.2 else { return [] }
         let bahnen = max(2, Int(((tiefe - 0.6) / 0.5).rounded()) + 1)
         let dz = (tiefe - 2 * rand) / Double(bahnen - 1)
-        let links = x0 + rand
-        let rechts = x1 - rand
+        let links = x0 + einzug + rand
+        let rechts = x1 - einzug - rand
         var weg: [(x: Double, z: Double)] = []
         for i in 0..<bahnen {
-            let z = z0 + rand + Double(i) * dz
+            let z = z0 + einzug + rand + Double(i) * dz
             // Hin und zurück: eine Schlange, kein Kamm - das Rohr hat einen Anfang und ein
             // Ende, und dazwischen reisst es nicht ab.
             if i % 2 == 0 {

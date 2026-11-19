@@ -38,6 +38,8 @@ struct Glasmodell: View {
     /// Die Drehung des Grundrisses. Die Vorgabe zeigt die Suedwestecke - dort ist die Terrasse.
     @State private var drehung: Double = 0.62
     @State private var beimZiehenAb: Double = 0.62
+    /// Ob der Finger dreht - oder nur auf einem Raum liegt.
+    @State private var zieht = false
 
     private typealias G = Hausgeometrie
 
@@ -75,7 +77,11 @@ struct Glasmodell: View {
                         zeichne(in: &gestalt, groesse: groesse, maß: maß, takt: 0)
                     }
                 }
+                // **Die Schilder sind für Finger durchlässig** (`globals.css:472`, mit
+                // Begründung: „damit das Tippen die Boeden darunter trifft"). Sie sitzen genau
+                // über der Raummitte - also dort, wo man hintippt.
                 schilder(maß: maß)
+                    .allowsHitTesting(false)
                 drehknoepfe
             }
             .contentShape(Rectangle())
@@ -83,17 +89,32 @@ struct Glasmodell: View {
             // sagt es ausdrücklich: „TIPPEN: RAUM"). Das Modell war bis zum 19.11.2026 ein
             // Bild, das man drehen konnte: die Temperatur eines Raums ablesen ja, stellen nur
             // über die Liste.
-            .onTapGesture { stelle in
-                if let id = raumBei(stelle, maß: maß) { tippeRaum?(id) }
-            }
+            //
+            // **Tippen und Drehen in einer Geste.** Zwei nebeneinander - `onTapGesture` neben
+            // `DragGesture` - streiten sich um jeden Finger, der sich beim Antippen um zwei
+            // Punkte bewegt. Die Vorlage misst darum selbst: unter acht Punkten Weg ist es ein
+            // Tipp, darüber ein Drehen (`HouseScene.ts`, `pointerup` mit der 8-Punkt-Schwelle).
             .gesture(
-                DragGesture()
+                DragGesture(minimumDistance: 0)
                     .onChanged { griff in
-                        // Eine Bildschirmbreite ist eine halbe Umdrehung: so kommt man mit einem
-                        // Wisch um das Haus, ohne dass ein Zittern es herumreisst.
+                        if !zieht,
+                           abs(griff.translation.width) + abs(griff.translation.height) > 8
+                        {
+                            zieht = true
+                        }
+                        guard zieht else { return }
+                        // Eine Bildschirmbreite ist eine halbe Umdrehung: so kommt man mit
+                        // einem Wisch um das Haus, ohne dass ein Zittern es herumreisst.
                         drehung = beimZiehenAb + griff.translation.width / raum.size.width * .pi
                     }
-                    .onEnded { _ in beimZiehenAb = drehung }
+                    .onEnded { griff in
+                        if zieht {
+                            beimZiehenAb = drehung
+                            zieht = false
+                        } else if let id = raumBei(griff.startLocation, maß: maß) {
+                            tippeRaum?(id)
+                        }
+                    }
             )
         }
         .accessibilityElement(children: .ignore)
@@ -112,7 +133,14 @@ struct Glasmodell: View {
         for deck in gezeigteDecks {
             let v = versatz(von: deck)
             for raum in deck.rooms where !(raum.tech ?? false) {
-                guard let id = raum.roomId else { continue }
+                // **Ein Teilraum führt auf seinen Hauptraum.** „Essen" ist ein Teil von
+                // „Wohnen" und hat keinen eigenen Fühler; wer darauf tippt, meint den Raum,
+                // zu dem es gehört (`HouseScene.ts`, `hauptKnoten`).
+                let id = raum.roomId
+                    ?? raum.partOf.flatMap { name in
+                        deck.rooms.first { $0.name == name }?.roomId
+                    }
+                guard let id else { continue }
                 let ecken: [(x: Double, y: Double, z: Double)] = [
                     (raum.x0 + v.x, 0, raum.z0 + v.z), (raum.x1 + v.x, 0, raum.z0 + v.z),
                     (raum.x1 + v.x, 0, raum.z1 + v.z), (raum.x0 + v.x, 0, raum.z1 + v.z),
@@ -159,11 +187,17 @@ struct Glasmodell: View {
         return (x: lauf * c, z: -lauf * sn)
     }
 
+    /// Der Umriss, der ein Deck im Bild beansprucht: die Grundplatte, sonst die Huelle.
+    private func umriss(_ deck: Deck) -> [[Double]] {
+        let p = deck.plate ?? []
+        return p.count >= 3 ? p : deck.shell
+    }
+
     /// Wie breit und hoch ein Deck auf dem Schirm steht, in Metern der Bildebene.
     private func ausdehnung(_ deck: Deck) -> (breite: Double, hoehe: Double) {
         var links = Double.infinity, rechts = -Double.infinity
         var unten = Double.infinity, oben = -Double.infinity
-        for ecke in deck.shell where ecke.count >= 2 {
+        for ecke in umriss(deck) where ecke.count >= 2 {
             for hoch in [0.0, deckhoehe] {
                 let p = G.bildschirm(x: ecke[0], y: hoch, z: ecke[1], drehung: drehung)
                 links = min(links, p.sx)
@@ -184,15 +218,19 @@ struct Glasmodell: View {
         var unten = Double.infinity, oben = -Double.infinity
         for deck in gezeigteDecks {
             let v = versatz(von: deck)
-            // Die Platte reicht 1,3 m ueber die Huelle hinaus; sie bestimmt das Bild mit.
-            for ecke in deck.shell where ecke.count >= 2 {
+            // **Gemessen wird die Grundplatte, nicht die Huelle** (`HouseScene.ts`,
+            // `ausschnittBerechnen`: `plate ?? shell`, um 1,5 m erweitert). Im Plan dieses
+            // Hauses reicht die Platte bis zu 5,4 m ueber die Huelle hinaus - Terrasse, Hof,
+            // Auto, Wallbox und die Waermepumpe bei x = 13 liegen draussen. Wer nur die Huelle
+            // misst, zeichnet sie ausserhalb des Bildes.
+            for ecke in umriss(deck) where ecke.count >= 2 {
                 for hoch in [0.0, deckhoehe] {
                     let p = G.bildschirm(
                         x: ecke[0] + v.x, y: hoch, z: ecke[1] + v.z, drehung: drehung)
-                    links = min(links, p.sx - 1.4)
-                    rechts = max(rechts, p.sx + 1.4)
-                    unten = min(unten, p.su - 1.4)
-                    oben = max(oben, p.su + 1.4)
+                    links = min(links, p.sx - 1.5)
+                    rechts = max(rechts, p.sx + 1.5)
+                    unten = min(unten, p.su - 1.5)
+                    oben = max(oben, p.su + 1.5)
                 }
             }
         }
@@ -327,7 +365,10 @@ struct Glasmodell: View {
         for raum in deck.rooms where !(raum.tech ?? false) {
             if raum.tiles == true {
                 for f in Hausmodell.fliesen(x0: raum.x0, z0: raum.z0, x1: raum.x1, z1: raum.z1) {
-                    let halb = Hausmodell.fliesenkante * 0.5 * (0.5).squareRoot()
+                    // Die halbe Diagonale einer Raute, deren Mitten 0,36 m auseinander
+                    // liegen: 0,36 / Wurzel 2. Mit der Hälfte davon klaffen zwischen den
+                    // Feldern Lücken - ein Punktfeld statt eines Schachbretts.
+                    let halb = Hausmodell.fliesenkante * (0.5).squareRoot()
                     let ecken: [(x: Double, y: Double, z: Double)] = [
                         (f.x, y + 0.006, f.z - halb),
                         (f.x + halb, y + 0.006, f.z),

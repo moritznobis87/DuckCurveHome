@@ -234,7 +234,10 @@ struct HausSeite: View {
         HStack(spacing: 8) {
             Kicker(wort: "kalt")
             LinearGradient(
-                colors: Marken.wasserstufen.map { Color($0.farbe) },
+                // **Die Skala der Böden, nicht die des Wassers.** Daneben steht ausgeschrieben,
+                // warum man die beiden nicht verwechseln darf: ein Raum mit 21 °C ist warm, ein
+                // Heizungsvorlauf mit 21 °C ist kalt.
+                colors: Hausgeometrie.temperaturstopps.map { Color($0.farbe) },
                 startPoint: .leading, endPoint: .trailing
             )
             .frame(width: 96, height: 8)
