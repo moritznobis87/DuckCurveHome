@@ -9,7 +9,8 @@ export const metadata: Metadata = {
   description: "Home Energy Management - Energieflüsse, Pufferspeicher, Strompreis und Wärmepumpen-Plan auf einen Blick.",
   applicationName: "Duck Curve Home",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Duck Curve Home" },
-  // Dieselben Markenicons wie duckcurve.de: ein Tab, ein Vogel.
+  // Die Marken-Ente auf eigener Bühne: Petrol-Grund, Sonne, Flügel. Quelle ist favicon.svg; die
+  // beiden anderen Dateien zeichnet tools/gen-appicon.py daraus, nicht die Hand.
   icons: {
     icon: [
       { url: "/favicon.ico" },
