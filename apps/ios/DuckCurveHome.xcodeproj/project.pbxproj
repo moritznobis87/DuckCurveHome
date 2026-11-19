@@ -42,6 +42,7 @@
 		A12C880295C6B5FFA2CC04B9 /* Zeichen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B67D80E0116B660F33FAFC6 /* Zeichen.swift */; };
 		A414B4F48D8F7D73D8DE92B8 /* StromSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6833877D0B3131B03C55F6 /* StromSeite.swift */; };
 		A828EF6E284B4E612A9201C9 /* Anlagenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B121AA23E50590AAD07F502 /* Anlagenbild.swift */; };
+		A866580B4F770F9C1E2A1F23 /* Wpmenue.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA88BF1FF2F8B10E21AE2C1D /* Wpmenue.swift */; };
 		B5B0CB533E0FCE256C33E295 /* Waermepumpenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */; };
 		BA80D620296C3F558A781A8A /* Dock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442E48F860C3E272065F1773 /* Dock.swift */; };
 		BF90E13714A06E92ACA5FEBA /* Systemanschluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65970F2409A3493784FE0F3 /* Systemanschluss.swift */; };
@@ -113,6 +114,7 @@
 		ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReglerSeite.swift; sourceTree = "<group>"; };
 		B10C35D7E84A91C914895209 /* IBMPlexSans-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.otf"; sourceTree = "<group>"; };
 		B98C536116288281EBEE7975 /* HandRahmen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandRahmen.swift; sourceTree = "<group>"; };
+		BA88BF1FF2F8B10E21AE2C1D /* Wpmenue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wpmenue.swift; sourceTree = "<group>"; };
 		BF4037BAFC1759DC6E851D10 /* DuckCurveHome.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DuckCurveHome.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C2585D3A39663A8ECC169086 /* WaermepumpeSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaermepumpeSeiten.swift; sourceTree = "<group>"; };
 		C65970F2409A3493784FE0F3 /* Systemanschluss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Systemanschluss.swift; sourceTree = "<group>"; };
@@ -149,6 +151,7 @@
 				D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */,
 				3B2CB1649CD728391A247327 /* Pufferspeicher.swift */,
 				0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */,
+				BA88BF1FF2F8B10E21AE2C1D /* Wpmenue.swift */,
 			);
 			path = Bausteine;
 			sourceTree = "<group>";
@@ -475,6 +478,7 @@
 				6A49193A6C88C9D4267FF1C9 /* WaermepumpeSeiten.swift in Sources */,
 				B5B0CB533E0FCE256C33E295 /* Waermepumpenbild.swift in Sources */,
 				F6805480CB4D065F2BD42F0A /* WandRahmen.swift in Sources */,
+				A866580B4F770F9C1E2A1F23 /* Wpmenue.swift in Sources */,
 				A12C880295C6B5FFA2CC04B9 /* Zeichen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
