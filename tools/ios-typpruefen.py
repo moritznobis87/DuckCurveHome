@@ -38,7 +38,13 @@ Was es prüft:
    dazu, die Ansicht blieb bei sechs. Syntaktisch einwandfrei, für den Compiler ein Abbruch.
    Gemeldet wird nur, wenn die Fallnamen eine **echte Teilmenge genau einer** Aufzählung sind;
    passen sie auf mehrere oder auf eine genau, bleibt es still.
-7. **`dazu` und `farbe` in der falschen Reihenfolge.** Bei `Zeile` und `Kacheldaten` sind die
+7. **Ein Aufruf mit Argumenten, die der Typ nicht hat** (`Leitungen(flaeche:kanten:fassung:)`,
+   während `Leitungen` nur zwei Felder hat). Der Fehler des zwölften Laufs, und der teuerste:
+   er kostet jedes Mal einen ganzen Übersetzungslauf auf dem Mac. Geprüft wird gegen die
+   Erklärung des Typs – jeden ausgeschriebenen `init`, auch den in einer `extension`, sonst
+   den gemerkten Anfangswert aus den gespeicherten Feldern. Nur Typen, die das Projekt selbst
+   erklärt; eine `extension Path` sagt nichts darüber, was SwiftUIs `Path` sonst kann.
+8. **`dazu` und `farbe` in der falschen Reihenfolge.** Bei `Zeile` und `Kacheldaten` sind die
    Felder die Argumente. Hier zählt echtes Klammernzählen: mein erster Versuch benutzte ein
    Muster für eine Klammerebene und hat deshalb einen Aufruf übersehen, der eine zweite hatte.
 """
@@ -209,6 +215,132 @@ def arg_namen(rumpf: str) -> list[str]:
             wort += z
         i += 1
     return namen
+
+
+def ohne_kommentare(text: str) -> str:
+    """Derselbe Text ohne Kommentare, Zeichenketten durch leere ersetzt.
+
+    **Warum das sein muss.** Dieses Projekt schreibt deutsche Anführungszeichen, und die
+    schliessende ist oft die gerade `"` – „sonst streckt man die Seite unnötig". Wer Klammern
+    zählt, ohne Kommentare zu entfernen, hält das für den Anfang einer Zeichenkette und
+    verschluckt den Rest der Datei. Genau daran ist der erste Entwurf von Regel 12
+    gescheitert: der Rumpf einer Ansicht reichte bis in die übernächste.
+    """
+    aus: list[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        z = text[i]
+        if z == '"':
+            # Dreifache Anführungszeichen zählen als eine Zeichenkette bis zum nächsten Dreier.
+            if text.startswith('"""', i):
+                ende = text.find('"""', i + 3)
+                i = n if ende < 0 else ende + 3
+                aus.append('""')
+                continue
+            i += 1
+            while i < n and text[i] != '"':
+                i += 2 if text[i] == "\\" else 1
+            i += 1
+            aus.append('""')
+            continue
+        if text.startswith("//", i):
+            ende = text.find("\n", i)
+            i = n if ende < 0 else ende
+            continue
+        if text.startswith("/*", i):
+            ende = text.find("*/", i + 2)
+            i = n if ende < 0 else ende + 2
+            continue
+        aus.append(z)
+        i += 1
+    return "".join(aus)
+
+
+def bausteine_lesen(pfade: list[str]) -> dict[str, set[str]]:
+    """Jeder im Projekt erklärte Verbundtyp mit den Argumentnamen, die er annimmt.
+
+    **Warum das die wichtigste Regel ist.** Zweimal hat genau dieser Fehler den
+    Übersetzungslauf gekostet: ein Aufruf mit Argumenten, die der Typ nicht hat
+    (`Leitungen(flaeche:kanten:fassung:)`, während `Leitungen` nur zwei Felder hatte).
+    Syntaktisch einwandfrei, für den Parser unsichtbar, für den Compiler ein Abbruch – und
+    beide Male erst auf dem Mac aufgefallen, eine Stunde später.
+
+    Gelesen werden die Erklärungen auf der **flachen Ebene** des Rumpfes: jeder dort
+    ausgeschriebene `init(...)`, und wenn es keinen gibt, der gemerkte Anfangswert aus den
+    gespeicherten Feldern. Ein `.init(` mitten im Rumpf ist ein Aufruf und keine Erklärung –
+    daran ist der erste Entwurf gescheitert und hat jeder Ansicht die Argumente von
+    `Gradient.Stop` zugeschrieben.
+
+    Berechnete Eigenschaften (`var x: T { … }`) sind keine Felder und zählen nicht mit;
+    `static` ebenfalls nicht. Private Felder werden mitgezählt, obwohl Swift sie aus dem
+    gemerkten Anfangswert nimmt: ein Fehlalarm wäre schlimmer als eine Lücke.
+    """
+    aus: dict[str, set[str]] = {}
+    # Nur Typen, die das Projekt selbst erklärt. Eine `extension Path` fügt der Vorlage von
+    # SwiftUI etwas hinzu und sagt nichts darüber, was sie sonst kann - wer sie für die ganze
+    # Erklärung hält, meldet jedes `Path(ellipseIn:)` als Fehler.
+    eigene: set[str] = set()
+    for pfad in pfade:
+        text = ohne_kommentare(open(pfad, encoding="utf-8").read())
+        # Auch `extension X { init(...) }`: `Zeichen` hat seinen zweiten Anfangswert dort,
+        # und ohne ihn hielte die Regel jeden `Zeichen(bereich:)` für falsch.
+        for m in re.finditer(r"^[ \t]*(?:public |internal |private |final |)*"
+                             r"(?:struct|class|extension)\s+(\w+)[^{\n]*\{", text, re.M):
+            name = m.group(1)
+            if not m.group(0).lstrip().startswith("extension"):
+                eigene.add(name)
+            koerper = klammerblock(text, m.end() - 1)
+            flach = flache_ebene(koerper)
+            namen = aus.setdefault(name, set())
+            # Die Erklärungen stehen auf der flachen Ebene. `init?` und `init` mit
+            # Modifikatoren davor zählen mit, `.init(` nicht - dem geht ein Punkt voraus.
+            inits = [im for im in re.finditer(r"(?:^|[^.\w])(init\??)\s*\(", flach)]
+            echte = []
+            for im in inits:
+                rumpf = next(iter(aufrufe(flach[im.start(1):], "init")), None)
+                if rumpf is None:
+                    continue
+                if re.search(r"\bfrom\s+decoder\b", rumpf[1]):
+                    continue
+                echte.append(rumpf[1])
+            if m.group(0).lstrip().startswith("extension"):
+                # Eine Erweiterung bringt nur Anfangswerte dazu; ihre `var` sind berechnet.
+                for rumpf in echte:
+                    for stueck in ausserhalb_trennen(rumpf):
+                        em = re.match(r"\s*(\w+|_)\s+\w+\s*:", stueck) \
+                            or re.match(r"\s*(\w+)\s*:", stueck)
+                        if em:
+                            namen.add(em.group(1))
+                continue
+            if echte:
+                for rumpf in echte:
+                    for stueck in ausserhalb_trennen(rumpf):
+                        em = re.match(r"\s*(\w+|_)\s+\w+\s*:", stueck) \
+                            or re.match(r"\s*(\w+)\s*:", stueck)
+                        if em:
+                            namen.add(em.group(1))
+                continue
+            # `flache_ebene` behält die Zeilen, also steht Zeile für Zeile beides
+            # nebeneinander: die flache Fassung sagt, ob die Erklärung zur obersten Ebene
+            # gehört, die rohe, ob ein `{` folgt - und dann ist es eine berechnete
+            # Eigenschaft und kein Feld.
+            for zeile, roh in zip(flach.splitlines(), koerper.splitlines()):
+                z = zeile.strip()
+                if not z or z.startswith("static") or " static " in z:
+                    continue
+                kopf = roh.split("=")[0]
+                if kopf.rstrip().endswith("{"):
+                    continue
+                # Mit Typangabe (`let wort: String`) oder ohne (`var gestrichelt = false`).
+                # Ohne den zweiten Fall fehlte jedes Feld, dessen Typ der Compiler herleitet -
+                # und das sind in dieser App gerade die mit Vorgabewert, also die, die am
+                # Aufrufort am ehesten dastehen.
+                fm = re.match(r"(?:@\w+(?:\([^)]*\))?\s+)*"
+                              r"(?:public |internal |private |fileprivate |)*"
+                              r"(?:var|let)\s+(\w+)\s*[:=]", z)
+                if fm:
+                    namen.add(fm.group(1))
+    return {n: a for n, a in aus.items() if n in eigene}
 
 
 def main() -> int:
@@ -500,13 +632,48 @@ def main() -> int:
                                           f"{len(marken)} von {len(faelle)} Faellen - "
                                           f"es fehlen {sorted(faelle - marken)}"))
 
-    print(f"{len(dateien)} Dateien geprüft, {len(felder)} Schemafelder als Maßstab.")
+    # 12. Ein Aufruf mit Argumenten, die der Typ nicht hat.
+    #
+    # Geprüft werden nur Typen, die das Projekt selbst erklärt - alles aus SwiftUI und der
+    # Standardbibliothek ist unbekannt und bleibt darum still. Gemeldet wird nur ein Name,
+    # den der Typ in KEINEM seiner Anfangswerte kennt: ein Typ mit mehreren `init` nimmt
+    # ihre Namen zusammen, sonst wäre jede Überladung ein Fehlalarm.
+    kernpfade = sorted(
+        os.path.join(r, d)
+        for r, _, ds in os.walk(KERN) for d in ds if d.endswith(".swift")
+    )
+    bausteine = bausteine_lesen(dateien + kernpfade)
+    # Namen, die auch eine Funktion oder eine Aufzählung sein können, bleiben aussen vor:
+    # `Zeichen(...)` ist beides, und der Aufruf einer gleichnamigen Funktion hat andere
+    # Argumente. Dasselbe gilt für alles, was nur einmal vorkommt.
+    doppeldeutig = set()
+    for pfad in dateien + kernpfade:
+        t = open(pfad, encoding="utf-8").read()
+        for m in re.finditer(r"\b(?:func|enum)\s+(\w+)", t):
+            doppeldeutig.add(m.group(1))
+    for pfad in dateien:
+        kurz = os.path.relpath(pfad, APP)
+        text = open(pfad, encoding="utf-8").read()
+        ohne = re.sub(r"//[^\n]*", "", text)
+        for name, erlaubt in bausteine.items():
+            if not erlaubt or name in doppeldeutig:
+                continue
+            for versatz, rumpf in aufrufe(ohne, name):
+                fremd = [a for a in arg_namen(rumpf) if a not in erlaubt]
+                if not fremd:
+                    continue
+                nr = ohne[:versatz].count("\n") + 1
+                maengel.append((kurz, nr, f"{name}(...) bekommt {fremd}, kennt aber nur "
+                                          f"{sorted(erlaubt)}"))
+
+    print(f"{len(dateien)} Dateien geprüft, {len(felder)} Schemafelder und "
+          f"{len(bausteine)} Bausteine als Maßstab.")
     if maengel:
         print(f"\n{len(maengel)} Fund(e):", file=sys.stderr)
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der elf geprüften Fehlerarten gefunden.")
+    print("Keine der zwölf geprüften Fehlerarten gefunden.")
     return 0
 
 
