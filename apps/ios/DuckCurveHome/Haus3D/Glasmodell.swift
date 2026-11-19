@@ -341,20 +341,59 @@ struct Glasmodell: View {
                     kante: Color(Hausmodell.amber.mitDeckung(0.4)), strich: 1, offen: false))
         }
 
+        // 1b. Das Meterraster auf der Platte.
+        //
+        // **Es gibt dem Bild seinen Plancharakter** (`HouseScene.ts`, `rasterTextur`): ohne
+        // das Raster ist die Platte eine dunkle Flaeche, mit ihm ist sie Gelaende mit einem
+        // Mass. Je ein Strich auf den Meter, sehr blass - es soll unter dem Haus liegen, nicht
+        // mit ihm um Aufmerksamkeit streiten.
+        if let platte = G.umgrenzung(deck.plate ?? deck.shell) {
+            let rand = 1.3
+            let x0 = platte.x0 - rand, x1 = platte.x1 + rand
+            let z0 = platte.z0 - rand, z1 = platte.z1 + rand
+            let strichfarbe = Color(Farbwert(0xA9ECFF, deckung: 0.07))
+            for x in stride(from: x0.rounded(.up), through: x1, by: 1) {
+                let ecken: [(x: Double, y: Double, z: Double)] =
+                    [(x, y - 0.015, z0), (x, y - 0.015, z1)]
+                stuecke.append(
+                    Malstueck(
+                        ecken: ecken, tiefe: tiefe(ecken) - 900, farbe: .clear,
+                        kante: strichfarbe, strich: 0.5, offen: true))
+            }
+            for z in stride(from: z0.rounded(.up), through: z1, by: 1) {
+                let ecken: [(x: Double, y: Double, z: Double)] =
+                    [(x0, y - 0.015, z), (x1, y - 0.015, z)]
+                stuecke.append(
+                    Malstueck(
+                        ecken: ecken, tiefe: tiefe(ecken) - 900, farbe: .clear,
+                        kante: strichfarbe, strich: 0.5, offen: true))
+            }
+        }
+
         // 2. Die Boeden der Raeume, in der Farbe ihrer Temperatur.
-        for raum in deck.rooms where !(raum.tech ?? false) {
+        //
+        // **Eine Platte, keine Flaeche** (`HouseScene.ts`: `BoxGeometry(b, BODEN_D, t)`). Ein
+        // Boden ohne Dicke hat im Schraegblick keine Kante, und ohne die Kanten verliert das
+        // ganze Bild sein Relief: die Moebel stehen dann nicht auf etwas, sondern daneben.
+        //
+        // **Ausgelassen werden nur Lufttraeume** (`open`), nicht die Technikraeume: auch die
+        // haben einen Fussboden.
+        for raum in deck.rooms where !(raum.open ?? false) {
             let grad = raum.roomId.flatMap { raeume[$0]?.tempC }
-            let ecken: [(x: Double, y: Double, z: Double)] = [
-                (raum.x0 + 0.01, y, raum.z0 + 0.01),
-                (raum.x1 - 0.01, y, raum.z0 + 0.01),
-                (raum.x1 - 0.01, y, raum.z1 - 0.01),
-                (raum.x0 + 0.01, y, raum.z1 - 0.01),
+            let farbe = Hausmodell.bodenfarbe(raum, grad: grad)
+            let grundriss: [(x: Double, z: Double)] = [
+                (raum.x0 + 0.01, raum.z0 + 0.01), (raum.x1 - 0.01, raum.z0 + 0.01),
+                (raum.x1 - 0.01, raum.z1 - 0.01), (raum.x0 + 0.01, raum.z1 - 0.01),
             ]
-            stuecke.append(
-                Malstueck(
-                    ecken: ecken, tiefe: tiefe(ecken) - 500,
-                    farbe: Color(Hausmodell.bodenfarbe(raum, grad: grad)),
-                    kante: Color(Farbe.linie1), strich: 0.6, offen: false))
+            for f in G.prisma(
+                grundriss: grundriss, y: y, hoehe: Hausmodell.bodenDicke, drehung: drehung)
+            {
+                stuecke.append(
+                    Malstueck(
+                        ecken: f.ecken, tiefe: f.tiefe - (f.obenauf ? 500 : 520),
+                        farbe: Color(farbe).opacity(farbe.deckung * (0.62 + 0.38 * f.licht)),
+                        kante: Color(Farbe.linie1), strich: 0.6, offen: false))
+            }
         }
 
         // 2b. Die Fliesen und die Heizschlangen.
@@ -362,7 +401,8 @@ struct Glasmodell: View {
         // **Beides liegt auf dem Boden, nicht darin** - ein Haar ueber ihm, damit es ihn nicht
         // durchschneidet. Die Fliesen geben dem Boden eine Oberflaeche; die Schlange sagt, wo
         // gerade geheizt wird, und das ist die Auskunft, wegen der man auf das Modell sieht.
-        for raum in deck.rooms where !(raum.tech ?? false) {
+        for raum in deck.rooms where !(raum.open ?? false) {
+            let oben = y + Hausmodell.bodenDicke
             if raum.tiles == true {
                 for f in Hausmodell.fliesen(x0: raum.x0, z0: raum.z0, x1: raum.x1, z1: raum.z1) {
                     // Die halbe Diagonale einer Raute, deren Mitten 0,36 m auseinander
@@ -370,10 +410,10 @@ struct Glasmodell: View {
                     // Feldern Lücken - ein Punktfeld statt eines Schachbretts.
                     let halb = Hausmodell.fliesenkante * (0.5).squareRoot()
                     let ecken: [(x: Double, y: Double, z: Double)] = [
-                        (f.x, y + 0.006, f.z - halb),
-                        (f.x + halb, y + 0.006, f.z),
-                        (f.x, y + 0.006, f.z + halb),
-                        (f.x - halb, y + 0.006, f.z),
+                        (f.x, oben + 0.006, f.z - halb),
+                        (f.x + halb, oben + 0.006, f.z),
+                        (f.x, oben + 0.006, f.z + halb),
+                        (f.x - halb, oben + 0.006, f.z),
                     ]
                     stuecke.append(
                         Malstueck(
@@ -393,8 +433,8 @@ struct Glasmodell: View {
             guard weg.count > 1 else { continue }
             stuecke.append(
                 Malstueck(
-                    ecken: weg.map { (x: $0.x, y: y + 0.012, z: $0.z) },
-                    tiefe: tiefe(weg.map { (x: $0.x, y: y + 0.012, z: $0.z) }) - 460,
+                    ecken: weg.map { (x: $0.x, y: oben + 0.012, z: $0.z) },
+                    tiefe: tiefe(weg.map { (x: $0.x, y: oben + 0.012, z: $0.z) }) - 450,
                     farbe: .clear,
                     kante: Color(Farbwert(0xFFC85A, deckung: min(1, glut))),
                     strich: 2.2, offen: true))
