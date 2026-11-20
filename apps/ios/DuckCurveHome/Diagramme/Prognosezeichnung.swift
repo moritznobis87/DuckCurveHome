@@ -2,26 +2,25 @@ import Charts
 import DuckCurveKit
 import SwiftUI
 
-/// Die Bilder der Prognoseseite: ein Tagesdiagramm, drei Säulenbilder, ein Rückblick.
-///
-/// **Was hier vorher stand: nichts.** Die Seite „Prognose" hatte vier Textkarten und keine
-/// einzige Zeichnung, obwohl die Antwort auf `GET /forecast/evaluation` rund 96 Punkte je Tag,
-/// fünf Sonnenhöhenklassen und die Gewichte der Quellen trägt. Die Vorlage
-/// (`apps/web/src/components/forecast/ForecastPage.tsx`) macht daraus sieben Diagramme; das
-/// hier sind die fünf, die auf einem Telefon Sinn ergeben.
-///
-/// **Gerechnet wird hier nicht.** Jede Größe kommt fertig aus ``Prognosebild`` im Kern - die
-/// Leistungsgrenze der Hochachse, die Abweichung eines Faktors von 1,00 in Prozentpunkten, die
-/// symmetrische Spanne der Faktorachse, die Stunde der Jetzt-Linie. Das ist Absicht und keine
-/// Pedanterie: jede dieser vier Zahlen sieht falsch gerechnet aus wie ein Diagrammfehler, und
-/// im Kern sind sie geprüft.
-///
-/// **Auskunft statt Tooltip.** Vier Diagramme der Vorlage hängen an Hinweisfenstern mit drei bis
-/// vier Zeilen (Faktor, gestern, letztes Verhältnis, Lerntage; MAE, Bias, Zahl der Paare).
-/// Swift Charts hat kein Hinweisfenster, und am Telefon gibt es kein Darüberfahren. Jedes Bild
-/// hat darum eine abgelesene Zeile über sich, die beim Berühren erscheint - derselbe Griff wie
-/// in ``Fahrplanzeichnung`` und im ``Antwortfaecher``. Ohne sie stünden die Zahl der Paare und
-/// die Lerntage nirgends in der App.
+// Die Bilder der Prognoseseite: ein Tagesdiagramm, drei Saeulenbilder, ein Rueckblick.
+//
+// **Was hier vorher stand: nichts.** Die Seite „Prognose“ hatte vier Textkarten und keine
+// einzige Zeichnung, obwohl die Antwort auf `GET /forecast/evaluation` rund 96 Punkte je Tag,
+// fuenf Sonnenhoehenklassen mit ihren Korrekturfaktoren und die Gewichte der Quellen traegt.
+// Die Vorlage (`apps/web/src/components/forecast/ForecastPage.tsx`) macht daraus sieben
+// Diagramme; das hier sind die fuenf, die am Telefon und an der Wand dieselbe Aussage tragen.
+//
+// **Gerechnet wird hier nicht.** Jede Groesse kommt fertig aus `Prognosebild` im Kern - die
+// Leistungsgrenze der Hochachse, die Abweichung eines Faktors von 1,00 in Prozentpunkten, die
+// symmetrische Spanne der Faktorachse, die Stunde der Jetzt-Linie. Das ist Absicht: jede dieser
+// vier Zahlen sieht falsch gerechnet aus wie ein Diagrammfehler, und im Kern ist sie geprueft.
+//
+// **Auskunft statt Hinweisfenster.** Vier Diagramme der Vorlage haengen an Tooltips mit drei bis
+// vier Zeilen (Faktor, gestern, letztes Verhaeltnis, Lerntage; MAE, Bias, Zahl der Paare). Swift
+// Charts hat kein Hinweisfenster, und am Telefon gibt es kein Darueberfahren. Jedes Bild hat
+// darum eine abgelesene Zeile ueber sich - derselbe Griff wie in `Fahrplanzeichnung` und im
+// `Antwortfaecher`. Ohne sie stuenden die Zahl der Paare und die Lerntage nirgends in der App.
+
 extension Farbe {
     /// Der Day-ahead-Lauf: in der Vorlage ein eigenes Blassgrau `#e4ecef`.
     ///
@@ -29,38 +28,39 @@ extension Farbe {
     /// noch in `Marken.swift`; es ist in der Vorlage eine einmalige Farbe für eine einzige
     /// Reihe (`ForecastPage.tsx:19`). Eine neue Serienfarbe müsste gegen `flaeche2` und gegen
     /// jede Nachbarfarbe geprüft werden, wie `Marken.swift:56-92` es für jede andere vormacht -
-    /// für einen Unterschied von zwei Prozent Helligkeit zu ``Farbe/text1`` (Weiss, 92 %).
+    /// und das für zwei Prozent Helligkeitsunterschied zu ``Farbe/text1`` (Weiss, 92 %).
     /// Day-ahead ist in diesem Bild das Unbewertete, das Weisse: dieselbe Rolle, die `text1` in
-    /// der ganzen App hat. Unterschieden wird es von der Ist-Reihe nicht über die Farbe, sondern
-    /// über das Strichmuster - „was gestrichelt ist, ist nicht gemessen".
+    /// der ganzen App hat. Von der Ist-Reihe unterschieden wird es nicht über die Farbe, sondern
+    /// über das Strichmuster - „was gestrichelt ist, ist nicht gemessen“.
     static let dayAhead = text1
 
-    /// Dieselbe Reihe als Fläche: Säule und Legendenklotz tragen mehr Farbe als ein Strich.
+    /// Dieselbe Reihe als Fläche: eine Säule und ein Legendenklotz tragen mehr Farbe als ein
+    /// Strich.
     ///
-    /// `rgba(228,236,239,.55)` der Vorlage (`ForecastPage.tsx:110`). Volle Deckung macht aus der
-    /// Day-ahead-Säule die hellste Fläche der Seite, und das Ist daneben wäre die leisere von
-    /// beiden - genau verkehrt.
+    /// `rgba(228,236,239,.55)` der Vorlage (`ForecastPage.tsx:110`). In voller Deckung wäre die
+    /// Day-ahead-Säule die hellste Fläche der Karte und das gemessene Ist daneben die leisere
+    /// von beiden - genau verkehrt.
     static let dayAheadFlaeche = text1.opacity(0.55)
 }
 
 // MARK: - Das Abgelesene
 
 /// Eine Zeile der Auskunft: ein Satz in der Farbe seiner Reihe.
-private struct Ablesungszeile: Identifiable {
+struct Ablesungszeile: Identifiable {
     let text: String
     var farbe: Color = Farbe.text2
     var id: String { text }
 }
 
-/// Was an der berührten Stelle steht - Kopf und Zeilen, in einem Kasten.
+/// Was an der berührten Stelle steht: ein Kopf und seine Zeilen, in einem Kasten.
 ///
-/// **Warum ein eigener Kasten und keine Zeile im Diagramm.** Swift Charts kennt keinen Platz
-/// ausserhalb des Zeichenbereichs; eine Beschriftung über `annotation` staucht die Skala, und
-/// dann stehen die Säulenpaare zweier Karten nicht mehr auf derselben Teilung.
-private struct Ablesung: View {
+/// **Warum über dem Bild und nicht darin.** Swift Charts kennt keinen Platz ausserhalb des
+/// Zeichenbereichs; eine Beschriftung über `annotation` staucht die Skala, und dann stehen die
+/// Säulen zweier Karten nicht mehr auf derselben Teilung. Solange niemand berührt, steht dort
+/// die Aufforderung - sonst springt das Bild beim ersten Tippen um die Höhe des Kastens.
+struct Ablesung: View {
     let kopf: String?
     let zeilen: [Ablesungszeile]
-    /// Was dasteht, solange niemand berührt - sonst springt das Bild beim ersten Tippen.
     let aufforderung: String
 
     var body: some View {
@@ -90,11 +90,11 @@ private struct Ablesung: View {
 
 /// Ein Strich der Legende, auch gestrichelt oder gepunktet.
 ///
-/// **`Legendenstueck` kann das nicht.** Es kennt Farbe und Höhe (`Umbruchzeile.swift:4`), und die
-/// Vorlage macht ihre Striche mit `border-top: 2px dashed` (`ForecastPage.tsx:197`). Im
-/// Hauptdiagramm unterscheidet aber **nur** das Strichmuster die drei Reihen voneinander - ein
+/// **``Legendenstueck`` kann das nicht.** Es kennt Farbe und Höhe (`Umbruchzeile.swift:4`), und
+/// die Vorlage zeichnet ihre Striche mit `border-top: 2px dashed` (`ForecastPage.tsx:197`). Im
+/// Hauptdiagramm unterscheidet aber **nur** das Strichmuster die drei Reihen - ein
 /// durchgezogener Klotz für Day-ahead wäre eine falsche Legende. Also ein `Path` mit `dash`.
-private struct Strichstueck: View {
+struct Strichstueck: View {
     let wort: String
     let farbe: Color
     /// Leer heisst durchgezogen.
@@ -117,7 +117,7 @@ private struct Strichstueck: View {
 }
 
 /// Ein Klotz der Legende - für Säulen und Flächen.
-private struct Klotzstueck: View {
+struct Klotzstueck: View {
     let wort: String
     let farbe: Color
 
@@ -134,9 +134,9 @@ private struct Klotzstueck: View {
 /// Ein Punkt der Legende, in der Form seiner Punktreihe.
 ///
 /// **Formen und nicht Striche** (`ForecastPage.tsx:318-321`). Die Faktorkarte hat drei Reihen,
-/// von denen zwei Punktreihen sind; drei gleich aussehende Striche darunter würden die Raute
-/// und den Kreis im Bild nicht erklären, sondern verwischen.
-private struct Formstueck: View {
+/// von denen zwei Punktreihen sind; drei gleich aussehende Striche darunter würden die Raute und
+/// den Kreis im Bild nicht erklären, sondern verwischen.
+struct Formstueck: View {
     let wort: String
     let farbe: Color
     /// Rautenform: ein gedrehtes Quadrat, wie `symbol(.diamond)` im Bild.
@@ -164,14 +164,14 @@ private struct Formstueck: View {
 ///
 /// **Das wichtigste Bild der Seite, und es fehlte ganz.** Hier steht die Frage, die die Seite
 /// stellt: lag die Prognose über oder unter dem, was gekommen ist - und zu welcher Tageszeit.
-/// Eine Tabelle mit Tagessummen beantwortet das nicht, weil ein Tag, der morgens zu hoch und
-/// mittags zu tief lag, in der Summe aussieht wie ein getroffener.
+/// Eine Tabelle mit Tagessummen beantwortet das nicht, denn ein Tag, der morgens zu hoch und
+/// mittags zu tief lag, sieht in der Summe aus wie ein getroffener.
 ///
 /// **Was gestrichelt ist, ist nicht gemessen.** Dieselbe Regel wie in ``TageskurveBild``: das
 /// Ist ist eine Fläche mit voller Kante, Day-ahead ein langer Strich, der korrigierte Lauf ein
-/// kurzer. Die Jetzt-Linie steht bei ``Prognosebild/Prognosetag/jetztStunde`` - also bei
-/// `generatedAt` der Antwort und nicht bei der Uhr des Geräts, sonst wandert sie bis zu fünf
-/// Minuten gegen den letzten Ist-Punkt.
+/// kurzer. Die Jetzt-Linie steht bei ``Prognosebild/Prognosetag/jetztStunde``, also bei
+/// `generatedAt` der Antwort und nicht bei der Uhr des Geräts - sonst stünde sie bis zu fünf
+/// Minuten neben dem letzten Ist-Punkt.
 struct Prognosekurvenbild: View {
     let tag: Prognosebild.Prognosetag
     /// Der laufende Tag? Dann gibt es den korrigierten Lauf und die Jetzt-Linie.
@@ -241,8 +241,8 @@ struct Prognosekurvenbild: View {
                 // **Weiches Bernstein, nicht das der PV-Reihe.** Die Vorlage nimmt für beide
                 // `#f2a900` (`ForecastPage.tsx:69`). In dieser App gilt die Regel aus
                 // ``Fahrplanzeichnung``: die Jetzt-Linie darf nicht die Farbe einer Reihe im
-                // selben Gitter haben, sonst sind es zwei bernsteinfarbene Striche und keiner
-                // sagt mehr, welcher „jetzt" meint.
+                // selben Gitter tragen, sonst sind es zwei bernsteinfarbene Striche und keiner
+                // sagt mehr, welcher „jetzt“ meint.
                 RuleMark(x: .value("jetzt", jetzt))
                     .foregroundStyle(Farbe.amberWeich)
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
@@ -271,8 +271,8 @@ struct Prognosekurvenbild: View {
             }
         }
         .chartYAxis {
-            // Genau drei Marken - 0, Mitte, oben. Dafür ist die Leistungsgrenze im Kern gerade
-            // gerundet, sonst stünde in der Mitte eine Zahl mit Komma.
+            // Genau drei Marken - 0, Mitte, oben. Dafür ist die Leistungsgrenze im Kern auf
+            // gerade Kilowatt gerundet; sonst stünde in der Mitte eine Zahl mit Komma.
             AxisMarks(
                 position: .leading,
                 values: [0, tag.leistungsgrenze / 2, tag.leistungsgrenze]
@@ -294,23 +294,28 @@ struct Prognosekurvenbild: View {
 
     private var ablesung: some View {
         Ablesung(
-            kopf: gelesen.map(Prognosezeichnung.uhrzeit),
-            zeilen: gelesen.map(zeilen) ?? [],
+            kopf: gelesen.map { Prognosezeichnung.uhrzeit($0) },
+            zeilen: gelesen.map { zeilen($0) } ?? [],
             aufforderung: "Zum Lesen einer Viertelstunde die Zeichnung berühren.")
     }
 
-    /// Die drei Reihen an der berührten Stelle. Was dort keinen Punkt hat, fällt weg - eine
-    /// Null stünde für eine Messung, die es nicht gibt.
+    /// Die drei Reihen an der berührten Stelle. Was dort keinen Punkt hat, fällt weg - eine Null
+    /// stünde für eine Messung, die es nicht gibt.
     private func zeilen(_ stunde: Double) -> [Ablesungszeile] {
         var aus: [Ablesungszeile] = []
         if let p = Prognosezeichnung.naechster(tag.ist, bei: stunde) {
-            aus.append(.init(text: "Ist \(Formate.kw(p.wert))", farbe: Farbe.pv))
+            aus.append(
+                Ablesungszeile(text: "Ist \(Formate.kwMitEinheit(p.wert))", farbe: Farbe.pv))
         }
         if let p = Prognosezeichnung.naechster(tag.dayAhead, bei: stunde) {
-            aus.append(.init(text: "Day-ahead \(Formate.kw(p.wert))", farbe: Farbe.dayAhead))
+            aus.append(
+                Ablesungszeile(
+                    text: "Day-ahead \(Formate.kwMitEinheit(p.wert))", farbe: Farbe.dayAhead))
         }
         if let p = Prognosezeichnung.naechster(tag.korrigiert, bei: stunde) {
-            aus.append(.init(text: "Korrigiert \(Formate.kw(p.wert))", farbe: Farbe.mist))
+            aus.append(
+                Ablesungszeile(
+                    text: "Korrigiert \(Formate.kwMitEinheit(p.wert))", farbe: Farbe.mist))
         }
         return aus
     }
@@ -319,8 +324,8 @@ struct Prognosekurvenbild: View {
     ///
     /// **Am Telefon gehört sie dorthin** (`handy.css:54,266`), und hier auch an der Wand: über
     /// dem Bild steht schon der Umschalter Heute/Gestern im Kopf der Karte, und drei Striche
-    /// daneben machen aus einer Kopfzeile eine Werkzeugleiste. Sie darf umbrechen - drei
-    /// Einträge mit „Jüngster Lauf, korrigiert" passen auf 390 Punkte nicht in eine Zeile.
+    /// daneben machen aus einer Kopfzeile eine Werkzeugleiste. Sie darf umbrechen - „Jüngster
+    /// Lauf, korrigiert“ passt mit zwei Nachbarn auf 390 Punkte nicht in eine Zeile.
     private var legende: some View {
         Umbruchzeile(abstand: 14, zeilenabstand: 5) {
             Strichstueck(wort: "Ist (15-min-Mittel)", farbe: Farbe.pv)
@@ -334,7 +339,7 @@ struct Prognosekurvenbild: View {
         }
     }
 
-    /// „Day-ahead · ausgegeben 06:00" - die Uhrzeit sagt, wie alt die Ankündigung ist.
+    /// „Day-ahead · ausgegeben 06:00“ - die Uhrzeit sagt, wie alt die Ankündigung ist.
     private var dayAheadWort: String {
         guard let ausgegeben else { return "Day-ahead" }
         return "Day-ahead · ausgegeben \(Formate.hhmm(iso: ausgegeben))"
@@ -345,10 +350,10 @@ struct Prognosekurvenbild: View {
 
 /// Was angekündigt war gegen das, was gekommen ist - je Tag ein Säulenpaar.
 ///
-/// **Dieselben Zahlen standen schon da, als Tabelle.** Vier Spalten mit vierzehn Zeilen, am
-/// Telefon eine Spalte auf einmal. Die Frage „gibt es eine Richtung" - liegt die Prognose
-/// immer zu hoch, oder nur an einzelnen Tagen - lässt sich daran nicht sehen; an zwei Säulen
-/// nebeneinander sieht man sie ohne zu lesen.
+/// **Dieselben Zahlen standen schon da, als Tabelle:** vier Spalten, am Telefon eine davon auf
+/// einmal. Die Frage „gibt es eine Richtung“ - liegt die Prognose immer zu hoch oder nur an
+/// einzelnen Tagen - lässt sich daran nicht sehen; an zwei Säulen nebeneinander sieht man sie,
+/// ohne zu lesen.
 struct Tagesenergiebild: View {
     let paare: [Prognosebild.Tagespaar]
 
@@ -374,9 +379,9 @@ struct Tagesenergiebild: View {
 
     private var diagramm: some View {
         Chart {
-            // **Der Kalendertag ist die Kategorie, nicht sein Kürzel.** An der Achse steht
-            // „Mo" (`ForecastPage.tsx:107`), aber in vierzehn Tagen kommt jeder Wochentag
-            // zweimal vor - mit dem Kürzel als Wert fielen die beiden Montage in eine Säule.
+            // **Der Kalendertag ist die Kategorie, nicht sein Kürzel.** An der Achse steht „Mo“
+            // (`ForecastPage.tsx:107`), aber in vierzehn Tagen kommt jeder Wochentag zweimal
+            // vor - mit dem Kürzel als Wert fielen die beiden Montage in eine Säule.
             ForEach(paare) { p in
                 BarMark(x: .value("Tag", p.tag), y: .value("kWh", p.prognose))
                     .foregroundStyle(Farbe.dayAheadFlaeche)
@@ -389,7 +394,6 @@ struct Tagesenergiebild: View {
             }
         }
         .chartXSelection(value: $gelesen)
-        .chartLegend(.hidden)
         .chartXAxis {
             AxisMarks(
                 values: Achse.beschriftungen(paare.map(\.tag), hoechstens: schmal ? 7 : 14)
@@ -419,22 +423,22 @@ struct Tagesenergiebild: View {
     private var ablesung: some View {
         let p = paare.first { $0.tag == gelesen }
         return Ablesung(
-            kopf: p?.wochentag,
-            zeilen: p.map(zeilen) ?? [],
+            kopf: p.map { $0.wochentag },
+            zeilen: p.map { zeilen($0) } ?? [],
             aufforderung: "Zum Lesen eines Tages die Zeichnung berühren.")
     }
 
     private func zeilen(_ p: Prognosebild.Tagespaar) -> [Ablesungszeile] {
         [
-            .init(text: "Day-ahead \(Formate.kwh(p.prognose))", farbe: Farbe.dayAhead),
-            .init(text: "Ist \(Formate.kwh(p.ist))", farbe: Farbe.pv),
-            .init(
+            Ablesungszeile(text: "Day-ahead \(Formate.kwh(p.prognose))", farbe: Farbe.dayAhead),
+            Ablesungszeile(text: "Ist \(Formate.kwh(p.ist))", farbe: Farbe.pv),
+            Ablesungszeile(
                 text: "Abweichung \(Formate.prozentpunkte(p.fehlerProzent)) · MAE "
                     + "\(Formate.zahl(p.mae, stellen: 2)) kW"),
         ]
     }
 
-    /// „Mo" zum Kalendertag an der Achse - fertig aus dem Kern, damit Achse und Auskunft
+    /// „Mo“ zum Kalendertag an der Achse - fertig aus dem Kern, damit Achse und Auskunft
     /// dasselbe Datum meinen.
     private func kurz(_ tag: String) -> String {
         paare.first { $0.tag == tag }?.kurz ?? tag
@@ -447,8 +451,8 @@ struct Tagesenergiebild: View {
 ///
 /// **Vorher eine Tabelle mit einer Spalte.** Es fehlten der Bias - also die Richtung des
 /// Fehlers - und die Zahl der Paare, aus denen beides gerechnet ist. Eine Güte von 0,42 kW aus
-/// vier Paaren ist etwas anderes als dieselbe Zahl aus vierhundert, und ohne die Zahl der
-/// Paare sieht man den Unterschied nicht.
+/// vier Paaren ist etwas anderes als dieselbe Zahl aus vierhundert, und ohne die Zahl der Paare
+/// sieht man den Unterschied nicht.
 struct Horizontbild: View {
     let balken: [Prognosebild.Fehlerbalken]
 
@@ -456,6 +460,15 @@ struct Horizontbild: View {
     @State private var gelesen: String?
 
     private var schmal: Bool { breite == .compact }
+
+    /// Die Säulen, die es wirklich gibt.
+    ///
+    /// **Eine Klasse ohne Paare bekommt keine Null-Säule.** Der Kern setzt `mae` und `zweites`
+    /// auf `nil`, sobald `paare` null ist; eine Säule der Höhe null sagt „kein Fehler“, und das
+    /// ist der genaue Gegensatz von „nichts gemessen“.
+    private var saeulen: [Prognosezeichnung.Saeule] {
+        Prognosezeichnung.saeulen(balken, zweitname: "|Bias|")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -470,15 +483,6 @@ struct Horizontbild: View {
                 Klotzstueck(wort: "|Bias|", farbe: Farbe.text1.opacity(0.4))
             }
         }
-    }
-
-    /// Die Säulen, die es wirklich gibt.
-    ///
-    /// **Eine Klasse ohne Paare bekommt keine Null-Säule.** Der Kern setzt `mae` und `zweites`
-    /// auf `nil`, sobald `paare` null ist; eine Säule der Höhe null sagt „kein Fehler" und das
-    /// ist der genaue Gegensatz von „nichts gemessen".
-    private var saeulen: [Prognosezeichnung.Saeule] {
-        Prognosezeichnung.saeulen(balken, zweitname: "|Bias|")
     }
 
     private var diagramm: some View {
@@ -518,8 +522,8 @@ struct Horizontbild: View {
     private var ablesung: some View {
         let b = balken.first { $0.name == gelesen }
         return Ablesung(
-            kopf: b?.langname,
-            zeilen: b.map(Prognosezeichnung.fehlerzeilen) ?? [],
+            kopf: b.map { $0.langname },
+            zeilen: b.map { Prognosezeichnung.fehlerzeilen($0) } ?? [],
             aufforderung: "Zum Lesen einer Klasse die Zeichnung berühren.")
     }
 }
@@ -529,15 +533,15 @@ struct Horizontbild: View {
 /// Die gelernten Faktoren nach Sonnenhöhe, als Abweichung von 1,00.
 ///
 /// **Die Karte, von der der Seitentitel handelt - und sie fehlte ganz.** „Stufe 1 ·
-/// Bias-Korrektur je Sonnenhöhe" stand als Kartentitel da, während `corrector.bins` in der App
+/// Bias-Korrektur je Sonnenhöhe“ stand als Kartentitel da, während `corrector.bins` in der App
 /// an keiner Stelle gelesen wurde.
 ///
 /// **Gezeichnet wird nicht der Faktor, sondern seine Abweichung von 1,00 in Prozentpunkten.**
 /// Faktoren liegen zwischen 0,9 und 1,1; auf einer Achse von 0 bis 1,1 ist das ein Strich. Als
 /// Abweichung wird die Achse symmetrisch um Null, die Säulen stehen auf der Nulllinie statt auf
-/// dem Achsenboden, und „zu wenig" zeigt nach unten statt nur ein Stück kürzer zu sein. Die
+/// dem Achsenboden, und „zu wenig“ zeigt nach unten statt nur ein Stück kürzer zu sein. Die
 /// Rechnung und die Spanne stehen in ``Prognosebild/faktorbalken(_:)`` - die Spanne über alle
-/// drei Reihen, damit die Raute von „gestern" nicht abgeschnitten wird.
+/// drei Reihen, damit die Raute von „gestern“ nicht abgeschnitten wird.
 struct Faktorenbild: View {
     let bild: Prognosebild.Faktorbild
 
@@ -568,9 +572,9 @@ struct Faktorenbild: View {
 
     private var diagramm: some View {
         Chart {
-            // **Die Nulllinie ist der Bezug und keine Rasterlinie.** In ihrem Ton
-            // (`rasterlinie`, 9 % Weiss) wäre die Linie, auf der alle Säulen stehen, die
-            // leiseste des Bildes.
+            // **Die Nulllinie ist der Bezug und keine Rasterlinie.** In deren Ton
+            // (`rasterlinie`, 9 % Weiss) wäre die Linie, auf der alle Säulen stehen, der
+            // leiseste Strich des Bildes.
             RuleMark(y: .value("Prozentpunkte", 0.0))
                 .foregroundStyle(Farbe.text1.opacity(0.55))
                 .lineStyle(StrokeStyle(lineWidth: 1))
@@ -578,7 +582,7 @@ struct Faktorenbild: View {
                 if let a = k.abweichung {
                     BarMark(x: .value("Sonnenhöhe", k.name), y: .value("Prozentpunkte", a))
                         // Rot heisst: die Prognose lag zu hoch, der Faktor zieht sie herunter.
-                        // Das ist keine Bewertung, sondern die Richtung (`ForecastPage.tsx:156`).
+                        // Das ist die Richtung und keine Bewertung (`ForecastPage.tsx:156`).
                         .foregroundStyle(k.unterEins ? Farbe.alarm : Farbe.pv)
                         .cornerRadius(2)
                 }
@@ -632,33 +636,35 @@ struct Faktorenbild: View {
         let k = bild.klassen.first { $0.name == gelesen }
         return Ablesung(
             kopf: k.map { "Sonnenhöhe \($0.name)" },
-            zeilen: k.map(zeilen) ?? [],
+            zeilen: k.map { zeilen($0) } ?? [],
             aufforderung: "Zum Lesen einer Sonnenhöhenklasse die Zeichnung berühren.")
     }
 
-    /// **Drei Nachkommastellen, nicht eine** (`ForecastPage.tsx:175`). Der Unterschied zwischen
-    /// 1,073 und 1,068 ist die ganze Nachricht dieser Karte; gerundet auf eine Stelle wären
-    /// beide 1,1.
+    /// **Drei Nachkommastellen beim Faktor, nicht eine** (`ForecastPage.tsx:175`). Der
+    /// Unterschied zwischen 1,073 und 1,068 ist die ganze Nachricht dieser Karte; auf eine
+    /// Stelle gerundet wären beide 1,1.
+    ///
+    /// Gestern und das letzte Verhältnis stehen als Prozentpunkte da und nicht als Faktor - das
+    /// ist, was im Bild als Raute und als Kreis liegt, und zwei Maßstäbe in einer Auskunft wären
+    /// eine Falle für den, der sie vergleicht.
     private func zeilen(_ k: Prognosebild.Faktorbild.Klasse) -> [Ablesungszeile] {
         var aus: [Ablesungszeile] = [
-            .init(
+            Ablesungszeile(
                 text: "Faktor \(Formate.zahl(k.faktor, stellen: 3))",
                 farbe: k.unterEins ? Farbe.alarm : Farbe.pv)
         ]
         if let g = k.gestern {
             aus.append(
-                .init(
-                    text: "gestern \(Formate.prozentpunkte(g))",
-                    farbe: Farbe.dayAhead))
+                Ablesungszeile(
+                    text: "gestern \(Formate.prozentpunkte(g))", farbe: Farbe.dayAhead))
         }
         if let l = k.letztes {
             aus.append(
-                .init(
-                    text: "letztes Ist/Prognose \(Formate.prozentpunkte(l))",
-                    farbe: Farbe.mist))
+                Ablesungszeile(
+                    text: "letztes Ist/Prognose \(Formate.prozentpunkte(l))", farbe: Farbe.mist))
         }
-        if let tage = k.lerntage {
-            aus.append(.init(text: "\(tage) Lerntage"))
+        if let lerntage = k.lerntage {
+            aus.append(Ablesungszeile(text: "\(lerntage) Lerntage"))
         }
         return aus
     }
@@ -671,14 +677,15 @@ struct Faktorenbild: View {
 /// **Was der Rückblick anderes sagt als die Bewertung.** Die Bewertung zeigt, was der Bewerter
 /// im Arbeitsspeicher hat; der Rückblick liest die abgelegten Läufe und ordnet jedes Paar nach
 /// dem Abstand zwischen Lauf und Lieferzeit. Daran sieht man, ab welcher Vorlaufzeit eine
-/// Prognose brauchbar ist - sechs Klassen von „0-1h" bis „24-48h".
+/// Prognose brauchbar ist - sechs Klassen von „0-1h“ bis „24-48h“. In der App waren es drei
+/// Zahlen in einer Tabelle.
 ///
 /// **Der Rand von 95 % gehört dazu.** Der mittlere Fehler sagt, wie es im Schnitt lief; die
 /// Frage, auf die ein Fahrplan antwortet, ist aber, wie schlimm es schlimmstenfalls kam. Darum
 /// die gestrichelte Linie mit Punkten über den Säulen (`Rueckblick.tsx:66-83`).
 struct Vorlaufbild: View {
     let balken: [Prognosebild.Fehlerbalken]
-    /// Die Einheit der Reihe - Heizlast in kW, nicht jede Reihe ist eine Leistung.
+    /// Die Einheit der Reihe. Nicht jede ist eine Leistung - heute ist es die Heizlast in kW.
     let einheit: String
 
     @Environment(\.horizontalSizeClass) private var breite
@@ -689,6 +696,10 @@ struct Vorlaufbild: View {
     /// Keine einzige Klasse hat ein Paar: dann gehört ein Satz in das Bild und keine leere Achse.
     private var ohnePaare: Bool {
         balken.allSatisfy { $0.paare == 0 }
+    }
+
+    private var saeulen: [Prognosezeichnung.Saeule] {
+        Prognosezeichnung.saeulen(balken, zweitname: "Rand (95 %)")
     }
 
     var body: some View {
@@ -715,10 +726,14 @@ struct Vorlaufbild: View {
                     .symbol(.circle)
                     .symbolSize(45)
                 } else {
-                    BarMark(x: .value("Vorlauf", s.name), y: .value(einheit, s.wert))
-                        .foregroundStyle(Farbe.mist)
-                        .cornerRadius(2)
-                        .width(.ratio(0.52))
+                    // Die Breite als Anteil der Spalte: die `barWidth: "52%"` der Vorlage
+                    // (`Rueckblick.tsx:63`). Swift Charts kennt dafür `MarkDimension`.
+                    BarMark(
+                        x: .value("Vorlauf", s.name), y: .value(einheit, s.wert),
+                        width: .ratio(0.52)
+                    )
+                    .foregroundStyle(Farbe.mist)
+                    .cornerRadius(2)
                 }
             }
         }
@@ -754,10 +769,6 @@ struct Vorlaufbild: View {
         }
     }
 
-    private var saeulen: [Prognosezeichnung.Saeule] {
-        Prognosezeichnung.saeulen(balken, zweitname: "Rand (95 %)")
-    }
-
     private var ablesung: some View {
         let b = balken.first { $0.name == gelesen }
         return Ablesung(
@@ -767,33 +778,31 @@ struct Vorlaufbild: View {
     }
 
     private func zeilen(_ b: Prognosebild.Fehlerbalken) -> [Ablesungszeile] {
-        var aus: [Ablesungszeile] = []
-        aus.append(
-            .init(
+        [
+            Ablesungszeile(
                 text: "mittlerer Fehler \(Formate.zahl(b.mae, stellen: 2)) \(einheit)",
-                farbe: Farbe.mist))
-        aus.append(
-            .init(
+                farbe: Farbe.mist),
+            Ablesungszeile(
                 text: "Rand (95 %) \(Formate.zahl(b.zweites, stellen: 2)) \(einheit)",
-                farbe: Farbe.alarm))
-        return aus
+                farbe: Farbe.alarm),
+        ]
     }
 }
 
-// MARK: - Was alle fünf Bilder teilen
+// MARK: - Was mehrere Bilder teilen
 
 /// Die Handgriffe, die in mehr als einem Bild dieser Seite vorkommen.
 ///
-/// **Warum nicht im Kern.** Das sind drei Formatierungen und eine Umordnung von Reihen für
-/// `position(by:)` - also Fragen der Zeichnung, nicht der Rechnung. Was eine Zahl *ist*, steht
-/// in ``Prognosebild``; was sie *anzieht*, hier.
+/// **Warum nicht im Kern.** Das sind zwei Formatierungen und eine Umordnung von Reihen für
+/// `position(by:)` - also Fragen der Zeichnung und nicht der Rechnung. Was eine Zahl *ist*,
+/// steht in ``Prognosebild``; wie sie an ihren Platz kommt, hier.
 enum Prognosezeichnung {
 
     /// Eine Säule, die es wirklich gibt.
     ///
     /// **Warum die Reihen vorher umgeordnet werden.** Säulenpaare brauchen in Swift Charts
     /// `position(by:)` mit einer gemeinsamen Reihenkennung. Wären die beiden Säulen zwei
-    /// `BarMark` in einem `if let` je Klasse, stünde in einer Klasse ohne Bias die MAE-Säule
+    /// `BarMark` in je einem `if let`, stünde in einer Klasse ohne zweite Größe die MAE-Säule
     /// nicht in ihrer halben Spalte, sondern mittig - und die Klassen wären nicht mehr
     /// vergleichbar. Mit einer flachen Reihe entscheidet die Kennung über den Platz.
     struct Saeule: Identifiable {
@@ -819,18 +828,19 @@ enum Prognosezeichnung {
     /// Die drei Zeilen der Horizontauskunft: MAE, Betrag des Bias, Zahl der Paare.
     ///
     /// Die Zahl der Paare steht dabei, weil sie das Gewicht der beiden anderen Zahlen ist
-    /// (`ForecastPage.tsx:139`).
+    /// (`ForecastPage.tsx:139`). Der Betrag und nicht der Bias: so kommt er aus dem Kern, weil
+    /// zwei Säulen nebeneinander keine Achse teilen, von denen die eine nach unten zeigen kann.
     static func fehlerzeilen(_ b: Prognosebild.Fehlerbalken) -> [Ablesungszeile] {
         [
-            .init(text: "MAE \(Formate.zahl(b.mae, stellen: 2)) kW", farbe: Farbe.mist),
-            .init(
+            Ablesungszeile(text: "MAE \(Formate.zahl(b.mae, stellen: 2)) kW", farbe: Farbe.mist),
+            Ablesungszeile(
                 text: "|Bias| \(Formate.zahl(b.zweites, stellen: 2)) kW",
                 farbe: Farbe.text1.opacity(0.7)),
-            .init(text: "n = \(b.paare)"),
+            Ablesungszeile(text: "n = \(b.paare)"),
         ]
     }
 
-    /// Eine Stelle der Stundenachse als Uhrzeit: 13,75 wird „13:45".
+    /// Eine Stelle der Stundenachse als Uhrzeit: 13,75 wird „13:45“.
     static func uhrzeit(_ stunde: Double) -> String {
         let minuten = Int((stunde * 60).rounded())
         return String(format: "%02d:%02d", (minuten / 60) % 24, minuten % 60)
@@ -839,8 +849,9 @@ enum Prognosezeichnung {
     /// Der Punkt, der der berührten Stelle am nächsten liegt - oder keiner.
     ///
     /// **Mit Grenze, und die ist nicht Zierde.** Ohne sie zeigte die Auskunft nachts um drei den
-    /// Mittagswert, weil er der einzige Punkt der Reihe ist. Eine Viertelstunde links und rechts
-    /// ist der Raster der Antwort; alles darüber hinaus ist keine Auskunft über diese Stelle.
+    /// Mittagswert, weil er der einzige Punkt der Reihe ist. Eine Viertelstunde nach links und
+    /// rechts ist das Raster der Antwort; alles darüber hinaus ist keine Auskunft über diese
+    /// Stelle.
     static func naechster(_ punkte: [Kurvenpunkt], bei stunde: Double) -> Kurvenpunkt? {
         let nah = punkte.min { abs($0.stunde - stunde) < abs($1.stunde - stunde) }
         guard let nah, abs(nah.stunde - stunde) <= 0.25 else { return nil }

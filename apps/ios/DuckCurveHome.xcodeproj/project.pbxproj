@@ -51,6 +51,7 @@
 		BF90E13714A06E92ACA5FEBA /* Systemanschluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65970F2409A3493784FE0F3 /* Systemanschluss.swift */; };
 		BFEA1309C0F0923E9EC869A2 /* Umbruchzeile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D48D7AA0788028340C51B9 /* Umbruchzeile.swift */; };
 		C43C83AB55DE4450DB127E05 /* Einrichten.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */; };
+		CE52AB14EFE635E61A10408B /* Prognosezeichnung.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BF952160A0907077D465C7A /* Prognosezeichnung.swift */; };
 		CF1E38EE14DAA9FB117D4E38 /* MitteilungenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47987C6C791253041485C3B7 /* MitteilungenSeite.swift */; };
 		D4B4A38C63A5AE38D197BA44 /* Hauskonsolenleiste.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A4D3E090FA7E4373CF82D8F /* Hauskonsolenleiste.swift */; };
 		D742805330F9AD247E8CAB72 /* ReglerSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */; };
@@ -96,6 +97,7 @@
 		4FE935C11F91B3B4788FA2C8 /* Karte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Karte.swift; sourceTree = "<group>"; };
 		5B121AA23E50590AAD07F502 /* Anlagenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenbild.swift; sourceTree = "<group>"; };
 		5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Einrichten.swift; sourceTree = "<group>"; };
+		5BF952160A0907077D465C7A /* Prognosezeichnung.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Prognosezeichnung.swift; sourceTree = "<group>"; };
 		5D1A02B0F1DB5D6D6AFA0B27 /* WaermeSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaermeSeite.swift; sourceTree = "<group>"; };
 		5E28F2036D3D5B7885BC4F87 /* Ansichtswahl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ansichtswahl.swift; sourceTree = "<group>"; };
 		5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Waermebilder.swift; sourceTree = "<group>"; };
@@ -173,6 +175,7 @@
 				5B121AA23E50590AAD07F502 /* Anlagenbild.swift */,
 				136B81A72166E32541A4ABF9 /* Anlagenrohre.swift */,
 				98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */,
+				5BF952160A0907077D465C7A /* Prognosezeichnung.swift */,
 				F1BCE78C8EB2C5E42CFF9439 /* Pruefkurvenbild.swift */,
 				9AA49FDBA50756C197DFFDBC /* Tageskurve.swift */,
 				5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */,
@@ -474,6 +477,7 @@
 				99BBBD49F3FD5777A26147A2 /* Mitteilungen.swift in Sources */,
 				CF1E38EE14DAA9FB117D4E38 /* MitteilungenSeite.swift in Sources */,
 				56C0AE84FC921B660B63E93D /* Navigation.swift in Sources */,
+				CE52AB14EFE635E61A10408B /* Prognosezeichnung.swift in Sources */,
 				BC39AFA258EB753F725AFA8B /* Pruefkurvenbild.swift in Sources */,
 				EB7278D68E6A4B5E3D2B4F5D /* Pufferspeicher.swift in Sources */,
 				6239EAA0DFD479C95C1F7DA5 /* Raumkachel.swift in Sources */,
