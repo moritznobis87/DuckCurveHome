@@ -85,7 +85,7 @@ final class FormateTests: XCTestCase {
     }
 
     /// Nicht endliche Werte kommen aus Divisionen in der Auswertung. Sie duerfen nicht als
-    /// „inf" an der Wand landen.
+    /// „inf“ an der Wand landen.
     func testUnendlichUndNaNWerdenZumBindestrich() {
         XCTAssertEqual(Formate.kw(.infinity), "-")
         XCTAssertEqual(Formate.kw(.nan), "-")
@@ -99,7 +99,7 @@ extension FormateTests {
     /// dreizehn Geschwister verhalten, sonst ist die Falle nur verschoben.
     func testZahlOhneWertGibtDenStrich() {
         XCTAssertEqual(Formate.zahl(nil, stellen: 1), Formate.zahl(Double.nan, stellen: 1))
-        // Derselbe Strich wie bei den anderen, nicht „0,0" und nicht leer.
+        // Derselbe Strich wie bei den anderen, nicht „0,0“ und nicht leer.
         XCTAssertEqual(Formate.zahl(nil, stellen: 2), Formate.kw(nil))
         XCTAssertFalse(Formate.zahl(nil, stellen: 0).isEmpty)
     }
@@ -147,5 +147,143 @@ extension FormateTests {
         XCTAssertEqual(Tag.abstand("2026-10-25", "2026-10-26"), -1)
         XCTAssertEqual(Tag.abstand("2026-11-17", "2026-11-17"), 0)
         XCTAssertNil(Tag.abstand("unfug", "2026-11-17"))
+    }
+}
+
+// MARK: - Die vier Formate, die aus der Vorlage stammen
+
+/// Vier Formatierungen, die ihre Regel nicht hier, sondern in `apps/web` haben. Die Werte unten
+/// sind aus der Vorlage nachgerechnet, nicht ausgedacht - deshalb steht an jeder Gruppe, welche
+/// Zeile dort gemeint ist.
+extension FormateTests {
+    // MARK: - megabyte (StorageReport.tsx:21-24)
+
+    /// Die Schwelle ist 1024³ und nicht 1e9: die Datenbank zählt Seiten.
+    func testMegabyteSchaltetBeiEinemGibibyteUm() {
+        XCTAssertEqual(Formate.megabyte(1_073_741_824), "1 GB")
+        // Ein Mebibyte darunter bleibt es bei MB - und dort steht dann der Tausenderpunkt.
+        XCTAssertEqual(Formate.megabyte(1_073_741_824 - 1_048_576), "1.023 MB")
+        XCTAssertEqual(Formate.megabyte(1_099_511_627_776), "1.024 GB")
+    }
+
+    /// Höchstens zwei Stellen in GB, höchstens eine in MB - Nullen am Ende fallen weg, wie bei
+    /// `maximumFractionDigits`. Genau ein Gigabyte ist „1 GB“ und nicht „1,00 GB“.
+    func testMegabyteSchreibtHoechstensSoVieleStellenWieDieVorlage() {
+        XCTAssertEqual(Formate.megabyte(1_610_612_736), "1,5 GB")      // 1,5 GiB
+        XCTAssertEqual(Formate.megabyte(1_342_177_280), "1,25 GB")     // 1,25 GiB
+        XCTAssertEqual(Formate.megabyte(1_048_576), "1 MB")            // genau 1 MiB
+        XCTAssertEqual(Formate.megabyte(5_242_880), "5 MB")            // 5 MiB
+        XCTAssertEqual(Formate.megabyte(5_505_024), "5,3 MB")          // 5,25 MiB, kaufmännisch
+        XCTAssertEqual(Formate.megabyte(0), "0 MB")
+    }
+
+    /// Vor der Einheit steht hier das gewöhnliche Leerzeichen, nicht das schmale der kW-Werte -
+    /// so schreibt es die Vorlage (`StorageReport.tsx:22-23`).
+    func testMegabyteNimmtDasGewoehnlicheLeerzeichen() {
+        XCTAssertEqual(Formate.megabyte(5_242_880), "5\u{0020}MB")
+        XCTAssertFalse(Formate.megabyte(5_242_880).contains(Formate.schmalesLeerzeichen))
+        // Zum Vergleich: die Leistung nimmt das schmale.
+        XCTAssertTrue(Formate.kwMitEinheit(3.6).contains(Formate.schmalesLeerzeichen))
+    }
+
+    /// `Hausgeraet.bytes` rechnet dezimal und ist etwas anderes. Dieselbe Zahl, zwei Ergebnisse -
+    /// das ist Absicht und darf nicht zusammenfallen.
+    func testMegabyteIstNichtDieDezimaleRechnungDerPlatte() {
+        XCTAssertEqual(Formate.megabyte(1_000_000_000), "953,7 MB")
+        XCTAssertNotEqual(Formate.megabyte(1_000_000_000), Hausgeraet.bytes(1_000_000_000))
+    }
+
+    // MARK: - zeilen (StorageReport.tsx:26-28)
+
+    /// Ab tausend steht „N Tsd.“, darunter die Zahl.
+    func testZeilenKuerztAbTausend() {
+        XCTAssertEqual(Formate.zeilen(0), "0")
+        XCTAssertEqual(Formate.zeilen(1), "1")
+        XCTAssertEqual(Formate.zeilen(999), "999")
+        XCTAssertEqual(Formate.zeilen(1000), "1 Tsd.")
+    }
+
+    /// Gerundet, nicht abgeschnitten (`Math.round(n / 1000)`).
+    func testZeilenRundetDieTausender() {
+        XCTAssertEqual(Formate.zeilen(1499), "1 Tsd.")
+        XCTAssertEqual(Formate.zeilen(1500), "2 Tsd.")
+        XCTAssertEqual(Formate.zeilen(12_345), "12 Tsd.")
+    }
+
+    /// Millionen bekommen den Tausenderpunkt, weil `toLocaleString("de-DE")` ihn setzt.
+    /// `measurements_raw` liegt genau dort.
+    func testZeilenSetztDenTausenderpunktWieDieVorlage() {
+        XCTAssertEqual(Formate.zeilen(999_999), "1.000 Tsd.")
+        XCTAssertEqual(Formate.zeilen(1_234_567), "1.235 Tsd.")
+        // Und ist damit etwas anderes als die ganze Zahl, die `zahl` schreibt.
+        XCTAssertEqual(Formate.zahl(1_234_567, stellen: 0), "1234567")
+    }
+
+    // MARK: - euroMitVorzeichen (nachbetrachtung.ts:89-95)
+
+    /// Die drei Werte, die `nachbetrachtung.test.ts:110-113` festhält.
+    func testEuroMitVorzeichenWieDieVorlage() {
+        XCTAssertEqual(Formate.euroMitVorzeichen(0.31), "+0,31\u{202F}€")
+        XCTAssertEqual(Formate.euroMitVorzeichen(-0.8), "\u{2212}0,80\u{202F}€")
+        XCTAssertEqual(Formate.euroMitVorzeichen(0), "±0,00\u{202F}€")
+        XCTAssertEqual(Formate.euroMitVorzeichen(nil), Formate.leer)
+    }
+
+    /// Das Minus ist U+2212 und nicht der Bindestrich - sonst ist es in IBM Plex Sans zu kurz
+    /// für eine Zahl.
+    func testEuroMitVorzeichenNimmtDasEchteMinuszeichen() {
+        let text = Formate.euroMitVorzeichen(-12.5)
+        XCTAssertEqual(text, "\u{2212}12,50\u{202F}€")
+        XCTAssertTrue(text.hasPrefix(Formate.minus))
+        XCTAssertFalse(text.contains("-"))
+    }
+
+    /// Unter einem halben Cent steht ±, auf der Schwelle wieder das Vorzeichen
+    /// (`nachbetrachtung.ts:93`: `Math.abs(x) < 0.005`).
+    func testEuroMitVorzeichenGibtDerNullDasPlusminus() {
+        XCTAssertEqual(Formate.euroMitVorzeichen(0.004), "±0,00\u{202F}€")
+        XCTAssertEqual(Formate.euroMitVorzeichen(-0.004), "±0,00\u{202F}€")
+        XCTAssertEqual(Formate.euroMitVorzeichen(-0.0), "±0,00\u{202F}€")
+        XCTAssertEqual(Formate.euroMitVorzeichen(0.006), "+0,01\u{202F}€")
+        XCTAssertEqual(Formate.euroMitVorzeichen(-0.006), "\u{2212}0,01\u{202F}€")
+    }
+
+    /// Die Summe daneben trägt kein Vorzeichen. Beide Spalten stehen untereinander, also muss
+    /// alles übrige gleich sein: schmales Leerzeichen, zwei Stellen.
+    func testEuroMitVorzeichenUnterscheidetSichVonEuroNurImVorzeichen() {
+        XCTAssertEqual(Formate.euro(0.31), "0,31\u{202F}€")
+        XCTAssertEqual(Formate.euroMitVorzeichen(0.31), "+" + Formate.euro(0.31))
+        XCTAssertEqual(Formate.euroMitVorzeichen(-0.8), Formate.minus + Formate.euro(0.8))
+        XCTAssertEqual(Formate.euroMitVorzeichen(.nan), Formate.leer)
+        XCTAssertEqual(Formate.euroMitVorzeichen(.infinity), Formate.leer)
+    }
+
+    // MARK: - kurzDatum (wirkung.ts:96, :109-112)
+
+    /// „Sa., 07.11.“ - mit Punkt hinter dem Wochentag und mit führender Null.
+    func testKurzDatumSchreibtPunktUndFuehrendeNull() {
+        XCTAssertEqual(Formate.kurzDatum(iso: "2026-11-07T14:35:00+01:00"), "Sa., 07.11.")
+        XCTAssertEqual(Formate.kurzDatum(iso: "2026-01-04T11:42:00Z"), "So., 04.01.")
+    }
+
+    /// `Tag.kurz` ist etwas anderes und darf es bleiben: anderer Eingang, kein Punkt hinter dem
+    /// Wochentag, keine führende Null.
+    func testKurzDatumIstNichtTagKurz() {
+        XCTAssertEqual(Tag.kurz("2026-11-07"), "Sa, 7.11.")
+        XCTAssertNotEqual(Formate.kurzDatum(iso: "2026-11-07T14:35:00+01:00"), Tag.kurz("2026-11-07"))
+    }
+
+    /// In der Zeit des Hauses, nicht in UTC: 23:30 UTC ist schon der nächste Tag in Berlin, und
+    /// „angemeldet seit“ nennte sonst den falschen.
+    func testKurzDatumRechnetInHauszeit() {
+        XCTAssertEqual(Formate.kurzDatum(iso: "2026-11-06T23:30:00Z"), "Sa., 07.11.")
+        // Ohne Zonenangabe meint der Dienst die Hauszeit - derselbe Tag wie oben.
+        XCTAssertEqual(Formate.kurzDatum(iso: "2026-11-07T00:30:00"), "Sa., 07.11.")
+    }
+
+    func testKurzDatumHaeltEinenFehlendenStempelAus() {
+        XCTAssertEqual(Formate.kurzDatum(iso: nil), Formate.leer)
+        XCTAssertEqual(Formate.kurzDatum(iso: "unfug"), Formate.leer)
+        XCTAssertEqual(Formate.kurzDatum(iso: ""), Formate.leer)
     }
 }
