@@ -450,7 +450,11 @@ struct Anlagenbild: View {
                             value: $0, observedAt: Zeit.iso(jetzt),
                             quality: $0 == nil ? .unavailable : .ok, source: "anlage")
                     },
-                    jetzt: jetzt, laedt: wp.running || ofen.running == true, status: nil)
+                    jetzt: jetzt, laedt: wp.running || ofen.running == true, status: nil),
+                // **Ohne Fuellstand im Glas.** Der Prozentwert steht hier gleich darunter als
+                // eigene Zeile (mit „netto" und den Kilowattstunden daneben); im Glas stand er
+                // ein zweites Mal, in einer Spalte von wenigen Punkten Breite.
+                mitWerten: false
             )
             .frame(width: 150, height: 470)
             .position(x: 824 + 75, y: 92 + 235)

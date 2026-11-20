@@ -5,7 +5,8 @@ import SwiftUI
 /// zeigt.
 ///
 /// **Der Speicher sieht überall gleich aus** (Nutzerwunsch 14.11.2026): dasselbe Glas auf der
-/// Startseite, im Anlagenschema und auf der Wärmeseite.
+/// Startseite (`Leiste.swift`), in der Anlage (`AnlageSeite.swift`, `Anlagenbild.swift`) und im
+/// Ruhebild (`Ambiente.swift`). Die Wärmeseite zeigt den Puffer nicht als Glas.
 ///
 /// **An der Wand steht er, am Telefon liegt er.** Hier stand einmal, die liegende Fassung sei
 /// meine Erfindung und im Dashboard gebe es sie nicht. Das war falsch, und der Satz hat eine

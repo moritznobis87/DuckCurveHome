@@ -204,7 +204,9 @@ struct Ambiente: View {
             Text(Formate.celsius(aussenwert, stellen: 1))
                 .font(Schrift.mono(mass.aussen))
                 .kerning(mass.aussen * -0.02)
-                .foregroundStyle(Farbe.text1)
+                // Die Zahl steht da wie in der Vorlage, aber grau, wenn sie nicht traegt -
+                // so haelt es das Flussbild auch (`Energiefluss.swift`).
+                .foregroundStyle(aussenTraegt ? Farbe.text1 : Farbe.text3)
                 .monospacedDigit()
             Text(haus.zustand?.system.outdoorSourceDe ?? "draußen")
                 .font(Schrift.sans(mass.aussenWort))
@@ -214,8 +216,20 @@ struct Ambiente: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// Die Aussentemperatur.
+    ///
+    /// **Eine Abweichung von der Vorlage, mit Absicht.** Dort steht immer der Fuehler
+    /// (`outdoor_temp_c.value`). Der Dienst sagt aber mit `outdoorShownC`, wenn er den Wert des
+    /// Wetterdienstes zeigt, und `outdoorSourceDe` schreibt es daneben - eine Temperatur ohne
+    /// Herkunft ist an einer Wandanzeige eine Behauptung. Die Kopfzeile der Wand macht es
+    /// ebenso (`WandRahmen.swift`).
     private var aussenwert: Double? {
         haus.zustand?.system.outdoorShownC ?? haus.augenblick?.outdoorTempC.value
+    }
+
+    private var aussenTraegt: Bool {
+        haus.zustand?.system.outdoorShownC != nil
+            || haus.augenblick?.outdoorTempC.quality.traegt == true
     }
 
     /// Der atmende Punkt und das Wort daneben - das Einzige, was ein Ruhebild von einem
@@ -390,8 +404,13 @@ struct Ambiente: View {
             Ruhekicker(wort: "Strom gerade")
             Grosszahl(
                 wert: eins(ct), einheit: "ct", groesse: mass.preisZahl,
-                farbe: (ct ?? 0) < 0 ? Farbe.pv : Farbe.text1)
+                farbe: preisfarbe(ct))
         }
+    }
+
+    private func preisfarbe(_ ct: Double?) -> Color {
+        if haus.augenblick?.electricityPriceCtKwh.quality.traegt == false { return Farbe.text3 }
+        return (ct ?? 0) < 0 ? Farbe.pv : Farbe.text1
     }
 
     /// Was das Haus in der Nacht vorhat - und nur das, worüber der Plan etwas weiss.
@@ -448,12 +467,17 @@ struct Ambiente: View {
                 }
             }
             Spacer(minLength: 0)
+            // **Der Hinweis traegt die Beschriftung, nicht der Behaelter.** Auf einem
+            // Behaelter voller lesbarer Kinder spricht VoiceOver dessen Beschriftung nie - und
+            // das waere ausgerechnet der eine Satz, der sagt, wie man die Bedienung zurueckholt.
             Text("BERÜHREN FÜR DIE BEDIENUNG")
                 .font(Schrift.mono(mass.hinweis))
                 .kerning(mass.hinweis * 0.08)
                 .foregroundStyle(Farbe.text3)
                 .padding(.bottom, 6)
                 .lineLimit(1)
+                .accessibilityLabel("Ruhebild. Antippen für die Bedienung.")
+                .accessibilityAddTraits(.isButton)
         }
         .padding(.top, mass.fussRand)
         .overlay(alignment: .top) {
@@ -480,7 +504,10 @@ struct Ambiente: View {
         let lauf = Ruhebild.sonnenlauf(haus.plan, jetzt: jetzt)
         var neu = Stand()
         neu.lauf = lauf
-        neu.bild = Ruhebild.bild(lauf, jetzt: jetzt, pvKw: haus.augenblick?.pvPowerKw.value)
+        // **Die Entscheidung auf dem belastbaren Wert, die Zahlen roh.** Eine zwei Tage alte
+        // Messung von 0,4 kW hielte die Wand sonst die ganze Nacht auf dem Tagbild. Gezeigt
+        // wird der rohe Wert wie in der Vorlage - aber entschieden wird mit dem, der traegt.
+        neu.bild = Ruhebild.bild(lauf, jetzt: jetzt, pvKw: haus.augenblick?.pvPowerKw.belastbar)
         neu.aussicht = Ruhebild.aussicht(haus.plan, jetzt: jetzt, lauf: lauf)
         neu.bogen = Ruhebild.bogen(lauf, jetzt: jetzt)
         neu.planzeilen = Fahrplan.zeilen(haus.plan, jetzt: jetzt)
@@ -619,6 +646,10 @@ struct Grosszahl: View {
             }
         }
         .lineLimit(1)
+        // `line-height: 1`: die Zahl bringt in SwiftUI einen Schriftkasten von 1,3 Zeilen mit,
+        // die Vorlage gibt ihr genau eine. Die drei Zehntel stehen sonst als Luft zwischen
+        // Zahl und Wort, und die Paare sitzen lockerer als gemeint.
+        .padding(.vertical, -groesse * 0.15)
         .accessibilityElement(children: .combine)
     }
 }
@@ -688,13 +719,18 @@ struct Sonnenbogen: View {
                 if !bogen.bisJetzt.isEmpty {
                     flaeche(f).fill(Farbe.pv.opacity(0.26))
                 }
+                // **Auch die Striche skalieren.** Die Vorlage zeichnet ein SVG mit fester
+                // Zeichenflaeche und laesst es als Ganzes wachsen; eine feste Strichbreite
+                // waere auf einer schmalen Flaeche zu dick und auf einer breiten zu duenn.
                 linie(bogen.linie, f)
                     .stroke(
                         Farbe.pv.opacity(0.55),
-                        style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 6]))
+                        style: StrokeStyle(
+                            lineWidth: 2 * f, lineCap: .round, dash: [6 * f, 6 * f]))
                 if !bogen.bisJetzt.isEmpty {
                     linie(bogen.bisJetzt, f)
-                        .stroke(Farbe.pv, style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
+                        .stroke(
+                            Farbe.pv, style: StrokeStyle(lineWidth: 2.2 * f, lineCap: .round))
                 }
                 if let x = bogen.jetztX {
                     Path { p in
@@ -703,13 +739,13 @@ struct Sonnenbogen: View {
                     }
                     .stroke(
                         Farbe.amberWeich,
-                        style: StrokeStyle(lineWidth: 1.2, dash: [4, 4]))
+                        style: StrokeStyle(lineWidth: 1.2 * f, dash: [4 * f, 4 * f]))
                 }
                 Path { p in
                     p.move(to: CGPoint(x: 0, y: bogen.hoehe * f))
                     p.addLine(to: CGPoint(x: bogen.breite * f, y: bogen.hoehe * f))
                 }
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                .stroke(Color.white.opacity(0.2), lineWidth: 1 * f)
             }
         }
         .accessibilityElement()
