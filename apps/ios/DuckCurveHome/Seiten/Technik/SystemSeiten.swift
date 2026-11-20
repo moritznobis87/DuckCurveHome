@@ -76,7 +76,7 @@ struct HeizkreiseSeite: View {
                     raumtabelle(verlauf, heute: z.anker == haus.heute)
                 }
                 // **Offen, nicht zugeklappt** (`RoomsReport.tsx:549-557`). Wer nicht weiß,
-                // dass auf Sollwert plus Versatz geregelt wird, liest die Spalte „Ziel" als
+                // dass auf Sollwert plus Versatz geregelt wird, liest die Spalte „Ziel“ als
                 // das, was er eingestellt hat - und das ist sie nicht.
                 Text(
                     "Geregelt wird auf Sollwert plus Versatz – Controme rechnet das in seiner "
@@ -99,7 +99,7 @@ struct HeizkreiseSeite: View {
 
     /// Die Tabelle der Vorlage: Raum, Etage, Ist, Ziel, Abweichung, Ventil am Tag, Kreise.
     ///
-    /// **Ist und Ziel sind der letzte Messwert, kein Tagesmittel.** Hier stand „Im Tagesmittel"
+    /// **Ist und Ziel sind der letzte Messwert, kein Tagesmittel.** Hier stand „Im Tagesmittel“
     /// mit vier anderen Spalten; ein Mittel über einen Tag sagt aber nichts darüber, welcher
     /// Raum gerade abfällt - und genau das ist die Frage dieser Seite.
     private func raumtabelle(_ verlauf: RoomHistoryOut, heute: Bool) -> some View {
@@ -598,11 +598,18 @@ struct PrognoseSeite: View {
     }
 }
 
-/// Daten prüfen: wie lückenlos die Messwerte sind, was der Bestand wiegt, und die Tagesdiagnose.
+/// Daten prüfen: wie lückenlos die Messwerte sind, und die Tagesdiagnose.
 ///
 /// **Die wichtigste Seite für das Vertrauen in alle anderen.** Jede Zahl dieser App steht auf
 /// Minutenwerten; wo die fehlen, rechnet der Dienst mit weniger, als er zu haben scheint. Die
 /// längste Lücke je Reihe sagt, wie schlimm es war.
+///
+/// **Der Platzbedarf stand hier und steht jetzt auf `/system/zugang`.** Dort hat ihn die
+/// Vorlage (`apps/web/src/app/system/zugang/page.tsx` mit
+/// `apps/web/src/components/settings/StorageReport.tsx`), und hier hatte er nie eine Frage, die
+/// er beantwortet: „kommen die Daten an?“ und „wie viel wiegen sie?“ sind zwei Fragen, und die
+/// zweite nahm den Platz vor der ersten. Mit ihm ist die private Abschrift von `megabyte`
+/// gegangen - sie steht als ``Formate/megabyte(_:)`` im Kern, wo sie geprüft ist.
 struct DatenSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
@@ -612,7 +619,6 @@ struct DatenSeite: View {
     private static let kartentage = 28
 
     @State private var abdeckung: CoverageOut?
-    @State private var bestand: StorageReportOut?
     @State private var diagnose: String?
     @State private var fehler: ApiFehler?
     /// Die Minutenwerte des Tages - die Reihen, um die es auf dieser Seite geht.
@@ -669,13 +675,6 @@ struct DatenSeite: View {
                     }
                 }
             }
-            // **Der Bestand steht unten, nicht oben.** In der Vorlage gibt es ihn auf
-            // dieser Seite gar nicht; er ist kein Fehler, nahm aber den Platz vor der
-            // Hauptsache ein (`DataCheck.tsx:88-90`: der Augenblick vor der Karte, die Karte
-            // vor der Bilanz).
-            if let b = bestand {
-                datenbestand(b)
-            }
             // Die drei Absaetze der Vorlage (`DataCheck.tsx:119-147`) erklaeren, wie die
             // Bilder darueber zu lesen sind - sie fehlten ganz. Dann die Noten des Dienstes,
             // und dazwischen der Absatz zur leeren gegen die rote Zelle, der in der Vorlage
@@ -684,48 +683,10 @@ struct DatenSeite: View {
                 Pruefworte.methode.map(Optional.init) + [
                     abdeckung?.noteDe,
                     Abdeckungsraster.lesehilfe,
-                    bestand?.noteDe,
                     Pruefworte.abdeckungssatz,
                 ])
         }
         .task(id: z) { await lade(z) }
-    }
-
-    /// Was der Bestand wiegt - und wie lange Rohwerte bleiben.
-    ///
-    /// Die Aufbewahrungsfrist steht dabei, weil sie die Antwort auf die Frage ist, die sich an
-    /// eine Lücke von vor drei Wochen anschliesst: nachsehen kann man dort nicht mehr.
-    private func datenbestand(_ b: StorageReportOut) -> some View {
-        Karte(kicker: "Datenbestand", titel: megabyte(b.totalBytes)) {
-            VStack(alignment: .leading, spacing: 10) {
-                Zeile(
-                    wort: "Rohwerte bleiben", wert: "\(b.rawRetentionDays)", einheit: "Tage",
-                    dazu: "danach nur noch Minutenmittel"
-                )
-                if !b.tables.isEmpty {
-                    Tabelle(
-                        zeilennamen: b.tables.map(\.name),
-                        spalten: [
-                            .init(name: "gesamt", zellen: b.tables.map { megabyte($0.totalBytes) }),
-                            .init(name: "Daten", zellen: b.tables.map { megabyte($0.tableBytes) }),
-                            .init(name: "Index", zellen: b.tables.map { megabyte($0.indexBytes) }),
-                            .init(
-                                name: "Zeilen",
-                                zellen: b.tables.map { Formate.zahl(Double($0.rowsEstimate), stellen: 0) }
-                            ),
-                        ]
-                    )
-                }
-            }
-        }
-    }
-
-    private func megabyte(_ bytes: Int) -> String {
-        let mb = Double(bytes) / 1_048_576
-        if mb >= 1024 {
-            return Formate.zahl(mb / 1024, stellen: 2) + Formate.schmalesLeerzeichen + "GB"
-        }
-        return Formate.zahl(mb, stellen: 1) + Formate.schmalesLeerzeichen + "MB"
     }
 
     private func lade(_ z: Zeitraum) async {
@@ -735,99 +696,16 @@ struct DatenSeite: View {
         hatMinuten = !kurve.leer
 
         // **Immer achtundzwanzig Tage, unabhaengig von der Spanne.** Die Karte ist das
-        // Gegenstueck zur Frage „kommen die Daten an?", und die beantwortet ein einzelner Tag
+        // Gegenstueck zur Frage „kommen die Daten an?“, und die beantwortet ein einzelner Tag
         // nicht: ein Abriss, der jede Nacht wiederkommt, ist erst ueber Wochen ein Muster
         // (`DataCheck.tsx:98`, `days = 28`). Die Spannenwahl steht auf dieser Seite ohnehin
         // auf Tag.
         async let a = try? haus.api.abdeckung(anker: z.anker, tage: Self.kartentage)
-        async let b = try? haus.api.datenbestand()
         // Die Tagesdiagnose gibt es nur für einen Tag - für eine Woche wäre sie sieben Tabellen.
         async let d = z.spanne == .tag ? try? haus.api.diagnose(tag: z.anker) : nil
         abdeckung = await a
-        bestand = await b
         diagnose = await d
         fehler = abdeckung == nil ? .netz(Abdeckungsraster.nichtAbrufbar) : nil
-    }
-}
-
-/// Haustür: wer wann aufgeschlossen hat.
-struct HaustuerSeite: View {
-    @Environment(Hauszustand.self) private var haus
-
-    @State private var tage = 7
-    @State private var protokoll: DoorLogOut?
-    @State private var fehler: ApiFehler?
-
-    var body: some View {
-        Seite {
-            // Das Protokoll hat in der Vorlage seinen eigenen Knopf
-            // (`DoorLog.tsx:107-111`), nicht `.kl-knopf`.
-            Tagewahl(tage: $tage, moeglich: [7, 30, 90], form: .haustuerprotokoll)
-            if let fehler {
-                Stoerung(fehler: fehler) { Task { await lade() } }
-            }
-            if let p = protokoll {
-                Kachelfeld(
-                    kacheln: [
-                        Kacheldaten("Öffnungen", String(p.entries.filter(\.granted).count)),
-                        Kacheldaten(
-                            "abgewiesen", String(p.entries.filter { !$0.granted }.count),
-                            farbe: p.entries.contains { !$0.granted } ? Farbe.achtung : Farbe.text1
-                        ),
-                        Kacheldaten("Zeitraum", "\(p.days) Tage"),
-                    ],
-                    kicker: "Haustür"
-                )
-                Karte(kicker: "Protokoll") {
-                    if p.entries.isEmpty {
-                        Leer(satz: "In diesem Zeitraum wurde nicht aufgeschlossen.")
-                    } else {
-                        VStack(spacing: 0) {
-                            ForEach(Array(p.entries.enumerated()), id: \.offset) { i, e in
-                                if i > 0 { Divider().overlay(Farbe.linie1) }
-                                eintrag(e)
-                            }
-                        }
-                    }
-                }
-                Methode([p.noteDe])
-            } else if fehler == nil {
-                Karte { Leer(satz: "Wird geholt …") }
-            }
-        }
-        .task(id: tage) { await lade() }
-    }
-
-    private func eintrag(_ e: DoorEntryOut) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Circle()
-                .fill(e.granted ? Farbe.mist : Farbe.alarm)
-                .frame(width: 6, height: 6)
-                .padding(.top, 5)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(e.actor).font(Schrift.klein).foregroundStyle(Farbe.text1)
-                Text([e.door, e.method, e.reason].filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3)
-            }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(Formate.hhmm(iso: e.at)).font(Schrift.zahlKlein).foregroundStyle(Farbe.text2)
-                Text(e.outcome).font(Schrift.winzig).foregroundStyle(Farbe.text3)
-            }
-        }
-        .padding(.vertical, 6)
-    }
-
-    private func lade() async {
-        do {
-            protokoll = try await haus.api.haustuer(tage: tage)
-            fehler = nil
-        } catch let f as ApiFehler {
-            fehler = f
-        } catch {
-            fehler = .netz(error.localizedDescription)
-        }
     }
 }
 
@@ -843,7 +721,7 @@ struct AnnahmenSeite: View {
     @State private var fehler: ApiFehler?
     /// Was in den Feldern steht, als Text - nicht als Zahl.
     ///
-    /// **Warum Text und nicht `Double?`.** Wer „0," getippt hat, ist mitten im Tippen; eine
+    /// **Warum Text und nicht `Double?`.** Wer „0,“ getippt hat, ist mitten im Tippen; eine
     /// Zahl daraus zu machen hiesse, die Null zu uebernehmen und den Rest zu verwerfen. Der
     /// Entwurf bleibt roh, bis er abgegeben wird (`Annahmenfelder.abgabe`).
     @State private var entwuerfe: [String: String] = [:]
@@ -873,7 +751,7 @@ struct AnnahmenSeite: View {
     // MARK: - Das Formular
 
     /// **Die Seite stellt, sie zeigt nicht nur.** Hier stand eine Leseliste roher Schlüssel
-    /// („hw auto off block s 1200"), und darunter der Satz, geändert werde das im Dashboard.
+    /// („hw auto off block s 1200“), und darunter der Satz, geändert werde das im Dashboard.
     /// Die Vorlage (`settings/HeatSettings.tsx`) ist ein Formular: zwölf beschriftete Felder
     /// mit ihren Einheiten und Erklärsätzen, die Kennlinie als Zeile, ein Knopf. Jede Änderung
     /// wirkt sofort und rückwirkend - das steht als Satz darüber, nicht im Kleingedruckten.
@@ -1294,7 +1172,7 @@ struct Automatikkarte: View {
     private var titel: String {
         if !automatik.enabled { return "aus" }
         // `active` ist keine Ja/Nein-Angabe, sondern die Reihe der Raeume, an denen gerade
-        // geschrieben ist. „Greift gerade" heisst: diese Reihe ist nicht leer.
+        // geschrieben ist. „Greift gerade“ heisst: diese Reihe ist nicht leer.
         if !automatik.active.isEmpty { return "greift gerade · \(automatik.phase.wort)" }
         return "an · \(automatik.phase.wort)"
     }
