@@ -834,16 +834,17 @@ struct DatenSeite: View {
             if let b = bestand {
                 datenbestand(b)
             }
-            Methode([
-                abdeckung?.noteDe,
-                // Der Absatz, der den Unterschied zwischen einer leeren und einer roten Zelle
-                // erklaert - in der Vorlage steht er unmittelbar unter der Karte
-                // (`CoverageMap.tsx:146-152`).
-                Abdeckungsraster.lesehilfe,
-                bestand?.noteDe,
-                "Eine Reihe mit 100 Prozent hat in jeder Minute des Zeitraums einen Wert. "
-                    + "Alles darunter heißt: die Berichte rechnen mit weniger.",
-            ])
+            // Die drei Absaetze der Vorlage (`DataCheck.tsx:119-147`) erklaeren, wie die
+            // Bilder darueber zu lesen sind - sie fehlten ganz. Dann die Noten des Dienstes,
+            // und dazwischen der Absatz zur leeren gegen die rote Zelle, der in der Vorlage
+            // unmittelbar unter der Karte steht (`CoverageMap.tsx:146-152`).
+            Methode(
+                Pruefworte.methode.map(Optional.init) + [
+                    abdeckung?.noteDe,
+                    Abdeckungsraster.lesehilfe,
+                    bestand?.noteDe,
+                    Pruefworte.abdeckungssatz,
+                ])
         }
         .task(id: z) { await lade(z) }
     }

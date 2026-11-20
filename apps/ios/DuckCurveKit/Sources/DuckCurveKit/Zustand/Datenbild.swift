@@ -500,6 +500,42 @@ public struct Pruefkurve: Sendable, Hashable {
 }
 
 // =====================================================================================
+//  Die Worte der Seite
+// =====================================================================================
+
+/// Was unter „Daten prüfen“ steht: die drei Absätze der Vorlage (`DataCheck.tsx:119-147`).
+///
+/// **Warum die Texte im Kern stehen und nicht in der Ansicht.** Sie erklären, wie die Bilder
+/// darüber zu lesen sind - und wenn sich ein Bild ändert, muss der Text mitgehen. Hier stehen
+/// sie an einer Stelle und unter Test, statt in einem `ViewBuilder` verteilt.
+public enum Pruefworte {
+    /// Die obere Fläche und das Zeitfenster.
+    ///
+    /// **Hier steht die Abweichung ausdrücklich drin.** Der Browser hat drei Wege zum
+    /// Zeitfenster: ein Werkzeug oben rechts, einen Regler unter dem Diagramm und Zoomen am
+    /// Zeiger (`charts.ts:637-672`). Swift Charts bringt dafür kein Gegenstück mit; die App
+    /// kennt das Ziehen über das Bild und den Weg zurück. Das in den Text zu schreiben ist
+    /// besser, als einen Regler zu versprechen, den es nicht gibt.
+    public static let flaeche =
+        "Die obere Fläche zeigt die Messreihen, wie sie gespeichert sind: auf einer gemeinsamen Kilowattachse, mit hervorgehobener Nulllinie. Über ihr ist Bezug, unter ihr Einspeisung. Die Strecke, um die es geht, ist oft nur eine Viertelstunde lang und über den ganzen Tag gezeichnet damit wenige Bildpunkte - darum wählt ein Ziehen über das Bild ein Zeitfenster, und „Ganzer Tag“ kommt zurück. Die Kilowattachse geht mit, damit auch kleine Leistungen im Ausschnitt lesbar bleiben. Über den ganzen Tag wird jede fünfte Minute gezeichnet, im Ausschnitt jede."
+
+    /// Der Ladestand als Gegenprobe zur Ladeleistung.
+    public static let ladestand =
+        "Die gestrichelte Linie ist der Ladestand auf der rechten Achse. Sie steht hier als Gegenprobe: Ladeleistung und Ladestand sind zwei unabhängige Messwerte desselben Geräts und müssen zueinander passen. 2,8 kW über anderthalb Stunden sind 4,2 kWh und damit über 80 Prozentpunkte in einem 5,1-kWh-Speicher. Bewegt sich der Ladestand dabei nicht, stimmt eine der beiden Reihen nicht. Steigt er wie erwartet, hat der Speicher wirklich geladen, und die Frage ist nicht mehr, ob die Daten stimmen, sondern warum er es tat."
+
+    /// Der amtliche Zähler, die Bilanz des Hauses und die Lücke in der Erzeugung.
+    public static let zaehler =
+        "Die zweite gestrichelte Linie, in der Farbe des Netzbezugs, ist der amtliche Zähler. Er misst dieselbe Größe wie der Stromwandler und läuft vorerst nur mit: führend bleibt der Wandler. Wo die beiden Linien übereinanderliegen, sind sich die Geräte einig; wo nicht, ist erst zu prüfen, ob es eine echte Abweichung ist oder nur ein Versatz von Sekunden - dafür ist das Zeitfenster da. Der Hausverbrauch ist dabei keine eigene Messung, sondern folgt aus der Bilanz Haus = PV + Netz + Speicher. Läuft die PV und zeigt das Netz trotzdem Bezug, sieht man hier unmittelbar, ob der Hausverbrauch über der Erzeugung lag oder ob die Erzeugungsreihe selbst eine Lücke hat. Die Stundenbilanz darunter nimmt diese zweite Frage noch einmal auf: zwischen der ersten und der letzten Minute mit Erzeugung zählt sie die Minuten auf genau 0,00 kW und meldet es, wenn sich der Netzwert in derselben Strecke weiterbewegt. Dann liefert der Zähler, die Erzeugungsmessung aber nicht - und die ausgewiesene Netzladung ist eine Folge der Lücke, kein Verhalten des Speichers."
+
+    /// Die drei Absätze in der Reihenfolge der Vorlage.
+    public static let methode: [String] = [flaeche, ladestand, zaehler]
+
+    /// Was eine Abdeckung von 100 Prozent heißt - der eigene Satz der App.
+    public static let abdeckungssatz =
+        "Eine Reihe mit 100 Prozent hat in jeder Minute des Zeitraums einen Wert. Alles darunter heißt: die Berichte rechnen mit weniger."
+}
+
+// =====================================================================================
 //  Quellen
 // =====================================================================================
 

@@ -140,11 +140,13 @@ final class SpannenTests: XCTestCase {
 
     /// **Die Ausnahmen, und warum es sie gibt.** Heizkreise zeigen Minutenwerte eines Tages –
     /// über eine Woche gelegt ergäbe das ein Bild, in dem nichts mehr zu erkennen ist. Die
-    /// PV-Abrechnung ist ein Beleg und kennt nur Monat und Jahr.
+    /// PV-Abrechnung ist ein Beleg und kennt nur Monat und Jahr. „Daten prüfen" zeigt ebenfalls
+    /// Minutenwerte und kennt darum ebenfalls nur Tage (`DataCheck.tsx:59-68`,
+    /// `showPeriods={false}`).
     func testDieAusnahmen() {
         XCTAssertEqual(Bereiche.spannen(fuer: "/waerme/raeume"), [.tag])
         XCTAssertEqual(Bereiche.spannen(fuer: "/geld/pv-abrechnung"), [.monat, .jahr])
-        XCTAssertEqual(Bereiche.spannen(fuer: "/system/daten"), [.tag, .woche, .monat])
+        XCTAssertEqual(Bereiche.spannen(fuer: "/system/daten"), [.tag])
     }
 
     /// Eine Ansicht erbt die Spannen ihres Reiters: „Ein Tag" unter „Anlage" ist dieselbe Seite
