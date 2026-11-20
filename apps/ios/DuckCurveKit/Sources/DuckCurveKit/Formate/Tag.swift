@@ -109,6 +109,21 @@ public enum Tag {
         return String(format: "%02d.%02d.", t.day ?? 0, t.month ?? 0)
     }
 
+    /// „4.11.“ - Tag und Monat **ohne** fuehrende Null.
+    ///
+    /// **Warum es die neben ``tagMonat(_:)`` gibt.** Dieselbe Vorlage schreibt den Tag an zwei
+    /// Stellen auf zwei Arten, und beide Male mit Grund. An der Achse der Abdeckungskarte steht
+    /// er zweistellig, damit achtundzwanzig Spalten gleich breit bleiben
+    /// (`charts.ts:493-500`); an der Achse und in der Tabelle des Waermepumpenbetriebs steht er
+    /// einstellig, so wie man ihn sagt (`betrieb.ts:42-45`, und `betrieb.test.ts:44-45` haelt
+    /// „31.1.“ und „4.11.“ ausdruecklich fest). Eine der beiden Formen auf die andere zu
+    /// ziehen hiesse, eine der beiden Begruendungen zu verwerfen.
+    public static func punkt(_ tag: String) -> String {
+        guard let d = date(tag) else { return tag }
+        let t = Kalender.haus.dateComponents([.day, .month], from: d)
+        return "\(t.day ?? 0).\(t.month ?? 0)."
+    }
+
     /// Ist das heute, gestern oder morgen? Fuer die Ueberschrift, die dann ein Wort statt eines
     /// Datums zeigt.
     public static func nameRelativ(_ tag: String, jetzt: Date = Date()) -> String? {
