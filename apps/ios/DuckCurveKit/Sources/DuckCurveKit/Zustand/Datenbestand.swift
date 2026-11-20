@@ -8,7 +8,7 @@ import Foundation
 /// `total_bytes > 0` und höchstens acht), in welcher Form jede Zahl geschrieben wird (`:21-28`),
 /// welcher von drei Zuständen gilt (`:41-43`) und was in der Schlusszeile steht (`:71-77`).
 /// In einer `View` wäre keine davon prüfbar - und genau dort stand sie bis jetzt, auf der
-/// Datenseite (`DuckCurveHome/Seiten/Technik/SystemSeiten.swift`), ohne Filter und ohne
+/// Datenseite (`DuckCurveHome/Seiten/Technik/DatenSeite.swift`), ohne Filter und ohne
 /// Obergrenze.
 ///
 /// **Die Obergrenze ist keine Schönheit.** `measurements_raw` und `measurements_minute` sind in

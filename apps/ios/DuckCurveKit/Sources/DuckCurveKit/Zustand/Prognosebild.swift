@@ -432,7 +432,7 @@ public enum Prognosebild {
 /// ganzzahlig. Die Prognoseseite hat ihre Prozent schon als Prozent (`energy_error_pct`), und
 /// sie braucht das Vorzeichen: „+12,4 %" und „−3,0 %" sind zwei verschiedene Nachrichten, „12 %"
 /// ist keine. Die App behalf sich bisher mit `Formate.prozent(pct / 100)` und verlor dabei
-/// beides (`SystemSeiten.swift:436`).
+/// beides (`PrognoseSeite.swift`).
 extension Formate {
     /// Ein Prozentwert, wie er schon ankommt, mit Vorzeichen: „+12,4 %", „−3,0 %", „0,0 %".
     ///

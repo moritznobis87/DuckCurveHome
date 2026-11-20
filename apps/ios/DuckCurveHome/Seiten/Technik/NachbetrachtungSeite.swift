@@ -362,7 +362,7 @@ struct NachbetrachtungSeite: View {
     /// **Offen, nicht zugeklappt** (`Nachbetrachtung.tsx:235`): „Was für diesen Tag gilt, bleibt
     /// offen stehen; zugeklappt wäre es verschwiegen.“ Dieselbe Regel steht in
     /// `components/ui/Methode.tsx:11-13` und ist in der App für die Wirkungsseite schon so
-    /// umgesetzt (`FahrplanSeiten.swift:366-367`).
+    /// umgesetzt (`WirkungSeite.swift`).
     ///
     /// Die Gründe fehlender Linien fehlen hier: sie stehen schon unter der Tabelle - gefiltert
     /// im Kern (``Nachbetrachtungsbild/tageshinweise(_:)``).
