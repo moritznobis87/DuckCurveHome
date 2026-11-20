@@ -259,17 +259,24 @@ public enum Annahmenfelder {
 
     /// Die Kennlinie aus der getippten Zeile - oder `nil`, wenn sie so nicht zu lesen ist.
     ///
-    /// Getrennt wird an Komma und Semikolon, gespalten an dem Doppelpunkt; jedes Stück muss genau
-    /// zwei endliche Zahlen sein, sonst ist die ganze Zeile unlesbar und es geht nichts an den
-    /// Dienst. **Komma und Punkt gelten beide**, denn eine deutsche Tastatur liefert das Komma,
-    /// und dieselbe Zeile kommt mit Punkt aus `kurveZuText` zurück.
+    /// Gespalten wird an dem Doppelpunkt; jedes Stück muss genau zwei endliche Zahlen sein, sonst
+    /// ist die ganze Zeile unlesbar und es geht nichts an den Dienst - die Vorlage schickt eine
+    /// halb gelesene Kennlinie nicht ab, weil ein weggefallener Stützpunkt ein gelöschter wäre.
+    ///
+    /// **Das Komma kann nicht beides sein.** Es trennt in der Vorlage die Stützpunkte, und auf
+    /// einer deutschen Tastatur ist es das Dezimaltrennzeichen; „-7:2,4, 2:3" ist damit nicht
+    /// auflösbar. Darum die Regel: steht ein Semikolon in der Zeile, trennt das Semikolon und das
+    /// Komma ist Dezimaltrennzeichen - „-7:2,4; 2:3,5". Sonst trennt das Komma, und die Zahlen
+    /// stehen mit Punkt, so wie `kurveZuText` sie schreibt. Beide Schreibweisen gehen, keine
+    /// Mischung.
     ///
     /// **Aufsteigend wird hier nicht geprüft.** Das tut der Dienst (`schemas.py`, `_kennlinie`),
     /// und zwar mit der Begründung, die die Oberfläche nicht kennt: eine Kennlinie mit einem
     /// Punkt ist eine Konstante, eine mit Sprüngen eine Falle.
     public static func textZuKurve(_ text: String) -> [[Double]]? {
+        let trenner: Character = text.contains(";") ? ";" : ","
         let stuecke = text
-            .split(whereSeparator: { $0 == "," || $0 == ";" })
+            .split(separator: trenner)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         guard !stuecke.isEmpty else { return nil }
