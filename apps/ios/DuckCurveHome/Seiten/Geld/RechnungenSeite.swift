@@ -1,233 +1,504 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Rechnungen: die Tibber-Rechnungen und was die Pruefung an ihnen gefunden hat.
+/// Rechnungen: die Tibber-Rechnungen, nachgerechnet und gegen die eigene Messung gehalten.
+///
+/// Vorlage ist `apps/web/src/components/reports/InvoiceCheck.tsx` mit den vier Diagrammen in
+/// `apps/web/src/components/reports/charts.ts:279-367`.
 ///
 /// **Was diese Seite wirklich tut.** Sie vergleicht, was der Versorger abgerechnet hat, mit dem,
 /// was das Haus selbst gemessen hat - Kilowattstunden, Zeitraum, mittlerer Preis. Eine Rechnung,
 /// deren Zeitraum nicht zu den eigenen Minutenwerten passt, ist nicht automatisch falsch; aber
 /// sie ist eine Frage wert, und ohne diese Seite stellt sie niemand.
 ///
-/// Nur fuer den Hausherrn: hier stehen Name, Adresse, Marktlokations-ID, Zaehlernummer.
+/// **Die App konnte bis hierher keine Rechnung einlesen.** `Api.pruefeRechnung` lag unbenutzt
+/// da, und der Leerzustand schickte den Benutzer in `docs/RECHNUNGSPRUEFUNG.md`. Jetzt steht
+/// oben links das Ablegefeld der Vorlage (``Rechnungsablage``), und rechts daneben stehen die
+/// vier Kennzahlen über **alle** Rechnungen - die es ebenfalls nicht gab, obwohl sie die Frage
+/// beantworten, mit der jemand auf diese Seite kommt.
+///
+/// **Was gerechnet wird, steht im Kern** (``Rechnungspruefung``): Reihenfolge, Achsenkürzel,
+/// mengengewichteter Mittelpreis, Mehrwertsteuerrundung, die Teilung der Befunde, die
+/// 98-%-Schwelle der Abdeckung, die 0,005-Schwelle des Deltas und jeder Wortlaut. Hier bleibt
+/// die Anordnung.
+///
+/// **Keine Zeitraumleiste**, weil die Vorlage hier `AreaShell` benutzt und nicht `ReportShell`
+/// (`InvoiceCheck.tsx:205`): eine Rechnung bringt ihren Zeitraum mit.
+///
+/// Nur für den Hausherrn: hier stehen Name, Adresse, Marktlokations-ID, Zählernummer
+/// (`Bereiche.swift:122`, `nurHausherr: true`).
 struct RechnungenSeite: View {
     @Environment(Hauszustand.self) private var haus
+    @Environment(\.horizontalSizeClass) private var breite
 
     @State private var liste: [InvoiceSummaryOut] = []
     @State private var gewaehlt: String?
     @State private var bericht: InvoiceReportOut?
     @State private var fehler: ApiFehler?
+    @State private var dateifehler: String?
     @State private var laedt = false
+    @State private var geladen = false
+    /// Läuft gerade eine Prüfung in ``Rechnungsablage``? Der Zustand steht hier und nicht dort,
+    /// weil der Leerzustand ihn braucht - der Grund steht dort im ``body``.
+    @State private var pruefeLaeuft = false
+
+    private var schmal: Bool { breite == .compact }
 
     var body: some View {
         Seite {
+            kicker
             if let fehler {
                 Stoerung(fehler: fehler) { Task { await ladeListe() } }
             }
-            if liste.isEmpty, !laedt, fehler == nil {
-                Karte {
-                    Leer(
-                        satz: "Es sind keine Rechnungen eingelesen.",
-                        dazu: "Rechnungen kommen über den Dienst herein - siehe docs/RECHNUNGSPRUEFUNG.md."
-                    )
-                }
+            if let dateifehler {
+                Dateiband(zeile: dateifehler)
             }
-            if !liste.isEmpty {
-                Karte(kicker: "Rechnungen") {
-                    VStack(spacing: 0) {
-                        ForEach(Array(liste.enumerated()), id: \.offset) { i, r in
-                            if i > 0 { Divider().overlay(Farbe.linie1) }
-                            rechnungszeile(r)
-                        }
-                    }
+            kopfzeile
+            if liste.isEmpty {
+                // **Während des ersten Ladens steht hier nichts** - wie in der Vorlage, die
+                // `loaded` erst nach der Antwort setzt (`InvoiceCheck.tsx:111`). Ein
+                // Leerzustand, der eine halbe Sekunde aufblitzt, sieht aus wie ein Fehler.
+                //
+                // **Und während des Prüfens auch nicht:** die Vorlage verlangt `loaded && !busy`
+                // (`InvoiceCheck.tsx:331`), und `busy` ist dort der Hochlade-Zustand (`:99`).
+                // Auf dem häufigsten ersten Weg - leere Seite, erstes PDF ablegen - stünde
+                // sonst „Noch keine Rechnung geprüft“ unter einem Feld, das „Rechnung wird
+                // geprüft …“ sagt. `laedt` allein genügt nicht: das ist nur die Liste.
+                if geladen, !laedt, !pruefeLaeuft {
+                    Karte { Leer(satz: Rechnungspruefung.leerSatz) }
                 }
-            }
-            if let bericht {
-                pruefung(bericht)
+            } else {
+                diagramme
+                tabelle
+                if let bericht {
+                    befunde(bericht)
+                    methode(bericht)
+                }
             }
         }
         .task { await ladeListe() }
         .task(id: gewaehlt) { await ladeBericht() }
     }
 
-    private func rechnungszeile(_ r: InvoiceSummaryOut) -> some View {
-        Button {
-            gewaehlt = gewaehlt == r.number ? nil : r.number
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(r.periodLabel).font(Schrift.klein).foregroundStyle(Farbe.text1)
-                    Text("Nr. \(r.number) · \(r.issuedOn)")
-                        .font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(Formate.euro(r.totalGrossEur))
-                        .font(Schrift.zahl).foregroundStyle(Farbe.text1)
-                    urteil(r.verdict, probleme: r.problems)
-                }
-            }
-            .padding(.vertical, 7)
-            .contentShape(Rectangle())
+    /// Der Kicker der Seite (`InvoiceCheck.tsx:205`).
+    ///
+    /// **Er steht über der ersten Karte und nicht in einer.** Die Vorlage setzt ihn in den Kopf
+    /// der `AreaShell`, also über den Inhalt; die Kostenseite hat ihn in eine Karte gelegt, weil
+    /// dort eine Karte die vier Beträge trägt, zu denen er gehört (`KostenSeite.swift:123`).
+    /// Hier gehört er zu der ganzen Seite, und die erste Karte hat mit „Rechnung prüfen“ schon
+    /// einen eigenen Kicker - zwei Kicker in einer Kopfzeile wären einer zu viel.
+    @ViewBuilder private var kicker: some View {
+        if schmal {
+            // Am Telefon keine Sperrschrift: dort sind Überschriften lesbare Schrift
+            // (`handy.css:184`, und ``Karte`` macht es ebenso).
+            Text(Rechnungspruefung.seitenkicker)
+                .font(Schrift.klein)
+                .foregroundStyle(Farbe.text2)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            Kicker(wort: Rechnungspruefung.seitenkicker)
         }
-        .buttonStyle(.plain)
     }
 
-    /// Das Urteil der Prüfung, als Wort mit Farbe.
+    // MARK: - Zeile 1: Ablegefeld und die vier Kennzahlen
+
+    /// `--cols: "5fr 7fr"` am Schirm (`InvoiceCheck.tsx:209`), am Telefon untereinander
+    /// (`handy.css:209`).
     ///
-    /// **Hier standen erfundene Vokabeln.** Die Fassung davor kannte `ok`, `warn`, `fail` und
-    /// `alarm`; der Dienst schickt `ok`, `info`, `warning`, `error`. Drei meiner vier Wörter
-    /// gibt es nicht, und die beiden häufigsten des Dienstes fielen durch den `default` – in
-    /// der Liste stand dann das englische Rohwort „error" und „info". Die Wörter stehen jetzt
-    /// im Kern und sind dort gegen die Vorlage geprüft.
-    ///
-    /// Die Zahl der Befunde bleibt, wo es welche gibt: „auffällig" sagt, dass etwas ist,
-    /// „2 Befunde" sagt, wie viel. Das Dashboard hat beides an verschiedenen Stellen; auf
-    /// einer Zeile ist die Zahl die nützlichere Auskunft.
-    private func urteil(_ wort: String, probleme: Int) -> some View {
-        guard let u = Rechnungsurteil.aus(wort) else {
-            // Ein Wort, das der Dienst neu eingeführt hat: roh zeigen ist ehrlicher, als es
-            // in eine der vier Schubladen zu zwingen.
-            return Text(wort).font(Schrift.winzig).foregroundStyle(Farbe.text3)
-        }
-        let text = u.istBefund && probleme > 0
-            ? (probleme == 1 ? "1 Befund" : "\(probleme) Befunde")
-            : u.wort
-        let farbe: Color =
-            switch u {
-            case .error, .warning: Farbe.alarm
-            case .info: Farbe.mist
-            case .ok: Farbe.text3
+    /// **Diese Zeile steht immer da, auch ohne eine einzige Rechnung** - wie in der Vorlage, die
+    /// erst alles *danach* an `items.length > 0` hängt (`InvoiceCheck.tsx:227`). Sonst gäbe es
+    /// keinen Weg, die erste Rechnung einzulesen.
+    @ViewBuilder private var kopfzeile: some View {
+        if schmal {
+            ablage
+            kacheln
+        } else {
+            Spaltenreihe(anteile: [5, 7], abstand: 14) {
+                ablage
+                kacheln
             }
-        return Text(text).font(Schrift.winzig).foregroundStyle(farbe)
+        }
     }
 
-    private func pruefung(_ b: InvoiceReportOut) -> some View {
-        Group {
-            Kachelfeld(kacheln: kennzahlen(b), kicker: "Nr. \(b.invoice.number)")
-            if !b.findings.isEmpty {
-                Karte(kicker: "Was aufgefallen ist") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(Array(b.findings.enumerated()), id: \.offset) { _, f in
-                            befund(f)
-                        }
+    private var ablage: some View {
+        Rechnungsablage(anzahl: liste.count, laeuft: $pruefeLaeuft) { neuer, zeile in
+            nachPruefung(neuer, zeile)
+        }
+    }
+
+    private var kacheln: some View {
+        Kachelfeld(
+            kacheln: Rechnungspruefung.kopfkennzahlen(liste).map(kachel),
+            ersteFuehrt: true, art: .bericht)
+    }
+
+    /// Eine Kopfzahl des Kerns als Kachel. Die Farbe kommt aus der Rolle, nicht aus der Zahl.
+    private func kachel(_ k: Rechnungspruefung.Kopfzahl) -> Kacheldaten {
+        Kacheldaten(
+            k.wort, k.wert, einheit: k.einheit, dazu: k.dazu, farbe: Rechnungsfarbe.zu(k.ton))
+    }
+
+    // MARK: - Die vier Diagramme
+
+    /// Zwei Zeilen: `1fr 1fr` und `5fr 7fr` (`InvoiceCheck.tsx:229`, `:239`).
+    @ViewBuilder private var diagramme: some View {
+        if schmal {
+            mengenkarte
+            betragskarte
+            preiskarte
+            positionskarte
+        } else {
+            Spaltenreihe(anteile: [1, 1], abstand: 14) {
+                mengenkarte
+                betragskarte
+            }
+            Spaltenreihe(anteile: [5, 7], abstand: 14) {
+                preiskarte
+                positionskarte
+            }
+        }
+    }
+
+    private var mengenkarte: some View {
+        let paare = Rechnungspruefung.mengenpaare(liste)
+        return Karte(
+            kicker: Rechnungspruefung.mengentitel,
+            beiwerk: AnyView(kopftext(Rechnungspruefung.mengenkopf))
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                Diagrammlegende(
+                    stuecke: Rechnungsfarbe.legende(Rechnungspruefung.mengenreihen))
+                Mengenvergleichsbild(paare: paare)
+            }
+        }
+    }
+
+    /// „Arbeitspreis · Grundgebühr · Steuer“ ist in der Vorlage der rechte Kopftext
+    /// (`InvoiceCheck.tsx:235`). Hier trägt die Legende dieselbe Aufzählung **mit** ihren
+    /// Farben; den Text daneben noch einmal zu schreiben wäre dieselbe Auskunft zweimal, und
+    /// darum bleibt die Kopfzeile dieser einen Karte ohne Beiwerk.
+    ///
+    /// **Die Legende steht unter dem Kopf und nicht in ihm**, bei allen drei Verlaufskarten.
+    /// ``Diagrammlegende`` nimmt die ganze Breite und richtet sich nach rechts; als `beiwerk`
+    /// einer ``Karte`` drückte sie den Kicker zusammen - sie ist ausdrücklich für den Platz
+    /// darunter gemacht (`Diagramme/Pvverwendung.swift:160-169`).
+    private var betragskarte: some View {
+        let reihen = Rechnungspruefung.betragsreihen(liste)
+        return Karte(kicker: Rechnungspruefung.betragstitel) {
+            VStack(alignment: .leading, spacing: 8) {
+                Diagrammlegende(stuecke: Rechnungsfarbe.legende(reihen))
+                Rechnungsbetragsbild(reihen: reihen)
+            }
+        }
+    }
+
+    private var preiskarte: some View {
+        let punkte = Rechnungspruefung.preisreihe(liste)
+        return Karte(
+            kicker: Rechnungspruefung.preistitel,
+            beiwerk: AnyView(kopftext(Rechnungspruefung.preiskopf))
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                Preislegende()
+                Durchschnittspreisbild(punkte: punkte)
+            }
+        }
+    }
+
+    /// Die Preisbestandteile der **gewählten** Rechnung; ohne Auswahl der Satz der Vorlage.
+    private var positionskarte: some View {
+        let balken = Rechnungspruefung.positionsbalken(bericht?.invoice.positions ?? [])
+        return Karte(
+            kicker: Rechnungspruefung.positionstitel,
+            beiwerk: AnyView(
+                kopftext(bericht?.invoice.periodLabel ?? Rechnungspruefung.positionskopfLeer))
+        ) {
+            if balken.isEmpty {
+                Leer(satz: Rechnungspruefung.positionsleer)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Positionsleiste(balken: balken)
+                    Divider().overlay(Farbe.linie1)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("ct/kWh").font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                        Spacer(minLength: 8)
+                        Positionslegende(balken: balken)
                     }
                 }
             }
-            if let m = b.measured {
-                Karte(kicker: "Was das Haus gemessen hat") {
-                    VStack(spacing: 0) {
-                        Zeile(
-                            wort: "Bezug", wert: Formate.zahl(m.importKwh, stellen: 1), einheit: "kWh"
-                        )
-                        Zeile(wort: "abgedeckter Zeitraum", wert: Formate.prozent(m.coverage))
-                        Zeile(
-                            wort: "mittlerer Preis",
-                            wert: Formate.zahl(m.avgPriceCtKwh, stellen: 2), einheit: "ct/kWh"
-                        )
-                    }
-                }
-            }
-            if !b.invoice.positions.isEmpty {
-                Karte(kicker: "Positionen") {
-                    Tabelle(
-                        zeilennamen: b.invoice.positions.map(\.label),
-                        spalten: [
-                            .init(
-                                name: "ct/kWh",
-                                zellen: b.invoice.positions.map { Formate.zahl($0.ctPerKwh, stellen: $0.ctDecimals) }
-                            ),
-                            .init(name: "Betrag", zellen: b.invoice.positions.map { Formate.euro($0.amountEur) }),
-                        ]
-                    )
-                }
-            }
-            Methode([
-                "Geprüft am \(b.checkedAt).",
-                b.alreadyKnown == true ? "Diese Rechnung war schon eingelesen." : nil,
-                "Verglichen werden Zeitraum, Menge und mittlerer Preis gegen die eigenen "
-                    + "Minutenwerte. Eine Abweichung ist eine Frage, kein Beweis.",
-            ])
         }
     }
 
-    /// Die Farbe des Punktes vor einem Befund.
+    /// Der rechte Kopftext einer Karte - 12 px `--text-3` in der Vorlage (`Card.tsx:24-26`).
+    private func kopftext(_ wort: String) -> some View {
+        Text(wort)
+            .font(schmal ? Schrift.klein : Schrift.winzig)
+            .foregroundStyle(Farbe.text3)
+            .multilineTextAlignment(.trailing)
+    }
+
+    // MARK: - Die Tabelle „Geprüfte Rechnungen“
+
+    /// Acht Spalten (`InvoiceCheck.tsx:254-302`), von denen die erste der Zeilenname ist.
     ///
-    /// **Hier stand ein Vergleich mit „alarm", und der war doppelt falsch:** `severity` ist
-    /// eine Aufzaehlung und keine Zeichenkette, und „alarm" ist keiner ihrer Werte. Sie kennt
-    /// `ok`, `info`, `warning`, `error`. Der Punkt waere also immer gelb geblieben, auch wenn
-    /// der Typ gepasst haette - ein Fehler, den man am Bildschirm nicht sieht.
-    ///
-    /// Die Zuordnung ist die des Dashboards (`reports/InvoiceCheck.tsx`, `Dot`): Fehler und
-    /// Warnung rot, Hinweis grau, alles andere gelb. Dass dort auch ein `ok` gelb wird und
-    /// nicht gruen, ist auffaellig - es bleibt trotzdem so, denn zwei Oberflaechen, die
-    /// dieselbe Pruefung verschieden einfaerben, sind schlimmer als eine fragliche Farbe.
-    private func befundfarbe(_ s: InvoiceFindingSeverityWahl) -> Color {
-        switch s {
-        case .error, .warning: return Farbe.alarm
-        case .info: return Farbe.mist
-        case .ok, .unbekannt: return Farbe.amber
-        }
-    }
-
-    private func befund(_ f: InvoiceFinding) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Circle()
-                .fill(befundfarbe(f.severity))
-                .frame(width: 6, height: 6)
-                .padding(.top, 6)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(f.titleDe).font(Schrift.klein).foregroundStyle(Farbe.text1)
-                Text(f.detailDe)
-                    .font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                    .fixedSize(horizontal: false, vertical: true)
-                if f.expected != nil || f.actual != nil {
-                    HStack(spacing: 12) {
-                        if let e = f.expected {
-                            Text("erwartet \(Formate.zahl(e, stellen: 2)) \(f.unit ?? "")")
-                                .font(Schrift.zahlKlein).foregroundStyle(Farbe.text3)
-                        }
-                        if let a = f.actual {
-                            Text("auf der Rechnung \(Formate.zahl(a, stellen: 2)) \(f.unit ?? "")")
-                                .font(Schrift.zahlKlein).foregroundStyle(Farbe.text1)
-                        }
-                    }
-                }
+    /// **Die Zeile ist der Griff**, mit dem die Befunde und die Preisbestandteile darunter
+    /// umgeschaltet werden - darum ``Rechnungstabelle`` und nicht ``Tabelle``; der Grund steht
+    /// dort. **Ein zweites Tippen wählt nicht ab** (`InvoiceCheck.tsx:117-125`): die App ließ
+    /// das zu, und damit konnte die untere Hälfte der Seite mit einem Fehltipper verschwinden.
+    private var tabelle: some View {
+        let zeilen = Rechnungspruefung.tabellenzeilen(liste)
+        return Karte(
+            kicker: Rechnungspruefung.tabellentitel,
+            beiwerk: AnyView(kopftext(Rechnungspruefung.tabellenkopf))
+        ) {
+            Rechnungstabelle(
+                zeilennamen: zeilen.map(\.zeitraum), spalten: spalten(zeilen),
+                gewaehlt: zeilen.firstIndex { $0.nummer == gewaehlt }
+            ) { stelle in
+                gewaehlt = zeilen[stelle].nummer
             }
         }
     }
 
-    private func kennzahlen(_ b: InvoiceReportOut) -> [Kacheldaten] {
-        let r = b.invoice
+    private func spalten(_ zeilen: [Rechnungspruefung.Tabellenzeile]) -> [Tabelle.Spalte] {
+        let namen = Rechnungspruefung.tabellenspalten
+        let leise = [Color?](repeating: Farbe.text3, count: zeilen.count)
         return [
-            Kacheldaten("brutto", Formate.euro(r.totalGrossEur), dazu: r.periodLabel),
-            Kacheldaten("abgerechnet", Formate.zahl(r.kwh, stellen: 1), einheit: "kWh"),
-            Kacheldaten(
-                "mittlerer Preis", Formate.zahl(r.avgCtKwhGross, stellen: 2), einheit: "ct/kWh"
-            ),
-            Kacheldaten("Energie netto", Formate.euro(r.energyNetEur)),
-            Kacheldaten("Gebühren netto", Formate.euro(r.feesNetEur)),
-            Kacheldaten("Umsatzsteuer", Formate.euro(r.vatEur)),
+            .init(name: namen[1], zellen: zeilen.map(\.nummer), farben: leise),
+            .init(name: namen[2], zellen: zeilen.map(\.menge)),
+            .init(name: namen[3], zellen: zeilen.map(\.messung), farben: leise),
+            .init(name: namen[4], zellen: zeilen.map(\.preis)),
+            .init(name: namen[5], zellen: zeilen.map(\.netto), farben: leise),
+            .init(name: namen[6], zellen: zeilen.map(\.brutto)),
+            .init(
+                name: namen[7], zellen: zeilen.map(\.ergebnis.text),
+                // Der Rückgabetyp steht angeschrieben: `farben` ist `[Color?]`, und eine
+                // Reihe aus `Color` dorthin zu geben hängt sonst an einer stillen Umwandlung.
+                farben: zeilen.map { (z) -> Color? in Rechnungsfarbe.zu(z.ergebnis.ton) }),
         ]
     }
+
+    // MARK: - Die Befunde, in zwei Karten
+
+    /// `--cols: "7fr 5fr"` (`InvoiceCheck.tsx:305`): links was nachgerechnet wurde, rechts was
+    /// gegen die eigenen Daten gehalten wurde.
+    ///
+    /// **Die App hatte eine Karte „Was aufgefallen ist“ für beides.** Ohne die Teilung steht
+    /// nicht da, was ein Rechenfehler des Versorgers ist und was eine Lücke in der eigenen
+    /// Messung - und das ist auf dieser Seite der Unterschied, auf den alles hinausläuft.
+    @ViewBuilder private func befunde(_ b: InvoiceReportOut) -> some View {
+        if schmal {
+            rechenkarte(b)
+            abgleichkarte(b)
+        } else {
+            Spaltenreihe(anteile: [7, 5], abstand: 14) {
+                rechenkarte(b)
+                abgleichkarte(b)
+            }
+        }
+    }
+
+    private func rechenkarte(_ b: InvoiceReportOut) -> some View {
+        let gerechnet = Rechnungspruefung.gerechnet(b.findings)
+        return Karte(
+            kicker: Rechnungspruefung.gerechnetTitel(b.invoice.periodLabel),
+            beiwerk: AnyView(kopftext(Rechnungspruefung.stimmig(gerechnet)))
+        ) {
+            befundliste(gerechnet, leer: Rechnungspruefung.gerechnetLeer)
+        }
+    }
+
+    private func abgleichkarte(_ b: InvoiceReportOut) -> some View {
+        let verglichen = Rechnungspruefung.verglichen(b.findings)
+        return Karte(
+            kicker: Rechnungspruefung.verglichenTitel,
+            beiwerk: AnyView(kopftext(b.invoice.number))
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                befundliste(verglichen, leer: Rechnungspruefung.verglichenLeer)
+                Divider().overlay(Farbe.linie1)
+                // Der Zählerstand: die einzige Zahl der Seite, die jemand am Zähler im Keller
+                // nachsehen kann (`InvoiceCheck.tsx:322-326`).
+                Text(Rechnungspruefung.zaehlerzeile(b.invoice))
+                    .font(Schrift.winzig)
+                    .foregroundStyle(Farbe.text3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// **Haarlinien zwischen den Befunden statt zwölf Punkten Abstand** (`border-t` und `py-2`,
+    /// `InvoiceCheck.tsx:36`). Bei sieben Befunden mit je zwei Zeilen Text ist der Abstand
+    /// allein keine Trennung mehr: man liest nicht, wo einer aufhört.
+    @ViewBuilder private func befundliste(_ befunde: [InvoiceFinding], leer: String) -> some View {
+        if befunde.isEmpty {
+            Leer(satz: leer)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(befunde.enumerated()), id: \.offset) { i, f in
+                    if i > 0 { Divider().overlay(Farbe.linie1) }
+                    befundzeile(f).padding(.vertical, 8)
+                }
+            }
+        }
+    }
+
+    private func befundzeile(_ f: InvoiceFinding) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            // Acht Punkte, wie `h-2 w-2` (`InvoiceCheck.tsx:27`) - in der App waren es sechs,
+            // und daneben verschwindet er neben dem 13-Punkt-Titel.
+            Circle()
+                .fill(Rechnungsfarbe.zu(Rechnungspruefung.befundton(f.severity)))
+                .frame(width: 8, height: 8)
+                .padding(.top, 5)
+            VStack(alignment: .leading, spacing: 3) {
+                befundkopf(f)
+                if !f.detailDe.isEmpty {
+                    Text(f.detailDe)
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    /// Titel und Zahlen. **Am Schirm auf einer Zeile, am Telefon untereinander:** „31,20
+    /// erwartet · 31,45 ct/kWh · +0,25“ neben einem Titel braucht Breite, die 390 Punkte nicht
+    /// haben, und abgeschnitten wäre die Zahl weg, auf die es ankommt.
+    @ViewBuilder private func befundkopf(_ f: InvoiceFinding) -> some View {
+        let zahlen = Rechnungspruefung.befundzahlen(f)
+        if schmal {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(f.titleDe).font(Schrift.klein).foregroundStyle(Farbe.text1)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let zahlen {
+                    befundzahlen(zahlen, schwere: f.severity)
+                }
+            }
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(f.titleDe).font(Schrift.klein).foregroundStyle(Farbe.text1)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                if let zahlen {
+                    befundzahlen(zahlen, schwere: f.severity)
+                }
+            }
+        }
+    }
+
+    private func befundzahlen(_ text: String, schwere: InvoiceFindingSeverityWahl) -> some View {
+        Text(text)
+            .font(Schrift.zahlKlein)
+            .foregroundStyle(
+                Rechnungsfarbe.zu(Rechnungspruefung.befundzahlenton(schwere)))
+            .lineLimit(1)
+    }
+
+    // MARK: - Die Methode
+
+    /// **Was die App zusätzlich weiß, und die Vorlage nicht zeigt.** Der Methodenblock trug
+    /// einmal auch den Satz, wogegen verglichen wird - der steht jetzt als Hinweis in der
+    /// Prüfkarte, wo die Vorlage ihn hat (`InvoiceCheck.tsx:213-217`). Übrig bleiben die beiden
+    /// Angaben, die nur der Dienst der App liefert: wann geprüft wurde, und ob die Rechnung
+    /// schon einmal dagewesen ist.
+    private func methode(_ b: InvoiceReportOut) -> some View {
+        Methode([
+            "Geprüft am \(b.checkedAt).",
+            b.alreadyKnown == true ? "Diese Rechnung war schon eingelesen." : nil,
+        ])
+    }
+
+    // MARK: - Laden
 
     private func ladeListe() async {
         laedt = true
         do {
             liste = try await haus.api.rechnungen()
             fehler = nil
-        } catch let f as ApiFehler {
-            fehler = f
         } catch {
-            fehler = .netz(error.localizedDescription)
+            fehler = fehlerAus(error, satz: Rechnungspruefung.listenfehler)
         }
         laedt = false
+        geladen = true
+        // **Beim Öffnen die neueste Rechnung zeigen** - der Grund steht in der Vorlage und gilt
+        // hier genauso: „damit Befunde und Preisbestandteile nicht leer bleiben“
+        // (`InvoiceCheck.tsx:127-129`). Alfred verlinkt im Browser über `?nr=` auf eine gerade
+        // geprüfte Rechnung; der ``Wegweiser`` der App trägt keine Frageliste, darum kommt eine
+        // gewünschte Nummer hier nur aus dem Ablegefeld.
+        if gewaehlt == nil {
+            gewaehlt = Rechnungspruefung.erstauswahl(liste)
+        }
     }
 
+    /// **Hier wurde ein Fehler verschluckt:** `bericht = try? await …`. Fiel der Bericht aus,
+    /// blieb die untere Hälfte der Seite ohne Begründung leer - und das sah aus wie eine
+    /// Rechnung ohne Befunde. Die Vorlage schreibt stattdessen in ihr Fehlerband
+    /// (`InvoiceCheck.tsx:123`).
     private func ladeBericht() async {
         guard let nummer = gewaehlt else {
             bericht = nil
             return
         }
-        bericht = try? await haus.api.rechnung(nummer)
+        do {
+            bericht = try await haus.api.rechnung(nummer)
+            fehler = nil
+        } catch {
+            fehler = fehlerAus(error, satz: Rechnungspruefung.berichtfehler)
+        }
+    }
+
+    /// Ein Fehler des Dienstes bleibt, wie er ist - seine Meldung ist deutsch und für Menschen
+    /// gemacht (``ApiFehler/rat``). Nur was **kein** ``ApiFehler`` ist, bekommt den Satz der
+    /// Vorlage: `localizedDescription` wäre an dieser Stelle englisch und technisch.
+    private func fehlerAus(_ error: any Error, satz: String) -> ApiFehler {
+        if let f = error as? ApiFehler { return f }
+        return ApiFehler(code: "antwort_unlesbar", meldung: satz, status: 500)
+    }
+
+    /// Nach dem Prüfen: den letzten Bericht zeigen, die Fehlschläge melden, die Liste neu holen
+    /// (`InvoiceCheck.tsx:137-159`).
+    private func nachPruefung(_ neuer: InvoiceReportOut?, _ zeile: String?) {
+        dateifehler = zeile
+        if let neuer {
+            bericht = neuer
+            gewaehlt = neuer.invoice.number
+        }
+        // `laedt` schon hier und nicht erst in ``ladeListe``: zwischen dem Ende der Prüfung und
+        // dem Anlaufen der Aufgabe liegt sonst ein Durchgang, in dem die Liste noch leer und
+        // kein Zustand gesetzt ist - und genau dort blitzte der Leerzustand auf. Die Vorlage
+        // wartet dafür die neue Liste ab, ehe sie `busy` löscht (`InvoiceCheck.tsx:155-156`).
+        laedt = true
+        Task { await ladeListe() }
+    }
+}
+
+/// Das Fehlerband für die Dateien, die beim Prüfen gescheitert sind.
+///
+/// **Warum nicht ``Stoerung``.** Die nimmt einen ``ApiFehler`` und zeigt dessen Code als zweite
+/// Zeile - bei „okt.pdf: Kein Tibber-Layout erkannt.“ gibt es keinen Code, und einen zu
+/// erfinden, damit der Baustein passt, wäre die falsche Richtung. Die Vorlage hat für alles ein
+/// Band (`ReportShell.tsx:147-153`); hier steht dasselbe Band mit derselben Farbe, nur ohne
+/// Code und ohne „Erneut“ - einen Versuch wiederholt man, indem man die Datei neu ablegt.
+private struct Dateiband: View {
+    let zeile: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Zeichen(.warnung, groesse: 16, farbe: Farbe.alarm)
+            Text(zeile)
+                .font(Schrift.klein)
+                .foregroundStyle(Farbe.text1)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+        }
+        .padding(12)
+        .background(Farbe.alarm.opacity(0.12))
+        .overlay(
+            RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
+                .strokeBorder(Farbe.alarm.opacity(0.4), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
     }
 }
