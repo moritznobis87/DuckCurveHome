@@ -167,6 +167,14 @@ struct WaermepumpeSeite: View {
     /// Ohne diese Grenze wird die hochkante Zeichnung auf einem iPad in einem schmalen
     /// Fenster so breit wie die Karte und damit tausend Punkte hoch - das Seitenverhältnis
     /// ist 380 zu 1000.
+    ///
+    /// **Das Polster weicht an beiden Enden ab.** Die Vorlage gibt dieser einen Karte ein
+    /// eigenes Polster - 16 an der Wand (`globals.css:791`) und 10 am Telefon
+    /// (`handy.css:250`); ``Karte`` setzt 14 an der Wand und 16 am Telefon
+    /// (`Gestalt/Karte.swift:33`). Angetastet wird ``Karte`` dafür nicht: sie trägt alle
+    /// Karten der App, und ein Sonderpolster für eine einzige wäre an jeder anderen Stelle
+    /// ein neuer Fall. Sichtbar sind davon zwei Punkte weniger Luft an der Wand und sechs
+    /// mehr am Telefon - die Zeichnung nimmt ihre Breite ohnehin aus der Karte.
     private func buehne(_ w: WaermepumpeOut) -> some View {
         Karte {
             Waermepumpenbild(wp: w, lage: lage)
