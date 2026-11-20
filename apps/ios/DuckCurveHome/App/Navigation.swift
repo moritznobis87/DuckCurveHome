@@ -155,7 +155,6 @@ struct Wurzel: View {
                 WandRahmen(wegweiser: wegweiser)
             }
         }
-        .environment(wegweiser)
         .hausschrift()
         .seitengrund()
         .preferredColorScheme(.dark)
@@ -193,5 +192,18 @@ struct Wurzel: View {
                 EmptyView()
             }
         }
+        // **Der Wegweiser steht ganz aussen, hinter den Blaettern.**
+        //
+        // Ein Blatt erbt die Umgebung der Stelle, an der `sheet` haengt - nicht die, die
+        // weiter innen eingesetzt wird. Stand `.environment(wegweiser)` vor `.sheet`, dann lag
+        // die Einsetzung INNERHALB der Ansicht, an der das Blatt haengt, und das Blatt sah den
+        // Wegweiser nicht. `@Environment(Wegweiser.self)` ist nicht wahlfrei: wer ihn dort
+        // liest, bekommt keinen Nullwert, sondern einen Abbruch - „No Observable object of
+        // type Wegweiser found".
+        //
+        // Aufgefallen ist es an `Wpmenue`, dem ersten Blatt, das einen Weg kennt: ein Tipp auf
+        // die Waermepumpe im Flussbild hat die App beendet. Die anderen Blaetter brauchen nur
+        // den Hauszustand, und der wird eine Ebene hoeher eingesetzt - darum lief es so lange.
+        .environment(wegweiser)
     }
 }

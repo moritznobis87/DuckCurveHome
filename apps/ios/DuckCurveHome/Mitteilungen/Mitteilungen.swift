@@ -59,8 +59,7 @@ final class Mitteilungen: NSObject {
     /// Start, den niemand einordnen kann, wird abgelehnt, und danach ist die Tuer zu. Gefragt
     /// wird darum erst auf der Seite „Mitteilungen", wo dabeisteht, wofuer.
     func pruefeStand() async {
-        let einstellungen = await UNUserNotificationCenter.current().notificationSettings()
-        switch einstellungen.authorizationStatus {
+        switch await Self.erlaubnisstand() {
         case .notDetermined:
             stand = .ungefragt
         case .denied:
@@ -70,6 +69,22 @@ final class Mitteilungen: NSObject {
             await meldeBeimSystemAn()
         @unknown default:
             stand = .ungefragt
+        }
+    }
+
+    /// Nur die Erlaubnis, nicht die ganzen Einstellungen.
+    ///
+    /// **Warum ueber einen Rueckruf und nicht ueber `await notificationSettings()`.**
+    /// `UNNotificationSettings` ist nicht `Sendable`, und dieses Projekt uebersetzt mit
+    /// `SWIFT_STRICT_CONCURRENCY: complete`: ein solches Ergebnis darf den Hauptakteur nicht
+    /// erreichen („non-sendable result type 'UNNotificationSettings' cannot be sent from
+    /// nonisolated context"). Gebraucht wird davon ohnehin nur die Erlaubnis, und die ist eine
+    /// Aufzaehlung. Sie wird im Rueckruf herausgezogen, und nur sie geht hinueber.
+    private nonisolated static func erlaubnisstand() async -> UNAuthorizationStatus {
+        await withCheckedContinuation { fortsetzung in
+            UNUserNotificationCenter.current().getNotificationSettings { einstellungen in
+                fortsetzung.resume(returning: einstellungen.authorizationStatus)
+            }
         }
     }
 

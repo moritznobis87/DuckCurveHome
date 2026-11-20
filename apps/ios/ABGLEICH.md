@@ -42,6 +42,32 @@ nicht abgehakt.
   mit dem Weg zur Rechnungsprüfung. Dazu die Datenabdeckung in der (jetzt zugeklappten)
   Methode. Offen bleibt der Spannenvergleich „Strom im Überblick".
 
+- **Ruhebild (`Ambiente`) · acht Bausteine** (19.11.) – nach fünf Minuten ohne Berührung stand
+  an der Wand nur Uhr, Satz, drei selbstgebaute Zahlen und eine Fußzeile. Jetzt zwei Bilder,
+  und der Sonnenlauf aus dem Fahrplan entscheidet, welches gilt: am Tag Sonnenbogen, „heute
+  erwartet" und die drei Knoten Sonne–Haus–Speicher mit wandernden Leitungen, am Abend
+  Pufferglas, Strompreis und die Planzeilen der Nacht. Dazu der Kopf rechts (Außentemperatur,
+  atmender Punkt mit LIVE/UNTERBROCHEN), der Wachbefund als Satz statt der Entscheidung, die
+  vier Tageszahlen am Fuß und der Hinweis BERÜHREN FÜR DIE BEDIENUNG. Die Rechnung liegt mit 17
+  Tests im Kern (`Zustand/Ruhebild.swift`).
+
+## Was dabei auffiel und größer ist als eine Seite
+
+- **mittel** · gestalt — Der Baustein `Kicker` steht in der falschen Schrift. Die Vorlage
+  (`globals.css:57`) setzt `.kicker` als IBM Plex **Mono** in 13 Punkten mit 0,13 em Sperrung
+  und Zeilenhöhe 1,2; die App schreibt ihn als IBM Plex Sans **SemiBold** in 10,5 Punkten mit
+  1,4 Punkten Sperrung (`Gestalt/Typografie.swift`). Das betrifft jede Karte auf jeder Seite,
+  darum steht es hier und nicht unter einer Seite. Das Ruhebild hat dafür vorerst einen eigenen
+  `Ruhekicker`; richtig wäre, `Kicker` zu ändern und den eigenen wieder wegzunehmen – das ist
+  eine Änderung, die man einmal am ganzen Gerät ansehen muss.
+  - Vorlage: `apps/web/src/styles/globals.css:57-64`
+  - bauen in: `apps/ios/DuckCurveHome/Gestalt/Typografie.swift`
+- **klein** · gestalt — `Pufferflach`, das liegende Glas am Telefon, hat die Kapselform, den
+  Glanz und den hellen Rand nicht mitbekommen, die das stehende Glas am 19.11. bekam. Dasselbe
+  Wasser sieht am Telefon anders aus als an der Wand.
+  - Vorlage: `apps/web/src/components/puffer/Glas.tsx:36-83`
+  - bauen in: `apps/ios/DuckCurveHome/Bausteine/Pufferspeicher.swift`
+
 ## Was zwei Bildschirmfotos zeigten, die Liste aber nicht
 
 Am 18.11. hat der Nutzer die Startseite und die Energieseite nebeneinandergehalten, Vorlage
