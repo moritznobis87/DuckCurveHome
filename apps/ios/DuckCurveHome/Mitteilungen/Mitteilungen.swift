@@ -164,9 +164,20 @@ final class Mitteilungen: NSObject {
     }
 
     /// Dieses Geraet abmelden.
-    func meldeAb() async {
+    ///
+    /// **Warum der Netzfehler nicht mehr verschluckt wird.** Hier stand `_ = try? await …` und
+    /// darunter unbedingt `stand = .erlaubt`: scheiterte der Weg zum Dienst, blieb das Geraet
+    /// dort angemeldet, und die Seite meldete trotzdem, es bekomme keine Mitteilungen mehr. Die
+    /// Vorlage meldet diesen Satz nur im `try`-Zweig und sonst ihren Fehlersatz
+    /// (`apps/web/src/components/settings/Mitteilungen.tsx:158-162`).
+    ///
+    /// **Und warum das Token geloescht wird.** ``pruefeStand()`` schliesst aus einem vorhandenen
+    /// Token auf ``Stand/angemeldet``; bliebe es stehen, stuende nach dem Abmelden wieder
+    /// „angemeldet“ da - neben der Rueckmeldung, dass dieses Geraet nichts mehr bekommt.
+    func meldeAb() async throws {
         guard let haus, let token else { return }
-        _ = try? await haus.api.meldeApnsAb(token: token)
+        _ = try await haus.api.meldeApnsAb(token: token)
+        self.token = nil
         stand = .erlaubt
     }
 }
