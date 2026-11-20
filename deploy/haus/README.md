@@ -47,19 +47,14 @@ in Stufe 2 um (unten, „Was noch fehlt“).
 4. Im Router dem Gerät eine **feste IP-Adresse** geben. Die Bridge in Home Assistant spricht es
    über diese Adresse an.
 
-## 2. Die Images freigeben (einmalig, auf GitHub)
+## 2. Die Images
 
 GitHub baut die Images bei jedem Push auf `main` für arm64 und amd64 und legt sie unter
-`ghcr.io/moritznobis87/duckcurve-api` und `…/duckcurve-web` ab. Neue Pakete sind dort zunächst
-**privat**. Entweder einmal auf öffentlich stellen (GitHub → Profil → Packages → Paket →
-Package settings → Change visibility → Public), für beide Pakete. Oder auf dem Gerät anmelden:
-
-```bash
-echo <GitHub-Token mit read:packages> | sudo docker login ghcr.io -u moritznobis87 --password-stdin
-```
-
-Ohne Freigabe endet der erste Start mit „denied“ beim Laden der Images. Notfalls baut das Gerät
-selbst (`einrichten.sh --bauen`), das dauert aber und braucht viel Speicher.
+`ghcr.io/moritznobis87/duckcurve-api` und `…/duckcurve-web` ab. Sie sind öffentlich abrufbar
+(geprüft am 20.11.2026 ohne Anmeldung, beide mit linux/arm64); das Gerät lädt sie beim ersten Start
+ohne weiteres Zutun. Ein Fehler „denied“ beim Laden hieße, dass jemand die Sichtbarkeit eines Pakets
+geändert hat (GitHub → Profil → Packages → Paket → Package settings). Notfalls baut das Gerät selbst
+(`einrichten.sh --bauen`), das dauert aber und braucht viel Speicher.
 
 ## 3. Einrichten
 
