@@ -101,7 +101,7 @@ describe("Update", () => {
     fetchMock.mockImplementation(() => Promise.resolve(Response.json(bereit)));
     const { unmount } = render(<UpdateHinweis />);
     await screen.findByText(/steht ein Update bereit mit 2 Neuerungen/);
-    expect(screen.getByRole("link", { name: "Ansehen und installieren" })).toHaveAttribute("href", "/system/zugang#software");
+    expect(screen.getByRole("link", { name: "Ansehen und installieren" })).toHaveAttribute("href", "/system/geraet#software");
     fireEvent.click(screen.getByRole("button", { name: "Nicht jetzt" }));
     await waitFor(() => expect(screen.queryByRole("note")).not.toBeInTheDocument());
     expect(window.localStorage.getItem("dch-update-weg")).toBe("bbbbbbbbbbbb");

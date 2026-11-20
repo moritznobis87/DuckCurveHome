@@ -115,6 +115,7 @@ final class BereicheTests: XCTestCase {
     func testNurHausherr() {
         XCTAssertTrue(Bereiche.nurHausherr("/geld/rechnungen"))
         XCTAssertTrue(Bereiche.nurHausherr("/system/zugang"))
+        XCTAssertTrue(Bereiche.nurHausherr("/system/geraet"))
         XCTAssertFalse(Bereiche.nurHausherr("/strom"))
         XCTAssertFalse(Bereiche.nurHausherr("/waerme/anlage"))
     }

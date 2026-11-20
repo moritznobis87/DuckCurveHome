@@ -5,7 +5,6 @@ import { active } from "@/lib/presence";
 import { CopyField } from "@/components/ui/CopyField";
 import { StorageReport } from "@/components/settings/StorageReport";
 import { AreaShell } from "@/components/layout/AreaShell";
-import { Software } from "@/components/update/Software";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Zugang und Sicherung · Duck Curve Home" };
@@ -57,11 +56,6 @@ export default async function Page() {
   ].filter(Boolean);
   return (
     <AreaShell kicker="Geräte koppeln · wer zusieht · Daten sichern">
-
-      <section id="software" className="flex max-w-[760px] flex-col gap-3">
-        <h2 className="m-0 text-[18px] font-semibold">Software</h2>
-        <Software />
-      </section>
 
       <section className="flex max-w-[760px] flex-col gap-3">
         <h2 className="m-0 text-[18px] font-semibold">Zugang einrichten</h2>

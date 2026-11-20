@@ -4,7 +4,7 @@ import { useState } from "react";
 import { laeuft, schonGescheitert, useUpdate, type UpdateStatus } from "./useUpdate";
 
 /**
- * Der Bereich „Software“ auf der Seite Zugang und Sicherung: welche Fassung läuft, was neu ist, und
+ * Der Bereich „Software“ auf der Seite Hausgerät: welche Fassung läuft, was neu ist, und
  * der Knopf zum Installieren. Installiert wird auf dem Gerät selbst (deploy/haus/dch): Sicherung,
  * Laden, Neustart, Prüfung - und kommt die neue Fassung nicht gesund hoch, zurück zur alten.
  */

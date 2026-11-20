@@ -49,7 +49,7 @@ export function UpdateHinweis() {
           : `Für Duck Curve steht ein Update bereit${status.neuerungen.length ? ` mit ${status.neuerungen.length} ${status.neuerungen.length === 1 ? "Neuerung" : "Neuerungen"}` : ""}.`}
       </span>
       <span className="mitteil-hinweis-knoepfe">
-        <Link href="/system/zugang#software" className="mitteil-hinweis-los">
+        <Link href="/system/geraet#software" className="mitteil-hinweis-los">
           {imGang ? "Ansehen" : "Ansehen und installieren"}
         </Link>
         {imGang ? null : (
