@@ -167,6 +167,16 @@ function option(
   };
 }
 
+/** Der feste Rahmen um ein Diagramm. `EChart` setzt sich selbst `height: 100%`; ohne einen Rahmen
+ *  mit fester Höhe wächst die Zeichenfläche mit ihrem Behälter und der Behälter mit ihr, endlos. */
+function Flaeche({ className, option: o }: { className: string; option: EChartsCoreOption }) {
+  return (
+    <div className={className}>
+      <EChart option={o} />
+    </div>
+  );
+}
+
 function Diagramm({ titel, untertitel, legende, children }: { titel: string; untertitel?: string; legende?: Reihe[]; children: React.ReactNode }) {
   return (
     <figure className="m-0 flex min-w-0 flex-col gap-1 rounded-[3px] border border-line-1 bg-surface-2 px-3 py-2">
@@ -223,17 +233,17 @@ export function VerlaufAnsicht({ v, spanne }: { v: Verlauf; spanne: Spanne }) {
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       {hat(belegt) ? (
         <Diagramm titel="SSD belegt" untertitel="Prozent der Platte">
-          <EChart className={CHART} option={option(spanne, s, t, [{ name: "belegt", farbe: C.pv, werte: belegt }], "%", 1, { min: 0, max: 100, grenze: { wert: 85, wort: "85 %" } })} />
+          <Flaeche className={CHART} option={option(spanne, s, t, [{ name: "belegt", farbe: C.pv, werte: belegt }], "%", 1, { min: 0, max: 100, grenze: { wert: 85, wort: "85 %" } })} />
         </Diagramm>
       ) : null}
       {temperatur.length ? (
         <Diagramm titel="Temperatur" legende={temperatur}>
-          <EChart className={CHART} option={option(spanne, s, t, temperatur, "°C", 1, { grenze: { wert: 80, wort: "80 °C" } })} />
+          <Flaeche className={CHART} option={option(spanne, s, t, temperatur, "°C", 1, { grenze: { wert: 80, wort: "80 °C" } })} />
         </Diagramm>
       ) : null}
       {hat(cpu) ? (
         <Diagramm titel="CPU-Auslastung" untertitel="Mittel aller Kerne, %">
-          <EChart className={CHART} option={option(spanne, s, t, [{ name: "Auslastung", farbe: C.pv, werte: cpu }], "%", 1, { min: 0 })} />
+          <Flaeche className={CHART} option={option(spanne, s, t, [{ name: "Auslastung", farbe: C.pv, werte: cpu }], "%", 1, { min: 0 })} />
         </Diagramm>
       ) : null}
       {hat(ram) ? (
@@ -249,22 +259,22 @@ export function VerlaufAnsicht({ v, spanne }: { v: Verlauf; spanne: Spanne }) {
       ) : null}
       {netz.some((r) => r.werte.some((w) => w)) ? (
         <Diagramm titel="Netzwerk" legende={netz}>
-          <EChart className={CHART} option={option(spanne, s, t, netz, "kB/s", 1, { min: 0 })} />
+          <Flaeche className={CHART} option={option(spanne, s, t, netz, "kB/s", 1, { min: 0 })} />
         </Diagramm>
       ) : null}
       {daten.length ? (
         <Diagramm titel="Datenbank und Sicherungen" legende={daten.length > 1 ? daten : undefined} untertitel="MB">
-          <EChart className={CHART} option={option(spanne, s, t, daten, "MB", 1, { min: 0 })} />
+          <Flaeche className={CHART} option={option(spanne, s, t, daten, "MB", 1, { min: 0 })} />
         </Diagramm>
       ) : null}
       {hat(spannung) ? (
         <Diagramm titel="Eingangsspannung" untertitel="tiefster Wert je Abschnitt, V">
-          <EChart className={CHART} option={option(spanne, s, t, [{ name: "Spannung", farbe: C.pv, werte: spannung }], "V", 2, { grenze: { wert: 4.85, wort: "4,85 V" } })} />
+          <Flaeche className={CHART} option={option(spanne, s, t, [{ name: "Spannung", farbe: C.pv, werte: spannung }], "V", 2, { grenze: { wert: 4.85, wort: "4,85 V" } })} />
         </Diagramm>
       ) : null}
       {hat(geschrieben) ? (
         <Diagramm titel="Auf die SSD geschrieben" untertitel="GB je Abschnitt">
-          <EChart className={CHART} option={option(spanne, s, t, [{ name: "geschrieben", farbe: C.ev, werte: geschrieben }], "GB", 2, { min: 0, balken: true })} />
+          <Flaeche className={CHART} option={option(spanne, s, t, [{ name: "geschrieben", farbe: C.ev, werte: geschrieben }], "GB", 2, { min: 0, balken: true })} />
         </Diagramm>
       ) : null}
       {dienste.map((d) => (
