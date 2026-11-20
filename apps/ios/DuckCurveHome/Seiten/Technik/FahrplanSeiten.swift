@@ -14,43 +14,50 @@ struct FahrplanSeite: View {
         Seite {
             if let p = haus.plan {
                 kopf(p)
-                if let warnung = p.plannerWarnDe, !warnung.isEmpty {
-                    Karte { Leer(satz: "Der Planer meldet etwas.", dazu: warnung) }
-                }
-                if !p.windows.isEmpty {
-                    Karte(kicker: "Preisfenster") {
-                        VStack(spacing: 0) {
-                            ForEach(Array(p.windows.enumerated()), id: \.offset) { i, w in
-                                if i > 0 { Divider().overlay(Farbe.linie1) }
-                                fenster(w)
-                            }
-                        }
-                    }
-                }
                 if !p.intervals.isEmpty {
                     Karte(
                         kicker: "Horizont",
                         titel: "\(Formate.tagUndUhr(iso: p.horizonStart, jetzt: haus.jetzt)) bis \(Formate.tagUndUhr(iso: p.horizonEnd, jetzt: haus.jetzt)) · \(p.planner)"
                     ) {
                         Fahrplanzeichnung(bild: Fahrplanbild.baue(p), plan: p, jetzt: haus.jetzt)
+                        // **Die beiden Sätze des Planers stehen unter der Zeichnung**
+                        // (`Fahrplan.tsx:642-643`), nicht in einer eigenen Karte davor und
+                        // nicht in der zugeklappten Methode: die Notiz blass, die Warnung
+                        // rot. Hier hatte die Warnung eine Karte für sich, mit dem erfundenen
+                        // Vorsatz „Der Planer meldet etwas." und in Textfarbe - eine Warnung,
+                        // die aussieht wie eine Auskunft, ist keine.
+                        if let notiz = p.plannerNoteDe, !notiz.isEmpty {
+                            Text(notiz)
+                                .font(Schrift.winzig)
+                                .foregroundStyle(Farbe.text3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if let warnung = p.plannerWarnDe, !warnung.isEmpty {
+                            Text(warnung)
+                                .font(Schrift.winzig)
+                                .foregroundStyle(Farbe.alarm)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     Karte(
                         kicker: "Die Entscheidungen",
-                        titel: "die teuersten und die billigsten Viertelstunden, mit Begründung"
+                        titel: Fahrplanworte.entscheidungenDazu
                     ) {
                         plantabelle(p)
                     }
                 }
-                Methode([
-                    p.plannerNoteDe,
-                    "Planer: \(p.planner)\(p.plannerStatus.map { " · \($0)" } ?? "")",
-                    "Erstellt \(Formate.hhmm(iso: p.createdAt)), Horizont bis \(Formate.hhmm(iso: p.horizonEnd)).",
-                    p.hpActuation == true
-                        ? "Die Freigabe wird geschaltet."
-                        : "Die Freigabe wird nicht geschaltet – der Plan ist eine Empfehlung.",
-                ])
+                Methode(
+                    Fahrplanworte.methode.map(Optional.init) + [
+                        "Planer: \(p.planner)\(p.plannerStatus.map { " · \($0)" } ?? "") · erstellt \(Formate.hhmm(iso: p.createdAt))",
+                        p.hpActuation == true
+                            ? "Die Freigabe wird geschaltet."
+                            : "Die Freigabe wird nicht geschaltet – der Plan ist eine Empfehlung.",
+                    ],
+                    kurz: Fahrplanworte.methodeKurz,
+                    titel: Fahrplanworte.methodeTitel
+                )
             } else {
-                Karte { Leer(satz: "Es liegt kein Fahrplan vor.") }
+                Karte { Leer(satz: Fahrplanworte.ohnePlan) }
             }
         }
     }
@@ -61,26 +68,13 @@ struct FahrplanSeite: View {
     /// naechste Preistief und die Puffergroesse. Drei Laeufe koennen zwanzig Minuten oder acht
     /// Stunden sein - die Stunden sind das, was man der gemessenen Laufzeit gegenueberstellt.
     private func kopf(_ p: PlanOut) -> some View {
+        // **Vier Spalten, nicht zwei** (`Fahrplan.tsx:548`: `md:grid-cols-4 xl:grid-cols-7`).
+        // Bei zwei Spalten stehen die sieben Zahlen am iPad in vier Zeilen und schieben die
+        // Zeichnung, um die es auf der Seite geht, unter den Rand.
         Kachelfeld(
             kacheln: Fahrplankacheln.kacheln(p).map(Kacheldaten.init),
-            kicker: "Voraus"
+            spalten: 4
         )
-    }
-
-    private func fenster(_ w: PriceWindowOut) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Circle()
-                .fill(w.kind == .negative ? Farbe.amber : w.kind == .cheap ? Farbe.mist : Farbe.alarm)
-                .frame(width: 7, height: 7)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(w.labelDe).font(Schrift.klein).foregroundStyle(Farbe.text1)
-                Text("\(Formate.hhmm(iso: w.start)) bis \(Formate.hhmm(iso: w.end))")
-                    .font(Schrift.winzig).foregroundStyle(Farbe.text3)
-            }
-            Spacer(minLength: 8)
-            Text(Formate.ct(w.avgCtKwh)).font(Schrift.zahlKlein).foregroundStyle(Farbe.text2)
-        }
-        .padding(.vertical, 6)
     }
 
     /// Die Viertelstunden an den Preisenden – so wie es das Dashboard zeigt.
@@ -88,52 +82,56 @@ struct FahrplanSeite: View {
     /// Nicht alle 96 und nicht die naechsten 32: an einem ruhigen Tag steht in fast allen
     /// dasselbe, und auf dem Telefon stand das als zweiunddreissig Zeilen „aus" untereinander.
     private func plantabelle(_ p: PlanOut) -> some View {
-        let zeilen = Planauswahl.raender(p.intervals)
+        let zeilen = Planauswahl.entscheidungen(p.intervals)
         return VStack(alignment: .leading, spacing: 8) {
             if zeilen.isEmpty {
-                Text("Noch kein Plan mit Preisen.")
+                Text("Noch keine Preise im Horizont.")
                     .font(Schrift.klein).foregroundStyle(Farbe.text3)
             } else {
                 Tabelle(
                     // „03:15" allein steht im Horizont zweimal: er reicht ueber zwei Tage.
-                    zeilennamen: zeilen.map { Formate.tagUndUhr(iso: $0.ts, jetzt: haus.jetzt) },
+                    zeilennamen: zeilen.map { Formate.tagUndUhr($0.zeit, jetzt: haus.jetzt) },
                     spalten: [
-                        .init(name: "Preis", zellen: zeilen.map { Formate.ct($0.priceCtKwh) }),
+                        .init(name: "Preis", zellen: zeilen.map { Formate.ct($0.preis) }),
                         .init(
                             name: "Bedarf",
-                            zellen: zeilen.map { Formate.kwMitEinheit(Planauswahl.bedarf($0)) }),
-                        .init(name: "Puffer", zellen: zeilen.map { Formate.kwh($0.bufferKwh) }),
+                            zellen: zeilen.map { Formate.kwMitEinheit($0.bedarf) }),
+                        // **Drei Spalten tragen Farbe** (`Fahrplan.tsx:715-721`): Puffer,
+                        // Wärmepumpe und Ofen sagen dasselbe wie die Streifen darüber, und
+                        // sie sollen es in derselben Sprache sagen.
                         .init(
-                            name: "Wärmepumpe",
-                            zellen: zeilen.map { zustandswort($0.plannedHpState) }),
-                        .init(name: "Ofen", zellen: zeilen.map { ofenwort($0.plannedStoveOn) }),
+                            name: "Puffer", zellen: zeilen.map { Formate.kwh($0.puffer) },
+                            farben: zeilen.map { $0.puffer == nil ? nil : Farbe.puffer }),
                         .init(
-                            name: "Warum",
-                            zellen: zeilen.map { $0.noteDe ?? grundwort($0.reasonCode) }),
+                            name: "Wärmepumpe", zellen: zeilen.map(\.zustandswort),
+                            farben: zeilen.map { rollenfarbe($0.zustandsrolle) }),
+                        .init(
+                            name: "Ofen", zellen: zeilen.map(\.ofenwort),
+                            farben: zeilen.map { rollenfarbe($0.ofenrolle) }),
+                        .init(name: "Warum", zellen: zeilen.map(\.warum)),
                     ]
                 )
             }
         }
     }
 
-    private func ofenwort(_ an: Bool?) -> String {
-        guard let an else { return Formate.leer }
-        return an ? "brennt" : "aus"
-    }
-
-    private func zustandswort(_ z: PlanIntervalOutPlannedHpStateWahl) -> String {
-        switch z {
-        case .release: return "frei"
-        case .off: return "aus"
-        case .free: return "offen"
-        case .avoid: return "meiden"
-        case .unbekannt: return "?"
+    /// Dieselben Farben wie im Streifen darüber.
+    private func rollenfarbe(_ r: Fahrplanbild.Rolle) -> Color? {
+        switch r {
+        case .angefordert, .wpGemessen: return Farbe.waermepumpe
+        case .gemieden: return Farbe.alarm
+        case .frei: return Farbe.text2
+        case .aus: return Farbe.text3
+        case .ofenAn: return Farbe.ofen
+        case .ofenAus, .neutral: return nil
+        case .pv: return Farbe.pv
+        case .puffer: return Farbe.puffer
+        case .heizen: return Farbe.haus
+        case .warmwasser: return Farbe.warmwasser
+        case .vorhersage: return Farbe.mist
         }
     }
 
-    private func grundwort(_ code: String) -> String {
-        ReasonCode(rawValue: code).map(Grundwort.text) ?? code.replacingOccurrences(of: "_", with: " ")
-    }
 }
 
 /// Fahrplan · Rückblick: ein Ortstag in Euro – versprochen, gehalten, wirklich.

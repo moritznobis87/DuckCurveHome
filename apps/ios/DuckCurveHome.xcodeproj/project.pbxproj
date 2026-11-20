@@ -33,6 +33,7 @@
 		6A6AE4891268B8CE7EF864AC /* Blaetter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB4AE3BBF422749B5EDD958 /* Blaetter.swift */; };
 		6FCF3DE35A951A727A3F0312 /* Ausblickkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7679B32D01774CCA129F24A6 /* Ausblickkarte.swift */; };
 		7A6C6E5925D48EE511579D9D /* Glasmodell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE2E906879843FBFF8C04AC /* Glasmodell.swift */; };
+		7BA728D9D24497FBC2C1119E /* Unteransichten.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC7469018CE630476024776F /* Unteransichten.swift */; };
 		8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */; };
 		92BED5F9FA7987479E09055C /* AnlageSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201BD07AEDBDDA5B2E91E375 /* AnlageSeite.swift */; };
 		9791AE7D34591424DCAAD5DB /* Farben.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E127C736AC8ABEDFAB4437 /* Farben.swift */; };
@@ -115,6 +116,7 @@
 		9FE2E906879843FBFF8C04AC /* Glasmodell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glasmodell.swift; sourceTree = "<group>"; };
 		A5D48D7AA0788028340C51B9 /* Umbruchzeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Umbruchzeile.swift; sourceTree = "<group>"; };
 		AAA38BD9FC62B1F89035ABAE /* GeldSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeldSeiten.swift; sourceTree = "<group>"; };
+		AC7469018CE630476024776F /* Unteransichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Unteransichten.swift; sourceTree = "<group>"; };
 		ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReglerSeite.swift; sourceTree = "<group>"; };
 		B10C35D7E84A91C914895209 /* IBMPlexSans-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.otf"; sourceTree = "<group>"; };
 		B98C536116288281EBEE7975 /* HandRahmen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandRahmen.swift; sourceTree = "<group>"; };
@@ -197,6 +199,7 @@
 				0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */,
 				7A347595B312F69C774E01EE /* Schluesselbund.swift */,
 				19D6E643E59B9205E637CF97 /* Seitenwahl.swift */,
+				AC7469018CE630476024776F /* Unteransichten.swift */,
 				70D0DC76B4C835ABDEB44904 /* Vorschauen.swift */,
 				2195B41CC96C7867CA119D73 /* WandRahmen.swift */,
 			);
@@ -480,6 +483,7 @@
 				3119991C0311A68EED64E790 /* Tageskurve.swift in Sources */,
 				F01A3D3524E63BA7DE6D02B7 /* Typografie.swift in Sources */,
 				BFEA1309C0F0923E9EC869A2 /* Umbruchzeile.swift in Sources */,
+				7BA728D9D24497FBC2C1119E /* Unteransichten.swift in Sources */,
 				FB410072136231AA663DAAD2 /* Vorschauen.swift in Sources */,
 				9A1C3FB9FF91FD7A101C7D83 /* WaermeSeite.swift in Sources */,
 				D894CFE0B631F5092301D588 /* Waermebilder.swift in Sources */,
