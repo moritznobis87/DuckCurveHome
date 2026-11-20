@@ -376,11 +376,81 @@ schwaerzen() {
 		for my $x (@g) { s/\Q$x\E/***/g } s/\e\[[0-9;]*[A-Za-z]//g'
 }
 
+cpu_zaehler() {
+	# "<gesamt> <leerlauf>" aus /proc/stat; Leerlauf zaehlt idle und iowait.
+	awk '/^cpu / { g = 0; for (i = 2; i <= NF; i++) g += $i; print g, $5 + $6; exit }' /proc/stat
+}
+
+netz_zaehler() {
+	# Bytes seit dem Start auf der Schnittstelle mit der Standardroute. Raten bildet die API aus
+	# zwei Berichten; nach einem Neustart beginnen die Zaehler wieder bei null.
+	local s
+	s=$(awk '$2 == "00000000" { print $1; exit }' /proc/net/route 2>/dev/null)
+	if [ -z "$s" ] || [ ! -r "/sys/class/net/$s/statistics/rx_bytes" ]; then
+		echo null
+		return 0
+	fi
+	jq -n --arg s "$s" --arg rx "$(cat "/sys/class/net/$s/statistics/rx_bytes")" \
+		--arg tx "$(cat "/sys/class/net/$s/statistics/tx_bytes")" \
+		'{schnittstelle: $s, empfangen_bytes: ($rx | tonumber), gesendet_bytes: ($tx | tonumber)}'
+}
+
+ssd_gesundheit() {
+	# SMART der Platte, auf der / liegt (smartctl aus smartmontools). NVMe meldet Abnutzung und
+	# geschriebene Daten; eine Platte am USB-Adapter oft nur Temperatur und Betriebsstunden.
+	command -v smartctl >/dev/null 2>&1 || { echo null; return 0; }
+	local quelle platte roh
+	quelle=$(findmnt -no SOURCE / 2>/dev/null)
+	platte=$(lsblk -no PKNAME "$quelle" 2>/dev/null | head -n1)
+	[ -n "$platte" ] || { echo null; return 0; }
+	roh=$(timeout 15 smartctl -j -a "/dev/$platte" 2>/dev/null || true)
+	echo "$roh" | jq -c --arg p "$platte" '
+		(.nvme_smart_health_information_log // {}) as $n
+		| if (.device // null) == null then null else {
+			geraet: $p,
+			modell: (.model_name // null),
+			gesund: (.smart_status.passed // null),
+			temperatur_c: (.temperature.current // null),
+			betriebsstunden: (.power_on_time.hours // null),
+			abnutzung_prozent: ($n.percentage_used // null),
+			reserve_prozent: ($n.available_spare // null),
+			geschrieben_bytes: (if $n.data_units_written then $n.data_units_written * 512000 else null end),
+			gelesen_bytes: (if $n.data_units_read then $n.data_units_read * 512000 else null end),
+			fehler: ($n.media_errors // null),
+			unsichere_abschaltungen: ($n.unsafe_shutdowns // null)
+		} end' 2>/dev/null || echo null
+}
+
+docker_platz() {
+	# Was Docker auf der Platte belegt (Images, Container, Volumes, Bau-Cache). `docker system df`
+	# rechnet einige Sekunden; deshalb hoechstens alle zehn Minuten neu, dazwischen von damals.
+	local zwischen="$GERAET/.docker_platz.json"
+	if [ -s "$zwischen" ] && [ $(($(date +%s) - $(stat -c %Y "$zwischen"))) -lt 600 ]; then
+		cat "$zwischen"
+		return 0
+	fi
+	local roh
+	roh=$(docker system df --format '{{json .}}' 2>/dev/null || true)
+	[ -n "$roh" ] || { echo null; return 0; }
+	echo "$roh" | jq -s -c '
+		def bytes: (capture("^(?<w>[0-9.]+)\\s*(?<e>[kKMGT]?B)") as $m
+			| ($m.w | tonumber) * ({"B": 1, "kB": 1000, "KB": 1000, "MB": 1000000, "GB": 1000000000,
+			   "TB": 1000000000000}[$m.e] // 1) | floor) // null;
+		map({key: (.Type | ascii_downcase | gsub("[^a-z]"; "_")), value: (.Size | bytes)}) | from_entries
+		| {images_bytes: .images, container_bytes: .containers, volumes_bytes: .local_volumes,
+		   cache_bytes: .build_cache}' >"$zwischen.neu" 2>/dev/null && [ -s "$zwischen.neu" ] &&
+		mv "$zwischen.neu" "$zwischen" && cat "$zwischen" && return 0
+	rm -f "$zwischen.neu"
+	echo null
+}
+
 bericht() {
 	# Der Gesundheitsbericht nach $GERAET/geraet.json. Liest nur, aendert nichts.
 	mkdir -p "$GERAET"
 	local ids inspekt stats='[]' dienste_json einheiten='[]' sicherung rechner
 
+	local cpu_vorher cpu_nachher
+	cpu_vorher=$(cpu_zaehler)
 	ids=$(compose ps -aq 2>/dev/null || true)
 	if [ -n "$ids" ]; then
 		# shellcheck disable=SC2086
@@ -389,7 +459,9 @@ bericht() {
 		stats=$(docker stats --no-stream --format '{{json .}}' $ids 2>/dev/null | jq -s '.' 2>/dev/null || echo '[]')
 	else
 		inspekt='[]'
+		sleep 1
 	fi
+	cpu_nachher=$(cpu_zaehler)
 	dienste_json=$(jq -n --argjson i "$inspekt" --argjson s "$stats" \
 		--argjson soll "$(dienste_bekannt | jq -R . | jq -s .)" '
 		def zahl: (gsub("[^0-9.]"; "") | tonumber? // null);
@@ -445,19 +517,34 @@ bericht() {
 	# shellcheck disable=SC2012
 	neueste=$(ls -1t "$SICHERUNG"/dch-*.dump 2>/dev/null | head -n1 || true)
 	anzahl=$(find "$SICHERUNG" -maxdepth 1 -name 'dch-*.dump' 2>/dev/null | wc -l)
+	local summe
+	summe=$(find "$SICHERUNG" -maxdepth 1 -name 'dch-*.dump' -printf '%s\n' 2>/dev/null | awk '{s += $1} END {print s + 0}')
 	sicherung=$(jq -n --arg d "$(basename "${neueste:-}")" \
 		--arg t "$([ -n "$neueste" ] && date -u -r "$neueste" +%Y-%m-%dT%H:%M:%SZ)" \
 		--arg g "$([ -n "$neueste" ] && stat -c %s "$neueste")" --argjson n "$anzahl" \
-		--arg z "$(wert DCH_SICHERUNG_ZIEL)" \
+		--arg z "$(wert DCH_SICHERUNG_ZIEL)" --argjson summe "${summe:-0}" \
 		'{letzte: (if $d == "" then null else $d end), letzte_am: (if $t == "" then null else $t end),
-		  letzte_bytes: ($g | tonumber? // null), anzahl: $n, ausser_haus: (if $z == "" then null else $z end)}')
+		  letzte_bytes: ($g | tonumber? // null), anzahl: $n, gesamt_bytes: $summe,
+		  ausser_haus: (if $z == "" then null else $z end)}')
 
-	local temp="" drossel="" modell="" platten
+	local temp="" drossel="" modell="" platten takt="" spannung=""
 	[ -r /sys/class/thermal/thermal_zone0/temp ] && temp=$(cat /sys/class/thermal/thermal_zone0/temp)
-	command -v vcgencmd >/dev/null 2>&1 && drossel=$(vcgencmd get_throttled 2>/dev/null | sed -n 's/^throttled=//p')
+	if command -v vcgencmd >/dev/null 2>&1; then
+		drossel=$(vcgencmd get_throttled 2>/dev/null | sed -n 's/^throttled=//p')
+		# Die Spannung am Eingang (Raspberry Pi 5). Bei PoE die Antwort auf "reicht die Versorgung?".
+		spannung=$(vcgencmd pmic_read_adc EXT5V_V 2>/dev/null | sed -n 's/.*=\([0-9.]*\)V.*/\1/p' | head -n1)
+	fi
+	[ -r /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq ] &&
+		takt=$(($(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq) / 1000))
 	[ -r /proc/device-tree/model ] && modell=$(tr -d '\0' </proc/device-tree/model)
 	# Je Dateisystem einmal: Liegen Docker und Sicherungen auf der SSD, steht dort nur "/".
-	platten=$(df -B1 --output=source,target,size,avail / "$SICHERUNG" "$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /)" 2>/dev/null |
+	# Auch ohne laufendes Docker: Dann ist dieser Bericht am wichtigsten, und nichts darf an einem
+	# fehlenden Pfad scheitern.
+	local docker_ordner
+	docker_ordner=$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)
+	[ -d "$docker_ordner" ] || docker_ordner=/
+	[ -d "$SICHERUNG" ] || mkdir -p "$SICHERUNG"
+	platten=$({ df -B1 --output=source,target,size,avail / "$SICHERUNG" "$docker_ordner" 2>/dev/null || true; } |
 		awk 'NR > 1 && !gesehen[$1]++ { print $2 "\t" $3 "\t" $4 }' |
 		jq -R -s 'split("\n") | map(select(length > 0) | split("\t") | {ort: .[0], gesamt_bytes: (.[1] | tonumber), frei_bytes: (.[2] | tonumber)})')
 	rechner=$(jq -n \
@@ -469,6 +556,12 @@ bericht() {
 		--arg gesamt "$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)" \
 		--arg frei "$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)" \
 		--arg docker "$(docker version --format '{{.Server.Version}}' 2>/dev/null)" \
+		--arg swap_gesamt "$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)" \
+		--arg swap_frei "$(awk '/^SwapFree:/ {print $2}' /proc/meminfo)" \
+		--arg takt "$takt" --arg spannung "$spannung" \
+		--arg cpu_vorher "$cpu_vorher" --arg cpu_nachher "$cpu_nachher" \
+		--argjson netz "$(netz_zaehler)" --argjson ssd "$(ssd_gesundheit)" \
+		--argjson docker_platz "$(docker_platz)" \
 		--argjson platten "${platten:-[]}" '
 		def leer: if . == "" then null else . end;
 		{name: $name, modell: ($modell | leer), system: ($system | leer), kernel: $kernel,
@@ -478,12 +571,24 @@ bericht() {
 		 drosselung: ($drossel | leer),
 		 speicher_gesamt_mb: (($gesamt | tonumber) / 1024 | floor),
 		 speicher_frei_mb: (($frei | tonumber) / 1024 | floor),
+		 swap_gesamt_mb: (($swap_gesamt | tonumber? // 0) / 1024 | floor),
+		 swap_frei_mb: (($swap_frei | tonumber? // 0) / 1024 | floor),
+		 takt_mhz: ($takt | tonumber? // null),
+		 eingangsspannung_v: ($spannung | tonumber? // null),
+		 cpu_prozent: (($cpu_vorher | split(" ") | map(tonumber)) as $a
+			| ($cpu_nachher | split(" ") | map(tonumber)) as $b
+			| (($b[0] - $a[0]) as $gesamt | ($b[1] - $a[1]) as $leer
+			| if $gesamt > 0 then ((1 - $leer / $gesamt) * 1000 | round / 10) else null end)),
+		 netz: $netz, ssd: $ssd, docker_platz: $docker_platz,
 		 platten: $platten, docker: ($docker | leer)}')
 
+	local docker_laeuft=false
+	docker info >/dev/null 2>&1 && docker_laeuft=true
 	jq -n --arg t "$(jetzt)" --arg v "$(wert DCH_VERSION)" --argjson r "$rechner" \
 		--argjson d "$dienste_json" --argjson e "$einheiten" --argjson s "$sicherung" \
-		--arg f "$(wert DCH_FERNZUGANG)" \
-		'{erstellt_am: $t, kanal: $v, fernzugang: ($f == "1"), rechner: $r, dienste: $d, einheiten: $e, sicherung: $s}' \
+		--arg f "$(wert DCH_FERNZUGANG)" --argjson dl "$docker_laeuft" \
+		'{erstellt_am: $t, kanal: $v, fernzugang: ($f == "1"), docker_laeuft: $dl,
+		  rechner: $r, dienste: $d, einheiten: $e, sicherung: $s}' \
 		>"$GERAET/geraet.json.neu"
 	chmod 0644 "$GERAET/geraet.json.neu"
 	mv "$GERAET/geraet.json.neu" "$GERAET/geraet.json"

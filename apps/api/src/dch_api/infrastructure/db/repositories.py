@@ -419,6 +419,57 @@ class SqlRepositories:
         # rechnete die Oberfläche das Alter des Werts je nach Datenbank um zwei Stunden daneben.
         return self._aware(row[0]) if row and row[0] else None
 
+    # ------------------------------------------------------------------ Hausgerät
+    async def geraet_messwert_speichern(self, zeile: Mapping[str, Any]) -> bool:
+        """Einen Messpunkt ablegen. Gibt es für diesen Zeitpunkt schon einen, bleibt der alte:
+        Der Sammler fragt jede Minute, der Punkt gilt für fünf."""
+        ins: Any = (
+            sqlite_insert(m.GeraetMesswert)
+            if self.dialect == "sqlite"
+            else pg_insert(m.GeraetMesswert)
+        )
+        anweisung = ins.values(**zeile).on_conflict_do_nothing(index_elements=["ts"])
+        async with self.maker() as s:
+            ergebnis = cast(CursorResult[Any], await s.execute(anweisung))
+            await s.commit()
+        return bool(ergebnis.rowcount)
+
+    async def geraet_messwerte(self, von: datetime, bis: datetime) -> list[dict[str, Any]]:
+        """Die Messpunkte einer Spanne, älteste zuerst, als Wörterbücher."""
+        t = m.GeraetMesswert
+        spalten = [c.name for c in t.__table__.columns]
+        async with self.maker() as s:
+            zeilen = (
+                await s.execute(select(t).where(t.ts >= von, t.ts < bis).order_by(t.ts))
+            ).scalars()
+            aus = []
+            for z in zeilen:
+                d = {name: getattr(z, name) for name in spalten}
+                d["ts"] = self._aware(d["ts"])
+                aus.append(d)
+        return aus
+
+    async def geraet_messwerte_ausduennen(self, fein_vor: datetime, alles_vor: datetime) -> int:
+        """Fünf-Minuten-Punkte vor `fein_vor` löschen (die stündlichen bleiben), alles vor
+        `alles_vor` ganz. Gibt die Zahl der gelöschten Zeilen zurück."""
+        t = m.GeraetMesswert
+        async with self.maker() as s:
+            a = cast(
+                CursorResult[Any],
+                await s.execute(delete(t).where(t.ts < fein_vor, t.stuendlich.is_(False))),
+            )
+            b = cast(CursorResult[Any], await s.execute(delete(t).where(t.ts < alles_vor)))
+            await s.commit()
+        return int(a.rowcount or 0) + int(b.rowcount or 0)
+
+    async def datenbank_bytes(self) -> int | None:
+        """Wie groß die Datenbank auf der Platte ist; `None` ohne PostgreSQL."""
+        if self.dialect != "postgresql":
+            return None
+        async with self.maker() as s:
+            wert = (await s.execute(text("SELECT pg_database_size(current_database())"))).scalar()
+        return int(wert) if wert is not None else None
+
     async def storage_report(self) -> list[dict[str, object]]:
         """Platzbedarf je Tabelle, größte zuerst: Daten, Indizes, geschätzte Zeilenzahl.
 

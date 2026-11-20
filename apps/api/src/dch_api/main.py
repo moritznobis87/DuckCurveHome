@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import Depends, FastAPI, Request, Response
@@ -150,9 +153,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "nicht geprüft."
                 ),
             )
+        # Auf dem Hausgerät mit Datenbank: alle fünf Minuten ein Messpunkt für den Verlauf der
+        # Seite Hausgerät (application/geraet_verlauf.py).
+        sammler: asyncio.Task[None] | None = None
+        repos = getattr(app.state.runner, "repos", None)
+        if settings.geraet_dir and settings.mode == "live" and repos is not None:
+            from dch_api.application import geraet_verlauf
+
+            sammler = asyncio.create_task(
+                geraet_verlauf.schleife(repos, Path(settings.geraet_dir)), name="geraet-verlauf"
+            )
         try:
             yield
         finally:
+            if sammler is not None:
+                # Abbrechen und abwarten: Hält der Sammler gerade eine Verbindung, darf die
+                # Datenbank erst danach geschlossen werden.
+                sammler.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await sammler
             await app.state.runner.stop()
             engine = getattr(app.state, "engine", None)
             if engine is not None:

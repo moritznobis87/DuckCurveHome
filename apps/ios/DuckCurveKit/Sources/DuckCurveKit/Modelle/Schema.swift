@@ -348,6 +348,21 @@ public enum GeraetRechnerOutDrosselungAmpelWahl: String, Codable, Sendable, Hash
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetRechnerOutSpannungAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetRechnerOutSpannungAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum GeraetRechnerOutSpeicherAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case gut = "gut"
     case warn = "warn"
@@ -388,6 +403,36 @@ public enum GeraetSicherungOutAmpelWahl: String, Codable, Sendable, Hashable, Ca
     public init(from decoder: any Decoder) throws {
         let roh = try decoder.singleValueContainer().decode(String.self)
         self = GeraetSicherungOutAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetSsdOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetSsdOutAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetVerlaufOutSpanneWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case tag = "tag"
+    case woche = "woche"
+    case monat = "monat"
+    case jahr = "jahr"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetVerlaufOutSpanneWahl(rawValue: roh) ?? .unbekannt
     }
 }
 
@@ -1553,6 +1598,7 @@ public struct ApiSelbstOut: Codable, Sendable, Hashable {
     public var datenbankOk: Bool?
     public var datenbankMs: Double?
     public var datenbankDe: String?
+    public var datenbankBytes: Int?
     public var bridgeOnline: Bool?
     public var verbindungDe: String?
     public var quellen: [SourceStatusOut]
@@ -1572,6 +1618,7 @@ public struct ApiSelbstOut: Codable, Sendable, Hashable {
         case datenbankOk = "datenbank_ok"
         case datenbankMs = "datenbank_ms"
         case datenbankDe = "datenbank_de"
+        case datenbankBytes = "datenbank_bytes"
         case bridgeOnline = "bridge_online"
         case verbindungDe = "verbindung_de"
         case quellen
@@ -1583,7 +1630,7 @@ public struct ApiSelbstOut: Codable, Sendable, Hashable {
         case textDe = "text_de"
     }
 
-    public init(version: String, commit: String, modus: String, laufzeitS: Int, rssMb: Double, datenbankOk: Bool? = nil, datenbankMs: Double? = nil, datenbankDe: String? = nil, bridgeOnline: Bool? = nil, verbindungDe: String? = nil, quellen: [SourceStatusOut] = [], befunde: [WatchFindingOut] = [], sseClients: Int? = nil, alfredEingerichtet: Bool? = nil, energyRebuild: String? = nil, ampel: ApiSelbstOutAmpelWahl? = nil, textDe: String? = nil) {
+    public init(version: String, commit: String, modus: String, laufzeitS: Int, rssMb: Double, datenbankOk: Bool? = nil, datenbankMs: Double? = nil, datenbankDe: String? = nil, datenbankBytes: Int? = nil, bridgeOnline: Bool? = nil, verbindungDe: String? = nil, quellen: [SourceStatusOut] = [], befunde: [WatchFindingOut] = [], sseClients: Int? = nil, alfredEingerichtet: Bool? = nil, energyRebuild: String? = nil, ampel: ApiSelbstOutAmpelWahl? = nil, textDe: String? = nil) {
         self.version = version
         self.commit = commit
         self.modus = modus
@@ -1592,6 +1639,7 @@ public struct ApiSelbstOut: Codable, Sendable, Hashable {
         self.datenbankOk = datenbankOk
         self.datenbankMs = datenbankMs
         self.datenbankDe = datenbankDe
+        self.datenbankBytes = datenbankBytes
         self.bridgeOnline = bridgeOnline
         self.verbindungDe = verbindungDe
         self.quellen = quellen
@@ -1613,6 +1661,7 @@ public struct ApiSelbstOut: Codable, Sendable, Hashable {
         self.datenbankOk = try c.decodeIfPresent(Bool.self, forKey: .datenbankOk)
         self.datenbankMs = try c.decodeIfPresent(Double.self, forKey: .datenbankMs)
         self.datenbankDe = try c.decodeIfPresent(String.self, forKey: .datenbankDe)
+        self.datenbankBytes = try c.decodeIfPresent(Int.self, forKey: .datenbankBytes)
         self.bridgeOnline = try c.decodeIfPresent(Bool.self, forKey: .bridgeOnline)
         self.verbindungDe = try c.decodeIfPresent(String.self, forKey: .verbindungDe)
         self.quellen = try c.decodeIfPresent([SourceStatusOut].self, forKey: .quellen) ?? []
@@ -3947,6 +3996,35 @@ public struct GeraetDienstOut: Codable, Sendable, Hashable {
     }
 }
 
+public struct GeraetDockerPlatzOut: Codable, Sendable, Hashable {
+    public var imagesBytes: Int?
+    public var containerBytes: Int?
+    public var volumesBytes: Int?
+    public var cacheBytes: Int?
+
+    public enum CodingKeys: String, CodingKey {
+        case imagesBytes = "images_bytes"
+        case containerBytes = "container_bytes"
+        case volumesBytes = "volumes_bytes"
+        case cacheBytes = "cache_bytes"
+    }
+
+    public init(imagesBytes: Int? = nil, containerBytes: Int? = nil, volumesBytes: Int? = nil, cacheBytes: Int? = nil) {
+        self.imagesBytes = imagesBytes
+        self.containerBytes = containerBytes
+        self.volumesBytes = volumesBytes
+        self.cacheBytes = cacheBytes
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.imagesBytes = try c.decodeIfPresent(Int.self, forKey: .imagesBytes)
+        self.containerBytes = try c.decodeIfPresent(Int.self, forKey: .containerBytes)
+        self.volumesBytes = try c.decodeIfPresent(Int.self, forKey: .volumesBytes)
+        self.cacheBytes = try c.decodeIfPresent(Int.self, forKey: .cacheBytes)
+    }
+}
+
 /// Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht).
 public struct GeraetEinheitOut: Codable, Sendable, Hashable {
     public var name: String
@@ -3993,6 +4071,31 @@ public struct GeraetEinheitOut: Codable, Sendable, Hashable {
     }
 }
 
+public struct GeraetNetzOut: Codable, Sendable, Hashable {
+    public var schnittstelle: String
+    public var empfangenBytes: Int
+    public var gesendetBytes: Int
+
+    public enum CodingKeys: String, CodingKey {
+        case schnittstelle
+        case empfangenBytes = "empfangen_bytes"
+        case gesendetBytes = "gesendet_bytes"
+    }
+
+    public init(schnittstelle: String, empfangenBytes: Int, gesendetBytes: Int) {
+        self.schnittstelle = schnittstelle
+        self.empfangenBytes = empfangenBytes
+        self.gesendetBytes = gesendetBytes
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.schnittstelle = try c.decode(String.self, forKey: .schnittstelle)
+        self.empfangenBytes = try c.decode(Int.self, forKey: .empfangenBytes)
+        self.gesendetBytes = try c.decode(Int.self, forKey: .gesendetBytes)
+    }
+}
+
 /// Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion.
 public struct GeraetOut: Codable, Sendable, Hashable {
     public var unterstuetzt: Bool
@@ -4000,6 +4103,7 @@ public struct GeraetOut: Codable, Sendable, Hashable {
     public var berichtAlt: Bool?
     public var kanal: String?
     public var fernzugang: Bool?
+    public var dockerLaeuft: Bool?
     public var rechner: GeraetRechnerOut?
     public var dienste: [GeraetDienstOut]
     public var einheiten: [GeraetEinheitOut]
@@ -4016,6 +4120,7 @@ public struct GeraetOut: Codable, Sendable, Hashable {
         case berichtAlt = "bericht_alt"
         case kanal
         case fernzugang
+        case dockerLaeuft = "docker_laeuft"
         case rechner
         case dienste
         case einheiten
@@ -4027,12 +4132,13 @@ public struct GeraetOut: Codable, Sendable, Hashable {
         case textDe = "text_de"
     }
 
-    public init(unterstuetzt: Bool, berichtAm: String? = nil, berichtAlt: Bool? = nil, kanal: String? = nil, fernzugang: Bool? = nil, rechner: GeraetRechnerOut? = nil, dienste: [GeraetDienstOut] = [], einheiten: [GeraetEinheitOut] = [], sicherung: GeraetSicherungOut? = nil, letzteAktion: GeraetAktionOut? = nil, beschaeftigt: String? = nil, api: ApiSelbstOut, ampel: GeraetOutAmpelWahl? = nil, textDe: String? = nil) {
+    public init(unterstuetzt: Bool, berichtAm: String? = nil, berichtAlt: Bool? = nil, kanal: String? = nil, fernzugang: Bool? = nil, dockerLaeuft: Bool? = nil, rechner: GeraetRechnerOut? = nil, dienste: [GeraetDienstOut] = [], einheiten: [GeraetEinheitOut] = [], sicherung: GeraetSicherungOut? = nil, letzteAktion: GeraetAktionOut? = nil, beschaeftigt: String? = nil, api: ApiSelbstOut, ampel: GeraetOutAmpelWahl? = nil, textDe: String? = nil) {
         self.unterstuetzt = unterstuetzt
         self.berichtAm = berichtAm
         self.berichtAlt = berichtAlt
         self.kanal = kanal
         self.fernzugang = fernzugang
+        self.dockerLaeuft = dockerLaeuft
         self.rechner = rechner
         self.dienste = dienste
         self.einheiten = einheiten
@@ -4051,6 +4157,7 @@ public struct GeraetOut: Codable, Sendable, Hashable {
         self.berichtAlt = try c.decodeIfPresent(Bool.self, forKey: .berichtAlt)
         self.kanal = try c.decodeIfPresent(String.self, forKey: .kanal)
         self.fernzugang = try c.decodeIfPresent(Bool.self, forKey: .fernzugang)
+        self.dockerLaeuft = try c.decodeIfPresent(Bool.self, forKey: .dockerLaeuft)
         self.rechner = try c.decodeIfPresent(GeraetRechnerOut.self, forKey: .rechner)
         self.dienste = try c.decodeIfPresent([GeraetDienstOut].self, forKey: .dienste) ?? []
         self.einheiten = try c.decodeIfPresent([GeraetEinheitOut].self, forKey: .einheiten) ?? []
@@ -4089,6 +4196,45 @@ public struct GeraetPlatteOut: Codable, Sendable, Hashable {
         self.gesamtBytes = try c.decode(Int.self, forKey: .gesamtBytes)
         self.freiBytes = try c.decode(Int.self, forKey: .freiBytes)
         self.ampel = try c.decodeIfPresent(GeraetPlatteOutAmpelWahl.self, forKey: .ampel)
+    }
+}
+
+/// Wachstum je Tag über die letzten 30 Tage (eine Gerade durch die Füllstände), erst ab
+/// sieben Tagen Verlauf. Eine Schätzung „bei diesem Tempo“, kein Termin.
+public struct GeraetPrognoseOut: Codable, Sendable, Hashable {
+    public var tageVerlauf: Double?
+    public var platteBytesProTag: Int?
+    public var platteVollInTagen: Int?
+    public var datenbankBytesProTag: Int?
+    public var sicherungBytesProTag: Int?
+    public var ssdGeschriebenBytesProTag: Int?
+
+    public enum CodingKeys: String, CodingKey {
+        case tageVerlauf = "tage_verlauf"
+        case platteBytesProTag = "platte_bytes_pro_tag"
+        case platteVollInTagen = "platte_voll_in_tagen"
+        case datenbankBytesProTag = "datenbank_bytes_pro_tag"
+        case sicherungBytesProTag = "sicherung_bytes_pro_tag"
+        case ssdGeschriebenBytesProTag = "ssd_geschrieben_bytes_pro_tag"
+    }
+
+    public init(tageVerlauf: Double? = nil, platteBytesProTag: Int? = nil, platteVollInTagen: Int? = nil, datenbankBytesProTag: Int? = nil, sicherungBytesProTag: Int? = nil, ssdGeschriebenBytesProTag: Int? = nil) {
+        self.tageVerlauf = tageVerlauf
+        self.platteBytesProTag = platteBytesProTag
+        self.platteVollInTagen = platteVollInTagen
+        self.datenbankBytesProTag = datenbankBytesProTag
+        self.sicherungBytesProTag = sicherungBytesProTag
+        self.ssdGeschriebenBytesProTag = ssdGeschriebenBytesProTag
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.tageVerlauf = try c.decodeIfPresent(Double.self, forKey: .tageVerlauf)
+        self.platteBytesProTag = try c.decodeIfPresent(Int.self, forKey: .platteBytesProTag)
+        self.platteVollInTagen = try c.decodeIfPresent(Int.self, forKey: .platteVollInTagen)
+        self.datenbankBytesProTag = try c.decodeIfPresent(Int.self, forKey: .datenbankBytesProTag)
+        self.sicherungBytesProTag = try c.decodeIfPresent(Int.self, forKey: .sicherungBytesProTag)
+        self.ssdGeschriebenBytesProTag = try c.decodeIfPresent(Int.self, forKey: .ssdGeschriebenBytesProTag)
     }
 }
 
@@ -4141,6 +4287,15 @@ public struct GeraetRechnerOut: Codable, Sendable, Hashable {
     public var speicherAmpel: GeraetRechnerOutSpeicherAmpelWahl?
     public var platten: [GeraetPlatteOut]
     public var docker: String?
+    public var cpuProzent: Double?
+    public var taktMhz: Double?
+    public var eingangsspannungV: Double?
+    public var spannungAmpel: GeraetRechnerOutSpannungAmpelWahl?
+    public var swapGesamtMb: Int?
+    public var swapFreiMb: Int?
+    public var netz: GeraetNetzOut?
+    public var ssd: GeraetSsdOut?
+    public var dockerPlatz: GeraetDockerPlatzOut?
 
     public enum CodingKeys: String, CodingKey {
         case name
@@ -4161,9 +4316,18 @@ public struct GeraetRechnerOut: Codable, Sendable, Hashable {
         case speicherAmpel = "speicher_ampel"
         case platten
         case docker
+        case cpuProzent = "cpu_prozent"
+        case taktMhz = "takt_mhz"
+        case eingangsspannungV = "eingangsspannung_v"
+        case spannungAmpel = "spannung_ampel"
+        case swapGesamtMb = "swap_gesamt_mb"
+        case swapFreiMb = "swap_frei_mb"
+        case netz
+        case ssd
+        case dockerPlatz = "docker_platz"
     }
 
-    public init(name: String? = nil, modell: String? = nil, system: String? = nil, kernel: String? = nil, adresse: String? = nil, laufzeitS: Int? = nil, kerne: Int? = nil, last: [Double] = [], temperaturC: Double? = nil, temperaturAmpel: GeraetRechnerOutTemperaturAmpelWahl? = nil, drosselung: String? = nil, drosselungDe: [String] = [], drosselungAmpel: GeraetRechnerOutDrosselungAmpelWahl? = nil, speicherGesamtMb: Int? = nil, speicherFreiMb: Int? = nil, speicherAmpel: GeraetRechnerOutSpeicherAmpelWahl? = nil, platten: [GeraetPlatteOut] = [], docker: String? = nil) {
+    public init(name: String? = nil, modell: String? = nil, system: String? = nil, kernel: String? = nil, adresse: String? = nil, laufzeitS: Int? = nil, kerne: Int? = nil, last: [Double] = [], temperaturC: Double? = nil, temperaturAmpel: GeraetRechnerOutTemperaturAmpelWahl? = nil, drosselung: String? = nil, drosselungDe: [String] = [], drosselungAmpel: GeraetRechnerOutDrosselungAmpelWahl? = nil, speicherGesamtMb: Int? = nil, speicherFreiMb: Int? = nil, speicherAmpel: GeraetRechnerOutSpeicherAmpelWahl? = nil, platten: [GeraetPlatteOut] = [], docker: String? = nil, cpuProzent: Double? = nil, taktMhz: Double? = nil, eingangsspannungV: Double? = nil, spannungAmpel: GeraetRechnerOutSpannungAmpelWahl? = nil, swapGesamtMb: Int? = nil, swapFreiMb: Int? = nil, netz: GeraetNetzOut? = nil, ssd: GeraetSsdOut? = nil, dockerPlatz: GeraetDockerPlatzOut? = nil) {
         self.name = name
         self.modell = modell
         self.system = system
@@ -4182,6 +4346,15 @@ public struct GeraetRechnerOut: Codable, Sendable, Hashable {
         self.speicherAmpel = speicherAmpel
         self.platten = platten
         self.docker = docker
+        self.cpuProzent = cpuProzent
+        self.taktMhz = taktMhz
+        self.eingangsspannungV = eingangsspannungV
+        self.spannungAmpel = spannungAmpel
+        self.swapGesamtMb = swapGesamtMb
+        self.swapFreiMb = swapFreiMb
+        self.netz = netz
+        self.ssd = ssd
+        self.dockerPlatz = dockerPlatz
     }
 
     public init(from decoder: any Decoder) throws {
@@ -4204,6 +4377,15 @@ public struct GeraetRechnerOut: Codable, Sendable, Hashable {
         self.speicherAmpel = try c.decodeIfPresent(GeraetRechnerOutSpeicherAmpelWahl.self, forKey: .speicherAmpel)
         self.platten = try c.decodeIfPresent([GeraetPlatteOut].self, forKey: .platten) ?? []
         self.docker = try c.decodeIfPresent(String.self, forKey: .docker)
+        self.cpuProzent = try c.decodeIfPresent(Double.self, forKey: .cpuProzent)
+        self.taktMhz = try c.decodeIfPresent(Double.self, forKey: .taktMhz)
+        self.eingangsspannungV = try c.decodeIfPresent(Double.self, forKey: .eingangsspannungV)
+        self.spannungAmpel = try c.decodeIfPresent(GeraetRechnerOutSpannungAmpelWahl.self, forKey: .spannungAmpel)
+        self.swapGesamtMb = try c.decodeIfPresent(Int.self, forKey: .swapGesamtMb)
+        self.swapFreiMb = try c.decodeIfPresent(Int.self, forKey: .swapFreiMb)
+        self.netz = try c.decodeIfPresent(GeraetNetzOut.self, forKey: .netz)
+        self.ssd = try c.decodeIfPresent(GeraetSsdOut.self, forKey: .ssd)
+        self.dockerPlatz = try c.decodeIfPresent(GeraetDockerPlatzOut.self, forKey: .dockerPlatz)
     }
 }
 
@@ -4212,6 +4394,7 @@ public struct GeraetSicherungOut: Codable, Sendable, Hashable {
     public var letzteAm: String?
     public var letzteBytes: Int?
     public var anzahl: Int?
+    public var gesamtBytes: Int?
     public var ausserHaus: String?
     public var ampel: GeraetSicherungOutAmpelWahl?
     public var textDe: String?
@@ -4221,16 +4404,18 @@ public struct GeraetSicherungOut: Codable, Sendable, Hashable {
         case letzteAm = "letzte_am"
         case letzteBytes = "letzte_bytes"
         case anzahl
+        case gesamtBytes = "gesamt_bytes"
         case ausserHaus = "ausser_haus"
         case ampel
         case textDe = "text_de"
     }
 
-    public init(letzte: String? = nil, letzteAm: String? = nil, letzteBytes: Int? = nil, anzahl: Int? = nil, ausserHaus: String? = nil, ampel: GeraetSicherungOutAmpelWahl? = nil, textDe: String? = nil) {
+    public init(letzte: String? = nil, letzteAm: String? = nil, letzteBytes: Int? = nil, anzahl: Int? = nil, gesamtBytes: Int? = nil, ausserHaus: String? = nil, ampel: GeraetSicherungOutAmpelWahl? = nil, textDe: String? = nil) {
         self.letzte = letzte
         self.letzteAm = letzteAm
         self.letzteBytes = letzteBytes
         self.anzahl = anzahl
+        self.gesamtBytes = gesamtBytes
         self.ausserHaus = ausserHaus
         self.ampel = ampel
         self.textDe = textDe
@@ -4242,9 +4427,253 @@ public struct GeraetSicherungOut: Codable, Sendable, Hashable {
         self.letzteAm = try c.decodeIfPresent(String.self, forKey: .letzteAm)
         self.letzteBytes = try c.decodeIfPresent(Int.self, forKey: .letzteBytes)
         self.anzahl = try c.decodeIfPresent(Int.self, forKey: .anzahl)
+        self.gesamtBytes = try c.decodeIfPresent(Int.self, forKey: .gesamtBytes)
         self.ausserHaus = try c.decodeIfPresent(String.self, forKey: .ausserHaus)
         self.ampel = try c.decodeIfPresent(GeraetSicherungOutAmpelWahl.self, forKey: .ampel)
         self.textDe = try c.decodeIfPresent(String.self, forKey: .textDe)
+    }
+}
+
+/// SMART der Platte, auf der das System liegt. NVMe meldet alles; eine Platte am USB-Adapter
+/// oft nur Temperatur und Betriebsstunden.
+public struct GeraetSsdOut: Codable, Sendable, Hashable {
+    public var geraet: String
+    public var modell: String?
+    public var gesund: Bool?
+    public var temperaturC: Double?
+    public var betriebsstunden: Int?
+    public var abnutzungProzent: Double?
+    public var reserveProzent: Double?
+    public var geschriebenBytes: Int?
+    public var gelesenBytes: Int?
+    public var fehler: Int?
+    public var unsichereAbschaltungen: Int?
+    public var ampel: GeraetSsdOutAmpelWahl?
+    public var textDe: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case geraet
+        case modell
+        case gesund
+        case temperaturC = "temperatur_c"
+        case betriebsstunden
+        case abnutzungProzent = "abnutzung_prozent"
+        case reserveProzent = "reserve_prozent"
+        case geschriebenBytes = "geschrieben_bytes"
+        case gelesenBytes = "gelesen_bytes"
+        case fehler
+        case unsichereAbschaltungen = "unsichere_abschaltungen"
+        case ampel
+        case textDe = "text_de"
+    }
+
+    public init(geraet: String, modell: String? = nil, gesund: Bool? = nil, temperaturC: Double? = nil, betriebsstunden: Int? = nil, abnutzungProzent: Double? = nil, reserveProzent: Double? = nil, geschriebenBytes: Int? = nil, gelesenBytes: Int? = nil, fehler: Int? = nil, unsichereAbschaltungen: Int? = nil, ampel: GeraetSsdOutAmpelWahl? = nil, textDe: String? = nil) {
+        self.geraet = geraet
+        self.modell = modell
+        self.gesund = gesund
+        self.temperaturC = temperaturC
+        self.betriebsstunden = betriebsstunden
+        self.abnutzungProzent = abnutzungProzent
+        self.reserveProzent = reserveProzent
+        self.geschriebenBytes = geschriebenBytes
+        self.gelesenBytes = gelesenBytes
+        self.fehler = fehler
+        self.unsichereAbschaltungen = unsichereAbschaltungen
+        self.ampel = ampel
+        self.textDe = textDe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.geraet = try c.decode(String.self, forKey: .geraet)
+        self.modell = try c.decodeIfPresent(String.self, forKey: .modell)
+        self.gesund = try c.decodeIfPresent(Bool.self, forKey: .gesund)
+        self.temperaturC = try c.decodeIfPresent(Double.self, forKey: .temperaturC)
+        self.betriebsstunden = try c.decodeIfPresent(Int.self, forKey: .betriebsstunden)
+        self.abnutzungProzent = try c.decodeIfPresent(Double.self, forKey: .abnutzungProzent)
+        self.reserveProzent = try c.decodeIfPresent(Double.self, forKey: .reserveProzent)
+        self.geschriebenBytes = try c.decodeIfPresent(Int.self, forKey: .geschriebenBytes)
+        self.gelesenBytes = try c.decodeIfPresent(Int.self, forKey: .gelesenBytes)
+        self.fehler = try c.decodeIfPresent(Int.self, forKey: .fehler)
+        self.unsichereAbschaltungen = try c.decodeIfPresent(Int.self, forKey: .unsichereAbschaltungen)
+        self.ampel = try c.decodeIfPresent(GeraetSsdOutAmpelWahl.self, forKey: .ampel)
+        self.textDe = try c.decodeIfPresent(String.self, forKey: .textDe)
+    }
+}
+
+public struct GeraetVerlaufDienstOut: Codable, Sendable, Hashable {
+    public var cpuProzent: Double?
+    public var speicherMb: Double?
+
+    public enum CodingKeys: String, CodingKey {
+        case cpuProzent = "cpu_prozent"
+        case speicherMb = "speicher_mb"
+    }
+
+    public init(cpuProzent: Double? = nil, speicherMb: Double? = nil) {
+        self.cpuProzent = cpuProzent
+        self.speicherMb = speicherMb
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.cpuProzent = try c.decodeIfPresent(Double.self, forKey: .cpuProzent)
+        self.speicherMb = try c.decodeIfPresent(Double.self, forKey: .speicherMb)
+    }
+}
+
+public struct GeraetVerlaufOut: Codable, Sendable, Hashable {
+    public var unterstuetzt: Bool
+    public var spanne: GeraetVerlaufOutSpanneWahl?
+    public var von: String?
+    public var bis: String?
+    public var schrittMin: Int?
+    public var punkte: [GeraetVerlaufPunktOut]
+    public var prognose: GeraetPrognoseOut?
+
+    public enum CodingKeys: String, CodingKey {
+        case unterstuetzt
+        case spanne
+        case von
+        case bis
+        case schrittMin = "schritt_min"
+        case punkte
+        case prognose
+    }
+
+    public init(unterstuetzt: Bool, spanne: GeraetVerlaufOutSpanneWahl? = nil, von: String? = nil, bis: String? = nil, schrittMin: Int? = nil, punkte: [GeraetVerlaufPunktOut] = [], prognose: GeraetPrognoseOut? = nil) {
+        self.unterstuetzt = unterstuetzt
+        self.spanne = spanne
+        self.von = von
+        self.bis = bis
+        self.schrittMin = schrittMin
+        self.punkte = punkte
+        self.prognose = prognose
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.unterstuetzt = try c.decode(Bool.self, forKey: .unterstuetzt)
+        self.spanne = try c.decodeIfPresent(GeraetVerlaufOutSpanneWahl.self, forKey: .spanne)
+        self.von = try c.decodeIfPresent(String.self, forKey: .von)
+        self.bis = try c.decodeIfPresent(String.self, forKey: .bis)
+        self.schrittMin = try c.decodeIfPresent(Int.self, forKey: .schrittMin)
+        self.punkte = try c.decodeIfPresent([GeraetVerlaufPunktOut].self, forKey: .punkte) ?? []
+        self.prognose = try c.decodeIfPresent(GeraetPrognoseOut.self, forKey: .prognose)
+    }
+}
+
+/// Ein Abschnitt im Verlauf: Mittel, Spitzen und Stände am Ende des Abschnitts.
+public struct GeraetVerlaufPunktOut: Codable, Sendable, Hashable {
+    public var t: String
+    public var cpuProzent: Double?
+    public var cpuProzentMax: Double?
+    public var last1: Double?
+    public var temperaturC: Double?
+    public var temperaturCMax: Double?
+    public var taktMhz: Double?
+    public var eingangsspannungV: Double?
+    public var eingangsspannungVMin: Double?
+    public var speicherBelegtMb: Double?
+    public var speicherGesamtMb: Double?
+    public var swapBelegtMb: Double?
+    public var platteBelegtBytes: Int?
+    public var platteGesamtBytes: Int?
+    public var ssdTemperaturC: Double?
+    public var ssdTemperaturCMax: Double?
+    public var ssdAbnutzungProzent: Double?
+    public var ssdGeschriebenBytes: Int?
+    public var netzEmpfangenBytesS: Double?
+    public var netzGesendetBytesS: Double?
+    public var datenbankBytes: Int?
+    public var sicherungBytes: Int?
+    public var dockerBytes: Int?
+    public var drosselungJetzt: Bool?
+    public var dienste: [String: GeraetVerlaufDienstOut]
+
+    public enum CodingKeys: String, CodingKey {
+        case t
+        case cpuProzent = "cpu_prozent"
+        case cpuProzentMax = "cpu_prozent_max"
+        case last1
+        case temperaturC = "temperatur_c"
+        case temperaturCMax = "temperatur_c_max"
+        case taktMhz = "takt_mhz"
+        case eingangsspannungV = "eingangsspannung_v"
+        case eingangsspannungVMin = "eingangsspannung_v_min"
+        case speicherBelegtMb = "speicher_belegt_mb"
+        case speicherGesamtMb = "speicher_gesamt_mb"
+        case swapBelegtMb = "swap_belegt_mb"
+        case platteBelegtBytes = "platte_belegt_bytes"
+        case platteGesamtBytes = "platte_gesamt_bytes"
+        case ssdTemperaturC = "ssd_temperatur_c"
+        case ssdTemperaturCMax = "ssd_temperatur_c_max"
+        case ssdAbnutzungProzent = "ssd_abnutzung_prozent"
+        case ssdGeschriebenBytes = "ssd_geschrieben_bytes"
+        case netzEmpfangenBytesS = "netz_empfangen_bytes_s"
+        case netzGesendetBytesS = "netz_gesendet_bytes_s"
+        case datenbankBytes = "datenbank_bytes"
+        case sicherungBytes = "sicherung_bytes"
+        case dockerBytes = "docker_bytes"
+        case drosselungJetzt = "drosselung_jetzt"
+        case dienste
+    }
+
+    public init(t: String, cpuProzent: Double? = nil, cpuProzentMax: Double? = nil, last1: Double? = nil, temperaturC: Double? = nil, temperaturCMax: Double? = nil, taktMhz: Double? = nil, eingangsspannungV: Double? = nil, eingangsspannungVMin: Double? = nil, speicherBelegtMb: Double? = nil, speicherGesamtMb: Double? = nil, swapBelegtMb: Double? = nil, platteBelegtBytes: Int? = nil, platteGesamtBytes: Int? = nil, ssdTemperaturC: Double? = nil, ssdTemperaturCMax: Double? = nil, ssdAbnutzungProzent: Double? = nil, ssdGeschriebenBytes: Int? = nil, netzEmpfangenBytesS: Double? = nil, netzGesendetBytesS: Double? = nil, datenbankBytes: Int? = nil, sicherungBytes: Int? = nil, dockerBytes: Int? = nil, drosselungJetzt: Bool? = nil, dienste: [String: GeraetVerlaufDienstOut] = [:]) {
+        self.t = t
+        self.cpuProzent = cpuProzent
+        self.cpuProzentMax = cpuProzentMax
+        self.last1 = last1
+        self.temperaturC = temperaturC
+        self.temperaturCMax = temperaturCMax
+        self.taktMhz = taktMhz
+        self.eingangsspannungV = eingangsspannungV
+        self.eingangsspannungVMin = eingangsspannungVMin
+        self.speicherBelegtMb = speicherBelegtMb
+        self.speicherGesamtMb = speicherGesamtMb
+        self.swapBelegtMb = swapBelegtMb
+        self.platteBelegtBytes = platteBelegtBytes
+        self.platteGesamtBytes = platteGesamtBytes
+        self.ssdTemperaturC = ssdTemperaturC
+        self.ssdTemperaturCMax = ssdTemperaturCMax
+        self.ssdAbnutzungProzent = ssdAbnutzungProzent
+        self.ssdGeschriebenBytes = ssdGeschriebenBytes
+        self.netzEmpfangenBytesS = netzEmpfangenBytesS
+        self.netzGesendetBytesS = netzGesendetBytesS
+        self.datenbankBytes = datenbankBytes
+        self.sicherungBytes = sicherungBytes
+        self.dockerBytes = dockerBytes
+        self.drosselungJetzt = drosselungJetzt
+        self.dienste = dienste
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.t = try c.decode(String.self, forKey: .t)
+        self.cpuProzent = try c.decodeIfPresent(Double.self, forKey: .cpuProzent)
+        self.cpuProzentMax = try c.decodeIfPresent(Double.self, forKey: .cpuProzentMax)
+        self.last1 = try c.decodeIfPresent(Double.self, forKey: .last1)
+        self.temperaturC = try c.decodeIfPresent(Double.self, forKey: .temperaturC)
+        self.temperaturCMax = try c.decodeIfPresent(Double.self, forKey: .temperaturCMax)
+        self.taktMhz = try c.decodeIfPresent(Double.self, forKey: .taktMhz)
+        self.eingangsspannungV = try c.decodeIfPresent(Double.self, forKey: .eingangsspannungV)
+        self.eingangsspannungVMin = try c.decodeIfPresent(Double.self, forKey: .eingangsspannungVMin)
+        self.speicherBelegtMb = try c.decodeIfPresent(Double.self, forKey: .speicherBelegtMb)
+        self.speicherGesamtMb = try c.decodeIfPresent(Double.self, forKey: .speicherGesamtMb)
+        self.swapBelegtMb = try c.decodeIfPresent(Double.self, forKey: .swapBelegtMb)
+        self.platteBelegtBytes = try c.decodeIfPresent(Int.self, forKey: .platteBelegtBytes)
+        self.platteGesamtBytes = try c.decodeIfPresent(Int.self, forKey: .platteGesamtBytes)
+        self.ssdTemperaturC = try c.decodeIfPresent(Double.self, forKey: .ssdTemperaturC)
+        self.ssdTemperaturCMax = try c.decodeIfPresent(Double.self, forKey: .ssdTemperaturCMax)
+        self.ssdAbnutzungProzent = try c.decodeIfPresent(Double.self, forKey: .ssdAbnutzungProzent)
+        self.ssdGeschriebenBytes = try c.decodeIfPresent(Int.self, forKey: .ssdGeschriebenBytes)
+        self.netzEmpfangenBytesS = try c.decodeIfPresent(Double.self, forKey: .netzEmpfangenBytesS)
+        self.netzGesendetBytesS = try c.decodeIfPresent(Double.self, forKey: .netzGesendetBytesS)
+        self.datenbankBytes = try c.decodeIfPresent(Int.self, forKey: .datenbankBytes)
+        self.sicherungBytes = try c.decodeIfPresent(Int.self, forKey: .sicherungBytes)
+        self.dockerBytes = try c.decodeIfPresent(Int.self, forKey: .dockerBytes)
+        self.drosselungJetzt = try c.decodeIfPresent(Bool.self, forKey: .drosselungJetzt)
+        self.dienste = try c.decodeIfPresent([String: GeraetVerlaufDienstOut].self, forKey: .dienste) ?? [:]
     }
 }
 

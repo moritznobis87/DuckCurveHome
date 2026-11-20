@@ -2054,6 +2054,41 @@ class GeraetPlatteOut(BaseModel):
     ampel: Ampel = "gut"
 
 
+class GeraetNetzOut(BaseModel):
+    schnittstelle: str
+    #: Zähler seit dem Start des Geräts.
+    empfangen_bytes: int
+    gesendet_bytes: int
+
+
+class GeraetSsdOut(BaseModel):
+    """SMART der Platte, auf der das System liegt. NVMe meldet alles; eine Platte am USB-Adapter
+    oft nur Temperatur und Betriebsstunden."""
+
+    geraet: str
+    modell: str | None = None
+    gesund: bool | None = None
+    temperatur_c: float | None = None
+    betriebsstunden: int | None = None
+    #: Verbrauchte Lebensdauer laut Hersteller, 0 bis 100 (darüber: über die zugesagte hinaus).
+    abnutzung_prozent: float | None = None
+    reserve_prozent: float | None = None
+    geschrieben_bytes: int | None = None
+    gelesen_bytes: int | None = None
+    fehler: int | None = None
+    unsichere_abschaltungen: int | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetDockerPlatzOut(BaseModel):
+    images_bytes: int | None = None
+    container_bytes: int | None = None
+    #: Darin liegt auch die Datenbank.
+    volumes_bytes: int | None = None
+    cache_bytes: int | None = None
+
+
 class GeraetRechnerOut(BaseModel):
     """Der Rechner selbst: Raspberry Pi oder was sonst darunter läuft."""
 
@@ -2077,6 +2112,17 @@ class GeraetRechnerOut(BaseModel):
     speicher_ampel: Ampel = "aus"
     platten: list[GeraetPlatteOut] = Field(default_factory=list)
     docker: str | None = None
+    #: Auslastung aller Kerne über die rund zwei Sekunden, in denen der Bericht entsteht.
+    cpu_prozent: float | None = None
+    takt_mhz: float | None = None
+    #: Spannung am Eingang (Raspberry Pi 5, `vcgencmd pmic_read_adc EXT5V_V`).
+    eingangsspannung_v: float | None = None
+    spannung_ampel: Ampel = "aus"
+    swap_gesamt_mb: int = 0
+    swap_frei_mb: int = 0
+    netz: GeraetNetzOut | None = None
+    ssd: GeraetSsdOut | None = None
+    docker_platz: GeraetDockerPlatzOut | None = None
 
 
 class GeraetSicherungOut(BaseModel):
@@ -2084,6 +2130,8 @@ class GeraetSicherungOut(BaseModel):
     letzte_am: datetime | None = None
     letzte_bytes: int | None = None
     anzahl: int = 0
+    #: Alle Sicherungen auf dem Gerät zusammen.
+    gesamt_bytes: int | None = None
     #: Das rclone-Ziel für die Kopie außer Haus; `None`: keine.
     ausser_haus: str | None = None
     ampel: Ampel = "aus"
@@ -2114,6 +2162,8 @@ class ApiSelbstOut(BaseModel):
     datenbank_ok: bool | None = None
     datenbank_ms: float | None = None
     datenbank_de: str = ""
+    #: Größe der Datenbank auf der Platte; `None` ohne PostgreSQL.
+    datenbank_bytes: int | None = None
     bridge_online: bool = False
     verbindung_de: str = ""
     quellen: list[SourceStatusOut] = Field(default_factory=list)
@@ -2136,6 +2186,8 @@ class GeraetOut(BaseModel):
     bericht_alt: bool = False
     kanal: str | None = None
     fernzugang: bool = False
+    #: Falsch, wenn Docker auf dem Gerät nicht antwortet; dann laufen keine Dienste.
+    docker_laeuft: bool | None = None
     rechner: GeraetRechnerOut | None = None
     dienste: list[GeraetDienstOut] = Field(default_factory=list)
     einheiten: list[GeraetEinheitOut] = Field(default_factory=list)
@@ -2160,3 +2212,62 @@ class GeraetProtokollOut(BaseModel):
     vorhanden: bool
     erstellt_am: datetime | None = None
     zeilen: list[str] = Field(default_factory=list)
+
+
+class GeraetVerlaufDienstOut(BaseModel):
+    cpu_prozent: float | None = None
+    speicher_mb: float | None = None
+
+
+class GeraetVerlaufPunktOut(BaseModel):
+    """Ein Abschnitt im Verlauf: Mittel, Spitzen und Stände am Ende des Abschnitts."""
+
+    t: datetime
+    cpu_prozent: float | None = None
+    cpu_prozent_max: float | None = None
+    last1: float | None = None
+    temperatur_c: float | None = None
+    temperatur_c_max: float | None = None
+    takt_mhz: float | None = None
+    eingangsspannung_v: float | None = None
+    eingangsspannung_v_min: float | None = None
+    speicher_belegt_mb: float | None = None
+    speicher_gesamt_mb: float | None = None
+    swap_belegt_mb: float | None = None
+    platte_belegt_bytes: int | None = None
+    platte_gesamt_bytes: int | None = None
+    ssd_temperatur_c: float | None = None
+    ssd_temperatur_c_max: float | None = None
+    ssd_abnutzung_prozent: float | None = None
+    #: In diesem Abschnitt auf die SSD geschrieben.
+    ssd_geschrieben_bytes: int = 0
+    netz_empfangen_bytes_s: float = 0.0
+    netz_gesendet_bytes_s: float = 0.0
+    datenbank_bytes: int | None = None
+    sicherung_bytes: int | None = None
+    docker_bytes: int | None = None
+    #: Wurde in diesem Abschnitt gedrosselt oder war die Spannung zu niedrig?
+    drosselung_jetzt: bool = False
+    dienste: dict[str, GeraetVerlaufDienstOut] = Field(default_factory=dict)
+
+
+class GeraetPrognoseOut(BaseModel):
+    """Wachstum je Tag über die letzten 30 Tage (eine Gerade durch die Füllstände), erst ab
+    sieben Tagen Verlauf. Eine Schätzung „bei diesem Tempo“, kein Termin."""
+
+    tage_verlauf: float = 0.0
+    platte_bytes_pro_tag: int | None = None
+    platte_voll_in_tagen: int | None = None
+    datenbank_bytes_pro_tag: int | None = None
+    sicherung_bytes_pro_tag: int | None = None
+    ssd_geschrieben_bytes_pro_tag: int | None = None
+
+
+class GeraetVerlaufOut(BaseModel):
+    unterstuetzt: bool
+    spanne: Literal["tag", "woche", "monat", "jahr"] = "tag"
+    von: datetime | None = None
+    bis: datetime | None = None
+    schritt_min: int = 5
+    punkte: list[GeraetVerlaufPunktOut] = Field(default_factory=list)
+    prognose: GeraetPrognoseOut = Field(default_factory=GeraetPrognoseOut)

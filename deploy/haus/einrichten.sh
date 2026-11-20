@@ -71,7 +71,7 @@ pakete() {
 	schritt "Pakete"
 	export DEBIAN_FRONTEND=noninteractive
 	apt-get update -q
-	apt-get install -y -q ca-certificates curl git jq openssl avahi-daemon unattended-upgrades rclone
+	apt-get install -y -q ca-certificates curl git jq openssl avahi-daemon unattended-upgrades rclone smartmontools
 
 	if ! command -v docker >/dev/null || ! docker compose version >/dev/null 2>&1; then
 		schritt "Docker (aus der Paketquelle von Docker)"
