@@ -813,15 +813,12 @@ struct DatenSeite: View {
                     Abdeckungskarte(reihen: Abdeckungsraster.baue(a), jetzt: haus.jetzt)
                 }
             }
-            if let b = bestand {
-                datenbestand(b)
-            }
             if let d = diagnose, !d.isEmpty {
                 // **Reiner Text, und das soll er bleiben.** Die Tagesdiagnose ist eine Tabelle
                 // zum Lesen, keine Datenstruktur - der Dienst schickt sie darum ohne
                 // JSON-Umschlag. Sie in Zeilen zu zerlegen und neu zu setzen hiesse, sie zu
                 // interpretieren.
-                Karte(kicker: "Tagesdiagnose") {
+                Karte(kicker: "Stundenbilanz und auffällige Strecken") {
                     ScrollView(.horizontal, showsIndicators: true) {
                         Text(d)
                             .font(Schrift.zahlKlein)
@@ -829,6 +826,13 @@ struct DatenSeite: View {
                             .textSelection(.enabled)
                     }
                 }
+            }
+            // **Der Bestand steht unten, nicht oben.** In der Vorlage gibt es ihn auf
+            // dieser Seite gar nicht; er ist kein Fehler, nahm aber den Platz vor der
+            // Hauptsache ein (`DataCheck.tsx:88-90`: der Augenblick vor der Karte, die Karte
+            // vor der Bilanz).
+            if let b = bestand {
+                datenbestand(b)
             }
             Methode([
                 abdeckung?.noteDe,
