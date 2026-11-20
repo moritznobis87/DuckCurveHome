@@ -77,6 +77,23 @@ public enum Formate {
         return zahl(wert, stellen: 1) + schmalesLeerzeichen + "kWh"
     }
 
+    /// Energie in kWh ohne Einheit, mit einer Nachkommastelle - ab hundert ohne.
+    ///
+    /// **Warum die Schwelle und nicht überall eine Stelle.** Die PV-Abrechnung schreibt diese
+    /// Regel sechsmal aus (`PvAccounting.tsx:30`, `:33`, `:92`, `:95`, `:155`, `:157`), und sie
+    /// hat zwei Gründe: das Zehntel einer Jahressumme ist Rauschen, und in einer Tabelle mit
+    /// acht Spalten nimmt es den Platz, den die Spalte daneben braucht. Dieselbe Schwelle
+    /// steht in ``Wallbox/geladenKurz(_:)`` (`EvReport.tsx:95`) - sie gehört hierher, nicht
+    /// in jede Seite, die sie braucht.
+    ///
+    /// Verglichen wird der Wert selbst und nicht sein Betrag, wie in der Vorlage: eine
+    /// eingespeiste Menge ist nie negativ, und eine Sonderregel für einen Fall, den es nicht
+    /// gibt, wäre eine Abweichung ohne Beleg.
+    public static func kwhNachGroesse(_ wert: Double?) -> String {
+        guard let wert, wert.isFinite else { return leer }
+        return zahl(wert, stellen: wert >= 100 ? 0 : 1)
+    }
+
     /// Ein Anteil (0 bis 1) als Prozent, ganzzahlig.
     public static func prozent(_ anteil: Double?) -> String {
         guard let anteil, anteil.isFinite else { return leer }
