@@ -28,10 +28,9 @@ und eine Seite mit eigenen, falschen Summen, die es in der Vorlage längst nicht
 | | |
 |---|---|
 | Seiten gesamt | **27** (die 28. war `/waerme/bilanz` und ist jetzt eine Weiterleitung) |
-| gemessen | **16** Seiten, zusammen rund 650 000 Zeichen Messung |
-| danach umgebaut | **13** Seiten, je ein Commit mit Gegenprüfung |
-| gemessen, Umbau steht an | `/waerme/waermepumpe`, `/waerme/waermepumpe/kennlinie` |
-| Messung läuft | `/waerme/nachbetrachtung`, `/system/mitteilungen`, `/system/haustuer`, `/system/zugang` |
+| gemessen | **27 von 27** (20.11.), zusammen rund 800 000 Zeichen Messung in `messungen/` |
+| danach umgebaut | **19** Seiten, je ein Commit mit Gegenprüfung und Nachbesserung |
+| vorher schon nachgearbeitet | 8 Seiten (`/`, `/waerme`, `/waerme/fahrplan`, `/waerme/wirkung`, `/waerme/raeume`, `/waerme/annahmen`, `/system`, `/system/daten`) - nach der Handliste, nicht nach einer Messung |
 | nach alter Handliste | 167 Punkte, davon 45 erledigt – als Zählung überholt, als Fundliste weiter gültig |
 
 ### Die gemessenen und umgebauten Seiten (20.11.)
@@ -55,6 +54,12 @@ entfernt hatte, die vorher da war.
 | `/waerme/waermepumpe/betrieb` | Die Heizkurve zeichnete nur die Gerade; `b.stunden` wurde nirgends gelesen |
 | `/waerme/wiedergabe` | Zahlen zu einer Stunde, aber kein Bild, wo diese Stunde im Tag liegt |
 | `/waerme/anlage` | Das Anlagenschema war eine Liste, keine Bühne |
+| `/waerme/waermepumpe` | Die Tabelle, die die Vorlage hier zeigt, stand verkürzt auf der Reglerseite; fast jede Zahl stand zweimal |
+| `/waerme/waermepumpe/kennlinie` | Das Kennfeld färbte mit der falschen Rampe, und `rounded()` legte Minusgrade eine Spalte zu weit links ab |
+| `/waerme/nachbetrachtung` | Beide Diagramme fehlten ganz; ein Kachelfeld zeigte die Nennleistung in kW als Strom in kWh |
+| `/system/mitteilungen` | „Dieses Gerät bekommt keine Mitteilungen mehr" stand auch da, wenn das Abmelden gescheitert war |
+| `/system/haustuer` | Zwei Kennzahlen zählten `granted` statt `outcome` - abgelehnte Versuche erschienen als Öffnungen |
+| `/system/zugang` | Vier von sechs Abschnitten fehlten; der Platzbedarf stand auf der Datenseite, wo die Vorlage ihn nicht hat |
 | `/waerme/bilanz` | **Die Seite gibt es in der Vorlage nicht mehr.** Sie zeigte eine zweite „Wärme gesamt“ (24,5 kWh gegen 20,4 kWh auf `/waerme`), weil sie nur `heatPumpKwh` summierte, und einen gestapelten Balken, den die Vorlage ausdrücklich verbietet. Gelöscht; die Adresse leitet weiter, mit ihr alle elf Paare aus `next.config.ts` |
 
 ## Erledigt
@@ -595,6 +600,8 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
 
 ### `/system/haustuer`  ·  1 Punkte  ·  *gegengeprüft 17.11.*
 
+> **Überholt.** Diese Seite wurde am 20.11. gemessen und umgebaut; die Messung (`messungen/system-haustuer.md`) ist genauer als die Punkte darunter. Was hier noch offen aussieht, ist es meistens nicht – was wirklich offen blieb, steht am Fuß der Messung.
+
 - **mittel** — Tuerprotokoll ohne Tagesgruppe und ohne Datum
   - Befund: Web gruppiert wirklich je Kalendertag: groupByDay in apps/web/src/components/settings/DoorLog.tsx:48-57, dayLabel (Heute/Gestern/sonst Wochentag + Tag + Monat) in :24-32, und :121-134 zeichnet je Gruppe eine eigene Kachel mit dayLabel als Ueberschrift. Die iOS-Seite HaustuerSeite (apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:632-707) baut ab :657-668 eine flache VStack-Liste direkt ueber p.entries, ohne jede Gruppierung, und eintrag(_:) gibt als einzige Zeitangabe Formate.hhmm(iso: e.at) aus (:691), also nur hh:mm (Formate.swift:131-134). Ich habe im ganzen Bereich :631-708 nach Tag, Datum, Heute, Gestern, wochentag, gruppiert und Dictionary(grouping gesucht - kein Treffer; die vorhandenen Helfer Tag.nameRelativ (Tag.swift:102-108) und Formate.langesDatum (Formate.swift:167-171) werden hier nicht benutzt. Die Spanne stimmt ebenfalls: Tagewahl bietet 7, 30, 90 (:641), waehrend das Web nur 7, 14, 30 kennt (DoorLog.tsx:22), der Zeitraum ohne Datum ist in der App also noch laenger. Nur die Zeilenangaben des Punktes sind leicht verschoben (nicht :636-658 und :618, sondern :632-707 mit Liste :657-668 und eintrag :677-696).
   - Vorlage: `apps/web/src/components/settings/DoorLog.tsx:24-32, :48-57, :121-134`
@@ -602,6 +609,8 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
   - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
 
 ### `/system/mitteilungen`  ·  3 Punkte  ·  *gegengeprüft 17.11.*
+
+> **Überholt.** Diese Seite wurde am 20.11. gemessen und umgebaut; die Messung (`messungen/system-mitteilungen.md`) ist genauer als die Punkte darunter. Was hier noch offen aussieht, ist es meistens nicht – was wirklich offen blieb, steht am Fuß der Messung.
 
 - **mittel** — details_de je Gerät nach Probe und Briefversand fehlt
   - Befund: Web setzt und zeigt die Liste zweimal: apps/web/src/components/settings/Mitteilungen.tsx:175 (setDetails(antwort.details_de ?? [])) und :246-250 (ul mit details.map), sowie apps/web/src/components/settings/Morgenbrief.tsx:56 und :106-110. In der App nehmen probe() (apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift:218-229) und sendeBrief() (:239-247) nur a.messageDe in rueckmeldung; das Feld existiert im Modell (apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:6236 detailsDe in PushResultOut, Schlüssel details_de :6242), wird aber nirgends gelesen: grep nach detailsDe und details_de über apps/ios/ trifft außer ABGLEICH.md nur Schema.swift:6236/6242/6245/6249/6257 und Binärdateien in .build. Hinweis: die Zeilenangabe 211-241 in ABGLEICH.md ist um ~7 Zeilen verschoben, die beiden Funktionen stehen bei :218-247.
@@ -620,6 +629,8 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
   - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/MitteilungenSeite.swift`
 
 ### `/system/zugang`  ·  1 Punkte, davon 1 spürbar  ·  *gegengeprüft 17.11.*
+
+> **Überholt.** Diese Seite wurde am 20.11. gemessen und umgebaut; die Messung (`messungen/system-zugang.md`) ist genauer als die Punkte darunter. Was hier noch offen aussieht, ist es meistens nicht – was wirklich offen blieb, steht am Fuß der Messung.
 
 - **spürbar** — Kein Datenexport (Minutenwerte/Stundenbilanz) in der App
   - Befund: Die Webseite hat den Abschnitt "Sicherung" (page.tsx:127) und bietet je Jahr (laufendes und voriges) zwei Download-Links auf /api/dch/export/minutes (page.tsx:138-139) und /api/dch/export/hours (page.tsx:141-142), mit dem Hinweis, dass die Stundenbilanz die Grundlagen der PV-Abrechnung traegt (page.tsx:146-151). In der App rendert Seitenwahl.swift:91-92 fuer /system/zugang die ZugangSeite (Einrichten.swift:254-356); sie hat genau die Karten "Dieses Gerät" (261), "Verbindung" (281), "Angemeldete Geräte für Mitteilungen" (297) und "Ändern" (318) plus Methode-Block - keine Sicherungskarte. Gesucht habe ich im ganzen iOS-Baum (DuckCurveHome und DuckCurveKit/Sources) nach ShareLink, UIActivityViewController, fileExporter, Transferable (null Treffer), nach openURL und Link( (null Treffer), nach export/minutes, export/hours und /export (null Treffer), sowie nach Sicherung, Minutenwerte, Stundenbilanz, herunterlad, download, backup, csv, gzip, archiv, exportier, FileManager, UTType - die Treffer sind ausschliesslich Kommentare, Modellfelder (Schema.swift exportKwh/exportRevenueEur, also Einspeise-Kennzahlen, nicht Dateiexport), der Reitername "Zugang und Sicherung" (Bereiche.swift:148) und unverwandte Dinge (Entscheidungsarchiv MitteilungenSeite.swift:557). Api.swift hat 63 oeffentliche Funktionen, keine davon beruehrt einen Export-Endpunkt (docs/openapi.json kennt /export gar nicht, der Web-Weg laeuft als CSV-Strom ueber den Proxy apps/web/src/app/api/dch/[...path]). Der Reiter heisst in der App also "Zugang und Sicherung", ohne dass es eine Sicherung gibt.
@@ -657,6 +668,8 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
   - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
 
 ### `/waerme/nachbetrachtung`  ·  6 Punkte, davon 3 spürbar
+
+> **Überholt.** Diese Seite wurde am 20.11. gemessen und umgebaut; die Messung (`messungen/waerme-nachbetrachtung.md`) ist genauer als die Punkte darunter. Was hier noch offen aussieht, ist es meistens nicht – was wirklich offen blieb, steht am Fuß der Messung.
 
 - **spürbar** · abschnitt — Die Karte „Die Linien in Zahlen“ fehlt vollstaendig, und damit die vier Vergleichslinien selbst (erster Fahrplan, letzter Stand, wirklich, perfekte Voraussicht). Je verfuegbarer Linie eine Zeile mit name_de (plus „· geschaetzt“ wenn geschaetzt), eur, bei hat_ofen ofen_eur („davon Ofen“), wp_kwh, ct_je_kwh („im Mittel“, mit Erklaerung dass es nicht an der Menge haengt), wp_h, bei hat_ofen ofen_h; Kopf rechts „ueber die N verglichenen Viertelstunden“. Die App zeigt nur die Abstaende zwischen den Linien, nie die Linien mit ihren Betraegen - r.linien wird in der ganzen App nicht gelesen (Modell: Schema.swift:5327-5343).
   - Vorlage: `apps/web/src/components/waerme/Nachbetrachtung.tsx:179-233`
