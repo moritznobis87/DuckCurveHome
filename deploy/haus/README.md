@@ -234,6 +234,20 @@ Werte als aktuell zu zeigen.
 
 Auf Railway steht dort nur, was die API über sich selbst weiß; Handgriffe gibt es dort nicht.
 
+**Verlauf und Statistik.** Unter den Karten steht ein Verlauf über Tag, Woche, Monat oder Jahr,
+je Größe ein kleines Diagramm: SSD belegt, Temperatur von Rechner und SSD, CPU-Auslastung,
+Arbeitsspeicher, Netzwerk, Datenbank und Sicherungen, Eingangsspannung, auf die SSD geschrieben
+und der Speicher jedes Dienstes. Darüber steht, wie schnell Platte und Datenbank wachsen und wann
+die SSD bei diesem Tempo voll wäre (eine Gerade durch die letzten 30 Tage, erst ab sieben Tagen
+Verlauf). Die Karte *SSD-Gesundheit* liest SMART (`smartmontools`, installiert das
+Einrichtungsskript): Abnutzung, Betriebsstunden, geschriebene Daten, Lesefehler, unsaubere
+Abschaltungen. *Platz auf der SSD* teilt den belegten Platz auf in Programme (Docker-Images,
+Cache), Daten (Datenbank und Volumes), Sicherungen und den Rest.
+
+Gespeichert wird der Verlauf in der Datenbank (`geraet_messwerte`): Die API legt alle fünf
+Minuten einen Punkt aus dem Bericht ab, hält Fünf-Minuten-Punkte 30 Tage und danach den zur
+vollen Stunde zwei Jahre. Das sind höchstens rund 25 000 Zeilen (30 × 288 + 700 × 24).
+
 ## Im Alltag: `dch`
 
 | Befehl | Wirkung |
