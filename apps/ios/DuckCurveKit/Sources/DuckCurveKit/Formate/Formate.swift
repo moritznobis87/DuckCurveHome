@@ -112,6 +112,33 @@ public enum Formate {
         return zahl(wert, stellen: 1) + schmalesLeerzeichen + "ct/kWh"
     }
 
+    /// „18,4 ct“ - derselbe Preis **ohne den Nenner**, wo die Einheit schon über der Spalte steht.
+    ///
+    /// **Warum das neben ``ct(_:)`` steht und nicht darin.** Die Fahrplanseite schreibt den Preis
+    /// an zwei Stellen ohne „/kWh“: in der Entscheidungstabelle (`Fahrplan.tsx:713`) und im
+    /// Hinweisfenster des Diagramms (`:328`), beide Male als `${de(i.price_ct_kwh, 1)} ct`. Den
+    /// Nenner trägt dort der Flächentitel „Strompreis · ct/kWh“ (`Fahrplan.tsx:114`) – er ist
+    /// damit schon gesagt, und in der schmalen Preisspalte des Telefons kostet seine
+    /// Wiederholung die halbe Zellbreite. Ein Schalter an ``ct(_:)`` wäre dasselbe in einer
+    /// Zeile weniger; zwei Funktionen sagen dafür an der Rufstelle, welche der beiden Formen
+    /// gemeint ist, wie schon bei ``euro(_:stellen:)`` und ``euroMitVorzeichen(_:)``.
+    ///
+    /// **Eine Nachkommastelle, genau wie ``ct(_:)``.** Das `de` der Vorlage ist
+    /// `x.toFixed(n).replace(".", ",")` (`Fahrplan.tsx:84-86`) und wird an beiden Stellen mit
+    /// `1` gerufen. Die Rundung ist also dieselbe; die beiden Funktionen unterscheiden sich in
+    /// genau einem Stück Text, dem Nenner.
+    ///
+    /// Vor der Einheit steht ``schmalesLeerzeichen``, auch wo die Vorlage an dieser Stelle ein
+    /// gewöhnliches Leerzeichen tippt: die Regel im Kopf dieser Datei gilt für jede Einheit
+    /// dieser Anwendung, und „18,4 ct“ darf in einer Tabellenzelle nicht umbrechen. Dieselbe
+    /// Wahl trifft ``Waermepumpenseite/celsius(_:stellen:)``, dort begründet; und
+    /// ``Gelduebersicht/bezugspreis(_:)`` baut für `CostReport.tsx:233` heute schon „31,2 ct“
+    /// mit demselben Ergebnis - seitenlokal, weil es diese Funktion noch nicht gab.
+    public static func ctKurz(_ wert: Double?) -> String {
+        guard let wert, wert.isFinite else { return leer }
+        return zahl(wert, stellen: 1) + schmalesLeerzeichen + "ct"
+    }
+
     /// Geld in Euro.
     public static func euro(_ wert: Double?, stellen: Int = 2) -> String {
         guard let wert, wert.isFinite else { return leer }

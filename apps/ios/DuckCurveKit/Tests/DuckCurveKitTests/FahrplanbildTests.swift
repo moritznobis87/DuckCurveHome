@@ -321,7 +321,22 @@ final class FahrplanbildTests: XCTestCase {
             .first { $0.wort == "Ofen geplant" }!
         XCTAssertEqual(brennt.wert, "1,0 h")
         XCTAssertEqual(brennt.dazu, "Volllast, 15 kg je Füllung")
-        XCTAssertEqual(brennt.ton, .glut)
+        // `tone={kennzahlen.ofenViertel ? "ember" : "muted"}` (`Fahrplan.tsx:559-562`), und
+        // `ember` ist `var(--alert)` (`Stat.tsx:5`). Vorher stand hier `glut`, der Ton der
+        // Wärmepumpe - siehe ``Kennzahl/Ton/alarm``.
+        XCTAssertEqual(brennt.ton, .alarm)
+        XCTAssertEqual(mit.ton, .gedaempft, "Kein Ofenlauf ist kein Alarm.")
+    }
+
+    /// **„Wärmepumpe angefordert“ trägt den Alarmton** (`Fahrplan.tsx:551-554`:
+    /// `tone="ember"`), und zwar unabhängig davon, ob Duck Curve selbst schaltet.
+    func testAngefordertTraegtDenAlarmton() {
+        XCTAssertEqual(
+            Fahrplankacheln.kacheln(plan(anzahl: 8))
+                .first { $0.wort == "Wärmepumpe angefordert" }?.ton, .alarm)
+        XCTAssertEqual(
+            Fahrplankacheln.kacheln(plan(anzahl: 8, schaltet: true))
+                .first { $0.wort == "Wärmepumpe angefordert" }?.ton, .alarm)
     }
 
     func testDerGeplanteWaermebedarfIstArbeitUndNichtLeistung() {

@@ -35,10 +35,13 @@ public enum Gelduebersicht {
 
     /// Welche Rolle ein Betrag hat - und damit, welche Farbe er bekommt.
     ///
-    /// **Warum nicht ``Kennzahl/Ton``.** Dem fehlt der Wert für `--alert` (#E0533D), und genau
-    /// der trägt hier die Hauptzahl: „Bezahlt“ steht in der Vorlage in `var(--alert)`
-    /// (`CostReport.tsx:112`). ``Kennzahl/Ton`` zu erweitern hieße, den vollständigen `switch`
-    /// in `Farbe.ton` zu erweitern (`apps/ios/DuckCurveHome/Gestalt/Farben.swift`), und der
+    /// **Warum nicht ``Kennzahl/Ton``.** Dessen Alarmwert gibt es inzwischen
+    /// (``Kennzahl/Ton/alarm``, `--alert` #E0533D) - und er allein würde diese Seite nicht
+    /// tragen: „Bezahlt“ steht in der Vorlage in `var(--alert)` (`CostReport.tsx:112`), die
+    /// Einspeisung unter der Nulllinie aber in #FFD778 und die Pellets in `--stove` #B5651D,
+    /// und für die beiden hat ``Kennzahl/Ton`` keinen Fall. Ihn um Farben zu erweitern, die
+    /// nur hier vorkommen, hieße den vollständigen `switch` in `Farbe.ton`
+    /// (`apps/ios/DuckCurveHome/Gestalt/Farben.swift`) um Seitensachen zu erweitern, und der
     /// gehört allen Seiten. Darum eine eigene, kleine Aufzählung mit genau den sieben Rollen,
     /// die diese Seite kennt; die Ansicht setzt sie in Farben um und entscheidet nichts.
     public enum Ton: String, Sendable, Hashable, CaseIterable {
@@ -594,9 +597,10 @@ public enum Gelduebersicht {
     /// (`CostReport.tsx:98`) - die vier Abfragen laufen nebeneinander, und eine gescheiterte
     /// lässt ihre Spalte leer.
     ///
-    /// **„Bezahlt (Netzstrom)“ müsste `--alert` tragen und trägt `glut`.** ``Streifenzeile``
-    /// nimmt ``Kennzahl/Ton``, und dem fehlt der Wert für #E0533D; `glut` (#E0966B) ist der
-    /// nächstliegende vorhandene Ton. Eine Zeile weniger wäre der schlechtere Tausch.
+    /// **„Bezahlt (Netzstrom)“ trägt ``Kennzahl/Ton/alarm``** - `--alert` #E0533D, so wie die
+    /// Vorlage die Zeile setzt (`CostReport.tsx:229`: `tone: "ember"`; `PeriodStrip.tsx:19`
+    /// führt `ember` auf `var(--alert)`). Vorher stand hier `glut` #E0966B, weil
+    /// ``Kennzahl/Ton`` keinen Alarmton kannte; seit es ihn gibt, ist die Ersatzwahl unnötig.
     public static func spannenzeilen(_ je: [Spanne: EnergySummaryOut]) -> [Streifenzeile] {
         let folge = Spanne.allCases
         func reihe(_ wort: String, _ ton: Kennzahl.Ton, _ wert: (EnergyTotalsOut) -> String)
@@ -607,7 +611,7 @@ public enum Gelduebersicht {
                 ton: ton)
         }
         return [
-            reihe("Bezahlt (Netzstrom)", .glut) { Formate.euro($0.importCostEur) },
+            reihe("Bezahlt (Netzstrom)", .alarm) { Formate.euro($0.importCostEur) },
             reihe("Bekommen (Einspeisung)", .nebel) { Formate.euro($0.exportRevenueEur) },
             reihe("Gespart (Sonne, Speicher)", .bernstein) {
                 Formate.euro(summe([$0.pvDirectSavingsEur, $0.batteryNetEur]))

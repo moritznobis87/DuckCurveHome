@@ -271,11 +271,11 @@ public enum Stromuebersicht {
     /// (`HouseReport.tsx:39`) - die vier Abfragen laufen nebeneinander, und eine gescheiterte
     /// lässt ihre Spalte leer, ohne den Streifen mitzunehmen.
     ///
-    /// **„Netzkosten“ müsste `--alert` tragen und trägt `glut`.** ``Streifenzeile`` nimmt
-    /// ``Kennzahl/Ton``, und dem fehlt der Wert für #E0533D; `glut` (#E0966B) ist der
-    /// nächstliegende vorhandene Ton, und im Streifen steht keine Zeile der Wärmepumpe daneben,
-    /// mit der er sich verwechseln ließe. Dieselbe Ersatzwahl trifft
-    /// ``Gelduebersicht/spannenzeilen(_:)``.
+    /// **„Netzkosten“ trägt ``Kennzahl/Ton/alarm``** - `--alert` #E0533D, so wie die Vorlage
+    /// die Zeile setzt (`HouseReport.tsx:78`: `tone: "ember"`; `PeriodStrip.tsx:19` führt
+    /// `ember` auf `var(--alert)`). Vorher stand hier `glut` #E0966B, weil ``Kennzahl/Ton``
+    /// keinen Alarmton kannte; seit es ihn gibt, ist die Ersatzwahl unnötig. Dieselbe Zeile
+    /// steht in ``Gelduebersicht/spannenzeilen(_:)``.
     public static func spannenzeilen(_ je: [Spanne: EnergySummaryOut]) -> [Streifenzeile] {
         let folge = Spanne.allCases
         func reihe(
@@ -294,7 +294,7 @@ public enum Stromuebersicht {
             // der Spalte daneben.
             reihe("Verbrauch · kWh") { Formate.kwhNachGroesse($0.houseKwh) },
             reihe("Autarkie", .bernstein) { Formate.prozent($0.autarky) },
-            reihe("Netzkosten", .glut) { Formate.euro($0.importCostEur) },
+            reihe("Netzkosten", .alarm) { Formate.euro($0.importCostEur) },
             // `export_revenue_eur` stand auf dieser Seite nirgends und lag ungelesen im
             // Modell: was eingespeist wurde, gehört zur Einordnung des Zeitraums.
             reihe("Einspeiseerlös") { Formate.euro($0.exportRevenueEur) },

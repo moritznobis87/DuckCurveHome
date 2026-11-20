@@ -463,6 +463,11 @@ final class GelduebersichtTests: XCTestCase {
         XCTAssertEqual(z[0].werte[0], Formate.euro(128.40))
         XCTAssertEqual(z[2].werte[0], Formate.euro(52.80 + 17.40))
         XCTAssertEqual(z[3].werte[0], "412\u{202F}kWh")
+        // „Bezahlt (Netzstrom)“ trägt `--alert` wie in der Vorlage (`CostReport.tsx:229`:
+        // `tone: "ember"`; `PeriodStrip.tsx:19`). Vorher war es `glut`, weil ``Kennzahl/Ton``
+        // keinen Alarmton kannte.
+        XCTAssertEqual(
+            z.map(\.ton), [.alarm, .nebel, .bernstein, .normal, .normal])
     }
 
     /// **Eine** Nachkommastelle am Ø-Preis (`CostReport.tsx:233`) - die App hatte zwei.

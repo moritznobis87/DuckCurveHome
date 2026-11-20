@@ -122,6 +122,10 @@ public enum Farbe {
         case .normal: return text1
         case .sonne: return pv
         case .glut: return waermepumpe
+        // `--alert` #E0533D, der Ton `ember` der Vorlage (`Stat.tsx:5`,
+        // `PeriodStrip.tsx:19`). Siehe ``Kennzahl/Ton/alarm``, wo steht, welche drei Stellen
+        // vorher auf `glut` auswichen und warum das die falsche Farbe war.
+        case .alarm: return alarm
         case .bernstein: return amber
         case .gedaempft: return text3
         case .nebel: return mist

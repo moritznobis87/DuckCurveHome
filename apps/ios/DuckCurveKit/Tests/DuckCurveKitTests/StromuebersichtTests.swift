@@ -285,7 +285,10 @@ final class StromuebersichtTests: XCTestCase {
         XCTAssertEqual(
             zeilen.map(\.wort),
             ["Verbrauch · kWh", "Autarkie", "Netzkosten", "Einspeiseerlös"])
-        XCTAssertEqual(zeilen.map(\.ton), [.normal, .bernstein, .glut, .normal])
+        // „Netzkosten“ trägt `--alert` wie in der Vorlage (`HouseReport.tsx:78`:
+        // `tone: "ember"`; `PeriodStrip.tsx:19`). Vorher war es `glut`, weil ``Kennzahl/Ton``
+        // keinen Alarmton kannte.
+        XCTAssertEqual(zeilen.map(\.ton), [.normal, .bernstein, .alarm, .normal])
         XCTAssertEqual(zeilen[0].werte, ["59,2", "412", "1681", "9120"])
         XCTAssertEqual(
             zeilen[1].werte.first, "11\(Formate.schmalesLeerzeichen)%")

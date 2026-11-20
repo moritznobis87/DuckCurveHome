@@ -42,6 +42,24 @@ public struct Kennzahl: Sendable, Hashable, Identifiable {
         case sonne
         /// Die Wärmepumpe und was an ihr hängt.
         case glut
+        /// Alarmrot `--alert` #E0533D: was bezahlt wurde, und was eine Warnung ist.
+        ///
+        /// **Warum dieser Fall nachgetragen wurde.** Die Vorlage nennt den Ton `ember`, und
+        /// `Stat.tsx:5` setzt ihn auf `var(--alert)` - in `apps/web/src/styles/tokens.css:64`
+        /// ist das #E0533D. Derselbe Ton steht am Spannenstreifen (`PeriodStrip.tsx:19`). Im
+        /// Kern fehlte er, und darum wichen drei Stellen auf ``glut`` aus: die Kacheln
+        /// „Wärmepumpe angefordert“ und „Ofen geplant“ (``Fahrplankacheln/kacheln(_:)``),
+        /// die Zeile „Netzkosten“ (``Stromuebersicht/spannenzeilen(_:)``) und die Zeile
+        /// „Bezahlt (Netzstrom)“ (``Gelduebersicht/spannenzeilen(_:)``).
+        ///
+        /// **``glut`` war dafür der falsche Ton und nicht nur ein ungenauer.** Er ist
+        /// `Marken.waermepumpe` #E0966B, und diese Farbe ist ausdrücklich so gewählt, dass sie
+        /// von `alarm` absteht, damit die Wärmepumpe nicht wie eine Störung aussieht
+        /// (`Gestalt/Marken.swift:94-97`). Eine bezahlte Rechnung soll genau umgekehrt wie eine
+        /// Warnung aussehen. Dazu kam, dass auf der Stromseite die Wärmepumpenkachel zwei
+        /// Plätze neben der Netzbezugskachel steht: zwei Kacheln in derselben Farbe für
+        /// Verschiedenes.
+        case alarm
         /// Geld und Preis.
         case bernstein
         /// Eine Zahl, die nur Hintergrund ist.
