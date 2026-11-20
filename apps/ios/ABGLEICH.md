@@ -51,7 +51,40 @@ nicht abgehakt.
   vier Tageszahlen am Fuß und der Hinweis BERÜHREN FÜR DIE BEDIENUNG. Die Rechnung liegt mit 17
   Tests im Kern (`Zustand/Ruhebild.swift`).
 
+- **Die sechs Technikseiten · je ein Commit** (20.11.) – der Nutzer hat zwölf Bildschirmfotos
+  nebeneinandergelegt, Browser gegen App, und jede Seite war schlechter. Fahrplan (richtige
+  Zustandswörter aus einer Quelle, gefärbte Tabelle, bernsteinfarbene Jetzt-Linie,
+  Flächenkanten, Methodentext), Wirkung (Quotenvergleich, Antwortfächer, Ereignisraster – die
+  Seite hatte kein einziges Bild), Heizkreise (Viertelstundenraster statt Balken, „Die Räume
+  als Tabelle", Istwerte; die Automatikkarte zog auf die Hausseite), Prognose (vier Diagramme,
+  Quellentabelle, Rückblick mit sechs Vorlaufklassen), Daten prüfen (Leistungsdiagramm mit
+  beiden Gegenproben, Quellenkarte), Annahmen (Formular statt Leseliste). Dazu der Umschalter
+  für Unteransichten, ohne den es von „Rückblick" keinen Weg zurück zu „Voraus" gab. Fünf neue
+  Kern-Rechnungen mit zusammen rund 190 Tests.
+
 ## Was dabei auffiel und größer ist als eine Seite
+
+- **spürbar** · abschnitt — Die Wärmekarte „Kommen die Daten an? 28 Tage" auf *Daten prüfen*:
+  28 Spalten mal 24 Zeilen, Farbe ist die Zahl der Minuten je Stunde (Rampe rot → sandfarben →
+  blaugrau, absichtlich herum: eine Karte ohne Lücken soll langweilig aussehen), eine Zelle
+  ohne Farbe heißt „keine Minutenzeile", eine rote „Zeilen da, diese Reihe fehlt darin". Die
+  Abdeckungstabelle der App trägt dieselben Zahlen, aber nicht das Bild.
+  - Vorlage: `apps/web/src/components/reports/CoverageMap.tsx:128-154`
+  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- **spürbar** · navigation — Der Sprung aus einer Zeile des Ereignisrasters (*Wirkung*) in die
+  Wiedergabe dieses Augenblicks. `Wirkungsbild.Ereigniszeile.weg` steht fertig da
+  (`/waerme/wiedergabe?day=…&t=…`), aber `Wegweiser.gehe` nimmt nur einen Weg, `Seitenwahl`
+  schneidet den Fragezeichenteil ab, und `WiedergabeSeite` hält Tag und Stelle in eigenem
+  Zustand. Solange das so ist, steht im Kartenkopf bewusst nicht, dass eine Zeile etwas öffnet.
+  - Vorlage: `apps/web/src/components/waerme/Ereignisraster.tsx`
+  - bauen in: `apps/ios/DuckCurveHome/App/Seitenwahl.swift`, `App/Navigation.swift`
+- **klein** · gestalt — `Karte` kann keinen Akzentbalken. Die Vorlage setzt über zwei Karten
+  (*Was sich für die nächste Prognose ändert*, *Wie der Rückblick zu lesen ist*) einen 3 Punkte
+  hohen Verlauf von Bernstein nach durchsichtig. Ein `akzent: Bool = false` an `Karte` wäre die
+  kleinste Lösung – betrifft aber einen Baustein, den zwanzig Seiten benutzen.
+  - Vorlage: `apps/web/src/styles/globals.css:78-84`
+  - bauen in: `apps/ios/DuckCurveHome/Gestalt/Karte.swift`
+
 
 - **mittel** · gestalt — Der Baustein `Kicker` steht in der falschen Schrift. Die Vorlage
   (`globals.css:57`) setzt `.kicker` als IBM Plex **Mono** in 13 Punkten mit 0,13 em Sperrung
