@@ -26,8 +26,8 @@ struct Pufferglas: View {
     /// Die Breite des Tanks. Das Dashboard zeichnet 72 auf 300 – ein schmales, hohes Glas
     /// (`Ambiente.tsx:180`); auf der Startseite ist es schmaler.
     var breite: CGFloat = 60
-    /// Die Schrift der vier Fühlerzahlen. Im Ruhebild grösser, weil man dort weiter weg steht.
-    var zahlschrift: Font = Schrift.zahlKlein
+    /// Die Grösse der vier Fühlerzahlen. Im Ruhebild grösser, weil man dort weiter weg steht.
+    var zahlgroesse: CGFloat = 12.5
     /// Blass, wenn die Werte unvollständig oder veraltet sind (`Glas.tsx:44`, `opacity .5`).
     var gedimmt: Bool = false
     /// Ob Füllstand und Wort rechts danebenstehen. Das Ruhebild setzt sie selbst, grösser.
@@ -51,8 +51,9 @@ struct Pufferglas: View {
     /// Der Platz rechts vom Glas für Strich und Zahl.
     ///
     /// Die Vorlage rechnet ihn aus der Schriftgrösse: `randBreite(s) = round(20 + s * 2.6)`
-    /// (`puffer/glas.ts`). Bei 13 Punkten sind das 54, bei 17 Punkten 64.
-    private var randbreite: CGFloat { 46 }
+    /// (`puffer/glas.ts`). Bei 12,5 Punkten sind das 53, bei 17 Punkten 64. Eine feste Zahl
+    /// stand hier zuerst - und liess bei grosser Schrift die Zahlen über den Rand laufen.
+    private var randbreite: CGFloat { (20 + zahlgroesse * 2.6).rounded() }
 
     // MARK: - Das Glas
 
@@ -97,7 +98,7 @@ struct Pufferglas: View {
             Rectangle()
                 .fill(Farbe.linie2)
                 .frame(width: 10, height: 1)
-                .position(x: breite + 5, y: y)
+                .position(x: breite + 9, y: y)
             HStack(spacing: 1) {
                 Text(m.belastbar.map { Formate.zahl($0, stellen: 0) } ?? Formate.leer)
                     .foregroundStyle(m.quality.traegt ? Farbe.text1 : Farbe.text3)
@@ -105,8 +106,11 @@ struct Pufferglas: View {
                     Text("°").foregroundStyle(Farbe.text3)
                 }
             }
-            .font(zahlschrift)
-            .position(x: breite + 32, y: y)
+            .font(Schrift.mono(zahlgroesse))
+            // Der Strich endet bei `breite + 14`, die Zahl beginnt bei `breite + 20`
+            // (`Glas.tsx:78-80`). `position` setzt die Mitte, darum die halbe Zahlenbreite
+            // dazu: drei Zeichen Mono sind 1,8 Zeilenhöhen breit.
+            .position(x: breite + 20 + zahlgroesse * 0.9, y: y)
         }
     }
 

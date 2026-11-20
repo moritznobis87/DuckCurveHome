@@ -188,28 +188,17 @@ struct Kopfzeile: View {
 /// Der Punkt, der sagt, ob die Anzeige noch lebt.
 struct Verbindungspunkt: View {
     @Environment(Hauszustand.self) private var haus
-    @State private var atmet = false
     @Environment(\.horizontalSizeClass) private var breite
     private var schmal: Bool { breite == .compact }
 
     var body: some View {
         HStack(spacing: 6) {
-            Circle()
-                .fill(haus.gestoert ? Farbe.alarm : Farbe.gut)
-                .frame(width: 8, height: 8)
-                // **Ein ruhiges Atmen, solange es laeuft** (`globals.css:197`, `dch-atmen`
-                // ueber 3,6 Sekunden). An einer Wand ist das der Unterschied zwischen „lebt"
-                // und „eingefroren" - ein stehendes Bild sagt das nicht von sich aus. Hier
-                // stand genau dieser Satz, und darunter eine feste Deckkraft von 0,85: der
-                // Punkt stand still, und der Kommentar behauptete das Gegenteil.
-                .opacity(haus.gestoert ? 1 : (atmet ? 0.45 : 1))
-                .animation(
-                    haus.gestoert
-                        ? nil
-                        : .easeInOut(duration: 1.8).repeatForever(autoreverses: true),
-                    value: atmet
-                )
-                .onAppear { atmet = true }
+            // **Ein ruhiges Atmen, solange es laeuft** (`globals.css:197`, `dch-atmen`
+            // ueber 3,6 Sekunden). An einer Wand ist das der Unterschied zwischen „lebt" und
+            // „eingefroren" - ein stehendes Bild sagt das nicht von sich aus. Derselbe Punkt
+            // wie im Ruhebild, und aus demselben Grund an einer Stelle: zwei Fassungen atmen
+            // irgendwann verschieden, und eine von beiden hoert nach einer Stoerung auf.
+            Atempunkt(gestoert: haus.gestoert)
             // **Am Telefon nur der Punkt, solange es laeuft** (`handy.css:227-228`): „live"
             // steht neunundneunzig Prozent der Zeit da und sagt damit nichts. Ausgeschrieben
             // wird, was nicht selbstverstaendlich ist: die Stoerung - und der Vorfuehrbetrieb.

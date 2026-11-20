@@ -20,7 +20,7 @@ import Foundation
 /// das Gegenteil: den ganzen erwarteten Tag, gefüllt nur bis jetzt.
 ///
 /// Alles hier ist reine Rechnung, damit es Tests gibt; die Zeichnung steht in
-/// `Bausteine/Ruhebild.swift`.
+/// `apps/ios/DuckCurveHome/Bausteine/Ambiente.swift`.
 public enum Ruhebild {
 
     // MARK: - Maße
@@ -222,7 +222,8 @@ public enum Ruhebild {
     ///
     /// **Warum der erste und nicht der lauteste.** Der Dienst sortiert die Wache schon: Alarm vor
     /// Warnung, bei gleicher Schwere der ältere. Hier noch einmal zu sortieren hiesse, diese
-    /// Reihenfolge ein zweites Mal zu behaupten (`apps/web/src/components/home/Wache.tsx:24`).
+    /// Reihenfolge ein zweites Mal zu behaupten (`apps/web/src/components/home/Wache.tsx`,
+    /// `schwerster`).
     public static func schwersterBefund(_ wache: [WatchFindingOut]?) -> WatchFindingOut? {
         wache?.first
     }

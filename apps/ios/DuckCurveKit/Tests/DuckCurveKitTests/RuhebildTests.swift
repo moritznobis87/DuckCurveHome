@@ -144,18 +144,41 @@ final class RuhebildTests: XCTestCase {
     }
 
     func testBogenInterpoliertDenPunktAufJetzt() {
-        // 12:07:30 liegt genau zwischen zwei Viertelstunden; die Höhe dort ist das Mittel.
+        // 12:07:30 liegt genau zwischen 12:00 und 12:15. Der eingeschobene Punkt muss dort
+        // liegen, wo die Kurve zwischen beiden Viertelstunden steht - sonst endet die Fläche
+        // bis zu einer Viertelstunde vor der Marke.
         let lauf = Ruhebild.sonnenlauf(planMitSonne(), jetzt: uhr(12))!
+        let jetzt = uhr(12).addingTimeInterval(7.5 * 60)
+        let b = Ruhebild.bogen(lauf, jetzt: jetzt, breite: 300, hoehe: 60)!
+        let letzter = b.bisJetzt.last!
+
+        // Erwartet: die Stelle von 12:07:30 im Fenster der Punkte und die halbe Höhe zwischen
+        // den Werten um 12:00 (3,2 kW) und 12:15 (3,4 kW), von Hand gerechnet.
+        let von = lauf.punkte.first!.zeit
+        let bis = lauf.punkte.last!.zeit
+        let x = jetzt.timeIntervalSince(von) / bis.timeIntervalSince(von) * 300
+        let spitze = lauf.punkte.map(\.kw).max()!
+        let kw = (3.2 + 3.4) / 2
+        let y = 60 - (kw / spitze) * (60 - Ruhebild.bogenLuftOben)
+        XCTAssertEqual(letzter.x, x, accuracy: 1e-9)
+        XCTAssertEqual(letzter.y, y, accuracy: 1e-9)
+        XCTAssertEqual(b.jetztX!, x, accuracy: 1e-9)
+
+        // Und der Punkt steht wirklich zwischen seinen beiden Nachbarn, nicht auf einem davon.
+        let davor = b.bisJetzt[b.bisJetzt.count - 2]
+        XCTAssertGreaterThan(letzter.x, davor.x)
+        XCTAssertLessThan(letzter.y, davor.y)  // vor der Spitze steigt die Kurve
+    }
+
+    func testBogenFlaecheEndetAnDerMarkeUndNichtDavor() {
+        // Die Vorlage prüft dasselbe an der Zeichenkette der Fläche (`ambiente.test.ts:72`);
+        // hier endet die gefüllte Linie an der Marke, und die Ansicht zieht sie von dort auf
+        // die Grundlinie zurück.
+        let lauf = Ruhebild.sonnenlauf(planMitSonne(), jetzt: uhr(12))
         let b = Ruhebild.bogen(lauf, jetzt: uhr(12).addingTimeInterval(7.5 * 60), breite: 300,
                                hoehe: 60)!
-        let a = lauf.punkte.first { Int($0.zeit.timeIntervalSince(lauf.punkte[0].zeit)) == 0 }
-        XCTAssertNotNil(a)
-        let letzte = b.bisJetzt.suffix(3)
-        XCTAssertEqual(letzte.count, 3)
-        let davor = letzte.first!
-        let drauf = letzte.last!
-        XCTAssertGreaterThan(drauf.x, davor.x)
-        XCTAssertLessThan(drauf.y, davor.y)  // vor der Spitze steigt die Kurve
+        XCTAssertEqual(b.bisJetzt.last!.x, b.jetztX!, accuracy: 1e-9)
+        XCTAssertLessThan(b.bisJetzt.last!.y, 60)
     }
 
     func testBogenHatVorSonnenaufgangKeineMarkeUndKeineFlaeche() {

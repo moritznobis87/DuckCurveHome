@@ -37,10 +37,17 @@ struct Ambiente: View {
 
     /// Was aus Fahrplan und Uhr folgt - einmal je Minute gerechnet, nicht je Sekunde.
     ///
-    /// **Warum gespeichert und nicht gerechnet.** `WandRahmen` taktet im Sekundenschlag; die
-    /// Vorlage rastet dagegen auf die Minute (`Home.tsx:117`: `Math.floor(now / 60_000)`). Ohne
-    /// Raster liefe der Sonnenlauf sechzigmal so oft, und die Marke im Bogen zappelte.
-    @State private var stand = Stand()
+    /// **Warum gespeichert und nicht gerechnet.** Die Vorlage rastet auf die Minute
+    /// (`Home.tsx:117`: `Math.floor(now / 60_000)`). Ohne Raster liefe der Sonnenlauf
+    /// sechzigmal so oft, und die Marke im Bogen zappelte.
+    ///
+    /// **Wahlfrei, damit das Bild nie im falschen anfängt.** Mit einem Anfangswert stünde im
+    /// ersten Durchgang das Abendbild da - auch mittags, für den Bruchteil einer Sekunde, den
+    /// die Überblendung sichtbar macht. Solange hier nichts steht, rechnet die Ansicht selbst.
+    @State private var stand: Stand?
+
+    /// Die Minute, auf der das Bild steht. Eine eigene Uhr, kein Mitlaufen am Rahmen.
+    @State private var takt = Date()
 
     struct Stand {
         var lauf: Ruhebild.Sonnenlauf?
@@ -51,10 +58,17 @@ struct Ambiente: View {
         var morgenPvKwh: Double?
     }
 
-    /// Die Minute, auf der das Bild steht.
-    private var jetztMinute: Date {
-        Date(timeIntervalSince1970: (haus.jetzt.timeIntervalSince1970 / 60).rounded(.down) * 60)
-    }
+    /// Jede Sekunde nachsehen, ob die Minute gewechselt hat.
+    ///
+    /// **Warum eine eigene Uhr.** Bis hierher kam der Takt daher, dass `WandRahmen` im
+    /// Sekundenschlag neu baut und das Bild dabei mitgebaut wird. Das ist kein Takt, sondern
+    /// ein Zufall: Hört der Rahmen auf zu takten, bleibt die Uhr auf dem Bild stehen - und
+    /// genau das ist der eine Fehler, den ein Ruhebild nicht machen darf.
+    private static let sekunde = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    private var jetztMinute: Date { takt }
+
+    private var jetztStand: Stand { stand ?? gerechnet(jetztMinute) }
 
     var body: some View {
         GeometryReader { raum in
@@ -72,8 +86,16 @@ struct Ambiente: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel("Ruhebild. Antippen für die Bedienung.")
         .onAppear { rechne() }
-        .onChange(of: Int(jetztMinute.timeIntervalSince1970)) { _, _ in rechne() }
+        .onReceive(Self.sekunde) { _ in
+            let minute = Date(
+                timeIntervalSince1970: (haus.jetzt.timeIntervalSince1970 / 60).rounded(.down) * 60)
+            if minute != takt {
+                takt = minute
+                rechne()
+            }
+        }
         .onChange(of: haus.plan?.createdAt) { _, _ in rechne() }
+        .onChange(of: haus.augenblick?.timestamp) { _, _ in rechne() }
         .task { await holeBilanz() }
     }
 
@@ -108,7 +130,7 @@ struct Ambiente: View {
     /// `farthest-corner`: hundert Prozent liegen in der Ecke des quadratischen Kastens, also bei
     /// `d/2 · √2`. Wer `d/2` nimmt, zeichnet den Schein um ein Drittel zu klein.
     private func schein(_ mass: Bildmasse) -> some View {
-        let tag = stand.bild == .tag
+        let tag = jetztStand.bild == .tag
         let d = tag
             ? min(760, mass.breite * 0.70)
             : min(700, mass.breite * 0.66)
@@ -152,12 +174,16 @@ struct Ambiente: View {
 
     private func kopf(_ mass: Bildmasse) -> some View {
         HStack(alignment: .top, spacing: 32) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text(Formate.hhmm(jetztMinute))
                     .font(Schrift.mono(mass.uhr))
                     .kerning(mass.uhr * -0.04)
                     .foregroundStyle(Farbe.text1)
                     .monospacedDigit()
+                    // `line-height: .9` bei einem Schriftkasten von 1,3 Zeilen: die Zeile der
+                    // Vorlage ist vier Zehntel niedriger als das, was SwiftUI mitbringt, und
+                    // das Datum rueckt entsprechend hinauf. Sechs Punkte Abstand bleiben.
+                    .padding(.bottom, 6 - mass.uhr * 0.2)
                 Text(Formate.langesDatum(jetztMinute))
                     .font(Schrift.sans(mass.datum))
                     .foregroundStyle(Farbe.text2)
@@ -197,10 +223,12 @@ struct Ambiente: View {
     private func lebenszeichen(_ mass: Bildmasse) -> some View {
         HStack(spacing: 9) {
             Atempunkt(gestoert: haus.gestoert)
+            // Die Farbe traegt der Punkt, nicht das Wort (`globals.css:391`): ein rotes Wort
+            // neben einem roten Punkt sagt dasselbe zweimal.
             Text(haus.verbindungswort.uppercased())
                 .font(Schrift.mono(12))
                 .kerning(12 * 0.13)
-                .foregroundStyle(haus.gestoert ? Farbe.alarm : Farbe.text2)
+                .foregroundStyle(Farbe.text2)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(haus.zustand?.system.connectionLabelDe ?? haus.verbindungswort)
@@ -213,14 +241,13 @@ struct Ambiente: View {
             Text(satz)
                 .font(Schrift.sans(mass.satz))
                 .kerning(mass.satz * -0.015)
-                .lineSpacing(mass.satz * 0.2)
                 .foregroundStyle(satzfarbe)
                 .fixedSize(horizontal: false, vertical: true)
                 // `max-width: 22ch` - und ein „ch" ist der Vorschub der Null, in IBM Plex
                 // 0,6 em. Zweiundzwanzig davon sind 13,2 Zeilenhöhen.
                 .frame(maxWidth: mass.satz * 13.2, alignment: .leading)
             Spacer(minLength: 0)
-            if stand.bild == .tag {
+            if jetztStand.bild == .tag {
                 vorschau(mass)
             }
         }
@@ -252,16 +279,16 @@ struct Ambiente: View {
     // MARK: - Die Aussicht neben dem Satz (nur am Tag)
 
     @ViewBuilder private func vorschau(_ mass: Bildmasse) -> some View {
-        if stand.aussicht.erwartetKwh != nil || stand.bogen != nil {
+        if jetztStand.aussicht.erwartetKwh != nil || jetztStand.bogen != nil {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Ruhekicker(wort: "Heute erwartet")
                     Spacer(minLength: 0)
                     Grosszahl(
-                        wert: eins(stand.aussicht.erwartetKwh), einheit: "kWh",
-                        groesse: mass.vorschauZahl, farbe: Farbe.pv)
+                        wert: eins(jetztStand.aussicht.erwartetKwh), einheit: "kWh",
+                        groesse: mass.vorschauZahl, farbe: Farbe.pv, sperrung: -0.02)
                 }
-                if let b = stand.bogen {
+                if let b = jetztStand.bogen {
                     Sonnenbogen(bogen: b)
                         .frame(height: mass.vorschauBreite * (b.hoehe + 2) / b.breite)
                 }
@@ -277,14 +304,14 @@ struct Ambiente: View {
 
     /// „noch 4,2 kWh bis 17:00" - was geerntet ist, steht schon unten als Tageszahl.
     private var restzeile: String {
-        guard let rest = stand.aussicht.restKwh, let bis = stand.aussicht.bis else { return " " }
+        guard let rest = jetztStand.aussicht.restKwh, let bis = jetztStand.aussicht.bis else { return " " }
         return "noch \(eins(rest)) kWh bis \(Formate.hhmm(bis))"
     }
 
     // MARK: - Die Mitte
 
     @ViewBuilder private func mitte(_ mass: Bildmasse) -> some View {
-        if stand.bild == .tag {
+        if jetztStand.bild == .tag {
             Flussreihe(mass: mass, augenblick: haus.augenblick, ruhig: ruhigeBewegung)
         } else {
             abend(mass)
@@ -312,22 +339,30 @@ struct Ambiente: View {
     private func puffer(_ mass: Bildmasse) -> some View {
         let zustand = Pufferzustand.aus(
             fuehler: haus.augenblick?.bufferTempsC.vonObenNachUnten ?? [],
-            jetzt: jetztMinute,
+            jetzt: haus.jetzt,
             laedt: haus.zustand?.heatPump.running ?? false,
             status: haus.zustand?.buffer.status
         )
         return HStack(alignment: .center, spacing: mass.pufferLuft) {
             Spacer(minLength: 0)
-            Pufferglas(
-                temperaturen: haus.augenblick?.bufferTempsC.vonObenNachUnten ?? [],
-                soc: haus.zustand?.buffer.soc,
-                zustand: zustand,
-                breite: 72,
-                zahlschrift: Schrift.mono(17),
-                gedimmt: !zustand.traegt,
-                mitWerten: false
-            )
-            .frame(width: 72 + 64)
+            // **Das Glas wächst mit der Zeile.** Die Vorlage gibt ihm `height: auto` und ein
+            // festes Seitenverhältnis (`138 : 302` aus Tank 72, Rand 64 und Höhe 300): es ist
+            // so hoch wie die Abendzeile, und Breite und Zahlen folgen daraus. Mit festen 72
+            // Punkten stünde auf einer hohen Wand ein schmaler Strich.
+            GeometryReader { raum in
+                let hoch = raum.size.height
+                Pufferglas(
+                    temperaturen: haus.augenblick?.bufferTempsC.vonObenNachUnten ?? [],
+                    soc: haus.zustand?.buffer.soc,
+                    zustand: zustand,
+                    breite: hoch * 72 / 302,
+                    zahlgroesse: hoch * 17 / 302,
+                    gedimmt: !zustand.traegt,
+                    mitWerten: false
+                )
+                .frame(width: hoch * 138 / 302, height: hoch)
+            }
+            .frame(width: pufferbreite(mass))
             VStack(alignment: .leading, spacing: 4) {
                 Ruhekicker(wort: "Puffer")
                 Grosszahl(
@@ -342,6 +377,13 @@ struct Ambiente: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// Wie breit das Glas samt Zahlen wird. `GeometryReader` fragt nicht nach der Höhe, also
+    /// rechnet die Breite mit der Höhe, die die Abendzeile übrig lässt.
+    private func pufferbreite(_ mass: Bildmasse) -> CGFloat {
+        let hoch = max(120, mass.hoehe - mass.randOben - mass.randUnten - mass.abendHoch * 2 - 260)
+        return hoch * 138 / 302
+    }
+
     private func preis(_ mass: Bildmasse) -> some View {
         let ct = haus.augenblick?.electricityPriceCtKwh.value
         return VStack(alignment: .leading, spacing: 8) {
@@ -353,12 +395,18 @@ struct Ambiente: View {
     }
 
     /// Was das Haus in der Nacht vorhat - und nur das, worüber der Plan etwas weiss.
-    private func planzeilen(_ mass: Bildmasse) -> some View {
+    @ViewBuilder private func planzeilen(_ mass: Bildmasse) -> some View {
+        if !jetztStand.planzeilen.isEmpty || jetztStand.morgenPvKwh != nil {
+            planliste(mass)
+        }
+    }
+
+    private func planliste(_ mass: Bildmasse) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(stand.planzeilen) { z in
+            ForEach(jetztStand.planzeilen) { z in
                 planzeile(z.wort, z.wann, mass)
             }
-            if let morgen = stand.morgenPvKwh {
+            if let morgen = jetztStand.morgenPvKwh {
                 planzeile("Morgen Sonne", "\(eins(morgen)) kWh", mass)
             }
         }
@@ -388,7 +436,7 @@ struct Ambiente: View {
                 // **Am Abend nur drei** (`Ambiente.tsx:70`): die vierte ist der Strompreis, und
                 // der steht dort schon gross rechts. Dieselbe Zahl zweimal auf einem Bild wäre
                 // keine zweite Auskunft.
-                ForEach(stand.bild == .abend ? Array(kennzahlen.prefix(3)) : kennzahlen) { k in
+                ForEach(jetztStand.bild == .abend ? Array(kennzahlen.prefix(3)) : kennzahlen) { k in
                     VStack(alignment: .leading, spacing: 4) {
                         Grosszahl(
                             wert: k.wert, einheit: k.einheit ?? "", groesse: mass.fussZahl,
@@ -423,7 +471,12 @@ struct Ambiente: View {
     // MARK: - Rechnen und Laden
 
     private func rechne() {
-        let jetzt = jetztMinute
+        takt = Date(
+            timeIntervalSince1970: (haus.jetzt.timeIntervalSince1970 / 60).rounded(.down) * 60)
+        stand = gerechnet(takt)
+    }
+
+    private func gerechnet(_ jetzt: Date) -> Stand {
         let lauf = Ruhebild.sonnenlauf(haus.plan, jetzt: jetzt)
         var neu = Stand()
         neu.lauf = lauf
@@ -434,13 +487,18 @@ struct Ambiente: View {
         if let f = Tageskacheln.fenster(.morgen, jetzt: jetzt), let iv = haus.plan?.intervals {
             neu.morgenPvKwh = Tageskacheln.pvSumme(iv, von: f.von, bis: f.bis)
         }
-        stand = neu
+        return neu
     }
 
     /// Die Tagesbilanz, solange das Bild steht - alle fünf Minuten, wie in der Vorlage.
     private func holeBilanz() async {
         while !Task.isCancelled {
-            bilanz = try? await haus.api.energieUebersicht("day", anker: haus.heute)
+            // **Ein Fehlschlag loescht nichts.** Sonst stehen drei der vier Fusszahlen fuer
+            // fuenf Minuten auf einem Strich, weil ein einziger Abruf nicht durchkam - und das
+            // Bild behauptet, der Tag habe nichts geerntet.
+            if let frisch = try? await haus.api.energieUebersicht("day", anker: haus.heute) {
+                bilanz = frisch
+            }
             try? await Task.sleep(for: .seconds(300))
         }
     }
@@ -540,12 +598,18 @@ struct Grosszahl: View {
     let einheit: String
     let groesse: CGFloat
     var farbe: Color = Farbe.text1
+    /// Wie weit die Zahl gesperrt ist. Die Vorlage nimmt -0,03 em, nur die Zahl der Aussicht
+    /// -0,02 em (`globals.css:402`).
+    var sperrung: CGFloat = -0.03
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: groesse * 0.22) {
+        // **Der Abstand ist ein Leerzeichen, kein Rand.** Im Markup steht zwischen Zahl und
+        // Einheit ein gewoehnliches Leerzeichen, und es gehoert zur Mono-Schrift der Zahl: 0,6
+        // em Vorschub, abzueglich der Sperrung. Drei Punkte waeren ein Viertel davon.
+        HStack(alignment: .firstTextBaseline, spacing: groesse * (0.6 + sperrung)) {
             Text(wert)
                 .font(Schrift.mono(groesse))
-                .kerning(groesse * -0.03)
+                .kerning(groesse * sperrung)
                 .foregroundStyle(farbe)
                 .monospacedDigit()
             if !einheit.isEmpty {
@@ -575,24 +639,34 @@ struct Ruhekicker: View {
 }
 
 /// Der Punkt, der atmet, solange die Zahlen gelten.
+///
+/// **Er fängt nach einer Störung wieder an.** Die Dauerschleife hängt an der Änderung von
+/// `atmet`; stand sie still, während der Punkt rot war, bleibt sie nach der Störung stehen -
+/// der Punkt steht dann halb dunkel da und behauptet, die Anzeige sei eingefroren. Darum wird
+/// `atmet` beim Wechsel zurückgesetzt und im nächsten Durchgang neu gesetzt.
 struct Atempunkt: View {
     let gestoert: Bool
     @Environment(\.accessibilityReduceMotion) private var ruhigeBewegung
     @State private var atmet = false
+
+    private var still: Bool { gestoert || ruhigeBewegung }
 
     var body: some View {
         Circle()
             .fill(gestoert ? Farbe.alarm : Farbe.gut)
             .frame(width: 8, height: 8)
             // `dch-atmen`: 3,6 Sekunden für den ganzen Weg, also 1,8 hin und 1,8 zurück.
-            .opacity(gestoert || ruhigeBewegung ? 1 : (atmet ? 0.5 : 1))
+            .opacity(still ? 1 : (atmet ? 0.5 : 1))
             .animation(
-                gestoert || ruhigeBewegung
-                    ? nil
-                    : .easeInOut(duration: 1.8).repeatForever(autoreverses: true),
+                still ? nil : .easeInOut(duration: 1.8).repeatForever(autoreverses: true),
                 value: atmet
             )
-            .onAppear { atmet = true }
+            .onAppear { atmet = !still }
+            .onChange(of: still) { _, jetztStill in
+                atmet = false
+                guard !jetztStill else { return }
+                Task { @MainActor in atmet = true }
+            }
     }
 }
 
@@ -705,6 +779,8 @@ struct Flussreihe: View {
     private var gibt: Bool { batterie > Self.schwelleKw }
 
     private var speicherwort: String {
+        // Ohne Augenblick weiss das Bild nichts - dann steht da auch nicht „hält".
+        guard augenblick != nil else { return "Speicher" }
         if laedt { return "Speicher lädt" }
         if gibt { return "Speicher gibt ab" }
         return "Speicher hält"
@@ -765,7 +841,11 @@ struct Flussreihe: View {
         .shadow(color: .white.opacity(r >= mass.ringGross ? 0.07 : 0), radius: 40)
     }
 
-    /// Das Zeichen ist 44 Prozent des Kreises (`Ambiente.tsx:154`: 48 in 108, 64 in 148).
+    /// Das Zeichen ist 44 Prozent des Kreises.
+    ///
+    /// Die Vorlage setzt feste Grössen (`Ambiente.tsx:154`: 48 und 64) - auf einer Wand von
+    /// 1366 Punkten sind das genau 44 und 43 Prozent der beiden Kreise. Als Anteil geschrieben
+    /// bleibt das Verhältnis auch dort, wo die Kreise kleiner werden.
     private func zeichen(_ r: CGFloat) -> CGFloat { (r * 0.44).rounded() }
 
     /// Die Leitung: 14 Punkte Strich, 16 Luft, und sie wandert in Flussrichtung.
@@ -801,6 +881,7 @@ struct Leitungsstrich: View {
         .onAppear { laufe() }
         .onChange(of: an) { _, _ in laufe() }
         .onChange(of: rueck) { _, _ in laufe() }
+        .onChange(of: ruhig) { _, _ in laufe() }
     }
 
     private func laufe() {
