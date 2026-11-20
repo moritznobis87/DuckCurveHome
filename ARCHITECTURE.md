@@ -81,3 +81,11 @@ Jeder Wert trägt `observed_at`, `quality` (ok, stale, unavailable, unknown, der
 | 6 | In-Memory-Historie in Phase 1 | keine Datenbank nötig, PostgreSQL folgt mit Alembic in Phase 2 |
 | 7 | Home Assistant als Geräteschicht, Bridge als HA-Add-on, Railway als Hosting | ADR-0001: geringster Aufwand, HA bleibt geschlossen, Datenbank managed |
 | 8 | BFF-Route mit signiertem Kiosk-Cookie statt Auth in der API | Bearer bleibt serverseitig (valyze-Muster), Pairing per Link |
+
+Entschieden, aber noch nicht umgesetzt: **ADR-0002** kehrt Nummer 8 um - die Anmeldung zieht mit
+Personen und Passkeys in die API, das BFF hält nur noch ein opakes Sitzungstoken
+([`docs/decisions/ADR-0002-identitaet-und-berechtigung.md`](docs/decisions/ADR-0002-identitaet-und-berechtigung.md)).
+**ADR-0003** beschreibt, wie eine Box im Kundenrollout ohne Home Assistant erreichbar wird - Beitritt,
+Verzeichnis, Relais und Flotte
+([`docs/decisions/ADR-0003-erreichbarkeit-und-flotte.md`](docs/decisions/ADR-0003-erreichbarkeit-und-flotte.md)),
+mit dem Ausfallvertrag in [`docs/ZENTRALE.md`](docs/ZENTRALE.md).
