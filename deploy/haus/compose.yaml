@@ -68,6 +68,11 @@ services:
       PORT: "8000"
       DATABASE_URL: postgresql://dch:${POSTGRES_PASSWORD}@postgres:5432/dch
       DCH_CORS_ORIGINS: "[]"
+      # Austausch mit dem Update-Dienst des Geraets (dch pruefen / dch anfrage): Die API liest die
+      # Statusdatei und legt Anfragen ab. Docker selbst erreicht sie nicht.
+      DCH_UPDATE_DIR: /update
+    volumes:
+      - ${DCH_UPDATE:-/var/lib/duckcurve/update}:/update
     depends_on:
       postgres:
         condition: service_healthy

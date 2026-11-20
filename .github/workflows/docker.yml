@@ -35,5 +35,10 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/duckcurve-${{ matrix.name }}:${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || github.ref_name }}
             ${{ github.event_name == 'push' && format('ghcr.io/{0}/duckcurve-{1}:sha-{2}', github.repository_owner, matrix.name, github.sha) || '' }}
+          # Der Commit im Image: Daran erkennt der Update-Dienst des Hausgeraets, welcher Stand
+          # laeuft und welcher bereitsteht, und holt die Neuerungen dazwischen.
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -226,6 +226,67 @@
         }
       }
     },
+    "/api/v1/system/update": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Steht ein Update bereit?",
+        "operationId": "update_status_api_v1_system_update_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateStatusOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Update installieren oder jetzt pruefen",
+        "description": "Legt die Anfrage fuer den Update-Dienst ab und kehrt sofort zurueck (202). Den Fortschritt\nliest die Oberflaeche ueber GET; waehrend des Neustarts ist die API kurz nicht erreichbar.",
+        "operationId": "update_anfragen_api_v1_system_update_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAnfrageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateStatusOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/live/state": {
       "get": {
         "tags": [
@@ -14691,6 +14752,201 @@
         ],
         "title": "TibberZusammenfassung",
         "description": "Das Ergebnis der festen Tibber-Pruefung, so knapp, wie Alfred es im Panel sagt. Die volle\nAuswertung steht auf der Rechnungsseite, auf die `AlfredRechnungOut.link` zeigt."
+      },
+      "UpdateAnfrageIn": {
+        "properties": {
+          "aktion": {
+            "type": "string",
+            "enum": [
+              "installieren",
+              "pruefen"
+            ],
+            "title": "Aktion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aktion"
+        ],
+        "title": "UpdateAnfrageIn"
+      },
+      "UpdateErgebnisOut": {
+        "properties": {
+          "am": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Am"
+          },
+          "ergebnis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ergebnis"
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "nach": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nach"
+          }
+        },
+        "type": "object",
+        "title": "UpdateErgebnisOut"
+      },
+      "UpdateNeuerungOut": {
+        "properties": {
+          "sha": {
+            "type": "string",
+            "title": "Sha"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sha",
+          "titel"
+        ],
+        "title": "UpdateNeuerungOut"
+      },
+      "UpdateStatusOut": {
+        "properties": {
+          "unterstuetzt": {
+            "type": "boolean",
+            "title": "Unterstuetzt",
+            "default": false
+          },
+          "kanal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kanal"
+          },
+          "aktuell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aktuell"
+          },
+          "verfuegbar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verfuegbar"
+          },
+          "update_verfuegbar": {
+            "type": "boolean",
+            "title": "Update Verfuegbar",
+            "default": false
+          },
+          "neuerungen": {
+            "items": {
+              "$ref": "#/components/schemas/UpdateNeuerungOut"
+            },
+            "type": "array",
+            "title": "Neuerungen"
+          },
+          "geprueft_am": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geprueft Am"
+          },
+          "zustand": {
+            "type": "string",
+            "title": "Zustand",
+            "default": "bereit"
+          },
+          "schritt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schritt"
+          },
+          "meldung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meldung"
+          },
+          "zuletzt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UpdateErgebnisOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "anfrage_offen": {
+            "type": "boolean",
+            "title": "Anfrage Offen",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "UpdateStatusOut",
+        "description": "Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne\nHausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an."
       },
       "ValidationError": {
         "properties": {

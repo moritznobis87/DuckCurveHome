@@ -20,6 +20,7 @@ QUELLE=$(cd "$HIER/../.." && pwd)
 # Umlenkbar nur fuer Tests (DCH_NUR_DATEIEN=1); auf dem Geraet gelten die Vorgaben.
 BASIS=${DCH_BASIS:-/opt/duckcurve}
 SICHERUNG=${DCH_SICHERUNG:-/var/lib/duckcurve/sicherung}
+UPDATE=${DCH_UPDATE:-/var/lib/duckcurve/update}
 
 KIOSK=0
 MARKE=1
@@ -123,6 +124,11 @@ dateien() {
 	schritt "Dateien unter $BASIS"
 	install -d -m 0755 "$BASIS" "$BASIS/kiosk"
 	install -d -m 0700 "$SICHERUNG"
+	# Austausch mit der App: die Statusdatei schreibt nur dieses Geraet, in anfrage/ darf die API
+	# (Benutzer 10001 im Image) eine Anfrage ablegen - mehr kann sie hier nicht.
+	install -d -m 0755 "$UPDATE"
+	install -d -m 0770 "$UPDATE/anfrage"
+	[ "$NUR_DATEIEN" = "1" ] || chown 10001:10001 "$UPDATE/anfrage"
 	install -m 0644 "$HIER/compose.yaml" "$BASIS/compose.yaml"
 	install -m 0644 "$HIER/Caddyfile" "$BASIS/Caddyfile"
 	install -m 0755 "$HIER/dch" "$BASIS/dch"
@@ -185,9 +191,13 @@ dienste() {
 	install -m 0644 "$HIER/systemd/duckcurve.service" /etc/systemd/system/duckcurve.service
 	install -m 0644 "$HIER/systemd/duckcurve-sicherung.service" /etc/systemd/system/duckcurve-sicherung.service
 	install -m 0644 "$HIER/systemd/duckcurve-sicherung.timer" /etc/systemd/system/duckcurve-sicherung.timer
+	install -m 0644 "$HIER/systemd/duckcurve-update.path" /etc/systemd/system/duckcurve-update.path
+	install -m 0644 "$HIER/systemd/duckcurve-update.service" /etc/systemd/system/duckcurve-update.service
+	install -m 0644 "$HIER/systemd/duckcurve-pruefen.service" /etc/systemd/system/duckcurve-pruefen.service
+	install -m 0644 "$HIER/systemd/duckcurve-pruefen.timer" /etc/systemd/system/duckcurve-pruefen.timer
 	systemctl daemon-reload
-	systemctl enable duckcurve.service duckcurve-sicherung.timer
-	systemctl start duckcurve-sicherung.timer
+	systemctl enable duckcurve.service duckcurve-sicherung.timer duckcurve-update.path duckcurve-pruefen.timer
+	systemctl start duckcurve-sicherung.timer duckcurve-update.path duckcurve-pruefen.timer
 
 	if [ "$BAUEN" = "1" ]; then
 		schritt "Images bauen (das dauert einige Minuten)"

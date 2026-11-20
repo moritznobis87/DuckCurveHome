@@ -194,6 +194,10 @@ class Settings(BaseSettings):
     # Wie viele fruehere Wechsel eines Gespraechs mitgehen. Der Faden lebt nur im Browser.
     alfred_verlauf_max: int = 6
 
+    # Austausch mit dem Update-Dienst des Hausgeraets (deploy/haus/dch, Abschnitt "Updates"). Leer
+    # heisst: kein Hausgeraet (Railway, Entwicklung), die App bietet keine Updates an.
+    update_dir: str = ""
+
     @field_validator("cors_origins", "bridge_tokens", mode="before")
     @classmethod
     def _lists(cls, value: object) -> list[str]:

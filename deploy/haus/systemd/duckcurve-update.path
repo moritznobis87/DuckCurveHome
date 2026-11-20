@@ -1,0 +1,10 @@
+# Die App hat eine Anfrage abgelegt ("Update installieren" oder "jetzt pruefen"): dch anfrage.
+[Unit]
+Description=Duck Curve Home - Anfragen aus der App
+
+[Path]
+PathExists=/var/lib/duckcurve/update/anfrage/anfrage.json
+Unit=duckcurve-update.service
+
+[Install]
+WantedBy=multi-user.target

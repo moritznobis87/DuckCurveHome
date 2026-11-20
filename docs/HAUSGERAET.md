@@ -84,9 +84,12 @@ sehen könnte.
 
 - **Schreibgeschütztes System** (Overlay-Dateisystem): Nur Datenbank, Docker-Daten und Einstellungen liegen auf
   einer beschreibbaren Partition. Das Gerät übersteht hartes Ausschalten wie ein Haushaltsgerät.
-- **Updates:** Anwendung über Images aus der GitHub Container Registry, ausgelöst durch einen Release-Tag und
-  eingespielt im Wartungsfenster (Projektplan 15.2). Sicherheitsupdates des Systems automatisch
-  (`unattended-upgrades`). Ein Gerät wird für ein Update nie neu bespielt.
+- **Updates:** Anwendung über Images aus der GitHub Container Registry. **Gebaut:** Das Gerät sieht alle
+  sechs Stunden nach, die App zeigt dem Hausherrn einen Hinweis, installiert wird auf Knopfdruck mit Sicherung
+  vorher, Gesundheitsprüfung danach und automatischer Rückkehr zur vorherigen Fassung
+  (`deploy/haus/README.md`, Abschnitt 10). Heute folgt das eigene Haus dem Kanal `main`; für Kundengeräte
+  ist ein Release-Tag als Kanal und ein Wartungsfenster vorgesehen (Projektplan 15.2). Sicherheitsupdates
+  des Systems automatisch (`unattended-upgrades`). Ein Gerät wird für ein Update nie neu bespielt.
 - **Firewall** lässt nur das Nötige aus dem Heimnetz zu (HTTPS, MQTT für die Shellys).
 
 ## 5. Kioskmodus: nur die Anwendung
@@ -207,7 +210,7 @@ mehr wie ein eigenes Produkt. Für die ersten Geräte ist der normale Pi 5 einfa
 | Baustein | Inhalt |
 |---|---|
 | `deploy/haus/compose.yaml` | **gebaut (Stufe 1):** postgres, api, web, caddy, cloudflared; Mosquitto, eBUS und Bridge folgen in Stufe 2 |
-| `deploy/haus/einrichten.sh`, `deploy/haus/dch` | **gebaut:** Docker, Dienste, Sicherung, Bootloader, Kiosk, Marke, Übernahme von Railway; offen: Firewall, Overlay |
+| `deploy/haus/einrichten.sh`, `deploy/haus/dch` | **gebaut:** Docker, Dienste, Sicherung, Updates aus der App mit Rückkehr, Bootloader, Kiosk, Marke, Übernahme von Railway; offen: Firewall, Overlay |
 | `deploy/haus/marke/`, `deploy/haus/kiosk/` | **gebaut:** Plymouth-Theme, Ladeseite, Chromium-Richtlinien |
 | `deploy/haus/erststart/` | Erststart-Dienst: Hostname, Schlüssel, Wartungsnetz, Bootloader |
 | `deploy/haus/werkstatt/` | Werkstatt-Stick: Abbild schreiben, prüfen, melden |

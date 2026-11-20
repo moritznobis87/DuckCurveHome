@@ -140,6 +140,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Steht ein Update bereit? */
+        get: operations["update_status_api_v1_system_update_get"];
+        put?: never;
+        /**
+         * Update installieren oder jetzt pruefen
+         * @description Legt die Anfrage fuer den Update-Dienst ab und kehrt sofort zurueck (202). Den Fortschritt
+         *     liest die Oberflaeche ueber GET; waehrend des Neustarts ist die API kurz nicht erreichbar.
+         */
+        post: operations["update_anfragen_api_v1_system_update_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/live/state": {
         parameters: {
             query?: never;
@@ -6761,6 +6783,74 @@ export interface components {
             /** Schon Bekannt */
             schon_bekannt: boolean;
         };
+        /** UpdateAnfrageIn */
+        UpdateAnfrageIn: {
+            /**
+             * Aktion
+             * @enum {string}
+             */
+            aktion: "installieren" | "pruefen";
+        };
+        /** UpdateErgebnisOut */
+        UpdateErgebnisOut: {
+            /** Am */
+            am?: string | null;
+            /** Ergebnis */
+            ergebnis?: string | null;
+            /** Von */
+            von?: string | null;
+            /** Nach */
+            nach?: string | null;
+        };
+        /** UpdateNeuerungOut */
+        UpdateNeuerungOut: {
+            /** Sha */
+            sha: string;
+            /** Titel */
+            titel: string;
+        };
+        /**
+         * UpdateStatusOut
+         * @description Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne
+         *     Hausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an.
+         */
+        UpdateStatusOut: {
+            /**
+             * Unterstuetzt
+             * @default false
+             */
+            unterstuetzt: boolean;
+            /** Kanal */
+            kanal?: string | null;
+            /** Aktuell */
+            aktuell?: string | null;
+            /** Verfuegbar */
+            verfuegbar?: string | null;
+            /**
+             * Update Verfuegbar
+             * @default false
+             */
+            update_verfuegbar: boolean;
+            /** Neuerungen */
+            neuerungen?: components["schemas"]["UpdateNeuerungOut"][];
+            /** Geprueft Am */
+            geprueft_am?: string | null;
+            /**
+             * Zustand
+             * @default bereit
+             */
+            zustand: string;
+            /** Schritt */
+            schritt?: string | null;
+            /** Meldung */
+            meldung?: string | null;
+            zuletzt?: components["schemas"]["UpdateErgebnisOut"] | null;
+            /**
+             * Anfrage Offen
+             * @default false
+             */
+            anfrage_offen: boolean;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -7196,6 +7286,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Zuordnungsergebnis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_status_api_v1_system_update_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStatusOut"];
+                };
+            };
+        };
+    };
+    update_anfragen_api_v1_system_update_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAnfrageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStatusOut"];
                 };
             };
             /** @description Validation Error */

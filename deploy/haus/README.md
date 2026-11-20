@@ -163,6 +163,40 @@ neuesten 14 bleiben (`DCH_SICHERUNG_BEHALTEN`). Für eine Kopie außer Haus einm
 `DCH_SICHERUNG_ZIEL=<ziel>:<ordner>` setzen. Vor jedem `dch aktualisieren` sichert das Gerät
 zusätzlich von selbst.
 
+## 10. Updates aus der App
+
+Nach dem ersten Einrichten spielt das Gerät neue Fassungen selbst ein; neu bespielt wird es dafür nie.
+
+1. **Nachsehen.** Alle sechs Stunden (und fünf Minuten nach dem Start) fragt das Gerät die Registry, ob
+   es zum Kanal (`DCH_VERSION`, Vorgabe `main`) neue Images gibt. Erkannt wird die Fassung am Commit,
+   aus dem ein Image gebaut wurde (Label `org.opencontainers.image.revision`); die Liste der Neuerungen
+   kommt aus der Commit-Historie auf GitHub.
+2. **Hinweis.** Steht etwas bereit, zeigt die App mit Vollzugriff oben einen Hinweis „Für Duck Curve
+   steht ein Update bereit“. „Nicht jetzt“ blendet ihn für genau diese Fassung aus. Gäste sehen nichts.
+3. **Installieren.** Unter *System → Zugang und Sicherung → Software* stehen laufende Fassung,
+   Neuerungen und der Knopf „Update installieren“, mit einer Rückfrage davor. Danach arbeitet das
+   Gerät allein: Datenbank sichern, Einrichtung nachziehen, neue Images laden, neu starten und prüfen,
+   ob API und Oberfläche gesund antworten. Die Seite zeigt den Fortschritt und lädt nach dem Neustart
+   von selbst neu. Gemessen im Test: gut 10 Sekunden ohne Bauen, dazu die Ladezeit der Images.
+4. **Zurück, wenn etwas nicht stimmt.** Kommt die neue Fassung binnen drei Minuten nicht gesund hoch,
+   startet das Gerät die vorherige wieder und meldet das in der App. Diese Fassung drängt dann nicht
+   mehr per Hinweis; auf der Software-Seite steht „Erneut versuchen“. Die Datenbank bleibt dabei
+   unverändert: Migrationen laufen nur vorwärts, deshalb sichert das Gerät vor jedem Update. Hat eine
+   kaputte Fassung schon migriert, hilft `sudo dch wiederherstellen <datei>` mit der Sicherung von
+   unmittelbar davor.
+
+**Warum die App dabei nie Docker anfasst.** Die API läuft ohne Rechte und hat keinen Zugriff auf
+Docker. Sie legt nur eine Anfrage als Datei ab (`/var/lib/duckcurve/update/anfrage/`, beschreibbar
+nur für den Container-Benutzer). systemd bemerkt die Datei (`duckcurve-update.path`) und startet
+`dch anfrage` als root. Das Skript liest daraus nur, *ob* installiert oder nachgesehen werden soll;
+*was* installiert wird, bestimmen allein `.env` und die Registry. Den Stand meldet es über
+`/var/lib/duckcurve/update/status.json`, das die API nur liest. Eine kompromittierte Oberfläche kann
+so höchstens ein Update auslösen, das ohnehin bereitsteht, aber keine fremde Fassung und keinen
+Befehl einschleusen.
+
+Von der Kommandozeile geht dasselbe mit `sudo dch pruefen` und `sudo dch aktualisieren`; der Stand
+erscheint auch dann in der App.
+
 ## Im Alltag: `dch`
 
 | Befehl | Wirkung |
@@ -170,7 +204,8 @@ zusätzlich von selbst.
 | `sudo dch status` | Dienste, Gesundheit, Version |
 | `sudo dch logs [api\|web\|postgres\|caddy]` | Protokoll folgen |
 | `sudo dch neustart` | nach einer Änderung an `.env` |
-| `sudo dch aktualisieren [version]` | neue Images ziehen und neu starten (vorher Sicherung) |
+| `sudo dch pruefen` | nachsehen, ob ein Update bereitsteht (das tut das Gerät auch alle sechs Stunden) |
+| `sudo dch aktualisieren [version]` | Update einspielen wie aus der App: Sicherung, laden, neu starten, prüfen, notfalls zurück |
 | `sudo dch selbst-aktualisieren` | Quelltext holen und die Einrichtung erneut ausführen |
 | `sudo dch sichern` / `sicherungen` | jetzt sichern / Sicherungen auflisten |
 | `sudo dch wiederherstellen <datei>` | Datenbank aus einer Sicherung |
@@ -215,3 +250,12 @@ Kompression, Bridge-Verbindung über Port 8001 (richtiges Token verbunden, falsc
 abgewiesen), Sicherung, Aufbewahrung, Wiederherstellung, Übernahme aus einer zweiten Postgres-Instanz
 und die Ladeseite des Kiosks bis in die Anwendung. Nicht getestet: Pakete, systemd, Bootloader,
 Startbild und Kiosk auf echter Hardware.
+
+Am 20.11.2026 die Updates, ebenfalls im Container, mit einer lokalen Registry an Stelle von GHCR:
+Fassung 1111 installiert, 2222 veröffentlicht. `dch pruefen` und die API meldeten das Update, ein
+Browser sah den Hinweis und klickte „Update installieren“, die Anfrage landete als Datei beim Host,
+`dch anfrage` spielte 2222 in 13 Sekunden ein (Sicherung inklusive). Dann eine absichtlich kaputte
+Fassung 3333, deren API nicht startet: nach drei Minuten Wartezeit lief wieder 2222, gesund, und die
+App meldete die Rückkehr. Ein zweiter Klick während eines laufenden Updates wird abgewiesen. Nicht
+getestet: die systemd-Units selbst (Path-Unit und Timer), dort spielte ein Shell-Wächter die
+Path-Unit.

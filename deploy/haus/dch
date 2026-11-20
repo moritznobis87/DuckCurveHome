@@ -12,15 +12,21 @@
 #   dch wiederherstellen DATEI  Datenbank aus einer Sicherung wiederherstellen
 #   dch uebernehmen URL         Datenbank von Railway (oder einem anderen Postgres) uebernehmen
 #   dch koppeln                 Einstellungen fuer das Bridge-Add-on und Pairing-Links anzeigen
+#   dch pruefen                 nachsehen, ob ein Update bereitsteht (Statusdatei fuer die App)
+#   dch anfrage                 eine Anfrage aus der App bearbeiten (startet systemd von selbst)
 #
 # Laeuft als root (sudo). Alles liegt unter /opt/duckcurve, Sicherungen unter
-# /var/lib/duckcurve/sicherung.
+# /var/lib/duckcurve/sicherung, der Austausch mit der App unter /var/lib/duckcurve/update.
 
 set -euo pipefail
 
 BASIS=${DCH_BASIS:-/opt/duckcurve}
 SICHERUNG=${DCH_SICHERUNG:-/var/lib/duckcurve/sicherung}
+UPDATE=${DCH_UPDATE:-/var/lib/duckcurve/update}
 ENVDATEI="$BASIS/.env"
+STATUS="$UPDATE/status.json"
+ANFRAGE="$UPDATE/anfrage/anfrage.json"
+REPO_GITHUB=moritznobis87/DuckCurveHome
 
 fehler() { echo "dch: $*" >&2; exit 1; }
 hinweis() { echo "==> $*"; }
@@ -48,6 +54,277 @@ warten_auf_postgres() {
 		sleep 2
 	done
 	fehler "Die Datenbank antwortet nicht."
+}
+
+# ----------------------------------------------------------------------------------- Updates
+#
+# Die App steuert Docker nicht selbst: Wer an Docker kommt, ist praktisch Administrator des
+# Geraets. Sie liest nur die Statusdatei, die dieser Teil schreibt, und legt fuer "Update
+# installieren" eine Anfrage-Datei ab; systemd sieht sie (duckcurve-update.path) und ruft
+# `dch anfrage`. Was danach geschieht, entscheidet allein dieses Skript.
+
+jetzt() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+status_setzen() {
+	# Felder in die Statusdatei schreiben, atomar (erst Kopie, dann umbenennen), damit die API nie
+	# eine halbe Datei liest. Aufruf: status_setzen '.zustand = "laeuft"' [--arg name wert ...]
+	local filter=$1
+	shift
+	mkdir -p "$UPDATE"
+	[ -s "$STATUS" ] || echo '{}' >"$STATUS"
+	jq "$@" "$filter" "$STATUS" >"$STATUS.neu"
+	chmod 0644 "$STATUS.neu"
+	mv "$STATUS.neu" "$STATUS"
+}
+
+schritt_setzen() {
+	status_setzen '.zustand = $z | .schritt = $s | .geaendert_am = $t' \
+		--arg z "$1" --arg s "$2" --arg t "$(jetzt)"
+}
+
+bild_ref() {
+	# Das Image eines Dienstes, so wie compose.yaml es zusammensetzt.
+	local dienst=$1 standard
+	standard="ghcr.io/moritznobis87/duckcurve-$dienst"
+	local name
+	name=$(wert "DCH_IMAGE_${dienst^^}")
+	echo "${name:-$standard}:$(wert DCH_VERSION)"
+}
+
+laufende_revision() {
+	# Commit des Images, das gerade laeuft (Label org.opencontainers.image.revision), sonst leer.
+	local id
+	id=$(compose ps -q "$1" 2>/dev/null | head -n1)
+	[ -n "$id" ] || return 0
+	docker inspect --format '{{.Image}}' "$id" 2>/dev/null |
+		xargs -r docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null |
+		sed 's/<no value>//'
+}
+
+laufender_digest() {
+	local id
+	id=$(compose ps -q "$1" 2>/dev/null | head -n1)
+	[ -n "$id" ] || return 0
+	docker inspect --format '{{.Image}}' "$id" 2>/dev/null |
+		xargs -r docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' 2>/dev/null |
+		sed -n 's/.*@//p' | head -n1
+}
+
+entfernt() {
+	# Revision und Digest eines Images in der Registry, fuer die Plattform dieses Geraets.
+	# Ausgabe: "<digest> <revision>" (Revision leer, wenn das Image kein Label traegt).
+	# Die Registry steht vorn im Namen (ghcr.io/... oder eine eigene wie registry.lan:5000/...).
+	# GHCR verlangt auch fuer oeffentliche Images ein anonymes Token, eine eigene Registry meist
+	# nicht; localhost spricht HTTP.
+	local ref=$1 host repo tag token index digest manifest config arch schema=https
+	host=${ref%%/*}
+	repo=${ref#*/}
+	tag=${repo##*:}
+	repo=${repo%:*}
+	{ [ "$host" != "$ref" ] && [[ "$host" == *.* || "$host" == *:* ]]; } || return 1
+	[[ "$host" == localhost* || "$host" == 127.0.0.1* ]] && schema=http
+	arch=$(dpkg --print-architecture 2>/dev/null || uname -m)
+	case "$arch" in aarch64) arch=arm64 ;; x86_64) arch=amd64 ;; esac
+	local h=(-fsS -m 20)
+	if [ "$host" = "ghcr.io" ]; then
+		token=$(curl -fsS -m 15 "https://ghcr.io/token?scope=repository:$repo:pull" | jq -r .token) || return 1
+		h+=(-H "Authorization: Bearer $token")
+	fi
+	local basis="$schema://$host/v2/$repo"
+	digest=$(curl "${h[@]}" -I \
+		-H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json" \
+		"$basis/manifests/$tag" | tr -d '\r' | sed -n 's/^[Dd]ocker-[Cc]ontent-[Dd]igest: //p') || return 1
+	index=$(curl "${h[@]}" \
+		-H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json" \
+		"$basis/manifests/$tag") || return 1
+	manifest=$(echo "$index" | jq -r --arg a "$arch" \
+		'.manifests[]? | select(.platform.os == "linux" and .platform.architecture == $a) | .digest' | head -n1)
+	local revision=""
+	if [ -n "$manifest" ]; then
+		config=$(curl "${h[@]}" -H "Accept: application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json" \
+			"$basis/manifests/$manifest" | jq -r .config.digest) || true
+	else
+		# Ein Image fuer nur eine Plattform: kein Verzeichnis, sondern gleich das Manifest.
+		config=$(echo "$index" | jq -r '.config.digest // empty')
+	fi
+	if [ -n "${config:-}" ] && [ "$config" != "null" ]; then
+		revision=$(curl "${h[@]}" -L "$basis/blobs/$config" |
+			jq -r '.config.Labels["org.opencontainers.image.revision"] // empty') || true
+	fi
+	echo "$digest $revision"
+}
+
+neuerungen() {
+	# Die Commit-Titel zwischen zwei Staenden, neueste zuerst, ohne Merges; hoechstens 30.
+	local alt=$1 neu=$2
+	{ [ -n "$alt" ] && [ -n "$neu" ] && [ "$alt" != "$neu" ]; } || { echo '[]'; return 0; }
+	curl -fsS -m 20 "https://api.github.com/repos/$REPO_GITHUB/compare/$alt...$neu" 2>/dev/null |
+		jq '[.commits[]? | {sha: .sha[0:7], titel: (.commit.message | split("\n")[0])}
+		     | select(.titel | startswith("Merge") | not)] | reverse | .[0:30]' 2>/dev/null || echo '[]'
+}
+
+pruefen() {
+	local alt_rev neu_rev alt_dig neu_dig verfuegbar=false liste='[]' bauen=false
+	if [ -f "$BASIS/compose.bauen.yaml" ]; then
+		bauen=true
+		local q="$BASIS/quelle"
+		git -C "$q" fetch -q origin 2>/dev/null || true
+		alt_rev=$(git -C "$q" rev-parse HEAD 2>/dev/null || true)
+		neu_rev=$(git -C "$q" rev-parse '@{u}' 2>/dev/null || true)
+		[ -n "$neu_rev" ] && [ "$alt_rev" != "$neu_rev" ] && verfuegbar=true
+		if [ "$verfuegbar" = true ]; then
+			liste=$(git -C "$q" log --no-merges --format='%h%x09%s' -n 30 "$alt_rev..$neu_rev" |
+				jq -R -s 'split("\n") | map(select(length > 0) | split("\t") | {sha: .[0], titel: .[1]})')
+		fi
+	else
+		local ergebnis
+		alt_rev=$(laufende_revision api)
+		alt_dig=$(laufender_digest api)
+		if ergebnis=$(entfernt "$(bild_ref api)"); then
+			neu_dig=${ergebnis%% *}
+			neu_rev=${ergebnis#* }
+			if [ -n "$alt_rev" ] && [ -n "$neu_rev" ]; then
+				[ "$alt_rev" != "$neu_rev" ] && verfuegbar=true
+			elif [ -n "$neu_dig" ] && [ "$neu_dig" != "$alt_dig" ]; then
+				verfuegbar=true
+			fi
+			# Die Oberflaeche zaehlt mit: ein neues Image nur fuer sie ist auch ein Update.
+			local web_ergebnis web_alt
+			web_alt=$(laufender_digest web)
+			if web_ergebnis=$(entfernt "$(bild_ref web)"); then
+				[ -n "${web_ergebnis%% *}" ] && [ "${web_ergebnis%% *}" != "$web_alt" ] && verfuegbar=true
+			fi
+			[ "$verfuegbar" = true ] && liste=$(neuerungen "$alt_rev" "$neu_rev")
+		else
+			status_setzen '.unterstuetzt = true | .geprueft_am = $t | .meldung = "Die Registry war nicht erreichbar."' \
+				--arg t "$(jetzt)"
+			return 0
+		fi
+	fi
+	status_setzen '.unterstuetzt = true | .kanal = $k | .gebaut_auf_geraet = ($b == "true")
+		| .aktuell = $a | .verfuegbar = (if $v == "true" then $n else null end)
+		| .update_verfuegbar = ($v == "true") | .neuerungen = $l | .geprueft_am = $t
+		| .zustand = (.zustand // "bereit")
+		| .meldung = (if .meldung == "Die Registry war nicht erreichbar." then null else .meldung end)' \
+		--arg k "$(wert DCH_VERSION)" --arg b "$bauen" --arg a "${alt_rev:0:12}" --arg n "${neu_rev:0:12}" \
+		--arg v "$verfuegbar" --argjson l "$liste" --arg t "$(jetzt)"
+}
+
+gesund() {
+	# Ob API und Oberflaeche nach einem Neustart wieder antworten; hoechstens drei Minuten.
+	local id
+	for _ in $(seq 1 60); do
+		id=$(compose ps -q api 2>/dev/null | head -n1)
+		if [ -n "$id" ] && [ "$(docker inspect --format '{{.State.Health.Status}}' "$id" 2>/dev/null)" = "healthy" ] &&
+			curl -fsS -m 5 http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+			return 0
+		fi
+		sleep 3
+	done
+	return 1
+}
+
+dateien_nachziehen() {
+	# Was im Quelltext unter deploy/haus liegt, auf den Stand des Quelltexts bringen: compose.yaml,
+	# Caddyfile, dch, Systemdienste. Ohne apt, ohne Boot-Einstellungen; das bleibt einrichten.sh.
+	local q="$BASIS/quelle/deploy/haus"
+	[ -d "$q" ] || return 0
+	install -m 0644 "$q/compose.yaml" "$BASIS/compose.yaml"
+	install -m 0644 "$q/Caddyfile" "$BASIS/Caddyfile"
+	# `install` legt eine neue Datei an statt die alte zu ueberschreiben: Dieses Skript laeuft
+	# gerade, und bash liest es beim Ausfuehren Stueck fuer Stueck.
+	install -m 0755 "$q/dch" "$BASIS/dch"
+	if [ -d /run/systemd/system ] && [ -d "$q/systemd" ]; then
+		local einheit
+		for einheit in "$q"/systemd/duckcurve*.service "$q"/systemd/duckcurve*.timer "$q"/systemd/duckcurve*.path; do
+			[ -f "$einheit" ] || continue
+			case "$(basename "$einheit")" in
+			duckcurve-kiosk.service) [ -f /etc/systemd/system/duckcurve-kiosk.service ] || continue ;;
+			esac
+			install -m 0644 "$einheit" "/etc/systemd/system/$(basename "$einheit")"
+		done
+		systemctl daemon-reload
+	fi
+}
+
+installieren() {
+	local von=${1:-}
+	mkdir -p "$UPDATE"
+	exec 9>"$UPDATE/.sperre"
+	flock -n 9 || fehler "Es laeuft bereits ein Update."
+	local vorher_api vorher_web alt
+	alt=$(laufende_revision api)
+	status_setzen '.zustand = "laeuft" | .schritt = "Sicherung" | .meldung = null | .begonnen_am = $t | .von = $v' \
+		--arg t "$(jetzt)" --arg v "$von"
+
+	if ! "$0" sichern >/dev/null 2>&1; then
+		schritt_setzen fehlgeschlagen "Sicherung"
+		status_setzen '.meldung = "Die Sicherung vor dem Update ist fehlgeschlagen; es wurde nichts geändert."'
+		return 1
+	fi
+
+	schritt_setzen laeuft "Quelltext"
+	if [ -d "$BASIS/quelle/.git" ]; then
+		git -C "$BASIS/quelle" pull -q --ff-only 2>/dev/null || true
+		dateien_nachziehen
+	fi
+
+	# Was jetzt laeuft, unter einem eigenen Namen festhalten: Damit geht es zurueck, falls die neue
+	# Fassung nicht gesund hochkommt.
+	local dienst id
+	for dienst in api web; do
+		id=$(compose ps -q "$dienst" 2>/dev/null | head -n1)
+		[ -n "$id" ] && docker tag "$(docker inspect --format '{{.Image}}' "$id")" "duckcurve-$dienst:vorher"
+	done
+	vorher_api=$(docker image inspect --format '{{.Id}}' duckcurve-api:vorher 2>/dev/null || true)
+	vorher_web=$(docker image inspect --format '{{.Id}}' duckcurve-web:vorher 2>/dev/null || true)
+
+	schritt_setzen laeuft "Laden"
+	if [ -f "$BASIS/compose.bauen.yaml" ]; then
+		compose build >/dev/null 2>&1 || { schritt_setzen fehlgeschlagen "Laden"; status_setzen '.meldung = "Das Bauen der neuen Fassung ist fehlgeschlagen; die alte läuft weiter."'; return 1; }
+	else
+		compose pull api web >/dev/null 2>&1 || { schritt_setzen fehlgeschlagen "Laden"; status_setzen '.meldung = "Die neue Fassung ließ sich nicht laden (Internet?); die alte läuft weiter."'; return 1; }
+	fi
+
+	# Welche Fassung jetzt versucht wird; auch nach einer Rueckkehr soll klar sein, welche nicht hochkam.
+	local versucht
+	if [ -f "$BASIS/compose.bauen.yaml" ]; then
+		versucht=$(git -C "$BASIS/quelle" rev-parse HEAD 2>/dev/null || true)
+	else
+		versucht=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$(bild_ref api)" 2>/dev/null || true)
+	fi
+
+	schritt_setzen laeuft "Neustart"
+	compose up -d --remove-orphans >/dev/null 2>&1 || true
+
+	schritt_setzen laeuft "Pruefung"
+	if gesund; then
+		status_setzen '.zustand = "fertig" | .schritt = null | .update_verfuegbar = false | .verfuegbar = null
+			| .neuerungen = [] | .meldung = null
+			| .zuletzt = {am: $t, ergebnis: "ok", von: $a, nach: $n}' \
+			--arg t "$(jetzt)" --arg a "${alt:0:12}" --arg n "$(laufende_revision api | cut -c1-12)"
+		docker image prune -f >/dev/null 2>&1 || true
+		pruefen || true
+		return 0
+	fi
+
+	schritt_setzen laeuft "Zurueck"
+	local ref
+	if [ -n "$vorher_api" ]; then ref=$(bild_ref api); [ -f "$BASIS/compose.bauen.yaml" ] && ref=duckcurve-api:lokal; docker tag "$vorher_api" "$ref"; fi
+	if [ -n "$vorher_web" ]; then ref=$(bild_ref web); [ -f "$BASIS/compose.bauen.yaml" ] && ref=duckcurve-web:lokal; docker tag "$vorher_web" "$ref"; fi
+	compose up -d --remove-orphans >/dev/null 2>&1 || true
+	if gesund; then
+		status_setzen '.zustand = "zurueckgerollt" | .schritt = null
+			| .meldung = "Die neue Fassung kam nicht gesund hoch. Die vorherige läuft wieder."
+			| .zuletzt = {am: $t, ergebnis: "zurueckgerollt", von: $a, nach: $n}' \
+			--arg t "$(jetzt)" --arg a "${alt:0:12}" --arg n "${versucht:0:12}"
+	else
+		status_setzen '.zustand = "fehlgeschlagen" | .schritt = null
+			| .meldung = "Weder die neue noch die vorherige Fassung kam gesund hoch. Bitte am Gerät nachsehen (dch status, dch logs api)."
+			| .zuletzt = {am: $t, ergebnis: "fehlgeschlagen", von: $a, nach: $n}' \
+			--arg t "$(jetzt)" --arg a "${alt:0:12}" --arg n "${versucht:0:12}"
+	fi
+	return 1
 }
 
 befehl=${1:-status}
@@ -86,19 +363,34 @@ aktualisieren)
 			echo "DCH_VERSION=$1" >>"$ENVDATEI"
 		fi
 	fi
-	# Vor jedem Update eine Sicherung: Eine Migration ist nur additiv (Projektplan 23.4), aber eine
-	# Sicherung von vor fuenf Minuten kostet nichts.
-	"$0" sichern
-	if [ -f "$BASIS/compose.bauen.yaml" ]; then
-		hinweis "Images werden auf dem Geraet gebaut (das dauert)."
-		git -C "$BASIS/quelle" pull --ff-only
-		compose build
+	# Derselbe Ablauf wie aus der App: Sicherung, Quelltext, Laden, Neustart, Pruefung, und bei
+	# einem Fehlschlag zurueck zur vorherigen Fassung. Eine Migration ist nur additiv
+	# (Projektplan 23.4); die alte Fassung kommt mit einem neueren Schema zurecht.
+	if installieren "Befehlszeile"; then
+		hinweis "Aktualisiert. $(jq -r '.zuletzt | "Von \(.von // "?") auf \(.nach // "?")."' "$STATUS")"
 	else
-		compose pull
+		fehler "$(jq -r '.meldung // "Update fehlgeschlagen."' "$STATUS")"
 	fi
-	compose up -d --remove-orphans
-	docker image prune -f >/dev/null
-	hinweis "Aktualisiert auf $(wert DCH_VERSION)."
+	;;
+
+pruefen)
+	pruefen
+	jq -r 'if .update_verfuegbar then "Update verfuegbar: \(.aktuell // "?") -> \(.verfuegbar // "?")"
+	       else "Kein Update verfuegbar (\(.aktuell // "?"))." end' "$STATUS"
+	;;
+
+anfrage)
+	# Von duckcurve-update.path gerufen, sobald die App eine Anfrage abgelegt hat. Die Datei wird
+	# zuerst entfernt: Sonst sieht systemd sie weiter und startet den Dienst immer wieder.
+	[ -f "$ANFRAGE" ] || exit 0
+	aktion=$(jq -r '.aktion // empty' "$ANFRAGE" 2>/dev/null || true)
+	von=$(jq -r '.von // empty' "$ANFRAGE" 2>/dev/null | tr -cd '[:alnum:] ._-' | cut -c1-60)
+	rm -f "$ANFRAGE"
+	case "$aktion" in
+	pruefen) pruefen ;;
+	installieren) installieren "${von:-App}" || true ;;
+	*) echo "dch: unbekannte Anfrage '$aktion' verworfen" >&2 ;;
+	esac
 	;;
 
 selbst-aktualisieren)

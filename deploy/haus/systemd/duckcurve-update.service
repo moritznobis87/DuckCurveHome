@@ -1,0 +1,11 @@
+# Bearbeitet eine Anfrage aus der App. Laeuft auf dem Geraet selbst und nicht im Container: Ein
+# Update startet die Container neu, und der Dienst, der das tut, darf dabei nicht mit untergehen.
+[Unit]
+Description=Duck Curve Home - Update aus der App
+Requires=docker.service
+After=docker.service duckcurve.service
+
+[Service]
+Type=oneshot
+TimeoutStartSec=30min
+ExecStart=/usr/local/bin/dch anfrage

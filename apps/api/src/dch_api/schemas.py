@@ -1959,3 +1959,43 @@ class AlfredZuordnungIn(BaseModel):
     """Eine eingefügte Entitätenliste aus Home Assistant (Entwicklerwerkzeuge → Zustände)."""
 
     liste: str = Field(min_length=1, max_length=60_000)
+
+
+# --- Updates des Hausgeräts (deploy/haus/dch, routers/update.py) ---------------------------------
+
+
+class UpdateNeuerungOut(BaseModel):
+    sha: str
+    titel: str
+
+
+class UpdateErgebnisOut(BaseModel):
+    am: str | None = None
+    ergebnis: str | None = None
+    von: str | None = None
+    nach: str | None = None
+
+
+class UpdateStatusOut(BaseModel):
+    """Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne
+    Hausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an."""
+
+    unterstuetzt: bool = False
+    kanal: str | None = None
+    aktuell: str | None = None
+    verfuegbar: str | None = None
+    update_verfuegbar: bool = False
+    neuerungen: list[UpdateNeuerungOut] = Field(default_factory=list)
+    geprueft_am: str | None = None
+    #: bereit | laeuft | fertig | zurueckgerollt | fehlgeschlagen
+    zustand: str = "bereit"
+    #: Sicherung | Quelltext | Laden | Neustart | Pruefung | Zurueck, solange `zustand` laeuft
+    schritt: str | None = None
+    meldung: str | None = None
+    zuletzt: UpdateErgebnisOut | None = None
+    #: Eine Anfrage liegt bereit und wartet darauf, dass der Dienst sie abholt.
+    anfrage_offen: bool = False
+
+
+class UpdateAnfrageIn(BaseModel):
+    aktion: Literal["installieren", "pruefen"]
