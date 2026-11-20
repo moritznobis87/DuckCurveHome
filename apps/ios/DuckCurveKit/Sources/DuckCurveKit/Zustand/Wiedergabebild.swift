@@ -73,8 +73,8 @@ public struct Wiedergabebild: Sendable {
     ///
     /// **Nicht in `Marken`**, weil sie keine Markenfarben sind, sondern die Auflösung *dieser*
     /// Uhr: „fünf unterscheidbare Helligkeiten liest das Auge sicherer als 288 fast gleiche“
-    /// (`tagesuhr.ts:85-92`). Die Spurfarbe entsteht aus `Marken.papier` mit Deckung 0,055 und
-    /// braucht darum keinen eigenen Eintrag.
+    /// (`tagesuhr.ts:85-92`). Die Spurfarbe dagegen ist eine Marke und steht an ``Marken/spur``:
+    /// sie sagt „gemessen, aber nein“ und gilt damit über alle Ringe, nicht nur über die zwei.
     public static let stufen: [Double] = [0.16, 0.32, 0.52, 0.76, 1]
 
     /// Einen Wert in eine von `anzahl` Stufen einordnen, 0 bis anzahl-1.

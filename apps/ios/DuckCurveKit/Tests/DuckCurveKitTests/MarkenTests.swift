@@ -363,4 +363,100 @@ final class MarkenTests: XCTestCase {
         XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 0.25),
                        Marken.abdeckungFehlend.gemischt(mit: Marken.abdeckungTeils, anteil: 0.5))
     }
+
+    // MARK: - Die nachgezogenen Farben
+
+    /// Die Hexwerte der Vorlage, festgenagelt wie die uebrigen.
+    ///
+    /// **Drei von ihnen tragen eine Zahl, die in dieser Liste schon vorkommt**, und genau
+    /// darum stehen sie da: #C2A86B ist auch `abdeckungTeils`, #E4ECEF auch der oberste Stopp
+    /// von `rampeNetz`, und das Weiss der Spur auch `papier`. Vor diesem Test holten sich die
+    /// Seiten die Werte von dort - wer den Sandton der Abdeckungskarte verschoben haette,
+    /// haette die Grundgebuehr einer Stromrechnung mitverschoben. Hier wird deshalb kein
+    /// Gleichstand geprueft, sondern jeder Wert einzeln gegen die Vorlage: die beiden duerfen
+    /// auseinanderlaufen, sie duerfen es nur nicht unbemerkt.
+    func testDieNachgezogenenFarbenHabenDieWerteDerVorlage() {
+        // `C.base`, `charts/palette.ts:39` - in `reports/charts.ts:300` die Grundgebuehr.
+        XCTAssertEqual(Marken.grundgebuehr.hex, "#C2A86B")
+        XCTAssertEqual(Marken.grundgebuehr.deckung, 1.0, accuracy: 1e-9)
+        // `C.export`, `charts/palette.ts:44` - `rgba(228,236,239,.5)`, halbe Deckung.
+        XCTAssertEqual(Marken.umsatzsteuer.hex, "#E4ECEF")
+        XCTAssertEqual(Marken.umsatzsteuer.deckung, 0.5, accuracy: 1e-9)
+        // `SPUR`, `waerme/Tagesuhr.tsx:51` - `rgba(255,255,255,.055)`.
+        XCTAssertEqual(Marken.spur.hex, "#FFFFFF")
+        XCTAssertEqual(Marken.spur.deckung, 0.055, accuracy: 1e-9)
+        // `.anlage-buehne`, `globals.css:565`.
+        XCTAssertEqual(Marken.buehneOben.hex, "#0A2735")
+        XCTAssertEqual(Marken.buehneOben.deckung, 0.85, accuracy: 1e-9)
+        XCTAssertEqual(Marken.buehneUnten.hex, "#05161F")
+        XCTAssertEqual(Marken.buehneUnten.deckung, 0.9, accuracy: 1e-9)
+    }
+
+    /// Die Spur muss schwaecher sein als jede Linie des Rasters.
+    ///
+    /// Daran haengt, dass die Tagesuhr drei Aussagen tragen kann: Spur, Fuellung, nichts. Mit
+    /// der Deckung einer Rasterlinie waere die Spur ein Messwert und nicht ein Untergrund.
+    func testDieSpurIstSchwaecherAlsJedeLinie() {
+        XCTAssertLessThan(Marken.spur.deckung, Marken.rasterlinie.deckung)
+        XCTAssertLessThan(Marken.spur.deckung, Marken.linie1.deckung)
+        XCTAssertLessThan(Marken.spur.deckung, Marken.linie2.deckung)
+    }
+
+    /// Der gestapelte Rechnungsbetrag: Arbeitspreis, Grundgebuehr, Mehrwertsteuer.
+    ///
+    /// **Ein Befund, nicht eine Auflage.** Arbeitspreis (`pv`) und Grundgebuehr liegen bei
+    /// ΔE2000 14,3 und damit unter der Schwelle 15, die diese Liste fuer **gestapelte** Reihen
+    /// sonst verlangt - und gestapelt sind sie (`reports/charts.ts:313`, `stack: "eur"`). Der
+    /// Kopf von `charts/palette.ts` fuehrt drei durchgerechnete Diagramme auf; dieses ist
+    /// keines davon. Die Zahl wird hier festgenagelt und nicht verbessert: die App soll
+    /// dieselben Farben zeigen wie der Browser, und eine eigene Wahl waere zwei Paletten. Wer
+    /// sie heben will, hebt sie in der Vorlage.
+    func testDerStapelDesRechnungsbetragsHaeltSeineGemessenenAbstaende() {
+        XCTAssertEqual(Marken.pv.abstand(zu: Marken.grundgebuehr), 14.3, accuracy: 0.1)
+        XCTAssertEqual(Marken.pv.abstand(zu: Marken.umsatzsteuer), 33.9, accuracy: 0.1)
+        XCTAssertEqual(Marken.grundgebuehr.abstand(zu: Marken.umsatzsteuer), 27.4, accuracy: 0.1)
+    }
+
+    /// Beide Abschnitte muessen sich von der Kartenflaeche abheben - der untere Abschnitt eines
+    /// Stapels verschwand in der Vorlage schon einmal im Hintergrund (`charts/palette.ts`,
+    /// Haushalt #4D6B78 mit 2,28:1).
+    ///
+    /// Die Mehrwertsteuer traegt halbe Deckung, also zaehlt nicht ihr Hexwert, sondern was
+    /// davon auf der Karte ankommt: 3,91:1 statt der 10,84:1 des reinen #E4ECEF.
+    func testBeideReihenDesRechnungsbetragsHebenSichVonDerKarteAb() {
+        XCTAssertGreaterThan(Marken.grundgebuehr.kontrast(zu: Marken.flaeche2), 3.0)
+        let aufDerKarte = Marken.flaeche2.gemischt(
+            mit: Marken.umsatzsteuer, anteil: Marken.umsatzsteuer.deckung)
+        XCTAssertEqual(aufDerKarte.kontrast(zu: Marken.flaeche2), 3.91, accuracy: 0.02)
+        XCTAssertGreaterThan(aufDerKarte.kontrast(zu: Marken.flaeche2), 3.0)
+    }
+
+    /// Die Buehne ist dunkler als die dunkelste Kartenflaeche - das ist ihr ganzer Zweck.
+    ///
+    /// Die Deckungen der Anlagenzeichnung sind fuer diesen Grund gerechnet. Stuende sie auf
+    /// `flaeche1`, verloeren die Lichtpunkte in den Rohren und die Glaskacheln ihren Kontrast.
+    /// Nach unten wird es dunkler, damit die Zeichnung auf dem Boden steht.
+    func testDieBuehneIstDunklerAlsDieDunkelsteKartenflaeche() {
+        XCTAssertLessThan(Marken.buehneOben.leuchtdichte, Marken.flaeche1.leuchtdichte)
+        XCTAssertLessThan(Marken.buehneUnten.leuchtdichte, Marken.buehneOben.leuchtdichte)
+    }
+
+    /// Der Rand der Buehne ist eine Lichtkante oben und kein gleichmaessiger Grauwert.
+    ///
+    /// Der Stopp bei 30 Prozent ist der Punkt: zwischen 0 und 0,3 faellt die Deckung um 0,11,
+    /// auf den restlichen 70 Prozent nur noch um 0,01. Ein Verlauf mit zwei Stopps - oder ein
+    /// `strokeBorder` in einer Farbe - waere oben zu dunkel und unten zu hell.
+    func testDerRandDerBuehneIstEineLichtkanteOben() {
+        let rand = Marken.buehneRand
+        XCTAssertEqual(rand.count, 3)
+        XCTAssertEqual(rand.map(\.stelle), [0, 0.3, 1])
+        for stopp in rand {
+            XCTAssertEqual(stopp.farbe.hex, Marken.papier.hex, "der Rand ist Weiss mit Deckung")
+        }
+        let oben = rand[0].farbe.deckung - rand[1].farbe.deckung
+        let unten = rand[1].farbe.deckung - rand[2].farbe.deckung
+        XCTAssertGreaterThan(oben, 0, "oben heller als in der Mitte")
+        XCTAssertGreaterThan(unten, 0, "und die Mitte heller als unten")
+        XCTAssertGreaterThan(oben, unten * 10, "der Sprung sitzt im ersten Drittel")
+    }
 }

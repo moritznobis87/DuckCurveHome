@@ -38,9 +38,8 @@ struct Tagesuhrbild: View {
     /// entscheidet: „wer hinfasst, will hinsehen“ (`Wiedergabe.tsx:151`).
     var aufSprung: (Int) -> Void
 
-    /// Die Spur: wo gemessen wurde. `rgba(255,255,255,.055)` der Vorlage (`Tagesuhr.tsx:45`) -
-    /// zu schwach für einen eigenen Markeneintrag, und nirgends sonst gebraucht.
-    private var spurfarbe: Color { Color(Marken.papier.mitDeckung(0.055)) }
+    /// Die Spur: wo gemessen wurde. Der Wert und seine Begründung stehen an ``Marken/spur``.
+    private var spurfarbe: Color { Farbe.spur }
 
     private var mitte: CGPoint {
         CGPoint(x: Tagesuhrgeometrie.mitte, y: Tagesuhrgeometrie.mitte)

@@ -33,9 +33,48 @@ public enum Marken {
     public static let linie2 = Farbwert(0xFFFFFF, deckung: 0.17)
     public static let rasterlinie = Farbwert(0xFFFFFF, deckung: 0.09)
 
+    /// Die Spur der Tagesuhr: wo gemessen wurde, aber nichts lief.
+    ///
+    /// **Eine eigene Stufe und nicht die nächste vorhandene.** Die Vorlage setzt
+    /// `rgba(255,255,255,.055)` (`waerme/Tagesuhr.tsx:51`, Konstante `SPUR`), und das liegt
+    /// zwischen `rasterlinie` (0,09) und nichts. Beide Nachbarn wären falsch: mit 0,09 liest
+    /// sich die Spur als Messwert statt als Untergrund, mit 0,10 (`linie1`) als Rahmen. Die
+    /// Uhr trägt damit drei Aussagen - Spur heißt „gemessen, aber nein“, eine Füllung heißt
+    /// „ja“, und gar nichts heißt „keine Messung“ -, und die schwächste von ihnen braucht
+    /// ihren eigenen Wert.
+    public static let spur = papier.mitDeckung(0.055)
+
     /// Der Verlauf des Hintergrunds, 130 Grad wie im Dashboard.
     public static let grundVerlauf: [(farbe: Farbwert, stelle: Double)] = [
         (deep, 0.0), (petrol, 0.62), (Farbwert(0x153C4C), 1.0),
+    ]
+
+    // MARK: - Die Bühne der Anlagenzeichnung
+
+    /// Die Fläche, auf der das Anlagenschema steht - oben.
+    ///
+    /// **Warum sie keine Kartenfläche ist.** `rgba(10,39,53,.85)` über dem Seitenverlauf
+    /// (`globals.css:565`, `.anlage-buehne`), und das ist dunkler als jede Karte der App. Die
+    /// Deckungen der Zeichnung - die Lichtpunkte in den Rohren, der Sonnenschein hinter der
+    /// PV, die Glaskacheln - sind für diesen Grund gerechnet; auf `flaeche1` verlieren genau
+    /// die Teile ihren Kontrast, die das Bild tragen. Zwei Seiten teilen die Bühne
+    /// (`globals.css:606-609`), darum steht sie hier und nicht in einer von ihnen.
+    public static let buehneOben = Farbwert(0x0A2735, deckung: 0.85)
+
+    /// Dieselbe Fläche unten: `rgba(5,22,31,.9)` (`globals.css:565`). Der Verlauf nach unten
+    /// ins Dunklere lässt die Zeichnung auf dem Boden stehen statt im Nichts zu schweben.
+    public static let buehneUnten = Farbwert(0x05161F, deckung: 0.9)
+
+    /// Der Rand der Bühne, als Verlauf und nicht als Strich.
+    ///
+    /// `linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03) 30%,
+    /// rgba(255,255,255,.02))` (`globals.css:564`). **Der Stopp bei 30 Prozent ist der Sinn
+    /// der Sache:** er macht aus dem Verlauf eine Lichtkante oben statt eines gleichmäßigen
+    /// Grauwerts. Eine Haarlinie in einer Farbe wäre oben zu dunkel und unten zu hell - die
+    /// Stellen gehören darum zum Wert und stehen mit ihm an einer Stelle.
+    public static let buehneRand: [(farbe: Farbwert, stelle: Double)] = [
+        (papier.mitDeckung(0.14), 0.0), (papier.mitDeckung(0.03), 0.3),
+        (papier.mitDeckung(0.02), 1.0),
     ]
 
     // MARK: - Text auf Dunkel
@@ -138,6 +177,29 @@ public enum Marken {
     /// Hell und nicht sandfarben: neben dem Orange der Waermepumpe waere Sand bei Deuteranopie
     /// dieselbe Farbe (Abstand 0,2).
     public static let diagrammHaushalt = Farbwert(0xCFD8DC)
+
+    // MARK: Die beiden Reihen des Rechnungsbetrags
+
+    /// Die Grundgebühr im gestapelten Balken „Rechnungsbetrag“.
+    ///
+    /// **Eigener Name, obwohl `abdeckungTeils` dieselbe Zahl trägt.** `C.base` ist #C2A86B
+    /// (`charts/palette.ts:39`, dort als „Haushalt ohne Wärmepumpe und Wallbox“ geführt), und
+    /// die Rechnungsseite nimmt denselben Sandton für die Grundgebühr
+    /// (`reports/charts.ts:300`). Derselbe Hexwert heißt in dieser Liste schon einmal etwas
+    /// anderes - der Sandton der Mitte der Abdeckungsrampe. Wer den einen verschiebt, soll
+    /// nicht den anderen mitverschieben: eine Farbe gehört zur Sache, die sie bezeichnet.
+    public static let grundgebuehr = Farbwert(0xC2A86B)
+
+    /// Die Mehrwertsteuer im selben Balken: `C.export`, `rgba(228,236,239,.5)`
+    /// (`charts/palette.ts:44`, dort die Einspeisung der PV-Berichte;
+    /// `reports/charts.ts:301`).
+    ///
+    /// **Die halbe Deckung ist der Wert und kein Zufall.** Der oberste Abschnitt des Stapels
+    /// ist die Steuer, und ein fast weißer, deckender Block zöge den Blick auf das, was am
+    /// wenigsten zu entscheiden ist. #E4ECEF steht in dieser Liste auch als oberster Stopp
+    /// von `rampeNetz`; dort ist es die Spitze einer Helligkeitsrampe und hier eine
+    /// Serienfarbe - zwei Sachen, zwei Namen.
+    public static let umsatzsteuer = Farbwert(0xE4ECEF, deckung: 0.5)
 
     /// Die Sonne eines anderen Tages: hinter heute liegt gestern.
     ///

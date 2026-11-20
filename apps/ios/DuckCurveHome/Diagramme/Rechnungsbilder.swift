@@ -10,18 +10,6 @@ import SwiftUI
 /// vollständigen `switch` in `Gestalt/Farben.swift` zu erweitern, und der gehört allen Seiten.
 /// Darum trägt ``Rechnungspruefung/Ton`` die Rollen dieser Seite, und hier stehen ihre Farben -
 /// nach dem Vorbild von ``Geldfarbe``.
-///
-/// **Zwei Farben der Vorlage haben in `Marken` keinen eigenen Namen, und das ist hier
-/// geborgt.** Der gestapelte Balken „Rechnungsbetrag“ braucht `C.base` #C2A86B für die
-/// Grundgebühr und `C.export` `rgba(228,236,239,.5)` für die Mehrwertsteuer
-/// (`charts/palette.ts:39`, `:44`). `Marken` kennt beide Hexwerte, aber unter anderer
-/// Bedeutung: #C2A86B ist dort `abdeckungTeils`, der Sandton der Abdeckungskarte, und #E4ECEF
-/// ist der oberste Stopp der Netzrampe. Genommen werden sie, weil der Abstand der drei Flächen
-/// in `charts/palette.ts:9-31` gegen #123544 durchgerechnet ist und eine ersetzte Farbe ihn
-/// verfallen ließe - ein Stapel aus drei Abschnitten, von denen zwei wie einer aussehen, ist
-/// genau der Fehler, den diese Rechnung verhindert. Zwei eigene Marken (`grundgebuehr`,
-/// `umsatzsteuer`) wären das Richtige; `Marken.swift` gehört allen Seiten und wird hier nicht
-/// angefasst.
 enum Rechnungsfarbe {
     static func zu(_ ton: Rechnungspruefung.Ton) -> Color {
         switch ton {
@@ -29,17 +17,12 @@ enum Rechnungsfarbe {
         case .netz: return Farbe.diagrammNetz
         case .bernstein: return Farbe.amber
         case .nebel: return Farbe.mist
-        case .grundgebuehr: return Color(Marken.abdeckungTeils)
-        case .umsatzsteuer: return Color(Self.blass)
+        case .grundgebuehr: return Farbe.grundgebuehr
+        case .umsatzsteuer: return Farbe.umsatzsteuer
         case .text: return Farbe.text1
         case .leise: return Farbe.text3
         }
     }
-
-    /// `rgba(228,236,239,.5)` - der oberste Stopp der Netzrampe mit halber Deckung. Über den
-    /// Rampenwert und nicht als eigene Zahl, damit hier keine zweite Quelle für #E4ECEF steht.
-    private static let blass: Farbwert =
-        Marken.rampenfarbe(Marken.rampeNetz, anteil: 1).mitDeckung(0.5)
 
     /// Die Legendenklötze einer Reihenliste.
     static func legende(_ reihen: [Rechnungspruefung.Reihe]) -> [Legendenstueck] {

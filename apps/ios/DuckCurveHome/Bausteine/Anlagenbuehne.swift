@@ -18,8 +18,8 @@ import SwiftUI
 ///
 /// **Der Rahmen ist ein Verlauf und kein Strich.** `.anlage-buehne` hat ein Polster von einem
 /// Punkt und einen Verlauf als Hintergrund, `.anlage-innen` legt sich darüber: was man als
-/// Haarlinie sieht, ist der Rand dieses Verlaufs, oben heller (weiß 0,14) als unten (0,02).
-/// Ein `strokeBorder` in einer Farbe wäre oben zu dunkel und unten zu hell.
+/// Haarlinie sieht, ist der Rand dieses Verlaufs. Ein `strokeBorder` in einer Farbe wäre oben
+/// zu dunkel und unten zu hell; die Stopps stehen an ``Marken/buehneRand``.
 struct Anlagenbuehne<Inhalt: View>: View {
     @ViewBuilder var inhalt: () -> Inhalt
 
@@ -66,28 +66,11 @@ struct Anlagenbuehne<Inhalt: View>: View {
             .accessibilityLabel("Die Zeichnung lässt sich zur Seite schieben: Strom, Erzeuger, Speicher, Verbraucher.")
     }
 
-    /// `linear-gradient(180deg, rgba(10,39,53,.85), rgba(5,22,31,.9))` (`globals.css:565`).
-    private var flaeche: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(Farbwert(0x0A_2735, deckung: 0.85)),
-                Color(Farbwert(0x05_161F, deckung: 0.9)),
-            ],
-            startPoint: .top, endPoint: .bottom)
-    }
-
-    /// `linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03) 30%, rgba(255,255,255,.02))`
-    /// (`globals.css:564`) - der Stopp bei 30 % macht aus dem Verlauf eine Lichtkante oben statt
-    /// eines gleichmäßigen Grauwerts.
-    private var rahmen: LinearGradient {
-        LinearGradient(
-            stops: [
-                .init(color: .white.opacity(0.14), location: 0),
-                .init(color: .white.opacity(0.03), location: 0.3),
-                .init(color: .white.opacity(0.02), location: 1),
-            ],
-            startPoint: .top, endPoint: .bottom)
-    }
+    /// Die beiden Verläufe der Bühne. Die Werte und ihre Begründungen stehen an
+    /// ``Marken/buehneOben`` und ``Marken/buehneRand``: die Bühne trägt in der Vorlage zwei
+    /// Seiten (`globals.css:606-609`), und was zwei Seiten teilen, gehört in die Palette.
+    private var flaeche: LinearGradient { Farbe.buehneFlaeche }
+    private var rahmen: LinearGradient { Farbe.buehneRand }
 }
 
 /// Der Kasten, der dasteht, solange die Anlage noch nicht da ist.
