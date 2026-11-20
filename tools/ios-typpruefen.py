@@ -495,6 +495,16 @@ def bausteine_lesen(pfade: list[str]) -> dict[str, set[str]]:
 def main() -> int:
     felder, aufzaehlungen = schema_lesen()
     nie_wahlfrei = {n for n, ts in felder.items() if all(not t.endswith("?") for t in ts)}
+    # **Namen, die auch Apple vergibt.** `DateComponents` hat `minute`, `hour`, `day` - alle
+    # wahlfrei, und `teile.minute ?? 0` ist dort richtig. Sobald das Projekt irgendwo ein
+    # eigenes Feld desselben Namens erklärt (`Faecherpunkt.minute: Int`), hielte Regel 1 den
+    # Zugriff für einen Fehler. Der Prüfer löst keine Typen auf und kann den Empfänger nicht
+    # ansehen; also bleiben die Namen aussen vor, die Foundation selbst führt.
+    nie_wahlfrei -= {
+        "era", "year", "month", "day", "hour", "minute", "second", "nanosecond",
+        "weekday", "weekdayOrdinal", "quarter", "weekOfMonth", "weekOfYear",
+        "yearForWeekOfYear", "calendar", "timeZone",
+    }
     # Ein Vergleich mit einer Zeichenkette ist nur dann sicher falsch, wenn das Feld in
     # KEINEM Typ eine Zeichenkette ist. `mode` etwa heisst woanders `String` - dort ist der
     # Vergleich richtig, und ein Prueffehler waere schlimmer als eine Luecke.

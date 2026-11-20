@@ -10,193 +10,139 @@ import SwiftUI
 struct HeizkreiseSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
-    @State private var automatik: RoomShiftOut?
+
+    /// Die Istwerte neben dem Tagesverlauf.
+    ///
+    /// **Zwei Abfragen auf einer Seite, und `Berichtsseite` kennt nur eine.** Der Tagesverlauf
+    /// kommt aus `/rooms/history`, die heutigen Zahlen der Tabelle aus `/rooms`; die Vorlage
+    /// holt letztere am laufenden Tag alle dreissig Sekunden nach (`RoomsReport.tsx:38`).
+    /// Darum steht dieser Zustand neben dem Gerüst und nicht darin.
+    @State private var live: RoomsLiveOut?
+    @State private var fehlerLive: ApiFehler?
 
     var body: some View {
         let z = wegweiser.zeitraum(jetzt: haus.jetzt)
         Berichtsseite { z, api in
             try await api.raeumeTag(z.anker, schrittMin: 15)
         } inhalt: { verlauf in
-            if let a = automatik {
-                Automatikkarte(automatik: a) { neu in automatik = neu }
+            if let f = fehlerLive {
+                Stoerung(fehler: f) { Task { await holeLive(heute: z.anker == haus.heute) } }
+            }
+            // **Räume ohne Namen** (`RoomsReport.tsx:431-436`): die Brücke schickt die
+            // Namensliste als eigene Meldung; bis dahin stehen die Kennungen da, und das
+            // gehört dazugesagt.
+            if live?.named == false, !verlauf.rooms.isEmpty {
+                Text(
+                    "Die Räume heißen hier nach ihrer Kennung in der Heizungsregelung. Die "
+                        + "Namensliste kommt als eigene Meldung der Brücke und steht nach ihrem "
+                        + "nächsten Start zur Verfügung."
+                )
+                .font(Schrift.winzig)
+                .foregroundStyle(Farbe.text3)
+                .fixedSize(horizontal: false, vertical: true)
             }
             if verlauf.rooms.isEmpty {
-                Karte { Leer(satz: "Für diesen Tag sind keine Raumwerte da.") }
+                Karte {
+                    Leer(
+                        satz: "Keine Räume",
+                        dazu: "Es liegen keine Werte der Einzelraumregelung vor. Die Brücke "
+                            + "liest sie, sobald in ihrer Konfiguration die Adresse des "
+                            + "Controme-Servers eingetragen ist.")
+                }
             } else {
                 // **Die Hauptkarte, und zwar zuerst.** Nicht die Temperaturen, sondern die
                 // Abweichung vom Ziel: zehn Raeume zwischen 18 und 21 Grad sind als Kurven
                 // ein flaches Band. So macht es das Dashboard (`rooms/RoomsReport.tsx`), und
                 // es beantwortet die Frage, die diese Seite stellt - welcher Raum bestimmt
                 // die Vorlauftemperatur.
-                Karte(kicker: "Abweichung im Tagesverlauf",
-                      titel: "\(verlauf.rooms.count) Räume") {
+                Karte(
+                    kicker: "Abweichung im Tagesverlauf",
+                    beiwerk: AnyView(
+                        Text(
+                            "Je Raum und Viertelstunde die Abweichung vom Zielwert. Der Raum, "
+                                + "der zuerst abfällt, bestimmt die nötige Vorlauftemperatur "
+                                + "für alle."
+                        )
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
+                    )
+                ) {
                     Abweichungsmatrix(
                         verlauf: verlauf,
                         bisStelle: Raumabweichung.gewesen(tag: z.anker, jetzt: haus.jetzt)
                     )
                 }
-                Karte(kicker: "Temperaturen") {
-                    Raumverlaufsbild(verlauf: verlauf)
+                Karte(kicker: "Die Räume als Tabelle") {
+                    raumtabelle(verlauf, heute: z.anker == haus.heute)
                 }
-                Karte(kicker: "Ventile") {
-                    Ventilband(verlauf: verlauf)
-                }
-                Karte(kicker: "Im Tagesmittel") {
-                    Tabelle(
-                        zeilennamen: verlauf.rooms.map(\.name),
-                        spalten: [
-                            .init(
-                                name: "Temperatur",
-                                zellen: verlauf.rooms.map {
-                                    Formate.celsius(mittel($0.tempC), stellen: 1)
-                                }
-                            ),
-                            .init(
-                                name: "Sollwert",
-                                zellen: verlauf.rooms.map {
-                                    Formate.celsius(mittel($0.setpointC), stellen: 1)
-                                }
-                            ),
-                            .init(
-                                name: "Ventil offen",
-                                zellen: verlauf.rooms.map { Formate.prozent(mittel($0.valve)) }
-                            ),
-                            .init(
-                                name: "Fenster offen",
-                                zellen: verlauf.rooms.map {
-                                    Formate.dauer(
-                                        minuten: Int(
-                                            ($0.window.compactMap { $0 }.filter { $0 > 0.5 }.count)
-                                                * verlauf.stepMin
-                                        )
-                                    )
-                                }
-                            ),
-                        ]
-                    )
-                }
-                Methode([
-                    "Aufgelöst in \(verlauf.stepMin) Minuten.",
-                    "Ein fehlender Messwert wird nicht überbrückt: eine Lücke in der Kurve ist "
-                        + "eine Lücke in den Daten.",
-                ])
+                // **Offen, nicht zugeklappt** (`RoomsReport.tsx:549-557`). Wer nicht weiß,
+                // dass auf Sollwert plus Versatz geregelt wird, liest die Spalte „Ziel" als
+                // das, was er eingestellt hat - und das ist sie nicht.
+                Text(
+                    "Geregelt wird auf Sollwert plus Versatz – Controme rechnet das in seiner "
+                        + "eigenen Oberfläche vor und zeigt das Ergebnis als Zieltemperatur. "
+                        + "Der Versatz ist dabei die Summe mehrerer benannter Anpassungen, "
+                        + "nicht nur der Witterung. Die Antriebe am Verteiler sind auf oder zu "
+                        + "– ein Zwischenwert im Streifen heißt „ein Teil der Kreise“ oder "
+                        + "„einen Teil des Fensters“, nicht „halb offen“. Ein Tippen auf "
+                        + "eine Kachel im Bereich Haus stellt den Sollwert dieses Raums, "
+                        + "dauerhaft und in halben Grad; die Ventile bleiben Sache des Reglers."
+                )
+                .font(Schrift.winzig)
+                .foregroundStyle(Farbe.text3)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .task { automatik = try? await haus.api.raumAutomatik() }
+        .task(id: z.anker) { await holeLive(heute: z.anker == haus.heute) }
     }
 
-    private func mittel(_ werte: [Double?]) -> Double? {
-        let da = werte.compactMap { $0 }.filter(\.isFinite)
-        guard !da.isEmpty else { return nil }
-        return da.reduce(0, +) / Double(da.count)
-    }
-}
-
-/// Die Temperaturen aller Räume über den Tag.
-private struct Raumverlaufsbild: View {
-    let verlauf: RoomHistoryOut
-
-    var body: some View {
-        Chart {
-            ForEach(verlauf.rooms, id: \.id) { raum in
-                ForEach(Array(punkte(raum).enumerated()), id: \.offset) { _, p in
-                    LineMark(
-                        x: .value("Stunde", p.stunde),
-                        y: .value("°C", p.wert),
-                        series: .value("Raum", raum.name)
-                    )
-                    .foregroundStyle(by: .value("Raum", raum.name))
-                    .lineStyle(StrokeStyle(lineWidth: 1.3))
-                }
-            }
-        }
-        .chartXScale(domain: 0...24)
-        // Ohne Vorgabe nimmt Swift Charts die Null dazu, und die Kurven verschmelzen im
-        // oberen Drittel. Die Spanne wird im Kern gerechnet und ist dort geprueft.
-        .chartYScale(domain: Achse.spanne(werte: verlauf.rooms.flatMap(\.tempC)) ?? 15...25)
-        .chartXAxis {
-            AxisMarks(values: Array(stride(from: 0.0, through: 24, by: 4))) { w in
-                AxisGridLine().foregroundStyle(Farbe.rasterlinie)
-                AxisValueLabel {
-                    if let h = w.as(Double.self) {
-                        Text(String(format: "%02d", Int(h)))
-                            .font(Schrift.achse).foregroundStyle(Farbe.text3)
-                    }
-                }
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading) { w in
-                AxisGridLine().foregroundStyle(Farbe.rasterlinie)
-                AxisValueLabel {
-                    if let d = w.as(Double.self) {
-                        Text(Formate.zahl(d, stellen: 0))
-                            .font(Schrift.achse).foregroundStyle(Farbe.text3)
-                    }
-                }
-            }
-        }
-        .chartLegend(position: .bottom, alignment: .leading, spacing: 6)
-        .frame(height: 240)
+    /// Die Tabelle der Vorlage: Raum, Etage, Ist, Ziel, Abweichung, Ventil am Tag, Kreise.
+    ///
+    /// **Ist und Ziel sind der letzte Messwert, kein Tagesmittel.** Hier stand „Im Tagesmittel"
+    /// mit vier anderen Spalten; ein Mittel über einen Tag sagt aber nichts darüber, welcher
+    /// Raum gerade abfällt - und genau das ist die Frage dieser Seite.
+    private func raumtabelle(_ verlauf: RoomHistoryOut, heute: Bool) -> some View {
+        let zeilen = Raumabweichung.tabellenzeilen(live: live, tag: verlauf, istHeute: heute)
+        return Tabelle(
+            zeilennamen: zeilen.map(\.name),
+            spalten: [
+                .init(name: "Ist", zellen: zeilen.map { Formate.celsius($0.ist, stellen: 1) }),
+                .init(name: "Ziel", zellen: zeilen.map { Formate.celsius($0.ziel, stellen: 1) }),
+                .init(
+                    name: "Abweichung",
+                    zellen: zeilen.map { $0.abweichung.map(Raumabweichung.kelvin) ?? Formate.leer },
+                    farben: zeilen.map {
+                        $0.abweichung.map { Color(Marken.abweichungsfarbe(kelvin: $0)) }
+                    }),
+                .init(name: "Etage", zellen: zeilen.map(\.etage)),
+                .init(
+                    name: "Ventil am Tag",
+                    zellen: zeilen.map { Raumabweichung.anteilText($0.tagesventil) }),
+                .init(
+                    name: "Kreise",
+                    zellen: zeilen.map { $0.kreise > 0 ? String($0.kreise) : Formate.leer }),
+            ],
+            // Ist, Ziel und Abweichung gehören am Telefon nebeneinander: die dritte Zahl ist
+            // die Differenz der beiden anderen (`handy.css:377-379`).
+            immerSichtbar: 3
+        )
     }
 
-    /// Die Zeitstempel kommen als Liste, die Werte je Raum als zweite - beide gleich lang.
-    private func punkte(_ raum: RoomSeriesOut) -> [(stunde: Double, wert: Double)] {
-        zip(verlauf.ts, raum.tempC).compactMap { roh, wert in
-            guard let wert, let t = Zeit.ausIso(roh) else { return nil }
-            let teile = Kalender.haus.dateComponents([.hour, .minute], from: t)
-            return (Double(teile.hour ?? 0) + Double(teile.minute ?? 0) / 60, wert)
-        }
-    }
-}
-
-/// Die Ventile als Band: eine Zeile je Raum, dunkel wo zu, hell wo offen.
-///
-/// **Das ist die Darstellung, die eine Kurve nicht ersetzt.** Zehn Ventilkurven übereinander sind
-/// ein Knäuel; zehn Bänder sind eine Partitur, und man sieht auf einen Blick, ob die Räume
-/// gleichzeitig oder nacheinander ziehen.
-private struct Ventilband: View {
-    let verlauf: RoomHistoryOut
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            ForEach(verlauf.rooms, id: \.id) { raum in
-                HStack(spacing: 8) {
-                    Text(raum.name)
-                        .font(Schrift.winzig)
-                        .foregroundStyle(Farbe.text3)
-                        .frame(width: 92, alignment: .leading)
-                        .lineLimit(1)
-                    GeometryReader { r in
-                        HStack(spacing: 0) {
-                            ForEach(Array(raum.valve.enumerated()), id: \.offset) { _, v in
-                                Rectangle()
-                                    .fill(farbe(v))
-                                    .frame(width: max(1, r.size.width / CGFloat(max(1, raum.valve.count))))
-                            }
-                        }
-                    }
-                    .frame(height: 11)
-                    .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
-                }
+    /// Die Istwerte holen und, solange der laufende Tag gezeigt wird, alle dreissig Sekunden
+    /// nachziehen.
+    private func holeLive(heute: Bool) async {
+        while !Task.isCancelled {
+            do {
+                live = try await haus.api.raeume()
+                fehlerLive = nil
+            } catch {
+                // Nur die Istwerte scheitern hier; der Tagesverlauf hat sein eigenes Gerüst.
+                fehlerLive = error as? ApiFehler ?? .netz(error.localizedDescription)
             }
-            HStack(spacing: 8) {
-                Spacer().frame(width: 92)
-                Text("00").font(Schrift.achse).foregroundStyle(Farbe.text3)
-                Spacer()
-                Text("12").font(Schrift.achse).foregroundStyle(Farbe.text3)
-                Spacer()
-                Text("24").font(Schrift.achse).foregroundStyle(Farbe.text3)
-            }
+            guard heute else { return }
+            try? await Task.sleep(for: Raumabweichung.liveTakt)
         }
-    }
-
-    /// Ein fehlender Wert bleibt leer und wird nicht als „zu" gezeichnet - „nicht gemessen" und
-    /// „zu" sind zwei verschiedene Auskünfte.
-    private func farbe(_ v: Double?) -> Color {
-        guard let v else { return Farbe.linie1 }
-        if v < 0.02 { return Farbe.flaeche3 }
-        return Farbe.ventilOffen.opacity(0.35 + 0.65 * min(1, v))
     }
 }
 
