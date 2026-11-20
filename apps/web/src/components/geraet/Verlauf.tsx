@@ -88,7 +88,13 @@ function option(
   roh: Reihe[],
   einheit: string,
   stellen: number,
-  { min, max, grenze, balken }: { min?: number; max?: number; grenze?: { wert: number; wort: string }; balken?: boolean } = {},
+  {
+    min,
+    max,
+    grenze,
+    balken,
+    intervall,
+  }: { min?: number; max?: number; grenze?: { wert: number; wort: string }; balken?: boolean; intervall?: number } = {},
 ): EChartsCoreOption {
   const { t, reihen } = mitLuecken(zeiten, schrittMin, roh);
   const mehrere = reihen.length > 1;
@@ -96,7 +102,7 @@ function option(
     animation: false,
     backgroundColor: "transparent",
     textStyle: { fontFamily: MONO },
-    grid: { left: 40, right: mehrere ? 64 : 12, top: 10, bottom: 22 },
+    grid: { left: 40, right: mehrere ? 80 : 12, top: 10, bottom: 22 },
     tooltip: {
       trigger: "axis",
       confine: true,
@@ -137,6 +143,7 @@ function option(
       type: "value",
       min,
       max,
+      interval: intervall,
       splitNumber: 3,
       axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => ZAHL(v, stellen) },
       splitLine: { lineStyle: { color: C.gridline } },
@@ -153,6 +160,8 @@ function option(
       endLabel: mehrere
         ? { show: true, formatter: r.name, color: C.text, fontFamily: MONO, fontSize: 10, offset: [4, 0] }
         : undefined,
+      // Enden zwei Linien auf demselben Wert, rücken die Namen auseinander statt übereinander.
+      labelLayout: mehrere ? { moveOverlap: "shiftY" } : undefined,
       markLine:
         grenze && i === 0
           ? {
@@ -233,7 +242,7 @@ export function VerlaufAnsicht({ v, spanne }: { v: Verlauf; spanne: Spanne }) {
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       {hat(belegt) ? (
         <Diagramm titel="SSD belegt" untertitel="Prozent der Platte">
-          <Flaeche className={CHART} option={option(spanne, s, t, [{ name: "belegt", farbe: C.pv, werte: belegt }], "%", 1, { min: 0, max: 100, grenze: { wert: 85, wort: "85 %" } })} />
+          <Flaeche className={CHART} option={option(spanne, s, t, [{ name: "belegt", farbe: C.pv, werte: belegt }], "%", 1, { min: 0, max: 100, intervall: 25, grenze: { wert: 85, wort: "85 %" } })} />
         </Diagramm>
       ) : null}
       {temperatur.length ? (
@@ -269,7 +278,7 @@ export function VerlaufAnsicht({ v, spanne }: { v: Verlauf; spanne: Spanne }) {
       ) : null}
       {hat(spannung) ? (
         <Diagramm titel="Eingangsspannung" untertitel="tiefster Wert je Abschnitt, V">
-          <Flaeche className={CHART} option={option(spanne, s, t, [{ name: "Spannung", farbe: C.pv, werte: spannung }], "V", 2, { grenze: { wert: 4.85, wort: "4,85 V" } })} />
+          <Flaeche className={CHART} option={option(spanne, s, t, [{ name: "Spannung", farbe: C.pv, werte: spannung }], "V", 2, { min: 4.5, max: 5.3, grenze: { wert: 4.85, wort: "4,85 V" } })} />
         </Diagramm>
       ) : null}
       {hat(geschrieben) ? (

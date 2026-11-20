@@ -452,7 +452,8 @@ struct HausgeraetSeite: View {
                 Verlaufsdiagramm(titel: "Datenbank und Sicherungen", einheit: "MB", stellen: 1, reihen: daten)
             }
             Verlaufsdiagramm(titel: "Eingangsspannung", einheit: "V", stellen: 2,
-                             reihen: [linie("tiefster Wert", Farbe.pv) { $0.eingangsspannungVMin }], grenze: 4.85)
+                             reihen: [linie("tiefster Wert", Farbe.pv) { $0.eingangsspannungVMin }], grenze: 4.85,
+                             bereich: 4.5...5.3)
             ForEach(dienste, id: \.self) { d in
                 Verlaufsdiagramm(titel: "\(Hausgeraet.dienstname(d)): Speicher", einheit: "MB", stellen: 0,
                                  reihen: [linie("Speicher", Farbe.mist) { $0.dienste[d]?.speicherMb }], hoehe: 90)
