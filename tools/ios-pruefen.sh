@@ -112,9 +112,13 @@ fi
 blau "5/5  Was dieser Lauf nicht prueft"
 cat <<'ENDE'
   - Ob die Oberflaeche typpruefend uebersetzt (braucht macOS und Xcode).
+    Das macht seit dem 20.11.2026 der Lauf `ios` auf GitHub bei jedem Schieben:
+    Job `oberflaeche`, zwei Minuten. Vorher war er 196 Laeufe lang rot, und
+    zwar aus zwei Gruenden, die nichts mit dem Code zu tun hatten - darum
+    schlug jeder Uebersetzungsfehler erst auf dem Rechner des Nutzers auf.
   - Ob sie richtig aussieht (braucht ein Geraet oder den Simulator).
   - Die Diagramme in Swift Charts und das Glasmodell als Zeichnung.
   Auf einem Mac:  xcodegen generate && xcodebuild -scheme DuckCurveHome \
-      -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' build
+      -destination 'generic/platform=iOS Simulator' build
 ENDE
 printf '\n\033[0;32mFertig.\033[0m\n'
