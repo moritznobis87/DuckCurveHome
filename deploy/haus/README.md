@@ -163,6 +163,77 @@ neuesten 14 bleiben (`DCH_SICHERUNG_BEHALTEN`). Für eine Kopie außer Haus einm
 `DCH_SICHERUNG_ZIEL=<ziel>:<ordner>` setzen. Vor jedem `dch aktualisieren` sichert das Gerät
 zusätzlich von selbst.
 
+## 10. Updates aus der App
+
+Nach dem ersten Einrichten spielt das Gerät neue Fassungen selbst ein; neu bespielt wird es dafür nie.
+
+1. **Nachsehen.** Alle sechs Stunden (und fünf Minuten nach dem Start) fragt das Gerät die Registry, ob
+   es zum Kanal (`DCH_VERSION`, Vorgabe `main`) neue Images gibt. Erkannt wird die Fassung am Commit,
+   aus dem ein Image gebaut wurde (Label `org.opencontainers.image.revision`); die Liste der Neuerungen
+   kommt aus der Commit-Historie auf GitHub.
+2. **Hinweis.** Steht etwas bereit, zeigt die App mit Vollzugriff oben einen Hinweis „Für Duck Curve
+   steht ein Update bereit“. „Nicht jetzt“ blendet ihn für genau diese Fassung aus. Gäste sehen nichts.
+3. **Installieren.** Unter *System → Zugang und Sicherung → Software* stehen laufende Fassung,
+   Neuerungen und der Knopf „Update installieren“, mit einer Rückfrage davor. Danach arbeitet das
+   Gerät allein: Datenbank sichern, Einrichtung nachziehen, neue Images laden, neu starten und prüfen,
+   ob API und Oberfläche gesund antworten. Die Seite zeigt den Fortschritt und lädt nach dem Neustart
+   von selbst neu. Gemessen im Test: gut 10 Sekunden ohne Bauen, dazu die Ladezeit der Images.
+4. **Zurück, wenn etwas nicht stimmt.** Kommt die neue Fassung binnen drei Minuten nicht gesund hoch,
+   startet das Gerät die vorherige wieder und meldet das in der App. Diese Fassung drängt dann nicht
+   mehr per Hinweis; auf der Software-Seite steht „Erneut versuchen“. Die Datenbank bleibt dabei
+   unverändert: Migrationen laufen nur vorwärts, deshalb sichert das Gerät vor jedem Update. Hat eine
+   kaputte Fassung schon migriert, hilft `sudo dch wiederherstellen <datei>` mit der Sicherung von
+   unmittelbar davor.
+
+**Warum die App dabei nie Docker anfasst.** Die API läuft ohne Rechte und hat keinen Zugriff auf
+Docker. Sie legt nur eine Anfrage als Datei ab (`/var/lib/duckcurve/geraet/anfrage/`, beschreibbar
+nur für den Container-Benutzer). systemd bemerkt die Datei (`duckcurve-anfrage.path`) und startet
+`dch anfrage` als root. Das Skript liest daraus nur, *ob* installiert oder nachgesehen werden soll;
+*was* installiert wird, bestimmen allein `.env` und die Registry. Den Stand meldet es über
+`/var/lib/duckcurve/geraet/status.json`, das die API nur liest. Eine kompromittierte Oberfläche kann
+so höchstens ein Update auslösen, das ohnehin bereitsteht, aber keine fremde Fassung und keinen
+Befehl einschleusen.
+
+Von der Kommandozeile geht dasselbe mit `sudo dch pruefen` und `sudo dch aktualisieren`; der Stand
+erscheint auch dann in der App.
+
+## 11. Das Gerät aus der App verwalten
+
+Auf das Gerät selbst kommt im Alltag niemand: kein Bildschirm, keine Tastatur, und die
+Kommandozeile ist nichts für den Hausherrn. Darum steht alles Nötige in der App unter
+*Technik → Hausgerät*, im Browser wie in der iOS-App, nur mit Vollzugriff:
+
+- **Gesamturteil** oben: „Alles in Ordnung“ oder der Grund, warum nicht, etwa „web: Läuft, aber
+  die Prüfung schlägt fehl, 3-mal in Folge.“
+- **Dienste**: Datenbank, Rechenkern, Oberfläche, Webserver und, wenn eingeschaltet, Fernzugang.
+  Zu jedem: läuft er, besteht er seine Gesundheitsprüfung (Docker-Healthcheck mit der letzten
+  Ausgabe), seit wann, wie oft von selbst neu gestartet, CPU und Speicher, welche Fassung.
+- **Rechenkern**: Antwortet die Datenbank (mit Antwortzeit)? Ist die Bridge verbunden? Welche
+  Datenquellen melden sich, was meldet der Wächter, ist Alfred eingerichtet?
+- **Gerät**: Modell, Laufzeit, Last, Temperatur, Arbeitsspeicher, freier Platz auf der SSD und,
+  auf dem Raspberry Pi, ob die Spannung jemals zu niedrig war oder der Prozessor gedrosselt
+  wurde. Gerade bei PoE ist das die erste Frage, wenn etwas hakt.
+- **Sicherung**: die letzte, wie alt sie ist, wie viele es gibt, ob eine Kopie außer Haus
+  eingerichtet ist.
+- **Abläufe auf dem Gerät**: die systemd-Zeitgeber und -Dienste mit ihrem nächsten Lauf.
+- **Software**: die Updates aus Abschnitt 10.
+
+Handgriffe, jeder mit einer Rückfrage davor: einen Dienst neu starten, sein **Protokoll ansehen**
+(die letzten 300 Zeilen; alles, was in `.env` als Token, Schlüssel, Passwort oder Adresse mit
+Zugangsdaten steht, ist darin durch `***` ersetzt), **jetzt sichern**, alle Dienste neu starten,
+das ganze Gerät neu starten. Während ein Update läuft, sind sie gesperrt.
+
+**Wie das zusammenhängt.** Jede Minute schreibt das Gerät einen Bericht
+(`duckcurve-zustand.timer` → `dch zustand` → `/var/lib/duckcurve/geraet/geraet.json`). Die API
+liest ihn, bewertet jeden Teil mit einer Ampel und einem Satz und gibt ihn unter
+`/api/v1/system/geraet` aus; Browser und iOS-App zeigen dasselbe. Handgriffe gehen denselben Weg
+wie die Updates: Die API legt eine Anfrage-Datei ab, `duckcurve-anfrage.path` ruft
+`dch anfrage`. Das Skript nimmt nur Handgriffe aus einer festen Liste an und nur Dienstnamen, die
+in `compose.yaml` stehen. Ist der Bericht älter als drei Minuten, sagt die Seite das, statt alte
+Werte als aktuell zu zeigen.
+
+Auf Railway steht dort nur, was die API über sich selbst weiß; Handgriffe gibt es dort nicht.
+
 ## Im Alltag: `dch`
 
 | Befehl | Wirkung |
@@ -170,11 +241,13 @@ zusätzlich von selbst.
 | `sudo dch status` | Dienste, Gesundheit, Version |
 | `sudo dch logs [api\|web\|postgres\|caddy]` | Protokoll folgen |
 | `sudo dch neustart` | nach einer Änderung an `.env` |
-| `sudo dch aktualisieren [version]` | neue Images ziehen und neu starten (vorher Sicherung) |
+| `sudo dch pruefen` | nachsehen, ob ein Update bereitsteht (das tut das Gerät auch alle sechs Stunden) |
+| `sudo dch aktualisieren [version]` | Update einspielen wie aus der App: Sicherung, laden, neu starten, prüfen, notfalls zurück |
 | `sudo dch selbst-aktualisieren` | Quelltext holen und die Einrichtung erneut ausführen |
 | `sudo dch sichern` / `sicherungen` | jetzt sichern / Sicherungen auflisten |
 | `sudo dch wiederherstellen <datei>` | Datenbank aus einer Sicherung |
 | `sudo dch uebernehmen <url>` | Datenbank von Railway oder einem anderen Postgres |
+| `sudo dch zustand` | den Gesundheitsbericht für die App jetzt schreiben (sonst jede Minute) |
 | `sudo dch koppeln` | Werte für das Bridge-Add-on, Zertifikat- und Pairing-Link |
 
 ## Kiosk und Startbild
@@ -215,3 +288,22 @@ Kompression, Bridge-Verbindung über Port 8001 (richtiges Token verbunden, falsc
 abgewiesen), Sicherung, Aufbewahrung, Wiederherstellung, Übernahme aus einer zweiten Postgres-Instanz
 und die Ladeseite des Kiosks bis in die Anwendung. Nicht getestet: Pakete, systemd, Bootloader,
 Startbild und Kiosk auf echter Hardware.
+
+Am 20.11.2026 die Updates, ebenfalls im Container, mit einer lokalen Registry an Stelle von GHCR:
+Fassung 1111 installiert, 2222 veröffentlicht. `dch pruefen` und die API meldeten das Update, ein
+Browser sah den Hinweis und klickte „Update installieren“, die Anfrage landete als Datei beim Host,
+`dch anfrage` spielte 2222 in 13 Sekunden ein (Sicherung inklusive). Dann eine absichtlich kaputte
+Fassung 3333, deren API nicht startet: nach drei Minuten Wartezeit lief wieder 2222, gesund, und die
+App meldete die Rückkehr. Ein zweiter Klick während eines laufenden Updates wird abgewiesen. Nicht
+getestet: die systemd-Units selbst (Path-Unit und Timer), dort spielte ein Shell-Wächter die
+Path-Unit.
+
+Am selben Tag die Seite *Hausgerät*, im Container gegen den echten Stack: `dch zustand` schreibt
+den Bericht in 2,4 Sekunden (Container mit Prüfung, CPU und Speicher, Platz, Sicherung). Ein
+Browser holte das Protokoll der API (zwei Sekunden, Token durch `***` ersetzt), startete den
+Rechenkern neu (die API löst damit ihren eigenen Neustart aus; nach sieben Sekunden „Neu
+gestartet“), dann die Oberfläche (die Seite lief danach weiter), und sicherte die Datenbank.
+Auf Handybreite kein Überlauf, keine Fehler in der Seite. Die iOS-Seite wurde auf Linux nur
+geparst und gegen das Schema geprüft; übersetzt wird sie im Lauf `ios` auf GitHub (macOS).
+Nicht getestet: Temperatur und Drosselung, weil es dort keinen Raspberry Pi gab, systemd-Timer
+und `Gerät neu starten`.

@@ -58,6 +58,7 @@
 		C7DA84FBE547E1A84DE2F5C2 /* WallboxSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314F038F955B93D22F485DA9 /* WallboxSeite.swift */; };
 		CE52AB14EFE635E61A10408B /* Prognosezeichnung.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BF952160A0907077D465C7A /* Prognosezeichnung.swift */; };
 		CF1E38EE14DAA9FB117D4E38 /* MitteilungenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47987C6C791253041485C3B7 /* MitteilungenSeite.swift */; };
+		6C18209A3EEA2189B560B490 /* HausgeraetSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = C62C484BFC9307CBCE541571 /* HausgeraetSeite.swift */; };
 		D4B4A38C63A5AE38D197BA44 /* Hauskonsolenleiste.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A4D3E090FA7E4373CF82D8F /* Hauskonsolenleiste.swift */; };
 		D742805330F9AD247E8CAB72 /* ReglerSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */; };
 		D894CFE0B631F5092301D588 /* Waermebilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */; };
@@ -95,6 +96,7 @@
 		404A42E4106E511C51916C29 /* Hauszustand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hauszustand.swift; sourceTree = "<group>"; };
 		442E48F860C3E272065F1773 /* Dock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dock.swift; sourceTree = "<group>"; };
 		47987C6C791253041485C3B7 /* MitteilungenSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MitteilungenSeite.swift; sourceTree = "<group>"; };
+		C62C484BFC9307CBCE541571 /* HausgeraetSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HausgeraetSeite.swift; sourceTree = "<group>"; };
 		4A4D3E090FA7E4373CF82D8F /* Hauskonsolenleiste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hauskonsolenleiste.swift; sourceTree = "<group>"; };
 		4A6833877D0B3131B03C55F6 /* StromSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StromSeite.swift; sourceTree = "<group>"; };
 		4DDE9029416AEAAC086E9A89 /* Raumkachel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Raumkachel.swift; sourceTree = "<group>"; };
@@ -279,6 +281,7 @@
 			children = (
 				201BD07AEDBDDA5B2E91E375 /* AnlageSeite.swift */,
 				F24AB59B19DC4867BB539095 /* FahrplanSeiten.swift */,
+				C62C484BFC9307CBCE541571 /* HausgeraetSeite.swift */,
 				27DFE093B98D4839CAEC9644 /* KennlinieSeite.swift */,
 				47987C6C791253041485C3B7 /* MitteilungenSeite.swift */,
 				ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */,
@@ -484,6 +487,7 @@
 				7A6C6E5925D48EE511579D9D /* Glasmodell.swift in Sources */,
 				F9410CEC89296C2F90F7DCE7 /* HandRahmen.swift in Sources */,
 				2269D6D973CDD5E90BAAF30A /* HausSeite.swift in Sources */,
+				6C18209A3EEA2189B560B490 /* HausgeraetSeite.swift in Sources */,
 				D4B4A38C63A5AE38D197BA44 /* Hauskonsolenleiste.swift in Sources */,
 				F5EB172C68A7846716CEDC15 /* Hauszustand.swift in Sources */,
 				AD1752C6B64DD9BD4FA5B72D /* Jahresflaeche.swift in Sources */,

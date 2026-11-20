@@ -140,6 +140,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Steht ein Update bereit? */
+        get: operations["update_status_api_v1_system_update_get"];
+        put?: never;
+        /**
+         * Update installieren oder jetzt pruefen
+         * @description Legt die Anfrage fuer den Update-Dienst ab und kehrt sofort zurueck (202). Den Fortschritt
+         *     liest die Oberflaeche ueber GET; waehrend des Neustarts ist die API kurz nicht erreichbar.
+         */
+        post: operations["update_anfragen_api_v1_system_update_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wie es dem Hausgerät und seinen Diensten geht */
+        get: operations["geraet_api_v1_system_geraet_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet/aktion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Einen Handgriff auf dem Gerät anfragen
+         * @description Dienst neu starten, jetzt sichern, Protokoll holen, Gerät neu starten oder den Bericht
+         *     erneuern. Kehrt sofort zurück (202); wie es ausging, steht danach in `letzte_aktion`.
+         */
+        post: operations["aktion_api_v1_system_geraet_aktion_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet/protokoll/{dienst}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die zuletzt geholten Protokollzeilen eines Dienstes
+         * @description Liefert, was `aktion: protokoll` zuletzt geholt hat (300 Zeilen, Geheimnisse geschwärzt).
+         *     Frisch wird es nur über die Aktion; diese Abfrage liest bloß die Datei.
+         */
+        get: operations["protokoll_api_v1_system_geraet_protokoll__dienst__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/live/state": {
         parameters: {
             query?: never;
@@ -1826,6 +1907,71 @@ export interface components {
             tapping_since: string | null;
         };
         /**
+         * ApiSelbstOut
+         * @description Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden.
+         */
+        ApiSelbstOut: {
+            /** Version */
+            version: string;
+            /** Commit */
+            commit: string;
+            /** Modus */
+            modus: string;
+            /** Laufzeit S */
+            laufzeit_s: number;
+            /** Rss Mb */
+            rss_mb: number;
+            /** Datenbank Ok */
+            datenbank_ok?: boolean | null;
+            /** Datenbank Ms */
+            datenbank_ms?: number | null;
+            /**
+             * Datenbank De
+             * @default
+             */
+            datenbank_de: string;
+            /**
+             * Bridge Online
+             * @default false
+             */
+            bridge_online: boolean;
+            /**
+             * Verbindung De
+             * @default
+             */
+            verbindung_de: string;
+            /** Quellen */
+            quellen?: components["schemas"]["SourceStatusOut"][];
+            /** Befunde */
+            befunde?: components["schemas"]["WatchFindingOut"][];
+            /**
+             * Sse Clients
+             * @default 0
+             */
+            sse_clients: number;
+            /**
+             * Alfred Eingerichtet
+             * @default false
+             */
+            alfred_eingerichtet: boolean;
+            /**
+             * Energy Rebuild
+             * @default
+             */
+            energy_rebuild: string;
+            /**
+             * Ampel
+             * @default gut
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /**
          * ApnsSubscribeIn
          * @description Ein Gerät der iOS-App anmelden.
          *
@@ -3338,6 +3484,289 @@ export interface components {
             brutto_eur?: number | null;
             /** Netto Eur */
             netto_eur?: number | null;
+        };
+        /** GeraetAktionIn */
+        GeraetAktionIn: {
+            /**
+             * Aktion
+             * @enum {string}
+             */
+            aktion: "neustart" | "sichern" | "protokoll" | "geraet_neustart" | "zustand";
+            /** Dienst */
+            dienst?: string | null;
+        };
+        /**
+         * GeraetAktionOut
+         * @description Die zuletzt aus der App angefragte Aktion und wie sie ausging.
+         */
+        GeraetAktionOut: {
+            /** Aktion */
+            aktion: string;
+            /** Dienst */
+            dienst?: string | null;
+            /** Zustand */
+            zustand: string;
+            /**
+             * Meldung
+             * @default
+             */
+            meldung: string;
+            /** Von */
+            von?: string | null;
+            /** Begonnen Am */
+            begonnen_am?: string | null;
+            /** Beendet Am */
+            beendet_am?: string | null;
+        };
+        /**
+         * GeraetDienstOut
+         * @description Ein Container des Geräts (postgres, api, web, caddy, cloudflared).
+         */
+        GeraetDienstOut: {
+            /** Name */
+            name: string;
+            /** Zustand */
+            zustand: string;
+            /** Gesundheit */
+            gesundheit?: string | null;
+            /** Pruefung */
+            pruefung?: string | null;
+            /** Pruefung Fehlschlaege */
+            pruefung_fehlschlaege?: number | null;
+            /** Gestartet Am */
+            gestartet_am?: string | null;
+            /**
+             * Neustarts
+             * @default 0
+             */
+            neustarts: number;
+            /** Exit Code */
+            exit_code?: number | null;
+            /** Image */
+            image?: string | null;
+            /** Revision */
+            revision?: string | null;
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Speicher Mb */
+            speicher_mb?: number | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /**
+         * GeraetEinheitOut
+         * @description Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht).
+         */
+        GeraetEinheitOut: {
+            /** Name */
+            name: string;
+            /**
+             * Beschreibung
+             * @default
+             */
+            beschreibung: string;
+            /**
+             * Aktiv
+             * @default
+             */
+            aktiv: string;
+            /**
+             * Unterzustand
+             * @default
+             */
+            unterzustand: string;
+            /**
+             * Eingeschaltet
+             * @default false
+             */
+            eingeschaltet: boolean;
+            /** Naechster Lauf */
+            naechster_lauf?: string | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /**
+         * GeraetOut
+         * @description Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion.
+         */
+        GeraetOut: {
+            /** Unterstuetzt */
+            unterstuetzt: boolean;
+            /** Bericht Am */
+            bericht_am?: string | null;
+            /**
+             * Bericht Alt
+             * @default false
+             */
+            bericht_alt: boolean;
+            /** Kanal */
+            kanal?: string | null;
+            /**
+             * Fernzugang
+             * @default false
+             */
+            fernzugang: boolean;
+            rechner?: components["schemas"]["GeraetRechnerOut"] | null;
+            /** Dienste */
+            dienste?: components["schemas"]["GeraetDienstOut"][];
+            /** Einheiten */
+            einheiten?: components["schemas"]["GeraetEinheitOut"][];
+            sicherung?: components["schemas"]["GeraetSicherungOut"] | null;
+            letzte_aktion?: components["schemas"]["GeraetAktionOut"] | null;
+            /** Beschaeftigt */
+            beschaeftigt?: string | null;
+            api: components["schemas"]["ApiSelbstOut"];
+            /**
+             * Ampel
+             * @default gut
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /** GeraetPlatteOut */
+        GeraetPlatteOut: {
+            /** Ort */
+            ort: string;
+            /** Gesamt Bytes */
+            gesamt_bytes: number;
+            /** Frei Bytes */
+            frei_bytes: number;
+            /**
+             * Ampel
+             * @default gut
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+        };
+        /** GeraetProtokollOut */
+        GeraetProtokollOut: {
+            /** Dienst */
+            dienst: string;
+            /** Vorhanden */
+            vorhanden: boolean;
+            /** Erstellt Am */
+            erstellt_am?: string | null;
+            /** Zeilen */
+            zeilen?: string[];
+        };
+        /**
+         * GeraetRechnerOut
+         * @description Der Rechner selbst: Raspberry Pi oder was sonst darunter läuft.
+         */
+        GeraetRechnerOut: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Modell */
+            modell?: string | null;
+            /** System */
+            system?: string | null;
+            /** Kernel */
+            kernel?: string | null;
+            /** Adresse */
+            adresse?: string | null;
+            /**
+             * Laufzeit S
+             * @default 0
+             */
+            laufzeit_s: number;
+            /**
+             * Kerne
+             * @default 1
+             */
+            kerne: number;
+            /** Last */
+            last?: number[];
+            /** Temperatur C */
+            temperatur_c?: number | null;
+            /**
+             * Temperatur Ampel
+             * @default aus
+             * @enum {string}
+             */
+            temperatur_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /** Drosselung */
+            drosselung?: string | null;
+            /** Drosselung De */
+            drosselung_de?: string[];
+            /**
+             * Drosselung Ampel
+             * @default aus
+             * @enum {string}
+             */
+            drosselung_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Speicher Gesamt Mb
+             * @default 0
+             */
+            speicher_gesamt_mb: number;
+            /**
+             * Speicher Frei Mb
+             * @default 0
+             */
+            speicher_frei_mb: number;
+            /**
+             * Speicher Ampel
+             * @default aus
+             * @enum {string}
+             */
+            speicher_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /** Platten */
+            platten?: components["schemas"]["GeraetPlatteOut"][];
+            /** Docker */
+            docker?: string | null;
+        };
+        /** GeraetSicherungOut */
+        GeraetSicherungOut: {
+            /** Letzte */
+            letzte?: string | null;
+            /** Letzte Am */
+            letzte_am?: string | null;
+            /** Letzte Bytes */
+            letzte_bytes?: number | null;
+            /**
+             * Anzahl
+             * @default 0
+             */
+            anzahl: number;
+            /** Ausser Haus */
+            ausser_haus?: string | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -6761,6 +7190,74 @@ export interface components {
             /** Schon Bekannt */
             schon_bekannt: boolean;
         };
+        /** UpdateAnfrageIn */
+        UpdateAnfrageIn: {
+            /**
+             * Aktion
+             * @enum {string}
+             */
+            aktion: "installieren" | "pruefen";
+        };
+        /** UpdateErgebnisOut */
+        UpdateErgebnisOut: {
+            /** Am */
+            am?: string | null;
+            /** Ergebnis */
+            ergebnis?: string | null;
+            /** Von */
+            von?: string | null;
+            /** Nach */
+            nach?: string | null;
+        };
+        /** UpdateNeuerungOut */
+        UpdateNeuerungOut: {
+            /** Sha */
+            sha: string;
+            /** Titel */
+            titel: string;
+        };
+        /**
+         * UpdateStatusOut
+         * @description Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne
+         *     Hausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an.
+         */
+        UpdateStatusOut: {
+            /**
+             * Unterstuetzt
+             * @default false
+             */
+            unterstuetzt: boolean;
+            /** Kanal */
+            kanal?: string | null;
+            /** Aktuell */
+            aktuell?: string | null;
+            /** Verfuegbar */
+            verfuegbar?: string | null;
+            /**
+             * Update Verfuegbar
+             * @default false
+             */
+            update_verfuegbar: boolean;
+            /** Neuerungen */
+            neuerungen?: components["schemas"]["UpdateNeuerungOut"][];
+            /** Geprueft Am */
+            geprueft_am?: string | null;
+            /**
+             * Zustand
+             * @default bereit
+             */
+            zustand: string;
+            /** Schritt */
+            schritt?: string | null;
+            /** Meldung */
+            meldung?: string | null;
+            zuletzt?: components["schemas"]["UpdateErgebnisOut"] | null;
+            /**
+             * Anfrage Offen
+             * @default false
+             */
+            anfrage_offen: boolean;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -7196,6 +7693,143 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Zuordnungsergebnis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_status_api_v1_system_update_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStatusOut"];
+                };
+            };
+        };
+    };
+    update_anfragen_api_v1_system_update_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAnfrageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    geraet_api_v1_system_geraet_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetOut"];
+                };
+            };
+        };
+    };
+    aktion_api_v1_system_geraet_aktion_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GeraetAktionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetAktionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    protokoll_api_v1_system_geraet_protokoll__dienst__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dienst: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetProtokollOut"];
                 };
             };
             /** @description Validation Error */

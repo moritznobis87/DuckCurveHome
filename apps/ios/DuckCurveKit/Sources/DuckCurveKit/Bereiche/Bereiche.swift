@@ -165,6 +165,8 @@ public enum Bereiche {
                 Reiter(weg: "/waerme/annahmen", name: "Annahmen", nurHausherr: true),
                 Reiter(weg: "/system/mitteilungen", name: "Mitteilungen", nurHausherr: true),
                 Reiter(weg: "/system/haustuer", name: "Haustür", nurHausherr: true),
+                // Der Rechner im Haus: Dienste, Gesundheit, Neustarts, Protokolle, Updates.
+                Reiter(weg: "/system/geraet", name: "Hausgerät", nurHausherr: true),
                 Reiter(weg: "/system/zugang", name: "Zugang und Sicherung", nurHausherr: true),
             ]
         ),

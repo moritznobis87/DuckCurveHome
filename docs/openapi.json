@@ -226,6 +226,173 @@
         }
       }
     },
+    "/api/v1/system/update": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Steht ein Update bereit?",
+        "operationId": "update_status_api_v1_system_update_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateStatusOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Update installieren oder jetzt pruefen",
+        "description": "Legt die Anfrage fuer den Update-Dienst ab und kehrt sofort zurueck (202). Den Fortschritt\nliest die Oberflaeche ueber GET; waehrend des Neustarts ist die API kurz nicht erreichbar.",
+        "operationId": "update_anfragen_api_v1_system_update_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAnfrageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateStatusOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/geraet": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Wie es dem Hausgerät und seinen Diensten geht",
+        "operationId": "geraet_api_v1_system_geraet_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeraetOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/geraet/aktion": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Einen Handgriff auf dem Gerät anfragen",
+        "description": "Dienst neu starten, jetzt sichern, Protokoll holen, Gerät neu starten oder den Bericht\nerneuern. Kehrt sofort zurück (202); wie es ausging, steht danach in `letzte_aktion`.",
+        "operationId": "aktion_api_v1_system_geraet_aktion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeraetAktionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeraetAktionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/geraet/protokoll/{dienst}": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Die zuletzt geholten Protokollzeilen eines Dienstes",
+        "description": "Liefert, was `aktion: protokoll` zuletzt geholt hat (300 Zeilen, Geheimnisse geschwärzt).\nFrisch wird es nur über die Aktion; diese Abfrage liest bloß die Datei.",
+        "operationId": "protokoll_api_v1_system_geraet_protokoll__dienst__get",
+        "parameters": [
+          {
+            "name": "dienst",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dienst"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeraetProtokollOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/live/state": {
       "get": {
         "tags": [
@@ -4220,6 +4387,122 @@
         "title": "AnlageWarmwasserOut",
         "description": "Das Trinkwasser: ein Anlegefühler am warmen Auslass, sonst nichts.\n\n`present` ist falsch, solange kein Fühler meldet; dann bleibt die Kachel gedimmt und sagt das.\n`tapping` ist **erkannt**, nicht gemessen: Das Rohr springt auf, sobald warmes Wasser läuft,\nsiehe `hems_core.thermal.anlage.zapfung`. Es sagt, dass und seit wann, nicht wie viel."
       },
+      "ApiSelbstOut": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "commit": {
+            "type": "string",
+            "title": "Commit"
+          },
+          "modus": {
+            "type": "string",
+            "title": "Modus"
+          },
+          "laufzeit_s": {
+            "type": "integer",
+            "title": "Laufzeit S"
+          },
+          "rss_mb": {
+            "type": "number",
+            "title": "Rss Mb"
+          },
+          "datenbank_ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datenbank Ok"
+          },
+          "datenbank_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datenbank Ms"
+          },
+          "datenbank_de": {
+            "type": "string",
+            "title": "Datenbank De",
+            "default": ""
+          },
+          "bridge_online": {
+            "type": "boolean",
+            "title": "Bridge Online",
+            "default": false
+          },
+          "verbindung_de": {
+            "type": "string",
+            "title": "Verbindung De",
+            "default": ""
+          },
+          "quellen": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatusOut"
+            },
+            "type": "array",
+            "title": "Quellen"
+          },
+          "befunde": {
+            "items": {
+              "$ref": "#/components/schemas/WatchFindingOut"
+            },
+            "type": "array",
+            "title": "Befunde"
+          },
+          "sse_clients": {
+            "type": "integer",
+            "title": "Sse Clients",
+            "default": 0
+          },
+          "alfred_eingerichtet": {
+            "type": "boolean",
+            "title": "Alfred Eingerichtet",
+            "default": false
+          },
+          "energy_rebuild": {
+            "type": "string",
+            "title": "Energy Rebuild",
+            "default": ""
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "gut"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "commit",
+          "modus",
+          "laufzeit_s",
+          "rss_mb"
+        ],
+        "title": "ApiSelbstOut",
+        "description": "Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden."
+      },
       "ApnsSubscribeIn": {
         "properties": {
           "token": {
@@ -7483,6 +7766,738 @@
         "type": "object",
         "title": "GeleseneRechnung",
         "description": "Was das Modell gelesen hat, nach Pruefung der Typen."
+      },
+      "GeraetAktionIn": {
+        "properties": {
+          "aktion": {
+            "type": "string",
+            "enum": [
+              "neustart",
+              "sichern",
+              "protokoll",
+              "geraet_neustart",
+              "zustand"
+            ],
+            "title": "Aktion"
+          },
+          "dienst": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,30}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dienst"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aktion"
+        ],
+        "title": "GeraetAktionIn"
+      },
+      "GeraetAktionOut": {
+        "properties": {
+          "aktion": {
+            "type": "string",
+            "title": "Aktion"
+          },
+          "dienst": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dienst"
+          },
+          "zustand": {
+            "type": "string",
+            "title": "Zustand"
+          },
+          "meldung": {
+            "type": "string",
+            "title": "Meldung",
+            "default": ""
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "begonnen_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Begonnen Am"
+          },
+          "beendet_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beendet Am"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aktion",
+          "zustand"
+        ],
+        "title": "GeraetAktionOut",
+        "description": "Die zuletzt aus der App angefragte Aktion und wie sie ausging."
+      },
+      "GeraetDienstOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "zustand": {
+            "type": "string",
+            "title": "Zustand"
+          },
+          "gesundheit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gesundheit"
+          },
+          "pruefung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pruefung"
+          },
+          "pruefung_fehlschlaege": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pruefung Fehlschlaege"
+          },
+          "gestartet_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gestartet Am"
+          },
+          "neustarts": {
+            "type": "integer",
+            "title": "Neustarts",
+            "default": 0
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Code"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "cpu_prozent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Prozent"
+          },
+          "speicher_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speicher Mb"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "aus"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "zustand"
+        ],
+        "title": "GeraetDienstOut",
+        "description": "Ein Container des Geräts (postgres, api, web, caddy, cloudflared)."
+      },
+      "GeraetEinheitOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "beschreibung": {
+            "type": "string",
+            "title": "Beschreibung",
+            "default": ""
+          },
+          "aktiv": {
+            "type": "string",
+            "title": "Aktiv",
+            "default": ""
+          },
+          "unterzustand": {
+            "type": "string",
+            "title": "Unterzustand",
+            "default": ""
+          },
+          "eingeschaltet": {
+            "type": "boolean",
+            "title": "Eingeschaltet",
+            "default": false
+          },
+          "naechster_lauf": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Naechster Lauf"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "aus"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "GeraetEinheitOut",
+        "description": "Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht)."
+      },
+      "GeraetOut": {
+        "properties": {
+          "unterstuetzt": {
+            "type": "boolean",
+            "title": "Unterstuetzt"
+          },
+          "bericht_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bericht Am"
+          },
+          "bericht_alt": {
+            "type": "boolean",
+            "title": "Bericht Alt",
+            "default": false
+          },
+          "kanal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kanal"
+          },
+          "fernzugang": {
+            "type": "boolean",
+            "title": "Fernzugang",
+            "default": false
+          },
+          "rechner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeraetRechnerOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dienste": {
+            "items": {
+              "$ref": "#/components/schemas/GeraetDienstOut"
+            },
+            "type": "array",
+            "title": "Dienste"
+          },
+          "einheiten": {
+            "items": {
+              "$ref": "#/components/schemas/GeraetEinheitOut"
+            },
+            "type": "array",
+            "title": "Einheiten"
+          },
+          "sicherung": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeraetSicherungOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "letzte_aktion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeraetAktionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "beschaeftigt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beschaeftigt"
+          },
+          "api": {
+            "$ref": "#/components/schemas/ApiSelbstOut"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "gut"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "unterstuetzt",
+          "api"
+        ],
+        "title": "GeraetOut",
+        "description": "Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion."
+      },
+      "GeraetPlatteOut": {
+        "properties": {
+          "ort": {
+            "type": "string",
+            "title": "Ort"
+          },
+          "gesamt_bytes": {
+            "type": "integer",
+            "title": "Gesamt Bytes"
+          },
+          "frei_bytes": {
+            "type": "integer",
+            "title": "Frei Bytes"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "gut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ort",
+          "gesamt_bytes",
+          "frei_bytes"
+        ],
+        "title": "GeraetPlatteOut"
+      },
+      "GeraetProtokollOut": {
+        "properties": {
+          "dienst": {
+            "type": "string",
+            "title": "Dienst"
+          },
+          "vorhanden": {
+            "type": "boolean",
+            "title": "Vorhanden"
+          },
+          "erstellt_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erstellt Am"
+          },
+          "zeilen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Zeilen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dienst",
+          "vorhanden"
+        ],
+        "title": "GeraetProtokollOut"
+      },
+      "GeraetRechnerOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell"
+          },
+          "system": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System"
+          },
+          "kernel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kernel"
+          },
+          "adresse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adresse"
+          },
+          "laufzeit_s": {
+            "type": "integer",
+            "title": "Laufzeit S",
+            "default": 0
+          },
+          "kerne": {
+            "type": "integer",
+            "title": "Kerne",
+            "default": 1
+          },
+          "last": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Last"
+          },
+          "temperatur_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperatur C"
+          },
+          "temperatur_ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Temperatur Ampel",
+            "default": "aus"
+          },
+          "drosselung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drosselung"
+          },
+          "drosselung_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Drosselung De"
+          },
+          "drosselung_ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Drosselung Ampel",
+            "default": "aus"
+          },
+          "speicher_gesamt_mb": {
+            "type": "integer",
+            "title": "Speicher Gesamt Mb",
+            "default": 0
+          },
+          "speicher_frei_mb": {
+            "type": "integer",
+            "title": "Speicher Frei Mb",
+            "default": 0
+          },
+          "speicher_ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Speicher Ampel",
+            "default": "aus"
+          },
+          "platten": {
+            "items": {
+              "$ref": "#/components/schemas/GeraetPlatteOut"
+            },
+            "type": "array",
+            "title": "Platten"
+          },
+          "docker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Docker"
+          }
+        },
+        "type": "object",
+        "title": "GeraetRechnerOut",
+        "description": "Der Rechner selbst: Raspberry Pi oder was sonst darunter läuft."
+      },
+      "GeraetSicherungOut": {
+        "properties": {
+          "letzte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Letzte"
+          },
+          "letzte_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Letzte Am"
+          },
+          "letzte_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Letzte Bytes"
+          },
+          "anzahl": {
+            "type": "integer",
+            "title": "Anzahl",
+            "default": 0
+          },
+          "ausser_haus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ausser Haus"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "aus"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "GeraetSicherungOut"
       },
       "HTTPValidationError": {
         "properties": {
@@ -14691,6 +15706,201 @@
         ],
         "title": "TibberZusammenfassung",
         "description": "Das Ergebnis der festen Tibber-Pruefung, so knapp, wie Alfred es im Panel sagt. Die volle\nAuswertung steht auf der Rechnungsseite, auf die `AlfredRechnungOut.link` zeigt."
+      },
+      "UpdateAnfrageIn": {
+        "properties": {
+          "aktion": {
+            "type": "string",
+            "enum": [
+              "installieren",
+              "pruefen"
+            ],
+            "title": "Aktion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aktion"
+        ],
+        "title": "UpdateAnfrageIn"
+      },
+      "UpdateErgebnisOut": {
+        "properties": {
+          "am": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Am"
+          },
+          "ergebnis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ergebnis"
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "nach": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nach"
+          }
+        },
+        "type": "object",
+        "title": "UpdateErgebnisOut"
+      },
+      "UpdateNeuerungOut": {
+        "properties": {
+          "sha": {
+            "type": "string",
+            "title": "Sha"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sha",
+          "titel"
+        ],
+        "title": "UpdateNeuerungOut"
+      },
+      "UpdateStatusOut": {
+        "properties": {
+          "unterstuetzt": {
+            "type": "boolean",
+            "title": "Unterstuetzt",
+            "default": false
+          },
+          "kanal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kanal"
+          },
+          "aktuell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aktuell"
+          },
+          "verfuegbar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verfuegbar"
+          },
+          "update_verfuegbar": {
+            "type": "boolean",
+            "title": "Update Verfuegbar",
+            "default": false
+          },
+          "neuerungen": {
+            "items": {
+              "$ref": "#/components/schemas/UpdateNeuerungOut"
+            },
+            "type": "array",
+            "title": "Neuerungen"
+          },
+          "geprueft_am": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geprueft Am"
+          },
+          "zustand": {
+            "type": "string",
+            "title": "Zustand",
+            "default": "bereit"
+          },
+          "schritt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schritt"
+          },
+          "meldung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meldung"
+          },
+          "zuletzt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UpdateErgebnisOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "anfrage_offen": {
+            "type": "boolean",
+            "title": "Anfrage Offen",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "UpdateStatusOut",
+        "description": "Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne\nHausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an."
       },
       "ValidationError": {
         "properties": {

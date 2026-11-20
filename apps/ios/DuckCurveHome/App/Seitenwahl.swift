@@ -91,6 +91,8 @@ struct Seitenwahl: View {
             return AnyView(MitteilungenSeite())
         case "/system/haustuer":
             return AnyView(HaustuerSeite())
+        case "/system/geraet":
+            return AnyView(HausgeraetSeite())
         case "/system/zugang":
             return AnyView(ZugangSeite())
 

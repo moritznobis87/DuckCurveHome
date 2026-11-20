@@ -25,6 +25,7 @@ from dch_api.routers import (
     energy,
     export,
     forecast,
+    geraet,
     health,
     history,
     house,
@@ -34,6 +35,7 @@ from dch_api.routers import (
     push,
     rooms,
     system,
+    update,
     waermepumpe,
 )
 from dch_api.settings import Settings, get_settings
@@ -196,6 +198,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     protected = [Depends(require_api_token)]
     for r in (
         alfred.router,
+        update.router,
+        geraet.router,
         live.router,
         history.router,
         plan.router,
