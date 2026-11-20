@@ -447,12 +447,34 @@ struct DatenSeite: View {
     @State private var bestand: StorageReportOut?
     @State private var diagnose: String?
     @State private var fehler: ApiFehler?
+    /// Die Minutenwerte des Tages - die Reihen, um die es auf dieser Seite geht.
+    @State private var kurve = Pruefkurve()
+    @State private var hatMinuten = false
 
     var body: some View {
         let z = wegweiser.zeitraum(jetzt: haus.jetzt)
-        Seite(zeitraum: Zeitraumleiste()) {
+        // **Keine Spannenwahl** (`DataCheck.tsx:59-68`, `showPeriods={false}`): diese Seite
+        // kennt nur Tage. Minutenwerte über eine Woche ergäben ein Bild, in dem man nichts
+        // erkennt - und genau zum Erkennen ist sie da.
+        Seite(zeitraum: Zeitraumleiste(spannen: [.tag])) {
             if let fehler {
                 Stoerung(fehler: fehler) { Task { await lade(z) } }
+            }
+            Karte(kicker: "Leistungen über den Tag") {
+                if hatMinuten {
+                    Pruefkurvenbild(kurve: kurve)
+                } else {
+                    Leer(satz: Pruefkurve.leersatz)
+                }
+            }
+            Karte(
+                kicker: "Quellen",
+                beiwerk: AnyView(
+                    Text("liefert gerade, was liefern soll?")
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3))
+            ) {
+                Quellenkarte(zeilen: Quellenstand.zeilen(aus: haus.zustand?.system))
             }
             if let a = abdeckung {
                 Karte(kicker: "Abdeckung") {
@@ -556,6 +578,11 @@ struct DatenSeite: View {
     }
 
     private func lade(_ z: Zeitraum) async {
+        async let minuten = try? haus.api.verlaufTag(z.anker)
+        let historie = await minuten
+        kurve = Pruefkurve.baue(tag: z.anker, historie: historie)
+        hatMinuten = !kurve.leer
+
         let tage: Int =
             switch z.spanne {
             case .tag: 1
