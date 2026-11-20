@@ -240,24 +240,23 @@ struct PrognoseSeite: View {
 
     // MARK: - Kopfzeile
 
-    /// Was in der Vorlage im Kopf der Hülle steht: die Sache, der Stand, die Marke.
+    /// Was in der Vorlage im Kopf der Hülle steht: der Stand und die Marke.
     ///
     /// **Am Telefon fällt der Stand weg.** Die Vorlage blendet ihn unter 1400 px aus
     /// (`ForecastPage.tsx:246`), und aus demselben Grund: „Stand 14:35 · Bridge (PV-Prognose)“
     /// neben einer Überschrift auf 390 Punkten lässt von der Überschrift zwei Wörter übrig. Die
     /// Uhrzeit steht ohnehin in der Jetzt-Linie des Hauptdiagramms.
+    ///
+    /// **Die Sache selbst stand hier zweimal** - einmal als Sperrschrift, einmal als
+    /// Überschrift fürs Telefon -, und sie gehört der Hülle und nicht dieser Seite
+    /// (`ForecastPage.tsx:245`). ``Seite`` zeichnet sie jetzt aus ``Bereiche/kicker(fuer:)``;
+    /// hier bleibt, was die Seite selbst weiß.
     @ViewBuilder private func kopfzeile(_ b: ForecastEvaluationOut) -> some View {
         let marke = Stufenmarke(wort: markenwort(b), aktiv: b.correctionActive)
         if schmal {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("PV-Prognose gegen Ist · Korrekturfaktoren")
-                    .font(Schrift.karte)
-                    .foregroundStyle(Farbe.text1)
-                marke
-            }
+            marke
         } else {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Kicker(wort: "PV-Prognose gegen Ist · Korrekturfaktoren")
                 Spacer(minLength: 8)
                 Text(standwort(b)).font(Schrift.zahlKlein).foregroundStyle(Farbe.text3)
                 marke
@@ -874,8 +873,14 @@ struct AnnahmenSeite: View {
     /// Die Vorlage (`settings/HeatSettings.tsx`) ist ein Formular: zwölf beschriftete Felder
     /// mit ihren Einheiten und Erklärsätzen, die Kennlinie als Zeile, ein Knopf. Jede Änderung
     /// wirkt sofort und rückwirkend - das steht als Satz darüber, nicht im Kleingedruckten.
+    ///
+    /// **Ohne Kicker, weil er jetzt im Gerippe steht.** „Lieferschein · Datenblatt · Puffer“ ist
+    /// in der Vorlage der Kicker der Hülle (`waerme/annahmen/page.tsx:13`) und nicht die
+    /// Überschrift dieser Karte - `HeatSettings.tsx` setzt über das Formular keine. ``Seite``
+    /// zeichnet ihn aus ``Bereiche/kicker(fuer:)``, und das Wort bleibt
+    /// ``Annahmenfelder/kicker``.
     @ViewBuilder private func formular(_ c: HemsConfig) -> some View {
-        Karte(kicker: Annahmenfelder.kicker, beiwerk: AnyView(umschalter)) {
+        Karte(beiwerk: AnyView(umschalter)) {
             VStack(alignment: .leading, spacing: 18) {
                 Text(Annahmenfelder.einleitung)
                     .font(Schrift.klein)
