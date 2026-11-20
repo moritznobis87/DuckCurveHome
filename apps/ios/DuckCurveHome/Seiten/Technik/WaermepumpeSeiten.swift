@@ -178,27 +178,78 @@ struct WaermepumpeSeite: View {
 }
 
 /// Die Wahl des Zeitraums in Tagen, fuer die Seiten, die keinen Kalender brauchen.
+///
+/// **Die Knopfform der Vorlage, an einer Stelle.** Die Vorlage hat dafuer genau eine Regel:
+/// `.kl-knopf` (`globals.css:893-894`) - 13 Punkte, Polster 7/13, eine Haarlinie `linie1` als
+/// Rahmen, und gewaehlt `amber` auf `petrol` in Gewicht 600. Die Reihe darum ist `.kl-wahl`
+/// (`globals.css:892`) mit Abstand 6 und Umbruch; darum ``Umbruchzeile`` und nicht `HStack` -
+/// vier Knoepfe in dieser Groesse passen am Telefon nicht in eine Zeile, und abgeschnitten
+/// waere schlechter als umgebrochen.
+///
+/// **Warum es die Form nur einmal gibt.** Es gab eine zweite, fast gleiche Fassung auf der
+/// Betriebsseite, weil die Vorlage dort nachgelesen wurde und die gemeinsame Ansicht gerade
+/// nicht angefasst werden durfte. Zwei Fassungen derselben Form laufen auseinander, sobald
+/// eine von beiden gepflegt wird.
 struct Tagewahl: View {
     @Binding var tage: Int
     let moeglich: [Int]
+    /// Die Beschriftung der Gruppe fuer die Bedienungshilfen, wie `aria-label` an `.kl-wahl`
+    /// (`Betrieb.tsx:65`). `nil` laesst die Knoepfe einzeln stehen - so war es vorher, und so
+    /// bleibt es an den Stellen, die keine Gruppe nennen.
+    var gruppe: String?
 
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(moeglich, id: \.self) { n in
-                Button {
-                    tage = n
-                } label: {
-                    Text("\(n) Tage")
-                        .font(Schrift.winzig)
-                        .foregroundStyle(n == tage ? Farbe.deep : Farbe.text2)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(n == tage ? Farbe.amberWeich : Farbe.flaeche2)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-            Spacer(minLength: 0)
+        if let gruppe {
+            reihe
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(gruppe)
+        } else {
+            reihe
         }
+    }
+
+    /// **Die Teile einzeln benannt und mit angeschriebenem Typ.** Eine Kette aus Polster,
+    /// Grund, Rahmen und drei Fragezeichen ergibt „unable to type-check this expression in
+    /// reasonable time“; das sieht man erst auf dem Mac, nicht beim Parsen.
+    private var reihe: some View {
+        Umbruchzeile(abstand: 6, zeilenabstand: 6) {
+            ForEach(moeglich, id: \.self) { n in
+                knopf(n)
+            }
+        }
+    }
+
+    private func knopf(_ n: Int) -> some View {
+        let gewaehlt: Bool = n == tage
+        return Button {
+            tage = n
+        } label: {
+            Text("\(n) Tage")
+                .font(schrift(gewaehlt))
+                .foregroundStyle(gewaehlt ? Farbe.petrol : Farbe.text2)
+                .padding(.horizontal, 13)
+                .padding(.vertical, 7)
+                .background(gewaehlt ? Farbe.amber : Color.clear)
+                .overlay(Capsule().strokeBorder(rand(gewaehlt), lineWidth: 1))
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(merkmale(gewaehlt))
+    }
+
+    /// Gewaehlt halbfett (`font-weight: 600`, `globals.css:894`): der Unterschied soll nicht
+    /// allein an der Farbe haengen.
+    private func schrift(_ gewaehlt: Bool) -> Font {
+        gewaehlt
+            ? Schrift.sansHalbfett(13, relativeTo: .footnote)
+            : Schrift.klein
+    }
+
+    private func rand(_ gewaehlt: Bool) -> Color {
+        gewaehlt ? Farbe.amber : Farbe.linie1
+    }
+
+    private func merkmale(_ gewaehlt: Bool) -> AccessibilityTraits {
+        gewaehlt ? [.isButton, .isSelected] : [.isButton]
     }
 }
