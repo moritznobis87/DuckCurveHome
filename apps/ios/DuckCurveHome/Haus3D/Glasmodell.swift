@@ -32,6 +32,20 @@ struct Glasmodell: View {
     var waermepumpeKw: Double?
     var wallboxKw: Double?
     var pufferSoc: Double?
+    /// Ob der Pelletofen brennt. `nil` heisst: es gibt keinen oder er meldet nichts
+    /// (`house/live.ts:66`) - und das ist etwas anderes als „aus“.
+    var ofenLaeuft: Bool?
+    /// Welcher Raum scharf gestellt ist - Deck **und** Name. `nil` heisst: keiner.
+    ///
+    /// **Im Fokus treten die uebrigen zurueck** (`globals.css:487-488`: die anderen Schilder
+    /// auf 0,18, das gewaehlte auf 1,25). Ohne das steht das Fokusfenster neben einem Bild, in
+    /// dem der gemeinte Raum genauso aussieht wie die zwoelf anderen.
+    ///
+    /// **Der Name allein reicht nicht.** Bei `sichtbaresDeck == nil` stehen alle Decks
+    /// nebeneinander, und „Flur“ gibt es in jedem Geschoss - ein Vergleich nur ueber den Namen
+    /// zog in der breiten Modellansicht jeden gleichnamigen Raum gross. Die Vorlage stellt
+    /// beides zusammen scharf (`HouseReport.tsx:188`: `setFokus(deck.key, raum.name)`).
+    var fokus: Hauskonsolenfenster.Ort?
     /// Was ein Tipp auf einen Raum tut. Ohne das bleibt das Modell ein Bild.
     var tippeRaum: ((Int) -> Void)?
 
@@ -653,6 +667,8 @@ struct Glasmodell: View {
             ForEach(Array(deck.rooms.enumerated()), id: \.offset) { _, raum in
                 if zeigeSchild(raum, nah: nah) {
                     raumschild(raum, nah: nah)
+                        .opacity(schildDeckung(raum, deck: deck))
+                        .scaleEffect(imFokus(raum, deck: deck) ? 1.25 : 1)
                         .position(
                             punkt(
                                 (raum.x0 + raum.x1) / 2 + v.x, y + 1.25,
@@ -672,6 +688,22 @@ struct Glasmodell: View {
 
     /// **Welcher Raum ein Schild bekommt.** Teilräume und stille Räume keines; Nebenräume erst,
     /// wenn das Bild groß genug ist, sie zu tragen.
+    /// Wie deutlich ein Raumschild steht.
+    ///
+    /// Ohne Fokus wie bisher; im Fokus bleibt das gewaehlte voll da und die uebrigen treten auf
+    /// 0,18 zurueck (`globals.css:487`).
+    private func schildDeckung(_ raum: Room, deck: Deck) -> Double {
+        let gedaempft = raum.cold == true || raum.tech == true ? 0.75 : 1.0
+        guard fokus != nil else { return gedaempft }
+        return imFokus(raum, deck: deck) ? 1 : 0.18
+    }
+
+    /// Ob dieses Schild das scharf gestellte ist - Deck und Name muessen beide stimmen.
+    private func imFokus(_ raum: Room, deck: Deck) -> Bool {
+        guard let fokus else { return false }
+        return fokus.deck == deck.key && fokus.raum == raum.name
+    }
+
     private func zeigeSchild(_ raum: Room, nah: Double) -> Bool {
         if raum.silent == true || raum.partOf != nil { return false }
         if raum.minor == true, nah < kleinAb { return false }
@@ -720,7 +752,8 @@ struct Glasmodell: View {
             Capsule().fill(Color(Farbwert(0x07202C, deckung: 0.78)))
                 .overlay(Capsule().strokeBorder(Color(Farbwert(0xA9ECFF, deckung: 0.22)), lineWidth: 1))
         )
-        .opacity(raum.cold == true || raum.tech == true ? 0.75 : 1)
+        // Die Deckkraft kommt von aussen (`schildDeckung`): sie haengt am Fokus und am Raum
+        // zugleich, und zwei Stellen, die sie setzen, multiplizieren sich.
         .fixedSize()
     }
 
@@ -757,6 +790,17 @@ struct Glasmodell: View {
                         it.label ?? "Wallbox",
                         wert: wallboxKw.map { Formate.zahl($0, stellen: 1) + " kW" })),
                 (x, 0.2, z + 1.1)
+            )
+        case .stove:
+            // **„brennt“ oder „aus“, und sonst nichts.** Die Vorlage laesst die Glut atmen
+            // (`HouseScene.ts:1341`); hier steht erst einmal das Wort dazu - eine Zeichnung,
+            // die nicht da ist, soll keine Bewegung vortaeuschen.
+            return (
+                AnyView(
+                    technikschild(
+                        it.label ?? "Ofen",
+                        wert: ofenLaeuft.map { $0 ? "brennt" : "aus" })),
+                (x, 0.9, z)
             )
         default:
             return nil

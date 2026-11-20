@@ -1,14 +1,21 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Das Haus: die Raeume als Liste zum Stellen oder als Glasmodell.
+/// Das Haus: die Raeume als Liste zum Stellen oder als Glasmodell - und neben beidem die
+/// Konsole.
 ///
 /// **Ein Schalter in der Seite, kein Reiter.** `areas.ts` haelt das fest: es sind zwei Ansichten
 /// derselben Sache, und die Liste ist die zum Arbeiten. Wer einen Sollwert stellen will, tippt
 /// ihn in der Liste; wer wissen will, ob irgendwo ein Fenster offen ist, sieht das Modell an.
 ///
-/// **Der Alarm steht oben und nicht im Modell.** Scharf oder nicht ist eine Auskunft, die man
-/// lesen will, ohne das Haus zu drehen.
+/// **Ein Raster für beide Ansichten.** `globals.css:447` setzt `.haus-seite` als 216 Punkte und
+/// den Rest, und **links steht in beiden Ansichten die Konsole** - rechts entweder die
+/// Raumliste oder die Bühne. Die App hatte die Konsole nur in der breiten Modellansicht; am
+/// Telefon und in jeder Liste fehlten damit Fenster, Puffer, Wärmepumpe und Heizkreise. Unter
+/// 900 Punkten wird aus der Spalte eine quer rollende Reihe (`globals.css:543-549`).
+///
+/// **Der Alarm steht in der Konsole und nicht als eigene Karte.** Scharf oder nicht ist eine
+/// Auskunft, die man neben den anderen vier liest, nicht über die ganze Breite.
 struct HausSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
@@ -38,6 +45,10 @@ struct HausSeite: View {
     /// Karte hängt dort an `kacheln`). In der App stand sie als erste und grösste Karte auf
     /// der Heizkreiseseite und drängte die Wärmekarte, um die es dort geht, unter den Rand.
     @State private var automatik: RoomShiftOut?
+    /// Welcher Block der Konsole aufgeklappt ist.
+    @State private var klappe: Konsolenklappe?
+    /// Welcher Raum im Modell scharf gestellt ist - Geschoss und Name, wie im Plan.
+    @State private var fokus: Hauskonsolenfenster.Ort?
 
     private enum Ansichtswahlart: String { case liste, modell }
 
@@ -46,7 +57,13 @@ struct HausSeite: View {
         .task { await lade() }
         // Die Raumtemperaturen kommen nicht im Ereignisstrom - sie werden nachgeholt, aber nicht
         // im Sekundentakt: ein Fussbodenheizkreis bewegt sich in Stunden, nicht in Sekunden.
-        .task { await haltFrisch() }
+        .task { await haltHausFrisch() }
+        .task { await haltRaeumeFrisch() }
+        .sheet(item: $klappe) { art in
+            Hauskonsolenblatt(
+                art: art, plan: hausplan?.plan, kontakte: hausplan?.contacts ?? [],
+                raeume: raeume?.rooms ?? [], springe: springe)
+        }
         .sheet(isPresented: raumOffen) {
             if case .raum(let id) = wegweiser.blatt,
                let r = raeume?.rooms.first(where: { $0.id == id })
@@ -88,29 +105,72 @@ struct HausSeite: View {
         )
     }
 
-    /// **Am Telefon zwei Zeilen, an der Wand eine.**
+    // MARK: - Das Gerippe
+
+    /// **Am Telefon rollt die Seite, an der Wand füllt sie den Schirm.**
     ///
-    /// Der Umschalter nimmt am Telefon die ganze Breite (`handy.css:177`), und neben einem
-    /// `Spacer` teilen sich beide den Platz: der Schalter stuende dann mitten in der Zeile und
-    /// „Stand 14:32" irgendwo rechts daneben. Also steht der Stand darueber und der Schalter
-    /// allein auf seiner Zeile.
+    /// Das Modell braucht die ganze Fläche und darf nicht in einem Rollbereich stehen; alles
+    /// andere rollt. Die Konsole steht in beiden Fällen vor dem Inhalt - oben quer, links
+    /// senkrecht.
     @ViewBuilder private var gerippe: some View {
-        if schmal || ansicht == .liste {
+        if schmal {
             Seite {
                 kopf
-                if let fehler {
-                    Stoerung(fehler: fehler) { Task { await lade() } }
-                }
-                if let alarm = haus.zustand?.alarm {
-                    Alarmkarte(alarm: alarm)
-                }
+                stoerung
+                // Unter 900 Punkten wird aus der Spalte eine quer rollende Reihe
+                // (`globals.css:546-548`).
+                konsole(waagrecht: true)
                 switch ansicht {
                 case .liste: raumliste
                 case .modell: modell
                 }
+                fussnote
+            }
+        } else if ansicht == .liste {
+            Seite {
+                kopf
+                stoerung
+                // **Auch neben der Liste steht die Konsole links**, in derselben Spalte von
+                // 216 Punkten wie neben der Bühne (`HouseReport.tsx:266-285`).
+                HStack(alignment: .top, spacing: 14) {
+                    konsole(waagrecht: false)
+                        .frame(width: 216)
+                    VStack(alignment: .leading, spacing: 14) { raumliste }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         } else {
             wandmodell
+        }
+    }
+
+    @ViewBuilder private var stoerung: some View {
+        if let fehler {
+            Stoerung(fehler: fehler) { Task { await lade() } }
+        }
+    }
+
+    /// Die Konsole - aber nur, wo es einen Hausplan gibt.
+    ///
+    /// **Die Liste braucht keinen Hausplan** (`HouseReport.tsx:350-352`): die Räume kommen aus
+    /// der Heizungsregelung. Fehlt der Plan, steht sie allein da, ohne die Leiste mit Alarm und
+    /// Fenstern - deren Kontakte stünden sonst als „keine Kontakte im Plan“ daneben.
+    @ViewBuilder private func konsole(waagrecht: Bool) -> some View {
+        if hausplan?.plan != nil {
+            Hauskonsolenleiste(
+                raeume: raeume?.rooms ?? [], plan: hausplan?.plan,
+                kontakte: hausplan?.contacts ?? [], waagrecht: waagrecht, klappe: $klappe)
+        }
+    }
+
+    /// `plan.note_de` steht unter der Modellansicht jeder Breite (`HouseReport.tsx:354`) -
+    /// vorher nur in der Wandfassung.
+    @ViewBuilder private var fussnote: some View {
+        if ansicht == .modell, let satz = hausplan?.plan?.noteDe, !satz.isEmpty {
+            Text(satz)
+                .font(Schrift.sans(11))
+                .foregroundStyle(Farbe.text3)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -125,24 +185,14 @@ struct HausSeite: View {
     private var wandmodell: some View {
         VStack(alignment: .leading, spacing: 10) {
             werkzeuge
-            if let fehler {
-                Stoerung(fehler: fehler) { Task { await lade() } }
-            }
+            stoerung
             HStack(alignment: .top, spacing: 14) {
-                Hauskonsolenleiste(
-                    raeume: raeume?.rooms ?? [], plan: hausplan?.plan,
-                    kontakte: hausplan?.contacts ?? []
-                )
-                .frame(width: 216)
+                konsole(waagrecht: false)
+                    .frame(width: 216)
                 buehne
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if let satz = hausplan?.plan?.noteDe, !satz.isEmpty {
-                Text(satz)
-                    .font(Schrift.sans(11))
-                    .foregroundStyle(Farbe.text3)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            fussnote
         }
         .padding(.horizontal, 32)
         .padding(.top, 4)
@@ -150,29 +200,21 @@ struct HausSeite: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    /// Die Bühne: das Modell, randvoll, mit der Legende in ihrer unteren linken Ecke.
+    /// Die Bühne: das Modell, randvoll, mit der Legende in ihrer unteren linken Ecke und dem
+    /// Fokusfenster oben rechts.
     @ViewBuilder private var buehne: some View {
         if let plan = hausplan?.plan {
             ZStack(alignment: .bottomLeading) {
-                Glasmodell(
-                    plan: plan,
-                    raeume: Dictionary(
-                        (raeume?.rooms ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }
-                    ),
-                    kontakte: Dictionary(
-                        (hausplan?.contacts ?? []).map { ($0.key, $0) },
-                        uniquingKeysWith: { a, _ in a }
-                    ),
-                    alarmScharf: (haus.zustand?.alarm?.state ?? 0) >= 1,
-                    sichtbaresDeck: deck.isEmpty ? nil : deck,
-                    waermepumpeKw: haus.augenblick?.heatPumpPowerKw.belastbar,
-                    wallboxKw: haus.augenblick?.evPowerKw.belastbar,
-                    pufferSoc: haus.zustand?.buffer.soc,
-                    tippeRaum: { id in wegweiser.blatt = .raum(id) }
-                )
+                glasmodell(plan)
                 legende
                     .padding(.leading, 14)
                     .padding(.bottom, 12)
+                if let f = fokus {
+                    fokusfenster(f, plan: plan)
+                        .frame(width: 320)
+                        .padding(14)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous))
@@ -186,29 +228,69 @@ struct HausSeite: View {
         }
     }
 
-    /// Die Werkzeuge der Seite: Ansicht, Geschoss, Drehung - alle als Pillen, rechts oben.
+    /// Das Modell selbst - eine Stelle für beide Fassungen, damit die Werte nicht auseinander
+    /// laufen.
+    private func glasmodell(_ plan: HousePlan) -> some View {
+        Glasmodell(
+            plan: plan,
+            raeume: Dictionary(
+                (raeume?.rooms ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }
+            ),
+            kontakte: Dictionary(
+                (hausplan?.contacts ?? []).map { ($0.key, $0) },
+                uniquingKeysWith: { a, _ in a }
+            ),
+            // **`state` ist eine Zahl, kein Wort.** Hier stand ein Vergleich mit „armed_away“ -
+            // das war geraten und falsch. Der Dienst schickt eine Stufe: alles ab 1 ist scharf.
+            alarmScharf: Hauskonsolenfenster.stufe(haus.zustand?.alarm) != .unscharf
+                && Hauskonsolenfenster.stufe(haus.zustand?.alarm) != .unbekannt,
+            sichtbaresDeck: deck.isEmpty ? nil : deck,
+            waermepumpeKw: haus.augenblick?.heatPumpPowerKw.belastbar,
+            wallboxKw: haus.augenblick?.evPowerKw.belastbar,
+            pufferSoc: haus.zustand?.buffer.soc,
+            ofenLaeuft: Hauskonsolenfenster.ofenLaeuft(haus.zustand?.stove),
+            fokus: fokus,
+            // **Ein Tipp öffnet das Fokusfenster, nicht sofort das volle Blatt.** Die Vorlage
+            // zeigt neben dem Modell Temperatur, Ziel, Heizkreis und die Kontakte dieses Raums
+            // (`HouseReport.tsx:295-343`); das Blatt verdeckt das Modell und kennt die
+            // Kontakte nicht. Der Weg zum Stellen steht im Fenster.
+            tippeRaum: { id in zeigeFokus(raumId: id) }
+        )
+    }
+
+    /// Die Werkzeuge der Seite: Ansicht, Geschoss - alle als Pillen, rechts oben.
     ///
     /// **Sie gehören in die Kopfzeile** (`HouseReport.tsx:219-248`, der `right`-Platz der
     /// Hülle). Das Gerippe der App hat dafür keinen Platz; hier stehen sie als eigene Zeile
     /// über der Bühne, in derselben Gestalt: gesperrte Großschrift, das Gewählte in Bernstein.
     private var werkzeuge: some View {
         HStack(spacing: 6) {
+            // **Der Kicker steht in der Hülle und damit in beiden Ansichten**
+            // (`HouseReport.tsx:218-219`, `layout/AreaShell.tsx:13-29`). Er hing hier nur in
+            // `kopf`, den die Wandfassung nicht baut - auf der Anzeige, die mit dem Modell
+            // anfängt, stand also nirgends, woher der Plan kommt.
+            herkunft
             Spacer(minLength: 0)
             pillen(
                 [Ansicht(weg: "liste", name: "Liste"), Ansicht(weg: "modell", name: "Modell")],
                 aktiv: ansicht.rawValue
             ) { a in ansicht = Ansichtswahlart(rawValue: a) ?? .liste }
-            if let plan = hausplan?.plan, plan.decks.count > 1 {
-                pillen(
-                    [Ansicht(weg: "", name: "Alle")]
-                        + plan.decks.map { Ansicht(weg: $0.key, name: $0.name) },
-                    aktiv: deck
-                ) { a in
+            if hausplan?.plan != nil {
+                pillen(deckwahl, aktiv: deck) { a in
                     deck = a
                     deckGewaehlt = true
                 }
             }
         }
+    }
+
+    /// **Auch ein Haus mit einem Geschoss bekommt seine Gruppe**, dann mit der Aufschrift
+    /// „Haus“ (`HouseReport.tsx:233-234`). Die App liess die Pillen bei einem Deck ganz weg -
+    /// und damit stand an der Stelle, an der sonst das Geschoss steht, nichts.
+    private var deckwahl: [Ansicht] {
+        let decks = hausplan?.plan?.decks ?? []
+        guard decks.count > 1 else { return [Ansicht(weg: "", name: "Haus")] }
+        return [Ansicht(weg: "", name: "Alle")] + decks.map { Ansicht(weg: $0.key, name: $0.name) }
     }
 
     private func pillen(
@@ -235,7 +317,7 @@ struct HausSeite: View {
         .overlay(Capsule().strokeBorder(Farbe.linie2, lineWidth: 1))
     }
 
-    /// „KALT ▬▬ WARM · GELB: UNTER ZIEL · TIPPEN: RAUM" (`HouseReport.tsx:288-294`).
+    /// „KALT ▬▬ WARM · GELB: UNTER ZIEL · TIPPEN: RAUM“ (`HouseReport.tsx:288-294`).
     private var legende: some View {
         HStack(spacing: 8) {
             Kicker(wort: "kalt")
@@ -255,9 +337,12 @@ struct HausSeite: View {
         .allowsHitTesting(false)
     }
 
+    // MARK: - Kopf
+
     private var kopf: some View {
         VStack(alignment: .leading, spacing: 8) {
             if schmal {
+                herkunft
                 if let r = raeume, let at = Zeit.ausIso(r.at) {
                     Text("Stand \(Formate.hhmm(at))")
                         .font(Schrift.winzig)
@@ -266,6 +351,7 @@ struct HausSeite: View {
                 }
                 ansichtswahl
             } else {
+                herkunft
                 HStack {
                     ansichtswahl
                     Spacer(minLength: 8)
@@ -277,6 +363,21 @@ struct HausSeite: View {
                 }
             }
         }
+    }
+
+    /// **Woher der Plan kommt, stand nirgends.** Die Vorlage setzt es als Kicker in das
+    /// Reiterband: `plan.name || "Hausplan"` und dahinter `house.source_de`
+    /// (`HouseReport.tsx:219`).
+    @ViewBuilder private var herkunft: some View {
+        if let h = hausplan {
+            Kicker(wort: herkunftswort(h))
+        }
+    }
+
+    private func herkunftswort(_ h: HouseOut) -> String {
+        let eigen = h.plan?.name ?? ""
+        let name = eigen.isEmpty ? "Hausplan" : eigen
+        return h.sourceDe.isEmpty ? name : "\(name) · \(h.sourceDe)"
     }
 
     private var ansichtswahl: some View {
@@ -381,20 +482,23 @@ struct HausSeite: View {
             tag: String(tagIso), jetzt: jetzt, schrittMin: t.stepMin)
     }
 
-    // MARK: - Modell
+    // MARK: - Modell am Telefon
 
     private var modell: some View {
-        Karte {
+        Group {
             if let plan = hausplan?.plan {
-                // **Ein Stockwerk nach dem anderen, wie im Dashboard** (`HouseReport.tsx:233`:
-                // „Alle" und je ein Reiter fuer jedes Deck). Uebereinander liegen zwei
-                // Grundrisse, deren Raeume auf fast dieselbe Stelle des Schirms fallen - und
-                // dann liegen auch ihre Namen uebereinander. Wer ein Stockwerk waehlt, sieht
-                // es allein und gross.
-                if plan.decks.count > 1 {
+                Karte {
+                    // **Ein Stockwerk nach dem anderen, wie im Dashboard**
+                    // (`HouseReport.tsx:233`). Uebereinander liegen zwei Grundrisse, deren
+                    // Raeume auf fast dieselbe Stelle des Schirms fallen - und dann liegen
+                    // auch ihre Namen uebereinander.
+                    // **Auch bei einem einzigen Deck steht die Gruppe da**, dann mit der
+                    // Aufschrift „Haus“ (`HouseReport.tsx:230-234`: `.haus-werkzeuge` wird in
+                    // jeder Breite gebaut, `globals.css:552` lässt sie am Telefon nur
+                    // umbrechen). Die breite Fassung zeigte sie schon so; am Telefon fehlte
+                    // sie genau dort, wo sie vorher schon fehlte.
                     Ansichtswahl(
-                        ansichten: [Ansicht(weg: "", name: "Alle")]
-                            + plan.decks.map { Ansicht(weg: $0.key, name: $0.name) },
+                        ansichten: deckwahl,
                         aktiv: Ansicht(
                             weg: deck,
                             name: plan.decks.first { $0.key == deck }?.name ?? "Alle")
@@ -403,37 +507,29 @@ struct HausSeite: View {
                         deckGewaehlt = true
                     }
                     .onAppear {
-                        if !deckGewaehlt, schmal, let erstes = plan.decks.first {
+                        // Nur bei mehreren Decks: uebereinander sind zwei Grundrisse nicht zu
+                        // lesen. Ein einzelnes Deck steht unter „Haus“ ohnehin allein da, und
+                        // ein vorgewählter Schlüssel liesse die einzige Pille ungewählt
+                        // aussehen.
+                        if !deckGewaehlt, schmal, plan.decks.count > 1,
+                           let erstes = plan.decks.first
+                        {
                             deck = erstes.key
                         }
                     }
+                    glasmodell(plan)
+                        // **Ein Anteil des Schirms, keine feste Höhe.** Die Vorlage rechnet in
+                        // Bildschirmhöhe (`globals.css:550`: 70dvh, `handy.css:393`: 58dvh);
+                        // die App hatte 460 Punkte, und auf einem grossen Telefon blieb unter
+                        // dem Bild ein leeres Drittel.
+                        .containerRelativeFrame(.vertical) { hoehe, _ in hoehe * 0.58 }
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                Glasmodell(
-                    plan: plan,
-                    raeume: Dictionary(
-                        (raeume?.rooms ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }
-                    ),
-                    kontakte: Dictionary(
-                        (hausplan?.contacts ?? []).map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a }
-                    ),
-                    // **`state` ist eine Zahl, kein Wort.** Hier stand ein Vergleich mit
-                    // „armed_away" - das war geraten und falsch. Der Dienst schickt eine
-                    // Stufe (`live_runtime.py`, `ALARM_WORT`): 0 unscharf, 1 zu Hause
-                    // scharf, 2 unterwegs scharf, 3 schaltet, 4 ausgeloest. Das Dashboard
-                    // liest es in `house/live.ts` genauso - alles ab 1 ist scharf.
-                    alarmScharf: (haus.zustand?.alarm?.state ?? 0) >= 1,
-                    sichtbaresDeck: deck.isEmpty ? nil : deck,
-                    waermepumpeKw: haus.augenblick?.heatPumpPowerKw.belastbar,
-                    wallboxKw: haus.augenblick?.evPowerKw.belastbar,
-                    pufferSoc: haus.zustand?.buffer.soc,
-                    // Derselbe Weg wie aus der Liste: ein Tipp auf einen Raum öffnet sein
-                    // Blatt, und dort steht der Regler.
-                    tippeRaum: { id in wegweiser.blatt = .raum(id) }
-                )
-                .frame(height: 460)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .sheet(item: $fokus) { f in
+                    fokusblatt(f, plan: plan)
+                }
             } else {
-                modellhinweis
+                Karte { modellhinweis }
             }
         }
     }
@@ -443,16 +539,201 @@ struct HausSeite: View {
     /// Eine Stelle für beide Fassungen: die Wandfassung zeigt denselben Satz in ihrer Bühne,
     /// und zwei Stellen mit denselben drei Sätzen laufen auseinander.
     @ViewBuilder private var modellhinweis: some View {
-        if let fehlertext = hausplan?.errorDe, !fehlertext.isEmpty {
-            Leer(satz: "Der Hausplan ist nicht lesbar.", dazu: fehlertext)
-        } else if hausplan?.present == false {
-            Leer(
-                satz: "Für dieses Haus liegt kein Plan vor.",
-                dazu: "Der Plan kommt von der Brücke (haus.yaml)."
-            )
+        if let h = hausplan {
+            // **Beide Sätze in derselben Karte, untereinander** (`HouseReport.tsx:257-262`:
+            // `house.error_de` und darunter der Hinweis auf die Beispieldatei). Hier standen
+            // zwei sich ausschliessende Zweige, und der zweite kam nie dran: im Fall „kein
+            // Plan“ setzt der Dienst `present=False` **und** `error_de`
+            // (`live_runtime.py:1596-1606`). Gelesen hat man deshalb immer nur „nicht
+            // lesbar“ - die falsche Auskunft, wenn bloss noch keiner gemeldet wurde.
+            Leer(satz: planhinweis(h), dazu: planabhilfe)
         } else {
             Leer(satz: "Wird geholt …")
         }
+    }
+
+    /// Was der Dienst zum fehlenden Plan meldet - und wenn er nichts meldet, der eigene Satz.
+    private func planhinweis(_ h: HouseOut) -> String {
+        let fehler = h.errorDe ?? ""
+        return fehler.isEmpty ? "Für dieses Haus liegt kein Plan vor." : fehler
+    }
+
+    private var planabhilfe: String {
+        "Die Vorlage liegt im Repository unter config/haus.example.yaml; sie beschreibt jede "
+            + "Art von Eintrag. Die Brücke liest die Datei alle 30 Sekunden neu, ein Neustart "
+            + "ist nicht nötig."
+    }
+
+    // MARK: - Der Fokus am Modell
+
+    /// Den Raum hinter einer Kennung scharf stellen.
+    ///
+    /// Kennt der Plan die Kennung nicht, bleibt der bisherige Weg: das volle Blatt. Ein Tipp,
+    /// der nichts tut, wäre schlimmer als ein Blatt, das zu viel zeigt.
+    private func zeigeFokus(raumId: Int) {
+        if let ort = Hauskonsolenfenster.raumOrt(plan: hausplan?.plan, raumId: raumId) {
+            fokus = ort
+        } else {
+            wegweiser.blatt = .raum(raumId)
+        }
+    }
+
+    /// Aus einer Zeile der Konsole in den Raum im Modell (`HouseReport.tsx:176-191`).
+    ///
+    /// Steht die Liste vorn, wechselt die Seite in die Modellansicht; sonst wird nötigenfalls
+    /// das Geschoss gewechselt. Danach schliesst das Blatt der Konsole.
+    private func springe(_ ort: Hauskonsolenfenster.Ort) {
+        ansicht = .modell
+        if !deck.isEmpty, deck != ort.deck { deck = ort.deck }
+        if schmal { deck = ort.deck }
+        deckGewaehlt = true
+        fokus = ort
+        klappe = nil
+    }
+
+    /// Das Fokusfenster: gross die Temperatur, das Ziel, der Heizkreis, die Kontakte des Raums.
+    ///
+    /// **Es ersetzt nicht das Stellblatt, es führt dorthin.** Eine zweite Stellmechanik wäre
+    /// eine zweite Wahrheit (`HouseReport.tsx:356-362`: die Vorlage öffnet dafür dasselbe
+    /// Fenster wie die Raumseite).
+    private func fokusfenster(_ ort: Hauskonsolenfenster.Ort, plan: HousePlan) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            fokuskopf(ort, plan: plan)
+            fokuswerte(ort, plan: plan)
+            fokuskontakte(ort, plan: plan)
+            if let id = raumKennung(ort, plan: plan) {
+                Button { wegweiser.blatt = .raum(id) } label: {
+                    Text("Sollwert stellen")
+                        .font(Schrift.mono(11))
+                        .tracking(1.3)
+                        .foregroundStyle(Farbe.petrol)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(Farbe.amber, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 16)
+        .padding(.bottom, 14)
+        .background(Farbe.grund.opacity(0.94), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Farbe.linie2, lineWidth: 1))
+        .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
+    }
+
+    /// Am Telefon wird aus dem Fenster ein Blatt von unten (`globals.css:551`) - dieselbe
+    /// Entscheidung wie bei den Konsolenfenstern.
+    private func fokusblatt(_ ort: Hauskonsolenfenster.Ort, plan: HousePlan) -> some View {
+        ScrollView {
+            fokusfenster(ort, plan: plan)
+                .padding(16)
+        }
+        .seitengrund()
+        .presentationDetents([.medium])
+    }
+
+    private func fokuskopf(_ ort: Hauskonsolenfenster.Ort, plan: HousePlan) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Kicker(wort: plan.decks.first { $0.key == ort.deck }?.name ?? "")
+                Text(ort.raum).font(Schrift.sans(18)).fontWeight(.semibold)
+                    .foregroundStyle(Farbe.text1)
+            }
+            Spacer(minLength: 8)
+            Button { fokus = nil } label: {
+                Text("SCHLIESSEN")
+                    .font(Schrift.mono(10))
+                    .tracking(1.4)
+                    .foregroundStyle(Farbe.text2)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .overlay(Capsule().strokeBorder(Farbe.linie2, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder private func fokuswerte(
+        _ ort: Hauskonsolenfenster.Ort, plan: HousePlan
+    ) -> some View {
+        if let r = fokusraum(ort, plan: plan) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(r.tempC.map { Formate.zahl($0, stellen: 1) } ?? Formate.leer)
+                    .font(Schrift.mono(44, relativeTo: .largeTitle))
+                    .fontWeight(.medium)
+                    .foregroundStyle(Farbe.text1)
+                Text("°C gemessen").font(Schrift.mono(14)).foregroundStyle(Farbe.text3)
+            }
+            fokuszeile("Ziel", wert: Formate.celsius(r.targetC ?? r.setpointC, stellen: 1))
+            fokuszeile("Heizkreis", wert: Formate.prozent(r.valve))
+        } else {
+            Text("Kein Thermostat in diesem Raum.")
+                .font(Schrift.sans(13))
+                .foregroundStyle(Farbe.text3)
+        }
+    }
+
+    private func fokuszeile(_ wort: String, wert: String) -> some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(Farbe.linie1).frame(height: 1)
+            HStack {
+                Text(wort.uppercased())
+                    .font(Schrift.mono(10))
+                    .tracking(1.6)
+                    .foregroundStyle(Farbe.text3)
+                Spacer(minLength: 10)
+                Text(wert).font(Schrift.mono(15)).foregroundStyle(Farbe.text1)
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    /// Die Kontakte **dieses** Raums (`HouseReport.tsx:322-337`). Das Raumblatt der App kennt
+    /// sie nicht - und „steht hier ein Fenster offen“ ist die Frage, wegen der man im Modell
+    /// auf einen Raum tippt.
+    private func fokuskontakte(
+        _ ort: Hauskonsolenfenster.Ort, plan: HousePlan
+    ) -> some View {
+        let zeilen = Hauskonsolenfenster.kontaktzeilen(
+            plan: plan, kontakte: hausplan?.contacts ?? []
+        ).filter { $0.ort?.deck == ort.deck && $0.raum == ort.raum }
+        return VStack(alignment: .leading, spacing: 6) {
+            Rectangle().fill(Farbe.linie1).frame(height: 1)
+            Text("FENSTER UND TÜREN")
+                .font(Schrift.mono(10))
+                .tracking(1.6)
+                .foregroundStyle(Farbe.text3)
+                .padding(.top, 8)
+            if zeilen.isEmpty {
+                Text("keine Kontakte in diesem Raum")
+                    .font(Schrift.sans(12.5))
+                    .foregroundStyle(Farbe.text3)
+            }
+            ForEach(zeilen) { z in
+                HStack {
+                    Text(z.name).font(Schrift.sans(12.5)).foregroundStyle(Farbe.text2)
+                    Spacer(minLength: 10)
+                    Text(z.wort.uppercased())
+                        .font(Schrift.mono(11))
+                        .tracking(0.9)
+                        .foregroundStyle(z.offen == true ? Farbe.amber : Farbe.text3)
+                }
+            }
+        }
+    }
+
+    private func fokusraum(_ ort: Hauskonsolenfenster.Ort, plan: HousePlan) -> RoomLiveOut? {
+        guard let id = raumKennung(ort, plan: plan) else { return nil }
+        return raeume?.rooms.first { $0.id == id }
+    }
+
+    private func raumKennung(_ ort: Hauskonsolenfenster.Ort, plan: HousePlan) -> Int? {
+        plan.decks.first { $0.key == ort.deck }?
+            .rooms.first { $0.name == ort.raum && $0.partOf == nil }?
+            .roomId
     }
 
     // MARK: - Laden
@@ -473,77 +754,25 @@ struct HausSeite: View {
         }
     }
 
-    private func haltFrisch() async {
+    /// **Der Hausplan alle zehn Sekunden** (`HouseReport.tsx:53`, `:115-124`). An ihm hängen die
+    /// Kontakte, und ein offenes Fenster erschien bisher bis zu einer Minute später: die App
+    /// holte alle drei Abfragen in einer Schleife im Minutentakt.
+    private func haltHausFrisch() async {
         while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 60_000_000_000)
+            try? await Task.sleep(nanoseconds: 10_000_000_000)
+            guard !Task.isCancelled else { return }
+            if let p = try? await haus.api.haus() { hausplan = p }
+        }
+    }
+
+    /// **Die Räume alle dreissig Sekunden** (`HouseReport.tsx:54`, Begründung im Kopfkommentar:
+    /// „alle 30 Sekunden, haeufiger fragt Controme nicht“).
+    private func haltRaeumeFrisch() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 30_000_000_000)
             guard !Task.isCancelled else { return }
             if let r = try? await haus.api.raeume() { raeume = r }
-            if let p = try? await haus.api.haus() { hausplan = p }
             if let t = try? await haus.api.raeumeTag(Tag.heute(), schrittMin: 15) { tag = t }
-        }
-    }
-}
-
-/// Der Alarm: scharf oder nicht, und ob er scharf gestellt werden kann.
-///
-/// **Einen Weg zum Entschaerfen gibt es hier nicht, und das ist Absicht.** Wer das Haus
-/// entschaerfen will, tut das an der Anlage selbst - eine App, die das kann, ist der Schluessel
-/// unter der Fussmatte.
-struct Alarmkarte: View {
-    @Environment(Hauszustand.self) private var haus
-    let alarm: AlarmOut
-
-    @State private var laeuft = false
-    @State private var rueckmeldung: String?
-
-    var body: some View {
-        Karte(kicker: "Alarm", titel: alarm.stateDe) {
-            VStack(alignment: .leading, spacing: 10) {
-                if let r = rueckmeldung {
-                    Text(r).font(Schrift.winzig).foregroundStyle(Farbe.text2)
-                }
-                if alarm.canArm, haus.darfSchalten {
-                    HStack(spacing: 10) {
-                        knopf("Zu Hause scharf", .daheim)
-                        knopf("Abwesend scharf", .fort)
-                    }
-                    Text("Entschärft wird an der Anlage, nicht hier.")
-                        .font(Schrift.winzig)
-                        .foregroundStyle(Farbe.text3)
-                }
-            }
-        }
-    }
-
-    private func knopf(_ wort: String, _ art: Api.AlarmArt) -> some View {
-        Button {
-            schaerfe(art)
-        } label: {
-            Text(wort)
-                .font(Schrift.klein)
-                .foregroundStyle(Farbe.deep)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(Farbe.amberWeich)
-                .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .disabled(laeuft)
-        .opacity(laeuft ? 0.6 : 1)
-    }
-
-    private func schaerfe(_ art: Api.AlarmArt) {
-        laeuft = true
-        Task {
-            do {
-                let a = try await haus.api.schaerfeAlarm(art)
-                rueckmeldung = a.messageDe
-            } catch let f as ApiFehler {
-                rueckmeldung = f.rat
-            } catch {
-                rueckmeldung = error.localizedDescription
-            }
-            laeuft = false
         }
     }
 }
