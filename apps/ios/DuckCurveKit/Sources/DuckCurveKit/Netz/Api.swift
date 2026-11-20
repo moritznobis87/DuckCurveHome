@@ -402,6 +402,11 @@ public struct Api: Sendable {
         return try await hole("/system/geraet/protokoll/\(entschaerft)")
     }
 
+    /// Der Verlauf des Hausgeräts über einen Tag, eine Woche, einen Monat oder ein Jahr.
+    public func geraetVerlauf(_ spanne: GeraetVerlaufOutSpanneWahl) async throws -> GeraetVerlaufOut {
+        try await hole("/system/geraet/verlauf", fragen: ["spanne": spanne.rawValue])
+    }
+
     /// Steht ein Update bereit (`routers/update.py`)?
     public func update() async throws -> UpdateStatusOut {
         try await hole("/system/update")

@@ -45,6 +45,10 @@ struct HandRahmen: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
             }
+            // Steht für das Hausgerät ein Update bereit, steht das hier - über jeder Seite.
+            Updatehinweis(wegweiser: wegweiser)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
             Seitenwahl(weg: wegweiser.weg)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Alfred schwebt ueber der Seite, nicht in der Leiste: die gehoert den fuenf

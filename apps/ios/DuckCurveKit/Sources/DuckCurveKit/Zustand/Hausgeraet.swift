@@ -101,7 +101,130 @@ public enum Hausgeraet {
         return ("\(was), \(Formate.hhmm(iso: a.beendetAm)): \(meldung)", a.zustand != "ok")
     }
 
+    // MARK: - Größen und Prognose
+
+    /// Höchstens `stellen` Nachkommastellen, Nullen am Ende weg: „2,5“ statt „2,50“, wie
+    /// `toLocaleString("de-DE", { maximumFractionDigits })` im Dashboard.
+    public static func kurz(_ wert: Double, stellen: Int) -> String {
+        let f = NumberFormatter()
+        f.locale = Locale(identifier: "de_DE")
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = stellen
+        return f.string(from: NSNumber(value: wert)) ?? String(wert)
+    }
+
+    /// „1,2 GB“, „840 MB“, „2,5 TB“ - dezimal, wie Plattenhersteller und `df -H` zählen.
+    public static func bytes(_ b: Int?) -> String {
+        guard let b else { return "–" }
+        let a = abs(Double(b))
+        if a >= 1e12 { return "\(kurz(Double(b) / 1e12, stellen: 2)) TB" }
+        if a >= 1e9 { return "\(kurz(Double(b) / 1e9, stellen: 1)) GB" }
+        if a >= 1e6 { return "\(kurz(Double(b) / 1e6, stellen: 1)) MB" }
+        return "\(kurz(Double(b) / 1e3, stellen: 0)) kB"
+    }
+
+    /// „in etwa 13 Monaten“ - eine Schätzung, kein Termin.
+    public static func ungefaehr(tage: Int) -> String {
+        if tage >= 730 { return "in etwa \(Int((Double(tage) / 365).rounded())) Jahren" }
+        if tage >= 60 { return "in etwa \(Int((Double(tage) / 30).rounded())) Monaten" }
+        return "in etwa \(tage) Tagen"
+    }
+
+    /// Dieselben Sätze wie `prognoseSaetze` im Dashboard (`components/geraet/Verlauf.tsx`).
+    public static func prognosesaetze(_ p: GeraetPrognoseOut?) -> [String] {
+        let tage = p?.tageVerlauf ?? 0
+        guard let p, tage >= 7 else {
+            return ["Für eine Prognose braucht es sieben Tage Verlauf; bisher sind es \(kurz(tage, stellen: 1))."]
+        }
+        var saetze: [String] = []
+        if let rate = p.platteBytesProTag {
+            if rate <= 0 {
+                saetze.append("Die SSD füllt sich derzeit nicht.")
+            } else {
+                let voll = p.platteVollInTagen.map { "; bei diesem Tempo ist sie \(ungefaehr(tage: $0)) voll" } ?? ""
+                saetze.append("Die SSD füllt sich um \(bytes(rate)) pro Tag\(voll).")
+            }
+        }
+        if let db = p.datenbankBytesProTag { saetze.append("Die Datenbank wächst um \(bytes(db)) pro Tag.") }
+        if let w = p.ssdGeschriebenBytesProTag { saetze.append("Auf die SSD werden \(bytes(w)) pro Tag geschrieben.") }
+        return saetze
+    }
+
+    /// Ein Abschnitt des Platzbalkens.
+    public struct Platzteil: Sendable, Hashable {
+        public let name: String
+        public let bytes: Int
+        /// Programme, Daten, Sicherungen, Rest, frei - die Oberfläche wählt danach die Farbe.
+        public let art: String
+    }
+
+    /// Wofür der Platz auf der SSD draufgeht; wie `platzAbschnitte` im Dashboard.
+    public static func platz(_ g: GeraetOut) -> [Platzteil]? {
+        guard let p = g.rechner?.platten.first(where: { $0.ort == "/" }) else { return nil }
+        let d = g.rechner?.dockerPlatz
+        let belegt = p.gesamtBytes - p.freiBytes
+        let programme = (d?.imagesBytes ?? 0) + (d?.containerBytes ?? 0) + (d?.cacheBytes ?? 0)
+        let daten = d?.volumesBytes ?? 0
+        let sicherungen = g.sicherung?.gesamtBytes ?? 0
+        let rest = max(0, belegt - programme - daten - sicherungen)
+        return [
+            Platzteil(name: "Programme (Docker-Images, Cache)", bytes: programme, art: "programme"),
+            Platzteil(name: "Daten (Datenbank und Volumes)", bytes: daten, art: "daten"),
+            Platzteil(name: "Sicherungen", bytes: sicherungen, art: "sicherungen"),
+            Platzteil(name: "System und Sonstiges", bytes: rest, art: "rest"),
+            Platzteil(name: "frei", bytes: p.freiBytes, art: "frei"),
+        ]
+    }
+
+    /// Ein Punkt einer Linie im Verlauf. `stueck` wechselt an jeder Lücke, damit die Linie dort
+    /// reißt, statt eine Zeit ohne Werte zu überbrücken (Swift Charts verbindet sonst alles).
+    public struct Linienpunkt: Sendable, Hashable, Identifiable {
+        public let t: Date
+        public let wert: Double
+        public let stueck: Int
+        public var id: Date { t }
+    }
+
+    public static func linie(
+        _ punkte: [GeraetVerlaufPunktOut], schrittMin: Int, _ wert: (GeraetVerlaufPunktOut) -> Double?
+    ) -> [Linienpunkt] {
+        var aus: [Linienpunkt] = []
+        var stueck = 0
+        var vorher: Date?
+        for p in punkte {
+            guard let t = Zeitpunkt.lies(p.t) else { continue }
+            guard let w = wert(p) else {
+                stueck += 1
+                vorher = nil
+                continue
+            }
+            if let v = vorher, t.timeIntervalSince(v) > Double(schrittMin) * 90 { stueck += 1 }
+            aus.append(Linienpunkt(t: t, wert: w, stueck: stueck))
+            vorher = t
+        }
+        return aus
+    }
+
     // MARK: - Updates
+
+    /// Ob der Hinweis „Update bereit“ über der Seite stehen soll - wie `UpdateHinweis.tsx`: nur
+    /// für den Hausherrn, nicht auf der Seite Hausgerät selbst (dort steht es ausführlich), nicht
+    /// für eine Fassung, die schon einmal nicht hochkam, und nicht, wenn diese Fassung mit
+    /// „Nicht jetzt“ weggeklickt wurde. Während eines Updates immer.
+    public static func zeigeHinweis(_ s: UpdateStatusOut?, weg: String, hausherr: Bool, weggeklickt: String?) -> Bool {
+        guard hausherr, let s, s.unterstuetzt == true, !weg.hasPrefix("/system/geraet") else { return false }
+        if updateLaeuft(s) { return true }
+        guard s.updateVerfuegbar == true, !schonGescheitert(s) else { return false }
+        return weggeklickt == nil || weggeklickt != s.verfuegbar
+    }
+
+    public static func hinweissatz(_ s: UpdateStatusOut) -> String {
+        if updateLaeuft(s) { return "Duck Curve wird gerade aktualisiert. Die Anwendung startet dabei einmal neu." }
+        let n = s.neuerungen.count
+        let mit = n == 0 ? "" : " mit \(n) \(n == 1 ? "Neuerung" : "Neuerungen")"
+        return "Für Duck Curve steht ein Update bereit\(mit)."
+    }
 
     /// Ob ein Update läuft oder angefragt ist.
     public static func updateLaeuft(_ s: UpdateStatusOut?) -> Bool {

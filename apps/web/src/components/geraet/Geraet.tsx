@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { Software } from "@/components/update/Software";
 import type { Ampel, ApiSelbst, Geraet as GeraetDaten, GeraetDienst, GeraetProtokoll, GeraetRechner } from "@/lib/api/models";
+import { DIENSTNAMEN } from "./namen";
 import { beschaeftigt, holeProtokoll, useGeraet, type Handgriff } from "./useGeraet";
+import { Verlauf, bytesText } from "./Verlauf";
 
 /**
  * Technik → Hausgerät: wie es dem Gerät und seinen Diensten geht, und die wenigen Handgriffe, die
@@ -14,14 +16,7 @@ import { beschaeftigt, holeProtokoll, useGeraet, type Handgriff } from "./useGer
  * iOS-App dasselbe sagen.
  */
 
-/** Was die Dienste für jemanden sind, der nicht weiß, was ein Container ist. */
-export const DIENSTNAMEN: Record<string, string> = {
-  api: "Rechenkern (API)",
-  web: "Oberfläche",
-  postgres: "Datenbank",
-  caddy: "Webserver (HTTPS)",
-  cloudflared: "Fernzugang",
-};
+export { DIENSTNAMEN } from "./namen";
 
 const EINHEITEN: Record<string, string> = {
   "duckcurve.service": "Start beim Einschalten",
@@ -287,6 +282,110 @@ function RechnerKarte({ r }: { r: GeraetRechner }) {
       {(r.platten ?? []).map((p) => (
         <Zeile key={p.ort} ampel={p.ampel} titel={p.ort === "/" ? "SSD" : p.ort} rechts={`${gb(p.frei_bytes)} frei von ${gb(p.gesamt_bytes)}`} />
       ))}
+      {r.cpu_prozent != null ? (
+        <Zeile
+          titel="CPU-Auslastung"
+          text={r.takt_mhz ? `Takt gerade ${Math.round(r.takt_mhz)} MHz` : undefined}
+          rechts={`${r.cpu_prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })} %`}
+        />
+      ) : null}
+      {r.eingangsspannung_v != null ? (
+        <Zeile
+          ampel={r.spannung_ampel}
+          titel="Eingangsspannung"
+          text="Spannung am Netzteil- oder PoE-Eingang des Raspberry Pi"
+          rechts={`${r.eingangsspannung_v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} V`}
+        />
+      ) : null}
+      {r.swap_gesamt_mb ? (
+        <Zeile titel="Auslagerung (Swap)" rechts={`${r.swap_gesamt_mb - (r.swap_frei_mb ?? 0)} von ${r.swap_gesamt_mb} MB`} />
+      ) : null}
+      {r.netz ? (
+        <Zeile
+          titel={`Netzwerk (${r.netz.schnittstelle})`}
+          text="seit dem Start des Geräts"
+          rechts={`↓ ${bytesText(r.netz.empfangen_bytes)} · ↑ ${bytesText(r.netz.gesendet_bytes)}`}
+        />
+      ) : null}
+    </Karte>
+  );
+}
+
+function SsdKarte({ s }: { s: NonNullable<GeraetRechner["ssd"]> }) {
+  const stunden = s.betriebsstunden;
+  return (
+    <Karte>
+      <Zeile ampel={s.ampel} titel={s.text_de} text={[s.modell, `/dev/${s.geraet}`].filter(Boolean).join(" · ")} />
+      {s.abnutzung_prozent != null ? (
+        <Zeile
+          titel="Abnutzung"
+          text={s.reserve_prozent != null ? `Reserve-Blöcke: ${s.reserve_prozent} %` : "verbrauchte Lebensdauer laut Hersteller"}
+          rechts={`${s.abnutzung_prozent} %`}
+        />
+      ) : null}
+      {s.temperatur_c != null ? <Zeile titel="Temperatur" rechts={`${s.temperatur_c} °C`} /> : null}
+      {stunden != null ? (
+        <Zeile titel="Betriebsstunden" rechts={`${stunden.toLocaleString("de-DE")} h (${(stunden / 8760).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Jahre)`} />
+      ) : null}
+      {s.geschrieben_bytes != null ? (
+        <Zeile titel="Geschrieben / gelesen" text="seit Herstellung" rechts={`${bytesText(s.geschrieben_bytes)} / ${bytesText(s.gelesen_bytes)}`} />
+      ) : null}
+      {s.fehler != null ? <Zeile ampel={s.fehler ? "warn" : "gut"} titel="Lesefehler" rechts={String(s.fehler)} /> : null}
+      {s.unsichere_abschaltungen != null ? (
+        <Zeile titel="Unsaubere Abschaltungen" text="Strom weg, ohne herunterzufahren" rechts={String(s.unsichere_abschaltungen)} />
+      ) : null}
+    </Karte>
+  );
+}
+
+/** Wofür der Platz auf der SSD draufgeht, als ein Balken mit Abschnitten. */
+export function platzAbschnitte(g: GeraetDaten): { name: string; bytes: number; farbe: string }[] | null {
+  const p = g.rechner?.platten?.find((x) => x.ort === "/");
+  if (!p) return null;
+  const d = g.rechner?.docker_platz;
+  const belegt = p.gesamt_bytes - p.frei_bytes;
+  const programme = (d?.images_bytes ?? 0) + (d?.container_bytes ?? 0) + (d?.cache_bytes ?? 0);
+  const daten = d?.volumes_bytes ?? 0;
+  const sicherungen = g.sicherung?.gesamt_bytes ?? 0;
+  const rest = Math.max(0, belegt - programme - daten - sicherungen);
+  return [
+    { name: "Programme (Docker-Images, Cache)", bytes: programme, farbe: "#2f89b5" },
+    { name: "Daten (Datenbank und Volumes)", bytes: daten, farbe: "#f2a900" },
+    { name: "Sicherungen", bytes: sicherungen, farbe: "#cfd8dc" },
+    { name: "System und Sonstiges", bytes: rest, farbe: "rgba(255,255,255,.28)" },
+    { name: "frei", bytes: p.frei_bytes, farbe: "transparent" },
+  ];
+}
+
+function PlatzKarte({ g }: { g: GeraetDaten }) {
+  const teile = platzAbschnitte(g);
+  if (!teile) return null;
+  const summe = teile.reduce((a, t) => a + t.bytes, 0) || 1;
+  return (
+    <Karte>
+      <div className="flex h-[14px] w-full gap-[2px] overflow-hidden rounded-[4px] bg-surface-3" role="img" aria-label="Aufteilung der SSD">
+        {teile
+          .filter((t) => t.bytes > 0 && t.farbe !== "transparent")
+          .map((t) => (
+            <span key={t.name} style={{ width: `${(t.bytes / summe) * 100}%`, background: t.farbe, minWidth: 2 }} />
+          ))}
+      </div>
+      <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[13px]">
+        {teile.map((t) => (
+          <li key={t.name} className="flex items-center gap-2">
+            <span
+              className="inline-block h-[10px] w-[10px] shrink-0 rounded-[2px]"
+              style={{ background: t.farbe, border: t.farbe === "transparent" ? "1px solid var(--line-2)" : undefined }}
+            />
+            <span className="flex-1 text-text-2">{t.name}</span>
+            <span className="mono text-text-1">{bytesText(t.bytes)}</span>
+            <span className="mono w-[44px] text-right text-text-3">{Math.round((t.bytes / summe) * 100)} %</span>
+          </li>
+        ))}
+      </ul>
+      {g.api.datenbank_bytes != null ? (
+        <span className="text-[12px] text-text-3">Davon die Datenbank selbst: {bytesText(g.api.datenbank_bytes)}.</span>
+      ) : null}
     </Karte>
   );
 }
@@ -416,6 +515,22 @@ export function Geraet() {
           <RechnerKarte r={g.rechner} />
         </section>
       ) : null}
+
+      {g.rechner?.ssd ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="m-0 text-[18px] font-semibold">SSD-Gesundheit</h2>
+          <SsdKarte s={g.rechner.ssd} />
+        </section>
+      ) : null}
+
+      {g.rechner?.platten?.some((p) => p.ort === "/") ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="m-0 text-[18px] font-semibold">Platz auf der SSD</h2>
+          <PlatzKarte g={g} />
+        </section>
+      ) : null}
+
+      {g.unterstuetzt ? <Verlauf /> : null}
 
       {g.sicherung ? (
         <section className="flex flex-col gap-3">
