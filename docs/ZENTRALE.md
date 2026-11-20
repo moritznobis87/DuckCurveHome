@@ -7,9 +7,12 @@ dahinter stehen in [ADR-0002](decisions/ADR-0002-identitaet-und-berechtigung.md)
 was er darf) und [ADR-0003](decisions/ADR-0003-erreichbarkeit-und-flotte.md) (wie man ihn erreicht).
 Diese Seite beschreibt das **Zielbild** und den Vertrag, an dem es zu messen ist.
 
-**Stand 20.11.2026: nichts davon ist gebaut.** Es gibt ein Haus, und die Entscheidung, Home Assistant
-im Kundenrollout nicht mehr vorauszusetzen (Q12 in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)). Der
-Umbau ist vorgemerkt, nicht begonnen.
+**Stand 20.11.2026: von der Zentrale ist nichts gebaut, vom Gerät darunter schon Stufe 1.** Das
+Hausgerät selbst - Rechner, Dienste, Kiosk, Marke, Sicherung, Update mit Rückkehr, Zugang von unterwegs
+über `cloudflared` - steht in [HAUSGERAET.md](HAUSGERAET.md) und in `deploy/haus/`. Was dort für **ein**
+Haus entschieden ist, genügt für ein Haus; diese Seite beschreibt, was dazukommt, sobald ein Gerät zu
+einem Kunden geht. Der Umbau ist vorgemerkt, nicht freigegeben (Q12 in
+[OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)).
 
 ## Kurz gesagt
 
@@ -59,8 +62,9 @@ reicht durch - **nach SNI weiter, ohne zu terminieren**. Damit liegt zwischen Ku
 durchgehende Verschlüsselung, und die Zentrale kann die Hausdaten nicht lesen. Geprüft wird in zwei
 Schichten: die Zentrale erlaubt die **Verbindung**, die Box erlaubt die **Anfrage**.
 
-Die App probiert immer zuerst lokal. Das ist nicht Höflichkeit, sondern Rechnung: ein Dauerdisplay
-mit offenem SSE-Strom kostet über ein Relais rund 4 GB im Monat und über das LAN nichts.
+Die App probiert immer zuerst lokal. Das ist nicht Höflichkeit, sondern Rechnung: der Live-Strom sind
+gemessene 4,5 kB alle fünf Sekunden ([HAUSGERAET.md](HAUSGERAET.md), Abschnitt 1), also etwa 2,3 GB im
+Monat je Dauerdisplay - über ein Relais Egress, über das LAN nichts.
 
 **5 · Benutzerverwaltung als signiertes Dokument.** Die Zentrale kennt Personen, ihre Passkeys und
 ihre Zuordnungen. Sie signiert ein kleines Dokument - *diese Personen, diese Rollen, diese
@@ -74,11 +78,15 @@ Internet; eine Änderung ist in Sekunden unten, und bei getrennter Leitung gilt 
 ## Beratungszugang
 
 Dafür braucht es die zentrale Verwaltung überhaupt: sonst müsste der Kunde einem Fremden von Hand ein
-Konto auf seiner Box anlegen.
+Konto auf seiner Box anlegen. Die Rolle und ihre Regeln sind in [HAUSGERAET.md](HAUSGERAET.md)
+Abschnitt 7 schon angelegt - dort als `service` für den Techniker vor Ort, mit Zustimmung des Kunden,
+Protokollierung und einem Vertrag zur Auftragsverarbeitung. Das hier ist dieselbe Rolle aus der Ferne,
+und dieselben vier Regeln gelten:
 
 - **Der Kunde erteilt ihn**, auf Knopfdruck in der App („Support für 2 Stunden erlauben"). Kein
-  Dauerzugang, keine Voreinstellung, dass es an ist.
-- **Befristet und eng.** Eigene Rolle `berater`: Diagnose und Einstellungen sehen, klar benannte
+  Dauerzugang, keine Voreinstellung, dass es an ist. HAUSGERAET nennt denselben Schalter für die
+  Fernwartung.
+- **Befristet und eng.** Rolle `service`: Diagnose und Einstellungen sehen, klar benannte
   Eingriffe. **Nicht** Rechnungen, nicht die PV-Abrechnung, nicht der Datenexport - und **niemals die
   Haustür** ([TUEROEFFNUNG.md](TUEROEFFNUNG.md)). Dass ein Supportmitarbeiter eine Haustür öffnen
   kann, darf technisch nicht möglich sein, nicht bloß nicht vorgesehen.
@@ -92,7 +100,9 @@ Konto auf seiner Box anlegen.
   noch nicht getroffen.
 
 Davon streng getrennt: **Fernwartung** (Shell, Firmware, Betriebssystem) ist kein Benutzerzugang und
-hängt nicht an einem Benutzerkonto, sondern an signierten Images und einem eigenen Weg.
+hängt nicht an einem Benutzerkonto, sondern an Schlüsseln je Gerät und signierten Freischaltdateien -
+die vier Wege dafür stehen in [HAUSGERAET.md](HAUSGERAET.md) Abschnitt 7. Die Zentrale ergänzt sie nur
+um eines: sie kann einen Geräteschlüssel einzeln sperren.
 
 ## Was die Zentrale nie hält
 
@@ -119,7 +129,7 @@ Die Prüfliste für jede künftige Änderung. Wer etwas baut, das eine Zeile in 
 | Anmeldung im Heimnetz, neu | **läuft**, solange das Berechtigungsdokument gilt | **läuft** |
 | Protokoll, Historie, Export | **läuft** | **läuft** |
 | Strompreise, Wetter, Prognose | **läuft** (Box holt selbst) | aus, Plan rechnet mit dem letzten Stand |
-| Zugriff von außen | aus | aus |
+| Zugriff von außen | aus | aus (ein schreibgeschützter Spiegel der Zusammenfassungen wäre die Antwort darauf, [HAUSGERAET.md](HAUSGERAET.md) Abschnitt 1 - bewusst nicht in der ersten Stufe) |
 | Neue Box in Betrieb nehmen | aus | aus |
 | Beratungszugang erteilen oder widerrufen | aus | aus |
 | Benutzer anlegen oder entfernen | aus (wirkt mit der nächsten Verbindung) | aus |

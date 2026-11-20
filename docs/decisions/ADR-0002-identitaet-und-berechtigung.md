@@ -111,7 +111,7 @@ Geräten.
 
 | Art | Nachweis | Rolle | `urheber.art` |
 |---|---|---|---|
-| Person | Passkey, widerrufbar je Gerät | `hausherr`, `bewohner`, später `berater` | `person` |
+| Person | Passkey, widerrufbar je Gerät | `hausherr`, `bewohner`, später `service` | `person` |
 | Gerät | Pairing-Link wie heute, lange Frist | `anzeige` | `geraet` |
 | Gast | Link mit Frist, kein Konto | `gast` | `geraet` |
 
@@ -140,6 +140,12 @@ jeder gestanden haben; rückwirkend aus einem Gerät einen Menschen zu machen w�
   guten Gründen **nicht** unter der Konto-Domain (ADR-0003). Derselbe Passkey gilt daher nicht für
   Zentrale und Box. Gelöst wird das dort, nicht hier: die Box legt still einen zweiten,
   hausgebundenen Passkey an, sobald die Person mit gültiger Sitzung im eigenen Netz ist.
+- **Die Rolle für den Support heißt `service`,** wie in [`docs/HAUSGERAET.md`](../HAUSGERAET.md)
+  Abschnitt 7 eingeführt - dort für den Techniker vor Ort mit Geräte-PIN, hier für den Zugang aus der
+  Ferne. Eine Rolle, ein Name; was sie darf und was nie, steht in [`docs/ZENTRALE.md`](../ZENTRALE.md).
+- **Passkeys im Kioskbrowser funktionieren,** obwohl das Gerät lokal kein öffentliches Zertifikat hat:
+  der Kiosk öffnet `http://localhost:3000`, und `localhost` gilt dem Browser als sicherer Kontext. Für
+  jeden anderen Zugriff im Heimnetz gilt das nicht - siehe [ADR-0003](ADR-0003-erreichbarkeit-und-flotte.md).
 - **Der heutige Zustand bleibt lauffähig.** Ohne `DCH_SESSION_SECRET` ist die Anmeldung aus, wie
   heute; das Kiosk-Token wird zum Gerätezugang, der Gast-Link bleibt, was er ist.
 
