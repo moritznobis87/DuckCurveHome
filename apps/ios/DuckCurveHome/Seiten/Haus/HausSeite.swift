@@ -32,6 +32,12 @@ struct HausSeite: View {
     /// wurde nur von der Technikseite gelesen. Es fehlte kein Feld, es fehlte ein Aufruf.
     @State private var tag: RoomHistoryOut?
     @State private var fehler: ApiFehler?
+    /// Die Automatik für die thermische Masse.
+    ///
+    /// **Sie gehört unter die Raumkacheln** (`HouseReport.tsx:283`, `RoomsReport.tsx:474`: die
+    /// Karte hängt dort an `kacheln`). In der App stand sie als erste und grösste Karte auf
+    /// der Heizkreiseseite und drängte die Wärmekarte, um die es dort geht, unter den Rand.
+    @State private var automatik: RoomShiftOut?
 
     private enum Ansichtswahlart: String { case liste, modell }
 
@@ -319,6 +325,9 @@ struct HausSeite: View {
                         }
                     }
                 }
+                if let a = automatik {
+                    Automatikkarte(automatik: a) { neu in automatik = neu }
+                }
                 if r.named == false {
                     Karte {
                         Leer(
@@ -452,9 +461,11 @@ struct HausSeite: View {
         async let r = try? haus.api.raeume()
         async let p = try? haus.api.haus()
         async let t = try? haus.api.raeumeTag(Tag.heute(), schrittMin: 15)
+        async let a = try? haus.api.raumAutomatik()
         raeume = await r
         hausplan = await p
         tag = await t
+        automatik = await a
         if raeume == nil, hausplan == nil {
             fehler = .netz("Räume und Hausplan nicht erreichbar.")
         } else {

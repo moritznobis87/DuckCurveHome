@@ -173,6 +173,15 @@ struct Tabelle: View {
     /// Die erste Spalte ist die Beschriftung der Zeile und wird nie ausgeblendet.
     let zeilennamen: [String]
     let spalten: [Spalte]
+    /// Wie viele Spalten am Telefon nebeneinander stehen, bevor die Umschaltung anfängt.
+    ///
+    /// **Eine Spalte ist die Regel, nicht das Gesetz.** `handy.css` sagt „Tabellen werden
+    /// Listen", und für die meisten Berichte stimmt das: vier Zahlen nebeneinander auf 390
+    /// Punkten sind keine. Die Raumtabelle ist der Fall, für den die Vorlage selbst eine
+    /// Ausnahme macht (`handy.css:377-379`: sie blendet Etage, Ventil und Kreise aus und
+    /// lässt Ist, Ziel und Abweichung nebeneinander stehen) - drei kurze Zahlen gehören dort
+    /// zusammen, weil die Abweichung die Differenz der beiden anderen ist.
+    var immerSichtbar: Int = 1
 
     @Environment(\.horizontalSizeClass) private var breite
     @State private var gezeigt = 0
@@ -189,9 +198,16 @@ struct Tabelle: View {
         }
     }
 
+    /// Welche Spalten am Telefon nebeneinander stehen.
+    private var feste: [Int] {
+        Array(0..<min(max(1, immerSichtbar), spalten.count))
+    }
+
     private var handyliste: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if spalten.count > 1 {
+            if immerSichtbar > 1 {
+                festeListe
+            } else if spalten.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         ForEach(Array(spalten.enumerated()), id: \.offset) { i, s in
@@ -223,6 +239,42 @@ struct Tabelle: View {
                     }
                     .padding(.vertical, 6)
                 }
+            }
+        }
+    }
+
+    /// Die Fassung mit mehreren festen Spalten: Kopfzeile, dann je Zeile Name und Zahlen.
+    private var festeListe: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("").frame(maxWidth: .infinity, alignment: .leading)
+                ForEach(feste, id: \.self) { s in
+                    Text(spalten[s].name)
+                        .font(Schrift.achse)
+                        .foregroundStyle(Farbe.text3)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
+            .padding(.bottom, 4)
+            Divider().overlay(Farbe.linie2)
+            ForEach(Array(zeilennamen.enumerated()), id: \.offset) { i, name in
+                if i > 0 { Divider().overlay(Farbe.linie1) }
+                HStack {
+                    Text(name)
+                        .font(Schrift.klein)
+                        .foregroundStyle(Farbe.text2)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ForEach(feste, id: \.self) { s in
+                        Text(zelle(spalte: s, zeile: i))
+                            .font(Schrift.zahlKlein)
+                            .foregroundStyle(farbe(spalte: s, zeile: i))
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                }
+                .padding(.vertical, 6)
             }
         }
     }
