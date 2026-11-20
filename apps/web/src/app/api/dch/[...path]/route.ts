@@ -6,9 +6,10 @@ import { touch } from "@/lib/presence";
  * Pfade, die Gästen verschlossen bleiben. Verbräuche und Kosten dürfen Gäste sehen; hier steht, was in
  * die Steuerakte gehört: die Rechnungen (Name, Adresse, Marktlokations-ID, Zählernummer, IBAN) und die
  * PV-Abrechnung (Bemessungsgrundlagen und Umsatzsteuer der Anlage) und der Datenexport, der den
- * gesamten Bestand als Datei ausliefert.
+ * gesamten Bestand als Datei ausliefert. Dazu das Hausgerät: Protokolle, Adressen und Dienste sind
+ * Sache des Hausherrn.
  */
-const GUEST_FORBIDDEN = [/^import\/tibber-invoice/, /^energy\/pv$/, /^export\//];
+const GUEST_FORBIDDEN = [/^import\/tibber-invoice/, /^energy\/pv$/, /^export\//, /^system\/geraet/, /^system\/update/];
 
 /**
  * BFF-Proxy zur API. Liest die Ziel-URL zur Laufzeit (nicht zur Build-Zeit wie Rewrites), reicht

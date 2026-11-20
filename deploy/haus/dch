@@ -14,18 +14,19 @@
 #   dch koppeln                 Einstellungen fuer das Bridge-Add-on und Pairing-Links anzeigen
 #   dch pruefen                 nachsehen, ob ein Update bereitsteht (Statusdatei fuer die App)
 #   dch anfrage                 eine Anfrage aus der App bearbeiten (startet systemd von selbst)
+#   dch zustand                 Gesundheitsbericht fuer die App schreiben (jede Minute per Timer)
 #
 # Laeuft als root (sudo). Alles liegt unter /opt/duckcurve, Sicherungen unter
-# /var/lib/duckcurve/sicherung, der Austausch mit der App unter /var/lib/duckcurve/update.
+# /var/lib/duckcurve/sicherung, der Austausch mit der App unter /var/lib/duckcurve/geraet.
 
 set -euo pipefail
 
 BASIS=${DCH_BASIS:-/opt/duckcurve}
 SICHERUNG=${DCH_SICHERUNG:-/var/lib/duckcurve/sicherung}
-UPDATE=${DCH_UPDATE:-/var/lib/duckcurve/update}
+GERAET=${DCH_GERAET:-/var/lib/duckcurve/geraet}
 ENVDATEI="$BASIS/.env"
-STATUS="$UPDATE/status.json"
-ANFRAGE="$UPDATE/anfrage/anfrage.json"
+STATUS="$GERAET/status.json"
+ANFRAGE="$GERAET/anfrage/anfrage.json"
 REPO_GITHUB=moritznobis87/DuckCurveHome
 
 fehler() { echo "dch: $*" >&2; exit 1; }
@@ -60,7 +61,7 @@ warten_auf_postgres() {
 #
 # Die App steuert Docker nicht selbst: Wer an Docker kommt, ist praktisch Administrator des
 # Geraets. Sie liest nur die Statusdatei, die dieser Teil schreibt, und legt fuer "Update
-# installieren" eine Anfrage-Datei ab; systemd sieht sie (duckcurve-update.path) und ruft
+# installieren" eine Anfrage-Datei ab; systemd sieht sie (duckcurve-anfrage.path) und ruft
 # `dch anfrage`. Was danach geschieht, entscheidet allein dieses Skript.
 
 jetzt() { date -u +%Y-%m-%dT%H:%M:%SZ; }
@@ -70,7 +71,7 @@ status_setzen() {
 	# eine halbe Datei liest. Aufruf: status_setzen '.zustand = "laeuft"' [--arg name wert ...]
 	local filter=$1
 	shift
-	mkdir -p "$UPDATE"
+	mkdir -p "$GERAET"
 	[ -s "$STATUS" ] || echo '{}' >"$STATUS"
 	jq "$@" "$filter" "$STATUS" >"$STATUS.neu"
 	chmod 0644 "$STATUS.neu"
@@ -244,13 +245,15 @@ dateien_nachziehen() {
 			install -m 0644 "$einheit" "/etc/systemd/system/$(basename "$einheit")"
 		done
 		systemctl daemon-reload
+		# Was mit einem Update neu hinzukommt, muss auch laufen, nicht nur daliegen.
+		systemctl enable --now duckcurve-anfrage.path duckcurve-pruefen.timer duckcurve-zustand.timer >/dev/null 2>&1 || true
 	fi
 }
 
 installieren() {
 	local von=${1:-}
-	mkdir -p "$UPDATE"
-	exec 9>"$UPDATE/.sperre"
+	mkdir -p "$GERAET"
+	exec 9>"$GERAET/.sperre"
 	flock -n 9 || fehler "Es laeuft bereits ein Update."
 	local vorher_api vorher_web alt
 	alt=$(laufende_revision api)
@@ -327,6 +330,235 @@ installieren() {
 	return 1
 }
 
+# ---------------------------------------------------------------------------------- Hausgeraet
+#
+# Was die App unter Technik -> Hausgeraet zeigt. Es gibt sonst keinen Weg auf dieses Geraet: kein
+# Bildschirm, keine Tastatur, keine Kommandozeile fuer den Hausherrn. Darum schreibt dieser Teil
+# jede Minute einen Bericht (duckcurve-zustand.timer) und fuehrt aus der App eine kleine, feste
+# Liste von Handgriffen aus: einen Dienst neu starten, jetzt sichern, ein Protokoll holen, das
+# Geraet neu starten. Mehr nicht, und nichts davon mit Werten aus der Anfrage ausser dem Namen
+# eines Dienstes, der gegen compose.yaml geprueft wird.
+
+dienste_bekannt() {
+	# Die Dienste aus compose.yaml (mit dem Profil Fernzugang, wenn es an ist).
+	compose config --services 2>/dev/null
+}
+
+dienst_gueltig() {
+	local d=$1
+	[ "$d" = "alle" ] && return 0
+	[[ "$d" =~ ^[a-z][a-z0-9_-]{0,30}$ ]] || return 1
+	dienste_bekannt | grep -qx -- "$d"
+}
+
+aktion_setzen() {
+	# Die zuletzt angefragte Aktion und wie sie ausging: $GERAET/aktion.json.
+	# Aufruf: aktion_setzen <aktion> <dienst> <laeuft|ok|fehler> <meldung> [von]
+	local datei="$GERAET/aktion.json" alt='{}'
+	[ -s "$datei" ] && alt=$(cat "$datei")
+	echo "$alt" | jq --arg a "$1" --arg d "$2" --arg z "$3" --arg m "$4" --arg v "${5:-}" --arg t "$(jetzt)" '
+		(if $z == "laeuft" then {begonnen_am: $t, beendet_am: null} else {begonnen_am: (.begonnen_am // $t), beendet_am: $t} end)
+		+ {aktion: $a, dienst: (if $d == "" then null else $d end), zustand: $z, meldung: $m,
+		   von: (if $v == "" then .von else $v end)}' >"$datei.neu"
+	chmod 0644 "$datei.neu"
+	mv "$datei.neu" "$datei"
+}
+
+geheimnisse() {
+	# Die Werte aus .env, die in einem Protokoll nichts zu suchen haben, je Zeile einer.
+	sed -n -E 's/^[A-Z0-9_]*(TOKEN|TOKENS|KEY|SECRET|PASSWORT|PASSWORD|SCHLUESSEL|_URL)=//p' "$ENVDATEI" |
+		sed 's/^"\(.*\)"$/\1/' | tr ',' '\n' | tr -d '[] "' | awk 'length($0) >= 8'
+}
+
+schwaerzen() {
+	# Ersetzt jedes Geheimnis aus .env durch ***, woertlich (perl-base gehoert zu jedem Debian).
+	GEHEIM="$(geheimnisse)" perl -pe 'BEGIN { @g = grep { length } split /\n/, $ENV{GEHEIM} }
+		for my $x (@g) { s/\Q$x\E/***/g } s/\e\[[0-9;]*[A-Za-z]//g'
+}
+
+bericht() {
+	# Der Gesundheitsbericht nach $GERAET/geraet.json. Liest nur, aendert nichts.
+	mkdir -p "$GERAET"
+	local ids inspekt stats='[]' dienste_json einheiten='[]' sicherung rechner
+
+	ids=$(compose ps -aq 2>/dev/null || true)
+	if [ -n "$ids" ]; then
+		# shellcheck disable=SC2086
+		inspekt=$(docker inspect $ids 2>/dev/null || echo '[]')
+		# shellcheck disable=SC2086
+		stats=$(docker stats --no-stream --format '{{json .}}' $ids 2>/dev/null | jq -s '.' 2>/dev/null || echo '[]')
+	else
+		inspekt='[]'
+	fi
+	dienste_json=$(jq -n --argjson i "$inspekt" --argjson s "$stats" \
+		--argjson soll "$(dienste_bekannt | jq -R . | jq -s .)" '
+		def zahl: (gsub("[^0-9.]"; "") | tonumber? // null);
+		def mib: (capture("^(?<w>[0-9.]+)\\s*(?<e>[KMGT]?i?B)") as $m
+			| ($m.w | tonumber) * ({"B": 0.00000095367, "KiB": 0.0009765625, "kB": 0.0009765625, "MiB": 1, "MB": 1,
+			   "GiB": 1024, "GB": 1024, "TiB": 1048576}[$m.e] // 1)) // null;
+		($i | map({key: .Config.Labels["com.docker.compose.service"], value: .}) | from_entries) as $nach
+		| ($s | map({key: .Name, value: .}) | from_entries) as $last
+		| ($soll + ($nach | keys) | unique) | map(. as $name | $nach[$name] as $c
+		  | if $c == null then {name: $name, zustand: "fehlt"}
+		    else ($last[$c.Name | ltrimstr("/")] // {}) as $st | {
+			name: $name,
+			zustand: $c.State.Status,
+			gesundheit: ($c.State.Health.Status // null),
+			pruefung: (($c.State.Health.Log // []) | last | .Output // null
+				| if . == null then null else (gsub("\\s+$"; "") | .[0:300]) end),
+			pruefung_fehlschlaege: ($c.State.Health.FailingStreak // null),
+			gestartet_am: $c.State.StartedAt,
+			neustarts: $c.RestartCount,
+			exit_code: (if $c.State.Status == "exited" then $c.State.ExitCode else null end),
+			image: $c.Config.Image,
+			revision: ($c.Config.Labels["org.opencontainers.image.revision"] // null
+				| if . == null then null else .[0:12] end),
+			cpu_prozent: ($st.CPUPerc // null | if . == null then null else zahl end),
+			speicher_mb: ($st.MemUsage // null | if . == null then null else (split("/")[0] | mib) end)
+		  } end)')
+
+	if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+		local u felder naechster
+		for u in duckcurve.service duckcurve-anfrage.path duckcurve-zustand.timer duckcurve-pruefen.timer \
+			duckcurve-sicherung.timer duckcurve-kiosk.service; do
+			[ -f "/etc/systemd/system/$u" ] || continue
+			felder=$(systemctl show -p ActiveState -p SubState -p UnitFileState -p NextElapseUSecRealtime \
+				-p Description "$u" 2>/dev/null || true)
+			naechster=$(echo "$felder" | sed -n 's/^NextElapseUSecRealtime=//p')
+			if [ -n "$naechster" ] && [ "$naechster" != "n/a" ] && [ "$naechster" != "0" ]; then
+				naechster=$(date -u -d "$naechster" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "")
+			else
+				naechster=""
+			fi
+			einheiten=$(echo "$einheiten" | jq --arg n "$u" \
+				--arg b "$(echo "$felder" | sed -n 's/^Description=//p')" \
+				--arg a "$(echo "$felder" | sed -n 's/^ActiveState=//p')" \
+				--arg s "$(echo "$felder" | sed -n 's/^SubState=//p')" \
+				--arg f "$(echo "$felder" | sed -n 's/^UnitFileState=//p')" \
+				--arg x "$naechster" \
+				'. + [{name: $n, beschreibung: $b, aktiv: $a, unterzustand: $s, eingeschaltet: ($f == "enabled"),
+				        naechster_lauf: (if $x == "" then null else $x end)}]')
+		done
+	fi
+
+	local neueste="" anzahl=0
+	# shellcheck disable=SC2012
+	neueste=$(ls -1t "$SICHERUNG"/dch-*.dump 2>/dev/null | head -n1 || true)
+	anzahl=$(find "$SICHERUNG" -maxdepth 1 -name 'dch-*.dump' 2>/dev/null | wc -l)
+	sicherung=$(jq -n --arg d "$(basename "${neueste:-}")" \
+		--arg t "$([ -n "$neueste" ] && date -u -r "$neueste" +%Y-%m-%dT%H:%M:%SZ)" \
+		--arg g "$([ -n "$neueste" ] && stat -c %s "$neueste")" --argjson n "$anzahl" \
+		--arg z "$(wert DCH_SICHERUNG_ZIEL)" \
+		'{letzte: (if $d == "" then null else $d end), letzte_am: (if $t == "" then null else $t end),
+		  letzte_bytes: ($g | tonumber? // null), anzahl: $n, ausser_haus: (if $z == "" then null else $z end)}')
+
+	local temp="" drossel="" modell="" platten
+	[ -r /sys/class/thermal/thermal_zone0/temp ] && temp=$(cat /sys/class/thermal/thermal_zone0/temp)
+	command -v vcgencmd >/dev/null 2>&1 && drossel=$(vcgencmd get_throttled 2>/dev/null | sed -n 's/^throttled=//p')
+	[ -r /proc/device-tree/model ] && modell=$(tr -d '\0' </proc/device-tree/model)
+	# Je Dateisystem einmal: Liegen Docker und Sicherungen auf der SSD, steht dort nur "/".
+	platten=$(df -B1 --output=source,target,size,avail / "$SICHERUNG" "$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /)" 2>/dev/null |
+		awk 'NR > 1 && !gesehen[$1]++ { print $2 "\t" $3 "\t" $4 }' |
+		jq -R -s 'split("\n") | map(select(length > 0) | split("\t") | {ort: .[0], gesamt_bytes: (.[1] | tonumber), frei_bytes: (.[2] | tonumber)})')
+	rechner=$(jq -n \
+		--arg name "$(hostname)" --arg modell "$modell" \
+		--arg system "$(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-}")" --arg kernel "$(uname -r)" \
+		--arg adresse "$(hostname -I 2>/dev/null | awk '{print $1}')" \
+		--arg laufzeit "$(cut -d. -f1 /proc/uptime)" --arg last "$(cut -d' ' -f1-3 /proc/loadavg)" \
+		--arg kerne "$(nproc)" --arg temp "$temp" --arg drossel "$drossel" \
+		--arg gesamt "$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)" \
+		--arg frei "$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)" \
+		--arg docker "$(docker version --format '{{.Server.Version}}' 2>/dev/null)" \
+		--argjson platten "${platten:-[]}" '
+		def leer: if . == "" then null else . end;
+		{name: $name, modell: ($modell | leer), system: ($system | leer), kernel: $kernel,
+		 adresse: ($adresse | leer), laufzeit_s: ($laufzeit | tonumber), kerne: ($kerne | tonumber),
+		 last: ($last | split(" ") | map(tonumber)),
+		 temperatur_c: (if $temp == "" then null else (($temp | tonumber) / 100 | round / 10) end),
+		 drosselung: ($drossel | leer),
+		 speicher_gesamt_mb: (($gesamt | tonumber) / 1024 | floor),
+		 speicher_frei_mb: (($frei | tonumber) / 1024 | floor),
+		 platten: $platten, docker: ($docker | leer)}')
+
+	jq -n --arg t "$(jetzt)" --arg v "$(wert DCH_VERSION)" --argjson r "$rechner" \
+		--argjson d "$dienste_json" --argjson e "$einheiten" --argjson s "$sicherung" \
+		--arg f "$(wert DCH_FERNZUGANG)" \
+		'{erstellt_am: $t, kanal: $v, fernzugang: ($f == "1"), rechner: $r, dienste: $d, einheiten: $e, sicherung: $s}' \
+		>"$GERAET/geraet.json.neu"
+	chmod 0644 "$GERAET/geraet.json.neu"
+	mv "$GERAET/geraet.json.neu" "$GERAET/geraet.json"
+}
+
+protokoll_schreiben() {
+	# Die letzten 300 Zeilen eines Dienstes, geschwaerzt, nach $GERAET/protokoll/<dienst>.txt.
+	local dienst=$1 ziel="$GERAET/protokoll/$1.txt"
+	mkdir -p "$GERAET/protokoll"
+	compose logs --no-color --timestamps --tail 300 "$dienst" 2>&1 | schwaerzen >"$ziel.neu"
+	chmod 0644 "$ziel.neu"
+	mv "$ziel.neu" "$ziel"
+}
+
+handgriff() {
+	# Eine Aktion aus der App. Aufruf: handgriff <aktion> <dienst> <von>
+	local aktion=$1 dienst=$2 von=$3
+	case "$aktion" in
+	zustand) bericht; return 0 ;;
+	neustart | protokoll)
+		if ! dienst_gueltig "$dienst"; then
+			aktion_setzen "$aktion" "" fehler "Unbekannter Dienst." "$von"
+			return 1
+		fi
+		;;
+	sichern | geraet_neustart) dienst="" ;;
+	*)
+		echo "dch: unbekannte Anfrage '$aktion' verworfen" >&2
+		return 1
+		;;
+	esac
+
+	# Nicht mitten in ein Update hinein: dieselbe Sperre wie installieren.
+	exec 9>"$GERAET/.sperre"
+	if ! flock -n 9; then
+		aktion_setzen "$aktion" "$dienst" fehler "Gerade läuft ein Update; bitte danach noch einmal." "$von"
+		return 1
+	fi
+	aktion_setzen "$aktion" "$dienst" laeuft "" "$von"
+
+	case "$aktion" in
+	neustart)
+		if [ "$dienst" = "alle" ]; then compose restart >/dev/null 2>&1; else compose restart "$dienst" >/dev/null 2>&1; fi
+		if gesund; then
+			aktion_setzen neustart "$dienst" ok "Neu gestartet."
+		else
+			aktion_setzen neustart "$dienst" fehler "Neu gestartet, aber API oder Oberfläche antworten nicht gesund."
+		fi
+		;;
+	sichern)
+		if "$0" sichern >/dev/null 2>&1; then
+			aktion_setzen sichern "" ok "Gesichert."
+		else
+			aktion_setzen sichern "" fehler "Die Sicherung ist fehlgeschlagen (dch sichern am Gerät zeigt den Grund)."
+		fi
+		;;
+	protokoll)
+		if protokoll_schreiben "$dienst"; then
+			aktion_setzen protokoll "$dienst" ok "Protokoll geholt."
+		else
+			aktion_setzen protokoll "$dienst" fehler "Das Protokoll ließ sich nicht lesen."
+		fi
+		;;
+	geraet_neustart)
+		aktion_setzen geraet_neustart "" ok "Das Gerät startet neu; in ein bis zwei Minuten ist es zurück."
+		bericht || true
+		flock -u 9
+		systemctl reboot
+		return 0
+		;;
+	esac
+	flock -u 9
+	bericht || true
+}
+
 befehl=${1:-status}
 shift || true
 
@@ -379,17 +611,22 @@ pruefen)
 	       else "Kein Update verfuegbar (\(.aktuell // "?"))." end' "$STATUS"
 	;;
 
+zustand)
+	# Von duckcurve-zustand.timer jede Minute gerufen; schreibt den Bericht fuer die App.
+	bericht
+	;;
 anfrage)
-	# Von duckcurve-update.path gerufen, sobald die App eine Anfrage abgelegt hat. Die Datei wird
+	# Von duckcurve-anfrage.path gerufen, sobald die App eine Anfrage abgelegt hat. Die Datei wird
 	# zuerst entfernt: Sonst sieht systemd sie weiter und startet den Dienst immer wieder.
 	[ -f "$ANFRAGE" ] || exit 0
-	aktion=$(jq -r '.aktion // empty' "$ANFRAGE" 2>/dev/null || true)
+	aktion=$(jq -r '.aktion // empty' "$ANFRAGE" 2>/dev/null | tr -cd 'a-z_' | cut -c1-30 || true)
+	dienst=$(jq -r '.dienst // empty' "$ANFRAGE" 2>/dev/null | tr -cd 'a-z0-9_-' | cut -c1-30 || true)
 	von=$(jq -r '.von // empty' "$ANFRAGE" 2>/dev/null | tr -cd '[:alnum:] ._-' | cut -c1-60)
 	rm -f "$ANFRAGE"
 	case "$aktion" in
 	pruefen) pruefen ;;
 	installieren) installieren "${von:-App}" || true ;;
-	*) echo "dch: unbekannte Anfrage '$aktion' verworfen" >&2 ;;
+	*) handgriff "$aktion" "$dienst" "${von:-App}" || true ;;
 	esac
 	;;
 
@@ -474,7 +711,7 @@ TEXT
 	;;
 
 *)
-	sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+	sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
 	exit 1
 	;;
 esac

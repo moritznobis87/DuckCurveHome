@@ -196,7 +196,7 @@ class Settings(BaseSettings):
 
     # Austausch mit dem Update-Dienst des Hausgeraets (deploy/haus/dch, Abschnitt "Updates"). Leer
     # heisst: kein Hausgeraet (Railway, Entwicklung), die App bietet keine Updates an.
-    update_dir: str = ""
+    geraet_dir: str = ""
 
     @field_validator("cors_origins", "bridge_tokens", mode="before")
     @classmethod

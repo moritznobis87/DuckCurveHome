@@ -27,7 +27,7 @@ def geraet(ordner: Path) -> Iterator[TestClient]:
         demo_autostart=False,
         demo_warmup_hours=1.0,
         demo_start=datetime(2026, 9, 4, 11, 30, tzinfo=UTC),
-        update_dir=str(ordner),
+        geraet_dir=str(ordner),
     )
     with TestClient(create_app(settings)) as c:
         yield c

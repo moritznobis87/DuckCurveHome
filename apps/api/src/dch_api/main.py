@@ -25,6 +25,7 @@ from dch_api.routers import (
     energy,
     export,
     forecast,
+    geraet,
     health,
     history,
     house,
@@ -198,6 +199,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     for r in (
         alfred.router,
         update.router,
+        geraet.router,
         live.router,
         history.router,
         plan.router,

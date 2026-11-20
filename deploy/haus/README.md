@@ -186,11 +186,11 @@ Nach dem ersten Einrichten spielt das Gerät neue Fassungen selbst ein; neu besp
    unmittelbar davor.
 
 **Warum die App dabei nie Docker anfasst.** Die API läuft ohne Rechte und hat keinen Zugriff auf
-Docker. Sie legt nur eine Anfrage als Datei ab (`/var/lib/duckcurve/update/anfrage/`, beschreibbar
-nur für den Container-Benutzer). systemd bemerkt die Datei (`duckcurve-update.path`) und startet
+Docker. Sie legt nur eine Anfrage als Datei ab (`/var/lib/duckcurve/geraet/anfrage/`, beschreibbar
+nur für den Container-Benutzer). systemd bemerkt die Datei (`duckcurve-anfrage.path`) und startet
 `dch anfrage` als root. Das Skript liest daraus nur, *ob* installiert oder nachgesehen werden soll;
 *was* installiert wird, bestimmen allein `.env` und die Registry. Den Stand meldet es über
-`/var/lib/duckcurve/update/status.json`, das die API nur liest. Eine kompromittierte Oberfläche kann
+`/var/lib/duckcurve/geraet/status.json`, das die API nur liest. Eine kompromittierte Oberfläche kann
 so höchstens ein Update auslösen, das ohnehin bereitsteht, aber keine fremde Fassung und keinen
 Befehl einschleusen.
 

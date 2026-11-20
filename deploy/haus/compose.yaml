@@ -70,9 +70,9 @@ services:
       DCH_CORS_ORIGINS: "[]"
       # Austausch mit dem Update-Dienst des Geraets (dch pruefen / dch anfrage): Die API liest die
       # Statusdatei und legt Anfragen ab. Docker selbst erreicht sie nicht.
-      DCH_UPDATE_DIR: /update
+      DCH_GERAET_DIR: /geraet
     volumes:
-      - ${DCH_UPDATE:-/var/lib/duckcurve/update}:/update
+      - ${DCH_GERAET:-/var/lib/duckcurve/geraet}:/geraet
     depends_on:
       postgres:
         condition: service_healthy

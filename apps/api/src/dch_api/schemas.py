@@ -1999,3 +1999,164 @@ class UpdateStatusOut(BaseModel):
 
 class UpdateAnfrageIn(BaseModel):
     aktion: Literal["installieren", "pruefen"]
+
+
+# ------------------------------------------------------------------------------- Hausgerät
+#
+# Was die Seite Technik -> Hausgerät zeigt (routers/geraet.py). Die rohen Werte kommen aus dem
+# Bericht, den das Gerät jede Minute schreibt (deploy/haus/dch, `dch zustand`); Ampel und Satz
+# bildet die API, damit Browser und iOS-App dieselbe Bewertung zeigen und sie nicht zweimal
+# gepflegt wird.
+
+Ampel = Literal["gut", "warn", "schlecht", "aus"]
+
+
+class GeraetDienstOut(BaseModel):
+    """Ein Container des Geräts (postgres, api, web, caddy, cloudflared)."""
+
+    name: str
+    #: Docker: running, restarting, exited, paused, created - oder `fehlt`, wenn compose.yaml ihn
+    #: kennt, er aber nicht angelegt ist.
+    zustand: str
+    #: healthy, unhealthy, starting; `None`: Der Dienst hat keine Prüfung.
+    gesundheit: str | None = None
+    #: Die letzte Ausgabe der Prüfung, gekürzt.
+    pruefung: str | None = None
+    pruefung_fehlschlaege: int | None = None
+    gestartet_am: datetime | None = None
+    neustarts: int = 0
+    exit_code: int | None = None
+    image: str | None = None
+    revision: str | None = None
+    cpu_prozent: float | None = None
+    speicher_mb: float | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetEinheitOut(BaseModel):
+    """Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht)."""
+
+    name: str
+    beschreibung: str = ""
+    aktiv: str = ""
+    unterzustand: str = ""
+    eingeschaltet: bool = False
+    naechster_lauf: datetime | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetPlatteOut(BaseModel):
+    ort: str
+    gesamt_bytes: int
+    frei_bytes: int
+    ampel: Ampel = "gut"
+
+
+class GeraetRechnerOut(BaseModel):
+    """Der Rechner selbst: Raspberry Pi oder was sonst darunter läuft."""
+
+    name: str = ""
+    modell: str | None = None
+    system: str | None = None
+    kernel: str | None = None
+    adresse: str | None = None
+    laufzeit_s: int = 0
+    kerne: int = 1
+    last: list[float] = Field(default_factory=list)
+    temperatur_c: float | None = None
+    temperatur_ampel: Ampel = "aus"
+    #: `vcgencmd get_throttled`, roh (etwa `0x50005`); `None` ohne Raspberry Pi.
+    drosselung: str | None = None
+    #: Was die Bits bedeuten, als Sätze. Leer: nichts aufgefallen.
+    drosselung_de: list[str] = Field(default_factory=list)
+    drosselung_ampel: Ampel = "aus"
+    speicher_gesamt_mb: int = 0
+    speicher_frei_mb: int = 0
+    speicher_ampel: Ampel = "aus"
+    platten: list[GeraetPlatteOut] = Field(default_factory=list)
+    docker: str | None = None
+
+
+class GeraetSicherungOut(BaseModel):
+    letzte: str | None = None
+    letzte_am: datetime | None = None
+    letzte_bytes: int | None = None
+    anzahl: int = 0
+    #: Das rclone-Ziel für die Kopie außer Haus; `None`: keine.
+    ausser_haus: str | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetAktionOut(BaseModel):
+    """Die zuletzt aus der App angefragte Aktion und wie sie ausging."""
+
+    aktion: str
+    dienst: str | None = None
+    #: laeuft, ok, fehler
+    zustand: str
+    meldung: str = ""
+    von: str | None = None
+    begonnen_am: datetime | None = None
+    beendet_am: datetime | None = None
+
+
+class ApiSelbstOut(BaseModel):
+    """Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden."""
+
+    version: str
+    commit: str
+    modus: str
+    laufzeit_s: int
+    rss_mb: float
+    datenbank_ok: bool | None = None
+    datenbank_ms: float | None = None
+    datenbank_de: str = ""
+    bridge_online: bool = False
+    verbindung_de: str = ""
+    quellen: list[SourceStatusOut] = Field(default_factory=list)
+    befunde: list[WatchFindingOut] = Field(default_factory=list)
+    sse_clients: int = 0
+    alfred_eingerichtet: bool = False
+    energy_rebuild: str = ""
+    ampel: Ampel = "gut"
+    text_de: str = ""
+
+
+class GeraetOut(BaseModel):
+    """Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion."""
+
+    #: Falsch ohne Hausgerät (Railway, Entwicklung): Dann gibt es nur `api`.
+    unterstuetzt: bool
+    bericht_am: datetime | None = None
+    #: Wahr, wenn der letzte Bericht älter als drei Minuten ist: Der Zeitgeber auf dem Gerät
+    #: läuft dann nicht, und alle Werte darunter sind von damals.
+    bericht_alt: bool = False
+    kanal: str | None = None
+    fernzugang: bool = False
+    rechner: GeraetRechnerOut | None = None
+    dienste: list[GeraetDienstOut] = Field(default_factory=list)
+    einheiten: list[GeraetEinheitOut] = Field(default_factory=list)
+    sicherung: GeraetSicherungOut | None = None
+    letzte_aktion: GeraetAktionOut | None = None
+    #: Warum gerade keine Aktion angenommen wird (Update läuft, Anfrage offen); `None`: frei.
+    beschaeftigt: str | None = None
+    api: ApiSelbstOut
+    #: Das Gesamturteil: das schlechteste aller Einzelurteile, mit dem Grund.
+    ampel: Ampel = "gut"
+    text_de: str = ""
+
+
+class GeraetAktionIn(BaseModel):
+    aktion: Literal["neustart", "sichern", "protokoll", "geraet_neustart", "zustand"]
+    #: Für `neustart` und `protokoll`: der Dienst aus compose.yaml, für `neustart` auch `alle`.
+    dienst: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_-]{0,30}$")
+
+
+class GeraetProtokollOut(BaseModel):
+    dienst: str
+    vorhanden: bool
+    erstellt_am: datetime | None = None
+    zeilen: list[str] = Field(default_factory=list)
