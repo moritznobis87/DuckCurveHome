@@ -32,6 +32,60 @@ final class PlanauswahlTests: XCTestCase {
         XCTAssertTrue(aus.allSatisfy { $0.priceCtKwh != nil })
     }
 
+    // MARK: - Die Entscheidungen
+
+    private func voll(_ stunde: Int, preis: Double?, zustand: PlanIntervalOutPlannedHpStateWahl,
+                      ofen: Bool?, notiz: String?) -> PlanIntervalOut {
+        PlanIntervalOut(
+            ts: String(format: "2026-11-17T%02d:00:00+01:00", stunde),
+            expectedPvKw: 0, priceCtKwh: preis, plannedHpState: zustand, plannedStoveOn: ofen,
+            reasonCode: "price_rule", noteDe: notiz, heatDemandKw: 2, dhwDemandKw: 0.5,
+            bufferKwh: 12)
+    }
+
+    /// Der Fehler, der diesen Typ noetig gemacht hat: die Ansicht hatte `release` auf „frei"
+    /// abgebildet - und „frei" ist der Name eines anderen Zustands.
+    func testDasWortDesZustandsIstDasDerZeichnung() {
+        let plan = [
+            voll(0, preis: 40, zustand: .release, ofen: true, notiz: "teuer, aber noetig"),
+            voll(1, preis: 10, zustand: .free, ofen: false, notiz: nil),
+        ]
+        let e = Planauswahl.entscheidungen(plan)
+        XCTAssertEqual(e.count, 2)
+        XCTAssertEqual(e[0].zustandswort, "angefordert")
+        XCTAssertEqual(e[0].zustandsrolle, .angefordert)
+        XCTAssertEqual(e[1].zustandswort, "frei")
+        XCTAssertEqual(e[1].zustandsrolle, .frei)
+        XCTAssertEqual(
+            e[0].zustandswort, Fahrplanbild.zustand(.release).wort,
+            "dasselbe Wort wie im Streifen darueber")
+    }
+
+    func testDerOfenHatDreiZustaendeUndEinerDavonIstNichts() {
+        let e = Planauswahl.entscheidungen([
+            voll(0, preis: 40, zustand: .off, ofen: true, notiz: nil),
+            voll(1, preis: 30, zustand: .off, ofen: false, notiz: nil),
+            voll(2, preis: 10, zustand: .off, ofen: nil, notiz: nil),
+        ])
+        XCTAssertEqual(e.map(\.ofenwort), ["brennt", "aus", Formate.leer])
+        XCTAssertEqual(e.map(\.ofenrolle), [.ofenAn, .ofenAus, .neutral])
+    }
+
+    func testDerSatzDesDienstesSchlaegtSeinenSchluessel() {
+        let e = Planauswahl.entscheidungen([
+            voll(0, preis: 40, zustand: .avoid, ofen: nil, notiz: "Strom ist teuer"),
+            voll(1, preis: 10, zustand: .release, ofen: nil, notiz: nil),
+        ])
+        XCTAssertEqual(e[0].warum, "Strom ist teuer")
+        XCTAssertEqual(e[1].warum, "price rule", "ohne Satz die Kennung in Worten - leer bleibt es nie")
+    }
+
+    func testDerBedarfIstHeizenUndWarmwasser() {
+        let e = Planauswahl.entscheidungen([voll(0, preis: 40, zustand: .off, ofen: nil, notiz: nil)])
+        XCTAssertEqual(e[0].bedarf ?? 0, 2.5, accuracy: 1e-9)
+        XCTAssertEqual(e[0].puffer ?? 0, 12, accuracy: 1e-9)
+    }
+
     func testEinKurzerPlanWirdNichtVerdoppelt() {
         // Vier Viertelstunden: die drei teuersten und die drei billigsten ueberschneiden sich.
         let aus = Planauswahl.raender([iv(0, 10), iv(1, 20), iv(2, 30), iv(3, 40)])

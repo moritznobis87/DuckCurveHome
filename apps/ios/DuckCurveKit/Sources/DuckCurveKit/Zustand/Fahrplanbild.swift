@@ -35,6 +35,8 @@ public struct Fahrplanbild: Sendable {
     public enum Rolle: String, Sendable, Hashable {
         case angefordert, gemieden, frei, aus, ofenAn, ofenAus
         case pv, puffer, wpGemessen, heizen, warmwasser, neutral
+        /// Was erwartet wird und nicht gemessen ist: die PV-Prognose, die Preisbänder.
+        case vorhersage
     }
 
     /// Die vier Zustände, die `planned_hp_state` kennt, mit Wort und Balkenhöhe.
@@ -56,6 +58,55 @@ public struct Fahrplanbild: Sendable {
     /// Alle vier in der Reihenfolge der Legende.
     public static var zustandslegende: [(wort: String, hoehe: Double, rolle: Rolle)] {
         [.release, .avoid, .free, .off].map(zustand)
+    }
+
+    /// Ein Stück der Legende: ein Klotz in seiner Farbe und das Wort dahinter.
+    public struct Legendenstueck: Sendable, Hashable, Identifiable {
+        public let wort: String
+        public let rolle: Rolle
+        /// Wie hoch der Klotz ist. Die Vorlage leitet sie aus der Balkenhöhe ab
+        /// (`max(3, round(hoehe * 10))`), damit die vier Zustände in der Legende dieselbe
+        /// Rangfolge haben wie im Streifen; eine Linie ist drei Punkte hoch, eine Fläche zehn.
+        public let dick: Double
+        /// Blass wie das Band hinter der Preiskurve, nicht voll wie eine Fläche.
+        public let blass: Bool
+
+        public var id: String { wort }
+
+        public init(wort: String, rolle: Rolle, dick: Double, blass: Bool = false) {
+            self.wort = wort
+            self.rolle = rolle
+            self.dick = dick
+            self.blass = blass
+        }
+    }
+
+    /// Die ganze Legende der Vorlage, in ihrer Reihenfolge (`waerme/Fahrplan.tsx:598-640`).
+    ///
+    /// **Warum im Kern und nicht in der Zeichnung.** Das letzte Stück steht nur da, wenn der
+    /// Plan ein negatives Preisfenster kennt - das ist eine Aussage über die Daten und keine
+    /// über das Zeichnen. Sie stand in der Ansicht, zusammen mit elf festen Wörtern.
+    public var legende: [Legendenstueck] {
+        var stuecke = Self.zustandslegende.map {
+            Legendenstueck(
+                wort: "Wärmepumpe \($0.wort)", rolle: $0.rolle,
+                dick: max(3, ($0.hoehe * 10).rounded()))
+        }
+        stuecke += [
+            Legendenstueck(wort: "Ofen brennt", rolle: .ofenAn, dick: 10),
+            Legendenstueck(wort: "Heizen", rolle: .heizen, dick: 10),
+            Legendenstueck(wort: "Warmwasser", rolle: .warmwasser, dick: 10),
+            // Der Pufferinhalt ist in der Vorlage eine Linie, kein Band - drei Punkte.
+            Legendenstueck(wort: "Pufferinhalt", rolle: .puffer, dick: 3),
+            Legendenstueck(wort: "PV gemessen", rolle: .pv, dick: 10),
+            Legendenstueck(wort: "PV erwartet", rolle: .vorhersage, dick: 2),
+            Legendenstueck(wort: "Preistief", rolle: .vorhersage, dick: 10, blass: true),
+        ]
+        if hatNegativesFenster {
+            stuecke.append(
+                Legendenstueck(wort: "negativer Preis", rolle: .gemieden, dick: 10, blass: true))
+        }
+        return stuecke
     }
 
     // MARK: - Die Reihen

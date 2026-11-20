@@ -365,4 +365,44 @@ final class FahrplanbildTests: XCTestCase {
         XCTAssertEqual(Fahrplankacheln.viertelstunden(1), "0,3 h")
         XCTAssertEqual(Fahrplankacheln.viertelstunden(96), "24,0 h")
     }
+
+    // MARK: - Die Legende
+
+    func testDieLegendeHatDieElfStueckeDerVorlage() {
+        let b = Fahrplanbild.baue(plan(anzahl: 8, preis: { _ in 30 }))
+        let woerter = b.legende.map(\.wort)
+        XCTAssertEqual(
+            woerter,
+            [
+                "Wärmepumpe angefordert", "Wärmepumpe gemieden", "Wärmepumpe frei",
+                "Wärmepumpe aus", "Ofen brennt", "Heizen", "Warmwasser", "Pufferinhalt",
+                "PV gemessen", "PV erwartet", "Preistief",
+            ])
+    }
+
+    func testDasZwoelfteStueckStehtNurBeiNegativemPreis() {
+        let ohne = Fahrplanbild.baue(plan(anzahl: 8, preis: { _ in 30 }))
+        XCTAssertFalse(ohne.legende.contains { $0.wort == "negativer Preis" })
+    }
+
+    func testDieKlotzhoehenFolgenDenBalkenhoehen() {
+        let b = Fahrplanbild.baue(plan(anzahl: 8, preis: { _ in 30 }))
+        let dick = Dictionary(uniqueKeysWithValues: b.legende.map { ($0.wort, $0.dick) })
+        XCTAssertEqual(dick["Wärmepumpe angefordert"], 10)
+        XCTAssertEqual(dick["Wärmepumpe gemieden"], 6)
+        XCTAssertEqual(dick["Wärmepumpe frei"], 3, "0,3 mal 10 gerundet waere 3")
+        XCTAssertEqual(dick["Wärmepumpe aus"], 3, "unter drei Punkten sieht man nichts mehr")
+        XCTAssertEqual(dick["Pufferinhalt"], 3, "eine Linie, keine Flaeche")
+        XCTAssertEqual(dick["PV erwartet"], 2, "ein gestrichelter Strich")
+    }
+
+    // MARK: - Die festen Saetze
+
+    func testDieMethodeHatDreiAbsaetzeUndNennteBusUndPreisregel() {
+        XCTAssertEqual(Fahrplanworte.methode.count, 3)
+        XCTAssertTrue(Fahrplanworte.methode[0].contains("eBUS"))
+        XCTAssertTrue(Fahrplanworte.methode[1].contains("Preisregel"))
+        XCTAssertTrue(Fahrplanworte.methode[2].contains("Rückblick"))
+        XCTAssertFalse(Fahrplanworte.methodeKurz.isEmpty)
+    }
 }

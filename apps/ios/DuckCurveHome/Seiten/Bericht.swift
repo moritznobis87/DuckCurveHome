@@ -159,6 +159,14 @@ struct Tabelle: View {
         let name: String
         /// Die Zellen dieser Spalte, in der Reihenfolge der Zeilen.
         let zellen: [String]
+        /// Die Farbe je Zelle, wo eine gilt.
+        ///
+        /// **Warum eine Spalte Farbe tragen darf.** In der Entscheidungstabelle des Fahrplans
+        /// stehen dieselben Wörter wie in den Streifen darüber - „angefordert", „gemieden",
+        /// „brennt" -, und die Vorlage färbt sie dort wie dort gleich
+        /// (`waerme/Fahrplan.tsx:715-721`). Ohne Farbe muss man zweimal lesen, um zu sehen,
+        /// dass es dieselbe Sache ist. Leer heißt: alles in `Farbe.text1`, wie bisher.
+        var farben: [Color?] = []
         var id: String { name }
     }
 
@@ -211,7 +219,7 @@ struct Tabelle: View {
                         Spacer(minLength: 8)
                         Text(zelle(spalte: gezeigt, zeile: i))
                             .font(Schrift.zahl)
-                            .foregroundStyle(Farbe.text1)
+                            .foregroundStyle(farbe(spalte: gezeigt, zeile: i))
                     }
                     .padding(.vertical, 6)
                 }
@@ -242,13 +250,20 @@ struct Tabelle: View {
                     ForEach(Array(spalten.enumerated()), id: \.offset) { s, _ in
                         Text(zelle(spalte: s, zeile: i))
                             .font(Schrift.zahl)
-                            .foregroundStyle(Farbe.text1)
+                            .foregroundStyle(farbe(spalte: s, zeile: i))
                             .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
                 .padding(.vertical, 6)
             }
         }
+    }
+
+    private func farbe(spalte: Int, zeile: Int) -> Color {
+        guard spalte < spalten.count, zeile < spalten[spalte].farben.count else {
+            return Farbe.text1
+        }
+        return spalten[spalte].farben[zeile] ?? Farbe.text1
     }
 
     private func zelle(spalte: Int, zeile: Int) -> String {

@@ -409,30 +409,3 @@ struct Waermepumpenblatt: View {
 
     private enum Griff { case auto, manuellAn, manuellAus }
 }
-
-/// Die Reason-Codes des Reglers in Worten.
-///
-/// Der Dienst schickt Kennungen (`pv_surplus`, `min_runtime_hold`), weil sie stabil sein muessen.
-/// Fuer die Anzeige werden daraus Saetze - eine Kennung an der Wand ist keine Begruendung.
-/// Unbekannte Kennungen werden gezeigt, wie sie sind: besser eine Kennung als nichts.
-enum Grundwort {
-    static func text(_ c: ReasonCode) -> String {
-        switch c {
-        case .pvSurplus: return "Überschuss aus der Sonne"
-        case .pvSurplusFading: return "der Überschuss geht zurück"
-        case .priceNegative: return "der Strompreis ist negativ"
-        case .priceCheapWindow: return "günstiges Preisfenster"
-        case .plannedWindow: return "so steht es im Fahrplan"
-        case .heatDemandForced: return "die Wärme wird gebraucht"
-        case .hpRunningOwnControl: return "die Pumpe läuft nach eigenem Regler"
-        case .minRuntimeHold: return "Mindestlaufzeit noch nicht erreicht"
-        case .minOfftimePending: return "Mindestpause noch nicht vorbei"
-        case .onDelayPending: return "Einschaltverzögerung läuft"
-        case .offDelayPending: return "Ausschaltverzögerung läuft"
-        case .bufferFull: return "der Puffer ist voll"
-        case .bufferNoHeadroom: return "im Puffer ist kein Platz"
-        case .maxStartsReached: return "genug Starts für heute"
-        default: return c.rawValue.replacingOccurrences(of: "_", with: " ")
-        }
-    }
-}
