@@ -25,8 +25,15 @@ import SwiftUI
 /// **Keine Zeitraumleiste**, weil die Vorlage hier `AreaShell` benutzt und nicht `ReportShell`
 /// (`InvoiceCheck.tsx:205`): eine Rechnung bringt ihren Zeitraum mit.
 ///
+/// **Den Kicker zeichnet ``Seite``.** Er stand hier als erste Zeile der Seite, mit einer eigenen
+/// Fassung fürs Telefon: dort lesbare Schrift statt Sperrschrift, mit `handy.css:184` als Beleg.
+/// Der Beleg trug nicht - `handy.css:184` ist `.card-head h2.kicker`, also der Kicker **einer
+/// Karte**; der Kicker der Hülle trägt `hidden … md:block` (`AreaNav.tsx:96`) und fällt am
+/// Telefon weg. Jetzt steht die Regel einmal im Gerippe, das Wort bleibt
+/// ``Rechnungspruefung/seitenkicker``.
+///
 /// Nur für den Hausherrn: hier stehen Name, Adresse, Marktlokations-ID, Zählernummer
-/// (`Bereiche.swift:122`, `nurHausherr: true`).
+/// (`Bereiche.swift:167`, `nurHausherr: true`).
 struct RechnungenSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(\.horizontalSizeClass) private var breite
@@ -46,12 +53,15 @@ struct RechnungenSeite: View {
 
     var body: some View {
         Seite {
-            kicker
             if let fehler {
                 Stoerung(fehler: fehler) { Task { await ladeListe() } }
             }
+            // Die Fehlschläge einzelner Dateien im **selben** Band wie ein Fehler des Dienstes
+            // darüber: die Vorlage hat für beides eines (`InvoiceCheck.tsx:207`). Ohne Code,
+            // denn eine gescheiterte Datei hat keinen, und ohne „Erneut“ - einen Versuch
+            // wiederholt man, indem man die Datei neu ablegt.
             if let dateifehler {
-                Dateiband(zeile: dateifehler)
+                Stoerung(satz: dateifehler)
             }
             kopfzeile
             if liste.isEmpty {
@@ -78,26 +88,6 @@ struct RechnungenSeite: View {
         }
         .task { await ladeListe() }
         .task(id: gewaehlt) { await ladeBericht() }
-    }
-
-    /// Der Kicker der Seite (`InvoiceCheck.tsx:205`).
-    ///
-    /// **Er steht über der ersten Karte und nicht in einer.** Die Vorlage setzt ihn in den Kopf
-    /// der `AreaShell`, also über den Inhalt; die Kostenseite hat ihn in eine Karte gelegt, weil
-    /// dort eine Karte die vier Beträge trägt, zu denen er gehört (`KostenSeite.swift:123`).
-    /// Hier gehört er zu der ganzen Seite, und die erste Karte hat mit „Rechnung prüfen“ schon
-    /// einen eigenen Kicker - zwei Kicker in einer Kopfzeile wären einer zu viel.
-    @ViewBuilder private var kicker: some View {
-        if schmal {
-            // Am Telefon keine Sperrschrift: dort sind Überschriften lesbare Schrift
-            // (`handy.css:184`, und ``Karte`` macht es ebenso).
-            Text(Rechnungspruefung.seitenkicker)
-                .font(Schrift.klein)
-                .foregroundStyle(Farbe.text2)
-                .fixedSize(horizontal: false, vertical: true)
-        } else {
-            Kicker(wort: Rechnungspruefung.seitenkicker)
-        }
     }
 
     // MARK: - Zeile 1: Ablegefeld und die vier Kennzahlen
@@ -242,18 +232,24 @@ struct RechnungenSeite: View {
     /// Acht Spalten (`InvoiceCheck.tsx:254-302`), von denen die erste der Zeilenname ist.
     ///
     /// **Die Zeile ist der Griff**, mit dem die Befunde und die Preisbestandteile darunter
-    /// umgeschaltet werden - darum ``Rechnungstabelle`` und nicht ``Tabelle``; der Grund steht
-    /// dort. **Ein zweites Tippen wählt nicht ab** (`InvoiceCheck.tsx:117-125`): die App ließ
-    /// das zu, und damit konnte die untere Hälfte der Seite mit einem Fehltipper verschwinden.
+    /// umgeschaltet werden (`InvoiceCheck.tsx:277-279`). **Ein zweites Tippen wählt nicht ab**
+    /// (`InvoiceCheck.tsx:117-125`): die App ließ das zu, und damit konnte die untere Hälfte
+    /// der Seite mit einem Fehltipper verschwinden.
+    ///
+    /// Beides kann seit dem 20.11.2026 das Tabellengerippe selbst (``Tabelle/auswahl``); hier
+    /// stand dafür eine zweite, fast gleiche Tabelle. `engeZellen`, weil diese Tabelle in der
+    /// Vorlage die kleinere der beiden Tabellenschriften trägt (`InvoiceCheck.tsx:257`) - acht
+    /// Spalten in einer Karte haben sonst zweizeilige Zellen.
     private var tabelle: some View {
         let zeilen = Rechnungspruefung.tabellenzeilen(liste)
         return Karte(
             kicker: Rechnungspruefung.tabellentitel,
             beiwerk: AnyView(kopftext(Rechnungspruefung.tabellenkopf))
         ) {
-            Rechnungstabelle(
+            Tabelle(
                 zeilennamen: zeilen.map(\.zeitraum), spalten: spalten(zeilen),
-                gewaehlt: zeilen.firstIndex { $0.nummer == gewaehlt }
+                engeZellen: true,
+                gewaehlteZeile: zeilen.firstIndex { $0.nummer == gewaehlt }
             ) { stelle in
                 gewaehlt = zeilen[stelle].nummer
             }
@@ -471,34 +467,5 @@ struct RechnungenSeite: View {
         // wartet dafür die neue Liste ab, ehe sie `busy` löscht (`InvoiceCheck.tsx:155-156`).
         laedt = true
         Task { await ladeListe() }
-    }
-}
-
-/// Das Fehlerband für die Dateien, die beim Prüfen gescheitert sind.
-///
-/// **Warum nicht ``Stoerung``.** Die nimmt einen ``ApiFehler`` und zeigt dessen Code als zweite
-/// Zeile - bei „okt.pdf: Kein Tibber-Layout erkannt.“ gibt es keinen Code, und einen zu
-/// erfinden, damit der Baustein passt, wäre die falsche Richtung. Die Vorlage hat für alles ein
-/// Band (`ReportShell.tsx:147-153`); hier steht dasselbe Band mit derselben Farbe, nur ohne
-/// Code und ohne „Erneut“ - einen Versuch wiederholt man, indem man die Datei neu ablegt.
-private struct Dateiband: View {
-    let zeile: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Zeichen(.warnung, groesse: 16, farbe: Farbe.alarm)
-            Text(zeile)
-                .font(Schrift.klein)
-                .foregroundStyle(Farbe.text1)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 8)
-        }
-        .padding(12)
-        .background(Farbe.alarm.opacity(0.12))
-        .overlay(
-            RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
-                .strokeBorder(Farbe.alarm.opacity(0.4), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
     }
 }

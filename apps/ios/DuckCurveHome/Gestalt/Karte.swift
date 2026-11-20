@@ -407,18 +407,47 @@ struct Leer: View {
 ///
 /// Die Seite behaelt, was sie schon hat - ein Diagramm von vorhin ist mehr wert als eine
 /// Fehlermeldung, die die ganze Flaeche nimmt.
+///
+/// **Zwei Fassungen, weil nicht jeder Fehlschlag einen Code hat.** Ein ``ApiFehler`` bringt Rat
+/// und Code mit; „okt.pdf: Kein Tibber-Layout erkannt.“ ist ein Satz über eine einzelne Datei
+/// und hat keinen - und einen zu erfinden, damit der Baustein passt, wäre die falsche Richtung.
+/// Darum nimmt die zweite Fassung reinen Text. Ein eigenes Band dafür hatte die Rechnungsseite
+/// bis zum 20.11.2026; die Vorlage hat für beides dasselbe (`reports/ReportShell.tsx:147-153`,
+/// gesetzt in `InvoiceCheck.tsx:207` für den Fehler des Dienstes wie für die gescheiterten
+/// Dateien), und zwei verschieden gefärbte Bänder übereinander sehen nach zwei Arten von
+/// Unglück aus, wo es eine ist.
 struct Stoerung: View {
-    let fehler: ApiFehler
+    /// Was schiefging, in einem Satz für Menschen (``ApiFehler/rat``).
+    let satz: String
+    /// Der Code als zweite Zeile, wo es einen gibt.
+    let code: String?
     var erneut: (() -> Void)?
+
+    /// Ein Fehler des Dienstes: sein Rat, sein Code.
+    ///
+    /// **„network“ steht nicht dabei:** der Rat sagt bei einem Netzfehler schon alles, und der
+    /// Code darunter wäre dasselbe noch einmal, nur englisch.
+    init(fehler: ApiFehler, erneut: (() -> Void)? = nil) {
+        self.satz = fehler.rat
+        self.code = fehler.code == "network" ? nil : fehler.code
+        self.erneut = erneut
+    }
+
+    /// Reiner Text, ohne Code: der Fehlschlag einer einzelnen Datei.
+    init(satz: String, erneut: (() -> Void)? = nil) {
+        self.satz = satz
+        self.code = nil
+        self.erneut = erneut
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Zeichen(.warnung, groesse: 16, farbe: Farbe.achtung)
             VStack(alignment: .leading, spacing: 3) {
-                Text(fehler.rat).font(Schrift.klein).foregroundStyle(Farbe.text1)
+                Text(satz).font(Schrift.klein).foregroundStyle(Farbe.text1)
                     .fixedSize(horizontal: false, vertical: true)
-                if fehler.code != "network" {
-                    Text(fehler.code).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                if let code {
+                    Text(code).font(Schrift.winzig).foregroundStyle(Farbe.text3)
                 }
             }
             Spacer(minLength: 8)

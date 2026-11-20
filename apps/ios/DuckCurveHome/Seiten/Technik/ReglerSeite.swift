@@ -331,12 +331,18 @@ struct ReglerSeite: View {
     /// Heizkurve, die auf dem Papier stimmt, und ein Vorlauf, der ständig fünf Kelvin darüber
     /// liegt, sind zwei verschiedene Auskünfte. Sie an ihren Platz in der Vorlage zu verschieben
     /// heißt, die Wärmepumpenseite zu ändern, und das ist ein eigener Griff.
+    ///
+    /// **Am Telefon rollt sie seitlich.** Sie ist die zweite der beiden Tabellen, die die
+    /// Vorlage nicht zur Liste zerfallen lässt (`waermepumpe/Kennzahlen.tsx:50` in `.kl-rollt`,
+    /// `globals.css:912-913`, `handy.css:246-247`) - mit dreizehn Spalten in der Vorlage ist sie
+    /// die breiteste, die das Projekt hat.
     @ViewBuilder private func kennzahlenkarte() -> some View {
         if let k = kennzahlen, !k.zeilen.isEmpty {
             Karte(kicker: "Was der Regler tat", titel: "\(k.tage) Tage") {
                 Tabelle(
                     zeilennamen: k.zeilen.map { "Zustand \($0.code)" },
-                    spalten: kennzahlenspalten(k.zeilen)
+                    spalten: kennzahlenspalten(k.zeilen),
+                    handyfassung: .rollt
                 )
             }
         }

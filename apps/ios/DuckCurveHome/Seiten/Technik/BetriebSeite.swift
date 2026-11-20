@@ -51,7 +51,7 @@ struct BetriebSeite: View {
 
     @ViewBuilder private func inhalt(_ b: BetriebOut) -> some View {
         kopf(b)
-        Rueckblickwahl(tage: $tage, moeglich: Self.rueckblicke)
+        Tagewahl(tage: $tage, moeglich: Self.rueckblicke, gruppe: "Rückblick")
         // **Der Fehler steht in der Standzeile, die Karte bleibt** - und doch steht hier
         // zusätzlich ``Stoerung``. Die Vorlage hat keinen „Erneut“-Knopf und lädt nur beim
         // Wechsel des Zeitraums neu (`Betrieb.tsx:36-38`); auf einem Telefon mit wackligem
@@ -182,14 +182,12 @@ struct BetriebSeite: View {
     /// Die Tage als Tabelle, **zugeklappt**, mit der Zahl der Tage im Griff
     /// (`Betrieb.tsx:135-137`).
     ///
-    /// **Am Telefon der Spaltenumschalter und nicht die seitliche Rolle, und das ist eine
-    /// Abweichung.** Die Vorlage hält diese eine Tabelle ausdrücklich davon ab, zur Liste zu
-    /// werden: sie ist mindestens 940 Punkte breit und rollt (`globals.css:912-913`,
-    /// `handy.css:246-247`) - anders als `kosten-tabelle` und `nb-tabelle`, die dort zu
-    /// Listen umgebaut sind. Bei elf Spalten ist die Rolle aber das schlechtere Angebot: man
-    /// sieht nicht, welche Spalten es gibt, und findet die gesuchte nur durch Wischen.
-    /// ``Tabelle`` nennt am Telefon alle elf Namen in einer Reihe und zeigt die gewählte -
-    /// dieselbe Entscheidung, die `handy.css` für seine übrigen Tabellen getroffen hat.
+    /// **Am Telefon rollt sie seitlich und zerfällt nicht zur Liste.** Die Vorlage hält diese
+    /// eine Tabelle ausdrücklich davon ab: sie ist mindestens 940 Punkte breit und rollt
+    /// (`globals.css:912-913`, `handy.css:246-247`) - anders als `kosten-tabelle` und
+    /// `nb-tabelle`, die dort zu Listen umgebaut sind. Bis zum 20.11.2026 stand hier der
+    /// Spaltenumschalter, weil das Gerippe nur das konnte; bei elf Spalten füllt dessen Reihe
+    /// am Telefon zwei Zeilen, und jeder Blick auf eine andere Spalte wirft die vorige weg.
     @ViewBuilder private func tabelle(_ b: BetriebOut) -> some View {
         Karte {
             DisclosureGroup(isExpanded: $tabelleOffen) {
@@ -197,7 +195,8 @@ struct BetriebSeite: View {
                     zeilennamen: Betriebsbild.tabellenzeilen(b),
                     spalten: Betriebsbild.tabellenspalten(b).map {
                         Tabelle.Spalte(name: $0.name, zellen: $0.zellen)
-                    }
+                    },
+                    handyfassung: .rollt
                 )
                 .padding(.top, 8)
             } label: {
@@ -292,67 +291,5 @@ struct BetriebSeite: View {
         } catch {
             fehler = .netz(error.localizedDescription)
         }
-    }
-}
-
-/// Die Wahl des Rückblicks in Tagen, in der Knopfform der Vorlage (`.kl-knopf`,
-/// `globals.css:892-895`).
-///
-/// **Warum nicht ``Tagewahl``.** Die gibt es, und fünf andere Seiten zeichnen mit ihr ihre
-/// Knopfreihe - in anderen Maßen: 11,5 Punkte, Polster 10/5, kein Rahmen, gewählt
-/// `amberWeich` auf `deep` (`WaermepumpeSeiten.swift:377-400`). Die Vorlage nennt für diese
-/// Knöpfe 13 Punkte, Polster 7/13, eine Haarlinie als Rahmen und gewählt `--amber` auf
-/// `--petrol` mit Gewicht 600, und zwar für **alle** Seiten, die `.kl-wahl` benutzen. Die
-/// gemeinsame Ansicht darauf zu ziehen, wäre richtig und ändert fünf Seiten auf einmal; das
-/// gehört in einen Schritt, der sie alle ansieht, und nicht in den Umbau dieser einen.
-struct Rueckblickwahl: View {
-    @Binding var tage: Int
-    let moeglich: [Int]
-
-    var body: some View {
-        Umbruchzeile(abstand: 6, zeilenabstand: 6) {
-            ForEach(moeglich, id: \.self) { n in
-                knopf(n)
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Rückblick")
-    }
-
-    /// **Die Teile einzeln benannt und mit angeschriebenem Typ.** Vier Fragezeichen in einer
-    /// Kette von Modifikatoren ergeben „unable to type-check this expression in reasonable
-    /// time“; der Prüfer sieht das nicht, der Mac dann schon.
-    private func knopf(_ n: Int) -> some View {
-        let gewaehlt: Bool = n == tage
-        return Button {
-            tage = n
-        } label: {
-            Text("\(n) Tage")
-                .font(schrift(gewaehlt))
-                .foregroundStyle(gewaehlt ? Farbe.petrol : Farbe.text2)
-                .padding(.horizontal, 13)
-                .padding(.vertical, 7)
-                .background(gewaehlt ? Farbe.amber : Color.clear)
-                .overlay(Capsule().strokeBorder(rand(gewaehlt), lineWidth: 1))
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(merkmale(gewaehlt))
-    }
-
-    /// Gewählt halbfett (`font-weight: 600`, `globals.css:894`): der Unterschied soll nicht
-    /// allein an der Farbe hängen.
-    private func schrift(_ gewaehlt: Bool) -> Font {
-        gewaehlt
-            ? Font.custom(Schrift.sansHalbfett, size: 13, relativeTo: .footnote)
-            : Schrift.klein
-    }
-
-    private func rand(_ gewaehlt: Bool) -> Color {
-        gewaehlt ? Farbe.amber : Farbe.linie1
-    }
-
-    private func merkmale(_ gewaehlt: Bool) -> AccessibilityTraits {
-        gewaehlt ? [.isButton, .isSelected] : [.isButton]
     }
 }
