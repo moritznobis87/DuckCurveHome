@@ -308,4 +308,59 @@ final class MarkenTests: XCTestCase {
         let dicht = Farbwert(0xFFFFFF, deckung: 1)
         XCTAssertEqual(offen.gemischt(mit: dicht, anteil: 0.25).deckung, 0.25, accuracy: 1e-9)
     }
+
+    // MARK: - Die Rampen der Jahreskarte
+
+    /// Die Rampen sind aus der Vorlage uebernommen; dieser Test haelt fest, dass sie es bleiben.
+    func testDieRampenDerJahreskarteHabenIhreEndenUndIhreLaenge() {
+        XCTAssertEqual(Marken.rampeEigen.count, 6)
+        XCTAssertEqual(Marken.rampeNetz.count, 6)
+        XCTAssertEqual(Marken.rampeWaerme.count, 6)
+        XCTAssertEqual(Marken.rampeNetzBilanz.count, 7)
+        // Der dunkelste Schritt der einfarbigen Rampen ist die Kartenflaeche selbst.
+        for rampe in [Marken.rampeEigen, Marken.rampeNetz, Marken.rampeWaerme] {
+            XCTAssertEqual(rampe.first, Farbwert(0x123544))
+        }
+        XCTAssertEqual(Marken.rampeEigen.last, Farbwert(0xFFD778))
+        XCTAssertEqual(Marken.rampeNetz.last, Farbwert(0xE4ECEF))
+        XCTAssertEqual(Marken.rampeWaerme.last, Farbwert(0xF6CDB4))
+    }
+
+    /// **Jede einfarbige Rampe wird durchgehend heller.** Das ist ihr Zweck: „mehr" soll sich
+    /// als „heller" lesen, ohne dass man eine Skala daneben braucht.
+    func testDieEinfarbigenRampenSteigenInDerHelligkeit() {
+        for (name, rampe) in [
+            ("eigen", Marken.rampeEigen), ("netz", Marken.rampeNetz),
+            ("waerme", Marken.rampeWaerme),
+        ] {
+            var vorher = -1.0
+            for schritt in 0...40 {
+                let dichte = Marken.rampenfarbe(rampe, anteil: Double(schritt) / 40).leuchtdichte
+                XCTAssertGreaterThan(dichte, vorher - 1e-9, "Rampe \(name) faellt bei \(schritt).")
+                vorher = dichte
+            }
+        }
+    }
+
+    /// Die divergierende Rampe: beide Pole gleich hell, die Mitte deutlich dunkler.
+    func testDieNetzbilanzIstAnBeidenPolenGleichHellUndInDerMitteRuhig() {
+        let links = Marken.rampenfarbe(Marken.rampeNetzBilanz, anteil: 0)
+        let rechts = Marken.rampenfarbe(Marken.rampeNetzBilanz, anteil: 1)
+        let mitte = Marken.rampenfarbe(Marken.rampeNetzBilanz, anteil: 0.5)
+        XCTAssertEqual(links.leuchtdichte, rechts.leuchtdichte, accuracy: 0.08)
+        XCTAssertLessThan(mitte.leuchtdichte, links.leuchtdichte / 2)
+        XCTAssertLessThan(mitte.leuchtdichte, rechts.leuchtdichte / 2)
+    }
+
+    /// Eine leere Rampe darf keine Farbe erfinden, und die Enden gelten ausserhalb.
+    func testDieRampenrechnungHaeltSichAnIhreGrenzen() {
+        XCTAssertEqual(Marken.rampenfarbe([], anteil: 0.5), Marken.text3)
+        XCTAssertEqual(Marken.rampenfarbe(Marken.rampeEigen, anteil: -2), Marken.rampeEigen[0])
+        XCTAssertEqual(Marken.rampenfarbe(Marken.rampeEigen, anteil: 9), Marken.rampeEigen[5])
+        XCTAssertEqual(Marken.rampenfarbe(Marken.rampeEigen, anteil: .nan), Marken.rampeEigen[0])
+        // Die Abdeckungsrampe laeuft jetzt ueber dieselbe Rechnung und muss dasselbe liefern.
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 0.5), Marken.abdeckungTeils)
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 0.25),
+                       Marken.abdeckungFehlend.gemischt(mit: Marken.abdeckungTeils, anteil: 0.5))
+    }
 }
