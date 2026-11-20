@@ -45,7 +45,6 @@ struct ReglerSeite: View {
     @State private var laeuft = false
     @State private var meldungen: [Meldung] = []
     @State private var stunden: [Reglerpult.Kurvenpunkt] = []
-    @State private var kennzahlen: ReglerKennzahlenOut?
     @State private var nurLesenOffen = false
     @State private var protokollOffen = true
     @State private var vermerkeOffen = false
@@ -70,7 +69,6 @@ struct ReglerSeite: View {
         }
         .task { await beobachte() }
         .task { await holeStunden() }
-        .task { kennzahlen = try? await haus.api.reglerKennzahlen(tage: 7) }
         .safeAreaInset(edge: .bottom, spacing: 0) { leiste }
     }
 
@@ -116,7 +114,6 @@ struct ReglerSeite: View {
         nurLesenKarte(e)
         protokollkarte(e)
         vermerkekarte(e)
-        kennzahlenkarte()
     }
 
     @ViewBuilder private func fussteil(_ e: ReglerEinstellungenOut) -> some View {
@@ -322,43 +319,14 @@ struct ReglerSeite: View {
         }
     }
 
-    /// Was der Regler in den letzten Tagen wirklich getan hat, nach Betriebszustand.
-    ///
-    /// **Diese Karte hängt in der Vorlage an `/waerme/waermepumpe`** und nicht am Regler
-    /// (`waermepumpe/Waermepumpe.tsx:104`). Sie bleibt hier bewusst stehen, und zwar als
-    /// letzte: sie ist die Gegenprobe zu allem darüber. Dort steht, was eingestellt *ist*; hier
-    /// steht, wie viele Minuten die Anlage in welchem Zustand war und mit welchem Vorlauf. Eine
-    /// Heizkurve, die auf dem Papier stimmt, und ein Vorlauf, der ständig fünf Kelvin darüber
-    /// liegt, sind zwei verschiedene Auskünfte. Sie an ihren Platz in der Vorlage zu verschieben
-    /// heißt, die Wärmepumpenseite zu ändern, und das ist ein eigener Griff.
-    ///
-    /// **Am Telefon rollt sie seitlich.** Sie ist die zweite der beiden Tabellen, die die
-    /// Vorlage nicht zur Liste zerfallen lässt (`waermepumpe/Kennzahlen.tsx:50` in `.kl-rollt`,
-    /// `globals.css:912-913`, `handy.css:246-247`) - mit dreizehn Spalten in der Vorlage ist sie
-    /// die breiteste, die das Projekt hat.
-    @ViewBuilder private func kennzahlenkarte() -> some View {
-        if let k = kennzahlen, !k.zeilen.isEmpty {
-            Karte(kicker: "Was der Regler tat", titel: "\(k.tage) Tage") {
-                Tabelle(
-                    zeilennamen: k.zeilen.map { "Zustand \($0.code)" },
-                    spalten: kennzahlenspalten(k.zeilen),
-                    handyfassung: .rollt
-                )
-            }
-        }
-    }
-
-    private func kennzahlenspalten(_ zeilen: [ReglerKennzahlOut]) -> [Tabelle.Spalte] {
-        [
-            .init(name: "Minuten", zellen: zeilen.map { Formate.zahl(Double($0.minuten), stellen: 0) }),
-            .init(name: "davon gelaufen", zellen: zeilen.map { Formate.zahl(Double($0.laufMin), stellen: 0) }),
-            .init(name: "Vorlauf", zellen: zeilen.map { Formate.celsius($0.vorlaufC, stellen: 1) }),
-            .init(name: "Sollvorlauf", zellen: zeilen.map { Formate.celsius($0.vorlaufSollC, stellen: 1) }),
-            .init(name: "angefordert", zellen: zeilen.map { Formate.prozent($0.angefordertAnteil) }),
-            .init(name: "Heizstab", zellen: zeilen.map { Formate.prozent($0.heizstabAnteil) }),
-            .init(name: "zuletzt", zellen: zeilen.map { $0.zuletzt.map { Formate.hhmm(iso: $0) } ?? Formate.leer }),
-        ]
-    }
+    // **Die Karte „Was der Regler tat“ ist am 20.11.2026 von hier weggezogen.** Sie hängt in
+    // der Vorlage an `/waerme/waermepumpe` (`waermepumpe/Waermepumpe.tsx:104`) und in
+    // `Regler.tsx` überhaupt nicht; hier stand sie mit sieben der dreizehn Spalten, ohne die
+    // beiden Erklärabsätze und ohne die Markierung der laufenden Kennzahl. Der Kommentar, der
+    // sie hier gehalten hat, nannte sie „die Gegenprobe zu allem darüber“ - das bleibt wahr,
+    // und darum steht sie jetzt vollständig auf der Wärmepumpenseite, zu der auch der zweite
+    // Verweis im Fuß führt. Gerechnet wird sie in ``Wpseite``, gezeichnet in
+    // ``WaermepumpeSeite``.
 
     /// Die zwei Verweise im Fuß (`Regler.tsx:279-282`): was der Regler aus der Kurve wirklich
     /// macht, steht auf der Betriebsseite – und genau darauf zielt der Näherungsabsatz.
