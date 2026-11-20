@@ -1,0 +1,17 @@
+# Duck Curve Home: die Dienste des Hausgeraets (deploy/haus/compose.yaml), gestartet beim Booten.
+[Unit]
+Description=Duck Curve Home
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Beim ersten Start werden die Images geladen; das darf dauern.
+TimeoutStartSec=0
+ExecStart=/usr/local/bin/dch neustart
+ExecStop=/usr/local/bin/dch stoppen
+
+[Install]
+WantedBy=multi-user.target

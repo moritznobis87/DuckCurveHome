@@ -1317,6 +1317,13 @@ unkritisch. Deploy-Rollover: Bridge reconnectet in < 5 s, Ringpuffer überbrück
 - Dieselbe Sicherheitsarchitektur für die Kontakte (Abschnitt 11) - der Guardian läuft in beiden Profilen auf dem
   Haus-Rechner.
 
+### 15.5 Das Hausgerät (Plan vom 15.11.2026)
+
+Wie Profil A als eigenes Gerät aussieht - Dienste, Transferdienst zu Home Assistant, Betriebssystem,
+Kioskmodus, Marke vom Einschalten an, Wartungszugänge und die Auslieferung an Kunden (ein Abbild auf der
+NVMe-SSD, individuell erst beim ersten Start, keine SD-Karte) - steht in [`docs/HAUSGERAET.md`](HAUSGERAET.md).
+Der Umbau ist vorgemerkt, nicht freigegeben ([Q12](OPEN_QUESTIONS.md)).
+
 ## 16. PostgreSQL-Datenmodell
 
 Schema `dch` (nicht `public`), Zeitstempel `timestamptz`, IDs `uuid` (v7 wenn verfügbar, sonst v4), Konfigurationen

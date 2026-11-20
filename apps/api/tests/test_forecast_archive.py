@@ -204,3 +204,25 @@ async def test_ein_abgelegter_fahrplan_laesst_sich_als_absicht_lesen(
     stand = stand_vor(punkte, raster_min=15)
     assert stand(ziel + timedelta(minutes=2)) == 1.0, "um 9:02 galt die Freigabe von 8:00"
     assert stand(ziel + timedelta(minutes=8)) == 0.0, "um 9:08 der Widerruf von 9:05"
+
+
+async def test_ein_lauf_haelt_den_fremdschluessel_ein(tmp_path: Path) -> None:
+    """Wie Postgres: mit geprueften Fremdschluesseln. Ohne sie schrieb SQLAlchemy die Punkte vor
+    ihrem Lauf, und auf dem Hausgeraet ging jeder Lauf mit "forecast run not stored" verloren
+    (19.11.2026). SQLite prueft Fremdschluessel nur mit PRAGMA, also wird es hier eingeschaltet."""
+    from sqlalchemy import event
+
+    engine = make_engine(f"sqlite+aiosqlite:///{tmp_path / 'fk.sqlite'}")
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _fremdschluessel(verbindung, _eintrag):  # type: ignore[no-untyped-def]
+        verbindung.execute("PRAGMA foreign_keys=ON")
+
+    await create_all_for_tests(engine)
+    repos = SqlRepositories(engine)
+    try:
+        await repos.save_forecast_run(lauf(anzahl=5))
+        assert await zaehle(repos, m.ForecastRun) == 1
+        assert await zaehle(repos, m.ForecastPoint) == 5
+    finally:
+        await engine.dispose()

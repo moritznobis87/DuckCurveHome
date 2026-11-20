@@ -869,6 +869,12 @@ class SqlRepositories:
                     params={"fingerabdruck": lauf.fingerabdruck},
                 )
             )
+            # Erst der Lauf, dann seine Punkte. Zwischen den beiden Modellen gibt es keine
+            # `relationship`, also kennt SQLAlchemy die Reihenfolge nicht und schrieb die Punkte
+            # zuerst; Postgres wies sie wegen des Fremdschluessels ab ("forecast run not stored"
+            # bei jedem Lauf). SQLite prueft Fremdschluessel ohne PRAGMA nicht, darum fiel es in den
+            # Tests nicht auf (gefunden am 19.11.2026 beim ersten Start auf dem Hausgeraet).
+            await s.flush()
             s.add_all(
                 m.ForecastPoint(
                     run_id=kennung,
