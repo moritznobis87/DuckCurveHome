@@ -442,6 +442,27 @@ final class DatenbildTests: XCTestCase {
         XCTAssertEqual(Abdeckungsraster.stufe(minuten: 5), .fehlend)
     }
 
+    /// Die Zellfarbe: `nil` bleibt `nil`, und die Enden der Rampe liegen bei 0 und 60 Minuten.
+    func testEineStundeOhneMinutenzeileBekommtKeineFarbe() {
+        XCTAssertNil(
+            Abdeckungsraster.farbe(minuten: nil),
+            "Ohne Minutenzeile stand der Dienst still - das ist eine andere Auskunft als null "
+                + "Minuten, und darum keine Farbe und nicht die rote.")
+        XCTAssertEqual(Abdeckungsraster.farbe(minuten: 0), Marken.abdeckungFehlend)
+        XCTAssertEqual(Abdeckungsraster.farbe(minuten: 30), Marken.abdeckungTeils)
+        XCTAssertEqual(Abdeckungsraster.farbe(minuten: 60), Marken.abdeckungVoll)
+    }
+
+    /// Die Skala ist fest: mehr als sechzig Minuten gibt es nicht, und nichts darunter faellt
+    /// aus der Rampe.
+    func testDieZellfarbeHaeltSichAnDieFesteSkalaVonNullBisSechzig() {
+        XCTAssertEqual(Abdeckungsraster.farbe(minuten: 90), Marken.abdeckungVoll)
+        XCTAssertEqual(Abdeckungsraster.farbe(minuten: -5), Marken.abdeckungFehlend)
+        // 55 und 48 Minuten muessen sich unterscheiden - genau dafuer ist die Skala stetig.
+        XCTAssertNotEqual(
+            Abdeckungsraster.farbe(minuten: 55), Abdeckungsraster.farbe(minuten: 48))
+    }
+
     func testAlleReihenDerAntwortKommenAufDasselbeRasterDerTage() {
         let antwort = CoverageOut(
             start: "2026-11-09T00:00:00+01:00", end: "2026-11-11T00:00:00+01:00",
@@ -519,5 +540,25 @@ final class DatenbildTests: XCTestCase {
             Abdeckungsraster.alter(
                 lastAt: Zeit.iso(jetzt.addingTimeInterval(60)), jetzt: jetzt),
             "letzter Wert gerade eben")
+    }
+
+    // MARK: - Die Worte der Seite
+
+    /// **Ein Test gegen das Verkuerzen.** Die drei Absaetze sind das, was die Bilder lesbar
+    /// macht; sie fehlten einmal ganz, und ein halber Absatz faellt beim Lesen nicht auf.
+    /// Darum steht hier, was in jedem von ihnen vorkommen muss.
+    func testDieDreiAbsaetzeDerMethodeNennenIhreGegenproben() {
+        XCTAssertEqual(Pruefworte.methode.count, 3)
+        XCTAssertEqual(Pruefworte.methode, [Pruefworte.flaeche, Pruefworte.ladestand, Pruefworte.zaehler])
+        XCTAssertTrue(Pruefworte.flaeche.contains("Nulllinie"))
+        XCTAssertTrue(Pruefworte.flaeche.contains("Zeitfenster"))
+        XCTAssertTrue(Pruefworte.ladestand.contains("4,2 kWh"))
+        XCTAssertTrue(Pruefworte.ladestand.contains("5,1-kWh-Speicher"))
+        XCTAssertTrue(Pruefworte.zaehler.contains("Haus = PV + Netz + Speicher"))
+        XCTAssertTrue(Pruefworte.zaehler.contains("0,00 kW"))
+        for absatz in Pruefworte.methode {
+            XCTAssertGreaterThan(absatz.count, 200, "Ein Absatz, der kuerzer ist, erklaert nichts.")
+            XCTAssertTrue(absatz.hasSuffix("."), "Jeder Absatz endet als Satz.")
+        }
     }
 }

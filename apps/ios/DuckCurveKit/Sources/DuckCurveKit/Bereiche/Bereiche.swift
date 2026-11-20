@@ -153,8 +153,15 @@ public enum Bereiche {
                 Reiter(weg: "/waerme/raeume", name: "Heizkreise", mitZeitraum: true, spannen: [.tag]),
                 Reiter(weg: "/system", name: "Prognose", nurHausherr: true),
                 Reiter(
+                    // **Nur Tage.** Die Vorlage schaltet die Spannenwahl auf dieser Seite
+                    // ausdrücklich ab (`DataCheck.tsx:59-68`, `showPeriods={false}`), weil die
+                    // Prüfansicht Minutenwerte zeigt: über eine Woche gelegt ergeben sie ein
+                    // Bild, in dem nichts zu erkennen ist. Hier standen Tag, Woche und Monat -
+                    // und die Seite selbst bot nur Tage an. Reiter und Seite widersprachen
+                    // sich also, und der Reiter gewann: wer Woche wählte, bekam ein Diagramm
+                    // aus einem Tag mit der Überschrift einer Woche.
                     weg: "/system/daten", name: "Daten prüfen", mitZeitraum: true,
-                    spannen: [.tag, .woche, .monat], nurHausherr: true),
+                    spannen: [.tag], nurHausherr: true),
                 Reiter(weg: "/waerme/annahmen", name: "Annahmen", nurHausherr: true),
                 Reiter(weg: "/system/mitteilungen", name: "Mitteilungen", nurHausherr: true),
                 Reiter(weg: "/system/haustuer", name: "Haustür", nurHausherr: true),

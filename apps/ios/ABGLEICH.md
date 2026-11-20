@@ -13,8 +13,8 @@ nicht abgehakt.
 |---|---|
 | verglichen | **28 von 28 Seiten** |
 | Punkte gesamt | 167 |
-| davon erledigt | **43** |
-| offen | **124**, davon 1 nach Prüfung keine Lücke |
+| davon erledigt | **45** |
+| offen | **122**, davon 1 nach Prüfung keine Lücke |
 
 ## Erledigt
 
@@ -64,13 +64,17 @@ nicht abgehakt.
 
 ## Was dabei auffiel und größer ist als eine Seite
 
-- **spürbar** · abschnitt — Die Wärmekarte „Kommen die Daten an? 28 Tage" auf *Daten prüfen*:
-  28 Spalten mal 24 Zeilen, Farbe ist die Zahl der Minuten je Stunde (Rampe rot → sandfarben →
-  blaugrau, absichtlich herum: eine Karte ohne Lücken soll langweilig aussehen), eine Zelle
-  ohne Farbe heißt „keine Minutenzeile", eine rote „Zeilen da, diese Reihe fehlt darin". Die
-  Abdeckungstabelle der App trägt dieselben Zahlen, aber nicht das Bild.
-  - Vorlage: `apps/web/src/components/reports/CoverageMap.tsx:128-154`
-  - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
+- ~~**spürbar** · abschnitt — Die Wärmekarte „Kommen die Daten an? 28 Tage" auf *Daten
+  prüfen*~~ · **erledigt 20.11.** – 28 Spalten mal 24 Zeilen je Reihe, Farbe ist die Zahl der
+  Minuten je Stunde auf einer stetigen Rampe von Rot über Sandfarben zu Blaugrau, Skala fest
+  von 0 bis 60. Eine Zelle ohne Farbe wird nicht gezeichnet: „keine Minutenzeile" ist eine
+  andere Auskunft als „diese Reihe fehlt darin", und beides sah vorher gleich aus, weil es
+  keines von beiden gab. Darüber je Reihe die Kopfzeile der Vorlage (Abdeckung mit zwei Stellen
+  über 99,9 Prozent und in Alarmfarbe unter 99, unvollständige Stunden, längster Ausfall, Alter
+  des letzten Werts als Satz), darunter die Lesehilfe in der Methode. Statt der Tabelle, die
+  dieselben Zahlen trug, aber kein Muster zeigte. Gezeichnet in einem `Canvas` je Reihe
+  (`Diagramme/Abdeckungskarte.swift`), gerechnet im Kern (`Abdeckungsraster`, `Tag.tagMonat`,
+  `Marken.abdeckungsfarbe`).
 - **spürbar** · navigation — Der Sprung aus einer Zeile des Ereignisrasters (*Wirkung*) in die
   Wiedergabe dieses Augenblicks. `Wirkungsbild.Ereigniszeile.weg` steht fertig da
   (`/waerme/wiedergabe?day=…&t=…`), aber `Wegweiser.gehe` nimmt nur einen Weg, `Seitenwahl`
@@ -514,7 +518,8 @@ dieser Liste, sondern kam aus Screenshots vom Gerät.
   - Vorlage: `apps/web/src/components/reports/DataCheck.tsx:91-96; apps/web/src/components/reports/Sources.tsx:47-81`
   - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:505-571 (keine Quellenkarte); Teilstueck vorhanden in apps/ios/DuckCurveHome/Bausteine/Blaetter.swift:353-354`
   - bauen in: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift`
-- **mittel** — Abdeckung je Stunde als Flaeche fehlt
+- ~~**mittel** — Abdeckung je Stunde als Flaeche fehlt~~ · **erledigt 20.11.** – `hours` wird
+  jetzt gelesen (`Abdeckungsraster.baue`), und die Karte steht an der Stelle der Vorlage.
   - Befund: Das Feld traegt die Stundenwerte (CoverageSeriesOut.hours, apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Schema.swift:2365), wird aber nirgends gelesen: der einzige Treffer fuer .hours ausserhalb des Schemas ist ein Doc-Kommentar in apps/ios/DuckCurveKit/Sources/DuckCurveKit/Modelle/Mischwert.swift:10. Die App fasst stattdessen je Reihe eine Tabellenzeile zusammen (apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:511-546: vollstaendig, Minuten, lueckige Stunden, laengste Luecke, zuletzt). Ein Tagesraster kann die App zwar zeichnen, aber nur fuer Energiemengen und nicht fuer Abdeckung je Stunde (apps/ios/DuckCurveHome/Seiten/Energie/JahreskarteSeite.swift:11-33, YearMapOut); die Unterscheidung leere gegen rote Zelle gibt es dort nicht.
   - Vorlage: `apps/web/src/components/reports/CoverageMap.tsx:34-43, 104-131`
   - In der App: `apps/ios/DuckCurveHome/Seiten/Technik/SystemSeiten.swift:511-546`

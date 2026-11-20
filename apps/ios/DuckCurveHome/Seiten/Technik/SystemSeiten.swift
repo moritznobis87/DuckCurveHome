@@ -765,17 +765,9 @@ struct DatenSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
 
-    /// „gesehen / erwartet" als ein Feld.
-    ///
-    /// **Als Ausdruck in der Tabelle gab der Compiler auf** („unable to type-check this
-    /// expression in reasonable time"). Zeichenkettenverkettung mit Interpolation und zwei
-    /// Umwandlungen darin oeffnet ihm zu viele Moeglichkeiten; als Funktion mit angeschriebenen
-    /// Typen ist es eindeutig - und lesbarer.
-    private func minutenpaar(_ s: CoverageSeriesOut) -> String {
-        let gesehen = Formate.zahl(Double(s.minutesSeen), stellen: 0)
-        let erwartet = Formate.zahl(Double(s.minutesExpected), stellen: 0)
-        return "\(gesehen) / \(erwartet)"
-    }
+    /// Wie viele Tage die Waermekarte zeigt (`DataCheck.tsx:98`). Die Zahl steht im Kicker und
+    /// in der Abfrage, darum nur einmal.
+    private static let kartentage = 28
 
     @State private var abdeckung: CoverageOut?
     @State private var bestand: StorageReportOut?
@@ -811,51 +803,22 @@ struct DatenSeite: View {
                 Quellenkarte(zeilen: Quellenstand.zeilen(aus: haus.zustand?.system))
             }
             if let a = abdeckung {
-                Karte(kicker: "Abdeckung") {
-                    if a.series.isEmpty {
-                        Leer(satz: "Keine Reihen gemeldet.")
-                    } else {
-                        Tabelle(
-                            zeilennamen: a.series.map(\.labelDe),
-                            spalten: [
-                                .init(
-                                    name: "vollständig",
-                                    zellen: a.series.map { Formate.prozent($0.coverage) }
-                                ),
-                                .init(
-                                    name: "Minuten",
-                                    zellen: a.series.map(minutenpaar)
-                                ),
-                                .init(
-                                    name: "lückige Stunden",
-                                    zellen: a.series.map { String($0.incompleteHours) }
-                                ),
-                                .init(
-                                    name: "längste Lücke",
-                                    zellen: a.series.map {
-                                        Formate.zahl(Double($0.longestOutageH), stellen: 1) + " h"
-                                    }
-                                ),
-                                .init(
-                                    name: "zuletzt",
-                                    zellen: a.series.map {
-                                        $0.lastAt.map { Formate.hhmm(iso: $0) } ?? Formate.leer
-                                    }
-                                ),
-                            ]
-                        )
-                    }
+                Karte(
+                    kicker: "Kommen die Daten an? \(Self.kartentage) Tage",
+                    beiwerk: AnyView(
+                        Text("Farbe = Minuten je Stunde, 0 bis 60")
+                            .font(Schrift.winzig)
+                            .foregroundStyle(Farbe.text3))
+                ) {
+                    Abdeckungskarte(reihen: Abdeckungsraster.baue(a), jetzt: haus.jetzt)
                 }
-            }
-            if let b = bestand {
-                datenbestand(b)
             }
             if let d = diagnose, !d.isEmpty {
                 // **Reiner Text, und das soll er bleiben.** Die Tagesdiagnose ist eine Tabelle
                 // zum Lesen, keine Datenstruktur - der Dienst schickt sie darum ohne
                 // JSON-Umschlag. Sie in Zeilen zu zerlegen und neu zu setzen hiesse, sie zu
                 // interpretieren.
-                Karte(kicker: "Tagesdiagnose") {
+                Karte(kicker: "Stundenbilanz und auffällige Strecken") {
                     ScrollView(.horizontal, showsIndicators: true) {
                         Text(d)
                             .font(Schrift.zahlKlein)
@@ -864,12 +827,24 @@ struct DatenSeite: View {
                     }
                 }
             }
-            Methode([
-                abdeckung?.noteDe,
-                bestand?.noteDe,
-                "Eine Reihe mit 100 Prozent hat in jeder Minute des Zeitraums einen Wert. "
-                    + "Alles darunter heißt: die Berichte rechnen mit weniger.",
-            ])
+            // **Der Bestand steht unten, nicht oben.** In der Vorlage gibt es ihn auf
+            // dieser Seite gar nicht; er ist kein Fehler, nahm aber den Platz vor der
+            // Hauptsache ein (`DataCheck.tsx:88-90`: der Augenblick vor der Karte, die Karte
+            // vor der Bilanz).
+            if let b = bestand {
+                datenbestand(b)
+            }
+            // Die drei Absaetze der Vorlage (`DataCheck.tsx:119-147`) erklaeren, wie die
+            // Bilder darueber zu lesen sind - sie fehlten ganz. Dann die Noten des Dienstes,
+            // und dazwischen der Absatz zur leeren gegen die rote Zelle, der in der Vorlage
+            // unmittelbar unter der Karte steht (`CoverageMap.tsx:146-152`).
+            Methode(
+                Pruefworte.methode.map(Optional.init) + [
+                    abdeckung?.noteDe,
+                    Abdeckungsraster.lesehilfe,
+                    bestand?.noteDe,
+                    Pruefworte.abdeckungssatz,
+                ])
         }
         .task(id: z) { await lade(z) }
     }
@@ -917,21 +892,19 @@ struct DatenSeite: View {
         kurve = Pruefkurve.baue(tag: z.anker, historie: historie)
         hatMinuten = !kurve.leer
 
-        let tage: Int =
-            switch z.spanne {
-            case .tag: 1
-            case .woche: 7
-            case .monat: 31
-            case .jahr: 365
-            }
-        async let a = try? haus.api.abdeckung(anker: z.anker, tage: tage)
+        // **Immer achtundzwanzig Tage, unabhaengig von der Spanne.** Die Karte ist das
+        // Gegenstueck zur Frage „kommen die Daten an?", und die beantwortet ein einzelner Tag
+        // nicht: ein Abriss, der jede Nacht wiederkommt, ist erst ueber Wochen ein Muster
+        // (`DataCheck.tsx:98`, `days = 28`). Die Spannenwahl steht auf dieser Seite ohnehin
+        // auf Tag.
+        async let a = try? haus.api.abdeckung(anker: z.anker, tage: Self.kartentage)
         async let b = try? haus.api.datenbestand()
         // Die Tagesdiagnose gibt es nur für einen Tag - für eine Woche wäre sie sieben Tabellen.
         async let d = z.spanne == .tag ? try? haus.api.diagnose(tag: z.anker) : nil
         abdeckung = await a
         bestand = await b
         diagnose = await d
-        fehler = abdeckung == nil ? .netz("Die Abdeckung ist nicht erreichbar.") : nil
+        fehler = abdeckung == nil ? .netz(Abdeckungsraster.nichtAbrufbar) : nil
     }
 }
 

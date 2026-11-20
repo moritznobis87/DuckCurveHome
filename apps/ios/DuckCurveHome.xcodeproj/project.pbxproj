@@ -34,6 +34,7 @@
 		6FCF3DE35A951A727A3F0312 /* Ausblickkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7679B32D01774CCA129F24A6 /* Ausblickkarte.swift */; };
 		7A6C6E5925D48EE511579D9D /* Glasmodell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE2E906879843FBFF8C04AC /* Glasmodell.swift */; };
 		7BA728D9D24497FBC2C1119E /* Unteransichten.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC7469018CE630476024776F /* Unteransichten.swift */; };
+		86081F4D7F554FABD4D7897D /* Abdeckungskarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E5135A3C960FF18F667327A /* Abdeckungskarte.swift */; };
 		8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */; };
 		92BED5F9FA7987479E09055C /* AnlageSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201BD07AEDBDDA5B2E91E375 /* AnlageSeite.swift */; };
 		9791AE7D34591424DCAAD5DB /* Farben.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E127C736AC8ABEDFAB4437 /* Farben.swift */; };
@@ -92,6 +93,7 @@
 		4A4D3E090FA7E4373CF82D8F /* Hauskonsolenleiste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hauskonsolenleiste.swift; sourceTree = "<group>"; };
 		4A6833877D0B3131B03C55F6 /* StromSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StromSeite.swift; sourceTree = "<group>"; };
 		4DDE9029416AEAAC086E9A89 /* Raumkachel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Raumkachel.swift; sourceTree = "<group>"; };
+		4E5135A3C960FF18F667327A /* Abdeckungskarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Abdeckungskarte.swift; sourceTree = "<group>"; };
 		4E942EE0CAD6144F59FB8B7A /* SystemSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSeiten.swift; sourceTree = "<group>"; };
 		4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alfredblatt.swift; sourceTree = "<group>"; };
 		4FE935C11F91B3B4788FA2C8 /* Karte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Karte.swift; sourceTree = "<group>"; };
@@ -172,6 +174,7 @@
 		304A7B322587ABC509023368 /* Diagramme */ = {
 			isa = PBXGroup;
 			children = (
+				4E5135A3C960FF18F667327A /* Abdeckungskarte.swift */,
 				5B121AA23E50590AAD07F502 /* Anlagenbild.swift */,
 				136B81A72166E32541A4ABF9 /* Anlagenrohre.swift */,
 				98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */,
@@ -446,6 +449,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				86081F4D7F554FABD4D7897D /* Abdeckungskarte.swift in Sources */,
 				3EF3EF537DB4E937E636B504 /* Abweichungsmatrix.swift in Sources */,
 				8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */,
 				BF25DAE57629F583E2BC4442 /* Ambiente.swift in Sources */,

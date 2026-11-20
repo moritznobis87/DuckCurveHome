@@ -221,4 +221,91 @@ final class MarkenTests: XCTestCase {
         // ΔE76 muss bei gesaettigten Farben deutlich darueber liegen - das ist der Grund fuer ΔE2000.
         XCTAssertGreaterThan(Marken.ofen.abstand76(zu: Marken.waermepumpe), Marken.ofen.abstand(zu: Marken.waermepumpe))
     }
+
+    // MARK: - Die Rampe der Verfügbarkeit
+
+    /// Die drei Stopps müssen sich auch ohne Farbwahrnehmung trennen lassen: die Karte hat
+    /// keine Beschriftung je Zelle, nur Helligkeit und Ton.
+    func testDieDreiStufenDerAbdeckungTrennenSichInDerHelligkeit() {
+        let stufen = Marken.abdeckung
+        XCTAssertEqual(stufen.count, 3)
+        for (a, b) in zip(stufen, stufen.dropFirst()) {
+            let abstand = abs(a.leuchtdichte - b.leuchtdichte)
+            XCTAssertGreaterThan(
+                abstand, 0.04,
+                "Zwei benachbarte Stufen der Abdeckungskarte müssen sich in der Helligkeit "
+                    + "unterscheiden, nicht nur im Farbton.")
+        }
+    }
+
+    func testDieEndenDerAbdeckungsrampeSindDieSchonGepruefentenMarken() {
+        XCTAssertEqual(Marken.abdeckungFehlend, Marken.alarm, "rot ist das laute Ende")
+        XCTAssertEqual(Marken.abdeckungVoll, Marken.mist, "blaugrau das ruhige")
+    }
+
+    /// Die Raender der Rampe sind genau die Stopps, und die Mitte ist genau der Sandton.
+    func testDieRampeTrifftAnIhrenStuetzstellenDieStopps() {
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 0), Marken.abdeckungFehlend)
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 0.5), Marken.abdeckungTeils)
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 1), Marken.abdeckungVoll)
+    }
+
+    /// Zwischen den Stopps wird gemischt - sonst waere die Karte dreifarbig, und eine Stunde
+    /// mit 55 Minuten saehe aus wie eine mit 48.
+    func testZwischenDenStoppsLiegenEigeneToene() {
+        let mitte = Marken.abdeckungsfarbe(anteil: 0.75)
+        XCTAssertNotEqual(mitte, Marken.abdeckungTeils)
+        XCTAssertNotEqual(mitte, Marken.abdeckungVoll)
+        // Sie liegt zwischen den beiden, Kanal fuer Kanal.
+        let a = Marken.abdeckungTeils
+        let b = Marken.abdeckungVoll
+        XCTAssertEqual(mitte.rot, (a.rot + b.rot) / 2, accuracy: 1e-9)
+        XCTAssertEqual(mitte.gruen, (a.gruen + b.gruen) / 2, accuracy: 1e-9)
+        XCTAssertEqual(mitte.blau, (a.blau + b.blau) / 2, accuracy: 1e-9)
+    }
+
+    /// **Die Rampe ist keine Helligkeitsrampe, und das muss man wissen.** Der Sandton der Mitte
+    /// ist heller als beide Enden; von null Minuten nach sechzig geht die Helligkeit erst
+    /// aufwaerts und dann wieder abwaerts. Zweideutig wird sie dadurch nicht, denn die Enden
+    /// trennt der Farbton (rot gegen blaugrau), und innerhalb jeder Haelfte ist die Helligkeit
+    /// eindeutig. Genau das haelt dieser Test fest, damit ein Wechsel der Stopps die
+    /// Eindeutigkeit nicht unbemerkt verliert.
+    func testJedeHaelfteDerRampeIstInDerHelligkeitEindeutig() {
+        func dichten(_ von: Int, _ bis: Int) -> [Double] {
+            (von...bis).map { Marken.abdeckungsfarbe(anteil: Double($0) / 60).leuchtdichte }
+        }
+        for (a, b) in zip(dichten(0, 30), dichten(0, 30).dropFirst()) {
+            XCTAssertGreaterThan(b, a, "Die erste Haelfte wird heller, Minute fuer Minute.")
+        }
+        for (a, b) in zip(dichten(30, 60), dichten(30, 60).dropFirst()) {
+            XCTAssertLessThan(b, a, "Die zweite Haelfte wird ruhiger, Minute fuer Minute.")
+        }
+    }
+
+    /// Werte ausserhalb der Rampe und ein Unwert duerfen keine fremde Farbe erfinden.
+    func testAusserhalbDerRampeStehenIhreEnden() {
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: -3), Marken.abdeckungFehlend)
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 7), Marken.abdeckungVoll)
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: .nan), Marken.abdeckungFehlend)
+    }
+
+    /// Mischen ist stetig und an den Enden genau: 0 ist diese Farbe, 1 die andere.
+    func testGemischtTrifftDieEndenUndBeschneidetDenAnteil() {
+        let a = Farbwert(0x000000)
+        let b = Farbwert(0xFFFFFF)
+        XCTAssertEqual(a.gemischt(mit: b, anteil: 0), a)
+        XCTAssertEqual(a.gemischt(mit: b, anteil: 1), b)
+        XCTAssertEqual(a.gemischt(mit: b, anteil: -1), a, "unter null wird beschnitten")
+        XCTAssertEqual(a.gemischt(mit: b, anteil: 2), b, "ueber eins auch")
+        XCTAssertEqual(a.gemischt(mit: b, anteil: .nan), a, "ein Unwert laesst die Farbe stehen")
+        XCTAssertEqual(a.gemischt(mit: b, anteil: 0.5).rot, 0.5, accuracy: 1e-9)
+    }
+
+    /// Auch die Deckung wird gemischt - eine Farbe mit Deckung 0 darf nicht plötzlich deckend
+    /// werden, nur weil sie zu 10 Prozent eingemischt ist.
+    func testGemischtNimmtAuchDieDeckungMit() {
+        let offen = Farbwert(0xFFFFFF, deckung: 0)
+        let dicht = Farbwert(0xFFFFFF, deckung: 1)
+        XCTAssertEqual(offen.gemischt(mit: dicht, anteil: 0.25).deckung, 0.25, accuracy: 1e-9)
+    }
 }
