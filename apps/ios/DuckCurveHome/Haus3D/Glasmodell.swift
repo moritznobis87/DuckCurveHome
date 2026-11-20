@@ -105,7 +105,12 @@ struct Glasmodell: View {
                         guard zieht else { return }
                         // Eine Bildschirmbreite ist eine halbe Umdrehung: so kommt man mit
                         // einem Wisch um das Haus, ohne dass ein Zittern es herumreisst.
-                        drehung = beimZiehenAb + griff.translation.width / raum.size.width * .pi
+                        // `.pi` ausgeschrieben: `drehung` ist ein Double, die Verschiebung
+                        // eine CGFloat - ohne den Typ davor findet der Compiler zwei Wege und
+                        // nimmt keinen („ambiguous use of 'pi'").
+                        drehung =
+                            beimZiehenAb
+                            + Double(griff.translation.width / raum.size.width) * Double.pi
                     }
                     .onEnded { griff in
                         if zieht {
