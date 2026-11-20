@@ -25,6 +25,19 @@ struct Waermedaten: Sendable {
 /// ist: der Strom der Wärmepumpe nach Herkunft, die Taktung, der Ofen. Die Vorlage
 /// (`apps/web/src/components/reports/HeatOverview.tsx`) hat dafür zwei Seiten
 /// zusammengelegt, die für denselben Tag verschiedene Zahlen nannten.
+///
+/// **`/waerme/bilanz` ist keine Seite mehr, und das ist der Punkt.** Bis zum 10.11.2026 stand
+/// hier eine zweite Seite „Bilanz“ daneben; die Vorlage hat sie zur Weiterleitung gemacht
+/// (`apps/web/src/app/waerme/bilanz/page.tsx:1-15`), weil beide für denselben Tag
+/// verschiedene Zahlen nannten - „24,5 kWh Wärme und Arbeitszahl 2,90 auf der einen, 20,4 kWh
+/// und 2,41 auf der anderen“ (`HeatOverview.tsx:19-23`). Die App hatte diese zweite Seite als
+/// `WaermebilanzSeite` in dieser Datei, mit einer Kachel „Wärme gesamt“, die den Ofen nicht
+/// mitzählte. Sie ist gelöscht; die Adresse löst über ``AlteWege/ziel(_:)`` auf diese Seite
+/// auf. Keine Zahl ist dabei verloren gegangen: „entnommen“ und „Verlust“ stehen als Unterzeile
+/// der Entnahme-Kachel und als Zeilen im Spannenvergleich, die Arbeitszahl ebenfalls dort, die
+/// Auflösung als Kopfzeile des Tagesverlaufs. Was nicht wiederkommt, lässt die Vorlage mit
+/// Absicht weg: „davon nutzbar“, „erwartet, 24 h“ - der Wärmebedarf der kommenden Stunden
+/// gehört zum Fahrplan und steht dort (`HeatOverview.tsx:30-31`).
 struct WaermeSeite: View {
     var body: some View {
         Berichtsseite { z, api in
@@ -347,96 +360,5 @@ struct WaermeSeite: View {
                 farbe: (b.gainUnexplainedKwh ?? 0) > 1 ? Farbe.achtung : Farbe.text1
             )
         }
-    }
-}
-
-/// Die Wärmebilanz als eigene Seite: wohin die Waerme ging.
-struct WaermebilanzSeite: View {
-    var body: some View {
-        Berichtsseite { z, api in
-            try await api.waermebilanz(z.spanne.rawValue, anker: z.anker)
-        } inhalt: { b in
-            Kachelfeld(kacheln: kennzahlen(b), kicker: "Wärmebilanz")
-            if !b.buckets.isEmpty {
-                Karte(kicker: "Woher die Wärme kam") {
-                    Balkenbild(stuecke: [
-                        .init(
-                            name: "Wärmepumpe", farbe: Farbe.waermepumpe,
-                            werte: b.buckets.map { ($0.labelDe, $0.heatPumpKwh ?? 0) }
-                        ),
-                        .init(
-                            name: "Ofen ins Wasser", farbe: Farbe.ofen,
-                            werte: b.buckets.map { ($0.labelDe, $0.stoveWaterKwh ?? 0) }
-                        ),
-                        .init(
-                            name: "Ofen in den Raum", farbe: Farbe.amberWeich,
-                            werte: b.buckets.map { ($0.labelDe, $0.stoveRoomKwh ?? 0) }
-                        ),
-                    ])
-                }
-                Karte(kicker: "Wohin sie ging") {
-                    Balkenbild(stuecke: [
-                        .init(
-                            name: "entnommen", farbe: Farbe.mist,
-                            werte: b.buckets.map { ($0.labelDe, $0.drawKwh ?? 0) }
-                        ),
-                        .init(
-                            name: "Verlust", farbe: Farbe.alarm,
-                            werte: b.buckets.map { ($0.labelDe, $0.lossKwh ?? 0) }
-                        ),
-                    ])
-                }
-                Karte(kicker: "Die Zahlen") {
-                    Tabelle(
-                        zeilennamen: b.buckets.map(\.labelDe),
-                        spalten: [
-                            .init(
-                                name: "Wärmepumpe",
-                                zellen: b.buckets.map { Formate.zahl($0.heatPumpKwh ?? 0, stellen: 1) }
-                            ),
-                            .init(
-                                name: "Strom",
-                                zellen: b.buckets.map { Formate.zahl($0.electricKwh ?? 0, stellen: 1) }
-                            ),
-                            .init(
-                                name: "Arbeitszahl",
-                                zellen: b.buckets.map { Formate.zahl($0.copMean, stellen: 2) }
-                            ),
-                            .init(
-                                name: "Verlust",
-                                zellen: b.buckets.map { Formate.zahl($0.lossKwh ?? 0, stellen: 1) }
-                            ),
-                        ]
-                    )
-                }
-            }
-            Methode([b.noteDe, b.forecastNoteDe, b.params.roomSourceDe])
-        }
-    }
-
-    private func kennzahlen(_ b: HeatBalanceOut) -> [Kacheldaten] {
-        var aus: [Kacheldaten] = [
-            Kacheldaten(
-                "Wärme gesamt", Formate.zahl(summe(b) { $0.heatPumpKwh }, stellen: 1), einheit: "kWh",
-                farbe: Farbe.waermepumpe
-            ),
-            Kacheldaten("entnommen", Formate.zahl(summe(b) { $0.drawKwh }, stellen: 1), einheit: "kWh"),
-            Kacheldaten(
-                "Verlust", Formate.zahl(summe(b) { $0.lossKwh }, stellen: 1), einheit: "kWh",
-                dazu: "davon nutzbar: \(Formate.kwh(summe(b) { $0.lossUsefulKwh }))"
-            ),
-            Kacheldaten("Strom", Formate.zahl(summe(b) { $0.electricKwh }, stellen: 1), einheit: "kWh"),
-        ]
-        if let p = b.forecastHeatKwh {
-            aus.append(
-                Kacheldaten("erwartet, 24 h", Formate.zahl(p, stellen: 1), einheit: "kWh")
-            )
-        }
-        aus.append(Kacheldaten("Auflösung", b.resolutionDe))
-        return aus
-    }
-
-    private func summe(_ b: HeatBalanceOut, _ feld: (HeatBucketOut) -> Double?) -> Double {
-        b.buckets.reduce(0) { $0 + (feld($1) ?? 0) }
     }
 }

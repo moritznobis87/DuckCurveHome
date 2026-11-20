@@ -32,8 +32,13 @@ final class Wegweiser {
         self.weg = weg
     }
 
+    /// **Eine alte Adresse wird hier zur neuen.** Die Vorlage leitet sie mit `permanent: true`
+    /// weiter (`apps/web/next.config.ts:31`), und das heisst: danach steht die neue Adresse da,
+    /// nicht die alte. Sonst zeigte die Leiste auf „Jetzt“, waehrend die Seite der Waerme
+    /// gezeichnet ist - `bereichVon("/waermebilanz")` findet niemanden. Welcher Weg wohin
+    /// aufloest, rechnet der Kern (``AlteWege/weiterleitung(_:)``).
     func gehe(_ nachWeg: String) {
-        weg = nachWeg
+        weg = AlteWege.weiterleitung(nachWeg) ?? nachWeg
     }
 
     /// Den Bereich wechseln. Fuehrt auf den Reiter, auf dem man dort zuletzt war - nicht immer

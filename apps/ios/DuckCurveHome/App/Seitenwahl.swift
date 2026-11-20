@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Welche Seite zu einem Weg gehoert.
 ///
-/// Alle 29 Seiten des Dashboards, unter denselben Adressen. Das ist absichtlich eine einzige
+/// Alle 28 Seiten des Dashboards, unter denselben Adressen. Das ist absichtlich eine einzige
 /// Stelle mit einem langen `switch` und keine Tabelle aus Bauanweisungen: ein `switch` ueber
 /// Zeichenketten laesst sich lesen, und der Compiler sagt nichts dazu, ob eine Tabelle
 /// vollstaendig ist. Dass jeder Weg aus `Bereiche.alleWege` hier ankommt, prueft dagegen ein
@@ -79,8 +79,6 @@ struct Seitenwahl: View {
             return AnyView(WirkungSeite())
         case "/waerme/raeume":
             return AnyView(HeizkreiseSeite())
-        case "/waerme/bilanz":
-            return AnyView(WaermebilanzSeite())
         case "/waerme/annahmen":
             return AnyView(AnnahmenSeite())
         case "/system":
@@ -101,11 +99,20 @@ struct Seitenwahl: View {
         }
     }
 
-    /// Fragezeichenteil und Schraegstriche am Ende weg - wie `Bereiche` es auch tut.
+    /// Fragezeichenteil und Schraegstriche am Ende weg, und alte Adressen auf ihren Nachfolger.
+    ///
+    /// **Hier steht die Weiterleitung, nicht in einer Ansicht.** Next.js hat zwei Mittel dafuer -
+    /// `redirects()` in `apps/web/next.config.ts:17` und `redirect()` in einer Seite, die sonst
+    /// nichts tut (`apps/web/src/app/waerme/bilanz/page.tsx:14`); eine App hat nur ihren
+    /// Wegweiser. Die Aufloesung ist eine reine Rechnung ueber Zeichenketten und liegt deshalb im
+    /// Kern (``AlteWege/ziel(_:)``), geprueft von `AlteWegeTests`. Eine Umleitungsansicht, die im
+    /// Zeichnen `wegweiser.gehe(...)` ruft, waere der andere Weg - und genau der, vor dem
+    /// `Navigation.swift:56-62` warnt („Modifying state during view update“).
+    ///
+    /// Der Zeitraum muss dabei nichts mitnehmen: er haengt am Bereich und nicht an der Adresse
+    /// (`Navigation.swift:22,69-81`), und alte wie neue Adresse liegen im selben Bereich.
     private var sauber: String {
-        var s = weg.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? "/"
-        while s.count > 1, s.hasSuffix("/") { s.removeLast() }
-        return s.isEmpty ? "/" : s
+        AlteWege.ziel(weg)
     }
 }
 
