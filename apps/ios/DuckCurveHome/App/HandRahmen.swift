@@ -41,6 +41,9 @@ struct HandRahmen: View {
                     wegweiser.gehe(r.weg)
                     wegweiser.merkeReiter()
                 }
+                Unteransichten(reiter: wegweiser.reiter)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
             }
             Seitenwahl(weg: wegweiser.weg)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

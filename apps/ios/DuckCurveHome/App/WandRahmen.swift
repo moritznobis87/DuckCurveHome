@@ -58,6 +58,11 @@ struct WandRahmen: View {
                     wegweiser.gehe(r.weg)
                     wegweiser.merkeReiter()
                 }
+                // Die Unteransichten des gewaehlten Reiters, wo es welche gibt: Voraus gegen
+                // Rueckblick, Jetzt gegen Ein Tag, die vier Sichten der Waermepumpe.
+                Unteransichten(reiter: wegweiser.reiter)
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 8)
                 Divider().overlay(Farbe.linie1)
             }
             Seitenwahl(weg: wegweiser.weg)
