@@ -31,10 +31,11 @@ struct Stromdaten: Sendable {
 /// (6,9 kWh Erzeugung) stand ausserdem dicht neben den 6,6 kWh der Autarkiezeile, die etwas
 /// ganz anderes sind - Sonne und Speicher, die ins Haus gingen.
 ///
-/// **Was ihr fehlt:** der Reiterkicker „Verbrauch · Verbraucher · Herkunft“
-/// (`HouseReport.tsx:42`, gezeichnet `AreaNav.tsx:96`). Das gemeinsame Gerippe hat keine Stelle
-/// dafür, und eine einzubauen ist eine Entscheidung über alle dreizehn Berichtsseiten; das Wort
-/// liegt als ``Stromuebersicht/seitenkicker`` bereit.
+/// **Der Reiterkicker steht jetzt im Gerippe.** „Verbrauch · Verbraucher · Herkunft“
+/// (`HouseReport.tsx:42`, gezeichnet `AreaNav.tsx:96`) fehlte hier, und eine Stelle dafür war
+/// eine Entscheidung über alle achtundzwanzig Seiten - gefallen ist sie in ``Seite``, die ihn
+/// aus ``Bereiche/kicker(fuer:)`` liest. Das Wort bleibt ``Stromuebersicht/seitenkicker``; der
+/// Reiter `/strom` zeigt dorthin.
 struct StromSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(\.horizontalSizeClass) private var breite

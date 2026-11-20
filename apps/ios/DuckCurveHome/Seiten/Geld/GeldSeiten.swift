@@ -68,10 +68,12 @@ struct PvAbrechnungSeite: View {
         let b = d.bericht
         let saetze = Pvabrechnung.saetze(b)
 
-        // Der Kicker ist der der Vorlage (`PvAccounting.tsx:82`) und nicht der Reitername:
-        // „PV-Abrechnung“ über einer Karte auf dem Reiter „PV-Abrechnung“ sagt nichts.
-        Kachelfeld(
-            kacheln: kacheln(b), kicker: "Einspeisung · Eigenverbrauch · Umsatzsteuer")
+        // **Das Kachelfeld trägt keinen Kicker**, so wie die Vorlage auch keinen über ihr
+        // `KpiGrid` setzt (`PvAccounting.tsx:94`). „Einspeisung · Eigenverbrauch ·
+        // Umsatzsteuer“ stand hier, weil es in der Vorlage der Kicker der Hülle ist
+        // (`PvAccounting.tsx:82`) und die App keine Hülle hatte, die ihn zeichnet. Jetzt hat
+        // sie eine: ``Seite`` liest ihn aus ``Bereiche/kicker(fuer:)``.
+        Kachelfeld(kacheln: kacheln(b))
 
         erloeskarte(b)
         aufstellungskarte(b)

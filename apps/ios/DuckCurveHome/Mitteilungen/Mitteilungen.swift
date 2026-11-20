@@ -197,9 +197,9 @@ extension Mitteilungen: UNUserNotificationCenterDelegate {
         guard let ziel = inhalt["url"] as? String else { return }
         // Eine Mitteilung kann aelter sein als der Umbau, der ihre Seite verschoben hat. Die
         // Vorlage faengt das mit ihren Weiterleitungen (`apps/web/next.config.ts:17-32`); hier
-        // tut es ``AlteWege/ziel(_:)``, damit ein altes Ziel auf den Nachfolger fuehrt und nicht
+        // tut es ``Bereiche/ziel(_:)``, damit ein altes Ziel auf den Nachfolger fuehrt und nicht
         // auf die Startseite.
-        let aufgeloest = AlteWege.ziel(ziel)
+        let aufgeloest = Bereiche.ziel(ziel)
         await MainActor.run {
             Zielsprung.gewuenscht = Bereiche.alleWege.contains(aufgeloest) ? aufgeloest : "/"
         }

@@ -50,17 +50,19 @@ struct JahreskarteSeite: View {
         }
     }
 
-    // MARK: - Kopf: Kicker und Jahreswahl
+    // MARK: - Kopf: die Jahreswahl
 
-    /// **Am Telefon steht die Jahreswahl in einer eigenen Zeile und der Kicker fällt weg.**
+    /// **Am Telefon steht die Jahreswahl in einer eigenen Zeile.**
     /// So macht es die Vorlage: `.report-header-right { display: contents }` löst den Kasten auf
-    /// und gibt der Jahreswahl `order: 2; flex: 1 1 100%` (`handy.css:148-149`), und der Kicker
-    /// trägt `hidden … md:block` (`AreaNav.tsx:96`) - unter 768 Punkten ist er nicht zu sehen.
+    /// und gibt der Jahreswahl `order: 2; flex: 1 1 100%` (`handy.css:148-149`).
+    ///
+    /// **Der Kicker stand hier und steht jetzt im Gerippe.** Er gehört in der Vorlage der Hülle
+    /// (`AreaShell.tsx:26`), nicht dieser Seite; ``Seite`` zeichnet ihn aus
+    /// ``Bereiche/kicker(fuer:)``, und auch die Regel, dass er am Telefon wegfällt
+    /// (`AreaNav.tsx:96`, `hidden … md:block` - unter 768 Punkten ist er nicht zu sehen), steht
+    /// dort einmal statt hier und auf vier weiteren Seiten.
     private var kopf: some View {
         HStack(alignment: .center, spacing: 10) {
-            if !schmal {
-                Kicker(wort: Jahresraster.kicker)
-            }
             Spacer(minLength: 4)
             jahreswahl
         }

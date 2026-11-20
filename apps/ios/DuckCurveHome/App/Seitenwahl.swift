@@ -105,14 +105,14 @@ struct Seitenwahl: View {
     /// `redirects()` in `apps/web/next.config.ts:17` und `redirect()` in einer Seite, die sonst
     /// nichts tut (`apps/web/src/app/waerme/bilanz/page.tsx:14`); eine App hat nur ihren
     /// Wegweiser. Die Aufloesung ist eine reine Rechnung ueber Zeichenketten und liegt deshalb im
-    /// Kern (``AlteWege/ziel(_:)``), geprueft von `AlteWegeTests`. Eine Umleitungsansicht, die im
+    /// Kern (``Bereiche/ziel(_:)``), geprueft von `AlteWegeTests`. Eine Umleitungsansicht, die im
     /// Zeichnen `wegweiser.gehe(...)` ruft, waere der andere Weg - und genau der, vor dem
     /// `Navigation.swift:56-62` warnt („Modifying state during view update“).
     ///
     /// Der Zeitraum muss dabei nichts mitnehmen: er haengt am Bereich und nicht an der Adresse
     /// (`Navigation.swift:22,69-81`), und alte wie neue Adresse liegen im selben Bereich.
     private var sauber: String {
-        AlteWege.ziel(weg)
+        Bereiche.ziel(weg)
     }
 }
 
@@ -145,14 +145,22 @@ struct Unbekannt: View {
 /// **Warum eine eigene Huelle und nicht `ScrollView` an jeder Stelle.** Dreissig Seiten, die
 /// jede ihren eigenen Rand setzen, haben dreissig verschiedene Raender - im Dashboard ist das
 /// zweimal passiert und beide Male erst an der Wand aufgefallen. Hier steht der Rand einmal.
+///
+/// **Und darum traegt sie auch den Kicker.** Die Vorlage gibt ihn der Huelle jeder Seite
+/// (`AreaShell.tsx:14,26`), nicht der Seite; `ReportShell` reicht ihn nur weiter
+/// (`ReportShell.tsx:103`). Das Gegenstueck zu `AreaShell` ist diese Ansicht - jede der
+/// achtundzwanzig Seiten steckt in ihr, ``Berichtsseite`` baut sich selbst aus ihr. Stuende er
+/// in ``Berichtsseite``, haetten ihn dreizehn Seiten und fuenfzehn nicht.
 struct Seite<Inhalt: View>: View {
     var zeitraum: Zeitraumleiste?
     @ViewBuilder var inhalt: () -> Inhalt
 
     @Environment(\.horizontalSizeClass) private var breite
+    @Environment(Wegweiser.self) private var wegweiser
 
     var body: some View {
         VStack(spacing: 0) {
+            kicker
             // **Am Telefon steht die Zeitwahl im Gerippe**, ueber den Reitern und neben dem
             // Namen des Bereichs - so wie in der Vorlage (`handy.css:146-161`). Hier stand sie
             // unter den Reitern, und der Name des Bereichs stand nirgends.
@@ -177,6 +185,33 @@ struct Seite<Inhalt: View>: View {
                 .padding(.top, 4)
                 .padding(.bottom, 24)
             }
+        }
+    }
+
+    /// Die Stichworte, die sagen, was auf der Seite steht - „Laeufe · Abtauen · Heizkurve“.
+    ///
+    /// **Rechts und nicht links.** Die Vorlage setzt die Reiterzeile auf `justify-between` und
+    /// haengt den Kicker an ihr rechtes Ende (`AreaNav.tsx:93,96`). Die Reiterzeile der App
+    /// zeichnet das Gerippe und nicht die Huelle; der Kicker steht darum in einer eigenen Zeile
+    /// unmittelbar darunter - aber am rechten Rand, wo die Vorlage ihn hat, und ueber dem
+    /// Rollbereich, damit er wie dort beim Blaettern stehen bleibt.
+    ///
+    /// **Am Telefon faellt er weg**, und das ist nicht gespart, sondern abgeschrieben: er traegt
+    /// `hidden … md:block` (`AreaNav.tsx:96`) und ist unter 768 Punkten nicht zu sehen.
+    /// `handy.css` holt ihn auch nicht zurueck - was dort auf lesbare Schrift umgestellt wird,
+    /// ist der Kicker **einer Karte** (`handy.css:184`, `.card-head h2.kicker`) und der der
+    /// Methodenkarte (`handy.css:214`), nicht dieser. Am Telefon sagen Bereichsname, Reiterzeile
+    /// und Unteransichten schon zu dritt, wo man ist; eine vierte Antwort auf 390 Punkten kostet
+    /// nur die Zeile, in der die erste Zahl stehen sollte.
+    @ViewBuilder private var kicker: some View {
+        if breite != .compact, let wort = Bereiche.kicker(fuer: wegweiser.weg) {
+            Kicker(wort: wort)
+                // `truncate` an derselben Stelle: ein Kicker, der umbricht, schiebt die Seite
+                // nach unten.
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 6)
         }
     }
 }

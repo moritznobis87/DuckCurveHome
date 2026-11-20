@@ -58,11 +58,10 @@ struct WiedergabeSeite: View {
 
     var body: some View {
         Seite {
-            // Der Seitenkicker der Vorlage (`page.tsx:10`). Am Telefon ist er dort ausgeblendet
-            // (`AreaNav.tsx:96`, `hidden md:block`), also steht er hier auch nur breit.
-            if !schmal {
-                Kicker(wort: Wiedergabeworte.seitenkicker)
-            }
+            // Der Seitenkicker der Vorlage (`page.tsx:10`) stand hier als erste Zeile. Jetzt
+            // zeichnet ihn ``Seite`` fuer jede Seite, und das Wort haengt an der Ansicht
+            // „Ein Tag“ (``Bereiche/kicker(fuer:)``) - samt der Regel, dass er am Telefon
+            // wegfaellt, die hier und auf vier anderen Seiten einzeln dastand.
             Karte(kicker: "Wiedergabe", beiwerk: kopfzahl) {
                 tagwahl
                 if let fehler {

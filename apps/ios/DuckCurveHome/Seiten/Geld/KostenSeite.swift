@@ -113,14 +113,17 @@ struct KostenSeite: View {
         )
     }
 
-    /// Die vier Beträge, unter dem Kicker der Vorlage.
+    /// Die vier Beträge, wie in der Vorlage: eine Karte ohne Kopfzeile
+    /// (`CostReport.tsx:109-117`).
     ///
-    /// **Der Kicker ist der der Seite und nicht der Reitername** (`CostReport.tsx:107`). Die
-    /// Vorlage setzt ihn rechts in die Zeitraumzeile; die Zeitraumleiste der App trägt dort
-    /// nur Spannenwahl und Datumskasten. Dieselbe Entscheidung hat die PV-Abrechnung
-    /// getroffen.
+    /// **Hier trug diese Karte den Kicker der Seite** (`CostReport.tsx:107`), weil die
+    /// Zeitraumleiste der App nur Spannenwahl und Datumskasten trägt und es keine andere Stelle
+    /// gab; dieselbe Entscheidung hatte die PV-Abrechnung getroffen. Jetzt gibt es die Stelle:
+    /// ``Seite`` zeichnet ihn aus ``Bereiche/kicker(fuer:)``, und das Wort bleibt
+    /// ``Gelduebersicht/seitenkicker``. In der Karte stünde er damit zum zweiten Mal - und in
+    /// der Vorlage hat sie keinen.
     @ViewBuilder private func kopfzeile(_ d: Kostendaten) -> some View {
-        Karte(kicker: Gelduebersicht.seitenkicker) {
+        Karte {
             Betragszeile(betraege: Gelduebersicht.kopfbetraege(d.kosten, waerme: d.waerme))
         }
     }

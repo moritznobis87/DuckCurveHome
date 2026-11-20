@@ -32,7 +32,7 @@ struct Waermedaten: Sendable {
 /// verschiedene Zahlen nannten - „24,5 kWh Wärme und Arbeitszahl 2,90 auf der einen, 20,4 kWh
 /// und 2,41 auf der anderen“ (`HeatOverview.tsx:19-23`). Die App hatte diese zweite Seite als
 /// `WaermebilanzSeite` in dieser Datei, mit einer Kachel „Wärme gesamt“, die den Ofen nicht
-/// mitzählte. Sie ist gelöscht; die Adresse löst über ``AlteWege/ziel(_:)`` auf diese Seite
+/// mitzählte. Sie ist gelöscht; die Adresse löst über ``Bereiche/ziel(_:)`` auf diese Seite
 /// auf. Keine Zahl ist dabei verloren gegangen: „entnommen“ und „Verlust“ stehen als Unterzeile
 /// der Entnahme-Kachel und als Zeilen im Spannenvergleich, die Arbeitszahl ebenfalls dort, die
 /// Auflösung als Kopfzeile des Tagesverlaufs. Was nicht wiederkommt, lässt die Vorlage mit

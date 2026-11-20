@@ -32,16 +32,18 @@ struct AnlageSeite: View {
     /// Die Reihenfolge der Vorlage: Kicker, Satz, Fehler, Bühne, Fuß - und erst danach die
     /// Zahlengruppen, die nur die App hat (`Anlage.tsx:59-126`).
     ///
+    /// **Den Kicker zeichnet jetzt ``Seite``.** Er stand hier als erste Zeile, und daneben in
+    /// `WiedergabeSeite`, `JahreskarteSeite`, `RechnungenSeite` und `PrognoseSeite` - fünf
+    /// Seiten mit fünf Fassungen derselben Zeile, drei davon mit einer eigenen Antwort darauf,
+    /// was am Telefon damit geschieht. Jetzt steht sie einmal im Gerippe und kommt aus
+    /// ``Bereiche/kicker(fuer:)``; das Wort selbst bleibt ``Anlagenworte/bereichskicker``, und
+    /// die Ansicht „Jetzt“ dieses Reiters zeigt dorthin.
+    ///
     /// **Der Fuß steht auch ohne Daten da.** Die Vorlage hält ihn außerhalb der Abfrage: wer die
     /// Seite zum ersten Mal öffnet und auf die Bühne wartet, kann schon lesen, was er dann
     /// sehen wird.
     var body: some View {
         Seite {
-            if !schmal {
-                // Am Telefon blendet die Vorlage den Bereichskicker aus (`AreaNav.tsx:96`).
-                Kicker(wort: Anlagenworte.bereichskicker)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
             kopf
             if let fehler {
                 Stoerung(fehler: fehler) { Task { await lade() } }

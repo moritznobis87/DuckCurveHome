@@ -36,9 +36,9 @@ final class Wegweiser {
     /// weiter (`apps/web/next.config.ts:31`), und das heisst: danach steht die neue Adresse da,
     /// nicht die alte. Sonst zeigte die Leiste auf „Jetzt“, waehrend die Seite der Waerme
     /// gezeichnet ist - `bereichVon("/waermebilanz")` findet niemanden. Welcher Weg wohin
-    /// aufloest, rechnet der Kern (``AlteWege/weiterleitung(_:)``).
+    /// aufloest, rechnet der Kern (``Bereiche/weiterleitung(_:)``).
     func gehe(_ nachWeg: String) {
-        weg = AlteWege.weiterleitung(nachWeg) ?? nachWeg
+        weg = Bereiche.weiterleitung(nachWeg) ?? nachWeg
     }
 
     /// Den Bereich wechseln. Fuehrt auf den Reiter, auf dem man dort zuletzt war - nicht immer
