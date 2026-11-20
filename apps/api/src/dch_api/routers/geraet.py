@@ -39,6 +39,7 @@ from dch_api.schemas import (
     GeraetDienstOut,
     GeraetEinheitOut,
     GeraetOut,
+    GeraetPlatteOut,
     GeraetProtokollOut,
     GeraetRechnerOut,
     GeraetSicherungOut,
@@ -167,6 +168,12 @@ def bewerte_sicherung(s: GeraetSicherungOut, jetzt: datetime) -> GeraetSicherung
     return s
 
 
+def _platz_de(p: GeraetPlatteOut) -> str:
+    wo = "auf der SSD" if p.ort == "/" else f"unter {p.ort}"
+    frei = f"{p.frei_bytes / 1e9:.1f}".replace(".", ",")
+    return f"Nur noch {frei} GB frei {wo}."
+
+
 # ---------------------------------------------------------------------------- Selbstauskunft
 
 
@@ -278,7 +285,7 @@ def zusammenstellen(ordner: Path, api: ApiSelbstOut, jetzt: datetime) -> GeraetO
         if r.drosselung_de:
             kandidaten.append((r.drosselung_ampel, r.drosselung_de[0]))
         kandidaten.append((r.speicher_ampel, "Der Arbeitsspeicher wird knapp."))
-        kandidaten += [(p.ampel, f"Auf {p.ort} wird der Platz knapp.") for p in r.platten]
+        kandidaten += [(p.ampel, _platz_de(p)) for p in r.platten]
     if out.sicherung:
         kandidaten.append((out.sicherung.ampel, out.sicherung.text_de))
     if out.bericht_alt:

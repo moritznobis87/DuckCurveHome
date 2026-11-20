@@ -259,3 +259,16 @@ def test_sicherung_bewerten() -> None:
     frisch = GeraetSicherungOut(letzte="a", letzte_am=jetzt - timedelta(hours=9), anzahl=2)
     s = bewerte_sicherung(frisch, jetzt)
     assert s.ampel == "gut" and "außer Haus" in s.text_de
+
+
+def test_knapper_platz_sagt_wie_viel(geraet: TestClient, ordner: Path) -> None:
+    _bericht(ordner)
+    bericht = json.loads((ordner / "geraet.json").read_text())
+    bericht["rechner"]["platten"] = [
+        {"ort": "/", "gesamt_bytes": 256_000_000_000, "frei_bytes": 12_400_000_000}
+    ]
+    (ordner / "geraet.json").write_text(json.dumps(bericht))
+    antwort = geraet.get("/api/v1/system/geraet").json()
+    assert antwort["rechner"]["platten"][0]["ampel"] == "schlecht"
+    assert antwort["ampel"] == "schlecht"
+    assert antwort["text_de"] == "Nur noch 12,4 GB frei auf der SSD."

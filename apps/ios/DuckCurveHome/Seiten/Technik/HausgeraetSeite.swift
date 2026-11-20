@@ -252,12 +252,8 @@ struct HausgeraetSeite: View {
                 api.datenbankOk == false ? .schlecht : api.datenbankOk == true ? .gut : .aus,
                 "Datenbank", api.datenbankDe
             )
-            zeile(
-                api.bridgeOnline == true ? .gut : api.modus == "live" ? .warn : .aus,
-                "Bridge", api.verbindungDe
-            )
             ForEach(api.quellen, id: \.name) { q in
-                zeile(q.online ? .gut : .warn, q.name, [q.detailDe ?? "", q.lastOk.map { "zuletzt \(Formate.hhmm(iso: $0))" } ?? ""]
+                zeile(q.online ? .gut : (q.detailDe ?? "").hasPrefix("nicht eingerichtet") ? .aus : .warn, q.name, [q.detailDe ?? "", q.lastOk.map { "zuletzt \(Formate.hhmm(iso: $0))" } ?? ""]
                     .filter { !$0.isEmpty }.joined(separator: " · "))
             }
             ForEach(api.befunde, id: \.name) { b in

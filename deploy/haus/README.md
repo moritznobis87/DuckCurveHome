@@ -197,6 +197,43 @@ Befehl einschleusen.
 Von der Kommandozeile geht dasselbe mit `sudo dch pruefen` und `sudo dch aktualisieren`; der Stand
 erscheint auch dann in der App.
 
+## 11. Das Gerät aus der App verwalten
+
+Auf das Gerät selbst kommt im Alltag niemand: kein Bildschirm, keine Tastatur, und die
+Kommandozeile ist nichts für den Hausherrn. Darum steht alles Nötige in der App unter
+*Technik → Hausgerät*, im Browser wie in der iOS-App, nur mit Vollzugriff:
+
+- **Gesamturteil** oben: „Alles in Ordnung“ oder der Grund, warum nicht, etwa „web: Läuft, aber
+  die Prüfung schlägt fehl, 3-mal in Folge.“
+- **Dienste**: Datenbank, Rechenkern, Oberfläche, Webserver und, wenn eingeschaltet, Fernzugang.
+  Zu jedem: läuft er, besteht er seine Gesundheitsprüfung (Docker-Healthcheck mit der letzten
+  Ausgabe), seit wann, wie oft von selbst neu gestartet, CPU und Speicher, welche Fassung.
+- **Rechenkern**: Antwortet die Datenbank (mit Antwortzeit)? Ist die Bridge verbunden? Welche
+  Datenquellen melden sich, was meldet der Wächter, ist Alfred eingerichtet?
+- **Gerät**: Modell, Laufzeit, Last, Temperatur, Arbeitsspeicher, freier Platz auf der SSD und,
+  auf dem Raspberry Pi, ob die Spannung jemals zu niedrig war oder der Prozessor gedrosselt
+  wurde. Gerade bei PoE ist das die erste Frage, wenn etwas hakt.
+- **Sicherung**: die letzte, wie alt sie ist, wie viele es gibt, ob eine Kopie außer Haus
+  eingerichtet ist.
+- **Abläufe auf dem Gerät**: die systemd-Zeitgeber und -Dienste mit ihrem nächsten Lauf.
+- **Software**: die Updates aus Abschnitt 10.
+
+Handgriffe, jeder mit einer Rückfrage davor: einen Dienst neu starten, sein **Protokoll ansehen**
+(die letzten 300 Zeilen; alles, was in `.env` als Token, Schlüssel, Passwort oder Adresse mit
+Zugangsdaten steht, ist darin durch `***` ersetzt), **jetzt sichern**, alle Dienste neu starten,
+das ganze Gerät neu starten. Während ein Update läuft, sind sie gesperrt.
+
+**Wie das zusammenhängt.** Jede Minute schreibt das Gerät einen Bericht
+(`duckcurve-zustand.timer` → `dch zustand` → `/var/lib/duckcurve/geraet/geraet.json`). Die API
+liest ihn, bewertet jeden Teil mit einer Ampel und einem Satz und gibt ihn unter
+`/api/v1/system/geraet` aus; Browser und iOS-App zeigen dasselbe. Handgriffe gehen denselben Weg
+wie die Updates: Die API legt eine Anfrage-Datei ab, `duckcurve-anfrage.path` ruft
+`dch anfrage`. Das Skript nimmt nur Handgriffe aus einer festen Liste an und nur Dienstnamen, die
+in `compose.yaml` stehen. Ist der Bericht älter als drei Minuten, sagt die Seite das, statt alte
+Werte als aktuell zu zeigen.
+
+Auf Railway steht dort nur, was die API über sich selbst weiß; Handgriffe gibt es dort nicht.
+
 ## Im Alltag: `dch`
 
 | Befehl | Wirkung |
@@ -210,6 +247,7 @@ erscheint auch dann in der App.
 | `sudo dch sichern` / `sicherungen` | jetzt sichern / Sicherungen auflisten |
 | `sudo dch wiederherstellen <datei>` | Datenbank aus einer Sicherung |
 | `sudo dch uebernehmen <url>` | Datenbank von Railway oder einem anderen Postgres |
+| `sudo dch zustand` | den Gesundheitsbericht für die App jetzt schreiben (sonst jede Minute) |
 | `sudo dch koppeln` | Werte für das Bridge-Add-on, Zertifikat- und Pairing-Link |
 
 ## Kiosk und Startbild
@@ -259,3 +297,13 @@ Fassung 3333, deren API nicht startet: nach drei Minuten Wartezeit lief wieder 2
 App meldete die Rückkehr. Ein zweiter Klick während eines laufenden Updates wird abgewiesen. Nicht
 getestet: die systemd-Units selbst (Path-Unit und Timer), dort spielte ein Shell-Wächter die
 Path-Unit.
+
+Am selben Tag die Seite *Hausgerät*, im Container gegen den echten Stack: `dch zustand` schreibt
+den Bericht in 2,4 Sekunden (Container mit Prüfung, CPU und Speicher, Platz, Sicherung). Ein
+Browser holte das Protokoll der API (zwei Sekunden, Token durch `***` ersetzt), startete den
+Rechenkern neu (die API löst damit ihren eigenen Neustart aus; nach sieben Sekunden „Neu
+gestartet“), dann die Oberfläche (die Seite lief danach weiter), und sicherte die Datenbank.
+Auf Handybreite kein Überlauf, keine Fehler in der Seite. Die iOS-Seite wurde auf Linux nur
+geparst und gegen das Schema geprüft; übersetzt wird sie im Lauf `ios` auf GitHub (macOS).
+Nicht getestet: Temperatur und Drosselung, weil es dort keinen Raspberry Pi gab, systemd-Timer
+und `Gerät neu starten`.

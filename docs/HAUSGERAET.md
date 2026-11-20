@@ -151,6 +151,10 @@ sie braucht:
    starten, Update, Protokolle, Werksreset, Schalter „Fernwartung erlauben“. Keine Kommandozeile, sondern eine
    feste Liste von Aktionen, die ein kleiner Systemdienst ausführt. Neue Rolle `service` neben `owner` und
    `guest`.
+   **Teilweise gebaut (20.11.2026), für den Hausherrn statt für den Techniker:** die Seite *Technik →
+   Hausgerät* in Browser und iOS-App mit Gesundheit aller Dienste und des Rechners, Protokollen, Neustarts,
+   Sicherung und Updates, ausgeführt über eine feste Liste von Handgriffen (`dch anfrage`,
+   `deploy/haus/README.md`, Abschnitt 11). Offen: WLAN, Werksreset, Fernwartungsschalter, Rolle `service`.
 3. **Wartungs-USB-Stick** ohne Netz: Ein Stick mit einer **signierten** Freischaltdatei öffnet den Zugang für
    einige Stunden (SSH im lokalen Netz oder Textkonsole). Ohne gültige Signatur geschieht nichts.
 4. **Gehäuse auf:** serielle Konsole am eigenen Anschluss des Pi 5; notfalls Wiederherstellungsstick, Image
@@ -210,7 +214,7 @@ mehr wie ein eigenes Produkt. Für die ersten Geräte ist der normale Pi 5 einfa
 | Baustein | Inhalt |
 |---|---|
 | `deploy/haus/compose.yaml` | **gebaut (Stufe 1):** postgres, api, web, caddy, cloudflared; Mosquitto, eBUS und Bridge folgen in Stufe 2 |
-| `deploy/haus/einrichten.sh`, `deploy/haus/dch` | **gebaut:** Docker, Dienste, Sicherung, Updates aus der App mit Rückkehr, Bootloader, Kiosk, Marke, Übernahme von Railway; offen: Firewall, Overlay |
+| `deploy/haus/einrichten.sh`, `deploy/haus/dch` | **gebaut:** Docker, Dienste, Sicherung, Updates aus der App mit Rückkehr, Gesundheitsbericht und Handgriffe für die Seite „Hausgerät“, Bootloader, Kiosk, Marke, Übernahme von Railway; offen: Firewall, Overlay |
 | `deploy/haus/marke/`, `deploy/haus/kiosk/` | **gebaut:** Plymouth-Theme, Ladeseite, Chromium-Richtlinien |
 | `deploy/haus/erststart/` | Erststart-Dienst: Hostname, Schlüssel, Wartungsnetz, Bootloader |
 | `deploy/haus/werkstatt/` | Werkstatt-Stick: Abbild schreiben, prüfen, melden |

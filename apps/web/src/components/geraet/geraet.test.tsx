@@ -50,7 +50,7 @@ function stand(felder: Partial<GeraetDaten> = {}): GeraetDaten {
         text_de: "Läuft, aber die Prüfung schlägt fehl, 3-mal in Folge.",
       },
     ],
-    einheiten: [{ name: "duckcurve-sicherung.timer", aktiv: "active", unterzustand: "waiting", eingeschaltet: true, naechster_lauf: jetzt, ampel: "gut", text_de: "Wartet auf den nächsten Lauf." }],
+    einheiten: [{ name: "duckcurve-sicherung.timer", beschreibung: "", aktiv: "active", unterzustand: "waiting", eingeschaltet: true, naechster_lauf: jetzt, ampel: "gut", text_de: "Wartet auf den nächsten Lauf." }],
     sicherung: { letzte: "dch-20261120-031500.dump", letzte_am: jetzt, letzte_bytes: 4_200_000, anzahl: 14, ausser_haus: null, ampel: "gut", text_de: "14 Sicherung(en) auf dem Gerät. Keine Kopie außer Haus eingerichtet." },
     letzte_aktion: null,
     beschaeftigt: null,

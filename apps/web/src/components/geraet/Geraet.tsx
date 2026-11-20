@@ -87,6 +87,11 @@ function gb(bytes: number): string {
   return `${(bytes / 1e9).toLocaleString("de-DE", { maximumFractionDigits: bytes > 1e11 ? 0 : 1 })} GB`;
 }
 
+function groesse(bytes: number): string {
+  if (bytes < 1e6) return `${Math.max(1, Math.round(bytes / 1e3))} kB`;
+  return `${(bytes / 1e6).toLocaleString("de-DE", { maximumFractionDigits: 1 })} MB`;
+}
+
 function Karte({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col gap-2 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">{children}</div>;
 }
@@ -222,11 +227,10 @@ function ApiKarte({ api }: { api: ApiSelbst }) {
         titel="Datenbank"
         text={api.datenbank_de}
       />
-      <Zeile ampel={api.bridge_online ? "gut" : api.modus === "live" ? "warn" : "aus"} titel="Bridge" text={api.verbindung_de} />
       {(api.quellen ?? []).map((q) => (
         <Zeile
           key={q.name}
-          ampel={q.online ? "gut" : "warn"}
+          ampel={q.online ? "gut" : q.detail_de?.startsWith("nicht eingerichtet") ? "aus" : "warn"}
           titel={q.name}
           text={[q.detail_de, q.last_ok ? `zuletzt ${uhr(q.last_ok)}` : ""].filter(Boolean).join(" · ")}
         />
@@ -422,7 +426,7 @@ export function Geraet() {
               <Zeile
                 titel="Letzte Sicherung"
                 text={g.sicherung.letzte}
-                rechts={`${uhr(g.sicherung.letzte_am)}${g.sicherung.letzte_bytes ? ` · ${(g.sicherung.letzte_bytes / 1e6).toLocaleString("de-DE", { maximumFractionDigits: 1 })} MB` : ""}`}
+                rechts={`${uhr(g.sicherung.letzte_am)}${g.sicherung.letzte_bytes ? ` · ${groesse(g.sicherung.letzte_bytes)}` : ""}`}
               />
             ) : null}
             <Zeile titel="Kopie außer Haus" text={g.sicherung.ausser_haus ?? "keine (DCH_SICHERUNG_ZIEL in .env)"} />
