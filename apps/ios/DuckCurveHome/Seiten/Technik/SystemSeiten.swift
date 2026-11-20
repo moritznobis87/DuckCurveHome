@@ -663,6 +663,16 @@ struct AnnahmenSeite: View {
 
     @State private var einstellungen: HemsConfig?
     @State private var fehler: ApiFehler?
+    /// Was in den Feldern steht, als Text - nicht als Zahl.
+    ///
+    /// **Warum Text und nicht `Double?`.** Wer „0," getippt hat, ist mitten im Tippen; eine
+    /// Zahl daraus zu machen hiesse, die Null zu uebernehmen und den Rest zu verwerfen. Der
+    /// Entwurf bleibt roh, bis er abgegeben wird (`Annahmenfelder.abgabe`).
+    @State private var entwuerfe: [String: String] = [:]
+    @State private var kennlinie = ""
+    @State private var schickt = false
+    @State private var uebernommen = false
+    @State private var ansicht = "formular"
 
     var body: some View {
         Seite {
@@ -670,42 +680,11 @@ struct AnnahmenSeite: View {
                 Stoerung(fehler: fehler) { Task { await lade() } }
             }
             if let c = einstellungen {
-                if let wp = c.heatPump {
-                    Karte(kicker: "Wärmepumpe") {
-                        Werteliste(werte: wp.alsZeilen)
-                    }
+                if ansicht == "formular" {
+                    formular(c)
+                } else {
+                    werteliste(c)
                 }
-                if let puffer = c.buffer {
-                    Karte(kicker: "Pufferspeicher") {
-                        Werteliste(werte: puffer.alsZeilen)
-                    }
-                }
-                if let waerme = c.heatDemand {
-                    Karte(kicker: "Wärmebedarf") {
-                        Werteliste(werte: waerme.alsZeilen)
-                    }
-                }
-                if let tarif = c.tariff {
-                    Karte(kicker: "Tarif") {
-                        Werteliste(werte: tarif.alsZeilen)
-                    }
-                }
-                if let ofen = c.stove {
-                    Karte(kicker: "Pelletofen") {
-                        Werteliste(werte: ofen.alsZeilen)
-                    }
-                }
-                if let regelung = c.control {
-                    Karte(kicker: "Regelung") {
-                        Werteliste(werte: regelung.alsZeilen)
-                    }
-                }
-                Methode([
-                    "Diese Werte sind gesetzt, nicht gemessen – und sie gehen in jede Euro-Zahl "
-                        + "dieser App ein.",
-                    "Geändert werden sie im Dashboard oder über die Konfiguration des Dienstes. "
-                        + "Diese Seite zeigt sie, damit man weiß, worauf die Zahlen stehen.",
-                ])
             } else if fehler == nil {
                 Karte { Leer(satz: "Wird geholt …") }
             }
@@ -713,15 +692,237 @@ struct AnnahmenSeite: View {
         .task { await lade() }
     }
 
+    // MARK: - Das Formular
+
+    /// **Die Seite stellt, sie zeigt nicht nur.** Hier stand eine Leseliste roher Schlüssel
+    /// („hw auto off block s 1200"), und darunter der Satz, geändert werde das im Dashboard.
+    /// Die Vorlage (`settings/HeatSettings.tsx`) ist ein Formular: zwölf beschriftete Felder
+    /// mit ihren Einheiten und Erklärsätzen, die Kennlinie als Zeile, ein Knopf. Jede Änderung
+    /// wirkt sofort und rückwirkend - das steht als Satz darüber, nicht im Kleingedruckten.
+    @ViewBuilder private func formular(_ c: HemsConfig) -> some View {
+        Karte(kicker: Annahmenfelder.kicker, beiwerk: AnyView(umschalter)) {
+            VStack(alignment: .leading, spacing: 18) {
+                Text(Annahmenfelder.einleitung)
+                    .font(Schrift.klein)
+                    .foregroundStyle(Farbe.text2)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                spalten(c)
+                kennlinienzeile(c)
+                abgabezeile
+            }
+        }
+        Methode(Annahmenfelder.methodensaetze.map(Optional.init))
+    }
+
+    /// Zwei Spalten an der Wand, eine am Telefon - wie die Vorlage.
+    @ViewBuilder private func spalten(_ c: HemsConfig) -> some View {
+        let gruppen = Annahmenfelder.spalten()
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 28) {
+                ForEach(Array(gruppen.enumerated()), id: \.offset) { _, felder in
+                    VStack(alignment: .leading, spacing: 14) {
+                        ForEach(felder) { feld in
+                            feldzeile(feld, c)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(minWidth: 640)
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(gruppen.flatMap { $0 }) { feld in
+                    feldzeile(feld, c)
+                }
+            }
+        }
+    }
+
+    private func feldzeile(_ feld: Annahmenfeld, _ c: HemsConfig) -> some View {
+        let gebunden = Binding(
+            get: { entwuerfe[feld.schluessel] ?? "" },
+            set: { entwuerfe[feld.schluessel] = $0 }
+        )
+        let geaendert = Annahmenfelder.abweichend(
+            feld, entwurf: gebunden.wrappedValue, gegen: c)
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(feld.wort)
+                    .font(Schrift.klein)
+                    .foregroundStyle(Farbe.text1)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                TextField("", text: gebunden)
+                    .font(Schrift.zahl)
+                    .multilineTextAlignment(.trailing)
+                    .keyboardType(feld.darfNegativ ? .numbersAndPunctuation : .decimalPad)
+                    .textFieldStyle(.plain)
+                    .frame(width: 92)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Farbe.flaeche2)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
+                            .strokeBorder(
+                                geaendert ? Farbe.amber : Farbe.linie2, lineWidth: 1)
+                    )
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+                    .disabled(!haus.darfSchalten)
+                Text(feld.einheit)
+                    .font(Schrift.winzig)
+                    .foregroundStyle(Farbe.text3)
+                    .frame(width: 42, alignment: .leading)
+            }
+            if let hinweis = feld.hinweis {
+                Text(hinweis)
+                    .font(Schrift.winzig)
+                    .foregroundStyle(Farbe.text3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func kennlinienzeile(_ c: HemsConfig) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Kicker(wort: Annahmenfelder.kennlinienTitel)
+            Text(Annahmenfelder.kennlinienErklaerung)
+                .font(Schrift.winzig)
+                .foregroundStyle(Farbe.text3)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+            TextField("", text: $kennlinie)
+                .font(Schrift.zahl)
+                .textFieldStyle(.plain)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(Farbe.flaeche2)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
+                        .strokeBorder(
+                            kennlinie != Annahmenfelder.kurveZuText(c.heatDemand?.copCurve ?? [])
+                                ? Farbe.amber : Farbe.linie2,
+                            lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+                .disabled(!haus.darfSchalten)
+        }
+    }
+
+    @ViewBuilder private var abgabezeile: some View {
+        HStack(spacing: 12) {
+            Button {
+                Task { await uebernimm() }
+            } label: {
+                Text(schickt ? Annahmenfelder.knopfLaeuft : Annahmenfelder.knopf)
+                    .font(Schrift.klein)
+                    .foregroundStyle(Farbe.petrol)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 9)
+                    .background(Farbe.amber)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(schickt || !haus.darfSchalten)
+            .opacity(haus.darfSchalten ? 1 : 0.4)
+            if uebernommen {
+                Text(Annahmenfelder.uebernommenSatz)
+                    .font(Schrift.winzig)
+                    .foregroundStyle(Farbe.text2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// Die rohen Werte bleiben erreichbar - sie sind mehr als die zwölf Annahmen, und wer eine
+    /// Kennung sucht, findet sie nur dort.
+    private var umschalter: some View {
+        Ansichtswahl(
+            ansichten: [
+                Ansicht(weg: "formular", name: "Annahmen"),
+                Ansicht(weg: "werte", name: "Alle Werte"),
+            ],
+            aktiv: Ansicht(weg: ansicht, name: "")
+        ) { a in ansicht = a.weg }
+    }
+
+    @ViewBuilder private func werteliste(_ c: HemsConfig) -> some View {
+        Karte(kicker: "Alle Werte", beiwerk: AnyView(umschalter)) {
+            VStack(alignment: .leading, spacing: 14) {
+                if let wp = c.heatPump {
+                    abschnitt("Wärmepumpe", wp.alsZeilen)
+                }
+                if let puffer = c.buffer {
+                    abschnitt("Pufferspeicher", puffer.alsZeilen)
+                }
+                if let waerme = c.heatDemand {
+                    abschnitt("Wärmebedarf", waerme.alsZeilen)
+                }
+                if let tarif = c.tariff {
+                    abschnitt("Tarif", tarif.alsZeilen)
+                }
+                if let ofen = c.stove {
+                    abschnitt("Pelletofen", ofen.alsZeilen)
+                }
+                if let regelung = c.control {
+                    abschnitt("Regelung", regelung.alsZeilen)
+                }
+            }
+        }
+    }
+
+    private func abschnitt(_ wort: String, _ zeilen: [(wort: String, wert: String)]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Kicker(wort: wort)
+            Werteliste(werte: zeilen)
+        }
+    }
+
+    // MARK: - Laden und Abgeben
+
     private func lade() async {
         do {
-            einstellungen = try await haus.api.einstellungen()
+            let c = try await haus.api.einstellungen()
+            uebernimmAntwort(c)
             fehler = nil
         } catch let f as ApiFehler {
             fehler = f
         } catch {
-            fehler = .netz(error.localizedDescription)
+            fehler = .netz(Annahmenfelder.ladefehler)
         }
+    }
+
+    private func uebernimm() async {
+        guard !schickt else { return }
+        schickt = true
+        uebernommen = false
+        defer { schickt = false }
+        switch Annahmenfelder.abgabe(entwuerfe: entwuerfe, kennlinie: kennlinie) {
+        case .kennlinieUnlesbar:
+            fehler = ApiFehler(code: "kennlinie", meldung: Annahmenfelder.kennlinienFehler, status: 0)
+        case .bereit(let patch):
+            do {
+                let c = try await haus.api.stelleWaerme(patch)
+                uebernimmAntwort(c)
+                fehler = nil
+                uebernommen = true
+            } catch let f as ApiFehler {
+                fehler = f
+            } catch {
+                fehler = .netz(Annahmenfelder.aenderungAbgelehnt)
+            }
+        }
+    }
+
+    /// Nach jedem Laden und nach jedem Übernehmen stehen die Felder auf dem, was der Dienst
+    /// wirklich hat - nicht auf dem, was jemand getippt hatte.
+    private func uebernimmAntwort(_ c: HemsConfig) {
+        einstellungen = c
+        entwuerfe = Annahmenfelder.entwuerfe(c)
+        kennlinie = Annahmenfelder.kurveZuText(c.heatDemand?.copCurve ?? [])
     }
 }
 
