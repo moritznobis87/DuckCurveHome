@@ -253,7 +253,11 @@ struct Prognosekurvenbild: View {
                     .lineStyle(StrokeStyle(lineWidth: 1))
             }
         }
-        .chartXScale(domain: 0...24)
+        // **Die Spanne als Dezimalzahlen, nicht als `0...24`.** Die Querachse dieses Bildes ist
+        // eine Zahlenachse aus Stunden (`Kurvenpunkt.stunde`, `Double`). Ein `0...24` wäre ein
+        // `ClosedRange<Int>`, und eine Skala in `Int` über Werten in `Double` ist der Fehler, den
+        // man erst an einem leeren Gitter sieht.
+        .chartXScale(domain: 0.0...24.0)
         .chartYScale(domain: 0...tag.leistungsgrenze)
         .chartXSelection(value: $gelesen)
         .chartXAxis {
@@ -393,6 +397,10 @@ struct Tagesenergiebild: View {
                     .cornerRadius(2)
             }
         }
+        // **Die Querachse wird vorgegeben, nicht aus den Säulen abgeleitet.** Sonst bestimmt
+        // die Reihenfolge der Marken die Reihenfolge der Tage, und ein Tag ohne Säulen fiele aus
+        // der Achse heraus - bei einem Tag ohne Messung wären es plötzlich dreizehn.
+        .chartXScale(domain: paare.map(\.tag))
         .chartXSelection(value: $gelesen)
         .chartXAxis {
             AxisMarks(
@@ -494,6 +502,9 @@ struct Horizontbild: View {
                     .cornerRadius(2)
             }
         }
+        // Alle Klassen stehen an der Achse, auch die ohne Paare: dass es für „12-36h“ noch
+        // keine gibt, ist eine Auskunft und keine Lücke im Bild.
+        .chartXScale(domain: balken.map(\.name))
         .chartXSelection(value: $gelesen)
         .chartXAxis {
             AxisMarks(values: balken.map(\.name)) { wert in
@@ -601,6 +612,8 @@ struct Faktorenbild: View {
             }
         }
         .chartYScale(domain: bild.spanne)
+        // Eine Klasse, für die noch kein Faktor gelernt ist, behält ihren Platz an der Achse.
+        .chartXScale(domain: bild.klassen.map(\.name))
         .chartXSelection(value: $gelesen)
         .chartXAxis {
             AxisMarks(values: bild.klassen.map(\.name)) { wert in
@@ -737,6 +750,10 @@ struct Vorlaufbild: View {
                 }
             }
         }
+        // **Alle sechs Vorlaufklassen stehen an der Achse, auch die ohne Paare.** Ohne die
+        // vorgegebene Spanne verschwindet im leeren Zeitraum die ganze Achse, und der Satz in
+        // der Bildmitte stünde über einer weissen Fläche statt über dem Raster, das er meint.
+        .chartXScale(domain: balken.map(\.name))
         .chartXSelection(value: $gelesen)
         .chartXAxis {
             AxisMarks(values: balken.map(\.name)) { wert in
