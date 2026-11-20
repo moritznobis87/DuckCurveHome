@@ -59,7 +59,10 @@ struct Seitenwahl: View {
         case "/waerme/anlage":
             return AnyView(AnlageSeite())
         case "/waerme/wiedergabe":
-            return AnyView(WiedergabeSeite())
+            // Der Fragezeichenteil wählt die Seite nicht, aber er sagt ihr, wo sie anfangen soll:
+            // aus der Jahreskarte kommt ein Tag und eine Stunde (`YearMap.tsx:82`). Gelesen und
+            // geprüft wird das im Kern, damit ein erfundener Tag hier nicht durchkommt.
+            return AnyView(WiedergabeSeite(ziel: Wiedergabeziel.ausWeg(weg)))
         case "/waerme/waermepumpe":
             return AnyView(WaermepumpeSeite())
         case "/waerme/waermepumpe/betrieb":

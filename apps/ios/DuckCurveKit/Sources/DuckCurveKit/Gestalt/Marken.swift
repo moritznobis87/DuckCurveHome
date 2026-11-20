@@ -229,17 +229,67 @@ public enum Marken {
     /// Stufen machten aus beiden dasselbe Feld. `Abdeckungsstufe` bleibt daneben stehen - sie
     /// benennt die drei Stopps fuer die Lesehilfe, und benennen kann man nur Stufen.
     public static func abdeckungsfarbe(anteil: Double) -> Farbwert {
-        guard anteil.isFinite else { return abdeckungFehlend }
-        guard let erste = abdeckung.first, let letzte = abdeckung.last else {
-            return abdeckungFehlend
-        }
-        let lage = min(1, max(0, anteil)) * Double(abdeckung.count - 1)
-        if lage <= 0 { return erste }
-        if lage >= Double(abdeckung.count - 1) { return letzte }
-        let unten = Int(lage)
-        return abdeckung[unten].gemischt(
-            mit: abdeckung[unten + 1], anteil: lage - Double(unten))
+        rampenfarbe(abdeckung, anteil: anteil)
     }
+
+    // MARK: - Rampen allgemein
+
+    /// Die Farbe an einer Stelle einer Rampe, `anteil` 0 bis 1 - zwischen den Stopps gemischt.
+    ///
+    /// **Eine Rechnung für alle Rampen.** Die Abdeckungskarte hatte sie zuerst; die Jahreskarte
+    /// braucht dieselbe über vier andere Stopplisten (`charts.ts:409-412`), und zwei Kopien
+    /// derselben Mischung wären zwei Stellen, an denen die Skala auseinanderläuft. Werte
+    /// ausserhalb von 0 bis 1 werden beschnitten, ein Unwert gibt den ersten Stopp: eine
+    /// erfundene Farbe wäre schlimmer als eine stumme.
+    public static func rampenfarbe(_ rampe: [Farbwert], anteil: Double) -> Farbwert {
+        guard let erste = rampe.first, let letzte = rampe.last else { return text3 }
+        guard anteil.isFinite else { return erste }
+        let lage = min(1, max(0, anteil)) * Double(rampe.count - 1)
+        if lage <= 0 { return erste }
+        if lage >= Double(rampe.count - 1) { return letzte }
+        let unten = Int(lage)
+        return rampe[unten].gemischt(mit: rampe[unten + 1], anteil: lage - Double(unten))
+    }
+
+    // MARK: - Die Rampen der Jahreskarte
+
+    /// **In OKLab zwischen Markenfarben gerechnet, nicht von Hand gewählt** - so steigt die
+    /// wahrgenommene Helligkeit gleichmässig, und nur so liest sich „mehr" als „heller"
+    /// (`charts.ts:400-412`). Die Werte sind darum aus der Vorlage übernommen und nicht hier
+    /// neu bestimmt: dieselbe Skala in zwei Oberflächen muss dieselben Farben an denselben
+    /// Stellen zeigen.
+    ///
+    /// Der dunkelste Schritt jeder einfarbigen Rampe ist die Kartenfläche selbst (`#123544`),
+    /// damit „fast nichts" mit dem Grund verschmilzt. Die Zuordnung ist die des Energieflusses:
+    /// Bernstein ist eigene Energie, Mist das Netz, Terrakotta die Wärmepumpe.
+    public static let rampeEigen: [Farbwert] = [
+        Farbwert(0x123544), Farbwert(0x6A6448), Farbwert(0xC39234),
+        Farbwert(0xF5B22E), Farbwert(0xFAC558), Farbwert(0xFFD778),
+    ]
+
+    /// Das Netz: von der Kartenfläche bis fast ins Weisse.
+    public static let rampeNetz: [Farbwert] = [
+        Farbwert(0x123544), Farbwert(0x3C5F6E), Farbwert(0x688C9B),
+        Farbwert(0x93B1BF), Farbwert(0xBBCED7), Farbwert(0xE4ECEF),
+    ]
+
+    /// Die Wärmepumpe in Terrakotta.
+    public static let rampeWaerme: [Farbwert] = [
+        Farbwert(0x123544), Farbwert(0x655C57), Farbwert(0xB68365),
+        Farbwert(0xE5A17A), Farbwert(0xEEB797), Farbwert(0xF6CDB4),
+    ]
+
+    /// Die Netzbilanz, divergierend: Einspeisung (Bernstein) über eine flächennahe Mitte zum
+    /// Bezug (Mist).
+    ///
+    /// **Beide Pole gleich hell, sonst schrie eine Seite lauter als die andere**
+    /// (`charts.ts:405-407`). Die Mitte ist der Kartenfläche nah, damit eine Stunde um null
+    /// nicht als Ereignis gelesen wird. Sieben Stopps, damit die Mitte wirklich in der Mitte
+    /// liegt.
+    public static let rampeNetzBilanz: [Farbwert] = [
+        Farbwert(0xF2A900), Farbwert(0xAC833B), Farbwert(0x695F44), Farbwert(0x2B3A41),
+        Farbwert(0x4C646E), Farbwert(0x70909F), Farbwert(0x96C0D3),
+    ]
 
     /// Die fuenf Stufen der Abweichung, kalt nach warm.
     public static let abweichung: [Farbwert] = [abwKalt2, abwKalt1, abwNull, abwWarm1, abwWarm2]

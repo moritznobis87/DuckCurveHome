@@ -155,6 +155,15 @@ struct HeizkreiseSeite: View {
 struct WiedergabeSeite: View {
     @Environment(Hauszustand.self) private var haus
 
+    /// Woher der Sprung kam: ein Tag und eine Stunde, auf die in der Jahreskarte getippt wurde.
+    ///
+    /// **Wahlfrei, und das ist der ganze Zweck.** Die Seite wird meist ohne Ziel aufgerufen und
+    /// zeigt dann wie bisher gestern von Mitternacht an. Kommt sie aus der Jahreskarte, trägt der
+    /// Weg einen Tag und eine Stunde (`YearMap.tsx:72-84`), und dann beginnt sie dort:
+    /// „Die Karte zeigt, *dass* an einem Dienstag im Februar etwas anders war; die Wiedergabe
+    /// zeigt, was.“
+    var ziel: Wiedergabeziel?
+
     @State private var tag: String = ""
     @State private var wiedergabe: AnlageReplayOut?
     @State private var stelle: Double = 0
@@ -185,7 +194,7 @@ struct WiedergabeSeite: View {
         }
         .task(id: tag) { await lade() }
         .task(id: laeuftAb) { await spiele() }
-        .onAppear { if tag.isEmpty { tag = Tag.plus(haus.heute, -1) } }
+        .onAppear { if tag.isEmpty { tag = ziel?.tag ?? Tag.plus(haus.heute, -1) } }
     }
 
     private var tagwahl: some View {
@@ -275,6 +284,24 @@ struct WiedergabeSeite: View {
         }
     }
 
+    /// Auf welchem Augenblick der Schieber steht, wenn ein Tag geladen ist.
+    ///
+    /// Null, außer die Seite wurde mit einem Ziel aufgerufen - dann auf der getippten Stunde
+    /// (`YearMap.tsx:76-84`). Ohne das landete jeder Sprung aus der Jahreskarte um Mitternacht,
+    /// und wer auf einen Dienstagnachmittag getippt hat, müsste ihn sich dort noch einmal suchen.
+    ///
+    /// Das Ziel gilt nur für seinen eigenen Tag: wer nach dem Sprung weiterblättert, fängt wieder
+    /// vorn an, denn eine Stunde, die aus einem anderen Tag stammt, ist dort keine Auskunft.
+    ///
+    /// Welches Bild zur Stunde gehört, sucht der Kern (`Wiedergabeziel.bildstelle`): `frames` ist
+    /// nicht notwendig gleichmässig (`schemas.py:1832-1835`), und eine Rechnung, die ein dichtes
+    /// Band annimmt, wäre hier auch nicht prüfbar.
+    private func anfangsstelle(_ w: AnlageReplayOut) -> Double {
+        guard let ziel, ziel.tag == w.day, !w.frames.isEmpty else { return 0 }
+        return Double(
+            Wiedergabeziel.bildstelle(stunde: ziel.stunde, zeitpunkte: w.frames.map(\.at)))
+    }
+
     /// Abspielen: ein Augenblick je Viertelsekunde. Schnell genug, dass ein Tag in einer Minute
     /// durchläuft, langsam genug, dass man etwas sieht.
     private func spiele() async {
@@ -294,8 +321,9 @@ struct WiedergabeSeite: View {
     private func lade() async {
         guard Tag.istTag(tag) else { return }
         do {
-            wiedergabe = try await haus.api.anlageWiedergabe(tag: tag)
-            stelle = 0
+            let w = try await haus.api.anlageWiedergabe(tag: tag)
+            wiedergabe = w
+            stelle = anfangsstelle(w)
             fehler = nil
         } catch let f as ApiFehler {
             fehler = f
