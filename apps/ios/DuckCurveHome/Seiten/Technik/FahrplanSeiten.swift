@@ -320,84 +320,139 @@ struct WirkungSeite: View {
     @State private var tage = 30
     @State private var wirkung: KontaktwirkungOut?
     @State private var fehler: ApiFehler?
+    @State private var laedtNeu = false
+
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
 
     var body: some View {
         Seite {
-            Tagewahl(tage: $tage, moeglich: [7, 30, 90])
-            if let fehler {
-                Stoerung(fehler: fehler) { Task { await lade() } }
-            }
             if let w = wirkung {
-                if let urteil = w.urteilDe, !urteil.isEmpty {
-                    Karte(kicker: "Das Urteil", titel: w.urteil) {
-                        Text(urteil)
-                            .font(Schrift.klein)
-                            .foregroundStyle(Farbe.text1)
-                            .fixedSize(horizontal: false, vertical: true)
+                let bild = Wirkungsbild.baue(w)
+                urteilskarte(bild)
+                Kachelfeld(
+                    kacheln: Wirkungskacheln.kacheln(w).map(Kacheldaten.init),
+                    kicker: bild.spanne ?? "\(w.days) Tage",
+                    spalten: 3
+                )
+                if !bild.faecher.isEmpty {
+                    Karte(
+                        kicker: "Antwortfächer",
+                        beiwerk: AnyView(
+                            Text(
+                                "\(w.nAuswertbar ?? 0) Anforderungen bei stehender Maschine, "
+                                    + "am Beginn übereinandergelegt"
+                            )
+                            .font(Schrift.winzig)
+                            .foregroundStyle(Farbe.text3)
+                            .lineLimit(1)
+                        )
+                    ) {
+                        Antwortfaecher(bild: bild)
                     }
                 }
-                Kachelfeld(kacheln: kennzahlen(w), kicker: "\(w.days) Tage")
-                Karte(kicker: "Abdeckung") {
-                    VStack(spacing: 0) {
-                        Zeile(wort: "Kontakt gemessen", wert: Formate.prozent(w.abdeckungKontakt))
-                        Zeile(wort: "Leistung gemessen", wert: Formate.prozent(w.abdeckungLeistung))
-                        Zeile(
-                            wort: "Schwelle", wert: Formate.kw(w.schwelleKw), einheit: "kW",
-                            dazu: "ab hier gilt die Pumpe als laufend"
+                if !bild.gruppen.isEmpty {
+                    Karte(
+                        kicker: "Jede Anforderung",
+                        beiwerk: AnyView(
+                            Text("sortiert nach Verzögerung")
+                                .font(Schrift.winzig)
+                                .foregroundStyle(Farbe.text3)
                         )
-                        if let vor = w.vorMin, let nach = w.nachMin {
-                            Zeile(wort: "Fenster", wert: "\(vor) vor, \(nach) nach", einheit: "min")
+                    ) {
+                        Ereignisraster(bild: bild)
+                    }
+                }
+                // **Offen, nicht zugeklappt** (`Wirkung.tsx:240`): was eine Zahl an diesem
+                // Zeitraum einschränkt, darf nicht hinter einem Deckel liegen.
+                if !w.hinweiseDe.isEmpty {
+                    Karte(kicker: "Zu diesem Zeitraum") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(w.hinweiseDe, id: \.self) { satz in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Text("·").font(Schrift.klein).foregroundStyle(Farbe.text3)
+                                    Text(satz)
+                                        .font(Schrift.klein)
+                                        .foregroundStyle(Farbe.text2)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
                         }
                     }
                 }
-                Methode(w.methodeDe + w.hinweiseDe)
-            } else if fehler == nil {
-                Karte { Leer(satz: "Wird gerechnet …") }
+                if !w.methodeDe.isEmpty {
+                    Methode(
+                        w.methodeDe.map(Optional.init),
+                        kurz: "ein Zusammenhang in der Zeit, keine Ursache · Vergleich zur "
+                            + "selben Tageszeit",
+                        titel: "Was die Auswertung kann"
+                    )
+                }
+            } else if let fehler {
+                Stoerung(fehler: fehler) { Task { await lade() } }
+            } else {
+                Karte { Leer(satz: "Die Anforderungen werden gesucht.") }
             }
         }
         .task(id: tage) { await lade() }
     }
 
-    private func kennzahlen(_ w: KontaktwirkungOut) -> [Kacheldaten] {
-        [
-            Kacheldaten(
-                "Quote", Formate.prozent(w.quote),
-                dazu: vertrauen(w),
-                farbe: (w.quote ?? 0) > 0.6 ? Farbe.mist : Farbe.achtung
-            ),
-            Kacheldaten(
-                "Ereignisse", w.nAuswertbar.map(String.init) ?? Formate.leer,
-                dazu: w.n.map { "von \($0) insgesamt" }
-            ),
-            Kacheldaten(
-                "gefolgt", w.gefolgt.map(String.init) ?? Formate.leer,
-                dazu: "die Pumpe lief danach an"
-            ),
-            Kacheldaten(
-                "lief schon", w.nLiefSchon.map(String.init) ?? Formate.leer,
-                dazu: "zählt nicht: K1 kann nichts auslösen, was schon läuft"
-            ),
-            Kacheldaten(
-                "Verzögerung", Formate.dauer(minuten: w.verzoegerungMedianMin.map { Int($0.rounded()) }),
-                dazu: "Median bis zum Anlauf"
-            ),
-            Kacheldaten(
-                "Nachlauf", Formate.dauer(minuten: w.nachlaufMedianMin.map { Int($0.rounded()) }),
-                dazu: w.nachlaufN.map { "aus \($0) Fällen" }
-            ),
-        ]
+    /// Die Urteilskarte: links der Satz, rechts der Quotenvergleich.
+    ///
+    /// **Der Satz und das Bild gehören nebeneinander** (`globals.css:648`: zwei Spalten,
+    /// darunter 900 Punkten eine). Der Satz sagt, was herauskam; das Bild sagt, wie sicher das
+    /// ist - und erst beides zusammen ist das Urteil. In der App stand nur der Satz, klein, in
+    /// einer Karte ohne Bild.
+    @ViewBuilder private func urteilskarte(_ bild: Wirkungsbild) -> some View {
+        Karte(
+            kicker: "Folgt die Wärmepumpe der Anforderung?",
+            beiwerk: bild.spanne.map { s in
+                AnyView(
+                    Text(s).font(Schrift.zahlKlein).foregroundStyle(Farbe.text3))
+            }
+        ) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 8) {
+                    Text("Zeitraum").font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                    Tagewahl(tage: $tage, moeglich: [7, 30, 90])
+                    if laedtNeu {
+                        Text("wird neu gerechnet")
+                            .font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                    }
+                    Spacer(minLength: 0)
+                }
+                if let fehler {
+                    Stoerung(fehler: fehler) { Task { await lade() } }
+                }
+                if schmal {
+                    urteilssatz(bild)
+                    Quotenbild(bild: bild, ringfarbe: Farbe.flaeche2)
+                } else {
+                    HStack(alignment: .center, spacing: 28) {
+                        urteilssatz(bild)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Quotenbild(bild: bild, ringfarbe: Farbe.flaeche1)
+                            .frame(maxWidth: 460)
+                    }
+                }
+            }
+        }
     }
 
-    /// Der Vertrauensbereich der Quote.
-    ///
-    /// **Ohne ihn ist die Quote keine Auskunft.** Eine Quote von 70 Prozent aus zehn Ereignissen
-    /// und eine aus tausend sind zwei verschiedene Dinge, und nur das zweite ist eine Zahl.
-    private func vertrauen(_ w: KontaktwirkungOut) -> String? {
-        guard let lo = w.quoteLo, let hi = w.quoteHi else { return nil }
-        return "\(Formate.prozent(lo)) bis \(Formate.prozent(hi))"
+    private func urteilssatz(_ bild: Wirkungsbild) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Kicker(wort: "Urteil · \(bild.urteilswort)")
+            Text(bild.urteilssatz ?? "Noch kein Urteil.")
+                .font(Schrift.sans(20, relativeTo: .title3))
+                .foregroundStyle(Farbe.text1)
+                .lineSpacing(5)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private func lade() async {
+        laedtNeu = wirkung != nil
+        defer { laedtNeu = false }
         do {
             wirkung = try await haus.api.kontaktwirkung(tage: tage)
             fehler = nil

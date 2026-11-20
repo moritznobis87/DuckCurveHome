@@ -64,6 +64,7 @@
 		F5EB172C68A7846716CEDC15 /* Hauszustand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 404A42E4106E511C51916C29 /* Hauszustand.swift */; };
 		F6805480CB4D065F2BD42F0A /* WandRahmen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2195B41CC96C7867CA119D73 /* WandRahmen.swift */; };
 		F9410CEC89296C2F90F7DCE7 /* HandRahmen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B98C536116288281EBEE7975 /* HandRahmen.swift */; };
+		F94F526492959D7819284785 /* Wirkungszeichnung.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49690F94C45DEC54FC3D58F /* Wirkungszeichnung.swift */; };
 		FA5EA45739E98569EE9938B6 /* Raumprotokollblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 978C93E98BD0C62960AD3FB2 /* Raumprotokollblatt.swift */; };
 		FB410072136231AA663DAAD2 /* Vorschauen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D0DC76B4C835ABDEB44904 /* Vorschauen.swift */; };
 		FDC1EC6D16D2BB418720477D /* Seitenwahl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19D6E643E59B9205E637CF97 /* Seitenwahl.swift */; };
@@ -119,6 +120,7 @@
 		AC7469018CE630476024776F /* Unteransichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Unteransichten.swift; sourceTree = "<group>"; };
 		ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReglerSeite.swift; sourceTree = "<group>"; };
 		B10C35D7E84A91C914895209 /* IBMPlexSans-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.otf"; sourceTree = "<group>"; };
+		B49690F94C45DEC54FC3D58F /* Wirkungszeichnung.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wirkungszeichnung.swift; sourceTree = "<group>"; };
 		B98C536116288281EBEE7975 /* HandRahmen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandRahmen.swift; sourceTree = "<group>"; };
 		BA88BF1FF2F8B10E21AE2C1D /* Wpmenue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wpmenue.swift; sourceTree = "<group>"; };
 		BF4037BAFC1759DC6E851D10 /* DuckCurveHome.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DuckCurveHome.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -171,6 +173,7 @@
 				98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */,
 				9AA49FDBA50756C197DFFDBC /* Tageskurve.swift */,
 				5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */,
+				B49690F94C45DEC54FC3D58F /* Wirkungszeichnung.swift */,
 			);
 			path = Diagramme;
 			sourceTree = "<group>";
@@ -490,6 +493,7 @@
 				6A49193A6C88C9D4267FF1C9 /* WaermepumpeSeiten.swift in Sources */,
 				B5B0CB533E0FCE256C33E295 /* Waermepumpenbild.swift in Sources */,
 				F6805480CB4D065F2BD42F0A /* WandRahmen.swift in Sources */,
+				F94F526492959D7819284785 /* Wirkungszeichnung.swift in Sources */,
 				A866580B4F770F9C1E2A1F23 /* Wpmenue.swift in Sources */,
 				A12C880295C6B5FFA2CC04B9 /* Zeichen.swift in Sources */,
 			);
