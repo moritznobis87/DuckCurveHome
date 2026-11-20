@@ -517,7 +517,9 @@ struct PrognoseSeite: View {
             } else {
                 Kicker(wort: "Rückblick · abgelegte Läufe gegen das Ist")
             }
-            Tagewahl(tage: $tage, moeglich: [3, 7, 14, 30])
+            // Der Rueckblick hat in der Vorlage seinen eigenen Knopf
+            // (`Rueckblick.tsx:173`) - und schreibt „3 d“ statt „3 Tage“.
+            Tagewahl(tage: $tage, moeglich: [3, 7, 14, 30], form: .prognoseRueckblick)
         }
         if let v = verlauf {
             if v.reihen.isEmpty {
@@ -758,7 +760,9 @@ struct HaustuerSeite: View {
 
     var body: some View {
         Seite {
-            Tagewahl(tage: $tage, moeglich: [7, 30, 90])
+            // Das Protokoll hat in der Vorlage seinen eigenen Knopf
+            // (`DoorLog.tsx:107-111`), nicht `.kl-knopf`.
+            Tagewahl(tage: $tage, moeglich: [7, 30, 90], form: .haustuerprotokoll)
             if let fehler {
                 Stoerung(fehler: fehler) { Task { await lade() } }
             }

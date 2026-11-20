@@ -51,7 +51,9 @@ struct BetriebSeite: View {
 
     @ViewBuilder private func inhalt(_ b: BetriebOut) -> some View {
         kopf(b)
-        Tagewahl(tage: $tage, moeglich: Self.rueckblicke, gruppe: "Rückblick")
+        // `.kl-knopf` wie in der Vorlage dieser Seite (`Betrieb.tsx:67`).
+        Tagewahl(
+            tage: $tage, moeglich: Self.rueckblicke, gruppe: "Rückblick", form: .klKnopf)
         // **Der Fehler steht in der Standzeile, die Karte bleibt** - und doch steht hier
         // zusätzlich ``Stoerung``. Die Vorlage hat keinen „Erneut“-Knopf und lädt nur beim
         // Wechsel des Zeitraums neu (`Betrieb.tsx:36-38`); auf einem Telefon mit wackligem

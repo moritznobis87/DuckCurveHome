@@ -414,7 +414,10 @@ struct WirkungSeite: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 8) {
                     Text("Zeitraum").font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                    Tagewahl(tage: $tage, moeglich: [7, 30, 90])
+                    // Die Vorlage zieht hier `.wg-wahl` (`Wirkung.tsx:149`), nicht
+                    // `.kl-knopf`: die kleine Mono-Kapsel, die neben die beiden winzigen
+                    // Beschriftungen dieser Zeile passt.
+                    Tagewahl(tage: $tage, moeglich: [7, 30, 90], form: .wgWahl)
                     if laedtNeu {
                         Text("wird neu gerechnet")
                             .font(Schrift.winzig).foregroundStyle(Farbe.text3)

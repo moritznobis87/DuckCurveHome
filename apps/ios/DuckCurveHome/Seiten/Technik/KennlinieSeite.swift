@@ -21,7 +21,8 @@ struct KennlinieSeite: View {
 
     var body: some View {
         Seite {
-            Tagewahl(tage: $tage, moeglich: [7, 30, 90])
+            // `.kl-knopf` wie in der Vorlage dieser Seite (`Kennlinie.tsx:126`).
+            Tagewahl(tage: $tage, moeglich: [7, 30, 90], form: .klKnopf)
             if let fehler {
                 Stoerung(fehler: fehler) { Task { await lade() } }
             }
