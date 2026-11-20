@@ -104,6 +104,12 @@ public struct Tageskurve: Sendable {
     /// aus 13,4 kWh eine Auskunft."
     public var pvKwh: Double?
     public var schattenKwh: Double?
+    /// Wie der Tag des Schattens heisst: „gestern" hinter heute, „heute" hinter morgen.
+    ///
+    /// **Der Tag gehoert in die Legende** (`DayCurve.tsx:176-180`): „gestern 6,9 kWh" sagt,
+    /// womit verglichen wird; „Vortag" sagt es nicht, wenn man vor der Morgenkurve steht und
+    /// der Vortag heute ist.
+    public var schattenwort: String?
 
     public init() {}
 
@@ -213,6 +219,10 @@ public struct Tageskurve: Sendable {
         // ------------------------------------------------------------- Die Summen
         k.pvKwh = energie(k.pv, bis: k.jetztStunde)
         k.schattenKwh = energie(k.schatten, bis: k.jetztStunde)
+        // Hinter heute liegt gestern, hinter morgen heute (`home/tage.ts`).
+        if !k.schatten.isEmpty {
+            k.schattenwort = tag == .morgen ? "heute" : "gestern"
+        }
         return k
     }
 
@@ -248,16 +258,69 @@ public struct Tageskurve: Sendable {
         return max(4, (hoch * 1.12).rounded(.up))
     }
 
-    /// Die Grenzen der Preisachse.
+    /// Die Grenzen der Preisachse, mit der Schrittweite ihrer Marken.
     ///
-    /// Negative Preise kommen vor und sind der Grund fuer das halbe Projekt - die Achse muss
-    /// unter die Null reichen, wenn es sie gibt, und nicht bei null abschneiden.
-    public var preisgrenzen: (unten: Double, oben: Double) {
+    /// **So eng wie möglich, und auf runden Zahlen.** Hier stand `min(0, tief − 2)` bis
+    /// `max(10, hoch + 2)`: die Achse reichte immer bis zur Null, und an einem gewöhnlichen
+    /// Tag zwischen 38 und 52 ct lag die ganze Kurve damit im oberen Viertel und sah flach
+    /// aus - genau so stand es am 19.11.2026 auf dem iPad. Die Null gehört auf diese Achse nur,
+    /// wenn es negative Preise gibt; dann ist sie die Nachricht.
+    ///
+    /// **Wie die runde Spanne entsteht** (`charts/dayBounds.ts`, `priceBounds`): gesucht wird
+    /// die feinste runde Schrittweite, die mit höchstens sieben Abschnitten auskommt. Weil die
+    /// Schrittweiten ansteigen, ist der erste Treffer zugleich der mit der engsten Spanne - und
+    /// je enger die Spanne, desto mehr Höhe bleibt für den Verlauf. Ein gröberer Schritt reißt
+    /// die Achse beim Runden wieder auf: bei 22 bis 46 ct ergibt Schritt 5 die Spanne 20 bis
+    /// 50, Schritt 20 dagegen 0 bis 60.
+    public var preisgrenzen: (unten: Double, oben: Double, schritt: Double) {
         let alle = (preis + preisErwartet).map(\.wert).filter(\.isFinite)
-        guard let tief = alle.min(), let hoch = alle.max() else { return (0, 40) }
-        let unten = min(0, (tief - 2).rounded(.down))
-        let oben = max(10, (hoch + 2).rounded(.up))
-        return (unten, oben)
+        guard let tief = alle.min(), let hoch = alle.max() else { return (0, 45, 15) }
+        // Wenig Luft, damit die Kurve die Ränder nicht berührt.
+        let luft = max(0.5, (hoch - tief) * 0.06)
+        for schritt in [0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100] {
+            let unten = ((tief - luft) / schritt).rounded(.down) * schritt
+            let oben = ((hoch + luft) / schritt).rounded(.up) * schritt
+            if (oben - unten) / schritt <= 7 {
+                return (unten, max(oben, unten + 2 * schritt), schritt)
+            }
+        }
+        let unten = (tief - luft).rounded(.down)
+        let oben = (hoch + luft).rounded(.up)
+        return (unten, oben, max(1, ((hoch - tief) / 3).rounded()))
+    }
+
+    /// Die Marken der Preisachse, von unten nach oben.
+    public var preismarken: [Double] {
+        let g = preisgrenzen
+        guard g.schritt > 0, g.oben > g.unten else { return [] }
+        var aus: [Double] = []
+        var v = g.unten
+        // Rundungsfehler: `0.1 + 0.2` ist nicht `0.3`, und eine Marke, die um ein
+        // Milliardstel über der Grenze liegt, fiele sonst weg.
+        while v <= g.oben + g.schritt / 1000 {
+            aus.append((v * 1000).rounded() / 1000)
+            v += g.schritt
+        }
+        return aus
+    }
+
+    /// Ein Preis in Cent, abgebildet auf die Leistungsachse.
+    ///
+    /// **Warum das sein muss.** Die Wandanzeige zeichnet Leistung und Preis in EIN Bild mit
+    /// zwei Achsen - links Kilowatt, rechts Cent (`DayCurve.tsx`, `yAxis[1].position: right`).
+    /// Swift Charts kennt nur eine Werteachse je Bild; die zweite entsteht, indem der Preis in
+    /// die Leistungsachse gerechnet und die rechte Achse zurückgerechnet beschriftet wird.
+    public func preisAufLeistung(_ ct: Double) -> Double {
+        let g = preisgrenzen
+        guard g.oben > g.unten else { return 0 }
+        return (ct - g.unten) / (g.oben - g.unten) * leistungsgrenze
+    }
+
+    /// Der Rückweg: welcher Preis steht an dieser Stelle der Leistungsachse?
+    public func leistungAufPreis(_ kw: Double) -> Double {
+        let g = preisgrenzen
+        guard leistungsgrenze > 0 else { return g.unten }
+        return g.unten + kw / leistungsgrenze * (g.oben - g.unten)
     }
 
     /// Ist überhaupt etwas zu zeichnen?

@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -471,3 +472,44 @@ class RoomShiftState(Base):
     until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     paused_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class GeraetMesswert(Base):
+    """Ein Messpunkt des Hausgeräts, alle fünf Minuten aus seinem Bericht (`dch zustand`).
+
+    **Warum eigene Spalten statt eines JSON-Felds.** Gelesen wird in Spannen über Wochen und
+    Monate, je Größe ein Diagramm; Spalten lassen sich zählen, mitteln und nach Lücken absuchen,
+    ohne jedes Mal das ganze Dokument zu öffnen. Nur die Dienste stehen als JSON, weil ihre Zahl
+    mit dem Fernzugang wechselt.
+
+    **Wie lange.** Fünf-Minuten-Punkte 30 Tage, danach bleibt der zur vollen Stunde zwei Jahre
+    (`stuendlich`). Ein Jahr Füllstand reicht für eine Prognose; ein Jahr Fünf-Minuten-Werte wären
+    über hunderttausend Zeilen, die niemand liest.
+
+    Zähler (Netz, auf die SSD geschrieben) stehen als Stand seit dem Start des Geräts; die Rate
+    bildet die Auswertung aus aufeinanderfolgenden Punkten.
+    """
+
+    __tablename__ = "geraet_messwerte"
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    stuendlich: Mapped[bool] = mapped_column(Boolean, default=False)
+    cpu_prozent: Mapped[float | None] = mapped_column(Float)
+    last1: Mapped[float | None] = mapped_column(Float)
+    temperatur_c: Mapped[float | None] = mapped_column(Float)
+    takt_mhz: Mapped[float | None] = mapped_column(Float)
+    eingangsspannung_v: Mapped[float | None] = mapped_column(Float)
+    drosselung: Mapped[int | None] = mapped_column(Integer)
+    speicher_belegt_mb: Mapped[float | None] = mapped_column(Float)
+    speicher_gesamt_mb: Mapped[float | None] = mapped_column(Float)
+    swap_belegt_mb: Mapped[float | None] = mapped_column(Float)
+    platte_belegt_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    platte_gesamt_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    ssd_temperatur_c: Mapped[float | None] = mapped_column(Float)
+    ssd_abnutzung_prozent: Mapped[float | None] = mapped_column(Float)
+    ssd_geschrieben_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    netz_empfangen_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    netz_gesendet_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    datenbank_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    sicherung_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    docker_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    dienste: Mapped[dict[str, object] | None] = mapped_column(JsonType)

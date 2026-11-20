@@ -32,8 +32,13 @@ final class Wegweiser {
         self.weg = weg
     }
 
+    /// **Eine alte Adresse wird hier zur neuen.** Die Vorlage leitet sie mit `permanent: true`
+    /// weiter (`apps/web/next.config.ts:31`), und das heisst: danach steht die neue Adresse da,
+    /// nicht die alte. Sonst zeigte die Leiste auf „Jetzt“, waehrend die Seite der Waerme
+    /// gezeichnet ist - `bereichVon("/waermebilanz")` findet niemanden. Welcher Weg wohin
+    /// aufloest, rechnet der Kern (``Bereiche/weiterleitung(_:)``).
     func gehe(_ nachWeg: String) {
-        weg = nachWeg
+        weg = Bereiche.weiterleitung(nachWeg) ?? nachWeg
     }
 
     /// Den Bereich wechseln. Fuehrt auf den Reiter, auf dem man dort zuletzt war - nicht immer
@@ -94,6 +99,8 @@ final class Wegweiser {
 /// Ein Blatt ueber der Seite: was beim Tippen auf eine Zahl aufgeht.
 enum Blatt: Identifiable, Hashable {
     case waermepumpe
+    /// Die Auswahl, die ein Tipp auf die Waermepumpe im Flussbild oeffnet.
+    case waermepumpenmenue
     case ofen
     case batterie
     case raum(Int)
@@ -105,6 +112,7 @@ enum Blatt: Identifiable, Hashable {
     var id: String {
         switch self {
         case .waermepumpe: return "wp"
+        case .waermepumpenmenue: return "wp-menue"
         case .ofen: return "ofen"
         case .batterie: return "bat"
         case .raum(let i): return "raum-\(i)"
@@ -152,7 +160,6 @@ struct Wurzel: View {
                 WandRahmen(wegweiser: wegweiser)
             }
         }
-        .environment(wegweiser)
         .hausschrift()
         .seitengrund()
         .preferredColorScheme(.dark)
@@ -180,6 +187,7 @@ struct Wurzel: View {
         .sheet(item: Binding(get: { wegweiser.blatt }, set: { wegweiser.blatt = $0 })) { blatt in
             switch blatt {
             case .waermepumpe: Waermepumpenblatt()
+            case .waermepumpenmenue: Wpmenue()
             case .ofen: Ofenblatt()
             case .batterie: Batterieblatt()
             case .entscheidungen: Entscheidungsblatt()
@@ -189,5 +197,18 @@ struct Wurzel: View {
                 EmptyView()
             }
         }
+        // **Der Wegweiser steht ganz aussen, hinter den Blaettern.**
+        //
+        // Ein Blatt erbt die Umgebung der Stelle, an der `sheet` haengt - nicht die, die
+        // weiter innen eingesetzt wird. Stand `.environment(wegweiser)` vor `.sheet`, dann lag
+        // die Einsetzung INNERHALB der Ansicht, an der das Blatt haengt, und das Blatt sah den
+        // Wegweiser nicht. `@Environment(Wegweiser.self)` ist nicht wahlfrei: wer ihn dort
+        // liest, bekommt keinen Nullwert, sondern einen Abbruch - „No Observable object of
+        // type Wegweiser found".
+        //
+        // Aufgefallen ist es an `Wpmenue`, dem ersten Blatt, das einen Weg kennt: ein Tipp auf
+        // die Waermepumpe im Flussbild hat die App beendet. Die anderen Blaetter brauchen nur
+        // den Hauszustand, und der wird eine Ebene hoeher eingesetzt - darum lief es so lange.
+        .environment(wegweiser)
     }
 }

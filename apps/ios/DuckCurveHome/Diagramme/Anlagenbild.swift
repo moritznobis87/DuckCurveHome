@@ -25,8 +25,14 @@ struct Anlagenbild: View {
     @Environment(Wegweiser.self) private var wegweiser
     @Environment(\.accessibilityReduceMotion) private var ruhig
 
-    /// Wie hoch die Bühne gezeichnet wird. Darunter sind die Zahlen nicht mehr zu lesen.
-    private let hoehe: CGFloat = 430
+    /// Wie hoch die Bühne gezeichnet wird: **940 × 501**, wie am Telefon der Vorlage.
+    ///
+    /// `min-width: 940px` der Zeichnung wird in `handy.css` nicht überschrieben
+    /// (`globals.css:567`), die Bühne ist dort also 940 Punkte breit und bei 1200 × 640 damit
+    /// 501 hoch. Hier standen 430 - das sind 806 × 430, ein Siebtel kleiner als gemeint, und
+    /// die kleinen Schriften (11,5 bei Gewicht 300) verlieren bei dieser Verkleinerung genau
+    /// das, was sie lesbar macht.
+    private let hoehe: CGFloat = Anlagenrohre.buehne.height / Anlagenrohre.buehne.width * 940
 
     private var breite: CGFloat {
         hoehe / Anlagenrohre.buehne.height * Anlagenrohre.buehne.width
@@ -64,7 +70,7 @@ struct Anlagenbild: View {
     private var heizkreis: AnlageHeizkreisOut { anlage.heizkreis }
     private var warmwasser: AnlageWarmwasserOut { anlage.warmwasser }
 
-    /// Die Wasserkreise haben keine gemessene Leistung – ihre Stärke steht für „läuft".
+    /// Die Wasserkreise haben keine gemessene Leistung – ihre Stärke steht für „läuft“.
     private var wpKw: Double { wp.running ? (wp.thermalKw ?? 5) : 0 }
     private var ofenKw: Double { ofen.running == true ? (ofen.waterKw ?? 5) : 0 }
     private var heizKw: Double { heizkreis.running ? 4 : 0 }
@@ -111,16 +117,30 @@ struct Anlagenbild: View {
 
     // MARK: - Die Rohre
 
-    private var rohre: some View {
-        TimelineView(.animation(minimumInterval: ruhig ? 1 : 1.0 / 30)) { takt in
+    /// **Bei „Bewegung reduzieren“ keine Lichtpunkte und keine Zeitachse.** Die App senkte hier
+    /// nur den Takt auf ein Bild je Sekunde - die Punkte wanderten weiter, nur ruckelnd, und das
+    /// ist genau das Bild, das die Einstellung vermeiden soll. Die Vorlage zeichnet sie gar nicht
+    /// (`Schema.tsx:74`); damit fällt auch der `TimelineView` weg, denn ein Bild, das sich nicht
+    /// bewegt, braucht keine Uhr.
+    @ViewBuilder private var rohre: some View {
+        if ruhig {
             Canvas { gestalt, _ in
-                let sekunden = takt.date.timeIntervalSinceReferenceDate
                 for r in rohrliste {
-                    zeichne(r, in: &gestalt, sekunden: sekunden)
+                    zeichne(r, in: &gestalt, sekunden: nil)
                 }
             }
+            .allowsHitTesting(false)
+        } else {
+            TimelineView(.animation(minimumInterval: 1.0 / 30)) { takt in
+                Canvas { gestalt, _ in
+                    let sekunden = takt.date.timeIntervalSinceReferenceDate
+                    for r in rohrliste {
+                        zeichne(r, in: &gestalt, sekunden: sekunden)
+                    }
+                }
+            }
+            .allowsHitTesting(false)
         }
-        .allowsHitTesting(false)
     }
 
     /// Ein Rohr mit allem, was seine Darstellung bestimmt.
@@ -189,51 +209,90 @@ struct Anlagenbild: View {
     ///
     /// `leise` sind Rückläufe – schmaler, blasser, weniger Licht, damit die Schleife als Paar
     /// lesbar bleibt und der Vorlauf das Wort führt.
-    private func zeichne(_ r: Rohrzug, in gestalt: inout GraphicsContext, sekunden: Double) {
+    private func zeichne(_ r: Rohrzug, in gestalt: inout GraphicsContext, sekunden: Double?) {
         let rohr = Anlagenrohre.rohr(r.kennung)
         let an = Anlagenschema.istAn(r.kw)
         let staerke = Anlagenschema.rohrStaerke(r.kw, leise: r.leise)
 
         if r.hof {
+            // **Fester Hof, 20 Punkte breit** (`.anlage-halo`, `globals.css:579`). Mitlaufend
+            // mit der Rohrstärke war er bei schwacher Leistung zu schmal, um den Ofensteiger zu
+            // verdecken - und genau dafür ist er da.
             gestalt.stroke(
-                rohr.pfad, with: .color(Farbe.grund.opacity(0.85)),
-                style: StrokeStyle(lineWidth: staerke + 7, lineCap: .round))
+                rohr.pfad, with: .color(Color(Farbwert(0x07_1D28)).opacity(0.9)),
+                style: StrokeStyle(lineWidth: 20, lineCap: .round))
         }
+        // Die Deckungen der Vorlage (`Schema.tsx:72-73`). Die App hatte 0,3 und 0,9 - auf dem
+        // hellen Kartengrund war das nötig, auf der Bühne ist es ein Leuchtkabel: die Rohre
+        // führten das Bild, wo sie es nur tragen sollen.
         gestalt.stroke(
-            rohr.pfad, with: .color(r.farbe.opacity(an ? 0.3 : 0.14)),
+            rohr.pfad, with: .color(r.farbe.opacity(an ? (r.leise ? 0.12 : 0.16) : 0.06)),
             style: StrokeStyle(lineWidth: staerke, lineCap: .round))
         gestalt.stroke(
-            rohr.pfad, with: .color(r.farbe.opacity(an ? 0.9 : 0.3)),
-            style: StrokeStyle(lineWidth: r.leise ? 1.2 : 1.8, lineCap: .round))
+            rohr.pfad, with: .color(r.farbe.opacity(an ? (r.leise ? 0.35 : 0.5) : 0.12)),
+            style: StrokeStyle(lineWidth: an ? (r.leise ? 1.2 : 1.6) : 1, lineCap: .round))
 
-        guard an, let kw = r.kw else { return }
+        guard let sekunden, an, let kw = r.kw else { return }
         let zahl = r.farben.isEmpty ? Anlagenschema.punktzahl(kw, leise: r.leise) : r.farben.count
         let dauer = Anlagenschema.rohrDauer(kw, leise: r.leise)
-        let halbmesser: CGFloat = r.leise ? 2.6 : 3.4
         for i in 0..<max(0, zahl) {
             var anteil = (sekunden / dauer + Double(i) / Double(zahl))
                 .truncatingRemainder(dividingBy: 1)
             if r.umkehren { anteil = 1 - anteil }
-            let p = rohr.punkt(bei: anteil)
             let farbe = r.farben.isEmpty ? r.farbe : r.farben[i % r.farben.count]
-            gestalt.fill(
-                Path(ellipseIn: CGRect(
-                    x: p.x - halbmesser, y: p.y - halbmesser,
-                    width: halbmesser * 2, height: halbmesser * 2)),
-                with: .color(farbe))
+            licht(
+                rohr.punkt(bei: anteil), halbmesser: punktmass(i, r),
+                deckung: punktdeckung(i, r), farbe: farbe, in: &gestalt)
         }
+    }
+
+    /// Halbmesser und Deckung wechseln von Punkt zu Punkt (`Schema.tsx:78-80`).
+    ///
+    /// Jeder zweite Punkt ist kleiner und blasser - das lässt eine Reihe gleich schneller Punkte
+    /// wie Wasser aussehen und nicht wie eine Perlenkette. Gemischter Strom hat gleich grosse
+    /// Punkte, weil dort die Farbe den Unterschied macht; Rückläufe sind gedämpft.
+    private func punktmass(_ i: Int, _ r: Rohrzug) -> CGFloat {
+        let roh: CGFloat = r.farben.isEmpty ? (i % 2 != 0 ? 2.2 : 3.2) : 3
+        return roh * (r.leise ? 0.8 : 1)
+    }
+
+    private func punktdeckung(_ i: Int, _ r: Rohrzug) -> Double {
+        let roh: Double = r.farben.isEmpty ? (i % 2 != 0 ? 0.55 : 0.95) : 0.92
+        return roh * (r.leise ? 0.7 : 1)
+    }
+
+    /// Ein Lichtpunkt mit Hof.
+    ///
+    /// **Gemalt und nicht gefiltert.** Im SVG trägt jeder Punkt `filter="url(#anlage-weich)"` -
+    /// einen Gauss von 2,2 (`Schema.tsx:81`, `:196-198`). In einem `Canvas` kostet ein Filter je
+    /// Punkt zu viel, und ein Filter für eine gemeinsame Punkteschicht würde die Tiefenfolge
+    /// umwerfen: der dunkle Hof des Wärmepumpenvorlaufs läge dann unter fremden Punkten. Also
+    /// zwei Kreise - ein weiter, blasser und der Kern darauf -, dasselbe Mittel wie bei der
+    /// Pumpe.
+    private func licht(
+        _ p: CGPoint, halbmesser: CGFloat, deckung: Double, farbe: Color,
+        in gestalt: inout GraphicsContext
+    ) {
+        func kreis(_ r: CGFloat) -> Path {
+            Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
+        }
+        gestalt.fill(kreis(halbmesser * 2.1), with: .color(farbe.opacity(deckung * 0.22)))
+        gestalt.fill(kreis(halbmesser), with: .color(farbe.opacity(deckung)))
     }
 
     // MARK: - Die Geräte
 
     private var geraete: some View {
         ZStack(alignment: .topLeading) {
-            Text("Strom").modifier(Ueberschrift()).position(x: 60 + 26, y: 46)
-            Text("Wärme").modifier(Ueberschrift()).position(x: 420 + 30, y: 46)
+            // **Der Textanfang steht bei x 60 bzw. 420** (`Schema.tsx:207-212`), `.position`
+            // setzt aber die Mitte - und eine Überschrift, deren Mitte feststeht, wandert mit
+            // ihrer Länge. Darum derselbe Griff wie bei ``hinweis``.
+            ueberschrift("Strom", ab: 60)
+            ueberschrift("Wärme", ab: 420)
 
             quelle(
                 .pv, mitte: CGPoint(x: 120, y: 150), rand: Anlagenschema.Farbwerte.pv,
-                name: "Sonne", wert: strom.pvKw, hinweis: nil)
+                name: "PV", wert: strom.pvKw, hinweis: nil)
             quelle(
                 .netz, mitte: CGPoint(x: 120, y: 300), rand: Anlagenschema.Farbwerte.netz,
                 name: "Netz", wert: strom.gridKw,
@@ -246,8 +305,12 @@ struct Anlagenbild: View {
             knoten
             quelle(
                 .haus, mitte: CGPoint(x: 330, y: 470), halbmesser: 38,
-                rand: Anlagenschema.Farbwerte.wallbox, name: "Haushalt", wert: strom.restKw,
-                hinweis: "ohne Wärmepumpe")
+                rand: Anlagenschema.Farbwerte.wallbox, name: "Haushalt", namengroesse: 12.5,
+                zahlgroesse: 13, wert: strom.restKw,
+                // **„inkl. Wallbox“ und nicht „ohne Wärmepumpe“** (`Schema.tsx:297`). Beides
+                // ist wahr, aber nur eines sagt, was in der Zahl *drin* ist - und die Wallbox
+                // ist der Posten, der sie verdoppeln kann.
+                hinweis: "inkl. Wallbox")
 
             ofenkachel
             waermepumpenkachel
@@ -284,6 +347,27 @@ struct Anlagenbild: View {
         }
     }
 
+    private func ueberschrift(_ wort: String, ab x: CGFloat) -> some View {
+        Text(wort)
+            .modifier(Ueberschrift())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(width: 300)
+            .position(x: x + 150, y: 46)
+            .allowsHitTesting(false)
+    }
+
+    /// Dasselbe wie `de()` der Vorlage (`schema.ts:55-56`): der Betrag mit einer Stelle - und
+    /// **ohne Wert ein Strich**, nicht „0,0“.
+    ///
+    /// Die App rechnete hier `abs(wert ?? 0)` und machte damit aus jedem schweigenden Zähler
+    /// eine gemessene Null: ein Haus, dessen Netzzähler ausgefallen ist, sah aus wie ein Haus
+    /// ohne Netzbezug. Die Einheit entfällt mit dem Wert (``grosseZahl``), so wie das `<tspan>`
+    /// der Vorlage (`Schema.tsx:143-147`).
+    private func de(_ wert: Double?) -> String {
+        guard let wert, wert.isFinite else { return Formate.leer }
+        return Formate.kw(abs(wert))
+    }
+
     private var batteriewort: String {
         let wort = Anlagenschema.batterieWort(strom.batteryKw)
         guard let soc = strom.batterySoc else { return wort }
@@ -297,7 +381,8 @@ struct Anlagenbild: View {
     /// Eine Stromquelle als Kreis mit Namen, Zahl und Wort darunter.
     private func quelle(
         _ ziel: Anlagenschema.Ziel, mitte: CGPoint, halbmesser: CGFloat = 40, rand: Farbwert,
-        name: String, wert: Double?, hinweis hinweistext: String?
+        name: String, namengroesse: CGFloat = 14, zahlgroesse: CGFloat = 14, wert: Double?,
+        hinweis hinweistext: String?
     ) -> some View {
         ZStack {
             Circle()
@@ -305,17 +390,19 @@ struct Anlagenbild: View {
                 .overlay(Circle().strokeBorder(Color(rand).opacity(0.75), lineWidth: 1.2))
                 .frame(width: halbmesser * 2, height: halbmesser * 2)
             VStack(spacing: 2) {
-                Text(name).font(.custom("IBMPlexSans", size: 14)).foregroundStyle(Farbe.text2)
-                Text(Formate.zahl(abs(wert ?? 0), stellen: 1) + " kW")
-                    .font(.custom("IBMPlexMono", size: 14))
+                // `.anlage-name` nennt keine Farbe und erbt damit `var(--text-1)`
+                // (`globals.css:568`, `.anlage-flaeche text`); hier stand `text2`.
+                Text(name)
+                    .font(.system(size: namengroesse, weight: .medium))
                     .foregroundStyle(Farbe.text1)
+                grosseZahl(de(wert), einheit: " kW", groesse: zahlgroesse)
             }
         }
         .frame(width: halbmesser * 2, height: halbmesser * 2)
         .overlay(alignment: .bottom) {
             if let hinweistext, !hinweistext.isEmpty {
                 Text(hinweistext)
-                    .font(.custom("IBMPlexSans", size: 11))
+                    .font(.system(size: 11.5, weight: .light))
                     .foregroundStyle(Farbe.text3)
                     .fixedSize()
                     .offset(y: 22)
@@ -336,11 +423,13 @@ struct Anlagenbild: View {
         }
         .position(x: 300, y: 300)
         .overlay(alignment: .topLeading) {
-            Text(Formate.zahl(abs(strom.houseKw ?? 0), stellen: 1) + " kW im Haus")
-                .font(.custom("IBMPlexSans", size: 11))
-                .foregroundStyle(Farbe.text3)
-                .fixedSize()
-                .position(x: 230, y: 286)
+            // „zusammen 4,2 kW“, rechtsbündig vor dem Knoten (`Schema.tsx:284-286`): das Wort
+            // gehört zu der Stelle, an der sich die drei Quellen sammeln, und nennt ihre Summe.
+            // „im Haus“ sagte eine Zugehörigkeit, die der Knoten nicht meint - die Wärmepumpe
+            // steht auch im Haus und hängt an demselben Punkt.
+            hinweis(
+                "zusammen \(de(strom.houseKw)) kW", an: CGPoint(x: 286, y: 292),
+                nachLinks: true)
         }
         .allowsHitTesting(false)
     }
@@ -351,20 +440,20 @@ struct Anlagenbild: View {
             gedimmt: ofen.running != true
         ) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Pelletofen").font(.custom("IBMPlexSans", size: 15))
-                    .foregroundStyle(Farbe.text1)
-                Text(Anlagenschema.ofenStatus(ofen)).font(.custom("IBMPlexSans", size: 12))
-                    .foregroundStyle(Farbe.text3)
+                name("Pelletofen")
+                unterzeile(Anlagenschema.ofenStatus(ofen))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .overlay(alignment: .bottomTrailing) {
+                let gemeldet = ofen.running == true && ofen.waterKw != nil
                 VStack(alignment: .trailing, spacing: 1) {
                     grosseZahl(
-                        ofen.running == true && ofen.waterKw != nil
-                            ? "≈" + Formate.zahl(abs(ofen.waterKw ?? 0), stellen: 1) : "-",
-                        einheit: " kW", groesse: 30)
-                    Text("ins Wasser").font(.custom("IBMPlexSans", size: 11))
-                        .foregroundStyle(Farbe.text3)
+                        gemeldet ? "≈" + de(ofen.waterKw) : Formate.leer,
+                        einheit: " kW", groesse: 32, einheitGroesse: 13)
+                    // **„geschätzt aus der Stufe“, und nur wenn eine Stufe brennt**
+                    // (`Schema.tsx:312-314`). „ins Wasser“ stand auch an einem Strich - und
+                    // erklärte damit eine Schätzung, die niemand gemacht hat.
+                    hinweistext(gemeldet ? "geschätzt aus der Stufe" : "")
                 }
             }
             .padding(EdgeInsets(top: 20, leading: 26, bottom: 12, trailing: 24))
@@ -378,35 +467,61 @@ struct Anlagenbild: View {
         ) {
             ZStack(alignment: .topLeading) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Wärmepumpe").font(.custom("IBMPlexSans", size: 15))
-                        .foregroundStyle(Farbe.text1)
-                    Text(wp.running ? "läuft" : "steht").font(.custom("IBMPlexSans", size: 12))
-                        .foregroundStyle(Farbe.text3)
+                    name("Wärmepumpe")
+                    unterzeile(wpStatus)
                 }
                 VStack(alignment: .leading, spacing: 1) {
-                    grosseZahl(
-                        Formate.zahl(abs(wp.powerKw ?? 0), stellen: 1), einheit: " kW",
-                        groesse: 26)
-                    Text("Strom hinein").font(.custom("IBMPlexSans", size: 11))
-                        .foregroundStyle(Farbe.text3)
+                    grosseZahl(de(wp.powerKw), einheit: " kW", groesse: 30)
+                    hinweistext("Strom hinein")
                 }
                 .frame(maxHeight: .infinity, alignment: .bottom)
                 VStack(alignment: .trailing, spacing: 1) {
+                    // **„0,0“ nur, wenn sie steht** (`Schema.tsx:331`): eine stehende Pumpe
+                    // macht gemessene null Wärme, eine laufende ohne Zähler macht welche, die
+                    // niemand kennt - und dann steht dort ein Strich.
                     grosseZahl(
-                        wp.running
-                            ? (wp.thermalKw != nil
-                                ? Formate.zahl(abs(wp.thermalKw ?? 0), stellen: 1) : "-")
-                            : "0,0",
-                        einheit: " kW", groesse: 38)
-                    Text(wp.running && wp.thermalKw == nil ? "Wärme nicht gemessen" : "Wärme heraus")
-                        .font(.custom("IBMPlexSans", size: 11))
-                        .foregroundStyle(Farbe.text3)
+                        wp.running ? de(wp.thermalKw) : Formate.zahl(0, stellen: 1),
+                        einheit: " kW", groesse: 44, einheitGroesse: 13)
+                    hinweistext(
+                        wp.running && wp.thermalKw == nil ? "Wärme nicht gemessen" : "Wärme heraus")
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 copring.frame(maxWidth: .infinity, alignment: .trailing).offset(y: 12)
             }
             .padding(EdgeInsets(top: 22, leading: 26, bottom: 14, trailing: 24))
         }
+    }
+
+    /// Was unter „Wärmepumpe“ steht (`Schema.tsx:325`).
+    ///
+    /// **Mit der Dauer, wenn es eine gibt.** Die App schrieb nur „läuft“ - und damit sieht eine
+    /// Pumpe, die seit zwei Minuten taktet, aus wie eine, die seit drei Stunden durchläuft.
+    private var wpStatus: String {
+        guard wp.running else { return "steht" }
+        let seit = Anlagenschema.dauerText(seit: wp.runningSince, jetzt: jetzt)
+        return seit.isEmpty ? "läuft" : "läuft seit \(seit)"
+    }
+
+    /// Der Name auf einer Kachel: `.anlage-name`, 15 Punkte, Gewicht 500 (`globals.css:570`).
+    private func name(_ wort: String) -> some View {
+        Text(wort)
+            .font(.system(size: 15, weight: .medium))
+            .foregroundStyle(Farbe.text1)
+    }
+
+    /// Die Zeile unter dem Namen: `.anlage-sub`, 12,5 Punkte, Gewicht 300, ``Farbe/text2``
+    /// (`globals.css:571`) - hier stand 12 Punkte in `text3`, also leiser als gemeint.
+    private func unterzeile(_ wort: String) -> some View {
+        Text(wort)
+            .font(.system(size: 12.5, weight: .light))
+            .foregroundStyle(Farbe.text2)
+    }
+
+    /// Ein Hinweis in der Kachel: `.anlage-hint`, 11,5 Punkte, Gewicht 300 (`globals.css:572`).
+    private func hinweistext(_ wort: String) -> some View {
+        Text(wort)
+            .font(.system(size: 11.5, weight: .light))
+            .foregroundStyle(Farbe.text3)
     }
 
     /// Die Arbeitszahl als Ring: voll bei 5, wie im Dashboard.
@@ -422,13 +537,16 @@ struct Anlagenbild: View {
                     style: StrokeStyle(lineWidth: 3, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-            Text(cop.map { Formate.zahl($0, stellen: 1) } ?? "-")
-                .font(.custom("IBMPlexMono", size: 13))
+            // Die Zahl im Ring ist die einzige `.anlage-num` mit Gewicht 400 - sie steht in
+            // einem Ring von 34 Punkten und hält bei 200 nicht stand (`Schema.tsx:336`).
+            Text(cop.map { Formate.zahl($0, stellen: 1) } ?? Formate.leer)
+                .font(.system(size: 13))
+                .monospacedDigit()
                 .foregroundStyle(Farbe.text1)
         }
         .frame(width: 34, height: 34)
         .overlay(alignment: .leading) {
-            Text("COP").font(.custom("IBMPlexSans", size: 10))
+            Text("COP").font(.system(size: 10, weight: .light))
                 .foregroundStyle(Farbe.text3)
                 .fixedSize()
                 .offset(x: -30)
@@ -450,24 +568,28 @@ struct Anlagenbild: View {
                             value: $0, observedAt: Zeit.iso(jetzt),
                             quality: $0 == nil ? .unavailable : .ok, source: "anlage")
                     },
-                    jetzt: jetzt, laedt: wp.running || ofen.running == true, status: nil)
+                    jetzt: jetzt, laedt: wp.running || ofen.running == true, status: nil),
+                breite: glasBreite,
+                zahlgroesse: glasZahl,
+                // **Ohne Fuellstand im Glas.** Der Prozentwert steht hier gleich darunter als
+                // eigene Zeile (mit „netto“ und den Kilowattstunden daneben); im Glas stand er
+                // ein zweites Mal, in einer Spalte von wenigen Punkten Breite.
+                mitWerten: false
             )
-            .frame(width: 150, height: 470)
-            .position(x: 824 + 75, y: 92 + 235)
+            .frame(width: glasBreite + glasRand, height: 470, alignment: .topLeading)
+            .position(x: 824 + (glasBreite + glasRand) / 2, y: 92 + 235)
             VStack(spacing: 1) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(puffer.soc.map { "\(Int(($0 * 100).rounded())) %" } ?? "-")
-                        .font(.custom("IBMPlexMono", size: 24))
-                        .foregroundStyle(Farbe.text1)
-                    Text(Anlagenschema.nettoText(puffer))
-                        .font(.custom("IBMPlexSans", size: 12))
-                        .foregroundStyle(nettofarbe)
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    grosseZahl(
+                        puffer.soc.map { "\(Int(($0 * 100).rounded()))" } ?? Formate.leer,
+                        einheit: " %", groesse: 24)
+                    if !Anlagenschema.nettoText(puffer).isEmpty {
+                        Text(Anlagenschema.nettoText(puffer))
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color(Anlagenworte.nettoFarbe(puffer)))
+                    }
                 }
-                Text(
-                    "\(Formate.zahl(puffer.usableKwh, stellen: 1)) von \(Formate.zahl(puffer.capacityKwh, stellen: 1)) kWh · \(Int(puffer.volumeLiters)) l"
-                )
-                .font(.custom("IBMPlexSans", size: 11))
-                .foregroundStyle(Farbe.text3)
+                hinweistext(Anlagenworte.glaszeile(puffer))
             }
             .fixedSize()
             .position(x: 860, y: 612)
@@ -478,13 +600,22 @@ struct Anlagenbild: View {
         .accessibilityAddTraits(.isButton)
     }
 
-    private var nettofarbe: Color {
-        switch puffer.netWord {
-        case "lädt": return Farbe.amberWeich
-        case "entlädt": return Color(Anlagenschema.Farbwerte.speicher)
-        default: return Farbe.text3
-        }
-    }
+    /// **Der Tank ist 72 Punkte breit und steht von x 824 bis x 896** (`Schema.tsx:368`).
+    ///
+    /// Das ist die eine Zahl, an der die ganze Bühne hängt: an der Kante 896 enden der
+    /// Warmwasser-, der Heizungs- und der Kaltwasserstutzen, an 824 der Wärmepumpenvorlauf
+    /// (`Anlagenrohre.swift:101-109`). Hier stand ein Aufruf **ohne `breite`** - also die
+    /// Voreinstellung 60 - in einem Rahmen von 150 Punkten; im zentrierten Rahmen rutschte der
+    /// Tank um 18,5 Punkte nach rechts. Folge: der Wärmepumpenvorlauf endete im Leeren, die
+    /// vier anderen Rohre endeten im Wasser statt an der Wand, und damit sagte die Bühne nicht
+    /// mehr, was sie sagen soll - dass sich die vier getrennten Systeme *genau hier* berühren.
+    ///
+    /// Der Rahmen muss darum so breit sein wie das Kind: Tank plus Zahlenspalte, nach derselben
+    /// Formel wie in ``Pufferglas`` (`Pufferspeicher.swift:57`: `round(20 + s * 2,6)`), und
+    /// linksoben gesetzt.
+    private let glasBreite: CGFloat = 72
+    private let glasZahl: CGFloat = 13
+    private var glasRand: CGFloat { (20 + glasZahl * 2.6).rounded() }
 
     private var warmwasserkachel: some View {
         kachel(
@@ -511,16 +642,16 @@ struct Anlagenbild: View {
         }
     }
 
-    private func abnehmer(_ name: String, wert: String, einheit: String, satz: String)
+    private func abnehmer(_ wort: String, wert: String, einheit: String, satz: String)
         -> some View
     {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
-                Text(name).font(.custom("IBMPlexSans", size: 15)).foregroundStyle(Farbe.text1)
+                name(wort)
                 Spacer(minLength: 8)
                 grosseZahl(wert, einheit: einheit, groesse: 22)
             }
-            Text(satz).font(.custom("IBMPlexSans", size: 12)).foregroundStyle(Farbe.text3)
+            unterzeile(satz)
         }
         .padding(EdgeInsets(top: 16, leading: 24, bottom: 14, trailing: 24))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -534,22 +665,7 @@ struct Anlagenbild: View {
     ) -> some View {
         inhalt()
             .frame(width: breite, height: hoehe, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: rundung, style: .continuous)
-                    .fill(Farbe.flaeche2.opacity(0.92))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: rundung, style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        .white.opacity(0.28), .white.opacity(0.06),
-                                        .white.opacity(0.02),
-                                    ],
-                                    startPoint: .top, endPoint: .bottom),
-                                lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.38), radius: 14, y: 14)
-            )
+            .background(kachelflaeche(rundung))
             .opacity(gedimmt ? 0.7 : 1)
             .position(x: x + breite / 2, y: y + hoehe / 2)
             .contentShape(RoundedRectangle(cornerRadius: rundung, style: .continuous))
@@ -559,15 +675,65 @@ struct Anlagenbild: View {
             .accessibilityAddTraits(.isButton)
     }
 
-    private func grosseZahl(_ wert: String, einheit: String, groesse: CGFloat) -> some View {
+    /// Die Fläche einer Kachel: **Glas und keine Karte** (`.anlage-glas`, `globals.css:576`).
+    ///
+    /// Hier stand `flaeche2` bei 0,92 - eine gedeckte Farbe (#123544), die auf der Bühne wie
+    /// eine aufgelegte Karte wirkt. Die Vorlage füllt mit `rgba(255,255,255,.045)`: die Kachel
+    /// ist eine *Aufhellung* des Grundes, der Bühnenverlauf scheint durch, und die Kacheln
+    /// liegen damit in der Zeichnung statt auf ihr.
+    ///
+    /// Zwei Ränder, wie im SVG: der gleichmäßige Strich (weiß 0,10) und darin die Haarlinie,
+    /// deren Verlauf **bei 25 %** schon auf 0,06 gefallen ist (`Schema.tsx:177-181`). Die App
+    /// zog ihn über die ganze Höhe und machte daraus einen Rahmen; gemeint ist eine Lichtkante
+    /// an der Oberkante.
+    private func kachelflaeche(_ rundung: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: rundung, style: .continuous)
+            .fill(.white.opacity(0.045))
+            .overlay(
+                RoundedRectangle(cornerRadius: rundung, style: .continuous)
+                    .strokeBorder(.white.opacity(0.10), lineWidth: 1)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: rundung - 0.5, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white.opacity(0.28), location: 0),
+                                .init(color: .white.opacity(0.06), location: 0.25),
+                                .init(color: .white.opacity(0.02), location: 1),
+                            ],
+                            startPoint: .top, endPoint: .bottom),
+                        lineWidth: 1)
+                    .padding(0.5)
+            )
+            .shadow(color: .black.opacity(0.38), radius: 14, y: 14)
+    }
+
+    /// Eine grosse Zahl mit Einheit: `.anlage-num` und `.anlage-unit` (`globals.css:573-574`).
+    ///
+    /// **Gewicht 200 und die Systemschrift.** Die Vorlage schaltet die ganze Zeichnung
+    /// ausdrücklich auf `-apple-system`/SF Pro, und zwar mit Begründung
+    /// (`globals.css:566-568`): die leichten Schnitte 200 und 300 halten die Kacheln ruhig, und
+    /// IBM Plex kommt im Haus nur in 400 und 600. Eine Zahl in Plex Mono ist hier also nicht
+    /// hausschriftlich, sondern zu schwer - dazu fehlte ihr die Engführung von −0,03 em.
+    /// `monospacedDigit` ersetzt `font-variant-numeric: tabular-nums` (`globals.css:567`).
+    ///
+    /// Die Einheitsgrösse steht in der Vorlage an der Stelle und wird nicht gerechnet: 12 im
+    /// Regelfall, 13 an den grossen Zahlen (`Schema.tsx:139`, `:311`, `:331`). Die App rechnete
+    /// `max(11, groesse * 0,42)` - an der 44er Zahl der Wärmepumpe wären das 18 Punkte.
+    private func grosseZahl(
+        _ wert: String, einheit: String, groesse: CGFloat, einheitGroesse: CGFloat = 12
+    ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 1) {
             Text(wert)
-                .font(.custom("IBMPlexMono", size: groesse))
+                .font(.system(size: groesse, weight: .thin))
+                .monospacedDigit()
+                .kerning(-groesse * 0.03)
                 .foregroundStyle(Farbe.text1)
-            if wert != "-", !einheit.isEmpty {
+            if wert != Formate.leer, !einheit.isEmpty {
                 Text(einheit)
-                    .font(.custom("IBMPlexSans", size: max(11, groesse * 0.42)))
-                    .foregroundStyle(Farbe.text3)
+                    .font(.system(size: einheitGroesse))
+                    .foregroundStyle(Farbe.text2)
             }
         }
         .fixedSize()
@@ -590,7 +756,7 @@ struct Anlagenbild: View {
         .opacity(laeuft ? 1 : 0.55)
         .overlay(alignment: .top) {
             if !wort.isEmpty {
-                Text(wort).font(.custom("IBMPlexSans", size: 11))
+                Text(wort).font(.system(size: 11.5, weight: .light))
                     .foregroundStyle(Farbe.text3)
                     .fixedSize()
                     .offset(y: -18)
@@ -607,7 +773,7 @@ struct Anlagenbild: View {
     @ViewBuilder private func hinweis(_ wort: String, an: CGPoint, nachLinks: Bool) -> some View {
         if !wort.isEmpty {
             Text(wort)
-                .font(.custom("IBMPlexSans", size: 11))
+                .font(.system(size: 11.5, weight: .light))
                 .foregroundStyle(Farbe.text3)
                 .fixedSize()
                 .frame(
@@ -621,14 +787,20 @@ struct Anlagenbild: View {
     }
 }
 
-/// Die beiden Überschriften der Bühne.
+/// Die beiden Überschriften der Bühne: `.anlage-cap` (`globals.css:569`).
+///
+/// **Nicht ``Farbe/kicker``.** Der Kicker der App ist `mist` (#7FA3B3) - ein Blaugrau, das auf
+/// der Bühne genau die Farbe des Netzes trägt und damit wie eine Beschriftung des Netzstrangs
+/// aussieht. Die Vorlage setzt hier ausdrücklich `fill: var(--text-3)`, also weiß bei 0,48:
+/// eine Überschrift über der Zeichnung und kein Teil von ihr. Sperrung 0,12 em bei 11 Punkten
+/// sind 1,32.
 private struct Ueberschrift: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(.custom("IBMPlexSans-SmBld", size: 11))
-            .tracking(1.2)
+            .font(.system(size: 11, weight: .medium))
+            .tracking(1.32)
             .textCase(.uppercase)
-            .foregroundStyle(Farbe.kicker)
+            .foregroundStyle(Farbe.text3)
             .fixedSize()
     }
 }

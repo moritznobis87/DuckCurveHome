@@ -71,6 +71,8 @@ curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '
 
 ## Weitere Dokumente
 
+- [deploy/haus/README.md](deploy/haus/README.md) - Duck Curve Home auf dem eigenen Gerät installieren (Raspberry Pi, Stufe 1)
+- [docs/HAUSGERAET.md](docs/HAUSGERAET.md) - Plan für das eigene Gerät im Haus: Dienste, Kiosk, Marke, Wartung, Auslieferung
 - [docs/ALFRED.md](docs/ALFRED.md) - Alfred: was er kann, was das Haus nie verlässt, Einrichtung mit Mistral
 - [docs/ZENTRALE.md](docs/ZENTRALE.md) - die Zentrale im Zielbild: Beitritt einer Box, Verzeichnis, Relais,
   Beratungszugang, und der Ausfallvertrag als Prüfliste (noch nichts davon gebaut)

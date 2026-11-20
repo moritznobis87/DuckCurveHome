@@ -87,6 +87,25 @@ public enum Schrift {
         Font.custom(Self.sans, size: groesse, relativeTo: relativeTo)
     }
 
+    /// Dieselbe Groesse, aber im echten SemiBold der Hausschrift.
+    ///
+    /// **Warum nicht `sans(13).weight(.semibold)`.** `.weight` sucht auf einer eingebundenen
+    /// Schrift keinen Schnitt aus - es laesst iOS den Regular synthetisch fetten, und das
+    /// trifft nicht denselben Strich wie der Schnitt, der unter dem PostScript-Namen
+    /// `IBMPlexSans-SmBld` im Bundle liegt (die Falle steht oben bei ``sansHalbfett``). Die
+    /// Vorlage setzt fuer den gewaehlten Knopf ausdruecklich Gewicht 600
+    /// (`globals.css:894`, `.kl-knopf` im Zustand gedrueckt), also braucht es den benannten
+    /// Schnitt und nicht das synthetische Gewicht.
+    ///
+    /// **Es gibt keine Konstante dafuer**, weil die Vorlage dieses Gewicht an Groessen
+    /// zwischen den Stufen der App nennt - derselbe Grund, der ``sans(_:relativeTo:)``
+    /// rechtfertigt. `relativeTo` bleibt, damit „Groesserer Text“ weiter wirkt.
+    public static func sansHalbfett(_ groesse: CGFloat, relativeTo: Font.TextStyle = .body)
+        -> Font
+    {
+        Font.custom(Self.sansHalbfett, size: groesse, relativeTo: relativeTo)
+    }
+
     public static func mono(_ groesse: CGFloat, relativeTo: Font.TextStyle = .body) -> Font {
         Font.custom(Self.mono, size: groesse, relativeTo: relativeTo)
     }

@@ -47,6 +47,14 @@ final class TagTests: XCTestCase {
         XCTAssertEqual(Tag.kurz("2026-11-07"), "Sa, 7.11.")
     }
 
+    /// Die Achsenform: zweistellig, ohne Wochentag, ohne Jahr - und ein Tag, der kein Tag ist,
+    /// kommt unveraendert zurueck statt als „00.00.".
+    func testTagUndMonatAnDerAchse() {
+        XCTAssertEqual(Tag.tagMonat("2026-11-07"), "07.11.")
+        XCTAssertEqual(Tag.tagMonat("2026-01-31"), "31.01.")
+        XCTAssertEqual(Tag.tagMonat("kein Tag"), "kein Tag")
+    }
+
     func testRelativeNamen() {
         let jetzt = Tag.date("2026-11-16")!
         XCTAssertEqual(Tag.nameRelativ("2026-11-16", jetzt: jetzt), "Heute")

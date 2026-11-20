@@ -59,8 +59,7 @@ final class Mitteilungen: NSObject {
     /// Start, den niemand einordnen kann, wird abgelehnt, und danach ist die Tuer zu. Gefragt
     /// wird darum erst auf der Seite „Mitteilungen", wo dabeisteht, wofuer.
     func pruefeStand() async {
-        let einstellungen = await UNUserNotificationCenter.current().notificationSettings()
-        switch einstellungen.authorizationStatus {
+        switch await Self.erlaubnisstand() {
         case .notDetermined:
             stand = .ungefragt
         case .denied:
@@ -70,6 +69,22 @@ final class Mitteilungen: NSObject {
             await meldeBeimSystemAn()
         @unknown default:
             stand = .ungefragt
+        }
+    }
+
+    /// Nur die Erlaubnis, nicht die ganzen Einstellungen.
+    ///
+    /// **Warum ueber einen Rueckruf und nicht ueber `await notificationSettings()`.**
+    /// `UNNotificationSettings` ist nicht `Sendable`, und dieses Projekt uebersetzt mit
+    /// `SWIFT_STRICT_CONCURRENCY: complete`: ein solches Ergebnis darf den Hauptakteur nicht
+    /// erreichen („non-sendable result type 'UNNotificationSettings' cannot be sent from
+    /// nonisolated context"). Gebraucht wird davon ohnehin nur die Erlaubnis, und die ist eine
+    /// Aufzaehlung. Sie wird im Rueckruf herausgezogen, und nur sie geht hinueber.
+    private nonisolated static func erlaubnisstand() async -> UNAuthorizationStatus {
+        await withCheckedContinuation { fortsetzung in
+            UNUserNotificationCenter.current().getNotificationSettings { einstellungen in
+                fortsetzung.resume(returning: einstellungen.authorizationStatus)
+            }
         }
     }
 
@@ -149,9 +164,20 @@ final class Mitteilungen: NSObject {
     }
 
     /// Dieses Geraet abmelden.
-    func meldeAb() async {
+    ///
+    /// **Warum der Netzfehler nicht mehr verschluckt wird.** Hier stand `_ = try? await …` und
+    /// darunter unbedingt `stand = .erlaubt`: scheiterte der Weg zum Dienst, blieb das Geraet
+    /// dort angemeldet, und die Seite meldete trotzdem, es bekomme keine Mitteilungen mehr. Die
+    /// Vorlage meldet diesen Satz nur im `try`-Zweig und sonst ihren Fehlersatz
+    /// (`apps/web/src/components/settings/Mitteilungen.tsx:158-162`).
+    ///
+    /// **Und warum das Token geloescht wird.** ``pruefeStand()`` schliesst aus einem vorhandenen
+    /// Token auf ``Stand/angemeldet``; bliebe es stehen, stuende nach dem Abmelden wieder
+    /// „angemeldet“ da - neben der Rueckmeldung, dass dieses Geraet nichts mehr bekommt.
+    func meldeAb() async throws {
         guard let haus, let token else { return }
-        _ = try? await haus.api.meldeApnsAb(token: token)
+        _ = try await haus.api.meldeApnsAb(token: token)
+        self.token = nil
         stand = .erlaubt
     }
 }
@@ -180,8 +206,13 @@ extension Mitteilungen: UNUserNotificationCenterDelegate {
     ) async {
         let inhalt = response.notification.request.content.userInfo
         guard let ziel = inhalt["url"] as? String else { return }
+        // Eine Mitteilung kann aelter sein als der Umbau, der ihre Seite verschoben hat. Die
+        // Vorlage faengt das mit ihren Weiterleitungen (`apps/web/next.config.ts:17-32`); hier
+        // tut es ``Bereiche/ziel(_:)``, damit ein altes Ziel auf den Nachfolger fuehrt und nicht
+        // auf die Startseite.
+        let aufgeloest = Bereiche.ziel(ziel)
         await MainActor.run {
-            Zielsprung.gewuenscht = Bereiche.alleWege.contains(ziel) ? ziel : "/"
+            Zielsprung.gewuenscht = Bereiche.alleWege.contains(aufgeloest) ? aufgeloest : "/"
         }
     }
 }

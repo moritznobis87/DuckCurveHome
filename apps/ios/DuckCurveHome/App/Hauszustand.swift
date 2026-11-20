@@ -278,6 +278,31 @@ final class Hauszustand {
         return "Automatik"
     }
 
+    /// Das Wort neben dem Lebenspunkt: „live", „demo 60×", „unterbrochen · 23:35".
+    ///
+    /// **Warum hier und nicht in der Ansicht.** Zwei Stellen zeigen es - der Kopf der
+    /// Wandanzeige und das Ruhebild - und sie sollen nie verschiedene Wörter sagen.
+    var verbindungswort: String {
+        switch verbindung {
+        case .live:
+            guard let s = zustand?.system else { return "live" }
+            if s.mode == "demo" {
+                return s.simSpeed != 1 ? "demo \(Formate.zahl(s.simSpeed, stellen: 0))×" : "demo"
+            }
+            return "live"
+        case .verbindet:
+            return "verbinde"
+        case .verbindetNeu:
+            guard let letzter = letzterRahmen else { return "verbinde" }
+            return "unterbrochen · \(Formate.hhmm(letzter.addingTimeInterval(versatz)))"
+        case .aus:
+            return fehler == nil ? "angehalten" : "nicht verbunden"
+        }
+    }
+
+    /// Läuft die Anwendung im Vorführbetrieb? Dann ist jede Zahl erfunden.
+    var vorfuehrung: Bool { zustand?.system.mode == "demo" }
+
     /// Ob dieser Zugang schalten darf. Blendet aus, sperrt nicht - siehe `Zugang`.
     var darfSchalten: Bool { zugang.rolle == .hausherr }
 }

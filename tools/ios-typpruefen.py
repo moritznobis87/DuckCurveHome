@@ -44,7 +44,15 @@ Was es prüft:
    Erklärung des Typs – jeden ausgeschriebenen `init`, auch den in einer `extension`, sonst
    den gemerkten Anfangswert aus den gespeicherten Feldern. Nur Typen, die das Projekt selbst
    erklärt; eine `extension Path` sagt nichts darüber, was SwiftUIs `Path` sonst kann.
-8. **`dazu` und `farbe` in der falschen Reihenfolge.** Bei `Zeile` und `Kacheldaten` sind die
+8. **Ein Name, der benutzt wird und nirgends erklärt ist** (`zahlgroesse`, `modellhinweis`).
+   Der Fehler des dreizehnten Laufs, zweimal in einem Lauf: ein Block ging bei einer Änderung
+   verloren, die denselben Ankerkommentar traf, und seine drei Aufrufer blieben stehen; ein
+   zweiter Name wurde aufgerufen und nie geschrieben. Geprüft werden nur Namen **ohne Punkt
+   davor** – dort ist `self` der Empfänger, und `self` ist das Projekt. Was von draussen ohne
+   Punkt kommt (`max`, `withAnimation`, die `kSec`-Konstanten), steht in
+   `tools/ios-bekannte-namen.txt`. Kleingeschriebene Namen; Typnamen bleiben aussen vor, dort
+   wären ohne eine Liste aller SwiftUI-Typen alle Treffer Fehlalarme.
+9. **`dazu` und `farbe` in der falschen Reihenfolge.** Bei `Zeile` und `Kacheldaten` sind die
    Felder die Argumente. Hier zählt echtes Klammernzählen: mein erster Versuch benutzte ein
    Muster für eine Klammerebene und hat deshalb einen Aufruf übersehen, der eine zweite hatte.
 """
@@ -256,6 +264,147 @@ def ohne_kommentare(text: str) -> str:
     return "".join(aus)
 
 
+def nur_code(text: str) -> str:
+    """Derselbe Text ohne Kommentare und ohne Wortlaut – Zeichen für Zeichen an seiner Stelle.
+
+    **Warum nicht `ohne_kommentare`.** Das dort reicht fürs Klammernzählen, verschiebt aber
+    Zeilen (ein Block in dreifachen Anführungszeichen wird zu zwei Zeichen) und endet an der
+    ersten Anführung in einer Einschiebung: in `"… \\(a ? "kein Füllstand" : b)"` wird aus
+    `kein Füllstand` Code. Für
+    Regel 13 ist beides fatal – sie melden Zeilennummern und deutsche Wörter als Namen.
+
+    Dieses Verfahren ersetzt jedes Zeichen einer Zeichenkette oder eines Kommentars durch ein
+    Leerzeichen und jeden Zeilenumbruch durch sich selbst. Länge und Zeilennummern bleiben
+    also genau erhalten. Was in `\\( )` steht, bleibt stehen – das ist Code; eine
+    Zeichenkette darin ist wieder Wortlaut. Darum ein Stapel und keine Suche nach dem
+    nächsten Anführungszeichen.
+    """
+    aus: list[str] = []
+    i, n = 0, len(text)
+    stapel: list[str] = []  # "kurz" | "lang" | "ein" (in \( )) | "tiefer"
+    while i < n:
+        z = text[i]
+        oben = stapel[-1] if stapel else None
+        if oben in ("kurz", "lang"):
+            if z == "\\" and i + 1 < n:
+                if text[i + 1] == "(":
+                    stapel.append("ein")
+                    aus.append("  ")
+                    i += 2
+                    continue
+                aus.append("\n" if text[i + 1] == "\n" else " ")
+                aus.append(" ")
+                i += 2
+                continue
+            if oben == "lang" and text.startswith('"""', i):
+                stapel.pop()
+                aus.append("   ")
+                i += 3
+                continue
+            if oben == "kurz" and z == '"':
+                stapel.pop()
+                aus.append(" ")
+                i += 1
+                continue
+            aus.append("\n" if z == "\n" else " ")
+            i += 1
+            continue
+        if text.startswith("//", i):
+            while i < n and text[i] != "\n":
+                aus.append(" ")
+                i += 1
+            continue
+        if text.startswith("/*", i):
+            tiefe = 0
+            while i < n:
+                if text.startswith("/*", i):
+                    tiefe += 1
+                    aus.append("  ")
+                    i += 2
+                    continue
+                if text.startswith("*/", i):
+                    tiefe -= 1
+                    aus.append("  ")
+                    i += 2
+                    if tiefe == 0:
+                        break
+                    continue
+                aus.append("\n" if text[i] == "\n" else " ")
+                i += 1
+            continue
+        if text.startswith('"""', i):
+            stapel.append("lang")
+            aus.append("   ")
+            i += 3
+            continue
+        if z == '"':
+            stapel.append("kurz")
+            aus.append(" ")
+            i += 1
+            continue
+        if oben in ("ein", "tiefer"):
+            if z == "(":
+                stapel.append("tiefer")
+            elif z == ")":
+                stapel.pop()
+                if oben == "ein":
+                    aus.append(" ")
+                    i += 1
+                    continue
+        aus.append(z)
+        i += 1
+    return "".join(aus)
+
+
+# Wie ein Name erklärt wird. Jede Gruppe eines Treffers zählt, am Komma getrennt.
+ERKLAERUNGEN = [
+    r"\b(?:let|var)\s+(\w+)",
+    r"\b(?:let|var)\s*\(([^)]*)\)",                 # let (a, b) = …
+    r"\bfunc\s+(\w+)",
+    r"\bcase\s+([\w\s,]+?)(?=[:({=}\n])",            # case auto, manuellAn, manuellAus
+    r"\b(?:struct|class|enum|protocol|typealias|actor)\s+(\w+)",
+    r"(?:^|[(,])\s*(?:_\s+)?(\w+)\s*:\s*[\w\[(@]",    # name: Typ
+    r"(?:^|[(,])\s*(\w+)\s+(\w+)\s*:\s*[\w\[(@]",    # aussen innen: Typ
+    r"\b(?:for|if let|guard let|while let|catch let)\s+(\w+)",
+    r"\{\s*((?:\w+\s*,\s*)*\w+)\s+in\b",            # { puffer, _ in
+]
+
+# Wörter, die Swift selbst mitbringt und die darum kein Name sind.
+SCHLUESSELWOERTER = set(
+    """let var func if else for in while return self nil true false guard switch case default
+    break continue struct class enum protocol extension import public private internal static
+    where as is try await async throws rethrows init deinit some any inout defer do catch throw
+    repeat typealias associatedtype subscript operator precedencegroup lazy weak unowned open
+    final override required convenience mutating nonmutating indirect fileprivate get set
+    willSet didSet super Self nonisolated each borrowing consuming fallthrough package dynamic
+    infix prefix postfix""".split()
+)
+
+
+def erklaerte_namen(texte: list[str]) -> set[str]:
+    """Jeder Name, den das Projekt irgendwo erklärt."""
+    namen: set[str] = set()
+    for text in texte:
+        for muster in ERKLAERUNGEN:
+            for m in re.finditer(muster, text, re.M):
+                for stueck in m.groups():
+                    for name in re.split(r"[,\s]+", stueck or ""):
+                        if name:
+                            namen.add(name)
+        if re.search(r"\b(?:willSet|didSet)\b", text):
+            namen |= {"oldValue", "newValue"}
+    return namen
+
+
+def bekannte_namen() -> set[str]:
+    """Die Liste der Namen von draussen, aus `tools/ios-bekannte-namen.txt`."""
+    pfad = os.path.join(WURZEL, "tools", "ios-bekannte-namen.txt")
+    if not os.path.exists(pfad):
+        return set()
+    zeilen = open(pfad, encoding="utf-8").read().splitlines()
+    return {w for z in zeilen if not z.lstrip().startswith("#") for w in z.split()}
+
+
 def bausteine_lesen(pfade: list[str]) -> dict[str, set[str]]:
     """Jeder im Projekt erklärte Verbundtyp mit den Argumentnamen, die er annimmt.
 
@@ -346,6 +495,16 @@ def bausteine_lesen(pfade: list[str]) -> dict[str, set[str]]:
 def main() -> int:
     felder, aufzaehlungen = schema_lesen()
     nie_wahlfrei = {n for n, ts in felder.items() if all(not t.endswith("?") for t in ts)}
+    # **Namen, die auch Apple vergibt.** `DateComponents` hat `minute`, `hour`, `day` - alle
+    # wahlfrei, und `teile.minute ?? 0` ist dort richtig. Sobald das Projekt irgendwo ein
+    # eigenes Feld desselben Namens erklärt (`Faecherpunkt.minute: Int`), hielte Regel 1 den
+    # Zugriff für einen Fehler. Der Prüfer löst keine Typen auf und kann den Empfänger nicht
+    # ansehen; also bleiben die Namen aussen vor, die Foundation selbst führt.
+    nie_wahlfrei -= {
+        "era", "year", "month", "day", "hour", "minute", "second", "nanosecond",
+        "weekday", "weekdayOrdinal", "quarter", "weekOfMonth", "weekOfYear",
+        "yearForWeekOfYear", "calendar", "timeZone",
+    }
     # Ein Vergleich mit einer Zeichenkette ist nur dann sicher falsch, wenn das Feld in
     # KEINEM Typ eine Zeichenkette ist. `mode` etwa heisst woanders `String` - dort ist der
     # Vergleich richtig, und ein Prueffehler waere schlimmer als eine Luecke.
@@ -666,6 +825,44 @@ def main() -> int:
                 maengel.append((kurz, nr, f"{name}(...) bekommt {fremd}, kennt aber nur "
                                           f"{sorted(erlaubt)}"))
 
+    # 13. Ein Name, der benutzt wird und nirgends erklärt ist.
+    #
+    # **Der Fehler des dreizehnten Laufs, und zweimal in einem Lauf.** `zahlgroesse` stand in
+    # `Knoten`, bis eine späterere Änderung denselben Ankerkommentar traf und den Block dabei
+    # überschrieb; `modellhinweis` wurde in der Wandfassung der Hausseite aufgerufen und war
+    # nie geschrieben worden. Drei bzw. ein Aufrufer blieben stehen, der Parser sah nichts, und
+    # Xcode sagte „cannot find … in scope". Regel 12 prüft die **Argumente** eines Aufrufs,
+    # nicht, ob der aufgerufene Name überhaupt existiert.
+    #
+    # **Wie das ohne Typauflösung geht.** Gesucht wird nur nach Namen ohne Punkt davor: `self`
+    # ist dann der Empfänger, und `self` ist das Projekt. Alles mit Punkt (`haus.zustand`,
+    # `$0.name`) bleibt aussen vor – dort entscheidet ein Typ, den dieses Skript nicht kennt.
+    # Was von draussen ohne Punkt kommt – `max`, `withAnimation`, die `kSec`-Konstanten, die
+    # Mitglieder von `Path`, die eine `extension` ohne `self.` aufruft – steht in
+    # `tools/ios-bekannte-namen.txt`. Diese Liste ist der Preis der Regel: Sie ist kurz, und
+    # jede Zeile darin hat jemand gelesen.
+    #
+    # Nur die App, nicht der Kern: der Kern übersetzt hier auf Linux, dort findet der Compiler
+    # das selbst und besser.
+    code = {pfad: nur_code(open(pfad, encoding="utf-8").read())
+            for pfad in dateien + kernpfade}
+    erklaert = erklaerte_namen(list(code.values())) | bekannte_namen() | SCHLUESSELWOERTER
+    for pfad in dateien:
+        kurz = os.path.relpath(pfad, APP)
+        text = code[pfad]
+        # `@escaping`, `#available`: hinter `@` und `#` steht kein Name des Projekts.
+        for m in re.finditer(r"(?<![.\w$`@#])([a-z]\w*)", text):
+            name = m.group(1)
+            if name in erklaert:
+                continue
+            # Ein Doppelpunkt dahinter heisst Argumentname oder Fallmarke, kein Zugriff.
+            if text[m.end():m.end() + 1] == ":":
+                continue
+            nr = text[:m.start()].count("\n") + 1
+            maengel.append((kurz, nr, f"`{name}` wird benutzt, aber nirgends im Projekt "
+                                      f"erklärt (wenn es von draussen kommt: "
+                                      f"tools/ios-bekannte-namen.txt)"))
+
     print(f"{len(dateien)} Dateien geprüft, {len(felder)} Schemafelder und "
           f"{len(bausteine)} Bausteine als Maßstab.")
     if maengel:
@@ -673,7 +870,7 @@ def main() -> int:
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der zwölf geprüften Fehlerarten gefunden.")
+    print("Keine der dreizehn geprüften Fehlerarten gefunden.")
     return 0
 
 

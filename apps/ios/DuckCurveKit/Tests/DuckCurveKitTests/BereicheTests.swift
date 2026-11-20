@@ -115,6 +115,7 @@ final class BereicheTests: XCTestCase {
     func testNurHausherr() {
         XCTAssertTrue(Bereiche.nurHausherr("/geld/rechnungen"))
         XCTAssertTrue(Bereiche.nurHausherr("/system/zugang"))
+        XCTAssertTrue(Bereiche.nurHausherr("/system/geraet"))
         XCTAssertFalse(Bereiche.nurHausherr("/strom"))
         XCTAssertFalse(Bereiche.nurHausherr("/waerme/anlage"))
     }
@@ -140,11 +141,13 @@ final class SpannenTests: XCTestCase {
 
     /// **Die Ausnahmen, und warum es sie gibt.** Heizkreise zeigen Minutenwerte eines Tages –
     /// über eine Woche gelegt ergäbe das ein Bild, in dem nichts mehr zu erkennen ist. Die
-    /// PV-Abrechnung ist ein Beleg und kennt nur Monat und Jahr.
+    /// PV-Abrechnung ist ein Beleg und kennt nur Monat und Jahr. „Daten prüfen" zeigt ebenfalls
+    /// Minutenwerte und kennt darum ebenfalls nur Tage (`DataCheck.tsx:59-68`,
+    /// `showPeriods={false}`).
     func testDieAusnahmen() {
         XCTAssertEqual(Bereiche.spannen(fuer: "/waerme/raeume"), [.tag])
         XCTAssertEqual(Bereiche.spannen(fuer: "/geld/pv-abrechnung"), [.monat, .jahr])
-        XCTAssertEqual(Bereiche.spannen(fuer: "/system/daten"), [.tag, .woche, .monat])
+        XCTAssertEqual(Bereiche.spannen(fuer: "/system/daten"), [.tag])
     }
 
     /// Eine Ansicht erbt die Spannen ihres Reiters: „Ein Tag" unter „Anlage" ist dieselbe Seite
@@ -152,5 +155,121 @@ final class SpannenTests: XCTestCase {
     func testEineAnsichtErbtVonIhremReiter() {
         XCTAssertNil(Bereiche.spannen(fuer: "/waerme/wiedergabe"))
         XCTAssertEqual(Bereiche.spannen(fuer: "/strom?anker=2026-11-18"), Spanne.allCases)
+    }
+}
+
+/// Der Kicker je Seite: die zwei bis vier Stichworte unter dem Titel.
+///
+/// **Warum das geprüft wird und nicht bloß hingeschrieben.** Die Stichworte sind eine Abschrift
+/// aus achtundzwanzig Vorlagen, verteilt über `page.tsx` und die Berichtsbausteine - und jede
+/// Abschrift läuft auseinander, wenn niemand nachrechnet. Vorher stand sie in der Seite selbst,
+/// und genau dort hat niemand gemerkt, dass dasselbe Wort auch im Wortschatz des Kerns steht.
+final class KickerTests: XCTestCase {
+    /// Jede Route und das Wort, das die Vorlage ihrer Hülle gibt. Die Stelle steht am Eintrag
+    /// in ``Bereiche/alle``.
+    private let erwartet: [String: String] = [
+        "/strom": "Verbrauch · Verbraucher · Herkunft",
+        "/waerme": "gerechnet, nicht gemessen",
+        "/strom/pv": "Erzeugung · Verwendung · Prognose",
+        "/strom/wallbox": "Ladungen · Herkunft · Kosten",
+        "/strom/jahr": "365 Tage × 24 Stunden",
+        "/geld": "Was der Zeitraum gekostet hat, in einer Zeile",
+        "/geld/pv-abrechnung": "Einspeisung · Eigenverbrauch · Umsatzsteuer",
+        "/geld/rechnungen": "Tibber · nachgerechnet und gegen die eigene Messung gehalten",
+        "/waerme/anlage": "Strom · Speicher · vier Kreise",
+        "/waerme/wiedergabe": "Ein Tag am Anlagenschema · zum Durchfahren",
+        "/waerme/waermepumpe": "Außengerät · Innengerät · Speicher",
+        "/waerme/waermepumpe/betrieb": "Läufe · Abtauen · Heizkurve",
+        "/waerme/waermepumpe/kennlinie": "Arbeitszahl · gemessen",
+        "/waerme/waermepumpe/regler": "Einstellungen · gelesen",
+        "/waerme/fahrplan": "Preis · PV · Wärmebedarf · Puffer · zwei Tage",
+        "/waerme/nachbetrachtung": "Versprochen, gehalten, wirklich · ein Tag in Euro",
+        "/waerme/wirkung": "Folgt die Wärmepumpe der Anforderung? · gemessen, nicht angenommen",
+        "/waerme/raeume": "Einzelraumregelung · Abweichung vom Ziel über den Tag",
+        "/system": "PV-Prognose gegen Ist · Korrekturfaktoren",
+        "/system/daten": "Messreihen · Stundenbilanz · Rohdaten",
+        "/waerme/annahmen": "Lieferschein · Datenblatt · Puffer",
+        "/system/mitteilungen": "Was aufs Handy kommt: Störungen und das Morning Briefing",
+        "/system/haustuer": "Wer sich am Reader erkennen ließ, und was geschah",
+        "/system/geraet": "Dienste, Gesundheit, Sicherung und Updates des Rechners im Haus",
+        "/system/zugang": "Geräte koppeln · wer zusieht · Daten sichern",
+    ]
+
+    /// Die drei Routen, die keinen bekommen - jede mit einem Grund in der Vorlage.
+    ///
+    /// `/` hat einen eigenen Kopf statt der Hülle (`home/Home.tsx:203`); `/haus` und
+    /// `/strom/speicher` rechnen ihre Zeile aus der Antwort des Dienstes
+    /// (`house/HouseReport.tsx:219`, `reports/BatteryReport.tsx:103`) und können darum nicht im
+    /// Gerippe stehen.
+    private let ohneKicker: Set<String> = ["/", "/haus", "/strom/speicher"]
+
+    func testJedeSeiteTraegtDasWortIhrerVorlage() {
+        for (weg, wort) in erwartet {
+            XCTAssertEqual(Bereiche.kicker(fuer: weg), wort, weg)
+        }
+        for weg in ohneKicker {
+            XCTAssertNil(Bereiche.kicker(fuer: weg), "\(weg) bekommt einen Kicker, den die Vorlage nicht hat")
+        }
+    }
+
+    /// **Jede Route muss hier eine Entscheidung haben.** Eine neue Seite, die niemand einträgt,
+    /// fällt sonst still durch: im Gerippe stünde nichts, und ob das Absicht war, wüsste
+    /// niemand.
+    func testKeineRouteBleibtUnentschieden() {
+        for weg in Bereiche.alleWege {
+            XCTAssertTrue(
+                erwartet[weg] != nil || ohneKicker.contains(weg),
+                "\(weg) steht in der Leiste, aber in keiner der beiden Listen dieses Tests")
+        }
+        XCTAssertEqual(Set(erwartet.keys).union(ohneKicker), Set(Bereiche.alleWege))
+    }
+
+    /// **Eine Route, ein Wort.** Weil die erste Ansicht die Adresse ihres Reiters hat, könnten
+    /// für `/waerme/anlage` zwei Felder gefüllt sein - und beim nächsten Umbau mit zwei
+    /// verschiedenen Worten. Dann hinge es an der Reihenfolge der Suche, welches man sieht.
+    func testKeineRouteBekommtZweiVerschiedene() {
+        var gesehen: [String: Set<String>] = [:]
+        for b in Bereiche.alle {
+            for r in b.reiter {
+                if let k = r.kicker { gesehen[r.weg, default: []].insert(k) }
+                for u in r.unter {
+                    if let k = u.kicker { gesehen[u.weg, default: []].insert(k) }
+                }
+            }
+        }
+        for (weg, worte) in gesehen {
+            XCTAssertEqual(worte.count, 1, "\(weg) hat \(worte.count) Kicker: \(worte.sorted())")
+        }
+    }
+
+    /// Wo es Ansichten gibt, tragen sie den Kicker und der Reiter keinen: vier Sichten der
+    /// Wärmepumpe sind vier Seiten der Vorlage mit vier eigenen `page.tsx`.
+    func testWoAnsichtenStehenTraegtDerReiterKeinen() {
+        for b in Bereiche.alle {
+            for r in b.reiter where !r.unter.isEmpty {
+                XCTAssertNil(r.kicker, "Reiter \(r.name) trägt einen Kicker neben seinen Ansichten")
+                for u in r.unter {
+                    XCTAssertNotNil(u.kicker, "Ansicht \(u.name) von \(r.name) hat keinen")
+                }
+            }
+        }
+    }
+
+    /// Der Fragezeichenteil gehört nicht zum Weg - sonst hätte dieselbe Seite mit Zeitraum in
+    /// der Adresse keinen Kicker (`Bereiche.saeubere(_:)`).
+    func testDerFragezeichenteilAendertNichts() {
+        XCTAssertEqual(
+            Bereiche.kicker(fuer: "/strom?period=week&anchor=2026-11-18"),
+            Stromuebersicht.seitenkicker)
+        XCTAssertEqual(
+            Bereiche.kicker(fuer: "/waerme/wiedergabe?tag=2026-11-10&stunde=7"),
+            Wiedergabeworte.seitenkicker)
+        XCTAssertEqual(Bereiche.kicker(fuer: "/strom/jahr/"), Jahresraster.kicker)
+    }
+
+    /// Ein Weg, den die App nicht kennt, bekommt keinen - `Unbekannt` zeigt einen Satz und
+    /// keine Stichworte.
+    func testEinUnbekannterWegBekommtKeinen() {
+        XCTAssertNil(Bereiche.kicker(fuer: "/irgendwas"))
     }
 }

@@ -138,3 +138,14 @@ export type Nachbetrachtung = S["NachbetrachtungOut"];
 export type AnlageStrom = S["AnlageStromOut"];
 export type AnlageSpeicher = S["AnlageSpeicherOut"];
 export type AnlageWarmwasser = S["AnlageWarmwasserOut"];
+
+// Technik -> Hausgerät (routers/geraet.py)
+export type Geraet = S["GeraetOut"];
+export type GeraetDienst = S["GeraetDienstOut"];
+export type GeraetEinheit = S["GeraetEinheitOut"];
+export type GeraetRechner = S["GeraetRechnerOut"];
+export type GeraetSicherung = S["GeraetSicherungOut"];
+export type GeraetAktion = S["GeraetAktionOut"];
+export type GeraetProtokoll = S["GeraetProtokollOut"];
+export type ApiSelbst = S["ApiSelbstOut"];
+export type Ampel = GeraetDienst["ampel"];

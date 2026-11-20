@@ -121,4 +121,18 @@ final class WpbildTests: XCTestCase {
         XCTAssertEqual(
             Wpbild.luefterwort(Vorschau.waermepumpe(luefter: 420)), "Lüfter · Drehzahl 420")
     }
+
+    // MARK: - Das Zustandswort
+
+    /// **Bereitschaft ist keine Stoerung und kein Lauf.** Die Maschine zieht im Stillstand
+    /// rund 0,1 kW fuer Steuerung und Umwaelzpumpe; „laeuft" waere dafuer falsch, „aus" auch.
+    func testDreiWorteUndNichtZwei() {
+        XCTAssertEqual(Wpbild.wort(kw: 1.8, laeuft: true), "läuft")
+        XCTAssertEqual(Wpbild.wort(kw: 0.0, laeuft: true), "läuft", "der Dienst hat recht")
+        XCTAssertEqual(Wpbild.wort(kw: 0.1, laeuft: false), "Bereitschaft")
+        XCTAssertEqual(Wpbild.wort(kw: 0.04, laeuft: false), "steht")
+        XCTAssertEqual(Wpbild.wort(kw: nil, laeuft: nil), "steht")
+        // Ohne Auskunft des Dienstes entscheidet die Leistung - und sagt nicht „laeuft".
+        XCTAssertEqual(Wpbild.wort(kw: 1.8, laeuft: nil), "Bereitschaft")
+    }
 }

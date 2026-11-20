@@ -26,46 +26,46 @@ struct Fahrplanzeichnung: View {
         VStack(alignment: .leading, spacing: 13) {
             auskunft
             flaeche(
-                "Strompreis · ct/kWh", hoehe: 86, spanne: preisspanne,
+                "Strompreis · ct/kWh", hoehe: 92, spanne: preisspanne,
                 leer: bild.preis.isEmpty ? "keine Preise im Horizont" : nil
             ) {
                 preisbild
             }
             flaeche(
-                "PV · kW · erwartet und gemessen", hoehe: 74, spanne: pvspanne,
+                "PV · kW · erwartet und gemessen", hoehe: 80, spanne: pvspanne,
                 leer: bild.hatMessung ? nil : "keine Messung im Horizont"
             ) {
                 pvbild
             }
             flaeche(
-                "Wärmebedarf · kW thermisch", hoehe: 86, spanne: waermespanne,
+                "Wärmebedarf · kW thermisch", hoehe: 92, spanne: waermespanne,
                 leer: bild.hatWaerme ? nil : "kein Wärmebedarf im Fahrplan"
             ) {
                 waermebild
             }
             flaeche(
-                puffertitel, hoehe: 74, spanne: pufferspanne,
+                puffertitel, hoehe: 80, spanne: pufferspanne,
                 leer: bild.hatPuffer ? nil : "kein Pufferverlauf im Fahrplan"
             ) {
                 pufferbild
             }
             flaeche(
-                "Wärmepumpe · kW elektrisch gemessen", hoehe: 66, spanne: wpspanne,
+                "Wärmepumpe · kW elektrisch gemessen", hoehe: 72, spanne: wpspanne,
                 leer: bild.hatWpMessung ? nil : "keine Messung der Wärmepumpe"
             ) {
                 wpbild
             }
-            flaeche("Wärmepumpe geplant", hoehe: 16, spanne: 0...1, leer: nil) {
+            flaeche("Wärmepumpe geplant", hoehe: 22, spanne: 0...1, leer: nil) {
                 streifen(bild.zustandsstreifen)
             }
             flaeche(
-                "Anforderung gemessen", hoehe: 16, spanne: 0...1,
+                "Anforderung gemessen", hoehe: 22, spanne: 0...1,
                 leer: bild.hatAnforderung ? nil : "keine Anforderung gemessen"
             ) {
                 streifen(bild.anforderung)
             }
             flaeche(
-                "Pelletofen geplant", hoehe: 16, spanne: 0...1,
+                "Pelletofen geplant", hoehe: 22, spanne: 0...1,
                 leer: bild.ofenstreifen.contains { $0.rolle == .ofenAn }
                     ? nil
                     : (bild.hatOfenfahrplan
@@ -131,9 +131,13 @@ struct Fahrplanzeichnung: View {
             Chart {
                 inhalt()
                 if let h = bild.horizont, h.contains(jetzt) {
+                    // **Bernstein, nicht Grau** (`Fahrplan.tsx:272-278`: `--amber-soft`,
+                    // gestrichelt, 1,2). Die Jetzt-Linie stand in derselben Farbe wie die
+                    // Achsenbeschriftung und wie die Auswahllinie daneben - drei graue
+                    // Senkrechte, und keine sagte mehr, welche „jetzt" meint.
                     RuleMark(x: .value("jetzt", jetzt))
-                        .foregroundStyle(Farbe.text2)
-                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
+                        .foregroundStyle(Farbe.amberWeich)
+                        .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
                 }
                 if let g = gewaehlt {
                     RuleMark(x: .value("gewählt", g))
@@ -215,10 +219,23 @@ struct Fahrplanzeichnung: View {
     }
 
     @ChartContentBuilder private var pvbild: some ChartContent {
+        // **Flaeche blass, Kante voll** (`Fahrplan.tsx:402-411`: Flaeche 0,20, Linie in
+        // Volldeckung, Breite 2). Eine Flaeche ohne Kante verliert ihren Rand gegen die
+        // Kartenflaeche; die Linie holt die Lesbarkeit zurueck, die die blasse Flaeche abgibt.
         ForEach(bild.pvGemessen) { p in
             if let kw = p.wert {
                 AreaMark(x: .value("Zeit", p.zeit), y: .value("kW", kw))
-                    .foregroundStyle(Farbe.pv.opacity(0.38))
+                    .foregroundStyle(Farbe.pv.opacity(0.20))
+            }
+        }
+        ForEach(bild.pvGemessen) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "gemessen")
+                )
+                .foregroundStyle(Farbe.pv)
+                .lineStyle(StrokeStyle(lineWidth: 2))
             }
         }
         ForEach(bild.pvErwartet) { p in
@@ -234,11 +251,17 @@ struct Fahrplanzeichnung: View {
     }
 
     /// Zwei Flächen statt eines Stapels: zuerst die Summe, darüber das Heizen.
+    ///
+    /// **Die Kante des Warmwassers liegt auf der Summe, nicht auf dem Warmwasser.** Im
+    /// gestapelten Bild der Vorlage ist die obere Kante der Warmwasserfläche gerade die Summe
+    /// aus beidem (`Fahrplan.tsx:415-437`); eine Linie auf `warmwasser` läge mitten im Bild
+    /// und gehörte zu nichts. Die Reihe `bild.warmwasser` wird deshalb gar nicht gezeichnet -
+    /// sie steht für die Auskunft.
     @ChartContentBuilder private var waermebild: some ChartContent {
         ForEach(bild.waermeSumme) { p in
             if let kw = p.wert {
                 AreaMark(x: .value("Zeit", p.zeit), y: .value("kW", kw))
-                    .foregroundStyle(Farbe.warmwasser.opacity(0.75))
+                    .foregroundStyle(Farbe.warmwasser.opacity(0.34))
                     .interpolationMethod(.stepEnd)
             }
         }
@@ -248,7 +271,29 @@ struct Fahrplanzeichnung: View {
                     x: .value("Zeit", p.zeit), y: .value("kW", kw),
                     series: .value("Reihe", "heizen")
                 )
-                .foregroundStyle(Farbe.haus.opacity(0.75))
+                .foregroundStyle(Farbe.haus.opacity(0.22))
+                .interpolationMethod(.stepEnd)
+            }
+        }
+        ForEach(bild.waermeSumme) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "summe")
+                )
+                .foregroundStyle(Farbe.warmwasser)
+                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                .interpolationMethod(.stepEnd)
+            }
+        }
+        ForEach(bild.heizen) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "heizkante")
+                )
+                .foregroundStyle(Farbe.haus)
+                .lineStyle(StrokeStyle(lineWidth: 1.5))
                 .interpolationMethod(.stepEnd)
             }
         }
@@ -264,10 +309,13 @@ struct Fahrplanzeichnung: View {
             )
             .foregroundStyle(Farbe.alarm.opacity(0.10))
         }
-        if let decke = bild.pufferDecke {
-            RuleMark(y: .value("Decke", decke))
-                .foregroundStyle(Farbe.linie2)
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 4]))
+        // Die Decke ist in der Vorlage die Achse selbst (`Fahrplan.tsx:302`), keine Linie im
+        // Bild: eine gestrichelte Waagerechte dort sieht aus wie eine zweite Reserve.
+        ForEach(bild.puffer) { p in
+            if let kwh = p.wert {
+                AreaMark(x: .value("Zeit", p.zeit), y: .value("kWh", kwh))
+                    .foregroundStyle(Farbe.puffer.opacity(0.14))
+            }
         }
         ForEach(bild.puffer) { p in
             if let kwh = p.wert {
@@ -276,7 +324,7 @@ struct Fahrplanzeichnung: View {
                     series: .value("Reihe", "puffer")
                 )
                 .foregroundStyle(Farbe.puffer)
-                .lineStyle(StrokeStyle(lineWidth: 1.6))
+                .lineStyle(StrokeStyle(lineWidth: 2))
             }
         }
     }
@@ -285,8 +333,19 @@ struct Fahrplanzeichnung: View {
         ForEach(bild.wpGemessen) { p in
             if let kw = p.wert {
                 AreaMark(x: .value("Zeit", p.zeit), y: .value("kW", kw))
-                    .foregroundStyle(Farbe.waermepumpe.opacity(0.55))
+                    .foregroundStyle(Farbe.waermepumpe.opacity(0.22))
                     .interpolationMethod(.stepEnd)
+            }
+        }
+        ForEach(bild.wpGemessen) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "wp")
+                )
+                .foregroundStyle(Farbe.waermepumpe)
+                .lineStyle(StrokeStyle(lineWidth: 1.8))
+                .interpolationMethod(.stepEnd)
             }
         }
     }
@@ -296,7 +355,9 @@ struct Fahrplanzeichnung: View {
         ForEach(felder) { f in
             RectangleMark(
                 xStart: .value("von", f.zeit),
-                xEnd: .value("bis", f.zeit.addingTimeInterval(Ausblick.schritt)),
+                // 92 Prozent der Viertelstunde (`Fahrplan.tsx:465-469`): bei voller Breite
+                // beruehren sich die Felder, und aus zwoelf Entscheidungen wird ein Balken.
+                xEnd: .value("bis", f.zeit.addingTimeInterval(Ausblick.schritt * 0.92)),
                 yStart: .value("u", 0), yEnd: .value("o", f.hoehe)
             )
             .foregroundStyle(farbe(f.rolle))
@@ -356,6 +417,7 @@ struct Fahrplanzeichnung: View {
         case .heizen: return Farbe.haus
         case .warmwasser: return Farbe.warmwasser
         case .neutral: return Farbe.text1
+        case .vorhersage: return Farbe.mist
         }
     }
 
@@ -363,37 +425,17 @@ struct Fahrplanzeichnung: View {
 
     private var legende: some View {
         Umbruchzeile(abstand: 13, zeilenabstand: 5) {
-            ForEach(legendenstuecke) { s in
+            ForEach(bild.legende) { s in
                 HStack(spacing: 5) {
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(s.farbe)
-                        .frame(width: 13, height: s.hoehe)
+                    RoundedRectangle(cornerRadius: s.dick <= 2 ? 0 : 1.5)
+                        .fill(farbe(s.rolle).opacity(s.blass ? 0.32 : 1))
+                        .frame(width: 14, height: s.dick)
                     Text(s.wort).font(Schrift.winzig).foregroundStyle(Farbe.text3)
                 }
             }
         }
     }
 
-    private var legendenstuecke: [Legendenstueck] {
-        var s = Fahrplanbild.zustandslegende.map {
-            Legendenstueck(
-                wort: "Wärmepumpe \($0.wort)", farbe: farbe($0.rolle),
-                hoehe: max(3, $0.hoehe * 10))
-        }
-        s += [
-            .init(wort: "Ofen brennt", farbe: Farbe.ofen, hoehe: 9),
-            .init(wort: "Heizen", farbe: Farbe.haus, hoehe: 9),
-            .init(wort: "Warmwasser", farbe: Farbe.warmwasser, hoehe: 9),
-            .init(wort: "Pufferinhalt", farbe: Farbe.puffer, hoehe: 3),
-            .init(wort: "PV gemessen", farbe: Farbe.pv, hoehe: 9),
-            .init(wort: "PV erwartet", farbe: Farbe.mist, hoehe: 2),
-            .init(wort: "Preistief", farbe: Farbe.mist.opacity(0.32), hoehe: 9),
-        ]
-        if bild.hatNegativesFenster {
-            s.append(.init(wort: "negativer Preis", farbe: Farbe.alarm.opacity(0.32), hoehe: 9))
-        }
-        return s
-    }
 }
 
 #Preview("Fahrplan") {

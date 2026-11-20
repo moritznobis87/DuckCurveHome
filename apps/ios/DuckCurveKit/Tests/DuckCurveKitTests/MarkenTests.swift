@@ -221,4 +221,242 @@ final class MarkenTests: XCTestCase {
         // ΔE76 muss bei gesaettigten Farben deutlich darueber liegen - das ist der Grund fuer ΔE2000.
         XCTAssertGreaterThan(Marken.ofen.abstand76(zu: Marken.waermepumpe), Marken.ofen.abstand(zu: Marken.waermepumpe))
     }
+
+    // MARK: - Die Rampe der Verfügbarkeit
+
+    /// Die drei Stopps müssen sich auch ohne Farbwahrnehmung trennen lassen: die Karte hat
+    /// keine Beschriftung je Zelle, nur Helligkeit und Ton.
+    func testDieDreiStufenDerAbdeckungTrennenSichInDerHelligkeit() {
+        let stufen = Marken.abdeckung
+        XCTAssertEqual(stufen.count, 3)
+        for (a, b) in zip(stufen, stufen.dropFirst()) {
+            let abstand = abs(a.leuchtdichte - b.leuchtdichte)
+            XCTAssertGreaterThan(
+                abstand, 0.04,
+                "Zwei benachbarte Stufen der Abdeckungskarte müssen sich in der Helligkeit "
+                    + "unterscheiden, nicht nur im Farbton.")
+        }
+    }
+
+    func testDieEndenDerAbdeckungsrampeSindDieSchonGepruefentenMarken() {
+        XCTAssertEqual(Marken.abdeckungFehlend, Marken.alarm, "rot ist das laute Ende")
+        XCTAssertEqual(Marken.abdeckungVoll, Marken.mist, "blaugrau das ruhige")
+    }
+
+    /// Die Raender der Rampe sind genau die Stopps, und die Mitte ist genau der Sandton.
+    func testDieRampeTrifftAnIhrenStuetzstellenDieStopps() {
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 0), Marken.abdeckungFehlend)
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 0.5), Marken.abdeckungTeils)
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 1), Marken.abdeckungVoll)
+    }
+
+    /// Zwischen den Stopps wird gemischt - sonst waere die Karte dreifarbig, und eine Stunde
+    /// mit 55 Minuten saehe aus wie eine mit 48.
+    func testZwischenDenStoppsLiegenEigeneToene() {
+        let mitte = Marken.abdeckungsfarbe(anteil: 0.75)
+        XCTAssertNotEqual(mitte, Marken.abdeckungTeils)
+        XCTAssertNotEqual(mitte, Marken.abdeckungVoll)
+        // Sie liegt zwischen den beiden, Kanal fuer Kanal.
+        let a = Marken.abdeckungTeils
+        let b = Marken.abdeckungVoll
+        XCTAssertEqual(mitte.rot, (a.rot + b.rot) / 2, accuracy: 1e-9)
+        XCTAssertEqual(mitte.gruen, (a.gruen + b.gruen) / 2, accuracy: 1e-9)
+        XCTAssertEqual(mitte.blau, (a.blau + b.blau) / 2, accuracy: 1e-9)
+    }
+
+    /// **Die Rampe ist keine Helligkeitsrampe, und das muss man wissen.** Der Sandton der Mitte
+    /// ist heller als beide Enden; von null Minuten nach sechzig geht die Helligkeit erst
+    /// aufwaerts und dann wieder abwaerts. Zweideutig wird sie dadurch nicht, denn die Enden
+    /// trennt der Farbton (rot gegen blaugrau), und innerhalb jeder Haelfte ist die Helligkeit
+    /// eindeutig. Genau das haelt dieser Test fest, damit ein Wechsel der Stopps die
+    /// Eindeutigkeit nicht unbemerkt verliert.
+    func testJedeHaelfteDerRampeIstInDerHelligkeitEindeutig() {
+        func dichten(_ von: Int, _ bis: Int) -> [Double] {
+            (von...bis).map { Marken.abdeckungsfarbe(anteil: Double($0) / 60).leuchtdichte }
+        }
+        for (a, b) in zip(dichten(0, 30), dichten(0, 30).dropFirst()) {
+            XCTAssertGreaterThan(b, a, "Die erste Haelfte wird heller, Minute fuer Minute.")
+        }
+        for (a, b) in zip(dichten(30, 60), dichten(30, 60).dropFirst()) {
+            XCTAssertLessThan(b, a, "Die zweite Haelfte wird ruhiger, Minute fuer Minute.")
+        }
+    }
+
+    /// Werte ausserhalb der Rampe und ein Unwert duerfen keine fremde Farbe erfinden.
+    func testAusserhalbDerRampeStehenIhreEnden() {
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: -3), Marken.abdeckungFehlend)
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 7), Marken.abdeckungVoll)
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: .nan), Marken.abdeckungFehlend)
+    }
+
+    /// Mischen ist stetig und an den Enden genau: 0 ist diese Farbe, 1 die andere.
+    func testGemischtTrifftDieEndenUndBeschneidetDenAnteil() {
+        let a = Farbwert(0x000000)
+        let b = Farbwert(0xFFFFFF)
+        XCTAssertEqual(a.gemischt(mit: b, anteil: 0), a)
+        XCTAssertEqual(a.gemischt(mit: b, anteil: 1), b)
+        XCTAssertEqual(a.gemischt(mit: b, anteil: -1), a, "unter null wird beschnitten")
+        XCTAssertEqual(a.gemischt(mit: b, anteil: 2), b, "ueber eins auch")
+        XCTAssertEqual(a.gemischt(mit: b, anteil: .nan), a, "ein Unwert laesst die Farbe stehen")
+        XCTAssertEqual(a.gemischt(mit: b, anteil: 0.5).rot, 0.5, accuracy: 1e-9)
+    }
+
+    /// Auch die Deckung wird gemischt - eine Farbe mit Deckung 0 darf nicht plötzlich deckend
+    /// werden, nur weil sie zu 10 Prozent eingemischt ist.
+    func testGemischtNimmtAuchDieDeckungMit() {
+        let offen = Farbwert(0xFFFFFF, deckung: 0)
+        let dicht = Farbwert(0xFFFFFF, deckung: 1)
+        XCTAssertEqual(offen.gemischt(mit: dicht, anteil: 0.25).deckung, 0.25, accuracy: 1e-9)
+    }
+
+    // MARK: - Die Rampen der Jahreskarte
+
+    /// Die Rampen sind aus der Vorlage uebernommen; dieser Test haelt fest, dass sie es bleiben.
+    func testDieRampenDerJahreskarteHabenIhreEndenUndIhreLaenge() {
+        XCTAssertEqual(Marken.rampeEigen.count, 6)
+        XCTAssertEqual(Marken.rampeNetz.count, 6)
+        XCTAssertEqual(Marken.rampeWaerme.count, 6)
+        XCTAssertEqual(Marken.rampeNetzBilanz.count, 7)
+        // Der dunkelste Schritt der einfarbigen Rampen ist die Kartenflaeche selbst.
+        for rampe in [Marken.rampeEigen, Marken.rampeNetz, Marken.rampeWaerme] {
+            XCTAssertEqual(rampe.first, Farbwert(0x123544))
+        }
+        XCTAssertEqual(Marken.rampeEigen.last, Farbwert(0xFFD778))
+        XCTAssertEqual(Marken.rampeNetz.last, Farbwert(0xE4ECEF))
+        XCTAssertEqual(Marken.rampeWaerme.last, Farbwert(0xF6CDB4))
+    }
+
+    /// **Jede einfarbige Rampe wird durchgehend heller.** Das ist ihr Zweck: „mehr" soll sich
+    /// als „heller" lesen, ohne dass man eine Skala daneben braucht.
+    func testDieEinfarbigenRampenSteigenInDerHelligkeit() {
+        for (name, rampe) in [
+            ("eigen", Marken.rampeEigen), ("netz", Marken.rampeNetz),
+            ("waerme", Marken.rampeWaerme),
+        ] {
+            var vorher = -1.0
+            for schritt in 0...40 {
+                let dichte = Marken.rampenfarbe(rampe, anteil: Double(schritt) / 40).leuchtdichte
+                XCTAssertGreaterThan(dichte, vorher - 1e-9, "Rampe \(name) faellt bei \(schritt).")
+                vorher = dichte
+            }
+        }
+    }
+
+    /// Die divergierende Rampe: beide Pole gleich hell, die Mitte deutlich dunkler.
+    func testDieNetzbilanzIstAnBeidenPolenGleichHellUndInDerMitteRuhig() {
+        let links = Marken.rampenfarbe(Marken.rampeNetzBilanz, anteil: 0)
+        let rechts = Marken.rampenfarbe(Marken.rampeNetzBilanz, anteil: 1)
+        let mitte = Marken.rampenfarbe(Marken.rampeNetzBilanz, anteil: 0.5)
+        XCTAssertEqual(links.leuchtdichte, rechts.leuchtdichte, accuracy: 0.08)
+        XCTAssertLessThan(mitte.leuchtdichte, links.leuchtdichte / 2)
+        XCTAssertLessThan(mitte.leuchtdichte, rechts.leuchtdichte / 2)
+    }
+
+    /// Eine leere Rampe darf keine Farbe erfinden, und die Enden gelten ausserhalb.
+    func testDieRampenrechnungHaeltSichAnIhreGrenzen() {
+        XCTAssertEqual(Marken.rampenfarbe([], anteil: 0.5), Marken.text3)
+        XCTAssertEqual(Marken.rampenfarbe(Marken.rampeEigen, anteil: -2), Marken.rampeEigen[0])
+        XCTAssertEqual(Marken.rampenfarbe(Marken.rampeEigen, anteil: 9), Marken.rampeEigen[5])
+        XCTAssertEqual(Marken.rampenfarbe(Marken.rampeEigen, anteil: .nan), Marken.rampeEigen[0])
+        // Die Abdeckungsrampe laeuft jetzt ueber dieselbe Rechnung und muss dasselbe liefern.
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 0.5), Marken.abdeckungTeils)
+        XCTAssertEqual(Marken.abdeckungsfarbe(anteil: 0.25),
+                       Marken.abdeckungFehlend.gemischt(mit: Marken.abdeckungTeils, anteil: 0.5))
+    }
+
+    // MARK: - Die nachgezogenen Farben
+
+    /// Die Hexwerte der Vorlage, festgenagelt wie die uebrigen.
+    ///
+    /// **Drei von ihnen tragen eine Zahl, die in dieser Liste schon vorkommt**, und genau
+    /// darum stehen sie da: #C2A86B ist auch `abdeckungTeils`, #E4ECEF auch der oberste Stopp
+    /// von `rampeNetz`, und das Weiss der Spur auch `papier`. Vor diesem Test holten sich die
+    /// Seiten die Werte von dort - wer den Sandton der Abdeckungskarte verschoben haette,
+    /// haette die Grundgebuehr einer Stromrechnung mitverschoben. Hier wird deshalb kein
+    /// Gleichstand geprueft, sondern jeder Wert einzeln gegen die Vorlage: die beiden duerfen
+    /// auseinanderlaufen, sie duerfen es nur nicht unbemerkt.
+    func testDieNachgezogenenFarbenHabenDieWerteDerVorlage() {
+        // `C.base`, `charts/palette.ts:39` - in `reports/charts.ts:300` die Grundgebuehr.
+        XCTAssertEqual(Marken.grundgebuehr.hex, "#C2A86B")
+        XCTAssertEqual(Marken.grundgebuehr.deckung, 1.0, accuracy: 1e-9)
+        // `C.export`, `charts/palette.ts:44` - `rgba(228,236,239,.5)`, halbe Deckung.
+        XCTAssertEqual(Marken.umsatzsteuer.hex, "#E4ECEF")
+        XCTAssertEqual(Marken.umsatzsteuer.deckung, 0.5, accuracy: 1e-9)
+        // `SPUR`, `waerme/Tagesuhr.tsx:51` - `rgba(255,255,255,.055)`.
+        XCTAssertEqual(Marken.spur.hex, "#FFFFFF")
+        XCTAssertEqual(Marken.spur.deckung, 0.055, accuracy: 1e-9)
+        // `.anlage-buehne`, `globals.css:565`.
+        XCTAssertEqual(Marken.buehneOben.hex, "#0A2735")
+        XCTAssertEqual(Marken.buehneOben.deckung, 0.85, accuracy: 1e-9)
+        XCTAssertEqual(Marken.buehneUnten.hex, "#05161F")
+        XCTAssertEqual(Marken.buehneUnten.deckung, 0.9, accuracy: 1e-9)
+    }
+
+    /// Die Spur muss schwaecher sein als jede Linie des Rasters.
+    ///
+    /// Daran haengt, dass die Tagesuhr drei Aussagen tragen kann: Spur, Fuellung, nichts. Mit
+    /// der Deckung einer Rasterlinie waere die Spur ein Messwert und nicht ein Untergrund.
+    func testDieSpurIstSchwaecherAlsJedeLinie() {
+        XCTAssertLessThan(Marken.spur.deckung, Marken.rasterlinie.deckung)
+        XCTAssertLessThan(Marken.spur.deckung, Marken.linie1.deckung)
+        XCTAssertLessThan(Marken.spur.deckung, Marken.linie2.deckung)
+    }
+
+    /// Der gestapelte Rechnungsbetrag: Arbeitspreis, Grundgebuehr, Mehrwertsteuer.
+    ///
+    /// **Ein Befund, nicht eine Auflage.** Arbeitspreis (`pv`) und Grundgebuehr liegen bei
+    /// ΔE2000 14,3 und damit unter der Schwelle 15, die diese Liste fuer **gestapelte** Reihen
+    /// sonst verlangt - und gestapelt sind sie (`reports/charts.ts:313`, `stack: "eur"`). Der
+    /// Kopf von `charts/palette.ts` fuehrt drei durchgerechnete Diagramme auf; dieses ist
+    /// keines davon. Die Zahl wird hier festgenagelt und nicht verbessert: die App soll
+    /// dieselben Farben zeigen wie der Browser, und eine eigene Wahl waere zwei Paletten. Wer
+    /// sie heben will, hebt sie in der Vorlage.
+    func testDerStapelDesRechnungsbetragsHaeltSeineGemessenenAbstaende() {
+        XCTAssertEqual(Marken.pv.abstand(zu: Marken.grundgebuehr), 14.3, accuracy: 0.1)
+        XCTAssertEqual(Marken.pv.abstand(zu: Marken.umsatzsteuer), 33.9, accuracy: 0.1)
+        XCTAssertEqual(Marken.grundgebuehr.abstand(zu: Marken.umsatzsteuer), 27.4, accuracy: 0.1)
+    }
+
+    /// Beide Abschnitte muessen sich von der Kartenflaeche abheben - der untere Abschnitt eines
+    /// Stapels verschwand in der Vorlage schon einmal im Hintergrund (`charts/palette.ts`,
+    /// Haushalt #4D6B78 mit 2,28:1).
+    ///
+    /// Die Mehrwertsteuer traegt halbe Deckung, also zaehlt nicht ihr Hexwert, sondern was
+    /// davon auf der Karte ankommt: 3,91:1 statt der 10,84:1 des reinen #E4ECEF.
+    func testBeideReihenDesRechnungsbetragsHebenSichVonDerKarteAb() {
+        XCTAssertGreaterThan(Marken.grundgebuehr.kontrast(zu: Marken.flaeche2), 3.0)
+        let aufDerKarte = Marken.flaeche2.gemischt(
+            mit: Marken.umsatzsteuer, anteil: Marken.umsatzsteuer.deckung)
+        XCTAssertEqual(aufDerKarte.kontrast(zu: Marken.flaeche2), 3.91, accuracy: 0.02)
+        XCTAssertGreaterThan(aufDerKarte.kontrast(zu: Marken.flaeche2), 3.0)
+    }
+
+    /// Die Buehne ist dunkler als die dunkelste Kartenflaeche - das ist ihr ganzer Zweck.
+    ///
+    /// Die Deckungen der Anlagenzeichnung sind fuer diesen Grund gerechnet. Stuende sie auf
+    /// `flaeche1`, verloeren die Lichtpunkte in den Rohren und die Glaskacheln ihren Kontrast.
+    /// Nach unten wird es dunkler, damit die Zeichnung auf dem Boden steht.
+    func testDieBuehneIstDunklerAlsDieDunkelsteKartenflaeche() {
+        XCTAssertLessThan(Marken.buehneOben.leuchtdichte, Marken.flaeche1.leuchtdichte)
+        XCTAssertLessThan(Marken.buehneUnten.leuchtdichte, Marken.buehneOben.leuchtdichte)
+    }
+
+    /// Der Rand der Buehne ist eine Lichtkante oben und kein gleichmaessiger Grauwert.
+    ///
+    /// Der Stopp bei 30 Prozent ist der Punkt: zwischen 0 und 0,3 faellt die Deckung um 0,11,
+    /// auf den restlichen 70 Prozent nur noch um 0,01. Ein Verlauf mit zwei Stopps - oder ein
+    /// `strokeBorder` in einer Farbe - waere oben zu dunkel und unten zu hell.
+    func testDerRandDerBuehneIstEineLichtkanteOben() {
+        let rand = Marken.buehneRand
+        XCTAssertEqual(rand.count, 3)
+        XCTAssertEqual(rand.map(\.stelle), [0, 0.3, 1])
+        for stopp in rand {
+            XCTAssertEqual(stopp.farbe.hex, Marken.papier.hex, "der Rand ist Weiss mit Deckung")
+        }
+        let oben = rand[0].farbe.deckung - rand[1].farbe.deckung
+        let unten = rand[1].farbe.deckung - rand[2].farbe.deckung
+        XCTAssertGreaterThan(oben, 0, "oben heller als in der Mitte")
+        XCTAssertGreaterThan(unten, 0, "und die Mitte heller als unten")
+        XCTAssertGreaterThan(oben, unten * 10, "der Sprung sitzt im ersten Drittel")
+    }
 }

@@ -1,0 +1,10 @@
+# Die App hat eine Anfrage abgelegt (Update, Dienst neu starten, sichern, Protokoll, ...): dch anfrage.
+[Unit]
+Description=Duck Curve Home - Anfragen aus der App
+
+[Path]
+PathExists=/var/lib/duckcurve/geraet/anfrage/anfrage.json
+Unit=duckcurve-anfrage.service
+
+[Install]
+WantedBy=multi-user.target

@@ -41,12 +41,18 @@ struct Leiste: View {
                 .contentShape(Rectangle())
                 .onTapGesture { wegweiser.gehe("/waerme") }
             } else {
-                Karte(kicker: "Pufferspeicher") {
+                // Die Pufferkachel dehnt sich, die Planzeilen bleiben so hoch wie ihr Inhalt
+                // (`globals.css:236,238,242`: `flex: 1 1 0` gegen `flex: none`).
+                Karte(kicker: "Puffer") {
+                    // **Keine Mindesthoehe am Tank** (`globals.css:240-241`, woertlich: „das
+                    // liess ihn an der Wand ueber die Kachel hinauslaufen"). Die Kachel nimmt,
+                    // was die Planzeilen uebrig lassen, und das Glas fuellt sie.
                     Pufferglas(
                         temperaturen: fuehler, soc: haus.zustand?.buffer.soc, zustand: zustand
                     )
-                    .frame(maxWidth: .infinity, minHeight: 210)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .frame(maxHeight: .infinity)
             }
             if !kompakt, !zeilen.isEmpty {
                 Karte(kicker: "Nächste 24 h") {
@@ -97,113 +103,5 @@ struct Leiste: View {
 
     private var zeilen: [Planzeile] {
         Fahrplan.zeilen(haus.plan, jetzt: haus.jetzt)
-    }
-}
-
-/// Das Bild, das nach fuenf Minuten ohne Beruehrung ueber der Wandanzeige liegt.
-///
-/// **Was es ist und was nicht.** Kein Bildschirmschoner: die Seite darunter bleibt am Leben und
-/// mit ihr die Verbindung. Es ist der Zustand, in dem diese Anzeige die meiste Zeit ist - und
-/// darum zeigt es nicht weniger, sondern anderes: Uhr, Satz, drei grosse Zahlen. Was man aus
-/// zwei Metern im Vorbeigehen liest.
-///
-/// **Es zeigt immer heute.** `WandRahmen` kehrt nach zwei Minuten zum laufenden Tag zurueck,
-/// bevor das Ambiente nach fuenf aufgeht - damit es nie das Gestern von jemandem zeigt.
-struct Ambiente: View {
-    @Environment(Hauszustand.self) private var haus
-    let aufwachen: () -> Void
-
-    var body: some View {
-        ZStack {
-            Farbe.grundVerlauf.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 28) {
-                uhr
-                satz
-                zahlen
-                Spacer(minLength: 0)
-                fuss
-            }
-            .padding(44)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture(perform: aufwachen)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityLabel("Ruhebild. Antippen für die Bedienung.")
-    }
-
-    private var uhr: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(Formate.hhmm(haus.jetzt))
-                .font(Schrift.zahlAmbiente)
-                .foregroundStyle(Farbe.text1)
-                .monospacedDigit()
-            Text(Formate.langesDatum(haus.jetzt))
-                .font(Schrift.text)
-                .foregroundStyle(Farbe.text3)
-        }
-    }
-
-    private var satz: some View {
-        Text(haus.satz)
-            .font(Schrift.satz)
-            .foregroundStyle(Farbe.text2)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: 720, alignment: .leading)
-    }
-
-    /// Drei Zahlen. Nicht vier und nicht sechs: aus zwei Metern liest man drei.
-    private var zahlen: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 48) {
-            ForEach(drei, id: \.wort) { k in
-                VStack(alignment: .leading, spacing: 2) {
-                    Zahl(
-                        wert: k.wert, einheit: k.einheit,
-                        schrift: Schrift.custom(52), einheitSchrift: Schrift.klein,
-                        farbe: k.farbe
-                    )
-                    Text(k.wort)
-                        .font(Schrift.klein)
-                        .foregroundStyle(Farbe.text3)
-                }
-            }
-        }
-    }
-
-    private var drei: [Kacheldaten] {
-        let heute = haus.zustand?.todayKwh ?? [:]
-        return [
-            Kacheldaten(
-                "aus der Sonne", Formate.zahl(heute["pv"] ?? 0, stellen: 1),
-                einheit: "kWh", farbe: Farbe.pv
-            ),
-            Kacheldaten(
-                "Strompreis",
-                Formate.zahl(haus.augenblick?.electricityPriceCtKwh.belastbar ?? 0, stellen: 1),
-                einheit: "ct/kWh"
-            ),
-            Kacheldaten(
-                "draußen",
-                Formate.zahl(
-                    haus.zustand?.system.outdoorShownC ?? haus.augenblick?.outdoorTempC.belastbar ?? 0,
-                    stellen: 1
-                ),
-                einheit: "°C"
-            ),
-        ]
-    }
-
-    /// Unten die naechste Sache und der Zustand der Verbindung - das Einzige, was ein Ruhebild
-    /// von einem eingefrorenen unterscheidet.
-    private var fuss: some View {
-        HStack(spacing: 20) {
-            if let erste = Fahrplan.zeilen(haus.plan, jetzt: haus.jetzt).first {
-                Text("\(erste.wort) \(erste.wann)")
-                    .font(Schrift.klein)
-                    .foregroundStyle(Farbe.text3)
-            }
-            Spacer(minLength: 0)
-            Verbindungspunkt()
-        }
     }
 }

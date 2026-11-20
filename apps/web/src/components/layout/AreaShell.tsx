@@ -1,6 +1,7 @@
 "use client";
 
 import { AreaAnsichten, AreaIcons, AreaTabs, Bereichstitel, Brand, Fussleiste } from "./AreaNav";
+import { UpdateHinweis } from "@/components/update/UpdateHinweis";
 
 /**
  * Die Huelle jeder Unterseite: Marke, Bereichsleiste, rechts die Werkzeuge der Seite (meist die
@@ -21,6 +22,7 @@ export function AreaShell({ right, kicker, period, anchor, children }: { right?:
         </div>
         {right ? <div className="report-header-right flex shrink-0 items-center gap-3">{right}</div> : null}
       </header>
+      <UpdateHinweis />
       <AreaTabs period={period} anchor={anchor} right={kicker} />
       <AreaAnsichten />
       {children}

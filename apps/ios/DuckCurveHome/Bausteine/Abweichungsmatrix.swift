@@ -22,23 +22,28 @@ struct Abweichungsmatrix: View {
     /// Das erste Fenster, das noch nicht gewesen ist.
     let bisStelle: Int?
 
-    private let zeilenhoehe: CGFloat = 22
-    private let namensbreite: CGFloat = 104
-    private let mittelbreite: CGFloat = 46
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
+
+    /// Die Zelle ist 20 Punkte hoch, die Zeile drei darüber (`RoomsReport.tsx:486`,
+    /// `gap-[3px]`).
+    private let zellenhoehe: CGFloat = 20
+    private var namensbreite: CGFloat { schmal ? 76 : 128 }
+    private let mittelbreite: CGFloat = 62
+    /// Zwei Punkte zwischen zwei Viertelstunden, am Telefon einer.
+    ///
+    /// **Das ist der Unterschied zwischen einem Raster und einem Balken.** Die Felder standen
+    /// hier ohne Lücke aneinander und überlappten sich sogar um einen halben Punkt - aus
+    /// sechsundneunzig Viertelstunden wurde ein durchgehender Streifen, und man konnte nicht
+    /// mehr sehen, dass jede Zelle eine eigene Messung ist.
+    private var luecke: CGFloat { schmal ? 1 : 2 }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Je Raum und Viertelstunde die Abweichung vom Zielwert. "
-                + "Der Raum, der zuerst abfällt, bestimmt die nötige Vorlauftemperatur für alle.")
-                .font(Schrift.winzig)
-                .foregroundStyle(Farbe.text3)
-                .fixedSize(horizontal: false, vertical: true)
-
+        VStack(alignment: .leading, spacing: 3) {
             ForEach(Array(verlauf.rooms.enumerated()), id: \.offset) { _, raum in
                 zeile(raum)
             }
             achse
-            legende
         }
     }
 
@@ -52,41 +57,45 @@ struct Abweichungsmatrix: View {
         let f = felder(raum)
         let m = Raumabweichung.mittel(f)
         return HStack(spacing: 8) {
+            // **Rechtsbündig an das Band gesetzt** (`RoomsReport.tsx:489`): die Namen sind
+            // verschieden lang, und links gesetzt beginnt jedes Band woanders.
             Text(raum.name)
                 .font(Schrift.winzig)
                 .foregroundStyle(Farbe.text2)
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .frame(width: namensbreite, alignment: .leading)
+                .frame(width: namensbreite, alignment: .trailing)
             Canvas { gestalt, groesse in
                 male(f, in: &gestalt, groesse: groesse)
             }
-            .frame(height: zeilenhoehe - 4)
-            Text(m.map { "\($0 > 0 ? "+" : "")\(Formate.zahl($0, stellen: 1))" } ?? Formate.leer)
+            .frame(height: zellenhoehe)
+            // Die Einheit gehört dazu: „+1,4" ist eine Zahl, „+1,4 K" ist eine Abweichung.
+            Text(m.map(Raumabweichung.kelvin) ?? Formate.leer)
                 .font(Schrift.zahlKlein)
                 .foregroundStyle(m == nil ? Farbe.text3 : Farbe.text1)
                 .frame(width: mittelbreite, alignment: .trailing)
         }
-        .frame(height: zeilenhoehe)
     }
 
     private func male(
         _ felder: [Raumabweichung.Feld], in g: inout GraphicsContext, groesse: CGSize
     ) {
         guard !felder.isEmpty else { return }
-        let breite = groesse.width / CGFloat(felder.count)
+        let n = CGFloat(felder.count)
+        let breite = max(1, (groesse.width - (n - 1) * luecke) / n)
         for (i, f) in felder.enumerated() {
-            let kasten = CGRect(x: CGFloat(i) * breite, y: 0,
-                                width: breite + 0.5, height: groesse.height)
+            let kasten = CGRect(x: CGFloat(i) * (breite + luecke), y: 0,
+                                width: breite, height: groesse.height)
+            let form = Path(roundedRect: kasten, cornerRadius: 2)
             switch f {
             case .wert(let k):
-                g.fill(Path(kasten), with: .color(Color(Marken.abweichungsfarbe(kelvin: k))))
+                g.fill(form, with: .color(Color(Marken.abweichungsfarbe(kelvin: k))))
             case .nochNicht:
-                g.fill(Path(kasten), with: .color(.white.opacity(0.035)))
+                g.fill(form, with: .color(.white.opacity(0.035)))
             case .keinWert:
                 // Schraffur statt Grau: sie gehoert sichtbar nicht zur Skala, und genau das
                 // ist die Aussage.
-                g.fill(Path(kasten), with: .color(.white.opacity(0.04)))
+                g.fill(form, with: .color(.white.opacity(0.04)))
                 var schraffur = Path()
                 var x = kasten.minX - kasten.height
                 while x < kasten.maxX {
@@ -94,7 +103,7 @@ struct Abweichungsmatrix: View {
                     schraffur.addLine(to: CGPoint(x: x + kasten.height, y: kasten.minY))
                     x += 3
                 }
-                g.clip(to: Path(kasten))
+                g.clip(to: form)
                 g.stroke(schraffur, with: .color(.white.opacity(0.18)), lineWidth: 0.8)
             }
         }
@@ -105,12 +114,12 @@ struct Abweichungsmatrix: View {
             Spacer().frame(width: namensbreite)
             HStack {
                 ForEach([0, 6, 12, 18], id: \.self) { stunde in
-                    Text(String(format: "%02d", stunde))
+                    Text(stundenwort(stunde))
                         .font(Schrift.achse).foregroundStyle(Farbe.text3)
                     if stunde != 18 { Spacer() }
                 }
                 Spacer()
-                Text("24").font(Schrift.achse).foregroundStyle(Farbe.text3)
+                Text(stundenwort(24)).font(Schrift.achse).foregroundStyle(Farbe.text3)
             }
             Text("Mittel")
                 .font(Schrift.achse).foregroundStyle(Farbe.text3)
@@ -118,18 +127,9 @@ struct Abweichungsmatrix: View {
         }
     }
 
-    private var legende: some View {
-        HStack(spacing: 10) {
-            ForEach(Array(["−1,5", "−0,5", "am Ziel", "+0,5", "+1,5"].enumerated()), id: \.offset) {
-                i, marke in
-                HStack(spacing: 4) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Color(Marken.abweichung[i]))
-                        .frame(width: 12, height: 10)
-                    Text(marke).font(Schrift.achse).foregroundStyle(Farbe.text3)
-                }
-            }
-        }
-        .padding(.top, 2)
+    /// An der Wand „06:00", am Telefon „06" (`handy.css:384`).
+    private func stundenwort(_ stunde: Int) -> String {
+        schmal ? String(format: "%02d", stunde) : String(format: "%02d:00", stunde)
     }
+
 }

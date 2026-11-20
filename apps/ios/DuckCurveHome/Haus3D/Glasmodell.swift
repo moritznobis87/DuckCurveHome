@@ -32,10 +32,28 @@ struct Glasmodell: View {
     var waermepumpeKw: Double?
     var wallboxKw: Double?
     var pufferSoc: Double?
+    /// Ob der Pelletofen brennt. `nil` heisst: es gibt keinen oder er meldet nichts
+    /// (`house/live.ts:66`) - und das ist etwas anderes als „aus“.
+    var ofenLaeuft: Bool?
+    /// Welcher Raum scharf gestellt ist - Deck **und** Name. `nil` heisst: keiner.
+    ///
+    /// **Im Fokus treten die uebrigen zurueck** (`globals.css:487-488`: die anderen Schilder
+    /// auf 0,18, das gewaehlte auf 1,25). Ohne das steht das Fokusfenster neben einem Bild, in
+    /// dem der gemeinte Raum genauso aussieht wie die zwoelf anderen.
+    ///
+    /// **Der Name allein reicht nicht.** Bei `sichtbaresDeck == nil` stehen alle Decks
+    /// nebeneinander, und „Flur“ gibt es in jedem Geschoss - ein Vergleich nur ueber den Namen
+    /// zog in der breiten Modellansicht jeden gleichnamigen Raum gross. Die Vorlage stellt
+    /// beides zusammen scharf (`HouseReport.tsx:188`: `setFokus(deck.key, raum.name)`).
+    var fokus: Hauskonsolenfenster.Ort?
+    /// Was ein Tipp auf einen Raum tut. Ohne das bleibt das Modell ein Bild.
+    var tippeRaum: ((Int) -> Void)?
 
     /// Die Drehung des Grundrisses. Die Vorgabe zeigt die Suedwestecke - dort ist die Terrasse.
     @State private var drehung: Double = 0.62
     @State private var beimZiehenAb: Double = 0.62
+    /// Ob der Finger dreht - oder nur auf einem Raum liegt.
+    @State private var zieht = false
 
     private typealias G = Hausgeometrie
 
@@ -55,26 +73,107 @@ struct Glasmodell: View {
             ZStack(alignment: .topLeading) {
                 // Der Himmel der Vorlage ist eine einzige flache Farbe, gleich der Karte.
                 Color(Farbwert(0x0B2E3F))
-                Canvas { gestalt, groesse in
-                    zeichne(in: &gestalt, groesse: groesse, maß: maß)
+                // **Das Bild atmet, aber nur viermal in der Sekunde.** Die Heizschlangen
+                // pulsen über rund viereinhalb Sekunden; dafür reicht es, das Modell alle
+                // 250 Millisekunden neu zu malen. Sechzig Bilder je Sekunde wären hundert
+                // Flächen zu sortieren je Bild, für eine Bewegung, die niemand so schnell
+                // sieht. Heizt kein Raum, steht das Bild still.
+                if heizt {
+                    TimelineView(.periodic(from: .now, by: 0.25)) { lage in
+                        Canvas { gestalt, groesse in
+                            zeichne(
+                                in: &gestalt, groesse: groesse, maß: maß,
+                                takt: lage.date.timeIntervalSinceReferenceDate)
+                        }
+                    }
+                } else {
+                    Canvas { gestalt, groesse in
+                        zeichne(in: &gestalt, groesse: groesse, maß: maß, takt: 0)
+                    }
                 }
+                // **Die Schilder sind für Finger durchlässig** (`globals.css:472`, mit
+                // Begründung: „damit das Tippen die Boeden darunter trifft"). Sie sitzen genau
+                // über der Raummitte - also dort, wo man hintippt.
                 schilder(maß: maß)
+                    .allowsHitTesting(false)
                 drehknoepfe
             }
             .contentShape(Rectangle())
+            // **Ein Tipp trifft einen Raum** (`HouseScene.ts`, und die Legende der Vorlage
+            // sagt es ausdrücklich: „TIPPEN: RAUM"). Das Modell war bis zum 19.11.2026 ein
+            // Bild, das man drehen konnte: die Temperatur eines Raums ablesen ja, stellen nur
+            // über die Liste.
+            //
+            // **Tippen und Drehen in einer Geste.** Zwei nebeneinander - `onTapGesture` neben
+            // `DragGesture` - streiten sich um jeden Finger, der sich beim Antippen um zwei
+            // Punkte bewegt. Die Vorlage misst darum selbst: unter acht Punkten Weg ist es ein
+            // Tipp, darüber ein Drehen (`HouseScene.ts`, `pointerup` mit der 8-Punkt-Schwelle).
             .gesture(
-                DragGesture()
+                DragGesture(minimumDistance: 0)
                     .onChanged { griff in
-                        // Eine Bildschirmbreite ist eine halbe Umdrehung: so kommt man mit einem
-                        // Wisch um das Haus, ohne dass ein Zittern es herumreisst.
-                        drehung = beimZiehenAb + griff.translation.width / raum.size.width * .pi
+                        if !zieht,
+                           abs(griff.translation.width) + abs(griff.translation.height) > 8
+                        {
+                            zieht = true
+                        }
+                        guard zieht else { return }
+                        // Eine Bildschirmbreite ist eine halbe Umdrehung: so kommt man mit
+                        // einem Wisch um das Haus, ohne dass ein Zittern es herumreisst.
+                        // `.pi` ausgeschrieben: `drehung` ist ein Double, die Verschiebung
+                        // eine CGFloat - ohne den Typ davor findet der Compiler zwei Wege und
+                        // nimmt keinen („ambiguous use of 'pi'").
+                        drehung =
+                            beimZiehenAb
+                            + Double(griff.translation.width / raum.size.width) * Double.pi
                     }
-                    .onEnded { _ in beimZiehenAb = drehung }
+                    .onEnded { griff in
+                        if zieht {
+                            beimZiehenAb = drehung
+                            zieht = false
+                        } else if let id = raumBei(griff.startLocation, maß: maß) {
+                            tippeRaum?(id)
+                        }
+                    }
             )
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(vorlesen)
-        .accessibilityHint("Mit dem Finger drehen.")
+        .accessibilityHint("Mit dem Finger drehen, auf einen Raum tippen zum Stellen.")
+    }
+
+    // MARK: - Treffer
+
+    /// Welcher Raum liegt unter diesem Punkt des Schirms?
+    ///
+    /// **Von vorn nach hinten gesucht.** Zwei Decks nebeneinander überdecken sich nicht, aber
+    /// ein Raum und die Platte darunter schon; wer von hinten sucht, trifft den falschen.
+    private func raumBei(_ stelle: CGPoint, maß: (punkteJeMeter: Double, mitte: CGPoint)) -> Int? {
+        var treffer: (tiefe: Double, id: Int)?
+        for deck in gezeigteDecks {
+            let v = versatz(von: deck)
+            for raum in deck.rooms where !(raum.tech ?? false) {
+                // **Ein Teilraum führt auf seinen Hauptraum.** „Essen" ist ein Teil von
+                // „Wohnen" und hat keinen eigenen Fühler; wer darauf tippt, meint den Raum,
+                // zu dem es gehört (`HouseScene.ts`, `hauptKnoten`).
+                let id = raum.roomId
+                    ?? raum.partOf.flatMap { name in
+                        deck.rooms.first { $0.name == name }?.roomId
+                    }
+                guard let id else { continue }
+                let ecken: [(x: Double, y: Double, z: Double)] = [
+                    (raum.x0 + v.x, 0, raum.z0 + v.z), (raum.x1 + v.x, 0, raum.z0 + v.z),
+                    (raum.x1 + v.x, 0, raum.z1 + v.z), (raum.x0 + v.x, 0, raum.z1 + v.z),
+                ]
+                let auf = ecken.map { punkt($0.x, $0.y, $0.z, maß) }
+                    .map { (x: Double($0.x), y: Double($0.y)) }
+                guard G.imVieleck((x: Double(stelle.x), y: Double(stelle.y)), auf) else {
+                    continue
+                }
+                let t = tiefe(ecken)
+                if treffer == nil || t > treffer!.tiefe { treffer = (t, id) }
+            }
+        }
+        return treffer?.id
     }
 
     // MARK: - Welche Decks
@@ -84,9 +183,50 @@ struct Glasmodell: View {
         return plan.decks.filter { $0.key == sichtbaresDeck }
     }
 
-    private func hoehe(von deck: Deck) -> Double {
-        guard let i = gezeigteDecks.firstIndex(where: { $0.key == deck.key }) else { return 0 }
-        return Double(i) * (deckhoehe + abstand)
+    /// Wo ein Deck steht.
+    ///
+    /// **Nebeneinander, nicht übereinander** (`HouseScene.ts`, `anordnen`: „Die Decks
+    /// nebeneinander (quer) oder untereinander (hochkant), im Bildschirm gemessen"). Zwei
+    /// Grundrisse übereinander sind zwei Grundrisse, von denen man einen sieht; nebeneinander
+    /// sind es zwei Häuser, die man vergleichen kann.
+    ///
+    /// **Gemessen wird auf dem Schirm, versetzt wird in der Welt.** Der Abstand ist die Breite
+    /// des vorigen Decks auf dem Schirm plus 3,6 Meter; zurückgedreht wird er, damit die
+    /// beiden nebeneinander bleiben, egal wie das Haus steht.
+    private func versatz(von deck: Deck) -> (x: Double, z: Double) {
+        guard sichtbaresDeck == nil,
+              let i = gezeigteDecks.firstIndex(where: { $0.key == deck.key }), i > 0
+        else { return (0, 0) }
+        var lauf = 0.0
+        for vor in gezeigteDecks.prefix(i) {
+            lauf += ausdehnung(vor).breite + 3.6
+        }
+        let c = cos(drehung)
+        let sn = sin(drehung)
+        return (x: lauf * c, z: -lauf * sn)
+    }
+
+    /// Der Umriss, der ein Deck im Bild beansprucht: die Grundplatte, sonst die Huelle.
+    private func umriss(_ deck: Deck) -> [[Double]] {
+        let p = deck.plate ?? []
+        return p.count >= 3 ? p : deck.shell
+    }
+
+    /// Wie breit und hoch ein Deck auf dem Schirm steht, in Metern der Bildebene.
+    private func ausdehnung(_ deck: Deck) -> (breite: Double, hoehe: Double) {
+        var links = Double.infinity, rechts = -Double.infinity
+        var unten = Double.infinity, oben = -Double.infinity
+        for ecke in umriss(deck) where ecke.count >= 2 {
+            for hoch in [0.0, deckhoehe] {
+                let p = G.bildschirm(x: ecke[0], y: hoch, z: ecke[1], drehung: drehung)
+                links = min(links, p.sx)
+                rechts = max(rechts, p.sx)
+                unten = min(unten, p.su)
+                oben = max(oben, p.su)
+            }
+        }
+        guard links.isFinite, rechts > links else { return (0, 0) }
+        return (rechts - links, oben - unten)
     }
 
     // MARK: - Masstab
@@ -96,15 +236,20 @@ struct Glasmodell: View {
         var links = Double.infinity, rechts = -Double.infinity
         var unten = Double.infinity, oben = -Double.infinity
         for deck in gezeigteDecks {
-            let y = hoehe(von: deck)
-            // Die Platte reicht 1,3 m ueber die Huelle hinaus; sie bestimmt das Bild mit.
-            for ecke in deck.shell where ecke.count >= 2 {
-                for hoch in [y, y + deckhoehe] {
-                    let p = G.bildschirm(x: ecke[0], y: hoch, z: ecke[1], drehung: drehung)
-                    links = min(links, p.sx - 1.4)
-                    rechts = max(rechts, p.sx + 1.4)
-                    unten = min(unten, p.su - 1.4)
-                    oben = max(oben, p.su + 1.4)
+            let v = versatz(von: deck)
+            // **Gemessen wird die Grundplatte, nicht die Huelle** (`HouseScene.ts`,
+            // `ausschnittBerechnen`: `plate ?? shell`, um 1,5 m erweitert). Im Plan dieses
+            // Hauses reicht die Platte bis zu 5,4 m ueber die Huelle hinaus - Terrasse, Hof,
+            // Auto, Wallbox und die Waermepumpe bei x = 13 liegen draussen. Wer nur die Huelle
+            // misst, zeichnet sie ausserhalb des Bildes.
+            for ecke in umriss(deck) where ecke.count >= 2 {
+                for hoch in [0.0, deckhoehe] {
+                    let p = G.bildschirm(
+                        x: ecke[0] + v.x, y: hoch, z: ecke[1] + v.z, drehung: drehung)
+                    links = min(links, p.sx - 1.5)
+                    rechts = max(rechts, p.sx + 1.5)
+                    unten = min(unten, p.su - 1.5)
+                    oben = max(oben, p.su + 1.5)
                 }
             }
         }
@@ -148,13 +293,27 @@ struct Glasmodell: View {
         let offen: Bool
     }
 
+    /// Heizt ueberhaupt ein Raum? Nur dann muss das Bild sich bewegen.
+    private var heizt: Bool {
+        raeume.values.contains { ($0.valve ?? 0) > 0 }
+    }
+
     private func zeichne(
         in gestalt: inout GraphicsContext, groesse: CGSize,
-        maß: (punkteJeMeter: Double, mitte: CGPoint)
+        maß: (punkteJeMeter: Double, mitte: CGPoint), takt: Double
     ) {
         for deck in gezeigteDecks {
-            var stuecke: [Malstueck] = []
-            sammle(deck, y: hoehe(von: deck), in: &stuecke)
+            var roh: [Malstueck] = []
+            sammle(deck, y: 0, takt: takt, in: &roh)
+            let v = versatz(von: deck)
+            let stuecke = (v.x == 0 && v.z == 0)
+                ? roh
+                : roh.map { st in
+                    Malstueck(
+                        ecken: st.ecken.map { (x: $0.x + v.x, y: $0.y, z: $0.z + v.z) },
+                        tiefe: st.tiefe, farbe: st.farbe, kante: st.kante, strich: st.strich,
+                        offen: st.offen)
+                }
             // **Von hinten nach vorn.** Ohne das steht ein Bett vor der Wand, hinter der es
             // steht.
             for s in stuecke.sorted(by: { $0.tiefe < $1.tiefe }) {
@@ -183,7 +342,9 @@ struct Glasmodell: View {
         return mx * blick.0 + my * blick.1 + mz * blick.2
     }
 
-    private func sammle(_ deck: Deck, y: Double, in stuecke: inout [Malstueck]) {
+    private func sammle(
+        _ deck: Deck, y: Double, takt: Double, in stuecke: inout [Malstueck]
+    ) {
         // 1. Die Platte, auf der das Deck steht.
         if let platte = G.umgrenzung(deck.plate ?? deck.shell) {
             let rand = 1.3
@@ -199,20 +360,103 @@ struct Glasmodell: View {
                     kante: Color(Hausmodell.amber.mitDeckung(0.4)), strich: 1, offen: false))
         }
 
+        // 1b. Das Meterraster auf der Platte.
+        //
+        // **Es gibt dem Bild seinen Plancharakter** (`HouseScene.ts`, `rasterTextur`): ohne
+        // das Raster ist die Platte eine dunkle Flaeche, mit ihm ist sie Gelaende mit einem
+        // Mass. Je ein Strich auf den Meter, sehr blass - es soll unter dem Haus liegen, nicht
+        // mit ihm um Aufmerksamkeit streiten.
+        if let platte = G.umgrenzung(deck.plate ?? deck.shell) {
+            let rand = 1.3
+            let x0 = platte.x0 - rand, x1 = platte.x1 + rand
+            let z0 = platte.z0 - rand, z1 = platte.z1 + rand
+            let strichfarbe = Color(Farbwert(0xA9ECFF, deckung: 0.07))
+            for x in stride(from: x0.rounded(.up), through: x1, by: 1) {
+                let ecken: [(x: Double, y: Double, z: Double)] =
+                    [(x, y - 0.015, z0), (x, y - 0.015, z1)]
+                stuecke.append(
+                    Malstueck(
+                        ecken: ecken, tiefe: tiefe(ecken) - 900, farbe: .clear,
+                        kante: strichfarbe, strich: 0.5, offen: true))
+            }
+            for z in stride(from: z0.rounded(.up), through: z1, by: 1) {
+                let ecken: [(x: Double, y: Double, z: Double)] =
+                    [(x0, y - 0.015, z), (x1, y - 0.015, z)]
+                stuecke.append(
+                    Malstueck(
+                        ecken: ecken, tiefe: tiefe(ecken) - 900, farbe: .clear,
+                        kante: strichfarbe, strich: 0.5, offen: true))
+            }
+        }
+
         // 2. Die Boeden der Raeume, in der Farbe ihrer Temperatur.
-        for raum in deck.rooms where !(raum.tech ?? false) {
+        //
+        // **Eine Platte, keine Flaeche** (`HouseScene.ts`: `BoxGeometry(b, BODEN_D, t)`). Ein
+        // Boden ohne Dicke hat im Schraegblick keine Kante, und ohne die Kanten verliert das
+        // ganze Bild sein Relief: die Moebel stehen dann nicht auf etwas, sondern daneben.
+        //
+        // **Ausgelassen werden nur Lufttraeume** (`open`), nicht die Technikraeume: auch die
+        // haben einen Fussboden.
+        for raum in deck.rooms where !(raum.open ?? false) {
             let grad = raum.roomId.flatMap { raeume[$0]?.tempC }
-            let ecken: [(x: Double, y: Double, z: Double)] = [
-                (raum.x0 + 0.01, y, raum.z0 + 0.01),
-                (raum.x1 - 0.01, y, raum.z0 + 0.01),
-                (raum.x1 - 0.01, y, raum.z1 - 0.01),
-                (raum.x0 + 0.01, y, raum.z1 - 0.01),
+            let farbe = Hausmodell.bodenfarbe(raum, grad: grad)
+            let grundriss: [(x: Double, z: Double)] = [
+                (raum.x0 + 0.01, raum.z0 + 0.01), (raum.x1 - 0.01, raum.z0 + 0.01),
+                (raum.x1 - 0.01, raum.z1 - 0.01), (raum.x0 + 0.01, raum.z1 - 0.01),
             ]
+            for f in G.prisma(
+                grundriss: grundriss, y: y, hoehe: Hausmodell.bodenDicke, drehung: drehung)
+            {
+                stuecke.append(
+                    Malstueck(
+                        ecken: f.ecken, tiefe: f.tiefe - (f.obenauf ? 500 : 520),
+                        farbe: Color(farbe).opacity(farbe.deckung * (0.62 + 0.38 * f.licht)),
+                        kante: Color(Farbe.linie1), strich: 0.6, offen: false))
+            }
+        }
+
+        // 2b. Die Fliesen und die Heizschlangen.
+        //
+        // **Beides liegt auf dem Boden, nicht darin** - ein Haar ueber ihm, damit es ihn nicht
+        // durchschneidet. Die Fliesen geben dem Boden eine Oberflaeche; die Schlange sagt, wo
+        // gerade geheizt wird, und das ist die Auskunft, wegen der man auf das Modell sieht.
+        for raum in deck.rooms where !(raum.open ?? false) {
+            let oben = y + Hausmodell.bodenDicke
+            if raum.tiles == true {
+                for f in Hausmodell.fliesen(x0: raum.x0, z0: raum.z0, x1: raum.x1, z1: raum.z1) {
+                    // Die halbe Diagonale einer Raute, deren Mitten 0,36 m auseinander
+                    // liegen: 0,36 / Wurzel 2. Mit der Hälfte davon klaffen zwischen den
+                    // Feldern Lücken - ein Punktfeld statt eines Schachbretts.
+                    let halb = Hausmodell.fliesenkante * (0.5).squareRoot()
+                    let ecken: [(x: Double, y: Double, z: Double)] = [
+                        (f.x, oben + 0.006, f.z - halb),
+                        (f.x + halb, oben + 0.006, f.z),
+                        (f.x, oben + 0.006, f.z + halb),
+                        (f.x - halb, oben + 0.006, f.z),
+                    ]
+                    stuecke.append(
+                        Malstueck(
+                            ecken: ecken, tiefe: tiefe(ecken) - 480,
+                            farbe: f.hell
+                                ? Color(Farbwert(0xFFFFFF, deckung: 0.035))
+                                : Color(Farbwert(0x040E16, deckung: 0.13)),
+                            kante: nil, strich: 0, offen: false))
+                }
+            }
+            let glut = Hausmodell.heizglut(
+                ventil: raum.roomId.flatMap { raeume[$0]?.valve },
+                takt: takt, versatz: raum.x0)
+            guard glut > 0 else { continue }
+            let weg = Hausmodell.heizschlange(
+                x0: raum.x0, z0: raum.z0, x1: raum.x1, z1: raum.z1)
+            guard weg.count > 1 else { continue }
             stuecke.append(
                 Malstueck(
-                    ecken: ecken, tiefe: tiefe(ecken) - 500,
-                    farbe: Color(Hausmodell.bodenfarbe(raum, grad: grad)),
-                    kante: Color(Farbe.linie1), strich: 0.6, offen: false))
+                    ecken: weg.map { (x: $0.x, y: oben + 0.012, z: $0.z) },
+                    tiefe: tiefe(weg.map { (x: $0.x, y: oben + 0.012, z: $0.z) }) - 450,
+                    farbe: .clear,
+                    kante: Color(Farbwert(0xFFC85A, deckung: min(1, glut))),
+                    strich: 2.2, offen: true))
         }
 
         // 3. Die Moebel und das Gelaende.
@@ -407,30 +651,36 @@ struct Glasmodell: View {
     @ViewBuilder private func schilder(maß: (punkteJeMeter: Double, mitte: CGPoint)) -> some View {
         let nah = maß.punkteJeMeter
         ForEach(Array(gezeigteDecks.enumerated()), id: \.offset) { _, deck in
-            let y = hoehe(von: deck)
+            let v = versatz(von: deck)
+            let y = 0.0
             // Der Name des Decks, unten links neben seiner Platte.
             if let platte = G.umgrenzung(deck.plate ?? deck.shell) {
                 ort(deck.name, farbe: Farbwert(0xA9ECFF, deckung: 0.55), sperrung: 2.2)
-                    .position(punkt(platte.x0 - 1.4, y + 0.05, platte.z1 + 1.4, maß))
+                    .position(punkt(platte.x0 - 1.4 + v.x, y + 0.05, platte.z1 + 1.4 + v.z, maß))
             }
             // Die Orte: GARTEN, TERRASSE, INNENHOF.
             ForEach(Array(deck.places.enumerated()), id: \.offset) { _, p in
                 ort(p.text, farbe: Farbwert(0xA9ECFF, deckung: 0.38), sperrung: 2.6)
-                    .position(punkt(p.x, y + 0.02, p.z, maß))
+                    .position(punkt(p.x + v.x, y + 0.02, p.z + v.z, maß))
             }
             // Die Raumschilder.
             ForEach(Array(deck.rooms.enumerated()), id: \.offset) { _, raum in
                 if zeigeSchild(raum, nah: nah) {
                     raumschild(raum, nah: nah)
+                        .opacity(schildDeckung(raum, deck: deck))
+                        .scaleEffect(imFokus(raum, deck: deck) ? 1.25 : 1)
                         .position(
-                            punkt((raum.x0 + raum.x1) / 2, y + 1.25, (raum.z0 + raum.z1) / 2, maß))
+                            punkt(
+                                (raum.x0 + raum.x1) / 2 + v.x, y + 1.25,
+                                (raum.z0 + raum.z1) / 2 + v.z, maß))
                 }
             }
             // Die Geraeteschilder.
             ForEach(Array(deck.items.enumerated()), id: \.offset) { _, stueck in
                 if let schild = geraeteschild(stueck) {
                     schild.0
-                        .position(punkt(schild.1.x, y + schild.1.y, schild.1.z, maß))
+                        .position(
+                            punkt(schild.1.x + v.x, y + schild.1.y, schild.1.z + v.z, maß))
                 }
             }
         }
@@ -438,6 +688,22 @@ struct Glasmodell: View {
 
     /// **Welcher Raum ein Schild bekommt.** Teilräume und stille Räume keines; Nebenräume erst,
     /// wenn das Bild groß genug ist, sie zu tragen.
+    /// Wie deutlich ein Raumschild steht.
+    ///
+    /// Ohne Fokus wie bisher; im Fokus bleibt das gewaehlte voll da und die uebrigen treten auf
+    /// 0,18 zurueck (`globals.css:487`).
+    private func schildDeckung(_ raum: Room, deck: Deck) -> Double {
+        let gedaempft = raum.cold == true || raum.tech == true ? 0.75 : 1.0
+        guard fokus != nil else { return gedaempft }
+        return imFokus(raum, deck: deck) ? 1 : 0.18
+    }
+
+    /// Ob dieses Schild das scharf gestellte ist - Deck und Name muessen beide stimmen.
+    private func imFokus(_ raum: Room, deck: Deck) -> Bool {
+        guard let fokus else { return false }
+        return fokus.deck == deck.key && fokus.raum == raum.name
+    }
+
     private func zeigeSchild(_ raum: Room, nah: Double) -> Bool {
         if raum.silent == true || raum.partOf != nil { return false }
         if raum.minor == true, nah < kleinAb { return false }
@@ -486,7 +752,8 @@ struct Glasmodell: View {
             Capsule().fill(Color(Farbwert(0x07202C, deckung: 0.78)))
                 .overlay(Capsule().strokeBorder(Color(Farbwert(0xA9ECFF, deckung: 0.22)), lineWidth: 1))
         )
-        .opacity(raum.cold == true || raum.tech == true ? 0.75 : 1)
+        // Die Deckkraft kommt von aussen (`schildDeckung`): sie haengt am Fokus und am Raum
+        // zugleich, und zwei Stellen, die sie setzen, multiplizieren sich.
         .fixedSize()
     }
 
@@ -523,6 +790,17 @@ struct Glasmodell: View {
                         it.label ?? "Wallbox",
                         wert: wallboxKw.map { Formate.zahl($0, stellen: 1) + " kW" })),
                 (x, 0.2, z + 1.1)
+            )
+        case .stove:
+            // **„brennt“ oder „aus“, und sonst nichts.** Die Vorlage laesst die Glut atmen
+            // (`HouseScene.ts:1341`); hier steht erst einmal das Wort dazu - eine Zeichnung,
+            // die nicht da ist, soll keine Bewegung vortaeuschen.
+            return (
+                AnyView(
+                    technikschild(
+                        it.label ?? "Ofen",
+                        wert: ofenLaeuft.map { $0 ? "brennt" : "aus" })),
+                (x, 0.9, z)
             )
         default:
             return nil

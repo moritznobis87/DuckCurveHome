@@ -33,9 +33,48 @@ public enum Marken {
     public static let linie2 = Farbwert(0xFFFFFF, deckung: 0.17)
     public static let rasterlinie = Farbwert(0xFFFFFF, deckung: 0.09)
 
+    /// Die Spur der Tagesuhr: wo gemessen wurde, aber nichts lief.
+    ///
+    /// **Eine eigene Stufe und nicht die nächste vorhandene.** Die Vorlage setzt
+    /// `rgba(255,255,255,.055)` (`waerme/Tagesuhr.tsx:51`, Konstante `SPUR`), und das liegt
+    /// zwischen `rasterlinie` (0,09) und nichts. Beide Nachbarn wären falsch: mit 0,09 liest
+    /// sich die Spur als Messwert statt als Untergrund, mit 0,10 (`linie1`) als Rahmen. Die
+    /// Uhr trägt damit drei Aussagen - Spur heißt „gemessen, aber nein“, eine Füllung heißt
+    /// „ja“, und gar nichts heißt „keine Messung“ -, und die schwächste von ihnen braucht
+    /// ihren eigenen Wert.
+    public static let spur = papier.mitDeckung(0.055)
+
     /// Der Verlauf des Hintergrunds, 130 Grad wie im Dashboard.
     public static let grundVerlauf: [(farbe: Farbwert, stelle: Double)] = [
         (deep, 0.0), (petrol, 0.62), (Farbwert(0x153C4C), 1.0),
+    ]
+
+    // MARK: - Die Bühne der Anlagenzeichnung
+
+    /// Die Fläche, auf der das Anlagenschema steht - oben.
+    ///
+    /// **Warum sie keine Kartenfläche ist.** `rgba(10,39,53,.85)` über dem Seitenverlauf
+    /// (`globals.css:565`, `.anlage-buehne`), und das ist dunkler als jede Karte der App. Die
+    /// Deckungen der Zeichnung - die Lichtpunkte in den Rohren, der Sonnenschein hinter der
+    /// PV, die Glaskacheln - sind für diesen Grund gerechnet; auf `flaeche1` verlieren genau
+    /// die Teile ihren Kontrast, die das Bild tragen. Zwei Seiten teilen die Bühne
+    /// (`globals.css:606-609`), darum steht sie hier und nicht in einer von ihnen.
+    public static let buehneOben = Farbwert(0x0A2735, deckung: 0.85)
+
+    /// Dieselbe Fläche unten: `rgba(5,22,31,.9)` (`globals.css:565`). Der Verlauf nach unten
+    /// ins Dunklere lässt die Zeichnung auf dem Boden stehen statt im Nichts zu schweben.
+    public static let buehneUnten = Farbwert(0x05161F, deckung: 0.9)
+
+    /// Der Rand der Bühne, als Verlauf und nicht als Strich.
+    ///
+    /// `linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03) 30%,
+    /// rgba(255,255,255,.02))` (`globals.css:564`). **Der Stopp bei 30 Prozent ist der Sinn
+    /// der Sache:** er macht aus dem Verlauf eine Lichtkante oben statt eines gleichmäßigen
+    /// Grauwerts. Eine Haarlinie in einer Farbe wäre oben zu dunkel und unten zu hell - die
+    /// Stellen gehören darum zum Wert und stehen mit ihm an einer Stelle.
+    public static let buehneRand: [(farbe: Farbwert, stelle: Double)] = [
+        (papier.mitDeckung(0.14), 0.0), (papier.mitDeckung(0.03), 0.3),
+        (papier.mitDeckung(0.02), 1.0),
     ]
 
     // MARK: - Text auf Dunkel
@@ -139,6 +178,38 @@ public enum Marken {
     /// dieselbe Farbe (Abstand 0,2).
     public static let diagrammHaushalt = Farbwert(0xCFD8DC)
 
+    // MARK: Die beiden Reihen des Rechnungsbetrags
+
+    /// Die Grundgebühr im gestapelten Balken „Rechnungsbetrag“.
+    ///
+    /// **Eigener Name, obwohl `abdeckungTeils` dieselbe Zahl trägt.** `C.base` ist #C2A86B
+    /// (`charts/palette.ts:39`, dort als „Haushalt ohne Wärmepumpe und Wallbox“ geführt), und
+    /// die Rechnungsseite nimmt denselben Sandton für die Grundgebühr
+    /// (`reports/charts.ts:300`). Derselbe Hexwert heißt in dieser Liste schon einmal etwas
+    /// anderes - der Sandton der Mitte der Abdeckungsrampe. Wer den einen verschiebt, soll
+    /// nicht den anderen mitverschieben: eine Farbe gehört zur Sache, die sie bezeichnet.
+    public static let grundgebuehr = Farbwert(0xC2A86B)
+
+    /// Die Mehrwertsteuer im selben Balken: `C.export`, `rgba(228,236,239,.5)`
+    /// (`charts/palette.ts:44`, dort die Einspeisung der PV-Berichte;
+    /// `reports/charts.ts:301`).
+    ///
+    /// **Die halbe Deckung ist der Wert und kein Zufall.** Der oberste Abschnitt des Stapels
+    /// ist die Steuer, und ein fast weißer, deckender Block zöge den Blick auf das, was am
+    /// wenigsten zu entscheiden ist. #E4ECEF steht in dieser Liste auch als oberster Stopp
+    /// von `rampeNetz`; dort ist es die Spitze einer Helligkeitsrampe und hier eine
+    /// Serienfarbe - zwei Sachen, zwei Namen.
+    public static let umsatzsteuer = Farbwert(0xE4ECEF, deckung: 0.5)
+
+    /// Die Sonne eines anderen Tages: hinter heute liegt gestern.
+    ///
+    /// Dieselbe Familie wie `pv`, nur dunkler - nach dem Maßstab der übrigen Farben zu nah.
+    /// **Hier ist das der Sinn:** es ist dieselbe Größe an einem anderen Tag, und wer die
+    /// beiden für verwandt hält, hat richtig gelesen. Unterschieden werden sie an der Form
+    /// (keine Fläche, dünner, hinter allem) und in der Legende, die den Tag nennt
+    /// (`charts/palette.ts`, `pvSchatten`).
+    public static let pvSchatten = Farbwert(0xC8902F)
+
     /// Die vier Schichten des Puffers, warm nach kuehl - wie die Schichtung selbst.
     ///
     /// **Keine vier Kategorienfarben, sondern eine Folge.** Die Linien liegen fast immer in
@@ -192,6 +263,95 @@ public enum Marken {
         }
         return letzte.farbe
     }
+
+    // MARK: - Die Rampe der Verfügbarkeit
+
+    /// Die drei Stopps der Abdeckungskarte: rot, sandfarben, ruhiges Blaugrau.
+    ///
+    /// **Sie läuft absichtlich herum.** Üblich wäre grün für „alles da"; hier ist das ruhige
+    /// Ende blaugrau und das laute Ende rot, denn eine Karte ohne Lücken soll langweilig
+    /// aussehen (`rooms/../CoverageMap.tsx:32`). Wer darauf sieht, sucht die roten Spalten -
+    /// und eine Wand aus Grün hätte dieselbe Aufmerksamkeit verlangt wie eine aus Rot.
+    public static let abdeckungFehlend = alarm
+    /// Der Sandton der Mitte. Er steht zwischen Rot und Blaugrau und ist von beiden auch ohne
+    /// Farbwahrnehmung durch seine Helligkeit zu trennen.
+    public static let abdeckungTeils = Farbwert(0xC2A86B)
+    public static let abdeckungVoll = mist
+
+    /// Die drei Stufen in der Reihenfolge der Rampe.
+    public static let abdeckung: [Farbwert] = [
+        abdeckungFehlend, abdeckungTeils, abdeckungVoll,
+    ]
+
+    /// Die Farbe zu einem Anteil der Rampe, 0 bis 1 - zwischen den Stopps gemischt.
+    ///
+    /// **Die Karte hat keine Stufen.** In der Vorlage ist die Skala stetig (`charts.ts:517-536`,
+    /// `visualMap` mit `type: "continuous"` ueber genau diese drei Farben), und das ist der
+    /// Punkt: eine Stunde mit 55 von 60 Minuten soll anders aussehen als eine mit 48. Drei
+    /// Stufen machten aus beiden dasselbe Feld. `Abdeckungsstufe` bleibt daneben stehen - sie
+    /// benennt die drei Stopps fuer die Lesehilfe, und benennen kann man nur Stufen.
+    public static func abdeckungsfarbe(anteil: Double) -> Farbwert {
+        rampenfarbe(abdeckung, anteil: anteil)
+    }
+
+    // MARK: - Rampen allgemein
+
+    /// Die Farbe an einer Stelle einer Rampe, `anteil` 0 bis 1 - zwischen den Stopps gemischt.
+    ///
+    /// **Eine Rechnung für alle Rampen.** Die Abdeckungskarte hatte sie zuerst; die Jahreskarte
+    /// braucht dieselbe über vier andere Stopplisten (`charts.ts:409-412`), und zwei Kopien
+    /// derselben Mischung wären zwei Stellen, an denen die Skala auseinanderläuft. Werte
+    /// ausserhalb von 0 bis 1 werden beschnitten, ein Unwert gibt den ersten Stopp: eine
+    /// erfundene Farbe wäre schlimmer als eine stumme.
+    public static func rampenfarbe(_ rampe: [Farbwert], anteil: Double) -> Farbwert {
+        guard let erste = rampe.first, let letzte = rampe.last else { return text3 }
+        guard anteil.isFinite else { return erste }
+        let lage = min(1, max(0, anteil)) * Double(rampe.count - 1)
+        if lage <= 0 { return erste }
+        if lage >= Double(rampe.count - 1) { return letzte }
+        let unten = Int(lage)
+        return rampe[unten].gemischt(mit: rampe[unten + 1], anteil: lage - Double(unten))
+    }
+
+    // MARK: - Die Rampen der Jahreskarte
+
+    /// **In OKLab zwischen Markenfarben gerechnet, nicht von Hand gewählt** - so steigt die
+    /// wahrgenommene Helligkeit gleichmässig, und nur so liest sich „mehr" als „heller"
+    /// (`charts.ts:400-412`). Die Werte sind darum aus der Vorlage übernommen und nicht hier
+    /// neu bestimmt: dieselbe Skala in zwei Oberflächen muss dieselben Farben an denselben
+    /// Stellen zeigen.
+    ///
+    /// Der dunkelste Schritt jeder einfarbigen Rampe ist die Kartenfläche selbst (`#123544`),
+    /// damit „fast nichts" mit dem Grund verschmilzt. Die Zuordnung ist die des Energieflusses:
+    /// Bernstein ist eigene Energie, Mist das Netz, Terrakotta die Wärmepumpe.
+    public static let rampeEigen: [Farbwert] = [
+        Farbwert(0x123544), Farbwert(0x6A6448), Farbwert(0xC39234),
+        Farbwert(0xF5B22E), Farbwert(0xFAC558), Farbwert(0xFFD778),
+    ]
+
+    /// Das Netz: von der Kartenfläche bis fast ins Weisse.
+    public static let rampeNetz: [Farbwert] = [
+        Farbwert(0x123544), Farbwert(0x3C5F6E), Farbwert(0x688C9B),
+        Farbwert(0x93B1BF), Farbwert(0xBBCED7), Farbwert(0xE4ECEF),
+    ]
+
+    /// Die Wärmepumpe in Terrakotta.
+    public static let rampeWaerme: [Farbwert] = [
+        Farbwert(0x123544), Farbwert(0x655C57), Farbwert(0xB68365),
+        Farbwert(0xE5A17A), Farbwert(0xEEB797), Farbwert(0xF6CDB4),
+    ]
+
+    /// Die Netzbilanz, divergierend: Einspeisung (Bernstein) über eine flächennahe Mitte zum
+    /// Bezug (Mist).
+    ///
+    /// **Beide Pole gleich hell, sonst schrie eine Seite lauter als die andere**
+    /// (`charts.ts:405-407`). Die Mitte ist der Kartenfläche nah, damit eine Stunde um null
+    /// nicht als Ereignis gelesen wird. Sieben Stopps, damit die Mitte wirklich in der Mitte
+    /// liegt.
+    public static let rampeNetzBilanz: [Farbwert] = [
+        Farbwert(0xF2A900), Farbwert(0xAC833B), Farbwert(0x695F44), Farbwert(0x2B3A41),
+        Farbwert(0x4C646E), Farbwert(0x70909F), Farbwert(0x96C0D3),
+    ]
 
     /// Die fuenf Stufen der Abweichung, kalt nach warm.
     public static let abweichung: [Farbwert] = [abwKalt2, abwKalt1, abwNull, abwWarm1, abwWarm2]
@@ -250,6 +410,22 @@ public struct Farbwert: Sendable, Hashable {
     /// Dieselbe Farbe mit anderer Deckung.
     public func mitDeckung(_ d: Double) -> Farbwert {
         Farbwert(rot: rot, gruen: gruen, blau: blau, deckung: d)
+    }
+
+    /// Diese Farbe mit einer anderen gemischt: `anteil` 0 ist diese, 1 die andere.
+    ///
+    /// Gemischt wird kanalweise in sRGB - dasselbe, was `visualMap` in der Vorlage tut
+    /// (`charts.ts:536`, `inRange: { color: ramp }`). Kein Lab, keine Gammakorrektur: eine
+    /// andere Mischung ergaebe andere Zwischentoene als im Browser, und genau das soll sie
+    /// nicht.
+    public func gemischt(mit andere: Farbwert, anteil: Double) -> Farbwert {
+        guard anteil.isFinite else { return self }
+        let t = min(1, max(0, anteil))
+        return Farbwert(
+            rot: rot + (andere.rot - rot) * t,
+            gruen: gruen + (andere.gruen - gruen) * t,
+            blau: blau + (andere.blau - blau) * t,
+            deckung: deckung + (andere.deckung - deckung) * t)
     }
 
     // MARK: - Pruefung der Palette

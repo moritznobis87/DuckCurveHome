@@ -1,0 +1,11 @@
+# Schreibt den Gesundheitsbericht, den die App unter Technik -> Hausgeraet zeigt: Dienste, ihre
+# Pruefungen, Temperatur, Drosselung, Speicher, Platz, letzte Sicherung (dch zustand).
+[Unit]
+Description=Duck Curve Home - Gesundheitsbericht fuer die App
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+TimeoutStartSec=2min
+ExecStart=/usr/local/bin/dch zustand

@@ -1,0 +1,39 @@
+# Namen, die nicht im Projekt stehen und trotzdem richtig sind.
+#
+# Regel 13 in tools/ios-typpruefen.py meldet jeden kleingeschriebenen Namen, der in
+# apps/ios/DuckCurveHome benutzt, aber nirgends im Projekt erklaert wird - so wie
+# `zahlgroesse` und `modellhinweis`, die einen Mac-Lauf gekostet haben. Alles aus der
+# Standardbibliothek, aus SwiftUI und aus den Rahmenwerken von Apple ist fuer dieses
+# Skript unsichtbar; was davon ohne Punkt davor aufgerufen wird, steht hier.
+#
+# Wer einen neuen solchen Namen benutzt, traegt ihn hier ein. Das ist Absicht: die Liste
+# ist kurz, und jede Zeile darin ist eine Behauptung, die jemand gelesen hat.
+
+# Freistehende Funktionen der Standardbibliothek
+abs min max round floor ceil sqrt pow exp log hypot atan2 cos sin tan stride zip
+print assert precondition fatalError dump swap repeatElement
+
+# Nebenlaeufigkeit
+withAnimation withTransaction withTaskGroup withThrowingTaskGroup
+withCheckedContinuation withCheckedThrowingContinuation withTaskCancellationHandler
+withUnsafeContinuation
+
+# Anweisungen an den Uebersetzer: `#if canImport(...)`, `nonisolated(unsafe)`
+canImport endif os arch swift compiler targetEnvironment available unsafe
+
+# Mitglieder von Apples Typen, die eine `extension` ohne `self.` aufruft.
+# `extension Path` in Gestalt/Zeichen.swift:
+move addLine addCurve addQuadCurve closeSubpath
+# `extension View` in Gestalt/Typografie.swift:
+font background
+
+# Der Schluesselbund (Security.framework) - Konstanten, kein Swift-Namensraum
+errSecSuccess errSecItemNotFound
+kSecClass kSecClassGenericPassword kSecAttrService kSecAttrAccount
+kSecValueData kSecReturnData kSecMatchLimit kSecMatchLimitOne
+kSecAttrAccessible kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+
+# Benennungen in Apples Rueckrufen, die als aeusserer Argumentname dastehen
+didReceive willPresent
+didRegisterForRemoteNotificationsWithDeviceToken
+didFailToRegisterForRemoteNotificationsWithError

@@ -1,21 +1,36 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Die Jahreskarte: ein Jahr als Raster aus Tagen, nach Wochen gestapelt.
+/// Die Jahreskarte: ein Kalenderjahr als Fläche aus 365 Tagen und 24 Stunden.
 ///
-/// **Warum ein Raster und keine Kurve.** Ein Jahr als Linie ist 365 Punkte in einem Bild, das
-/// 300 Punkte breit ist - jeder zweite Tag fällt weg, und die Jahreszeit, die die eigentliche
-/// Auskunft ist, verschwindet im Rauschen. Als Raster hat jeder Tag sein Feld, die Wochen stehen
-/// untereinander, und der Sommer ist eine helle Insel. Dieselbe Form, die Versionsverwaltungen
-/// fuer Beitraege benutzen, und aus demselben Grund.
+/// **Warum eine Fläche und keine Kurve** (`YearMap.tsx:13-15`). Ein Jahr als Linie sind 8760
+/// Punkte in einem Bild von 350 Punkten Breite; was übrig bleibt, ist Rauschen. Als Fläche aus Tag
+/// und Stunde wird jede Gewohnheit ein Muster: die Heizperiode ein Block, die Sonne ein Bogen, die
+/// Nachtabsenkung ein waagerechter Streifen - und die Entenkurve, über ein ganzes Jahr gelegt, ein
+/// Bild statt einer Behauptung.
+///
+/// **Was diese Seite einmal falsch zeigte, und warum es hier steht.** Der Dienst liefert
+/// `metrics` als `[Tag][Stunde 0-23]`; diese Seite las dieselbe Liste als Wochenzeilen mit sieben
+/// Spalten. Damit waren die Stunden 7 bis 23 jedes Tages überhaupt nicht im Bild - siebzig Prozent
+/// der Messwerte -, und die Achsen bedeuteten etwas anderes, als die Beschriftung behauptete. Das
+/// Raster liegt jetzt im Kern (`Jahresraster`) und ist dort geprüft, gerade weil ein solcher
+/// Fehler in einer Ansicht nicht auffällt: er sieht aus wie ein Bild.
+///
+/// **Gerechnet wird hier nichts.** Die Obergrenze der Skala, die Farbe je Zelle, die
+/// Monatsanfänge, die Texte des Hinweisfensters und der Fließtext unter der Karte kommen aus
+/// `Jahresraster`.
 struct JahreskarteSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
+    @Environment(\.horizontalSizeClass) private var breite
 
     @State private var karte: YearMapOut?
+    @State private var raster: Jahresraster?
     @State private var fehler: ApiFehler?
-    @State private var reihe: String = "pv_kwh"
+    @State private var kennzahl: Jahreskennzahl = .netz
     @State private var jahr: Int = 0
+
+    private var schmal: Bool { breite == .compact }
 
     var body: some View {
         Seite {
@@ -23,22 +38,9 @@ struct JahreskarteSeite: View {
             if let fehler {
                 Stoerung(fehler: fehler) { Task { await lade() } }
             }
-            if let karte {
-                Karte(kicker: "\(karte.year)", titel: name(reihe)) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Raster(karte: karte, reihe: reihe)
-                        skala(karte)
-                    }
-                }
-                Kachelfeld(kacheln: kennzahlen(karte), kicker: "Das Jahr")
-                Methode([
-                    karte.dataSince.map { "Daten seit \($0)." },
-                    "\(Formate.zahl(Double(karte.hoursWithData), stellen: 0)) Stunden mit Messwerten.",
-                    "Ein Tag ohne Messwerte bleibt leer und wird nicht als Null gezeichnet.",
-                ])
-            } else if fehler == nil {
-                Karte { Leer(satz: "Wird geholt …") }
-            }
+            kennzahlleiste
+            bildkarte
+            fussnote
         }
         .task(id: jahr) { await lade() }
         .onAppear {
@@ -48,92 +50,156 @@ struct JahreskarteSeite: View {
         }
     }
 
+    // MARK: - Kopf: die Jahreswahl
+
+    /// **Am Telefon steht die Jahreswahl in einer eigenen Zeile.**
+    /// So macht es die Vorlage: `.report-header-right { display: contents }` löst den Kasten auf
+    /// und gibt der Jahreswahl `order: 2; flex: 1 1 100%` (`handy.css:148-149`).
+    ///
+    /// **Der Kicker stand hier und steht jetzt im Gerippe.** Er gehört in der Vorlage der Hülle
+    /// (`AreaShell.tsx:26`), nicht dieser Seite; ``Seite`` zeichnet ihn aus
+    /// ``Bereiche/kicker(fuer:)``, und auch die Regel, dass er am Telefon wegfällt
+    /// (`AreaNav.tsx:96`, `hidden … md:block` - unter 768 Punkten ist er nicht zu sehen), steht
+    /// dort einmal statt hier und auf vier weiteren Seiten.
     private var kopf: some View {
-        HStack(spacing: 10) {
-            if let karte, !karte.metrics.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(karte.metrics.keys.sorted(), id: \.self) { s in
-                            Button {
-                                reihe = s
-                            } label: {
-                                Text(name(s))
-                                    .font(Schrift.winzig)
-                                    .foregroundStyle(s == reihe ? Farbe.deep : Farbe.text2)
-                                    .padding(.horizontal, 9)
-                                    .padding(.vertical, 4)
-                                    .background(s == reihe ? Farbe.amberWeich : Farbe.flaeche2)
-                                    .clipShape(Capsule())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
+        HStack(alignment: .center, spacing: 10) {
             Spacer(minLength: 4)
-            HStack(spacing: 8) {
-                Button { jahr -= 1 } label: { Text("‹").font(Schrift.karte).frame(width: 28, height: 28) }
-                    .buttonStyle(.plain).foregroundStyle(Farbe.text2)
-                Text(String(jahr)).font(Schrift.zahlKlein).foregroundStyle(Farbe.text1)
-                Button { jahr += 1 } label: { Text("›").font(Schrift.karte).frame(width: 28, height: 28) }
+            jahreswahl
+        }
+    }
+
+    /// Vier Jahre, das laufende zuerst (`YearMap.tsx:91-99`).
+    ///
+    /// **Keine Pfeile mehr.** Hier stand ein Blätterer ‹ Jahr › ohne untere Grenze; wer
+    /// zwanzigmal zurück tippte, landete bei 2006 und holte sich eine leere Karte. Die Vorlage
+    /// nennt vier Jahre, weil es für mehr keine Daten gibt - und vier Knöpfe zeigen zugleich, dass
+    /// es nicht mehr gibt.
+    private var jahreswahl: some View {
+        HStack(spacing: 4) {
+            ForEach(Jahresraster.jahreswahl(jetzt: haus.jetzt), id: \.self) { j in
+                Button { jahr = j } label: { jahreswort(j) }
                     .buttonStyle(.plain)
-                    .foregroundStyle(darfVor ? Farbe.text2 : Farbe.text3)
-                    .disabled(!darfVor)
             }
-            .background(Farbe.flaeche2)
-            .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
         }
+        .padding(4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .strokeBorder(Farbe.linie2, lineWidth: 1)
+        )
     }
 
-    private var darfVor: Bool {
-        jahr < Kalender.haus.component(.year, from: haus.jetzt)
+    private func jahreswort(_ j: Int) -> some View {
+        let aktiv: Bool = j == jahr
+        return Text(String(j))
+            .font(Schrift.mono(12.5, relativeTo: .caption))
+            .foregroundStyle(aktiv ? Farbe.petrol : Farbe.text2)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(aktiv ? Farbe.amber : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous))
     }
 
-    private func name(_ schluessel: String) -> String {
-        switch schluessel {
-        case "pv_kwh": return "aus der Sonne"
-        case "house_kwh": return "im Haus"
-        case "import_kwh": return "aus dem Netz"
-        case "export_kwh": return "eingespeist"
-        case "heat_pump_kwh": return "Wärmepumpe"
-        case "autarky": return "Autarkie"
-        case "price_ct": return "Strompreis"
-        default: return schluessel.replacingOccurrences(of: "_", with: " ")
-        }
-    }
+    // MARK: - Die acht Kennzahlen
 
-    private func kennzahlen(_ k: YearMapOut) -> [Kacheldaten] {
-        let werte = (k.metrics[reihe] ?? []).flatMap { $0 }.compactMap { $0 }
-        let summe = werte.reduce(0, +)
-        let istAnteil = reihe == "autarky"
-        return [
-            Kacheldaten(
-                istAnteil ? "im Mittel" : "zusammen",
-                istAnteil
-                    ? Formate.prozent(werte.isEmpty ? nil : summe / Double(werte.count))
-                    : Formate.zahl(summe, stellen: 0),
-                einheit: istAnteil ? nil : "kWh"
-            ),
-            Kacheldaten("Tage mit Werten", String(werte.count)),
-            Kacheldaten(
-                "bester Tag",
-                istAnteil ? Formate.prozent(werte.max()) : Formate.zahl(werte.max(), stellen: 1),
-                einheit: istAnteil ? nil : "kWh"
-            ),
-            Kacheldaten("Stunden erfasst", Formate.zahl(Double(k.hoursWithData), stellen: 0)),
-        ]
-    }
-
-    private func skala(_ k: YearMapOut) -> some View {
-        HStack(spacing: 6) {
-            Text("wenig").font(Schrift.winzig).foregroundStyle(Farbe.text3)
-            ForEach(Array(Farbe.waerme.enumerated()), id: \.offset) { _, f in
-                Rectangle().fill(f).frame(width: 16, height: 8)
+    /// Acht Knöpfe in der Reihenfolge der Vorlage, umbrechend statt rollend
+    /// (`YearMap.tsx:104`, `flex-wrap`).
+    ///
+    /// **Umbrechen und nicht rollen.** Hier stand ein waagerechter Rollbereich - damit waren von
+    /// acht Kennzahlen drei zu sehen und fünf hinter dem Rand, und welche es gibt, erfuhr man nur
+    /// durch Wischen. Acht Wörter sind zwei Zeilen; zwei Zeilen zeigen alles.
+    private var kennzahlleiste: some View {
+        Umbruchzeile(abstand: 6, zeilenabstand: 6) {
+            ForEach(Jahreskennzahl.allCases, id: \.self) { k in
+                Button { waehle(k) } label: { kennzahlwort(k) }
+                    .buttonStyle(.plain)
             }
-            Text("viel").font(Schrift.winzig).foregroundStyle(Farbe.text3)
-            Spacer(minLength: 0)
         }
     }
+
+    /// 13 Punkte am iPad, 14,5 am Telefon - dort ist Kleinschrift eine Stufe größer
+    /// (`handy.css:189-192`: 13 → 14,5).
+    private func kennzahlwort(_ k: Jahreskennzahl) -> some View {
+        let aktiv: Bool = k == kennzahl
+        return Text(k.name)
+            .font(Schrift.sans(schmal ? 14.5 : 13, relativeTo: .footnote))
+            .foregroundStyle(aktiv ? Farbe.amber : Farbe.text2)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(aktiv ? Farbe.amber.opacity(0.10) : Color.clear)
+            .overlay(
+                RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous)
+                    .strokeBorder(aktiv ? Farbe.amber : Farbe.linie2, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous))
+    }
+
+    private func waehle(_ k: Jahreskennzahl) {
+        kennzahl = k
+        baue()
+    }
+
+    // MARK: - Die Bildkarte
+
+    /// Name der Kennzahl links, Einheit rechts (`YearMap.tsx:125`).
+    ///
+    /// **Das Jahr steht nicht mehr im Kicker.** Es stand dort und gleich daneben im Blätterer -
+    /// zweimal dieselbe Zahl, und der Platz, an dem die Vorlage die Kennzahl nennt, blieb leer.
+    @ViewBuilder private var bildkarte: some View {
+        // Steht ein Fehler und ist noch nichts da, trägt das Band über der Seite die Auskunft;
+        // eine leere Karte darunter wiederholte sie nur mit anderen Worten.
+        if raster != nil || fehler == nil {
+            Karte(kicker: kennzahl.name, beiwerk: einheitswort) {
+                inhalt
+            }
+        }
+    }
+
+    private var einheitswort: AnyView? {
+        guard !kennzahl.einheit.isEmpty else { return nil }
+        return AnyView(
+            Text(kennzahl.einheit)
+                .font(Schrift.sans(12, relativeTo: .caption))
+                .foregroundStyle(Farbe.text3)
+        )
+    }
+
+    /// Die drei Zustände der Karte (`YearMap.tsx:127`).
+    @ViewBuilder private var inhalt: some View {
+        if let r = raster {
+            if r.hatStundenwerte {
+                Jahresflaeche(raster: r) { ziel in wegweiser.gehe(ziel.weg) }
+            } else {
+                // **Ein eigener Satz, keine leere Fläche.** Vorher stand hier ein Raster ohne
+                // eine einzige Farbe, und das sieht aus wie ein Fehler der App statt wie ein
+                // Jahr ohne Daten.
+                Leer(satz: Jahresraster.keineStundenSatz(jahr: jahr))
+            }
+        } else {
+            Leer(satz: Jahresraster.laedtSatz)
+        }
+    }
+
+    // MARK: - Die Fußnote
+
+    /// Der Fließtext unter der Karte (`YearMap.tsx:131-138`): was diese Karte zeigt, der Satz über
+    /// Ortszeit und Lücken, die Stundenabdeckung und der wirkliche Werteumfang.
+    ///
+    /// **Statt einer zugeklappten `Methode`.** Hier stand eine, mit drei anderen Sätzen - und
+    /// zugeklappt. Der wichtigste Teil dieses Textes ist der letzte: dass die Farbskala beim 98.
+    /// Perzentil endet. Eine Skala, die etwas verschweigt, muss das offen sagen und nicht hinter
+    /// einem Dreieck.
+    @ViewBuilder private var fussnote: some View {
+        if let r = raster {
+            Text(r.fussnote)
+                .font(Schrift.sans(schmal ? 13.5 : 12, relativeTo: .footnote))
+                .foregroundStyle(Farbe.text3)
+                .lineSpacing(5)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 640, alignment: .leading)
+        }
+    }
+
+    // MARK: - Laden
 
     private func lade() async {
         guard jahr > 2000 else { return }
@@ -145,57 +211,18 @@ struct JahreskarteSeite: View {
         } catch {
             fehler = .netz(error.localizedDescription)
         }
+        baue()
     }
-}
 
-/// Das Raster selbst: Wochen als Spalten, Wochentage als Zeilen.
-private struct Raster: View {
-    let karte: YearMapOut
-    let reihe: String
-
-    /// Die Kantenlaenge eines Tagesfeldes. Klein genug, dass 53 Wochen auf ein iPad passen.
-    private let kante: CGFloat = 11
-    private let luecke: CGFloat = 2
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: luecke) {
-                ForEach(0..<wochen.count, id: \.self) { w in
-                    VStack(spacing: luecke) {
-                        ForEach(0..<7, id: \.self) { tag in
-                            feld(woche: w, tag: tag)
-                        }
-                    }
-                }
-            }
-            .padding(.vertical, 2)
+    /// Das Raster einmal bauen und merken.
+    ///
+    /// **Nicht in `body` rechnen.** `Jahresraster.baue` läuft über 8760 Zellen; in einem `body`
+    /// liefe es bei jedem Bildwechsel, also auch beim Fahren des Fingers über die Fläche.
+    private func baue() {
+        guard let karte else {
+            raster = nil
+            return
         }
-    }
-
-    /// Die Werte, nach Wochen gruppiert. Der Dienst liefert sie als Wochenzeilen.
-    private var wochen: [[Double?]] {
-        karte.metrics[reihe] ?? []
-    }
-
-    @ViewBuilder private func feld(woche: Int, tag: Int) -> some View {
-        let wert = woche < wochen.count && tag < wochen[woche].count ? wochen[woche][tag] : nil
-        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-            .fill(farbe(wert))
-            .frame(width: kante, height: kante)
-            .accessibilityHidden(wert == nil)
-    }
-
-    /// Die Farbe eines Tages. Ein Tag ohne Messwerte bleibt leer - und nicht dunkelblau, was
-    /// „wenig" heisst: „nichts gemessen" und „nichts erzeugt" sind zwei verschiedene Auskuenfte.
-    private func farbe(_ wert: Double?) -> Color {
-        guard let wert else { return Farbe.linie1 }
-        guard let hoechster = alle.max(), hoechster > 0 else { return Farbe.waerme[0] }
-        let anteil = min(1, max(0, wert / hoechster))
-        let stufe = Int((anteil * Double(Farbe.waerme.count - 1)).rounded())
-        return Farbe.waerme[min(Farbe.waerme.count - 1, max(0, stufe))]
-    }
-
-    private var alle: [Double] {
-        wochen.flatMap { $0 }.compactMap { $0 }
+        raster = Jahresraster.baue(karte, kennzahl: kennzahl)
     }
 }
