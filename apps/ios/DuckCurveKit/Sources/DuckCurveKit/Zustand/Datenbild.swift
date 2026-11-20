@@ -744,6 +744,33 @@ public struct Abdeckungsraster: Sendable, Hashable, Identifiable {
         return (0..<anzahl).map { Tag.plus(erster, $0) }
     }
 
+    /// Die Farbe einer Stufe. `nil` heißt: gar keine Farbe, und das ist eine eigene Aussage.
+    ///
+    /// **Eine Zelle ohne Farbe ist nicht dasselbe wie eine rote.** Ohne Farbe gab es für diese
+    /// Stunde überhaupt keine Minutenzeile - dann stand der Dienst still, und der Ausfall ist
+    /// unserer. Rot heißt, dass Zeilen da sind und diese eine Reihe darin fehlt: dann hat das
+    /// Gerät nichts geliefert (`CoverageMap.tsx:146-152`).
+    public static func farbe(_ stufe: Abdeckungsstufe) -> Farbwert? {
+        switch stufe {
+        case .leer: return nil
+        case .fehlend: return Marken.abdeckungFehlend
+        case .teils: return Marken.abdeckungTeils
+        case .voll: return Marken.abdeckungVoll
+        }
+    }
+
+    /// Die Farbe einer Stunde: ihre Minutenzahl auf der Rampe, `nil` ohne Minutenzeile.
+    ///
+    /// **Die Skala ist fest, nicht nach den Daten.** Null bis sechzig Minuten
+    /// (`charts.ts:434-437`): eine Reihe, die nie mehr als vierzig Minuten je Stunde liefert,
+    /// saehe sonst vollstaendig aus. Und `nil` bleibt `nil` - eine Stunde ohne Minutenzeile
+    /// bekommt keine Farbe, auch nicht die rote.
+    public static func farbe(minuten: Int?) -> Farbwert? {
+        guard let minuten else { return nil }
+        let anteil = Double(minuten) / Double(minutenJeStunde)
+        return Marken.abdeckungsfarbe(anteil: anteil)
+    }
+
     /// Welche Stufe eine Stunde hat.
     public static func stufe(minuten: Int?) -> Abdeckungsstufe {
         guard let minuten else { return .leer }

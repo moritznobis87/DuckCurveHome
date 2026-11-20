@@ -202,6 +202,45 @@ public enum Marken {
         return letzte.farbe
     }
 
+    // MARK: - Die Rampe der Verfügbarkeit
+
+    /// Die drei Stopps der Abdeckungskarte: rot, sandfarben, ruhiges Blaugrau.
+    ///
+    /// **Sie läuft absichtlich herum.** Üblich wäre grün für „alles da"; hier ist das ruhige
+    /// Ende blaugrau und das laute Ende rot, denn eine Karte ohne Lücken soll langweilig
+    /// aussehen (`rooms/../CoverageMap.tsx:32`). Wer darauf sieht, sucht die roten Spalten -
+    /// und eine Wand aus Grün hätte dieselbe Aufmerksamkeit verlangt wie eine aus Rot.
+    public static let abdeckungFehlend = alarm
+    /// Der Sandton der Mitte. Er steht zwischen Rot und Blaugrau und ist von beiden auch ohne
+    /// Farbwahrnehmung durch seine Helligkeit zu trennen.
+    public static let abdeckungTeils = Farbwert(0xC2A86B)
+    public static let abdeckungVoll = mist
+
+    /// Die drei Stufen in der Reihenfolge der Rampe.
+    public static let abdeckung: [Farbwert] = [
+        abdeckungFehlend, abdeckungTeils, abdeckungVoll,
+    ]
+
+    /// Die Farbe zu einem Anteil der Rampe, 0 bis 1 - zwischen den Stopps gemischt.
+    ///
+    /// **Die Karte hat keine Stufen.** In der Vorlage ist die Skala stetig (`charts.ts:517-536`,
+    /// `visualMap` mit `type: "continuous"` ueber genau diese drei Farben), und das ist der
+    /// Punkt: eine Stunde mit 55 von 60 Minuten soll anders aussehen als eine mit 48. Drei
+    /// Stufen machten aus beiden dasselbe Feld. `Abdeckungsstufe` bleibt daneben stehen - sie
+    /// benennt die drei Stopps fuer die Lesehilfe, und benennen kann man nur Stufen.
+    public static func abdeckungsfarbe(anteil: Double) -> Farbwert {
+        guard anteil.isFinite else { return abdeckungFehlend }
+        guard let erste = abdeckung.first, let letzte = abdeckung.last else {
+            return abdeckungFehlend
+        }
+        let lage = min(1, max(0, anteil)) * Double(abdeckung.count - 1)
+        if lage <= 0 { return erste }
+        if lage >= Double(abdeckung.count - 1) { return letzte }
+        let unten = Int(lage)
+        return abdeckung[unten].gemischt(
+            mit: abdeckung[unten + 1], anteil: lage - Double(unten))
+    }
+
     /// Die fuenf Stufen der Abweichung, kalt nach warm.
     public static let abweichung: [Farbwert] = [abwKalt2, abwKalt1, abwNull, abwWarm1, abwWarm2]
 
@@ -259,6 +298,22 @@ public struct Farbwert: Sendable, Hashable {
     /// Dieselbe Farbe mit anderer Deckung.
     public func mitDeckung(_ d: Double) -> Farbwert {
         Farbwert(rot: rot, gruen: gruen, blau: blau, deckung: d)
+    }
+
+    /// Diese Farbe mit einer anderen gemischt: `anteil` 0 ist diese, 1 die andere.
+    ///
+    /// Gemischt wird kanalweise in sRGB - dasselbe, was `visualMap` in der Vorlage tut
+    /// (`charts.ts:536`, `inRange: { color: ramp }`). Kein Lab, keine Gammakorrektur: eine
+    /// andere Mischung ergaebe andere Zwischentoene als im Browser, und genau das soll sie
+    /// nicht.
+    public func gemischt(mit andere: Farbwert, anteil: Double) -> Farbwert {
+        guard anteil.isFinite else { return self }
+        let t = min(1, max(0, anteil))
+        return Farbwert(
+            rot: rot + (andere.rot - rot) * t,
+            gruen: gruen + (andere.gruen - gruen) * t,
+            blau: blau + (andere.blau - blau) * t,
+            deckung: deckung + (andere.deckung - deckung) * t)
     }
 
     // MARK: - Pruefung der Palette

@@ -97,6 +97,18 @@ public enum Tag {
         return "\(Namen.wochentag(t.weekday ?? 1, kurz: true)), \(t.day ?? 0).\(t.month ?? 0)."
     }
 
+    /// „10.11." - nur Tag und Monat, zweistellig, fuer eine Achse aus vielen Tagen.
+    ///
+    /// **Ohne Wochentag und ohne Jahr**, anders als `kurz`. An der Achse der Abdeckungskarte
+    /// steht jeder dritte von achtundzwanzig Tagen (`charts.ts:493-500`,
+    /// `{ day: "2-digit", month: "2-digit" }`); „Sa, 7.11." waere dort dreimal so breit und
+    /// nennt genau das, was zwischen Nachbarspalten gleich bleibt.
+    public static func tagMonat(_ tag: String) -> String {
+        guard let d = date(tag) else { return tag }
+        let t = Kalender.haus.dateComponents([.day, .month], from: d)
+        return String(format: "%02d.%02d.", t.day ?? 0, t.month ?? 0)
+    }
+
     /// Ist das heute, gestern oder morgen? Fuer die Ueberschrift, die dann ein Wort statt eines
     /// Datums zeigt.
     public static func nameRelativ(_ tag: String, jetzt: Date = Date()) -> String? {
