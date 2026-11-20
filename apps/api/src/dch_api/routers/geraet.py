@@ -21,11 +21,12 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import ValidationError
 from sqlalchemy import text
 
 from dch_api import geraet_austausch as austausch
+from dch_api.application import geraet_verlauf
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
 from dch_api.errors import DchError
@@ -43,6 +44,8 @@ from dch_api.schemas import (
     GeraetProtokollOut,
     GeraetRechnerOut,
     GeraetSicherungOut,
+    GeraetSsdOut,
+    GeraetVerlaufOut,
 )
 
 log = structlog.get_logger("geraet")
@@ -151,7 +154,39 @@ def bewerte_rechner(r: GeraetRechnerOut) -> GeraetRechnerOut:
     for p in r.platten:
         anteil = p.frei_bytes / p.gesamt_bytes if p.gesamt_bytes else 1.0
         p.ampel = "schlecht" if anteil < 0.05 else "warn" if anteil < 0.15 else "gut"
+    # Ein 5-Volt-Netzteil liefert unter Last nicht exakt 5,0 V. Die Schwellen sind geschätzt und
+    # bewusst vorsichtig; die verlässliche Auskunft ist das Unterspannungsbit der Drosselung.
+    if r.eingangsspannung_v is not None:
+        v = r.eingangsspannung_v
+        r.spannung_ampel = "schlecht" if v < 4.7 else "warn" if v < 4.85 else "gut"
+    if r.ssd is not None:
+        r.ssd = bewerte_ssd(r.ssd)
     return r
+
+
+def bewerte_ssd(s: GeraetSsdOut) -> GeraetSsdOut:
+    if s.gesund is False:
+        s.ampel, s.text_de = (
+            "schlecht",
+            "Die SSD meldet selbst einen Fehler (SMART). Sicherung prüfen, SSD ersetzen.",
+        )
+    elif s.abnutzung_prozent is not None and s.abnutzung_prozent >= 90:
+        s.ampel, s.text_de = "schlecht", f"Die SSD ist zu {s.abnutzung_prozent:.0f} % abgenutzt."
+    elif s.fehler:
+        s.ampel, s.text_de = "warn", f"Die SSD hat {s.fehler} Lesefehler gemeldet."
+    elif s.abnutzung_prozent is not None and s.abnutzung_prozent >= 70:
+        s.ampel, s.text_de = "warn", f"Die SSD ist zu {s.abnutzung_prozent:.0f} % abgenutzt."
+    elif s.temperatur_c is not None and s.temperatur_c >= 70:
+        s.ampel, s.text_de = "warn", f"Die SSD ist {s.temperatur_c:.0f} °C warm."
+    else:
+        teile = []
+        if s.abnutzung_prozent is not None:
+            teile.append(f"{s.abnutzung_prozent:.0f} % abgenutzt")
+        if s.betriebsstunden is not None:
+            teile.append(f"{s.betriebsstunden} Betriebsstunden")
+        s.ampel = "gut"
+        s.text_de = "Gesund" + (f": {', '.join(teile)}." if teile else ".")
+    return s
 
 
 def bewerte_sicherung(s: GeraetSicherungOut, jetzt: datetime) -> GeraetSicherungOut:
@@ -196,6 +231,13 @@ async def _datenbank(request: Request) -> tuple[bool | None, float | None, str]:
 async def selbstauskunft(request: Request, runner: Runtime) -> ApiSelbstOut:
     system = runner.live_state().system
     ok, ms, db_de = await _datenbank(request)
+    db_bytes = None
+    repos = getattr(runner, "repos", None)
+    if ok and repos is not None and hasattr(repos, "datenbank_bytes"):
+        try:
+            db_bytes = await repos.datenbank_bytes()
+        except Exception:
+            db_bytes = None
     rss, _ = speicher_mb()
     api = ApiSelbstOut(
         version=system.version,
@@ -206,6 +248,7 @@ async def selbstauskunft(request: Request, runner: Runtime) -> ApiSelbstOut:
         datenbank_ok=ok,
         datenbank_ms=ms,
         datenbank_de=db_de,
+        datenbank_bytes=db_bytes,
         bridge_online=system.bridge_online,
         verbindung_de=system.connection_label_de,
         quellen=system.sources,
@@ -267,7 +310,13 @@ def zusammenstellen(ordner: Path, api: ApiSelbstOut, jetzt: datetime) -> GeraetO
     out.fernzugang = bool(bericht.get("fernzugang"))
     rechner = _einzeln(bericht.get("rechner"), GeraetRechnerOut)
     out.rechner = bewerte_rechner(rechner) if rechner else None
+    out.docker_laeuft = (
+        bericht.get("docker_laeuft") if isinstance(bericht.get("docker_laeuft"), bool) else None
+    )
     out.dienste = [bewerte_dienst(d) for d in _liste(bericht.get("dienste"), GeraetDienstOut)]
+    if out.docker_laeuft is False:
+        for d in out.dienste:
+            d.ampel, d.text_de = "schlecht", "Docker läuft nicht; ohne Docker läuft kein Dienst."
     out.einheiten = [bewerte_einheit(e) for e in _liste(bericht.get("einheiten"), GeraetEinheitOut)]
     sicherung = _einzeln(bericht.get("sicherung"), GeraetSicherungOut)
     out.sicherung = bewerte_sicherung(sicherung, jetzt) if sicherung else None
@@ -275,7 +324,10 @@ def zusammenstellen(ordner: Path, api: ApiSelbstOut, jetzt: datetime) -> GeraetO
     out.beschaeftigt = austausch.beschaeftigt(ordner)
 
     # Das Gesamturteil: das schlechteste Einzelurteil, mit seinem Grund.
-    kandidaten: list[tuple[Ampel, str]] = [(api.ampel, f"API: {api.text_de}")]
+    kandidaten: list[tuple[Ampel, str]] = []
+    if out.docker_laeuft is False:
+        kandidaten.append(("schlecht", "Docker läuft nicht. „Gerät neu starten“ hilft meist."))
+    kandidaten.append((api.ampel, f"API: {api.text_de}"))
     kandidaten += [(d.ampel, f"{d.name}: {d.text_de}") for d in out.dienste]
     kandidaten += [(e.ampel, f"{e.name}: {e.text_de}") for e in out.einheiten]
     if out.rechner:
@@ -285,6 +337,15 @@ def zusammenstellen(ordner: Path, api: ApiSelbstOut, jetzt: datetime) -> GeraetO
         if r.drosselung_de:
             kandidaten.append((r.drosselung_ampel, r.drosselung_de[0]))
         kandidaten.append((r.speicher_ampel, "Der Arbeitsspeicher wird knapp."))
+        if r.eingangsspannung_v is not None:
+            kandidaten.append(
+                (
+                    r.spannung_ampel,
+                    f"Die Eingangsspannung ist niedrig ({r.eingangsspannung_v:.2f} V).",
+                )
+            )
+        if r.ssd is not None:
+            kandidaten.append((r.ssd.ampel, r.ssd.text_de))
         kandidaten += [(p.ampel, _platz_de(p)) for p in r.platten]
     if out.sicherung:
         kandidaten.append((out.sicherung.ampel, out.sicherung.text_de))
@@ -307,6 +368,28 @@ async def geraet(request: Request, runner: Annotated[Runtime, Depends(get_runner
     if ordner is None:
         return GeraetOut(unterstuetzt=False, api=api, ampel=api.ampel, text_de=api.text_de)
     return zusammenstellen(ordner, api, datetime.now(UTC))
+
+
+@router.get("/verlauf", response_model=GeraetVerlaufOut, summary="Der Verlauf des Hausgeräts")
+async def verlauf(
+    request: Request,
+    runner: Annotated[Runtime, Depends(get_runner)],
+    spanne: Annotated[str, Query(pattern="^(tag|woche|monat|jahr)$")] = "tag",
+) -> GeraetVerlaufOut:
+    """CPU, Temperatur, Speicher, Platz, SSD, Netz, Datenbank und Dienste über einen Tag, eine
+    Woche, einen Monat oder ein Jahr, dazu eine Prognose für den Platz. Gesammelt wird nur auf
+    dem Hausgerät mit Datenbank (`application/geraet_verlauf.py`)."""
+    repos = getattr(runner, "repos", None)
+    if austausch.ordner(request) is None or repos is None or not hasattr(repos, "geraet_messwerte"):
+        return GeraetVerlaufOut.model_validate({"unterstuetzt": False, "spanne": spanne})
+    jetzt = datetime.now(UTC)
+    art = geraet_verlauf.SPANNEN[spanne]
+    # Für die Prognose immer 30 Tage, auch wenn nur ein Tag gezeigt wird.
+    von = jetzt - max(art.dauer, timedelta(days=30)) - geraet_verlauf.RASTER
+    zeilen = await repos.geraet_messwerte(von, jetzt + geraet_verlauf.RASTER)
+    return GeraetVerlaufOut.model_validate(
+        {"unterstuetzt": True, **geraet_verlauf.verlauf(zeilen, spanne, jetzt)}
+    )
 
 
 @router.post(

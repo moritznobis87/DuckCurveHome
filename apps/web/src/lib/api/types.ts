@@ -179,6 +179,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/geraet/verlauf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Der Verlauf des Hausgeräts
+         * @description CPU, Temperatur, Speicher, Platz, SSD, Netz, Datenbank und Dienste über einen Tag, eine
+         *     Woche, einen Monat oder ein Jahr, dazu eine Prognose für den Platz. Gesammelt wird nur auf
+         *     dem Hausgerät mit Datenbank (`application/geraet_verlauf.py`).
+         */
+        get: operations["verlauf_api_v1_system_geraet_verlauf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/geraet/aktion": {
         parameters: {
             query?: never;
@@ -1930,6 +1952,8 @@ export interface components {
              * @default
              */
             datenbank_de: string;
+            /** Datenbank Bytes */
+            datenbank_bytes?: number | null;
             /**
              * Bridge Online
              * @default false
@@ -3562,6 +3586,17 @@ export interface components {
              */
             text_de: string;
         };
+        /** GeraetDockerPlatzOut */
+        GeraetDockerPlatzOut: {
+            /** Images Bytes */
+            images_bytes?: number | null;
+            /** Container Bytes */
+            container_bytes?: number | null;
+            /** Volumes Bytes */
+            volumes_bytes?: number | null;
+            /** Cache Bytes */
+            cache_bytes?: number | null;
+        };
         /**
          * GeraetEinheitOut
          * @description Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht).
@@ -3603,6 +3638,15 @@ export interface components {
              */
             text_de: string;
         };
+        /** GeraetNetzOut */
+        GeraetNetzOut: {
+            /** Schnittstelle */
+            schnittstelle: string;
+            /** Empfangen Bytes */
+            empfangen_bytes: number;
+            /** Gesendet Bytes */
+            gesendet_bytes: number;
+        };
         /**
          * GeraetOut
          * @description Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion.
@@ -3624,6 +3668,8 @@ export interface components {
              * @default false
              */
             fernzugang: boolean;
+            /** Docker Laeuft */
+            docker_laeuft?: boolean | null;
             rechner?: components["schemas"]["GeraetRechnerOut"] | null;
             /** Dienste */
             dienste?: components["schemas"]["GeraetDienstOut"][];
@@ -3660,6 +3706,28 @@ export interface components {
              * @enum {string}
              */
             ampel: "gut" | "warn" | "schlecht" | "aus";
+        };
+        /**
+         * GeraetPrognoseOut
+         * @description Wachstum je Tag über die letzten 30 Tage (eine Gerade durch die Füllstände), erst ab
+         *     sieben Tagen Verlauf. Eine Schätzung „bei diesem Tempo“, kein Termin.
+         */
+        GeraetPrognoseOut: {
+            /**
+             * Tage Verlauf
+             * @default 0
+             */
+            tage_verlauf: number;
+            /** Platte Bytes Pro Tag */
+            platte_bytes_pro_tag?: number | null;
+            /** Platte Voll In Tagen */
+            platte_voll_in_tagen?: number | null;
+            /** Datenbank Bytes Pro Tag */
+            datenbank_bytes_pro_tag?: number | null;
+            /** Sicherung Bytes Pro Tag */
+            sicherung_bytes_pro_tag?: number | null;
+            /** Ssd Geschrieben Bytes Pro Tag */
+            ssd_geschrieben_bytes_pro_tag?: number | null;
         };
         /** GeraetProtokollOut */
         GeraetProtokollOut: {
@@ -3740,6 +3808,31 @@ export interface components {
             platten?: components["schemas"]["GeraetPlatteOut"][];
             /** Docker */
             docker?: string | null;
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Takt Mhz */
+            takt_mhz?: number | null;
+            /** Eingangsspannung V */
+            eingangsspannung_v?: number | null;
+            /**
+             * Spannung Ampel
+             * @default aus
+             * @enum {string}
+             */
+            spannung_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Swap Gesamt Mb
+             * @default 0
+             */
+            swap_gesamt_mb: number;
+            /**
+             * Swap Frei Mb
+             * @default 0
+             */
+            swap_frei_mb: number;
+            netz?: components["schemas"]["GeraetNetzOut"] | null;
+            ssd?: components["schemas"]["GeraetSsdOut"] | null;
+            docker_platz?: components["schemas"]["GeraetDockerPlatzOut"] | null;
         };
         /** GeraetSicherungOut */
         GeraetSicherungOut: {
@@ -3754,6 +3847,8 @@ export interface components {
              * @default 0
              */
             anzahl: number;
+            /** Gesamt Bytes */
+            gesamt_bytes?: number | null;
             /** Ausser Haus */
             ausser_haus?: string | null;
             /**
@@ -3767,6 +3862,149 @@ export interface components {
              * @default
              */
             text_de: string;
+        };
+        /**
+         * GeraetSsdOut
+         * @description SMART der Platte, auf der das System liegt. NVMe meldet alles; eine Platte am USB-Adapter
+         *     oft nur Temperatur und Betriebsstunden.
+         */
+        GeraetSsdOut: {
+            /** Geraet */
+            geraet: string;
+            /** Modell */
+            modell?: string | null;
+            /** Gesund */
+            gesund?: boolean | null;
+            /** Temperatur C */
+            temperatur_c?: number | null;
+            /** Betriebsstunden */
+            betriebsstunden?: number | null;
+            /** Abnutzung Prozent */
+            abnutzung_prozent?: number | null;
+            /** Reserve Prozent */
+            reserve_prozent?: number | null;
+            /** Geschrieben Bytes */
+            geschrieben_bytes?: number | null;
+            /** Gelesen Bytes */
+            gelesen_bytes?: number | null;
+            /** Fehler */
+            fehler?: number | null;
+            /** Unsichere Abschaltungen */
+            unsichere_abschaltungen?: number | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /** GeraetVerlaufDienstOut */
+        GeraetVerlaufDienstOut: {
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Speicher Mb */
+            speicher_mb?: number | null;
+        };
+        /** GeraetVerlaufOut */
+        GeraetVerlaufOut: {
+            /** Unterstuetzt */
+            unterstuetzt: boolean;
+            /**
+             * Spanne
+             * @default tag
+             * @enum {string}
+             */
+            spanne: "tag" | "woche" | "monat" | "jahr";
+            /** Von */
+            von?: string | null;
+            /** Bis */
+            bis?: string | null;
+            /**
+             * Schritt Min
+             * @default 5
+             */
+            schritt_min: number;
+            /** Punkte */
+            punkte?: components["schemas"]["GeraetVerlaufPunktOut"][];
+            prognose?: components["schemas"]["GeraetPrognoseOut"];
+        };
+        /**
+         * GeraetVerlaufPunktOut
+         * @description Ein Abschnitt im Verlauf: Mittel, Spitzen und Stände am Ende des Abschnitts.
+         */
+        GeraetVerlaufPunktOut: {
+            /**
+             * T
+             * Format: date-time
+             */
+            t: string;
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Cpu Prozent Max */
+            cpu_prozent_max?: number | null;
+            /** Last1 */
+            last1?: number | null;
+            /** Temperatur C */
+            temperatur_c?: number | null;
+            /** Temperatur C Max */
+            temperatur_c_max?: number | null;
+            /** Takt Mhz */
+            takt_mhz?: number | null;
+            /** Eingangsspannung V */
+            eingangsspannung_v?: number | null;
+            /** Eingangsspannung V Min */
+            eingangsspannung_v_min?: number | null;
+            /** Speicher Belegt Mb */
+            speicher_belegt_mb?: number | null;
+            /** Speicher Gesamt Mb */
+            speicher_gesamt_mb?: number | null;
+            /** Swap Belegt Mb */
+            swap_belegt_mb?: number | null;
+            /** Platte Belegt Bytes */
+            platte_belegt_bytes?: number | null;
+            /** Platte Gesamt Bytes */
+            platte_gesamt_bytes?: number | null;
+            /** Ssd Temperatur C */
+            ssd_temperatur_c?: number | null;
+            /** Ssd Temperatur C Max */
+            ssd_temperatur_c_max?: number | null;
+            /** Ssd Abnutzung Prozent */
+            ssd_abnutzung_prozent?: number | null;
+            /**
+             * Ssd Geschrieben Bytes
+             * @default 0
+             */
+            ssd_geschrieben_bytes: number;
+            /**
+             * Netz Empfangen Bytes S
+             * @default 0
+             */
+            netz_empfangen_bytes_s: number;
+            /**
+             * Netz Gesendet Bytes S
+             * @default 0
+             */
+            netz_gesendet_bytes_s: number;
+            /** Datenbank Bytes */
+            datenbank_bytes?: number | null;
+            /** Sicherung Bytes */
+            sicherung_bytes?: number | null;
+            /** Docker Bytes */
+            docker_bytes?: number | null;
+            /**
+             * Drosselung Jetzt
+             * @default false
+             */
+            drosselung_jetzt: boolean;
+            /** Dienste */
+            dienste?: {
+                [key: string]: components["schemas"]["GeraetVerlaufDienstOut"];
+            };
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -7775,6 +8013,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GeraetOut"];
+                };
+            };
+        };
+    };
+    verlauf_api_v1_system_geraet_verlauf_get: {
+        parameters: {
+            query?: {
+                spanne?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetVerlaufOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

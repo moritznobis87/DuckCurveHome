@@ -65,6 +65,10 @@ struct WandRahmen: View {
                     .padding(.bottom, 8)
                 Divider().overlay(Farbe.linie1)
             }
+            // Steht für das Hausgerät ein Update bereit, steht das hier - über jeder Seite.
+            Updatehinweis(wegweiser: wegweiser)
+                .padding(.horizontal, 32)
+                .padding(.top, 8)
             Seitenwahl(weg: wegweiser.weg)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .overlay(alignment: .bottomTrailing) { Entenknopf() }
