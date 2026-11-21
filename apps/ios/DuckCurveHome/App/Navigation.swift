@@ -170,16 +170,34 @@ struct Wurzel: View {
 
     @State private var wegweiser = Wegweiser()
 
+    /// Ob der Ladeschirm steht. Wann er kommt und wann er geht, rechnet ``Ladeschirm/Lauf``.
+    @State private var ladebild = false
+
     var body: some View {
-        Group {
-            if !haus.zugang.istEingerichtet {
-                Einrichten()
-            } else if breite == .compact {
-                HandRahmen(wegweiser: wegweiser)
-            } else {
-                WandRahmen(wegweiser: wegweiser)
+        ZStack {
+            Group {
+                if !haus.zugang.istEingerichtet {
+                    Einrichten()
+                } else if breite == .compact {
+                    HandRahmen(wegweiser: wegweiser)
+                } else {
+                    WandRahmen(wegweiser: wegweiser)
+                }
+            }
+            // **Der Ladeschirm liegt darüber und ersetzt das Gerippe nicht.** Ein `else`-Zweig
+            // wäre die naheliegende Schreibweise und die falsche: SwiftUI baut den Rahmen dann
+            // erst, wenn der Schirm geht, also genau in dem Augenblick, in dem die erste Zahl
+            // da ist - die Seite entsteht unter der Überblendung und man sieht sie entstehen.
+            // Darüberliegend läuft darunter alles weiter, `.task` und Verbindung eingeschlossen,
+            // und am Ende wird nur ein Vorhang weggeblendet.
+            if ladebild {
+                Ladebild(wand: breite != .compact)
+                    .transition(.opacity)
             }
         }
+        // Dieselbe Überblendung, mit der an der Wand das Ruhebild kommt und geht - nur kürzer:
+        // dort löst sich ein Bild ab, hier wartet jemand.
+        .animation(.easeInOut(duration: 0.4), value: ladebild)
         .hausschrift()
         .seitengrund()
         .preferredColorScheme(.dark)
@@ -199,8 +217,13 @@ struct Wurzel: View {
                 break
             }
         }
-        .task {
+        // **Am Zugang aufgehängt und nicht nur beim Erscheinen.** Wer die App zum ersten Mal
+        // öffnet, steht im Einrichten; erst wenn dort ein Zugang eingetragen ist, gibt es
+        // überhaupt etwas zu verbinden - und dann soll das Warten darauf angezeigt werden.
+        // `haus.starte()` verträgt den zweiten Aufruf, es hält sich selbst auf.
+        .task(id: haus.zugang.istEingerichtet) {
             haus.starte()
+            await fuehreLadeschirm()
         }
         // Die Blaetter gehoeren in beide Gerippe, also hierher und nicht in eines von beiden.
         // `Blatt` ist `Identifiable`, also nimmt SwiftUIs eigenes `sheet(item:)` es direkt.
@@ -231,5 +254,39 @@ struct Wurzel: View {
         // die Waermepumpe im Flussbild hat die App beendet. Die anderen Blaetter brauchen nur
         // den Hauszustand, und der wird eine Ebene hoeher eingesetzt - darum lief es so lange.
         .environment(wegweiser)
+    }
+
+    /// Den Ladeschirm führen, bis das Warten vorbei ist.
+    ///
+    /// **Warum eine eigene Schleife und kein Wecker am Rahmen.** Die drei Fristen des
+    /// Ladeschirms sind Zehntelsekunden (``Ladeschirm/ruhefrist``, ``Ladeschirm/mindestens``,
+    /// ``Ladeschirm/aufgabeNach``); der langsamste Takt, der sie trifft, ist ein Zwanzigstel.
+    /// Ein `Timer` in der Wurzel, der so schnell schlägt, schlüge für immer - auch nachts an
+    /// einer Wand, die seit Wochen fertig geladen ist. Diese Schleife läuft nur, solange
+    /// gewartet wird, und endet mit ``Ladeschirm/Lage/vorbei`` von selbst. Ist beim ersten Takt
+    /// schon ein Augenblicksbild da - in jeder Vorschau und bei jedem Zurückkommen -, endet sie
+    /// nach dem ersten Durchgang.
+    ///
+    /// Verlassen wird sie auch, wenn die Aufgabe abgebrochen wird: `.task` räumt sie auf, wenn
+    /// die Wurzel verschwindet oder der Zugang wechselt.
+    private func fuehreLadeschirm() async {
+        guard haus.zugang.istEingerichtet else { return }
+        var lauf = Ladeschirm.Lauf(start: Date())
+        while !Task.isCancelled {
+            switch lauf.takt(
+                jetzt: Date(),
+                hatZahlen: !haus.nochKeineZahlen,
+                fehlerSteht: haus.fehler != nil
+            ) {
+            case .verborgen:
+                break
+            case .steht:
+                if !ladebild { ladebild = true }
+            case .vorbei:
+                if ladebild { ladebild = false }
+                return
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
     }
 }

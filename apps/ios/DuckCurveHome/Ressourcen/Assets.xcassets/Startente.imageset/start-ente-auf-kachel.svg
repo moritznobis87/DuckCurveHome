@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="-77.34 -237.34 1350.68 1350.68" role="img" aria-label="Duck Curve">
+
+<!--
+    Alfred auf seiner weissen Kachel - nur fuer das Startbrett.
+
+    **Warum es diese zweite Datei gibt.** Die Katalogente (Ente.imageset/ente-maskottchen.svg)
+    ist Flaeche in Petrol: ihr Koerper ist #0F2E3D, der Startgrund #082431. Das sind 1,13 zu 1,
+    also nichts - auf dem Startbrett blieben von ihr Schnabel, Auge, Fluegellinie und die vier
+    Balken uebrig, Bruchstuecke statt einer Ente. Diese Zeichnung braucht eine helle Unterlage,
+    und das sagt das Haus an jeder Stelle, an der es sie als Zeichen benutzt: der Entenknopf
+    (Alfred/Alfredblatt.swift) und der Ladeschirm (Bausteine/Ladebild.swift) legen beide
+    `Circle().fill(Farbe.papier)` darunter, und die Quelle des Programmsymbols
+    (deploy/haus/kiosk/ente.svg) begruendet dasselbe fuer die Tab-Leiste.
+
+    **Warum nicht eine Kachel im Startbrett selbst.** Dort waere sie eine zusaetzliche `UIView`
+    mit einem `layer.cornerRadius` ueber `userDefinedRuntimeAttributes` - und ein Startbrett,
+    das beim Laden stolpert, heisst: die App startet gar nicht. Hier ist die Kachel Teil des
+    Bildes, das Brett bleibt eine Flaeche, ein Bild und zwei Zeilen Text.
+
+    **Die Masse sind die des Ladeschirms**, damit die Ente beim Uebergang nicht springt: die
+    Kachel fuellt das Bild, die Ente darin ist 0,73 davon - dasselbe Verhaeltnis wie am
+    Entenknopf (38 in 52) und in `Ladebildmasse.ente`. Bei 150 Punkten Bild sind das 109,5
+    Punkte Ente, auf beiden Schirmen gleich.
+
+    **Gerechnet ist das ueber die `viewBox` und nicht ueber eine Verschiebung.** Die Ente steht
+    in ihrer Quelldatei im Kasten x 105…1091, y -55…931, also 986 Einheiten im Quadrat um den
+    Punkt (598, 438). Ein Kreis von 986 / 0,73 = 1350,68 Einheiten um denselben Punkt ergibt das
+    Verhaeltnis; die `viewBox` ist genau dieser Kreis. So sind die Pfade unten Zeichen fuer
+    Zeichen die der Quelldatei - keine Transformation, kein zweites Koordinatensystem, nichts,
+    was beim naechsten Abgleich auseinanderlaufen koennte.
+
+    **Wer die Ente aendert, aendert sie hier mit.** Die Quelle ist
+    Ente.imageset/ente-maskottchen.svg; alles ab dem Kreis ist von dort kopiert.
+
+    Weicher Schatten und Amber-Schein, die der Ladeschirm unter und hinter die Kachel legt,
+    fehlen hier mit Absicht: beide sind Filter beziehungsweise Verlaeufe, und der Bildkatalog
+    zeichnet von SVG nur einen Grundvorrat sicher. Was fehlt, ist Licht - nicht die Gestalt.
+-->
+
+<circle cx="598" cy="438" r="675.34" fill="#FFFFFF"/>
+
+<path fill="#0F2E3D" d="M158 610c0-170 94-300 243-344-10-31-15-63-15-96C386 76 462 0 556 0s170 76 170 170c0 57-28 108-71 139 86 9 162 46 217 101 48 48 88 46 133-8 14-17 29-8 31 17 14 155-47 315-191 395-104 58-242 73-397 57-173-18-290-110-290-261z"/>
+<path fill="#F2A900" d="M389 171c-89 5-161 32-222 81 62 34 134 47 214 35 36-5 57-31 51-61-5-27-19-45-43-55z"/>
+<path fill="#F2A900" opacity=".85" d="M181 263c70 22 144 23 222 2-43 52-141 66-222-2z"/>
+<circle cx="541" cy="154" r="26" fill="#FFFFFF"/>
+<circle cx="549" cy="157" r="11" fill="#0F2E3D"/>
+<path d="M434 594c105 105 270 102 374-9 37-39 69-65 96-77" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round"/>
+<rect x="710" y="690" width="16" height="62" rx="8" fill="#7FA3B3"/>
+<rect x="754" y="660" width="16" height="92" rx="8" fill="#7FA3B3"/>
+<rect x="798" y="620" width="16" height="132" rx="8" fill="#7FA3B3"/>
+<rect x="842" y="570" width="16" height="182" rx="8" fill="#F2A900"/>
+
+</svg>

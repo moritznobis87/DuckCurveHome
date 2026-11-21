@@ -258,6 +258,18 @@ final class Hauszustand {
     /// Ist die Verbindung in Ordnung? Die Anzeige daempft sich, wenn nicht.
     var gestoert: Bool { verbindung != .live }
 
+    /// Ist noch gar nichts da? Das ist die Frage, an der der Ladeschirm haengt.
+    ///
+    /// **Das Augenblicksbild ist das Mass, nicht der Verbindungszustand.** `verbindung == .live`
+    /// sagt, dass der Strom offen ist - nicht, dass eine Zahl angekommen ist; zwischen beidem
+    /// liegt im ruhigen Haus bis zu eine Sekunde. Und es ist auch nicht `raster` oder `plan`:
+    /// beide duerfen dauerhaft leer bleiben (ein Haus ohne Photovoltaik hat keine Prognose), ein
+    /// Ladeschirm, der auf sie wartet, wartete dort fuer immer.
+    ///
+    /// Es ist dieselbe Bedingung, an der schon ``satz`` entscheidet, ob er „Verbinde mit dem
+    /// Haus …“ sagt - nur unter einem Namen, damit die beiden Stellen nicht auseinanderlaufen.
+    var nochKeineZahlen: Bool { zustand == nil }
+
     /// Der Satz, der auf der Startseite steht.
     ///
     /// Die Erklaerung des Reglers, wenn es eine gibt. Sonst zwei Saetze, die nicht nach einem
