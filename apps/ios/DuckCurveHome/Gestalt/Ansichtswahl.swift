@@ -174,6 +174,12 @@ extension Ansichtswahl {
         ///
         /// `schmal` ist die Breitenklasse: die Vorlage schreibt zwei dieser vier Formen am
         /// Telefon neu (`handy.css`), die zwei anderen nicht.
+        ///
+        /// **Warum die zwei breitenlosen Maße `…Masse` heißen.** Ein `static let` darf in
+        /// einer Aufzählung nicht so heißen wie einer ihrer Fälle - `Self.prognosekopf` wäre
+        /// sonst der Fall und nicht das Maß, und der Übersetzer meldet beides: eine doppelte
+        /// Erklärung und einen falschen Rückgabetyp. Die vier Maße mit Breitenklasse tragen
+        /// ihr `Breit`/`Schmal` ohnehin, die zwei ohne brauchen darum ein eigenes Wort.
         func zuschnitt(schmal: Bool) -> Zuschnitt {
             switch self {
             case .ansichten:
@@ -181,9 +187,9 @@ extension Ansichtswahl {
             case .tagesschalter:
                 return schmal ? Self.tagesschalterSchmal : Self.tagesschalterBreit
             case .prognosekopf:
-                return Self.prognosekopf
+                return Self.prognosekopfMasse
             case .hausGruppe:
-                return Self.hausGruppe
+                return Self.hausGruppeMasse
             }
         }
 
@@ -274,7 +280,7 @@ extension Ansichtswahl {
         // `overflow-hidden`. `:285-286`: mono, padding 16/8 (`px-4 py-2`), font-size 12,
         // Großbuchstaben, letter-spacing .08em - bei 12 Punkten 0,96. Gewählt Grund `amber`
         // mit `petrol`, sonst durchsichtig mit `text-3`.
-        private static let prognosekopf = Zuschnitt(
+        private static let prognosekopfMasse = Zuschnitt(
             abstand: 0,
             polster: 0,
             radius: 3,
@@ -296,7 +302,7 @@ extension Ansichtswahl {
         // Rand 1 px `linie2`, radius 999 (Kapsel), padding 3, kein gap. `:475`: mono,
         // font-size 10,5, letter-spacing .12em - bei 10,5 Punkten 1,26 -, Großbuchstaben,
         // Schrift `text2`, radius 999, padding 7px 12px. `:476` gewählt: `petrol` auf `amber`.
-        private static let hausGruppe = Zuschnitt(
+        private static let hausGruppeMasse = Zuschnitt(
             abstand: 0,
             polster: 3,
             radius: nil,

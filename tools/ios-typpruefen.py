@@ -863,6 +863,40 @@ def main() -> int:
                                       f"erklärt (wenn es von draussen kommt: "
                                       f"tools/ios-bekannte-namen.txt)"))
 
+    # 14. Ein `static let` in einer Aufzählung, das so heisst wie einer ihrer Fälle.
+    #
+    # **Der Fehler des vierzehnten Laufs.** `Ansichtswahl.Form` hatte vier Fälle und für zwei
+    # davon ein gleichnamiges `private static let … = Zuschnitt(…)`. Swift lässt das nicht zu:
+    # Fall und statische Eigenschaft liegen im selben Namensraum. Xcode meldete zweierlei -
+    # „invalid redeclaration" an der Eigenschaft und „cannot convert return expression of type
+    # 'Form' to return type 'Zuschnitt'" dort, wo `Self.prognosekopf` den **Fall** traf statt
+    # des Maßes. Die vier Maße mit Breitenklasse hiessen `…Breit`/`…Schmal` und stiessen
+    # darum nicht an; nur die zwei ohne Variante taten es.
+    #
+    # **Warum das Gatter es vorher nicht sah.** `swiftc -parse` prüft nur die Form, nicht die
+    # Namen; gebaut wird die Oberfläche erst auf dem Mac. Das Muster ist aber ohne jede
+    # Typauflösung zu erkennen: Fälle und statische Eigenschaften einer Aufzählung stehen
+    # beide auf ihrer flachen Ebene.
+    for pfad in dateien + kernpfade:
+        kurz = os.path.relpath(pfad, APP if pfad in dateien else KERN)
+        text = code[pfad] if pfad in code else nur_code(open(pfad, encoding="utf-8").read())
+        for m in re.finditer(r"\benum\s+(\w+)[^{\n]*\{", text):
+            koerper = flache_ebene(klammerblock(text, m.end() - 1))
+            faelle = set()
+            for z in re.finditer(r"^\s*(?:indirect\s+)?case\s+(.+)$", koerper, re.M):
+                for stueck in z.group(1).split(","):
+                    name = re.match(r"\s*`?(\w+)`?", stueck)
+                    if name:
+                        faelle.add(name.group(1))
+            for z in re.finditer(r"\bstatic\s+(?:let|var)\s+(\w+)", koerper):
+                if z.group(1) not in faelle:
+                    continue
+                nr = text[:m.end() + z.start()].count("\n") + 1
+                maengel.append((kurz, nr, f"`static let {z.group(1)}` heisst wie der Fall "
+                                          f"`.{z.group(1)}` derselben Aufzaehlung "
+                                          f"`{m.group(1)}` - Swift meldet das als doppelte "
+                                          f"Erklaerung"))
+
     print(f"{len(dateien)} Dateien geprüft, {len(felder)} Schemafelder und "
           f"{len(bausteine)} Bausteine als Maßstab.")
     if maengel:
@@ -870,7 +904,7 @@ def main() -> int:
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der dreizehn geprüften Fehlerarten gefunden.")
+    print("Keine der vierzehn geprüften Fehlerarten gefunden.")
     return 0
 
 
