@@ -11,6 +11,12 @@ on:
       - "apps/web/public/favicon.ico"
       - "apps/web/public/apple-touch-icon.png"
       - "tools/ios-pruefen.sh"
+      # Die Wachen, die ios-pruefen.sh aufruft: wer eine davon aendert, aendert das Gatter
+      # selbst - und das gehoert geprueft, nicht nur das, was es bewacht.
+      - "tools/xcodeproj-pruefen.py"
+      - "tools/ios-typpruefen.py"
+      - "tools/ios-version.py"
+      - "tools/ios-ausliefern.sh"
       - "docs/openapi.json"
       - ".github/workflows/ios.yml"
   pull_request:
@@ -23,6 +29,12 @@ on:
       - "apps/web/public/favicon.ico"
       - "apps/web/public/apple-touch-icon.png"
       - "tools/ios-pruefen.sh"
+      # Die Wachen, die ios-pruefen.sh aufruft: wer eine davon aendert, aendert das Gatter
+      # selbst - und das gehoert geprueft, nicht nur das, was es bewacht.
+      - "tools/xcodeproj-pruefen.py"
+      - "tools/ios-typpruefen.py"
+      - "tools/ios-version.py"
+      - "tools/ios-ausliefern.sh"
       - "docs/openapi.json"
       - ".github/workflows/ios.yml"
 
