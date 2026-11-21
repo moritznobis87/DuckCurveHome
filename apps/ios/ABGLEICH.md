@@ -28,9 +28,17 @@ und eine Seite mit eigenen, falschen Summen, die es in der Vorlage längst nicht
 | | |
 |---|---|
 | Seiten gesamt | **27** (die 28. war `/waerme/bilanz` und ist jetzt eine Weiterleitung) |
-| gemessen | **27 von 27** (20.11.), zusammen rund 800 000 Zeichen Messung in `messungen/` |
-| danach umgebaut | **19** Seiten, je ein Commit mit Gegenprüfung und Nachbesserung |
-| vorher schon nachgearbeitet | 8 Seiten (`/`, `/waerme`, `/waerme/fahrplan`, `/waerme/wirkung`, `/waerme/raeume`, `/waerme/annahmen`, `/system`, `/system/daten`) - nach der Handliste, nicht nach einer Messung |
+| gemessen | **27 von 27**, zusammen rund 1 000 000 Zeichen Messung in `messungen/` |
+| danach umgebaut | **27 von 27**, je ein Commit mit Gegenprüfung und Nachbesserung |
+
+**Die Handliste ist damit abgearbeitet, und sie hat sich als zu flach erwiesen.** Die acht
+Seiten, die am 17. und 20.11. nach ihr nachgearbeitet wurden, galten als fertig. Gemessen
+hatten sie zusammen noch **152** Punkte, davon 11 tragende – und die vier schwersten waren
+keine Lücken, sondern Fehler: die Wandanzeige blieb nach einem Blick auf gestern tagelang
+dort stehen; jedes Übernehmen auf *Annahmen* schrieb alle dreizehn Werte gerundet zurück, auch
+die unangetasteten; der Wärme-Tagesverlauf zeigte eine Summe, die die Vorlage in ihrem eigenen
+Kommentar verbietet; und *Heizkreise* meldete „Keine Räume“, während der Dienst Räume lieferte.
+Eine Lücke sieht man im Vergleich zweier Bilder. Einen falschen Wert nicht.
 | nach alter Handliste | 167 Punkte, davon 45 erledigt – als Zählung überholt, als Fundliste weiter gültig |
 
 ### Die gemessenen und umgebauten Seiten (20.11.)
@@ -60,6 +68,14 @@ entfernt hatte, die vorher da war.
 | `/system/mitteilungen` | „Dieses Gerät bekommt keine Mitteilungen mehr" stand auch da, wenn das Abmelden gescheitert war |
 | `/system/haustuer` | Zwei Kennzahlen zählten `granted` statt `outcome` - abgelehnte Versuche erschienen als Öffnungen |
 | `/system/zugang` | Vier von sechs Abschnitten fehlten; der Platzbedarf stand auf der Datenseite, wo die Vorlage ihn nicht hat |
+| `/` | Die Heimkehr erreichte den Tagesschalter nicht - die Wandanzeige blieb auf einem fremden Gestern |
+| `/waerme` | Der Tagesverlauf stapelte die Ofen-Raumwärme in die Zufuhr; `charts.ts` verbietet genau das |
+| `/waerme/annahmen` | Jedes Übernehmen schrieb dreizehn Werte gerundet zurück; `abweichend` verglich gegen den rohen statt den angezeigten Wert |
+| `/waerme/fahrplan` | Acht übereinandergelegte Flächen ohne gemeinsame linke Kante - also nicht vergleichbar |
+| `/waerme/wirkung` | Der Antwortfächer hatte keine senkrechte Achse, also keinen festen Bereich 0 bis 100 % |
+| `/waerme/raeume` | „Keine Räume" bei leerer Tagesreihe; die Abweichungsmatrix gab am Gerät keine Zahl her |
+| `/system` | Ein Fehler der zweiten Abfrage verschwand spurlos hinter einem `try?` |
+| `/system/daten` | Kein Weg zu den Rohdaten, keine Werteauskunft, Lade- und Fehlerzustand vertauscht |
 | `/waerme/bilanz` | **Die Seite gibt es in der Vorlage nicht mehr.** Sie zeigte eine zweite „Wärme gesamt“ (24,5 kWh gegen 20,4 kWh auf `/waerme`), weil sie nur `heatPumpKwh` summierte, und einen gestapelten Balken, den die Vorlage ausdrücklich verbietet. Gelöscht; die Adresse leitet weiter, mit ihr alle elf Paare aus `next.config.ts` |
 
 ## Erledigt
