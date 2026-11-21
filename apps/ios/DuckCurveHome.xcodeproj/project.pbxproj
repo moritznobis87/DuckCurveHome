@@ -16,6 +16,7 @@
 		1D59B9232C5BB1FFA8750A3A /* Reiterzeile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */; };
 		2269D6D973CDD5E90BAAF30A /* HausSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F329F096F927AD179434D9 /* HausSeite.swift */; };
 		226B4A492629F3CED2C25DE8 /* IBMPlexSans-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = B10C35D7E84A91C914895209 /* IBMPlexSans-Regular.otf */; };
+		22D2BC7A701FA3B894DF5333 /* Mitteilungshinweis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D531BC992F24B251740574 /* Mitteilungshinweis.swift */; };
 		258141E958D0A8A3F7E14DF0 /* Spannenstreifen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02C5C77DB64AB14812F14D2 /* Spannenstreifen.swift */; };
 		27D9FD29E3FD1BE4D14BFE6C /* JahreskarteSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9A9723F685B8DBB43A9489 /* JahreskarteSeite.swift */; };
 		2918583F1B0E0FB33ED72F5E /* Uebernahmeleiste.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D3C63F595D1552B1E1D3D2 /* Uebernahmeleiste.swift */; };
@@ -79,6 +80,7 @@
 		AC796F92288EDBB6A44B67BC /* Rechnungsbilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E35561AFDDA944A9E5740F8 /* Rechnungsbilder.swift */; };
 		AD1752C6B64DD9BD4FA5B72D /* Jahresflaeche.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92265FA3DF3AC4CE97195D9F /* Jahresflaeche.swift */; };
 		B5B0CB533E0FCE256C33E295 /* Waermepumpenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */; };
+		B74DFF3BE092C442D5C12ADC /* Alarmblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CD89A5D4C7BEBFA6799403 /* Alarmblatt.swift */; };
 		BA80D620296C3F558A781A8A /* Dock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442E48F860C3E272065F1773 /* Dock.swift */; };
 		BC39AFA258EB753F725AFA8B /* Pruefkurvenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BCE78C8EB2C5E42CFF9439 /* Pruefkurvenbild.swift */; };
 		BDB969FBDB5E1849EF0EF74D /* Tagesbandbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 969EAD73174365A9152E9DE5 /* Tagesbandbild.swift */; };
@@ -156,6 +158,7 @@
 		4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alfredblatt.swift; sourceTree = "<group>"; };
 		4F3B82A360A20BB9691F6AB5 /* Tagesvergleichsbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tagesvergleichsbild.swift; sourceTree = "<group>"; };
 		4FE935C11F91B3B4788FA2C8 /* Karte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Karte.swift; sourceTree = "<group>"; };
+		50CD89A5D4C7BEBFA6799403 /* Alarmblatt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alarmblatt.swift; sourceTree = "<group>"; };
 		54F332EF42172D779262A123 /* WirkungSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirkungSeite.swift; sourceTree = "<group>"; };
 		5A9EBBEFEC662E299C54E29E /* Rechnungsablage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rechnungsablage.swift; sourceTree = "<group>"; };
 		5B121AA23E50590AAD07F502 /* Anlagenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenbild.swift; sourceTree = "<group>"; };
@@ -165,6 +168,7 @@
 		5E28F2036D3D5B7885BC4F87 /* Ansichtswahl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ansichtswahl.swift; sourceTree = "<group>"; };
 		5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Waermebilder.swift; sourceTree = "<group>"; };
 		5FFB45298D2FC9524BF64B03 /* Abrechnungstabelle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Abrechnungstabelle.swift; sourceTree = "<group>"; };
+		60D531BC992F24B251740574 /* Mitteilungshinweis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mitteilungshinweis.swift; sourceTree = "<group>"; };
 		61DB91AB7C211CA4C9681DE3 /* WiedergabeSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiedergabeSeite.swift; sourceTree = "<group>"; };
 		6446BE3D6E34C1FCD8DA8BF7 /* ZugangSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZugangSeite.swift; sourceTree = "<group>"; };
 		6488CB1E8676677F62FE64F4 /* Kanalzug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kanalzug.swift; sourceTree = "<group>"; };
@@ -253,6 +257,7 @@
 			children = (
 				5FFB45298D2FC9524BF64B03 /* Abrechnungstabelle.swift */,
 				F0BCDE5FB8D6F9AFCC77CB33 /* Abweichungsmatrix.swift */,
+				50CD89A5D4C7BEBFA6799403 /* Alarmblatt.swift */,
 				06738C7E03178A104B308ABA /* Ambiente.swift */,
 				15663FB9ABB9A4FD8D1473F3 /* Anlagenbuehne.swift */,
 				2B9467F366C44BFFDAF5A0BC /* Anteilsleiste.swift */,
@@ -265,6 +270,7 @@
 				35511C5E90815784C780CCA1 /* Geldfarbe.swift */,
 				6488CB1E8676677F62FE64F4 /* Kanalzug.swift */,
 				D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */,
+				60D531BC992F24B251740574 /* Mitteilungshinweis.swift */,
 				857CBC9D8C59148A11B405B3 /* Plakette.swift */,
 				16EA06A79528967315F5A4EF /* Postenliste.swift */,
 				3B2CB1649CD728391A247327 /* Pufferspeicher.swift */,
@@ -593,6 +599,7 @@
 				86081F4D7F554FABD4D7897D /* Abdeckungskarte.swift in Sources */,
 				4AE33F610960FF4F0F3F5440 /* Abrechnungstabelle.swift in Sources */,
 				3EF3EF537DB4E937E636B504 /* Abweichungsmatrix.swift in Sources */,
+				B74DFF3BE092C442D5C12ADC /* Alarmblatt.swift in Sources */,
 				8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */,
 				BF25DAE57629F583E2BC4442 /* Ambiente.swift in Sources */,
 				92BED5F9FA7987479E09055C /* AnlageSeite.swift in Sources */,
@@ -643,6 +650,7 @@
 				05FB739969DE812D7DA39011 /* Leiste.swift in Sources */,
 				99BBBD49F3FD5777A26147A2 /* Mitteilungen.swift in Sources */,
 				CF1E38EE14DAA9FB117D4E38 /* MitteilungenSeite.swift in Sources */,
+				22D2BC7A701FA3B894DF5333 /* Mitteilungshinweis.swift in Sources */,
 				5978892A3A331A6505D8DFD6 /* NachbetrachtungSeite.swift in Sources */,
 				56C0AE84FC921B660B63E93D /* Navigation.swift in Sources */,
 				3971CFC7F6422B658ECCFDAB /* Plakette.swift in Sources */,
