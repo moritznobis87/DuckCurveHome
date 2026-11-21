@@ -41,3 +41,6 @@ DerivedData/
 # Was Xcode an Benutzerzustand hineinschreibt, gehoert niemandem ausser dem, der davorsitzt:
 xcuserdata/
 *.xcuserdatad/
+
+# Archive und .ipa aus tools/ios-ausliefern.sh - erzeugt, gross, nie eingecheckt:
+apps/ios/build/

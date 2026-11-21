@@ -64,6 +64,18 @@ Auf einem Mac zusätzlich:
 xcodegen generate && xcodebuild -scheme DuckCurveHome -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' build
 ```
 
+## Ausliefern
+
+Auf ein Gerät, das nicht am Kabel hängt – TestFlight oder Store:
+
+```bash
+tools/ios-ausliefern.sh --hochzaehlen --hochladen
+```
+
+Der Weg dorthin, einmalig einzurichten (Team-Kennung, App-ID, App-Datensatz) und was Apple
+verlangt, steht in [`docs/APPSTORE.md`](../../docs/APPSTORE.md). Die Baunummer steht doppelt
+und wird nicht von Hand gestellt, sondern mit `tools/ios-version.py --hochzaehlen`.
+
 ## Vorschauen
 
 Alle Vorschauen stehen in [`DuckCurveHome/App/Vorschauen.swift`](DuckCurveHome/App/Vorschauen.swift),
