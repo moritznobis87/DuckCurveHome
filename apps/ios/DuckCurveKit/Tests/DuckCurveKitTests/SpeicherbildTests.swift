@@ -103,7 +103,8 @@ final class SpeicherbildTests: XCTestCase {
             Speicherbild.kacheln(bericht(summen(dunkel: dunkel)))[1].ton
         }
         XCTAssertEqual(ton(0.2), .gedaempft, "genau 0,2 ist noch kein Fall")
-        XCTAssertEqual(ton(0.21), .glut)
+        // `BatteryReport.tsx:111`: oberhalb der Schwelle `ember`, darunter `muted`.
+        XCTAssertEqual(ton(0.21), .alarm)
         XCTAssertEqual(ton(nil), .gedaempft)
     }
 
@@ -112,7 +113,7 @@ final class SpeicherbildTests: XCTestCase {
             Speicherbild.kacheln(bericht(summen(geraet: geraet)))[7]
         }
         XCTAssertEqual(kachel(0.2).ton, .gedaempft)
-        XCTAssertEqual(kachel(0.9).ton, .glut)
+        XCTAssertEqual(kachel(0.9).ton, .alarm)
         XCTAssertEqual(kachel(0.9).dazu, "0,21\(schmal)€ bezahlt · 0,04\(schmal)€ entgangen")
     }
 

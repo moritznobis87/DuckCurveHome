@@ -236,6 +236,9 @@ final class NachbetrachtungsbildTests: XCTestCase {
         // Zwei Stufen mit verschiedenem Vorzeichen haben dieselbe Farbe.
         XCTAssertEqual(
             Nachbetrachtungsbild.treppenfarbe(t[1]), Nachbetrachtungsbild.treppenfarbe(t[3]))
+        // Und zwar die Marke der Treppenstufe (`Kostentreppe.tsx:29`), nicht ein hier
+        // ausgeschriebenes Weiss auf 0,62.
+        XCTAssertEqual(Nachbetrachtungsbild.treppenfarbe(t[1]), Marken.stufenbalken)
     }
 
     func testStrichartTrenntDieBeidenFahrplaeneUeberDenStrich() {
@@ -251,7 +254,7 @@ final class NachbetrachtungsbildTests: XCTestCase {
 
     func testStreifenfarbeUnterscheidetAusVonKeinerAussage() {
         // Stufe null bekommt einen eigenen, schwachen Grund.
-        XCTAssertEqual(Nachbetrachtungsbild.streifenfarbe(stufe: 0), Farbwert(0xFFFFFF, deckung: 0.07))
+        XCTAssertEqual(Nachbetrachtungsbild.streifenfarbe(stufe: 0), Marken.stufeNull)
         XCTAssertEqual(
             Nachbetrachtungsbild.streifenfarbe(stufe: 1), Marken.waermepumpe.mitDeckung(0.28))
         XCTAssertEqual(

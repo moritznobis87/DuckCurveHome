@@ -156,7 +156,9 @@ struct WaermepumpeSeite: View {
     /// vier Rahmen, die erste Zahl in 48 Punkten über die ganze Breite, die übrigen
     /// zweispaltig mit Haarlinien (`handy.css:195-207`).
     private func kennzahlenfeld(_ w: WaermepumpeOut) -> some View {
-        Kachelfeld(kacheln: Wpseite.kennzahlen(w).map(Kacheldaten.init))
+        // `.kpi-handy`: die Werte sind Spannen, und die Vorlage gibt ihnen am Telefon eine
+        // Stufe weniger (`handy.css:381-382`).
+        Kachelfeld(kacheln: Wpseite.kennzahlen(w).map(Kacheldaten.init), spannen: true)
     }
 
     // MARK: - Die Zeichnung

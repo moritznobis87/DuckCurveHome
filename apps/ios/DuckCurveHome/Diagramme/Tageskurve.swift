@@ -40,14 +40,12 @@ struct TageskurveBild: View {
 
     private var schmal: Bool { breite == .compact }
 
-    /// Die Hauslinie: Weiss auf 0,88 (`DayCurve.tsx:127`, `:146` nennt dieselbe Farbe in der
-    /// Legende).
+    /// Die Hauslinie: ``Farbe/hauslinie``, wo auch ihre Begruendung steht.
     ///
-    /// **Nicht ``Farbe/last``** (Weiss auf 0,62). Das Haus ist die Linie, gegen die man die
-    /// Sonne liest; auf 0,62 verschwand sie hinter der Sonnenflaeche, und in der Legende stand
-    /// ein Strich, den man im Bild nicht wiederfand. `Marken.text1` ist dasselbe Weiss, hier
-    /// auf die Deckung der Vorlage gebracht.
-    private static let hausfarbe = Color(Marken.text1.mitDeckung(0.88))
+    /// Sie stand hier als `Marken.text1.mitDeckung(0.88)` - richtiger Wert an der falschen
+    /// Marke: `text1` ist die Schriftfarbe erster Stufe, und wer die verschiebt, verschob
+    /// damit stillschweigend eine Diagrammlinie.
+    private static let hausfarbe = Farbe.hauslinie
 
     /// Die Hoehe der Preisflaeche am Telefon (`DayCurve.tsx:174`: `PREIS_HOEHE = 58`).
     ///
@@ -598,13 +596,20 @@ struct TageskurveBild: View {
 }
 
 /// Der Umschalter Gestern / Heute / Morgen über der Kurve.
+///
+/// **Er hat seine eigene Form** (`globals.css:247-248` `.home-tage`/`.home-tag`,
+/// `DayCurve.tsx:155-157`) und nicht die der Ansichtsleiste: an der Wand ein Rand um die
+/// Reihe und keine Fläche darunter, einen Punkt größere Schrift und flachere Knöpfe. Die App
+/// nahm hier bis zum 21.11.2026 die Vorgabe und legte damit eine Fläche unter die drei Tage,
+/// die die Vorlage nicht kennt.
 struct Tagwahl: View {
     @Binding var tag: Kurventag
 
     var body: some View {
         Ansichtswahl(
             ansichten: Kurventag.allCases.map { Ansicht(weg: $0.rawValue, name: $0.name) },
-            aktiv: Ansicht(weg: tag.rawValue, name: tag.name)
+            aktiv: Ansicht(weg: tag.rawValue, name: tag.name),
+            form: .tagesschalter
         ) { a in
             guard let neu = Kurventag(rawValue: a.weg) else { return }
             tag = neu

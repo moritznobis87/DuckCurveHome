@@ -32,19 +32,21 @@ struct WirkungSeite: View {
                 // Kein Kicker über dem Kachelfeld: der ausgewertete Zeitraum steht schon als
                 // Beiwerk der Urteilskarte, und die Vorlage setzt über das Feld keine
                 // Überschrift (`Wirkung.tsx:171`).
+                // **Zwei Spalten am Telefon, drei am iPad, fuenf an der Wand**
+                // (`Wirkung.tsx:171`: `grid-cols-2 md:grid-cols-3 xl:grid-cols-5`). Hier stand
+                // fest `spalten: 3`, und damit fehlte die obere Stufe; ``Kachelfeld`` misst sich
+                // dafuer selbst. Die Werte sind Spannen und bekommen am Telefon eine Stufe
+                // weniger (`handy.css:381-382`, `.kpi-handy`).
                 Kachelfeld(
                     kacheln: Wirkungskacheln.kacheln(w).map(Kacheldaten.init),
-                    spalten: 3
+                    spannen: true,
+                    staffelung: Kachelraster(mittel: 3, breit: 5)
                 )
                 if bild.faecherZeigen {
                     faecherkarte(bild)
                 }
                 if bild.rasterZeigen {
-                    Karte(
-                        kicker: "Jede Anforderung",
-                        beiwerk: schmal ? nil : rasterbeiwerk
-                    ) {
-                        if schmal { beiwerkzeile(rastersatz) }
+                    Karte(kicker: "Jede Anforderung", beiwerk: rasterbeiwerk) {
                         Ereignisraster(bild: bild)
                     }
                 }
@@ -66,11 +68,14 @@ struct WirkungSeite: View {
                     }
                 }
                 if !w.methodeDe.isEmpty {
+                    // **Eine echte Liste und nicht Absätze** (`Wirkung.tsx:254-258`: eine
+                    // `<ul>` im Methodendeckel, gestaltet in `globals.css:735`).
                     Methode(
-                        w.methodeDe.map(Optional.init),
+                        [],
                         kurz: "ein Zusammenhang in der Zeit, keine Ursache · Vergleich zur "
                             + "selben Tageszeit",
-                        titel: "Was die Auswertung kann"
+                        titel: "Was die Auswertung kann",
+                        punkte: w.methodeDe
                     )
                 }
             }
@@ -128,12 +133,12 @@ struct WirkungSeite: View {
     @ViewBuilder private func urteilsraster(_ bild: Wirkungsbild) -> some View {
         if schmal {
             urteilssatz(bild)
-            Quotenbild(bild: bild, ringfarbe: Farbe.flaeche2)
+            Quotenbild(bild: bild)
         } else {
             HStack(alignment: .center, spacing: 28) {
                 urteilssatz(bild)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Quotenbild(bild: bild, ringfarbe: Farbe.flaeche1)
+                Quotenbild(bild: bild)
                     .frame(maxWidth: 460)
             }
         }
@@ -162,11 +167,7 @@ struct WirkungSeite: View {
         let satz =
             "\(bild.nAuswertbar) Anforderungen bei stehender Maschine, "
             + "am Beginn übereinandergelegt"
-        Karte(
-            kicker: "Antwortfächer",
-            beiwerk: schmal ? nil : kopfbeiwerk(satz)
-        ) {
-            if schmal { beiwerkzeile(satz) }
+        Karte(kicker: "Antwortfächer", beiwerk: kopfbeiwerk(satz)) {
             Antwortfaecher(bild: bild)
         }
     }
@@ -180,26 +181,14 @@ struct WirkungSeite: View {
 
     private var rasterbeiwerk: AnyView { kopfbeiwerk(rastersatz) }
 
+    /// **Das Beiwerk geht jetzt in jeder Breite als Beiwerk hinein.** Hier stand
+    /// `beiwerk: schmal ? nil : …` und darunter eine zweite Fassung desselben Satzes als erste
+    /// Zeile des Karteninhalts - weil ``Karte`` das Beiwerk am Telefon neben die Überschrift
+    /// setzte und von „0 Anforderungen bei stehender Maschine, am Beginn übereinandergelegt“ ein
+    /// Wortfragment blieb. ``Karte/beiwerkzeile(_:)`` gibt ihm dort inzwischen die eigene Zeile,
+    /// die `handy.css:185` vorsieht; Größe und Farbe stehen in ``Kartenhinweis``.
     private func kopfbeiwerk(_ satz: String) -> AnyView {
-        AnyView(
-            Text(satz)
-                .font(Schrift.winzig)
-                .foregroundStyle(Farbe.text3)
-                .multilineTextAlignment(.trailing))
-    }
-
-    /// **Am Telefon steht das Beiwerk in einer eigenen Zeile und bricht um**
-    /// (`handy.css:185`: `flex-basis: 100%; white-space: normal; overflow: visible`, begründet
-    /// in `ui/Card.tsx:43-44`). ``Karte`` setzt es auf schmalem Schirm neben die Überschrift, und
-    /// dort blieb von „0 Anforderungen bei stehender Maschine, am Beginn übereinandergelegt“ ein
-    /// Wortfragment. Darum wird es hier nicht als Beiwerk übergeben, sondern als erste Zeile des
-    /// Karteninhalts gezeichnet - derselbe Platz, den die Vorlage ihm gibt.
-    private func beiwerkzeile(_ satz: String) -> some View {
-        Text(satz)
-            .font(Schrift.klein)
-            .foregroundStyle(Farbe.text3)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        Kartenhinweis.beiwerk(satz)
     }
 
     private func lade() async {

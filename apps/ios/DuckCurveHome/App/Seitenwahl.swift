@@ -325,8 +325,10 @@ struct Datumskasten: View {
                     wegweiser.setzeZeitraum(Zeitraum.heute(z.spanne, jetzt: haus.jetzt))
                 } label: {
                     Text("HEUTE")
-                        .font(Schrift.kicker)
-                        .kerning(0.6)
+                        // Mono 11 mit 0,08 em, wie `ReportShell.tsx:116` den Knopf setzt -
+                        // und nicht die Kickerschrift, die er sich geborgt hatte.
+                        .font(Schrift.mono(11, relativeTo: .caption2))
+                        .tracking(0.88)
                         .foregroundStyle(Farbe.amber)
                         .padding(.horizontal, 6)
                 }

@@ -140,10 +140,8 @@ struct StromSeite: View {
 
     private func verbrauchskarte(_ b: EnergySummaryOut) -> some View {
         Karte(kicker: Stromuebersicht.verbrauchstitel) {
-            // Die Legende steht unter dem Kartenkopf und nicht in ihm: ``Karte`` setzt ihr
-            // `beiwerk` am Telefon neben den Kicker, und für drei Farbflecke mit Namen ist
-            // dort kein Platz. Umbrechen muss sie in jedem Fall - „damit eine Legende
-            // umbricht statt zu verschwinden“ (`Card.tsx:24-26`).
+            // Die Legende steht unter dem Kartenkopf und nicht in ihm; die Begründung und
+            // die Stelle der Vorlage stehen an ``Diagrammlegende``.
             Diagrammlegende(stuecke: Strombalkenbild.verbraucher)
             Strombalkenbild(
                 balken: Stromuebersicht.verbrauch(b),
@@ -297,10 +295,8 @@ struct PvSeite: View {
 
     private func verwendungskarte(_ b: EnergySummaryOut) -> some View {
         Karte(kicker: "Erzeugung und Verwendung") {
-            // Die Legende steht unter dem Kartenkopf und nicht in ihm: ``Karte`` setzt ihr
-            // `beiwerk` am Telefon neben den Kicker, und für drei Farbflecke mit Namen ist
-            // dort kein Platz. Umbrechen muss sie in jedem Fall - „damit eine Legende
-            // umbricht statt zu verschwinden“ (`Card.tsx:24-26`).
+            // Die Legende steht unter dem Kartenkopf und nicht in ihm; die Begründung und
+            // die Stelle der Vorlage stehen an ``Diagrammlegende``.
             Diagrammlegende(stuecke: Pvverwendungsbild.legende)
             Pvverwendungsbild(balken: Pvbild.verwendung(b), hoehe: bildhoehe)
         }

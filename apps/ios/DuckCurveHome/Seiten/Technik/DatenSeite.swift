@@ -16,7 +16,7 @@ import SwiftUI
 /// Abdeckung in der Abdeckungskarte und die drei erklärenden Absätze als Fließtext am Fuß. Bis
 /// zum 21.11.2026 lag beides in einer zugeklappten ``Methode``, und damit lag der Satz, der die
 /// leere von der roten Zelle unterscheidet, unter einem Deckel - gerade die Auskunft, die laut
-/// Vorlage „entscheidet, wen man anschaut" (`CoverageMap.tsx:24-27`). Ein Deckel ist richtig,
+/// Vorlage „entscheidet, wen man anschaut“ (`CoverageMap.tsx:24-27`). Ein Deckel ist richtig,
 /// wo eine Methode erklärt wird, die immer gleich ist; hier steht eine Angabe **zu diesem
 /// Zeitraum**, und die darf nach ``Methode/kurz`` selbst nicht hinter den Deckel.
 ///
@@ -38,9 +38,9 @@ struct DatenSeite: View {
     /// `<CoverageMap anchor={anchor} />`, die Zahl ist der Vorgabewert der Karte selbst.
     private static let kartentage = 28
 
-    /// `max-w-[90ch]` des Fließtextes (`ReportShell.tsx:143-145`), auf 11,5 Punkte gerechnet -
-    /// dieselbe Zahl wie auf der Heizkreisseite, damit die App nicht zwei Lesebreiten hat.
-    private static let lesebreite: CGFloat = 560
+    /// `max-w-[90ch]` des Fließtextes - jetzt aus ``Marken/lesebreite`` und nicht mehr aus
+    /// zwei Seiten, die dieselbe Zahl von Hand tragen. Die Rechnung steht dort.
+    private static let lesebreite = CGFloat(Marken.lesebreite)
 
     @State private var abdeckung: CoverageOut?
     @State private var diagnose: String?
@@ -60,11 +60,11 @@ struct DatenSeite: View {
     /// dreißig Sekunden (`Sources.tsx:26`).
     ///
     /// **Warum hier die Verbindung befragt wird und nicht ``Hauszustand/fehler``.** Das ist
-    /// „der letzte Fehler, der nicht von selbst weggeht - etwa ein falsches Token"; ein
+    /// „der letzte Fehler, der nicht von selbst weggeht - etwa ein falsches Token“; ein
     /// abgerissener Strom setzt ihn nicht. Ohne diese Frage stünde über der Karte beim
-    /// nächtlichen WLAN-Abriss stundenlang „lädt …", und das wäre dieselbe Sorte Unwahrheit
+    /// nächtlichen WLAN-Abriss stundenlang „lädt …“, und das wäre dieselbe Sorte Unwahrheit
     /// wie der Befund, der hier vorher beim Öffnen stand. ``Verbindung/verbindet`` ist der
-    /// erste Versuch und damit wirklich „lädt"; ``Verbindung/verbindetNeu`` und
+    /// erste Versuch und damit wirklich „lädt“; ``Verbindung/verbindetNeu`` und
     /// ``Verbindung/aus`` sind es nicht mehr.
     private var quellenlage: Pruefstand.Lage {
         guard haus.zustand != nil else {
@@ -123,7 +123,7 @@ struct DatenSeite: View {
 
     /// **Die Verfügbarkeit steht vor der Bilanz, und der Augenblick vor der Karte**
     /// (`DataCheck.tsx:88-90`): die Wärmekarte zählt Stunden und sieht einen Ausfall erst nach
-    /// einer. Für „läuft es jetzt" ist sie zu träge, für „lief es letzte Woche" ist sie das
+    /// einer. Für „läuft es jetzt“ ist sie zu träge, für „lief es letzte Woche“ ist sie das
     /// einzige Werkzeug - beide Fragen stellt man an derselben Stelle.
     private var quellen: some View {
         Karte(kicker: "Quellen", beiwerk: beiwerk("liefert gerade, was liefern soll?")) {
@@ -251,13 +251,11 @@ struct DatenSeite: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Was rechts im Kartenkopf steht (`Card.tsx`, `right=…`).
+    /// Was rechts im Kartenkopf steht (`ui/Card.tsx:26`, `right=…`).
+    /// Größe, Farbe und Ausrichtung stehen in ``Kartenhinweis`` - hier standen sie
+    /// zum zehnten Mal, und am Telefon alle drei falsch (``Karte/beiwerkzeile(_:)``).
     private func beiwerk(_ satz: String) -> AnyView {
-        AnyView(
-            Text(satz)
-                .font(Schrift.winzig)
-                .foregroundStyle(Farbe.text3)
-                .multilineTextAlignment(.trailing))
+        Kartenhinweis.beiwerk(satz)
     }
 
     // MARK: - Nachladen

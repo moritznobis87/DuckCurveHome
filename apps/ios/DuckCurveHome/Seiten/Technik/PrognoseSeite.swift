@@ -33,52 +33,6 @@ private struct Stufenmarke: View {
     }
 }
 
-/// Die Akzentleiste über einer Karte: 3 Punkte Bernstein, nach rechts auslaufend.
-///
-/// **Was die Vorlage damit auszeichnet.** `Card accent` (`ui/Card.tsx:4-5`) steht in der ganzen
-/// Anwendung zweimal, und beide Male auf dieser Seite: über „Was sich für die nächste Prognose
-/// ändert“ (`ForecastPage.tsx:326`) und über „Wie der Rückblick zu lesen ist“
-/// (`Rueckblick.tsx:200`). Es sind die zwei Karten, die nicht messen, sondern einordnen - was
-/// sich ändert, und wie das Gezeigte zu lesen ist. Ohne die Leiste stehen sie zwischen den
-/// Messkarten wie zwei weitere Messungen.
-///
-/// **Die Farben kommen aus `--accent-bar`** (`tokens.css:98`:
-/// `linear-gradient(90deg, var(--amber), var(--amber-soft), transparent 86%)`). Ein Stopp ohne
-/// eigene Stelle liegt in CSS mittig zwischen seinen Nachbarn, also bei 43 %. Ausgeblendet wird
-/// in durchsichtiges Bernstein und nicht in `Color.clear`: `clear` ist durchsichtiges Schwarz,
-/// und ein Verlauf dorthin wird in der Mitte grau.
-///
-/// **Der Schnitt muss nach der Leiste kommen.** ``Karte`` legt Grund, Rand und Schnitt in dieser
-/// Reihenfolge; ein `overlay` darüber stünde in den Ecken über den Radius hinaus. Die Vorlage
-/// schneidet dort mit `overflow: hidden` (`globals.css:76`), hier also ein zweiter `clipShape`
-/// mit demselben Radius. Dass der Radius hier ein zweites Mal steht, ist der Preis dafür, dass
-/// ``Karte`` kein `akzent:` kennt - gemeldet.
-private struct Akzentkarte<Inhalt: View>: View {
-    @ViewBuilder var inhalt: () -> Inhalt
-
-    @Environment(\.horizontalSizeClass) private var breite
-
-    private var radius: CGFloat { breite == .compact ? 16 : Marken.radius3 }
-
-    var body: some View {
-        inhalt()
-            .overlay(alignment: .top) { leiste }
-            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-    }
-
-    private var leiste: some View {
-        LinearGradient(
-            stops: [
-                Gradient.Stop(color: Farbe.amber, location: 0),
-                Gradient.Stop(color: Farbe.amberWeich, location: 0.43),
-                Gradient.Stop(color: Farbe.amberWeich.opacity(0), location: 0.86),
-            ],
-            startPoint: .leading, endPoint: .trailing
-        )
-        .frame(height: 3)
-    }
-}
-
 /// Prognose: wie gut die Vorhersage war - und was sie daraus gelernt hat.
 ///
 /// **Vorher vier Textkarten und keine einzige Zeichnung.** Die Antwort auf
@@ -203,12 +157,15 @@ struct PrognoseSeite: View {
             kicker: (heute ? "Heute" : "Gestern") + " · Prognose gegen Ist",
             titel: guetezeile(gezeigt.score),
             beiwerk: AnyView(
+                // Mono in Großbuchstaben, nicht die Vorgabe: er steht in einer Zeile mit
+                // der Gütezahl, die in Mono gesetzt ist (`ForecastPage.tsx:279-288`).
                 Ansichtswahl(
                     ansichten: [
                         Ansicht(weg: "heute", name: "Heute"),
                         Ansicht(weg: "gestern", name: "Gestern"),
                     ],
-                    aktiv: Ansicht(weg: gezeigterTag, name: "")
+                    aktiv: Ansicht(weg: gezeigterTag, name: ""),
+                    form: .prognosekopf
                 ) { a in gezeigterTag = a.weg })
         ) {
             Prognosekurvenbild(tag: bild, heute: heute, ausgegeben: gezeigt.issuedAt)
@@ -296,8 +253,7 @@ struct PrognoseSeite: View {
     /// Spalten. Gleich geteilt brach links jeder zweite Satz dreimal um.
     @ViewBuilder private func zweierreihe(_ b: ForecastEvaluationOut) -> some View {
         spaltenreihe([7, 5]) {
-            // `Card accent` (`ForecastPage.tsx:326`) - siehe ``Akzentkarte``.
-            Akzentkarte { aenderungskarte(b) }
+            aenderungskarte(b)
             quellenkarte(b)
         }
     }
@@ -312,7 +268,9 @@ struct PrognoseSeite: View {
     private func aenderungskarte(_ b: ForecastEvaluationOut) -> some View {
         Karte(
             kicker: "Was sich für die nächste Prognose ändert",
-            titel: abschlusstext(b.corrector)
+            titel: abschlusstext(b.corrector),
+            // `Card accent` (`ForecastPage.tsx:326`) - siehe ``Karte/akzent``.
+            akzent: true
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 if b.nextChangesDe.isEmpty {
@@ -492,20 +450,20 @@ struct PrognoseSeite: View {
     /// Abfrage (`Rueckblick.tsx:205`). Die rechte Zeile fällt dann weg: wie viele Läufe im
     /// Bestand liegen, weiß man ohne Antwort nicht.
     private var lesehilfe: some View {
-        Akzentkarte {
-            Karte(
-                kicker: "Wie der Rückblick zu lesen ist",
-                titel: Prognosebild.Rueckblick.lesehilfeRechts(verlauf)
-            ) {
-                VStack(alignment: .leading, spacing: 10) {
-                    if let satz = Prognosebild.Rueckblick.fehlersatz(fehlerVerlauf) {
-                        Text(satz)
-                            .font(Schrift.klein)
-                            .foregroundStyle(Farbe.text2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    hinweise
+        Karte(
+            kicker: "Wie der Rückblick zu lesen ist",
+            titel: Prognosebild.Rueckblick.lesehilfeRechts(verlauf),
+            // `Card accent` (`Rueckblick.tsx:200`) - siehe ``Karte/akzent``.
+            akzent: true
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                if let satz = Prognosebild.Rueckblick.fehlersatz(fehlerVerlauf) {
+                    Text(satz)
+                        .font(Schrift.klein)
+                        .foregroundStyle(Farbe.text2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                hinweise
             }
         }
     }

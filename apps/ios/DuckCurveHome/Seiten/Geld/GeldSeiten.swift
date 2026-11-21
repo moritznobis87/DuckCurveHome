@@ -153,11 +153,10 @@ struct PvAbrechnungSeite: View {
         }
     }
 
-    /// Was rechts in einer Kopfzeile steht - 12 px in `--text-3` (`Card.tsx:20-28`).
+    /// Was rechts in einer Kopfzeile steht - 12 px in `--text-3` (`ui/Card.tsx:20-28`).
+    /// Größe, Farbe und Ausrichtung stehen in ``Kartenhinweis`` - hier standen sie
+    /// zum zehnten Mal, und am Telefon alle drei falsch (``Karte/beiwerkzeile(_:)``).
     private func beiwerk(_ satz: String) -> some View {
-        Text(satz)
-            .font(Schrift.winzig)
-            .foregroundStyle(Farbe.text3)
-            .multilineTextAlignment(.trailing)
+        Kartenhinweis(satz: satz)
     }
 }

@@ -168,10 +168,8 @@ struct RechnungenSeite: View {
     /// Farben; den Text daneben noch einmal zu schreiben wäre dieselbe Auskunft zweimal, und
     /// darum bleibt die Kopfzeile dieser einen Karte ohne Beiwerk.
     ///
-    /// **Die Legende steht unter dem Kopf und nicht in ihm**, bei allen drei Verlaufskarten.
-    /// ``Diagrammlegende`` nimmt die ganze Breite und richtet sich nach rechts; als `beiwerk`
-    /// einer ``Karte`` drückte sie den Kicker zusammen - sie ist ausdrücklich für den Platz
-    /// darunter gemacht (`Diagramme/Pvverwendung.swift:160-169`).
+    /// **Die Legende steht unter dem Kopf und nicht in ihm**, bei allen drei Verlaufskarten -
+    /// die Begründung und was daran noch offen ist, stehen an ``Diagrammlegende``.
     private var betragskarte: some View {
         let reihen = Rechnungspruefung.betragsreihen(liste)
         return Karte(kicker: Rechnungspruefung.betragstitel) {
@@ -219,12 +217,12 @@ struct RechnungenSeite: View {
         }
     }
 
-    /// Der rechte Kopftext einer Karte - 12 px `--text-3` in der Vorlage (`Card.tsx:24-26`).
+    /// Der rechte Kopftext einer Karte - 12 px `--text-3` in der Vorlage
+    /// (`ui/Card.tsx:26`).
+    /// Größe, Farbe und Ausrichtung stehen in ``Kartenhinweis`` - hier standen sie
+    /// zum zehnten Mal, und am Telefon alle drei falsch (``Karte/beiwerkzeile(_:)``).
     private func kopftext(_ wort: String) -> some View {
-        Text(wort)
-            .font(schmal ? Schrift.klein : Schrift.winzig)
-            .foregroundStyle(Farbe.text3)
-            .multilineTextAlignment(.trailing)
+        Kartenhinweis(satz: wort)
     }
 
     // MARK: - Die Tabelle „Geprüfte Rechnungen“

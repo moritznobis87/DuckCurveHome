@@ -156,11 +156,7 @@ struct JahreskarteSeite: View {
 
     private var einheitswort: AnyView? {
         guard !kennzahl.einheit.isEmpty else { return nil }
-        return AnyView(
-            Text(kennzahl.einheit)
-                .font(Schrift.sans(12, relativeTo: .caption))
-                .foregroundStyle(Farbe.text3)
-        )
+        return Kartenhinweis.beiwerk(kennzahl.einheit)
     }
 
     /// Die drei Zustände der Karte (`YearMap.tsx:127`).

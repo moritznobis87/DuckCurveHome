@@ -45,6 +45,14 @@ public enum Farbe {
     public static let rasterlinie = Color(Marken.rasterlinie)
     /// Die Spur der Tagesuhr - schwächer als jede Linie, Begründung an ``Marken/spur``.
     public static let spur = Color(Marken.spur)
+    /// Der Grund einer gedrückten Listenzeile - schwächer als ``linie1``, Begründung an
+    /// ``Marken/zeileGedrueckt``.
+    public static let zeileGedrueckt = Color(Marken.zeileGedrueckt)
+    /// Der Rand der berührten Zelle einer Rasterkarte, Begründung an ``Marken/zelleBeruehrt``.
+    public static let zelleBeruehrt = Color(Marken.zelleBeruehrt)
+    /// Der Fokusring eines Eingabefeldes. Seine Stärke steht daneben
+    /// (``Marken/fokusring``) - beides gehört zusammen.
+    public static let fokusring = Color(Marken.fokusring.farbe)
 
     /// Die hervorgehobene Zeile einer anklickbaren Tabelle.
     ///
@@ -82,6 +90,8 @@ public enum Farbe {
     public static let wallbox = Color(Marken.wallbox)
     public static let preis = Color(Marken.preis)
     public static let last = Color(Marken.last)
+    /// Die Hauslinie der Tageskurve, Begründung an ``Marken/hauslinie``.
+    public static let hauslinie = Color(Marken.hauslinie)
 
     // Status
     public static let gut = Color(Marken.gut)
@@ -154,6 +164,16 @@ public enum Farbe {
     public static let buehneFlaeche = LinearGradient(
         colors: [Color(Marken.buehneOben), Color(Marken.buehneUnten)],
         startPoint: .top, endPoint: .bottom
+    )
+
+    /// Das Akzentband oben an einer Karte, von links nach rechts auslaufend.
+    ///
+    /// CSS zählt den Winkel von oben im Uhrzeigersinn; `90deg` ist dort der Verlauf nach
+    /// rechts, in SwiftUI also von ``UnitPoint/leading`` nach ``UnitPoint/trailing``. Die drei
+    /// Stopps und ihre Stellen stehen an ``Marken/akzentband``.
+    public static let akzentband = LinearGradient(
+        stops: Marken.akzentband.map { .init(color: Color($0.farbe), location: $0.stelle) },
+        startPoint: .leading, endPoint: .trailing
     )
 
     /// Ihr Rand: die Lichtkante oben, Begründung an ``Marken/buehneRand``.

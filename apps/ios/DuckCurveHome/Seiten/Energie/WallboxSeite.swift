@@ -119,9 +119,7 @@ struct WallboxSeite: View {
     /// „4 im Zeitraum“ rechts im Kartenkopf (`EvReport.tsx:54`). Das Feld gab es, die Seite
     /// übergab es nicht.
     private func anzahl(_ b: EvReportOut) -> some View {
-        Text(Wallbox.kopfzeile(anzahl: b.sessions.count))
-            .font(Schrift.winzig)
-            .foregroundStyle(Farbe.text3)
+        Kartenhinweis(satz: Wallbox.kopfzeile(anzahl: b.sessions.count))
     }
 
     @ViewBuilder private func ladevorgaenge(_ b: EvReportOut) -> some View {

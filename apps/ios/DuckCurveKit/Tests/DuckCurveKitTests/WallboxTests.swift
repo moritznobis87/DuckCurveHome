@@ -57,8 +57,10 @@ final class WallboxTests: XCTestCase {
                 "Effektiv je kWh",
             ])
         XCTAssertEqual(k.map(\.einheit), ["kWh", nil, "kWh", nil, nil, "ct"])
+        // „Aus dem Netz“ und „Bezahlt“ tragen `ember` (`EvReport.tsx:41-42`), also den
+        // Alarmton und nicht `glut` - die Wallboxseite zeigt keine Waermepumpe.
         XCTAssertEqual(
-            k.map(\.ton), [.nebel, .bernstein, .glut, .glut, .gedaempft, .normal])
+            k.map(\.ton), [.nebel, .bernstein, .alarm, .alarm, .gedaempft, .normal])
     }
 
     func testKachelnTragenDieZahlenUndHinweiseDerVorlage() {
@@ -229,7 +231,7 @@ final class WallboxTests: XCTestCase {
         let zeilen = Wallbox.spannenzeilen(je)
         XCTAssertEqual(
             zeilen.map(\.wort), ["Geladen · kWh", "Sonnenanteil", "Bezahlt", "Ladevorgänge"])
-        XCTAssertEqual(zeilen.map(\.ton), [.nebel, .bernstein, .glut, .normal])
+        XCTAssertEqual(zeilen.map(\.ton), [.nebel, .bernstein, .alarm, .normal])
         XCTAssertEqual(zeilen.map { $0.werte.count }, [4, 4, 4, 4])
         XCTAssertEqual(zeilen[3].werte, ["1", "0", "0", "0"])
     }

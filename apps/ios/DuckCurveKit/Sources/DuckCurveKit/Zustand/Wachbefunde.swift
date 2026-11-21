@@ -45,9 +45,13 @@ public enum Wachbefunde {
             }
         }
 
-        /// Der Grund der Zeile: dieselbe Farbe auf 10 % (`globals.css:205-206`).
+        /// Der Grund der Zeile: dieselbe Farbe auf 10 %.
+        ///
+        /// Die Rechnung stand hier und gehört zu den Marken: ein Zehntel ist dort eine Zahl
+        /// für die ganze Wache, hier war es eine Zahl in einem Zweig. ``Marken/wachzeile(_:)``
+        /// gibt Kante und Grund als Paar und nennt die Stelle der Vorlage.
         public var grundfarbe: Farbwert {
-            farbe.mitDeckung(0.10)
+            Marken.wachzeile(farbe).grund
         }
     }
 

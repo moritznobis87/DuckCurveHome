@@ -75,10 +75,14 @@ struct Pruefkurvenbild: View {
     /// Die Vorzeichenregel, wörtlich wie in der Vorlage (`DataCheck.tsx:76`).
     ///
     /// **Sie bricht um und wird nicht abgeschnitten.** `handy.css:185` setzt für genau diese
-    /// Zeile `white-space: normal; overflow: visible; text-overflow: clip`, und `Card.tsx:28-29`
-    /// nennt den Grund: „ein abgeschnittener Legendeneintrag ist schlimmer als eine zweite
-    /// Zeile". Hier stand `lineLimit(2)`, und auf 390 Punkten fiel damit „Ladestand rechts in
-    /// %" weg - also gerade der Hinweis auf die zweite Achse.
+    /// Zeile `white-space: normal; overflow: visible; text-overflow: clip`, und
+    /// `ui/Card.tsx:24-25` nennt den Grund: „ein abgeschnittener Legendeneintrag ist schlimmer
+    /// als eine zweite Zeile“. Hier stand `lineLimit(2)`, und auf 390 Punkten fiel damit
+    /// „Ladestand rechts in %“ weg - also gerade der Hinweis auf die zweite Achse.
+    ///
+    /// **Sie steht im Kartenkörper und nicht im Kartenkopf**, obwohl die Vorlage sie als
+    /// `right=` setzt - mit der eigenen Begründung, dass diese Zeile die Kopfzeile am Telefon
+    /// sprengt (`DataCheck.tsx:73-76`). ``DatenSeite/leistungen`` schreibt das aus.
     private var kopfzeile: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(
@@ -211,7 +215,7 @@ struct Pruefkurvenbild: View {
     /// **Ohne berührte Stelle um die Mitte des gezeigten Ausschnitts.** Das ist kein
     /// Behelf, sondern genau das, was das Rad der Vorlage tut, wenn der Zeiger in der Mitte
     /// steht (`charts.ts:659`, `zoomOnMouseWheel`). Gerechnet wird auf der ganzen Kurve und
-    /// nicht auf dem Ausschnitt: sonst hätte ein zweiter Druck auf „3 h" ein Fenster im
+    /// nicht auf dem Ausschnitt: sonst hätte ein zweiter Druck auf „3 h“ ein Fenster im
     /// Fenster ergeben.
     private func fensterwahl(_ k: Pruefkurve) -> some View {
         let mitte = (k.fenster.lowerBound + k.fenster.upperBound) / 2
@@ -340,12 +344,12 @@ struct Pruefkurvenbild: View {
 /// und den Zähler dahinter. Die Oberfläche rechnet nichts nach (`reports/Sources.tsx`).
 struct Quellenkarte: View {
     let zeilen: [Quellenstand.Quellenzeile]
-    /// Was statt der Zeilen dasteht: „lädt …" oder „nicht abrufbar"
+    /// Was statt der Zeilen dasteht: „lädt …“ oder „nicht abrufbar“
     /// (``Pruefstand/quellensatz``). `nil` heißt: die Zeilen sind dran.
     ///
     /// **Zwei Zustände und nicht einer.** Bis zum 21.11.2026 sagte diese Karte beim Öffnen
-    /// „Der Zustand der Quellen ist gerade nicht abrufbar." - eine Behauptung über einen
-    /// Dienst, der noch nicht gefragt worden war. Die Vorlage schreibt dort „lädt …"
+    /// „Der Zustand der Quellen ist gerade nicht abrufbar.“ - eine Behauptung über einen
+    /// Dienst, der noch nicht gefragt worden war. Die Vorlage schreibt dort „lädt …“
     /// (`Sources.tsx:48-49`).
     var satz: String?
 
@@ -381,7 +385,7 @@ struct Quellenkarte: View {
     /// **Am Telefon steht der Satz des Dienstes unter dem Namen.** Die Vorlage gibt ihm
     /// `w-full … sm:w-auto` (`Sources.tsx:61, 79`): unter 640 Punkten eine eigene Zeile. Hier
     /// standen Name und Satz immer in einer Zeile, und auf 390 Punkten teilte sich „inexogy ·
-    /// 412 Abfragen · letzter Wert vor 3 min" die Zeile mit „Zähler (inexogy)" - beides
+    /// 412 Abfragen · letzter Wert vor 3 min“ die Zeile mit „Zähler (inexogy)“ - beides
     /// gequetscht, keines lesbar.
     @ViewBuilder private func inhalt(_ z: Quellenstand.Quellenzeile) -> some View {
         if schmal {

@@ -239,10 +239,11 @@ struct Ambiente: View {
             Atempunkt(gestoert: haus.gestoert)
             // Die Farbe traegt der Punkt, nicht das Wort (`globals.css:391`): ein rotes Wort
             // neben einem roten Punkt sagt dasselbe zweimal.
-            Text(haus.verbindungswort.uppercased())
-                .font(Schrift.mono(12))
-                .kerning(12 * 0.13)
-                .foregroundStyle(Farbe.text2)
+            // Ein Kicker in 12 Punkten, nicht in Nebelgrau: `.ambiente-live kicker`
+            // (`Ambiente.tsx:47`) erbt Mono, Grossschrift und 0,13 em von `.kicker` und
+            // setzt nur Groesse und Farbe neu (`globals.css:391`). Hier stand das drei
+            // Zeilen lang von Hand nachgebaut.
+            Kicker(wort: haus.verbindungswort, groesse: 12, farbe: Farbe.text2)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(haus.zustand?.system.connectionLabelDe ?? haus.verbindungswort)
@@ -296,7 +297,7 @@ struct Ambiente: View {
         if jetztStand.aussicht.erwartetKwh != nil || jetztStand.bogen != nil {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Ruhekicker(wort: "Heute erwartet")
+                    Kicker(wort: "Heute erwartet", groesse: 12)
                     Spacer(minLength: 0)
                     Grosszahl(
                         wert: eins(jetztStand.aussicht.erwartetKwh), einheit: "kWh",
@@ -378,7 +379,7 @@ struct Ambiente: View {
             }
             .frame(width: pufferbreite(mass))
             VStack(alignment: .leading, spacing: 4) {
-                Ruhekicker(wort: "Puffer")
+                Kicker(wort: "Puffer", groesse: 12)
                 Grosszahl(
                     wert: prozent(haus.zustand?.buffer.soc), einheit: "%",
                     groesse: mass.knotenZahl, farbe: Farbe.text1)
@@ -401,7 +402,7 @@ struct Ambiente: View {
     private func preis(_ mass: Bildmasse) -> some View {
         let ct = haus.augenblick?.electricityPriceCtKwh.value
         return VStack(alignment: .leading, spacing: 8) {
-            Ruhekicker(wort: "Strom gerade")
+            Kicker(wort: "Strom gerade", groesse: 12)
             Grosszahl(
                 wert: eins(ct), einheit: "ct", groesse: mass.preisZahl,
                 farbe: preisfarbe(ct))
@@ -651,21 +652,6 @@ struct Grosszahl: View {
         // Zahl und Wort, und die Paare sitzen lockerer als gemeint.
         .padding(.vertical, -groesse * 0.15)
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// Der Kicker des Ruhebildes: Mono 12, weit gesperrt, in Nebelgrau.
-///
-/// Nicht der Baustein `Kicker`: der ist Sans-Halbfett in 10,5 Punkten. Die Vorlage gibt den drei
-/// Kickern des Ruhebildes über `.ambiente-vorschau-wort` eine eigene Grösse und Schrift.
-struct Ruhekicker: View {
-    let wort: String
-
-    var body: some View {
-        Text(wort.uppercased())
-            .font(Schrift.mono(12))
-            .kerning(12 * 0.13)
-            .foregroundStyle(Farbe.kicker)
     }
 }
 

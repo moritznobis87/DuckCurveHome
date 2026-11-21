@@ -240,13 +240,15 @@ struct Abdeckungskarte: View {
                         Path(roundedRect: kasten, cornerRadius: 1.5),
                         with: .color(Color(farbe)))
                 }
-                // Die berührte Zelle bekommt einen hellen Rand (`charts.ts:540`,
-                // `rgba(255,255,255,.85)`) - **auch die leere**: dass hier nichts ist, ist auf
-                // dieser Seite eine Auskunft und kein Fehlgriff.
+                // Die berührte Zelle bekommt einen hellen Rand (``Farbe/zelleBeruehrt``)
+                // - **auch die leere**: dass hier nichts ist, ist auf dieser Seite eine
+                // Auskunft und kein Fehlgriff. Hier stand `Farbe.text1.opacity(0.85)`, und
+                // das sind nicht 0,85: SwiftUI multipliziert mit der Deckung, die `text1`
+                // schon trägt.
                 if let zelle, zelle.tag == i, zelle.stunde == stunde {
                     g.stroke(
                         Path(roundedRect: kasten, cornerRadius: 1.5),
-                        with: .color(Farbe.text1.opacity(0.85)), lineWidth: 1)
+                        with: .color(Farbe.zelleBeruehrt), lineWidth: 1)
                 }
             }
         }

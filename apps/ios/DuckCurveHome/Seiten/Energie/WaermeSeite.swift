@@ -52,8 +52,9 @@ struct Waermedaten: Sendable {
 /// der Methodenkarte und haben in der Vorlage kein Gegenstück.
 ///
 /// **Was die Vorlage hat und diese Seite nicht.** Das Nachladen im Fünf-Minuten-Takt
-/// (`useReport.ts:7, 39, 70`) gehört in ``Berichtsseite`` - es trifft alle dreizehn
-/// Berichtsseiten und ist kein Zug über diese eine. Ebenso die Ankerziele `#puffer` und
+/// (`useReport.ts:7, 39, 70`) steht jetzt in ``Berichtsseite/halteFrisch(_:)`` - es trifft
+/// alle dreizehn Berichtsseiten und war kein Zug über diese eine. Noch offen sind die
+/// Ankerziele `#puffer` und
 /// `#ofen` (`HeatOverview.tsx:198, 279`), auf die das Anlagenschema verweist: ein Sprungziel
 /// braucht einen `ScrollViewReader` um den Seiteninhalt, und der steht im Gerippe.
 struct WaermeSeite: View {
@@ -142,7 +143,6 @@ struct WaermeSeite: View {
             jetzt: haus.jetzt
         )
 
-        annahmenverweis
         Methode(
             Waermeuebersicht.methodensaetze.map { $0 as String? } + [
                 Waermeuebersicht.verlaufssatz(d.bilanz.noteDe),
@@ -151,11 +151,17 @@ struct WaermeSeite: View {
             ],
             // **Die Abdeckung steht in der Kurzzeile und nicht im Rumpf.** Sie schränkt jede
             // Zahl dieser Seite ein, und zugeklappt wäre sie verschwiegen: „eine Seite mit 61
-            // Prozent Datenabdeckung sieht aus wie eine mit hundert“ (`Bericht.swift:516-522`,
+            // Prozent Datenabdeckung sieht aus wie eine mit hundert“ (`Bericht.swift:801-807`,
             // Vorlage `ReportShell.tsx:166-168`). Sie stand hier als einer von acht Sätzen im
             // Deckel.
             kurz: d.strom.map { Waermeuebersicht.abdeckungssatz($0.summary.meta) },
-            titel: Waermeuebersicht.methodentitel
+            titel: Waermeuebersicht.methodentitel,
+            // **Der Verweis steht in dem Satz, zu dem er gehört** (`HeatOverview.tsx:374-376`:
+            // „Wer diese Werte unter *Annahmen* ändert …“). Er stand als bernsteinfarbene
+            // Zeile über der Karte, weil ``Methode`` keine Stelle dafür hatte - ein Knopf ohne
+            // den Satz, der sagt, was dort zu ändern ist. Das Wort kommt aus
+            // ``Waermeuebersicht/annahmensatz(_:)`` und steht damit nur an einer Stelle.
+            verweis: ("Annahmen", "/waerme/annahmen")
         )
     }
 
@@ -471,14 +477,11 @@ struct WaermeSeite: View {
     /// Der Untertitel rechts im Kartenkopf, 12 px in `text-3` (`ui/Card.tsx:20-29`) - nicht als
     /// `titel:` unter dem Kicker, wo er am iPad in Textfarbe und derselben Größe wie die
     /// Überschrift stünde.
+    /// Größe, Farbe und Ausrichtung stehen in ``Kartenhinweis`` - hier standen sie
+    /// zum zehnten Mal, und am Telefon alle drei falsch (``Karte/beiwerkzeile(_:)``).
     private func beiwerk(_ wort: String?) -> AnyView? {
         guard let wort, !wort.isEmpty else { return nil }
-        return AnyView(
-            Text(wort)
-                .font(Schrift.winzig)
-                .foregroundStyle(Farbe.text3)
-                .multilineTextAlignment(.trailing)
-        )
+        return Kartenhinweis.beiwerk(wort)
     }
 
     // MARK: - Die Verweise
@@ -525,25 +528,6 @@ struct WaermeSeite: View {
             Text(wort).font(Schrift.klein).foregroundStyle(Farbe.amber)
         }
         .buttonStyle(.plain)
-    }
-
-    /// Der Verweis auf die Annahmen (`HeatOverview.tsx:374-376`).
-    ///
-    /// **Er steht über der Methodenkarte und nicht in ihr.** ``Methode`` nimmt Sätze und keine
-    /// Ansichten, und sie ist das gemeinsame Gerippe von dreizehn Berichtsseiten - ihr eine
-    /// Stelle für einen Verweis einzubauen ist eine Entscheidung über alle dreizehn. Der Satz,
-    /// zu dem er gehört, steht in ``Waermeuebersicht/annahmensatz(_:)``: „Wer diese Werte unter
-    /// Annahmen ändert, ändert jede Zahl auf dieser Seite, auch die vergangener Jahre.“
-    private var annahmenverweis: some View {
-        HStack {
-            Spacer(minLength: 0)
-            Button {
-                wegweiser.gehe("/waerme/annahmen")
-            } label: {
-                Text("Annahmen ›").font(Schrift.klein).foregroundStyle(Farbe.amber)
-            }
-            .buttonStyle(.plain)
-        }
     }
 
     // MARK: - Die Balkenbilder

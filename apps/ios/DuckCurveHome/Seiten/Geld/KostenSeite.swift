@@ -276,11 +276,10 @@ struct KostenSeite: View {
     }
 
     /// Was rechts in einer Kopfzeile steht.
+    /// Größe, Farbe und Ausrichtung stehen in ``Kartenhinweis`` - hier standen sie
+    /// zum zehnten Mal, und am Telefon alle drei falsch (``Karte/beiwerkzeile(_:)``).
     private func kopfhinweis(_ satz: String) -> some View {
-        Text(satz)
-            .font(Schrift.winzig)
-            .foregroundStyle(Farbe.text3)
-            .multilineTextAlignment(.trailing)
+        Kartenhinweis(satz: satz)
     }
 }
 

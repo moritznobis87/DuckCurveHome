@@ -213,12 +213,8 @@ struct SpeicherSeite: View {
         let tagesansicht = d.zeitraum.spanne == .tag
         return Karte(
             kicker: "Ladezustand über den Tag",
-            beiwerk: AnyView(
-                Text(Speichertagkurve.kopfzeile(tagesansicht: tagesansicht))
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3)
-                    .multilineTextAlignment(.trailing)
-            )
+            beiwerk: Kartenhinweis.beiwerk(
+                Speichertagkurve.kopfzeile(tagesansicht: tagesansicht))
         ) {
             if tagesansicht, !d.tagkurve.leer {
                 Speichertagbild(kurve: d.tagkurve)

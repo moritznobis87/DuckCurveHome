@@ -61,9 +61,13 @@ struct NachbetrachtungSeite: View {
             }
             hinweiskarte
             if let d = daten, !d.methodeDe.isEmpty {
+                // **Eine echte Liste und nicht vier Absätze** (`Nachbetrachtung.tsx:249-253`:
+                // eine `<ul>` im Methodendeckel, `globals.css:735` gibt ihr Einzug, Abstand
+                // und die Punkte). Jeder Satz des Dienstes gilt einzeln; untereinander als
+                // Absätze ist das nicht zu sehen.
                 Methode(
-                    d.methodeDe.map(Optional.init), kurz: Nachbetrachtungsworte.methodeKurz,
-                    titel: Nachbetrachtungsworte.methodeTitel)
+                    [], kurz: Nachbetrachtungsworte.methodeKurz,
+                    titel: Nachbetrachtungsworte.methodeTitel, punkte: d.methodeDe)
             }
         }
         .task(id: tag) { await lade() }
@@ -97,12 +101,7 @@ struct NachbetrachtungSeite: View {
     /// alt das Versprechen ist.
     private var kopfzahl: AnyView? {
         guard let d = daten else { return nil }
-        return AnyView(
-            Text(Nachbetrachtungsbild.kopfzahl(d))
-                .font(Schrift.winzig)
-                .foregroundStyle(Farbe.text3)
-                .multilineTextAlignment(.trailing)
-                .fixedSize(horizontal: false, vertical: true))
+        return Kartenhinweis.beiwerk(Nachbetrachtungsbild.kopfzahl(d))
     }
 
     /// Die Bedienzeile: ‹, ein Datumsfeld, ›, der lange Tag - und rechts der Weg in die
@@ -303,12 +302,7 @@ struct NachbetrachtungSeite: View {
     private func vergleichskarte(_ d: NachbetrachtungOut) -> some View {
         Karte(
             kicker: Nachbetrachtungsworte.vergleichTitel,
-            beiwerk: AnyView(
-                Text(Nachbetrachtungsworte.vergleichDazu)
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true))
+            beiwerk: Kartenhinweis.beiwerk(Nachbetrachtungsworte.vergleichDazu)
         ) {
             Tagesvergleichsbild(daten: d)
         }
@@ -320,16 +314,12 @@ struct NachbetrachtungSeite: View {
         let t = Nachbetrachtungsbild.zahlentabelle(d)
         return Karte(
             kicker: Nachbetrachtungsworte.tabelleTitel,
-            beiwerk: AnyView(
-                Text(Nachbetrachtungsworte.tabelleDazu(nVerglichen: d.nVerglichen))
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true))
+            beiwerk: Kartenhinweis.beiwerk(
+                Nachbetrachtungsworte.tabelleDazu(nVerglichen: d.nVerglichen))
         ) {
             // **„Kosten“ ist die Spalte, die am Telefon dasteht.** Die Vorlage macht aus jeder
             // Zeile einen Block mit Name und Kosten vorn (`handy.css:331-337`); ``Tabelle``
-            // schaltet stattdessen eine Spalte um (`Seiten/Bericht.swift:151-156`). Die
+            // schaltet stattdessen eine Spalte um (`Seiten/Bericht.swift:195-200`). Die
             // Abweichung ist bewusst und wurde schon für den Fahrplan getragen - hier zählt
             // nur, dass die hervorgehobene Zahl der Vorlage die zuerst gezeigte ist.
             Tabelle(

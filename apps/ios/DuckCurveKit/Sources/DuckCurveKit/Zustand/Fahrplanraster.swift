@@ -121,21 +121,18 @@ public enum Fahrplanraster {
     /// 1280 px, sieben darüber. `handy.css:197` baut daraus unter 720 px die eine Fläche mit
     /// zwei Spalten.
     ///
-    /// **Gemessen wird die Breite des Kachelfelds, nicht die des Fensters.** Eine
-    /// Medienabfrage der Vorlage kennt das Fenster; eine SwiftUI-Ansicht kennt den Platz, den
-    /// sie bekommt. Dazwischen liegen die beiden Ränder der Seite von je 16 Punkten
-    /// (`App/Seitenwahl.swift`, `padding(.horizontal, 16)`), und die Schwellen stehen deshalb
-    /// um diese 32 Punkte tiefer. Ist links noch eine Leiste, fällt die Antwort eine Stufe
-    /// vorsichtiger aus - und eine Stufe zu wenig ist hier der harmlose Fehler.
-    ///
-    /// Eine Breite von null gibt es im ersten Zeichendurchgang, bevor gemessen wurde: dann
-    /// gelten die zwei Spalten, mit denen die Vorlage ohne Medienabfrage anfängt.
+    /// **Die Schwellen stehen in ``Kachelraster``** - samt der Begründung, warum die Breite
+    /// des Kachelfelds gemessen wird und nicht die des Fensters. Hier bleibt nur, welche drei
+    /// Zahlen diese Seite staffelt; ``Kachelfeld`` nimmt die Staffelung inzwischen selbst und
+    /// ruft diese Funktion nicht mehr.
     public static func spalten(breite: Double) -> Int {
-        guard breite.isFinite, breite > 0 else { return 2 }
-        if breite >= 1280 - 32 { return 7 }
-        if breite >= 768 - 32 { return 4 }
-        return 2
+        raster.spalten(breite: breite)
     }
+
+    /// Die Staffelung dieser einen Seite. Die Schwellen selbst stehen in ``Kachelraster``,
+    /// weil inzwischen jedes Kachelfeld sie braucht und zwei Kopien derselben zwei Zahlen
+    /// zwei Stellen waeren, an denen die Staffelung auseinanderlaeuft.
+    public static let raster = Kachelraster(mittel: 4, breit: 7)
 
     // MARK: - Die Zellen einer Entscheidungszeile
 

@@ -443,9 +443,10 @@ private struct Feldgrund: ViewModifier {
     let geaendert: Bool
     let imFokus: Bool
 
-    /// `--focus-ring: 0 0 0 6px rgba(242,169,0,0.12)` (`tokens.css:97`): kein Weichzeichner,
-    /// sechs Punkte Stärke, außerhalb des Randes.
-    private static let ringstaerke: CGFloat = 6
+    /// Stärke und Farbe des Rings stehen an ``Marken/fokusring``; hier wird nur gezeichnet.
+    /// Beide Zahlen standen in dieser Datei, und ein Ring, dessen Stärke nur eine Seite kennt,
+    /// ist auf der zweiten Seite ein anderer Ring.
+    private static let ringstaerke = CGFloat(Marken.fokusring.staerke)
 
     func body(content: Content) -> some View {
         content
@@ -468,7 +469,7 @@ private struct Feldgrund: ViewModifier {
             RoundedRectangle(
                 cornerRadius: CGFloat(Marken.radius1) + Self.ringstaerke, style: .continuous
             )
-            .strokeBorder(Farbe.amber.opacity(0.12), lineWidth: Self.ringstaerke)
+            .strokeBorder(Farbe.fokusring, lineWidth: Self.ringstaerke)
             .padding(-Self.ringstaerke)
         }
     }

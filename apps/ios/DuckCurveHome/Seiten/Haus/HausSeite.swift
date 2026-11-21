@@ -263,6 +263,10 @@ struct HausSeite: View {
     /// **Sie gehören in die Kopfzeile** (`HouseReport.tsx:219-248`, der `right`-Platz der
     /// Hülle). Das Gerippe der App hat dafür keinen Platz; hier stehen sie als eigene Zeile
     /// über der Bühne, in derselben Gestalt: gesperrte Großschrift, das Gewählte in Bernstein.
+    ///
+    /// **Die Kapselform steht nicht mehr hier.** Diese Datei hatte sie als eigene Funktion
+    /// `pillen` nachgebaut, weil ``Ansichtswahl`` nur eine Form kannte; seit dem 21.11.2026
+    /// ist sie dort ``Ansichtswahl/Form/hausGruppe`` und kommt aus `globals.css:474-476`.
     private var werkzeuge: some View {
         HStack(spacing: 6) {
             // **Der Kicker steht in der Hülle und damit in beiden Ansichten**
@@ -271,13 +275,18 @@ struct HausSeite: View {
             // anfängt, stand also nirgends, woher der Plan kommt.
             herkunft
             Spacer(minLength: 0)
-            pillen(
-                [Ansicht(weg: "liste", name: "Liste"), Ansicht(weg: "modell", name: "Modell")],
-                aktiv: ansicht.rawValue
-            ) { a in ansicht = Ansichtswahlart(rawValue: a) ?? .liste }
+            Ansichtswahl(
+                ansichten: [
+                    Ansicht(weg: "liste", name: "Liste"), Ansicht(weg: "modell", name: "Modell"),
+                ],
+                aktiv: Ansicht(weg: ansicht.rawValue, name: ""),
+                form: .hausGruppe
+            ) { a in ansicht = Ansichtswahlart(rawValue: a.weg) ?? .liste }
             if hausplan?.plan != nil {
-                pillen(deckwahl, aktiv: deck) { a in
-                    deck = a
+                Ansichtswahl(
+                    ansichten: deckwahl, aktiv: Ansicht(weg: deck, name: ""), form: .hausGruppe
+                ) { a in
+                    deck = a.weg
                     deckGewaehlt = true
                 }
             }
@@ -291,30 +300,6 @@ struct HausSeite: View {
         let decks = hausplan?.plan?.decks ?? []
         guard decks.count > 1 else { return [Ansicht(weg: "", name: "Haus")] }
         return [Ansicht(weg: "", name: "Alle")] + decks.map { Ansicht(weg: $0.key, name: $0.name) }
-    }
-
-    private func pillen(
-        _ ansichten: [Ansicht], aktiv: String, waehle: @escaping (String) -> Void
-    ) -> some View {
-        HStack(spacing: 0) {
-            ForEach(ansichten) { a in
-                let an = a.weg == aktiv
-                Button { if !an { waehle(a.weg) } } label: {
-                    Text(a.name.uppercased())
-                        .font(Schrift.mono(10.5))
-                        .kerning(1.3)
-                        .foregroundStyle(an ? Farbe.petrol : Farbe.text2)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(an ? Farbe.amber : .clear, in: Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(an ? [.isButton, .isSelected] : .isButton)
-            }
-        }
-        .padding(3)
-        .background(Farbe.flaeche1.opacity(0.72), in: Capsule())
-        .overlay(Capsule().strokeBorder(Farbe.linie2, lineWidth: 1))
     }
 
     /// „KALT ▬▬ WARM · GELB: UNTER ZIEL · TIPPEN: RAUM“ (`HouseReport.tsx:288-294`).

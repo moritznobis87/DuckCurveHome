@@ -13,8 +13,12 @@ import SwiftUI
 struct Quotenbild: View {
     let bild: Wirkungsbild
     /// Die Farbe der Kartenfläche. Der Ring um den Punkt hält ihn vom Balken ab, und dafür
-    /// muss er die Farbe haben, auf der er liegt - am Telefon eine andere als an der Wand.
-    var ringfarbe: Color = Farbe.flaeche1
+    /// muss er die Farbe haben, auf der er liegt.
+    ///
+    /// **Der Wert kommt nicht mehr von draussen.** Die Wirkungsseite gab ihn in zwei Zweigen
+    /// mit - ``Farbe/flaeche2`` am Telefon, ``Farbe/flaeche1`` an der Wand -, weil ``Karte``
+    /// zwei Flächen hatte. Sie hat eine: `--surface-2` (`globals.css:72`).
+    var ringfarbe: Color = Farbe.flaeche2
 
     @Environment(\.horizontalSizeClass) private var breite
     private var schmal: Bool { breite == .compact }
@@ -497,7 +501,8 @@ struct Antwortfaecher: View {
 ///
 /// **Hover gibt es in der App nicht.** Die Vorlage legt der Zeile unter dem Zeiger einen Grund
 /// unter und hellt ihr Ergebniswort auf (`globals.css:664`, `:668`); beides hat in SwiftUI kein
-/// Gegenstück. Der übliche Weg im Haus - der sichtbare Verweis in Bernstein mit „›“
+/// Gegenstück. Den Grund trägt jetzt ``Farbe/zeileGedrueckt`` - hier stand ``Farbe/linie1``,
+/// und das ist eine Haarlinie und um zwei Drittel zu kräftig für eine Zeile unter dem Finger. Der übliche Weg im Haus - der sichtbare Verweis in Bernstein mit „›“
 /// (`Karte.swift:254-257`) - wäre bei achtzig Zeilen achtzigmal Lärm. Bleibt der Druckzustand,
 /// und der Satz im Kartenkopf, den die Vorlage ohnehin schreibt (`Wirkung.tsx:235`).
 ///
@@ -509,7 +514,7 @@ private struct Rasterzeilenstil: ButtonStyle {
         configuration.label
             .padding(.vertical, 3)
             .padding(.horizontal, 6)
-            .background(configuration.isPressed ? Farbe.linie1 : Color.clear)
+            .background(configuration.isPressed ? Farbe.zeileGedrueckt : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
             .contentShape(Rectangle())
     }

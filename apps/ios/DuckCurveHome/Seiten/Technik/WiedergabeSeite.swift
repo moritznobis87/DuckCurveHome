@@ -94,11 +94,7 @@ struct WiedergabeSeite: View {
     /// Vormittag fehlt, aus wie ein ruhiger Vormittag.
     private var kopfzahl: AnyView? {
         guard let b = bild, b.erwartet > 0 || b.anzahl > 0 else { return nil }
-        return AnyView(
-            Text(b.kopfzahl)
-                .font(Schrift.zahlKlein)
-                .foregroundStyle(Farbe.text3)
-                .multilineTextAlignment(.trailing))
+        return Kartenhinweis.beiwerk(b.kopfzahl, mono: true)
     }
 
     // MARK: - Tageswahl und Schrittweite

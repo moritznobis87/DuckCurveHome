@@ -62,7 +62,9 @@ struct BetriebSeite: View {
         if let fehler {
             Stoerung(fehler: fehler) { Task { await lade() } }
         }
-        Kachelfeld(kacheln: Betriebsbild.kacheln(b).map(Kacheldaten.init))
+        // `.kpi-handy`: die Werte sind Spannen, und die Vorlage gibt ihnen am Telefon eine
+        // Stufe weniger (`handy.css:381-382`).
+        Kachelfeld(kacheln: Betriebsbild.kacheln(b).map(Kacheldaten.init), spannen: true)
         auszaehlung(b)
         if Betriebsbild.lief(b) {
             // **Lief sie nicht, fallen alle vier Diagramme weg** (`Betrieb.tsx:48`, `:91`):

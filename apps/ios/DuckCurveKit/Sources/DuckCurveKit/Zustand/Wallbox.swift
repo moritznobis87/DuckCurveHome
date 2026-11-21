@@ -23,11 +23,10 @@ public enum Wallbox {
     /// zusammenrechnet. In der Vorlage steht sie dreimal, aber nie als Kachel: als Hinweis
     /// unter „Geladen“, im Kopf der Ladevorgangskarte und als Zeile des Spannenstreifens.
     ///
-    /// **Der Ton `ember` der Vorlage hat im Kern kein Gegenstück.** ``Kennzahl/Ton`` kennt
-    /// kein Alarmrot, und die Zuordnung Ton zu Farbe liegt in einer Datei, die dieser Umbau
-    /// nicht ändern darf. `.glut` ist der nächstliegende vorhandene Ton – warm und von
-    /// `bernstein` unterscheidbar –, damit „Aus dem Netz“ und „Bezahlt“ wenigstens in
-    /// derselben Farbfamilie stehen wie in der Vorlage.
+    /// **„Aus dem Netz“ und „Bezahlt“ tragen den Alarmton** (`EvReport.tsx:41-42`, beide
+    /// `tone="ember"`). Sie standen auf ``Kennzahl/Ton/glut``, weil der Kern damals kein
+    /// Alarmrot kannte; jetzt gibt es ``Kennzahl/Ton/alarm``, und `glut` war hier nicht nur
+    /// ungenau, sondern falsch: `glut` ist die Wärmepumpe, und die Wallboxseite zeigt keine.
     public static func kacheln(_ b: EvReportOut) -> [Kennzahl] {
         let t = b.summary.totals
         return [
@@ -39,10 +38,10 @@ public enum Wallbox {
                 dazu: herkunftssatz(t), ton: .bernstein),
             Kennzahl(
                 wort: "Aus dem Netz", wert: Formate.zahl(t.evGridKwh, stellen: 1), einheit: "kWh",
-                dazu: netzsatz(t), ton: .glut),
+                dazu: netzsatz(t), ton: .alarm),
             Kennzahl(
                 wort: "Bezahlt", wert: Formate.euro(t.evCostEur),
-                dazu: "Netzanteil × Strompreis", ton: .glut),
+                dazu: "Netzanteil × Strompreis", ton: .alarm),
             Kennzahl(
                 wort: "Entgangene Vergütung", wert: Formate.euro(t.evOpportunityEur),
                 dazu: "nicht eingespeister PV-Strom", ton: .gedaempft),
@@ -218,7 +217,9 @@ public enum Wallbox {
         return [
             reihe("Geladen · kWh", .nebel) { geladenKurz($0.summary.totals) },
             reihe("Sonnenanteil", .bernstein) { Formate.prozent(sonnenanteil($0.summary.totals)) },
-            reihe("Bezahlt", .glut) { Formate.euro($0.summary.totals.evCostEur) },
+            // `EvReport.tsx:97` traegt hier dasselbe `ember` wie die Kachel darueber. Zwei
+            // Toene fuer dieselbe Zahl auf derselben Seite waeren zwei Aussagen.
+            reihe("Bezahlt", .alarm) { Formate.euro($0.summary.totals.evCostEur) },
             reihe("Ladevorgänge", .normal) { String($0.sessions.count) },
         ]
     }

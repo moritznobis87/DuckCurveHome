@@ -20,7 +20,6 @@ import SwiftUI
 struct HeizkreiseSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
-    @Environment(\.horizontalSizeClass) private var breite
 
     /// Die Istwerte neben dem Tagesverlauf.
     ///
@@ -31,16 +30,28 @@ struct HeizkreiseSeite: View {
     @State private var live: RoomsLiveOut?
     @State private var fehlerLive: ApiFehler?
 
-    private var schmal: Bool { breite == .compact }
-
+    /// **Das Fehlerband der Istwerte haengt am Gerippe und nicht am Inhalt.** Es stand bis
+    /// hierher in ``seiteninhalt(_:anker:heute:)``, und der wird nur gebaut, wenn der
+    /// Tagesverlauf da ist: scheiterten beide Abfragen, war von den zwei Nachrichten nur eine
+    /// zu sehen. ``Berichtsseite/nebenfehler`` zeigt es neben allem, was dasteht - so wie die
+    /// Vorlage (`HeatOverview.tsx:138`).
+    ///
+    /// Der Knopf ist ein Zugewinn gegenueber dem Fehlerband der Vorlage
+    /// (`ReportShell.tsx:147-153`, dort ohne), und er bleibt: am Telefon ist ein Neuladen der
+    /// Seite teurer als ein Tippen.
     var body: some View {
         let z = wegweiser.zeitraum(jetzt: haus.jetzt)
         let heute = z.anker == haus.heute
-        Berichtsseite { zeitraum, api in
-            try await api.raeumeTag(zeitraum.anker, schrittMin: 15)
-        } inhalt: { verlauf in
-            seiteninhalt(verlauf, anker: z.anker, heute: heute)
-        }
+        Berichtsseite(
+            hole: { zeitraum, api in
+                try await api.raeumeTag(zeitraum.anker, schrittMin: 15)
+            },
+            inhalt: { verlauf in
+                seiteninhalt(verlauf, anker: z.anker, heute: heute)
+            },
+            nebenfehler: fehlerLive,
+            nebenfehlerErneut: { Task { await holeLive(heute: heute) } }
+        )
         .task(id: z.anker) { await holeLive(heute: heute) }
     }
 
@@ -54,12 +65,6 @@ struct HeizkreiseSeite: View {
         // Karte, trägt die Tabelle und bedingt den Namenshinweis. Zweimal gerechnet wäre
         // zweimal die Gelegenheit, es verschieden zu tun.
         let zeilen = Raumabweichung.tabellenzeilen(live: live, tag: verlauf, istHeute: heute)
-        if let f = fehlerLive {
-            // Der Knopf ist ein Zugewinn gegenüber dem Fehlerband der Vorlage
-            // (`ReportShell.tsx:147-153`, dort ohne), und er bleibt: am Telefon ist ein
-            // Neuladen der Seite teurer als ein Tippen.
-            Stoerung(fehler: f) { Task { await holeLive(heute: heute) } }
-        }
         // **Räume ohne Namen** (`RoomsReport.tsx:431-436`): die Brücke schickt die
         // Namensliste als eigene Meldung; bis dahin stehen die Kennungen da, und das
         // gehört dazugesagt. Die Bedingung hängt an den Zeilen und nicht an der Tagesreihe –
@@ -110,11 +115,7 @@ struct HeizkreiseSeite: View {
     private func matrixkarte(_ verlauf: RoomHistoryOut, anker: String) -> some View {
         Karte(
             kicker: "Abweichung im Tagesverlauf",
-            beiwerk: AnyView(
-                Text(Self.matrixsatz)
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3)
-            )
+            beiwerk: Kartenhinweis.beiwerk(Self.matrixsatz)
         ) {
             Abweichungsmatrix(verlauf: verlauf, bisStelle: bisStelle(verlauf, anker: anker))
         }
@@ -143,24 +144,25 @@ struct HeizkreiseSeite: View {
     /// mit vier anderen Spalten; ein Mittel über einen Tag sagt aber nichts darüber, welcher
     /// Raum gerade abfällt – und genau das ist die Frage dieser Seite.
     ///
-    /// **Am Telefon vier Spalten, und zwar diese vier.** `handy.css:376-379` blendet Etage,
+    /// **Am Telefon vier Spalten, und zwar diese vier.** `handy.css:377-379` blendet Etage,
     /// Ventil und Kreise aus (`display: none`) und lässt Raum, Ist, Ziel und Abweichung
     /// nebeneinander stehen; die dritte Zahl ist die Differenz der beiden anderen und gehört
-    /// daneben. Darum stellt diese Seite nach Breite zwei Spaltenlisten auf, statt eine
-    /// umzusortieren: ``Tabelle/immerSichtbar`` hält die **ersten** n Spalten fest
-    /// (`Bericht.swift:256-258`), und eine Liste, die beides können müsste, hätte die Etage
-    /// auch an der Wand nach hinten geschoben.
+    /// daneben.
+    ///
+    /// **Eine Spaltenliste und nicht zwei.** Hier standen zwei, nach Breite ausgewählt, weil
+    /// ``Tabelle/immerSichtbar`` die **ersten** n Spalten festhält und die Etage an zweiter
+    /// Stelle steht. Zwei Beschreibungen derselben Tabelle sind eine zu viel: an einer von
+    /// beiden wird die nächste Spalte vergessen. ``Tabelle/festeSpalten`` nennt jetzt die
+    /// Nummern, genau wie `handy.css` die Spalten nennt, die es ausblendet - und der Kopf über
+    /// der Namensspalte heißt „Raum“ wie in der Vorlage (`RoomsReport.tsx:519`).
     private func raumtabelle(_ zeilen: [Raumzeile]) -> some View {
         Tabelle(
             zeilennamen: zeilen.map(\.name),
-            spalten: schmal ? handyspalten(zeilen) : vollespalten(zeilen),
-            immerSichtbar: 3
+            spalten: vollespalten(zeilen),
+            namenskopf: "Raum",
+            // Ist, Ziel, Abweichung - die Stellen 1 bis 3 in ``vollespalten(_:)``.
+            festeSpalten: [1, 2, 3]
         )
-    }
-
-    /// Die vier Spalten des Telefons: Raum (als Zeilenname), Ist, Ziel, Abweichung.
-    private func handyspalten(_ zeilen: [Raumzeile]) -> [Tabelle.Spalte] {
-        [istspalte(zeilen), zielspalte(zeilen), abweichungsspalte(zeilen)]
     }
 
     /// Alle sieben Spalten in der Reihenfolge der Vorlage.
@@ -171,12 +173,14 @@ struct HeizkreiseSeite: View {
         ]
     }
 
-    /// Die Etage an zweiter Stelle, und leiser als die Zahlen (`RoomsReport.tsx:535`: `text-3`).
-    /// Sie ist eine Angabe der Anlage und keine Messung.
+    /// Die Etage an zweiter Stelle - **links, in Satzschrift und leiser als die Zahlen**
+    /// (`RoomsReport.tsx:520`, `:535`: der Kopf ohne `text-right`, die Zelle ohne `mono` und in
+    /// `text-3`). Sie ist eine Angabe der Anlage und keine Messung.
+    ///
+    /// Die Farbe stand hier als Liste je Zeile; sie ist jetzt die Vorgabe einer linksbündigen
+    /// Spalte und muss nicht zweimal gesagt werden.
     private func etagenspalte(_ zeilen: [Raumzeile]) -> Tabelle.Spalte {
-        .init(
-            name: "Etage", zellen: zeilen.map(\.etage),
-            farben: zeilen.map { _ -> Color? in Farbe.text3 })
+        .init(name: "Etage", zellen: zeilen.map(\.etage), linksbuendig: true)
     }
 
     private func istspalte(_ zeilen: [Raumzeile]) -> Tabelle.Spalte {
@@ -191,7 +195,7 @@ struct HeizkreiseSeite: View {
     ///
     /// Hier stand die Abweichung in der Farbe ihrer Stufe. Das ist nicht nur ein Unterschied
     /// zur Vorlage, sondern schlecht zu lesen: „am Ziel“ ist die häufigste Zeile, und
-    /// `abwNull` `#3A5560` auf der Kartenfläche `#0F2E3D` ergibt rund 1,8:1
+    /// `abwNull` `#3A5560` auf der Kartenfläche `#123544` ergibt rund 1,6:1
     /// (`Marken.swift:148`, `:28`). Die fünf Stufen sind in der Vorlage Flächenfarben der
     /// Matrix und keine Schriftfarben – dort tragen sie, weil eine Fläche Farbe aushält. Wer
     /// die Abweichung farbig sehen will, liest die Karte darüber.
@@ -247,8 +251,11 @@ struct HeizkreiseSeite: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// `max-w-[90ch]` der Vorlage (`ReportShell.tsx:144`), auf 11,5 Punkte gerechnet.
-    private static let lesebreite: CGFloat = 560
+    /// `max-w-[90ch]` der Vorlage - die Rechnung steht an ``Marken/lesebreite``.
+    ///
+    /// Hier stand 560, auf der Datenseite ebenfalls: dieselbe Zahl zweimal von Hand, und beide
+    /// Male rund zehn Prozent zu schmal für 90 Zeichen in IBM Plex Sans.
+    private static let lesebreite = CGFloat(Marken.lesebreite)
     /// `max-w-[70ch]` des Absatzes in der leeren Karte (`RoomsReport.tsx:441`), auf 13 Punkte.
     private static let absatzbreite: CGFloat = 440
     /// Die halbfette Auszeichnung in einem Hinweisabsatz.

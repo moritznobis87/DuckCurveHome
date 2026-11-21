@@ -203,7 +203,7 @@ public enum Nachbetrachtungsbild {
     public static func treppenfarbe(_ s: Stufe) -> Farbwert {
         if s.key == "wirklich" { return Marken.waermepumpe }
         if s.art == .bezug { return Marken.haus }
-        if s.art == .stufe { return Farbwert(0xFFFFFF, deckung: 0.62) }
+        if s.art == .stufe { return Marken.stufenbalken }
         return Marken.mist
     }
 
@@ -290,7 +290,7 @@ public enum Nachbetrachtungsbild {
     /// bekommt einen schwachen Grund, damit sie sich von „sagt nichts“ unterscheidet, das leer
     /// bleibt.
     public static func streifenfarbe(stufe: Int) -> Farbwert {
-        guard stufe >= 1 else { return Farbwert(0xFFFFFF, deckung: 0.07) }
+        guard stufe >= 1 else { return Marken.stufeNull }
         let i = min(deckungen.count, stufe) - 1
         return Marken.waermepumpe.mitDeckung(deckungen[i])
     }

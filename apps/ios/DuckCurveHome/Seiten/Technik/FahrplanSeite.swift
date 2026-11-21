@@ -22,11 +22,6 @@ struct FahrplanSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(\.horizontalSizeClass) private var breite
 
-    /// Die gemessene Breite des Kachelfelds - sie entscheidet über zwei, vier oder sieben
-    /// Spalten. Vor der ersten Messung null, und ``Fahrplanraster/spalten(breite:)`` antwortet
-    /// darauf mit den zwei Spalten, mit denen die Vorlage ohne Medienabfrage anfängt.
-    @State private var kachelbreite: CGFloat = 0
-
     private var schmal: Bool { breite == .compact }
 
     var body: some View {
@@ -61,25 +56,20 @@ struct FahrplanSeite: View {
     /// ``Kachelfeld`` zerlegt in Zeilen fester Laenge unabhaengig von der Breite: die sechs
     /// Kacheln hinter der fuehrenden standen auf 390 Punkten zu vier in einer Reihe. Die obere
     /// Stufe fehlte ganz.
+    ///
+    /// **Gemessen wird in ``Kachelfeld``.** Dafuer standen hier ein `@State` und ein
+    /// `GeometryReader` im Hintergrund der Karte - ein Messaufbau in einer Seite, die davon
+    /// nichts wissen will, und der erste von inzwischen mehreren. Die Staffelung selbst steht
+    /// in ``Fahrplanraster/raster``, also im Kern.
+    ///
+    /// **Die Werte sind Spannen** („2,8 bis 3,6“), und die Vorlage gibt ihnen am Telefon eine
+    /// Stufe weniger (`handy.css:381-382`, `.kpi-handy`).
     private func kopf(_ p: PlanOut?) -> some View {
         Kachelfeld(
             kacheln: Fahrplankacheln.kacheln(p).map(Kacheldaten.init),
-            spalten: Fahrplanraster.spalten(breite: Double(kachelbreite))
+            spannen: true,
+            staffelung: Fahrplanraster.raster
         )
-        // **Die Breite wird gemessen und nicht erraten.** `horizontalSizeClass` kennt nur
-        // „schmal“ und „breit“ und kann die obere Stufe der Vorlage nicht treffen - zwischen
-        // einem iPad hochkant und einem quer liegt sie. Der Leser steht im Hintergrund, weil
-        // eine Flaeche dort die Groesse ihres Vordergrunds annimmt und damit nichts an der
-        // Anordnung aendert; `GeometryReader` als Huelle wuerde die Hoehe des Kachelfelds
-        // auffressen.
-        .background {
-            GeometryReader { raum in
-                Color.clear
-                    .onChange(of: raum.size.width, initial: true) { _, neu in
-                        kachelbreite = neu
-                    }
-            }
-        }
     }
 
     // MARK: - Die Karte „Horizont“
@@ -141,16 +131,14 @@ struct FahrplanSeite: View {
     }
 
     /// „heute 00:00 bis übermorgen 00:00 · k1“ in Zahlenschrift.
+    ///
+    /// Groesse und Ausrichtung stehen in ``Kartenhinweis`` und ``Karte/beiwerkzeile(_:)``; hier
+    /// stand beides noch einmal, samt der Umschaltung auf 13 Punkte am Telefon.
     private func horizontbeiwerk(_ p: PlanOut?) -> AnyView? {
         guard let p else { return nil }
         let spanne = "\(Formate.tagUndUhr(iso: p.horizonStart, jetzt: haus.jetzt)) bis "
             + "\(Formate.tagUndUhr(iso: p.horizonEnd, jetzt: haus.jetzt)) · \(p.planner)"
-        return AnyView(
-            Text(spanne)
-                .font(schmal ? Schrift.mono(13) : Schrift.zahlKlein)
-                .foregroundStyle(Farbe.text3)
-                .multilineTextAlignment(.trailing)
-        )
+        return Kartenhinweis.beiwerk(spanne, mono: true)
     }
 
     // MARK: - Die Karte „Die Entscheidungen“
@@ -164,28 +152,32 @@ struct FahrplanSeite: View {
             Planauswahl.entscheidungen(p?.intervals ?? []), jetzt: haus.jetzt)
         return Karte(
             kicker: "Die Entscheidungen",
-            beiwerk: AnyView(
-                Text(Fahrplanworte.entscheidungenDazu)
-                    .font(schmal ? Schrift.sans(13) : Schrift.sans(12))
-                    .foregroundStyle(Farbe.text3)
-                    .multilineTextAlignment(.trailing))
+            beiwerk: Kartenhinweis.beiwerk(Fahrplanworte.entscheidungenDazu)
         ) {
             if zeilen.isEmpty {
                 Text(Fahrplanworte.ohnePreise)
                     .font(Schrift.klein).foregroundStyle(Farbe.text3)
-            } else if schmal {
-                bloecke(zeilen)
             } else {
                 tabelle(zeilen)
             }
         }
     }
 
-    /// Am iPad die sieben Spalten nebeneinander, im gemeinsamen Gerippe aller Berichtsseiten.
+    /// Die sieben Spalten im gemeinsamen Gerippe aller Berichtsseiten - am iPad nebeneinander,
+    /// am Telefon je Zeile als Raster.
     ///
     /// **Drei Spalten tragen Farbe** (`Fahrplan.tsx:715-721`): Puffer, Wärmepumpe und Ofen
     /// sagen dasselbe wie die Streifen der Zeichnung, und sie sollen es in derselben Sprache
     /// sagen.
+    ///
+    /// **Die Blockfassung ist hergezogen, nicht gebaut.** Hier standen `bloecke(_:)` und
+    /// `block(_:)` - das Raster aus `handy.css:319-329` von Hand, weil ``Tabelle`` damals
+    /// gesperrt war. Jetzt steht es dort (``Tabelle/Handyfassung/block``), und zwar fuer alle
+    /// vier Tabellen, die die Vorlage so umbaut. „Spitze“ ist das Zustandswort, „Fuss“ die
+    /// Begruendung (`handy.css:323`, `:329`).
+    ///
+    /// **„Ofen brennt“ steht nur am Telefon so da** (`handy.css:328`: `::before`). Das Wort
+    /// kommt aus dem Kern, damit es nicht in zwei Fassungen verschieden heisst.
     private func tabelle(_ zeilen: [Fahrplanraster.Entscheidungszeile]) -> some View {
         Tabelle(
             // „03:15“ allein steht im Horizont zweimal: er reicht ueber zwei Tage.
@@ -201,82 +193,17 @@ struct FahrplanSeite: View {
                     farben: zeilen.map { rollenfarbe($0.zustandsrolle) }),
                 .init(
                     name: Fahrplanraster.spaltennamen[5], zellen: zeilen.map(\.ofen),
-                    farben: zeilen.map { rollenfarbe($0.ofenrolle) }),
-                .init(name: Fahrplanraster.spaltennamen[6], zellen: zeilen.map(\.warum)),
-            ]
+                    farben: zeilen.map { rollenfarbe($0.ofenrolle) },
+                    handyzellen: zeilen.map(\.ofenMitWort)),
+                // Die Begruendung ist ein Satz und kein Wert: links, in Satzschrift und leise
+                // (`Fahrplan.tsx:703`, `:722`).
+                .init(
+                    name: Fahrplanraster.spaltennamen[6], zellen: zeilen.map(\.warum),
+                    linksbuendig: true),
+            ],
+            handyfassung: .block(spitze: 3, fuss: 5),
+            namenskopf: Fahrplanraster.spaltennamen[0]
         )
-    }
-
-    /// Am Telefon je Zeile ein Block, in dem **alle sieben Werte gleichzeitig** stehen.
-    ///
-    /// **Warum nicht die Liste des Gerippes.** ``Tabelle`` zeigt am Telefon eine Spalte,
-    /// umgeschaltet über eine Pillenreihe - zu sehen waren Zeit und Preis, und Bedarf, Puffer,
-    /// Zustandswort, Ofen und die Begründung waren weg, bis man tippt. Die Karte heißt „die
-    /// teuersten und die billigsten Viertelstunden, **mit Begründung**“, und die Begründung war
-    /// genau das, was dort nicht stand.
-    ///
-    /// Die Vorlage baut dieselbe Tabelle am Telefon zu einem Raster aus vier Spalten und drei
-    /// Zeilen um (`handy.css:319-329`): oben die Zeit über drei Spalten und rechts das
-    /// Zustandswort, darunter Preis, Bedarf und Puffer und rechts der Ofen mit dem Wort „Ofen“
-    /// vor sich, darunter die Begründung über die ganze Breite und umbrechend. Jede Zeile ist
-    /// dort ein eigenes Raster, also gibt es keine Spalten über Zeilen hinweg - drei `HStack`
-    /// sind dasselbe.
-    ///
-    /// **Dieselbe Fassung bräuchten `.kosten-tabelle`, `.nb-tabelle` und `.fenster-tabelle`**
-    /// (`handy.css:305`). Sie gehört damit in ``Tabelle`` und nicht in diese Seite; der
-    /// Baustein ist in dieser Runde gesperrt, und der Wunsch steht im Bericht.
-    private func bloecke(_ zeilen: [Fahrplanraster.Entscheidungszeile]) -> some View {
-        VStack(spacing: 0) {
-            ForEach(Array(zeilen.enumerated()), id: \.offset) { stelle, z in
-                if stelle > 0 {
-                    Divider().overlay(Farbe.linie1)
-                }
-                block(z)
-                    // `padding: 12px 0`, die erste Zeile nur `padding-top: 2px`.
-                    .padding(.top, stelle == 0 ? 2 : 12)
-                    .padding(.bottom, 12)
-            }
-        }
-    }
-
-    private func block(_ z: Fahrplanraster.Entscheidungszeile) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 14) {
-                Text(z.zeit).font(Schrift.mono(15)).foregroundStyle(Farbe.text1)
-                Spacer(minLength: 8)
-                Text(z.zustand)
-                    .font(Schrift.sans(14))
-                    .foregroundStyle(rollenfarbe(z.zustandsrolle) ?? Farbe.text1)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 14) {
-                Text(z.preis)
-                    .font(Schrift.mono(13.5))
-                    .foregroundStyle(Farbe.text1)
-                Text(z.bedarf)
-                    .font(Schrift.mono(13.5))
-                    .foregroundStyle(Farbe.text1)
-                Text(z.puffer)
-                    .font(Schrift.mono(13.5))
-                    .foregroundStyle(rollenfarbe(z.pufferrolle) ?? Farbe.text1)
-                Spacer(minLength: 8)
-                // Ohne Kopfzeile sagt „brennt“ allein in der rechten Ecke nicht, was brennt
-                // (`handy.css:328`: `::before { content: "Ofen " }`). Das Wort kommt aus dem
-                // Kern, damit es nicht in zwei Fassungen verschieden heisst.
-                Text(z.ofenMitWort)
-                    .font(Schrift.sans(13.5))
-                    .foregroundStyle(Farbe.text3)
-            }
-            // Die Begruendung ist der leiseste Teil der Zeile, nicht der lauteste:
-            // `Fahrplan.tsx:722` gibt dem siebten `td` die Klasse `text-text-3`, und
-            // `handy.css:329` aendert daran nur Lage und Zeilenhoehe (`line-height: 1.4`).
-            Text(z.warum)
-                .font(Schrift.sans(13.5))
-                .foregroundStyle(Farbe.text3)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Dieselben Farben wie im Streifen darüber - nur „frei“ und „aus“ lesbar gemacht.

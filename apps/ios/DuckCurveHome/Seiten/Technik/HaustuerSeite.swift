@@ -99,7 +99,7 @@ struct HaustuerSeite: View {
         // **Der Satz des Dienstes steht sichtbar da und nicht hinter einem Deckel.** Er ist die
         // einzige Zählung der Seite („… Ereignisse in … Tagen, davon … geöffnet.“,
         // `system.py:189-195`), und ``Methode`` ist zugeklappt, solange niemand fragt
-        // (`Seiten/Bericht.swift:526,535-537`) - dort stand er bis zum 20.11.2026 und war nicht zu
+        // (`Seiten/Bericht.swift:819,834-836`) - dort stand er bis zum 20.11.2026 und war nicht zu
         // sehen. Die Vorlage zeigt ihn immer (`DoorLog.tsx:136`) und hat auf dieser Seite
         // überhaupt keinen Methodenblock (gesucht nach `Methode` in `page.tsx` und
         // `DoorLog.tsx`: kein Treffer).

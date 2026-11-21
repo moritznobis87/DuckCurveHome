@@ -110,9 +110,13 @@ struct Alfredblatt: View {
     private func blase(_ n: Alfred.Nachricht) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if n.ausModell {
-                Text(Alfred.Texte.kiMarke)
-                    .font(Schrift.kicker)
-                    .foregroundStyle(Farbe.kicker)
+                // `.alfred-ki` (`globals.css:858`): Sans 11, 0,04 em, Großbuchstaben, in
+                // `amber-soft`. Kein Kicker - die Marke sagt, woher die Antwort kommt, und
+                // steht darum in der Farbe, die in dieser Anwendung „von der Maschine“ heißt.
+                Text(Alfred.Texte.kiMarke.uppercased())
+                    .font(Schrift.sans(11, relativeTo: .caption2))
+                    .tracking(0.44)
+                    .foregroundStyle(Farbe.amberWeich)
             }
             Text(fettgedruckt(n.inhalt))
                 .font(Schrift.text)
@@ -178,9 +182,11 @@ struct Alfredblatt: View {
 
     private var vorschlagskarte: some View {
         VStack(alignment: .leading, spacing: 8) {
+            // `.alfred-vorschlaege-liste .titel` (`globals.css:876`): Sans 12 in
+            // `amber-soft`, ohne Sperrung und ohne Großschrift. Auch das war kein Kicker.
             Text(Alfred.Texte.vorschlagTitel)
-                .font(Schrift.kicker)
-                .foregroundStyle(Farbe.kicker)
+                .font(Schrift.sans(12, relativeTo: .caption))
+                .foregroundStyle(Farbe.amberWeich)
             ForEach(Array(vorschlaege.enumerated()), id: \.offset) { _, v in
                 HStack(spacing: 10) {
                     Text(Alfred.vorschlagText(v))

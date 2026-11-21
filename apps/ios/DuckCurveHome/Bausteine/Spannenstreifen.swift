@@ -40,10 +40,7 @@ struct Spannenstreifen: View {
 
     /// „jeweils bis jetzt“ oder „jeweils bis 10.11.2026“ – rechts im Kartenkopf.
     private var hinweis: some View {
-        Text(Spannenworte.bis(anker: anker, jetzt: jetzt))
-            .font(Schrift.winzig)
-            .foregroundStyle(Farbe.text3)
-            .multilineTextAlignment(.trailing)
+        Kartenhinweis(satz: Spannenworte.bis(anker: anker, jetzt: jetzt))
     }
 
     // MARK: - Am iPad: vier Spalten

@@ -69,7 +69,10 @@ struct KennlinieSeite: View {
         if let fehlt = k.fehltDe, !fehlt.isEmpty {
             Stummhinweis(satz: fehlt)
         }
-        Kachelfeld(kacheln: Kennlinienbild.kacheln(k).map(Kacheldaten.init))
+        // `.kpi-handy`: die Werte sind Spannen, und die Vorlage gibt ihnen am Telefon eine
+        // Stufe weniger (`handy.css:381-382`).
+        Kachelfeld(
+            kacheln: Kennlinienbild.kacheln(k).map(Kacheldaten.init), spannen: true)
         if k.punkte.isEmpty, let b = k.bilanz {
             Bilanzkarte(bilanz: b)
         }
