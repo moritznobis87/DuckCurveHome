@@ -135,7 +135,18 @@ def main() -> int:
         print(f"Die pbxproj liest sich nicht: {fehler}", file=sys.stderr)
         return 1
 
-    import yaml
+    # **Spaet importiert, und mit einem Satz statt eines Rueckverfolgs.** PyYAML ist nicht in
+    # der Standardbibliothek, und das python3, das auf einem frisch eingerichteten Mac neben
+    # Xcode liegt, hat es nicht. Ohne diesen Zweig endet der Aufruf in einem
+    # ModuleNotFoundError - und zwar in jedem Skript, das diese Wache aufruft
+    # (`tools/ios-pruefen.sh`, `tools/ios-ausliefern.sh`), kurz vor der eigentlichen Arbeit.
+    try:
+        import yaml
+    except ModuleNotFoundError:
+        print("Dieser Pruefung fehlt PyYAML - damit wird project.yml gelesen.", file=sys.stderr)
+        print("Nachinstallieren:  python3 -m pip install --user pyyaml", file=sys.stderr)
+        return 1
+
     spezifikation = yaml.safe_load(open(SPEZIFIKATION, encoding="utf-8"))
     ziel_spezifikation = spezifikation["targets"]["DuckCurveHome"]
 

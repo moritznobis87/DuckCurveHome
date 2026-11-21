@@ -15,6 +15,9 @@
 # **Dieses Skript braucht einen Mac.** `xcodebuild` gibt es nur dort, und die Oberflaeche
 # uebersetzt nur dort. Alles, was ohne Mac geht, steht in `tools/ios-pruefen.sh`.
 #
+# **Und PyYAML**, weil die Wache `tools/xcodeproj-pruefen.py` project.yml damit liest. Das
+# python3 neben einem frischen Xcode hat es nicht:  python3 -m pip install --user pyyaml
+#
 # **Die Team-Kennung** kommt aus `$DEVELOPMENT_TEAM` oder aus `project.yml`. Zu finden unter
 # developer.apple.com/account -> Membership details.
 #
@@ -65,6 +68,31 @@ if [[ -z "$TEAM" ]]; then
     exit 1
 fi
 
+# **Die API-Schluessel werden hier gebaut, nicht erst vor dem Hochladen - und sie gehen an
+# beide xcodebuild-Laeufe.** `-allowProvisioningUpdates` darf ein Verteilprofil anlegen, und
+# dafuer muss sich xcodebuild bei Apple ausweisen. Auf einem Rechner, an dem niemand in Xcode
+# angemeldet ist (ein Laeufer, ein frisch eingerichteter Mac), gibt es dafuer nur diesen
+# Schluessel. Lagen die Angaben erst beim Export vor, scheiterte schon das Archivieren.
+#
+# Fehlt etwas, sagt das Skript es jetzt - und nicht nach den Minuten, die ein Archiv braucht.
+SCHLUESSEL=()
+if [[ -n "${ASC_KEY_ID:-}" && -n "${ASC_ISSUER_ID:-}" && -n "${ASC_KEY_PATH:-}" ]]; then
+    PFAD="${ASC_KEY_PATH/#\~/$HOME}"
+    if [[ ! -f "$PFAD" ]]; then
+        rot "ASC_KEY_PATH zeigt auf keine Datei: $PFAD"
+        exit 1
+    fi
+    SCHLUESSEL=(
+        -authenticationKeyID "$ASC_KEY_ID"
+        -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+        -authenticationKeyPath "$PFAD"
+    )
+elif [[ $HOCHLADEN -eq 1 ]]; then
+    rot "--hochladen braucht ASC_KEY_ID, ASC_ISSUER_ID und ASC_KEY_PATH - siehe Kopf dieses"
+    rot "Skripts. Ohne sie entsteht nur die .ipa; die schickt dann der Organizer."
+    exit 1
+fi
+
 # ------------------------------------------------------- 2. Stimmt das Projekt mit project.yml
 
 blau "1/5  Das eingecheckte Projekt gegen project.yml halten"
@@ -100,6 +128,7 @@ xcodebuild archive \
     -destination 'generic/platform=iOS' \
     -archivePath "$ARCHIV" \
     -allowProvisioningUpdates \
+    "${SCHLUESSEL[@]+"${SCHLUESSEL[@]}"}" \
     DEVELOPMENT_TEAM="$TEAM"
 gruen "Archiv liegt in apps/ios/build/"
 
@@ -132,18 +161,6 @@ cat > "$BAU/ExportOptions.plist" <<PLIST
 PLIST
 
 blau "4/5  Ausfuehren"
-SCHLUESSEL=()
-if [[ $HOCHLADEN -eq 1 ]]; then
-    : "${ASC_KEY_ID:?ASC_KEY_ID fehlt - siehe Kopf dieses Skripts}"
-    : "${ASC_ISSUER_ID:?ASC_ISSUER_ID fehlt - siehe Kopf dieses Skripts}"
-    : "${ASC_KEY_PATH:?ASC_KEY_PATH fehlt - siehe Kopf dieses Skripts}"
-    SCHLUESSEL=(
-        -authenticationKeyID "$ASC_KEY_ID"
-        -authenticationKeyIssuerID "$ASC_ISSUER_ID"
-        -authenticationKeyPath "${ASC_KEY_PATH/#\~/$HOME}"
-    )
-fi
-
 xcodebuild -exportArchive \
     -archivePath "$ARCHIV" \
     -exportOptionsPlist "$BAU/ExportOptions.plist" \

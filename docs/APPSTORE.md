@@ -29,7 +29,12 @@ danach in App Store Connect passiert.
 4. **Nur für den Weg über die Kommandozeile:** einen API-Schlüssel in App Store Connect ▸ Users
    and Access ▸ Integrations ▸ App Store Connect API ▸ Keys. Die `.p8`-Datei gibt es **einmal**
    zum Herunterladen; sie gehört nach `~/.appstoreconnect/private_keys/` und **nicht** ins
-   Repository.
+   Repository. `tools/ios-ausliefern.sh` gibt sie an **beide** `xcodebuild`-Läufe weiter, nicht
+   nur an den Upload: `-allowProvisioningUpdates` darf ein Verteilprofil anlegen, und auf einem
+   Rechner, an dem niemand in Xcode angemeldet ist, kann sich xcodebuild nur damit ausweisen.
+5. **PyYAML für das python3, das die Skripte benutzen.** `tools/xcodeproj-pruefen.py` liest
+   `project.yml` damit, und das python3 neben einem frisch eingerichteten Xcode hat es nicht:
+   `python3 -m pip install --user pyyaml`. Fehlt es, sagt die Prüfung das in einem Satz.
 
 Für eine kostenlose App braucht es keine Bankverbindung und keine Steuerangaben.
 
@@ -119,8 +124,14 @@ und in der `.app` die Berechtigungen ansehen.
 bleibt byte-identisch zu dem, was XcodeGen schreibt, und `tools/xcodeproj-pruefen.py` bleibt
 grün. Das lief auf Linux.
 
-`tools/ios-ausliefern.sh` ist **nicht** gelaufen – `xcodebuild` gibt es nur auf einem Mac, und
-dort hat es noch niemand ausprobiert. Geprüft sind nur seine Abbruchwege (kein Xcode, fehlende
-Team-Kennung, unbekanntes Argument) und die Syntax. Der erste Lauf gehört darum ohne
-`--hochladen` gemacht: dann entsteht eine `.ipa` in `apps/ios/build/export/` und es geht nichts
-zu Apple, was man nicht zurückholen kann.
+Von `tools/ios-ausliefern.sh` ist geprüft, **was es aufruft**, nicht **dass es ankommt**: mit
+einem vorgeschobenen `xcodebuild`, das nur seine Argumente ausgibt, sind die fünf Wege
+nachgemessen – ohne Schlüssel, mit Schlüsseln (die dann in beiden Aufrufen stehen),
+`--hochladen` ohne Schlüssel (bricht ab, **bevor** archiviert wird), `--hochladen` mit
+Schlüsseln (`destination: upload`), und ein Schlüsselpfad, der ins Leere zeigt.
+
+Das echte `xcodebuild` hat es nie gesehen – das gibt es nur auf einem Mac. Was dort schiefgehen
+kann, sind Signierung, Berechtigungen und die Annahme durch App Store Connect, also genau die
+Dinge, die niemand simulieren kann. Der erste Lauf gehört darum ohne `--hochladen` gemacht: dann
+entsteht eine `.ipa` in `apps/ios/build/export/` und es geht nichts zu Apple, was man nicht
+zurückholen kann.
