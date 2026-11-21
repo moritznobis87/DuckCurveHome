@@ -11,7 +11,7 @@ import Foundation
 /// nebeneinander ist der ganze Zweck der Seite; in der App fehlte das Gemessene vollständig.
 ///
 /// **Lücken bleiben Lücken.** Eine Viertelstunde ohne Messung ist `nil` und nicht null Kilowatt.
-/// Der Unterschied ist nicht Feinheit: eine Null hieße „die Anlage stand", und in der Zukunft
+/// Der Unterschied ist nicht Feinheit: eine Null hieße „die Anlage stand“, und in der Zukunft
 /// wäre sie eine Behauptung über morgen. Dasselbe beim Wärmebedarf - eine Null hieße, das Haus
 /// brauche dort keine Wärme.
 public struct Fahrplanbild: Sendable {
@@ -41,8 +41,8 @@ public struct Fahrplanbild: Sendable {
 
     /// Die vier Zustände, die `planned_hp_state` kennt, mit Wort und Balkenhöhe.
     ///
-    /// **Der Zustand trägt drei Kennzeichen, nicht eines.** Farbe, Höhe und Wort. „Angefordert"
-    /// und „gemieden" liegen farblich bei ΔE 14 und damit knapp unter dem, was zwei Flächen in
+    /// **Der Zustand trägt drei Kennzeichen, nicht eines.** Farbe, Höhe und Wort. „Angefordert“
+    /// und „gemieden“ liegen farblich bei ΔE 14 und damit knapp unter dem, was zwei Flächen in
     /// einer Zeile sicher unterscheidbar macht; Höhe und Wort schließen die Lücke.
     public static func zustand(_ z: PlanIntervalOutPlannedHpStateWahl) -> (
         wort: String, hoehe: Double, rolle: Rolle
@@ -87,7 +87,25 @@ public struct Fahrplanbild: Sendable {
     /// Plan ein negatives Preisfenster kennt - das ist eine Aussage über die Daten und keine
     /// über das Zeichnen. Sie stand in der Ansicht, zusammen mit elf festen Wörtern.
     public var legende: [Legendenstueck] {
-        var stuecke = Self.zustandslegende.map {
+        Self.legendenstuecke(negativesFenster: hatNegativesFenster)
+    }
+
+    /// Dieselbe Legende aus dem Plan allein, ohne gebautes Bild.
+    ///
+    /// **Warum es die Fassung gibt.** Ohne Intervalle zeigt die Vorlage die Horizontkarte
+    /// weiter - mit dem Satz „Noch kein Fahrplan gerechnet.“ an der Stelle der Zeichnung und
+    /// mit der **vollständigen** Legende darunter (`waerme/Fahrplan.tsx:590-640`: Der Satz
+    /// steht im `else` des Diagramms, die Legende dahinter und außerhalb). Sie ist dort kein
+    /// Beiwerk des Bildes, sondern das Verzeichnis dessen, was das Bild zeigen *würde*. Ohne
+    /// Intervalle gibt es kein ``Fahrplanbild``, und ein leeres zu bauen, nur um an die
+    /// Legende zu kommen, hieße ein Bild vorzutäuschen.
+    public static func legende(_ plan: PlanOut?) -> [Legendenstueck] {
+        legendenstuecke(
+            negativesFenster: plan?.windows.contains { $0.kind == .negative } ?? false)
+    }
+
+    private static func legendenstuecke(negativesFenster: Bool) -> [Legendenstueck] {
+        var stuecke = zustandslegende.map {
             Legendenstueck(
                 wort: "Wärmepumpe \($0.wort)", rolle: $0.rolle,
                 dick: max(3, ($0.hoehe * 10).rounded()))
@@ -102,7 +120,7 @@ public struct Fahrplanbild: Sendable {
             Legendenstueck(wort: "PV erwartet", rolle: .vorhersage, dick: 2),
             Legendenstueck(wort: "Preistief", rolle: .vorhersage, dick: 10, blass: true),
         ]
-        if hatNegativesFenster {
+        if negativesFenster {
             stuecke.append(
                 Legendenstueck(wort: "negativer Preis", rolle: .gemieden, dick: 10, blass: true))
         }
@@ -175,7 +193,7 @@ public struct Fahrplanbild: Sendable {
             return Feld(zeit: t, hoehe: z.hoehe, rolle: z.rolle)
         }
         // Nur Viertelstunden mit Messung. Eine fehlende hinterlässt eine Lücke, und das ist
-        // richtig: „nicht angefordert" und „nicht gemessen" sind zwei verschiedene Aussagen.
+        // richtig: „nicht angefordert“ und „nicht gemessen“ sind zwei verschiedene Aussagen.
         b.anforderung = iv.compactMap { i, t in
             guard let an = i.actualHpRelease else { return nil }
             return Feld(zeit: t, hoehe: an ? 1 : 0.12, rolle: an ? .angefordert : .aus)
@@ -222,7 +240,7 @@ public struct Fahrplanbild: Sendable {
 
     /// Die Untergrenze einer Achse: der kleinste Wert, abgerundet auf eine runde Stufe.
     ///
-    /// **Warum nicht null.** Die Regel „Flächen beginnen bei null" gilt, wo die Fläche die Menge
+    /// **Warum nicht null.** Die Regel „Flächen beginnen bei null“ gilt, wo die Fläche die Menge
     /// bedeutet. Der Strompreis bedeutet keine Menge, sondern einen Stand, und sein Tagesgang
     /// spielt sich zwischen 20 und 50 ct ab; von null aus gesehen ist das eine flache Welle in
     /// der oberen Hälfte. Dasselbe beim Wärmebedarf zwischen 1,5 und 4 kW.
@@ -280,11 +298,14 @@ public struct Fahrplanbild: Sendable {
                 Auskunftszeile(wort: wort, wert: wert, rolle: rolle, eingerueckt: eingerueckt))
         }
 
-        zeile("Strompreis", Formate.ct(i.priceCtKwh))
+        // **„18,4 ct“ ohne Nenner** (`Fahrplan.tsx:328`: `${de(i.price_ct_kwh, 1)} ct`). Den
+        // Nenner trägt der Flächentitel „Strompreis · ct/kWh“, und im Auskunftsfeld ist er
+        // dasselbe noch einmal.
+        zeile("Strompreis", Formate.ctKurz(i.priceCtKwh))
         zeile("PV erwartet", Formate.kwMitEinheit(i.expectedPvKw))
         if let ist = i.actualPvKw {
             zeile("PV gemessen", Formate.kwMitEinheit(ist), .pv)
-            // Vorzeichen ausgeschrieben: „+0,4" liest sich als Zahl, „0,4 mehr als erwartet"
+            // Vorzeichen ausgeschrieben: „+0,4“ liest sich als Zahl, „0,4 mehr als erwartet“
             // als Aussage, und darum geht es in dieser Zeile.
             let ab = ist - i.expectedPvKw
             let wort =
