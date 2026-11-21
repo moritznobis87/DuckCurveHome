@@ -1,0 +1,10 @@
+# Nachsehen, ob ein Update bereitsteht; das Ergebnis liest die App.
+[Unit]
+Description=Duck Curve Home - nach Updates sehen
+Requires=docker.service
+After=docker.service duckcurve.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dch pruefen

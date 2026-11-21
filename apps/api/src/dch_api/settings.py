@@ -97,6 +97,25 @@ class Settings(BaseSettings):
     # angemeldete Geraet nennt; wer will, setzt DCH_PUSH_SUBJECT.
     push_subject: str = "mailto:duck-curve-home@example.org"
 
+    # ---------------------------------------------------------------- Mitteilungen an die App
+    #
+    # Der Weg zur iOS-App laeuft ueber APNs und braucht einen Signierschluessel aus einem
+    # Apple-Developer-Konto. Das ist die einzige Stelle dieses Projekts, an der etwas von aussen
+    # beschafft werden muss, das sich nicht selbst erzeugen laesst: das VAPID-Paar fuer Web Push
+    # legt der Dienst selbst an (siehe application/push.py), einen APNs-Schluessel nicht.
+    #
+    # Fehlt einer der vier Werte, bleibt der Weg zu, Web Push laeuft unberuehrt weiter, und die
+    # App sagt auf ihrer Seite „Mitteilungen", was fehlt. Wie man ihn bekommt, steht in
+    # apps/ios/README.md.
+    #: Der Inhalt der .p8-Datei, mit echten Zeilenumbruechen.
+    apns_key_p8: str = ""
+    #: Die Schluesselkennung, zehn Zeichen (der Teil im Dateinamen: AuthKey_ABC123DEFG.p8).
+    apns_key_id: str = ""
+    #: Die Teamkennung aus dem Developer-Konto.
+    apns_team_id: str = ""
+    #: Die Bundle-Kennung der App. Muss zu project.yml passen.
+    apns_topic: str = "home.duckcurve.app"
+
     # Live-Modus
     database_url: str = Field(default="", validation_alias="DATABASE_URL")
     db_create_all: bool = False  # nur SQLite/Tests: Schema ohne Alembic anlegen
@@ -157,6 +176,27 @@ class Settings(BaseSettings):
     # Sechs Uhr, weil `forecast_evaluation` seine Tageswertung schon gegen diese Stunde rechnet. Zwei
     # verschiedene Begriffe von "der Lauf von gestern" waeren eine Fehlerquelle, die niemand findet.
     forecast_canonical_hour: int = 6
+
+    # Alfred, der Helfer in der Oberflaeche (docs/ALFRED.md).
+    #
+    # Ohne Schluessel bleibt Alfred bei den vorbereiteten Texten und das Eingabefeld erscheint gar
+    # nicht erst. Der Anbieter ist Mistral; dieselbe Form (Systemtext als erste Nachricht, Bearer)
+    # sprechen auch OpenAI und weitere, dort genuegt eine andere Adresse in DCH_ALFRED_URL.
+    alfred_anbieter: Literal["mistral", "openai"] = "mistral"
+    alfred_schluessel: str = ""
+    # Leer heisst: die Vorgabe des Anbieters (alfred.dienst.VORGABE_MODELL).
+    alfred_modell: str = ""
+    alfred_url: str = ""
+    # Zeitlimit einer einzelnen Modellanfrage in Sekunden.
+    alfred_zeitlimit_s: float = 30.0
+    # Schutz der Rechnung vor einer Schleife, kein Abrechnen: gezaehlt wird im Prozess, je Geraet.
+    alfred_fragen_pro_tag: int = 100
+    # Wie viele fruehere Wechsel eines Gespraechs mitgehen. Der Faden lebt nur im Browser.
+    alfred_verlauf_max: int = 6
+
+    # Austausch mit dem Update-Dienst des Hausgeraets (deploy/haus/dch, Abschnitt "Updates"). Leer
+    # heisst: kein Hausgeraet (Railway, Entwicklung), die App bietet keine Updates an.
+    geraet_dir: str = ""
 
     @field_validator("cors_origins", "bridge_tokens", mode="before")
     @classmethod

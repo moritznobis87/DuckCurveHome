@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Duck Curve
+Description=Startbild von Duck Curve Home (deploy/haus/README.md)
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/duckcurve
+ScriptFile=/usr/share/plymouth/themes/duckcurve/duckcurve.script

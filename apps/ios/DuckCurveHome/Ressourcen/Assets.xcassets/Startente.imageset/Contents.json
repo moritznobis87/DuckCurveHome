@@ -1,0 +1,16 @@
+{
+  "images" : [
+    {
+      "filename" : "start-ente-auf-kachel.svg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "von Hand, nur fuer Ressourcen/Startbrett.storyboard",
+    "version" : 1
+  },
+  "properties" : {
+    "preserves-vector-representation" : true,
+    "template-rendering-intent" : "original"
+  }
+}

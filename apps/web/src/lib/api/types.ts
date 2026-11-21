@@ -21,6 +21,228 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/alfred/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kann Alfred antworten?
+         * @description Liest nur Einstellungen; kein Modell, keine Kosten. Die Oberflaeche zeigt das Eingabefeld nur
+         *     bei `bereit` und nennt im Panel den Anbieter.
+         */
+        get: operations["zustand_api_v1_alfred_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alfred/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eine Frage an den Helfer
+         * @description Ohne eingerichtetes Modell `bereit=False` statt eines Fehlers; die Oberflaeche zeigt dann
+         *     ihre vorbereiteten Texte.
+         */
+        post: operations["frage_api_v1_alfred_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alfred/ask/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eine Frage an den Helfer, mit Fortschritt
+         * @description Dieselbe Frage wie POST /alfred/ask, mit Ereignissen: `schritt` je laufendem Werkzeug
+         *     (nur der Name - den Satz dazu hat die Oberflaeche), zuletzt `antwort` oder `fehler`.
+         *
+         *     POST statt EventSource, weil EventSource nur GET ohne Rumpf kann und die Hilfetexte mitgehen.
+         */
+        post: operations["frage_mit_fortschritt_api_v1_alfred_ask_stream_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alfred/rechnung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eine Stromrechnung erkennen, prüfen und zusammenfassen
+         * @description Das PDF als Rumpf (`application/pdf`), etwa per Drag-and-drop auf Alfred.
+         *
+         *     **Erst die feste Erkennung, dann das Modell.** Liest die Tibber-Pruefung das PDF, ist es eine
+         *     Tibber-Rechnung: Sie wird geprueft und abgelegt wie auf der Rechnungsseite (dieselbe Funktion,
+         *     dieselbe Ablage), ohne Sprachmodell, ohne dass etwas das Haus verlaesst und auch ohne
+         *     eingerichteten Schluessel. Die Antwort nennt die Rechnungsseite, auf der die volle Auswertung
+         *     steht.
+         *
+         *     Nur wenn sie es nicht kann, liest das Sprachmodell (andere Anbieter, `alfred/rechnung.py`):
+         *     Dann gehen nur geschwaerzte Zeilen mit Mengen, Preisen und Zeitraeumen hinaus, und gespeichert
+         *     wird nichts.
+         *
+         *     Das Ablegen einer Tibber-Rechnung ist ein Schreiben, aber keines, das ein Modell ausloest: Der
+         *     Mensch hat die Datei hineingezogen, so wie er sie auf der Rechnungsseite hochladen wuerde.
+         */
+        post: operations["rechnung_lesen_api_v1_alfred_rechnung_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alfred/zuordnung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Entitätszuordnung für ein neues Haus vorschlagen
+         * @description Aus einer eingefuegten Entitaetenliste einen gepruefen YAML-Ausschnitt fuer `sensors:`.
+         *     Schreibt nichts; die Datei liegt in Home Assistant.
+         */
+        post: operations["zuordnung_vorschlagen_api_v1_alfred_zuordnung_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Steht ein Update bereit? */
+        get: operations["update_status_api_v1_system_update_get"];
+        put?: never;
+        /**
+         * Update installieren oder jetzt pruefen
+         * @description Legt die Anfrage fuer den Update-Dienst ab und kehrt sofort zurueck (202). Den Fortschritt
+         *     liest die Oberflaeche ueber GET; waehrend des Neustarts ist die API kurz nicht erreichbar.
+         */
+        post: operations["update_anfragen_api_v1_system_update_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wie es dem Hausgerät und seinen Diensten geht */
+        get: operations["geraet_api_v1_system_geraet_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet/verlauf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Der Verlauf des Hausgeräts
+         * @description CPU, Temperatur, Speicher, Platz, SSD, Netz, Datenbank und Dienste über einen Tag, eine
+         *     Woche, einen Monat oder ein Jahr, dazu eine Prognose für den Platz. Gesammelt wird nur auf
+         *     dem Hausgerät mit Datenbank (`application/geraet_verlauf.py`).
+         */
+        get: operations["verlauf_api_v1_system_geraet_verlauf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet/aktion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Einen Handgriff auf dem Gerät anfragen
+         * @description Dienst neu starten, jetzt sichern, Protokoll holen, Gerät neu starten oder den Bericht
+         *     erneuern. Kehrt sofort zurück (202); wie es ausging, steht danach in `letzte_aktion`.
+         */
+        post: operations["aktion_api_v1_system_geraet_aktion_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet/protokoll/{dienst}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die zuletzt geholten Protokollzeilen eines Dienstes
+         * @description Liefert, was `aktion: protokoll` zuletzt geholt hat (300 Zeilen, Geheimnisse geschwärzt).
+         *     Frisch wird es nur über die Aktion; diese Abfrage liest bloß die Datei.
+         */
+        get: operations["protokoll_api_v1_system_geraet_protokoll__dienst__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/live/state": {
         parameters: {
             query?: never;
@@ -141,6 +363,52 @@ export interface paths {
         put?: never;
         /** Dieses Gerät anmelden */
         post: operations["subscribe_api_v1_push_subscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/apns/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dieses Gerät der App anmelden (APNs)
+         * @description Ein Gerät der iOS-App anmelden.
+         *
+         *     **Warum ein eigener Weg neben `/push/subscribe`.** Eine iOS-App kann Web Push nicht
+         *     empfangen; Apple lässt Mitteilungen nur über APNs zu. Die Adresse ist dort kein Endpunkt beim
+         *     Push-Dienst des Browsers, sondern ein Gerätetoken des Betriebssystems - und es gibt keine
+         *     beiden Schlüssel, denn APNs verschlüsselt selbst.
+         *
+         *     Gespeichert wird das Gerät trotzdem als Abonnement wie jedes andere. Was es unterscheidet,
+         *     steht in seiner Adresse (`apns://…`), und `PushService` sieht daran, welchen Weg eine
+         *     Mitteilung nimmt.
+         */
+        post: operations["apns_subscribe_api_v1_push_apns_subscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/apns/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dieses Gerät der App abmelden (APNs) */
+        post: operations["apns_unsubscribe_api_v1_push_apns_unsubscribe_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1359,6 +1627,101 @@ export interface components {
             /** Observed At */
             observed_at: string | null;
         };
+        /** AlfredAntwortOut */
+        AlfredAntwortOut: {
+            /** Bereit */
+            bereit: boolean;
+            /** Antwort */
+            antwort: string;
+            /** Vorschlaege */
+            vorschlaege?: components["schemas"]["AlfredVorschlagOut"][];
+        };
+        /** AlfredFrageIn */
+        AlfredFrageIn: {
+            /** Frage */
+            frage: string;
+            /**
+             * Wissen
+             * @default
+             */
+            wissen: string;
+            /** Verlauf */
+            verlauf?: components["schemas"]["AlfredWechselIn"][];
+        };
+        /**
+         * AlfredRechnungOut
+         * @description `tibber`: erkannt, geprueft und abgelegt wie auf der Rechnungsseite, ohne Sprachmodell.
+         *     `andere`: vom Sprachmodell gelesen, fest gegen die eigene Messung gehalten, nicht gespeichert.
+         */
+        AlfredRechnungOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "tibber" | "andere";
+            tibber?: components["schemas"]["TibberZusammenfassung"] | null;
+            andere?: components["schemas"]["Rechnungsergebnis"] | null;
+            /** Link */
+            link?: string | null;
+        };
+        /**
+         * AlfredVorschlagOut
+         * @description Ein Vorschlag, noch nicht ausgeführt. `art` sagt, welcher Endpunkt ihn beim Drücken ausführt:
+         *     `schalten` → POST /control/actuators/{ziel}, `sollwert` → POST /rooms/{ziel}/setpoint.
+         */
+        AlfredVorschlagOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "schalten" | "sollwert";
+            /** Ziel */
+            ziel: string | number;
+            /** Name */
+            name: string;
+            /** An */
+            an?: boolean | null;
+            /** War An */
+            war_an?: boolean | null;
+            /** Alt */
+            alt?: number | null;
+            /** Neu */
+            neu?: number | null;
+        };
+        /**
+         * AlfredWechselIn
+         * @description Ein früherer Wechsel des Gesprächs. Ungeprüfte Eingabe aus dem Browser: Begrenzt werden Rolle,
+         *     Länge und - in `AlfredFrageIn` - die Zahl; der Dienst nimmt davon nur die letzten.
+         */
+        AlfredWechselIn: {
+            /**
+             * Wer
+             * @enum {string}
+             */
+            wer: "alfred" | "nutzer";
+            /** Inhalt */
+            inhalt: string;
+        };
+        /**
+         * AlfredZuordnungIn
+         * @description Eine eingefügte Entitätenliste aus Home Assistant (Entwicklerwerkzeuge → Zustände).
+         */
+        AlfredZuordnungIn: {
+            /** Liste */
+            liste: string;
+        };
+        /**
+         * AlfredZustandOut
+         * @description Ob Alfred antworten kann, und an wen Fragen gehen (KI-Verordnung Art. 50).
+         */
+        AlfredZustandOut: {
+            /** Bereit */
+            bereit: boolean;
+            /** Anbieter */
+            anbieter?: string | null;
+            /** Modell */
+            modell?: string | null;
+        };
         /**
          * AnlageHeizkreisOut
          * @description Der Heizkreis: wie viele Räume gerade Wärme nehmen. Eine Leistung gibt es nicht; die
@@ -1566,6 +1929,99 @@ export interface components {
             tapping_since: string | null;
         };
         /**
+         * ApiSelbstOut
+         * @description Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden.
+         */
+        ApiSelbstOut: {
+            /** Version */
+            version: string;
+            /** Commit */
+            commit: string;
+            /** Modus */
+            modus: string;
+            /** Laufzeit S */
+            laufzeit_s: number;
+            /** Rss Mb */
+            rss_mb: number;
+            /** Datenbank Ok */
+            datenbank_ok?: boolean | null;
+            /** Datenbank Ms */
+            datenbank_ms?: number | null;
+            /**
+             * Datenbank De
+             * @default
+             */
+            datenbank_de: string;
+            /** Datenbank Bytes */
+            datenbank_bytes?: number | null;
+            /**
+             * Bridge Online
+             * @default false
+             */
+            bridge_online: boolean;
+            /**
+             * Verbindung De
+             * @default
+             */
+            verbindung_de: string;
+            /** Quellen */
+            quellen?: components["schemas"]["SourceStatusOut"][];
+            /** Befunde */
+            befunde?: components["schemas"]["WatchFindingOut"][];
+            /**
+             * Sse Clients
+             * @default 0
+             */
+            sse_clients: number;
+            /**
+             * Alfred Eingerichtet
+             * @default false
+             */
+            alfred_eingerichtet: boolean;
+            /**
+             * Energy Rebuild
+             * @default
+             */
+            energy_rebuild: string;
+            /**
+             * Ampel
+             * @default gut
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /**
+         * ApnsSubscribeIn
+         * @description Ein Gerät der iOS-App anmelden.
+         *
+         *     Derselbe Zuschnitt wie `PushSubscribeIn`, nur dass die Adresse ein Gerätetoken ist und die
+         *     beiden Schlüssel fehlen: APNs verschlüsselt selbst.
+         */
+        ApnsSubscribeIn: {
+            /** Token */
+            token: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Sandbox
+             * @default false
+             */
+            sandbox: boolean;
+        };
+        /** ApnsUnsubscribeIn */
+        ApnsUnsubscribeIn: {
+            /** Token */
+            token: string;
+        };
+        /**
          * AutoProfile
          * @enum {string}
          */
@@ -1692,6 +2148,15 @@ export interface components {
             duration_min: number;
             /** Reserve Soc */
             reserve_soc?: number | null;
+        };
+        /** Befund */
+        Befund: {
+            /** Stufe */
+            stufe: string;
+            /** Titel */
+            titel: string;
+            /** Text */
+            text: string;
         };
         /**
          * BetriebHeizkurveOut
@@ -3021,6 +3486,525 @@ export interface components {
             energy_actual_kwh: number;
             /** Energy Error Pct */
             energy_error_pct: number | null;
+        };
+        /**
+         * GeleseneRechnung
+         * @description Was das Modell gelesen hat, nach Pruefung der Typen.
+         */
+        GeleseneRechnung: {
+            /** Anbieter */
+            anbieter?: string | null;
+            /** Von */
+            von?: string | null;
+            /** Bis */
+            bis?: string | null;
+            /** Kwh */
+            kwh?: number | null;
+            /** Arbeitspreis Ct Kwh */
+            arbeitspreis_ct_kwh?: number | null;
+            /** Grundpreis Eur Monat */
+            grundpreis_eur_monat?: number | null;
+            /** Brutto Eur */
+            brutto_eur?: number | null;
+            /** Netto Eur */
+            netto_eur?: number | null;
+        };
+        /** GeraetAktionIn */
+        GeraetAktionIn: {
+            /**
+             * Aktion
+             * @enum {string}
+             */
+            aktion: "neustart" | "sichern" | "protokoll" | "geraet_neustart" | "zustand";
+            /** Dienst */
+            dienst?: string | null;
+        };
+        /**
+         * GeraetAktionOut
+         * @description Die zuletzt aus der App angefragte Aktion und wie sie ausging.
+         */
+        GeraetAktionOut: {
+            /** Aktion */
+            aktion: string;
+            /** Dienst */
+            dienst?: string | null;
+            /** Zustand */
+            zustand: string;
+            /**
+             * Meldung
+             * @default
+             */
+            meldung: string;
+            /** Von */
+            von?: string | null;
+            /** Begonnen Am */
+            begonnen_am?: string | null;
+            /** Beendet Am */
+            beendet_am?: string | null;
+        };
+        /**
+         * GeraetDienstOut
+         * @description Ein Container des Geräts (postgres, api, web, caddy, cloudflared).
+         */
+        GeraetDienstOut: {
+            /** Name */
+            name: string;
+            /** Zustand */
+            zustand: string;
+            /** Gesundheit */
+            gesundheit?: string | null;
+            /** Pruefung */
+            pruefung?: string | null;
+            /** Pruefung Fehlschlaege */
+            pruefung_fehlschlaege?: number | null;
+            /** Gestartet Am */
+            gestartet_am?: string | null;
+            /**
+             * Neustarts
+             * @default 0
+             */
+            neustarts: number;
+            /** Exit Code */
+            exit_code?: number | null;
+            /** Image */
+            image?: string | null;
+            /** Revision */
+            revision?: string | null;
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Speicher Mb */
+            speicher_mb?: number | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /** GeraetDockerPlatzOut */
+        GeraetDockerPlatzOut: {
+            /** Images Bytes */
+            images_bytes?: number | null;
+            /** Container Bytes */
+            container_bytes?: number | null;
+            /** Volumes Bytes */
+            volumes_bytes?: number | null;
+            /** Cache Bytes */
+            cache_bytes?: number | null;
+        };
+        /**
+         * GeraetEinheitOut
+         * @description Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht).
+         */
+        GeraetEinheitOut: {
+            /** Name */
+            name: string;
+            /**
+             * Beschreibung
+             * @default
+             */
+            beschreibung: string;
+            /**
+             * Aktiv
+             * @default
+             */
+            aktiv: string;
+            /**
+             * Unterzustand
+             * @default
+             */
+            unterzustand: string;
+            /**
+             * Eingeschaltet
+             * @default false
+             */
+            eingeschaltet: boolean;
+            /** Naechster Lauf */
+            naechster_lauf?: string | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /** GeraetNetzOut */
+        GeraetNetzOut: {
+            /** Schnittstelle */
+            schnittstelle: string;
+            /** Empfangen Bytes */
+            empfangen_bytes: number;
+            /** Gesendet Bytes */
+            gesendet_bytes: number;
+        };
+        /**
+         * GeraetOut
+         * @description Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion.
+         */
+        GeraetOut: {
+            /** Unterstuetzt */
+            unterstuetzt: boolean;
+            /** Bericht Am */
+            bericht_am?: string | null;
+            /**
+             * Bericht Alt
+             * @default false
+             */
+            bericht_alt: boolean;
+            /** Kanal */
+            kanal?: string | null;
+            /**
+             * Fernzugang
+             * @default false
+             */
+            fernzugang: boolean;
+            /** Docker Laeuft */
+            docker_laeuft?: boolean | null;
+            rechner?: components["schemas"]["GeraetRechnerOut"] | null;
+            /** Dienste */
+            dienste?: components["schemas"]["GeraetDienstOut"][];
+            /** Einheiten */
+            einheiten?: components["schemas"]["GeraetEinheitOut"][];
+            sicherung?: components["schemas"]["GeraetSicherungOut"] | null;
+            letzte_aktion?: components["schemas"]["GeraetAktionOut"] | null;
+            /** Beschaeftigt */
+            beschaeftigt?: string | null;
+            api: components["schemas"]["ApiSelbstOut"];
+            /**
+             * Ampel
+             * @default gut
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /** GeraetPlatteOut */
+        GeraetPlatteOut: {
+            /** Ort */
+            ort: string;
+            /** Gesamt Bytes */
+            gesamt_bytes: number;
+            /** Frei Bytes */
+            frei_bytes: number;
+            /**
+             * Ampel
+             * @default gut
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+        };
+        /**
+         * GeraetPrognoseOut
+         * @description Wachstum je Tag über die letzten 30 Tage (eine Gerade durch die Füllstände), erst ab
+         *     sieben Tagen Verlauf. Eine Schätzung „bei diesem Tempo“, kein Termin.
+         */
+        GeraetPrognoseOut: {
+            /**
+             * Tage Verlauf
+             * @default 0
+             */
+            tage_verlauf: number;
+            /** Platte Bytes Pro Tag */
+            platte_bytes_pro_tag?: number | null;
+            /** Platte Voll In Tagen */
+            platte_voll_in_tagen?: number | null;
+            /** Datenbank Bytes Pro Tag */
+            datenbank_bytes_pro_tag?: number | null;
+            /** Sicherung Bytes Pro Tag */
+            sicherung_bytes_pro_tag?: number | null;
+            /** Ssd Geschrieben Bytes Pro Tag */
+            ssd_geschrieben_bytes_pro_tag?: number | null;
+        };
+        /** GeraetProtokollOut */
+        GeraetProtokollOut: {
+            /** Dienst */
+            dienst: string;
+            /** Vorhanden */
+            vorhanden: boolean;
+            /** Erstellt Am */
+            erstellt_am?: string | null;
+            /** Zeilen */
+            zeilen?: string[];
+        };
+        /**
+         * GeraetRechnerOut
+         * @description Der Rechner selbst: Raspberry Pi oder was sonst darunter läuft.
+         */
+        GeraetRechnerOut: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Modell */
+            modell?: string | null;
+            /** System */
+            system?: string | null;
+            /** Kernel */
+            kernel?: string | null;
+            /** Adresse */
+            adresse?: string | null;
+            /**
+             * Laufzeit S
+             * @default 0
+             */
+            laufzeit_s: number;
+            /**
+             * Kerne
+             * @default 1
+             */
+            kerne: number;
+            /** Last */
+            last?: number[];
+            /** Temperatur C */
+            temperatur_c?: number | null;
+            /**
+             * Temperatur Ampel
+             * @default aus
+             * @enum {string}
+             */
+            temperatur_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /** Drosselung */
+            drosselung?: string | null;
+            /** Drosselung De */
+            drosselung_de?: string[];
+            /**
+             * Drosselung Ampel
+             * @default aus
+             * @enum {string}
+             */
+            drosselung_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Speicher Gesamt Mb
+             * @default 0
+             */
+            speicher_gesamt_mb: number;
+            /**
+             * Speicher Frei Mb
+             * @default 0
+             */
+            speicher_frei_mb: number;
+            /**
+             * Speicher Ampel
+             * @default aus
+             * @enum {string}
+             */
+            speicher_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /** Platten */
+            platten?: components["schemas"]["GeraetPlatteOut"][];
+            /** Docker */
+            docker?: string | null;
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Takt Mhz */
+            takt_mhz?: number | null;
+            /** Eingangsspannung V */
+            eingangsspannung_v?: number | null;
+            /**
+             * Spannung Ampel
+             * @default aus
+             * @enum {string}
+             */
+            spannung_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Swap Gesamt Mb
+             * @default 0
+             */
+            swap_gesamt_mb: number;
+            /**
+             * Swap Frei Mb
+             * @default 0
+             */
+            swap_frei_mb: number;
+            netz?: components["schemas"]["GeraetNetzOut"] | null;
+            ssd?: components["schemas"]["GeraetSsdOut"] | null;
+            docker_platz?: components["schemas"]["GeraetDockerPlatzOut"] | null;
+        };
+        /** GeraetSicherungOut */
+        GeraetSicherungOut: {
+            /** Letzte */
+            letzte?: string | null;
+            /** Letzte Am */
+            letzte_am?: string | null;
+            /** Letzte Bytes */
+            letzte_bytes?: number | null;
+            /**
+             * Anzahl
+             * @default 0
+             */
+            anzahl: number;
+            /** Gesamt Bytes */
+            gesamt_bytes?: number | null;
+            /** Ausser Haus */
+            ausser_haus?: string | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /**
+         * GeraetSsdOut
+         * @description SMART der Platte, auf der das System liegt. NVMe meldet alles; eine Platte am USB-Adapter
+         *     oft nur Temperatur und Betriebsstunden.
+         */
+        GeraetSsdOut: {
+            /** Geraet */
+            geraet: string;
+            /** Modell */
+            modell?: string | null;
+            /** Gesund */
+            gesund?: boolean | null;
+            /** Temperatur C */
+            temperatur_c?: number | null;
+            /** Betriebsstunden */
+            betriebsstunden?: number | null;
+            /** Abnutzung Prozent */
+            abnutzung_prozent?: number | null;
+            /** Reserve Prozent */
+            reserve_prozent?: number | null;
+            /** Geschrieben Bytes */
+            geschrieben_bytes?: number | null;
+            /** Gelesen Bytes */
+            gelesen_bytes?: number | null;
+            /** Fehler */
+            fehler?: number | null;
+            /** Unsichere Abschaltungen */
+            unsichere_abschaltungen?: number | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /** GeraetVerlaufDienstOut */
+        GeraetVerlaufDienstOut: {
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Speicher Mb */
+            speicher_mb?: number | null;
+        };
+        /** GeraetVerlaufOut */
+        GeraetVerlaufOut: {
+            /** Unterstuetzt */
+            unterstuetzt: boolean;
+            /**
+             * Spanne
+             * @default tag
+             * @enum {string}
+             */
+            spanne: "tag" | "woche" | "monat" | "jahr";
+            /** Von */
+            von?: string | null;
+            /** Bis */
+            bis?: string | null;
+            /**
+             * Schritt Min
+             * @default 5
+             */
+            schritt_min: number;
+            /** Punkte */
+            punkte?: components["schemas"]["GeraetVerlaufPunktOut"][];
+            prognose?: components["schemas"]["GeraetPrognoseOut"];
+        };
+        /**
+         * GeraetVerlaufPunktOut
+         * @description Ein Abschnitt im Verlauf: Mittel, Spitzen und Stände am Ende des Abschnitts.
+         */
+        GeraetVerlaufPunktOut: {
+            /**
+             * T
+             * Format: date-time
+             */
+            t: string;
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Cpu Prozent Max */
+            cpu_prozent_max?: number | null;
+            /** Last1 */
+            last1?: number | null;
+            /** Temperatur C */
+            temperatur_c?: number | null;
+            /** Temperatur C Max */
+            temperatur_c_max?: number | null;
+            /** Takt Mhz */
+            takt_mhz?: number | null;
+            /** Eingangsspannung V */
+            eingangsspannung_v?: number | null;
+            /** Eingangsspannung V Min */
+            eingangsspannung_v_min?: number | null;
+            /** Speicher Belegt Mb */
+            speicher_belegt_mb?: number | null;
+            /** Speicher Gesamt Mb */
+            speicher_gesamt_mb?: number | null;
+            /** Swap Belegt Mb */
+            swap_belegt_mb?: number | null;
+            /** Platte Belegt Bytes */
+            platte_belegt_bytes?: number | null;
+            /** Platte Gesamt Bytes */
+            platte_gesamt_bytes?: number | null;
+            /** Ssd Temperatur C */
+            ssd_temperatur_c?: number | null;
+            /** Ssd Temperatur C Max */
+            ssd_temperatur_c_max?: number | null;
+            /** Ssd Abnutzung Prozent */
+            ssd_abnutzung_prozent?: number | null;
+            /**
+             * Ssd Geschrieben Bytes
+             * @default 0
+             */
+            ssd_geschrieben_bytes: number;
+            /**
+             * Netz Empfangen Bytes S
+             * @default 0
+             */
+            netz_empfangen_bytes_s: number;
+            /**
+             * Netz Gesendet Bytes S
+             * @default 0
+             */
+            netz_gesendet_bytes_s: number;
+            /** Datenbank Bytes */
+            datenbank_bytes?: number | null;
+            /** Sicherung Bytes */
+            sicherung_bytes?: number | null;
+            /** Docker Bytes */
+            docker_bytes?: number | null;
+            /**
+             * Drosselung Jetzt
+             * @default false
+             */
+            drosselung_jetzt: boolean;
+            /** Dienste */
+            dienste?: {
+                [key: string]: components["schemas"]["GeraetVerlaufDienstOut"];
+            };
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -5196,6 +6180,20 @@ export interface components {
          * @enum {string}
          */
         ReasonCode: "pv_surplus" | "pv_surplus_fading" | "price_negative" | "price_cheap_window" | "planned_window" | "heat_demand_forced" | "hp_running_own_control" | "min_runtime_hold" | "min_offtime_pending" | "on_delay_pending" | "off_delay_pending" | "buffer_full" | "buffer_no_headroom" | "max_starts_reached" | "no_trigger" | "planned_pause" | "import_too_high" | "manual_override" | "mode_off" | "sensor_stale" | "sensor_unavailable" | "price_data_stale" | "hp_not_responding" | "failsafe" | "toggle_rate_exceeded";
+        /** Rechnungsergebnis */
+        Rechnungsergebnis: {
+            gelesen: components["schemas"]["GeleseneRechnung"];
+            /** Mittlerer Preis Ct Kwh */
+            mittlerer_preis_ct_kwh: number | null;
+            /** Gemessen Kwh */
+            gemessen_kwh: number | null;
+            /** Abdeckung */
+            abdeckung: number | null;
+            /** Befunde */
+            befunde: components["schemas"]["Befund"][];
+            /** Zeilen Gesendet */
+            zeilen_gesendet: number;
+        };
         /**
          * ReglerAenderungOut
          * @description Eine Zeile des Protokolls: wer wann was gestellt hat.
@@ -6395,6 +7393,109 @@ export interface components {
             /** Avg Ct Kwh Gross */
             avg_ct_kwh_gross: number;
         };
+        /**
+         * TibberZusammenfassung
+         * @description Das Ergebnis der festen Tibber-Pruefung, so knapp, wie Alfred es im Panel sagt. Die volle
+         *     Auswertung steht auf der Rechnungsseite, auf die `AlfredRechnungOut.link` zeigt.
+         */
+        TibberZusammenfassung: {
+            /** Zeitraum */
+            zeitraum: string;
+            /**
+             * Von
+             * Format: date
+             */
+            von: string;
+            /**
+             * Bis
+             * Format: date
+             */
+            bis: string;
+            /** Kwh */
+            kwh: number;
+            /** Brutto Eur */
+            brutto_eur: number;
+            /** Ct Kwh Brutto */
+            ct_kwh_brutto: number;
+            /** Gemessen Kwh */
+            gemessen_kwh: number | null;
+            /** Abdeckung */
+            abdeckung: number | null;
+            /** Urteil */
+            urteil: string;
+            /** Befunde */
+            befunde: components["schemas"]["Befund"][];
+            /** Schon Bekannt */
+            schon_bekannt: boolean;
+        };
+        /** UpdateAnfrageIn */
+        UpdateAnfrageIn: {
+            /**
+             * Aktion
+             * @enum {string}
+             */
+            aktion: "installieren" | "pruefen";
+        };
+        /** UpdateErgebnisOut */
+        UpdateErgebnisOut: {
+            /** Am */
+            am?: string | null;
+            /** Ergebnis */
+            ergebnis?: string | null;
+            /** Von */
+            von?: string | null;
+            /** Nach */
+            nach?: string | null;
+        };
+        /** UpdateNeuerungOut */
+        UpdateNeuerungOut: {
+            /** Sha */
+            sha: string;
+            /** Titel */
+            titel: string;
+        };
+        /**
+         * UpdateStatusOut
+         * @description Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne
+         *     Hausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an.
+         */
+        UpdateStatusOut: {
+            /**
+             * Unterstuetzt
+             * @default false
+             */
+            unterstuetzt: boolean;
+            /** Kanal */
+            kanal?: string | null;
+            /** Aktuell */
+            aktuell?: string | null;
+            /** Verfuegbar */
+            verfuegbar?: string | null;
+            /**
+             * Update Verfuegbar
+             * @default false
+             */
+            update_verfuegbar: boolean;
+            /** Neuerungen */
+            neuerungen?: components["schemas"]["UpdateNeuerungOut"][];
+            /** Geprueft Am */
+            geprueft_am?: string | null;
+            /**
+             * Zustand
+             * @default bereit
+             */
+            zustand: string;
+            /** Schritt */
+            schritt?: string | null;
+            /** Meldung */
+            meldung?: string | null;
+            zuletzt?: components["schemas"]["UpdateErgebnisOut"] | null;
+            /**
+             * Anfrage Offen
+             * @default false
+             */
+            anfrage_offen: boolean;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -6636,6 +7737,32 @@ export interface components {
             /** Data Since */
             data_since: string | null;
         };
+        /** Zuordnungsergebnis */
+        Zuordnungsergebnis: {
+            /** Zeilen */
+            zeilen: components["schemas"]["Zuordnungszeile"][];
+            /** Verworfen */
+            verworfen: string[];
+            /** Offen */
+            offen: string[];
+            /** Yaml */
+            yaml: string;
+            /** Zeilen Gesendet */
+            zeilen_gesendet: number;
+        };
+        /** Zuordnungszeile */
+        Zuordnungszeile: {
+            /** Schluessel */
+            schluessel: string;
+            /** Entitaet */
+            entitaet: string;
+            /** Einheit */
+            einheit: string;
+            /** Grund */
+            grund: string;
+            /** Yaml */
+            yaml: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -6663,6 +7790,324 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    zustand_api_v1_alfred_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlfredZustandOut"];
+                };
+            };
+        };
+    };
+    frage_api_v1_alfred_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlfredFrageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlfredAntwortOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    frage_mit_fortschritt_api_v1_alfred_ask_stream_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlfredFrageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rechnung_lesen_api_v1_alfred_rechnung_post: {
+        parameters: {
+            query?: {
+                file_name?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlfredRechnungOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    zuordnung_vorschlagen_api_v1_alfred_zuordnung_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlfredZuordnungIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Zuordnungsergebnis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_status_api_v1_system_update_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStatusOut"];
+                };
+            };
+        };
+    };
+    update_anfragen_api_v1_system_update_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAnfrageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    geraet_api_v1_system_geraet_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetOut"];
+                };
+            };
+        };
+    };
+    verlauf_api_v1_system_geraet_verlauf_get: {
+        parameters: {
+            query?: {
+                spanne?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetVerlaufOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    aktion_api_v1_system_geraet_aktion_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GeraetAktionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetAktionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    protokoll_api_v1_system_geraet_protokoll__dienst__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dienst: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetProtokollOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -6821,6 +8266,72 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PushSubscribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apns_subscribe_api_v1_push_apns_subscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApnsSubscribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apns_unsubscribe_api_v1_push_apns_unsubscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApnsUnsubscribeIn"];
             };
         };
         responses: {

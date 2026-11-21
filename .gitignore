@@ -27,3 +27,17 @@ test-results/
 
 # PlatformIO (hardware/)
 .pio/
+
+# Swift / Xcode (apps/ios)
+.build/
+.swiftpm/
+DerivedData/
+# **Das Xcode-Projekt liegt im Repository, obwohl es erzeugt wird.** Das war erst anders, und
+# der Grund fuer die Umkehr ist praktisch: wer Xcode frisch installiert hat, hat XcodeGen nicht,
+# und das Projekt per `Pull` zu bekommen ist ein Schritt statt vier. Der Preis - dass es gegen
+# project.yml veralten kann - ist nicht hingenommen, sondern bewacht:
+# `tools/xcodeproj-pruefen.py` laeuft in `tools/ios-pruefen.sh` und in der CI.
+#
+# Was Xcode an Benutzerzustand hineinschreibt, gehoert niemandem ausser dem, der davorsitzt:
+xcuserdata/
+*.xcuserdatad/

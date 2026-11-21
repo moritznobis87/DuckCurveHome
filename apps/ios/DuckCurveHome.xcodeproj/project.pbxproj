@@ -1,0 +1,930 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		009C58B1789BEC6A39EE233B /* AnnahmenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF8E8755B5E399BE6A7495A3 /* AnnahmenSeite.swift */; };
+		037D55C1D81214979C40FC04 /* Tagewahl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7CBA6D906B970B1B27F8918 /* Tagewahl.swift */; };
+		05FB739969DE812D7DA39011 /* Leiste.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */; };
+		08BA2CE15442D3C33FD44C38 /* Ladebild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DBF78711330C19ED82AC95D /* Ladebild.swift */; };
+		0DAA63F1E91CB9DBF73F8285 /* FahrplanSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C6840AE9F08B99D03D4BD4C /* FahrplanSeite.swift */; };
+		11B372029B73A0C0A76B506E /* Schluesselbund.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A347595B312F69C774E01EE /* Schluesselbund.swift */; };
+		1423F68C39EC71F5598C2C47 /* GeldSeiten.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA38BD9FC62B1F89035ABAE /* GeldSeiten.swift */; };
+		1D59B9232C5BB1FFA8750A3A /* Reiterzeile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */; };
+		2269D6D973CDD5E90BAAF30A /* HausSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F329F096F927AD179434D9 /* HausSeite.swift */; };
+		226B4A492629F3CED2C25DE8 /* IBMPlexSans-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = B10C35D7E84A91C914895209 /* IBMPlexSans-Regular.otf */; };
+		22D2BC7A701FA3B894DF5333 /* Mitteilungshinweis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D531BC992F24B251740574 /* Mitteilungshinweis.swift */; };
+		258141E958D0A8A3F7E14DF0 /* Spannenstreifen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02C5C77DB64AB14812F14D2 /* Spannenstreifen.swift */; };
+		27D9FD29E3FD1BE4D14BFE6C /* JahreskarteSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9A9723F685B8DBB43A9489 /* JahreskarteSeite.swift */; };
+		2918583F1B0E0FB33ED72F5E /* Uebernahmeleiste.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D3C63F595D1552B1E1D3D2 /* Uebernahmeleiste.swift */; };
+		2C33C03FBC4DD1869C483351 /* JetztSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EDA5386AE8BE30137A358B3 /* JetztSeite.swift */; };
+		3002C7A14CEBBC9EA38D673C /* IBMPlexMono-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 24A791D7B98D4B9ACA0194CC /* IBMPlexMono-Regular.otf */; };
+		3119991C0311A68EED64E790 /* Tageskurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AA49FDBA50756C197DFFDBC /* Tageskurve.swift */; };
+		3382A8C842A14E75F78BE43C /* Kennlinienbilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C052BD7A45994835EC22D32 /* Kennlinienbilder.swift */; };
+		38A6A890454592845AC625EA /* Tagesuhrbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8536E9F8915751233BFA009D /* Tagesuhrbild.swift */; };
+		3971CFC7F6422B658ECCFDAB /* Plakette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857CBC9D8C59148A11B405B3 /* Plakette.swift */; };
+		3A9537F0B7B97C13AF8EB3FB /* PrognoseSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = E292E617571683B6796B6399 /* PrognoseSeite.swift */; };
+		3B16964D57955DDA37C9D346 /* SpeicherSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8656CF6F1E54DD7DC1160DEF /* SpeicherSeite.swift */; };
+		3E30EAB4C6F63E5AD9D2F86C /* DuckCurveHomeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0518C11F936494CF844C1F /* DuckCurveHomeApp.swift */; };
+		3E972660B413B9444BFD044F /* Spaltenreihe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6688CD9D80CC8E2505C8770 /* Spaltenreihe.swift */; };
+		3EF3EF537DB4E937E636B504 /* Abweichungsmatrix.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0BCDE5FB8D6F9AFCC77CB33 /* Abweichungsmatrix.swift */; };
+		45AE6E2E3854CE0E52925988 /* Pultkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43EA48A53776915ADD31F7C /* Pultkarte.swift */; };
+		498B36D3AD10F973FA6BE8CD /* RechnungenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71D659D49C85D23F490706A6 /* RechnungenSeite.swift */; };
+		4AE33F610960FF4F0F3F5440 /* Abrechnungstabelle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FFB45298D2FC9524BF64B03 /* Abrechnungstabelle.swift */; };
+		4E765D4786033C74B93D66B6 /* Fahrplanzeichnung.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */; };
+		4F4C0F0A21CF2F94D2FCC3C3 /* Ansichtswahl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E28F2036D3D5B7885BC4F87 /* Ansichtswahl.swift */; };
+		50E9B830BB427C2DCAA0BF73 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 90D7A2BB3C0E19C96527B863 /* Assets.xcassets */; };
+		512F02FA33052F129D25DBD5 /* Energiefluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F3D8B5A242C08D8BEF8DE76 /* Energiefluss.swift */; };
+		512F2413B7056CF4CF62009B /* DuckCurveKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3A62E496A87A8D94CA123EEF /* DuckCurveKit */; };
+		528F3C17E297BD8A24DDA017 /* Ladeente.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11F4DB48A868B5F7EC0F9E24 /* Ladeente.swift */; };
+		54B02B16AF6AD7A1D91887A2 /* HaustuerSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F596BFA7422B61717C966902 /* HaustuerSeite.swift */; };
+		56C0AE84FC921B660B63E93D /* Navigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7FB5A5CC63F033E8AC7820 /* Navigation.swift */; };
+		5978892A3A331A6505D8DFD6 /* NachbetrachtungSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = A45F43488CBC3E8169B9B8CD /* NachbetrachtungSeite.swift */; };
+		598CA6A0572234E67AB11B89 /* BetriebSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EE27E8199A12BE21510ACF6 /* BetriebSeite.swift */; };
+		615EE3A0388C009F5AD74004 /* Anteilsleiste.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9467F366C44BFFDAF5A0BC /* Anteilsleiste.swift */; };
+		6239EAA0DFD479C95C1F7DA5 /* Raumkachel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DDE9029416AEAAC086E9A89 /* Raumkachel.swift */; };
+		643D9FDBE5C78B85C63D5ACA /* Anlagenrohre.swift in Sources */ = {isa = PBXBuildFile; fileRef = 136B81A72166E32541A4ABF9 /* Anlagenrohre.swift */; };
+		67E0F39BDDA04ABA7B1DC320 /* Tagesvergleichsbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3B82A360A20BB9691F6AB5 /* Tagesvergleichsbild.swift */; };
+		6A6AE4891268B8CE7EF864AC /* Blaetter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB4AE3BBF422749B5EDD958 /* Blaetter.swift */; };
+		6FCF3DE35A951A727A3F0312 /* Ausblickkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7679B32D01774CCA129F24A6 /* Ausblickkarte.swift */; };
+		76C51B9D9AF10588513426FE /* Speicherpruefkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = E991E3B3F7D2D7BB3C05EE93 /* Speicherpruefkarte.swift */; };
+		78F288AC8477C44FA5296A87 /* Postenliste.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16EA06A79528967315F5A4EF /* Postenliste.swift */; };
+		794E2772E9FA350C23B47393 /* Kanalzug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6488CB1E8676677F62FE64F4 /* Kanalzug.swift */; };
+		7A6C6E5925D48EE511579D9D /* Glasmodell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE2E906879843FBFF8C04AC /* Glasmodell.swift */; };
+		7ADC1391DB1466144D3A6EE8 /* Automatikkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD58805BB6C50E5A7C686E2 /* Automatikkarte.swift */; };
+		7BA728D9D24497FBC2C1119E /* Unteransichten.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC7469018CE630476024776F /* Unteransichten.swift */; };
+		824E41A9E11CD2A4EB81477D /* Speichersteuerkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5415F4BC3F74F2529DCC0B6 /* Speichersteuerkarte.swift */; };
+		83979A335889D8B32195AD4F /* Geldfarbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35511C5E90815784C780CCA1 /* Geldfarbe.swift */; };
+		86081F4D7F554FABD4D7897D /* Abdeckungskarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E5135A3C960FF18F667327A /* Abdeckungskarte.swift */; };
+		8638A47733CD3ABDE1B1DE1A /* Betragszeile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6990FD9C3BB7F0E9A5390ADC /* Betragszeile.swift */; };
+		8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */; };
+		8FBB2C0204A565CC8FBADF61 /* DatenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3EE1FD082DC4983DE9FE984 /* DatenSeite.swift */; };
+		92BED5F9FA7987479E09055C /* AnlageSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201BD07AEDBDDA5B2E91E375 /* AnlageSeite.swift */; };
+		936CC078D935F0E9661D3842 /* Geldbalken.swift in Sources */ = {isa = PBXBuildFile; fileRef = 137F9DCA46B9045B284290A9 /* Geldbalken.swift */; };
+		9791AE7D34591424DCAAD5DB /* Farben.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E127C736AC8ABEDFAB4437 /* Farben.swift */; };
+		99325CC88981F11B88CCF0DE /* WirkungSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F332EF42172D779262A123 /* WirkungSeite.swift */; };
+		99BBBD49F3FD5777A26147A2 /* Mitteilungen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1569F6F6326D9C4B70474A60 /* Mitteilungen.swift */; };
+		9A1C3FB9FF91FD7A101C7D83 /* WaermeSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D1A02B0F1DB5D6D6AFA0B27 /* WaermeSeite.swift */; };
+		9B5CE42C67067F41A23B681B /* HeizkreiseSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 751CE68FE3CF41229464D5E3 /* HeizkreiseSeite.swift */; };
+		9FB949F248DA3A0880753B14 /* WaermepumpeSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E58C41E4B28CFD2A1100B /* WaermepumpeSeite.swift */; };
+		A032CFA7AF0A6774C96282C7 /* Bericht.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30DAA240E8C7E2CE0D0D58B /* Bericht.swift */; };
+		A12C880295C6B5FFA2CC04B9 /* Zeichen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B67D80E0116B660F33FAFC6 /* Zeichen.swift */; };
+		A414B4F48D8F7D73D8DE92B8 /* StromSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6833877D0B3131B03C55F6 /* StromSeite.swift */; };
+		A68E6D151458C984ABD7E13F /* ZugangSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6446BE3D6E34C1FCD8DA8BF7 /* ZugangSeite.swift */; };
+		A7A6CC381CE06EA5773D4C1D /* Hauskonsolenblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3668C94F265C0A110C190A08 /* Hauskonsolenblatt.swift */; };
+		A828EF6E284B4E612A9201C9 /* Anlagenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B121AA23E50590AAD07F502 /* Anlagenbild.swift */; };
+		A841255CFF6E0C1D583B8C6C /* Vergleichsknopf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD5135D1CBB377BF98F955F /* Vergleichsknopf.swift */; };
+		A866580B4F770F9C1E2A1F23 /* Wpmenue.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA88BF1FF2F8B10E21AE2C1D /* Wpmenue.swift */; };
+		AC796F92288EDBB6A44B67BC /* Rechnungsbilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E35561AFDDA944A9E5740F8 /* Rechnungsbilder.swift */; };
+		AD1752C6B64DD9BD4FA5B72D /* Jahresflaeche.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92265FA3DF3AC4CE97195D9F /* Jahresflaeche.swift */; };
+		B5B0CB533E0FCE256C33E295 /* Waermepumpenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */; };
+		B74DFF3BE092C442D5C12ADC /* Alarmblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CD89A5D4C7BEBFA6799403 /* Alarmblatt.swift */; };
+		BA80D620296C3F558A781A8A /* Dock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442E48F860C3E272065F1773 /* Dock.swift */; };
+		BC39AFA258EB753F725AFA8B /* Pruefkurvenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BCE78C8EB2C5E42CFF9439 /* Pruefkurvenbild.swift */; };
+		BDB969FBDB5E1849EF0EF74D /* Tagesbandbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 969EAD73174365A9152E9DE5 /* Tagesbandbild.swift */; };
+		BF25DAE57629F583E2BC4442 /* Ambiente.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06738C7E03178A104B308ABA /* Ambiente.swift */; };
+		BF90E13714A06E92ACA5FEBA /* Systemanschluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65970F2409A3493784FE0F3 /* Systemanschluss.swift */; };
+		BFC01C83721892608D7631E9 /* Schalterkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEE7ED84DB529D334544654 /* Schalterkarte.swift */; };
+		BFEA1309C0F0923E9EC869A2 /* Umbruchzeile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D48D7AA0788028340C51B9 /* Umbruchzeile.swift */; };
+		C43C83AB55DE4450DB127E05 /* Einrichten.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */; };
+		C4424C91CF38AE065FD8883B /* Speichertagbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D1E1FFB855BA190928989B8 /* Speichertagbild.swift */; };
+		C57D7F4920028E07AB70536D /* Konsolenkurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB24715E55D8EF61537622CF /* Konsolenkurve.swift */; };
+		C7DA84FBE547E1A84DE2F5C2 /* WallboxSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314F038F955B93D22F485DA9 /* WallboxSeite.swift */; };
+		CE52AB14EFE635E61A10408B /* Prognosezeichnung.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BF952160A0907077D465C7A /* Prognosezeichnung.swift */; };
+		CF1E38EE14DAA9FB117D4E38 /* MitteilungenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47987C6C791253041485C3B7 /* MitteilungenSeite.swift */; };
+		D3731A83303F90690FDC2D29 /* HausgeraetSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE09B5179F75B40B0A501689 /* HausgeraetSeite.swift */; };
+		D4B4A38C63A5AE38D197BA44 /* Hauskonsolenleiste.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A4D3E090FA7E4373CF82D8F /* Hauskonsolenleiste.swift */; };
+		D4F4491E3A060F093073E3B1 /* Kostentreppe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74871F9C1B6E06A9AFB0325F /* Kostentreppe.swift */; };
+		D579B6BE85CD910AA87C26F3 /* Pvtageskurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = 270699906F2C3E954ADA8108 /* Pvtageskurve.swift */; };
+		D742805330F9AD247E8CAB72 /* ReglerSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */; };
+		D894CFE0B631F5092301D588 /* Waermebilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */; };
+		DDF398D3D35EB0582927AD6B /* IBMPlexSans-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7ADD7B3C58332C88E4C1E7F8 /* IBMPlexSans-SemiBold.otf */; };
+		E13E305715ECAA8F56FA9AA0 /* Sprachhoerer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6B45FF83ECE21C1CE755D2 /* Sprachhoerer.swift */; };
+		E1BA848EC03EE1BA5C793D0E /* WiedergabeSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DB91AB7C211CA4C9681DE3 /* WiedergabeSeite.swift */; };
+		E26B292CEE7ED47EAE3A8894 /* KennlinieSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27DFE093B98D4839CAEC9644 /* KennlinieSeite.swift */; };
+		E482DDF65B14F096AC3D0EDD /* Betriebskurven.swift in Sources */ = {isa = PBXBuildFile; fileRef = 950F49693D463B5483196E46 /* Betriebskurven.swift */; };
+		EA238585B29B985B247A88EE /* Heizkurvenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945FA48170730FFF4FAAEBF4 /* Heizkurvenbild.swift */; };
+		EB7278D68E6A4B5E3D2B4F5D /* Pufferspeicher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2CB1649CD728391A247327 /* Pufferspeicher.swift */; };
+		F01A3D3524E63BA7DE6D02B7 /* Typografie.swift in Sources */ = {isa = PBXBuildFile; fileRef = 926698EEDAB57A85461E370A /* Typografie.swift */; };
+		F2315D70178CB51A033F71E7 /* Karte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE935C11F91B3B4788FA2C8 /* Karte.swift */; };
+		F523B5947273EEAB16435973 /* Anlagenbuehne.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15663FB9ABB9A4FD8D1473F3 /* Anlagenbuehne.swift */; };
+		F57341AC4A36B0F7A09110EC /* KostenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6ED7F71460E771FF1142A8 /* KostenSeite.swift */; };
+		F5EB172C68A7846716CEDC15 /* Hauszustand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 404A42E4106E511C51916C29 /* Hauszustand.swift */; };
+		F6805480CB4D065F2BD42F0A /* WandRahmen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2195B41CC96C7867CA119D73 /* WandRahmen.swift */; };
+		F76361C8B28CFB9F67FB6E78 /* Startbrett.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 00F3568AE522C488C204C262 /* Startbrett.storyboard */; };
+		F92D1E92970B23E1A0D28ED3 /* Pvverwendung.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C209B5F303A5CDF856D0B99 /* Pvverwendung.swift */; };
+		F9410CEC89296C2F90F7DCE7 /* HandRahmen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B98C536116288281EBEE7975 /* HandRahmen.swift */; };
+		F94F526492959D7819284785 /* Wirkungszeichnung.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49690F94C45DEC54FC3D58F /* Wirkungszeichnung.swift */; };
+		FA513BA85B6F00E2A1376A37 /* Rechnungsablage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9EBBEFEC662E299C54E29E /* Rechnungsablage.swift */; };
+		FA5EA45739E98569EE9938B6 /* Raumprotokollblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 978C93E98BD0C62960AD3FB2 /* Raumprotokollblatt.swift */; };
+		FB410072136231AA663DAAD2 /* Vorschauen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D0DC76B4C835ABDEB44904 /* Vorschauen.swift */; };
+		FDC1EC6D16D2BB418720477D /* Seitenwahl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19D6E643E59B9205E637CF97 /* Seitenwahl.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		00F3568AE522C488C204C262 /* Startbrett.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Startbrett.storyboard; sourceTree = "<group>"; };
+		06738C7E03178A104B308ABA /* Ambiente.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ambiente.swift; sourceTree = "<group>"; };
+		0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Waermepumpenbild.swift; sourceTree = "<group>"; };
+		0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reiterzeile.swift; sourceTree = "<group>"; };
+		11F4DB48A868B5F7EC0F9E24 /* Ladeente.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ladeente.swift; sourceTree = "<group>"; };
+		136B81A72166E32541A4ABF9 /* Anlagenrohre.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenrohre.swift; sourceTree = "<group>"; };
+		137F9DCA46B9045B284290A9 /* Geldbalken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geldbalken.swift; sourceTree = "<group>"; };
+		15663FB9ABB9A4FD8D1473F3 /* Anlagenbuehne.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenbuehne.swift; sourceTree = "<group>"; };
+		1569F6F6326D9C4B70474A60 /* Mitteilungen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mitteilungen.swift; sourceTree = "<group>"; };
+		16EA06A79528967315F5A4EF /* Postenliste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Postenliste.swift; sourceTree = "<group>"; };
+		19D6E643E59B9205E637CF97 /* Seitenwahl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Seitenwahl.swift; sourceTree = "<group>"; };
+		1B67D80E0116B660F33FAFC6 /* Zeichen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Zeichen.swift; sourceTree = "<group>"; };
+		1EDA5386AE8BE30137A358B3 /* JetztSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JetztSeite.swift; sourceTree = "<group>"; };
+		1EE27E8199A12BE21510ACF6 /* BetriebSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetriebSeite.swift; sourceTree = "<group>"; };
+		201BD07AEDBDDA5B2E91E375 /* AnlageSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnlageSeite.swift; sourceTree = "<group>"; };
+		2195B41CC96C7867CA119D73 /* WandRahmen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WandRahmen.swift; sourceTree = "<group>"; };
+		24A791D7B98D4B9ACA0194CC /* IBMPlexMono-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.otf"; sourceTree = "<group>"; };
+		270699906F2C3E954ADA8108 /* Pvtageskurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pvtageskurve.swift; sourceTree = "<group>"; };
+		27DFE093B98D4839CAEC9644 /* KennlinieSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KennlinieSeite.swift; sourceTree = "<group>"; };
+		2B9467F366C44BFFDAF5A0BC /* Anteilsleiste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anteilsleiste.swift; sourceTree = "<group>"; };
+		2D6ED7F71460E771FF1142A8 /* KostenSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KostenSeite.swift; sourceTree = "<group>"; };
+		314F038F955B93D22F485DA9 /* WallboxSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallboxSeite.swift; sourceTree = "<group>"; };
+		35511C5E90815784C780CCA1 /* Geldfarbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geldfarbe.swift; sourceTree = "<group>"; };
+		3668C94F265C0A110C190A08 /* Hauskonsolenblatt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hauskonsolenblatt.swift; sourceTree = "<group>"; };
+		3B2CB1649CD728391A247327 /* Pufferspeicher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pufferspeicher.swift; sourceTree = "<group>"; };
+		404A42E4106E511C51916C29 /* Hauszustand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hauszustand.swift; sourceTree = "<group>"; };
+		442E48F860C3E272065F1773 /* Dock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dock.swift; sourceTree = "<group>"; };
+		47987C6C791253041485C3B7 /* MitteilungenSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MitteilungenSeite.swift; sourceTree = "<group>"; };
+		4A4D3E090FA7E4373CF82D8F /* Hauskonsolenleiste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hauskonsolenleiste.swift; sourceTree = "<group>"; };
+		4A6833877D0B3131B03C55F6 /* StromSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StromSeite.swift; sourceTree = "<group>"; };
+		4BD5135D1CBB377BF98F955F /* Vergleichsknopf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vergleichsknopf.swift; sourceTree = "<group>"; };
+		4C209B5F303A5CDF856D0B99 /* Pvverwendung.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pvverwendung.swift; sourceTree = "<group>"; };
+		4DDE9029416AEAAC086E9A89 /* Raumkachel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Raumkachel.swift; sourceTree = "<group>"; };
+		4E5135A3C960FF18F667327A /* Abdeckungskarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Abdeckungskarte.swift; sourceTree = "<group>"; };
+		4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alfredblatt.swift; sourceTree = "<group>"; };
+		4F3B82A360A20BB9691F6AB5 /* Tagesvergleichsbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tagesvergleichsbild.swift; sourceTree = "<group>"; };
+		4FE935C11F91B3B4788FA2C8 /* Karte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Karte.swift; sourceTree = "<group>"; };
+		50CD89A5D4C7BEBFA6799403 /* Alarmblatt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alarmblatt.swift; sourceTree = "<group>"; };
+		54F332EF42172D779262A123 /* WirkungSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirkungSeite.swift; sourceTree = "<group>"; };
+		5A9EBBEFEC662E299C54E29E /* Rechnungsablage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rechnungsablage.swift; sourceTree = "<group>"; };
+		5B121AA23E50590AAD07F502 /* Anlagenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenbild.swift; sourceTree = "<group>"; };
+		5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Einrichten.swift; sourceTree = "<group>"; };
+		5BF952160A0907077D465C7A /* Prognosezeichnung.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Prognosezeichnung.swift; sourceTree = "<group>"; };
+		5D1A02B0F1DB5D6D6AFA0B27 /* WaermeSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaermeSeite.swift; sourceTree = "<group>"; };
+		5E28F2036D3D5B7885BC4F87 /* Ansichtswahl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ansichtswahl.swift; sourceTree = "<group>"; };
+		5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Waermebilder.swift; sourceTree = "<group>"; };
+		5FFB45298D2FC9524BF64B03 /* Abrechnungstabelle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Abrechnungstabelle.swift; sourceTree = "<group>"; };
+		60D531BC992F24B251740574 /* Mitteilungshinweis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mitteilungshinweis.swift; sourceTree = "<group>"; };
+		61DB91AB7C211CA4C9681DE3 /* WiedergabeSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiedergabeSeite.swift; sourceTree = "<group>"; };
+		6446BE3D6E34C1FCD8DA8BF7 /* ZugangSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZugangSeite.swift; sourceTree = "<group>"; };
+		6488CB1E8676677F62FE64F4 /* Kanalzug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kanalzug.swift; sourceTree = "<group>"; };
+		6990FD9C3BB7F0E9A5390ADC /* Betragszeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Betragszeile.swift; sourceTree = "<group>"; };
+		6C052BD7A45994835EC22D32 /* Kennlinienbilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kennlinienbilder.swift; sourceTree = "<group>"; };
+		70D0DC76B4C835ABDEB44904 /* Vorschauen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vorschauen.swift; sourceTree = "<group>"; };
+		71D659D49C85D23F490706A6 /* RechnungenSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RechnungenSeite.swift; sourceTree = "<group>"; };
+		74871F9C1B6E06A9AFB0325F /* Kostentreppe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kostentreppe.swift; sourceTree = "<group>"; };
+		751CE68FE3CF41229464D5E3 /* HeizkreiseSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeizkreiseSeite.swift; sourceTree = "<group>"; };
+		75F329F096F927AD179434D9 /* HausSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HausSeite.swift; sourceTree = "<group>"; };
+		7679B32D01774CCA129F24A6 /* Ausblickkarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ausblickkarte.swift; sourceTree = "<group>"; };
+		7A347595B312F69C774E01EE /* Schluesselbund.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Schluesselbund.swift; sourceTree = "<group>"; };
+		7ADD7B3C58332C88E4C1E7F8 /* IBMPlexSans-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-SemiBold.otf"; sourceTree = "<group>"; };
+		7D0518C11F936494CF844C1F /* DuckCurveHomeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuckCurveHomeApp.swift; sourceTree = "<group>"; };
+		7DBF78711330C19ED82AC95D /* Ladebild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ladebild.swift; sourceTree = "<group>"; };
+		8536E9F8915751233BFA009D /* Tagesuhrbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tagesuhrbild.swift; sourceTree = "<group>"; };
+		857CBC9D8C59148A11B405B3 /* Plakette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Plakette.swift; sourceTree = "<group>"; };
+		8656CF6F1E54DD7DC1160DEF /* SpeicherSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeicherSeite.swift; sourceTree = "<group>"; };
+		8C6840AE9F08B99D03D4BD4C /* FahrplanSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FahrplanSeite.swift; sourceTree = "<group>"; };
+		8D1E1FFB855BA190928989B8 /* Speichertagbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Speichertagbild.swift; sourceTree = "<group>"; };
+		8E35561AFDDA944A9E5740F8 /* Rechnungsbilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rechnungsbilder.swift; sourceTree = "<group>"; };
+		8E9A9723F685B8DBB43A9489 /* JahreskarteSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JahreskarteSeite.swift; sourceTree = "<group>"; };
+		8EB4AE3BBF422749B5EDD958 /* Blaetter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Blaetter.swift; sourceTree = "<group>"; };
+		8F3D8B5A242C08D8BEF8DE76 /* Energiefluss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Energiefluss.swift; sourceTree = "<group>"; };
+		90D7A2BB3C0E19C96527B863 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		90E127C736AC8ABEDFAB4437 /* Farben.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Farben.swift; sourceTree = "<group>"; };
+		92265FA3DF3AC4CE97195D9F /* Jahresflaeche.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Jahresflaeche.swift; sourceTree = "<group>"; };
+		926698EEDAB57A85461E370A /* Typografie.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typografie.swift; sourceTree = "<group>"; };
+		945FA48170730FFF4FAAEBF4 /* Heizkurvenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Heizkurvenbild.swift; sourceTree = "<group>"; };
+		950F49693D463B5483196E46 /* Betriebskurven.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Betriebskurven.swift; sourceTree = "<group>"; };
+		969EAD73174365A9152E9DE5 /* Tagesbandbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tagesbandbild.swift; sourceTree = "<group>"; };
+		978C93E98BD0C62960AD3FB2 /* Raumprotokollblatt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Raumprotokollblatt.swift; sourceTree = "<group>"; };
+		98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fahrplanzeichnung.swift; sourceTree = "<group>"; };
+		9AA49FDBA50756C197DFFDBC /* Tageskurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tageskurve.swift; sourceTree = "<group>"; };
+		9AEE7ED84DB529D334544654 /* Schalterkarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Schalterkarte.swift; sourceTree = "<group>"; };
+		9FE2E906879843FBFF8C04AC /* Glasmodell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glasmodell.swift; sourceTree = "<group>"; };
+		A45F43488CBC3E8169B9B8CD /* NachbetrachtungSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NachbetrachtungSeite.swift; sourceTree = "<group>"; };
+		A5D48D7AA0788028340C51B9 /* Umbruchzeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Umbruchzeile.swift; sourceTree = "<group>"; };
+		AAA38BD9FC62B1F89035ABAE /* GeldSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeldSeiten.swift; sourceTree = "<group>"; };
+		AC7469018CE630476024776F /* Unteransichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Unteransichten.swift; sourceTree = "<group>"; };
+		ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReglerSeite.swift; sourceTree = "<group>"; };
+		B10C35D7E84A91C914895209 /* IBMPlexSans-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.otf"; sourceTree = "<group>"; };
+		B49690F94C45DEC54FC3D58F /* Wirkungszeichnung.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wirkungszeichnung.swift; sourceTree = "<group>"; };
+		B98C536116288281EBEE7975 /* HandRahmen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandRahmen.swift; sourceTree = "<group>"; };
+		BA88BF1FF2F8B10E21AE2C1D /* Wpmenue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wpmenue.swift; sourceTree = "<group>"; };
+		BE09B5179F75B40B0A501689 /* HausgeraetSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HausgeraetSeite.swift; sourceTree = "<group>"; };
+		BF4037BAFC1759DC6E851D10 /* DuckCurveHome.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DuckCurveHome.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C5415F4BC3F74F2529DCC0B6 /* Speichersteuerkarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Speichersteuerkarte.swift; sourceTree = "<group>"; };
+		C65970F2409A3493784FE0F3 /* Systemanschluss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Systemanschluss.swift; sourceTree = "<group>"; };
+		C7CBA6D906B970B1B27F8918 /* Tagewahl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tagewahl.swift; sourceTree = "<group>"; };
+		CF6B45FF83ECE21C1CE755D2 /* Sprachhoerer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sprachhoerer.swift; sourceTree = "<group>"; };
+		D30DAA240E8C7E2CE0D0D58B /* Bericht.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bericht.swift; sourceTree = "<group>"; };
+		D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Leiste.swift; sourceTree = "<group>"; };
+		DC1727717E97B2E078703BAB /* DuckCurveKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = DuckCurveKit; path = DuckCurveKit; sourceTree = SOURCE_ROOT; };
+		E02C5C77DB64AB14812F14D2 /* Spannenstreifen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spannenstreifen.swift; sourceTree = "<group>"; };
+		E21D9B15AC2FE60F410BCD9E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E292E617571683B6796B6399 /* PrognoseSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrognoseSeite.swift; sourceTree = "<group>"; };
+		E6D3C63F595D1552B1E1D3D2 /* Uebernahmeleiste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Uebernahmeleiste.swift; sourceTree = "<group>"; };
+		E991E3B3F7D2D7BB3C05EE93 /* Speicherpruefkarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Speicherpruefkarte.swift; sourceTree = "<group>"; };
+		EAD58805BB6C50E5A7C686E2 /* Automatikkarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Automatikkarte.swift; sourceTree = "<group>"; };
+		EB24715E55D8EF61537622CF /* Konsolenkurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Konsolenkurve.swift; sourceTree = "<group>"; };
+		EB7FB5A5CC63F033E8AC7820 /* Navigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Navigation.swift; sourceTree = "<group>"; };
+		EE8E58C41E4B28CFD2A1100B /* WaermepumpeSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaermepumpeSeite.swift; sourceTree = "<group>"; };
+		EF8E8755B5E399BE6A7495A3 /* AnnahmenSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnahmenSeite.swift; sourceTree = "<group>"; };
+		F0BCDE5FB8D6F9AFCC77CB33 /* Abweichungsmatrix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Abweichungsmatrix.swift; sourceTree = "<group>"; };
+		F1BCE78C8EB2C5E42CFF9439 /* Pruefkurvenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pruefkurvenbild.swift; sourceTree = "<group>"; };
+		F3EE1FD082DC4983DE9FE984 /* DatenSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatenSeite.swift; sourceTree = "<group>"; };
+		F43EA48A53776915ADD31F7C /* Pultkarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pultkarte.swift; sourceTree = "<group>"; };
+		F596BFA7422B61717C966902 /* HaustuerSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HaustuerSeite.swift; sourceTree = "<group>"; };
+		F6688CD9D80CC8E2505C8770 /* Spaltenreihe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spaltenreihe.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A6A23D58CF66F5D6583F7798 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				512F2413B7056CF4CF62009B /* DuckCurveKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		293399FB5A3036DFA261178D /* Bausteine */ = {
+			isa = PBXGroup;
+			children = (
+				5FFB45298D2FC9524BF64B03 /* Abrechnungstabelle.swift */,
+				F0BCDE5FB8D6F9AFCC77CB33 /* Abweichungsmatrix.swift */,
+				50CD89A5D4C7BEBFA6799403 /* Alarmblatt.swift */,
+				06738C7E03178A104B308ABA /* Ambiente.swift */,
+				15663FB9ABB9A4FD8D1473F3 /* Anlagenbuehne.swift */,
+				2B9467F366C44BFFDAF5A0BC /* Anteilsleiste.swift */,
+				7679B32D01774CCA129F24A6 /* Ausblickkarte.swift */,
+				EAD58805BB6C50E5A7C686E2 /* Automatikkarte.swift */,
+				6990FD9C3BB7F0E9A5390ADC /* Betragszeile.swift */,
+				8EB4AE3BBF422749B5EDD958 /* Blaetter.swift */,
+				442E48F860C3E272065F1773 /* Dock.swift */,
+				8F3D8B5A242C08D8BEF8DE76 /* Energiefluss.swift */,
+				35511C5E90815784C780CCA1 /* Geldfarbe.swift */,
+				6488CB1E8676677F62FE64F4 /* Kanalzug.swift */,
+				7DBF78711330C19ED82AC95D /* Ladebild.swift */,
+				11F4DB48A868B5F7EC0F9E24 /* Ladeente.swift */,
+				D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */,
+				60D531BC992F24B251740574 /* Mitteilungshinweis.swift */,
+				857CBC9D8C59148A11B405B3 /* Plakette.swift */,
+				16EA06A79528967315F5A4EF /* Postenliste.swift */,
+				3B2CB1649CD728391A247327 /* Pufferspeicher.swift */,
+				F43EA48A53776915ADD31F7C /* Pultkarte.swift */,
+				5A9EBBEFEC662E299C54E29E /* Rechnungsablage.swift */,
+				9AEE7ED84DB529D334544654 /* Schalterkarte.swift */,
+				F6688CD9D80CC8E2505C8770 /* Spaltenreihe.swift */,
+				E02C5C77DB64AB14812F14D2 /* Spannenstreifen.swift */,
+				E991E3B3F7D2D7BB3C05EE93 /* Speicherpruefkarte.swift */,
+				C5415F4BC3F74F2529DCC0B6 /* Speichersteuerkarte.swift */,
+				C7CBA6D906B970B1B27F8918 /* Tagewahl.swift */,
+				E6D3C63F595D1552B1E1D3D2 /* Uebernahmeleiste.swift */,
+				4BD5135D1CBB377BF98F955F /* Vergleichsknopf.swift */,
+				0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */,
+				BA88BF1FF2F8B10E21AE2C1D /* Wpmenue.swift */,
+			);
+			path = Bausteine;
+			sourceTree = "<group>";
+		};
+		304A7B322587ABC509023368 /* Diagramme */ = {
+			isa = PBXGroup;
+			children = (
+				4E5135A3C960FF18F667327A /* Abdeckungskarte.swift */,
+				5B121AA23E50590AAD07F502 /* Anlagenbild.swift */,
+				136B81A72166E32541A4ABF9 /* Anlagenrohre.swift */,
+				950F49693D463B5483196E46 /* Betriebskurven.swift */,
+				98A150B6FBEB447B5B20BF64 /* Fahrplanzeichnung.swift */,
+				137F9DCA46B9045B284290A9 /* Geldbalken.swift */,
+				945FA48170730FFF4FAAEBF4 /* Heizkurvenbild.swift */,
+				92265FA3DF3AC4CE97195D9F /* Jahresflaeche.swift */,
+				6C052BD7A45994835EC22D32 /* Kennlinienbilder.swift */,
+				EB24715E55D8EF61537622CF /* Konsolenkurve.swift */,
+				74871F9C1B6E06A9AFB0325F /* Kostentreppe.swift */,
+				5BF952160A0907077D465C7A /* Prognosezeichnung.swift */,
+				F1BCE78C8EB2C5E42CFF9439 /* Pruefkurvenbild.swift */,
+				270699906F2C3E954ADA8108 /* Pvtageskurve.swift */,
+				4C209B5F303A5CDF856D0B99 /* Pvverwendung.swift */,
+				8E35561AFDDA944A9E5740F8 /* Rechnungsbilder.swift */,
+				8D1E1FFB855BA190928989B8 /* Speichertagbild.swift */,
+				969EAD73174365A9152E9DE5 /* Tagesbandbild.swift */,
+				9AA49FDBA50756C197DFFDBC /* Tageskurve.swift */,
+				8536E9F8915751233BFA009D /* Tagesuhrbild.swift */,
+				4F3B82A360A20BB9691F6AB5 /* Tagesvergleichsbild.swift */,
+				5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */,
+				B49690F94C45DEC54FC3D58F /* Wirkungszeichnung.swift */,
+			);
+			path = Diagramme;
+			sourceTree = "<group>";
+		};
+		4EBD190964C2671752E11268 /* Gestalt */ = {
+			isa = PBXGroup;
+			children = (
+				5E28F2036D3D5B7885BC4F87 /* Ansichtswahl.swift */,
+				90E127C736AC8ABEDFAB4437 /* Farben.swift */,
+				4FE935C11F91B3B4788FA2C8 /* Karte.swift */,
+				926698EEDAB57A85461E370A /* Typografie.swift */,
+				A5D48D7AA0788028340C51B9 /* Umbruchzeile.swift */,
+				1B67D80E0116B660F33FAFC6 /* Zeichen.swift */,
+			);
+			path = Gestalt;
+			sourceTree = "<group>";
+		};
+		572A922A1F1C8D06C77E7086 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				7D0518C11F936494CF844C1F /* DuckCurveHomeApp.swift */,
+				5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */,
+				B98C536116288281EBEE7975 /* HandRahmen.swift */,
+				404A42E4106E511C51916C29 /* Hauszustand.swift */,
+				EB7FB5A5CC63F033E8AC7820 /* Navigation.swift */,
+				0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */,
+				7A347595B312F69C774E01EE /* Schluesselbund.swift */,
+				19D6E643E59B9205E637CF97 /* Seitenwahl.swift */,
+				AC7469018CE630476024776F /* Unteransichten.swift */,
+				70D0DC76B4C835ABDEB44904 /* Vorschauen.swift */,
+				2195B41CC96C7867CA119D73 /* WandRahmen.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		654BEB5D89370BE73A6FCD0A /* Haus */ = {
+			isa = PBXGroup;
+			children = (
+				3668C94F265C0A110C190A08 /* Hauskonsolenblatt.swift */,
+				4A4D3E090FA7E4373CF82D8F /* Hauskonsolenleiste.swift */,
+				75F329F096F927AD179434D9 /* HausSeite.swift */,
+				4DDE9029416AEAAC086E9A89 /* Raumkachel.swift */,
+				978C93E98BD0C62960AD3FB2 /* Raumprotokollblatt.swift */,
+			);
+			path = Haus;
+			sourceTree = "<group>";
+		};
+		65C84AC3C6447AB9951FDF9E /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				DC1727717E97B2E078703BAB /* DuckCurveKit */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		6BDEA2D50D97AC0C39CB668B /* Marke */ = {
+			isa = PBXGroup;
+			children = (
+				24A791D7B98D4B9ACA0194CC /* IBMPlexMono-Regular.otf */,
+				B10C35D7E84A91C914895209 /* IBMPlexSans-Regular.otf */,
+				7ADD7B3C58332C88E4C1E7F8 /* IBMPlexSans-SemiBold.otf */,
+			);
+			path = Marke;
+			sourceTree = "<group>";
+		};
+		770B0B85A2D0E79753FAE0DC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BF4037BAFC1759DC6E851D10 /* DuckCurveHome.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		79A3AD3A4203D07076FFDC67 /* Jetzt */ = {
+			isa = PBXGroup;
+			children = (
+				1EDA5386AE8BE30137A358B3 /* JetztSeite.swift */,
+			);
+			path = Jetzt;
+			sourceTree = "<group>";
+		};
+		7E4EF8E069C777E57D778A83 /* Technik */ = {
+			isa = PBXGroup;
+			children = (
+				201BD07AEDBDDA5B2E91E375 /* AnlageSeite.swift */,
+				EF8E8755B5E399BE6A7495A3 /* AnnahmenSeite.swift */,
+				1EE27E8199A12BE21510ACF6 /* BetriebSeite.swift */,
+				F3EE1FD082DC4983DE9FE984 /* DatenSeite.swift */,
+				8C6840AE9F08B99D03D4BD4C /* FahrplanSeite.swift */,
+				BE09B5179F75B40B0A501689 /* HausgeraetSeite.swift */,
+				F596BFA7422B61717C966902 /* HaustuerSeite.swift */,
+				751CE68FE3CF41229464D5E3 /* HeizkreiseSeite.swift */,
+				27DFE093B98D4839CAEC9644 /* KennlinieSeite.swift */,
+				47987C6C791253041485C3B7 /* MitteilungenSeite.swift */,
+				A45F43488CBC3E8169B9B8CD /* NachbetrachtungSeite.swift */,
+				E292E617571683B6796B6399 /* PrognoseSeite.swift */,
+				ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */,
+				EE8E58C41E4B28CFD2A1100B /* WaermepumpeSeite.swift */,
+				61DB91AB7C211CA4C9681DE3 /* WiedergabeSeite.swift */,
+				54F332EF42172D779262A123 /* WirkungSeite.swift */,
+				6446BE3D6E34C1FCD8DA8BF7 /* ZugangSeite.swift */,
+			);
+			path = Technik;
+			sourceTree = "<group>";
+		};
+		866D63D465051E0AAD1981CC /* DuckCurveHome */ = {
+			isa = PBXGroup;
+			children = (
+				B9729E59F135561143EB2AB2 /* Alfred */,
+				572A922A1F1C8D06C77E7086 /* App */,
+				293399FB5A3036DFA261178D /* Bausteine */,
+				304A7B322587ABC509023368 /* Diagramme */,
+				4EBD190964C2671752E11268 /* Gestalt */,
+				98C8CE7760A3A630FEE98F0B /* Haus3D */,
+				BF92AD50E626E87B53CE88EE /* Mitteilungen */,
+				CB385DF539C979F0D937B7AE /* Ressourcen */,
+				F5EA3A126DC1B0B547A9BA67 /* Seiten */,
+				E21D9B15AC2FE60F410BCD9E /* Info.plist */,
+			);
+			path = DuckCurveHome;
+			sourceTree = "<group>";
+		};
+		9624658A1AB14DA9EAC1B168 /* Energie */ = {
+			isa = PBXGroup;
+			children = (
+				8E9A9723F685B8DBB43A9489 /* JahreskarteSeite.swift */,
+				8656CF6F1E54DD7DC1160DEF /* SpeicherSeite.swift */,
+				4A6833877D0B3131B03C55F6 /* StromSeite.swift */,
+				5D1A02B0F1DB5D6D6AFA0B27 /* WaermeSeite.swift */,
+				314F038F955B93D22F485DA9 /* WallboxSeite.swift */,
+			);
+			path = Energie;
+			sourceTree = "<group>";
+		};
+		98C8CE7760A3A630FEE98F0B /* Haus3D */ = {
+			isa = PBXGroup;
+			children = (
+				9FE2E906879843FBFF8C04AC /* Glasmodell.swift */,
+			);
+			path = Haus3D;
+			sourceTree = "<group>";
+		};
+		B9729E59F135561143EB2AB2 /* Alfred */ = {
+			isa = PBXGroup;
+			children = (
+				4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */,
+				CF6B45FF83ECE21C1CE755D2 /* Sprachhoerer.swift */,
+			);
+			path = Alfred;
+			sourceTree = "<group>";
+		};
+		BF92AD50E626E87B53CE88EE /* Mitteilungen */ = {
+			isa = PBXGroup;
+			children = (
+				1569F6F6326D9C4B70474A60 /* Mitteilungen.swift */,
+				C65970F2409A3493784FE0F3 /* Systemanschluss.swift */,
+			);
+			path = Mitteilungen;
+			sourceTree = "<group>";
+		};
+		CB385DF539C979F0D937B7AE /* Ressourcen */ = {
+			isa = PBXGroup;
+			children = (
+				6BDEA2D50D97AC0C39CB668B /* Marke */,
+				90D7A2BB3C0E19C96527B863 /* Assets.xcassets */,
+				00F3568AE522C488C204C262 /* Startbrett.storyboard */,
+			);
+			path = Ressourcen;
+			sourceTree = "<group>";
+		};
+		DBC32120246BCA5E280ACD8D = {
+			isa = PBXGroup;
+			children = (
+				866D63D465051E0AAD1981CC /* DuckCurveHome */,
+				65C84AC3C6447AB9951FDF9E /* Packages */,
+				770B0B85A2D0E79753FAE0DC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E324203A9961C93CB1951100 /* Geld */ = {
+			isa = PBXGroup;
+			children = (
+				AAA38BD9FC62B1F89035ABAE /* GeldSeiten.swift */,
+				2D6ED7F71460E771FF1142A8 /* KostenSeite.swift */,
+				71D659D49C85D23F490706A6 /* RechnungenSeite.swift */,
+			);
+			path = Geld;
+			sourceTree = "<group>";
+		};
+		F5EA3A126DC1B0B547A9BA67 /* Seiten */ = {
+			isa = PBXGroup;
+			children = (
+				9624658A1AB14DA9EAC1B168 /* Energie */,
+				E324203A9961C93CB1951100 /* Geld */,
+				654BEB5D89370BE73A6FCD0A /* Haus */,
+				79A3AD3A4203D07076FFDC67 /* Jetzt */,
+				7E4EF8E069C777E57D778A83 /* Technik */,
+				D30DAA240E8C7E2CE0D0D58B /* Bericht.swift */,
+			);
+			path = Seiten;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FAC2C7F8522686C15CEB54C0 /* DuckCurveHome */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2DB44F363507E41810CD5721 /* Build configuration list for PBXNativeTarget "DuckCurveHome" */;
+			buildPhases = (
+				EC4388562D18A472E949D7CD /* Sources */,
+				CFA380E1D8651D3CDABCBFC8 /* Resources */,
+				A6A23D58CF66F5D6583F7798 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DuckCurveHome;
+			packageProductDependencies = (
+				3A62E496A87A8D94CA123EEF /* DuckCurveKit */,
+			);
+			productName = DuckCurveHome;
+			productReference = BF4037BAFC1759DC6E851D10 /* DuckCurveHome.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		28BE3F33505B10FCB9D7EC4D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					FAC2C7F8522686C15CEB54C0 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 14148F2E2F1D6EBC3C17F725 /* Build configuration list for PBXProject "DuckCurveHome" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = DBC32120246BCA5E280ACD8D;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6FB7133938786AA70FF315B7 /* XCLocalSwiftPackageReference "DuckCurveKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 770B0B85A2D0E79753FAE0DC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FAC2C7F8522686C15CEB54C0 /* DuckCurveHome */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CFA380E1D8651D3CDABCBFC8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				50E9B830BB427C2DCAA0BF73 /* Assets.xcassets in Resources */,
+				3002C7A14CEBBC9EA38D673C /* IBMPlexMono-Regular.otf in Resources */,
+				226B4A492629F3CED2C25DE8 /* IBMPlexSans-Regular.otf in Resources */,
+				DDF398D3D35EB0582927AD6B /* IBMPlexSans-SemiBold.otf in Resources */,
+				F76361C8B28CFB9F67FB6E78 /* Startbrett.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		EC4388562D18A472E949D7CD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				86081F4D7F554FABD4D7897D /* Abdeckungskarte.swift in Sources */,
+				4AE33F610960FF4F0F3F5440 /* Abrechnungstabelle.swift in Sources */,
+				3EF3EF537DB4E937E636B504 /* Abweichungsmatrix.swift in Sources */,
+				B74DFF3BE092C442D5C12ADC /* Alarmblatt.swift in Sources */,
+				8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */,
+				BF25DAE57629F583E2BC4442 /* Ambiente.swift in Sources */,
+				92BED5F9FA7987479E09055C /* AnlageSeite.swift in Sources */,
+				A828EF6E284B4E612A9201C9 /* Anlagenbild.swift in Sources */,
+				F523B5947273EEAB16435973 /* Anlagenbuehne.swift in Sources */,
+				643D9FDBE5C78B85C63D5ACA /* Anlagenrohre.swift in Sources */,
+				009C58B1789BEC6A39EE233B /* AnnahmenSeite.swift in Sources */,
+				4F4C0F0A21CF2F94D2FCC3C3 /* Ansichtswahl.swift in Sources */,
+				615EE3A0388C009F5AD74004 /* Anteilsleiste.swift in Sources */,
+				6FCF3DE35A951A727A3F0312 /* Ausblickkarte.swift in Sources */,
+				7ADC1391DB1466144D3A6EE8 /* Automatikkarte.swift in Sources */,
+				A032CFA7AF0A6774C96282C7 /* Bericht.swift in Sources */,
+				8638A47733CD3ABDE1B1DE1A /* Betragszeile.swift in Sources */,
+				598CA6A0572234E67AB11B89 /* BetriebSeite.swift in Sources */,
+				E482DDF65B14F096AC3D0EDD /* Betriebskurven.swift in Sources */,
+				6A6AE4891268B8CE7EF864AC /* Blaetter.swift in Sources */,
+				8FBB2C0204A565CC8FBADF61 /* DatenSeite.swift in Sources */,
+				BA80D620296C3F558A781A8A /* Dock.swift in Sources */,
+				3E30EAB4C6F63E5AD9D2F86C /* DuckCurveHomeApp.swift in Sources */,
+				C43C83AB55DE4450DB127E05 /* Einrichten.swift in Sources */,
+				512F02FA33052F129D25DBD5 /* Energiefluss.swift in Sources */,
+				0DAA63F1E91CB9DBF73F8285 /* FahrplanSeite.swift in Sources */,
+				4E765D4786033C74B93D66B6 /* Fahrplanzeichnung.swift in Sources */,
+				9791AE7D34591424DCAAD5DB /* Farben.swift in Sources */,
+				1423F68C39EC71F5598C2C47 /* GeldSeiten.swift in Sources */,
+				936CC078D935F0E9661D3842 /* Geldbalken.swift in Sources */,
+				83979A335889D8B32195AD4F /* Geldfarbe.swift in Sources */,
+				7A6C6E5925D48EE511579D9D /* Glasmodell.swift in Sources */,
+				F9410CEC89296C2F90F7DCE7 /* HandRahmen.swift in Sources */,
+				2269D6D973CDD5E90BAAF30A /* HausSeite.swift in Sources */,
+				D3731A83303F90690FDC2D29 /* HausgeraetSeite.swift in Sources */,
+				A7A6CC381CE06EA5773D4C1D /* Hauskonsolenblatt.swift in Sources */,
+				D4B4A38C63A5AE38D197BA44 /* Hauskonsolenleiste.swift in Sources */,
+				54B02B16AF6AD7A1D91887A2 /* HaustuerSeite.swift in Sources */,
+				F5EB172C68A7846716CEDC15 /* Hauszustand.swift in Sources */,
+				9B5CE42C67067F41A23B681B /* HeizkreiseSeite.swift in Sources */,
+				EA238585B29B985B247A88EE /* Heizkurvenbild.swift in Sources */,
+				AD1752C6B64DD9BD4FA5B72D /* Jahresflaeche.swift in Sources */,
+				27D9FD29E3FD1BE4D14BFE6C /* JahreskarteSeite.swift in Sources */,
+				2C33C03FBC4DD1869C483351 /* JetztSeite.swift in Sources */,
+				794E2772E9FA350C23B47393 /* Kanalzug.swift in Sources */,
+				F2315D70178CB51A033F71E7 /* Karte.swift in Sources */,
+				E26B292CEE7ED47EAE3A8894 /* KennlinieSeite.swift in Sources */,
+				3382A8C842A14E75F78BE43C /* Kennlinienbilder.swift in Sources */,
+				C57D7F4920028E07AB70536D /* Konsolenkurve.swift in Sources */,
+				F57341AC4A36B0F7A09110EC /* KostenSeite.swift in Sources */,
+				D4F4491E3A060F093073E3B1 /* Kostentreppe.swift in Sources */,
+				08BA2CE15442D3C33FD44C38 /* Ladebild.swift in Sources */,
+				528F3C17E297BD8A24DDA017 /* Ladeente.swift in Sources */,
+				05FB739969DE812D7DA39011 /* Leiste.swift in Sources */,
+				99BBBD49F3FD5777A26147A2 /* Mitteilungen.swift in Sources */,
+				CF1E38EE14DAA9FB117D4E38 /* MitteilungenSeite.swift in Sources */,
+				22D2BC7A701FA3B894DF5333 /* Mitteilungshinweis.swift in Sources */,
+				5978892A3A331A6505D8DFD6 /* NachbetrachtungSeite.swift in Sources */,
+				56C0AE84FC921B660B63E93D /* Navigation.swift in Sources */,
+				3971CFC7F6422B658ECCFDAB /* Plakette.swift in Sources */,
+				78F288AC8477C44FA5296A87 /* Postenliste.swift in Sources */,
+				3A9537F0B7B97C13AF8EB3FB /* PrognoseSeite.swift in Sources */,
+				CE52AB14EFE635E61A10408B /* Prognosezeichnung.swift in Sources */,
+				BC39AFA258EB753F725AFA8B /* Pruefkurvenbild.swift in Sources */,
+				EB7278D68E6A4B5E3D2B4F5D /* Pufferspeicher.swift in Sources */,
+				45AE6E2E3854CE0E52925988 /* Pultkarte.swift in Sources */,
+				D579B6BE85CD910AA87C26F3 /* Pvtageskurve.swift in Sources */,
+				F92D1E92970B23E1A0D28ED3 /* Pvverwendung.swift in Sources */,
+				6239EAA0DFD479C95C1F7DA5 /* Raumkachel.swift in Sources */,
+				FA5EA45739E98569EE9938B6 /* Raumprotokollblatt.swift in Sources */,
+				498B36D3AD10F973FA6BE8CD /* RechnungenSeite.swift in Sources */,
+				FA513BA85B6F00E2A1376A37 /* Rechnungsablage.swift in Sources */,
+				AC796F92288EDBB6A44B67BC /* Rechnungsbilder.swift in Sources */,
+				D742805330F9AD247E8CAB72 /* ReglerSeite.swift in Sources */,
+				1D59B9232C5BB1FFA8750A3A /* Reiterzeile.swift in Sources */,
+				BFC01C83721892608D7631E9 /* Schalterkarte.swift in Sources */,
+				11B372029B73A0C0A76B506E /* Schluesselbund.swift in Sources */,
+				FDC1EC6D16D2BB418720477D /* Seitenwahl.swift in Sources */,
+				3E972660B413B9444BFD044F /* Spaltenreihe.swift in Sources */,
+				258141E958D0A8A3F7E14DF0 /* Spannenstreifen.swift in Sources */,
+				3B16964D57955DDA37C9D346 /* SpeicherSeite.swift in Sources */,
+				76C51B9D9AF10588513426FE /* Speicherpruefkarte.swift in Sources */,
+				824E41A9E11CD2A4EB81477D /* Speichersteuerkarte.swift in Sources */,
+				C4424C91CF38AE065FD8883B /* Speichertagbild.swift in Sources */,
+				E13E305715ECAA8F56FA9AA0 /* Sprachhoerer.swift in Sources */,
+				A414B4F48D8F7D73D8DE92B8 /* StromSeite.swift in Sources */,
+				BF90E13714A06E92ACA5FEBA /* Systemanschluss.swift in Sources */,
+				BDB969FBDB5E1849EF0EF74D /* Tagesbandbild.swift in Sources */,
+				3119991C0311A68EED64E790 /* Tageskurve.swift in Sources */,
+				38A6A890454592845AC625EA /* Tagesuhrbild.swift in Sources */,
+				67E0F39BDDA04ABA7B1DC320 /* Tagesvergleichsbild.swift in Sources */,
+				037D55C1D81214979C40FC04 /* Tagewahl.swift in Sources */,
+				F01A3D3524E63BA7DE6D02B7 /* Typografie.swift in Sources */,
+				2918583F1B0E0FB33ED72F5E /* Uebernahmeleiste.swift in Sources */,
+				BFEA1309C0F0923E9EC869A2 /* Umbruchzeile.swift in Sources */,
+				7BA728D9D24497FBC2C1119E /* Unteransichten.swift in Sources */,
+				A841255CFF6E0C1D583B8C6C /* Vergleichsknopf.swift in Sources */,
+				FB410072136231AA663DAAD2 /* Vorschauen.swift in Sources */,
+				9A1C3FB9FF91FD7A101C7D83 /* WaermeSeite.swift in Sources */,
+				D894CFE0B631F5092301D588 /* Waermebilder.swift in Sources */,
+				9FB949F248DA3A0880753B14 /* WaermepumpeSeite.swift in Sources */,
+				B5B0CB533E0FCE256C33E295 /* Waermepumpenbild.swift in Sources */,
+				C7DA84FBE547E1A84DE2F5C2 /* WallboxSeite.swift in Sources */,
+				F6805480CB4D065F2BD42F0A /* WandRahmen.swift in Sources */,
+				E1BA848EC03EE1BA5C793D0E /* WiedergabeSeite.swift in Sources */,
+				99325CC88981F11B88CCF0DE /* WirkungSeite.swift in Sources */,
+				F94F526492959D7819284785 /* Wirkungszeichnung.swift in Sources */,
+				A866580B4F770F9C1E2A1F23 /* Wpmenue.swift in Sources */,
+				A12C880295C6B5FFA2CC04B9 /* Zeichen.swift in Sources */,
+				A68E6D151458C984ABD7E13F /* ZugangSeite.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		363FFF257685D9FD9EC81E94 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = DuckCurveHome/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = home.duckcurve.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B43468B2C962FE401BE98705 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		F2D2C5B56A47AEF5307E4360 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = DuckCurveHome/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = home.duckcurve.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		FC72C21D5F3561C8189FA476 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		14148F2E2F1D6EBC3C17F725 /* Build configuration list for PBXProject "DuckCurveHome" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FC72C21D5F3561C8189FA476 /* Debug */,
+				B43468B2C962FE401BE98705 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		2DB44F363507E41810CD5721 /* Build configuration list for PBXNativeTarget "DuckCurveHome" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				363FFF257685D9FD9EC81E94 /* Debug */,
+				F2D2C5B56A47AEF5307E4360 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		6FB7133938786AA70FF315B7 /* XCLocalSwiftPackageReference "DuckCurveKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = DuckCurveKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		3A62E496A87A8D94CA123EEF /* DuckCurveKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DuckCurveKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 28BE3F33505B10FCB9D7EC4D /* Project object */;
+}

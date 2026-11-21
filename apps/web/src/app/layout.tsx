@@ -2,13 +2,15 @@ import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 // Die Handy-Ansicht ist eine eigene Schicht und kommt zuletzt, damit sie die Grundstile schlägt.
 import "@/styles/handy.css";
+import { Alfred } from "@/components/alfred/Alfred";
 
 export const metadata: Metadata = {
   title: "Duck Curve Home",
   description: "Home Energy Management - Energieflüsse, Pufferspeicher, Strompreis und Wärmepumpen-Plan auf einen Blick.",
   applicationName: "Duck Curve Home",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Duck Curve Home" },
-  // Dieselben Markenicons wie duckcurve.de: ein Tab, ein Vogel.
+  // Die Marken-Ente auf eigener Bühne: Petrol-Grund, Sonne, Flügel. Quelle ist favicon.svg; die
+  // beiden anderen Dateien zeichnet tools/gen-appicon.py daraus, nicht die Hand.
   icons: {
     icon: [
       { url: "/favicon.ico" },
@@ -30,7 +32,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de">
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Auf jeder Seite derselbe Helfer; auf /locked und /pair blendet er sich selbst aus. */}
+        <Alfred />
+      </body>
     </html>
   );
 }

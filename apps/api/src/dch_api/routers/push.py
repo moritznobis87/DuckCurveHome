@@ -10,6 +10,8 @@ from dch_api.application.push import Mitteilung, PushService, Zustellung
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
 from dch_api.schemas import (
+    ApnsSubscribeIn,
+    ApnsUnsubscribeIn,
     MorgenbriefIn,
     MorgenbriefOut,
     PushGeraeteOut,
@@ -40,6 +42,53 @@ async def subscribe(
     await push.subscribe(body.endpoint, body.p256dh, body.auth, body.label, body.origin)
     return PushResultOut(
         ok=True, devices=await push.count(), message_de="Dieses Gerät bekommt jetzt Mitteilungen."
+    )
+
+
+@router.post(
+    "/apns/subscribe",
+    response_model=PushResultOut,
+    summary="Dieses Gerät der App anmelden (APNs)",
+)
+async def apns_subscribe(
+    body: ApnsSubscribeIn, push: Annotated[PushService, Depends(get_push)]
+) -> PushResultOut:
+    """Ein Gerät der iOS-App anmelden.
+
+    **Warum ein eigener Weg neben `/push/subscribe`.** Eine iOS-App kann Web Push nicht
+    empfangen; Apple lässt Mitteilungen nur über APNs zu. Die Adresse ist dort kein Endpunkt beim
+    Push-Dienst des Browsers, sondern ein Gerätetoken des Betriebssystems - und es gibt keine
+    beiden Schlüssel, denn APNs verschlüsselt selbst.
+
+    Gespeichert wird das Gerät trotzdem als Abonnement wie jedes andere. Was es unterscheidet,
+    steht in seiner Adresse (`apns://…`), und `PushService` sieht daran, welchen Weg eine
+    Mitteilung nimmt.
+    """
+    await push.subscribe_apns(body.token, body.label or "", body.sandbox)
+    satz = "Dieses Gerät bekommt jetzt Mitteilungen."
+    if push.apns is None or not push.apns.bereit:
+        satz = (
+            "Angemeldet. Der Dienst kann aber noch nicht an die App senden: "
+            "es fehlt der Signierschlüssel von Apple."
+        )
+    return PushResultOut(ok=True, devices=await push.count(), message_de=satz)
+
+
+@router.post(
+    "/apns/unsubscribe",
+    response_model=PushResultOut,
+    summary="Dieses Gerät der App abmelden (APNs)",
+)
+async def apns_unsubscribe(
+    body: ApnsUnsubscribeIn, push: Annotated[PushService, Depends(get_push)]
+) -> PushResultOut:
+    weg = await push.unsubscribe_apns(body.token)
+    return PushResultOut(
+        ok=weg,
+        devices=await push.count(),
+        message_de="Dieses Gerät bekommt keine Mitteilungen mehr."
+        if weg
+        else "Dieses Gerät war nicht angemeldet.",
     )
 
 

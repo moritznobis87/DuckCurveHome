@@ -1,7 +1,8 @@
 # Duck Curve Home
 
 Home-Energy-Management-System (HEMS) für ein Wohnhaus in Geilenkirchen: Energieflüsse, Pufferspeicher,
-Strompreis und der Wärmepumpen-Plan auf einen Blick - auf einem iPad an der Wand. Ab Phase 4 optimiert
+Strompreis und der Wärmepumpen-Plan auf einen Blick - auf einem iPad an der Wand, als App
+oder im Browser. Ab Phase 4 optimiert
 Duck Curve Home die Wärmepumpe als flexible Last nach PV-Überschuss, Strompreis und Wärmebedarf, ohne die
 Anlage selbst zu verändern: gesteuert werden ausschließlich die beiden dafür vorgesehenen Kontakte.
 
@@ -36,6 +37,8 @@ tools/demo.sh                      # API mit Reload + Next.js Dev-Server
 | `apps/api` | FastAPI: Live-Zustand, SSE-Stream, Historie, Plan, Steuerung, Bridge-Ingest, myenergi-Cloud direkt (Live + Minutenhistorie), PostgreSQL (Alembic) |
 | `apps/bridge` + `addons/duckcurve_bridge` | Bridge als Home-Assistant-Add-on: Shelly 3EM direkt über MQTT (Mosquitto), übrige Entitäten über HA, schaltet mit TTL, ausgehende WSS-Verbindung mit SQLite-Outbox |
 | `apps/web` | Next.js-Dashboard (iPad-Querformat, Dark Mode, Duck-Curve-Design-System) in fünf Bereichen, vier für den Alltag und einer für den Betrieb: Jetzt (`/`, die Wandanzeige, am Handy mit Flussbild und Ausblick auf 24 Stunden), Haus (`/haus`, die Räume als Liste zum Stellen oder als Glasmodell mit Temperaturen, Kontakten und Alarm), Energie (Strom, Wärme, Photovoltaik, Speicher, Wallbox, Jahreskarte), Geld (Kosten, PV-Abrechnung, Rechnungen) und Technik (Anlage, Wärmepumpe, Fahrplan, Wirkung, Heizkreise; für den Hausherrn dazu Prognose, Daten prüfen, Annahmen, Mitteilungen, Haustür, Zugang). Die Adressen folgen weiter dem Gegenstand (`/strom`, `/waerme`, `/system`); welcher Bereich eine Seite zeigt, steht in `apps/web/src/lib/areas.ts`. Die Reiter eines Bereichs teilen sich den Zeitraum; alte Adressen leiten um. Unter 720 px Breite eine eigene Handy-Ansicht (`apps/web/src/styles/handy.css`): Bereichsleiste unten, Energiefluss als Bild, eine führende Zahl je Seite, Tabellen als Listen |
+| `apps/ios` | **iPhone und iPad**: eine App, zwei Oberflächen - die Wandanzeige im Querformat und die Handansicht. Alle 29 Seiten, unter denselben Adressen. `DuckCurveKit` ist der Kern ohne SwiftUI und baut auch ohne macOS (211 Tests); die Oberfläche braucht Xcode. Bauen: `cd apps/ios && xcodegen generate`. Siehe [`apps/ios/README.md`](apps/ios/README.md) |
+| `apps/api/src/dch_api/alfred` + `apps/web/src/components/alfred` | Alfred, der Helfer unten rechts: erklärt die Seiten und beantwortet mit Mistral Fragen zu den Daten des Hauses, über Werkzeuge, die dieselben Auswertungen lesen wie die Seiten. Schaltet nichts ohne Knopfdruck ([docs/ALFRED.md](docs/ALFRED.md)) |
 | `docs/` | Projektplan, OpenAPI-Schema, Architekturentscheidungen |
 | `hardware/verteilerregler` | Prototyp eines eigenen Reglers am Heizkreisverteiler: Firmware für den ESP32-S3 (PlatformIO), Schaltbild, Stücklisten. Fährt zehn stufenlose Motorantriebe, misst den Motorstrom und liest die Rücklauffühler; gerechnet wird im Kern. Übersetzt, nie an Hardware gelaufen |
 
@@ -49,6 +52,8 @@ uv run pytest -q                         # Python-Tests (Kern + API)
 uv run ruff check apps packages && uv run mypy apps/api/src packages/hems-core/src && uv run lint-imports
 cd apps/web && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 tools/gen-types.sh                       # OpenAPI → docs/openapi.json → apps/web/src/lib/api/types.ts
+tools/ios-pruefen.sh                     # iOS: Kern bauen und testen, Oberfläche parsen
+tools/gen-swift.py                       # OpenAPI → Swift-Modelle (`--pruefen` für die CI)
 ```
 
 Demo steuern (Zeitraffer, Störungen, Szenarien):
@@ -66,6 +71,10 @@ curl -X POST localhost:8000/api/v1/demo -H 'content-type: application/json' -d '
 
 ## Weitere Dokumente
 
+- [deploy/haus/README.md](deploy/haus/README.md) - Duck Curve Home auf dem eigenen Gerät installieren (Raspberry Pi, Stufe 1)
+- [docs/HAUSGERAET.md](docs/HAUSGERAET.md) - Plan für das eigene Gerät im Haus: Dienste, Kiosk, Marke, Wartung, Auslieferung
+- [docs/ZENTRALE.md](docs/ZENTRALE.md) - was eine Zentrale leisten muss, wenn ein Gerät zum Kunden geht: Beitritt, Verzeichnis, Relais, Beratungszugang, Ausfallvertrag ([ADR-0002](docs/decisions/ADR-0002-identitaet-und-berechtigung.md), [ADR-0003](docs/decisions/ADR-0003-erreichbarkeit-und-flotte.md))
+- [docs/ALFRED.md](docs/ALFRED.md) - Alfred: was er kann, was das Haus nie verlässt, Einrichtung mit Mistral
 - [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) - offene Rückfragen mit Annahmen
 - [docs/RECHNUNGSPRUEFUNG.md](docs/RECHNUNGSPRUEFUNG.md) - Tibber-Rechnungen prüfen (`/haus/rechnungen`, Endpunkt für Automatisierungen)
 - [docs/HA_EXPORT.md](docs/HA_EXPORT.md) - Historie aus dem Home-Assistant-Recorder exportieren und importieren (`POST /api/v1/import/ha`)

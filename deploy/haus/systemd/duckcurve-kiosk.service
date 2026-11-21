@@ -1,0 +1,30 @@
+# Kiosk: genau eine Anwendung auf dem Display (cage + Chromium), als Benutzer ohne Rechte.
+# Muster nach der systemd-Einheit aus dem cage-Projekt. Kein Desktop, keine Anmeldung, kein
+# Wechsel auf die Textkonsole (cage erlaubt ihn nur mit -s).
+[Unit]
+Description=Duck Curve Home - Kiosk
+After=duckcurve.service systemd-user-sessions.service plymouth-quit-wait.service
+Wants=duckcurve.service
+Conflicts=getty@tty1.service
+
+[Service]
+User=kiosk
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+Environment=XDG_SESSION_TYPE=wayland
+# Das Startbild erst loslassen, wenn cage uebernimmt, damit nichts dazwischen aufblitzt.
+ExecStartPre=-/usr/bin/plymouth quit --retain-splash
+ExecStart=/usr/bin/cage -d -- /opt/duckcurve/kiosk/start.sh
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical.target

@@ -1,0 +1,822 @@
+#!/usr/bin/env bash
+# dch - Duck Curve Home auf dem Hausgeraet bedienen (deploy/haus/README.md).
+#
+#   dch status                  Dienste, Gesundheit, Version
+#   dch logs [dienst]           Protokoll folgen (api, web, postgres, caddy, ...)
+#   dch neustart                Dienste neu starten (nach einer Aenderung an .env)
+#   dch stoppen                 Dienste anhalten
+#   dch aktualisieren [version] Images ziehen und neu starten; mit Version wird sie festgehalten
+#   dch selbst-aktualisieren    Quelltext holen und die Einrichtung erneut ausfuehren
+#   dch sichern                 Datenbank jetzt sichern
+#   dch sicherungen             vorhandene Sicherungen auflisten
+#   dch wiederherstellen DATEI  Datenbank aus einer Sicherung wiederherstellen
+#   dch uebernehmen URL         Datenbank von Railway (oder einem anderen Postgres) uebernehmen
+#   dch koppeln                 Einstellungen fuer das Bridge-Add-on und Pairing-Links anzeigen
+#   dch pruefen                 nachsehen, ob ein Update bereitsteht (Statusdatei fuer die App)
+#   dch anfrage                 eine Anfrage aus der App bearbeiten (startet systemd von selbst)
+#   dch zustand                 Gesundheitsbericht fuer die App schreiben (jede Minute per Timer)
+#
+# Laeuft als root (sudo). Alles liegt unter /opt/duckcurve, Sicherungen unter
+# /var/lib/duckcurve/sicherung, der Austausch mit der App unter /var/lib/duckcurve/geraet.
+
+set -euo pipefail
+
+BASIS=${DCH_BASIS:-/opt/duckcurve}
+SICHERUNG=${DCH_SICHERUNG:-/var/lib/duckcurve/sicherung}
+GERAET=${DCH_GERAET:-/var/lib/duckcurve/geraet}
+ENVDATEI="$BASIS/.env"
+STATUS="$GERAET/status.json"
+ANFRAGE="$GERAET/anfrage/anfrage.json"
+REPO_GITHUB=moritznobis87/DuckCurveHome
+
+fehler() { echo "dch: $*" >&2; exit 1; }
+hinweis() { echo "==> $*"; }
+
+[ -f "$BASIS/compose.yaml" ] || fehler "$BASIS/compose.yaml fehlt - ist das Geraet eingerichtet (einrichten.sh)?"
+[ -f "$ENVDATEI" ] || fehler "$ENVDATEI fehlt."
+
+wert() {
+	# Ein Wert aus .env, ohne die Datei als Skript auszufuehren.
+	sed -n "s/^$1=//p" "$ENVDATEI" | tail -n 1 | sed 's/^"\(.*\)"$/\1/'
+}
+
+compose() {
+	local profile=()
+	[ "$(wert DCH_FERNZUGANG)" = "1" ] && profile+=(--profile fernzugang)
+	local dateien=(-f "$BASIS/compose.yaml")
+	[ -f "$BASIS/compose.bauen.yaml" ] && dateien+=(-f "$BASIS/compose.bauen.yaml")
+	docker compose --project-directory "$BASIS" "${dateien[@]}" "${profile[@]}" "$@"
+}
+
+warten_auf_postgres() {
+
+	for _ in $(seq 1 60); do
+		compose exec -T postgres pg_isready -U dch -d dch >/dev/null 2>&1 && return 0
+		sleep 2
+	done
+	fehler "Die Datenbank antwortet nicht."
+}
+
+# ----------------------------------------------------------------------------------- Updates
+#
+# Die App steuert Docker nicht selbst: Wer an Docker kommt, ist praktisch Administrator des
+# Geraets. Sie liest nur die Statusdatei, die dieser Teil schreibt, und legt fuer "Update
+# installieren" eine Anfrage-Datei ab; systemd sieht sie (duckcurve-anfrage.path) und ruft
+# `dch anfrage`. Was danach geschieht, entscheidet allein dieses Skript.
+
+jetzt() { date -u +%Y-%m-%dT%H:%M:%SZ; }
+
+status_setzen() {
+	# Felder in die Statusdatei schreiben, atomar (erst Kopie, dann umbenennen), damit die API nie
+	# eine halbe Datei liest. Aufruf: status_setzen '.zustand = "laeuft"' [--arg name wert ...]
+	local filter=$1
+	shift
+	mkdir -p "$GERAET"
+	[ -s "$STATUS" ] || echo '{}' >"$STATUS"
+	jq "$@" "$filter" "$STATUS" >"$STATUS.neu"
+	chmod 0644 "$STATUS.neu"
+	mv "$STATUS.neu" "$STATUS"
+}
+
+schritt_setzen() {
+	status_setzen '.zustand = $z | .schritt = $s | .geaendert_am = $t' \
+		--arg z "$1" --arg s "$2" --arg t "$(jetzt)"
+}
+
+bild_ref() {
+	# Das Image eines Dienstes, so wie compose.yaml es zusammensetzt.
+	local dienst=$1 standard
+	standard="ghcr.io/moritznobis87/duckcurve-$dienst"
+	local name
+	name=$(wert "DCH_IMAGE_${dienst^^}")
+	echo "${name:-$standard}:$(wert DCH_VERSION)"
+}
+
+laufende_revision() {
+	# Commit des Images, das gerade laeuft (Label org.opencontainers.image.revision), sonst leer.
+	local id
+	id=$(compose ps -q "$1" 2>/dev/null | head -n1)
+	[ -n "$id" ] || return 0
+	docker inspect --format '{{.Image}}' "$id" 2>/dev/null |
+		xargs -r docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null |
+		sed 's/<no value>//'
+}
+
+laufender_digest() {
+	local id
+	id=$(compose ps -q "$1" 2>/dev/null | head -n1)
+	[ -n "$id" ] || return 0
+	docker inspect --format '{{.Image}}' "$id" 2>/dev/null |
+		xargs -r docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' 2>/dev/null |
+		sed -n 's/.*@//p' | head -n1
+}
+
+entfernt() {
+	# Revision und Digest eines Images in der Registry, fuer die Plattform dieses Geraets.
+	# Ausgabe: "<digest> <revision>" (Revision leer, wenn das Image kein Label traegt).
+	# Die Registry steht vorn im Namen (ghcr.io/... oder eine eigene wie registry.lan:5000/...).
+	# GHCR verlangt auch fuer oeffentliche Images ein anonymes Token, eine eigene Registry meist
+	# nicht; localhost spricht HTTP.
+	local ref=$1 host repo tag token index digest manifest config arch schema=https
+	host=${ref%%/*}
+	repo=${ref#*/}
+	tag=${repo##*:}
+	repo=${repo%:*}
+	{ [ "$host" != "$ref" ] && [[ "$host" == *.* || "$host" == *:* ]]; } || return 1
+	[[ "$host" == localhost* || "$host" == 127.0.0.1* ]] && schema=http
+	arch=$(dpkg --print-architecture 2>/dev/null || uname -m)
+	case "$arch" in aarch64) arch=arm64 ;; x86_64) arch=amd64 ;; esac
+	local h=(-fsS -m 20)
+	if [ "$host" = "ghcr.io" ]; then
+		token=$(curl -fsS -m 15 "https://ghcr.io/token?scope=repository:$repo:pull" | jq -r .token) || return 1
+		h+=(-H "Authorization: Bearer $token")
+	fi
+	local basis="$schema://$host/v2/$repo"
+	digest=$(curl "${h[@]}" -I \
+		-H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json" \
+		"$basis/manifests/$tag" | tr -d '\r' | sed -n 's/^[Dd]ocker-[Cc]ontent-[Dd]igest: //p') || return 1
+	index=$(curl "${h[@]}" \
+		-H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json" \
+		"$basis/manifests/$tag") || return 1
+	manifest=$(echo "$index" | jq -r --arg a "$arch" \
+		'.manifests[]? | select(.platform.os == "linux" and .platform.architecture == $a) | .digest' | head -n1)
+	local revision=""
+	if [ -n "$manifest" ]; then
+		config=$(curl "${h[@]}" -H "Accept: application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json" \
+			"$basis/manifests/$manifest" | jq -r .config.digest) || true
+	else
+		# Ein Image fuer nur eine Plattform: kein Verzeichnis, sondern gleich das Manifest.
+		config=$(echo "$index" | jq -r '.config.digest // empty')
+	fi
+	if [ -n "${config:-}" ] && [ "$config" != "null" ]; then
+		revision=$(curl "${h[@]}" -L "$basis/blobs/$config" |
+			jq -r '.config.Labels["org.opencontainers.image.revision"] // empty') || true
+	fi
+	echo "$digest $revision"
+}
+
+neuerungen() {
+	# Die Commit-Titel zwischen zwei Staenden, neueste zuerst, ohne Merges; hoechstens 30.
+	local alt=$1 neu=$2
+	{ [ -n "$alt" ] && [ -n "$neu" ] && [ "$alt" != "$neu" ]; } || { echo '[]'; return 0; }
+	curl -fsS -m 20 "https://api.github.com/repos/$REPO_GITHUB/compare/$alt...$neu" 2>/dev/null |
+		jq '[.commits[]? | {sha: .sha[0:7], titel: (.commit.message | split("\n")[0])}
+		     | select(.titel | startswith("Merge") | not)] | reverse | .[0:30]' 2>/dev/null || echo '[]'
+}
+
+pruefen() {
+	local alt_rev neu_rev alt_dig neu_dig verfuegbar=false liste='[]' bauen=false
+	if [ -f "$BASIS/compose.bauen.yaml" ]; then
+		bauen=true
+		local q="$BASIS/quelle"
+		git -C "$q" fetch -q origin 2>/dev/null || true
+		alt_rev=$(git -C "$q" rev-parse HEAD 2>/dev/null || true)
+		neu_rev=$(git -C "$q" rev-parse '@{u}' 2>/dev/null || true)
+		[ -n "$neu_rev" ] && [ "$alt_rev" != "$neu_rev" ] && verfuegbar=true
+		if [ "$verfuegbar" = true ]; then
+			liste=$(git -C "$q" log --no-merges --format='%h%x09%s' -n 30 "$alt_rev..$neu_rev" |
+				jq -R -s 'split("\n") | map(select(length > 0) | split("\t") | {sha: .[0], titel: .[1]})')
+		fi
+	else
+		local ergebnis
+		alt_rev=$(laufende_revision api)
+		alt_dig=$(laufender_digest api)
+		if ergebnis=$(entfernt "$(bild_ref api)"); then
+			neu_dig=${ergebnis%% *}
+			neu_rev=${ergebnis#* }
+			if [ -n "$alt_rev" ] && [ -n "$neu_rev" ]; then
+				[ "$alt_rev" != "$neu_rev" ] && verfuegbar=true
+			elif [ -n "$neu_dig" ] && [ "$neu_dig" != "$alt_dig" ]; then
+				verfuegbar=true
+			fi
+			# Die Oberflaeche zaehlt mit: ein neues Image nur fuer sie ist auch ein Update.
+			local web_ergebnis web_alt
+			web_alt=$(laufender_digest web)
+			if web_ergebnis=$(entfernt "$(bild_ref web)"); then
+				[ -n "${web_ergebnis%% *}" ] && [ "${web_ergebnis%% *}" != "$web_alt" ] && verfuegbar=true
+			fi
+			[ "$verfuegbar" = true ] && liste=$(neuerungen "$alt_rev" "$neu_rev")
+		else
+			status_setzen '.unterstuetzt = true | .geprueft_am = $t | .meldung = "Die Registry war nicht erreichbar."' \
+				--arg t "$(jetzt)"
+			return 0
+		fi
+	fi
+	status_setzen '.unterstuetzt = true | .kanal = $k | .gebaut_auf_geraet = ($b == "true")
+		| .aktuell = $a | .verfuegbar = (if $v == "true" then $n else null end)
+		| .update_verfuegbar = ($v == "true") | .neuerungen = $l | .geprueft_am = $t
+		| .zustand = (.zustand // "bereit")
+		| .meldung = (if .meldung == "Die Registry war nicht erreichbar." then null else .meldung end)' \
+		--arg k "$(wert DCH_VERSION)" --arg b "$bauen" --arg a "${alt_rev:0:12}" --arg n "${neu_rev:0:12}" \
+		--arg v "$verfuegbar" --argjson l "$liste" --arg t "$(jetzt)"
+}
+
+gesund() {
+	# Ob API und Oberflaeche nach einem Neustart wieder antworten; hoechstens drei Minuten.
+	local id
+	for _ in $(seq 1 60); do
+		id=$(compose ps -q api 2>/dev/null | head -n1)
+		if [ -n "$id" ] && [ "$(docker inspect --format '{{.State.Health.Status}}' "$id" 2>/dev/null)" = "healthy" ] &&
+			curl -fsS -m 5 http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+			return 0
+		fi
+		sleep 3
+	done
+	return 1
+}
+
+dateien_nachziehen() {
+	# Was im Quelltext unter deploy/haus liegt, auf den Stand des Quelltexts bringen: compose.yaml,
+	# Caddyfile, dch, Systemdienste. Ohne apt, ohne Boot-Einstellungen; das bleibt einrichten.sh.
+	local q="$BASIS/quelle/deploy/haus"
+	[ -d "$q" ] || return 0
+	install -m 0644 "$q/compose.yaml" "$BASIS/compose.yaml"
+	install -m 0644 "$q/Caddyfile" "$BASIS/Caddyfile"
+	# `install` legt eine neue Datei an statt die alte zu ueberschreiben: Dieses Skript laeuft
+	# gerade, und bash liest es beim Ausfuehren Stueck fuer Stueck.
+	install -m 0755 "$q/dch" "$BASIS/dch"
+	if [ -d /run/systemd/system ] && [ -d "$q/systemd" ]; then
+		local einheit
+		for einheit in "$q"/systemd/duckcurve*.service "$q"/systemd/duckcurve*.timer "$q"/systemd/duckcurve*.path; do
+			[ -f "$einheit" ] || continue
+			case "$(basename "$einheit")" in
+			duckcurve-kiosk.service) [ -f /etc/systemd/system/duckcurve-kiosk.service ] || continue ;;
+			esac
+			install -m 0644 "$einheit" "/etc/systemd/system/$(basename "$einheit")"
+		done
+		systemctl daemon-reload
+		# Was mit einem Update neu hinzukommt, muss auch laufen, nicht nur daliegen.
+		systemctl enable --now duckcurve-anfrage.path duckcurve-pruefen.timer duckcurve-zustand.timer >/dev/null 2>&1 || true
+	fi
+}
+
+installieren() {
+	local von=${1:-}
+	mkdir -p "$GERAET"
+	exec 9>"$GERAET/.sperre"
+	flock -n 9 || fehler "Es laeuft bereits ein Update."
+	local vorher_api vorher_web alt
+	alt=$(laufende_revision api)
+	status_setzen '.zustand = "laeuft" | .schritt = "Sicherung" | .meldung = null | .begonnen_am = $t | .von = $v' \
+		--arg t "$(jetzt)" --arg v "$von"
+
+	if ! "$0" sichern >/dev/null 2>&1; then
+		schritt_setzen fehlgeschlagen "Sicherung"
+		status_setzen '.meldung = "Die Sicherung vor dem Update ist fehlgeschlagen; es wurde nichts geändert."'
+		return 1
+	fi
+
+	schritt_setzen laeuft "Quelltext"
+	if [ -d "$BASIS/quelle/.git" ]; then
+		git -C "$BASIS/quelle" pull -q --ff-only 2>/dev/null || true
+		dateien_nachziehen
+	fi
+
+	# Was jetzt laeuft, unter einem eigenen Namen festhalten: Damit geht es zurueck, falls die neue
+	# Fassung nicht gesund hochkommt.
+	local dienst id
+	for dienst in api web; do
+		id=$(compose ps -q "$dienst" 2>/dev/null | head -n1)
+		[ -n "$id" ] && docker tag "$(docker inspect --format '{{.Image}}' "$id")" "duckcurve-$dienst:vorher"
+	done
+	vorher_api=$(docker image inspect --format '{{.Id}}' duckcurve-api:vorher 2>/dev/null || true)
+	vorher_web=$(docker image inspect --format '{{.Id}}' duckcurve-web:vorher 2>/dev/null || true)
+
+	schritt_setzen laeuft "Laden"
+	if [ -f "$BASIS/compose.bauen.yaml" ]; then
+		compose build >/dev/null 2>&1 || { schritt_setzen fehlgeschlagen "Laden"; status_setzen '.meldung = "Das Bauen der neuen Fassung ist fehlgeschlagen; die alte läuft weiter."'; return 1; }
+	else
+		compose pull api web >/dev/null 2>&1 || { schritt_setzen fehlgeschlagen "Laden"; status_setzen '.meldung = "Die neue Fassung ließ sich nicht laden (Internet?); die alte läuft weiter."'; return 1; }
+	fi
+
+	# Welche Fassung jetzt versucht wird; auch nach einer Rueckkehr soll klar sein, welche nicht hochkam.
+	local versucht
+	if [ -f "$BASIS/compose.bauen.yaml" ]; then
+		versucht=$(git -C "$BASIS/quelle" rev-parse HEAD 2>/dev/null || true)
+	else
+		versucht=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$(bild_ref api)" 2>/dev/null || true)
+	fi
+
+	schritt_setzen laeuft "Neustart"
+	compose up -d --remove-orphans >/dev/null 2>&1 || true
+
+	schritt_setzen laeuft "Pruefung"
+	if gesund; then
+		status_setzen '.zustand = "fertig" | .schritt = null | .update_verfuegbar = false | .verfuegbar = null
+			| .neuerungen = [] | .meldung = null
+			| .zuletzt = {am: $t, ergebnis: "ok", von: $a, nach: $n}' \
+			--arg t "$(jetzt)" --arg a "${alt:0:12}" --arg n "$(laufende_revision api | cut -c1-12)"
+		docker image prune -f >/dev/null 2>&1 || true
+		pruefen || true
+		return 0
+	fi
+
+	schritt_setzen laeuft "Zurueck"
+	local ref
+	if [ -n "$vorher_api" ]; then ref=$(bild_ref api); [ -f "$BASIS/compose.bauen.yaml" ] && ref=duckcurve-api:lokal; docker tag "$vorher_api" "$ref"; fi
+	if [ -n "$vorher_web" ]; then ref=$(bild_ref web); [ -f "$BASIS/compose.bauen.yaml" ] && ref=duckcurve-web:lokal; docker tag "$vorher_web" "$ref"; fi
+	compose up -d --remove-orphans >/dev/null 2>&1 || true
+	if gesund; then
+		status_setzen '.zustand = "zurueckgerollt" | .schritt = null
+			| .meldung = "Die neue Fassung kam nicht gesund hoch. Die vorherige läuft wieder."
+			| .zuletzt = {am: $t, ergebnis: "zurueckgerollt", von: $a, nach: $n}' \
+			--arg t "$(jetzt)" --arg a "${alt:0:12}" --arg n "${versucht:0:12}"
+	else
+		status_setzen '.zustand = "fehlgeschlagen" | .schritt = null
+			| .meldung = "Weder die neue noch die vorherige Fassung kam gesund hoch. Bitte am Gerät nachsehen (dch status, dch logs api)."
+			| .zuletzt = {am: $t, ergebnis: "fehlgeschlagen", von: $a, nach: $n}' \
+			--arg t "$(jetzt)" --arg a "${alt:0:12}" --arg n "${versucht:0:12}"
+	fi
+	return 1
+}
+
+# ---------------------------------------------------------------------------------- Hausgeraet
+#
+# Was die App unter Technik -> Hausgeraet zeigt. Es gibt sonst keinen Weg auf dieses Geraet: kein
+# Bildschirm, keine Tastatur, keine Kommandozeile fuer den Hausherrn. Darum schreibt dieser Teil
+# jede Minute einen Bericht (duckcurve-zustand.timer) und fuehrt aus der App eine kleine, feste
+# Liste von Handgriffen aus: einen Dienst neu starten, jetzt sichern, ein Protokoll holen, das
+# Geraet neu starten. Mehr nicht, und nichts davon mit Werten aus der Anfrage ausser dem Namen
+# eines Dienstes, der gegen compose.yaml geprueft wird.
+
+dienste_bekannt() {
+	# Die Dienste aus compose.yaml (mit dem Profil Fernzugang, wenn es an ist).
+	compose config --services 2>/dev/null
+}
+
+dienst_gueltig() {
+	local d=$1
+	[ "$d" = "alle" ] && return 0
+	[[ "$d" =~ ^[a-z][a-z0-9_-]{0,30}$ ]] || return 1
+	dienste_bekannt | grep -qx -- "$d"
+}
+
+aktion_setzen() {
+	# Die zuletzt angefragte Aktion und wie sie ausging: $GERAET/aktion.json.
+	# Aufruf: aktion_setzen <aktion> <dienst> <laeuft|ok|fehler> <meldung> [von]
+	local datei="$GERAET/aktion.json" alt='{}'
+	[ -s "$datei" ] && alt=$(cat "$datei")
+	echo "$alt" | jq --arg a "$1" --arg d "$2" --arg z "$3" --arg m "$4" --arg v "${5:-}" --arg t "$(jetzt)" '
+		(if $z == "laeuft" then {begonnen_am: $t, beendet_am: null} else {begonnen_am: (.begonnen_am // $t), beendet_am: $t} end)
+		+ {aktion: $a, dienst: (if $d == "" then null else $d end), zustand: $z, meldung: $m,
+		   von: (if $v == "" then .von else $v end)}' >"$datei.neu"
+	chmod 0644 "$datei.neu"
+	mv "$datei.neu" "$datei"
+}
+
+geheimnisse() {
+	# Die Werte aus .env, die in einem Protokoll nichts zu suchen haben, je Zeile einer.
+	sed -n -E 's/^[A-Z0-9_]*(TOKEN|TOKENS|KEY|SECRET|PASSWORT|PASSWORD|SCHLUESSEL|_URL)=//p' "$ENVDATEI" |
+		sed 's/^"\(.*\)"$/\1/' | tr ',' '\n' | tr -d '[] "' | awk 'length($0) >= 8'
+}
+
+schwaerzen() {
+	# Ersetzt jedes Geheimnis aus .env durch ***, woertlich (perl-base gehoert zu jedem Debian).
+	GEHEIM="$(geheimnisse)" perl -pe 'BEGIN { @g = grep { length } split /\n/, $ENV{GEHEIM} }
+		for my $x (@g) { s/\Q$x\E/***/g } s/\e\[[0-9;]*[A-Za-z]//g'
+}
+
+cpu_zaehler() {
+	# "<gesamt> <leerlauf>" aus /proc/stat; Leerlauf zaehlt idle und iowait.
+	awk '/^cpu / { g = 0; for (i = 2; i <= NF; i++) g += $i; print g, $5 + $6; exit }' /proc/stat
+}
+
+netz_zaehler() {
+	# Bytes seit dem Start auf der Schnittstelle mit der Standardroute. Raten bildet die API aus
+	# zwei Berichten; nach einem Neustart beginnen die Zaehler wieder bei null.
+	local s
+	s=$(awk '$2 == "00000000" { print $1; exit }' /proc/net/route 2>/dev/null)
+	if [ -z "$s" ] || [ ! -r "/sys/class/net/$s/statistics/rx_bytes" ]; then
+		echo null
+		return 0
+	fi
+	jq -n --arg s "$s" --arg rx "$(cat "/sys/class/net/$s/statistics/rx_bytes")" \
+		--arg tx "$(cat "/sys/class/net/$s/statistics/tx_bytes")" \
+		'{schnittstelle: $s, empfangen_bytes: ($rx | tonumber), gesendet_bytes: ($tx | tonumber)}'
+}
+
+ssd_gesundheit() {
+	# SMART der Platte, auf der / liegt (smartctl aus smartmontools). NVMe meldet Abnutzung und
+	# geschriebene Daten; eine Platte am USB-Adapter oft nur Temperatur und Betriebsstunden.
+	command -v smartctl >/dev/null 2>&1 || { echo null; return 0; }
+	local quelle platte roh
+	quelle=$(findmnt -no SOURCE / 2>/dev/null)
+	platte=$(lsblk -no PKNAME "$quelle" 2>/dev/null | head -n1)
+	[ -n "$platte" ] || { echo null; return 0; }
+	roh=$(timeout 15 smartctl -j -a "/dev/$platte" 2>/dev/null || true)
+	echo "$roh" | jq -c --arg p "$platte" '
+		(.nvme_smart_health_information_log // {}) as $n
+		| if (.device // null) == null then null else {
+			geraet: $p,
+			modell: (.model_name // null),
+			gesund: (.smart_status.passed // null),
+			temperatur_c: (.temperature.current // null),
+			betriebsstunden: (.power_on_time.hours // null),
+			abnutzung_prozent: ($n.percentage_used // null),
+			reserve_prozent: ($n.available_spare // null),
+			geschrieben_bytes: (if $n.data_units_written then $n.data_units_written * 512000 else null end),
+			gelesen_bytes: (if $n.data_units_read then $n.data_units_read * 512000 else null end),
+			fehler: ($n.media_errors // null),
+			unsichere_abschaltungen: ($n.unsafe_shutdowns // null)
+		} end' 2>/dev/null || echo null
+}
+
+docker_platz() {
+	# Was Docker auf der Platte belegt (Images, Container, Volumes, Bau-Cache). `docker system df`
+	# rechnet einige Sekunden; deshalb hoechstens alle zehn Minuten neu, dazwischen von damals.
+	local zwischen="$GERAET/.docker_platz.json"
+	if [ -s "$zwischen" ] && [ $(($(date +%s) - $(stat -c %Y "$zwischen"))) -lt 600 ]; then
+		cat "$zwischen"
+		return 0
+	fi
+	local roh
+	roh=$(docker system df --format '{{json .}}' 2>/dev/null || true)
+	[ -n "$roh" ] || { echo null; return 0; }
+	echo "$roh" | jq -s -c '
+		def bytes: (capture("^(?<w>[0-9.]+)\\s*(?<e>[kKMGT]?B)") as $m
+			| ($m.w | tonumber) * ({"B": 1, "kB": 1000, "KB": 1000, "MB": 1000000, "GB": 1000000000,
+			   "TB": 1000000000000}[$m.e] // 1) | floor) // null;
+		map({key: (.Type | ascii_downcase | gsub("[^a-z]"; "_")), value: (.Size | bytes)}) | from_entries
+		| {images_bytes: .images, container_bytes: .containers, volumes_bytes: .local_volumes,
+		   cache_bytes: .build_cache}' >"$zwischen.neu" 2>/dev/null && [ -s "$zwischen.neu" ] &&
+		mv "$zwischen.neu" "$zwischen" && cat "$zwischen" && return 0
+	rm -f "$zwischen.neu"
+	echo null
+}
+
+bericht() {
+	# Der Gesundheitsbericht nach $GERAET/geraet.json. Liest nur, aendert nichts.
+	mkdir -p "$GERAET"
+	local ids inspekt stats='[]' dienste_json einheiten='[]' sicherung rechner
+
+	local cpu_vorher cpu_nachher
+	cpu_vorher=$(cpu_zaehler)
+	ids=$(compose ps -aq 2>/dev/null || true)
+	if [ -n "$ids" ]; then
+		# shellcheck disable=SC2086
+		inspekt=$(docker inspect $ids 2>/dev/null || echo '[]')
+		# shellcheck disable=SC2086
+		stats=$(docker stats --no-stream --format '{{json .}}' $ids 2>/dev/null | jq -s '.' 2>/dev/null || echo '[]')
+	else
+		inspekt='[]'
+		sleep 1
+	fi
+	cpu_nachher=$(cpu_zaehler)
+	dienste_json=$(jq -n --argjson i "$inspekt" --argjson s "$stats" \
+		--argjson soll "$(dienste_bekannt | jq -R . | jq -s .)" '
+		def zahl: (gsub("[^0-9.]"; "") | tonumber? // null);
+		def mib: (capture("^(?<w>[0-9.]+)\\s*(?<e>[KMGT]?i?B)") as $m
+			| ($m.w | tonumber) * ({"B": 0.00000095367, "KiB": 0.0009765625, "kB": 0.0009765625, "MiB": 1, "MB": 1,
+			   "GiB": 1024, "GB": 1024, "TiB": 1048576}[$m.e] // 1)) // null;
+		($i | map({key: .Config.Labels["com.docker.compose.service"], value: .}) | from_entries) as $nach
+		| ($s | map({key: .Name, value: .}) | from_entries) as $last
+		| ($soll + ($nach | keys) | unique) | map(. as $name | $nach[$name] as $c
+		  | if $c == null then {name: $name, zustand: "fehlt"}
+		    else ($last[$c.Name | ltrimstr("/")] // {}) as $st | {
+			name: $name,
+			zustand: $c.State.Status,
+			gesundheit: ($c.State.Health.Status // null),
+			pruefung: (($c.State.Health.Log // []) | last | .Output // null
+				| if . == null then null else (gsub("\\s+$"; "") | .[0:300]) end),
+			pruefung_fehlschlaege: ($c.State.Health.FailingStreak // null),
+			gestartet_am: $c.State.StartedAt,
+			neustarts: $c.RestartCount,
+			exit_code: (if $c.State.Status == "exited" then $c.State.ExitCode else null end),
+			image: $c.Config.Image,
+			revision: ($c.Config.Labels["org.opencontainers.image.revision"] // null
+				| if . == null then null else .[0:12] end),
+			cpu_prozent: ($st.CPUPerc // null | if . == null then null else zahl end),
+			speicher_mb: ($st.MemUsage // null | if . == null then null else (split("/")[0] | mib) end)
+		  } end)')
+
+	if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+		local u felder naechster
+		for u in duckcurve.service duckcurve-anfrage.path duckcurve-zustand.timer duckcurve-pruefen.timer \
+			duckcurve-sicherung.timer duckcurve-kiosk.service; do
+			[ -f "/etc/systemd/system/$u" ] || continue
+			felder=$(systemctl show -p ActiveState -p SubState -p UnitFileState -p NextElapseUSecRealtime \
+				-p Description "$u" 2>/dev/null || true)
+			naechster=$(echo "$felder" | sed -n 's/^NextElapseUSecRealtime=//p')
+			if [ -n "$naechster" ] && [ "$naechster" != "n/a" ] && [ "$naechster" != "0" ]; then
+				naechster=$(date -u -d "$naechster" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "")
+			else
+				naechster=""
+			fi
+			einheiten=$(echo "$einheiten" | jq --arg n "$u" \
+				--arg b "$(echo "$felder" | sed -n 's/^Description=//p')" \
+				--arg a "$(echo "$felder" | sed -n 's/^ActiveState=//p')" \
+				--arg s "$(echo "$felder" | sed -n 's/^SubState=//p')" \
+				--arg f "$(echo "$felder" | sed -n 's/^UnitFileState=//p')" \
+				--arg x "$naechster" \
+				'. + [{name: $n, beschreibung: $b, aktiv: $a, unterzustand: $s, eingeschaltet: ($f == "enabled"),
+				        naechster_lauf: (if $x == "" then null else $x end)}]')
+		done
+	fi
+
+	local neueste="" anzahl=0
+	# shellcheck disable=SC2012
+	neueste=$(ls -1t "$SICHERUNG"/dch-*.dump 2>/dev/null | head -n1 || true)
+	anzahl=$(find "$SICHERUNG" -maxdepth 1 -name 'dch-*.dump' 2>/dev/null | wc -l)
+	local summe
+	summe=$(find "$SICHERUNG" -maxdepth 1 -name 'dch-*.dump' -printf '%s\n' 2>/dev/null | awk '{s += $1} END {print s + 0}')
+	sicherung=$(jq -n --arg d "$(basename "${neueste:-}")" \
+		--arg t "$([ -n "$neueste" ] && date -u -r "$neueste" +%Y-%m-%dT%H:%M:%SZ)" \
+		--arg g "$([ -n "$neueste" ] && stat -c %s "$neueste")" --argjson n "$anzahl" \
+		--arg z "$(wert DCH_SICHERUNG_ZIEL)" --argjson summe "${summe:-0}" \
+		'{letzte: (if $d == "" then null else $d end), letzte_am: (if $t == "" then null else $t end),
+		  letzte_bytes: ($g | tonumber? // null), anzahl: $n, gesamt_bytes: $summe,
+		  ausser_haus: (if $z == "" then null else $z end)}')
+
+	local temp="" drossel="" modell="" platten takt="" spannung=""
+	[ -r /sys/class/thermal/thermal_zone0/temp ] && temp=$(cat /sys/class/thermal/thermal_zone0/temp)
+	if command -v vcgencmd >/dev/null 2>&1; then
+		drossel=$(vcgencmd get_throttled 2>/dev/null | sed -n 's/^throttled=//p')
+		# Die Spannung am Eingang (Raspberry Pi 5). Bei PoE die Antwort auf "reicht die Versorgung?".
+		spannung=$(vcgencmd pmic_read_adc EXT5V_V 2>/dev/null | sed -n 's/.*=\([0-9.]*\)V.*/\1/p' | head -n1)
+	fi
+	[ -r /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq ] &&
+		takt=$(($(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq) / 1000))
+	[ -r /proc/device-tree/model ] && modell=$(tr -d '\0' </proc/device-tree/model)
+	# Je Dateisystem einmal: Liegen Docker und Sicherungen auf der SSD, steht dort nur "/".
+	# Auch ohne laufendes Docker: Dann ist dieser Bericht am wichtigsten, und nichts darf an einem
+	# fehlenden Pfad scheitern.
+	local docker_ordner
+	docker_ordner=$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)
+	[ -d "$docker_ordner" ] || docker_ordner=/
+	[ -d "$SICHERUNG" ] || mkdir -p "$SICHERUNG"
+	platten=$({ df -B1 --output=source,target,size,avail / "$SICHERUNG" "$docker_ordner" 2>/dev/null || true; } |
+		awk 'NR > 1 && !gesehen[$1]++ { print $2 "\t" $3 "\t" $4 }' |
+		jq -R -s 'split("\n") | map(select(length > 0) | split("\t") | {ort: .[0], gesamt_bytes: (.[1] | tonumber), frei_bytes: (.[2] | tonumber)})')
+	rechner=$(jq -n \
+		--arg name "$(hostname)" --arg modell "$modell" \
+		--arg system "$(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-}")" --arg kernel "$(uname -r)" \
+		--arg adresse "$(hostname -I 2>/dev/null | awk '{print $1}')" \
+		--arg laufzeit "$(cut -d. -f1 /proc/uptime)" --arg last "$(cut -d' ' -f1-3 /proc/loadavg)" \
+		--arg kerne "$(nproc)" --arg temp "$temp" --arg drossel "$drossel" \
+		--arg gesamt "$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)" \
+		--arg frei "$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)" \
+		--arg docker "$(docker version --format '{{.Server.Version}}' 2>/dev/null)" \
+		--arg swap_gesamt "$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)" \
+		--arg swap_frei "$(awk '/^SwapFree:/ {print $2}' /proc/meminfo)" \
+		--arg takt "$takt" --arg spannung "$spannung" \
+		--arg cpu_vorher "$cpu_vorher" --arg cpu_nachher "$cpu_nachher" \
+		--argjson netz "$(netz_zaehler)" --argjson ssd "$(ssd_gesundheit)" \
+		--argjson docker_platz "$(docker_platz)" \
+		--argjson platten "${platten:-[]}" '
+		def leer: if . == "" then null else . end;
+		{name: $name, modell: ($modell | leer), system: ($system | leer), kernel: $kernel,
+		 adresse: ($adresse | leer), laufzeit_s: ($laufzeit | tonumber), kerne: ($kerne | tonumber),
+		 last: ($last | split(" ") | map(tonumber)),
+		 temperatur_c: (if $temp == "" then null else (($temp | tonumber) / 100 | round / 10) end),
+		 drosselung: ($drossel | leer),
+		 speicher_gesamt_mb: (($gesamt | tonumber) / 1024 | floor),
+		 speicher_frei_mb: (($frei | tonumber) / 1024 | floor),
+		 swap_gesamt_mb: (($swap_gesamt | tonumber? // 0) / 1024 | floor),
+		 swap_frei_mb: (($swap_frei | tonumber? // 0) / 1024 | floor),
+		 takt_mhz: ($takt | tonumber? // null),
+		 eingangsspannung_v: ($spannung | tonumber? // null),
+		 cpu_prozent: (($cpu_vorher | split(" ") | map(tonumber)) as $a
+			| ($cpu_nachher | split(" ") | map(tonumber)) as $b
+			| (($b[0] - $a[0]) as $gesamt | ($b[1] - $a[1]) as $leer
+			| if $gesamt > 0 then ((1 - $leer / $gesamt) * 1000 | round / 10) else null end)),
+		 netz: $netz, ssd: $ssd, docker_platz: $docker_platz,
+		 platten: $platten, docker: ($docker | leer)}')
+
+	local docker_laeuft=false
+	docker info >/dev/null 2>&1 && docker_laeuft=true
+	jq -n --arg t "$(jetzt)" --arg v "$(wert DCH_VERSION)" --argjson r "$rechner" \
+		--argjson d "$dienste_json" --argjson e "$einheiten" --argjson s "$sicherung" \
+		--arg f "$(wert DCH_FERNZUGANG)" --argjson dl "$docker_laeuft" \
+		'{erstellt_am: $t, kanal: $v, fernzugang: ($f == "1"), docker_laeuft: $dl,
+		  rechner: $r, dienste: $d, einheiten: $e, sicherung: $s}' \
+		>"$GERAET/geraet.json.neu"
+	chmod 0644 "$GERAET/geraet.json.neu"
+	mv "$GERAET/geraet.json.neu" "$GERAET/geraet.json"
+}
+
+protokoll_schreiben() {
+	# Die letzten 300 Zeilen eines Dienstes, geschwaerzt, nach $GERAET/protokoll/<dienst>.txt.
+	local dienst=$1 ziel="$GERAET/protokoll/$1.txt"
+	mkdir -p "$GERAET/protokoll"
+	compose logs --no-color --timestamps --tail 300 "$dienst" 2>&1 | schwaerzen >"$ziel.neu"
+	chmod 0644 "$ziel.neu"
+	mv "$ziel.neu" "$ziel"
+}
+
+handgriff() {
+	# Eine Aktion aus der App. Aufruf: handgriff <aktion> <dienst> <von>
+	local aktion=$1 dienst=$2 von=$3
+	case "$aktion" in
+	zustand) bericht; return 0 ;;
+	neustart | protokoll)
+		if ! dienst_gueltig "$dienst"; then
+			aktion_setzen "$aktion" "" fehler "Unbekannter Dienst." "$von"
+			return 1
+		fi
+		;;
+	sichern | geraet_neustart) dienst="" ;;
+	*)
+		echo "dch: unbekannte Anfrage '$aktion' verworfen" >&2
+		return 1
+		;;
+	esac
+
+	# Nicht mitten in ein Update hinein: dieselbe Sperre wie installieren.
+	exec 9>"$GERAET/.sperre"
+	if ! flock -n 9; then
+		aktion_setzen "$aktion" "$dienst" fehler "Gerade läuft ein Update; bitte danach noch einmal." "$von"
+		return 1
+	fi
+	aktion_setzen "$aktion" "$dienst" laeuft "" "$von"
+
+	case "$aktion" in
+	neustart)
+		if [ "$dienst" = "alle" ]; then compose restart >/dev/null 2>&1; else compose restart "$dienst" >/dev/null 2>&1; fi
+		if gesund; then
+			aktion_setzen neustart "$dienst" ok "Neu gestartet."
+		else
+			aktion_setzen neustart "$dienst" fehler "Neu gestartet, aber API oder Oberfläche antworten nicht gesund."
+		fi
+		;;
+	sichern)
+		if "$0" sichern >/dev/null 2>&1; then
+			aktion_setzen sichern "" ok "Gesichert."
+		else
+			aktion_setzen sichern "" fehler "Die Sicherung ist fehlgeschlagen (dch sichern am Gerät zeigt den Grund)."
+		fi
+		;;
+	protokoll)
+		if protokoll_schreiben "$dienst"; then
+			aktion_setzen protokoll "$dienst" ok "Protokoll geholt."
+		else
+			aktion_setzen protokoll "$dienst" fehler "Das Protokoll ließ sich nicht lesen."
+		fi
+		;;
+	geraet_neustart)
+		aktion_setzen geraet_neustart "" ok "Das Gerät startet neu; in ein bis zwei Minuten ist es zurück."
+		bericht || true
+		flock -u 9
+		systemctl reboot
+		return 0
+		;;
+	esac
+	flock -u 9
+	bericht || true
+}
+
+befehl=${1:-status}
+shift || true
+
+case "$befehl" in
+status)
+	compose ps
+	echo
+	if curl -fsS -m 5 http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+		hinweis "Oberflaeche antwortet (http://127.0.0.1:3000)."
+	else
+		hinweis "Oberflaeche antwortet NICHT."
+	fi
+	hinweis "Version: $(wert DCH_VERSION)"
+	;;
+
+logs)
+	compose logs -f --tail 200 "$@"
+	;;
+
+neustart)
+	compose up -d --remove-orphans
+	;;
+
+stoppen)
+	compose stop
+	;;
+
+aktualisieren)
+	if [ $# -ge 1 ]; then
+		[[ "$1" =~ ^[A-Za-z0-9._-]+$ ]] || fehler "Ungueltige Version: $1"
+		if grep -q '^DCH_VERSION=' "$ENVDATEI"; then
+			sed -i "s/^DCH_VERSION=.*/DCH_VERSION=$1/" "$ENVDATEI"
+		else
+			echo "DCH_VERSION=$1" >>"$ENVDATEI"
+		fi
+	fi
+	# Derselbe Ablauf wie aus der App: Sicherung, Quelltext, Laden, Neustart, Pruefung, und bei
+	# einem Fehlschlag zurueck zur vorherigen Fassung. Eine Migration ist nur additiv
+	# (Projektplan 23.4); die alte Fassung kommt mit einem neueren Schema zurecht.
+	if installieren "Befehlszeile"; then
+		hinweis "Aktualisiert. $(jq -r '.zuletzt | "Von \(.von // "?") auf \(.nach // "?")."' "$STATUS")"
+	else
+		fehler "$(jq -r '.meldung // "Update fehlgeschlagen."' "$STATUS")"
+	fi
+	;;
+
+pruefen)
+	pruefen
+	jq -r 'if .update_verfuegbar then "Update verfuegbar: \(.aktuell // "?") -> \(.verfuegbar // "?")"
+	       else "Kein Update verfuegbar (\(.aktuell // "?"))." end' "$STATUS"
+	;;
+
+zustand)
+	# Von duckcurve-zustand.timer jede Minute gerufen; schreibt den Bericht fuer die App.
+	bericht
+	;;
+anfrage)
+	# Von duckcurve-anfrage.path gerufen, sobald die App eine Anfrage abgelegt hat. Die Datei wird
+	# zuerst entfernt: Sonst sieht systemd sie weiter und startet den Dienst immer wieder.
+	[ -f "$ANFRAGE" ] || exit 0
+	aktion=$(jq -r '.aktion // empty' "$ANFRAGE" 2>/dev/null | tr -cd 'a-z_' | cut -c1-30 || true)
+	dienst=$(jq -r '.dienst // empty' "$ANFRAGE" 2>/dev/null | tr -cd 'a-z0-9_-' | cut -c1-30 || true)
+	von=$(jq -r '.von // empty' "$ANFRAGE" 2>/dev/null | tr -cd '[:alnum:] ._-' | cut -c1-60)
+	rm -f "$ANFRAGE"
+	case "$aktion" in
+	pruefen) pruefen ;;
+	installieren) installieren "${von:-App}" || true ;;
+	*) handgriff "$aktion" "$dienst" "${von:-App}" || true ;;
+	esac
+	;;
+
+selbst-aktualisieren)
+	quelle=$(readlink -f "$BASIS/quelle" 2>/dev/null || true)
+	[ -d "$quelle/.git" ] || fehler "Kein Quelltext unter $BASIS/quelle."
+	git -C "$quelle" pull --ff-only
+	# shellcheck disable=SC2046
+	exec "$quelle/deploy/haus/einrichten.sh" $(cat "$BASIS/einrichtung.conf" 2>/dev/null || true)
+	;;
+
+sichern)
+	mkdir -p "$SICHERUNG"
+	chmod 700 "$SICHERUNG"
+	warten_auf_postgres
+	ziel="$SICHERUNG/dch-$(date +%Y%m%d-%H%M%S).dump"
+	compose exec -T postgres pg_dump -U dch -d dch -Fc --no-owner >"$ziel.teil"
+	mv "$ziel.teil" "$ziel"
+	hinweis "Gesichert: $ziel ($(du -h "$ziel" | cut -f1))"
+	behalten=$(wert DCH_SICHERUNG_BEHALTEN)
+	behalten=${behalten:-14}
+	# Aeltere Sicherungen loeschen, die neuesten $behalten bleiben.
+	ls -1t "$SICHERUNG"/dch-*.dump 2>/dev/null | tail -n +"$((behalten + 1))" | xargs -r rm -f
+	extern=$(wert DCH_SICHERUNG_ZIEL)
+	if [ -n "$extern" ]; then
+		if command -v rclone >/dev/null; then
+			rclone copy "$ziel" "$extern" && hinweis "Kopie ausser Haus: $extern"
+		else
+			echo "dch: DCH_SICHERUNG_ZIEL ist gesetzt, aber rclone fehlt (apt install rclone)." >&2
+		fi
+	fi
+	;;
+
+sicherungen)
+	ls -1lht "$SICHERUNG"/dch-*.dump 2>/dev/null || echo "Noch keine Sicherung."
+	;;
+
+wiederherstellen)
+	datei=${1:-}
+	[ -f "$datei" ] || fehler "Aufruf: dch wiederherstellen <datei.dump>"
+	read -r -p "Die Datenbank wird durch $datei ersetzt. Fortfahren? [ja/nein] " antwort
+	[ "$antwort" = "ja" ] || fehler "Abgebrochen."
+	"$0" sichern
+	compose stop api web
+	warten_auf_postgres
+	compose exec -T postgres pg_restore -U dch -d dch --clean --if-exists --no-owner --no-acl <"$datei" ||
+		echo "dch: pg_restore meldete Warnungen (meist harmlos, etwa fehlende Rollen)." >&2
+	compose up -d
+	hinweis "Wiederhergestellt aus $datei."
+	;;
+
+uebernehmen)
+	quelle_url=${1:-}
+	[ -n "$quelle_url" ] || fehler "Aufruf: dch uebernehmen 'postgresql://...' (DATABASE_URL des Railway-Postgres, oeffentliche Adresse)"
+	mkdir -p "$SICHERUNG"
+	ziel="$SICHERUNG/uebernahme-$(date +%Y%m%d-%H%M%S).dump"
+	hinweis "Lade die Datenbank herunter ..."
+	# Mit dem pg_dump aus dem Postgres-Image dieses Stacks: Er muss mindestens so neu sein wie der
+	# Server, von dem er liest.
+	docker run --rm -e QUELLE="$quelle_url" postgres:17 \
+		sh -c 'pg_dump "$QUELLE" -Fc --no-owner --no-acl' >"$ziel.teil"
+	mv "$ziel.teil" "$ziel"
+	hinweis "Heruntergeladen: $ziel ($(du -h "$ziel" | cut -f1))"
+	"$0" wiederherstellen "$ziel"
+	;;
+
+koppeln)
+	name=$(wert DCH_HOSTNAME)
+	ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+	cat <<TEXT
+Bridge-Add-on in Home Assistant (Einstellungen -> Add-ons -> Duck Curve Home Bridge -> Konfiguration):
+  api_ws_url:  ws://${ip:-<IP dieses Geraets>}:8001/bridge/ws
+  api_token:   $(wert DCH_BRIDGE_TOKENS | cut -d, -f1 | tr -d '[]" ')
+  Die IP-Adresse im Router fest vergeben, damit sie sich nicht aendert.
+
+iPad oder Handy im Heimnetz:
+  1. Stammzertifikat holen:  http://${name}.local/zertifikat
+     (iPad: Profil installieren, dann Einstellungen -> Allgemein -> Info ->
+      Zertifikatsvertrauenseinstellungen -> fuer "Caddy Local Authority" einschalten)
+  2. Koppeln:               https://${name}.local/pair?token=$(wert DCH_KIOSK_TOKEN)&name=iPad-Flur
+TEXT
+	;;
+
+*)
+	sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+	exit 1
+	;;
+esac

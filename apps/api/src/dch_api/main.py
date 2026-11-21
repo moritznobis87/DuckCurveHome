@@ -2,19 +2,24 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from dch_api import urheber
+from dch_api.application.apns import ApnsVersender
 from dch_api.application.config_loader import load_app_config
 from dch_api.dependencies import require_api_token
 from dch_api.errors import DchError, install_error_handlers
 from dch_api.infrastructure.logging import configure_logging
 from dch_api.routers import (
+    alfred,
     anlage,
     bridge,
     config,
@@ -23,6 +28,7 @@ from dch_api.routers import (
     energy,
     export,
     forecast,
+    geraet,
     health,
     history,
     house,
@@ -32,9 +38,13 @@ from dch_api.routers import (
     push,
     rooms,
     system,
+    update,
     waermepumpe,
 )
 from dch_api.settings import Settings, get_settings
+
+#: Fuer alles, was ausserhalb von `create_app` protokolliert.
+start_log = structlog.get_logger("start")
 
 API_PREFIX = "/api/v1"
 
@@ -48,7 +58,7 @@ async def _start_demo(app: FastAPI, settings: Settings) -> None:
     # Ohne Datenbank: Die Anmeldungen leben nur, solange der Vorgang lebt. Fuer den Demo-Modus ist
     # das richtig - dort soll nichts von gestern uebrig sein -, und die Oberflaeche ist damit auch
     # ohne Datenbank zu bedienen.
-    app.state.push = PushService(MemoryPushStore(), settings.push_subject)
+    app.state.push = PushService(MemoryPushStore(), settings.push_subject, apns_versender(settings))
     app.state.hems = runner.hems
     await runner.start()
 
@@ -96,7 +106,7 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
         from dch_api.integrations.inexogy import InexogyClient
 
         inexogy = InexogyClient(settings.inexogy_email, settings.inexogy_password)
-    push = PushService(repos, settings.push_subject)
+    push = PushService(repos, settings.push_subject, apns_versender(settings))
     runtime = LiveRuntime(
         settings, cfg, repos, hub, forecasts, myenergi=myenergi, inexogy=inexogy, push=push
     )
@@ -143,9 +153,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "nicht geprüft."
                 ),
             )
+        # Auf dem Hausgerät mit Datenbank: alle fünf Minuten ein Messpunkt für den Verlauf der
+        # Seite Hausgerät (application/geraet_verlauf.py).
+        sammler: asyncio.Task[None] | None = None
+        repos = getattr(app.state.runner, "repos", None)
+        if settings.geraet_dir and settings.mode == "live" and repos is not None:
+            from dch_api.application import geraet_verlauf
+
+            sammler = asyncio.create_task(
+                geraet_verlauf.schleife(repos, Path(settings.geraet_dir)), name="geraet-verlauf"
+            )
         try:
             yield
         finally:
+            if sammler is not None:
+                # Abbrechen und abwarten: Hält der Sammler gerade eine Verbindung, darf die
+                # Datenbank erst danach geschlossen werden.
+                sammler.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await sammler
             await app.state.runner.stop()
             engine = getattr(app.state, "engine", None)
             if engine is not None:
@@ -190,6 +216,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(bridge.router)
     protected = [Depends(require_api_token)]
     for r in (
+        alfred.router,
+        update.router,
+        geraet.router,
         live.router,
         history.router,
         plan.router,
@@ -219,3 +248,26 @@ def run() -> None:
 
     s = get_settings()
     uvicorn.run("dch_api.main:app", host=s.host, port=s.port, log_level=s.log_level.lower())
+
+
+def apns_versender(settings: Settings) -> ApnsVersender | None:
+    """Den Weg zur App aufbauen - oder `None`, wenn kein Schluessel eingetragen ist.
+
+    Kein Fehler, wenn er fehlt: ein Haus ohne iOS-App braucht ihn nicht, und Web Push laeuft
+    unberuehrt weiter. Was fehlt, sagt die App auf ihrer Seite „Mitteilungen".
+    """
+    from dch_api.application.apns import ApnsSchluessel
+
+    schluessel = ApnsSchluessel(
+        p8=settings.apns_key_p8,
+        key_id=settings.apns_key_id,
+        team_id=settings.apns_team_id,
+        topic=settings.apns_topic,
+    )
+    if not schluessel.vollstaendig:
+        if schluessel.p8.strip() or schluessel.key_id.strip() or schluessel.team_id.strip():
+            # Teilweise eingetragen ist ein Versehen und kein Verzicht - das soll auffallen.
+            start_log.warning("apns key incomplete", fehlt=schluessel.fehlt_de())
+        return None
+    start_log.info("apns ready", topic=schluessel.topic)
+    return ApnsVersender(schluessel)

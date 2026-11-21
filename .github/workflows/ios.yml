@@ -1,0 +1,110 @@
+name: ios
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "apps/ios/**"
+      - "tools/gen-swift.py"
+      - "tools/gen-zeichen.py"
+      - "tools/gen-appicon.py"
+      - "apps/web/public/favicon.svg"
+      - "apps/web/public/favicon.ico"
+      - "apps/web/public/apple-touch-icon.png"
+      - "tools/ios-pruefen.sh"
+      - "docs/openapi.json"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "apps/ios/**"
+      - "tools/gen-swift.py"
+      - "tools/gen-zeichen.py"
+      - "tools/gen-appicon.py"
+      - "apps/web/public/favicon.svg"
+      - "apps/web/public/favicon.ico"
+      - "apps/web/public/apple-touch-icon.png"
+      - "tools/ios-pruefen.sh"
+      - "docs/openapi.json"
+      - ".github/workflows/ios.yml"
+
+# Ein Lauf je Zweig. Wer zweimal kurz hintereinander schiebt, bekam bisher zwei volle
+# Laeufe und zwei Mails; der aeltere ist in dem Augenblick ohnehin ueberholt.
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Der Kern baut und testet ohne macOS. Das ist der ganze Zweck seines Zuschnitts, und darum
+  # laeuft er hier auf einem Linux-Laeufer: schneller, billiger, und immer verfuegbar.
+  kern:
+    # **Feste Ubuntu-Fassung, nicht `ubuntu-latest`.** GitHub hat `ubuntu-latest` auf 26.04
+    # gezogen, und `setup-swift` bricht dort ab („Version 26.04 of Ubuntu is not supported").
+    # Genau daran ist dieser Lauf seit seinem ersten Tag gescheitert - 196-mal, jedes Mal mit
+    # einer Mail. Hier steht darum die Fassung, auf der die Aktion eine Swift-Toolchain
+    # findet; sie wandert erst, wenn jemand sie bewusst weiterzieht.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with: { swift-version: "6.1" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pillow
+
+      - run: pip install pyyaml
+
+      - name: Erzeugte Dateien gegen ihre Quellen halten
+        run: |
+          python3 tools/gen-swift.py --pruefen
+          python3 tools/gen-zeichen.py --pruefen
+          python3 tools/gen-appicon.py --pruefen
+          python3 tools/xcodeproj-pruefen.py
+          python3 tools/ios-typpruefen.py
+
+      - name: Kern bauen und testen, Oberflaeche parsen
+        run: tools/ios-pruefen.sh
+
+  # Die Oberflaeche laesst sich nur auf einem Mac uebersetzen. Dieser Lauf ist der einzige Ort,
+  # an dem das ohne ein Geraet geschieht - und er ist der Grund, warum der Kern so gross ist:
+  # was hier bricht, haette sonst niemand gesehen.
+  oberflaeche:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      # **Gebaut wird das eingecheckte Projekt, nicht ein frisch erzeugtes.** Das ist das,
+      # was beim Oeffnen in Xcode wirklich vor einem liegt; ein hier erzeugtes waere ein
+      # anderes Projekt, und sein gruener Haken sagte nichts ueber das im Repository.
+      # **Ein allgemeines Ziel, kein benanntes Geraet.** `name=iPhone 16,OS=latest` verlangt
+      # eine eingerichtete Simulatorlaufzeit; auf dem Laeufer gibt es keine, und xcodebuild
+      # bricht mit „Unable to find a device matching the provided destination specifier" ab.
+      # Uebersetzt werden soll hier ohnehin nur - dafuer reicht `generic/platform`, und das
+      # braucht kein Geraet.
+      - name: Uebersetzen fuer den Simulator
+        run: |
+          xcodebuild build \
+            -project apps/ios/DuckCurveHome.xcodeproj \
+            -scheme DuckCurveHome \
+            -destination 'generic/platform=iOS Simulator' \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Den Kern auch auf Apples Toolchain testen
+        run: swift test
+        working-directory: apps/ios/DuckCurveKit
+
+      # Nachrichtlich, nicht als Schranke: XcodeGen auf dem Laeufer kann eine andere Fassung
+      # sein als die, mit der das Projekt erzeugt wurde, und dann weicht die Datei ab, ohne
+      # dass etwas faul ist. Die harte Pruefung macht `tools/xcodeproj-pruefen.py` im
+      # Linux-Lauf: sie vergleicht Inhalt statt Bytes und ist von der Fassung unabhaengig.
+      - name: Hinweis - weicht das eingecheckte Projekt von project.yml ab?
+        continue-on-error: true
+        run: |
+          brew install xcodegen
+          cd apps/ios && xcodegen generate
+          cd "$GITHUB_WORKSPACE"
+          if ! git diff --quiet -- apps/ios/DuckCurveHome.xcodeproj apps/ios/DuckCurveHome/Info.plist; then
+            echo "::warning::Das eingecheckte Xcode-Projekt weicht von project.yml ab."
+            git diff --stat -- apps/ios/DuckCurveHome.xcodeproj apps/ios/DuckCurveHome/Info.plist
+          else
+            echo "Deckt sich mit project.yml."
+          fi
