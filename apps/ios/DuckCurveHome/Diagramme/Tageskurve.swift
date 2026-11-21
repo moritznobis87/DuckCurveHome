@@ -40,6 +40,24 @@ struct TageskurveBild: View {
 
     private var schmal: Bool { breite == .compact }
 
+    /// Die Hauslinie: Weiss auf 0,88 (`DayCurve.tsx:127`, `:146` nennt dieselbe Farbe in der
+    /// Legende).
+    ///
+    /// **Nicht ``Farbe/last``** (Weiss auf 0,62). Das Haus ist die Linie, gegen die man die
+    /// Sonne liest; auf 0,62 verschwand sie hinter der Sonnenflaeche, und in der Legende stand
+    /// ein Strich, den man im Bild nicht wiederfand. `Marken.text1` ist dasselbe Weiss, hier
+    /// auf die Deckung der Vorlage gebracht.
+    private static let hausfarbe = Color(Marken.text1.mitDeckung(0.88))
+
+    /// Die Hoehe der Preisflaeche am Telefon (`DayCurve.tsx:174`: `PREIS_HOEHE = 58`).
+    ///
+    /// Die App nahm 72, und die 14 Punkte Unterschied gingen der Leistungsflaeche verloren:
+    /// die Summe stimmte (260 gegen 262, `handy.css:265`), die Aufteilung nicht.
+    private static let preishoehe: CGFloat = 58
+
+    /// Und die der Leistungsflaeche: der Rest von 262 Punkten (`handy.css:265`).
+    private static let leistungshoehe: CGFloat = 184
+
     var body: some View {
         VStack(alignment: .leading, spacing: schmal ? 8 : 4) {
             // **Am Telefon steht die Legende unter dem Bild** (`handy.css:54,266`). Oben
@@ -118,7 +136,7 @@ struct TageskurveBild: View {
             }
             ForEach(kurve.haus) { p in
                 LineMark(x: .value("Stunde", p.stunde), y: .value("kW", p.wert), series: .value("Reihe", "haus"))
-                    .foregroundStyle(Farbe.last)
+                    .foregroundStyle(Self.hausfarbe)
                     .lineStyle(StrokeStyle(lineWidth: 1.8))
             }
             ForEach(kurve.waermepumpe) { p in
@@ -181,7 +199,10 @@ struct TageskurveBild: View {
                 AxisGridLine().foregroundStyle(Farbe.rasterlinie)
                 AxisValueLabel {
                     if let d = wert.as(Double.self) {
-                        Text("\(Formate.zahl(d, stellen: 0)) kW")
+                        // Eine Stelle, wenn die Achsenmitte eine braucht: bei der Grenze 3
+                        // steht dort 1,5, und „2 kW“ waere dann die falsche Zahl an der
+                        // richtigen Stelle.
+                        Text("\(Formate.zahl(d, stellen: achsenstellen)) kW")
                             .font(Schrift.achse)
                             .foregroundStyle(Farbe.text3)
                     }
@@ -215,18 +236,26 @@ struct TageskurveBild: View {
 
     private var leistungsflaeche: some View {
         Chart {
-            // Der Vortag zuerst, damit er hinter allem liegt.
-            ForEach(kurve.schatten) { p in
-                LineMark(x: .value("Stunde", p.stunde), y: .value("kW", p.wert), series: .value("Reihe", "schatten"))
-                    .foregroundStyle(Farbe.pv.opacity(0.26))
-                    .lineStyle(StrokeStyle(lineWidth: 1.2))
-            }
+            // **Die Baender zuerst, dann der Vortag** - wie an der Wand und in der Vorlage
+            // (`DayCurve.tsx:124-125`: der Schatten hat `z: 1`, die Baender haengen an der
+            // Sonne mit `z: 3`). Hier lag es umgekehrt, und die getoenten Flaechen uebertoenten
+            // die Linie, die sie durchlaufen sollte.
             ForEach(kurve.baender) { b in
                 RectangleMark(
                     xStart: .value("von", b.von),
                     xEnd: .value("bis", b.bis)
                 )
                 .foregroundStyle(bandfarbe(b).opacity(0.14))
+            }
+            // **Der Vortag in seiner eigenen Farbe** (`DayCurve.tsx:124`: `C.pvSchatten`,
+            // Breite 1,6, Deckung 0,75). Die Telefonfassung nahm die Sonnenfarbe auf 0,26 -
+            // also dieselbe Farbe wie die Flaeche darueber, nur blasser, und damit sah der
+            // Vortag aus wie ein Rand der heutigen Sonne. Die Wandfassung macht es richtig.
+            ForEach(kurve.schatten) { p in
+                LineMark(x: .value("Stunde", p.stunde), y: .value("kW", p.wert), series: .value("Reihe", "schatten"))
+                    .foregroundStyle(Farbe.pvSchatten)
+                    .lineStyle(StrokeStyle(lineWidth: 1.6))
+                    .opacity(0.75)
             }
             ForEach(kurve.pv) { p in
                 AreaMark(x: .value("Stunde", p.stunde), y: .value("kW", p.wert), series: .value("Reihe", "pv"))
@@ -244,8 +273,8 @@ struct TageskurveBild: View {
             }
             ForEach(kurve.haus) { p in
                 LineMark(x: .value("Stunde", p.stunde), y: .value("kW", p.wert), series: .value("Reihe", "haus"))
-                    .foregroundStyle(Farbe.last)
-                    .lineStyle(StrokeStyle(lineWidth: 1.6))
+                    .foregroundStyle(Self.hausfarbe)
+                    .lineStyle(StrokeStyle(lineWidth: 1.8))
             }
             ForEach(kurve.waermepumpe) { p in
                 LineMark(x: .value("Stunde", p.stunde), y: .value("kW", p.wert), series: .value("Reihe", "wp"))
@@ -257,11 +286,7 @@ struct TageskurveBild: View {
                     .foregroundStyle(Farbe.waermepumpe.opacity(0.75))
                     .lineStyle(StrokeStyle(lineWidth: 1.4, dash: [4, 4]))
             }
-            if let jetzt = kurve.jetztStunde {
-                RuleMark(x: .value("jetzt", jetzt))
-                    .foregroundStyle(Farbe.text2)
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
-            }
+            jetztmarke
             if let faden {
                 RuleMark(x: .value("Faden", faden))
                     .foregroundStyle(Farbe.amber.opacity(0.6))
@@ -272,20 +297,44 @@ struct TageskurveBild: View {
         .chartYScale(domain: 0...kurve.leistungsgrenze)
         .chartXAxis(.hidden)
         .chartYAxis {
-            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { wert in
+            // **Drei Marken, dieselben wie an der Wand** (`DayCurve.tsx:118`:
+            // `interval: powerMax / 2`). `.automatic` setzte vier, und die mittleren standen
+            // dann auf krummen Zahlen.
+            AxisMarks(position: .leading, values: [0, kurve.leistungsgrenze / 2, kurve.leistungsgrenze]) { wert in
                 AxisGridLine().foregroundStyle(Farbe.rasterlinie)
                 AxisValueLabel {
                     if let d = wert.as(Double.self) {
-                        Text(Formate.zahl(d, stellen: 0))
+                        // **Mit Einheit** (`DayCurve.tsx:118`: `${v} kW`). An zwei
+                        // gestapelten Flaechen ist die Einheit die einzige Auskunft, welche
+                        // welche ist.
+                        Text("\(Formate.zahl(d, stellen: achsenstellen)) kW")
                             .font(Schrift.achse)
                             .foregroundStyle(Farbe.text3)
                     }
                 }
             }
         }
-        .frame(height: schmal ? 170 : 230)
+        .frame(height: schmal ? Self.leistungshoehe : 230)
         .chartOverlay { feld in
             fadenkreuzflaeche(feld)
+        }
+    }
+
+    /// Eine halbe Stelle, wenn die Achsenmitte eine braucht: bei der Grenze 3 steht dort 1,5.
+    private var achsenstellen: Int {
+        (kurve.leistungsgrenze / 2).truncatingRemainder(dividingBy: 1) == 0 ? 0 : 1
+    }
+
+    /// Die Marke „jetzt“ - in beiden Fassungen dieselbe.
+    ///
+    /// **`--amber-soft`, gestrichelt, 1,2** (`DayCurve.tsx:88`, am Handy ueber `:129` auch in
+    /// die Preisflaeche gezeichnet). Die Telefonfassung nahm `text2` und ein feineres Muster,
+    /// und damit sah die wichtigste Linie des Bildes aus wie eine Hilfslinie.
+    @ChartContentBuilder private var jetztmarke: some ChartContent {
+        if let jetzt = kurve.jetztStunde {
+            RuleMark(x: .value("jetzt", jetzt))
+                .foregroundStyle(Farbe.amberWeich)
+                .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [4, 4]))
         }
     }
 
@@ -316,11 +365,7 @@ struct TageskurveBild: View {
                     .lineStyle(StrokeStyle(lineWidth: 1.6, dash: [4, 4]))
                     .interpolationMethod(.stepEnd)
             }
-            if let jetzt = kurve.jetztStunde {
-                RuleMark(x: .value("jetzt", jetzt))
-                    .foregroundStyle(Farbe.text2)
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
-            }
+            jetztmarke
             if let faden {
                 RuleMark(x: .value("Faden", faden))
                     .foregroundStyle(Farbe.amber.opacity(0.6))
@@ -335,14 +380,16 @@ struct TageskurveBild: View {
                 AxisGridLine().foregroundStyle(Farbe.rasterlinie)
                 AxisValueLabel {
                     if let d = wert.as(Double.self) {
-                        Text(Formate.zahl(d, stellen: 0))
+                        // Mit Einheit, wie die Leistungsachse darueber (`DayCurve.tsx:120`:
+                        // `${v} ct`).
+                        Text("\(Formate.zahl(d, stellen: preisstellen)) ct")
                             .font(Schrift.achse)
                             .foregroundStyle(Farbe.text3)
                     }
                 }
             }
         }
-        .frame(height: schmal ? 72 : 92)
+        .frame(height: schmal ? Self.preishoehe : 92)
     }
 
     /// Die Zeitachse, einmal unter beiden Flaechen.
@@ -361,7 +408,10 @@ struct TageskurveBild: View {
                 AxisGridLine().foregroundStyle(Farbe.rasterlinie)
                 AxisValueLabel {
                     if let h = wert.as(Double.self) {
-                        Text(String(format: "%02d", Int(h)))
+                        // **`HH:00` und nicht `00`** (`DayCurve.tsx:116`:
+                        // `${String(v % 24).padStart(2, "0")}:00`, in beiden Fassungen). Eine
+                        // Reihe „00 06 12 18“ liest sich als Zaehlung; „06:00“ als Uhrzeit.
+                        Text(String(format: "%02d:00", Int(h) % 24))
                             .font(Schrift.achse)
                             .foregroundStyle(Farbe.text3)
                     }
@@ -371,10 +421,12 @@ struct TageskurveBild: View {
         .frame(height: 18)
     }
 
-    /// Alle drei Stunden am Telefon, alle zwei am iPad. 24 Zahlen passen auf 390 Punkte nicht.
+    /// Alle sechs Stunden, wie in der Vorlage (`DayCurve.tsx:116`: `interval: 6`).
+    ///
+    /// Hier stand ein Schritt von vier Stunden mit der Beschriftung „00 04 08 …“ - sechs Marken
+    /// in einer Zeile, die auf 390 Punkten mit Uhrzeiten nicht mehr lesbar waere.
     private var stundenmarken: [Double] {
-        let schritt: Double = schmal ? 4 : 2
-        return Array(stride(from: 0, through: kurve.stunden, by: schritt))
+        Array(stride(from: 0, through: kurve.stunden, by: 6))
     }
 
     // MARK: - Fadenkreuz
@@ -448,16 +500,27 @@ struct TageskurveBild: View {
         var flaeche = false
     }
 
+    /// **Die Legende haengt am Tag und nicht an den Reihen** (`DayCurve.tsx:143-149`).
+    ///
+    /// Hier stand ueberall `isEmpty`, und das hatte zwei sichtbare Folgen. An einem Tag ohne
+    /// Messwerte verschwand „Sonne“ aus der Legende, obwohl die Achse stand - die Legende sagt
+    /// dann nicht mehr, was das Bild zeigen wuerde, sondern was zufaellig angekommen ist. Und
+    /// „Preistief“ stand nur da, solange gerade ein Band im Bild lag: sobald das Fenster vorbei
+    /// war, blieb eine getoente Flaeche ohne Namen. Die Vorlage nennt es ausser gestern immer.
+    ///
+    /// Zwei Eintraege haengen weiter am Inhalt, und zu Recht: der Schatten, weil es ihn ohne
+    /// Vortagsreihe nicht gibt (`:145`: `schatten ? …`), und die gemessene Waermepumpe, die die
+    /// Vorlage gar nicht zeichnet.
     private var eintraege: [Legendeneintrag] {
         var aus: [Legendeneintrag] = []
-        if !kurve.pv.isEmpty {
+        if tag != .morgen {
             // **Die Kilowattstunden stehen nur am Vortag.** Das ist die ganze Begründung für
             // den Schatten: „Eine Kurve allein sagt nicht, ob der Tag gut war; erst der Vortag
             // macht aus 13,4 kWh eine Auskunft." Zweimal eine Zahl, und der Vergleich geht
             // verloren (`DayCurve.tsx:143`).
             aus.append(Legendeneintrag(wort: "Sonne", farbe: Farbe.pv, flaeche: true))
         }
-        if !kurve.pvErwartet.isEmpty {
+        if tag != .gestern {
             aus.append(
                 Legendeneintrag(
                     wort: tag == .morgen ? "Sonne erwartet" : "Prognose",
@@ -468,31 +531,33 @@ struct TageskurveBild: View {
             aus.append(
                 Legendeneintrag(wort: "\(kurve.schattenwort ?? "Vortag")\(kwh)", farbe: Farbe.pvSchatten))
         }
-        if !kurve.haus.isEmpty {
-            aus.append(Legendeneintrag(wort: "Haus", farbe: Farbe.last))
+        if tag != .morgen {
+            aus.append(Legendeneintrag(wort: "Haus", farbe: Self.hausfarbe))
         }
-        if !kurve.waermepumpe.isEmpty {
+        // Die gemessene Waermepumpe zeichnet die Vorlage nicht; es gibt sie nur hier, und nur
+        // an einem Tag, an dem gemessen wurde. `tag != .morgen` haelt sie vom gestrichelten
+        // Eintrag darunter getrennt - zwei Eintraege gleichen Wortes waeren derselbe Schluessel.
+        if tag != .morgen, !kurve.waermepumpe.isEmpty {
             aus.append(Legendeneintrag(wort: "Wärmepumpe", farbe: Farbe.waermepumpe))
         }
-        if !kurve.waermeErwartet.isEmpty {
+        if tag == .morgen {
             aus.append(
                 Legendeneintrag(wort: "Wärmepumpe", farbe: Farbe.waermepumpe, gestrichelt: true)
             )
         }
         // **Der Strompreis gehört in die Legende.** Er fehlte: eine zweite Achse rechts und
-        // eine Linie im Bild, die niemand benennt (`DayCurve.tsx:147`).
-        if !kurve.preis.isEmpty || !kurve.preisErwartet.isEmpty {
+        // eine Linie im Bild, die niemand benennt (`DayCurve.tsx:148`).
+        aus.append(
+            Legendeneintrag(wort: "Strompreis", farbe: Farbe.preis, gestrichelt: tag == .morgen))
+        if tag != .gestern {
+            // **Ein Name, unbedingt** (`DayCurve.tsx:149`): immer „Preistief“, immer in der
+            // Preisfarbe, gleich welche Fenster gerade im Bild liegen - sonst bleibt eine
+            // getoente Flaeche ohne Namen. „NEGATIV“ ist in der Vorlage die Beschriftung im
+            // Band selbst (`:82`) und kein Eintrag der Legende; eine Wahl zwischen beiden
+            // liesse an einem windigen Mittag, an dem ein guenstiges und ein negatives
+            // Fenster zugleich im Bild liegen, die guenstige Flaeche unbenannt.
             aus.append(
-                Legendeneintrag(
-                    wort: "Strompreis", farbe: Farbe.preis,
-                    gestrichelt: kurve.preis.isEmpty))
-        }
-        if !kurve.baender.isEmpty {
-            // Jede Bandart einmal, nicht einmal je Band - sonst stehen dort vier Mal „Preistief".
-            for art in Set(kurve.baender.map(\.art)) {
-                let name = kurve.baender.first { $0.art == art }?.name ?? ""
-                aus.append(Legendeneintrag(wort: name, farbe: bandfarbe(art), flaeche: true))
-            }
+                Legendeneintrag(wort: "Preistief", farbe: bandfarbe(.guenstig), flaeche: true))
         }
         return aus
     }

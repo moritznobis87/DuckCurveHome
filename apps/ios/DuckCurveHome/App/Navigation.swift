@@ -24,6 +24,17 @@ final class Wegweiser {
     /// Wohin ein Tippen auf eine Zahl fuehrt - der Stapel ueber der Seite.
     var blatt: Blatt?
 
+    /// Welchen der drei Tage die Startseite zeigt.
+    ///
+    /// **Warum das hier steht und nicht in der Seite.** Es stand dort (`@State private var tag`),
+    /// und damit kam die Heimkehr nicht an: ``heimkehr(jetzt:)`` setzt die Zeitraeume der
+    /// Berichtsseiten zurueck, und ein `@State` einer Seite ist von aussen nicht erreichbar. Wer
+    /// an der Wandanzeige im Vorbeigehen auf „Gestern“ tippte, hinterliess eine Anzeige, die
+    /// gestrige Kurve und gestrige Kacheln so zeigte, wie sonst die heutigen stehen - tagelang.
+    /// Genau davor warnt `DayCurve.tsx:32-34`: „die Wandanzeige soll nicht an einem Tag von
+    /// vorgestern haengen bleiben, wie es der alten passiert ist.“
+    var kurventag: Kurventag = .heute
+
     var bereich: Bereich { Bereiche.bereichVon(weg) }
     var reiter: Reiter? { Bereiche.reiterVon(bereich, weg) }
     var ansicht: Ansicht? { Bereiche.ansichtVon(reiter, weg) }
@@ -93,6 +104,12 @@ final class Wegweiser {
         for (schluessel, z) in zeitraeume where !z.istAktuell(jetzt: jetzt) {
             zeitraeume[schluessel] = Zeitraum.heute(z.spanne, jetzt: jetzt)
         }
+        // **Und der Tagesschalter der Startseite** (`Home.tsx:162-167`: `HEIMKEHR_MS`). Die
+        // Abfrage ist nicht nur Sparsamkeit: `heimkehr` wird an der Wand in jedem Takt gerufen,
+        // solange niemand die Anzeige beruehrt, und eine Zuweisung auf eine beobachtete
+        // Eigenschaft meldet eine Aenderung auch dann, wenn sich nichts aendert - jede Sekunde
+        // ein neuer Durchlauf der ganzen Startseite.
+        if kurventag != .heute { kurventag = .heute }
     }
 }
 
@@ -102,6 +119,8 @@ enum Blatt: Identifiable, Hashable {
     /// Die Auswahl, die ein Tipp auf die Waermepumpe im Flussbild oeffnet.
     case waermepumpenmenue
     case ofen
+    /// Die Alarmanlage scharf stellen - vom Dock der Wandanzeige aus (`Dock.tsx:281-283`).
+    case alarm
     case batterie
     case raum(Int)
     /// Das Protokoll eines Raums – zwei Tage Kurve und jede Sollwertänderung.
@@ -114,6 +133,7 @@ enum Blatt: Identifiable, Hashable {
         case .waermepumpe: return "wp"
         case .waermepumpenmenue: return "wp-menue"
         case .ofen: return "ofen"
+        case .alarm: return "alarm"
         case .batterie: return "bat"
         case .raum(let i): return "raum-\(i)"
         case .raumprotokoll(let i): return "raumlog-\(i)"
@@ -189,6 +209,7 @@ struct Wurzel: View {
             case .waermepumpe: Waermepumpenblatt()
             case .waermepumpenmenue: Wpmenue()
             case .ofen: Ofenblatt()
+            case .alarm: Alarmblatt()
             case .batterie: Batterieblatt()
             case .entscheidungen: Entscheidungsblatt()
             case .zugang: Einrichten()

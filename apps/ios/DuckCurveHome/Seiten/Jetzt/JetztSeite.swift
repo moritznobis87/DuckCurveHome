@@ -16,9 +16,9 @@ import SwiftUI
 /// Satz oben; vergangene Tage stehen unter Strom, mit allem Blaettern, das dort hingehoert.
 struct JetztSeite: View {
     @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
     @Environment(\.horizontalSizeClass) private var breite
 
-    @State private var tag: Kurventag = .heute
     @State private var vortag: [Verlaufspunkt] = []
     @State private var waermeprognose: [HeatForecastPoint] = []
     @State private var bilanz: EnergySummaryOut?
@@ -26,11 +26,48 @@ struct JetztSeite: View {
 
     private var schmal: Bool { breite == .compact }
 
+    /// Welcher Tag gezeigt wird - im ``Wegweiser`` und nicht in der Seite.
+    ///
+    /// **Weil die Heimkehr sonst nicht ankommt.** Hier stand `@State private var tag`, und
+    /// `Wegweiser.heimkehr(jetzt:)` setzte nach zwei Minuten brav die Zeitraeume der
+    /// Berichtsseiten zurueck - an diese Seite kam es nicht. Wer an der Wandanzeige im
+    /// Vorbeigehen auf „Gestern“ tippte, hinterliess eine Anzeige, die gestrige Kurve und
+    /// gestrige Kacheln so zeigte, wie sonst die heutigen stehen (`Home.tsx:36-38`: „Wer
+    /// vorbeigeht, soll nicht das Gestern eines anderen sehen“).
+    private var tag: Kurventag { wegweiser.kurventag }
+
     var body: some View {
         gerippe
             .task(id: tag) { await ladeFuerTag() }
             .task(id: haus.heute) { await ladeVortag() }
             .task(id: tag) { await haltBilanzFrisch() }
+            .onChange(of: haus.heute) { mitternacht() }
+    }
+
+    /// **Mitternacht** (`Home.tsx:95-110`, Kommentar: „Die alte Ansicht blieb auf gestern
+    /// stehen“).
+    ///
+    /// Wechselt der Kalendertag, waehrend die Seite steht, dann ist aus dem Gestern von eben
+    /// vorgestern geworden: unter „Gestern“ stand dann vorgestern, und „Heute“ begann mit der
+    /// Reihe von gestern, weil nichts sie neu holte. Also Schalter zurueck, geholte Reihen
+    /// verwerfen - und die Reihe des neuen Tages holen.
+    ///
+    /// **Das Holen ist der Schritt, ohne den „Heute“ leer bleibt** (`Home.tsx:109`:
+    /// `void api.history("today").then(…)`, begruendet in `:95-97`: „weil der
+    /// Zustandsspeicher Live-Werte nur an den laufenden Tag anhaengt, hoerte die Kurve dort
+    /// schlicht auf“). Es gilt hier genauso: ``Hauszustand`` haengt Live-Werte nur an,
+    /// solange `raster.tag` der laufende Tag ist, und `ersteLadung()` holt den Verlauf nur,
+    /// wenn das Raster leer ist oder schon auf heute steht - selbst eine Wiederverbindung
+    /// fuellt es also nicht nach. ``Tageskurve`` siebt die Messwerte nach dem gezeigten Tag,
+    /// und damit stuenden pv, haus, waermepumpe und preis unter „Heute“ bis zum Neustart der
+    /// App leer. `ladeTag` setzt `raster` auf den neuen Tag, und damit laeuft auch das
+    /// Fortschreiben der Live-Werte wieder an.
+    private func mitternacht() {
+        if wegweiser.kurventag != .heute { wegweiser.kurventag = .heute }
+        geholtesRaster = []
+        vortag = []
+        geholterVortag = ""
+        Task { await haus.ladeTag(haus.heute) }
     }
 
     @ViewBuilder private var gerippe: some View {
@@ -62,7 +99,10 @@ struct JetztSeite: View {
                     Energiefluss(
                         augenblick: haus.augenblick, jetzt: haus.jetzt,
                         pvSpitzeKw: pvSpitze, wpLaeuft: haus.zustand?.heatPump.running,
-                        nacht: istNacht, sonneAb: sonneAb
+                        nacht: istNacht, sonneAb: sonneAb,
+                        // Auf einem niedrigen Schirm ruecken auch die Knotenkreise zurueck
+                        // (`globals.css:272-273`), nicht nur die Blockabstaende.
+                        eng: eng
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     // Die Leiste ist 272 Punkte breit (`globals.css:211`).
@@ -109,6 +149,16 @@ struct JetztSeite: View {
                         Text(k.wort)
                             .font(Schrift.sans(12))
                             .foregroundStyle(Farbe.text2)
+                        // **Der Zusatz fehlte an der Wand** (`tage.ts:107`: „Wärme erwartet ·
+                        // 4,2 kWh Strom“). Die Vorlage hat die Angabe im Wort selbst; der Kern
+                        // fuellt sie als eigenes Feld, und das Telefon zeigt sie laengst. Hier
+                        // stand nur die thermische Zahl, und wie viel Strom sie kostet, stand
+                        // auf der Startseite der Wandanzeige nirgends.
+                        if let dazu = k.dazu {
+                            Text(dazu)
+                                .font(Schrift.winzig)
+                                .foregroundStyle(Farbe.text3)
+                        }
                     }
                 }
             }
@@ -205,6 +255,10 @@ struct JetztSeite: View {
                     .foregroundStyle(Farbe.text3)
             }
             Wache(befunde: haus.zustand?.system.watch ?? [])
+            // **Nur am Telefon, und hier und nicht unter Technik** (`Home.tsx:225`): wer unter
+            // Technik ist, hat den Weg schon gefunden. Ob der Hinweis dasteht, entscheidet
+            // ``Startseitenhinweis``.
+            Mitteilungshinweis()
             if let f = haus.fehler {
                 Stoerung(fehler: f) {
                     Task { await haus.ersteLadung() }
@@ -248,13 +302,14 @@ struct JetztSeite: View {
             kurve: Tageskurve.baue(
                 tag: tag,
                 raster: tag == .heute ? haus.raster.punkte : geholtesRaster,
-                vortag: tag == .heute ? vortag : [],
+                vortag: schattenreihe,
                 plan: haus.plan,
                 waermeprognose: waermeprognose,
                 jetzt: haus.jetzt
             ),
             tag: tag,
-            tagwahl: AnyView(Tagwahl(tag: $tag))
+            tagwahl: AnyView(Tagwahl(tag: Binding(
+                get: { wegweiser.kurventag }, set: { wegweiser.kurventag = $0 })))
         )
         if schmal {
             Karte { bild }
@@ -267,6 +322,25 @@ struct JetztSeite: View {
 
     /// Fuer gestern wird der Verlauf eigens geholt; fuer morgen gibt es keinen.
     @State private var geholtesRaster: [Verlaufspunkt] = []
+
+    /// Welche Reihe als Schatten hinter dem Tag liegt.
+    ///
+    /// **Hinter heute gestern, hinter morgen heute** (`tage.ts:192`: `punkte = tag === "heute"
+    /// ? gestern : heute`). Die App gab fuer morgen nichts, und damit fehlte auf einem von drei
+    /// Tagen der Vergleich, der die ganze Begruendung der Schattenkurve ist: „erst der Vortag
+    /// macht aus 13,4 kWh eine Auskunft“ (`DayCurve.tsx:28-30`). Der Kern konnte es laengst und
+    /// sagte es selbst - ``Tageskurve`` setzt das Schattenwort fuer morgen auf „heute“, ein
+    /// Zweig, den die Seite nie erreichte.
+    ///
+    /// **Hinter gestern liegt nichts** (`tage.ts:146-147`): vorgestern holt die Wandanzeige
+    /// nicht, wer so weit zurueck will, ist unter Strom richtig.
+    private var schattenreihe: [Verlaufspunkt] {
+        switch tag {
+        case .heute: return vortag
+        case .morgen: return haus.raster.punkte
+        case .gestern: return []
+        }
+    }
 
     // MARK: - Die vier Zahlen
 

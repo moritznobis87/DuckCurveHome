@@ -206,9 +206,65 @@ final class TageskurveTests: XCTestCase {
     func testDieLeistungsachseIstRuhig() {
         var k = Tageskurve()
         k.pv = [Kurvenpunkt(stunde: 12, wert: 4.3)]
-        XCTAssertEqual(k.leistungsgrenze, 5)
-        // Auch bei nichts bleibt eine brauchbare Achse stehen.
-        XCTAssertEqual(Tageskurve().leistungsgrenze, 4)
+        // `max(3, ceil(4,3 · 1,1 / 2) · 2)` = 6 (`DayCurve.tsx:85`). In 1-kW-Schritten waere es
+        // 5, und die Achsenmitte stuende dann auf 2,5.
+        XCTAssertEqual(k.leistungsgrenze, 6)
+        // Auch bei nichts bleibt eine brauchbare Achse stehen - drei, mit Mitte bei 1,5.
+        XCTAssertEqual(Tageskurve().leistungsgrenze, 3)
+    }
+
+    /// Die Schritte sind gerade, damit die mittlere der drei Marken auf einer runden Zahl steht.
+    func testDieLeistungsachseGehtInZweiKilowattSchritten() {
+        var k = Tageskurve()
+        // 3,6 mal 1,1 ist 3,96 - noch unter vier; 3,7 ergibt 4,07 und reisst die Achse auf sechs.
+        for (hoch, grenze) in [(0.5, 3.0), (2.0, 4.0), (3.6, 4.0), (3.7, 6.0), (9.0, 10.0)] {
+            k.haus = [Kurvenpunkt(stunde: 1, wert: hoch)]
+            XCTAssertEqual(k.leistungsgrenze, grenze, "bei \(hoch) kW")
+        }
+    }
+
+    /// Eine Nacht zwischen zwei Messpunkten ist keine Flaeche (`tage.ts:166-180`).
+    func testEnergieUeberspringtLuecken() {
+        // Abends 1,5 kW, morgens 1,5 kW, acht Stunden Nichts dazwischen: die Trapezregel
+        // ergaebe zwoelf Kilowattstunden Sonne mitten in der Nacht.
+        let nacht = [Kurvenpunkt(stunde: 12, wert: 1.5), Kurvenpunkt(stunde: 20, wert: 1.5)]
+        XCTAssertNil(Tageskurve.energie(nacht))
+
+        // Ein Ausfall von zwanzig Minuten bleibt drin: er ist kuerzer als eine Stunde.
+        let loch = [
+            Kurvenpunkt(stunde: 10, wert: 3),
+            Kurvenpunkt(stunde: 10 + 1.0 / 3, wert: 3),
+        ]
+        XCTAssertEqual(Tageskurve.energie(loch) ?? 0, 1.0, accuracy: 1e-9)
+
+        // Genau eine Stunde ist ein Raster und kein Ausfall (`tage.ts:175`: `h > 1`).
+        let stundenraster = [Kurvenpunkt(stunde: 1, wert: 2), Kurvenpunkt(stunde: 2, wert: 2)]
+        XCTAssertEqual(Tageskurve.energie(stundenraster) ?? 0, 2.0, accuracy: 1e-9)
+
+        // Und eine Reihe, in der nur die Nacht liegt, waehrend davor gemessen wurde: die
+        // Luecke faellt weg, der gemessene Teil bleibt.
+        let gemischt = [
+            Kurvenpunkt(stunde: 9, wert: 2),
+            Kurvenpunkt(stunde: 10, wert: 2),
+            Kurvenpunkt(stunde: 20, wert: 2),
+        ]
+        XCTAssertEqual(Tageskurve.energie(gemischt) ?? 0, 2.0, accuracy: 1e-9)
+    }
+
+    /// Hinter morgen liegt heute, und heute ist bis jetzt gelaufen (`tage.ts:197`).
+    func testDerSchattenWirdBisZurUhrzeitGerechnet() {
+        let heute = raster("2026-02-24")
+        let morgen = Tageskurve.baue(
+            tag: .morgen, raster: [], vortag: heute, plan: nil, jetzt: jetzt)
+        // `jetztStunde` gibt es fuer morgen nicht - die Grenze steht trotzdem.
+        XCTAssertNil(morgen.jetztStunde)
+        let stunde = Kalender.haus.component(.hour, from: jetzt)
+        XCTAssertEqual(morgen.schattenBis ?? -1, Double(stunde), accuracy: 1.0)
+        XCTAssertEqual(morgen.schattenwort, "heute")
+
+        // Und die Summe ist kleiner als die des ganzen Tages: sonst waere der Schnitt wirkungslos.
+        let ganz = Tageskurve.energie(morgen.schatten) ?? 0
+        XCTAssertLessThan(morgen.schattenKwh ?? .infinity, ganz + 1e-9)
     }
 
     /// Negative Preise kommen vor und sind der Grund fuer das halbe Projekt: die Achse muss

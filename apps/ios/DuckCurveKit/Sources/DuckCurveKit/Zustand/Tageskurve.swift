@@ -104,6 +104,15 @@ public struct Tageskurve: Sendable {
     /// aus 13,4 kWh eine Auskunft."
     public var pvKwh: Double?
     public var schattenKwh: Double?
+    /// Bis zu welcher Uhrzeit der Schatten gerechnet ist, in Stunden seit Tagesbeginn.
+    ///
+    /// **Warum das nicht ``jetztStunde`` ist.** `jetztStunde` steht nur am laufenden Tag
+    /// (`DayCurve.tsx:88`: die Marke „jetzt“ gibt es nur dort). Der Schatten liegt aber auch
+    /// hinter morgen, und dort ist er der heutige Verlauf - gerechnet bis jetzt, nicht über den
+    /// ganzen Tag (`tage.ts:197`: `bis = tag === "heute" ? gleicheUhrzeit(…) : nowMs`). Ohne
+    /// eine eigene Grenze stand in der Legende unter „Morgen“ die Sonne eines ganzen Tages
+    /// neben einer Erwartung, die noch keine Stunde alt ist.
+    public var schattenBis: Double?
     /// Wie der Tag des Schattens heisst: „gestern" hinter heute, „heute" hinter morgen.
     ///
     /// **Der Tag gehoert in die Legende** (`DayCurve.tsx:176-180`): „gestern 6,9 kWh" sagt,
@@ -217,8 +226,16 @@ public struct Tageskurve: Sendable {
         }
 
         // ------------------------------------------------------------- Die Summen
+        //
+        // **Der Schatten wird bis zur Uhrzeit geschnitten, nicht bis zur Jetzt-Marke.** Die
+        // Marke gibt es nur heute; hinter morgen liegt der heutige Verlauf, und er ist bis
+        // jetzt gelaufen (`tage.ts:197`). Die Schattenpunkte stehen ohnehin auf der Uhr und
+        // nicht auf den Sekunden seit Tagesbeginn (siehe oben), also ist die Uhrzeit auch die
+        // richtige Grenze - am Tag der Zeitumstellung erst recht.
+        let uhr = Kalender.haus.dateComponents([.hour, .minute], from: jetzt)
+        k.schattenBis = Double(uhr.hour ?? 0) + Double(uhr.minute ?? 0) / 60
         k.pvKwh = energie(k.pv, bis: k.jetztStunde)
-        k.schattenKwh = energie(k.schatten, bis: k.jetztStunde)
+        k.schattenKwh = energie(k.schatten, bis: k.schattenBis)
         // Hinter heute liegt gestern, hinter morgen heute (`home/tage.ts`).
         if !k.schatten.isEmpty {
             k.schattenwort = tag == .morgen ? "heute" : "gestern"
@@ -232,30 +249,53 @@ public struct Tageskurve: Sendable {
     /// Rechteckregel klein, aber nicht null - und bei einer Reihe mit Luecken (ein Ausfall von
     /// zwanzig Minuten) ist er gross: die Trapezregel fuellt die Luecke mit dem Mittel der
     /// Raender, die Rechteckregel mit dem letzten Wert.
+    ///
+    /// **Eine Lücke über ``luecke`` wird übersprungen** (`tage.ts:166-180`, wörtlich): „Zwei
+    /// Punkte mit einer Nacht dazwischen sagen nichts über die Nacht, und als Trapez gerechnet
+    /// ergäben sie eine Energie, die es nie gab.“ Das trifft genau die Zahl, die in der
+    /// Schattenlegende steht: nach einem Ausfall von acht Stunden lagen zwischen dem letzten
+    /// Messwert des Abends und dem ersten des Morgens zwei Punkte mit 1,5 kW, und die App
+    /// rechnete daraus zwölf Kilowattstunden Sonne mitten in der Nacht.
+    ///
+    /// Eine Lücke von genau einer Stunde bleibt drin - ein Stundenraster ist ein Raster und
+    /// kein Ausfall (`tage.ts:175`: `h > 1`, nicht `h >= 1`).
     public static func energie(_ punkte: [Kurvenpunkt], bis: Double? = nil) -> Double? {
         let reihe = bis.map { grenze in punkte.filter { $0.stunde <= grenze } } ?? punkte
         guard reihe.count > 1 else { return nil }
         var summe = 0.0
+        var paare = 0
         for i in 1..<reihe.count {
             let dt = reihe[i].stunde - reihe[i - 1].stunde
-            guard dt > 0 else { continue }
+            guard dt > 0, dt <= luecke else { continue }
             summe += (reihe[i].wert + reihe[i - 1].wert) / 2 * dt
+            paare += 1
         }
-        return summe
+        // Nur Lücken und kein einziges Paar: dann ist nichts gerechnet, und `0` wäre eine
+        // Auskunft, die niemand hat (`tage.ts:179`: `return paare ? summe : null`).
+        return paare > 0 ? summe : nil
     }
+
+    /// Der grösste Abstand zweier Stützpunkte, über den noch integriert wird, in Stunden.
+    public static let luecke: Double = 1
 
     /// Die obere Grenze der Leistungsachse.
     ///
     /// Nicht der groesste Messwert, sondern eine runde Zahl darueber: eine Achse, die bei jedem
     /// Takt auf den aktuellen Hoechstwert springt, laesst die ganze Zeichnung zappeln.
+    ///
+    /// **In Schritten von zwei Kilowatt, mindestens drei** (`DayCurve.tsx:85`:
+    /// `Math.max(3, Math.ceil(max * 1.1 / 2) * 2)`). Die App rundete auf ganze Kilowatt und
+    /// begann bei vier - und weil die Achse drei Marken trägt (0, Mitte, oben), stand an einem
+    /// stillen Tag „4 / 2 / 0“ statt „3 / 1,5 / 0“ und an einem Tag mit 4,3 kW „5 / 2,5 / 0“.
+    /// Der gerade Schritt hält die Mitte auf einer runden Zahl, sobald überhaupt etwas
+    /// gemessen wird; der Mindestwert drei lässt einem stillen Tag seine Mitte bei 1,5.
     public var leistungsgrenze: Double {
         let alle = [pv, pvErwartet, haus, waermepumpe, schatten, waermeErwartet]
             .flatMap { $0 }
             .map { abs($0.wert) }
             .filter { $0.isFinite }
         let hoch = alle.max() ?? 0
-        // In Schritten von einem Kilowatt, mindestens vier.
-        return max(4, (hoch * 1.12).rounded(.up))
+        return max(3, (hoch * 1.1 / 2).rounded(.up) * 2)
     }
 
     /// Die Grenzen der Preisachse, mit der Schrittweite ihrer Marken.
