@@ -36,6 +36,11 @@ struct Alfredblatt: View {
     @State private var fuehrtAus = false
     @State private var zeigtDateiwahl = false
 
+    /// Wo die Ente steht. **Hier steht der Weg zurück**: wer sie verschoben hat und sie nicht
+    /// mehr findet oder nicht mehr dort haben will, kommt über sie selbst in dieses Blatt, und
+    /// hier steht dann der Knopf. Eine Einstellungsseite dafür wäre eine Zeile für eine Ente.
+    @AppStorage(Entenplatz.merker) private var enteGemerkt = Entenplatz.gemerkt(Entenplatz.vorgabe)
+
     @FocusState private var amFeld: Bool
 
     var body: some View {
@@ -52,6 +57,15 @@ struct Alfredblatt: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(Alfred.Texte.schliessen) { schliessen() }
+                }
+                // Nur wenn sie woanders steht: ein Knopf, der nichts zurücksetzt, ist einer,
+                // der jeden Tag erklärt werden muss.
+                if Entenplatz.gelesen(enteGemerkt) != Entenplatz.vorgabe {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button(Alfred.Texte.enteZurueck) {
+                            enteGemerkt = Entenplatz.gemerkt(Entenplatz.vorgabe)
+                        }
+                    }
                 }
             }
         }
@@ -310,7 +324,7 @@ struct Alfredblatt: View {
     /// **Warum es die Rueckfallebene gibt.** Der Fortschritt ist eine Annehmlichkeit, die
     /// Antwort ist die Sache. Scheitert der Ereignisstrom - ein Gegenstueck, das ihn nicht
     /// kennt, etwas dazwischen, das ihn puffert -, ist eine Antwort ohne Zwischenstand immer
-    /// noch besser als ein Blatt, auf dem „Ich denke nach ..." stehen bleibt. Genau das stand
+    /// noch besser als ein Blatt, auf dem „Ich denke nach ...“ stehen bleibt. Genau das stand
     /// am 17.11. auf dem Geraet, weil der Strom an einer falschen Sitzung hing.
     private func frageMitRueckfallebene(
         _ eingabe: AlfredFrageIn, weiter: AsyncStream<String>.Continuation
@@ -349,7 +363,7 @@ struct Alfredblatt: View {
     private func lies(_ ergebnis: Result<URL, any Error>) async {
         guard case .success(let url) = ergebnis else { return }
         // Eine Datei aus der Dateiauswahl liegt ausserhalb der Sandkiste: ohne diesen Zugriff
-        // kommt ein leeres `Data` zurueck, und die Rechnung waere „nicht lesbar".
+        // kommt ein leeres `Data` zurueck, und die Rechnung waere „nicht lesbar“.
         let darf = url.startAccessingSecurityScopedResource()
         defer { if darf { url.stopAccessingSecurityScopedResource() } }
         guard let pdf = try? Data(contentsOf: url), !pdf.isEmpty else {
@@ -388,7 +402,8 @@ struct Alfredblatt: View {
     }
 }
 
-/// Der Knopf, der Alfred ruft: das Maskottchen, unten rechts über der Seite.
+
+/// Der Knopf, der Alfred ruft: das Maskottchen über der Seite, standardmäßig unten rechts.
 ///
 /// **Über der Seite und nicht in der Leiste.** Die Bereichsleiste unten gehört den fünf
 /// Bereichen; ein sechstes Zeichen darin wäre ein Bereich, und Alfred ist keiner. Im
@@ -399,9 +414,29 @@ struct Alfredblatt: View {
 /// (`brand/ente-maskottchen.svg`) und auf dem Programmsymbol. Zwei Zeichen, zwei Aufgaben;
 /// hier wird jemand angesprochen, nicht eine Marke gezeigt.
 ///
-/// **Tippen öffnet, Halten spricht.** Dieselbe Geste wie an der Wand: 350 Millisekunden
-/// gedrückt, dann hört Alfred zu, solange der Finger liegen bleibt. Kürzer ist ein Tippen und
-/// öffnet nur das Blatt. Länger als ein Tippen, kürzer als das lange Drücken des Systems.
+/// **Tippen öffnet, Halten spricht, Ziehen verschiebt.** Die ersten beiden sind dieselbe Geste
+/// wie an der Wand: 350 Millisekunden gedrückt, dann hört Alfred zu, solange der Finger liegen
+/// bleibt. Kürzer ist ein Tippen und öffnet nur das Blatt. Länger als ein Tippen, kürzer als das
+/// lange Drücken des Systems.
+///
+/// **Die dritte Geste musste sich zwischen die beiden drängen** (Nutzer am 21.11.2026: „das
+/// Symbol von Alfred verschiebbar machen wenn man laenger drauf drueckt und es dann ueber den
+/// Monitor zieht“). Das lange Drücken war besetzt, und das ist kein Formfehler, sondern der
+/// ganze Entwurf: ab 350 Millisekunden ist das Mikrofon an. Die Grenze ist darum nicht die Zeit,
+/// sondern der Weg – ``Entenplatz/zugSchwelle``, der Radius der Ente selbst. Wer den Finger über
+/// ihren Rand hinausbewegt, verschiebt; wer ihn liegen lässt, spricht.
+///
+/// **Und die Aufnahme wird dabei weggeworfen, nicht abgeschickt.** Ein Zug kommt oft erst nach
+/// den 350 Millisekunden, dann läuft das Mikrofon schon. ``Sprachhoerer/brich()`` löscht die
+/// Aufnahme samt Rückruf; ``Sprachhoerer/beende()`` würde sie abschicken. Wer die Ente nur
+/// umsetzt, hat nicht nebenbei eine Frage gestellt - das ist die Zusage dieser drei Gesten, und
+/// sie gilt auch in der Lücke, in der die Erlaubnis noch angelaufen ist.
+///
+/// **Alle drei Lagen sieht man.** Beim Zuhören wird die Ente größer, trägt einen roten Punkt und
+/// den Zettel mit der Mitschrift; beim Verschieben folgt sie dem Finger, ohne Punkt und ohne
+/// Zettel, und beim Übergang dorthin rüttelt es einmal. Das Rütteln hat die Wandanzeige
+/// vorgemacht (`Alfred.tsx:337`: `navigator.vibrate(20)`, als die Haltegeste anläuft); dort
+/// konnte es nur das Android-Telefon, hier kann es jedes.
 struct Entenknopf: View {
     @Environment(Hauszustand.self) private var haus
 
@@ -410,79 +445,172 @@ struct Entenknopf: View {
     /// Ob ein Sprachmodell eingerichtet ist. `nil` heisst: noch nicht beantwortet.
     @State private var bereit: Bool?
     @State private var hoerer = Sprachhoerer()
+
+    /// Wo die Ente steht – im Gerät gemerkt, nicht über iCloud (``Entenplatz/merker``).
+    ///
+    /// Gemerkt wird das Wort einer Stelle und nicht ein Punkt: ein Punkt gälte für genau diesen
+    /// Bildschirm in genau dieser Lage. Was im Merker steht, darf auch Unsinn sein -
+    /// ``Entenplatz/gelesen(_:)`` macht daraus die Vorgabe.
+    @AppStorage(Entenplatz.merker) private var gemerkt = Entenplatz.gemerkt(Entenplatz.vorgabe)
+
     /// **Der Finger liegt – als `@GestureState` und nicht als `@State`.** Eine Geste kann
     /// abgebrochen werden, und dann kommt kein `onEnded`: iOS storniert die Berührungen,
     /// sobald ein Systemdialog über dem Fenster liegt – und genau das tut der erste Griff
     /// nach dem Mikrofon. Ein `@State`, das nur `onEnded` zurücksetzt, bliebe danach auf
-    /// „gedrückt" stehen; die Ente reagierte beim nächsten Mal nicht, und das Mikrofon liefe
+    /// „gedrückt“ stehen; die Ente reagierte beim nächsten Mal nicht, und das Mikrofon liefe
     /// weiter, weil niemand das Ende meldet. `@GestureState` setzt sich beim Abbruch selbst
     /// zurück, und ``loslassen()`` hängt an diesem Zurücksetzen statt an `onEnded`.
     @GestureState private var druck = false
+    /// Wie weit der Finger seit dem Aufsetzen gewandert ist – aus demselben Grund eine
+    /// Gestenlage: ein abgebrochener Zug muss bei null enden und nicht beim letzten Wert.
+    @GestureState private var schub = Entenplatz.Punkt.ursprung
     @State private var gehalten = false
     @State private var haltenAufgabe: Task<Void, Never>?
     /// Das Blatt soll aufgehen, sobald der Finger weg ist – nicht darunter hervor.
     @State private var oeffnenNachLoslassen = false
 
+    /// Seit die Schwelle überschritten ist: die Ente folgt dem Finger.
+    @State private var zieht = false
+    /// Der letzte Zug, der ein Zug war. **Gebraucht beim Loslassen, und dann ist ``schub``
+    /// schon auf null zurückgesetzt** – das Einrasten rechnet darum mit diesem Wert.
+    @State private var letzterSchub = Entenplatz.Punkt.ursprung
+    /// Die Fläche, über der die Ente schwebt. Sie ändert sich beim Drehen und am geteilten
+    /// Fenster des iPads, und mit ihr der Versatz jeder Stelle.
+    @State private var flaeche = Entenplatz.Flaeche.unbekannt
+
     /// So lange muss die Ente gedrückt sein, bis Alfred zuhört.
     private static let haltenMs: UInt64 = 350
 
+    private var stelle: Entenplatz.Stelle { Entenplatz.gelesen(gemerkt) }
+
+    /// Der Versatz gegenüber der Ecke unten rechts, aus der Stelle und – während des Zuges –
+    /// aus dem Finger. Begrenzt wird im Kern, darum liegt die Ente nie halb draußen.
+    ///
+    /// **Gezeichnet wird nach ``letzterSchub`` und nicht nach ``schub``.** Eine Gestenlage
+    /// springt beim Ende oder Abbruch auf null zurück, und zwar in einem eigenen Durchgang:
+    /// die Ente stünde für ein Bild wieder dort, wo sie hergekommen ist, und erst danach an
+    /// ihrer neuen Stelle. Der gemerkte Zug hält genau einen Durchgang lang stand - bis
+    /// ``loslassen()`` Stelle und Zug zusammen setzt.
+    private var versatz: Entenplatz.Punkt {
+        Entenplatz.versatz(stelle, zug: zieht ? letzterSchub : .ursprung, in: flaeche)
+    }
+
     var body: some View {
+        // **Ein `GeometryReader`, und er misst die Seite und nicht die Ente.** Als Überlagerung
+        // bekommt diese Ansicht die Größe der Seite angeboten; nur deshalb weiß das Einrasten,
+        // wie weit es nach links und nach oben geht. Gezeichnet wird weiterhin in der Ecke unten
+        // rechts - und damit innerhalb der Seite, also nie hinter der Leiste der fünf Bereiche
+        // (`HandRahmen.swift`) und nie unter der Uhr der Wandanzeige.
+        GeometryReader { raum in
+            entenfeld
+                .frame(
+                    maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .onChange(of: raum.size, initial: true) { _, neu in
+                    flaeche = Entenplatz.Flaeche(breite: neu.width, hoehe: neu.height)
+                }
+        }
+        .task { bereit = try? await haus.api.alfredZustand().bereit }
+        .onChange(of: druck) { _, liegt in
+            if liegt { druecken() } else { loslassen() }
+        }
+        .onChange(of: schub) { _, neu in
+            // Das Zurücksetzen der Geste ist kein Zug - sonst stünde beim Loslassen null da,
+            // und die Ente rastete wieder dort ein, wo sie hergekommen ist.
+            guard neu != .ursprung else { return }
+            letzterSchub = neu
+            if !zieht, Entenplatz.istZug(neu) { beginneZiehen() }
+        }
+        // Geht das Blatt auf, waehrend noch aufgenommen wird, hoert hier niemand mehr zu.
+        .onChange(of: zeigtAlfred) { _, auf in
+            if auf { hoerer.brich() }
+        }
+        // Einmal rütteln, wenn aus dem Halten ein Verschieben wird: das ist der Augenblick, in
+        // dem das Mikrofon ausgeht und die Ente dem Finger gehört, und man sieht dabei auf die
+        // Ente und nicht auf den Zettel.
+        .sensoryFeedback(trigger: zieht) { _, verschiebt in verschiebt ? .impact : nil }
+        .sheet(isPresented: $zeigtAlfred) {
+            Alfredblatt(starttext: gefragt)
+        }
+        .alert(
+            Alfred.Texte.name,
+            isPresented: Binding(
+                get: { hoerer.meldung != nil && !zeigtAlfred },
+                set: { if !$0 { hoerer.loescheMeldung() } })
+        ) {
+            Button("Verstanden", role: .cancel) { hoerer.loescheMeldung() }
+        } message: {
+            Text(hoerer.meldung ?? "")
+        }
+    }
+
+    /// Die Ente mit allem, was an ihr hängt, an ihrer Stelle.
+    private var entenfeld: some View {
         ente
-            .overlay(alignment: .topTrailing) { hoerzeichen }
-            .overlay(alignment: .bottomTrailing) { mitschrift }
-            .padding(20)
-            .task { bereit = try? await haus.api.alfredZustand().bereit }
-            .onChange(of: druck) { _, liegt in
-                if liegt { druecken() } else { loslassen() }
-            }
-            // Geht das Blatt auf, waehrend noch aufgenommen wird, hoert hier niemand mehr zu.
-            .onChange(of: zeigtAlfred) { _, auf in
-                if auf { hoerer.brich() }
-            }
-            .sheet(isPresented: $zeigtAlfred) {
-                Alfredblatt(starttext: gefragt)
-            }
-            .alert(
-                Alfred.Texte.name,
-                isPresented: Binding(
-                    get: { hoerer.meldung != nil && !zeigtAlfred },
-                    set: { if !$0 { hoerer.loescheMeldung() } })
-            ) {
-                Button("Verstanden", role: .cancel) { hoerer.loescheMeldung() }
-            } message: {
-                Text(hoerer.meldung ?? "")
-            }
+            .overlay(alignment: zeichenEcke) { hoerzeichen }
+            .overlay(alignment: zettelEcke) { mitschrift }
+            .padding(Entenplatz.rand)
+            .offset(x: versatz.x, y: versatz.y)
+    }
+
+    /// Ob die Ente an der linken Kante klebt. **Sie entscheidet, wohin alles ausweicht**, was
+    /// an ihr hängt: ein Zettel, der an der linken Kante nach links aus ihr herauswächst, steht
+    /// zur Hälfte neben dem Schirm.
+    private var klebtLinks: Bool { stelle.seite == .links }
+    private var klebtOben: Bool { stelle.hoehe == .oben }
+
+    private var zettelEcke: Alignment {
+        Alignment(
+            horizontal: klebtLinks ? .leading : .trailing,
+            vertical: klebtOben ? .top : .bottom)
+    }
+
+    private var zeichenEcke: Alignment {
+        Alignment(horizontal: klebtLinks ? .leading : .trailing, vertical: .top)
     }
 
     private var ente: some View {
         Image("Ente")
             .resizable()
             .scaledToFit()
-            .frame(width: 38, height: 38)
-            .padding(7)
+            .frame(width: Entenplatz.entengroesse, height: Entenplatz.entengroesse)
+            .padding(Entenplatz.ring)
             .background(Circle().fill(Farbe.papier))
-            .shadow(color: .black.opacity(0.35), radius: 10, y: 3)
-            .scaleEffect(hoerer.lage == .hoert ? 1.12 : 1)
+            // Beim Verschieben hebt sich die Ente von der Seite ab: ein größerer Schatten ist
+            // das, was in dieser Anwendung „in der Hand“ heißt.
+            .shadow(color: .black.opacity(zieht ? 0.5 : 0.35), radius: zieht ? 16 : 10, y: 3)
+            .scaleEffect(hoerer.lage == .hoert || zieht ? 1.12 : 1)
             .animation(.easeInOut(duration: 0.18), value: hoerer.lage)
+            .animation(.easeInOut(duration: 0.18), value: zieht)
             .contentShape(Circle())
             .gesture(griff)
             // **Ein Zug ist fuer VoiceOver keine Handlung.** Vorher war das ein echter
             // `Button`, den ein Doppeltippen ausloeste; jetzt traegt ein Bild eine Geste, und
             // die wird der Bedienungshilfe nicht angeboten. Ohne diese drei Zeilen las
-            // VoiceOver „Alfred fragen, Bild" und ein Doppeltippen tat nichts.
+            // VoiceOver „Alfred fragen, Bild“ und ein Doppeltippen tat nichts.
             .accessibilityElement()
             .accessibilityLabel(Alfred.Texte.ansprechen)
-            .accessibilityHint(Alfred.Texte.haltenHinweis)
+            // **Und das Verschieben ist erst recht keine.** Es hängt an einer Strecke, die mit
+            // eingeschaltetem VoiceOver niemand zurücklegt. Darum steht es als Handlung da -
+            // ein Schritt weiter am Rand entlang, und einer zurück an die Vorgabe. Der Wert
+            // sagt, wo die Ente gerade steht; ohne ihn wäre die Handlung ein Blindflug.
+            .accessibilityValue(Alfred.Texte.enteStelle(stelle.name))
+            .accessibilityHint(Alfred.Texte.enteHinweis)
             .accessibilityAddTraits(.isButton)
             .accessibilityAction {
                 gefragt = nil
                 zeigtAlfred = true
             }
+            .accessibilityAction(named: Text(Alfred.Texte.enteVerschieben)) {
+                setze(Entenplatz.naechste(nach: stelle))
+            }
+            .accessibilityAction(named: Text(Alfred.Texte.enteZurueck)) {
+                setze(Entenplatz.vorgabe)
+            }
     }
 
-    /// Was bisher verstanden wurde, über der Ente, solange der Finger liegt.
+    /// Was bisher verstanden wurde, neben der Ente, solange der Finger liegt.
     ///
-    /// **Ohne das wäre „Texterkennung" ein Versprechen ohne Beleg.** Man hält die Ente, redet
+    /// **Ohne das wäre „Texterkennung“ ein Versprechen ohne Beleg.** Man hält die Ente, redet
     /// in ein Telefon, das nichts anzeigt, und erfährt erst nach dem Loslassen, ob überhaupt
     /// etwas angekommen ist. Hier stehen die Worte, während sie kommen – und wer sieht, dass
     /// nichts kommt, lässt los und tippt.
@@ -509,9 +637,11 @@ struct Entenknopf: View {
                     .strokeBorder(Farbe.amber.opacity(0.4), lineWidth: 1)
             )
             .shadow(color: .black.opacity(0.4), radius: 12, y: 4)
-            // Über der Ente und nach links aus ihr heraus: sie sitzt am rechten Rand, und
-            // ein Kasten, der dort beginnt, stünde zur Hälfte neben dem Schirm.
-            .offset(y: -62)
+            // Von der Ente weg, nicht über sie: er wächst aus der Kante heraus, an der sie
+            // klebt, und bei einer Ente oben nach unten statt nach oben. Stünde er immer links
+            // über ihr, läge er an der linken Kante zur Hälfte neben dem Schirm und an der
+            // oberen Kante über ihr hinaus.
+            .offset(y: klebtOben ? 62 : -62)
             .fixedSize()
             .allowsHitTesting(false)
             .transition(.opacity)
@@ -525,7 +655,7 @@ struct Entenknopf: View {
                 .fill(Farbe.alarm)
                 .frame(width: 11, height: 11)
                 .overlay(Circle().strokeBorder(Farbe.grund, lineWidth: 2))
-                .offset(x: 2, y: -2)
+                .offset(x: klebtLinks ? -2 : 2, y: -2)
         }
     }
 
@@ -533,14 +663,25 @@ struct Entenknopf: View {
     /// meldet ihren Beginn, aber kein Loslassen – gebraucht wird genau das Loslassen. Mit
     /// einem Zug ab Null bekommt man beides: `onChanged` beim Aufsetzen, `onEnded` beim
     /// Abheben, auch wenn der Finger dabei ein Stück wandert.
+    ///
+    /// **Zwei Gestenlagen an einer Geste**, weil zwei verschiedene Fragen daran hängen: *ob* ein
+    /// Finger liegt – daran hängen die Uhr fürs Halten und das Aufräumen – und *wie weit* er
+    /// gewandert ist, woran das Verschieben hängt. Eine einzige Lage für beides würde bei jedem
+    /// Millimeter die Uhr neu stellen.
     private var griff: some Gesture {
         DragGesture(minimumDistance: 0)
             .updating($druck) { _, liegt, _ in liegt = true }
+            .updating($schub) { wert, strecke, _ in
+                strecke = Entenplatz.Punkt(
+                    x: wert.translation.width, y: wert.translation.height)
+            }
     }
 
     /// Der Finger ist aufgesetzt: die Uhr fürs Halten läuft.
     private func druecken() {
         gehalten = false
+        zieht = false
+        letzterSchub = .ursprung
         oeffnenNachLoslassen = false
         haltenAufgabe?.cancel()
         haltenAufgabe = Task { @MainActor in
@@ -551,12 +692,48 @@ struct Entenknopf: View {
         }
     }
 
+    /// Aus dem Druck ist ein Zug geworden.
+    ///
+    /// **Hier wird die Aufnahme weggeworfen und nicht abgeschickt.** Das ist die harte Bedingung
+    /// dieser Geste: ein Zug beginnt oft erst nach den 350 Millisekunden, und dann läuft das
+    /// Mikrofon schon. ``Sprachhoerer/brich()`` löscht den Rückruf mit, also geht keine Frage an
+    /// den Dienst; ``Sprachhoerer/beende()`` täte das Gegenteil. Wer die Ente nur umsetzt, hat
+    /// nichts gefragt.
+    private func beginneZiehen() {
+        zieht = true
+        // Die Uhr abbestellen: wer zieht, will nicht sprechen. Und ``hoeren()`` fragt gleich
+        // noch einmal nach, denn die Uhr kann mitten in einem `await` stehen.
+        haltenAufgabe?.cancel()
+        haltenAufgabe = nil
+        gehalten = false
+        // Das Blatt soll auch nicht aufgehen, nur weil die Ente unterwegs ist.
+        oeffnenNachLoslassen = false
+        // **Nur die Aufnahme dieser Geste, nicht die schon losgelassene.** `laeuft` umfasst
+        // auch `.wartet` - die Lage nach dem Loslassen, in der das Mikrofon aus ist und nur
+        // noch das Endergebnis aussteht. Wer spricht, loslaesst und dann in diesem Fenster
+        // anfaengt zu verschieben, hat die Frage mit dem Loslassen schon abgeschickt; sie hier
+        // abzubrechen hiesse, sie stumm wegzuwerfen - `brich()` sagt bewusst nichts. Die Zusage
+        // des Verschiebens ist, dass dabei nichts heimlich aufgenommen wird, und in `.wartet`
+        // nimmt niemand mehr auf.
+        if hoerer.lage == .startet || hoerer.lage == .hoert { hoerer.brich() }
+    }
+
     /// Der Finger ist weg – losgelassen **oder** die Geste wurde abgebrochen. Beide Wege
     /// kommen hier an, und beide müssen aufräumen.
     private func loslassen() {
         haltenAufgabe?.cancel()
         haltenAufgabe = nil
-        if gehalten {
+        if zieht {
+            // Eingerastet statt frei stehen gelassen: welche Stelle das ist, rechnet der Kern.
+            // **Stelle und Zug in einem Zug**, denn beide bewegen dasselbe Bild: zuerst die
+            // Stelle und dann den Zug zu löschen, hiesse die Ente zweimal zu versetzen.
+            let neu = Entenplatz.einrasten(von: stelle, zug: letzterSchub, in: flaeche)
+            withAnimation(.spring(duration: 0.3, bounce: 0.2)) {
+                gemerkt = Entenplatz.gemerkt(neu)
+                letzterSchub = .ursprung
+                zieht = false
+            }
+        } else if gehalten {
             hoerer.beende()
             if oeffnenNachLoslassen {
                 gefragt = nil
@@ -566,8 +743,18 @@ struct Entenknopf: View {
             gefragt = nil
             zeigtAlfred = true
         }
+        zieht = false
         gehalten = false
         oeffnenNachLoslassen = false
+        letzterSchub = .ursprung
+    }
+
+    /// Die Ente an eine Stelle setzen und sie sich merken. Mit Schwung, damit man das Einrasten
+    /// sieht und die Ente nicht einfach woanders ist.
+    private func setze(_ neu: Entenplatz.Stelle) {
+        withAnimation(.spring(duration: 0.3, bounce: 0.2)) {
+            gemerkt = Entenplatz.gemerkt(neu)
+        }
     }
 
     private func hoeren() async {
@@ -580,6 +767,11 @@ struct Entenknopf: View {
         // nicht -, bliebe die Spracheingabe sonst fuer den ganzen Programmlauf stumm, ohne
         // dass irgendwo ein Grund stuende.
         if bereit == nil { bereit = try? await haus.api.alfredZustand().bereit }
+        // **Und zwischen Frage und Antwort kann der Zug begonnen haben.** Ein abgebrochenes
+        // `Task` kommt hier trotzdem an: der Abbruch laesst den Aufruf scheitern, und
+        // `try?` macht daraus ein `nil`, das keinen Riegel ist. Der Zug hat Vorrang, immer -
+        // sonst ginge das Mikrofon an, waehrend die Ente schon unterwegs ist.
+        guard !zieht else { return }
         guard bereit != false else {
             // Das Blatt geht auf, sobald der Finger weg ist, und sagt dort, woran es liegt.
             oeffnenNachLoslassen = true
