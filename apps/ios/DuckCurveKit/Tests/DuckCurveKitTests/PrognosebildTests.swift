@@ -188,8 +188,10 @@ final class PrognosebildTests: XCTestCase {
         }
         XCTAssertEqual(ton(15), .normal, "genau an der Grenze ist noch nicht darueber")
         XCTAssertEqual(ton(-15), .normal)
-        XCTAssertEqual(ton(15.1), .glut)
-        XCTAssertEqual(ton(-15.1), .glut, "zu wenig ist so weit daneben wie zu viel")
+        // `ember` der Vorlage ist `var(--alert)` (`ForecastPage.tsx:183`), nicht der Ton der
+        // Wärmepumpe.
+        XCTAssertEqual(ton(15.1), .alarm)
+        XCTAssertEqual(ton(-15.1), .alarm, "zu wenig ist so weit daneben wie zu viel")
     }
 
     func testDieTrefferkachelZaehltNurDieLetztenSiebenTage() {

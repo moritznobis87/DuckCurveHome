@@ -33,6 +33,52 @@ private struct Stufenmarke: View {
     }
 }
 
+/// Die Akzentleiste über einer Karte: 3 Punkte Bernstein, nach rechts auslaufend.
+///
+/// **Was die Vorlage damit auszeichnet.** `Card accent` (`ui/Card.tsx:4-5`) steht in der ganzen
+/// Anwendung zweimal, und beide Male auf dieser Seite: über „Was sich für die nächste Prognose
+/// ändert“ (`ForecastPage.tsx:326`) und über „Wie der Rückblick zu lesen ist“
+/// (`Rueckblick.tsx:200`). Es sind die zwei Karten, die nicht messen, sondern einordnen - was
+/// sich ändert, und wie das Gezeigte zu lesen ist. Ohne die Leiste stehen sie zwischen den
+/// Messkarten wie zwei weitere Messungen.
+///
+/// **Die Farben kommen aus `--accent-bar`** (`tokens.css:98`:
+/// `linear-gradient(90deg, var(--amber), var(--amber-soft), transparent 86%)`). Ein Stopp ohne
+/// eigene Stelle liegt in CSS mittig zwischen seinen Nachbarn, also bei 43 %. Ausgeblendet wird
+/// in durchsichtiges Bernstein und nicht in `Color.clear`: `clear` ist durchsichtiges Schwarz,
+/// und ein Verlauf dorthin wird in der Mitte grau.
+///
+/// **Der Schnitt muss nach der Leiste kommen.** ``Karte`` legt Grund, Rand und Schnitt in dieser
+/// Reihenfolge; ein `overlay` darüber stünde in den Ecken über den Radius hinaus. Die Vorlage
+/// schneidet dort mit `overflow: hidden` (`globals.css:76`), hier also ein zweiter `clipShape`
+/// mit demselben Radius. Dass der Radius hier ein zweites Mal steht, ist der Preis dafür, dass
+/// ``Karte`` kein `akzent:` kennt - gemeldet.
+private struct Akzentkarte<Inhalt: View>: View {
+    @ViewBuilder var inhalt: () -> Inhalt
+
+    @Environment(\.horizontalSizeClass) private var breite
+
+    private var radius: CGFloat { breite == .compact ? 16 : Marken.radius3 }
+
+    var body: some View {
+        inhalt()
+            .overlay(alignment: .top) { leiste }
+            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+    }
+
+    private var leiste: some View {
+        LinearGradient(
+            stops: [
+                Gradient.Stop(color: Farbe.amber, location: 0),
+                Gradient.Stop(color: Farbe.amberWeich, location: 0.43),
+                Gradient.Stop(color: Farbe.amberWeich.opacity(0), location: 0.86),
+            ],
+            startPoint: .leading, endPoint: .trailing
+        )
+        .frame(height: 3)
+    }
+}
+
 /// Prognose: wie gut die Vorhersage war - und was sie daraus gelernt hat.
 ///
 /// **Vorher vier Textkarten und keine einzige Zeichnung.** Die Antwort auf
@@ -59,6 +105,13 @@ struct PrognoseSeite: View {
     @State private var bewertung: ForecastEvaluationOut?
     @State private var verlauf: ForecastHistoryOut?
     @State private var fehler: ApiFehler?
+    /// Der Fehler der **zweiten** Abfrage, getrennt vom ersten.
+    ///
+    /// **Er wurde vorher weggeworfen** (`try?`), und damit stand unter einer Tagewahl, die
+    /// scheinbar funktioniert, für immer „Wird geholt …“. Die Vorlage hält beide Zustände
+    /// getrennt (`Rueckblick.tsx:131-132`) und zeigt diesen in der Lesehilfekarte - nicht als
+    /// zweites Störungsband oben, denn die Bewertung darüber ist in Ordnung.
+    @State private var fehlerVerlauf: ApiFehler?
     /// Heute oder gestern im Hauptdiagramm.
     ///
     /// **Nur lokal, keine zweite Abfrage** (`ForecastPage.tsx:207`): beide Tage stehen in
@@ -176,17 +229,31 @@ struct PrognoseSeite: View {
     /// am Telefon auf eine (`globals.css:108,350`). Untereinander wären es dort drei Karten mit
     /// je 150 Punkten Bild - lesbar; nebeneinander wären es drei Diagramme auf 120 Punkten
     /// Breite, in denen vierzehn Säulenpaare zu einem Streifen verschmelzen.
+    ///
+    /// **Und nicht zu gleichen Dritteln.** `5fr 3fr 4fr` (`ForecastPage.tsx:295`) ist kein
+    /// Geschmack: links stehen vierzehn Säulenpaare, in der Mitte sechs einzelne Säulen. Ein
+    /// `HStack` mit `frame(maxWidth: .infinity)` nahm der Tagesenergie ein Fünftel ihrer Breite
+    /// und gab es der Horizontkarte, die es nicht braucht.
     @ViewBuilder private func dreierreihe(_ b: ForecastEvaluationOut) -> some View {
-        if schmal {
+        spaltenreihe([5, 3, 4]) {
             tagesenergiekarte(b)
             horizontkarte(b)
             faktorkarte(b)
+        }
+    }
+
+    /// Eine `report-row`: an der Wand im Maß der Vorlage, am Telefon untereinander
+    /// (`globals.css:108` gegen `:350`).
+    ///
+    /// SwiftUI kennt kein `fr`; ``Spaltenreihe`` rechnet die Anteile selbst und gibt allen
+    /// Karten dieselbe Höhe - so wie die Flex-Reihe der Vorlage.
+    @ViewBuilder private func spaltenreihe<Inhalt: View>(
+        _ anteile: [CGFloat], @ViewBuilder _ inhalt: () -> Inhalt
+    ) -> some View {
+        if schmal {
+            VStack(spacing: 14) { inhalt() }
         } else {
-            HStack(alignment: .top, spacing: 14) {
-                tagesenergiekarte(b)
-                horizontkarte(b)
-                faktorkarte(b)
-            }
+            Spaltenreihe(anteile: anteile, abstand: 14) { inhalt() }
         }
     }
 
@@ -223,15 +290,15 @@ struct PrognoseSeite: View {
 
     // MARK: - Die zwei breiten Karten
 
+    /// `7fr 5fr` (`ForecastPage.tsx:325`): links die nummerierten Sätze, rechts die Tabelle.
+    ///
+    /// Die Sätze sind ganze Zeilen Text und brauchen die Breite; die Tabelle hat vier kurze
+    /// Spalten. Gleich geteilt brach links jeder zweite Satz dreimal um.
     @ViewBuilder private func zweierreihe(_ b: ForecastEvaluationOut) -> some View {
-        if schmal {
-            aenderungskarte(b)
+        spaltenreihe([7, 5]) {
+            // `Card accent` (`ForecastPage.tsx:326`) - siehe ``Akzentkarte``.
+            Akzentkarte { aenderungskarte(b) }
             quellenkarte(b)
-        } else {
-            HStack(alignment: .top, spacing: 14) {
-                aenderungskarte(b)
-                quellenkarte(b)
-            }
         }
     }
 
@@ -376,45 +443,86 @@ struct PrognoseSeite: View {
             // (`Rueckblick.tsx:173`) - und schreibt „3 d“ statt „3 Tage“.
             Tagewahl(tage: $tage, moeglich: [3, 7, 14, 30], form: .prognoseRueckblick)
         }
+        reihenreihe
+        lesehilfe
+    }
+
+    /// Die Reihen des Rückblicks - **nebeneinander**, eine Spalte je Reihe.
+    ///
+    /// **Untereinander war es ein Vergleich, für den man rollen muss.** Die Vorlage setzt so
+    /// viele gleich breite Spalten, wie es Reihen gibt (`Rueckblick.tsx:182`,
+    /// ``Prognosebild/Rueckblick/spalten(reihen:)``); heute sind das zwei, PV-Leistung und
+    /// Außentemperatur, über denselben sechs Vorlaufklassen. Dieselbe Seite entscheidet das
+    /// zweimal richtig (``dreierreihe(_:)``, ``zweierreihe(_:)``) und hier bisher nicht.
+    @ViewBuilder private var reihenreihe: some View {
         if let v = verlauf {
             if v.reihen.isEmpty {
                 Karte { Leer(satz: "Im Bestand liegt für diesen Zeitraum kein Lauf.") }
             } else {
-                ForEach(v.reihen, id: \.key) { r in
-                    Karte(kicker: r.labelDe, titel: kopfrechts(r)) {
-                        Vorlaufbild(balken: Prognosebild.vorlaufbalken(r), einheit: r.einheit)
+                spaltenreihe(anteile(v)) {
+                    ForEach(v.reihen, id: \.key) { r in
+                        Karte(
+                            kicker: Prognosebild.Rueckblick.kopfkicker(r),
+                            titel: Prognosebild.Rueckblick.kopfrechts(r)
+                        ) {
+                            Vorlaufbild(balken: Prognosebild.vorlaufbalken(r), einheit: r.einheit)
+                        }
                     }
                 }
             }
-            // `kurz` steht auch zugeklappt da - genau dafür ist es gedacht: wie viele Tage und
-            // wie viele Läufe hinter den Säulen stehen, schränkt sie ein.
-            Methode(
-                v.hinweiseDe, kurz: "\(v.tage) Tage · \(laeufe(v)) Läufe im Bestand",
-                titel: "Wie der Rückblick zu lesen ist")
-        } else {
+        } else if fehlerVerlauf == nil {
             // Eine Tagewahl über einer leeren Fläche sieht aus wie ein Schalter, der nichts tut.
             Karte { Leer(satz: "Wird geholt …") }
         }
     }
 
-    /// „96 Paare · Bias +0,12 kW“ - oder, wenn es keine gibt, wie viele Läufe trotzdem dalagen.
-    ///
-    /// **Die Zahl der Läufe ohne Paare ist die wichtigere Auskunft von beiden.** Sie trennt „der
-    /// Dienst legt nichts ab“ von „er legt ab, findet aber kein Ist dazu“ (`Rueckblick.tsx:170`).
-    private func kopfrechts(_ r: ReiheOut) -> String {
-        let gesamt = r.gesamt
-        if gesamt.n == 0 { return "\(r.laeufe) Läufe, keine Paare" }
-        let vorzeichen = gesamt.bias > 0 ? "+" : ""
-        return "\(gesamt.n) Paare · Bias \(vorzeichen)"
-            + "\(Formate.zahl(gesamt.bias, stellen: 2)) \(r.einheit)"
+    private func anteile(_ v: ForecastHistoryOut) -> [CGFloat] {
+        Prognosebild.Rueckblick.spalten(reihen: v.reihen.count).map { CGFloat($0) }
     }
 
-    /// Die Läufe im Bestand: die größte Zahl über alle Reihen.
+    /// Wie der Rückblick zu lesen ist: offen, mit Akzentleiste - und mit dem Fehler darin.
     ///
-    /// Jede Reihe zählt ihre eigenen; „im Bestand“ meint den Bestand und nicht die Reihe, und
-    /// eine Summe wäre falsch - es sind dieselben Läufe.
-    private func laeufe(_ v: ForecastHistoryOut) -> Int {
-        v.reihen.map(\.laeufe).max() ?? 0
+    /// **Der Deckel ist weg.** Hier stand ``Methode``, und die ist zugeklappt
+    /// (`DisclosureGroup`). Die Vorlage setzt an dieser Stelle eine offene `Card accent`
+    /// (`Rueckblick.tsx:200-213`), und dieselbe Seite begründet das zwanzig Zeilen weiter oben
+    /// schon einmal (``aenderungskarte(_:)``): was eine Zahl einschränkt, darf nicht hinter
+    /// einem Deckel liegen. Für `notesDe` war es geändert, für `hinweiseDe` nicht.
+    ///
+    /// **Und sie steht immer da**, auch ohne Antwort - denn sie trägt den Fehler der zweiten
+    /// Abfrage (`Rueckblick.tsx:205`). Die rechte Zeile fällt dann weg: wie viele Läufe im
+    /// Bestand liegen, weiß man ohne Antwort nicht.
+    private var lesehilfe: some View {
+        Akzentkarte {
+            Karte(
+                kicker: "Wie der Rückblick zu lesen ist",
+                titel: Prognosebild.Rueckblick.lesehilfeRechts(verlauf)
+            ) {
+                VStack(alignment: .leading, spacing: 10) {
+                    if let satz = Prognosebild.Rueckblick.fehlersatz(fehlerVerlauf) {
+                        Text(satz)
+                            .font(Schrift.klein)
+                            .foregroundStyle(Farbe.text2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    hinweise
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var hinweise: some View {
+        let saetze = verlauf?.hinweiseDe ?? []
+        if !saetze.isEmpty {
+            VStack(alignment: .leading, spacing: 5) {
+                ForEach(Array(saetze.enumerated()), id: \.offset) { _, satz in
+                    Text(satz)
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
     }
 
     // MARK: - Nachladen
@@ -441,12 +549,22 @@ struct PrognoseSeite: View {
     /// Der Rückblick alle zehn Minuten - und bei jeder neuen Tageszahl sofort, weil die Aufgabe
     /// an `tage` hängt.
     ///
-    /// **Ein Fehler hier löscht nichts.** Die Störung oben gehört der Bewertung; ein Rückblick,
-    /// der einmal nicht antwortet, soll nicht die Säulen von vorhin vom Schirm nehmen.
+    /// **Ein Fehler hier löscht nichts - aber er sagt sich.** Die Störung oben gehört der
+    /// Bewertung; ein Rückblick, der einmal nicht antwortet, soll nicht die Säulen von vorhin
+    /// vom Schirm nehmen. Hier stand dafür ein `try?`, und damit war der Fehler nicht nur
+    /// harmlos, sondern unsichtbar: antwortete `/forecast/history` nie, stand „Wird geholt …“
+    /// für immer da, unter einer Tagewahl, die zu funktionieren schien. Jetzt bleibt die alte
+    /// Antwort stehen **und** der Satz des Dienstes steht in der Lesehilfekarte
+    /// (`Rueckblick.tsx:144-146`).
     private func haltVerlaufFrisch() async {
         while !Task.isCancelled {
-            if let frisch = try? await haus.api.prognoseVerlauf(tage: tage) {
-                verlauf = frisch
+            do {
+                verlauf = try await haus.api.prognoseVerlauf(tage: tage)
+                fehlerVerlauf = nil
+            } catch let f as ApiFehler {
+                fehlerVerlauf = f
+            } catch {
+                fehlerVerlauf = .netz(error.localizedDescription)
             }
             try? await Task.sleep(for: .seconds(600))
         }

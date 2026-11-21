@@ -177,10 +177,12 @@ public enum Prognosebild {
             Kennzahl(
                 wort: "Heute · Abweichung",
                 wert: Formate.prozentpunkte(heute?.energyErrorPct),
-                // Der Ton der Vorlage ist `ember` (`Farbe.alarm`). Den gibt es in
-                // ``Kennzahl/Ton`` noch nicht; `.glut` ist der wärmste vorhandene und damit
-                // die nächstbeste Warnung. Siehe die Notiz am Ende dieser Datei.
-                ton: daneben ? .glut : .normal),
+                // Der Ton der Vorlage ist `ember`, und `Stat` setzt ihn auf `var(--alert)`
+                // (`ForecastPage.tsx:183`, `:262`) - #E0533D. Hier stand `.glut`, weil
+                // ``Kennzahl/Ton`` keinen Alarmton hatte; `.glut` ist `Marken.waermepumpe`
+                // #E0966B und damit die Farbe der Wärmepumpe. Eine Abweichung über 15 % sah
+                // aus wie eine Wärmepumpenzahl. Den Ton gibt es jetzt.
+                ton: daneben ? .alarm : .normal),
             Kennzahl(
                 wort: "MAE · 7 Tage",
                 wert: Formate.zahl(b.sources.first?.mae7dKw, stellen: 2),
