@@ -84,6 +84,15 @@ struct HaustuerSeite: View {
             if let p = protokoll {
                 protokollteil(p)
             } else if fehler == nil {
+                // **Hier bleibt der bloße Absatz, und das ist entschieden und nicht
+                // übersehen.** Der Hinweis ersetzt die Seite nicht: Einleitung, Tagewahl und
+                // Nachsatz stehen weiter darüber und darunter, und die Tagewahl bleibt
+                // bedienbar - nach ``Ladehinweis/Stufe`` also die kleine Stufe. Deren Grad ist
+                // 13 auf der Kurve der Fußnote, dieser Absatz ist 14 auf der des Fließtextes,
+                // wie die drei anderen dieser Spalte. Eine Ente kostete hier einen Punkt
+                // Schriftgröße und die Kurve, auf der die Spalte wächst, an genau einem von
+                // vier gleich gesetzten Absätzen - eine Änderung an der Typografie der Seite
+                // und nicht am Ladehinweis.
                 absatz(Tuerprotokoll.ladesatz, 14, Farbe.text3)
             }
             absatz(Tuerprotokoll.nachsatz, 14, Farbe.text3)

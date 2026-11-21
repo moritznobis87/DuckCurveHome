@@ -64,7 +64,10 @@ struct ReglerSeite: View {
             if let e = einstellungen {
                 inhalt(e)
             } else if fehler == nil {
-                Karte { Leer(satz: "Wird vom Bus gelesen …") }
+                // Alfred in der großen Stufe: solange nichts da ist, ist dieser Hinweis die
+                // ganze Seite (``Ladehinweis/Stufe``). Ohne Farbe, denn hier stand ``Leer``
+                // und damit ``Farbe/text2``.
+                Karte { Ladeente(satz: "Wird vom Bus gelesen …", stufe: .gross) }
             }
         }
         .task { await beobachte() }

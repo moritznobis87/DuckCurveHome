@@ -352,6 +352,15 @@ struct Quellenkarte: View {
     /// Dienst, der noch nicht gefragt worden war. Die Vorlage schreibt dort „lädt …“
     /// (`Sources.tsx:48-49`).
     var satz: String?
+    /// Ist dieser Satz der Ladesatz? Dann steht Alfred daneben.
+    ///
+    /// **Warum ein eigenes Feld und nicht ein Vergleich mit dem Satz.** ``satz`` trägt zwei
+    /// verschiedene Nachrichten - „lädt …“ und „nicht abrufbar“ -, und die Ente gehört nur zur
+    /// ersten: eine schaukelnde Ente neben einem Befund wäre eine Lüge über einen Vorgang, den
+    /// es nicht gibt. Welche von beiden es ist, weiß der ``Pruefstand`` und nicht diese Karte;
+    /// den Satz danach wieder auseinanderzunehmen hieße, dieselbe Entscheidung zweimal zu
+    /// treffen, und das zweite Mal ohne Test.
+    var laedt = false
 
     @Environment(\.horizontalSizeClass) private var breite
 
@@ -360,7 +369,11 @@ struct Quellenkarte: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let satz {
-                Leer(satz: satz)
+                if laedt {
+                    Ladeente(satz: satz)
+                } else {
+                    Leer(satz: satz)
+                }
             } else {
                 ForEach(zeilen) { z in
                     zeile(z)

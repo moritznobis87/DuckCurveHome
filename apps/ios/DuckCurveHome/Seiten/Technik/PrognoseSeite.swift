@@ -92,7 +92,12 @@ struct PrognoseSeite: View {
                 dreierreihe(b)
                 zweierreihe(b)
             } else if fehler == nil {
-                Karte { Leer(satz: "Wird geholt …") }
+                // **Die kleine Stufe, obwohl hier die ganze obere Seite wartet.** Diese Seite
+                // hat zwei Abfragen, die nebeneinander laufen: die Bewertung hier und der
+                // Verlauf im ``rueckblick`` darunter. Beide koennen gleichzeitig warten, und
+                // damit ist keiner der beiden Hinweise die Seite - die Begruendung steht an
+                // ``Ladehinweis/Stufe``.
+                Karte { Ladeente(satz: Ladehinweis.berichtssatz) }
             }
             rueckblick
         }
@@ -430,7 +435,8 @@ struct PrognoseSeite: View {
             }
         } else if fehlerVerlauf == nil {
             // Eine Tagewahl über einer leeren Fläche sieht aus wie ein Schalter, der nichts tut.
-            Karte { Leer(satz: "Wird geholt …") }
+            // Kleine Stufe, weil oben gleichzeitig der zweite Hinweis dieser Seite stehen kann.
+            Karte { Ladeente(satz: Ladehinweis.berichtssatz) }
         }
     }
 

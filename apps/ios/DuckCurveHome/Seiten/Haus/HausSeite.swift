@@ -548,7 +548,10 @@ struct HausSeite: View {
             // lesbar“ - die falsche Auskunft, wenn bloss noch keiner gemeldet wurde.
             Leer(satz: planhinweis(h), dazu: planabhilfe)
         } else {
-            Leer(satz: "Wird geholt …")
+            // Die grosse Stufe: dieser Hinweis steht an der Stelle des ganzen Hausmodells und
+            // ist der einzige der Seite (``Ladehinweis/Stufe``). Der Zweig darueber ist ein
+            // Befund und kein Warten - dort bleibt ``Leer``.
+            Ladeente(satz: Ladehinweis.berichtssatz, stufe: .gross)
         }
     }
 

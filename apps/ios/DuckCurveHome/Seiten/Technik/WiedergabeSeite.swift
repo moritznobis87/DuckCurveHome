@@ -367,6 +367,14 @@ struct WiedergabeSeite: View {
     ///
     /// **Ein Tag ohne Bilder sagt es jetzt.** Vorher griff die Bedingung nicht, und es blieb
     /// dauerhaft „Wird geholt …“ stehen - ein Tag ohne Messung sah damit aus wie ein Netzproblem.
+    ///
+    /// **Und darum steht hier keine ``Ladeente``, entschieden und nicht übersehen.** Dieser
+    /// eine Satz trägt zwei verschiedene Zustände: „wird geholt“ ist ein Warten, „keine Bilder
+    /// an diesem Tag“ ist ein Befund. ``Ladeente`` gehört nach ihrer eigenen Regel nur zum
+    /// ersten - eine Ente neben einem Befund behauptet einen Vorgang, den es nicht gibt. Die
+    /// Ente verlangte also, diesen Satz vorher in eine Lage aufzuteilen, wie ``Pruefstand`` es
+    /// für die `DatenSeite` tut; das ist eine Änderung am Zustand dieser Seite und nicht am
+    /// Ladehinweis, und sie wartet darauf, zusammen mit dieser Lage gemacht zu werden.
     private var zustandssatz: String {
         guard geholt, let b = bild else { return Wiedergabeworte.wirdGeholt }
         return b.anzahl == 0 ? Wiedergabeworte.ohneBilder(b.hinweise) : Wiedergabeworte.wirdGeholt

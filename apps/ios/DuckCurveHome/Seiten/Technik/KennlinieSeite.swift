@@ -36,11 +36,16 @@ struct KennlinieSeite: View {
         Seite {
             if let k = kennlinie {
                 inhalt(k)
-            } else {
+            } else if fehler == nil {
                 // **Eine Zeile und keine Karte** (`Kennlinie.tsx:95-97`). Eine leere Karte mit
                 // „Wird geholt …“ nimmt die Fläche, auf der gleich das Bild steht, und lässt
-                // offen, ob da je etwas kommt.
-                Text(fehler == nil ? Kennlinienbild.ladesatz : Kennlinienbild.fehlersatz)
+                // offen, ob da je etwas kommt. Der Satz und seine Farbe sind die von vorher;
+                // dazugekommen ist Alfred darüber, in der großen Stufe, weil dieser Hinweis an
+                // der Stelle der ganzen Seite steht (``Ladehinweis/Stufe``).
+                Ladeente(satz: Kennlinienbild.ladesatz, stufe: .gross, farbe: Farbe.text3)
+            } else {
+                // Kein Warten, also keine Ente - die Regel an ``Ladeente``.
+                Text(Kennlinienbild.fehlersatz)
                     .font(Schrift.text)
                     .foregroundStyle(Farbe.text3)
                     .fixedSize(horizontal: false, vertical: true)

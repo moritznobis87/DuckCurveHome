@@ -46,7 +46,9 @@ struct Raumprotokollblatt: View {
                     } else if let f = fehler {
                         Stoerung(fehler: f) { Task { await hole() } }
                     } else if laeuft {
-                        Karte { Leer(satz: "Wird geholt …") }
+                        Karte {
+                            Ladeente(satz: Ladehinweis.berichtssatz, stufe: .gross)
+                        }
                     }
                     fussnote
                 }
