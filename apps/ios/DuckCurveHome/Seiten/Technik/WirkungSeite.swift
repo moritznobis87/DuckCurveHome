@@ -5,8 +5,14 @@ import SwiftUI
 ///
 /// **Das ist die Ereignisstudie, und sie ist die ehrlichste Seite des Projekts.** K1 ist eine
 /// Anforderung, keine Garantie: die Wärmepumpe hat ihren eigenen Regler und darf nein sagen. Die
-/// Frage „folgt sie überhaupt?" ist damit eine empirische, und hier steht die Antwort samt
+/// Frage „folgt sie überhaupt?“ ist damit eine empirische, und hier steht die Antwort samt
 /// Vertrauensbereich.
+///
+/// **Die Urteilskarte steht immer, auch ohne Daten** (`Wirkung.tsx:144-168`). Vorher ersetzte
+/// eine Störung die ganze Seite, und damit war die Zeitraumwahl weg - wer sich den Fehler bei
+/// 90 Tagen holte, kam nicht auf 7 zurück, ohne die Seite zu verlassen. Dasselbe Muster und
+/// dieselbe Begründung stehen in ``NachbetrachtungSeite`` („die Tagwahl bleibt bedienbar, und
+/// wer einen anderen Tag nimmt, kommt aus dem Fehler heraus“).
 struct WirkungSeite: View {
     @Environment(Hauszustand.self) private var haus
 
@@ -20,39 +26,25 @@ struct WirkungSeite: View {
 
     var body: some View {
         Seite {
-            if let w = wirkung {
-                let bild = Wirkungsbild.baue(w)
-                urteilskarte(bild)
+            let bild = wirkung.map(Wirkungsbild.baue)
+            urteilskarte(bild)
+            if let w = wirkung, let bild {
+                // Kein Kicker über dem Kachelfeld: der ausgewertete Zeitraum steht schon als
+                // Beiwerk der Urteilskarte, und die Vorlage setzt über das Feld keine
+                // Überschrift (`Wirkung.tsx:171`).
                 Kachelfeld(
                     kacheln: Wirkungskacheln.kacheln(w).map(Kacheldaten.init),
-                    kicker: bild.spanne ?? "\(w.days) Tage",
                     spalten: 3
                 )
-                if !bild.faecher.isEmpty {
-                    Karte(
-                        kicker: "Antwortfächer",
-                        beiwerk: AnyView(
-                            Text(
-                                "\(w.nAuswertbar ?? 0) Anforderungen bei stehender Maschine, "
-                                    + "am Beginn übereinandergelegt"
-                            )
-                            .font(Schrift.winzig)
-                            .foregroundStyle(Farbe.text3)
-                            .lineLimit(1)
-                        )
-                    ) {
-                        Antwortfaecher(bild: bild)
-                    }
+                if bild.faecherZeigen {
+                    faecherkarte(bild)
                 }
-                if !bild.gruppen.isEmpty {
+                if bild.rasterZeigen {
                     Karte(
                         kicker: "Jede Anforderung",
-                        beiwerk: AnyView(
-                            Text("sortiert nach Verzögerung")
-                                .font(Schrift.winzig)
-                                .foregroundStyle(Farbe.text3)
-                        )
+                        beiwerk: schmal ? nil : rasterbeiwerk
                     ) {
+                        if schmal { beiwerkzeile(rastersatz) }
                         Ereignisraster(bild: bild)
                     }
                 }
@@ -81,10 +73,6 @@ struct WirkungSeite: View {
                         titel: "Was die Auswertung kann"
                     )
                 }
-            } else if let fehler {
-                Stoerung(fehler: fehler) { Task { await lade() } }
-            } else {
-                Karte { Leer(satz: "Die Anforderungen werden gesucht.") }
             }
         }
         .task(id: tage) { await lade() }
@@ -96,54 +84,122 @@ struct WirkungSeite: View {
     /// darunter 900 Punkten eine). Der Satz sagt, was herauskam; das Bild sagt, wie sicher das
     /// ist - und erst beides zusammen ist das Urteil. In der App stand nur der Satz, klein, in
     /// einer Karte ohne Bild.
-    @ViewBuilder private func urteilskarte(_ bild: Wirkungsbild) -> some View {
+    ///
+    /// **Ohne Daten bleibt der Kopf stehen** und darunter steht, woran es liegt: die Störung
+    /// oder der Satz der ersten Ladung (`Wirkung.tsx:156-157`). Die Zeitraumwahl bleibt in
+    /// beiden Fällen bedienbar.
+    @ViewBuilder private func urteilskarte(_ bild: Wirkungsbild?) -> some View {
         Karte(
             kicker: "Folgt die Wärmepumpe der Anforderung?",
-            beiwerk: bild.spanne.map { s in
+            beiwerk: bild?.spanne.map { s in
                 AnyView(
                     Text(s).font(Schrift.zahlKlein).foregroundStyle(Farbe.text3))
             }
         ) {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 8) {
-                    Text("Zeitraum").font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                    // Die Vorlage zieht hier `.wg-wahl` (`Wirkung.tsx:149`), nicht
-                    // `.kl-knopf`: die kleine Mono-Kapsel, die neben die beiden winzigen
-                    // Beschriftungen dieser Zeile passt.
-                    Tagewahl(tage: $tage, moeglich: [7, 30, 90], form: .wgWahl)
-                    if laedtNeu {
-                        Text("wird neu gerechnet")
-                            .font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                    }
-                    Spacer(minLength: 0)
-                }
+                zeitraumzeile
                 if let fehler {
                     Stoerung(fehler: fehler) { Task { await lade() } }
                 }
-                if schmal {
-                    urteilssatz(bild)
-                    Quotenbild(bild: bild, ringfarbe: Farbe.flaeche2)
-                } else {
-                    HStack(alignment: .center, spacing: 28) {
-                        urteilssatz(bild)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Quotenbild(bild: bild, ringfarbe: Farbe.flaeche1)
-                            .frame(maxWidth: 460)
-                    }
+                if let bild {
+                    urteilsraster(bild)
+                } else if fehler == nil {
+                    Leer(satz: "Die Anforderungen werden gesucht.")
                 }
             }
         }
     }
 
+    private var zeitraumzeile: some View {
+        HStack(spacing: 8) {
+            Text("Zeitraum").font(Schrift.winzig).foregroundStyle(Farbe.text3)
+            // Die Vorlage zieht hier `.wg-wahl` (`Wirkung.tsx:149`), nicht
+            // `.kl-knopf`: die kleine Mono-Kapsel, die neben die beiden winzigen
+            // Beschriftungen dieser Zeile passt.
+            Tagewahl(tage: $tage, moeglich: [7, 30, 90], form: .wgWahl)
+            if laedtNeu {
+                Text("wird neu gerechnet")
+                    .font(Schrift.winzig).foregroundStyle(Farbe.text3)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    @ViewBuilder private func urteilsraster(_ bild: Wirkungsbild) -> some View {
+        if schmal {
+            urteilssatz(bild)
+            Quotenbild(bild: bild, ringfarbe: Farbe.flaeche2)
+        } else {
+            HStack(alignment: .center, spacing: 28) {
+                urteilssatz(bild)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Quotenbild(bild: bild, ringfarbe: Farbe.flaeche1)
+                    .frame(maxWidth: 460)
+            }
+        }
+    }
+
+    /// **Der Urteilssatz wächst mit der Breite** (`globals.css:650`:
+    /// `clamp(17px, 2vw, 22px)`, dazu `max-width: 60ch`). Er stand fest auf 20 Punkten: am
+    /// Telefon drei Punkte zu groß für eine Spalte von 358 Punkten, an der Wand zwei zu klein
+    /// für den Satz, der die Seite trägt. Die 640 Punkte sind die 60 Zeichen der Vorlage in
+    /// dieser Schrift - ein Satz, der über die ganze Wand läuft, ist nicht mehr zu lesen.
     private func urteilssatz(_ bild: Wirkungsbild) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Kicker(wort: "Urteil · \(bild.urteilswort)")
             Text(bild.urteilssatz ?? "Noch kein Urteil.")
-                .font(Schrift.sans(20, relativeTo: .title3))
+                .font(Schrift.sans(schmal ? 17 : 22, relativeTo: .title3))
                 .foregroundStyle(Farbe.text1)
                 .lineSpacing(5)
+                .frame(maxWidth: 640, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    // MARK: - Die beiden Zeichnungskarten
+
+    @ViewBuilder private func faecherkarte(_ bild: Wirkungsbild) -> some View {
+        let satz =
+            "\(bild.nAuswertbar) Anforderungen bei stehender Maschine, "
+            + "am Beginn übereinandergelegt"
+        Karte(
+            kicker: "Antwortfächer",
+            beiwerk: schmal ? nil : kopfbeiwerk(satz)
+        ) {
+            if schmal { beiwerkzeile(satz) }
+            Antwortfaecher(bild: bild)
+        }
+    }
+
+    /// Der halbe Satz, der fehlte: die Vorlage sagt im Kartenkopf, dass eine Zeile irgendwohin
+    /// führt (`Wirkung.tsx:235`) - und ohne ihn merkt es am Telefon niemand, weil es dort kein
+    /// Darüberfahren gibt.
+    private var rastersatz: String {
+        "sortiert nach Verzögerung · eine Zeile öffnet die Wiedergabe dieses Augenblicks"
+    }
+
+    private var rasterbeiwerk: AnyView { kopfbeiwerk(rastersatz) }
+
+    private func kopfbeiwerk(_ satz: String) -> AnyView {
+        AnyView(
+            Text(satz)
+                .font(Schrift.winzig)
+                .foregroundStyle(Farbe.text3)
+                .multilineTextAlignment(.trailing))
+    }
+
+    /// **Am Telefon steht das Beiwerk in einer eigenen Zeile und bricht um**
+    /// (`handy.css:185`: `flex-basis: 100%; white-space: normal; overflow: visible`, begründet
+    /// in `ui/Card.tsx:43-44`). ``Karte`` setzt es auf schmalem Schirm neben die Überschrift, und
+    /// dort blieb von „0 Anforderungen bei stehender Maschine, am Beginn übereinandergelegt“ ein
+    /// Wortfragment. Darum wird es hier nicht als Beiwerk übergeben, sondern als erste Zeile des
+    /// Karteninhalts gezeichnet - derselbe Platz, den die Vorlage ihm gibt.
+    private func beiwerkzeile(_ satz: String) -> some View {
+        Text(satz)
+            .font(Schrift.klein)
+            .foregroundStyle(Farbe.text3)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func lade() async {

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Die Seite „Wirkung" als fertiges Bild: Quotenvergleich, Antwortfächer, Ereignisraster.
+/// Die Seite „Wirkung“ als fertiges Bild: Quotenvergleich, Antwortfächer, Ereignisraster.
 ///
 /// **Das Urteil fällt der Dienst.** Hier wird nichts verglichen, nichts geschätzt und nichts
 /// gerundet, was eine Aussage ändern könnte. Der Urteilssatz, beide Quoten und ihre
@@ -18,7 +18,7 @@ import Foundation
 /// Kilowatt. Darum liefert dieser Typ die Kurven als **Stücke** und nicht als Reihen mit
 /// Löchern: `LineMark` in Swift Charts kennt kein `connectNulls: false` und zöge eine Linie über
 /// die Lücke - und damit eine Messung, die es nicht gibt. Dasselbe im Raster: „gemessen und
-/// gestanden" und „nicht gemessen" sind zwei Aussagen, und nur eine davon ist Stillstand.
+/// gestanden“ und „nicht gemessen“ sind zwei Aussagen, und nur eine davon ist Stillstand.
 public struct Wirkungsbild: Sendable {
 
     // MARK: - Werte, die aus dem Dienst kommen und hier nur einen Namen bekommen
@@ -27,7 +27,7 @@ public struct Wirkungsbild: Sendable {
     ///
     /// Dieselbe Acht wie `MIN_EREIGNISSE` in
     /// `packages/hems-core/src/hems_core/thermal/kontaktwirkung.py:52` („unter so vielen
-    /// auswertbaren Ereignissen gibt es kein Urteil, nur die Zahlen") und wie `MIN_FUER_BAND` in
+    /// auswertbaren Ereignissen gibt es kein Urteil, nur die Zahlen“) und wie `MIN_FUER_BAND` in
     /// `apps/web/src/components/waerme/Antwortfaecher.tsx:41`. Sie steht hier als Name, damit
     /// nicht in zwei Diagrammen zwei verschiedene Achten stehen.
     public static let mindestensFuerBand = 8
@@ -39,7 +39,7 @@ public struct Wirkungsbild: Sendable {
     public static let maxKurven = 80
 
     /// Mehr Zeilen zeigt das Raster nicht (`MAX_ZEILEN`, `Ereignisraster.tsx:27`): „darüber wird
-    /// es eine Liste, die niemand mehr liest."
+    /// es eine Liste, die niemand mehr liest.“
     public static let maxZeilen = 80
 
     /// Vorgabe für `vor_min`, falls die Antwort sie nicht nennt (`kontaktwirkung.py:41`).
@@ -68,13 +68,37 @@ public struct Wirkungsbild: Sendable {
     /// die Aussage des Rasters.
     public var breite: Int = Wirkungsbild.vorMinVorgabe + Wirkungsbild.nachMinVorgabe + 1
 
+    // MARK: - Was überhaupt gezeigt werden darf
+
+    /// Wie viele Anforderungen bei stehender Maschine auswertbar waren.
+    public var nAuswertbar: Int = 0
+
+    /// Darf die Karte „Antwortfächer“ erscheinen?
+    ///
+    /// **Nicht „hat der Fächer Minuten“.** Der Dienst füllt `faecher.minuten`
+    /// unbedingt mit allen 151 Minuten des Ausschnitts, auch wenn kein einziges Ereignis
+    /// auswertbar war (`kontaktwirkung.py:281-321`, Aufruf `:524`). Eine Bedingung auf dieses
+    /// Raster ist damit immer wahr, und gezeigt wurde eine leere Zeichnung mit Schwellenlinie,
+    /// Folgefenster und vierteiliger Legende unter der Zeile „0 Anforderungen bei stehender
+    /// Maschine“. Die Vorlage fragt die Zahl der auswertbaren Anforderungen
+    /// (`Wirkung.tsx:204`).
+    public var faecherZeigen: Bool { nAuswertbar > 0 }
+
+    /// Darf die Karte „Jede Anforderung“ erscheinen? Genau dann, wenn es Zeilen gibt.
+    ///
+    /// Die Vorlage prüft zweierlei: die Karte hängt an `d.n > 0` (`Wirkung.tsx:233`), das
+    /// Raster selbst gibt ohne geliefertes Ereignis `null` zurück (`Ereignisraster.tsx:62`).
+    /// Beides zusammen ist dies. Es steht hier, damit die Ansicht keine Bedingung mehr selbst
+    /// formt.
+    public var rasterZeigen: Bool { !gruppen.isEmpty }
+
     // MARK: - Das Urteil
 
-    /// Das deutsche Wort zur Urteilskennung, für den Kicker „Urteil · …".
+    /// Das deutsche Wort zur Urteilskennung, für den Kicker „Urteil · …“.
     public var urteilswort: String = "noch offen"
     /// Der Urteilssatz, wie der Dienst ihn schreibt. Die Oberfläche urteilt nicht.
     public var urteilssatz: String?
-    /// „10. Oktober bis 9. November" - der ausgewertete Zeitraum, oder `nil`, wenn er fehlt.
+    /// „10. Oktober bis 9. November“ - der ausgewertete Zeitraum, oder `nil`, wenn er fehlt.
     public var spanne: String?
 
     // MARK: - Der Quotenvergleich
@@ -98,7 +122,7 @@ public struct Wirkungsbild: Sendable {
     /// Seite ist aber genau der Abstand der beiden - und ob er größer ist als die Unsicherheit.
     /// Deshalb gehören `lo` und `hi` zur Zeile und nicht in eine Fußnote.
     public struct Quotenzeile: Sendable, Hashable, Identifiable {
-        /// „angefordert" oder „sonst" - zugleich die Kategorie der Achse.
+        /// „angefordert“ oder „sonst“ - zugleich die Kategorie der Achse.
         public let name: String
         public let rolle: Rolle
         /// Der beobachtete Anteil (0 bis 1), oder `nil`, wenn es nichts zu beobachten gab.
@@ -112,10 +136,10 @@ public struct Wirkungsbild: Sendable {
 
         public var id: String { name }
 
-        /// Die ganze Prozentzahl rechts neben dem Balken, ohne Einheit: „100".
+        /// Die ganze Prozentzahl rechts neben dem Balken, ohne Einheit: „100“.
         public var zahl: String { Formate.prozentZahl(quote) }
 
-        /// Der Bereich darunter: „94 bis 100 %". `nil`, wenn eine der Grenzen fehlt - ein
+        /// Der Bereich darunter: „94 bis 100 %“. `nil`, wenn eine der Grenzen fehlt - ein
         /// halber Vertrauensbereich ist keine Angabe.
         public var bereich: String? {
             guard let lo, let hi, lo.isFinite, hi.isFinite else { return nil }
@@ -190,6 +214,65 @@ public struct Wirkungsbild: Sendable {
     /// Alle Minuten des Fächers in ihrer Reihenfolge.
     public var faecher: [Faecherpunkt] = []
 
+    /// Ein Punkt des Bandes der mittleren Hälfte: unteres und oberes Viertel einer Minute.
+    public struct Bandpunkt: Sendable, Hashable, Identifiable {
+        public let minute: Int
+        public let unten: Double
+        public let oben: Double
+
+        public var id: Int { minute }
+
+        public init(minute: Int, unten: Double, oben: Double) {
+            self.minute = minute
+            self.unten = unten
+            self.oben = oben
+        }
+    }
+
+    /// Ein zusammenhängendes Stück des Bandes.
+    ///
+    /// **Warum Stücke, wie bei den Kurven.** `AreaMark` kennt kein `connectNulls: false`. Eine
+    /// Fläche aus allen Minuten mit Band schließt sich über die Minuten ohne Band hinweg -
+    /// also genau dort, wo zu wenige Ereignisse gemessen haben, behauptete sie eine mittlere
+    /// Hälfte. Die Vorlage setzt in **beide** gestapelten Reihen `null` und bricht damit ab
+    /// (`Antwortfaecher.tsx:59-65`). Jedes Stück ist im Diagramm eine eigene Reihe; `id` ist
+    /// dafür eindeutig („band.0“).
+    public struct Bandstueck: Sendable, Hashable, Identifiable {
+        public let id: String
+        public let punkte: [Bandpunkt]
+
+        public init(id: String, punkte: [Bandpunkt]) {
+            self.id = id
+            self.punkte = punkte
+        }
+    }
+
+    /// Das Band der mittleren Hälfte, in Stücken - leer, wo keine Minute eines verdient.
+    public var band: [Bandstueck] = []
+
+    /// Die Marken der senkrechten Achse der oberen Fläche, in Kilowatt.
+    ///
+    /// **Warum die Spanne nicht aus den Daten kommen darf.** Ohne feste Achse skaliert Swift
+    /// Charts die Fläche nach ihrem Inhalt: eine Mittelkurve, die bis 0,6 kW steigt, reicht
+    /// dann bis an den oberen Rand und sieht aus wie volle Leistung. Die Vorlage setzt `min: 0`
+    /// und `splitNumber: 3` (`Antwortfaecher.tsx:157-163`); dass daraus runde Zahlen werden,
+    /// rechnet dort ECharts. Hier rechnet es der Kern, denn es ist eine Rundung und keine
+    /// Zeichnung.
+    public var leistungsmarken: [Double] = [0, 1, 2, 3]
+
+    /// Die Spanne der oberen Fläche: von null bis zur letzten Marke.
+    public var leistungsspanne: ClosedRange<Double> { 0...(leistungsmarken.last ?? 1) }
+
+    /// Die Marken der unteren Fläche: fest 0, 50, 100 (`interval: 50`,
+    /// `Antwortfaecher.tsx:168`).
+    public static let anteilsmarken: [Double] = [0, 50, 100]
+
+    /// Die Spanne der unteren Fläche. **Fest null bis hundert Prozent**
+    /// (`Antwortfaecher.tsx:166-167`): die Aussage der Fläche ist der *Abstand* der beiden
+    /// Treppen in Prozentpunkten, und der ist nur auf einer festen Achse ablesbar. Nach den
+    /// Daten skaliert stiege eine Treppe, die 30 Prozent erreicht, bis an den oberen Rand.
+    public static let anteilsspanne: ClosedRange<Double> = 0...100
+
     /// Ein gemessener Punkt einer Leistungskurve. Ohne `nil`: wo nicht gemessen wurde, endet
     /// das Stück.
     public struct Kurvenpunkt: Sendable, Hashable, Identifiable {
@@ -208,7 +291,7 @@ public struct Wirkungsbild: Sendable {
     /// **Warum Stücke und nicht eine Reihe.** Swift Charts hat kein `connectNulls: false`. Eine
     /// Reihe mit Löchern wird zu einer durchgezogenen Linie über die Lücke hinweg, und die
     /// behauptet eine Messung. Jedes Stück ist im Diagramm eine eigene Reihe; `id` ist dafür über
-    /// alle Kurven eindeutig („e3.1", „mittel.0").
+    /// alle Kurven eindeutig („e3.1“, „mittel.0“).
     public struct Kurvenstueck: Sendable, Hashable, Identifiable {
         public let id: String
         public let punkte: [Kurvenpunkt]
@@ -318,7 +401,7 @@ public struct Wirkungsbild: Sendable {
                     text: "läuft in \(Formate.prozent(p.anteilLaeuft)) der \(p.n) Ereignisse",
                     eingerueckt: true))
         } else {
-            // Keine Null: null Kilowatt hieße „die Maschine stand", und das weiß hier niemand.
+            // Keine Null: null Kilowatt hieße „die Maschine stand“, und das weiß hier niemand.
             zeilen.append(Auskunftszeile(text: "keine Messung"))
         }
 
@@ -339,9 +422,9 @@ public struct Wirkungsbild: Sendable {
 
     /// In welche der vier Gruppen ein Schließvorgang gehört.
     ///
-    /// **Die Reihenfolge der Prüfung ist die Aussage.** „Lief schon" kommt zuerst, weil ein
+    /// **Die Reihenfolge der Prüfung ist die Aussage.** „Lief schon“ kommt zuerst, weil ein
     /// Kontakt nichts auslösen kann, was bereits läuft - so ein Ereignis zählt in keine Quote.
-    /// Dann kommt die fehlende Messung: ohne Leistung im Folgefenster ist „nicht angelaufen"
+    /// Dann kommt die fehlende Messung: ohne Leistung im Folgefenster ist „nicht angelaufen“
     /// keine Aussage, sondern Unwissen. Erst danach steht die Frage, ob die Maschine anlief.
     public enum Ereignisgruppe: String, Sendable, Hashable, CaseIterable {
         case gefolgt
@@ -368,9 +451,9 @@ public struct Wirkungsbild: Sendable {
     public struct Ereigniszeile: Sendable, Hashable, Identifiable {
         /// Der Zeitstempel des Schließens, wie der Dienst ihn schickt.
         public let at: String
-        /// „Sa., 07.11. 14:35" in der Zeit des Hauses.
+        /// „Sa., 07.11. 14:35“ in der Zeit des Hauses.
         public let wann: String
-        /// Das Wort rechts: „sofort", „nach 7 min", „kein Anlauf" …
+        /// Das Wort rechts: „sofort“, „nach 7 min“, „kein Anlauf“ …
         public let ergebnis: String
         public let laeuft: [Range<Int>]
         public let steht: [Range<Int>]
@@ -425,7 +508,17 @@ public struct Wirkungsbild: Sendable {
     /// Die Marken der Achsenzeile: `-vor`, 0, 30, 60, 90, `nach` - ohne Doppelte.
     public var achsenmarken: [Achsenmarke] = []
 
-    /// „gezeigt sind die jüngsten 80 von 214 Anforderungen", wenn es mehr sind als `maxZeilen`.
+    /// Die Marken der Zeitachse des Fächers: alle 30 Minuten, vom Beginn des Ausschnitts an.
+    ///
+    /// **Warum eine zweite Liste neben ``achsenmarken``.** Die Zeichnung griff zu
+    /// ``achsenText(_:)`` und schrieb damit unter jede der sechs Marken „min“. Die Vorlage
+    /// nennt die Einheit nur beim Nullpunkt und am Ende und begründet es: „sechsmal „min“
+    /// nebeneinander stößt auf schmalen Schirmen zusammen, und einmal genügt“
+    /// (`Antwortfaecher.tsx:85-87`). Mit fertigen Wörtern kann die Zeichnung nicht mehr die
+    /// falsche Funktion wählen.
+    public var faechermarken: [Achsenmarke] = []
+
+    /// „gezeigt sind die jüngsten 80 von 214 Anforderungen“, wenn es mehr sind als `maxZeilen`.
     public var rasterHinweis: String?
 
     // MARK: - Rechnungen, einzeln prüfbar
@@ -447,7 +540,7 @@ public struct Wirkungsbild: Sendable {
     /// Was in keinem von beiden liegt, wurde nicht gemessen.
     ///
     /// **Warum nicht `Ausblick.abschnitte`.** Das kennt zwei Zustände, an und aus. Hier sind es
-    /// drei, und der dritte ist der wichtige: ein Balken, der „nicht gemessen" wie „gestanden"
+    /// drei, und der dritte ist der wichtige: ein Balken, der „nicht gemessen“ wie „gestanden“
     /// zeichnet, behauptet Stillstand, wo niemand hingesehen hat. Ein Wert, der keine Zahl ist
     /// (`NaN`), gilt ebenfalls als nicht gemessen - sonst wäre er stillschweigend Stillstand.
     public static func betrieb(kw: [Double?], schwelleKw: Double) -> (
@@ -491,8 +584,8 @@ public struct Wirkungsbild: Sendable {
 
     /// Was neben einer Zeile des Rasters steht (`wirkung.ts:74-81`).
     ///
-    /// „Erst nach" ab der Folgefrist: dieselbe Zahl, die über die Quote entscheidet, soll auch
-    /// das Wort entscheiden - sonst steht im Raster „nach 45 min" und in der Kachel, es sei nicht
+    /// „Erst nach“ ab der Folgefrist: dieselbe Zahl, die über die Quote entscheidet, soll auch
+    /// das Wort entscheiden - sonst steht im Raster „nach 45 min“ und in der Kachel, es sei nicht
     /// gefolgt.
     public static func ergebnisText(_ e: Ereignis, folgeMin: Int) -> String {
         switch gruppe(e) {
@@ -503,6 +596,85 @@ public struct Wirkungsbild: Sendable {
             if v == 0 { return "sofort" }
             return v < folgeMin ? "nach \(v) min" : "erst nach \(v) min"
         }
+    }
+
+    /// Die Stücke des Bandes aus den Minuten des Fächers.
+    ///
+    /// Eine Minute ohne beide Viertel beendet das Stück - siehe ``Bandstueck``.
+    static func bandstuecke(_ punkte: [Faecherpunkt]) -> [Bandstueck] {
+        var aus: [Bandstueck] = []
+        var offen: [Bandpunkt] = []
+
+        func schliessen() {
+            if !offen.isEmpty {
+                aus.append(Bandstueck(id: "band.\(aus.count)", punkte: offen))
+                offen = []
+            }
+        }
+
+        for p in punkte {
+            guard let u = p.q25Kw, let o = p.q75Kw, u.isFinite, o.isFinite else {
+                schliessen()
+                continue
+            }
+            offen.append(Bandpunkt(minute: p.minute, unten: u, oben: o))
+        }
+        schliessen()
+        return aus
+    }
+
+    /// Stufen, in denen die obere Achse wächst.
+    ///
+    /// Drei dieser Stufen sind die Spanne. Es sind die Zahlen, die ECharts selbst wählt: eine
+    /// Achse bis 1,9 kW ist Rauschen, eine bis 2 kW eine Angabe. Über 150 kW rechnet
+    /// ``leistungsmarken(hoechstwert:)`` selbst weiter - eine Wärmepumpe im Haus kommt dort
+    /// nicht hin, und eine Liste, die es vorsorglich bis 1000 aufzählt, behauptet eine
+    /// Überlegung, die niemand hatte.
+    static let leistungsstufen: [Double] = [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50]
+
+    /// Die vier Marken der oberen Fläche zu einem Höchstwert: null und drei gleiche Schritte.
+    public static func leistungsmarken(hoechstwert: Double) -> [Double] {
+        let ziel = hoechstwert.isFinite ? max(hoechstwert, 0) : 0
+        let stufe = leistungsstufen.first { $0 * 3 >= ziel } ?? (ziel / 3).rounded(.up)
+        return [0, stufe, stufe * 2, stufe * 3]
+    }
+
+    /// Der größte Wert, der in der oberen Fläche vorkommt.
+    ///
+    /// **Die Schwelle zählt mit.** Sie ist eine gestrichelte Waagerechte im Bild
+    /// (`Antwortfaecher.tsx:210-231`), und an ihr hängt, was hier „läuft“ heißt. Läge sie
+    /// über der Spanne, wäre sie nicht zu sehen - und die Zeichnung erklärte ihr eigenes Wort
+    /// nicht mehr.
+    public static func hoechsteLeistung(
+        faecher: [Faecherpunkt], kurven: [Einzelkurve], schwelleKw: Double
+    ) -> Double {
+        var hoch = schwelleKw.isFinite ? max(schwelleKw, 0) : 0
+        for p in faecher {
+            if let m = p.mittelKw, m.isFinite { hoch = max(hoch, m) }
+            if let o = p.q75Kw, o.isFinite { hoch = max(hoch, o) }
+        }
+        for k in kurven {
+            for stueck in k.stuecke {
+                for punkt in stueck.punkte { hoch = max(hoch, punkt.kw) }
+            }
+        }
+        return hoch
+    }
+
+    /// Die Beschriftung einer Marke der oberen Fläche.
+    ///
+    /// Ohne Nachkommastelle, solange alle Marken ganz sind: „0 / 2 / 4 / 6“ und nicht
+    /// „0,0 / 2,0 / 4,0 / 6,0“, wie es ``Formate/kw(_:stellen:)`` sonst schreibt. Die Achse
+    /// der Vorlage zählt ebenfalls in ganzen Zahlen, solange die Stufe eine ist.
+    public func leistungswort(_ wert: Double) -> String {
+        let ganz = leistungsmarken.allSatisfy { $0 == $0.rounded() }
+        return Formate.kw(wert, stellen: ganz ? 0 : 1)
+    }
+
+    /// Die Beschriftung einer Marke der unteren Fläche: „50 %“ (`formatter: "{value} %"`,
+    /// `Antwortfaecher.tsx:169`). Der Wert ist eine Prozentzahl, kein Anteil.
+    public static func anteilswort(_ prozent: Double) -> String {
+        Formate.prozent(prozent / 100)
     }
 
     /// Die Beschriftung einer Minute relativ zum Schließen (`wirkung.ts:84-87`).
@@ -526,7 +698,7 @@ public struct Wirkungsbild: Sendable {
     ///
     /// Eine unbekannte Kennung steht rohe da - das ist Absicht der Vorlage: lieber ein fremdes
     /// Wort als eine erfundene Übersetzung, die den Dienst falsch wiedergibt. Fehlt die Kennung
-    /// ganz, ist nichts entschieden, und genau das heißt „noch offen".
+    /// ganz, ist nichts entschieden, und genau das heißt „noch offen“.
     public static func urteilswort(_ kennung: String?) -> String {
         switch kennung {
         case nil, "offen": return "noch offen"
@@ -537,9 +709,9 @@ public struct Wirkungsbild: Sendable {
         }
     }
 
-    /// „10. Oktober bis 9. November" in der Zeit des Hauses (`spanne`, `wirkung.ts:115-117`).
+    /// „10. Oktober bis 9. November“ in der Zeit des Hauses (`spanne`, `wirkung.ts:115-117`).
     ///
-    /// Beide Enden oder keines: „10. Oktober bis -" wäre keine Spanne.
+    /// Beide Enden oder keines: „10. Oktober bis -“ wäre keine Spanne.
     public static func spanne(von: String?, bis: String?) -> String? {
         guard let von, let bis, let a = Zeit.ausIso(von), let b = Zeit.ausIso(bis) else {
             return nil
@@ -547,15 +719,15 @@ public struct Wirkungsbild: Sendable {
         return "\(tagUndMonat(a)) bis \(tagUndMonat(b))"
     }
 
-    /// „9. November" - Tag und Monat ausgeschrieben, in der Zeit des Hauses.
+    /// „9. November“ - Tag und Monat ausgeschrieben, in der Zeit des Hauses.
     static func tagUndMonat(_ zeitpunkt: Date) -> String {
         let t = Kalender.haus.dateComponents([.day, .month], from: zeitpunkt)
         return "\(t.day ?? 0). \(Namen.monat(t.month ?? 1))"
     }
 
-    /// „Sa., 07.11. 14:35" - die linke Spalte einer Rasterzeile (`kurzDatum` + `hhmm`).
+    /// „Sa., 07.11. 14:35“ - die linke Spalte einer Rasterzeile (`kurzDatum` + `hhmm`).
     ///
-    /// **Nicht `Tag.kurz`.** Das schreibt „Sa, 7.11." für Blätterleisten. Die Rasterspalte ist
+    /// **Nicht `Tag.kurz`.** Das schreibt „Sa, 7.11.“ für Blätterleisten. Die Rasterspalte ist
     /// 112 Punkte breit und steht in Festbreitenschrift; mit führenden Nullen stehen die Ziffern
     /// aller achtzig Zeilen untereinander, ohne nicht.
     static func wann(_ zeitpunkt: Date) -> String {
@@ -687,6 +859,7 @@ public struct Wirkungsbild: Sendable {
                 anteilAngelaufen: wert(f.anteilAngelaufen, i))
         }
         b.mittel = stuecke(minuten: raster, werte: b.faecher.map(\.mittelKw), name: "mittel")
+        b.band = bandstuecke(b.faecher)
 
         let auswertbar = w.ereignisse.filter(\.auswertbar).suffix(maxKurven)
         b.einzelkurven = auswertbar.enumerated().map { k, e in
@@ -694,12 +867,16 @@ public struct Wirkungsbild: Sendable {
                 id: k, stuecke: stuecke(minuten: kurvenraster, werte: e.kw, name: "e\(k)"))
         }
         b.kurvendeckung = deckung(auswertbar.count)
+        b.leistungsmarken = leistungsmarken(
+            hoechstwert: hoechsteLeistung(
+                faecher: b.faecher, kurven: b.einzelkurven, schwelleKw: b.schwelleKw))
 
         b.anteilOhne = w.vergleich.angelaufenBis.enumerated().map { i, anteil in
             (minute: i, anteil: anteil)
         }
 
         let nAuswertbar = w.nAuswertbar ?? 0
+        b.nAuswertbar = nAuswertbar
         if nAuswertbar < mindestensFuerBand {
             b.bandHinweis =
                 "das Band der mittleren Hälfte erscheint ab \(mindestensFuerBand) Ereignissen"
@@ -707,11 +884,17 @@ public struct Wirkungsbild: Sendable {
 
         b.gruppen = geordnet(w)
         b.achsenmarken = marken(vorMin: b.vorMin, nachMin: b.nachMin, breite: b.breite)
+        b.faechermarken = faechermarken(
+            vorMin: b.vorMin, nachMin: b.nachMin, breite: b.breite)
 
-        let n = w.n ?? 0
-        if n > maxZeilen {
+        // **Gezählt werden die gelieferten Ereignisse, nicht `n`** (`alle.length`,
+        // `Ereignisraster.tsx:112`). `n` ist die Zahl aller Anforderungen des Zeitraums; begrenzt
+        // der Dienst `ereignisse` selbst, nennt der Satz dann eine Zahl, aus der die gezeigten
+        // Zeilen nicht gewählt wurden - „die jüngsten 80 von 214“, wo nur 95 überhaupt kamen.
+        let geliefert = w.ereignisse.count
+        if geliefert > maxZeilen {
             b.rasterHinweis =
-                "gezeigt sind die jüngsten \(maxZeilen) von \(n) Anforderungen"
+                "gezeigt sind die jüngsten \(maxZeilen) von \(geliefert) Anforderungen"
         }
         return b
     }
@@ -767,13 +950,27 @@ public struct Wirkungsbild: Sendable {
                 fein: m != 0 && m != nachMin)
         }
     }
+
+    /// Die Marken der Zeitachse des Fächers: `interval: 30` der Vorlage
+    /// (`Antwortfaecher.tsx:79`), vom Beginn des Ausschnitts an.
+    ///
+    /// Anders als ``marken(vorMin:nachMin:breite:)`` keine feste Liste: eine Achse mit `min` und
+    /// `interval` setzt ihre Marken ab dem `min`, und nicht auf die 30er des Nullpunkts.
+    static func faechermarken(vorMin: Int, nachMin: Int, breite: Int) -> [Achsenmarke] {
+        stride(from: -vorMin, through: nachMin, by: 30).map { m in
+            Achsenmarke(
+                minute: m, wort: achsenmarke(m, ende: nachMin),
+                anteil: breite > 0 ? Double(m + vorMin) / Double(breite) : 0,
+                fein: m != 0 && m != nachMin)
+        }
+    }
 }
 
 /// Die fünf Kacheln der Wirkungsseite, in der Reihenfolge der Vorlage (`Wirkung.tsx:170-202`).
 ///
-/// **Warum fünf und welche fünf.** Die App zeigte sechs andere: „Quote", „Ereignisse",
-/// „gefolgt", „lief schon", „Verzögerung", „Nachlauf" - teils dieselbe Zahl zweimal, und ohne
-/// die führende Zahl `n`. Vor allem fehlte „ohne Anforderung angelaufen": die Vergleichsquote ist
+/// **Warum fünf und welche fünf.** Die App zeigte sechs andere: „Quote“, „Ereignisse“,
+/// „gefolgt“, „lief schon“, „Verzögerung“, „Nachlauf“ - teils dieselbe Zahl zweimal, und ohne
+/// die führende Zahl `n`. Vor allem fehlte „ohne Anforderung angelaufen“: die Vergleichsquote ist
 /// die halbe Aussage der Seite, denn eine Pumpe, die immer anläuft, folgt keiner Anforderung.
 ///
 /// **Was es nicht ist:** keine Wertung. Der Ton sagt, welche Rolle eine Zahl hat, nicht ob sie
@@ -820,7 +1017,7 @@ public enum Wirkungskacheln {
         ]
     }
 
-    /// „Median nach dem Ende der Anforderung, 3 Fälle" - und ohne Fälle der Grund dafür.
+    /// „Median nach dem Ende der Anforderung, 3 Fälle“ - und ohne Fälle der Grund dafür.
     static func nachlaufSatz(_ faelle: Int?) -> String {
         guard let faelle, faelle > 0 else { return "kein Ende bei laufender Maschine" }
         let wort = faelle == 1 ? "1 Fall" : "\(faelle) Fälle"
@@ -830,21 +1027,21 @@ public enum Wirkungskacheln {
 
 extension Formate {
 
-    /// Ein Anteil als ganze Prozentzahl **ohne** Einheit: „94" (`prozentZahl`, `wirkung.ts:90-92`).
+    /// Ein Anteil als ganze Prozentzahl **ohne** Einheit: „94“ (`prozentZahl`, `wirkung.ts:90-92`).
     ///
     /// **Warum es die neben `prozent` gibt.** Die Einheit steht an manchen Stellen nur einmal:
-    /// „94 bis 100 %" nennt sie am Ende, die Achse trägt sie in ihrer eigenen Beschriftung, und
+    /// „94 bis 100 %“ nennt sie am Ende, die Achse trägt sie in ihrer eigenen Beschriftung, und
     /// die Kachel setzt sie in eigener Schrift neben die Zahl. Mit `prozent` stünde dort
-    /// „94 % bis 100 %" - dieselbe Angabe zweimal.
+    /// „94 % bis 100 %“ - dieselbe Angabe zweimal.
     public static func prozentZahl(_ anteil: Double?) -> String {
         guard let anteil, anteil.isFinite else { return leer }
         return zahl(anteil * 100, stellen: 0)
     }
 
-    /// Eine Dauer in Minuten als bloße Zahl: „95" (`minuten`, `Wirkung.tsx:108-110`).
+    /// Eine Dauer in Minuten als bloße Zahl: „95“ (`minuten`, `Wirkung.tsx:108-110`).
     ///
-    /// **Warum nicht `dauer`.** Das schaltet ab einer Stunde auf „1 h 35 min" um. Die Kacheln
-    /// „Verzögerung" und „Nachlauf" tragen ihre Einheit getrennt und zählen immer in Minuten;
+    /// **Warum nicht `dauer`.** Das schaltet ab einer Stunde auf „1 h 35 min“ um. Die Kacheln
+    /// „Verzögerung“ und „Nachlauf“ tragen ihre Einheit getrennt und zählen immer in Minuten;
     /// bei einem Nachlauf von 95 Minuten stünden App und Wandanzeige sonst verschieden da - und
     /// zwei Antworten auf dieselbe Frage sind schlimmer als eine lange Zahl.
     public static func minutenZahl(_ wert: Double?) -> String {

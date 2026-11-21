@@ -5,7 +5,7 @@ import SwiftUI
 /// Der Quotenvergleich: zwei Zeilen, ein Punkt und ein Balken.
 ///
 /// **Warum ein Bild und nicht zwei Zahlen.** Die Frage der Seite ist nicht „wie hoch ist die
-/// Quote", sondern „ist sie höher als sonst". Zwei Prozentzahlen in zwei Kacheln beantworten
+/// Quote“, sondern „ist sie höher als sonst“. Zwei Prozentzahlen in zwei Kacheln beantworten
 /// das nicht: man muss sie im Kopf vergleichen und weiß dabei nichts über ihre Unsicherheit.
 /// Hier liegen beide übereinander auf derselben Spur, jede mit dem Bereich, in dem ihr wahrer
 /// Wert liegt - und das Urteil fällt erst, wenn die Balken sich nicht mehr überlappen
@@ -16,11 +16,12 @@ struct Quotenbild: View {
     /// muss er die Farbe haben, auf der er liegt - am Telefon eine andere als an der Wand.
     var ringfarbe: Color = Farbe.flaeche1
 
+    @Environment(\.horizontalSizeClass) private var breite
+    private var schmal: Bool { breite == .compact }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(bild.quotenzeilen) { z in
-                zeile(z)
-            }
+            zeilen
             achse
             Text(bild.quotenerklaerung)
                 .font(Schrift.winzig)
@@ -33,12 +34,47 @@ struct Quotenbild: View {
         .accessibilityLabel(bild.quotenbeschreibung)
     }
 
+    /// Die beiden Zeilen - und hinter ihnen die Rasterlinien.
+    ///
+    /// **Die Linien gehen durch beide Zeilen hindurch** (`Wirkung.tsx:89-96`: von y=14 bis
+    /// y=104, während die Zeilen bei y=38 und y=82 liegen). Darum liegen sie im Hintergrund
+    /// dieses Blocks und nicht in der Beschriftungszeile darunter: nur eine Linie, die an beiden
+    /// Punkten vorbeiläuft, macht sie vergleichbar. Das Polster gibt ihnen die Höhe, die sie in
+    /// der Vorlage über die Zeilen hinaus haben.
+    private var zeilen: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(bild.quotenzeilen) { z in
+                zeile(z)
+            }
+        }
+        .padding(.vertical, 6)
+        .background(rasterlinien)
+    }
+
+    private var rasterlinien: some View {
+        HStack(spacing: 10) {
+            Spacer().frame(width: namensbreite)
+            GeometryReader { raum in
+                ZStack(alignment: .leading) {
+                    ForEach(stellen, id: \.self) { anteil in
+                        Rectangle()
+                            .fill(Farbe.rasterlinie)
+                            .frame(width: 1)
+                            .offset(x: CGFloat(anteil) * raum.size.width - 0.5)
+                    }
+                }
+            }
+            Spacer().frame(width: zahlenbreite)
+        }
+    }
+
     private func zeile(_ z: Wirkungsbild.Quotenzeile) -> some View {
         HStack(alignment: .center, spacing: 10) {
             Text(z.name)
-                .font(Schrift.klein)
+                .font(Schrift.sans(namensgroesse))
                 .foregroundStyle(Farbe.text2)
-                .frame(width: 92, alignment: .leading)
+                .lineLimit(1)
+                .frame(width: namensbreite, alignment: .leading)
             spur(z)
                 .frame(height: 22)
             // **Die Zahl steht neben der Spur, nicht darin** (`Wirkung.tsx:92-98`: x=346 bei
@@ -48,13 +84,16 @@ struct Quotenbild: View {
             VStack(alignment: .leading, spacing: 1) {
                 Zahl(
                     wert: z.zahl, einheit: z.quote == nil ? nil : "%",
-                    schrift: Schrift.mono(17), einheitSchrift: Schrift.winzig,
+                    schrift: Schrift.mono(zahlengroesse), einheitSchrift: Schrift.winzig,
                     farbe: Farbe.text1)
                 if let b = z.bereich {
-                    Text(b).font(Schrift.achse).foregroundStyle(Farbe.text3)
+                    Text(b)
+                        .font(Schrift.mono(kleingroesse))
+                        .foregroundStyle(Farbe.text3)
+                        .lineLimit(1)
                 }
             }
-            .frame(width: 86, alignment: .leading)
+            .frame(width: zahlenbreite, alignment: .leading)
         }
     }
 
@@ -92,15 +131,15 @@ struct Quotenbild: View {
         }
     }
 
-    /// Null, fünfzig, hundert - mit den Rasterlinien, an denen man die Punkte vergleicht.
+    /// Null, fünfzig, hundert - die Beschriftung zu den Linien hinter den Zeilen.
     private var achse: some View {
         HStack(spacing: 10) {
-            Spacer().frame(width: 92)
+            Spacer().frame(width: namensbreite)
             GeometryReader { raum in
                 ZStack(alignment: .topLeading) {
-                    ForEach([0.0, 0.5, 1.0], id: \.self) { anteil in
+                    ForEach(stellen, id: \.self) { anteil in
                         Text(Formate.prozent(anteil))
-                            .font(Schrift.achse)
+                            .font(Schrift.mono(kleingroesse))
                             .foregroundStyle(Farbe.text3)
                             .fixedSize()
                             .position(
@@ -108,10 +147,26 @@ struct Quotenbild: View {
                     }
                 }
             }
-            .frame(height: 14)
-            Spacer().frame(width: 86)
+            .frame(height: kleingroesse + 4)
+            Spacer().frame(width: zahlenbreite)
         }
     }
+
+    /// Die drei Stellen der Spur: null, fünfzig, hundert Prozent (`Wirkung.tsx:89`).
+    private let stellen: [Double] = [0, 0.5, 1]
+
+    // MARK: - Maße nach Breite
+
+    /// **Am Telefon größere Schrift** (`globals.css:676`: `.wk-q-name` 15, `.wk-q-zahl` 20,
+    /// `.wk-q-klein`/`.wk-q-achse` 13 statt 12,5 / 17 / 10,5). Die Vorlage braucht das, weil ihr
+    /// Bild ein SVG mit festem `viewBox` ist und auf 390 Punkten kleiner gerechnet wird als auf
+    /// 520; hier wächst nur die Spur mit, die Schrift stand fest. Die Zahlenspalte wächst mit,
+    /// sonst bricht „94 bis 100 %“ in Mono 13 um.
+    private var namensgroesse: CGFloat { schmal ? 15 : 12.5 }
+    private var zahlengroesse: CGFloat { schmal ? 20 : 17 }
+    private var kleingroesse: CGFloat { schmal ? 13 : 10.5 }
+    private var namensbreite: CGFloat { 92 }
+    private var zahlenbreite: CGFloat { schmal ? 98 : 86 }
 
     private func farbe(_ r: Wirkungsbild.Rolle) -> Color {
         r == .angefordert ? Farbe.waermepumpe : Farbe.mist
@@ -125,6 +180,14 @@ struct Quotenbild: View {
 /// Minute angelaufen ist, und daneben derselbe Anteil ohne Anforderung zur selben Tageszeit.
 /// Der Abstand dieser beiden Treppen ist die Wirkung; eine Zahl allein zeigt ihn nicht
 /// (`waerme/Antwortfaecher.tsx`).
+///
+/// **Beide Flächen haben eine senkrechte Achse, und die untere eine feste.** Das fehlte, und es
+/// war der schwerste Fehler dieser Seite: ohne `chartYScale` skaliert Swift Charts die untere
+/// Fläche nach ihren Daten, und eine Treppe, die bis 30 Prozent steigt, reicht dann bis an den
+/// oberen Rand - sie sieht aus wie volle Folgsamkeit. Die Vorlage setzt dort ausdrücklich
+/// `min: 0, max: 100, interval: 50` (`Antwortfaecher.tsx:164-171`), für die obere `min: 0` mit
+/// drei Marken (`:157-163`). Gerechnet wird die Spanne im Kern
+/// (``Wirkungsbild/leistungsspanne``), gezeichnet hier.
 struct Antwortfaecher: View {
     let bild: Wirkungsbild
 
@@ -134,64 +197,128 @@ struct Antwortfaecher: View {
 
     /// **Gleich breite Achsenbeschriftung für beide Flächen.** Sonst schiebt die breitere
     /// Beschriftung ihre Zeichenfläche nach rechts, und der Nullpunkt - die Minute, in der die
-    /// Anforderung beginnt - steht in beiden Flächen an verschiedener Stelle. Die Vorlage
-    /// erzwingt dasselbe mit `outerBoundsMode: "none"`.
+    /// Anforderung beginnt - steht in beiden Flächen an verschiedener Stelle. Oben stehen
+    /// „0/2/4/6“, unten „0 %/50 %/100 %“; auf diese Breite gebracht, rücken beide Flächen gleich
+    /// weit ein. Die Vorlage erzwingt dasselbe mit `outerBoundsMode: "none"` und festen Rändern
+    /// (`Antwortfaecher.tsx:34-35`, `:148-154`).
     private let achsenbreite: CGFloat = 34
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             auskunft
-            flaeche("Leistung der Wärmepumpe in kW", hoehe: 210) {
-                leistungsbild
-            } achse: {
-                AxisMarks(values: markenwerte) { _ in
-                    AxisGridLine().foregroundStyle(Farbe.rasterlinie)
-                }
-            }
-            flaeche("Anteil, der bis hier angelaufen ist", hoehe: 110) {
-                anteilsbild
-            } achse: {
-                AxisMarks(values: markenwerte) { w in
-                    AxisGridLine().foregroundStyle(Farbe.rasterlinie)
-                    if let m = w.as(Double.self) {
-                        AxisValueLabel {
-                            Text(Wirkungsbild.achsenText(Int(m)))
-                                .font(Schrift.achse)
-                                .foregroundStyle(Farbe.text3)
-                        }
-                    }
-                }
-            }
+            leistungsflaeche
+            anteilsflaeche
             legende
         }
     }
 
-    private var markenwerte: [Double] {
-        stride(from: Double(-bild.vorMin), through: Double(bild.nachMin), by: 30).map { $0 }
-    }
-
     // MARK: - Die beiden Flächen
 
-    private func flaeche<Inhalt: ChartContent, Achse: AxisContent>(
-        _ titel: String, hoehe: CGFloat,
-        @ChartContentBuilder inhalt: () -> Inhalt,
-        @AxisContentBuilder achse: () -> Achse
-    ) -> some View {
+    /// **Der Titel steht über der Fläche, nicht an der Achse** (`Antwortfaecher.tsx:103-114`):
+    /// „neben der Achse stieße er mit deren Zahlen zusammen“. Mono 10, wie dort - dieselbe
+    /// Schrift wie die Achsenzahlen darunter, damit er zur Fläche gehört und nicht zum Text.
+    private func flaechentitel(_ titel: String) -> some View {
+        Text(titel).font(Schrift.achse).foregroundStyle(Farbe.text3)
+    }
+
+    private var leistungsflaeche: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(titel).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+            flaechentitel("Leistung der Wärmepumpe in kW")
             Chart {
-                inhalt()
-                // Die Minute, in der die Anforderung beginnt - in beiden Flächen dieselbe
-                // Senkrechte.
-                RuleMark(x: .value("Anforderung", 0.0))
-                    .foregroundStyle(Farbe.text1.opacity(0.75))
-                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+                leistungsbild
+                nulllinie
             }
-            .chartXScale(domain: Double(-bild.vorMin)...Double(bild.nachMin))
+            .chartXScale(domain: fenster)
+            .chartYScale(domain: bild.leistungsspanne)
             .chartXSelection(value: auswahl)
-            .chartXAxis { achse() }
-            .frame(height: hoehe)
+            // Beschriftet wird nur die untere Fläche (`xAchse(0, false)`,
+            // `Antwortfaecher.tsx:155`): zwei Zeitachsen übereinander sagen dasselbe zweimal.
+            .chartXAxis(.hidden)
+            .chartYAxis { kilowattmarken }
+            .frame(height: 210)
         }
+    }
+
+    private var anteilsflaeche: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            flaechentitel("Anteil, der bis hier angelaufen ist")
+            Chart {
+                anteilsbild
+                nulllinie
+            }
+            .chartXScale(domain: fenster)
+            .chartYScale(domain: Wirkungsbild.anteilsspanne)
+            .chartXSelection(value: auswahl)
+            .chartXAxis { zeitachse }
+            .chartYAxis { prozentmarken }
+            .frame(height: 110)
+        }
+    }
+
+    private var fenster: ClosedRange<Double> {
+        Double(-bild.vorMin)...Double(bild.nachMin)
+    }
+
+    // MARK: - Die Achsen
+
+    /// Die Zeitachse: Marken alle 30 Minuten, die Einheit nur am Nullpunkt und am Ende.
+    ///
+    /// Die Wörter kommen fertig aus dem Kern (``Wirkungsbild/faechermarken``). Hier stand
+    /// `achsenText`, und das schreibt die Einheit immer mit - „min“ fünfmal unter einer Achse
+    /// (Begründung der Vorlage: `Antwortfaecher.tsx:85-86`).
+    private var zeitachse: some AxisContent {
+        AxisMarks(values: bild.faechermarken.map { Double($0.minute) }) { wert in
+            AxisValueLabel {
+                if let m = wert.as(Double.self) {
+                    Text(zeitwort(m))
+                        .font(Schrift.achse)
+                        .foregroundStyle(Farbe.text3)
+                }
+            }
+        }
+    }
+
+    private func zeitwort(_ wert: Double) -> String {
+        let minute = Int(wert.rounded())
+        return bild.faechermarken.first { $0.minute == minute }?.wort
+            ?? Wirkungsbild.achsenmarke(minute, ende: bild.nachMin)
+    }
+
+    private var kilowattmarken: some AxisContent {
+        AxisMarks(position: .leading, values: bild.leistungsmarken) { wert in
+            AxisGridLine().foregroundStyle(Farbe.rasterlinie)
+            AxisValueLabel {
+                if let p = wert.as(Double.self) {
+                    achsenwort(bild.leistungswort(p))
+                }
+            }
+        }
+    }
+
+    private var prozentmarken: some AxisContent {
+        AxisMarks(position: .leading, values: Wirkungsbild.anteilsmarken) { wert in
+            AxisGridLine().foregroundStyle(Farbe.rasterlinie)
+            AxisValueLabel {
+                if let p = wert.as(Double.self) {
+                    achsenwort(Wirkungsbild.anteilswort(p))
+                }
+            }
+        }
+    }
+
+    private func achsenwort(_ wort: String) -> some View {
+        Text(wort)
+            .font(Schrift.achse)
+            .foregroundStyle(Farbe.text3)
+            .lineLimit(1)
+            .frame(width: achsenbreite, alignment: .trailing)
+    }
+
+    /// Die Minute, in der die Anforderung beginnt - in beiden Flächen dieselbe Senkrechte.
+    @ChartContentBuilder private var nulllinie: some ChartContent {
+        RuleMark(x: .value("Anforderung", 0.0))
+            .foregroundStyle(Farbe.text1.opacity(0.75))
+            .lineStyle(StrokeStyle(lineWidth: 1.5))
     }
 
     /// Die Auswahl der beiden Flächen, gerundet auf ganze Minuten.
@@ -201,6 +328,8 @@ struct Antwortfaecher: View {
             set: { neu in gewaehlt = neu.map { Int($0.rounded()) } }
         )
     }
+
+    // MARK: - Was in den Flächen steht
 
     @ChartContentBuilder private var leistungsbild: some ChartContent {
         // **Jedes Stück eine eigene Reihe.** Eine Linie über eine Lücke hinweg erfindet eine
@@ -218,11 +347,14 @@ struct Antwortfaecher: View {
                 }
             }
         }
-        ForEach(bild.faecher) { p in
-            if let u = p.q25Kw, let o = p.q75Kw {
+        // Das Band bricht ab, wo zu wenige Ereignisse gemessen haben - darum auch hier Stücke
+        // mit je eigener Reihe und keine Fläche über alle Minuten (``Wirkungsbild/Bandstueck``).
+        ForEach(bild.band) { stueck in
+            ForEach(stueck.punkte) { p in
                 AreaMark(
                     x: .value("Minute", Double(p.minute)),
-                    yStart: .value("unten", u), yEnd: .value("oben", o)
+                    yStart: .value("unten", p.unten), yEnd: .value("oben", p.oben),
+                    series: .value("Reihe", stueck.id)
                 )
                 .foregroundStyle(Farbe.waermepumpe.opacity(0.22))
             }
@@ -252,7 +384,8 @@ struct Antwortfaecher: View {
         // Anforderung, alles rechts davon kam später.
         RectangleMark(
             xStart: .value("von", 0.0), xEnd: .value("bis", Double(bild.folgeMin)),
-            yStart: .value("u", 0.0), yEnd: .value("o", 100.0)
+            yStart: .value("u", Wirkungsbild.anteilsspanne.lowerBound),
+            yEnd: .value("o", Wirkungsbild.anteilsspanne.upperBound)
         )
         .foregroundStyle(Farbe.text1.opacity(0.05))
         .annotation(position: .topLeading, alignment: .leading) {
@@ -360,15 +493,45 @@ struct Antwortfaecher: View {
     }
 }
 
+/// Der Druckzustand einer Rasterzeile.
+///
+/// **Hover gibt es in der App nicht.** Die Vorlage legt der Zeile unter dem Zeiger einen Grund
+/// unter und hellt ihr Ergebniswort auf (`globals.css:664`, `:668`); beides hat in SwiftUI kein
+/// Gegenstück. Der übliche Weg im Haus - der sichtbare Verweis in Bernstein mit „›“
+/// (`Karte.swift:254-257`) - wäre bei achtzig Zeilen achtzigmal Lärm. Bleibt der Druckzustand,
+/// und der Satz im Kartenkopf, den die Vorlage ohnehin schreibt (`Wirkung.tsx:235`).
+///
+/// Polster und Radius sind die der Vorlage (`globals.css:663`: `padding: 3px 6px`,
+/// `border-radius: 4px`) - und die Achsenzeile trägt dasselbe Polster, weil sie dort dieselbe
+/// Rasterzeile ist (`.wk-kopfzeile`, `Ereignisraster.tsx:65`).
+private struct Rasterzeilenstil: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.vertical, 3)
+            .padding(.horizontal, 6)
+            .background(configuration.isPressed ? Farbe.linie1 : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .contentShape(Rectangle())
+    }
+}
+
 /// Das Ereignisraster: eine Zeile je Anforderung, nach Verzögerung sortiert.
 ///
 /// **Warum kein Diagramm, sondern gezeichnete Rechtecke.** Achtzig Zeilen wären achtzig
 /// Diagramme; das rollt auf keinem Telefon. Jede Zeile ist darum ein `Canvas`, der in Punkten
 /// rechnet - auch der Nullpunktstrich, der sonst anderthalb *Minuten* breit wäre statt
 /// anderthalb Punkte (die Vorlage löst dasselbe mit `vector-effect: non-scaling-stroke`).
+///
+/// **Jede Zeile führt in die Wiedergabe dieses Augenblicks** (`Ereignisraster.tsx:22-23`,
+/// `:37`). Das Raster sagt, dass die Maschine am Dienstag nicht folgte; warum, zeigt das
+/// Anlagenschema von Dienstag. Das Ziel liegt fertig im Kern
+/// (``Wirkungsbild/Ereigniszeile/weg``); gesprungen wird über den ``Wegweiser``, und der
+/// Fragezeichenteil `?day=&t=` übersteht das - ``Bereiche/weiterleitung(_:)`` putzt ihn
+/// absichtlich nicht weg, und ``Wiedergabeziel/ausWeg(_:)`` liest ihn in `Seitenwahl` zurück.
 struct Ereignisraster: View {
     let bild: Wirkungsbild
 
+    @Environment(Wegweiser.self) private var wegweiser
     @Environment(\.horizontalSizeClass) private var breite
     private var schmal: Bool { breite == .compact }
 
@@ -378,57 +541,92 @@ struct Ereignisraster: View {
             ForEach(bild.gruppen, id: \.gruppe) { gruppe in
                 VStack(alignment: .leading, spacing: 4) {
                     Kicker(wort: "\(gruppe.gruppe.titel) · \(gruppe.zeilen.count)")
+                        .padding(.leading, 6)
                     ForEach(gruppe.zeilen) { z in
                         zeile(z)
                     }
                 }
             }
-            if let hinweis = bild.rasterHinweis {
-                Text(hinweis).font(Schrift.winzig).foregroundStyle(Farbe.text3)
-            }
             legende
         }
     }
 
+    /// Die Achsenzeile.
+    ///
+    /// **Die erste und die letzte Marke hängen nicht über den Rand.** Alle Marken mittig gesetzt
+    /// hieß: „−30 min“ reichte nach links in die Datumsspalte und „+120 min“ nach rechts aus der
+    /// Zeile. Die Vorlage nimmt genau diesen beiden den Versatz (`globals.css:672-673`:
+    /// `:first-child { transform: none }`, `:last-child { translateX(-100%) }`).
     private var achse: some View {
         HStack(spacing: 8) {
-            Spacer().frame(width: schmal ? 92 : 112)
+            Spacer().frame(width: datumsbreite)
             GeometryReader { raum in
                 ZStack(alignment: .topLeading) {
-                    ForEach(bild.achsenmarken) { m in
+                    ForEach(Array(bild.achsenmarken.enumerated()), id: \.element.id) { i, m in
                         if !m.fein || !schmal {
-                            Text(m.wort)
-                                .font(Schrift.achse)
-                                .foregroundStyle(Farbe.text3)
-                                .fixedSize()
-                                .position(x: CGFloat(m.anteil) * raum.size.width, y: 7)
+                            achsenmarke(m, stelle: i, breite: raum.size.width)
                         }
                     }
                 }
             }
             .frame(height: 14)
-            Spacer().frame(width: schmal ? 78 : 104)
+            Spacer().frame(width: ergebnisbreite)
         }
+        .padding(.horizontal, 6)
+    }
+
+    private func achsenmarke(
+        _ m: Wirkungsbild.Achsenmarke, stelle: Int, breite: CGFloat
+    ) -> some View {
+        let x = CGFloat(m.anteil) * breite
+        let erste = stelle == 0
+        let letzte = stelle == bild.achsenmarken.count - 1
+        let ausrichtung: Alignment = erste ? .leading : (letzte ? .trailing : .center)
+        let versatz: CGFloat = erste ? x : (letzte ? x - breite : x - breite / 2)
+        return Text(m.wort)
+            .font(Schrift.achse)
+            .foregroundStyle(Farbe.text3)
+            .fixedSize()
+            .frame(width: breite, alignment: ausrichtung)
+            .offset(x: versatz, y: 0)
     }
 
     private func zeile(_ z: Wirkungsbild.Ereigniszeile) -> some View {
+        Button {
+            wegweiser.gehe(z.weg)
+        } label: {
+            zeileninhalt(z)
+        }
+        .buttonStyle(Rasterzeilenstil())
+        .accessibilityLabel(
+            "\(z.wann) · \(z.ergebnis) · \(z.kontaktMin) min angefordert. "
+                + "Öffnet die Wiedergabe.")
+    }
+
+    private func zeileninhalt(_ z: Wirkungsbild.Ereigniszeile) -> some View {
         HStack(spacing: 8) {
             Text(z.wann)
                 .font(Schrift.achse)
                 .foregroundStyle(Farbe.text2)
                 .lineLimit(1)
-                .frame(width: schmal ? 92 : 112, alignment: .leading)
+                .frame(width: datumsbreite, alignment: .leading)
             Canvas { gestalt, groesse in
                 male(z, in: &gestalt, groesse: groesse)
             }
             .frame(height: 13)
+            // **Linksbündig wie die Rasterspalte der Vorlage** (`globals.css:663`, `:667`:
+            // `.wk-ergebnis` hat keine eigene Ausrichtung). Rechts ausgerichtet standen die
+            // Wörter von achtzig Zeilen auf der anderen Kante als in der Vorlage.
             Text(z.ergebnis)
                 .font(Schrift.winzig)
                 .foregroundStyle(Farbe.text3)
                 .lineLimit(1)
-                .frame(width: schmal ? 78 : 104, alignment: .trailing)
+                .frame(width: ergebnisbreite, alignment: .leading)
         }
     }
+
+    private var datumsbreite: CGFloat { schmal ? 92 : 112 }
+    private var ergebnisbreite: CGFloat { schmal ? 78 : 104 }
 
     private func male(
         _ z: Wirkungsbild.Ereigniszeile, in g: inout GraphicsContext, groesse: CGSize
@@ -456,12 +654,18 @@ struct Ereignisraster: View {
             with: .color(.white.opacity(0.75)))
     }
 
+    /// Die Legende - und als ihr **letzter Eintrag** der Hinweis, dass nur die jüngsten achtzig
+    /// Zeilen dastehen (`Ereignisraster.tsx:110-114`: derselbe `<ul>`). Als eigene Zeile über
+    /// der Legende las er sich wie eine Überschrift des Rasters und nicht wie seine Fußnote.
     private var legende: some View {
         Umbruchzeile(abstand: 16, zeilenabstand: 5) {
             marke("Wärmepumpe läuft", Farbe.waermepumpe, hoehe: 8)
             marke("gemessen, steht", Color.white.opacity(0.12), hoehe: 8)
             marke("angefordert", Farbe.mist, hoehe: 3)
             Text("leer: keine Messung").font(Schrift.winzig).foregroundStyle(Farbe.text3)
+            if let hinweis = bild.rasterHinweis {
+                Text(hinweis).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+            }
         }
     }
 
