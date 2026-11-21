@@ -203,4 +203,40 @@ extension Zugang {
         guard (2000...2100).contains(jahr) else { return nil }
         return adresse("/export/" + art.rawValue, ["year": String(jahr)])
     }
+
+    /// Die Adresse einer Sicherung über einen beliebigen Zeitraum.
+    ///
+    /// **Warum es die neben ``export(art:jahr:)`` gibt.** Die Prüfansicht verweist nicht auf ein
+    /// Jahr, sondern auf *diesen* Tag: „Minutenwerte dieses Tages als CSV ›" auf
+    /// `/api/dch/export/minutes?start=…&end=…` (`apps/web/src/components/reports/DataCheck.tsx:52-56`).
+    /// Der Dienst nimmt das längst - `docs/openapi.json` führt für `/api/v1/export/{kind}`
+    /// neben `year` auch `start` und `end` als `date-time` -, die App kannte nur das Jahr. Und
+    /// zwanzig Megabyte eines Jahres sind nicht die Antwort auf die Frage „was war an diesem
+    /// Tag", um die es dort geht.
+    ///
+    /// **Ein verdrehter Zeitraum gibt keine Adresse.** `bis` vor `von` ergäbe am Dienst eine
+    /// leere Datei und sieht dann aus wie ein Tag ohne Messung - der Unterschied ist genau das,
+    /// was die Prüfansicht zeigen soll. Dann steht lieber kein Verweis.
+    ///
+    /// Der Vorbehalt von ``export(art:jahr:)`` gilt hier genauso: die Antwort ist eine Datei und
+    /// kein JSON, und wer die Adresse an den Browser des Geräts weitergibt, gibt die
+    /// `Authorization`-Kopfzeile nicht mit. Gesagt wird das an ``Pruefworte/csvVorbehalt``.
+    public func export(art: Exportart, von: Date, bis: Date) -> URL? {
+        guard bis > von else { return nil }
+        return adresse(
+            "/export/" + art.rawValue, ["start": Zeit.iso(von), "end": Zeit.iso(bis)])
+    }
+
+    /// Dieselbe Adresse aus einem Kalendertag, mit den Grenzen der Hauszeit.
+    ///
+    /// **Die Grenzen kommen aus ``Tag/zeitraum(_:)`` und nicht aus einer Rechnung mit 86400.**
+    /// Am Tag der Zeitumstellung hat der Tag 23 oder 25 Stunden; eine Adresse aus
+    /// Mitternacht plus einem festen Tag schnitte dort eine Stunde ab oder nähme eine dazu -
+    /// und auf einer Seite, die Lücken in Messreihen sucht, wäre das die Lücke, die man selbst
+    /// gemacht hat. Die Vorlage rechnet an dieser Stelle tatsächlich mit `86400000`
+    /// (`DataCheck.tsx:22-25`), was im Browser dieselbe Grube ist.
+    public func export(art: Exportart, tag: String) -> URL? {
+        guard let z = Tag.zeitraum(tag) else { return nil }
+        return export(art: art, von: z.von, bis: z.bis)
+    }
 }
