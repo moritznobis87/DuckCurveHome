@@ -67,11 +67,13 @@ struct AnnahmenSeite: View {
 
     /// „lädt …“ als bloßer Absatz in `text-3` (`HeatSettings.tsx:158`) - begründet am
     /// ``Annahmenfelder/ladesatz``.
+    ///
+    /// **Alfred steht darüber, in der großen Stufe.** Dieser Hinweis ist, solange er dasteht,
+    /// die ganze Seite (``Ladehinweis/Stufe``) - und damit formgleich mit dem der
+    /// `WaermepumpeSeite`. Der Satz und seine Farbe bleiben, was sie waren; den Grad gibt jetzt
+    /// die Stufe, wie an jeder anderen Ladeente dieses Hauses.
     private var ladesatz: some View {
-        Text(Annahmenfelder.ladesatz)
-            .font(Schrift.sans(14))
-            .foregroundStyle(Farbe.text3)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        Ladeente(satz: Annahmenfelder.ladesatz, stufe: .gross, farbe: Farbe.text3)
     }
 
     // MARK: - Das Formular

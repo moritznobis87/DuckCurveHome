@@ -112,10 +112,33 @@ struct DatenSeite: View {
     private var leistungen: some View {
         Karte(kicker: "Leistungen über den Tag") {
             if let satz = stand.kurvensatz {
-                Leer(satz: satz)
+                ladehinweis(satz, stand.kurve)
             } else {
                 Pruefkurvenbild(kurve: kurve)
             }
+        }
+    }
+
+    /// Der Satz einer Karte - mit Alfred daneben, wenn wirklich geladen wird.
+    ///
+    /// **Diese Seite ist der Grund, dass die Ente einen gemeinsamen Takt hat.** Hier warten vier
+    /// Karten gleichzeitig: drei Abfragen, die nebeneinander laufen, und der Ereignisstrom.
+    /// Vier Enten, die jede ihre eigene Dauerschleife bei ihrem eigenen Erscheinen anfingen,
+    /// wackelten gegeneinander; ``Ladehinweis/zeiger(jetzt:)`` hängt allein am Zeitpunkt, und
+    /// damit atmen alle vier als eine. Dieselbe Seite ist auch der Grund für die *kleine* Stufe
+    /// an allen vier Stellen: keiner dieser Hinweise ist die Seite, jeder ist einer von vieren.
+    ///
+    /// **Und die Bedingung ist die Lage und nicht der Satz.** ``Pruefstand`` gibt denselben
+    /// ``Leer``-Satz für „gekommen, aber leer“ und für „nicht gekommen“ wie für „lädt“; die
+    /// Ente gehört nur zum letzten Fall. Ein Fehler ist kein Warten, und eine Ente, die neben
+    /// einem Befund schaukelt, behauptet einen Vorgang, der vorbei ist.
+    @ViewBuilder private func ladehinweis(
+        _ satz: String, _ lage: Pruefstand.Lage
+    ) -> some View {
+        if lage == .laedt {
+            Ladeente(satz: satz)
+        } else {
+            Leer(satz: satz)
         }
     }
 
@@ -127,7 +150,9 @@ struct DatenSeite: View {
     /// einzige Werkzeug - beide Fragen stellt man an derselben Stelle.
     private var quellen: some View {
         Karte(kicker: "Quellen", beiwerk: beiwerk("liefert gerade, was liefern soll?")) {
-            Quellenkarte(zeilen: quellenzeilen, satz: stand.quellensatz)
+            Quellenkarte(
+                zeilen: quellenzeilen, satz: stand.quellensatz,
+                laedt: quellenlage == .laedt)
         }
     }
 
@@ -145,7 +170,7 @@ struct DatenSeite: View {
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 if let satz = stand.rastersatz {
-                    Leer(satz: satz)
+                    ladehinweis(satz, stand.abdeckung)
                 } else if let a = abdeckung {
                     Abdeckungskarte(reihen: Abdeckungsraster.baue(a), jetzt: haus.jetzt)
                 }
@@ -185,7 +210,7 @@ struct DatenSeite: View {
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 if let satz = stand.diagnosesatz {
-                    Leer(satz: satz)
+                    ladehinweis(satz, stand.diagnose)
                 } else if let d = diagnose {
                     ScrollView(.horizontal, showsIndicators: true) {
                         Text(d)

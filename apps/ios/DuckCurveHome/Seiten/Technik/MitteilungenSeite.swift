@@ -770,7 +770,7 @@ struct Batterieblatt: View {
                         }
                         Methode([b.noteDe])
                     } else {
-                        Karte { Leer(satz: "Wird geholt …") }
+                        Karte { Ladeente(satz: Ladehinweis.berichtssatz, stufe: .gross) }
                     }
                     if let r = rueckmeldung {
                         Text(r).font(Schrift.klein).foregroundStyle(Farbe.text2)

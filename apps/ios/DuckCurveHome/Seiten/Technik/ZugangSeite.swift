@@ -156,7 +156,9 @@ struct ZugangSeite: View {
         case .fehler(let satz):
             Stoerung(satz: satz) { Task { await ladeBestand() } }
         case .laedt:
-            Leer(satz: Datenbestand.ladewort)
+            // Die kleine Stufe: der Hinweis steht unter dem Absatz, der die Karte erklärt, und
+            // ersetzt nicht die Karte (``Ladehinweis/Stufe``).
+            Ladeente(satz: Datenbestand.ladewort)
         case .leer(let note):
             hinweis(note)
         case .tabelle(let posten):

@@ -166,6 +166,18 @@ public enum Wpseite {
 
     // MARK: - Die Absätze, die wörtlich dastehen müssen
 
+    /// Was dasteht, solange die Seite noch nichts hat (`Waermepumpe.tsx:60-62`).
+    ///
+    /// **Er stand bis zum 21.11.2026 als Literal in der Ansicht** und ist beim Einbau der
+    /// ``Ladehinweis``-Ente hierher gezogen: ein Satz, der wörtlich dastehen muss, gehört zu den
+    /// anderen, die wörtlich dastehen müssen - und ein Satz in einer `View` wird von keinem Test
+    /// gelesen.
+    ///
+    /// **Er nennt die Maschine und nicht die Daten.** Diese Seite ist die einzige, auf der ein
+    /// Ladehinweis an der Stelle einer *ganzen* Seite steht; „wird geladen“ allein ließe offen,
+    /// ob die App, das Haus oder die Wärmepumpe gemeint ist.
+    public static let laedtSatz = "Die Wärmepumpe wird geladen …"
+
     /// Der fette Vorsatz des Heizstab-Absatzes (`Waermepumpe.tsx:83`).
     ///
     /// Eine Stelle, wie die Vorlage sie schreibt (`zahl(daten.zusatz_kw)`): „rund“ steht

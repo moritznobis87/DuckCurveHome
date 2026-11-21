@@ -83,10 +83,11 @@ struct NachbetrachtungSeite: View {
             bedienzeile
             fehlerzeile
             if laedt, daten == nil {
-                Text(Nachbetrachtungsworte.laedtSatz)
-                    .font(Schrift.klein)
-                    .foregroundStyle(Farbe.text3)
-                    .fixedSize(horizontal: false, vertical: true)
+                // **Die kleine Stufe**, obwohl dieser Hinweis der einzige der Seite ist: er
+                // teilt seine Karte mit der Bedienzeile darüber, mit der man schon den Tag
+                // wechseln kann, während gerechnet wird. Eine Ente über dem Satz würde diese
+                // Spalte auseinanderziehen (``Ladehinweis/Stufe``).
+                Ladeente(satz: Nachbetrachtungsworte.laedtSatz, farbe: Farbe.text3)
             }
             if let d = daten {
                 kopfinhalt(d)

@@ -59,7 +59,12 @@ struct Berichtsseite<Antwort: Sendable, Inhalt: View>: View {
                     .opacity(laedt ? 0.55 : 1)
                     .animation(.easeInOut(duration: Marken.dauer), value: laedt)
             } else if laedt {
-                Karte { Leer(satz: "Wird geholt …") }
+                // **Die wichtigste Stelle der Ente: hier wartet jede der dreizehn
+                // Auswertungsseiten.** Der Satz ist Zeichen fuer Zeichen der, der hier stand
+                // (``Ladehinweis/berichtssatz``); die grosse Stufe, weil der Hinweis an der
+                // Stelle der ganzen Seite steht und der einzige auf ihr ist - die Begruendung
+                // steht an ``Ladehinweis/Stufe``.
+                Karte { Ladeente(satz: Ladehinweis.berichtssatz, stufe: .gross) }
             } else if fehler == nil {
                 Karte { Leer(satz: "Für diesen Zeitraum ist nichts da.") }
             }

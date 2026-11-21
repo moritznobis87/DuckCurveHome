@@ -109,7 +109,10 @@ struct WirkungSeite: View {
                 if let bild {
                     urteilsraster(bild)
                 } else if fehler == nil {
-                    Leer(satz: "Die Anforderungen werden gesucht.")
+                    // Die kleine Stufe: der Hinweis teilt seine Karte mit der Zeitraumzeile
+                    // darüber, die während der Suche bedienbar bleibt
+                    // (``Ladehinweis/Stufe``). Der Satz steht jetzt im Kern.
+                    Ladeente(satz: Wirkungsbild.laedtSatz)
                 }
             }
         }

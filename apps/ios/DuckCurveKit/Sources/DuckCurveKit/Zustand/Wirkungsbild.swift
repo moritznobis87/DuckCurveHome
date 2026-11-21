@@ -50,6 +50,17 @@ public struct Wirkungsbild: Sendable {
     /// zählt als Folge des Schließens.
     public static let folgeMinVorgabe = 30
 
+    /// Was in der Urteilskarte steht, solange noch nichts da ist.
+    ///
+    /// **Er sagt „gesucht“ und nicht „geladen“**, weil diese Seite nicht eine Zahl holt, sondern
+    /// Ereignisse in einem Zeitraum sucht: ein Schließen eines Kontakts, auf das ein Anlauf
+    /// folgte. Findet sie keines, steht am Ende kein Fehler da, sondern das Urteil „zu wenige
+    /// Ereignisse“ (``mindestensFuerBand``) - und dann war „geladen“ das falsche Versprechen.
+    ///
+    /// Er stand bis zum 21.11.2026 als Literal in der Ansicht und ist beim Einbau der
+    /// ``Ladehinweis``-Ente hierher gezogen.
+    public static let laedtSatz = "Die Anforderungen werden gesucht."
+
     // MARK: - Der Ausschnitt
 
     /// Wie weit der Ausschnitt vor das Schließen reicht, in Minuten.

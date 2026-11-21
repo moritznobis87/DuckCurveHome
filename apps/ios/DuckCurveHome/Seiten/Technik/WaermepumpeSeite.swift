@@ -53,10 +53,10 @@ struct WaermepumpeSeite: View {
                 Stoerung(fehler: fehler) { Task { await lade() } }
             } else {
                 // **Ein Absatz und keine Karte** (`Waermepumpe.tsx:60-62`): solange nichts da
-                // ist, gibt es nichts zu umrahmen.
-                Text("Die Wärmepumpe wird geladen …")
-                    .font(Schrift.text)
-                    .foregroundStyle(Farbe.text3)
+                // ist, gibt es nichts zu umrahmen. Der Satz und seine Farbe sind die von
+                // vorher; dazugekommen ist Alfred darüber, in der großen Stufe, weil dieser
+                // Hinweis an der Stelle der ganzen Seite steht (``Ladehinweis/Stufe``).
+                Ladeente(satz: Wpseite.laedtSatz, stufe: .gross, farbe: Farbe.text3)
             }
         }
         .task { await lade() }

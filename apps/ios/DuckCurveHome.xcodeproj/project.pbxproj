@@ -40,6 +40,7 @@
 		50E9B830BB427C2DCAA0BF73 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 90D7A2BB3C0E19C96527B863 /* Assets.xcassets */; };
 		512F02FA33052F129D25DBD5 /* Energiefluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F3D8B5A242C08D8BEF8DE76 /* Energiefluss.swift */; };
 		512F2413B7056CF4CF62009B /* DuckCurveKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3A62E496A87A8D94CA123EEF /* DuckCurveKit */; };
+		528F3C17E297BD8A24DDA017 /* Ladeente.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11F4DB48A868B5F7EC0F9E24 /* Ladeente.swift */; };
 		54B02B16AF6AD7A1D91887A2 /* HaustuerSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F596BFA7422B61717C966902 /* HaustuerSeite.swift */; };
 		56C0AE84FC921B660B63E93D /* Navigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7FB5A5CC63F033E8AC7820 /* Navigation.swift */; };
 		5978892A3A331A6505D8DFD6 /* NachbetrachtungSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = A45F43488CBC3E8169B9B8CD /* NachbetrachtungSeite.swift */; };
@@ -129,6 +130,7 @@
 		06738C7E03178A104B308ABA /* Ambiente.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ambiente.swift; sourceTree = "<group>"; };
 		0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Waermepumpenbild.swift; sourceTree = "<group>"; };
 		0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reiterzeile.swift; sourceTree = "<group>"; };
+		11F4DB48A868B5F7EC0F9E24 /* Ladeente.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ladeente.swift; sourceTree = "<group>"; };
 		136B81A72166E32541A4ABF9 /* Anlagenrohre.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenrohre.swift; sourceTree = "<group>"; };
 		137F9DCA46B9045B284290A9 /* Geldbalken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geldbalken.swift; sourceTree = "<group>"; };
 		15663FB9ABB9A4FD8D1473F3 /* Anlagenbuehne.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenbuehne.swift; sourceTree = "<group>"; };
@@ -274,6 +276,7 @@
 				35511C5E90815784C780CCA1 /* Geldfarbe.swift */,
 				6488CB1E8676677F62FE64F4 /* Kanalzug.swift */,
 				7DBF78711330C19ED82AC95D /* Ladebild.swift */,
+				11F4DB48A868B5F7EC0F9E24 /* Ladeente.swift */,
 				D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */,
 				60D531BC992F24B251740574 /* Mitteilungshinweis.swift */,
 				857CBC9D8C59148A11B405B3 /* Plakette.swift */,
@@ -655,6 +658,7 @@
 				F57341AC4A36B0F7A09110EC /* KostenSeite.swift in Sources */,
 				D4F4491E3A060F093073E3B1 /* Kostentreppe.swift in Sources */,
 				08BA2CE15442D3C33FD44C38 /* Ladebild.swift in Sources */,
+				528F3C17E297BD8A24DDA017 /* Ladeente.swift in Sources */,
 				05FB739969DE812D7DA39011 /* Leiste.swift in Sources */,
 				99BBBD49F3FD5777A26147A2 /* Mitteilungen.swift in Sources */,
 				CF1E38EE14DAA9FB117D4E38 /* MitteilungenSeite.swift in Sources */,

@@ -171,7 +171,9 @@ struct JahreskarteSeite: View {
                 Leer(satz: Jahresraster.keineStundenSatz(jahr: jahr))
             }
         } else {
-            Leer(satz: Jahresraster.laedtSatz)
+            // Die große Stufe: der Hinweis steht an der Stelle des ganzen Jahresrasters und
+            // ist der einzige der Seite (``Ladehinweis/Stufe``).
+            Ladeente(satz: Jahresraster.laedtSatz, stufe: .gross)
         }
     }
 
