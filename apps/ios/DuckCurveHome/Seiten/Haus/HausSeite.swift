@@ -189,9 +189,18 @@ struct HausSeite: View {
             HStack(alignment: .top, spacing: 14) {
                 konsole(waagrecht: false)
                     .frame(width: 216)
+                // **Hochkant auch an der Wand - und das ist die eine Stelle, an der diese
+                // Seite der Vorlage bewusst nicht folgt.** Dort füllt die Bühne die Restspalte
+                // des Rasters aus 216 Punkten und dem Rest (`globals.css:447`, Höhe mindestens
+                // 480 Punkte, `globals.css:468`) und liegt auf einem breiten Schirm quer. Der
+                // Nutzer will sie hochkant, in jeder Breite; die Begründung des Maßes steht an
+                // ``Hausbuehne/seitenverhaeltnis``. Der Preis ist die Luft, die
+                // rechts neben der Bühne bleibt - deshalb hängt die Reihe links, sonst
+                // rutschte mit der Bühne auch die Konsole in die Mitte.
                 buehne
+                    .aspectRatio(Hausbuehne.seitenverhaeltnis, contentMode: .fit)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             fussnote
         }
         .padding(.horizontal, 32)
@@ -503,11 +512,17 @@ struct HausSeite: View {
                         }
                     }
                     glasmodell(plan)
-                        // **Ein Anteil des Schirms, keine feste Höhe.** Die Vorlage rechnet in
-                        // Bildschirmhöhe (`globals.css:550`: 70dvh, `handy.css:393`: 58dvh);
-                        // die App hatte 460 Punkte, und auf einem grossen Telefon blieb unter
-                        // dem Bild ein leeres Drittel.
-                        .containerRelativeFrame(.vertical) { hoehe, _ in hoehe * 0.58 }
+                        // **Hochkant, und damit aus der Breite gerechnet statt aus der Höhe.**
+                        // Die Vorlage rechnet in Bildschirmhöhe (`globals.css:550`: 70dvh,
+                        // `handy.css:393`: 58dvh); daraus wurde hier ein Anteil von 0,58 der
+                        // Fläche, nachdem feste 460 Punkte auf einem grossen Telefon unter dem
+                        // Bild ein leeres Drittel gelassen hatten. Am Telefon kommt bei beiden
+                        // Rechnungen fast dasselbe heraus - 58dvh von 844 Punkten sind 490, drei
+                        // zu vier aus 358 Punkten Breite sind 477 -, aber nur das
+                        // Seitenverhältnis bleibt hochkant, wenn das Telefon quer liegt oder
+                        // klein ist. Das Maß und sein Beleg stehen an
+                        // ``Hausbuehne/seitenverhaeltnis``.
+                        .aspectRatio(Hausbuehne.seitenverhaeltnis, contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .sheet(item: $fokus) { f in
