@@ -111,17 +111,37 @@ final class WaermeuebersichtTests: XCTestCase {
         XCTAssertEqual(k[0].dazu, "Wärmepumpe 20,1 · Ofen 4,4 kWh")
     }
 
-    func testEinZeitraumOhneGemesseneMinuteIstEinStrichUndKeineNull() {
+    /// Die Kacheln rechnen nicht strenger als die Vorlage: dort steht `kwh(t?.produced_kwh)`
+    /// (`HeatOverview.tsx:143, 162`), und der Strich bei `minutes == 0` bleibt der
+    /// Spannentabelle (`:119-127`). Ein Tag, der eben angefangen hat, hat eine Zahl.
+    func testOhneGemesseneMinuteStehtTrotzdemDieZahlDerBilanz() {
         let k = Waermeuebersicht.kacheln(
             bilanz: bilanz(totals(minuten: 0)), strom: strombericht())
-        XCTAssertEqual(k[0].wert, Formate.leer, "Null waere die Behauptung, es sei nichts gelaufen.")
+        XCTAssertEqual(k[0].wert, "24,5")
+        XCTAssertEqual(k.first { $0.wort == "Entnahme" }?.wert, "18,4")
+    }
+
+    /// Der Strich gilt nur, wo nichts dasteht - und er gilt weiter in der Spannentabelle.
+    func testOhneWertStehtEinStrichUndInDerSpannentabelleAuchOhneMinuten() {
+        let k = Waermeuebersicht.kacheln(
+            bilanz: bilanz(totals(erzeugt: nil, entnahme: nil)), strom: strombericht())
+        XCTAssertEqual(k[0].wert, Formate.leer)
         XCTAssertEqual(k.first { $0.wort == "Entnahme" }?.wert, Formate.leer)
+        let z = Waermeuebersicht.spannenzeilen([.tag: bilanz(totals(minuten: 0))])
+        XCTAssertEqual(z[0].werte[0], Formate.leer, "Null ist eine Messung, keine Daten ist keine.")
     }
 
     func testNullIstEineMessung() {
         let k = Waermeuebersicht.kacheln(
             bilanz: bilanz(totals(minuten: 1440, erzeugt: 0)), strom: strombericht())
         XCTAssertEqual(k[0].wert, "0,0")
+    }
+
+    /// Kein `tone` an keiner der sechs (`HeatOverview.tsx:141-165`, `Stat.tsx:34`).
+    func testKeineDerSechsKachelnTraegtEinenTon() {
+        let k = Waermeuebersicht.kacheln(bilanz: bilanz(), strom: strombericht())
+        XCTAssertTrue(k.allSatisfy { $0.ton == .normal }, "Die Vorlage setzt an keiner ein tone.")
+        XCTAssertEqual(Waermeuebersicht.kostenkernzahl(kosten()).ton, .normal)
     }
 
     func testOhneArbeitszahlSagtDieKachelWarum() {
@@ -287,6 +307,8 @@ final class WaermeuebersichtTests: XCTestCase {
         XCTAssertEqual(z[7].wort, "Arbeitszahl")
         XCTAssertEqual(z[7].werte[0], "2,87")
         XCTAssertEqual(z[9].werte[0], Formate.euro(1.74))
+        // ``Streifenzeile`` und kein Tupel: nur so passt die Karte in ``Spannenstreifen``.
+        XCTAssertTrue(z.allSatisfy { $0.ton == .normal }, "HeatOverview.tsx:118-131 setzt keinen.")
     }
 
     // MARK: - Annahmen und Abdeckung

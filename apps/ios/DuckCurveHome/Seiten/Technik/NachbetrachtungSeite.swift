@@ -20,6 +20,15 @@ import SwiftUI
 /// **Diese Seite rechnet einen Vergleichslauf und braucht darum Sekunden** - und deshalb steht
 /// hier der Tagesabgleich: solange ein anderer Tag lädt, steht der alte nicht mehr da.
 struct NachbetrachtungSeite: View {
+    /// Der Weg, unter dem die Seite aufgegangen ist - samt Fragezeichenteil.
+    ///
+    /// **Der Tag steht in der Adresse** (`Nachbetrachtung.tsx:45-50`), und deshalb braucht die
+    /// Seite den ungeputzten Weg: `/waerme/nachbetrachtung?day=…` kommt vom Verweis „Fahrplan
+    /// gegen Wirklichkeit“ der Wärmeseite (`HeatOverview.tsx:268`). Welchen Tag daraus wird,
+    /// rechnet der Kern (``Nachbetrachtungsbild/tag(ausWeg:heute:)``) - dasselbe Muster wie an
+    /// ``WiedergabeSeite``, die ihr Ziel aus der Jahreskarte ebenso bekommt.
+    let weg: String
+
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
     @Environment(\.horizontalSizeClass) private var breite
@@ -58,7 +67,9 @@ struct NachbetrachtungSeite: View {
             }
         }
         .task(id: tag) { await lade() }
-        .onAppear { if tag.isEmpty { tag = Tag.plus(haus.heute, -1) } }
+        .onAppear {
+            if tag.isEmpty { tag = Nachbetrachtungsbild.tag(ausWeg: weg, heute: haus.heute) }
+        }
     }
 
     // MARK: - Karte 1: Was hat der Tag gekostet?

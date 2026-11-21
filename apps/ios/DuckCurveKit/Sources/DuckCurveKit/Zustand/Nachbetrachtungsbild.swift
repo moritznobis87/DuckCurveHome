@@ -19,6 +19,38 @@ import Foundation
 /// zeigt.
 public enum Nachbetrachtungsbild {
 
+    // MARK: - Der Tag aus der Adresse
+
+    /// Welchen Tag der Rückblick zeigt, wenn er unter einer Adresse mit `?day=…` aufgeht.
+    ///
+    /// **Der Tag gehört in die Adresse und nicht allein in den Zustand der Seite.** Die Vorlage
+    /// liest ihn dort (`Nachbetrachtung.tsx:45-50`), und die Wärmeseite hängt ihn an ihren
+    /// Verweis (`HeatOverview.tsx:268`: `/waerme/nachbetrachtung?day=${anchor}`). Stand der Tag
+    /// nur im `@State` der Rückblickseite, landete wer am 10.11. auf „Fahrplan gegen
+    /// Wirklichkeit“ tippt im Rückblick vom 9.11. - oder auf dem Tag, den die Seite zuletzt
+    /// gehalten hat.
+    ///
+    /// **Gerechnet wird hier und nicht in der Ansicht** - dieselben zwei Bedingungen wie in der
+    /// Vorlage (`Nachbetrachtung.tsx:50`) und derselbe Rückfall: ein echter Kalendertag, nicht
+    /// nach heute, sonst gestern. „Der heutige Tag ist nie zu Ende, und die Frage ‚was hat es
+    /// gekostet‘ meint meist einen abgeschlossenen“ (`Nachbetrachtung.tsx:47-48`).
+    ///
+    /// Unbekannte Felder werden übergangen und ein doppeltes `day` vom letzten Vorkommen
+    /// überschrieben - wie in ``Wiedergabeziel/ausWeg(_:)``, und wie es jede Adressleiste macht.
+    public static func tag(ausWeg weg: String, heute: String) -> String {
+        let gestern = Tag.plus(heute, -1)
+        let stuecke = weg.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+        guard stuecke.count == 2 else { return gestern }
+        var gefunden: String?
+        for paar in stuecke[1].split(separator: "&") {
+            let kv = paar.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            guard kv.count == 2, kv[0] == "day" else { continue }
+            gefunden = String(kv[1])
+        }
+        guard let tag = gefunden, Tag.istTag(tag), tag <= heute else { return gestern }
+        return tag
+    }
+
     // MARK: - Die Kostentreppe
 
     /// Was eine Treppenzeile ist: ein Stand, ein Schritt dazwischen, oder ein Vergleich daneben.

@@ -74,7 +74,10 @@ struct Seitenwahl: View {
         case "/waerme/fahrplan":
             return AnyView(FahrplanSeite())
         case "/waerme/nachbetrachtung":
-            return AnyView(NachbetrachtungSeite())
+            // Wie bei der Wiedergabe wählt der Fragezeichenteil die Seite nicht, aber er sagt
+            // ihr, welchen Tag sie zeigt: von der Wärmeseite kommt der gelesene Tag mit
+            // (`HeatOverview.tsx:268`). Geprüft wird er im Kern.
+            return AnyView(NachbetrachtungSeite(weg: weg))
         case "/waerme/wirkung":
             return AnyView(WirkungSeite())
         case "/waerme/raeume":

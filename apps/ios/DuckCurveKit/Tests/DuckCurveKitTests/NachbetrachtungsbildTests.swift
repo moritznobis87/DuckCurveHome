@@ -602,6 +602,43 @@ final class NachbetrachtungsbildTests: XCTestCase {
             "Strom der Wärmepumpe je Viertelstunde, bis 1,13\(Formate.schmalesLeerzeichen)kWh")
     }
 
+    // MARK: - Der Tag aus der Adresse
+
+    /// Dieselben Fälle, die `Nachbetrachtung.tsx:45-50` unterscheidet - und der Fall, um den es
+    /// geht: der Verweis der Wärmeseite (`HeatOverview.tsx:268`) trägt den gelesenen Tag und
+    /// nicht gestern.
+    func testTagAusWeg() {
+        let heute = "2026-11-10"
+        XCTAssertEqual(
+            Nachbetrachtungsbild.tag(ausWeg: "/waerme/nachbetrachtung?day=2026-11-10", heute: heute),
+            "2026-11-10")
+        XCTAssertEqual(
+            Nachbetrachtungsbild.tag(ausWeg: "/waerme/nachbetrachtung?day=2026-03-01", heute: heute),
+            "2026-03-01")
+        // Ohne Angabe gestern.
+        XCTAssertEqual(
+            Nachbetrachtungsbild.tag(ausWeg: "/waerme/nachbetrachtung", heute: heute), "2026-11-09")
+        XCTAssertEqual(
+            Nachbetrachtungsbild.tag(ausWeg: "/waerme/nachbetrachtung?", heute: heute), "2026-11-09")
+        // Ein Tag nach heute ist keiner, und ein erfundener auch nicht.
+        XCTAssertEqual(
+            Nachbetrachtungsbild.tag(ausWeg: "/waerme/nachbetrachtung?day=2026-11-11", heute: heute),
+            "2026-11-09")
+        XCTAssertEqual(
+            Nachbetrachtungsbild.tag(ausWeg: "/waerme/nachbetrachtung?day=2026-02-30", heute: heute),
+            "2026-11-09")
+        XCTAssertEqual(
+            Nachbetrachtungsbild.tag(ausWeg: "/waerme/nachbetrachtung?day=gestern", heute: heute),
+            "2026-11-09")
+        // Unbekannte Felder daneben, doppeltes `day` vom letzten Vorkommen.
+        XCTAssertEqual(
+            Nachbetrachtungsbild.tag(ausWeg: "/x?t=7&day=2026-01-02&z=1", heute: heute),
+            "2026-01-02")
+        XCTAssertEqual(
+            Nachbetrachtungsbild.tag(ausWeg: "/x?day=2026-01-02&day=2026-01-03", heute: heute),
+            "2026-01-03")
+    }
+
     // MARK: - Die Vorschau
 
     /// Die Vorschau ist kein Schmuck: an ihr hängen die `#Preview`-Blöcke der Ansichten, und ein
