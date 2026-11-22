@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Card, CardHead } from "@/components/ui/Card";
-import type { Regelkreis, RegelkreisHerkunft, RegelkreisKreis, RegelkreisParameter } from "@/lib/api/models";
+import type { Regelkreis, RegelkreisGlied, RegelkreisHerkunft, RegelkreisKreis, RegelkreisParameter } from "@/lib/api/models";
+import { Rundinstrument, Schieber, SprungantwortBild } from "./Anzeigen";
 
 /**
  * Das Detailblatt eines Blocks: was er tut, woran er lernt, und was man ihm vorschreiben kann.
@@ -127,7 +128,33 @@ function Entwurf({ k }: { k: RegelkreisKreis }) {
   return (
     <>
       {k.hinweis ? <p className="rk-warnung">{k.hinweis}</p> : null}
-      <div className="rk-kacheln">
+      <div className="rk-instrumente">
+        <Rundinstrument
+          wert={r?.phasenreserve_grad ?? null}
+          von={0}
+          bis={90}
+          stellen={0}
+          einheit="°"
+          titel="Phasenreserve"
+          felder={[
+            { bis: 45, farbe: "var(--alert)" },
+            { bis: 60, farbe: "var(--amber)" },
+            { bis: 90, farbe: "var(--mist)" },
+          ]}
+        />
+        <Rundinstrument
+          wert={r?.amplitudenreserve ?? null}
+          von={0}
+          bis={8}
+          stellen={1}
+          titel="Amplitudenreserve"
+          felder={[
+            { bis: 2.5, farbe: "var(--alert)" },
+            { bis: 4, farbe: "var(--amber)" },
+            { bis: 8, farbe: "var(--mist)" },
+          ]}
+        />
+        <div className="rk-kacheln rk-kacheln-eng">
         <div>
           <span>Strecke</span>
           <b>{s.art === "iptd" ? "Integrierer" : "1. Ordnung"}</b>
@@ -161,6 +188,7 @@ function Entwurf({ k }: { k: RegelkreisKreis }) {
             <small>aus der Taktzahlgrenze</small>
           </div>
         ) : null}
+        </div>
       </div>
       {s.halbregel ? (
         <p className="rk-text">
@@ -178,24 +206,34 @@ function Parameterzeile({ p, offen, onOeffne, onStellen, onFreigeben, busy }: { 
   return (
     <>
       <tr className="rk-zeile" onClick={onOeffne}>
-        <td className="mono">
+        <td className="mono rk-nowrap">
           <span className="rk-punkt" style={{ background: h.farbe }} />
           {p.symbol}
         </td>
-        <td>{p.name}</td>
-        <td className="rk-num mono">
-          {de(p.wert, p.stellen)}
-          {p.einheit === "—" ? "" : ` ${p.einheit}`}
+        <td>
+          {p.name}
+          <span className="rk-klein rk-zeile-herkunft" style={{ color: h.farbe }}>
+            {h.text}
+            {p.n ? ` · n = ${p.n.toLocaleString("de-DE")}` : ""}
+          </span>
         </td>
-        <td className="rk-num mono">{p.sigma !== null && p.sigma !== undefined ? `±${de(2 * p.sigma, p.stellen)}` : "—"}</td>
-        <td className="rk-num mono">{p.n ? p.n.toLocaleString("de-DE") : "—"}</td>
-        <td className="rk-klein" style={{ color: h.farbe }}>
-          {h.text}
+        <td className="rk-messzelle">
+          <span className="mono rk-messwert">
+            {de(p.wert, p.stellen)}
+            <i>{p.einheit === "—" ? "" : ` ${p.einheit}`}</i>
+          </span>
+          <Schieber wert={p.wert} unten={p.unten} oben={p.oben} startwert={p.startwert} sigma={p.sigma} herkunft={p.herkunft} />
+          <span className="rk-schieber-grenzen mono">
+            <i>{de(p.unten, p.stellen)}</i>
+            {p.sigma ? <b>±{de(2 * p.sigma, p.stellen)}</b> : null}
+            <i>{de(p.oben, p.stellen)}</i>
+          </span>
         </td>
+        <td className="rk-fuellspalte" />
       </tr>
       {offen ? (
         <tr>
-          <td colSpan={6} className="rk-ausklapp">
+          <td colSpan={4} className="rk-ausklapp">
             <p className="rk-text">{p.warum}</p>
             <p className="rk-klein">
               {p.schaetzart_text}
@@ -215,14 +253,15 @@ function Parameterzeile({ p, offen, onOeffne, onStellen, onFreigeben, busy }: { 
             ) : null}
             <div className="rk-stellen">
               <input
+                key={`${p.id}-${p.wert}`}
                 type="number"
                 step="any"
-                value={feld}
+                defaultValue={feld}
                 onChange={(e) => setFeld(e.target.value)}
                 aria-label={`Eigener Wert für ${p.name}`}
                 className="rk-feld mono"
               />
-              <button className="rk-knopf" disabled={busy} onClick={() => onStellen(Number(feld.replace(",", ".")))}>
+              <button className="rk-knopf" disabled={busy} onClick={() => onStellen(Number(String(feld).replace(",", ".")))}>
                 Übersteuern
               </button>
               {p.herkunft === "uebersteuert" ? (
@@ -237,7 +276,7 @@ function Parameterzeile({ p, offen, onOeffne, onStellen, onFreigeben, busy }: { 
                   <tr>
                     <th>Datum</th>
                     <th>alt → neu</th>
-                    <th className="rk-num">σ</th>
+                    <th className="rk-num">Unsicherheit</th>
                     <th className="rk-num">n</th>
                     <th>Grund der Übernahme</th>
                   </tr>
@@ -266,12 +305,46 @@ function Parameterzeile({ p, offen, onOeffne, onStellen, onFreigeben, busy }: { 
   );
 }
 
+/** Das Übertragungsglied eines Blocks: Kennbild, Kurzzeichen, Funktion und das Erkennungszeichen. */
+function Glied({ g, entwurf }: { g: RegelkreisGlied; entwurf?: RegelkreisGlied }) {
+  return (
+    <div className="rk-glied">
+      <div className="rk-glied-bild">
+        <SprungantwortBild g={g} />
+        <span className="rk-glied-marke">{g.kurz}</span>
+      </div>
+      <div className="rk-glied-text">
+        <b>
+          {g.name}
+          {g.nichtlinear ? <em> · nichtlinear</em> : null}
+        </b>
+        <code>{g.g_s}</code>
+        <span className="rk-klein">{g.erkennen}</span>
+        {g.nichtlinear ? (
+          <span className="rk-klein rk-glied-warnung">
+            Nichtlinear: die Frequenzkennlinie gilt nur im linearisierten Arbeitspunkt, und der wandert.
+          </span>
+        ) : null}
+      </div>
+      {entwurf ? (
+        <div className="rk-glied-bild rk-glied-zweit">
+          <SprungantwortBild g={entwurf} />
+          <span className="rk-glied-marke">{entwurf.kurz}</span>
+          <span className="rk-klein">ausgelegt als</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function Blatt({ d, blockId, onWaehle, onStellen, onFreigeben, busy }: { d: Regelkreis; blockId: string; onWaehle: (id: string) => void; onStellen: (pid: string, wert: number) => void; onFreigeben: (pid: string) => void; busy: boolean }) {
   const [offen, setOffen] = useState<string | null>(null);
   const block = d.bloecke.find((b) => b.id === blockId);
   if (!block) return null;
   const params = d.parameter.filter((p) => p.block === block.id);
   const kreis = block.kreis ? d.kreise.find((k) => k.id === block.kreis) : undefined;
+  const g = block.glied ? d.glieder.find((x) => x.id === block.glied) : undefined;
+  const gEntwurf = block.glied_entwurf ? d.glieder.find((x) => x.id === block.glied_entwurf) : undefined;
   const hinein = d.kanten.filter((k) => k.nach === block.id);
   const hinaus = d.kanten.filter((k) => k.von === block.id);
   const name = (id: string) => d.bloecke.find((b) => b.id === id)?.name ?? id;
@@ -282,6 +355,7 @@ export function Blatt({ d, blockId, onWaehle, onStellen, onFreigeben, busy }: { 
         right={block.behandlung_text ?? undefined}
       />
       <h3 className="rk-titel">{block.name}</h3>
+      {g ? <Glied g={g} entwurf={gEntwurf} /> : null}
       {block.erklaerung.map((t, i) => (
         <p key={i} className="rk-text">
           {t}
@@ -297,15 +371,13 @@ export function Blatt({ d, blockId, onWaehle, onStellen, onFreigeben, busy }: { 
       {params.length ? (
         <>
           <p className="kicker rk-abschnitt">Parameter — Zeile anklicken für Verlauf und Übersteuerung</p>
-          <table className="rk-tabelle">
+          <table className="rk-tabelle rk-ptab">
             <thead>
               <tr>
                 <th>Größe</th>
-                <th>Bedeutung</th>
-                <th className="rk-num">Wert</th>
-                <th className="rk-num">Unsicherheit</th>
-                <th className="rk-num">n</th>
-                <th>Herkunft</th>
+                <th>Bedeutung und Herkunft</th>
+                <th className="rk-messkopf">Wert im Plausibilitätsbereich</th>
+                <th className="rk-fuellspalte" />
               </tr>
             </thead>
             <tbody>

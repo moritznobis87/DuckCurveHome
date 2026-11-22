@@ -10,7 +10,7 @@ export default async function Page() {
   // Wer hier einen Parameter übersteuert, greift in die Auslegung der Regler ein.
   await requireOwner();
   return (
-    <AreaShell kicker="Die ganze Regelung als Blockschaltbild · und woher jede Zahl kommt">
+    <AreaShell kicker="Blockschaltbild der Kaskade · Herkunft jeder Zahl">
       <Regelkreis />
     </AreaShell>
   );

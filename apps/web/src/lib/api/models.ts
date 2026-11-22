@@ -152,17 +152,20 @@ export type RegelkreisKante = Voll<S["KanteAnsicht"], "art">;
 export type RegelkreisKreis = Voll<S["KreisAnsicht"], "erklaerung" | "kennlinie">;
 export type RegelkreisParameter = Voll<S["ParameterAnsicht"], "wirkt_auf" | "protokoll" | "n">;
 export type RegelkreisGuete = S["GueteAnsicht"];
+/** Ein Übertragungsglied samt gerechnetem Kennbild (Sprungantwort oder Kennlinie). */
+export type RegelkreisGlied = Voll<S["GliedAnsicht"], "kurve2">;
 export type RegelkreisArbeitspunkt = Voll<S["Arbeitspunkt"], "aussen_gemessen" | "vorlauf_gemessen">;
 export type RegelkreisUebernahme = S["Uebernahme"];
 export type RegelkreisHerkunft = RegelkreisParameter["herkunft"];
 
 /** Die Regelkreis-Karte: Struktur, geltende Parameter, Entwurf und Lernzustand. */
-export type Regelkreis = Omit<S["RegelkreisOut"], "bloecke" | "kanten" | "kreise" | "parameter" | "arbeitspunkt" | "uebersteuert" | "uebernahmen"> & {
+export type Regelkreis = Omit<S["RegelkreisOut"], "bloecke" | "kanten" | "kreise" | "parameter" | "arbeitspunkt" | "glieder" | "uebersteuert" | "uebernahmen"> & {
   bloecke: RegelkreisBlock[];
   kanten: RegelkreisKante[];
   kreise: RegelkreisKreis[];
   parameter: RegelkreisParameter[];
   arbeitspunkt: RegelkreisArbeitspunkt;
+  glieder: RegelkreisGlied[];
   uebersteuert: string[];
   uebernahmen: number;
 };

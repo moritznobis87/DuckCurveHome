@@ -5657,6 +5657,28 @@
             },
             "type": "array",
             "title": "Parameter"
+          },
+          "glied": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glied"
+          },
+          "glied_entwurf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glied Entwurf"
           }
         },
         "type": "object",
@@ -9589,6 +9611,103 @@
         ],
         "title": "GeraetVerlaufPunktOut",
         "description": "Ein Abschnitt im Verlauf: Mittel, Spitzen und Stände am Ende des Abschnitts."
+      },
+      "GliedAnsicht": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kurz": {
+            "type": "string",
+            "title": "Kurz"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "g_s": {
+            "type": "string",
+            "title": "G S"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "sprung",
+              "kennlinie",
+              "takt"
+            ],
+            "title": "Art"
+          },
+          "kategorie": {
+            "type": "string",
+            "enum": [
+              "strecke",
+              "regler",
+              "messglied",
+              "nichtlinear",
+              "planung",
+              "beobachter"
+            ],
+            "title": "Kategorie"
+          },
+          "nichtlinear": {
+            "type": "boolean",
+            "title": "Nichtlinear"
+          },
+          "erkennen": {
+            "type": "string",
+            "title": "Erkennen"
+          },
+          "kurve": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Kurve"
+          },
+          "kurve2": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Kurve2"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kurz",
+          "name",
+          "g_s",
+          "art",
+          "kategorie",
+          "nichtlinear",
+          "erkennen",
+          "kurve"
+        ],
+        "title": "GliedAnsicht",
+        "description": "Ein Übertragungsglied mit seinem Bild: Kurzzeichen, Name, Funktion, Sprungantwort.\n\nDer Katalog steht einmal in der Antwort und nicht an jedem Block. Die Kurven sind auf das\nEinheitsquadrat normiert - Form, keine Messung."
       },
       "GueteAnsicht": {
         "properties": {
@@ -14755,6 +14874,13 @@
             "type": "array",
             "title": "Bloecke"
           },
+          "glieder": {
+            "items": {
+              "$ref": "#/components/schemas/GliedAnsicht"
+            },
+            "type": "array",
+            "title": "Glieder"
+          },
           "kanten": {
             "items": {
               "$ref": "#/components/schemas/KanteAnsicht"
@@ -14802,6 +14928,7 @@
           "arbeitspunkt",
           "kosten",
           "bloecke",
+          "glieder",
           "kanten",
           "kreise",
           "parameter",

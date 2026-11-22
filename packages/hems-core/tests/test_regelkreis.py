@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import math
 from datetime import UTC, datetime, timedelta
+from itertools import pairwise
 
 import pytest
 
 from hems_core.domain.config import HeatDemandConfig, HemsConfig, StoveConfig
-from hems_core.regelkreis import entwurf, karte, messung, parameter, schaetzer, struktur
+from hems_core.regelkreis import entwurf, glied, karte, messung, parameter, schaetzer, struktur
 from hems_core.thermal import kontaktwirkung
 from hems_core.thermal.kennlinie import Ausgleich
 
@@ -775,3 +776,102 @@ def test_kandidaten_tragen_die_kennungen_des_registers() -> None:
     )
     for k in messung.aus_kennlinie(a):
         assert k.pid in parameter.PARAMETER
+
+
+# --------------------------------------------------------------- Übertragungsglieder
+
+
+def test_jeder_block_sagt_was_fuer_ein_glied_er_ist() -> None:
+    """Störgrößen und Summierstellen ausgenommen: eine Störgröße ist kein Glied, sondern ein
+    Eingang, und eine Summierstelle überträgt nicht, sie addiert."""
+    for b in struktur.BLOECKE:
+        if b.rolle in ("stoergroesse", "summierstelle"):
+            assert b.glied is None, b.id
+        else:
+            assert b.glied in glied.GLIEDER, b.id
+
+
+def test_der_pufferkreis_nennt_entwurf_und_ausfuehrung_getrennt() -> None:
+    """Ausgelegt wird ein PI-Regler, ausgeführt wird ein Zweipunktregler. Wer nur das eine sieht,
+    versteht entweder die Hysterese nicht oder die Einstellregel nicht."""
+    b = struktur.NACH_ID["puffer_regler"]
+    assert b.glied == "zweipunkt"
+    assert b.glied_entwurf == "pi_regler"
+
+
+def test_der_puffer_ist_ein_integrierer_mit_verzoegerungskette() -> None:
+    """Die Einordnung, aus der der ganze Entwurf folgt: über die Energie ein Integrierer, über die
+    Schichtung eine Kette. Ein Verzögerungsglied wäre die falsche Behauptung - wer die Freigabe
+    stehen lässt, kocht den Speicher, er läuft nicht in einen Endwert."""
+    assert struktur.NACH_ID["puffer"].glied == "itn"
+    assert glied.GLIEDER["itn"].kategorie == "strecke"
+
+
+def test_jedes_glied_hat_eine_kurve_im_einheitsquadrat() -> None:
+    """Die Bilder sind gerechnet und nicht gemalt; sie müssen in ihr Kästchen passen."""
+    for g in glied.GLIEDER.values():
+        assert len(g.kurve) >= 3, g.id
+        for x, y in (*g.kurve, *g.kurve2):
+            assert -0.01 <= x <= 1.01, (g.id, x)
+            assert -0.01 <= y <= 1.01, (g.id, y)
+        assert g.g_s and g.erkennen
+
+
+def test_die_sprungantworten_haben_die_form_ihres_glieds() -> None:
+    """Die Probe aufs Exempel: ein PT1 steigt am Anfang am steilsten, ein PT2 beginnt flach, ein
+    Totzeitglied tut erst gar nichts, und ein Integrierer kommt nie zum Stillstand."""
+
+    def wert(gid: str, x: float) -> float:
+        """Zwischen den Stützstellen geradlinig - so zeichnet die Anzeige die Kurve auch."""
+        punkte = glied.GLIEDER[gid].kurve
+        for (x0, y0), (x1, y1) in pairwise(punkte):
+            if x0 <= x <= x1:
+                f = 0.0 if x1 == x0 else (x - x0) / (x1 - x0)
+                return y0 + f * (y1 - y0)
+        return punkte[-1][1]
+
+    # PT1: nach einem Viertel der Zeit schon mehr als die Hälfte des Endwerts.
+    assert wert("pt1", 0.4) > 0.5 * wert("pt1", 1.0)
+    # PT2: zu diesem Zeitpunkt deutlich weniger - der Wendepunkt liegt später.
+    assert wert("pt2_tt", 0.4) < wert("pt1", 0.4)
+    # Totzeit: am Anfang genau null.
+    assert wert("tt", 0.2) == 0.0
+    assert wert("tt", 0.9) > 0.5
+    # Integrierer: steigt bis zum Rand.
+    assert wert("i", 1.0) > wert("i", 0.6) > wert("i", 0.3)
+    # PI-Regler: springt sofort und steigt danach weiter.
+    assert wert("pi_regler", 0.13) > 0.2
+    assert wert("pi_regler", 1.0) > wert("pi_regler", 0.13)
+
+
+def test_nichtlineare_glieder_zeigen_eine_kennlinie_statt_einer_sprungantwort() -> None:
+    """Bei einer Begrenzung ist die Zeit nicht interessant, die Krümmung sehr."""
+    for gid in ("begrenzung", "auswahl", "p_kennlinie", "p_kennfeld", "hysterese"):
+        assert glied.GLIEDER[gid].art == "kennlinie"
+        assert glied.GLIEDER[gid].nichtlinear
+
+
+def test_die_karte_liefert_den_katalog_der_vorkommenden_glieder() -> None:
+    k = karte.aufbauen(CFG, schaetzer.Schaetzstand(), jetzt=T0)
+    katalog = {g.id for g in k.glieder}
+    benutzt = {b.glied for b in k.bloecke if b.glied} | {
+        b.glied_entwurf for b in k.bloecke if b.glied_entwurf
+    }
+    assert katalog == benutzt
+    assert "itn" in katalog and "zweipunkt" in katalog and "pi_regler" in katalog
+
+
+def test_umschaltpunkt_ausserhalb_der_hausgrenzen_wird_nicht_gemeldet() -> None:
+    """Bei billigem Strom liegt der rechnerische Schnittpunkt bei minus zwanzig Grad. Dort gilt
+    die COP-Ebene nicht mehr, und die Zahl liest sich wie eine Auskunft, ohne eine zu sein."""
+    stand = schaetzer.Schaetzstand()
+    guenstig = karte.aufbauen(
+        CFG,
+        stand,
+        jetzt=T0,
+        arbeitspunkt=karte.Arbeitspunkt(
+            aussen_c=6.0, vorlauf_c=40.0, strompreis_eur_kwh=0.08, aussen_gemessen=True
+        ),
+    )
+    assert guenstig.kosten.umschalt_aussen_c is None
+    assert guenstig.kosten.cop_umschalt < 1.5

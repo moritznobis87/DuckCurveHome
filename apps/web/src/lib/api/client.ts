@@ -48,7 +48,7 @@ const reglerVoll = (d: ReglerEinstellungen): ReglerEinstellungen => ({ ...d, wer
  * Die Karte auffüllen: Felder mit Vorbelegung im Schema kommen als `optional` heraus, obwohl die
  * Antwort sie immer trägt. Einmal hier statt in jeder Zeile der Zeichnung.
  */
-type RegelkreisRoh = Omit<Regelkreis, "bloecke" | "kanten" | "kreise" | "parameter" | "arbeitspunkt" | "uebersteuert" | "uebernahmen"> & Record<string, unknown>;
+type RegelkreisRoh = Omit<Regelkreis, "bloecke" | "kanten" | "kreise" | "parameter" | "arbeitspunkt" | "glieder" | "uebersteuert" | "uebernahmen"> & Record<string, unknown>;
 
 const regelkreisVoll = (d: RegelkreisRoh): Regelkreis => {
   const roh = d as unknown as Regelkreis;
@@ -59,6 +59,7 @@ const regelkreisVoll = (d: RegelkreisRoh): Regelkreis => {
     kreise: (roh.kreise ?? []).map((k) => ({ ...k, erklaerung: k.erklaerung ?? [], kennlinie: k.kennlinie ?? [] })),
     parameter: (roh.parameter ?? []).map((p) => ({ ...p, n: p.n ?? 0, wirkt_auf: p.wirkt_auf ?? [], protokoll: p.protokoll ?? [] })),
     arbeitspunkt: { ...roh.arbeitspunkt, aussen_gemessen: roh.arbeitspunkt?.aussen_gemessen ?? false, vorlauf_gemessen: roh.arbeitspunkt?.vorlauf_gemessen ?? false },
+    glieder: (roh.glieder ?? []).map((g) => ({ ...g, kurve2: g.kurve2 ?? [] })),
     uebersteuert: roh.uebersteuert ?? [],
     uebernahmen: roh.uebernahmen ?? 0,
   };

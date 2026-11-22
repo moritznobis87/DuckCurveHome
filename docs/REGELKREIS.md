@@ -61,6 +61,34 @@ ob sie vor ihrer Wirkung bekannt sind. Deshalb trägt jede in `struktur.py` eine
 | Fensterlüftung | erkannt | Integrator wird angehalten |
 | Raumwärme des Ofens | aufgeschaltet | aus dem Fahrplan, nicht nachträglich ausgeregelt |
 
+## 3a. Welches Übertragungsglied jeder Block ist
+
+Jeder Block trägt seine Einordnung mit, und das ist keine Beschriftung, sondern eine Behauptung,
+aus der der Entwurf folgt. Der Katalog steht in `glied.py`; jedes Glied bringt Kurzzeichen, Name,
+Übertragungsfunktion, ein Erkennungszeichen in einem Satz und sein **Kennbild** mit - die
+Sprungantwort, bei statischen Gliedern die Kennlinie. Die Kurven sind gerechnet und nicht gemalt:
+sie folgen aus der Übertragungsfunktion und stehen deshalb im Kern.
+
+| Block | Glied | warum |
+|---|---|---|
+| Wärmepumpe, Pelletofen, Mischer/Verteiler | PT1-Tt | erst passiert nichts, dann die Exponentialkurve |
+| Pufferspeicher | ITn | über die Energie ein Integrierer, über die Schichtung eine Kette von vier Gliedern |
+| Raummodell | PT2-Tt | zwei Speicher (Estrich, Luft), deshalb ein Wendepunkt |
+| Vorlauf- und Raumfühler, PV-Bias | PT1 | Filter erster Ordnung |
+| Pufferlade-Regler | 2-Pkt, ausgelegt als PI | die Stellgröße ist ein Kontakt; die Einstellregel gilt dem Entwurf |
+| Mischer- und Einzelraum-Regler | PI | Sprung und Gerade |
+| Erzeuger-Zuordnung | 3-Pkt | zwei Maschinen und eine Totzone dazwischen |
+| COP-Kennfeld | P(θ) | eine Schar statt einer Geraden: Verstärkungsplanung |
+| Grenzkosten, Heizkennlinie | P mit Kennlinie | nichtlinear; die Verstärkung hängt vom Arbeitspunkt ab |
+| Leitventil-Logik | max | Auswahlglied: der Raum mit dem größten Bedarf führt |
+| Komfortgrenzen | ⊓ | Begrenzungsglied |
+| Beobachter | x̂ | Kalman-Filter über vier Schichttemperaturen |
+| Fahrplan | MPC | prädiktiver Zustandsregler, abgetastet im Viertelstundenraster |
+
+**Nichtlineare Glieder sind als solche gekennzeichnet**, und das hat Folgen: die Frequenzkennlinie
+der drei stetigen Kreise gilt nur im linearisierten Arbeitspunkt, und der wandert mit dem Wetter.
+Deshalb steht der Arbeitspunkt in jeder Antwort.
+
 ## 4. Der Entwurf: SIMC
 
 Die Regler werden **gerechnet, nicht eingestellt**. Aus den Streckenparametern folgt der PI-Regler
@@ -186,6 +214,7 @@ Verstärkungsplanung, und sie ist damit sichtbar.
 | Pfad | Inhalt |
 |---|---|
 | `hems_core/regelkreis/struktur.py` | Blöcke, Signale, Störgrößen, Kreise - als geprüfte Daten |
+| `hems_core/regelkreis/glied.py` | Katalog der Übertragungsglieder mit gerechneten Kennbildern |
 | `hems_core/regelkreis/parameter.py` | das Register: Symbol, Einheit, Startwert, Grenzen, Herkunft |
 | `hems_core/regelkreis/entwurf.py` | Streckenmodelle, SIMC, Frequenzkennlinie, Reserven, Hysterese |
 | `hems_core/regelkreis/schaetzer.py` | RLS, EWMA, Übernahmeprüfung, Schätzstand |
@@ -193,4 +222,4 @@ Verstärkungsplanung, und sie ist damit sichtbar.
 | `hems_core/regelkreis/karte.py` | setzt alles zu einer Antwort zusammen |
 | `dch_api/application/regelkreis.py` | Lernlauf, Arbeitspunkt, Persistenz |
 | `dch_api/routers/regelkreis.py` | `GET /regelkreis`, `POST`/`DELETE /regelkreis/parameter/{pid}` |
-| `apps/web/src/components/regelkreis/` | die Zeichnung: Layout, Karte, Detailblatt |
+| `apps/web/src/components/regelkreis/` | die Zeichnung: Layout, Karte, Detailblatt, Instrumente |

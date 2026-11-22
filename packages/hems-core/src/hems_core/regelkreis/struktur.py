@@ -41,6 +41,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Literal
 
+from hems_core.regelkreis.glied import GLIEDER
 from hems_core.regelkreis.parameter import LAMBDA_JE_KREIS, PARAMETER, je_block
 
 #: Die Kaskadenebene. 4 ist außen und langsam, 0 ist der einzelne Raum.
@@ -115,6 +116,18 @@ class Block:
     #: Signalmarke, die dieser Block setzt bzw. liest.
     gibt_marke: str | None = None
     marke: str | None = None
+    #: Was für ein Übertragungsglied der Block ist (Kennung aus `glied.GLIEDER`).
+    #:
+    #: Leer bleibt es nur bei Störgrößen und Summierstellen: eine Störgröße ist kein Glied,
+    #: sondern ein Eingang, und eine Summierstelle überträgt nicht, sie addiert.
+    glied: str | None = None
+    #: Wo Entwurf und Ausführung auseinanderfallen, das Glied des Entwurfs.
+    #:
+    #: Der Pufferkreis ist der Fall: ausgelegt wird ein PI-Regler, ausgeführt wird ein
+    #: Zweipunktregler, weil die Stellgröße ein Kontakt ist. Beides zu nennen ist nicht
+    #: Umständlichkeit - wer nur das eine sieht, versteht die Hysterese nicht oder die
+    #: Einstellregel nicht.
+    glied_entwurf: str | None = None
 
     @property
     def parameter(self) -> tuple[str, ...]:
@@ -261,6 +274,7 @@ _E4: tuple[Block, ...] = (
     ),
     Block(
         id="kosten_wp",
+        glied="p_kennlinie",
         ebene=4,
         rolle="rechenglied",
         name="Grenzkosten Wärmepumpe",
@@ -276,6 +290,7 @@ _E4: tuple[Block, ...] = (
     ),
     Block(
         id="kosten_ofen",
+        glied="p",
         ebene=4,
         rolle="rechenglied",
         name="Grenzkosten Pelletofen",
@@ -294,6 +309,7 @@ _E4: tuple[Block, ...] = (
     ),
     Block(
         id="pv",
+        glied="pt1",
         ebene=4,
         rolle="modell",
         name="PV-Prognose",
@@ -312,6 +328,7 @@ _E4: tuple[Block, ...] = (
     ),
     Block(
         id="bedarf",
+        glied="p",
         ebene=4,
         rolle="modell",
         name="Wärmebedarf",
@@ -331,6 +348,7 @@ _E4: tuple[Block, ...] = (
     ),
     Block(
         id="komfort",
+        glied="begrenzung",
         ebene=4,
         rolle="rechenglied",
         name="Komfort und Nebenbedingungen",
@@ -352,6 +370,7 @@ _E4: tuple[Block, ...] = (
     ),
     Block(
         id="fahrplan",
+        glied="zustandsregler",
         ebene=4,
         rolle="regler",
         name="Ökonomischer Führungsregler",
@@ -383,6 +402,7 @@ _E4: tuple[Block, ...] = (
 _E3: tuple[Block, ...] = (
     Block(
         id="cop",
+        glied="p_kennfeld",
         ebene=3,
         rolle="modell",
         name="COP-Kennfeld",
@@ -456,6 +476,8 @@ _E3: tuple[Block, ...] = (
     ),
     Block(
         id="puffer_regler",
+        glied="zweipunkt",
+        glied_entwurf="pi_regler",
         ebene=3,
         rolle="regler",
         name="Pufferlade-Regler",
@@ -480,6 +502,7 @@ _E3: tuple[Block, ...] = (
     ),
     Block(
         id="zuordnung",
+        glied="dreipunkt",
         ebene=3,
         rolle="logik",
         name="Erzeuger-Zuordnung",
@@ -501,6 +524,7 @@ _E3: tuple[Block, ...] = (
     ),
     Block(
         id="wp",
+        glied="pt1_tt",
         ebene=2,
         rolle="stellglied",
         name="Wärmepumpe (Anforderung)",
@@ -526,6 +550,7 @@ _E3: tuple[Block, ...] = (
     ),
     Block(
         id="ofen",
+        glied="pt1_tt",
         ebene=2,
         rolle="stellglied",
         name="Pelletofen (Stufe 1–5)",
@@ -546,9 +571,10 @@ _E3: tuple[Block, ...] = (
     ),
     Block(
         id="puffer",
+        glied="itn",
         ebene=3,
         rolle="strecke",
-        name="Pufferspeicher, 1000 l, vier Schichten",
+        name="Pufferspeicher, 1000 Liter",
         kurz="1/(Cbuf s + UA) · (1+Ts s)^−4",
         erklaerung=(
             "Das dämpfende Glied der ganzen Anlage: zwei Erzeuger, zwei Entnahmen, vier Fühler. "
@@ -571,9 +597,10 @@ _E3: tuple[Block, ...] = (
     ),
     Block(
         id="beobachter",
+        glied="beobachter",
         ebene=3,
         rolle="beobachter",
-        name="Beobachter: Ladestand und Abfluss",
+        name="Beobachter",
         kurz="Kalman über T1…T4",
         erklaerung=(
             "Das Haus hat keinen Wärmemengenzähler. Der Beobachter rekonstruiert aus vier "
@@ -600,6 +627,7 @@ _E3: tuple[Block, ...] = (
 _E1: tuple[Block, ...] = (
     Block(
         id="kennlinie",
+        glied="p_kennlinie",
         ebene=1,
         rolle="vorsteuerung",
         name="Heizkennlinie",
@@ -622,6 +650,7 @@ _E1: tuple[Block, ...] = (
     ),
     Block(
         id="leitventil",
+        glied="auswahl",
         ebene=1,
         rolle="logik",
         name="Leitventil-Logik",
@@ -641,6 +670,7 @@ _E1: tuple[Block, ...] = (
     ),
     Block(
         id="vl_regler",
+        glied="pi_regler",
         ebene=1,
         rolle="regler",
         name="Mischer-Regler",
@@ -662,6 +692,7 @@ _E1: tuple[Block, ...] = (
     ),
     Block(
         id="heizkreis",
+        glied="pt1_tt",
         ebene=1,
         rolle="strecke",
         name="Mischer, Pumpe, Verteiler",
@@ -684,6 +715,7 @@ _E1: tuple[Block, ...] = (
     ),
     Block(
         id="vl_fuehler",
+        glied="pt1",
         ebene=1,
         rolle="messglied",
         name="Vorlauffühler",
@@ -739,6 +771,7 @@ _E0: tuple[Block, ...] = (
     ),
     Block(
         id="raum_regler",
+        glied="pi_regler",
         ebene=0,
         rolle="regler",
         name="Einzelraum-Regler",
@@ -765,6 +798,7 @@ _E0: tuple[Block, ...] = (
     ),
     Block(
         id="ventil",
+        glied="pt1",
         ebene=0,
         rolle="stellglied",
         name="Stellantrieb am Verteiler",
@@ -785,6 +819,7 @@ _E0: tuple[Block, ...] = (
     ),
     Block(
         id="raum",
+        glied="pt2_tt",
         ebene=0,
         rolle="strecke",
         name="Raummodell, zwei Knoten",
@@ -809,6 +844,7 @@ _E0: tuple[Block, ...] = (
     ),
     Block(
         id="raum_fuehler",
+        glied="pt1",
         ebene=0,
         rolle="messglied",
         name="Raumfühler",
@@ -824,6 +860,7 @@ _E0: tuple[Block, ...] = (
     ),
     Block(
         id="weitere_raeume",
+        glied="pt2_tt",
         ebene=0,
         rolle="teilkreise",
         name="Neun weitere Räume",
@@ -1058,6 +1095,12 @@ def pruefe_struktur() -> None:
             raise ValueError(f"Block {b.id} nennt unbekannten Kreis {b.kreis}")
         if b.rolle == "stoergroesse" and b.behandlung is None:
             raise ValueError(f"Störgröße {b.id} ohne Behandlung")
+        braucht_glied = b.rolle not in ("stoergroesse", "summierstelle")
+        if braucht_glied and b.glied is None:
+            raise ValueError(f"Block {b.id} ohne Übertragungsglied")
+        for gid in (b.glied, b.glied_entwurf):
+            if gid is not None and gid not in GLIEDER:
+                raise ValueError(f"Block {b.id} nennt unbekanntes Glied {gid}")
     for kreis_id, pid in LAMBDA_JE_KREIS.items():
         if kreis_id not in KREIS_NACH_ID:
             raise ValueError(f"λ für unbekannten Kreis {kreis_id}")

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Regelkreis, RegelkreisHerkunft, RegelkreisParameter } from "@/lib/api/models";
+import type { Regelkreis, RegelkreisParameter } from "@/lib/api/models";
+import { HERKUNFT_FARBE, Sprungantwort } from "./Anzeigen";
 import { BESCHRIFTUNG, EBENEN, PLATZ, SICHT, WEGE, notplatz, type Punkt, type Rechteck } from "./layout";
 
 /**
@@ -16,15 +17,6 @@ import { BESCHRIFTUNG, EBENEN, PLATZ, SICHT, WEGE, notplatz, type Punkt, type Re
  * übersteuert. Das ist die wichtigste Auskunft der ganzen Seite: eine Karte, auf der eine Annahme
  * aussieht wie eine Messung, verleitet zu Schlüssen, die die Daten nicht tragen.
  */
-
-const HERKUNFT_FARBE: Record<RegelkreisHerkunft, string> = {
-  gemessen: "var(--amber)",
-  geschaetzt: "var(--amber-soft)",
-  annahme: "var(--text-3)",
-  fest: "var(--text-3)",
-  entwurf: "var(--mist)",
-  uebersteuert: "var(--alert)",
-};
 
 const KANTE_KLASSE: Record<string, string> = {
   signal: "rk-kante",
@@ -103,19 +95,22 @@ function stapel(
   stoer: boolean,
   klein: boolean,
   oben: boolean,
+  rechts: number,
+  mitFormel: boolean,
 ): Zeile[] {
   const aus: Zeile[] = [];
   const unten = r.y + r.h - (b.kreis || b.marke ? 20 : 6);
   // Platz für die Lernmarke oder die Signalmarke oben rechts - aber nur, wo eine steht.
-  const ersteBreite = r.w - (oben ? 34 : 20);
+  const ersteBreite = r.w - (oben ? 34 : 20) - rechts;
   let y = r.y + (stoer ? 16 : 19);
   const namen = stoer ? [kuerze(b.name, ersteBreite, 6.2)] : teile(b.name, Math.floor(ersteBreite / 6.4)).slice(0, 2);
   for (const [i, n] of namen.entries()) {
-    aus.push({ text: i === 0 ? kuerze(n, ersteBreite, 6.4) : kuerze(n, r.w - 20, 6.4), klasse: stoer ? "rk-name-klein" : "rk-name", y });
+    aus.push({ text: i === 0 ? kuerze(n, ersteBreite, 6.4) : kuerze(n, r.w - 20 - rechts, 6.4), klasse: stoer ? "rk-name-klein" : "rk-name", y });
     y += 14;
   }
-  if (b.kurz) {
-    const formeln = klein || stoer ? [kuerze(b.kurz, r.w - 20, 6.1)] : teile(b.kurz, Math.floor((r.w - 20) / 6.1)).slice(0, 2);
+  if (b.kurz && mitFormel) {
+    const breit = r.w - 20 - rechts;
+    const formeln = klein || stoer ? [kuerze(b.kurz, breit, 6.1)] : teile(b.kurz, Math.floor(breit / 6.1)).slice(0, 2);
     y += 3;
     for (const z of formeln) {
       if (y > unten) break;
@@ -147,6 +142,7 @@ export function Karte({ d, sicht, gewaehlt, onWaehle }: { d: Regelkreis; sicht: 
     return nach;
   }, [d.parameter]);
 
+  const glieder = useMemo(() => Object.fromEntries(d.glieder.map((g) => [g.id, g])), [d.glieder]);
   const ohnePlatz = d.bloecke.filter((b) => !PLATZ[b.id]);
   const platz: Record<string, Rechteck> = {};
   for (const b of d.bloecke) platz[b.id] = PLATZ[b.id]?.rect ?? notplatz(ohnePlatz.indexOf(b));
@@ -221,6 +217,10 @@ export function Karte({ d, sicht, gewaehlt, onWaehle }: { d: Regelkreis; sicht: 
             const rechtecke = [haupt, ...(PLATZ[b.id]?.wdh ?? [])];
             const ps = (params[b.id] ?? []).slice(0, 3);
             const klein = haupt.h <= 44;
+            // Das Kennbild steht rechts im Kaestchen, wo Platz dafuer ist; sonst nur das
+            // Kurzzeichen. Der Textstapel weicht ihm aus.
+            const g = b.glied ? glieder[b.glied] : undefined;
+            const bild = g && haupt.h >= 74 && haupt.w >= 150 ? g : undefined;
             const summe = b.rolle === "summierstelle";
             const stoer = b.rolle === "stoergroesse";
             const gelernt = (params[b.id] ?? []).some((p) => p.herkunft === "gemessen" || p.herkunft === "geschaetzt" || p.herkunft === "annahme");
@@ -259,11 +259,23 @@ export function Karte({ d, sicht, gewaehlt, onWaehle }: { d: Regelkreis; sicht: 
                 )}
                 {summe
                   ? null
-                  : stapel(b, haupt, ps, stoer, klein, gelernt || !!b.gibt_marke).map((z, i) => (
+                  : stapel(b, haupt, ps, stoer, klein, gelernt || !!b.gibt_marke, bild ? 54 : 0, !bild).map((z, i) => (
                       <text key={i} className={z.klasse} style={z.farbe ? { fill: z.farbe } : undefined} x={haupt.x + 11} y={z.y}>
                         {z.text}
                       </text>
                     ))}
+                {bild ? (
+                  <g transform={`translate(${haupt.x + haupt.w - 50} ${haupt.y + 22})`} className="rk-kennbild">
+                    <Sprungantwort g={bild} />
+                    <text x={21} y={36} textAnchor="middle" className="rk-glied-kurz">
+                      {bild.kurz}
+                    </text>
+                  </g>
+                ) : g && !summe ? (
+                  <text x={haupt.x + haupt.w - 8} y={haupt.y + haupt.h - 7} textAnchor="end" className="rk-glied-kurz">
+                    {g.kurz}
+                  </text>
+                ) : null}
                 {summe ? null : (
                   <>
                     {b.kreis ? (

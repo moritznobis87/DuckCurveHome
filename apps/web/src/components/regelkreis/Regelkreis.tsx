@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardHead } from "@/components/ui/Card";
 import { Methode } from "@/components/ui/Methode";
-import { Stat } from "@/components/ui/Stat";
 import { ApiError, api } from "@/lib/api/client";
 import type { Regelkreis as Daten, RegelkreisUebernahme } from "@/lib/api/models";
+import { Leuchte, Pegel, Ring, Rundinstrument, SprungantwortBild } from "./Anzeigen";
 import { Blatt } from "./Blatt";
 import { Karte } from "./Karte";
 import { SICHT } from "./layout";
@@ -30,6 +30,25 @@ import { SICHT } from "./layout";
  */
 
 const de = (v: number, stellen = 2) => v.toLocaleString("de-DE", { minimumFractionDigits: stellen, maximumFractionDigits: stellen });
+
+/** So viele Stützstellen verlangt die Übernahmeprüfung, bevor sie überhaupt hinsieht. */
+const NOETIGE_STUETZSTELLEN = 30;
+
+/** Die Ordnung des Katalogs: erst, was regelt, dann was gestellt wird, dann der Rest. */
+const KATEGORIEN: [string, string][] = [
+  ["regler", "Regelglieder"],
+  ["strecke", "Streckenglieder"],
+  ["nichtlinear", "Nichtlineare Glieder"],
+  ["beobachter", "Beobachter"],
+  ["planung", "Planung"],
+  ["messglied", "Messglieder"],
+];
+
+/** In welchen Blöcken ein Glied vorkommt - der Katalog soll nicht abstrakt bleiben. */
+function woGenutzt(d: Daten, gid: string): string {
+  const namen = d.bloecke.filter((b) => b.glied === gid || b.glied_entwurf === gid).map((b) => b.name);
+  return namen.length ? `im Haus: ${namen.join(" · ")}` : "";
+}
 
 /** Alle Übernahmen über alle Parameter, jüngste zuerst. */
 function protokoll(d: Daten): { pid: string; name: string; symbol: string; einheit: string; stellen: number; block: string; u: RegelkreisUebernahme }[] {
@@ -83,18 +102,85 @@ export function Regelkreis() {
   if (fehler && !d) return <Card>{fehler}</Card>;
   if (!d) return <Card>Karte wird geladen …</Card>;
 
+  const springeZuGlied = (gid: string) => {
+    const b = d.bloecke.find((x) => x.glied === gid || x.glied_entwurf === gid);
+    if (b) setGewaehlt(b.id);
+  };
   const log = protokoll(d);
   const ap = d.arbeitspunkt;
   const k = d.kosten;
+  const billiger = k.waermepumpe_ct_kwh <= k.ofen_ct_kwh;
+  // Wie viele der lernbaren Parameter stehen schon auf einer Messung statt auf einer Annahme.
+  const lernbar = d.parameter.filter((p) => p.schaetzart !== "keiner").length;
+  const belegt = d.parameter.filter((p) => p.herkunft === "gemessen" || p.herkunft === "geschaetzt").length;
+  const kreiseGut = d.kreise.every((kr) => !kr.reserven || kr.reserven.gut);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rk-stats">
-        <Stat label="Arbeitszahl im Punkt" value={de(k.cop, 2)} hint={`bei ${de(ap.aussen_c, 1)} °C außen und ${de(ap.vorlauf_c, 0)} °C Vorlauf · ${ap.aussen_gemessen ? "Außentemperatur gemessen" : "Auslegungspunkt"}${ap.vorlauf_gemessen ? ", Vorlauf gemessen" : ", Vorlauf aus der Kennlinie gerechnet"}`} tone="amber" />
-        <Stat label="Grenzkosten Wärme" value={`${de(k.waermepumpe_ct_kwh, 1)} / ${de(k.ofen_ct_kwh, 1)}`} unit="ct/kWh" hint={`Wärmepumpe gegen Pelletofen bei ${de(ap.strompreis_eur_kwh * 100, 1)} ct/kWh Strom`} tone={k.waermepumpe_ct_kwh <= k.ofen_ct_kwh ? "mist" : "ember"} />
-        <Stat label="Umschaltpunkt" value={k.umschalt_aussen_c !== null ? `${de(k.umschalt_aussen_c, 1)} °C` : "—"} hint={k.umschalt_aussen_c !== null ? `darunter ist der Ofen billiger · nötige Arbeitszahl ${de(k.cop_umschalt, 2)}` : `nötige Arbeitszahl ${de(k.cop_umschalt, 2)}, außerhalb des sinnvollen Bereichs`} />
-        <Stat label="Lernstand" value={d.tage != null ? de(d.tage, 0) : "0"} unit="Betriebstage" hint={`${d.uebernahmen} Übernahme${d.uebernahmen === 1 ? "" : "n"}${d.uebersteuert.length ? ` · ${d.uebersteuert.length} übersteuert` : ""}`} tone={d.uebersteuert.length ? "ember" : undefined} />
-      </div>
+      <section className="rk-konsole" aria-label="Arbeitspunkt und Lernstand">
+        <div className="rk-konsole-feld">
+          <Rundinstrument
+            wert={k.cop}
+            von={1}
+            bis={6}
+            stellen={2}
+            titel="Arbeitszahl im Punkt"
+            felder={[
+              { bis: 2.2, farbe: "var(--alert)" },
+              { bis: 3.2, farbe: "var(--amber)" },
+              { bis: 6, farbe: "var(--mist)" },
+            ]}
+          />
+          <p className="rk-klein rk-konsole-text">
+            bei {de(ap.aussen_c, 1)} °C außen und {de(ap.vorlauf_c, 0)} °C Vorlauf
+            <br />
+            {ap.aussen_gemessen ? "Außentemperatur gemessen" : "Auslegungspunkt"}
+            {ap.vorlauf_gemessen ? ", Vorlauf gemessen" : ", Vorlauf aus der Kennlinie"}
+          </p>
+        </div>
+
+        <div className="rk-konsole-feld rk-konsole-pegel">
+          <Pegel wert={k.waermepumpe_ct_kwh} max={30} schwelle={k.ofen_ct_kwh} titel="Wärmepumpe" zahl={de(k.waermepumpe_ct_kwh, 1)} farbe="var(--heat-pump)" />
+          <Pegel wert={k.ofen_ct_kwh} max={30} titel="Ofen" zahl={de(k.ofen_ct_kwh, 1)} farbe="var(--stove)" />
+          <div className="rk-konsole-text">
+            <span className="kicker">Grenzkosten Wärme</span>
+            <b className="mono" style={{ color: billiger ? "var(--heat-pump)" : "var(--stove)" }}>
+              {billiger ? "Wärmepumpe" : "Pelletofen"}
+            </b>
+            <span className="rk-klein">
+              ct je kWh Wärme bei {de(ap.strompreis_eur_kwh * 100, 1)} ct/kWh Strom. Die Linie am linken Pegel ist der Ofen.
+            </span>
+          </div>
+        </div>
+
+        <div className="rk-konsole-feld">
+          <span className="kicker">Umschaltpunkt</span>
+          <b className="mono rk-konsole-zahl">{k.umschalt_aussen_c !== null ? `${de(k.umschalt_aussen_c, 1)} °C` : "—"}</b>
+          <span className="rk-klein">
+            {k.umschalt_aussen_c !== null ? "darunter ist der Ofen die billigere Kilowattstunde" : "außerhalb des sinnvollen Bereichs"}
+            <br />
+            nötige Arbeitszahl {de(k.cop_umschalt, 2)}
+          </span>
+        </div>
+
+        <div className="rk-konsole-feld">
+          <Ring anteil={lernbar ? belegt / lernbar : 0} mitte={`${belegt}/${lernbar}`} titel="aus Messung" />
+          <div className="rk-konsole-text">
+            <span className="kicker">Lernstand</span>
+            <b className="mono rk-konsole-zahl">{d.tage != null ? de(d.tage, 0) : "0"}<i> Betriebstage</i></b>
+            <span className="rk-klein">
+              {d.uebernahmen} Übernahme{d.uebernahmen === 1 ? "" : "n"}
+            </span>
+            <div className="rk-leuchten">
+              <Leuchte an={ap.aussen_gemessen} titel="Arbeitspunkt gemessen" />
+              <Leuchte an={d.uebersteuert.length > 0} farbe="var(--alert)" titel={`${d.uebersteuert.length} übersteuert`} />
+              {/* Diese Leuchte brennt immer; ihre Farbe ist die Meldung. Eine Warnleuchte, die bei
+                  einer Warnung ausgeht, ist die Umkehrung ihres Zwecks. */}
+              <Leuchte an farbe={kreiseGut ? "var(--mist)" : "var(--alert)"} titel={kreiseGut ? "Reserven in Ordnung" : "Reserve zu klein"} />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {fehler ? <Card>{fehler}</Card> : null}
 
@@ -123,6 +209,7 @@ export function Regelkreis() {
           <span><i className="rk-l-punkt" style={{ background: "var(--text-3)" }} />Annahme oder fest</span>
           <span><i className="rk-l-punkt" style={{ background: "var(--mist)" }} />Entwurf</span>
           <span><i className="rk-l-punkt" style={{ background: "var(--alert)" }} />übersteuert</span>
+          <span><i className="rk-l-bild" />Kennbild: Sprungantwort des Glieds</span>
         </div>
       </Card>
 
@@ -159,7 +246,7 @@ export function Regelkreis() {
               <tr>
                 <th>Modell</th>
                 <th className="rk-num">Restfehler</th>
-                <th className="rk-num">Stützstellen</th>
+                <th className="rk-zelle-mitte">Datenlage</th>
               </tr>
             </thead>
             <tbody>
@@ -171,7 +258,14 @@ export function Regelkreis() {
                     <span className="rk-klein">{g.quelle}</span>
                   </td>
                   <td className="rk-num mono">{g.rmse !== null ? `${de(g.rmse, 3)}${g.einheit === "—" ? "" : ` ${g.einheit}`}` : "—"}</td>
-                  <td className="rk-num mono">{g.n ? g.n.toLocaleString("de-DE") : "—"}</td>
+                  <td className="rk-zelle-mitte">
+                    <Ring
+                      anteil={Math.min(1, g.n / NOETIGE_STUETZSTELLEN)}
+                      mitte={g.n ? (g.n > 999 ? `${Math.round(g.n / 1000)}k` : String(g.n)) : "0"}
+                      groesse={38}
+                      farbe={g.n >= NOETIGE_STUETZSTELLEN ? "var(--amber)" : "var(--mist)"}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -180,42 +274,93 @@ export function Regelkreis() {
 
         <Card>
           <CardHead title="Kennwerte der Kreise" right="nach SIMC entworfen" />
-          <table className="rk-tabelle">
+          <table className="rk-tabelle rk-ktab">
             <thead>
               <tr>
                 <th>Kreis</th>
-                <th className="rk-num">Periode bei ωc</th>
-                <th className="rk-num">Phase</th>
-                <th className="rk-num">Amplitude</th>
+                <th className="rk-zelle-mitte">Phasenreserve</th>
               </tr>
             </thead>
             <tbody>
               {d.kreise.map((kr) => (
                 <tr key={kr.id} className="rk-zeile" onClick={() => setGewaehlt(kr.regler_block)}>
                   <td>
-                    {kr.id} {kr.name}
-                    <br />
-                    <span className="rk-klein">{kr.regelgroesse} über {kr.stellgroesse}</span>
+                    <b className="rk-kreis-name">
+                      {kr.id} {kr.name}
+                    </b>
+                    <span className="rk-klein">
+                      {kr.regelgroesse} über {kr.stellgroesse}
+                    </span>
+                    {kr.reserven ? (
+                      <span className="rk-klein mono">
+                        Periode bei ωc {kr.reserven.periode_min ? (kr.reserven.periode_min >= 60 ? `${de(kr.reserven.periode_min / 60, 1)} h` : `${de(kr.reserven.periode_min, 0)} min`) : "—"}
+                        {" · "}
+                        Amplitudenreserve {kr.reserven.amplitudenreserve !== null ? de(kr.reserven.amplitudenreserve, 2) : "∞"}
+                      </span>
+                    ) : (
+                      <span className="rk-klein">
+                        {kr.art === "planung" ? "gleitender Horizont — in Euro beurteilt" : "hybrid, ganzzahlig — keine Frequenzkennlinie"}
+                      </span>
+                    )}
                   </td>
-                  {kr.reserven ? (
-                    <>
-                      <td className="rk-num mono">{kr.reserven.periode_min ? (kr.reserven.periode_min >= 60 ? `${de(kr.reserven.periode_min / 60, 1)} h` : `${de(kr.reserven.periode_min, 0)} min`) : "—"}</td>
-                      <td className="rk-num mono" style={{ color: kr.reserven.gut ? undefined : "var(--alert)" }}>
-                        {kr.reserven.phasenreserve_grad !== null ? `${de(kr.reserven.phasenreserve_grad, 0)}°` : "—"}
-                      </td>
-                      <td className="rk-num mono">{kr.reserven.amplitudenreserve !== null ? de(kr.reserven.amplitudenreserve, 2) : "∞"}</td>
-                    </>
-                  ) : (
-                    <td colSpan={3} className="rk-klein">
-                      {kr.art === "planung" ? "gleitender Horizont — in Euro beurteilt" : "hybrid, ganzzahlig — keine Frequenzkennlinie"}
-                    </td>
-                  )}
+                  <td className="rk-zelle-mitte">
+                    {kr.reserven ? (
+                      <Rundinstrument
+                        wert={kr.reserven.phasenreserve_grad}
+                        von={0}
+                        bis={90}
+                        stellen={0}
+                        einheit="°"
+                        titel={`Phasenreserve ${kr.id}`}
+                        groesse={62}
+                        felder={[
+                          { bis: 45, farbe: "var(--alert)" },
+                          { bis: 60, farbe: "var(--amber)" },
+                          { bis: 90, farbe: "var(--mist)" },
+                        ]}
+                      />
+                    ) : (
+                      <span className="rk-klein">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </Card>
       </div>
+
+      <Card>
+        <CardHead title="Die Glieder dieser Strecke" right="Kennbild, Kurzzeichen, Übertragungsfunktion" />
+        <p className="rk-text">
+          Jedes Kästchen der Karte trägt sein Kennbild: die Antwort auf einen Sprung am Eingang,
+          bei statischen Gliedern stattdessen die Kennlinie. Wer die Form kennt, erkennt das Glied,
+          ohne die Formel zu lesen — und wer die Formel liest, prüft die Form.
+        </p>
+        <div className="rk-katalog">
+          {KATEGORIEN.map(([key, titel]) => {
+            const glieder = d.glieder.filter((g) => g.kategorie === key);
+            if (!glieder.length) return null;
+            return (
+              <div key={key} className="rk-katalog-gruppe">
+                <span className="kicker">{titel}</span>
+                {glieder.map((g) => (
+                  <div key={g.id} className="rk-katalog-eintrag" onClick={() => springeZuGlied(g.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") springeZuGlied(g.id); }}>
+                    <SprungantwortBild g={g} breite={80} hoehe={48} />
+                    <div>
+                      <b className="mono">{g.kurz}</b>
+                      <span>{g.name}</span>
+                      <code>{g.g_s}</code>
+                      <span className="rk-klein">{g.erkennen}</span>
+                      <span className="rk-klein rk-katalog-wo">{woGenutzt(d, g.id)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
 
       <Methode kurz="Struktur, Entwurf nach SIMC, und wann eine Schätzung den geltenden Wert ersetzt">
         <p>

@@ -27,6 +27,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from hems_core.domain.config import HemsConfig
 from hems_core.regelkreis import entwurf
+from hems_core.regelkreis.glied import GLIEDER
 from hems_core.regelkreis.parameter import (
     LAMBDA_JE_KREIS,
     PARAMETER,
@@ -49,6 +50,11 @@ from hems_core.regelkreis.struktur import (
     Kreis,
     Rolle,
 )
+
+#: Innerhalb dieser Aussentemperaturen ist ein Umschaltpunkt eine Auskunft. Die Grenzen sind die
+#: des Betriebs dieses Hauses, nicht die der Rechnung.
+UMSCHALT_VON_C = -15.0
+UMSCHALT_BIS_C = 18.0
 
 
 class Arbeitspunkt(BaseModel):
@@ -199,6 +205,10 @@ class BlockAnsicht(BaseModel):
     marke: str | None = None
     gibt_marke: str | None = None
     parameter: list[str] = Field(default_factory=list)
+    #: Kennung des Übertragungsglieds; der Katalog steht einmal in der Antwort.
+    glied: str | None = None
+    #: Das Glied des Entwurfs, wo es von der Ausführung abweicht.
+    glied_entwurf: str | None = None
 
 
 class KanteAnsicht(BaseModel):
@@ -209,6 +219,27 @@ class KanteAnsicht(BaseModel):
     signal: str
     art: Kantenart
     vorzeichen: Literal["+", "-"] | None = None
+
+
+class GliedAnsicht(BaseModel):
+    """Ein Übertragungsglied mit seinem Bild: Kurzzeichen, Name, Funktion, Sprungantwort.
+
+    Der Katalog steht einmal in der Antwort und nicht an jedem Block. Die Kurven sind auf das
+    Einheitsquadrat normiert - Form, keine Messung.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    kurz: str
+    name: str
+    g_s: str
+    art: Literal["sprung", "kennlinie", "takt"]
+    kategorie: Literal["strecke", "regler", "messglied", "nichtlinear", "planung", "beobachter"]
+    nichtlinear: bool
+    erkennen: str
+    kurve: list[tuple[float, float]]
+    kurve2: list[tuple[float, float]] = Field(default_factory=list)
 
 
 class GueteAnsicht(BaseModel):
@@ -251,6 +282,8 @@ class Regelkreiskarte(BaseModel):
     arbeitspunkt: Arbeitspunkt
     kosten: Kostenpunkt
     bloecke: list[BlockAnsicht]
+    #: Der Katalog der vorkommenden Übertragungsglieder, einmal je Antwort.
+    glieder: list[GliedAnsicht]
     kanten: list[KanteAnsicht]
     kreise: list[KreisAnsicht]
     parameter: list[ParameterAnsicht]
@@ -327,7 +360,10 @@ def kostenpunkt(cfg: HemsConfig, w: Mapping[str, float], ap: Arbeitspunkt) -> Ko
     aussen: float | None = None
     if abs(w["cop_b"]) > 1e-6:
         aussen = (cop_umschalt - w["cop_a"] - w["cop_c"] * ap.vorlauf_c) / w["cop_b"]
-        if not -30.0 <= aussen <= 30.0:
+        # Ausserhalb der Temperaturen, die dieses Haus erlebt, ist der Schnittpunkt eine
+        # Rechengroesse ohne Aussage: die COP-Ebene gilt dort nicht mehr, und ein Umschaltpunkt
+        # bei minus zwanzig Grad liest sich wie eine Auskunft, ist aber keine.
+        if not UMSCHALT_VON_C <= aussen <= UMSCHALT_BIS_C:
             aussen = None
     return Kostenpunkt(
         cop=arbeitszahl,
@@ -467,6 +503,9 @@ def aufbauen(
     """
     ap = arbeitspunkt or Arbeitspunkt.aus_konfiguration(cfg)
     w = werte(cfg, stand)
+    gebraucht = {b.glied for b in BLOECKE if b.glied} | {
+        b.glied_entwurf for b in BLOECKE if b.glied_entwurf
+    }
     start = startwerte(cfg)
     params: list[ParameterAnsicht] = []
     for pid, p in PARAMETER.items():
@@ -534,8 +573,26 @@ def aufbauen(
                 marke=b.marke,
                 gibt_marke=b.gibt_marke,
                 parameter=list(b.parameter),
+                glied=b.glied,
+                glied_entwurf=b.glied_entwurf,
             )
             for b in BLOECKE
+        ],
+        glieder=[
+            GliedAnsicht(
+                id=g.id,
+                kurz=g.kurz,
+                name=g.name,
+                g_s=g.g_s,
+                art=g.art,
+                kategorie=g.kategorie,
+                nichtlinear=g.nichtlinear,
+                erkennen=g.erkennen,
+                kurve=[(round(x, 4), round(y, 4)) for x, y in g.kurve],
+                kurve2=[(round(x, 4), round(y, 4)) for x, y in g.kurve2],
+            )
+            for g in GLIEDER.values()
+            if g.id in gebraucht
         ],
         kanten=[
             KanteAnsicht(
@@ -563,6 +620,7 @@ __all__ = [
     "KREIS_NACH_ID",
     "Arbeitspunkt",
     "BlockAnsicht",
+    "GliedAnsicht",
     "GueteAnsicht",
     "KanteAnsicht",
     "KennliniePunkt",

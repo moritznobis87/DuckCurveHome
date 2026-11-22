@@ -2491,6 +2491,10 @@ export interface components {
             gibt_marke?: string | null;
             /** Parameter */
             parameter?: string[];
+            /** Glied */
+            glied?: string | null;
+            /** Glied Entwurf */
+            glied_entwurf?: string | null;
         };
         /** BlockRuleConfig */
         BlockRuleConfig: {
@@ -4122,6 +4126,47 @@ export interface components {
             dienste?: {
                 [key: string]: components["schemas"]["GeraetVerlaufDienstOut"];
             };
+        };
+        /**
+         * GliedAnsicht
+         * @description Ein Übertragungsglied mit seinem Bild: Kurzzeichen, Name, Funktion, Sprungantwort.
+         *
+         *     Der Katalog steht einmal in der Antwort und nicht an jedem Block. Die Kurven sind auf das
+         *     Einheitsquadrat normiert - Form, keine Messung.
+         */
+        GliedAnsicht: {
+            /** Id */
+            id: string;
+            /** Kurz */
+            kurz: string;
+            /** Name */
+            name: string;
+            /** G S */
+            g_s: string;
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "sprung" | "kennlinie" | "takt";
+            /**
+             * Kategorie
+             * @enum {string}
+             */
+            kategorie: "strecke" | "regler" | "messglied" | "nichtlinear" | "planung" | "beobachter";
+            /** Nichtlinear */
+            nichtlinear: boolean;
+            /** Erkennen */
+            erkennen: string;
+            /** Kurve */
+            kurve: [
+                number,
+                number
+            ][];
+            /** Kurve2 */
+            kurve2?: [
+                number,
+                number
+            ][];
         };
         /**
          * GueteAnsicht
@@ -6507,6 +6552,8 @@ export interface components {
             kosten: components["schemas"]["Kostenpunkt"];
             /** Bloecke */
             bloecke: components["schemas"]["BlockAnsicht"][];
+            /** Glieder */
+            glieder: components["schemas"]["GliedAnsicht"][];
             /** Kanten */
             kanten: components["schemas"]["KanteAnsicht"][];
             /** Kreise */
