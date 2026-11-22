@@ -37,7 +37,9 @@ final class WallboxTests: XCTestCase {
         abdeckung: Double? = 0.61, seit: String? = "2026-11-10", hinweis: String = "Geschätzt."
     ) -> EvReportOut {
         EvReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             summary: EnergySummaryOut(
+                generatedAt: "2026-11-22T10:00:00+01:00",
                 period: .day, anchor: anker, start: "2026-11-10T00:00:00+01:00",
                 end: "2026-11-11T00:00:00+01:00", totals: t ?? summen(),
                 meta: EnergyMetaOut(

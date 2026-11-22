@@ -16,6 +16,14 @@ import SwiftUI
 /// passen nicht auf 390 Punkte: die Namen wurden abgeschnitten, die Zahlen liefen ineinander.“
 /// Dort steht deshalb ein Reihenschalter über einer Liste, die eine Spanne in lesbarer Größe
 /// zeigt (`handy.css:291-299`).
+///
+/// **Die Zahlen kommen aus einem eigenen Zustand und dürfen fehlen.** Die vier Spalten hängen
+/// am Ankertag und nicht an der gewählten Spanne; sie werden darum neben der Seite geholt
+/// (``Spannenstand``) und treffen später ein als ihre Kacheln. Solange eine Spalte fehlt, steht
+/// in ihren Zellen ein Strich - die Zeilen bringen ihn selbst mit (``Streifenzeile``), und so
+/// macht es die Vorlage auch: dort fragt die Zeile ihren Wert je Spanne ab
+/// (`PeriodStrip.tsx:18`, `:58`, `:85`), und der Aufrufer antwortet mit „-“, wo er keinen hat
+/// (`HouseReport.tsx:39`).
 struct Spannenstreifen: View {
     let titel: String
     let zeilen: [Streifenzeile]

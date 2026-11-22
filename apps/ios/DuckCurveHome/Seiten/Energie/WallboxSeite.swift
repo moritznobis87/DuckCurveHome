@@ -3,14 +3,16 @@ import SwiftUI
 
 /// Alles, was die Wallboxseite braucht – in einem Rutsch geholt.
 ///
-/// **Fünf Antworten, nicht eine.** Die Seite holte bisher genau eine Spanne
-/// (`StromSeite.swift:284-285` vor dem Umbau). Der Streifen „Wallbox im Überblick“ stellt Tag,
-/// Woche, Monat und Jahr **zum selben Anker** nebeneinander (`EvReport.tsx:26,91-100`); das sind
-/// vier weitere Abfragen derselben Antwort. Scheitert eine, fehlt ihre Spalte – die Seite bleibt
-/// stehen.
+/// **Eine Antwort, und der Streifen daneben.** Der Streifen „Wallbox im Überblick“ stellt Tag,
+/// Woche, Monat und Jahr **zum selben Anker** nebeneinander (`EvReport.tsx:91-100`); das sind
+/// vier weitere Abfragen derselben Antwort, und sie stehen nicht mehr in diesem Verbund,
+/// sondern als eigener Zustand neben der Seite (``Spannenstand``, Vorlage `EvReport.tsx:26`).
+/// Lagen sie hier, wartete die Seite auf ihre langsamste Spalte.
+///
+/// **Der Verbund bleibt trotzdem**: ``Berichtsseite`` leitet `Antwort` aus der Abfrage ab, und
+/// ein benannter Typ sagt an `inhalt:`, was dort ankommt.
 struct Wallboxdaten: Sendable {
     let bericht: EvReportOut
-    let jeSpanne: [Spanne: EvReportOut]
 }
 
 /// Wallbox: wann geladen wurde, woraus, und was es gekostet hat.
@@ -26,40 +28,64 @@ struct Wallboxdaten: Sendable {
 /// die Zeile über die Datengrundlage. Hier bleibt die Anordnung.
 struct WallboxSeite: View {
     @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
     @Environment(\.horizontalSizeClass) private var breite
 
     private var schmal: Bool { breite == .compact }
 
+    /// Der Streifen, als eigener Zustand neben der Seite - der Grund steht an ``Spannenstand``.
+    @State private var streifen = Spannenstand<EvReportOut>()
+
     var body: some View {
-        Berichtsseite { z, api in
-            // Die vier Spannen laufen los, bevor die eigentliche Antwort da ist: sie hängen
-            // nur am Anker, nicht an der gewählten Spanne.
-            async let spannen = holeSpannen(anker: z.anker, api: api)
-            let bericht = try await api.energieWallbox(z.spanne.rawValue, anker: z.anker)
-            return Wallboxdaten(bericht: bericht, jeSpanne: await spannen)
-        } inhalt: { d in
-            inhalt(d)
+        let z = wegweiser.zeitraum(jetzt: haus.jetzt)
+        let stand = streifen.fuer(z.anker)
+        Berichtsseite(
+            hole: { zr, api in
+                let bericht = try await api.energieWallbox(zr.spanne.rawValue, anker: zr.anker)
+                return Wallboxdaten(bericht: bericht)
+            },
+            inhalt: { (d: Wallboxdaten) in
+                inhalt(d, anker: z.anker, streifen: stand)
+            },
+            // Der zweite Fehlerweg: fällt der Streifen ganz aus, steht sein Grund als Band
+            // neben allem, was schon dasteht - und das Band der Seite bleibt unberührt.
+            // Wann der Dienst das gerechnet hat: bei einem Treffer im Zwischenspeicher ist
+            // das nicht jetzt, und dann steht es als Zeile ueber der Seite (``Berichtsstand``).
+            gerechnetAm: { (d: Wallboxdaten) in d.bericht.generatedAt },
+            nebenfehler: stand.fehler,
+            nebenfehlerErneut: { Task { await holeStreifen(anker: z.anker) } }
+        )
+        // **Am Anker, nicht am Zeitraum.** Ein Spannenwechsel ändert an den vier Spalten
+        // desselben Ankertags nichts; hing der Streifen an `z`, holte jeder Wechsel vier
+        // Abfragen umsonst. Am Ankerwechsel muss er neu laden, sonst zeigt er den falschen Tag.
+        .task(id: z.anker) { await halteStreifenFrisch(anker: z.anker) }
+    }
+
+    /// Den Streifen holen und im Fünf-Minuten-Takt nachholen, solange der Anker steht
+    /// (`useReport.ts:70`).
+    private func halteStreifenFrisch(anker: String) async {
+        while !Task.isCancelled {
+            await holeStreifen(anker: anker)
+            try? await Task.sleep(for: Berichtstakt.nachladen)
         }
     }
 
-    /// Die vier Spannen zum selben Anker. `try?` je Spanne: eine fehlende Spalte ist besser als
+    /// Die vier Spannen zum selben Anker, jede für sich: eine fehlende Spalte ist besser als
     /// eine Seite, die an ihr scheitert (`useReport.ts:55-77` nimmt dafür `Promise.allSettled`).
-    private func holeSpannen(anker: String, api: Api) async -> [Spanne: EvReportOut] {
-        await withTaskGroup(of: (Spanne, EvReportOut?).self) { gruppe in
-            for s in Spanne.allCases {
-                gruppe.addTask {
-                    (s, try? await api.energieWallbox(s.rawValue, anker: anker))
-                }
-            }
-            var aus: [Spanne: EvReportOut] = [:]
-            for await (s, b) in gruppe {
-                if let b { aus[s] = b }
-            }
-            return aus
+    private func holeStreifen(anker: String) async {
+        let api = haus.api
+        let neu = await streifen.nachgeholt(zu: anker) { s in
+            try await api.energieWallbox(s.rawValue, anker: anker)
         }
+        // Welcher Anker gilt, entscheidet erst das Schreiben - der Knopf „Noch einmal“ läuft
+        // neben `.task(id:)` und bricht beim Blättern nicht ab
+        // (``Spannenstand/uebernimm(_:zu:)``).
+        streifen.uebernimm(neu, zu: wegweiser.zeitraum(jetzt: haus.jetzt).anker)
     }
 
-    @ViewBuilder private func inhalt(_ d: Wallboxdaten) -> some View {
+    @ViewBuilder private func inhalt(
+        _ d: Wallboxdaten, anker: String, streifen: Spannenstand<EvReportOut>
+    ) -> some View {
         let b = d.bericht
 
         // **Ohne Kicker über dem Kachelfeld.** Hier stand „Wallbox“ – ein Wort, das der aktive
@@ -75,10 +101,16 @@ struct WallboxSeite: View {
             ladevorgaenge(b)
         }
 
+        // **Der Streifen steht, auch solange seine Zahlen fehlen**: ``Wallbox`` zeichnet jede
+        // Spalte ohne Antwort als Strich, wie die Vorlage mit ihrem `strip`, das als `{}`
+        // anfängt (`EvReport.tsx:33`, `:94-99`). Der Anker kommt aus der Blätterleiste und
+        // nicht aus `b.summary.anchor`: die Zahlen der Seite dürfen beim Blättern noch die des
+        // alten Tages sein, die vier Spaltenköpfe gehören zu dem Tag, für den der Streifen
+        // geholt wurde.
         Spannenstreifen(
             titel: "Wallbox im Überblick",
-            zeilen: Wallbox.spannenzeilen(d.jeSpanne),
-            anker: b.summary.anchor,
+            zeilen: Wallbox.spannenzeilen(streifen.werte),
+            anker: anker,
             jetzt: haus.jetzt
         )
 

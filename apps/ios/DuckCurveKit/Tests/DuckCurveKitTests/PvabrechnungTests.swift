@@ -58,6 +58,7 @@ final class PvabrechnungTests: XCTestCase {
         _ t: PvTaxTotals? = nil, stuecke: [PvTaxBucketOut] = [], meta: PvTaxMetaOut? = nil
     ) -> PvTaxReportOut {
         PvTaxReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .year, anchor: "2026-11-10", start: "2026-01-01T00:00:00+01:00",
             end: "2027-01-01T00:00:00+01:00", totals: t ?? summen(), buckets: stuecke,
             meta: meta ?? angaben())
