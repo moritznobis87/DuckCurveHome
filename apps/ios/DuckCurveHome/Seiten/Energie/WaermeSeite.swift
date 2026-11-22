@@ -9,15 +9,14 @@ import SwiftUI
 /// stand bis zur zweiten Runde `try await` an beiden Hauptabfragen, und ein Fehlschlag einer von
 /// beiden räumte die ganze Seite - `strom` ist deshalb jetzt ``Optional``.
 ///
-/// **Die vier Spannen dazu.** Der Vergleich „Wärme im Zeitraum“ stellt Tag, Woche, Monat und
-/// Jahr nebeneinander; das sind vier weitere Abfragen derselben Bilanz. Scheitert eine, fehlt
-/// ihre Spalte - die Seite bleibt stehen.
+/// **Die vier Spannen stehen nicht mehr darin.** Der Vergleich „Wärme im Zeitraum“ ist ein
+/// eigener Zustand (``Spannenstand``) und hängt am Anker, nicht am Zeitraum. Lag er hier, hing
+/// die ganze Seite an seiner langsamsten Spalte - und das ist immer der Monat.
 struct Waermedaten: Sendable {
     let bilanz: HeatBalanceOut
     /// `/energy/heat` - Taktung, Ofen, Strom nach Herkunft, Pufferreihe. Darf fehlen.
     let strom: HeatReportOut?
     let schieben: ShiftReportOut?
-    let jeSpanne: [Spanne: HeatBalanceOut]
 }
 
 /// Wärme: wer geliefert hat, was es gekostet hat, wie die Anlage lief.
@@ -64,46 +63,81 @@ struct WaermeSeite: View {
 
     private var schmal: Bool { breite == .compact }
 
+    /// Der Spannenvergleich, als eigener Zustand neben der Seite.
+    ///
+    /// **Warum er nicht mehr in ``Waermedaten`` steht.** Die Wärmeseite löste fünf Bilanzen auf
+    /// einmal aus - die gewählte Spanne und die vier Spalten des Streifens -, und
+    /// ``Berichtsseite`` zeichnet erst, wenn die ganze Antwort da ist: die Kacheln warteten
+    /// also auf die Monatsspalte, und die kann im Dienst dem Minutenpfad nicht ausweichen.
+    /// In der Vorführung 4227 ms, bis irgendetwas dastand, statt 625 ms.
+    /// Die Vorlage hält beides getrennt - `useReport` für die Bilanz der gewählten Spanne,
+    /// `useMultiPeriod` für die vier Spalten (`HeatOverview.tsx:92`, `:95`) - und zeichnet den
+    /// Streifen mit Strichen, bis seine Zahlen da sind.
+    @State private var streifen = Spannenstand<HeatBalanceOut>()
+
     var body: some View {
         let z = wegweiser.zeitraum(jetzt: haus.jetzt)
-        Berichtsseite { zr, api in
-            // Vier Abfragen nebeneinander. Nur die Bilanz wird geworfen: ihr Fehler ist der
-            // einzige, für den die Vorlage ein Band zeigt (`HeatOverview.tsx:138`).
-            async let bilanz = api.waermebilanz(zr.spanne.rawValue, anker: zr.anker)
-            async let strom = api.energieWaerme(zr.spanne.rawValue, anker: zr.anker)
-            async let schieben = api.energieVerschiebung(zr.spanne.rawValue, anker: zr.anker)
-            async let spannen = holeSpannen(anker: zr.anker, api: api)
-            return Waermedaten(
-                bilanz: try await bilanz,
-                strom: try? await strom,
-                schieben: try? await schieben,
-                jeSpanne: await spannen
-            )
-        } inhalt: { d in
-            inhalt(d, z: z)
+        let stand = streifen.fuer(z.anker)
+        Berichtsseite(
+            hole: { zr, api in
+                // Drei Abfragen nebeneinander. Nur die Bilanz wird geworfen: ihr Fehler ist der
+                // einzige, für den die Vorlage ein Band zeigt (`HeatOverview.tsx:138`).
+                async let bilanz = api.waermebilanz(zr.spanne.rawValue, anker: zr.anker)
+                async let strom = api.energieWaerme(zr.spanne.rawValue, anker: zr.anker)
+                async let schieben = api.energieVerschiebung(zr.spanne.rawValue, anker: zr.anker)
+                return Waermedaten(
+                    bilanz: try await bilanz,
+                    strom: try? await strom,
+                    schieben: try? await schieben
+                )
+            },
+            // Der Typ steht da, weil `inhalt` in diesem Ordner mehrfach vorkommt: ohne ihn
+            // leitet der Compiler `()` ab - der Grund steht ausgeschrieben an ``Kostendaten``.
+            inhalt: { (d: Waermedaten) in
+                inhalt(d, z: z, streifen: stand)
+            },
+            // Der zweite Fehlerweg: fallen alle vier Spalten aus, steht der Grund als Band
+            // neben allem, was schon dasteht - und das Band der Bilanz bleibt davon unberührt.
+            // Wann der Dienst das gerechnet hat: bei einem Treffer im Zwischenspeicher ist
+            // das nicht jetzt, und dann steht es als Zeile ueber der Seite (``Berichtsstand``).
+            gerechnetAm: { (d: Waermedaten) in d.bilanz.generatedAt },
+            nebenfehler: stand.fehler,
+            nebenfehlerErneut: { Task { await holeStreifen(anker: z.anker) } }
+        )
+        // **Am Anker, nicht am Zeitraum.** Ein Spannenwechsel ändert an Tag, Woche, Monat und
+        // Jahr desselben Ankertags nichts; hing der Streifen an `z`, holte jeder Wechsel vier
+        // Abfragen umsonst. Am Ankerwechsel muss er dagegen neu laden, sonst steht er still
+        // und zeigt den falschen Tag.
+        .task(id: z.anker) { await halteStreifenFrisch(anker: z.anker) }
+    }
+
+    /// Den Streifen holen und im Fünf-Minuten-Takt nachholen, solange der Anker steht
+    /// (`useReport.ts:70`).
+    private func halteStreifenFrisch(anker: String) async {
+        while !Task.isCancelled {
+            await holeStreifen(anker: anker)
+            try? await Task.sleep(for: Berichtstakt.nachladen)
         }
     }
 
-    /// Die vier Spannen nebeneinander. `try?` je Spanne: eine fehlende Spalte ist besser als
-    /// eine Seite, die an ihr scheitert.
-    private func holeSpannen(anker: String, api: Api) async -> [Spanne: HeatBalanceOut] {
-        await withTaskGroup(of: (Spanne, HeatBalanceOut?).self) { gruppe in
-            for s in Spanne.allCases {
-                gruppe.addTask {
-                    (s, try? await api.waermebilanz(s.rawValue, anker: anker))
-                }
-            }
-            var aus: [Spanne: HeatBalanceOut] = [:]
-            for await (s, b) in gruppe {
-                if let b { aus[s] = b }
-            }
-            return aus
+    /// Die vier Spannen zum Anker, jede für sich: eine fehlende Spalte ist besser als eine
+    /// Seite, die an ihr scheitert (``Spannenstand``).
+    private func holeStreifen(anker: String) async {
+        let api = haus.api
+        let neu = await streifen.nachgeholt(zu: anker) { s in
+            try await api.waermebilanz(s.rawValue, anker: anker)
         }
+        // Welcher Anker gilt, entscheidet erst das Schreiben - der Knopf „Noch einmal“ läuft
+        // neben `.task(id:)` und bricht beim Blättern nicht ab
+        // (``Spannenstand/uebernimm(_:zu:)``).
+        streifen.uebernimm(neu, zu: wegweiser.zeitraum(jetzt: haus.jetzt).anker)
     }
 
     // MARK: - Die Anordnung
 
-    @ViewBuilder private func inhalt(_ d: Waermedaten, z: Zeitraum) -> some View {
+    @ViewBuilder private func inhalt(
+        _ d: Waermedaten, z: Zeitraum, streifen: Spannenstand<HeatBalanceOut>
+    ) -> some View {
         let tag = d.bilanz.period == .day
 
         Kachelfeld(
@@ -136,9 +170,12 @@ struct WaermeSeite: View {
             }
         }
 
+        // **Der Streifen steht, auch solange seine Zahlen fehlen.** ``Waermeuebersicht``
+        // zeichnet jede Spalte ohne Antwort als Strich, und genau das tut die Vorlage mit ihrem
+        // `alle`, das als `{}` anfängt (`HeatOverview.tsx:118-131`, `useReport.ts:56`).
         Spannenstreifen(
             titel: Waermeuebersicht.spannentitel,
-            zeilen: Waermeuebersicht.spannenzeilen(d.jeSpanne),
+            zeilen: Waermeuebersicht.spannenzeilen(streifen.werte),
             anker: z.anker,
             jetzt: haus.jetzt
         )

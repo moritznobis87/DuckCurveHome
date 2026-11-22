@@ -8,20 +8,30 @@ kein Test gesehen hat, weil im Demo-Betrieb alle Spalten kommen.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+import asyncio
+from collections.abc import Awaitable, Callable, Iterator
+from datetime import UTC, date, datetime, timedelta
+from itertools import pairwise
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
-from dch_api.application.energy_accounting import ENERGY_KEYS, HEAT_KEYS
+from dch_api.application.energy_accounting import (
+    ENERGY_KEYS,
+    HEAT_KEYS,
+    EnergyAccounting,
+    MinuteRow,
+    MinuteRows,
+)
 from dch_api.infrastructure.db.engine import create_all_for_tests, make_engine
 from dch_api.infrastructure.db.repositories import SqlRepositories
 from dch_api.main import create_app
 from dch_api.settings import Settings
-from hems_core.domain import Quality
+from hems_core.domain import HemsConfig, Quality
 from hems_core.protocol import RawReading
+from hems_core.simulation import BERLIN
 
 AUTH = {"authorization": "Bearer api-geheim"}
 # Ortszeit Berlin: 6 Uhr des 12.10.2026 ist 4 Uhr UTC.
@@ -312,3 +322,212 @@ def test_eine_abgelehnte_aenderung_laesst_den_fahrplan_stehen(client: TestClient
         == 422
     )
     assert runner._plan_at == vorher
+
+
+# ------------------------------------------------------------------ Rechnung im Faden
+
+#: Beginn der gesäten Minutenzeilen der Fadentests - Oktober, mit dem Umstellungstag darin.
+FADEN_BEGINN = datetime(2026, 10, 1, tzinfo=UTC)
+
+
+def _minutenzeilen(beginn: datetime, minuten: int) -> list[MinuteRow]:
+    """Minutenzeilen, wie sie live aus `measurements_minute` kommen - Wärme *und* Strom.
+
+    Die Stromspalten stehen mit darin, weil `minute_rows` und `heat_rows` im Demo-Betrieb
+    dieselbe Abfrage sind und die Kostenseite der Bilanz (`_heat_cost` -> `summary`) sonst über
+    leeren Stunden rechnet.
+    """
+    return [
+        {
+            "ts": (beginn + timedelta(minutes=i)).isoformat(),
+            "heat_pump_power_kw": 2.0,
+            "outdoor_temp_c": 4.0,
+            "buffer_temp_top_c": 50.0 + (i % 60) * 0.05,
+            "buffer_temp_mid_top_c": 49.0 + (i % 60) * 0.05,
+            "buffer_temp_mid_bottom_c": 48.0 + (i % 60) * 0.05,
+            "buffer_temp_bottom_c": 47.0 + (i % 60) * 0.05,
+            "stove_running": 1.0,
+            "stove_power_level": 5.0,
+            "pv_power_kw": 1.5,
+            "grid_power_kw": 0.8,
+            "battery_power_kw": -0.2,
+            "electricity_price_ct_kwh": 28.0,
+        }
+        for i in range(minuten)
+    ]
+
+
+def _leser(zeilen: list[MinuteRow]) -> MinuteRows:
+    """Eine Minutenabfrage auf eine feste Liste - sie schneidet den Zeitraum heraus."""
+
+    async def lesen(start: datetime, end: datetime) -> list[MinuteRow]:
+        return [r for r in zeilen if start <= datetime.fromisoformat(str(r["ts"])) < end]
+
+    return lesen
+
+
+async def _mit_puls(ruf: Callable[[], Awaitable[Any]]) -> tuple[Any, float, list[float]]:
+    """Etwas rechnen lassen und daneben alle fünf Millisekunden anklopfen.
+
+    Zurück kommen das Ergebnis, die gesamte Antwortzeit und die Zeitpunkte, an denen der Puls
+    durchkam: aus ihren Abständen lesen die Tests ab, wie lange die Schleife stand.
+    """
+    schlaege: list[float] = []
+
+    async def puls() -> None:
+        while True:
+            schlaege.append(asyncio.get_running_loop().time())
+            await asyncio.sleep(0.005)
+
+    p = asyncio.create_task(puls())
+    t0 = asyncio.get_running_loop().time()
+    ergebnis = await ruf()
+    gesamt = asyncio.get_running_loop().time() - t0
+    p.cancel()
+    assert len(schlaege) > 5, f"der Puls kam nur {len(schlaege)}-mal durch"
+    assert gesamt > 0.1, f"zu schnell für eine Aussage über Nebenläufigkeit ({gesamt:.3f} s)"
+    return ergebnis, gesamt, schlaege
+
+
+async def test_die_rechnung_blockiert_die_ereignisschleife_nicht() -> None:
+    """Die Wärmebilanz rechnet lange - und der Dienst muss daneben weiter antworten.
+
+    Gemessen war der Grund: `/live/state` brauchte im Ruhezustand 79 ms und neben einer laufenden
+    Monatsbilanz 4933 ms. `heat_balance` ist `async`, rechnete zwischen ihren `await`-Punkten aber
+    durch, und solange sie das tat, stand die Ereignisschleife und mit ihr jede andere Antwort.
+
+    Geprüft wird nicht die Dauer, sondern die Nebenläufigkeit: ein Puls, der alle fünf
+    Millisekunden schlagen will, darf während der Rechnung nicht stehenbleiben. Die Zeilen kommen
+    deshalb nur über `heat_rows`; `minute_rows` bleibt leer, damit dieser Test die Minutenrechnung
+    misst und nur sie. Was die Kostenseite daneben noch kostet, hält der Test unter diesem fest -
+    getrennt, weil sonst ein Wachstum der einen Seite in der Schranke der anderen verschwindet.
+    """
+    tage = 7
+    zeilen = _minutenzeilen(FADEN_BEGINN, tage * 24 * 60)
+
+    async def keine(start: datetime, end: datetime) -> list[MinuteRow]:
+        return []
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, keine, heat_rows=_leser(zeilen))
+    bilanz, gesamt, schlaege = await _mit_puls(
+        lambda: acc.heat_balance("month", date(2026, 10, 15), FADEN_BEGINN + timedelta(days=tage))
+    )
+
+    assert bilanz.totals.heat_pump_kwh > 0, "ohne gerechnete Wärme sagt der Test nichts"
+    assert bilanz.buckets, "ohne Eimer wäre der teure Teil der Rechnung nicht gelaufen"
+    pause = max(b - a for a, b in pairwise(schlaege))
+    assert pause < gesamt / 3, f"längste Pause {pause:.3f} s von {gesamt:.3f} s"
+
+
+async def test_die_schleife_steht_auch_mit_der_kostenseite_nicht_lange() -> None:
+    """Derselbe Test mit gefüllten `minute_rows` - so, wie der Dienst wirklich antwortet.
+
+    **Warum es diesen zweiten Fall gibt.** Der Test über diesem hängt für `minute_rows` einen
+    leeren Leser ein, und damit ist genau der Teil abgeschaltet, der weiter in der Schleife
+    rechnet: `_heat_cost` holt sich `summary`, und die rechnet im Schleifenfaden. Mit gefüllten
+    Zeilen gemessen, stand die Schleife in derselben Testform einmal 296 ms am Stück von 494 ms
+    Antwortzeit - die strenge Schranke des ersten Falls (`pause < gesamt / 3`) fällt dort, und
+    zwar zu Recht. Geprüft wird deshalb hier nicht die längste einzelne Pause, sondern die
+    **Summe** aller Pausen über 50 ms: sie sagt, wie viel von der Antwort die
+    Schleife insgesamt noch steht, und sie wächst mit, wenn die Kostenseite wächst.
+
+    50 ms ist die Schwelle, unter der eine Pause an einer Wandanzeige niemandem auffällt; alles
+    darüber ist eine Antwort, die wartet.
+
+    **Die Schranke ist mit Absicht keine strenge.** Gemessen stehen hier 0,28 bis 0,36 s von 0,49
+    bis 0,58 s Antwortzeit, also 0,55 bis 0,62 - und das ist kein Rest, sondern der Weg, der noch
+    offen ist: `summary` rechnet weiter im Schleifenfaden, sie nimmt einen anderen Weg (`hours`,
+    `_compute_hours`) und braucht ihre eigene Prüfung auf Reinheit. Dieser Test hält den heutigen
+    Stand fest, damit er nicht unbemerkt schlechter wird; ist `summary` nachgezogen, gehört die
+    Schranke auf ein Drittel heruntergesetzt wie die des Tests über diesem.
+    """
+    tage = 7
+    zeilen = _minutenzeilen(FADEN_BEGINN, tage * 24 * 60)
+    leser = _leser(zeilen)
+    acc = EnergyAccounting(HemsConfig(), BERLIN, leser, heat_rows=leser)
+    bilanz, gesamt, schlaege = await _mit_puls(
+        lambda: acc.heat_balance("month", date(2026, 10, 15), FADEN_BEGINN + timedelta(days=tage))
+    )
+
+    assert bilanz.totals.heat_pump_kwh > 0, "ohne gerechnete Wärme sagt der Test nichts"
+    assert bilanz.cost.heat_pump_paid_eur > 0, "ohne Stromkosten lief die Kostenseite nicht mit"
+    summe = sum(d for a, b in pairwise(schlaege) if (d := b - a) > 0.05)
+    assert summe < gesamt * 0.75, f"Pausen über 50 ms zusammen {summe:.3f} s von {gesamt:.3f} s"
+
+
+# ------------------------------------------------------------- Monatsgrenze und Zeitumstellung
+
+
+async def test_ein_abgeschlossener_monat_mit_zeitumstellung_rechnet_aus_minuten() -> None:
+    """Oktober hat in Berliner Zeit 31 Tage und eine Stunde - und fiel genau daran aus.
+
+    `HEAT_MINUTE_DAYS = 31` wurde gegen die **Dauer** des Zeitraums geprüft, und die ist an dem
+    Sonntag mit der Rückstellung eine Stunde länger als 31 Tage. Gemessen hat die Bilanz eines
+    abgeschlossenen Oktobers deshalb `minutes == 0` und „keine Daten im Zeitraum“ gemeldet,
+    während derselbe Monat im Laufen (`stop = now + 1 min`, also kürzer als sein Ende)
+    vollständig gerechnet wurde. Im März war es umgekehrt. Gezählt werden jetzt Kalendertage.
+    """
+    zeilen = _minutenzeilen(FADEN_BEGINN, 7 * 24 * 60)
+
+    async def keine(start: datetime, end: datetime) -> list[MinuteRow]:
+        return []
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, keine, heat_rows=_leser(zeilen))
+    _start, ende = acc.period_bounds("month", date(2026, 10, 15))
+    assert ende - _start > timedelta(days=31), "ohne die Umstellungsstunde prüft der Test nichts"
+
+    bilanz = await acc.heat_balance("month", date(2026, 10, 15), ende + timedelta(days=1))
+    assert bilanz.resolution_de == "aus Minutenwerten"
+    assert bilanz.totals.minutes == 7 * 24 * 60
+    assert bilanz.totals.heat_pump_kwh > 0
+
+
+async def test_ein_ganzer_monat_geht_wirklich_einmal_durch_den_dienst() -> None:
+    """31 Tage Minutenzeilen am Stück - der Fall, der 206 s brauchte, bevor der Puffergriff fiel.
+
+    Dezember, weil darin keine Uhr umgestellt wird: 44 640 Proben, ein abgeschlossener Monat,
+    und die Eimer stehen für jeden seiner Tage. Der Test ist der Wächter über die Größenordnung,
+    mit der die Wärmeseite im Betrieb wirklich gerufen wird - die Fadentests darüber säen sieben
+    Tage, weil sie etwas anderes messen.
+    """
+    beginn = datetime(2026, 12, 1, tzinfo=UTC)
+    zeilen = _minutenzeilen(beginn, 31 * 24 * 60)
+
+    async def keine(start: datetime, end: datetime) -> list[MinuteRow]:
+        return []
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, keine, heat_rows=_leser(zeilen))
+    _start, ende = acc.period_bounds("month", date(2026, 12, 15))
+    bilanz = await acc.heat_balance("month", date(2026, 12, 15), ende + timedelta(days=1))
+
+    assert bilanz.resolution_de == "aus Minutenwerten"
+    assert bilanz.totals.minutes > 44_000, f"nur {bilanz.totals.minutes} Minuten gerechnet"
+    assert len(bilanz.buckets) == 31
+    assert bilanz.totals.heat_pump_kwh > 0
+    assert not bilanz.series, "der Verlauf gehört nur zum Tag"
+
+
+async def test_die_uebersetzung_der_zeilen_laeuft_im_faden() -> None:
+    """Nur die Abfrage der Zeilen gehört auf die Ereignisschleife, ihre Übersetzung nicht.
+
+    Der Faden endete eine Zeile zu früh: `_heat_samples` holte die Zeilen und übersetzte sie
+    gleich danach in einer gewöhnlichen Schleife weiter *auf* der Schleife - gemessen 232 bis
+    257 ms für 44 640 Zeilen, und eine Monatsbilanz übersetzt zweimal. Der Test fährt genau
+    diesen Schritt allein: fast die ganze Zeit ist Übersetzung, und stünde sie noch in der
+    Schleife, wäre die längste Pause so lang wie der Aufruf selbst.
+    """
+    beginn = datetime(2026, 12, 1, tzinfo=UTC)
+    zeilen = _minutenzeilen(beginn, 31 * 24 * 60)
+
+    async def keine(start: datetime, end: datetime) -> list[MinuteRow]:
+        return []
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, keine, heat_rows=_leser(zeilen))
+    (proben, schritt), gesamt, schlaege = await _mit_puls(
+        lambda: acc._samples_for(beginn, beginn + timedelta(days=31))
+    )
+
+    assert len(proben) == 31 * 24 * 60, "ohne die Proben sagt der Test nichts"
+    assert schritt == 1.0
+    pause = max(b - a for a, b in pairwise(schlaege))
+    assert pause < gesamt / 3, f"längste Pause {pause:.3f} s von {gesamt:.3f} s"

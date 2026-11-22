@@ -398,31 +398,4 @@ public enum Pvbild {
     /// ``EnergyMetaOut``.
     public static let ersparnissatz =
         "Ersparnis im Überblick = PV direkt plus Batterieentladung, jeweils gegen den Strompreis der Stunde."
-
-    // MARK: - Vier Spannen in einem Zug
-
-    /// Dieselbe Abfrage für Tag, Woche, Monat und Jahr, nebenläufig.
-    ///
-    /// **`try?` je Spanne, nicht für alle vier zusammen.** Eine fehlende Spalte ist besser
-    /// als eine Seite, die an ihr scheitert - die Vorlage holt die vier mit
-    /// `Promise.allSettled` und lässt den Streifen stehen, wenn eine wegfällt
-    /// (`useReport.ts:55-77`).
-    ///
-    /// Steht hier und nicht in der Seite, weil /strom denselben Streifen über denselben
-    /// Antworten braucht. Der richtige Platz wäre ``Api`` selbst; dort lag die Fassung
-    /// dieses Projekts bisher privat in einer einzigen Seite.
-    public static func jeSpanne<T: Sendable>(
-        _ hole: @Sendable @escaping (Spanne) async -> T?
-    ) async -> [Spanne: T] {
-        await withTaskGroup(of: (Spanne, T?).self) { gruppe in
-            for s in Spanne.allCases {
-                gruppe.addTask { (s, await hole(s)) }
-            }
-            var aus: [Spanne: T] = [:]
-            for await (s, wert) in gruppe {
-                if let wert { aus[s] = wert }
-            }
-            return aus
-        }
-    }
 }

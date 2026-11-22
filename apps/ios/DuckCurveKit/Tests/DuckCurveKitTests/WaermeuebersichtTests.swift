@@ -35,6 +35,7 @@ final class WaermeuebersichtTests: XCTestCase {
         lueftung: VentilationOut? = nil, params: HeatParamsOut? = nil
     ) -> HeatBalanceOut {
         HeatBalanceOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .day, start: Zeit.iso(ab), end: Zeit.iso(ab.addingTimeInterval(86400)),
             resolutionDe: "je Minute", totals: t ?? totals(), series: [], buckets: [],
             cost: k ?? kosten(), params: params ?? HeatParamsOut(copCurve: []),
@@ -53,7 +54,9 @@ final class WaermeuebersichtTests: XCTestCase {
         puffer: [[String: Mischwert]] = [], abdeckung: Double? = 0.98, seit: String? = "2026-01-04"
     ) -> HeatReportOut {
         HeatReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             summary: EnergySummaryOut(
+                generatedAt: "2026-11-22T10:00:00+01:00",
                 period: .day, anchor: "2026-11-17", start: Zeit.iso(ab),
                 end: Zeit.iso(ab.addingTimeInterval(86400)), totals: t ?? summentotals(),
                 meta: EnergyMetaOut(
@@ -171,6 +174,7 @@ final class WaermeuebersichtTests: XCTestCase {
 
     func testDasVorzeichenDesSparbetragsStehtAlsSatzUndNichtAlsMinus() {
         let gespart = ShiftReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .day, start: Zeit.iso(ab), end: Zeit.iso(ab), actualEur: 1.2,
             naiveEur: 1.5, savingEur: 0.3, savingCtPerKwh: 1.4, heatPumpKwh: 21,
             shiftedKwh: 8, daysUsed: 1, daysSkipped: 0, methodDe: "")
@@ -198,6 +202,7 @@ final class WaermeuebersichtTests: XCTestCase {
             "Dafür braucht es einen Tag mit genug gemessenen Stunden und laufender Wärmepumpe.")
 
         let mitGrund = ShiftReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .day, start: Zeit.iso(ab), end: Zeit.iso(ab), actualEur: 0, naiveEur: 0,
             savingEur: 0, heatPumpKwh: 0, shiftedKwh: 0, daysUsed: 0, daysSkipped: 1,
             skippedDe: "Zu wenig gemessene Stunden.", methodDe: "")

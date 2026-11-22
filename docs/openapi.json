@@ -7198,6 +7198,11 @@
       },
       "EnergySummaryOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "period": {
             "type": "string",
             "enum": [
@@ -7239,6 +7244,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "period",
           "anchor",
           "start",
@@ -7585,6 +7591,11 @@
       },
       "EvReportOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "summary": {
             "$ref": "#/components/schemas/EnergySummaryOut"
           },
@@ -7598,6 +7609,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "summary",
           "sessions"
         ],
@@ -9770,6 +9782,11 @@
       },
       "HeatBalanceOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "period": {
             "type": "string",
             "enum": [
@@ -9870,6 +9887,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "period",
           "start",
           "end",
@@ -10645,6 +10663,11 @@
       },
       "HeatReportOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "summary": {
             "$ref": "#/components/schemas/EnergySummaryOut"
           },
@@ -10714,6 +10737,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "summary",
           "thermal_kwh_est",
           "cop_est",
@@ -14616,6 +14640,11 @@
       },
       "PvTaxReportOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "period": {
             "type": "string",
             "enum": [
@@ -14657,6 +14686,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "period",
           "anchor",
           "start",
@@ -16661,6 +16691,11 @@
       },
       "ShiftReportOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "period": {
             "type": "string",
             "enum": [
@@ -16746,6 +16781,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "period",
           "start",
           "end",

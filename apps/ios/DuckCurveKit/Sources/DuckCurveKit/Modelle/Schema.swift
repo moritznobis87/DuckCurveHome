@@ -3530,6 +3530,7 @@ public struct EnergySnapshot: Codable, Sendable, Hashable {
 }
 
 public struct EnergySummaryOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var period: EnergySummaryOutPeriodWahl
     public var anchor: String
     public var start: String
@@ -3538,7 +3539,19 @@ public struct EnergySummaryOut: Codable, Sendable, Hashable {
     public var buckets: [EnergyBucketOut]
     public var meta: EnergyMetaOut
 
-    public init(period: EnergySummaryOutPeriodWahl, anchor: String, start: String, end: String, totals: EnergyTotalsOut, buckets: [EnergyBucketOut] = [], meta: EnergyMetaOut) {
+    public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
+        case period
+        case anchor
+        case start
+        case end
+        case totals
+        case buckets
+        case meta
+    }
+
+    public init(generatedAt: String, period: EnergySummaryOutPeriodWahl, anchor: String, start: String, end: String, totals: EnergyTotalsOut, buckets: [EnergyBucketOut] = [], meta: EnergyMetaOut) {
+        self.generatedAt = generatedAt
         self.period = period
         self.anchor = anchor
         self.start = start
@@ -3550,6 +3563,7 @@ public struct EnergySummaryOut: Codable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.period = try c.decode(EnergySummaryOutPeriodWahl.self, forKey: .period)
         self.anchor = try c.decode(String.self, forKey: .anchor)
         self.start = try c.decode(String.self, forKey: .start)
@@ -3809,16 +3823,25 @@ public struct Ereignis: Codable, Sendable, Hashable {
 }
 
 public struct EvReportOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var summary: EnergySummaryOut
     public var sessions: [EvSessionOut]
 
-    public init(summary: EnergySummaryOut, sessions: [EvSessionOut] = []) {
+    public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
+        case summary
+        case sessions
+    }
+
+    public init(generatedAt: String, summary: EnergySummaryOut, sessions: [EvSessionOut] = []) {
+        self.generatedAt = generatedAt
         self.summary = summary
         self.sessions = sessions
     }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.summary = try c.decode(EnergySummaryOut.self, forKey: .summary)
         self.sessions = try c.decodeIfPresent([EvSessionOut].self, forKey: .sessions) ?? []
     }
@@ -5073,6 +5096,7 @@ public struct HTTPValidationError: Codable, Sendable, Hashable {
 
 /// Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging.
 public struct HeatBalanceOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var period: HeatBalanceOutPeriodWahl
     public var start: String
     public var end: String
@@ -5089,6 +5113,7 @@ public struct HeatBalanceOut: Codable, Sendable, Hashable {
     public var noteDe: String?
 
     public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
         case period
         case start
         case end
@@ -5105,7 +5130,8 @@ public struct HeatBalanceOut: Codable, Sendable, Hashable {
         case noteDe = "note_de"
     }
 
-    public init(period: HeatBalanceOutPeriodWahl, start: String, end: String, resolutionDe: String, totals: HeatTotals, previous: HeatTotals? = nil, series: [HeatBalancePointOut] = [], buckets: [HeatBucketOut] = [], cost: HeatCostOut? = nil, forecastHeatKwh: Double? = nil, forecastNoteDe: String? = nil, params: HeatParamsOut, ventilation: VentilationOut? = nil, noteDe: String? = nil) {
+    public init(generatedAt: String, period: HeatBalanceOutPeriodWahl, start: String, end: String, resolutionDe: String, totals: HeatTotals, previous: HeatTotals? = nil, series: [HeatBalancePointOut] = [], buckets: [HeatBucketOut] = [], cost: HeatCostOut? = nil, forecastHeatKwh: Double? = nil, forecastNoteDe: String? = nil, params: HeatParamsOut, ventilation: VentilationOut? = nil, noteDe: String? = nil) {
+        self.generatedAt = generatedAt
         self.period = period
         self.start = start
         self.end = end
@@ -5124,6 +5150,7 @@ public struct HeatBalanceOut: Codable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.period = try c.decode(HeatBalanceOutPeriodWahl.self, forKey: .period)
         self.start = try c.decode(String.self, forKey: .start)
         self.end = try c.decode(String.self, forKey: .end)
@@ -5667,6 +5694,7 @@ public struct HeatPumpState: Codable, Sendable, Hashable {
 }
 
 public struct HeatReportOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var summary: EnergySummaryOut
     public var thermalKwhEst: Double
     public var copEst: Double
@@ -5682,6 +5710,7 @@ public struct HeatReportOut: Codable, Sendable, Hashable {
     public var modelNoteDe: String
 
     public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
         case summary
         case thermalKwhEst = "thermal_kwh_est"
         case copEst = "cop_est"
@@ -5697,7 +5726,8 @@ public struct HeatReportOut: Codable, Sendable, Hashable {
         case modelNoteDe = "model_note_de"
     }
 
-    public init(summary: EnergySummaryOut, thermalKwhEst: Double, copEst: Double, forecast: [HeatForecastPoint] = [], forecastElectricKwh24h: Double, forecastThermalKwh24h: Double, bufferSeries: [[String: Mischwert]] = [], heatLossKwPerK: Double, cycling: CyclingStats, priceQuality: PriceQualityOut, bufferBalance: BufferBalanceOut, stove: StoveOut, modelNoteDe: String) {
+    public init(generatedAt: String, summary: EnergySummaryOut, thermalKwhEst: Double, copEst: Double, forecast: [HeatForecastPoint] = [], forecastElectricKwh24h: Double, forecastThermalKwh24h: Double, bufferSeries: [[String: Mischwert]] = [], heatLossKwPerK: Double, cycling: CyclingStats, priceQuality: PriceQualityOut, bufferBalance: BufferBalanceOut, stove: StoveOut, modelNoteDe: String) {
+        self.generatedAt = generatedAt
         self.summary = summary
         self.thermalKwhEst = thermalKwhEst
         self.copEst = copEst
@@ -5715,6 +5745,7 @@ public struct HeatReportOut: Codable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.summary = try c.decode(EnergySummaryOut.self, forKey: .summary)
         self.thermalKwhEst = try c.decode(Double.self, forKey: .thermalKwhEst)
         self.copEst = try c.decode(Double.self, forKey: .copEst)
@@ -8197,6 +8228,7 @@ public struct PvTaxMetaOut: Codable, Sendable, Hashable {
 
 /// PV-Abrechnung eines Zeitraums: Einspeisung, Eigenverbrauch, Umsatzsteuer.
 public struct PvTaxReportOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var period: PvTaxReportOutPeriodWahl
     public var anchor: String
     public var start: String
@@ -8205,7 +8237,19 @@ public struct PvTaxReportOut: Codable, Sendable, Hashable {
     public var buckets: [PvTaxBucketOut]
     public var meta: PvTaxMetaOut
 
-    public init(period: PvTaxReportOutPeriodWahl, anchor: String, start: String, end: String, totals: PvTaxTotals, buckets: [PvTaxBucketOut] = [], meta: PvTaxMetaOut) {
+    public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
+        case period
+        case anchor
+        case start
+        case end
+        case totals
+        case buckets
+        case meta
+    }
+
+    public init(generatedAt: String, period: PvTaxReportOutPeriodWahl, anchor: String, start: String, end: String, totals: PvTaxTotals, buckets: [PvTaxBucketOut] = [], meta: PvTaxMetaOut) {
+        self.generatedAt = generatedAt
         self.period = period
         self.anchor = anchor
         self.start = start
@@ -8217,6 +8261,7 @@ public struct PvTaxReportOut: Codable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.period = try c.decode(PvTaxReportOutPeriodWahl.self, forKey: .period)
         self.anchor = try c.decode(String.self, forKey: .anchor)
         self.start = try c.decode(String.self, forKey: .start)
@@ -9583,6 +9628,7 @@ public struct ShiftDayOut: Codable, Sendable, Hashable {
 /// Annahmen stehen einzeln in `assumptions_de`, weil eine Zahl ohne sie mehr behauptet, als sie
 /// weiß.
 public struct ShiftReportOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var period: ShiftReportOutPeriodWahl
     public var start: String
     public var end: String
@@ -9600,6 +9646,7 @@ public struct ShiftReportOut: Codable, Sendable, Hashable {
     public var assumptionsDe: [String]
 
     public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
         case period
         case start
         case end
@@ -9617,7 +9664,8 @@ public struct ShiftReportOut: Codable, Sendable, Hashable {
         case assumptionsDe = "assumptions_de"
     }
 
-    public init(period: ShiftReportOutPeriodWahl, start: String, end: String, actualEur: Double, naiveEur: Double, savingEur: Double, savingCtPerKwh: Double? = nil, heatPumpKwh: Double, shiftedKwh: Double, days: [ShiftDayOut] = [], daysUsed: Int, daysSkipped: Int, skippedDe: String? = nil, methodDe: String, assumptionsDe: [String] = []) {
+    public init(generatedAt: String, period: ShiftReportOutPeriodWahl, start: String, end: String, actualEur: Double, naiveEur: Double, savingEur: Double, savingCtPerKwh: Double? = nil, heatPumpKwh: Double, shiftedKwh: Double, days: [ShiftDayOut] = [], daysUsed: Int, daysSkipped: Int, skippedDe: String? = nil, methodDe: String, assumptionsDe: [String] = []) {
+        self.generatedAt = generatedAt
         self.period = period
         self.start = start
         self.end = end
@@ -9637,6 +9685,7 @@ public struct ShiftReportOut: Codable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.period = try c.decode(ShiftReportOutPeriodWahl.self, forKey: .period)
         self.start = try c.decode(String.self, forKey: .start)
         self.end = try c.decode(String.self, forKey: .end)
