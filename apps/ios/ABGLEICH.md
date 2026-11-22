@@ -1,7 +1,8 @@
 # Was die App noch nicht zeigt
 
 **Die Adressen sind vollständig, der Inhalt ist es nicht.** Alle 28 Inhaltsseiten des
-Dashboards haben in der App eine Entsprechung unter derselben Adresse. Ob dort auch dasselbe
+Dashboards haben in der App eine Entsprechung unter derselben Adresse – die jüngste,
+`/waerme/regelkreis`, seit dem 22.11. Ob dort auch dasselbe
 *steht*, sagt eine Adressliste nicht – und die Antwort lautet auf den meisten Seiten nein.
 
 Diese Liste ist der Arbeitsvorrat. Sie wird abgearbeitet; erledigte Punkte werden gestrichen,
@@ -27,9 +28,20 @@ und eine Seite mit eigenen, falschen Summen, die es in der Vorlage längst nicht
 
 | | |
 |---|---|
-| Seiten gesamt | **27** (die 28. war `/waerme/bilanz` und ist jetzt eine Weiterleitung) |
-| gemessen | **27 von 27**, zusammen rund 1 000 000 Zeichen Messung in `messungen/` |
-| danach umgebaut | **27 von 27**, je ein Commit mit Gegenprüfung und Nachbesserung |
+| Seiten gesamt | **28** (die alte 28. war `/waerme/bilanz` und ist jetzt eine Weiterleitung; dafür kam am 22.11. `/waerme/regelkreis` dazu) |
+| gemessen | **27 von 28**, zusammen rund 1 000 000 Zeichen Messung in `messungen/` |
+| danach umgebaut | **27 von 28**, je ein Commit mit Gegenprüfung und Nachbesserung |
+
+**Die 28. Seite ist `/waerme/regelkreis`**, und sie ist nicht gemessen worden, weil es nichts
+zu messen gab: Vorlage und App sind in derselben Runde entstanden. Sie ist auch die einzige, die
+in der App bewusst **anders** aussieht als im Browser. Dort liegt ein Blockschaltbild von 1400
+Punkten Breite, in dem man Kästchen anklickt; am Telefon bliebe davon ein Ausschnitt, durch den
+man schiebt. Die App zeigt dieselbe Kaskade darum als Liste nach Ebenen – je Block sein
+Übertragungsglied mit Kennbild, seine Signale mit Vorzeichen, seine Parameter mit Schieber,
+Herkunft, Lernverlauf und Eingabefeld. Die Instrumente (Kennbild, Rundinstrument, Pegel,
+Schieber, Verlauf) sind dieselben fünf wie im Dashboard, und die Reserven, Anteile und Sätze
+kommen aus ``Regelkreisbild`` im Kern, nicht aus der Ansicht. Der Kicker weicht als einziger von
+der Vorlage ab, mit Begründung in `KickerTests`.
 
 **Die Handliste ist damit abgearbeitet, und sie hat sich als zu flach erwiesen.** Die acht
 Seiten, die am 17. und 20.11. nach ihr nachgearbeitet wurden, galten als fertig. Gemessen

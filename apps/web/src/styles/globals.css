@@ -1228,10 +1228,12 @@ button.ansicht { cursor: pointer; }
 .rk-katalog-eintrag code { font: 400 11.5px/1.5 var(--font-mono); color: var(--text-2); overflow-x: auto; }
 .rk-katalog-wo { color: var(--mist) !important; }
 
-/* Die Karte als Tafel: ein feines Raster, auf dem die Kaestchen liegen. */
-.rk-roller { background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
-  linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 28px 28px; background-position: -1px -1px; border-radius: var(--radius-2); }
+/* Die Karte liegt in einer Vertiefung, nicht auf Millimeterpapier.
+   Erster Versuch war ein Raster aus feinen Linien - es hat die Leitungen der Zeichnung
+   nachgeahmt und mit ihnen um Aufmerksamkeit gestritten. Jetzt traegt nur eine Fase und ein
+   etwas tieferer Grund die Flaeche; das Bild steht darin, ohne dagegen anzukommen. */
+.rk-roller { border-radius: var(--radius-2); background: rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px var(--line-1); }
 .rk-gewaehlt .rk-rahmen { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--amber) 55%, transparent)); }
 .rk-wert { font-variant-numeric: tabular-nums; }
 
@@ -1278,3 +1280,9 @@ button.ansicht { cursor: pointer; }
    sie an der naechsten Spalte, und aus "±0,016" und "240" wird "±0,016240". */
 .rk-tabelle td + td, .rk-tabelle th + th,
 .rk-protokoll td + td, .rk-protokoll th + th { padding-left: 12px; }
+.rk-verlauf-band { fill: var(--mist); opacity: 0.2; stroke: none; }
+.rk-verlauf-schaetzung { fill: none; stroke: var(--mist); stroke-width: 1.2; }
+.rk-verlauf-geltend { fill: none; stroke: var(--amber); stroke-width: 1.9; stroke-linejoin: round; }
+.rk-verlauf-start { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 4 3; }
+.rk-verlauf-punkt { fill: var(--amber); stroke: var(--surface-1); stroke-width: 1.2; }
+.rk-verlauf { margin-top: 10px; }

@@ -150,7 +150,7 @@ type Voll<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> }
 export type RegelkreisBlock = Voll<S["BlockAnsicht"], "erklaerung" | "gleichungen" | "parameter" | "kurz">;
 export type RegelkreisKante = Voll<S["KanteAnsicht"], "art">;
 export type RegelkreisKreis = Voll<S["KreisAnsicht"], "erklaerung" | "kennlinie">;
-export type RegelkreisParameter = Voll<S["ParameterAnsicht"], "wirkt_auf" | "protokoll" | "n">;
+export type RegelkreisParameter = Voll<S["ParameterAnsicht"], "wirkt_auf" | "protokoll" | "verlauf" | "n">;
 export type RegelkreisGuete = S["GueteAnsicht"];
 /** Ein Übertragungsglied samt gerechnetem Kennbild (Sprungantwort oder Kennlinie). */
 export type RegelkreisGlied = Voll<S["GliedAnsicht"], "kurve2">;

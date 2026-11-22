@@ -13187,6 +13187,42 @@
         "title": "MemoryTypeOut",
         "description": "Eine Objektgruppe im Python-Haufen: Typ, Anzahl, flache Größe."
       },
+      "Messpunkt": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "wert": {
+            "type": "number",
+            "title": "Wert"
+          },
+          "sigma": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sigma"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "wert"
+        ],
+        "title": "Messpunkt",
+        "description": "Eine Schätzung zu einem Zeitpunkt, mit ihrer Unsicherheit. Eine Stützstelle des Verlaufs."
+      },
       "MorgenbriefIn": {
         "properties": {
           "enabled": {
@@ -13734,6 +13770,13 @@
             },
             "type": "array",
             "title": "Protokoll"
+          },
+          "verlauf": {
+            "items": {
+              "$ref": "#/components/schemas/Messpunkt"
+            },
+            "type": "array",
+            "title": "Verlauf"
           },
           "pruefung": {
             "anyOf": [

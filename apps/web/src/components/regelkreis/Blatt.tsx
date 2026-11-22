@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardHead } from "@/components/ui/Card";
 import type { Regelkreis, RegelkreisGlied, RegelkreisHerkunft, RegelkreisKreis, RegelkreisParameter } from "@/lib/api/models";
-import { Rundinstrument, Schieber, SprungantwortBild } from "./Anzeigen";
+import { Lernverlauf, Rundinstrument, Schieber, SprungantwortBild } from "./Anzeigen";
 
 /**
  * Das Detailblatt eines Blocks: was er tut, woran er lernt, und was man ihm vorschreiben kann.
@@ -270,6 +270,13 @@ function Parameterzeile({ p, offen, onOeffne, onStellen, onFreigeben, busy }: { 
                 </button>
               ) : null}
             </div>
+            <Lernverlauf
+              verlauf={p.verlauf}
+              protokoll={p.protokoll}
+              startwert={p.startwert}
+              stellen={p.stellen}
+              einheit={p.einheit === "—" ? "" : p.einheit}
+            />
             {p.protokoll.length ? (
               <table className="rk-protokoll">
                 <thead>

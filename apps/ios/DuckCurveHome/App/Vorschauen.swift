@@ -112,6 +112,14 @@
         Vorschaurahmen(weg: "/waerme/waermepumpe") { WaermepumpeSeite() }
     }
 
+    #Preview("Regelkreis") {
+        Vorschaurahmen(breit: true, weg: "/waerme/regelkreis") { RegelkreisSeite() }
+    }
+
+    #Preview("Regelkreis · Hand") {
+        Vorschaurahmen(weg: "/waerme/regelkreis") { RegelkreisSeite() }
+    }
+
     #Preview("Zugang") {
         Vorschaurahmen(weg: "/system/zugang") { ZugangSeite() }
     }

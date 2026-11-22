@@ -57,7 +57,7 @@ const regelkreisVoll = (d: RegelkreisRoh): Regelkreis => {
     bloecke: (roh.bloecke ?? []).map((b) => ({ ...b, kurz: b.kurz ?? "", erklaerung: b.erklaerung ?? [], gleichungen: b.gleichungen ?? [], parameter: b.parameter ?? [] })),
     kanten: (roh.kanten ?? []).map((k) => ({ ...k, art: k.art ?? "signal" })),
     kreise: (roh.kreise ?? []).map((k) => ({ ...k, erklaerung: k.erklaerung ?? [], kennlinie: k.kennlinie ?? [] })),
-    parameter: (roh.parameter ?? []).map((p) => ({ ...p, n: p.n ?? 0, wirkt_auf: p.wirkt_auf ?? [], protokoll: p.protokoll ?? [] })),
+    parameter: (roh.parameter ?? []).map((p) => ({ ...p, n: p.n ?? 0, wirkt_auf: p.wirkt_auf ?? [], protokoll: p.protokoll ?? [], verlauf: p.verlauf ?? [] })),
     arbeitspunkt: { ...roh.arbeitspunkt, aussen_gemessen: roh.arbeitspunkt?.aussen_gemessen ?? false, vorlauf_gemessen: roh.arbeitspunkt?.vorlauf_gemessen ?? false },
     glieder: (roh.glieder ?? []).map((g) => ({ ...g, kurve2: g.kurve2 ?? [] })),
     uebersteuert: roh.uebersteuert ?? [],

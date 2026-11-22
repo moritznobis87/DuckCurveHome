@@ -309,6 +309,35 @@ public struct Api: Sendable {
         try await hole("/waermepumpe/kennlinie", fragen: ["tage": String(tage)])
     }
 
+    // MARK: - Regelkreis
+
+    /// Die ganze Karte: Blöcke, Kanten, Kreise, Parameter samt Herkunft und Lernprotokoll.
+    ///
+    /// Eine Antwort, kein Dutzend. Die Karte ist in sich geschlossen - wer die Parameter eines
+    /// Blocks sucht, findet sie über dessen Kennung, und wer wissen will, warum eine Zahl
+    /// dasteht, liest ihre Herkunft. Zwei Abrufe könnten einander widersprechen.
+    public func regelkreis() async throws -> RegelkreisOut {
+        try await hole("/regelkreis")
+    }
+
+    /// Einen Parameter von Hand setzen. Die Lernebene lässt ihn danach in Ruhe.
+    ///
+    /// Die Antwort ist wieder die ganze Karte, denn ein übersteuerter Parameter verschiebt den
+    /// Entwurf aller Kreise, in denen er vorkommt: aus einer neuen Zeitkonstante folgt eine
+    /// neue Nachstellzeit und daraus eine andere Phasenreserve. Ein „in Ordnung“ würde die
+    /// Seite zwingen, selbst nachzurechnen - und das wäre eine zweite Wahrheit.
+    public func stelleRegelkreis(_ pid: String, wert: Double) async throws -> RegelkreisOut {
+        try await hole(
+            "/regelkreis/parameter/\(pid)", verfahren: "POST",
+            rumpf: try rumpf(RegelkreisStellenIn(wert: wert))
+        )
+    }
+
+    /// Eine Übersteuerung zurücknehmen: der Parameter lernt wieder.
+    public func gibRegelkreisFrei(_ pid: String) async throws -> RegelkreisOut {
+        try await hole("/regelkreis/parameter/\(pid)", verfahren: "DELETE")
+    }
+
     // MARK: - Steuern
 
     public func batterie() async throws -> BatteryLiveOut {

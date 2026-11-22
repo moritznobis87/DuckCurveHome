@@ -36,7 +36,7 @@ from hems_core.regelkreis.parameter import (
     Schaetzart,
     startwerte,
 )
-from hems_core.regelkreis.schaetzer import Pruefung, Schaetzstand, Uebernahme
+from hems_core.regelkreis.schaetzer import Messpunkt, Pruefung, Schaetzstand, Uebernahme
 from hems_core.regelkreis.struktur import (
     BEHANDLUNG_TEXT,
     BLOECKE,
@@ -116,6 +116,8 @@ class ParameterAnsicht(BaseModel):
     quelle: str | None = None
     wirkt_auf: list[str] = Field(default_factory=list)
     protokoll: list[Uebernahme] = Field(default_factory=list)
+    #: Der Weg der Schätzung über die Zeit, älteste zuerst - das Bild zum Protokoll.
+    verlauf: list[Messpunkt] = Field(default_factory=list)
     #: Die letzte Prüfung. Bei einer Ablehnung steht hier, warum noch der alte Wert gilt.
     pruefung: Pruefung | None = None
 
@@ -542,6 +544,7 @@ def aufbauen(
                 quelle=p.quelle,
                 wirkt_auf=list(p.wirkt_auf),
                 protokoll=list(eintrag.protokoll) if eintrag else [],
+                verlauf=list(eintrag.verlauf) if eintrag else [],
                 pruefung=eintrag.letzte_pruefung if eintrag else None,
             )
         )

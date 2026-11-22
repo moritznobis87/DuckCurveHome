@@ -288,3 +288,101 @@ export function Leuchte({ an, farbe = "var(--amber)", titel }: { an: boolean; fa
     </span>
   );
 }
+
+/* ------------------------------------------------------------------ Lernverlauf */
+
+/**
+ * Der Weg einer Schätzung über die Zeit: die laufende Schätzung mit ihrem Unsicherheitsband, und
+ * als Treppe darüber der Wert, mit dem die Regelung wirklich arbeitet.
+ *
+ * **Warum beides in einem Bild.** Das Protokoll sagt, wann ein Wert übernommen wurde und warum.
+ * Es sagt nicht, was dazwischen geschah - ob die Schätzung ruhig auf ihren Wert zulief oder
+ * monatelang schwankte und zufällig an einem Tag über die Schwelle kam. Das ist der Unterschied
+ * zwischen einer Zahl, der man trauen kann, und einer, die gerade gut aussieht. Die Treppe zeigt
+ * zugleich, was die Übernahmeprüfung tut: sie hält den geltenden Wert still, solange die
+ * Schätzung zappelt.
+ */
+export function Lernverlauf({
+  verlauf,
+  protokoll,
+  startwert,
+  stellen,
+  einheit,
+  breite = 540,
+  hoehe = 150,
+}: {
+  verlauf: { at: string; wert: number; sigma?: number | null }[];
+  protokoll: { at: string; neu: number }[];
+  startwert: number;
+  stellen: number;
+  einheit: string;
+  breite?: number;
+  hoehe?: number;
+}) {
+  if (verlauf.length < 2) return null;
+  const pad = { l: 52, r: 10, t: 12, b: 20 };
+  const t0 = new Date(verlauf[0]!.at).getTime();
+  const t1 = new Date(verlauf[verlauf.length - 1]!.at).getTime();
+  const spanne = Math.max(1, t1 - t0);
+  const werte = verlauf.flatMap((p) => [p.wert, p.wert + 2 * (p.sigma ?? 0), p.wert - 2 * (p.sigma ?? 0)]);
+  werte.push(startwert, ...protokoll.map((u) => u.neu));
+  let lo = Math.min(...werte);
+  let hi = Math.max(...werte);
+  const luft = (hi - lo) * 0.12 || Math.abs(hi) * 0.1 || 1;
+  lo -= luft;
+  hi += luft;
+  const x = (iso: string) => pad.l + ((new Date(iso).getTime() - t0) / spanne) * (breite - pad.l - pad.r);
+  const y = (v: number) => pad.t + (1 - (v - lo) / (hi - lo)) * (hoehe - pad.t - pad.b);
+  const linie = (f: (p: (typeof verlauf)[number]) => number) =>
+    verlauf.map((p, i) => `${i ? "L" : "M"}${x(p.at).toFixed(1)} ${f(p).toFixed(1)}`).join(" ");
+  // Das Band: oben hin, unten zurück.
+  const band = [
+    ...verlauf.map((p, i) => `${i ? "L" : "M"}${x(p.at).toFixed(1)} ${y(p.wert + 2 * (p.sigma ?? 0)).toFixed(1)}`),
+    ...[...verlauf].reverse().map((p) => `L${x(p.at).toFixed(1)} ${y(p.wert - 2 * (p.sigma ?? 0)).toFixed(1)}`),
+    "Z",
+  ].join(" ");
+  // Die Treppe des geltenden Werts: Startwert, bis eine Übernahme ihn ersetzt.
+  const stufen: string[] = [`M${x(verlauf[0]!.at).toFixed(1)} ${y(startwert).toFixed(1)}`];
+  let gilt = startwert;
+  for (const u of protokoll) {
+    const px = Math.max(pad.l, Math.min(breite - pad.r, x(u.at)));
+    stufen.push(`L${px.toFixed(1)} ${y(gilt).toFixed(1)}`, `L${px.toFixed(1)} ${y(u.neu).toFixed(1)}`);
+    gilt = u.neu;
+  }
+  stufen.push(`L${(breite - pad.r).toFixed(1)} ${y(gilt).toFixed(1)}`);
+  const tag = (iso: string) => new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+  return (
+    <figure className="rk-chart rk-verlauf">
+      <svg viewBox={`0 0 ${breite} ${hoehe}`} role="img" aria-label={`Verlauf der Schätzung von ${de(verlauf[0]!.wert, stellen)} auf ${de(verlauf[verlauf.length - 1]!.wert, stellen)} ${einheit}`}>
+        {[0, 0.5, 1].map((f) => {
+          const v = lo + (hi - lo) * f;
+          return (
+            <g key={f}>
+              <line className="rk-raster" x1={pad.l} x2={breite - pad.r} y1={y(v)} y2={y(v)} />
+              <text className="rk-achse-text" x={pad.l - 6} y={y(v) + 3} textAnchor="end">
+                {de(v, stellen)}
+              </text>
+            </g>
+          );
+        })}
+        <path d={band} className="rk-verlauf-band" />
+        <line className="rk-verlauf-start" x1={pad.l} x2={breite - pad.r} y1={y(startwert)} y2={y(startwert)} />
+        <path d={linie((p) => y(p.wert))} className="rk-verlauf-schaetzung" />
+        <path d={stufen.join(" ")} className="rk-verlauf-geltend" />
+        {protokoll.map((u) => (
+          <circle key={u.at} cx={Math.max(pad.l, Math.min(breite - pad.r, x(u.at)))} cy={y(u.neu)} r={3.4} className="rk-verlauf-punkt" />
+        ))}
+        <text className="rk-achse-text" x={pad.l} y={hoehe - 5}>
+          {tag(verlauf[0]!.at)}
+        </text>
+        <text className="rk-achse-text" x={breite - pad.r} y={hoehe - 5} textAnchor="end">
+          {tag(verlauf[verlauf.length - 1]!.at)}
+        </text>
+      </svg>
+      <figcaption className="rk-bild-text">
+        Dünn: die laufende Schätzung mit ihrem Band aus ±2σ. Dick: der Wert, mit dem die Regelung
+        arbeitet — er springt nur bei einer Übernahme. Gestrichelt: der Startwert.
+      </figcaption>
+    </figure>
+  );
+}

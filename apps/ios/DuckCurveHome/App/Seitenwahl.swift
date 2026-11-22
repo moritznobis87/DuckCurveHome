@@ -80,6 +80,8 @@ struct Seitenwahl: View {
             return AnyView(NachbetrachtungSeite(weg: weg))
         case "/waerme/wirkung":
             return AnyView(WirkungSeite())
+        case "/waerme/regelkreis":
+            return AnyView(RegelkreisSeite())
         case "/waerme/raeume":
             return AnyView(HeizkreiseSeite())
         case "/waerme/annahmen":

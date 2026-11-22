@@ -1117,3 +1117,77 @@ def test_in_der_heizzeit_gibt_es_keine_stille_nacht() -> None:
         )
         is None
     )
+
+
+# --------------------------------------------------------------- Der Weg der Schätzung
+
+
+def test_der_verlauf_zeichnet_jede_meldung_auf() -> None:
+    """Das Protokoll zeigt die Sprünge, der Verlauf den Weg dazwischen. Erst beides zusammen
+    sagt, ob eine Schätzung ruhig auf ihren Wert zulief oder zufällig über die Schwelle kam."""
+    stand = schaetzer.Schaetzstand()
+    for i in range(12):
+        stand.melde(
+            "h_haus",
+            kandidat=0.22 - 0.004 * i,
+            sigma=0.02 - 0.001 * i,
+            n=40 + 10 * i,
+            jetzt=T0 + timedelta(days=i),
+            startwert=0.22,
+        )
+    verlauf = stand.parameter["h_haus"].verlauf
+    assert len(verlauf) == 12
+    assert verlauf[0].at == T0 and verlauf[-1].at == T0 + timedelta(days=11)
+    assert verlauf[0].wert == pytest.approx(0.22)
+    assert verlauf[-1].wert == pytest.approx(0.176)
+    assert verlauf[-1].sigma is not None and verlauf[-1].sigma < verlauf[0].sigma
+    assert [p.n for p in verlauf] == sorted(p.n for p in verlauf)
+
+
+def test_zwei_meldungen_derselben_stunde_sind_ein_punkt() -> None:
+    """Der Lernlauf geht stündlich; dichter aufzuzeichnen hieße, dieselbe Aussage zu wiederholen."""
+    stand = schaetzer.Schaetzstand()
+    stand.melde("h_haus", kandidat=0.20, sigma=0.01, n=50, jetzt=T0, startwert=0.22)
+    stand.melde(
+        "h_haus", kandidat=0.19, sigma=0.01, n=51, jetzt=T0 + timedelta(minutes=10), startwert=0.22
+    )
+    verlauf = stand.parameter["h_haus"].verlauf
+    assert len(verlauf) == 1
+    assert verlauf[0].wert == pytest.approx(0.19), "der jüngere Wert ersetzt den älteren"
+
+
+def test_der_verlauf_duennt_hinten_aus_und_nicht_vorn() -> None:
+    """Wer vorne abschneidet, verliert den Anfang - und der ist das Interessante am Lernen."""
+    stand = schaetzer.Schaetzstand()
+    for i in range(schaetzer.VERLAUF_LAENGE + 60):
+        stand.melde(
+            "h_haus",
+            kandidat=0.22,
+            sigma=0.01,
+            n=50,
+            jetzt=T0 + timedelta(hours=2 * i),
+            startwert=0.22,
+        )
+    verlauf = stand.parameter["h_haus"].verlauf
+    assert len(verlauf) <= schaetzer.VERLAUF_LAENGE
+    assert verlauf[0].at == T0, "der erste Punkt bleibt stehen"
+    assert verlauf[-1].at == T0 + timedelta(hours=2 * (schaetzer.VERLAUF_LAENGE + 59))
+    # Hinten dicht, vorn grob: der letzte Abstand ist kleiner als der erste.
+    assert (verlauf[-1].at - verlauf[-2].at) <= (verlauf[1].at - verlauf[0].at)
+
+
+def test_die_karte_reicht_den_verlauf_durch() -> None:
+    stand = schaetzer.Schaetzstand()
+    for i in range(5):
+        stand.melde(
+            "cop_a",
+            kandidat=5.0 - 0.2 * i,
+            sigma=0.1,
+            n=100,
+            jetzt=T0 + timedelta(days=i),
+            startwert=5.2,
+        )
+    k = karte.aufbauen(CFG, stand, jetzt=T0 + timedelta(days=5))
+    p = next(x for x in k.parameter if x.id == "cop_a")
+    assert len(p.verlauf) == 5
+    assert p.verlauf[-1].wert == pytest.approx(4.2)

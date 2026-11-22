@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -339,6 +339,17 @@ class Uebernahme(BaseModel):
     grund: str
 
 
+class Messpunkt(BaseModel):
+    """Eine Schätzung zu einem Zeitpunkt, mit ihrer Unsicherheit. Eine Stützstelle des Verlaufs."""
+
+    model_config = ConfigDict(frozen=True)
+
+    at: datetime
+    wert: float
+    sigma: float | None = None
+    n: int = 0
+
+
 class ParameterStand(BaseModel):
     """Der Zustand eines Parameters: was gilt, was geschätzt wird, und was war."""
 
@@ -355,6 +366,14 @@ class ParameterStand(BaseModel):
     rmse: float | None = None
     #: Jüngste Übernahme zuletzt.
     protokoll: list[Uebernahme] = Field(default_factory=list)
+    #: Der Weg der Schätzung, älteste zuerst.
+    #:
+    #: **Warum der Weg und nicht nur der Stand.** Das Protokoll zeigt die Sprünge - wann ein Wert
+    #: übernommen wurde und warum. Es zeigt nicht, was dazwischen geschah: ob die Schätzung ruhig
+    #: auf ihren Wert zulief oder monatelang schwankte und zufällig an einem Tag über die Schwelle
+    #: kam. Das ist der Unterschied zwischen einer Zahl, der man trauen kann, und einer, die
+    #: gerade gut aussieht.
+    verlauf: list[Messpunkt] = Field(default_factory=list)
     #: Letzte Prüfung, auch wenn sie abgelehnt hat - das ist die interessantere Hälfte.
     letzte_pruefung: Pruefung | None = None
 
@@ -365,6 +384,29 @@ class ParameterStand(BaseModel):
 
 #: So viele Einträge je Parameter werden behalten. Älteres steht in den Ereignissen der Anlage.
 PROTOKOLL_LAENGE = 24
+#: So viele Stützstellen behält ein Verlauf. Darüber wird die ältere Hälfte ausgedünnt.
+VERLAUF_LAENGE = 180
+#: Dichter als das wird nicht aufgezeichnet: zwei Schätzungen aus derselben Stunde sagen dasselbe.
+VERLAUF_ABSTAND_MIN = 50.0
+
+
+def _verlauf_anhaengen(
+    verlauf: list[Messpunkt], punkt: Messpunkt, laenge: int = VERLAUF_LAENGE
+) -> list[Messpunkt]:
+    """Eine Stützstelle anhängen und den Verlauf in Grenzen halten.
+
+    **Ausgedünnt wird die ältere Hälfte, nicht der Anfang.** Wer vorne abschneidet, verliert
+    genau das, was den Verlauf interessant macht: den Anfang, an dem die Schätzung noch weit weg
+    war. Stattdessen fällt in der älteren Hälfte jeder zweite Punkt weg - die Kurve bleibt über
+    ihre ganze Länge erkennbar und wird zum Rand hin nur gröber.
+    """
+    if verlauf and punkt.at - verlauf[-1].at < timedelta(minutes=VERLAUF_ABSTAND_MIN):
+        return [*verlauf[:-1], punkt]
+    neu = [*verlauf, punkt]
+    if len(neu) <= laenge:
+        return neu
+    mitte = len(neu) // 2
+    return [*neu[:mitte:2], *neu[mitte:]]
 
 
 class Schaetzstand(BaseModel):
@@ -459,6 +501,9 @@ class Schaetzstand(BaseModel):
             stand=jetzt,
             rmse=rmse_neu if rmse_neu is not None else stand.rmse,
             protokoll=protokoll,
+            verlauf=_verlauf_anhaengen(
+                list(stand.verlauf), Messpunkt(at=jetzt, wert=kandidat, sigma=sigma, n=n)
+            ),
             letzte_pruefung=pruefung,
         )
         if self.seit is None:

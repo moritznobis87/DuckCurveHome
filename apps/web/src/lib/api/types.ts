@@ -5777,6 +5777,26 @@ export interface components {
             /** Mb */
             mb: number;
         };
+        /**
+         * Messpunkt
+         * @description Eine Schätzung zu einem Zeitpunkt, mit ihrer Unsicherheit. Eine Stützstelle des Verlaufs.
+         */
+        Messpunkt: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Wert */
+            wert: number;
+            /** Sigma */
+            sigma?: number | null;
+            /**
+             * N
+             * @default 0
+             */
+            n: number;
+        };
         /** MorgenbriefIn */
         MorgenbriefIn: {
             /** Enabled */
@@ -6029,6 +6049,8 @@ export interface components {
             wirkt_auf?: string[];
             /** Protokoll */
             protokoll?: components["schemas"]["Uebernahme"][];
+            /** Verlauf */
+            verlauf?: components["schemas"]["Messpunkt"][];
             pruefung?: components["schemas"]["Pruefung"] | null;
         };
         /**
