@@ -3048,6 +3048,11 @@ export interface components {
         /** EnergySummaryOut */
         EnergySummaryOut: {
             /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
              * Period
              * @enum {string}
              */
@@ -3334,6 +3339,11 @@ export interface components {
         };
         /** EvReportOut */
         EvReportOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             summary: components["schemas"]["EnergySummaryOut"];
             /** Sessions */
             sessions: components["schemas"]["EvSessionOut"][];
@@ -4017,6 +4027,11 @@ export interface components {
          */
         HeatBalanceOut: {
             /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
              * Period
              * @enum {string}
              */
@@ -4498,6 +4513,11 @@ export interface components {
         };
         /** HeatReportOut */
         HeatReportOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             summary: components["schemas"]["EnergySummaryOut"];
             /** Thermal Kwh Est */
             thermal_kwh_est: number;
@@ -6061,6 +6081,11 @@ export interface components {
          */
         PvTaxReportOut: {
             /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
              * Period
              * @enum {string}
              */
@@ -6854,6 +6879,11 @@ export interface components {
          *     weiß.
          */
         ShiftReportOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             /**
              * Period
              * @enum {string}

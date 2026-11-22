@@ -2426,6 +2426,12 @@ class LiveRuntime:
             else None,
         )
         result = await importer.run(payload, cast(Kind, kind), dry_run, replace_until)
+        if not dry_run:
+            # Der Import schreibt Stundenbilanzen vergangener Monate direkt, ohne über
+            # `accounting.recompute` zu gehen - dort steht dieselbe Zeile aus demselben Grund.
+            # Ohne sie behielte der Berichtsspeicher die Zahlen von vor dem Import, und zwar
+            # dauerhaft: abgeschlossene Zeiträume haben dort keine Frist.
+            self.accounting.berichte.leeren()
         log.info("ha import", **result.model_dump(exclude={"entities", "unmapped"}, mode="json"))
         return result
 

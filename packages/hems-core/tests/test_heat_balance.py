@@ -19,6 +19,7 @@ from hems_core.thermal import (
     stored_energy_kwh,
     stove_output_kw,
 )
+from hems_core.thermal.heat_balance import MAX_GAP_MIN, buffer_power_kw
 
 NOW = datetime(2026, 10, 13, 6, 0, tzinfo=UTC)
 BUFFER = BufferConfig()
@@ -378,8 +379,6 @@ def test_ein_fuehlersprung_wird_nicht_zu_fuenfzig_kilowatt() -> None:
 
 def test_das_fenster_verliert_die_energie_nicht() -> None:
     """Geglättet werden darf nur die Verteilung, nicht die Menge."""
-    from hems_core.thermal.heat_balance import buffer_power_kw
-
     samples = _stufe(40, 20, 1.0)
     leistungen = [p for p in buffer_power_kw(samples, BUFFER) if p is not None]
     # Summe der Leistungen mal Zeitschritt gegen die Differenz der Bestände.
@@ -421,3 +420,187 @@ def test_die_summen_zaehlen_die_minuten_ohne_aussage() -> None:
     summen = heat_totals(heat_series(samples, stove=STOVE, heat=HEAT, buffer=BUFFER), samples)
     assert summen.unknown_minutes == 30
     assert "nichts sagen" in summen.note_de
+
+
+# ------------------------------------------------------------------ Das Fenster als Zeigerlauf
+
+
+def _spann(
+    gemessen: list[int], zeiten: list[datetime], i: int, halb: float
+) -> tuple[int | None, int | None]:
+    """Das Indexpaar (davor, dahinter) für Probe `i`, geradeheraus formuliert.
+
+    Dieselbe Regel wie in `buffer_power_kw`, nur ohne Zeiger: hier zählt Lesbarkeit, dort Laufzeit.
+    Drei Dinge stehen deshalb ausdrücklich da, weil sie beim Umbau auf Zeiger als erstes verloren
+    gehen: `j <= i` bzw. `j >= i` sind **Indexschranken** und keine Zeitbedingung, eine Messung
+    genau auf `i` zählt für beide Seiten mit, und reicht das halbe Fenster nicht, gilt der weiteste
+    Spann - die erste Messung davor, die letzte dahinter - und nicht der nächste Nachbar.
+    """
+    davor = [j for j in gemessen if j <= i]
+    danach = [j for j in gemessen if j >= i]
+    weit_vor = [j for j in davor if (zeiten[i] - zeiten[j]).total_seconds() / 60.0 >= halb]
+    weit_nach = [j for j in danach if (zeiten[j] - zeiten[i]).total_seconds() / 60.0 >= halb]
+    vor = weit_vor[-1] if weit_vor else (davor[0] if davor else None)
+    nach = weit_nach[0] if weit_nach else (danach[-1] if danach else None)
+    return vor, nach
+
+
+def _vergleichsfassung(samples: list[HeatSample], fenster: float = 10.0) -> list[float | None]:
+    """`buffer_power_kw` ohne Zeiger, über `_spann`. Langsam, dafür offensichtlich."""
+    zeiten = [s.at for s in samples]
+    inhalte = [stored_energy_kwh(list(s.buffer_c), BUFFER) if s.buffer_c else None for s in samples]
+    gemessen = [i for i, e in enumerate(inhalte) if e is not None]
+    out: list[float | None] = [None] * len(samples)
+    if len(gemessen) < 2:
+        return out
+    for i in range(len(samples)):
+        vor, nach = _spann(gemessen, zeiten, i, fenster / 2.0)
+        if vor is None or nach is None or vor == nach:
+            continue
+        minuten = (zeiten[nach] - zeiten[vor]).total_seconds() / 60.0
+        if minuten <= 0 or minuten > MAX_GAP_MIN + fenster:
+            continue
+        out[i] = (inhalte[nach] - inhalte[vor]) / (minuten / 60.0)
+    return out
+
+
+def _lueckig(offsets: list[int], gemessen: list[int]) -> list[HeatSample]:
+    """Eine Reihe mit beliebigen Abständen; `gemessen` sagt, welche Probe Temperaturen hat."""
+    out = []
+    for k, o in enumerate(offsets):
+        t = 50.0 + 0.3 * k
+        out.append(
+            HeatSample(
+                at=NOW + timedelta(minutes=o),
+                outdoor_c=5.0,
+                room_c=21.0,
+                buffer_c=(t, t - 1.0, t - 2.0, t - 3.0) if k in gemessen else None,
+            )
+        )
+    return out
+
+
+# Die Fälle, an denen sich die Zeigerfassung von der geradeheraus formulierten unterscheiden würde,
+# wenn eine der drei Feinheiten fehlte: Ränder, Lücken, Dopplungen, Messungen genau auf der Probe.
+HARTE_FAELLE: list[tuple[list[int], list[int]]] = [
+    ([0, 1], [0, 1]),
+    ([0, 0], [0, 1]),  # zwei Messungen auf derselben Minute
+    ([0, 6, 20], [0, 1, 2]),  # die Probe ist selbst die letzte Messung
+    ([0, 3, 4], [0, 1, 2]),  # nirgends ein halbes Fenster: weitester Spann
+    ([0, 1, 2, 3, 4, 5], [2, 3]),  # i vor der ersten und hinter der letzten Messung
+    (list(range(60)), [0, 1, 2]),  # alle Messungen vorn
+    (list(range(60)), [57, 58, 59]),  # alle Messungen hinten
+    (list(range(10)) + list(range(100, 110)), list(range(20))),  # Lücke von 90 Minuten
+    ([0, 25, 26, 51], [0, 1, 2, 3]),  # Lücke genau an der Grenze
+    (list(range(40)), [0, 39]),  # nur die beiden Ränder gemessen
+    ([0, 0, 1, 1, 2, 2, 12, 12, 13], list(range(9))),  # Dopplungen in Serie
+    ([0, 1, 2, 3, 4, 5, 200], list(range(7))),  # ein Block, dann eine späte Messung
+    (list(range(40)), list(range(0, 40, 2))),  # jede zweite Minute
+]
+
+
+def test_die_zeiger_liefern_dasselbe_wie_die_offene_rechnung() -> None:
+    """Der Zeigerlauf ist eine Beschleunigung und keine neue Regel.
+
+    Geprüft wird nicht die Mitte einer dichten Reihe - die trifft jede Fassung -, sondern genau die
+    Ränder und Lücken, an denen die beiden Seiten verschieden weit greifen.
+    """
+    for offsets, gemessen in HARTE_FAELLE:
+        samples = _lueckig(offsets, gemessen)
+        for fenster in (0.0, 2.0, 10.0, 30.0):
+            assert buffer_power_kw(samples, BUFFER, fenster) == _vergleichsfassung(
+                samples, fenster
+            ), (offsets, gemessen, fenster)
+
+
+def test_eine_messung_genau_auf_der_probe_zaehlt_mit() -> None:
+    """„Mindestens ein halbes Fenster dahinter“ heißt *ab* der Probe, nicht *nach* ihr.
+
+    Sonst verlöre die letzte gemessene Minute einer Reihe ihre Leistung, obwohl vierzehn Minuten
+    davor eine zweite Messung steht und der Spann damit vollständig ist.
+    """
+    samples = _lueckig([0, 6, 20], [0, 1, 2])
+    leistungen = buffer_power_kw(samples, BUFFER)
+    assert leistungen[2] is not None
+    # Der Spann reicht von Minute 6 bis Minute 20, nicht von 20 bis 20.
+    inhalte = [stored_energy_kwh(list(s.buffer_c or ()), BUFFER) for s in samples]
+    assert leistungen[2] == (inhalte[2] - inhalte[1]) / (14.0 / 60.0)
+
+
+def test_ohne_volles_fenster_gilt_der_weiteste_spann() -> None:
+    """Der nächste Nachbar wäre der kurze Spann - und damit die große Leistung.
+
+    Drei Messungen in vier Minuten: für die mittlere Probe gibt es auf keiner Seite ein halbes
+    Fenster. Die Rechnung nimmt dann die äußeren Messungen und nicht die benachbarten; vier Minuten
+    Spann statt einer, also ein Viertel der Leistung. Genau darum geht es bei `BUFFER_WINDOW_MIN`.
+    """
+    samples = _lueckig([0, 3, 4], [0, 1, 2])
+    inhalte = [stored_energy_kwh(list(s.buffer_c or ()), BUFFER) for s in samples]
+    leistungen = buffer_power_kw(samples, BUFFER)
+    assert leistungen[1] == (inhalte[2] - inhalte[0]) / (4.0 / 60.0)
+    assert leistungen[1] != (inhalte[2] - inhalte[1]) / (1.0 / 60.0)
+
+
+def test_vor_der_ersten_und_hinter_der_letzten_messung_steht_nichts() -> None:
+    """Die Indexschranke trägt die Aussage, nicht der Zeitabstand.
+
+    Für eine Probe vor der ersten Messung ist der Abstand zu jeder Messung groß genug - und trotzdem
+    gibt es nichts davor. Eine Zeigerfassung, die nur auf Zeiten schaut, liest hier eine Leistung,
+    wo keine ist.
+    """
+    samples = _lueckig([0, 1, 2, 3, 4, 5], [2, 3])
+    leistungen = buffer_power_kw(samples, BUFFER)
+    assert leistungen[0] is None and leistungen[1] is None  # nichts davor
+    assert leistungen[4] is None and leistungen[5] is None  # nichts dahinter
+    assert leistungen[2] is not None and leistungen[3] is not None
+
+
+class _ZaehlendeZeit(datetime):
+    """Eine Zeit, die mitzählt, wie oft die Rechnung nach einem Abstand fragt.
+
+    Gemessen wird die Zahl der Fragen und nicht die Laufzeit: die schwankt mit der Maschine, die
+    Zahl der Fragen ist die Größe, um die es hier geht.
+    """
+
+    fragen = 0
+
+    def __sub__(self, other):  # type: ignore[override]
+        _ZaehlendeZeit.fragen += 1
+        return super().__sub__(other)
+
+
+def _gezaehlt(n: int) -> int:
+    """Wie viele Abstandsfragen `buffer_power_kw` für `n` Minutenproben stellt."""
+    basis = _ZaehlendeZeit(2026, 10, 13, 6, 0, tzinfo=UTC)
+    samples = [
+        HeatSample(
+            at=basis + timedelta(minutes=i),
+            outdoor_c=5.0,
+            buffer_c=(50.0 + i % 7, 49.0, 48.0, 47.0),
+        )
+        for i in range(n)
+    ]
+    _ZaehlendeZeit.fragen = 0
+    buffer_power_kw(samples, BUFFER)
+    return _ZaehlendeZeit.fragen
+
+
+def test_die_speicherleistung_fragt_nur_linear_oft_nach_abstaenden() -> None:
+    """Der eigentliche Befund: hier stand eine quadratische Funktion.
+
+    Je Probe wurde die sortierte Liste der Messungen zweimal von vorn durchsucht. Ein Tag ging
+    damit noch (0,3 s), ein Monat nicht mehr (172 s), und `measurements_minute` wird nie gelöscht -
+    die Datenmenge wächst, die Rechenzeit im Quadrat dazu. Festgehalten wird deshalb nicht die
+    Laufzeit, sondern die Zahl der Abstandsfragen: fünf je Probe, unabhängig von der Länge.
+    """
+    klein, gross = _gezaehlt(1000), _gezaehlt(4000)
+    assert klein <= 12 * 1000, klein
+    assert gross <= 12 * 4000, gross
+    # Viermal so viele Proben, höchstens etwa viermal so viele Fragen. Die alte Fassung brauchte
+    # bei n=4000 über acht Millionen und wäre hier um den Faktor hundert gescheitert.
+    assert gross <= 5 * klein, (klein, gross)
+
+
+def test_ein_monat_minutenproben_laeuft_durch() -> None:
+    """44640 Proben, der Fall, an dem die Monatsseite hing."""
+    assert _gezaehlt(44640) <= 12 * 44640
