@@ -86,6 +86,7 @@ Jeder Wert trägt `observed_at`, `quality` (ok, stale, unavailable, unknown, der
 | 9 | Regler aus gelernten Streckenparametern rechnen (SIMC) statt von Hand einstellen | indirekter selbsteinstellender Regler; die Einstellregel ist prüfbar, die Handeinstellung war es nie |
 | 10 | Übernahme einer Schätzung nur über fünf Hürden (Daten, Grenzen, Unsicherheit, Wartezeit, Gütegewinn) | das Modell kann nie schlechter werden als sein Startwert; jede Ablehnung hat einen Satz |
 | 11 | Lernzustand des Regelkreises in `model_calibrations` (`regelkreis_v1`) statt eigener Tabelle | ein Zustand je Modell, genau wofür die Tabelle da ist |
+| 12 | Der Regelkreis in der App als Liste nach Ebenen statt als Blockschaltbild | die einzige Seite, die bewusst anders aussieht als die Vorlage: eine Zeichnung von 1400 Punkten Breite ist am Telefon ein Ausschnitt, durch den man schiebt - dieselben Zahlen, dieselben Instrumente, andere Gestalt |
 
 
 Entschieden, aber noch nicht umgesetzt: **ADR-0002** kehrt Nummer 8 um - die Anmeldung zieht mit

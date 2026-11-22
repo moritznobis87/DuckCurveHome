@@ -10,7 +10,7 @@
 # ist kurz, und jede Zeile darin ist eine Behauptung, die jemand gelesen hat.
 
 # Freistehende Funktionen der Standardbibliothek
-abs min max round floor ceil sqrt pow exp log hypot atan2 cos sin tan stride zip
+abs min max round floor ceil sqrt pow exp log log10 hypot atan2 cos sin tan stride zip
 print assert precondition fatalError dump swap repeatElement
 
 # Nebenlaeufigkeit

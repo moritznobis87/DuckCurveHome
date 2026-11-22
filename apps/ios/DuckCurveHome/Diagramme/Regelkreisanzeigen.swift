@@ -471,3 +471,110 @@ struct Lernverlauf: View {
         }
     }
 }
+
+// MARK: - Frequenzkennlinie
+
+/// Das Bode-Diagramm des offenen Kreises, klein: Betrag in dB, Phase in Grad, über der
+/// Kreisfrequenz.
+///
+/// **Warum es auch ans Telefon gehört.** Phasen- und Amplitudenreserve sind zwei Zahlen aus
+/// diesem Bild, und sie sagen nicht, **wie** der Kreis dorthin kommt: ob die Phase sanft fällt
+/// oder an einer Totzeit abstürzt, ist derselbe Zahlenwert und ein anderer Regelkreis. Die zwei
+/// Hilfslinien machen die Reserven ablesbar: 0 dB im oberen Feld, −180° im unteren, und die
+/// Durchtrittsfrequenz als Senkrechte durch beide.
+///
+/// Gerechnet wird nichts: die Punkte kommen aus dem Entwurf im Kern des Dienstes.
+struct Frequenzbild: View {
+    let punkte: [KennliniePunkt]
+    /// Die Durchtrittsfrequenz in rad/min, wo es eine gibt.
+    var durchtritt: Double?
+    var hoehe: CGFloat = 76
+
+    /// Das untere Feld bekommt mehr Platz: dort liegt die Phasenreserve, und dort wird
+    /// abgelesen.
+    private let fuge: CGFloat = 4
+
+    var body: some View {
+        if punkte.count < 2 {
+            EmptyView()
+        } else {
+            VStack(alignment: .leading, spacing: 2) {
+                Canvas { g, flaeche in male(in: &g, flaeche: flaeche) }
+                    .frame(height: hoehe)
+                beschriftung
+            }
+            .accessibilityLabel("Frequenzkennlinie des offenen Kreises")
+        }
+    }
+
+    private var beschriftung: some View {
+        HStack(spacing: 0) {
+            Text("ω klein")
+            Spacer(minLength: 4)
+            Text("|L| in dB · ∠L in Grad")
+            Spacer(minLength: 4)
+            Text("ω groß")
+        }
+        .font(Schrift.mono(9))
+        .foregroundStyle(Farbe.text3)
+        .accessibilityHidden(true)
+    }
+
+    /// Die Frequenzachse ist logarithmisch - die gesuchten Frequenzen liegen über Dekaden, und
+    /// linear aufgetragen klebte der ganze Verlauf am linken Rand.
+    private func x(_ w: Double, _ breite: CGFloat) -> CGFloat {
+        let lo = log10(max(punkte.first?.w ?? 1e-4, 1e-9))
+        let hi = log10(max(punkte.last?.w ?? 1.0, 1e-9))
+        let spanne = max(hi - lo, 1e-9)
+        return CGFloat((log10(max(w, 1e-9)) - lo) / spanne) * breite
+    }
+
+    private func male(in g: inout GraphicsContext, flaeche: CGSize) {
+        let hoch = (flaeche.height - fuge) / 2
+        male(feld: CGRect(x: 0, y: 0, width: flaeche.width, height: hoch), in: &g,
+             werte: punkte.map(\.db), unten: -40, oben: 40, hilfslinie: 0,
+             farbe: Farbe.amber)
+        male(feld: CGRect(x: 0, y: hoch + fuge, width: flaeche.width, height: hoch), in: &g,
+             werte: punkte.map(\.grad), unten: -270, oben: 0, hilfslinie: -180,
+             farbe: Farbe.mist)
+        guard let durchtritt else { return }
+        var senkrechte = Path()
+        let d = x(durchtritt, flaeche.width)
+        senkrechte.move(to: CGPoint(x: d, y: 0))
+        senkrechte.addLine(to: CGPoint(x: d, y: flaeche.height))
+        g.stroke(
+            senkrechte, with: .color(Farbe.papier.opacity(0.35)),
+            style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+    }
+
+    /// Ein Feld: Rahmen, Hilfslinie, Kurve. Beschnitten wird nicht gezeichnet, sondern
+    /// begrenzt - eine Kurve, die aus dem Feld läuft, legt sich auf seinen Rand und bleibt
+    /// damit lesbar.
+    private func male(
+        feld: CGRect, in g: inout GraphicsContext, werte: [Double], unten: Double, oben: Double,
+        hilfslinie: Double, farbe: Color
+    ) {
+        let spanne = max(oben - unten, 1e-9)
+        func y(_ wert: Double) -> CGFloat {
+            let teil = min(1.0, max(0.0, (wert - unten) / spanne))
+            return feld.maxY - CGFloat(teil) * feld.height
+        }
+        g.fill(
+            Path(roundedRect: feld, cornerRadius: 2),
+            with: .color(Farbe.papier.opacity(0.04)))
+        var hilfe = Path()
+        hilfe.move(to: CGPoint(x: feld.minX, y: y(hilfslinie)))
+        hilfe.addLine(to: CGPoint(x: feld.maxX, y: y(hilfslinie)))
+        g.stroke(
+            hilfe, with: .color(Farbe.papier.opacity(0.3)),
+            style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+        var kurve = Path()
+        for (i, wert) in werte.enumerated() where i < punkte.count {
+            let stelle = CGPoint(x: x(punkte[i].w, feld.width), y: y(wert))
+            if i == 0 { kurve.move(to: stelle) } else { kurve.addLine(to: stelle) }
+        }
+        g.stroke(
+            kurve, with: .color(farbe),
+            style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+    }
+}

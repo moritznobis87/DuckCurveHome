@@ -2,10 +2,18 @@
 
 Stand: 22.11.2026. **Umsetzungsstand:** Struktur, Entwurf und Lernebene sind gebaut und liegen in
 `packages/hems-core/src/hems_core/regelkreis/`. Die Seite `Technik → Regelkreis`
-(`/waerme/regelkreis`) zeichnet sie. Zwei Schätzer sind angeschlossen und laufen über echten
-Auswertungen: die COP-Ebene aus der gemessenen Kennlinie und die Totzeit der Wärmepumpe aus der
-Ereignisstudie. Alles andere steht auf Startwerten aus Konfiguration und Datenblatt und ist auf der
-Karte als Annahme gekennzeichnet.
+(`/waerme/regelkreis`) zeichnet sie, im Browser und in der App. Sechs Schätzer sind angeschlossen
+und laufen über echten Auswertungen: die COP-Ebene aus der gemessenen Kennlinie, die Totzeit der
+Wärmepumpe aus der Ereignisstudie, Verlustkoeffizient des Hauses, interne Gewinne und
+Warmwasserbedarf aus der Wärmebilanz, und der Verlustbeiwert des Puffers aus stillen Nächten.
+Alles andere steht auf Startwerten aus Konfiguration und Datenblatt und ist auf der Karte als
+Annahme gekennzeichnet.
+
+**Zwei Oberflächen, eine Gestalt je Gerät.** Im Browser liegt das Blockschaltbild: 35 Kästchen,
+56 Signale, anklickbar, mit Detailblatt. In der App steht dieselbe Kaskade als Liste nach Ebenen -
+ein Blockschaltbild von 1400 Punkten Breite wäre am Telefon ein Ausschnitt, durch den man schiebt.
+Beide zeigen dieselben Zahlen aus derselben Antwort, dieselben fünf Instrumente und dieselbe
+Herkunft an jeder Zahl; beide lassen jeden Parameter übersteuern und freigeben.
 
 Dieses Dokument beschreibt, **was** geregelt wird, **wie** die Regler entstehen und **wann** eine
 Schätzung den geltenden Wert ersetzt.
@@ -242,3 +250,6 @@ Verstärkungsplanung, und sie ist damit sichtbar.
 | `dch_api/application/regelkreis.py` | Lernlauf, Arbeitspunkt, Persistenz |
 | `dch_api/routers/regelkreis.py` | `GET /regelkreis`, `POST`/`DELETE /regelkreis/parameter/{pid}` |
 | `apps/web/src/components/regelkreis/` | die Zeichnung: Layout, Karte, Detailblatt, Instrumente |
+| `DuckCurveKit/Zustand/Regelkreisbild.swift` | die Karte für die App: Ebenen, Signale, Sätze |
+| `DuckCurveHome/Seiten/Technik/RegelkreisSeite.swift` | die Seite der App |
+| `DuckCurveHome/Diagramme/Regelkreisanzeigen.swift` | ihre fünf Instrumente |

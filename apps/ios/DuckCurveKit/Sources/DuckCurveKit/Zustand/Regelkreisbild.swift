@@ -136,6 +136,11 @@ public struct Regelkreisbild: Sendable, Hashable {
         /// In welchem Feld die beiden Reserven liegen - die Ansicht macht daraus Farben.
         public let phasenFeld: Reservefeld
         public let amplitudenFeld: Reservefeld
+        /// Die Frequenzkennlinie des offenen Kreises, roh aus dem Dienst: je Punkt die
+        /// Kreisfrequenz in rad/min, der Betrag in dB und die Phase in Grad.
+        public let kennlinie: [KennliniePunkt]
+        /// Die Durchtrittsfrequenz in rad/min - die Marke im Bild.
+        public let durchtritt: Double?
         public let gut: Bool
         public let bewertbar: Bool
         /// Die Schaltdifferenz des Zweipunktreglers, wo es eine gibt.
@@ -467,6 +472,8 @@ public struct Regelkreisbild: Sendable, Hashable {
                 ? nil : min(1.0, max(0.0, ((amplitude ?? 6.0) - 1.0) / 5.0)),
             phasenFeld: feld(phasenreserve: phase),
             amplitudenFeld: feld(amplitudenreserve: amplitude),
+            kennlinie: k.kennlinie,
+            durchtritt: r?.durchtritt,
             gut: r?.gut ?? true,
             bewertbar: r != nil,
             hysterese: k.hystereseK.map { "± " + Formate.zahl($0 / 2, stellen: 2) + " K" },

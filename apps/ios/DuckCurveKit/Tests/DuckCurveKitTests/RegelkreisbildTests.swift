@@ -313,6 +313,30 @@ final class RegelkreisbildTests: XCTestCase {
         XCTAssertNil(r1?.hinweis)
     }
 
+    /// **Die Frequenzkennlinie reist mit.** Aus ihr kommen die beiden Reserven; ohne sie wäre
+    /// im Bild nur die Zahl und nicht der Verlauf, der zu ihr führt.
+    func testFrequenzkennlinieUndDurchtritt() {
+        let kennlinie = [
+            KennliniePunkt(w: 0.001, db: 38, grad: -95),
+            KennliniePunkt(w: 0.08, db: 0, grad: -128),
+            KennliniePunkt(w: 1.0, db: -34, grad: -212),
+        ]
+        let kreis = KreisAnsicht(
+            id: "R1", name: "Vorlauftemperatur", regelgroesse: "Vorlauftemperatur",
+            stellgroesse: "Mischerstellung in %", reglerBlock: "vl_regler", taktS: 10,
+            art: .stetig,
+            reserven: ReservenAnsicht(
+                durchtritt: 0.08, periodeMin: 78, phasenreserveGrad: 52,
+                amplitudenreserve: 3.1, gut: true),
+            kennlinie: kennlinie)
+        let bild = Regelkreisbild.baue(karte(kreise: [kreis]))
+        XCTAssertEqual(bild.kreise.first?.kennlinie.count, 3)
+        XCTAssertEqual(bild.kreise.first?.durchtritt, 0.08)
+        // Ein Kreis ohne Frequenzkennlinie trägt eine leere Liste und keine erfundene Kurve.
+        XCTAssertEqual(Regelkreisbild.baue(karte()).kreise.last?.kennlinie, [])
+        XCTAssertNil(Regelkreisbild.baue(karte()).kreise.last?.durchtritt)
+    }
+
     /// **Unendlich schlägt voll aus**, denn die Phase erreicht −180° nie - das ist das Beste,
     /// was dieser Pegel zeigen kann, und keine fehlende Angabe.
     func testUnendlicheAmplitudenreserve() {

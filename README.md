@@ -45,7 +45,9 @@ tools/demo.sh                      # API mit Reload + Next.js Dev-Server
 Die Regelung selbst steht als Blockschaltbild unter `Technik → Regelkreis`: fünf Kaskadenebenen von
 der Kostenrechnung bis in den einzelnen Raum, die Störgrößen am Ort ihrer Wirkung, und zu jedem
 Parameter, ob er gemessen, geschätzt oder angenommen ist. Die Regler werden aus den gelernten
-Streckenparametern gerechnet, nicht eingestellt ([docs/REGELKREIS.md](docs/REGELKREIS.md)).
+Streckenparametern gerechnet, nicht eingestellt ([docs/REGELKREIS.md](docs/REGELKREIS.md)). In der
+App steht dieselbe Kaskade als Liste nach Ebenen - ein Blockschaltbild von 1400 Punkten Breite
+wäre am Telefon ein Ausschnitt, durch den man schiebt.
 
 Weitere Dokumente: [ARCHITECTURE.md](ARCHITECTURE.md) · [CONFIGURATION.md](CONFIGURATION.md) ·
 [HEMS_CONTROL.md](HEMS_CONTROL.md)

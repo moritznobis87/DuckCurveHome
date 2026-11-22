@@ -134,6 +134,17 @@ final class DemoLaufTests: XCTestCase {
         await pruefe("anlageWiedergabe") { _ = try await api.anlageWiedergabe(tag: Tag.plus(heute, -1)) }
         await pruefe("diagnose") { _ = try await api.diagnose(tag: heute) }
         await pruefe("speicherPruefung") { _ = try await api.speicherPruefung("day", anker: heute) }
+        // Die Regelkreis-Karte ist die groesste Antwort des Dienstes: 35 Bloecke, 56 Kanten, 31
+        // Parameter mit Protokoll und Verlauf, dazu der Gliedkatalog mit gerechneten Kurven. Wenn
+        // irgendwo ein erzeugtes Modell von seinem Schema abweicht, dann hier.
+        await pruefe("regelkreis") {
+            let karte = try await api.regelkreis()
+            // Eine Antwort, die durchkommt, aber leer ist, waere hier kein Erfolg: `pruefe`
+            // schluckt 404 absichtlich, und eine leere Karte sieht genauso aus.
+            XCTAssertFalse(karte.bloecke.isEmpty, "die Karte kam ohne Bloecke")
+            XCTAssertFalse(karte.parameter.isEmpty, "die Karte kam ohne Parameter")
+            XCTAssertEqual(karte.kreise.count, 5, "fuenf Kreise hat die Kaskade")
+        }
 
         XCTAssertTrue(fehler.isEmpty, "\n" + fehler.joined(separator: "\n"))
     }

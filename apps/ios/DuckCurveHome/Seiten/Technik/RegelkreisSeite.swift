@@ -357,6 +357,11 @@ private struct Kreiszeileansicht: View {
                         .font(Schrift.mono(9.5)).foregroundStyle(Farbe.text3)
                 }
             }
+            // **Und darunter das Bild, aus dem die beiden Zahlen kommen.** Zwei Reserven sagen
+            // nicht, wie der Kreis dorthin kommt: ob die Phase sanft fällt oder an einer
+            // Totzeit abstürzt, ist derselbe Zahlenwert und ein anderer Regelkreis.
+            Frequenzbild(punkte: kreis.kennlinie, durchtritt: kreis.durchtritt)
+                .frame(maxWidth: 260)
         }
     }
 }
