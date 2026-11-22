@@ -33,10 +33,24 @@ struct Berichtsseite<Antwort: Sendable, Inhalt: View>: View {
     /// verschwunden. Die Vorlage setzt das Band **neben** den Inhalt und ersetzt ihn nie
     /// (`HeatOverview.tsx:138`: `{error ? <ErrorBanner/> : null}` vor den Karten, die weiter
     /// gezeichnet werden).
+    ///
+    /// **Sieben Ansichten benutzen es inzwischen fuer den Spannenstreifen.** Der haengt am
+    /// Anker und nicht am Zeitraum und ist darum ein eigener Zustand (``Spannenstand``); faellt
+    /// er ganz aus, steht sein Grund hier - und das Band der Hauptabfrage bleibt davon
+    /// unberuehrt. Zwei Zustaende, zwei Fehlerwege.
     var nebenfehler: ApiFehler?
     /// Was der Knopf an diesem Band ausloest. Ohne ihn steht es ohne Knopf, wie in der Vorlage
     /// (`ReportShell.tsx:147-153`).
     var nebenfehlerErneut: (() -> Void)?
+    /// Wo in der Antwort steht, wann der Dienst sie gerechnet hat (`generated_at`).
+    ///
+    /// **Warum die Seite nur die Stelle nennt und nicht die Regel.** Seit der Dienst
+    /// Auswertungen zwischenspeichert, ist eine Antwort nicht mehr in jedem Fall von jetzt. Wann
+    /// das dastehen muss, ist eine Entscheidung fuer alle dreizehn Seiten und steht einmal im
+    /// Kern (``Berichtsstand``); hier steht nur, aus welchem Feld der Zeitstempel kommt. Ohne
+    /// Angabe steht keine Zeile - Seiten, deren Antwort keinen Stempel traegt, sollen keinen
+    /// erfinden.
+    var gerechnetAm: ((Antwort) -> String?)?
 
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
@@ -55,6 +69,11 @@ struct Berichtsseite<Antwort: Sendable, Inhalt: View>: View {
                 Stoerung(fehler: fehler) { Task { await lade(z, erzwingen: true) } }
             }
             if let antwort {
+                if let satz = Berichtsstand.satz(
+                    gerechnetAm: gerechnetAm?(antwort), jetzt: haus.jetzt)
+                {
+                    Kartenhinweis(satz: satz, mono: true)
+                }
                 inhalt(antwort)
                     .opacity(laedt ? 0.55 : 1)
                     .animation(.easeInOut(duration: Marken.dauer), value: laedt)
@@ -72,13 +91,6 @@ struct Berichtsseite<Antwort: Sendable, Inhalt: View>: View {
         .task(id: z) { await halteFrisch(z) }
     }
 
-    /// Der Takt, in dem eine Berichtsseite nachlaedt: fuenf Minuten (`useReport.ts:7`:
-    /// `REFRESH_MS = 5 * 60_000`).
-    ///
-    /// Eine berechnete Eigenschaft und keine gespeicherte: in einem Typ mit Platzhaltern gibt
-    /// es keine statischen Speicherplaetze.
-    private static var nachladetakt: Duration { .seconds(300) }
-
     /// Holen und im Fuenf-Minuten-Takt nachholen, solange die Seite steht.
     ///
     /// **Warum das Nachladen im Gerippe steht und nicht in dreizehn Seiten.** Die Vorlage hat
@@ -86,6 +98,11 @@ struct Berichtsseite<Antwort: Sendable, Inhalt: View>: View {
     /// `setInterval(() => void load(), REFRESH_MS)`). An einer Wandanzeige, die den ganzen Tag
     /// auf „heute“ steht, wechselt der Zeitraum nie - und ohne Takt stuende dort abends der
     /// Stand vom Morgen, ohne dass es dasteht.
+    ///
+    /// Der Takt steht als ``Berichtstakt/nachladen`` im Kern und nicht hier: seit der
+    /// Spannenstreifen ein eigener Zustand mit einer eigenen Schleife ist, braucht ihn auch
+    /// jede Seite, die einen hat - und zwei Mal „300“ im Code waeren zwei Mal die Gelegenheit,
+    /// es verschieden zu tun.
     ///
     /// Die Schleife haengt an `.task(id:)` und endet damit mit dem Zeitraum und mit der Seite.
     /// Muster und `try?`-Haltung sind die des Ruhebildes, das dieselbe Zahl nachholt
@@ -104,7 +121,7 @@ struct Berichtsseite<Antwort: Sendable, Inhalt: View>: View {
         while !Task.isCancelled {
             await lade(z, still: !erstes)
             erstes = false
-            try? await Task.sleep(for: Self.nachladetakt)
+            try? await Task.sleep(for: Berichtstakt.nachladen)
         }
     }
 

@@ -60,6 +60,7 @@ final class PvbildTests: XCTestCase {
         meta m: EnergyMetaOut? = nil, anker: String = "2026-11-10"
     ) -> EnergySummaryOut {
         EnergySummaryOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .day, anchor: anker, start: "\(anker)T00:00:00+01:00",
             end: "\(anker)T23:59:59+01:00", totals: t ?? totals(), buckets: buckets,
             meta: m ?? meta())
@@ -535,17 +536,5 @@ final class PvbildTests: XCTestCase {
     func testDerErsparnissatzNenntBeideTeileDerSumme() {
         XCTAssertTrue(Pvbild.ersparnissatz.contains("PV direkt"))
         XCTAssertTrue(Pvbild.ersparnissatz.contains("Batterieentladung"))
-    }
-
-    // MARK: - Vier Spannen in einem Zug
-
-    func testJeSpanneHoltAlleVierUndLaesstGescheiterteWeg() async {
-        let aus: [Spanne: String] = await Pvbild.jeSpanne { s in
-            s == .monat ? nil : s.rawValue
-        }
-        XCTAssertEqual(aus.count, 3)
-        XCTAssertEqual(aus[.tag], "day")
-        XCTAssertNil(aus[.monat])
-        XCTAssertEqual(aus[.jahr], "year")
     }
 }
