@@ -31,6 +31,7 @@ from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
+from dch_api.application import regelkreis as regelkreis_logic
 from dch_api.application import regler as regler_logic
 from dch_api.application import reglerkennzahl as kennzahl_logic
 from dch_api.application import room_log as room_log_logic
@@ -106,6 +107,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    RegelkreisOut,
     ReglerEinstellungenOut,
     ReglerKennzahlenOut,
     ReglerStellenOut,
@@ -169,6 +171,7 @@ from hems_core.planning import (
     price_rank,
 )
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
+from hems_core.regelkreis.schaetzer import Schaetzstand
 from hems_core.simulation import BERLIN
 from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
 from hems_core.thermal import betrieb as betrieb_kern
@@ -216,6 +219,11 @@ class LiveRuntime:
         self._betrieb: dict[int, BetriebOut] = {}
         #: Gesendete Einstellungen des Reglers, deren Rückmeldung aussteht: Wert und Zeitpunkt.
         self._regler_gesendet: dict[str, tuple[float, datetime]] = {}
+        #: Der Lernzustand des Regelkreises. Er liegt dauerhaft in `model_calibrations` und wird
+        #: beim ersten Lernlauf gelesen - nicht im Konstruktor, weil der nicht warten kann.
+        self._regelkreis = Schaetzstand()
+        self._regelkreis_gelernt: datetime | None = None
+        self._regelkreis_geladen = False
         self.repos = repos
         self.hub = hub
         self.forecasts = forecasts
@@ -1580,6 +1588,90 @@ class LiveRuntime:
         except Exception as exc:
             log.warning("review without shift", error=repr(exc)[:200])
             return None
+
+    # ------------------------------------------------------------------ Regelkreis
+    REGELKREIS_MODELL = regelkreis_logic.MODELL
+
+    async def regelkreis(self) -> RegelkreisOut:
+        """Die Regelkreis-Karte aus dem Lernzustand des Hauses, für den Augenblick gerechnet."""
+        await self._regelkreis_bereit()
+        await self._regelkreis_lernen()
+        snap, _, _ = self._states()
+        return regelkreis_logic.zusammensetzen(
+            self.hems,
+            self._regelkreis,
+            jetzt=self.now,
+            ap=regelkreis_logic.arbeitspunkt(self.hems, self._regelkreis, snap),
+        )
+
+    async def regelkreis_uebersteuern(self, pid: str, wert: float) -> RegelkreisOut:
+        # Erst laden, dann ändern: sonst schriebe die erste Übersteuerung nach einem Neustart
+        # einen leeren Stand über den gelernten - und der Lernlauf gleich darauf hätte sie
+        # ihrerseits wieder überschrieben.
+        await self._regelkreis_bereit()
+        regelkreis_logic.uebersteuern(self._regelkreis, pid, wert)
+        await self._regelkreis_speichern()
+        return await self.regelkreis()
+
+    async def regelkreis_freigeben(self, pid: str) -> RegelkreisOut:
+        await self._regelkreis_bereit()
+        regelkreis_logic.freigeben(self._regelkreis, pid)
+        await self._regelkreis_speichern()
+        return await self.regelkreis()
+
+    async def _regelkreis_bereit(self) -> None:
+        """Den gespeicherten Lernstand holen, einmal je Prozess."""
+        if not self._regelkreis_geladen:
+            await self._regelkreis_laden()
+
+    async def _regelkreis_lernen(self) -> None:
+        """Ein Lernlauf, höchstens stündlich.
+
+        Die beiden Auswertungen, aus denen die Kandidaten kommen, gehen über dreißig Tage
+        Minutenwerte - das ist für jeden Seitenaufruf zu viel. Die Übernahmeprüfung wartet
+        ohnehin vierzehn Tage zwischen zwei Übernahmen; stündlich reicht also mit Abstand.
+
+        Scheitert eine der Auswertungen, bleibt die Karte: sie zeigt dann den letzten Lernstand
+        und sagt an jedem Parameter, woher er kam. Eine Seite, die wegen einer Datenbankabfrage
+        gar nichts zeigt, ist schlechter als eine, die etwas Älteres zeigt und das zugibt.
+        """
+        now = self.now
+        if not regelkreis_logic.faellig(self._regelkreis_gelernt, now):
+            return
+        self._regelkreis_gelernt = now
+        kennlinie: KennlinieOut | None = None
+        wirkung: KontaktwirkungOut | None = None
+        try:
+            kennlinie = await self.kennlinie(regelkreis_logic.KENNLINIE_TAGE)
+            wirkung = await self.kontaktwirkung(regelkreis_logic.WIRKUNG_TAGE)
+        except Exception as exc:
+            log.warning("regelkreis learn failed", error=repr(exc)[:200])
+            return
+        pruefungen = regelkreis_logic.lernen(
+            self._regelkreis, self.hems, jetzt=now, kennlinie=kennlinie, wirkung=wirkung
+        )
+        uebernommen = [pid for pid, p in pruefungen.items() if p.uebernehmen]
+        if uebernommen:
+            log.info("regelkreis adopted", parameter=uebernommen)
+        if pruefungen:
+            await self._regelkreis_speichern()
+
+    async def _regelkreis_laden(self) -> None:
+        self._regelkreis_geladen = True
+        try:
+            raw = await self.repos.load_calibration(self.REGELKREIS_MODELL)
+            if raw:
+                self._regelkreis = Schaetzstand.model_validate(raw)
+        except Exception as exc:
+            log.warning("regelkreis load failed", error=repr(exc)[:200])
+
+    async def _regelkreis_speichern(self) -> None:
+        try:
+            await self.repos.save_calibration(
+                self.REGELKREIS_MODELL, self._regelkreis.model_dump(mode="json")
+            )
+        except Exception as exc:
+            log.warning("regelkreis save failed", error=repr(exc)[:200])
 
     async def kontaktwirkung(self, days: int) -> KontaktwirkungOut:
         """Was K1 auslöst, aus dem dauerhaften Minutenbestand der letzten `days` Tage."""

@@ -1506,6 +1506,126 @@
         }
       }
     },
+    "/api/v1/regelkreis": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Die Regelkreis-Karte",
+        "description": "Die ganze Kaskade: Blöcke, Signale, Störgrößen, die geltenden Parameter mit ihrer Herkunft,\nder daraus entworfene Regler je Kreis mit Reserven und Frequenzkennlinie, und das Protokoll\nder Übernahmen.\n\nGerechnet für den Augenblick: die Verstärkung der Wärmepumpe hängt von Außen- und\nVorlauftemperatur ab, und `arbeitspunkt.gemessen` sagt, ob diese Zahlen aus der Messung kamen.",
+        "operationId": "regelkreis_api_v1_regelkreis_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegelkreisOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/regelkreis/parameter/{pid}": {
+      "post": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Einen Parameter übersteuern",
+        "description": "Einen geschätzten Wert von Hand setzen.\n\nDie Übersteuerung gewinnt gegen jede Schätzung, bis sie freigegeben wird; der Schätzer läuft\nweiter und schreibt mit, was er gesagt hätte. Beschnitten wird auf die\nPlausibilitätsgrenzen - wer sich vertippt, bringt die Regelung nicht zum Stehen.\n\nDie abgeleiteten Reglerwerte ändern sich mit: das ist der Zweck, denn so lässt sich sehen, was\neine andere Streckenannahme aus dem Regler macht.",
+        "operationId": "uebersteuern_api_v1_regelkreis_parameter__pid__post",
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Kennung des Parameters, etwa `wp_totzeit`",
+              "title": "Pid"
+            },
+            "description": "Kennung des Parameters, etwa `wp_totzeit`"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegelkreisStellenIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegelkreisOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Eine Übersteuerung aufheben",
+        "description": "Die Übersteuerung aufheben; es gilt wieder, was gelernt wurde.",
+        "operationId": "freigeben_api_v1_regelkreis_parameter__pid__delete",
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Kennung des Parameters",
+              "title": "Pid"
+            },
+            "description": "Kennung des Parameters"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegelkreisOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/forecast/evaluation": {
       "get": {
         "tags": [
@@ -4261,6 +4381,40 @@
         ],
         "title": "ApnsUnsubscribeIn"
       },
+      "Arbeitspunkt": {
+        "properties": {
+          "aussen_c": {
+            "type": "number",
+            "title": "Aussen C"
+          },
+          "vorlauf_c": {
+            "type": "number",
+            "title": "Vorlauf C"
+          },
+          "strompreis_eur_kwh": {
+            "type": "number",
+            "title": "Strompreis Eur Kwh"
+          },
+          "aussen_gemessen": {
+            "type": "boolean",
+            "title": "Aussen Gemessen",
+            "default": false
+          },
+          "vorlauf_gemessen": {
+            "type": "boolean",
+            "title": "Vorlauf Gemessen",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "aussen_c",
+          "vorlauf_c",
+          "strompreis_eur_kwh"
+        ],
+        "title": "Arbeitspunkt",
+        "description": "Der Punkt, für den die Karte gerechnet wird."
+      },
       "AutoProfile": {
         "type": "string",
         "enum": [
@@ -5023,6 +5177,159 @@
           "label_de"
         ],
         "title": "BinCorrection"
+      },
+      "BlockAnsicht": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "ebene": {
+            "type": "integer",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "title": "Ebene"
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "regler",
+              "stellglied",
+              "strecke",
+              "beobachter",
+              "rechenglied",
+              "modell",
+              "logik",
+              "vorsteuerung",
+              "messglied",
+              "stoergroesse",
+              "summierstelle",
+              "teilkreise"
+            ],
+            "title": "Rolle"
+          },
+          "rolle_text": {
+            "type": "string",
+            "title": "Rolle Text"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kurz": {
+            "type": "string",
+            "title": "Kurz"
+          },
+          "kreis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kreis"
+          },
+          "erklaerung": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Erklaerung"
+          },
+          "gleichungen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gleichungen"
+          },
+          "behandlung": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "aufgeschaltet",
+                  "ausgeregelt",
+                  "beobachtet",
+                  "geplant",
+                  "erkannt"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Behandlung"
+          },
+          "behandlung_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Behandlung Text"
+          },
+          "quelle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quelle"
+          },
+          "marke": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marke"
+          },
+          "gibt_marke": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gibt Marke"
+          },
+          "parameter": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Parameter"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ebene",
+          "rolle",
+          "rolle_text",
+          "name",
+          "kurz"
+        ],
+        "title": "BlockAnsicht"
       },
       "BlockRuleConfig": {
         "properties": {
@@ -7484,6 +7791,52 @@
         "title": "GeleseneRechnung",
         "description": "Was das Modell gelesen hat, nach Pruefung der Typen."
       },
+      "GueteAnsicht": {
+        "properties": {
+          "modell": {
+            "type": "string",
+            "title": "Modell"
+          },
+          "block": {
+            "type": "string",
+            "title": "Block"
+          },
+          "einheit": {
+            "type": "string",
+            "title": "Einheit"
+          },
+          "rmse": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rmse"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "quelle": {
+            "type": "string",
+            "title": "Quelle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "modell",
+          "block",
+          "einheit",
+          "rmse",
+          "n",
+          "quelle"
+        ],
+        "title": "GueteAnsicht",
+        "description": "Der Restfehler eines Teilmodells gegen die Messung."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -9733,6 +10086,56 @@
         "title": "Item",
         "description": "Ein Moebel, ein Geraet, ein Stueck Treppe. Welche Felder gelten, sagt `kind`; die Anzeige\nnimmt fuer fehlende Masse ihre Voreinstellungen. Geprueft wird hier nur, dass die Zahlen endlich\nsind und die Art bekannt ist."
       },
+      "KanteAnsicht": {
+        "properties": {
+          "von": {
+            "type": "string",
+            "title": "Von"
+          },
+          "nach": {
+            "type": "string",
+            "title": "Nach"
+          },
+          "signal": {
+            "type": "string",
+            "title": "Signal"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "signal",
+              "stoergroesse",
+              "rueckfuehrung",
+              "fuehrung",
+              "parameter"
+            ],
+            "title": "Art"
+          },
+          "vorzeichen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "+",
+                  "-"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vorzeichen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "von",
+          "nach",
+          "signal",
+          "art"
+        ],
+        "title": "KanteAnsicht"
+      },
       "KennlinieOut": {
         "properties": {
           "now": {
@@ -9827,6 +10230,29 @@
         ],
         "title": "KennlinieOut",
         "description": "Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.\n\nDie Punkte sind Abschätzungen aus Durchfluss, Spreizung und Zähler; warum, steht in\n`hinweise_de`."
+      },
+      "KennliniePunkt": {
+        "properties": {
+          "w": {
+            "type": "number",
+            "title": "W"
+          },
+          "db": {
+            "type": "number",
+            "title": "Db"
+          },
+          "grad": {
+            "type": "number",
+            "title": "Grad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "w",
+          "db",
+          "grad"
+        ],
+        "title": "KennliniePunkt"
       },
       "KennlinienAnnahmeOut": {
         "properties": {
@@ -10271,6 +10697,176 @@
         ],
         "title": "KontaktwirkungOut",
         "description": "Was der Freigabekontakt K1 auslöst: die Ereignisstudie über die letzten `days` Tage.\n\nJeder Schließvorgang ist ein Ereignis; `ereignisse` enthält zu jedem die Leistung der\nWärmepumpe von einer halben Stunde davor bis zwei Stunden danach, `faecher` legt sie am\nNullpunkt übereinander. `quote` ist der Anteil der Schließvorgänge bei stehender Maschine, auf\ndie binnen `folge_min` Minuten ein Anlauf folgte, `vergleich.quote` derselbe Anteil ohne\nSchließvorgang zur selben Tageszeit.\n\nDas Urteil steht in `urteil` und `urteil_de` und wird hier gefällt, nicht in der Oberfläche.\nEs ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `methode_de`."
+      },
+      "Kostenpunkt": {
+        "properties": {
+          "cop": {
+            "type": "number",
+            "title": "Cop"
+          },
+          "waermepumpe_ct_kwh": {
+            "type": "number",
+            "title": "Waermepumpe Ct Kwh"
+          },
+          "ofen_ct_kwh": {
+            "type": "number",
+            "title": "Ofen Ct Kwh"
+          },
+          "cop_umschalt": {
+            "type": "number",
+            "title": "Cop Umschalt"
+          },
+          "umschalt_aussen_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Umschalt Aussen C"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cop",
+          "waermepumpe_ct_kwh",
+          "ofen_ct_kwh",
+          "cop_umschalt",
+          "umschalt_aussen_c"
+        ],
+        "title": "Kostenpunkt",
+        "description": "Grenzkosten der Wärme an diesem Arbeitspunkt - die Zahl, nach der zugeordnet wird."
+      },
+      "KreisAnsicht": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "regelgroesse": {
+            "type": "string",
+            "title": "Regelgroesse"
+          },
+          "stellgroesse": {
+            "type": "string",
+            "title": "Stellgroesse"
+          },
+          "regler_block": {
+            "type": "string",
+            "title": "Regler Block"
+          },
+          "messglied": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messglied"
+          },
+          "takt_s": {
+            "type": "number",
+            "title": "Takt S"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "stetig",
+              "zweipunkt",
+              "hybrid",
+              "planung"
+            ],
+            "title": "Art"
+          },
+          "erklaerung": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Erklaerung"
+          },
+          "strecke": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreckeAnsicht"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "regler": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReglerAnsicht"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reserven": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReservenAnsicht"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kennlinie": {
+            "items": {
+              "$ref": "#/components/schemas/KennliniePunkt"
+            },
+            "type": "array",
+            "title": "Kennlinie"
+          },
+          "hysterese_k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hysterese K"
+          },
+          "hinweis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hinweis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "regelgroesse",
+          "stellgroesse",
+          "regler_block",
+          "messglied",
+          "takt_s",
+          "art",
+          "erklaerung"
+        ],
+        "title": "KreisAnsicht",
+        "description": "Ein Kreis der Kaskade mit seinem Entwurf."
       },
       "Linie": {
         "properties": {
@@ -11070,6 +11666,186 @@
         ],
         "title": "OverrideKind"
       },
+      "ParameterAnsicht": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "block": {
+            "type": "string",
+            "title": "Block"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "einheit": {
+            "type": "string",
+            "title": "Einheit"
+          },
+          "stellen": {
+            "type": "integer",
+            "title": "Stellen"
+          },
+          "wert": {
+            "type": "number",
+            "title": "Wert"
+          },
+          "herkunft": {
+            "type": "string",
+            "enum": [
+              "gemessen",
+              "geschaetzt",
+              "annahme",
+              "fest",
+              "entwurf",
+              "uebersteuert"
+            ],
+            "title": "Herkunft"
+          },
+          "schaetzart": {
+            "type": "string",
+            "enum": [
+              "ausgleich",
+              "rls",
+              "ereignis",
+              "bilanz",
+              "ewma",
+              "keiner"
+            ],
+            "title": "Schaetzart"
+          },
+          "schaetzart_text": {
+            "type": "string",
+            "title": "Schaetzart Text"
+          },
+          "startwert": {
+            "type": "number",
+            "title": "Startwert"
+          },
+          "schaetzung": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schaetzung"
+          },
+          "sigma": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sigma"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N",
+            "default": 0
+          },
+          "stand": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stand"
+          },
+          "rmse": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rmse"
+          },
+          "unten": {
+            "type": "number",
+            "title": "Unten"
+          },
+          "oben": {
+            "type": "number",
+            "title": "Oben"
+          },
+          "warum": {
+            "type": "string",
+            "title": "Warum"
+          },
+          "quelle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quelle"
+          },
+          "wirkt_auf": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Wirkt Auf"
+          },
+          "protokoll": {
+            "items": {
+              "$ref": "#/components/schemas/Uebernahme"
+            },
+            "type": "array",
+            "title": "Protokoll"
+          },
+          "pruefung": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pruefung"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "block",
+          "symbol",
+          "name",
+          "einheit",
+          "stellen",
+          "wert",
+          "herkunft",
+          "schaetzart",
+          "schaetzart_text",
+          "startwert",
+          "unten",
+          "oben",
+          "warum"
+        ],
+        "title": "ParameterAnsicht",
+        "description": "Ein Parameter, wie ihn die Oberfläche zeigt."
+      },
       "Place": {
         "properties": {
           "text": {
@@ -11552,6 +12328,38 @@
           "label_de"
         ],
         "title": "PriceWindowOut"
+      },
+      "Pruefung": {
+        "properties": {
+          "uebernehmen": {
+            "type": "boolean",
+            "title": "Uebernehmen"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "uebernommen",
+              "zu_wenig_daten",
+              "innerhalb_unsicherheit",
+              "zu_frueh",
+              "grenzen",
+              "nicht_besser"
+            ],
+            "title": "Code"
+          },
+          "grund": {
+            "type": "string",
+            "title": "Grund"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uebernehmen",
+          "code",
+          "grund"
+        ],
+        "title": "Pruefung",
+        "description": "Das Ergebnis der Übernahmeprüfung, mit Satz für die Oberfläche."
       },
       "PushGeraetOut": {
         "properties": {
@@ -12105,6 +12913,118 @@
         ],
         "title": "Rechnungsergebnis"
       },
+      "RegelkreisOut": {
+        "properties": {
+          "stand": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Stand"
+          },
+          "seit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seit"
+          },
+          "tage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tage"
+          },
+          "arbeitspunkt": {
+            "$ref": "#/components/schemas/Arbeitspunkt"
+          },
+          "kosten": {
+            "$ref": "#/components/schemas/Kostenpunkt"
+          },
+          "bloecke": {
+            "items": {
+              "$ref": "#/components/schemas/BlockAnsicht"
+            },
+            "type": "array",
+            "title": "Bloecke"
+          },
+          "kanten": {
+            "items": {
+              "$ref": "#/components/schemas/KanteAnsicht"
+            },
+            "type": "array",
+            "title": "Kanten"
+          },
+          "kreise": {
+            "items": {
+              "$ref": "#/components/schemas/KreisAnsicht"
+            },
+            "type": "array",
+            "title": "Kreise"
+          },
+          "parameter": {
+            "items": {
+              "$ref": "#/components/schemas/ParameterAnsicht"
+            },
+            "type": "array",
+            "title": "Parameter"
+          },
+          "guete": {
+            "items": {
+              "$ref": "#/components/schemas/GueteAnsicht"
+            },
+            "type": "array",
+            "title": "Guete"
+          },
+          "uebersteuert": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Uebersteuert"
+          },
+          "uebernahmen": {
+            "type": "integer",
+            "title": "Uebernahmen",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "stand",
+          "arbeitspunkt",
+          "kosten",
+          "bloecke",
+          "kanten",
+          "kreise",
+          "parameter",
+          "guete"
+        ],
+        "title": "RegelkreisOut",
+        "description": "Die Regelkreis-Karte: Struktur, geltende Parameter, Entwurf und Lernzustand.\n\nAlles, was die Karte zeigt, steht hier: je Block seine Erklärung, seine Gleichungen und seine\nParameter, je Kreis die Strecke, der daraus entworfene Regler, seine Reserven und die\nFrequenzkennlinie, je Parameter die Herkunft - gemessen, geschätzt, angenommen, fest,\nübersteuert -, die Unsicherheit und das Übernahmeprotokoll.\n\nKoordinaten stehen nicht darin. Wo ein Kästchen liegt, ist eine Frage der Zeichnung; was\nverbunden ist, eine Aussage über das Haus."
+      },
+      "RegelkreisStellenIn": {
+        "properties": {
+          "wert": {
+            "type": "number",
+            "title": "Wert"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wert"
+        ],
+        "title": "RegelkreisStellenIn",
+        "description": "Ein Parameter von Hand. Beschnitten wird auf die Plausibilitätsgrenzen des Registers."
+      },
       "ReglerAenderungOut": {
         "properties": {
           "at": {
@@ -12150,6 +13070,34 @@
         ],
         "title": "ReglerAenderungOut",
         "description": "Eine Zeile des Protokolls: wer wann was gestellt hat."
+      },
+      "ReglerAnsicht": {
+        "properties": {
+          "kp": {
+            "type": "number",
+            "title": "Kp"
+          },
+          "tn": {
+            "type": "number",
+            "title": "Tn"
+          },
+          "lam": {
+            "type": "number",
+            "title": "Lam"
+          },
+          "regel": {
+            "type": "string",
+            "title": "Regel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kp",
+          "tn",
+          "lam",
+          "regel"
+        ],
+        "title": "ReglerAnsicht"
       },
       "ReglerBestaetigenIn": {
         "properties": {
@@ -12633,6 +13581,67 @@
         ],
         "title": "ReiheOut",
         "description": "Eine Reihe im Rückblick: ihre Wertung über alles und je Vorlaufklasse."
+      },
+      "ReservenAnsicht": {
+        "properties": {
+          "durchtritt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durchtritt"
+          },
+          "periode_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periode Min"
+          },
+          "phasenreserve_grad": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phasenreserve Grad"
+          },
+          "amplitudenreserve": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amplitudenreserve"
+          },
+          "gut": {
+            "type": "boolean",
+            "title": "Gut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "durchtritt",
+          "periode_min",
+          "phasenreserve_grad",
+          "amplitudenreserve",
+          "gut"
+        ],
+        "title": "ReservenAnsicht"
       },
       "Room": {
         "properties": {
@@ -14323,6 +15332,59 @@
         "title": "StoveOut",
         "description": "Der Pelletofen im Zeitraum. `available=False` heißt: keine Daten, nicht „lief nicht\"."
       },
+      "StreckeAnsicht": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "foptd",
+              "iptd"
+            ],
+            "title": "Art"
+          },
+          "k": {
+            "type": "number",
+            "title": "K"
+          },
+          "t1": {
+            "type": "number",
+            "title": "T1",
+            "default": 0.0
+          },
+          "t2": {
+            "type": "number",
+            "title": "T2",
+            "default": 0.0
+          },
+          "totzeit": {
+            "type": "number",
+            "title": "Totzeit"
+          },
+          "t1_entwurf": {
+            "type": "number",
+            "title": "T1 Entwurf"
+          },
+          "totzeit_entwurf": {
+            "type": "number",
+            "title": "Totzeit Entwurf"
+          },
+          "halbregel": {
+            "type": "boolean",
+            "title": "Halbregel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "k",
+          "totzeit",
+          "t1_entwurf",
+          "totzeit_entwurf",
+          "halbregel"
+        ],
+        "title": "StreckeAnsicht",
+        "description": "Das Streckenmodell eines Kreises, in Zahlen."
+      },
       "SystemEventOut": {
         "properties": {
           "at": {
@@ -14691,6 +15753,68 @@
         ],
         "title": "TibberZusammenfassung",
         "description": "Das Ergebnis der festen Tibber-Pruefung, so knapp, wie Alfred es im Panel sagt. Die volle\nAuswertung steht auf der Rechnungsseite, auf die `AlfredRechnungOut.link` zeigt."
+      },
+      "Uebernahme": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "alt": {
+            "type": "number",
+            "title": "Alt"
+          },
+          "neu": {
+            "type": "number",
+            "title": "Neu"
+          },
+          "sigma": {
+            "type": "number",
+            "title": "Sigma"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "rmse_alt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rmse Alt"
+          },
+          "rmse_neu": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rmse Neu"
+          },
+          "grund": {
+            "type": "string",
+            "title": "Grund"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "alt",
+          "neu",
+          "sigma",
+          "n",
+          "grund"
+        ],
+        "title": "Uebernahme",
+        "description": "Ein Eintrag im Änderungsprotokoll. Was sich geändert hat, und warum."
       },
       "ValidationError": {
         "properties": {

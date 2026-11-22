@@ -24,6 +24,7 @@ from dch_api.application import kennlinie as kennlinie_logic
 from dch_api.application import kontaktwirkung as kontaktwirkung_logic
 from dch_api.application import morgenbrief as brief_modul
 from dch_api.application import nachbetrachtung as nachbetrachtung_logic
+from dch_api.application import regelkreis as regelkreis_logic
 from dch_api.application import regler as regler_logic
 from dch_api.application import reglerkennzahl as kennzahl_logic
 from dch_api.application import waermepumpe as wp_logic
@@ -80,6 +81,7 @@ from dch_api.schemas import (
     Period,
     PlanOut,
     PvTaxReportOut,
+    RegelkreisOut,
     ReglerAenderungOut,
     ReglerEinstellungenOut,
     ReglerKennzahlenOut,
@@ -129,6 +131,7 @@ from hems_core.planning import (
     next_window_after,
     price_rank,
 )
+from hems_core.regelkreis.schaetzer import Schaetzstand
 from hems_core.simulation import BERLIN, DemoConfig, DemoHouse, new_demo_house
 from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
 from hems_core.thermal import betrieb as betrieb_kern
@@ -190,6 +193,11 @@ class DemoRunner:
         self.shift_target: ShiftTarget = AUS
         # Die Alarmanlage der Vorfuehrung: unscharf, bis jemand drueckt.
         self._alarm: float = 0.0
+        # Der Lernzustand des Regelkreises. In der Vorfuehrung nur im Arbeitsspeicher: sie hat
+        # keine Datenbank, und ein Lernstand, der einen Neustart ueberlebt, waere hier eine
+        # Behauptung ueber Dauer, die die Vorfuehrung nicht einloesen kann.
+        self._regelkreis = Schaetzstand()
+        self._regelkreis_gelernt: datetime | None = None
         self.broker = SseBroker()
         # Derselbe Takt wie im Live-Betrieb: Die Vorfuehrung soll nicht billiger aussehen,
         # als der echte Betrieb ist.
@@ -1156,6 +1164,42 @@ class DemoRunner:
             # Kurze Zeitgrenze wie im Fahrplan der Vorführung: sie rechnet im Zeitraffer.
             opt_cfg=OptimizerConfig(step_min=15, time_limit_s=2.0),
             verschieben=await self.accounting.shift_report("day", day, self.now),
+        )
+
+    # ------------------------------------------------------------------ Regelkreis
+    async def regelkreis(self) -> RegelkreisOut:
+        """Die Regelkreis-Karte der Vorführung.
+
+        Gelernt wird auch hier, und zwar echt: dieselben Schätzer über den Auswertungen des
+        Vorführhauses. Eine Vorführung, in der die Lernebene nur so aussieht, als lerne sie,
+        zeigt die Form und verschweigt die Sache.
+        """
+        await self._regelkreis_lernen()
+        return regelkreis_logic.zusammensetzen(
+            self.hems,
+            self._regelkreis,
+            jetzt=self.now,
+            ap=regelkreis_logic.arbeitspunkt(self.hems, self._regelkreis, self.snapshot),
+        )
+
+    async def regelkreis_uebersteuern(self, pid: str, wert: float) -> RegelkreisOut:
+        regelkreis_logic.uebersteuern(self._regelkreis, pid, wert)
+        return await self.regelkreis()
+
+    async def regelkreis_freigeben(self, pid: str) -> RegelkreisOut:
+        regelkreis_logic.freigeben(self._regelkreis, pid)
+        return await self.regelkreis()
+
+    async def _regelkreis_lernen(self) -> None:
+        """Ein Lernlauf, höchstens stündlich: Kennlinie und Ereignisstudie als Kandidaten."""
+        now = self.now
+        if not regelkreis_logic.faellig(self._regelkreis_gelernt, now):
+            return
+        self._regelkreis_gelernt = now
+        kennlinie = await self.kennlinie(regelkreis_logic.KENNLINIE_TAGE)
+        wirkung = await self.kontaktwirkung(regelkreis_logic.WIRKUNG_TAGE)
+        regelkreis_logic.lernen(
+            self._regelkreis, self.hems, jetzt=now, kennlinie=kennlinie, wirkung=wirkung
         )
 
     async def kontaktwirkung(self, days: int) -> KontaktwirkungOut:

@@ -1,4 +1,4 @@
-import type { ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
+import type { Regelkreis, ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
   House, Betrieb, BetriebRoh, ReglerEinstellungen, ReglerStellen, ReglerStellenRoh, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
@@ -43,6 +43,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 const reglerVoll = (d: ReglerEinstellungen): ReglerEinstellungen => ({ ...d, werte: (d.werte ?? []).map((w) => ({ ...w, wahl: w.wahl ?? {} })), hinweise_de: d.hinweise_de ?? [], protokoll: d.protokoll ?? [] });
+
+/**
+ * Die Karte auffüllen: Felder mit Vorbelegung im Schema kommen als `optional` heraus, obwohl die
+ * Antwort sie immer trägt. Einmal hier statt in jeder Zeile der Zeichnung.
+ */
+type RegelkreisRoh = Omit<Regelkreis, "bloecke" | "kanten" | "kreise" | "parameter" | "arbeitspunkt" | "uebersteuert" | "uebernahmen"> & Record<string, unknown>;
+
+const regelkreisVoll = (d: RegelkreisRoh): Regelkreis => {
+  const roh = d as unknown as Regelkreis;
+  return {
+    ...roh,
+    bloecke: (roh.bloecke ?? []).map((b) => ({ ...b, kurz: b.kurz ?? "", erklaerung: b.erklaerung ?? [], gleichungen: b.gleichungen ?? [], parameter: b.parameter ?? [] })),
+    kanten: (roh.kanten ?? []).map((k) => ({ ...k, art: k.art ?? "signal" })),
+    kreise: (roh.kreise ?? []).map((k) => ({ ...k, erklaerung: k.erklaerung ?? [], kennlinie: k.kennlinie ?? [] })),
+    parameter: (roh.parameter ?? []).map((p) => ({ ...p, n: p.n ?? 0, wirkt_auf: p.wirkt_auf ?? [], protokoll: p.protokoll ?? [] })),
+    arbeitspunkt: { ...roh.arbeitspunkt, aussen_gemessen: roh.arbeitspunkt?.aussen_gemessen ?? false, vorlauf_gemessen: roh.arbeitspunkt?.vorlauf_gemessen ?? false },
+    uebersteuert: roh.uebersteuert ?? [],
+    uebernahmen: roh.uebernahmen ?? 0,
+  };
+};
 
 export const api = {
   liveState: () => request<LiveState>("/live/state"),
@@ -106,6 +126,13 @@ export const api = {
     request<AnlageReplay>(`/anlage/wiedergabe?day=${day}&step_min=${stepMin}`),
   /** Was K1 auslöst: die Ereignisstudie über 7, 30 oder 90 Tage. */
   kontaktwirkung: (days = 30) => request<Kontaktwirkung>(`/anlage/kontaktwirkung?days=${days}`),
+  // Die Regelkreis-Karte. Ein Aufruf liefert Struktur, Parameter, Entwurf und Lernstand; die
+  // Seite zeichnet daraus und rechnet nichts nach.
+  regelkreis: async (): Promise<Regelkreis> => regelkreisVoll(await request<RegelkreisRoh>("/regelkreis")),
+  regelkreisStellen: async (pid: string, wert: number): Promise<Regelkreis> =>
+    regelkreisVoll(await request<RegelkreisRoh>(`/regelkreis/parameter/${encodeURIComponent(pid)}`, { method: "POST", body: JSON.stringify({ wert }) })),
+  regelkreisFreigeben: async (pid: string): Promise<Regelkreis> =>
+    regelkreisVoll(await request<RegelkreisRoh>(`/regelkreis/parameter/${encodeURIComponent(pid)}`, { method: "DELETE" })),
   /** Ein Ortstag in Euro: versprochen, gehalten, wirklich. Rechnet einen Vergleichslauf, braucht also Sekunden. */
   nachbetrachtung: (day: string) => request<Nachbetrachtung>(`/plan/nachbetrachtung?day=${day}`),
   // Dauerhaft, ohne Frist: derselbe Griff wie in Contromes eigener Oberflaeche.
