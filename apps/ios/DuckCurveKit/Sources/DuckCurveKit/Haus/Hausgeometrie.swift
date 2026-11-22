@@ -399,4 +399,31 @@ public enum Hausgeometrie {
     public static func wandlinie(_ o: Opening) -> (senkrecht: Bool, konst: Double) {
         o.x != nil ? (true, o.x ?? 0) : (false, o.z ?? 0)
     }
+
+    // MARK: - Treffer
+
+    /// Liegt ein Punkt in einem Vieleck? **Der Strahlensatz**: eine Halbgerade nach rechts
+    /// schneidet den Rand ungerade oft, wenn der Punkt drinnen liegt.
+    ///
+    /// **Wofür.** Im Modell soll ein Tipp einen Raum treffen. Die Räume sind Vierecke in der
+    /// Welt, auf dem Schirm aber schiefe Vierecke - jede Ecke geht einzeln durch die
+    /// Projektion. Ein Rechteckvergleich träfe daneben, sobald das Haus gedreht ist, und
+    /// gedreht ist es immer.
+    public static func imVieleck(_ p: (x: Double, y: Double), _ ecken: [(x: Double, y: Double)])
+        -> Bool
+    {
+        guard ecken.count >= 3 else { return false }
+        var drin = false
+        var j = ecken.count - 1
+        for i in 0..<ecken.count {
+            let a = ecken[i]
+            let b = ecken[j]
+            if (a.y > p.y) != (b.y > p.y) {
+                let x = (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x
+                if p.x < x { drin.toggle() }
+            }
+            j = i
+        }
+        return drin
+    }
 }

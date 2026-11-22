@@ -28,6 +28,68 @@ public enum Planauswahl {
             .sorted { $0.ts < $1.ts }
     }
 
+    /// Eine Zeile der Entscheidungstabelle.
+    ///
+    /// **Warum als Wert und nicht als sechs Listen von Zeichenketten.** Die Ansicht hat die
+    /// Abbildung `planned_hp_state` → Wort ein zweites Mal geschrieben und dabei vertauscht:
+    /// In der Zeile, in der der Plan die Wärmepumpe *anfordert*, stand „frei" – und „frei" ist
+    /// der Name eines anderen Zustands. Dieselbe Seite nannte denselben Zustand in der
+    /// Zeichnung und in der Tabelle verschieden. Hier liegt das Wort an einer Stelle, und die
+    /// Rolle trägt gleich die Farbe mit, die die Vorlage drei Zellen gibt
+    /// (`waerme/Fahrplan.tsx:715-721`: Puffer, Wärmepumpe, Ofen).
+    public struct Entscheidung: Sendable, Hashable, Identifiable {
+        public let zeit: Date
+        public let preis: Double?
+        public let bedarf: Double?
+        public let puffer: Double?
+        public let zustandswort: String
+        public let zustandsrolle: Fahrplanbild.Rolle
+        public let ofenwort: String
+        public let ofenrolle: Fahrplanbild.Rolle
+        /// Der Satz des Dienstes, sonst sein Schlüssel – irgendetwas sagt er immer.
+        public let warum: String
+
+        public var id: Date { zeit }
+
+        public init(
+            zeit: Date, preis: Double?, bedarf: Double?, puffer: Double?, zustandswort: String,
+            zustandsrolle: Fahrplanbild.Rolle, ofenwort: String, ofenrolle: Fahrplanbild.Rolle,
+            warum: String
+        ) {
+            self.zeit = zeit
+            self.preis = preis
+            self.bedarf = bedarf
+            self.puffer = puffer
+            self.zustandswort = zustandswort
+            self.zustandsrolle = zustandsrolle
+            self.ofenwort = ofenwort
+            self.ofenrolle = ofenrolle
+            self.warum = warum
+        }
+    }
+
+    /// Die sechs Zeilen der Entscheidungstabelle, fertig.
+    public static func entscheidungen(_ intervalle: [PlanIntervalOut], je anzahl: Int = 3)
+        -> [Entscheidung]
+    {
+        raender(intervalle, je: anzahl).compactMap { iv -> Entscheidung? in
+            guard let zeit = Zeit.ausIso(iv.ts) else { return nil }
+            let zustand = Fahrplanbild.zustand(iv.plannedHpState)
+            let ofen: (wort: String, rolle: Fahrplanbild.Rolle) =
+                switch iv.plannedStoveOn {
+                case .some(true): ("brennt", .ofenAn)
+                case .some(false): ("aus", .ofenAus)
+                case .none: (Formate.leer, .neutral)
+                }
+            return Entscheidung(
+                zeit: zeit, preis: iv.priceCtKwh, bedarf: bedarf(iv), puffer: iv.bufferKwh,
+                zustandswort: zustand.wort, zustandsrolle: zustand.rolle,
+                ofenwort: ofen.wort, ofenrolle: ofen.rolle,
+                warum: iv.noteDe ?? Grundwort.text(kennung: iv.reasonCode)
+            )
+        }
+    }
+
     /// Der Wärmebedarf einer Viertelstunde: Heizung **und** Warmwasser.
     ///
     /// Beides steht getrennt im Plan und gehört in einer Zeile zusammen – wer nur die Heizung

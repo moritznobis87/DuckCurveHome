@@ -771,6 +771,8 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 .mitteil-hinweis-los { padding: 8px 14px; border-radius: 999px; background: var(--amber); color: var(--petrol); font-weight: 600; font-size: 13px; text-decoration: none; }
 .mitteil-hinweis-zu { padding: 8px 10px; border: 0; background: none; color: var(--text-3); font-size: 13px; cursor: pointer; }
 .mitteil-hinweis-los:focus-visible, .mitteil-hinweis-zu:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+/* Der Update-Hinweis steht auf breiten Bildschirmen in einer Zeile: Text links, Knoepfe rechts. */
+@media (min-width: 721px) { .update-hinweis { flex-direction: row; align-items: center; justify-content: space-between; } }
 
 /* Die Raumliste im Bereich Haus: dieselbe Spalte wie die Bühne des Modells. */
 .haus-liste { display: flex; flex-direction: column; gap: 16px; min-width: 0; }

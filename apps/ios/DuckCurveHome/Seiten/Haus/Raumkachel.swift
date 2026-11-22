@@ -337,9 +337,14 @@ struct Abzeichen: View {
     var rand: Color?
 
     var body: some View {
+        // **Eigene Maße und nicht ``Schrift/kicker``.** Das Abzeichen hatte sich die
+        // Kickerschrift geborgt; die Vorlage gibt ihm eine eigene (`RoomsReport.tsx:199`
+        // und `:205`: `mono text-[10px] uppercase tracking-[.08em]`, bei 10 Punkten also
+        // 0,8). Seit der Kicker Mono 13 ist, wäre die Borgung ein Abzeichen in
+        // Überschriftgröße.
         Text(wort.uppercased())
-            .font(Schrift.kicker)
-            .kerning(0.6)
+            .font(Schrift.mono(10, relativeTo: .caption2))
+            .tracking(0.8)
             .foregroundStyle(farbe)
             .lineLimit(1)
             .padding(.horizontal, 5)
@@ -421,9 +426,13 @@ struct Kleinknopf: View {
 
     var body: some View {
         Button(action: tun) {
+            // `.raum-protokoll-knopf mono` (`globals.css:175`, am Telefon
+            // `handy.css:375`: `font-size: 11px; letter-spacing: .08em`, also 0,88) - nicht
+            // die Kickerschrift, die er sich geborgt hatte. Polster und Radius stehen hier
+            // schon in den Maßen des Telefons; die Schrift zog nach.
             Text(wort.uppercased())
-                .font(Schrift.kicker)
-                .kerning(0.6)
+                .font(Schrift.mono(11, relativeTo: .caption2))
+                .tracking(0.88)
                 .foregroundStyle(Farbe.text3)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)

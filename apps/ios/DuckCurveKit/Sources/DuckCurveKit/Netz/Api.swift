@@ -378,6 +378,46 @@ public struct Api: Sendable {
         try await hole("/system/speicher")
     }
 
+    // MARK: - Hausgerät
+
+    /// Wie es dem Rechner im Haus und seinen Diensten geht (`routers/geraet.py`). Ohne Hausgerät
+    /// (Railway) steht nur die Selbstauskunft der API darin, `unterstuetzt` ist dann falsch.
+    public func geraet() async throws -> GeraetOut {
+        try await hole("/system/geraet")
+    }
+
+    /// Einen Handgriff auf dem Gerät anfragen: Dienst neu starten, sichern, Protokoll holen,
+    /// Gerät neu starten. Kehrt sofort zurück; wie es ausging, steht in `geraet().letzteAktion`.
+    @discardableResult
+    public func geraetAktion(_ aktion: GeraetAktionInAktionWahl, dienst: String? = nil) async throws -> GeraetAktionOut {
+        try await hole(
+            "/system/geraet/aktion", verfahren: "POST",
+            rumpf: try rumpf(GeraetAktionIn(aktion: aktion, dienst: dienst))
+        )
+    }
+
+    /// Was die Aktion `protokoll` zuletzt geholt hat - 300 Zeilen, Geheimnisse geschwärzt.
+    public func geraetProtokoll(_ dienst: String) async throws -> GeraetProtokollOut {
+        let entschaerft = dienst.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? dienst
+        return try await hole("/system/geraet/protokoll/\(entschaerft)")
+    }
+
+    /// Der Verlauf des Hausgeräts über einen Tag, eine Woche, einen Monat oder ein Jahr.
+    public func geraetVerlauf(_ spanne: GeraetVerlaufOutSpanneWahl) async throws -> GeraetVerlaufOut {
+        try await hole("/system/geraet/verlauf", fragen: ["spanne": spanne.rawValue])
+    }
+
+    /// Steht ein Update bereit (`routers/update.py`)?
+    public func update() async throws -> UpdateStatusOut {
+        try await hole("/system/update")
+    }
+
+    /// Update installieren oder jetzt nachsehen lassen. Installiert wird auf dem Gerät.
+    @discardableResult
+    public func updateAnfragen(_ aktion: UpdateAnfrageInAktionWahl) async throws -> UpdateStatusOut {
+        try await hole("/system/update", verfahren: "POST", rumpf: try rumpf(UpdateAnfrageIn(aktion: aktion)))
+    }
+
     // MARK: - Einstellungen
 
     public func einstellungen() async throws -> HemsConfig {

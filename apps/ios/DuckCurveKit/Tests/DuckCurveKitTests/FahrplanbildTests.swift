@@ -64,7 +64,7 @@ final class FahrplanbildTests: XCTestCase {
     func testEineFehlendeAnforderungHinterlaesstEineLueckeImStreifen() {
         let b = Fahrplanbild.baue(
             plan(anzahl: 8, anforderung: { $0 < 3 ? ($0 == 0) : nil }))
-        XCTAssertEqual(b.anforderung.count, 3, "„nicht angefordert\" und „nicht gemessen\" sind zwei Aussagen.")
+        XCTAssertEqual(b.anforderung.count, 3, "„nicht angefordert“ und „nicht gemessen“ sind zwei Aussagen.")
         XCTAssertEqual(b.anforderung.map(\.rolle), [.angefordert, .aus, .aus])
         XCTAssertEqual(b.anforderung.map(\.hoehe), [1, 0.12, 0.12])
     }
@@ -208,7 +208,9 @@ final class FahrplanbildTests: XCTestCase {
         let a = Fahrplanbild.auskunft(p, zeit: ab, jetzt: ab)!
         XCTAssertEqual(a.titel, "heute 00:00")
         let paare = a.zeilen.map { "\($0.wort)=\($0.wert)" }
-        XCTAssertTrue(paare.contains("Strompreis=\(Formate.ct(24.9))"), "\(paare)")
+        // „18,4 ct“ ohne Nenner, wie die Vorlage (`Fahrplan.tsx:328`).
+        XCTAssertTrue(paare.contains("Strompreis=\(Formate.ctKurz(24.9))"), "\(paare)")
+        XCTAssertFalse(paare.contains { $0.contains("ct/kWh") }, "\(paare)")
         XCTAssertTrue(paare.contains("PV erwartet=\(Formate.kwMitEinheit(2.0))"))
         XCTAssertTrue(paare.contains("PV gemessen=\(Formate.kwMitEinheit(2.4))"))
         XCTAssertTrue(paare.contains("=\(Formate.kwMitEinheit(0.4)) mehr als erwartet"))
@@ -321,7 +323,22 @@ final class FahrplanbildTests: XCTestCase {
             .first { $0.wort == "Ofen geplant" }!
         XCTAssertEqual(brennt.wert, "1,0 h")
         XCTAssertEqual(brennt.dazu, "Volllast, 15 kg je Füllung")
-        XCTAssertEqual(brennt.ton, .glut)
+        // `tone={kennzahlen.ofenViertel ? "ember" : "muted"}` (`Fahrplan.tsx:559-562`), und
+        // `ember` ist `var(--alert)` (`Stat.tsx:5`). Vorher stand hier `glut`, der Ton der
+        // Wärmepumpe - siehe ``Kennzahl/Ton/alarm``.
+        XCTAssertEqual(brennt.ton, .alarm)
+        XCTAssertEqual(mit.ton, .gedaempft, "Kein Ofenlauf ist kein Alarm.")
+    }
+
+    /// **„Wärmepumpe angefordert“ trägt den Alarmton** (`Fahrplan.tsx:551-554`:
+    /// `tone="ember"`), und zwar unabhängig davon, ob Duck Curve selbst schaltet.
+    func testAngefordertTraegtDenAlarmton() {
+        XCTAssertEqual(
+            Fahrplankacheln.kacheln(plan(anzahl: 8))
+                .first { $0.wort == "Wärmepumpe angefordert" }?.ton, .alarm)
+        XCTAssertEqual(
+            Fahrplankacheln.kacheln(plan(anzahl: 8, schaltet: true))
+                .first { $0.wort == "Wärmepumpe angefordert" }?.ton, .alarm)
     }
 
     func testDerGeplanteWaermebedarfIstArbeitUndNichtLeistung() {
@@ -364,5 +381,70 @@ final class FahrplanbildTests: XCTestCase {
         XCTAssertEqual(Fahrplankacheln.viertelstunden(0), "0,0 h")
         XCTAssertEqual(Fahrplankacheln.viertelstunden(1), "0,3 h")
         XCTAssertEqual(Fahrplankacheln.viertelstunden(96), "24,0 h")
+    }
+
+    // MARK: - Die Legende
+
+    func testDieLegendeHatDieElfStueckeDerVorlage() {
+        let b = Fahrplanbild.baue(plan(anzahl: 8, preis: { _ in 30 }))
+        let woerter = b.legende.map(\.wort)
+        XCTAssertEqual(
+            woerter,
+            [
+                "Wärmepumpe angefordert", "Wärmepumpe gemieden", "Wärmepumpe frei",
+                "Wärmepumpe aus", "Ofen brennt", "Heizen", "Warmwasser", "Pufferinhalt",
+                "PV gemessen", "PV erwartet", "Preistief",
+            ])
+    }
+
+    func testDasZwoelfteStueckStehtNurBeiNegativemPreis() {
+        let ohne = Fahrplanbild.baue(plan(anzahl: 8, preis: { _ in 30 }))
+        XCTAssertFalse(ohne.legende.contains { $0.wort == "negativer Preis" })
+    }
+
+    /// Ohne Intervalle bleibt die Horizontkarte stehen - mit dem Satz und der ganzen Legende.
+    func testDieLegendeStehtAuchOhnePlanUndOhneIntervalle() {
+        let ohneIntervalle = plan(anzahl: 0)
+        XCTAssertEqual(
+            Fahrplanbild.legende(nil).map(\.wort),
+            Fahrplanbild.legende(ohneIntervalle).map(\.wort))
+        XCTAssertEqual(Fahrplanbild.legende(nil).count, 11)
+        XCTAssertFalse(Fahrplanbild.legende(nil).contains { $0.wort == "negativer Preis" })
+    }
+
+    /// Das zwoelfte Stueck haengt an den Fenstern und nicht an den Intervallen: ein Plan ohne
+    /// Viertelstunden kann ein negatives Preisfenster kennen.
+    func testDasZwoelfteStueckHaengtAmFensterUndNichtAmBild() {
+        let mit = plan(
+            anzahl: 0,
+            fenster: [
+                PriceWindowOut(
+                    start: Zeit.iso(ab.addingTimeInterval(3600)),
+                    end: Zeit.iso(ab.addingTimeInterval(7200)), kind: .negative,
+                    labelDe: "negativer Preis")
+            ])
+        XCTAssertTrue(Fahrplanbild.legende(mit).contains { $0.wort == "negativer Preis" })
+        XCTAssertEqual(Fahrplanbild.legende(mit).count, 12)
+    }
+
+    func testDieKlotzhoehenFolgenDenBalkenhoehen() {
+        let b = Fahrplanbild.baue(plan(anzahl: 8, preis: { _ in 30 }))
+        let dick = Dictionary(uniqueKeysWithValues: b.legende.map { ($0.wort, $0.dick) })
+        XCTAssertEqual(dick["Wärmepumpe angefordert"], 10)
+        XCTAssertEqual(dick["Wärmepumpe gemieden"], 6)
+        XCTAssertEqual(dick["Wärmepumpe frei"], 3, "0,3 mal 10 gerundet waere 3")
+        XCTAssertEqual(dick["Wärmepumpe aus"], 3, "unter drei Punkten sieht man nichts mehr")
+        XCTAssertEqual(dick["Pufferinhalt"], 3, "eine Linie, keine Flaeche")
+        XCTAssertEqual(dick["PV erwartet"], 2, "ein gestrichelter Strich")
+    }
+
+    // MARK: - Die festen Saetze
+
+    func testDieMethodeHatDreiAbsaetzeUndNennteBusUndPreisregel() {
+        XCTAssertEqual(Fahrplanworte.methode.count, 3)
+        XCTAssertTrue(Fahrplanworte.methode[0].contains("eBUS"))
+        XCTAssertTrue(Fahrplanworte.methode[1].contains("Preisregel"))
+        XCTAssertTrue(Fahrplanworte.methode[2].contains("Rückblick"))
+        XCTAssertFalse(Fahrplanworte.methodeKurz.isEmpty)
     }
 }

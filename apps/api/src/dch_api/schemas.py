@@ -1979,3 +1979,315 @@ class RegelkreisStellenIn(BaseModel):
     """Ein Parameter von Hand. Beschnitten wird auf die Plausibilitätsgrenzen des Registers."""
 
     wert: float
+
+
+# --- Updates des Hausgeräts (deploy/haus/dch, routers/update.py) ---------------------------------
+
+
+class UpdateNeuerungOut(BaseModel):
+    sha: str
+    titel: str
+
+
+class UpdateErgebnisOut(BaseModel):
+    am: str | None = None
+    ergebnis: str | None = None
+    von: str | None = None
+    nach: str | None = None
+
+
+class UpdateStatusOut(BaseModel):
+    """Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne
+    Hausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an."""
+
+    unterstuetzt: bool = False
+    kanal: str | None = None
+    aktuell: str | None = None
+    verfuegbar: str | None = None
+    update_verfuegbar: bool = False
+    neuerungen: list[UpdateNeuerungOut] = Field(default_factory=list)
+    geprueft_am: str | None = None
+    #: bereit | laeuft | fertig | zurueckgerollt | fehlgeschlagen
+    zustand: str = "bereit"
+    #: Sicherung | Quelltext | Laden | Neustart | Pruefung | Zurueck, solange `zustand` laeuft
+    schritt: str | None = None
+    meldung: str | None = None
+    zuletzt: UpdateErgebnisOut | None = None
+    #: Eine Anfrage liegt bereit und wartet darauf, dass der Dienst sie abholt.
+    anfrage_offen: bool = False
+
+
+class UpdateAnfrageIn(BaseModel):
+    aktion: Literal["installieren", "pruefen"]
+
+
+# ------------------------------------------------------------------------------- Hausgerät
+#
+# Was die Seite Technik -> Hausgerät zeigt (routers/geraet.py). Die rohen Werte kommen aus dem
+# Bericht, den das Gerät jede Minute schreibt (deploy/haus/dch, `dch zustand`); Ampel und Satz
+# bildet die API, damit Browser und iOS-App dieselbe Bewertung zeigen und sie nicht zweimal
+# gepflegt wird.
+
+Ampel = Literal["gut", "warn", "schlecht", "aus"]
+
+
+class GeraetDienstOut(BaseModel):
+    """Ein Container des Geräts (postgres, api, web, caddy, cloudflared)."""
+
+    name: str
+    #: Docker: running, restarting, exited, paused, created - oder `fehlt`, wenn compose.yaml ihn
+    #: kennt, er aber nicht angelegt ist.
+    zustand: str
+    #: healthy, unhealthy, starting; `None`: Der Dienst hat keine Prüfung.
+    gesundheit: str | None = None
+    #: Die letzte Ausgabe der Prüfung, gekürzt.
+    pruefung: str | None = None
+    pruefung_fehlschlaege: int | None = None
+    gestartet_am: datetime | None = None
+    neustarts: int = 0
+    exit_code: int | None = None
+    image: str | None = None
+    revision: str | None = None
+    cpu_prozent: float | None = None
+    speicher_mb: float | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetEinheitOut(BaseModel):
+    """Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht)."""
+
+    name: str
+    beschreibung: str = ""
+    aktiv: str = ""
+    unterzustand: str = ""
+    eingeschaltet: bool = False
+    naechster_lauf: datetime | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetPlatteOut(BaseModel):
+    ort: str
+    gesamt_bytes: int
+    frei_bytes: int
+    ampel: Ampel = "gut"
+
+
+class GeraetNetzOut(BaseModel):
+    schnittstelle: str
+    #: Zähler seit dem Start des Geräts.
+    empfangen_bytes: int
+    gesendet_bytes: int
+
+
+class GeraetSsdOut(BaseModel):
+    """SMART der Platte, auf der das System liegt. NVMe meldet alles; eine Platte am USB-Adapter
+    oft nur Temperatur und Betriebsstunden."""
+
+    geraet: str
+    modell: str | None = None
+    gesund: bool | None = None
+    temperatur_c: float | None = None
+    betriebsstunden: int | None = None
+    #: Verbrauchte Lebensdauer laut Hersteller, 0 bis 100 (darüber: über die zugesagte hinaus).
+    abnutzung_prozent: float | None = None
+    reserve_prozent: float | None = None
+    geschrieben_bytes: int | None = None
+    gelesen_bytes: int | None = None
+    fehler: int | None = None
+    unsichere_abschaltungen: int | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetDockerPlatzOut(BaseModel):
+    images_bytes: int | None = None
+    container_bytes: int | None = None
+    #: Darin liegt auch die Datenbank.
+    volumes_bytes: int | None = None
+    cache_bytes: int | None = None
+
+
+class GeraetRechnerOut(BaseModel):
+    """Der Rechner selbst: Raspberry Pi oder was sonst darunter läuft."""
+
+    name: str = ""
+    modell: str | None = None
+    system: str | None = None
+    kernel: str | None = None
+    adresse: str | None = None
+    laufzeit_s: int = 0
+    kerne: int = 1
+    last: list[float] = Field(default_factory=list)
+    temperatur_c: float | None = None
+    temperatur_ampel: Ampel = "aus"
+    #: `vcgencmd get_throttled`, roh (etwa `0x50005`); `None` ohne Raspberry Pi.
+    drosselung: str | None = None
+    #: Was die Bits bedeuten, als Sätze. Leer: nichts aufgefallen.
+    drosselung_de: list[str] = Field(default_factory=list)
+    drosselung_ampel: Ampel = "aus"
+    speicher_gesamt_mb: int = 0
+    speicher_frei_mb: int = 0
+    speicher_ampel: Ampel = "aus"
+    platten: list[GeraetPlatteOut] = Field(default_factory=list)
+    docker: str | None = None
+    #: Auslastung aller Kerne über die rund zwei Sekunden, in denen der Bericht entsteht.
+    cpu_prozent: float | None = None
+    takt_mhz: float | None = None
+    #: Spannung am Eingang (Raspberry Pi 5, `vcgencmd pmic_read_adc EXT5V_V`).
+    eingangsspannung_v: float | None = None
+    spannung_ampel: Ampel = "aus"
+    swap_gesamt_mb: int = 0
+    swap_frei_mb: int = 0
+    netz: GeraetNetzOut | None = None
+    ssd: GeraetSsdOut | None = None
+    docker_platz: GeraetDockerPlatzOut | None = None
+
+
+class GeraetSicherungOut(BaseModel):
+    letzte: str | None = None
+    letzte_am: datetime | None = None
+    letzte_bytes: int | None = None
+    anzahl: int = 0
+    #: Alle Sicherungen auf dem Gerät zusammen.
+    gesamt_bytes: int | None = None
+    #: Das rclone-Ziel für die Kopie außer Haus; `None`: keine.
+    ausser_haus: str | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetAktionOut(BaseModel):
+    """Die zuletzt aus der App angefragte Aktion und wie sie ausging."""
+
+    aktion: str
+    dienst: str | None = None
+    #: laeuft, ok, fehler
+    zustand: str
+    meldung: str = ""
+    von: str | None = None
+    begonnen_am: datetime | None = None
+    beendet_am: datetime | None = None
+
+
+class ApiSelbstOut(BaseModel):
+    """Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden."""
+
+    version: str
+    commit: str
+    modus: str
+    laufzeit_s: int
+    rss_mb: float
+    datenbank_ok: bool | None = None
+    datenbank_ms: float | None = None
+    datenbank_de: str = ""
+    #: Größe der Datenbank auf der Platte; `None` ohne PostgreSQL.
+    datenbank_bytes: int | None = None
+    bridge_online: bool = False
+    verbindung_de: str = ""
+    quellen: list[SourceStatusOut] = Field(default_factory=list)
+    befunde: list[WatchFindingOut] = Field(default_factory=list)
+    sse_clients: int = 0
+    alfred_eingerichtet: bool = False
+    energy_rebuild: str = ""
+    ampel: Ampel = "gut"
+    text_de: str = ""
+
+
+class GeraetOut(BaseModel):
+    """Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion."""
+
+    #: Falsch ohne Hausgerät (Railway, Entwicklung): Dann gibt es nur `api`.
+    unterstuetzt: bool
+    bericht_am: datetime | None = None
+    #: Wahr, wenn der letzte Bericht älter als drei Minuten ist: Der Zeitgeber auf dem Gerät
+    #: läuft dann nicht, und alle Werte darunter sind von damals.
+    bericht_alt: bool = False
+    kanal: str | None = None
+    fernzugang: bool = False
+    #: Falsch, wenn Docker auf dem Gerät nicht antwortet; dann laufen keine Dienste.
+    docker_laeuft: bool | None = None
+    rechner: GeraetRechnerOut | None = None
+    dienste: list[GeraetDienstOut] = Field(default_factory=list)
+    einheiten: list[GeraetEinheitOut] = Field(default_factory=list)
+    sicherung: GeraetSicherungOut | None = None
+    letzte_aktion: GeraetAktionOut | None = None
+    #: Warum gerade keine Aktion angenommen wird (Update läuft, Anfrage offen); `None`: frei.
+    beschaeftigt: str | None = None
+    api: ApiSelbstOut
+    #: Das Gesamturteil: das schlechteste aller Einzelurteile, mit dem Grund.
+    ampel: Ampel = "gut"
+    text_de: str = ""
+
+
+class GeraetAktionIn(BaseModel):
+    aktion: Literal["neustart", "sichern", "protokoll", "geraet_neustart", "zustand"]
+    #: Für `neustart` und `protokoll`: der Dienst aus compose.yaml, für `neustart` auch `alle`.
+    dienst: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_-]{0,30}$")
+
+
+class GeraetProtokollOut(BaseModel):
+    dienst: str
+    vorhanden: bool
+    erstellt_am: datetime | None = None
+    zeilen: list[str] = Field(default_factory=list)
+
+
+class GeraetVerlaufDienstOut(BaseModel):
+    cpu_prozent: float | None = None
+    speicher_mb: float | None = None
+
+
+class GeraetVerlaufPunktOut(BaseModel):
+    """Ein Abschnitt im Verlauf: Mittel, Spitzen und Stände am Ende des Abschnitts."""
+
+    t: datetime
+    cpu_prozent: float | None = None
+    cpu_prozent_max: float | None = None
+    last1: float | None = None
+    temperatur_c: float | None = None
+    temperatur_c_max: float | None = None
+    takt_mhz: float | None = None
+    eingangsspannung_v: float | None = None
+    eingangsspannung_v_min: float | None = None
+    speicher_belegt_mb: float | None = None
+    speicher_gesamt_mb: float | None = None
+    swap_belegt_mb: float | None = None
+    platte_belegt_bytes: int | None = None
+    platte_gesamt_bytes: int | None = None
+    ssd_temperatur_c: float | None = None
+    ssd_temperatur_c_max: float | None = None
+    ssd_abnutzung_prozent: float | None = None
+    #: In diesem Abschnitt auf die SSD geschrieben.
+    ssd_geschrieben_bytes: int = 0
+    netz_empfangen_bytes_s: float = 0.0
+    netz_gesendet_bytes_s: float = 0.0
+    datenbank_bytes: int | None = None
+    sicherung_bytes: int | None = None
+    docker_bytes: int | None = None
+    #: Wurde in diesem Abschnitt gedrosselt oder war die Spannung zu niedrig?
+    drosselung_jetzt: bool = False
+    dienste: dict[str, GeraetVerlaufDienstOut] = Field(default_factory=dict)
+
+
+class GeraetPrognoseOut(BaseModel):
+    """Wachstum je Tag über die letzten 30 Tage (eine Gerade durch die Füllstände), erst ab
+    sieben Tagen Verlauf. Eine Schätzung „bei diesem Tempo“, kein Termin."""
+
+    tage_verlauf: float = 0.0
+    platte_bytes_pro_tag: int | None = None
+    platte_voll_in_tagen: int | None = None
+    datenbank_bytes_pro_tag: int | None = None
+    sicherung_bytes_pro_tag: int | None = None
+    ssd_geschrieben_bytes_pro_tag: int | None = None
+
+
+class GeraetVerlaufOut(BaseModel):
+    unterstuetzt: bool
+    spanne: Literal["tag", "woche", "monat", "jahr"] = "tag"
+    von: datetime | None = None
+    bis: datetime | None = None
+    schritt_min: int = 5
+    punkte: list[GeraetVerlaufPunktOut] = Field(default_factory=list)
+    prognose: GeraetPrognoseOut = Field(default_factory=GeraetPrognoseOut)

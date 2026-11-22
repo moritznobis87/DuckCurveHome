@@ -258,6 +258,18 @@ final class Hauszustand {
     /// Ist die Verbindung in Ordnung? Die Anzeige daempft sich, wenn nicht.
     var gestoert: Bool { verbindung != .live }
 
+    /// Ist noch gar nichts da? Das ist die Frage, an der der Ladeschirm haengt.
+    ///
+    /// **Das Augenblicksbild ist das Mass, nicht der Verbindungszustand.** `verbindung == .live`
+    /// sagt, dass der Strom offen ist - nicht, dass eine Zahl angekommen ist; zwischen beidem
+    /// liegt im ruhigen Haus bis zu eine Sekunde. Und es ist auch nicht `raster` oder `plan`:
+    /// beide duerfen dauerhaft leer bleiben (ein Haus ohne Photovoltaik hat keine Prognose), ein
+    /// Ladeschirm, der auf sie wartet, wartete dort fuer immer.
+    ///
+    /// Es ist dieselbe Bedingung, an der schon ``satz`` entscheidet, ob er „Verbinde mit dem
+    /// Haus …“ sagt - nur unter einem Namen, damit die beiden Stellen nicht auseinanderlaufen.
+    var nochKeineZahlen: Bool { zustand == nil }
+
     /// Der Satz, der auf der Startseite steht.
     ///
     /// Die Erklaerung des Reglers, wenn es eine gibt. Sonst zwei Saetze, die nicht nach einem
@@ -277,6 +289,31 @@ final class Hauszustand {
         if m.systemMode == .off { return "Automatik aus, Duck Curve schaut nur zu" }
         return "Automatik"
     }
+
+    /// Das Wort neben dem Lebenspunkt: „live", „demo 60×", „unterbrochen · 23:35".
+    ///
+    /// **Warum hier und nicht in der Ansicht.** Zwei Stellen zeigen es - der Kopf der
+    /// Wandanzeige und das Ruhebild - und sie sollen nie verschiedene Wörter sagen.
+    var verbindungswort: String {
+        switch verbindung {
+        case .live:
+            guard let s = zustand?.system else { return "live" }
+            if s.mode == "demo" {
+                return s.simSpeed != 1 ? "demo \(Formate.zahl(s.simSpeed, stellen: 0))×" : "demo"
+            }
+            return "live"
+        case .verbindet:
+            return "verbinde"
+        case .verbindetNeu:
+            guard let letzter = letzterRahmen else { return "verbinde" }
+            return "unterbrochen · \(Formate.hhmm(letzter.addingTimeInterval(versatz)))"
+        case .aus:
+            return fehler == nil ? "angehalten" : "nicht verbunden"
+        }
+    }
+
+    /// Läuft die Anwendung im Vorführbetrieb? Dann ist jede Zahl erfunden.
+    var vorfuehrung: Bool { zustand?.system.mode == "demo" }
 
     /// Ob dieser Zugang schalten darf. Blendet aus, sperrt nicht - siehe `Zugang`.
     var darfSchalten: Bool { zugang.rolle == .hausherr }

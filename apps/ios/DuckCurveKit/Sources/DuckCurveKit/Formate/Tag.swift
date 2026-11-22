@@ -97,6 +97,68 @@ public enum Tag {
         return "\(Namen.wochentag(t.weekday ?? 1, kurz: true)), \(t.day ?? 0).\(t.month ?? 0)."
     }
 
+    /// „Di., 10. November 2026“ - kurzer Wochentag, Tag zweistellig, Monat ausgeschrieben.
+    ///
+    /// **Warum es ein drittes Datumsformat braucht.** Die Zellenauskunft der Abdeckungskarte
+    /// nennt den Tag in dieser Form: `toLocaleDateString("de-DE", { weekday: "short",
+    /// day: "2-digit", month: "long", year: "numeric" })`
+    /// (`apps/web/src/components/reports/charts.ts:473-478`). Keines der drei vorhandenen
+    /// Formate trifft sie, und jedes verfehlt sie an einer anderen Stelle:
+    ///
+    /// | Format           | Beispiel                    | Unterschied zu dieser Form              |
+    /// |------------------|-----------------------------|-----------------------------------------|
+    /// | ``lang(_:)``     | „Samstag, 7. November 2026“ | Wochentag ausgeschrieben, Tag einstellig |
+    /// | ``kurz(_:)``     | „Sa, 7.11.“                 | Monat als Zahl, ohne Jahr, kein Punkt hinter dem Wochentag |
+    /// | ``tagMonat(_:)`` | „07.11.“                    | ohne Wochentag, ohne Jahr               |
+    ///
+    /// Die Tabelle steht hier, damit die nächste Seite, die diese Form braucht, nicht ein
+    /// viertes Format anlegt, weil sie die drei Geschwister für austauschbar hält.
+    ///
+    /// **Der Punkt hinter dem Wochentag wird hier gesetzt**, denn ``Namen/wochentageKurz``
+    /// führt „Di“ ohne ihn; dieselbe Zeile steht in ``Formate/kurzDatum(iso:)``. Die Namen
+    /// kommen aus ``Namen/wochentag(_:kurz:)`` und ``Namen/monat(_:)`` und nicht aus einem
+    /// `DateFormatter` - aus dem Grund, der am Kopf von ``Namen`` steht: unter Linux und unter
+    /// iOS liegen zwei ICU-Stände, die sich beim Punkt nicht einig sind, und ein Test, der nur
+    /// auf dem Prüfrechner gilt, ist keiner.
+    ///
+    /// Die führende Null am Tag kommt aus `day: "2-digit"` und ist der sichtbare Unterschied
+    /// zu ``lang(_:)``. Ein Tag, der kein Tag ist, kommt unverändert zurück wie bei den
+    /// Geschwistern - nicht als „01. Januar 0“.
+    public static func langKurzerWochentag(_ tag: String) -> String {
+        guard let d = date(tag) else { return tag }
+        let t = Kalender.haus.dateComponents([.weekday, .day, .month, .year], from: d)
+        let wochentag = Namen.wochentag(t.weekday ?? 1, kurz: true)
+        return "\(wochentag)., " + String(format: "%02d", t.day ?? 0)
+            + ". \(Namen.monat(t.month ?? 1)) \(t.year ?? 0)"
+    }
+
+    /// „10.11." - nur Tag und Monat, zweistellig, fuer eine Achse aus vielen Tagen.
+    ///
+    /// **Ohne Wochentag und ohne Jahr**, anders als `kurz`. An der Achse der Abdeckungskarte
+    /// steht jeder dritte von achtundzwanzig Tagen (`charts.ts:493-500`,
+    /// `{ day: "2-digit", month: "2-digit" }`); „Sa, 7.11." waere dort dreimal so breit und
+    /// nennt genau das, was zwischen Nachbarspalten gleich bleibt.
+    public static func tagMonat(_ tag: String) -> String {
+        guard let d = date(tag) else { return tag }
+        let t = Kalender.haus.dateComponents([.day, .month], from: d)
+        return String(format: "%02d.%02d.", t.day ?? 0, t.month ?? 0)
+    }
+
+    /// „4.11.“ - Tag und Monat **ohne** fuehrende Null.
+    ///
+    /// **Warum es die neben ``tagMonat(_:)`` gibt.** Dieselbe Vorlage schreibt den Tag an zwei
+    /// Stellen auf zwei Arten, und beide Male mit Grund. An der Achse der Abdeckungskarte steht
+    /// er zweistellig, damit achtundzwanzig Spalten gleich breit bleiben
+    /// (`charts.ts:493-500`); an der Achse und in der Tabelle des Waermepumpenbetriebs steht er
+    /// einstellig, so wie man ihn sagt (`betrieb.ts:42-45`, und `betrieb.test.ts:44-45` haelt
+    /// „31.1.“ und „4.11.“ ausdruecklich fest). Eine der beiden Formen auf die andere zu
+    /// ziehen hiesse, eine der beiden Begruendungen zu verwerfen.
+    public static func punkt(_ tag: String) -> String {
+        guard let d = date(tag) else { return tag }
+        let t = Kalender.haus.dateComponents([.day, .month], from: d)
+        return "\(t.day ?? 0).\(t.month ?? 0)."
+    }
+
     /// Ist das heute, gestern oder morgen? Fuer die Ueberschrift, die dann ein Wort statt eines
     /// Datums zeigt.
     public static func nameRelativ(_ tag: String, jetzt: Date = Date()) -> String? {

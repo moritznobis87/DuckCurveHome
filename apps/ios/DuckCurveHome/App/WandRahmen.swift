@@ -58,13 +58,25 @@ struct WandRahmen: View {
                     wegweiser.gehe(r.weg)
                     wegweiser.merkeReiter()
                 }
+                // Die Unteransichten des gewaehlten Reiters, wo es welche gibt: Voraus gegen
+                // Rueckblick, Jetzt gegen Ein Tag, die vier Sichten der Waermepumpe.
+                Unteransichten(reiter: wegweiser.reiter)
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 8)
                 Divider().overlay(Farbe.linie1)
             }
+            // Steht für das Hausgerät ein Update bereit, steht das hier - über jeder Seite.
+            Updatehinweis(wegweiser: wegweiser)
+                .padding(.horizontal, 32)
+                .padding(.top, 8)
             Seitenwahl(weg: wegweiser.weg)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .overlay(alignment: .bottomTrailing) { Entenknopf() }
         }
-        .opacity(haus.gestoert ? 0.72 : 1)
+        // **Abgeblendet wird das Bild, nicht die Anzeige** (`Home.tsx:227`: das `opacity`
+        // sitzt am Hero). Der Kopf trägt Uhr und Verbindungspunkt - gerade die beiden sollen
+        // bei einer Störung voll lesbar bleiben, denn sie sagen, wie alt das Bild ist. Hier
+        // lag das Abblenden über allem, Uhr und Punkt eingeschlossen.
         .animation(.easeInOut(duration: 0.4), value: haus.gestoert)
     }
 
@@ -108,7 +120,8 @@ struct Kopfzeile: View {
             Spacer(minLength: 12)
             uhrzeit
         }
-        .padding(.horizontal, 16)
+        // Derselbe Seitenrand wie die Seite darunter (`globals.css:190`: 32 Punkte).
+        .padding(.horizontal, 32)
         .padding(.vertical, 10)
     }
 
@@ -120,13 +133,17 @@ struct Kopfzeile: View {
                     wegweiser.merkeReiter()
                     wegweiser.geheZuBereich(b)
                 } label: {
+                    // **Das gewaehlte Zeichen steht auf Bernstein, nicht in Bernstein**
+                    // (`globals.css:750`): gefuellte Flaeche, Zeichen in Petrol. Umgekehrt war
+                    // es ein helles Zeichen auf einer hellen Flaeche - aus drei Metern nicht
+                    // von seinen Nachbarn zu unterscheiden.
                     Zeichen(
                         bereich: b.zeichen,
                         groesse: 22,
-                        farbe: istAktiv ? Farbe.amber : Farbe.text3
+                        farbe: istAktiv ? Farbe.petrol : Farbe.text3
                     )
                     .padding(8)
-                    .background(istAktiv ? Farbe.flaeche2 : .clear)
+                    .background(istAktiv ? Farbe.amber : .clear)
                     .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
                 }
                 .buttonStyle(.plain)
@@ -137,12 +154,17 @@ struct Kopfzeile: View {
     }
 
     private var uhrzeit: some View {
-        HStack(alignment: .center, spacing: 16) {
+        // Auf einer Grundlinie, nicht mittig: Datum, Uhr und Temperatur sind eine Zeile aus
+        // drei Groessen (`globals.css:192`: `align-items: baseline`, Abstand 22).
+        HStack(alignment: .firstTextBaseline, spacing: 22) {
             Text(Formate.langesDatum(haus.jetzt))
-                .font(Schrift.klein)
-                .foregroundStyle(Farbe.text3)
+                .font(Schrift.sans(15))
+                .foregroundStyle(Farbe.text2)
             Text(Formate.hhmm(haus.jetzt))
-                .font(Schrift.zahlFuehrend)
+                // `clamp(30px, 3.4vw, 46px)` mit Strichstaerke 500 (`globals.css:194`).
+                .font(Schrift.sans(40, relativeTo: .largeTitle))
+                .fontWeight(.medium)
+                .kerning(-1.2)
                 .foregroundStyle(Farbe.text1)
                 .monospacedDigit()
             aussen
@@ -155,15 +177,20 @@ struct Kopfzeile: View {
     /// Der Dienst sagt mit `outdoor_source_de`, wenn er den Wert des Wetterdienstes zeigt statt
     /// des eigenen Fuehlers. Das steht dann dabei: eine Temperatur ohne Herkunft ist an einer
     /// Wandanzeige eine Behauptung.
+    ///
+    /// **Eine Zeile, nicht zwei** (`globals.css:195-196`): die Zahl in 17 Punkten, das Wort
+    /// klein dahinter. Uebereinander gestapelt waren es zwei Zeilen in einer Kopfzeile, die
+    /// sonst aus einer besteht.
     private var aussen: some View {
-        VStack(alignment: .trailing, spacing: 0) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(Formate.celsius(haus.zustand?.system.outdoorShownC ?? haus.augenblick?.outdoorTempC.value, stellen: 1))
-                .font(Schrift.zahl)
-                .foregroundStyle(Farbe.text1)
+                .font(Schrift.sans(17))
+                .foregroundStyle(Farbe.text2)
             Text(haus.zustand?.system.outdoorSourceDe ?? "draußen")
-                .font(Schrift.winzig)
+                .font(Schrift.sans(12))
                 .foregroundStyle(Farbe.text3)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -175,13 +202,12 @@ struct Verbindungspunkt: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Circle()
-                .fill(haus.gestoert ? Farbe.alarm : Farbe.gut)
-                .frame(width: 7, height: 7)
-                // Ein ruhiges Pulsieren, solange es laeuft. An einer Wand ist das der
-                // Unterschied zwischen „lebt" und „eingefroren" - ein stehendes Bild sagt das
-                // nicht von sich aus.
-                .opacity(haus.gestoert ? 1 : 0.85)
+            // **Ein ruhiges Atmen, solange es laeuft** (`globals.css:197`, `dch-atmen`
+            // ueber 3,6 Sekunden). An einer Wand ist das der Unterschied zwischen „lebt" und
+            // „eingefroren" - ein stehendes Bild sagt das nicht von sich aus. Derselbe Punkt
+            // wie im Ruhebild, und aus demselben Grund an einer Stelle: zwei Fassungen atmen
+            // irgendwann verschieden, und eine von beiden hoert nach einer Stoerung auf.
+            Atempunkt(gestoert: haus.gestoert)
             // **Am Telefon nur der Punkt, solange es laeuft** (`handy.css:227-228`): „live"
             // steht neunundneunzig Prozent der Zeit da und sagt damit nichts. Ausgeschrieben
             // wird, was nicht selbstverstaendlich ist: die Stoerung - und der Vorfuehrbetrieb.
@@ -197,25 +223,8 @@ struct Verbindungspunkt: View {
         .accessibilityLabel(haus.zustand?.system.connectionLabelDe ?? wort)
     }
 
-    private var vorfuehrung: Bool {
-        haus.zustand?.system.mode == "demo"
-    }
+    private var vorfuehrung: Bool { haus.vorfuehrung }
 
-    private var wort: String {
-        switch haus.verbindung {
-        case .live:
-            guard let s = haus.zustand?.system else { return "live" }
-            if s.mode == "demo" {
-                return s.simSpeed != 1 ? "demo \(Formate.zahl(s.simSpeed, stellen: 0))×" : "demo"
-            }
-            return "live"
-        case .verbindet:
-            return "verbinde"
-        case .verbindetNeu:
-            guard let letzter = haus.letzterRahmen else { return "verbinde" }
-            return "unterbrochen · \(Formate.hhmm(letzter.addingTimeInterval(haus.versatz)))"
-        case .aus:
-            return haus.fehler == nil ? "angehalten" : "nicht verbunden"
-        }
-    }
+    private var wort: String { haus.verbindungswort }
+
 }

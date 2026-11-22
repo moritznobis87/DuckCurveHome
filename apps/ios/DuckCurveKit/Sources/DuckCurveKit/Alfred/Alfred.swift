@@ -53,6 +53,7 @@ public enum Alfred {
         "/waerme/annahmen": "Annahmen zeigt die Wärmeannahmen des Modells und lässt sie ändern. Nur mit Vollzugriff.",
         "/system/mitteilungen": "Mitteilungen stellt das Morning Briefing und die angemeldeten Geräte ein. Nur mit Vollzugriff.",
         "/system/haustuer": "Haustür zeigt die Zutritte an der Haustür. Nur mit Vollzugriff.",
+        "/system/geraet": "Hausgerät zeigt, wie es dem Rechner im Haus und seinen Diensten geht, holt Protokolle, startet Dienste neu und installiert Updates. Nur mit Vollzugriff.",
         "/system/zugang": "Zugang und Sicherung verwaltet gekoppelte Geräte und die Sicherung. Nur mit Vollzugriff.",
     ]
 
@@ -278,7 +279,6 @@ public enum Alfred {
         // Browser und schickt die Aufnahme je nach Hersteller an Apple oder Google; hier
         // erkennt das Gerät, und bei einem Modell, das es kann, verlässt die Aufnahme das
         // Telefon nicht.
-        public static let haltenHinweis = "Ente gedrückt halten, sprechen, loslassen."
         public static let haltenLaeuft = "Ich höre zu … Lass die Ente los, wenn du fertig bist."
         public static let sprachWartet = "Einen Moment …"
         public static let sprachNichtsGehoert =
@@ -294,6 +294,31 @@ public enum Alfred {
             "Für Deutsch ist auf diesem Gerät keine Spracherkennung eingerichtet. Tipp deine Frage ins Feld."
         public static let sprachFehler =
             "Die Spracherkennung hat nicht geklappt. Tipp deine Frage ins Feld."
+
+        // MARK: Die Ente verschieben
+        //
+        // **Drei Gesten auf einem Zeichen, und die Worte müssen sie auseinanderhalten.** Tippen
+        // öffnet, Halten spricht, Ziehen verschiebt - siehe ``Entenplatz`` für die Stellen und
+        // ``Entenknopf`` für die Grenze zwischen Halten und Ziehen.
+
+        /// Was VoiceOver an der Ente sagt, wenn der Hinweis gelesen wird.
+        ///
+        /// **Er nennt die Aktionen und nicht die Finger.** Vorher stand hier „Ente gedrückt
+        /// halten, sprechen, loslassen“ - eine Anleitung für eine Geste, die mit eingeschaltetem
+        /// VoiceOver niemand ausführt, und seit dem Verschieben auch keine vollständige mehr.
+        /// Erreichbar ist für die Bedienungshilfe, was unter den Aktionen steht.
+        public static let enteHinweis =
+            "Doppeltippen fragt Alfred. Mit den Aktionen lässt sich die Ente an eine andere Stelle setzen."
+
+        /// Was unter den Aktionen steht: ein Schritt weiter am Rand entlang
+        /// (``Entenplatz/naechste(nach:)``).
+        public static let enteVerschieben = "Ente weitersetzen"
+
+        /// Und der Weg zurück - an der Ente selbst und als Knopf im Blatt.
+        public static let enteZurueck = "Ente zurücksetzen"
+
+        /// Wo sie steht, als Wert des Elements: „steht unten rechts“.
+        public static func enteStelle(_ name: String) -> String { "steht \(name)" }
 
         public static let rechnungKnopf = "Rechnung prüfen (PDF)"
         public static let rechnungZurAuswertung = "Zur vollen Auswertung"

@@ -61,6 +61,21 @@ public enum AlfredWechselInWerWahl: String, Codable, Sendable, Hashable, CaseIte
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum ApiSelbstOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = ApiSelbstOutAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum AutoProfile: String, Codable, Sendable, Hashable, CaseIterable {
     case eco = "eco"
     case pv = "pv"
@@ -237,6 +252,187 @@ public enum EnergySummaryOutPeriodWahl: String, Codable, Sendable, Hashable, Cas
     public init(from decoder: any Decoder) throws {
         let roh = try decoder.singleValueContainer().decode(String.self)
         self = EnergySummaryOutPeriodWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetAktionInAktionWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case neustart = "neustart"
+    case sichern = "sichern"
+    case protokoll = "protokoll"
+    case geraetNeustart = "geraet_neustart"
+    case zustand = "zustand"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetAktionInAktionWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetDienstOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetDienstOutAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetEinheitOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetEinheitOutAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetOutAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetPlatteOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetPlatteOutAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetRechnerOutDrosselungAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetRechnerOutDrosselungAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetRechnerOutSpannungAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetRechnerOutSpannungAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetRechnerOutSpeicherAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetRechnerOutSpeicherAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetRechnerOutTemperaturAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetRechnerOutTemperaturAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetSicherungOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetSicherungOutAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetSsdOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetSsdOutAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetVerlaufOutSpanneWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case tag = "tag"
+    case woche = "woche"
+    case monat = "monat"
+    case jahr = "jahr"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetVerlaufOutSpanneWahl(rawValue: roh) ?? .unbekannt
     }
 }
 
@@ -630,6 +826,19 @@ public enum SystemMode: String, Codable, Sendable, Hashable, CaseIterable {
     public init(from decoder: any Decoder) throws {
         let roh = try decoder.singleValueContainer().decode(String.self)
         self = SystemMode(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum UpdateAnfrageInAktionWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case installieren = "installieren"
+    case pruefen = "pruefen"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = UpdateAnfrageInAktionWahl(rawValue: roh) ?? .unbekannt
     }
 }
 
@@ -1376,6 +1585,92 @@ public struct AnlageWarmwasserOut: Codable, Sendable, Hashable {
         self.inletC = try c.decodeIfPresent(Double.self, forKey: .inletC)
         self.tapping = try c.decodeIfPresent(Bool.self, forKey: .tapping)
         self.tappingSince = try c.decodeIfPresent(String.self, forKey: .tappingSince)
+    }
+}
+
+/// Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden.
+public struct ApiSelbstOut: Codable, Sendable, Hashable {
+    public var version: String
+    public var commit: String
+    public var modus: String
+    public var laufzeitS: Int
+    public var rssMb: Double
+    public var datenbankOk: Bool?
+    public var datenbankMs: Double?
+    public var datenbankDe: String?
+    public var datenbankBytes: Int?
+    public var bridgeOnline: Bool?
+    public var verbindungDe: String?
+    public var quellen: [SourceStatusOut]
+    public var befunde: [WatchFindingOut]
+    public var sseClients: Int?
+    public var alfredEingerichtet: Bool?
+    public var energyRebuild: String?
+    public var ampel: ApiSelbstOutAmpelWahl?
+    public var textDe: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case version
+        case commit
+        case modus
+        case laufzeitS = "laufzeit_s"
+        case rssMb = "rss_mb"
+        case datenbankOk = "datenbank_ok"
+        case datenbankMs = "datenbank_ms"
+        case datenbankDe = "datenbank_de"
+        case datenbankBytes = "datenbank_bytes"
+        case bridgeOnline = "bridge_online"
+        case verbindungDe = "verbindung_de"
+        case quellen
+        case befunde
+        case sseClients = "sse_clients"
+        case alfredEingerichtet = "alfred_eingerichtet"
+        case energyRebuild = "energy_rebuild"
+        case ampel
+        case textDe = "text_de"
+    }
+
+    public init(version: String, commit: String, modus: String, laufzeitS: Int, rssMb: Double, datenbankOk: Bool? = nil, datenbankMs: Double? = nil, datenbankDe: String? = nil, datenbankBytes: Int? = nil, bridgeOnline: Bool? = nil, verbindungDe: String? = nil, quellen: [SourceStatusOut] = [], befunde: [WatchFindingOut] = [], sseClients: Int? = nil, alfredEingerichtet: Bool? = nil, energyRebuild: String? = nil, ampel: ApiSelbstOutAmpelWahl? = nil, textDe: String? = nil) {
+        self.version = version
+        self.commit = commit
+        self.modus = modus
+        self.laufzeitS = laufzeitS
+        self.rssMb = rssMb
+        self.datenbankOk = datenbankOk
+        self.datenbankMs = datenbankMs
+        self.datenbankDe = datenbankDe
+        self.datenbankBytes = datenbankBytes
+        self.bridgeOnline = bridgeOnline
+        self.verbindungDe = verbindungDe
+        self.quellen = quellen
+        self.befunde = befunde
+        self.sseClients = sseClients
+        self.alfredEingerichtet = alfredEingerichtet
+        self.energyRebuild = energyRebuild
+        self.ampel = ampel
+        self.textDe = textDe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.version = try c.decode(String.self, forKey: .version)
+        self.commit = try c.decode(String.self, forKey: .commit)
+        self.modus = try c.decode(String.self, forKey: .modus)
+        self.laufzeitS = try c.decode(Int.self, forKey: .laufzeitS)
+        self.rssMb = try c.decode(Double.self, forKey: .rssMb)
+        self.datenbankOk = try c.decodeIfPresent(Bool.self, forKey: .datenbankOk)
+        self.datenbankMs = try c.decodeIfPresent(Double.self, forKey: .datenbankMs)
+        self.datenbankDe = try c.decodeIfPresent(String.self, forKey: .datenbankDe)
+        self.datenbankBytes = try c.decodeIfPresent(Int.self, forKey: .datenbankBytes)
+        self.bridgeOnline = try c.decodeIfPresent(Bool.self, forKey: .bridgeOnline)
+        self.verbindungDe = try c.decodeIfPresent(String.self, forKey: .verbindungDe)
+        self.quellen = try c.decodeIfPresent([SourceStatusOut].self, forKey: .quellen) ?? []
+        self.befunde = try c.decodeIfPresent([WatchFindingOut].self, forKey: .befunde) ?? []
+        self.sseClients = try c.decodeIfPresent(Int.self, forKey: .sseClients)
+        self.alfredEingerichtet = try c.decodeIfPresent(Bool.self, forKey: .alfredEingerichtet)
+        self.energyRebuild = try c.decodeIfPresent(String.self, forKey: .energyRebuild)
+        self.ampel = try c.decodeIfPresent(ApiSelbstOutAmpelWahl.self, forKey: .ampel)
+        self.textDe = try c.decodeIfPresent(String.self, forKey: .textDe)
     }
 }
 
@@ -3570,6 +3865,815 @@ public struct GeleseneRechnung: Codable, Sendable, Hashable {
         self.grundpreisEurMonat = try c.decodeIfPresent(Double.self, forKey: .grundpreisEurMonat)
         self.bruttoEur = try c.decodeIfPresent(Double.self, forKey: .bruttoEur)
         self.nettoEur = try c.decodeIfPresent(Double.self, forKey: .nettoEur)
+    }
+}
+
+public struct GeraetAktionIn: Codable, Sendable, Hashable {
+    public var aktion: GeraetAktionInAktionWahl
+    public var dienst: String?
+
+    public init(aktion: GeraetAktionInAktionWahl, dienst: String? = nil) {
+        self.aktion = aktion
+        self.dienst = dienst
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.aktion = try c.decode(GeraetAktionInAktionWahl.self, forKey: .aktion)
+        self.dienst = try c.decodeIfPresent(String.self, forKey: .dienst)
+    }
+}
+
+/// Die zuletzt aus der App angefragte Aktion und wie sie ausging.
+public struct GeraetAktionOut: Codable, Sendable, Hashable {
+    public var aktion: String
+    public var dienst: String?
+    public var zustand: String
+    public var meldung: String?
+    public var von: String?
+    public var begonnenAm: String?
+    public var beendetAm: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case aktion
+        case dienst
+        case zustand
+        case meldung
+        case von
+        case begonnenAm = "begonnen_am"
+        case beendetAm = "beendet_am"
+    }
+
+    public init(aktion: String, dienst: String? = nil, zustand: String, meldung: String? = nil, von: String? = nil, begonnenAm: String? = nil, beendetAm: String? = nil) {
+        self.aktion = aktion
+        self.dienst = dienst
+        self.zustand = zustand
+        self.meldung = meldung
+        self.von = von
+        self.begonnenAm = begonnenAm
+        self.beendetAm = beendetAm
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.aktion = try c.decode(String.self, forKey: .aktion)
+        self.dienst = try c.decodeIfPresent(String.self, forKey: .dienst)
+        self.zustand = try c.decode(String.self, forKey: .zustand)
+        self.meldung = try c.decodeIfPresent(String.self, forKey: .meldung)
+        self.von = try c.decodeIfPresent(String.self, forKey: .von)
+        self.begonnenAm = try c.decodeIfPresent(String.self, forKey: .begonnenAm)
+        self.beendetAm = try c.decodeIfPresent(String.self, forKey: .beendetAm)
+    }
+}
+
+/// Ein Container des Geräts (postgres, api, web, caddy, cloudflared).
+public struct GeraetDienstOut: Codable, Sendable, Hashable {
+    public var name: String
+    public var zustand: String
+    public var gesundheit: String?
+    public var pruefung: String?
+    public var pruefungFehlschlaege: Int?
+    public var gestartetAm: String?
+    public var neustarts: Int?
+    public var exitCode: Int?
+    public var image: String?
+    public var revision: String?
+    public var cpuProzent: Double?
+    public var speicherMb: Double?
+    public var ampel: GeraetDienstOutAmpelWahl?
+    public var textDe: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case name
+        case zustand
+        case gesundheit
+        case pruefung
+        case pruefungFehlschlaege = "pruefung_fehlschlaege"
+        case gestartetAm = "gestartet_am"
+        case neustarts
+        case exitCode = "exit_code"
+        case image
+        case revision
+        case cpuProzent = "cpu_prozent"
+        case speicherMb = "speicher_mb"
+        case ampel
+        case textDe = "text_de"
+    }
+
+    public init(name: String, zustand: String, gesundheit: String? = nil, pruefung: String? = nil, pruefungFehlschlaege: Int? = nil, gestartetAm: String? = nil, neustarts: Int? = nil, exitCode: Int? = nil, image: String? = nil, revision: String? = nil, cpuProzent: Double? = nil, speicherMb: Double? = nil, ampel: GeraetDienstOutAmpelWahl? = nil, textDe: String? = nil) {
+        self.name = name
+        self.zustand = zustand
+        self.gesundheit = gesundheit
+        self.pruefung = pruefung
+        self.pruefungFehlschlaege = pruefungFehlschlaege
+        self.gestartetAm = gestartetAm
+        self.neustarts = neustarts
+        self.exitCode = exitCode
+        self.image = image
+        self.revision = revision
+        self.cpuProzent = cpuProzent
+        self.speicherMb = speicherMb
+        self.ampel = ampel
+        self.textDe = textDe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.zustand = try c.decode(String.self, forKey: .zustand)
+        self.gesundheit = try c.decodeIfPresent(String.self, forKey: .gesundheit)
+        self.pruefung = try c.decodeIfPresent(String.self, forKey: .pruefung)
+        self.pruefungFehlschlaege = try c.decodeIfPresent(Int.self, forKey: .pruefungFehlschlaege)
+        self.gestartetAm = try c.decodeIfPresent(String.self, forKey: .gestartetAm)
+        self.neustarts = try c.decodeIfPresent(Int.self, forKey: .neustarts)
+        self.exitCode = try c.decodeIfPresent(Int.self, forKey: .exitCode)
+        self.image = try c.decodeIfPresent(String.self, forKey: .image)
+        self.revision = try c.decodeIfPresent(String.self, forKey: .revision)
+        self.cpuProzent = try c.decodeIfPresent(Double.self, forKey: .cpuProzent)
+        self.speicherMb = try c.decodeIfPresent(Double.self, forKey: .speicherMb)
+        self.ampel = try c.decodeIfPresent(GeraetDienstOutAmpelWahl.self, forKey: .ampel)
+        self.textDe = try c.decodeIfPresent(String.self, forKey: .textDe)
+    }
+}
+
+public struct GeraetDockerPlatzOut: Codable, Sendable, Hashable {
+    public var imagesBytes: Int?
+    public var containerBytes: Int?
+    public var volumesBytes: Int?
+    public var cacheBytes: Int?
+
+    public enum CodingKeys: String, CodingKey {
+        case imagesBytes = "images_bytes"
+        case containerBytes = "container_bytes"
+        case volumesBytes = "volumes_bytes"
+        case cacheBytes = "cache_bytes"
+    }
+
+    public init(imagesBytes: Int? = nil, containerBytes: Int? = nil, volumesBytes: Int? = nil, cacheBytes: Int? = nil) {
+        self.imagesBytes = imagesBytes
+        self.containerBytes = containerBytes
+        self.volumesBytes = volumesBytes
+        self.cacheBytes = cacheBytes
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.imagesBytes = try c.decodeIfPresent(Int.self, forKey: .imagesBytes)
+        self.containerBytes = try c.decodeIfPresent(Int.self, forKey: .containerBytes)
+        self.volumesBytes = try c.decodeIfPresent(Int.self, forKey: .volumesBytes)
+        self.cacheBytes = try c.decodeIfPresent(Int.self, forKey: .cacheBytes)
+    }
+}
+
+/// Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht).
+public struct GeraetEinheitOut: Codable, Sendable, Hashable {
+    public var name: String
+    public var beschreibung: String?
+    public var aktiv: String?
+    public var unterzustand: String?
+    public var eingeschaltet: Bool?
+    public var naechsterLauf: String?
+    public var ampel: GeraetEinheitOutAmpelWahl?
+    public var textDe: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case name
+        case beschreibung
+        case aktiv
+        case unterzustand
+        case eingeschaltet
+        case naechsterLauf = "naechster_lauf"
+        case ampel
+        case textDe = "text_de"
+    }
+
+    public init(name: String, beschreibung: String? = nil, aktiv: String? = nil, unterzustand: String? = nil, eingeschaltet: Bool? = nil, naechsterLauf: String? = nil, ampel: GeraetEinheitOutAmpelWahl? = nil, textDe: String? = nil) {
+        self.name = name
+        self.beschreibung = beschreibung
+        self.aktiv = aktiv
+        self.unterzustand = unterzustand
+        self.eingeschaltet = eingeschaltet
+        self.naechsterLauf = naechsterLauf
+        self.ampel = ampel
+        self.textDe = textDe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.beschreibung = try c.decodeIfPresent(String.self, forKey: .beschreibung)
+        self.aktiv = try c.decodeIfPresent(String.self, forKey: .aktiv)
+        self.unterzustand = try c.decodeIfPresent(String.self, forKey: .unterzustand)
+        self.eingeschaltet = try c.decodeIfPresent(Bool.self, forKey: .eingeschaltet)
+        self.naechsterLauf = try c.decodeIfPresent(String.self, forKey: .naechsterLauf)
+        self.ampel = try c.decodeIfPresent(GeraetEinheitOutAmpelWahl.self, forKey: .ampel)
+        self.textDe = try c.decodeIfPresent(String.self, forKey: .textDe)
+    }
+}
+
+public struct GeraetNetzOut: Codable, Sendable, Hashable {
+    public var schnittstelle: String
+    public var empfangenBytes: Int
+    public var gesendetBytes: Int
+
+    public enum CodingKeys: String, CodingKey {
+        case schnittstelle
+        case empfangenBytes = "empfangen_bytes"
+        case gesendetBytes = "gesendet_bytes"
+    }
+
+    public init(schnittstelle: String, empfangenBytes: Int, gesendetBytes: Int) {
+        self.schnittstelle = schnittstelle
+        self.empfangenBytes = empfangenBytes
+        self.gesendetBytes = gesendetBytes
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.schnittstelle = try c.decode(String.self, forKey: .schnittstelle)
+        self.empfangenBytes = try c.decode(Int.self, forKey: .empfangenBytes)
+        self.gesendetBytes = try c.decode(Int.self, forKey: .gesendetBytes)
+    }
+}
+
+/// Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion.
+public struct GeraetOut: Codable, Sendable, Hashable {
+    public var unterstuetzt: Bool
+    public var berichtAm: String?
+    public var berichtAlt: Bool?
+    public var kanal: String?
+    public var fernzugang: Bool?
+    public var dockerLaeuft: Bool?
+    public var rechner: GeraetRechnerOut?
+    public var dienste: [GeraetDienstOut]
+    public var einheiten: [GeraetEinheitOut]
+    public var sicherung: GeraetSicherungOut?
+    public var letzteAktion: GeraetAktionOut?
+    public var beschaeftigt: String?
+    public var api: ApiSelbstOut
+    public var ampel: GeraetOutAmpelWahl?
+    public var textDe: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case unterstuetzt
+        case berichtAm = "bericht_am"
+        case berichtAlt = "bericht_alt"
+        case kanal
+        case fernzugang
+        case dockerLaeuft = "docker_laeuft"
+        case rechner
+        case dienste
+        case einheiten
+        case sicherung
+        case letzteAktion = "letzte_aktion"
+        case beschaeftigt
+        case api
+        case ampel
+        case textDe = "text_de"
+    }
+
+    public init(unterstuetzt: Bool, berichtAm: String? = nil, berichtAlt: Bool? = nil, kanal: String? = nil, fernzugang: Bool? = nil, dockerLaeuft: Bool? = nil, rechner: GeraetRechnerOut? = nil, dienste: [GeraetDienstOut] = [], einheiten: [GeraetEinheitOut] = [], sicherung: GeraetSicherungOut? = nil, letzteAktion: GeraetAktionOut? = nil, beschaeftigt: String? = nil, api: ApiSelbstOut, ampel: GeraetOutAmpelWahl? = nil, textDe: String? = nil) {
+        self.unterstuetzt = unterstuetzt
+        self.berichtAm = berichtAm
+        self.berichtAlt = berichtAlt
+        self.kanal = kanal
+        self.fernzugang = fernzugang
+        self.dockerLaeuft = dockerLaeuft
+        self.rechner = rechner
+        self.dienste = dienste
+        self.einheiten = einheiten
+        self.sicherung = sicherung
+        self.letzteAktion = letzteAktion
+        self.beschaeftigt = beschaeftigt
+        self.api = api
+        self.ampel = ampel
+        self.textDe = textDe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.unterstuetzt = try c.decode(Bool.self, forKey: .unterstuetzt)
+        self.berichtAm = try c.decodeIfPresent(String.self, forKey: .berichtAm)
+        self.berichtAlt = try c.decodeIfPresent(Bool.self, forKey: .berichtAlt)
+        self.kanal = try c.decodeIfPresent(String.self, forKey: .kanal)
+        self.fernzugang = try c.decodeIfPresent(Bool.self, forKey: .fernzugang)
+        self.dockerLaeuft = try c.decodeIfPresent(Bool.self, forKey: .dockerLaeuft)
+        self.rechner = try c.decodeIfPresent(GeraetRechnerOut.self, forKey: .rechner)
+        self.dienste = try c.decodeIfPresent([GeraetDienstOut].self, forKey: .dienste) ?? []
+        self.einheiten = try c.decodeIfPresent([GeraetEinheitOut].self, forKey: .einheiten) ?? []
+        self.sicherung = try c.decodeIfPresent(GeraetSicherungOut.self, forKey: .sicherung)
+        self.letzteAktion = try c.decodeIfPresent(GeraetAktionOut.self, forKey: .letzteAktion)
+        self.beschaeftigt = try c.decodeIfPresent(String.self, forKey: .beschaeftigt)
+        self.api = try c.decode(ApiSelbstOut.self, forKey: .api)
+        self.ampel = try c.decodeIfPresent(GeraetOutAmpelWahl.self, forKey: .ampel)
+        self.textDe = try c.decodeIfPresent(String.self, forKey: .textDe)
+    }
+}
+
+public struct GeraetPlatteOut: Codable, Sendable, Hashable {
+    public var ort: String
+    public var gesamtBytes: Int
+    public var freiBytes: Int
+    public var ampel: GeraetPlatteOutAmpelWahl?
+
+    public enum CodingKeys: String, CodingKey {
+        case ort
+        case gesamtBytes = "gesamt_bytes"
+        case freiBytes = "frei_bytes"
+        case ampel
+    }
+
+    public init(ort: String, gesamtBytes: Int, freiBytes: Int, ampel: GeraetPlatteOutAmpelWahl? = nil) {
+        self.ort = ort
+        self.gesamtBytes = gesamtBytes
+        self.freiBytes = freiBytes
+        self.ampel = ampel
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.ort = try c.decode(String.self, forKey: .ort)
+        self.gesamtBytes = try c.decode(Int.self, forKey: .gesamtBytes)
+        self.freiBytes = try c.decode(Int.self, forKey: .freiBytes)
+        self.ampel = try c.decodeIfPresent(GeraetPlatteOutAmpelWahl.self, forKey: .ampel)
+    }
+}
+
+/// Wachstum je Tag über die letzten 30 Tage (eine Gerade durch die Füllstände), erst ab
+/// sieben Tagen Verlauf. Eine Schätzung „bei diesem Tempo“, kein Termin.
+public struct GeraetPrognoseOut: Codable, Sendable, Hashable {
+    public var tageVerlauf: Double?
+    public var platteBytesProTag: Int?
+    public var platteVollInTagen: Int?
+    public var datenbankBytesProTag: Int?
+    public var sicherungBytesProTag: Int?
+    public var ssdGeschriebenBytesProTag: Int?
+
+    public enum CodingKeys: String, CodingKey {
+        case tageVerlauf = "tage_verlauf"
+        case platteBytesProTag = "platte_bytes_pro_tag"
+        case platteVollInTagen = "platte_voll_in_tagen"
+        case datenbankBytesProTag = "datenbank_bytes_pro_tag"
+        case sicherungBytesProTag = "sicherung_bytes_pro_tag"
+        case ssdGeschriebenBytesProTag = "ssd_geschrieben_bytes_pro_tag"
+    }
+
+    public init(tageVerlauf: Double? = nil, platteBytesProTag: Int? = nil, platteVollInTagen: Int? = nil, datenbankBytesProTag: Int? = nil, sicherungBytesProTag: Int? = nil, ssdGeschriebenBytesProTag: Int? = nil) {
+        self.tageVerlauf = tageVerlauf
+        self.platteBytesProTag = platteBytesProTag
+        self.platteVollInTagen = platteVollInTagen
+        self.datenbankBytesProTag = datenbankBytesProTag
+        self.sicherungBytesProTag = sicherungBytesProTag
+        self.ssdGeschriebenBytesProTag = ssdGeschriebenBytesProTag
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.tageVerlauf = try c.decodeIfPresent(Double.self, forKey: .tageVerlauf)
+        self.platteBytesProTag = try c.decodeIfPresent(Int.self, forKey: .platteBytesProTag)
+        self.platteVollInTagen = try c.decodeIfPresent(Int.self, forKey: .platteVollInTagen)
+        self.datenbankBytesProTag = try c.decodeIfPresent(Int.self, forKey: .datenbankBytesProTag)
+        self.sicherungBytesProTag = try c.decodeIfPresent(Int.self, forKey: .sicherungBytesProTag)
+        self.ssdGeschriebenBytesProTag = try c.decodeIfPresent(Int.self, forKey: .ssdGeschriebenBytesProTag)
+    }
+}
+
+public struct GeraetProtokollOut: Codable, Sendable, Hashable {
+    public var dienst: String
+    public var vorhanden: Bool
+    public var erstelltAm: String?
+    public var zeilen: [String]
+
+    public enum CodingKeys: String, CodingKey {
+        case dienst
+        case vorhanden
+        case erstelltAm = "erstellt_am"
+        case zeilen
+    }
+
+    public init(dienst: String, vorhanden: Bool, erstelltAm: String? = nil, zeilen: [String] = []) {
+        self.dienst = dienst
+        self.vorhanden = vorhanden
+        self.erstelltAm = erstelltAm
+        self.zeilen = zeilen
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.dienst = try c.decode(String.self, forKey: .dienst)
+        self.vorhanden = try c.decode(Bool.self, forKey: .vorhanden)
+        self.erstelltAm = try c.decodeIfPresent(String.self, forKey: .erstelltAm)
+        self.zeilen = try c.decodeIfPresent([String].self, forKey: .zeilen) ?? []
+    }
+}
+
+/// Der Rechner selbst: Raspberry Pi oder was sonst darunter läuft.
+public struct GeraetRechnerOut: Codable, Sendable, Hashable {
+    public var name: String?
+    public var modell: String?
+    public var system: String?
+    public var kernel: String?
+    public var adresse: String?
+    public var laufzeitS: Int?
+    public var kerne: Int?
+    public var last: [Double]
+    public var temperaturC: Double?
+    public var temperaturAmpel: GeraetRechnerOutTemperaturAmpelWahl?
+    public var drosselung: String?
+    public var drosselungDe: [String]
+    public var drosselungAmpel: GeraetRechnerOutDrosselungAmpelWahl?
+    public var speicherGesamtMb: Int?
+    public var speicherFreiMb: Int?
+    public var speicherAmpel: GeraetRechnerOutSpeicherAmpelWahl?
+    public var platten: [GeraetPlatteOut]
+    public var docker: String?
+    public var cpuProzent: Double?
+    public var taktMhz: Double?
+    public var eingangsspannungV: Double?
+    public var spannungAmpel: GeraetRechnerOutSpannungAmpelWahl?
+    public var swapGesamtMb: Int?
+    public var swapFreiMb: Int?
+    public var netz: GeraetNetzOut?
+    public var ssd: GeraetSsdOut?
+    public var dockerPlatz: GeraetDockerPlatzOut?
+
+    public enum CodingKeys: String, CodingKey {
+        case name
+        case modell
+        case system
+        case kernel
+        case adresse
+        case laufzeitS = "laufzeit_s"
+        case kerne
+        case last
+        case temperaturC = "temperatur_c"
+        case temperaturAmpel = "temperatur_ampel"
+        case drosselung
+        case drosselungDe = "drosselung_de"
+        case drosselungAmpel = "drosselung_ampel"
+        case speicherGesamtMb = "speicher_gesamt_mb"
+        case speicherFreiMb = "speicher_frei_mb"
+        case speicherAmpel = "speicher_ampel"
+        case platten
+        case docker
+        case cpuProzent = "cpu_prozent"
+        case taktMhz = "takt_mhz"
+        case eingangsspannungV = "eingangsspannung_v"
+        case spannungAmpel = "spannung_ampel"
+        case swapGesamtMb = "swap_gesamt_mb"
+        case swapFreiMb = "swap_frei_mb"
+        case netz
+        case ssd
+        case dockerPlatz = "docker_platz"
+    }
+
+    public init(name: String? = nil, modell: String? = nil, system: String? = nil, kernel: String? = nil, adresse: String? = nil, laufzeitS: Int? = nil, kerne: Int? = nil, last: [Double] = [], temperaturC: Double? = nil, temperaturAmpel: GeraetRechnerOutTemperaturAmpelWahl? = nil, drosselung: String? = nil, drosselungDe: [String] = [], drosselungAmpel: GeraetRechnerOutDrosselungAmpelWahl? = nil, speicherGesamtMb: Int? = nil, speicherFreiMb: Int? = nil, speicherAmpel: GeraetRechnerOutSpeicherAmpelWahl? = nil, platten: [GeraetPlatteOut] = [], docker: String? = nil, cpuProzent: Double? = nil, taktMhz: Double? = nil, eingangsspannungV: Double? = nil, spannungAmpel: GeraetRechnerOutSpannungAmpelWahl? = nil, swapGesamtMb: Int? = nil, swapFreiMb: Int? = nil, netz: GeraetNetzOut? = nil, ssd: GeraetSsdOut? = nil, dockerPlatz: GeraetDockerPlatzOut? = nil) {
+        self.name = name
+        self.modell = modell
+        self.system = system
+        self.kernel = kernel
+        self.adresse = adresse
+        self.laufzeitS = laufzeitS
+        self.kerne = kerne
+        self.last = last
+        self.temperaturC = temperaturC
+        self.temperaturAmpel = temperaturAmpel
+        self.drosselung = drosselung
+        self.drosselungDe = drosselungDe
+        self.drosselungAmpel = drosselungAmpel
+        self.speicherGesamtMb = speicherGesamtMb
+        self.speicherFreiMb = speicherFreiMb
+        self.speicherAmpel = speicherAmpel
+        self.platten = platten
+        self.docker = docker
+        self.cpuProzent = cpuProzent
+        self.taktMhz = taktMhz
+        self.eingangsspannungV = eingangsspannungV
+        self.spannungAmpel = spannungAmpel
+        self.swapGesamtMb = swapGesamtMb
+        self.swapFreiMb = swapFreiMb
+        self.netz = netz
+        self.ssd = ssd
+        self.dockerPlatz = dockerPlatz
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.name = try c.decodeIfPresent(String.self, forKey: .name)
+        self.modell = try c.decodeIfPresent(String.self, forKey: .modell)
+        self.system = try c.decodeIfPresent(String.self, forKey: .system)
+        self.kernel = try c.decodeIfPresent(String.self, forKey: .kernel)
+        self.adresse = try c.decodeIfPresent(String.self, forKey: .adresse)
+        self.laufzeitS = try c.decodeIfPresent(Int.self, forKey: .laufzeitS)
+        self.kerne = try c.decodeIfPresent(Int.self, forKey: .kerne)
+        self.last = try c.decodeIfPresent([Double].self, forKey: .last) ?? []
+        self.temperaturC = try c.decodeIfPresent(Double.self, forKey: .temperaturC)
+        self.temperaturAmpel = try c.decodeIfPresent(GeraetRechnerOutTemperaturAmpelWahl.self, forKey: .temperaturAmpel)
+        self.drosselung = try c.decodeIfPresent(String.self, forKey: .drosselung)
+        self.drosselungDe = try c.decodeIfPresent([String].self, forKey: .drosselungDe) ?? []
+        self.drosselungAmpel = try c.decodeIfPresent(GeraetRechnerOutDrosselungAmpelWahl.self, forKey: .drosselungAmpel)
+        self.speicherGesamtMb = try c.decodeIfPresent(Int.self, forKey: .speicherGesamtMb)
+        self.speicherFreiMb = try c.decodeIfPresent(Int.self, forKey: .speicherFreiMb)
+        self.speicherAmpel = try c.decodeIfPresent(GeraetRechnerOutSpeicherAmpelWahl.self, forKey: .speicherAmpel)
+        self.platten = try c.decodeIfPresent([GeraetPlatteOut].self, forKey: .platten) ?? []
+        self.docker = try c.decodeIfPresent(String.self, forKey: .docker)
+        self.cpuProzent = try c.decodeIfPresent(Double.self, forKey: .cpuProzent)
+        self.taktMhz = try c.decodeIfPresent(Double.self, forKey: .taktMhz)
+        self.eingangsspannungV = try c.decodeIfPresent(Double.self, forKey: .eingangsspannungV)
+        self.spannungAmpel = try c.decodeIfPresent(GeraetRechnerOutSpannungAmpelWahl.self, forKey: .spannungAmpel)
+        self.swapGesamtMb = try c.decodeIfPresent(Int.self, forKey: .swapGesamtMb)
+        self.swapFreiMb = try c.decodeIfPresent(Int.self, forKey: .swapFreiMb)
+        self.netz = try c.decodeIfPresent(GeraetNetzOut.self, forKey: .netz)
+        self.ssd = try c.decodeIfPresent(GeraetSsdOut.self, forKey: .ssd)
+        self.dockerPlatz = try c.decodeIfPresent(GeraetDockerPlatzOut.self, forKey: .dockerPlatz)
+    }
+}
+
+public struct GeraetSicherungOut: Codable, Sendable, Hashable {
+    public var letzte: String?
+    public var letzteAm: String?
+    public var letzteBytes: Int?
+    public var anzahl: Int?
+    public var gesamtBytes: Int?
+    public var ausserHaus: String?
+    public var ampel: GeraetSicherungOutAmpelWahl?
+    public var textDe: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case letzte
+        case letzteAm = "letzte_am"
+        case letzteBytes = "letzte_bytes"
+        case anzahl
+        case gesamtBytes = "gesamt_bytes"
+        case ausserHaus = "ausser_haus"
+        case ampel
+        case textDe = "text_de"
+    }
+
+    public init(letzte: String? = nil, letzteAm: String? = nil, letzteBytes: Int? = nil, anzahl: Int? = nil, gesamtBytes: Int? = nil, ausserHaus: String? = nil, ampel: GeraetSicherungOutAmpelWahl? = nil, textDe: String? = nil) {
+        self.letzte = letzte
+        self.letzteAm = letzteAm
+        self.letzteBytes = letzteBytes
+        self.anzahl = anzahl
+        self.gesamtBytes = gesamtBytes
+        self.ausserHaus = ausserHaus
+        self.ampel = ampel
+        self.textDe = textDe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.letzte = try c.decodeIfPresent(String.self, forKey: .letzte)
+        self.letzteAm = try c.decodeIfPresent(String.self, forKey: .letzteAm)
+        self.letzteBytes = try c.decodeIfPresent(Int.self, forKey: .letzteBytes)
+        self.anzahl = try c.decodeIfPresent(Int.self, forKey: .anzahl)
+        self.gesamtBytes = try c.decodeIfPresent(Int.self, forKey: .gesamtBytes)
+        self.ausserHaus = try c.decodeIfPresent(String.self, forKey: .ausserHaus)
+        self.ampel = try c.decodeIfPresent(GeraetSicherungOutAmpelWahl.self, forKey: .ampel)
+        self.textDe = try c.decodeIfPresent(String.self, forKey: .textDe)
+    }
+}
+
+/// SMART der Platte, auf der das System liegt. NVMe meldet alles; eine Platte am USB-Adapter
+/// oft nur Temperatur und Betriebsstunden.
+public struct GeraetSsdOut: Codable, Sendable, Hashable {
+    public var geraet: String
+    public var modell: String?
+    public var gesund: Bool?
+    public var temperaturC: Double?
+    public var betriebsstunden: Int?
+    public var abnutzungProzent: Double?
+    public var reserveProzent: Double?
+    public var geschriebenBytes: Int?
+    public var gelesenBytes: Int?
+    public var fehler: Int?
+    public var unsichereAbschaltungen: Int?
+    public var ampel: GeraetSsdOutAmpelWahl?
+    public var textDe: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case geraet
+        case modell
+        case gesund
+        case temperaturC = "temperatur_c"
+        case betriebsstunden
+        case abnutzungProzent = "abnutzung_prozent"
+        case reserveProzent = "reserve_prozent"
+        case geschriebenBytes = "geschrieben_bytes"
+        case gelesenBytes = "gelesen_bytes"
+        case fehler
+        case unsichereAbschaltungen = "unsichere_abschaltungen"
+        case ampel
+        case textDe = "text_de"
+    }
+
+    public init(geraet: String, modell: String? = nil, gesund: Bool? = nil, temperaturC: Double? = nil, betriebsstunden: Int? = nil, abnutzungProzent: Double? = nil, reserveProzent: Double? = nil, geschriebenBytes: Int? = nil, gelesenBytes: Int? = nil, fehler: Int? = nil, unsichereAbschaltungen: Int? = nil, ampel: GeraetSsdOutAmpelWahl? = nil, textDe: String? = nil) {
+        self.geraet = geraet
+        self.modell = modell
+        self.gesund = gesund
+        self.temperaturC = temperaturC
+        self.betriebsstunden = betriebsstunden
+        self.abnutzungProzent = abnutzungProzent
+        self.reserveProzent = reserveProzent
+        self.geschriebenBytes = geschriebenBytes
+        self.gelesenBytes = gelesenBytes
+        self.fehler = fehler
+        self.unsichereAbschaltungen = unsichereAbschaltungen
+        self.ampel = ampel
+        self.textDe = textDe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.geraet = try c.decode(String.self, forKey: .geraet)
+        self.modell = try c.decodeIfPresent(String.self, forKey: .modell)
+        self.gesund = try c.decodeIfPresent(Bool.self, forKey: .gesund)
+        self.temperaturC = try c.decodeIfPresent(Double.self, forKey: .temperaturC)
+        self.betriebsstunden = try c.decodeIfPresent(Int.self, forKey: .betriebsstunden)
+        self.abnutzungProzent = try c.decodeIfPresent(Double.self, forKey: .abnutzungProzent)
+        self.reserveProzent = try c.decodeIfPresent(Double.self, forKey: .reserveProzent)
+        self.geschriebenBytes = try c.decodeIfPresent(Int.self, forKey: .geschriebenBytes)
+        self.gelesenBytes = try c.decodeIfPresent(Int.self, forKey: .gelesenBytes)
+        self.fehler = try c.decodeIfPresent(Int.self, forKey: .fehler)
+        self.unsichereAbschaltungen = try c.decodeIfPresent(Int.self, forKey: .unsichereAbschaltungen)
+        self.ampel = try c.decodeIfPresent(GeraetSsdOutAmpelWahl.self, forKey: .ampel)
+        self.textDe = try c.decodeIfPresent(String.self, forKey: .textDe)
+    }
+}
+
+public struct GeraetVerlaufDienstOut: Codable, Sendable, Hashable {
+    public var cpuProzent: Double?
+    public var speicherMb: Double?
+
+    public enum CodingKeys: String, CodingKey {
+        case cpuProzent = "cpu_prozent"
+        case speicherMb = "speicher_mb"
+    }
+
+    public init(cpuProzent: Double? = nil, speicherMb: Double? = nil) {
+        self.cpuProzent = cpuProzent
+        self.speicherMb = speicherMb
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.cpuProzent = try c.decodeIfPresent(Double.self, forKey: .cpuProzent)
+        self.speicherMb = try c.decodeIfPresent(Double.self, forKey: .speicherMb)
+    }
+}
+
+public struct GeraetVerlaufOut: Codable, Sendable, Hashable {
+    public var unterstuetzt: Bool
+    public var spanne: GeraetVerlaufOutSpanneWahl?
+    public var von: String?
+    public var bis: String?
+    public var schrittMin: Int?
+    public var punkte: [GeraetVerlaufPunktOut]
+    public var prognose: GeraetPrognoseOut?
+
+    public enum CodingKeys: String, CodingKey {
+        case unterstuetzt
+        case spanne
+        case von
+        case bis
+        case schrittMin = "schritt_min"
+        case punkte
+        case prognose
+    }
+
+    public init(unterstuetzt: Bool, spanne: GeraetVerlaufOutSpanneWahl? = nil, von: String? = nil, bis: String? = nil, schrittMin: Int? = nil, punkte: [GeraetVerlaufPunktOut] = [], prognose: GeraetPrognoseOut? = nil) {
+        self.unterstuetzt = unterstuetzt
+        self.spanne = spanne
+        self.von = von
+        self.bis = bis
+        self.schrittMin = schrittMin
+        self.punkte = punkte
+        self.prognose = prognose
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.unterstuetzt = try c.decode(Bool.self, forKey: .unterstuetzt)
+        self.spanne = try c.decodeIfPresent(GeraetVerlaufOutSpanneWahl.self, forKey: .spanne)
+        self.von = try c.decodeIfPresent(String.self, forKey: .von)
+        self.bis = try c.decodeIfPresent(String.self, forKey: .bis)
+        self.schrittMin = try c.decodeIfPresent(Int.self, forKey: .schrittMin)
+        self.punkte = try c.decodeIfPresent([GeraetVerlaufPunktOut].self, forKey: .punkte) ?? []
+        self.prognose = try c.decodeIfPresent(GeraetPrognoseOut.self, forKey: .prognose)
+    }
+}
+
+/// Ein Abschnitt im Verlauf: Mittel, Spitzen und Stände am Ende des Abschnitts.
+public struct GeraetVerlaufPunktOut: Codable, Sendable, Hashable {
+    public var t: String
+    public var cpuProzent: Double?
+    public var cpuProzentMax: Double?
+    public var last1: Double?
+    public var temperaturC: Double?
+    public var temperaturCMax: Double?
+    public var taktMhz: Double?
+    public var eingangsspannungV: Double?
+    public var eingangsspannungVMin: Double?
+    public var speicherBelegtMb: Double?
+    public var speicherGesamtMb: Double?
+    public var swapBelegtMb: Double?
+    public var platteBelegtBytes: Int?
+    public var platteGesamtBytes: Int?
+    public var ssdTemperaturC: Double?
+    public var ssdTemperaturCMax: Double?
+    public var ssdAbnutzungProzent: Double?
+    public var ssdGeschriebenBytes: Int?
+    public var netzEmpfangenBytesS: Double?
+    public var netzGesendetBytesS: Double?
+    public var datenbankBytes: Int?
+    public var sicherungBytes: Int?
+    public var dockerBytes: Int?
+    public var drosselungJetzt: Bool?
+    public var dienste: [String: GeraetVerlaufDienstOut]
+
+    public enum CodingKeys: String, CodingKey {
+        case t
+        case cpuProzent = "cpu_prozent"
+        case cpuProzentMax = "cpu_prozent_max"
+        case last1
+        case temperaturC = "temperatur_c"
+        case temperaturCMax = "temperatur_c_max"
+        case taktMhz = "takt_mhz"
+        case eingangsspannungV = "eingangsspannung_v"
+        case eingangsspannungVMin = "eingangsspannung_v_min"
+        case speicherBelegtMb = "speicher_belegt_mb"
+        case speicherGesamtMb = "speicher_gesamt_mb"
+        case swapBelegtMb = "swap_belegt_mb"
+        case platteBelegtBytes = "platte_belegt_bytes"
+        case platteGesamtBytes = "platte_gesamt_bytes"
+        case ssdTemperaturC = "ssd_temperatur_c"
+        case ssdTemperaturCMax = "ssd_temperatur_c_max"
+        case ssdAbnutzungProzent = "ssd_abnutzung_prozent"
+        case ssdGeschriebenBytes = "ssd_geschrieben_bytes"
+        case netzEmpfangenBytesS = "netz_empfangen_bytes_s"
+        case netzGesendetBytesS = "netz_gesendet_bytes_s"
+        case datenbankBytes = "datenbank_bytes"
+        case sicherungBytes = "sicherung_bytes"
+        case dockerBytes = "docker_bytes"
+        case drosselungJetzt = "drosselung_jetzt"
+        case dienste
+    }
+
+    public init(t: String, cpuProzent: Double? = nil, cpuProzentMax: Double? = nil, last1: Double? = nil, temperaturC: Double? = nil, temperaturCMax: Double? = nil, taktMhz: Double? = nil, eingangsspannungV: Double? = nil, eingangsspannungVMin: Double? = nil, speicherBelegtMb: Double? = nil, speicherGesamtMb: Double? = nil, swapBelegtMb: Double? = nil, platteBelegtBytes: Int? = nil, platteGesamtBytes: Int? = nil, ssdTemperaturC: Double? = nil, ssdTemperaturCMax: Double? = nil, ssdAbnutzungProzent: Double? = nil, ssdGeschriebenBytes: Int? = nil, netzEmpfangenBytesS: Double? = nil, netzGesendetBytesS: Double? = nil, datenbankBytes: Int? = nil, sicherungBytes: Int? = nil, dockerBytes: Int? = nil, drosselungJetzt: Bool? = nil, dienste: [String: GeraetVerlaufDienstOut] = [:]) {
+        self.t = t
+        self.cpuProzent = cpuProzent
+        self.cpuProzentMax = cpuProzentMax
+        self.last1 = last1
+        self.temperaturC = temperaturC
+        self.temperaturCMax = temperaturCMax
+        self.taktMhz = taktMhz
+        self.eingangsspannungV = eingangsspannungV
+        self.eingangsspannungVMin = eingangsspannungVMin
+        self.speicherBelegtMb = speicherBelegtMb
+        self.speicherGesamtMb = speicherGesamtMb
+        self.swapBelegtMb = swapBelegtMb
+        self.platteBelegtBytes = platteBelegtBytes
+        self.platteGesamtBytes = platteGesamtBytes
+        self.ssdTemperaturC = ssdTemperaturC
+        self.ssdTemperaturCMax = ssdTemperaturCMax
+        self.ssdAbnutzungProzent = ssdAbnutzungProzent
+        self.ssdGeschriebenBytes = ssdGeschriebenBytes
+        self.netzEmpfangenBytesS = netzEmpfangenBytesS
+        self.netzGesendetBytesS = netzGesendetBytesS
+        self.datenbankBytes = datenbankBytes
+        self.sicherungBytes = sicherungBytes
+        self.dockerBytes = dockerBytes
+        self.drosselungJetzt = drosselungJetzt
+        self.dienste = dienste
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.t = try c.decode(String.self, forKey: .t)
+        self.cpuProzent = try c.decodeIfPresent(Double.self, forKey: .cpuProzent)
+        self.cpuProzentMax = try c.decodeIfPresent(Double.self, forKey: .cpuProzentMax)
+        self.last1 = try c.decodeIfPresent(Double.self, forKey: .last1)
+        self.temperaturC = try c.decodeIfPresent(Double.self, forKey: .temperaturC)
+        self.temperaturCMax = try c.decodeIfPresent(Double.self, forKey: .temperaturCMax)
+        self.taktMhz = try c.decodeIfPresent(Double.self, forKey: .taktMhz)
+        self.eingangsspannungV = try c.decodeIfPresent(Double.self, forKey: .eingangsspannungV)
+        self.eingangsspannungVMin = try c.decodeIfPresent(Double.self, forKey: .eingangsspannungVMin)
+        self.speicherBelegtMb = try c.decodeIfPresent(Double.self, forKey: .speicherBelegtMb)
+        self.speicherGesamtMb = try c.decodeIfPresent(Double.self, forKey: .speicherGesamtMb)
+        self.swapBelegtMb = try c.decodeIfPresent(Double.self, forKey: .swapBelegtMb)
+        self.platteBelegtBytes = try c.decodeIfPresent(Int.self, forKey: .platteBelegtBytes)
+        self.platteGesamtBytes = try c.decodeIfPresent(Int.self, forKey: .platteGesamtBytes)
+        self.ssdTemperaturC = try c.decodeIfPresent(Double.self, forKey: .ssdTemperaturC)
+        self.ssdTemperaturCMax = try c.decodeIfPresent(Double.self, forKey: .ssdTemperaturCMax)
+        self.ssdAbnutzungProzent = try c.decodeIfPresent(Double.self, forKey: .ssdAbnutzungProzent)
+        self.ssdGeschriebenBytes = try c.decodeIfPresent(Int.self, forKey: .ssdGeschriebenBytes)
+        self.netzEmpfangenBytesS = try c.decodeIfPresent(Double.self, forKey: .netzEmpfangenBytesS)
+        self.netzGesendetBytesS = try c.decodeIfPresent(Double.self, forKey: .netzGesendetBytesS)
+        self.datenbankBytes = try c.decodeIfPresent(Int.self, forKey: .datenbankBytes)
+        self.sicherungBytes = try c.decodeIfPresent(Int.self, forKey: .sicherungBytes)
+        self.dockerBytes = try c.decodeIfPresent(Int.self, forKey: .dockerBytes)
+        self.drosselungJetzt = try c.decodeIfPresent(Bool.self, forKey: .drosselungJetzt)
+        self.dienste = try c.decodeIfPresent([String: GeraetVerlaufDienstOut].self, forKey: .dienste) ?? [:]
     }
 }
 
@@ -8440,6 +9544,120 @@ public struct TibberZusammenfassung: Codable, Sendable, Hashable {
         self.urteil = try c.decode(String.self, forKey: .urteil)
         self.befunde = try c.decodeIfPresent([Befund].self, forKey: .befunde) ?? []
         self.schonBekannt = try c.decode(Bool.self, forKey: .schonBekannt)
+    }
+}
+
+public struct UpdateAnfrageIn: Codable, Sendable, Hashable {
+    public var aktion: UpdateAnfrageInAktionWahl
+
+    public init(aktion: UpdateAnfrageInAktionWahl) {
+        self.aktion = aktion
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.aktion = try c.decode(UpdateAnfrageInAktionWahl.self, forKey: .aktion)
+    }
+}
+
+public struct UpdateErgebnisOut: Codable, Sendable, Hashable {
+    public var am: String?
+    public var ergebnis: String?
+    public var von: String?
+    public var nach: String?
+
+    public init(am: String? = nil, ergebnis: String? = nil, von: String? = nil, nach: String? = nil) {
+        self.am = am
+        self.ergebnis = ergebnis
+        self.von = von
+        self.nach = nach
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.am = try c.decodeIfPresent(String.self, forKey: .am)
+        self.ergebnis = try c.decodeIfPresent(String.self, forKey: .ergebnis)
+        self.von = try c.decodeIfPresent(String.self, forKey: .von)
+        self.nach = try c.decodeIfPresent(String.self, forKey: .nach)
+    }
+}
+
+public struct UpdateNeuerungOut: Codable, Sendable, Hashable {
+    public var sha: String
+    public var titel: String
+
+    public init(sha: String, titel: String) {
+        self.sha = sha
+        self.titel = titel
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.sha = try c.decode(String.self, forKey: .sha)
+        self.titel = try c.decode(String.self, forKey: .titel)
+    }
+}
+
+/// Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne
+/// Hausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an.
+public struct UpdateStatusOut: Codable, Sendable, Hashable {
+    public var unterstuetzt: Bool?
+    public var kanal: String?
+    public var aktuell: String?
+    public var verfuegbar: String?
+    public var updateVerfuegbar: Bool?
+    public var neuerungen: [UpdateNeuerungOut]
+    public var geprueftAm: String?
+    public var zustand: String?
+    public var schritt: String?
+    public var meldung: String?
+    public var zuletzt: UpdateErgebnisOut?
+    public var anfrageOffen: Bool?
+
+    public enum CodingKeys: String, CodingKey {
+        case unterstuetzt
+        case kanal
+        case aktuell
+        case verfuegbar
+        case updateVerfuegbar = "update_verfuegbar"
+        case neuerungen
+        case geprueftAm = "geprueft_am"
+        case zustand
+        case schritt
+        case meldung
+        case zuletzt
+        case anfrageOffen = "anfrage_offen"
+    }
+
+    public init(unterstuetzt: Bool? = nil, kanal: String? = nil, aktuell: String? = nil, verfuegbar: String? = nil, updateVerfuegbar: Bool? = nil, neuerungen: [UpdateNeuerungOut] = [], geprueftAm: String? = nil, zustand: String? = nil, schritt: String? = nil, meldung: String? = nil, zuletzt: UpdateErgebnisOut? = nil, anfrageOffen: Bool? = nil) {
+        self.unterstuetzt = unterstuetzt
+        self.kanal = kanal
+        self.aktuell = aktuell
+        self.verfuegbar = verfuegbar
+        self.updateVerfuegbar = updateVerfuegbar
+        self.neuerungen = neuerungen
+        self.geprueftAm = geprueftAm
+        self.zustand = zustand
+        self.schritt = schritt
+        self.meldung = meldung
+        self.zuletzt = zuletzt
+        self.anfrageOffen = anfrageOffen
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.unterstuetzt = try c.decodeIfPresent(Bool.self, forKey: .unterstuetzt)
+        self.kanal = try c.decodeIfPresent(String.self, forKey: .kanal)
+        self.aktuell = try c.decodeIfPresent(String.self, forKey: .aktuell)
+        self.verfuegbar = try c.decodeIfPresent(String.self, forKey: .verfuegbar)
+        self.updateVerfuegbar = try c.decodeIfPresent(Bool.self, forKey: .updateVerfuegbar)
+        self.neuerungen = try c.decodeIfPresent([UpdateNeuerungOut].self, forKey: .neuerungen) ?? []
+        self.geprueftAm = try c.decodeIfPresent(String.self, forKey: .geprueftAm)
+        self.zustand = try c.decodeIfPresent(String.self, forKey: .zustand)
+        self.schritt = try c.decodeIfPresent(String.self, forKey: .schritt)
+        self.meldung = try c.decodeIfPresent(String.self, forKey: .meldung)
+        self.zuletzt = try c.decodeIfPresent(UpdateErgebnisOut.self, forKey: .zuletzt)
+        self.anfrageOffen = try c.decodeIfPresent(Bool.self, forKey: .anfrageOffen)
     }
 }
 

@@ -1,17 +1,51 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Duck Curve">
-  <!-- Die Marken-Ente, unveraendert aus den Markenassets uebernommen
-       (marke/ente-einfach.svg im Repository valyze) - dieselbe Ente wie
-       in der Anwendung. Hier steht sie auf der hellen Kachel, wie im
-       Markenicon brand/duck-icon.png: Der Koerper ist petrol, und auf
-       einer dunklen Tab-Leiste verschwaende er ohne sie.
-       Die Fassung mit Laecheln (ente-begleiter.svg) taugt fuer das
-       Favicon nicht: Das Laecheln ist ein Strich von 18 Einheiten, bei
-       16 Pixeln also ein Viertelpixel breit - genau der Fehler der
-       Entenkurve, die vorher hier stand. Diese Ente ist reine Flaeche. -->
-  <rect width="1024" height="1024" rx="224" fill="#FFFFFF"/>
-  <g transform="translate(-152 36) scale(1.0595)">
-    <path fill="#0F2E3D" d="M238 585c0-130 78-227 194-255-11-26-17-55-17-85 0-112 91-203 203-203s203 91 203 203c0 50-18 96-49 131 39 20 73 47 99 80 36 45 69 48 107 5 17-19 32-15 35 12 13 126-33 258-145 325-84 51-198 66-331 57-176-12-299-105-299-270z"/>
+  <!-- Das Symbol von Duck Curve Home - und die eine Quelle fuer alle seine
+       Fassungen: tools/gen-appicon.py zeichnet daraus das App-Symbol fuer iOS,
+       apple-touch-icon.png und favicon.ico. Wer hier etwas aendert, laesst
+       danach den Generator laufen.
+
+       Die Ente selbst ist die Marken-Ente, unveraendert aus den Markenassets
+       (marke/ente-einfach.svg im Repository valyze): Koerper, Schnabel, Auge.
+       Die Fassung mit Laecheln (ente-begleiter.svg) taugt hier nicht: Das
+       Laecheln ist ein Strich von 18 Einheiten, bei 16 Pixeln also ein
+       Viertelpixel breit - genau der Fehler der Entenkurve, die einmal hier
+       stand. Diese Ente ist reine Flaeche.
+
+       Die Buehne gehoert diesem Haus. Bis November 2026 stand die Ente petrol
+       auf einer weissen Kachel, wie im Markenicon brand/duck-icon.png; auf dem
+       Startbildschirm war das ein greller Fleck ohne Tiefe. Jetzt:
+       - Der Grund ist Petrol mit einem Verlauf, die Ente darauf hell. So
+         bleibt sie auch auf einer dunklen Tab-Leiste stehen.
+       - Hinter dem Kopf steht die Sonne, in der Farbe des Schnabels. Sie ist
+         der Bezug zum Thema, und sie ist Flaeche: klein bleibt sie ein Punkt
+         und wird kein Kringel. Sie reicht ueber die Kerbe am Schwanz hinaus -
+         endete sie knapp davor, bliebe dort ein duenner dunkler Spalt.
+       - Der Fluegel ist einen Ton dunkler als der Koerper. Bei 16 Pixeln geht
+         er im Koerper auf und stoert nicht; gross nimmt er der Ente das
+         Gestempelte.
+       - Die Ente haelt Abstand zum Rand: iOS legt seine eigene Rundung ueber
+         das Symbol, und Schnabel und Schwanz sollen ihr nicht zu nah kommen.
+
+       Der Generator liest diese Datei mit einem engen Blick: zwei Verlaeufe
+       mit je zwei Farben, die Kachel, die Sonne, die Gruppe mit der Ente.
+       Was er nicht kennt, weist er zurueck, statt es stillschweigend
+       auszulassen. -->
+  <defs>
+    <linearGradient id="grund" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1D5269"/>
+      <stop offset="1" stop-color="#0A222E"/>
+    </linearGradient>
+    <radialGradient id="sonne">
+      <stop offset="0" stop-color="#FFC533"/>
+      <stop offset="1" stop-color="#F2A900"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#grund)"/>
+  <circle cx="660" cy="355" r="240" fill="url(#sonne)"/>
+  <g transform="translate(-40 215) scale(0.74)">
+    <path fill="#FFFFFF" d="M238 585c0-130 78-227 194-255-11-26-17-55-17-85 0-112 91-203 203-203s203 91 203 203c0 50-18 96-49 131 39 20 73 47 99 80 36 45 69 48 107 5 17-19 32-15 35 12 13 126-33 258-145 325-84 51-198 66-331 57-176-12-299-105-299-270z"/>
+    <path fill="#C9DCE5" d="M520 545c95-30 215-15 330 50-30 120-150 185-270 160-85-18-110-120-60-210z"/>
     <path fill="#F2A900" d="M426 238c-74 8-132 31-178 68 54 25 111 34 173 23 25-5 40-25 35-47-5-24-14-39-30-44z"/>
-    <circle cx="587" cy="220" r="23" fill="#FFFFFF"/>
+    <circle cx="587" cy="220" r="23" fill="#0F2E3D"/>
   </g>
 </svg>

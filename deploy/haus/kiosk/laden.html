@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- Die Ladeseite des Kiosks (deploy/haus/einrichten.sh setzt @KOPPELN@ ein).
+     Chromium startet hier, solange die Dienste noch hochfahren: So erscheint nie eine Fehlerseite
+     des Browsers, sondern das Duck-Curve-Symbol. Sobald die Oberflaeche antwortet, geht es ueber den
+     Pairing-Link in die Anwendung; der Link setzt die Sitzung dieses Geraets und leitet auf "/". -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duck Curve</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #082431; color: rgba(255,255,255,.72);
+    font-family: "IBM Plex Sans", "DejaVu Sans", sans-serif; cursor: none; user-select: none; }
+  main { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+  img { width: 160px; height: 160px; border-radius: 36px; animation: atmen 2.4s ease-in-out infinite; }
+  p { margin: 0; font-size: 18px; letter-spacing: .02em; }
+  @keyframes atmen { 0%, 100% { opacity: .78; transform: scale(.98); } 50% { opacity: 1; transform: scale(1); } }
+</style>
+</head>
+<body>
+<main>
+  <img src="ente.svg" alt="">
+  <p id="satz">Duck Curve startet …</p>
+</main>
+<script>
+  // Ob die Oberflaeche antwortet. `no-cors`, weil diese Seite von file:// kommt: Die Antwort ist dann
+  // nicht lesbar, aber der Aufruf gelingt nur, wenn der Dienst laeuft - mehr muss hier niemand wissen.
+  const ziel = "@KOPPELN@";
+  let versuche = 0;
+  async function pruefen() {
+    try {
+      await fetch("http://localhost:3000/api/health", { mode: "no-cors", cache: "no-store" });
+      location.replace(ziel);
+    } catch {
+      versuche += 1;
+      if (versuche === 45) document.getElementById("satz").textContent = "Duck Curve startet - das dauert heute etwas länger …";
+      setTimeout(pruefen, 2000);
+    }
+  }
+  pruefen();
+</script>
+</body>
+</html>

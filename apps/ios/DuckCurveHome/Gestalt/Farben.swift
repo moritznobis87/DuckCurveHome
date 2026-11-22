@@ -43,6 +43,33 @@ public enum Farbe {
     public static let linie1 = Color(Marken.linie1)
     public static let linie2 = Color(Marken.linie2)
     public static let rasterlinie = Color(Marken.rasterlinie)
+    /// Die Spur der Tagesuhr - schwächer als jede Linie, Begründung an ``Marken/spur``.
+    public static let spur = Color(Marken.spur)
+    /// Der Grund einer gedrückten Listenzeile - schwächer als ``linie1``, Begründung an
+    /// ``Marken/zeileGedrueckt``.
+    public static let zeileGedrueckt = Color(Marken.zeileGedrueckt)
+    /// Der Rand der berührten Zelle einer Rasterkarte, Begründung an ``Marken/zelleBeruehrt``.
+    public static let zelleBeruehrt = Color(Marken.zelleBeruehrt)
+    /// Der Fokusring eines Eingabefeldes. Seine Stärke steht daneben
+    /// (``Marken/fokusring``) - beides gehört zusammen.
+    public static let fokusring = Color(Marken.fokusring.farbe)
+
+    /// Die hervorgehobene Zeile einer anklickbaren Tabelle.
+    ///
+    /// **Heller und nicht dunkler als die Karte, anders als in der Vorlage** - weil die App
+    /// ihre Kartenflächen umgekehrt belegt. Dort steht die Karte auf `--surface-2` (#123544)
+    /// und die gewählte Zeile auf dem dunkleren `--surface-1` (#0F2E3D)
+    /// (`reports/InvoiceCheck.tsx:279`). ``Karte`` nimmt am iPad `flaeche1` und am Telefon
+    /// `flaeche2`; `flaeche1` als Hervorhebung wäre am iPad die Kartenfläche selbst und damit
+    /// unsichtbar. `flaeche3` hebt sich von **beiden** ab (1,26:1 auf `flaeche1`, 1,15:1 auf
+    /// `flaeche2`) und liegt damit in seinem schlechtesten Fall noch über dem, was die Vorlage
+    /// selbst erreicht (`--surface-1` auf `--surface-2`: 1,09:1). Der Unterschied zur Vorlage
+    /// ist die Richtung, nicht die Sache.
+    ///
+    /// Eigener Name und nicht `flaeche3` an der Stelle: dieselbe Fläche trägt in der App
+    /// zwanzig Kacheln, Kapseln und Felder, und eine Hervorhebung, die nachgezogen werden
+    /// muss, findet man nur unter ihrem Namen.
+    public static let zeileGewaehlt = flaeche3
 
     // Text
     public static let text1 = Color(Marken.text1)
@@ -63,6 +90,8 @@ public enum Farbe {
     public static let wallbox = Color(Marken.wallbox)
     public static let preis = Color(Marken.preis)
     public static let last = Color(Marken.last)
+    /// Die Hauslinie der Tageskurve, Begründung an ``Marken/hauslinie``.
+    public static let hauslinie = Color(Marken.hauslinie)
 
     // Status
     public static let gut = Color(Marken.gut)
@@ -78,6 +107,11 @@ public enum Farbe {
     public static let diagrammWallbox = Color(Marken.diagrammWallbox)
     public static let diagrammSpeicher = Color(Marken.diagrammSpeicher)
     public static let diagrammHaushalt = Color(Marken.diagrammHaushalt)
+    /// Die Grundgebühr und die Mehrwertsteuer im gestapelten Rechnungsbetrag.
+    public static let grundgebuehr = Color(Marken.grundgebuehr)
+    public static let umsatzsteuer = Color(Marken.umsatzsteuer)
+    /// Die Sonne des Vortags.
+    public static let pvSchatten = Color(Marken.pvSchatten)
     public static let waerme = Marken.waerme.map(Color.init)
     public static let pufferschichten = Marken.pufferschichten.map(Color.init)
 
@@ -98,6 +132,10 @@ public enum Farbe {
         case .normal: return text1
         case .sonne: return pv
         case .glut: return waermepumpe
+        // `--alert` #E0533D, der Ton `ember` der Vorlage (`Stat.tsx:5`,
+        // `PeriodStrip.tsx:19`). Siehe ``Kennzahl/Ton/alarm``, wo steht, welche drei Stellen
+        // vorher auf `glut` auswichen und warum das die falsche Farbe war.
+        case .alarm: return alarm
         case .bernstein: return amber
         case .gedaempft: return text3
         case .nebel: return mist
@@ -121,6 +159,28 @@ public enum Farbe {
 
     /// Der Hintergrund einer Seite: der Verlauf, nicht die flache Farbe.
     public static let seitengrund = grundVerlauf
+
+    /// Die Fläche der Anlagenbühne, oben nach unten - Begründung an ``Marken/buehneOben``.
+    public static let buehneFlaeche = LinearGradient(
+        colors: [Color(Marken.buehneOben), Color(Marken.buehneUnten)],
+        startPoint: .top, endPoint: .bottom
+    )
+
+    /// Das Akzentband oben an einer Karte, von links nach rechts auslaufend.
+    ///
+    /// CSS zählt den Winkel von oben im Uhrzeigersinn; `90deg` ist dort der Verlauf nach
+    /// rechts, in SwiftUI also von ``UnitPoint/leading`` nach ``UnitPoint/trailing``. Die drei
+    /// Stopps und ihre Stellen stehen an ``Marken/akzentband``.
+    public static let akzentband = LinearGradient(
+        stops: Marken.akzentband.map { .init(color: Color($0.farbe), location: $0.stelle) },
+        startPoint: .leading, endPoint: .trailing
+    )
+
+    /// Ihr Rand: die Lichtkante oben, Begründung an ``Marken/buehneRand``.
+    public static let buehneRand = LinearGradient(
+        stops: Marken.buehneRand.map { .init(color: Color($0.farbe), location: $0.stelle) },
+        startPoint: .top, endPoint: .bottom
+    )
 }
 
 /// Die Guete eines Messwerts als Farbe.

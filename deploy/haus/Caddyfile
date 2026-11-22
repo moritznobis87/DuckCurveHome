@@ -1,0 +1,49 @@
+# Duck Curve Home - Eingang im Heimnetz (deploy/haus/README.md).
+#
+# HTTPS mit einem Zertifikat, das Caddy selbst ausstellt (`tls internal`): Die Sitzung der Oberflaeche
+# ist ein sicheres Cookie, und ein Browser schickt es nur ueber HTTPS (oder an localhost). Damit iPad
+# und Handy dem Zertifikat trauen, installiert man einmal das Stammzertifikat; es liegt unter
+# http://<name>.local/zertifikat zum Herunterladen bereit.
+
+{
+	# Kein Zertifikat von Let's Encrypt versuchen: Ein .local-Name ist im Internet nicht erreichbar.
+	local_certs
+	# Die automatische Umleitung auf HTTPS ist genauer als der Block `http://` unten und schluege
+	# ihn: Dann waere /zertifikat nie erreichbar. Umgeleitet wird stattdessen dort, von Hand.
+	auto_https disable_redirects
+}
+
+# Die Oberflaeche fuer das Heimnetz.
+{$DCH_HOSTNAME}.local, localhost {
+	tls internal
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+# Ueber HTTP nur zwei Dinge: das Stammzertifikat zum Einrichten des iPads, und fuer alles andere
+# der Weg nach HTTPS.
+http:// {
+	handle /zertifikat {
+		root * /data/caddy/pki/authorities/local
+		rewrite * /root.crt
+		header Content-Type application/x-x509-ca-cert
+		header Content-Disposition "attachment; filename=duckcurve-home.crt"
+		file_server
+	}
+	handle {
+		redir https://{host}{uri} 302
+	}
+}
+
+# Der Bridge-Endpunkt fuer das Add-on in Home Assistant, ohne TLS: Die Bridge kennt das lokale
+# Stammzertifikat nicht, und der Weg bleibt im Heimnetz. Gesichert ist er durch das Bridge-Token
+# (DCH_BRIDGE_TOKENS). Ausser /bridge/ws ist hier nichts erreichbar.
+:8001 {
+	@bridge path /bridge/ws /bridge/ws/*
+	handle @bridge {
+		reverse_proxy api:8000
+	}
+	handle {
+		respond 404
+	}
+}

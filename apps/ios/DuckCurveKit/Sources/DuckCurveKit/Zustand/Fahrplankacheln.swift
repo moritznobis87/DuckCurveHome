@@ -47,7 +47,11 @@ public enum Fahrplankacheln {
                 dazu: plan?.hpActuation == true
                     ? "im ganzen Horizont · Duck Curve fordert selbst an"
                     : "im ganzen Horizont · wird nur beobachtet, nicht geschaltet",
-                ton: .glut),
+                // Alarmrot, nicht das Wärmepumpenbraun: die Vorlage setzt `tone="ember"`
+                // (`Fahrplan.tsx:551-554`), und `Stat.tsx:5` führt `ember` auf `var(--alert)`
+                // #E0533D (`tokens.css:64`). Bis es ``Kennzahl/Ton/alarm`` gab, stand hier
+                // `glut` #E0966B - dort steht, warum das die falsche Farbe war.
+                ton: .alarm),
             Kennzahl(
                 wort: "Wärmepumpe gelaufen",
                 wert: mitMessung.isEmpty
@@ -71,7 +75,9 @@ public enum Fahrplankacheln {
                     ? "kein Fahrplan für den Ofen"
                     : (ofenviertel > 0
                         ? "Volllast, 15 kg je Füllung" : "nicht eingeplant, Begründung unten"),
-                ton: ofenviertel > 0 ? .glut : .gedaempft),
+                // Derselbe `ember` der Vorlage, aber nur wenn der Ofen brennt
+                // (`Fahrplan.tsx:559-562`: `tone={kennzahlen.ofenViertel ? "ember" : "muted"}`).
+                ton: ofenviertel > 0 ? .alarm : .gedaempft),
             Kennzahl(
                 wort: "Wärmebedarf geplant",
                 wert: waerme > 0 ? Formate.zahl(waerme / 4, stellen: 0) : Formate.leer,

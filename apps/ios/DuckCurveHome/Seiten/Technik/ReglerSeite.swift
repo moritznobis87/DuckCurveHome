@@ -1,36 +1,59 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Wärmepumpe · Regler: was am Regler eingestellt ist – gelesen über den Bus.
+/// Wärmepumpe · Regler: was am Regler eingestellt ist – gelesen über den Bus, und was sich
+/// stellen lässt, lässt sich hier stellen.
 ///
-/// **Und was sich stellen lässt, lässt sich hier stellen.** Das ist die heikelste Seite der
-/// ganzen App, und sie ist mit drei Vorsichten gebaut:
+/// Oben die Heizkurve mit ihren Griffen, darunter das Pult: ein Kanalzug je Zahl, Schalter für
+/// alles, was nur Stufen kennt. Was jemand bewegt, ist zunächst ein Entwurf; erst „Übernehmen“
+/// schickt die Änderungen ab, nach einer Übersicht, was sich von welchem auf welchen Wert
+/// ändert (`apps/web/src/components/waermepumpe/Regler.tsx:11-23`).
 ///
-/// 1. **Gestellt ist erst, wenn der Regler es zurückmeldet.** Der Dienst antwortet auf einen
-///    Griff mit dem vollständigen Satz der Einstellungen, nicht mit „in Ordnung" - und bis die
-///    Antwort da ist, steht der alte Wert da. Ein Schieber, der sofort auf den neuen Wert
-///    springt und zwei Sekunden später zurück, lügt.
-/// 2. **Nichts wird stillschweigend gestellt.** Jeder Griff fragt nach, mit dem alten und dem
-///    neuen Wert im Satz. Das ist an einer Heizungsanlage keine Umständlichkeit: eine
+/// **Das ist die heikelste Seite der ganzen App, und sie ist mit vier Vorsichten gebaut:**
+///
+/// 1. **Ohne Gerätevergleich bewegt sich nichts.** Eine Einstellung muss stellbar, gelesen und
+///    mit dem Bediengerät verglichen sein, und der Dienst muss einen Stellbefehl loswerden
+///    können – erst dann nimmt ein Schieber, ein Griff oder ein Stufenknopf einen Finger an
+///    (``Reglerpult/bedienbar(_:stellenMoeglich:)``). Das war die schwerste Lücke dieser Seite:
+///    bis zum 20.11.2026 prüfte sie nur `stellbar` und las den Wert roh, ohne seine Güte – ein
+///    nie verglichener und ein veralteter Wert waren hier bewegbar und absendbar. Der Dienst
+///    lehnte ab, aber die Oberfläche hatte es angeboten.
+/// 2. **Gestellt ist erst, wenn der Regler es zurückmeldet.** Der Dienst antwortet auf einen
+///    Griff mit dem vollständigen Satz der Einstellungen, nicht mit „in Ordnung“ – und bis die
+///    Antwort da ist, steht der alte Wert da und darunter „gesendet …, wartet auf den Regler“.
+///    Solange etwas wartet, wird alle fünf Sekunden nachgefragt statt alle sechzig
+///    (``Reglerpult/takt(wartet:)``).
+/// 3. **Nichts wird stillschweigend gestellt.** Zwei Knopfdrücke mit einer Liste dazwischen, in
+///    der jede Änderung mit altem und neuem Wert steht (``Uebernahmeleiste``). Eine
 ///    Heizkurvensteilheit, die versehentlich von 0,4 auf 1,4 geht, merkt man im Februar an der
 ///    Rechnung.
-/// 3. **Was der Dienst nicht als stellbar meldet, wird nur gezeigt.** `stellbar` kommt vom
-///    Dienst und nicht aus einer Liste hier - er weiß, was der Bus hergibt.
+/// 4. **Was der Dienst nicht als stellbar meldet, wird nur gezeigt.** `stellbar` kommt vom
+///    Dienst und nicht aus einer Liste hier – er weiß, was der Bus hergibt. Was nur gelesen
+///    wird, steht in einem eigenen, zugeklappten Abschnitt und nicht zwischen den Reglern.
+///
+/// **Gerechnet wird im Kern** (``Reglerpult``): die Sperren, das Raster, die Näherung der
+/// Heizkurve, die Stufenwörter, die vier Fassungen der Fußzeile und die Absätze, die wörtlich
+/// dastehen müssen. Hier bleiben die Maße und die Reihenfolge.
 struct ReglerSeite: View {
     @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
 
     @State private var einstellungen: ReglerEinstellungenOut?
     @State private var fehler: ApiFehler?
-    @State private var nachfrage: Nachfrage?
-    @State private var laeuft: String?
-    @State private var rueckmeldung: String?
-    @State private var kennzahlen: ReglerKennzahlenOut?
+    @State private var entwurf: Reglerpult.Entwurf = [:]
+    @State private var uebersicht = false
+    @State private var laeuft = false
+    @State private var meldungen: [Meldung] = []
+    @State private var stunden: [Reglerpult.Kurvenpunkt] = []
+    @State private var nurLesenOffen = false
+    @State private var protokollOffen = true
+    @State private var vermerkeOffen = false
 
-    /// Die Nachfrage vor einem Griff.
-    private struct Nachfrage: Identifiable {
-        let einstellung: ReglerEinstellungOut
-        let neu: Double
-        var id: String { einstellung.schluessel }
+    /// Eine Antwort des Dienstes auf einen Stellbefehl, mit ✓ oder ✗ (`Regler.tsx:137-146`).
+    private struct Meldung: Identifiable {
+        let ok: Bool
+        let text: String
+        let id = UUID()
     }
 
     var body: some View {
@@ -39,226 +62,369 @@ struct ReglerSeite: View {
                 Stoerung(fehler: fehler) { Task { await lade() } }
             }
             if let e = einstellungen {
-                kopf(e)
-                if let r = rueckmeldung {
-                    Karte { Text(r).font(Schrift.klein).foregroundStyle(Farbe.text1) }
-                }
-                ForEach(gruppen(e), id: \.name) { gruppe in
-                    Karte(kicker: gruppe.name) {
-                        VStack(spacing: 0) {
-                            ForEach(Array(gruppe.werte.enumerated()), id: \.offset) { i, w in
-                                if i > 0 { Divider().overlay(Farbe.linie1) }
-                                Einstellungszeile(
-                                    einstellung: w,
-                                    laeuft: laeuft == w.schluessel,
-                                    darfStellen: darfStellen(e, w)
-                                ) { neu in
-                                    nachfrage = Nachfrage(einstellung: w, neu: neu)
-                                } bestaetigen: {
-                                    bestaetige(w)
-                                }
-                            }
-                        }
-                    }
-                }
-                if let k = kennzahlen, !k.zeilen.isEmpty {
-                    kennzahlenkarte(k, k.zeilen)
-                }
-                if !e.protokoll.isEmpty {
-                    Karte(kicker: "Was geändert wurde") {
-                        VStack(spacing: 0) {
-                            ForEach(Array(e.protokoll.enumerated()), id: \.offset) { i, a in
-                                if i > 0 { Divider().overlay(Farbe.linie1) }
-                                aenderung(a)
-                            }
-                        }
-                    }
-                }
-                Methode(
-                    e.hinweiseDe + [
-                        e.hindernisDe,
-                        e.stellenJeTag.map { "Höchstens \($0) Griffe am Tag." },
-                        "Gelesen über den eBUS. Gestellt ist eine Einstellung erst, wenn der "
-                            + "Regler sie zurückmeldet.",
-                    ]
-                )
+                inhalt(e)
             } else if fehler == nil {
-                Karte { Leer(satz: "Wird vom Bus gelesen …") }
+                // Alfred in der großen Stufe: solange nichts da ist, ist dieser Hinweis die
+                // ganze Seite (``Ladehinweis/Stufe``). Ohne Farbe, denn hier stand ``Leer``
+                // und damit ``Farbe/text2``.
+                Karte { Ladeente(satz: "Wird vom Bus gelesen …", stufe: .gross) }
             }
         }
-        .task { await lade() }
-        .task { kennzahlen = try? await haus.api.reglerKennzahlen(tage: 7) }
-        // **Nachgefragt wird jedes Mal.** An einer Heizungsanlage ist das keine Umstaendlichkeit:
-        // eine Heizkurvensteilheit, die versehentlich von 0,4 auf 1,4 geht, merkt man im Februar
-        // an der Rechnung. Im Satz stehen der alte und der neue Wert, damit die Frage zu
-        // beantworten ist, ohne sie wegzuklicken.
-        .alert(
-            nachfrage.map { "\($0.einstellung.nameDe) stellen?" } ?? "",
-            isPresented: Binding(
-                get: { nachfrage != nil },
-                set: { if !$0 { nachfrage = nil } }
-            ),
-            presenting: nachfrage
-        ) { n in
-            Button("Stellen") { stelle(n) }
-            Button("Abbrechen", role: .cancel) {}
-        } message: { n in
-            Text(nachfragesatz(n))
-        }
+        .task { await beobachte() }
+        .task { await holeStunden() }
+        .safeAreaInset(edge: .bottom, spacing: 0) { leiste }
     }
 
-    /// Was der Regler in den letzten Tagen wirklich getan hat, nach Betriebszustand.
+    /// Die Reihenfolge ist die der Vorlage (`Regler.tsx:117-313`).
     ///
-    /// **Das ist die Gegenprobe zu den Einstellungen darüber.** Dort steht, was eingestellt ist;
-    /// hier steht, wie viele Minuten die Anlage in welchem Zustand war und mit welchem Vorlauf.
-    /// Eine Heizkurve, die auf dem Papier stimmt, und ein Vorlauf, der ständig fünf Kelvin
-    /// darüber liegt, sind zwei verschiedene Auskünfte.
-    private func kennzahlenkarte(
-        _ k: ReglerKennzahlenOut, _ zeilen: [ReglerKennzahlOut]
-    ) -> some View {
-        Karte(kicker: "Was der Regler tat", titel: "\(k.tage) Tage") {
-            Tabelle(
-                zeilennamen: zeilen.map { "Zustand \($0.code)" },
-                spalten: [
-                    .init(
-                        name: "Minuten",
-                        zellen: zeilen.map { Formate.zahl(Double($0.minuten), stellen: 0) }
-                    ),
-                    .init(
-                        name: "davon gelaufen",
-                        zellen: zeilen.map { Formate.zahl(Double($0.laufMin), stellen: 0) }
-                    ),
-                    .init(
-                        name: "Vorlauf",
-                        zellen: zeilen.map { Formate.celsius($0.vorlaufC, stellen: 1) }
-                    ),
-                    .init(
-                        name: "Sollvorlauf",
-                        zellen: zeilen.map { Formate.celsius($0.vorlaufSollC, stellen: 1) }
-                    ),
-                    .init(
-                        name: "angefordert",
-                        zellen: zeilen.map { Formate.prozent($0.angefordertAnteil) }
-                    ),
-                    .init(
-                        name: "Heizstab",
-                        zellen: zeilen.map { Formate.prozent($0.heizstabAnteil) }
-                    ),
-                    .init(
-                        name: "zuletzt",
-                        zellen: zeilen.map { $0.zuletzt.map { Formate.hhmm(iso: $0) } ?? Formate.leer }
-                    ),
-                ]
-            )
+    /// **In vier Teilen, weil ein `ViewBuilder` zehn Kinder nimmt.** Die Seite hat dreizehn.
+    @ViewBuilder private func inhalt(_ e: ReglerEinstellungenOut) -> some View {
+        kopfteil(e)
+        reglerteil(e)
+        listenteil(e)
+        fussteil(e)
+    }
+
+    @ViewBuilder private func kopfteil(_ e: ReglerEinstellungenOut) -> some View {
+        kopf(e)
+        if e.stellenMoeglich != true, let hindernis = e.hindernisDe, !hindernis.isEmpty {
+            hinderniskasten(hindernis)
+        }
+        if Reglerpult.anleitungNoetig(e.werte) {
+            Text(Reglerpult.anleitungssatz)
+                .font(Schrift.klein)
+                .foregroundStyle(Farbe.text2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if !meldungen.isEmpty {
+            meldungskasten
         }
     }
 
+    @ViewBuilder private func reglerteil(_ e: ReglerEinstellungenOut) -> some View {
+        kurvenkarte(e)
+        Pultkarte(
+            gruppen: Reglerpult.pultgruppen(e.werte), entwurf: entwurf,
+            stellenMoeglich: stellbar(e), darfStellen: haus.darfSchalten, stelle: setze,
+            vergleichen: { vergleiche($0, true) })
+        Schalterkarte(
+            schalter: Reglerpult.schalter(e.werte), entwurf: entwurf,
+            stellenMoeglich: stellbar(e), darfStellen: haus.darfSchalten, stelle: setze,
+            vergleichen: { vergleiche($0, true) })
+    }
+
+    @ViewBuilder private func listenteil(_ e: ReglerEinstellungenOut) -> some View {
+        nurLesenKarte(e)
+        protokollkarte(e)
+        vermerkekarte(e)
+    }
+
+    @ViewBuilder private func fussteil(_ e: ReglerEinstellungenOut) -> some View {
+        Methode(
+            e.hinweiseDe + [
+                e.hindernisDe,
+                e.stellenJeTag.map { "Höchstens \($0) Griffe am Tag." },
+                "Gelesen über den eBUS. Gestellt ist eine Einstellung erst, wenn der "
+                    + "Regler sie zurückmeldet.",
+            ]
+        )
+        fussverweise()
+    }
+
+    /// **Stellen heißt hier zweierlei**: der Dienst muss können, und der Mensch muss dürfen.
+    /// `darfSchalten` ist die Gästesperre der App und hat in der Vorlage kein Gegenstück; sie
+    /// kommt hier dazu, nicht an ihre Stelle.
+    ///
+    /// **Das reicht für die Schieber, nicht für den Vergleichsknopf.** Wer nicht stellen darf,
+    /// bekommt hier `false`, und damit greift im Kern der Sperrgrund „nicht verglichen“ vor
+    /// „Stellen nicht möglich“ (``Reglerpult/sperre(_:stellenMoeglich:)``) – die Fußzeile zeigt
+    /// also den gestrichelten Knopf. Der schaltet diese Sperre für alle ab, und darum geht
+    /// `darfSchalten` zusätzlich und ungemischt an die Karten (siehe ``Vergleichsknopf``).
+    private func stellbar(_ e: ReglerEinstellungenOut) -> Bool {
+        haus.darfSchalten && e.stellenMoeglich == true
+    }
+
+    // MARK: - Kopf und Absätze
+
+    /// **Der führende Satz ist der Satz des Dienstes, groß** (`globals.css:789`: 22 Punkte, am
+    /// Telefon 19) – darunter nicht die Uhrzeit, sondern wie weit der Vergleich gediehen ist.
+    /// Eine Uhrzeit sagt, wann gelesen wurde; diese Zeile sagt, wie viel sich bewegen lässt.
     private func kopf(_ e: ReglerEinstellungenOut) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(e.satzDe)
-                .font(Schrift.klein)
+                .font(Schrift.satz)
                 .foregroundStyle(Farbe.text1)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 10) {
-                Text("Stand \(Formate.hhmm(iso: e.now))")
-                    .font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                if e.stellenMoeglich != true {
-                    Text("Stellen ist gesperrt")
-                        .font(Schrift.winzig).foregroundStyle(Farbe.achtung)
-                }
-            }
+            Text(Reglerpult.verglichenSatz(e.werte, fehler: fehler?.rat))
+                .font(Schrift.klein)
+                .foregroundStyle(Farbe.text3)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private struct Gruppe: Identifiable {
-        let name: String
-        let werte: [ReglerEinstellungOut]
-        var id: String { name }
+    /// Der Warnabsatz, wenn der Dienst gerade keinen Stellbefehl loswird (`Regler.tsx:126-130`,
+    /// `globals.css:792`). Er stand bisher zugeklappt in der Methode, und oben stand dafür
+    /// „Stellen ist gesperrt“ in 11,5 Punkten.
+    private func hinderniskasten(_ hindernis: String) -> some View {
+        Text(Reglerpult.hindernissatz(hindernis))
+            .font(Schrift.klein)
+            .foregroundStyle(Farbe.text1)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Farbe.amber.opacity(0.09), in: absatzumriss)
+            .overlay(absatzumriss.strokeBorder(Farbe.amber.opacity(0.55), lineWidth: 1))
+            .accessibilityAddTraits(.isStaticText)
     }
 
-    /// Nach Gruppen des Dienstes, in der Reihenfolge, in der sie kommen.
-    private func gruppen(_ e: ReglerEinstellungenOut) -> [Gruppe] {
-        var reihenfolge: [String] = []
-        var nach: [String: [ReglerEinstellungOut]] = [:]
-        for w in e.werte {
-            if nach[w.gruppeDe] == nil {
-                nach[w.gruppeDe] = []
-                reihenfolge.append(w.gruppeDe)
+    private var absatzumriss: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+    }
+
+    /// Je Antwort eine Zeile mit ✓ oder ✗ und dem Satz des Dienstes – nicht eine Karte mit der
+    /// letzten Meldung (`Regler.tsx:137-146`). Jede Einstellung ist ein eigener Befehl auf dem
+    /// Bus, also hat jede ihre eigene Antwort.
+    private var meldungskasten: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(meldungen) { m in
+                Text("\(m.ok ? "✓" : "✗") \(m.text)")
+                    .font(Schrift.klein)
+                    .foregroundStyle(m.ok ? Farbe.text1 : Farbe.alarm)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            nach[w.gruppeDe]?.append(w)
-        }
-        return reihenfolge.map { Gruppe(name: $0, werte: nach[$0] ?? []) }
-    }
-
-    private func darfStellen(_ e: ReglerEinstellungenOut, _ w: ReglerEinstellungOut) -> Bool {
-        haus.darfSchalten && e.stellenMoeglich == true && w.stellbar == true
-    }
-
-    private func nachfragesatz(_ n: Nachfrage) -> String {
-        let alt = n.einstellung.wertAlsText(n.einstellung.wert.value)
-        let neu = n.einstellung.wertAlsText(n.neu)
-        var satz = "Von \(alt) auf \(neu).\n\nDas wird am Regler selbst geändert, nicht nur hier."
-        if let hinweis = n.einstellung.hinweisDe, !hinweis.isEmpty {
-            satz += "\n\n\(hinweis)"
-        }
-        return satz
-    }
-
-    private func aenderung(_ a: ReglerAenderungOut) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(a.nameDe).font(Schrift.klein).foregroundStyle(Farbe.text1)
-                Text(
-                    [Formate.hhmm(iso: a.at), a.urheberDe]
-                        .compactMap { $0 }
-                        .joined(separator: " · ")
-                )
-                .font(Schrift.winzig).foregroundStyle(Farbe.text3)
-            }
-            Spacer(minLength: 8)
-            Text("\(a.vonDe) → \(a.aufDe)")
-                .font(Schrift.zahlKlein)
+            Button("Ausblenden") { meldungen = [] }
+                .font(Schrift.klein)
+                .buttonStyle(.plain)
                 .foregroundStyle(Farbe.text2)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .overlay(Capsule().strokeBorder(Farbe.linie2, lineWidth: 1))
         }
-        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Farbe.flaeche2, in: absatzumriss)
+        .overlay(absatzumriss.strokeBorder(Farbe.linie2, lineWidth: 1))
+    }
+
+    // MARK: - Die Karten
+
+    private func kurvenkarte(_ e: ReglerEinstellungenOut) -> some View {
+        Karte(kicker: "Heizkurve") {
+            VStack(alignment: .leading, spacing: 10) {
+                Heizkurvenbild(
+                    werte: e.werte, entwurf: entwurf, stellenMoeglich: stellbar(e),
+                    stunden: stunden, stelle: setze)
+                Text(Reglerpult.naeherungssatz)
+                    .font(Schrift.klein)
+                    .foregroundStyle(Farbe.text3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// **Ein eigener, zugeklappter Abschnitt** (`Regler.tsx:201-228`). Acht Zeilen, an denen
+    /// nichts zu tun ist, standen bisher gleichberechtigt zwischen denen, an denen etwas zu tun
+    /// ist.
+    @ViewBuilder private func nurLesenKarte(_ e: ReglerEinstellungenOut) -> some View {
+        let lesen = Reglerpult.nurLesen(e.werte)
+        if !lesen.isEmpty {
+            Karte {
+                DisclosureGroup(isExpanded: $nurLesenOffen) {
+                    Tabelle(
+                        zeilennamen: lesen.map(lesezeilenname),
+                        spalten: [
+                            .init(
+                                name: "Wert", zellen: lesen.map(Reglerpult.wertText),
+                                farben: lesen.map { Reglerpult.gelesen($0) ? Farbe.amber : Farbe.text3 }),
+                            .init(name: "gelesen", zellen: lesen.map(Reglerpult.standText)),
+                            .init(name: "Kennung", zellen: lesen.map(\.kennung)),
+                        ]
+                    )
+                    .padding(.top, 8)
+                } label: {
+                    Text("Nur zum Lesen (\(lesen.count))")
+                        .font(Schrift.karte).foregroundStyle(Farbe.text1)
+                }
+                .tint(Farbe.text3)
+            }
+        }
+    }
+
+    private func lesezeilenname(_ w: ReglerEinstellungOut) -> String {
+        let name = "\(w.gruppeDe): \(w.nameDe)"
+        guard let lesart = w.lesartDe, !lesart.isEmpty else { return name }
+        return name + "\nlaut Busbeschreibung: " + lesart
+    }
+
+    /// Was zuletzt gestellt wurde – aufgeklappt, denn es ist die Gegenprobe zu dem, was man
+    /// gerade vorhat (`Regler.tsx:230-256`). Fünf Spalten mit Datum, nicht eine Zeile ohne.
+    @ViewBuilder private func protokollkarte(_ e: ReglerEinstellungenOut) -> some View {
+        if !e.protokoll.isEmpty {
+            Karte {
+                DisclosureGroup(isExpanded: $protokollOffen) {
+                    Tabelle(
+                        zeilennamen: e.protokoll.map(\.nameDe),
+                        spalten: [
+                            .init(
+                                name: "Zeit",
+                                zellen: e.protokoll.map { Formate.tagUndUhr(Zeit.ausIso($0.at), jetzt: haus.jetzt) }),
+                            .init(name: "von", zellen: e.protokoll.map(\.vonDe)),
+                            .init(name: "auf", zellen: e.protokoll.map(\.aufDe)),
+                            .init(name: "wer", zellen: e.protokoll.map { $0.urheberDe ?? Formate.leer }),
+                        ]
+                    )
+                    .padding(.top, 8)
+                } label: {
+                    Text("Was zuletzt gestellt wurde (\(e.protokoll.count))")
+                        .font(Schrift.karte).foregroundStyle(Farbe.text1)
+                }
+                .tint(Farbe.text3)
+            }
+        }
+    }
+
+    /// Einen Vermerk zurücknehmen (`Regler.tsx:258-271`).
+    ///
+    /// **Zurücknehmen löscht zugleich den Entwurf dieser Einstellung** (`Regler.tsx:76`): wer
+    /// den Vergleich zurückzieht, sagt „ich weiß nicht mehr, ob das stimmt“ – und dann darf ein
+    /// Entwurf, der darauf aufbaut, nicht stehen bleiben.
+    @ViewBuilder private func vermerkekarte(_ e: ReglerEinstellungenOut) -> some View {
+        let verglichen = Reglerpult.stellbare(e.werte).filter { $0.bestaetigt == true }
+        if !verglichen.isEmpty {
+            Karte {
+                DisclosureGroup(isExpanded: $vermerkeOffen) {
+                    Umbruchzeile(abstand: 8, zeilenabstand: 8) {
+                        ForEach(verglichen, id: \.schluessel) { w in
+                            Button("\(w.gruppeDe): \(w.nameDe) ist doch nicht verglichen") {
+                                vergleiche(w, false)
+                            }
+                            .font(Schrift.klein)
+                            .buttonStyle(.plain)
+                            // Auch das Zurücknehmen ist ein Vermerk am Dienst und gehört dem
+                            // Hausherrn - derselbe Grund wie am ``Vergleichsknopf``.
+                            .disabled(!haus.darfSchalten)
+                            .opacity(haus.darfSchalten ? 1 : 0.45)
+                            .foregroundStyle(Farbe.text2)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .overlay(Capsule().strokeBorder(Farbe.linie2, lineWidth: 1))
+                        }
+                    }
+                    .padding(.top, 8)
+                } label: {
+                    Text("Vermerke zurücknehmen")
+                        .font(Schrift.karte).foregroundStyle(Farbe.text1)
+                }
+                .tint(Farbe.text3)
+            }
+        }
+    }
+
+    // **Die Karte „Was der Regler tat“ ist am 20.11.2026 von hier weggezogen.** Sie hängt in
+    // der Vorlage an `/waerme/waermepumpe` (`waermepumpe/Waermepumpe.tsx:104`) und in
+    // `Regler.tsx` überhaupt nicht; hier stand sie mit sieben der dreizehn Spalten, ohne die
+    // beiden Erklärabsätze und ohne die Markierung der laufenden Kennzahl. Der Kommentar, der
+    // sie hier gehalten hat, nannte sie „die Gegenprobe zu allem darüber“ - das bleibt wahr,
+    // und darum steht sie jetzt vollständig auf der Wärmepumpenseite, zu der auch der zweite
+    // Verweis im Fuß führt. Gerechnet wird sie in ``Wpseite``, gezeichnet in
+    // ``WaermepumpeSeite``.
+
+    /// Die zwei Verweise im Fuß (`Regler.tsx:279-282`): was der Regler aus der Kurve wirklich
+    /// macht, steht auf der Betriebsseite – und genau darauf zielt der Näherungsabsatz.
+    private func fussverweise() -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            verweis("Die Heizkurve, wie sie gefahren wird ›", nach: "/waerme/waermepumpe/betrieb")
+            verweis("Die Wärmepumpe jetzt ›", nach: "/waerme/waermepumpe")
+        }
+        .padding(.top, 2)
+    }
+
+    private func verweis(_ wort: String, nach weg: String) -> some View {
+        Button(wort) { wegweiser.gehe(weg) }
+            .font(Schrift.klein)
+            .buttonStyle(.plain)
+            .foregroundStyle(Farbe.amber)
+    }
+
+    // MARK: - Die Leiste
+
+    @ViewBuilder private var leiste: some View {
+        let offen = offeneAenderungen
+        if !offen.isEmpty {
+            Uebernahmeleiste(
+                offen: offen, uebersicht: $uebersicht, laeuft: laeuft,
+                verwerfen: { entwurf = [:] }, uebernehmen: { uebernehmen(offen) })
+        }
+    }
+
+    private var offeneAenderungen: [Reglerpult.Aenderung] {
+        guard let e = einstellungen else { return [] }
+        return Reglerpult.aenderungen(e.werte, entwurf: entwurf)
     }
 
     // MARK: - Werte lesen und schreiben
 
-    private func stelle(_ n: Nachfrage) {
-        laeuft = n.einstellung.schluessel
+    private func setze(_ schluessel: String, _ wert: Double) {
+        entwurf[schluessel] = wert
+    }
+
+    /// **Nacheinander, nicht zugleich: jede Einstellung ist ein eigener Befehl auf dem Bus**
+    /// (`Regler.tsx:86-95`). Jede Antwort trägt den vollständigen Satz der Einstellungen; der
+    /// letzte gilt. Jede Antwort wird einzeln als ✓ oder ✗ gezeigt.
+    private func uebernehmen(_ offen: [Reglerpult.Aenderung]) {
+        laeuft = true
         Task {
-            do {
-                let a = try await haus.api.stelleRegler(n.einstellung.schluessel, wert: n.neu)
-                // Der Dienst antwortet mit dem vollstaendigen Satz - also wird er uebernommen
-                // und nicht nur der eine Wert.
-                einstellungen = a.einstellungen
-                rueckmeldung = a.messageDe
-                fehler = nil
-            } catch let f as ApiFehler {
-                fehler = f
-            } catch {
-                fehler = .netz(error.localizedDescription)
+            var aus: [Meldung] = []
+            var stand = einstellungen
+            for a in offen {
+                do {
+                    let r = try await haus.api.stelleRegler(a.w.schluessel, wert: a.neu)
+                    aus.append(Meldung(ok: r.ok, text: r.messageDe))
+                    stand = r.einstellungen
+                } catch let f as ApiFehler {
+                    aus.append(Meldung(ok: false, text: f.rat))
+                } catch {
+                    aus.append(Meldung(ok: false, text: "\(a.w.nameDe): nicht gesendet."))
+                }
             }
-            laeuft = nil
+            einstellungen = stand
+            entwurf = [:]
+            meldungen = aus
+            uebersicht = false
+            laeuft = false
         }
     }
 
-    /// Vermerken, dass eine Einstellung mit dem Bediengeraet verglichen ist.
+    /// Vermerken, dass eine Einstellung mit dem Bediengerät verglichen ist – oder das
+    /// zurücknehmen.
     ///
-    /// Das ist kein Griff an die Anlage, sondern ein Haken: „ich habe am Geraet nachgesehen, es
-    /// steht wirklich so da". Der Bus liest manche Werte nur mittelbar, und dieser Haken
-    /// unterscheidet eine gelesene Zahl von einer bestaetigten.
-    private func bestaetige(_ w: ReglerEinstellungOut) {
-        laeuft = w.schluessel
+    /// Das ist kein Griff an die Anlage, sondern ein Haken: „ich habe am Gerät nachgesehen, es
+    /// steht wirklich so da“. Der Bus liest manche Werte nur mittelbar, und dieser Haken
+    /// unterscheidet eine gelesene Zahl von einer bestätigten.
+    private func vergleiche(_ w: ReglerEinstellungOut, _ bestaetigt: Bool) {
         Task {
-            if let a = try? await haus.api.bestaetigeRegler(
-                w.schluessel, bestaetigt: !(w.bestaetigt ?? false)
-            ) {
+            do {
+                let a = try await haus.api.bestaetigeRegler(w.schluessel, bestaetigt: bestaetigt)
                 einstellungen = a.einstellungen
-                rueckmeldung = a.messageDe
+                if !bestaetigt { entwurf[w.schluessel] = nil }
+            } catch let f as ApiFehler {
+                meldungen = [Meldung(ok: false, text: f.rat)]
+            } catch {
+                meldungen = [Meldung(ok: false, text: "Der Vermerk ließ sich nicht speichern.")]
             }
-            laeuft = nil
+        }
+    }
+
+    /// **Alle sechzig Sekunden neu – und alle fünf, solange etwas auf seine Rückmeldung
+    /// wartet** (`Regler.tsx:42-48`). Die App las bisher einmal; ein „gesendet“ blieb stehen,
+    /// bis jemand die Seite neu betrat.
+    private func beobachte() async {
+        while !Task.isCancelled {
+            await lade()
+            let wartet = einstellungen.map { Reglerpult.wartet($0.werte) } ?? false
+            try? await Task.sleep(for: .seconds(Reglerpult.takt(wartet: wartet)))
         }
     }
 
@@ -272,116 +438,13 @@ struct ReglerSeite: View {
             fehler = .netz(error.localizedDescription)
         }
     }
-}
 
-/// Eine Zeile der Reglereinstellungen.
-///
-/// **Der Griff ist ein Stepper, kein Schieber.** Eine Heizkurvensteilheit hat einen Bereich von
-/// 0,1 bis 1,5 in Schritten von 0,05 - auf einem Schieber sind das 28 Stellungen auf zweihundert
-/// Punkten, und der Finger trifft die falsche. Ein Stepper trifft immer.
-struct Einstellungszeile: View {
-    let einstellung: ReglerEinstellungOut
-    let laeuft: Bool
-    let darfStellen: Bool
-    let stellen: (Double) -> Void
-    let bestaetigen: () -> Void
-
-    @State private var entwurf: Double?
-
-    private var jetzigerWert: Double? {
-        einstellung.wert.value
-    }
-
-    private var gezeigt: Double? {
-        entwurf ?? jetzigerWert
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(einstellung.nameDe).font(Schrift.klein).foregroundStyle(Farbe.text1)
-                    HStack(spacing: 6) {
-                        Text(einstellung.kennung)
-                            .font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                        if einstellung.bestaetigt == true {
-                            Text("verglichen")
-                                .font(Schrift.winzig).foregroundStyle(Farbe.mist)
-                        }
-                        // **`gesendet` ist kein Ja/Nein, sondern der gesendete Wert mit
-                        // seinem Zeitstempel** (`ReglerGesendetOut`). Hier stand
-                        // `== true`. Da der Wert nun schon dasteht, sagt die Zeile auch,
-                        // *was* unterwegs ist - so wie das Dashboard (`Regler.tsx`: „gesendet
-                        // 21,0 °C, wartet auf den Regler").
-                        if let g = einstellung.gesendet {
-                            Text("gesendet \(einstellung.wertAlsText(g.wert)), wartet auf den Regler")
-                                .font(Schrift.winzig).foregroundStyle(Farbe.achtung)
-                        }
-                    }
-                }
-                Spacer(minLength: 8)
-                Text(text)
-                    .font(Schrift.zahl)
-                    .foregroundStyle(entwurf == nil ? Farbe.text1 : Farbe.amber)
-                    .opacity(laeuft ? 0.5 : 1)
-            }
-            if darfStellen, let von = einstellung.von, let bis = einstellung.bis, let wert = gezeigt {
-                griff(wert: wert, von: von, bis: bis)
-            }
-            if let hinweis = einstellung.hinweisDe, !hinweis.isEmpty {
-                Text(hinweis)
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(.vertical, 7)
-    }
-
-    private var text: String {
-        if let lesart = einstellung.lesartDe, !lesart.isEmpty, entwurf == nil { return lesart }
-        guard let wert = gezeigt else { return Formate.leer }
-        if let wort = einstellung.wahl[String(Int(wert))] { return wort }
-        let zahl = Formate.zahl(wert, stellen: einstellung.stellen ?? 1)
-        return einstellung.einheit.map { "\(zahl)\(Formate.schmalesLeerzeichen)\($0)" } ?? zahl
-    }
-
-    private func griff(wert: Double, von: Double, bis: Double) -> some View {
-        let schritt = einstellung.schritt ?? 1
-        return HStack(spacing: 10) {
-            Stepper(
-                "",
-                value: Binding(
-                    get: { entwurf ?? wert },
-                    set: { entwurf = min(bis, max(von, $0)) }
-                ),
-                in: von...bis,
-                step: schritt
-            )
-            .labelsHidden()
-            .disabled(laeuft)
-
-            if let e = entwurf, abs(e - (jetzigerWert ?? e)) >= schritt / 2 {
-                Button("Stellen") { stellen(e) }
-                    .font(Schrift.klein)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Farbe.amber)
-                Button("Zurück") { entwurf = nil }
-                    .font(Schrift.klein)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Farbe.text3)
-            } else {
-                Button(einstellung.bestaetigt == true ? "Haken weg" : "Verglichen") {
-                    bestaetigen()
-                }
-                .font(Schrift.winzig)
-                .buttonStyle(.plain)
-                .foregroundStyle(Farbe.text3)
-            }
-            Spacer(minLength: 0)
-            Text("\(Formate.zahl(von, stellen: einstellung.stellen ?? 1)) bis \(Formate.zahl(bis, stellen: einstellung.stellen ?? 1))")
-                .font(Schrift.winzig)
-                .foregroundStyle(Farbe.text3)
+    /// Die gemessenen Stunden sind Beiwerk: fehlen sie, steht die Kurve ohne Punkte da
+    /// (`Regler.tsx:51`).
+    private func holeStunden() async {
+        guard let b = try? await haus.api.betrieb(tage: 14) else { return }
+        stunden = b.stunden.map {
+            Reglerpult.Kurvenpunkt(aussen: $0.aussenC, vorlauf: $0.sollC)
         }
     }
 }

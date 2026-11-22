@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Welche Seite zu einem Weg gehoert.
 ///
-/// Alle 29 Seiten des Dashboards, unter denselben Adressen. Das ist absichtlich eine einzige
+/// Alle 28 Seiten des Dashboards, unter denselben Adressen. Das ist absichtlich eine einzige
 /// Stelle mit einem langen `switch` und keine Tabelle aus Bauanweisungen: ein `switch` ueber
 /// Zeichenketten laesst sich lesen, und der Compiler sagt nichts dazu, ob eine Tabelle
 /// vollstaendig ist. Dass jeder Weg aus `Bereiche.alleWege` hier ankommt, prueft dagegen ein
@@ -59,7 +59,10 @@ struct Seitenwahl: View {
         case "/waerme/anlage":
             return AnyView(AnlageSeite())
         case "/waerme/wiedergabe":
-            return AnyView(WiedergabeSeite())
+            // Der Fragezeichenteil wählt die Seite nicht, aber er sagt ihr, wo sie anfangen soll:
+            // aus der Jahreskarte kommt ein Tag und eine Stunde (`YearMap.tsx:82`). Gelesen und
+            // geprüft wird das im Kern, damit ein erfundener Tag hier nicht durchkommt.
+            return AnyView(WiedergabeSeite(ziel: Wiedergabeziel.ausWeg(weg)))
         case "/waerme/waermepumpe":
             return AnyView(WaermepumpeSeite())
         case "/waerme/waermepumpe/betrieb":
@@ -71,13 +74,14 @@ struct Seitenwahl: View {
         case "/waerme/fahrplan":
             return AnyView(FahrplanSeite())
         case "/waerme/nachbetrachtung":
-            return AnyView(NachbetrachtungSeite())
+            // Wie bei der Wiedergabe wählt der Fragezeichenteil die Seite nicht, aber er sagt
+            // ihr, welchen Tag sie zeigt: von der Wärmeseite kommt der gelesene Tag mit
+            // (`HeatOverview.tsx:268`). Geprüft wird er im Kern.
+            return AnyView(NachbetrachtungSeite(weg: weg))
         case "/waerme/wirkung":
             return AnyView(WirkungSeite())
         case "/waerme/raeume":
             return AnyView(HeizkreiseSeite())
-        case "/waerme/bilanz":
-            return AnyView(WaermebilanzSeite())
         case "/waerme/annahmen":
             return AnyView(AnnahmenSeite())
         case "/system":
@@ -88,6 +92,8 @@ struct Seitenwahl: View {
             return AnyView(MitteilungenSeite())
         case "/system/haustuer":
             return AnyView(HaustuerSeite())
+        case "/system/geraet":
+            return AnyView(HausgeraetSeite())
         case "/system/zugang":
             return AnyView(ZugangSeite())
 
@@ -96,11 +102,20 @@ struct Seitenwahl: View {
         }
     }
 
-    /// Fragezeichenteil und Schraegstriche am Ende weg - wie `Bereiche` es auch tut.
+    /// Fragezeichenteil und Schraegstriche am Ende weg, und alte Adressen auf ihren Nachfolger.
+    ///
+    /// **Hier steht die Weiterleitung, nicht in einer Ansicht.** Next.js hat zwei Mittel dafuer -
+    /// `redirects()` in `apps/web/next.config.ts:17` und `redirect()` in einer Seite, die sonst
+    /// nichts tut (`apps/web/src/app/waerme/bilanz/page.tsx:14`); eine App hat nur ihren
+    /// Wegweiser. Die Aufloesung ist eine reine Rechnung ueber Zeichenketten und liegt deshalb im
+    /// Kern (``Bereiche/ziel(_:)``), geprueft von `AlteWegeTests`. Eine Umleitungsansicht, die im
+    /// Zeichnen `wegweiser.gehe(...)` ruft, waere der andere Weg - und genau der, vor dem
+    /// `Navigation.swift:56-62` warnt („Modifying state during view update“).
+    ///
+    /// Der Zeitraum muss dabei nichts mitnehmen: er haengt am Bereich und nicht an der Adresse
+    /// (`Navigation.swift:22,69-81`), und alte wie neue Adresse liegen im selben Bereich.
     private var sauber: String {
-        var s = weg.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? "/"
-        while s.count > 1, s.hasSuffix("/") { s.removeLast() }
-        return s.isEmpty ? "/" : s
+        Bereiche.ziel(weg)
     }
 }
 
@@ -133,14 +148,22 @@ struct Unbekannt: View {
 /// **Warum eine eigene Huelle und nicht `ScrollView` an jeder Stelle.** Dreissig Seiten, die
 /// jede ihren eigenen Rand setzen, haben dreissig verschiedene Raender - im Dashboard ist das
 /// zweimal passiert und beide Male erst an der Wand aufgefallen. Hier steht der Rand einmal.
+///
+/// **Und darum traegt sie auch den Kicker.** Die Vorlage gibt ihn der Huelle jeder Seite
+/// (`AreaShell.tsx:14,26`), nicht der Seite; `ReportShell` reicht ihn nur weiter
+/// (`ReportShell.tsx:103`). Das Gegenstueck zu `AreaShell` ist diese Ansicht - jede der
+/// achtundzwanzig Seiten steckt in ihr, ``Berichtsseite`` baut sich selbst aus ihr. Stuende er
+/// in ``Berichtsseite``, haetten ihn dreizehn Seiten und fuenfzehn nicht.
 struct Seite<Inhalt: View>: View {
     var zeitraum: Zeitraumleiste?
     @ViewBuilder var inhalt: () -> Inhalt
 
     @Environment(\.horizontalSizeClass) private var breite
+    @Environment(Wegweiser.self) private var wegweiser
 
     var body: some View {
         VStack(spacing: 0) {
+            kicker
             // **Am Telefon steht die Zeitwahl im Gerippe**, ueber den Reitern und neben dem
             // Namen des Bereichs - so wie in der Vorlage (`handy.css:146-161`). Hier stand sie
             // unter den Reitern, und der Name des Bereichs stand nirgends.
@@ -165,6 +188,33 @@ struct Seite<Inhalt: View>: View {
                 .padding(.top, 4)
                 .padding(.bottom, 24)
             }
+        }
+    }
+
+    /// Die Stichworte, die sagen, was auf der Seite steht - „Laeufe · Abtauen · Heizkurve“.
+    ///
+    /// **Rechts und nicht links.** Die Vorlage setzt die Reiterzeile auf `justify-between` und
+    /// haengt den Kicker an ihr rechtes Ende (`AreaNav.tsx:93,96`). Die Reiterzeile der App
+    /// zeichnet das Gerippe und nicht die Huelle; der Kicker steht darum in einer eigenen Zeile
+    /// unmittelbar darunter - aber am rechten Rand, wo die Vorlage ihn hat, und ueber dem
+    /// Rollbereich, damit er wie dort beim Blaettern stehen bleibt.
+    ///
+    /// **Am Telefon faellt er weg**, und das ist nicht gespart, sondern abgeschrieben: er traegt
+    /// `hidden … md:block` (`AreaNav.tsx:96`) und ist unter 768 Punkten nicht zu sehen.
+    /// `handy.css` holt ihn auch nicht zurueck - was dort auf lesbare Schrift umgestellt wird,
+    /// ist der Kicker **einer Karte** (`handy.css:184`, `.card-head h2.kicker`) und der der
+    /// Methodenkarte (`handy.css:214`), nicht dieser. Am Telefon sagen Bereichsname, Reiterzeile
+    /// und Unteransichten schon zu dritt, wo man ist; eine vierte Antwort auf 390 Punkten kostet
+    /// nur die Zeile, in der die erste Zahl stehen sollte.
+    @ViewBuilder private var kicker: some View {
+        if breite != .compact, let wort = Bereiche.kicker(fuer: wegweiser.weg) {
+            Kicker(wort: wort)
+                // `truncate` an derselben Stelle: ein Kicker, der umbricht, schiebt die Seite
+                // nach unten.
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 6)
         }
     }
 }
@@ -275,8 +325,10 @@ struct Datumskasten: View {
                     wegweiser.setzeZeitraum(Zeitraum.heute(z.spanne, jetzt: haus.jetzt))
                 } label: {
                     Text("HEUTE")
-                        .font(Schrift.kicker)
-                        .kerning(0.6)
+                        // Mono 11 mit 0,08 em, wie `ReportShell.tsx:116` den Knopf setzt -
+                        // und nicht die Kickerschrift, die er sich geborgt hatte.
+                        .font(Schrift.mono(11, relativeTo: .caption2))
+                        .tracking(0.88)
                         .foregroundStyle(Farbe.amber)
                         .padding(.horizontal, 6)
                 }

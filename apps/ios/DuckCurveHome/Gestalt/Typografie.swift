@@ -45,11 +45,46 @@ public enum Schrift {
     public static let klein = Font.custom(sans, size: 13, relativeTo: .footnote)
     public static let winzig = Font.custom(sans, size: 11.5, relativeTo: .caption2)
 
-    /// Die Sperrschrift ueber einer Karte: „HEUTE", „PUFFER".
+    /// Die Groesse des Kickers, und warum sie 13 ist und nicht 10,5.
+    ///
+    /// **Das war die aelteste offene Abweichung der App.** Die Vorlage setzt `.kicker` als
+    /// IBM Plex **Mono** in 13 px mit 0,13 em Sperrung in Grossbuchstaben
+    /// (`globals.css:57-64`); die App schrieb ihn bis zum 21.11.2026 als Sans-Halbfett in
+    /// 10,5 Punkten mit 1,4 Punkten Sperrung. Das ist kein Geschmacksunterschied: Mono ist
+    /// die Schrift, in der in dieser Anwendung die *Zahlen* stehen, und der Kicker gehoert
+    /// dort hin, weil er eine Zahl beschriftet und nicht einen Absatz fuehrt. Halbfett in
+    /// 10,5 las sich dagegen wie eine kleine Ueberschrift - also wie das, was der Kicker
+    /// gerade nicht ist.
+    ///
+    /// **Die Groesse ist ein eigener Wert**, weil die Vorlage sie an einzelnen Stellen
+    /// ueberschreibt und dabei alles andere an `.kicker` stehen laesst: 12 im Ruhebild
+    /// (`globals.css:401` `.ambiente-vorschau-wort`) und am Lebenszeichen
+    /// (`globals.css:391` `.ambiente-live`), 11 in der Kopfzeile eines Raumprotokolls
+    /// (`Protokoll.tsx:155`) und ueber der Abweichungsskala (`RoomsReport.tsx:48`), 10 im
+    /// Tabellenkopf der Kostenaufstellung (`CostReport.tsx:197`). Darum nimmt ``Kicker``
+    /// eine Groesse und nicht nur ein Wort.
+    public static let kickerGroesse: CGFloat = 13
+
+    /// `letter-spacing: 0.13em` (`globals.css:61`) - in em und nicht in Punkten, darum ein
+    /// Faktor. Eine feste Punktzahl waere bei 10 Punkten Schrift eine andere Sperrung als bei
+    /// 13, und genau das war der zweite Teil der alten Abweichung.
+    public static let kickerSperrung: CGFloat = 0.13
+
+    /// Die Textstufe, an der die Sperrschrift haengt: `.footnote` und nicht `.caption2`.
+    ///
+    /// 13 Punkte ist die Grundgroesse von `.footnote`, und „Groesserer Text“ soll den Kicker
+    /// auf derselben Kurve wachsen lassen wie den Text, dessen Groesse er teilt (``klein``).
+    /// Solange der Kicker 10,5 Punkte hatte, war `.caption2` die naehere Stufe - mit der
+    /// Groesse zog der Anker um.
+    public static let kickerStil: Font.TextStyle = .footnote
+
+    /// Die Sperrschrift ueber einer Karte: „HEUTE“, „PUFFER“ - die Schrift allein, ohne
+    /// Grossschrift und ohne Sperrung. Die Zeile, wie sie auf einer Karte steht, ist
+    /// ``Kicker``; diese Konstante ist fuer Stellen, die nur die Schrift brauchen.
     ///
     /// **Ueber einer Karte am Handy nicht verwenden** - `handy.css` hat sie dort absichtlich
-    /// abgeschafft („Ueberschriften sind lesbare Schrift, keine Sperrschrift"), und ``Karte``
-    /// schaltet ihre Kopfzeile darum selbst auf 15 Punkte um.
+    /// abgeschafft („Ueberschriften sind lesbare Schrift, keine Sperrschrift“,
+    /// `handy.css:184`), und ``Karte`` schaltet ihre Kopfzeile darum selbst auf 15 Punkte um.
     ///
     /// **Auf einer Kennzahlkachel gilt das nicht**, und das ist keine Nachlaessigkeit: die
     /// Vorlage stellt am Handy ausdruecklich nur die Kartenkoepfe um und laesst den Kicker in
@@ -58,7 +93,7 @@ public enum Schrift {
     /// Ueberschrift fuehrt einen Abschnitt und wird gelesen, ein Kachelwort beschriftet eine
     /// Zahl und wird gestreift - und gestreift wird es leichter, wenn es sich von der Zahl
     /// darunter auch in der Form unterscheidet.
-    public static let kicker = Font.custom(sansHalbfett, size: 10.5, relativeTo: .caption2)
+    public static let kicker = Font.custom(mono, size: kickerGroesse, relativeTo: kickerStil)
 
     /// Der Satz der Startseite: die Erklaerung des Reglers, gross und ruhig.
     public static let satz = Font.custom(sans, size: 19, relativeTo: .title3)
@@ -85,6 +120,25 @@ public enum Schrift {
     /// Text" weiter wirkt.
     public static func sans(_ groesse: CGFloat, relativeTo: Font.TextStyle = .body) -> Font {
         Font.custom(Self.sans, size: groesse, relativeTo: relativeTo)
+    }
+
+    /// Dieselbe Groesse, aber im echten SemiBold der Hausschrift.
+    ///
+    /// **Warum nicht `sans(13).weight(.semibold)`.** `.weight` sucht auf einer eingebundenen
+    /// Schrift keinen Schnitt aus - es laesst iOS den Regular synthetisch fetten, und das
+    /// trifft nicht denselben Strich wie der Schnitt, der unter dem PostScript-Namen
+    /// `IBMPlexSans-SmBld` im Bundle liegt (die Falle steht oben bei ``sansHalbfett``). Die
+    /// Vorlage setzt fuer den gewaehlten Knopf ausdruecklich Gewicht 600
+    /// (`globals.css:894`, `.kl-knopf` im Zustand gedrueckt), also braucht es den benannten
+    /// Schnitt und nicht das synthetische Gewicht.
+    ///
+    /// **Es gibt keine Konstante dafuer**, weil die Vorlage dieses Gewicht an Groessen
+    /// zwischen den Stufen der App nennt - derselbe Grund, der ``sans(_:relativeTo:)``
+    /// rechtfertigt. `relativeTo` bleibt, damit „Groesserer Text“ weiter wirkt.
+    public static func sansHalbfett(_ groesse: CGFloat, relativeTo: Font.TextStyle = .body)
+        -> Font
+    {
+        Font.custom(Self.sansHalbfett, size: groesse, relativeTo: relativeTo)
     }
 
     public static func mono(_ groesse: CGFloat, relativeTo: Font.TextStyle = .body) -> Font {
@@ -129,14 +183,33 @@ struct Zahl: View {
 }
 
 /// Die Sperrschrift-Zeile ueber einer Karte.
+///
+/// **Groesse und Farbe sind Parameter, weil die Vorlage sie stellenweise ueberschreibt.**
+/// `.kicker` ist in der Vorlage eine Klasse, und wer eine zweite danebenschreibt
+/// (`class="ambiente-live kicker"`, `Ambiente.tsx:47`), aendert genau das eine Mass und erbt
+/// den Rest. Ohne diese beiden Parameter musste jede solche Stelle den ganzen Kicker von Hand
+/// nachbauen - so entstand `Ruhekicker` im Ruhebild und das Lebenszeichen daneben, drei
+/// Zeilen, die dasselbe sagten. Beide Vorgaben sind gesetzt, darum laeuft jeder alte Aufruf
+/// `Kicker(wort:)` unveraendert weiter.
+///
+/// Die Sperrung kommt nicht mitgegeben: sie haengt in der Vorlage an der Groesse
+/// (`0.13em`, ``Schrift/kickerSperrung``) und waere als eigener Parameter eine Einladung,
+/// die beiden auseinanderlaufen zu lassen.
 struct Kicker: View {
     let wort: String
+    /// Die Groesse in Punkten. Vorgabe ist ``Schrift/kickerGroesse``; kleinere Werte nennt die
+    /// Vorlage an einzelnen Stellen, sie stehen bei ``Schrift/kickerGroesse``.
+    var groesse: CGFloat = Schrift.kickerGroesse
+    /// Vorgabe ist `--text-kicker` (`globals.css:63`, in `tokens.css:35` das Nebelgrau).
+    /// `.ambiente-live` (`globals.css:391`) setzt dort `--text-2`, weil die Farbe daneben der
+    /// atmende Punkt traegt und ein rotes Wort neben einem roten Punkt dasselbe zweimal sagt.
+    var farbe: Color = Farbe.kicker
 
     var body: some View {
         Text(wort.uppercased())
-            .font(Schrift.kicker)
-            .tracking(1.4)
-            .foregroundStyle(Farbe.kicker)
+            .font(Schrift.mono(groesse, relativeTo: Schrift.kickerStil))
+            .tracking(groesse * Schrift.kickerSperrung)
+            .foregroundStyle(farbe)
     }
 }
 

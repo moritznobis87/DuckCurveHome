@@ -153,3 +153,90 @@ public struct Zugang: Sendable, Hashable, Codable {
         return !gastgeber.hasSuffix(".invalid")
     }
 }
+
+// =====================================================================================
+//  Die Sicherung: Adressen, die nicht JSON liefern
+// =====================================================================================
+
+extension Zugang {
+    /// Welche Messreihe eine Sicherung enthält.
+    ///
+    /// **Warum ein Typ und nicht zwei Zeichenketten in der Ansicht.** Der Dienst nimmt genau
+    /// zwei Werte - `docs/openapi.json`, Pfad `/api/v1/export/{kind}`, `enum: [minutes, hours]`.
+    /// Eine dritte Zeichenkette dort hinzuschreiben ergibt kein Fehlerbild, sondern eine 422
+    /// auf dem Gerät; ein Fall im `switch` ergibt einen Übersetzungsfehler. Und die beiden
+    /// Wörter, mit denen die Vorlage sie benennt (`page.tsx:139-144`), sind eine Textauswahl
+    /// und gehören deshalb hierher und nicht in eine `View`.
+    public enum Exportart: String, Sendable, Hashable, CaseIterable, Codable {
+        /// Die Minutenwerte: eine Zeile je Minute und Reihe.
+        case minuten = "minutes"
+        /// Die Stundenbilanz - mit den Grundlagen der PV-Abrechnung.
+        case stunden = "hours"
+
+        /// Wie der Verweis heißt (`page.tsx:140, 143`).
+        ///
+        /// Der Pfeil steht am Wort und nicht daneben: so hält es die Vorlage, und er sagt, was
+        /// ein Tippen tut - laden, nicht blättern.
+        public var wort: String {
+            switch self {
+            case .minuten: return "Minutenwerte ↓"
+            case .stunden: return "Stundenbilanz ↓"
+            }
+        }
+    }
+
+    /// Die Adresse einer Jahressicherung - oder `nil`, wenn das Jahr keines ist, das der Dienst
+    /// annimmt.
+    ///
+    /// **Warum die Grenzen hier geprüft werden und nicht erst am Dienst.** `docs/openapi.json`
+    /// schreibt für `year` `minimum: 2000, maximum: 2100`. Eine Adresse mit `year=1999` ist
+    /// keine Adresse, sondern eine 422 mit Verzögerung - und sie entsteht nicht aus einem
+    /// Tippfehler, sondern aus einer Uhr, die nach einem Stromausfall auf 1970 steht. Dann
+    /// soll der Verweis nicht da sein, statt ins Leere zu führen.
+    ///
+    /// **Was diese Adresse nicht kann.** Sie liefert eine Datei und kein JSON; ``Api`` hat
+    /// darum keinen Griff dafür (gesucht nach „export“: kein Treffer). Wer sie öffnet, muss
+    /// die `Authorization`-Kopfzeile selbst mitbringen - ``kopfzeilen`` hat sie. Gibt die
+    /// Oberfläche die Adresse an den Browser weiter, fehlt sie dort; nachzulesen bei
+    /// ``Zugangsworte/herunterladen``, wo genau dieser Vorbehalt dem Benutzer gesagt wird.
+    public func export(art: Exportart, jahr: Int) -> URL? {
+        guard (2000...2100).contains(jahr) else { return nil }
+        return adresse("/export/" + art.rawValue, ["year": String(jahr)])
+    }
+
+    /// Die Adresse einer Sicherung über einen beliebigen Zeitraum.
+    ///
+    /// **Warum es die neben ``export(art:jahr:)`` gibt.** Die Prüfansicht verweist nicht auf ein
+    /// Jahr, sondern auf *diesen* Tag: „Minutenwerte dieses Tages als CSV ›" auf
+    /// `/api/dch/export/minutes?start=…&end=…` (`apps/web/src/components/reports/DataCheck.tsx:52-56`).
+    /// Der Dienst nimmt das längst - `docs/openapi.json` führt für `/api/v1/export/{kind}`
+    /// neben `year` auch `start` und `end` als `date-time` -, die App kannte nur das Jahr. Und
+    /// zwanzig Megabyte eines Jahres sind nicht die Antwort auf die Frage „was war an diesem
+    /// Tag", um die es dort geht.
+    ///
+    /// **Ein verdrehter Zeitraum gibt keine Adresse.** `bis` vor `von` ergäbe am Dienst eine
+    /// leere Datei und sieht dann aus wie ein Tag ohne Messung - der Unterschied ist genau das,
+    /// was die Prüfansicht zeigen soll. Dann steht lieber kein Verweis.
+    ///
+    /// Der Vorbehalt von ``export(art:jahr:)`` gilt hier genauso: die Antwort ist eine Datei und
+    /// kein JSON, und wer die Adresse an den Browser des Geräts weitergibt, gibt die
+    /// `Authorization`-Kopfzeile nicht mit. Gesagt wird das an ``Pruefworte/csvVorbehalt``.
+    public func export(art: Exportart, von: Date, bis: Date) -> URL? {
+        guard bis > von else { return nil }
+        return adresse(
+            "/export/" + art.rawValue, ["start": Zeit.iso(von), "end": Zeit.iso(bis)])
+    }
+
+    /// Dieselbe Adresse aus einem Kalendertag, mit den Grenzen der Hauszeit.
+    ///
+    /// **Die Grenzen kommen aus ``Tag/zeitraum(_:)`` und nicht aus einer Rechnung mit 86400.**
+    /// Am Tag der Zeitumstellung hat der Tag 23 oder 25 Stunden; eine Adresse aus
+    /// Mitternacht plus einem festen Tag schnitte dort eine Stunde ab oder nähme eine dazu -
+    /// und auf einer Seite, die Lücken in Messreihen sucht, wäre das die Lücke, die man selbst
+    /// gemacht hat. Die Vorlage rechnet an dieser Stelle tatsächlich mit `86400000`
+    /// (`DataCheck.tsx:22-25`), was im Browser dieselbe Grube ist.
+    public func export(art: Exportart, tag: String) -> URL? {
+        guard let z = Tag.zeitraum(tag) else { return nil }
+        return export(art: art, von: z.von, bis: z.bis)
+    }
+}

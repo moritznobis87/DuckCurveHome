@@ -60,6 +60,22 @@
         }
     }
 
+    /// **Zwei Vorschauen für denselben Schirm**, weil die zweite Zeile nur an der Wand steht
+    /// und alle Maße an der kurzen Kante hängen: am Telefon ist das die Breite, am iPad im
+    /// Querformat die Höhe. Was auf einem von beiden stimmt, stimmt deshalb nicht von selbst
+    /// auf dem anderen.
+    #Preview("Der Ladeschirm · Wand") {
+        Vorschaurahmen(breit: true) {
+            Ladebild(wand: true)
+        }
+    }
+
+    #Preview("Der Ladeschirm · Hand") {
+        Vorschaurahmen {
+            Ladebild(wand: false)
+        }
+    }
+
     #Preview("Einrichten") {
         Vorschaurahmen {
             Einrichten()

@@ -86,3 +86,12 @@ Jeder Wert trägt `observed_at`, `quality` (ok, stale, unavailable, unknown, der
 | 9 | Regler aus gelernten Streckenparametern rechnen (SIMC) statt von Hand einstellen | indirekter selbsteinstellender Regler; die Einstellregel ist prüfbar, die Handeinstellung war es nie |
 | 10 | Übernahme einer Schätzung nur über fünf Hürden (Daten, Grenzen, Unsicherheit, Wartezeit, Gütegewinn) | das Modell kann nie schlechter werden als sein Startwert; jede Ablehnung hat einen Satz |
 | 11 | Lernzustand des Regelkreises in `model_calibrations` (`regelkreis_v1`) statt eigener Tabelle | ein Zustand je Modell, genau wofür die Tabelle da ist |
+
+
+Entschieden, aber noch nicht umgesetzt: **ADR-0002** kehrt Nummer 8 um - die Anmeldung zieht mit
+Personen und Passkeys in die API, das BFF hält nur noch ein opakes Sitzungstoken
+([`docs/decisions/ADR-0002-identitaet-und-berechtigung.md`](docs/decisions/ADR-0002-identitaet-und-berechtigung.md)).
+**ADR-0003** beschreibt, wie eine Box im Kundenrollout ohne Home Assistant erreichbar wird - Beitritt,
+Verzeichnis, Relais und Flotte
+([`docs/decisions/ADR-0003-erreichbarkeit-und-flotte.md`](docs/decisions/ADR-0003-erreichbarkeit-und-flotte.md)),
+mit dem Ausfallvertrag in [`docs/ZENTRALE.md`](docs/ZENTRALE.md).

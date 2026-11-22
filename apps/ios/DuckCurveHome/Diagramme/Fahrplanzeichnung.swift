@@ -2,7 +2,7 @@ import Charts
 import DuckCurveKit
 import SwiftUI
 
-/// Der Fahrplan über seinen ganzen Horizont: acht Flächen über einer Zeitachse.
+/// Der Fahrplan über seinen ganzen Horizont: acht Flächen über **einer** Zeitachse.
 ///
 /// **Was hier vorher stand.** Eine Fläche: ein Band für die geplante Freigabe, darüber der
 /// Preis, beides auf 24 Stunden geschnitten, die y-Achse versteckt. Gemessenes kam nicht vor.
@@ -14,6 +14,21 @@ import SwiftUI
 /// ein Schaltzustand haben keine gemeinsame Skala. Sie teilen die Zeitachse, und jede Fläche
 /// trägt ihren Maßstab im Titel. Im Dashboard war genau das einmal falsch - alle Achsen hingen
 /// an Gitter 0 und die Flächen fielen übereinander.
+///
+/// **Eine linke Kante für alle acht, und das ist die Hauptaussage der Seite.** Die Vorlage setzt
+/// jedem der acht Gitter dieselben Ränder (`Fahrplan.tsx:291`: `left: 56, right: 18`) und legt
+/// die Titel auf dieselben 56 Punkte (`:287`) - nur dadurch bedeutet eine Senkrechte durch die
+/// Zeichnung überall denselben Zeitpunkt, und nur dadurch stimmt der Satz „sechs Flächen
+/// übereinander mit einer gemeinsamen Zeitachse“ (`:19-22`). Hier war bis zum 21.11.2026 jede
+/// Fläche ein eigenes `Chart` mit `AxisMarks(position: .leading)`, und das nimmt sich so viel
+/// Platz, wie seine eigene Beschriftung braucht: die fünf Wertflächen standen um die Breite von
+/// „40“ bzw. „21,5“ eingerückt, die drei Streifen bekamen gar keine Beschriftung und fingen am
+/// Kartenrand an - und die Zeitachse stand ausgerechnet unter dem schmalsten der drei. Jetzt
+/// trägt eine eigene Spalte fester Breite (``achsenbreite``) die Zahlen, jedes `Chart` hat seine
+/// Achsen versteckt, und die Zeitachse steht als neunte, leere Zeichnung unter denselben
+/// Rändern. Derselbe Weg wie in `Diagramme/Abdeckungskarte.swift:42, 108, 182` und
+/// `Diagramme/Kennlinienbilder.swift`; welche Zahlen in der Spalte stehen und wo, rechnet
+/// ``Fahrplanraster/achsenmarken(_:etwa:)``.
 struct Fahrplanzeichnung: View {
     let bild: Fahrplanbild
     let plan: PlanOut
@@ -22,59 +37,78 @@ struct Fahrplanzeichnung: View {
     /// Wo der Finger auf der Zeitachse steht. Ohne Beruehrung: nichts.
     @State private var gewaehlt: Date?
 
+    @Environment(\.horizontalSizeClass) private var breite
+
+    private var schmal: Bool { breite == .compact }
+
+    /// Die Breite der Zahlenspalte links - für alle acht Flächen dieselbe.
+    ///
+    /// Die Vorlage hat 56 CSS-Punkte bei 10 px Schrift (`Fahrplan.tsx:291`, `:264`). „21,5“ in
+    /// ``Schrift/achse`` braucht am iPad 42 Punkte; am Telefon reicht weniger, und dort zählt
+    /// jeder Punkt für die Zeichnung selbst.
+    private var achsenbreite: CGFloat { schmal ? 34 : 42 }
+
+    /// Der rechte Rand, den sich die Vorlage für die letzte Zeitmarke nimmt (`:291`:
+    /// `right: 18`). Er gilt für alle acht Flächen und für die Zeitachse, sonst wäre die
+    /// gemeinsame Kante nur eine halbe.
+    private let rechterRand: CGFloat = 18
+
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
             auskunft
-            flaeche(
-                "Strompreis · ct/kWh", hoehe: 86, spanne: preisspanne,
-                leer: bild.preis.isEmpty ? "keine Preise im Horizont" : nil
-            ) {
+            // Für die Preisfläche hat die Vorlage **keinen** Leerhinweis (`:473-487`: sechs
+            // Hinweise, der Preis ist nicht darunter). Eine Preiszeichnung ohne Preise ist in
+            // diesem Haus kein Zustand, über den man etwas sagen müsste - und der Hinweis
+            // nahm hier zugleich der Achse die Beschriftung.
+            flaeche("Strompreis · ct/kWh", hoehe: 92, spanne: preisspanne, leer: nil) {
                 preisbild
             }
             flaeche(
-                "PV · kW · erwartet und gemessen", hoehe: 74, spanne: pvspanne,
+                "PV · kW · erwartet und gemessen", hoehe: 80, spanne: pvspanne,
                 leer: bild.hatMessung ? nil : "keine Messung im Horizont"
             ) {
                 pvbild
             }
             flaeche(
-                "Wärmebedarf · kW thermisch", hoehe: 86, spanne: waermespanne,
+                "Wärmebedarf · kW thermisch", hoehe: 92, spanne: waermespanne,
                 leer: bild.hatWaerme ? nil : "kein Wärmebedarf im Fahrplan"
             ) {
                 waermebild
             }
             flaeche(
-                puffertitel, hoehe: 74, spanne: pufferspanne,
+                puffertitel, hoehe: 80, spanne: pufferspanne,
                 leer: bild.hatPuffer ? nil : "kein Pufferverlauf im Fahrplan"
             ) {
                 pufferbild
             }
             flaeche(
-                "Wärmepumpe · kW elektrisch gemessen", hoehe: 66, spanne: wpspanne,
+                "Wärmepumpe · kW elektrisch gemessen", hoehe: 72, spanne: wpspanne,
                 leer: bild.hatWpMessung ? nil : "keine Messung der Wärmepumpe"
             ) {
                 wpbild
             }
-            flaeche("Wärmepumpe geplant", hoehe: 16, spanne: 0...1, leer: nil) {
+            flaeche("Wärmepumpe geplant", hoehe: 22, spanne: 0...1, leer: nil, beschriftet: false) {
                 streifen(bild.zustandsstreifen)
             }
             flaeche(
-                "Anforderung gemessen", hoehe: 16, spanne: 0...1,
-                leer: bild.hatAnforderung ? nil : "keine Anforderung gemessen"
+                "Anforderung gemessen", hoehe: 22, spanne: 0...1,
+                leer: bild.hatAnforderung ? nil : "keine Anforderung gemessen",
+                beschriftet: false
             ) {
                 streifen(bild.anforderung)
             }
             flaeche(
-                "Pelletofen geplant", hoehe: 16, spanne: 0...1,
+                "Pelletofen geplant", hoehe: 22, spanne: 0...1,
                 leer: bild.ofenstreifen.contains { $0.rolle == .ofenAn }
                     ? nil
                     : (bild.hatOfenfahrplan
                         ? "nicht eingeplant, Begründung darunter" : "kein Ofenfahrplan"),
-                mitZeitachse: true
+                beschriftet: false
             ) {
                 streifen(bild.ofenstreifen)
             }
-            legende
+            zeitachse
+            Fahrplanlegende(stuecke: bild.legende)
         }
     }
 
@@ -108,7 +142,15 @@ struct Fahrplanzeichnung: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Farbe.flaeche2, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            // **Dunkler als die Karte, mit bernsteinfarbenem Rand** (`Fahrplan.tsx:315-316`:
+            // `backgroundColor: C.deep`, `borderColor: rgba(242,169,0,.4)`). Daran erkennt man,
+            // dass das Feld zum Zeiger gehört und nicht zur Karte: es stand auf
+            // ``Farbe/flaeche2`` ohne Umriss und sah aus wie eine zweite Karte im Bild.
+            .background(Farbe.deep, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(Farbe.amber.opacity(0.4), lineWidth: 1)
+            }
         } else {
             Text("Zum Lesen einer Viertelstunde die Zeichnung berühren.")
                 .font(Schrift.winzig).foregroundStyle(Farbe.text3)
@@ -117,39 +159,125 @@ struct Fahrplanzeichnung: View {
 
     // MARK: - Der Rahmen einer Fläche
 
-    /// Titel, Zeichnung, und bei leerer Reihe ein Wort in der Mitte statt einer leeren Achse.
+    /// Titel, Zahlenspalte, Zeichnung - und bei leerer Reihe ein Wort in der Mitte.
     ///
-    /// Die Zeitachse steht nur unter der letzten Fläche: achtmal dieselben Uhrzeiten sind
-    /// siebenmal Lärm. Die senkrechten Rasterlinien stehen in jeder, damit die Flächen
-    /// übereinander lesbar bleiben.
+    /// **Die Zeitachse steht nicht hier.** Sie trägt in der Vorlage nur das letzte Gitter
+    /// (`Fahrplan.tsx:292`), und wenn sie zu einer der acht Flächen gehörte, hinge sie an deren
+    /// Einrückung. Sie steht darum als eigene Zeile unter allen acht (``zeitachse``). Die
+    /// senkrechten Rasterlinien stehen in jeder Fläche (`:255`), damit die Flächen übereinander
+    /// lesbar bleiben.
+    ///
+    /// **Die waagerechten Rasterlinien bleiben auch dann stehen, wenn ein Hinweis dasteht.** In
+    /// der Vorlage fehlt bei einer leeren Fläche nur die Reihe; Achse und Raster bleiben
+    /// (`:473-487` setzt ein `graphic`, kein `show: false`). Hier blendete derselbe `leer`-Fall
+    /// die Beschriftung mit ab, und dann wanderte die linke Kante der Fläche.
     private func flaeche<Inhalt: ChartContent>(
         _ titel: String, hoehe: CGFloat, spanne: ClosedRange<Double>, leer: String?,
-        mitZeitachse: Bool = false, @ChartContentBuilder inhalt: () -> Inhalt
+        beschriftet: Bool = true, @ChartContentBuilder inhalt: () -> Inhalt
     ) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(titel).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+        let marken = beschriftet ? Fahrplanraster.achsenmarken(spanne) : []
+        return VStack(alignment: .leading, spacing: 3) {
+            // Der Titel steht auf der linken Kante der Zeichnung, nicht auf der der Karte
+            // (`Fahrplan.tsx:287-288`: `left: 56` wie das Gitter).
+            Text(titel)
+                .font(Schrift.winzig)
+                .foregroundStyle(Farbe.text3)
+                .padding(.leading, achsenbreite)
+            HStack(spacing: 0) {
+                werteachse(marken, hoehe: hoehe)
+                diagramm(spanne: spanne, marken: marken, hoehe: hoehe, inhalt: inhalt())
+                    .overlay {
+                        if let leer {
+                            Text(leer).font(Schrift.achse).foregroundStyle(Farbe.text3)
+                        }
+                    }
+                Spacer().frame(width: rechterRand)
+            }
+        }
+    }
+
+    /// Eine der acht Flächen, mit versteckten Achsen: die Zahlen stehen daneben, die Zeit darunter.
+    private func diagramm<Inhalt: ChartContent>(
+        spanne: ClosedRange<Double>, marken: [Fahrplanraster.Achsenmarke], hoehe: CGFloat,
+        inhalt: Inhalt
+    ) -> some View {
+        Chart {
+            inhalt
+            if let h = bild.horizont, h.contains(jetzt) {
+                // **Bernstein, nicht Grau** (`Fahrplan.tsx:272-278`: `--amber-soft`,
+                // gestrichelt, 1,2). Die Jetzt-Linie stand in derselben Farbe wie die
+                // Achsenbeschriftung und wie die Auswahllinie daneben - drei graue
+                // Senkrechte, und keine sagte mehr, welche „jetzt“ meint.
+                RuleMark(x: .value("jetzt", jetzt))
+                    .foregroundStyle(Farbe.amberWeich)
+                    .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
+            }
+            if let g = gewaehlt {
+                RuleMark(x: .value("gewählt", g))
+                    .foregroundStyle(Farbe.text1.opacity(0.3))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+            }
+        }
+        .chartXScale(domain: zeitbereich)
+        .chartYScale(domain: spanne)
+        // Alle acht Flaechen teilen eine Auswahl: ein Finger auf der Preisflaeche zeigt
+        // auch, was der Puffer und der Ofen in dieser Viertelstunde tun. Seit alle acht in
+        // derselben Breite rechnen, liegt der Treffpunkt in allen auf derselben Stelle.
+        .chartXSelection(value: $gewaehlt)
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .hour, count: 6)) { _ in
+                AxisGridLine().foregroundStyle(Farbe.rasterlinie)
+            }
+        }
+        .chartYAxis {
+            AxisMarks(values: marken.map(\.wert)) { _ in
+                AxisGridLine().foregroundStyle(Farbe.rasterlinie)
+            }
+        }
+        .frame(height: hoehe)
+    }
+
+    /// Die Zahlen der Werteachse in einer eigenen Spalte fester Breite.
+    ///
+    /// **Ein Rahmen der Höhe null setzt die Zahl mittig auf ihre Rasterlinie**, ohne dass die
+    /// Zeilenhöhe der Schrift gemessen werden müsste - derselbe Griff wie bei den Zeitmarken
+    /// des Ausblicks (`Bausteine/Ausblickkarte.swift:272-277`, dort waagerecht). Die unterste
+    /// Zahl sitzt damit auf der Grundlinie der Fläche, wie `showMinLabel: true` in der Vorlage.
+    private func werteachse(_ marken: [Fahrplanraster.Achsenmarke], hoehe: CGFloat) -> some View {
+        ZStack(alignment: .topTrailing) {
+            // Hält die Spalte auf Breite und Höhe, auch wo keine Zahl steht - die drei
+            // Streifen haben keine (`Fahrplan.tsx:308`: `show: false`) und müssen trotzdem
+            // auf derselben Kante anfangen.
+            Color.clear.frame(width: achsenbreite, height: hoehe)
+            ForEach(marken) { m in
+                Text(m.wort)
+                    .font(Schrift.achse)
+                    .foregroundStyle(Farbe.text3)
+                    .fixedSize()
+                    .padding(.trailing, 5)
+                    .frame(height: 0)
+                    .offset(y: CGFloat(1 - m.anteil) * hoehe)
+            }
+        }
+        .frame(width: achsenbreite, height: hoehe, alignment: .topTrailing)
+    }
+
+    /// Die Zeitachse - einmal, unter allen acht Flächen und in derselben Breite.
+    ///
+    /// Eine leere Zeichnung mit einer unsichtbaren Marke, damit sie dieselbe Skala bekommt:
+    /// derselbe Weg wie in `Diagramme/Tageskurve.swift:394-399`. Achtmal dieselben Uhrzeiten
+    /// wären siebenmal Lärm, und an einer der acht Flächen hinge sie an deren Einrückung.
+    private var zeitachse: some View {
+        HStack(spacing: 0) {
+            Spacer().frame(width: achsenbreite)
             Chart {
-                inhalt()
-                if let h = bild.horizont, h.contains(jetzt) {
-                    RuleMark(x: .value("jetzt", jetzt))
-                        .foregroundStyle(Farbe.text2)
-                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                }
-                if let g = gewaehlt {
-                    RuleMark(x: .value("gewählt", g))
-                        .foregroundStyle(Farbe.text1.opacity(0.3))
-                        .lineStyle(StrokeStyle(lineWidth: 1))
-                }
+                RuleMark(x: .value("x", zeitbereich.lowerBound)).foregroundStyle(.clear)
             }
             .chartXScale(domain: zeitbereich)
-            .chartYScale(domain: spanne)
-            // Alle acht Flaechen teilen eine Auswahl: ein Finger auf der Preisflaeche zeigt
-            // auch, was der Puffer und der Ofen in dieser Viertelstunde tun.
-            .chartXSelection(value: $gewaehlt)
+            .chartYAxis(.hidden)
             .chartXAxis {
                 AxisMarks(values: .stride(by: .hour, count: 6)) { w in
-                    AxisGridLine().foregroundStyle(Farbe.rasterlinie)
-                    if mitZeitachse, let t = w.as(Date.self) {
+                    if let t = w.as(Date.self) {
                         AxisValueLabel {
                             // Am Tagesanfang das Datum, sonst die Stunde: der Horizont reicht
                             // ueber zwei Tage, und zwei Zwoelfen ohne Tag sind nicht zu trennen.
@@ -160,20 +288,8 @@ struct Fahrplanzeichnung: View {
                     }
                 }
             }
-            .chartYAxis {
-                AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { _ in
-                    if leer == nil, hoehe > 20 {
-                        AxisGridLine().foregroundStyle(Farbe.rasterlinie)
-                        AxisValueLabel().font(Schrift.achse).foregroundStyle(Farbe.text3)
-                    }
-                }
-            }
-            .frame(height: hoehe)
-            .overlay {
-                if let leer {
-                    Text(leer).font(Schrift.achse).foregroundStyle(Farbe.text3)
-                }
-            }
+            .frame(height: 16)
+            Spacer().frame(width: rechterRand)
         }
     }
 
@@ -215,10 +331,23 @@ struct Fahrplanzeichnung: View {
     }
 
     @ChartContentBuilder private var pvbild: some ChartContent {
+        // **Flaeche blass, Kante voll** (`Fahrplan.tsx:402-411`: Flaeche 0,20, Linie in
+        // Volldeckung, Breite 2). Eine Flaeche ohne Kante verliert ihren Rand gegen die
+        // Kartenflaeche; die Linie holt die Lesbarkeit zurueck, die die blasse Flaeche abgibt.
         ForEach(bild.pvGemessen) { p in
             if let kw = p.wert {
                 AreaMark(x: .value("Zeit", p.zeit), y: .value("kW", kw))
-                    .foregroundStyle(Farbe.pv.opacity(0.38))
+                    .foregroundStyle(Farbe.pv.opacity(0.20))
+            }
+        }
+        ForEach(bild.pvGemessen) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "gemessen")
+                )
+                .foregroundStyle(Farbe.pv)
+                .lineStyle(StrokeStyle(lineWidth: 2))
             }
         }
         ForEach(bild.pvErwartet) { p in
@@ -228,18 +357,34 @@ struct Fahrplanzeichnung: View {
                     series: .value("Reihe", "erwartet")
                 )
                 .foregroundStyle(Farbe.mist)
-                .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
+                // **1,5 Punkte und geglättet** (`Fahrplan.tsx:397-399`: `width: 1.5`,
+                // `smooth: true`). Die Glättung ist dort kein Zierrat: sie unterscheidet die
+                // Prognosekurve von der gemessenen Treppe daneben, die in derselben Fläche
+                // liegt. Mit 1,2 Punkten und eckig sahen beide gleich aus.
+                .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                .interpolationMethod(.catmullRom)
             }
         }
     }
 
     /// Zwei Flächen statt eines Stapels: zuerst die Summe, darüber das Heizen.
+    ///
+    /// **Die Kante des Warmwassers liegt auf der Summe, nicht auf dem Warmwasser.** Im
+    /// gestapelten Bild der Vorlage ist die obere Kante der Warmwasserfläche gerade die Summe
+    /// aus beidem (`Fahrplan.tsx:415-437`); eine Linie auf `warmwasser` läge mitten im Bild
+    /// und gehörte zu nichts. Die Reihe `bild.warmwasser` wird deshalb gar nicht gezeichnet -
+    /// sie steht für die Auskunft.
+    ///
+    /// **Keine Stufen.** Die beiden gestapelten Reihen der Vorlage haben **kein** `step`
+    /// (`:415-437`) - anders als der Preis (`:372`) und die gemessene Wärmepumpe (`:459`), die
+    /// es ausdrücklich tragen. Das ist kein Zufall der Vorlage: ein Preis gilt eine
+    /// Viertelstunde lang unverändert, ein Wärmebedarf ist ein Modellwert, der sich stetig
+    /// ändert. Hier stand `stepEnd` an allen vier Marken.
     @ChartContentBuilder private var waermebild: some ChartContent {
         ForEach(bild.waermeSumme) { p in
             if let kw = p.wert {
                 AreaMark(x: .value("Zeit", p.zeit), y: .value("kW", kw))
-                    .foregroundStyle(Farbe.warmwasser.opacity(0.75))
-                    .interpolationMethod(.stepEnd)
+                    .foregroundStyle(Farbe.warmwasser.opacity(0.34))
             }
         }
         ForEach(bild.heizen) { p in
@@ -248,8 +393,27 @@ struct Fahrplanzeichnung: View {
                     x: .value("Zeit", p.zeit), y: .value("kW", kw),
                     series: .value("Reihe", "heizen")
                 )
-                .foregroundStyle(Farbe.haus.opacity(0.75))
-                .interpolationMethod(.stepEnd)
+                .foregroundStyle(Farbe.haus.opacity(0.22))
+            }
+        }
+        ForEach(bild.waermeSumme) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "summe")
+                )
+                .foregroundStyle(Farbe.warmwasser)
+                .lineStyle(StrokeStyle(lineWidth: 1.5))
+            }
+        }
+        ForEach(bild.heizen) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "heizkante")
+                )
+                .foregroundStyle(Farbe.haus)
+                .lineStyle(StrokeStyle(lineWidth: 1.5))
             }
         }
     }
@@ -264,10 +428,13 @@ struct Fahrplanzeichnung: View {
             )
             .foregroundStyle(Farbe.alarm.opacity(0.10))
         }
-        if let decke = bild.pufferDecke {
-            RuleMark(y: .value("Decke", decke))
-                .foregroundStyle(Farbe.linie2)
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 4]))
+        // Die Decke ist in der Vorlage die Achse selbst (`Fahrplan.tsx:302`), keine Linie im
+        // Bild: eine gestrichelte Waagerechte dort sieht aus wie eine zweite Reserve.
+        ForEach(bild.puffer) { p in
+            if let kwh = p.wert {
+                AreaMark(x: .value("Zeit", p.zeit), y: .value("kWh", kwh))
+                    .foregroundStyle(Farbe.puffer.opacity(0.14))
+            }
         }
         ForEach(bild.puffer) { p in
             if let kwh = p.wert {
@@ -276,7 +443,7 @@ struct Fahrplanzeichnung: View {
                     series: .value("Reihe", "puffer")
                 )
                 .foregroundStyle(Farbe.puffer)
-                .lineStyle(StrokeStyle(lineWidth: 1.6))
+                .lineStyle(StrokeStyle(lineWidth: 2))
             }
         }
     }
@@ -285,8 +452,19 @@ struct Fahrplanzeichnung: View {
         ForEach(bild.wpGemessen) { p in
             if let kw = p.wert {
                 AreaMark(x: .value("Zeit", p.zeit), y: .value("kW", kw))
-                    .foregroundStyle(Farbe.waermepumpe.opacity(0.55))
+                    .foregroundStyle(Farbe.waermepumpe.opacity(0.22))
                     .interpolationMethod(.stepEnd)
+            }
+        }
+        ForEach(bild.wpGemessen) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "wp")
+                )
+                .foregroundStyle(Farbe.waermepumpe)
+                .lineStyle(StrokeStyle(lineWidth: 1.8))
+                .interpolationMethod(.stepEnd)
             }
         }
     }
@@ -296,7 +474,9 @@ struct Fahrplanzeichnung: View {
         ForEach(felder) { f in
             RectangleMark(
                 xStart: .value("von", f.zeit),
-                xEnd: .value("bis", f.zeit.addingTimeInterval(Ausblick.schritt)),
+                // 92 Prozent der Viertelstunde (`Fahrplan.tsx:465-469`): bei voller Breite
+                // beruehren sich die Felder, und aus zwoelf Entscheidungen wird ein Balken.
+                xEnd: .value("bis", f.zeit.addingTimeInterval(Ausblick.schritt * 0.92)),
                 yStart: .value("u", 0), yEnd: .value("o", f.hoehe)
             )
             .foregroundStyle(farbe(f.rolle))
@@ -305,7 +485,7 @@ struct Fahrplanzeichnung: View {
 
     // MARK: - Maßstäbe
 
-    /// Die rote Zone unten hat im Dashboard das Wort „RESERVE" in sich. Auf 74 Punkten Hoehe
+    /// Die rote Zone unten hat im Dashboard das Wort „RESERVE“ in sich. Auf 74 Punkten Hoehe
     /// ist dafuer kein Platz, also steht es im Titel - gelesen wird es ohnehin dort.
     private var puffertitel: String {
         guard let r = bild.pufferReserve else { return "Pufferinhalt · kWh" }
@@ -337,13 +517,25 @@ struct Fahrplanzeichnung: View {
         Fahrplanbild.spanne(0, bis: bild.wpGemessen.map(\.wert)) ?? 0...3
     }
 
-    /// Jede Rolle hat genau eine Farbe - auch die der Auskunftszeilen.
-    ///
-    /// **Ohne `default`, und das ist Absicht.** Als ``Fahrplanbild/Rolle`` um sechs Faelle
-    /// wuchs, hat der Compiler genau hier angehalten. Ein `default` haette das verschluckt und
-    /// sechs Zeilen stillschweigend weiss gefaerbt.
-    private func farbe(_ r: Fahrplanbild.Rolle) -> Color {
-        switch r {
+    private func farbe(_ r: Fahrplanbild.Rolle) -> Color { r.bildfarbe }
+
+}
+
+/// Jede Rolle hat genau eine Farbe **im Bild** - im Streifen, in der Legende und in den
+/// Auskunftszeilen.
+///
+/// **Ohne `default`, und das ist Absicht.** Als ``Fahrplanbild/Rolle`` um sechs Faelle wuchs,
+/// hat der Compiler genau hier angehalten. Ein `default` haette das verschluckt und sechs
+/// Zeilen stillschweigend weiss gefaerbt.
+///
+/// **Nicht dieselbe Zuordnung wie in der Entscheidungstabelle**, und das ist kein Versehen.
+/// Hier sind „frei“ und „aus“ Flaechen in 30 und 14 Prozent Deckung (`Fahrplan.tsx:51-56`:
+/// `WP_ZUSTAND`); in der Tabelle sind dieselben Woerter Text, und Text in 14 Prozent Deckung
+/// ist nicht zu lesen. Die Tabelle hebt sie darum auf ``Farbe/text2`` und ``Farbe/text3``
+/// (`Seiten/Technik/FahrplanSeite.swift`, `rollenfarbe(_:)`).
+extension Fahrplanbild.Rolle {
+    var bildfarbe: Color {
+        switch self {
         case .angefordert: return Farbe.waermepumpe
         case .gemieden: return Farbe.alarm
         case .frei: return Farbe.text1.opacity(0.3)
@@ -356,43 +548,47 @@ struct Fahrplanzeichnung: View {
         case .heizen: return Farbe.haus
         case .warmwasser: return Farbe.warmwasser
         case .neutral: return Farbe.text1
+        case .vorhersage: return Farbe.mist
         }
     }
+}
 
-    // MARK: - Die Legende
+/// Das Verzeichnis unter der Zeichnung: zwoelf Kloetze mit ihrem Wort.
+///
+/// **Eine eigene Ansicht, weil sie auch ohne Zeichnung dasteht.** Ohne Intervalle zeigt die
+/// Vorlage die Horizontkarte weiter - den Satz an der Stelle des Bildes und die Legende
+/// darunter (`Fahrplan.tsx:590-640`: Der Satz steht im `else` des Diagramms, die Legende
+/// dahinter und ausserhalb). Sie ist dort das Verzeichnis dessen, was das Bild zeigen *wuerde*.
+///
+/// **Nicht ``Diagrammlegende``** (`Diagramme/Pvverwendung.swift:170`), und das ist kein
+/// uebersehener Baustein: der setzt 12/4 Punkte Abstand, 10 Punkte Klotzbreite und eine
+/// Schriftgroesse, richtet sich rechts aus und kennt die blassen Baender nicht. Die Legende des
+/// Fahrplans hat in der Vorlage eigene Masse (`:598`, `width: 14`), zwei blasse Stuecke fuer die
+/// Preisfenster und vier verschiedene Klotzhoehen fuer die Zustaende. Der vorhandene Baustein
+/// liesse davon nichts uebrig.
+///
+/// **Die Abstaende der Vorlage** (`:598`: `gap-x-5 gap-y-2`, also 20 und 8 px). Hier standen
+/// 13 und 5 - auf einem Telefon rueckten damit zwoelf Stuecke so dicht aneinander, dass zwei
+/// Zeilen wie eine aussahen. Die Schrift waechst am Telefon eine Stufe (`handy.css:190`:
+/// 11 px → 12 px), wie jede kleine Schrift einer Berichtsseite dort.
+struct Fahrplanlegende: View {
+    let stuecke: [Fahrplanbild.Legendenstueck]
 
-    private var legende: some View {
-        Umbruchzeile(abstand: 13, zeilenabstand: 5) {
-            ForEach(legendenstuecke) { s in
+    @Environment(\.horizontalSizeClass) private var breite
+
+    var body: some View {
+        Umbruchzeile(abstand: 20, zeilenabstand: 8) {
+            ForEach(stuecke) { s in
                 HStack(spacing: 5) {
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(s.farbe)
-                        .frame(width: 13, height: s.hoehe)
-                    Text(s.wort).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                    RoundedRectangle(cornerRadius: s.dick <= 2 ? 0 : 1.5)
+                        .fill(s.rolle.bildfarbe.opacity(s.blass ? 0.32 : 1))
+                        .frame(width: 14, height: s.dick)
+                    Text(s.wort)
+                        .font(breite == .compact ? Schrift.sans(12) : Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
                 }
             }
         }
-    }
-
-    private var legendenstuecke: [Legendenstueck] {
-        var s = Fahrplanbild.zustandslegende.map {
-            Legendenstueck(
-                wort: "Wärmepumpe \($0.wort)", farbe: farbe($0.rolle),
-                hoehe: max(3, $0.hoehe * 10))
-        }
-        s += [
-            .init(wort: "Ofen brennt", farbe: Farbe.ofen, hoehe: 9),
-            .init(wort: "Heizen", farbe: Farbe.haus, hoehe: 9),
-            .init(wort: "Warmwasser", farbe: Farbe.warmwasser, hoehe: 9),
-            .init(wort: "Pufferinhalt", farbe: Farbe.puffer, hoehe: 3),
-            .init(wort: "PV gemessen", farbe: Farbe.pv, hoehe: 9),
-            .init(wort: "PV erwartet", farbe: Farbe.mist, hoehe: 2),
-            .init(wort: "Preistief", farbe: Farbe.mist.opacity(0.32), hoehe: 9),
-        ]
-        if bild.hatNegativesFenster {
-            s.append(.init(wort: "negativer Preis", farbe: Farbe.alarm.opacity(0.32), hoehe: 9))
-        }
-        return s
     }
 }
 

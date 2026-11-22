@@ -1,0 +1,24 @@
+# Startbild von Duck Curve Home: das Symbol auf Petrol, langsam atmend. Dasselbe Bild beim Hoch- und
+# beim Herunterfahren. Meldungen des Systems werden nicht angezeigt (Plymouth-Skript ohne
+# Textausgabe); ein Kunde sieht vom Einschalten bis zur Anwendung nur Duck Curve.
+
+# --deep aus apps/web/src/styles/tokens.css: #082431
+Window.SetBackgroundTopColor(0.031, 0.141, 0.192);
+Window.SetBackgroundBottomColor(0.031, 0.141, 0.192);
+
+logo.image = Image("logo.png");
+# Auf kleinen Displays (7 Zoll im Hochformat) nicht breiter als die Haelfte des Bildschirms.
+grenze = Window.GetWidth() / 2;
+if (logo.image.GetWidth() > grenze) {
+  logo.image = logo.image.Scale(grenze, logo.image.GetHeight() * grenze / logo.image.GetWidth());
+}
+logo.sprite = Sprite(logo.image);
+logo.sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - logo.image.GetWidth() / 2);
+logo.sprite.SetY(Window.GetY() + Window.GetHeight() / 2 - logo.image.GetHeight() / 2);
+
+takt = 0;
+fun erneuern() {
+  takt++;
+  logo.sprite.SetOpacity(0.8 + 0.2 * Math.Sin(takt / 25));
+}
+Plymouth.SetRefreshFunction(erneuern);

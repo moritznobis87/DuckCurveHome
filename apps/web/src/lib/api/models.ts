@@ -166,3 +166,15 @@ export type Regelkreis = Omit<S["RegelkreisOut"], "bloecke" | "kanten" | "kreise
   uebersteuert: string[];
   uebernahmen: number;
 };
+
+
+// Technik -> Hausgerät (routers/geraet.py)
+export type Geraet = S["GeraetOut"];
+export type GeraetDienst = S["GeraetDienstOut"];
+export type GeraetEinheit = S["GeraetEinheitOut"];
+export type GeraetRechner = S["GeraetRechnerOut"];
+export type GeraetSicherung = S["GeraetSicherungOut"];
+export type GeraetAktion = S["GeraetAktionOut"];
+export type GeraetProtokoll = S["GeraetProtokollOut"];
+export type ApiSelbst = S["ApiSelbstOut"];
+export type Ampel = GeraetDienst["ampel"];
