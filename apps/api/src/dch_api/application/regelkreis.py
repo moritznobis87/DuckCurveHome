@@ -22,7 +22,8 @@ Reine Zusammensetzung. Wer liest und schreibt, ist die Laufzeit.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta, tzinfo
 
 from dch_api.errors import DchError
 from dch_api.schemas import KennlinieOut, KontaktwirkungOut, RegelkreisOut
@@ -32,6 +33,7 @@ from hems_core.regelkreis import karte as kern
 from hems_core.regelkreis import messung
 from hems_core.regelkreis.parameter import PARAMETER
 from hems_core.regelkreis.schaetzer import Pruefung, Schaetzstand
+from hems_core.thermal.heat_balance import HeatSample, heat_series
 from hems_core.thermal.kennlinie import Ausgleich
 
 #: Der Schlüssel des Lernzustands in `model_calibrations`.
@@ -42,6 +44,9 @@ LERNABSTAND = timedelta(hours=1)
 #: Rückblick der beiden Auswertungen, aus denen die Kandidaten kommen.
 KENNLINIE_TAGE = 30
 WIRKUNG_TAGE = 30
+#: Rückblick der Wärmebilanz. Mehr trägt die Minutenauflösung des Bestands nicht, und für
+#: Heizstunden und stille Nächte reichen zwei Wochen.
+WAERME_TAGE = 14
 
 
 def arbeitspunkt(
@@ -102,6 +107,8 @@ def lernen(
     jetzt: datetime,
     kennlinie: KennlinieOut | None = None,
     wirkung: KontaktwirkungOut | None = None,
+    waerme: Sequence[HeatSample] | None = None,
+    zeitzone: tzinfo = UTC,
 ) -> dict[str, Pruefung]:
     """Ein Lernlauf: Kandidaten bilden, vorlegen, und die Prüfungen zurückgeben.
 
@@ -116,6 +123,26 @@ def lernen(
         kandidaten.extend(messung.aus_kennlinie(a))
     if wirkung is not None:
         kandidaten.extend(messung.aus_kontaktwirkung(wirkung))
+    if waerme:
+        # Dieselbe Rechnung wie auf der Wärmeseite, nicht eine zweite daneben.
+        punkte = heat_series(
+            waerme,
+            stove=cfg.stove,
+            heat=cfg.heat_demand,
+            buffer=cfg.buffer,
+            heat_pump=cfg.heat_pump,
+        )
+        kandidaten.extend(
+            messung.aus_waermebilanz(waerme, punkte, heat=cfg.heat_demand, zeitzone=zeitzone)
+        )
+        nacht = messung.aus_naechten(
+            waerme,
+            buffer=cfg.buffer,
+            heat=cfg.heat_demand,
+            kapazitaet_kwh_k=kern.werte(cfg, stand)["puffer_c"],
+        )
+        if nacht is not None:
+            kandidaten.append(nacht)
     aus: dict[str, Pruefung] = {}
     for k in kandidaten:
         vorher = stand.parameter.get(k.pid)

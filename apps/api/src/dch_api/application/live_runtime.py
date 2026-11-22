@@ -176,6 +176,7 @@ from hems_core.simulation import BERLIN
 from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
 from hems_core.thermal import betrieb as betrieb_kern
 from hems_core.thermal import kennlinie as kennlinie_kern
+from hems_core.thermal.heat_balance import HeatSample
 from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
 from hems_core.watch import BRIDGE, RULES, back_text, findings
 from hems_core.watch.aussen import Aussenpruefung
@@ -1641,14 +1642,24 @@ class LiveRuntime:
         self._regelkreis_gelernt = now
         kennlinie: KennlinieOut | None = None
         wirkung: KontaktwirkungOut | None = None
+        waerme: list[HeatSample] = []
         try:
             kennlinie = await self.kennlinie(regelkreis_logic.KENNLINIE_TAGE)
             wirkung = await self.kontaktwirkung(regelkreis_logic.WIRKUNG_TAGE)
+            waerme = await self.accounting.waermeproben(
+                now - timedelta(days=regelkreis_logic.WAERME_TAGE), now
+            )
         except Exception as exc:
             log.warning("regelkreis learn failed", error=repr(exc)[:200])
             return
         pruefungen = regelkreis_logic.lernen(
-            self._regelkreis, self.hems, jetzt=now, kennlinie=kennlinie, wirkung=wirkung
+            self._regelkreis,
+            self.hems,
+            jetzt=now,
+            kennlinie=kennlinie,
+            wirkung=wirkung,
+            waerme=waerme,
+            zeitzone=BERLIN,
         )
         uebernommen = [pid for pid, p in pruefungen.items() if p.uebernehmen]
         if uebernommen:

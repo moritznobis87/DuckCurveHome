@@ -13630,9 +13630,11 @@
             "type": "string",
             "enum": [
               "ausgleich",
+              "fenster",
               "rls",
               "ereignis",
               "bilanz",
+              "stillstand",
               "ewma",
               "keiner"
             ],

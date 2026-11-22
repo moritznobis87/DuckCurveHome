@@ -1198,8 +1198,17 @@ class DemoRunner:
         self._regelkreis_gelernt = now
         kennlinie = await self.kennlinie(regelkreis_logic.KENNLINIE_TAGE)
         wirkung = await self.kontaktwirkung(regelkreis_logic.WIRKUNG_TAGE)
+        waerme = await self.accounting.waermeproben(
+            now - timedelta(days=regelkreis_logic.WAERME_TAGE), now
+        )
         regelkreis_logic.lernen(
-            self._regelkreis, self.hems, jetzt=now, kennlinie=kennlinie, wirkung=wirkung
+            self._regelkreis,
+            self.hems,
+            jetzt=now,
+            kennlinie=kennlinie,
+            wirkung=wirkung,
+            waerme=waerme,
+            zeitzone=BERLIN,
         )
 
     async def kontaktwirkung(self, days: int) -> KontaktwirkungOut:

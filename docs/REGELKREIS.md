@@ -157,9 +157,28 @@ rechnet:
 |---|---|---|
 | COP-Ebene a, b, c | `thermal.kennlinie.ausgleich` | **angeschlossen** |
 | Totzeit und Anlaufzeit der Wärmepumpe | `thermal.kontaktwirkung` (Ereignisstudie) | **angeschlossen** |
-| Verlustbeiwert des Puffers | Abkühlung in Nächten ohne Betrieb | Funktion da, Daten noch nicht angebunden |
-| Verlustkoeffizient des Hauses, interne Gewinne | Wärmebilanz gegen Gradstunden | RLS da, Datenpfad offen |
+| Verlustkoeffizient des Hauses, interne Gewinne, Warmwasserbedarf | Wärmebilanz, Stundenmittel über 14 Tage | **angeschlossen** |
+| Verlustbeiwert des Puffers | Abkühlung in stillen Nächten über der Heizgrenze | **angeschlossen** |
 | Raumkapazitäten, solare Apertur, Ventilautorität | Raumhistorie | offen |
+| Steilheit der Heizkennlinie | Ventilhübe gegen Rücklauftemperatur | offen |
+
+**Die Wärmebilanz liefert drei Größen auf einmal**, und das ist der Grund für das dritte Glied im
+Modell:
+
+    Q̇bedarf(h) = H·(Ti − Ta) − Q̇int + Q̇WW,tag · p(h)
+
+`p(h)` ist das Zapfprofil aus der Konfiguration, auf eins normiert. Wer nur gegen die
+Temperaturdifferenz anpasst, schreibt die Zapfungen in den Verlustkoeffizienten hinein und bekommt
+ein zu undichtes Haus. Die Raumwärme des Ofens wird dazugerechnet - ohne sie sähe jede Ofenstunde
+aus wie ein dichteres Haus. Ausgewertet werden Stundenmittel unterhalb der Heizgrenze mit
+mindestens 45 auswertbaren Minuten.
+
+**Der Verlustbeiwert des Puffers braucht Geduld.** Still heißt nicht, dass die Erzeuger stehen -
+still heißt, dass niemand entnimmt. In der Heizzeit zieht der Heizkreis auch nachts, und zwar um
+ein Vielfaches mehr, als die Hülle verliert: ein Kelvin je Stunde sind bei tausend Litern 1,2 kW,
+der Stillstandsverlust rund 0,2. Verwertbar sind deshalb nur Nächte **über der Heizgrenze**. Davon
+gibt es wenige, `n` zählt Nächte und nicht Minuten, und bis zur dreißigsten bleibt der Beiwert
+eine Annahme. Im Januar lernt dieser Schätzer nichts, und die Karte sagt das.
 
 Die Unsicherheit der Kennliniensteigung hängt an der Spanne der Punkte: eine Kennlinie aus einer
 einzigen Kältewoche gibt die Vorlaufabhängigkeit nicht her, und `ausgleich` setzt den Term dann auf
@@ -197,9 +216,9 @@ Verstärkungsplanung, und sie ist damit sichtbar.
 
 ## 8. Was offen ist
 
-1. **Die übrigen Schätzer anschließen.** Die Reihen liegen vor; es fehlt der Datenpfad von der
-   Minutenreihe in den RLS. Die Reihenfolge nach Nutzen: H des Hauses, Verlustbeiwert des Puffers,
-   Steilheit der Heizkennlinie.
+1. **Die übrigen Schätzer anschließen.** Offen sind die Steilheit der Heizkennlinie (braucht die
+   Ventilhübe je Raum) und die Raumparameter. H des Hauses, interne Gewinne, Warmwasserbedarf und
+   der Verlustbeiwert des Puffers laufen seit dem 22.11.2026.
 2. **Je Raum statt ein Raum.** Das Register führt einen Satz Raumparameter; das Haus hat zehn
    Kreise. Die Plausibilitätsprüfung (Summe der Raumverluste gegen H) setzt zehn Sätze voraus.
 3. **Der Regler nutzt den Entwurf noch nicht.** Die Karte rechnet KR und Tn aus den gelernten

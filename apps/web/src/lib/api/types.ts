@@ -5999,7 +5999,7 @@ export interface components {
              * Schaetzart
              * @enum {string}
              */
-            schaetzart: "ausgleich" | "rls" | "ereignis" | "bilanz" | "ewma" | "keiner";
+            schaetzart: "ausgleich" | "fenster" | "rls" | "ereignis" | "bilanz" | "stillstand" | "ewma" | "keiner";
             /** Schaetzart Text */
             schaetzart_text: string;
             /** Startwert */

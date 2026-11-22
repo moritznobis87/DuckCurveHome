@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from datetime import UTC, datetime, timedelta
 from itertools import pairwise
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -479,15 +480,35 @@ def test_vorlaufsollwert_folgt_der_heizkennlinie() -> None:
     assert kalt <= CFG.buffer.max_temperature_c
 
 
-def test_karte_zeigt_gelernte_zahlen_als_gemessen_oder_geschaetzt() -> None:
+def test_karte_trennt_gemessen_von_geschaetzt() -> None:
+    """Gemessen heißt: unmittelbar aus Messwerten abgelesen - die Ausgleichsebene aus Wärme und
+    Strom, die Anlaufverzögerung aus dem Abstand zweier Zeitpunkte. Geschätzt heißt: durch ein
+    Modell hindurch, das selbst Annahmen enthält. Der Verlustbeiwert des Speichers rechnet gegen
+    eine angenommene Aufstellraumtemperatur und gehört deshalb in die zweite Gruppe."""
     stand = schaetzer.Schaetzstand()
     stand.melde("cop_a", kandidat=3.9, sigma=0.05, n=400, jetzt=T0, startwert=5.0)
+    stand.melde("wp_totzeit", kandidat=4.6, sigma=0.3, n=40, jetzt=T0, startwert=3.0)
     stand.melde("h_haus", kandidat=0.186, sigma=0.004, n=120, jetzt=T0, startwert=0.22)
+    stand.melde("puffer_ua", kandidat=5.6, sigma=0.4, n=35, jetzt=T0, startwert=4.0)
     k = karte.aufbauen(CFG, stand, jetzt=T0)
     herkunft = {p.id: p.herkunft for p in k.parameter}
     assert herkunft["cop_a"] == "gemessen"
+    assert herkunft["wp_totzeit"] == "gemessen"
     assert herkunft["h_haus"] == "geschaetzt"
-    assert k.uebernahmen == 2
+    assert herkunft["puffer_ua"] == "geschaetzt"
+    assert k.uebernahmen == 4
+
+
+def test_jede_schaetzart_hat_einen_satz() -> None:
+    """Die Oberfläche zeigt neben jedem Parameter, wie er gewonnen wird. Ein Verfahren ohne Satz
+    stünde dort als leere Zeile - und eine Beschreibung, die nicht zum Verfahren passt, wäre
+    schlimmer: die drei Größen der Wärmebilanz kommen aus einem gleitenden Fenster und nicht aus
+    einem rekursiven Schätzer."""
+    for p in parameter.PARAMETER.values():
+        assert p.schaetzart in parameter.SCHAETZART_TEXT
+        assert len(parameter.SCHAETZART_TEXT[p.schaetzart]) > 20
+    assert parameter.PARAMETER["h_haus"].schaetzart == "fenster"
+    assert parameter.PARAMETER["puffer_ua"].schaetzart == "stillstand"
 
 
 def test_karte_entwirft_die_regler_aus_den_geltenden_parametern() -> None:
@@ -875,3 +896,224 @@ def test_umschaltpunkt_ausserhalb_der_hausgrenzen_wird_nicht_gemeldet() -> None:
     )
     assert guenstig.kosten.umschalt_aussen_c is None
     assert guenstig.kosten.cop_umschalt < 1.5
+
+
+# --------------------------------------------------- Schätzer über der Wärmebilanz
+
+BERLIN = ZoneInfo("Europe/Berlin")
+#: Die Zahlen, die der Schätzer wiederfinden soll - dieselben, die das Haus vermutlich hat.
+H_WAHR = 0.186
+INT_WAHR = 0.62
+WW_WAHR = 6.4
+
+
+def _bilanz_reihe(tage: int = 6, rauschen: float = 0.0) -> tuple[list, list]:
+    """Minutenreihe eines Hauses, das sich genau an das Modell hält.
+
+    Die Außentemperatur wandert über die Tage und über den Tag, damit die Steigung bestimmt ist;
+    ohne Spanne in der Temperaturdifferenz ließe sich H nicht von den Gewinnen trennen.
+    """
+    from hems_core.thermal.heat_balance import HeatPoint, HeatSample
+
+    profil = list(HeatDemandConfig().dhw_profile)
+    gewicht = [w / sum(profil) for w in profil]
+    proben: list[HeatSample] = []
+    punkte: list[HeatPoint] = []
+    start = datetime(2026, 1, 5, 0, 0, tzinfo=BERLIN)
+    for stunde in range(tage * 24):
+        at = start + timedelta(hours=stunde)
+        tag = stunde // 24
+        aussen = -4.0 + 2.6 * tag + 4.0 * math.sin(stunde * math.pi / 12.0)
+        bedarf = (
+            H_WAHR * (21.0 - aussen)
+            - INT_WAHR
+            + WW_WAHR * gewicht[at.hour]
+            + rauschen * math.sin(stunde * 2.399)
+        )
+        for minute in range(60):
+            proben.append(HeatSample(at=at + timedelta(minutes=minute), outdoor_c=aussen))
+            punkte.append(HeatPoint(at=at + timedelta(minutes=minute), draw_kw=max(0.0, bedarf)))
+    return proben, punkte
+
+
+def test_waermebilanz_findet_verlust_gewinne_und_warmwasser() -> None:
+    """Drei Größen aus einer Reihe: die Steigung über der Temperaturdifferenz ist H, der
+    Achsabschnitt sind die inneren Gewinne, und die Form des Tages ist das Warmwasser.
+
+    Wer nur gegen die Temperaturdifferenz anpasst, schreibt die Zapfungen in den
+    Verlustkoeffizienten hinein - das Haus sähe undichter aus, als es ist.
+    """
+    proben, punkte = _bilanz_reihe()
+    kandidaten = {
+        k.pid: k
+        for k in messung.aus_waermebilanz(proben, punkte, heat=HeatDemandConfig(), zeitzone=BERLIN)
+    }
+    assert kandidaten["h_haus"].wert == pytest.approx(H_WAHR, abs=0.004)
+    assert kandidaten["q_intern"].wert == pytest.approx(INT_WAHR, abs=0.05)
+    assert kandidaten["ww_tag"].wert == pytest.approx(WW_WAHR, abs=0.4)
+    assert kandidaten["h_haus"].n > 50
+    assert kandidaten["h_haus"].rmse is not None and kandidaten["h_haus"].rmse < 0.05
+
+
+def test_waermebilanz_meldet_ihre_unsicherheit_mit() -> None:
+    """Mit Rauschen in der Reihe wird die Unsicherheit größer - sonst wäre sie keine."""
+    sauber = {
+        k.pid: k
+        for k in messung.aus_waermebilanz(
+            *_bilanz_reihe(), heat=HeatDemandConfig(), zeitzone=BERLIN
+        )
+    }
+    verrauscht = {
+        k.pid: k
+        for k in messung.aus_waermebilanz(
+            *_bilanz_reihe(rauschen=0.8), heat=HeatDemandConfig(), zeitzone=BERLIN
+        )
+    }
+    assert verrauscht["h_haus"].sigma > sauber["h_haus"].sigma * 5
+    assert verrauscht["h_haus"].rmse is not None
+    assert verrauscht["h_haus"].rmse > 0.3
+
+
+def test_waermebilanz_rechnet_die_raumwaerme_des_ofens_dazu() -> None:
+    """Sonst sähe jede Ofenstunde aus wie ein dichteres Haus: der Ofen deckt Bedarf, der sonst
+    durch den Speicher gegangen wäre."""
+    from hems_core.thermal.heat_balance import HeatPoint
+
+    proben, punkte = _bilanz_reihe()
+    ohne_ofen = [
+        HeatPoint(at=p.at, draw_kw=max(0.0, p.draw_kw - 1.5), stove_room_kw=1.5) for p in punkte
+    ]
+    mit = {
+        k.pid: k
+        for k in messung.aus_waermebilanz(
+            proben, ohne_ofen, heat=HeatDemandConfig(), zeitzone=BERLIN
+        )
+    }
+    assert mit["h_haus"].wert == pytest.approx(H_WAHR, abs=0.01)
+
+
+def test_waermebilanz_ohne_heiztage_gibt_nichts_her() -> None:
+    """Über der Heizgrenze ist das Modell nicht gemeint, und ein Schätzer, der dort trotzdem
+    rechnet, liefert eine Zahl ohne Deckung."""
+    from hems_core.thermal.heat_balance import HeatPoint, HeatSample
+
+    proben = [
+        HeatSample(
+            at=datetime(2026, 7, 1, 12, tzinfo=BERLIN) + timedelta(minutes=i), outdoor_c=24.0
+        )
+        for i in range(600)
+    ]
+    punkte = [HeatPoint(at=p.at, draw_kw=0.4) for p in proben]
+    assert messung.aus_waermebilanz(proben, punkte, heat=HeatDemandConfig(), zeitzone=BERLIN) == []
+
+
+def _nacht(stunden: float, von_c: float, bis_c: float, oben_extra: float = 0.0) -> list:
+    """Eine Strecke, in der nichts läuft: vier gleiche Schichten, die gleichmäßig fallen."""
+    from hems_core.thermal.heat_balance import HeatSample
+
+    aus = []
+    schritte = int(stunden * 60)
+    for i in range(schritte + 1):
+        f = i / schritte
+        t = von_c + (bis_c - von_c) * f
+        oben = t - oben_extra * f
+        aus.append(
+            HeatSample(
+                at=datetime(2026, 1, 10, 1, 0, tzinfo=BERLIN) + timedelta(minutes=i),
+                heat_pump_kw=0.0,
+                outdoor_c=18.0,
+                buffer_c=(oben, t, t, t + oben_extra * f),
+                stove_running=False,
+            )
+        )
+    return aus
+
+
+def test_stille_strecke_wird_gefunden_und_liefert_den_verlustbeiwert() -> None:
+    """1,163 kWh/K, 0,15 K/h Abkühlung bei 31 K Übertemperatur sind 5,6 W/K.
+
+    Die sauberste Messung der Wärmeseite: in dieser Nacht steht alles andere still.
+    """
+    proben = _nacht(6.0, 49.0, 48.1)
+    strecken = messung.stille_strecken(proben, buffer=CFG.buffer, heat=CFG.heat_demand)
+    assert len(strecken) == 1
+    assert strecken[0].stunden == pytest.approx(6.0, abs=0.1)
+    assert strecken[0].kelvin_je_stunde == pytest.approx(0.15, abs=0.01)
+    k = messung.aus_naechten(
+        proben, buffer=CFG.buffer, heat=CFG.heat_demand, kapazitaet_kwh_k=1.163
+    )
+    assert k is not None and k.pid == "puffer_ua"
+    assert k.wert == pytest.approx(5.6, abs=0.3)
+    assert k.n == 1, "eine Nacht ist eine Beobachtung, nicht dreihundertsechzig"
+
+
+def test_eine_zapfung_faellt_aus_der_messung() -> None:
+    """Ein stehender Speicher verliert Zehntelgrade je Stunde; wer Wasser zapft, sieht Grade."""
+    assert (
+        messung.stille_strecken(_nacht(6.0, 49.0, 40.0), buffer=CFG.buffer, heat=CFG.heat_demand)
+        == []
+    )
+
+
+def test_eine_entnahme_oben_faellt_auf() -> None:
+    """Die Handschrift einer Zapfung: die oberste Schicht fällt deutlich schneller als das Mittel,
+    auch wenn das Mittel noch harmlos aussieht."""
+    assert (
+        messung.stille_strecken(
+            _nacht(6.0, 49.0, 48.1, oben_extra=3.0), buffer=CFG.buffer, heat=CFG.heat_demand
+        )
+        == []
+    )
+
+
+def test_laufende_waermepumpe_unterbricht_die_strecke() -> None:
+    from hems_core.thermal.heat_balance import HeatSample
+
+    proben = _nacht(3.0, 49.0, 48.6)
+    stoerung = HeatSample(
+        at=proben[-1].at + timedelta(minutes=1),
+        heat_pump_kw=3.4,
+        outdoor_c=18.0,
+        buffer_c=(48.6, 48.6, 48.6, 48.6),
+        stove_running=False,
+    )
+    weiter = _nacht(3.0, 48.6, 48.2)
+    versetzt = [s.__class__(**{**s.__dict__, "at": s.at + timedelta(hours=4)}) for s in weiter]
+    strecken = messung.stille_strecken(
+        [*proben, stoerung, *versetzt], buffer=CFG.buffer, heat=CFG.heat_demand
+    )
+    assert len(strecken) == 2, "vor und nach dem Lauf je eine Strecke, nicht eine durchgehende"
+
+
+def test_naechte_nehmen_den_median_und_nicht_das_mittel() -> None:
+    """Eine einzelne Nacht mit einer unbemerkten Zapfung soll das Ergebnis nicht tragen."""
+    gut = _nacht(4.0, 49.0, 48.4)
+    schnell = [
+        s.__class__(**{**s.__dict__, "at": s.at + timedelta(hours=10)})
+        for s in _nacht(4.0, 49.0, 48.0)
+    ]
+    nur_gut = messung.aus_naechten(
+        gut, buffer=CFG.buffer, heat=CFG.heat_demand, kapazitaet_kwh_k=1.163
+    )
+    beide = messung.aus_naechten(
+        [*gut, *schnell], buffer=CFG.buffer, heat=CFG.heat_demand, kapazitaet_kwh_k=1.163
+    )
+    assert nur_gut is not None and beide is not None
+    assert beide.n == 2
+    assert beide.wert > nur_gut.wert  # der Median zweier Punkte liegt dazwischen
+    assert beide.wert < 1.6 * nur_gut.wert
+
+
+def test_in_der_heizzeit_gibt_es_keine_stille_nacht() -> None:
+    """Solange geheizt wird, zieht der Heizkreis auch nachts - und zwar um ein Vielfaches mehr,
+    als die Hülle des Speichers verliert. Wer dort misst, schreibt die Heizung in den
+    Verlustbeiwert und bekommt einen Speicher, der fünfmal schlechter gedämmt ist, als er ist.
+    """
+    winter = [s.__class__(**{**s.__dict__, "outdoor_c": -2.0}) for s in _nacht(6.0, 49.0, 48.1)]
+    assert messung.stille_strecken(winter, buffer=CFG.buffer, heat=CFG.heat_demand) == []
+    assert (
+        messung.aus_naechten(
+            winter, buffer=CFG.buffer, heat=CFG.heat_demand, kapazitaet_kwh_k=1.163
+        )
+        is None
+    )

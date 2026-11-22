@@ -42,14 +42,21 @@ from hems_core.domain.config import HemsConfig
 Herkunft = Literal["gemessen", "geschaetzt", "annahme", "fest", "entwurf", "uebersteuert"]
 
 #: Mit welchem Verfahren der Parameter nachgeführt wird.
-Schaetzart = Literal["ausgleich", "rls", "ereignis", "bilanz", "ewma", "keiner"]
+Schaetzart = Literal[
+    "ausgleich", "fenster", "rls", "ereignis", "bilanz", "stillstand", "ewma", "keiner"
+]
 
 #: Was jedes Verfahren tut, in einem Satz für die Oberfläche.
 SCHAETZART_TEXT: Mapping[Schaetzart, str] = {
     "ausgleich": "Kleinste Quadrate über die Messpunkte, geschlossen gelöst. Liefert Restfehler und "
     "Gültigkeitsbereich mit.",
+    "fenster": "Kleinste Quadrate über ein gleitendes Fenster von vierzehn Tagen. Das Fenster "
+    "ist das Vergessen: was älter ist, zählt nicht mehr, und ein verändertes Haus wird nach zwei "
+    "Wochen vollständig neu gesehen.",
     "rls": "Rekursive kleinste Quadrate mit Vergessensfaktor. Das Modell ist in diesem Parameter "
     "linear, deshalb genügt die geschlossene Form; die Kovarianz liefert die Unsicherheit.",
+    "stillstand": "Messung im Stillstand: die Abkühlung in Nächten, in denen weder erzeugt noch "
+    "entnommen wird. Jede Nacht ist eine Beobachtung, und es zählt ihr Median.",
     "ereignis": "Auswertung einzelner Schaltereignisse gegen die gleiche Tageszeit ohne Schaltung. "
     "Liefert Totzeit und Zeitkonstante, nicht die Verstärkung.",
     "bilanz": "Aus dem Rest der Wärmebilanz. Das Haus hat keinen Wärmemengenzähler; was die Bilanz "
@@ -156,11 +163,11 @@ _REGISTER: tuple[Parameter, ...] = (
         name="Verlustkoeffizient des Hauses",
         einheit="kW/K",
         stellen=3,
-        schaetzart="rls",
+        schaetzart="fenster",
         unten=0.08,
         oben=0.45,
         pfad=("heat_demand", "heat_loss_kw_per_k"),
-        quelle="Wärmebilanz gegen Gradstunden (thermal.heat_balance)",
+        quelle="Stundenmittel der Wärmebilanz gegen die Temperaturdifferenz, 14 Tage",
         wirkt_auf=("Bedarfsprognose", "Vorsteuerung des Pufferkreises", "Heizkennlinie"),
         warum="Wärmestrom je Kelvin Temperaturdifferenz. Die wichtigste Zahl der Prognose; bis zur "
         "Messung eine Schätzung, und als solche gekennzeichnet.",
@@ -172,11 +179,11 @@ _REGISTER: tuple[Parameter, ...] = (
         name="Interne Gewinne",
         einheit="kW",
         stellen=2,
-        schaetzart="rls",
+        schaetzart="fenster",
         unten=0.0,
         oben=2.0,
         pfad=("heat_demand", "internal_gains_kw"),
-        quelle="Wärmebilanz gegen Gradstunden",
+        quelle="Achsabschnitt derselben Ausgleichsrechnung",
         wirkt_auf=("Bedarfsprognose", "Heizgrenze"),
         warum="Personen, Geräte, Kochen. Verschiebt die Heizgrenze: je größer, desto früher darf "
         "die Heizung aus.",
@@ -188,11 +195,11 @@ _REGISTER: tuple[Parameter, ...] = (
         name="Warmwasserbedarf",
         einheit="kWh/d",
         stellen=1,
-        schaetzart="bilanz",
+        schaetzart="fenster",
         unten=1.0,
         oben=25.0,
         pfad=("heat_demand", "dhw_kwh_per_day"),
-        quelle="Rest der Wärmebilanz (thermal.heat_balance.draw_kw)",
+        quelle="Form des Tages in derselben Ausgleichsrechnung: das Zapfprofil als dritter Term",
         wirkt_auf=("Fahrplan", "Hysterese am Puffer"),
         warum="Die größte nicht gemessene Last am Puffer. Ohne Wärmemengenzähler nur aus dem "
         "Bilanzrest zu bekommen.",
@@ -392,12 +399,13 @@ _REGISTER: tuple[Parameter, ...] = (
         name="Verlustbeiwert des Speichers",
         einheit="W/K",
         stellen=1,
-        schaetzart="rls",
+        schaetzart="stillstand",
         unten=0.5,
         oben=25.0,
         pfad=("buffer", "loss_kw_per_k"),
         faktor=1000.0,
-        quelle="Abkühlung in Nächten ohne Erzeugung und ohne Zapfung",
+        quelle="Abkühlung in stillen Nächten über der Heizgrenze; in der Heizzeit zieht der "
+        "Heizkreis mit und verfälscht die Messung",
         wirkt_auf=("Bilanzrest", "Fahrplan"),
         warum="Steht im Modell gegen die Übertemperatur zum Aufstellraum. Die Hälfte dieses "
         "Verlusts heizt den Technikraum und ist deshalb nicht verloren.",

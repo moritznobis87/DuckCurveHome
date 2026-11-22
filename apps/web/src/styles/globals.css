@@ -1273,3 +1273,8 @@ button.ansicht { cursor: pointer; }
 .rk-ktab td:first-child { display: flex; flex-direction: column; gap: 2px; }
 .rk-kreis-name { font-size: 13px; color: var(--text-1); font-weight: 600; }
 .rk-ktab th:last-child, .rk-ktab td:last-child { width: 78px; }
+
+/* Zahlenspalten stehen rechtsbuendig und ohne Rand nach rechts; ohne Abstand nach links kleben
+   sie an der naechsten Spalte, und aus "±0,016" und "240" wird "±0,016240". */
+.rk-tabelle td + td, .rk-tabelle th + th,
+.rk-protokoll td + td, .rk-protokoll th + th { padding-left: 12px; }

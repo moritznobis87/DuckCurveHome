@@ -293,6 +293,10 @@ class Regelkreiskarte(BaseModel):
     uebernahmen: int = 0
 
 
+#: Verfahren, die unmittelbar aus Messwerten ablesen. Alles andere geht durch ein Modell.
+MESSEND = frozenset({"ausgleich", "ereignis"})
+
+
 def _herkunft(pid: str, stand: Schaetzstand) -> Herkunft:
     """Woher der geltende Wert kommt. Die Reihenfolge ist die der Verbindlichkeit."""
     if pid in stand.uebersteuert:
@@ -303,7 +307,11 @@ def _herkunft(pid: str, stand: Schaetzstand) -> Herkunft:
     eintrag = stand.parameter.get(pid)
     if eintrag is None or not eintrag.protokoll:
         return "annahme"
-    return "gemessen" if p.schaetzart == "ausgleich" else "geschaetzt"
+    # Gemessen heisst: unmittelbar aus Messwerten abgelesen - die Ausgleichsebene aus Wärme und
+    # Strom, die Anlaufverzögerung aus dem Abstand zweier Zeitpunkte. Geschätzt heisst: durch ein
+    # Modell hindurch, das selbst Annahmen enthält. Der Verlustbeiwert des Speichers gehört in die
+    # zweite Gruppe, weil er gegen eine angenommene Aufstellraumtemperatur rechnet.
+    return "gemessen" if p.schaetzart in MESSEND else "geschaetzt"
 
 
 def werte(cfg: HemsConfig, stand: Schaetzstand) -> dict[str, float]:

@@ -17,8 +17,12 @@ Reine Funktionen über bereits gerechneten Ergebnissen. Kein I/O, keine Datenban
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime, timedelta, tzinfo
 
+from hems_core.domain.config import BufferConfig, HeatDemandConfig
+from hems_core.thermal.heat_balance import HeatPoint, HeatSample, mean_temperature_c
 from hems_core.thermal.kennlinie import Ausgleich
 from hems_core.thermal.kontaktwirkung import Kontaktwirkung
 
@@ -198,4 +202,261 @@ def aus_abkuehlung(
         return None
     ua_w_k = kapazitaet_kwh_k * kelvin_je_stunde / uebertemperatur_k * 1000.0
     sigma = kapazitaet_kwh_k * streuung_k_je_stunde / uebertemperatur_k * 1000.0
-    return Kandidat(pid="puffer_ua", wert=ua_w_k, sigma=max(0.2, sigma), n=int(stunden * 60))
+    # `n` ist eins: eine Nacht ist **eine** Beobachtung. Ihre Minuten sind nicht unabhängig,
+    # und sie als Stützstellen zu zählen hiesse, der Übernahmeprüfung Daten vorzutäuschen.
+    return Kandidat(pid="puffer_ua", wert=ua_w_k, sigma=max(0.2, sigma), n=1)
+
+
+#: Wie viele Minuten einer Stunde auswertbar sein müssen, damit sie als Stützstelle zählt.
+MIN_MINUTEN_JE_STUNDE = 45
+#: Mehr Wärme als das zieht dieses Haus nicht; darüber ist die Bilanz entgleist.
+MAX_BEDARF_KW = 20.0
+#: So schnell kühlt ein stehender Speicher nicht ab. Darüber war jemand am Wasser.
+MAX_ABKUEHLUNG_K_H = 0.6
+#: Unter dieser Leistung läuft die Wärmepumpe nicht.
+STEHT_KW = 0.3
+#: Grössere Lücken zwischen zwei Minuten trennen zwei Strecken.
+MAX_LUECKE_MIN = 5.0
+
+
+def _loese3(a: list[list[float]], b: list[float]) -> list[float] | None:
+    """Drei Gleichungen, drei Unbekannte, Gauß mit Spaltenpivot. Mehr braucht es hier nicht."""
+    m = [[*row, b[i]] for i, row in enumerate(a)]
+    for i in range(3):
+        p = max(range(i, 3), key=lambda r: abs(m[r][i]))
+        if abs(m[p][i]) < 1e-12:
+            return None
+        m[i], m[p] = m[p], m[i]
+        for r in range(3):
+            if r == i:
+                continue
+            f = m[r][i] / m[i][i]
+            for c in range(i, 4):
+                m[r][c] -= f * m[i][c]
+    return [m[i][3] / m[i][i] for i in range(3)]
+
+
+def aus_waermebilanz(
+    samples: Sequence[HeatSample],
+    punkte: Sequence[HeatPoint],
+    *,
+    heat: HeatDemandConfig,
+    zeitzone: tzinfo,
+) -> list[Kandidat]:
+    """Verlustkoeffizient, interne Gewinne und Warmwasserbedarf aus der Wärmebilanz.
+
+    **Das Modell, und warum es drei Glieder hat.** Was aus dem Speicher geht, ist Heizung **und**
+    Warmwasser; wer nur gegen die Temperaturdifferenz anpasst, schreibt die Zapfungen in den
+    Verlustkoeffizienten hinein und bekommt ein zu undichtes Haus. Deshalb:
+
+        Q̇bedarf(h) = H · (Ti − Ta) − Q̇int + Q̇WW,tag · p(h)
+
+    `p(h)` ist das Tagesprofil der Zapfungen aus der Konfiguration, auf eins normiert. Alle drei
+    Glieder sind in ihren Parametern linear, also genügt ein Ausgleich - und er trennt, was sonst
+    vermischt bliebe: H aus der Steigung über der Temperaturdifferenz, die Gewinne aus dem
+    Achsabschnitt, das Warmwasser aus der Form des Tages.
+
+    **Was dazugerechnet wird.** Die Raumwärme des Ofens, denn sie deckt Bedarf, der sonst durch
+    den Speicher gegangen wäre. Ohne sie sähe jede Ofenstunde aus wie ein dichteres Haus.
+
+    **Was ausgeschlossen wird.** Stunden über der Heizgrenze (dort ist das Modell nicht gemeint),
+    Stunden mit zu wenigen auswertbaren Minuten, und alles, was jenseits dessen liegt, was dieses
+    Haus ziehen kann. Die Zeitstempel werden in die übergebene Zeitzone gerechnet, denn das
+    Zapfprofil folgt dem Tag der Bewohner und nicht dem von Greenwich.
+    """
+    if len(samples) != len(punkte):
+        raise ValueError("zu jeder Probe gehört ein Punkt der Bilanz")
+    profil = list(heat.dhw_profile)
+    summe = sum(profil)
+    if len(profil) != 24 or summe <= 0:
+        return []
+    gewicht = [w / summe for w in profil]
+
+    # Stundenmittel bilden: Bedarf, Temperaturdifferenz, Profilwert.
+    eimer: dict[datetime, list[tuple[float, float, int]]] = {}
+    for s, p in zip(samples, punkte, strict=True):
+        if p.unknown or s.outdoor_c is None:
+            continue
+        ort = s.at.astimezone(zeitzone)
+        key = ort.replace(minute=0, second=0, microsecond=0)
+        eimer.setdefault(key, []).append((p.draw_kw + p.stove_room_kw, s.outdoor_c, ort.hour))
+
+    x_zeilen: list[list[float]] = []
+    y_werte: list[float] = []
+    for key in sorted(eimer):
+        rows = eimer[key]
+        if len(rows) < MIN_MINUTEN_JE_STUNDE:
+            continue
+        bedarf = sum(r[0] for r in rows) / len(rows)
+        aussen = sum(r[1] for r in rows) / len(rows)
+        if aussen >= heat.heating_limit_c or not 0.0 <= bedarf <= MAX_BEDARF_KW:
+            continue
+        x_zeilen.append([heat.indoor_target_c - aussen, 1.0, gewicht[rows[0][2]]])
+        y_werte.append(bedarf)
+
+    n = len(x_zeilen)
+    if n < 24:
+        return []
+    # Normalgleichungen: XᵀX θ = Xᵀy. Bei drei Unbekannten ist das die kürzeste ehrliche Lösung.
+    xtx = [[sum(x[i] * x[j] for x in x_zeilen) for j in range(3)] for i in range(3)]
+    xty = [sum(x[i] * y for x, y in zip(x_zeilen, y_werte, strict=True)) for i in range(3)]
+    theta = _loese3(xtx, xty)
+    if theta is None:
+        return []
+    rest = [
+        y - sum(t * xi for t, xi in zip(theta, x, strict=True))
+        for x, y in zip(x_zeilen, y_werte, strict=True)
+    ]
+    s2 = sum(r * r for r in rest) / max(1, n - 3)
+    rmse = math.sqrt(s2)
+    # Die Unsicherheit je Parameter aus der Diagonale von (XᵀX)⁻¹ - gelöst über drei Einheitsvektoren.
+    sigma: list[float] = []
+    for i in range(3):
+        e = [1.0 if j == i else 0.0 for j in range(3)]
+        spalte = _loese3([row[:] for row in xtx], e)
+        sigma.append(math.sqrt(max(0.0, (spalte[i] if spalte else 0.0) * s2)))
+
+    aus: list[Kandidat] = []
+    h, minus_int, ww = theta
+    aus.append(Kandidat(pid="h_haus", wert=h, sigma=max(1e-4, sigma[0]), n=n, rmse=rmse))
+    aus.append(Kandidat(pid="q_intern", wert=-minus_int, sigma=max(1e-3, sigma[1]), n=n, rmse=rmse))
+    # Der Warmwasserbedarf steckt in jeder Stunde nur zu einem Bruchteil; ohne Stunden aus der
+    # Morgen- und Abendspitze ist er nicht bestimmt, und dann wird er auch nicht vorgeschlagen.
+    spitze = sum(1 for x in x_zeilen if x[2] >= 2.0 / 24.0)
+    if spitze >= 6:
+        aus.append(Kandidat(pid="ww_tag", wert=ww, sigma=max(0.05, sigma[2]), n=n, rmse=rmse))
+    return aus
+
+
+@dataclass(frozen=True)
+class Nacht:
+    """Eine Strecke, in der der Speicher nichts tut außer abzukühlen."""
+
+    von: datetime
+    bis: datetime
+    stunden: float
+    kelvin_je_stunde: float
+    uebertemperatur_k: float
+
+
+def stille_strecken(
+    samples: Sequence[HeatSample],
+    *,
+    buffer: BufferConfig,
+    heat: HeatDemandConfig,
+    mindest_stunden: float = 2.0,
+) -> list[Nacht]:
+    """Strecken finden, in denen weder erzeugt noch spürbar entnommen wird.
+
+    **Warum diese Strecken so wertvoll sind.** In ihnen ist die einzige Senke die Hülle des
+    Speichers; alles andere steht still. Das ist die sauberste Messung, die die Wärmeseite dieses
+    Hauses hergibt - sie braucht nur Geduld, denn verwertbare Nächte gibt es wenige.
+
+    **Warum nur ausserhalb der Heizzeit.** Still heisst nicht, dass die Erzeuger stehen - still
+    heisst, dass **niemand** etwas entnimmt. Solange das Haus geheizt wird, zieht der Heizkreis
+    auch nachts, und zwar um ein Vielfaches mehr als die Hülle des Speichers verliert: ein Kelvin
+    je Stunde sind bei tausend Litern 1,2 kW, der Stillstandsverlust dagegen rund 0,2. Wer in der
+    Heizzeit misst, schreibt die Heizung in den Verlustbeiwert und bekommt einen Speicher, der
+    fünfmal schlechter gedämmt ist, als er ist.
+
+    Verwertbare Strecken liegen deshalb **über der Heizgrenze** - im Sommer, wenn der Speicher nur
+    noch das Warmwasser hält. Davon gibt es wenige, und bis zur ersten bleibt der Beiwert eine
+    Annahme. Das ist langsamer als eine Schätzung aus Winternächten und das einzige, was trägt.
+
+    **Woran eine Zapfung erkannt wird.** An der Geschwindigkeit. Ein stehender Speicher verliert
+    Zehntelgrade je Stunde; wer Wasser zapft, sieht Grade. Strecken, die schneller abkühlen als
+    `MAX_ABKUEHLUNG_K_H`, werden verworfen, und ebenso solche, in denen die oberste Schicht
+    deutlich schneller fällt als das Mittel - das ist die Handschrift einer Entnahme oben.
+    """
+    aus: list[Nacht] = []
+    lauf: list[HeatSample] = []
+
+    def pruefe(strecke: list[HeatSample]) -> None:
+        if len(strecke) < 2:
+            return
+        stunden = (strecke[-1].at - strecke[0].at).total_seconds() / 3600.0
+        if stunden < mindest_stunden:
+            return
+        temps = [s.buffer_c for s in strecke]
+        if any(t is None for t in temps):
+            return
+        mittel = [mean_temperature_c(list(t), buffer) for t in temps if t is not None]
+        oben = [t[0] for t in temps if t is not None]
+        fall = (mittel[0] - mittel[-1]) / stunden
+        fall_oben = (oben[0] - oben[-1]) / stunden
+        if not 0.0 < fall <= MAX_ABKUEHLUNG_K_H:
+            return
+        if fall_oben > 2.0 * fall + 0.2:
+            return
+        uebertemperatur = sum(mittel) / len(mittel) - buffer.ambient_c
+        aus.append(
+            Nacht(
+                von=strecke[0].at,
+                bis=strecke[-1].at,
+                stunden=stunden,
+                kelvin_je_stunde=fall,
+                uebertemperatur_k=uebertemperatur,
+            )
+        )
+
+    for s in samples:
+        ausserhalb = s.outdoor_c is not None and s.outdoor_c >= heat.heating_limit_c
+        still = (
+            ausserhalb
+            and (s.heat_pump_kw is None or s.heat_pump_kw < STEHT_KW)
+            and not s.stove_running
+        )
+        # Eine Lücke in den Daten unterbricht die Strecke. Ohne das würden zwei stille Nächte mit
+        # einem fehlenden Tag dazwischen zu einer Strecke, und die Abkühlung würde über Stunden
+        # gerechnet, von denen niemand weiss, was in ihnen geschah.
+        lueckig = bool(lauf) and (s.at - lauf[-1].at) > timedelta(minutes=MAX_LUECKE_MIN)
+        if still and s.buffer_c and not lueckig:
+            lauf.append(s)
+        else:
+            pruefe(lauf)
+            lauf = [s] if still and s.buffer_c else []
+    pruefe(lauf)
+    return aus
+
+
+def aus_naechten(
+    samples: Sequence[HeatSample],
+    *,
+    buffer: BufferConfig,
+    heat: HeatDemandConfig,
+    kapazitaet_kwh_k: float,
+) -> Kandidat | None:
+    """Der Verlustbeiwert des Speichers aus allen stillen Strecken einer Reihe.
+
+    Jede Strecke liefert einen Punkt; genommen wird ihr Median, denn eine einzelne Nacht mit einer
+    unbemerkten Zapfung soll das Ergebnis nicht tragen. Die Unsicherheit ist die Streuung der
+    Punkte, durch die Wurzel ihrer Zahl geteilt - und `n` zählt Nächte und nicht Minuten, weil
+    zwei Minuten derselben Nacht nichts Unabhängiges sagen.
+    """
+    werte: list[float] = []
+    for nacht in stille_strecken(samples, buffer=buffer, heat=heat):
+        k = aus_abkuehlung(
+            kelvin_je_stunde=nacht.kelvin_je_stunde,
+            uebertemperatur_k=nacht.uebertemperatur_k,
+            kapazitaet_kwh_k=kapazitaet_kwh_k,
+            stunden=nacht.stunden,
+            streuung_k_je_stunde=0.02,
+        )
+        if k is not None:
+            werte.append(k.wert)
+    if not werte:
+        return None
+    mitte = _median(werte)
+    mittel = sum(werte) / len(werte)
+    streuung = (
+        math.sqrt(sum((w - mittel) ** 2 for w in werte) / max(1, len(werte) - 1))
+        if len(werte) > 1
+        else mitte * 0.3
+    )
+    return Kandidat(
+        pid="puffer_ua",
+        wert=mitte,
+        sigma=max(0.2, streuung / math.sqrt(len(werte))),
+        n=len(werte),
+        rmse=streuung,
+    )

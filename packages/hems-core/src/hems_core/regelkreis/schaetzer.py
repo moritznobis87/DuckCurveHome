@@ -233,11 +233,11 @@ def _satz(code: Pruefcode, p: Parameter, **z: float) -> str:
     if code == "uebernommen":
         if z.get("gewinn", 0.0) <= 0.0:
             return (
-                f"Abweichung {_z(z['abstand'])}{einheit} über {SIGMA_FAKTOR:g} σ. Ein Gütevergleich "
+                f"Abweichung {_z(z['abstand'])}{einheit} über {_z(SIGMA_FAKTOR)} σ. Ein Gütevergleich "
                 f"lag noch nicht vor - der bisherige Wert war nie an Messdaten geprüft worden."
             )
         return (
-            f"Abweichung {_z(z['abstand'])}{einheit} über {SIGMA_FAKTOR:g} σ, Restfehler im "
+            f"Abweichung {_z(z['abstand'])}{einheit} über {_z(SIGMA_FAKTOR)} σ, Restfehler im "
             f"Vergleich über {MINDEST_TAGE:.0f} Tage um {z['gewinn'] * 100:.0f} % kleiner."
         )
     if code == "zu_wenig_daten":

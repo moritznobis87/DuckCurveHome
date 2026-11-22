@@ -1711,6 +1711,16 @@ class EnergyAccounting:
             note_de=v.note_de,
         )
 
+    async def waermeproben(self, start: datetime, end: datetime) -> list[HeatSample]:
+        """Die Proben der Wärmebilanz für einen Zeitraum, in Minutenauflösung.
+
+        Öffentlich, weil die Lernebene des Regelkreises dieselben Proben braucht wie die
+        Wärmeseite: aus ihnen kommen der Verlustkoeffizient des Hauses und der Verlustbeiwert des
+        Speichers. Zweimal dieselbe Reihe zu lesen hiesse, zwei Wahrheiten zu pflegen.
+        """
+        proben, schritt = await self._samples_for(start, end)
+        return proben if schritt <= 1.0 else []
+
     async def _samples_for(self, start: datetime, end: datetime) -> tuple[list[HeatSample], float]:
         """Proben und Schrittweite für einen Zeitraum: Minuten, wo es geht, sonst Stunden.
 
