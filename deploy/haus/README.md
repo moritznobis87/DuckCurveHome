@@ -229,7 +229,7 @@ erscheint auch dann in der App.
 
 Auf das Gerät selbst kommt im Alltag niemand: kein Bildschirm, keine Tastatur, und die
 Kommandozeile ist nichts für den Hausherrn. Darum steht alles Nötige in der App unter
-*Technik → Hausgerät*, im Browser wie in der iOS-App, nur mit Vollzugriff:
+*System → Hausgerät*, im Browser wie in der iOS-App, nur mit Vollzugriff:
 
 - **Gesamturteil** oben: „Alles in Ordnung“ oder der Grund, warum nicht, etwa „web: Läuft, aber
   die Prüfung schlägt fehl, 3-mal in Folge.“

@@ -30,11 +30,13 @@ export const SEITEN: Record<string, string> = {
     "PV-Abrechnung zeigt Einspeisung, Eigenverbrauch und Umsatzsteuer der Anlage. Nur mit Vollzugriff.",
   "/geld/rechnungen":
     "Rechnungen prüft Tibber-Rechnungen: Das PDF wird hochgeladen, nachgerechnet und gegen den eigenen Zähler gehalten. Nur mit Vollzugriff.",
+  "/anlage":
+    "Anlage ist die Übersicht der Heizungsanlage. Sie ordnet ihre Seiten in drei Gruppen: die Maschine, ihre Regelung und die Abstimmung.",
   "/waerme/anlage":
     "Anlage zeigt das Anlagenschema im Augenblick; die Ansicht Ein Tag spielt einen ganzen Tag als Folge von Bildern ab.",
   "/waerme/wiedergabe": "Ein Tag spielt das Anlagenschema über einen ganzen Tag ab.",
   "/waerme/waermepumpe":
-    "Wärmepumpe zeigt die Wärmepumpe allein, mit allem, was ihr eigener Bus meldet. Die Ansichten Betrieb, Kennlinie und Regler zeigen dieselbe Maschine über Tage, über Wochen und ihre Einstellungen.",
+    "Wärmepumpe zeigt die Wärmepumpe allein, mit allem, was ihr eigener Bus meldet. Die Ansichten Betrieb und Kennlinie zeigen dieselbe Maschine über Tage und über Wochen.",
   "/waerme/waermepumpe/betrieb": "Betrieb zeigt die Läufe der Wärmepumpe über Tage: Laufzeiten, Abtauen, Takten und die Heizkurve des Reglers.",
   "/waerme/waermepumpe/kennlinie": "Kennlinie zeigt die gemessene Arbeitszahl der Wärmepumpe über Wochen.",
   "/waerme/waermepumpe/regler":
@@ -46,7 +48,7 @@ export const SEITEN: Record<string, string> = {
   "/waerme/wirkung": "Wirkung zeigt, ob die Wärmepumpe der Anforderung folgt und was das Verschieben gebracht hat.",
   "/waerme/regelkreis":
     "Regelkreis zeigt die ganze Regelung als Blockschaltbild: fünf Kaskadenebenen von der Kostenrechnung bis in den einzelnen Raum, die Störgrößen am Ort ihrer Wirkung, und zu jedem Parameter, ob er gemessen, geschätzt oder angenommen ist. Dort steht auch, warum eine Schätzung noch nicht übernommen wurde. Nur mit Vollzugriff.",
-  "/waerme/raeume": "Heizkreise zeigt die Raumtemperaturen und Heizkreise über den gewählten Zeitraum.",
+  "/waerme/raeume": "Über den Tag zeigt die Raumtemperaturen und Heizkreise über den gewählten Zeitraum.",
   "/system": "Prognose zeigt, wie gut PV- und Verbrauchsprognosen waren. Nur mit Vollzugriff.",
   "/system/daten": "Daten prüfen zeigt, wie vollständig die Messreihen sind. Nur mit Vollzugriff.",
   "/waerme/annahmen": "Annahmen zeigt die Wärmeannahmen des Modells und lässt sie ändern. Nur mit Vollzugriff.",

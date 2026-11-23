@@ -279,8 +279,8 @@ struct NachbetrachtungSeite: View {
                         // selbst.** ``Wegweiser/setzeZeitraum(_:)`` schreibt nach
                         // `zeitraeume[bereich.schluessel]`, und `bereich` rechnet der Wegweiser
                         // aus `weg` (`App/Navigation.swift:27`, `:84-86`). Umgekehrt landete der
-                        // Tag unter `.technik` - dort, wo diese Seite steht -, die Kostenseite
-                        // fiel auf ihre Monatsvorgabe (`:77`), und der Technikbereich bekam
+                        // Tag unter `.anlage` - dort, wo diese Seite steht -, die Kostenseite
+                        // fiel auf ihre Monatsvorgabe (`:77`), und der Bereich Anlage bekam
                         // still einen Anker, den niemand gestellt hat.
                         wegweiser.gehe("/geld")
                         wegweiser.setzeZeitraum(Zeitraum(spanne: .tag, anker: tag))

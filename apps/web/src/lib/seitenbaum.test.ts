@@ -19,9 +19,20 @@ type Reiter = {
   name: string;
   zeitraum: boolean;
   nurHausherr: boolean;
+  gruppe: string | null;
+  beschreibung: string | null;
   unter: Unteransicht[];
 };
-type Bereich = { schluessel: string; weg: string; name: string; reiter: Reiter[] };
+type Gruppe = { name: string; wort: string };
+type Bereich = {
+  schluessel: string;
+  weg: string;
+  name: string;
+  nurHausherr: boolean;
+  inLeiste: boolean;
+  gruppen: Gruppe[];
+  reiter: Reiter[];
+};
 
 /** Der Seitenbaum des Dashboards in der Schreibweise der gemeinsamen Datei. */
 function seitenbaumDesDashboards(): Bereich[] {
@@ -29,11 +40,16 @@ function seitenbaumDesDashboards(): Bereich[] {
     schluessel: bereich.key,
     weg: bereich.href,
     name: bereich.label,
+    nurHausherr: bereich.ownerOnly === true,
+    inLeiste: bereich.leiste !== false,
+    gruppen: (bereich.gruppen ?? []).map((gruppe) => ({ name: gruppe.name, wort: gruppe.wort })),
     reiter: bereich.tabs.map((reiter) => ({
       weg: reiter.href,
       name: reiter.label,
       zeitraum: reiter.dated === true,
       nurHausherr: reiter.ownerOnly === true,
+      gruppe: reiter.gruppe ?? null,
+      beschreibung: reiter.beschreibung ?? null,
       unter: (reiter.unter ?? []).map((ansicht) => ({ weg: ansicht.href, name: ansicht.label })),
     })),
   }));

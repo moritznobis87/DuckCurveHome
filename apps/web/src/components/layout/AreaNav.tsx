@@ -3,17 +3,17 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { AREAS, ansichtOf, areaOf, tabOf } from "@/lib/areas";
+import { AREAS, LEISTE, ansichtOf, areaOf, tabOf, tabsDerGruppe, type Tab } from "@/lib/areas";
 import { Icon } from "@/components/ui/Icon";
 import { useRole } from "@/lib/live/useRole";
 
 /**
  * Die Bereichsleiste: fuenf Zeichen, kein Text.
  *
- * Entenkurve, Haus, Blitz, Euro, Zahnrad. Der Name steht im `title` und fuer die Vorlesehilfe
+ * Entenkurve, Haus, Blitz, Euro, Waermepumpe. Der Name steht im `title` und fuer die Vorlesehilfe
  * im `aria-label`; auf dem Bildschirm genuegt das Zeichen, weil es nur fuenf sind und sie sich
- * nicht aehneln. Das Zahnrad ist die Technik und fuer alle sichtbar; was darin nur der Hausherr
- * sehen darf, steht am Reiter.
+ * nicht aehneln. Was in einem Bereich nur der Hausherr sehen darf, steht am Reiter. Das System
+ * steht nicht in der Leiste, sondern hinter dem Zahnrad daneben (`Systemknopf`).
  */
 export function AreaIcons({ size = 20 }: { size?: number }) {
   const pathname = usePathname();
@@ -21,7 +21,7 @@ export function AreaIcons({ size = 20 }: { size?: number }) {
   const active = areaOf(pathname ?? "/");
   return (
     <nav className="flex items-center gap-1" aria-label="Bereiche">
-      {AREAS.filter((a) => !a.ownerOnly || role === "owner").map((a) => {
+      {LEISTE.filter((a) => !a.ownerOnly || role === "owner").map((a) => {
         const on = a.key === active.key;
         return (
           <Link
@@ -37,6 +37,33 @@ export function AreaIcons({ size = 20 }: { size?: number }) {
         );
       })}
     </nav>
+  );
+}
+
+/**
+ * Das Zahnrad: der Weg zum System.
+ *
+ * Die Verwaltung (Mitteilungen, Haustuer, Hausgeraet, Zugang, Daten pruefen) stand bis zum
+ * 23.11.2026 als fuenf Reiter zwischen den Seiten, die man taeglich ansieht. Sie wird selten
+ * gebraucht und nur vom Hausherrn; darum liegt sie hinter einem Knopf im Kopf der Seite und
+ * belegt keinen Platz in der Leiste. Ein Gast sieht den Knopf nicht.
+ */
+export function Systemknopf() {
+  const pathname = usePathname();
+  const role = useRole();
+  const system = AREAS.find((a) => a.key === "system");
+  if (!system || role !== "owner") return null;
+  const on = areaOf(pathname ?? "/").key === "system";
+  return (
+    <Link
+      href={system.href}
+      aria-label={system.label}
+      aria-current={on ? "page" : undefined}
+      title={system.label}
+      className={`system-knopf area-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] transition-colors${on ? " area-icon-an" : ""}`}
+    >
+      <Icon name={system.icon} size={20} />
+    </Link>
   );
 }
 
@@ -76,22 +103,51 @@ export function AreaTabs({ period, anchor, right }: { period?: string; anchor?: 
     if (!el || !an || el.scrollWidth <= el.clientWidth) return;
     el.scrollLeft = Math.max(0, an.offsetLeft - (el.clientWidth - an.offsetWidth) / 2);
   }, [current?.href]);
+  const reiter = (t: Tab) => {
+    const on = current?.href === t.href;
+    return (
+      <Link
+        key={t.href}
+        href={t.dated ? `${t.href}${query}` : t.href}
+        aria-current={on ? "page" : undefined}
+        className={`area-tab whitespace-nowrap pb-2.5 pt-2 text-[13px]${on ? " area-tab-an" : ""}`}
+      >
+        {t.label}
+      </Link>
+    );
+  };
+  // Ein Bereich mit Gruppen: am Rechner stehen alle Gruppen in der Zeile, je mit ihrem Namen
+  // davor. Am Handy bleibt nur die Gruppe der Seite, auf der man steht, und davor der Weg
+  // zurück zur Übersicht; die anderen Gruppen erreicht man dort. So rollt die Zeile nicht mehr.
+  const aufUebersicht = area.gruppen !== undefined && current === undefined;
   return (
-    <div className="area-tabs flex items-baseline justify-between gap-6 border-b border-line-1">
+    <div className={`area-tabs flex items-baseline justify-between gap-6 border-b border-line-1${aufUebersicht ? " area-tabs-uebersicht" : ""}`}>
       <div ref={reihe} className="area-tabs-row flex gap-6">
-        {tabs.map((t) => {
-          const on = current?.href === t.href;
-          return (
+        {area.gruppen ? (
+          <>
             <Link
-              key={t.href}
-              href={t.dated ? `${t.href}${query}` : t.href}
-              aria-current={on ? "page" : undefined}
-              className={`area-tab whitespace-nowrap pb-2.5 pt-2 text-[13px]${on ? " area-tab-an" : ""}`}
+              href={area.href}
+              aria-current={aufUebersicht ? "page" : undefined}
+              aria-label={`Übersicht ${area.label}`}
+              className={`area-tab area-zurueck whitespace-nowrap pb-2.5 pt-2 text-[13px]${aufUebersicht ? " area-tab-an" : ""}`}
             >
-              {t.label}
+              <span className="area-zurueck-wort">Übersicht</span>
             </Link>
-          );
-        })}
+            {area.gruppen.map((g) => {
+              const inGruppe = tabsDerGruppe(area, g.name).filter((t) => tabs.includes(t));
+              if (inGruppe.length === 0) return null;
+              const an = current?.gruppe === g.name;
+              return (
+                <div key={g.name} role="group" aria-label={g.name} className={`area-gruppe flex items-baseline gap-6${an ? " area-gruppe-an" : ""}`}>
+                  <span className="area-gruppenwort kicker whitespace-nowrap" aria-hidden="true">{g.name}</span>
+                  {inGruppe.map(reiter)}
+                </div>
+              );
+            })}
+          </>
+        ) : (
+          tabs.map(reiter)
+        )}
       </div>
       {right ? <div className="kicker hidden truncate pb-2.5 md:block" style={{ fontSize: 11 }}>{right}</div> : null}
     </div>
@@ -140,7 +196,7 @@ export function Fussleiste() {
   const active = areaOf(pathname ?? "/");
   return (
     <nav className="fussleiste" aria-label="Bereiche">
-      {AREAS.filter((a) => !a.ownerOnly || role === "owner").map((a) => {
+      {LEISTE.filter((a) => !a.ownerOnly || role === "owner").map((a) => {
         const on = a.key === active.key;
         return (
           <Link key={a.key} href={a.href} aria-current={on ? "page" : undefined} className={`fussleiste-punkt${on ? " fussleiste-an" : ""}`}>

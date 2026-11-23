@@ -40,7 +40,7 @@ export default async function Page() {
             <p className="m-0 text-[15px] leading-[1.6] text-text-2">
               Öffne einmal den Pairing-Link dieses Hauses
               (<code className="mono text-[13px]">/pair?token=…</code>) und lege unter
-              <strong> Technik › Zugang</strong> die erste Person an. Den Link, der dabei entsteht,
+              <strong> System › Zugang und Sicherung</strong> die erste Person an. Den Link, der dabei entsteht,
               öffnest du auf dem Gerät, das künftig anmeldet.
             </p>
           </section>

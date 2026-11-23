@@ -665,7 +665,7 @@ einige Tage Messung, nicht eine Vermutung.
 
 ## Die Technikseite der Wärmepumpe
 
-Stand 14.11.2026. Unter Technik gibt es den Reiter „Wärmepumpe“ (`/waerme/waermepumpe`): eine
+Stand 14.11.2026. Unter Anlage gibt es den Reiter „Wärmepumpe“ (`/waerme/waermepumpe`): eine
 Zeichnung aus Außengerät, Innengerät und Speicher mit den vier Leitungen dazwischen, und jeder
 Messwert steht dort, wo er an der Anlage entsteht. Der Dienst setzt die Seite in
 `apps/api/src/dch_api/application/waermepumpe.py` zusammen und gibt sie unter
@@ -1009,7 +1009,7 @@ Stand 15.11.2026. Frage des Hausherrn: ob sich von hier aus in die Regelung eing
 gebaut sind die ersten beiden.
 
 **Stufe 1, gebaut: lesen.** Das Add-on „Duck Curve eBUS“ fragt ab 0.4.0 zwölf Einstellungen ab
-(ab 0.5.0 sind es 22), jede etwa alle zehn bis fünfzehn Minuten. Seite: Technik → Wärmepumpe → Regler
+(ab 0.5.0 sind es 22), jede etwa alle zehn bis fünfzehn Minuten. Seite: Anlage → Regler
 (`/waerme/waermepumpe/regler`), Antwort: `GET /api/v1/waermepumpe/einstellungen`, Liste:
 `apps/api/src/dch_api/application/regler.py`.
 
@@ -1107,7 +1107,7 @@ selbst, mit Preis und Sonne. Erst nachdem Stufe 2 an der Anlage erprobt ist.
 
 ## Der Betrieb über Tage: Läufe, Abtauen, Takten, Heizkurve
 
-Stand 14.11.2026. Seite: Technik → Wärmepumpe → Betrieb (`/waerme/waermepumpe/betrieb`),
+Stand 14.11.2026. Seite: Anlage → Wärmepumpe → Betrieb (`/waerme/waermepumpe/betrieb`),
 Rechnung: `packages/hems-core/src/hems_core/thermal/betrieb.py`, Antwort:
 `GET /api/v1/waermepumpe/betrieb?tage=14`. Eine Auszählung der gespeicherten Minuten, mit
 denselben Reihen wie die Kennlinie und dazu dem Vorlauf-Sollwert des Reglers
@@ -1142,7 +1142,7 @@ denselben Reihen wie die Kennlinie und dazu dem Vorlauf-Sollwert des Reglers
 
 Stand 14.11.2026, Nutzerwunsch: Messpunkte der Arbeitszahl über Außen- und Vorlauftemperatur
 sammeln, darstellen und daraus die eigene Kennlinie nach der Methode der kleinsten Quadrate
-ableiten. Seite: Technik → Wärmepumpe → Kennlinie (`/waerme/waermepumpe/kennlinie`), Rechnung:
+ableiten. Seite: Anlage → Wärmepumpe → Kennlinie (`/waerme/waermepumpe/kennlinie`), Rechnung:
 `packages/hems-core/src/hems_core/thermal/kennlinie.py`, Antwort:
 `GET /api/v1/waermepumpe/kennlinie?tage=30`.
 

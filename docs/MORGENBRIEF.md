@@ -3,7 +3,7 @@
 Stand 13.11.2026. Rechnung und Zeilen in
 `packages/hems-core/src/hems_core/planning/morgenbrief.py`, Versand und Vorschau in
 `apps/api/src/dch_api/application/morgenbrief.py`, Endpunkte unter `/api/v1/push/morgenbrief`,
-Einstellung auf der Seite `Technik → Mitteilungen`. Im Quelltext heißt es weiter `morgenbrief`;
+Einstellung auf der Seite `System → Mitteilungen`. Im Quelltext heißt es weiter `morgenbrief`;
 auf dem Telefon und in der Oberfläche heißt es „Morning Briefing“.
 
 ## Was es ist
@@ -79,7 +79,7 @@ ob er verschickt wurde, an wen und mit welchem Ergebnis. Seitdem gilt:
   `geraete`). Die Seite sagt daraus „Zuletzt verschickt am …, angekommen bei 1 von 1 Gerät“ oder
   „Bisher ist kein Morning Briefing verschickt worden“. Nimmt kein Gerät ihn an, steht das da, und es
   wird nicht jede Minute neu geschickt: der Push-Dienst lehnt aus demselben Grund wieder ab.
-* **Jedes Gerät meldet sich einzeln an**, auf `Technik → Mitteilungen`. Auf iPhone und iPad geht
+* **Jedes Gerät meldet sich einzeln an**, auf `System → Mitteilungen`. Auf iPhone und iPad geht
   das nur in der App vom Home-Bildschirm. Auf der Startseite des Telefons steht beim Hausherrn
   ein Hinweis, solange das Gerät nicht angemeldet ist; er lässt sich wegtippen.
 * **Die Probe sagt je Gerät, was der Push-Dienst geantwortet hat**, mit Statuszahl und Grund

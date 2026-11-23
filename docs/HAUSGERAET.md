@@ -151,7 +151,7 @@ sie braucht:
    starten, Update, Protokolle, Werksreset, Schalter „Fernwartung erlauben“. Keine Kommandozeile, sondern eine
    feste Liste von Aktionen, die ein kleiner Systemdienst ausführt. Neue Rolle `service` neben `owner` und
    `guest`.
-   **Teilweise gebaut (20.11.2026), für den Hausherrn statt für den Techniker:** die Seite *Technik →
+   **Teilweise gebaut (20.11.2026), für den Hausherrn statt für den Techniker:** die Seite *System →
    Hausgerät* in Browser und iOS-App mit Gesundheit aller Dienste und des Rechners, Protokollen, Neustarts,
    Sicherung und Updates, ausgeführt über eine feste Liste von Handgriffen (`dch anfrage`,
    `deploy/haus/README.md`, Abschnitt 11). Offen: WLAN, Werksreset, Fernwartungsschalter, Rolle `service`.

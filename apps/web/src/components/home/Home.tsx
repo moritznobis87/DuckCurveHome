@@ -13,7 +13,7 @@ import { UpdateHinweis } from "@/components/update/UpdateHinweis";
 import { useRuhe } from "@/lib/useRuhe";
 import { celsius, hhmm, longDate } from "@/lib/format";
 import { isoDay } from "@/lib/day";
-import { AreaIcons, Brand, Fussleiste } from "@/components/layout/AreaNav";
+import { AreaIcons, Brand, Fussleiste, Systemknopf } from "@/components/layout/AreaNav";
 import { abschnitte, ausblick } from "./ausblick";
 import { FlowHandy } from "./FlowHandy";
 import { FlowHero } from "./FlowHero";
@@ -204,6 +204,7 @@ export function Home() {
         <div className="flex items-center gap-5">
           <Brand />
           <AreaIcons />
+          <Systemknopf />
         </div>
         <div className="home-uhr" suppressHydrationWarning>
           <span className="home-datum">{nowMs ? longDate(new Date(nowMs)) : ""}</span>

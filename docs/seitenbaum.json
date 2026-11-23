@@ -4,24 +4,54 @@
       "schluessel": "jetzt",
       "weg": "/",
       "name": "Jetzt",
+      "nurHausherr": false,
+      "inLeiste": true,
+      "gruppen": [],
       "reiter": []
     },
     {
       "schluessel": "haus",
       "weg": "/haus",
       "name": "Haus",
-      "reiter": []
+      "nurHausherr": false,
+      "inLeiste": true,
+      "gruppen": [],
+      "reiter": [
+        {
+          "weg": "/haus",
+          "name": "Räume",
+          "zeitraum": false,
+          "nurHausherr": false,
+          "gruppe": null,
+          "beschreibung": null,
+          "unter": []
+        },
+        {
+          "weg": "/waerme/raeume",
+          "name": "Über den Tag",
+          "zeitraum": true,
+          "nurHausherr": false,
+          "gruppe": null,
+          "beschreibung": null,
+          "unter": []
+        }
+      ]
     },
     {
       "schluessel": "energie",
       "weg": "/strom",
       "name": "Energie",
+      "nurHausherr": false,
+      "inLeiste": true,
+      "gruppen": [],
       "reiter": [
         {
           "weg": "/strom",
           "name": "Strom",
           "zeitraum": true,
           "nurHausherr": false,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         },
         {
@@ -29,6 +59,8 @@
           "name": "Wärme",
           "zeitraum": true,
           "nurHausherr": false,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         },
         {
@@ -36,6 +68,17 @@
           "name": "Photovoltaik",
           "zeitraum": true,
           "nurHausherr": false,
+          "gruppe": null,
+          "beschreibung": null,
+          "unter": []
+        },
+        {
+          "weg": "/system",
+          "name": "Prognose",
+          "zeitraum": false,
+          "nurHausherr": true,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         },
         {
@@ -43,6 +86,8 @@
           "name": "Speicher",
           "zeitraum": true,
           "nurHausherr": false,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         },
         {
@@ -50,6 +95,8 @@
           "name": "Wallbox",
           "zeitraum": true,
           "nurHausherr": false,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         },
         {
@@ -57,6 +104,8 @@
           "name": "Jahreskarte",
           "zeitraum": false,
           "nurHausherr": false,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         }
       ]
@@ -65,12 +114,17 @@
       "schluessel": "geld",
       "weg": "/geld",
       "name": "Geld",
+      "nurHausherr": false,
+      "inLeiste": true,
+      "gruppen": [],
       "reiter": [
         {
           "weg": "/geld",
           "name": "Kosten",
           "zeitraum": true,
           "nurHausherr": false,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         },
         {
@@ -78,6 +132,8 @@
           "name": "PV-Abrechnung",
           "zeitraum": true,
           "nurHausherr": true,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         },
         {
@@ -85,20 +141,40 @@
           "name": "Rechnungen",
           "zeitraum": false,
           "nurHausherr": true,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         }
       ]
     },
     {
-      "schluessel": "technik",
-      "weg": "/waerme/anlage",
-      "name": "Technik",
+      "schluessel": "anlage",
+      "weg": "/anlage",
+      "name": "Anlage",
+      "nurHausherr": false,
+      "inLeiste": true,
+      "gruppen": [
+        {
+          "name": "Maschine",
+          "wort": "Was sie gerade tut"
+        },
+        {
+          "name": "Regelung",
+          "wort": "Warum sie es tut"
+        },
+        {
+          "name": "Abstimmung",
+          "wort": "Womit gerechnet wird"
+        }
+      ],
       "reiter": [
         {
           "weg": "/waerme/anlage",
           "name": "Anlage",
           "zeitraum": false,
           "nurHausherr": false,
+          "gruppe": "Maschine",
+          "beschreibung": "Speicher, Vorlauf und Heizkreise im Schema, im Augenblick und über einen Tag.",
           "unter": [
             {
               "weg": "/waerme/anlage",
@@ -115,6 +191,8 @@
           "name": "Wärmepumpe",
           "zeitraum": false,
           "nurHausherr": false,
+          "gruppe": "Maschine",
+          "beschreibung": "Der Zustand des Geräts, seine Läufe und die gemessene Arbeitszahl.",
           "unter": [
             {
               "weg": "/waerme/waermepumpe",
@@ -127,10 +205,6 @@
             {
               "weg": "/waerme/waermepumpe/kennlinie",
               "name": "Kennlinie"
-            },
-            {
-              "weg": "/waerme/waermepumpe/regler",
-              "name": "Regler"
             }
           ]
         },
@@ -139,6 +213,8 @@
           "name": "Fahrplan",
           "zeitraum": false,
           "nurHausherr": false,
+          "gruppe": "Regelung",
+          "beschreibung": "Wann die Wärmepumpe laufen soll und was der Plan von gestern gehalten hat.",
           "unter": [
             {
               "weg": "/waerme/fahrplan",
@@ -155,6 +231,8 @@
           "name": "Wirkung",
           "zeitraum": false,
           "nurHausherr": false,
+          "gruppe": "Regelung",
+          "beschreibung": "Ob die Wärmepumpe der Anforderung folgt, gemessen an ihren Läufen.",
           "unter": []
         },
         {
@@ -162,27 +240,8 @@
           "name": "Regelkreis",
           "zeitraum": false,
           "nurHausherr": true,
-          "unter": []
-        },
-        {
-          "weg": "/waerme/raeume",
-          "name": "Heizkreise",
-          "zeitraum": true,
-          "nurHausherr": false,
-          "unter": []
-        },
-        {
-          "weg": "/system",
-          "name": "Prognose",
-          "zeitraum": false,
-          "nurHausherr": true,
-          "unter": []
-        },
-        {
-          "weg": "/system/daten",
-          "name": "Daten prüfen",
-          "zeitraum": true,
-          "nurHausherr": true,
+          "gruppe": "Regelung",
+          "beschreibung": "Die Regelung mit ihren Ebenen, Stellgrößen und Parametern.",
           "unter": []
         },
         {
@@ -190,13 +249,36 @@
           "name": "Annahmen",
           "zeitraum": false,
           "nurHausherr": true,
+          "gruppe": "Abstimmung",
+          "beschreibung": "Die Werte, mit denen das Modell des Hauses rechnet.",
           "unter": []
         },
+        {
+          "weg": "/waerme/waermepumpe/regler",
+          "name": "Regler",
+          "zeitraum": false,
+          "nurHausherr": false,
+          "gruppe": "Abstimmung",
+          "beschreibung": "Die Einstellungen am Regler der Wärmepumpe, über den Bus gelesen.",
+          "unter": []
+        }
+      ]
+    },
+    {
+      "schluessel": "system",
+      "weg": "/system/mitteilungen",
+      "name": "System",
+      "nurHausherr": true,
+      "inLeiste": false,
+      "gruppen": [],
+      "reiter": [
         {
           "weg": "/system/mitteilungen",
           "name": "Mitteilungen",
           "zeitraum": false,
           "nurHausherr": true,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         },
         {
@@ -204,6 +286,8 @@
           "name": "Haustür",
           "zeitraum": false,
           "nurHausherr": true,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         },
         {
@@ -211,6 +295,8 @@
           "name": "Hausgerät",
           "zeitraum": false,
           "nurHausherr": true,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         },
         {
@@ -218,6 +304,17 @@
           "name": "Zugang und Sicherung",
           "zeitraum": false,
           "nurHausherr": true,
+          "gruppe": null,
+          "beschreibung": null,
+          "unter": []
+        },
+        {
+          "weg": "/system/daten",
+          "name": "Daten prüfen",
+          "zeitraum": true,
+          "nurHausherr": true,
+          "gruppe": null,
+          "beschreibung": null,
           "unter": []
         }
       ]

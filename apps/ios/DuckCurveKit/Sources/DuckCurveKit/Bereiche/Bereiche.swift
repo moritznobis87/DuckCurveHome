@@ -21,23 +21,55 @@ import Foundation
 /// ihre Ansicht waehlt.
 public struct Bereich: Sendable, Hashable, Identifiable {
     public enum Schluessel: String, Sendable, Hashable, CaseIterable {
-        case jetzt, haus, energie, geld, technik
+        case jetzt, haus, energie, geld, anlage, system
     }
 
     public var schluessel: Schluessel
     public var weg: String
     public var zeichen: Bereichszeichen
     public var name: String
+    /// Nur mit Vollzugriff sichtbar. Das gilt heute fuer das System.
+    public var nurHausherr: Bool
+    /// Steht der Bereich in der Leiste? Das System steht nicht darin: es wird selten gebraucht
+    /// und liegt hinter dem Zahnrad im Kopf der Seite.
+    public var inLeiste: Bool
+    /// Die Gruppen des Bereichs. Ein Bereich mit Gruppen hat eine Uebersicht unter seiner eigenen
+    /// Adresse; seine Reiterzeile zeigt die Gruppen statt einer einzigen langen Reihe.
+    public var gruppen: [Gruppe]
     public var reiter: [Reiter]
 
     public var id: Schluessel { schluessel }
 
-    public init(schluessel: Schluessel, weg: String, zeichen: Bereichszeichen, name: String, reiter: [Reiter] = []) {
+    public init(
+        schluessel: Schluessel, weg: String, zeichen: Bereichszeichen, name: String,
+        nurHausherr: Bool = false, inLeiste: Bool = true, gruppen: [Gruppe] = [],
+        reiter: [Reiter] = []
+    ) {
         self.schluessel = schluessel
         self.weg = weg
         self.zeichen = zeichen
         self.name = name
+        self.nurHausherr = nurHausherr
+        self.inLeiste = inLeiste
+        self.gruppen = gruppen
         self.reiter = reiter
+    }
+
+    /// Die Reiter einer Gruppe, in der Reihenfolge des Bereichs.
+    public func reiter(derGruppe gruppe: String) -> [Reiter] {
+        reiter.filter { $0.gruppe == gruppe }
+    }
+}
+
+/// Eine Gruppe innerhalb eines Bereichs, mit einem Halbsatz, der sagt, wovon sie handelt.
+public struct Gruppe: Sendable, Hashable, Identifiable {
+    public var name: String
+    public var wort: String
+    public var id: String { name }
+
+    public init(name: String, wort: String) {
+        self.name = name
+        self.wort = wort
     }
 }
 
@@ -80,10 +112,19 @@ public struct Reiter: Sendable, Hashable, Identifiable {
     /// `reports/BatteryReport.tsx:103`) - ein gerechneter Kicker kennt die Antwort und kann
     /// nicht in einer Tabelle stehen. Erfunden wird keiner.
     public var kicker: String?
+    /// Die Gruppe des Bereichs, zu der der Reiter gehoert. Nur in Bereichen mit Gruppen.
+    public var gruppe: String?
+    /// Ein Satz fuer die Karte auf der Uebersicht des Bereichs: was die Seite beantwortet. Er
+    /// steht im Seitenbaum, damit er im Dashboard und in der App derselbe ist.
+    public var beschreibung: String?
 
     public var id: String { weg }
 
-    public init(weg: String, name: String, mitZeitraum: Bool = false, spannen: [Spanne] = Spanne.allCases, nurHausherr: Bool = false, unter: [Ansicht] = [], kicker: String? = nil) {
+    public init(
+        weg: String, name: String, mitZeitraum: Bool = false,
+        spannen: [Spanne] = Spanne.allCases, nurHausherr: Bool = false, unter: [Ansicht] = [],
+        kicker: String? = nil, gruppe: String? = nil, beschreibung: String? = nil
+    ) {
         self.weg = weg
         self.name = name
         self.mitZeitraum = mitZeitraum
@@ -91,6 +132,8 @@ public struct Reiter: Sendable, Hashable, Identifiable {
         self.nurHausherr = nurHausherr
         self.unter = unter
         self.kicker = kicker
+        self.gruppe = gruppe
+        self.beschreibung = beschreibung
     }
 }
 
@@ -121,7 +164,7 @@ public struct Ansicht: Sendable, Hashable, Identifiable {
 /// Heisst nicht `Zeichen`: so heisst in der App die Ansicht, die eine Zeichnung zeichnet, und
 /// zwei Typen dieses Namens in einem Modulraum sind nicht mehr eindeutig zu nennen.
 public enum Bereichszeichen: String, Sendable, Hashable {
-    case ente, haus, blitz, euro, zahnrad
+    case ente, haus, blitz, euro, waermepumpe, zahnrad
 }
 
 public enum Bereiche {
@@ -133,8 +176,16 @@ public enum Bereiche {
         // (`house/HouseReport.tsx:219`: „Hausplan · …“). Ein Kicker hängt darum am Reiter und an
         // der Ansicht, nicht am Bereich.
         Bereich(schluessel: .jetzt, weg: "/", zeichen: .ente, name: "Jetzt"),
-        // Das Haus: die Raeume als Liste und als Modell, ein Schalter in der Seite und kein Reiter.
-        Bereich(schluessel: .haus, weg: "/haus", zeichen: .haus, name: "Haus"),
+        // Die Raeume als Liste und als Modell, dazu ihr Verlauf ueber den Tag. Die Hausseite
+        // rechnet ihren Kicker aus dem Plan, darum traegt ihr Reiter keinen.
+        Bereich(
+            schluessel: .haus, weg: "/haus", zeichen: .haus, name: "Haus",
+            reiter: [
+                Reiter(weg: "/haus", name: "Räume"),
+                Reiter(weg: "/waerme/raeume", name: "Über den Tag", mitZeitraum: true, spannen: [.tag],
+                    kicker: "Einzelraumregelung · Abweichung vom Ziel über den Tag"),  // `RoomsReport.tsx:600`
+            ]
+        ),
         Bereich(
             schluessel: .energie, weg: "/strom", zeichen: .blitz, name: "Energie",
             reiter: [
@@ -144,6 +195,10 @@ public enum Bereiche {
                     kicker: "gerechnet, nicht gemessen"),  // `HeatOverview.tsx:137`
                 Reiter(weg: "/strom/pv", name: "Photovoltaik", mitZeitraum: true,
                     kicker: "Erzeugung · Verwendung · Prognose"),  // `PvReport.tsx:77`
+                // Die Prognose der Photovoltaik gegen das, was wirklich kam. Sie steht neben ihr
+                // und nicht als Ansicht darunter, weil sie keinen Zeitraum kennt.
+                Reiter(weg: "/system", name: "Prognose", nurHausherr: true,
+                    kicker: "PV-Prognose gegen Ist · Korrekturfaktoren"),  // `ForecastPage.tsx:245`
                 // **Ohne Kicker, und nicht aus Versehen.** Die Vorlage rechnet ihn hier aus der
                 // Kapazität („13,8 kWh · Nutzung und Ersparnis“, `BatteryReport.tsx:103`), und
                 // die kennt erst die Antwort des Dienstes. Die Seite zeichnet ihn darum weiter
@@ -169,8 +224,12 @@ public enum Bereiche {
             ]
         ),
         Bereich(
-            schluessel: .technik, weg: "/waerme/anlage", zeichen: .zahnrad, name: "Technik",
-            // Erst die Anlage und ihr Fahrplan, dann die Auswertungen, dann das Einstellen.
+            schluessel: .anlage, weg: "/anlage", zeichen: .waermepumpe, name: "Anlage",
+            gruppen: [
+                Gruppe(name: "Maschine", wort: "Was sie gerade tut"),
+                Gruppe(name: "Regelung", wort: "Warum sie es tut"),
+                Gruppe(name: "Abstimmung", wort: "Womit gerechnet wird"),
+            ],
             reiter: [
                 Reiter(
                     weg: "/waerme/anlage", name: "Anlage",
@@ -181,7 +240,9 @@ public enum Bereiche {
                             kicker: Anlagenworte.bereichskicker),
                         Ansicht(weg: "/waerme/wiedergabe", name: "Ein Tag",
                             kicker: Wiedergabeworte.seitenkicker),
-                    ]
+                    ],
+                    gruppe: "Maschine",
+                    beschreibung: "Speicher, Vorlauf und Heizkreise im Schema, im Augenblick und über einen Tag."
                 ),
                 Reiter(
                     weg: "/waerme/waermepumpe", name: "Wärmepumpe",
@@ -192,9 +253,9 @@ public enum Bereiche {
                             kicker: "Läufe · Abtauen · Heizkurve"),  // `waermepumpe/betrieb/page.tsx:9`
                         Ansicht(weg: "/waerme/waermepumpe/kennlinie", name: "Kennlinie",
                             kicker: "Arbeitszahl · gemessen"),  // `waermepumpe/kennlinie/page.tsx:9`
-                        Ansicht(weg: "/waerme/waermepumpe/regler", name: "Regler",
-                            kicker: "Einstellungen · gelesen"),  // `waermepumpe/regler/page.tsx:9`
-                    ]
+                    ],
+                    gruppe: "Maschine",
+                    beschreibung: "Der Zustand des Geräts, seine Läufe und die gemessene Arbeitszahl."
                 ),
                 Reiter(
                     weg: "/waerme/fahrplan", name: "Fahrplan",
@@ -203,29 +264,38 @@ public enum Bereiche {
                             kicker: "Preis · PV · Wärmebedarf · Puffer · zwei Tage"),  // `fahrplan/page.tsx:9`
                         Ansicht(weg: "/waerme/nachbetrachtung", name: "Rückblick",
                             kicker: "Versprochen, gehalten, wirklich · ein Tag in Euro"),  // `nachbetrachtung/page.tsx:10`
-                    ]
+                    ],
+                    gruppe: "Regelung",
+                    beschreibung: "Wann die Wärmepumpe laufen soll und was der Plan von gestern gehalten hat."
                 ),
                 Reiter(weg: "/waerme/wirkung", name: "Wirkung",
-                    kicker: "Folgt die Wärmepumpe der Anforderung? · gemessen, nicht angenommen"),  // `wirkung/page.tsx:9`
+                    kicker: "Folgt die Wärmepumpe der Anforderung? · gemessen, nicht angenommen",  // `wirkung/page.tsx:9`
+                    gruppe: "Regelung",
+                    beschreibung: "Ob die Wärmepumpe der Anforderung folgt, gemessen an ihren Läufen."),
                 Reiter(weg: "/waerme/regelkreis", name: "Regelkreis", nurHausherr: true,
-                    kicker: Regelkreisbild.seitenkicker),  // `waerme/regelkreis/page.tsx:12`
-                Reiter(weg: "/waerme/raeume", name: "Heizkreise", mitZeitraum: true, spannen: [.tag],
-                    kicker: "Einzelraumregelung · Abweichung vom Ziel über den Tag"),  // `RoomsReport.tsx:600`
-                Reiter(weg: "/system", name: "Prognose", nurHausherr: true,
-                    kicker: "PV-Prognose gegen Ist · Korrekturfaktoren"),  // `ForecastPage.tsx:245`
-                Reiter(
-                    // **Nur Tage.** Die Vorlage schaltet die Spannenwahl auf dieser Seite
-                    // ausdrücklich ab (`DataCheck.tsx:59-68`, `showPeriods={false}`), weil die
-                    // Prüfansicht Minutenwerte zeigt: über eine Woche gelegt ergeben sie ein
-                    // Bild, in dem nichts zu erkennen ist. Hier standen Tag, Woche und Monat -
-                    // und die Seite selbst bot nur Tage an. Reiter und Seite widersprachen
-                    // sich also, und der Reiter gewann: wer Woche wählte, bekam ein Diagramm
-                    // aus einem Tag mit der Überschrift einer Woche.
-                    weg: "/system/daten", name: "Daten prüfen", mitZeitraum: true,
-                    spannen: [.tag], nurHausherr: true,
-                    kicker: "Messreihen · Stundenbilanz · Rohdaten"),  // `DataCheck.tsx:61`
+                    kicker: Regelkreisbild.seitenkicker,  // `waerme/regelkreis/page.tsx:12`
+                    gruppe: "Regelung",
+                    beschreibung: "Die Regelung mit ihren Ebenen, Stellgrößen und Parametern."),
                 Reiter(weg: "/waerme/annahmen", name: "Annahmen", nurHausherr: true,
-                    kicker: Annahmenfelder.kicker),  // `waerme/annahmen/page.tsx:13`
+                    kicker: Annahmenfelder.kicker,  // `waerme/annahmen/page.tsx:13`
+                    gruppe: "Abstimmung",
+                    beschreibung: "Die Werte, mit denen das Modell des Hauses rechnet."),
+                // Was am Regler eingestellt ist, gelesen ueber den Bus. Bis zum 23.11.2026 eine
+                // Ansicht der Waermepumpe; als Stelle zum Einstellen gehoert er zur Abstimmung.
+                // Seine Adresse liegt weiter unter der der Waermepumpe: es gilt die laengste
+                // passende Adresse (``Bereiche/reiterVon(_:_:)``).
+                Reiter(weg: "/waerme/waermepumpe/regler", name: "Regler",
+                    kicker: "Einstellungen · gelesen",  // `waermepumpe/regler/page.tsx:9`
+                    gruppe: "Abstimmung",
+                    beschreibung: "Die Einstellungen am Regler der Wärmepumpe, über den Bus gelesen."),
+            ]
+        ),
+        // Die Verwaltung: selten gebraucht und nur vom Hausherrn. Hinter dem Zahnrad, nicht in
+        // der Leiste.
+        Bereich(
+            schluessel: .system, weg: "/system/mitteilungen", zeichen: .zahnrad, name: "System",
+            nurHausherr: true, inLeiste: false,
+            reiter: [
                 Reiter(weg: "/system/mitteilungen", name: "Mitteilungen", nurHausherr: true,
                     kicker: "Was aufs Handy kommt: Störungen und das Morning Briefing"),  // `system/mitteilungen/page.tsx:12`
                 Reiter(weg: "/system/haustuer", name: "Haustür", nurHausherr: true,
@@ -235,9 +305,20 @@ public enum Bereiche {
                     kicker: "Dienste, Gesundheit, Sicherung und Updates des Rechners im Haus"),  // `system/geraet/page.tsx:9`
                 Reiter(weg: "/system/zugang", name: "Zugang und Sicherung", nurHausherr: true,
                     kicker: "Geräte koppeln · wer zusieht · Daten sichern"),  // `system/zugang/page.tsx:58`
+                Reiter(
+                    // **Nur Tage.** Die Vorlage schaltet die Spannenwahl auf dieser Seite
+                    // ausdrücklich ab (`DataCheck.tsx:59-68`, `showPeriods={false}`), weil die
+                    // Prüfansicht Minutenwerte zeigt: über eine Woche gelegt ergeben sie ein
+                    // Bild, in dem nichts zu erkennen ist.
+                    weg: "/system/daten", name: "Daten prüfen", mitZeitraum: true,
+                    spannen: [.tag], nurHausherr: true,
+                    kicker: "Messreihen · Stundenbilanz · Rohdaten"),  // `DataCheck.tsx:61`
             ]
         ),
     ]
+
+    /// Die Bereiche der Leiste, in ihrer Reihenfolge. Das System gehoert nicht dazu.
+    public static var leiste: [Bereich] { alle.filter(\.inLeiste) }
 
     /// Welche Spannen die Seite zu einem Weg anbietet - `nil`, wenn sie keinen Zeitraum kennt.
     ///
@@ -261,8 +342,28 @@ public enum Bereiche {
     /// in der Seite, müsste er von unten nach oben gereicht werden; so steht er einmal und wird
     /// von derselben Stelle gelesen.
     public static func kicker(fuer weg: String) -> String? {
-        let reiter = reiterVon(bereichVon(weg), weg)
+        let bereich = bereichVon(weg)
+        let reiter = reiterVon(bereich, weg)
+        // Die Uebersicht eines Bereichs mit Gruppen ist kein Reiter und hat trotzdem eine Zeile.
+        if reiter == nil, !bereich.gruppen.isEmpty, saeubere(weg) == bereich.weg {
+            return uebersichtskicker(bereich)
+        }
         return ansichtVon(reiter, weg)?.kicker ?? reiter?.kicker
+    }
+
+    /// Steht dieser Weg auf der Uebersicht eines Bereichs mit Gruppen?
+    ///
+    /// Das Gerippe fragt danach: am Telefon sind dort die Karten die Navigation, und die
+    /// Reiterzeile darueber waere dasselbe ein zweites Mal (`handy.css`, `.area-tabs-uebersicht`).
+    public static func istUebersicht(_ weg: String) -> Bool {
+        let bereich = bereichVon(weg)
+        return !bereich.gruppen.isEmpty && saeubere(weg) == bereich.weg
+    }
+
+    /// Die Zeile ueber der Uebersicht eines Bereichs. Derselbe Wortlaut wie im Dashboard
+    /// (`Bereichsuebersicht.tsx`).
+    public static func uebersichtskicker(_ bereich: Bereich) -> String {
+        "Alle Seiten im Bereich \(bereich.name)"
     }
 
     /// Der Bereich, zu dem ein Weg gehoert: der mit der laengsten passenden Adresse unter seinen

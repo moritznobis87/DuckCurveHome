@@ -154,7 +154,7 @@ final class HausgeraetTests: XCTestCase {
     }
 
     func testReiterNurFuerDenHausherrn() {
-        XCTAssertEqual(Bereiche.bereichVon("/system/geraet").schluessel, .technik)
+        XCTAssertEqual(Bereiche.bereichVon("/system/geraet").schluessel, .system)
     }
 }
 

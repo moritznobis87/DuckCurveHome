@@ -60,7 +60,7 @@ Person, die auch an die Datenbank käme:
 
 Danach tut die Variable nichts mehr: bei jedem Start prüft sie, ob wirklich noch niemand da ist.
 Wer den Link im Protokoll verpasst, lässt sie stehen und startet neu, solange noch niemand
-hereingekommen ist; danach stellt der Hausherr unter **Technik › Zugang** neue Links aus.
+hereingekommen ist; danach stellt der Hausherr unter **System › Zugang und Sicherung** neue Links aus.
 
 ### Das Gerät an der Wand
 
@@ -76,7 +76,7 @@ einzeln widerrufbar war.
 
 ## Einladen
 
-Auf **Technik › Zugang**: E-Mail-Adresse, Name, Rolle. Der Link kommt in jedem Fall zurück und
+Auf **System › Zugang und Sicherung**: E-Mail-Adresse, Name, Rolle. Der Link kommt in jedem Fall zurück und
 steht dort zum Kopieren; ist ein Postausgang eingerichtet
 (`DCH_SMTP_*` oder `DCH_RESEND_SCHLUESSEL`), geht er zusätzlich per E-Mail hinaus. **Der Versand
 ist eine Beigabe, kein Torwächter:** schlägt er fehl, ist die Person trotzdem angelegt.
@@ -114,7 +114,7 @@ sein. Eine Nachricht von `haus@duckcurve.de` ohne SPF- und DKIM-Einträge in der
 Transaktionsversender führt durch diese Einträge; bei SMTP über ein vorhandenes Postfach genügt
 es meist, dessen eigene Adresse als Absender zu nehmen.
 
-Auf der Seite **Technik › Zugang** steht, was noch fehlt: ohne Konfiguration sagt sie
+Auf der Seite **System › Zugang und Sicherung** steht, was noch fehlt: ohne Konfiguration sagt sie
 „E-Mail-Versand ist nicht eingerichtet" und nennt die Variablen. Und was auch immer beim Versand
 schiefgeht - die Person ist angelegt, und der Link steht dort zum Kopieren. Der Versand ist eine
 Beigabe, kein Torwächter.

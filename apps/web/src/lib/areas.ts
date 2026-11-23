@@ -1,5 +1,5 @@
 /**
- * Die Seitenstruktur: fuenf Bereiche nach Frage, dazu System fuer den Hausherrn.
+ * Die Seitenstruktur: Bereich, Gruppe, Seite.
  *
  * **Warum nach Frage und nicht nach Geraet.** Dreizehn Seiten waren nacheinander entstanden, je
  * eine je Geraet, und jede mit eigener Zeitraumwahl. Wer die Woche in der Photovoltaik ansah und
@@ -7,6 +7,10 @@
  * den Zeitraum: er reist als `?period=&anchor=` von Reiter zu Reiter mit.
  *
  * Die alten Adressen leiten in `next.config.ts` auf die neuen um, Lesezeichen bleiben gueltig.
+ *
+ * **Dieselbe Struktur gilt in der App.** `docs/seitenbaum.json` beschreibt sie einmal;
+ * `seitenbaum.test.ts` haelt diese Datei dagegen und `SeitenbaumTests.swift` die App. Wer hier
+ * etwas aendert, aendert zuerst die gemeinsame Datei.
  */
 import type { IconName } from "@/components/ui/Icon";
 
@@ -23,41 +27,69 @@ export type Tab = {
    * nicht als eigene Reiter daneben. Die erste Ansicht hat die Adresse des Reiters.
    */
   unter?: Ansicht[];
+  /** Die Gruppe des Bereichs, zu der der Reiter gehoert. Nur in Bereichen mit Gruppen. */
+  gruppe?: string;
+  /** Ein Satz fuer die Karte auf der Uebersicht des Bereichs: was die Seite beantwortet. */
+  beschreibung?: string;
 };
 
 export type Ansicht = { href: string; label: string };
 
+/** Eine Gruppe innerhalb eines Bereichs, mit einem Halbsatz, der sagt, wovon sie handelt. */
+export type Gruppe = { name: string; wort: string };
+
 export type Area = {
-  key: "jetzt" | "haus" | "energie" | "geld" | "technik";
+  key: "jetzt" | "haus" | "energie" | "geld" | "anlage" | "system";
   href: string;
   icon: IconName;
   label: string;
   ownerOnly?: boolean;
+  /**
+   * Steht der Bereich in der Leiste? Das System steht nicht darin: es wird selten gebraucht und
+   * liegt hinter dem Zahnrad im Kopf der Seite.
+   */
+  leiste?: boolean;
+  /**
+   * Die Gruppen des Bereichs. Ein Bereich mit Gruppen hat eine Uebersicht unter seiner eigenen
+   * Adresse; seine Reiterzeile zeigt die Gruppen statt einer einzigen langen Reihe.
+   */
+  gruppen?: Gruppe[];
   tabs: Tab[];
 };
 
 /**
- * **Alltag vorn, Technik hinten** (seit dem 11.11.2026).
+ * **Bereich, Gruppe, Seite** (seit dem 23.11.2026).
  *
- * Vorher standen Fahrplan, Wirkung, Annahmen und Prognose gleichberechtigt neben dem, was jemand
- * im Haus täglich braucht, und die Räume lagen zwei Ebenen tief unter Wärme. Die Leiste hat jetzt
- * vier Bereiche für den Alltag und einen für den, der die Anlage betreibt:
+ * Bis dahin lagen 18 der 29 Ansichten im Bereich Technik, in einer Zeile aus 13 Reitern, und
+ * darin drei verschiedene Aufgaben: der Maschine zusehen, die Regelung verstehen, das System
+ * verwalten. Geordnet war das nur durch die Reihenfolge.
  *
- * - **Jetzt**: was gerade ist und was als Nächstes kommt.
- * - **Haus**: die Räume, als Liste zum Stellen oder als Modell. Ohne Reiter.
- * - **Energie**: was verbraucht und erzeugt wurde, Strom und Wärme nebeneinander.
+ * - **Jetzt**: was gerade ist und was als Naechstes kommt.
+ * - **Haus**: die Raeume, zum Stellen und ueber den Tag.
+ * - **Energie**: was verbraucht und erzeugt wurde, Strom und Waerme nebeneinander.
  * - **Geld**: was es gekostet hat.
- * - **Technik**: wie die Anlage arbeitet und woran man sie einstellt.
+ * - **Anlage**: die Heizungsanlage in drei Gruppen. Die Maschine, ihre Regelung und die Werte,
+ *   mit denen gerechnet wird.
+ * - **System**: die Verwaltung. Hinter dem Zahnrad und nicht in der Leiste.
  *
- * Die Adressen sind dieselben geblieben. Ein Bereich ist deshalb nicht mehr das erste Stück des
- * Pfads: `/waerme` gehört zur Energie, `/waerme/anlage` zur Technik. Was nur der Hausherr sieht,
- * steht am Reiter, nicht mehr am Bereich.
+ * Die Adressen sind dieselben geblieben; neu ist nur `/anlage` fuer die Uebersicht. Ein Bereich
+ * ist deshalb nicht das erste Stueck des Pfads: `/waerme` gehoert zur Energie, `/waerme/anlage`
+ * zur Anlage, `/system` (die Prognose) zur Energie und `/system/geraet` zum System.
  */
 export const AREAS: Area[] = [
   { key: "jetzt", href: "/", icon: "duck", label: "Jetzt", tabs: [] },
-  // Das Haus: die Räume als Liste und als Modell, ein Schalter in der Seite und kein Reiter.
-  // Die Geometrie kommt von der Bruecke (haus.yaml), die Werte aus Raeumen und Live-Zustand.
-  { key: "haus", href: "/haus", icon: "house", label: "Haus", tabs: [] },
+  // Die Raeume als Liste und als Modell, dazu ihr Verlauf ueber den Tag. Die Geometrie kommt
+  // von der Bruecke (haus.yaml), die Werte aus Raeumen und Live-Zustand.
+  {
+    key: "haus",
+    href: "/haus",
+    icon: "house",
+    label: "Haus",
+    tabs: [
+      { href: "/haus", label: "Räume" },
+      { href: "/waerme/raeume", label: "Über den Tag", dated: true },
+    ],
+  },
   {
     key: "energie",
     href: "/strom",
@@ -67,6 +99,9 @@ export const AREAS: Area[] = [
       { href: "/strom", label: "Strom", dated: true },
       { href: "/waerme", label: "Wärme", dated: true },
       { href: "/strom/pv", label: "Photovoltaik", dated: true },
+      // Die Prognose der Photovoltaik gegen das, was wirklich kam. Sie steht neben ihr und nicht
+      // als Ansicht darunter, weil sie keinen Zeitraum kennt und die Photovoltaik einen hat.
+      { href: "/system", label: "Prognose", ownerOnly: true },
       { href: "/strom/speicher", label: "Speicher", dated: true },
       { href: "/strom/wallbox", label: "Wallbox", dated: true },
       { href: "/strom/jahr", label: "Jahreskarte" },
@@ -84,16 +119,22 @@ export const AREAS: Area[] = [
     ],
   },
   {
-    key: "technik",
-    href: "/waerme/anlage",
-    icon: "gear",
-    label: "Technik",
-    // Erst die Anlage und ihr Fahrplan, dann die Auswertungen, dann das Einstellen. Die
-    // Wiedergabe ist die Anlage ueber einen Tag, die Nachbetrachtung der Fahrplan im Rueckblick.
+    key: "anlage",
+    href: "/anlage",
+    icon: "pump",
+    label: "Anlage",
+    gruppen: [
+      { name: "Maschine", wort: "Was sie gerade tut" },
+      { name: "Regelung", wort: "Warum sie es tut" },
+      { name: "Abstimmung", wort: "Womit gerechnet wird" },
+    ],
     tabs: [
       {
         href: "/waerme/anlage",
         label: "Anlage",
+        gruppe: "Maschine",
+        beschreibung: "Speicher, Vorlauf und Heizkreise im Schema, im Augenblick und über einen Tag.",
+        // Die Wiedergabe ist die Anlage ueber einen Tag.
         unter: [
           { href: "/waerme/anlage", label: "Jetzt" },
           { href: "/waerme/wiedergabe", label: "Ein Tag" },
@@ -103,40 +144,84 @@ export const AREAS: Area[] = [
       {
         href: "/waerme/waermepumpe",
         label: "Wärmepumpe",
+        gruppe: "Maschine",
+        beschreibung: "Der Zustand des Geräts, seine Läufe und die gemessene Arbeitszahl.",
         // Der Augenblick, der Betrieb über Tage und die gemessene Kennlinie: dieselbe Maschine,
         // einmal jetzt, einmal als Tagebuch, einmal als Kennlinie über Wochen.
         unter: [
           { href: "/waerme/waermepumpe", label: "Jetzt" },
           { href: "/waerme/waermepumpe/betrieb", label: "Betrieb" },
           { href: "/waerme/waermepumpe/kennlinie", label: "Kennlinie" },
-          // Was am Regler eingestellt ist, gelesen über den Bus. Verstellt wird dort nichts.
-          { href: "/waerme/waermepumpe/regler", label: "Regler" },
         ],
       },
       {
         href: "/waerme/fahrplan",
         label: "Fahrplan",
+        gruppe: "Regelung",
+        beschreibung: "Wann die Wärmepumpe laufen soll und was der Plan von gestern gehalten hat.",
+        // Die Nachbetrachtung ist der Fahrplan im Rueckblick.
         unter: [
           { href: "/waerme/fahrplan", label: "Voraus" },
           { href: "/waerme/nachbetrachtung", label: "Rückblick" },
         ],
       },
-      { href: "/waerme/wirkung", label: "Wirkung" },
+      {
+        href: "/waerme/wirkung",
+        label: "Wirkung",
+        gruppe: "Regelung",
+        beschreibung: "Ob die Wärmepumpe der Anforderung folgt, gemessen an ihren Läufen.",
+      },
       // Die Regelung selbst, als Blockschaltbild: fünf Kaskadenebenen, ihre Störgrößen und der
       // Lernstand jedes Parameters. Steht hinter der Wirkung, weil sie deren Zahlen verwendet.
-      { href: "/waerme/regelkreis", label: "Regelkreis", ownerOnly: true },
-      { href: "/waerme/raeume", label: "Heizkreise", dated: true },
-      { href: "/system", label: "Prognose", ownerOnly: true },
-      { href: "/system/daten", label: "Daten prüfen", dated: true, ownerOnly: true },
-      { href: "/waerme/annahmen", label: "Annahmen", ownerOnly: true },
+      {
+        href: "/waerme/regelkreis",
+        label: "Regelkreis",
+        gruppe: "Regelung",
+        ownerOnly: true,
+        beschreibung: "Die Regelung mit ihren Ebenen, Stellgrößen und Parametern.",
+      },
+      {
+        href: "/waerme/annahmen",
+        label: "Annahmen",
+        gruppe: "Abstimmung",
+        ownerOnly: true,
+        beschreibung: "Die Werte, mit denen das Modell des Hauses rechnet.",
+      },
+      // Was am Regler eingestellt ist, gelesen über den Bus. Bis zum 23.11.2026 eine Ansicht
+      // der Wärmepumpe; als Stelle zum Einstellen gehört er zur Abstimmung.
+      {
+        href: "/waerme/waermepumpe/regler",
+        label: "Regler",
+        gruppe: "Abstimmung",
+        beschreibung: "Die Einstellungen am Regler der Wärmepumpe, über den Bus gelesen.",
+      },
+    ],
+  },
+  {
+    key: "system",
+    href: "/system/mitteilungen",
+    icon: "gear",
+    label: "System",
+    ownerOnly: true,
+    leiste: false,
+    tabs: [
       { href: "/system/mitteilungen", label: "Mitteilungen", ownerOnly: true },
       { href: "/system/haustuer", label: "Haustür", ownerOnly: true },
       // Der Rechner im Haus selbst: Dienste, Gesundheit, Neustarts, Protokolle, Updates.
       { href: "/system/geraet", label: "Hausgerät", ownerOnly: true },
       { href: "/system/zugang", label: "Zugang und Sicherung", ownerOnly: true },
+      { href: "/system/daten", label: "Daten prüfen", dated: true, ownerOnly: true },
     ],
   },
 ];
+
+/** Die Bereiche der Leiste, in ihrer Reihenfolge. Das System gehoert nicht dazu. */
+export const LEISTE: Area[] = AREAS.filter((a) => a.leiste !== false);
+
+/** Die Reiter einer Gruppe, in der Reihenfolge des Bereichs. */
+export function tabsDerGruppe(area: Area, gruppe: string): Tab[] {
+  return area.tabs.filter((t) => t.gruppe === gruppe);
+}
 
 /**
  * Der Bereich, zu dem ein Pfad gehoert: der mit der laengsten passenden Adresse unter seinen

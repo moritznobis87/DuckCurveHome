@@ -78,9 +78,10 @@ final class Wegweiser {
     /// Rechnung und kein Eintrag; eingetragen wird erst, wenn jemand stellt.
     ///
     /// Zweitens **gilt sie nur, soweit die Seite sie anbietet.** Der Zeitraum haengt am
-    /// Bereich, die Spannen haengen am Reiter: wer unter Technik „Daten pruefen" auf Monat
-    /// stellt und dann auf „Heizkreise" wechselt, haette sonst „Nov. 2026" im Kopf, keinen
-    /// Schalter (also keinen Weg zurueck) und eine Seite, die trotzdem nur einen Tag laedt.
+    /// Bereich, die Spannen haengen am Reiter: wer unter Geld die „Kosten" auf Woche stellt
+    /// und dann zur „PV-Abrechnung" wechselt, die nur Monat und Jahr kennt, haette sonst eine
+    /// Woche im Kopf, keinen Schalter dafuer (also keinen Weg zurueck) und eine Seite, die
+    /// trotzdem einen Monat laedt.
     /// Kennt die Seite die Spanne nicht, faellt sie auf die erste, die die Seite kennt.
     func zeitraum(jetzt: Date) -> Zeitraum {
         // Die Vorgabe haengt am Bereich: Energie fangen beim Tag an, Geld beim Monat.
