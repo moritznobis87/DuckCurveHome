@@ -21,6 +21,428 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/zustand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ist eine Anmeldung nötig?
+         * @description Was die Anmeldeseite wissen muss, bevor jemand angemeldet ist.
+         *
+         *     Wortkarg mit Absicht: `personen` ist eine Zahl, keine Liste. Dass es noch niemanden gibt, muss
+         *     die Seite sagen können („Zugang über das gepaarte Gerät einrichten"); wer das wäre, braucht
+         *     sie nicht.
+         */
+        get: operations["zustand_api_v1_auth_zustand_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/wer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wer stellt diese Anfrage?
+         * @description Die kleinste Auskunft: Art, Rolle, Name.
+         *
+         *     Die Oberfläche fragt das alle zwei Minuten, um keine toten Knöpfe zu zeigen - darum eine
+         *     eigene Antwort und nicht `/auth/ich`, das zusätzlich Passkeys und Sitzungen lädt. Sie
+         *     beantwortet beide Wege herein: eine angemeldete Person ebenso wie ein gepaartes Gerät.
+         */
+        get: operations["wer_api_v1_auth_wer_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/anmeldung/beginnen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Anmeldung mit Passkey beginnen
+         * @description Die Optionen für `navigator.credentials.get` - ohne E-Mail-Adresse.
+         *
+         *     Der Browser bietet die Passkeys für diese Domain an (auffindbarer Passkey). Erst auf Klick und
+         *     nicht beim Laden der Seite: jede Challenge ist eine Zeile in der Datenbank, und eine Seite,
+         *     die beim blossen Aufruf eine anlegt, ließe sich von jedem Bot fluten.
+         */
+        post: operations["anmeldung_beginnen_api_v1_auth_anmeldung_beginnen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/anmeldung/abschliessen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mit Passkey anmelden */
+        post: operations["anmeldung_abschliessen_api_v1_auth_anmeldung_abschliessen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/wiederherstellung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mit Wiederherstellungscode anmelden
+         * @description Der Weg, wenn alle Geräte weg sind. Der Code gilt einmal.
+         *
+         *     Danach gehört der erste Griff in das Konto: einen neuen Passkey anlegen und neue Codes holen.
+         */
+        post: operations["wiederherstellung_api_v1_auth_wiederherstellung_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/einladung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wem gehört dieser Link?
+         * @description Löst den Link nicht ein - das tut erst der fertige Passkey.
+         */
+        get: operations["einladung_api_v1_auth_einladung_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/einladung/passkey/beginnen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Passkey über den Link anlegen: beginnen */
+        post: operations["einladung_passkey_beginnen_api_v1_auth_einladung_passkey_beginnen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/einladung/passkey/abschliessen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passkey über den Link anlegen: abschließen
+         * @description Legt den Passkey an, löst den Link ein und meldet an.
+         *
+         *     **Jeder eingelöste Link bringt zehn frische Wiederherstellungscodes** und entwertet die alten.
+         *     Das ist Absicht: der Link ist nicht nur die Einladung, sondern auch der Rückweg, und wer ihn
+         *     gebraucht hat, muss davon ausgehen, dass die alten Codes nichts mehr wert sind. Sie gehen
+         *     **einmal** im Klartext hinaus, hier; danach liegen nur ihre Hashes.
+         */
+        post: operations["einladung_passkey_abschliessen_api_v1_auth_einladung_passkey_abschliessen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/ich": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wer bin ich, und welche Geräte habe ich? */
+        get: operations["ich_api_v1_auth_ich_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/abmelden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Diese Sitzung beenden
+         * @description Beendet die Sitzung, mit der gefragt wird. Das BFF löscht danach sein Cookie.
+         */
+        post: operations["abmelden_api_v1_auth_abmelden_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/sitzungen/{sitzung_id}/beenden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ein anderes Gerät abmelden */
+        post: operations["sitzung_beenden_api_v1_auth_sitzungen__sitzung_id__beenden_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/sitzungen/beenden-alle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Überall abmelden
+         * @description Der Griff für den Verdachtsfall: alle Sitzungen dieser Person enden, auch die eigene.
+         */
+        post: operations["alle_sitzungen_beenden_api_v1_auth_sitzungen_beenden_alle_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkeys/beginnen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Passkey anlegen: beginnen */
+        post: operations["passkey_beginnen_api_v1_auth_passkeys_beginnen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkeys/abschliessen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Passkey anlegen: abschließen */
+        post: operations["passkey_abschliessen_api_v1_auth_passkeys_abschliessen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkeys/{passkey_id}/name": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Passkey umbenennen */
+        post: operations["passkey_umbenennen_api_v1_auth_passkeys__passkey_id__name_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkeys/{passkey_id}/loeschen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passkey löschen
+         * @description Der letzte Passkey bleibt: sonst käme diese Person nur noch über einen Code oder einen
+         *     Link des Hausherrn herein.
+         */
+        post: operations["passkey_loeschen_api_v1_auth_passkeys__passkey_id__loeschen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Neue Wiederherstellungscodes
+         * @description Zehn neue Codes; die alten gelten nicht mehr. Klartext nur hier, einmal.
+         */
+        post: operations["codes_api_v1_auth_codes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/personen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wer Zugang hat */
+        get: operations["personen_api_v1_auth_personen_get"];
+        put?: never;
+        /**
+         * Person anlegen und einladen
+         * @description Legt die Person an und gibt den Einladungslink zurück - immer, auch wenn die E-Mail
+         *     hinausging. Der Versand ist eine Beigabe: schlägt er fehl, ist die Person trotzdem angelegt
+         *     und der Link bleibt kopierbar (`dch_api/post.py`).
+         */
+        post: operations["person_anlegen_api_v1_auth_personen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/personen/{person_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rolle oder Zustand ändern */
+        post: operations["person_aendern_api_v1_auth_personen__person_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/personen/{person_id}/einladen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Neuen Link ausstellen
+         * @description Ein neuer Link - für „Einladung kam nicht an" und für „alle Geräte verloren".
+         *
+         *     Der alte Link wird dabei entwertet: zwei gültige Links für dieselbe Person sind einer zu viel.
+         */
+        post: operations["person_einladen_api_v1_auth_personen__person_id__einladen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/personen/{person_id}/loeschen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Person löschen
+         * @description Löscht die Person samt Passkeys, Sitzungen und offenen Links. Der letzte aktive Hausherr
+         *     bleibt - sonst sperrt sich das Haus selbst aus.
+         */
+        post: operations["person_loeschen_api_v1_auth_personen__person_id__loeschen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/alfred/status": {
         parameters: {
             query?: never;
@@ -1779,6 +2201,26 @@ export interface components {
             modell?: string | null;
         };
         /**
+         * AngemeldetOut
+         * @description Das Ergebnis einer Anmeldung.
+         *
+         *     `token` ist der Ausweis im Klartext und existiert genau hier einmal. Das BFF legt ihn in ein
+         *     HttpOnly-Cookie und gibt ihn nie an den Browser weiter; eine App legt ihn in den
+         *     Schlüsselbund.
+         */
+        AngemeldetOut: {
+            /** Token */
+            token: string;
+            /**
+             * Laeuft Ab Am
+             * Format: date-time
+             */
+            laeuft_ab_am: string;
+            ausweis: components["schemas"]["AusweisOut"];
+            /** Codes */
+            codes?: string[];
+        };
+        /**
          * AnlageHeizkreisOut
          * @description Der Heizkreis: wie viele Räume gerade Wärme nehmen. Eine Leistung gibt es nicht; die
          *     Wärmebilanz kennt sie nur als Rest, und ein Rest ist keine Anzeige für den Augenblick.
@@ -1984,6 +2426,15 @@ export interface components {
             /** Tapping Since */
             tapping_since: string | null;
         };
+        /** AnmeldenIn */
+        AnmeldenIn: {
+            /** Schritt */
+            schritt: string;
+            /** Antwort */
+            antwort: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * ApiSelbstOut
          * @description Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden.
@@ -2098,6 +2549,38 @@ export interface components {
              * @default false
              */
             vorlauf_gemessen: boolean;
+        };
+        /**
+         * AusweisOut
+         * @description Wer gerade fragt. Die Oberfläche blendet danach aus, was die Rolle nicht darf - verboten
+         *     wird es am Dienst (`dch_api/auth/rechte.py`).
+         */
+        AusweisOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "person" | "geraet" | "gast" | "dienst";
+            /**
+             * Rolle
+             * @enum {string}
+             */
+            rolle: "hausherr" | "bewohner" | "gast" | "service";
+            /**
+             * Person Id
+             * @default
+             */
+            person_id: string;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Email
+             * @default
+             */
+            email: string;
         };
         /**
          * AutoProfile
@@ -3106,6 +3589,59 @@ export interface components {
             days: number;
             /** Note De */
             note_de: string;
+        };
+        /**
+         * EinladenIn
+         * @description Einen neuen Link ausstellen. Die Person steht in der Adresse, nicht hier.
+         */
+        EinladenIn: {
+            /**
+             * Einladen
+             * @default true
+             */
+            einladen: boolean;
+        };
+        /**
+         * EinladungOut
+         * @description Der Einladungslink - einmal, im Klartext, zum Kopieren oder Verschicken.
+         */
+        EinladungOut: {
+            person: components["schemas"]["PersonOut"];
+            /** Link */
+            link: string;
+            /**
+             * Laeuft Ab Am
+             * Format: date-time
+             */
+            laeuft_ab_am: string;
+            /**
+             * Verschickt
+             * @default false
+             */
+            verschickt: boolean;
+        };
+        /**
+         * EinladungPersonOut
+         * @description Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist.
+         */
+        EinladungPersonOut: {
+            /** Email */
+            email: string;
+            /**
+             * Anzeigename
+             * @default
+             */
+            anzeigename: string;
+            /**
+             * Rolle
+             * @enum {string}
+             */
+            rolle: "hausherr" | "bewohner" | "gast" | "service";
+            /**
+             * Passkeys
+             * @default 0
+             */
+            passkeys: number;
         };
         /** EnergyBucketOut */
         EnergyBucketOut: {
@@ -5123,6 +5659,22 @@ export interface components {
              */
             note_de: string;
         };
+        /**
+         * IchOut
+         * @description Die eigene Seite: wer ich bin, welche Passkeys und welche Sitzungen ich habe.
+         */
+        IchOut: {
+            ausweis: components["schemas"]["AusweisOut"];
+            /** Passkeys */
+            passkeys?: components["schemas"]["PasskeyOut"][];
+            /** Sitzungen */
+            sitzungen?: components["schemas"]["SitzungOut"][];
+            /**
+             * Codes Offen
+             * @default 0
+             */
+            codes_offen: number;
+        };
         /** ImportResult */
         ImportResult: {
             /** Kind */
@@ -5968,6 +6520,11 @@ export interface components {
              */
             verschieben_de: string;
         };
+        /** NameIn */
+        NameIn: {
+            /** Name */
+            name: string;
+        };
         /** NextExpected */
         NextExpected: {
             /** Action */
@@ -6090,6 +6647,123 @@ export interface components {
             /** Verlauf */
             verlauf?: components["schemas"]["Messpunkt"][];
             pruefung?: components["schemas"]["Pruefung"] | null;
+        };
+        /** PasskeyAbschliessenIn */
+        PasskeyAbschliessenIn: {
+            /** Schritt */
+            schritt: string;
+            /** Antwort */
+            antwort: {
+                [key: string]: unknown;
+            };
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Token
+             * @default
+             */
+            token: string;
+        };
+        /** PasskeyBeginnenIn */
+        PasskeyBeginnenIn: {
+            /**
+             * Token
+             * @default
+             */
+            token: string;
+        };
+        /** PasskeyOut */
+        PasskeyOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Gesichert */
+            gesichert: boolean;
+            /**
+             * Erstellt Am
+             * Format: date-time
+             */
+            erstellt_am: string;
+            /** Zuletzt Benutzt Am */
+            zuletzt_benutzt_am?: string | null;
+        };
+        /** PersonAendernIn */
+        PersonAendernIn: {
+            /** Rolle */
+            rolle?: ("hausherr" | "bewohner" | "gast" | "service") | null;
+            /** Aktiv */
+            aktiv?: boolean | null;
+            /** Anzeigename */
+            anzeigename?: string | null;
+        };
+        /** PersonAnlegenIn */
+        PersonAnlegenIn: {
+            /** Email */
+            email: string;
+            /**
+             * Anzeigename
+             * @default
+             */
+            anzeigename: string;
+            /**
+             * Rolle
+             * @default bewohner
+             * @enum {string}
+             */
+            rolle: "hausherr" | "bewohner" | "gast" | "service";
+            /**
+             * Einladen
+             * @default true
+             */
+            einladen: boolean;
+        };
+        /** PersonOut */
+        PersonOut: {
+            /** Id */
+            id: string;
+            /** Email */
+            email: string;
+            /**
+             * Anzeigename
+             * @default
+             */
+            anzeigename: string;
+            /**
+             * Rolle
+             * @enum {string}
+             */
+            rolle: "hausherr" | "bewohner" | "gast" | "service";
+            /**
+             * Aktiv
+             * @default true
+             */
+            aktiv: boolean;
+            /**
+             * Erstellt Am
+             * Format: date-time
+             */
+            erstellt_am: string;
+            /** Zuletzt Angemeldet Am */
+            zuletzt_angemeldet_am?: string | null;
+            /**
+             * Passkeys
+             * @default 0
+             */
+            passkeys: number;
+            /**
+             * Codes Offen
+             * @default 0
+             */
+            codes_offen: number;
+            /**
+             * Einladung Offen
+             * @default false
+             */
+            einladung_offen: boolean;
         };
         /**
          * Place
@@ -7382,6 +8056,33 @@ export interface components {
             /** Assumptions De */
             assumptions_de?: string[];
         };
+        /** SitzungOut */
+        SitzungOut: {
+            /** Id */
+            id: string;
+            /**
+             * Erstellt Am
+             * Format: date-time
+             */
+            erstellt_am: string;
+            /**
+             * Laeuft Ab Am
+             * Format: date-time
+             */
+            laeuft_ab_am: string;
+            /** Zuletzt Benutzt Am */
+            zuletzt_benutzt_am?: string | null;
+            /**
+             * Herkunft
+             * @default
+             */
+            herkunft: string;
+            /**
+             * Diese
+             * @default false
+             */
+            diese: boolean;
+        };
         /** SourceOut */
         SourceOut: {
             /** Name */
@@ -8117,6 +8818,25 @@ export interface components {
             angelaufen_bis?: number[];
         };
         /**
+         * VersandOut
+         * @description Ob eine Einladung per E-Mail hinausgehen kann - und was sonst fehlt.
+         */
+        VersandOut: {
+            /**
+             * Aktiv
+             * @default false
+             */
+            aktiv: boolean;
+            /**
+             * Weg
+             * @default
+             * @enum {string}
+             */
+            weg: "smtp" | "https" | "";
+            /** Fehlt */
+            fehlt?: string[];
+        };
+        /**
          * VorlaufOut
          * @description Eine Sprosse der Vorlaufleiter mit ihrer Wertung.
          */
@@ -8256,6 +8976,13 @@ export interface components {
             /** P95 */
             p95: number;
         };
+        /** WiederherstellenIn */
+        WiederherstellenIn: {
+            /** Email */
+            email: string;
+            /** Code */
+            code: string;
+        };
         /**
          * YearMapOut
          * @description Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.
@@ -8277,6 +9004,45 @@ export interface components {
             hours_with_data: number;
             /** Data Since */
             data_since: string | null;
+        };
+        /**
+         * ZeremonieOut
+         * @description Der Beginn einer WebAuthn-Zeremonie.
+         *
+         *     `optionen` ist der JSON-Text, den `navigator.credentials` erwartet - unverändert
+         *     weiterzugeben. `schritt` kommt mit der Antwort des Geräts zurück und bindet sie an ihre
+         *     Challenge.
+         */
+        ZeremonieOut: {
+            /** Schritt */
+            schritt: string;
+            /** Optionen */
+            optionen: string;
+        };
+        /**
+         * ZugangZustandOut
+         * @description Was die Oberfläche über die Anmeldung wissen muss, bevor jemand angemeldet ist.
+         *
+         *     Öffentlich und mit Absicht wortkarg: `personen` ist eine Zahl, keine Liste. Dass es noch
+         *     niemanden gibt, muss die Anmeldeseite sagen können - wer das ist, braucht sie nicht.
+         */
+        ZugangZustandOut: {
+            /**
+             * Anmeldung
+             * @default false
+             */
+            anmeldung: boolean;
+            /**
+             * Personen
+             * @default 0
+             */
+            personen: number;
+            /**
+             * Rp Id
+             * @default
+             */
+            rp_id: string;
+            versand?: components["schemas"]["VersandOut"];
         };
         /** Zuordnungsergebnis */
         Zuordnungsergebnis: {
@@ -8331,6 +9097,627 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    zustand_api_v1_auth_zustand_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZugangZustandOut"];
+                };
+            };
+        };
+    };
+    wer_api_v1_auth_wer_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AusweisOut"];
+                };
+            };
+        };
+    };
+    anmeldung_beginnen_api_v1_auth_anmeldung_beginnen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZeremonieOut"];
+                };
+            };
+        };
+    };
+    anmeldung_abschliessen_api_v1_auth_anmeldung_abschliessen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnmeldenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AngemeldetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wiederherstellung_api_v1_auth_wiederherstellung_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WiederherstellenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AngemeldetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einladung_api_v1_auth_einladung_get: {
+        parameters: {
+            query?: {
+                token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EinladungPersonOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einladung_passkey_beginnen_api_v1_auth_einladung_passkey_beginnen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyBeginnenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZeremonieOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einladung_passkey_abschliessen_api_v1_auth_einladung_passkey_abschliessen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyAbschliessenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AngemeldetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ich_api_v1_auth_ich_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IchOut"];
+                };
+            };
+        };
+    };
+    abmelden_api_v1_auth_abmelden_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    sitzung_beenden_api_v1_auth_sitzungen__sitzung_id__beenden_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sitzung_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alle_sitzungen_beenden_api_v1_auth_sitzungen_beenden_alle_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+    };
+    passkey_beginnen_api_v1_auth_passkeys_beginnen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZeremonieOut"];
+                };
+            };
+        };
+    };
+    passkey_abschliessen_api_v1_auth_passkeys_abschliessen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyAbschliessenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    passkey_umbenennen_api_v1_auth_passkeys__passkey_id__name_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passkey_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NameIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    passkey_loeschen_api_v1_auth_passkeys__passkey_id__loeschen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passkey_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    codes_api_v1_auth_codes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    personen_api_v1_auth_personen_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonOut"][];
+                };
+            };
+        };
+    };
+    person_anlegen_api_v1_auth_personen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonAnlegenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EinladungOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    person_aendern_api_v1_auth_personen__person_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonAendernIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    person_einladen_api_v1_auth_personen__person_id__einladen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EinladenIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EinladungOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    person_loeschen_api_v1_auth_personen__person_id__loeschen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

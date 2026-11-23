@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -2342,3 +2342,175 @@ class GeraetVerlaufOut(BaseModel):
     schritt_min: int = 5
     punkte: list[GeraetVerlaufPunktOut] = Field(default_factory=list)
     prognose: GeraetPrognoseOut = Field(default_factory=GeraetPrognoseOut)
+
+
+# ---------------------------------------------------------------------------
+# Anmeldung mit Passkey, Sitzungen, Personen (ADR-0002)
+# ---------------------------------------------------------------------------
+
+
+class ZeremonieOut(BaseModel):
+    """Der Beginn einer WebAuthn-Zeremonie.
+
+    `optionen` ist der JSON-Text, den `navigator.credentials` erwartet - unverändert
+    weiterzugeben. `schritt` kommt mit der Antwort des Geräts zurück und bindet sie an ihre
+    Challenge.
+    """
+
+    schritt: str
+    optionen: str
+
+
+class AusweisOut(BaseModel):
+    """Wer gerade fragt. Die Oberfläche blendet danach aus, was die Rolle nicht darf - verboten
+    wird es am Dienst (`dch_api/auth/rechte.py`)."""
+
+    art: Literal["person", "geraet", "gast", "dienst"]
+    rolle: Literal["hausherr", "bewohner", "gast", "service"]
+    person_id: str = ""
+    name: str = ""
+    email: str = ""
+
+
+class AngemeldetOut(BaseModel):
+    """Das Ergebnis einer Anmeldung.
+
+    `token` ist der Ausweis im Klartext und existiert genau hier einmal. Das BFF legt ihn in ein
+    HttpOnly-Cookie und gibt ihn nie an den Browser weiter; eine App legt ihn in den
+    Schlüsselbund.
+    """
+
+    token: str
+    laeuft_ab_am: datetime
+    ausweis: AusweisOut
+    #: Nur beim ersten Passkey: die zehn Wiederherstellungscodes, einmalig im Klartext.
+    codes: list[str] = Field(default_factory=list)
+
+
+class PasskeyOut(BaseModel):
+    id: str
+    name: str
+    #: Ob der Passkey in einer Wolke gesichert ist (iCloud, Google) - dann liegt er auf mehreren
+    #: Geräten und ein verlorenes Telefon sperrt niemanden aus.
+    gesichert: bool
+    erstellt_am: datetime
+    zuletzt_benutzt_am: datetime | None = None
+
+
+class SitzungOut(BaseModel):
+    id: str
+    erstellt_am: datetime
+    laeuft_ab_am: datetime
+    zuletzt_benutzt_am: datetime | None = None
+    herkunft: str = ""
+    #: Ob das die Sitzung ist, mit der gerade gefragt wird.
+    diese: bool = False
+
+
+class PersonOut(BaseModel):
+    id: str
+    email: str
+    anzeigename: str = ""
+    rolle: Literal["hausherr", "bewohner", "gast", "service"]
+    aktiv: bool = True
+    erstellt_am: datetime
+    zuletzt_angemeldet_am: datetime | None = None
+    passkeys: int = 0
+    codes_offen: int = 0
+    einladung_offen: bool = False
+
+
+class IchOut(BaseModel):
+    """Die eigene Seite: wer ich bin, welche Passkeys und welche Sitzungen ich habe."""
+
+    ausweis: AusweisOut
+    passkeys: list[PasskeyOut] = Field(default_factory=list)
+    sitzungen: list[SitzungOut] = Field(default_factory=list)
+    codes_offen: int = 0
+
+
+class VersandOut(BaseModel):
+    """Ob eine Einladung per E-Mail hinausgehen kann - und was sonst fehlt."""
+
+    aktiv: bool = False
+    weg: Literal["smtp", "https", ""] = ""
+    fehlt: list[str] = Field(default_factory=list)
+
+
+class ZugangZustandOut(BaseModel):
+    """Was die Oberfläche über die Anmeldung wissen muss, bevor jemand angemeldet ist.
+
+    Öffentlich und mit Absicht wortkarg: `personen` ist eine Zahl, keine Liste. Dass es noch
+    niemanden gibt, muss die Anmeldeseite sagen können - wer das ist, braucht sie nicht.
+    """
+
+    anmeldung: bool = False
+    personen: int = 0
+    rp_id: str = ""
+    versand: VersandOut = Field(default_factory=VersandOut)
+
+
+class PersonAnlegenIn(BaseModel):
+    email: str
+    anzeigename: str = ""
+    rolle: Literal["hausherr", "bewohner", "gast", "service"] = "bewohner"
+    #: Ob die Einladung gleich per E-Mail hinausgehen soll. Der Link kommt in jedem Fall zurück.
+    einladen: bool = True
+
+
+class EinladenIn(BaseModel):
+    """Einen neuen Link ausstellen. Die Person steht in der Adresse, nicht hier."""
+
+    #: Ob er zusätzlich per E-Mail hinausgehen soll. Zurück kommt er in jedem Fall.
+    einladen: bool = True
+
+
+class PersonAendernIn(BaseModel):
+    rolle: Literal["hausherr", "bewohner", "gast", "service"] | None = None
+    aktiv: bool | None = None
+    anzeigename: str | None = None
+
+
+class EinladungOut(BaseModel):
+    """Der Einladungslink - einmal, im Klartext, zum Kopieren oder Verschicken."""
+
+    person: PersonOut
+    link: str
+    laeuft_ab_am: datetime
+    verschickt: bool = False
+
+
+class EinladungPersonOut(BaseModel):
+    """Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist."""
+
+    email: str
+    anzeigename: str = ""
+    rolle: Literal["hausherr", "bewohner", "gast", "service"]
+    passkeys: int = 0
+
+
+class PasskeyBeginnenIn(BaseModel):
+    #: Nur für den Weg über den Einladungslink; angemeldet bleibt es leer.
+    token: str = ""
+
+
+class PasskeyAbschliessenIn(BaseModel):
+    schritt: str
+    #: Die Antwort des Geräts, wie `@simplewebauthn/browser` sie liefert.
+    antwort: dict[str, Any]
+    name: str = ""
+    token: str = ""
+
+
+class AnmeldenIn(BaseModel):
+    schritt: str
+    antwort: dict[str, Any]
+
+
+class WiederherstellenIn(BaseModel):
+    email: str
+    code: str
+
+
+class NameIn(BaseModel):
+    name: str

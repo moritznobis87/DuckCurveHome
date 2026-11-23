@@ -53,8 +53,19 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_ALFRED_VERLAUF_MAX` | `6` | Frühere Gesprächswechsel, die mitgehen; der Verlauf lebt nur im Browser |
 | `DCH_API_URL` (web) | `http://localhost:8000` | Ziel der BFF-Route `/api/dch/*` |
 | `DCH_API_TOKEN` (web) | - | wird als Bearer an die API weitergereicht |
-| `DCH_SESSION_SECRET` (web) | - | ≥ 32 Zeichen; aktiviert die Kiosk-Anmeldung |
+| `DCH_SESSION_SECRET` (web) | - | ≥ 32 Zeichen; signiert das Gerätecookie und macht damit die **Gerätepaarung** möglich. Es ist nicht das Geheimnis der Personensitzungen - die sind opake Token in der Datenbank und brauchen keinen Schlüssel |
 | `DCH_KIOSK_TOKEN` (web) | - | Pairing-Token für `/pair?token=…&name=…` |
+| `DCH_ANMELDUNG` (web) | - | `1` verlangt eine Anmeldung, auch wenn keine Gerätepaarung eingerichtet ist (`DCH_SESSION_SECRET` leer). `0` schaltet sie aus. Ohne beides gilt: Anmeldung nötig, sobald das Gerätecookie möglich ist |
+| `DCH_PASSKEY_RP_ID` | `home.duckcurve.de` | Die Domain, an die jeder Passkey gebunden wird. **Nicht mehr änderbar, ohne alle Passkeys zu entwerten.** Der eigene Host und nicht die registrierbare Domain `duckcurve.de`: sonst liegen die Passkeys von Duck Curve und Duck Curve Home im selben Bereich, der Browser bietet beide an, und der falsche wird abgewiesen (am 23.11.2026 so entschieden, Begründung in [ADR-0002](docs/decisions/ADR-0002-identitaet-und-berechtigung.md), Festlegung 1). Entwicklung: `localhost` |
+| `DCH_PASSKEY_HERKUENFTE` | `["https://home.duckcurve.de"]` | Seiten, von denen eine Antwort des Browsers angenommen wird - also die Adresse des **web**-Dienstes, nicht die der API. Beim Start geprüft: `https` (außer `localhost`) und der Host muss die RP-ID sein oder auf `.<RP-ID>` endigen. Stimmt es nicht, läuft der Dienst weiter und protokolliert es als Fehler - anmelden kann sich dann niemand |
+| `DCH_PASSKEY_RP_NAME` | `Duck Curve Home` | Was der Browser im Passkey-Dialog anzeigt |
+| `DCH_SITZUNG_TAGE` | `30` | Frist einer Personensitzung. Die Wandanzeige hängt nicht daran: sie ist ein Gerät und behält ihre Paarung |
+| `DCH_ZUGANGSTOKEN_STUNDEN` | `72` | Frist eines Einladungs- oder Wiederherstellungslinks; er gilt einmal |
+| `DCH_ANMELDE_URL` | *(erste Herkunft)* | Adresse, die im Einladungslink steht |
+| `DCH_SMTP_HOST` / `_PORT` / `_BENUTZER` / `_PASSWORT` | - / `587` / - / - | Postausgang für die Einladung (`dch_api/post.py`). Ohne Angaben wird nichts verschickt und der Link bleibt auf der Seite „Zugang" zum Kopieren - der Versand ist eine Beigabe, kein Torwächter |
+| `DCH_SMTP_SICHERHEIT` | `starttls` | `starttls`, `ssl` oder `keine` |
+| `DCH_RESEND_SCHLUESSEL` | - | HTTPS-Versender als zweiter Weg, wenn ausgehendes SMTP gesperrt ist. Ist beides eingetragen, gilt SMTP |
+| `DCH_ABSENDER` | *(SMTP-Benutzer)* | Absenderadresse, für beide Wege |
 
 ## Bridge (Home-Assistant-Add-on)
 

@@ -382,26 +382,42 @@ async def test_wer_nach_dem_leeren_fragt_bekommt_keine_rechnung_von_vorher() -> 
 
 
 def test_der_schluessel_hat_keinen_platz_fuer_eine_person_und_braucht_keinen() -> None:
-    """Weil es hier keine Personen gibt - und das ist nachgesehen, nicht angenommen.
+    """Weil es hier keine personenabhängigen Antworten gibt - und das ist nachgesehen, nicht
+    angenommen.
 
-    Der Dienst kennt genau ein Token (`DCH_API_TOKEN`); wer es hat, darf alles (ADR-0002). Die
-    Rollen `owner` und `guest` leben im BFF der Vorlage und wirken auf **Pfaden**
-    (`GUEST_FORBIDDEN` in `apps/web/src/app/api/dch/[...path]/route.ts`): ein Gast kommt an
-    `/energy/pv` nicht heran, sieht aber überall sonst dieselben Zahlen wie der Hausherr. Zwei
-    Antworten für denselben Pfad gibt es nicht, also kann der Speicher keine verwechseln.
+    **Diese Prüfung hat beim Benutzersystem angeschlagen und ist umgeschrieben worden**
+    (23.11.2026). Sie sah die Rollentrennung im BFF nach (`GUEST_FORBIDDEN` in
+    `apps/web/src/app/api/dch/[...path]/route.ts`). Seit ADR-0002 steht sie im Dienst, in
+    `dch_api/auth/rechte.py` - der Proxy entscheidet nichts mehr, er hängt nur noch den
+    Nachweis an.
 
-    **Kommt das Benutzersystem aus ADR-0002, muss diese Prüfung fallen** - und zwar vor der ersten
-    Antwort, die je Benutzer verschieden ausfällt. Deshalb steht sie hier und nicht nur im Text.
+    **Die Begründung trägt unverändert, und darauf kommt es an:** getrennt wird weiterhin auf
+    **Pfaden**, nicht auf Inhalten. `darf(rolle, methode, pfad)` bekommt keine Person zu sehen
+    und kann deshalb keine personenabhängige Antwort erzeugen; wer einen Pfad nicht sehen darf,
+    bekommt 403, **bevor** der Endpunkt rechnet. Für denselben Pfad gibt es also nach wie vor
+    genau eine Antwort, und der Speicher kann keine verwechseln.
+
+    **Fallen muss sie erst, wenn ein Endpunkt je Person verschieden antwortet** - wenn also ein
+    Bewohner an derselben Adresse andere Zahlen sähe als der Hausherr. Dann gehört die Person in
+    den Schlüssel. Deshalb steht das hier und nicht nur im Text.
     """
+    import inspect
     from pathlib import Path
 
     from dch_api.application import berichtsspeicher
+    from dch_api.auth import rechte
 
     assert len(berichtsspeicher.Schluessel.__args__) == 3
+    # Die Trennung kennt Rolle, Methode und Pfad - und sonst nichts. Käme hier eine Person oder
+    # ein Ausweis dazu, könnte die Antwort von ihr abhängen.
+    assert list(inspect.signature(rechte.darf).parameters) == ["rolle", "methode", "pfad"]
+    assert all(p.startswith("/") for p in rechte.AKTEN), "verglichen wird mit Pfaden"
+    # Der Proxy reicht nur noch durch: die Rolle eines gepaarten Geräts reist als Kopfzeile mit,
+    # als Inhaltsfilter wirkt sie nicht.
     bff = Path(__file__).resolve().parents[3] / "apps/web/src/app/api/dch/[...path]/route.ts"
     text = bff.read_text(encoding="utf-8")
-    assert "GUEST_FORBIDDEN" in text, "die Rollentrennung läuft über Pfade"
     assert "x-dch-urheber-rolle" in text, "die Rolle reist als Kopf mit, nicht als Inhaltsfilter"
+    assert "GUEST_FORBIDDEN" not in text, "die Rechte liegen im Dienst, nicht im Proxy"
 
 
 # ---------------------------------------------------------------- An der Auswertung

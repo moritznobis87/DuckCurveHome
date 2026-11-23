@@ -22,8 +22,25 @@ describe("Web-App-Manifest", () => {
       expect(ohneCookie(pfad).headers.get("location")).toBeNull();
     });
 
-    it("das Dashboard bleibt ohne Cookie gesperrt", () => {
-      expect(ohneCookie("/").headers.get("location")).toContain("/locked");
+    it("das Dashboard fuehrt ohne Cookie zur Anmeldung", () => {
+      expect(ohneCookie("/").headers.get("location")).toContain("/anmeldung");
+    });
+
+    // Ohne das waere die Anmeldung eine Schleife: die Seite, die anmeldet, leitete auf sich selbst.
+    it.each(["/anmeldung", "/anmeldung/einrichten"])("%s ist ohne Cookie erreichbar", (pfad) => {
+      expect(ohneCookie(pfad).headers.get("location")).toBeNull();
+    });
+
+    it("das Geraetecookie allein genuegt weiterhin", () => {
+      const req = new NextRequest("https://home.example/");
+      req.cookies.set("dch_session", "egal");
+      expect(middleware(req).headers.get("location")).toBeNull();
+    });
+
+    it("das Personencookie allein genuegt", () => {
+      const req = new NextRequest("https://home.example/");
+      req.cookies.set("dch_person", "egal");
+      expect(middleware(req).headers.get("location")).toBeNull();
     });
   });
 });

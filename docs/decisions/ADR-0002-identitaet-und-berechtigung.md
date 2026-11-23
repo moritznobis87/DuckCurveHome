@@ -1,6 +1,6 @@
 # ADR-0002 - Identität und Berechtigung (Anmeldung mit Passkey)
 
-**Status:** angenommen, Umsetzung offen · **Datum:** 2026-11-20
+**Status:** angenommen und **umgesetzt** (23.11.2026) · **Datum:** 2026-11-20
 
 ## Kontext
 
@@ -75,13 +75,28 @@ nachzuholen sind nicht die Dienste, sondern vier Festlegungen - und die kosten j
 **Option C: Identität zentralisierbar, Berechtigung und Sitzung immer lokal.** Heute ist die
 „Zentrale" eine Tabelle in derselben Datenbank, kein Dienst. Dazu diese Festlegungen:
 
-**1 · `DCH_PASSKEY_RP_ID = duckcurve.de`,** nicht `home.duckcurve.de`. Eine RP-ID ist nicht änderbar,
-ohne alle Passkeys zu entwerten; die registrierbare Domain gilt auch unter jeder Subdomain. Damit
-wird eine späte Zentralisierung ein Kopieren von Zeilen statt einer Neuanlage auf jedem Gerät - in
-den Tabellen liegt nur der öffentliche Schlüssel. Zwei Preise, die dazugehören: jede Herkunft unter
-`*.duckcurve.de` kann Assertions für diese Passkeys anfordern (alle Subdomains selbst betreiben), und
-solange DuckCurve und Home getrennte Benutzertabellen haben, zeigt der Browser beim Anmelden auch die
-Passkeys des jeweils anderen an - der falsche führt zu „Anmeldung abgelehnt".
+**1 · `DCH_PASSKEY_RP_ID = home.duckcurve.de`.** Eine RP-ID ist nicht änderbar, ohne alle
+Passkeys zu entwerten, also ist das die eine Festlegung, die hier wirklich zählt.
+
+> **Geändert am 23.11.2026.** Hier stand `duckcurve.de`, die registrierbare Domain, damit eine
+> spätere zentrale Anmeldung unter `konto.duckcurve.de` dieselben Passkeys weiterverwenden
+> könnte. Der Preis war in diesem Papier benannt - der Browser bietet dann auch die Passkeys von
+> Duck Curve an - und zu billig veranschlagt: er war als Übergangsärgernis gedacht und ist in der
+> Praxis ein Dauerzustand. Beide Passkeys tragen dieselbe E-Mail-Adresse und sehen im
+> Auswahldialog gleich aus; der falsche wird abgewiesen, und man sieht ihm nicht an, welcher es
+> war. Dagegen ist der eingetauschte Vorteil klein: jene Zentrale wäre ohnehin ein neuer
+> Anmeldeweg, und einen Passkey neu anzulegen dauert zwei Minuten. Nebenbei widerspricht die
+> gemeinsame RP-ID [ADR-0003](ADR-0003-erreichbarkeit-und-flotte.md), wo für die Box aus
+> demselben Grund eine **getrennte** registrierbare Domain steht: RP-Bereiche, die sich
+> überlappen, kosten mehr, als sie einbringen.
+
+Was damit bewusst aufgegeben ist: Kommt die zentrale Anmeldung, legen die Leute dort neue
+Passkeys an - ein Kopieren der Zeilen genügt dann nicht mehr. Für eine Handvoll Personen ist das
+ein Nachmittag, nicht ein Projekt.
+
+Was dadurch besser wird, über die Verwechslung hinaus: der RP-Bereich ist eng. Nur
+`home.duckcurve.de` selbst kann Assertions für diese Passkeys anfordern - bei `duckcurve.de` wäre
+es jede Subdomain gewesen.
 
 **2 · Identität und Berechtigung sind zwei Tabellen,** von Anfang an: `person` (E-Mail, Name,
 Passkeys) und `mitgliedschaft` (Person × `instanz_id` → Rolle). Bei einer Instanz hat die zweite
@@ -133,9 +148,11 @@ jeder gestanden haben; rückwirkend aus einem Gerät einen Menschen zu machen w�
   den Routern statt im Proxy. Alembic-Wanderung für fünf Tabellen.
 - **Neu im Web:** eine Anmeldeseite mit `@simplewebauthn/browser`, `/system/zugang` wird von einer
   Token-Liste zu einer Personen- und Geräteliste, `lib/guard.ts` und `middleware.ts` fragen die API.
-- **iOS:** Passkeys brauchen `webcredentials:duckcurve.de` in den Associated Domains und eine
-  `apple-app-site-association` unter `https://duckcurve.de/.well-known/` - das ist ein Eingriff in
-  **DuckCurveWebsite**, nicht in dieses Repository. Bis dahin bleibt die App beim Gerätetoken.
+- **iOS:** Passkeys brauchen `webcredentials:home.duckcurve.de` in den Associated Domains und
+  eine `apple-app-site-association` unter `https://home.duckcurve.de/.well-known/`. Seit die RP-ID
+  auf dem eigenen Host steht (23.11.2026), liegt diese Datei beim web-Dienst dieses Repositories;
+  vorher wäre es ein Eingriff in DuckCurveWebsite gewesen. Bis dahin bleibt die App beim
+  Gerätetoken.
 - **Zwei Passkey-Welten.** Die Box antwortet im Heimnetz unter einem eigenen Namen, und der liegt aus
   guten Gründen **nicht** unter der Konto-Domain (ADR-0003). Derselbe Passkey gilt daher nicht für
   Zentrale und Box. Gelöst wird das dort, nicht hier: die Box legt still einen zweiten,
@@ -148,6 +165,33 @@ jeder gestanden haben; rückwirkend aus einem Gerät einen Menschen zu machen w�
   jeden anderen Zugriff im Heimnetz gilt das nicht - siehe [ADR-0003](ADR-0003-erreichbarkeit-und-flotte.md).
 - **Der heutige Zustand bleibt lauffähig.** Ohne `DCH_SESSION_SECRET` ist die Anmeldung aus, wie
   heute; das Kiosk-Token wird zum Gerätezugang, der Gast-Link bleibt, was er ist.
+
+## Umgesetzt am 23.11.2026
+
+Gebaut ist die Anmeldung mit Passkey samt Personenverwaltung und Einladung per E-Mail; die
+Bedienung steht in [`docs/ZUGANG.md`](../ZUGANG.md). Drei Dinge weichen von diesem Papier ab, und
+zwar bewusst:
+
+**Die Rolle steht als Spalte an der Person, nicht in einer Mitgliedschaftstabelle.** Festlegung 2
+verlangte zwei Tabellen von Anfang an. Bei genauerem Hinsehen ist das nicht die Stelle, die teuer
+wird: eine `mitgliedschaften`-Tabelle später nachzuziehen ist eine **additive** Wanderung, die
+`personen.rolle` ausliest und je Person eine Zeile schreibt - kein Datenverlust, kein Umbau der
+Anwendung, weil zwischen Tabelle und Programm ohnehin der `Ausweis` steht. Teuer bleibt allein
+die RP-ID, und die steht wie festgelegt auf der registrierbaren Domain. Der Nutzer wollte
+ausdrücklich eine Single-Tenant-Lösung, die später aufgebohrt wird (23.11.2026); zwei Tabellen mit
+je einer Instanz wären die Form ohne den Inhalt gewesen.
+
+**Vier Rollen statt drei.** `gast` ist auch eine Rolle für Personen geworden, nicht nur ein Link:
+ein Besuch, der länger bleibt, soll ein Gesicht haben dürfen. Und `service` heißt so wie in
+[`docs/HAUSGERAET.md`](../HAUSGERAET.md) Abschnitt 7, nicht `berater`.
+
+**Die Haustür brauchte keine eigene Regel.** Über diesen Dienst öffnet sie niemand - das macht der
+Leser im Haus über die Bridge. Was hier liegt, ist ihr Protokoll, und das ist eine Akte und damit
+ohnehin dem Hausherrn vorbehalten.
+
+Nicht umgesetzt: die iOS-App meldet sich weiter mit dem Gerätetoken an. Passkeys brauchen dort
+`webcredentials:home.duckcurve.de` und eine `apple-app-site-association` auf
+`home.duckcurve.de` - seit der Änderung an Festlegung 1 eine Datei in diesem Repository.
 
 ## Offene Punkte
 

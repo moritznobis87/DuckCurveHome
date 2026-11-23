@@ -16,6 +16,7 @@
     "gen:types": "openapi-typescript ../../docs/openapi.json -o src/lib/api/types.ts"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "14.0.0",
     "echarts": "^6.0.0",
     "next": "^15.5.0",
     "react": "^19.1.0",

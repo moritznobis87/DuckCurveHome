@@ -1,10 +1,13 @@
 import { headers } from "next/headers";
 import { requireOwner } from "@/lib/guard";
-import { authRequired } from "@/lib/session";
+import { anmeldungNoetig, authRequired } from "@/lib/session";
 import { active } from "@/lib/presence";
+import { zustand } from "@/lib/zugang";
 import { CopyField } from "@/components/ui/CopyField";
 import { StorageReport } from "@/components/settings/StorageReport";
 import { AreaShell } from "@/components/layout/AreaShell";
+import { MeinZugang } from "@/components/zugang/MeinZugang";
+import { Personen } from "@/components/zugang/Personen";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Zugang und Sicherung · Duck Curve Home" };
@@ -41,6 +44,7 @@ async function publicHost(): Promise<string> {
 
 export default async function Page() {
   await requireOwner(); // doppelt zum Layout: die Seite zeigt die Schluessel zum Haus
+  const stand = await zustand();
   const here = active();
   const year = new Date().getFullYear();
   const base = `https://${await publicHost()}`;
@@ -57,12 +61,22 @@ export default async function Page() {
   return (
     <AreaShell kicker="Geräte koppeln · wer zusieht · Daten sichern">
 
+      <Personen versand={{ aktiv: stand.versand.aktiv, fehlt: stand.versand.fehlt }} />
+
       <section className="flex max-w-[760px] flex-col gap-3">
-        <h2 className="m-0 text-[18px] font-semibold">Zugang einrichten</h2>
+        <h2 className="m-0 text-[18px] font-semibold">Mein Zugang</h2>
+        <MeinZugang />
+      </section>
+
+      <section className="flex max-w-[760px] flex-col gap-3">
+        <h2 className="m-0 text-[18px] font-semibold">Geräte koppeln</h2>
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-          Ein Gerät wird einmal über einen Link gepaart und behält danach seine Sitzung. Die Links
-          unten enthalten die echten Tokens und sind sofort verwendbar - behandle sie wie einen
-          Haustürschlüssel. Die Adresse kommt aus
+          Ein <strong>Gerät</strong> ist keine Person: die Wandanzeige im Flur soll sich nicht
+          anmelden müssen, und rückwirkend aus einem Gerät einen Menschen zu machen wäre eine
+          Erfindung - am iPad im Flur kann jeder gestanden haben. Darum bleibt die Paarung
+          daneben bestehen. Ein Gerät wird einmal über einen Link gepaart und behält danach seine
+          Sitzung. Die Links unten enthalten die echten Tokens und sind sofort verwendbar -
+          behandle sie wie einen Haustürschlüssel. Die Adresse kommt aus
           <code className="mono mx-1 text-[13px]">DCH_PUBLIC_HOST</code> - so steht hier die eigene Domain,
           auch wenn du gerade über die Railway-Adresse hereingekommen bist.
         </p>
@@ -81,7 +95,13 @@ export default async function Page() {
           Um das zu unterbinden, <code className="mono text-[13px]">DCH_GUEST_TOKEN</code> ändern - bestehende
           Gast-Sitzungen laufen dann regulär ab, neue entstehen nicht mehr.
           {missing.length ? ` Nicht gesetzt: ${missing.join(", ")} - der Link zeigt dort noch den Platzhalter.` : ""}
-          {!authRequired() ? " Achtung: DCH_SESSION_SECRET ist nicht gesetzt, die Anmeldung ist derzeit deaktiviert." : ""}
+          {!authRequired() ? " Achtung: DCH_SESSION_SECRET ist nicht gesetzt, die Gerätepaarung ist derzeit deaktiviert." : ""}
+          {!anmeldungNoetig()
+            ? " Achtung: Es wird keine Anmeldung verlangt - weder DCH_SESSION_SECRET noch DCH_ANMELDUNG ist gesetzt."
+            : ""}
+          {!stand.anmeldung
+            ? " Achtung: Der Dienst läuft ohne Datenbank (Demo-Modus); Personen lassen sich damit nicht anlegen."
+            : ""}
         </p>
       </section>
 
@@ -92,13 +112,13 @@ export default async function Page() {
         ) : (
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {here.map((p) => (
-              <li key={`${p.role}:${p.name}:${p.agent}`} className="flex items-baseline justify-between gap-4 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">
+              <li key={`${p.rolle}:${p.name}:${p.agent}`} className="flex items-baseline justify-between gap-4 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">
                 <span className="flex items-baseline gap-3">
                   <span className="text-[15px] text-text-1">{p.name}</span>
-                  <span className="mono text-[12px] uppercase tracking-[.1em]" style={{ color: p.role === "owner" ? "var(--amber)" : "var(--text-3)" }}>
-                    {p.role === "owner" ? "Vollzugriff" : "Gast"}
+                  <span className="mono text-[12px] uppercase tracking-[.1em]" style={{ color: p.rolle === "hausherr" ? "var(--amber)" : "var(--text-3)" }}>
+                    {p.rolle}
                   </span>
-                  <span className="text-[13px] text-text-3">{p.agent}</span>
+                  <span className="text-[13px] text-text-3">{p.person ? "Person" : "Gerät"} · {p.agent}</span>
                 </span>
                 <span className="mono text-[12px] text-text-3">{ago(p.lastSeen)}</span>
               </li>
@@ -106,8 +126,8 @@ export default async function Page() {
           </ul>
         )}
         <p className="m-0 text-[14px] leading-[1.6] text-text-3">
-          Der Name stammt aus dem Pairing-Link (<code className="mono text-[13px]">&amp;name=…</code>); ohne Angabe
-          heißt ein Gast schlicht „gast". Die Liste liegt nur im Arbeitsspeicher: nach einem Neustart des
+          Bei einer Person stammt der Name aus ihrem Zugang, bei einem Gerät aus dem Pairing-Link
+          (<code className="mono text-[13px]">&amp;name=…</code>); ohne Angabe heißt ein Gast schlicht „gast". Die Liste liegt nur im Arbeitsspeicher: nach einem Neustart des
           Web-Dienstes ist sie leer. Sie zeigt, wer zusieht - ein Zugriffsprotokoll ist sie nicht.
           Zum Aktualisieren die Seite neu laden.
         </p>

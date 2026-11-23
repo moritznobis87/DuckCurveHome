@@ -14,12 +14,14 @@ from sqlalchemy import (
     JSON,
     BigInteger,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Float,
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     SmallInteger,
     String,
     Text,
@@ -513,3 +515,169 @@ class GeraetMesswert(Base):
     sicherung_bytes: Mapped[int | None] = mapped_column(BigInteger)
     docker_bytes: Mapped[int | None] = mapped_column(BigInteger)
     dienste: Mapped[dict[str, object] | None] = mapped_column(JsonType)
+
+
+# ---------------------------------------------------------------------------
+# Personen, Passkeys, Sitzungen (ADR-0002)
+#
+# Vier Tabellen für die Anmeldung eines Menschen. Sie stehen neben `kiosk_devices`
+# und ersetzen es nicht: ein gepaartes Gerät ist keine Person, und die Wandanzeige
+# im Flur soll sich nicht anmelden müssen (docs/URHEBER.md).
+#
+# **Single-Tenant.** Die Rolle steht als Spalte an der Person und nicht in einer
+# Mitgliedschaftstabelle. Eine solche Tabelle später nachzuziehen ist eine additive
+# Wanderung, die `personen.rolle` ausliest - sie ist nicht das, was teuer wird.
+# Teuer wäre die RP-ID (siehe `settings.passkey_rp_id`), und die steht von Anfang an
+# auf der registrierbaren Domain.
+# ---------------------------------------------------------------------------
+
+
+class Person(Base):
+    """Ein Mensch mit Zugang zu diesem Haus.
+
+    **Kein Passwort.** Angemeldet wird mit Passkey; der Rückweg sind zehn
+    Wiederherstellungscodes (nur als Hash abgelegt) und ein Einladungslink des
+    Hausherrn. Damit entfällt alles, was ein Passwort nach sich zieht: Argon2id,
+    Mindestlängen, Wechselzwang, ein zweiter Faktor daneben. Ein Passkey mit
+    verlangter Nutzerprüfung ist Besitz und Merkmal zugleich.
+
+    `aktiv` schaltet ab, ohne zu löschen: die Passkeys bleiben liegen, nützen aber
+    nichts, weil jede Anmeldung und jede Anfrage die Spalte prüft.
+    """
+
+    __tablename__ = "personen"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    #: Kleingeschrieben abgelegt; sie ist der Anker für Einladung und Wiederherstellung.
+    email: Mapped[str] = mapped_column(String(254), unique=True)
+    anzeigename: Mapped[str] = mapped_column(String(80), default="")
+    #: hausherr | bewohner | gast | service - die Matrix steht in `dch_api/auth/rechte.py`.
+    rolle: Mapped[str] = mapped_column(String(16), default="bewohner")
+    aktiv: Mapped[bool] = mapped_column(Boolean, default=True)
+    #: SHA-256 der zehn Wiederherstellungscodes, je einer einmal gültig.
+    wiederherstellungscodes: Mapped[list[str] | None] = mapped_column(JsonType)
+    erstellt_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    zuletzt_angemeldet_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint(
+            "rolle IN ('hausherr', 'bewohner', 'gast', 'service')", name="ck_personen_rolle"
+        ),
+    )
+
+
+class Passkey(Base):
+    """Ein Passkey (WebAuthn) einer Person - nur der öffentliche Teil.
+
+    Der private Schlüssel bleibt auf dem Gerät oder im Passwortmanager. Ein
+    Lesezugriff auf diese Datenbank erlaubt damit keine Anmeldung, anders als bei
+    einem Passworthash, der sich offline durchprobieren lässt.
+
+    `ON DELETE CASCADE`: mit der Person verschwinden ihre Passkeys in derselben
+    Transaktion.
+    """
+
+    __tablename__ = "passkeys"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    person_id: Mapped[UUID] = mapped_column(
+        ForeignKey("personen.id", ondelete="CASCADE"), index=True
+    )
+    #: Die Kennung des Schlüssels, vom Gerät vergeben (bis 1023 Byte).
+    credential_id: Mapped[bytes] = mapped_column(LargeBinary, unique=True)
+    #: Der öffentliche Schlüssel im COSE-Format.
+    oeffentlicher_schluessel: Mapped[bytes] = mapped_column(LargeBinary)
+    #: Der Signaturzähler des Geräts; synchronisierte Passkeys melden 0.
+    zaehler: Mapped[int] = mapped_column(BigInteger, default=0)
+    #: Wie der Browser das Gerät erreicht (usb, nfc, ble, internal, hybrid).
+    transports: Mapped[list[str] | None] = mapped_column(JsonType)
+    #: Der Name, den die Person vergibt („iPhone", „Laptop Büro").
+    name: Mapped[str] = mapped_column(String(80), default="Passkey")
+    #: Ob der Passkey in einer Wolke gesichert ist (iCloud, Google-Passwortmanager).
+    gesichert: Mapped[bool] = mapped_column(Boolean, default=False)
+    erstellt_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    zuletzt_benutzt_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PasskeySchritt(Base):
+    """Die Challenge einer Zeremonie, einmal und fünf Minuten gültig.
+
+    In der Datenbank und nicht im Arbeitsspeicher: „Optionen holen" und „Antwort
+    prüfen" sind zwei Anfragen, und der Dienst läuft auf dem Hausgerät neben dem
+    Worker und auf Railway mit mehreren Arbeitern. Ein im Prozess gehaltener Wert
+    wäre nur dem Arbeiter bekannt, der ihn ausgestellt hat - der Fehler wäre
+    sporadisch und genau deshalb teuer.
+
+    Nicht in `zugangstoken`, weil die Anmeldung ohne Namen beginnt: der Schritt
+    kennt seine Person noch nicht (auffindbarer Passkey).
+    """
+
+    __tablename__ = "passkey_schritte"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    #: registrierung | anmeldung
+    zweck: Mapped[str] = mapped_column(String(16))
+    challenge: Mapped[bytes] = mapped_column(LargeBinary)
+    person_id: Mapped[UUID | None] = mapped_column(ForeignKey("personen.id", ondelete="CASCADE"))
+    erstellt_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    laeuft_ab_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    eingeloest_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint(
+            "zweck IN ('registrierung', 'anmeldung')", name="ck_passkey_schritte_zweck"
+        ),
+    )
+
+
+class PersonSitzung(Base):
+    """Eine angemeldete Person - opakes Token, nur als Hash abgelegt.
+
+    **Opak und kein JWT**, weil ein Zugang sofort widerrufbar sein muss: ein JWT
+    wird ohne Datenbankzugriff geprüft und gälte nach dem Abschalten einer Person
+    bis zum Ablauf weiter. Das war die Schwäche des alten Kiosk-Cookies: eine
+    einzelne Sitzung ließ sich nicht beenden, nur das Geheimnis für alle wechseln.
+
+    Ein Token kostet eine indizierte Abfrage, die die Person mitliest - einen
+    Rundlauf, und es gibt keinen Signierschlüssel zu verwalten.
+    """
+
+    __tablename__ = "person_sitzungen"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    person_id: Mapped[UUID] = mapped_column(
+        ForeignKey("personen.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    erstellt_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    laeuft_ab_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    zuletzt_benutzt_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: Woher die Anmeldung kam - für die Sitzungsliste. Kein Sicherheitsmerkmal, da fälschbar.
+    herkunft: Mapped[str] = mapped_column(String(120), default="")
+
+
+class Zugangstoken(Base):
+    """Ein einmaliger Link mit Frist: Einladung oder neuer Zugang.
+
+    **Kein vorläufiges Passwort.** Ein vergebenes Passwort stünde in einer
+    Nachricht und gälte bis zur ersten Anmeldung. Ein einmaliger Token läuft ab
+    und ist nach Gebrauch wertlos.
+
+    Die Zeile bleibt nach dem Einlösen stehen und belegt, wann jemand seinen
+    Zugang eingerichtet hat.
+    """
+
+    __tablename__ = "zugangstoken"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    person_id: Mapped[UUID] = mapped_column(
+        ForeignKey("personen.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    #: einladung | wiederherstellung - derselbe Mechanismus, verschiedene Texte in der Post.
+    zweck: Mapped[str] = mapped_column(String(20))
+    erstellt_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    laeuft_ab_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    eingeloest_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint(
+            "zweck IN ('einladung', 'wiederherstellung')", name="ck_zugangstoken_zweck"
+        ),
+    )

@@ -194,14 +194,107 @@ class Settings(BaseSettings):
     # Wie viele fruehere Wechsel eines Gespraechs mitgehen. Der Faden lebt nur im Browser.
     alfred_verlauf_max: int = 6
 
+    # ------------------------------------------------------- Anmeldung mit Passkey (ADR-0002)
+    #
+    # **Die RP-ID ist nicht mehr aenderbar, ohne jeden Passkey zu entwerten.** Ein Passkey haengt
+    # an einer Domain; wird sie gewechselt, legt jeder auf jedem Geraet einen neuen an.
+    #
+    # **Sie steht auf dem eigenen Host und nicht auf der registrierbaren Domain** - das ist seit
+    # dem 23.11.2026 anders entschieden als urspruenglich in ADR-0002. Mit `duckcurve.de` lagen
+    # die Passkeys von Duck Curve und Duck Curve Home im selben Bereich: der Browser bot beide an,
+    # beide trugen dieselbe E-Mail-Adresse, und der falsche wurde abgewiesen. Eingetauscht war
+    # dafuer, dass eine spaetere zentrale Anmeldung unter `konto.duckcurve.de` dieselben Passkeys
+    # weiterverwenden koennte - das ist weniger wert: jene Zentrale waere ohnehin ein neuer
+    # Anmeldeweg, und ein neuer Passkey ist eine Sache von zwei Minuten. Taegliche Verwechslung
+    # ist teurer als ein einmaliger Umzug.
+    #
+    # In der Entwicklung: DCH_PASSKEY_RP_ID=localhost und DCH_PASSKEY_HERKUENFTE=http://localhost:3000.
+    # `localhost` gilt dem Browser als sicherer Kontext, auch ohne https.
+    passkey_rp_id: str = "home.duckcurve.de"
+    #: Was der Browser im Dialog anzeigt.
+    passkey_rp_name: str = "Duck Curve Home"
+    #: Herkuenfte, von denen eine Antwort des Browsers angenommen wird. Geprueft beim Start.
+    passkey_herkuenfte: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["https://home.duckcurve.de"]
+    )
+    #: Wie lange die Sitzung einer Person haelt. Dreissig Tage: lang genug, dass niemand sich
+    #: taeglich anmeldet, kurz genug, dass ein vergessenes Geraet nicht ein halbes Jahr offen
+    #: steht. Die Wandanzeige haengt nicht daran - sie ist ein Geraet und behaelt ihre Paarung.
+    sitzung_tage: int = 30
+    #: Wie lange ein Einladungs- oder Wiederherstellungslink gilt.
+    zugangstoken_stunden: int = 72
+    #: Die Adresse, unter der die Oberflaeche erreichbar ist - fuer den Link in der Einladung.
+    #: Leer heisst: die erste Herkunft aus `passkey_herkuenfte`.
+    anmelde_url: str = ""
+
+    # ------------------------------------------------------- Postausgang fuer die Einladung
+    #
+    # Der Versand ist eine **Beigabe, kein Torwaechter** (dch_api/post.py): Ohne Konfiguration
+    # wird nichts verschickt, die Person ist trotzdem angelegt, und der Hausherr gibt den Link
+    # von Hand weiter - er steht auf der Seite „Zugang“ zum Kopieren.
+    #
+    # Zwei Wege, weil ausgehendes SMTP in manchen Umgebungen gesperrt ist. Ist beides
+    # eingetragen, gilt SMTP.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_benutzer: str = ""
+    smtp_passwort: str = ""
+    smtp_sicherheit: Literal["starttls", "ssl", "keine"] = "starttls"
+    smtp_zeitlimit_s: float = 10.0
+    #: Die Absenderadresse, fuer beide Wege. Leer heisst: der SMTP-Benutzer.
+    absender: str = ""
+    #: Schluessel eines HTTPS-Versenders (Resend) - der zweite Weg neben SMTP.
+    resend_schluessel: str = ""
+
     # Austausch mit dem Update-Dienst des Hausgeraets (deploy/haus/dch, Abschnitt "Updates"). Leer
     # heisst: kein Hausgeraet (Railway, Entwicklung), die App bietet keine Updates an.
     geraet_dir: str = ""
 
-    @field_validator("cors_origins", "bridge_tokens", mode="before")
+    @field_validator("cors_origins", "bridge_tokens", "passkey_herkuenfte", mode="before")
     @classmethod
     def _lists(cls, value: object) -> list[str]:
         return parse_list(value)
+
+    def passkey_problem(self) -> str | None:
+        """Was an der Passkey-Einstellung nicht stimmt - oder `None`.
+
+        Geprueft wird beim Start und nicht erst bei der ersten Anmeldung: eine Herkunft, die
+        nicht zur RP-ID passt, laesst jede Zeremonie scheitern, und zwar mit einer Meldung des
+        Browsers, die niemandem sagt, woran es lag.
+
+        Erlaubt ist `https` oder ein Host, den der Browser ohnehin als sicheren Kontext ansieht
+        (`localhost`). Der Host muss die RP-ID selbst sein oder auf `.<RP-ID>` endigen - so
+        verlangt es WebAuthn (W3C Level 3, § 4, „RP ID“).
+        """
+        from urllib.parse import urlsplit
+
+        rp = self.passkey_rp_id.strip().lower()
+        if not rp:
+            return "DCH_PASSKEY_RP_ID ist leer."
+        if not self.passkey_herkuenfte:
+            return "DCH_PASSKEY_HERKUENFTE ist leer."
+        for herkunft in self.passkey_herkuenfte:
+            teile = urlsplit(herkunft.strip())
+            host = (teile.hostname or "").lower()
+            if not teile.scheme or not host:
+                return f"Herkunft „{herkunft}“ ist keine Adresse (erwartet https://host)."
+            lokal = host == "localhost" or host.endswith(".localhost")
+            if teile.scheme != "https" and not lokal:
+                return f"Herkunft „{herkunft}“ ist nicht https."
+            if host != rp and not host.endswith("." + rp):
+                return (
+                    f"Herkunft „{herkunft}“ passt nicht zu DCH_PASSKEY_RP_ID „{rp}“: der Host "
+                    f"muss die RP-ID sein oder auf „.{rp}“ endigen."
+                )
+        return None
+
+    @property
+    def anmeldung_url(self) -> str:
+        """Die Adresse fuer den Link in einer Einladung, ohne Schraegstrich am Ende."""
+        roh = self.anmelde_url.strip() or (
+            self.passkey_herkuenfte[0] if self.passkey_herkuenfte else ""
+        )
+        return roh.rstrip("/")
 
     @property
     def runs_api(self) -> bool:
