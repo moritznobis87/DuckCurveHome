@@ -282,6 +282,39 @@ def test_raeume_kommen_von_der_bruecke_bis_in_die_anzeige(live_client: TestClien
     assert verlauf["rooms"][0]["temp_c"][-1] == 20.6
 
 
+def test_ohne_aussentemperatur_bekennt_sich_die_raumwirkung_dazu(live_client: TestClient) -> None:
+    """Fehlt die Außentemperatur, rechnet die Karte mit 7,0 °C - und sagt es.
+
+    Die Außentemperatur bestimmt über die Arbeitszahl jede Stromzahl dieser Antwort: zwischen
+    7 °C (Arbeitszahl 3,5) und -7 °C (2,4) liegt Faktor 1,46. Bis zum 23.11.2026 stand die
+    Rücklage stumm in `outdoor_c`, einem Feld, das im Schema mit „woraus gerechnet wurde"
+    kommentiert ist, und `note_de` nannte die Außentemperatur unter seinen Grundlagen nicht
+    einmal - während die Regelkreis-Karte im gleichen Projekt für genau diesen Zweck ein
+    `aussen_gemessen` führt.
+
+    Der Test fährt den Live-Betrieb, weil dort die Lücke war: unter `/wirkung` antwortete im
+    Prüflauf bisher nur der `DemoRunner`, und das simulierte Haus hat immer eine
+    Außentemperatur.
+    """
+    now = datetime.now(UTC)
+    with live_client.websocket_connect(
+        "/bridge/ws", headers={"authorization": "Bearer geheim"}
+    ) as ws:
+        ws.send_text(_hello())
+        ws.receive_text()
+        # Nur ein Raumfühler, keine Außentemperatur - genau die Lage nach einem Neustart der
+        # Brücke oder bei stummem eBUS und stummer Wetterstation.
+        ws.send_text(_telemetrie(1, now, {"room_1_temp_c": 20.6, "room_1_setpoint_c": 21.0}))
+        ws.receive_text()
+        d = live_client.get("/api/v1/rooms/1/wirkung", params={"delta_k": 0.5}, headers=KOPF).json()
+
+    assert d["outdoor_c"] == 7.0, "die unveränderte Rücklage dieser Antwort"
+    assert d["aussen_gemessen"] is False
+    assert "angenommene 7,0 °C" in d["note_de"]
+    # Gerechnet wird trotzdem, nur eben kenntlich: die Zahlen sind da.
+    assert d["daily_kwh_th"] > 0 and d["cop"] > 0
+
+
 def test_ohne_ereignis_heissen_die_raeume_nach_ihrer_kennung(live_client: TestClient) -> None:
     """Messwerte kommen vielleicht vor der Namensliste. Dann zeigt die Seite Ersatznamen - und
     `named` sagt, dass es Ersatznamen sind."""
@@ -400,6 +433,11 @@ def test_die_wirkung_einer_anhebung_steht_mit_ihrer_herkunft_da(client: TestClie
     assert d["daily_kwh_el"] == pytest.approx(d["daily_kwh_th"] / d["cop"], abs=0.02)
     assert d["half_life_h"] > 0
     assert d["note_de"].startswith("Geschätzt")
+    # Im simulierten Haus ist die Aussentemperatur gerechnet und damit bekannt; der Satz nennt
+    # sie, weil sie ueber die Arbeitszahl jede Stromzahl dieser Antwort bestimmt.
+    assert d["aussen_gemessen"] is True
+    assert f"für {d['outdoor_c']:.1f}".replace(".", ",") + " °C draußen" in d["note_de"]
+    assert "angenommene" not in d["note_de"]
     # Eine Absenkung kostet nichts, sie spart.
     runter = client.get("/api/v1/rooms/1/wirkung", params={"delta_k": -0.5}).json()
     assert runter["daily_kwh_th"] < 0

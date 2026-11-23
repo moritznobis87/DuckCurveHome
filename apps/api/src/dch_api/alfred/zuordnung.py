@@ -33,6 +33,13 @@ ZEILEN_MAX = 400
 #: Die eine Stelle ist `SensorTimeouts.temperature_s`.
 _PUFFER_FRIST = int(SensorTimeouts().temperature_s)
 
+#: Die Altersgrenze der Aussentemperatur - aus demselben Grund geholt und nicht abgeschrieben.
+#:
+#: Hier stand 3600, dieselbe Zahl, die bis zum 23.11.2026 in `config/entities.home.yaml` stand,
+#: waehrend `LiveState.snapshot` mit drei Stunden rechnete. Die eine Stelle ist
+#: `SensorTimeouts.outdoor_temp_s`; warum es 5400 sind, steht dort.
+_AUSSEN_FRIST = int(SensorTimeouts().outdoor_temp_s)
+
 
 @dataclass(frozen=True)
 class Ziel:
@@ -59,7 +66,7 @@ KATALOG: tuple[Ziel, ...] = (
     Ziel("buffer_temp_mid_top_c", _TEMPERATUR, "Pufferspeicher mitte oben", _PUFFER_FRIST),
     Ziel("buffer_temp_mid_bottom_c", _TEMPERATUR, "Pufferspeicher mitte unten", _PUFFER_FRIST),
     Ziel("buffer_temp_bottom_c", _TEMPERATUR, "Pufferspeicher unten", _PUFFER_FRIST),
-    Ziel("outdoor_temp_c", _TEMPERATUR, "Aussentemperatur", 3600),
+    Ziel("outdoor_temp_c", _TEMPERATUR, "Aussentemperatur", _AUSSEN_FRIST),
     Ziel("flow_temp_c", _TEMPERATUR, "Vorlauftemperatur des Waermepumpenkreises", 900),
 )
 

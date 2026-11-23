@@ -497,7 +497,9 @@ def test_zuordnung_endpunkt(
     antwort = mit_modell.post(
         "/api/v1/alfred/zuordnung", json={"liste": "sensor.aussen 8.1 °C"}
     ).json()
-    assert antwort["zeilen"][0]["yaml"].endswith('unit: "°C", stale_after_s: 3600 }')
+    # Die Frist im Vorschlag ist die eine aus `SensorTimeouts`, nicht eine hier abgeschriebene.
+    frist = int(SensorTimeouts().outdoor_temp_s)
+    assert antwort["zeilen"][0]["yaml"].endswith(f'unit: "°C", stale_after_s: {frist} }}')
     assert m.rumpf(0)["response_format"] == {"type": "json_object"}
     assert "tools" not in m.rumpf(0)
 
@@ -743,3 +745,15 @@ def test_die_vorlage_schlaegt_die_eine_altersgrenze_der_pufferfuehler_vor() -> N
     assert len(puffer) == 4
     for z in puffer:
         assert z.stale_after_s == frist, z.schluessel
+
+
+def test_die_vorlage_schlaegt_die_eine_altersgrenze_der_aussentemperatur_vor() -> None:
+    """Dieselbe Stelle, dieselbe Krankheit: Alfreds Katalog darf die 3600 nicht zurueckbringen.
+
+    Fuer die Aussentemperatur standen bis zum 23.11.2026 drei Stunden in `LiveState.snapshot` und
+    eine Stunde in `config/entities.home.yaml` und hier. Die YAML-Datei ist nachgezogen; dieser
+    Test deckt die Vorlage, aus der die naechste Einrichtung ihre Zahlen nimmt.
+    """
+    frist = SensorTimeouts().outdoor_temp_s
+    (aussen,) = [z for z in zuordnung.KATALOG if z.schluessel == "outdoor_temp_c"]
+    assert aussen.stale_after_s == frist

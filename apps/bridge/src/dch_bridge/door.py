@@ -38,6 +38,7 @@ from dch_bridge.sources.unifi_access import UnifiAccessEvents
 from hems_core.control import AccessEvent, DoorGate, DoorPolicy
 from hems_core.control.door_access import stale_cutoff
 from hems_core.domain import Quality
+from hems_core.domain.zeit import HAUS_ZONE
 from hems_core.protocol import RawReading
 
 log = structlog.get_logger("door")
@@ -109,7 +110,9 @@ class DoorService:
             return
         self.gate.note_open(event.actor, now)
         self.opened += 1
-        self.last_de = f"Geöffnet für {event.actor} um {now.astimezone():%H:%M:%S}."
+        # Ortszeit des Hauses, nicht die des Prozesses: wer abends nachsieht, wann die Tür
+        # aufging, vergleicht mit seiner Armbanduhr (siehe `hems_core.domain.zeit`).
+        self.last_de = f"Geöffnet für {event.actor} um {now.astimezone(HAUS_ZONE):%H:%M:%S}."
         log.info("door opened", actor=event.actor, door=event.door, method=event.method)
         await self._report(event, "geöffnet", decision.reason_de)
 

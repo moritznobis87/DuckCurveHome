@@ -39,7 +39,9 @@ def _b64(daten: bytes) -> str:
 class Geraet:
     """Ein Authenticator in Software: Plattform, Nutzerprüfung, Signaturzähler."""
 
-    def __init__(self, herkunft: str = HERKUNFT, rp_id: str = RP_ID, nutzerpruefung: bool = True) -> None:
+    def __init__(
+        self, herkunft: str = HERKUNFT, rp_id: str = RP_ID, nutzerpruefung: bool = True
+    ) -> None:
         self.schluessel = ec.generate_private_key(ec.SECP256R1())
         self.kennung = os.urandom(16)
         self.herkunft, self.rp_id, self.nutzerpruefung = herkunft, rp_id, nutzerpruefung
@@ -418,7 +420,10 @@ def test_letzter_passkey_bleibt(client: TestClient) -> None:
         ).status_code
         == 200
     )
-    assert client.post(f"{API}/auth/passkeys/{passkey['id']}/loeschen", headers=kopf).status_code == 200
+    assert (
+        client.post(f"{API}/auth/passkeys/{passkey['id']}/loeschen", headers=kopf).status_code
+        == 200
+    )
     # Und mit dem zweiten kommt man herein.
     assert anmelden(client, zweites)["token"] != sitzung
 
@@ -441,7 +446,11 @@ def test_derselbe_passkey_nicht_zweimal(client: TestClient) -> None:
     z = client.post(f"{API}/auth/passkeys/beginnen", headers=kopf).json()
     antwort = client.post(
         f"{API}/auth/passkeys/abschliessen",
-        json={"schritt": z["schritt"], "antwort": geraet.anlegen(json.loads(z["optionen"])), "name": "noch mal"},
+        json={
+            "schritt": z["schritt"],
+            "antwort": geraet.anlegen(json.loads(z["optionen"])),
+            "name": "noch mal",
+        },
         headers=kopf,
     )
     assert antwort.status_code == 400
@@ -478,7 +487,9 @@ def test_gast_darf_nur_lesen(client: TestClient) -> None:
     )["token"]
     kopf = mit(sitzung)
     assert client.get(f"{API}/live/state", headers=kopf).status_code == 200
-    antwort = client.post(f"{API}/control/actuators/courtyard_light", json={"on": True}, headers=kopf)
+    antwort = client.post(
+        f"{API}/control/actuators/courtyard_light", json={"on": True}, headers=kopf
+    )
     assert antwort.status_code == 403
     assert antwort.json()["error"]["message"] == "Gastzugang: nur Ansicht."
 
@@ -492,7 +503,9 @@ def test_service_darf_am_geraet_aber_nicht_im_haus(client: TestClient) -> None:
     assert client.get(f"{API}/live/state", headers=kopf).status_code == 200
     # Nicht im Haus stellen: ein Beratungszugang schaltet keine Lichter.
     assert (
-        client.post(f"{API}/control/actuators/courtyard_light", json={"on": True}, headers=kopf).status_code
+        client.post(
+            f"{API}/control/actuators/courtyard_light", json={"on": True}, headers=kopf
+        ).status_code
         == 403
     )
     # Und niemals die Akten - auch nicht das Protokoll der Haustür.
@@ -521,7 +534,9 @@ def test_die_rolle_aus_der_kopfzeile_wird_durchgesetzt(client: TestClient) -> No
     assert client.get(f"{API}/live/state", headers=DIENST_GAST).status_code == 200
     assert client.get(f"{API}/energy/pv", headers=DIENST_GAST).status_code == 403
     assert (
-        client.post(f"{API}/control/actuators/courtyard_light", json={"on": True}, headers=DIENST_GAST).status_code
+        client.post(
+            f"{API}/control/actuators/courtyard_light", json={"on": True}, headers=DIENST_GAST
+        ).status_code
         == 403
     )
 
@@ -575,12 +590,17 @@ def test_der_letzte_hausherr_bleibt(client: TestClient) -> None:
         antwort = client.post(f"{API}/auth/personen/{person['id']}", json=rumpf, headers=DIENST)
         assert antwort.status_code == 400
         assert "letzte aktive Hausherr" in antwort.json()["error"]["message"]
-    assert client.post(f"{API}/auth/personen/{person['id']}/loeschen", headers=DIENST).status_code == 400
+    assert (
+        client.post(f"{API}/auth/personen/{person['id']}/loeschen", headers=DIENST).status_code
+        == 400
+    )
 
     # Mit einem zweiten geht alles davon.
     person_anlegen(client, email="zweiter@example.org", rolle="hausherr")
     assert (
-        client.post(f"{API}/auth/personen/{person['id']}", json={"rolle": "bewohner"}, headers=DIENST).status_code
+        client.post(
+            f"{API}/auth/personen/{person['id']}", json={"rolle": "bewohner"}, headers=DIENST
+        ).status_code
         == 200
     )
 
@@ -588,12 +608,19 @@ def test_der_letzte_hausherr_bleibt(client: TestClient) -> None:
 def test_loeschen_nimmt_passkeys_und_sitzungen_mit(client: TestClient) -> None:
     person_anlegen(client)  # Hausherr bleibt
     ergebnis = einrichten(
-        client, person_anlegen(client, email="weg@example.org", rolle="bewohner"), (geraet := Geraet())
+        client,
+        person_anlegen(client, email="weg@example.org", rolle="bewohner"),
+        (geraet := Geraet()),
     )
     person = next(
-        p for p in client.get(f"{API}/auth/personen", headers=DIENST).json() if p["email"] == "weg@example.org"
+        p
+        for p in client.get(f"{API}/auth/personen", headers=DIENST).json()
+        if p["email"] == "weg@example.org"
     )
-    assert client.post(f"{API}/auth/personen/{person['id']}/loeschen", headers=DIENST).status_code == 200
+    assert (
+        client.post(f"{API}/auth/personen/{person['id']}/loeschen", headers=DIENST).status_code
+        == 200
+    )
     # Die Sitzung ist weg.
     assert client.get(f"{API}/auth/ich", headers=mit(ergebnis["token"])).status_code == 401
     # Und der Passkey auch: die Anmeldung findet ihn nicht mehr.
@@ -623,7 +650,9 @@ def test_sitzung_eines_anderen_geraets_beenden(client: TestClient) -> None:
     sitzungen = client.get(f"{API}/auth/ich", headers=kopf).json()["sitzungen"]
     assert len(sitzungen) == 2
     andere = next(s for s in sitzungen if not s["diese"])
-    assert client.post(f"{API}/auth/sitzungen/{andere['id']}/beenden", headers=kopf).status_code == 200
+    assert (
+        client.post(f"{API}/auth/sitzungen/{andere['id']}/beenden", headers=kopf).status_code == 200
+    )
     assert client.get(f"{API}/auth/ich", headers=mit(ergebnis["token"])).status_code == 401
     assert len(client.get(f"{API}/auth/ich", headers=kopf).json()["sitzungen"]) == 1
 

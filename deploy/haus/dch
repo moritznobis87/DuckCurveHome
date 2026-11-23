@@ -395,6 +395,34 @@ netz_zaehler() {
 		'{schnittstelle: $s, empfangen_bytes: ($rx | tonumber), gesendet_bytes: ($tx | tonumber)}'
 }
 
+uhr() {
+	# Zustand der Systemuhr fuer die App. Gegen eine falsch gestellte Uhr hilft keine Schranke in
+	# der Anwendung: Sie verschiebt jeden Zeitstempel im Haus und die grosse Uhr auf der
+	# Wandanzeige, ohne sich sonst zu zeigen. NTPSynchronized ist die Auskunft des Kernels und gilt
+	# fuer jeden Zeitdienst; NTP sagt nur, ob timedated den Dienst in /usr/lib/systemd/ntp-units.d
+	# findet, was bei einem von Hand eingerichteten Dienst offen ist - deshalb wird beides gemeldet
+	# und die Ampel aus NTPSynchronized gebildet. Ohne systemd (Container, anderes Init) ist der Zustand
+	# unbekannt, nicht schlecht: Ausgabe null.
+	#
+	# DCH_SYSTEMD_PFAD ist die Naht fuer die Pruefung: Der Pruefstand laeuft in einem Container
+	# ohne /run/systemd/system, und ein Verzeichnis unter /run anzulegen, nur damit ein Test etwas
+	# sehen kann, waere schlimmer als ein benannter Vorgabewert (apps/api/tests/test_geraet.py).
+	command -v timedatectl >/dev/null 2>&1 &&
+		[ -d "${DCH_SYSTEMD_PFAD:-/run/systemd/system}" ] || { echo null; return 0; }
+	local roh
+	roh=$(timedatectl show -p Timezone -p NTP -p NTPSynchronized 2>/dev/null || true)
+	[ -n "$roh" ] || { echo null; return 0; }
+	# timedatectl schreibt Wahrheitswerte als yes/no; true/false faengt eine andere Fassung ab,
+	# alles andere bleibt unbekannt und darf nicht als "nicht synchron" durchgehen.
+	jq -n --arg zone "$(echo "$roh" | sed -n 's/^Timezone=//p')" \
+		--arg dienst "$(echo "$roh" | sed -n 's/^NTP=//p')" \
+		--arg synchron "$(echo "$roh" | sed -n 's/^NTPSynchronized=//p')" '
+		def ja: if . == "yes" or . == "true" then true
+			elif . == "no" or . == "false" then false else null end;
+		{zeitzone: (if $zone == "" then null else $zone end),
+		 zeitdienst_an: ($dienst | ja), zeit_synchron: ($synchron | ja)}'
+}
+
 ssd_gesundheit() {
 	# SMART der Platte, auf der / liegt (smartctl aus smartmontools). NVMe meldet Abnutzung und
 	# geschriebene Daten; eine Platte am USB-Adapter oft nur Temperatur und Betriebsstunden.
@@ -561,6 +589,7 @@ bericht() {
 		--arg takt "$takt" --arg spannung "$spannung" \
 		--arg cpu_vorher "$cpu_vorher" --arg cpu_nachher "$cpu_nachher" \
 		--argjson netz "$(netz_zaehler)" --argjson ssd "$(ssd_gesundheit)" \
+		--argjson uhr "$(uhr)" \
 		--argjson docker_platz "$(docker_platz)" \
 		--argjson platten "${platten:-[]}" '
 		def leer: if . == "" then null else . end;
@@ -579,6 +608,8 @@ bericht() {
 			| ($cpu_nachher | split(" ") | map(tonumber)) as $b
 			| (($b[0] - $a[0]) as $gesamt | ($b[1] - $a[1]) as $leer
 			| if $gesamt > 0 then ((1 - $leer / $gesamt) * 1000 | round / 10) else null end)),
+		 zeitzone: $uhr.zeitzone, zeitdienst_an: $uhr.zeitdienst_an,
+		 zeit_synchron: $uhr.zeit_synchron,
 		 netz: $netz, ssd: $ssd, docker_platz: $docker_platz,
 		 platten: $platten, docker: ($docker | leer)}')
 

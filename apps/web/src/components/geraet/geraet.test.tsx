@@ -31,6 +31,14 @@ function stand(felder: Partial<GeraetDaten> = {}): GeraetDaten {
       drosselung: "0x50000",
       drosselung_de: ["Seit dem Start war die Spannung mindestens einmal zu niedrig."],
       drosselung_ampel: "warn",
+      // Die Uhr des Geraets: Pflichtfelder, weil sie im Schema einen Vorgabewert tragen
+      // (openapi-typescript macht Eigenschaften mit `default` nicht optional). Hier die
+      // unauffaellige Lage - Uhr gestellt, also kein Satz und Ampel aus dem Bericht.
+      zeit_de: "",
+      zeit_ampel: "gut",
+      zeitzone: "Europe/Berlin",
+      zeit_synchron: true,
+      zeitdienst_an: true,
       speicher_gesamt_mb: 4096,
       speicher_frei_mb: 2900,
       speicher_ampel: "gut",

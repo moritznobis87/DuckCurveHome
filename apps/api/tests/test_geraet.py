@@ -4,6 +4,9 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import subprocess
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -13,9 +16,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from dch_api.main import create_app
-from dch_api.routers.geraet import bewerte_sicherung, drosselung_de
-from dch_api.schemas import GeraetSicherungOut
+from dch_api.routers.geraet import bewerte_rechner, bewerte_sicherung, drosselung_de, zeit_zustand
+from dch_api.schemas import GeraetRechnerOut, GeraetSicherungOut
 from dch_api.settings import Settings
+
+WURZEL = Path(__file__).resolve().parents[3]
+DCH = WURZEL / "deploy" / "haus" / "dch"
 
 
 @pytest.fixture
@@ -251,6 +257,92 @@ def test_drosselung_bits() -> None:
     assert drosselung_de("kaputt")[1] == "warn"
 
 
+def test_uhrzustand_bewerten() -> None:
+    # Ohne timedatectl (Railway, Entwicklung) ist der Zustand unbekannt und darf nicht warnen.
+    assert zeit_zustand(None, None) == ("", "aus")
+    assert zeit_zustand(None, True) == ("", "aus")
+    assert zeit_zustand(True, False) == ("", "gut")
+    # Mit laufendem Zeitdienst nennt der Satz nur, dass kein Zeitserver zu erreichen ist, und
+    # behauptet nicht, die Uhr gehe falsch: nach 32 000 s ohne Antwort setzt der Kernel
+    # STA_UNSYNC von selbst, auch wenn die Uhr dann noch auf Zehntelsekunden stimmt.
+    text, ampel = zeit_zustand(False, True)
+    assert ampel == "warn" and "erreicht keinen Zeitserver" in text
+    assert "ist nicht gestellt" not in text
+    text, ampel = zeit_zustand(False, False)
+    assert ampel == "schlecht" and "kein Zeitdienst eingeschaltet" in text
+    # Ohne Auskunft über den Dienst bleibt es schlecht, behauptet aber keine Ursache.
+    text, ampel = zeit_zustand(False, None)
+    assert ampel == "schlecht" and "Zeitdienst" not in text
+
+
+def _uhr(ordner: Path, **felder: Any) -> None:
+    """Die Uhrfelder, die `dch zustand` aus `timedatectl` in den Bericht schreibt, nachgebaut."""
+    bericht = json.loads((ordner / "geraet.json").read_text())
+    bericht["rechner"].update(zeitzone="Europe/Berlin", **felder)
+    (ordner / "geraet.json").write_text(json.dumps(bericht))
+
+
+def test_nicht_gestellte_uhr_bestimmt_das_urteil(geraet: TestClient, ordner: Path) -> None:
+    _bericht(ordner)
+    _uhr(ordner, zeit_synchron=False, zeitdienst_an=False)
+    antwort = geraet.get("/api/v1/system/geraet").json()
+    rechner = antwort["rechner"]
+    assert rechner["zeitzone"] == "Europe/Berlin" and rechner["zeit_ampel"] == "schlecht"
+    # Das Gesamturteil sagt, was aus der falschen Uhr folgt - sonst sucht niemand dort.
+    assert antwort["ampel"] == "schlecht"
+    assert "Wandanzeige" in antwort["text_de"] and "Zeitstempel" in antwort["text_de"]
+
+
+def test_eine_fremde_zeitzone_macht_die_uhr_nicht_schlecht(
+    geraet: TestClient, ordner: Path
+) -> None:
+    """Die Zeitzone des Geraets wird gemeldet und nicht bewertet - absichtlich.
+
+    Keine Uhrzeit im Haus haengt an ihr: der Dienst formatiert in `hems_core.domain.zeit`, die
+    Oberflaeche in Europe/Berlin, die App in der Zone des Telefons. Ein Geraet auf Etc/UTC mit
+    synchroner Uhr ist also in Ordnung, und die Seite behauptet nichts anderes. Der Test haelt
+    das fest, damit die Entscheidung eine Entscheidung bleibt und keine Luecke wird.
+    """
+    _bericht(ordner)
+    _uhr(ordner, zeit_synchron=True, zeitdienst_an=True)
+    bericht = json.loads((ordner / "geraet.json").read_text())
+    bericht["rechner"]["zeitzone"] = "Etc/UTC"
+    (ordner / "geraet.json").write_text(json.dumps(bericht))
+    antwort = geraet.get("/api/v1/system/geraet").json()
+    assert antwort["rechner"]["zeitzone"] == "Etc/UTC"
+    assert antwort["rechner"]["zeit_ampel"] == "gut"
+    assert antwort["rechner"]["zeit_de"] == ""
+
+
+def test_laufender_zeitdienst_warnt_nur(geraet: TestClient, ordner: Path) -> None:
+    _bericht(ordner)
+    _uhr(ordner, zeit_synchron=False, zeitdienst_an=True)
+    antwort = geraet.get("/api/v1/system/geraet").json()
+    assert antwort["rechner"]["zeit_ampel"] == "warn"
+    assert antwort["ampel"] in ("warn", "schlecht")
+
+
+def test_unbekannte_uhr_bleibt_stumm(geraet: TestClient, ordner: Path) -> None:
+    # Der Bericht eines Geraets ohne systemd (und der einer aelteren dch-Fassung) hat die Felder
+    # nicht: Dann ist die Uhr unbekannt, und die Seite schweigt darueber.
+    _bericht(ordner)
+    antwort = geraet.get("/api/v1/system/geraet").json()
+    rechner = antwort["rechner"]
+    assert rechner["zeit_synchron"] is None and rechner["zeitzone"] is None
+    assert rechner["zeit_ampel"] == "aus" and rechner["zeit_de"] == ""
+    assert "Uhr" not in antwort["text_de"]
+
+
+def test_synchrone_uhr_ist_gut(geraet: TestClient, ordner: Path) -> None:
+    _bericht(ordner)
+    _uhr(ordner, zeit_synchron=True, zeitdienst_an=True)
+    antwort = geraet.get("/api/v1/system/geraet").json()
+    assert antwort["rechner"]["zeit_ampel"] == "gut"
+    assert antwort["rechner"]["zeit_de"] == ""
+    if antwort["api"]["ampel"] == "gut":
+        assert antwort["ampel"] == "gut"
+
+
 def test_sicherung_bewerten() -> None:
     jetzt = datetime(2026, 11, 20, 12, tzinfo=UTC)
     assert bewerte_sicherung(GeraetSicherungOut(), jetzt).text_de == "Noch keine Sicherung."
@@ -272,3 +364,138 @@ def test_knapper_platz_sagt_wie_viel(geraet: TestClient, ordner: Path) -> None:
     assert antwort["rechner"]["platten"][0]["ampel"] == "schlecht"
     assert antwort["ampel"] == "schlecht"
     assert antwort["text_de"] == "Nur noch 12,4 GB frei auf der SSD."
+
+
+# ------------------------------------------------------- Die Uhrfelder kommen aus einem Shell-Skript
+
+
+def _uhr_aus_dch(tmp_path: Path, ausgabe: str | None, *, rueckgabe: int = 0) -> Any:
+    """`uhr()` aus `deploy/haus/dch` wirklich ausführen, mit `timedatectl` als Attrappe.
+
+    Die Funktion wird aus dem Quelltext geschnitten (von `^uhr()` bis zur ersten Zeile, die nur
+    aus `}` besteht) und in einer eigenen Shell ausgeführt. Damit prüft der Test die Zeilen, die
+    auf dem Hausgerät laufen, und nicht eine Nachbildung davon.
+
+    `ausgabe` ist `None` für „es gibt kein `timedatectl`"; sonst das, was es auf die Standardausgabe
+    schreibt. `rueckgabe` ist sein Beendigungscode.
+    """
+    quelle = DCH.read_text().splitlines()
+    beginn = quelle.index("uhr() {")
+    ende = next(i for i in range(beginn, len(quelle)) if quelle[i] == "}")
+    funktion = "\n".join(quelle[beginn : ende + 1])
+
+    attrappen = tmp_path / "bin"
+    attrappen.mkdir()
+    if ausgabe is not None:
+        falsch = attrappen / "timedatectl"
+        # Als Hier-Dokument und nicht als `printf`-Zeichenkette: `printf '%s'` lässt \n stehen,
+        # und dann steht die ganze Ausgabe in einem Feld - der erste Anlauf dieses Tests war
+        # darum grün für die falsche Sache.
+        falsch.write_text("#!/bin/sh\ncat <<'AUSGABE'\n" + ausgabe + f"AUSGABE\nexit {rueckgabe}\n")
+        falsch.chmod(0o755)
+    # Ein eigenes PATH mit nur den nötigen Werkzeugen: Läge das echte `timedatectl` noch darin,
+    # würde der Test auf einer systemd-Maschine etwas anderes messen als hier.
+    noetig = tmp_path / "werkzeuge"
+    noetig.mkdir()
+    for werkzeug in ("bash", "sh", "sed", "jq", "cat"):
+        ort = shutil.which(werkzeug)
+        if ort:
+            (noetig / werkzeug).symlink_to(ort)
+
+    lauf = subprocess.run(
+        ["bash", "-c", f"{funktion}\nuhr"],
+        capture_output=True,
+        text=True,
+        env={
+            "PATH": f"{attrappen}:{noetig}",
+            # Die Naht aus `dch`: der Prüfstand hat kein /run/systemd/system.
+            "DCH_SYSTEMD_PFAD": str(tmp_path),
+        },
+    )
+    assert lauf.returncode == 0, f"uhr() brach ab: {lauf.stderr}"
+    return json.loads(lauf.stdout)
+
+
+@pytest.mark.skipif(not shutil.which("jq"), reason="ohne jq kann `dch` kein JSON bauen")
+@pytest.mark.parametrize(
+    ("ntp", "synchron", "erwartet_dienst", "erwartet_synchron", "ampel"),
+    [
+        ("yes", "yes", True, True, "gut"),
+        # Ein anderer Zeitdienst als systemd-timesyncd: der Kernel sagt synchron, `timedated`
+        # kennt den Dienst vielleicht nicht. Die Uhr ist gestellt, also gut.
+        ("no", "yes", False, True, "gut"),
+        ("yes", "no", True, False, "warn"),
+        ("no", "no", False, False, "schlecht"),
+        # Eine Fassung, die true/false schreibt statt yes/no.
+        ("true", "false", True, False, "warn"),
+        # Etwas Unverständliches darf nicht als „nicht synchron" durchgehen.
+        ("vielleicht", "vielleicht", None, None, "aus"),
+    ],
+)
+def test_die_uhrfelder_aus_dch_tragen_bis_zur_ampel(
+    tmp_path: Path,
+    ntp: str,
+    synchron: str,
+    erwartet_dienst: bool | None,
+    erwartet_synchron: bool | None,
+    ampel: str,
+) -> None:
+    """Von `timedatectl` über `dch` und das Schema bis zur Ampel - der ganze Weg in einem Zug.
+
+    Dieser Test ist die einzige Prüfung im Baum, die `deploy/haus/dch` wirklich ausführt. Ohne ihn
+    überlebt dort jede Änderung per Bauart: Es gibt für die Shell-Dateien des Hausgeräts weder
+    `shellcheck` noch `bash -n` in den Abläufen, und das JSON, das `dch` schreibt, ist der Vertrag
+    mit `GeraetRechnerOut` - bricht er, zeigt die App stumm nichts an.
+    """
+    roh = _uhr_aus_dch(tmp_path, f"Timezone=Europe/Berlin\nNTP={ntp}\nNTPSynchronized={synchron}\n")
+    assert roh == {
+        "zeitzone": "Europe/Berlin",
+        "zeitdienst_an": erwartet_dienst,
+        "zeit_synchron": erwartet_synchron,
+    }
+    # Dieselben Schlüssel, die der Bericht trägt, in das Schema und durch die Bewertung.
+    r = bewerte_rechner(GeraetRechnerOut(**roh))
+    assert r.zeit_ampel == ampel
+    assert bool(r.zeit_de) is (ampel not in ("gut", "aus"))
+
+
+@pytest.mark.skipif(not shutil.which("jq"), reason="ohne jq kann `dch` kein JSON bauen")
+@pytest.mark.parametrize(
+    ("ausgabe", "rueckgabe"),
+    [
+        # Kein timedatectl: Railway, Entwicklung, ein Container ohne systemd.
+        (None, 0),
+        # Vorhanden, aber ohne systemd als Init - genau die Lage im Prüfbehälter.
+        ("", 1),
+        # Antwortet, sagt aber nichts über die Uhr.
+        ("Timezone=Europe/Berlin\n", 0),
+    ],
+)
+def test_eine_nicht_zu_erfragende_uhr_wird_unbekannt_und_nicht_schlecht(
+    tmp_path: Path, ausgabe: str | None, rueckgabe: int
+) -> None:
+    """Unbekannt heißt `null` beziehungsweise `None`, und `None` heißt Ampel aus.
+
+    Der teuerste Fehler dieser Art wäre eine Dauerwarnung in der Entwicklung und auf Railway: Sie
+    nimmt der echten Meldung den Glauben, und die echte Meldung ist der Grund, warum es die Felder
+    überhaupt gibt.
+    """
+    roh = _uhr_aus_dch(tmp_path, ausgabe, rueckgabe=rueckgabe)
+    if roh is None:
+        r = bewerte_rechner(GeraetRechnerOut())
+    else:
+        assert roh["zeit_synchron"] is None
+        r = bewerte_rechner(GeraetRechnerOut(**roh))
+    assert (r.zeit_ampel, r.zeit_de) == ("aus", "")
+
+
+def test_der_pfad_der_systemd_naht_ist_in_dch_wirklich_so_geschrieben() -> None:
+    """Die Naht, auf der die beiden Tests darüber stehen - und ihr Vorgabewert.
+
+    Stünde in `dch` wieder `/run/systemd/system` fest, liefen die Tests darüber weiter, prüften
+    aber nur noch den unbekannt-Fall: Der Prüfbehälter hat dieses Verzeichnis nicht, und ein
+    stillschweigend halbierter Test ist schlimmer als keiner.
+    """
+    text = DCH.read_text()
+    assert '[ -d "${DCH_SYSTEMD_PFAD:-/run/systemd/system}" ]' in text
+    assert os.environ.get("DCH_SYSTEMD_PFAD") is None, "der Vorgabewert gilt im Betrieb"

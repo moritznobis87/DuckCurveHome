@@ -2231,7 +2231,17 @@ class LiveRuntime:
         info = self._room_name(meta, room_id)
         kreise_gesamt = sum(max(1, self._room_name(meta, r).circuits) for r in self._room_ids(meta))
         now = self.now
-        aussen = self.live.measurement("outdoor_temp_c", now, 3600).value
+        # Die Außentemperatur aus der Aufnahme und nicht aus einer zweiten Abfrage mit eigener
+        # Frist: `LiveState.snapshot` ist die Stelle, die sie altert
+        # (`SensorTimeouts.outdoor_temp_s`). Hier stand `measurement(..., 3600)`, und diese 3600
+        # bewirkte nichts - `Measurement.value` gibt die Zahl auch heraus, wenn sie `stale` ist,
+        # also hätte die Raumwirkung genauso mit der Außentemperatur von vorgestern gerechnet.
+        # Die 7,0 °C sind die unveränderte Rücklage dieser Antwort - gesetzt, keine Messung, und
+        # die Antwort sagt das jetzt: `aussen_gemessen` und ein Satz in `note_de`. Ohne das stand
+        # eine Arbeitszahl für 7 °C da, wo es -7 °C sein konnten, und das ist Faktor 1,46 auf
+        # jede Stromzahl dieser Karte.
+        aussen_m = self.live.snapshot(now).outdoor_temp_c
+        aussen = aussen_m.value_or(7.0)
         preise = [
             iv.price_ct_kwh
             for iv in (self.plan.intervals if self.plan else [])
@@ -2245,10 +2255,11 @@ class LiveRuntime:
             circuits=max(1, info.circuits),
             total_circuits=max(1, kreise_gesamt),
             cfg=self.hems.heat_demand,
-            outdoor_c=aussen if aussen is not None else 7.0,
+            outdoor_c=aussen,
             price_ct_kwh=mittel,
             cheap_ct_kwh=min(preise) if preise else None,
             expensive_ct_kwh=max(preise) if preise else None,
+            outdoor_measured=aussen_m.usable,
         )
         return RoomEffectOut(
             room_id=room_id,
@@ -2263,7 +2274,8 @@ class LiveRuntime:
             shift_saving_eur=wirkung.shift_saving_eur,
             half_life_h=wirkung.half_life_h,
             cop=wirkung.cop,
-            outdoor_c=round(aussen if aussen is not None else 7.0, 1),
+            outdoor_c=round(aussen, 1),
+            aussen_gemessen=aussen_m.usable,
             price_ct_kwh=round(mittel, 1) if mittel is not None else None,
             cheap_ct_kwh=round(min(preise), 1) if preise else None,
             expensive_ct_kwh=round(max(preise), 1) if preise else None,

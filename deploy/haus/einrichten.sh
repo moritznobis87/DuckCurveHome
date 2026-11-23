@@ -116,6 +116,47 @@ name_setzen() {
 	systemctl restart avahi-daemon 2>/dev/null || true
 }
 
+# ---------------------------------------------------------------------------------------- Zeit
+
+zeitdienst_laeuft() {
+	# Haelt schon irgendwer die Uhr? Die Namen sind die ueblichen Pakete in Debian; es genuegt
+	# einer, denn mehr als ein Dienst an derselben Uhr zieht sie gegeneinander.
+	local dienst
+	for dienst in systemd-timesyncd chrony chronyd ntpsec ntp openntpd; do
+		systemctl is-active --quiet "$dienst.service" 2>/dev/null && return 0
+	done
+	return 1
+}
+
+zeit() {
+	# Die Uhr des Geraets traegt alles: jeder Messwert, jeder Tagesabschluss und die grosse Uhr auf
+	# der Wandanzeige haengen an ihr. Der CM5 hat keine gepufferte Echtzeituhr, also startet er mit
+	# einer geratenen Zeit und driftet ohne Zeitdienst weiter (am 22.11.2026 ging die Uhr drei
+	# Minuten nach). Die Zeitzone stellt der Nutzer beim Bespielen der SSD ein (README Abschnitt 1),
+	# die Synchronisation richtet dieses Skript ein - sie darf nicht an einer Rueckfrage haengen und
+	# nicht abbrechen, wenn das System kein systemd-timesyncd kennt.
+	schritt "Zeit synchron halten"
+	if ! command -v timedatectl >/dev/null || [ ! -d /run/systemd/system ]; then
+		echo "Hinweis: ohne systemd keine Zeitsynchronisation eingerichtet - Uhr selbst stellen." >&2
+		return 0
+	fi
+	# Ein bereits laufender Zeitdienst bleibt unangetastet: chrony, ntpsec und systemd-timesyncd
+	# belegen in Debian dasselbe virtuelle Paket (time-daemon), apt wuerde den vorhandenen Dienst
+	# also beim Nachinstallieren entfernen. Zwei Dienste an einer Uhr stoeren sich ausserdem.
+	if ! zeitdienst_laeuft; then
+		if ! systemctl cat systemd-timesyncd.service >/dev/null 2>&1; then
+			DEBIAN_FRONTEND=noninteractive apt-get install -y -q systemd-timesyncd ||
+				echo "Hinweis: systemd-timesyncd liess sich nicht installieren." >&2
+		fi
+		# set-ntp schaltet den Zeitdienst ein, den timedated kennt, und startet ihn; ohne einen
+		# solchen schlaegt es fehl, und das darf die Einrichtung nicht beenden.
+		timedatectl set-ntp true 2>/dev/null ||
+			echo "Hinweis: Zeitsynchronisation liess sich nicht einschalten." >&2
+	fi
+	# Dieselben Felder liest `dch zustand` fuer die App; hier stehen sie fuer den, der einrichtet.
+	timedatectl show -p Timezone -p NTP -p NTPSynchronized 2>/dev/null | sed 's/^/    /' || true
+}
+
 # ------------------------------------------------------------------------------------- Dateien
 
 zufall() { openssl rand -hex 24; }
@@ -354,6 +395,7 @@ if [ "$NUR_DATEIEN" = "1" ]; then
 fi
 
 pakete
+zeit
 dateien
 name_setzen "$NAME"
 dienste
