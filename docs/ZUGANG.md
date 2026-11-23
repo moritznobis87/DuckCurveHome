@@ -64,6 +64,41 @@ ist eine Beigabe, kein Torwächter:** schlägt er fehl, ist die Person trotzdem 
 Ein Link gilt einmal und 72 Stunden (`DCH_ZUGANGSTOKEN_STUNDEN`). Ein neuer entwertet den alten -
 zwei gültige Links für dieselbe Person sind einer zu viel.
 
+### Den Postausgang einrichten
+
+Alles davon gehört auf den **api**-Dienst. Zwei Wege, und sie schließen einander aus; ist beides
+eingetragen, gilt SMTP:
+
+```bash
+# Weg 1: SMTP
+DCH_SMTP_HOST=smtp.example.org
+DCH_SMTP_PORT=587
+DCH_SMTP_BENUTZER=versand@duckcurve.de
+DCH_SMTP_PASSWORT=…
+DCH_SMTP_SICHERHEIT=starttls        # starttls | ssl | keine
+DCH_ABSENDER=haus@duckcurve.de
+
+# Weg 2: HTTPS-Versender, wenn ausgehendes SMTP gesperrt ist
+DCH_RESEND_SCHLUESSEL=re_…
+DCH_ABSENDER=haus@duckcurve.de
+```
+
+**Warum es zwei Wege gibt:** manche Hoster sperren ausgehendes SMTP (Port 587 und 465), weil es
+für Spam missbraucht wird. Kommt bei Weg 1 nichts an und steht im Protokoll ein
+`einladung nicht verschickt` mit `fehler: OSError`, ist das der wahrscheinliche Grund - dann Weg 2
+nehmen, der spricht gewöhnliches HTTPS.
+
+**Was nicht in der Software liegt:** die Absenderadresse muss dem Empfänger-Postfach glaubwürdig
+sein. Eine Nachricht von `haus@duckcurve.de` ohne SPF- und DKIM-Einträge in der DNS-Zone von
+`duckcurve.de` landet im Spam oder wird abgewiesen - bei Gmail und Outlook regelmäßig. Ein
+Transaktionsversender führt durch diese Einträge; bei SMTP über ein vorhandenes Postfach genügt
+es meist, dessen eigene Adresse als Absender zu nehmen.
+
+Auf der Seite **Technik › Zugang** steht, was noch fehlt: ohne Konfiguration sagt sie
+„E-Mail-Versand ist nicht eingerichtet" und nennt die Variablen. Und was auch immer beim Versand
+schiefgeht - die Person ist angelegt, und der Link steht dort zum Kopieren. Der Versand ist eine
+Beigabe, kein Torwächter.
+
 ## Der Rückweg
 
 Drei Stufen, in dieser Reihenfolge:
@@ -177,6 +212,9 @@ entstehen und keine Einheitenprüfung sie sieht:
 - Zeremonien in `dch_api/auth/passkeys.py` (Bibliothek `webauthn`), Sitzungen und Verwaltung in
   `dch_api/auth/dienst.py`, die Rechtematrix in `dch_api/auth/rechte.py`, der Ausweis in
   `dch_api/auth/ausweis.py`, der Postausgang in `dch_api/post.py`.
+- Der Postausgang wird gegen einen **echten kleinen SMTP-Server** geprüft, nicht gegen ein
+  nachgebildetes `smtplib`: `apps/api/tests/test_post.py`. Dort steht auch, dass der Endpunkt den
+  Versand wirklich auslöst und dass in der Nachricht derselbe Link steht, den die Antwort nennt.
 - Endpunkte unter `/api/v1/auth/…` in `dch_api/routers/auth.py`; die Tür in
   `dch_api/dependencies.py`.
 - Oberfläche: `apps/web/src/app/anmeldung/`, `apps/web/src/components/zugang/`, Durchreiche in
