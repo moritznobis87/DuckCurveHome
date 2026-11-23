@@ -119,7 +119,7 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
     from dch_api.auth.dienst import AuthDienst
 
     app.state.auth = AuthDienst(engine, settings)
-    await _ersten_hausherrn_anlegen(app.state.auth, settings)
+    await _zugang_aus_der_umgebung(app.state.auth, settings)
     app.state.bridge_hub = hub
     app.state.runner = runtime
     app.state.push = push
@@ -130,25 +130,47 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
     app.state.hems = runtime.hems
 
 
-async def _ersten_hausherrn_anlegen(auth: object, settings: Settings) -> None:
-    """Beim allerersten Start den Zugang des Hausherrn anlegen und seinen Link protokollieren.
+async def _zugang_aus_der_umgebung(auth: object, settings: Settings) -> None:
+    """Zugang, den nur bekommt, wer die Umgebung des Dienstes setzen kann.
 
-    Der Ersatz fuer die Geraetepaarung, ueber die frueher der erste Zugang entstand. Ein offener
-    Endpunkt waere keiner: wer die Adresse zuerst faende, haette das Haus. Hier entscheidet, wer
-    die Umgebung des Dienstes setzen kann - und das ist dieselbe Person, die auch die Datenbank
-    haette.
+    Zwei Faelle, zwei Variablen, und der Unterschied ist wichtig:
 
-    Der Link steht **einmal** im Protokoll, als Warnung, damit er beim Hochfahren auffaellt. Er
-    gilt `DCH_ZUGANGSTOKEN_STUNDEN` und nur einmal; wer ihn verpasst, stellt sich spaeter unter
-    „Zugang" einen neuen aus - sofern dann schon jemand hereingekommen ist. Sonst: Variable
-    stehen lassen und neu starten, denn die Pruefung „ist wirklich noch niemand da" laeuft bei
-    jedem Start.
+    `DCH_ERSTE_PERSON` greift **nur bei leerer Personentabelle** - der Ersatz fuer die
+    Geraetepaarung, ueber die frueher der erste Zugang entstand. Die Variable darf stehen bleiben;
+    ist erst einmal jemand da, tut sie nichts mehr.
+
+    `DCH_NOTZUGANG` greift **immer** und ist der Rueckweg, wenn sich jemand ausgesperrt hat: die
+    genannte Person wird aktiv, wird `hausherr` und bekommt einen Link. Sie gehoert nach Gebrauch
+    wieder weg, und solange sie steht, sagt der Dienst das bei jedem Start.
+
+    Ein offener Endpunkt waere fuer beides keiner: wer die Adresse zuerst faende, haette das Haus.
+    Hier entscheidet, wer die Umgebung setzen kann - dieselbe Person, die auch an die Datenbank
+    kaeme.
     """
     from dch_api.auth.dienst import AuthDienst, ZugangError
 
-    if not isinstance(auth, AuthDienst) or not settings.erste_person.strip():
+    if not isinstance(auth, AuthDienst):
         return
-    if await auth.anzahl() > 0:
+
+    if settings.notzugang.strip():
+        try:
+            angaben, klartext = await auth.notzugang(settings.notzugang)
+        except ZugangError as fehler:
+            start_log.error("notzugang nicht moeglich", grund=str(fehler))
+        else:
+            start_log.warning(
+                "NOTZUGANG OFFEN",
+                email=angaben.email,
+                link=auth.link(klartext),
+                hinweis=(
+                    "Diesen Link einmalig oeffnen und danach DCH_NOTZUGANG wieder entfernen. "
+                    "Solange die Variable steht, entsteht bei jedem Start ein neuer Link, und "
+                    "wer das Protokoll liest, kommt herein."
+                ),
+            )
+        return
+
+    if not settings.erste_person.strip() or await auth.anzahl() > 0:
         return
     try:
         angaben, klartext = await auth.person_anlegen(settings.erste_person, "", "hausherr")

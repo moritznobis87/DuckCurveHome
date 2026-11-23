@@ -723,3 +723,75 @@ def test_eine_benutzte_sitzung_laeuft_nicht_ab(client: TestClient) -> None:
         auth_dienst.VERMERK_S = alt
     neue_frist = datetime.fromisoformat(sitzungen[0]["laeuft_ab_am"])
     assert neue_frist > erste_frist, "die Frist muss mitrücken"
+
+
+def test_notzugang_holt_einen_ausgesperrten_zurueck(tmp_path: Path) -> None:
+    """Der Rückweg, wenn alles andere zu ist - und die Lücke, die am 23.11.2026 auffiel.
+
+    `DCH_ERSTE_PERSON` greift nur bei leerer Tabelle und ist damit kein Rückweg: wer sich
+    aussperrt, hat ja schon einen Zugang. Mit `DCH_NOTZUGANG` wird die genannte Person wieder
+    aktiv, wird `hausherr` und bekommt einen Link - auch wenn sie abgeschaltet und
+    heruntergestuft war.
+    """
+    datei = tmp_path / "notzugang.sqlite"
+    gemeinsam = {
+        "mode": "live",
+        "database_url": f"sqlite+aiosqlite:///{datei}",
+        "db_create_all": True,
+        "api_token": "api-geheim",
+        "passkey_rp_id": RP_ID,
+        "passkey_herkuenfte": [HERKUNFT],
+        "anmelde_url": HERKUNFT,
+        "weather_refresh_min": 0,
+        "role": "api",
+    }
+
+    # Ausgangslage: zwei Personen, und die eine ist abgeschaltet und nur noch Gast.
+    with TestClient(create_app(Settings(**gemeinsam))) as client:
+        person_anlegen(client, email="zweiter@example.org", rolle="hausherr")
+        person_anlegen(client, email="moritz@example.org", rolle="hausherr")
+        personen = client.get(f"{API}/auth/personen", headers=DIENST).json()
+        moritz = next(p for p in personen if p["email"] == "moritz@example.org")
+        client.post(f"{API}/auth/personen/{moritz['id']}", json={"rolle": "gast"}, headers=DIENST)
+        client.post(f"{API}/auth/personen/{moritz['id']}", json={"aktiv": False}, headers=DIENST)
+
+    # DCH_ERSTE_PERSON hilft hier nicht: die Tabelle ist nicht leer.
+    with TestClient(create_app(Settings(**gemeinsam, erste_person="moritz@example.org"))) as ohne:
+        gleich = next(
+            p
+            for p in ohne.get(f"{API}/auth/personen", headers=DIENST).json()
+            if p["email"] == "moritz@example.org"
+        )
+        assert gleich["aktiv"] is False and gleich["rolle"] == "gast"
+
+    # Der Notzugang schon - und der Link führt wirklich hinein.
+    with TestClient(create_app(Settings(**gemeinsam, notzugang="moritz@example.org"))) as mit_not:
+        zurueck = next(
+            p
+            for p in mit_not.get(f"{API}/auth/personen", headers=DIENST).json()
+            if p["email"] == "moritz@example.org"
+        )
+        assert zurueck["aktiv"] is True
+        assert zurueck["rolle"] == "hausherr"
+        assert zurueck["einladung_offen"] is True
+
+        token = client_token(mit_not, "moritz@example.org")
+        ergebnis = einrichten(mit_not, token, Geraet())
+        assert ergebnis["ausweis"]["rolle"] == "hausherr"
+        assert mit_not.get(f"{API}/auth/ich", headers=mit(ergebnis["token"])).status_code == 200
+
+
+def client_token(client: TestClient, email: str) -> str:
+    """Den offenen Einladungstoken einer Person holen - über einen neuen Link.
+
+    Den aus dem Protokoll zu fischen wäre näher am Betrieb, aber brüchig im Test; der Hausherr
+    stellt hier stattdessen einen neuen aus, und das entwertet den alten ohnehin.
+    """
+    person = next(
+        p for p in client.get(f"{API}/auth/personen", headers=DIENST).json() if p["email"] == email
+    )
+    antwort = client.post(
+        f"{API}/auth/personen/{person['id']}/einladen", json={"einladen": False}, headers=DIENST
+    )
+    assert antwort.status_code == 200, antwort.text
+    return antwort.json()["link"].split("token=")[1]

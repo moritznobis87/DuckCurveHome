@@ -121,7 +121,8 @@ Beigabe, kein Torwächter.
 
 ## Der Rückweg
 
-Drei Stufen, in dieser Reihenfolge:
+Vier Stufen, in dieser Reihenfolge - und die ersten beiden sind die, die man vorbereitet haben
+muss, bevor man sie braucht:
 
 1. **Ein zweiter Passkey**, am besten auf einem zweiten Gerät. Ein in der Wolke gesicherter
    Passkey (iCloud-Schlüsselbund, Google-Passwortmanager) liegt ohnehin auf mehreren.
@@ -131,10 +132,19 @@ Drei Stufen, in dieser Reihenfolge:
 3. **Ein neuer Link des Hausherrn.** Er entwertet alle offenen Links und beendet alle Sitzungen
    der Person; danach legt sie einen neuen Passkey an.
 
-Für den Hausherrn selbst bleibt der Notweg über die Umgebung: `DCH_ERSTE_PERSON` wirkt wieder,
-sobald keine Person mehr da ist - und wer die Datenbank erreicht, kann eine Person abschalten.
-Das ist tragfähig, solange er an die Umgebungsvariablen kommt; auf einem Hausgerät beim Kunden
-wäre es keiner, und darum steht in ADR-0003 die Vollmacht aus der Zentrale.
+4. **Der Notzugang.** Fällt alles andere zugleich aus, setzt der Betreiber auf dem api-Dienst
+   `DCH_NOTZUGANG=<E-Mail>` und startet neu: die Person wird wieder aktiv, wird `hausherr` und
+   bekommt einen Einladungslink ins Protokoll. **Danach die Variable wieder entfernen** - solange
+   sie steht, entsteht bei jedem Start ein neuer Link, und wer das Protokoll liest, kommt herein;
+   der Dienst sagt das bei jedem Start als Warnung.
+
+   `DCH_ERSTE_PERSON` leistet das **nicht**: sie greift nur bei leerer Personentabelle. Wer sich
+   aussperrt, hat ja schon einen Zugang - genau daran fehlte es am 23.11.2026, als die RP-ID
+   wechselte und der einzige Passkey an die alte gebunden war.
+
+Der Notzugang gehört dem, der die Umgebung des Dienstes setzen kann - und das ist dieselbe Person,
+die auch an die Datenbank käme. Auf einem Hausgerät beim Kunden ist das der Betreiber und nicht
+der Kunde; darum steht in ADR-0003 die Vollmacht aus der Zentrale.
 
 ## Was das Protokoll jetzt sagt
 

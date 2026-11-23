@@ -452,6 +452,45 @@ class AuthDienst:
             await s.commit()
         return klartext, adresse
 
+    async def notzugang(self, email: str) -> tuple[PersonAngaben, str]:
+        """Der Rückweg, wenn niemand mehr hereinkommt. Legt einen Link für diese Adresse auf.
+
+        **Warum es das gibt.** Alle anderen Wege setzen voraus, dass irgendjemand noch
+        hereinkommt: ein zweiter Passkey, ein Wiederherstellungscode, ein Link des Hausherrn.
+        Fällt alles zugleich aus - der einzige Passkey ist an eine alte RP-ID gebunden, die Codes
+        sind nicht aufgehoben -, bliebe sonst nur, die Personentabelle von Hand zu leeren, damit
+        `DCH_ERSTE_PERSON` wieder greift. Das ist auf einem Hausgerät beim Kunden kein Weg.
+
+        **Was er kann und was das heißt.** Er macht die genannte Person wieder aktiv, setzt sie auf
+        `hausherr` und stellt ihr einen Einladungslink aus; gibt es sie nicht, legt er sie an. Wer
+        die Umgebung des Dienstes setzen kann, kann sich damit Zugang verschaffen - das konnte er
+        vorher auch schon, nur über die Datenbank. Darum gehört der Schalter nach Gebrauch wieder
+        weg, und der Dienst sagt das bei jedem Start, solange er steht.
+        """
+        adresse = _email(email)
+        async with self.maker() as s:
+            person = (
+                await s.execute(select(m.Person).where(m.Person.email == adresse))
+            ).scalar_one_or_none()
+            if person is None:
+                person = m.Person(
+                    email=adresse,
+                    anzeigename="",
+                    rolle="hausherr",
+                    aktiv=True,
+                    erstellt_am=jetzt(),
+                )
+                s.add(person)
+                await s.flush()
+            else:
+                person.aktiv = True
+                person.rolle = "hausherr"
+            klartext = await self._token_anlegen(s, person.id, "einladung")
+            angaben = await self._angaben(s, person)
+            await s.commit()
+        log.warning("notzugang ausgestellt", email=_verkuerzt(adresse))
+        return angaben, klartext
+
     def link(self, klartext: str) -> str:
         """Die vollständige Adresse, die in die Einladung gehört."""
         return f"{self.settings.anmeldung_url}/anmeldung/einrichten?token={klartext}"
