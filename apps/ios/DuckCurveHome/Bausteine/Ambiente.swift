@@ -74,7 +74,7 @@ struct Ambiente: View {
     private var jetztMinute: Date { takt }
 
     /// Die Minute der Daten: in der Uhr des Dienstes sind Fahrplan und Sonnenlauf geschrieben.
-    private var datenminute: Date { Verlauf.minutenanfang(haus.jetzt) }
+    private var datenminute: Date { Minutenraster.minutenanfang(haus.jetzt) }
 
     private var jetztStand: Stand { stand ?? gerechnet(datenminute) }
 
@@ -95,7 +95,7 @@ struct Ambiente: View {
         .accessibilityLabel("Ruhebild. Antippen für die Bedienung.")
         .onAppear { rechne() }
         .onReceive(Self.sekunde) { _ in
-            let minute = Verlauf.minutenanfang(haus.wanduhr)
+            let minute = Minutenraster.minutenanfang(haus.wanduhr)
             if minute != takt {
                 takt = minute
                 rechne()
@@ -507,7 +507,7 @@ struct Ambiente: View {
     // MARK: - Rechnen und Laden
 
     private func rechne() {
-        takt = Verlauf.minutenanfang(haus.wanduhr)
+        takt = Minutenraster.minutenanfang(haus.wanduhr)
         stand = gerechnet(datenminute)
     }
 
