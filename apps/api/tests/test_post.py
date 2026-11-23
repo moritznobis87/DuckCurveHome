@@ -43,7 +43,9 @@ class SmtpProbe:
         self.nachrichten: list[str] = []
         self.umschlaege: list[tuple[str, list[str]]] = []
 
-    async def _verbindung(self, leser: asyncio.StreamReader, schreiber: asyncio.StreamWriter) -> None:
+    async def _verbindung(
+        self, leser: asyncio.StreamReader, schreiber: asyncio.StreamWriter
+    ) -> None:
         async def sag(zeile: str) -> None:
             schreiber.write(f"{zeile}\r\n".encode())
             await schreiber.drain()
@@ -108,9 +110,7 @@ def _settings(port: int, **mehr: Any) -> Settings:
 
 async def test_die_einladung_geht_wirklich_ueber_den_draht(smtp: Any) -> None:
     probe, port = smtp
-    ok = await post.verschicken(
-        _settings(port), "anna@example.org", "Anna", LINK, "einladung"
-    )
+    ok = await post.verschicken(_settings(port), "anna@example.org", "Anna", LINK, "einladung")
     assert ok is True
     assert len(probe.nachrichten) == 1
     nachricht = message_from_string(probe.nachrichten[0], policy=standard_policy)
@@ -139,9 +139,7 @@ async def test_das_token_steht_nicht_im_betreff(smtp: Any) -> None:
 
 async def test_der_wiederherstellungslink_hat_seinen_eigenen_text(smtp: Any) -> None:
     probe, port = smtp
-    await post.verschicken(
-        _settings(port), "anna@example.org", "Anna", LINK, "wiederherstellung"
-    )
+    await post.verschicken(_settings(port), "anna@example.org", "Anna", LINK, "wiederherstellung")
     nachricht = message_from_string(probe.nachrichten[0], policy=standard_policy)
     assert str(nachricht["Subject"]) == "Ihr Link für einen neuen Zugang"
     assert "neuer Link angefordert" in nachricht.get_content()
@@ -215,7 +213,9 @@ class HttpProbe:
         self.rumpf = ""
         self.kopf: dict[str, str] = {}
 
-    async def _verbindung(self, leser: asyncio.StreamReader, schreiber: asyncio.StreamWriter) -> None:
+    async def _verbindung(
+        self, leser: asyncio.StreamReader, schreiber: asyncio.StreamWriter
+    ) -> None:
         kopfzeilen = await leser.readuntil(b"\r\n\r\n")
         text = kopfzeilen.decode("utf-8", "replace")
         for zeile in text.split("\r\n")[1:]:
@@ -271,7 +271,9 @@ async def test_smtp_hat_vorrang_wenn_beides_eingetragen_ist(smtp: Any) -> None:
     assert len(probe.nachrichten) == 1
 
 
-async def test_person_anlegen_schickt_die_einladung_wirklich_hinaus(smtp: Any, tmp_path: Any) -> None:
+async def test_person_anlegen_schickt_die_einladung_wirklich_hinaus(
+    smtp: Any, tmp_path: Any
+) -> None:
     """Der ganze Weg: Endpunkt, Dienst, Draht.
 
     Die Prüfungen oben sagen, dass `verschicken` funktioniert. Diese sagt, dass es auch gerufen

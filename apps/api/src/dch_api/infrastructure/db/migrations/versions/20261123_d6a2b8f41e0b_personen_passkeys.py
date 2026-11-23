@@ -37,7 +37,11 @@ def upgrade() -> None:
         sa.Column("anzeigename", sa.String(length=80), nullable=False, server_default=""),
         sa.Column("rolle", sa.String(length=16), nullable=False, server_default="bewohner"),
         sa.Column("aktiv", sa.Boolean(), nullable=False, server_default=sa.true()),
-        sa.Column("wiederherstellungscodes", sa.JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=True),
+        sa.Column(
+            "wiederherstellungscodes",
+            sa.JSON().with_variant(postgresql.JSONB(), "postgresql"),
+            nullable=True,
+        ),
         sa.Column("erstellt_am", sa.DateTime(timezone=True), nullable=False),
         sa.Column("zuletzt_angemeldet_am", sa.DateTime(timezone=True), nullable=True),
         sa.CheckConstraint(ROLLEN, name="ck_personen_rolle"),
@@ -54,7 +58,9 @@ def upgrade() -> None:
         sa.Column("credential_id", sa.LargeBinary(), nullable=False, unique=True),
         sa.Column("oeffentlicher_schluessel", sa.LargeBinary(), nullable=False),
         sa.Column("zaehler", sa.BigInteger(), nullable=False, server_default="0"),
-        sa.Column("transports", sa.JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=True),
+        sa.Column(
+            "transports", sa.JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=True
+        ),
         sa.Column("name", sa.String(length=80), nullable=False, server_default="Passkey"),
         sa.Column("gesichert", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("erstellt_am", sa.DateTime(timezone=True), nullable=False),

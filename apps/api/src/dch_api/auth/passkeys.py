@@ -144,9 +144,7 @@ async def _schritt_anlegen(
     return klartext
 
 
-async def _schritt_einloesen(
-    s: AsyncSession, schritt: str, zweck: str
-) -> m.PasskeySchritt | None:
+async def _schritt_einloesen(s: AsyncSession, schritt: str, zweck: str) -> m.PasskeySchritt | None:
     """Der offene, gültige Schritt - einmal: er gilt danach als eingelöst.
 
     `with_for_update` sperrt die Zeile, damit Prüfen und Entwerten in derselben Transaktion
@@ -193,9 +191,7 @@ async def registrierung_beginnen(
     nicht versehentlich einen zweiten an und der Browser sagt es gleich.
     """
     vorhandene = (
-        (await s.execute(select(m.Passkey).where(m.Passkey.person_id == person.id)))
-        .scalars()
-        .all()
+        (await s.execute(select(m.Passkey).where(m.Passkey.person_id == person.id))).scalars().all()
     )
     optionen = webauthn.generate_registration_options(
         rp_id=settings.passkey_rp_id,
@@ -208,9 +204,7 @@ async def registrierung_beginnen(
             resident_key=ResidentKeyRequirement.REQUIRED,
             user_verification=UserVerificationRequirement.REQUIRED,
         ),
-        exclude_credentials=[
-            PublicKeyCredentialDescriptor(id=p.credential_id) for p in vorhandene
-        ],
+        exclude_credentials=[PublicKeyCredentialDescriptor(id=p.credential_id) for p in vorhandene],
     )
     schritt = await _schritt_anlegen(s, "registrierung", optionen.challenge, person.id)
     return Zeremonie(schritt=schritt, optionen=webauthn.options_to_json(optionen))
@@ -241,9 +235,7 @@ async def pruefe_registrierung(
             "Der Passkey ließ sich nicht prüfen. Bitte noch einmal versuchen."
         ) from fehler
     schon_da = (
-        await s.execute(
-            select(m.Passkey).where(m.Passkey.credential_id == geprueft.credential_id)
-        )
+        await s.execute(select(m.Passkey).where(m.Passkey.credential_id == geprueft.credential_id))
     ).scalar_one_or_none()
     if schon_da is not None:
         raise PasskeyError("Diesen Passkey gibt es schon.")
