@@ -9,8 +9,8 @@ Teil des Repositories, nicht nur für die Dateien der laufenden Aufgabe.
 - **Das Ganze, nicht der Diff.** Was dir unterwegs als falsch, tot oder widersprüchlich auffällt,
   ist deine Sache: beheben, wenn es klein ist und zur Änderung passt; sonst mit Fundstelle nennen
   und als eigene Änderung nachziehen. Ein roter `main` gehört dir, gleich wer ihn rot gemacht hat.
-- **Darstellung ist Teil von „fertig“.** Eine Seite ist fertig, wenn sie am iPhone und am iPad gut
-  aussieht, sich ohne Erklärung bedienen lässt und zur übrigen App passt - nicht schon, wenn sie die
+- **Darstellung ist Teil von „fertig“.** Eine Seite ist fertig, wenn sie am iPhone, am iPad und im
+  Browser gut aussieht, sich ohne Erklärung bedienen lässt und zur übrigen App passt - nicht schon, wenn sie die
   richtigen Zahlen zeigt. Was sich hier nicht ansehen lässt, wird als ungesehen gemeldet.
 - **Qualität wird gemessen, nicht behauptet.** Eine Begründung, die in Code, Dokument oder PR steht,
   ist gegen den Baum geprüft. Struktur, Namen und Tests hinterlässt du so, wie du sie vorfinden
@@ -18,6 +18,21 @@ Teil des Repositories, nicht nur für die Dateien der laufenden Aufgabe.
 - **Die Entscheidungen des Hausherrn bleiben seine.** Was das Haus tut und wie die App gegliedert
   ist, entscheidet er. Bei einem Umbau, der Gliederung oder Bedienung verändert, stellst du erst
   den Vorschlag mit Begründung vor und baust danach.
+
+## Dashboard und App sind dasselbe, zweimal
+
+Der Hausherr hat das am 23.11.2026 festgelegt: Das Dashboard (`apps/web`) und die App (`apps/ios`)
+bestehen dauerhaft nebeneinander und zeigen identische Inhalte. Keines ersetzt das andere, und
+keines ist nur Vorlage für das andere.
+
+- **Jede Änderung an Inhalt, Gliederung oder Bedienung kommt in beide, im selben Pull Request.**
+  Seiten, Adressen, Namen, Zahlen, Texte und Einstellmöglichkeiten sind gleich. Fertig, wenn beide
+  dasselbe zeigen und für beide die Prüfungen aus der PR-Regel grün sind.
+- **Die Anordnung darf der Bildschirmbreite folgen, der Inhalt nicht.** Dieselbe Seite schmal und
+  breit anders zu setzen ist kein Unterschied. Ein Wert, ein Satz oder ein Schalter, den nur eines
+  von beiden hat, ist einer.
+- **Ein Unterschied, den du findest, ist ein Fehler.** Beheben oder mit Fundstelle nennen, wie
+  unter „Codeowner“ beschrieben.
 
 ## Jede Änderung geht über einen Pull Request nach `main`
 
