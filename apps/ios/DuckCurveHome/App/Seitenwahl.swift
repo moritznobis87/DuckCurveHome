@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Welche Seite zu einem Weg gehoert.
 ///
-/// Alle 28 Seiten des Dashboards, unter denselben Adressen. Das ist absichtlich eine einzige
+/// Alle Seiten des Dashboards, unter denselben Adressen. Das ist absichtlich eine einzige
 /// Stelle mit einem langen `switch` und keine Tabelle aus Bauanweisungen: ein `switch` ueber
 /// Zeichenketten laesst sich lesen, und der Compiler sagt nichts dazu, ob eine Tabelle
 /// vollstaendig ist. Dass jeder Weg aus `Bereiche.alleWege` hier ankommt, prueft dagegen ein
@@ -55,7 +55,10 @@ struct Seitenwahl: View {
         case "/geld/rechnungen":
             return AnyView(RechnungenSeite())
 
-        // ---------------------------------------------------------------- Technik
+        // ----------------------------------------------------------------- Anlage
+        case "/anlage":
+            // Die Übersicht des Bereichs: seine drei Gruppen, je Seite eine Karte.
+            return AnyView(Bereichsuebersicht(bereich: Bereiche.bereichVon(sauber)))
         case "/waerme/anlage":
             return AnyView(AnlageSeite())
         case "/waerme/wiedergabe":

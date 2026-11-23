@@ -174,7 +174,7 @@ Schlüssel, keine Zugangsdaten des Kunden zu Tibber oder myenergi).
   Betreiber Chiffrat lagert, das er nicht lesen kann. Heute ist das eine Entscheidung über den eigenen
   Bestand, später über fremden.
 - **Gesundheitsmeldungen aus der Ferne.** `HeartbeatFrame` und `DeviceHealthFrame` gibt es, und die
-  Seite *Technik → Hausgerät* zeigt sie dem Hausherrn. Was fehlt, ist der Weg zum Betreiber: ein
+  Seite *System → Hausgerät* zeigt sie dem Hausherrn. Was fehlt, ist der Weg zum Betreiber: ein
   Ausfall soll auffallen, bevor der Kunde anruft.
 - **Die Echtzeituhr ist entschieden** (RTC-Batterie, HAUSGERAET Abschnitt 2) und bekommt hier ihren
   zweiten Grund: ohne richtige Zeit schlägt jede Zertifikatsprüfung fehl.

@@ -750,6 +750,29 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 .area-icon-an { background: var(--amber); color: var(--petrol); }
 .area-tab { color: var(--text-2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .area-tab-an { color: var(--text-1); border-bottom-color: var(--amber); }
+/* Gruppen in der Reiterzeile: der Name der Gruppe steht klein vor ihren Reitern, ein Strich
+   trennt sie von der Gruppe davor. So liest sich die Zeile der Anlage als drei kurze Reihen
+   und nicht als eine lange. */
+.area-gruppe { padding-left: 24px; border-left: 1px solid var(--line-1); }
+.area-gruppenwort { font-size: 10px; color: var(--text-3); }
+/* Das Zahnrad steht neben der Leiste, aber nicht in ihr: ein Strich Abstand genügt. */
+.system-knopf { margin-left: -8px; }
+
+/* Die Übersicht eines Bereichs: je Gruppe eine Reihe Karten, jede Karte eine Seite. */
+/* Breit stehen die Gruppen nebeneinander, jede als Spalte ihrer Karten; schmal untereinander. */
+.uebersicht { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: start; gap: 30px 24px; padding-top: 6px; }
+.uebersicht-gruppe { display: flex; flex-direction: column; gap: 12px; }
+.uebersicht-kopf { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.uebersicht-name { margin: 0; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-kicker); }
+.uebersicht-wort { font-size: 13px; color: var(--text-3); }
+.uebersicht-karten { display: flex; flex-direction: column; gap: 12px; }
+.uebersicht-karte { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 16px 18px 15px; border: 1px solid var(--line-1); border-radius: var(--radius-3); background: var(--surface-1); color: inherit; text-decoration: none; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+.uebersicht-karte:hover { border-color: var(--line-2); background: var(--surface-2); }
+.uebersicht-karte:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.uebersicht-titel { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-1); }
+.uebersicht-satz { font-size: 13.5px; line-height: 1.45; color: var(--text-2); }
+.uebersicht-ansichten { margin-top: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+
 /* Nur am Handy sichtbar: Leiste unten, Bereichsname im Kopf, kurze Datumsangabe. */
 .fussleiste, .bereichstitel, .report-anchor-kurz { display: none; }
 

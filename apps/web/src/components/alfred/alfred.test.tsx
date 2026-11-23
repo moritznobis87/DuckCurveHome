@@ -50,7 +50,9 @@ describe("Hilfetexte", () => {
   });
 
   it("der Ort folgt Bereich und Reiter", () => {
-    expect(ortBestimmen("/waerme/nachbetrachtung")).toMatchObject({ bereich: "Technik", reiter: "Fahrplan" });
+    expect(ortBestimmen("/waerme/nachbetrachtung")).toMatchObject({ bereich: "Anlage", reiter: "Fahrplan" });
+    // Auf der Übersicht steht man im Bereich und auf keinem Reiter.
+    expect(ortBestimmen("/anlage")).toMatchObject({ bereich: "Anlage", reiter: null, text: SEITEN["/anlage"] });
     expect(ortBestimmen("/").bereich).toBe("Jetzt");
     expect(wissen("/geld/rechnungen")).toContain("Bereich Geld, Reiter Rechnungen");
   });

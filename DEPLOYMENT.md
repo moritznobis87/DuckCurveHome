@@ -57,7 +57,7 @@ Home Assistant OS (Haus)                          Railway
 5. **Ersten Zugang einrichten** (`docs/ZUGANG.md`): `DCH_ERSTE_PERSON` setzen, api-Dienst neu
    starten, den Einladungslink aus dem Protokoll holen (einmal, als Warnung) und auf dem Gerät
    öffnen, das künftig anmeldet. Dort entsteht der Passkey, und die zehn Wiederherstellungscodes
-   erscheinen **einmal**. Danach unter **Technik → Zugang** alle weiteren Personen einladen.
+   erscheinen **einmal**. Danach unter **System → Zugang und Sicherung** alle weiteren Personen einladen.
    Einen offenen Weg „ersten Zugang hier anlegen" gibt es mit Absicht nicht: wer die Adresse
    zuerst fände, hätte das Haus.
 6. **iPad an der Wand:** es bekommt eine eigene Person mit einem Passkey auf dem Gerät - gib ihr

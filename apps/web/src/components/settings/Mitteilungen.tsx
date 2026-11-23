@@ -199,7 +199,7 @@ export function Mitteilungen() {
           <ol className="m-0 flex flex-col gap-1 pl-5">
             <li>Unten auf Teilen tippen, dann „Zum Home-Bildschirm".</li>
             <li>Duck Curve Home vom Home-Bildschirm öffnen.</li>
-            <li>Dort wieder hierher: Technik, Mitteilungen, „Auf diesem Gerät einschalten".</li>
+            <li>Dort wieder hierher: das Zahnrad, Mitteilungen, „Auf diesem Gerät einschalten".</li>
           </ol>
         </div>
       ) : null}

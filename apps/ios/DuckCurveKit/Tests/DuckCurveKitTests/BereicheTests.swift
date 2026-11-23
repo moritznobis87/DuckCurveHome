@@ -8,8 +8,9 @@ import XCTest
 /// und zugleich der, bei dem ein Fehler am teuersten ist: ein Reiter, der zum falschen Bereich
 /// gehoert, verschiebt die ganze Leiste.
 final class BereicheTests: XCTestCase {
-    func testVierBereicheFuerDenAlltagUndEinerFuerDieTechnik() {
-        XCTAssertEqual(Bereiche.alle.map(\.name), ["Jetzt", "Haus", "Energie", "Geld", "Technik"])
+    func testFuenfBereicheInDerLeisteUndDasSystemDahinter() {
+        XCTAssertEqual(Bereiche.leiste.map(\.name), ["Jetzt", "Haus", "Energie", "Geld", "Anlage"])
+        XCTAssertEqual(Bereiche.alle.filter { !$0.inLeiste }.map(\.name), ["System"])
     }
 
     func testOrdnetEinenWegSeinemBereichZu() {
@@ -23,12 +24,16 @@ final class BereicheTests: XCTestCase {
     func testRichtetSichNachDerLaengstenAdresse() {
         XCTAssertEqual(Bereiche.bereichVon("/waerme").schluessel, .energie)
         XCTAssertEqual(Bereiche.bereichVon("/waerme?period=day&anchor=2026-11-10").schluessel, .energie)
-        XCTAssertEqual(Bereiche.bereichVon("/waerme/anlage").schluessel, .technik)
-        XCTAssertEqual(Bereiche.bereichVon("/waerme/wiedergabe").schluessel, .technik)
-        XCTAssertEqual(Bereiche.bereichVon("/waerme/nachbetrachtung").schluessel, .technik)
-        XCTAssertEqual(Bereiche.bereichVon("/waerme/raeume").schluessel, .technik)
-        XCTAssertEqual(Bereiche.bereichVon("/system").schluessel, .technik)
-        XCTAssertEqual(Bereiche.bereichVon("/system/zugang").schluessel, .technik)
+        XCTAssertEqual(Bereiche.bereichVon("/anlage").schluessel, .anlage)
+        XCTAssertEqual(Bereiche.bereichVon("/waerme/anlage").schluessel, .anlage)
+        XCTAssertEqual(Bereiche.bereichVon("/waerme/wiedergabe").schluessel, .anlage)
+        XCTAssertEqual(Bereiche.bereichVon("/waerme/nachbetrachtung").schluessel, .anlage)
+        // Die Raeume ueber den Tag gehoeren zum Haus, die Prognose zur Energie, der Rest von
+        // `/system` zur Verwaltung: drei Bereiche unter zwei alten Pfadanfaengen.
+        XCTAssertEqual(Bereiche.bereichVon("/waerme/raeume").schluessel, .haus)
+        XCTAssertEqual(Bereiche.bereichVon("/system").schluessel, .energie)
+        XCTAssertEqual(Bereiche.bereichVon("/system/zugang").schluessel, .system)
+        XCTAssertEqual(Bereiche.bereichVon("/system/daten").schluessel, .system)
     }
 
     func testFindetDenReiterAmLaengstenPassendenWeg() {
@@ -39,18 +44,40 @@ final class BereicheTests: XCTestCase {
         XCTAssertEqual(Bereiche.reiterVon(energie, "/waerme")?.name, "Wärme")
     }
 
-    func testDasHausIstEinBereichOhneReiter() {
+    func testImHausStehenDieRaeumeUndIhrVerlaufUeberDenTag() {
         XCTAssertEqual(Bereiche.bereichVon("/haus").schluessel, .haus)
-        XCTAssertTrue(Bereiche.bereichVon("/haus").reiter.isEmpty)
+        XCTAssertEqual(Bereiche.bereichVon("/haus").reiter.map(\.name), ["Räume", "Über den Tag"])
     }
 
-    func testKeinBereichNurFuerDenHausherrnAberReiter() {
-        let technik = Bereiche.alle.first { $0.schluessel == .technik }!
+    func testEinGastSiehtDieAnlageOhneRegelkreisUndAnnahmenUndDasSystemGarNicht() {
+        XCTAssertEqual(Bereiche.alle.filter(\.nurHausherr).map(\.schluessel), [.system])
+        let anlage = Bereiche.alle.first { $0.schluessel == .anlage }!
         XCTAssertEqual(
-            technik.reiter.filter { !$0.nurHausherr }.map(\.name),
-            ["Anlage", "Wärmepumpe", "Fahrplan", "Wirkung", "Heizkreise"]
+            anlage.reiter.filter { !$0.nurHausherr }.map(\.name),
+            ["Anlage", "Wärmepumpe", "Fahrplan", "Wirkung", "Regler"]
         )
-        XCTAssertTrue(technik.reiter.filter { $0.weg.hasPrefix("/system") }.allSatisfy(\.nurHausherr))
+        let system = Bereiche.alle.first { $0.schluessel == .system }!
+        XCTAssertTrue(system.reiter.allSatisfy(\.nurHausherr))
+        // Was unter `/system` liegt, sieht nur der Hausherr, gleich in welchem Bereich es steht.
+        let unterSystem = Bereiche.alle.flatMap(\.reiter).filter { $0.weg.hasPrefix("/system") }
+        XCTAssertTrue(unterSystem.allSatisfy(\.nurHausherr))
+    }
+
+    func testJederReiterDerAnlageGehoertZuGenauEinerIhrerGruppen() {
+        let anlage = Bereiche.alle.first { $0.schluessel == .anlage }!
+        let namen = anlage.gruppen.map(\.name)
+        XCTAssertEqual(namen, ["Maschine", "Regelung", "Abstimmung"])
+        for r in anlage.reiter { XCTAssertTrue(namen.contains(r.gruppe ?? ""), "\(r.name) hat keine Gruppe") }
+        XCTAssertEqual(anlage.reiter(derGruppe: "Maschine").map(\.name), ["Anlage", "Wärmepumpe"])
+        XCTAssertEqual(anlage.reiter(derGruppe: "Regelung").map(\.name), ["Fahrplan", "Wirkung", "Regelkreis"])
+        XCTAssertEqual(anlage.reiter(derGruppe: "Abstimmung").map(\.name), ["Annahmen", "Regler"])
+        // Die Karte auf der Uebersicht braucht je Seite einen Satz.
+        for r in anlage.reiter { XCTAssertTrue(r.beschreibung?.hasSuffix(".") ?? false, "\(r.name) hat keinen Satz") }
+        // Gruppen gibt es nur dort, wo sie etwas ordnen.
+        for b in Bereiche.alle where b.schluessel != .anlage {
+            XCTAssertTrue(b.gruppen.isEmpty)
+            for r in b.reiter { XCTAssertNil(r.gruppe) }
+        }
     }
 
     func testVerweistNirgendsAufEineAlteAdresseUndNenntKeineZweimal() {
@@ -62,26 +89,33 @@ final class BereicheTests: XCTestCase {
     }
 
     func testZaehltDieAnsichtenEinesReitersZuIhm() {
-        let technik = Bereiche.bereichVon("/waerme/anlage")
-        XCTAssertEqual(Bereiche.reiterVon(technik, "/waerme/wiedergabe")?.name, "Anlage")
-        XCTAssertEqual(Bereiche.reiterVon(technik, "/waerme/anlage")?.name, "Anlage")
-        XCTAssertEqual(Bereiche.reiterVon(technik, "/waerme/nachbetrachtung")?.name, "Fahrplan")
-        XCTAssertEqual(Bereiche.reiterVon(technik, "/waerme/raeume")?.name, "Heizkreise")
+        let anlage = Bereiche.bereichVon("/waerme/anlage")
+        XCTAssertEqual(Bereiche.reiterVon(anlage, "/waerme/wiedergabe")?.name, "Anlage")
+        XCTAssertEqual(Bereiche.reiterVon(anlage, "/waerme/anlage")?.name, "Anlage")
+        XCTAssertEqual(Bereiche.reiterVon(anlage, "/waerme/nachbetrachtung")?.name, "Fahrplan")
         XCTAssertEqual(
-            Bereiche.ansichtVon(Bereiche.reiterVon(technik, "/waerme/wiedergabe"), "/waerme/wiedergabe")?.name,
+            Bereiche.reiterVon(Bereiche.bereichVon("/waerme/raeume"), "/waerme/raeume")?.name, "Über den Tag")
+        // Auf der Uebersicht ist kein Reiter aktiv.
+        XCTAssertNil(Bereiche.reiterVon(anlage, "/anlage"))
+        XCTAssertEqual(
+            Bereiche.ansichtVon(Bereiche.reiterVon(anlage, "/waerme/wiedergabe"), "/waerme/wiedergabe")?.name,
             "Ein Tag"
         )
         XCTAssertEqual(
-            Bereiche.ansichtVon(Bereiche.reiterVon(technik, "/waerme/fahrplan"), "/waerme/fahrplan")?.name,
+            Bereiche.ansichtVon(Bereiche.reiterVon(anlage, "/waerme/fahrplan"), "/waerme/fahrplan")?.name,
             "Voraus"
         )
-        XCTAssertNil(Bereiche.ansichtVon(Bereiche.reiterVon(technik, "/waerme/wirkung"), "/waerme/wirkung"))
+        XCTAssertNil(Bereiche.ansichtVon(Bereiche.reiterVon(anlage, "/waerme/wirkung"), "/waerme/wirkung"))
     }
 
     func testJedeErsteAnsichtHatDieAdresseIhresReiters() {
         for b in Bereiche.alle {
-            if let ersterReiter = b.reiter.first {
+            // Ein Bereich mit Gruppen hat eine Uebersicht unter eigener Adresse.
+            if let ersterReiter = b.reiter.first, b.gruppen.isEmpty {
                 XCTAssertEqual(ersterReiter.weg, b.weg, "Bereich \(b.name) zeigt nicht auf seinen ersten Reiter")
+            }
+            if !b.gruppen.isEmpty {
+                XCTAssertFalse(b.reiter.map(\.weg).contains(b.weg), "Die Uebersicht von \(b.name) ist auch ein Reiter")
             }
             for r in b.reiter where !r.unter.isEmpty {
                 XCTAssertEqual(r.unter.first?.weg, r.weg, "Reiter \(r.name) zeigt nicht auf seine erste Ansicht")
@@ -89,15 +123,20 @@ final class BereicheTests: XCTestCase {
         }
     }
 
-    /// Die Wärmepumpe hat vier Ansichten - und alle vier muessen erreichbar sein, sonst findet
-    /// niemand die Seite „Regler".
-    func testDieWaermepumpeHatVierAnsichten() {
-        let technik = Bereiche.bereichVon("/waerme/waermepumpe")
-        let wp = Bereiche.reiterVon(technik, "/waerme/waermepumpe")
-        XCTAssertEqual(wp?.unter.map(\.name), ["Jetzt", "Betrieb", "Kennlinie", "Regler"])
+    /// Der Regler liegt unter dem Pfad der Wärmepumpe und ist trotzdem ein eigener Reiter in der
+    /// Abstimmung: es gilt die laengste passende Adresse. Die drei Ansichten der Wärmepumpe
+    /// bleiben bei ihr.
+    func testDerReglerIstEinEigenerReiterUnterDemPfadDerWaermepumpe() {
+        let anlage = Bereiche.bereichVon("/waerme/waermepumpe")
+        let wp = Bereiche.reiterVon(anlage, "/waerme/waermepumpe")
+        XCTAssertEqual(wp?.unter.map(\.name), ["Jetzt", "Betrieb", "Kennlinie"])
         for u in wp?.unter ?? [] {
-            XCTAssertEqual(Bereiche.reiterVon(technik, u.weg)?.name, "Wärmepumpe", "\(u.weg) faellt aus dem Reiter")
+            XCTAssertEqual(Bereiche.reiterVon(anlage, u.weg)?.name, "Wärmepumpe", "\(u.weg) faellt aus dem Reiter")
         }
+        let regler = Bereiche.reiterVon(anlage, "/waerme/waermepumpe/regler")
+        XCTAssertEqual(regler?.name, "Regler")
+        XCTAssertEqual(regler?.gruppe, "Abstimmung")
+        XCTAssertEqual(Bereiche.kicker(fuer: "/waerme/waermepumpe/regler"), "Einstellungen · gelesen")
     }
 
     /// Jeder Weg, den die App kennt, muss sich einem Bereich zuordnen lassen. Sonst landet eine
@@ -176,6 +215,8 @@ final class KickerTests: XCTestCase {
         "/geld": "Was der Zeitraum gekostet hat, in einer Zeile",
         "/geld/pv-abrechnung": "Einspeisung · Eigenverbrauch · Umsatzsteuer",
         "/geld/rechnungen": "Tibber · nachgerechnet und gegen die eigene Messung gehalten",
+        // Die Uebersicht des Bereichs: kein Reiter, aber eine Zeile (`Bereichsuebersicht.tsx`).
+        "/anlage": "Alle Seiten im Bereich Anlage",
         "/waerme/anlage": "Strom · Speicher · vier Kreise",
         "/waerme/wiedergabe": "Ein Tag am Anlagenschema · zum Durchfahren",
         "/waerme/waermepumpe": "Außengerät · Innengerät · Speicher",

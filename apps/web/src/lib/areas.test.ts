@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AREAS, ansichtOf, areaOf, tabOf } from "./areas";
+import { AREAS, LEISTE, ansichtOf, areaOf, tabOf, tabsDerGruppe } from "./areas";
 
 describe("Bereiche", () => {
-  it("hat vier Bereiche fuer den Alltag und einen fuer die Technik", () => {
-    expect(AREAS.map((a) => a.label)).toEqual(["Jetzt", "Haus", "Energie", "Geld", "Technik"]);
+  it("hat fuenf Bereiche in der Leiste und das System dahinter", () => {
+    expect(LEISTE.map((a) => a.label)).toEqual(["Jetzt", "Haus", "Energie", "Geld", "Anlage"]);
+    expect(AREAS.filter((a) => a.leiste === false).map((a) => a.label)).toEqual(["System"]);
   });
 
   it("ordnet einen Pfad seinem Bereich zu, die Startseite ist Jetzt", () => {
@@ -14,15 +15,19 @@ describe("Bereiche", () => {
   });
 
   it("richtet sich nach der laengsten Adresse, nicht nach dem ersten Stueck des Pfads", () => {
-    // Die Waerme als Bericht gehoert zur Energie, ihre Anlage und ihr Fahrplan zur Technik.
+    // Die Waerme als Bericht gehoert zur Energie, ihre Anlage und ihr Fahrplan zur Anlage.
     expect(areaOf("/waerme").key).toBe("energie");
     expect(areaOf("/waerme?period=day&anchor=2026-11-10").key).toBe("energie");
-    expect(areaOf("/waerme/anlage").key).toBe("technik");
-    expect(areaOf("/waerme/wiedergabe").key).toBe("technik");
-    expect(areaOf("/waerme/nachbetrachtung").key).toBe("technik");
-    expect(areaOf("/waerme/raeume").key).toBe("technik");
-    expect(areaOf("/system").key).toBe("technik");
-    expect(areaOf("/system/zugang").key).toBe("technik");
+    expect(areaOf("/anlage").key).toBe("anlage");
+    expect(areaOf("/waerme/anlage").key).toBe("anlage");
+    expect(areaOf("/waerme/wiedergabe").key).toBe("anlage");
+    expect(areaOf("/waerme/nachbetrachtung").key).toBe("anlage");
+    // Die Raeume ueber den Tag gehoeren zum Haus, die Prognose zur Energie, der Rest von
+    // `/system` zur Verwaltung: drei Bereiche unter zwei alten Pfadanfaengen.
+    expect(areaOf("/waerme/raeume").key).toBe("haus");
+    expect(areaOf("/system").key).toBe("energie");
+    expect(areaOf("/system/zugang").key).toBe("system");
+    expect(areaOf("/system/daten").key).toBe("system");
   });
 
   it("findet den Reiter am laengsten passenden Pfad, nicht am ersten", () => {
@@ -33,16 +38,36 @@ describe("Bereiche", () => {
     expect(tabOf(energie, "/waerme")?.label).toBe("Wärme");
   });
 
-  it("kennt das Haus als eigenen Bereich ohne Reiter: Liste und Modell sind ein Schalter in der Seite", () => {
+  it("kennt im Haus die Raeume und ihren Verlauf ueber den Tag", () => {
     expect(areaOf("/haus").key).toBe("haus");
-    expect(areaOf("/haus").tabs).toEqual([]);
+    expect(areaOf("/haus").tabs.map((t) => t.label)).toEqual(["Räume", "Über den Tag"]);
   });
 
-  it("hat keinen Bereich nur fuer den Hausherrn, aber Reiter", () => {
-    expect(AREAS.filter((a) => a.ownerOnly)).toEqual([]);
-    const technik = AREAS.find((a) => a.key === "technik")!;
-    expect(technik.tabs.filter((t) => !t.ownerOnly).map((t) => t.label)).toEqual(["Anlage", "Wärmepumpe", "Fahrplan", "Wirkung", "Heizkreise"]);
-    expect(technik.tabs.filter((t) => t.href.startsWith("/system")).every((t) => t.ownerOnly)).toBe(true);
+  it("zeigt einem Gast die Anlage ohne Regelkreis und Annahmen, und das System gar nicht", () => {
+    expect(AREAS.filter((a) => a.ownerOnly).map((a) => a.key)).toEqual(["system"]);
+    const anlage = AREAS.find((a) => a.key === "anlage")!;
+    expect(anlage.tabs.filter((t) => !t.ownerOnly).map((t) => t.label)).toEqual(["Anlage", "Wärmepumpe", "Fahrplan", "Wirkung", "Regler"]);
+    const system = AREAS.find((a) => a.key === "system")!;
+    expect(system.tabs.every((t) => t.ownerOnly)).toBe(true);
+    // Was unter `/system` liegt, sieht nur der Hausherr, gleich in welchem Bereich es steht.
+    expect(AREAS.flatMap((a) => a.tabs).filter((t) => t.href.startsWith("/system")).every((t) => t.ownerOnly)).toBe(true);
+  });
+
+  it("ordnet jeden Reiter der Anlage genau einer ihrer Gruppen zu", () => {
+    const anlage = AREAS.find((a) => a.key === "anlage")!;
+    const namen = (anlage.gruppen ?? []).map((g) => g.name);
+    expect(namen).toEqual(["Maschine", "Regelung", "Abstimmung"]);
+    for (const t of anlage.tabs) expect(namen).toContain(t.gruppe);
+    expect(tabsDerGruppe(anlage, "Maschine").map((t) => t.label)).toEqual(["Anlage", "Wärmepumpe"]);
+    expect(tabsDerGruppe(anlage, "Regelung").map((t) => t.label)).toEqual(["Fahrplan", "Wirkung", "Regelkreis"]);
+    expect(tabsDerGruppe(anlage, "Abstimmung").map((t) => t.label)).toEqual(["Annahmen", "Regler"]);
+    // Die Karte auf der Uebersicht braucht je Seite einen Satz.
+    for (const t of anlage.tabs) expect(t.beschreibung?.endsWith(".")).toBe(true);
+    // Gruppen gibt es nur dort, wo sie etwas ordnen.
+    for (const a of AREAS.filter((x) => x.key !== "anlage")) {
+      expect(a.gruppen).toBeUndefined();
+      for (const t of a.tabs) expect(t.gruppe).toBeUndefined();
+    }
   });
 
   it("verweist nirgends auf eine alte Adresse und nennt keine Adresse zweimal", () => {
@@ -53,20 +78,28 @@ describe("Bereiche", () => {
   });
 
   it("zaehlt die Ansichten eines Reiters zu ihm", () => {
-    const technik = areaOf("/waerme/anlage");
+    const anlage = areaOf("/waerme/anlage");
     // Die Wiedergabe ist die Anlage ueber einen Tag, die Nachbetrachtung der Fahrplan im Rueckblick.
-    expect(tabOf(technik, "/waerme/wiedergabe")?.label).toBe("Anlage");
-    expect(tabOf(technik, "/waerme/anlage")?.label).toBe("Anlage");
-    expect(tabOf(technik, "/waerme/nachbetrachtung")?.label).toBe("Fahrplan");
-    expect(tabOf(technik, "/waerme/raeume")?.label).toBe("Heizkreise");
-    expect(ansichtOf(tabOf(technik, "/waerme/wiedergabe"), "/waerme/wiedergabe")?.label).toBe("Ein Tag");
-    expect(ansichtOf(tabOf(technik, "/waerme/fahrplan"), "/waerme/fahrplan")?.label).toBe("Voraus");
-    expect(ansichtOf(tabOf(technik, "/waerme/wirkung"), "/waerme/wirkung")).toBeUndefined();
+    expect(tabOf(anlage, "/waerme/wiedergabe")?.label).toBe("Anlage");
+    expect(tabOf(anlage, "/waerme/anlage")?.label).toBe("Anlage");
+    expect(tabOf(anlage, "/waerme/nachbetrachtung")?.label).toBe("Fahrplan");
+    expect(tabOf(areaOf("/waerme/raeume"), "/waerme/raeume")?.label).toBe("Über den Tag");
+    expect(ansichtOf(tabOf(anlage, "/waerme/wiedergabe"), "/waerme/wiedergabe")?.label).toBe("Ein Tag");
+    expect(ansichtOf(tabOf(anlage, "/waerme/fahrplan"), "/waerme/fahrplan")?.label).toBe("Voraus");
+    expect(ansichtOf(tabOf(anlage, "/waerme/wirkung"), "/waerme/wirkung")).toBeUndefined();
+    // Der Regler liegt unter dem Pfad der Waermepumpe und ist trotzdem ein eigener Reiter: es
+    // gilt die laengste passende Adresse.
+    expect(tabOf(anlage, "/waerme/waermepumpe/regler")?.label).toBe("Regler");
+    expect(tabOf(anlage, "/waerme/waermepumpe/betrieb")?.label).toBe("Wärmepumpe");
+    // Auf der Uebersicht ist kein Reiter aktiv.
+    expect(tabOf(anlage, "/anlage")).toBeUndefined();
   });
 
   it("gibt jeder ersten Ansicht die Adresse ihres Reiters, und dem Bereich die seines ersten Reiters", () => {
     for (const a of AREAS) {
-      if (a.tabs[0]) expect(a.tabs[0].href).toBe(a.href);
+      // Ein Bereich mit Gruppen hat eine Uebersicht unter eigener Adresse.
+      if (a.tabs[0] && !a.gruppen) expect(a.tabs[0].href).toBe(a.href);
+      if (a.gruppen) expect(a.tabs.map((t) => t.href)).not.toContain(a.href);
       for (const t of a.tabs) if (t.unter) expect(t.unter[0]?.href).toBe(t.href);
     }
   });

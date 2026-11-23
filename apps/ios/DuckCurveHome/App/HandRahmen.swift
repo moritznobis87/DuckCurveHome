@@ -32,11 +32,17 @@ struct HandRahmen: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
             }
-            if !wegweiser.bereich.reiter.isEmpty {
+            // **Auf der Übersicht eines Bereichs steht keine Reiterzeile**: dort sind die Karten
+            // die Navigation, und die Zeile darüber wäre dasselbe ein zweites Mal.
+            if !wegweiser.bereich.reiter.isEmpty, !Bereiche.istUebersicht(wegweiser.weg) {
                 Reiterzeile(
                     bereich: wegweiser.bereich,
                     aktiv: wegweiser.reiter,
-                    darfAlles: haus.darfSchalten
+                    darfAlles: haus.darfSchalten,
+                    zurUebersicht: {
+                        wegweiser.gehe(wegweiser.bereich.weg)
+                        wegweiser.merkeReiter()
+                    }
                 ) { r in
                     wegweiser.gehe(r.weg)
                     wegweiser.merkeReiter()
@@ -121,6 +127,12 @@ struct HandRahmen: View {
                 .accessibilityElement(children: .combine)
             }
             Verbindungspunkt()
+            // Das Zahnrad zum System steht ganz rechts (`handy.css`, `.system-knopf`). Die
+            // Zeile richtet sich an der Grundlinie des Namens aus; der Knopf ist 36 Punkte hoch
+            // und hängt sich neun Punkte über seiner Unterkante ein. Damit liegt seine Mitte
+            // auf der Höhe der Großbuchstaben, sonst stünde er unter der Zeile.
+            Systemknopf(wegweiser: wegweiser, groesse: 20)
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 9 }
         }
         .padding(.horizontal, 16)
         .padding(.top, 2)
@@ -151,7 +163,8 @@ struct Bereichsleiste: View {
         VStack(spacing: 0) {
             Divider().overlay(Farbe.linie1)
             HStack(spacing: 0) {
-                ForEach(Bereiche.alle) { b in
+                // Fünf Einträge. Das System steht nicht in der Leiste, sondern hinter dem Zahnrad.
+                ForEach(Bereiche.leiste) { b in
                     knopf(b)
                 }
             }

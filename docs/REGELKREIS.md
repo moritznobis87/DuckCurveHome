@@ -1,7 +1,7 @@
 # Der Regelkreis des Hauses
 
 Stand: 22.11.2026. **Umsetzungsstand:** Struktur, Entwurf und Lernebene sind gebaut und liegen in
-`packages/hems-core/src/hems_core/regelkreis/`. Die Seite `Technik → Regelkreis`
+`packages/hems-core/src/hems_core/regelkreis/`. Die Seite `Anlage → Regelkreis`
 (`/waerme/regelkreis`) zeichnet sie, im Browser und in der App. Sechs Schätzer sind angeschlossen
 und laufen über echten Auswertungen: die COP-Ebene aus der gemessenen Kennlinie, die Totzeit der
 Wärmepumpe aus der Ereignisstudie, Verlustkoeffizient des Hauses, interne Gewinne und

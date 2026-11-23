@@ -9,7 +9,7 @@ final class AlfredTests: XCTestCase {
 
     func testDerOrtKommtAusDenBereichenUndNichtAusEinerZweitenListe() {
         let o = Alfred.ortBestimmen("/waerme/waermepumpe/betrieb")
-        XCTAssertEqual(o.bereich, "Technik")
+        XCTAssertEqual(o.bereich, "Anlage")
         XCTAssertEqual(o.reiter, "Wärmepumpe")
         XCTAssertTrue(o.text?.hasPrefix("Betrieb zeigt") == true, o.text ?? "nil")
     }

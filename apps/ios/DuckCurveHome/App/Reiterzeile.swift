@@ -14,17 +14,32 @@ import SwiftUI
 /// BFF-Proxy (`apps/web/src/app/api/dch/[...path]/route.ts`). Dasselbe gilt hier: die App
 /// zeigt einem Gast die Kachel nicht, aber verlassen darf sich darauf niemand.
 ///
-/// **Sie rollt waagerecht.** Am iPad passen die Reiter des Technik-Bereichs in eine Zeile, am
-/// Telefon nicht – und eine Zeile, die umbricht, verschiebt den Inhalt darunter bei jedem
-/// Wechsel. Rollen ist das kleinere Übel als ein springendes Gerippe.
+/// **Sie rollt waagerecht**, wo sie nicht passt: eine Zeile, die umbricht, verschiebt den Inhalt
+/// darunter bei jedem Wechsel. Rollen ist das kleinere Übel als ein springendes Gerippe.
+///
+/// **Ein Bereich mit Gruppen rollt am Telefon nicht mehr** (seit dem 23.11.2026, wie
+/// `AreaNav.tsx`, `AreaTabs`). Am iPad stehen alle Gruppen in der Zeile, je mit ihrem Namen
+/// davor. Am Telefon bleibt nur die Gruppe der Seite, auf der man steht, und davor der Weg
+/// zurück zur Übersicht; die anderen Gruppen erreicht man dort.
 struct Reiterzeile: View {
     let bereich: Bereich
     let aktiv: Reiter?
     let darfAlles: Bool
+    /// Der Weg zur Übersicht eines Bereichs mit Gruppen. Bereiche ohne Gruppen rufen ihn nie.
+    var zurUebersicht: () -> Void = {}
     let waehle: (Reiter) -> Void
 
     private var sichtbar: [Reiter] {
         bereich.reiter.filter { darfAlles || !$0.nurHausherr }
+    }
+
+    /// Die Gruppen, die diese Zeile zeigt: am iPad alle, von denen dieser Betrachter etwas
+    /// sieht, am Telefon nur die des gewählten Reiters.
+    private var gruppen: [Gruppe] {
+        bereich.gruppen.filter { gruppe in
+            guard sichtbar.contains(where: { $0.gruppe == gruppe.name }) else { return false }
+            return !schmal || aktiv?.gruppe == gruppe.name
+        }
     }
 
     @Environment(\.horizontalSizeClass) private var breite
@@ -34,9 +49,24 @@ struct Reiterzeile: View {
         ScrollViewReader { leser in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(sichtbar) { r in
-                        knopf(r, gewaehlt: r.weg == aktiv?.weg)
-                            .id(r.weg)
+                    if bereich.gruppen.isEmpty {
+                        ForEach(sichtbar) { r in
+                            knopf(r, gewaehlt: r.weg == aktiv?.weg)
+                                .id(r.weg)
+                        }
+                    } else {
+                        uebersichtsknopf
+                        ForEach(gruppen) { gruppe in
+                            if !schmal {
+                                Kicker(wort: gruppe.name, groesse: 10, farbe: Farbe.text3)
+                                    .padding(.leading, 14)
+                                    .accessibilityHidden(true)
+                            }
+                            ForEach(sichtbar.filter { $0.gruppe == gruppe.name }) { r in
+                                knopf(r, gewaehlt: r.weg == aktiv?.weg)
+                                    .id(r.weg)
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -88,35 +118,90 @@ struct Reiterzeile: View {
         }
     }
 
+    /// Der Weg zur Übersicht: am iPad das Wort, am Telefon nur der Pfeil. Mit dem Wort daneben
+    /// passten drei Reiter einer Gruppe am Telefon nicht mehr in die Breite (`handy.css`,
+    /// `.area-zurueck`). Gewählt ist er, wenn kein Reiter es ist: dann steht man auf ihr.
+    private var uebersichtsknopf: some View {
+        let gewaehlt = aktiv == nil
+        return Button {
+            if !gewaehlt { zurUebersicht() }
+        } label: {
+            pille(schmal ? "‹" : "Übersicht", gewaehlt: gewaehlt)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Übersicht \(bereich.name)")
+        .accessibilityAddTraits(gewaehlt ? [.isButton, .isSelected] : [.isButton])
+    }
+
     private func knopf(_ r: Reiter, gewaehlt: Bool) -> some View {
         Button {
             if !gewaehlt { waehle(r) }
         } label: {
-            Text(r.name)
-                .font(Schrift.sans(14))
-                .fontWeight(gewaehlt ? .semibold : .regular)
-                // **Weiss auf dunkel fuer den gewaehlten Reiter** (`handy.css:175`). Eine Pille,
-                // die nur eine Spur heller ist als ihre Nachbarinnen, sagt nicht, wo man ist.
-                .foregroundStyle(gewaehlt ? Farbe.deep : Farbe.text2)
-                .lineLimit(1)
-                .padding(.horizontal, 15)
-                .padding(.vertical, 9)
-                .background(
-                    Capsule().fill(gewaehlt ? Farbe.text1 : Color.white.opacity(0.07))
-                )
+            pille(r.name, gewaehlt: gewaehlt)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(gewaehlt ? [.isButton, .isSelected] : [.isButton])
+    }
+
+    /// Die Pille, in der ein Reiter steht.
+    private func pille(_ wort: String, gewaehlt: Bool) -> some View {
+        Text(wort)
+            .font(Schrift.sans(14))
+            .fontWeight(gewaehlt ? .semibold : .regular)
+            // **Weiss auf dunkel fuer den gewaehlten Reiter** (`handy.css:175`). Eine Pille,
+            // die nur eine Spur heller ist als ihre Nachbarinnen, sagt nicht, wo man ist.
+            .foregroundStyle(gewaehlt ? Farbe.deep : Farbe.text2)
+            .lineLimit(1)
+            .padding(.horizontal, 15)
+            .padding(.vertical, 9)
+            .background(
+                Capsule().fill(gewaehlt ? Farbe.text1 : Color.white.opacity(0.07))
+            )
+    }
+}
+
+/// Das Zahnrad: der Weg zum System.
+///
+/// Die Verwaltung (Mitteilungen, Haustür, Hausgerät, Zugang, Daten prüfen) stand bis zum
+/// 23.11.2026 als fünf Reiter zwischen den Seiten, die man täglich ansieht. Sie wird selten
+/// gebraucht und nur vom Hausherrn; darum liegt sie hinter einem Knopf im Kopf und belegt
+/// keinen Platz in der Leiste (`AreaNav.tsx`, `Systemknopf`). Ein Gast sieht den Knopf nicht.
+struct Systemknopf: View {
+    @Environment(Hauszustand.self) private var haus
+    let wegweiser: Wegweiser
+    /// Die Größe des Zeichens: 22 Punkte im Kopf der Wandanzeige, 20 am Telefon.
+    var groesse: CGFloat = 22
+
+    var body: some View {
+        if haus.darfSchalten, let system = Bereiche.alle.first(where: { $0.schluessel == .system }) {
+            let istAktiv = wegweiser.bereich.schluessel == .system
+            Button {
+                wegweiser.merkeReiter()
+                wegweiser.geheZuBereich(system)
+            } label: {
+                Zeichen(
+                    bereich: system.zeichen,
+                    groesse: groesse,
+                    farbe: istAktiv ? Farbe.petrol : Farbe.text3
+                )
+                .padding(8)
+                .background(istAktiv ? Farbe.amber : .clear)
+                .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(system.name)
+            .accessibilityAddTraits(istAktiv ? [.isSelected, .isButton] : .isButton)
+        }
     }
 }
 
 #if DEBUG
     #Preview("Reiterzeile") {
-        let technik = Bereiche.alle.first { $0.schluessel == .technik }!
+        let anlage = Bereiche.alle.first { $0.schluessel == .anlage }!
         return VStack(spacing: 24) {
-            Reiterzeile(bereich: technik, aktiv: technik.reiter.first, darfAlles: true) { _ in }
+            Reiterzeile(bereich: anlage, aktiv: anlage.reiter.first, darfAlles: true) { _ in }
             // Als Gast: die Reiter mit `nurHausherr` fallen weg.
-            Reiterzeile(bereich: technik, aktiv: nil, darfAlles: false) { _ in }
+            Reiterzeile(bereich: anlage, aktiv: nil, darfAlles: false) { _ in }
         }
         .background(Farbe.grund)
     }

@@ -60,7 +60,12 @@ struct WandRahmen: View {
                 Reiterzeile(
                     bereich: wegweiser.bereich,
                     aktiv: wegweiser.reiter,
-                    darfAlles: haus.darfSchalten
+                    darfAlles: haus.darfSchalten,
+                    zurUebersicht: {
+                        beruehrt()
+                        wegweiser.gehe(wegweiser.bereich.weg)
+                        wegweiser.merkeReiter()
+                    }
                 ) { r in
                     beruehrt()
                     wegweiser.gehe(r.weg)
@@ -140,6 +145,8 @@ struct Kopfzeile: View {
         HStack(alignment: .center, spacing: 20) {
             Marke()
             bereichszeichen
+            // Das Zahnrad zum System steht neben der Leiste, nicht in ihr.
+            Systemknopf(wegweiser: wegweiser)
             Spacer(minLength: 12)
             uhrzeit
         }
@@ -150,7 +157,7 @@ struct Kopfzeile: View {
 
     private var bereichszeichen: some View {
         HStack(spacing: 4) {
-            ForEach(Bereiche.alle) { b in
+            ForEach(Bereiche.leiste) { b in
                 let istAktiv = wegweiser.bereich.schluessel == b.schluessel
                 Button {
                     wegweiser.merkeReiter()

@@ -20,7 +20,15 @@ final class SeitenbaumTests: XCTestCase {
         let schluessel: String
         let weg: String
         let name: String
+        let nurHausherr: Bool
+        let inLeiste: Bool
+        let gruppen: [Gruppenzeile]
         let reiter: [Reiterzeile]
+    }
+
+    private struct Gruppenzeile: Decodable, Equatable {
+        let name: String
+        let wort: String
     }
 
     private struct Reiterzeile: Decodable, Equatable {
@@ -28,6 +36,8 @@ final class SeitenbaumTests: XCTestCase {
         let name: String
         let zeitraum: Bool
         let nurHausherr: Bool
+        let gruppe: String?
+        let beschreibung: String?
         let unter: [Ansichtszeile]
     }
 
@@ -43,12 +53,17 @@ final class SeitenbaumTests: XCTestCase {
                 schluessel: bereich.schluessel.rawValue,
                 weg: bereich.weg,
                 name: bereich.name,
+                nurHausherr: bereich.nurHausherr,
+                inLeiste: bereich.inLeiste,
+                gruppen: bereich.gruppen.map { Gruppenzeile(name: $0.name, wort: $0.wort) },
                 reiter: bereich.reiter.map { reiter in
                     Reiterzeile(
                         weg: reiter.weg,
                         name: reiter.name,
                         zeitraum: reiter.mitZeitraum,
                         nurHausherr: reiter.nurHausherr,
+                        gruppe: reiter.gruppe,
+                        beschreibung: reiter.beschreibung,
                         unter: reiter.unter.map { Ansichtszeile(weg: $0.weg, name: $0.name) }
                     )
                 }

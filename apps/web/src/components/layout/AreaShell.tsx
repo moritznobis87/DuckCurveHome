@@ -1,11 +1,11 @@
 "use client";
 
-import { AreaAnsichten, AreaIcons, AreaTabs, Bereichstitel, Brand, Fussleiste } from "./AreaNav";
+import { AreaAnsichten, AreaIcons, AreaTabs, Bereichstitel, Brand, Fussleiste, Systemknopf } from "./AreaNav";
 import { UpdateHinweis } from "@/components/update/UpdateHinweis";
 
 /**
- * Die Huelle jeder Unterseite: Marke, Bereichsleiste, rechts die Werkzeuge der Seite (meist die
- * Zeitraumwahl), darunter die Reiter des Bereichs.
+ * Die Huelle jeder Unterseite: Marke, Bereichsleiste und das Zahnrad zum System, rechts die
+ * Werkzeuge der Seite (meist die Zeitraumwahl), darunter die Reiter des Bereichs.
  *
  * Eine Huelle fuer alle, damit die Seiten sich nicht in Kleinigkeiten unterscheiden: vorher hatten
  * Jahreskarte, Prognose und Einstellungen je einen eigenen Kopf mit „← Dashboard", und jeder war
@@ -19,6 +19,7 @@ export function AreaShell({ right, kicker, period, anchor, children }: { right?:
           <Brand />
           <Bereichstitel />
           <AreaIcons />
+          <Systemknopf />
         </div>
         {right ? <div className="report-header-right flex shrink-0 items-center gap-3">{right}</div> : null}
       </header>

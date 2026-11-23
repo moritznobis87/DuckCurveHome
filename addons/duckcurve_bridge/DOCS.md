@@ -535,7 +535,7 @@ Wetterstation.
 
 **Kommt nichts an, sagt die Bridge, wo es hängt (ab 0.14.2).** Neunzig Sekunden nach dem
 Start und dann alle fünf Minuten meldet sie der Cloud die Lage des Busses, und die Seite
-Technik → Wärmepumpe macht daraus einen Satz. Dieselbe Zeile steht im Protokoll (`ebus lage`):
+Anlage → Wärmepumpe macht daraus einen Satz. Dieselbe Zeile steht im Protokoll (`ebus lage`):
 
 | `lage` | Bedeutung | Nachsehen |
 |---|---|---|
