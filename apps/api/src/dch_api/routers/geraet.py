@@ -144,11 +144,22 @@ def drosselung_de(roh: str | None) -> tuple[list[str], Ampel]:
 def zeit_zustand(synchron: bool | None, dienst_an: bool | None) -> tuple[str, Ampel]:
     """Was der Zustand der Maschinenuhr bedeutet (`timedatectl` im Bericht des Geräts).
 
-    Eine falsch gestellte Uhr zeigt sich sonst nirgends: Am 22.11.2026 standen auf dem iPad an der
-    Wand 22:04 und in seiner eigenen Statusleiste 22:07, weil die Uhr des Geräts drei Minuten nach
-    ging. Darum gehört sie in die Bewertung. Unbekannt ist dabei nicht schlecht: Auf Railway und in
-    der Entwicklung gibt es kein `timedatectl`, und eine Dauerwarnung dort nimmt der echten Meldung
-    den Glauben.
+    **Eine falsch gestellte Uhr zeigt sich sonst nirgends**, und das ist der Grund für dieses Feld.
+    Der Pi hat keine gepufferte Echtzeituhr: ohne Zeitdienst startet er mit einer geratenen Zeit
+    und driftet weiter, während jeder Messwert, jeder Tagesabschluss und jeder Vergleich mit dem
+    Börsenpreis einen Zeitstempel von dieser Uhr trägt. Gemerkt hätte es niemand.
+
+    **Was dieses Feld nicht erklärt.** Den Anlass gab ein Foto vom 22.11.2026: in der großen Uhr
+    der Wandanzeige 22:04, in der Statusleiste desselben iPads 22:07. Welche der beiden
+    Maschinenuhren dabei falsch ging, ist nicht festgestellt - nur, dass die App den Abstand
+    ungefiltert weitergab (`Hausuhr.swift`, dort steht die Lehre daraus). Am 23.11.2026 gegen
+    `/health` nachgemessen lag `server_time` des Dienstes auf Railway innerhalb einer Sekunde
+    richtig; der Abstand lag also vermutlich auf der Seite des iPads und nicht beim Dienst. Die
+    Uhr des Hausgeräts kommt erst als Frage dazu, wenn der Dienst dorthin zieht
+    (`deploy/haus/README.md`, Stufe 1) - heute ist sie es nicht.
+
+    Unbekannt ist darum nicht schlecht: Auf Railway und in der Entwicklung gibt es kein
+    `timedatectl`, und eine Dauerwarnung dort nimmt der echten Meldung den Glauben.
     """
     if synchron is None:
         return "", "aus"
