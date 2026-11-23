@@ -18,6 +18,7 @@ on:
       - "tools/ios-version.py"
       - "tools/ios-ausliefern.sh"
       - "docs/openapi.json"
+      - "docs/seitenbaum.json"
       - ".github/workflows/ios.yml"
   pull_request:
     paths:
@@ -36,6 +37,7 @@ on:
       - "tools/ios-version.py"
       - "tools/ios-ausliefern.sh"
       - "docs/openapi.json"
+      - "docs/seitenbaum.json"
       - ".github/workflows/ios.yml"
 
 # Ein Lauf je Zweig. Wer zweimal kurz hintereinander schiebt, bekam bisher zwei volle

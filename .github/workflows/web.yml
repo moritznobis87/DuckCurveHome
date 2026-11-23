@@ -2,9 +2,9 @@ name: web
 on:
   push:
     branches: [main, "claude/**"]
-    paths: ["apps/web/**", "docs/openapi.json", ".github/workflows/web.yml"]
+    paths: ["apps/web/**", "docs/openapi.json", "docs/seitenbaum.json", ".github/workflows/web.yml"]
   pull_request:
-    paths: ["apps/web/**", "docs/openapi.json", ".github/workflows/web.yml"]
+    paths: ["apps/web/**", "docs/openapi.json", "docs/seitenbaum.json", ".github/workflows/web.yml"]
 jobs:
   check:
     runs-on: ubuntu-latest
