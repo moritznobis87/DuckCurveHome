@@ -668,8 +668,15 @@ struct Entenknopf: View {
     /// Finger liegt – daran hängen die Uhr fürs Halten und das Aufräumen – und *wie weit* er
     /// gewandert ist, woran das Verschieben hängt. Eine einzige Lage für beides würde bei jedem
     /// Millimeter die Uhr neu stellen.
+    ///
+    /// **Gemessen im Bildschirm (`.global`) und nicht an der Ente.** Die Geste hängt an der
+    /// Ente, und der Versatz (`.offset` in ``entenfeld``) liegt außen um sie herum: Ihr eigener
+    /// Raum wandert mit jedem Bild dorthin, wohin der Zug sie eben geschoben hat. Vom Finger
+    /// aus gemessen fiel der Weg dann auf null zurück, sobald die Ente nachgerückt war, die
+    /// Ente sprang zurück, der Weg wuchs wieder - sie zuckte beim Verschieben (Nutzer am
+    /// 23.11.2026). Der Bildschirm bewegt sich nicht mit; dort ist der Weg der Weg des Fingers.
     private var griff: some Gesture {
-        DragGesture(minimumDistance: 0)
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
             .updating($druck) { _, liegt, _ in liegt = true }
             .updating($schub) { wert, strecke, _ in
                 strecke = Entenplatz.Punkt(
