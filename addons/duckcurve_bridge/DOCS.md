@@ -710,6 +710,11 @@ des Add-ons selbst lebt nur bis zum nächsten Neustart und taugt dafür nicht. B
 merkt sich die Bridge bis zu 200 Ereignisse und schickt sie nach; ein Neustart während einer
 Störung verliert sie.
 
+**Die Uhrzeit in dieser Zeile ist Ortszeit (ab 0.15.1).** Die Statuszeile des Add-ons („Geöffnet
+für Moritz um 19:42:07") stand bis dahin in der Zeitzone des Containers. Wer abends nachsieht, wann
+die Tür aufging, vergleicht mit seiner Armbanduhr, und keine Zeitzone der Umgebung darf darüber
+entscheiden — sie steht jetzt als Konstante im Code (`hems_core.domain.zeit`).
+
 **Trägt die Strecke zum Schloss?** Das Add-on fragt ihren Zustand im Minutentakt ab und schickt
 ihn als Messreihe `door_lock_online` mit. Auf der Prüfseite `/daten` erscheint sie in derselben
 Verfügbarkeitskarte wie der Stromzähler. Setzt die Strecke über Home Assistant regelmäßig aus,
