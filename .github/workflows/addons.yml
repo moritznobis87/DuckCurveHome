@@ -3,8 +3,15 @@ name: addons
 # Docstring von tools/addon-fassung-pruefen.py; der Anlass war ein Update, das am 23.11.2026 nicht
 # auf dem Hausgeraet ankam.
 on:
+  # `push` nur auf main, und das ist eine Behebung, nicht eine Verkuerzung. Auf einem Zweig ist
+  # `github.event.before` der vorige Zweigkopf - wer main hereingemergt hat, bekommt dessen
+  # Aenderungen an apps/bridge als die eigenen vorgehalten. Gemessen am ersten Push dieses
+  # Zweiges: rot wegen `main.py` aus PR #16, einer fremden Aenderung. Auf main ist
+  # `github.event.before` dagegen genau richtig: der vorige main-Stand, und der Vergleich zeigt,
+  # was gerade gelandet ist. Fuer einen Zweig stellt der `pull_request`-Lauf unten dieselbe Frage
+  # mit der richtigen Basis, und nach CLAUDE.md geht jede Aenderung ueber einen PR.
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
     paths: ["addons/**", "apps/bridge/**", "tools/addon-fassung-pruefen.py", "tools/tests/**",
             ".github/workflows/addons.yml"]
   pull_request:
@@ -30,8 +37,9 @@ jobs:
         # Bei `pull_request` ist HEAD der Probe-Merge aus dem PR-Kopf und der Basis; der Vergleich
         # gegen die Basis zeigt damit genau, was der PR aendert.
         run: uv run python tools/addon-fassung-pruefen.py --basis "origin/${{ github.base_ref }}" --kopf HEAD
-      - name: Add-on-Fassung gegen den vorherigen Stand (Push)
+      - name: Add-on-Fassung gegen den vorherigen main-Stand (Push auf main)
         if: github.event_name == 'push'
-        # `github.event.before` ist bei einem neuen Zweig vierzig Nullen. Dann springt die
-        # Ersatzbasis ein und die Pruefung vergleicht gegen den Merge-Base mit main.
+        # `github.event.before` ist der vorige main-Stand; der Vergleich zeigt genau, was dieser
+        # Merge gebracht hat. Nach einem Force-Push ist er unerreichbar, dann springt die
+        # Ersatzbasis ein und es wird gegen den Merge-Base mit main verglichen.
         run: uv run python tools/addon-fassung-pruefen.py --basis "${{ github.event.before }}" --ersatzbasis origin/main --kopf HEAD

@@ -102,11 +102,20 @@ Ohne `--kopf` wird der Arbeitsbaum verglichen. Dabei sieht `git diff` nur nachve
 Dateien - eine voellig neue, noch nicht hinzugefuegte Datei bleibt unsichtbar. In der CI spielt
 das keine Rolle, dort liegt alles im Commit.
 
-`--ersatzbasis` fuer den Fall, dass die Basis nicht zu gebrauchen ist. Bei `push` auf einen neuen
-Zweig liefert GitHub als `github.event.before` vierzig Nullen; dann wird gegen den Merge-Base
-mit der Ersatzbasis verglichen. Laesst sich auch die nicht aufloesen, wird die Pruefung
-uebersprungen (Rueckgabewert 0) statt abzubrechen - ein unbrauchbarer Vergleichspunkt ist kein
-Befund.
+`--ersatzbasis` fuer den Fall, dass die Basis nicht zu gebrauchen ist. Nach einem Force-Push ist
+`github.event.before` unerreichbar, bei einem neuen Zweig sind es vierzig Nullen; dann wird gegen
+den Merge-Base mit der Ersatzbasis verglichen. Laesst sich auch die nicht aufloesen, wird die
+Pruefung uebersprungen (Rueckgabewert 0) statt abzubrechen - ein unbrauchbarer Vergleichspunkt
+ist kein Befund.
+
+**Die Basis entscheidet, ob die Pruefung die richtige Frage stellt**, und das ist an einem echten
+Fehlalarm gelernt. Der Ablauf lief zuerst auch bei `push` auf einen Entwicklungszweig. Dort ist
+`github.event.before` der vorige Zweigkopf - wer seit dem letzten Push main hereingemergt hat,
+bekommt dessen Aenderungen an `apps/bridge` als die eigenen vorgehalten. Der erste Push dieses
+Zweiges wurde genau so rot, wegen `main.py` aus einem fremden PR. Die Frage, auf die es ankommt,
+ist nicht "was hat dieser Schub gebracht", sondern **"was aendert dieser Zweig gegenueber main"**
+- und die stellt der `pull_request`-Lauf mit `origin/<base_ref>` als Basis. Darum laeuft `push`
+nur noch auf main, wo `github.event.before` der vorige main-Stand und damit das Richtige ist.
 """
 
 from __future__ import annotations
