@@ -988,6 +988,43 @@ def main() -> int:
                                           f"Anfangswert verlangt aber {soll} - Swift meldet "
                                           f"\"argument must precede argument\""))
 
+    # 16. Ein grossgeschriebener Empfaenger, den das Projekt nirgends erklaert.
+    #
+    # **Der Fehler des sechzehnten Laufs.** `Verlauf.minutenanfang(haus.wanduhr)`, an drei
+    # Stellen in `Ambiente.swift`. Der Typ heisst `Minutenraster`; `Verlauf` ist der Name der
+    # **Datei**, in der er steht - eine Verwechslung, die sich beim Schreiben anbietet und beim
+    # Lesen nicht auffaellt. Der Mac sagte "cannot find 'Verlauf' in scope" und brach ab, zwei
+    # Stunden nach dem Schieben.
+    #
+    # **Warum Regel 13 das nicht faengt.** Sie sucht nach Namen, die mit einem Kleinbuchstaben
+    # beginnen - Eigenschaften und Funktionen. Ein Typname beginnt gross und fiel durch. Beides
+    # getrennt zu fuehren hat einen Grund: kleingeschrieben ist fast alles das Projekt selbst,
+    # grossgeschrieben kommt das meiste von Apple. Darum ist diese Regel schmaler geschnitten.
+    #
+    # **Nur der Empfaenger einer Punktkette, und nur mit kleingeschriebenem Mitglied**
+    # (`Verlauf.minutenanfang`, nicht `Color.Resolved`): Dort steht sicher ein Typ und nicht ein
+    # Feld, und ein grossgeschriebenes Mitglied waere ein verschachtelter Typ, bei dem dieses
+    # Skript die Erklaerung nicht sicher findet. Was von draussen kommt - `Color`, `Task`,
+    # `Double`, die Rahmenwerke von Apple -, steht in `tools/ios-bekannte-namen.txt`; es sind
+    # zwei Dutzend Namen, und jeder davon ist eine gelesene Zeile.
+    typnamen: set[str] = set()
+    for pfad in dateien + kernpfade:
+        for m in re.finditer(r"\b(?:struct|class|enum|protocol|actor|typealias)\s+(\w+)",
+                             code.get(pfad) or nur_code(open(pfad, encoding="utf-8").read())):
+            typnamen.add(m.group(1))
+    for pfad in dateien:
+        kurz = os.path.relpath(pfad, APP)
+        text = code[pfad]
+        for m in re.finditer(r"(?<![.\w$`])([A-Z]\w*)\s*\.\s*[a-z]\w*", text):
+            name = m.group(1)
+            if name in typnamen or name in erklaert:
+                continue
+            nr = text[:m.start()].count("\n") + 1
+            maengel.append((kurz, nr, f"`{name}.…` - einen Typ `{name}` erklaert das Projekt "
+                                      f"nirgends (heisst so eine *Datei*? der Typ darin kann "
+                                      f"anders heissen; kommt er von draussen: "
+                                      f"tools/ios-bekannte-namen.txt)"))
+
     print(f"{len(dateien)} Dateien geprüft, {len(felder)} Schemafelder und "
           f"{len(bausteine)} Bausteine als Maßstab.")
     if maengel:
@@ -995,7 +1032,7 @@ def main() -> int:
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der fünfzehn geprüften Fehlerarten gefunden.")
+    print("Keine der sechzehn geprüften Fehlerarten gefunden.")
     return 0
 
 
