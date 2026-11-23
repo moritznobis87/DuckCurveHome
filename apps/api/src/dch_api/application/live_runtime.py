@@ -1738,11 +1738,14 @@ class LiveRuntime:
         """Die Regelkreis-Karte aus dem Lernzustand des Hauses, für den Augenblick gerechnet."""
         await self._regelkreis_bereit()
         await self._regelkreis_lernen()
-        snap, _, _ = self._states()
+        # Eine Uhr fuer die ganze Antwort: der Arbeitspunkt kommt aus der Momentaufnahme, und
+        # die altert ihre Messwerte gegen genau den Augenblick, der auch in der Karte steht.
+        jetzt = self.now
+        snap, _, _ = self._states(jetzt)
         return regelkreis_logic.zusammensetzen(
             self.hems,
             self._regelkreis,
-            jetzt=self.now,
+            jetzt=jetzt,
             ap=regelkreis_logic.arbeitspunkt(self.hems, self._regelkreis, snap),
         )
 

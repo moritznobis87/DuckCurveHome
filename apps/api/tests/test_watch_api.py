@@ -275,7 +275,11 @@ def test_alarme_stehen_vor_warnungen_in_der_liste() -> None:
             text_de=name,
         )
 
-    gemischt = [f("price", "warn"), f("frozen:buffer_temp_top_c", "alarm"), f("buffer_flat", "warn")]
+    gemischt = [
+        f("price", "warn"),
+        f("frozen:buffer_temp_top_c", "alarm"),
+        f("buffer_flat", "warn"),
+    ]
     assert [b.name for b in _nach_schwere(gemischt)] == [
         "frozen:buffer_temp_top_c",
         "price",

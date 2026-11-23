@@ -117,9 +117,7 @@ class LiveState:
         Meldung verschwindet bei Sonnenuntergang und kommt beim Aufgang zurück, weil genau dann
         wieder etwas fehlt.
         """
-        zuletzt: dict[str, datetime | None] = {
-            k: r.observed_at for k, r in self.readings.items()
-        }
+        zuletzt: dict[str, datetime | None] = {k: r.observed_at for k, r in self.readings.items()}
         hoehe = self.sonnenhoehe(now) if self.sonnenhoehe else None
         pv = pv_bei_nacht(self._m("pv_power_kw", now, self.cfg.timeouts.power_s), now, hoehe)
         if pv.source and pv.source.startswith("nacht:"):
