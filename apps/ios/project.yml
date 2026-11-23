@@ -94,18 +94,39 @@ targets:
         # **Querformat am iPad, beides am Telefon.** Die Wandanzeige ist im Querformat gedacht;
         # ein iPad, das an der Wand kippt, ist kein Fall, den man vorsehen muss. Das Telefon wird
         # in der Hand gehalten und darf sich drehen.
-        # **Ohne diesen Eintrag bekommt die App nicht den ganzen Bildschirm.**
+        # **Ohne einen Startbildschirm bekommt die App nicht den ganzen Bildschirm.**
         #
         # Eine App ohne Startbildschirm gilt iOS als Altlast und laeuft in einem Ersatzfenster:
         # schwarze Balken oben und unten, der Inhalt links und rechts abgeschnitten, die Leiste
-        # mitten im Bild. Genau so sah es am iPhone aus. Ein leeres Woerterbuch genuegt - es
-        # sagt „ja, diese App kennt moderne Bildschirme"; gezeichnet wird nichts weiter als die
-        # Flaeche.
+        # mitten im Bild. Genau so sah es am iPhone aus. Irgendein Startbildschirm genuegt - er
+        # sagt „ja, diese App kennt moderne Bildschirme“.
         #
-        # Die Farbe ist `Marken.deep`, dieselbe wie `Farbe.grund`. Ohne sie waere der
-        # Startbildschirm das Systemschwarz und beim Erscheinen der App gaebe es einen Sprung.
-        UILaunchScreen:
-          UIColorName: Startgrund
+        # **Hier stand dafuer das Woerterbuch, jetzt steht ein Startbrett.**
+        #
+        #     UILaunchScreen:
+        #       UIColorName: Startgrund
+        #
+        # Das war die reine Flaeche in `Marken.deep` (gleich `Farbe.grund`) - sie verhinderte
+        # das Ersatzfenster und, weil sie die Farbe der App trug, auch einen Farbsprung beim
+        # Erscheinen. Was sie nicht konnte, ist **Text**: das Woerterbuch kennt nur eine Farbe,
+        # ein Bild und zwei Striche. Und genau Text war die Bitte des Nutzers am 21.11.2026 -
+        # nach einem frischen Bauen dauert der erste Start lange, und solange stand ein
+        # petrolfarbener Bildschirm da, an dem nichts zu erkennen war.
+        #
+        # `UILaunchStoryboardName` kann Text, und es tut dasselbe wie das Woerterbuch: ein
+        # Startbrett ist der Startbildschirm, auf den iOS wartet, bevor es eine App als modern
+        # ansieht - er ist sogar der aeltere der beiden Wege. Die Farbe nimmt das Brett aus
+        # demselben benannten Wert `Startgrund`; verloren geht also keine der beiden Wirkungen.
+        #
+        # **Beides zugleich waere ein Ratespiel.** Welcher der zwei Schluessel gewinnt, wenn
+        # beide dastehen, ist nicht verlaesslich dokumentiert - und bei der Antwort
+        # „das Woerterbuch“ waere das Brett unsichtbar, ohne dass irgendwo ein Fehler steht.
+        # Also einer von beiden, und zwar der, der kann, was gebraucht wird.
+        #
+        # Die Datei ist `DuckCurveHome/Ressourcen/Startbrett.storyboard`; der Wert hier ist der
+        # Name ohne Endung. Was darauf steht und warum, erklaert sie selbst - und der Schirm,
+        # der danach kommt, steht in `DuckCurveKit/Zustand/Ladeschirm.swift`.
+        UILaunchStoryboardName: Startbrett
 
         # **Ohne diesen Satz bleibt die App am Telefon leer.** Seit iOS 14 fragt das System,
         # bevor eine App ein Geraet im selben Netz anspricht - und der Dienst dieses Hauses

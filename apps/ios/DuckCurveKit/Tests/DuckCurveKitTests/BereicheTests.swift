@@ -185,6 +185,15 @@ final class KickerTests: XCTestCase {
         "/waerme/fahrplan": "Preis · PV · Wärmebedarf · Puffer · zwei Tage",
         "/waerme/nachbetrachtung": "Versprochen, gehalten, wirklich · ein Tag in Euro",
         "/waerme/wirkung": "Folgt die Wärmepumpe der Anforderung? · gemessen, nicht angenommen",
+        // **Die eine Route, deren Wort bewusst von der Vorlage abweicht.** Dort steht
+        // „Blockschaltbild der Kaskade · Herkunft jeder Zahl" (`waerme/regelkreis/page.tsx:13`),
+        // und das ist im Browser richtig: da liegt eine Zeichnung von 1400 Punkten Breite, in
+        // der man Kästchen anklickt. Am Telefon bliebe davon ein Ausschnitt, durch den man
+        // schiebt - die App zeigt die Kaskade deshalb als Liste nach Ebenen. Ein Kicker, der
+        // ein Blockschaltbild verspricht, verspräche hier ein Bild, das nicht da ist. Das Wort
+        // steht im Kern (``Regelkreisbild/seitenkicker``), damit Reiter und Seite dasselbe
+        // lesen.
+        "/waerme/regelkreis": "Kaskade in fünf Ebenen · Herkunft jeder Zahl",
         "/waerme/raeume": "Einzelraumregelung · Abweichung vom Ziel über den Tag",
         "/system": "PV-Prognose gegen Ist · Korrekturfaktoren",
         "/system/daten": "Messreihen · Stundenbilanz · Rohdaten",

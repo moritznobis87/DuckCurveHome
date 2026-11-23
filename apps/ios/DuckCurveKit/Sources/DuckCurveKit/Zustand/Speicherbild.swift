@@ -100,10 +100,13 @@ public enum Speicherbild {
     /// Wirkungsgrad. Beides beantwortet dieselbe Frage („kommt heraus, was hineinging?“), nur
     /// aus verschiedenen Quellen, und beides zugleich waere eine Kachel zu viel.
     ///
-    /// **Der Ton `ember` der Vorlage hat im Kern kein Gegenstueck.** ``Kennzahl/Ton`` kennt kein
-    /// Alarmrot, und die Zuordnung Ton zu Farbe liegt in einer Datei, die dieser Umbau nicht
-    /// aendern darf. `.glut` ist der naechstliegende vorhandene Ton - warm, von `bernstein`
-    /// unterscheidbar -, dieselbe Wahl wie in ``Wallbox/kacheln(_:)``.
+    /// **Drei Kacheln tragen den Alarmton, und zwar nur oberhalb ihrer Schwelle**
+    /// (`BatteryReport.tsx:111`, `:130`, `:142`, jeweils `tone={... ? "ember" : "muted"}`):
+    /// „Netzladung ohne PV“, die Gegenprobe „Laut Ladestand“ und „Verlust im Geraet“. Sie
+    /// standen auf ``Kennzahl/Ton/glut``, weil der Kern damals kein Alarmrot kannte - und
+    /// `glut` ist `Marken.waermepumpe`, eine Farbe, die ausdruecklich **nicht** wie eine
+    /// Stoerung aussehen soll. Genau das sind diese drei aber: Strom, der in den Speicher
+    /// ging, ohne dass Sonne da war, und Ladung, die die Zellen nie erreicht hat.
     public static func kacheln(
         _ b: EnergySummaryOut, ladestand: Ladestandsenergie? = nil
     ) -> [Kennzahl] {
@@ -123,7 +126,7 @@ public enum Speicherbild {
                 einheit: "kWh",
                 dazu: "von \(Formate.zahl(t.gridToBatteryKwh, stellen: 1))"
                     + "\(Formate.schmalesLeerzeichen)kWh Netzladung insgesamt" + zusatz,
-                ton: dunkel > auffallendKwh ? .glut : .gedaempft),
+                ton: dunkel > auffallendKwh ? .alarm : .gedaempft),
             Kennzahl(
                 wort: "Entladen", wert: Formate.zahl(t.batteryDischargeKwh, stellen: 1),
                 einheit: "kWh",
@@ -148,7 +151,7 @@ public enum Speicherbild {
                 einheit: "kWh",
                 dazu: "\(Formate.euro(t.batteryDeviceCostEur)) bezahlt · "
                     + "\(Formate.euro(t.batteryDeviceOpportunityEur)) entgangen",
-                ton: geraet > auffallendKwh ? .glut : .gedaempft),
+                ton: geraet > auffallendKwh ? .alarm : .gedaempft),
         ]
     }
 
@@ -165,7 +168,7 @@ public enum Speicherbild {
             dazu: "entladen · Leistungsmessung "
                 + "\(Formate.zahl(t.batteryDischargeKwh, stellen: 1))"
                 + "\(Formate.schmalesLeerzeichen)kWh",
-            ton: widerspricht(t, ladestand: l) ? .glut : .gedaempft)
+            ton: widerspricht(t, ladestand: l) ? .alarm : .gedaempft)
     }
 
     /// Laufen Leistungsmessung und Ladestand auseinander? (`BatteryReport.tsx:129`)

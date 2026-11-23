@@ -34,11 +34,20 @@ struct BetriebSeite: View {
         Seite {
             if let b = betrieb {
                 inhalt(b)
-            } else {
+            } else if fehler == nil {
                 // **Vor der ersten Antwort ersetzt ein Absatz die ganze Seite**
                 // (`Betrieb.tsx:30-33`). Eine Kachelreihe aus Strichen über einem leeren
-                // Diagramm sagt weniger als der Satz, dass gerade ausgezählt wird.
-                Text(fehler == nil ? Betriebsbild.ladesatz : Betriebsbild.fehlersatz)
+                // Diagramm sagt weniger als der Satz, dass gerade ausgezählt wird. Der Satz
+                // und seine Farbe sind die von vorher; dazugekommen ist Alfred darüber, in der
+                // großen Stufe, weil dieser Hinweis an der Stelle der ganzen Seite steht
+                // (``Ladehinweis/Stufe``) - dieselbe Stelle, dieselbe Form wie auf der
+                // `WaermepumpeSeite`.
+                Ladeente(satz: Betriebsbild.ladesatz, stufe: .gross, farbe: Farbe.text3)
+            } else {
+                // **Der Fehler bekommt keine Ente**, und das ist die Regel an ``Ladeente``:
+                // ein Befund ist fertig, und eine schaukelnde Ente daneben behauptete ein
+                // Warten, das es nicht mehr gibt.
+                Text(Betriebsbild.fehlersatz)
                     .font(Schrift.text)
                     .foregroundStyle(Farbe.text3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -62,7 +71,9 @@ struct BetriebSeite: View {
         if let fehler {
             Stoerung(fehler: fehler) { Task { await lade() } }
         }
-        Kachelfeld(kacheln: Betriebsbild.kacheln(b).map(Kacheldaten.init))
+        // `.kpi-handy`: die Werte sind Spannen, und die Vorlage gibt ihnen am Telefon eine
+        // Stufe weniger (`handy.css:381-382`).
+        Kachelfeld(kacheln: Betriebsbild.kacheln(b).map(Kacheldaten.init), spannen: true)
         auszaehlung(b)
         if Betriebsbild.lief(b) {
             // **Lief sie nicht, fallen alle vier Diagramme weg** (`Betrieb.tsx:48`, `:91`):

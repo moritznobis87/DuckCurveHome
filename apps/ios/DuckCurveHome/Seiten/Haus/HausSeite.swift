@@ -189,9 +189,18 @@ struct HausSeite: View {
             HStack(alignment: .top, spacing: 14) {
                 konsole(waagrecht: false)
                     .frame(width: 216)
+                // **Hochkant auch an der Wand - und das ist die eine Stelle, an der diese
+                // Seite der Vorlage bewusst nicht folgt.** Dort füllt die Bühne die Restspalte
+                // des Rasters aus 216 Punkten und dem Rest (`globals.css:447`, Höhe mindestens
+                // 480 Punkte, `globals.css:468`) und liegt auf einem breiten Schirm quer. Der
+                // Nutzer will sie hochkant, in jeder Breite; die Begründung des Maßes steht an
+                // ``Hausbuehne/seitenverhaeltnis``. Der Preis ist die Luft, die
+                // rechts neben der Bühne bleibt - deshalb hängt die Reihe links, sonst
+                // rutschte mit der Bühne auch die Konsole in die Mitte.
                 buehne
+                    .aspectRatio(Hausbuehne.seitenverhaeltnis, contentMode: .fit)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             fussnote
         }
         .padding(.horizontal, 32)
@@ -263,6 +272,10 @@ struct HausSeite: View {
     /// **Sie gehören in die Kopfzeile** (`HouseReport.tsx:219-248`, der `right`-Platz der
     /// Hülle). Das Gerippe der App hat dafür keinen Platz; hier stehen sie als eigene Zeile
     /// über der Bühne, in derselben Gestalt: gesperrte Großschrift, das Gewählte in Bernstein.
+    ///
+    /// **Die Kapselform steht nicht mehr hier.** Diese Datei hatte sie als eigene Funktion
+    /// `pillen` nachgebaut, weil ``Ansichtswahl`` nur eine Form kannte; seit dem 21.11.2026
+    /// ist sie dort ``Ansichtswahl/Form/hausGruppe`` und kommt aus `globals.css:474-476`.
     private var werkzeuge: some View {
         HStack(spacing: 6) {
             // **Der Kicker steht in der Hülle und damit in beiden Ansichten**
@@ -271,13 +284,18 @@ struct HausSeite: View {
             // anfängt, stand also nirgends, woher der Plan kommt.
             herkunft
             Spacer(minLength: 0)
-            pillen(
-                [Ansicht(weg: "liste", name: "Liste"), Ansicht(weg: "modell", name: "Modell")],
-                aktiv: ansicht.rawValue
-            ) { a in ansicht = Ansichtswahlart(rawValue: a) ?? .liste }
+            Ansichtswahl(
+                ansichten: [
+                    Ansicht(weg: "liste", name: "Liste"), Ansicht(weg: "modell", name: "Modell"),
+                ],
+                aktiv: Ansicht(weg: ansicht.rawValue, name: ""),
+                form: .hausGruppe
+            ) { a in ansicht = Ansichtswahlart(rawValue: a.weg) ?? .liste }
             if hausplan?.plan != nil {
-                pillen(deckwahl, aktiv: deck) { a in
-                    deck = a
+                Ansichtswahl(
+                    ansichten: deckwahl, aktiv: Ansicht(weg: deck, name: ""), form: .hausGruppe
+                ) { a in
+                    deck = a.weg
                     deckGewaehlt = true
                 }
             }
@@ -291,30 +309,6 @@ struct HausSeite: View {
         let decks = hausplan?.plan?.decks ?? []
         guard decks.count > 1 else { return [Ansicht(weg: "", name: "Haus")] }
         return [Ansicht(weg: "", name: "Alle")] + decks.map { Ansicht(weg: $0.key, name: $0.name) }
-    }
-
-    private func pillen(
-        _ ansichten: [Ansicht], aktiv: String, waehle: @escaping (String) -> Void
-    ) -> some View {
-        HStack(spacing: 0) {
-            ForEach(ansichten) { a in
-                let an = a.weg == aktiv
-                Button { if !an { waehle(a.weg) } } label: {
-                    Text(a.name.uppercased())
-                        .font(Schrift.mono(10.5))
-                        .kerning(1.3)
-                        .foregroundStyle(an ? Farbe.petrol : Farbe.text2)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(an ? Farbe.amber : .clear, in: Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(an ? [.isButton, .isSelected] : .isButton)
-            }
-        }
-        .padding(3)
-        .background(Farbe.flaeche1.opacity(0.72), in: Capsule())
-        .overlay(Capsule().strokeBorder(Farbe.linie2, lineWidth: 1))
     }
 
     /// „KALT ▬▬ WARM · GELB: UNTER ZIEL · TIPPEN: RAUM“ (`HouseReport.tsx:288-294`).
@@ -518,11 +512,17 @@ struct HausSeite: View {
                         }
                     }
                     glasmodell(plan)
-                        // **Ein Anteil des Schirms, keine feste Höhe.** Die Vorlage rechnet in
-                        // Bildschirmhöhe (`globals.css:550`: 70dvh, `handy.css:393`: 58dvh);
-                        // die App hatte 460 Punkte, und auf einem grossen Telefon blieb unter
-                        // dem Bild ein leeres Drittel.
-                        .containerRelativeFrame(.vertical) { hoehe, _ in hoehe * 0.58 }
+                        // **Hochkant, und damit aus der Breite gerechnet statt aus der Höhe.**
+                        // Die Vorlage rechnet in Bildschirmhöhe (`globals.css:550`: 70dvh,
+                        // `handy.css:393`: 58dvh); daraus wurde hier ein Anteil von 0,58 der
+                        // Fläche, nachdem feste 460 Punkte auf einem grossen Telefon unter dem
+                        // Bild ein leeres Drittel gelassen hatten. Am Telefon kommt bei beiden
+                        // Rechnungen fast dasselbe heraus - 58dvh von 844 Punkten sind 490, drei
+                        // zu vier aus 358 Punkten Breite sind 477 -, aber nur das
+                        // Seitenverhältnis bleibt hochkant, wenn das Telefon quer liegt oder
+                        // klein ist. Das Maß und sein Beleg stehen an
+                        // ``Hausbuehne/seitenverhaeltnis``.
+                        .aspectRatio(Hausbuehne.seitenverhaeltnis, contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .sheet(item: $fokus) { f in
@@ -548,7 +548,10 @@ struct HausSeite: View {
             // lesbar“ - die falsche Auskunft, wenn bloss noch keiner gemeldet wurde.
             Leer(satz: planhinweis(h), dazu: planabhilfe)
         } else {
-            Leer(satz: "Wird geholt …")
+            // Die grosse Stufe: dieser Hinweis steht an der Stelle des ganzen Hausmodells und
+            // ist der einzige der Seite (``Ladehinweis/Stufe``). Der Zweig darueber ist ein
+            // Befund und kein Warten - dort bleibt ``Leer``.
+            Ladeente(satz: Ladehinweis.berichtssatz, stufe: .gross)
         }
     }
 

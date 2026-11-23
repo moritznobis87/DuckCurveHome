@@ -21,6 +21,7 @@ from dch_api.alfred.werkzeuge import Kontext
 from dch_api.main import create_app
 from dch_api.routers.control import ACTUATOR_LABELS
 from dch_api.settings import Settings
+from hems_core.domain.config import SensorTimeouts
 
 SCHLUESSEL = "geheim-123"
 
@@ -726,3 +727,19 @@ def test_andere_rechnung_ohne_modell_sagt_warum(client: TestClient) -> None:
     )
     assert antwort.status_code == 409
     assert "keine Tibber-Rechnung" in antwort.json()["error"]["message"]
+
+
+def test_die_vorlage_schlaegt_die_eine_altersgrenze_der_pufferfuehler_vor() -> None:
+    """Alfreds Katalog darf die 3600 nicht zurueckbringen.
+
+    Bis zum 22.11.2026 stand fuer dieselben vier Fuehler in `config/entities.home.yaml` 3600 und
+    in `SensorTimeouts` 900. Wirksam war immer die kuerzere, weil der Dienst jeden Wert beim Bauen
+    der Aufnahme noch einmal altert - die 3600 konnte nichts bewirken und sagte trotzdem etwas
+    anderes. Die YAML-Datei ist nachgezogen; dieser Test deckt die dritte Stelle, die Vorlage, aus
+    der die naechste Einrichtung ihre Zahlen nimmt.
+    """
+    frist = SensorTimeouts().temperature_s
+    puffer = [z for z in zuordnung.KATALOG if z.schluessel.startswith("buffer_temp_")]
+    assert len(puffer) == 4
+    for z in puffer:
+        assert z.stale_after_s == frist, z.schluessel

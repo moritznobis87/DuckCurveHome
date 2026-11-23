@@ -282,7 +282,10 @@ final class WirkungsbildTests: XCTestCase {
         XCTAssertEqual(b.rasterHinweis, "gezeigt sind die jüngsten 80 von 85 Anforderungen")
         let gezeigt = b.gruppen.flatMap(\.zeilen).count
         XCTAssertEqual(gezeigt, 80)
-        XCTAssertNil(Wirkungsbild.baue(antwort(ereignisse: viele, n: 80)).rasterHinweis)
+        XCTAssertNil(
+            Wirkungsbild.baue(antwort(ereignisse: Array(viele.prefix(80)), n: 80))
+                .rasterHinweis,
+            "Achtzig gelieferte Ereignisse sind achtzig gezeigte - da fehlt nichts.")
     }
 
     // MARK: - Die Zeile
@@ -508,7 +511,7 @@ final class WirkungsbildTests: XCTestCase {
     func testEineFehlendeZahlStehtAlsStrichUndDannOhneEinheit() {
         let k = Wirkungskacheln.kacheln(antwort())
         XCTAssertEqual(k[1].wert, "-")
-        XCTAssertNil(k[1].einheit, "„- %\" ist keine Angabe.")
+        XCTAssertNil(k[1].einheit, "„- %“ ist keine Angabe.")
         XCTAssertEqual(k[3].wert, "-")
         XCTAssertNil(k[3].einheit)
         XCTAssertNil(k[4].einheit)
@@ -535,7 +538,7 @@ final class WirkungsbildTests: XCTestCase {
         XCTAssertEqual(k[3].wert, "5")
         XCTAssertEqual(k[3].einheit, "min")
         XCTAssertEqual(k[3].dazu, "Median von der Anforderung bis zum Anlauf")
-        XCTAssertEqual(k[4].wert, "95", "Nicht „1 h 35 min\" - sonst stehen App und Wand verschieden da.")
+        XCTAssertEqual(k[4].wert, "95", "Nicht „1 h 35 min“ - sonst stehen App und Wand verschieden da.")
         XCTAssertEqual(k[4].dazu, "Median nach dem Ende der Anforderung, 3 Fälle")
     }
 
@@ -564,5 +567,161 @@ final class WirkungsbildTests: XCTestCase {
         XCTAssertEqual(Formate.minutenZahl(4.6), "5")
         XCTAssertEqual(Formate.minutenZahl(nil), Formate.leer)
         XCTAssertNotEqual(Formate.minutenZahl(95), Formate.dauer(minuten: 95))
+    }
+
+    // MARK: - Was gezeigt werden darf
+
+    func testOhneAuswertbareAnforderungBleibtDerFaecherWegObwohlDasRasterVollIst() {
+        let volles = faecher(
+            minuten: Array((-30)...120), n: Array(repeating: 0, count: 151))
+        let ohne = Wirkungsbild.baue(antwort(faecher: volles, nAuswertbar: 0))
+        XCTAssertEqual(
+            ohne.faecher.count, 151,
+            "Der Dienst füllt das Minutenraster unbedingt - darauf darf die Karte nicht hängen.")
+        XCTAssertFalse(ohne.faecherZeigen)
+        XCTAssertEqual(ohne.nAuswertbar, 0)
+
+        let mit = Wirkungsbild.baue(antwort(faecher: volles, nAuswertbar: 1))
+        XCTAssertTrue(mit.faecherZeigen)
+        XCTAssertEqual(mit.nAuswertbar, 1)
+    }
+
+    func testDasRasterErscheintNurMitZeilenUndNichtMitEinerBlossenZahl() {
+        XCTAssertFalse(
+            Wirkungsbild.baue(antwort(ereignisse: [], n: 7)).rasterZeigen,
+            "Sieben gezählte Anforderungen ohne eine gelieferte sind keine Zeile.")
+        XCTAssertTrue(Wirkungsbild.baue(antwort(ereignisse: [ereignis()], n: 1)).rasterZeigen)
+    }
+
+    // MARK: - Das Band der mittleren Hälfte
+
+    func testDasBandBrichtAnEinerMinuteMitZuWenigenEreignissenAb() {
+        let f = faecher(
+            minuten: [0, 1, 2, 3], q25: [0.2, 0.3, 0.4, 0.5], q75: [1.0, 1.1, 1.2, 1.3],
+            n: [9, 9, 3, 9])
+        let b = Wirkungsbild.baue(antwort(faecher: f, nAuswertbar: 9))
+        XCTAssertEqual(
+            b.band.count, 2, "Die Minute mit drei Ereignissen trennt das Band in zwei Stücke.")
+        XCTAssertEqual(b.band[0].punkte.map(\.minute), [0, 1])
+        XCTAssertEqual(b.band[1].punkte.map(\.minute), [3])
+        XCTAssertEqual(
+            Set(b.band.map(\.id)).count, 2,
+            "Jedes Stück braucht eine eigene Reihe im Diagramm.")
+        XCTAssertEqual(b.band[0].punkte[0].unten, 0.2)
+        XCTAssertEqual(b.band[0].punkte[0].oben, 1.0)
+    }
+
+    func testOhneEineEinzigeMinuteMitBandBleibtDasBandLeer() {
+        let f = faecher(minuten: [0, 1], q25: [0.2, 0.3], q75: [1.0, 1.1], n: [2, 3])
+        XCTAssertTrue(Wirkungsbild.baue(antwort(faecher: f, nAuswertbar: 3)).band.isEmpty)
+    }
+
+    func testEinHalbesViertelErgibtKeinBandstueck() {
+        let f = faecher(minuten: [0], q25: [0.2], q75: [nil], n: [9])
+        XCTAssertTrue(
+            Wirkungsbild.baue(antwort(faecher: f, nAuswertbar: 9)).band.isEmpty,
+            "Eine Fläche braucht zwei Grenzen.")
+    }
+
+    // MARK: - Die Achsen des Fächers
+
+    func testDieZeitachseDesFaechersNenntDieEinheitNurAmNullpunktUndAmEnde() {
+        let b = Wirkungsbild.baue(antwort())
+        XCTAssertEqual(b.faechermarken.map(\.minute), [-30, 0, 30, 60, 90, 120])
+        XCTAssertEqual(
+            b.faechermarken.map(\.wort),
+            ["−30", "Anforderung", "+30", "+60", "+90", "+120 min"])
+        XCTAssertEqual(
+            b.faechermarken.filter { $0.wort.contains("min") }.count, 1,
+            "Fünfmal „min“ unter einer Achse ist Lärm.")
+    }
+
+    func testDieZeitachseDesFaechersBeginntAmRandUndNichtAmNullpunkt() {
+        let b = Wirkungsbild.baue(antwort(vorMin: 20, nachMin: 70))
+        XCTAssertEqual(
+            b.faechermarken.map(\.minute), [-20, 10, 40, 70],
+            "Eine Achse mit `min` und `interval: 30` setzt ihre Marken ab dem `min`.")
+    }
+
+    func testDieObereAchseBeginntBeiNullUndWaechstInRundenStufen() {
+        gleich(Wirkungsbild.leistungsmarken(hoechstwert: 1.9), [0, 1, 2, 3], "1,9 kW")
+        gleich(Wirkungsbild.leistungsmarken(hoechstwert: 3), [0, 1, 2, 3], "genau 3 kW")
+        gleich(Wirkungsbild.leistungsmarken(hoechstwert: 3.1), [0, 2, 4, 6], "knapp über 3 kW")
+        gleich(Wirkungsbild.leistungsmarken(hoechstwert: 7.5), [0, 2.5, 5, 7.5], "7,5 kW")
+        gleich(Wirkungsbild.leistungsmarken(hoechstwert: 0), [0, 0.1, 0.2, 0.3], "ohne Messung")
+        gleich(
+            Wirkungsbild.leistungsmarken(hoechstwert: -5), [0, 0.1, 0.2, 0.3],
+            "Eine negative Leistung dreht die Achse nicht um.")
+        gleich(
+            Wirkungsbild.leistungsmarken(hoechstwert: .nan), [0, 0.1, 0.2, 0.3],
+            "Eine Unzahl ist kein Höchstwert.")
+        gleich(
+            Wirkungsbild.leistungsmarken(hoechstwert: 400), [0, 134, 268, 402],
+            "Über die Stufenliste hinaus wird aufgerundet, statt die Spanne zu kürzen.")
+    }
+
+    func testDieObereSpanneBeginntImmerBeiNullUndIstNiemalsLeer() {
+        let b = Wirkungsbild.baue(antwort(schwelleKw: 0))
+        XCTAssertEqual(b.leistungsspanne.lowerBound, 0)
+        XCTAssertGreaterThan(
+            b.leistungsspanne.upperBound, 0,
+            "Eine Spanne von null bis null ist keine Achse.")
+    }
+
+    func testDieObereSpanneUmfasstSchwelleMittelViertelUndJedeEinzelkurve() {
+        let f = faecher(
+            minuten: [0, 1], mittel: [1.0, nil], q25: [0.5, 0.5], q75: [2.0, nil], n: [9, 9])
+        let b = Wirkungsbild.baue(
+            antwort(schwelleKw: 0.4, ereignisse: [ereignis(kw: [0.5, 7.5])], faecher: f,
+                    nAuswertbar: 9))
+        XCTAssertEqual(
+            Wirkungsbild.hoechsteLeistung(
+                faecher: b.faecher, kurven: b.einzelkurven, schwelleKw: b.schwelleKw),
+            7.5, "Die höchste Einzelkurve gehört in die Spanne wie das Mittel.")
+        gleich(b.leistungsmarken, [0, 2.5, 5, 7.5], "aus 7,5 kW")
+
+        XCTAssertEqual(
+            Wirkungsbild.hoechsteLeistung(faecher: [], kurven: [], schwelleKw: 3), 3,
+            "Die Schwelle ist eine Linie im Bild und muss hineinpassen.")
+        XCTAssertEqual(
+            Wirkungsbild.hoechsteLeistung(faecher: [], kurven: [], schwelleKw: .nan), 0)
+    }
+
+    func testDieObereAchseSchreibtGanzeZahlenOhneKomma() {
+        var b = Wirkungsbild()
+        b.leistungsmarken = [0, 2, 4, 6]
+        XCTAssertEqual(b.leistungswort(4), "4")
+        b.leistungsmarken = [0, 2.5, 5, 7.5]
+        XCTAssertEqual(b.leistungswort(2.5), "2,5")
+    }
+
+    func testDieUntereFlaecheHatEineFesteSkalaVonNullBisHundertProzent() {
+        XCTAssertEqual(Wirkungsbild.anteilsspanne, 0...100)
+        XCTAssertEqual(Wirkungsbild.anteilsmarken, [0, 50, 100])
+        XCTAssertEqual(Wirkungsbild.anteilswort(0), "0\u{202F}%")
+        XCTAssertEqual(Wirkungsbild.anteilswort(50), "50\u{202F}%")
+        XCTAssertEqual(Wirkungsbild.anteilswort(100), "100\u{202F}%")
+    }
+
+    // MARK: - Der Rasterhinweis
+
+    func testDerRasterhinweisZaehltDieGeliefertenEreignisseUndNichtDieGezaehlten() {
+        let viele = (0..<95).map { i in
+            ereignis(at: "2026-11-07T10:00:00+01:00", verzoegerung: i)
+        }
+        XCTAssertEqual(
+            Wirkungsbild.baue(antwort(ereignisse: viele, n: 214)).rasterHinweis,
+            "gezeigt sind die jüngsten 80 von 95 Anforderungen",
+            "Gezählt wird, woraus gewählt wurde.")
+    }
+
+    /// Zwei Listen von Kommazahlen vergleichen.
+    ///
+    /// `0,1 * 3` ist in Gleitkommaarithmetik nicht `0,3`, und die Stufen der Achse werden
+    /// multipliziert. Verglichen wird darum mit Toleranz - sonst prüfte der Test die
+    /// Darstellung von Gleitkommazahlen und nicht die Rundung der Achse.
+    private func gleich(_ a: [Double], _ b: [Double], _ was: String) {
+        XCTAssertEqual(a.count, b.count, was)
+        for (x, y) in zip(a, b) { XCTAssertEqual(x, y, accuracy: 1e-9, was) }
     }
 }

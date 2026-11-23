@@ -113,11 +113,34 @@ class BalanceConfig(BaseModel):
     min_flow_kw: float = 0.05  # darunter gilt „kein Fluss“
 
 
+#: Ab welchem Alter ein Messwert nicht mehr trägt.
+#:
+#: **Hier steht die Grenze, und nur hier.** Für die vier Pufferfühler gab es bis zum 22.11.2026
+#: zwei: über Home Assistant galt `stale_after_s: 3600` aus `config/entities.home.yaml`, über MQTT
+#: die 900 Sekunden hier - vier Mal so lang auf dem einen Weg, und nichts sagte, welcher gilt.
+#: Wirksam war ohnehin immer die kürzere, weil der Dienst jeden Fühler beim Bauen der Aufnahme
+#: noch einmal altert (`LiveState.snapshot` → `Measurement.aged`); die 3600 konnte also nie etwas
+#: bewirken und sagte trotzdem etwas anderes. Eine Zahl, die nichts tut und etwas anderes
+#: behauptet, ist schlimmer als keine.
+#:
+#: Zwei Stellen draußen zeigen auf diese: die Zuordnung des Hauses (`config/entities.home.yaml`,
+#: weil die Bridge sie liest, bevor der Dienst sie sieht) und Alfreds Vorlage für ein neues Haus
+#: (`dch_api.alfred.zuordnung`, die den Wert hier holt). Dass die Zuordnung mitläuft, hält
+#: `apps/api/tests/test_live_state.py` fest.
+#:
+#: Die Erklärung steht als Kommentar und nicht als Docstring: Pydantic trägt Docstrings in
+#: `docs/openapi.json` und von dort in die erzeugten Typen des Dashboards, und eine Hausgeschichte
+#: ist für einen Leser der Schnittstelle keine Auskunft.
 class SensorTimeouts(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     power_s: float = 180.0  # HA-Integrationen (myenergi, Shelly) melden teils nur alle 60-120 s
     battery_s: float = 180.0
+    #: Die Pufferfühler melden über MQTT alle 30 s, über Home Assistant jede Minute. Eine
+    #: Viertelstunde Stille ist damit kein Takt mehr, sondern ein Ausfall - und ein Ladezustand
+    #: aus einer Viertelstunde alten Temperaturen ist noch brauchbar: ohne Entnahme bewegt sich
+    #: der Speicher in dieser Zeit um 0,02 K (0,004 kW/K gegen 17 °C Technikraum, siehe
+    #: `BufferConfig`), unter 4,4 kW Entnahme um 0,94 K.
     temperature_s: float = 900.0
     price_s: float = 3600.0 * 2
 

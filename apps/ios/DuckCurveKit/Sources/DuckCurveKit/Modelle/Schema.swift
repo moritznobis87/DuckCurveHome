@@ -164,6 +164,45 @@ public enum BatteryModeInModeWahl: String, Codable, Sendable, Hashable, CaseIter
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum BlockAnsichtBehandlungWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case aufgeschaltet = "aufgeschaltet"
+    case ausgeregelt = "ausgeregelt"
+    case beobachtet = "beobachtet"
+    case geplant = "geplant"
+    case erkannt = "erkannt"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = BlockAnsichtBehandlungWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum BlockAnsichtRolleWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case regler = "regler"
+    case stellglied = "stellglied"
+    case strecke = "strecke"
+    case beobachter = "beobachter"
+    case rechenglied = "rechenglied"
+    case modell = "modell"
+    case logik = "logik"
+    case vorsteuerung = "vorsteuerung"
+    case messglied = "messglied"
+    case stoergroesse = "stoergroesse"
+    case summierstelle = "summierstelle"
+    case teilkreise = "teilkreise"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = BlockAnsichtRolleWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum BufferConfigSocMethodWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case layeredEnergyV1 = "layered_energy_v1"
     case weightedMeanV1 = "weighted_mean_v1"
@@ -483,6 +522,37 @@ public enum GeraetVerlaufOutSpanneWahl: String, Codable, Sendable, Hashable, Cas
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum GliedAnsichtArtWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case sprung = "sprung"
+    case kennlinie = "kennlinie"
+    case takt = "takt"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GliedAnsichtArtWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum GliedAnsichtKategorieWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case strecke = "strecke"
+    case regler = "regler"
+    case messglied = "messglied"
+    case nichtlinear = "nichtlinear"
+    case planung = "planung"
+    case beobachter = "beobachter"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GliedAnsichtKategorieWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum HeatBalanceOutPeriodWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case day = "day"
     case week = "week"
@@ -635,6 +705,35 @@ public enum ItemToneWahl: String, Codable, Sendable, Hashable, CaseIterable {
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum KanteAnsichtArtWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case signal = "signal"
+    case stoergroesse = "stoergroesse"
+    case rueckfuehrung = "rueckfuehrung"
+    case fuehrung = "fuehrung"
+    case parameter = "parameter"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = KanteAnsichtArtWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum KanteAnsichtVorzeichenWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case plus = "+"
+    case minus = "-"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = KanteAnsichtVorzeichenWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum KennlinienFitOutArtWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case ebene = "ebene"
     case aussen = "aussen"
@@ -650,6 +749,21 @@ public enum KennlinienFitOutArtWahl: String, Codable, Sendable, Hashable, CaseIt
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum KreisAnsichtArtWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case stetig = "stetig"
+    case zweipunkt = "zweipunkt"
+    case hybrid = "hybrid"
+    case planung = "planung"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = KreisAnsichtArtWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum OverrideKind: String, Codable, Sendable, Hashable, CaseIterable {
     case forceRelease = "force_release"
     case forceOff = "force_off"
@@ -659,6 +773,42 @@ public enum OverrideKind: String, Codable, Sendable, Hashable, CaseIterable {
     public init(from decoder: any Decoder) throws {
         let roh = try decoder.singleValueContainer().decode(String.self)
         self = OverrideKind(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum ParameterAnsichtHerkunftWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gemessen = "gemessen"
+    case geschaetzt = "geschaetzt"
+    case annahme = "annahme"
+    case fest = "fest"
+    case entwurf = "entwurf"
+    case uebersteuert = "uebersteuert"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = ParameterAnsichtHerkunftWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum ParameterAnsichtSchaetzartWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case ausgleich = "ausgleich"
+    case fenster = "fenster"
+    case rls = "rls"
+    case ereignis = "ereignis"
+    case bilanz = "bilanz"
+    case stillstand = "stillstand"
+    case ewma = "ewma"
+    case keiner = "keiner"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = ParameterAnsichtSchaetzartWahl(rawValue: roh) ?? .unbekannt
     }
 }
 
@@ -734,6 +884,23 @@ public enum PriceWindowOutKindWahl: String, Codable, Sendable, Hashable, CaseIte
     public init(from decoder: any Decoder) throws {
         let roh = try decoder.singleValueContainer().decode(String.self)
         self = PriceWindowOutKindWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum PruefungCodeWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case uebernommen = "uebernommen"
+    case zuWenigDaten = "zu_wenig_daten"
+    case innerhalbUnsicherheit = "innerhalb_unsicherheit"
+    case zuFrueh = "zu_frueh"
+    case grenzen = "grenzen"
+    case nichtBesser = "nicht_besser"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = PruefungCodeWahl(rawValue: roh) ?? .unbekannt
     }
 }
 
@@ -907,6 +1074,19 @@ public enum StoveModeInModeWahl: String, Codable, Sendable, Hashable, CaseIterab
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum StreckeAnsichtArtWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case foptd = "foptd"
+    case iptd = "iptd"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = StreckeAnsichtArtWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum SystemMode: String, Codable, Sendable, Hashable, CaseIterable {
     case off = "off"
     case manual = "manual"
@@ -937,7 +1117,7 @@ public enum UpdateAnfrageInAktionWahl: String, Codable, Sendable, Hashable, Case
 public enum VersandOutWegWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case smtp = "smtp"
     case https = "https"
-    case feld = ""
+    case leer = ""
     case unbekannt = "—unbekannt—"
 
     public init(from decoder: any Decoder) throws {
@@ -1864,6 +2044,40 @@ public struct ApnsUnsubscribeIn: Codable, Sendable, Hashable {
     }
 }
 
+/// Der Punkt, für den die Karte gerechnet wird.
+public struct Arbeitspunkt: Codable, Sendable, Hashable {
+    public var aussenC: Double
+    public var vorlaufC: Double
+    public var strompreisEurKwh: Double
+    public var aussenGemessen: Bool?
+    public var vorlaufGemessen: Bool?
+
+    public enum CodingKeys: String, CodingKey {
+        case aussenC = "aussen_c"
+        case vorlaufC = "vorlauf_c"
+        case strompreisEurKwh = "strompreis_eur_kwh"
+        case aussenGemessen = "aussen_gemessen"
+        case vorlaufGemessen = "vorlauf_gemessen"
+    }
+
+    public init(aussenC: Double, vorlaufC: Double, strompreisEurKwh: Double, aussenGemessen: Bool? = nil, vorlaufGemessen: Bool? = nil) {
+        self.aussenC = aussenC
+        self.vorlaufC = vorlaufC
+        self.strompreisEurKwh = strompreisEurKwh
+        self.aussenGemessen = aussenGemessen
+        self.vorlaufGemessen = vorlaufGemessen
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.aussenC = try c.decode(Double.self, forKey: .aussenC)
+        self.vorlaufC = try c.decode(Double.self, forKey: .vorlaufC)
+        self.strompreisEurKwh = try c.decode(Double.self, forKey: .strompreisEurKwh)
+        self.aussenGemessen = try c.decodeIfPresent(Bool.self, forKey: .aussenGemessen)
+        self.vorlaufGemessen = try c.decodeIfPresent(Bool.self, forKey: .vorlaufGemessen)
+    }
+}
+
 /// Wer gerade fragt. Die Oberfläche blendet danach aus, was die Rolle nicht darf - verboten
 /// wird es am Dienst (`dch_api/auth/rechte.py`).
 public struct AusweisOut: Codable, Sendable, Hashable {
@@ -2440,6 +2654,87 @@ public struct BinCorrection: Codable, Sendable, Hashable {
         self.previous = try c.decodeIfPresent(Double.self, forKey: .previous)
         self.lastRatio = try c.decodeIfPresent(Double.self, forKey: .lastRatio)
         self.days = try c.decodeIfPresent(Int.self, forKey: .days)
+    }
+}
+
+public struct BlockAnsicht: Codable, Sendable, Hashable {
+    public var id: String
+    public var ebene: Int
+    public var rolle: BlockAnsichtRolleWahl
+    public var rolleText: String
+    public var name: String
+    public var kurz: String
+    public var kreis: String?
+    public var erklaerung: [String]
+    public var gleichungen: [String]
+    public var behandlung: BlockAnsichtBehandlungWahl?
+    public var behandlungText: String?
+    public var quelle: String?
+    public var marke: String?
+    public var gibtMarke: String?
+    public var parameter: [String]
+    public var glied: String?
+    public var gliedEntwurf: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case id
+        case ebene
+        case rolle
+        case rolleText = "rolle_text"
+        case name
+        case kurz
+        case kreis
+        case erklaerung
+        case gleichungen
+        case behandlung
+        case behandlungText = "behandlung_text"
+        case quelle
+        case marke
+        case gibtMarke = "gibt_marke"
+        case parameter
+        case glied
+        case gliedEntwurf = "glied_entwurf"
+    }
+
+    public init(id: String, ebene: Int, rolle: BlockAnsichtRolleWahl, rolleText: String, name: String, kurz: String, kreis: String? = nil, erklaerung: [String] = [], gleichungen: [String] = [], behandlung: BlockAnsichtBehandlungWahl? = nil, behandlungText: String? = nil, quelle: String? = nil, marke: String? = nil, gibtMarke: String? = nil, parameter: [String] = [], glied: String? = nil, gliedEntwurf: String? = nil) {
+        self.id = id
+        self.ebene = ebene
+        self.rolle = rolle
+        self.rolleText = rolleText
+        self.name = name
+        self.kurz = kurz
+        self.kreis = kreis
+        self.erklaerung = erklaerung
+        self.gleichungen = gleichungen
+        self.behandlung = behandlung
+        self.behandlungText = behandlungText
+        self.quelle = quelle
+        self.marke = marke
+        self.gibtMarke = gibtMarke
+        self.parameter = parameter
+        self.glied = glied
+        self.gliedEntwurf = gliedEntwurf
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.ebene = try c.decode(Int.self, forKey: .ebene)
+        self.rolle = try c.decode(BlockAnsichtRolleWahl.self, forKey: .rolle)
+        self.rolleText = try c.decode(String.self, forKey: .rolleText)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.kurz = try c.decode(String.self, forKey: .kurz)
+        self.kreis = try c.decodeIfPresent(String.self, forKey: .kreis)
+        self.erklaerung = try c.decodeIfPresent([String].self, forKey: .erklaerung) ?? []
+        self.gleichungen = try c.decodeIfPresent([String].self, forKey: .gleichungen) ?? []
+        self.behandlung = try c.decodeIfPresent(BlockAnsichtBehandlungWahl.self, forKey: .behandlung)
+        self.behandlungText = try c.decodeIfPresent(String.self, forKey: .behandlungText)
+        self.quelle = try c.decodeIfPresent(String.self, forKey: .quelle)
+        self.marke = try c.decodeIfPresent(String.self, forKey: .marke)
+        self.gibtMarke = try c.decodeIfPresent(String.self, forKey: .gibtMarke)
+        self.parameter = try c.decodeIfPresent([String].self, forKey: .parameter) ?? []
+        self.glied = try c.decodeIfPresent(String.self, forKey: .glied)
+        self.gliedEntwurf = try c.decodeIfPresent(String.self, forKey: .gliedEntwurf)
     }
 }
 
@@ -3491,6 +3786,7 @@ public struct EnergySnapshot: Codable, Sendable, Hashable {
 }
 
 public struct EnergySummaryOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var period: EnergySummaryOutPeriodWahl
     public var anchor: String
     public var start: String
@@ -3499,7 +3795,19 @@ public struct EnergySummaryOut: Codable, Sendable, Hashable {
     public var buckets: [EnergyBucketOut]
     public var meta: EnergyMetaOut
 
-    public init(period: EnergySummaryOutPeriodWahl, anchor: String, start: String, end: String, totals: EnergyTotalsOut, buckets: [EnergyBucketOut] = [], meta: EnergyMetaOut) {
+    public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
+        case period
+        case anchor
+        case start
+        case end
+        case totals
+        case buckets
+        case meta
+    }
+
+    public init(generatedAt: String, period: EnergySummaryOutPeriodWahl, anchor: String, start: String, end: String, totals: EnergyTotalsOut, buckets: [EnergyBucketOut] = [], meta: EnergyMetaOut) {
+        self.generatedAt = generatedAt
         self.period = period
         self.anchor = anchor
         self.start = start
@@ -3511,6 +3819,7 @@ public struct EnergySummaryOut: Codable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.period = try c.decode(EnergySummaryOutPeriodWahl.self, forKey: .period)
         self.anchor = try c.decode(String.self, forKey: .anchor)
         self.start = try c.decode(String.self, forKey: .start)
@@ -3770,16 +4079,25 @@ public struct Ereignis: Codable, Sendable, Hashable {
 }
 
 public struct EvReportOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var summary: EnergySummaryOut
     public var sessions: [EvSessionOut]
 
-    public init(summary: EnergySummaryOut, sessions: [EvSessionOut] = []) {
+    public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
+        case summary
+        case sessions
+    }
+
+    public init(generatedAt: String, summary: EnergySummaryOut, sessions: [EvSessionOut] = []) {
+        self.generatedAt = generatedAt
         self.summary = summary
         self.sessions = sessions
     }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.summary = try c.decode(EnergySummaryOut.self, forKey: .summary)
         self.sessions = try c.decodeIfPresent([EvSessionOut].self, forKey: .sessions) ?? []
     }
@@ -4933,6 +5251,92 @@ public struct GeraetVerlaufPunktOut: Codable, Sendable, Hashable {
     }
 }
 
+/// Ein Übertragungsglied mit seinem Bild: Kurzzeichen, Name, Funktion, Sprungantwort.
+///
+/// Der Katalog steht einmal in der Antwort und nicht an jedem Block. Die Kurven sind auf das
+/// Einheitsquadrat normiert - Form, keine Messung.
+public struct GliedAnsicht: Codable, Sendable, Hashable {
+    public var id: String
+    public var kurz: String
+    public var name: String
+    public var gS: String
+    public var art: GliedAnsichtArtWahl
+    public var kategorie: GliedAnsichtKategorieWahl
+    public var nichtlinear: Bool
+    public var erkennen: String
+    public var kurve: [[Double]]
+    public var kurve2: [[Double]]
+
+    public enum CodingKeys: String, CodingKey {
+        case id
+        case kurz
+        case name
+        case gS = "g_s"
+        case art
+        case kategorie
+        case nichtlinear
+        case erkennen
+        case kurve
+        case kurve2
+    }
+
+    public init(id: String, kurz: String, name: String, gS: String, art: GliedAnsichtArtWahl, kategorie: GliedAnsichtKategorieWahl, nichtlinear: Bool, erkennen: String, kurve: [[Double]] = [], kurve2: [[Double]] = []) {
+        self.id = id
+        self.kurz = kurz
+        self.name = name
+        self.gS = gS
+        self.art = art
+        self.kategorie = kategorie
+        self.nichtlinear = nichtlinear
+        self.erkennen = erkennen
+        self.kurve = kurve
+        self.kurve2 = kurve2
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.kurz = try c.decode(String.self, forKey: .kurz)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.gS = try c.decode(String.self, forKey: .gS)
+        self.art = try c.decode(GliedAnsichtArtWahl.self, forKey: .art)
+        self.kategorie = try c.decode(GliedAnsichtKategorieWahl.self, forKey: .kategorie)
+        self.nichtlinear = try c.decode(Bool.self, forKey: .nichtlinear)
+        self.erkennen = try c.decode(String.self, forKey: .erkennen)
+        self.kurve = try c.decodeIfPresent([[Double]].self, forKey: .kurve) ?? []
+        self.kurve2 = try c.decodeIfPresent([[Double]].self, forKey: .kurve2) ?? []
+    }
+}
+
+/// Der Restfehler eines Teilmodells gegen die Messung.
+public struct GueteAnsicht: Codable, Sendable, Hashable {
+    public var modell: String
+    public var block: String
+    public var einheit: String
+    public var rmse: Double?
+    public var n: Int
+    public var quelle: String
+
+    public init(modell: String, block: String, einheit: String, rmse: Double? = nil, n: Int, quelle: String) {
+        self.modell = modell
+        self.block = block
+        self.einheit = einheit
+        self.rmse = rmse
+        self.n = n
+        self.quelle = quelle
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.modell = try c.decode(String.self, forKey: .modell)
+        self.block = try c.decode(String.self, forKey: .block)
+        self.einheit = try c.decode(String.self, forKey: .einheit)
+        self.rmse = try c.decodeIfPresent(Double.self, forKey: .rmse)
+        self.n = try c.decode(Int.self, forKey: .n)
+        self.quelle = try c.decode(String.self, forKey: .quelle)
+    }
+}
+
 public struct HTTPValidationError: Codable, Sendable, Hashable {
     public var detail: [ValidationError]
 
@@ -4948,6 +5352,7 @@ public struct HTTPValidationError: Codable, Sendable, Hashable {
 
 /// Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging.
 public struct HeatBalanceOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var period: HeatBalanceOutPeriodWahl
     public var start: String
     public var end: String
@@ -4964,6 +5369,7 @@ public struct HeatBalanceOut: Codable, Sendable, Hashable {
     public var noteDe: String?
 
     public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
         case period
         case start
         case end
@@ -4980,7 +5386,8 @@ public struct HeatBalanceOut: Codable, Sendable, Hashable {
         case noteDe = "note_de"
     }
 
-    public init(period: HeatBalanceOutPeriodWahl, start: String, end: String, resolutionDe: String, totals: HeatTotals, previous: HeatTotals? = nil, series: [HeatBalancePointOut] = [], buckets: [HeatBucketOut] = [], cost: HeatCostOut? = nil, forecastHeatKwh: Double? = nil, forecastNoteDe: String? = nil, params: HeatParamsOut, ventilation: VentilationOut? = nil, noteDe: String? = nil) {
+    public init(generatedAt: String, period: HeatBalanceOutPeriodWahl, start: String, end: String, resolutionDe: String, totals: HeatTotals, previous: HeatTotals? = nil, series: [HeatBalancePointOut] = [], buckets: [HeatBucketOut] = [], cost: HeatCostOut? = nil, forecastHeatKwh: Double? = nil, forecastNoteDe: String? = nil, params: HeatParamsOut, ventilation: VentilationOut? = nil, noteDe: String? = nil) {
+        self.generatedAt = generatedAt
         self.period = period
         self.start = start
         self.end = end
@@ -4999,6 +5406,7 @@ public struct HeatBalanceOut: Codable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.period = try c.decode(HeatBalanceOutPeriodWahl.self, forKey: .period)
         self.start = try c.decode(String.self, forKey: .start)
         self.end = try c.decode(String.self, forKey: .end)
@@ -5542,6 +5950,7 @@ public struct HeatPumpState: Codable, Sendable, Hashable {
 }
 
 public struct HeatReportOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var summary: EnergySummaryOut
     public var thermalKwhEst: Double
     public var copEst: Double
@@ -5557,6 +5966,7 @@ public struct HeatReportOut: Codable, Sendable, Hashable {
     public var modelNoteDe: String
 
     public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
         case summary
         case thermalKwhEst = "thermal_kwh_est"
         case copEst = "cop_est"
@@ -5572,7 +5982,8 @@ public struct HeatReportOut: Codable, Sendable, Hashable {
         case modelNoteDe = "model_note_de"
     }
 
-    public init(summary: EnergySummaryOut, thermalKwhEst: Double, copEst: Double, forecast: [HeatForecastPoint] = [], forecastElectricKwh24h: Double, forecastThermalKwh24h: Double, bufferSeries: [[String: Mischwert]] = [], heatLossKwPerK: Double, cycling: CyclingStats, priceQuality: PriceQualityOut, bufferBalance: BufferBalanceOut, stove: StoveOut, modelNoteDe: String) {
+    public init(generatedAt: String, summary: EnergySummaryOut, thermalKwhEst: Double, copEst: Double, forecast: [HeatForecastPoint] = [], forecastElectricKwh24h: Double, forecastThermalKwh24h: Double, bufferSeries: [[String: Mischwert]] = [], heatLossKwPerK: Double, cycling: CyclingStats, priceQuality: PriceQualityOut, bufferBalance: BufferBalanceOut, stove: StoveOut, modelNoteDe: String) {
+        self.generatedAt = generatedAt
         self.summary = summary
         self.thermalKwhEst = thermalKwhEst
         self.copEst = copEst
@@ -5590,6 +6001,7 @@ public struct HeatReportOut: Codable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.summary = try c.decode(EnergySummaryOut.self, forKey: .summary)
         self.thermalKwhEst = try c.decode(Double.self, forKey: .thermalKwhEst)
         self.copEst = try c.decode(Double.self, forKey: .copEst)
@@ -6318,6 +6730,31 @@ public struct Item: Codable, Sendable, Hashable {
     }
 }
 
+public struct KanteAnsicht: Codable, Sendable, Hashable {
+    public var von: String
+    public var nach: String
+    public var signal: String
+    public var art: KanteAnsichtArtWahl
+    public var vorzeichen: KanteAnsichtVorzeichenWahl?
+
+    public init(von: String, nach: String, signal: String, art: KanteAnsichtArtWahl, vorzeichen: KanteAnsichtVorzeichenWahl? = nil) {
+        self.von = von
+        self.nach = nach
+        self.signal = signal
+        self.art = art
+        self.vorzeichen = vorzeichen
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.von = try c.decode(String.self, forKey: .von)
+        self.nach = try c.decode(String.self, forKey: .nach)
+        self.signal = try c.decode(String.self, forKey: .signal)
+        self.art = try c.decode(KanteAnsichtArtWahl.self, forKey: .art)
+        self.vorzeichen = try c.decodeIfPresent(KanteAnsichtVorzeichenWahl.self, forKey: .vorzeichen)
+    }
+}
+
 /// Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.
 ///
 /// Die Punkte sind Abschätzungen aus Durchfluss, Spreizung und Zähler; warum, steht in
@@ -6376,6 +6813,25 @@ public struct KennlinieOut: Codable, Sendable, Hashable {
         self.annahmeVorlaufC = try c.decodeIfPresent(Double.self, forKey: .annahmeVorlaufC)
         self.bilanz = try c.decodeIfPresent(KennlinienBilanzOut.self, forKey: .bilanz)
         self.hinweiseDe = try c.decodeIfPresent([String].self, forKey: .hinweiseDe) ?? []
+    }
+}
+
+public struct KennliniePunkt: Codable, Sendable, Hashable {
+    public var w: Double
+    public var db: Double
+    public var grad: Double
+
+    public init(w: Double, db: Double, grad: Double) {
+        self.w = w
+        self.db = db
+        self.grad = grad
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.w = try c.decode(Double.self, forKey: .w)
+        self.db = try c.decode(Double.self, forKey: .db)
+        self.grad = try c.decode(Double.self, forKey: .grad)
     }
 }
 
@@ -6713,6 +7169,114 @@ public struct KontaktwirkungOut: Codable, Sendable, Hashable {
     }
 }
 
+/// Grenzkosten der Wärme an diesem Arbeitspunkt - die Zahl, nach der zugeordnet wird.
+public struct Kostenpunkt: Codable, Sendable, Hashable {
+    public var cop: Double
+    public var waermepumpeCtKwh: Double
+    public var ofenCtKwh: Double
+    public var copUmschalt: Double
+    public var umschaltAussenC: Double?
+
+    public enum CodingKeys: String, CodingKey {
+        case cop
+        case waermepumpeCtKwh = "waermepumpe_ct_kwh"
+        case ofenCtKwh = "ofen_ct_kwh"
+        case copUmschalt = "cop_umschalt"
+        case umschaltAussenC = "umschalt_aussen_c"
+    }
+
+    public init(cop: Double, waermepumpeCtKwh: Double, ofenCtKwh: Double, copUmschalt: Double, umschaltAussenC: Double? = nil) {
+        self.cop = cop
+        self.waermepumpeCtKwh = waermepumpeCtKwh
+        self.ofenCtKwh = ofenCtKwh
+        self.copUmschalt = copUmschalt
+        self.umschaltAussenC = umschaltAussenC
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.cop = try c.decode(Double.self, forKey: .cop)
+        self.waermepumpeCtKwh = try c.decode(Double.self, forKey: .waermepumpeCtKwh)
+        self.ofenCtKwh = try c.decode(Double.self, forKey: .ofenCtKwh)
+        self.copUmschalt = try c.decode(Double.self, forKey: .copUmschalt)
+        self.umschaltAussenC = try c.decodeIfPresent(Double.self, forKey: .umschaltAussenC)
+    }
+}
+
+/// Ein Kreis der Kaskade mit seinem Entwurf.
+public struct KreisAnsicht: Codable, Sendable, Hashable {
+    public var id: String
+    public var name: String
+    public var regelgroesse: String
+    public var stellgroesse: String
+    public var reglerBlock: String
+    public var messglied: String?
+    public var taktS: Double
+    public var art: KreisAnsichtArtWahl
+    public var erklaerung: [String]
+    public var strecke: StreckeAnsicht?
+    public var regler: ReglerAnsicht?
+    public var reserven: ReservenAnsicht?
+    public var kennlinie: [KennliniePunkt]
+    public var hystereseK: Double?
+    public var hinweis: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case regelgroesse
+        case stellgroesse
+        case reglerBlock = "regler_block"
+        case messglied
+        case taktS = "takt_s"
+        case art
+        case erklaerung
+        case strecke
+        case regler
+        case reserven
+        case kennlinie
+        case hystereseK = "hysterese_k"
+        case hinweis
+    }
+
+    public init(id: String, name: String, regelgroesse: String, stellgroesse: String, reglerBlock: String, messglied: String? = nil, taktS: Double, art: KreisAnsichtArtWahl, erklaerung: [String] = [], strecke: StreckeAnsicht? = nil, regler: ReglerAnsicht? = nil, reserven: ReservenAnsicht? = nil, kennlinie: [KennliniePunkt] = [], hystereseK: Double? = nil, hinweis: String? = nil) {
+        self.id = id
+        self.name = name
+        self.regelgroesse = regelgroesse
+        self.stellgroesse = stellgroesse
+        self.reglerBlock = reglerBlock
+        self.messglied = messglied
+        self.taktS = taktS
+        self.art = art
+        self.erklaerung = erklaerung
+        self.strecke = strecke
+        self.regler = regler
+        self.reserven = reserven
+        self.kennlinie = kennlinie
+        self.hystereseK = hystereseK
+        self.hinweis = hinweis
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.regelgroesse = try c.decode(String.self, forKey: .regelgroesse)
+        self.stellgroesse = try c.decode(String.self, forKey: .stellgroesse)
+        self.reglerBlock = try c.decode(String.self, forKey: .reglerBlock)
+        self.messglied = try c.decodeIfPresent(String.self, forKey: .messglied)
+        self.taktS = try c.decode(Double.self, forKey: .taktS)
+        self.art = try c.decode(KreisAnsichtArtWahl.self, forKey: .art)
+        self.erklaerung = try c.decodeIfPresent([String].self, forKey: .erklaerung) ?? []
+        self.strecke = try c.decodeIfPresent(StreckeAnsicht.self, forKey: .strecke)
+        self.regler = try c.decodeIfPresent(ReglerAnsicht.self, forKey: .regler)
+        self.reserven = try c.decodeIfPresent(ReservenAnsicht.self, forKey: .reserven)
+        self.kennlinie = try c.decodeIfPresent([KennliniePunkt].self, forKey: .kennlinie) ?? []
+        self.hystereseK = try c.decodeIfPresent(Double.self, forKey: .hystereseK)
+        self.hinweis = try c.decodeIfPresent(String.self, forKey: .hinweis)
+    }
+}
+
 /// Eine der Linien: ihre Summe, und je Viertelstunde, woraus sie entstand.
 public struct Linie: Codable, Sendable, Hashable {
     public var key: String
@@ -6965,6 +7529,29 @@ public struct MemoryTypeOut: Codable, Sendable, Hashable {
         self.name = try c.decode(String.self, forKey: .name)
         self.count = try c.decode(Int.self, forKey: .count)
         self.mb = try c.decode(Double.self, forKey: .mb)
+    }
+}
+
+/// Eine Schätzung zu einem Zeitpunkt, mit ihrer Unsicherheit. Eine Stützstelle des Verlaufs.
+public struct Messpunkt: Codable, Sendable, Hashable {
+    public var at: String
+    public var wert: Double
+    public var sigma: Double?
+    public var n: Int?
+
+    public init(at: String, wert: Double, sigma: Double? = nil, n: Int? = nil) {
+        self.at = at
+        self.wert = wert
+        self.sigma = sigma
+        self.n = n
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.at = try c.decode(String.self, forKey: .at)
+        self.wert = try c.decode(Double.self, forKey: .wert)
+        self.sigma = try c.decodeIfPresent(Double.self, forKey: .sigma)
+        self.n = try c.decodeIfPresent(Int.self, forKey: .n)
     }
 }
 
@@ -7267,6 +7854,116 @@ public struct Override: Codable, Sendable, Hashable {
         self.startedAt = try c.decode(String.self, forKey: .startedAt)
         self.endsAt = try c.decode(String.self, forKey: .endsAt)
         self.setBy = try c.decodeIfPresent(String.self, forKey: .setBy)
+    }
+}
+
+/// Ein Parameter, wie ihn die Oberfläche zeigt.
+public struct ParameterAnsicht: Codable, Sendable, Hashable {
+    public var id: String
+    public var block: String
+    public var symbol: String
+    public var name: String
+    public var einheit: String
+    public var stellen: Int
+    public var wert: Double
+    public var herkunft: ParameterAnsichtHerkunftWahl
+    public var schaetzart: ParameterAnsichtSchaetzartWahl
+    public var schaetzartText: String
+    public var startwert: Double
+    public var schaetzung: Double?
+    public var sigma: Double?
+    public var n: Int?
+    public var stand: String?
+    public var rmse: Double?
+    public var unten: Double
+    public var oben: Double
+    public var warum: String
+    public var quelle: String?
+    public var wirktAuf: [String]
+    public var protokoll: [Uebernahme]
+    public var verlauf: [Messpunkt]
+    public var pruefung: Pruefung?
+
+    public enum CodingKeys: String, CodingKey {
+        case id
+        case block
+        case symbol
+        case name
+        case einheit
+        case stellen
+        case wert
+        case herkunft
+        case schaetzart
+        case schaetzartText = "schaetzart_text"
+        case startwert
+        case schaetzung
+        case sigma
+        case n
+        case stand
+        case rmse
+        case unten
+        case oben
+        case warum
+        case quelle
+        case wirktAuf = "wirkt_auf"
+        case protokoll
+        case verlauf
+        case pruefung
+    }
+
+    public init(id: String, block: String, symbol: String, name: String, einheit: String, stellen: Int, wert: Double, herkunft: ParameterAnsichtHerkunftWahl, schaetzart: ParameterAnsichtSchaetzartWahl, schaetzartText: String, startwert: Double, schaetzung: Double? = nil, sigma: Double? = nil, n: Int? = nil, stand: String? = nil, rmse: Double? = nil, unten: Double, oben: Double, warum: String, quelle: String? = nil, wirktAuf: [String] = [], protokoll: [Uebernahme] = [], verlauf: [Messpunkt] = [], pruefung: Pruefung? = nil) {
+        self.id = id
+        self.block = block
+        self.symbol = symbol
+        self.name = name
+        self.einheit = einheit
+        self.stellen = stellen
+        self.wert = wert
+        self.herkunft = herkunft
+        self.schaetzart = schaetzart
+        self.schaetzartText = schaetzartText
+        self.startwert = startwert
+        self.schaetzung = schaetzung
+        self.sigma = sigma
+        self.n = n
+        self.stand = stand
+        self.rmse = rmse
+        self.unten = unten
+        self.oben = oben
+        self.warum = warum
+        self.quelle = quelle
+        self.wirktAuf = wirktAuf
+        self.protokoll = protokoll
+        self.verlauf = verlauf
+        self.pruefung = pruefung
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.block = try c.decode(String.self, forKey: .block)
+        self.symbol = try c.decode(String.self, forKey: .symbol)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.einheit = try c.decode(String.self, forKey: .einheit)
+        self.stellen = try c.decode(Int.self, forKey: .stellen)
+        self.wert = try c.decode(Double.self, forKey: .wert)
+        self.herkunft = try c.decode(ParameterAnsichtHerkunftWahl.self, forKey: .herkunft)
+        self.schaetzart = try c.decode(ParameterAnsichtSchaetzartWahl.self, forKey: .schaetzart)
+        self.schaetzartText = try c.decode(String.self, forKey: .schaetzartText)
+        self.startwert = try c.decode(Double.self, forKey: .startwert)
+        self.schaetzung = try c.decodeIfPresent(Double.self, forKey: .schaetzung)
+        self.sigma = try c.decodeIfPresent(Double.self, forKey: .sigma)
+        self.n = try c.decodeIfPresent(Int.self, forKey: .n)
+        self.stand = try c.decodeIfPresent(String.self, forKey: .stand)
+        self.rmse = try c.decodeIfPresent(Double.self, forKey: .rmse)
+        self.unten = try c.decode(Double.self, forKey: .unten)
+        self.oben = try c.decode(Double.self, forKey: .oben)
+        self.warum = try c.decode(String.self, forKey: .warum)
+        self.quelle = try c.decodeIfPresent(String.self, forKey: .quelle)
+        self.wirktAuf = try c.decodeIfPresent([String].self, forKey: .wirktAuf) ?? []
+        self.protokoll = try c.decodeIfPresent([Uebernahme].self, forKey: .protokoll) ?? []
+        self.verlauf = try c.decodeIfPresent([Messpunkt].self, forKey: .verlauf) ?? []
+        self.pruefung = try c.decodeIfPresent(Pruefung.self, forKey: .pruefung)
     }
 }
 
@@ -7722,6 +8419,26 @@ public struct PriceWindowOut: Codable, Sendable, Hashable {
     }
 }
 
+/// Das Ergebnis der Übernahmeprüfung, mit Satz für die Oberfläche.
+public struct Pruefung: Codable, Sendable, Hashable {
+    public var uebernehmen: Bool
+    public var code: PruefungCodeWahl
+    public var grund: String
+
+    public init(uebernehmen: Bool, code: PruefungCodeWahl, grund: String) {
+        self.uebernehmen = uebernehmen
+        self.code = code
+        self.grund = grund
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.uebernehmen = try c.decode(Bool.self, forKey: .uebernehmen)
+        self.code = try c.decode(PruefungCodeWahl.self, forKey: .code)
+        self.grund = try c.decode(String.self, forKey: .grund)
+    }
+}
+
 /// Ein angemeldetes Gerät, soweit der Dienst es kennt: ein Wort und der Stand der Zustellung.
 public struct PushGeraetOut: Codable, Sendable, Hashable {
     public var label: String
@@ -7972,6 +8689,7 @@ public struct PvTaxMetaOut: Codable, Sendable, Hashable {
 
 /// PV-Abrechnung eines Zeitraums: Einspeisung, Eigenverbrauch, Umsatzsteuer.
 public struct PvTaxReportOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var period: PvTaxReportOutPeriodWahl
     public var anchor: String
     public var start: String
@@ -7980,7 +8698,19 @@ public struct PvTaxReportOut: Codable, Sendable, Hashable {
     public var buckets: [PvTaxBucketOut]
     public var meta: PvTaxMetaOut
 
-    public init(period: PvTaxReportOutPeriodWahl, anchor: String, start: String, end: String, totals: PvTaxTotals, buckets: [PvTaxBucketOut] = [], meta: PvTaxMetaOut) {
+    public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
+        case period
+        case anchor
+        case start
+        case end
+        case totals
+        case buckets
+        case meta
+    }
+
+    public init(generatedAt: String, period: PvTaxReportOutPeriodWahl, anchor: String, start: String, end: String, totals: PvTaxTotals, buckets: [PvTaxBucketOut] = [], meta: PvTaxMetaOut) {
+        self.generatedAt = generatedAt
         self.period = period
         self.anchor = anchor
         self.start = start
@@ -7992,6 +8722,7 @@ public struct PvTaxReportOut: Codable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.period = try c.decode(PvTaxReportOutPeriodWahl.self, forKey: .period)
         self.anchor = try c.decode(String.self, forKey: .anchor)
         self.start = try c.decode(String.self, forKey: .start)
@@ -8121,6 +8852,78 @@ public struct Rechnungsergebnis: Codable, Sendable, Hashable {
     }
 }
 
+/// Die Regelkreis-Karte: Struktur, geltende Parameter, Entwurf und Lernzustand.
+///
+/// Alles, was die Karte zeigt, steht hier: je Block seine Erklärung, seine Gleichungen und seine
+/// Parameter, je Kreis die Strecke, der daraus entworfene Regler, seine Reserven und die
+/// Frequenzkennlinie, je Parameter die Herkunft - gemessen, geschätzt, angenommen, fest,
+/// übersteuert -, die Unsicherheit und das Übernahmeprotokoll.
+///
+/// Koordinaten stehen nicht darin. Wo ein Kästchen liegt, ist eine Frage der Zeichnung; was
+/// verbunden ist, eine Aussage über das Haus.
+public struct RegelkreisOut: Codable, Sendable, Hashable {
+    public var stand: String
+    public var seit: String?
+    public var tage: Double?
+    public var arbeitspunkt: Arbeitspunkt
+    public var kosten: Kostenpunkt
+    public var bloecke: [BlockAnsicht]
+    public var glieder: [GliedAnsicht]
+    public var kanten: [KanteAnsicht]
+    public var kreise: [KreisAnsicht]
+    public var parameter: [ParameterAnsicht]
+    public var guete: [GueteAnsicht]
+    public var uebersteuert: [String]
+    public var uebernahmen: Int?
+
+    public init(stand: String, seit: String? = nil, tage: Double? = nil, arbeitspunkt: Arbeitspunkt, kosten: Kostenpunkt, bloecke: [BlockAnsicht] = [], glieder: [GliedAnsicht] = [], kanten: [KanteAnsicht] = [], kreise: [KreisAnsicht] = [], parameter: [ParameterAnsicht] = [], guete: [GueteAnsicht] = [], uebersteuert: [String] = [], uebernahmen: Int? = nil) {
+        self.stand = stand
+        self.seit = seit
+        self.tage = tage
+        self.arbeitspunkt = arbeitspunkt
+        self.kosten = kosten
+        self.bloecke = bloecke
+        self.glieder = glieder
+        self.kanten = kanten
+        self.kreise = kreise
+        self.parameter = parameter
+        self.guete = guete
+        self.uebersteuert = uebersteuert
+        self.uebernahmen = uebernahmen
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.stand = try c.decode(String.self, forKey: .stand)
+        self.seit = try c.decodeIfPresent(String.self, forKey: .seit)
+        self.tage = try c.decodeIfPresent(Double.self, forKey: .tage)
+        self.arbeitspunkt = try c.decode(Arbeitspunkt.self, forKey: .arbeitspunkt)
+        self.kosten = try c.decode(Kostenpunkt.self, forKey: .kosten)
+        self.bloecke = try c.decodeIfPresent([BlockAnsicht].self, forKey: .bloecke) ?? []
+        self.glieder = try c.decodeIfPresent([GliedAnsicht].self, forKey: .glieder) ?? []
+        self.kanten = try c.decodeIfPresent([KanteAnsicht].self, forKey: .kanten) ?? []
+        self.kreise = try c.decodeIfPresent([KreisAnsicht].self, forKey: .kreise) ?? []
+        self.parameter = try c.decodeIfPresent([ParameterAnsicht].self, forKey: .parameter) ?? []
+        self.guete = try c.decodeIfPresent([GueteAnsicht].self, forKey: .guete) ?? []
+        self.uebersteuert = try c.decodeIfPresent([String].self, forKey: .uebersteuert) ?? []
+        self.uebernahmen = try c.decodeIfPresent(Int.self, forKey: .uebernahmen)
+    }
+}
+
+/// Ein Parameter von Hand. Beschnitten wird auf die Plausibilitätsgrenzen des Registers.
+public struct RegelkreisStellenIn: Codable, Sendable, Hashable {
+    public var wert: Double
+
+    public init(wert: Double) {
+        self.wert = wert
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.wert = try c.decode(Double.self, forKey: .wert)
+    }
+}
+
 /// Eine Zeile des Protokolls: wer wann was gestellt hat.
 public struct ReglerAenderungOut: Codable, Sendable, Hashable {
     public var at: String
@@ -8156,6 +8959,28 @@ public struct ReglerAenderungOut: Codable, Sendable, Hashable {
         self.vonDe = try c.decode(String.self, forKey: .vonDe)
         self.aufDe = try c.decode(String.self, forKey: .aufDe)
         self.urheberDe = try c.decodeIfPresent(String.self, forKey: .urheberDe)
+    }
+}
+
+public struct ReglerAnsicht: Codable, Sendable, Hashable {
+    public var kp: Double
+    public var tn: Double
+    public var lam: Double
+    public var regel: String
+
+    public init(kp: Double, tn: Double, lam: Double, regel: String) {
+        self.kp = kp
+        self.tn = tn
+        self.lam = lam
+        self.regel = regel
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.kp = try c.decode(Double.self, forKey: .kp)
+        self.tn = try c.decode(Double.self, forKey: .tn)
+        self.lam = try c.decode(Double.self, forKey: .lam)
+        self.regel = try c.decode(String.self, forKey: .regel)
     }
 }
 
@@ -8489,6 +9314,39 @@ public struct ReiheOut: Codable, Sendable, Hashable {
         self.gesamt = try c.decode(Wertung.self, forKey: .gesamt)
         self.jeVorlauf = try c.decodeIfPresent([VorlaufOut].self, forKey: .jeVorlauf) ?? []
         self.laeufe = try c.decode(Int.self, forKey: .laeufe)
+    }
+}
+
+public struct ReservenAnsicht: Codable, Sendable, Hashable {
+    public var durchtritt: Double?
+    public var periodeMin: Double?
+    public var phasenreserveGrad: Double?
+    public var amplitudenreserve: Double?
+    public var gut: Bool
+
+    public enum CodingKeys: String, CodingKey {
+        case durchtritt
+        case periodeMin = "periode_min"
+        case phasenreserveGrad = "phasenreserve_grad"
+        case amplitudenreserve
+        case gut
+    }
+
+    public init(durchtritt: Double? = nil, periodeMin: Double? = nil, phasenreserveGrad: Double? = nil, amplitudenreserve: Double? = nil, gut: Bool) {
+        self.durchtritt = durchtritt
+        self.periodeMin = periodeMin
+        self.phasenreserveGrad = phasenreserveGrad
+        self.amplitudenreserve = amplitudenreserve
+        self.gut = gut
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.durchtritt = try c.decodeIfPresent(Double.self, forKey: .durchtritt)
+        self.periodeMin = try c.decodeIfPresent(Double.self, forKey: .periodeMin)
+        self.phasenreserveGrad = try c.decodeIfPresent(Double.self, forKey: .phasenreserveGrad)
+        self.amplitudenreserve = try c.decodeIfPresent(Double.self, forKey: .amplitudenreserve)
+        self.gut = try c.decode(Bool.self, forKey: .gut)
     }
 }
 
@@ -9231,6 +10089,7 @@ public struct ShiftDayOut: Codable, Sendable, Hashable {
 /// Annahmen stehen einzeln in `assumptions_de`, weil eine Zahl ohne sie mehr behauptet, als sie
 /// weiß.
 public struct ShiftReportOut: Codable, Sendable, Hashable {
+    public var generatedAt: String
     public var period: ShiftReportOutPeriodWahl
     public var start: String
     public var end: String
@@ -9248,6 +10107,7 @@ public struct ShiftReportOut: Codable, Sendable, Hashable {
     public var assumptionsDe: [String]
 
     public enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
         case period
         case start
         case end
@@ -9265,7 +10125,8 @@ public struct ShiftReportOut: Codable, Sendable, Hashable {
         case assumptionsDe = "assumptions_de"
     }
 
-    public init(period: ShiftReportOutPeriodWahl, start: String, end: String, actualEur: Double, naiveEur: Double, savingEur: Double, savingCtPerKwh: Double? = nil, heatPumpKwh: Double, shiftedKwh: Double, days: [ShiftDayOut] = [], daysUsed: Int, daysSkipped: Int, skippedDe: String? = nil, methodDe: String, assumptionsDe: [String] = []) {
+    public init(generatedAt: String, period: ShiftReportOutPeriodWahl, start: String, end: String, actualEur: Double, naiveEur: Double, savingEur: Double, savingCtPerKwh: Double? = nil, heatPumpKwh: Double, shiftedKwh: Double, days: [ShiftDayOut] = [], daysUsed: Int, daysSkipped: Int, skippedDe: String? = nil, methodDe: String, assumptionsDe: [String] = []) {
+        self.generatedAt = generatedAt
         self.period = period
         self.start = start
         self.end = end
@@ -9285,6 +10146,7 @@ public struct ShiftReportOut: Codable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.generatedAt = try c.decode(String.self, forKey: .generatedAt)
         self.period = try c.decode(ShiftReportOutPeriodWahl.self, forKey: .period)
         self.start = try c.decode(String.self, forKey: .start)
         self.end = try c.decode(String.self, forKey: .end)
@@ -9765,6 +10627,52 @@ public struct StoveOut: Codable, Sendable, Hashable {
     }
 }
 
+/// Das Streckenmodell eines Kreises, in Zahlen.
+public struct StreckeAnsicht: Codable, Sendable, Hashable {
+    public var art: StreckeAnsichtArtWahl
+    public var k: Double
+    public var t1: Double?
+    public var t2: Double?
+    public var totzeit: Double
+    public var t1Entwurf: Double
+    public var totzeitEntwurf: Double
+    public var halbregel: Bool
+
+    public enum CodingKeys: String, CodingKey {
+        case art
+        case k
+        case t1
+        case t2
+        case totzeit
+        case t1Entwurf = "t1_entwurf"
+        case totzeitEntwurf = "totzeit_entwurf"
+        case halbregel
+    }
+
+    public init(art: StreckeAnsichtArtWahl, k: Double, t1: Double? = nil, t2: Double? = nil, totzeit: Double, t1Entwurf: Double, totzeitEntwurf: Double, halbregel: Bool) {
+        self.art = art
+        self.k = k
+        self.t1 = t1
+        self.t2 = t2
+        self.totzeit = totzeit
+        self.t1Entwurf = t1Entwurf
+        self.totzeitEntwurf = totzeitEntwurf
+        self.halbregel = halbregel
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.art = try c.decode(StreckeAnsichtArtWahl.self, forKey: .art)
+        self.k = try c.decode(Double.self, forKey: .k)
+        self.t1 = try c.decodeIfPresent(Double.self, forKey: .t1)
+        self.t2 = try c.decodeIfPresent(Double.self, forKey: .t2)
+        self.totzeit = try c.decode(Double.self, forKey: .totzeit)
+        self.t1Entwurf = try c.decode(Double.self, forKey: .t1Entwurf)
+        self.totzeitEntwurf = try c.decode(Double.self, forKey: .totzeitEntwurf)
+        self.halbregel = try c.decode(Bool.self, forKey: .halbregel)
+    }
+}
+
 public struct SystemEventOut: Codable, Sendable, Hashable {
     public var at: String
     public var severity: String
@@ -10042,6 +10950,52 @@ public struct TibberZusammenfassung: Codable, Sendable, Hashable {
         self.urteil = try c.decode(String.self, forKey: .urteil)
         self.befunde = try c.decodeIfPresent([Befund].self, forKey: .befunde) ?? []
         self.schonBekannt = try c.decode(Bool.self, forKey: .schonBekannt)
+    }
+}
+
+/// Ein Eintrag im Änderungsprotokoll. Was sich geändert hat, und warum.
+public struct Uebernahme: Codable, Sendable, Hashable {
+    public var at: String
+    public var alt: Double
+    public var neu: Double
+    public var sigma: Double
+    public var n: Int
+    public var rmseAlt: Double?
+    public var rmseNeu: Double?
+    public var grund: String
+
+    public enum CodingKeys: String, CodingKey {
+        case at
+        case alt
+        case neu
+        case sigma
+        case n
+        case rmseAlt = "rmse_alt"
+        case rmseNeu = "rmse_neu"
+        case grund
+    }
+
+    public init(at: String, alt: Double, neu: Double, sigma: Double, n: Int, rmseAlt: Double? = nil, rmseNeu: Double? = nil, grund: String) {
+        self.at = at
+        self.alt = alt
+        self.neu = neu
+        self.sigma = sigma
+        self.n = n
+        self.rmseAlt = rmseAlt
+        self.rmseNeu = rmseNeu
+        self.grund = grund
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.at = try c.decode(String.self, forKey: .at)
+        self.alt = try c.decode(Double.self, forKey: .alt)
+        self.neu = try c.decode(Double.self, forKey: .neu)
+        self.sigma = try c.decode(Double.self, forKey: .sigma)
+        self.n = try c.decode(Int.self, forKey: .n)
+        self.rmseAlt = try c.decodeIfPresent(Double.self, forKey: .rmseAlt)
+        self.rmseNeu = try c.decodeIfPresent(Double.self, forKey: .rmseNeu)
+        self.grund = try c.decode(String.self, forKey: .grund)
     }
 }
 

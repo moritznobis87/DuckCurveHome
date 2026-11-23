@@ -20,6 +20,15 @@ import SwiftUI
 /// **Diese Seite rechnet einen Vergleichslauf und braucht darum Sekunden** - und deshalb steht
 /// hier der Tagesabgleich: solange ein anderer Tag lädt, steht der alte nicht mehr da.
 struct NachbetrachtungSeite: View {
+    /// Der Weg, unter dem die Seite aufgegangen ist - samt Fragezeichenteil.
+    ///
+    /// **Der Tag steht in der Adresse** (`Nachbetrachtung.tsx:45-50`), und deshalb braucht die
+    /// Seite den ungeputzten Weg: `/waerme/nachbetrachtung?day=…` kommt vom Verweis „Fahrplan
+    /// gegen Wirklichkeit“ der Wärmeseite (`HeatOverview.tsx:268`). Welchen Tag daraus wird,
+    /// rechnet der Kern (``Nachbetrachtungsbild/tag(ausWeg:heute:)``) - dasselbe Muster wie an
+    /// ``WiedergabeSeite``, die ihr Ziel aus der Jahreskarte ebenso bekommt.
+    let weg: String
+
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
     @Environment(\.horizontalSizeClass) private var breite
@@ -52,13 +61,19 @@ struct NachbetrachtungSeite: View {
             }
             hinweiskarte
             if let d = daten, !d.methodeDe.isEmpty {
+                // **Eine echte Liste und nicht vier Absätze** (`Nachbetrachtung.tsx:249-253`:
+                // eine `<ul>` im Methodendeckel, `globals.css:735` gibt ihr Einzug, Abstand
+                // und die Punkte). Jeder Satz des Dienstes gilt einzeln; untereinander als
+                // Absätze ist das nicht zu sehen.
                 Methode(
-                    d.methodeDe.map(Optional.init), kurz: Nachbetrachtungsworte.methodeKurz,
-                    titel: Nachbetrachtungsworte.methodeTitel)
+                    [], kurz: Nachbetrachtungsworte.methodeKurz,
+                    titel: Nachbetrachtungsworte.methodeTitel, punkte: d.methodeDe)
             }
         }
         .task(id: tag) { await lade() }
-        .onAppear { if tag.isEmpty { tag = Tag.plus(haus.heute, -1) } }
+        .onAppear {
+            if tag.isEmpty { tag = Nachbetrachtungsbild.tag(ausWeg: weg, heute: haus.heute) }
+        }
     }
 
     // MARK: - Karte 1: Was hat der Tag gekostet?
@@ -68,10 +83,11 @@ struct NachbetrachtungSeite: View {
             bedienzeile
             fehlerzeile
             if laedt, daten == nil {
-                Text(Nachbetrachtungsworte.laedtSatz)
-                    .font(Schrift.klein)
-                    .foregroundStyle(Farbe.text3)
-                    .fixedSize(horizontal: false, vertical: true)
+                // **Die kleine Stufe**, obwohl dieser Hinweis der einzige der Seite ist: er
+                // teilt seine Karte mit der Bedienzeile darüber, mit der man schon den Tag
+                // wechseln kann, während gerechnet wird. Eine Ente über dem Satz würde diese
+                // Spalte auseinanderziehen (``Ladehinweis/Stufe``).
+                Ladeente(satz: Nachbetrachtungsworte.laedtSatz, farbe: Farbe.text3)
             }
             if let d = daten {
                 kopfinhalt(d)
@@ -86,12 +102,7 @@ struct NachbetrachtungSeite: View {
     /// alt das Versprechen ist.
     private var kopfzahl: AnyView? {
         guard let d = daten else { return nil }
-        return AnyView(
-            Text(Nachbetrachtungsbild.kopfzahl(d))
-                .font(Schrift.winzig)
-                .foregroundStyle(Farbe.text3)
-                .multilineTextAlignment(.trailing)
-                .fixedSize(horizontal: false, vertical: true))
+        return Kartenhinweis.beiwerk(Nachbetrachtungsbild.kopfzahl(d))
     }
 
     /// Die Bedienzeile: ‹, ein Datumsfeld, ›, der lange Tag - und rechts der Weg in die
@@ -292,12 +303,7 @@ struct NachbetrachtungSeite: View {
     private func vergleichskarte(_ d: NachbetrachtungOut) -> some View {
         Karte(
             kicker: Nachbetrachtungsworte.vergleichTitel,
-            beiwerk: AnyView(
-                Text(Nachbetrachtungsworte.vergleichDazu)
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true))
+            beiwerk: Kartenhinweis.beiwerk(Nachbetrachtungsworte.vergleichDazu)
         ) {
             Tagesvergleichsbild(daten: d)
         }
@@ -309,16 +315,12 @@ struct NachbetrachtungSeite: View {
         let t = Nachbetrachtungsbild.zahlentabelle(d)
         return Karte(
             kicker: Nachbetrachtungsworte.tabelleTitel,
-            beiwerk: AnyView(
-                Text(Nachbetrachtungsworte.tabelleDazu(nVerglichen: d.nVerglichen))
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true))
+            beiwerk: Kartenhinweis.beiwerk(
+                Nachbetrachtungsworte.tabelleDazu(nVerglichen: d.nVerglichen))
         ) {
             // **„Kosten“ ist die Spalte, die am Telefon dasteht.** Die Vorlage macht aus jeder
             // Zeile einen Block mit Name und Kosten vorn (`handy.css:331-337`); ``Tabelle``
-            // schaltet stattdessen eine Spalte um (`Seiten/Bericht.swift:151-156`). Die
+            // schaltet stattdessen eine Spalte um (`Seiten/Bericht.swift:195-200`). Die
             // Abweichung ist bewusst und wurde schon für den Fahrplan getragen - hier zählt
             // nur, dass die hervorgehobene Zahl der Vorlage die zuerst gezeigte ist.
             Tabelle(
@@ -362,7 +364,7 @@ struct NachbetrachtungSeite: View {
     /// **Offen, nicht zugeklappt** (`Nachbetrachtung.tsx:235`): „Was für diesen Tag gilt, bleibt
     /// offen stehen; zugeklappt wäre es verschwiegen.“ Dieselbe Regel steht in
     /// `components/ui/Methode.tsx:11-13` und ist in der App für die Wirkungsseite schon so
-    /// umgesetzt (`FahrplanSeiten.swift:366-367`).
+    /// umgesetzt (`WirkungSeite.swift`).
     ///
     /// Die Gründe fehlender Linien fehlen hier: sie stehen schon unter der Tabelle - gefiltert
     /// im Kern (``Nachbetrachtungsbild/tageshinweise(_:)``).

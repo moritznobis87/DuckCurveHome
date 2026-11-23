@@ -63,6 +63,7 @@ final class StromuebersichtTests: XCTestCase {
         meta: EnergyMetaOut? = nil
     ) -> EnergySummaryOut {
         EnergySummaryOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .day, anchor: "2026-11-10", start: "2026-11-10T00:00:00+01:00",
             end: "2026-11-11T00:00:00+01:00", totals: t ?? summen(), buckets: stuecke,
             meta: meta ?? angaben())
@@ -285,7 +286,10 @@ final class StromuebersichtTests: XCTestCase {
         XCTAssertEqual(
             zeilen.map(\.wort),
             ["Verbrauch · kWh", "Autarkie", "Netzkosten", "Einspeiseerlös"])
-        XCTAssertEqual(zeilen.map(\.ton), [.normal, .bernstein, .glut, .normal])
+        // „Netzkosten“ trägt `--alert` wie in der Vorlage (`HouseReport.tsx:78`:
+        // `tone: "ember"`; `PeriodStrip.tsx:19`). Vorher war es `glut`, weil ``Kennzahl/Ton``
+        // keinen Alarmton kannte.
+        XCTAssertEqual(zeilen.map(\.ton), [.normal, .bernstein, .alarm, .normal])
         XCTAssertEqual(zeilen[0].werte, ["59,2", "412", "1681", "9120"])
         XCTAssertEqual(
             zeilen[1].werte.first, "11\(Formate.schmalesLeerzeichen)%")

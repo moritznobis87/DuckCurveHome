@@ -33,7 +33,7 @@ tools/demo.sh                      # API mit Reload + Next.js Dev-Server
 
 | Pfad | Inhalt |
 |---|---|
-| `packages/hems-core` | reine Domäne: Modelle, Vorzeichenkonvention, Bilanz, thermischer SOC, Regler-Zustandsmaschine, Preisfenster, Simulation |
+| `packages/hems-core` | reine Domäne: Modelle, Vorzeichenkonvention, Bilanz, thermischer SOC, Regler-Zustandsmaschine, Preisfenster, Simulation, Regelkreis (Struktur, Entwurf nach SIMC, Lernebene) |
 | `apps/api` | FastAPI: Live-Zustand, SSE-Stream, Historie, Plan, Steuerung, Bridge-Ingest, myenergi-Cloud direkt (Live + Minutenhistorie), PostgreSQL (Alembic) |
 | `apps/bridge` + `addons/duckcurve_bridge` | Bridge als Home-Assistant-Add-on: Shelly 3EM direkt über MQTT (Mosquitto), übrige Entitäten über HA, schaltet mit TTL, ausgehende WSS-Verbindung mit SQLite-Outbox |
 | `apps/web` | Next.js-Dashboard (iPad-Querformat, Dark Mode, Duck-Curve-Design-System) in fünf Bereichen, vier für den Alltag und einer für den Betrieb: Jetzt (`/`, die Wandanzeige, am Handy mit Flussbild und Ausblick auf 24 Stunden), Haus (`/haus`, die Räume als Liste zum Stellen oder als Glasmodell mit Temperaturen, Kontakten und Alarm), Energie (Strom, Wärme, Photovoltaik, Speicher, Wallbox, Jahreskarte), Geld (Kosten, PV-Abrechnung, Rechnungen) und Technik (Anlage, Wärmepumpe, Fahrplan, Wirkung, Heizkreise; für den Hausherrn dazu Prognose, Daten prüfen, Annahmen, Mitteilungen, Haustür, Zugang). Die Adressen folgen weiter dem Gegenstand (`/strom`, `/waerme`, `/system`); welcher Bereich eine Seite zeigt, steht in `apps/web/src/lib/areas.ts`. Die Reiter eines Bereichs teilen sich den Zeitraum; alte Adressen leiten um. Unter 720 px Breite eine eigene Handy-Ansicht (`apps/web/src/styles/handy.css`): Bereichsleiste unten, Energiefluss als Bild, eine führende Zahl je Seite, Tabellen als Listen |
@@ -41,6 +41,13 @@ tools/demo.sh                      # API mit Reload + Next.js Dev-Server
 | `apps/api/src/dch_api/alfred` + `apps/web/src/components/alfred` | Alfred, der Helfer unten rechts: erklärt die Seiten und beantwortet mit Mistral Fragen zu den Daten des Hauses, über Werkzeuge, die dieselben Auswertungen lesen wie die Seiten. Schaltet nichts ohne Knopfdruck ([docs/ALFRED.md](docs/ALFRED.md)) |
 | `docs/` | Projektplan, OpenAPI-Schema, Architekturentscheidungen |
 | `hardware/verteilerregler` | Prototyp eines eigenen Reglers am Heizkreisverteiler: Firmware für den ESP32-S3 (PlatformIO), Schaltbild, Stücklisten. Fährt zehn stufenlose Motorantriebe, misst den Motorstrom und liest die Rücklauffühler; gerechnet wird im Kern. Übersetzt, nie an Hardware gelaufen |
+
+Die Regelung selbst steht als Blockschaltbild unter `Technik → Regelkreis`: fünf Kaskadenebenen von
+der Kostenrechnung bis in den einzelnen Raum, die Störgrößen am Ort ihrer Wirkung, und zu jedem
+Parameter, ob er gemessen, geschätzt oder angenommen ist. Die Regler werden aus den gelernten
+Streckenparametern gerechnet, nicht eingestellt ([docs/REGELKREIS.md](docs/REGELKREIS.md)). In der
+App steht dieselbe Kaskade als Liste nach Ebenen - ein Blockschaltbild von 1400 Punkten Breite
+wäre am Telefon ein Ausschnitt, durch den man schiebt.
 
 Weitere Dokumente: [ARCHITECTURE.md](ARCHITECTURE.md) · [CONFIGURATION.md](CONFIGURATION.md) ·
 [HEMS_CONTROL.md](HEMS_CONTROL.md)

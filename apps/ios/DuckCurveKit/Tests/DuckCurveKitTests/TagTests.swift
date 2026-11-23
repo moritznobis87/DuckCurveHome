@@ -55,6 +55,35 @@ final class TagTests: XCTestCase {
         XCTAssertEqual(Tag.tagMonat("kein Tag"), "kein Tag")
     }
 
+    /// Die Form der Zellenauskunft: kurzer Wochentag mit Punkt, Tag zweistellig, Monat
+    /// ausgeschrieben, Jahr (`apps/web/src/components/reports/charts.ts:473-478`).
+    func testKurzerWochentagMitLangemMonat() {
+        XCTAssertEqual(Tag.langKurzerWochentag("2026-11-10"), "Di., 10. November 2026")
+        XCTAssertEqual(Tag.langKurzerWochentag("2026-11-07"), "Sa., 07. November 2026")
+        XCTAssertEqual(Tag.langKurzerWochentag("2026-01-04"), "So., 04. Januar 2026")
+    }
+
+    /// Die fuehrende Null kommt aus `day: "2-digit"` und ist der sichtbare Unterschied zu
+    /// ``Tag/lang(_:)``, das den Tag einstellig schreibt.
+    func testKurzerWochentagHaeltDieFuehrendeNull() {
+        XCTAssertEqual(Tag.lang("2026-11-07"), "Samstag, 7. November 2026")
+        XCTAssertNotEqual(Tag.langKurzerWochentag("2026-11-07"), Tag.lang("2026-11-07"))
+        XCTAssertTrue(Tag.langKurzerWochentag("2026-03-01").hasSuffix("01. März 2026"))
+    }
+
+    /// Der Punkt hinter dem Wochentag wird gesetzt, denn ``Namen/wochentageKurz`` fuehrt ihn
+    /// nicht - anders als bei ``Tag/kurz(_:)``, das ohne ihn schreibt.
+    func testKurzerWochentagSetztDenPunktHinterDenWochentag() {
+        XCTAssertTrue(Tag.langKurzerWochentag("2026-11-07").hasPrefix("Sa., "))
+        XCTAssertTrue(Tag.kurz("2026-11-07").hasPrefix("Sa, "))
+    }
+
+    /// Ein Tag, der kein Tag ist, kommt unveraendert zurueck wie bei den Geschwistern.
+    func testKurzerWochentagGibtEinenUngueltigenTagUnveraendertZurueck() {
+        XCTAssertEqual(Tag.langKurzerWochentag("kein Tag"), "kein Tag")
+        XCTAssertEqual(Tag.langKurzerWochentag("2026-02-30"), "2026-02-30")
+    }
+
     func testRelativeNamen() {
         let jetzt = Tag.date("2026-11-16")!
         XCTAssertEqual(Tag.nameRelativ("2026-11-16", jetzt: jetzt), "Heute")

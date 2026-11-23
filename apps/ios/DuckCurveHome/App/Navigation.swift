@@ -24,6 +24,17 @@ final class Wegweiser {
     /// Wohin ein Tippen auf eine Zahl fuehrt - der Stapel ueber der Seite.
     var blatt: Blatt?
 
+    /// Welchen der drei Tage die Startseite zeigt.
+    ///
+    /// **Warum das hier steht und nicht in der Seite.** Es stand dort (`@State private var tag`),
+    /// und damit kam die Heimkehr nicht an: ``heimkehr(jetzt:)`` setzt die Zeitraeume der
+    /// Berichtsseiten zurueck, und ein `@State` einer Seite ist von aussen nicht erreichbar. Wer
+    /// an der Wandanzeige im Vorbeigehen auf „Gestern“ tippte, hinterliess eine Anzeige, die
+    /// gestrige Kurve und gestrige Kacheln so zeigte, wie sonst die heutigen stehen - tagelang.
+    /// Genau davor warnt `DayCurve.tsx:32-34`: „die Wandanzeige soll nicht an einem Tag von
+    /// vorgestern haengen bleiben, wie es der alten passiert ist.“
+    var kurventag: Kurventag = .heute
+
     var bereich: Bereich { Bereiche.bereichVon(weg) }
     var reiter: Reiter? { Bereiche.reiterVon(bereich, weg) }
     var ansicht: Ansicht? { Bereiche.ansichtVon(reiter, weg) }
@@ -93,6 +104,12 @@ final class Wegweiser {
         for (schluessel, z) in zeitraeume where !z.istAktuell(jetzt: jetzt) {
             zeitraeume[schluessel] = Zeitraum.heute(z.spanne, jetzt: jetzt)
         }
+        // **Und der Tagesschalter der Startseite** (`Home.tsx:162-167`: `HEIMKEHR_MS`). Die
+        // Abfrage ist nicht nur Sparsamkeit: `heimkehr` wird an der Wand in jedem Takt gerufen,
+        // solange niemand die Anzeige beruehrt, und eine Zuweisung auf eine beobachtete
+        // Eigenschaft meldet eine Aenderung auch dann, wenn sich nichts aendert - jede Sekunde
+        // ein neuer Durchlauf der ganzen Startseite.
+        if kurventag != .heute { kurventag = .heute }
     }
 }
 
@@ -102,6 +119,8 @@ enum Blatt: Identifiable, Hashable {
     /// Die Auswahl, die ein Tipp auf die Waermepumpe im Flussbild oeffnet.
     case waermepumpenmenue
     case ofen
+    /// Die Alarmanlage scharf stellen - vom Dock der Wandanzeige aus (`Dock.tsx:281-283`).
+    case alarm
     case batterie
     case raum(Int)
     /// Das Protokoll eines Raums – zwei Tage Kurve und jede Sollwertänderung.
@@ -114,6 +133,7 @@ enum Blatt: Identifiable, Hashable {
         case .waermepumpe: return "wp"
         case .waermepumpenmenue: return "wp-menue"
         case .ofen: return "ofen"
+        case .alarm: return "alarm"
         case .batterie: return "bat"
         case .raum(let i): return "raum-\(i)"
         case .raumprotokoll(let i): return "raumlog-\(i)"
@@ -150,16 +170,34 @@ struct Wurzel: View {
 
     @State private var wegweiser = Wegweiser()
 
+    /// Ob der Ladeschirm steht. Wann er kommt und wann er geht, rechnet ``Ladeschirm/Lauf``.
+    @State private var ladebild = false
+
     var body: some View {
-        Group {
-            if !haus.zugang.istEingerichtet {
-                Einrichten()
-            } else if breite == .compact {
-                HandRahmen(wegweiser: wegweiser)
-            } else {
-                WandRahmen(wegweiser: wegweiser)
+        ZStack {
+            Group {
+                if !haus.zugang.istEingerichtet {
+                    Einrichten()
+                } else if breite == .compact {
+                    HandRahmen(wegweiser: wegweiser)
+                } else {
+                    WandRahmen(wegweiser: wegweiser)
+                }
+            }
+            // **Der Ladeschirm liegt darüber und ersetzt das Gerippe nicht.** Ein `else`-Zweig
+            // wäre die naheliegende Schreibweise und die falsche: SwiftUI baut den Rahmen dann
+            // erst, wenn der Schirm geht, also genau in dem Augenblick, in dem die erste Zahl
+            // da ist - die Seite entsteht unter der Überblendung und man sieht sie entstehen.
+            // Darüberliegend läuft darunter alles weiter, `.task` und Verbindung eingeschlossen,
+            // und am Ende wird nur ein Vorhang weggeblendet.
+            if ladebild {
+                Ladebild(wand: breite != .compact)
+                    .transition(.opacity)
             }
         }
+        // Dieselbe Überblendung, mit der an der Wand das Ruhebild kommt und geht - nur kürzer:
+        // dort löst sich ein Bild ab, hier wartet jemand.
+        .animation(.easeInOut(duration: 0.4), value: ladebild)
         .hausschrift()
         .seitengrund()
         .preferredColorScheme(.dark)
@@ -179,8 +217,13 @@ struct Wurzel: View {
                 break
             }
         }
-        .task {
+        // **Am Zugang aufgehängt und nicht nur beim Erscheinen.** Wer die App zum ersten Mal
+        // öffnet, steht im Einrichten; erst wenn dort ein Zugang eingetragen ist, gibt es
+        // überhaupt etwas zu verbinden - und dann soll das Warten darauf angezeigt werden.
+        // `haus.starte()` verträgt den zweiten Aufruf, es hält sich selbst auf.
+        .task(id: haus.zugang.istEingerichtet) {
             haus.starte()
+            await fuehreLadeschirm()
         }
         // Die Blaetter gehoeren in beide Gerippe, also hierher und nicht in eines von beiden.
         // `Blatt` ist `Identifiable`, also nimmt SwiftUIs eigenes `sheet(item:)` es direkt.
@@ -189,6 +232,7 @@ struct Wurzel: View {
             case .waermepumpe: Waermepumpenblatt()
             case .waermepumpenmenue: Wpmenue()
             case .ofen: Ofenblatt()
+            case .alarm: Alarmblatt()
             case .batterie: Batterieblatt()
             case .entscheidungen: Entscheidungsblatt()
             case .zugang: Einrichten()
@@ -210,5 +254,39 @@ struct Wurzel: View {
         // die Waermepumpe im Flussbild hat die App beendet. Die anderen Blaetter brauchen nur
         // den Hauszustand, und der wird eine Ebene hoeher eingesetzt - darum lief es so lange.
         .environment(wegweiser)
+    }
+
+    /// Den Ladeschirm führen, bis das Warten vorbei ist.
+    ///
+    /// **Warum eine eigene Schleife und kein Wecker am Rahmen.** Die drei Fristen des
+    /// Ladeschirms sind Zehntelsekunden (``Ladeschirm/ruhefrist``, ``Ladeschirm/mindestens``,
+    /// ``Ladeschirm/aufgabeNach``); der langsamste Takt, der sie trifft, ist ein Zwanzigstel.
+    /// Ein `Timer` in der Wurzel, der so schnell schlägt, schlüge für immer - auch nachts an
+    /// einer Wand, die seit Wochen fertig geladen ist. Diese Schleife läuft nur, solange
+    /// gewartet wird, und endet mit ``Ladeschirm/Lage/vorbei`` von selbst. Ist beim ersten Takt
+    /// schon ein Augenblicksbild da - in jeder Vorschau und bei jedem Zurückkommen -, endet sie
+    /// nach dem ersten Durchgang.
+    ///
+    /// Verlassen wird sie auch, wenn die Aufgabe abgebrochen wird: `.task` räumt sie auf, wenn
+    /// die Wurzel verschwindet oder der Zugang wechselt.
+    private func fuehreLadeschirm() async {
+        guard haus.zugang.istEingerichtet else { return }
+        var lauf = Ladeschirm.Lauf(start: Date())
+        while !Task.isCancelled {
+            switch lauf.takt(
+                jetzt: Date(),
+                hatZahlen: !haus.nochKeineZahlen,
+                fehlerSteht: haus.fehler != nil
+            ) {
+            case .verborgen:
+                break
+            case .steht:
+                if !ladebild { ladebild = true }
+            case .vorbei:
+                if ladebild { ladebild = false }
+                return
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
     }
 }

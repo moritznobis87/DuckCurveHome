@@ -134,7 +134,7 @@ final class MarkenTests: XCTestCase {
     /// Die beiden Enden der Skala muessen auch ohne Farbwahrnehmung zu trennen sein.
     ///
     /// **`tokens.css` begruendet das mit dem Hellwert, und das traegt nicht:** kalt (#6FD0F2) hat
-    /// L\* 79,0 und warm (#FFC247) L\* 82,0 - drei Punkte, nicht die dort genannten „mehr als 20".
+    /// L\* 79,0 und warm (#FFC247) L\* 82,0 - drei Punkte, nicht die dort genannten „mehr als 20“.
     /// Beide Enden sind helle Farben, das ist Absicht.
     ///
     /// Was wirklich traegt, ist der Blauanteil: 242 gegen 71. Rot- und Gruenblindheit lassen die
@@ -326,8 +326,8 @@ final class MarkenTests: XCTestCase {
         XCTAssertEqual(Marken.rampeWaerme.last, Farbwert(0xF6CDB4))
     }
 
-    /// **Jede einfarbige Rampe wird durchgehend heller.** Das ist ihr Zweck: „mehr" soll sich
-    /// als „heller" lesen, ohne dass man eine Skala daneben braucht.
+    /// **Jede einfarbige Rampe wird durchgehend heller.** Das ist ihr Zweck: „mehr“ soll sich
+    /// als „heller“ lesen, ohne dass man eine Skala daneben braucht.
     func testDieEinfarbigenRampenSteigenInDerHelligkeit() {
         for (name, rampe) in [
             ("eigen", Marken.rampeEigen), ("netz", Marken.rampeNetz),
@@ -458,5 +458,113 @@ final class MarkenTests: XCTestCase {
         XCTAssertGreaterThan(oben, 0, "oben heller als in der Mitte")
         XCTAssertGreaterThan(unten, 0, "und die Mitte heller als unten")
         XCTAssertGreaterThan(oben, unten * 10, "der Sprung sitzt im ersten Drittel")
+    }
+
+    // MARK: - Die aus den Seiten eingesammelten Werte
+
+    /// Die Zahlen der Vorlage, festgenagelt wie die uebrigen.
+    ///
+    /// **Drei von ihnen sind Weiss mit Deckung, und zwei tragen eine Zahl, die in dieser Liste
+    /// schon vorkommt**: ``Marken/stufenbalken`` hat die 0,62 von ``Marken/last``, und
+    /// ``Marken/hauslinie`` war in der Tageskurve als ``Marken/text1`` mit anderer Deckung
+    /// gerechnet. Darum steht hier kein Gleichstand, sondern jeder Wert einzeln gegen seine
+    /// Stelle in der Vorlage: die beiden duerfen auseinanderlaufen, sie duerfen es nur nicht
+    /// unbemerkt.
+    func testDieEingesammeltenWerteHabenDieZahlenDerVorlage() {
+        // `rgba(255,255,255,.88)`, `home/DayCurve.tsx:127` und `:146`.
+        XCTAssertEqual(Marken.hauslinie.hex, "#FFFFFF")
+        XCTAssertEqual(Marken.hauslinie.deckung, 0.88, accuracy: 1e-9)
+        // `rgba(255,255,255,.62)`, `waerme/Kostentreppe.tsx:29`.
+        XCTAssertEqual(Marken.stufenbalken.hex, "#FFFFFF")
+        XCTAssertEqual(Marken.stufenbalken.deckung, 0.62, accuracy: 1e-9)
+        // `rgba(255,255,255,.07)`, `waerme/Tagesvergleich.tsx:156`.
+        XCTAssertEqual(Marken.stufeNull.hex, "#FFFFFF")
+        XCTAssertEqual(Marken.stufeNull.deckung, 0.07, accuracy: 1e-9)
+        // `rgba(255, 255, 255, .06)`, `globals.css:664` (`a.wk-zeile:hover`).
+        XCTAssertEqual(Marken.zeileGedrueckt.hex, "#FFFFFF")
+        XCTAssertEqual(Marken.zeileGedrueckt.deckung, 0.06, accuracy: 1e-9)
+        // `rgba(255,255,255,.85)`, `reports/charts.ts:540` (`emphasis.itemStyle.borderColor`).
+        XCTAssertEqual(Marken.zelleBeruehrt.hex, "#FFFFFF")
+        XCTAssertEqual(Marken.zelleBeruehrt.deckung, 0.85, accuracy: 1e-9)
+    }
+
+    /// **Die weissen Schleier sind eine Leiter, und jede Stufe bedeutet etwas anderes.**
+    ///
+    /// Spur („gemessen, aber nichts lief“), gedrueckte Zeile, Stufe null eines Streifens
+    /// („aus“), Rasterlinie, Haarlinie: fuenf Aussagen zwischen 0,055 und 0,10. Genau darum
+    /// darf keine von ihnen eine andere vertreten - die Wirkungsseite nahm fuer die gedrueckte
+    /// Zeile ``Marken/linie1`` und war damit um zwei Drittel zu kraeftig. Dieser Test haelt die
+    /// Reihenfolge fest: wer eine Stufe verschiebt, sieht hier, ob sie ihre Nachbarin
+    /// ueberholt.
+    func testDieWeissenSchleierBleibenEineLeiter() {
+        let leiter = [
+            Marken.spur, Marken.zeileGedrueckt, Marken.stufeNull, Marken.rasterlinie,
+            Marken.linie1, Marken.linie2,
+        ]
+        for stufe in leiter {
+            XCTAssertEqual(stufe.hex, Marken.papier.hex, "jede Stufe ist Weiss mit Deckung")
+        }
+        for (a, b) in zip(leiter, leiter.dropFirst()) {
+            XCTAssertLessThan(a.deckung, b.deckung, "die Leiter steigt, Stufe fuer Stufe")
+        }
+    }
+
+    /// Das Akzentband: drei Stopps, und der Sinn sitzt in den Stellen.
+    ///
+    /// Der mittlere Stopp hat in CSS keine eigene Stelle und liegt damit mittig zwischen seinen
+    /// Nachbarn, also bei 43 Prozent (`tokens.css:98`). Der letzte traegt dieselbe Farbe wie der
+    /// mittlere auf Deckung null: ein Verlauf nach durchsichtigem Schwarz wird in SwiftUI in der
+    /// Mitte grau, und ein graues Akzentband ist kein Akzent.
+    func testDasAkzentbandHatDreiStoppsUndLaeuftInsDurchsichtigeBernstein() {
+        let band = Marken.akzentband
+        XCTAssertEqual(band.count, 3)
+        XCTAssertEqual(band.map(\.stelle), [0, 0.43, 0.86])
+        XCTAssertEqual(band[0].farbe, Marken.amber)
+        XCTAssertEqual(band[1].farbe, Marken.amberWeich)
+        XCTAssertEqual(band[2].farbe.hex, Marken.amberWeich.hex, "dieselbe Farbe, nicht Schwarz")
+        XCTAssertEqual(band[2].farbe.deckung, 0, accuracy: 1e-9)
+        // Die Mitte zwischen den letzten beiden Stopps bleibt Bernstein und wird nicht grau.
+        let mitte = band[1].farbe.gemischt(mit: band[2].farbe, anteil: 0.5)
+        XCTAssertEqual(mitte.hex, Marken.amberWeich.hex)
+        XCTAssertEqual(mitte.deckung, 0.5, accuracy: 1e-9)
+    }
+
+    /// Der Fokusring: sechs Punkte und 0,12 gehoeren zusammen (`tokens.css:97`).
+    ///
+    /// **Darum ein Paar und nicht zwei Zahlen.** Ein Ring von sechs Punkten traegt nur bei
+    /// dieser schwachen Deckung; umgekehrt ist 0,12 bei einem Punkt Staerke nicht zu sehen. Wer
+    /// eine der beiden anfasst, soll die andere daneben finden.
+    func testDerFokusringHatStaerkeUndDeckungDerVorlage() {
+        XCTAssertEqual(Marken.fokusring.staerke, 6, accuracy: 1e-9)
+        XCTAssertEqual(Marken.fokusring.farbe.hex, Marken.amber.hex)
+        XCTAssertEqual(Marken.fokusring.farbe.deckung, 0.12, accuracy: 1e-9)
+    }
+
+    /// Die Lesebreite ist nachgerechnet und nicht geschaetzt.
+    ///
+    /// `max-w-[90ch]` (`reports/ReportShell.tsx:143-145`), `1ch` ist die Vorschubbreite der
+    /// Null, in IBM Plex Sans 600 von 1000 Einheiten, und der Hinweisabsatz steht auf 11,5
+    /// Punkten. Zwei Seiten trugen dafuer je eine eigene 560 - rund zehn Prozent zu schmal.
+    /// Dieser Test ist die Rechnung selbst, damit die Zahl nicht wieder zur Schaetzung wird.
+    func testDieLesebreiteIstNeunzigZeichenInPlexSans() {
+        XCTAssertEqual(Marken.lesebreite, 90 * 0.6 * 11.5, accuracy: 1e-9)
+        XCTAssertEqual(Marken.lesebreite, 621, accuracy: 1e-9)
+    }
+
+    /// Die Wachzeile: Kante und Grund sind dieselbe Farbe, einmal voll und einmal auf 10 %.
+    ///
+    /// `globals.css:205-206` schreibt beide Faelle aus - `--alert` auf `rgba(224,83,61,.10)`
+    /// und `--amber-soft` auf `rgba(255,215,120,.10)`. Die Rechnung stand in der Wache; sie
+    /// gilt aber fuer jede Schwere, auch fuer die, die diese Fassung nicht kennt.
+    func testDieWachzeileGibtKanteUndGrundAlsPaar() {
+        for schwere in [Marken.alarm, Marken.amberWeich, Marken.mist] {
+            let paar = Marken.wachzeile(schwere)
+            XCTAssertEqual(paar.kante, schwere, "die Kante ist die Schwerefarbe selbst")
+            XCTAssertEqual(paar.grund.hex, schwere.hex, "der Grund ist dieselbe Farbe")
+            XCTAssertEqual(paar.grund.deckung, Marken.wachgrundDeckung, accuracy: 1e-9)
+        }
+        XCTAssertEqual(Marken.wachgrundDeckung, 0.10, accuracy: 1e-9)
+        XCTAssertEqual(Marken.wachzeile(Marken.alarm).grund.hex, "#E0533D")
+        XCTAssertEqual(Marken.wachzeile(Marken.amberWeich).grund.hex, "#FFD778")
     }
 }

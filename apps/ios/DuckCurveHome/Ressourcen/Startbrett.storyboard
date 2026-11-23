@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Das Startbrett: was das System zeichnet, bevor die App laeuft.
+
+    **Warum diese Datei ueberhaupt da ist.** Hier stand nichts, und `project.yml` fuehrte nur
+    `UILaunchScreen: UIColorName: Startgrund` - die reine Flaeche. Das ist genau der
+    petrolfarbene Bildschirm, ueber den der Nutzer am 21.11.2026 geschrieben hat: nach einem
+    frischen Bauen braucht der erste Start Sekunden, und solange steht eine Farbe da, die
+    nichts sagt. Das Woerterbuch `UILaunchScreen` kann keinen Text; fuer Text braucht es ein
+    Startbrett, und das ist diese Datei. Sie ersetzt den Eintrag und uebernimmt dabei seine
+    zweite Aufgabe (dazu `project.yml`): dem System zu sagen, dass diese App moderne
+    Bildschirme kennt, damit sie den ganzen bekommt und nicht in einem Ersatzfenster mit
+    schwarzen Balken laeuft.
+
+    **Fuenf Regeln, und alle fuenf haben einen Preis, wenn man sie bricht.**
+
+    1. **Nichts bewegt sich, nichts rechnet.** Das System zeichnet dieses Brett, bevor eine
+       Zeile Code dieser App gelaufen ist. Keine `UIViewController`-Klasse, kein `IBOutlet`,
+       keine Animation - was hier steht, ist eine Flaeche, ein Bild und zwei Zeilen Text.
+    2. **Alles haengt an der Mitte.** Vom iPhone SE bis zum iPad im Querformat ist die Mitte
+       die Mitte; ein festes Mass zu einem Rand ist auf dem naechsten Geraet falsch. Die Ente
+       sitzt mittig, der Text darunter, und zum Rand gibt es nur Ungleichungen - nie naeher als
+       24 Punkte an den sicheren Bereich, sonst beliebig weit weg.
+
+       **Die Kachel ist 150 Punkte gross und waechst nicht mit.** Im Ladeschirm der App tut
+       sie das (dort zwischen 150 und 260, nach der kurzen Kante gerechnet); hier waere
+       dieselbe Rechnung ein Gleichungs-Anteil mit zwei Ungleichungen daneben, und drei
+       streitende Auflagen in einer Datei, die beim Scheitern den Start verhindert, sind den
+       halben Zentimeter auf dem iPad nicht wert. 150 Punkte sind auf jedem Geraet sicher: auf
+       dem kleinsten iPhone nicht zu gross, auf dem iPad nicht zu klein, um das Logo zu
+       erkennen - und es ist genau die Untergrenze des Ladeschirms, also das Mass, das am
+       Telefon auf beiden Schirmen gilt. Dort faellt der Uebergang auf; am iPad waechst nur
+       der zweite der beiden Schirme, und das sieht niemand.
+    3. **Ein kaputtes Startbrett heisst: die App startet gar nicht.** Darum die gewoehnlichen
+       Klassen und nichts weiter. Die XML-Form ist mit
+       `python3 -c "import xml.etree.ElementTree as E; E.parse('…')"` geprueft.
+    4. **Dieselben Worte wie im Ladeschirm der App** (`Zustand/Ladeschirm.swift`). Die beiden
+       Schirme folgen aufeinander, oft in derselben Sekunde; verschiedene Saetze waeren zwei
+       Ladevorgaenge, wo einer ist. Was der Kern dort als `marke` und `satz` fuehrt, steht hier
+       von Hand - ein Startbrett kann nichts lesen, was in Swift steht. Wer dort etwas aendert,
+       aendert es hier mit.
+    5. **Das Bild ist nicht die Katalogente, sondern `Startente`.** Die Katalogente
+       (`Assets.xcassets/Ente.imageset`) ist Flaeche in Petrol und auf `Startgrund` praktisch
+       unsichtbar - 1,13 zu 1. Sie braucht eine helle Unterlage, und sie bekommt sie an jeder
+       anderen Stelle auch: der Entenknopf und der Ladeschirm legen beide
+       `Circle().fill(Farbe.papier)` darunter. `Startente.imageset` ist dieselbe Zeichnung mit
+       dieser Kachel schon darin, in demselben Verhaeltnis 0,73 - so ist die Ente hier 109,5
+       Punkte gross wie im Ladeschirm, und das Brett bleibt eine Flaeche, ein Bild und zwei
+       Zeilen Text. Die Datei begruendet sich selbst.
+
+    **Die Farbe ist `Startgrund` aus dem Bildkatalog**, derselbe benannte Wert, den der alte
+    Eintrag genommen hat (`Marken.deep`, 0x082431, gleich `Farbe.grund`). Benannte Farben darf
+    ein Startbrett benutzen; so bleibt die Farbe an einer Stelle, und der Uebergang in die App
+    ist ohne Sprung.
+
+    **Die Schrift ist die der Marke.** `IBMPlexSans-SmBld` ist der PostScript-Name des
+    Halbfetten - aus der Namenstabelle der Datei gelesen, nicht aus ihrem Dateinamen
+    (`Gestalt/Typografie.swift` erklaert die Falle). Eingebundene Schriften aus `UIAppFonts`
+    darf ein Startbrett setzen; stimmt der Name nicht, faellt iOS still auf die Systemschrift
+    zurueck - dann steht hier der richtige Satz in der falschen Schrift, und das ist der
+    harmloseste aller Fehlerfaelle.
+-->
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="start-brett">
+    <device id="retina6_12" orientation="portrait" appearance="dark"/>
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22505"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="System colors in document resources" minToolsVersion="11.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <scene sceneID="start-szene">
+            <objects>
+                <viewController id="start-brett" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="grund">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Startente" translatesAutoresizingMaskIntoConstraints="NO" id="ente">
+                                <rect key="frame" x="121.5" y="301" width="150" height="150"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="150" id="ente-breit"/>
+                                    <constraint firstAttribute="height" constant="150" id="ente-hoch"/>
+                                </constraints>
+                            </imageView>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Duck Curve" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="marke">
+                                <rect key="frame" x="131" y="483" width="131" height="34"/>
+                                <fontDescription key="fontDescription" name="IBMPlexSans-SmBld" family="IBM Plex Sans" pointSize="28"/>
+                                <!-- Weiss mit 92 Prozent und nicht reines Weiss: das ist der Wert
+                                     von `Farbe.text1`, in dem die Wortmarke eine Zehntelsekunde
+                                     spaeter im Ladeschirm steht. Die zweite Zeile traegt 72
+                                     Prozent, den Wert von `Farbe.text2`, und tat es schon. -->
+                                <color key="textColor" white="1" alpha="0.92000000000000004" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Verbinde mit dem Haus …" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="2" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="satz">
+                                <rect key="frame" x="115" y="527" width="163" height="19"/>
+                                <fontDescription key="fontDescription" name="IBMPlexSans" family="IBM Plex Sans" pointSize="15"/>
+                                <color key="textColor" white="1" alpha="0.72000000000000008" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="sicherer-bereich"/>
+                        <color key="backgroundColor" name="Startgrund"/>
+                        <constraints>
+                            <!-- Die Ente haengt an der Mitte, und zwar etwas ueber ihr: der Text
+                                 darunter gehoert zum Bild, und beide zusammen sollen mittig
+                                 stehen und nicht die Ente allein. -->
+                            <constraint firstItem="ente" firstAttribute="centerX" secondItem="grund" secondAttribute="centerX" id="ente-mitte-quer"/>
+                            <constraint firstItem="grund" firstAttribute="centerY" secondItem="ente" secondAttribute="bottom" constant="-24" id="ente-mitte-hoch"/>
+                            <constraint firstItem="marke" firstAttribute="top" secondItem="ente" secondAttribute="bottom" constant="32" id="marke-unter-ente"/>
+                            <constraint firstItem="marke" firstAttribute="centerX" secondItem="grund" secondAttribute="centerX" id="marke-mitte"/>
+                            <constraint firstItem="satz" firstAttribute="top" secondItem="marke" secondAttribute="bottom" constant="10" id="satz-unter-marke"/>
+                            <constraint firstItem="satz" firstAttribute="centerX" secondItem="grund" secondAttribute="centerX" id="satz-mitte"/>
+                            <!-- Keine festen Punkte am Rand, sondern Ungleichungen: die Zeilen
+                                 duerfen schmaler sein, aber nie naeher als 24 Punkte an den
+                                 sicheren Bereich. -->
+                            <constraint firstItem="satz" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="sicherer-bereich" secondAttribute="leading" constant="24" id="satz-links"/>
+                            <constraint firstItem="sicherer-bereich" firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="satz" secondAttribute="trailing" constant="24" id="satz-rechts"/>
+                            <constraint firstItem="marke" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="sicherer-bereich" secondAttribute="leading" constant="24" id="marke-links"/>
+                            <constraint firstItem="sicherer-bereich" firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="marke" secondAttribute="trailing" constant="24" id="marke-rechts"/>
+                            <!-- Und die Ente bleibt auch auf dem niedrigsten Geraet im Bild:
+                                 das iPhone im Querformat ist 393 Punkte hoch, 150 Punkte Ente
+                                 plus Text brauchen weniger, aber nur mit dieser Schranke ist es
+                                 festgehalten. -->
+                            <constraint firstItem="ente" firstAttribute="top" relation="greaterThanOrEqual" secondItem="sicherer-bereich" secondAttribute="top" constant="16" id="ente-oben"/>
+                            <constraint firstItem="sicherer-bereich" firstAttribute="bottom" relation="greaterThanOrEqual" secondItem="satz" secondAttribute="bottom" constant="16" id="satz-unten"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="erster-empfaenger" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="0.0" y="0.0"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="Startente" width="1024" height="1024"/>
+        <namedColor name="Startgrund">
+            <color red="0.031372549019607843" green="0.14117647058823529" blue="0.19215686274509805" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </namedColor>
+    </resources>
+</document>

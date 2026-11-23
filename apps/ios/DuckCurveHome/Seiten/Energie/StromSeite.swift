@@ -4,14 +4,12 @@ import SwiftUI
 
 /// Alles, was die Stromseite braucht - in einem Rutsch geholt.
 ///
-/// **Fünf Antworten, nicht eine.** Neben den Zahlen der gewählten Spanne laufen die vier
-/// Spannen des Überblicksstreifens; der hängt nur am Anker, nicht an der Spanne
-/// (`useReport.ts:55-77`). Scheitert eine der vier, fehlt ihre Spalte und die Seite bleibt
-/// stehen.
+/// **Eine Antwort, und der Überblicksstreifen daneben.** Die vier Spannen des Streifens hängen
+/// nur am Anker, nicht an der Spanne, und sind darum ein eigener Zustand (``Spannenstand``,
+/// Vorlage `useReport.ts:55-77`). Lagen sie in diesem Verbund, wartete die Seite auf ihre
+/// langsamste Spalte, und das ist immer der Monat.
 struct Stromdaten: Sendable {
     let bericht: EnergySummaryOut
-    /// Tag, Woche, Monat und Jahr desselben Ankertags - soweit sie geantwortet haben.
-    let jeSpanne: [Spanne: EnergySummaryOut]
 }
 
 /// Strom: was verbraucht wurde, wer es verbraucht hat, und woher es kam.
@@ -38,30 +36,66 @@ struct Stromdaten: Sendable {
 /// Reiter `/strom` zeigt dorthin.
 struct StromSeite: View {
     @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
     @Environment(\.horizontalSizeClass) private var breite
 
     private var schmal: Bool { breite == .compact }
 
+    /// Der Überblicksstreifen, als eigener Zustand neben der Seite - der Grund steht an
+    /// ``Spannenstand``.
+    @State private var streifen = Spannenstand<EnergySummaryOut>()
+
     var body: some View {
-        Berichtsseite { z, api in
-            try await Self.hole(z, api: api)
-        } inhalt: { d in
-            inhalt(d)
+        let z = wegweiser.zeitraum(jetzt: haus.jetzt)
+        let stand = streifen.fuer(z.anker)
+        Berichtsseite(
+            hole: { zr, api in
+                let bericht = try await api.energieUebersicht(zr.spanne.rawValue, anker: zr.anker)
+                return Stromdaten(bericht: bericht)
+            },
+            inhalt: { (d: Stromdaten) in
+                inhalt(d, anker: z.anker, streifen: stand)
+            },
+            // Wann der Dienst das gerechnet hat: bei einem Treffer im Zwischenspeicher ist
+            // das nicht jetzt, und dann steht es als Zeile ueber der Seite (``Berichtsstand``).
+            gerechnetAm: { (d: Stromdaten) in d.bericht.generatedAt },
+            // Der zweite Fehlerweg: fällt der Streifen ganz aus, steht sein Grund als Band
+            // neben allem, was schon dasteht - und das Band der Seite bleibt unberührt.
+            nebenfehler: stand.fehler,
+            nebenfehlerErneut: { Task { await holeStreifen(anker: z.anker) } }
+        )
+        // **Am Anker, nicht am Zeitraum.** Ein Spannenwechsel ändert an den vier Spalten
+        // desselben Ankertags nichts; hing der Streifen an `z`, holte jeder Wechsel vier
+        // Abfragen umsonst. Am Ankerwechsel muss er neu laden, sonst zeigt er den falschen Tag.
+        .task(id: z.anker) { await halteStreifenFrisch(anker: z.anker) }
+    }
+
+    /// Den Streifen holen und im Fünf-Minuten-Takt nachholen, solange der Anker steht
+    /// (`useReport.ts:70`).
+    private func halteStreifenFrisch(anker: String) async {
+        while !Task.isCancelled {
+            await holeStreifen(anker: anker)
+            try? await Task.sleep(for: Berichtstakt.nachladen)
         }
     }
 
-    /// **Die vier Spannen laufen neben der gewaehlten**, mit `try?` je Spanne und nicht für
-    /// alle vier zusammen: eine fehlende Spalte ist besser als eine Seite, die an ihr scheitert
+    /// **Die vier Spannen laufen neben der gewaehlten**, jede für sich und nicht alle vier
+    /// zusammen: eine fehlende Spalte ist besser als eine Seite, die an ihr scheitert
     /// (`useReport.ts:55-77`).
-    private static func hole(_ z: Zeitraum, api: Api) async throws -> Stromdaten {
-        async let spannen = Pvbild.jeSpanne { s in
-            try? await api.energieUebersicht(s.rawValue, anker: z.anker)
+    private func holeStreifen(anker: String) async {
+        let api = haus.api
+        let neu = await streifen.nachgeholt(zu: anker) { s in
+            try await api.energieUebersicht(s.rawValue, anker: anker)
         }
-        let bericht = try await api.energieUebersicht(z.spanne.rawValue, anker: z.anker)
-        return Stromdaten(bericht: bericht, jeSpanne: await spannen)
+        // Welcher Anker gilt, entscheidet erst das Schreiben - der Knopf „Noch einmal“ läuft
+        // neben `.task(id:)` und bricht beim Blättern nicht ab
+        // (``Spannenstand/uebernimm(_:zu:)``).
+        streifen.uebernimm(neu, zu: wegweiser.zeitraum(jetzt: haus.jetzt).anker)
     }
 
-    @ViewBuilder private func inhalt(_ d: Stromdaten) -> some View {
+    @ViewBuilder private func inhalt(
+        _ d: Stromdaten, anker: String, streifen: Spannenstand<EnergySummaryOut>
+    ) -> some View {
         // Ohne Ueberschrift: der aktive Reiter sagt, wo man ist (`ReportShell.tsx:99`).
         Kachelfeld(
             kacheln: kacheln(d.bericht),
@@ -74,10 +108,16 @@ struct StromSeite: View {
             spalten: schmal ? 2 : 3
         )
         diagrammreihe(d.bericht)
+        // **Der Streifen steht, auch solange seine Zahlen fehlen**: ``Stromuebersicht``
+        // zeichnet jede Spalte ohne Antwort als Strich, wie die Vorlage mit ihrem `strip`, das
+        // als `{}` anfängt (`HouseReport.tsx:39`, `:75-80`). Der Anker kommt aus der
+        // Blätterleiste und nicht aus `d.bericht.anchor`: die Zahlen der Seite dürfen beim
+        // Blättern noch die des alten Tages sein, die vier Spaltenköpfe gehören zu dem Tag,
+        // für den der Streifen geholt wurde.
         Spannenstreifen(
             titel: Stromuebersicht.ueberblickstitel,
-            zeilen: Stromuebersicht.spannenzeilen(d.jeSpanne),
-            anker: d.bericht.anchor,
+            zeilen: Stromuebersicht.spannenzeilen(streifen.werte),
+            anker: anker,
             jetzt: haus.jetzt
         )
         // Erst der Satz, der dieser Seite allein gehoert, dann der Hinweis des Dienstes
@@ -140,10 +180,8 @@ struct StromSeite: View {
 
     private func verbrauchskarte(_ b: EnergySummaryOut) -> some View {
         Karte(kicker: Stromuebersicht.verbrauchstitel) {
-            // Die Legende steht unter dem Kartenkopf und nicht in ihm: ``Karte`` setzt ihr
-            // `beiwerk` am Telefon neben den Kicker, und für drei Farbflecke mit Namen ist
-            // dort kein Platz. Umbrechen muss sie in jedem Fall - „damit eine Legende
-            // umbricht statt zu verschwinden“ (`Card.tsx:24-26`).
+            // Die Legende steht unter dem Kartenkopf und nicht in ihm; die Begründung und
+            // die Stelle der Vorlage stehen an ``Diagrammlegende``.
             Diagrammlegende(stuecke: Strombalkenbild.verbraucher)
             Strombalkenbild(
                 balken: Stromuebersicht.verbrauch(b),
@@ -192,18 +230,54 @@ struct PvSeite: View {
 
     private var schmal: Bool { breite == .compact }
 
+    /// Der Überblicksstreifen, als eigener Zustand neben der Seite - der Grund steht an
+    /// ``Spannenstand``.
+    @State private var streifen = Spannenstand<EnergySummaryOut>()
+
     var body: some View {
-        Berichtsseite { z, api in
-            // Die vier Spannen laufen neben der gewaehlten: eine fehlende Spalte ist besser
-            // als eine Seite, die an ihr scheitert (`useReport.ts:55-77`).
-            async let spannen = Pvbild.jeSpanne { s in
-                try? await api.energieUebersicht(s.rawValue, anker: z.anker)
-            }
-            let bericht = try await api.energieUebersicht(z.spanne.rawValue, anker: z.anker)
-            return (bericht: bericht, jeSpanne: await spannen)
-        } inhalt: { d in
-            inhalt(d.bericht, jeSpanne: d.jeSpanne)
+        let z = wegweiser.zeitraum(jetzt: haus.jetzt)
+        let stand = streifen.fuer(z.anker)
+        Berichtsseite(
+            hole: { zr, api in
+                try await api.energieUebersicht(zr.spanne.rawValue, anker: zr.anker)
+            },
+            inhalt: { (b: EnergySummaryOut) in
+                inhalt(b, anker: z.anker, streifen: stand)
+            },
+            // Wann der Dienst das gerechnet hat: bei einem Treffer im Zwischenspeicher ist
+            // das nicht jetzt, und dann steht es als Zeile ueber der Seite (``Berichtsstand``).
+            gerechnetAm: { (b: EnergySummaryOut) in b.generatedAt },
+            // Der zweite Fehlerweg: fällt der Streifen ganz aus, steht sein Grund als Band
+            // neben allem, was schon dasteht - und das Band der Seite bleibt unberührt.
+            nebenfehler: stand.fehler,
+            nebenfehlerErneut: { Task { await holeStreifen(anker: z.anker) } }
+        )
+        // **Am Anker, nicht am Zeitraum.** Ein Spannenwechsel ändert an den vier Spalten
+        // desselben Ankertags nichts; hing der Streifen an `z`, holte jeder Wechsel vier
+        // Abfragen umsonst. Am Ankerwechsel muss er neu laden, sonst zeigt er den falschen Tag.
+        .task(id: z.anker) { await halteStreifenFrisch(anker: z.anker) }
+    }
+
+    /// Den Streifen holen und im Fünf-Minuten-Takt nachholen, solange der Anker steht
+    /// (`useReport.ts:70`).
+    private func halteStreifenFrisch(anker: String) async {
+        while !Task.isCancelled {
+            await holeStreifen(anker: anker)
+            try? await Task.sleep(for: Berichtstakt.nachladen)
         }
+    }
+
+    /// Die vier Spannen laufen neben der gewaehlten, jede für sich: eine fehlende Spalte ist
+    /// besser als eine Seite, die an ihr scheitert (`useReport.ts:55-77`).
+    private func holeStreifen(anker: String) async {
+        let api = haus.api
+        let neu = await streifen.nachgeholt(zu: anker) { s in
+            try await api.energieUebersicht(s.rawValue, anker: anker)
+        }
+        // Welcher Anker gilt, entscheidet erst das Schreiben - der Knopf „Noch einmal“ läuft
+        // neben `.task(id:)` und bricht beim Blättern nicht ab
+        // (``Spannenstand/uebernimm(_:zu:)``).
+        streifen.uebernimm(neu, zu: wegweiser.zeitraum(jetzt: haus.jetzt).anker)
     }
 
     /// **Plan und Minutenwerte werden nicht erneut geholt.** Beide liegen im Hauszustand
@@ -212,7 +286,7 @@ struct PvSeite: View {
     /// bei jedem Blaettern neu geholt - und saehe danach aus wie die Prognose des gewaehlten
     /// Tages, die es nicht gibt.
     @ViewBuilder private func inhalt(
-        _ b: EnergySummaryOut, jeSpanne: [Spanne: EnergySummaryOut]
+        _ b: EnergySummaryOut, anker: String, streifen: Spannenstand<EnergySummaryOut>
     ) -> some View {
         let jetzt = haus.jetzt
         let istHeute = b.anchor == Tag.iso(jetzt)
@@ -234,10 +308,16 @@ struct PvSeite: View {
             spalten: schmal ? 2 : 3
         )
         diagrammreihe(b, prognose: prognose, istHeute: istHeute, tagesbeginn: tagesbeginn)
+        // **Der Streifen steht, auch solange seine Zahlen fehlen**: ``Pvbild`` zeichnet jede
+        // Spalte ohne Antwort als Strich, wie die Vorlage mit ihrem `strip`, das als `{}`
+        // anfängt (`PvReport.tsx:72`, `:114-119`). Der Anker kommt aus der Blätterleiste und
+        // nicht aus `b.anchor`: die Zahlen der Seite dürfen beim Blättern noch die des alten
+        // Tages sein, die vier Spaltenköpfe gehören zu dem Tag, für den der Streifen geholt
+        // wurde.
         Spannenstreifen(
             titel: "PV im Überblick",
-            zeilen: Pvbild.spannenzeilen(jeSpanne),
-            anker: b.anchor,
+            zeilen: Pvbild.spannenzeilen(streifen.werte),
+            anker: anker,
             jetzt: jetzt
         )
         // Erst der Satz, der die zusammengesetzte Ersparnis erklaert, dann der Hinweis des
@@ -297,10 +377,8 @@ struct PvSeite: View {
 
     private func verwendungskarte(_ b: EnergySummaryOut) -> some View {
         Karte(kicker: "Erzeugung und Verwendung") {
-            // Die Legende steht unter dem Kartenkopf und nicht in ihm: ``Karte`` setzt ihr
-            // `beiwerk` am Telefon neben den Kicker, und für drei Farbflecke mit Namen ist
-            // dort kein Platz. Umbrechen muss sie in jedem Fall - „damit eine Legende
-            // umbricht statt zu verschwinden“ (`Card.tsx:24-26`).
+            // Die Legende steht unter dem Kartenkopf und nicht in ihm; die Begründung und
+            // die Stelle der Vorlage stehen an ``Diagrammlegende``.
             Diagrammlegende(stuecke: Pvverwendungsbild.legende)
             Pvverwendungsbild(balken: Pvbild.verwendung(b), hoehe: bildhoehe)
         }

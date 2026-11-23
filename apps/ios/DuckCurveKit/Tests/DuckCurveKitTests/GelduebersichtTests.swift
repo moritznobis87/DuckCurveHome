@@ -59,6 +59,7 @@ final class GelduebersichtTests: XCTestCase {
         meta: EnergyMetaOut? = nil
     ) -> EnergySummaryOut {
         EnergySummaryOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .month, anchor: "2026-11-10", start: "2026-11-01T00:00:00+01:00",
             end: "2026-12-01T00:00:00+01:00", totals: t ?? summen(), buckets: stuecke,
             meta: meta ?? angaben())
@@ -69,6 +70,7 @@ final class GelduebersichtTests: XCTestCase {
         hinweis: String? = "Die Pelletmenge ist aus den Leistungsstufen geschätzt."
     ) -> HeatReportOut {
         HeatReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             summary: uebersicht(), thermalKwhEst: 420.1, copEst: 2.91,
             forecastElectricKwh24h: 8.4, forecastThermalKwh24h: 24.1, heatLossKwPerK: 0.21,
             cycling: CyclingStats(), priceQuality: PriceQualityOut(),
@@ -89,6 +91,7 @@ final class GelduebersichtTests: XCTestCase {
         methode: String = "Gegen einen Lauf ohne Preisblick gerechnet."
     ) -> ShiftReportOut {
         ShiftReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .month, start: "2026-11-01T00:00:00+01:00",
             end: "2026-12-01T00:00:00+01:00", actualEur: 44.10, naiveEur: 48.72,
             savingEur: gespart, savingCtPerKwh: ctJeKwh, heatPumpKwh: wpKwh,
@@ -463,6 +466,11 @@ final class GelduebersichtTests: XCTestCase {
         XCTAssertEqual(z[0].werte[0], Formate.euro(128.40))
         XCTAssertEqual(z[2].werte[0], Formate.euro(52.80 + 17.40))
         XCTAssertEqual(z[3].werte[0], "412\u{202F}kWh")
+        // „Bezahlt (Netzstrom)“ trägt `--alert` wie in der Vorlage (`CostReport.tsx:229`:
+        // `tone: "ember"`; `PeriodStrip.tsx:19`). Vorher war es `glut`, weil ``Kennzahl/Ton``
+        // keinen Alarmton kannte.
+        XCTAssertEqual(
+            z.map(\.ton), [.alarm, .nebel, .bernstein, .normal, .normal])
     }
 
     /// **Eine** Nachkommastelle am Ø-Preis (`CostReport.tsx:233`) - die App hatte zwei.

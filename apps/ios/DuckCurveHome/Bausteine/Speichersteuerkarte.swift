@@ -61,9 +61,7 @@ struct Speichersteuerkarte: View {
     }
 
     private func ladestand(_ s: BatteryLiveOut) -> some View {
-        Text(Speichersteuerung.ladestandswort(s))
-            .font(Schrift.winzig)
-            .foregroundStyle(Farbe.text3)
+        Kartenhinweis(satz: Speichersteuerung.ladestandswort(s))
     }
 
     // MARK: - Die zwei Gruppen

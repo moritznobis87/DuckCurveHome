@@ -216,23 +216,31 @@ public enum Annahmenfelder {
         return Formate.zahl(wert, stellen: feld.stellen)
     }
 
-    /// Ob ein Feld geändert, aber noch nicht übernommen ist - die Ansicht färbt es dann bernstein.
+    /// Ob ein Feld geändert, aber noch nicht übernommen ist - die Ansicht färbt es dann bernstein,
+    /// und nur dann geht es an den Dienst (``abgabe(entwuerfe:kennlinie:gegen:)``).
     ///
-    /// Verglichen werden die Zahlen auf die Stellen des Feldes gerundet und nicht die Texte:
-    /// „11,90" und „11,9" sind dieselbe Annahme, und eine bernsteinfarbene Zeile, die nichts
-    /// ändert, ist eine Lüge. Was nicht lesbar ist - leer, ein Strich, halb getippt -, gilt als
-    /// unverändert, denn es geht auch nicht an den Dienst.
+    /// **Verglichen wird mit dem, was in dem Feld stand, und nicht mit dem Wert des Dienstes.**
+    /// Beides ist nicht dasselbe: ins Feld schreibt ``entwurf(_:_:)`` die Anzeige, also
+    /// `Formate.zahl(wert, stellen:)`, und die ist gerundet. Wer gegen den rohen Wert vergleicht,
+    /// muss ihn dafür selbst wieder runden - und zwei Rundungen, `String(format:)` hier und eine
+    /// Multiplikation dort, sind sich bei einem genauen Halben nicht einig. Dann gilt ein Feld,
+    /// das niemand angefasst hat, als geändert, wird bernstein und geht gerundet zurück an den
+    /// Dienst. Genau das war der Fehler bei einem `buffer_loss_kw_per_k` von 0,0045 kW/K.
+    ///
+    /// Gegen die Anzeige verglichen kann das nicht passieren: ein unberührter Entwurf ist genau
+    /// das, was ``entwurf(_:_:)`` hineingeschrieben hat, und damit nie eine Änderung - wie klein
+    /// die Stellen des Feldes auch sind.
+    ///
+    /// Verglichen werden dabei Zahlen und nicht Texte: „11,90“ und „11,9“ sind dieselbe Annahme,
+    /// und eine bernsteinfarbene Zeile, die nichts ändert, ist eine Lüge. Was nicht lesbar ist -
+    /// leer, ein Strich, halb getippt -, gilt als unverändert, denn es geht auch nicht an den
+    /// Dienst. Wo der Dienst gar keinen Wert hat, ist jede Zahl eine Änderung.
     public static func abweichend(_ feld: Annahmenfeld, entwurf: String, gegen cfg: HemsConfig?)
         -> Bool
     {
         guard let getippt = Formate.zahlAusText(entwurf) else { return false }
-        guard let cfg, let steht = feld.lesen(cfg), steht.isFinite else { return true }
-        return gerundet(getippt, stellen: feld.stellen) != gerundet(steht, stellen: feld.stellen)
-    }
-
-    private static func gerundet(_ wert: Double, stellen: Int) -> Double {
-        let faktor = pow(10.0, Double(stellen))
-        return (wert * faktor).rounded() / faktor
+        guard let cfg, let steht = Formate.zahlAusText(Self.entwurf(feld, cfg)) else { return true }
+        return getippt != steht
     }
 
     // MARK: - Die Kennlinie als Zeile
@@ -313,25 +321,64 @@ public enum Annahmenfelder {
 
     /// Aus den getippten Texten den Patch für `POST /config/heat` bauen.
     ///
-    /// **Geschickt wird, was lesbar dasteht.** Jedes Feld von `HeatConfigIn` ist wahlfrei und der
-    /// Encoder lässt `nil` weg; ein leeres oder halb getipptes Feld bleibt damit stehen, wie es
-    /// beim Dienst steht. Die Kennlinie geht immer mit, weil sie als Ganzes ersetzt wird - ein
-    /// weggelassener Stützpunkt wäre sonst ein gelöschter.
+    /// **Geschickt wird, was wirklich abweicht - und sonst nichts.** Das war einmal „was lesbar
+    /// dasteht“, und das war ein Datenfehler. Im Feld steht nicht der Wert des Dienstes, sondern
+    /// seine Anzeige: ``entwurf(_:_:)`` schreibt `Formate.zahl(wert, stellen:)` hinein, und aus
+    /// einem `buffer_loss_kw_per_k` von 0,0045 wird dabei „0,005“. Wer dann irgendein anderes
+    /// Feld ändert und übernimmt, schickt diese 0,005 mit zurück: ein Wert, den niemand angefasst
+    /// hat, ist gerundet gespeichert, und weil ``abweichend(_:entwurf:gegen:)`` gegen die Anzeige
+    /// vergleicht, wird die Zeile dafür nicht einmal bernstein. Die Änderung ist unsichtbar.
+    /// Dasselbe traf `pellet_price_eur_per_t` 449,5 → 450 und `indoor_target_c` 21,25 → 21,3.
+    ///
+    /// Die Vorlage hat das Problem nicht: sie setzt den Rohwert ins Feld (`String(c.stove.…)`,
+    /// `HeatSettings.tsx:96-108`) und schickt ihn unverändert (`:124-130`). Weil die App deutsch
+    /// anzeigt und dafür runden muss, kann sie nicht denselben Weg gehen - sie muss stattdessen
+    /// fragen, ob sich überhaupt etwas geändert hat. Das Maß dafür ist genau jenes, das die Zeile
+    /// bernstein färbt: was nicht abweicht, bleibt aus dem Patch, und der Dienst behält seine
+    /// eigene, ungerundete Zahl. Jedes Feld von `HeatConfigIn` ist wahlfrei und der Encoder lässt
+    /// `nil` weg.
+    ///
+    /// **`gegen cfg:` ist deshalb nicht wahlfrei.** Ohne die Konfiguration des Dienstes weiß
+    /// niemand, was eine Abweichung ist; `nil` heißt „nichts bekannt“, und dann geht jedes
+    /// lesbare Feld mit - das ist der Fall des ersten Ladens, in dem nichts zu schonen ist.
+    ///
+    /// Die Kennlinie geht immer mit, weil sie als Ganzes ersetzt wird - ein weggelassener
+    /// Stützpunkt wäre sonst ein gelöschter.
     ///
     /// **Grenzen prüft hier nichts.** Ein Heizwert von 99 kWh/kg wandert in den Patch und wird
     /// vom Dienst abgelehnt, mit seinem Satz. Das ist die Entscheidung der Vorlage
     /// (`HeatSettings.tsx:145-148`): seine Begründung ist genauer als alles, was die Oberfläche
     /// sagen könnte, und zwei Prüfungen laufen auseinander.
-    public static func abgabe(entwuerfe: [String: String], kennlinie: String) -> Abgabe {
+    public static func abgabe(
+        entwuerfe: [String: String], kennlinie: String, gegen cfg: HemsConfig?
+    ) -> Abgabe {
         guard let kurve = textZuKurve(kennlinie) else { return .kennlinieUnlesbar }
         var patch = HeatConfigIn(copCurve: kurve)
         for feld in alle {
-            guard let text = entwuerfe[feld.schluessel],
+            let text = entwuerfe[feld.schluessel] ?? ""
+            guard abweichend(feld, entwurf: text, gegen: cfg),
                 let wert = Formate.zahlAusText(text)
             else { continue }
             feld.schreiben(&patch, wert)
         }
         return .bereit(patch)
+    }
+
+    /// Ob die Kennlinienzeile von der des Dienstes abweicht - die Ansicht färbt sie dann bernstein.
+    ///
+    /// **Verglichen werden die Stützpunkte und nicht die Texte.** In der Ansicht stand
+    /// `kennlinie != kurveZuText(…)`, und damit war „2:3,0“ eine offene Änderung gegenüber „2:3“
+    /// und „-7:2.4; 2:3“ eine gegenüber „-7:2.4, 2:3“ - beides ist dieselbe Kennlinie, nur anders
+    /// geschrieben, und beides darf ``textZuKurve(_:)`` ausdrücklich (`:266-271`). Ein Rand, der
+    /// bernstein wird, weil jemand ein Semikolon getippt hat, behauptet eine Änderung, die es
+    /// nicht gibt.
+    ///
+    /// Eine unlesbare Zeile gilt als abweichend: sie ist nicht das, was beim Dienst steht, und
+    /// der bernsteinfarbene Rand ist der einzige Hinweis darauf, bevor jemand übernimmt.
+    public static func kennlinieAbweichend(_ text: String, gegen cfg: HemsConfig?) -> Bool {
+        let steht = cfg?.heatDemand?.copCurve ?? []
+        guard let getippt = textZuKurve(text) else { return !text.isEmpty || !steht.isEmpty }
+        return getippt != steht
     }
 
     // MARK: - Die Sätze der Seite
@@ -380,6 +427,14 @@ public enum Annahmenfelder {
     /// Wenn die Kennlinienzeile nicht zu lesen ist (`HeatSettings.tsx:143`).
     public static let kennlinienFehler =
         "Die Kennlinie wird als Temperatur:COP geschrieben, Stützpunkte mit Komma getrennt."
+
+    /// Solange die Konfiguration unterwegs ist (`HeatSettings.tsx:158`).
+    ///
+    /// **Drei Wörter und keine Karte.** Die Vorlage setzt an diese Stelle einen bloßen Absatz in
+    /// `text-3`, und das ist mehr als Sparsamkeit: eine leere Karte mit „Wird geholt …“ nimmt
+    /// genau die Fläche, auf der im nächsten Augenblick dreizehn Felder stehen, und ruckt beim
+    /// Eintreffen alles nach unten. Ein Absatz ruckt nicht.
+    public static let ladesatz = "lädt …"
 
     /// Wenn die Konfiguration nicht kommt (`HeatSettings.tsx:130`).
     public static let ladefehler = "Die Konfiguration konnte nicht geladen werden."
@@ -459,6 +514,23 @@ public enum Annahmenfelder {
         public static let blockabstand: Double = 12
         /// Die Seite wird nicht breiter, auch an der Wand (`page.tsx:14`, `max-w-[980px]`).
         public static let hoechstbreite: Double = 980
+        /// Polster über und unter einer Feldzeile (`HeatSettings.tsx:66`, `py-2`).
+        public static let zeilenpolster: Double = 8
+        /// Was die Zeile auseinanderrückt, wenn sie umbricht (`HeatSettings.tsx:66`, `gap-y-1`).
+        public static let zeilenabstandUmbruch: Double = 4
+        /// Zwischen Wort und Feld (`HeatSettings.tsx:66`, `gap-x-4`).
+        public static let wortAbstand: Double = 16
+        /// Zwischen Feld und Einheit (`HeatSettings.tsx:71`, `gap-2`).
+        public static let feldEinheitAbstand: Double = 8
+        /// Polster des Knopfs, quer und hoch (`HeatSettings.tsx:194`, `px-4 py-2`).
+        public static let knopfpolster: (quer: Double, hoch: Double) = (16, 8)
+        /// Ab hier stehen die Felder in zwei Spalten (`HeatSettings.tsx:162`, `md:grid-cols-2`).
+        ///
+        /// **Die Zahl steht hier, auch wenn die Ansicht nicht nachmisst.** 768 Punkte sind genau
+        /// die Grenze, an der iOS die `horizontalSizeClass` von `.compact` auf `.regular` dreht;
+        /// die Ansicht fragt deshalb die Größenklasse und nicht die Breite - gemeint ist aber
+        /// diese Zahl, und sie soll nachlesbar bleiben, wenn die Vorlage sie einmal verschiebt.
+        public static let spaltenumbruch: Double = 768
     }
 }
 

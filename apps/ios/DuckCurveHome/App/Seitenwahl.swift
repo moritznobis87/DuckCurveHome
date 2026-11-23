@@ -74,9 +74,14 @@ struct Seitenwahl: View {
         case "/waerme/fahrplan":
             return AnyView(FahrplanSeite())
         case "/waerme/nachbetrachtung":
-            return AnyView(NachbetrachtungSeite())
+            // Wie bei der Wiedergabe wählt der Fragezeichenteil die Seite nicht, aber er sagt
+            // ihr, welchen Tag sie zeigt: von der Wärmeseite kommt der gelesene Tag mit
+            // (`HeatOverview.tsx:268`). Geprüft wird er im Kern.
+            return AnyView(NachbetrachtungSeite(weg: weg))
         case "/waerme/wirkung":
             return AnyView(WirkungSeite())
+        case "/waerme/regelkreis":
+            return AnyView(RegelkreisSeite())
         case "/waerme/raeume":
             return AnyView(HeizkreiseSeite())
         case "/waerme/annahmen":
@@ -322,8 +327,10 @@ struct Datumskasten: View {
                     wegweiser.setzeZeitraum(Zeitraum.heute(z.spanne, jetzt: haus.jetzt))
                 } label: {
                     Text("HEUTE")
-                        .font(Schrift.kicker)
-                        .kerning(0.6)
+                        // Mono 11 mit 0,08 em, wie `ReportShell.tsx:116` den Knopf setzt -
+                        // und nicht die Kickerschrift, die er sich geborgt hatte.
+                        .font(Schrift.mono(11, relativeTo: .caption2))
+                        .tracking(0.88)
                         .foregroundStyle(Farbe.amber)
                         .padding(.horizontal, 6)
                 }

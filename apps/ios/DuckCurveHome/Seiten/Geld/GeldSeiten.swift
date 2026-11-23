@@ -3,13 +3,14 @@ import SwiftUI
 
 /// Alles, was die PV-Abrechnung braucht - in einem Rutsch geholt.
 ///
-/// **Fünf Antworten, nicht eine.** Die Seite holte eine Spanne. Die Karte „Zeiträume im
-/// Vergleich“ stellt Tag, Woche, Monat und Jahr **zum selben Anker** nebeneinander
-/// (`PvAccounting.tsx:151-161`, `useReport.ts:55-77`); das sind vier weitere Abfragen derselben
-/// Antwort. Scheitert eine, fehlt ihre Spalte - die Seite bleibt stehen.
+/// **Eine Antwort, und die vier Spannen daneben.** Die Karte „Zeiträume im Vergleich“ stellt
+/// Tag, Woche, Monat und Jahr **zum selben Anker** nebeneinander
+/// (`PvAccounting.tsx:151-161`); das sind vier weitere Abfragen derselben Antwort, und sie
+/// stehen nicht mehr in diesem Verbund, sondern als eigener Zustand neben der Seite
+/// (``Spannenstand``, Vorlage `useReport.ts:55-77`). Lagen sie hier, wartete der Beleg auf
+/// seine langsamste Spalte.
 struct PvAbrechnungsdaten: Sendable {
     let bericht: PvTaxReportOut
-    let jeSpanne: [Spanne: PvTaxReportOut]
 }
 
 /// PV-Abrechnung: die Zahlen, die in die Umsatzsteuervoranmeldung gehören.
@@ -30,41 +31,66 @@ struct PvAbrechnungsdaten: Sendable {
 /// Sätze unter der Seite. Hier bleibt die Anordnung.
 struct PvAbrechnungSeite: View {
     @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
+
+    /// Der Spannenvergleich, als eigener Zustand neben der Seite - der Grund steht an
+    /// ``Spannenstand``.
+    @State private var streifen = Spannenstand<PvTaxReportOut>()
 
     var body: some View {
-        Berichtsseite { z, api in
-            // Die vier Spannen laufen los, bevor die eigentliche Antwort da ist: sie hängen
-            // nur am Anker, nicht an der gewählten Spanne.
-            async let spannen = holeSpannen(anker: z.anker, api: api)
-            let bericht = try await api.energiePv(z.spanne.rawValue, anker: z.anker)
-            return PvAbrechnungsdaten(bericht: bericht, jeSpanne: await spannen)
-        // Auch hier muss der Typ dastehen: `kennzahlen` ist in dieser Datei zweimal
-        // vorhanden, und solange `Antwort` nicht feststeht, kann der Compiler nicht
-        // entscheiden, welche gemeint ist - und leitet `()` ab.
-        } inhalt: { (d: PvAbrechnungsdaten) in
-            inhalt(d)
+        let z = wegweiser.zeitraum(jetzt: haus.jetzt)
+        let stand = streifen.fuer(z.anker)
+        Berichtsseite(
+            hole: { zr, api in
+                let bericht = try await api.energiePv(zr.spanne.rawValue, anker: zr.anker)
+                return PvAbrechnungsdaten(bericht: bericht)
+            },
+            // Auch hier muss der Typ dastehen: `kennzahlen` ist in dieser Datei zweimal
+            // vorhanden, und solange `Antwort` nicht feststeht, kann der Compiler nicht
+            // entscheiden, welche gemeint ist - und leitet `()` ab.
+            inhalt: { (d: PvAbrechnungsdaten) in
+                inhalt(d, anker: z.anker, streifen: stand)
+            },
+            // Der zweite Fehlerweg: fällt der Streifen ganz aus, steht sein Grund als Band
+            // neben allem, was schon dasteht - und das Band des Belegs bleibt unberührt.
+            // Wann der Dienst das gerechnet hat: bei einem Treffer im Zwischenspeicher ist
+            // das nicht jetzt, und dann steht es als Zeile ueber der Seite (``Berichtsstand``).
+            gerechnetAm: { (d: PvAbrechnungsdaten) in d.bericht.generatedAt },
+            nebenfehler: stand.fehler,
+            nebenfehlerErneut: { Task { await holeStreifen(anker: z.anker) } }
+        )
+        // **Am Anker, nicht am Zeitraum.** Ein Spannenwechsel ändert an den vier Spalten
+        // desselben Ankertags nichts; hing der Streifen an `z`, holte jeder Wechsel vier
+        // Abfragen umsonst. Am Ankerwechsel muss er neu laden, sonst zeigt er den falschen Tag.
+        .task(id: z.anker) { await halteStreifenFrisch(anker: z.anker) }
+    }
+
+    /// Den Streifen holen und im Fünf-Minuten-Takt nachholen, solange der Anker steht
+    /// (`useReport.ts:70`).
+    private func halteStreifenFrisch(anker: String) async {
+        while !Task.isCancelled {
+            await holeStreifen(anker: anker)
+            try? await Task.sleep(for: Berichtstakt.nachladen)
         }
     }
 
-    /// Die vier Spannen zum selben Anker. `try?` je Spanne: eine fehlende Spalte ist besser als
+    /// Die vier Spannen zum selben Anker, jede für sich: eine fehlende Spalte ist besser als
     /// eine Seite, die an ihr scheitert - die Vorlage nimmt dafür `Promise.allSettled`
-    /// (`useReport.ts:60`).
-    private func holeSpannen(anker: String, api: Api) async -> [Spanne: PvTaxReportOut] {
-        await withTaskGroup(of: (Spanne, PvTaxReportOut?).self) { gruppe in
-            for s in Spanne.allCases {
-                gruppe.addTask {
-                    (s, try? await api.energiePv(s.rawValue, anker: anker))
-                }
-            }
-            var aus: [Spanne: PvTaxReportOut] = [:]
-            for await (s, b) in gruppe {
-                if let b { aus[s] = b }
-            }
-            return aus
+    /// (`useReport.ts:61`).
+    private func holeStreifen(anker: String) async {
+        let api = haus.api
+        let neu = await streifen.nachgeholt(zu: anker) { s in
+            try await api.energiePv(s.rawValue, anker: anker)
         }
+        // Welcher Anker gilt, entscheidet erst das Schreiben - der Knopf „Noch einmal“ läuft
+        // neben `.task(id:)` und bricht beim Blättern nicht ab
+        // (``Spannenstand/uebernimm(_:zu:)``).
+        streifen.uebernimm(neu, zu: wegweiser.zeitraum(jetzt: haus.jetzt).anker)
     }
 
-    @ViewBuilder private func inhalt(_ d: PvAbrechnungsdaten) -> some View {
+    @ViewBuilder private func inhalt(
+        _ d: PvAbrechnungsdaten, anker: String, streifen: Spannenstand<PvTaxReportOut>
+    ) -> some View {
         let b = d.bericht
         let saetze = Pvabrechnung.saetze(b)
 
@@ -78,10 +104,16 @@ struct PvAbrechnungSeite: View {
         erloeskarte(b)
         aufstellungskarte(b)
 
+        // **Der Streifen steht, auch solange seine Zahlen fehlen**: ``Pvabrechnung``
+        // zeichnet jede Spalte ohne Antwort als Strich, wie die Vorlage mit ihrem `strip`, das
+        // als `{}` anfängt (`PvAccounting.tsx:76`, `:154-160`). Der Anker kommt aus der
+        // Blätterleiste und nicht aus `b.anchor`: die Zahlen des Belegs dürfen beim Blättern
+        // noch die des alten Tages sein, die vier Spaltenköpfe gehören zu dem Tag, für den der
+        // Streifen geholt wurde.
         Spannenstreifen(
             titel: "Zeiträume im Vergleich",
-            zeilen: Pvabrechnung.spannenzeilen(d.jeSpanne),
-            anker: b.anchor,
+            zeilen: Pvabrechnung.spannenzeilen(streifen.werte),
+            anker: anker,
             jetzt: haus.jetzt
         )
 
@@ -153,11 +185,10 @@ struct PvAbrechnungSeite: View {
         }
     }
 
-    /// Was rechts in einer Kopfzeile steht - 12 px in `--text-3` (`Card.tsx:20-28`).
+    /// Was rechts in einer Kopfzeile steht - 12 px in `--text-3` (`ui/Card.tsx:20-28`).
+    /// Größe, Farbe und Ausrichtung stehen in ``Kartenhinweis`` - hier standen sie
+    /// zum zehnten Mal, und am Telefon alle drei falsch (``Karte/beiwerkzeile(_:)``).
     private func beiwerk(_ satz: String) -> some View {
-        Text(satz)
-            .font(Schrift.winzig)
-            .foregroundStyle(Farbe.text3)
-            .multilineTextAlignment(.trailing)
+        Kartenhinweis(satz: satz)
     }
 }

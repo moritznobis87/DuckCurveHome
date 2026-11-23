@@ -46,7 +46,12 @@ struct Ambiente: View {
     /// die Überblendung sichtbar macht. Solange hier nichts steht, rechnet die Ansicht selbst.
     @State private var stand: Stand?
 
-    /// Die Minute, auf der das Bild steht. Eine eigene Uhr, kein Mitlaufen am Rahmen.
+    /// Die Minute, auf der die **grosse Uhr** steht. Eine eigene Uhr, kein Mitlaufen am Rahmen.
+    ///
+    /// Sie kommt aus ``Hauszustand/wanduhr`` und nicht aus `haus.jetzt`: hier stand die Uhr des
+    /// Dienstes, und eine Maschine mit drei Minuten Rueckstand schrieb `22:04` auf die Wand,
+    /// waehrend die Statusleiste des iPads `22:07` zeigte. Was gerechnet wird - Sonnenlauf,
+    /// Fahrplan, Aussicht -, nimmt weiter die Uhr der Daten (``datenminute``).
     @State private var takt = Date()
 
     struct Stand {
@@ -68,7 +73,10 @@ struct Ambiente: View {
 
     private var jetztMinute: Date { takt }
 
-    private var jetztStand: Stand { stand ?? gerechnet(jetztMinute) }
+    /// Die Minute der Daten: in der Uhr des Dienstes sind Fahrplan und Sonnenlauf geschrieben.
+    private var datenminute: Date { Minutenraster.minutenanfang(haus.jetzt) }
+
+    private var jetztStand: Stand { stand ?? gerechnet(datenminute) }
 
     var body: some View {
         GeometryReader { raum in
@@ -87,8 +95,7 @@ struct Ambiente: View {
         .accessibilityLabel("Ruhebild. Antippen für die Bedienung.")
         .onAppear { rechne() }
         .onReceive(Self.sekunde) { _ in
-            let minute = Date(
-                timeIntervalSince1970: (haus.jetzt.timeIntervalSince1970 / 60).rounded(.down) * 60)
+            let minute = Minutenraster.minutenanfang(haus.wanduhr)
             if minute != takt {
                 takt = minute
                 rechne()
@@ -239,10 +246,11 @@ struct Ambiente: View {
             Atempunkt(gestoert: haus.gestoert)
             // Die Farbe traegt der Punkt, nicht das Wort (`globals.css:391`): ein rotes Wort
             // neben einem roten Punkt sagt dasselbe zweimal.
-            Text(haus.verbindungswort.uppercased())
-                .font(Schrift.mono(12))
-                .kerning(12 * 0.13)
-                .foregroundStyle(Farbe.text2)
+            // Ein Kicker in 12 Punkten, nicht in Nebelgrau: `.ambiente-live kicker`
+            // (`Ambiente.tsx:47`) erbt Mono, Grossschrift und 0,13 em von `.kicker` und
+            // setzt nur Groesse und Farbe neu (`globals.css:391`). Hier stand das drei
+            // Zeilen lang von Hand nachgebaut.
+            Kicker(wort: haus.verbindungswort, groesse: 12, farbe: Farbe.text2)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(haus.zustand?.system.connectionLabelDe ?? haus.verbindungswort)
@@ -273,19 +281,23 @@ struct Ambiente: View {
     /// der Ausfall da und nicht ein Satz über eine Wärmepumpe, der auf zwei Tage alten Zahlen
     /// beruht. Darum nicht `haus.satz`: der kennt die Wache nicht.
     private var satz: String {
-        if let befund { return befund.textDe }
+        if let befund { return befund.satz }
         if let e = haus.zustand?.decision?.explanationDe, !e.isEmpty { return e }
         return "Verbinde mit dem Haus …"
     }
 
-    private var befund: WatchFindingOut? {
-        Ruhebild.schwersterBefund(haus.zustand?.system.watch)
+    /// **Auch der Befund der eigenen Uhr.** Gehen die Uhren von Dienst und Geraet auseinander,
+    /// steht das hier - an der einzigen Stelle, die das Ruhebild für einen Satz hat. Ohne das
+    /// waere die Lage auf dem Foto genau so still wie vorher: eine falsche Uhr, `LIVE` daneben
+    /// und kein Wort darüber.
+    private var befund: Wachbefunde.Zeile? {
+        Ruhebild.schwersterBefund(haus.zustand?.system.watch, zuerst: haus.uhrbefunde)
     }
 
     private var satzfarbe: Color {
-        switch befund?.severity {
+        switch befund?.schwere {
         case .alarm: return Farbe.alarm
-        case .warn: return Farbe.amberWeich
+        case .warnung: return Farbe.amberWeich
         default: return Farbe.text1
         }
     }
@@ -296,7 +308,7 @@ struct Ambiente: View {
         if jetztStand.aussicht.erwartetKwh != nil || jetztStand.bogen != nil {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Ruhekicker(wort: "Heute erwartet")
+                    Kicker(wort: "Heute erwartet", groesse: 12)
                     Spacer(minLength: 0)
                     Grosszahl(
                         wert: eins(jetztStand.aussicht.erwartetKwh), einheit: "kWh",
@@ -378,7 +390,7 @@ struct Ambiente: View {
             }
             .frame(width: pufferbreite(mass))
             VStack(alignment: .leading, spacing: 4) {
-                Ruhekicker(wort: "Puffer")
+                Kicker(wort: "Puffer", groesse: 12)
                 Grosszahl(
                     wert: prozent(haus.zustand?.buffer.soc), einheit: "%",
                     groesse: mass.knotenZahl, farbe: Farbe.text1)
@@ -401,7 +413,7 @@ struct Ambiente: View {
     private func preis(_ mass: Bildmasse) -> some View {
         let ct = haus.augenblick?.electricityPriceCtKwh.value
         return VStack(alignment: .leading, spacing: 8) {
-            Ruhekicker(wort: "Strom gerade")
+            Kicker(wort: "Strom gerade", groesse: 12)
             Grosszahl(
                 wert: eins(ct), einheit: "ct", groesse: mass.preisZahl,
                 farbe: preisfarbe(ct))
@@ -495,9 +507,8 @@ struct Ambiente: View {
     // MARK: - Rechnen und Laden
 
     private func rechne() {
-        takt = Date(
-            timeIntervalSince1970: (haus.jetzt.timeIntervalSince1970 / 60).rounded(.down) * 60)
-        stand = gerechnet(takt)
+        takt = Minutenraster.minutenanfang(haus.wanduhr)
+        stand = gerechnet(datenminute)
     }
 
     private func gerechnet(_ jetzt: Date) -> Stand {
@@ -651,21 +662,6 @@ struct Grosszahl: View {
         // Zahl und Wort, und die Paare sitzen lockerer als gemeint.
         .padding(.vertical, -groesse * 0.15)
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// Der Kicker des Ruhebildes: Mono 12, weit gesperrt, in Nebelgrau.
-///
-/// Nicht der Baustein `Kicker`: der ist Sans-Halbfett in 10,5 Punkten. Die Vorlage gibt den drei
-/// Kickern des Ruhebildes über `.ambiente-vorschau-wort` eine eigene Grösse und Schrift.
-struct Ruhekicker: View {
-    let wort: String
-
-    var body: some View {
-        Text(wort.uppercased())
-            .font(Schrift.mono(12))
-            .kerning(12 * 0.13)
-            .foregroundStyle(Farbe.kicker)
     }
 }
 

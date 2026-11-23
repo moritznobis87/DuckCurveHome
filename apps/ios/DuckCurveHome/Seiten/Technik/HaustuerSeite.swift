@@ -84,6 +84,15 @@ struct HaustuerSeite: View {
             if let p = protokoll {
                 protokollteil(p)
             } else if fehler == nil {
+                // **Hier bleibt der bloße Absatz, und das ist entschieden und nicht
+                // übersehen.** Der Hinweis ersetzt die Seite nicht: Einleitung, Tagewahl und
+                // Nachsatz stehen weiter darüber und darunter, und die Tagewahl bleibt
+                // bedienbar - nach ``Ladehinweis/Stufe`` also die kleine Stufe. Deren Grad ist
+                // 13 auf der Kurve der Fußnote, dieser Absatz ist 14 auf der des Fließtextes,
+                // wie die drei anderen dieser Spalte. Eine Ente kostete hier einen Punkt
+                // Schriftgröße und die Kurve, auf der die Spalte wächst, an genau einem von
+                // vier gleich gesetzten Absätzen - eine Änderung an der Typografie der Seite
+                // und nicht am Ladehinweis.
                 absatz(Tuerprotokoll.ladesatz, 14, Farbe.text3)
             }
             absatz(Tuerprotokoll.nachsatz, 14, Farbe.text3)
@@ -99,7 +108,7 @@ struct HaustuerSeite: View {
         // **Der Satz des Dienstes steht sichtbar da und nicht hinter einem Deckel.** Er ist die
         // einzige Zählung der Seite („… Ereignisse in … Tagen, davon … geöffnet.“,
         // `system.py:189-195`), und ``Methode`` ist zugeklappt, solange niemand fragt
-        // (`Seiten/Bericht.swift:526,535-537`) - dort stand er bis zum 20.11.2026 und war nicht zu
+        // (`Seiten/Bericht.swift:819,834-836`) - dort stand er bis zum 20.11.2026 und war nicht zu
         // sehen. Die Vorlage zeigt ihn immer (`DoorLog.tsx:136`) und hat auf dieser Seite
         // überhaupt keinen Methodenblock (gesucht nach `Methode` in `page.tsx` und
         // `DoorLog.tsx`: kein Treffer).

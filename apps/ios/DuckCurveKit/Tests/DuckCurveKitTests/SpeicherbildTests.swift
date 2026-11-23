@@ -37,6 +37,7 @@ final class SpeicherbildTests: XCTestCase {
         abdeckung: Double? = 0.94, seit: String? = "2026-09-03", hinweis: String = "Geschätzt."
     ) -> EnergySummaryOut {
         EnergySummaryOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .day, anchor: "2026-11-10", start: "2026-11-10T00:00:00+01:00",
             end: "2026-11-11T00:00:00+01:00", totals: t ?? summen(),
             meta: EnergyMetaOut(
@@ -103,7 +104,8 @@ final class SpeicherbildTests: XCTestCase {
             Speicherbild.kacheln(bericht(summen(dunkel: dunkel)))[1].ton
         }
         XCTAssertEqual(ton(0.2), .gedaempft, "genau 0,2 ist noch kein Fall")
-        XCTAssertEqual(ton(0.21), .glut)
+        // `BatteryReport.tsx:111`: oberhalb der Schwelle `ember`, darunter `muted`.
+        XCTAssertEqual(ton(0.21), .alarm)
         XCTAssertEqual(ton(nil), .gedaempft)
     }
 
@@ -112,7 +114,7 @@ final class SpeicherbildTests: XCTestCase {
             Speicherbild.kacheln(bericht(summen(geraet: geraet)))[7]
         }
         XCTAssertEqual(kachel(0.2).ton, .gedaempft)
-        XCTAssertEqual(kachel(0.9).ton, .glut)
+        XCTAssertEqual(kachel(0.9).ton, .alarm)
         XCTAssertEqual(kachel(0.9).dazu, "0,21\(schmal)€ bezahlt · 0,04\(schmal)€ entgangen")
     }
 

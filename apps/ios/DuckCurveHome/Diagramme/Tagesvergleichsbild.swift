@@ -425,10 +425,7 @@ private struct Strichlinie: Shape {
     ScrollView {
         Karte(
             kicker: Nachbetrachtungsworte.vergleichTitel,
-            beiwerk: AnyView(
-                Text(Nachbetrachtungsworte.vergleichDazu)
-                    .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.text3))
+            beiwerk: Kartenhinweis.beiwerk(Nachbetrachtungsworte.vergleichDazu)
         ) {
             Tagesvergleichsbild(daten: Vorschau.nachbetrachtung())
         }

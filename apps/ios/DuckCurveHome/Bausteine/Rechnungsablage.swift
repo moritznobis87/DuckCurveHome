@@ -69,10 +69,9 @@ struct Rechnungsablage: View {
     }
 
     private var kopfzahl: some View {
-        Text(laeuft ? Rechnungspruefung.laeuftKurz : Rechnungspruefung.gespeichert(anzahl))
-            .font(schmal ? Schrift.klein : Schrift.winzig)
-            .foregroundStyle(Farbe.text3)
-            .lineLimit(1)
+        Kartenhinweis(
+            satz: laeuft
+                ? Rechnungspruefung.laeuftKurz : Rechnungspruefung.gespeichert(anzahl))
     }
 
     // MARK: - Das Feld
@@ -139,9 +138,13 @@ struct Rechnungsablage: View {
     }
 
     /// 16 am Telefon, wie an der Karte selbst (`handy.css:182`); 3 am iPad wie in der Vorlage
-    /// (`InvoiceCheck.tsx:80`).
+    /// (`reports/InvoiceCheck.tsx:79`: `rounded-[3px]`).
+    ///
+    /// **Hier stand ``Marken/radius3``, und das sind sechs.** Der Kommentar nannte die richtige
+    /// Zahl und der Code die falsche Marke - dieselbe Verwechslung, mit der auch ``Karte`` am
+    /// iPad sechs Punkte Radius trug, wo `--radius-2` gemeint ist.
     private var radius: CGFloat {
-        schmal ? 16 : Marken.radius3
+        schmal ? 16 : Marken.radius2
     }
 
     // MARK: - Lesen und prüfen

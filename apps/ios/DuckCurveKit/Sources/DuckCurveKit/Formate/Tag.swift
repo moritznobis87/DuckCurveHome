@@ -97,6 +97,41 @@ public enum Tag {
         return "\(Namen.wochentag(t.weekday ?? 1, kurz: true)), \(t.day ?? 0).\(t.month ?? 0)."
     }
 
+    /// „Di., 10. November 2026“ - kurzer Wochentag, Tag zweistellig, Monat ausgeschrieben.
+    ///
+    /// **Warum es ein drittes Datumsformat braucht.** Die Zellenauskunft der Abdeckungskarte
+    /// nennt den Tag in dieser Form: `toLocaleDateString("de-DE", { weekday: "short",
+    /// day: "2-digit", month: "long", year: "numeric" })`
+    /// (`apps/web/src/components/reports/charts.ts:473-478`). Keines der drei vorhandenen
+    /// Formate trifft sie, und jedes verfehlt sie an einer anderen Stelle:
+    ///
+    /// | Format           | Beispiel                    | Unterschied zu dieser Form              |
+    /// |------------------|-----------------------------|-----------------------------------------|
+    /// | ``lang(_:)``     | „Samstag, 7. November 2026“ | Wochentag ausgeschrieben, Tag einstellig |
+    /// | ``kurz(_:)``     | „Sa, 7.11.“                 | Monat als Zahl, ohne Jahr, kein Punkt hinter dem Wochentag |
+    /// | ``tagMonat(_:)`` | „07.11.“                    | ohne Wochentag, ohne Jahr               |
+    ///
+    /// Die Tabelle steht hier, damit die nächste Seite, die diese Form braucht, nicht ein
+    /// viertes Format anlegt, weil sie die drei Geschwister für austauschbar hält.
+    ///
+    /// **Der Punkt hinter dem Wochentag wird hier gesetzt**, denn ``Namen/wochentageKurz``
+    /// führt „Di“ ohne ihn; dieselbe Zeile steht in ``Formate/kurzDatum(iso:)``. Die Namen
+    /// kommen aus ``Namen/wochentag(_:kurz:)`` und ``Namen/monat(_:)`` und nicht aus einem
+    /// `DateFormatter` - aus dem Grund, der am Kopf von ``Namen`` steht: unter Linux und unter
+    /// iOS liegen zwei ICU-Stände, die sich beim Punkt nicht einig sind, und ein Test, der nur
+    /// auf dem Prüfrechner gilt, ist keiner.
+    ///
+    /// Die führende Null am Tag kommt aus `day: "2-digit"` und ist der sichtbare Unterschied
+    /// zu ``lang(_:)``. Ein Tag, der kein Tag ist, kommt unverändert zurück wie bei den
+    /// Geschwistern - nicht als „01. Januar 0“.
+    public static func langKurzerWochentag(_ tag: String) -> String {
+        guard let d = date(tag) else { return tag }
+        let t = Kalender.haus.dateComponents([.weekday, .day, .month, .year], from: d)
+        let wochentag = Namen.wochentag(t.weekday ?? 1, kurz: true)
+        return "\(wochentag)., " + String(format: "%02d", t.day ?? 0)
+            + ". \(Namen.monat(t.month ?? 1)) \(t.year ?? 0)"
+    }
+
     /// „10.11." - nur Tag und Monat, zweistellig, fuer eine Achse aus vielen Tagen.
     ///
     /// **Ohne Wochentag und ohne Jahr**, anders als `kurz`. An der Achse der Abdeckungskarte

@@ -273,8 +273,8 @@ struct MitteilungenSeite: View {
     /// **Die Fläche ist `rgba(255,255,255,.07)` der Vorlage** und kein Markenwert: ``Marken``
     /// führt keinen Eintrag mit dieser Deckung, und eine zweite Fläche zu erfinden, nur damit
     /// sie einen Namen hat, wäre eine Festlegung ohne Beleg. Weiß mit 7 Prozent legt sich wie
-    /// in der Vorlage über das, was dahinter liegt - und das ist am iPad ``Farbe/flaeche1``, am
-    /// Telefon ``Farbe/flaeche2``. Siehe `braucht` der Messung.
+    /// in der Vorlage über das, was dahinter liegt - und das ist in jeder Breite die
+    /// Kartenfläche ``Farbe/flaeche2``. Siehe `braucht` der Messung.
     ///
     /// **Ohne Zeilen steht `hinweisDe` an ihrer Stelle, grau** (`Morgenbrief.tsx:82`): der
     /// Dienst sagt dort selbst, warum nichts darin steht. Die App erfand hier „Heute stünde
@@ -770,7 +770,7 @@ struct Batterieblatt: View {
                         }
                         Methode([b.noteDe])
                     } else {
-                        Karte { Leer(satz: "Wird geholt …") }
+                        Karte { Ladeente(satz: Ladehinweis.berichtssatz, stufe: .gross) }
                     }
                     if let r = rueckmeldung {
                         Text(r).font(Schrift.klein).foregroundStyle(Farbe.text2)

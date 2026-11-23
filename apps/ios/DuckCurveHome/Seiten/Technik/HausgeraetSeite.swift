@@ -85,7 +85,7 @@ struct HausgeraetSeite: View {
                 softwarekarte
                 if g.unterstuetzt { neustartkarte }
             } else if fehler == nil {
-                Karte { Leer(satz: "Wird geholt …") }
+                Karte { Ladeente(satz: Ladehinweis.berichtssatz, stufe: .gross) }
             }
         }
         .task {
@@ -556,7 +556,11 @@ struct HausgeraetSeite: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else {
-                    Leer(satz: "Das Gerät holt die letzten 300 Zeilen …")
+                    // Alfred in der großen Stufe, wie auf der Seite darunter: dieses Blatt
+                    // zeigt, solange es holt, nichts weiter als diesen Satz
+                    // (``Ladehinweis/Stufe``). Der Fehlerfall steht darüber und bekommt
+                    // keine Ente.
+                    Ladeente(satz: "Das Gerät holt die letzten 300 Zeilen …", stufe: .gross)
                 }
             }
             .background(Farbe.grund)

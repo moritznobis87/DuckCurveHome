@@ -35,6 +35,7 @@ final class WaermeuebersichtTests: XCTestCase {
         lueftung: VentilationOut? = nil, params: HeatParamsOut? = nil
     ) -> HeatBalanceOut {
         HeatBalanceOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .day, start: Zeit.iso(ab), end: Zeit.iso(ab.addingTimeInterval(86400)),
             resolutionDe: "je Minute", totals: t ?? totals(), series: [], buckets: [],
             cost: k ?? kosten(), params: params ?? HeatParamsOut(copCurve: []),
@@ -53,7 +54,9 @@ final class WaermeuebersichtTests: XCTestCase {
         puffer: [[String: Mischwert]] = [], abdeckung: Double? = 0.98, seit: String? = "2026-01-04"
     ) -> HeatReportOut {
         HeatReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             summary: EnergySummaryOut(
+                generatedAt: "2026-11-22T10:00:00+01:00",
                 period: .day, anchor: "2026-11-17", start: Zeit.iso(ab),
                 end: Zeit.iso(ab.addingTimeInterval(86400)), totals: t ?? summentotals(),
                 meta: EnergyMetaOut(
@@ -111,17 +114,37 @@ final class WaermeuebersichtTests: XCTestCase {
         XCTAssertEqual(k[0].dazu, "Wärmepumpe 20,1 · Ofen 4,4 kWh")
     }
 
-    func testEinZeitraumOhneGemesseneMinuteIstEinStrichUndKeineNull() {
+    /// Die Kacheln rechnen nicht strenger als die Vorlage: dort steht `kwh(t?.produced_kwh)`
+    /// (`HeatOverview.tsx:143, 162`), und der Strich bei `minutes == 0` bleibt der
+    /// Spannentabelle (`:119-127`). Ein Tag, der eben angefangen hat, hat eine Zahl.
+    func testOhneGemesseneMinuteStehtTrotzdemDieZahlDerBilanz() {
         let k = Waermeuebersicht.kacheln(
             bilanz: bilanz(totals(minuten: 0)), strom: strombericht())
-        XCTAssertEqual(k[0].wert, Formate.leer, "Null waere die Behauptung, es sei nichts gelaufen.")
+        XCTAssertEqual(k[0].wert, "24,5")
+        XCTAssertEqual(k.first { $0.wort == "Entnahme" }?.wert, "18,4")
+    }
+
+    /// Der Strich gilt nur, wo nichts dasteht - und er gilt weiter in der Spannentabelle.
+    func testOhneWertStehtEinStrichUndInDerSpannentabelleAuchOhneMinuten() {
+        let k = Waermeuebersicht.kacheln(
+            bilanz: bilanz(totals(erzeugt: nil, entnahme: nil)), strom: strombericht())
+        XCTAssertEqual(k[0].wert, Formate.leer)
         XCTAssertEqual(k.first { $0.wort == "Entnahme" }?.wert, Formate.leer)
+        let z = Waermeuebersicht.spannenzeilen([.tag: bilanz(totals(minuten: 0))])
+        XCTAssertEqual(z[0].werte[0], Formate.leer, "Null ist eine Messung, keine Daten ist keine.")
     }
 
     func testNullIstEineMessung() {
         let k = Waermeuebersicht.kacheln(
             bilanz: bilanz(totals(minuten: 1440, erzeugt: 0)), strom: strombericht())
         XCTAssertEqual(k[0].wert, "0,0")
+    }
+
+    /// Kein `tone` an keiner der sechs (`HeatOverview.tsx:141-165`, `Stat.tsx:34`).
+    func testKeineDerSechsKachelnTraegtEinenTon() {
+        let k = Waermeuebersicht.kacheln(bilanz: bilanz(), strom: strombericht())
+        XCTAssertTrue(k.allSatisfy { $0.ton == .normal }, "Die Vorlage setzt an keiner ein tone.")
+        XCTAssertEqual(Waermeuebersicht.kostenkernzahl(kosten()).ton, .normal)
     }
 
     func testOhneArbeitszahlSagtDieKachelWarum() {
@@ -151,6 +174,7 @@ final class WaermeuebersichtTests: XCTestCase {
 
     func testDasVorzeichenDesSparbetragsStehtAlsSatzUndNichtAlsMinus() {
         let gespart = ShiftReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .day, start: Zeit.iso(ab), end: Zeit.iso(ab), actualEur: 1.2,
             naiveEur: 1.5, savingEur: 0.3, savingCtPerKwh: 1.4, heatPumpKwh: 21,
             shiftedKwh: 8, daysUsed: 1, daysSkipped: 0, methodDe: "")
@@ -178,6 +202,7 @@ final class WaermeuebersichtTests: XCTestCase {
             "Dafür braucht es einen Tag mit genug gemessenen Stunden und laufender Wärmepumpe.")
 
         let mitGrund = ShiftReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             period: .day, start: Zeit.iso(ab), end: Zeit.iso(ab), actualEur: 0, naiveEur: 0,
             savingEur: 0, heatPumpKwh: 0, shiftedKwh: 0, daysUsed: 0, daysSkipped: 1,
             skippedDe: "Zu wenig gemessene Stunden.", methodDe: "")
@@ -287,6 +312,8 @@ final class WaermeuebersichtTests: XCTestCase {
         XCTAssertEqual(z[7].wort, "Arbeitszahl")
         XCTAssertEqual(z[7].werte[0], "2,87")
         XCTAssertEqual(z[9].werte[0], Formate.euro(1.74))
+        // ``Streifenzeile`` und kein Tupel: nur so passt die Karte in ``Spannenstreifen``.
+        XCTAssertTrue(z.allSatisfy { $0.ton == .normal }, "HeatOverview.tsx:118-131 setzt keinen.")
     }
 
     // MARK: - Annahmen und Abdeckung

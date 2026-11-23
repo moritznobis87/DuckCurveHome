@@ -52,8 +52,12 @@ struct Speicherpruefkarte: View {
         Button {
             pruefe()
         } label: {
-            Text(Speicherbild.pruefknopf(laeuft: laeuft))
-                .font(Schrift.kicker)
+            // `.pruef-knopf` (`globals.css:602`): Mono 11, 0,12 em - bei 11 Punkten 1,32 -,
+            // Großbuchstaben. Die Kickerschrift, die hier stand, war weder die eine noch die
+            // andere Größe.
+            Text(Speicherbild.pruefknopf(laeuft: laeuft).uppercased())
+                .font(Schrift.mono(11, relativeTo: .caption2))
+                .tracking(1.32)
                 .foregroundStyle(laeuft ? Farbe.text2 : Farbe.petrol)
                 .lineLimit(1)
                 .padding(.horizontal, 14)

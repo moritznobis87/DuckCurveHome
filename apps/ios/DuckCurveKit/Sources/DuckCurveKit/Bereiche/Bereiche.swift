@@ -207,6 +207,8 @@ public enum Bereiche {
                 ),
                 Reiter(weg: "/waerme/wirkung", name: "Wirkung",
                     kicker: "Folgt die Wärmepumpe der Anforderung? · gemessen, nicht angenommen"),  // `wirkung/page.tsx:9`
+                Reiter(weg: "/waerme/regelkreis", name: "Regelkreis", nurHausherr: true,
+                    kicker: Regelkreisbild.seitenkicker),  // `waerme/regelkreis/page.tsx:12`
                 Reiter(weg: "/waerme/raeume", name: "Heizkreise", mitZeitraum: true, spannen: [.tag],
                     kicker: "Einzelraumregelung · Abweichung vom Ziel über den Tag"),  // `RoomsReport.tsx:600`
                 Reiter(weg: "/system", name: "Prognose", nurHausherr: true,

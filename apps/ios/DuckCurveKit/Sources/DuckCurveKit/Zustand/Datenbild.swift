@@ -513,11 +513,17 @@ public enum Pruefworte {
     ///
     /// **Hier steht die Abweichung ausdrücklich drin.** Der Browser hat drei Wege zum
     /// Zeitfenster: ein Werkzeug oben rechts, einen Regler unter dem Diagramm und Zoomen am
-    /// Zeiger (`charts.ts:637-672`). Swift Charts bringt dafür kein Gegenstück mit; die App
-    /// kennt das Ziehen über das Bild und den Weg zurück. Das in den Text zu schreiben ist
-    /// besser, als einen Regler zu versprechen, den es nicht gibt.
+    /// Zeiger (`charts.ts:637-672`). Swift Charts bringt dafür kein Gegenstück mit; es hat für
+    /// das Fenster und für die Werteauskunft dieselbe eine Wischgeste, und die beiden nehmen
+    /// sie einander weg. Die Geste bekommt deshalb die Auskunft - die ist nur so zu haben -,
+    /// das Fenster bekommt Knöpfe (``Pruefkurve/fensterbreiten``). Das in den Text zu
+    /// schreiben ist besser, als einen Regler zu versprechen, den es nicht gibt.
+    ///
+    /// **Dieser Satz muss mitgehen, wenn sich die Geste ändert.** Er stand bis zum 21.11.2026
+    /// auf „ein Ziehen über das Bild wählt ein Zeitfenster", und genau das tut es seitdem
+    /// nicht mehr.
     public static let flaeche =
-        "Die obere Fläche zeigt die Messreihen, wie sie gespeichert sind: auf einer gemeinsamen Kilowattachse, mit hervorgehobener Nulllinie. Über ihr ist Bezug, unter ihr Einspeisung. Die Strecke, um die es geht, ist oft nur eine Viertelstunde lang und über den ganzen Tag gezeichnet damit wenige Bildpunkte - darum wählt ein Ziehen über das Bild ein Zeitfenster, und „Ganzer Tag“ kommt zurück. Die Kilowattachse geht mit, damit auch kleine Leistungen im Ausschnitt lesbar bleiben. Über den ganzen Tag wird jede fünfte Minute gezeichnet, im Ausschnitt jede."
+        "Die obere Fläche zeigt die Messreihen, wie sie gespeichert sind: auf einer gemeinsamen Kilowattachse, mit hervorgehobener Nulllinie. Über ihr ist Bezug, unter ihr Einspeisung. Ein Fahren über das Bild nennt die Werte der berührten Minute, jede Reihe in ihrer Farbe - daran vergleicht man die beiden Gegenproben. Die Strecke, um die es geht, ist oft nur eine Viertelstunde lang und über den ganzen Tag gezeichnet damit wenige Bildpunkte: die Knöpfe unter dem Bild legen darum ein Zeitfenster von einer, drei oder sechs Stunden um die berührte Stelle, und „Ganzer Tag“ kommt zurück. Die Kilowattachse geht mit, damit auch kleine Leistungen im Ausschnitt lesbar bleiben. Über den ganzen Tag wird jede fünfte Minute gezeichnet, im Ausschnitt jede."
 
     /// Der Ladestand als Gegenprobe zur Ladeleistung.
     public static let ladestand =

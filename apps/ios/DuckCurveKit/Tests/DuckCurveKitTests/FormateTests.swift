@@ -258,6 +258,52 @@ extension FormateTests {
         XCTAssertEqual(Formate.euroMitVorzeichen(.infinity), Formate.leer)
     }
 
+    // MARK: - ctKurz (Fahrplan.tsx:328, :713)
+
+    /// „18,4 ct“ - ohne den Nenner, eine Nachkommastelle, schmales Leerzeichen.
+    func testCtKurzSchreibtDenPreisOhneNenner() {
+        XCTAssertEqual(Formate.ctKurz(18.4), "18,4\u{202F}ct")
+        XCTAssertEqual(Formate.ctKurz(18.44), "18,4\u{202F}ct")
+        XCTAssertEqual(Formate.ctKurz(0), "0,0\u{202F}ct")
+    }
+
+    /// Kaufmännisch gerundet wie das Dashboard - derselbe Fall, an dem sich kaufmännisches und
+    /// mathematisches Runden unterscheiden (siehe ``testRundetWieDasDashboard``).
+    func testCtKurzRundetWieDasDashboard() {
+        XCTAssertEqual(Formate.ctKurz(1.25), "1,3\u{202F}ct")
+    }
+
+    /// Negative Preise sind der Grund für das halbe Projekt und stehen auch hier - mit U+2212,
+    /// nicht mit dem Bindestrich.
+    func testCtKurzNimmtDasEchteMinuszeichen() {
+        XCTAssertEqual(Formate.ctKurz(-1.25), "\u{2212}1,3\u{202F}ct")
+        XCTAssertFalse(Formate.ctKurz(-1.25).contains("-"))
+    }
+
+    /// Die zu Null gerundete Zahl verliert ihr Vorzeichen, wie bei allen Geschwistern: ein
+    /// Vorzeichen an einer Null ist eine Aussage, die die Messung nicht hergibt.
+    func testCtKurzGibtDerGerundetenNullKeinVorzeichen() {
+        XCTAssertEqual(Formate.ctKurz(-0.04), "0,0\u{202F}ct")
+        XCTAssertEqual(Formate.ctKurz(-0.06), "\u{2212}0,1\u{202F}ct")
+    }
+
+    /// **Der Unterschied zu ``Formate/ct(_:)`` ist genau der Nenner und sonst nichts.** Beide
+    /// Formen stehen auf derselben Seite (`Fahrplan.tsx:114` trägt „ct/kWh“ im Flächentitel,
+    /// `:713` schreibt „ct“ in die Zelle), und sie dürfen sich nicht auch noch in Rundung oder
+    /// Leerzeichen unterscheiden.
+    func testCtKurzUnterscheidetSichVonCtNurImNenner() {
+        XCTAssertEqual(Formate.ct(18.4), "18,4\u{202F}ct/kWh")
+        XCTAssertEqual(Formate.ctKurz(18.4) + "/kWh", Formate.ct(18.4))
+        XCTAssertTrue(Formate.ctKurz(18.4).contains(Formate.schmalesLeerzeichen))
+    }
+
+    /// Fehlt der Wert, steht der Strich - nicht „0,0 ct“ und nicht „inf“.
+    func testCtKurzOhneWertGibtDenStrich() {
+        XCTAssertEqual(Formate.ctKurz(nil), Formate.leer)
+        XCTAssertEqual(Formate.ctKurz(.nan), Formate.leer)
+        XCTAssertEqual(Formate.ctKurz(.infinity), Formate.leer)
+    }
+
     // MARK: - kurzDatum (wirkung.ts:96, :109-112)
 
     /// „Sa., 07.11.“ - mit Punkt hinter dem Wochentag und mit führender Null.

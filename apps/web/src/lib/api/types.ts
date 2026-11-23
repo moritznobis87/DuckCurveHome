@@ -1328,6 +1328,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/regelkreis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die Regelkreis-Karte
+         * @description Die ganze Kaskade: Blöcke, Signale, Störgrößen, die geltenden Parameter mit ihrer Herkunft,
+         *     der daraus entworfene Regler je Kreis mit Reserven und Frequenzkennlinie, und das Protokoll
+         *     der Übernahmen.
+         *
+         *     Gerechnet für den Augenblick: die Verstärkung der Wärmepumpe hängt von Außen- und
+         *     Vorlauftemperatur ab, und `arbeitspunkt.gemessen` sagt, ob diese Zahlen aus der Messung kamen.
+         */
+        get: operations["regelkreis_api_v1_regelkreis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/regelkreis/parameter/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Einen Parameter übersteuern
+         * @description Einen geschätzten Wert von Hand setzen.
+         *
+         *     Die Übersteuerung gewinnt gegen jede Schätzung, bis sie freigegeben wird; der Schätzer läuft
+         *     weiter und schreibt mit, was er gesagt hätte. Beschnitten wird auf die
+         *     Plausibilitätsgrenzen - wer sich vertippt, bringt die Regelung nicht zum Stehen.
+         *
+         *     Die abgeleiteten Reglerwerte ändern sich mit: das ist der Zweck, denn so lässt sich sehen, was
+         *     eine andere Streckenannahme aus dem Regler macht.
+         */
+        post: operations["uebersteuern_api_v1_regelkreis_parameter__pid__post"];
+        /**
+         * Eine Übersteuerung aufheben
+         * @description Die Übersteuerung aufheben; es gilt wieder, was gelernt wurde.
+         */
+        delete: operations["freigeben_api_v1_regelkreis_parameter__pid__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/evaluation": {
         parameters: {
             query?: never;
@@ -2473,6 +2529,28 @@ export interface components {
             token: string;
         };
         /**
+         * Arbeitspunkt
+         * @description Der Punkt, für den die Karte gerechnet wird.
+         */
+        Arbeitspunkt: {
+            /** Aussen C */
+            aussen_c: number;
+            /** Vorlauf C */
+            vorlauf_c: number;
+            /** Strompreis Eur Kwh */
+            strompreis_eur_kwh: number;
+            /**
+             * Aussen Gemessen
+             * @default false
+             */
+            aussen_gemessen: boolean;
+            /**
+             * Vorlauf Gemessen
+             * @default false
+             */
+            vorlauf_gemessen: boolean;
+        };
+        /**
          * AusweisOut
          * @description Wer gerade fragt. Die Oberfläche blendet danach aus, was die Rolle nicht darf - verboten
          *     wird es am Dienst (`dch_api/auth/rechte.py`).
@@ -2857,6 +2935,49 @@ export interface components {
              * @default 0
              */
             days: number;
+        };
+        /** BlockAnsicht */
+        BlockAnsicht: {
+            /** Id */
+            id: string;
+            /**
+             * Ebene
+             * @enum {integer}
+             */
+            ebene: 0 | 1 | 2 | 3 | 4;
+            /**
+             * Rolle
+             * @enum {string}
+             */
+            rolle: "regler" | "stellglied" | "strecke" | "beobachter" | "rechenglied" | "modell" | "logik" | "vorsteuerung" | "messglied" | "stoergroesse" | "summierstelle" | "teilkreise";
+            /** Rolle Text */
+            rolle_text: string;
+            /** Name */
+            name: string;
+            /** Kurz */
+            kurz: string;
+            /** Kreis */
+            kreis?: string | null;
+            /** Erklaerung */
+            erklaerung?: string[];
+            /** Gleichungen */
+            gleichungen?: string[];
+            /** Behandlung */
+            behandlung?: ("aufgeschaltet" | "ausgeregelt" | "beobachtet" | "geplant" | "erkannt") | null;
+            /** Behandlung Text */
+            behandlung_text?: string | null;
+            /** Quelle */
+            quelle?: string | null;
+            /** Marke */
+            marke?: string | null;
+            /** Gibt Marke */
+            gibt_marke?: string | null;
+            /** Parameter */
+            parameter?: string[];
+            /** Glied */
+            glied?: string | null;
+            /** Glied Entwurf */
+            glied_entwurf?: string | null;
         };
         /** BlockRuleConfig */
         BlockRuleConfig: {
@@ -3584,6 +3705,11 @@ export interface components {
         /** EnergySummaryOut */
         EnergySummaryOut: {
             /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
              * Period
              * @enum {string}
              */
@@ -3870,6 +3996,11 @@ export interface components {
         };
         /** EvReportOut */
         EvReportOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             summary: components["schemas"]["EnergySummaryOut"];
             /** Sessions */
             sessions: components["schemas"]["EvSessionOut"][];
@@ -4542,6 +4673,65 @@ export interface components {
                 [key: string]: components["schemas"]["GeraetVerlaufDienstOut"];
             };
         };
+        /**
+         * GliedAnsicht
+         * @description Ein Übertragungsglied mit seinem Bild: Kurzzeichen, Name, Funktion, Sprungantwort.
+         *
+         *     Der Katalog steht einmal in der Antwort und nicht an jedem Block. Die Kurven sind auf das
+         *     Einheitsquadrat normiert - Form, keine Messung.
+         */
+        GliedAnsicht: {
+            /** Id */
+            id: string;
+            /** Kurz */
+            kurz: string;
+            /** Name */
+            name: string;
+            /** G S */
+            g_s: string;
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "sprung" | "kennlinie" | "takt";
+            /**
+             * Kategorie
+             * @enum {string}
+             */
+            kategorie: "strecke" | "regler" | "messglied" | "nichtlinear" | "planung" | "beobachter";
+            /** Nichtlinear */
+            nichtlinear: boolean;
+            /** Erkennen */
+            erkennen: string;
+            /** Kurve */
+            kurve: [
+                number,
+                number
+            ][];
+            /** Kurve2 */
+            kurve2?: [
+                number,
+                number
+            ][];
+        };
+        /**
+         * GueteAnsicht
+         * @description Der Restfehler eines Teilmodells gegen die Messung.
+         */
+        GueteAnsicht: {
+            /** Modell */
+            modell: string;
+            /** Block */
+            block: string;
+            /** Einheit */
+            einheit: string;
+            /** Rmse */
+            rmse: number | null;
+            /** N */
+            n: number;
+            /** Quelle */
+            quelle: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -4552,6 +4742,11 @@ export interface components {
          * @description Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging.
          */
         HeatBalanceOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             /**
              * Period
              * @enum {string}
@@ -5034,6 +5229,11 @@ export interface components {
         };
         /** HeatReportOut */
         HeatReportOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             summary: components["schemas"]["EnergySummaryOut"];
             /** Thermal Kwh Est */
             thermal_kwh_est: number;
@@ -5680,6 +5880,22 @@ export interface components {
                 number
             ][] | null;
         };
+        /** KanteAnsicht */
+        KanteAnsicht: {
+            /** Von */
+            von: string;
+            /** Nach */
+            nach: string;
+            /** Signal */
+            signal: string;
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "signal" | "stoergroesse" | "rueckfuehrung" | "fuehrung" | "parameter";
+            /** Vorzeichen */
+            vorzeichen?: ("+" | "-") | null;
+        };
         /**
          * KennlinieOut
          * @description Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.
@@ -5717,6 +5933,15 @@ export interface components {
             bilanz?: components["schemas"]["KennlinienBilanzOut"] | null;
             /** Hinweise De */
             hinweise_de?: string[];
+        };
+        /** KennliniePunkt */
+        KennliniePunkt: {
+            /** W */
+            w: number;
+            /** Db */
+            db: number;
+            /** Grad */
+            grad: number;
         };
         /**
          * KennlinienAnnahmeOut
@@ -5928,6 +6153,58 @@ export interface components {
             days: number;
         };
         /**
+         * Kostenpunkt
+         * @description Grenzkosten der Wärme an diesem Arbeitspunkt - die Zahl, nach der zugeordnet wird.
+         */
+        Kostenpunkt: {
+            /** Cop */
+            cop: number;
+            /** Waermepumpe Ct Kwh */
+            waermepumpe_ct_kwh: number;
+            /** Ofen Ct Kwh */
+            ofen_ct_kwh: number;
+            /** Cop Umschalt */
+            cop_umschalt: number;
+            /** Umschalt Aussen C */
+            umschalt_aussen_c: number | null;
+        };
+        /**
+         * KreisAnsicht
+         * @description Ein Kreis der Kaskade mit seinem Entwurf.
+         */
+        KreisAnsicht: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Regelgroesse */
+            regelgroesse: string;
+            /** Stellgroesse */
+            stellgroesse: string;
+            /** Regler Block */
+            regler_block: string;
+            /** Messglied */
+            messglied: string | null;
+            /** Takt S */
+            takt_s: number;
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "stetig" | "zweipunkt" | "hybrid" | "planung";
+            /** Erklaerung */
+            erklaerung: string[];
+            strecke?: components["schemas"]["StreckeAnsicht"] | null;
+            regler?: components["schemas"]["ReglerAnsicht"] | null;
+            reserven?: components["schemas"]["ReservenAnsicht"] | null;
+            /** Kennlinie */
+            kennlinie?: components["schemas"]["KennliniePunkt"][];
+            /** Hysterese K */
+            hysterese_k?: number | null;
+            /** Hinweis */
+            hinweis?: string | null;
+        };
+        /**
          * Linie
          * @description Eine der Linien: ihre Summe, und je Viertelstunde, woraus sie entstand.
          */
@@ -6071,6 +6348,26 @@ export interface components {
             count: number;
             /** Mb */
             mb: number;
+        };
+        /**
+         * Messpunkt
+         * @description Eine Schätzung zu einem Zeitpunkt, mit ihrer Unsicherheit. Eine Stützstelle des Verlaufs.
+         */
+        Messpunkt: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Wert */
+            wert: number;
+            /** Sigma */
+            sigma?: number | null;
+            /**
+             * N
+             * @default 0
+             */
+            n: number;
         };
         /** MorgenbriefIn */
         MorgenbriefIn: {
@@ -6271,6 +6568,68 @@ export interface components {
          * @enum {string}
          */
         OverrideKind: "force_release" | "force_off" | "force_block";
+        /**
+         * ParameterAnsicht
+         * @description Ein Parameter, wie ihn die Oberfläche zeigt.
+         */
+        ParameterAnsicht: {
+            /** Id */
+            id: string;
+            /** Block */
+            block: string;
+            /** Symbol */
+            symbol: string;
+            /** Name */
+            name: string;
+            /** Einheit */
+            einheit: string;
+            /** Stellen */
+            stellen: number;
+            /** Wert */
+            wert: number;
+            /**
+             * Herkunft
+             * @enum {string}
+             */
+            herkunft: "gemessen" | "geschaetzt" | "annahme" | "fest" | "entwurf" | "uebersteuert";
+            /**
+             * Schaetzart
+             * @enum {string}
+             */
+            schaetzart: "ausgleich" | "fenster" | "rls" | "ereignis" | "bilanz" | "stillstand" | "ewma" | "keiner";
+            /** Schaetzart Text */
+            schaetzart_text: string;
+            /** Startwert */
+            startwert: number;
+            /** Schaetzung */
+            schaetzung?: number | null;
+            /** Sigma */
+            sigma?: number | null;
+            /**
+             * N
+             * @default 0
+             */
+            n: number;
+            /** Stand */
+            stand?: string | null;
+            /** Rmse */
+            rmse?: number | null;
+            /** Unten */
+            unten: number;
+            /** Oben */
+            oben: number;
+            /** Warum */
+            warum: string;
+            /** Quelle */
+            quelle?: string | null;
+            /** Wirkt Auf */
+            wirkt_auf?: string[];
+            /** Protokoll */
+            protokoll?: components["schemas"]["Uebernahme"][];
+            /** Verlauf */
+            verlauf?: components["schemas"]["Messpunkt"][];
+            pruefung?: components["schemas"]["Pruefung"] | null;
+        };
         /** PasskeyAbschliessenIn */
         PasskeyAbschliessenIn: {
             /** Schritt */
@@ -6579,6 +6938,21 @@ export interface components {
             label_de: string;
         };
         /**
+         * Pruefung
+         * @description Das Ergebnis der Übernahmeprüfung, mit Satz für die Oberfläche.
+         */
+        Pruefung: {
+            /** Uebernehmen */
+            uebernehmen: boolean;
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "uebernommen" | "zu_wenig_daten" | "innerhalb_unsicherheit" | "zu_frueh" | "grenzen" | "nicht_besser";
+            /** Grund */
+            grund: string;
+        };
+        /**
          * PushGeraetOut
          * @description Ein angemeldetes Gerät, soweit der Dienst es kennt: ein Wort und der Stand der Zustellung.
          */
@@ -6735,6 +7109,11 @@ export interface components {
          */
         PvTaxReportOut: {
             /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
              * Period
              * @enum {string}
              */
@@ -6869,6 +7248,58 @@ export interface components {
             zeilen_gesendet: number;
         };
         /**
+         * RegelkreisOut
+         * @description Die Regelkreis-Karte: Struktur, geltende Parameter, Entwurf und Lernzustand.
+         *
+         *     Alles, was die Karte zeigt, steht hier: je Block seine Erklärung, seine Gleichungen und seine
+         *     Parameter, je Kreis die Strecke, der daraus entworfene Regler, seine Reserven und die
+         *     Frequenzkennlinie, je Parameter die Herkunft - gemessen, geschätzt, angenommen, fest,
+         *     übersteuert -, die Unsicherheit und das Übernahmeprotokoll.
+         *
+         *     Koordinaten stehen nicht darin. Wo ein Kästchen liegt, ist eine Frage der Zeichnung; was
+         *     verbunden ist, eine Aussage über das Haus.
+         */
+        RegelkreisOut: {
+            /**
+             * Stand
+             * Format: date-time
+             */
+            stand: string;
+            /** Seit */
+            seit?: string | null;
+            /** Tage */
+            tage?: number | null;
+            arbeitspunkt: components["schemas"]["Arbeitspunkt"];
+            kosten: components["schemas"]["Kostenpunkt"];
+            /** Bloecke */
+            bloecke: components["schemas"]["BlockAnsicht"][];
+            /** Glieder */
+            glieder: components["schemas"]["GliedAnsicht"][];
+            /** Kanten */
+            kanten: components["schemas"]["KanteAnsicht"][];
+            /** Kreise */
+            kreise: components["schemas"]["KreisAnsicht"][];
+            /** Parameter */
+            parameter: components["schemas"]["ParameterAnsicht"][];
+            /** Guete */
+            guete: components["schemas"]["GueteAnsicht"][];
+            /** Uebersteuert */
+            uebersteuert?: string[];
+            /**
+             * Uebernahmen
+             * @default 0
+             */
+            uebernahmen: number;
+        };
+        /**
+         * RegelkreisStellenIn
+         * @description Ein Parameter von Hand. Beschnitten wird auf die Plausibilitätsgrenzen des Registers.
+         */
+        RegelkreisStellenIn: {
+            /** Wert */
+            wert: number;
+        };
+        /**
          * ReglerAenderungOut
          * @description Eine Zeile des Protokolls: wer wann was gestellt hat.
          */
@@ -6888,6 +7319,17 @@ export interface components {
             auf_de: string;
             /** Urheber De */
             urheber_de?: string | null;
+        };
+        /** ReglerAnsicht */
+        ReglerAnsicht: {
+            /** Kp */
+            kp: number;
+            /** Tn */
+            tn: number;
+            /** Lam */
+            lam: number;
+            /** Regel */
+            regel: string;
         };
         /** ReglerBestaetigenIn */
         ReglerBestaetigenIn: {
@@ -7083,6 +7525,19 @@ export interface components {
             je_vorlauf: components["schemas"]["VorlaufOut"][];
             /** Laeufe */
             laeufe: number;
+        };
+        /** ReservenAnsicht */
+        ReservenAnsicht: {
+            /** Durchtritt */
+            durchtritt: number | null;
+            /** Periode Min */
+            periode_min: number | null;
+            /** Phasenreserve Grad */
+            phasenreserve_grad: number | null;
+            /** Amplitudenreserve */
+            amplitudenreserve: number | null;
+            /** Gut */
+            gut: boolean;
         };
         /**
          * Room
@@ -7529,6 +7984,11 @@ export interface components {
          */
         ShiftReportOut: {
             /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
              * Period
              * @enum {string}
              */
@@ -7940,6 +8400,37 @@ export interface components {
              */
             fuel_note_de: string;
         };
+        /**
+         * StreckeAnsicht
+         * @description Das Streckenmodell eines Kreises, in Zahlen.
+         */
+        StreckeAnsicht: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "foptd" | "iptd";
+            /** K */
+            k: number;
+            /**
+             * T1
+             * @default 0
+             */
+            t1: number;
+            /**
+             * T2
+             * @default 0
+             */
+            t2: number;
+            /** Totzeit */
+            totzeit: number;
+            /** T1 Entwurf */
+            t1_entwurf: number;
+            /** Totzeit Entwurf */
+            totzeit_entwurf: number;
+            /** Halbregel */
+            halbregel: boolean;
+        };
         /** SystemEventOut */
         SystemEventOut: {
             /**
@@ -8128,6 +8619,31 @@ export interface components {
             befunde: components["schemas"]["Befund"][];
             /** Schon Bekannt */
             schon_bekannt: boolean;
+        };
+        /**
+         * Uebernahme
+         * @description Ein Eintrag im Änderungsprotokoll. Was sich geändert hat, und warum.
+         */
+        Uebernahme: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Alt */
+            alt: number;
+            /** Neu */
+            neu: number;
+            /** Sigma */
+            sigma: number;
+            /** N */
+            n: number;
+            /** Rmse Alt */
+            rmse_alt?: number | null;
+            /** Rmse Neu */
+            rmse_neu?: number | null;
+            /** Grund */
+            grund: string;
         };
         /** UpdateAnfrageIn */
         UpdateAnfrageIn: {
@@ -10399,6 +10915,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReglerStellenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regelkreis_api_v1_regelkreis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegelkreisOut"];
+                };
+            };
+        };
+    };
+    uebersteuern_api_v1_regelkreis_parameter__pid__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kennung des Parameters, etwa `wp_totzeit` */
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegelkreisStellenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegelkreisOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freigeben_api_v1_regelkreis_parameter__pid__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kennung des Parameters */
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegelkreisOut"];
                 };
             };
             /** @description Validation Error */

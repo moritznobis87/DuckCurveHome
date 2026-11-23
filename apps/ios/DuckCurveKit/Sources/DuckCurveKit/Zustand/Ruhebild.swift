@@ -224,7 +224,18 @@ public enum Ruhebild {
     /// Warnung, bei gleicher Schwere der ältere. Hier noch einmal zu sortieren hiesse, diese
     /// Reihenfolge ein zweites Mal zu behaupten (`apps/web/src/components/home/Wache.tsx`,
     /// `schwerster`).
-    public static func schwersterBefund(_ wache: [WatchFindingOut]?) -> WatchFindingOut? {
-        wache?.first
+    ///
+    /// **`zuerst` sind die Befunde, die der Dienst nicht haben kann** - heute genau einer: der
+    /// Abstand der beiden Uhren (``Hausuhr/befund``). Er steht vor den Warnungen des Dienstes,
+    /// und zwar aus demselben Grund, aus dem er ueberhaupt dasteht: solange die Uhren
+    /// auseinandergehen, ist jeder Zeitstempel unter ihm fraglich - aber **hinter** dessen
+    /// Alarmen, denn hier gibt es nur einen Platz, und „eine Quelle schweigt ganz" wiegt mehr
+    /// als „die Zeitstempel sind fraglich". Beides rechnet
+    /// ``Wachbefunde/zeilen(_:zuerst:hoechstens:)``, mitsamt der Begruendung und der Messung -
+    /// hier wird nur auf eine Zeile beschnitten, statt eine zweite Reihenfolge zu behaupten.
+    public static func schwersterBefund(
+        _ wache: [WatchFindingOut]?, zuerst: [Wachbefunde.Zeile] = []
+    ) -> Wachbefunde.Zeile? {
+        Wachbefunde.zeilen(wache ?? [], zuerst: zuerst, hoechstens: 1).first
     }
 }

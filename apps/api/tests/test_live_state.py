@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
+import yaml
 from fastapi.testclient import TestClient
 
 from dch_api.infrastructure.live_state import LiveState
 from hems_core.domain import HemsConfig, Quality
 from hems_core.protocol import RawReading
+from hems_core.watch import findings
 
 NOW = datetime(2026, 9, 4, 12, 0, tzinfo=UTC)
 
@@ -114,3 +117,91 @@ def test_die_alarmanlage_laesst_sich_schaerfen_aber_nicht_entschaerfen(client: T
     # Es gibt keinen Modus, der entschärft.
     assert client.post("/api/v1/control/alarm/arm", json={"mode": "disarm"}).status_code == 422
     assert client.post("/api/v1/control/alarm/arm", json={"mode": "off"}).status_code == 422
+
+
+def test_nachts_schweigt_die_erzeugung_nicht_sie_ist_null() -> None:
+    """Der Wächter darf nachts keinen Alarm über die Leistungen stellen.
+
+    Seit dem 22.11.2026 fällt eine Gruppenregel nach dem Schlüssel, der am **längsten** schweigt -
+    vorher deckte der jüngste die anderen zu. Richtig so, nur gilt es auch für `power`: zwanzig
+    Minuten nach Sonnenuntergang stand damit ein Alarm auf dem einen Platz des Ruhebilds, jede
+    Nacht bis zum Sonnenaufgang, während der Dienst zwei Module weiter festhält, dass eine
+    fehlende Erzeugung nachts bekannt ist (`pv_bei_nacht`). Die Ausnahme steht deshalb auch in
+    `zuletzt_gesehen`, der Vorlage des Wächters.
+    """
+    nacht = datetime(2026, 11, 10, 19, 46, tzinfo=UTC)
+    alt = nacht - timedelta(minutes=200)
+
+    def bestand(ls: LiveState) -> None:
+        ls.apply(
+            [
+                reading("pv_power_kw", 0.0, alt),
+                reading("grid_power_kw", 0.6, nacht),
+                reading("battery_power_kw", 0.0, nacht),
+            ]
+        )
+
+    nachts = LiveState(HemsConfig(), sonnenhoehe=lambda _t: -40.0)
+    bestand(nachts)
+    assert nachts.zuletzt_gesehen(nacht)["pv_power_kw"] == nacht
+    assert findings(nachts.zuletzt_gesehen(nacht), nacht) == []
+
+    # Am Tag fehlt derselbe Wert wirklich, und dann soll er gemeldet werden.
+    tags = LiveState(HemsConfig(), sonnenhoehe=lambda _t: 25.0)
+    bestand(tags)
+    assert tags.zuletzt_gesehen(nacht)["pv_power_kw"] == alt
+    (befund,) = findings(tags.zuletzt_gesehen(nacht), nacht)
+    assert befund.name == "power" and befund.severity == "alarm"
+    assert "1 von 3 Messstellen" in befund.text_de
+
+    # Ohne bekannten Sonnenstand bleibt alles, wie es gemeldet wurde.
+    blind = LiveState(HemsConfig())
+    bestand(blind)
+    assert blind.zuletzt_gesehen(nacht)["pv_power_kw"] == alt
+
+
+def test_die_pufferfuehler_haben_nur_eine_altersgrenze() -> None:
+    """Eine Grenze, zwei Wege: über Home Assistant und über MQTT dieselbe Zahl.
+
+    Bis zum 22.11.2026 stand in der Zuordnung 3600 und in `SensorTimeouts` 900. Wirksam war immer
+    die kürzere, weil der Dienst jeden Wert beim Bauen der Aufnahme noch einmal altert - die 3600
+    konnte nichts bewirken und sagte trotzdem etwas anderes. Dieser Test ist der Grund, warum das
+    nicht wieder auseinanderlaufen kann.
+    """
+    wurzel = Path(__file__).resolve().parents[3]
+    karte = yaml.safe_load((wurzel / "config" / "entities.home.yaml").read_text(encoding="utf-8"))
+    frist = HemsConfig().timeouts.temperature_s
+    puffer = [s for s in karte["sensors"] if str(s["key"]).startswith("buffer_temp_")]
+    assert len(puffer) == 4
+    for s in puffer:
+        assert s["stale_after_s"] == frist, s["key"]
+
+
+def test_die_stillstandsspur_zaehlt_gleiche_werte_und_bricht_bei_einer_luecke_ab() -> None:
+    """Woran man einen stehenden Fühler erkennt - und woran nicht.
+
+    Der letzte Wert allein sagt nichts darüber, ob er sich bewegt; dafür führt `LiveState` je
+    Schlüssel mit, seit wann derselbe Wert kommt und wie oft. Eine leere Meldung dazwischen bricht
+    die Spur ab: was nach einem Ausfall wieder kommt, ist ein neuer Wert und kein alter Stillstand.
+    """
+    ls = LiveState(HemsConfig())
+    for i in range(5):
+        ls.apply([reading("buffer_temp_top_c", 58.0, NOW + timedelta(minutes=i))])
+    spur = ls.unchanged["buffer_temp_top_c"]
+    assert (spur.meldungen, spur.unveraendert_min) == (5, 4.0)
+    # Die Spanne ist die gemeldete, nicht „bis jetzt": die Zeit nach der letzten Meldung ist
+    # Stille, und die hat ihre eigene Regel.
+    ls.apply([reading("buffer_temp_top_c", 58.1, NOW + timedelta(minutes=6))])
+    assert ls.unchanged["buffer_temp_top_c"].meldungen == 1
+    ls.apply(
+        [
+            RawReading(
+                key="buffer_temp_top_c",
+                value=None,
+                observed_at=NOW + timedelta(minutes=7),
+                quality=Quality.UNAVAILABLE,
+                source="ha:buffer_temp_top_c",
+            )
+        ]
+    )
+    assert "buffer_temp_top_c" not in ls.unchanged

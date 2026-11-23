@@ -33,6 +33,29 @@ public enum Marken {
     public static let linie2 = Farbwert(0xFFFFFF, deckung: 0.17)
     public static let rasterlinie = Farbwert(0xFFFFFF, deckung: 0.09)
 
+    /// Der Grund einer gedrückten Zeile in einer anklickbaren Liste.
+    ///
+    /// **Eine eigene Stufe unter ``linie1``, und der Unterschied ist zu sehen.** Die Vorlage
+    /// legt der Zeile unter dem Zeiger `rgba(255,255,255,.06)` unter (`globals.css:664`,
+    /// `a.wk-zeile:hover`); die Wirkungsseite nahm dafür ``linie1`` (Weiss auf 0,10) und war
+    /// damit um zwei Drittel zu kräftig. Bei achtzig Zeilen übereinander ist das der
+    /// Unterschied zwischen „diese Zeile liegt unter dem Finger“ und „diese Zeile ist
+    /// ausgewählt“ - und ausgewählt wird dort nichts.
+    ///
+    /// Eigener Name und nicht ``linie1`` mit anderer Deckung: ``linie1`` ist eine **Linie**,
+    /// und wer deren Deckung hebt, soll damit nicht die Rückmeldung jeder Liste mitheben.
+    public static let zeileGedrueckt = papier.mitDeckung(0.06)
+
+    /// Der Rand der berührten Zelle einer Rasterkarte.
+    ///
+    /// `rgba(255,255,255,.85)` (`charts.ts:540`, `emphasis.itemStyle.borderColor`). **Nicht
+    /// ``text1`` auf 0,85, wie die Abdeckungskarte es rechnete:** SwiftUI multipliziert
+    /// `opacity` mit der vorhandenen Deckung, und `text1` trägt schon 0,92 - heraus kamen 0,78
+    /// und damit ein blasserer Rahmen als in der Vorlage. Der Rand ist ausserdem keine
+    /// Schrift: er sagt „hier liegt der Finger“, und das ist eine andere Sache als Text erster
+    /// Stufe.
+    public static let zelleBeruehrt = papier.mitDeckung(0.85)
+
     /// Die Spur der Tagesuhr: wo gemessen wurde, aber nichts lief.
     ///
     /// **Eine eigene Stufe und nicht die nächste vorhandene.** Die Vorlage setzt
@@ -130,6 +153,16 @@ public enum Marken {
     public static let wallbox = Farbwert(0x5C8FA3)
     public static let preis = mist
     public static let last = Farbwert(0xFFFFFF, deckung: 0.62)
+
+    /// Die Hauslinie der Tageskurve: die Linie, gegen die man die Sonne liest.
+    ///
+    /// `rgba(255,255,255,.88)` (`DayCurve.tsx:127`; `:146` nennt dieselbe Farbe in der
+    /// Legende). **Nicht ``last`` (Weiss auf 0,62)** - auf 0,62 verschwand die Linie hinter der
+    /// Sonnenfläche, und in der Legende stand ein Strich, den man im Bild nicht wiederfand.
+    /// Und nicht ``text1`` mit anderer Deckung, wie die App sie bisher rechnete: `text1` ist
+    /// die Schriftfarbe erster Stufe, und wer die hebt oder senkt, soll damit nicht eine
+    /// Diagrammlinie verstellen.
+    public static let hauslinie = papier.mitDeckung(0.88)
 
     // MARK: - Status
 
@@ -264,11 +297,29 @@ public enum Marken {
         return letzte.farbe
     }
 
+    // MARK: - Die Nachbetrachtung: Treppe und Streifen
+
+    /// Der Balken einer Treppenstufe in der Kostentreppe.
+    ///
+    /// `rgba(255,255,255,.62)` (`Kostentreppe.tsx:29`, der Zweig `s.art === "stufe"`).
+    /// Dieselbe Zahl wie ``last`` und doch ein eigener Name: ``last`` ist die Hauslast im
+    /// Flussbild, diese Farbe ist der Weg von einer Zahl zur nächsten. Wer die Hauslast
+    /// verschiebt, soll nicht die Kostentreppe mitverschieben.
+    public static let stufenbalken = papier.mitDeckung(0.62)
+
+    /// Die Helligkeitsstufe null eines Streifens im Tagesvergleich.
+    ///
+    /// `rgba(255,255,255,.07)` (`Tagesvergleich.tsx:156`). **Stufe null ist eine Aussage und
+    /// keine Lücke:** die Linie sagt „aus“, und das muss sich von „sagt nichts“ unterscheiden,
+    /// das leer bleibt. Darum ein schwacher Grund und nicht gar keiner - und darum eine eigene
+    /// Marke, denn die übrigen Stufen desselben Streifens sind ``waermepumpe`` mit Deckung.
+    public static let stufeNull = papier.mitDeckung(0.07)
+
     // MARK: - Die Rampe der Verfügbarkeit
 
     /// Die drei Stopps der Abdeckungskarte: rot, sandfarben, ruhiges Blaugrau.
     ///
-    /// **Sie läuft absichtlich herum.** Üblich wäre grün für „alles da"; hier ist das ruhige
+    /// **Sie läuft absichtlich herum.** Üblich wäre grün für „alles da“; hier ist das ruhige
     /// Ende blaugrau und das laute Ende rot, denn eine Karte ohne Lücken soll langweilig
     /// aussehen (`rooms/../CoverageMap.tsx:32`). Wer darauf sieht, sucht die roten Spalten -
     /// und eine Wand aus Grün hätte dieselbe Aufmerksamkeit verlangt wie eine aus Rot.
@@ -316,13 +367,13 @@ public enum Marken {
     // MARK: - Die Rampen der Jahreskarte
 
     /// **In OKLab zwischen Markenfarben gerechnet, nicht von Hand gewählt** - so steigt die
-    /// wahrgenommene Helligkeit gleichmässig, und nur so liest sich „mehr" als „heller"
+    /// wahrgenommene Helligkeit gleichmässig, und nur so liest sich „mehr“ als „heller“
     /// (`charts.ts:400-412`). Die Werte sind darum aus der Vorlage übernommen und nicht hier
     /// neu bestimmt: dieselbe Skala in zwei Oberflächen muss dieselben Farben an denselben
     /// Stellen zeigen.
     ///
     /// Der dunkelste Schritt jeder einfarbigen Rampe ist die Kartenfläche selbst (`#123544`),
-    /// damit „fast nichts" mit dem Grund verschmilzt. Die Zuordnung ist die des Energieflusses:
+    /// damit „fast nichts“ mit dem Grund verschmilzt. Die Zuordnung ist die des Energieflusses:
     /// Bernstein ist eigene Energie, Mist das Netz, Terrakotta die Wärmepumpe.
     public static let rampeEigen: [Farbwert] = [
         Farbwert(0x123544), Farbwert(0x6A6448), Farbwert(0xC39234),
@@ -368,11 +419,71 @@ public enum Marken {
         return abweichung[Raumabweichung.stufe(k)]
     }
 
+    // MARK: - Das Akzentband der Karte
+
+    /// Der Verlauf des Akzentbalkens oben an einer Karte, drei Stopps.
+    ///
+    /// `--accent-bar: linear-gradient(90deg, var(--amber), var(--amber-soft), transparent 86%)`
+    /// (`tokens.css:98`). **Die mittlere Stelle steht hier und bleibt nicht ungenannt:** ein
+    /// Stopp ohne eigene Stelle liegt in CSS mittig zwischen seinen Nachbarn, also bei 43 % -
+    /// wer das im Kopf behalten muss, rechnet es beim nächsten Mal anders.
+    ///
+    /// **Ausgeblendet wird in durchsichtiges Bernstein und nicht in Schwarz.** CSS
+    /// `transparent` ist durchsichtiges Schwarz; der Browser mischt vormultipliziert und kommt
+    /// damit ohne Grau durch die Mitte. SwiftUI tut das nicht, und ein Verlauf nach
+    /// `Color.clear` wird dort grau. Der letzte Stopp trägt deshalb dieselbe Farbe mit Deckung
+    /// null.
+    public static let akzentband: [(farbe: Farbwert, stelle: Double)] = [
+        (amber, 0.0), (amberWeich, 0.43), (amberWeich.mitDeckung(0), 0.86),
+    ]
+
+    // MARK: - Die Wache
+
+    /// Die Deckung, auf der der Grund einer Wachzeile steht.
+    ///
+    /// `globals.css:205-206` färbt Kante, Zeichen und Grund nach der Schwere: `--alert` auf
+    /// `rgba(224,83,61,.10)` beim Alarm, `--amber-soft` auf `rgba(255,215,120,.10)` bei einer
+    /// Warnung. Es ist jedes Mal dieselbe Farbe, einmal voll und einmal auf einem Zehntel.
+    public static let wachgrundDeckung: Double = 0.10
+
+    /// Kante und Grund einer Wachzeile zu ihrer Schwerefarbe.
+    ///
+    /// **Ein Paar und nicht zwei Werte.** Die Zehn-Prozent-Rechnung stand in der Wache selbst;
+    /// sie gilt aber für jede Schwere und für jede, die noch dazukommt. Wer die Wache leiser
+    /// oder lauter machen will, ändert hier eine Zahl und nicht drei Fälle - und sieht an
+    /// dieser Stelle, dass Kante und Grund zusammengehören.
+    public static func wachzeile(_ schwere: Farbwert) -> (kante: Farbwert, grund: Farbwert) {
+        (schwere, schwere.mitDeckung(wachgrundDeckung))
+    }
+
     // MARK: - Form
 
     public static let radius1: Double = 2
     public static let radius2: Double = 3
     public static let radius3: Double = 6
+
+    /// Der Fokusring eines Eingabefeldes: Stärke und Farbe.
+    ///
+    /// `--focus-ring: 0 0 0 6px rgba(242, 169, 0, 0.12)` (`tokens.css:97`) - kein
+    /// Weichzeichner, sechs Punkte Stärke, ausserhalb des Randes. **Die beiden Zahlen gehören
+    /// zusammen und darum in einen Wert:** ein Ring von sechs Punkten trägt nur bei dieser
+    /// schwachen Deckung, und diese Deckung ist bei einem Punkt Stärke nicht mehr zu sehen.
+    /// Getrennt stehen sie in zwei Seiten und laufen auseinander.
+    public static let fokusring: (staerke: Double, farbe: Farbwert) = (6, amber.mitDeckung(0.12))
+
+    /// Die Lesebreite eines Fliesstextes, in Punkten.
+    ///
+    /// `max-w-[90ch]` (`ReportShell.tsx:143-145`), und die Vorlage begründet es an derselben
+    /// Stelle selbst: über die volle Breite eines 1440er Schirms geriet die Methodenangabe auf
+    /// gut 200 Zeichen je Zeile, und beim Zeilenwechsel findet das Auge den Anfang der nächsten
+    /// Zeile nicht wieder.
+    ///
+    /// **Nachgerechnet und nicht geschätzt.** `1ch` ist die Vorschubbreite der Null, und die
+    /// ist in IBM Plex Sans 600 von 1000 Einheiten (nachgemessen in
+    /// `Ressourcen/Marke/IBMPlexSans-Regular.otf`). Bei den 11,5 Punkten des Hinweisabsatzes
+    /// sind 90 Zeichen also 90 × 0,6 × 11,5 = 621 Punkte. Zwei Seiten trugen dafür je eine
+    /// eigene 560 - rund zehn Prozent zu schmal, und zweimal dieselbe Zahl von Hand.
+    public static let lesebreite: Double = 621
 
     // MARK: - Bewegung
 

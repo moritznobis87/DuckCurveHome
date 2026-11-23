@@ -19,8 +19,16 @@ struct WandRahmen: View {
     /// Wann zuletzt jemand das Glas beruehrt hat.
     @State private var letzteBeruehrung = Date()
     @State private var ruhe = false
-    /// Die laufende Uhr im Kopf. Eine Sekunde, nicht feiner.
-    @State private var uhr = Date()
+    /// Der Sekundentakt dieser Ansicht - und damit die Quelle der Kopfuhr.
+    ///
+    /// Er wandert an ``Kopfzeile/takt`` weiter und wird dort *gelesen*. Das klingt
+    /// selbstverstaendlich und war es nicht: die Kopfzeile nahm ihre Uhrzeit aus
+    /// `haus.wanduhr` und ihr `let uhr: Date` nirgends im Rumpf, tickte also nur als
+    /// Nebenwirkung davon, dass sich ein unbenutztes Argument jede Sekunde aendert. Ein
+    /// unbenutztes `let` einer `View` erzeugt keine Warnung, auch nicht unter
+    /// `-warnings-as-errors` - wer es aufgeraeumt haette, haette die Kopfuhr auf bis zu 60 s
+    /// eingefroren, und nichts haette es gesagt.
+    @State private var takt = Date()
 
     private static let ruheNach: TimeInterval = 5 * 60
     private static let heimkehrNach: TimeInterval = 2 * 60
@@ -35,7 +43,7 @@ struct WandRahmen: View {
         }
         .animation(.easeInOut(duration: 0.6), value: ruhe)
         .onReceive(Self.jedeSekunde) { jetzt in
-            uhr = jetzt
+            takt = jetzt
             pruefeRuhe(jetzt)
         }
         // Jede Beruehrung irgendwo auf der Flaeche zaehlt - auch eine, die auf einem Knopf landet.
@@ -47,7 +55,7 @@ struct WandRahmen: View {
 
     private var anzeige: some View {
         VStack(spacing: 0) {
-            Kopfzeile(uhr: uhr, wegweiser: wegweiser)
+            Kopfzeile(takt: takt, wegweiser: wegweiser)
             if !wegweiser.bereich.reiter.isEmpty {
                 Reiterzeile(
                     bereich: wegweiser.bereich,
@@ -110,8 +118,23 @@ struct WandRahmen: View {
 /// Der Kopf der Wandanzeige.
 struct Kopfzeile: View {
     @Environment(Hauszustand.self) private var haus
-    let uhr: Date
+    /// Der Sekundentakt des Rahmens.
+    ///
+    /// **Er ist die Quelle der Uhrzeit und nicht ihr Anlass.** ``wanduhr`` rechnet ihn mit dem
+    /// Versatz der Anzeigeuhr um; ohne ihn baut diese Ansicht nicht neu und die Uhr steht.
+    /// Vorher las der Rumpf ihn nirgends - die Uhrzeit kam aus `haus.wanduhr`, also aus
+    /// `Date()` zum Zeitpunkt des Neubaus, und der Neubau geschah, weil sich ein unbenutztes
+    /// Argument aenderte. Jetzt faellt es auf, wenn der Takt verschwindet.
+    let takt: Date
     let wegweiser: Wegweiser
+
+    /// Jetzt, wie es gross im Kopf steht: der Takt in der Uhr der Anzeige.
+    ///
+    /// Die **Wanduhr und nicht die Datenuhr** (``Hauszustand/wanduhr``): das hier ist die Zahl,
+    /// die jemand im Vorbeigehen gegen die Statusleiste seines iPads haelt - und ein Dienst,
+    /// dessen Uhr drei Minuten nachging, schrieb hier `22:04` neben das `22:07` des Geraets.
+    /// Alles, was mit Daten rechnet, nimmt weiter `haus.jetzt`.
+    private var wanduhr: Date { haus.uhr.anzeigezeit(takt) }
 
     var body: some View {
         HStack(alignment: .center, spacing: 20) {
@@ -157,10 +180,12 @@ struct Kopfzeile: View {
         // Auf einer Grundlinie, nicht mittig: Datum, Uhr und Temperatur sind eine Zeile aus
         // drei Groessen (`globals.css:192`: `align-items: baseline`, Abstand 22).
         HStack(alignment: .firstTextBaseline, spacing: 22) {
-            Text(Formate.langesDatum(haus.jetzt))
+            // Datum und Uhrzeit aus demselben Takt - sonst zeigten die beiden an der
+            // Tagesgrenze fuer einen Augenblick verschiedene Tage.
+            Text(Formate.langesDatum(wanduhr))
                 .font(Schrift.sans(15))
                 .foregroundStyle(Farbe.text2)
-            Text(Formate.hhmm(haus.jetzt))
+            Text(Formate.hhmm(wanduhr))
                 // `clamp(30px, 3.4vw, 46px)` mit Strichstaerke 500 (`globals.css:194`).
                 .font(Schrift.sans(40, relativeTo: .largeTitle))
                 .fontWeight(.medium)

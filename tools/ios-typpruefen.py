@@ -492,6 +492,64 @@ def bausteine_lesen(pfade: list[str]) -> dict[str, set[str]]:
     return {n: a for n, a in aus.items() if n in eigene}
 
 
+def feldreihenfolgen(pfade: list[str]) -> dict[str, list[str]]:
+    """Jeder Verbund **ohne eigenen `init`** mit seinen Feldern in der Reihenfolge der Erklaerung.
+
+    **Warum die Reihenfolge eine Regel verdient.** Hat ein `struct` keinen ausgeschriebenen
+    `init`, dann *ist* der gemerkte Mitglieder-Anfangswert seine Schnittstelle - und der verlangt
+    die Argumente in genau der Reihenfolge der Felder. Ein Aufruf, der zwei davon vertauscht,
+    nennt lauter Namen, die der Typ wirklich hat; Regel 12 sieht deshalb nichts, `swiftc -parse`
+    sieht nichts, und auf Linux uebersetzt die Oberflaeche gar nicht. Gefallen ist es erst im Lauf
+    `oberflaeche` auf macOS, zweieinhalb Stunden nach dem Schieben (22.11.2026,
+    `KostenSeite.swift:80`: "argument 'nebenfehler' must precede argument 'gerechnetAm'" - ein
+    neues Feld war hinten an `Berichtsseite` angehaengt worden, waehrend alle sieben
+    Aufrufstellen es vorn nannten).
+
+    **Nur, wo die Antwort eindeutig ist.** Aussen vor bleiben: Typen mit einem ausgeschriebenen
+    `init` (dann gilt dessen Reihenfolge, und bei mehreren Anfangswerten gibt es keine eine),
+    Typen, die auch in einer `extension` einen `init` bekommen, Namen, die mehr als einmal
+    erklaert sind, und `class` - fuer Klassen merkt Swift keinen Anfangswert.
+
+    Mitgezaehlt wird jedes gespeicherte Feld, auch ein privates mit Vorgabewert: es steht am
+    Aufrufort nie, verschiebt aber die Reihenfolge der anderen nicht. Berechnete Eigenschaften
+    (`var x: T { … }`) und `static` sind keine Felder.
+    """
+    reihen: dict[str, list[str]] = {}
+    mehrfach: set[str] = set()
+    mit_init: set[str] = set()
+    for pfad in pfade:
+        text = ohne_kommentare(open(pfad, encoding="utf-8").read())
+        for m in re.finditer(r"^[ \t]*(?:public |internal |private |fileprivate |final |)*"
+                             r"(struct|class|extension)\s+(\w+)[^{\n]*\{", text, re.M):
+            art, name = m.group(1), m.group(2)
+            koerper = klammerblock(text, m.end() - 1)
+            flach = flache_ebene(koerper)
+            # Ein `.init(` mitten im Rumpf ist ein Aufruf und keine Erklaerung; derselbe
+            # Unterschied, an dem schon `bausteine_lesen` haengt.
+            if re.search(r"(?:^|[^.\w])init\??\s*\(", flach):
+                mit_init.add(name)
+            if art != "struct":
+                continue
+            if name in reihen:
+                mehrfach.add(name)
+                continue
+            felder: list[str] = []
+            for zeile, roh in zip(flach.splitlines(), koerper.splitlines()):
+                z = zeile.strip()
+                if not z or z.startswith("static") or " static " in z:
+                    continue
+                if roh.split("=")[0].rstrip().endswith("{"):
+                    continue
+                fm = re.match(r"(?:@\w+(?:\([^)]*\))?\s+)*"
+                              r"(?:public |internal |private |fileprivate |)*"
+                              r"(?:var|let)\s+(\w+)\s*[:=]", z)
+                if fm:
+                    felder.append(fm.group(1))
+            reihen[name] = felder
+    return {n: f for n, f in reihen.items()
+            if n not in mehrfach and n not in mit_init and len(f) > 1}
+
+
 def main() -> int:
     felder, aufzaehlungen = schema_lesen()
     nie_wahlfrei = {n for n, ts in felder.items() if all(not t.endswith("?") for t in ts)}
@@ -863,6 +921,110 @@ def main() -> int:
                                       f"erklärt (wenn es von draussen kommt: "
                                       f"tools/ios-bekannte-namen.txt)"))
 
+    # 14. Ein `static let` in einer Aufzählung, das so heisst wie einer ihrer Fälle.
+    #
+    # **Der Fehler des vierzehnten Laufs.** `Ansichtswahl.Form` hatte vier Fälle und für zwei
+    # davon ein gleichnamiges `private static let … = Zuschnitt(…)`. Swift lässt das nicht zu:
+    # Fall und statische Eigenschaft liegen im selben Namensraum. Xcode meldete zweierlei -
+    # „invalid redeclaration" an der Eigenschaft und „cannot convert return expression of type
+    # 'Form' to return type 'Zuschnitt'" dort, wo `Self.prognosekopf` den **Fall** traf statt
+    # des Maßes. Die vier Maße mit Breitenklasse hiessen `…Breit`/`…Schmal` und stiessen
+    # darum nicht an; nur die zwei ohne Variante taten es.
+    #
+    # **Warum das Gatter es vorher nicht sah.** `swiftc -parse` prüft nur die Form, nicht die
+    # Namen; gebaut wird die Oberfläche erst auf dem Mac. Das Muster ist aber ohne jede
+    # Typauflösung zu erkennen: Fälle und statische Eigenschaften einer Aufzählung stehen
+    # beide auf ihrer flachen Ebene.
+    for pfad in dateien + kernpfade:
+        kurz = os.path.relpath(pfad, APP if pfad in dateien else KERN)
+        text = code[pfad] if pfad in code else nur_code(open(pfad, encoding="utf-8").read())
+        for m in re.finditer(r"\benum\s+(\w+)[^{\n]*\{", text):
+            koerper = flache_ebene(klammerblock(text, m.end() - 1))
+            faelle = set()
+            for z in re.finditer(r"^\s*(?:indirect\s+)?case\s+(.+)$", koerper, re.M):
+                for stueck in z.group(1).split(","):
+                    name = re.match(r"\s*`?(\w+)`?", stueck)
+                    if name:
+                        faelle.add(name.group(1))
+            for z in re.finditer(r"\bstatic\s+(?:let|var)\s+(\w+)", koerper):
+                if z.group(1) not in faelle:
+                    continue
+                nr = text[:m.end() + z.start()].count("\n") + 1
+                maengel.append((kurz, nr, f"`static let {z.group(1)}` heisst wie der Fall "
+                                          f"`.{z.group(1)}` derselben Aufzaehlung "
+                                          f"`{m.group(1)}` - Swift meldet das als doppelte "
+                                          f"Erklaerung"))
+
+    # 15. Ein Aufruf, der die Argumente eines Mitglieder-Anfangswerts vertauscht.
+    #
+    # **Der Fehler des fuenfzehnten Laufs.** `Berichtsseite` bekam ein neues Feld `gerechnetAm`
+    # hinten angehaengt, waehrend alle sieben Aufrufstellen es vor `nebenfehler` nannten. Jeder
+    # einzelne Name war richtig - Regel 12 prueft genau das und schwieg -, nur die Reihenfolge
+    # war es nicht. Auf Linux faellt das nicht auf, weil `swiftc -parse` die Form prueft und
+    # nicht die Zuordnung; der Mac brach ab mit "argument 'nebenfehler' must precede argument
+    # 'gerechnetAm'", und `main` war zweieinhalb Stunden rot.
+    #
+    # **Ohne Typauflösung geht das, weil der Mitglieder-Anfangswert keine Freiheit laesst.** Die
+    # genannten Argumente muessen eine Teilfolge der Feldreihenfolge sein; was fehlt, hat einen
+    # Vorgabewert, und was zu viel ist, meldet Regel 12. Geprueft werden nur Verbunde ohne
+    # eigenen `init` (siehe `feldreihenfolgen`) und nur Aufrufe in der App - im Kern findet der
+    # Compiler es hier auf Linux selbst und besser.
+    reihen = feldreihenfolgen(dateien + kernpfade)
+    for pfad in dateien:
+        kurz = os.path.relpath(pfad, APP)
+        ohne = ohne_kommentare(open(pfad, encoding="utf-8").read())
+        for name, felder in reihen.items():
+            if name in doppeldeutig:
+                continue
+            rang = {f: i for i, f in enumerate(felder)}
+            for versatz, rumpf in aufrufe(ohne, name):
+                genannt = [a for a in arg_namen(rumpf) if a in rang]
+                raenge = [rang[a] for a in genannt]
+                if raenge == sorted(raenge):
+                    continue
+                soll = [f for f in felder if f in set(genannt)]
+                nr = ohne[:versatz].count("\n") + 1
+                maengel.append((kurz, nr, f"{name}(...) nennt {genannt}, der gemerkte "
+                                          f"Anfangswert verlangt aber {soll} - Swift meldet "
+                                          f"\"argument must precede argument\""))
+
+    # 16. Ein grossgeschriebener Empfaenger, den das Projekt nirgends erklaert.
+    #
+    # **Der Fehler des sechzehnten Laufs.** `Verlauf.minutenanfang(haus.wanduhr)`, an drei
+    # Stellen in `Ambiente.swift`. Der Typ heisst `Minutenraster`; `Verlauf` ist der Name der
+    # **Datei**, in der er steht - eine Verwechslung, die sich beim Schreiben anbietet und beim
+    # Lesen nicht auffaellt. Der Mac sagte "cannot find 'Verlauf' in scope" und brach ab, zwei
+    # Stunden nach dem Schieben.
+    #
+    # **Warum Regel 13 das nicht faengt.** Sie sucht nach Namen, die mit einem Kleinbuchstaben
+    # beginnen - Eigenschaften und Funktionen. Ein Typname beginnt gross und fiel durch. Beides
+    # getrennt zu fuehren hat einen Grund: kleingeschrieben ist fast alles das Projekt selbst,
+    # grossgeschrieben kommt das meiste von Apple. Darum ist diese Regel schmaler geschnitten.
+    #
+    # **Nur der Empfaenger einer Punktkette, und nur mit kleingeschriebenem Mitglied**
+    # (`Verlauf.minutenanfang`, nicht `Color.Resolved`): Dort steht sicher ein Typ und nicht ein
+    # Feld, und ein grossgeschriebenes Mitglied waere ein verschachtelter Typ, bei dem dieses
+    # Skript die Erklaerung nicht sicher findet. Was von draussen kommt - `Color`, `Task`,
+    # `Double`, die Rahmenwerke von Apple -, steht in `tools/ios-bekannte-namen.txt`; es sind
+    # zwei Dutzend Namen, und jeder davon ist eine gelesene Zeile.
+    typnamen: set[str] = set()
+    for pfad in dateien + kernpfade:
+        for m in re.finditer(r"\b(?:struct|class|enum|protocol|actor|typealias)\s+(\w+)",
+                             code.get(pfad) or nur_code(open(pfad, encoding="utf-8").read())):
+            typnamen.add(m.group(1))
+    for pfad in dateien:
+        kurz = os.path.relpath(pfad, APP)
+        text = code[pfad]
+        for m in re.finditer(r"(?<![.\w$`])([A-Z]\w*)\s*\.\s*[a-z]\w*", text):
+            name = m.group(1)
+            if name in typnamen or name in erklaert:
+                continue
+            nr = text[:m.start()].count("\n") + 1
+            maengel.append((kurz, nr, f"`{name}.…` - einen Typ `{name}` erklaert das Projekt "
+                                      f"nirgends (heisst so eine *Datei*? der Typ darin kann "
+                                      f"anders heissen; kommt er von draussen: "
+                                      f"tools/ios-bekannte-namen.txt)"))
+
     print(f"{len(dateien)} Dateien geprüft, {len(felder)} Schemafelder und "
           f"{len(bausteine)} Bausteine als Maßstab.")
     if maengel:
@@ -870,7 +1032,7 @@ def main() -> int:
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der dreizehn geprüften Fehlerarten gefunden.")
+    print("Keine der sechzehn geprüften Fehlerarten gefunden.")
     return 0
 
 

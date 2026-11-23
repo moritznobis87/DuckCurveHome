@@ -51,4 +51,12 @@ public enum Fahrplanworte {
 
     /// Was an der Stelle der Zeichnung steht, solange kein Plan gerechnet ist.
     public static let ohnePlan = "Noch kein Fahrplan gerechnet."
+
+    /// Was in der Entscheidungskarte steht, solange keine Viertelstunde einen Preis hat.
+    ///
+    /// **Nicht derselbe Satz wie ``ohnePlan``.** Die Vorlage hält die beiden auseinander
+    /// (`Fahrplan.tsx:595` gegen `:690`), und sie meinen Verschiedenes: Der Planer hat nicht
+    /// gerechnet - oder er hat gerechnet und kennt für den Horizont keine Preise. Im zweiten
+    /// Fall steht die Zeichnung vollständig da, nur die Tabelle bleibt leer.
+    public static let ohnePreise = "Noch keine Preise im Horizont."
 }

@@ -3,12 +3,14 @@ import SwiftUI
 
 /// Alles, was die Kostenseite braucht - in einem Rutsch geholt.
 ///
-/// **Sieben Antworten, nicht zwei.** Die Seite holte Übersicht und Vergleichslauf
-/// (`GeldSeiten.swift:15-17`). Dazu kommen jetzt `/energy/heat` - ohne das gibt es keinen
+/// **Drei Antworten, nicht zwei.** Die Seite holte Übersicht und Vergleichslauf
+/// (`GeldSeiten.swift:15-17`). Dazu kommt `/energy/heat` - ohne das gibt es keinen
 /// Pelletpreis, und ohne den ist „Bezahlt“ um einen ganzen Brennstoff zu klein
-/// (`CostReport.tsx:62`, `:66-67`) - und dieselbe Übersicht noch einmal für Tag, Woche, Monat
-/// und Jahr desselben Ankertags (`useReport.ts:149-171`). Scheitert eine davon, fehlt ihre
-/// Spalte; die Seite bleibt stehen.
+/// (`CostReport.tsx:62`, `:66-67`).
+///
+/// **Die vier Spannen stehen nicht mehr darin.** Dieselbe Übersicht für Tag, Woche, Monat und
+/// Jahr desselben Ankertags ist ein eigener Zustand (``Spannenstand``), so wie in der Vorlage
+/// (`useReport.ts:55-77`): lag sie hier, wartete die Seite auf ihre langsamste Spalte.
 ///
 /// **Der Typ muss an `inhalt:` dastehen, und das ist der Grund für diesen Verbund.**
 /// ``Berichtsseite`` leitet `Antwort` aus der Abfrage ab; bei einem benannten Paar, dessen
@@ -22,7 +24,6 @@ struct Kostendaten: Sendable {
     let waerme: HeatReportOut?
     /// Darf fehlen: der Vergleichslauf ist eine Schätzung und kein Teil der Buchhaltung.
     let verschiebung: ShiftReportOut?
-    let jeSpanne: [Spanne: EnergySummaryOut]
 }
 
 /// Kosten: was der Zeitraum gekostet hat, in einer Zeile.
@@ -47,55 +48,87 @@ struct Kostendaten: Sendable {
 /// die Vorzeichen der Diagramme und die fünf Spannenzeilen. Hier bleibt die Anordnung.
 struct KostenSeite: View {
     @Environment(Hauszustand.self) private var haus
+    @Environment(Wegweiser.self) private var wegweiser
     @Environment(\.horizontalSizeClass) private var breite
 
     private var schmal: Bool { breite == .compact }
 
+    /// Der Spannenvergleich, als eigener Zustand neben der Seite - der Grund steht an
+    /// ``Spannenstand``.
+    @State private var streifen = Spannenstand<EnergySummaryOut>()
+
     var body: some View {
-        Berichtsseite { z, api in
-            // Die vier Spannen laufen los, bevor die eigentliche Antwort da ist: sie hängen
-            // nur am Anker, nicht an der gewählten Spanne.
-            async let spannen = holeSpannen(anker: z.anker, api: api)
-            async let waerme = try? api.energieWaerme(z.spanne.rawValue, anker: z.anker)
-            async let schieben = try? api.energieVerschiebung(z.spanne.rawValue, anker: z.anker)
-            let kosten = try await api.energieUebersicht(z.spanne.rawValue, anker: z.anker)
-            return Kostendaten(
-                kosten: kosten, waerme: await waerme, verschiebung: await schieben,
-                jeSpanne: await spannen)
-        } inhalt: { (d: Kostendaten) in
-            inhalt(d)
+        let z = wegweiser.zeitraum(jetzt: haus.jetzt)
+        let stand = streifen.fuer(z.anker)
+        Berichtsseite(
+            hole: { zr, api in
+                async let waerme = try? api.energieWaerme(zr.spanne.rawValue, anker: zr.anker)
+                async let schieben = try? api.energieVerschiebung(
+                    zr.spanne.rawValue, anker: zr.anker)
+                let kosten = try await api.energieUebersicht(zr.spanne.rawValue, anker: zr.anker)
+                return Kostendaten(
+                    kosten: kosten, waerme: await waerme, verschiebung: await schieben)
+            },
+            inhalt: { (d: Kostendaten) in
+                inhalt(d, anker: z.anker, streifen: stand)
+            },
+            // Der zweite Fehlerweg: fällt der Streifen ganz aus, steht sein Grund als Band
+            // neben allem, was schon dasteht - und das Band der Übersicht bleibt unberührt.
+            // Wann der Dienst das gerechnet hat: bei einem Treffer im Zwischenspeicher ist
+            // das nicht jetzt, und dann steht es als Zeile ueber der Seite (``Berichtsstand``).
+            gerechnetAm: { (d: Kostendaten) in d.kosten.generatedAt },
+            nebenfehler: stand.fehler,
+            nebenfehlerErneut: { Task { await holeStreifen(anker: z.anker) } }
+        )
+        // **Am Anker, nicht am Zeitraum.** Ein Spannenwechsel ändert an den vier Spalten
+        // desselben Ankertags nichts; hing der Streifen an `z`, holte jeder Wechsel vier
+        // Abfragen umsonst. Am Ankerwechsel muss er neu laden, sonst zeigt er den falschen Tag.
+        .task(id: z.anker) { await halteStreifenFrisch(anker: z.anker) }
+    }
+
+    /// Den Streifen holen und im Fünf-Minuten-Takt nachholen, solange der Anker steht
+    /// (`useReport.ts:70`).
+    private func halteStreifenFrisch(anker: String) async {
+        while !Task.isCancelled {
+            await holeStreifen(anker: anker)
+            try? await Task.sleep(for: Berichtstakt.nachladen)
         }
     }
 
-    /// Die vier Spannen zum selben Anker. `try?` je Spanne: eine fehlende Spalte ist besser
-    /// als eine Seite, die an ihr scheitert - die Vorlage nimmt dafür `Promise.allSettled`
-    /// (`useReport.ts:160`).
-    private func holeSpannen(anker: String, api: Api) async -> [Spanne: EnergySummaryOut] {
-        await withTaskGroup(of: (Spanne, EnergySummaryOut?).self) { gruppe in
-            for s in Spanne.allCases {
-                gruppe.addTask {
-                    (s, try? await api.energieUebersicht(s.rawValue, anker: anker))
-                }
-            }
-            var aus: [Spanne: EnergySummaryOut] = [:]
-            for await (s, b) in gruppe {
-                if let b { aus[s] = b }
-            }
-            return aus
+    /// Die vier Spannen zum selben Anker, jede für sich: eine fehlende Spalte ist besser als
+    /// eine Seite, die an ihr scheitert - die Vorlage nimmt dafür `Promise.allSettled`
+    /// (`useReport.ts:61`).
+    private func holeStreifen(anker: String) async {
+        let api = haus.api
+        let neu = await streifen.nachgeholt(zu: anker) { s in
+            try await api.energieUebersicht(s.rawValue, anker: anker)
         }
+        // Welcher Anker gilt, entscheidet erst das Schreiben - der Knopf „Noch einmal“ läuft
+        // neben `.task(id:)` und bricht beim Blättern nicht ab
+        // (``Spannenstand/uebernimm(_:zu:)``).
+        streifen.uebernimm(neu, zu: wegweiser.zeitraum(jetzt: haus.jetzt).anker)
     }
 
     // MARK: - Die Anordnung
 
-    @ViewBuilder private func inhalt(_ d: Kostendaten) -> some View {
+    @ViewBuilder private func inhalt(
+        _ d: Kostendaten, anker: String, streifen: Spannenstand<EnergySummaryOut>
+    ) -> some View {
         kopfzeile(d)
         bildUndErsparnis(d)
         verschiebungskarte(d)
         aufstellungskarte(d)
+        // **Der Streifen steht, auch solange seine Zahlen fehlen**: ``Gelduebersicht``
+        // zeichnet jede Spalte ohne Antwort als Strich, wie die Vorlage mit ihrem `strip`, das
+        // als `{}` anfängt (`CostReport.tsx:98`, `:226-231`).
+        //
+        // **Der Anker kommt aus der Blätterleiste und nicht mehr aus `d.kosten.anchor`**: die
+        // Zahlen der Seite dürfen beim Blättern noch die des alten Tages sein, die Köpfe der
+        // vier Spalten gehören aber zu dem Tag, für den der Streifen geholt wurde.
         Spannenstreifen(
             titel: Gelduebersicht.spannentitel,
-            zeilen: Gelduebersicht.spannenzeilen(d.jeSpanne),
-            anker: d.kosten.anchor,
+            zeilen: Gelduebersicht.spannenzeilen(streifen.werte),
+            anker: anker,
             jetzt: haus.jetzt
         )
         // Die Abdeckung steht in der Kurzzeile und nicht im Rumpf: sie schränkt jede Zahl
@@ -276,11 +309,10 @@ struct KostenSeite: View {
     }
 
     /// Was rechts in einer Kopfzeile steht.
+    /// Größe, Farbe und Ausrichtung stehen in ``Kartenhinweis`` - hier standen sie
+    /// zum zehnten Mal, und am Telefon alle drei falsch (``Karte/beiwerkzeile(_:)``).
     private func kopfhinweis(_ satz: String) -> some View {
-        Text(satz)
-            .font(Schrift.winzig)
-            .foregroundStyle(Farbe.text3)
-            .multilineTextAlignment(.trailing)
+        Kartenhinweis(satz: satz)
     }
 }
 

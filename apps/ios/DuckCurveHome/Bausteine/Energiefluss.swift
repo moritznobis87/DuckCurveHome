@@ -141,6 +141,14 @@ struct Energiefluss: View {
     var sonneAb: String?
     /// Welche der beiden Anordnungen gezeichnet wird.
     var fassung: Flussknoten.Fassung = .wand
+    /// Ein niedriger Schirm: die Knotenkreise ruecken auf 48 und 92 zurueck.
+    ///
+    /// **Unter 820 Punkten Hoehe** (`globals.css:269-274`: `--r` von 28 auf 24 und von 56 auf
+    /// 46), und 820 ist die Hoehe des 10,9-Zoll-iPads im Querformat. Die Startseite rechnete
+    /// damit schon ihren Blockabstand, ihren oberen Rand und die Satzgroesse - nur das
+    /// Flussbild bekam es nicht, und die Kreise waren dort mitsamt ihrem Text rund ein Fuenftel
+    /// zu gross.
+    var eng: Bool = false
 
     @Environment(Wegweiser.self) private var wegweiser
 
@@ -169,6 +177,7 @@ struct Energiefluss: View {
                         ohneZahl: ohneZahl(k),
                         ohneNamen: fassung == .hand && k == .haus,
                         fassung: fassung,
+                        eng: eng,
                         seite: k.textseite(fassung),
                         // **Die Guete gehoert zu der Zahl, die dasteht** (`FlowHero.tsx:183`
                         // und `FlowHandy.tsx:243`: beide `m={s?.battery_soc}`). Der Speicher
@@ -566,6 +575,8 @@ struct Knoten: View {
     /// Der Knoten traegt gar keinen Text neben sich - der Hauskreis in der Hand.
     var ohneNamen: Bool = false
     var fassung: Flussknoten.Fassung = .wand
+    /// Ein niedriger Schirm - siehe ``Energiefluss/eng``.
+    var eng: Bool = false
     let seite: Flussknoten.Textseite
     let messwert: Messwert?
     let jetzt: Date
@@ -597,14 +608,18 @@ struct Knoten: View {
         !ohneZahl && (messwert == nil || messwert?.value == nil)
     }
 
-    /// Der Durchmesser: an der Wand 56 beziehungsweise 112 (`globals.css:219-220`), in der
-    /// Hand 52 und 108 (`handy.css:37,48`).
+    /// Der Durchmesser: an der Wand 56 beziehungsweise 112 (`globals.css:219-220`), auf einem
+    /// niedrigen Schirm 48 und 92 (`globals.css:272-273`), in der Hand 52 und 108
+    /// (`handy.css:37,48`).
+    ///
+    /// Die Hand kennt kein `eng`: dort rollt die Seite, und das Bild hat seine feste Hoehe von
+    /// 410 Punkten (`handy.css:33`).
     private var kante: CGFloat {
         switch (gross, fassung) {
         case (true, .hand): return 108
-        case (true, .wand): return 112
+        case (true, .wand): return eng ? 92 : 112
         case (false, .hand): return 52
-        case (false, .wand): return 56
+        case (false, .wand): return eng ? 48 : 56
         }
     }
 

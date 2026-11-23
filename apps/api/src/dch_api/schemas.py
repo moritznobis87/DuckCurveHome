@@ -25,6 +25,7 @@ from hems_core.domain import (
 from hems_core.forecasting import CorrectorState, ForecastScore
 from hems_core.forecasting.rueckblick import ReiheOut
 from hems_core.house import HousePlan
+from hems_core.regelkreis.karte import Regelkreiskarte
 from hems_core.thermal import CyclingStats, HeatTotals
 from hems_core.thermal.kontaktwirkung import Kontaktwirkung
 
@@ -513,6 +514,27 @@ class ForecastHistoryOut(BaseModel):
 Period = Literal["day", "week", "month", "year"]
 
 
+class BerichtMitStand(BaseModel):
+    """Eine Auswertung, die mitteilt, wann sie gerechnet wurde.
+
+    **Weil sie nicht mehr in jedem Fall jetzt gerechnet wird.** Die Auswertungen der Zeiträume
+    liegen seit dem 22.11.2026 in einem Zwischenspeicher
+    (`dch_api.application.berichtsspeicher`): ein abgeschlossener Zeitraum bleibt dauerhaft
+    liegen, der laufende eine Minute. Eine Zahl aus dem Speicher, die aussieht wie eine von
+    jetzt, ist eine stille Lüge - auf einer Wandanzeige, die wochenlang läuft, besonders. Hier
+    steht also nicht die Uhrzeit der Anfrage, sondern die der **Rechnung**, und bei einem
+    Treffer ist das ein Zeitpunkt in der Vergangenheit.
+
+    **Der Name ist nicht neu erfunden.** Die Vorlage kennt dieses Feld schon und nennt es
+    `generated_at`; angezeigt wird es dort als „Stand 14:35“
+    (`apps/web/src/components/forecast/ForecastPage.tsx` über `ForecastEvaluationOut`). Ein
+    zweiter Name für dieselbe Sache wäre eine Fehlerquelle ohne Gegenwert.
+    """
+
+    #: Wann diese Antwort gerechnet wurde - nicht, wann sie abgeholt wurde.
+    generated_at: datetime
+
+
 class EnergyTotalsOut(EnergyTotals):
     """Summen plus abgeleitete Kennzahlen als normale Felder (für JSON)."""
 
@@ -550,7 +572,7 @@ class EnergyMetaOut(BaseModel):
     estimated_note_de: str
 
 
-class EnergySummaryOut(BaseModel):
+class EnergySummaryOut(BerichtMitStand):
     period: Period
     anchor: date
     start: datetime
@@ -580,7 +602,7 @@ class PvTaxBucketOut(BaseModel):
     totals: PvTaxTotals
 
 
-class PvTaxReportOut(BaseModel):
+class PvTaxReportOut(BerichtMitStand):
     """PV-Abrechnung eines Zeitraums: Einspeisung, Eigenverbrauch, Umsatzsteuer."""
 
     period: Period
@@ -683,7 +705,7 @@ class StoveOut(BaseModel):
     fuel_note_de: str = ""
 
 
-class HeatReportOut(BaseModel):
+class HeatReportOut(BerichtMitStand):
     summary: EnergySummaryOut
     thermal_kwh_est: float  # gelieferte Wärme aus Strom × COP (Schätzung)
     cop_est: float
@@ -711,7 +733,7 @@ class EvSessionOut(BaseModel):
     avg_kw: float
 
 
-class EvReportOut(BaseModel):
+class EvReportOut(BerichtMitStand):
     summary: EnergySummaryOut
     sessions: list[EvSessionOut]  # Ladevorgänge im Zeitraum (nur Tag/Woche)
 
@@ -894,7 +916,7 @@ class HeatCostOut(BaseModel):
     cheaper_de: str = ""
 
 
-class HeatBalanceOut(BaseModel):
+class HeatBalanceOut(BerichtMitStand):
     """Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging."""
 
     period: Period
@@ -1592,7 +1614,7 @@ class ShiftDayOut(BaseModel):
     note_de: str = ""
 
 
-class ShiftReportOut(BaseModel):
+class ShiftReportOut(BerichtMitStand):
     """Was das Verschieben der Wärmepumpe gebracht hat - eine Rechnung, keine Messung.
 
     Der Vergleichslauf legt dieselbe Strommenge in die Stunden, in denen ein gewöhnlicher
@@ -1959,6 +1981,25 @@ class AlfredZuordnungIn(BaseModel):
     """Eine eingefügte Entitätenliste aus Home Assistant (Entwicklerwerkzeuge → Zustände)."""
 
     liste: str = Field(min_length=1, max_length=60_000)
+
+
+class RegelkreisOut(Regelkreiskarte):
+    """Die Regelkreis-Karte: Struktur, geltende Parameter, Entwurf und Lernzustand.
+
+    Alles, was die Karte zeigt, steht hier: je Block seine Erklärung, seine Gleichungen und seine
+    Parameter, je Kreis die Strecke, der daraus entworfene Regler, seine Reserven und die
+    Frequenzkennlinie, je Parameter die Herkunft - gemessen, geschätzt, angenommen, fest,
+    übersteuert -, die Unsicherheit und das Übernahmeprotokoll.
+
+    Koordinaten stehen nicht darin. Wo ein Kästchen liegt, ist eine Frage der Zeichnung; was
+    verbunden ist, eine Aussage über das Haus.
+    """
+
+
+class RegelkreisStellenIn(BaseModel):
+    """Ein Parameter von Hand. Beschnitten wird auf die Plausibilitätsgrenzen des Registers."""
+
+    wert: float
 
 
 # --- Updates des Hausgeräts (deploy/haus/dch, routers/update.py) ---------------------------------

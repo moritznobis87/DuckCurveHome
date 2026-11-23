@@ -53,10 +53,10 @@ struct WaermepumpeSeite: View {
                 Stoerung(fehler: fehler) { Task { await lade() } }
             } else {
                 // **Ein Absatz und keine Karte** (`Waermepumpe.tsx:60-62`): solange nichts da
-                // ist, gibt es nichts zu umrahmen.
-                Text("Die Wärmepumpe wird geladen …")
-                    .font(Schrift.text)
-                    .foregroundStyle(Farbe.text3)
+                // ist, gibt es nichts zu umrahmen. Der Satz und seine Farbe sind die von
+                // vorher; dazugekommen ist Alfred darüber, in der großen Stufe, weil dieser
+                // Hinweis an der Stelle der ganzen Seite steht (``Ladehinweis/Stufe``).
+                Ladeente(satz: Wpseite.laedtSatz, stufe: .gross, farbe: Farbe.text3)
             }
         }
         .task { await lade() }
@@ -156,7 +156,9 @@ struct WaermepumpeSeite: View {
     /// vier Rahmen, die erste Zahl in 48 Punkten über die ganze Breite, die übrigen
     /// zweispaltig mit Haarlinien (`handy.css:195-207`).
     private func kennzahlenfeld(_ w: WaermepumpeOut) -> some View {
-        Kachelfeld(kacheln: Wpseite.kennzahlen(w).map(Kacheldaten.init))
+        // `.kpi-handy`: die Werte sind Spannen, und die Vorlage gibt ihnen am Telefon eine
+        // Stufe weniger (`handy.css:381-382`).
+        Kachelfeld(kacheln: Wpseite.kennzahlen(w).map(Kacheldaten.init), spannen: true)
     }
 
     // MARK: - Die Zeichnung

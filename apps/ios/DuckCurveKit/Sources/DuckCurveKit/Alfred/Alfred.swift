@@ -47,6 +47,7 @@ public enum Alfred {
         "/waerme/fahrplan": "Fahrplan zeigt den Plan voraus: Preisfenster, PV-Überschuss und wann die Wärmepumpe laufen soll. Die Ansicht Rückblick ist die Nachbetrachtung.",
         "/waerme/nachbetrachtung": "Rückblick zeigt einen vergangenen Tag in Euro: was der Fahrplan versprochen hat, was gehalten wurde und woran es lag.",
         "/waerme/wirkung": "Wirkung zeigt, ob die Wärmepumpe der Anforderung folgt und was das Verschieben gebracht hat.",
+        "/waerme/regelkreis": "Regelkreis zeigt die ganze Regelung als Kaskade: fünf Ebenen von der Kostenrechnung bis in den einzelnen Raum, die Störgrößen am Ort ihrer Wirkung, und zu jedem Parameter, ob er gemessen, geschätzt oder angenommen ist. Dort steht auch, warum eine Schätzung noch nicht übernommen wurde, und dort lässt sich jeder Wert von Hand setzen. Nur mit Vollzugriff.",
         "/waerme/raeume": "Heizkreise zeigt die Raumtemperaturen und Heizkreise über den gewählten Zeitraum.",
         "/system": "Prognose zeigt, wie gut PV- und Verbrauchsprognosen waren. Nur mit Vollzugriff.",
         "/system/daten": "Daten prüfen zeigt, wie vollständig die Messreihen sind. Nur mit Vollzugriff.",
@@ -279,7 +280,6 @@ public enum Alfred {
         // Browser und schickt die Aufnahme je nach Hersteller an Apple oder Google; hier
         // erkennt das Gerät, und bei einem Modell, das es kann, verlässt die Aufnahme das
         // Telefon nicht.
-        public static let haltenHinweis = "Ente gedrückt halten, sprechen, loslassen."
         public static let haltenLaeuft = "Ich höre zu … Lass die Ente los, wenn du fertig bist."
         public static let sprachWartet = "Einen Moment …"
         public static let sprachNichtsGehoert =
@@ -295,6 +295,31 @@ public enum Alfred {
             "Für Deutsch ist auf diesem Gerät keine Spracherkennung eingerichtet. Tipp deine Frage ins Feld."
         public static let sprachFehler =
             "Die Spracherkennung hat nicht geklappt. Tipp deine Frage ins Feld."
+
+        // MARK: Die Ente verschieben
+        //
+        // **Drei Gesten auf einem Zeichen, und die Worte müssen sie auseinanderhalten.** Tippen
+        // öffnet, Halten spricht, Ziehen verschiebt - siehe ``Entenplatz`` für die Stellen und
+        // ``Entenknopf`` für die Grenze zwischen Halten und Ziehen.
+
+        /// Was VoiceOver an der Ente sagt, wenn der Hinweis gelesen wird.
+        ///
+        /// **Er nennt die Aktionen und nicht die Finger.** Vorher stand hier „Ente gedrückt
+        /// halten, sprechen, loslassen“ - eine Anleitung für eine Geste, die mit eingeschaltetem
+        /// VoiceOver niemand ausführt, und seit dem Verschieben auch keine vollständige mehr.
+        /// Erreichbar ist für die Bedienungshilfe, was unter den Aktionen steht.
+        public static let enteHinweis =
+            "Doppeltippen fragt Alfred. Mit den Aktionen lässt sich die Ente an eine andere Stelle setzen."
+
+        /// Was unter den Aktionen steht: ein Schritt weiter am Rand entlang
+        /// (``Entenplatz/naechste(nach:)``).
+        public static let enteVerschieben = "Ente weitersetzen"
+
+        /// Und der Weg zurück - an der Ente selbst und als Knopf im Blatt.
+        public static let enteZurueck = "Ente zurücksetzen"
+
+        /// Wo sie steht, als Wert des Elements: „steht unten rechts“.
+        public static func enteStelle(_ name: String) -> String { "steht \(name)" }
 
         public static let rechnungKnopf = "Rechnung prüfen (PDF)"
         public static let rechnungZurAuswertung = "Zur vollen Auswertung"

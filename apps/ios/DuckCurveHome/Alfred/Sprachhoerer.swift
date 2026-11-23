@@ -13,7 +13,7 @@ import SwiftUI
 ///
 /// **Das Loslassen kann vor dem Anlaufen kommen, und beim ersten Mal tut es das immer.**
 /// `beginne` wartet auf zwei Systemdialoge; der Finger ist lange vorher weg. Stünde die Lage
-/// erst nach dem Warten auf „hört", liefe das Loslassen ins Leere, und das Mikrofon bliebe
+/// erst nach dem Warten auf „hört“, liefe das Loslassen ins Leere, und das Mikrofon bliebe
 /// danach offen – für immer, denn niemand hält es mehr an. Darum wird die Lage **vor** dem
 /// ersten `await` gesetzt, und ein Loslassen während des Anlaufens wird gemerkt und nachgeholt.
 ///
@@ -57,8 +57,21 @@ final class Sprachhoerer {
     private var fertig: ((String?) -> Void)?
     /// Der Finger ist gegangen, bevor der Hörer stand.
     private var losgelassen = false
+    /// ``brich()`` kam, bevor der Hörer stand – siehe dort.
+    private var abgebrochen = false
     /// Die Wache nach dem Loslassen – sie gehört genau einer Aufnahme und wird mit ihr beendet.
     private var wache: Task<Void, Never>?
+
+    /// Welche Aufnahme gerade zählt.
+    ///
+    /// **Der Rückruf der Erkennung kommt noch, wenn seine Aufnahme längst weg ist.**
+    /// ``raeumeAuf()`` bricht die Erkennungsaufgabe ab, und den Abbruch meldet sie danach als
+    /// Fehler. Trifft diese Meldung ein, während schon die nächste Aufnahme läuft, beendete
+    /// sie die neue: überschriebene Mitschrift und „Die Spracherkennung hat nicht geklappt“
+    /// für jemanden, der gerade spricht. Seit dem Ziehen ist ein Abbruch der Normalfall, und
+    /// gleich danach ist die Ente wieder drückbar – ziehen, loslassen, neu halten liegt im
+    /// Bereich einer Sekunde. Darum trägt jeder Rückruf die Nummer seiner Aufnahme.
+    private var lauf = 0
 
     var laeuft: Bool { lage != .still }
 
@@ -76,7 +89,10 @@ final class Sprachhoerer {
         // **Vor dem ersten `await`.** Ab hier zählt ein Loslassen, auch wenn noch kein Ton
         // fließt.
         lage = .startet
+        // Ab hier gehören Rückrufe der vorigen Aufnahme nicht mehr hierher.
+        lauf += 1
         losgelassen = false
+        abgebrochen = false
         self.fertig = fertig
         text = ""
         meldung = nil
@@ -89,6 +105,11 @@ final class Sprachhoerer {
             scheitere(Alfred.Texte.sprachNichtErlaubt)
             return
         }
+        // **Abgebrochen, waehrend die Erlaubnis noch offen stand.** Wer die Ente in dieser
+        // Lücke zu ziehen beginnt, hat die Aufnahme abbestellt - ``brich()`` hat schon
+        // aufgeräumt, und was hier fehlte, war der Riegel: ohne ihn liefe gleich darunter
+        // `starteMaschine` an, und das Mikrofon ginge *nach* dem Abbruch auf.
+        if abgebrochen { return }
         // Der Finger war schneller als der Erlaubnisdialog - beim ersten Mal der Normalfall.
         // Nichts aufnehmen, aber sagen, dass es jetzt ginge.
         if losgelassen {
@@ -154,6 +175,7 @@ final class Sprachhoerer {
         maschine.prepare()
         try maschine.start()
 
+        let meinLauf = lauf
         aufgabe = erkenner.recognitionTask(with: neu) { @Sendable [weak self] ergebnis, fehler in
             // Nur Sendbares über die Grenze: `SFSpeechRecognitionResult` und `any Error` sind
             // es nicht.
@@ -161,7 +183,9 @@ final class Sprachhoerer {
             let endgueltig = ergebnis?.isFinal ?? false
             let schiefgegangen = fehler != nil
             Task { @MainActor in
-                guard let self else { return }
+                // Siehe ``lauf``: eine Meldung aus einer abgebrochenen Aufnahme beendete sonst
+                // die laufende.
+                guard let self, self.lauf == meinLauf else { return }
                 if let satz { self.text = satz }
                 if endgueltig || schiefgegangen {
                     self.loese(schiefgegangen: schiefgegangen)
@@ -203,11 +227,28 @@ final class Sprachhoerer {
         }
     }
 
-    /// Abbrechen, ohne zu fragen – das Blatt wird geschlossen, der Finger ist verrutscht.
+    /// Abbrechen, ohne zu fragen – das Blatt wird geschlossen, die Ente wird verschoben.
+    ///
+    /// **Der Unterschied zu ``beende()``**: `beende` hört auf und wartet auf das letzte
+    /// Ergebnis, um es abzuschicken. `brich` wirft die Aufnahme weg - `fertig` wird vorher
+    /// gelöscht, also erfährt niemand, was gesagt wurde, und es geht auch keine Frage an den
+    /// Dienst. Beim Verschieben der Ente ist genau das die Zusage: wer sie nur umsetzt, hat
+    /// nicht nebenbei eine Frage abgeschickt.
+    ///
+    /// **Und ein Abbruch sagt nichts.** Er ist keine missglückte Aufnahme: niemand hat eine
+    /// Antwort erwartet, und „Ich habe nichts verstanden“ wäre ein Vorwurf für etwas, das der
+    /// Nutzer gerade selbst getan hat. Darum fällt die Meldung weg, die ``loese(schiefgegangen:)``
+    /// setzt - sie stand sonst nach dem Schließen des Blatts noch als Hinweis da.
+    ///
+    /// **Er hält auch eine Aufnahme auf, die erst anläuft.** ``beginne(fertig:)`` wartet auf die
+    /// Erlaubnis; ohne `abgebrochen` bekäme sie danach trotzdem das Mikrofon, und zwar nach dem
+    /// Abbruch. Gesetzt wird es *nach* dem Lösen, denn das setzt seine Merker zurück.
     func brich() {
         guard lage != .still else { return }
         fertig = nil
         loese(schiefgegangen: false)
+        meldung = nil
+        abgebrochen = true
     }
 
     /// Die Meldung ist gelesen. Ohne das bliebe der Hinweis stehen und käme beim nächsten
@@ -242,7 +283,7 @@ final class Sprachhoerer {
         let ruf = fertig
         fertig = nil
         if gesagt.isEmpty {
-            // Ein Fehler der Erkennung und „nichts gesagt" sind zwei verschiedene Sätze.
+            // Ein Fehler der Erkennung und „nichts gesagt“ sind zwei verschiedene Sätze.
             meldung = schiefgegangen ? Alfred.Texte.sprachFehler : Alfred.Texte.sprachNichtsGehoert
             ruf?(nil)
         } else {

@@ -64,6 +64,55 @@ def swift_name(name: str) -> str:
     return f"`{c}`" if c in SWIFT_RESERVIERT else c
 
 
+# Aufzaehlungswerte, die nur aus Satzzeichen bestehen, haben nach dem Saeubern keinen Namen
+# mehr. `Literal["+", "-"]` wurde darum zweimal zu `case feld` - und zwei Faelle gleichen
+# Namens uebersetzt Swift nicht: die erzeugte Datei war unbrauchbar, und zwar erst beim
+# Bauen, nicht beim Erzeugen. Die gelaeufigen Zeichen bekommen deshalb ein Wort.
+ZEICHENWORT = {
+    "+": "plus",
+    "-": "minus",
+    "±": "plusminus",
+    "*": "stern",
+    "/": "schraegstrich",
+    "\\": "umgekehrterSchraegstrich",
+    "%": "prozent",
+    "=": "gleich",
+    "==": "gleich",
+    "!=": "ungleich",
+    "<": "kleiner",
+    ">": "groesser",
+    "<=": "kleinerGleich",
+    ">=": "groesserGleich",
+    "?": "fragezeichen",
+    "!": "ausruf",
+    "#": "raute",
+    "&": "und",
+    "|": "oder",
+    "~": "welle",
+    "@": "at",
+    "—": "strich",
+    "–": "strich",
+    "": "leer",
+}
+
+
+def fallname(wert: str, vergeben: set[str]) -> str:
+    """Der Swift-Name eines Aufzaehlungsfalls, eindeutig innerhalb seiner Aufzaehlung.
+
+    Eindeutig heisst: wo zwei Werte auf denselben Namen fallen, wird der zweite
+    durchnummeriert. Lieber ein haesslicher Name als eine Datei, die nicht uebersetzt.
+    """
+    roh = re.sub(r"[^0-9a-zA-Z_]", "_", wert).strip("_")
+    fall = camel(roh) if roh else ZEICHENWORT.get(wert.strip(), "wert")
+    grund = fall
+    n = 2
+    while fall in vergeben:
+        fall = f"{grund}{n}"
+        n += 1
+    vergeben.add(fall)
+    return f"`{fall}`" if fall in SWIFT_RESERVIERT else fall
+
+
 # Schemanamen, die unter Swift nicht so heissen duerfen, wie sie im Schema heissen.
 #
 # `Measurement` ist in Foundation vergeben (`Measurement<UnitType>`, die Groesse mit Einheit), und
@@ -164,11 +213,9 @@ class Generator:
             "/// Spielart im Dienst die App nicht stehen laesst.",
             f"public enum {name}: String, Codable, Sendable, Hashable, CaseIterable {{",
         ]
+        vergeben = {"unbekannt"}
         for w in werte:
-            fall = camel(re.sub(r"[^0-9a-zA-Z_]", "_", w))
-            if fall in SWIFT_RESERVIERT:
-                fall = f"`{fall}`"
-            zeilen.append(f'    case {fall} = "{w}"')
+            zeilen.append(f'    case {fallname(w, vergeben)} = "{w}"')
         zeilen.append("    case unbekannt = \"—unbekannt—\"")
         zeilen.append("")
         zeilen.append("    public init(from decoder: any Decoder) throws {")
@@ -282,6 +329,28 @@ import Foundation
         return kopf + "\n\n".join(enum_teile) + "\n\n// MARK: - Strukturen\n\n" + "\n\n".join(teile) + "\n"
 
 
+def doppelt_melden(text: str) -> None:
+    """Haelt fest, dass in keiner Aufzaehlung zwei Faelle gleich heissen.
+
+    **Warum das geprueft wird.** `Literal["+", "-"]` ergab zweimal `case feld`, weil beide
+    Werte nach dem Saeubern keinen Namen mehr hatten. Das faellt beim Erzeugen nicht auf - die
+    Datei entsteht, sieht richtig aus und laesst sich nur nicht uebersetzen, und zwar erst auf
+    dem Mac, Tage spaeter. ``fallname`` macht Namen inzwischen eindeutig; diese Pruefung
+    schlaegt an, falls das wieder auseinanderfaellt.
+    """
+    name = ""
+    gesehen: set[str] = set()
+    for zeile in text.splitlines():
+        if zeile.startswith("public enum "):
+            name = zeile.split()[2].rstrip(":")
+            gesehen = set()
+        elif zeile.startswith("    case "):
+            fall = zeile.split()[1].strip("`")
+            if fall in gesehen:
+                raise SystemExit(f"{name}: der Fall {fall} kommt zweimal vor.")
+            gesehen.add(fall)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pruefen", action="store_true", help="nur vergleichen, nichts schreiben")
@@ -289,6 +358,7 @@ def main() -> int:
 
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
     text = Generator(schema["components"]["schemas"]).lauf()
+    doppelt_melden(text)
 
     if args.pruefen:
         alt = ZIEL.read_text(encoding="utf-8") if ZIEL.exists() else ""

@@ -180,12 +180,14 @@ final class AnnahmenformularTests: XCTestCase {
 
     func testEineUnlesbareKennlinieHaeltDieGanzeAbgabeAuf() {
         let abgabe = Annahmenfelder.abgabe(
-            entwuerfe: Annahmenfelder.entwuerfe(konfiguration()), kennlinie: "7")
+            entwuerfe: Annahmenfelder.entwuerfe(konfiguration()), kennlinie: "7",
+            gegen: konfiguration())
         XCTAssertEqual(abgabe, .kennlinieUnlesbar, "Geprüft ohne Anfrage, wie in der Vorlage.")
     }
 
     func testDieKennlinieGehtImmerMitWeilSieAlsGanzesErsetztWird() throws {
-        guard case .bereit(let patch) = Annahmenfelder.abgabe(entwuerfe: [:], kennlinie: "2:3")
+        guard case .bereit(let patch) = Annahmenfelder.abgabe(
+            entwuerfe: [:], kennlinie: "2:3", gegen: nil)
         else { return XCTFail("Eine lesbare Kennlinie ohne Feldänderung ist eine Abgabe.") }
         XCTAssertEqual(patch.copCurve, [[2, 3]])
     }
@@ -196,7 +198,7 @@ final class AnnahmenformularTests: XCTestCase {
         entwuerfe["buffer_ambient_c"] = "-"
         entwuerfe["indoor_target_c"] = "einundzwanzig"
         guard case .bereit(let patch) = Annahmenfelder.abgabe(
-            entwuerfe: entwuerfe, kennlinie: "2:3")
+            entwuerfe: entwuerfe, kennlinie: "2:3", gegen: nil)
         else { return XCTFail("Die Kennlinie ist lesbar.") }
         let objekt =
             try JSONSerialization.jsonObject(with: JSONEncoder().encode(patch)) as? [String: Any]
@@ -209,18 +211,108 @@ final class AnnahmenformularTests: XCTestCase {
 
     func testEinGetipptesKommaKommtAlsZahlBeimDienstAn() throws {
         guard case .bereit(let patch) = Annahmenfelder.abgabe(
-            entwuerfe: ["pellet_kwh_per_kg": "5,05"], kennlinie: "2:3")
+            entwuerfe: ["pellet_kwh_per_kg": "5,05"], kennlinie: "2:3", gegen: nil)
         else { return XCTFail("Die Kennlinie ist lesbar.") }
         XCTAssertEqual(patch.pelletKwhPerKg, 5.05, "Ohne das verschluckt das Feld jede Eingabe.")
     }
 
     func testEinWertAusserhalbDerDienstgrenzenGehtTrotzdemAnDenDienst() throws {
         guard case .bereit(let patch) = Annahmenfelder.abgabe(
-            entwuerfe: ["pellet_kwh_per_kg": "99"], kennlinie: "2:3")
+            entwuerfe: ["pellet_kwh_per_kg": "99"], kennlinie: "2:3", gegen: nil)
         else { return XCTFail("Die Kennlinie ist lesbar.") }
         XCTAssertEqual(
             patch.pelletKwhPerKg, 99,
             "Die Grenzen kennt der Dienst; zwei Prüfungen laufen auseinander.")
+    }
+
+    // MARK: - Was ein Uebernehmen NICHT anfasst
+
+    /// Die Konfiguration, wie ein Dienst sie wirklich liefert: Zahlen mit mehr Stellen, als die
+    /// Anzeige hat. Genau daran scheiterte das alte `abgabe`.
+    private func feinereKonfiguration() -> HemsConfig {
+        HemsConfig(
+            buffer: BufferConfig(
+                volumeLiters: 1000, targetTemperatureC: 50, lossKwPerK: 0.0045, ambientC: 17,
+                lossUsefulFraction: 0.5),
+            heatDemand: HeatDemandConfig(indoorTargetC: 21.25, copCurve: [[2, 3]]),
+            stove: StoveConfig(
+                nominalHeatKw: 11.9, waterHeatKw: 10, combustionEfficiency: 0.911,
+                minHeatKw: 3.2, minWaterHeatKw: 1.8, pelletPriceEurPerT: 449.5,
+                pelletKwhPerKg: 4.9))
+    }
+
+    func testEinUebernehmenOhneEingabeSchicktKeinEinzigesFeld() throws {
+        let cfg = feinereKonfiguration()
+        let entwuerfe = Annahmenfelder.entwuerfe(cfg)
+        XCTAssertNotEqual(
+            Formate.zahlAusText(entwuerfe["buffer_loss_kw_per_k"] ?? ""), 0.0045,
+            "Die Anzeige rundet auf drei Stellen - und genau darin lag der Fehler.")
+        guard case .bereit(let patch) = Annahmenfelder.abgabe(
+            entwuerfe: entwuerfe, kennlinie: Annahmenfelder.kurveZuText(cfg.heatDemand?.copCurve ?? []),
+            gegen: cfg)
+        else { return XCTFail("Die Kennlinie ist lesbar.") }
+        let objekt =
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(patch)) as? [String: Any]
+        XCTAssertEqual(
+            objekt?.count, 1,
+            "Nur die Kennlinie. Wer nichts tippt, darf nichts ändern - und schon gar nicht "
+                + "dreizehn Werte auf die Stellen der Anzeige runden.")
+        XCTAssertNil(
+            objekt?["buffer_loss_kw_per_k"],
+            "0,0045 kW/K wurde als 0,005 zurückgeschickt, ohne dass die Zeile bernstein wurde.")
+        XCTAssertNil(objekt?["pellet_price_eur_per_t"], "449,50 €/t wurden 450.")
+        XCTAssertNil(objekt?["indoor_target_c"], "21,25 °C wurden 21,3.")
+    }
+
+    func testWerEinFeldAendertSchicktNurDiesesEineUndNichtDieAnderenZwoelf() throws {
+        let cfg = feinereKonfiguration()
+        var entwuerfe = Annahmenfelder.entwuerfe(cfg)
+        entwuerfe["pellet_kwh_per_kg"] = "5,05"
+        guard case .bereit(let patch) = Annahmenfelder.abgabe(
+            entwuerfe: entwuerfe, kennlinie: "2:3", gegen: cfg)
+        else { return XCTFail("Die Kennlinie ist lesbar.") }
+        let objekt =
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(patch)) as? [String: Any]
+        XCTAssertEqual(objekt?.count, 2, "Das geänderte Feld und die Kennlinie.")
+        XCTAssertEqual(objekt?["pellet_kwh_per_kg"] as? Double, 5.05)
+        XCTAssertNil(objekt?["buffer_loss_kw_per_k"])
+    }
+
+    func testOhneBekannteKonfigurationGehtJedesLesbareFeldMitWeilNichtsZuSchonenIst() throws {
+        guard case .bereit(let patch) = Annahmenfelder.abgabe(
+            entwuerfe: Annahmenfelder.entwuerfe(konfiguration()), kennlinie: "2:3", gegen: nil)
+        else { return XCTFail("Die Kennlinie ist lesbar.") }
+        let objekt =
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(patch)) as? [String: Any]
+        XCTAssertEqual(objekt?.count, 14, "Dreizehn Felder und die Kennlinie.")
+    }
+
+    func testEinFeldDasDerDienstNichtHatGehtMitSobaldEineZahlDarinSteht() throws {
+        guard case .bereit(let patch) = Annahmenfelder.abgabe(
+            entwuerfe: ["indoor_target_c": "21"], kennlinie: "2:3",
+            gegen: konfiguration(haus: false))
+        else { return XCTFail("Die Kennlinie ist lesbar.") }
+        XCTAssertEqual(
+            patch.indoorTargetC, 21,
+            "Wo der Dienst keinen Wert hat, ist jede Zahl eine Änderung.")
+    }
+
+    func testEineGleichwertigAndersGeschriebeneKennlinieIstKeineOffeneAenderung() {
+        let cfg = konfiguration()
+        XCTAssertFalse(
+            Annahmenfelder.kennlinieAbweichend("-7:2.4, 2:3.0, 7:3.5, 15:4.2", gegen: cfg),
+            "„3.0“ und „3“ sind derselbe Stützpunkt.")
+        XCTAssertFalse(
+            Annahmenfelder.kennlinieAbweichend("-7:2,4; 2:3; 7:3,5; 15:4,2", gegen: cfg),
+            "Die Semikolonschreibweise ist dieselbe Kennlinie, nur deutsch getippt.")
+        XCTAssertTrue(Annahmenfelder.kennlinieAbweichend("2:3", gegen: cfg))
+        XCTAssertTrue(
+            Annahmenfelder.kennlinieAbweichend("7", gegen: cfg),
+            "Unlesbar ist nicht das, was beim Dienst steht.")
+        XCTAssertFalse(
+            Annahmenfelder.kennlinieAbweichend("", gegen: konfiguration(kurve: [])),
+            "Nichts gegen nichts ist keine Änderung.")
+        XCTAssertTrue(Annahmenfelder.kennlinieAbweichend("", gegen: cfg))
     }
 
     // MARK: - Der Entwurf im Feld
@@ -300,6 +392,14 @@ final class AnnahmenformularTests: XCTestCase {
         XCTAssertTrue(
             Annahmenfelder.uebernommenSatz.contains("Fahrplan"),
             "Ohne den Hinweis sieht die noch alte Fahrplanseite wie Wirkungslosigkeit aus.")
+    }
+
+    func testDerLadesatzIstDerDerVorlageUndNichtDerDerApp() {
+        XCTAssertEqual(
+            Annahmenfelder.ladesatz, "lädt …",
+            "Die App sagte „Wird geholt …“ in einer Karte, die Vorlage drei Wörter im Absatz.")
+        XCTAssertEqual(
+            Annahmenfelder.ladefehler, "Die Konfiguration konnte nicht geladen werden.")
     }
 
     func testDerKennlinienfehlerNenntDasFormatUndNichtDenFehler() {

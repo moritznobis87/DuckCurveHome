@@ -37,7 +37,9 @@ final class WallboxTests: XCTestCase {
         abdeckung: Double? = 0.61, seit: String? = "2026-11-10", hinweis: String = "Geschätzt."
     ) -> EvReportOut {
         EvReportOut(
+            generatedAt: "2026-11-22T10:00:00+01:00",
             summary: EnergySummaryOut(
+                generatedAt: "2026-11-22T10:00:00+01:00",
                 period: .day, anchor: anker, start: "2026-11-10T00:00:00+01:00",
                 end: "2026-11-11T00:00:00+01:00", totals: t ?? summen(),
                 meta: EnergyMetaOut(
@@ -57,8 +59,10 @@ final class WallboxTests: XCTestCase {
                 "Effektiv je kWh",
             ])
         XCTAssertEqual(k.map(\.einheit), ["kWh", nil, "kWh", nil, nil, "ct"])
+        // „Aus dem Netz“ und „Bezahlt“ tragen `ember` (`EvReport.tsx:41-42`), also den
+        // Alarmton und nicht `glut` - die Wallboxseite zeigt keine Waermepumpe.
         XCTAssertEqual(
-            k.map(\.ton), [.nebel, .bernstein, .glut, .glut, .gedaempft, .normal])
+            k.map(\.ton), [.nebel, .bernstein, .alarm, .alarm, .gedaempft, .normal])
     }
 
     func testKachelnTragenDieZahlenUndHinweiseDerVorlage() {
@@ -229,7 +233,7 @@ final class WallboxTests: XCTestCase {
         let zeilen = Wallbox.spannenzeilen(je)
         XCTAssertEqual(
             zeilen.map(\.wort), ["Geladen · kWh", "Sonnenanteil", "Bezahlt", "Ladevorgänge"])
-        XCTAssertEqual(zeilen.map(\.ton), [.nebel, .bernstein, .glut, .normal])
+        XCTAssertEqual(zeilen.map(\.ton), [.nebel, .bernstein, .alarm, .normal])
         XCTAssertEqual(zeilen.map { $0.werte.count }, [4, 4, 4, 4])
         XCTAssertEqual(zeilen[3].werte, ["1", "0", "0", "0"])
     }

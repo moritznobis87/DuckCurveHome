@@ -20,8 +20,18 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from hems_core.domain.config import SensorTimeouts
+
 #: Hoechstzahl der Zeilen aus der eingefuegten Liste.
 ZEILEN_MAX = 400
+
+#: Die Altersgrenze der vier Pufferfuehler - geholt und nicht abgeschrieben.
+#:
+#: Hier stand 3600, dieselbe Zahl, die bis zum 22.11.2026 in `config/entities.home.yaml` stand und
+#: dort zur zweiten Grenze fuer dieselben Fuehler geworden war. Eine Vorlage, die eine Zahl
+#: vorschlaegt, die der Dienst nicht benutzt, bringt sie bei der naechsten Einrichtung zurueck.
+#: Die eine Stelle ist `SensorTimeouts.temperature_s`.
+_PUFFER_FRIST = int(SensorTimeouts().temperature_s)
 
 
 @dataclass(frozen=True)
@@ -45,10 +55,10 @@ KATALOG: tuple[Ziel, ...] = (
     Ziel("house_power_kw", _LEISTUNG, "Gesamtverbrauch des Hauses", 120),
     Ziel("heat_pump_power_kw", _LEISTUNG, "Elektrische Leistung der Waermepumpe", 60),
     Ziel("ev_power_kw", _LEISTUNG, "Ladeleistung der Wallbox", 120),
-    Ziel("buffer_temp_top_c", _TEMPERATUR, "Pufferspeicher oben", 3600),
-    Ziel("buffer_temp_mid_top_c", _TEMPERATUR, "Pufferspeicher mitte oben", 3600),
-    Ziel("buffer_temp_mid_bottom_c", _TEMPERATUR, "Pufferspeicher mitte unten", 3600),
-    Ziel("buffer_temp_bottom_c", _TEMPERATUR, "Pufferspeicher unten", 3600),
+    Ziel("buffer_temp_top_c", _TEMPERATUR, "Pufferspeicher oben", _PUFFER_FRIST),
+    Ziel("buffer_temp_mid_top_c", _TEMPERATUR, "Pufferspeicher mitte oben", _PUFFER_FRIST),
+    Ziel("buffer_temp_mid_bottom_c", _TEMPERATUR, "Pufferspeicher mitte unten", _PUFFER_FRIST),
+    Ziel("buffer_temp_bottom_c", _TEMPERATUR, "Pufferspeicher unten", _PUFFER_FRIST),
     Ziel("outdoor_temp_c", _TEMPERATUR, "Aussentemperatur", 3600),
     Ziel("flow_temp_c", _TEMPERATUR, "Vorlauftemperatur des Waermepumpenkreises", 900),
 )

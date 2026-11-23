@@ -10,7 +10,7 @@
 # ist kurz, und jede Zeile darin ist eine Behauptung, die jemand gelesen hat.
 
 # Freistehende Funktionen der Standardbibliothek
-abs min max round floor ceil sqrt pow exp log hypot atan2 cos sin tan stride zip
+abs min max round floor ceil sqrt pow exp log log10 hypot atan2 cos sin tan stride zip
 print assert precondition fatalError dump swap repeatElement
 
 # Nebenlaeufigkeit
@@ -37,3 +37,17 @@ kSecAttrAccessible kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 didReceive willPresent
 didRegisterForRemoteNotificationsWithDeviceToken
 didFailToRegisterForRemoteNotificationsWithError
+
+# Typen von draussen, die als Empfaenger dastehen (`Name.mitglied`) - Regel 16.
+#
+# Der Fehler des sechzehnten Laufs: `Verlauf.minutenanfang(...)` an drei Stellen in
+# Ambiente.swift. Der Typ heisst `Minutenraster`; `Verlauf` ist nur der Name der *Datei*,
+# in der er steht. Regel 13 sah es nicht, weil sie kleingeschriebene Namen prueft, und
+# `swiftc -parse` loest keine Namen auf - der Mac sagte "cannot find 'Verlauf' in scope",
+# zwei Stunden spaeter. Grossgeschriebene Empfaenger, die das Projekt nicht erklaert, sind
+# selten genug, um sie aufzuzaehlen; wer einen neuen benutzt, traegt ihn hier ein.
+Self Swift Task MainActor Optional Double String CGFloat URL Date Timer
+Color Font Angle MarkDimension
+UserDefaults UNUserNotificationCenter UIApplication UIDevice
+AVAudioSession AVAudioApplication SFSpeechRecognizer
+ISO8601DateFormatter JSONSerialization

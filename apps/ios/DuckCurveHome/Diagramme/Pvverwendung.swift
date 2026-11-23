@@ -5,7 +5,7 @@ import SwiftUI
 /// Was aus der Erzeugung wurde: gestapelte Balken je Zeitabschnitt, ablesbar.
 ///
 /// **Warum nicht ``Balkenbild``.** Das Gerippe zeichnet dasselbe Bild, aber ohne Zeiger und mit
-/// der Legende *im* Diagramm (`Bericht.swift:120`). Die Vorlage tut beides anders, und zwar mit
+/// der Legende *im* Diagramm (`Bericht.swift:164`). Die Vorlage tut beides anders, und zwar mit
 /// Begründung: die Legende steht im Kartenkopf, weil ein Farbfleck neben dem Namen aus einer
 /// Aufzählung eine Legende macht (`ReportShell.tsx:187-190`), und der Wert eines Balkens ist
 /// ablesbar, weil er an einem Monatsbild mit dreißig Balken sonst verloren ist
@@ -163,10 +163,15 @@ struct Pvverwendungsbild: View {
 ///
 /// **Umbrechend und nicht abgeschnitten.** Die Vorlage lässt dem Beiwerk eines Kartenkopfs
 /// genau dafür das `truncate` weg, wenn es ein Element und kein Wort ist („damit eine Legende
-/// umbricht statt zu verschwinden“, `Card.tsx:24-26`), und am Telefon rutscht es auf eine
-/// eigene Zeile (`handy.css:185`). ``Karte`` setzt sein `beiwerk` im schmalen Fall neben den
-/// Kicker; für drei Farbflecke mit Namen ist dort kein Platz. Darum steht die Legende hier
-/// unter dem Kopf und nicht in ihm.
+/// umbricht statt zu verschwinden“, `ui/Card.tsx:24-26`), und am Telefon rutscht es auf eine
+/// eigene Zeile (`handy.css:185`).
+///
+/// **Sie steht unter dem Kopf und nicht in ihm, und das ist der Rest einer Umgehung.** Solange
+/// ``Karte`` ihr `beiwerk` am Telefon neben den Kicker setzte, war dort für drei Farbflecke mit
+/// Namen kein Platz; seit ``Karte/beiwerkzeile(_:)`` wäre er es. Die Vorlage setzt die Legende
+/// tatsächlich in den Kopf (`reports/PvReport.tsx:103`, `right={<ChartLegend …>}`, ebenso
+/// `HouseReport.tsx:64, 68`, `CostReport.tsx:121`, `BatteryReport.tsx:149`). Sie dorthin zu
+/// ziehen verschiebt am iPad vier Karten und ist darum nicht Sache dieser Runde - gemeldet.
 struct Diagrammlegende: View {
     let stuecke: [Legendenstueck]
 

@@ -39,6 +39,12 @@ public enum Waermeuebersicht {
 
     // MARK: - Die sechs Kopfzahlen
 
+    /// **Keine der sechs trägt einen Ton, und das ist die Vorlage.** `HeatOverview.tsx:141-165`
+    /// ruft alle sechs `Stat` ohne `tone`, und `Stat.tsx:34` setzt die Zahl dann in
+    /// `var(--text-1)`. Vier davon standen hier farbig - Glut, Nebel und zweimal Bernstein -,
+    /// und nebeneinander gestellt war das der auffälligste Unterschied der ganzen Kopfzeile:
+    /// eine Reihe aus vier Farben gegen eine Reihe aus einer. Eine Farbe ordnet nur ein, wenn
+    /// nicht jede Kachel eine hat.
     public static func kacheln(bilanz: HeatBalanceOut?, strom: HeatReportOut?) -> [Kennzahl] {
         let t = bilanz?.totals
         let kosten = bilanz?.cost
@@ -57,39 +63,41 @@ public enum Waermeuebersicht {
             ? ((kosten?.heatPumpPaidEur ?? 0) / netzKwh) * 100 : nil
 
         return [
+            // **`kwh` und nicht `feld`.** Die Vorlage nimmt in der Kachel `kwh(t?.produced_kwh)`
+            // (`HeatOverview.tsx:143`) und behält `feld` - den Strich bei `minutes == 0` - für
+            // die Spannentabelle (`:119-127`). Der Unterschied ist nicht Pedanterie: ein Tag,
+            // der eben erst angefangen hat, hat noch keine gemessene Minute, und „0,0 kWh“ ist
+            // dort die richtige Auskunft. Ein Strich hieße „keine Daten“, und Daten gibt es.
             Kennzahl(
-                wort: "Wärme gesamt", wert: feld(bilanz) { $0.producedKwh }, einheit: "kWh",
+                wort: "Wärme gesamt", wert: kwh(bilanz?.totals.producedKwh), einheit: "kWh",
                 dazu: t == nil
                     ? nil
                     : (ofenKwh > 0.05
                         ? "Wärmepumpe \(kwh(t?.heatPumpKwh)) · Ofen \(kwh(ofenKwh)) kWh"
-                        : "nur die Wärmepumpe"),
-                ton: .glut),
+                        : "nur die Wärmepumpe")),
             Kennzahl(
                 wort: "Strom Wärmepumpe", wert: Formate.zahl(e?.heatPumpKwh, stellen: 1),
                 einheit: "kWh",
                 dazu: sonnenanteil.map { "\(Formate.prozent($0)) Sonnenstrom" }),
             Kennzahl(
                 wort: "Arbeitszahl", wert: Formate.zahl(t?.copMean, stellen: 2),
-                dazu: t?.copMean == nil ? "keine Laufzeit" : "aus Kennlinie und Vorlauf",
-                ton: .nebel),
+                dazu: t?.copMean == nil ? "keine Laufzeit" : "aus Kennlinie und Vorlauf"),
             Kennzahl(
                 wort: "Bezahlt", wert: Formate.zahl(kosten?.heatPumpPaidEur, stellen: 2),
                 einheit: "€",
                 dazu: e == nil
                     ? nil
                     : "\(Formate.zahl(netzKwh, stellen: 1)) kWh Netz"
-                        + (netzCt.map { " · Ø \(Formate.zahl($0, stellen: 1)) ct" } ?? ""),
-                ton: .bernstein),
+                        + (netzCt.map { " · Ø \(Formate.zahl($0, stellen: 1)) ct" } ?? "")),
             Kennzahl(
                 wort: "Wärmepreis", wert: Formate.zahl(kosten?.heatPumpCtPerKwh, stellen: 1),
                 einheit: "ct/kWh",
                 dazu: kosten?.stoveCtPerKwh != nil
                     ? "Wärmepumpe · Ofen \(Formate.ct(kosten?.stoveCtPerKwh))"
-                    : "je kWh Wärme der Wärmepumpe",
-                ton: .bernstein),
+                    : "je kWh Wärme der Wärmepumpe"),
+            // Auch hier `kwh` und nicht `feld` (`HeatOverview.tsx:162`).
             Kennzahl(
-                wort: "Entnahme", wert: feld(bilanz) { $0.drawKwh }, einheit: "kWh",
+                wort: "Entnahme", wert: kwh(bilanz?.totals.drawKwh), einheit: "kWh",
                 dazu: t == nil
                     ? nil : "Heizung und Warmwasser · Verlust \(kwh(t?.lossKwh)) kWh"),
         ]
@@ -98,10 +106,15 @@ public enum Waermeuebersicht {
     // MARK: - Was die Wärme gekostet hat
 
     /// Die Kernzahl der Kostenkarte: der Wärmepreis der Wärmepumpe.
+    ///
+    /// **In Textfarbe, wie überall.** Die Vorlage legt es am Baustein selbst fest und schreibt
+    /// die Begründung dazu (`HeatOverview.tsx:78`: „Die große Zahl einer Karte mit ihrer
+    /// Unterzeile. Schrift in Textfarbe, wie überall.“, umgesetzt `:82`). Bernstein stand hier,
+    /// weil die Zahl ein Preis ist - aber dann ist jede Kernzahl der Seite etwas, und am Ende
+    /// ist keine hervorgehoben.
     public static func kostenkernzahl(_ k: HeatCostOut?) -> Kennzahl {
         Kennzahl(
-            wort: "ct je kWh Wärme", wert: Formate.zahl(k?.heatPumpCtPerKwh, stellen: 1),
-            ton: .bernstein)
+            wort: "ct je kWh Wärme", wert: Formate.zahl(k?.heatPumpCtPerKwh, stellen: 1))
     }
 
     /// **Zwei Zahlen verschiedener Art stehen hier nebeneinander,** und das ist Absicht. Der
@@ -269,6 +282,8 @@ public enum Waermeuebersicht {
 
     // MARK: - Wärme im Zeitraum
 
+    public static let spannentitel = "Wärme im Zeitraum"
+
     /// Dieselben zwölf Größen für Tag, Woche, Monat und Jahr nebeneinander.
     ///
     /// **Warum das mehr ist als vier Zahlen.** Ein Tag sagt nichts über die Anlage: er sagt
@@ -277,12 +292,19 @@ public enum Waermeuebersicht {
     ///
     /// Die Einheit steht in der Zeile und nicht in jeder Zelle - im Dashboard liefen vier
     /// Spalten mit „63,7 kWh" am Telefon ineinander.
-    public static func spannenzeilen(_ je: [Spanne: HeatBalanceOut]) -> [(
-        wort: String, werte: [String]
-    )] {
+    /// **Der Rückgabetyp ist ``Streifenzeile``, damit ``Spannenstreifen`` die Karte zeichnen
+    /// kann.** Vorher gab diese Funktion ein Tupel zurück und passte damit in nichts außer eine
+    /// nackte ``Tabelle``; die Karte verlor dadurch alles, was der Baustein mitbringt - den
+    /// Hinweis „jeweils bis jetzt“ im Kartenkopf, die Tagesspalte, die nur „Heute“ heißt, wenn
+    /// sie es ist, und die führende erste Zeile (`PeriodStrip.tsx:34-38, 9-16, 84`). Sechs
+    /// andere Übersichten der App geben schon ``Streifenzeile`` zurück.
+    ///
+    /// Keine Zeile trägt einen Ton: die Vorlage setzt in `HeatOverview.tsx:118-131` bei keiner
+    /// ein `tone`.
+    public static func spannenzeilen(_ je: [Spanne: HeatBalanceOut]) -> [Streifenzeile] {
         let folge = Spanne.allCases
-        func reihe(_ wort: String, _ wert: (HeatBalanceOut?) -> String) -> (String, [String]) {
-            (wort, folge.map { wert(je[$0]) })
+        func reihe(_ wort: String, _ wert: (HeatBalanceOut?) -> String) -> Streifenzeile {
+            Streifenzeile(wort: wort, werte: folge.map { wert(je[$0]) })
         }
         return [
             reihe("Wärme gesamt · kWh") { feld($0) { $0.producedKwh } },
