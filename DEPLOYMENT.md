@@ -28,7 +28,7 @@ Home Assistant OS (Haus)                          Railway
    | `DCH_MODE` | `live` |
    | `DCH_ROLE` | `all` (API + Regler in einem Prozess; Worker-Trennung später) |
    | `DCH_BRIDGE_TOKENS` | `<zufälliges Token, z. B. openssl rand -hex 32>` (einzelnes Token; mehrere kommagetrennt oder als JSON-Liste) |
-   | `DCH_API_TOKEN` | zweites zufälliges Token (nur Web ↔ API) |
+   | `DCH_API_TOKEN` | zweites zufälliges Token. Nur noch für Maschinen: die iOS-App und Automatisierungen, die direkt mit der API sprechen. Die Weboberfläche braucht es nicht mehr |
    | `DCH_TIBBER_TOKEN` | Tibber-Developer-Token (optional; ohne Token keine Preisregeln) |
    | `DCH_MYENERGI_SERIAL` | Seriennummer des myenergi-Hubs (myenergi-App → Konto → Erweitert → API) |
    | `DCH_MYENERGI_API_KEY` | API-Key aus derselben Ansicht. Mit beiden Werten liest die API PV, Netz, Batterie und Wallbox direkt aus der myenergi-Cloud; Home Assistant liefert dann nur noch Wärmepumpe, Puffer und Schalter |
@@ -38,21 +38,32 @@ Home Assistant OS (Haus)                          Railway
    | `DCH_MIGRATE_ON_START` | `true` (Standard): Alembic-Migration läuft beim Containerstart, bevor die API hochfährt |
    | `DCH_CORS_ORIGINS` | `[]` (Web spricht serverseitig über das BFF) |
    | `DCH_ALFRED_SCHLUESSEL` | optional: API-Schlüssel von Mistral (console.mistral.ai → API Keys). Ohne ihn bleibt Alfred bei vorbereiteten Texten. Anbieter und Modell haben Vorgaben (`mistral`, `mistral-medium-latest`), siehe `docs/ALFRED.md` |
+   | `DCH_PASSKEY_RP_ID` | `home.duckcurve.de`. Die Domain, an die jeder Passkey gebunden wird - **später nicht mehr änderbar, ohne alle zu entwerten**. Der eigene Host und nicht `duckcurve.de`: sonst liegen die Passkeys von Duck Curve und Duck Curve Home im selben Bereich, der Browser bietet beide an, und der falsche wird abgewiesen ([ADR-0002](docs/decisions/ADR-0002-identitaet-und-berechtigung.md)) |
+   | `DCH_PASSKEY_HERKUENFTE` | `["https://home.duckcurve.de"]` - die Adresse des **web**-Services, denn von dort kommt der Browser. Beim Start geprüft; passt sie nicht zur RP-ID, läuft der Dienst weiter und meldet es als Fehler, aber anmelden kann sich niemand |
+   | `DCH_ANMELDE_URL` | `https://home.duckcurve.de`, die Adresse im Einladungslink. Leer = erste Herkunft |
+   | `DCH_ERSTE_PERSON` | Beim **allerersten** Start: die E-Mail-Adresse des Hausherrn. Der Dienst legt den Zugang an und schreibt den Einladungslink einmal ins Protokoll. Danach wirkungslos; einen Link, der von sich aus Zugang vergibt, gibt es nicht |
+   | `DCH_SMTP_HOST` u. a. | optional: Einladung per E-Mail (`DCH_SMTP_PORT`, `_BENUTZER`, `_PASSWORT`, `_SICHERHEIT`, `DCH_ABSENDER`; oder `DCH_RESEND_SCHLUESSEL` statt SMTP). Ohne sie wird nichts verschickt und der Einladungslink bleibt auf der Seite „Zugang" zum Kopieren - der Versand ist eine Beigabe, kein Torwächter |
 
 3. Variablen **web**:
 
    | Variable | Wert |
    |---|---|
    | `DCH_API_URL` | `http://${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}` (privates Netz, IPv6; `api` = Name des API-Services) |
-   | `DCH_API_TOKEN` | gleicher Wert wie in api |
-   | `DCH_SESSION_SECRET` | ≥ 32 zufällige Zeichen (signiert das Kiosk-Cookie) |
-   | `DCH_KIOSK_TOKEN` | Pairing-Token für neue Geräte |
+   | `DCH_ANMELDUNG` | nichts eintragen. Die Anmeldung ist an, solange hier nichts steht; `aus` gehört nur in eine Instanz ohne Personen (Demo) |
 
 4. Öffentliche Domains: web (z. B. `home.duckcurve.de`) und api (z. B. `api-home.duckcurve.de`, nur für
    `/health` und `/bridge/ws` genutzt; alle `/api/v1/*`-Aufrufe verlangen `DCH_API_TOKEN`).
-5. **iPad koppeln:** einmalig `https://home.duckcurve.de/pair?token=<DCH_KIOSK_TOKEN>&name=iPad-Flur` öffnen.
-   Das Gerät bleibt 180 Tage angemeldet. Danach die Seite als Web-App zum Home-Bildschirm hinzufügen und
-   in Guided Access mit deaktivierter Auto-Sperre betreiben.
+5. **Ersten Zugang einrichten** (`docs/ZUGANG.md`): `DCH_ERSTE_PERSON` setzen, api-Dienst neu
+   starten, den Einladungslink aus dem Protokoll holen (einmal, als Warnung) und auf dem Gerät
+   öffnen, das künftig anmeldet. Dort entsteht der Passkey, und die zehn Wiederherstellungscodes
+   erscheinen **einmal**. Danach unter **Technik → Zugang** alle weiteren Personen einladen.
+   Einen offenen Weg „ersten Zugang hier anlegen" gibt es mit Absicht nicht: wer die Adresse
+   zuerst fände, hätte das Haus.
+6. **iPad an der Wand:** es bekommt eine eigene Person mit einem Passkey auf dem Gerät - gib ihr
+   einen Namen, dem man ansieht, dass kein Mensch dahintersteht („Wandanzeige Flur"), und die
+   Rolle, die sie wirklich braucht. Danach die Seite als Web-App zum Home-Bildschirm hinzufügen
+   und in Guided Access mit deaktivierter Auto-Sperre betreiben. Die Sitzung läuft nicht ab,
+   solange das Gerät benutzt wird (`DCH_SITZUNG_TAGE` gilt für eine liegengebliebene).
 
 Migrationen laufen vor jedem Deploy (`preDeployCommand`). Nur additive Migrationen automatisch; destruktive
 Schritte manuell (Plan 23.4).
@@ -75,7 +86,7 @@ Werte bleiben Striche, weil noch keine Messwerte vorliegen). Prüfreihenfolge:
    - `"api":401`/`403`: kommt hier nicht vor (`/health` ist offen) - dann ist ein Proxy dazwischen.
 2. `https://<api-domain>/health` → erwartet `"mode":"live"`, `"status":"ok"`.
 3. Im Browser die Konsole/Netzwerk-Tab öffnen: `GET /api/dch/live/stream`.
-   - Antwort `401` mit `unauthorized`: `DCH_API_TOKEN` in web und api ist nicht identisch (oder in web leer).
+   - Antwort `401` mit `unauthorized`: niemand ist angemeldet. Die Oberfläche schickt dann zur Anmeldung; bei einer Anfrage von Hand gehört das Sitzungstoken als `authorization: Bearer …` dazu.
    - Antwort `503` mit `upstream_unreachable`: wie Punkt 1.
    - Antwort `200`, aber der Stream endet sofort: Logs des API-Services ansehen (`uvicorn`-Zeilen zu `/api/v1/live/stream`).
 4. Logs des Web-Services: `fetch failed` oder `ECONNREFUSED` deutet auf Port/Domain, `ENOTFOUND` auf einen

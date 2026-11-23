@@ -1,18 +1,23 @@
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE, authRequired, verifySession } from "@/lib/session";
-import { touch } from "@/lib/presence";
+
+import { anmeldungNoetig } from "@/lib/anmeldungAktiv";
+import { PERSON_COOKIE } from "@/lib/zugang";
 
 /**
- * Pfade, die Gästen verschlossen bleiben. Verbräuche und Kosten dürfen Gäste sehen; hier steht, was in
- * die Steuerakte gehört: die Rechnungen (Name, Adresse, Marktlokations-ID, Zählernummer, IBAN) und die
- * PV-Abrechnung (Bemessungsgrundlagen und Umsatzsteuer der Anlage) und der Datenexport, der den
- * gesamten Bestand als Datei ausliefert.
- */
-const GUEST_FORBIDDEN = [/^import\/tibber-invoice/, /^energy\/pv$/, /^export\//];
-
-/**
- * BFF-Proxy zur API. Liest die Ziel-URL zur Laufzeit (nicht zur Build-Zeit wie Rewrites), reicht
- * SSE-Streams ungepuffert durch und ist die Stelle, an der Phase 2 die Session-Prüfung ergänzt.
+ * BFF-Proxy zur API. Liest die Ziel-URL zur Laufzeit (nicht zur Build-Zeit wie Rewrites) und
+ * reicht SSE-Ströme ungepuffert durch.
+ *
+ * **Er entscheidet nichts und besitzt nichts.** Vorher stand hier die Liste der Pfade, die ein
+ * Gast nicht sehen darf, und das API-Token, mit dem er im Namen eines gepaarten Geräts sprach.
+ * Beides ist weg: die Rechte liegen im Dienst (`dch_api/auth/rechte.py`), und der einzige
+ * Nachweis, den diese Route weitergibt, ist das Sitzungstoken der angemeldeten Person. Damit ist
+ * der Urheber eines Eingriffs keine Behauptung des Proxys mehr, sondern steht in der Datenbank.
+ *
+ * Kein Token, keine Antwort: 401. Die Oberfläche schickt den Besucher dann zur Anmeldung.
+ *
+ * Das **API-Token** reicht er nicht mehr weiter - das taten frühere Fassungen, wenn kein
+ * Gerätecookie da war, und eine Instanz mit abgeschalteter Anmeldung hätte damit jedem Besucher
+ * Vollzugriff gegeben.
  */
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,43 +25,22 @@ export const runtime = "nodejs";
 const apiBase = (): string => (process.env.DCH_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }): Promise<Response> {
-  const session = verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  if (authRequired() && !session) {
+  const personToken = req.cookies.get(PERSON_COOKIE)?.value ?? "";
+  if (!personToken && anmeldungNoetig()) {
     return Response.json({ error: { code: "unauthorized", message: "Nicht angemeldet.", details: null } }, { status: 401 });
   }
-  touch(session, req.headers.get("user-agent"));
   const { path } = await ctx.params;
-  // Gäste dürfen ausschließlich lesen. Serverseitig, nicht nur in der Anzeige: eine ausgeblendete Kachel
-  // hält niemanden auf, der die Adresse kennt.
-  const guest = session?.role === "guest";
-  const joined = path.join("/");
-  if (guest && (req.method !== "GET" || GUEST_FORBIDDEN.some((re) => re.test(joined)))) {
-    return Response.json(
-      { error: { code: "forbidden", message: "Gastzugang: nur Ansicht.", details: null } },
-      { status: 403 },
-    );
-  }
   const target = `${apiBase()}/api/v1/${path.map(encodeURIComponent).join("/")}${req.nextUrl.search}`;
   const headers: Record<string, string> = { accept: req.headers.get("accept") ?? "*/*" };
-  const apiToken = process.env.DCH_API_TOKEN;
-  if (apiToken) headers["authorization"] = `Bearer ${apiToken}`;
-  // **Wer das hier auslöst, reist mit.** Der Name kommt aus dem signierten Sitzungscookie und
-  // wurde beim Paaren vergeben (/pair?token=…&name=iPad-Flur). Der Dienst schreibt ihn in jedes
-  // Ereignis, das diese Anfrage auslöst, damit später nachzulesen ist, wer etwas verstellt hat.
-  //
-  // **Die Art steht ausdrücklich dabei und lautet heute „geraet".** Ein Gerätename ist kein
-  // Mensch - am iPad im Flur kann jeder gestanden haben. Kommt später ein Benutzersystem, setzt
-  // diese Stelle `person` samt Benutzerkennung und schickt den Gerätenamen zusätzlich als
-  // `-geraet`; die alten Zeilen bleiben, was sie sind, und behaupten nie eine Person.
-  if (session?.name) {
-    headers["x-dch-urheber-art"] = "geraet";
-    headers["x-dch-urheber-name"] = session.name;
-    headers["x-dch-urheber-geraet"] = session.name;
-    headers["x-dch-urheber-rolle"] = session.role;
-    // Ein Vorschlag von Alfred, im Panel bestätigt: Das Protokoll soll zeigen, dass ein
-    // Sprachmodell den Anstoß gab. Nur dieser eine Wert wird durchgereicht, kein freier Text.
-    if (req.headers.get("x-dch-ueber") === "alfred") headers["x-dch-urheber-ueber"] = "alfred";
-  }
+  // **Das API-Token geht hier nicht mehr mit.** Vorher hing es an jeder Anfrage, für die kein
+  // Gerätecookie da war - und damit hätte eine Instanz mit abgeschalteter Anmeldung jedem
+  // Besucher Vollzugriff gereicht. Jetzt reicht der Proxy genau einen Nachweis weiter: das
+  // Sitzungstoken der angemeldeten Person. Ohne Anmeldung (Demo) geht er ohne Nachweis weiter -
+  // dort läuft der Dienst ohnehin ohne Token.
+  if (personToken) headers["authorization"] = `Bearer ${personToken}`;
+  // Ein Vorschlag von Alfred, im Panel bestätigt: Das Protokoll soll zeigen, dass ein
+  // Sprachmodell den Anstoß gab. Nur dieser eine Wert wird durchgereicht, kein freier Text.
+  if (req.headers.get("x-dch-ueber") === "alfred") headers["x-dch-urheber-ueber"] = "alfred";
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;
   let upstream: Response;
@@ -87,3 +71,4 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
 
 export const GET = proxy;
 export const POST = proxy;
+export const PUT = proxy;

@@ -1,4 +1,5 @@
-import type { ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
+import type { Ausweis, Einladung, Ich, Passkey, Person, PersonAendern, PersonAnlegen, Zeremonie,
+  Regelkreis, ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
   House, Betrieb, BetriebRoh, ReglerEinstellungen, ReglerStellen, ReglerStellenRoh, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
@@ -43,6 +44,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 const reglerVoll = (d: ReglerEinstellungen): ReglerEinstellungen => ({ ...d, werte: (d.werte ?? []).map((w) => ({ ...w, wahl: w.wahl ?? {} })), hinweise_de: d.hinweise_de ?? [], protokoll: d.protokoll ?? [] });
+
+/**
+ * Die Karte auffüllen: Felder mit Vorbelegung im Schema kommen als `optional` heraus, obwohl die
+ * Antwort sie immer trägt. Einmal hier statt in jeder Zeile der Zeichnung.
+ */
+type RegelkreisRoh = Omit<Regelkreis, "bloecke" | "kanten" | "kreise" | "parameter" | "arbeitspunkt" | "glieder" | "uebersteuert" | "uebernahmen"> & Record<string, unknown>;
+
+const regelkreisVoll = (d: RegelkreisRoh): Regelkreis => {
+  const roh = d as unknown as Regelkreis;
+  return {
+    ...roh,
+    bloecke: (roh.bloecke ?? []).map((b) => ({ ...b, kurz: b.kurz ?? "", erklaerung: b.erklaerung ?? [], gleichungen: b.gleichungen ?? [], parameter: b.parameter ?? [] })),
+    kanten: (roh.kanten ?? []).map((k) => ({ ...k, art: k.art ?? "signal" })),
+    kreise: (roh.kreise ?? []).map((k) => ({ ...k, erklaerung: k.erklaerung ?? [], kennlinie: k.kennlinie ?? [] })),
+    parameter: (roh.parameter ?? []).map((p) => ({ ...p, n: p.n ?? 0, wirkt_auf: p.wirkt_auf ?? [], protokoll: p.protokoll ?? [], verlauf: p.verlauf ?? [] })),
+    arbeitspunkt: { ...roh.arbeitspunkt, aussen_gemessen: roh.arbeitspunkt?.aussen_gemessen ?? false, vorlauf_gemessen: roh.arbeitspunkt?.vorlauf_gemessen ?? false },
+    glieder: (roh.glieder ?? []).map((g) => ({ ...g, kurve2: g.kurve2 ?? [] })),
+    uebersteuert: roh.uebersteuert ?? [],
+    uebernahmen: roh.uebernahmen ?? 0,
+  };
+};
 
 export const api = {
   liveState: () => request<LiveState>("/live/state"),
@@ -106,6 +128,13 @@ export const api = {
     request<AnlageReplay>(`/anlage/wiedergabe?day=${day}&step_min=${stepMin}`),
   /** Was K1 auslöst: die Ereignisstudie über 7, 30 oder 90 Tage. */
   kontaktwirkung: (days = 30) => request<Kontaktwirkung>(`/anlage/kontaktwirkung?days=${days}`),
+  // Die Regelkreis-Karte. Ein Aufruf liefert Struktur, Parameter, Entwurf und Lernstand; die
+  // Seite zeichnet daraus und rechnet nichts nach.
+  regelkreis: async (): Promise<Regelkreis> => regelkreisVoll(await request<RegelkreisRoh>("/regelkreis")),
+  regelkreisStellen: async (pid: string, wert: number): Promise<Regelkreis> =>
+    regelkreisVoll(await request<RegelkreisRoh>(`/regelkreis/parameter/${encodeURIComponent(pid)}`, { method: "POST", body: JSON.stringify({ wert }) })),
+  regelkreisFreigeben: async (pid: string): Promise<Regelkreis> =>
+    regelkreisVoll(await request<RegelkreisRoh>(`/regelkreis/parameter/${encodeURIComponent(pid)}`, { method: "DELETE" })),
   /** Ein Ortstag in Euro: versprochen, gehalten, wirklich. Rechnet einen Vergleichslauf, braucht also Sekunden. */
   nachbetrachtung: (day: string) => request<Nachbetrachtung>(`/plan/nachbetrachtung?day=${day}`),
   // Dauerhaft, ohne Frist: derselbe Griff wie in Contromes eigener Oberflaeche.
@@ -170,4 +199,24 @@ export const api = {
   setMorgenbrief: (enabled: boolean) => request<Morgenbrief>("/push/morgenbrief", { method: "PUT", body: JSON.stringify({ enabled }) }),
   morgenbriefSenden: () => request<PushResult>("/push/morgenbrief/senden", { method: "POST" }),
   demo: (body: Record<string, unknown>) => request<Record<string, unknown>>("/demo", { method: "POST", body: JSON.stringify(body) }),
+  // ----------------------------------------------------------------- Zugang (ADR-0002)
+  //
+  // Die Anmeldung selbst laeuft NICHT hierueber, sondern ueber Server Actions
+  // (app/anmeldung/aktionen.ts): wer sich anmeldet, hat noch keine Sitzung, und diese
+  // Durchreiche verlangt eine. Hier stehen nur die Aufrufe des angemeldeten Zustands.
+  wer: () => request<Ausweis>("/auth/wer"),
+  ich: () => request<Ich>("/auth/ich"),
+  personen: () => request<Person[]>("/auth/personen"),
+  personAnlegen: (body: PersonAnlegen) => request<Einladung>("/auth/personen", { method: "POST", body: JSON.stringify(body) }),
+  personAendern: (id: string, body: PersonAendern) => request<Person>(`/auth/personen/${encodeURIComponent(id)}`, { method: "POST", body: JSON.stringify(body) }),
+  personEinladen: (id: string, einladen: boolean) => request<Einladung>(`/auth/personen/${encodeURIComponent(id)}/einladen`, { method: "POST", body: JSON.stringify({ einladen }) }),
+  personLoeschen: (id: string) => request<{ ok: boolean }>(`/auth/personen/${encodeURIComponent(id)}/loeschen`, { method: "POST" }),
+  passkeyBeginnen: () => request<Zeremonie>("/auth/passkeys/beginnen", { method: "POST" }),
+  passkeyAbschliessen: (schritt: string, antwort: unknown, name: string) => request<Passkey>("/auth/passkeys/abschliessen", { method: "POST", body: JSON.stringify({ schritt, antwort, name }) }),
+  passkeyUmbenennen: (id: string, name: string) => request<{ ok: boolean }>(`/auth/passkeys/${encodeURIComponent(id)}/name`, { method: "POST", body: JSON.stringify({ name }) }),
+  passkeyLoeschen: (id: string) => request<{ ok: boolean }>(`/auth/passkeys/${encodeURIComponent(id)}/loeschen`, { method: "POST" }),
+  codesNeu: () => request<{ codes: string[] }>("/auth/codes", { method: "POST" }),
+  sitzungBeenden: (id: string) => request<{ ok: boolean }>(`/auth/sitzungen/${encodeURIComponent(id)}/beenden`, { method: "POST" }),
+  alleSitzungenBeenden: () => request<{ beendet: number }>("/auth/sitzungen/beenden-alle", { method: "POST" }),
+
 };

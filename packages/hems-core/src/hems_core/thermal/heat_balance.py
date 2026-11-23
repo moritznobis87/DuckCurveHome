@@ -215,7 +215,15 @@ def buffer_power_kw(
 
     Gesucht wird je Probe die nächste Messung mindestens ein halbes Fenster davor und dahinter; die
     Differenz zwischen ihnen, geteilt durch ihren Abstand, ist die mittlere Leistung über diese
-    Spanne. Am Rand der Reihe bleibt nur die einseitige Differenz.
+    Spanne. Am Rand der Reihe bleibt nur die einseitige Differenz, und dort gilt der **weiteste**
+    Spann, der noch zu haben ist, nicht der nächste Nachbar: eine Leistung aus einer Minute Abstand
+    wäre genau das Rauschen, gegen das `BUFFER_WINDOW_MIN` geschrieben ist.
+
+    **Zwei mitlaufende Zeiger, keine zwei Durchsuchungen.** Hier stand je Probe eine Suche von vorn
+    durch die Liste der Messungen. Das war quadratisch, und es war der Grund, warum eine
+    Monatsauswertung Minuten brauchte: 1440 Proben 0,30 s, 11520 Proben 12,7 s, 44640 Proben 172 s.
+    Weil `gemessen` sortiert ist und `i` nur vorwärts wandert, wandern die Grenzen beider Seiten
+    auch nur vorwärts; zwei Zeiger genügen, und die Reihe wird einmal durchlaufen statt n-mal.
     """
     zeiten = [s.at for s in samples]
     inhalte: list[float | None] = [
@@ -226,9 +234,46 @@ def buffer_power_kw(
     if len(gemessen) < 2:
         return out
     halb = window_min / 2.0
+    anzahl = len(gemessen)
+    erste, letzte = gemessen[0], gemessen[-1]
+    # Beide Zeiger zeigen in `gemessen` und nicht in `samples`.
+    #
+    # `zeiger_vor` steht auf der **letzten** Messung, die bei oder vor `i` liegt und mindestens ein
+    # halbes Fenster zurück; `zeiger_nach` auf der **ersten**, die bei oder nach `i` liegt und
+    # mindestens ein halbes Fenster voraus.
+    #
+    # Drei Feinheiten, in denen die Fassung von Hand gegengerechnet wurde, weil jede von ihnen
+    # eine naheliegende Zeigerfassung still falsch macht:
+    #
+    # * Jede Bedingung prüft **Index und Zeit**. Die Zeit allein genügt nicht: liegt `i` vor der
+    #   ersten oder hinter der letzten Messung, ist es der Index, der sagt, dass es auf dieser
+    #   Seite nichts gibt - und nicht der Abstand, der dort ja groß genug wäre.
+    # * „Bei oder“ ist wörtlich gemeint. Eine Messung genau auf `i` zählt für **beide** Seiten
+    #   mit; wer nur echte Nachbarn zuließe, nähme der letzten gemessenen Minute einer Reihe ihre
+    #   Leistung, obwohl weit davor eine zweite Messung steht.
+    # * Reicht das halbe Fenster auf einer Seite nicht, gilt dort nicht der nächste Nachbar,
+    #   sondern der weiteste Spann: die erste Messung überhaupt davor, die letzte überhaupt
+    #   dahinter. Der nächste Nachbar wäre hier der kurze Spann und damit die große Leistung.
+    #
+    # Dass die Zeiger nur vorwärts dürfen, folgt aus der Sortierung: zu festem Kandidaten wird die
+    # Bedingung von `zeiger_vor` mit wachsendem `i` nur leichter und die von `zeiger_nach` nur
+    # schwerer. Die zulässigen Kandidaten sind je Seite ein Stück am Rand der Liste, das nur wächst.
+    zeiger_vor = -1  # -1: auf dieser Seite noch keine Messung mit vollem halbem Fenster
+    zeiger_nach = 0
     for i in range(len(samples)):
-        vor = _letzte_vor(gemessen, zeiten, i, halb)
-        nach = _erste_nach(gemessen, zeiten, i, halb)
+        while (
+            zeiger_vor + 1 < anzahl
+            and gemessen[zeiger_vor + 1] <= i
+            and (zeiten[i] - zeiten[gemessen[zeiger_vor + 1]]).total_seconds() / 60.0 >= halb
+        ):
+            zeiger_vor += 1
+        while zeiger_nach < anzahl and (
+            gemessen[zeiger_nach] < i
+            or (zeiten[gemessen[zeiger_nach]] - zeiten[i]).total_seconds() / 60.0 < halb
+        ):
+            zeiger_nach += 1
+        vor = gemessen[zeiger_vor] if zeiger_vor >= 0 else (erste if erste <= i else None)
+        nach = gemessen[zeiger_nach] if zeiger_nach < anzahl else (letzte if letzte >= i else None)
         if vor is None or nach is None or vor == nach:
             continue
         minuten = (zeiten[nach] - zeiten[vor]).total_seconds() / 60.0
@@ -241,30 +286,6 @@ def buffer_power_kw(
             continue
         out[i] = (e_nach - e_vor) / (minuten / 60.0)
     return out
-
-
-def _letzte_vor(gemessen: list[int], zeiten: list[datetime], i: int, halb: float) -> int | None:
-    """Die letzte Messung, die mindestens `halb` Minuten vor Probe `i` liegt - sonst die letzte davor."""
-    kandidat: int | None = None
-    for j in gemessen:
-        if j > i:
-            break
-        abstand = (zeiten[i] - zeiten[j]).total_seconds() / 60.0
-        if abstand >= halb or kandidat is None:
-            kandidat = j
-    return kandidat
-
-
-def _erste_nach(gemessen: list[int], zeiten: list[datetime], i: int, halb: float) -> int | None:
-    """Die erste Messung, die mindestens `halb` Minuten nach Probe `i` liegt - sonst die letzte."""
-    letzte: int | None = None
-    for j in gemessen:
-        if j < i:
-            continue
-        letzte = j
-        if (zeiten[j] - zeiten[i]).total_seconds() / 60.0 >= halb:
-            return j
-    return letzte
 
 
 def heat_series(

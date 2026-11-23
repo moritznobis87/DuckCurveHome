@@ -350,6 +350,7 @@ def test_ein_tag_in_der_zukunft_wird_abgelehnt(client: TestClient) -> None:
 
 def _bericht(saving: float, tage: int, grund: str = "") -> ShiftReportOut:
     return ShiftReportOut(
+        generated_at=VON,
         period="day",
         start=VON,
         end=BIS,

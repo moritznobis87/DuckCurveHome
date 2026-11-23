@@ -30,6 +30,9 @@ import structlog
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
+from dch_api.application.apns import ApnsVersender, ist_apns
+from dch_api.application.apns import adresse as apns_adresse
+
 log = structlog.get_logger("push")
 
 #: So lange darf eine Mitteilung beim Push-Dienst liegen, wenn das Gerät aus ist. Ein Ausfall von
@@ -245,9 +248,11 @@ def erzeuge_paar() -> tuple[str, str]:
 
 
 class PushService:
-    def __init__(self, store: PushStore, subject: str) -> None:
+    def __init__(self, store: PushStore, subject: str, apns: ApnsVersender | None = None) -> None:
         self.store = store
         self.subject = subject
+        #: Der Weg zur App. `None` heisst: der Dienst verschickt nur Web Push.
+        self.apns = apns
         self._lock = asyncio.Lock()
         #: Der letzte Grund je Endpunkt, warum eine Mitteilung nicht ankam. Im Arbeitsspeicher:
         #: nach einem Neustart zeigt die nächste Probe ihn wieder.
@@ -309,6 +314,39 @@ class PushService:
             # Ohne Port: die Signaturbibliothek nimmt als Absender keine Adresse mit Port an.
             await self.store.save_push_origin(f"https://{treffer.group('rechner')}")
 
+    async def subscribe_apns(self, token: str, label: str = "", sandbox: bool = False) -> None:
+        """Ein Geraet der App anmelden.
+
+        Gespeichert wird es als Abonnement wie jedes andere - mit einer Adresse der Form
+        ``apns://<token>?env=…`` und ohne die beiden Schluessel, die Web Push braucht: APNs
+        verschluesselt selbst. Damit gelten fuer das Geraet alle Regeln, die schon da sind.
+
+        **Ein Token kann die Umgebung wechseln.** Wer eine App aus Xcode durch eine aus
+        TestFlight ersetzt, bekommt ein neues Token, aber das alte bleibt stehen und wird nie
+        wieder jemanden erreichen. Darum wird dasselbe Token in der anderen Umgebung beim
+        Anmelden entfernt.
+        """
+        sauber = token.strip().lower()
+        if not sauber:
+            return
+        andere = apns_adresse(sauber, not sandbox)
+        await self.store.drop_push_subscription(andere)
+        self._letzter_fehler.pop(andere, None)
+        endpoint = apns_adresse(sauber, sandbox)
+        await self.store.add_push_subscription(endpoint, "", "", label)
+        self._letzter_fehler.pop(endpoint, None)
+
+    async def unsubscribe_apns(self, token: str) -> bool:
+        """Ein Geraet der App abmelden - in beiden Umgebungen, ohne nach der zu fragen."""
+        sauber = token.strip().lower()
+        weg = False
+        for sandbox in (False, True):
+            endpoint = apns_adresse(sauber, sandbox)
+            if await self.store.drop_push_subscription(endpoint):
+                weg = True
+            self._letzter_fehler.pop(endpoint, None)
+        return weg
+
     async def unsubscribe(self, endpoint: str) -> bool:
         self._letzter_fehler.pop(endpoint, None)
         return await self.store.drop_push_subscription(endpoint)
@@ -358,7 +396,40 @@ class PushService:
     async def _zustellen(
         self, abo: Abo, mitteilung: Mitteilung, privat: str, kandidaten: list[str]
     ) -> Zustellung:
-        """Eine Mitteilung an ein Gerät; lehnt der Push-Dienst den Absender ab, mit dem nächsten.
+        """Eine Mitteilung an ein Gerät - auf dem Weg, den seine Adresse nennt.
+
+        Zwei Wege, eine Entscheidung: `apns://` geht an die App, alles andere als Web Push an
+        einen Browser. Die Unterscheidung steht hier und nicht an jeder Aufrufstelle, damit
+        `send_bericht` von den beiden Wegen nichts wissen muss.
+        """
+        if ist_apns(abo.endpoint):
+            return await self._zustellen_apns(abo, mitteilung)
+        return await self._zustellen_webpush(abo, mitteilung, privat, kandidaten)
+
+    async def _zustellen_apns(self, abo: Abo, mitteilung: Mitteilung) -> Zustellung:
+        """Eine Mitteilung an ein Gerät der App.
+
+        Der Absender spielt hier keine Rolle: APNs weist sich über den Signierschlüssel aus und
+        nicht über eine Adresse, und darum entfällt die ganze Kandidatenreihe von Web Push.
+        """
+        label = str(getattr(abo, "label", "") or "")
+        if self.apns is None or not self.apns.bereit:
+            return Zustellung(label, ok=False, grund="kein APNs-Schlüssel eingetragen")
+        antwort = await self.apns.sende(
+            abo.endpoint, mitteilung.title, mitteilung.body, mitteilung.tag, mitteilung.url
+        )
+        return Zustellung(
+            label,
+            ok=antwort.ok,
+            status=antwort.status or None,
+            grund=antwort.grund,
+            weg=antwort.weg,
+        )
+
+    async def _zustellen_webpush(
+        self, abo: Abo, mitteilung: Mitteilung, privat: str, kandidaten: list[str]
+    ) -> Zustellung:
+        """Eine Mitteilung an einen Browser; lehnt der Push-Dienst den Absender ab, mit dem nächsten.
 
         Welchen Absender ein Push-Dienst annimmt, lässt sich nicht vollständig vorhersagen
         (siehe `tauglich`). Deshalb wird es nicht vorhergesagt, sondern versucht. Die Reihenfolge

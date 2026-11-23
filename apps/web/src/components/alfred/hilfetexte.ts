@@ -44,12 +44,15 @@ export const SEITEN: Record<string, string> = {
   "/waerme/nachbetrachtung":
     "Rückblick zeigt einen vergangenen Tag in Euro: was der Fahrplan versprochen hat, was gehalten wurde und woran es lag.",
   "/waerme/wirkung": "Wirkung zeigt, ob die Wärmepumpe der Anforderung folgt und was das Verschieben gebracht hat.",
+  "/waerme/regelkreis":
+    "Regelkreis zeigt die ganze Regelung als Blockschaltbild: fünf Kaskadenebenen von der Kostenrechnung bis in den einzelnen Raum, die Störgrößen am Ort ihrer Wirkung, und zu jedem Parameter, ob er gemessen, geschätzt oder angenommen ist. Dort steht auch, warum eine Schätzung noch nicht übernommen wurde. Nur mit Vollzugriff.",
   "/waerme/raeume": "Heizkreise zeigt die Raumtemperaturen und Heizkreise über den gewählten Zeitraum.",
   "/system": "Prognose zeigt, wie gut PV- und Verbrauchsprognosen waren. Nur mit Vollzugriff.",
   "/system/daten": "Daten prüfen zeigt, wie vollständig die Messreihen sind. Nur mit Vollzugriff.",
   "/waerme/annahmen": "Annahmen zeigt die Wärmeannahmen des Modells und lässt sie ändern. Nur mit Vollzugriff.",
   "/system/mitteilungen": "Mitteilungen stellt das Morning Briefing und die angemeldeten Geräte ein. Nur mit Vollzugriff.",
   "/system/haustuer": "Haustür zeigt die Zutritte an der Haustür. Nur mit Vollzugriff.",
+  "/system/geraet": "Hausgerät zeigt, wie es dem Rechner im Haus und seinen Diensten geht, holt Protokolle, startet Dienste neu und installiert Updates. Nur mit Vollzugriff.",
   "/system/zugang": "Zugang und Sicherung verwaltet gekoppelte Geräte und die Sicherung. Nur mit Vollzugriff.",
 };
 

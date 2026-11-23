@@ -29,7 +29,7 @@ from pydantic import BaseModel, ConfigDict
 
 from hems_core.accounting import HourlyEnergy, MinuteSample, hourly_energy
 from hems_core.domain import HemsConfig, Quality
-from hems_core.domain.config import TariffConfig
+from hems_core.domain.config import SensorTimeouts, TariffConfig
 from hems_core.planning import PricePoint
 from hems_core.protocol import RawReading
 
@@ -276,7 +276,13 @@ IDLE_KW = 0.05
 IDLE_FILL = timedelta(hours=24)
 FILL_LIMIT: dict[str, timedelta] = {
     "electricity_price_ct_kwh": timedelta(hours=3),
-    "outdoor_temp_c": timedelta(hours=3),
+    # Die Aussentemperatur so lange, wie sie im Betrieb als frisch gilt, und nicht laenger: Hier
+    # standen drei Stunden, waehrend die Aufnahme den Wert nach anderthalb aufgibt
+    # (`SensorTimeouts.outdoor_temp_s`, dort steht die Herleitung). Damit schrieb der Import
+    # Zeilen in die Geschichte, die der laufende Dienst im selben Augenblick nicht mehr
+    # hergegeben haette - zwei Wahrheiten ueber dieselbe Groesse, je nachdem, wie sie hereinkam.
+    # Die Station meldet stuendlich, es wird also weiter eine ausgefallene Meldung ueberbrueckt.
+    "outdoor_temp_c": timedelta(seconds=SensorTimeouts().outdoor_temp_s),
     "battery_soc": timedelta(hours=6),
 }
 DEFAULT_FILL = timedelta(hours=1)

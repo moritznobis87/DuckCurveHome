@@ -18,6 +18,8 @@ apps/web  (Next.js)  ── SSE + REST über /api/dch/* (Rewrite) ──►  app
                        balance/     Bilanzierung, PV-Überschuss
                        thermal/     thermischer SOC (layered_energy_v1, weighted_mean_v1)
                        control/     HeatPumpTracker, HeatPumpController (Zustandsmaschine), Ewma, explain
+                       regelkreis/  Struktur der Kaskade, Parameterregister mit Herkunft, Entwurf
+                                    nach SIMC, Schätzer und Übernahmeprüfung, Karte
                        planning/    Preisfenster (Rang, günstig/teuer/negativ)
                        simulation/  DemoHouse (PV, Last, Wetter, Wärmepumpe, Puffer, Batterie, Wallbox, Preise)
 ```
@@ -81,3 +83,21 @@ Jeder Wert trägt `observed_at`, `quality` (ok, stale, unavailable, unknown, der
 | 6 | In-Memory-Historie in Phase 1 | keine Datenbank nötig, PostgreSQL folgt mit Alembic in Phase 2 |
 | 7 | Home Assistant als Geräteschicht, Bridge als HA-Add-on, Railway als Hosting | ADR-0001: geringster Aufwand, HA bleibt geschlossen, Datenbank managed |
 | 8 | BFF-Route mit signiertem Kiosk-Cookie statt Auth in der API | Bearer bleibt serverseitig (valyze-Muster), Pairing per Link |
+| 9 | Regler aus gelernten Streckenparametern rechnen (SIMC) statt von Hand einstellen | indirekter selbsteinstellender Regler; die Einstellregel ist prüfbar, die Handeinstellung war es nie |
+| 10 | Übernahme einer Schätzung nur über fünf Hürden (Daten, Grenzen, Unsicherheit, Wartezeit, Gütegewinn) | das Modell kann nie schlechter werden als sein Startwert; jede Ablehnung hat einen Satz |
+| 11 | Lernzustand des Regelkreises in `model_calibrations` (`regelkreis_v1`) statt eigener Tabelle | ein Zustand je Modell, genau wofür die Tabelle da ist |
+| 12 | Der Regelkreis in der App als Liste nach Ebenen statt als Blockschaltbild | die einzige Seite, die bewusst anders aussieht als die Vorlage: eine Zeichnung von 1400 Punkten Breite ist am Telefon ein Ausschnitt, durch den man schiebt - dieselben Zahlen, dieselben Instrumente, andere Gestalt |
+
+
+**Nummer 8 ist seit dem 23.11.2026 umgekehrt:** die Anmeldung steht mit Personen und Passkeys in
+der API, das BFF hält nur noch ein opakes Sitzungstoken, und die Rechte liegen in
+`dch_api/auth/rechte.py` statt im Proxy ([docs/ZUGANG.md](docs/ZUGANG.md))
+([`docs/decisions/ADR-0002-identitaet-und-berechtigung.md`](docs/decisions/ADR-0002-identitaet-und-berechtigung.md)).
+**Vom Kiosk-Cookie ist nichts übrig:** die Gerätepaarung mit ihrem stehenden URL-Token ist am
+selben Tag ausgebaut worden (Nachtrag im ADR). Es gibt nur noch Personen mit Passkey - an
+beliebig vielen Geräten zugleich, je Gerät eine eigene Sitzung -, und der Proxy reicht nur noch
+deren Token weiter, nicht mehr das API-Token.
+**ADR-0003** beschreibt, wie eine Box im Kundenrollout ohne Home Assistant erreichbar wird - Beitritt,
+Verzeichnis, Relais und Flotte
+([`docs/decisions/ADR-0003-erreichbarkeit-und-flotte.md`](docs/decisions/ADR-0003-erreichbarkeit-und-flotte.md)),
+mit dem Ausfallvertrag in [`docs/ZENTRALE.md`](docs/ZENTRALE.md).

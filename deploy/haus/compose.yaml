@@ -1,0 +1,143 @@
+# Duck Curve Home auf dem Hausgeraet (docs/HAUSGERAET.md, Anleitung deploy/haus/README.md).
+#
+# Stufe 1: Home Assistant bleibt, wie er ist. Die Bridge dort (Add-on) verbindet sich mit diesem
+# Geraet statt mit Railway; Broker (Mosquitto) und eBUS-Dienst laufen weiter als Add-ons. Spaeter
+# ziehen sie hierher um, und die Bridge wird zum Dienst auf diesem Geraet.
+#
+# Liegt auf dem Geraet unter /opt/duckcurve/compose.yaml, die Einstellungen daneben in .env
+# (aus env.vorlage, von einrichten.sh mit eigenen Geheimnissen angelegt). Bedient wird alles ueber
+# das Werkzeug `dch` (status, logs, aktualisieren, sichern, ...).
+#
+# Ports nach aussen:
+#   80    HTTP, leitet auf HTTPS um und liefert unter /zertifikat das lokale Stammzertifikat
+#   443   HTTPS fuer iPad und Handy im Heimnetz (Zertifikat von Caddy selbst ausgestellt)
+#   8001  nur der Bridge-Endpunkt /bridge/ws fuer das Add-on in Home Assistant, sonst nichts
+#   127.0.0.1:3000  die Oberflaeche fuer den Kiosk auf diesem Geraet, nicht aus dem Netz
+# API und Datenbank sind von aussen nicht erreichbar.
+
+name: duckcurve
+
+x-protokoll: &protokoll
+  # Begrenzte Protokolle: Ein Dienst, der in einer Schleife schreibt, soll die SSD nicht fuellen.
+  logging:
+    driver: local
+    options:
+      max-size: "20m"
+      max-file: "5"
+
+services:
+  postgres:
+    image: postgres:17
+    <<: *protokoll
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dch
+      POSTGRES_USER: dch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt in .env}
+    # Fuer einen Rechner mit 4 bis 8 GB, auf dem noch API, Oberflaeche und Regelung laufen.
+    # Mehr Speicher fuer Postgres macht die Auswertungen nicht spuerbar schneller: Sie lesen
+    # vorberechnete Stunden- und Tagesbilanzen (docs/HAUSGERAET.md, Abschnitt 1).
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-512MB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-2GB}
+      - -c
+      - max_connections=50
+      - -c
+      - wal_compression=on
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dch -d dch"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: ${DCH_IMAGE_API:-ghcr.io/moritznobis87/duckcurve-api}:${DCH_VERSION:-main}
+    <<: *protokoll
+    restart: unless-stopped
+    # Alle DCH_*-Einstellungen aus .env. Die Migration der Datenbank laeuft beim Start
+    # (apps/api/docker-entrypoint.sh), vor dem ersten Takt der Regelung.
+    env_file: .env
+    environment:
+      DCH_MODE: live
+      DCH_ROLE: all
+      PORT: "8000"
+      DATABASE_URL: postgresql://dch:${POSTGRES_PASSWORD}@postgres:5432/dch
+      DCH_CORS_ORIGINS: "[]"
+      # Austausch mit dem Update-Dienst des Geraets (dch pruefen / dch anfrage): Die API liest die
+      # Statusdatei und legt Anfragen ab. Docker selbst erreicht sie nicht.
+      DCH_GERAET_DIR: /geraet
+    volumes:
+      - ${DCH_GERAET:-/var/lib/duckcurve/geraet}:/geraet
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: ${DCH_IMAGE_WEB:-ghcr.io/moritznobis87/duckcurve-web}:${DCH_VERSION:-main}
+    <<: *protokoll
+    restart: unless-stopped
+    # Nur, was die Oberflaeche braucht; Datenbank und Anbieterschluessel sieht sie nicht.
+    environment:
+      DCH_API_URL: http://api:8000
+      # DCH_API_TOKEN braucht die Oberflaeche seit dem 23.11.2026 nicht mehr: sie reicht nur noch
+      # das Sitzungstoken der angemeldeten Person weiter.
+      # Die Anmeldung ist an, solange nichts anderes dasteht. Die Variablen der Geraetepaarung
+      # (DCH_SESSION_SECRET, DCH_KIOSK_TOKEN, DCH_GUEST_TOKEN, DCH_GUEST_HOURS, DCH_PUBLIC_HOST)
+      # sind am 23.11.2026 entfallen: sie vergaben Zugang ueber einen stehenden URL-Token.
+      # OFFEN fuer das Display am Geraet selbst - siehe README, Abschnitt Kiosk.
+      DCH_ANMELDUNG: ${DCH_ANMELDUNG:-an}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  caddy:
+    image: caddy:2
+    <<: *protokoll
+    restart: unless-stopped
+    environment:
+      DCH_HOSTNAME: ${DCH_HOSTNAME:-duckcurve-home}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8001:8001"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-daten:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_started
+
+  # Zugang von unterwegs ohne offenen Port (Cloudflare Tunnel). Nur mit `--profile fernzugang`
+  # bzw. DCH_FERNZUGANG=1 in .env; das Token kommt aus dem Cloudflare-Konto (README, Schritt 7).
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    <<: *protokoll
+    profiles: ["fernzugang"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # `:-` und nicht `:?`: Compose setzt Variablen auch in abgeschalteten Profilen ein, und ohne
+      # Fernzugang soll eine fehlende Angabe hier nicht den ganzen Stack anhalten.
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      web:
+        condition: service_started
+
+volumes:
+  postgres:
+  caddy-daten:
+  caddy-config:

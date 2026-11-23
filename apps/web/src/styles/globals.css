@@ -771,6 +771,8 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 .mitteil-hinweis-los { padding: 8px 14px; border-radius: 999px; background: var(--amber); color: var(--petrol); font-weight: 600; font-size: 13px; text-decoration: none; }
 .mitteil-hinweis-zu { padding: 8px 10px; border: 0; background: none; color: var(--text-3); font-size: 13px; cursor: pointer; }
 .mitteil-hinweis-los:focus-visible, .mitteil-hinweis-zu:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+/* Der Update-Hinweis steht auf breiten Bildschirmen in einer Zeile: Text links, Knoepfe rechts. */
+@media (min-width: 721px) { .update-hinweis { flex-direction: row; align-items: center; justify-content: space-between; } }
 
 /* Die Raumliste im Bereich Haus: dieselbe Spalte wie die Bühne des Modells. */
 .haus-liste { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -1027,3 +1029,264 @@ button.ansicht { cursor: pointer; }
 .kl-liste { font-size: 14px; color: var(--text-2); }
 .kl-liste summary { cursor: pointer; padding: 6px 0; }
 .kl-liste[open] summary { margin-bottom: 8px; }
+
+/* ------------------------------------------------------------------ Regelkreis
+   Die Karte der Regelung. Die Farben tragen Bedeutung und sind deshalb aus den Tokens:
+   Amber heißt gemessen, Amber-soft geschätzt, Mist Entwurf oder Rückführung, Alert Störgröße
+   oder Übersteuerung, Text-3 Annahme. Die Zeichnung ist breiter als jeder Bildschirm und rollt
+   waagerecht; auf dem Handy ist deshalb die Ebenenwahl der eigentliche Zugang. */
+.rk-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.rk-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; align-items: start; }
+.rk-roller { overflow-x: auto; overflow-y: hidden; }
+.rk-karte { display: block; width: 100%; min-width: 1080px; height: auto; }
+.rk-bild-text { margin: 10px 2px 0; font-size: 12px; line-height: 1.45; color: var(--text-3); }
+
+.rk-ebene { font: 500 10.5px/1 var(--font-mono); letter-spacing: .14em; fill: var(--mist); }
+.rk-blk { cursor: pointer; }
+.rk-rahmen { fill: var(--surface-2); stroke: var(--line-2); stroke-width: 1.1; }
+.rk-blk:hover .rk-rahmen { fill: var(--surface-3); stroke: var(--amber); }
+.rk-blk:focus-visible { outline: none; }
+.rk-blk:focus-visible .rk-rahmen { stroke: var(--amber); stroke-width: 2; }
+.rk-gewaehlt .rk-rahmen { stroke: var(--amber); stroke-width: 2; }
+.rk-regler .rk-rahmen { fill: var(--surface-3); }
+.rk-stoergroesse .rk-rahmen { fill: var(--surface-1); stroke: var(--alert); stroke-dasharray: 3 2.5; }
+.rk-beobachter .rk-rahmen { stroke: var(--dev-cold-2); }
+.rk-teilkreise .rk-rahmen { stroke-dasharray: 4 3; }
+.rk-blass { opacity: .35; }
+.rk-name { font: 500 12.5px/1 var(--font-sans); fill: var(--text-1); }
+.rk-name-klein { font: 400 11.5px/1 var(--font-sans); fill: var(--text-2); }
+.rk-formel { font: italic 400 10.5px/1 var(--font-mono); fill: var(--mist); }
+.rk-wert { font: 400 10.5px/1 var(--font-mono); }
+.rk-marke, .rk-wdh { font: 500 9px/1 var(--font-mono); letter-spacing: .08em; fill: var(--text-3); }
+.rk-theta { font: 500 7.5px/1 var(--font-mono); fill: var(--deep); }
+.rk-summe { fill: var(--surface-1); stroke: var(--text-2); stroke-width: 1.2; }
+.rk-blk:hover .rk-summe, .rk-gewaehlt .rk-summe { stroke: var(--amber); }
+.rk-summe-text { font: 500 11px/1 var(--font-mono); fill: var(--text-1); text-anchor: middle; }
+.rk-vorzeichen { font: 500 11px/1 var(--font-mono); fill: var(--text-1); }
+.rk-leitung-text { font: 400 9.5px/1 var(--font-mono); fill: var(--text-3); paint-order: stroke; stroke: var(--surface-1); stroke-width: 4px; stroke-linejoin: round; }
+
+.rk-kante { fill: none; stroke: var(--text-2); stroke-width: 1.3; }
+.rk-stoer { stroke: var(--alert); stroke-dasharray: 5 3; stroke-width: 1.2; }
+.rk-rueck { stroke: var(--mist); }
+.rk-fuehrung { stroke: var(--amber-soft); stroke-width: 1.6; }
+.rk-param { stroke: var(--amber); stroke-dasharray: 1.5 3; stroke-width: 1.2; }
+.rk-hell { stroke-width: 2.4; }
+
+.rk-sicht { display: flex; flex-wrap: wrap; gap: 4px; }
+.rk-knopf { padding: 4px 10px; border: 1px solid var(--line-1); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font-size: 12px; cursor: pointer; }
+.rk-knopf:hover { border-color: var(--line-2); background: var(--surface-3); }
+.rk-knopf:disabled { opacity: .5; cursor: default; }
+.rk-knopf.rk-an { background: var(--amber); border-color: var(--amber); color: var(--petrol); font-weight: 600; }
+.rk-legende { display: flex; flex-wrap: wrap; gap: 8px 18px; padding-top: 12px; font-size: 12px; color: var(--text-2); }
+.rk-legende span { display: flex; align-items: center; gap: 6px; }
+.rk-legende i { display: inline-block; width: 20px; height: 0; border-top: 2px solid var(--text-2); }
+.rk-l-fuehrung { border-top-color: var(--amber-soft) !important; }
+.rk-l-rueck { border-top-color: var(--mist) !important; }
+.rk-l-stoer { border-top-color: var(--alert) !important; border-top-style: dashed !important; }
+.rk-l-param { border-top-color: var(--amber) !important; border-top-style: dotted !important; }
+.rk-l-punkt { width: 9px !important; height: 9px !important; border: none !important; border-radius: 50%; }
+
+.rk-titel { margin: 2px 0 10px; font: 600 19px/1.2 var(--font-sans); letter-spacing: -.01em; color: var(--text-1); }
+.rk-text { margin: 0 0 9px; max-width: 72ch; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }
+.rk-klein { font-size: 12px; line-height: 1.45; color: var(--text-3); }
+.rk-abschnitt { margin: 18px 0 8px; }
+.rk-gleichungen { display: grid; gap: 6px; margin: 4px 0 10px; }
+.rk-gleichungen code { padding: 8px 12px; border: 1px solid var(--line-1); border-left: 2px solid var(--mist); border-radius: 4px; background: var(--surface-2); font: 400 12.5px/1.5 var(--font-mono); color: var(--text-1); overflow-x: auto; }
+.rk-warnung { margin: 0 0 10px; padding: 9px 12px; border: 1px solid var(--alert); border-radius: 4px; background: color-mix(in srgb, var(--alert) 12%, transparent); font-size: 12.5px; line-height: 1.5; color: var(--text-1); }
+.rk-pruefung { margin: 6px 0 10px; padding: 8px 11px; border-left: 2px solid var(--amber); font-size: 12.5px; line-height: 1.5; color: var(--text-2); }
+.rk-pruefung b { color: var(--text-1); }
+
+.rk-tabelle { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.rk-tabelle th { padding: 0 8px 6px 0; border-bottom: 1px solid var(--line-1); font: 500 10px/1.2 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); text-align: left; }
+.rk-tabelle td { padding: 7px 8px 7px 0; border-bottom: 1px solid var(--line-1); vertical-align: top; color: var(--text-2); }
+.rk-num { text-align: right; padding-right: 0 !important; font-variant-numeric: tabular-nums; }
+.rk-nowrap { white-space: nowrap; }
+.rk-zeile { cursor: pointer; }
+.rk-zeile:hover td { background: var(--surface-2); color: var(--text-1); }
+.rk-punkt { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.rk-ausklapp { padding: 10px 0 14px !important; }
+.rk-stellen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+.rk-feld { width: 110px; padding: 5px 8px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface-2); color: var(--text-1); font-size: 12.5px; }
+.rk-protokoll { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+.rk-protokoll th { padding: 0 8px 5px 0; border-bottom: 1px solid var(--line-1); font: 500 9.5px/1.2 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); text-align: left; }
+.rk-protokoll td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line-1); color: var(--text-2); vertical-align: top; }
+.rk-protokoll s { color: var(--text-3); }
+.rk-protokoll b { color: var(--amber); font-weight: 500; }
+
+.rk-kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; margin: 4px 0 12px; border: 1px solid var(--line-1); border-radius: 6px; overflow: hidden; background: var(--line-1); }
+.rk-kacheln > div { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; background: var(--surface-2); }
+.rk-kacheln span { font: 400 10px/1.3 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.rk-kacheln b { font: 500 16px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-1); }
+.rk-kacheln small { font: 400 11px/1.4 var(--font-mono); color: var(--text-3); }
+
+.rk-chart { margin: 4px 0 0; }
+.rk-chart svg { display: block; width: 100%; height: auto; }
+.rk-raster { stroke: var(--grid-line); stroke-width: .7; stroke-dasharray: 2 3; }
+.rk-achse { stroke: var(--text-3); stroke-width: 1; }
+.rk-grenze { stroke: var(--alert); stroke-width: 1; opacity: .5; }
+.rk-achse-text { font: 400 9.5px/1 var(--font-mono); fill: var(--text-3); }
+.rk-betrag { fill: none; stroke: var(--amber); stroke-width: 1.8; }
+.rk-phase { fill: none; stroke: var(--dev-cold-2); stroke-width: 1.8; }
+.rk-durchtritt { stroke: var(--alert); stroke-width: 1; stroke-dasharray: 3 2; }
+
+.rk-signale { display: grid; gap: 5px; font-size: 12.5px; }
+.rk-signale > div { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.rk-signale b { min-width: 150px; font: 400 11.5px/1.5 var(--font-mono); color: var(--amber); }
+.rk-signale button { padding: 0; border: none; background: none; color: var(--mist); font: 400 11.5px/1.5 var(--font-mono); text-decoration: underline dotted; cursor: pointer; }
+.rk-signale button:hover { color: var(--text-1); }
+
+.rk-log { list-style: none; margin: 0; padding: 0; }
+.rk-log li { display: grid; gap: 2px; padding: 9px 0; border-bottom: 1px solid var(--line-1); cursor: pointer; }
+.rk-log li:hover { background: var(--surface-2); }
+.rk-log-was { font-size: 13px; color: var(--text-1); }
+.rk-log-delta { font-size: 11.5px; color: var(--text-2); }
+.rk-log-delta s { color: var(--text-3); }
+.rk-log-delta b { color: var(--amber); font-weight: 500; }
+
+@media (max-width: 720px) {
+  .rk-karte { min-width: 980px; }
+  .rk-signale b { min-width: 0; }
+  .rk-tabelle, .rk-protokoll { font-size: 13px; }
+}
+
+/* --------------------------------------------------- Regelkreis: Instrumente und Konsole
+   Die Seite soll aussehen wie eine Tafel, an der man arbeitet, und nicht wie ein Aufsatz:
+   Fasen statt Flaechen, Instrumente statt Zahlenkolonnen, und das Leuchten nur dort, wo eine
+   Groesse wirklich gemessen ist. Alle Farben kommen aus den Tokens; neu ist die Behandlung. */
+
+.rk-konsole { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1px;
+  background: var(--line-1); border: 1px solid var(--line-2); border-radius: var(--radius-3); overflow: hidden; }
+.rk-konsole-feld { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--surface-1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); min-width: 0; }
+.rk-konsole-feld > .kicker { align-self: flex-start; }
+.rk-konsole-feld:has(> .kicker) { flex-direction: column; align-items: flex-start; gap: 4px; justify-content: center; }
+.rk-konsole-pegel { gap: 10px; }
+.rk-konsole-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; margin: 0; }
+.rk-konsole-zahl { font: 500 24px/1.1 var(--font-mono); color: var(--text-1); letter-spacing: -0.01em; }
+.rk-konsole-zahl i { font: 400 12px/1 var(--font-sans); font-style: normal; color: var(--text-3); margin-left: 6px; }
+.rk-leuchten { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+.rk-leuchte { display: inline-flex; align-items: center; gap: 6px; font: 400 10.5px/1.4 var(--font-mono); color: var(--text-3); }
+.rk-leuchte i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+/* Instrumente */
+.rk-rund-teil { stroke: var(--line-2); stroke-width: 1; }
+.rk-rund-zeiger { stroke: var(--text-1); stroke-width: 1.8; stroke-linecap: round; }
+.rk-rund-nabe { fill: var(--text-1); }
+.rk-rund-zahl { font: 500 15px/1 var(--font-mono); fill: var(--text-1); }
+.rk-rund-einheit { font-size: 10px; fill: var(--text-3); }
+.rk-rund-titel { font: 400 9.5px/1 var(--font-mono); fill: var(--text-3); letter-spacing: 0.06em; }
+.rk-ring-bahn { fill: none; stroke: var(--line-1); stroke-width: 4; }
+.rk-ring-zahl { font: 500 13px/1 var(--font-mono); fill: var(--text-1); }
+.rk-pegel-feld { fill: rgba(0, 0, 0, 0.18); stroke: var(--line-1); }
+.rk-pegel-schwelle { stroke: var(--text-1); stroke-width: 1.4; stroke-dasharray: 3 2; }
+.rk-pegel-zahl { font: 500 12px/1 var(--font-mono); fill: var(--text-1); }
+.rk-pegel-titel { font: 400 9px/1 var(--font-mono); fill: var(--text-3); }
+.rk-schieber { display: block; }
+.rk-schieber-bahn { fill: rgba(0, 0, 0, 0.22); stroke: var(--line-1); stroke-width: 1; }
+.rk-schieber-teil { stroke: var(--line-1); stroke-width: 1; }
+.rk-schieber-start { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 2 2; }
+.rk-schieber-griff { filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 45%, transparent)); }
+.rk-schieber-grenzen { display: flex; justify-content: space-between; gap: 6px; font-size: 9.5px; color: var(--text-3); }
+.rk-schieber-grenzen i { font-style: normal; }
+.rk-schieber-grenzen b { font-weight: 400; color: var(--mist); }
+.rk-messzelle { width: 150px; }
+.rk-messkopf { text-align: left; }
+.rk-messwert { display: block; font-size: 13.5px; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.rk-messwert i { font-style: normal; font-size: 11px; color: var(--text-3); }
+.rk-zeile-herkunft { display: block; margin-top: 2px; }
+
+/* Kennbilder */
+.rk-sprung-feld { fill: rgba(0, 0, 0, 0.2); stroke: var(--line-1); }
+.rk-sprung-achse { stroke: var(--line-2); stroke-width: 0.8; }
+.rk-sprung-kurve { fill: none; stroke: var(--amber); stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+.rk-sprung-dick { stroke-width: 1.8; }
+.rk-sprung-blass { stroke: var(--mist); opacity: 0.55; stroke-width: 1.1; }
+.rk-glied-kurz { font: 500 9px/1 var(--font-mono); fill: var(--mist); letter-spacing: 0.06em; }
+.rk-kennbild .rk-sprung-feld { fill: rgba(0, 0, 0, 0.26); }
+
+.rk-glied { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; margin: 0 0 14px;
+  padding: 12px 14px; border: 1px solid var(--line-1); border-left: 2px solid var(--amber);
+  border-radius: var(--radius-2); background: rgba(0, 0, 0, 0.14); }
+.rk-glied-bild { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rk-glied-marke { font: 500 12px/1 var(--font-mono); color: var(--amber); letter-spacing: 0.06em; }
+.rk-glied-zweit .rk-glied-marke { color: var(--mist); }
+.rk-glied-zweit .rk-sprung-kurve { stroke: var(--mist); }
+.rk-glied-text { display: flex; flex-direction: column; gap: 5px; min-width: 200px; flex: 1; }
+.rk-glied-text b { font: 600 14px/1.3 var(--font-sans); color: var(--text-1); }
+.rk-glied-text b em { font-style: normal; font-weight: 400; color: var(--alert); font-size: 12px; }
+.rk-glied-text code { font: 400 12px/1.5 var(--font-mono); color: var(--amber-soft); overflow-x: auto; }
+.rk-glied-warnung { color: var(--alert) !important; }
+
+.rk-instrumente { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
+.rk-kacheln-eng { flex: 1; min-width: 260px; margin: 0; }
+
+/* Katalog */
+.rk-katalog { display: grid; gap: 18px; }
+.rk-katalog-gruppe { display: grid; gap: 8px; }
+.rk-katalog-eintrag { display: flex; gap: 14px; align-items: flex-start; padding: 10px 12px;
+  border: 1px solid var(--line-1); border-radius: var(--radius-2); background: var(--surface-2); cursor: pointer; }
+.rk-katalog-eintrag:hover { border-color: var(--amber); background: var(--surface-3); }
+.rk-katalog-eintrag > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rk-katalog-eintrag b { font-size: 13px; color: var(--amber); }
+.rk-katalog-eintrag > div > span:nth-of-type(1) { font-size: 13.5px; color: var(--text-1); }
+.rk-katalog-eintrag code { font: 400 11.5px/1.5 var(--font-mono); color: var(--text-2); overflow-x: auto; }
+.rk-katalog-wo { color: var(--mist) !important; }
+
+/* Die Karte liegt in einer Vertiefung, nicht auf Millimeterpapier.
+   Erster Versuch war ein Raster aus feinen Linien - es hat die Leitungen der Zeichnung
+   nachgeahmt und mit ihnen um Aufmerksamkeit gestritten. Jetzt traegt nur eine Fase und ein
+   etwas tieferer Grund die Flaeche; das Bild steht darin, ohne dagegen anzukommen. */
+.rk-roller { border-radius: var(--radius-2); background: rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px var(--line-1); }
+.rk-gewaehlt .rk-rahmen { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--amber) 55%, transparent)); }
+.rk-wert { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 720px) {
+  .rk-konsole-feld { padding: 12px 14px; }
+  .rk-messzelle { width: 120px; }
+  .rk-glied-text { min-width: 0; }
+}
+
+/* Die Beschriftung eines Instruments steht ausserhalb seines Bildes: im SVG wurde sie an der
+   schmalen Kante abgeschnitten, und ein abgeschnittener Name ist schlimmer als keiner. */
+.rk-rund-feldchen, .rk-pegel-feldchen { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.rk-rund-feldchen i, .rk-pegel-feldchen i { font: 400 9.5px/1.2 var(--font-mono); font-style: normal;
+  letter-spacing: 0.06em; color: var(--text-3); text-align: center; max-width: 104px; }
+
+/* Die Fuellspalte haelt Bedeutung und Schieber beieinander: ohne sie treibt die Tabelle beide
+   an die Raender, und das Auge muss den ganzen Weg mitgehen. */
+.rk-fuellspalte { width: auto; }
+.rk-tabelle th:first-child { width: 120px; }
+.rk-messzelle, .rk-messkopf { width: 170px; }
+.rk-l-bild { width: 18px !important; height: 11px !important; border: 1px solid var(--line-2) !important;
+  border-radius: 2px; background: rgba(0, 0, 0, 0.2); position: relative; }
+.rk-l-bild::after { content: ""; position: absolute; left: 2px; right: 2px; top: 3px; height: 4px;
+  border-left: 1.5px solid var(--amber); border-bottom: 1.5px solid var(--amber); border-bottom-left-radius: 3px; }
+
+/* Die Parametertafel in festen Spalten: ohne das treiben Bedeutung und Schieber an die Raender
+   der Tafel, und zwischen beiden liegt eine Handbreit Leere, die das Auge mitgehen muss. */
+.rk-ptab { table-layout: fixed; }
+.rk-ptab th:nth-child(1) { width: 118px; }
+.rk-ptab th:nth-child(2) { width: 340px; }
+.rk-ptab th:nth-child(3) { width: 168px; }
+@media (max-width: 760px) {
+  .rk-ptab { table-layout: auto; }
+  .rk-ptab th:nth-child(2) { width: auto; }
+  .rk-fuellspalte { display: none; }
+}
+.rk-zelle-mitte { text-align: center; }
+.rk-zelle-mitte .rk-rund-feldchen i { display: none; }
+.rk-ktab td:first-child { display: flex; flex-direction: column; gap: 2px; }
+.rk-kreis-name { font-size: 13px; color: var(--text-1); font-weight: 600; }
+.rk-ktab th:last-child, .rk-ktab td:last-child { width: 78px; }
+
+/* Zahlenspalten stehen rechtsbuendig und ohne Rand nach rechts; ohne Abstand nach links kleben
+   sie an der naechsten Spalte, und aus "±0,016" und "240" wird "±0,016240". */
+.rk-tabelle td + td, .rk-tabelle th + th,
+.rk-protokoll td + td, .rk-protokoll th + th { padding-left: 12px; }
+.rk-verlauf-band { fill: var(--mist); opacity: 0.2; stroke: none; }
+.rk-verlauf-schaetzung { fill: none; stroke: var(--mist); stroke-width: 1.2; }
+.rk-verlauf-geltend { fill: none; stroke: var(--amber); stroke-width: 1.9; stroke-linejoin: round; }
+.rk-verlauf-start { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 4 3; }
+.rk-verlauf-punkt { fill: var(--amber); stroke: var(--surface-1); stroke-width: 1.2; }
+.rk-verlauf { margin-top: 10px; }

@@ -1,0 +1,11 @@
+# Jede Nacht gegen 03:15, mit Streuung; ein verpasster Lauf (Geraet aus) wird nachgeholt.
+[Unit]
+Description=Duck Curve Home - naechtliche Sicherung
+
+[Timer]
+OnCalendar=*-*-* 03:15
+RandomizedDelaySec=20min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

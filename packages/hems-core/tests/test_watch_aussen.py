@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from hems_core.domain.config import SensorTimeouts
 from hems_core.watch.aussen import ABWEICHUNG_K, ALT_MIN, pruefe
+from hems_core.watch.silence import RULES
 
 BERLIN = ZoneInfo("Europe/Berlin")
 #: 12:49 im Haus, der Augenblick des Bildschirmfotos vom 13.11.2026.
@@ -54,3 +56,44 @@ def test_ohne_messwert_steht_der_wetterdienst_da_ohne_befund() -> None:
     assert (p.angezeigt_c, p.quelle_de, p.text_de) == (8.6, "Wetterdienst", "")
     leer = pruefe(None, None, None, JETZT, BERLIN)
     assert (leer.angezeigt_c, leer.quelle_de, leer.text_de) == (None, "", "")
+
+
+#: Der Melde-Takt der Wetterstation über Home Assistant (docs/SENSORIK.md, „Die Außentemperatur":
+#: die Station meldet stündlich). Sie ist die langsamste der beiden Quellen - über den eBUS der
+#: Wärmepumpe kommt der Wert alle 5 bis 55 Sekunden - und setzt damit die Untergrenze.
+MELDETAKT_STATION_S = 3600.0
+
+
+def test_die_altersgrenze_der_aufnahme_ist_die_der_gegenprobe() -> None:
+    """Dieselbe Frist in zwei Einheiten: 90 Minuten hier, 5400 Sekunden in der Aufnahme.
+
+    Diese Prüfung ist die Herleitung der Zahl. Unten liegt der Melde-Takt der Station: eine
+    Grenze auf dem Takt selbst verfällt genau dann, wenn die nächste Meldung fällig ist, und
+    erzeugt bei jeder Verzögerung eine Lücke. Oben liegt diese Gegenprobe: ab `ALT_MIN` zeigt die
+    Startseite nicht mehr den Messwert, sondern den Wetterdienst. Eine Aufnahme, die den Wert
+    danach weiter `ok` nennt - bis zum 23.11.2026 drei Stunden lang - gibt ihn der Anlagenseite
+    als brauchbar heraus und nennt ihn auf der Regelkreis-Karte gemessen, während die Anzeige der
+    Startseite ihn schon aufgegeben hat.
+    """
+    frist_s = SensorTimeouts().outdoor_temp_s
+    assert frist_s > MELDETAKT_STATION_S
+    assert frist_s == ALT_MIN * 60.0
+
+
+def test_der_waechter_bleibt_laenger_als_die_aufnahme() -> None:
+    """180 Minuten gegen 90 - und das ist Absicht, nicht eine vergessene Zahl.
+
+    Die beiden fragen Verschiedenes. Die Aufnahme fragt, ob der Wert noch die Luft draußen
+    beschreibt; sie wird still `stale`, die Anzeige fällt auf den Wetterdienst zurück, und das
+    kostet niemanden etwas. Der Wächter fragt, ob die Quelle verstummt ist, und seine Antwort
+    geht einem Menschen aufs Telefon - dafür toleriert er eine ausgefallene Meldung mehr.
+
+    Die Prüfung steht hier, weil die Zahl bis zum 23.11.2026 nur als Kommentar begründet war:
+    die Produktionsregeln aus `hems_core.watch.silence.RULES` behauptete im ganzen Baum keine
+    Prüfung, während die drei anderen Stellen dieser Größe je eine haben.
+    """
+    regel = next(r for r in RULES if r.name == "weather")
+    assert regel.keys == ("outdoor_temp_c",)
+    assert regel.silence_min == 180
+    assert regel.silence_min * 60.0 > SensorTimeouts().outdoor_temp_s
+    assert regel.severity == "warn", "eine fehlende Außentemperatur ist kein Alarm"

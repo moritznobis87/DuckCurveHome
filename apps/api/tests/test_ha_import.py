@@ -20,6 +20,7 @@ from dch_api.application.ha_import import (
 )
 from hems_core.accounting import HourlyEnergy
 from hems_core.domain import HemsConfig
+from hems_core.domain.config import SensorTimeouts
 from hems_core.planning import PricePoint
 from hems_core.protocol import RawReading
 
@@ -268,6 +269,30 @@ def test_nonzero_value_is_not_carried_far() -> None:
     assert (T0 + timedelta(minutes=59)) in pv and (
         T0 + timedelta(hours=1)
     ) not in pv  # 3 kW höchstens 1 h
+
+
+def test_die_aussentemperatur_wird_nicht_laenger_fortgeschrieben_als_sie_frisch_ist() -> None:
+    """Der Import darf keine Zeile schreiben, die der laufende Dienst verworfen hätte.
+
+    Home Assistant schreibt nur bei Änderung, also fehlen Zeilen, und der Import schreibt den
+    letzten Wert fort. Bis zum 23.11.2026 drei Stunden lang - während die Aufnahme im Betrieb den
+    Wert nach anderthalb Stunden aufgibt (`SensorTimeouts.outdoor_temp_s`). Dieselbe Größe hatte
+    damit zwei Alter, je nachdem, ob sie über den Import oder über den Bus hereinkam. Die Station
+    meldet stündlich, eine ausgefallene Meldung wird also weiter überbrückt.
+    """
+    frist = SensorTimeouts().outdoor_temp_s
+    lines = ["statistic_id,unit_of_measurement,start_ts,mean,min,max,state,sum"]
+    ts = T0.timestamp()
+    # Zwei Meldungen mit fünf Stunden Lücke dazwischen: Was in der Lücke steht, ist Fortschreiben.
+    for versatz in (0.0, 5 * 3600.0):
+        lines.append(f"sensor.geilenkirchen_air_base_temperatur,°C,{ts + versatz},12.5,,,,")
+    aussen = parse_dump("\n".join(lines).encode(), RULES).minutes["outdoor_temp_c"]
+
+    letzte = max(m for m in aussen if m < T0 + timedelta(hours=2))
+    assert (letzte - T0).total_seconds() == frist - 60.0, (
+        f"fortgeschrieben bis {letzte}, erwartet {frist / 60.0:.0f} Minuten ab {T0}"
+    )
+    assert T0 + timedelta(seconds=frist) not in aussen, "eine Minute zu weit ist eine erfundene"
 
 
 def test_concatenated_sections_merge_into_one_dump() -> None:

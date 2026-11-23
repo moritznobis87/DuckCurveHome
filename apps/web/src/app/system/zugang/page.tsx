@@ -1,23 +1,14 @@
-import { headers } from "next/headers";
 import { requireOwner } from "@/lib/guard";
-import { authRequired } from "@/lib/session";
+import { anmeldungNoetig } from "@/lib/anmeldungAktiv";
 import { active } from "@/lib/presence";
-import { CopyField } from "@/components/ui/CopyField";
+import { zustand } from "@/lib/zugang";
 import { StorageReport } from "@/components/settings/StorageReport";
 import { AreaShell } from "@/components/layout/AreaShell";
+import { MeinZugang } from "@/components/zugang/MeinZugang";
+import { Personen } from "@/components/zugang/Personen";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Zugang und Sicherung · Duck Curve Home" };
-
-function Row({ label, url, note }: { label: string; url: string; note: string }) {
-  return (
-    <div className="flex flex-col gap-1.5 rounded-[3px] border border-line-1 bg-surface-2 p-4">
-      <span className="kicker" style={{ fontSize: 11 }}>{label}</span>
-      <CopyField value={url} label={label} />
-      <span className="text-[13px] leading-[1.5] text-text-3">{note}</span>
-    </div>
-  );
-}
 
 /** „vor 12 s“ statt einer Uhrzeit: hier zählt der Abstand zu jetzt, nicht der Zeitpunkt. */
 function ago(ms: number): string {
@@ -26,62 +17,43 @@ function ago(ms: number): string {
   return `vor ${Math.round(s / 60)} min`;
 }
 
-/** Der Pairing-Link soll die Adresse tragen, unter der das Haus die Seite kennt - nicht die, über die
- *  dieser Aufruf zufällig hereinkam. Railway antwortet weiterhin unter *.up.railway.app; ein von dort
- *  kopierter Link führte Gäste an der eigenen Domain vorbei. Vorrang hat darum DCH_PUBLIC_HOST, dann
- *  ein echter Host aus der Anfrage (localhost bleibt für die Entwicklung erhalten), zuletzt die Domain. */
-async function publicHost(): Promise<string> {
-  const configured = process.env.DCH_PUBLIC_HOST?.trim();
-  if (configured) return configured.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  if (host && !host.endsWith(".railway.app")) return host.split(",")[0]!.trim();
-  return "home.duckcurve.de";
-}
-
 export default async function Page() {
-  await requireOwner(); // doppelt zum Layout: die Seite zeigt die Schluessel zum Haus
+  await requireOwner(); // doppelt zum Layout: hier stehen die Zugänge zum Haus
+  const stand = await zustand();
   const here = active();
   const year = new Date().getFullYear();
-  const base = `https://${await publicHost()}`;
-  // Die Links tragen die echten Tokens, damit sie sich kopieren und sofort verwenden lassen. Das
-  // ist vertretbar, weil diese Seite nur mit Vollzugriff erreichbar ist und pro Anfrage gerendert
-  // wird - aber es heißt auch: wer einen Screenshot dieser Seite bekommt, hat die Schlüssel zum
-  // Haus. Ist eine Variable nicht gesetzt, bleibt der Platzhalter stehen.
-  const kiosk = process.env.DCH_KIOSK_TOKEN || "<DCH_KIOSK_TOKEN>";
-  const guest = process.env.DCH_GUEST_TOKEN || "<DCH_GUEST_TOKEN>";
-  const missing = [
-    !process.env.DCH_KIOSK_TOKEN ? "DCH_KIOSK_TOKEN" : null,
-    !process.env.DCH_GUEST_TOKEN ? "DCH_GUEST_TOKEN" : null,
-  ].filter(Boolean);
   return (
-    <AreaShell kicker="Geräte koppeln · wer zusieht · Daten sichern">
+    <AreaShell kicker="wer Zugang hat · wer zusieht · Daten sichern">
+
+      <Personen versand={{ aktiv: stand.versand.aktiv, fehlt: stand.versand.fehlt }} />
 
       <section className="flex max-w-[760px] flex-col gap-3">
-        <h2 className="m-0 text-[18px] font-semibold">Zugang einrichten</h2>
+        <h2 className="m-0 text-[18px] font-semibold">Mein Zugang</h2>
+        <MeinZugang />
+      </section>
+
+      <section className="flex max-w-[760px] flex-col gap-2">
+        <h2 className="m-0 text-[18px] font-semibold">Wie man hereinkommt</h2>
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-          Ein Gerät wird einmal über einen Link gepaart und behält danach seine Sitzung. Die Links
-          unten enthalten die echten Tokens und sind sofort verwendbar - behandle sie wie einen
-          Haustürschlüssel. Die Adresse kommt aus
-          <code className="mono mx-1 text-[13px]">DCH_PUBLIC_HOST</code> - so steht hier die eigene Domain,
-          auch wenn du gerade über die Railway-Adresse hereingekommen bist.
+          Nur als Person, nur mit Passkey. Es gibt <strong>keinen Link mehr, der Zugang vergibt</strong>:
+          bis zum 23.11.2026 standen hier zwei Adressen mit einem stehenden Token darin, die jeder
+          einlösen konnte, der sie je gesehen hatte, und die sich nur für alle zugleich widerrufen
+          ließen. Was es stattdessen gibt, ist der Einladungslink oben - einmal gültig, befristet,
+          je Person.
         </p>
-        <Row
-          label="Vollzugriff (Hausherr, Wandanzeige)"
-          url={`${base}/pair?token=${kiosk}&name=iPad-Flur`}
-          note="Darf schalten, sieht Kosten und Rechnungen. Die Sitzung hält ein halbes Jahr; `name` erscheint nur im Protokoll."
-        />
-        <Row
-          label="Gast (nur ansehen)"
-          url={`${base}/pair?token=${guest}&hours=8`}
-          note="Sieht Jetzt, Strom, Wärme und Geld; PV-Abrechnung, Rechnungen und System bleiben verschlossen. Die Schalter bleiben sichtbar und sagen „nur Ansicht“. Ohne `hours` gilt DCH_GUEST_HOURS (Vorgabe 24), höchstens 720."
-        />
+        <p className="m-0 text-[15px] leading-[1.6] text-text-2">
+          Eine Person darf an beliebig vielen Geräten zugleich angemeldet sein: je Gerät ein
+          Passkey und eine eigene Sitzung, einzeln zu beenden. Auch das Gerät an der Wand bekommt
+          deshalb eine eigene Person - gib ihr einen Namen, dem man ansieht, dass kein Mensch
+          dahintersteht („Wandanzeige Flur"), und die Rolle, die sie wirklich braucht.
+        </p>
         <p className="m-0 text-[14px] leading-[1.6] text-text-3">
-          Der Ablauf begrenzt die <em>Sitzung</em>, nicht den Link: Wer ihn aufhebt, kann sich erneut paaren.
-          Um das zu unterbinden, <code className="mono text-[13px]">DCH_GUEST_TOKEN</code> ändern - bestehende
-          Gast-Sitzungen laufen dann regulär ab, neue entstehen nicht mehr.
-          {missing.length ? ` Nicht gesetzt: ${missing.join(", ")} - der Link zeigt dort noch den Platzhalter.` : ""}
-          {!authRequired() ? " Achtung: DCH_SESSION_SECRET ist nicht gesetzt, die Anmeldung ist derzeit deaktiviert." : ""}
+          {!anmeldungNoetig()
+            ? "Achtung: Es wird derzeit keine Anmeldung verlangt - DCH_ANMELDUNG steht auf „aus\". "
+            : ""}
+          {!stand.anmeldung
+            ? "Achtung: Der Dienst läuft ohne Datenbank (Demo-Modus); Personen lassen sich damit nicht anlegen."
+            : ""}
         </p>
       </section>
 
@@ -92,11 +64,11 @@ export default async function Page() {
         ) : (
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {here.map((p) => (
-              <li key={`${p.role}:${p.name}:${p.agent}`} className="flex items-baseline justify-between gap-4 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">
+              <li key={`${p.rolle}:${p.name}:${p.agent}`} className="flex items-baseline justify-between gap-4 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">
                 <span className="flex items-baseline gap-3">
                   <span className="text-[15px] text-text-1">{p.name}</span>
-                  <span className="mono text-[12px] uppercase tracking-[.1em]" style={{ color: p.role === "owner" ? "var(--amber)" : "var(--text-3)" }}>
-                    {p.role === "owner" ? "Vollzugriff" : "Gast"}
+                  <span className="mono text-[12px] uppercase tracking-[.1em]" style={{ color: p.rolle === "hausherr" ? "var(--amber)" : "var(--text-3)" }}>
+                    {p.rolle}
                   </span>
                   <span className="text-[13px] text-text-3">{p.agent}</span>
                 </span>
@@ -106,8 +78,7 @@ export default async function Page() {
           </ul>
         )}
         <p className="m-0 text-[14px] leading-[1.6] text-text-3">
-          Der Name stammt aus dem Pairing-Link (<code className="mono text-[13px]">&amp;name=…</code>); ohne Angabe
-          heißt ein Gast schlicht „gast". Die Liste liegt nur im Arbeitsspeicher: nach einem Neustart des
+          Der Name stammt aus dem Zugang der Person. Die Liste liegt nur im Arbeitsspeicher: nach einem Neustart des
           Web-Dienstes ist sie leer. Sie zeigt, wer zusieht - ein Zugriffsprotokoll ist sie nicht.
           Zum Aktualisieren die Seite neu laden.
         </p>

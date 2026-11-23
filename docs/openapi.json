@@ -29,6 +29,814 @@
         }
       }
     },
+    "/api/v1/auth/zustand": {
+      "get": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Ist eine Anmeldung nötig?",
+        "description": "Was die Anmeldeseite wissen muss, bevor jemand angemeldet ist.\n\nWortkarg mit Absicht: `personen` ist eine Zahl, keine Liste. Dass es noch niemanden gibt, muss\ndie Seite sagen können („Zugang über das gepaarte Gerät einrichten\"); wer das wäre, braucht\nsie nicht.",
+        "operationId": "zustand_api_v1_auth_zustand_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZugangZustandOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/wer": {
+      "get": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Wer stellt diese Anfrage?",
+        "description": "Die kleinste Auskunft: Art, Rolle, Name.\n\nDie Oberfläche fragt das alle zwei Minuten, um keine toten Knöpfe zu zeigen - darum eine\neigene Antwort und nicht `/auth/ich`, das zusätzlich Passkeys und Sitzungen lädt. Sie\nbeantwortet beide Wege herein: eine angemeldete Person ebenso wie ein gepaartes Gerät.",
+        "operationId": "wer_api_v1_auth_wer_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AusweisOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/anmeldung/beginnen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Anmeldung mit Passkey beginnen",
+        "description": "Die Optionen für `navigator.credentials.get` - ohne E-Mail-Adresse.\n\nDer Browser bietet die Passkeys für diese Domain an (auffindbarer Passkey). Erst auf Klick und\nnicht beim Laden der Seite: jede Challenge ist eine Zeile in der Datenbank, und eine Seite,\ndie beim blossen Aufruf eine anlegt, ließe sich von jedem Bot fluten.",
+        "operationId": "anmeldung_beginnen_api_v1_auth_anmeldung_beginnen_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZeremonieOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/anmeldung/abschliessen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Mit Passkey anmelden",
+        "operationId": "anmeldung_abschliessen_api_v1_auth_anmeldung_abschliessen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnmeldenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AngemeldetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/wiederherstellung": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Mit Wiederherstellungscode anmelden",
+        "description": "Der Weg, wenn alle Geräte weg sind. Der Code gilt einmal.\n\nDanach gehört der erste Griff in das Konto: einen neuen Passkey anlegen und neue Codes holen.",
+        "operationId": "wiederherstellung_api_v1_auth_wiederherstellung_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiederherstellenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AngemeldetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/einladung": {
+      "get": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Wem gehört dieser Link?",
+        "description": "Löst den Link nicht ein - das tut erst der fertige Passkey.",
+        "operationId": "einladung_api_v1_auth_einladung_get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EinladungPersonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/einladung/passkey/beginnen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey über den Link anlegen: beginnen",
+        "operationId": "einladung_passkey_beginnen_api_v1_auth_einladung_passkey_beginnen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyBeginnenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZeremonieOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/einladung/passkey/abschliessen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey über den Link anlegen: abschließen",
+        "description": "Legt den Passkey an, löst den Link ein und meldet an.\n\n**Jeder eingelöste Link bringt zehn frische Wiederherstellungscodes** und entwertet die alten.\nDas ist Absicht: der Link ist nicht nur die Einladung, sondern auch der Rückweg, und wer ihn\ngebraucht hat, muss davon ausgehen, dass die alten Codes nichts mehr wert sind. Sie gehen\n**einmal** im Klartext hinaus, hier; danach liegen nur ihre Hashes.",
+        "operationId": "einladung_passkey_abschliessen_api_v1_auth_einladung_passkey_abschliessen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyAbschliessenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AngemeldetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/ich": {
+      "get": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Wer bin ich, und welche Geräte habe ich?",
+        "operationId": "ich_api_v1_auth_ich_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IchOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/abmelden": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Diese Sitzung beenden",
+        "description": "Beendet die Sitzung, mit der gefragt wird. Das BFF löscht danach sein Cookie.",
+        "operationId": "abmelden_api_v1_auth_abmelden_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object",
+                  "title": "Response Abmelden Api V1 Auth Abmelden Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sitzungen/{sitzung_id}/beenden": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Ein anderes Gerät abmelden",
+        "operationId": "sitzung_beenden_api_v1_auth_sitzungen__sitzung_id__beenden_post",
+        "parameters": [
+          {
+            "name": "sitzung_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sitzung Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Sitzung Beenden Api V1 Auth Sitzungen  Sitzung Id  Beenden Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sitzungen/beenden-alle": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Überall abmelden",
+        "description": "Der Griff für den Verdachtsfall: alle Sitzungen dieser Person enden, auch die eigene.",
+        "operationId": "alle_sitzungen_beenden_api_v1_auth_sitzungen_beenden_alle_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object",
+                  "title": "Response Alle Sitzungen Beenden Api V1 Auth Sitzungen Beenden Alle Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/beginnen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey anlegen: beginnen",
+        "operationId": "passkey_beginnen_api_v1_auth_passkeys_beginnen_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZeremonieOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/abschliessen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey anlegen: abschließen",
+        "operationId": "passkey_abschliessen_api_v1_auth_passkeys_abschliessen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyAbschliessenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/{passkey_id}/name": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey umbenennen",
+        "operationId": "passkey_umbenennen_api_v1_auth_passkeys__passkey_id__name_post",
+        "parameters": [
+          {
+            "name": "passkey_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Passkey Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NameIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Passkey Umbenennen Api V1 Auth Passkeys  Passkey Id  Name Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/{passkey_id}/loeschen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey löschen",
+        "description": "Der letzte Passkey bleibt: sonst käme diese Person nur noch über einen Code oder einen\nLink des Hausherrn herein.",
+        "operationId": "passkey_loeschen_api_v1_auth_passkeys__passkey_id__loeschen_post",
+        "parameters": [
+          {
+            "name": "passkey_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Passkey Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Passkey Loeschen Api V1 Auth Passkeys  Passkey Id  Loeschen Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/codes": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Neue Wiederherstellungscodes",
+        "description": "Zehn neue Codes; die alten gelten nicht mehr. Klartext nur hier, einmal.",
+        "operationId": "codes_api_v1_auth_codes_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Codes Api V1 Auth Codes Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/personen": {
+      "get": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Wer Zugang hat",
+        "operationId": "personen_api_v1_auth_personen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PersonOut"
+                  },
+                  "type": "array",
+                  "title": "Response Personen Api V1 Auth Personen Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Person anlegen und einladen",
+        "description": "Legt die Person an und gibt den Einladungslink zurück - immer, auch wenn die E-Mail\nhinausging. Der Versand ist eine Beigabe: schlägt er fehl, ist die Person trotzdem angelegt\nund der Link bleibt kopierbar (`dch_api/post.py`).",
+        "operationId": "person_anlegen_api_v1_auth_personen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonAnlegenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EinladungOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/personen/{person_id}": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Rolle oder Zustand ändern",
+        "operationId": "person_aendern_api_v1_auth_personen__person_id__post",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonAendernIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/personen/{person_id}/einladen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Neuen Link ausstellen",
+        "description": "Ein neuer Link - für „Einladung kam nicht an\" und für „alle Geräte verloren\".\n\nDer alte Link wird dabei entwertet: zwei gültige Links für dieselbe Person sind einer zu viel.",
+        "operationId": "person_einladen_api_v1_auth_personen__person_id__einladen_post",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EinladenIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Daten"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EinladungOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/personen/{person_id}/loeschen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Person löschen",
+        "description": "Löscht die Person samt Passkeys, Sitzungen und offenen Links. Der letzte aktive Hausherr\nbleibt - sonst sperrt sich das Haus selbst aus.",
+        "operationId": "person_loeschen_api_v1_auth_personen__person_id__loeschen_post",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Person Loeschen Api V1 Auth Personen  Person Id  Loeschen Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/alfred/status": {
       "get": {
         "tags": [
@@ -209,6 +1017,218 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Zuordnungsergebnis"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/update": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Steht ein Update bereit?",
+        "operationId": "update_status_api_v1_system_update_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateStatusOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Update installieren oder jetzt pruefen",
+        "description": "Legt die Anfrage fuer den Update-Dienst ab und kehrt sofort zurueck (202). Den Fortschritt\nliest die Oberflaeche ueber GET; waehrend des Neustarts ist die API kurz nicht erreichbar.",
+        "operationId": "update_anfragen_api_v1_system_update_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAnfrageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateStatusOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/geraet": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Wie es dem Hausgerät und seinen Diensten geht",
+        "operationId": "geraet_api_v1_system_geraet_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeraetOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/geraet/verlauf": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Der Verlauf des Hausgeräts",
+        "description": "CPU, Temperatur, Speicher, Platz, SSD, Netz, Datenbank und Dienste über einen Tag, eine\nWoche, einen Monat oder ein Jahr, dazu eine Prognose für den Platz. Gesammelt wird nur auf\ndem Hausgerät mit Datenbank (`application/geraet_verlauf.py`).",
+        "operationId": "verlauf_api_v1_system_geraet_verlauf_get",
+        "parameters": [
+          {
+            "name": "spanne",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(tag|woche|monat|jahr)$",
+              "default": "tag",
+              "title": "Spanne"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeraetVerlaufOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/geraet/aktion": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Einen Handgriff auf dem Gerät anfragen",
+        "description": "Dienst neu starten, jetzt sichern, Protokoll holen, Gerät neu starten oder den Bericht\nerneuern. Kehrt sofort zurück (202); wie es ausging, steht danach in `letzte_aktion`.",
+        "operationId": "aktion_api_v1_system_geraet_aktion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeraetAktionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeraetAktionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/geraet/protokoll/{dienst}": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Die zuletzt geholten Protokollzeilen eines Dienstes",
+        "description": "Liefert, was `aktion: protokoll` zuletzt geholt hat (300 Zeilen, Geheimnisse geschwärzt).\nFrisch wird es nur über die Aktion; diese Abfrage liest bloß die Datei.",
+        "operationId": "protokoll_api_v1_system_geraet_protokoll__dienst__get",
+        "parameters": [
+          {
+            "name": "dienst",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dienst"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeraetProtokollOut"
                 }
               }
             }
@@ -447,6 +1467,89 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/PushSubscribeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/push/apns/subscribe": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Dieses Gerät der App anmelden (APNs)",
+        "description": "Ein Gerät der iOS-App anmelden.\n\n**Warum ein eigener Weg neben `/push/subscribe`.** Eine iOS-App kann Web Push nicht\nempfangen; Apple lässt Mitteilungen nur über APNs zu. Die Adresse ist dort kein Endpunkt beim\nPush-Dienst des Browsers, sondern ein Gerätetoken des Betriebssystems - und es gibt keine\nbeiden Schlüssel, denn APNs verschlüsselt selbst.\n\nGespeichert wird das Gerät trotzdem als Abonnement wie jedes andere. Was es unterscheidet,\nsteht in seiner Adresse (`apns://…`), und `PushService` sieht daran, welchen Weg eine\nMitteilung nimmt.",
+        "operationId": "apns_subscribe_api_v1_push_apns_subscribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApnsSubscribeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResultOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/push/apns/unsubscribe": {
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Dieses Gerät der App abmelden (APNs)",
+        "operationId": "apns_unsubscribe_api_v1_push_apns_unsubscribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApnsUnsubscribeIn"
               }
             }
           },
@@ -1406,6 +2509,126 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReglerStellenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/regelkreis": {
+      "get": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Die Regelkreis-Karte",
+        "description": "Die ganze Kaskade: Blöcke, Signale, Störgrößen, die geltenden Parameter mit ihrer Herkunft,\nder daraus entworfene Regler je Kreis mit Reserven und Frequenzkennlinie, und das Protokoll\nder Übernahmen.\n\nGerechnet für den Augenblick: die Verstärkung der Wärmepumpe hängt von Außen- und\nVorlauftemperatur ab, und `arbeitspunkt.gemessen` sagt, ob diese Zahlen aus der Messung kamen.",
+        "operationId": "regelkreis_api_v1_regelkreis_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegelkreisOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/regelkreis/parameter/{pid}": {
+      "post": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Einen Parameter übersteuern",
+        "description": "Einen geschätzten Wert von Hand setzen.\n\nDie Übersteuerung gewinnt gegen jede Schätzung, bis sie freigegeben wird; der Schätzer läuft\nweiter und schreibt mit, was er gesagt hätte. Beschnitten wird auf die\nPlausibilitätsgrenzen - wer sich vertippt, bringt die Regelung nicht zum Stehen.\n\nDie abgeleiteten Reglerwerte ändern sich mit: das ist der Zweck, denn so lässt sich sehen, was\neine andere Streckenannahme aus dem Regler macht.",
+        "operationId": "uebersteuern_api_v1_regelkreis_parameter__pid__post",
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Kennung des Parameters, etwa `wp_totzeit`",
+              "title": "Pid"
+            },
+            "description": "Kennung des Parameters, etwa `wp_totzeit`"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegelkreisStellenIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegelkreisOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Anlage"
+        ],
+        "summary": "Eine Übersteuerung aufheben",
+        "description": "Die Übersteuerung aufheben; es gilt wieder, was gelernt wurde.",
+        "operationId": "freigeben_api_v1_regelkreis_parameter__pid__delete",
+        "parameters": [
+          {
+            "name": "pid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Kennung des Parameters",
+              "title": "Pid"
+            },
+            "description": "Kennung des Parameters"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegelkreisOut"
                 }
               }
             }
@@ -3537,6 +4760,37 @@
         "title": "AlfredZustandOut",
         "description": "Ob Alfred antworten kann, und an wen Fragen gehen (KI-Verordnung Art. 50)."
       },
+      "AngemeldetOut": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "laeuft_ab_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Laeuft Ab Am"
+          },
+          "ausweis": {
+            "$ref": "#/components/schemas/AusweisOut"
+          },
+          "codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Codes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "laeuft_ab_am",
+          "ausweis"
+        ],
+        "title": "AngemeldetOut",
+        "description": "Das Ergebnis einer Anmeldung.\n\n`token` ist der Ausweis im Klartext und existiert genau hier einmal. Das BFF legt ihn in ein\nHttpOnly-Cookie und gibt ihn nie an den Browser weiter; eine App legt ihn in den\nSchlüsselbund."
+      },
       "AnlageHeizkreisOut": {
         "properties": {
           "rooms_total": {
@@ -4136,6 +5390,273 @@
         ],
         "title": "AnlageWarmwasserOut",
         "description": "Das Trinkwasser: ein Anlegefühler am warmen Auslass, sonst nichts.\n\n`present` ist falsch, solange kein Fühler meldet; dann bleibt die Kachel gedimmt und sagt das.\n`tapping` ist **erkannt**, nicht gemessen: Das Rohr springt auf, sobald warmes Wasser läuft,\nsiehe `hems_core.thermal.anlage.zapfung`. Es sagt, dass und seit wann, nicht wie viel."
+      },
+      "AnmeldenIn": {
+        "properties": {
+          "schritt": {
+            "type": "string",
+            "title": "Schritt"
+          },
+          "antwort": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Antwort"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schritt",
+          "antwort"
+        ],
+        "title": "AnmeldenIn"
+      },
+      "ApiSelbstOut": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "commit": {
+            "type": "string",
+            "title": "Commit"
+          },
+          "modus": {
+            "type": "string",
+            "title": "Modus"
+          },
+          "laufzeit_s": {
+            "type": "integer",
+            "title": "Laufzeit S"
+          },
+          "rss_mb": {
+            "type": "number",
+            "title": "Rss Mb"
+          },
+          "datenbank_ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datenbank Ok"
+          },
+          "datenbank_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datenbank Ms"
+          },
+          "datenbank_de": {
+            "type": "string",
+            "title": "Datenbank De",
+            "default": ""
+          },
+          "datenbank_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datenbank Bytes"
+          },
+          "bridge_online": {
+            "type": "boolean",
+            "title": "Bridge Online",
+            "default": false
+          },
+          "verbindung_de": {
+            "type": "string",
+            "title": "Verbindung De",
+            "default": ""
+          },
+          "quellen": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatusOut"
+            },
+            "type": "array",
+            "title": "Quellen"
+          },
+          "befunde": {
+            "items": {
+              "$ref": "#/components/schemas/WatchFindingOut"
+            },
+            "type": "array",
+            "title": "Befunde"
+          },
+          "sse_clients": {
+            "type": "integer",
+            "title": "Sse Clients",
+            "default": 0
+          },
+          "alfred_eingerichtet": {
+            "type": "boolean",
+            "title": "Alfred Eingerichtet",
+            "default": false
+          },
+          "energy_rebuild": {
+            "type": "string",
+            "title": "Energy Rebuild",
+            "default": ""
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "gut"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "commit",
+          "modus",
+          "laufzeit_s",
+          "rss_mb"
+        ],
+        "title": "ApiSelbstOut",
+        "description": "Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden."
+      },
+      "ApnsSubscribeIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 8,
+            "title": "Token"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "sandbox": {
+            "type": "boolean",
+            "title": "Sandbox",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "ApnsSubscribeIn",
+        "description": "Ein Gerät der iOS-App anmelden.\n\nDerselbe Zuschnitt wie `PushSubscribeIn`, nur dass die Adresse ein Gerätetoken ist und die\nbeiden Schlüssel fehlen: APNs verschlüsselt selbst."
+      },
+      "ApnsUnsubscribeIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 8,
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "ApnsUnsubscribeIn"
+      },
+      "Arbeitspunkt": {
+        "properties": {
+          "aussen_c": {
+            "type": "number",
+            "title": "Aussen C"
+          },
+          "vorlauf_c": {
+            "type": "number",
+            "title": "Vorlauf C"
+          },
+          "strompreis_eur_kwh": {
+            "type": "number",
+            "title": "Strompreis Eur Kwh"
+          },
+          "aussen_gemessen": {
+            "type": "boolean",
+            "title": "Aussen Gemessen",
+            "default": false
+          },
+          "vorlauf_gemessen": {
+            "type": "boolean",
+            "title": "Vorlauf Gemessen",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "aussen_c",
+          "vorlauf_c",
+          "strompreis_eur_kwh"
+        ],
+        "title": "Arbeitspunkt",
+        "description": "Der Punkt, für den die Karte gerechnet wird."
+      },
+      "AusweisOut": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "person",
+              "geraet",
+              "gast",
+              "dienst"
+            ],
+            "title": "Art"
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "hausherr",
+              "bewohner",
+              "gast",
+              "service"
+            ],
+            "title": "Rolle"
+          },
+          "person_id": {
+            "type": "string",
+            "title": "Person Id",
+            "default": ""
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "rolle"
+        ],
+        "title": "AusweisOut",
+        "description": "Wer gerade fragt. Die Oberfläche blendet danach aus, was die Rolle nicht darf - verboten\nwird es am Dienst (`dch_api/auth/rechte.py`)."
       },
       "AutoProfile": {
         "type": "string",
@@ -4899,6 +6420,181 @@
           "label_de"
         ],
         "title": "BinCorrection"
+      },
+      "BlockAnsicht": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "ebene": {
+            "type": "integer",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "title": "Ebene"
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "regler",
+              "stellglied",
+              "strecke",
+              "beobachter",
+              "rechenglied",
+              "modell",
+              "logik",
+              "vorsteuerung",
+              "messglied",
+              "stoergroesse",
+              "summierstelle",
+              "teilkreise"
+            ],
+            "title": "Rolle"
+          },
+          "rolle_text": {
+            "type": "string",
+            "title": "Rolle Text"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kurz": {
+            "type": "string",
+            "title": "Kurz"
+          },
+          "kreis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kreis"
+          },
+          "erklaerung": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Erklaerung"
+          },
+          "gleichungen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gleichungen"
+          },
+          "behandlung": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "aufgeschaltet",
+                  "ausgeregelt",
+                  "beobachtet",
+                  "geplant",
+                  "erkannt"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Behandlung"
+          },
+          "behandlung_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Behandlung Text"
+          },
+          "quelle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quelle"
+          },
+          "marke": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marke"
+          },
+          "gibt_marke": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gibt Marke"
+          },
+          "parameter": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Parameter"
+          },
+          "glied": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glied"
+          },
+          "glied_entwurf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glied Entwurf"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ebene",
+          "rolle",
+          "rolle_text",
+          "name",
+          "kurz"
+        ],
+        "title": "BlockAnsicht"
       },
       "BlockRuleConfig": {
         "properties": {
@@ -6249,6 +7945,82 @@
         ],
         "title": "DoorLogOut"
       },
+      "EinladenIn": {
+        "properties": {
+          "einladen": {
+            "type": "boolean",
+            "title": "Einladen",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "EinladenIn",
+        "description": "Einen neuen Link ausstellen. Die Person steht in der Adresse, nicht hier."
+      },
+      "EinladungOut": {
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/PersonOut"
+          },
+          "link": {
+            "type": "string",
+            "title": "Link"
+          },
+          "laeuft_ab_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Laeuft Ab Am"
+          },
+          "verschickt": {
+            "type": "boolean",
+            "title": "Verschickt",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "person",
+          "link",
+          "laeuft_ab_am"
+        ],
+        "title": "EinladungOut",
+        "description": "Der Einladungslink - einmal, im Klartext, zum Kopieren oder Verschicken."
+      },
+      "EinladungPersonOut": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename",
+            "default": ""
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "hausherr",
+              "bewohner",
+              "gast",
+              "service"
+            ],
+            "title": "Rolle"
+          },
+          "passkeys": {
+            "type": "integer",
+            "title": "Passkeys",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "rolle"
+        ],
+        "title": "EinladungPersonOut",
+        "description": "Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist."
+      },
       "EnergyBucketOut": {
         "properties": {
           "start": {
@@ -6406,6 +8178,11 @@
       },
       "EnergySummaryOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "period": {
             "type": "string",
             "enum": [
@@ -6447,6 +8224,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "period",
           "anchor",
           "start",
@@ -6793,6 +8571,11 @@
       },
       "EvReportOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "summary": {
             "$ref": "#/components/schemas/EnergySummaryOut"
           },
@@ -6806,6 +8589,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "summary",
           "sessions"
         ],
@@ -7360,6 +9144,1658 @@
         "title": "GeleseneRechnung",
         "description": "Was das Modell gelesen hat, nach Pruefung der Typen."
       },
+      "GeraetAktionIn": {
+        "properties": {
+          "aktion": {
+            "type": "string",
+            "enum": [
+              "neustart",
+              "sichern",
+              "protokoll",
+              "geraet_neustart",
+              "zustand"
+            ],
+            "title": "Aktion"
+          },
+          "dienst": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,30}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dienst"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aktion"
+        ],
+        "title": "GeraetAktionIn"
+      },
+      "GeraetAktionOut": {
+        "properties": {
+          "aktion": {
+            "type": "string",
+            "title": "Aktion"
+          },
+          "dienst": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dienst"
+          },
+          "zustand": {
+            "type": "string",
+            "title": "Zustand"
+          },
+          "meldung": {
+            "type": "string",
+            "title": "Meldung",
+            "default": ""
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "begonnen_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Begonnen Am"
+          },
+          "beendet_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beendet Am"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aktion",
+          "zustand"
+        ],
+        "title": "GeraetAktionOut",
+        "description": "Die zuletzt aus der App angefragte Aktion und wie sie ausging."
+      },
+      "GeraetDienstOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "zustand": {
+            "type": "string",
+            "title": "Zustand"
+          },
+          "gesundheit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gesundheit"
+          },
+          "pruefung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pruefung"
+          },
+          "pruefung_fehlschlaege": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pruefung Fehlschlaege"
+          },
+          "gestartet_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gestartet Am"
+          },
+          "neustarts": {
+            "type": "integer",
+            "title": "Neustarts",
+            "default": 0
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Code"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "cpu_prozent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Prozent"
+          },
+          "speicher_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speicher Mb"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "aus"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "zustand"
+        ],
+        "title": "GeraetDienstOut",
+        "description": "Ein Container des Geräts (postgres, api, web, caddy, cloudflared)."
+      },
+      "GeraetDockerPlatzOut": {
+        "properties": {
+          "images_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Images Bytes"
+          },
+          "container_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container Bytes"
+          },
+          "volumes_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volumes Bytes"
+          },
+          "cache_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Bytes"
+          }
+        },
+        "type": "object",
+        "title": "GeraetDockerPlatzOut"
+      },
+      "GeraetEinheitOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "beschreibung": {
+            "type": "string",
+            "title": "Beschreibung",
+            "default": ""
+          },
+          "aktiv": {
+            "type": "string",
+            "title": "Aktiv",
+            "default": ""
+          },
+          "unterzustand": {
+            "type": "string",
+            "title": "Unterzustand",
+            "default": ""
+          },
+          "eingeschaltet": {
+            "type": "boolean",
+            "title": "Eingeschaltet",
+            "default": false
+          },
+          "naechster_lauf": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Naechster Lauf"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "aus"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "GeraetEinheitOut",
+        "description": "Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht)."
+      },
+      "GeraetNetzOut": {
+        "properties": {
+          "schnittstelle": {
+            "type": "string",
+            "title": "Schnittstelle"
+          },
+          "empfangen_bytes": {
+            "type": "integer",
+            "title": "Empfangen Bytes"
+          },
+          "gesendet_bytes": {
+            "type": "integer",
+            "title": "Gesendet Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schnittstelle",
+          "empfangen_bytes",
+          "gesendet_bytes"
+        ],
+        "title": "GeraetNetzOut"
+      },
+      "GeraetOut": {
+        "properties": {
+          "unterstuetzt": {
+            "type": "boolean",
+            "title": "Unterstuetzt"
+          },
+          "bericht_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bericht Am"
+          },
+          "bericht_alt": {
+            "type": "boolean",
+            "title": "Bericht Alt",
+            "default": false
+          },
+          "kanal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kanal"
+          },
+          "fernzugang": {
+            "type": "boolean",
+            "title": "Fernzugang",
+            "default": false
+          },
+          "docker_laeuft": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Docker Laeuft"
+          },
+          "rechner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeraetRechnerOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dienste": {
+            "items": {
+              "$ref": "#/components/schemas/GeraetDienstOut"
+            },
+            "type": "array",
+            "title": "Dienste"
+          },
+          "einheiten": {
+            "items": {
+              "$ref": "#/components/schemas/GeraetEinheitOut"
+            },
+            "type": "array",
+            "title": "Einheiten"
+          },
+          "sicherung": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeraetSicherungOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "letzte_aktion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeraetAktionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "beschaeftigt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beschaeftigt"
+          },
+          "api": {
+            "$ref": "#/components/schemas/ApiSelbstOut"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "gut"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "unterstuetzt",
+          "api"
+        ],
+        "title": "GeraetOut",
+        "description": "Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion."
+      },
+      "GeraetPlatteOut": {
+        "properties": {
+          "ort": {
+            "type": "string",
+            "title": "Ort"
+          },
+          "gesamt_bytes": {
+            "type": "integer",
+            "title": "Gesamt Bytes"
+          },
+          "frei_bytes": {
+            "type": "integer",
+            "title": "Frei Bytes"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "gut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ort",
+          "gesamt_bytes",
+          "frei_bytes"
+        ],
+        "title": "GeraetPlatteOut"
+      },
+      "GeraetPrognoseOut": {
+        "properties": {
+          "tage_verlauf": {
+            "type": "number",
+            "title": "Tage Verlauf",
+            "default": 0.0
+          },
+          "platte_bytes_pro_tag": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platte Bytes Pro Tag"
+          },
+          "platte_voll_in_tagen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platte Voll In Tagen"
+          },
+          "datenbank_bytes_pro_tag": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datenbank Bytes Pro Tag"
+          },
+          "sicherung_bytes_pro_tag": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sicherung Bytes Pro Tag"
+          },
+          "ssd_geschrieben_bytes_pro_tag": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ssd Geschrieben Bytes Pro Tag"
+          }
+        },
+        "type": "object",
+        "title": "GeraetPrognoseOut",
+        "description": "Wachstum je Tag über die letzten 30 Tage (eine Gerade durch die Füllstände), erst ab\nsieben Tagen Verlauf. Eine Schätzung „bei diesem Tempo“, kein Termin."
+      },
+      "GeraetProtokollOut": {
+        "properties": {
+          "dienst": {
+            "type": "string",
+            "title": "Dienst"
+          },
+          "vorhanden": {
+            "type": "boolean",
+            "title": "Vorhanden"
+          },
+          "erstellt_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erstellt Am"
+          },
+          "zeilen": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Zeilen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dienst",
+          "vorhanden"
+        ],
+        "title": "GeraetProtokollOut"
+      },
+      "GeraetRechnerOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell"
+          },
+          "system": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System"
+          },
+          "kernel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kernel"
+          },
+          "adresse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adresse"
+          },
+          "zeitzone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zeitzone"
+          },
+          "zeitdienst_an": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zeitdienst An"
+          },
+          "zeit_synchron": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zeit Synchron"
+          },
+          "zeit_de": {
+            "type": "string",
+            "title": "Zeit De",
+            "default": ""
+          },
+          "zeit_ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Zeit Ampel",
+            "default": "aus"
+          },
+          "laufzeit_s": {
+            "type": "integer",
+            "title": "Laufzeit S",
+            "default": 0
+          },
+          "kerne": {
+            "type": "integer",
+            "title": "Kerne",
+            "default": 1
+          },
+          "last": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Last"
+          },
+          "temperatur_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperatur C"
+          },
+          "temperatur_ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Temperatur Ampel",
+            "default": "aus"
+          },
+          "drosselung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drosselung"
+          },
+          "drosselung_de": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Drosselung De"
+          },
+          "drosselung_ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Drosselung Ampel",
+            "default": "aus"
+          },
+          "speicher_gesamt_mb": {
+            "type": "integer",
+            "title": "Speicher Gesamt Mb",
+            "default": 0
+          },
+          "speicher_frei_mb": {
+            "type": "integer",
+            "title": "Speicher Frei Mb",
+            "default": 0
+          },
+          "speicher_ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Speicher Ampel",
+            "default": "aus"
+          },
+          "platten": {
+            "items": {
+              "$ref": "#/components/schemas/GeraetPlatteOut"
+            },
+            "type": "array",
+            "title": "Platten"
+          },
+          "docker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Docker"
+          },
+          "cpu_prozent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Prozent"
+          },
+          "takt_mhz": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Takt Mhz"
+          },
+          "eingangsspannung_v": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eingangsspannung V"
+          },
+          "spannung_ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Spannung Ampel",
+            "default": "aus"
+          },
+          "swap_gesamt_mb": {
+            "type": "integer",
+            "title": "Swap Gesamt Mb",
+            "default": 0
+          },
+          "swap_frei_mb": {
+            "type": "integer",
+            "title": "Swap Frei Mb",
+            "default": 0
+          },
+          "netz": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeraetNetzOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ssd": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeraetSsdOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "docker_platz": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeraetDockerPlatzOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "GeraetRechnerOut",
+        "description": "Der Rechner selbst: Raspberry Pi oder was sonst darunter läuft."
+      },
+      "GeraetSicherungOut": {
+        "properties": {
+          "letzte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Letzte"
+          },
+          "letzte_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Letzte Am"
+          },
+          "letzte_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Letzte Bytes"
+          },
+          "anzahl": {
+            "type": "integer",
+            "title": "Anzahl",
+            "default": 0
+          },
+          "gesamt_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gesamt Bytes"
+          },
+          "ausser_haus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ausser Haus"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "aus"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "GeraetSicherungOut"
+      },
+      "GeraetSsdOut": {
+        "properties": {
+          "geraet": {
+            "type": "string",
+            "title": "Geraet"
+          },
+          "modell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modell"
+          },
+          "gesund": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gesund"
+          },
+          "temperatur_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperatur C"
+          },
+          "betriebsstunden": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Betriebsstunden"
+          },
+          "abnutzung_prozent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abnutzung Prozent"
+          },
+          "reserve_prozent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reserve Prozent"
+          },
+          "geschrieben_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geschrieben Bytes"
+          },
+          "gelesen_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gelesen Bytes"
+          },
+          "fehler": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fehler"
+          },
+          "unsichere_abschaltungen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unsichere Abschaltungen"
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "aus"
+          },
+          "text_de": {
+            "type": "string",
+            "title": "Text De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "geraet"
+        ],
+        "title": "GeraetSsdOut",
+        "description": "SMART der Platte, auf der das System liegt. NVMe meldet alles; eine Platte am USB-Adapter\noft nur Temperatur und Betriebsstunden."
+      },
+      "GeraetVerlaufDienstOut": {
+        "properties": {
+          "cpu_prozent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Prozent"
+          },
+          "speicher_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speicher Mb"
+          }
+        },
+        "type": "object",
+        "title": "GeraetVerlaufDienstOut"
+      },
+      "GeraetVerlaufOut": {
+        "properties": {
+          "unterstuetzt": {
+            "type": "boolean",
+            "title": "Unterstuetzt"
+          },
+          "spanne": {
+            "type": "string",
+            "enum": [
+              "tag",
+              "woche",
+              "monat",
+              "jahr"
+            ],
+            "title": "Spanne",
+            "default": "tag"
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis"
+          },
+          "schritt_min": {
+            "type": "integer",
+            "title": "Schritt Min",
+            "default": 5
+          },
+          "punkte": {
+            "items": {
+              "$ref": "#/components/schemas/GeraetVerlaufPunktOut"
+            },
+            "type": "array",
+            "title": "Punkte"
+          },
+          "prognose": {
+            "$ref": "#/components/schemas/GeraetPrognoseOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unterstuetzt"
+        ],
+        "title": "GeraetVerlaufOut"
+      },
+      "GeraetVerlaufPunktOut": {
+        "properties": {
+          "t": {
+            "type": "string",
+            "format": "date-time",
+            "title": "T"
+          },
+          "cpu_prozent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Prozent"
+          },
+          "cpu_prozent_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Prozent Max"
+          },
+          "last1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last1"
+          },
+          "temperatur_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperatur C"
+          },
+          "temperatur_c_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperatur C Max"
+          },
+          "takt_mhz": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Takt Mhz"
+          },
+          "eingangsspannung_v": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eingangsspannung V"
+          },
+          "eingangsspannung_v_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eingangsspannung V Min"
+          },
+          "speicher_belegt_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speicher Belegt Mb"
+          },
+          "speicher_gesamt_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speicher Gesamt Mb"
+          },
+          "swap_belegt_mb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Swap Belegt Mb"
+          },
+          "platte_belegt_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platte Belegt Bytes"
+          },
+          "platte_gesamt_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platte Gesamt Bytes"
+          },
+          "ssd_temperatur_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ssd Temperatur C"
+          },
+          "ssd_temperatur_c_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ssd Temperatur C Max"
+          },
+          "ssd_abnutzung_prozent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ssd Abnutzung Prozent"
+          },
+          "ssd_geschrieben_bytes": {
+            "type": "integer",
+            "title": "Ssd Geschrieben Bytes",
+            "default": 0
+          },
+          "netz_empfangen_bytes_s": {
+            "type": "number",
+            "title": "Netz Empfangen Bytes S",
+            "default": 0.0
+          },
+          "netz_gesendet_bytes_s": {
+            "type": "number",
+            "title": "Netz Gesendet Bytes S",
+            "default": 0.0
+          },
+          "datenbank_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datenbank Bytes"
+          },
+          "sicherung_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sicherung Bytes"
+          },
+          "docker_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Docker Bytes"
+          },
+          "drosselung_jetzt": {
+            "type": "boolean",
+            "title": "Drosselung Jetzt",
+            "default": false
+          },
+          "dienste": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GeraetVerlaufDienstOut"
+            },
+            "type": "object",
+            "title": "Dienste"
+          }
+        },
+        "type": "object",
+        "required": [
+          "t"
+        ],
+        "title": "GeraetVerlaufPunktOut",
+        "description": "Ein Abschnitt im Verlauf: Mittel, Spitzen und Stände am Ende des Abschnitts."
+      },
+      "GliedAnsicht": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kurz": {
+            "type": "string",
+            "title": "Kurz"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "g_s": {
+            "type": "string",
+            "title": "G S"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "sprung",
+              "kennlinie",
+              "takt"
+            ],
+            "title": "Art"
+          },
+          "kategorie": {
+            "type": "string",
+            "enum": [
+              "strecke",
+              "regler",
+              "messglied",
+              "nichtlinear",
+              "planung",
+              "beobachter"
+            ],
+            "title": "Kategorie"
+          },
+          "nichtlinear": {
+            "type": "boolean",
+            "title": "Nichtlinear"
+          },
+          "erkennen": {
+            "type": "string",
+            "title": "Erkennen"
+          },
+          "kurve": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Kurve"
+          },
+          "kurve2": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Kurve2"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kurz",
+          "name",
+          "g_s",
+          "art",
+          "kategorie",
+          "nichtlinear",
+          "erkennen",
+          "kurve"
+        ],
+        "title": "GliedAnsicht",
+        "description": "Ein Übertragungsglied mit seinem Bild: Kurzzeichen, Name, Funktion, Sprungantwort.\n\nDer Katalog steht einmal in der Antwort und nicht an jedem Block. Die Kurven sind auf das\nEinheitsquadrat normiert - Form, keine Messung."
+      },
+      "GueteAnsicht": {
+        "properties": {
+          "modell": {
+            "type": "string",
+            "title": "Modell"
+          },
+          "block": {
+            "type": "string",
+            "title": "Block"
+          },
+          "einheit": {
+            "type": "string",
+            "title": "Einheit"
+          },
+          "rmse": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rmse"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "quelle": {
+            "type": "string",
+            "title": "Quelle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "modell",
+          "block",
+          "einheit",
+          "rmse",
+          "n",
+          "quelle"
+        ],
+        "title": "GueteAnsicht",
+        "description": "Der Restfehler eines Teilmodells gegen die Messung."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -7375,6 +10811,11 @@
       },
       "HeatBalanceOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "period": {
             "type": "string",
             "enum": [
@@ -7475,6 +10916,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "period",
           "start",
           "end",
@@ -8250,6 +11692,11 @@
       },
       "HeatReportOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "summary": {
             "$ref": "#/components/schemas/EnergySummaryOut"
           },
@@ -8319,6 +11766,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "summary",
           "thermal_kwh_est",
           "cop_est",
@@ -8521,6 +11969,7 @@
               "power_s": 180.0,
               "battery_s": 180.0,
               "temperature_s": 900.0,
+              "outdoor_temp_s": 5400.0,
               "price_s": 7200.0
             }
           },
@@ -8861,6 +12310,38 @@
         ],
         "title": "HousePlan",
         "description": "Das ganze Haus: ein bis drei Decks. `note_de` steht unter der Anzeige, etwa fuer das, was\nim Plan angenommen und nicht gemessen ist."
+      },
+      "IchOut": {
+        "properties": {
+          "ausweis": {
+            "$ref": "#/components/schemas/AusweisOut"
+          },
+          "passkeys": {
+            "items": {
+              "$ref": "#/components/schemas/PasskeyOut"
+            },
+            "type": "array",
+            "title": "Passkeys"
+          },
+          "sitzungen": {
+            "items": {
+              "$ref": "#/components/schemas/SitzungOut"
+            },
+            "type": "array",
+            "title": "Sitzungen"
+          },
+          "codes_offen": {
+            "type": "integer",
+            "title": "Codes Offen",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "ausweis"
+        ],
+        "title": "IchOut",
+        "description": "Die eigene Seite: wer ich bin, welche Passkeys und welche Sitzungen ich habe."
       },
       "ImportResult": {
         "properties": {
@@ -9609,6 +13090,56 @@
         "title": "Item",
         "description": "Ein Moebel, ein Geraet, ein Stueck Treppe. Welche Felder gelten, sagt `kind`; die Anzeige\nnimmt fuer fehlende Masse ihre Voreinstellungen. Geprueft wird hier nur, dass die Zahlen endlich\nsind und die Art bekannt ist."
       },
+      "KanteAnsicht": {
+        "properties": {
+          "von": {
+            "type": "string",
+            "title": "Von"
+          },
+          "nach": {
+            "type": "string",
+            "title": "Nach"
+          },
+          "signal": {
+            "type": "string",
+            "title": "Signal"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "signal",
+              "stoergroesse",
+              "rueckfuehrung",
+              "fuehrung",
+              "parameter"
+            ],
+            "title": "Art"
+          },
+          "vorzeichen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "+",
+                  "-"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vorzeichen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "von",
+          "nach",
+          "signal",
+          "art"
+        ],
+        "title": "KanteAnsicht"
+      },
       "KennlinieOut": {
         "properties": {
           "now": {
@@ -9703,6 +13234,29 @@
         ],
         "title": "KennlinieOut",
         "description": "Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.\n\nDie Punkte sind Abschätzungen aus Durchfluss, Spreizung und Zähler; warum, steht in\n`hinweise_de`."
+      },
+      "KennliniePunkt": {
+        "properties": {
+          "w": {
+            "type": "number",
+            "title": "W"
+          },
+          "db": {
+            "type": "number",
+            "title": "Db"
+          },
+          "grad": {
+            "type": "number",
+            "title": "Grad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "w",
+          "db",
+          "grad"
+        ],
+        "title": "KennliniePunkt"
       },
       "KennlinienAnnahmeOut": {
         "properties": {
@@ -10148,6 +13702,176 @@
         "title": "KontaktwirkungOut",
         "description": "Was der Freigabekontakt K1 auslöst: die Ereignisstudie über die letzten `days` Tage.\n\nJeder Schließvorgang ist ein Ereignis; `ereignisse` enthält zu jedem die Leistung der\nWärmepumpe von einer halben Stunde davor bis zwei Stunden danach, `faecher` legt sie am\nNullpunkt übereinander. `quote` ist der Anteil der Schließvorgänge bei stehender Maschine, auf\ndie binnen `folge_min` Minuten ein Anlauf folgte, `vergleich.quote` derselbe Anteil ohne\nSchließvorgang zur selben Tageszeit.\n\nDas Urteil steht in `urteil` und `urteil_de` und wird hier gefällt, nicht in der Oberfläche.\nEs ist ein Zusammenhang in der Zeit und keine Ursache; warum, steht in `methode_de`."
       },
+      "Kostenpunkt": {
+        "properties": {
+          "cop": {
+            "type": "number",
+            "title": "Cop"
+          },
+          "waermepumpe_ct_kwh": {
+            "type": "number",
+            "title": "Waermepumpe Ct Kwh"
+          },
+          "ofen_ct_kwh": {
+            "type": "number",
+            "title": "Ofen Ct Kwh"
+          },
+          "cop_umschalt": {
+            "type": "number",
+            "title": "Cop Umschalt"
+          },
+          "umschalt_aussen_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Umschalt Aussen C"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cop",
+          "waermepumpe_ct_kwh",
+          "ofen_ct_kwh",
+          "cop_umschalt",
+          "umschalt_aussen_c"
+        ],
+        "title": "Kostenpunkt",
+        "description": "Grenzkosten der Wärme an diesem Arbeitspunkt - die Zahl, nach der zugeordnet wird."
+      },
+      "KreisAnsicht": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "regelgroesse": {
+            "type": "string",
+            "title": "Regelgroesse"
+          },
+          "stellgroesse": {
+            "type": "string",
+            "title": "Stellgroesse"
+          },
+          "regler_block": {
+            "type": "string",
+            "title": "Regler Block"
+          },
+          "messglied": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messglied"
+          },
+          "takt_s": {
+            "type": "number",
+            "title": "Takt S"
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "stetig",
+              "zweipunkt",
+              "hybrid",
+              "planung"
+            ],
+            "title": "Art"
+          },
+          "erklaerung": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Erklaerung"
+          },
+          "strecke": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreckeAnsicht"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "regler": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReglerAnsicht"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reserven": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReservenAnsicht"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kennlinie": {
+            "items": {
+              "$ref": "#/components/schemas/KennliniePunkt"
+            },
+            "type": "array",
+            "title": "Kennlinie"
+          },
+          "hysterese_k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hysterese K"
+          },
+          "hinweis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hinweis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "regelgroesse",
+          "stellgroesse",
+          "regler_block",
+          "messglied",
+          "takt_s",
+          "art",
+          "erklaerung"
+        ],
+        "title": "KreisAnsicht",
+        "description": "Ein Kreis der Kaskade mit seinem Entwurf."
+      },
       "Linie": {
         "properties": {
           "key": {
@@ -10549,6 +14273,42 @@
         "title": "MemoryTypeOut",
         "description": "Eine Objektgruppe im Python-Haufen: Typ, Anzahl, flache Größe."
       },
+      "Messpunkt": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "wert": {
+            "type": "number",
+            "title": "Wert"
+          },
+          "sigma": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sigma"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "wert"
+        ],
+        "title": "Messpunkt",
+        "description": "Eine Schätzung zu einem Zeitpunkt, mit ihrer Unsicherheit. Eine Stützstelle des Verlaufs."
+      },
       "MorgenbriefIn": {
         "properties": {
           "enabled": {
@@ -10802,6 +14562,19 @@
         "title": "NachbetrachtungOut",
         "description": "Ein Ortstag in Euro: was der Fahrplan versprach, was er hielt, was der Tag kostete.\n\nFünf Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet\n(`verglichen`): der erste Fahrplan des Tages mit seinen eigenen Kosten (`versprochen`) und mit\nden eingetretenen Werten (`erster`), der jeweils letzte Stand des Fahrplans (`letzter`), die\nMessung (`wirklich`) und ein Vergleichslauf mit perfekter Voraussicht (`perfekt`).\n\n`abstaende` sind die Stufen dazwischen. Die ersten drei führen vom Versprechen zur\nWirklichkeit: Prognosefehler, Nachführen, Eingriff der Maschine. Positiv heißt teurer.\n\nEine Linie, die fehlt, hat `verfuegbar=false` und sagt in `grund_de`, warum. Das ist für\nTage vor dem 09.11.2026 der Normalfall bei allen Fahrplanlinien: aufbewahrt wird erst seitdem."
       },
+      "NameIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "NameIn"
+      },
       "NextExpected": {
         "properties": {
           "action": {
@@ -10945,6 +14718,427 @@
           "force_block"
         ],
         "title": "OverrideKind"
+      },
+      "ParameterAnsicht": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "block": {
+            "type": "string",
+            "title": "Block"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "einheit": {
+            "type": "string",
+            "title": "Einheit"
+          },
+          "stellen": {
+            "type": "integer",
+            "title": "Stellen"
+          },
+          "wert": {
+            "type": "number",
+            "title": "Wert"
+          },
+          "herkunft": {
+            "type": "string",
+            "enum": [
+              "gemessen",
+              "geschaetzt",
+              "annahme",
+              "fest",
+              "entwurf",
+              "uebersteuert"
+            ],
+            "title": "Herkunft"
+          },
+          "schaetzart": {
+            "type": "string",
+            "enum": [
+              "ausgleich",
+              "fenster",
+              "rls",
+              "ereignis",
+              "bilanz",
+              "stillstand",
+              "ewma",
+              "keiner"
+            ],
+            "title": "Schaetzart"
+          },
+          "schaetzart_text": {
+            "type": "string",
+            "title": "Schaetzart Text"
+          },
+          "startwert": {
+            "type": "number",
+            "title": "Startwert"
+          },
+          "schaetzung": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schaetzung"
+          },
+          "sigma": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sigma"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N",
+            "default": 0
+          },
+          "stand": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stand"
+          },
+          "rmse": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rmse"
+          },
+          "unten": {
+            "type": "number",
+            "title": "Unten"
+          },
+          "oben": {
+            "type": "number",
+            "title": "Oben"
+          },
+          "warum": {
+            "type": "string",
+            "title": "Warum"
+          },
+          "quelle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quelle"
+          },
+          "wirkt_auf": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Wirkt Auf"
+          },
+          "protokoll": {
+            "items": {
+              "$ref": "#/components/schemas/Uebernahme"
+            },
+            "type": "array",
+            "title": "Protokoll"
+          },
+          "verlauf": {
+            "items": {
+              "$ref": "#/components/schemas/Messpunkt"
+            },
+            "type": "array",
+            "title": "Verlauf"
+          },
+          "pruefung": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pruefung"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "block",
+          "symbol",
+          "name",
+          "einheit",
+          "stellen",
+          "wert",
+          "herkunft",
+          "schaetzart",
+          "schaetzart_text",
+          "startwert",
+          "unten",
+          "oben",
+          "warum"
+        ],
+        "title": "ParameterAnsicht",
+        "description": "Ein Parameter, wie ihn die Oberfläche zeigt."
+      },
+      "PasskeyAbschliessenIn": {
+        "properties": {
+          "schritt": {
+            "type": "string",
+            "title": "Schritt"
+          },
+          "antwort": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Antwort"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "schritt",
+          "antwort"
+        ],
+        "title": "PasskeyAbschliessenIn"
+      },
+      "PasskeyBeginnenIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "PasskeyBeginnenIn"
+      },
+      "PasskeyOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "gesichert": {
+            "type": "boolean",
+            "title": "Gesichert"
+          },
+          "erstellt_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Erstellt Am"
+          },
+          "zuletzt_benutzt_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zuletzt Benutzt Am"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "gesichert",
+          "erstellt_am"
+        ],
+        "title": "PasskeyOut"
+      },
+      "PersonAendernIn": {
+        "properties": {
+          "rolle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "hausherr",
+                  "bewohner",
+                  "gast",
+                  "service"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rolle"
+          },
+          "aktiv": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aktiv"
+          },
+          "anzeigename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anzeigename"
+          }
+        },
+        "type": "object",
+        "title": "PersonAendernIn"
+      },
+      "PersonAnlegenIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename",
+            "default": ""
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "hausherr",
+              "bewohner",
+              "gast",
+              "service"
+            ],
+            "title": "Rolle",
+            "default": "bewohner"
+          },
+          "einladen": {
+            "type": "boolean",
+            "title": "Einladen",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "PersonAnlegenIn"
+      },
+      "PersonOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename",
+            "default": ""
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "hausherr",
+              "bewohner",
+              "gast",
+              "service"
+            ],
+            "title": "Rolle"
+          },
+          "aktiv": {
+            "type": "boolean",
+            "title": "Aktiv",
+            "default": true
+          },
+          "erstellt_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Erstellt Am"
+          },
+          "zuletzt_angemeldet_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zuletzt Angemeldet Am"
+          },
+          "passkeys": {
+            "type": "integer",
+            "title": "Passkeys",
+            "default": 0
+          },
+          "codes_offen": {
+            "type": "integer",
+            "title": "Codes Offen",
+            "default": 0
+          },
+          "einladung_offen": {
+            "type": "boolean",
+            "title": "Einladung Offen",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "rolle",
+          "erstellt_am"
+        ],
+        "title": "PersonOut"
       },
       "Place": {
         "properties": {
@@ -11429,6 +15623,38 @@
         ],
         "title": "PriceWindowOut"
       },
+      "Pruefung": {
+        "properties": {
+          "uebernehmen": {
+            "type": "boolean",
+            "title": "Uebernehmen"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "uebernommen",
+              "zu_wenig_daten",
+              "innerhalb_unsicherheit",
+              "zu_frueh",
+              "grenzen",
+              "nicht_besser"
+            ],
+            "title": "Code"
+          },
+          "grund": {
+            "type": "string",
+            "title": "Grund"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uebernehmen",
+          "code",
+          "grund"
+        ],
+        "title": "Pruefung",
+        "description": "Das Ergebnis der Übernahmeprüfung, mit Satz für die Oberfläche."
+      },
       "PushGeraetOut": {
         "properties": {
           "label": {
@@ -11721,6 +15947,11 @@
       },
       "PvTaxReportOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "period": {
             "type": "string",
             "enum": [
@@ -11762,6 +15993,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "period",
           "anchor",
           "start",
@@ -11981,6 +16213,126 @@
         ],
         "title": "Rechnungsergebnis"
       },
+      "RegelkreisOut": {
+        "properties": {
+          "stand": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Stand"
+          },
+          "seit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seit"
+          },
+          "tage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tage"
+          },
+          "arbeitspunkt": {
+            "$ref": "#/components/schemas/Arbeitspunkt"
+          },
+          "kosten": {
+            "$ref": "#/components/schemas/Kostenpunkt"
+          },
+          "bloecke": {
+            "items": {
+              "$ref": "#/components/schemas/BlockAnsicht"
+            },
+            "type": "array",
+            "title": "Bloecke"
+          },
+          "glieder": {
+            "items": {
+              "$ref": "#/components/schemas/GliedAnsicht"
+            },
+            "type": "array",
+            "title": "Glieder"
+          },
+          "kanten": {
+            "items": {
+              "$ref": "#/components/schemas/KanteAnsicht"
+            },
+            "type": "array",
+            "title": "Kanten"
+          },
+          "kreise": {
+            "items": {
+              "$ref": "#/components/schemas/KreisAnsicht"
+            },
+            "type": "array",
+            "title": "Kreise"
+          },
+          "parameter": {
+            "items": {
+              "$ref": "#/components/schemas/ParameterAnsicht"
+            },
+            "type": "array",
+            "title": "Parameter"
+          },
+          "guete": {
+            "items": {
+              "$ref": "#/components/schemas/GueteAnsicht"
+            },
+            "type": "array",
+            "title": "Guete"
+          },
+          "uebersteuert": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Uebersteuert"
+          },
+          "uebernahmen": {
+            "type": "integer",
+            "title": "Uebernahmen",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "stand",
+          "arbeitspunkt",
+          "kosten",
+          "bloecke",
+          "glieder",
+          "kanten",
+          "kreise",
+          "parameter",
+          "guete"
+        ],
+        "title": "RegelkreisOut",
+        "description": "Die Regelkreis-Karte: Struktur, geltende Parameter, Entwurf und Lernzustand.\n\nAlles, was die Karte zeigt, steht hier: je Block seine Erklärung, seine Gleichungen und seine\nParameter, je Kreis die Strecke, der daraus entworfene Regler, seine Reserven und die\nFrequenzkennlinie, je Parameter die Herkunft - gemessen, geschätzt, angenommen, fest,\nübersteuert -, die Unsicherheit und das Übernahmeprotokoll.\n\nKoordinaten stehen nicht darin. Wo ein Kästchen liegt, ist eine Frage der Zeichnung; was\nverbunden ist, eine Aussage über das Haus."
+      },
+      "RegelkreisStellenIn": {
+        "properties": {
+          "wert": {
+            "type": "number",
+            "title": "Wert"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wert"
+        ],
+        "title": "RegelkreisStellenIn",
+        "description": "Ein Parameter von Hand. Beschnitten wird auf die Plausibilitätsgrenzen des Registers."
+      },
       "ReglerAenderungOut": {
         "properties": {
           "at": {
@@ -12026,6 +16378,34 @@
         ],
         "title": "ReglerAenderungOut",
         "description": "Eine Zeile des Protokolls: wer wann was gestellt hat."
+      },
+      "ReglerAnsicht": {
+        "properties": {
+          "kp": {
+            "type": "number",
+            "title": "Kp"
+          },
+          "tn": {
+            "type": "number",
+            "title": "Tn"
+          },
+          "lam": {
+            "type": "number",
+            "title": "Lam"
+          },
+          "regel": {
+            "type": "string",
+            "title": "Regel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kp",
+          "tn",
+          "lam",
+          "regel"
+        ],
+        "title": "ReglerAnsicht"
       },
       "ReglerBestaetigenIn": {
         "properties": {
@@ -12510,6 +16890,67 @@
         "title": "ReiheOut",
         "description": "Eine Reihe im Rückblick: ihre Wertung über alles und je Vorlaufklasse."
       },
+      "ReservenAnsicht": {
+        "properties": {
+          "durchtritt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durchtritt"
+          },
+          "periode_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periode Min"
+          },
+          "phasenreserve_grad": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phasenreserve Grad"
+          },
+          "amplitudenreserve": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amplitudenreserve"
+          },
+          "gut": {
+            "type": "boolean",
+            "title": "Gut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "durchtritt",
+          "periode_min",
+          "phasenreserve_grad",
+          "amplitudenreserve",
+          "gut"
+        ],
+        "title": "ReservenAnsicht"
+      },
       "Room": {
         "properties": {
           "name": {
@@ -12671,6 +17112,10 @@
             "type": "number",
             "title": "Outdoor C"
           },
+          "aussen_gemessen": {
+            "type": "boolean",
+            "title": "Aussen Gemessen"
+          },
           "price_ct_kwh": {
             "anyOf": [
               {
@@ -12724,6 +17169,7 @@
           "half_life_h",
           "cop",
           "outdoor_c",
+          "aussen_gemessen",
           "price_ct_kwh",
           "cheap_ct_kwh",
           "expensive_ct_kwh",
@@ -13511,6 +17957,11 @@
             "title": "Temperature S",
             "default": 900.0
           },
+          "outdoor_temp_s": {
+            "type": "number",
+            "title": "Outdoor Temp S",
+            "default": 5400.0
+          },
           "price_s": {
             "type": "number",
             "title": "Price S",
@@ -13557,6 +18008,11 @@
       },
       "ShiftReportOut": {
         "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
           "period": {
             "type": "string",
             "enum": [
@@ -13642,6 +18098,7 @@
         },
         "type": "object",
         "required": [
+          "generated_at",
           "period",
           "start",
           "end",
@@ -13656,6 +18113,53 @@
         ],
         "title": "ShiftReportOut",
         "description": "Was das Verschieben der Wärmepumpe gebracht hat - eine Rechnung, keine Messung.\n\nDer Vergleichslauf legt dieselbe Strommenge in die Stunden, in denen ein gewöhnlicher\nThermostat sie gebraucht hätte, und stellt die Stromrechnung beider Läufe gegenüber. Die\nAnnahmen stehen einzeln in `assumptions_de`, weil eine Zahl ohne sie mehr behauptet, als sie\nweiß."
+      },
+      "SitzungOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "erstellt_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Erstellt Am"
+          },
+          "laeuft_ab_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Laeuft Ab Am"
+          },
+          "zuletzt_benutzt_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zuletzt Benutzt Am"
+          },
+          "herkunft": {
+            "type": "string",
+            "title": "Herkunft",
+            "default": ""
+          },
+          "diese": {
+            "type": "boolean",
+            "title": "Diese",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "erstellt_am",
+          "laeuft_ab_am"
+        ],
+        "title": "SitzungOut"
       },
       "SourceOut": {
         "properties": {
@@ -14199,6 +18703,59 @@
         "title": "StoveOut",
         "description": "Der Pelletofen im Zeitraum. `available=False` heißt: keine Daten, nicht „lief nicht\"."
       },
+      "StreckeAnsicht": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "foptd",
+              "iptd"
+            ],
+            "title": "Art"
+          },
+          "k": {
+            "type": "number",
+            "title": "K"
+          },
+          "t1": {
+            "type": "number",
+            "title": "T1",
+            "default": 0.0
+          },
+          "t2": {
+            "type": "number",
+            "title": "T2",
+            "default": 0.0
+          },
+          "totzeit": {
+            "type": "number",
+            "title": "Totzeit"
+          },
+          "t1_entwurf": {
+            "type": "number",
+            "title": "T1 Entwurf"
+          },
+          "totzeit_entwurf": {
+            "type": "number",
+            "title": "Totzeit Entwurf"
+          },
+          "halbregel": {
+            "type": "boolean",
+            "title": "Halbregel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "k",
+          "totzeit",
+          "t1_entwurf",
+          "totzeit_entwurf",
+          "halbregel"
+        ],
+        "title": "StreckeAnsicht",
+        "description": "Das Streckenmodell eines Kreises, in Zahlen."
+      },
       "SystemEventOut": {
         "properties": {
           "at": {
@@ -14568,6 +19125,263 @@
         "title": "TibberZusammenfassung",
         "description": "Das Ergebnis der festen Tibber-Pruefung, so knapp, wie Alfred es im Panel sagt. Die volle\nAuswertung steht auf der Rechnungsseite, auf die `AlfredRechnungOut.link` zeigt."
       },
+      "Uebernahme": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "alt": {
+            "type": "number",
+            "title": "Alt"
+          },
+          "neu": {
+            "type": "number",
+            "title": "Neu"
+          },
+          "sigma": {
+            "type": "number",
+            "title": "Sigma"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "rmse_alt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rmse Alt"
+          },
+          "rmse_neu": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rmse Neu"
+          },
+          "grund": {
+            "type": "string",
+            "title": "Grund"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "alt",
+          "neu",
+          "sigma",
+          "n",
+          "grund"
+        ],
+        "title": "Uebernahme",
+        "description": "Ein Eintrag im Änderungsprotokoll. Was sich geändert hat, und warum."
+      },
+      "UpdateAnfrageIn": {
+        "properties": {
+          "aktion": {
+            "type": "string",
+            "enum": [
+              "installieren",
+              "pruefen"
+            ],
+            "title": "Aktion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aktion"
+        ],
+        "title": "UpdateAnfrageIn"
+      },
+      "UpdateErgebnisOut": {
+        "properties": {
+          "am": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Am"
+          },
+          "ergebnis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ergebnis"
+          },
+          "von": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Von"
+          },
+          "nach": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nach"
+          }
+        },
+        "type": "object",
+        "title": "UpdateErgebnisOut"
+      },
+      "UpdateNeuerungOut": {
+        "properties": {
+          "sha": {
+            "type": "string",
+            "title": "Sha"
+          },
+          "titel": {
+            "type": "string",
+            "title": "Titel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sha",
+          "titel"
+        ],
+        "title": "UpdateNeuerungOut"
+      },
+      "UpdateStatusOut": {
+        "properties": {
+          "unterstuetzt": {
+            "type": "boolean",
+            "title": "Unterstuetzt",
+            "default": false
+          },
+          "kanal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kanal"
+          },
+          "aktuell": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aktuell"
+          },
+          "verfuegbar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verfuegbar"
+          },
+          "update_verfuegbar": {
+            "type": "boolean",
+            "title": "Update Verfuegbar",
+            "default": false
+          },
+          "neuerungen": {
+            "items": {
+              "$ref": "#/components/schemas/UpdateNeuerungOut"
+            },
+            "type": "array",
+            "title": "Neuerungen"
+          },
+          "geprueft_am": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geprueft Am"
+          },
+          "zustand": {
+            "type": "string",
+            "title": "Zustand",
+            "default": "bereit"
+          },
+          "schritt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schritt"
+          },
+          "meldung": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meldung"
+          },
+          "zuletzt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UpdateErgebnisOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "anfrage_offen": {
+            "type": "boolean",
+            "title": "Anfrage Offen",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "UpdateStatusOut",
+        "description": "Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne\nHausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an."
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -14770,6 +19584,35 @@
         ],
         "title": "Vergleich",
         "description": "Dieselbe Quote ohne Schließvorgang: wie oft läuft die Maschine von selbst an?"
+      },
+      "VersandOut": {
+        "properties": {
+          "aktiv": {
+            "type": "boolean",
+            "title": "Aktiv",
+            "default": false
+          },
+          "weg": {
+            "type": "string",
+            "enum": [
+              "smtp",
+              "https",
+              ""
+            ],
+            "title": "Weg",
+            "default": ""
+          },
+          "fehlt": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Fehlt"
+          }
+        },
+        "type": "object",
+        "title": "VersandOut",
+        "description": "Ob eine Einladung per E-Mail hinausgehen kann - und was sonst fehlt."
       },
       "VorlaufOut": {
         "properties": {
@@ -15182,6 +20025,24 @@
         "title": "Wertung",
         "description": "Kennzahlen einer Menge von Proben, in der Einheit der Reihe.\n\nEinheitenfrei benannt: `mae` ist bei der PV ein Kilowatt und bei der Temperatur ein Kelvin. Eine\nEnergiesumme steht hier bewusst nicht - sie ergibt nur für Leistungen einen Sinn, und wer sie\nfür PV braucht, findet sie in `evaluation.ForecastScore`."
       },
+      "WiederherstellenIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "code"
+        ],
+        "title": "WiederherstellenIn"
+      },
       "YearMapOut": {
         "properties": {
           "year": {
@@ -15243,6 +20104,50 @@
         ],
         "title": "YearMapOut",
         "description": "Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.\n\nDie Stunde ist Ortszeit, nicht UTC - sonst wanderte die Sonne im Bild um eine Stunde, sobald die\nZeitumstellung kommt. `null` heißt „keine Messdaten\", nicht „null Kilowattstunden\"; beides zu\nunterscheiden ist der halbe Nutzen der Darstellung."
+      },
+      "ZeremonieOut": {
+        "properties": {
+          "schritt": {
+            "type": "string",
+            "title": "Schritt"
+          },
+          "optionen": {
+            "type": "string",
+            "title": "Optionen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schritt",
+          "optionen"
+        ],
+        "title": "ZeremonieOut",
+        "description": "Der Beginn einer WebAuthn-Zeremonie.\n\n`optionen` ist der JSON-Text, den `navigator.credentials` erwartet - unverändert\nweiterzugeben. `schritt` kommt mit der Antwort des Geräts zurück und bindet sie an ihre\nChallenge."
+      },
+      "ZugangZustandOut": {
+        "properties": {
+          "anmeldung": {
+            "type": "boolean",
+            "title": "Anmeldung",
+            "default": false
+          },
+          "personen": {
+            "type": "integer",
+            "title": "Personen",
+            "default": 0
+          },
+          "rp_id": {
+            "type": "string",
+            "title": "Rp Id",
+            "default": ""
+          },
+          "versand": {
+            "$ref": "#/components/schemas/VersandOut"
+          }
+        },
+        "type": "object",
+        "title": "ZugangZustandOut",
+        "description": "Was die Oberfläche über die Anmeldung wissen muss, bevor jemand angemeldet ist.\n\nÖffentlich und mit Absicht wortkarg: `personen` ist eine Zahl, keine Liste. Dass es noch\nniemanden gibt, muss die Anmeldeseite sagen können - wer das ist, braucht sie nicht."
       },
       "Zuordnungsergebnis": {
         "properties": {

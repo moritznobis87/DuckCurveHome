@@ -8,20 +8,33 @@ kein Test gesehen hat, weil im Demo-Betrieb alle Spalten kommen.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+import asyncio
+import threading
+import time
+from collections.abc import Awaitable, Callable, Iterator
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
-from dch_api.application.energy_accounting import ENERGY_KEYS, HEAT_KEYS
+from dch_api.application import energy_accounting
+from dch_api.application.energy_accounting import (
+    ENERGY_KEYS,
+    HEAT_KEYS,
+    EnergyAccounting,
+    MinuteRow,
+    MinuteRows,
+)
 from dch_api.infrastructure.db.engine import create_all_for_tests, make_engine
 from dch_api.infrastructure.db.repositories import SqlRepositories
 from dch_api.main import create_app
 from dch_api.settings import Settings
-from hems_core.domain import Quality
+from hems_core.domain import HemsConfig, Quality
 from hems_core.protocol import RawReading
+from hems_core.simulation import BERLIN
+from hems_core.thermal import HeatSample
 
 AUTH = {"authorization": "Bearer api-geheim"}
 # Ortszeit Berlin: 6 Uhr des 12.10.2026 ist 4 Uhr UTC.
@@ -312,3 +325,358 @@ def test_eine_abgelehnte_aenderung_laesst_den_fahrplan_stehen(client: TestClient
         == 422
     )
     assert runner._plan_at == vorher
+
+
+# ------------------------------------------------------------------ Rechnung im Faden
+
+#: Beginn der gesäten Minutenzeilen der Fadentests - Oktober, mit dem Umstellungstag darin.
+FADEN_BEGINN = datetime(2026, 10, 1, tzinfo=UTC)
+
+
+def _minutenzeilen(beginn: datetime, minuten: int) -> list[MinuteRow]:
+    """Minutenzeilen, wie sie live aus `measurements_minute` kommen - Wärme *und* Strom.
+
+    Die Stromspalten stehen mit darin, weil `minute_rows` und `heat_rows` im Demo-Betrieb
+    dieselbe Abfrage sind und die Kostenseite der Bilanz (`_heat_cost` -> `summary`) sonst über
+    leeren Stunden rechnet.
+    """
+    return [
+        {
+            "ts": (beginn + timedelta(minutes=i)).isoformat(),
+            "heat_pump_power_kw": 2.0,
+            "outdoor_temp_c": 4.0,
+            "buffer_temp_top_c": 50.0 + (i % 60) * 0.05,
+            "buffer_temp_mid_top_c": 49.0 + (i % 60) * 0.05,
+            "buffer_temp_mid_bottom_c": 48.0 + (i % 60) * 0.05,
+            "buffer_temp_bottom_c": 47.0 + (i % 60) * 0.05,
+            "stove_running": 1.0,
+            "stove_power_level": 5.0,
+            "pv_power_kw": 1.5,
+            "grid_power_kw": 0.8,
+            "battery_power_kw": -0.2,
+            "electricity_price_ct_kwh": 28.0,
+        }
+        for i in range(minuten)
+    ]
+
+
+def _leser(zeilen: list[MinuteRow]) -> MinuteRows:
+    """Eine Minutenabfrage auf eine feste Liste - sie schneidet den Zeitraum heraus."""
+
+    async def lesen(start: datetime, end: datetime) -> list[MinuteRow]:
+        return [r for r in zeilen if start <= datetime.fromisoformat(str(r["ts"])) < end]
+
+    return lesen
+
+
+async def _mit_puls(ruf: Callable[[], Awaitable[Any]]) -> tuple[Any, float, list[float]]:
+    """Etwas rechnen lassen und daneben alle fünf Millisekunden anklopfen.
+
+    Zurück kommen das Ergebnis, die gesamte Antwortzeit und die Zeitpunkte, an denen der Puls
+    durchkam; was die Tests daraus ablesen, steht in `_schlagrate`.
+
+    Die Schranke von fünf Schlägen ist kein Maßstab für den Prüfling, sondern für die Messung:
+    darunter ist die Rate aus zu wenigen Punkten geschätzt, um etwas zu bedeuten. Sie fängt den
+    vollständigen Rückfall allerdings mit - steht die Übersetzung wieder in der Schleife, kommt
+    der Puls gemessen null Mal durch, und dieser Satz ist dann die klarste Fehlermeldung, die
+    der Test geben kann.
+    """
+    schlaege: list[float] = []
+
+    async def puls() -> None:
+        while True:
+            schlaege.append(asyncio.get_running_loop().time())
+            await asyncio.sleep(0.005)
+
+    p = asyncio.create_task(puls())
+    t0 = asyncio.get_running_loop().time()
+    ergebnis = await ruf()
+    gesamt = asyncio.get_running_loop().time() - t0
+    p.cancel()
+    assert len(schlaege) > 5, f"der Puls kam nur {len(schlaege)}-mal durch"
+    assert gesamt > 0.1, f"zu schnell für eine Aussage über Nebenläufigkeit ({gesamt:.3f} s)"
+    return ergebnis, gesamt, schlaege
+
+
+def _schlagrate(gesamt: float, schlaege: list[float]) -> float:
+    """Schläge je Sekunde: wie oft die Ereignisschleife während des Rufs überhaupt drankam.
+
+    Gegenüber der längsten Pause ist das die belastbarere Zahl, und zwar aus zwei Gründen. Der
+    erste: die längste Pause ist ein Extremwert und nimmt jeden einzelnen Aussetzer des
+    Betriebssystems voll mit, die Rate mittelt über den ganzen Ruf.
+
+    Der zweite ist schwerer und war der eigentliche Mangel. **Die längste Pause wird kleiner, je
+    größer die Blockade ist.** Nachgemessen am Fadentest, mit wachsendem Anteil der Übersetzung
+    auf der Schleife: 0,219 · 0,110 · 0,073 · 0,052 - und bei vollständigem Rückfall springt sie
+    auf 1,000, weil dann überhaupt kein Schlag mehr durchkommt. Der Grund ist, dass die
+    Schleifenarbeit vor dem **ersten** Schlag liegt: `await ruf()` gibt erst am `to_thread` ab,
+    vorher ist der Puls nie gelaufen, und was vor dem ersten Schlag geschieht, ist keine Lücke
+    *zwischen* zwei Schlägen. Genau im interessanten Bereich - teilweise blockiert - zeigte die
+    alte Kennzahl also nach unten, wo sie nach oben hätte zeigen müssen. Die Rate teilt durch die
+    gesamte Antwortzeit und fängt es: Steht die Schleife wirklich, geht sie auf null.
+    """
+    return len(schlaege) / gesamt
+
+
+def _rechnen(dauer: float) -> int:
+    """Reines Python über `dauer` Sekunden - der Vergleichsklotz für die Nulllinie.
+
+    Absichtlich kein `sleep`: ein Faden, der *rechnet*, hält den GIL und lässt die Schleife nur
+    an den Umschaltpunkten durch (`sys.setswitchinterval`, hier 5 ms). Gemessen kostet das
+    allein schon die Hälfte der Schläge - neben `asyncio.sleep` kamen 193 je Sekunde durch,
+    neben einem rechnenden Faden nur 96. Diesen Preis zahlt auch die richtig ausgelagerte
+    Übersetzung, also muss die Nulllinie ihn mitbezahlen, sonst vergleicht sie Äpfel mit Birnen.
+    """
+    ende = time.perf_counter() + dauer
+    x = 0
+    while time.perf_counter() < ende:
+        # In Blöcken rechnen, damit die Uhr nicht öfter gelesen wird als gerechnet.
+        for _ in range(2000):
+            x = (x * 1103515245 + 12345) % (1 << 61)
+    return x
+
+
+async def _nulllinie_im_faden(dauer: float) -> float:
+    """Die Schlagrate neben Arbeit, die nachweislich im Faden liegt - gleicher Prozess, gleiche Dauer.
+
+    **Warum es die Nulllinie gibt.** Eine lange Pause des Pulses hat zwei mögliche Ursachen, und
+    nur eine davon gehört dem Prüfling: entweder stand die Ereignisschleife (das ist der Mangel),
+    oder das Betriebssystem hat den messenden Puls nicht gescheduled (das ist die Maschine). Eine
+    feste Schranke kann die beiden nicht trennen und wird auf einer ausgelasteten Maschine aus
+    dem falschen Grund rot - und ein Test, der aus dem falschen Grund rot wird, nimmt dem
+    richtigen Grund den Glauben.
+
+    Die Nulllinie ist der Ausweg: dieselbe Messung neben Arbeit, die garantiert im Faden liegt.
+    Auf vier Kernen gemessen fiel ihre Rate von 96 Schlägen je Sekunde (unbelastet) auf 54 bis 67
+    neben sechzehn rechnenden Prozessen - und die des Prüflings von 75 bis 96 auf 39 bis 57. Die
+    Maschinenlast steckt damit in beiden Zahlen und kürzt sich im Verhältnis heraus.
+
+    `dauer` ist die gemessene Antwortzeit des Prüflings, nicht eine geratene Zahl: unter Last
+    dauert er länger, und eine Nulllinie über eine ganz andere Strecke wäre nicht vergleichbar.
+    Begrenzt wird sie trotzdem, weil die Rate eine Zahl *je Sekunde* ist: unter 0,3 s sind zu
+    wenige Schläge beisammen, um sie zu schätzen, und über 2 s wird nichts mehr genauer - wohl
+    aber der Prüflauf auf einer überlasteten Maschine unnötig lang (gemessen 38 bis 55 Schläge
+    je Sekunde über 2,6 bis 3,5 s, 45 bis 55 über 1,2 bis 2,0 s: dieselbe Zahl).
+    """
+    _wert, gesamt, schlaege = await _mit_puls(
+        lambda: asyncio.to_thread(_rechnen, min(max(dauer, 0.3), 2.0))
+    )
+    return _schlagrate(gesamt, schlaege)
+
+
+async def test_die_rechnung_blockiert_die_ereignisschleife_nicht() -> None:
+    """Die Wärmebilanz rechnet lange - und der Dienst muss daneben weiter antworten.
+
+    Gemessen war der Grund: `/live/state` brauchte im Ruhezustand 79 ms und neben einer laufenden
+    Monatsbilanz 4933 ms. `heat_balance` ist `async`, rechnete zwischen ihren `await`-Punkten aber
+    durch, und solange sie das tat, stand die Ereignisschleife und mit ihr jede andere Antwort.
+
+    Geprüft wird nicht die Dauer, sondern die Nebenläufigkeit: ein Puls, der alle fünf
+    Millisekunden schlagen will, darf während der Rechnung nicht stehenbleiben. Die Zeilen kommen
+    deshalb nur über `heat_rows`; `minute_rows` bleibt leer, damit dieser Test die Minutenrechnung
+    misst und nur sie. Was die Kostenseite daneben noch kostet, hält der Test unter diesem fest -
+    getrennt, weil sonst ein Wachstum der einen Seite in der Schranke der anderen verschwindet.
+
+    Der Maßstab ist derselbe wie beim Fadentest weiter unten und aus demselben Grund die
+    Schlagrate gegen die Nulllinie und nicht die längste Pause: auch hier war diese unter Last
+    nah an der alten Schranke von einem Drittel (gemessen 0,249 neben sechzehn rechnenden
+    Prozessen, also noch Faktor 1,3), und dieser Test ist unter CPU-Konkurrenz schon einmal
+    durchgefallen. Das Verhältnis zur Nulllinie liegt dagegen über drei Laststufen bei 0,80 bis
+    1,04 - die Rechnung liegt hier also praktisch vollständig im Faden, so gut wie es der GIL
+    überhaupt zulässt.
+    """
+    tage = 7
+    zeilen = _minutenzeilen(FADEN_BEGINN, tage * 24 * 60)
+
+    async def keine(start: datetime, end: datetime) -> list[MinuteRow]:
+        return []
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, keine, heat_rows=_leser(zeilen))
+    bilanz, gesamt, schlaege = await _mit_puls(
+        lambda: acc.heat_balance("month", date(2026, 10, 15), FADEN_BEGINN + timedelta(days=tage))
+    )
+
+    assert bilanz.totals.heat_pump_kwh > 0, "ohne gerechnete Wärme sagt der Test nichts"
+    assert bilanz.buckets, "ohne Eimer wäre der teure Teil der Rechnung nicht gelaufen"
+    rate = _schlagrate(gesamt, schlaege)
+    nulllinie = await _nulllinie_im_faden(gesamt)
+    assert rate > nulllinie / 3, (
+        f"{rate:.0f} Schläge/s während {gesamt:.3f} s gegen {nulllinie:.0f} der Nulllinie"
+    )
+
+
+async def test_die_schleife_steht_auch_mit_der_kostenseite_nicht_lange() -> None:
+    """Derselbe Test mit gefüllten `minute_rows` - so, wie der Dienst wirklich antwortet.
+
+    **Warum es diesen zweiten Fall gibt.** Der Test über diesem hängt für `minute_rows` einen
+    leeren Leser ein, und damit ist genau der Teil abgeschaltet, der weiter in der Schleife
+    rechnet: `_heat_cost` holt sich `summary`, und die rechnet im Schleifenfaden. Dieser Fall
+    steht deshalb schlechter da als der über ihm, und zwar zu Recht - er hält fest, wie viel von
+    der Antwort die Schleife wirklich noch steht, und wächst mit, wenn die Kostenseite wächst.
+
+    **Warum nicht mehr die Summe der Pausen über 50 ms.** Bis zu dieser Fassung verlangte der
+    Test, dass diese Summe unter 0,75 der Antwortzeit bleibt - und er fiel: neben achtundvierzig
+    rechnenden Prozessen gemessen 6,450 s von 8,124 s, also 0,79. Die 50 ms waren als Schwelle
+    gut gedacht (darunter fällt eine Pause an der Wandanzeige niemandem auf), taugen aber nicht
+    als Maßstab: unter Last wird *jede* Pause länger, immer mehr davon rutschen über die
+    Schwelle, und die Summe läuft gegen die Antwortzeit, ohne dass am Prüfling etwas anders ist.
+
+    Gemessen wird deshalb auch hier die Schlagrate gegen die Nulllinie im gleichen Prozess. Die
+    Zahl ist über drei Laststufen auffällig fest: 0,44 bis 0,56, also kommt der Puls neben der
+    Kostenseite etwa halb so oft durch wie neben Arbeit, die vollständig im Faden liegt. Das ist
+    kein Rest, sondern der Weg, der noch offen ist: `summary` nimmt mit `hours` und
+    `_compute_hours` einen anderen Weg und braucht ihre eigene Prüfung auf Reinheit. Die Schranke
+    von einem Viertel hält den heutigen Stand fest (Faktor 1,8 nach unten), damit er nicht
+    unbemerkt schlechter wird; ist `summary` nachgezogen, gehört sie auf ein Drittel wie die der
+    beiden Tests über diesem.
+    """
+    tage = 7
+    zeilen = _minutenzeilen(FADEN_BEGINN, tage * 24 * 60)
+    leser = _leser(zeilen)
+    acc = EnergyAccounting(HemsConfig(), BERLIN, leser, heat_rows=leser)
+    bilanz, gesamt, schlaege = await _mit_puls(
+        lambda: acc.heat_balance("month", date(2026, 10, 15), FADEN_BEGINN + timedelta(days=tage))
+    )
+
+    assert bilanz.totals.heat_pump_kwh > 0, "ohne gerechnete Wärme sagt der Test nichts"
+    assert bilanz.cost.heat_pump_paid_eur > 0, "ohne Stromkosten lief die Kostenseite nicht mit"
+    rate = _schlagrate(gesamt, schlaege)
+    nulllinie = await _nulllinie_im_faden(gesamt)
+    assert rate > nulllinie / 4, (
+        f"{rate:.0f} Schläge/s während {gesamt:.3f} s gegen {nulllinie:.0f} der Nulllinie"
+    )
+
+
+# ------------------------------------------------------------- Monatsgrenze und Zeitumstellung
+
+
+async def test_ein_abgeschlossener_monat_mit_zeitumstellung_rechnet_aus_minuten() -> None:
+    """Oktober hat in Berliner Zeit 31 Tage und eine Stunde - und fiel genau daran aus.
+
+    `HEAT_MINUTE_DAYS = 31` wurde gegen die **Dauer** des Zeitraums geprüft, und die ist an dem
+    Sonntag mit der Rückstellung eine Stunde länger als 31 Tage. Gemessen hat die Bilanz eines
+    abgeschlossenen Oktobers deshalb `minutes == 0` und „keine Daten im Zeitraum“ gemeldet,
+    während derselbe Monat im Laufen (`stop = now + 1 min`, also kürzer als sein Ende)
+    vollständig gerechnet wurde. Im März war es umgekehrt. Gezählt werden jetzt Kalendertage.
+    """
+    zeilen = _minutenzeilen(FADEN_BEGINN, 7 * 24 * 60)
+
+    async def keine(start: datetime, end: datetime) -> list[MinuteRow]:
+        return []
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, keine, heat_rows=_leser(zeilen))
+    _start, ende = acc.period_bounds("month", date(2026, 10, 15))
+    assert ende - _start > timedelta(days=31), "ohne die Umstellungsstunde prüft der Test nichts"
+
+    bilanz = await acc.heat_balance("month", date(2026, 10, 15), ende + timedelta(days=1))
+    assert bilanz.resolution_de == "aus Minutenwerten"
+    assert bilanz.totals.minutes == 7 * 24 * 60
+    assert bilanz.totals.heat_pump_kwh > 0
+
+
+async def test_ein_ganzer_monat_geht_wirklich_einmal_durch_den_dienst() -> None:
+    """31 Tage Minutenzeilen am Stück - der Fall, der 206 s brauchte, bevor der Puffergriff fiel.
+
+    Dezember, weil darin keine Uhr umgestellt wird: 44 640 Proben, ein abgeschlossener Monat,
+    und die Eimer stehen für jeden seiner Tage. Der Test ist der Wächter über die Größenordnung,
+    mit der die Wärmeseite im Betrieb wirklich gerufen wird - die Fadentests darüber säen sieben
+    Tage, weil sie etwas anderes messen.
+    """
+    beginn = datetime(2026, 12, 1, tzinfo=UTC)
+    zeilen = _minutenzeilen(beginn, 31 * 24 * 60)
+
+    async def keine(start: datetime, end: datetime) -> list[MinuteRow]:
+        return []
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, keine, heat_rows=_leser(zeilen))
+    _start, ende = acc.period_bounds("month", date(2026, 12, 15))
+    bilanz = await acc.heat_balance("month", date(2026, 12, 15), ende + timedelta(days=1))
+
+    assert bilanz.resolution_de == "aus Minutenwerten"
+    assert bilanz.totals.minutes > 44_000, f"nur {bilanz.totals.minutes} Minuten gerechnet"
+    assert len(bilanz.buckets) == 31
+    assert bilanz.totals.heat_pump_kwh > 0
+    assert not bilanz.series, "der Verlauf gehört nur zum Tag"
+
+
+async def test_die_uebersetzung_der_zeilen_laeuft_im_faden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Nur die Abfrage der Zeilen gehört auf die Ereignisschleife, ihre Übersetzung nicht.
+
+    Der Faden endete eine Zeile zu früh: `_heat_samples` holte die Zeilen und übersetzte sie
+    gleich danach in einer gewöhnlichen Schleife weiter *auf* der Schleife - gemessen 232 bis
+    257 ms für 44 640 Zeilen, und eine Monatsbilanz übersetzt zweimal. Der Test fährt genau
+    diesen Schritt allein: fast die ganze Zeit ist Übersetzung, und stünde sie noch in der
+    Schleife, käme der Puls während des ganzen Aufrufs kein einziges Mal durch.
+
+    **Warum nicht die längste Pause.** Bis zu dieser Fassung verlangte der Test
+    `pause < gesamt / 3` und fiel in vollen Läufen durch, allein aber 24-mal von 24-mal grün.
+    Der Grund ist der Maßstab, nicht der Prüfling: die längste Pause ist ein Extremwert, und sie
+    bekommt ihre Größe gar nicht von der Schleife, sondern vom GIL. Ein Faden, der rechnet, hält
+    ihn, und die Schleife wartet jedes Mal bis zum nächsten Umschaltpunkt - gemessen 64 bis 82 ms
+    am Stück, und das im *richtigen* Zustand. Gegen die Schranke von einem Drittel blieb damit
+    nur der Faktor 1,3, und den frisst ein einziger Aussetzer des Betriebssystems. Auf einem
+    Runner mit zwei Kernen wäre der Test aus dem falschen Grund rot geworden.
+
+    **Zwei Zusicherungen, und sie messen verschiedene Dinge.** Die erste ist die direkte: welcher
+    Faden `_proben_bauen` wirklich ausgeführt hat. Sie ist das, was der Name dieses Tests
+    behauptet, und sie steht hier, weil die Kennzahl darunter sie *nicht* leistet - nachgemessen
+    hält eine Übersetzung, die vollständig auf der Ereignisschleife läuft und alle 300 Zeilen mit
+    `await asyncio.sleep(0)` abgibt, ein Verhältnis von 0,75 und ist damit von den 0,77 des
+    richtigen Zustands nicht zu unterscheiden. Die Rate misst **Ansprechbarkeit**, nicht **Ort der
+    Arbeit**.
+
+    Die zweite ist die **Schlagrate gegen die Nulllinie im gleichen Prozess**
+    (`_nulllinie_im_faden`), und sie ist deshalb nicht überflüssig: Ansprechbarkeit ist das, was
+    an der Wandanzeige auffällt, und sie fällt auch dann, wenn die Übersetzung im Faden bleibt und
+    die Schleife trotzdem stehen lässt - etwa weil jemand den Faden um eine Rechnung erweitert,
+    die den GIL nicht mehr abgibt. Gemessen auf vier Kernen, ohne Last und neben acht und sechzehn
+    rechnenden Prozessen: Verhältnis 0,64 bis 0,88 im richtigen Zustand, 0,00 mit der Übersetzung
+    zurück auf der Schleife - dort kommt der Puls null Mal durch, weil zwischen den beiden
+    `await` nichts liegt, was ihn durchlässt.
+
+    **Was das Drittel kostet.** Wandert die *halbe* Übersetzung zurück in die Schleife, bleibt der
+    Test grün: gemessen 0,38 bis 0,44, also noch Faktor 1,1 bis 1,3 über der Schranke. Bei zwei
+    Dritteln fällt er (0,32), bei drei Vierteln auch (0,22). Die Nachweisgrenze dieser Kennzahl
+    liegt damit bei etwa 57 Prozent des Aufrufs auf der Schleife - nicht bei zwei Dritteln, denn
+    die Fadenhälfte läuft selbst nur mit 0,78 der Nulllinienrate (0,78 × 0,5 = 0,39). Strenger
+    wäre zu holen: mit `/2` läge die Grenze bei etwa 36 Prozent, und beim niedrigsten unter Last
+    gemessenen Wert 0,77 bliebe noch Faktor 1,5. Die Schranke bleibt trotzdem bei einem Drittel,
+    weil den Rückfall, um den es geht, jetzt die Fadenzusicherung fängt - vollständig und
+    lastunabhängig - und diese Kennzahl dafür Luft behalten soll.
+    """
+    beginn = datetime(2026, 12, 1, tzinfo=UTC)
+    zeilen = _minutenzeilen(beginn, 31 * 24 * 60)
+
+    async def keine(start: datetime, end: datetime) -> list[MinuteRow]:
+        return []
+
+    # Mitschreiben, auf welchem Faden die Übersetzung lief. `_heat_samples` sucht `_proben_bauen`
+    # beim Aufruf im Modul, also greift der Ersatz hier - und er ruft das Echte, damit der Test
+    # dieselbe Arbeit und dieselbe Antwortzeit messt wie ohne ihn.
+    faeden: list[int] = []
+    echt = energy_accounting._proben_bauen
+
+    def mitschreiben(rows: list[dict[str, float | str | None]]) -> list[HeatSample]:
+        faeden.append(threading.get_ident())
+        return echt(rows)
+
+    monkeypatch.setattr(energy_accounting, "_proben_bauen", mitschreiben)
+
+    acc = EnergyAccounting(HemsConfig(), BERLIN, keine, heat_rows=_leser(zeilen))
+    (proben, schritt), gesamt, schlaege = await _mit_puls(
+        lambda: acc._samples_for(beginn, beginn + timedelta(days=31))
+    )
+
+    assert len(proben) == 31 * 24 * 60, "ohne die Proben sagt der Test nichts"
+    assert schritt == 1.0
+    assert len(faeden) == 1, f"die Übersetzung lief {len(faeden)}-mal, erwartet war einmal"
+    assert faeden[0] != threading.get_ident(), (
+        "die Übersetzung lief auf dem Faden der Ereignisschleife"
+    )
+    rate = _schlagrate(gesamt, schlaege)
+    nulllinie = await _nulllinie_im_faden(gesamt)
+    assert rate > nulllinie / 3, (
+        f"{rate:.0f} Schläge/s während {gesamt:.3f} s gegen {nulllinie:.0f} der Nulllinie"
+    )

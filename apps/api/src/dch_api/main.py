@@ -2,21 +2,26 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from dch_api import urheber
+from dch_api import dependencies, urheber
+from dch_api.application.apns import ApnsVersender
 from dch_api.application.config_loader import load_app_config
-from dch_api.dependencies import require_api_token
+from dch_api.dependencies import require_zugang
 from dch_api.errors import DchError, install_error_handlers
 from dch_api.infrastructure.logging import configure_logging
 from dch_api.routers import (
     alfred,
     anlage,
+    auth,
     bridge,
     config,
     control,
@@ -24,6 +29,7 @@ from dch_api.routers import (
     energy,
     export,
     forecast,
+    geraet,
     health,
     history,
     house,
@@ -31,11 +37,16 @@ from dch_api.routers import (
     live,
     plan,
     push,
+    regelkreis,
     rooms,
     system,
+    update,
     waermepumpe,
 )
 from dch_api.settings import Settings, get_settings
+
+#: Fuer alles, was ausserhalb von `create_app` protokolliert.
+start_log = structlog.get_logger("start")
 
 API_PREFIX = "/api/v1"
 
@@ -46,10 +57,11 @@ async def _start_demo(app: FastAPI, settings: Settings) -> None:
 
     runner = DemoRunner(settings)
     app.state.runner = runner
+    app.state.auth = None  # ohne Datenbank keine Personen; die Anmeldung bleibt aus
     # Ohne Datenbank: Die Anmeldungen leben nur, solange der Vorgang lebt. Fuer den Demo-Modus ist
     # das richtig - dort soll nichts von gestern uebrig sein -, und die Oberflaeche ist damit auch
     # ohne Datenbank zu bedienen.
-    app.state.push = PushService(MemoryPushStore(), settings.push_subject)
+    app.state.push = PushService(MemoryPushStore(), settings.push_subject, apns_versender(settings))
     app.state.hems = runner.hems
     await runner.start()
 
@@ -97,11 +109,17 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
         from dch_api.integrations.inexogy import InexogyClient
 
         inexogy = InexogyClient(settings.inexogy_email, settings.inexogy_password)
-    push = PushService(repos, settings.push_subject)
+    push = PushService(repos, settings.push_subject, apns_versender(settings))
     runtime = LiveRuntime(
         settings, cfg, repos, hub, forecasts, myenergi=myenergi, inexogy=inexogy, push=push
     )
     app.state.engine = engine
+    # Die Anmeldung braucht eine Datenbank. Im Demo-Modus bleibt `auth` darum None, und
+    # `dependencies.require_zugang` verhaelt sich wie bisher (ADR-0002).
+    from dch_api.auth.dienst import AuthDienst
+
+    app.state.auth = AuthDienst(engine, settings)
+    await _ersten_hausherrn_anlegen(app.state.auth, settings)
     app.state.bridge_hub = hub
     app.state.runner = runtime
     app.state.push = push
@@ -110,6 +128,42 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
     # Erst nach dem Start: dort wird ein gespeicherter Konfigurationsstand angewandt, und die
     # Konfigurationsseite soll den zeigen und nicht den aus der Datei.
     app.state.hems = runtime.hems
+
+
+async def _ersten_hausherrn_anlegen(auth: object, settings: Settings) -> None:
+    """Beim allerersten Start den Zugang des Hausherrn anlegen und seinen Link protokollieren.
+
+    Der Ersatz fuer die Geraetepaarung, ueber die frueher der erste Zugang entstand. Ein offener
+    Endpunkt waere keiner: wer die Adresse zuerst faende, haette das Haus. Hier entscheidet, wer
+    die Umgebung des Dienstes setzen kann - und das ist dieselbe Person, die auch die Datenbank
+    haette.
+
+    Der Link steht **einmal** im Protokoll, als Warnung, damit er beim Hochfahren auffaellt. Er
+    gilt `DCH_ZUGANGSTOKEN_STUNDEN` und nur einmal; wer ihn verpasst, stellt sich spaeter unter
+    „Zugang" einen neuen aus - sofern dann schon jemand hereingekommen ist. Sonst: Variable
+    stehen lassen und neu starten, denn die Pruefung „ist wirklich noch niemand da" laeuft bei
+    jedem Start.
+    """
+    from dch_api.auth.dienst import AuthDienst, ZugangError
+
+    if not isinstance(auth, AuthDienst) or not settings.erste_person.strip():
+        return
+    if await auth.anzahl() > 0:
+        return
+    try:
+        angaben, klartext = await auth.person_anlegen(settings.erste_person, "", "hausherr")
+    except ZugangError as fehler:
+        start_log.error("erste person nicht angelegt", grund=str(fehler))
+        return
+    start_log.warning(
+        "erster hausherr angelegt",
+        email=angaben.email,
+        link=auth.link(klartext),
+        hinweis=(
+            "Diesen Link einmalig auf dem Geraet oeffnen, das kuenftig anmeldet. Er gilt "
+            f"{settings.zugangstoken_stunden} Stunden und nur einmal."
+        ),
+    )
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -124,6 +178,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await _start_live(app, settings)
         else:
             await _start_demo(app, settings)
+        problem = settings.passkey_problem()
+        if problem:
+            # Keine Ausnahme: ein Haus, dessen Passkey-Einstellung nicht stimmt, soll trotzdem
+            # laufen und seine Waermepumpe regeln. Nur anmelden kann sich dann niemand, und das
+            # steht hier so deutlich, dass es beim Hochfahren auffaellt.
+            log.error("passkey settings unusable", problem=problem, hinweis="Anmeldung unmoeglich")
         log.info(
             "started",
             mode=settings.mode,
@@ -144,9 +204,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "nicht geprüft."
                 ),
             )
+        # Auf dem Hausgerät mit Datenbank: alle fünf Minuten ein Messpunkt für den Verlauf der
+        # Seite Hausgerät (application/geraet_verlauf.py).
+        sammler: asyncio.Task[None] | None = None
+        repos = getattr(app.state.runner, "repos", None)
+        if settings.geraet_dir and settings.mode == "live" and repos is not None:
+            from dch_api.application import geraet_verlauf
+
+            sammler = asyncio.create_task(
+                geraet_verlauf.schleife(repos, Path(settings.geraet_dir)), name="geraet-verlauf"
+            )
         try:
             yield
         finally:
+            if sammler is not None:
+                # Abbrechen und abwarten: Hält der Sammler gerade eine Verbindung, darf die
+                # Datenbank erst danach geschlossen werden.
+                sammler.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await sammler
             await app.state.runner.stop()
             engine = getattr(app.state, "engine", None)
             if engine is not None:
@@ -166,21 +242,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     @app.middleware("http")
-    async def urheber_setzen(
+    async def zugang_und_urheber(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        """Den Urheber dieser Anfrage für ihre ganze Dauer bereitstellen.
+        """Einmal je Anfrage ermitteln, wer fragt - und daraus den Urheber setzen.
 
         **Warum Middleware und nicht Abhängigkeit.** Eine Abhängigkeit müsste jeder Endpunkt
         annehmen, und die Ablage müsste sie durch jede Schicht gereicht bekommen. Hier steht sie
         einmal und gilt für alles, was in dieser Anfrage geschrieben wird - auch tief unten in
         `repos.add_event`, das von einundzwanzig Stellen gerufen wird.
 
-        **Geglaubt wird die Angabe, weil hinter derselben Tür das API-Token steht.** Wer das
-        Token hat, könnte jeden Urheber behaupten - er könnte aber ohnehin alles. Das ist eine
-        Zuordnung, keine Beweisführung; siehe `application/urheber.py`.
+        **Ermitteln ist nicht prüfen.** Diese Stelle weist niemanden ab; sie legt den Ausweis in
+        `request.state.ausweis`. Abgewiesen wird in `dependencies.require_zugang`, das auch den
+        Pfad gegen die Rolle hält - sonst käme der Bridge-Endpunkt mit seiner eigenen Prüfung hier
+        nicht mehr durch.
+
+        **Seit es Personen gibt, ist der Urheber bei einer Anmeldung keine Behauptung mehr.** Bei
+        einem Gerät mit API-Token bleibt er eine Zuordnung, wie bisher (docs/URHEBER.md): wer das
+        Token hat, könnte jeden Namen behaupten - er könnte aber ohnehin alles.
         """
-        merker = urheber.setze(urheber.aus_kopfzeilen(request.headers))
+        ausweis = await dependencies.ausweis_ermitteln(request)
+        request.state.ausweis = ausweis
+        merker = urheber.setze(dependencies.urheber_der_anfrage(request, ausweis))
         try:
             return await call_next(request)
         finally:
@@ -189,9 +272,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(bridge.router)
-    protected = [Depends(require_api_token)]
+    # Der Zugangsrouter haengt NICHT an der allgemeinen Tuer: wer sich anmelden will, ist noch
+    # nicht angemeldet. Jeder seiner Endpunkte sagt selbst, was er verlangt (routers/auth.py).
+    app.include_router(auth.router, prefix=API_PREFIX)
+    protected = [Depends(require_zugang)]
     for r in (
         alfred.router,
+        update.router,
+        geraet.router,
         live.router,
         history.router,
         plan.router,
@@ -200,6 +288,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         house.router,
         anlage.router,
         waermepumpe.router,
+        regelkreis.router,
         forecast.router,
         energy.router,
         export.router,
@@ -221,3 +310,26 @@ def run() -> None:
 
     s = get_settings()
     uvicorn.run("dch_api.main:app", host=s.host, port=s.port, log_level=s.log_level.lower())
+
+
+def apns_versender(settings: Settings) -> ApnsVersender | None:
+    """Den Weg zur App aufbauen - oder `None`, wenn kein Schluessel eingetragen ist.
+
+    Kein Fehler, wenn er fehlt: ein Haus ohne iOS-App braucht ihn nicht, und Web Push laeuft
+    unberuehrt weiter. Was fehlt, sagt die App auf ihrer Seite „Mitteilungen".
+    """
+    from dch_api.application.apns import ApnsSchluessel
+
+    schluessel = ApnsSchluessel(
+        p8=settings.apns_key_p8,
+        key_id=settings.apns_key_id,
+        team_id=settings.apns_team_id,
+        topic=settings.apns_topic,
+    )
+    if not schluessel.vollstaendig:
+        if schluessel.p8.strip() or schluessel.key_id.strip() or schluessel.team_id.strip():
+            # Teilweise eingetragen ist ein Versehen und kein Verzicht - das soll auffallen.
+            start_log.warning("apns key incomplete", fehlt=schluessel.fehlt_de())
+        return None
+    start_log.info("apns ready", topic=schluessel.topic)
+    return ApnsVersender(schluessel)

@@ -3,15 +3,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import calendar
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from itertools import pairwise
+from typing import TypeVar
 from zoneinfo import ZoneInfo
 
 import structlog
 
+from dch_api.application.berichtsspeicher import Berichtsspeicher, MitStand
 from dch_api.schemas import (
     BufferBalanceOut,
     EnergyBucketOut,
@@ -74,6 +77,7 @@ from hems_core.thermal import (
     HeatTotals,
     RoomMinute,
     StoveSample,
+    VentResult,
     compressor_runs,
     cycling_stats,
     fuel_note,
@@ -708,6 +712,202 @@ def _speicher_text(
     return out
 
 
+# ---------------------------------------------------------------- Wärmebilanz: Rechnung im Faden
+#
+# Die Wärmebilanz rechnet aus bis zu 44 640 Minutenproben, und sie rechnet lange: der Verlauf,
+# die Summen, bis zu 31 Eimer und der Vergleichszeitraum. `heat_balance` ist `async`, zwischen
+# ihren `await`-Punkten rechnet sie aber durch - und solange sie das tut, steht die
+# Ereignisschleife und mit ihr der ganze Dienst. Gemessen hat das die Untersuchung, die den
+# quadratischen Puffergriff gefunden hat: `/live/state` antwortete im Ruhezustand in 9 ms und
+# neben einer laufenden Monatsbilanz in 1924 ms.
+#
+# Darum liegt die Rechnung in einem Faden (`asyncio.to_thread`), wie schon der Vergleichslöser der
+# Nachbetrachtung (`live_runtime.nachbetrachtung`). Die vier Funktionen hier sind die Nahtstelle:
+# was in ihnen steht, läuft im Faden, alles andere davor und danach.
+#
+# **Der Faden macht den Dienst nicht schnell, er macht ihn antwortfähig - und das ist der
+# Unterschied, auf den es ankommt.** Nachgemessen am Vorführstand mit 800 Stunden Minutenbestand:
+# neben einer laufenden Monatsbilanz kam ein Puls auf `/live/state` vorher **genau einmal** durch,
+# nämlich nach 4933 ms, als die Abfrage fertig war; nachher fünfmal, mit 0,8 s im Mittel. Dass eine
+# Antwort dabei langsamer ist als die 73 bis 79 ms des Ruhezustands, liegt am
+# globalen Sperrschloss: ein rechnender Faden gibt es nur alle paar Millisekunden her. Eine Seite,
+# die zäh antwortet, ist aber etwas anderes als eine, die gar nicht antwortet.
+#
+# **Was mitgeht, ist nachgeprüft und nicht angenommen.** `heat_series`, `heat_totals` und
+# `ventilation_split` lesen nur ihre Argumente und geben neue Werte zurück: kein Modulzustand,
+# kein Zwischenspeicher, kein Schloss, keine Zufallsquelle. Die Konfigurationen sind `frozen`,
+# `HeatSample` ist ein eingefrorener Datensatz, `HeatPoint` und `HeatTotals` sind eingefrorene
+# Modelle. Keine dieser Funktionen fasst `self` an, und deshalb nimmt keine von ihnen das
+# `EnergyAccounting` mit in den Faden, sondern nur Proben, Grenzen und die Konfiguration. Draußen
+# bleibt alles, was Zustand liest oder schreibt: `heat_rows` und die anderen Abfragen, `summary`,
+# `_heat_cost`. Ein Nebenläufigkeitsfehler im Dienst eines echten Hauses wäre teurer als eine
+# langsame Seite; deshalb steht die Grenze hier und nicht an der bequemeren Stelle weiter außen.
+#
+# **Die Abfrage der Zeilen und ihre Übersetzung sind nicht dasselbe.** Draußen bleiben muss die
+# Abfrage, nicht was danach mit ihrem Ergebnis geschieht: `_proben_bauen` liest nur die
+# Wörterbücher, die `heat_rows` zurückgegeben hat, fasst kein `self` an und hält kein Schloss.
+# Gemessen sind es 257 ms für 44 640 Zeilen, und eine Monatsbilanz übersetzt zweimal - Zeitraum
+# und Vergleichszeitraum. Das ist dieselbe Größenordnung wie die Rechnung danach, und deshalb
+# läuft die Übersetzung mit im Faden.
+#
+# **Was in derselben Antwort noch in der Schleife rechnet, steht hier, damit es niemand sucht.**
+# `_heat_cost` holt sich `summary`, und die rechnet weiter im Schleifenfaden: `/energy/summary` für
+# einen Monat hält die Schleife allein 1,8 bis 2,1 s, und genau das ist die längste Pause, die nach
+# dieser Änderung in einer Monatsbilanz noch übrig bleibt: gemessen 1837 bis 1982 ms bei 4,8 s
+# Antwortzeit. Dort liegt der nächste Schritt - er gehört aber nicht hierher, weil `summary` einen
+# anderen Weg nimmt (`hours`, `_compute_hours`) und seine eigene Prüfung auf Reinheit braucht.
+
+
+def _proben_bauen(rows: list[dict[str, float | str | None]]) -> list[HeatSample]:
+    """Minutenzeilen in Proben der Wärmebilanz übersetzen - der erste Schritt im Faden.
+
+    **Der Aufstellraum des Puffers ist nicht gemessen.** Hier stand der Raumfühler des Ofens,
+    und der hängt in einem anderen Raum: der Puffer steht im Technikraum. Die Messung war echt,
+    nur maß sie etwas anderes. Jetzt rechnet der Verlustterm gegen den eingestellten
+    Aufstellraum (`buffer.ambient_c`), und der steht als Annahme im Bericht, damit niemand ihn
+    für eine Messung hält. `room_c` wird weiter mitgeschrieben - als Messwert des Ofenraums,
+    der er immer war.
+    """
+    out: list[HeatSample] = []
+    for r in rows:
+        ts_raw = r.get("ts")
+        if not isinstance(ts_raw, str):
+            continue
+        temps = tuple(
+            _val(r.get(k))
+            for k in (
+                "buffer_temp_top_c",
+                "buffer_temp_mid_top_c",
+                "buffer_temp_mid_bottom_c",
+                "buffer_temp_bottom_c",
+            )
+        )
+        running = _val(r.get("stove_running"))
+        out.append(
+            HeatSample(
+                at=datetime.fromisoformat(ts_raw.replace("Z", "+00:00")),
+                heat_pump_kw=_val(r.get("heat_pump_power_kw")),
+                outdoor_c=_val(r.get("outdoor_temp_c")),
+                buffer_c=(
+                    tuple(t for t in temps if t is not None)
+                    if all(t is not None for t in temps)
+                    else None
+                ),
+                room_c=_val(r.get("stove_ambient_temp_c")),
+                stove_running=None if running is None else running >= 0.5,
+                stove_level=_val(r.get("stove_power_level")),
+            )
+        )
+    return out
+
+
+@dataclass(frozen=True)
+class WaermeTeile:
+    """Was an der Wärmebilanz gerechnet wird, in einem Wert.
+
+    Zusammen und nicht einzeln, damit ein Fadenwechsel für den ganzen Block genügt.
+    """
+
+    punkte: list[HeatPoint]
+    summen: HeatTotals
+    eimer: list[HeatBucketOut]
+    verlauf: list[HeatBalancePointOut]
+
+
+def _waerme_summen(
+    samples: list[HeatSample], step_min: float, hems: HemsConfig
+) -> tuple[list[HeatPoint], HeatTotals]:
+    """Verlauf und Summen einer Minutenreihe - die Rechnung, die beide Zeiträume brauchen."""
+    punkte = heat_series(
+        samples,
+        stove=hems.stove,
+        heat=hems.heat_demand,
+        buffer=hems.buffer,
+        heat_pump=hems.heat_pump,
+    )
+    return punkte, heat_totals(punkte, samples, step_min)
+
+
+def _waerme_rechnen(
+    samples: list[HeatSample],
+    step_min: float,
+    grenzen: list[tuple[datetime, datetime, str]],
+    hems: HemsConfig,
+    *,
+    mit_verlauf: bool,
+) -> WaermeTeile:
+    """Die ganze Minutenrechnung des Zeitraums: Verlauf, Summen, Eimer und die Punkte der Zeichnung.
+
+    `grenzen` sind die Eimergrenzen aus `bucket_starts`; sie werden draußen gebildet, weil dafür
+    die Zeitzone des Hauses gebraucht wird und es um höchstens 366 Einträge geht.
+    """
+    punkte, summen = _waerme_summen(samples, step_min, hems)
+
+    eimer: list[HeatBucketOut] = []
+    if samples:
+        for b_start, b_end, label in grenzen:
+            teil = [p for p in punkte if b_start <= p.at < b_end]
+            roh = [s for s in samples if b_start <= s.at < b_end]
+            if not teil:
+                continue
+            t = heat_totals(teil, roh, step_min)
+            eimer.append(
+                HeatBucketOut(
+                    start=b_start,
+                    label_de=label,
+                    heat_pump_kwh=t.heat_pump_kwh,
+                    stove_water_kwh=t.stove_water_kwh,
+                    stove_room_kwh=t.stove_room_kwh,
+                    draw_kwh=t.draw_kwh,
+                    loss_kwh=t.loss_kwh,
+                    loss_useful_kwh=t.loss_useful_kwh,
+                    residual_kwh=t.residual_kwh,
+                    electric_kwh=t.electric_kwh,
+                    cop_mean=t.cop_mean,
+                )
+            )
+
+    # Der Verlauf nur beim Tag, und dort jede fünfte Minute: 288 Punkte zeichnen dieselbe Kurve
+    # wie 1440 und sind ein Fünftel der Antwort.
+    verlauf = (
+        [
+            HeatBalancePointOut(
+                ts=p.at,
+                heat_pump_kw=p.heat_pump_kw,
+                stove_water_kw=p.stove_water_kw,
+                stove_room_kw=p.stove_room_kw,
+                draw_kw=None if p.unknown else p.draw_kw,
+                loss_kw=p.loss_kw,
+                loss_useful_kw=p.loss_useful_kw,
+                buffer_change_kw=p.buffer_change_kw,
+                buffer_kwh=p.buffer_kwh,
+                cop=p.cop,
+            )
+            for i, p in enumerate(punkte)
+            if i % 5 == 0
+        ]
+        if mit_verlauf
+        else []
+    )
+    return WaermeTeile(punkte=punkte, summen=summen, eimer=eimer, verlauf=verlauf)
+
+
+def _lueftung_rechnen(
+    punkte: list[HeatPoint], raum_minuten: list[RoomMinute], kreise: dict[int, int], step_min: float
+) -> VentResult:
+    """Die Entnahme je Minute einsammeln und auf die Räume verteilen.
+
+    Zwei Zeilen, und doch eine eigene Funktion: so geht die Verteilung über einen Monat Raumzeilen
+    in einem Stück in den Faden, statt die Ereignisschleife je Raum und Minute zu halten.
+    """
+    entnahme = {p.at: p.draw_kw for p in punkte if not p.unknown}
+    return ventilation_split(entnahme, raum_minuten, kreise, step_min)
+
+
+#: Was aus dem Berichtsspeicher kommt: eine Auswertung, die ihren eigenen Stand kennt.
+Bericht = TypeVar("Bericht", bound=MitStand)
+
+
 class EnergyAccounting:
     def __init__(
         self,
@@ -722,6 +922,8 @@ class EnergyAccounting:
         heat_store: HeatStore | None = None,
         room_rows: RoomRows | None = None,
     ) -> None:
+        # Vor `hems`: dessen Setzer räumt den Speicher, und dafür muss es ihn geben.
+        self.berichte = Berichtsspeicher()
         self.hems = hems
         self.tz = tz
         self.minute_rows = minute_rows
@@ -737,6 +939,50 @@ class EnergyAccounting:
         self.data_since = data_since
         self.device_events = device_events
         self._last_refresh_hour: datetime | None = None
+
+    # ------------------------------------------------------------------ Annahmen
+    @property
+    def hems(self) -> HemsConfig:
+        return self._hems
+
+    @hems.setter
+    def hems(self, neu: HemsConfig) -> None:
+        """Die Annahmen setzen - und alles verwerfen, was unter den alten gerechnet wurde.
+
+        **Eine Eigenschaft und kein schlichtes Feld, weil sonst niemand davon erfährt.** Gesetzt
+        wird von außen, an zwei Stellen und mit derselben Zeile (`LiveRuntime._apply_hems`,
+        `DemoRunner`); beide ändern einen Pelletpreis, eine Puffergröße oder eine COP-Kennlinie, und
+        jede dieser Zahlen geht in jede abgelegte Auswertung ein - auch in die abgeschlossener
+        Zeiträume, die ohne dieses Verwerfen dauerhaft liegenbleiben würden. Gemeldet wurde das
+        schon einmal in derselben Sache: eine Änderung, die „keine Wirkung“ zu haben schien, weil
+        eine Stufe weiter noch der alte Stand lag (siehe `_plan_at = None` in
+        `LiveRuntime.update_heat_config`).
+        """
+        self._hems = neu
+        self.berichte.leeren()
+
+    # ------------------------------------------------------------------ Berichtsspeicher
+    async def _gespeichert(
+        self,
+        endpunkt: str,
+        period: Period,
+        anchor: date,
+        now: datetime,
+        rechnen: Callable[[], Awaitable[Bericht]],
+        *,
+        dauerhaft: bool = True,
+    ) -> Bericht:
+        """Die Auswertung aus dem Speicher holen oder rechnen lassen. Warum: `berichtsspeicher`."""
+        _start, ende = self.period_bounds(period, anchor)
+        return await self.berichte.hole(
+            endpunkt,
+            period,
+            anchor,
+            now=now,
+            ende=ende,
+            rechnen=rechnen,
+            dauerhaft=dauerhaft,
+        )
 
     # ------------------------------------------------------------------ Zeiträume
     def period_bounds(self, period: Period, anchor: date) -> tuple[datetime, datetime]:
@@ -954,6 +1200,12 @@ class EnergyAccounting:
             # und ein getrennter Takt hätte am Ende zwei Stände, die sich widersprechen können.
             await self.refresh_heat_hours(cursor, chunk_end)
             cursor = chunk_end
+        # Nachgetragene Messwerte machen abgelegte Auswertungen falsch, und zwar gerade die
+        # dauerhaften: ein Backfill trägt vergangene Tage nach, und für die gilt im Speicher keine
+        # Frist. Hier und nicht beim Aufrufer, weil `recompute` die einzige Stelle ist, die
+        # vergangene Stunden neu schreibt - der regelmäßige Takt (`refresh`) rührt nur die laufende
+        # und die vorige an, und die fallen ohnehin unter die kurze Frist.
+        self.berichte.leeren()
         return total
 
     async def hours(
@@ -1143,6 +1395,12 @@ class EnergyAccounting:
 
     # ------------------------------------------------------------------ Zusammenfassungen
     async def summary(self, period: Period, anchor: date, now: datetime) -> EnergySummaryOut:
+        """Die Bilanz des Zeitraums - abgelegt, siehe `berichtsspeicher`."""
+        return await self._gespeichert(
+            "energy/summary", period, anchor, now, lambda: self._summary(period, anchor, now)
+        )
+
+    async def _summary(self, period: Period, anchor: date, now: datetime) -> EnergySummaryOut:
         start, end = self.period_bounds(period, anchor)
         hours = await self.hours(start, end)
         totals = summarize(h for h, _ in hours)
@@ -1158,6 +1416,7 @@ class EnergyAccounting:
         coverage = round(min(1.0, totals.minutes / elapsed_min), 3) if elapsed_min > 0 else None
         since = await self.data_since() if self.data_since else None
         return EnergySummaryOut(
+            generated_at=now,
             period=period,
             anchor=anchor,
             start=start,
@@ -1183,6 +1442,12 @@ class EnergyAccounting:
         )
 
     async def shift_report(self, period: Period, anchor: date, now: datetime) -> ShiftReportOut:
+        """Was das Verschieben gebracht hat - abgelegt, siehe `berichtsspeicher`."""
+        return await self._gespeichert(
+            "energy/shift", period, anchor, now, lambda: self._shift_report(period, anchor, now)
+        )
+
+    async def _shift_report(self, period: Period, anchor: date, now: datetime) -> ShiftReportOut:
         """Was das Verschieben gebracht hat: derselbe Zeitraum ohne Preisblick.
 
         Die Rechnung steht in `hems_core.accounting.counterfactual`; hier wird nur eingesammelt,
@@ -1222,6 +1487,7 @@ class EnergyAccounting:
         )
         gerechnet = [t for t in ergebnis.days if not t.note_de]
         return ShiftReportOut(
+            generated_at=now,
             period=period,
             start=start,
             end=end,
@@ -1320,6 +1586,12 @@ class EnergyAccounting:
         )
 
     async def pv_report(self, period: Period, anchor: date, now: datetime) -> PvTaxReportOut:
+        """Die PV-Abrechnung des Zeitraums - abgelegt, siehe `berichtsspeicher`."""
+        return await self._gespeichert(
+            "energy/pv", period, anchor, now, lambda: self._pv_report(period, anchor, now)
+        )
+
+    async def _pv_report(self, period: Period, anchor: date, now: datetime) -> PvTaxReportOut:
         """PV-Abrechnung: Einspeisung, Eigenverbrauch und Umsatzsteuer für den Zeitraum.
 
         Die Summen des Zeitraums werden aus den ungerundeten Stundenwerten gebildet, die Zeilen der
@@ -1345,6 +1617,7 @@ class EnergyAccounting:
         coverage = round(min(1.0, totals.minutes / elapsed_min), 3) if elapsed_min > 0 else None
         since = await self.data_since() if self.data_since else None
         return PvTaxReportOut(
+            generated_at=now,
             period=period,
             anchor=anchor,
             start=start,
@@ -1370,6 +1643,31 @@ class EnergyAccounting:
         )
 
     async def heat_report(
+        self,
+        period: Period,
+        anchor: date,
+        now: datetime,
+        temps_48h: list[tuple[datetime, float]],
+    ) -> HeatReportOut:
+        """Die Wärmeseite als Stromrechnung - abgelegt, aber **nie dauerhaft**.
+
+        Diese Antwort trägt neben dem Zeitraum die Bedarfsprognose der nächsten 48 Stunden
+        (`forecast`, `forecast_*_kwh_24h`), und die gehört nicht zum Zeitraum, sondern zu heute.
+        Ein abgeschlossener Monat dürfte sein Ergebnis dauerhaft behalten - die Prognose darin
+        nicht, und die beiden lassen sich im Speicher nicht trennen. Also gilt hier nur die kurze
+        Frist, und dort liegt der Nutzen ohnehin: sie fängt die fünf Abfragen eines Ankerwechsels
+        ab. Wäre es anders, stünde auf einer Wandanzeige wochenlang das Wetter von damals.
+        """
+        return await self._gespeichert(
+            "energy/heat",
+            period,
+            anchor,
+            now,
+            lambda: self._heat_report(period, anchor, now, temps_48h),
+            dauerhaft=False,
+        )
+
+    async def _heat_report(
         self,
         period: Period,
         anchor: date,
@@ -1416,6 +1714,7 @@ class EnergyAccounting:
         cycling = await self._cycling(start, min(end, now))
         stove = await self._stove(start, min(end, now))
         return HeatReportOut(
+            generated_at=now,
             summary=summary,
             thermal_kwh_est=round(thermal, 2),
             cop_est=cop_est,
@@ -1441,7 +1740,40 @@ class EnergyAccounting:
     # zu ziehen, um am Ende zwölf Balken zu zeigen, ist keine Auswertung, sondern ein Ausfall.
     HEAT_MINUTE_DAYS = 31
 
+    def _minutenpfad(self, start: datetime, end: datetime) -> bool:
+        """Ist der Zeitraum kurz genug für die Minutenrechnung?
+
+        **Gezählt werden Kalendertage, nicht Stunden.** Ein Oktober hat in Berliner Zeit 31 Tage
+        *und eine Stunde*: an dem Sonntag wird die Uhr zurückgestellt. Gegen eine Dauer von 31
+        Tagen geprüft, fiel ein abgeschlossener Oktober deshalb aus dem Minutenpfad - die Bilanz
+        stand mit `minutes == 0` und „keine Daten im Zeitraum“ da, während derselbe Monat im
+        Laufen (`stop = now + 1 min`, also kürzer) vollständig gerechnet wurde. Im März war es
+        umgekehrt: 31 Tage minus eine Stunde, und der Monat ging durch. Ein Monat ist aber ein
+        Monat, ob die Uhr darin umgestellt wurde oder nicht, und die Zahl der Tage sagt das.
+        """
+        return (end.date() - start.date()).days <= self.HEAT_MINUTE_DAYS
+
     async def heat_balance(
+        self,
+        period: Period,
+        anchor: date,
+        now: datetime,
+        temps_48h: list[tuple[datetime, float]] | None = None,
+    ) -> HeatBalanceOut:
+        """Die Wärmebilanz des Zeitraums - abgelegt, siehe `berichtsspeicher`.
+
+        Die teuerste Auswertung des Hauses und der Anlass des Speichers: bis zu 44 640
+        Minutenproben, und der Vergleichszeitraum noch einmal daneben.
+        """
+        return await self._gespeichert(
+            "energy/waermebilanz",
+            period,
+            anchor,
+            now,
+            lambda: self._heat_balance(period, anchor, now, temps_48h),
+        )
+
+    async def _heat_balance(
         self,
         period: Period,
         anchor: date,
@@ -1452,78 +1784,35 @@ class EnergyAccounting:
 
         Gerechnet wird aus Minutenwerten, solange der Zeitraum nicht länger als ein Monat ist.
         Darüber steht der Zeitraum ohne Verlauf da, mit einer Ansage statt einer stillen Näherung.
+
+        **Gerechnet wird in Fäden.** Die Minutenrechnung steht in `_waerme_rechnen` und
+        `_waerme_summen`, die Übersetzung der Zeilen in `_proben_bauen`; alle drei laufen über
+        `asyncio.to_thread`, und hier wird nur eingesammelt, was sie brauchen. Warum, und was
+        dafür geprüft wurde, steht über `WaermeTeile`.
         """
         start, end = self.period_bounds(period, anchor)
         stop = min(end, now + timedelta(minutes=1))
         samples, step_min = await self._samples_for(start, stop)
-        points = heat_series(
+        teile = await asyncio.to_thread(
+            _waerme_rechnen,
             samples,
-            stove=self.hems.stove,
-            heat=self.hems.heat_demand,
-            buffer=self.hems.buffer,
-            heat_pump=self.hems.heat_pump,
+            step_min,
+            self.bucket_starts(period, start, end),
+            self.hems,
+            mit_verlauf=period == "day",
         )
-        totals = heat_totals(points, samples, step_min)
-        lueftung = await self._ventilation(start, stop, points, step_min)
+        totals = teile.summen
+        lueftung = await self._ventilation(start, stop, teile.punkte, step_min)
 
         vor_start, vor_end = self._previous_bounds(period, anchor)
         vor_samples, vor_step = await self._samples_for(vor_start, min(vor_end, now))
-        vor_points = heat_series(
-            vor_samples,
-            stove=self.hems.stove,
-            heat=self.hems.heat_demand,
-            buffer=self.hems.buffer,
-            heat_pump=self.hems.heat_pump,
-        )
-        previous = heat_totals(vor_points, vor_samples, vor_step) if vor_samples else None
+        previous: HeatTotals | None = None
+        if vor_samples:
+            # Der Vergleichszeitraum braucht nur die Summen - sein Verlauf wird nirgends gezeigt.
+            _vor_punkte, previous = await asyncio.to_thread(
+                _waerme_summen, vor_samples, vor_step, self.hems
+            )
 
-        buckets: list[HeatBucketOut] = []
-        if samples:
-            nach_start = {p.at: p for p in points}
-            for b_start, b_end, label in self.bucket_starts(period, start, end):
-                teil = [p for ts, p in nach_start.items() if b_start <= ts < b_end]
-                roh = [s for s in samples if b_start <= s.at < b_end]
-                if not teil:
-                    continue
-                t = heat_totals(teil, roh, step_min)
-                buckets.append(
-                    HeatBucketOut(
-                        start=b_start,
-                        label_de=label,
-                        heat_pump_kwh=t.heat_pump_kwh,
-                        stove_water_kwh=t.stove_water_kwh,
-                        stove_room_kwh=t.stove_room_kwh,
-                        draw_kwh=t.draw_kwh,
-                        loss_kwh=t.loss_kwh,
-                        loss_useful_kwh=t.loss_useful_kwh,
-                        residual_kwh=t.residual_kwh,
-                        electric_kwh=t.electric_kwh,
-                        cop_mean=t.cop_mean,
-                    )
-                )
-
-        # Der Verlauf nur beim Tag, und dort jede fünfte Minute: 288 Punkte zeichnen dieselbe Kurve
-        # wie 1440 und sind ein Fünftel der Antwort.
-        series = (
-            [
-                HeatBalancePointOut(
-                    ts=p.at,
-                    heat_pump_kw=p.heat_pump_kw,
-                    stove_water_kw=p.stove_water_kw,
-                    stove_room_kw=p.stove_room_kw,
-                    draw_kw=None if p.unknown else p.draw_kw,
-                    loss_kw=p.loss_kw,
-                    loss_useful_kw=p.loss_useful_kw,
-                    buffer_change_kw=p.buffer_change_kw,
-                    buffer_kwh=p.buffer_kwh,
-                    cop=p.cop,
-                )
-                for i, p in enumerate(points)
-                if i % 5 == 0
-            ]
-            if period == "day"
-            else []
-        )
         aufloesung = (
             "aus Minutenwerten"
             if step_min < 60
@@ -1534,14 +1823,15 @@ class EnergyAccounting:
         kosten = await self._heat_cost(period, anchor, now, samples, totals, step_min)
         bedarf, fc_note = self._forecast_tomorrow(period, anchor, now, temps_48h or [])
         return HeatBalanceOut(
+            generated_at=now,
             period=period,
             start=start,
             end=end,
             resolution_de=aufloesung,
             totals=totals,
             previous=previous,
-            series=series,
-            buckets=buckets,
+            series=teile.verlauf,
+            buckets=teile.eimer,
             cost=kosten,
             forecast_heat_kwh=bedarf,
             forecast_note_de=fc_note,
@@ -1685,14 +1975,16 @@ class EnergyAccounting:
         Fenster, das zwanzig Minuten offen stand, ist in einer Stunde ein Drittel, und welches
         Drittel, weiß dann niemand mehr. Für lange Zeiträume steht hier deshalb nichts, statt einer
         Zahl, die so tut, als wüsste sie es.
+
+        Die Verteilung selbst läuft in einem Faden: ein Monat sind 44 640 Minuten mal Räume, und
+        das ist dieselbe Größenordnung wie die Bilanz davor.
         """
         if self.room_rows is None or step_min > 5.0 or not points:
             return None
         raum_minuten, kreise, namen = await self.room_rows(start, end)
         if not raum_minuten:
             return None
-        entnahme = {p.at: p.draw_kw for p in points if not p.unknown}
-        v = ventilation_split(entnahme, raum_minuten, kreise, step_min)
+        v = await asyncio.to_thread(_lueftung_rechnen, points, raum_minuten, kreise, step_min)
         return VentilationOut(
             kwh=v.kwh,
             share=v.share,
@@ -1711,6 +2003,16 @@ class EnergyAccounting:
             note_de=v.note_de,
         )
 
+    async def waermeproben(self, start: datetime, end: datetime) -> list[HeatSample]:
+        """Die Proben der Wärmebilanz für einen Zeitraum, in Minutenauflösung.
+
+        Öffentlich, weil die Lernebene des Regelkreises dieselben Proben braucht wie die
+        Wärmeseite: aus ihnen kommen der Verlustkoeffizient des Hauses und der Verlustbeiwert des
+        Speichers. Zweimal dieselbe Reihe zu lesen hiesse, zwei Wahrheiten zu pflegen.
+        """
+        proben, schritt = await self._samples_for(start, end)
+        return proben if schritt <= 1.0 else []
+
     async def _samples_for(self, start: datetime, end: datetime) -> tuple[list[HeatSample], float]:
         """Proben und Schrittweite für einen Zeitraum: Minuten, wo es geht, sonst Stunden.
 
@@ -1720,7 +2022,7 @@ class EnergyAccounting:
         """
         if end <= start:
             return [], 1.0
-        if (end - start) <= timedelta(days=self.HEAT_MINUTE_DAYS):
+        if self._minutenpfad(start, end):
             return await self._heat_samples(start, end), 1.0
         if self.heat_store is None:
             return [], 60.0
@@ -1729,49 +2031,15 @@ class EnergyAccounting:
         return samples_from_hours(rows, self.hems.buffer), 60.0
 
     async def _heat_samples(self, start: datetime, end: datetime) -> list[HeatSample]:
-        """Minutenzeilen in Proben der Wärmebilanz übersetzen.
+        """Die Minutenzeilen holen und übersetzen lassen.
 
-        **Der Aufstellraum des Puffers ist nicht gemessen.** Hier stand der Raumfühler des Ofens,
-        und der hängt in einem anderen Raum: der Puffer steht im Technikraum. Die Messung war echt,
-        nur maß sie etwas anderes. Jetzt rechnet der Verlustterm gegen den eingestellten
-        Aufstellraum (`buffer.ambient_c`), und der steht als Annahme im Bericht, damit niemand ihn
-        für eine Messung hält. `room_c` wird weiter mitgeschrieben - als Messwert des Ofenraums,
-        der er immer war.
+        Nur die Abfrage steht hier auf der Ereignisschleife; die Übersetzung läuft in einem
+        Faden (`_proben_bauen`), weil sie bei einem Monat so lange rechnet wie die Bilanz danach.
         """
-        if end <= start or (end - start) > timedelta(days=self.HEAT_MINUTE_DAYS):
+        if end <= start or not self._minutenpfad(start, end):
             return []
         rows = await self.heat_rows(start, end)
-        out: list[HeatSample] = []
-        for r in rows:
-            ts_raw = r.get("ts")
-            if not isinstance(ts_raw, str):
-                continue
-            temps = tuple(
-                _val(r.get(k))
-                for k in (
-                    "buffer_temp_top_c",
-                    "buffer_temp_mid_top_c",
-                    "buffer_temp_mid_bottom_c",
-                    "buffer_temp_bottom_c",
-                )
-            )
-            running = _val(r.get("stove_running"))
-            out.append(
-                HeatSample(
-                    at=datetime.fromisoformat(ts_raw.replace("Z", "+00:00")),
-                    heat_pump_kw=_val(r.get("heat_pump_power_kw")),
-                    outdoor_c=_val(r.get("outdoor_temp_c")),
-                    buffer_c=(
-                        tuple(t for t in temps if t is not None)
-                        if all(t is not None for t in temps)
-                        else None
-                    ),
-                    room_c=_val(r.get("stove_ambient_temp_c")),
-                    stove_running=None if running is None else running >= 0.5,
-                    stove_level=_val(r.get("stove_power_level")),
-                )
-            )
-        return out
+        return await asyncio.to_thread(_proben_bauen, rows)
 
     def _heat_params(self) -> HeatParamsOut:
         stove = self.hems.stove
@@ -1866,13 +2134,19 @@ class EnergyAccounting:
         return cycling_stats(runs, covered, hp.min_runtime_min)
 
     async def ev_report(self, period: Period, anchor: date, now: datetime) -> EvReportOut:
+        """Die Wallbox im Zeitraum - abgelegt, siehe `berichtsspeicher`."""
+        return await self._gespeichert(
+            "energy/ev", period, anchor, now, lambda: self._ev_report(period, anchor, now)
+        )
+
+    async def _ev_report(self, period: Period, anchor: date, now: datetime) -> EvReportOut:
         summary = await self.summary(period, anchor, now)
         sessions: list[EvSessionOut] = []
         if period in ("day", "week"):
             start, end = self.period_bounds(period, anchor)
             rows = await self.minute_rows(start, min(end, now + timedelta(minutes=1)))
             sessions = self._sessions(rows)
-        return EvReportOut(summary=summary, sessions=sessions)
+        return EvReportOut(generated_at=now, summary=summary, sessions=sessions)
 
     def _sessions(
         self, rows: list[MinuteRow], min_kw: float = 0.3, gap_min: int = 5

@@ -138,3 +138,58 @@ export type Nachbetrachtung = S["NachbetrachtungOut"];
 export type AnlageStrom = S["AnlageStromOut"];
 export type AnlageSpeicher = S["AnlageSpeicherOut"];
 export type AnlageWarmwasser = S["AnlageWarmwasserOut"];
+
+// ------------------------------------------------------------------ Regelkreis
+/**
+ * Felder mit Vorbelegung im Schema kommen als `optional` heraus, obwohl die Antwort sie immer
+ * trägt. Statt in jeder Zeile der Anzeige `?? []` zu schreiben, werden sie hier als vorhanden
+ * typisiert und im Client einmal aufgefüllt - dasselbe Verfahren wie bei den Reglereinstellungen.
+ */
+type Voll<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> };
+
+export type RegelkreisBlock = Voll<S["BlockAnsicht"], "erklaerung" | "gleichungen" | "parameter" | "kurz">;
+export type RegelkreisKante = Voll<S["KanteAnsicht"], "art">;
+export type RegelkreisKreis = Voll<S["KreisAnsicht"], "erklaerung" | "kennlinie">;
+export type RegelkreisParameter = Voll<S["ParameterAnsicht"], "wirkt_auf" | "protokoll" | "verlauf" | "n">;
+export type RegelkreisGuete = S["GueteAnsicht"];
+/** Ein Übertragungsglied samt gerechnetem Kennbild (Sprungantwort oder Kennlinie). */
+export type RegelkreisGlied = Voll<S["GliedAnsicht"], "kurve2">;
+export type RegelkreisArbeitspunkt = Voll<S["Arbeitspunkt"], "aussen_gemessen" | "vorlauf_gemessen">;
+export type RegelkreisUebernahme = S["Uebernahme"];
+export type RegelkreisHerkunft = RegelkreisParameter["herkunft"];
+
+/** Die Regelkreis-Karte: Struktur, geltende Parameter, Entwurf und Lernzustand. */
+export type Regelkreis = Omit<S["RegelkreisOut"], "bloecke" | "kanten" | "kreise" | "parameter" | "arbeitspunkt" | "glieder" | "uebersteuert" | "uebernahmen"> & {
+  bloecke: RegelkreisBlock[];
+  kanten: RegelkreisKante[];
+  kreise: RegelkreisKreis[];
+  parameter: RegelkreisParameter[];
+  arbeitspunkt: RegelkreisArbeitspunkt;
+  glieder: RegelkreisGlied[];
+  uebersteuert: string[];
+  uebernahmen: number;
+};
+
+
+// Technik -> Hausgerät (routers/geraet.py)
+export type Geraet = S["GeraetOut"];
+export type GeraetDienst = S["GeraetDienstOut"];
+export type GeraetEinheit = S["GeraetEinheitOut"];
+export type GeraetRechner = S["GeraetRechnerOut"];
+export type GeraetSicherung = S["GeraetSicherungOut"];
+export type GeraetAktion = S["GeraetAktionOut"];
+export type GeraetProtokoll = S["GeraetProtokollOut"];
+export type ApiSelbst = S["ApiSelbstOut"];
+export type Ampel = GeraetDienst["ampel"];
+
+// Zugang: Personen, Passkeys, Sitzungen (ADR-0002)
+export type Ausweis = S["AusweisOut"];
+export type Person = S["PersonOut"];
+export type PersonAnlegen = S["PersonAnlegenIn"];
+export type PersonAendern = S["PersonAendernIn"];
+export type Einladung = S["EinladungOut"];
+export type Passkey = S["PasskeyOut"];
+export type Sitzung = S["SitzungOut"];
+export type Ich = S["IchOut"];
+export type ZugangZustand = S["ZugangZustandOut"];
+export type Zeremonie = S["ZeremonieOut"];

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -25,6 +25,7 @@ from hems_core.domain import (
 from hems_core.forecasting import CorrectorState, ForecastScore
 from hems_core.forecasting.rueckblick import ReiheOut
 from hems_core.house import HousePlan
+from hems_core.regelkreis.karte import Regelkreiskarte
 from hems_core.thermal import CyclingStats, HeatTotals
 from hems_core.thermal.kontaktwirkung import Kontaktwirkung
 
@@ -513,6 +514,27 @@ class ForecastHistoryOut(BaseModel):
 Period = Literal["day", "week", "month", "year"]
 
 
+class BerichtMitStand(BaseModel):
+    """Eine Auswertung, die mitteilt, wann sie gerechnet wurde.
+
+    **Weil sie nicht mehr in jedem Fall jetzt gerechnet wird.** Die Auswertungen der Zeiträume
+    liegen seit dem 22.11.2026 in einem Zwischenspeicher
+    (`dch_api.application.berichtsspeicher`): ein abgeschlossener Zeitraum bleibt dauerhaft
+    liegen, der laufende eine Minute. Eine Zahl aus dem Speicher, die aussieht wie eine von
+    jetzt, ist eine stille Lüge - auf einer Wandanzeige, die wochenlang läuft, besonders. Hier
+    steht also nicht die Uhrzeit der Anfrage, sondern die der **Rechnung**, und bei einem
+    Treffer ist das ein Zeitpunkt in der Vergangenheit.
+
+    **Der Name ist nicht neu erfunden.** Die Vorlage kennt dieses Feld schon und nennt es
+    `generated_at`; angezeigt wird es dort als „Stand 14:35“
+    (`apps/web/src/components/forecast/ForecastPage.tsx` über `ForecastEvaluationOut`). Ein
+    zweiter Name für dieselbe Sache wäre eine Fehlerquelle ohne Gegenwert.
+    """
+
+    #: Wann diese Antwort gerechnet wurde - nicht, wann sie abgeholt wurde.
+    generated_at: datetime
+
+
 class EnergyTotalsOut(EnergyTotals):
     """Summen plus abgeleitete Kennzahlen als normale Felder (für JSON)."""
 
@@ -550,7 +572,7 @@ class EnergyMetaOut(BaseModel):
     estimated_note_de: str
 
 
-class EnergySummaryOut(BaseModel):
+class EnergySummaryOut(BerichtMitStand):
     period: Period
     anchor: date
     start: datetime
@@ -580,7 +602,7 @@ class PvTaxBucketOut(BaseModel):
     totals: PvTaxTotals
 
 
-class PvTaxReportOut(BaseModel):
+class PvTaxReportOut(BerichtMitStand):
     """PV-Abrechnung eines Zeitraums: Einspeisung, Eigenverbrauch, Umsatzsteuer."""
 
     period: Period
@@ -683,7 +705,7 @@ class StoveOut(BaseModel):
     fuel_note_de: str = ""
 
 
-class HeatReportOut(BaseModel):
+class HeatReportOut(BerichtMitStand):
     summary: EnergySummaryOut
     thermal_kwh_est: float  # gelieferte Wärme aus Strom × COP (Schätzung)
     cop_est: float
@@ -711,7 +733,7 @@ class EvSessionOut(BaseModel):
     avg_kw: float
 
 
-class EvReportOut(BaseModel):
+class EvReportOut(BerichtMitStand):
     summary: EnergySummaryOut
     sessions: list[EvSessionOut]  # Ladevorgänge im Zeitraum (nur Tag/Woche)
 
@@ -894,7 +916,7 @@ class HeatCostOut(BaseModel):
     cheaper_de: str = ""
 
 
-class HeatBalanceOut(BaseModel):
+class HeatBalanceOut(BerichtMitStand):
     """Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging."""
 
     period: Period
@@ -1048,6 +1070,13 @@ class RoomEffectOut(BaseModel):
     cop: float
     # Woraus gerechnet wurde, damit die Zahlen nachzuvollziehen sind.
     outdoor_c: float
+    #: War `outdoor_c` eine Messung - oder die Rücklage, weil keine vorlag?
+    #:
+    #: Die Außentemperatur bestimmt über die Arbeitszahl jede Stromzahl dieser Antwort: zwischen
+    #: 7 °C (Arbeitszahl 3,5) und -7 °C (2,4) liegt Faktor 1,46. Bis zum 23.11.2026 stand hier
+    #: stumm die Rücklage von 7,0 °C, sobald die Aufnahme keine Außentemperatur hatte, und
+    #: `outdoor_c` sah aus wie eine Messung. `note_de` sagt es jetzt auch im Satz.
+    aussen_gemessen: bool
     price_ct_kwh: float | None
     cheap_ct_kwh: float | None
     expensive_ct_kwh: float | None
@@ -1134,6 +1163,29 @@ class PushSubscribeIn(BaseModel):
     #: Die Herkunft der Seite (`location.origin`). Sie wird der Absender der Mitteilungen,
     #: solange keine eigene Adresse gesetzt ist.
     origin: str = ""
+
+
+class ApnsSubscribeIn(BaseModel):
+    """Ein Gerät der iOS-App anmelden.
+
+    Derselbe Zuschnitt wie `PushSubscribeIn`, nur dass die Adresse ein Gerätetoken ist und die
+    beiden Schlüssel fehlen: APNs verschlüsselt selbst.
+    """
+
+    #: Das Gerätetoken, wie APNs es vergibt - 64 Hexzeichen.
+    token: str = Field(min_length=8, max_length=200)
+    #: Ein Wort, an dem man das Gerät später wiedererkennt („iPad Flur").
+    label: str = ""
+    #: Ob das Token aus einem Entwicklungsbau kommt.
+    #:
+    #: Das muss mitkommen und lässt sich nicht erraten: ein Token aus Xcode gilt bei Apple an
+    #: einer anderen Adresse als eines aus dem App Store, und wer das verwechselt, bekommt
+    #: `BadDeviceToken` ohne weitere Auskunft.
+    sandbox: bool = False
+
+
+class ApnsUnsubscribeIn(BaseModel):
+    token: str = Field(min_length=8, max_length=200)
 
 
 class PushUnsubscribeIn(BaseModel):
@@ -1569,7 +1621,7 @@ class ShiftDayOut(BaseModel):
     note_de: str = ""
 
 
-class ShiftReportOut(BaseModel):
+class ShiftReportOut(BerichtMitStand):
     """Was das Verschieben der Wärmepumpe gebracht hat - eine Rechnung, keine Messung.
 
     Der Vergleichslauf legt dieselbe Strommenge in die Stunden, in denen ein gewöhnlicher
@@ -1936,3 +1988,529 @@ class AlfredZuordnungIn(BaseModel):
     """Eine eingefügte Entitätenliste aus Home Assistant (Entwicklerwerkzeuge → Zustände)."""
 
     liste: str = Field(min_length=1, max_length=60_000)
+
+
+class RegelkreisOut(Regelkreiskarte):
+    """Die Regelkreis-Karte: Struktur, geltende Parameter, Entwurf und Lernzustand.
+
+    Alles, was die Karte zeigt, steht hier: je Block seine Erklärung, seine Gleichungen und seine
+    Parameter, je Kreis die Strecke, der daraus entworfene Regler, seine Reserven und die
+    Frequenzkennlinie, je Parameter die Herkunft - gemessen, geschätzt, angenommen, fest,
+    übersteuert -, die Unsicherheit und das Übernahmeprotokoll.
+
+    Koordinaten stehen nicht darin. Wo ein Kästchen liegt, ist eine Frage der Zeichnung; was
+    verbunden ist, eine Aussage über das Haus.
+    """
+
+
+class RegelkreisStellenIn(BaseModel):
+    """Ein Parameter von Hand. Beschnitten wird auf die Plausibilitätsgrenzen des Registers."""
+
+    wert: float
+
+
+# --- Updates des Hausgeräts (deploy/haus/dch, routers/update.py) ---------------------------------
+
+
+class UpdateNeuerungOut(BaseModel):
+    sha: str
+    titel: str
+
+
+class UpdateErgebnisOut(BaseModel):
+    am: str | None = None
+    ergebnis: str | None = None
+    von: str | None = None
+    nach: str | None = None
+
+
+class UpdateStatusOut(BaseModel):
+    """Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne
+    Hausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an."""
+
+    unterstuetzt: bool = False
+    kanal: str | None = None
+    aktuell: str | None = None
+    verfuegbar: str | None = None
+    update_verfuegbar: bool = False
+    neuerungen: list[UpdateNeuerungOut] = Field(default_factory=list)
+    geprueft_am: str | None = None
+    #: bereit | laeuft | fertig | zurueckgerollt | fehlgeschlagen
+    zustand: str = "bereit"
+    #: Sicherung | Quelltext | Laden | Neustart | Pruefung | Zurueck, solange `zustand` laeuft
+    schritt: str | None = None
+    meldung: str | None = None
+    zuletzt: UpdateErgebnisOut | None = None
+    #: Eine Anfrage liegt bereit und wartet darauf, dass der Dienst sie abholt.
+    anfrage_offen: bool = False
+
+
+class UpdateAnfrageIn(BaseModel):
+    aktion: Literal["installieren", "pruefen"]
+
+
+# ------------------------------------------------------------------------------- Hausgerät
+#
+# Was die Seite Technik -> Hausgerät zeigt (routers/geraet.py). Die rohen Werte kommen aus dem
+# Bericht, den das Gerät jede Minute schreibt (deploy/haus/dch, `dch zustand`); Ampel und Satz
+# bildet die API, damit Browser und iOS-App dieselbe Bewertung zeigen und sie nicht zweimal
+# gepflegt wird.
+
+Ampel = Literal["gut", "warn", "schlecht", "aus"]
+
+
+class GeraetDienstOut(BaseModel):
+    """Ein Container des Geräts (postgres, api, web, caddy, cloudflared)."""
+
+    name: str
+    #: Docker: running, restarting, exited, paused, created - oder `fehlt`, wenn compose.yaml ihn
+    #: kennt, er aber nicht angelegt ist.
+    zustand: str
+    #: healthy, unhealthy, starting; `None`: Der Dienst hat keine Prüfung.
+    gesundheit: str | None = None
+    #: Die letzte Ausgabe der Prüfung, gekürzt.
+    pruefung: str | None = None
+    pruefung_fehlschlaege: int | None = None
+    gestartet_am: datetime | None = None
+    neustarts: int = 0
+    exit_code: int | None = None
+    image: str | None = None
+    revision: str | None = None
+    cpu_prozent: float | None = None
+    speicher_mb: float | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetEinheitOut(BaseModel):
+    """Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht)."""
+
+    name: str
+    beschreibung: str = ""
+    aktiv: str = ""
+    unterzustand: str = ""
+    eingeschaltet: bool = False
+    naechster_lauf: datetime | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetPlatteOut(BaseModel):
+    ort: str
+    gesamt_bytes: int
+    frei_bytes: int
+    ampel: Ampel = "gut"
+
+
+class GeraetNetzOut(BaseModel):
+    schnittstelle: str
+    #: Zähler seit dem Start des Geräts.
+    empfangen_bytes: int
+    gesendet_bytes: int
+
+
+class GeraetSsdOut(BaseModel):
+    """SMART der Platte, auf der das System liegt. NVMe meldet alles; eine Platte am USB-Adapter
+    oft nur Temperatur und Betriebsstunden."""
+
+    geraet: str
+    modell: str | None = None
+    gesund: bool | None = None
+    temperatur_c: float | None = None
+    betriebsstunden: int | None = None
+    #: Verbrauchte Lebensdauer laut Hersteller, 0 bis 100 (darüber: über die zugesagte hinaus).
+    abnutzung_prozent: float | None = None
+    reserve_prozent: float | None = None
+    geschrieben_bytes: int | None = None
+    gelesen_bytes: int | None = None
+    fehler: int | None = None
+    unsichere_abschaltungen: int | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetDockerPlatzOut(BaseModel):
+    images_bytes: int | None = None
+    container_bytes: int | None = None
+    #: Darin liegt auch die Datenbank.
+    volumes_bytes: int | None = None
+    cache_bytes: int | None = None
+
+
+class GeraetRechnerOut(BaseModel):
+    """Der Rechner selbst: Raspberry Pi oder was sonst darunter läuft."""
+
+    name: str = ""
+    modell: str | None = None
+    system: str | None = None
+    kernel: str | None = None
+    adresse: str | None = None
+    #: Zeitzone, die das Gerät für sich führt (`timedatectl`); `None`: nicht zu erfragen.
+    #:
+    #: Gemeldet, aber nicht bewertet - und das ist kein Versehen: Keine Uhrzeit, die hier jemand
+    #: liest, hängt an dieser Zone. Der Dienst formatiert in `hems_core.domain.zeit.HAUS_ZONE`,
+    #: die Oberfläche in `Europe/Berlin` (`apps/web/src/lib/format`), die App in der Zone des
+    #: Telefons. Eine Ampel darauf wäre eine Warnung über eine Einstellung, die nichts bewirkt.
+    #: Sie steht da für den, der das Gerät aufsetzt (`deploy/haus/README.md`, Abschnitt 1), und
+    #: für die Protokolle, die `journalctl` in Ortszeit schreibt.
+    zeitzone: str | None = None
+    #: Kennt `timedated` einen eingeschalteten Zeitdienst (`NTP=`)?
+    #:
+    #: Die Ampel entscheidet `zeit_synchron`, nicht dieses Feld: `NTPSynchronized` ist die Auskunft
+    #: des Kernels und gilt für jeden Zeitdienst, `NTP=` nur für die, die `timedated` in
+    #: `/usr/lib/systemd/ntp-units.d` findet. Ob ein von Hand eingerichteter Dienst dort steht, ist
+    #: nicht nachgeprüft (auf dem Entwicklungsrechner gibt es das Verzeichnis nicht); `False` ist
+    #: darum kein Befund für sich, sondern verschärft nur eine schon nicht gestellte Uhr.
+    zeitdienst_an: bool | None = None
+    #: Führt der Kernel die Uhr als synchronisiert (`NTPSynchronized=`)? `None`: unbekannt, weil es
+    #: kein `timedatectl` gibt (Railway, Entwicklung, Container) - unbekannt ist nicht schlecht.
+    zeit_synchron: bool | None = None
+    #: Was eine nicht gestellte Uhr bedeutet. Leer, solange sie synchron oder unbekannt ist.
+    zeit_de: str = ""
+    zeit_ampel: Ampel = "aus"
+    laufzeit_s: int = 0
+    kerne: int = 1
+    last: list[float] = Field(default_factory=list)
+    temperatur_c: float | None = None
+    temperatur_ampel: Ampel = "aus"
+    #: `vcgencmd get_throttled`, roh (etwa `0x50005`); `None` ohne Raspberry Pi.
+    drosselung: str | None = None
+    #: Was die Bits bedeuten, als Sätze. Leer: nichts aufgefallen.
+    drosselung_de: list[str] = Field(default_factory=list)
+    drosselung_ampel: Ampel = "aus"
+    speicher_gesamt_mb: int = 0
+    speicher_frei_mb: int = 0
+    speicher_ampel: Ampel = "aus"
+    platten: list[GeraetPlatteOut] = Field(default_factory=list)
+    docker: str | None = None
+    #: Auslastung aller Kerne über die rund zwei Sekunden, in denen der Bericht entsteht.
+    cpu_prozent: float | None = None
+    takt_mhz: float | None = None
+    #: Spannung am Eingang (Raspberry Pi 5, `vcgencmd pmic_read_adc EXT5V_V`).
+    eingangsspannung_v: float | None = None
+    spannung_ampel: Ampel = "aus"
+    swap_gesamt_mb: int = 0
+    swap_frei_mb: int = 0
+    netz: GeraetNetzOut | None = None
+    ssd: GeraetSsdOut | None = None
+    docker_platz: GeraetDockerPlatzOut | None = None
+
+
+class GeraetSicherungOut(BaseModel):
+    letzte: str | None = None
+    letzte_am: datetime | None = None
+    letzte_bytes: int | None = None
+    anzahl: int = 0
+    #: Alle Sicherungen auf dem Gerät zusammen.
+    gesamt_bytes: int | None = None
+    #: Das rclone-Ziel für die Kopie außer Haus; `None`: keine.
+    ausser_haus: str | None = None
+    ampel: Ampel = "aus"
+    text_de: str = ""
+
+
+class GeraetAktionOut(BaseModel):
+    """Die zuletzt aus der App angefragte Aktion und wie sie ausging."""
+
+    aktion: str
+    dienst: str | None = None
+    #: laeuft, ok, fehler
+    zustand: str
+    meldung: str = ""
+    von: str | None = None
+    begonnen_am: datetime | None = None
+    beendet_am: datetime | None = None
+
+
+class ApiSelbstOut(BaseModel):
+    """Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden."""
+
+    version: str
+    commit: str
+    modus: str
+    laufzeit_s: int
+    rss_mb: float
+    datenbank_ok: bool | None = None
+    datenbank_ms: float | None = None
+    datenbank_de: str = ""
+    #: Größe der Datenbank auf der Platte; `None` ohne PostgreSQL.
+    datenbank_bytes: int | None = None
+    bridge_online: bool = False
+    verbindung_de: str = ""
+    quellen: list[SourceStatusOut] = Field(default_factory=list)
+    befunde: list[WatchFindingOut] = Field(default_factory=list)
+    sse_clients: int = 0
+    alfred_eingerichtet: bool = False
+    energy_rebuild: str = ""
+    ampel: Ampel = "gut"
+    text_de: str = ""
+
+
+class GeraetOut(BaseModel):
+    """Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion."""
+
+    #: Falsch ohne Hausgerät (Railway, Entwicklung): Dann gibt es nur `api`.
+    unterstuetzt: bool
+    bericht_am: datetime | None = None
+    #: Wahr, wenn der letzte Bericht älter als drei Minuten ist: Der Zeitgeber auf dem Gerät
+    #: läuft dann nicht, und alle Werte darunter sind von damals.
+    bericht_alt: bool = False
+    kanal: str | None = None
+    fernzugang: bool = False
+    #: Falsch, wenn Docker auf dem Gerät nicht antwortet; dann laufen keine Dienste.
+    docker_laeuft: bool | None = None
+    rechner: GeraetRechnerOut | None = None
+    dienste: list[GeraetDienstOut] = Field(default_factory=list)
+    einheiten: list[GeraetEinheitOut] = Field(default_factory=list)
+    sicherung: GeraetSicherungOut | None = None
+    letzte_aktion: GeraetAktionOut | None = None
+    #: Warum gerade keine Aktion angenommen wird (Update läuft, Anfrage offen); `None`: frei.
+    beschaeftigt: str | None = None
+    api: ApiSelbstOut
+    #: Das Gesamturteil: das schlechteste aller Einzelurteile, mit dem Grund.
+    ampel: Ampel = "gut"
+    text_de: str = ""
+
+
+class GeraetAktionIn(BaseModel):
+    aktion: Literal["neustart", "sichern", "protokoll", "geraet_neustart", "zustand"]
+    #: Für `neustart` und `protokoll`: der Dienst aus compose.yaml, für `neustart` auch `alle`.
+    dienst: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_-]{0,30}$")
+
+
+class GeraetProtokollOut(BaseModel):
+    dienst: str
+    vorhanden: bool
+    erstellt_am: datetime | None = None
+    zeilen: list[str] = Field(default_factory=list)
+
+
+class GeraetVerlaufDienstOut(BaseModel):
+    cpu_prozent: float | None = None
+    speicher_mb: float | None = None
+
+
+class GeraetVerlaufPunktOut(BaseModel):
+    """Ein Abschnitt im Verlauf: Mittel, Spitzen und Stände am Ende des Abschnitts."""
+
+    t: datetime
+    cpu_prozent: float | None = None
+    cpu_prozent_max: float | None = None
+    last1: float | None = None
+    temperatur_c: float | None = None
+    temperatur_c_max: float | None = None
+    takt_mhz: float | None = None
+    eingangsspannung_v: float | None = None
+    eingangsspannung_v_min: float | None = None
+    speicher_belegt_mb: float | None = None
+    speicher_gesamt_mb: float | None = None
+    swap_belegt_mb: float | None = None
+    platte_belegt_bytes: int | None = None
+    platte_gesamt_bytes: int | None = None
+    ssd_temperatur_c: float | None = None
+    ssd_temperatur_c_max: float | None = None
+    ssd_abnutzung_prozent: float | None = None
+    #: In diesem Abschnitt auf die SSD geschrieben.
+    ssd_geschrieben_bytes: int = 0
+    netz_empfangen_bytes_s: float = 0.0
+    netz_gesendet_bytes_s: float = 0.0
+    datenbank_bytes: int | None = None
+    sicherung_bytes: int | None = None
+    docker_bytes: int | None = None
+    #: Wurde in diesem Abschnitt gedrosselt oder war die Spannung zu niedrig?
+    drosselung_jetzt: bool = False
+    dienste: dict[str, GeraetVerlaufDienstOut] = Field(default_factory=dict)
+
+
+class GeraetPrognoseOut(BaseModel):
+    """Wachstum je Tag über die letzten 30 Tage (eine Gerade durch die Füllstände), erst ab
+    sieben Tagen Verlauf. Eine Schätzung „bei diesem Tempo“, kein Termin."""
+
+    tage_verlauf: float = 0.0
+    platte_bytes_pro_tag: int | None = None
+    platte_voll_in_tagen: int | None = None
+    datenbank_bytes_pro_tag: int | None = None
+    sicherung_bytes_pro_tag: int | None = None
+    ssd_geschrieben_bytes_pro_tag: int | None = None
+
+
+class GeraetVerlaufOut(BaseModel):
+    unterstuetzt: bool
+    spanne: Literal["tag", "woche", "monat", "jahr"] = "tag"
+    von: datetime | None = None
+    bis: datetime | None = None
+    schritt_min: int = 5
+    punkte: list[GeraetVerlaufPunktOut] = Field(default_factory=list)
+    prognose: GeraetPrognoseOut = Field(default_factory=GeraetPrognoseOut)
+
+
+# ---------------------------------------------------------------------------
+# Anmeldung mit Passkey, Sitzungen, Personen (ADR-0002)
+# ---------------------------------------------------------------------------
+
+
+class ZeremonieOut(BaseModel):
+    """Der Beginn einer WebAuthn-Zeremonie.
+
+    `optionen` ist der JSON-Text, den `navigator.credentials` erwartet - unverändert
+    weiterzugeben. `schritt` kommt mit der Antwort des Geräts zurück und bindet sie an ihre
+    Challenge.
+    """
+
+    schritt: str
+    optionen: str
+
+
+class AusweisOut(BaseModel):
+    """Wer gerade fragt. Die Oberfläche blendet danach aus, was die Rolle nicht darf - verboten
+    wird es am Dienst (`dch_api/auth/rechte.py`)."""
+
+    art: Literal["person", "geraet", "gast", "dienst"]
+    rolle: Literal["hausherr", "bewohner", "gast", "service"]
+    person_id: str = ""
+    name: str = ""
+    email: str = ""
+
+
+class AngemeldetOut(BaseModel):
+    """Das Ergebnis einer Anmeldung.
+
+    `token` ist der Ausweis im Klartext und existiert genau hier einmal. Das BFF legt ihn in ein
+    HttpOnly-Cookie und gibt ihn nie an den Browser weiter; eine App legt ihn in den
+    Schlüsselbund.
+    """
+
+    token: str
+    laeuft_ab_am: datetime
+    ausweis: AusweisOut
+    #: Nur beim ersten Passkey: die zehn Wiederherstellungscodes, einmalig im Klartext.
+    codes: list[str] = Field(default_factory=list)
+
+
+class PasskeyOut(BaseModel):
+    id: str
+    name: str
+    #: Ob der Passkey in einer Wolke gesichert ist (iCloud, Google) - dann liegt er auf mehreren
+    #: Geräten und ein verlorenes Telefon sperrt niemanden aus.
+    gesichert: bool
+    erstellt_am: datetime
+    zuletzt_benutzt_am: datetime | None = None
+
+
+class SitzungOut(BaseModel):
+    id: str
+    erstellt_am: datetime
+    laeuft_ab_am: datetime
+    zuletzt_benutzt_am: datetime | None = None
+    herkunft: str = ""
+    #: Ob das die Sitzung ist, mit der gerade gefragt wird.
+    diese: bool = False
+
+
+class PersonOut(BaseModel):
+    id: str
+    email: str
+    anzeigename: str = ""
+    rolle: Literal["hausherr", "bewohner", "gast", "service"]
+    aktiv: bool = True
+    erstellt_am: datetime
+    zuletzt_angemeldet_am: datetime | None = None
+    passkeys: int = 0
+    codes_offen: int = 0
+    einladung_offen: bool = False
+
+
+class IchOut(BaseModel):
+    """Die eigene Seite: wer ich bin, welche Passkeys und welche Sitzungen ich habe."""
+
+    ausweis: AusweisOut
+    passkeys: list[PasskeyOut] = Field(default_factory=list)
+    sitzungen: list[SitzungOut] = Field(default_factory=list)
+    codes_offen: int = 0
+
+
+class VersandOut(BaseModel):
+    """Ob eine Einladung per E-Mail hinausgehen kann - und was sonst fehlt."""
+
+    aktiv: bool = False
+    weg: Literal["smtp", "https", ""] = ""
+    fehlt: list[str] = Field(default_factory=list)
+
+
+class ZugangZustandOut(BaseModel):
+    """Was die Oberfläche über die Anmeldung wissen muss, bevor jemand angemeldet ist.
+
+    Öffentlich und mit Absicht wortkarg: `personen` ist eine Zahl, keine Liste. Dass es noch
+    niemanden gibt, muss die Anmeldeseite sagen können - wer das ist, braucht sie nicht.
+    """
+
+    anmeldung: bool = False
+    personen: int = 0
+    rp_id: str = ""
+    versand: VersandOut = Field(default_factory=VersandOut)
+
+
+class PersonAnlegenIn(BaseModel):
+    email: str
+    anzeigename: str = ""
+    rolle: Literal["hausherr", "bewohner", "gast", "service"] = "bewohner"
+    #: Ob die Einladung gleich per E-Mail hinausgehen soll. Der Link kommt in jedem Fall zurück.
+    einladen: bool = True
+
+
+class EinladenIn(BaseModel):
+    """Einen neuen Link ausstellen. Die Person steht in der Adresse, nicht hier."""
+
+    #: Ob er zusätzlich per E-Mail hinausgehen soll. Zurück kommt er in jedem Fall.
+    einladen: bool = True
+
+
+class PersonAendernIn(BaseModel):
+    rolle: Literal["hausherr", "bewohner", "gast", "service"] | None = None
+    aktiv: bool | None = None
+    anzeigename: str | None = None
+
+
+class EinladungOut(BaseModel):
+    """Der Einladungslink - einmal, im Klartext, zum Kopieren oder Verschicken."""
+
+    person: PersonOut
+    link: str
+    laeuft_ab_am: datetime
+    verschickt: bool = False
+
+
+class EinladungPersonOut(BaseModel):
+    """Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist."""
+
+    email: str
+    anzeigename: str = ""
+    rolle: Literal["hausherr", "bewohner", "gast", "service"]
+    passkeys: int = 0
+
+
+class PasskeyBeginnenIn(BaseModel):
+    #: Nur für den Weg über den Einladungslink; angemeldet bleibt es leer.
+    token: str = ""
+
+
+class PasskeyAbschliessenIn(BaseModel):
+    schritt: str
+    #: Die Antwort des Geräts, wie `@simplewebauthn/browser` sie liefert.
+    antwort: dict[str, Any]
+    name: str = ""
+    token: str = ""
+
+
+class AnmeldenIn(BaseModel):
+    schritt: str
+    antwort: dict[str, Any]
+
+
+class WiederherstellenIn(BaseModel):
+    email: str
+    code: str
+
+
+class NameIn(BaseModel):
+    name: str

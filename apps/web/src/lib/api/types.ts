@@ -21,6 +21,428 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/zustand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ist eine Anmeldung nötig?
+         * @description Was die Anmeldeseite wissen muss, bevor jemand angemeldet ist.
+         *
+         *     Wortkarg mit Absicht: `personen` ist eine Zahl, keine Liste. Dass es noch niemanden gibt, muss
+         *     die Seite sagen können („Zugang über das gepaarte Gerät einrichten"); wer das wäre, braucht
+         *     sie nicht.
+         */
+        get: operations["zustand_api_v1_auth_zustand_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/wer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wer stellt diese Anfrage?
+         * @description Die kleinste Auskunft: Art, Rolle, Name.
+         *
+         *     Die Oberfläche fragt das alle zwei Minuten, um keine toten Knöpfe zu zeigen - darum eine
+         *     eigene Antwort und nicht `/auth/ich`, das zusätzlich Passkeys und Sitzungen lädt. Sie
+         *     beantwortet beide Wege herein: eine angemeldete Person ebenso wie ein gepaartes Gerät.
+         */
+        get: operations["wer_api_v1_auth_wer_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/anmeldung/beginnen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Anmeldung mit Passkey beginnen
+         * @description Die Optionen für `navigator.credentials.get` - ohne E-Mail-Adresse.
+         *
+         *     Der Browser bietet die Passkeys für diese Domain an (auffindbarer Passkey). Erst auf Klick und
+         *     nicht beim Laden der Seite: jede Challenge ist eine Zeile in der Datenbank, und eine Seite,
+         *     die beim blossen Aufruf eine anlegt, ließe sich von jedem Bot fluten.
+         */
+        post: operations["anmeldung_beginnen_api_v1_auth_anmeldung_beginnen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/anmeldung/abschliessen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mit Passkey anmelden */
+        post: operations["anmeldung_abschliessen_api_v1_auth_anmeldung_abschliessen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/wiederherstellung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mit Wiederherstellungscode anmelden
+         * @description Der Weg, wenn alle Geräte weg sind. Der Code gilt einmal.
+         *
+         *     Danach gehört der erste Griff in das Konto: einen neuen Passkey anlegen und neue Codes holen.
+         */
+        post: operations["wiederherstellung_api_v1_auth_wiederherstellung_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/einladung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wem gehört dieser Link?
+         * @description Löst den Link nicht ein - das tut erst der fertige Passkey.
+         */
+        get: operations["einladung_api_v1_auth_einladung_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/einladung/passkey/beginnen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Passkey über den Link anlegen: beginnen */
+        post: operations["einladung_passkey_beginnen_api_v1_auth_einladung_passkey_beginnen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/einladung/passkey/abschliessen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passkey über den Link anlegen: abschließen
+         * @description Legt den Passkey an, löst den Link ein und meldet an.
+         *
+         *     **Jeder eingelöste Link bringt zehn frische Wiederherstellungscodes** und entwertet die alten.
+         *     Das ist Absicht: der Link ist nicht nur die Einladung, sondern auch der Rückweg, und wer ihn
+         *     gebraucht hat, muss davon ausgehen, dass die alten Codes nichts mehr wert sind. Sie gehen
+         *     **einmal** im Klartext hinaus, hier; danach liegen nur ihre Hashes.
+         */
+        post: operations["einladung_passkey_abschliessen_api_v1_auth_einladung_passkey_abschliessen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/ich": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wer bin ich, und welche Geräte habe ich? */
+        get: operations["ich_api_v1_auth_ich_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/abmelden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Diese Sitzung beenden
+         * @description Beendet die Sitzung, mit der gefragt wird. Das BFF löscht danach sein Cookie.
+         */
+        post: operations["abmelden_api_v1_auth_abmelden_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/sitzungen/{sitzung_id}/beenden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ein anderes Gerät abmelden */
+        post: operations["sitzung_beenden_api_v1_auth_sitzungen__sitzung_id__beenden_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/sitzungen/beenden-alle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Überall abmelden
+         * @description Der Griff für den Verdachtsfall: alle Sitzungen dieser Person enden, auch die eigene.
+         */
+        post: operations["alle_sitzungen_beenden_api_v1_auth_sitzungen_beenden_alle_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkeys/beginnen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Passkey anlegen: beginnen */
+        post: operations["passkey_beginnen_api_v1_auth_passkeys_beginnen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkeys/abschliessen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Passkey anlegen: abschließen */
+        post: operations["passkey_abschliessen_api_v1_auth_passkeys_abschliessen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkeys/{passkey_id}/name": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Passkey umbenennen */
+        post: operations["passkey_umbenennen_api_v1_auth_passkeys__passkey_id__name_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passkeys/{passkey_id}/loeschen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passkey löschen
+         * @description Der letzte Passkey bleibt: sonst käme diese Person nur noch über einen Code oder einen
+         *     Link des Hausherrn herein.
+         */
+        post: operations["passkey_loeschen_api_v1_auth_passkeys__passkey_id__loeschen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Neue Wiederherstellungscodes
+         * @description Zehn neue Codes; die alten gelten nicht mehr. Klartext nur hier, einmal.
+         */
+        post: operations["codes_api_v1_auth_codes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/personen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wer Zugang hat */
+        get: operations["personen_api_v1_auth_personen_get"];
+        put?: never;
+        /**
+         * Person anlegen und einladen
+         * @description Legt die Person an und gibt den Einladungslink zurück - immer, auch wenn die E-Mail
+         *     hinausging. Der Versand ist eine Beigabe: schlägt er fehl, ist die Person trotzdem angelegt
+         *     und der Link bleibt kopierbar (`dch_api/post.py`).
+         */
+        post: operations["person_anlegen_api_v1_auth_personen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/personen/{person_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rolle oder Zustand ändern */
+        post: operations["person_aendern_api_v1_auth_personen__person_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/personen/{person_id}/einladen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Neuen Link ausstellen
+         * @description Ein neuer Link - für „Einladung kam nicht an" und für „alle Geräte verloren".
+         *
+         *     Der alte Link wird dabei entwertet: zwei gültige Links für dieselbe Person sind einer zu viel.
+         */
+        post: operations["person_einladen_api_v1_auth_personen__person_id__einladen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/personen/{person_id}/loeschen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Person löschen
+         * @description Löscht die Person samt Passkeys, Sitzungen und offenen Links. Der letzte aktive Hausherr
+         *     bleibt - sonst sperrt sich das Haus selbst aus.
+         */
+        post: operations["person_loeschen_api_v1_auth_personen__person_id__loeschen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/alfred/status": {
         parameters: {
             query?: never;
@@ -134,6 +556,109 @@ export interface paths {
          *     Schreibt nichts; die Datei liegt in Home Assistant.
          */
         post: operations["zuordnung_vorschlagen_api_v1_alfred_zuordnung_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Steht ein Update bereit? */
+        get: operations["update_status_api_v1_system_update_get"];
+        put?: never;
+        /**
+         * Update installieren oder jetzt pruefen
+         * @description Legt die Anfrage fuer den Update-Dienst ab und kehrt sofort zurueck (202). Den Fortschritt
+         *     liest die Oberflaeche ueber GET; waehrend des Neustarts ist die API kurz nicht erreichbar.
+         */
+        post: operations["update_anfragen_api_v1_system_update_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wie es dem Hausgerät und seinen Diensten geht */
+        get: operations["geraet_api_v1_system_geraet_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet/verlauf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Der Verlauf des Hausgeräts
+         * @description CPU, Temperatur, Speicher, Platz, SSD, Netz, Datenbank und Dienste über einen Tag, eine
+         *     Woche, einen Monat oder ein Jahr, dazu eine Prognose für den Platz. Gesammelt wird nur auf
+         *     dem Hausgerät mit Datenbank (`application/geraet_verlauf.py`).
+         */
+        get: operations["verlauf_api_v1_system_geraet_verlauf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet/aktion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Einen Handgriff auf dem Gerät anfragen
+         * @description Dienst neu starten, jetzt sichern, Protokoll holen, Gerät neu starten oder den Bericht
+         *     erneuern. Kehrt sofort zurück (202); wie es ausging, steht danach in `letzte_aktion`.
+         */
+        post: operations["aktion_api_v1_system_geraet_aktion_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/geraet/protokoll/{dienst}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die zuletzt geholten Protokollzeilen eines Dienstes
+         * @description Liefert, was `aktion: protokoll` zuletzt geholt hat (300 Zeilen, Geheimnisse geschwärzt).
+         *     Frisch wird es nur über die Aktion; diese Abfrage liest bloß die Datei.
+         */
+        get: operations["protokoll_api_v1_system_geraet_protokoll__dienst__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -260,6 +785,52 @@ export interface paths {
         put?: never;
         /** Dieses Gerät anmelden */
         post: operations["subscribe_api_v1_push_subscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/apns/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dieses Gerät der App anmelden (APNs)
+         * @description Ein Gerät der iOS-App anmelden.
+         *
+         *     **Warum ein eigener Weg neben `/push/subscribe`.** Eine iOS-App kann Web Push nicht
+         *     empfangen; Apple lässt Mitteilungen nur über APNs zu. Die Adresse ist dort kein Endpunkt beim
+         *     Push-Dienst des Browsers, sondern ein Gerätetoken des Betriebssystems - und es gibt keine
+         *     beiden Schlüssel, denn APNs verschlüsselt selbst.
+         *
+         *     Gespeichert wird das Gerät trotzdem als Abonnement wie jedes andere. Was es unterscheidet,
+         *     steht in seiner Adresse (`apns://…`), und `PushService` sieht daran, welchen Weg eine
+         *     Mitteilung nimmt.
+         */
+        post: operations["apns_subscribe_api_v1_push_apns_subscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/apns/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dieses Gerät der App abmelden (APNs) */
+        post: operations["apns_unsubscribe_api_v1_push_apns_unsubscribe_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -752,6 +1323,62 @@ export interface paths {
          */
         post: operations["einstellung_bestaetigen_api_v1_waermepumpe_einstellungen__schluessel__bestaetigen_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/regelkreis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die Regelkreis-Karte
+         * @description Die ganze Kaskade: Blöcke, Signale, Störgrößen, die geltenden Parameter mit ihrer Herkunft,
+         *     der daraus entworfene Regler je Kreis mit Reserven und Frequenzkennlinie, und das Protokoll
+         *     der Übernahmen.
+         *
+         *     Gerechnet für den Augenblick: die Verstärkung der Wärmepumpe hängt von Außen- und
+         *     Vorlauftemperatur ab, und `arbeitspunkt.gemessen` sagt, ob diese Zahlen aus der Messung kamen.
+         */
+        get: operations["regelkreis_api_v1_regelkreis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/regelkreis/parameter/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Einen Parameter übersteuern
+         * @description Einen geschätzten Wert von Hand setzen.
+         *
+         *     Die Übersteuerung gewinnt gegen jede Schätzung, bis sie freigegeben wird; der Schätzer läuft
+         *     weiter und schreibt mit, was er gesagt hätte. Beschnitten wird auf die
+         *     Plausibilitätsgrenzen - wer sich vertippt, bringt die Regelung nicht zum Stehen.
+         *
+         *     Die abgeleiteten Reglerwerte ändern sich mit: das ist der Zweck, denn so lässt sich sehen, was
+         *     eine andere Streckenannahme aus dem Regler macht.
+         */
+        post: operations["uebersteuern_api_v1_regelkreis_parameter__pid__post"];
+        /**
+         * Eine Übersteuerung aufheben
+         * @description Die Übersteuerung aufheben; es gilt wieder, was gelernt wurde.
+         */
+        delete: operations["freigeben_api_v1_regelkreis_parameter__pid__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1574,6 +2201,26 @@ export interface components {
             modell?: string | null;
         };
         /**
+         * AngemeldetOut
+         * @description Das Ergebnis einer Anmeldung.
+         *
+         *     `token` ist der Ausweis im Klartext und existiert genau hier einmal. Das BFF legt ihn in ein
+         *     HttpOnly-Cookie und gibt ihn nie an den Browser weiter; eine App legt ihn in den
+         *     Schlüsselbund.
+         */
+        AngemeldetOut: {
+            /** Token */
+            token: string;
+            /**
+             * Laeuft Ab Am
+             * Format: date-time
+             */
+            laeuft_ab_am: string;
+            ausweis: components["schemas"]["AusweisOut"];
+            /** Codes */
+            codes?: string[];
+        };
+        /**
          * AnlageHeizkreisOut
          * @description Der Heizkreis: wie viele Räume gerade Wärme nehmen. Eine Leistung gibt es nicht; die
          *     Wärmebilanz kennt sie nur als Rest, und ein Rest ist keine Anzeige für den Augenblick.
@@ -1778,6 +2425,162 @@ export interface components {
             tapping: boolean | null;
             /** Tapping Since */
             tapping_since: string | null;
+        };
+        /** AnmeldenIn */
+        AnmeldenIn: {
+            /** Schritt */
+            schritt: string;
+            /** Antwort */
+            antwort: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * ApiSelbstOut
+         * @description Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden.
+         */
+        ApiSelbstOut: {
+            /** Version */
+            version: string;
+            /** Commit */
+            commit: string;
+            /** Modus */
+            modus: string;
+            /** Laufzeit S */
+            laufzeit_s: number;
+            /** Rss Mb */
+            rss_mb: number;
+            /** Datenbank Ok */
+            datenbank_ok?: boolean | null;
+            /** Datenbank Ms */
+            datenbank_ms?: number | null;
+            /**
+             * Datenbank De
+             * @default
+             */
+            datenbank_de: string;
+            /** Datenbank Bytes */
+            datenbank_bytes?: number | null;
+            /**
+             * Bridge Online
+             * @default false
+             */
+            bridge_online: boolean;
+            /**
+             * Verbindung De
+             * @default
+             */
+            verbindung_de: string;
+            /** Quellen */
+            quellen?: components["schemas"]["SourceStatusOut"][];
+            /** Befunde */
+            befunde?: components["schemas"]["WatchFindingOut"][];
+            /**
+             * Sse Clients
+             * @default 0
+             */
+            sse_clients: number;
+            /**
+             * Alfred Eingerichtet
+             * @default false
+             */
+            alfred_eingerichtet: boolean;
+            /**
+             * Energy Rebuild
+             * @default
+             */
+            energy_rebuild: string;
+            /**
+             * Ampel
+             * @default gut
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /**
+         * ApnsSubscribeIn
+         * @description Ein Gerät der iOS-App anmelden.
+         *
+         *     Derselbe Zuschnitt wie `PushSubscribeIn`, nur dass die Adresse ein Gerätetoken ist und die
+         *     beiden Schlüssel fehlen: APNs verschlüsselt selbst.
+         */
+        ApnsSubscribeIn: {
+            /** Token */
+            token: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Sandbox
+             * @default false
+             */
+            sandbox: boolean;
+        };
+        /** ApnsUnsubscribeIn */
+        ApnsUnsubscribeIn: {
+            /** Token */
+            token: string;
+        };
+        /**
+         * Arbeitspunkt
+         * @description Der Punkt, für den die Karte gerechnet wird.
+         */
+        Arbeitspunkt: {
+            /** Aussen C */
+            aussen_c: number;
+            /** Vorlauf C */
+            vorlauf_c: number;
+            /** Strompreis Eur Kwh */
+            strompreis_eur_kwh: number;
+            /**
+             * Aussen Gemessen
+             * @default false
+             */
+            aussen_gemessen: boolean;
+            /**
+             * Vorlauf Gemessen
+             * @default false
+             */
+            vorlauf_gemessen: boolean;
+        };
+        /**
+         * AusweisOut
+         * @description Wer gerade fragt. Die Oberfläche blendet danach aus, was die Rolle nicht darf - verboten
+         *     wird es am Dienst (`dch_api/auth/rechte.py`).
+         */
+        AusweisOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "person" | "geraet" | "gast" | "dienst";
+            /**
+             * Rolle
+             * @enum {string}
+             */
+            rolle: "hausherr" | "bewohner" | "gast" | "service";
+            /**
+             * Person Id
+             * @default
+             */
+            person_id: string;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Email
+             * @default
+             */
+            email: string;
         };
         /**
          * AutoProfile
@@ -2132,6 +2935,49 @@ export interface components {
              * @default 0
              */
             days: number;
+        };
+        /** BlockAnsicht */
+        BlockAnsicht: {
+            /** Id */
+            id: string;
+            /**
+             * Ebene
+             * @enum {integer}
+             */
+            ebene: 0 | 1 | 2 | 3 | 4;
+            /**
+             * Rolle
+             * @enum {string}
+             */
+            rolle: "regler" | "stellglied" | "strecke" | "beobachter" | "rechenglied" | "modell" | "logik" | "vorsteuerung" | "messglied" | "stoergroesse" | "summierstelle" | "teilkreise";
+            /** Rolle Text */
+            rolle_text: string;
+            /** Name */
+            name: string;
+            /** Kurz */
+            kurz: string;
+            /** Kreis */
+            kreis?: string | null;
+            /** Erklaerung */
+            erklaerung?: string[];
+            /** Gleichungen */
+            gleichungen?: string[];
+            /** Behandlung */
+            behandlung?: ("aufgeschaltet" | "ausgeregelt" | "beobachtet" | "geplant" | "erkannt") | null;
+            /** Behandlung Text */
+            behandlung_text?: string | null;
+            /** Quelle */
+            quelle?: string | null;
+            /** Marke */
+            marke?: string | null;
+            /** Gibt Marke */
+            gibt_marke?: string | null;
+            /** Parameter */
+            parameter?: string[];
+            /** Glied */
+            glied?: string | null;
+            /** Glied Entwurf */
+            glied_entwurf?: string | null;
         };
         /** BlockRuleConfig */
         BlockRuleConfig: {
@@ -2744,6 +3590,59 @@ export interface components {
             /** Note De */
             note_de: string;
         };
+        /**
+         * EinladenIn
+         * @description Einen neuen Link ausstellen. Die Person steht in der Adresse, nicht hier.
+         */
+        EinladenIn: {
+            /**
+             * Einladen
+             * @default true
+             */
+            einladen: boolean;
+        };
+        /**
+         * EinladungOut
+         * @description Der Einladungslink - einmal, im Klartext, zum Kopieren oder Verschicken.
+         */
+        EinladungOut: {
+            person: components["schemas"]["PersonOut"];
+            /** Link */
+            link: string;
+            /**
+             * Laeuft Ab Am
+             * Format: date-time
+             */
+            laeuft_ab_am: string;
+            /**
+             * Verschickt
+             * @default false
+             */
+            verschickt: boolean;
+        };
+        /**
+         * EinladungPersonOut
+         * @description Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist.
+         */
+        EinladungPersonOut: {
+            /** Email */
+            email: string;
+            /**
+             * Anzeigename
+             * @default
+             */
+            anzeigename: string;
+            /**
+             * Rolle
+             * @enum {string}
+             */
+            rolle: "hausherr" | "bewohner" | "gast" | "service";
+            /**
+             * Passkeys
+             * @default 0
+             */
+            passkeys: number;
+        };
         /** EnergyBucketOut */
         EnergyBucketOut: {
             /**
@@ -2805,6 +3704,11 @@ export interface components {
         };
         /** EnergySummaryOut */
         EnergySummaryOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             /**
              * Period
              * @enum {string}
@@ -3092,6 +3996,11 @@ export interface components {
         };
         /** EvReportOut */
         EvReportOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             summary: components["schemas"]["EnergySummaryOut"];
             /** Sessions */
             sessions: components["schemas"]["EvSessionOut"][];
@@ -3267,6 +4176,579 @@ export interface components {
             /** Netto Eur */
             netto_eur?: number | null;
         };
+        /** GeraetAktionIn */
+        GeraetAktionIn: {
+            /**
+             * Aktion
+             * @enum {string}
+             */
+            aktion: "neustart" | "sichern" | "protokoll" | "geraet_neustart" | "zustand";
+            /** Dienst */
+            dienst?: string | null;
+        };
+        /**
+         * GeraetAktionOut
+         * @description Die zuletzt aus der App angefragte Aktion und wie sie ausging.
+         */
+        GeraetAktionOut: {
+            /** Aktion */
+            aktion: string;
+            /** Dienst */
+            dienst?: string | null;
+            /** Zustand */
+            zustand: string;
+            /**
+             * Meldung
+             * @default
+             */
+            meldung: string;
+            /** Von */
+            von?: string | null;
+            /** Begonnen Am */
+            begonnen_am?: string | null;
+            /** Beendet Am */
+            beendet_am?: string | null;
+        };
+        /**
+         * GeraetDienstOut
+         * @description Ein Container des Geräts (postgres, api, web, caddy, cloudflared).
+         */
+        GeraetDienstOut: {
+            /** Name */
+            name: string;
+            /** Zustand */
+            zustand: string;
+            /** Gesundheit */
+            gesundheit?: string | null;
+            /** Pruefung */
+            pruefung?: string | null;
+            /** Pruefung Fehlschlaege */
+            pruefung_fehlschlaege?: number | null;
+            /** Gestartet Am */
+            gestartet_am?: string | null;
+            /**
+             * Neustarts
+             * @default 0
+             */
+            neustarts: number;
+            /** Exit Code */
+            exit_code?: number | null;
+            /** Image */
+            image?: string | null;
+            /** Revision */
+            revision?: string | null;
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Speicher Mb */
+            speicher_mb?: number | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /** GeraetDockerPlatzOut */
+        GeraetDockerPlatzOut: {
+            /** Images Bytes */
+            images_bytes?: number | null;
+            /** Container Bytes */
+            container_bytes?: number | null;
+            /** Volumes Bytes */
+            volumes_bytes?: number | null;
+            /** Cache Bytes */
+            cache_bytes?: number | null;
+        };
+        /**
+         * GeraetEinheitOut
+         * @description Ein systemd-Dienst oder -Zeitgeber des Geräts (Start, Sicherung, Updates, Bericht).
+         */
+        GeraetEinheitOut: {
+            /** Name */
+            name: string;
+            /**
+             * Beschreibung
+             * @default
+             */
+            beschreibung: string;
+            /**
+             * Aktiv
+             * @default
+             */
+            aktiv: string;
+            /**
+             * Unterzustand
+             * @default
+             */
+            unterzustand: string;
+            /**
+             * Eingeschaltet
+             * @default false
+             */
+            eingeschaltet: boolean;
+            /** Naechster Lauf */
+            naechster_lauf?: string | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /** GeraetNetzOut */
+        GeraetNetzOut: {
+            /** Schnittstelle */
+            schnittstelle: string;
+            /** Empfangen Bytes */
+            empfangen_bytes: number;
+            /** Gesendet Bytes */
+            gesendet_bytes: number;
+        };
+        /**
+         * GeraetOut
+         * @description Die Seite Hausgerät: Rechner, Dienste, Zeitgeber, Sicherung, API und die letzte Aktion.
+         */
+        GeraetOut: {
+            /** Unterstuetzt */
+            unterstuetzt: boolean;
+            /** Bericht Am */
+            bericht_am?: string | null;
+            /**
+             * Bericht Alt
+             * @default false
+             */
+            bericht_alt: boolean;
+            /** Kanal */
+            kanal?: string | null;
+            /**
+             * Fernzugang
+             * @default false
+             */
+            fernzugang: boolean;
+            /** Docker Laeuft */
+            docker_laeuft?: boolean | null;
+            rechner?: components["schemas"]["GeraetRechnerOut"] | null;
+            /** Dienste */
+            dienste?: components["schemas"]["GeraetDienstOut"][];
+            /** Einheiten */
+            einheiten?: components["schemas"]["GeraetEinheitOut"][];
+            sicherung?: components["schemas"]["GeraetSicherungOut"] | null;
+            letzte_aktion?: components["schemas"]["GeraetAktionOut"] | null;
+            /** Beschaeftigt */
+            beschaeftigt?: string | null;
+            api: components["schemas"]["ApiSelbstOut"];
+            /**
+             * Ampel
+             * @default gut
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /** GeraetPlatteOut */
+        GeraetPlatteOut: {
+            /** Ort */
+            ort: string;
+            /** Gesamt Bytes */
+            gesamt_bytes: number;
+            /** Frei Bytes */
+            frei_bytes: number;
+            /**
+             * Ampel
+             * @default gut
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+        };
+        /**
+         * GeraetPrognoseOut
+         * @description Wachstum je Tag über die letzten 30 Tage (eine Gerade durch die Füllstände), erst ab
+         *     sieben Tagen Verlauf. Eine Schätzung „bei diesem Tempo“, kein Termin.
+         */
+        GeraetPrognoseOut: {
+            /**
+             * Tage Verlauf
+             * @default 0
+             */
+            tage_verlauf: number;
+            /** Platte Bytes Pro Tag */
+            platte_bytes_pro_tag?: number | null;
+            /** Platte Voll In Tagen */
+            platte_voll_in_tagen?: number | null;
+            /** Datenbank Bytes Pro Tag */
+            datenbank_bytes_pro_tag?: number | null;
+            /** Sicherung Bytes Pro Tag */
+            sicherung_bytes_pro_tag?: number | null;
+            /** Ssd Geschrieben Bytes Pro Tag */
+            ssd_geschrieben_bytes_pro_tag?: number | null;
+        };
+        /** GeraetProtokollOut */
+        GeraetProtokollOut: {
+            /** Dienst */
+            dienst: string;
+            /** Vorhanden */
+            vorhanden: boolean;
+            /** Erstellt Am */
+            erstellt_am?: string | null;
+            /** Zeilen */
+            zeilen?: string[];
+        };
+        /**
+         * GeraetRechnerOut
+         * @description Der Rechner selbst: Raspberry Pi oder was sonst darunter läuft.
+         */
+        GeraetRechnerOut: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Modell */
+            modell?: string | null;
+            /** System */
+            system?: string | null;
+            /** Kernel */
+            kernel?: string | null;
+            /** Adresse */
+            adresse?: string | null;
+            /** Zeitzone */
+            zeitzone?: string | null;
+            /** Zeitdienst An */
+            zeitdienst_an?: boolean | null;
+            /** Zeit Synchron */
+            zeit_synchron?: boolean | null;
+            /**
+             * Zeit De
+             * @default
+             */
+            zeit_de: string;
+            /**
+             * Zeit Ampel
+             * @default aus
+             * @enum {string}
+             */
+            zeit_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Laufzeit S
+             * @default 0
+             */
+            laufzeit_s: number;
+            /**
+             * Kerne
+             * @default 1
+             */
+            kerne: number;
+            /** Last */
+            last?: number[];
+            /** Temperatur C */
+            temperatur_c?: number | null;
+            /**
+             * Temperatur Ampel
+             * @default aus
+             * @enum {string}
+             */
+            temperatur_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /** Drosselung */
+            drosselung?: string | null;
+            /** Drosselung De */
+            drosselung_de?: string[];
+            /**
+             * Drosselung Ampel
+             * @default aus
+             * @enum {string}
+             */
+            drosselung_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Speicher Gesamt Mb
+             * @default 0
+             */
+            speicher_gesamt_mb: number;
+            /**
+             * Speicher Frei Mb
+             * @default 0
+             */
+            speicher_frei_mb: number;
+            /**
+             * Speicher Ampel
+             * @default aus
+             * @enum {string}
+             */
+            speicher_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /** Platten */
+            platten?: components["schemas"]["GeraetPlatteOut"][];
+            /** Docker */
+            docker?: string | null;
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Takt Mhz */
+            takt_mhz?: number | null;
+            /** Eingangsspannung V */
+            eingangsspannung_v?: number | null;
+            /**
+             * Spannung Ampel
+             * @default aus
+             * @enum {string}
+             */
+            spannung_ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Swap Gesamt Mb
+             * @default 0
+             */
+            swap_gesamt_mb: number;
+            /**
+             * Swap Frei Mb
+             * @default 0
+             */
+            swap_frei_mb: number;
+            netz?: components["schemas"]["GeraetNetzOut"] | null;
+            ssd?: components["schemas"]["GeraetSsdOut"] | null;
+            docker_platz?: components["schemas"]["GeraetDockerPlatzOut"] | null;
+        };
+        /** GeraetSicherungOut */
+        GeraetSicherungOut: {
+            /** Letzte */
+            letzte?: string | null;
+            /** Letzte Am */
+            letzte_am?: string | null;
+            /** Letzte Bytes */
+            letzte_bytes?: number | null;
+            /**
+             * Anzahl
+             * @default 0
+             */
+            anzahl: number;
+            /** Gesamt Bytes */
+            gesamt_bytes?: number | null;
+            /** Ausser Haus */
+            ausser_haus?: string | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /**
+         * GeraetSsdOut
+         * @description SMART der Platte, auf der das System liegt. NVMe meldet alles; eine Platte am USB-Adapter
+         *     oft nur Temperatur und Betriebsstunden.
+         */
+        GeraetSsdOut: {
+            /** Geraet */
+            geraet: string;
+            /** Modell */
+            modell?: string | null;
+            /** Gesund */
+            gesund?: boolean | null;
+            /** Temperatur C */
+            temperatur_c?: number | null;
+            /** Betriebsstunden */
+            betriebsstunden?: number | null;
+            /** Abnutzung Prozent */
+            abnutzung_prozent?: number | null;
+            /** Reserve Prozent */
+            reserve_prozent?: number | null;
+            /** Geschrieben Bytes */
+            geschrieben_bytes?: number | null;
+            /** Gelesen Bytes */
+            gelesen_bytes?: number | null;
+            /** Fehler */
+            fehler?: number | null;
+            /** Unsichere Abschaltungen */
+            unsichere_abschaltungen?: number | null;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Text De
+             * @default
+             */
+            text_de: string;
+        };
+        /** GeraetVerlaufDienstOut */
+        GeraetVerlaufDienstOut: {
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Speicher Mb */
+            speicher_mb?: number | null;
+        };
+        /** GeraetVerlaufOut */
+        GeraetVerlaufOut: {
+            /** Unterstuetzt */
+            unterstuetzt: boolean;
+            /**
+             * Spanne
+             * @default tag
+             * @enum {string}
+             */
+            spanne: "tag" | "woche" | "monat" | "jahr";
+            /** Von */
+            von?: string | null;
+            /** Bis */
+            bis?: string | null;
+            /**
+             * Schritt Min
+             * @default 5
+             */
+            schritt_min: number;
+            /** Punkte */
+            punkte?: components["schemas"]["GeraetVerlaufPunktOut"][];
+            prognose?: components["schemas"]["GeraetPrognoseOut"];
+        };
+        /**
+         * GeraetVerlaufPunktOut
+         * @description Ein Abschnitt im Verlauf: Mittel, Spitzen und Stände am Ende des Abschnitts.
+         */
+        GeraetVerlaufPunktOut: {
+            /**
+             * T
+             * Format: date-time
+             */
+            t: string;
+            /** Cpu Prozent */
+            cpu_prozent?: number | null;
+            /** Cpu Prozent Max */
+            cpu_prozent_max?: number | null;
+            /** Last1 */
+            last1?: number | null;
+            /** Temperatur C */
+            temperatur_c?: number | null;
+            /** Temperatur C Max */
+            temperatur_c_max?: number | null;
+            /** Takt Mhz */
+            takt_mhz?: number | null;
+            /** Eingangsspannung V */
+            eingangsspannung_v?: number | null;
+            /** Eingangsspannung V Min */
+            eingangsspannung_v_min?: number | null;
+            /** Speicher Belegt Mb */
+            speicher_belegt_mb?: number | null;
+            /** Speicher Gesamt Mb */
+            speicher_gesamt_mb?: number | null;
+            /** Swap Belegt Mb */
+            swap_belegt_mb?: number | null;
+            /** Platte Belegt Bytes */
+            platte_belegt_bytes?: number | null;
+            /** Platte Gesamt Bytes */
+            platte_gesamt_bytes?: number | null;
+            /** Ssd Temperatur C */
+            ssd_temperatur_c?: number | null;
+            /** Ssd Temperatur C Max */
+            ssd_temperatur_c_max?: number | null;
+            /** Ssd Abnutzung Prozent */
+            ssd_abnutzung_prozent?: number | null;
+            /**
+             * Ssd Geschrieben Bytes
+             * @default 0
+             */
+            ssd_geschrieben_bytes: number;
+            /**
+             * Netz Empfangen Bytes S
+             * @default 0
+             */
+            netz_empfangen_bytes_s: number;
+            /**
+             * Netz Gesendet Bytes S
+             * @default 0
+             */
+            netz_gesendet_bytes_s: number;
+            /** Datenbank Bytes */
+            datenbank_bytes?: number | null;
+            /** Sicherung Bytes */
+            sicherung_bytes?: number | null;
+            /** Docker Bytes */
+            docker_bytes?: number | null;
+            /**
+             * Drosselung Jetzt
+             * @default false
+             */
+            drosselung_jetzt: boolean;
+            /** Dienste */
+            dienste?: {
+                [key: string]: components["schemas"]["GeraetVerlaufDienstOut"];
+            };
+        };
+        /**
+         * GliedAnsicht
+         * @description Ein Übertragungsglied mit seinem Bild: Kurzzeichen, Name, Funktion, Sprungantwort.
+         *
+         *     Der Katalog steht einmal in der Antwort und nicht an jedem Block. Die Kurven sind auf das
+         *     Einheitsquadrat normiert - Form, keine Messung.
+         */
+        GliedAnsicht: {
+            /** Id */
+            id: string;
+            /** Kurz */
+            kurz: string;
+            /** Name */
+            name: string;
+            /** G S */
+            g_s: string;
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "sprung" | "kennlinie" | "takt";
+            /**
+             * Kategorie
+             * @enum {string}
+             */
+            kategorie: "strecke" | "regler" | "messglied" | "nichtlinear" | "planung" | "beobachter";
+            /** Nichtlinear */
+            nichtlinear: boolean;
+            /** Erkennen */
+            erkennen: string;
+            /** Kurve */
+            kurve: [
+                number,
+                number
+            ][];
+            /** Kurve2 */
+            kurve2?: [
+                number,
+                number
+            ][];
+        };
+        /**
+         * GueteAnsicht
+         * @description Der Restfehler eines Teilmodells gegen die Messung.
+         */
+        GueteAnsicht: {
+            /** Modell */
+            modell: string;
+            /** Block */
+            block: string;
+            /** Einheit */
+            einheit: string;
+            /** Rmse */
+            rmse: number | null;
+            /** N */
+            n: number;
+            /** Quelle */
+            quelle: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -3277,6 +4759,11 @@ export interface components {
          * @description Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging.
          */
         HeatBalanceOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             /**
              * Period
              * @enum {string}
@@ -3759,6 +5246,11 @@ export interface components {
         };
         /** HeatReportOut */
         HeatReportOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             summary: components["schemas"]["EnergySummaryOut"];
             /** Thermal Kwh Est */
             thermal_kwh_est: number;
@@ -3958,6 +5450,7 @@ export interface components {
              *       "power_s": 180,
              *       "battery_s": 180,
              *       "temperature_s": 900,
+             *       "outdoor_temp_s": 5400,
              *       "price_s": 7200
              *     }
              */
@@ -4165,6 +5658,22 @@ export interface components {
              * @default
              */
             note_de: string;
+        };
+        /**
+         * IchOut
+         * @description Die eigene Seite: wer ich bin, welche Passkeys und welche Sitzungen ich habe.
+         */
+        IchOut: {
+            ausweis: components["schemas"]["AusweisOut"];
+            /** Passkeys */
+            passkeys?: components["schemas"]["PasskeyOut"][];
+            /** Sitzungen */
+            sitzungen?: components["schemas"]["SitzungOut"][];
+            /**
+             * Codes Offen
+             * @default 0
+             */
+            codes_offen: number;
         };
         /** ImportResult */
         ImportResult: {
@@ -4389,6 +5898,22 @@ export interface components {
                 number
             ][] | null;
         };
+        /** KanteAnsicht */
+        KanteAnsicht: {
+            /** Von */
+            von: string;
+            /** Nach */
+            nach: string;
+            /** Signal */
+            signal: string;
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "signal" | "stoergroesse" | "rueckfuehrung" | "fuehrung" | "parameter";
+            /** Vorzeichen */
+            vorzeichen?: ("+" | "-") | null;
+        };
         /**
          * KennlinieOut
          * @description Die gemessene Kennlinie der Wärmepumpe: Messpunkte, Ausgleich und die bisherige Annahme.
@@ -4426,6 +5951,15 @@ export interface components {
             bilanz?: components["schemas"]["KennlinienBilanzOut"] | null;
             /** Hinweise De */
             hinweise_de?: string[];
+        };
+        /** KennliniePunkt */
+        KennliniePunkt: {
+            /** W */
+            w: number;
+            /** Db */
+            db: number;
+            /** Grad */
+            grad: number;
         };
         /**
          * KennlinienAnnahmeOut
@@ -4637,6 +6171,58 @@ export interface components {
             days: number;
         };
         /**
+         * Kostenpunkt
+         * @description Grenzkosten der Wärme an diesem Arbeitspunkt - die Zahl, nach der zugeordnet wird.
+         */
+        Kostenpunkt: {
+            /** Cop */
+            cop: number;
+            /** Waermepumpe Ct Kwh */
+            waermepumpe_ct_kwh: number;
+            /** Ofen Ct Kwh */
+            ofen_ct_kwh: number;
+            /** Cop Umschalt */
+            cop_umschalt: number;
+            /** Umschalt Aussen C */
+            umschalt_aussen_c: number | null;
+        };
+        /**
+         * KreisAnsicht
+         * @description Ein Kreis der Kaskade mit seinem Entwurf.
+         */
+        KreisAnsicht: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Regelgroesse */
+            regelgroesse: string;
+            /** Stellgroesse */
+            stellgroesse: string;
+            /** Regler Block */
+            regler_block: string;
+            /** Messglied */
+            messglied: string | null;
+            /** Takt S */
+            takt_s: number;
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "stetig" | "zweipunkt" | "hybrid" | "planung";
+            /** Erklaerung */
+            erklaerung: string[];
+            strecke?: components["schemas"]["StreckeAnsicht"] | null;
+            regler?: components["schemas"]["ReglerAnsicht"] | null;
+            reserven?: components["schemas"]["ReservenAnsicht"] | null;
+            /** Kennlinie */
+            kennlinie?: components["schemas"]["KennliniePunkt"][];
+            /** Hysterese K */
+            hysterese_k?: number | null;
+            /** Hinweis */
+            hinweis?: string | null;
+        };
+        /**
          * Linie
          * @description Eine der Linien: ihre Summe, und je Viertelstunde, woraus sie entstand.
          */
@@ -4781,6 +6367,26 @@ export interface components {
             /** Mb */
             mb: number;
         };
+        /**
+         * Messpunkt
+         * @description Eine Schätzung zu einem Zeitpunkt, mit ihrer Unsicherheit. Eine Stützstelle des Verlaufs.
+         */
+        Messpunkt: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Wert */
+            wert: number;
+            /** Sigma */
+            sigma?: number | null;
+            /**
+             * N
+             * @default 0
+             */
+            n: number;
+        };
         /** MorgenbriefIn */
         MorgenbriefIn: {
             /** Enabled */
@@ -4914,6 +6520,11 @@ export interface components {
              */
             verschieben_de: string;
         };
+        /** NameIn */
+        NameIn: {
+            /** Name */
+            name: string;
+        };
         /** NextExpected */
         NextExpected: {
             /** Action */
@@ -4975,6 +6586,185 @@ export interface components {
          * @enum {string}
          */
         OverrideKind: "force_release" | "force_off" | "force_block";
+        /**
+         * ParameterAnsicht
+         * @description Ein Parameter, wie ihn die Oberfläche zeigt.
+         */
+        ParameterAnsicht: {
+            /** Id */
+            id: string;
+            /** Block */
+            block: string;
+            /** Symbol */
+            symbol: string;
+            /** Name */
+            name: string;
+            /** Einheit */
+            einheit: string;
+            /** Stellen */
+            stellen: number;
+            /** Wert */
+            wert: number;
+            /**
+             * Herkunft
+             * @enum {string}
+             */
+            herkunft: "gemessen" | "geschaetzt" | "annahme" | "fest" | "entwurf" | "uebersteuert";
+            /**
+             * Schaetzart
+             * @enum {string}
+             */
+            schaetzart: "ausgleich" | "fenster" | "rls" | "ereignis" | "bilanz" | "stillstand" | "ewma" | "keiner";
+            /** Schaetzart Text */
+            schaetzart_text: string;
+            /** Startwert */
+            startwert: number;
+            /** Schaetzung */
+            schaetzung?: number | null;
+            /** Sigma */
+            sigma?: number | null;
+            /**
+             * N
+             * @default 0
+             */
+            n: number;
+            /** Stand */
+            stand?: string | null;
+            /** Rmse */
+            rmse?: number | null;
+            /** Unten */
+            unten: number;
+            /** Oben */
+            oben: number;
+            /** Warum */
+            warum: string;
+            /** Quelle */
+            quelle?: string | null;
+            /** Wirkt Auf */
+            wirkt_auf?: string[];
+            /** Protokoll */
+            protokoll?: components["schemas"]["Uebernahme"][];
+            /** Verlauf */
+            verlauf?: components["schemas"]["Messpunkt"][];
+            pruefung?: components["schemas"]["Pruefung"] | null;
+        };
+        /** PasskeyAbschliessenIn */
+        PasskeyAbschliessenIn: {
+            /** Schritt */
+            schritt: string;
+            /** Antwort */
+            antwort: {
+                [key: string]: unknown;
+            };
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Token
+             * @default
+             */
+            token: string;
+        };
+        /** PasskeyBeginnenIn */
+        PasskeyBeginnenIn: {
+            /**
+             * Token
+             * @default
+             */
+            token: string;
+        };
+        /** PasskeyOut */
+        PasskeyOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Gesichert */
+            gesichert: boolean;
+            /**
+             * Erstellt Am
+             * Format: date-time
+             */
+            erstellt_am: string;
+            /** Zuletzt Benutzt Am */
+            zuletzt_benutzt_am?: string | null;
+        };
+        /** PersonAendernIn */
+        PersonAendernIn: {
+            /** Rolle */
+            rolle?: ("hausherr" | "bewohner" | "gast" | "service") | null;
+            /** Aktiv */
+            aktiv?: boolean | null;
+            /** Anzeigename */
+            anzeigename?: string | null;
+        };
+        /** PersonAnlegenIn */
+        PersonAnlegenIn: {
+            /** Email */
+            email: string;
+            /**
+             * Anzeigename
+             * @default
+             */
+            anzeigename: string;
+            /**
+             * Rolle
+             * @default bewohner
+             * @enum {string}
+             */
+            rolle: "hausherr" | "bewohner" | "gast" | "service";
+            /**
+             * Einladen
+             * @default true
+             */
+            einladen: boolean;
+        };
+        /** PersonOut */
+        PersonOut: {
+            /** Id */
+            id: string;
+            /** Email */
+            email: string;
+            /**
+             * Anzeigename
+             * @default
+             */
+            anzeigename: string;
+            /**
+             * Rolle
+             * @enum {string}
+             */
+            rolle: "hausherr" | "bewohner" | "gast" | "service";
+            /**
+             * Aktiv
+             * @default true
+             */
+            aktiv: boolean;
+            /**
+             * Erstellt Am
+             * Format: date-time
+             */
+            erstellt_am: string;
+            /** Zuletzt Angemeldet Am */
+            zuletzt_angemeldet_am?: string | null;
+            /**
+             * Passkeys
+             * @default 0
+             */
+            passkeys: number;
+            /**
+             * Codes Offen
+             * @default 0
+             */
+            codes_offen: number;
+            /**
+             * Einladung Offen
+             * @default false
+             */
+            einladung_offen: boolean;
+        };
         /**
          * Place
          * @description Eine Ortsmarke draussen: Garten, Innenhof, Strasse.
@@ -5166,6 +6956,21 @@ export interface components {
             label_de: string;
         };
         /**
+         * Pruefung
+         * @description Das Ergebnis der Übernahmeprüfung, mit Satz für die Oberfläche.
+         */
+        Pruefung: {
+            /** Uebernehmen */
+            uebernehmen: boolean;
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "uebernommen" | "zu_wenig_daten" | "innerhalb_unsicherheit" | "zu_frueh" | "grenzen" | "nicht_besser";
+            /** Grund */
+            grund: string;
+        };
+        /**
          * PushGeraetOut
          * @description Ein angemeldetes Gerät, soweit der Dienst es kennt: ein Wort und der Stand der Zustellung.
          */
@@ -5322,6 +7127,11 @@ export interface components {
          */
         PvTaxReportOut: {
             /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
              * Period
              * @enum {string}
              */
@@ -5456,6 +7266,58 @@ export interface components {
             zeilen_gesendet: number;
         };
         /**
+         * RegelkreisOut
+         * @description Die Regelkreis-Karte: Struktur, geltende Parameter, Entwurf und Lernzustand.
+         *
+         *     Alles, was die Karte zeigt, steht hier: je Block seine Erklärung, seine Gleichungen und seine
+         *     Parameter, je Kreis die Strecke, der daraus entworfene Regler, seine Reserven und die
+         *     Frequenzkennlinie, je Parameter die Herkunft - gemessen, geschätzt, angenommen, fest,
+         *     übersteuert -, die Unsicherheit und das Übernahmeprotokoll.
+         *
+         *     Koordinaten stehen nicht darin. Wo ein Kästchen liegt, ist eine Frage der Zeichnung; was
+         *     verbunden ist, eine Aussage über das Haus.
+         */
+        RegelkreisOut: {
+            /**
+             * Stand
+             * Format: date-time
+             */
+            stand: string;
+            /** Seit */
+            seit?: string | null;
+            /** Tage */
+            tage?: number | null;
+            arbeitspunkt: components["schemas"]["Arbeitspunkt"];
+            kosten: components["schemas"]["Kostenpunkt"];
+            /** Bloecke */
+            bloecke: components["schemas"]["BlockAnsicht"][];
+            /** Glieder */
+            glieder: components["schemas"]["GliedAnsicht"][];
+            /** Kanten */
+            kanten: components["schemas"]["KanteAnsicht"][];
+            /** Kreise */
+            kreise: components["schemas"]["KreisAnsicht"][];
+            /** Parameter */
+            parameter: components["schemas"]["ParameterAnsicht"][];
+            /** Guete */
+            guete: components["schemas"]["GueteAnsicht"][];
+            /** Uebersteuert */
+            uebersteuert?: string[];
+            /**
+             * Uebernahmen
+             * @default 0
+             */
+            uebernahmen: number;
+        };
+        /**
+         * RegelkreisStellenIn
+         * @description Ein Parameter von Hand. Beschnitten wird auf die Plausibilitätsgrenzen des Registers.
+         */
+        RegelkreisStellenIn: {
+            /** Wert */
+            wert: number;
+        };
+        /**
          * ReglerAenderungOut
          * @description Eine Zeile des Protokolls: wer wann was gestellt hat.
          */
@@ -5475,6 +7337,17 @@ export interface components {
             auf_de: string;
             /** Urheber De */
             urheber_de?: string | null;
+        };
+        /** ReglerAnsicht */
+        ReglerAnsicht: {
+            /** Kp */
+            kp: number;
+            /** Tn */
+            tn: number;
+            /** Lam */
+            lam: number;
+            /** Regel */
+            regel: string;
         };
         /** ReglerBestaetigenIn */
         ReglerBestaetigenIn: {
@@ -5671,6 +7544,19 @@ export interface components {
             /** Laeufe */
             laeufe: number;
         };
+        /** ReservenAnsicht */
+        ReservenAnsicht: {
+            /** Durchtritt */
+            durchtritt: number | null;
+            /** Periode Min */
+            periode_min: number | null;
+            /** Phasenreserve Grad */
+            phasenreserve_grad: number | null;
+            /** Amplitudenreserve */
+            amplitudenreserve: number | null;
+            /** Gut */
+            gut: boolean;
+        };
         /**
          * Room
          * @description Ein Raum als Rechteck. `room_id` ist die Kennung der Einzelraumregelung; ohne sie zeigt die
@@ -5767,6 +7653,8 @@ export interface components {
             cop: number;
             /** Outdoor C */
             outdoor_c: number;
+            /** Aussen Gemessen */
+            aussen_gemessen: boolean;
             /** Price Ct Kwh */
             price_ct_kwh: number | null;
             /** Cheap Ct Kwh */
@@ -6078,6 +7966,11 @@ export interface components {
              */
             temperature_s: number;
             /**
+             * Outdoor Temp S
+             * @default 5400
+             */
+            outdoor_temp_s: number;
+            /**
              * Price S
              * @default 7200
              */
@@ -6115,6 +8008,11 @@ export interface components {
          *     weiß.
          */
         ShiftReportOut: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
             /**
              * Period
              * @enum {string}
@@ -6157,6 +8055,33 @@ export interface components {
             method_de: string;
             /** Assumptions De */
             assumptions_de?: string[];
+        };
+        /** SitzungOut */
+        SitzungOut: {
+            /** Id */
+            id: string;
+            /**
+             * Erstellt Am
+             * Format: date-time
+             */
+            erstellt_am: string;
+            /**
+             * Laeuft Ab Am
+             * Format: date-time
+             */
+            laeuft_ab_am: string;
+            /** Zuletzt Benutzt Am */
+            zuletzt_benutzt_am?: string | null;
+            /**
+             * Herkunft
+             * @default
+             */
+            herkunft: string;
+            /**
+             * Diese
+             * @default false
+             */
+            diese: boolean;
         };
         /** SourceOut */
         SourceOut: {
@@ -6500,6 +8425,37 @@ export interface components {
              */
             fuel_note_de: string;
         };
+        /**
+         * StreckeAnsicht
+         * @description Das Streckenmodell eines Kreises, in Zahlen.
+         */
+        StreckeAnsicht: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "foptd" | "iptd";
+            /** K */
+            k: number;
+            /**
+             * T1
+             * @default 0
+             */
+            t1: number;
+            /**
+             * T2
+             * @default 0
+             */
+            t2: number;
+            /** Totzeit */
+            totzeit: number;
+            /** T1 Entwurf */
+            t1_entwurf: number;
+            /** Totzeit Entwurf */
+            totzeit_entwurf: number;
+            /** Halbregel */
+            halbregel: boolean;
+        };
         /** SystemEventOut */
         SystemEventOut: {
             /**
@@ -6689,6 +8645,99 @@ export interface components {
             /** Schon Bekannt */
             schon_bekannt: boolean;
         };
+        /**
+         * Uebernahme
+         * @description Ein Eintrag im Änderungsprotokoll. Was sich geändert hat, und warum.
+         */
+        Uebernahme: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Alt */
+            alt: number;
+            /** Neu */
+            neu: number;
+            /** Sigma */
+            sigma: number;
+            /** N */
+            n: number;
+            /** Rmse Alt */
+            rmse_alt?: number | null;
+            /** Rmse Neu */
+            rmse_neu?: number | null;
+            /** Grund */
+            grund: string;
+        };
+        /** UpdateAnfrageIn */
+        UpdateAnfrageIn: {
+            /**
+             * Aktion
+             * @enum {string}
+             */
+            aktion: "installieren" | "pruefen";
+        };
+        /** UpdateErgebnisOut */
+        UpdateErgebnisOut: {
+            /** Am */
+            am?: string | null;
+            /** Ergebnis */
+            ergebnis?: string | null;
+            /** Von */
+            von?: string | null;
+            /** Nach */
+            nach?: string | null;
+        };
+        /** UpdateNeuerungOut */
+        UpdateNeuerungOut: {
+            /** Sha */
+            sha: string;
+            /** Titel */
+            titel: string;
+        };
+        /**
+         * UpdateStatusOut
+         * @description Was der Update-Dienst des Geräts zuletzt festgestellt hat. `unterstuetzt` ist falsch ohne
+         *     Hausgerät (Railway, Entwicklung); dann bietet die Oberfläche nichts an.
+         */
+        UpdateStatusOut: {
+            /**
+             * Unterstuetzt
+             * @default false
+             */
+            unterstuetzt: boolean;
+            /** Kanal */
+            kanal?: string | null;
+            /** Aktuell */
+            aktuell?: string | null;
+            /** Verfuegbar */
+            verfuegbar?: string | null;
+            /**
+             * Update Verfuegbar
+             * @default false
+             */
+            update_verfuegbar: boolean;
+            /** Neuerungen */
+            neuerungen?: components["schemas"]["UpdateNeuerungOut"][];
+            /** Geprueft Am */
+            geprueft_am?: string | null;
+            /**
+             * Zustand
+             * @default bereit
+             */
+            zustand: string;
+            /** Schritt */
+            schritt?: string | null;
+            /** Meldung */
+            meldung?: string | null;
+            zuletzt?: components["schemas"]["UpdateErgebnisOut"] | null;
+            /**
+             * Anfrage Offen
+             * @default false
+             */
+            anfrage_offen: boolean;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -6767,6 +8816,25 @@ export interface components {
             quote_hi?: number | null;
             /** Angelaufen Bis */
             angelaufen_bis?: number[];
+        };
+        /**
+         * VersandOut
+         * @description Ob eine Einladung per E-Mail hinausgehen kann - und was sonst fehlt.
+         */
+        VersandOut: {
+            /**
+             * Aktiv
+             * @default false
+             */
+            aktiv: boolean;
+            /**
+             * Weg
+             * @default
+             * @enum {string}
+             */
+            weg: "smtp" | "https" | "";
+            /** Fehlt */
+            fehlt?: string[];
         };
         /**
          * VorlaufOut
@@ -6908,6 +8976,13 @@ export interface components {
             /** P95 */
             p95: number;
         };
+        /** WiederherstellenIn */
+        WiederherstellenIn: {
+            /** Email */
+            email: string;
+            /** Code */
+            code: string;
+        };
         /**
          * YearMapOut
          * @description Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.
@@ -6929,6 +9004,45 @@ export interface components {
             hours_with_data: number;
             /** Data Since */
             data_since: string | null;
+        };
+        /**
+         * ZeremonieOut
+         * @description Der Beginn einer WebAuthn-Zeremonie.
+         *
+         *     `optionen` ist der JSON-Text, den `navigator.credentials` erwartet - unverändert
+         *     weiterzugeben. `schritt` kommt mit der Antwort des Geräts zurück und bindet sie an ihre
+         *     Challenge.
+         */
+        ZeremonieOut: {
+            /** Schritt */
+            schritt: string;
+            /** Optionen */
+            optionen: string;
+        };
+        /**
+         * ZugangZustandOut
+         * @description Was die Oberfläche über die Anmeldung wissen muss, bevor jemand angemeldet ist.
+         *
+         *     Öffentlich und mit Absicht wortkarg: `personen` ist eine Zahl, keine Liste. Dass es noch
+         *     niemanden gibt, muss die Anmeldeseite sagen können - wer das ist, braucht sie nicht.
+         */
+        ZugangZustandOut: {
+            /**
+             * Anmeldung
+             * @default false
+             */
+            anmeldung: boolean;
+            /**
+             * Personen
+             * @default 0
+             */
+            personen: number;
+            /**
+             * Rp Id
+             * @default
+             */
+            rp_id: string;
+            versand?: components["schemas"]["VersandOut"];
         };
         /** Zuordnungsergebnis */
         Zuordnungsergebnis: {
@@ -6983,6 +9097,627 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    zustand_api_v1_auth_zustand_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZugangZustandOut"];
+                };
+            };
+        };
+    };
+    wer_api_v1_auth_wer_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AusweisOut"];
+                };
+            };
+        };
+    };
+    anmeldung_beginnen_api_v1_auth_anmeldung_beginnen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZeremonieOut"];
+                };
+            };
+        };
+    };
+    anmeldung_abschliessen_api_v1_auth_anmeldung_abschliessen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnmeldenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AngemeldetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wiederherstellung_api_v1_auth_wiederherstellung_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WiederherstellenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AngemeldetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einladung_api_v1_auth_einladung_get: {
+        parameters: {
+            query?: {
+                token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EinladungPersonOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einladung_passkey_beginnen_api_v1_auth_einladung_passkey_beginnen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyBeginnenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZeremonieOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einladung_passkey_abschliessen_api_v1_auth_einladung_passkey_abschliessen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyAbschliessenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AngemeldetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ich_api_v1_auth_ich_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IchOut"];
+                };
+            };
+        };
+    };
+    abmelden_api_v1_auth_abmelden_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    sitzung_beenden_api_v1_auth_sitzungen__sitzung_id__beenden_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sitzung_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alle_sitzungen_beenden_api_v1_auth_sitzungen_beenden_alle_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+    };
+    passkey_beginnen_api_v1_auth_passkeys_beginnen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZeremonieOut"];
+                };
+            };
+        };
+    };
+    passkey_abschliessen_api_v1_auth_passkeys_abschliessen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyAbschliessenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    passkey_umbenennen_api_v1_auth_passkeys__passkey_id__name_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passkey_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NameIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    passkey_loeschen_api_v1_auth_passkeys__passkey_id__loeschen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passkey_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    codes_api_v1_auth_codes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    personen_api_v1_auth_personen_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonOut"][];
+                };
+            };
+        };
+    };
+    person_anlegen_api_v1_auth_personen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonAnlegenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EinladungOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    person_aendern_api_v1_auth_personen__person_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonAendernIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    person_einladen_api_v1_auth_personen__person_id__einladen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EinladenIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EinladungOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    person_loeschen_api_v1_auth_personen__person_id__loeschen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                person_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7124,6 +9859,174 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Zuordnungsergebnis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_status_api_v1_system_update_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStatusOut"];
+                };
+            };
+        };
+    };
+    update_anfragen_api_v1_system_update_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAnfrageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    geraet_api_v1_system_geraet_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetOut"];
+                };
+            };
+        };
+    };
+    verlauf_api_v1_system_geraet_verlauf_get: {
+        parameters: {
+            query?: {
+                spanne?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetVerlaufOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    aktion_api_v1_system_geraet_aktion_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GeraetAktionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetAktionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    protokoll_api_v1_system_geraet_protokoll__dienst__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dienst: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeraetProtokollOut"];
                 };
             };
             /** @description Validation Error */
@@ -7291,6 +10194,72 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PushSubscribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apns_subscribe_api_v1_push_apns_subscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApnsSubscribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushResultOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apns_unsubscribe_api_v1_push_apns_unsubscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApnsUnsubscribeIn"];
             };
         };
         responses: {
@@ -7971,6 +10940,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReglerStellenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regelkreis_api_v1_regelkreis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegelkreisOut"];
+                };
+            };
+        };
+    };
+    uebersteuern_api_v1_regelkreis_parameter__pid__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kennung des Parameters, etwa `wp_totzeit` */
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegelkreisStellenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegelkreisOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freigeben_api_v1_regelkreis_parameter__pid__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kennung des Parameters */
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegelkreisOut"];
                 };
             };
             /** @description Validation Error */

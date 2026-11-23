@@ -1,0 +1,9 @@
+# Naechtliche Sicherung der Datenbank (dch sichern).
+[Unit]
+Description=Duck Curve Home - Sicherung der Datenbank
+Requires=duckcurve.service
+After=duckcurve.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/dch sichern

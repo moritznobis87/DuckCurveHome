@@ -122,12 +122,17 @@ export const AREAS: Area[] = [
         ],
       },
       { href: "/waerme/wirkung", label: "Wirkung" },
+      // Die Regelung selbst, als Blockschaltbild: fünf Kaskadenebenen, ihre Störgrößen und der
+      // Lernstand jedes Parameters. Steht hinter der Wirkung, weil sie deren Zahlen verwendet.
+      { href: "/waerme/regelkreis", label: "Regelkreis", ownerOnly: true },
       { href: "/waerme/raeume", label: "Heizkreise", dated: true },
       { href: "/system", label: "Prognose", ownerOnly: true },
       { href: "/system/daten", label: "Daten prüfen", dated: true, ownerOnly: true },
       { href: "/waerme/annahmen", label: "Annahmen", ownerOnly: true },
       { href: "/system/mitteilungen", label: "Mitteilungen", ownerOnly: true },
       { href: "/system/haustuer", label: "Haustür", ownerOnly: true },
+      // Der Rechner im Haus selbst: Dienste, Gesundheit, Neustarts, Protokolle, Updates.
+      { href: "/system/geraet", label: "Hausgerät", ownerOnly: true },
       { href: "/system/zugang", label: "Zugang und Sicherung", ownerOnly: true },
     ],
   },
