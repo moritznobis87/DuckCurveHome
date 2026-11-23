@@ -4425,6 +4425,23 @@ export interface components {
             kernel?: string | null;
             /** Adresse */
             adresse?: string | null;
+            /** Zeitzone */
+            zeitzone?: string | null;
+            /** Zeitdienst An */
+            zeitdienst_an?: boolean | null;
+            /** Zeit Synchron */
+            zeit_synchron?: boolean | null;
+            /**
+             * Zeit De
+             * @default
+             */
+            zeit_de: string;
+            /**
+             * Zeit Ampel
+             * @default aus
+             * @enum {string}
+             */
+            zeit_ampel: "gut" | "warn" | "schlecht" | "aus";
             /**
              * Laufzeit S
              * @default 0
@@ -5433,6 +5450,7 @@ export interface components {
              *       "power_s": 180,
              *       "battery_s": 180,
              *       "temperature_s": 900,
+             *       "outdoor_temp_s": 5400,
              *       "price_s": 7200
              *     }
              */
@@ -7635,6 +7653,8 @@ export interface components {
             cop: number;
             /** Outdoor C */
             outdoor_c: number;
+            /** Aussen Gemessen */
+            aussen_gemessen: boolean;
             /** Price Ct Kwh */
             price_ct_kwh: number | null;
             /** Cheap Ct Kwh */
@@ -7945,6 +7965,11 @@ export interface components {
              * @default 900
              */
             temperature_s: number;
+            /**
+             * Outdoor Temp S
+             * @default 5400
+             */
+            outdoor_temp_s: number;
             /**
              * Price S
              * @default 7200

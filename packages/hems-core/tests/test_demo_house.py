@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from hems_core.balance import balance
 from hems_core.domain import BalanceConfig, Quality
-from hems_core.simulation import DemoConfig, new_demo_house
+from hems_core.simulation import BERLIN, DemoConfig, new_demo_house
 
 
 def run_day(seed: int = 7):
@@ -21,7 +21,9 @@ def test_pv_has_day_night_cycle_and_respects_inverter_limit() -> None:
     pv = [s.pv_power_kw.value or 0 for s in snaps]
     assert max(pv) > 2.0
     night = [
-        v for s, v in zip(snaps, pv, strict=True) if s.timestamp.astimezone().hour in (1, 2, 3)
+        v
+        for s, v in zip(snaps, pv, strict=True)
+        if s.timestamp.astimezone(BERLIN).hour in (1, 2, 3)
     ]
     assert all(v == 0 for v in night)
     assert max(pv) <= 8.25 + 1e-6

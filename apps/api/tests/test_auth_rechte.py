@@ -134,11 +134,22 @@ def test_passkey_einstellung_wird_geprueft() -> None:
     gut = Settings(passkey_rp_id="duckcurve.de", passkey_herkuenfte=["https://home.duckcurve.de"])
     assert gut.passkey_problem() is None
     # localhost gilt dem Browser als sicherer Kontext, auch ohne https.
-    assert Settings(passkey_rp_id="localhost", passkey_herkuenfte=["http://localhost:3000"]).passkey_problem() is None
+    assert (
+        Settings(
+            passkey_rp_id="localhost", passkey_herkuenfte=["http://localhost:3000"]
+        ).passkey_problem()
+        is None
+    )
     # Eine Herkunft, die nicht zur RP-ID passt, laesst jede Zeremonie scheitern.
     assert "passt nicht" in (
-        Settings(passkey_rp_id="duckcurve.de", passkey_herkuenfte=["https://example.org"]).passkey_problem() or ""
+        Settings(
+            passkey_rp_id="duckcurve.de", passkey_herkuenfte=["https://example.org"]
+        ).passkey_problem()
+        or ""
     )
     assert "nicht https" in (
-        Settings(passkey_rp_id="duckcurve.de", passkey_herkuenfte=["http://home.duckcurve.de"]).passkey_problem() or ""
+        Settings(
+            passkey_rp_id="duckcurve.de", passkey_herkuenfte=["http://home.duckcurve.de"]
+        ).passkey_problem()
+        or ""
     )

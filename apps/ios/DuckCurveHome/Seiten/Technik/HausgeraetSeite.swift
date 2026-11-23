@@ -297,6 +297,14 @@ struct HausgeraetSeite: View {
                       r.drosselungDe.isEmpty ? "Keine Unterspannung, keine Drosselung seit dem Start."
                           : r.drosselungDe.joined(separator: " "))
             }
+            // Die Uhr nur, wenn sie bekannt ist: Ohne `timedatectl` (Railway, Entwicklung) ist
+            // `zeitSynchron` nil, und dann schweigt die Seite darüber, statt dauerhaft zu warnen.
+            // Am 22.11.2026 ging die Uhr des Geräts drei Minuten nach, und keine Seite sagte es.
+            if let synchron = r.zeitSynchron {
+                zeile(Hausgeraet.Ampel(r.zeitAmpel?.rawValue), "Uhr",
+                      synchron ? "Wird laufend gegen einen Zeitserver gestellt." : r.zeitDe,
+                      rechts: r.zeitzone)
+            }
             if let gesamt = r.speicherGesamtMb, gesamt > 0 {
                 let belegt = Double(gesamt - (r.speicherFreiMb ?? 0)) / 1024
                 zeile(Hausgeraet.Ampel(r.speicherAmpel?.rawValue), "Arbeitsspeicher",

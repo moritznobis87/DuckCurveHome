@@ -178,7 +178,7 @@ class LiveState:
             heat_pump_power_kw=hp,
             ev_power_kw=ev,
             electricity_price_ct_kwh=self._m("electricity_price_ct_kwh", now, t.price_s),
-            outdoor_temp_c=self._m("outdoor_temp_c", now, 3 * 3600.0),
+            outdoor_temp_c=self._m("outdoor_temp_c", now, t.outdoor_temp_s),
             buffer_temps_c=BufferTemperatures(
                 top=self._m("buffer_temp_top_c", now, t.temperature_s),
                 mid_top=self._m("buffer_temp_mid_top_c", now, t.temperature_s),

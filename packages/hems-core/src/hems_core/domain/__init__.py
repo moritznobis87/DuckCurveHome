@@ -29,8 +29,10 @@ from hems_core.domain.measurement import Measurement
 from hems_core.domain.modes import AutoProfile, OperatingMode, Override, OverrideKind, SystemMode
 from hems_core.domain.quality import Quality
 from hems_core.domain.snapshot import BufferTemperatures, EnergySnapshot
+from hems_core.domain.zeit import HAUS_ZONE
 
 __all__ = [
+    "HAUS_ZONE",
     "AutoProfile",
     "BalanceConfig",
     "BatteryConfig",

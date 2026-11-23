@@ -17,6 +17,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from hems_core.domain.decision import ControllerState, DecisionInputs, ReasonCode
+from hems_core.domain.zeit import HAUS_ZONE
 
 
 def _minutes(seconds: float | None) -> int:
@@ -50,7 +51,11 @@ def explain(
             "Sicherheitsmodus: Duck Curve Home greift nicht ein, die Wärmepumpe regelt sich selbst."
         )
     if state is ControllerState.MANUAL:
-        ends = f" bis {override_ends.astimezone().strftime('%H:%M')}" if override_ends else ""
+        # In Ortszeit des Hauses und nicht in der des Prozesses: der Behälter läuft auf UTC, und
+        # `astimezone()` ohne Argument schrieb den Satz im Winter eine Stunde zu früh an die Wand.
+        ends = (
+            f" bis {override_ends.astimezone(HAUS_ZONE).strftime('%H:%M')}" if override_ends else ""
+        )
         if ReasonCode.MANUAL_OVERRIDE in reasons and inputs.hp_running:
             return f"Die Wärmepumpe läuft, von Hand eingeschaltet{ends}."
         return f"Von Hand eingestellt{ends}. So lange pausiert die Automatik."

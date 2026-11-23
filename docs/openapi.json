@@ -9843,6 +9843,55 @@
             ],
             "title": "Adresse"
           },
+          "zeitzone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zeitzone"
+          },
+          "zeitdienst_an": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zeitdienst An"
+          },
+          "zeit_synchron": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zeit Synchron"
+          },
+          "zeit_de": {
+            "type": "string",
+            "title": "Zeit De",
+            "default": ""
+          },
+          "zeit_ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Zeit Ampel",
+            "default": "aus"
+          },
           "laufzeit_s": {
             "type": "integer",
             "title": "Laufzeit S",
@@ -11920,6 +11969,7 @@
               "power_s": 180.0,
               "battery_s": 180.0,
               "temperature_s": 900.0,
+              "outdoor_temp_s": 5400.0,
               "price_s": 7200.0
             }
           },
@@ -17062,6 +17112,10 @@
             "type": "number",
             "title": "Outdoor C"
           },
+          "aussen_gemessen": {
+            "type": "boolean",
+            "title": "Aussen Gemessen"
+          },
           "price_ct_kwh": {
             "anyOf": [
               {
@@ -17115,6 +17169,7 @@
           "half_life_h",
           "cop",
           "outdoor_c",
+          "aussen_gemessen",
           "price_ct_kwh",
           "cheap_ct_kwh",
           "expensive_ct_kwh",
@@ -17901,6 +17956,11 @@
             "type": "number",
             "title": "Temperature S",
             "default": 900.0
+          },
+          "outdoor_temp_s": {
+            "type": "number",
+            "title": "Outdoor Temp S",
+            "default": 5400.0
           },
           "price_s": {
             "type": "number",

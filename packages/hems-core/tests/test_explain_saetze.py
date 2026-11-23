@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import time
 from datetime import UTC, datetime
 from itertools import product
 
@@ -94,3 +96,26 @@ def test_die_pause_nennt_die_restzeit_mit_einzahl_und_mehrzahl() -> None:
         min_runtime_s=1800.0,
     )
     assert "noch 1 Minute Pause" in kurz
+
+
+def test_die_uhrzeit_im_satz_steht_in_ortszeit_des_hauses(monkeypatch: pytest.MonkeyPatch) -> None:
+    """20:00 UTC am 11.11. sind im Haus 21:00 - und das darf nicht an der Umgebung hängen.
+
+    Bis zum 23.11.2026 stand hier `astimezone()` ohne Argument, also die Zeitzone des Prozesses.
+    Weder `deploy/haus/compose.yaml` noch `env.vorlage` setzen `TZ`, der API-Behälter läuft damit
+    auf UTC, und der Satz stand im Winter eine Stunde zu früh an der Wand: „von Hand eingeschaltet
+    bis 20:00", während im Haus 21:00 gemeint war. Still, weil UTC eine gültige Uhrzeit ergibt und
+    nur die falsche.
+
+    Der Test stellt die Prozesszone deshalb absichtlich auf eine dritte Zone (New York, 15:00 an
+    diesem Tag): Nur so fällt er, wenn jemand die Zone wieder der Umgebung überlässt - unter einem
+    Prozess, der ohnehin auf UTC läuft, wäre er mit 20:00 grün und würde nichts beweisen.
+    """
+    monkeypatch.setitem(os.environ, "TZ", "America/New_York")
+    time.tzset()
+    try:
+        text = satz(ControllerState.MANUAL, ReasonCode.MANUAL_OVERRIDE, laeuft=True)
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+    assert text == "Die Wärmepumpe läuft, von Hand eingeschaltet bis 21:00."

@@ -255,9 +255,7 @@ class AuthDienst:
             ergebnis = cast(
                 CursorResult[Any],
                 await s.execute(
-                    delete(m.PersonSitzung).where(
-                        m.PersonSitzung.person_id == _kennung(person_id)
-                    )
+                    delete(m.PersonSitzung).where(m.PersonSitzung.person_id == _kennung(person_id))
                 ),
             )
             await s.commit()
@@ -299,9 +297,7 @@ class AuthDienst:
     async def personen(self) -> list[PersonAngaben]:
         async with self.maker() as s:
             zeilen = (
-                (await s.execute(select(m.Person).order_by(m.Person.erstellt_am)))
-                .scalars()
-                .all()
+                (await s.execute(select(m.Person).order_by(m.Person.erstellt_am))).scalars().all()
             )
             return [await self._angaben(s, p) for p in zeilen]
 

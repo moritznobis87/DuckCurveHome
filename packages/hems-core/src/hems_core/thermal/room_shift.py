@@ -100,6 +100,7 @@ def effect(
     expensive_ct_kwh: float | None = None,
     shift_hours: float = 6.0,
     tau_h: float = TAU_RAUM_H,
+    outdoor_measured: bool = True,
 ) -> ShiftEffect:
     """Die ganze Rechnung für einen Raum.
 
@@ -111,6 +112,12 @@ def effect(
     **Der Verlust während der Haltezeit wird abgezogen.** Wer sechs Stunden vor dem Preishoch lädt,
     hat bis dahin einen Teil davon an die Umgebung verloren; bei 25 Stunden Zeitkonstante sind das
     rund ein Fünftel. Eine Ersparnis ohne diesen Abzug wäre zu schön.
+
+    **`outdoor_measured` gehört zur Herkunft und nicht zur Rechnung.** `outdoor_c` bestimmt über
+    die Arbeitszahl jede Stromzahl dieser Antwort: zwischen 7 °C (Arbeitszahl 3,5) und -7 °C
+    (2,4) liegt Faktor 1,46. Wer die Zahl mit einem gesetzten Wert rechnet, muss das im Satz
+    sagen, sonst hält der Leser eine Annahme für eine Messung. Gerechnet wird in beiden Fällen
+    gleich - der Aufrufer entscheidet, womit, und bekennt sich hier dazu.
     """
     anteil = share_of_house(circuits, total_circuits)
     cop = cop_at(outdoor_c, cfg)
@@ -138,13 +145,21 @@ def effect(
     def de(x: float, stellen: int = 1) -> str:
         return f"{x:.{stellen}f}".replace(".", ",")
 
+    aussen_satz = (
+        f" Die Arbeitszahl gilt für {de(outdoor_c)} °C draußen."
+        if outdoor_measured
+        else (
+            f" Die Arbeitszahl gilt für angenommene {de(outdoor_c)} °C draußen - eine aktuelle "
+            "Außentemperatur liegt nicht vor, und mit ihr würden die Stromzahlen anders ausfallen."
+        )
+    )
     note = (
         f"Geschätzt: {de(abs(delta_k))} K {richtung} in diesem Raum sind rund "
         f"{de(abs(taeglich_th))} kWh Wärme am Tag, bei Arbeitszahl {de(cop)} also "
         f"{de(abs(taeglich_el), 2)} kWh Strom. Grundlage sind der Verlustkoeffizient des Hauses "
         f"({de(cfg.heat_loss_kw_per_k, 2)} kW je Kelvin), der Anteil dieses Raums an den "
         f"Heizkreisen ({circuits} von {total_circuits}) und eine Zeitkonstante von "
-        f"{de(tau_h, 0)} Stunden."
+        f"{de(tau_h, 0)} Stunden.{aussen_satz}"
     )
     return ShiftEffect(
         delta_k=delta_k,

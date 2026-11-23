@@ -185,7 +185,9 @@ async def anmeldung_abschliessen(request: Request, daten: AnmeldenIn) -> Angemel
 
 
 @router.post(
-    "/wiederherstellung", response_model=AngemeldetOut, summary="Mit Wiederherstellungscode anmelden"
+    "/wiederherstellung",
+    response_model=AngemeldetOut,
+    summary="Mit Wiederherstellungscode anmelden",
 )
 async def wiederherstellung(request: Request, daten: WiederherstellenIn) -> AngemeldetOut:
     """Der Weg, wenn alle Geräte weg sind. Der Code gilt einmal.
@@ -312,18 +314,14 @@ async def sitzung_beenden(
 
 
 @router.post("/sitzungen/beenden-alle", summary="Überall abmelden")
-async def alle_sitzungen_beenden(
-    request: Request, ausweis: AngemeldetePerson
-) -> dict[str, int]:
+async def alle_sitzungen_beenden(request: Request, ausweis: AngemeldetePerson) -> dict[str, int]:
     """Der Griff für den Verdachtsfall: alle Sitzungen dieser Person enden, auch die eigene."""
     auth = await auth_oder_fehler(request)
     return {"beendet": await auth.alle_sitzungen_beenden(ausweis.person_id)}
 
 
 @router.post("/passkeys/beginnen", response_model=ZeremonieOut, summary="Passkey anlegen: beginnen")
-async def passkey_beginnen(
-    request: Request, ausweis: AngemeldetePerson
-) -> ZeremonieOut:
+async def passkey_beginnen(request: Request, ausweis: AngemeldetePerson) -> ZeremonieOut:
     auth = await auth_oder_fehler(request)
     zeremonie = await auth.registrierung_beginnen(person_id=ausweis.person_id)
     return ZeremonieOut(schritt=zeremonie.schritt, optionen=zeremonie.optionen)
@@ -394,17 +392,13 @@ async def codes(request: Request, ausweis: AngemeldetePerson) -> dict[str, objec
 
 
 @router.get("/personen", response_model=list[PersonOut], summary="Wer Zugang hat")
-async def personen(
-    request: Request, _: Hausherr
-) -> list[PersonOut]:
+async def personen(request: Request, _: Hausherr) -> list[PersonOut]:
     auth = await auth_oder_fehler(request)
     return [_person_out(p) for p in await auth.personen()]
 
 
 @router.post("/personen", response_model=EinladungOut, summary="Person anlegen und einladen")
-async def person_anlegen(
-    request: Request, daten: PersonAnlegenIn, _: Hausherr
-) -> EinladungOut:
+async def person_anlegen(request: Request, daten: PersonAnlegenIn, _: Hausherr) -> EinladungOut:
     """Legt die Person an und gibt den Einladungslink zurück - immer, auch wenn die E-Mail
     hinausging. Der Versand ist eine Beigabe: schlägt er fehl, ist die Person trotzdem angelegt
     und der Link bleibt kopierbar (`dch_api/post.py`)."""
@@ -486,9 +480,7 @@ async def person_einladen(
 
 
 @router.post("/personen/{person_id}/loeschen", summary="Person löschen")
-async def person_loeschen(
-    request: Request, person_id: str, _: Hausherr
-) -> dict[str, bool]:
+async def person_loeschen(request: Request, person_id: str, _: Hausherr) -> dict[str, bool]:
     """Löscht die Person samt Passkeys, Sitzungen und offenen Links. Der letzte aktive Hausherr
     bleibt - sonst sperrt sich das Haus selbst aus."""
     auth = await auth_oder_fehler(request)

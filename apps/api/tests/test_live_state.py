@@ -177,6 +177,32 @@ def test_die_pufferfuehler_haben_nur_eine_altersgrenze() -> None:
         assert s["stale_after_s"] == frist, s["key"]
 
 
+def test_die_aussentemperatur_hat_nur_eine_altersgrenze() -> None:
+    """Eine Grenze, zwei Wege: über den eBUS der Wärmepumpe und über die Wetterstation.
+
+    Bis zum 23.11.2026 standen hier zwei Zahlen an vier Stellen: drei Stunden in der Aufnahme,
+    eine Stunde in der Zuordnung und in Alfreds Vorlage. Weil die Bridge die Zuordnung liest,
+    bevor der Dienst den Wert sieht, galt über Home Assistant eine Stunde und über den Bus drei -
+    dieselbe Größe mit zwei Altern, je nach Weg. Warum es jetzt 5400 s sind, steht an
+    `SensorTimeouts.outdoor_temp_s`.
+    """
+    frist = HemsConfig().timeouts.outdoor_temp_s
+
+    # Die Aufnahme altert mit genau dieser Frist, nicht mit einer eigenen Zahl.
+    ls = LiveState(HemsConfig())
+    ls.apply([reading("outdoor_temp_c", 4.6)])
+    gerade_noch = ls.snapshot(NOW + timedelta(seconds=frist))
+    assert gerade_noch.outdoor_temp_c.quality is Quality.OK
+    zu_alt = ls.snapshot(NOW + timedelta(seconds=frist + 1))
+    assert zu_alt.outdoor_temp_c.quality is Quality.STALE
+
+    # Und die Zuordnung des Hauses nennt dieselbe Zahl.
+    wurzel = Path(__file__).resolve().parents[3]
+    karte = yaml.safe_load((wurzel / "config" / "entities.home.yaml").read_text(encoding="utf-8"))
+    (aussen,) = [s for s in karte["sensors"] if s["key"] == "outdoor_temp_c"]
+    assert aussen["stale_after_s"] == frist
+
+
 def test_die_stillstandsspur_zaehlt_gleiche_werte_und_bricht_bei_einer_luecke_ab() -> None:
     """Woran man einen stehenden Fühler erkennt - und woran nicht.
 

@@ -40,6 +40,8 @@ in Stufe 2 um (unten, „Was noch fehlt“).
    Betriebssystem **Raspberry Pi OS Lite (64-bit)**.
 2. In den Einstellungen des Imagers vorab setzen: Hostname `duckcurve-home`, Benutzer mit eigenem
    Passwort, **SSH mit öffentlichem Schlüssel**, WLAN (falls kein Kabel), Zeitzone Europe/Berlin.
+   Nur die Zeitzone ist hier Handarbeit; dass die Uhr auch **richtig gestellt** wird, richtet das
+   Einrichtungsskript ein (Abschnitt 3).
 3. SSD auf die IO-Platine setzen (Abstandshalter in das Loch für die Länge der SSD), einschalten.
    Startet der CM5 nicht von der SSD, zeigt die Startreihenfolge noch auf eMMC oder SD; das
    Einrichtungsskript stellt sie unten ein, für den allerersten Start hilft eine SD-Karte mit
@@ -73,10 +75,21 @@ sudo /opt/duckcurve-quelle/deploy/haus/einrichten.sh
 ```
 
 Mit angeschlossenem Display zusätzlich `--kiosk`. Weitere Schalter: `--help`. Das Skript installiert
-Docker, legt `/opt/duckcurve` mit eigenen Geheimnissen an, richtet die Systemdienste und die nächtliche
-Sicherung ein, stellt den Bootloader ein (SD-Karte vor NVMe, damit eine eingelegte Karte zur Wartung
-startet; mit Marke ohne Pi-Diagnosebildschirm) und ersetzt das Startbild. Am Ende steht, ob ein
-Neustart nötig ist.
+Docker, schaltet die Zeitsynchronisation ein, legt `/opt/duckcurve` mit eigenen Geheimnissen an,
+richtet die Systemdienste und die nächtliche Sicherung ein, stellt den Bootloader ein (SD-Karte vor
+NVMe, damit eine eingelegte Karte zur Wartung startet; mit Marke ohne Pi-Diagnosebildschirm) und
+ersetzt das Startbild. Am Ende steht, ob ein Neustart nötig ist.
+
+**Zur Uhr.** Der Pi hat keine gepufferte Echtzeituhr: Ohne Zeitdienst startet er mit einer geratenen
+Zeit und läuft weiter weg (am 22.11.2026 ging die Uhr des Geräts drei Minuten nach — die große Uhr
+auf dem Ruhebild zeigte 22:04, das iPad daneben 22:07). Daran hängt mehr als die Anzeige: Jeder
+Messwert, jeder Tagesabschluss und jeder Vergleich mit dem Börsenpreis trägt einen Zeitstempel von
+dieser Uhr. Das Skript schaltet darum `systemd-timesyncd` ein (`timedatectl set-ntp true`) und
+installiert es nach, falls es fehlt. Ein bereits laufender Zeitdienst — chrony, ntpsec — bleibt
+unangetastet: Die Pakete belegen in Debian dasselbe virtuelle Paket (`time-daemon`), ein
+Nachinstallieren würde den vorhandenen Dienst entfernen. Auf einem System ohne systemd bricht der
+Schritt nicht ab, sondern schreibt einen Hinweis. Was dabei herauskam, zeigt er zum Mitlesen
+(`Timezone`, `NTP`, `NTPSynchronized`); dieselben Felder stehen danach in der App.
 
 Es lässt sich jederzeit erneut ausführen. Die Einstellungen in `/opt/duckcurve/.env` werden dabei nie
 überschrieben.
@@ -212,7 +225,11 @@ Kommandozeile ist nichts für den Hausherrn. Darum steht alles Nötige in der Ap
   Datenquellen melden sich, was meldet der Wächter, ist Alfred eingerichtet?
 - **Gerät**: Modell, Laufzeit, Last, Temperatur, Arbeitsspeicher, freier Platz auf der SSD und,
   auf dem Raspberry Pi, ob die Spannung jemals zu niedrig war oder der Prozessor gedrosselt
-  wurde. Gerade bei PoE ist das die erste Frage, wenn etwas hakt.
+  wurde. Gerade bei PoE ist das die erste Frage, wenn etwas hakt. Dazu der **Zustand der Uhr**:
+  Zeitzone, ob ein Zeitdienst läuft und ob der Kernel die Uhr als gestellt führt. Ist sie das
+  nicht, sagt der Befund auch, was daraus folgt — die Wandanzeige zeigt dann eine falsche Zeit,
+  und jeder Zeitstempel im Haus ist verschoben. Auf Railway und in der Entwicklung gibt es kein
+  `timedatectl`; dort bleibt die Uhr *unbekannt* und warnt nicht.
 - **Sicherung**: die letzte, wie alt sie ist, wie viele es gibt, ob eine Kopie außer Haus
   eingerichtet ist.
 - **Abläufe auf dem Gerät**: die systemd-Zeitgeber und -Dienste mit ihrem nächsten Lauf.
@@ -321,3 +338,15 @@ Auf Handybreite kein Überlauf, keine Fehler in der Seite. Die iOS-Seite wurde a
 geparst und gegen das Schema geprüft; übersetzt wird sie im Lauf `ios` auf GitHub (macOS).
 Nicht getestet: Temperatur und Drosselung, weil es dort keinen Raspberry Pi gab, systemd-Timer
 und `Gerät neu starten`.
+
+Am 23.11.2026 die Uhr, ohne echte Maschine: `timedatectl`, `systemctl` und `apt-get` waren
+Attrappen in einem Linux-Container ohne systemd. Geprüft wurde damit der Schritt „Zeit synchron
+halten“ in acht Lagen (kein Zeitdienst, chrony läuft schon, `systemd-timesyncd` schon aktiv — also
+der zweite Lauf —, Installation schlägt fehl, `set-ntp` schlägt fehl, D-Bus antwortet nicht, kein
+systemd, kein `timedatectl`): In keiner bricht die Einrichtung ab, nachinstalliert wird nur ohne
+vorhandenen Zeitdienst. Ebenso `uhr()` aus `dch`: `NTP=no` bei synchroner Uhr bleibt gut, ein
+fehlendes Feld und ein nicht erreichbares `timedatectl` werden *unbekannt* und nicht *schlecht*.
+Dass `timedatectl` bei einem anderen Zeitdienst als `systemd-timesyncd` wirklich `NTP=no` meldet,
+ist **nicht** nachgeprüft — dafür fehlte die echte Maschine; der Code behandelt beide Fassungen,
+und die Ampel hängt ohnehin an `NTPSynchronized`. Nicht gesehen: die echte Ausgabe von `timedatectl` auf Raspberry Pi OS, das
+Nachinstallieren von `systemd-timesyncd` und wie schnell der Pi nach dem Einschalten synchron ist.

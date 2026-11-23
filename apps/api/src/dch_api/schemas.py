@@ -1070,6 +1070,13 @@ class RoomEffectOut(BaseModel):
     cop: float
     # Woraus gerechnet wurde, damit die Zahlen nachzuvollziehen sind.
     outdoor_c: float
+    #: War `outdoor_c` eine Messung - oder die Rücklage, weil keine vorlag?
+    #:
+    #: Die Außentemperatur bestimmt über die Arbeitszahl jede Stromzahl dieser Antwort: zwischen
+    #: 7 °C (Arbeitszahl 3,5) und -7 °C (2,4) liegt Faktor 1,46. Bis zum 23.11.2026 stand hier
+    #: stumm die Rücklage von 7,0 °C, sobald die Aufnahme keine Außentemperatur hatte, und
+    #: `outdoor_c` sah aus wie eine Messung. `note_de` sagt es jetzt auch im Satz.
+    aussen_gemessen: bool
     price_ct_kwh: float | None
     cheap_ct_kwh: float | None
     expensive_ct_kwh: float | None
@@ -2138,6 +2145,29 @@ class GeraetRechnerOut(BaseModel):
     system: str | None = None
     kernel: str | None = None
     adresse: str | None = None
+    #: Zeitzone, die das Gerät für sich führt (`timedatectl`); `None`: nicht zu erfragen.
+    #:
+    #: Gemeldet, aber nicht bewertet - und das ist kein Versehen: Keine Uhrzeit, die hier jemand
+    #: liest, hängt an dieser Zone. Der Dienst formatiert in `hems_core.domain.zeit.HAUS_ZONE`,
+    #: die Oberfläche in `Europe/Berlin` (`apps/web/src/lib/format`), die App in der Zone des
+    #: Telefons. Eine Ampel darauf wäre eine Warnung über eine Einstellung, die nichts bewirkt.
+    #: Sie steht da für den, der das Gerät aufsetzt (`deploy/haus/README.md`, Abschnitt 1), und
+    #: für die Protokolle, die `journalctl` in Ortszeit schreibt.
+    zeitzone: str | None = None
+    #: Kennt `timedated` einen eingeschalteten Zeitdienst (`NTP=`)?
+    #:
+    #: Die Ampel entscheidet `zeit_synchron`, nicht dieses Feld: `NTPSynchronized` ist die Auskunft
+    #: des Kernels und gilt für jeden Zeitdienst, `NTP=` nur für die, die `timedated` in
+    #: `/usr/lib/systemd/ntp-units.d` findet. Ob ein von Hand eingerichteter Dienst dort steht, ist
+    #: nicht nachgeprüft (auf dem Entwicklungsrechner gibt es das Verzeichnis nicht); `False` ist
+    #: darum kein Befund für sich, sondern verschärft nur eine schon nicht gestellte Uhr.
+    zeitdienst_an: bool | None = None
+    #: Führt der Kernel die Uhr als synchronisiert (`NTPSynchronized=`)? `None`: unbekannt, weil es
+    #: kein `timedatectl` gibt (Railway, Entwicklung, Container) - unbekannt ist nicht schlecht.
+    zeit_synchron: bool | None = None
+    #: Was eine nicht gestellte Uhr bedeutet. Leer, solange sie synchron oder unbekannt ist.
+    zeit_de: str = ""
+    zeit_ampel: Ampel = "aus"
     laufzeit_s: int = 0
     kerne: int = 1
     last: list[float] = Field(default_factory=list)
