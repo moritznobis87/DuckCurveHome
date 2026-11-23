@@ -1,0 +1,45 @@
+name: addons
+# Haelt die Add-on-Fassung gegen das, was in sein Abbild geht. Begruendung und Regeln stehen im
+# Docstring von tools/addon-fassung-pruefen.py; der Anlass war ein Update, das am 23.11.2026 nicht
+# auf dem Hausgeraet ankam.
+on:
+  # `push` nur auf main, und das ist eine Behebung, nicht eine Verkuerzung. Auf einem Zweig ist
+  # `github.event.before` der vorige Zweigkopf - wer main hereingemergt hat, bekommt dessen
+  # Aenderungen an apps/bridge als die eigenen vorgehalten. Gemessen am ersten Push dieses
+  # Zweiges: rot wegen `main.py` aus PR #16, einer fremden Aenderung. Auf main ist
+  # `github.event.before` dagegen genau richtig: der vorige main-Stand, und der Vergleich zeigt,
+  # was gerade gelandet ist. Fuer einen Zweig stellt der `pull_request`-Lauf unten dieselbe Frage
+  # mit der richtigen Basis, und nach CLAUDE.md geht jede Aenderung ueber einen PR.
+  push:
+    branches: [main]
+    paths: ["addons/**", "apps/bridge/**", "tools/addon-fassung-pruefen.py", "tools/tests/**",
+            ".github/workflows/addons.yml"]
+  pull_request:
+    paths: ["addons/**", "apps/bridge/**", "tools/addon-fassung-pruefen.py", "tools/tests/**",
+            ".github/workflows/addons.yml"]
+jobs:
+  fassung:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        # Die Pruefung vergleicht zwei Revisionen. Mit der flachen Voreinstellung (fetch-depth 1)
+        # gibt es die Basis nicht, und sie wuerde jeden Lauf ueberspringen statt zu wachen.
+        # fetch-depth 0 holt zugleich alle Zweige, darum ist `origin/main` unten vorhanden.
+        with: { fetch-depth: 0 }
+      - uses: astral-sh/setup-uv@v5
+        with: { version: "0.8.17", enable-cache: true }
+      - run: uv python install 3.12
+      - run: uv sync --frozen --all-packages
+      - name: Die Pruefung selbst prueft sich
+        run: uv run pytest tools/tests -q -p no:warnings
+      - name: Add-on-Fassung gegen den Zielzweig (Pull Request)
+        if: github.event_name == 'pull_request'
+        # Bei `pull_request` ist HEAD der Probe-Merge aus dem PR-Kopf und der Basis; der Vergleich
+        # gegen die Basis zeigt damit genau, was der PR aendert.
+        run: uv run python tools/addon-fassung-pruefen.py --basis "origin/${{ github.base_ref }}" --kopf HEAD
+      - name: Add-on-Fassung gegen den vorherigen main-Stand (Push auf main)
+        if: github.event_name == 'push'
+        # `github.event.before` ist der vorige main-Stand; der Vergleich zeigt genau, was dieser
+        # Merge gebracht hat. Nach einem Force-Push ist er unerreichbar, dann springt die
+        # Ersatzbasis ein und es wird gegen den Merge-Base mit main verglichen.
+        run: uv run python tools/addon-fassung-pruefen.py --basis "${{ github.event.before }}" --ersatzbasis origin/main --kopf HEAD
