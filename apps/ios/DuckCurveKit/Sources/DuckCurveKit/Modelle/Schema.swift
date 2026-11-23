@@ -432,6 +432,21 @@ public enum GeraetRechnerOutTemperaturAmpelWahl: String, Codable, Sendable, Hash
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum GeraetRechnerOutZeitAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = GeraetRechnerOutZeitAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum GeraetSicherungOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case gut = "gut"
     case warn = "warn"
@@ -4592,6 +4607,11 @@ public struct GeraetRechnerOut: Codable, Sendable, Hashable {
     public var system: String?
     public var kernel: String?
     public var adresse: String?
+    public var zeitzone: String?
+    public var zeitdienstAn: Bool?
+    public var zeitSynchron: Bool?
+    public var zeitDe: String?
+    public var zeitAmpel: GeraetRechnerOutZeitAmpelWahl?
     public var laufzeitS: Int?
     public var kerne: Int?
     public var last: [Double]
@@ -4621,6 +4641,11 @@ public struct GeraetRechnerOut: Codable, Sendable, Hashable {
         case system
         case kernel
         case adresse
+        case zeitzone
+        case zeitdienstAn = "zeitdienst_an"
+        case zeitSynchron = "zeit_synchron"
+        case zeitDe = "zeit_de"
+        case zeitAmpel = "zeit_ampel"
         case laufzeitS = "laufzeit_s"
         case kerne
         case last
@@ -4645,12 +4670,17 @@ public struct GeraetRechnerOut: Codable, Sendable, Hashable {
         case dockerPlatz = "docker_platz"
     }
 
-    public init(name: String? = nil, modell: String? = nil, system: String? = nil, kernel: String? = nil, adresse: String? = nil, laufzeitS: Int? = nil, kerne: Int? = nil, last: [Double] = [], temperaturC: Double? = nil, temperaturAmpel: GeraetRechnerOutTemperaturAmpelWahl? = nil, drosselung: String? = nil, drosselungDe: [String] = [], drosselungAmpel: GeraetRechnerOutDrosselungAmpelWahl? = nil, speicherGesamtMb: Int? = nil, speicherFreiMb: Int? = nil, speicherAmpel: GeraetRechnerOutSpeicherAmpelWahl? = nil, platten: [GeraetPlatteOut] = [], docker: String? = nil, cpuProzent: Double? = nil, taktMhz: Double? = nil, eingangsspannungV: Double? = nil, spannungAmpel: GeraetRechnerOutSpannungAmpelWahl? = nil, swapGesamtMb: Int? = nil, swapFreiMb: Int? = nil, netz: GeraetNetzOut? = nil, ssd: GeraetSsdOut? = nil, dockerPlatz: GeraetDockerPlatzOut? = nil) {
+    public init(name: String? = nil, modell: String? = nil, system: String? = nil, kernel: String? = nil, adresse: String? = nil, zeitzone: String? = nil, zeitdienstAn: Bool? = nil, zeitSynchron: Bool? = nil, zeitDe: String? = nil, zeitAmpel: GeraetRechnerOutZeitAmpelWahl? = nil, laufzeitS: Int? = nil, kerne: Int? = nil, last: [Double] = [], temperaturC: Double? = nil, temperaturAmpel: GeraetRechnerOutTemperaturAmpelWahl? = nil, drosselung: String? = nil, drosselungDe: [String] = [], drosselungAmpel: GeraetRechnerOutDrosselungAmpelWahl? = nil, speicherGesamtMb: Int? = nil, speicherFreiMb: Int? = nil, speicherAmpel: GeraetRechnerOutSpeicherAmpelWahl? = nil, platten: [GeraetPlatteOut] = [], docker: String? = nil, cpuProzent: Double? = nil, taktMhz: Double? = nil, eingangsspannungV: Double? = nil, spannungAmpel: GeraetRechnerOutSpannungAmpelWahl? = nil, swapGesamtMb: Int? = nil, swapFreiMb: Int? = nil, netz: GeraetNetzOut? = nil, ssd: GeraetSsdOut? = nil, dockerPlatz: GeraetDockerPlatzOut? = nil) {
         self.name = name
         self.modell = modell
         self.system = system
         self.kernel = kernel
         self.adresse = adresse
+        self.zeitzone = zeitzone
+        self.zeitdienstAn = zeitdienstAn
+        self.zeitSynchron = zeitSynchron
+        self.zeitDe = zeitDe
+        self.zeitAmpel = zeitAmpel
         self.laufzeitS = laufzeitS
         self.kerne = kerne
         self.last = last
@@ -4682,6 +4712,11 @@ public struct GeraetRechnerOut: Codable, Sendable, Hashable {
         self.system = try c.decodeIfPresent(String.self, forKey: .system)
         self.kernel = try c.decodeIfPresent(String.self, forKey: .kernel)
         self.adresse = try c.decodeIfPresent(String.self, forKey: .adresse)
+        self.zeitzone = try c.decodeIfPresent(String.self, forKey: .zeitzone)
+        self.zeitdienstAn = try c.decodeIfPresent(Bool.self, forKey: .zeitdienstAn)
+        self.zeitSynchron = try c.decodeIfPresent(Bool.self, forKey: .zeitSynchron)
+        self.zeitDe = try c.decodeIfPresent(String.self, forKey: .zeitDe)
+        self.zeitAmpel = try c.decodeIfPresent(GeraetRechnerOutZeitAmpelWahl.self, forKey: .zeitAmpel)
         self.laufzeitS = try c.decodeIfPresent(Int.self, forKey: .laufzeitS)
         self.kerne = try c.decodeIfPresent(Int.self, forKey: .kerne)
         self.last = try c.decodeIfPresent([Double].self, forKey: .last) ?? []
@@ -8983,6 +9018,7 @@ public struct RoomEffectOut: Codable, Sendable, Hashable {
     public var halfLifeH: Double
     public var cop: Double
     public var outdoorC: Double
+    public var aussenGemessen: Bool
     public var priceCtKwh: Double?
     public var cheapCtKwh: Double?
     public var expensiveCtKwh: Double?
@@ -9002,13 +9038,14 @@ public struct RoomEffectOut: Codable, Sendable, Hashable {
         case halfLifeH = "half_life_h"
         case cop
         case outdoorC = "outdoor_c"
+        case aussenGemessen = "aussen_gemessen"
         case priceCtKwh = "price_ct_kwh"
         case cheapCtKwh = "cheap_ct_kwh"
         case expensiveCtKwh = "expensive_ct_kwh"
         case noteDe = "note_de"
     }
 
-    public init(roomId: Int, name: String, deltaK: Double, share: Double, dailyKwhTh: Double, dailyKwhEl: Double, dailyEur: Double, storeKwhTh: Double, storeKwhEl: Double, shiftSavingEur: Double? = nil, halfLifeH: Double, cop: Double, outdoorC: Double, priceCtKwh: Double? = nil, cheapCtKwh: Double? = nil, expensiveCtKwh: Double? = nil, noteDe: String) {
+    public init(roomId: Int, name: String, deltaK: Double, share: Double, dailyKwhTh: Double, dailyKwhEl: Double, dailyEur: Double, storeKwhTh: Double, storeKwhEl: Double, shiftSavingEur: Double? = nil, halfLifeH: Double, cop: Double, outdoorC: Double, aussenGemessen: Bool, priceCtKwh: Double? = nil, cheapCtKwh: Double? = nil, expensiveCtKwh: Double? = nil, noteDe: String) {
         self.roomId = roomId
         self.name = name
         self.deltaK = deltaK
@@ -9022,6 +9059,7 @@ public struct RoomEffectOut: Codable, Sendable, Hashable {
         self.halfLifeH = halfLifeH
         self.cop = cop
         self.outdoorC = outdoorC
+        self.aussenGemessen = aussenGemessen
         self.priceCtKwh = priceCtKwh
         self.cheapCtKwh = cheapCtKwh
         self.expensiveCtKwh = expensiveCtKwh
@@ -9043,6 +9081,7 @@ public struct RoomEffectOut: Codable, Sendable, Hashable {
         self.halfLifeH = try c.decode(Double.self, forKey: .halfLifeH)
         self.cop = try c.decode(Double.self, forKey: .cop)
         self.outdoorC = try c.decode(Double.self, forKey: .outdoorC)
+        self.aussenGemessen = try c.decode(Bool.self, forKey: .aussenGemessen)
         self.priceCtKwh = try c.decodeIfPresent(Double.self, forKey: .priceCtKwh)
         self.cheapCtKwh = try c.decodeIfPresent(Double.self, forKey: .cheapCtKwh)
         self.expensiveCtKwh = try c.decodeIfPresent(Double.self, forKey: .expensiveCtKwh)
@@ -9562,19 +9601,22 @@ public struct SensorTimeouts: Codable, Sendable, Hashable {
     public var powerS: Double?
     public var batteryS: Double?
     public var temperatureS: Double?
+    public var outdoorTempS: Double?
     public var priceS: Double?
 
     public enum CodingKeys: String, CodingKey {
         case powerS = "power_s"
         case batteryS = "battery_s"
         case temperatureS = "temperature_s"
+        case outdoorTempS = "outdoor_temp_s"
         case priceS = "price_s"
     }
 
-    public init(powerS: Double? = nil, batteryS: Double? = nil, temperatureS: Double? = nil, priceS: Double? = nil) {
+    public init(powerS: Double? = nil, batteryS: Double? = nil, temperatureS: Double? = nil, outdoorTempS: Double? = nil, priceS: Double? = nil) {
         self.powerS = powerS
         self.batteryS = batteryS
         self.temperatureS = temperatureS
+        self.outdoorTempS = outdoorTempS
         self.priceS = priceS
     }
 
@@ -9583,6 +9625,7 @@ public struct SensorTimeouts: Codable, Sendable, Hashable {
         self.powerS = try c.decodeIfPresent(Double.self, forKey: .powerS)
         self.batteryS = try c.decodeIfPresent(Double.self, forKey: .batteryS)
         self.temperatureS = try c.decodeIfPresent(Double.self, forKey: .temperatureS)
+        self.outdoorTempS = try c.decodeIfPresent(Double.self, forKey: .outdoorTempS)
         self.priceS = try c.decodeIfPresent(Double.self, forKey: .priceS)
     }
 }

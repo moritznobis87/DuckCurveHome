@@ -62,6 +62,14 @@ def arbeitspunkt(
     nicht; wo sie fehlt, wird sie aus der Heizkennlinie gerechnet, und die Antwort sagt das. Eine
     Karte, die mit Annahmen gerechnet wurde und sich nicht dazu bekennt, lädt dazu ein, ihre
     Reglerwerte für gemessen zu halten.
+
+    **Zu alt ist nicht gemessen.** `aussen_gemessen` stand bis zum 23.11.2026 auf `True`, sobald
+    überhaupt eine Zahl dastand - und `Measurement.value` gibt sie auch heraus, wenn die Aufnahme
+    sie als `stale` führt. Die Karte behauptete damit genau das, wovor ihr eigener Docstring warnt:
+    eine Messung, wo eine alte Zahl stand. Gerechnet wird weiter mit ihr, denn eine anderthalb
+    Stunden alte Außentemperatur ist dem Auslegungspunkt (2 °C bei jedem Wetter) weit voraus; nur
+    heißt sie jetzt nicht mehr gemessen. Wann sie zu alt ist, entscheidet eine Stelle:
+    `SensorTimeouts.outdoor_temp_s`.
     """
     grund = kern.Arbeitspunkt.aus_konfiguration(cfg)
     if snapshot is None:
@@ -75,7 +83,7 @@ def arbeitspunkt(
         aussen_c=aussen,
         vorlauf_c=vorlauf_c if vorlauf_c is not None else kern.vorlauf_sollwert(cfg, w, aussen),
         strompreis_eur_kwh=(preis_ct / 100.0 if preis_ct is not None else grund.strompreis_eur_kwh),
-        aussen_gemessen=True,
+        aussen_gemessen=snapshot.outdoor_temp_c.usable,
         vorlauf_gemessen=vorlauf_c is not None,
     )
 

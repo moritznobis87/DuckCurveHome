@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
 from dch_api.application import regelkreis as logik
+from hems_core.domain import BufferTemperatures, EnergySnapshot, Measurement, Quality
 from hems_core.domain.config import HemsConfig
 from hems_core.regelkreis.parameter import PARAMETER
 from hems_core.regelkreis.schaetzer import Schaetzstand
@@ -61,6 +62,52 @@ def test_arbeitspunkt_nennt_woher_seine_zahlen_kommen(client: TestClient) -> Non
     assert ap["vorlauf_gemessen"] is False
     assert 20.0 <= ap["vorlauf_c"] <= 70.0
     assert ap["strompreis_eur_kwh"] > 0
+
+
+def _aufnahme(aussen: Measurement) -> EnergySnapshot:
+    """Eine Aufnahme, in der nur die Außentemperatur interessiert; der Rest ist unbekannt."""
+    leer = Measurement.missing(Quality.UNAVAILABLE, JETZT, "test")
+    return EnergySnapshot(
+        timestamp=JETZT,
+        pv_power_kw=leer,
+        grid_power_kw=leer,
+        battery_power_kw=leer,
+        battery_soc=leer,
+        house_power_kw=leer,
+        base_load_kw=leer,
+        heat_pump_power_kw=leer,
+        ev_power_kw=leer,
+        electricity_price_ct_kwh=Measurement.ok(27.0, JETZT, "test"),
+        outdoor_temp_c=aussen,
+        buffer_temps_c=BufferTemperatures(top=leer, mid_top=leer, mid_bottom=leer, bottom=leer),
+        hp_release_contact=leer,
+        hp_block_contact=leer,
+    )
+
+
+def test_eine_zu_alte_aussentemperatur_heisst_nicht_gemessen() -> None:
+    """Gerechnet wird mit ihr, gemessen heißt sie nicht mehr.
+
+    `Measurement.value` gibt die Zahl auch heraus, wenn die Aufnahme sie als `stale` führt. Bis
+    zum 23.11.2026 stand `aussen_gemessen` deshalb auf `True`, sobald überhaupt eine Zahl dastand
+    - und die Karte behauptete eine Messung, wo eine anderthalb Stunden alte Zahl stand. Dass die
+    Karte weiter mit ihr rechnet, ist Absicht: der Auslegungspunkt wären 2 °C bei jedem Wetter.
+    """
+    cfg = HemsConfig()
+    stand = Schaetzstand()
+    frisch = Measurement.ok(4.0, JETZT, "test")
+    alt = frisch.model_copy(update={"observed_at": JETZT - timedelta(hours=3)}).aged(
+        JETZT, cfg.timeouts.outdoor_temp_s
+    )
+    assert alt.quality is Quality.STALE, "ohne gealterten Messwert sagt der Test nichts"
+
+    gemessen = logik.arbeitspunkt(cfg, stand, _aufnahme(frisch))
+    veraltet = logik.arbeitspunkt(cfg, stand, _aufnahme(alt))
+
+    assert gemessen.aussen_gemessen is True
+    assert veraltet.aussen_gemessen is False
+    # Die Zahl bleibt dieselbe - nur ihre Herkunft ist eine andere.
+    assert veraltet.aussen_c == gemessen.aussen_c == 4.0
 
 
 def test_uebersteuern_aendert_den_regler_und_laesst_sich_freigeben(client: TestClient) -> None:

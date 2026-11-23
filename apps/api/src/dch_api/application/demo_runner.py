@@ -930,6 +930,9 @@ class DemoRunner:
             half_life_h=wirkung.half_life_h,
             cop=wirkung.cop,
             outdoor_c=round(aussen, 1),
+            # Das simulierte Haus rechnet seine Aussentemperatur in jedem Schritt aus; eine
+            # Ruecklage gibt es hier nicht.
+            aussen_gemessen=True,
             price_ct_kwh=round(mittel, 1) if mittel is not None else None,
             cheap_ct_kwh=round(min(preise), 1) if preise else None,
             expensive_ct_kwh=round(max(preise), 1) if preise else None,

@@ -141,6 +141,47 @@ def drosselung_de(roh: str | None) -> tuple[list[str], Ampel]:
     return [], "gut"
 
 
+def zeit_zustand(synchron: bool | None, dienst_an: bool | None) -> tuple[str, Ampel]:
+    """Was der Zustand der Maschinenuhr bedeutet (`timedatectl` im Bericht des Geräts).
+
+    Eine falsch gestellte Uhr zeigt sich sonst nirgends: Am 22.11.2026 standen auf dem iPad an der
+    Wand 22:04 und in seiner eigenen Statusleiste 22:07, weil die Uhr des Geräts drei Minuten nach
+    ging. Darum gehört sie in die Bewertung. Unbekannt ist dabei nicht schlecht: Auf Railway und in
+    der Entwicklung gibt es kein `timedatectl`, und eine Dauerwarnung dort nimmt der echten Meldung
+    den Glauben.
+    """
+    if synchron is None:
+        return "", "aus"
+    if synchron:
+        return "", "gut"
+    folge = (
+        "Die Uhr des Geräts ist nicht gestellt: Die Wandanzeige zeigt dann eine falsche Zeit, "
+        "und jeder Zeitstempel im Haus ist verschoben."
+    )
+    if dienst_an is True:
+        # Läuft ein Zeitdienst und führt der Kernel die Uhr trotzdem als nicht synchron, sind das
+        # zwei Lagen, die von außen nicht zu unterscheiden sind: frisch gestartet und noch nicht
+        # gestellt, oder seit Stunden keinen Zeitserver erreicht. Die zweite kommt von selbst und
+        # ohne jede Abweichung der Uhr: der Kernel lässt `maxerror` um 500 µs je Sekunde wachsen
+        # (`MAXFREQ`) und setzt `STA_UNSYNC`, sobald 16 s erreicht sind (`NTP_PHASE_LIMIT`) - also
+        # nach 32 000 s, knapp neun Stunden, während eine trainierte Uhr in dieser Zeit um
+        # Zehntelsekunden wegläuft. Ein Ausfall des Anschlusses über Nacht genügt dafür. Darum
+        # nennt der Satz nur, was beide Lagen teilen, und behauptet keine falsche Uhr; und darum
+        # ist es warn: ein laufender Zeitdienst stellt sie, sobald er wieder durchkommt.
+        return (
+            "Der Zeitdienst des Geräts erreicht keinen Zeitserver: Die Uhr ist entweder noch "
+            "nicht gestellt oder läuft seit Stunden ungeprüft weiter.",
+            "warn",
+        )
+    if dienst_an is False:
+        return (
+            f"{folge} Es ist kein Zeitdienst eingeschaltet; das Einrichtungsskript schaltet ihn "
+            "ein (einrichten.sh erneut ausführen).",
+            "schlecht",
+        )
+    return folge, "schlecht"
+
+
 def bewerte_rechner(r: GeraetRechnerOut) -> GeraetRechnerOut:
     # Der Raspberry Pi drosselt sich ab 80 °C selbst; ab 70 °C ist die Kühlung schon knapp.
     if r.temperatur_c is not None:
@@ -148,6 +189,7 @@ def bewerte_rechner(r: GeraetRechnerOut) -> GeraetRechnerOut:
             "schlecht" if r.temperatur_c >= 80 else "warn" if r.temperatur_c >= 70 else "gut"
         )
     r.drosselung_de, r.drosselung_ampel = drosselung_de(r.drosselung)
+    r.zeit_de, r.zeit_ampel = zeit_zustand(r.zeit_synchron, r.zeitdienst_an)
     if r.speicher_gesamt_mb:
         anteil = r.speicher_frei_mb / r.speicher_gesamt_mb
         r.speicher_ampel = "schlecht" if anteil < 0.05 else "warn" if anteil < 0.10 else "gut"
@@ -336,6 +378,8 @@ def zusammenstellen(ordner: Path, api: ApiSelbstOut, jetzt: datetime) -> GeraetO
             kandidaten.append((r.temperatur_ampel, f"Temperatur {r.temperatur_c:.0f} °C."))
         if r.drosselung_de:
             kandidaten.append((r.drosselung_ampel, r.drosselung_de[0]))
+        if r.zeit_de:
+            kandidaten.append((r.zeit_ampel, r.zeit_de))
         kandidaten.append((r.speicher_ampel, "Der Arbeitsspeicher wird knapp."))
         if r.eingangsspannung_v is not None:
             kandidaten.append(

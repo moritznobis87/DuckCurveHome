@@ -13,7 +13,6 @@ import hashlib
 import math
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict
 
@@ -21,9 +20,12 @@ from hems_core.domain.config import BufferConfig
 from hems_core.domain.measurement import Measurement
 from hems_core.domain.quality import Quality
 from hems_core.domain.snapshot import BufferTemperatures, EnergySnapshot
+from hems_core.domain.zeit import HAUS_ZONE
 from hems_core.planning.price_windows import PricePoint
 
-BERLIN = ZoneInfo("Europe/Berlin")
+#: Unter diesem Namen holt der Dienst die Ortszeit des Hauses; definiert ist sie in
+#: `hems_core.domain.zeit`, damit es nicht zwei Zonen gibt.
+BERLIN = HAUS_ZONE
 KWH_PER_L_K = 4.186 / 3600.0
 
 

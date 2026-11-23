@@ -132,7 +132,13 @@ struct Raumblatt: View {
     }
 
     private func wirkungskarte(_ w: RoomEffectOut) -> some View {
-        Karte(kicker: "Was das bedeutet", titel: "Pro Tag, bei \(Formate.celsius(w.outdoorC)) draußen") {
+        // „bei 7,0 °C draußen" war bis zum 23.11.2026 auch dann die Überschrift, wenn gar keine
+        // Außentemperatur vorlag - die Rücklage sah aus wie eine Messung, und sie bestimmt über
+        // die Arbeitszahl jede Zahl dieser Karte (Faktor 1,46 zwischen 7 und -7 °C).
+        let draussen = w.aussenGemessen
+            ? "bei \(Formate.celsius(w.outdoorC)) draußen"
+            : "bei angenommenen \(Formate.celsius(w.outdoorC)) draußen"
+        return Karte(kicker: "Was das bedeutet", titel: "Pro Tag, \(draussen)") {
             VStack(spacing: 0) {
                 Zeile(
                     wort: "Wärme", wert: Formate.zahl(w.dailyKwhTh, stellen: 1), einheit: "kWh",

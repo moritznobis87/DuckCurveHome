@@ -128,6 +128,9 @@ class BalanceConfig(BaseModel):
 #: (`dch_api.alfred.zuordnung`, die den Wert hier holt). Dass die Zuordnung mitläuft, hält
 #: `apps/api/tests/test_live_state.py` fest.
 #:
+#: Dasselbe gilt seit dem 23.11.2026 für die Außentemperatur (`outdoor_temp_s`): dort standen
+#: dieselben zwei Zahlen an vier Stellen, und beide waren je nach Weg unwirksam.
+#:
 #: Die Erklärung steht als Kommentar und nicht als Docstring: Pydantic trägt Docstrings in
 #: `docs/openapi.json` und von dort in die erzeugten Typen des Dashboards, und eine Hausgeschichte
 #: ist für einen Leser der Schnittstelle keine Auskunft.
@@ -142,6 +145,51 @@ class SensorTimeouts(BaseModel):
     #: der Speicher in dieser Zeit um 0,02 K (0,004 kW/K gegen 17 °C Technikraum, siehe
     #: `BufferConfig`), unter 4,4 kW Entnahme um 0,94 K.
     temperature_s: float = 900.0
+    #: Die Außentemperatur - eine Grenze für beide Wege, auf denen sie kommt.
+    #:
+    #: **Die Untergrenze ist der Melde-Takt der langsamsten Quelle.** Die Außentemperatur kommt
+    #: vom Außengerät der Wärmepumpe über eBUS (alle 5 bis 55 s je Name, `ebusd_mqtt.STUMM_S`);
+    #: schweigt der Bus, springt die Wetterstation über Home Assistant ein, und die meldet
+    #: **stündlich** (docs/SENSORIK.md, „Die Außentemperatur"). Die 3600 s, die bis zum 23.11.2026
+    #: in `config/entities.home.yaml` standen, waren damit keine Grenze, sondern der Takt selbst:
+    #: der Wert verfiel genau in dem Augenblick, in dem der nächste fällig war, und jede
+    #: Verzögerung der Station ließ die Aufnahme ohne Außentemperatur. Eine Altersgrenze muss
+    #: über dem Takt liegen, sonst erzeugt sie Dauerlücken.
+    #:
+    #: **Die Obergrenze setzt die Gegenprobe gegen den Wetterdienst.** Ab 90 Minuten gilt der
+    #: Messwert dort als veraltet und die Startseite zeigt den Wetterdienst statt „draußen"
+    #: (`hems_core.watch.aussen.ALT_MIN`, aus demselben stündlichen Takt hergeleitet). Die drei
+    #: Stunden, die bis zum 23.11.2026 in `LiveState.snapshot` standen, hielten den Wert danach
+    #: noch anderthalb Stunden für `ok`: Der Dienst hätte für dieselbe Zahl im selben Augenblick
+    #: „gemessen" und „zu alt" gesagt.
+    #:
+    #: **Was an dieser Qualität wirklich hängt**, damit niemand mehr zahlt, als sie wert ist: die
+    #: Anlagenseite zeigt den Wert nicht mehr (`anlage._wert` liest `usable`), die Regelkreis-Karte
+    #: nennt ihn nicht mehr gemessen (`regelkreis.arbeitspunkt`), und die Raumwirkung fällt auf
+    #: ihre Rücklage zurück und bekennt sich dazu (`LiveRuntime.room_effect`). **Nicht daran
+    #: hängen** die Minutenreihe (`history._values`) und die Entscheidungsspur des Reglers
+    #: (`heat_pump_controller`): beide schreiben `.value` mit, wie bei jedem anderen Fühler auch,
+    #: denn was ein Fühler gemeldet hat, ist eine andere Frage als was gerade draußen ist. Eine
+    #: Regelentscheidung hängt ohnehin an keiner Stelle an der Außentemperatur.
+    #:
+    #: Zwischen 3600 und 5400 bleibt die 5400, und sie ist keine neue Zahl, sondern die der
+    #: Gegenprobe. Gegenprobe der Größenordnung: der Tagesgang des Standorts hat rund 4,5 K
+    #: Amplitude (`simulation.demo_house.outdoor_temp_c`), also höchstens 1,2 K/h - in 90 Minuten
+    #: 1,8 K und damit weit innerhalb der 5 K, ab denen die Gegenprobe einen Wert für
+    #: stehengeblieben hält; in drei Stunden wären es 3,5 K, und mit einer Wetterlage darüber ist
+    #: die Grenze erreichbar.
+    #:
+    #: **Der Wächter bleibt bewusst länger** (`watch.silence`, Regel `weather`, 180 min): er fragt
+    #: nicht, ob der Wert noch die Luft beschreibt, sondern ob die Quelle verstummt ist, und
+    #: toleriert dafür eine ausgefallene Meldung, bevor er einen Menschen behelligt. Die Aufnahme
+    #: darf das nicht - sie wird still `stale`, die Anzeige fällt auf den Wetterdienst zurück,
+    #: und aufs Telefon geht nichts.
+    #:
+    #: Vier Stellen draußen zeigen auf diese: `LiveState.snapshot`, die Zuordnung des Hauses
+    #: (`config/entities.home.yaml`), Alfreds Vorlage (`dch_api.alfred.zuordnung`) und der
+    #: Lückenfüller des Home-Assistant-Imports (`ha_import.FILL_LIMIT`) - letzterer, damit der
+    #: Import keine Zeile schreibt, die der laufende Dienst im selben Augenblick verworfen hätte.
+    outdoor_temp_s: float = 5400.0
     price_s: float = 3600.0 * 2
 
 
