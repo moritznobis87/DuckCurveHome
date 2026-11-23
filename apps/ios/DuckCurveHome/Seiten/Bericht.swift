@@ -22,6 +22,23 @@ struct Berichtsseite<Antwort: Sendable, Inhalt: View>: View {
     /// Die Abfrage. Bekommt Zeitraum und API, liefert die Antwort.
     let hole: (Zeitraum, Api) async throws -> Antwort
     @ViewBuilder let inhalt: (Antwort) -> Inhalt
+    /// Wo in der Antwort steht, wann der Dienst sie gerechnet hat (`generated_at`).
+    ///
+    /// **Warum die Seite nur die Stelle nennt und nicht die Regel.** Seit der Dienst
+    /// Auswertungen zwischenspeichert, ist eine Antwort nicht mehr in jedem Fall von jetzt. Wann
+    /// das dastehen muss, ist eine Entscheidung fuer alle dreizehn Seiten und steht einmal im
+    /// Kern (``Berichtsstand``); hier steht nur, aus welchem Feld der Zeitstempel kommt. Ohne
+    /// Angabe steht keine Zeile - Seiten, deren Antwort keinen Stempel traegt, sollen keinen
+    /// erfinden.
+    ///
+    /// **Die Reihenfolge dieser Felder ist Teil der Schnittstelle.** ``Berichtsseite`` hat keinen
+    /// eigenen `init`, also *ist* der erzeugte Mitglieder-Initialisierer die Schnittstelle, und
+    /// der verlangt die Argumente in der Reihenfolge der Felder. Alle sieben Aufrufstellen nennen
+    /// `gerechnetAm` vor den beiden Nebenfehler-Feldern - darum steht es hier davor und nicht
+    /// dahinter. Das faellt auf Linux nicht auf, weil `swiftc -parse` keine Argumentreihenfolge
+    /// prueft; gefallen ist es erst im Lauf `oberflaeche` auf macOS (22.11.2026,
+    /// `KostenSeite.swift:80`: "argument 'nebenfehler' must precede argument 'gerechnetAm'").
+    var gerechnetAm: ((Antwort) -> String?)?
     /// Der Fehler einer **zweiten** Abfrage, die die Seite selbst haelt - als Band neben dem,
     /// was schon dasteht.
     ///
@@ -42,15 +59,6 @@ struct Berichtsseite<Antwort: Sendable, Inhalt: View>: View {
     /// Was der Knopf an diesem Band ausloest. Ohne ihn steht es ohne Knopf, wie in der Vorlage
     /// (`ReportShell.tsx:147-153`).
     var nebenfehlerErneut: (() -> Void)?
-    /// Wo in der Antwort steht, wann der Dienst sie gerechnet hat (`generated_at`).
-    ///
-    /// **Warum die Seite nur die Stelle nennt und nicht die Regel.** Seit der Dienst
-    /// Auswertungen zwischenspeichert, ist eine Antwort nicht mehr in jedem Fall von jetzt. Wann
-    /// das dastehen muss, ist eine Entscheidung fuer alle dreizehn Seiten und steht einmal im
-    /// Kern (``Berichtsstand``); hier steht nur, aus welchem Feld der Zeitstempel kommt. Ohne
-    /// Angabe steht keine Zeile - Seiten, deren Antwort keinen Stempel traegt, sollen keinen
-    /// erfinden.
-    var gerechnetAm: ((Antwort) -> String?)?
 
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
