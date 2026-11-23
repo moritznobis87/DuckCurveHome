@@ -81,10 +81,15 @@ NVMe, damit eine eingelegte Karte zur Wartung startet; mit Marke ohne Pi-Diagnos
 ersetzt das Startbild. Am Ende steht, ob ein Neustart nötig ist.
 
 **Zur Uhr.** Der Pi hat keine gepufferte Echtzeituhr: Ohne Zeitdienst startet er mit einer geratenen
-Zeit und läuft weiter weg (am 22.11.2026 ging die Uhr des Geräts drei Minuten nach — die große Uhr
-auf dem Ruhebild zeigte 22:04, das iPad daneben 22:07). Daran hängt mehr als die Anzeige: Jeder
-Messwert, jeder Tagesabschluss und jeder Vergleich mit dem Börsenpreis trägt einen Zeitstempel von
-dieser Uhr. Das Skript schaltet darum `systemd-timesyncd` ein (`timedatectl set-ntp true`) und
+Zeit und läuft weiter weg. Daran hängt mehr als die Anzeige: Jeder Messwert, jeder Tagesabschluss
+und jeder Vergleich mit dem Börsenpreis trägt einen Zeitstempel von dieser Uhr, und gemerkt hätte
+es niemand — eine falsch gestellte Maschinenuhr zeigt sich sonst an keiner Stelle.
+
+Den Anstoß gab ein Foto vom 22.11.2026 (große Uhr der Wandanzeige 22:04, Statusleiste desselben
+iPads 22:07). Dieser Abstand gehört aber **nicht** hierher: Welche der beiden Maschinenuhren falsch
+ging, ist nicht festgestellt, und am 23.11.2026 lag `server_time` des Dienstes auf Railway gegen
+`/health` nachgemessen innerhalb einer Sekunde richtig. Solange der Dienst dort läuft, ist die Uhr
+dieses Geräts für die Wandanzeige ohne Belang — sie wird es mit Stufe 1. Das Skript schaltet darum `systemd-timesyncd` ein (`timedatectl set-ntp true`) und
 installiert es nach, falls es fehlt. Ein bereits laufender Zeitdienst — chrony, ntpsec — bleibt
 unangetastet: Die Pakete belegen in Debian dasselbe virtuelle Paket (`time-daemon`), ein
 Nachinstallieren würde den vorhandenen Dienst entfernen. Auf einem System ohne systemd bricht der
