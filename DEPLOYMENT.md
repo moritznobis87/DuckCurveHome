@@ -38,6 +38,10 @@ Home Assistant OS (Haus)                          Railway
    | `DCH_MIGRATE_ON_START` | `true` (Standard): Alembic-Migration läuft beim Containerstart, bevor die API hochfährt |
    | `DCH_CORS_ORIGINS` | `[]` (Web spricht serverseitig über das BFF) |
    | `DCH_ALFRED_SCHLUESSEL` | optional: API-Schlüssel von Mistral (console.mistral.ai → API Keys). Ohne ihn bleibt Alfred bei vorbereiteten Texten. Anbieter und Modell haben Vorgaben (`mistral`, `mistral-medium-latest`), siehe `docs/ALFRED.md` |
+   | `DCH_PASSKEY_RP_ID` | `home.duckcurve.de`. Die Domain, an die jeder Passkey gebunden wird - **später nicht mehr änderbar, ohne alle zu entwerten**. Der eigene Host und nicht `duckcurve.de`: sonst liegen die Passkeys von Duck Curve und Duck Curve Home im selben Bereich, der Browser bietet beide an, und der falsche wird abgewiesen ([ADR-0002](docs/decisions/ADR-0002-identitaet-und-berechtigung.md)) |
+   | `DCH_PASSKEY_HERKUENFTE` | `["https://home.duckcurve.de"]` - die Adresse des **web**-Services, denn von dort kommt der Browser. Beim Start geprüft; passt sie nicht zur RP-ID, läuft der Dienst weiter und meldet es als Fehler, aber anmelden kann sich niemand |
+   | `DCH_ANMELDE_URL` | `https://home.duckcurve.de`, die Adresse im Einladungslink. Leer = erste Herkunft |
+   | `DCH_SMTP_HOST` u. a. | optional: Einladung per E-Mail (`DCH_SMTP_PORT`, `_BENUTZER`, `_PASSWORT`, `_SICHERHEIT`, `DCH_ABSENDER`; oder `DCH_RESEND_SCHLUESSEL` statt SMTP). Ohne sie wird nichts verschickt und der Einladungslink bleibt auf der Seite „Zugang" zum Kopieren - der Versand ist eine Beigabe, kein Torwächter |
 
 3. Variablen **web**:
 
@@ -45,12 +49,19 @@ Home Assistant OS (Haus)                          Railway
    |---|---|
    | `DCH_API_URL` | `http://${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}` (privates Netz, IPv6; `api` = Name des API-Services) |
    | `DCH_API_TOKEN` | gleicher Wert wie in api |
-   | `DCH_SESSION_SECRET` | ≥ 32 zufällige Zeichen (signiert das Kiosk-Cookie) |
+   | `DCH_SESSION_SECRET` | ≥ 32 zufällige Zeichen. Signiert das Cookie eines **Geräts** (Wandanzeige, Gastlink) und schaltet zugleich die Anmeldung ein. Nicht das Geheimnis der Personensitzungen: die sind opake Token in der Datenbank und brauchen keinen Schlüssel |
    | `DCH_KIOSK_TOKEN` | Pairing-Token für neue Geräte |
+   | `DCH_GUEST_TOKEN` | Pairing-Token für Gäste (`/pair?token=…&hours=8`) |
+   | `DCH_ANMELDUNG` | nur nötig, wenn **keine** Gerätepaarung eingerichtet ist: `1` verlangt trotzdem eine Anmeldung |
 
 4. Öffentliche Domains: web (z. B. `home.duckcurve.de`) und api (z. B. `api-home.duckcurve.de`, nur für
    `/health` und `/bridge/ws` genutzt; alle `/api/v1/*`-Aufrufe verlangen `DCH_API_TOKEN`).
-5. **iPad koppeln:** einmalig `https://home.duckcurve.de/pair?token=<DCH_KIOSK_TOKEN>&name=iPad-Flur` öffnen.
+5. **Ersten Zugang einrichten** (`docs/ZUGANG.md`): einmal den Pairing-Link öffnen, unter
+   **Technik → Zugang** die erste Person als `hausherr` anlegen und den Einladungslink auf dem
+   Gerät öffnen, das künftig anmeldet. Dort entsteht der Passkey, und die zehn
+   Wiederherstellungscodes erscheinen **einmal**. Einen offenen Weg „ersten Zugang hier anlegen"
+   gibt es mit Absicht nicht: wer die Adresse zuerst fände, hätte das Haus.
+6. **iPad koppeln:** einmalig `https://home.duckcurve.de/pair?token=<DCH_KIOSK_TOKEN>&name=iPad-Flur` öffnen.
    Das Gerät bleibt 180 Tage angemeldet. Danach die Seite als Web-App zum Home-Bildschirm hinzufügen und
    in Guided Access mit deaktivierter Auto-Sperre betreiben.
 

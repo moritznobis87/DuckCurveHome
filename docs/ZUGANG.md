@@ -94,10 +94,10 @@ aber ohnehin alles.
 
 ## Einrichten
 
-Im Betrieb (Railway, Hausgerät):
+Auf dem **api**-Dienst (Railway); der web-Dienst braucht davon nichts:
 
 ```
-DCH_PASSKEY_RP_ID=duckcurve.de
+DCH_PASSKEY_RP_ID=home.duckcurve.de
 DCH_PASSKEY_HERKUENFTE=["https://home.duckcurve.de"]
 DCH_ANMELDE_URL=https://home.duckcurve.de
 DCH_SESSION_SECRET=<mind. 32 Zeichen>     # für die Gerätepaarung
@@ -143,12 +143,17 @@ entstehen und keine Einheitenprüfung sie sieht:
 
 ## Grenzen und offene Punkte
 
+- **Die RP-ID gehört diesem Haus allein.** Ein Passkey für `home.duckcurve.de` gilt nicht unter
+  `duckcurve.de` und umgekehrt - das ist gewollt, seit beide Produkte nebeneinander laufen
+  (ADR-0002, Festlegung 1). Kommt einmal eine zentrale Anmeldung, legt jeder dort einen neuen
+  Passkey an.
 - **Die iOS-App meldet sich noch nicht als Person an.** Sie spricht direkt mit dem Dienst und
   nutzt weiter das Gerätetoken aus dem Schlüsselbund
   (`apps/ios/DuckCurveKit/Sources/DuckCurveKit/Netz/Zugang.swift`). Für Passkeys braucht sie
-  `webcredentials:duckcurve.de` in den Associated Domains und eine `apple-app-site-association`
-  unter `https://duckcurve.de/.well-known/` - das ist ein Eingriff in **DuckCurveWebsite**, nicht
-  in dieses Repository.
+  `webcredentials:home.duckcurve.de` in den Associated Domains und eine
+  `apple-app-site-association` unter `https://home.duckcurve.de/.well-known/`. Seit die RP-ID auf
+  dem eigenen Host steht, liegt diese Datei beim **web**-Dienst dieses Repositories - ein Eingriff
+  in DuckCurveWebsite ist dafür nicht mehr nötig.
 - **Ohne Datenbank gibt es keine Personen.** Im Demo-Modus läuft der Dienst ohne Postgres; die
   Anmeldung ist dann aus, und `/auth/zustand` sagt das.
 - **Ein Passkey auf einem verlorenen Gerät bleibt gültig**, bis die Person ihn unter „Mein

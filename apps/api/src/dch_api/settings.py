@@ -196,18 +196,21 @@ class Settings(BaseSettings):
 
     # ------------------------------------------------------- Anmeldung mit Passkey (ADR-0002)
     #
-    # **Die RP-ID ist die wichtigste Zeile dieser Datei und nicht mehr aenderbar.** Ein Passkey
-    # haengt an einer Domain; wird sie gewechselt, sind alle Passkeys wertlos und jeder legt auf
-    # jedem Geraet einen neuen an. Darum steht hier die **registrierbare** Domain und nicht
-    # `home.duckcurve.de`: ein Passkey fuer `duckcurve.de` gilt unter jeder Subdomain, also auch
-    # unter einer spaeteren zentralen Anmeldung (ADR-0002, Festlegung 1).
+    # **Die RP-ID ist nicht mehr aenderbar, ohne jeden Passkey zu entwerten.** Ein Passkey haengt
+    # an einer Domain; wird sie gewechselt, legt jeder auf jedem Geraet einen neuen an.
     #
-    # Der Preis steht dabei: jede Herkunft unter `*.duckcurve.de` kann Assertions fuer diese
-    # Passkeys anfordern. Alle Subdomains gehoeren deshalb uns.
+    # **Sie steht auf dem eigenen Host und nicht auf der registrierbaren Domain** - das ist seit
+    # dem 23.11.2026 anders entschieden als urspruenglich in ADR-0002. Mit `duckcurve.de` lagen
+    # die Passkeys von Duck Curve und Duck Curve Home im selben Bereich: der Browser bot beide an,
+    # beide trugen dieselbe E-Mail-Adresse, und der falsche wurde abgewiesen. Eingetauscht war
+    # dafuer, dass eine spaetere zentrale Anmeldung unter `konto.duckcurve.de` dieselben Passkeys
+    # weiterverwenden koennte - das ist weniger wert: jene Zentrale waere ohnehin ein neuer
+    # Anmeldeweg, und ein neuer Passkey ist eine Sache von zwei Minuten. Taegliche Verwechslung
+    # ist teurer als ein einmaliger Umzug.
     #
     # In der Entwicklung: DCH_PASSKEY_RP_ID=localhost und DCH_PASSKEY_HERKUENFTE=http://localhost:3000.
     # `localhost` gilt dem Browser als sicherer Kontext, auch ohne https.
-    passkey_rp_id: str = "duckcurve.de"
+    passkey_rp_id: str = "home.duckcurve.de"
     #: Was der Browser im Dialog anzeigt.
     passkey_rp_name: str = "Duck Curve Home"
     #: Herkuenfte, von denen eine Antwort des Browsers angenommen wird. Geprueft beim Start.

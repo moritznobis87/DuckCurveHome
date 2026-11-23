@@ -5,8 +5,9 @@ Rechner, Sicherheitsschlüssel) und wird mit Fingerabdruck, Gesicht oder Geräte
 hier liegt nur der öffentliche. Portiert aus `duckcurve/auth/passkeys.py` - die Regeln gelten
 unverändert, die Datenbankzugriffe sind asynchron:
 
-* **Gebunden an `settings.passkey_rp_id`** (`duckcurve.de`, gilt damit auch unter
-  `home.duckcurve.de`). Geprüfte Herkunft: `settings.passkey_herkuenfte`.
+* **Gebunden an `settings.passkey_rp_id`** (`home.duckcurve.de`) - und nur daran: ein Passkey
+  dieses Hauses taucht in keinem anderen Auswahldialog auf. Geprüfte Herkunft:
+  `settings.passkey_herkuenfte`.
 * **Nutzerprüfung ist Pflicht** (`user_verification=required`). Damit ist ein Passkey Besitz plus
   Wissen oder Merkmal; ein zweiter Faktor daneben wäre eine Wiederholung.
 * **Auffindbare Passkeys** (`resident_key=required`): die Anmeldung beginnt ohne E-Mail-Adresse,
