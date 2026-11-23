@@ -227,7 +227,7 @@ struct JetztSeite: View {
                         .lineLimit(1)
                 }
             }
-            Wache(befunde: haus.zustand?.system.watch ?? [])
+            Wache(befunde: haus.zustand?.system.watch ?? [], zuerst: haus.uhrbefunde)
             if let f = haus.fehler {
                 Stoerung(fehler: f) { Task { await haus.ersteLadung() } }
             }
@@ -254,7 +254,7 @@ struct JetztSeite: View {
                     .font(Schrift.sans(13))
                     .foregroundStyle(Farbe.text3)
             }
-            Wache(befunde: haus.zustand?.system.watch ?? [])
+            Wache(befunde: haus.zustand?.system.watch ?? [], zuerst: haus.uhrbefunde)
             // **Nur am Telefon, und hier und nicht unter Technik** (`Home.tsx:225`): wer unter
             // Technik ist, hat den Weg schon gefunden. Ob der Hinweis dasteht, entscheidet
             // ``Startseitenhinweis``.

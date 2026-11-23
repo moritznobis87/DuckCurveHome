@@ -66,6 +66,58 @@ final class WachbefundeTests: XCTestCase {
             Ruhebild.schwersterBefund(befunde)?.name)
     }
 
+    /// **Ein Alarm des Dienstes wird nicht von einem eigenen Befund verdraengt.**
+    ///
+    /// Gemessen am Fall, der es aufdeckte: der Uhrbefund (eine ``Wachbefunde/Schwere/warnung``)
+    /// nahm bei `hoechstens: 1` den einen Platz des Ruhebilds, und der Alarm `puffer_still` war
+    /// weg. Eine schiefe Uhr macht Zeitstempel fraglich - ein Alarm sagt, dass eine Quelle ganz
+    /// schweigt, und das wiegt mehr.
+    func testEinAlarmDesDienstesStehtVorDemEigenenBefund() {
+        let eigen = Wachbefunde.Zeile(
+            name: "hausuhr", satz: "Die Uhren gehen auseinander.", schwere: .warnung)
+
+        XCTAssertEqual(
+            Wachbefunde.zeilen([befund("mqtt", .alarm)], zuerst: [eigen], hoechstens: 1)
+                .map(\.name),
+            ["mqtt"])
+        XCTAssertEqual(
+            Wachbefunde.zeilen([befund("mqtt", .alarm)], zuerst: [eigen]).map(\.name),
+            ["mqtt", "hausuhr"])
+        // Zwei Alarme fuellen beide Plaetze - der eigene Befund tritt ganz zurueck.
+        XCTAssertEqual(
+            Wachbefunde.zeilen(
+                [befund("mqtt", .alarm), befund("puffer", .alarm)], zuerst: [eigen]).map(\.name),
+            ["mqtt", "puffer"])
+    }
+
+    /// **Vor den Warnungen des Dienstes steht er aber schon**, denn er entwertet deren
+    /// Zeitstempel: wer die Wache liest, ohne zu wissen, dass die Uhren auseinandergehen, sucht
+    /// den Fehler bei den Zahlen.
+    func testDerEigeneBefundStehtVorDenWarnungenDesDienstes() {
+        let eigen = Wachbefunde.Zeile(
+            name: "hausuhr", satz: "Die Uhren gehen auseinander.", schwere: .warnung)
+        XCTAssertEqual(
+            Wachbefunde.zeilen([befund("puffer", .warn)], zuerst: [eigen], hoechstens: 1)
+                .map(\.name),
+            ["hausuhr"])
+        XCTAssertEqual(
+            Wachbefunde.zeilen([befund("fremd", .unbekannt)], zuerst: [eigen], hoechstens: 1)
+                .map(\.name),
+            ["hausuhr"])
+    }
+
+    /// Umsortiert wird dafuer nichts: genommen wird der vordere Lauf der Alarme, nicht alle
+    /// Alarme der Liste. Steht in der Liste des Dienstes eine Warnung vor einem Alarm, bleibt
+    /// sie dort stehen - die App behauptet keine zweite Sortierung.
+    func testDerVordereLaufDerAlarmeZaehltUndNichtAlleAlarme() {
+        let eigen = Wachbefunde.Zeile(
+            name: "hausuhr", satz: "Die Uhren gehen auseinander.", schwere: .warnung)
+        XCTAssertEqual(
+            Wachbefunde.zeilen(
+                [befund("warnung", .warn), befund("alarm", .alarm)], zuerst: [eigen]).map(\.name),
+            ["hausuhr", "warnung"])
+    }
+
     /// Eine unbekannte Schwere bringt nichts zum Absturz - `Schema.swift` laesst sie zu, damit
     /// eine neue Stufe im Dienst die App nicht umbringt.
     func testEineUnbekannteSchwereWirdGezeigt() {

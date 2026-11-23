@@ -15,6 +15,31 @@ Controme soll nicht täglich lesen, dass von Controme nichts kommt. Die einzige 
 der Regel selbst (`expected`): Die Brücke wird auch dann erwartet, wenn der Dienst seit dem Start
 noch nie etwas von ihr gehört hat - sonst wäre ausgerechnet der Fall „kaputt und neu gestartet"
 der eine, den niemand meldet.
+
+**Jeder Schlüssel einer Gruppe muss melden.** Bis zum 22.11.2026 nahm `findings()` die *jüngste*
+Meldung einer Gruppe, und damit deckten drei gesunde Fühler den vierten zu: ausgeführt am
+Prüfstand - ein Pufferfühler drei Tage still, die drei anderen im Sekundentakt, Ergebnis `[]`.
+Gemeldet hätte es erst, wenn alle vier 31 Minuten schweigen. Das ist genau die Lage, die ein Foto
+der Wandanzeige nicht zeigt: vier satte Zahlen, eine davon von vorgestern. Gezählt wird deshalb
+der Schlüssel, der am längsten schweigt, und der Satz sagt, wie viele es sind („1 von 4 Fühlern").
+
+**Was bekannt ist, schweigt nicht.** Der Wächter fragt nicht „wann kam zuletzt eine Meldung?",
+sondern „wann war das zuletzt bekannt?" - und das ist nicht dasselbe. Nachts melden
+Wechselrichter nichts mehr, und der Dienst setzt die Erzeugung dann absichtlich auf null, weil
+sie bekannt ist und keine Lücke (`hems_core.balance.pv_bei_nacht`). Mit der Zählung nach dem
+längsten Schweigen stand sonst zwanzig Minuten nach Sonnenuntergang ein Alarm über die Gruppe
+`power` auf dem einen Platz des Ruhebilds, jede Nacht bis zum Sonnenaufgang. Die Ausnahme gehört
+deshalb in die Vorlage, die `last_seen` füllt (`LiveState.zuletzt_gesehen`), und nicht in die
+Regel: eine Regel, die Sonnenstände kennt, wäre keine Regel über Stille mehr.
+
+**Warum es nur diese eine Lesart gibt.** Jede Gruppe hier führt verschiedene Quellen zusammen, von
+denen jede einzeln gebraucht wird: vier Fühler an vier Höhen des Speichers, Erzeugung und Netz und
+Speicher für die Bilanz. Keine ist der Rückfall einer anderen, also genügt in keiner Gruppe eine
+Meldung für alle. Die zweite Lesart („eine genügt") gehörte zu einer Gruppe redundanter Quellen
+*derselben* Größe - die Außentemperatur hat zwei Wege (eBUS und Wetterstation), aber sie teilen
+einen Schlüssel (`outdoor_temp_c`) und sind deshalb keine Gruppe. Käme einmal eine solche Gruppe
+dazu, gehört ihre Lesart als Feld an die Regel; sie hier auf Vorrat einzubauen hieße, eine
+Einstellung zu pflegen, die keine Regel benutzt.
 """
 
 from __future__ import annotations
@@ -35,8 +60,9 @@ class WatchRule:
     """Ein Signal, das sich regelmäßig melden muss."""
 
     name: str
-    #: Ein oder mehrere Messschlüssel. Die jüngste Meldung zählt: Vier Pufferfühler sind eine
-    #: Sache, und drei davon nützen nichts, wenn der vierte fehlt - aber gemeldet wird die Gruppe.
+    #: Ein oder mehrere Messschlüssel. **Jeder** muss melden: Vier Pufferfühler sind eine Sache,
+    #: und drei davon nützen nichts, wenn der vierte fehlt. Fällig wird die Regel deshalb nach dem
+    #: Schlüssel, der am längsten schweigt - gemeldet wird die Gruppe, mit der Zahl im Satz.
     keys: tuple[str, ...]
     title_de: str
     #: So lange darf es still sein, bevor es ein Befund wird.
@@ -50,6 +76,10 @@ class WatchRule:
     #: Steht hier, weil der Satz der Entwarnung aus der Regel gebaut wird und kein Befund mehr da
     #: ist, aus dem man ihn nehmen könnte.
     plural: bool = False
+    #: Wie ein einzelnes Mitglied der Gruppe heißt, im Dativ Plural - „1 von 4 **Fühlern**". Nur
+    #: für diesen einen Satz, und darum in dieser einen Form. Bei Regeln mit einem Schlüssel
+    #: kommt er nie vor.
+    member_de: str = "Quellen"
 
 
 #: Die Voreinstellung. Die Zeiten sind großzügiger als die Alterung im Snapshot (dort gilt ein
@@ -78,8 +108,12 @@ RULES: tuple[WatchRule, ...] = (
         severity="alarm",
         impact_de="Ohne sie gibt es keinen Ladezustand und keine Entscheidung über die Wärmepumpe.",
         plural=True,
+        member_de="Fühlern",
     ),
     WatchRule(
+        # Drei verschiedene Geräte, von denen `balance()` jedes braucht: `supply_known` ist erst
+        # wahr, wenn Erzeugung **und** Netz **und** Speicher brauchbar sind. Zur Nacht siehe den
+        # Modulkopf: eine nachts fehlende Erzeugung ist bekannt und zählt nicht als Stille.
         name="power",
         keys=("pv_power_kw", "grid_power_kw", "battery_power_kw"),
         title_de="Die Leistungen",
@@ -87,6 +121,7 @@ RULES: tuple[WatchRule, ...] = (
         severity="alarm",
         impact_de="Ohne sie weiß DCH nicht, was das Haus gerade tut.",
         plural=True,
+        member_de="Messstellen",
     ),
     WatchRule(
         name="price",
@@ -114,7 +149,9 @@ class Finding:
     name: str
     title_de: str
     severity: Severity
-    #: Wann zuletzt etwas kam. None heißt: seit dem Start des Dienstes nie.
+    #: Wann zuletzt etwas kam - bei einer Gruppe der Schlüssel, der am längsten schweigt. Er ist
+    #: der Grund für den Befund, und sein Alter ist die Zahl, die daneben steht. None heißt: seit
+    #: dem Start des Dienstes nie.
     since: datetime | None
     silent_min: float
     text_de: str
@@ -131,6 +168,22 @@ def silence_text(minutes: float) -> str:
     return f"seit {round(days)} Tagen"
 
 
+def finding_text(rule: WatchRule, silent_min: float, still: int, von: int) -> str:
+    """Der Satz zum Befund: ganz still oder unvollständig.
+
+    Die Zahl gehört in den Satz, weil beides gleich aussieht und ungleich schwer wiegt. „Die
+    Puffertemperaturen seit 3 Tagen still" ist falsch, solange drei der vier Fühler im
+    Sekundentakt melden - und wer das liest, sucht den Fehler an der Brücke statt am Speicher.
+    """
+    if still >= von:
+        return f"{rule.title_de} {silence_text(silent_min)} still. {rule.impact_de}"
+    return (
+        f"{rule.title_de} {'sind' if rule.plural else 'ist'} unvollständig: {still} von {von} "
+        f"{rule.member_de} {'schweigt' if still == 1 else 'schweigen'} "
+        f"{silence_text(silent_min)}. {rule.impact_de}"
+    )
+
+
 def findings(
     last_seen: Mapping[str, datetime | None],
     now: datetime,
@@ -142,6 +195,10 @@ def findings(
     `last_seen` hält je Schlüssel den Zeitpunkt der letzten Meldung; ein Schlüssel, der gar nicht
     vorkommt, gilt als nie gesehen. `started_at` ist der Start des Dienstes und zählt nur für
     Regeln mit `expected`: Dort beginnt die Stille beim Start und nicht in der Ewigkeit.
+
+    **Maßgeblich ist der Schlüssel, der am längsten schweigt** (siehe Modulkopf). Gezählt wird
+    gegen die Schlüssel, die schon einmal geliefert haben: In einem Haus ohne Hausspeicher wären
+    sonst „2 von 3" Leistungen still, solange alles läuft.
     """
     out: list[Finding] = []
     for rule in rules:
@@ -152,10 +209,13 @@ def findings(
                 continue
             seit: datetime | None = None
             stille = (now - started_at).total_seconds() / 60
+            still = von = len(rule.keys)
         else:
-            juengste = max(bekannt)
-            seit = juengste
-            stille = (now - juengste).total_seconds() / 60
+            aelteste = min(bekannt)
+            seit = aelteste
+            stille = (now - aelteste).total_seconds() / 60
+            von = len(bekannt)
+            still = sum(1 for t in bekannt if (now - t).total_seconds() / 60 >= rule.silence_min)
         if stille < rule.silence_min:
             continue
         out.append(
@@ -165,7 +225,7 @@ def findings(
                 severity=rule.severity,
                 since=seit,
                 silent_min=stille,
-                text_de=f"{rule.title_de} {silence_text(stille)} still. {rule.impact_de}",
+                text_de=finding_text(rule, stille, still, von),
             )
         )
     out.sort(key=lambda f: (0 if f.severity == "alarm" else 1, -f.silent_min))

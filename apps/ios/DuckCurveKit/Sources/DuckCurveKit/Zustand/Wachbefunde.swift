@@ -8,7 +8,7 @@ import Foundation
 /// sortiert: Alarm vor Warnung, bei gleicher Schwere der ältere“). Welche zwei von fünf Befunden
 /// jemand im Vorbeigehen liest, ist damit eine Entscheidung über Inhalt und nicht über Form -
 /// und sie gehört an eine Stelle, an der sie geprüft werden kann. Dieselbe Begründung trägt
-/// ``Ruhebild/schwersterBefund(_:)``, die aus der Wache den einen Satz des Ruhebilds nimmt.
+/// ``Ruhebild/schwersterBefund(_:zuerst:)``, die aus der Wache den einen Satz des Ruhebilds nimmt.
 ///
 /// **Die Zwei ist keine Geschmacksfrage.** An der Wand rollt nichts (`JetztSeite.swift`, die
 /// Spalte ohne Rollbereich): eine Wache mit fünf Zeilen schiebt Kurve und Fuß aus dem Bild, und
@@ -80,17 +80,45 @@ public enum Wachbefunde {
     ///
     /// **Hier wird nicht sortiert, und das ist eine Entscheidung.** Der Dienst sortiert schon:
     /// „Alarm vor Warnung, bei gleicher Schwere der ältere“ (`Wache.tsx:21-24`). Die Vorlage
-    /// schneidet darum nur ab (`:30`: `slice(0, 2)`), und ``Ruhebild/schwersterBefund(_:)``
+    /// schneidet darum nur ab (`:30`: `slice(0, 2)`), und ``Ruhebild/schwersterBefund(_:zuerst:)``
     /// nimmt aus demselben Grund den ersten und nicht den lautesten: dieselbe Reihenfolge ein
     /// zweites Mal zu behaupten heißt, zwei Wahrheiten darüber zu haben, welcher Befund der
     /// schwerere ist - und die zweite steht dann in einer App, die der Dienst nicht kennt.
+    ///
+    /// **`zuerst` sind Befunde, die der Dienst nicht haben kann** - heute genau einer: der
+    /// Abstand der beiden Uhren (``Hausuhr/befund``). Er steht vor den *Warnungen* des Dienstes,
+    /// weil er deren Zeitstempel entwertet: wer die Wache liest, ohne zu wissen, dass die Uhren
+    /// auseinandergehen, sucht den Fehler bei den Zahlen.
+    ///
+    /// **Aber nie vor einem `.alarm` des Dienstes, und das war ein echter Verlust.**
+    /// Nachgerechnet: 180 s Versatz plus ein Alarm `puffer_still` („seit zwei Tagen still"),
+    /// ``Ruhebild/schwersterBefund(_:zuerst:)`` mit `hoechstens: 1` - auf der Wand stand der
+    /// Uhrbefund, eine ``Schwere/warnung``, und der Alarm war weg. Eine schiefe Uhr macht
+    /// Zeitstempel fraglich; ein Alarm sagt, dass eine Quelle ganz schweigt. Das zweite wiegt
+    /// mehr, und auf dem Ruhebild gibt es nur einen Platz.
+    ///
+    /// **Umsortiert wird dafür nichts.** Genommen wird der vordere Lauf der Alarme
+    /// (`prefix(while:)`), nicht alle Alarme der Liste - das verlässt sich auf die Sortierung
+    /// des Dienstes, statt ihr eine zweite eigene gegenüberzustellen. Steht in seiner Liste eine
+    /// Warnung vor einem Alarm, bleibt sie dort stehen - und dann **fällt der Alarm bei
+    /// `hoechstens: 2` aus der Liste heraus** (nachgerechnet: `[warnung, alarm]` mit einem
+    /// eigenen Befund ergibt `[eigener, warnung]`). Dieselbe Zusage trägt schon der Schnitt bei
+    /// zwei Zeilen; sie steht auf `_nach_schwere` in `live_runtime.py`, und seit dem 22.11.2026
+    /// gibt es dort eine Prüfung dafür (`test_alarme_stehen_vor_warnungen_in_der_liste`), weil
+    /// die Funktion bis dahin durch `return list(befunde)` ersetzbar war, ohne dass etwas fiel.
     public static func zeilen(
-        _ befunde: [WatchFindingOut], hoechstens: Int = Wachbefunde.hoechstens
+        _ befunde: [WatchFindingOut], zuerst: [Zeile] = [],
+        hoechstens: Int = Wachbefunde.hoechstens
     ) -> [Zeile] {
         guard hoechstens > 0 else { return [] }
-        return befunde.prefix(hoechstens).map { b in
+        let dienst = befunde.map { b in
             Zeile(name: b.name, satz: b.textDe, schwere: schwere(b.severity))
         }
+        let alarme = dienst.prefix { $0.schwere == .alarm }
+        var zeilen = Array(alarme)
+        zeilen.append(contentsOf: zuerst)
+        zeilen.append(contentsOf: dienst.dropFirst(alarme.count))
+        return Array(zeilen.prefix(hoechstens))
     }
 
     /// Die Schwere des Dienstes in die der Oberfläche.

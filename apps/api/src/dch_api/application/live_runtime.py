@@ -173,14 +173,43 @@ from hems_core.planning import (
 from hems_core.protocol import DeviceHealthFrame, EventFrame, RawReading
 from hems_core.regelkreis.schaetzer import Schaetzstand
 from hems_core.simulation import BERLIN
-from hems_core.thermal import RoomMinute, compute_buffer_state, room_shift
+from hems_core.thermal import (
+    RoomMinute,
+    compute_buffer_state,
+    room_shift,
+    schichtungsbefund,
+)
 from hems_core.thermal import betrieb as betrieb_kern
 from hems_core.thermal import kennlinie as kennlinie_kern
 from hems_core.thermal.heat_balance import HeatSample
 from hems_core.thermal.shift_plan import AUS, ShiftTarget, shift_target
-from hems_core.watch import BRIDGE, RULES, back_text, findings
+from hems_core.watch import (
+    BRIDGE,
+    PUFFER_KEYS,
+    RULES,
+    Fuehlerstand,
+    back_text,
+    eingefroren,
+    findings,
+)
 from hems_core.watch.aussen import Aussenpruefung
 from hems_core.watch.aussen import pruefe as pruefe_aussen
+
+
+def _nach_schwere(befunde: list[WatchFindingOut]) -> list[WatchFindingOut]:
+    """Alarme nach vorn, sonst die Reihenfolge lassen.
+
+    **Warum die Reihenfolge Inhalt ist.** Die Wandanzeige zeigt nicht alle Befunde, sondern die
+    ersten zwei (`Wachbefunde.hoechstens`, nach der Vorlage `Wache.tsx:30`), das Ruhebild nur den
+    ersten. Was hinten steht, liest niemand. `findings()` sortiert seine eigenen Befunde schon;
+    die Prüfungen an den Pufferfühlern und an der Außentemperatur kommen danach dazu, und ein
+    eingefrorener Fühler darf nicht hinter einer Warnung über den Strompreis landen.
+
+    Stabil, also innerhalb einer Schwere unverändert: die Sortierung nach Alter steht in
+    `findings()`, und sie noch einmal über die ganze Liste zu legen hieße, sie zu verdoppeln.
+    """
+    return sorted(befunde, key=lambda f: 0 if f.severity == "alarm" else 1)
+
 
 log = structlog.get_logger("live")
 VERSION = "0.1.0-phase2"
@@ -471,7 +500,7 @@ class LiveRuntime:
                 silent_min=round(f.silent_min, 1),
                 text_de=f.text_de,
             )
-            for f in findings(self._last_seen(), now, self.started_at)
+            for f in findings(self._last_seen(now), now, self.started_at)
         ]
 
     def _aussen(self, now: datetime) -> Aussenpruefung:
@@ -488,6 +517,66 @@ class LiveRuntime:
             now,
             BERLIN,
         )
+
+    def _puffer_befunde(self, snap: EnergySnapshot) -> list[WatchFindingOut]:
+        """Was an den vier Pufferfühlern nicht stimmt, obwohl sie melden.
+
+        **Zwei Prüfungen, die der Zeitstempel nicht leisten kann.** `Measurement.aged` fragt nur,
+        wann der letzte Wert kam. Ein Fühler, der im Minutentakt dieselbe Zahl schickt, bleibt
+        damit `ok`, und eine Säule mit vertauschten Fühlern rechnet durch wie eine richtige.
+        Beides steht als Rechnung im Kern (`hems_core.watch.stillstand`,
+        `hems_core.thermal.buffer_soc.schichtungsbefund`); hier wird nur zusammengetragen, was
+        der Rohbestand darüber weiß.
+
+        **Aus dem Rohbestand und nicht aus dem Snapshot** - wie beim Wächter und bei der
+        Außentemperatur: der Snapshot ersetzt alte Werte durch „unavailable" und verliert dabei
+        genau die Auskunft, um die es hier geht.
+
+        **Kein Weg aufs Telefon**, wie bei `_aussen_befund`: `_watch_notify` geht über die Regeln
+        für schweigende Quellen, und die haben feste Namen. Ein Befund je Fühler bräuchte dort
+        einen eigenen Zustandsspeicher; bis dahin steht er auf der Anzeige und in `/geraet`.
+        """
+        staende = [
+            Fuehlerstand(
+                key=k,
+                wert=spur.wert,
+                unveraendert_min=spur.unveraendert_min,
+                meldungen=spur.meldungen,
+                seit=spur.seit,
+            )
+            for k in PUFFER_KEYS
+            if (spur := self.live.unchanged.get(k)) is not None
+        ]
+        out = [
+            WatchFindingOut(
+                name=b.name,
+                title_de=b.title_de,
+                severity=b.severity,
+                since=b.since,
+                silent_min=b.silent_min,
+                text_de=b.text_de,
+            )
+            for b in eingefroren(staende, self.hems.buffer)
+        ]
+        # Die Schichtung nur, wenn alle vier Werte tragen: sonst steht neben dem fehlenden
+        # Ladezustand auch noch eine Aussage über eine Säule, von der ein Viertel fehlt.
+        werte = [m.value for m in snap.buffer_temps_c.as_list()]
+        if all(m.usable for m in snap.buffer_temps_c.as_list()) and None not in werte:
+            schicht = schichtungsbefund(
+                [float(v) for v in werte if v is not None], self.hems.buffer
+            )
+            if schicht is not None:
+                out.append(
+                    WatchFindingOut(
+                        name=schicht.name,
+                        title_de=schicht.title_de,
+                        severity=schicht.severity,
+                        since=None,
+                        silent_min=0.0,
+                        text_de=schicht.text_de,
+                    )
+                )
+        return out
 
     @staticmethod
     def _aussen_befund(aussen: Aussenpruefung) -> list[WatchFindingOut]:
@@ -522,7 +611,7 @@ class LiveRuntime:
         """
         if self.push is None:
             return
-        offen = {f.name: f for f in findings(self._last_seen(), now, self.started_at)}
+        offen = {f.name: f for f in findings(self._last_seen(now), now, self.started_at)}
         for rule in RULES:
             aktiv = rule.name in offen
             vorher = self._watch_state.get(rule.name, False)
@@ -555,11 +644,14 @@ class LiveRuntime:
                     )
                 )
 
-    def _last_seen(self) -> dict[str, datetime | None]:
-        """Wann zu jedem Schlüssel zuletzt etwas kam, die Brücke eingeschlossen."""
-        zuletzt: dict[str, datetime | None] = {
-            k: r.observed_at for k, r in self.live.readings.items()
-        }
+    def _last_seen(self, now: datetime) -> dict[str, datetime | None]:
+        """Wann zu jedem Schlüssel zuletzt etwas bekannt war, die Brücke eingeschlossen.
+
+        Die Messwerte kommen aus `LiveState.zuletzt_gesehen` - dort steht die eine Ausnahme, die
+        auch der Snapshot kennt (nachts ist eine fehlende Erzeugung null und keine Lücke). Die
+        Brücke ist kein Messwert, sondern die Leitung selbst, und kommt deshalb hier dazu.
+        """
+        zuletzt = self.live.zuletzt_gesehen(now)
         zuletzt[BRIDGE] = self.hub.last_frame_at
         return zuletzt
 
@@ -678,8 +770,15 @@ class LiveRuntime:
         )
 
     # ------------------------------------------------------------------ Regelung
-    def _states(self) -> tuple[EnergySnapshot, BufferState, HeatPumpState]:
-        snap = self.live.snapshot(self.now)
+    def _states(self, now: datetime) -> tuple[EnergySnapshot, BufferState, HeatPumpState]:
+        """Momentaufnahme, Pufferzustand und Wärmepumpenstand zu **einer** Uhrzeit.
+
+        `now` ist ein Argument und nicht `self.now`, damit in einer Antwort überall dieselbe
+        Uhrzeit steht. `anlage()` und `waermepumpe()` lasen ihre Uhr vorher zweimal - einmal für
+        sich, einmal hier drinnen -, und die Alterung der Messwerte fiel damit auf einen anderen
+        Augenblick als die Minutenreihe daneben.
+        """
+        snap = self.live.snapshot(now)
         hp = self.tracker.update(
             snap.heat_pump_power_kw,
             snap.hp_release_contact.value_or(0.0) >= 0.5,
@@ -710,8 +809,8 @@ class LiveRuntime:
 
     async def control_tick(self) -> Decision:
         await self._ingest_price()
-        snap, buffer, hp = self._states()
-        now = snap.timestamp
+        now = self.now
+        snap, buffer, hp = self._states(now)
         prices = self.forecasts.prices
         rank = price_rank(prices, now)
         cheap = cheap_windows(
@@ -863,13 +962,19 @@ class LiveRuntime:
         # Kein Ausstieg ohne Ofen mehr: `plan_stove` rechnet dann die Wärmepumpe allein, und die
         # führt inzwischen. Hier auszusteigen hieße, ihren Fahrplan wegen eines anderen Geräts
         # nicht einmal zu rechnen.
-        _, buffer, hp = self._states()
-        remaining = await self._stove_remaining_kg()
+        #
+        # Die Uhr wird **einmal** gelesen und durchgegeben. Vorher stand sie an fünf Stellen
+        # dieser Methode (Zustände, Behälterrest, Wetterreihe, Betriebszustand, Planbeginn), und
+        # zwischen der ersten und der letzten lag die Abfrage der Minutenreihe: der Fahrplan
+        # begann dann zu einer anderen Zeit, als die Werte alterten, gegen die er geplant wurde.
+        now = self.now
+        _, buffer, hp = self._states(now)
+        remaining = await self._stove_remaining_kg(now)
         pv_expected = self.evaluator.pv_expected_corrected(self.forecasts.pv_expected_kw)
-        temps = self._temps_48h()
+        temps = self._temps_48h(now)
         self.stove_plan = await asyncio.to_thread(
             plan_stove,
-            now=self.now,
+            now=now,
             tz=BERLIN,
             cfg=self.hems,
             prices=list(self.forecasts.prices),
@@ -877,7 +982,7 @@ class LiveRuntime:
             temps=temps,
             buffer=buffer,
             hp_running=hp.running,
-            stove_running=self._stove_running() is True,
+            stove_running=self._stove_running(now) is True,
             remaining_kg=remaining,
         )
         plan = self.stove_plan
@@ -911,23 +1016,23 @@ class LiveRuntime:
                     {"solve_ms": plan.solve_ms, "mip_gap": plan.mip_gap},
                 )
 
-    def _stove_running(self) -> bool | None:
+    def _stove_running(self, now: datetime) -> bool | None:
         """Der gemessene Betriebszustand, oder None, wenn nichts Frisches vorliegt."""
-        m = self.live.measurement("stove_running", self.now, STALE_AFTER_S)
+        m = self.live.measurement("stove_running", now, STALE_AFTER_S)
         if m.value is None or m.quality not in (Quality.OK, Quality.STALE):
             return None
         return bool(m.value)
 
-    async def _stove_remaining_kg(self) -> float | None:
+    async def _stove_remaining_kg(self, now: datetime) -> float | None:
         """Was seit dem letzten Nachfüllen noch im Behälter liegt, aus den Leistungsstufen geschätzt.
 
         Ohne jede Ofenmeldung im laufenden Fenster kommt `None` zurück, und der Planer rechnet dann
         mit einer vollen Füllung. Das ist die optimistische Annahme; sie ist vertretbar, weil ohne
         Ofendaten ohnehin kein Schaltbefehl ankäme.
         """
-        start_local, _ = budget_window(self.hems.stove, self.now.astimezone(BERLIN))
+        start_local, _ = budget_window(self.hems.stove, now.astimezone(BERLIN))
         rows = await self.repos.minute_series(
-            start_local.astimezone(UTC), self.now, ["stove_power_level", "stove_running"]
+            start_local.astimezone(UTC), now, ["stove_power_level", "stove_running"]
         )
         by_level: dict[str, int] = {}
         seen = False
@@ -944,14 +1049,14 @@ class LiveRuntime:
             return None
         return remaining_kg(self.hems.stove, estimated_kg_burned(self.hems.stove, by_level))
 
-    def _temps_48h(self) -> list[tuple[datetime, float]]:
+    def _temps_48h(self, now: datetime) -> list[tuple[datetime, float]]:
         w = self.forecasts.weather
         if w is None:
             return []
         return [
             (p.ts, p.temp_c)
             for p in w.points
-            if p.temp_c is not None and p.ts >= self.now - timedelta(hours=1)
+            if p.temp_c is not None and p.ts >= now - timedelta(hours=1)
         ][:48]
 
     async def _apply_stove_plan(self, now: datetime) -> None:
@@ -968,7 +1073,7 @@ class LiveRuntime:
             controllable=self.stove.controllable,
             actuation_enabled=self.settings.actuation_enabled,
             bridge_online=self.hub.online,
-            observed=self._stove_running(),
+            observed=self._stove_running(now),
             last_switch_at=self._stove_switched_at,
             min_runtime_min=self.hems.stove.min_runtime_min,
             min_offtime_min=self.hems.stove.min_offtime_min,
@@ -1129,8 +1234,31 @@ class LiveRuntime:
 
     # ------------------------------------------------------------------ Ausgabe
     def live_state(self) -> LiveStateOut:
-        snap, buffer, hp = self._states()
-        now = snap.timestamp
+        """Der Zustand, wie die Anzeige ihn sieht - zu der Uhrzeit, die der Dienst gerade hat.
+
+        **Warum die Uhr hier gelesen wird und nicht aus dem Snapshot kommt.** `server_time` ist
+        das einzige Feld, nach dem die Anzeige ihre eigene Uhr stellt: `Hauszustand.setzeVersatz`
+        rechnet `versatz = server_time - Date()` und schreibt `Date() + versatz` als große Uhr an
+        die Wand. Jede Sekunde, die dieses Feld hinter der Wirklichkeit liegt, steht also auf dem
+        Bildschirm - am 22.11.2026 fotografiert: 22:04 in der großen Uhr, 22:07 in der Statusleiste
+        desselben iPads, oben rechts LIVE.
+
+        Bis dahin stand hier `now = snap.timestamp`. Das war wertgleich, weil `_states` die
+        Aufnahme mit genau dieser Uhr baut (`LiveState.snapshot` setzt `timestamp=now`; über
+        `/live/state` gemessen, bei einer 600 s alten jüngsten Messung: 0,0 s Abstand zwischen
+        `server_time` und `snapshot.timestamp`) - aber es las sich als Messzeit und wäre eine
+        geworden, sobald jemand die Aufnahme in ein Feld legt, statt sie je Antwort zu bauen. Der
+        Vorführbetrieb tut genau das (`demo_runner.snapshot`); dort geht es gut, weil seine Uhr
+        nur im Schritt weiterläuft und die Aufnahme im gleichen Schritt erneuert wird (gemessen
+        bei `sim_speed=60`: 0,0 s). Hier gibt es diese Kopplung nicht, und sie soll auch nicht
+        entstehen: Die Uhr kommt aus `self.now`, und `_states` bekommt dieselbe Zahl - Gleichheit,
+        die im Kode steht statt geerbt zu sein.
+
+        Das Alter der Messungen geht dabei nicht verloren - es steht, wo es hingehört: am Messwert
+        in `observed_at` (daraus rechnet die App ihre „vor 4 min") und an `snapshot.timestamp`.
+        """
+        now = self.now
+        snap, buffer, hp = self._states(now)
         aussen = self._aussen(now)
         return LiveStateOut(
             snapshot=snap,
@@ -1151,7 +1279,13 @@ class LiveRuntime:
                 version=VERSION,
                 connection_label_de=self._connection_label(),
                 sources=self._sources(),
-                watch=[*self._watch(now), *self._aussen_befund(aussen)],
+                watch=_nach_schwere(
+                    [
+                        *self._watch(now),
+                        *self._puffer_befunde(snap),
+                        *self._aussen_befund(aussen),
+                    ]
+                ),
                 outdoor_shown_c=aussen.angezeigt_c,
                 outdoor_source_de=aussen.quelle_de,
                 hp_actuation=self.settings.heat_pump_actuation_enabled,
@@ -1203,8 +1337,15 @@ class LiveRuntime:
     def _room_name(meta: dict[int, rooms.RoomMeta], rid: int) -> rooms.RoomMeta:
         return meta.get(rid) or rooms.RoomMeta(id=rid, name=f"Raum {rid}", rank=rid)
 
-    async def rooms_live(self) -> RoomsLiveOut:
-        now = self.now
+    async def rooms_live(self, now: datetime | None = None) -> RoomsLiveOut:
+        """Die Räume im Augenblick.
+
+        `now` ist ein Argument, damit eine Antwort, die Räume *und* etwas anderes enthält, überall
+        dieselbe Uhrzeit hat. `anlage()` las seine Uhr vorher zweimal - einmal für sich, einmal
+        hier drinnen -, und die Ventilwerte alterten damit gegen einen anderen Augenblick als die
+        Minutenreihe daneben. Dieselbe Begründung wie an `_states`.
+        """
+        now = now or self.now
         meta = await self._room_meta()
         ids = self._room_ids(meta)
         out: list[RoomLiveOut] = []
@@ -1246,7 +1387,7 @@ class LiveRuntime:
     async def anlage(self) -> AnlageOut:
         """Das Schema im Augenblick: Live-Zustand, Räume und zwei kurze Rückblicke in die Minuten."""
         now = self.now
-        snap, buffer, hp = self._states()
+        snap, buffer, hp = self._states(now)
         zeilen = await self.repos.minute_series(
             now - timedelta(minutes=anlage_logic.RUECKBLICK_MIN), now, anlage_logic.KEYS
         )
@@ -1266,14 +1407,14 @@ class LiveRuntime:
             dhw_outlet=mess(anlage_logic.DHW_OUTLET),
             dhw_inlet=mess(anlage_logic.DHW_INLET),
             wp_vorlauf=mess(anlage_logic.WP_VORLAUF),
-            ventile=[r.valve for r in (await self.rooms_live()).rooms],
+            ventile=[r.valve for r in (await self.rooms_live(now)).rooms],
             zeilen=zeilen,
         )
 
     async def waermepumpe(self) -> WaermepumpeOut:
         """Die Wärmepumpe im Augenblick: was ihr Bus, der Zähler und die Pufferfühler melden."""
         now = self.now
-        snap, _, hp = self._states()
+        snap, _, hp = self._states(now)
         # Für den Fall, dass der Bus schweigt: was Dienst und Bridge über den Weg wissen.
         bus = self.hub.health_by_source.get("ebusd")
         woher = self.hub.health_by_source.get("zuordnung")
@@ -2380,10 +2521,12 @@ class LiveRuntime:
         return await self.accounting.summary(period, anchor, self.now)
 
     async def heat_report(self, period: Period, anchor: date) -> HeatReportOut:
-        return await self.accounting.heat_report(period, anchor, self.now, self._temps_48h())
+        now = self.now
+        return await self.accounting.heat_report(period, anchor, now, self._temps_48h(now))
 
     async def heat_balance(self, period: Period, anchor: date) -> HeatBalanceOut:
-        return await self.accounting.heat_balance(period, anchor, self.now, self._temps_48h())
+        now = self.now
+        return await self.accounting.heat_balance(period, anchor, now, self._temps_48h(now))
 
     async def update_heat_config(self, patch: HeatConfigIn) -> HemsConfig:
         """Geänderte Wärmeannahmen übernehmen, speichern und sofort wirksam machen.

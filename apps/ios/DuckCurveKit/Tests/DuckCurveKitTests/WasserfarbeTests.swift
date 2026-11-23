@@ -53,11 +53,38 @@ final class WasserfarbeTests: XCTestCase {
         XCTAssertNotEqual(hex(Marken.wasserfarbe(36)), hex(Marken.wasserfarbe(44)))
     }
 
-    /// **Der Fehler, den diese Tests festhalten.** Bei 40 °C - einer ganz gewoehnlichen
-    /// Puffertemperatur - muss die Farbe schon deutlich warm sein und nicht blass.
-    func testEinPufferUm40GradIstNichtBlass() {
+    /// **Ab der Komforttemperatur muss das Glas warm aussehen - vorher nicht.**
+    ///
+    /// Hier stand „bei 40 Grad", geprueft wurde 42, und bei 40 faellt dieselbe Zusicherung durch
+    /// (0,163 gegen die geforderten 0,25). Der Test, der genau diesen Anblick verhindern sollte,
+    /// liess ihn durch.
+    ///
+    /// **Entschieden: die Grenze ist 42, nicht die Skala.** 42 °C ist keine runde Zahl, sondern
+    /// `BufferConfig.comfort_min_top_c` - die Temperatur, ab der die Oberkante des Puffers
+    /// Komfortwaerme liefert. Darunter ist blass die richtige Auskunft: eine flache Saeule bei
+    /// 40 °C ergibt 18 % Ladestand und das Wort „kalt" (`usable_energy_kwh([40,40,40,39])`,
+    /// 5,523 von 31,395 kWh). Ein goldenes Glas neben dem Wort „kalt" waere ein Widerspruch auf
+    /// derselben Kachel, und genau fuer solche Widersprueche haengt die Anzeige an der Wand.
+    ///
+    /// **Was die Gegenentscheidung gekostet haette.** Die Stuetzstellen bei 40 bunter zu machen
+    /// heisst, von `apps/web/src/components/anlage/schema.ts` (`STOPS`) abzuweichen - der
+    /// Vorlage, deren Zahlen `testDieStuetzstellenSindDieDesDashboards` Zahl fuer Zahl festhaelt.
+    /// Dieselbe Skala in zwei Oberflaechen muss dieselben Zahlen an denselben Stellen zeigen;
+    /// zwei Haeuser derselben Temperatur in verschiedenen Farben waren der Fehler, der diese
+    /// Datei ueberhaupt entstehen liess.
+    func testEinPufferAbDerKomforttemperaturIstNichtBlass() {
         let f = Marken.wasserfarbe(42)
         // Rot deutlich ueber Blau: die warme Haelfte der Skala.
         XCTAssertGreaterThan(f.rot, f.blau + 0.25, "42 Grad muss warm aussehen, nicht blaulich")
+    }
+
+    /// Die Gegenrichtung, damit die Entscheidung von oben nicht still kippt: bei 40 Grad ist das
+    /// Glas noch nicht warm. Wer die Stuetzstellen verschiebt, faellt hier auf - und nicht erst
+    /// an einer Wandanzeige, die einen Puffer mit 18 % golden zeigt.
+    func testEinPufferUm40GradIstNochNichtWarm() {
+        let f = Marken.wasserfarbe(40)
+        XCTAssertLessThan(f.rot, f.blau + 0.25, "40 Grad gehoert in den blassen Uebergang")
+        // Aber auch nicht mehr kalt-petrol: der Uebergang hat bei 40 schon begonnen.
+        XCTAssertGreaterThan(f.rot, f.blau)
     }
 }

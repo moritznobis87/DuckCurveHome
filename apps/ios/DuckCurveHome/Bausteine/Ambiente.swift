@@ -46,7 +46,12 @@ struct Ambiente: View {
     /// die Überblendung sichtbar macht. Solange hier nichts steht, rechnet die Ansicht selbst.
     @State private var stand: Stand?
 
-    /// Die Minute, auf der das Bild steht. Eine eigene Uhr, kein Mitlaufen am Rahmen.
+    /// Die Minute, auf der die **grosse Uhr** steht. Eine eigene Uhr, kein Mitlaufen am Rahmen.
+    ///
+    /// Sie kommt aus ``Hauszustand/wanduhr`` und nicht aus `haus.jetzt`: hier stand die Uhr des
+    /// Dienstes, und eine Maschine mit drei Minuten Rueckstand schrieb `22:04` auf die Wand,
+    /// waehrend die Statusleiste des iPads `22:07` zeigte. Was gerechnet wird - Sonnenlauf,
+    /// Fahrplan, Aussicht -, nimmt weiter die Uhr der Daten (``datenminute``).
     @State private var takt = Date()
 
     struct Stand {
@@ -68,7 +73,10 @@ struct Ambiente: View {
 
     private var jetztMinute: Date { takt }
 
-    private var jetztStand: Stand { stand ?? gerechnet(jetztMinute) }
+    /// Die Minute der Daten: in der Uhr des Dienstes sind Fahrplan und Sonnenlauf geschrieben.
+    private var datenminute: Date { Verlauf.minutenanfang(haus.jetzt) }
+
+    private var jetztStand: Stand { stand ?? gerechnet(datenminute) }
 
     var body: some View {
         GeometryReader { raum in
@@ -87,8 +95,7 @@ struct Ambiente: View {
         .accessibilityLabel("Ruhebild. Antippen für die Bedienung.")
         .onAppear { rechne() }
         .onReceive(Self.sekunde) { _ in
-            let minute = Date(
-                timeIntervalSince1970: (haus.jetzt.timeIntervalSince1970 / 60).rounded(.down) * 60)
+            let minute = Verlauf.minutenanfang(haus.wanduhr)
             if minute != takt {
                 takt = minute
                 rechne()
@@ -274,19 +281,23 @@ struct Ambiente: View {
     /// der Ausfall da und nicht ein Satz über eine Wärmepumpe, der auf zwei Tage alten Zahlen
     /// beruht. Darum nicht `haus.satz`: der kennt die Wache nicht.
     private var satz: String {
-        if let befund { return befund.textDe }
+        if let befund { return befund.satz }
         if let e = haus.zustand?.decision?.explanationDe, !e.isEmpty { return e }
         return "Verbinde mit dem Haus …"
     }
 
-    private var befund: WatchFindingOut? {
-        Ruhebild.schwersterBefund(haus.zustand?.system.watch)
+    /// **Auch der Befund der eigenen Uhr.** Gehen die Uhren von Dienst und Geraet auseinander,
+    /// steht das hier - an der einzigen Stelle, die das Ruhebild für einen Satz hat. Ohne das
+    /// waere die Lage auf dem Foto genau so still wie vorher: eine falsche Uhr, `LIVE` daneben
+    /// und kein Wort darüber.
+    private var befund: Wachbefunde.Zeile? {
+        Ruhebild.schwersterBefund(haus.zustand?.system.watch, zuerst: haus.uhrbefunde)
     }
 
     private var satzfarbe: Color {
-        switch befund?.severity {
+        switch befund?.schwere {
         case .alarm: return Farbe.alarm
-        case .warn: return Farbe.amberWeich
+        case .warnung: return Farbe.amberWeich
         default: return Farbe.text1
         }
     }
@@ -496,9 +507,8 @@ struct Ambiente: View {
     // MARK: - Rechnen und Laden
 
     private func rechne() {
-        takt = Date(
-            timeIntervalSince1970: (haus.jetzt.timeIntervalSince1970 / 60).rounded(.down) * 60)
-        stand = gerechnet(takt)
+        takt = Verlauf.minutenanfang(haus.wanduhr)
+        stand = gerechnet(datenminute)
     }
 
     private func gerechnet(_ jetzt: Date) -> Stand {
