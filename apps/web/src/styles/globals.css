@@ -826,8 +826,10 @@ button.ansicht { cursor: pointer; }
 .alfred { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .alfred-button { width: 56px; height: 56px; padding: 6px; border: 1px solid var(--line-2); border-radius: 50%; background: var(--paper); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35); cursor: pointer; transition: transform 160ms ease; }
 .alfred-button img { display: block; width: 100%; height: 100%; pointer-events: none; }
-/* Halten heißt sprechen: Kein Lupen-, Auswahl- oder Bildmenü des Systems beim langen Drücken. */
-.alfred-button { touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+/* Halten heißt sprechen: Kein Lupen-, Auswahl- oder Bildmenü des Systems beim langen Drücken, und
+   kein Scrollen, das auf der Ente beginnt. Sonst übernimmt iOS die Berührung, sobald der Finger
+   etwas verrutscht, und bricht das Halten ab. */
+.alfred-button { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 /* Alfred hört zu: ein Ring, der atmet. Losgelassen und wartend steht er still. */
 .alfred.hoert .alfred-button { transform: scale(1.08); border-color: var(--amber); animation: alfred-hoert 1.1s ease-in-out infinite; }
 .alfred.wartet .alfred-button { animation: none; box-shadow: 0 0 0 4px rgba(242, 169, 0, 0.35); }
@@ -839,6 +841,8 @@ button.ansicht { cursor: pointer; }
 /* Eine Datei schwebt über Alfred: Knopf und Panel zeigen, dass sie hier abgelegt werden kann. */
 .alfred.zieht .alfred-button { outline: 3px dashed var(--amber); outline-offset: 4px; transform: scale(1.08); }
 .alfred.zieht .alfred-feld { border-color: var(--amber); }
+/* Was die Spracherkennung getan hat, wenn sie keinen Text lieferte (Alfred.tsx, technikZeile). */
+.alfred-technik { display: block; margin-top: 6px; font: 11px/1.4 "IBM Plex Mono", monospace; color: var(--text-3); }
 .alfred-link { display: block; margin-top: 6px; color: var(--amber-soft); font-weight: 600; text-decoration: none; }
 .alfred-link:hover { text-decoration: underline; }
 .alfred-button:hover { transform: translateY(-2px); }

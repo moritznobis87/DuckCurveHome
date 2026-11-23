@@ -112,7 +112,7 @@ Bildschirmtastatur nehmen. Das erkennt auf neueren Geräten auf dem Gerät.
 | Ausgang | Erkennung | Alfred sagt |
 |---|---|---|
 | beim Loslassen nie angelaufen | kein `start`-Ereignis | „Ich konnte nicht zuhören …“, mit Hinweis auf die Mikrofonfrage |
-| nach dem Loslassen kein Text | 5 s still (`WACHE_MS`) | „Die Spracherkennung dieses Browsers antwortet nicht …“ |
+| nach dem Loslassen kein Text | 5 s still (`WACHE_MS`), ohne Zwischentext | „Die Spracherkennung dieses Browsers antwortet nicht …“ |
 | Mikrofon verweigert | `not-allowed`, `service-not-allowed`, `audio-capture` | „Ich darf das Mikrofon nicht benutzen …“ |
 | nichts gesagt | `no-speech` oder Ende ohne Text | „Ich habe nichts verstanden …“ |
 | Browser ohne Erkennung | keine Klasse | „Dieser Browser kann keine Spracheingabe …“ |
@@ -120,7 +120,26 @@ Bildschirmtastatur nehmen. Das erkennt auf neueren Geräten auf dem Gerät.
 Jedes Zuhören endet genau einmal (`beenden`). Ein Text, der nach der Wache doch noch kommt, fragt
 nichts mehr. Die Erkennung läuft nicht im Dauermodus, denn Safari hat dort bekannte Fehler: Nach
 dem ersten Satz endet sie von selbst, auch wenn die Ente noch gedrückt ist. Eine lange Pause
-beendet also die Frage. Ton geht nicht an den Dienst. Mit der Bandbreite hat das nichts zu tun,
+beendet also die Frage.
+
+**Was Safari unter iOS anders macht.** Am iPhone kam beim ersten Versuch nur „Ich habe nichts
+verstanden“, die Erkennung lief an und lieferte keinen Text. Zwei Ursachen passen dazu, und beide
+sind abgefangen:
+
+- *Nur Zwischenstände.* Safari meldet einen Text oft nie als endgültig (`isFinal`). Alfred schaltet
+  deshalb Zwischenergebnisse ein, zeigt sie live („Ich höre: …“) und fragt mit dem letzten
+  Zwischentext, wenn die Erkennung endet oder nach dem Loslassen 1,5 s (`NACHLAUF_MS`) kein
+  endgültiger kommt. Ein endgültiges Ergebnis fragt sofort.
+- *iOS übernimmt die Berührung.* Verrutscht der Daumen, vermutet iOS ein Scrollen und schickt
+  `pointercancel`. Die Ente trägt `touch-action: none`, damit auf ihr kein Scrollen beginnt. Kommt
+  `pointercancel` doch, hört Alfred weiter zu, bis das nächste `touchend` oder `pointerup` den
+  gehobenen Finger meldet, höchstens 30 s lang (`HOEREN_MAX_MS`).
+
+Endet ein Zuhören ohne Text, steht unter Alfreds Satz eine Technikzeile (`technikZeile`), etwa
+„Start ✓ · Ton ✓ · Sprache – · Text – · Fehler no-speech · 1,8 s · nach dem Loslassen · Web-App“.
+Am Telefon gibt es keine Entwicklerwerkzeuge, und ein Bildschirmfoto davon sagt, wie weit die
+Erkennung kam. Derselbe Fehler stapelt sich nicht: Beim zweiten Mal rät Alfred zum Mikrofon der
+Tastatur, danach erneuert er nur die Technikzeile. Ton geht nicht an den Dienst. Mit der Bandbreite hat das nichts zu tun,
 fünf Sekunden Sprache sind etwa 15 KB. Es soll nur kein zweiter Empfänger die Stimmen aus dem Haus
 hören. Wer die Home-Bildschirm-App ohne Tastatur will, bräuchte Erkennung beim Anbieter (bei
 Mistral etwa Voxtral), und das wäre eine eigene Entscheidung.
