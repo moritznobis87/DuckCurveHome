@@ -235,6 +235,18 @@ class Settings(BaseSettings):
     #: tut die Variable nichts mehr - sie prueft jedes Mal, ob wirklich noch niemand da ist.
     erste_person: str = ""
 
+    #: Der Notzugang: diese Person wird beim Start wieder aktiv, wird `hausherr` und bekommt einen
+    #: Einladungslink ins Protokoll - **auch wenn es schon Personen gibt**.
+    #:
+    #: Der Unterschied zu `erste_person`: die greift nur bei leerer Tabelle und ist damit kein
+    #: Rueckweg, wenn jemand sich aussperrt. Genau das passierte am 23.11.2026, als die RP-ID
+    #: wechselte und der einzige Passkey an die alte gebunden war.
+    #:
+    #: **Nach Gebrauch wieder entfernen.** Solange die Variable steht, entsteht bei jedem Start
+    #: ein neuer Link, und wer das Protokoll liest, kommt herein. Der Dienst warnt darum bei jedem
+    #: Start, solange sie gesetzt ist.
+    notzugang: str = ""
+
     #: Die Adresse, unter der die Oberflaeche erreichbar ist - fuer den Link in der Einladung.
     #: Leer heisst: die erste Herkunft aus `passkey_herkuenfte`.
     anmelde_url: str = ""
