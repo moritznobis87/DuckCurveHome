@@ -74,10 +74,7 @@ def test_ein_ruhender_lauwarmer_speicher_ist_kein_fehlalarm() -> None:
         assert eingefroren([stand(temp, gemessene_standzeit)], CFG) == []
     # Über der nutzbaren Temperatur deckelt sie weiter - dort wird entnommen.
     assert standzeit_min(36.0, CFG) == pytest.approx(183.6, abs=0.5)
-    assert all(
-        (standzeit_min(t, CFG) or 0.0) <= 360.0
-        for t in (36.0, 40.0, 45.0, 50.0, 62.0)
-    )
+    assert all((standzeit_min(t, CFG) or 0.0) <= 360.0 for t in (36.0, 40.0, 45.0, 50.0, 62.0))
 
 
 def test_sechs_stunden_derselbe_wert_ist_ein_befund() -> None:
