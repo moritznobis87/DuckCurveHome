@@ -12,15 +12,16 @@ import structlog
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from dch_api import urheber
+from dch_api import dependencies, urheber
 from dch_api.application.apns import ApnsVersender
 from dch_api.application.config_loader import load_app_config
-from dch_api.dependencies import require_api_token
+from dch_api.dependencies import require_zugang
 from dch_api.errors import DchError, install_error_handlers
 from dch_api.infrastructure.logging import configure_logging
 from dch_api.routers import (
     alfred,
     anlage,
+    auth,
     bridge,
     config,
     control,
@@ -55,6 +56,7 @@ async def _start_demo(app: FastAPI, settings: Settings) -> None:
 
     runner = DemoRunner(settings)
     app.state.runner = runner
+    app.state.auth = None  # ohne Datenbank keine Personen; die Anmeldung bleibt aus
     # Ohne Datenbank: Die Anmeldungen leben nur, solange der Vorgang lebt. Fuer den Demo-Modus ist
     # das richtig - dort soll nichts von gestern uebrig sein -, und die Oberflaeche ist damit auch
     # ohne Datenbank zu bedienen.
@@ -111,6 +113,11 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
         settings, cfg, repos, hub, forecasts, myenergi=myenergi, inexogy=inexogy, push=push
     )
     app.state.engine = engine
+    # Die Anmeldung braucht eine Datenbank. Im Demo-Modus bleibt `auth` darum None, und
+    # `dependencies.require_zugang` verhaelt sich wie bisher (ADR-0002).
+    from dch_api.auth.dienst import AuthDienst
+
+    app.state.auth = AuthDienst(engine, settings)
     app.state.bridge_hub = hub
     app.state.runner = runtime
     app.state.push = push
@@ -133,6 +140,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await _start_live(app, settings)
         else:
             await _start_demo(app, settings)
+        problem = settings.passkey_problem()
+        if problem:
+            # Keine Ausnahme: ein Haus, dessen Passkey-Einstellung nicht stimmt, soll trotzdem
+            # laufen und seine Waermepumpe regeln. Nur anmelden kann sich dann niemand, und das
+            # steht hier so deutlich, dass es beim Hochfahren auffaellt.
+            log.error("passkey settings unusable", problem=problem, hinweis="Anmeldung unmoeglich")
         log.info(
             "started",
             mode=settings.mode,
@@ -191,21 +204,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     @app.middleware("http")
-    async def urheber_setzen(
+    async def zugang_und_urheber(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        """Den Urheber dieser Anfrage für ihre ganze Dauer bereitstellen.
+        """Einmal je Anfrage ermitteln, wer fragt - und daraus den Urheber setzen.
 
         **Warum Middleware und nicht Abhängigkeit.** Eine Abhängigkeit müsste jeder Endpunkt
         annehmen, und die Ablage müsste sie durch jede Schicht gereicht bekommen. Hier steht sie
         einmal und gilt für alles, was in dieser Anfrage geschrieben wird - auch tief unten in
         `repos.add_event`, das von einundzwanzig Stellen gerufen wird.
 
-        **Geglaubt wird die Angabe, weil hinter derselben Tür das API-Token steht.** Wer das
-        Token hat, könnte jeden Urheber behaupten - er könnte aber ohnehin alles. Das ist eine
-        Zuordnung, keine Beweisführung; siehe `application/urheber.py`.
+        **Ermitteln ist nicht prüfen.** Diese Stelle weist niemanden ab; sie legt den Ausweis in
+        `request.state.ausweis`. Abgewiesen wird in `dependencies.require_zugang`, das auch den
+        Pfad gegen die Rolle hält - sonst käme der Bridge-Endpunkt mit seiner eigenen Prüfung hier
+        nicht mehr durch.
+
+        **Seit es Personen gibt, ist der Urheber bei einer Anmeldung keine Behauptung mehr.** Bei
+        einem Gerät mit API-Token bleibt er eine Zuordnung, wie bisher (docs/URHEBER.md): wer das
+        Token hat, könnte jeden Namen behaupten - er könnte aber ohnehin alles.
         """
-        merker = urheber.setze(urheber.aus_kopfzeilen(request.headers))
+        ausweis = await dependencies.ausweis_ermitteln(request)
+        request.state.ausweis = ausweis
+        merker = urheber.setze(dependencies.urheber_der_anfrage(request, ausweis))
         try:
             return await call_next(request)
         finally:
@@ -214,7 +234,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(bridge.router)
-    protected = [Depends(require_api_token)]
+    # Der Zugangsrouter haengt NICHT an der allgemeinen Tuer: wer sich anmelden will, ist noch
+    # nicht angemeldet. Jeder seiner Endpunkte sagt selbst, was er verlangt (routers/auth.py).
+    app.include_router(auth.router, prefix=API_PREFIX)
+    protected = [Depends(require_zugang)]
     for r in (
         alfred.router,
         update.router,

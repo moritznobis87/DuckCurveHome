@@ -26,6 +26,9 @@ dependencies = [
     "pyyaml>=6.0",
     "pypdf>=5.1",  # Text aus Tibber-Rechnungen lesen
     "pywebpush>=2.0",
+    # Passkeys (WebAuthn). Die Zeremonien stehen in dch_api/auth/passkeys.py; diese Bibliothek
+    # prueft Signatur, Challenge, Herkunft und Zaehler - alles, was man nicht selbst schreiben will.
+    "webauthn>=2.5",
 ]
 
 [project.scripts]

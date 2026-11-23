@@ -29,6 +29,814 @@
         }
       }
     },
+    "/api/v1/auth/zustand": {
+      "get": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Ist eine Anmeldung nötig?",
+        "description": "Was die Anmeldeseite wissen muss, bevor jemand angemeldet ist.\n\nWortkarg mit Absicht: `personen` ist eine Zahl, keine Liste. Dass es noch niemanden gibt, muss\ndie Seite sagen können („Zugang über das gepaarte Gerät einrichten\"); wer das wäre, braucht\nsie nicht.",
+        "operationId": "zustand_api_v1_auth_zustand_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZugangZustandOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/wer": {
+      "get": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Wer stellt diese Anfrage?",
+        "description": "Die kleinste Auskunft: Art, Rolle, Name.\n\nDie Oberfläche fragt das alle zwei Minuten, um keine toten Knöpfe zu zeigen - darum eine\neigene Antwort und nicht `/auth/ich`, das zusätzlich Passkeys und Sitzungen lädt. Sie\nbeantwortet beide Wege herein: eine angemeldete Person ebenso wie ein gepaartes Gerät.",
+        "operationId": "wer_api_v1_auth_wer_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AusweisOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/anmeldung/beginnen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Anmeldung mit Passkey beginnen",
+        "description": "Die Optionen für `navigator.credentials.get` - ohne E-Mail-Adresse.\n\nDer Browser bietet die Passkeys für diese Domain an (auffindbarer Passkey). Erst auf Klick und\nnicht beim Laden der Seite: jede Challenge ist eine Zeile in der Datenbank, und eine Seite,\ndie beim blossen Aufruf eine anlegt, ließe sich von jedem Bot fluten.",
+        "operationId": "anmeldung_beginnen_api_v1_auth_anmeldung_beginnen_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZeremonieOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/anmeldung/abschliessen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Mit Passkey anmelden",
+        "operationId": "anmeldung_abschliessen_api_v1_auth_anmeldung_abschliessen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnmeldenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AngemeldetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/wiederherstellung": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Mit Wiederherstellungscode anmelden",
+        "description": "Der Weg, wenn alle Geräte weg sind. Der Code gilt einmal.\n\nDanach gehört der erste Griff in das Konto: einen neuen Passkey anlegen und neue Codes holen.",
+        "operationId": "wiederherstellung_api_v1_auth_wiederherstellung_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiederherstellenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AngemeldetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/einladung": {
+      "get": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Wem gehört dieser Link?",
+        "description": "Löst den Link nicht ein - das tut erst der fertige Passkey.",
+        "operationId": "einladung_api_v1_auth_einladung_get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EinladungPersonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/einladung/passkey/beginnen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey über den Link anlegen: beginnen",
+        "operationId": "einladung_passkey_beginnen_api_v1_auth_einladung_passkey_beginnen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyBeginnenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZeremonieOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/einladung/passkey/abschliessen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey über den Link anlegen: abschließen",
+        "description": "Legt den Passkey an, löst den Link ein und meldet an.\n\n**Jeder eingelöste Link bringt zehn frische Wiederherstellungscodes** und entwertet die alten.\nDas ist Absicht: der Link ist nicht nur die Einladung, sondern auch der Rückweg, und wer ihn\ngebraucht hat, muss davon ausgehen, dass die alten Codes nichts mehr wert sind. Sie gehen\n**einmal** im Klartext hinaus, hier; danach liegen nur ihre Hashes.",
+        "operationId": "einladung_passkey_abschliessen_api_v1_auth_einladung_passkey_abschliessen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyAbschliessenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AngemeldetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/ich": {
+      "get": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Wer bin ich, und welche Geräte habe ich?",
+        "operationId": "ich_api_v1_auth_ich_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IchOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/abmelden": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Diese Sitzung beenden",
+        "description": "Beendet die Sitzung, mit der gefragt wird. Das BFF löscht danach sein Cookie.",
+        "operationId": "abmelden_api_v1_auth_abmelden_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object",
+                  "title": "Response Abmelden Api V1 Auth Abmelden Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sitzungen/{sitzung_id}/beenden": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Ein anderes Gerät abmelden",
+        "operationId": "sitzung_beenden_api_v1_auth_sitzungen__sitzung_id__beenden_post",
+        "parameters": [
+          {
+            "name": "sitzung_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sitzung Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Sitzung Beenden Api V1 Auth Sitzungen  Sitzung Id  Beenden Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sitzungen/beenden-alle": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Überall abmelden",
+        "description": "Der Griff für den Verdachtsfall: alle Sitzungen dieser Person enden, auch die eigene.",
+        "operationId": "alle_sitzungen_beenden_api_v1_auth_sitzungen_beenden_alle_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object",
+                  "title": "Response Alle Sitzungen Beenden Api V1 Auth Sitzungen Beenden Alle Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/beginnen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey anlegen: beginnen",
+        "operationId": "passkey_beginnen_api_v1_auth_passkeys_beginnen_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZeremonieOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/abschliessen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey anlegen: abschließen",
+        "operationId": "passkey_abschliessen_api_v1_auth_passkeys_abschliessen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyAbschliessenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/{passkey_id}/name": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey umbenennen",
+        "operationId": "passkey_umbenennen_api_v1_auth_passkeys__passkey_id__name_post",
+        "parameters": [
+          {
+            "name": "passkey_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Passkey Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NameIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Passkey Umbenennen Api V1 Auth Passkeys  Passkey Id  Name Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/{passkey_id}/loeschen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passkey löschen",
+        "description": "Der letzte Passkey bleibt: sonst käme diese Person nur noch über einen Code oder einen\nLink des Hausherrn herein.",
+        "operationId": "passkey_loeschen_api_v1_auth_passkeys__passkey_id__loeschen_post",
+        "parameters": [
+          {
+            "name": "passkey_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Passkey Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Passkey Loeschen Api V1 Auth Passkeys  Passkey Id  Loeschen Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/codes": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Neue Wiederherstellungscodes",
+        "description": "Zehn neue Codes; die alten gelten nicht mehr. Klartext nur hier, einmal.",
+        "operationId": "codes_api_v1_auth_codes_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Codes Api V1 Auth Codes Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/personen": {
+      "get": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Wer Zugang hat",
+        "operationId": "personen_api_v1_auth_personen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PersonOut"
+                  },
+                  "type": "array",
+                  "title": "Response Personen Api V1 Auth Personen Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Person anlegen und einladen",
+        "description": "Legt die Person an und gibt den Einladungslink zurück - immer, auch wenn die E-Mail\nhinausging. Der Versand ist eine Beigabe: schlägt er fehl, ist die Person trotzdem angelegt\nund der Link bleibt kopierbar (`dch_api/post.py`).",
+        "operationId": "person_anlegen_api_v1_auth_personen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonAnlegenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EinladungOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/personen/{person_id}": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Rolle oder Zustand ändern",
+        "operationId": "person_aendern_api_v1_auth_personen__person_id__post",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonAendernIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/personen/{person_id}/einladen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Neuen Link ausstellen",
+        "description": "Ein neuer Link - für „Einladung kam nicht an\" und für „alle Geräte verloren\".\n\nDer alte Link wird dabei entwertet: zwei gültige Links für dieselbe Person sind einer zu viel.",
+        "operationId": "person_einladen_api_v1_auth_personen__person_id__einladen_post",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EinladenIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Daten"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EinladungOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/personen/{person_id}/loeschen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Person löschen",
+        "description": "Löscht die Person samt Passkeys, Sitzungen und offenen Links. Der letzte aktive Hausherr\nbleibt - sonst sperrt sich das Haus selbst aus.",
+        "operationId": "person_loeschen_api_v1_auth_personen__person_id__loeschen_post",
+        "parameters": [
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Person Loeschen Api V1 Auth Personen  Person Id  Loeschen Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/alfred/status": {
       "get": {
         "tags": [
@@ -3832,6 +4640,37 @@
         "title": "AlfredZustandOut",
         "description": "Ob Alfred antworten kann, und an wen Fragen gehen (KI-Verordnung Art. 50)."
       },
+      "AngemeldetOut": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "laeuft_ab_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Laeuft Ab Am"
+          },
+          "ausweis": {
+            "$ref": "#/components/schemas/AusweisOut"
+          },
+          "codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Codes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "laeuft_ab_am",
+          "ausweis"
+        ],
+        "title": "AngemeldetOut",
+        "description": "Das Ergebnis einer Anmeldung.\n\n`token` ist der Ausweis im Klartext und existiert genau hier einmal. Das BFF legt ihn in ein\nHttpOnly-Cookie und gibt ihn nie an den Browser weiter; eine App legt ihn in den\nSchlüsselbund."
+      },
       "AnlageHeizkreisOut": {
         "properties": {
           "rooms_total": {
@@ -4432,6 +5271,25 @@
         "title": "AnlageWarmwasserOut",
         "description": "Das Trinkwasser: ein Anlegefühler am warmen Auslass, sonst nichts.\n\n`present` ist falsch, solange kein Fühler meldet; dann bleibt die Kachel gedimmt und sagt das.\n`tapping` ist **erkannt**, nicht gemessen: Das Rohr springt auf, sobald warmes Wasser läuft,\nsiehe `hems_core.thermal.anlage.zapfung`. Es sagt, dass und seit wann, nicht wie viel."
       },
+      "AnmeldenIn": {
+        "properties": {
+          "schritt": {
+            "type": "string",
+            "title": "Schritt"
+          },
+          "antwort": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Antwort"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schritt",
+          "antwort"
+        ],
+        "title": "AnmeldenIn"
+      },
       "ApiSelbstOut": {
         "properties": {
           "version": {
@@ -4599,6 +5457,52 @@
           "token"
         ],
         "title": "ApnsUnsubscribeIn"
+      },
+      "AusweisOut": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "person",
+              "geraet",
+              "gast",
+              "dienst"
+            ],
+            "title": "Art"
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "hausherr",
+              "bewohner",
+              "gast",
+              "service"
+            ],
+            "title": "Rolle"
+          },
+          "person_id": {
+            "type": "string",
+            "title": "Person Id",
+            "default": ""
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "rolle"
+        ],
+        "title": "AusweisOut",
+        "description": "Wer gerade fragt. Die Oberfläche blendet danach aus, was die Rolle nicht darf - verboten\nwird es am Dienst (`dch_api/auth/rechte.py`)."
       },
       "AutoProfile": {
         "type": "string",
@@ -6711,6 +7615,82 @@
           "note_de"
         ],
         "title": "DoorLogOut"
+      },
+      "EinladenIn": {
+        "properties": {
+          "einladen": {
+            "type": "boolean",
+            "title": "Einladen",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "EinladenIn",
+        "description": "Einen neuen Link ausstellen. Die Person steht in der Adresse, nicht hier."
+      },
+      "EinladungOut": {
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/PersonOut"
+          },
+          "link": {
+            "type": "string",
+            "title": "Link"
+          },
+          "laeuft_ab_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Laeuft Ab Am"
+          },
+          "verschickt": {
+            "type": "boolean",
+            "title": "Verschickt",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "person",
+          "link",
+          "laeuft_ab_am"
+        ],
+        "title": "EinladungOut",
+        "description": "Der Einladungslink - einmal, im Klartext, zum Kopieren oder Verschicken."
+      },
+      "EinladungPersonOut": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename",
+            "default": ""
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "hausherr",
+              "bewohner",
+              "gast",
+              "service"
+            ],
+            "title": "Rolle"
+          },
+          "passkeys": {
+            "type": "integer",
+            "title": "Passkeys",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "rolle"
+        ],
+        "title": "EinladungPersonOut",
+        "description": "Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist."
       },
       "EnergyBucketOut": {
         "properties": {
@@ -10785,6 +11765,38 @@
         "title": "HousePlan",
         "description": "Das ganze Haus: ein bis drei Decks. `note_de` steht unter der Anzeige, etwa fuer das, was\nim Plan angenommen und nicht gemessen ist."
       },
+      "IchOut": {
+        "properties": {
+          "ausweis": {
+            "$ref": "#/components/schemas/AusweisOut"
+          },
+          "passkeys": {
+            "items": {
+              "$ref": "#/components/schemas/PasskeyOut"
+            },
+            "type": "array",
+            "title": "Passkeys"
+          },
+          "sitzungen": {
+            "items": {
+              "$ref": "#/components/schemas/SitzungOut"
+            },
+            "type": "array",
+            "title": "Sitzungen"
+          },
+          "codes_offen": {
+            "type": "integer",
+            "title": "Codes Offen",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "ausweis"
+        ],
+        "title": "IchOut",
+        "description": "Die eigene Seite: wer ich bin, welche Passkeys und welche Sitzungen ich habe."
+      },
       "ImportResult": {
         "properties": {
           "kind": {
@@ -12725,6 +13737,19 @@
         "title": "NachbetrachtungOut",
         "description": "Ein Ortstag in Euro: was der Fahrplan versprach, was er hielt, was der Tag kostete.\n\nFünf Linien, alle mit derselben Rechnung über dieselben Viertelstunden bewertet\n(`verglichen`): der erste Fahrplan des Tages mit seinen eigenen Kosten (`versprochen`) und mit\nden eingetretenen Werten (`erster`), der jeweils letzte Stand des Fahrplans (`letzter`), die\nMessung (`wirklich`) und ein Vergleichslauf mit perfekter Voraussicht (`perfekt`).\n\n`abstaende` sind die Stufen dazwischen. Die ersten drei führen vom Versprechen zur\nWirklichkeit: Prognosefehler, Nachführen, Eingriff der Maschine. Positiv heißt teurer.\n\nEine Linie, die fehlt, hat `verfuegbar=false` und sagt in `grund_de`, warum. Das ist für\nTage vor dem 09.11.2026 der Normalfall bei allen Fahrplanlinien: aufbewahrt wird erst seitdem."
       },
+      "NameIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "NameIn"
+      },
       "NextExpected": {
         "properties": {
           "action": {
@@ -12868,6 +13893,238 @@
           "force_block"
         ],
         "title": "OverrideKind"
+      },
+      "PasskeyAbschliessenIn": {
+        "properties": {
+          "schritt": {
+            "type": "string",
+            "title": "Schritt"
+          },
+          "antwort": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Antwort"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "schritt",
+          "antwort"
+        ],
+        "title": "PasskeyAbschliessenIn"
+      },
+      "PasskeyBeginnenIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "PasskeyBeginnenIn"
+      },
+      "PasskeyOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "gesichert": {
+            "type": "boolean",
+            "title": "Gesichert"
+          },
+          "erstellt_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Erstellt Am"
+          },
+          "zuletzt_benutzt_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zuletzt Benutzt Am"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "gesichert",
+          "erstellt_am"
+        ],
+        "title": "PasskeyOut"
+      },
+      "PersonAendernIn": {
+        "properties": {
+          "rolle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "hausherr",
+                  "bewohner",
+                  "gast",
+                  "service"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rolle"
+          },
+          "aktiv": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aktiv"
+          },
+          "anzeigename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anzeigename"
+          }
+        },
+        "type": "object",
+        "title": "PersonAendernIn"
+      },
+      "PersonAnlegenIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename",
+            "default": ""
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "hausherr",
+              "bewohner",
+              "gast",
+              "service"
+            ],
+            "title": "Rolle",
+            "default": "bewohner"
+          },
+          "einladen": {
+            "type": "boolean",
+            "title": "Einladen",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "PersonAnlegenIn"
+      },
+      "PersonOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "anzeigename": {
+            "type": "string",
+            "title": "Anzeigename",
+            "default": ""
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "hausherr",
+              "bewohner",
+              "gast",
+              "service"
+            ],
+            "title": "Rolle"
+          },
+          "aktiv": {
+            "type": "boolean",
+            "title": "Aktiv",
+            "default": true
+          },
+          "erstellt_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Erstellt Am"
+          },
+          "zuletzt_angemeldet_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zuletzt Angemeldet Am"
+          },
+          "passkeys": {
+            "type": "integer",
+            "title": "Passkeys",
+            "default": 0
+          },
+          "codes_offen": {
+            "type": "integer",
+            "title": "Codes Offen",
+            "default": 0
+          },
+          "einladung_offen": {
+            "type": "boolean",
+            "title": "Einladung Offen",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "rolle",
+          "erstellt_am"
+        ],
+        "title": "PersonOut"
       },
       "Place": {
         "properties": {
@@ -15580,6 +16837,53 @@
         "title": "ShiftReportOut",
         "description": "Was das Verschieben der Wärmepumpe gebracht hat - eine Rechnung, keine Messung.\n\nDer Vergleichslauf legt dieselbe Strommenge in die Stunden, in denen ein gewöhnlicher\nThermostat sie gebraucht hätte, und stellt die Stromrechnung beider Läufe gegenüber. Die\nAnnahmen stehen einzeln in `assumptions_de`, weil eine Zahl ohne sie mehr behauptet, als sie\nweiß."
       },
+      "SitzungOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "erstellt_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Erstellt Am"
+          },
+          "laeuft_ab_am": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Laeuft Ab Am"
+          },
+          "zuletzt_benutzt_am": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zuletzt Benutzt Am"
+          },
+          "herkunft": {
+            "type": "string",
+            "title": "Herkunft",
+            "default": ""
+          },
+          "diese": {
+            "type": "boolean",
+            "title": "Diese",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "erstellt_am",
+          "laeuft_ab_am"
+        ],
+        "title": "SitzungOut"
+      },
       "SourceOut": {
         "properties": {
           "name": {
@@ -16889,6 +18193,35 @@
         "title": "Vergleich",
         "description": "Dieselbe Quote ohne Schließvorgang: wie oft läuft die Maschine von selbst an?"
       },
+      "VersandOut": {
+        "properties": {
+          "aktiv": {
+            "type": "boolean",
+            "title": "Aktiv",
+            "default": false
+          },
+          "weg": {
+            "type": "string",
+            "enum": [
+              "smtp",
+              "https",
+              ""
+            ],
+            "title": "Weg",
+            "default": ""
+          },
+          "fehlt": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Fehlt"
+          }
+        },
+        "type": "object",
+        "title": "VersandOut",
+        "description": "Ob eine Einladung per E-Mail hinausgehen kann - und was sonst fehlt."
+      },
       "VorlaufOut": {
         "properties": {
           "key": {
@@ -17300,6 +18633,24 @@
         "title": "Wertung",
         "description": "Kennzahlen einer Menge von Proben, in der Einheit der Reihe.\n\nEinheitenfrei benannt: `mae` ist bei der PV ein Kilowatt und bei der Temperatur ein Kelvin. Eine\nEnergiesumme steht hier bewusst nicht - sie ergibt nur für Leistungen einen Sinn, und wer sie\nfür PV braucht, findet sie in `evaluation.ForecastScore`."
       },
+      "WiederherstellenIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "code"
+        ],
+        "title": "WiederherstellenIn"
+      },
       "YearMapOut": {
         "properties": {
           "year": {
@@ -17361,6 +18712,50 @@
         ],
         "title": "YearMapOut",
         "description": "Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.\n\nDie Stunde ist Ortszeit, nicht UTC - sonst wanderte die Sonne im Bild um eine Stunde, sobald die\nZeitumstellung kommt. `null` heißt „keine Messdaten\", nicht „null Kilowattstunden\"; beides zu\nunterscheiden ist der halbe Nutzen der Darstellung."
+      },
+      "ZeremonieOut": {
+        "properties": {
+          "schritt": {
+            "type": "string",
+            "title": "Schritt"
+          },
+          "optionen": {
+            "type": "string",
+            "title": "Optionen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schritt",
+          "optionen"
+        ],
+        "title": "ZeremonieOut",
+        "description": "Der Beginn einer WebAuthn-Zeremonie.\n\n`optionen` ist der JSON-Text, den `navigator.credentials` erwartet - unverändert\nweiterzugeben. `schritt` kommt mit der Antwort des Geräts zurück und bindet sie an ihre\nChallenge."
+      },
+      "ZugangZustandOut": {
+        "properties": {
+          "anmeldung": {
+            "type": "boolean",
+            "title": "Anmeldung",
+            "default": false
+          },
+          "personen": {
+            "type": "integer",
+            "title": "Personen",
+            "default": 0
+          },
+          "rp_id": {
+            "type": "string",
+            "title": "Rp Id",
+            "default": ""
+          },
+          "versand": {
+            "$ref": "#/components/schemas/VersandOut"
+          }
+        },
+        "type": "object",
+        "title": "ZugangZustandOut",
+        "description": "Was die Oberfläche über die Anmeldung wissen muss, bevor jemand angemeldet ist.\n\nÖffentlich und mit Absicht wortkarg: `personen` ist eine Zahl, keine Liste. Dass es noch\nniemanden gibt, muss die Anmeldeseite sagen können - wer das ist, braucht sie nicht."
       },
       "Zuordnungsergebnis": {
         "properties": {

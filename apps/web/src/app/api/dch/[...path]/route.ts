@@ -1,19 +1,28 @@
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE, authRequired, verifySession } from "@/lib/session";
+
 import { touch } from "@/lib/presence";
+import { SESSION_COOKIE, anmeldungNoetig, verifySession } from "@/lib/session";
+import { PERSON_COOKIE, rolleAusGeraet } from "@/lib/zugang";
 
 /**
- * Pfade, die Gästen verschlossen bleiben. Verbräuche und Kosten dürfen Gäste sehen; hier steht, was in
- * die Steuerakte gehört: die Rechnungen (Name, Adresse, Marktlokations-ID, Zählernummer, IBAN) und die
- * PV-Abrechnung (Bemessungsgrundlagen und Umsatzsteuer der Anlage) und der Datenexport, der den
- * gesamten Bestand als Datei ausliefert. Dazu das Hausgerät: Protokolle, Adressen und Dienste sind
- * Sache des Hausherrn.
- */
-const GUEST_FORBIDDEN = [/^import\/tibber-invoice/, /^energy\/pv$/, /^export\//, /^system\/geraet/, /^system\/update/];
-
-/**
- * BFF-Proxy zur API. Liest die Ziel-URL zur Laufzeit (nicht zur Build-Zeit wie Rewrites), reicht
- * SSE-Streams ungepuffert durch und ist die Stelle, an der Phase 2 die Session-Prüfung ergänzt.
+ * BFF-Proxy zur API. Liest die Ziel-URL zur Laufzeit (nicht zur Build-Zeit wie Rewrites) und
+ * reicht SSE-Ströme ungepuffert durch.
+ *
+ * **Seit ADR-0002 entscheidet er nichts mehr.** Vorher stand hier die Liste der Pfade, die ein
+ * Gast nicht sehen darf - das reichte, solange nur ein Browser mit dem Dienst sprach. Die
+ * iOS-App spricht direkt mit ihm, und dort wäre dieselbe Liste nur eine ausgeblendete
+ * Schaltfläche. Die Rechte liegen jetzt im Dienst (`dch_api/auth/rechte.py`), und diese Route
+ * hat genau eine Aufgabe: den richtigen Nachweis anhängen.
+ *
+ * Zwei Fälle, und sie sind verschieden:
+ *
+ *   **Person angemeldet** - das opake Sitzungstoken aus `dch_person` geht als Bearer mit. Der
+ *   Dienst kennt daraus Person und Rolle; der Urheber eines Eingriffs ist dann keine Behauptung
+ *   des Proxys mehr, sondern steht in der Datenbank.
+ *
+ *   **Gepaartes Gerät oder Gastlink** - das API-Token geht mit, und der Urheber kommt wie bisher
+ *   als Kopfzeile. Wer das Token hat, könnte jeden Namen behaupten; er könnte aber ohnehin alles
+ *   (docs/URHEBER.md).
  */
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,43 +30,36 @@ export const runtime = "nodejs";
 const apiBase = (): string => (process.env.DCH_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }): Promise<Response> {
-  const session = verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  if (authRequired() && !session) {
+  const personToken = req.cookies.get(PERSON_COOKIE)?.value ?? "";
+  const geraet = verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (anmeldungNoetig() && !personToken && !geraet) {
     return Response.json({ error: { code: "unauthorized", message: "Nicht angemeldet.", details: null } }, { status: 401 });
   }
-  touch(session, req.headers.get("user-agent"));
-  const { path } = await ctx.params;
-  // Gäste dürfen ausschließlich lesen. Serverseitig, nicht nur in der Anzeige: eine ausgeblendete Kachel
-  // hält niemanden auf, der die Adresse kennt.
-  const guest = session?.role === "guest";
-  const joined = path.join("/");
-  if (guest && (req.method !== "GET" || GUEST_FORBIDDEN.some((re) => re.test(joined)))) {
-    return Response.json(
-      { error: { code: "forbidden", message: "Gastzugang: nur Ansicht.", details: null } },
-      { status: 403 },
-    );
+  if (geraet && !personToken) {
+    touch({ name: geraet.name, rolle: rolleAusGeraet(geraet.role) }, req.headers.get("user-agent"));
   }
+  const { path } = await ctx.params;
   const target = `${apiBase()}/api/v1/${path.map(encodeURIComponent).join("/")}${req.nextUrl.search}`;
   const headers: Record<string, string> = { accept: req.headers.get("accept") ?? "*/*" };
-  const apiToken = process.env.DCH_API_TOKEN;
-  if (apiToken) headers["authorization"] = `Bearer ${apiToken}`;
-  // **Wer das hier auslöst, reist mit.** Der Name kommt aus dem signierten Sitzungscookie und
-  // wurde beim Paaren vergeben (/pair?token=…&name=iPad-Flur). Der Dienst schreibt ihn in jedes
-  // Ereignis, das diese Anfrage auslöst, damit später nachzulesen ist, wer etwas verstellt hat.
-  //
-  // **Die Art steht ausdrücklich dabei und lautet heute „geraet".** Ein Gerätename ist kein
-  // Mensch - am iPad im Flur kann jeder gestanden haben. Kommt später ein Benutzersystem, setzt
-  // diese Stelle `person` samt Benutzerkennung und schickt den Gerätenamen zusätzlich als
-  // `-geraet`; die alten Zeilen bleiben, was sie sind, und behaupten nie eine Person.
-  if (session?.name) {
-    headers["x-dch-urheber-art"] = "geraet";
-    headers["x-dch-urheber-name"] = session.name;
-    headers["x-dch-urheber-geraet"] = session.name;
-    headers["x-dch-urheber-rolle"] = session.role;
-    // Ein Vorschlag von Alfred, im Panel bestätigt: Das Protokoll soll zeigen, dass ein
-    // Sprachmodell den Anstoß gab. Nur dieser eine Wert wird durchgereicht, kein freier Text.
-    if (req.headers.get("x-dch-ueber") === "alfred") headers["x-dch-urheber-ueber"] = "alfred";
+  if (personToken) {
+    headers["authorization"] = `Bearer ${personToken}`;
+    // Der Dienst kennt die Person; das Gerät kennt nur dieser Proxy. Beides zusammen ergibt im
+    // Protokoll „Moritz, am iPad Flur" - der Dienst nimmt den Gerätenamen nur als Zusatz und
+    // niemals die Rolle aus einer Kopfzeile, wenn eine Sitzung dahintersteht.
+    if (geraet?.name) headers["x-dch-urheber-geraet"] = geraet.name;
+  } else {
+    const apiToken = process.env.DCH_API_TOKEN;
+    if (apiToken) headers["authorization"] = `Bearer ${apiToken}`;
+    if (geraet?.name) {
+      headers["x-dch-urheber-art"] = "geraet";
+      headers["x-dch-urheber-name"] = geraet.name;
+      headers["x-dch-urheber-geraet"] = geraet.name;
+      headers["x-dch-urheber-rolle"] = geraet.role;
+    }
   }
+  // Ein Vorschlag von Alfred, im Panel bestätigt: Das Protokoll soll zeigen, dass ein
+  // Sprachmodell den Anstoß gab. Nur dieser eine Wert wird durchgereicht, kein freier Text.
+  if (req.headers.get("x-dch-ueber") === "alfred") headers["x-dch-urheber-ueber"] = "alfred";
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;
   let upstream: Response;
@@ -88,3 +90,4 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
 
 export const GET = proxy;
 export const POST = proxy;
+export const PUT = proxy;

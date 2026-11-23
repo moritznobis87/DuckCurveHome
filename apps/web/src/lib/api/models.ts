@@ -149,3 +149,15 @@ export type GeraetAktion = S["GeraetAktionOut"];
 export type GeraetProtokoll = S["GeraetProtokollOut"];
 export type ApiSelbst = S["ApiSelbstOut"];
 export type Ampel = GeraetDienst["ampel"];
+
+// Zugang: Personen, Passkeys, Sitzungen (ADR-0002)
+export type Ausweis = S["AusweisOut"];
+export type Person = S["PersonOut"];
+export type PersonAnlegen = S["PersonAnlegenIn"];
+export type PersonAendern = S["PersonAendernIn"];
+export type Einladung = S["EinladungOut"];
+export type Passkey = S["PasskeyOut"];
+export type Sitzung = S["SitzungOut"];
+export type Ich = S["IchOut"];
+export type ZugangZustand = S["ZugangZustandOut"];
+export type Zeremonie = S["ZeremonieOut"];

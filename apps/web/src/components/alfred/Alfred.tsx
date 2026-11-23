@@ -59,7 +59,7 @@ type RechnungsAntwort = { art: "tibber" | "andere"; tibber: TibberZusammenfassun
 type Zuordnungsergebnis = { zeilen: { schluessel: string; entitaet: string; grund: string }[]; verworfen: string[]; offen: string[]; yaml: string };
 
 /** Pfade ohne Alfred: dort gibt es keine Anwendung, in der man sich orientieren müsste. */
-const OHNE_ALFRED = [/^\/locked/, /^\/pair/];
+const OHNE_ALFRED = [/^\/locked/, /^\/pair/, /^\/anmeldung/];
 
 let laufendeNummer = 0;
 const naechsteKennung = () => `alfred-${++laufendeNummer}`;

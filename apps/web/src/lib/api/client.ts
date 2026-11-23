@@ -1,4 +1,5 @@
-import type { ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
+import type { Ausweis, Einladung, Ich, Passkey, Person, PersonAendern, PersonAnlegen, Zeremonie,
+  ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
   House, Betrieb, BetriebRoh, ReglerEinstellungen, ReglerStellen, ReglerStellenRoh, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
@@ -170,4 +171,24 @@ export const api = {
   setMorgenbrief: (enabled: boolean) => request<Morgenbrief>("/push/morgenbrief", { method: "PUT", body: JSON.stringify({ enabled }) }),
   morgenbriefSenden: () => request<PushResult>("/push/morgenbrief/senden", { method: "POST" }),
   demo: (body: Record<string, unknown>) => request<Record<string, unknown>>("/demo", { method: "POST", body: JSON.stringify(body) }),
+  // ----------------------------------------------------------------- Zugang (ADR-0002)
+  //
+  // Die Anmeldung selbst laeuft NICHT hierueber, sondern ueber Server Actions
+  // (app/anmeldung/aktionen.ts): wer sich anmeldet, hat noch keine Sitzung, und diese
+  // Durchreiche verlangt eine. Hier stehen nur die Aufrufe des angemeldeten Zustands.
+  wer: () => request<Ausweis>("/auth/wer"),
+  ich: () => request<Ich>("/auth/ich"),
+  personen: () => request<Person[]>("/auth/personen"),
+  personAnlegen: (body: PersonAnlegen) => request<Einladung>("/auth/personen", { method: "POST", body: JSON.stringify(body) }),
+  personAendern: (id: string, body: PersonAendern) => request<Person>(`/auth/personen/${encodeURIComponent(id)}`, { method: "POST", body: JSON.stringify(body) }),
+  personEinladen: (id: string, einladen: boolean) => request<Einladung>(`/auth/personen/${encodeURIComponent(id)}/einladen`, { method: "POST", body: JSON.stringify({ einladen }) }),
+  personLoeschen: (id: string) => request<{ ok: boolean }>(`/auth/personen/${encodeURIComponent(id)}/loeschen`, { method: "POST" }),
+  passkeyBeginnen: () => request<Zeremonie>("/auth/passkeys/beginnen", { method: "POST" }),
+  passkeyAbschliessen: (schritt: string, antwort: unknown, name: string) => request<Passkey>("/auth/passkeys/abschliessen", { method: "POST", body: JSON.stringify({ schritt, antwort, name }) }),
+  passkeyUmbenennen: (id: string, name: string) => request<{ ok: boolean }>(`/auth/passkeys/${encodeURIComponent(id)}/name`, { method: "POST", body: JSON.stringify({ name }) }),
+  passkeyLoeschen: (id: string) => request<{ ok: boolean }>(`/auth/passkeys/${encodeURIComponent(id)}/loeschen`, { method: "POST" }),
+  codesNeu: () => request<{ codes: string[] }>("/auth/codes", { method: "POST" }),
+  sitzungBeenden: (id: string) => request<{ ok: boolean }>(`/auth/sitzungen/${encodeURIComponent(id)}/beenden`, { method: "POST" }),
+  alleSitzungenBeenden: () => request<{ beendet: number }>("/auth/sitzungen/beenden-alle", { method: "POST" }),
+
 };

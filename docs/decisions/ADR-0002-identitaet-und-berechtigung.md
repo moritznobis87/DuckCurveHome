@@ -1,6 +1,6 @@
 # ADR-0002 - Identität und Berechtigung (Anmeldung mit Passkey)
 
-**Status:** angenommen, Umsetzung offen · **Datum:** 2026-11-20
+**Status:** angenommen und **umgesetzt** (23.11.2026) · **Datum:** 2026-11-20
 
 ## Kontext
 
@@ -148,6 +148,33 @@ jeder gestanden haben; rückwirkend aus einem Gerät einen Menschen zu machen w�
   jeden anderen Zugriff im Heimnetz gilt das nicht - siehe [ADR-0003](ADR-0003-erreichbarkeit-und-flotte.md).
 - **Der heutige Zustand bleibt lauffähig.** Ohne `DCH_SESSION_SECRET` ist die Anmeldung aus, wie
   heute; das Kiosk-Token wird zum Gerätezugang, der Gast-Link bleibt, was er ist.
+
+## Umgesetzt am 23.11.2026
+
+Gebaut ist die Anmeldung mit Passkey samt Personenverwaltung und Einladung per E-Mail; die
+Bedienung steht in [`docs/ZUGANG.md`](../ZUGANG.md). Drei Dinge weichen von diesem Papier ab, und
+zwar bewusst:
+
+**Die Rolle steht als Spalte an der Person, nicht in einer Mitgliedschaftstabelle.** Festlegung 2
+verlangte zwei Tabellen von Anfang an. Bei genauerem Hinsehen ist das nicht die Stelle, die teuer
+wird: eine `mitgliedschaften`-Tabelle später nachzuziehen ist eine **additive** Wanderung, die
+`personen.rolle` ausliest und je Person eine Zeile schreibt - kein Datenverlust, kein Umbau der
+Anwendung, weil zwischen Tabelle und Programm ohnehin der `Ausweis` steht. Teuer bleibt allein
+die RP-ID, und die steht wie festgelegt auf der registrierbaren Domain. Der Nutzer wollte
+ausdrücklich eine Single-Tenant-Lösung, die später aufgebohrt wird (23.11.2026); zwei Tabellen mit
+je einer Instanz wären die Form ohne den Inhalt gewesen.
+
+**Vier Rollen statt drei.** `gast` ist auch eine Rolle für Personen geworden, nicht nur ein Link:
+ein Besuch, der länger bleibt, soll ein Gesicht haben dürfen. Und `service` heißt so wie in
+[`docs/HAUSGERAET.md`](../HAUSGERAET.md) Abschnitt 7, nicht `berater`.
+
+**Die Haustür brauchte keine eigene Regel.** Über diesen Dienst öffnet sie niemand - das macht der
+Leser im Haus über die Bridge. Was hier liegt, ist ihr Protokoll, und das ist eine Akte und damit
+ohnehin dem Hausherrn vorbehalten.
+
+Nicht umgesetzt: die iOS-App meldet sich weiter mit dem Gerätetoken an. Passkeys brauchen dort
+`webcredentials:duckcurve.de` und eine `apple-app-site-association` auf `duckcurve.de` - ein
+Eingriff in DuckCurveWebsite.
 
 ## Offene Punkte
 

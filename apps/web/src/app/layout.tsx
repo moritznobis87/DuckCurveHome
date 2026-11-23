@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de">
       <body>
         {children}
-        {/* Auf jeder Seite derselbe Helfer; auf /locked und /pair blendet er sich selbst aus. */}
+        {/* Auf jeder Seite derselbe Helfer; auf /anmeldung, /locked und /pair blendet er sich selbst aus. */}
         <Alfred />
       </body>
     </html>

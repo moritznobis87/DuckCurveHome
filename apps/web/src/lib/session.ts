@@ -1,13 +1,19 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
- * Kiosk-Session: ein signiertes, langlebiges HttpOnly-Cookie. Gepaart wird einmalig über /pair?token=…
- * mit dem Pairing-Token aus DCH_KIOSK_TOKEN. Ohne DCH_SESSION_SECRET ist die Anmeldung deaktiviert
- * (nur Entwicklung/Demo).
+ * Die Sitzung eines **Geräts**: ein signiertes, langlebiges HttpOnly-Cookie. Gepaart wird einmalig
+ * über /pair?token=… mit dem Token aus DCH_KIOSK_TOKEN (oder DCH_GUEST_TOKEN für einen Gast).
+ * Ohne DCH_SESSION_SECRET ist die Gerätepaarung deaktiviert (nur Entwicklung/Demo).
  *
- * Zwei Rollen: `owner` darf alles, `guest` nur zusehen. Gäste werden über DCH_GUEST_TOKEN gepaart.
- * Durchgesetzt wird das im BFF-Proxy, nicht in der Anzeige - eine ausgeblendete Kachel hält niemanden
- * auf, der die Adresse kennt.
+ * **Das ist nicht die Anmeldung einer Person.** Die läuft seit ADR-0002 mit Passkey über die API,
+ * und ihr Token ist opak und in der Datenbank widerrufbar (`lib/zugang.ts`). Beides gilt
+ * nebeneinander: die Wandanzeige im Flur soll sich nicht anmelden müssen, und ein Gast soll für
+ * acht Stunden Zusehen kein Konto brauchen.
+ *
+ * Zwei Rollen: `owner` darf alles, `guest` nur zusehen. Durchgesetzt wird das **im Dienst**
+ * (`dch_api/auth/rechte.py`) - der Proxy reicht die Rolle nur als Kopfzeile weiter. Vorher stand
+ * die Prüfung im Proxy; das reichte nicht mehr, als die iOS-App anfing, direkt mit dem Dienst zu
+ * sprechen.
  */
 export type Role = "owner" | "guest";
 export const SESSION_COOKIE = "dch_session";
@@ -30,6 +36,10 @@ export function sessionSecret(): string | null {
 export function authRequired(): boolean {
   return sessionSecret() !== null;
 }
+
+// Sie steht in einer eigenen Datei ohne Node-Bausteine, weil die Middleware sie braucht und in
+// der Edge-Laufzeit laeuft (lib/anmeldungAktiv.ts).
+export { anmeldungNoetig } from "@/lib/anmeldungAktiv";
 
 function sign(payload: string, secret: string): string {
   return createHmac("sha256", secret).update(payload).digest("base64url");

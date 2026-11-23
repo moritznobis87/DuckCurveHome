@@ -76,6 +76,36 @@ public enum ApiSelbstOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIter
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum AusweisOutArtWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case person = "person"
+    case geraet = "geraet"
+    case gast = "gast"
+    case dienst = "dienst"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = AusweisOutArtWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum AusweisOutRolleWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case hausherr = "hausherr"
+    case bewohner = "bewohner"
+    case gast = "gast"
+    case service = "service"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = AusweisOutRolleWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum AutoProfile: String, Codable, Sendable, Hashable, CaseIterable {
     case eco = "eco"
     case pv = "pv"
@@ -237,6 +267,21 @@ public enum DemoControlInScenarioWahl: String, Codable, Sendable, Hashable, Case
     public init(from decoder: any Decoder) throws {
         let roh = try decoder.singleValueContainer().decode(String.self)
         self = DemoControlInScenarioWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum EinladungPersonOutRolleWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case hausherr = "hausherr"
+    case bewohner = "bewohner"
+    case gast = "gast"
+    case service = "service"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = EinladungPersonOutRolleWahl(rawValue: roh) ?? .unbekannt
     }
 }
 
@@ -619,6 +664,51 @@ public enum OverrideKind: String, Codable, Sendable, Hashable, CaseIterable {
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum PersonAendernInRolleWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case hausherr = "hausherr"
+    case bewohner = "bewohner"
+    case gast = "gast"
+    case service = "service"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = PersonAendernInRolleWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum PersonAnlegenInRolleWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case hausherr = "hausherr"
+    case bewohner = "bewohner"
+    case gast = "gast"
+    case service = "service"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = PersonAnlegenInRolleWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum PersonOutRolleWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case hausherr = "hausherr"
+    case bewohner = "bewohner"
+    case gast = "gast"
+    case service = "service"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = PersonOutRolleWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum PlanIntervalOutPlannedHpStateWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case off = "off"
     case release = "release"
@@ -839,6 +929,20 @@ public enum UpdateAnfrageInAktionWahl: String, Codable, Sendable, Hashable, Case
     public init(from decoder: any Decoder) throws {
         let roh = try decoder.singleValueContainer().decode(String.self)
         self = UpdateAnfrageInAktionWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
+public enum VersandOutWegWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case smtp = "smtp"
+    case https = "https"
+    case feld = ""
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = VersandOutWegWahl(rawValue: roh) ?? .unbekannt
     }
 }
 
@@ -1205,6 +1309,40 @@ public struct AlfredZustandOut: Codable, Sendable, Hashable {
         self.bereit = try c.decode(Bool.self, forKey: .bereit)
         self.anbieter = try c.decodeIfPresent(String.self, forKey: .anbieter)
         self.modell = try c.decodeIfPresent(String.self, forKey: .modell)
+    }
+}
+
+/// Das Ergebnis einer Anmeldung.
+///
+/// `token` ist der Ausweis im Klartext und existiert genau hier einmal. Das BFF legt ihn in ein
+/// HttpOnly-Cookie und gibt ihn nie an den Browser weiter; eine App legt ihn in den
+/// Schlüsselbund.
+public struct AngemeldetOut: Codable, Sendable, Hashable {
+    public var token: String
+    public var laeuftAbAm: String
+    public var ausweis: AusweisOut
+    public var codes: [String]
+
+    public enum CodingKeys: String, CodingKey {
+        case token
+        case laeuftAbAm = "laeuft_ab_am"
+        case ausweis
+        case codes
+    }
+
+    public init(token: String, laeuftAbAm: String, ausweis: AusweisOut, codes: [String] = []) {
+        self.token = token
+        self.laeuftAbAm = laeuftAbAm
+        self.ausweis = ausweis
+        self.codes = codes
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.token = try c.decode(String.self, forKey: .token)
+        self.laeuftAbAm = try c.decode(String.self, forKey: .laeuftAbAm)
+        self.ausweis = try c.decode(AusweisOut.self, forKey: .ausweis)
+        self.codes = try c.decodeIfPresent([String].self, forKey: .codes) ?? []
     }
 }
 
@@ -1588,6 +1726,22 @@ public struct AnlageWarmwasserOut: Codable, Sendable, Hashable {
     }
 }
 
+public struct AnmeldenIn: Codable, Sendable, Hashable {
+    public var schritt: String
+    public var antwort: [String: Mischwert]
+
+    public init(schritt: String, antwort: [String: Mischwert] = [:]) {
+        self.schritt = schritt
+        self.antwort = antwort
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.schritt = try c.decode(String.self, forKey: .schritt)
+        self.antwort = try c.decodeIfPresent([String: Mischwert].self, forKey: .antwort) ?? [:]
+    }
+}
+
 /// Was die API über sich selbst weiß; auch ohne Hausgerät (Railway) vorhanden.
 public struct ApiSelbstOut: Codable, Sendable, Hashable {
     public var version: String
@@ -1707,6 +1861,41 @@ public struct ApnsUnsubscribeIn: Codable, Sendable, Hashable {
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.token = try c.decode(String.self, forKey: .token)
+    }
+}
+
+/// Wer gerade fragt. Die Oberfläche blendet danach aus, was die Rolle nicht darf - verboten
+/// wird es am Dienst (`dch_api/auth/rechte.py`).
+public struct AusweisOut: Codable, Sendable, Hashable {
+    public var art: AusweisOutArtWahl
+    public var rolle: AusweisOutRolleWahl
+    public var personId: String?
+    public var name: String?
+    public var email: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case art
+        case rolle
+        case personId = "person_id"
+        case name
+        case email
+    }
+
+    public init(art: AusweisOutArtWahl, rolle: AusweisOutRolleWahl, personId: String? = nil, name: String? = nil, email: String? = nil) {
+        self.art = art
+        self.rolle = rolle
+        self.personId = personId
+        self.name = name
+        self.email = email
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.art = try c.decode(AusweisOutArtWahl.self, forKey: .art)
+        self.rolle = try c.decode(AusweisOutRolleWahl.self, forKey: .rolle)
+        self.personId = try c.decodeIfPresent(String.self, forKey: .personId)
+        self.name = try c.decodeIfPresent(String.self, forKey: .name)
+        self.email = try c.decodeIfPresent(String.self, forKey: .email)
     }
 }
 
@@ -3099,6 +3288,73 @@ public struct DoorLogOut: Codable, Sendable, Hashable {
         self.entries = try c.decodeIfPresent([DoorEntryOut].self, forKey: .entries) ?? []
         self.days = try c.decode(Int.self, forKey: .days)
         self.noteDe = try c.decode(String.self, forKey: .noteDe)
+    }
+}
+
+/// Einen neuen Link ausstellen. Die Person steht in der Adresse, nicht hier.
+public struct EinladenIn: Codable, Sendable, Hashable {
+    public var einladen: Bool?
+
+    public init(einladen: Bool? = nil) {
+        self.einladen = einladen
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.einladen = try c.decodeIfPresent(Bool.self, forKey: .einladen)
+    }
+}
+
+/// Der Einladungslink - einmal, im Klartext, zum Kopieren oder Verschicken.
+public struct EinladungOut: Codable, Sendable, Hashable {
+    public var person: PersonOut
+    public var link: String
+    public var laeuftAbAm: String
+    public var verschickt: Bool?
+
+    public enum CodingKeys: String, CodingKey {
+        case person
+        case link
+        case laeuftAbAm = "laeuft_ab_am"
+        case verschickt
+    }
+
+    public init(person: PersonOut, link: String, laeuftAbAm: String, verschickt: Bool? = nil) {
+        self.person = person
+        self.link = link
+        self.laeuftAbAm = laeuftAbAm
+        self.verschickt = verschickt
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.person = try c.decode(PersonOut.self, forKey: .person)
+        self.link = try c.decode(String.self, forKey: .link)
+        self.laeuftAbAm = try c.decode(String.self, forKey: .laeuftAbAm)
+        self.verschickt = try c.decodeIfPresent(Bool.self, forKey: .verschickt)
+    }
+}
+
+/// Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist.
+public struct EinladungPersonOut: Codable, Sendable, Hashable {
+    public var email: String
+    public var anzeigename: String?
+    public var rolle: EinladungPersonOutRolleWahl
+    public var passkeys: Int?
+
+    public init(email: String, anzeigename: String? = nil, rolle: EinladungPersonOutRolleWahl, passkeys: Int? = nil) {
+        self.email = email
+        self.anzeigename = anzeigename
+        self.rolle = rolle
+        self.passkeys = passkeys
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.email = try c.decode(String.self, forKey: .email)
+        self.anzeigename = try c.decodeIfPresent(String.self, forKey: .anzeigename)
+        self.rolle = try c.decode(EinladungPersonOutRolleWahl.self, forKey: .rolle)
+        self.passkeys = try c.decodeIfPresent(Int.self, forKey: .passkeys)
     }
 }
 
@@ -5648,6 +5904,36 @@ public struct HousePlan: Codable, Sendable, Hashable {
     }
 }
 
+/// Die eigene Seite: wer ich bin, welche Passkeys und welche Sitzungen ich habe.
+public struct IchOut: Codable, Sendable, Hashable {
+    public var ausweis: AusweisOut
+    public var passkeys: [PasskeyOut]
+    public var sitzungen: [SitzungOut]
+    public var codesOffen: Int?
+
+    public enum CodingKeys: String, CodingKey {
+        case ausweis
+        case passkeys
+        case sitzungen
+        case codesOffen = "codes_offen"
+    }
+
+    public init(ausweis: AusweisOut, passkeys: [PasskeyOut] = [], sitzungen: [SitzungOut] = [], codesOffen: Int? = nil) {
+        self.ausweis = ausweis
+        self.passkeys = passkeys
+        self.sitzungen = sitzungen
+        self.codesOffen = codesOffen
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.ausweis = try c.decode(AusweisOut.self, forKey: .ausweis)
+        self.passkeys = try c.decodeIfPresent([PasskeyOut].self, forKey: .passkeys) ?? []
+        self.sitzungen = try c.decodeIfPresent([SitzungOut].self, forKey: .sitzungen) ?? []
+        self.codesOffen = try c.decodeIfPresent(Int.self, forKey: .codesOffen)
+    }
+}
+
 public struct ImportResult: Codable, Sendable, Hashable {
     public var kind: String
     public var rows: Int
@@ -6862,6 +7148,19 @@ public struct NachbetrachtungOut: Codable, Sendable, Hashable {
     }
 }
 
+public struct NameIn: Codable, Sendable, Hashable {
+    public var name: String
+
+    public init(name: String) {
+        self.name = name
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.name = try c.decode(String.self, forKey: .name)
+    }
+}
+
 public struct NextExpected: Codable, Sendable, Hashable {
     public var action: String
     public var at: String?
@@ -6968,6 +7267,168 @@ public struct Override: Codable, Sendable, Hashable {
         self.startedAt = try c.decode(String.self, forKey: .startedAt)
         self.endsAt = try c.decode(String.self, forKey: .endsAt)
         self.setBy = try c.decodeIfPresent(String.self, forKey: .setBy)
+    }
+}
+
+public struct PasskeyAbschliessenIn: Codable, Sendable, Hashable {
+    public var schritt: String
+    public var antwort: [String: Mischwert]
+    public var name: String?
+    public var token: String?
+
+    public init(schritt: String, antwort: [String: Mischwert] = [:], name: String? = nil, token: String? = nil) {
+        self.schritt = schritt
+        self.antwort = antwort
+        self.name = name
+        self.token = token
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.schritt = try c.decode(String.self, forKey: .schritt)
+        self.antwort = try c.decodeIfPresent([String: Mischwert].self, forKey: .antwort) ?? [:]
+        self.name = try c.decodeIfPresent(String.self, forKey: .name)
+        self.token = try c.decodeIfPresent(String.self, forKey: .token)
+    }
+}
+
+public struct PasskeyBeginnenIn: Codable, Sendable, Hashable {
+    public var token: String?
+
+    public init(token: String? = nil) {
+        self.token = token
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.token = try c.decodeIfPresent(String.self, forKey: .token)
+    }
+}
+
+public struct PasskeyOut: Codable, Sendable, Hashable {
+    public var id: String
+    public var name: String
+    public var gesichert: Bool
+    public var erstelltAm: String
+    public var zuletztBenutztAm: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case gesichert
+        case erstelltAm = "erstellt_am"
+        case zuletztBenutztAm = "zuletzt_benutzt_am"
+    }
+
+    public init(id: String, name: String, gesichert: Bool, erstelltAm: String, zuletztBenutztAm: String? = nil) {
+        self.id = id
+        self.name = name
+        self.gesichert = gesichert
+        self.erstelltAm = erstelltAm
+        self.zuletztBenutztAm = zuletztBenutztAm
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.gesichert = try c.decode(Bool.self, forKey: .gesichert)
+        self.erstelltAm = try c.decode(String.self, forKey: .erstelltAm)
+        self.zuletztBenutztAm = try c.decodeIfPresent(String.self, forKey: .zuletztBenutztAm)
+    }
+}
+
+public struct PersonAendernIn: Codable, Sendable, Hashable {
+    public var rolle: PersonAendernInRolleWahl?
+    public var aktiv: Bool?
+    public var anzeigename: String?
+
+    public init(rolle: PersonAendernInRolleWahl? = nil, aktiv: Bool? = nil, anzeigename: String? = nil) {
+        self.rolle = rolle
+        self.aktiv = aktiv
+        self.anzeigename = anzeigename
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.rolle = try c.decodeIfPresent(PersonAendernInRolleWahl.self, forKey: .rolle)
+        self.aktiv = try c.decodeIfPresent(Bool.self, forKey: .aktiv)
+        self.anzeigename = try c.decodeIfPresent(String.self, forKey: .anzeigename)
+    }
+}
+
+public struct PersonAnlegenIn: Codable, Sendable, Hashable {
+    public var email: String
+    public var anzeigename: String?
+    public var rolle: PersonAnlegenInRolleWahl?
+    public var einladen: Bool?
+
+    public init(email: String, anzeigename: String? = nil, rolle: PersonAnlegenInRolleWahl? = nil, einladen: Bool? = nil) {
+        self.email = email
+        self.anzeigename = anzeigename
+        self.rolle = rolle
+        self.einladen = einladen
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.email = try c.decode(String.self, forKey: .email)
+        self.anzeigename = try c.decodeIfPresent(String.self, forKey: .anzeigename)
+        self.rolle = try c.decodeIfPresent(PersonAnlegenInRolleWahl.self, forKey: .rolle)
+        self.einladen = try c.decodeIfPresent(Bool.self, forKey: .einladen)
+    }
+}
+
+public struct PersonOut: Codable, Sendable, Hashable {
+    public var id: String
+    public var email: String
+    public var anzeigename: String?
+    public var rolle: PersonOutRolleWahl
+    public var aktiv: Bool?
+    public var erstelltAm: String
+    public var zuletztAngemeldetAm: String?
+    public var passkeys: Int?
+    public var codesOffen: Int?
+    public var einladungOffen: Bool?
+
+    public enum CodingKeys: String, CodingKey {
+        case id
+        case email
+        case anzeigename
+        case rolle
+        case aktiv
+        case erstelltAm = "erstellt_am"
+        case zuletztAngemeldetAm = "zuletzt_angemeldet_am"
+        case passkeys
+        case codesOffen = "codes_offen"
+        case einladungOffen = "einladung_offen"
+    }
+
+    public init(id: String, email: String, anzeigename: String? = nil, rolle: PersonOutRolleWahl, aktiv: Bool? = nil, erstelltAm: String, zuletztAngemeldetAm: String? = nil, passkeys: Int? = nil, codesOffen: Int? = nil, einladungOffen: Bool? = nil) {
+        self.id = id
+        self.email = email
+        self.anzeigename = anzeigename
+        self.rolle = rolle
+        self.aktiv = aktiv
+        self.erstelltAm = erstelltAm
+        self.zuletztAngemeldetAm = zuletztAngemeldetAm
+        self.passkeys = passkeys
+        self.codesOffen = codesOffen
+        self.einladungOffen = einladungOffen
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.email = try c.decode(String.self, forKey: .email)
+        self.anzeigename = try c.decodeIfPresent(String.self, forKey: .anzeigename)
+        self.rolle = try c.decode(PersonOutRolleWahl.self, forKey: .rolle)
+        self.aktiv = try c.decodeIfPresent(Bool.self, forKey: .aktiv)
+        self.erstelltAm = try c.decode(String.self, forKey: .erstelltAm)
+        self.zuletztAngemeldetAm = try c.decodeIfPresent(String.self, forKey: .zuletztAngemeldetAm)
+        self.passkeys = try c.decodeIfPresent(Int.self, forKey: .passkeys)
+        self.codesOffen = try c.decodeIfPresent(Int.self, forKey: .codesOffen)
+        self.einladungOffen = try c.decodeIfPresent(Bool.self, forKey: .einladungOffen)
     }
 }
 
@@ -8842,6 +9303,43 @@ public struct ShiftReportOut: Codable, Sendable, Hashable {
     }
 }
 
+public struct SitzungOut: Codable, Sendable, Hashable {
+    public var id: String
+    public var erstelltAm: String
+    public var laeuftAbAm: String
+    public var zuletztBenutztAm: String?
+    public var herkunft: String?
+    public var diese: Bool?
+
+    public enum CodingKeys: String, CodingKey {
+        case id
+        case erstelltAm = "erstellt_am"
+        case laeuftAbAm = "laeuft_ab_am"
+        case zuletztBenutztAm = "zuletzt_benutzt_am"
+        case herkunft
+        case diese
+    }
+
+    public init(id: String, erstelltAm: String, laeuftAbAm: String, zuletztBenutztAm: String? = nil, herkunft: String? = nil, diese: Bool? = nil) {
+        self.id = id
+        self.erstelltAm = erstelltAm
+        self.laeuftAbAm = laeuftAbAm
+        self.zuletztBenutztAm = zuletztBenutztAm
+        self.herkunft = herkunft
+        self.diese = diese
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.erstelltAm = try c.decode(String.self, forKey: .erstelltAm)
+        self.laeuftAbAm = try c.decode(String.self, forKey: .laeuftAbAm)
+        self.zuletztBenutztAm = try c.decodeIfPresent(String.self, forKey: .zuletztBenutztAm)
+        self.herkunft = try c.decodeIfPresent(String.self, forKey: .herkunft)
+        self.diese = try c.decodeIfPresent(Bool.self, forKey: .diese)
+    }
+}
+
 public struct SourceOut: Codable, Sendable, Hashable {
     public var name: String
     public var labelDe: String
@@ -9813,6 +10311,26 @@ public struct Vergleich: Codable, Sendable, Hashable {
     }
 }
 
+/// Ob eine Einladung per E-Mail hinausgehen kann - und was sonst fehlt.
+public struct VersandOut: Codable, Sendable, Hashable {
+    public var aktiv: Bool?
+    public var weg: VersandOutWegWahl?
+    public var fehlt: [String]
+
+    public init(aktiv: Bool? = nil, weg: VersandOutWegWahl? = nil, fehlt: [String] = []) {
+        self.aktiv = aktiv
+        self.weg = weg
+        self.fehlt = fehlt
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.aktiv = try c.decodeIfPresent(Bool.self, forKey: .aktiv)
+        self.weg = try c.decodeIfPresent(VersandOutWegWahl.self, forKey: .weg)
+        self.fehlt = try c.decodeIfPresent([String].self, forKey: .fehlt) ?? []
+    }
+}
+
 /// Eine Sprosse der Vorlaufleiter mit ihrer Wertung.
 public struct VorlaufOut: Codable, Sendable, Hashable {
     public var key: String
@@ -10090,6 +10608,22 @@ public struct Wertung: Codable, Sendable, Hashable {
     }
 }
 
+public struct WiederherstellenIn: Codable, Sendable, Hashable {
+    public var email: String
+    public var code: String
+
+    public init(email: String, code: String) {
+        self.email = email
+        self.code = code
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.email = try c.decode(String.self, forKey: .email)
+        self.code = try c.decode(String.self, forKey: .code)
+    }
+}
+
 /// Ein Kalenderjahr als Tag × Stunde: 365 Spalten, 24 Zeilen, je Kennzahl eine Fläche.
 ///
 /// Die Stunde ist Ortszeit, nicht UTC - sonst wanderte die Sonne im Bild um eine Stunde, sobald die
@@ -10125,6 +10659,60 @@ public struct YearMapOut: Codable, Sendable, Hashable {
         self.metrics = try c.decodeIfPresent([String: [[Double?]]].self, forKey: .metrics) ?? [:]
         self.hoursWithData = try c.decode(Int.self, forKey: .hoursWithData)
         self.dataSince = try c.decodeIfPresent(String.self, forKey: .dataSince)
+    }
+}
+
+/// Der Beginn einer WebAuthn-Zeremonie.
+///
+/// `optionen` ist der JSON-Text, den `navigator.credentials` erwartet - unverändert
+/// weiterzugeben. `schritt` kommt mit der Antwort des Geräts zurück und bindet sie an ihre
+/// Challenge.
+public struct ZeremonieOut: Codable, Sendable, Hashable {
+    public var schritt: String
+    public var optionen: String
+
+    public init(schritt: String, optionen: String) {
+        self.schritt = schritt
+        self.optionen = optionen
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.schritt = try c.decode(String.self, forKey: .schritt)
+        self.optionen = try c.decode(String.self, forKey: .optionen)
+    }
+}
+
+/// Was die Oberfläche über die Anmeldung wissen muss, bevor jemand angemeldet ist.
+///
+/// Öffentlich und mit Absicht wortkarg: `personen` ist eine Zahl, keine Liste. Dass es noch
+/// niemanden gibt, muss die Anmeldeseite sagen können - wer das ist, braucht sie nicht.
+public struct ZugangZustandOut: Codable, Sendable, Hashable {
+    public var anmeldung: Bool?
+    public var personen: Int?
+    public var rpId: String?
+    public var versand: VersandOut?
+
+    public enum CodingKeys: String, CodingKey {
+        case anmeldung
+        case personen
+        case rpId = "rp_id"
+        case versand
+    }
+
+    public init(anmeldung: Bool? = nil, personen: Int? = nil, rpId: String? = nil, versand: VersandOut? = nil) {
+        self.anmeldung = anmeldung
+        self.personen = personen
+        self.rpId = rpId
+        self.versand = versand
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.anmeldung = try c.decodeIfPresent(Bool.self, forKey: .anmeldung)
+        self.personen = try c.decodeIfPresent(Int.self, forKey: .personen)
+        self.rpId = try c.decodeIfPresent(String.self, forKey: .rpId)
+        self.versand = try c.decodeIfPresent(VersandOut.self, forKey: .versand)
     }
 }
 

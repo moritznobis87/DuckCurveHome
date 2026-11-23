@@ -82,8 +82,9 @@ Jeder Wert trägt `observed_at`, `quality` (ok, stale, unavailable, unknown, der
 | 7 | Home Assistant als Geräteschicht, Bridge als HA-Add-on, Railway als Hosting | ADR-0001: geringster Aufwand, HA bleibt geschlossen, Datenbank managed |
 | 8 | BFF-Route mit signiertem Kiosk-Cookie statt Auth in der API | Bearer bleibt serverseitig (valyze-Muster), Pairing per Link |
 
-Entschieden, aber noch nicht umgesetzt: **ADR-0002** kehrt Nummer 8 um - die Anmeldung zieht mit
-Personen und Passkeys in die API, das BFF hält nur noch ein opakes Sitzungstoken
+**Nummer 8 ist seit dem 23.11.2026 umgekehrt:** die Anmeldung steht mit Personen und Passkeys in
+der API, das BFF hält nur noch ein opakes Sitzungstoken, und die Rechte liegen in
+`dch_api/auth/rechte.py` statt im Proxy ([docs/ZUGANG.md](docs/ZUGANG.md))
 ([`docs/decisions/ADR-0002-identitaet-und-berechtigung.md`](docs/decisions/ADR-0002-identitaet-und-berechtigung.md)).
 **ADR-0003** beschreibt, wie eine Box im Kundenrollout ohne Home Assistant erreichbar wird - Beitritt,
 Verzeichnis, Relais und Flotte
