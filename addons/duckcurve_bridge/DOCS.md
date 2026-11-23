@@ -741,6 +741,31 @@ alten Stand, zeigt aber die neue Nummer an. Die Nummer auf der Add-on-Seite ist 
 eingebaute Code, `addon` das Etikett. Laufen die beiden auseinander, wurde das Abbild nicht neu gebaut, und es
 hilft nur eine weitere Erhöhung der Version (sie steckt im `RUN`-Befehl und bricht damit den Docker-Cache).
 
+**Eine Prüfung wacht darüber.** Der Ablauf `addons` (siehe `.github/workflows/addons.yml`, Werkzeug
+`tools/addon-fassung-pruefen.py`) wird rot, wenn sich etwas geändert hat, was in das Abbild eingeht
+(`addons/duckcurve_bridge/**`, `apps/bridge/src/**`, `apps/bridge/pyproject.toml`), ohne dass `version`
+gestiegen ist und die `CHANGELOG.md` einen Abschnitt für die neue Fassung hat. Vorher ist das zweimal in
+60 Tagen passiert. Verloren ging dabei nichts - das Abbild wird aus `main` gebaut (`DCH_REF: main`), nicht
+aus dem Commit, der die Nummer anhebt. Genau darum wacht die Prüfung: Code ohne Anhebung bleibt nicht
+draußen, er fährt mit der **nächsten** Anhebung mit, ungebündelt, von niemandem für das Haus entschieden
+und im Changelog jener Fassung nicht erwähnt.
+
+**Anhebung und `VERSION` gehören in eine Änderung.** `apps/bridge/src/dch_bridge/main.py` trägt die Nummer
+ein zweites Mal, und `test_die_eingebaute_nummer_folgt_dem_etikett` verlangt, dass beide gleich sind. Wer in
+`config.yaml` anhebt und `VERSION` erst später nachzieht, wird bei diesem Nachziehen rot: dann ist
+`main.py` geändert und die Fassung nicht gestiegen. Beide Zeilen zusammen, und es fällt nichts.
+
+**`packages/hems-core/**` wird bewusst nicht beobachtet**, obwohl das Dockerfile es mitinstalliert: in
+denselben 60 Tagen berührten 29 Commits `packages/hems-core/src`, davon hob genau einer die Bridge-Version
+an - 28 Commits ohne Anhebung also (gezählt als Commits, nicht als CI-Läufe, und nicht jeder davon zu
+Unrecht). Eine Pflicht darauf hätte zu oft falsch angeschlagen, und eine Prüfung, die das tut, wird
+umgangen. Der Preis dieser Lücke steht direkt daneben: der Ortszeit-Fix dieser Fassung hängt an `HAUS_ZONE`
+aus `packages/hems-core/src/hems_core/domain/zeit.py` - diese eine Zeile stellt jede Uhrzeit, die im Haus
+gelesen wird, und wer sie ändert, bekommt kein Rot und keine Erinnerung. Wer dort etwas ändert, worauf es im
+Haus ankommt, erhöht die Nummer selbst. Nicht alles muss übrigens durch ein Abbild: `entities_url` zeigt ab
+Werk auf `.../main/config/entities.home.yaml`, die Zuordnung der Entitäten erreicht das Haus beim Neustart
+des Add-ons - dieser Weg braucht zu Recht keine Anhebung.
+
 ## Verhalten ohne Internet
 
 Die Bridge liest weiter und speichert Telemetrie lokal (SQLite-Outbox, 7 Tage). Nach `offline_release_s`
