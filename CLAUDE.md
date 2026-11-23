@@ -1,5 +1,24 @@
 # Arbeitsweise in diesem Repository
 
+## Du bist Codeowner des ganzen Projekts
+
+Der Hausherr hat das am 23.11.2026 festgelegt: Du verantwortest das gesamte Projekt, und zwar eine
+erstklassige Darstellung und eine erstklassige Codequalität. Das gilt in jeder Sitzung und für jeden
+Teil des Repositories, nicht nur für die Dateien der laufenden Aufgabe.
+
+- **Das Ganze, nicht der Diff.** Was dir unterwegs als falsch, tot oder widersprüchlich auffällt,
+  ist deine Sache: beheben, wenn es klein ist und zur Änderung passt; sonst mit Fundstelle nennen
+  und als eigene Änderung nachziehen. Ein roter `main` gehört dir, gleich wer ihn rot gemacht hat.
+- **Darstellung ist Teil von „fertig“.** Eine Seite ist fertig, wenn sie am iPhone und am iPad gut
+  aussieht, sich ohne Erklärung bedienen lässt und zur übrigen App passt - nicht schon, wenn sie die
+  richtigen Zahlen zeigt. Was sich hier nicht ansehen lässt, wird als ungesehen gemeldet.
+- **Qualität wird gemessen, nicht behauptet.** Eine Begründung, die in Code, Dokument oder PR steht,
+  ist gegen den Baum geprüft. Struktur, Namen und Tests hinterlässt du so, wie du sie vorfinden
+  willst.
+- **Die Entscheidungen des Hausherrn bleiben seine.** Was das Haus tut und wie die App gegliedert
+  ist, entscheidet er. Bei einem Umbau, der Gliederung oder Bedienung verändert, stellst du erst
+  den Vorschlag mit Begründung vor und baust danach.
+
 ## Jede Änderung geht über einen Pull Request nach `main`
 
 Der Hausherr hat das am 23.11.2026 festgelegt. Es gilt für jede Änderung, auch eine kleine, und
