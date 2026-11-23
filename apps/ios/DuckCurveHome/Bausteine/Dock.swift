@@ -310,8 +310,14 @@ struct Knopf: View {
 /// aus dem Bild. Was dort abgeschnitten wird, ist weg.
 struct Wache: View {
     let befunde: [WatchFindingOut]
+    /// Befunde, die der Dienst nicht haben kann - heute der Abstand der beiden Uhren
+    /// (``Hausuhr/befund``). Sie stehen vor seinen *Warnungen*: solange die Uhren
+    /// auseinandergehen, ist jeder Zeitstempel unter ihnen fraglich. Vor einem `.alarm` des
+    /// Dienstes stehen sie nicht - die Reihenfolge und ihre Begruendung rechnet
+    /// ``Wachbefunde/zeilen(_:zuerst:hoechstens:)``, hier wird nur gezeichnet.
+    var zuerst: [Wachbefunde.Zeile] = []
 
-    private var zeilen: [Wachbefunde.Zeile] { Wachbefunde.zeilen(befunde) }
+    private var zeilen: [Wachbefunde.Zeile] { Wachbefunde.zeilen(befunde, zuerst: zuerst) }
 
     var body: some View {
         if !zeilen.isEmpty {

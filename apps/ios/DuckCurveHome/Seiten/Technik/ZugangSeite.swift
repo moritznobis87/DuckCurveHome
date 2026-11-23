@@ -339,6 +339,13 @@ struct ZugangSeite: View {
                     Zeile(wort: "Fassung des Dienstes", wert: s.version)
                     Zeile(wort: "Brücke", wert: s.bridgeOnline ? "verbunden" : "nicht verbunden")
                     Zeile(wort: "Anzeigen am Strom", wert: String(s.sseClients))
+                    // **Die rohe gemessene Zahl, mit einer Dezimalstelle.** Sie ist die
+                    // einzige Stelle, an der man eine wandernde Maschinenuhr findet, *bevor*
+                    // sie drei Minuten erreicht und auf der Wand `22:04` neben `22:07` stellt.
+                    // Die Wache meldet erst ab einer Minute (``Hausuhr/meldeschwelle``) - hier
+                    // darf darum nie eine unterdrueckte oder geglaettete Zahl stehen, sonst
+                    // waere die Diagnose genau in dem Bereich blind, in dem sie noch billig
+                    // ist. ``Hauszustand/versatz`` kennt deshalb keine Schwelle.
                     Zeile(
                         wort: "Zeitversatz zum Dienst",
                         wert: Formate.zahl(haus.versatz, stellen: 1), einheit: "s"

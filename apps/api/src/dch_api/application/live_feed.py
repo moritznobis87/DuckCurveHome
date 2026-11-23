@@ -49,6 +49,24 @@ from typing import Any
 FLUECHTIGE_SCHLUESSEL = frozenset({"observed_at"})
 #: Dazu zwei Felder, die nur an ihrer Stelle flüchtig sind: die Zeit der Momentaufnahme und die
 #: Uhr des Servers.
+#:
+#: **Wie alt die Uhr beim Empfänger dadurch höchstens ist.** `system.server_time` ist das Feld,
+#: nach dem die Anzeige ihre eigene Uhr stellt (`versatz = server_time - jetzt`), also ist die
+#: Frage nicht akademisch: Sie entscheidet, welche Abweichung eine App noch für Laufzeit halten
+#: darf und ab welcher sie eine falsch gestellte Uhr melden muss.
+#:
+#: Gemessen am 22.11.2026 mit einem Zustand, der sich zehn Minuten lang gar nicht ändert
+#: (ungünstigster Fall, nur die Zeitstempel sind neu), getaktet wie `_control_loop` alle
+#: `tick_s = 10` s: Sendungen bei 0, 60, 120, ... s - Lücken **exakt 60,0 s**, also der
+#: `hoechstabstand_s`. Mehr kann es nicht werden, solange `_sende_zustand` überhaupt läuft; der
+#: Mindestabstand (5 s) macht es nur kürzer, nie länger. Unabhängig davon trägt der Herzschlag des
+#: Stroms dieselbe Uhr: `routers/live.py` sendet nach 5 s leerer Warteschlange
+#: `runner.now.isoformat()`, also höchstens **5 s** alt. Eine Anzeige, die beide liest, hat die
+#: Serveruhr nie älter als rund 5 s; eine, die nur Momentaufnahmen liest, nie älter als 60 s.
+#:
+#: Beides liegt weit unter den drei Minuten des Falls vom 22.11.2026 (22:04 in der großen Uhr der
+#: Wandanzeige gegen 22:07 in der Statusleiste desselben iPads): Ein alt gewordenes Feld erklärt
+#: eine solche Abweichung nicht, zwei verschieden gestellte Maschinenuhren schon.
 FLUECHTIGE_PFADE: tuple[tuple[str, ...], ...] = (
     ("snapshot", "timestamp"),
     ("system", "server_time"),
