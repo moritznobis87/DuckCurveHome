@@ -1,0 +1,226 @@
+{
+  "bereiche": [
+    {
+      "schluessel": "jetzt",
+      "weg": "/",
+      "name": "Jetzt",
+      "reiter": []
+    },
+    {
+      "schluessel": "haus",
+      "weg": "/haus",
+      "name": "Haus",
+      "reiter": []
+    },
+    {
+      "schluessel": "energie",
+      "weg": "/strom",
+      "name": "Energie",
+      "reiter": [
+        {
+          "weg": "/strom",
+          "name": "Strom",
+          "zeitraum": true,
+          "nurHausherr": false,
+          "unter": []
+        },
+        {
+          "weg": "/waerme",
+          "name": "Wärme",
+          "zeitraum": true,
+          "nurHausherr": false,
+          "unter": []
+        },
+        {
+          "weg": "/strom/pv",
+          "name": "Photovoltaik",
+          "zeitraum": true,
+          "nurHausherr": false,
+          "unter": []
+        },
+        {
+          "weg": "/strom/speicher",
+          "name": "Speicher",
+          "zeitraum": true,
+          "nurHausherr": false,
+          "unter": []
+        },
+        {
+          "weg": "/strom/wallbox",
+          "name": "Wallbox",
+          "zeitraum": true,
+          "nurHausherr": false,
+          "unter": []
+        },
+        {
+          "weg": "/strom/jahr",
+          "name": "Jahreskarte",
+          "zeitraum": false,
+          "nurHausherr": false,
+          "unter": []
+        }
+      ]
+    },
+    {
+      "schluessel": "geld",
+      "weg": "/geld",
+      "name": "Geld",
+      "reiter": [
+        {
+          "weg": "/geld",
+          "name": "Kosten",
+          "zeitraum": true,
+          "nurHausherr": false,
+          "unter": []
+        },
+        {
+          "weg": "/geld/pv-abrechnung",
+          "name": "PV-Abrechnung",
+          "zeitraum": true,
+          "nurHausherr": true,
+          "unter": []
+        },
+        {
+          "weg": "/geld/rechnungen",
+          "name": "Rechnungen",
+          "zeitraum": false,
+          "nurHausherr": true,
+          "unter": []
+        }
+      ]
+    },
+    {
+      "schluessel": "technik",
+      "weg": "/waerme/anlage",
+      "name": "Technik",
+      "reiter": [
+        {
+          "weg": "/waerme/anlage",
+          "name": "Anlage",
+          "zeitraum": false,
+          "nurHausherr": false,
+          "unter": [
+            {
+              "weg": "/waerme/anlage",
+              "name": "Jetzt"
+            },
+            {
+              "weg": "/waerme/wiedergabe",
+              "name": "Ein Tag"
+            }
+          ]
+        },
+        {
+          "weg": "/waerme/waermepumpe",
+          "name": "Wärmepumpe",
+          "zeitraum": false,
+          "nurHausherr": false,
+          "unter": [
+            {
+              "weg": "/waerme/waermepumpe",
+              "name": "Jetzt"
+            },
+            {
+              "weg": "/waerme/waermepumpe/betrieb",
+              "name": "Betrieb"
+            },
+            {
+              "weg": "/waerme/waermepumpe/kennlinie",
+              "name": "Kennlinie"
+            },
+            {
+              "weg": "/waerme/waermepumpe/regler",
+              "name": "Regler"
+            }
+          ]
+        },
+        {
+          "weg": "/waerme/fahrplan",
+          "name": "Fahrplan",
+          "zeitraum": false,
+          "nurHausherr": false,
+          "unter": [
+            {
+              "weg": "/waerme/fahrplan",
+              "name": "Voraus"
+            },
+            {
+              "weg": "/waerme/nachbetrachtung",
+              "name": "Rückblick"
+            }
+          ]
+        },
+        {
+          "weg": "/waerme/wirkung",
+          "name": "Wirkung",
+          "zeitraum": false,
+          "nurHausherr": false,
+          "unter": []
+        },
+        {
+          "weg": "/waerme/regelkreis",
+          "name": "Regelkreis",
+          "zeitraum": false,
+          "nurHausherr": true,
+          "unter": []
+        },
+        {
+          "weg": "/waerme/raeume",
+          "name": "Heizkreise",
+          "zeitraum": true,
+          "nurHausherr": false,
+          "unter": []
+        },
+        {
+          "weg": "/system",
+          "name": "Prognose",
+          "zeitraum": false,
+          "nurHausherr": true,
+          "unter": []
+        },
+        {
+          "weg": "/system/daten",
+          "name": "Daten prüfen",
+          "zeitraum": true,
+          "nurHausherr": true,
+          "unter": []
+        },
+        {
+          "weg": "/waerme/annahmen",
+          "name": "Annahmen",
+          "zeitraum": false,
+          "nurHausherr": true,
+          "unter": []
+        },
+        {
+          "weg": "/system/mitteilungen",
+          "name": "Mitteilungen",
+          "zeitraum": false,
+          "nurHausherr": true,
+          "unter": []
+        },
+        {
+          "weg": "/system/haustuer",
+          "name": "Haustür",
+          "zeitraum": false,
+          "nurHausherr": true,
+          "unter": []
+        },
+        {
+          "weg": "/system/geraet",
+          "name": "Hausgerät",
+          "zeitraum": false,
+          "nurHausherr": true,
+          "unter": []
+        },
+        {
+          "weg": "/system/zugang",
+          "name": "Zugang und Sicherung",
+          "zeitraum": false,
+          "nurHausherr": true,
+          "unter": []
+        }
+      ]
+    }
+  ]
+}

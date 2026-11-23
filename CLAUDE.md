@@ -12,6 +12,9 @@ Teil des Repositories, nicht nur für die Dateien der laufenden Aufgabe.
 - **Darstellung ist Teil von „fertig“.** Eine Seite ist fertig, wenn sie am iPhone, am iPad und im
   Browser gut aussieht, sich ohne Erklärung bedienen lässt und zur übrigen App passt - nicht schon, wenn sie die
   richtigen Zahlen zeigt. Was sich hier nicht ansehen lässt, wird als ungesehen gemeldet.
+- **Texte in der Oberfläche sind ausformuliert.** Kein Gedankenstrich, an dem ein paar Wörter
+  hängen, und keine Stichwortketten, wo ein Satz hingehört: das liest sich wie von einer Maschine
+  geschrieben. Jeder Satz steht so da, wie ihn ein Fachmann einem Kunden schreiben würde.
 - **Qualität wird gemessen, nicht behauptet.** Eine Begründung, die in Code, Dokument oder PR steht,
   ist gegen den Baum geprüft. Struktur, Namen und Tests hinterlässt du so, wie du sie vorfinden
   willst.
@@ -33,6 +36,9 @@ keines ist nur Vorlage für das andere.
   von beiden hat, ist einer.
 - **Ein Unterschied, den du findest, ist ein Fehler.** Beheben oder mit Fundstelle nennen, wie
   unter „Codeowner“ beschrieben.
+- **Der Seitenbaum steht einmal in `docs/seitenbaum.json`.** Dashboard und App werden je mit einem
+  Test dagegen gehalten (`seitenbaum.test.ts`, `SeitenbaumTests.swift`). Wer Gliederung, Namen
+  oder Adressen ändert, ändert zuerst diese Datei und zieht dann beide nach.
 
 ## Jede Änderung geht über einen Pull Request nach `main`
 
