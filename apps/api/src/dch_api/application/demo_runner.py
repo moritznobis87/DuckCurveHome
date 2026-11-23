@@ -928,8 +928,8 @@ class DemoRunner:
             note_de=wirkung.note_de,
         )
 
-    async def rooms_live(self) -> RoomsLiveOut:
-        now = self.now
+    async def rooms_live(self, now: datetime | None = None) -> RoomsLiveOut:
+        now = now or self.now
         out: list[RoomLiveOut] = []
         for r in demo_rooms.ROOMS:
             soll = self._room_setpoints.get(r.id, r.setpoint_c)
@@ -972,7 +972,7 @@ class DemoRunner:
             dhw_outlet=fehlt,
             dhw_inlet=fehlt,
             wp_vorlauf=fehlt,
-            ventile=[r.valve for r in (await self.rooms_live()).rooms],
+            ventile=[r.valve for r in (await self.rooms_live(now)).rooms],
             zeilen=self.history.series(
                 now - timedelta(minutes=anlage_logic.RUECKBLICK_MIN), now + timedelta(minutes=1)
             ),
@@ -1347,6 +1347,22 @@ class DemoRunner:
         }
 
     def live_state(self) -> LiveStateOut:
+        """Der Zustand des Vorführhauses - in **seiner** Uhr, nicht in der des Rechners.
+
+        `server_time` ist hier `self.now`, also `house.now`: die Simulationszeit, in der auch
+        jeder Stempel im Snapshot geschrieben ist. Das muss so bleiben. Die Anzeige stellt ihre
+        Uhr nach diesem Feld (`Hauszustand.setzeVersatz`), und nur dadurch folgt sie dem Zeitraffer
+        (`sim_speed`) und dem Vorführtag, der oft Wochen zurückliegt (`Settings.demo_start`).
+        Stünde hier die echte Uhr, lägen Anzeige und Daten um diesen Abstand auseinander: leere
+        Diagramme, weil der angezeigte Tag im Bestand nicht vorkommt.
+
+        Anders als im Live-Betrieb steht die Aufnahme hier in einem Feld (`self.snapshot`). Das
+        geht gut, weil `house.now` nur im Schritt weiterläuft und `_after_step` die Aufnahme im
+        gleichen Schritt erneuert: gemessen am 22.11.2026 bei `sim_speed=60` über 25 Abfragen
+        `server_time - snapshot.timestamp` = 0,0 s. Wer hier einen Puffer einbaut, der die Uhr
+        überlebt, macht aus `server_time` eine Messzeit - und das ist genau der Fehler, den
+        `tests/test_serverzeit.py` für den Live-Betrieb festhält.
+        """
         prices = self._prices()
         return LiveStateOut(
             snapshot=self.snapshot,

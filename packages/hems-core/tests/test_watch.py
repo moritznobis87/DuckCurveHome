@@ -25,6 +25,8 @@ REGELN = (
         silence_min=30,
         severity="alarm",
         impact_de="Ohne sie gibt es keinen Ladezustand.",
+        plural=True,
+        member_de="Fühlern",
     ),
     WatchRule(
         name="price",
@@ -56,11 +58,36 @@ def test_stilles_signal_wird_gemeldet() -> None:
     assert "Ladezustand" in befund.text_de
 
 
-def test_die_juengste_meldung_der_gruppe_zaehlt() -> None:
-    # Ein Fühler schweigt, der andere nicht: Das ist ein Fall für die Qualitätsanzeige am Wert,
-    # nicht für eine Mitteilung auf dem Telefon.
+def test_ein_einzelner_stiller_fuehler_wird_gemeldet() -> None:
+    """Der Fall, den die Gruppe bis zum 22.11.2026 zugedeckt hat.
+
+    Ein Fühler seit zwei Tagen still, der andere im Sekundentakt: vorher kam `[]` heraus, weil die
+    *jüngste* Meldung der Gruppe zählte. Ohne den einen Fühler rechnet der Dienst aber keinen
+    Ladezustand mehr - die Wandanzeige zeigt dann drei satte Zahlen und einen Strich, und niemand
+    erfährt, warum. Fällig ist die Regel nach dem Fühler, der am längsten schweigt.
+    """
     zuletzt = {BRIDGE: vor(1), "buffer_temp_top_c": vor(2900), "buffer_temp_bottom_c": vor(3)}
-    assert findings(zuletzt, JETZT, JETZT, REGELN) == []
+    (befund,) = findings(zuletzt, JETZT, JETZT, REGELN)
+    assert befund.name == "buffer"
+    # Die Zahl steht im Satz: „seit 2 Tagen still" allein wäre für die Gruppe falsch.
+    assert befund.text_de == (
+        "Die Puffertemperaturen sind unvollständig: 1 von 2 Fühlern schweigt seit 2 Tagen. "
+        "Ohne sie gibt es keinen Ladezustand."
+    )
+    # Und die Zeit ist die des stillen Fühlers, nicht die des gesunden.
+    assert befund.since == vor(2900)
+    assert befund.silent_min == 2900
+
+
+def test_ein_fuehler_der_nie_geliefert_hat_zaehlt_nicht_mit() -> None:
+    # „Was nie da war, fehlt nicht" gilt auch für die Zahl im Satz: Ein nicht angeschlossener
+    # Fühler soll nicht aus einem Ausfall einen halben machen.
+    zuletzt = {BRIDGE: vor(1), "buffer_temp_top_c": vor(2900)}
+    (befund,) = findings(zuletzt, JETZT, JETZT, REGELN)
+    assert (
+        befund.text_de
+        == "Die Puffertemperaturen seit 2 Tagen still. Ohne sie gibt es keinen Ladezustand."
+    )
 
 
 def test_was_nie_da_war_fehlt_nicht() -> None:

@@ -13,10 +13,16 @@ sensors:
 
   # --- Pufferspeicher: Shelly Plus 1 mit Temperatur-Add-on (5 Fühler, Nr. 4 liefert "unknown") ---
   # ⚠ Reihenfolge angenommen: 1 = oben … 5 = unten. Bitte am Speicher prüfen und ggf. tauschen.
-  - { key: buffer_temp_top_c,        entity: sensor.speicher_1_temperature, unit: "°C", stale_after_s: 3600 }
-  - { key: buffer_temp_mid_top_c,    entity: sensor.speicher_2_temperature, unit: "°C", stale_after_s: 3600 }
-  - { key: buffer_temp_mid_bottom_c, entity: sensor.speicher_3_temperature, unit: "°C", stale_after_s: 3600 }
-  - { key: buffer_temp_bottom_c,     entity: sensor.speicher_5_temperature, unit: "°C", stale_after_s: 3600 }
+  # 900 s ist KEINE eigene Zahl, sondern `SensorTimeouts.temperature_s` (hems_core.domain.config),
+  # die Grenze für dieselben vier Fühler über MQTT. Hier stand 3600, also vier Mal so lang auf
+  # dem Weg über Home Assistant - wirksam war trotzdem immer 900, weil der Dienst jeden Wert beim
+  # Bauen der Aufnahme noch einmal altert. Eine Zahl, die nichts bewirkt und etwas anderes sagt,
+  # ist schlimmer als keine. Wer sie ändert, ändert sie dort und zieht hier nach; dass beide
+  # gleich sind, hält `apps/api/tests/test_live_state.py` fest.
+  - { key: buffer_temp_top_c,        entity: sensor.speicher_1_temperature, unit: "°C", stale_after_s: 900 }
+  - { key: buffer_temp_mid_top_c,    entity: sensor.speicher_2_temperature, unit: "°C", stale_after_s: 900 }
+  - { key: buffer_temp_mid_bottom_c, entity: sensor.speicher_3_temperature, unit: "°C", stale_after_s: 900 }
+  - { key: buffer_temp_bottom_c,     entity: sensor.speicher_5_temperature, unit: "°C", stale_after_s: 900 }
 
   # --- Alarmanlage (Lupusec über die HA-Integration) ---
   # Der Zustand als Zahl: 0 unscharf, 1 zu Hause scharf, 2 unterwegs scharf, 3 schaltet gerade,
