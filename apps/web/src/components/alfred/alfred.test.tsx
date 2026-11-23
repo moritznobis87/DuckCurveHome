@@ -499,6 +499,37 @@ describe("Halten zum Sprechen", () => {
     expect(gefragt).toHaveLength(1);
   });
 
+  it("ein Endergebnis und das Ende danach fragen nur einmal", async () => {
+    render(<Alfred />);
+    await halten();
+    await act(async () => {
+      letzte().onstart?.();
+      letzte().onresult?.(ergebnis("Wie war die Woche?", true));
+      letzte().onend?.();
+    });
+    await screen.findByText("vorgeschlagen");
+    expect(gefragt).toEqual(["Wie war die Woche?"]);
+  });
+
+  it("wer das Panel beim Sprechen schließt, fragt nichts, auch wenn schon ein Zwischentext da war", async () => {
+    render(<Alfred />);
+    await halten();
+    const e = letzte();
+    act(() => {
+      e.onstart?.();
+      e.onresult?.(ergebnis("Mach das Licht"));
+    });
+    fireEvent.click(screen.getByRole("button", { name: TEXTE.schliessen }));
+    expect(e.abort).toHaveBeenCalled();
+    // Die Erkennung meldet ihr Ende erst nach dem Abbruch.
+    await act(async () => {
+      e.onerror?.({ error: "aborted" });
+      e.onend?.();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(NACHLAUF_MS * 2));
+    expect(gefragt).toEqual([]);
+  });
+
   it("übernimmt das System die Berührung, hört Alfred weiter zu, bis der Finger sich hebt", async () => {
     render(<Alfred />);
     await halten();

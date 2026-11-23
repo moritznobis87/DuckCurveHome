@@ -430,6 +430,9 @@ export function Alfred() {
 
   /** Fragt mit dem bisher erkannten Text, auch einem Zwischenstand, und gibt das Mikrofon frei. */
   const textFragen = (z: Zuhoeren) => {
+    // Ein beendetes Zuhören fragt nie mehr: weder nach einem Abbruch (Panel zu), dessen Ende
+    // noch nachkommt, noch ein zweites Mal, wenn auf das Endergebnis noch `onend` folgt.
+    if (z.fertig) return;
     const text = z.text;
     beenden(z, null);
     z.erkennung.abort();
