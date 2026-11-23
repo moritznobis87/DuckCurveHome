@@ -93,6 +93,10 @@ Jeder Wert trägt `observed_at`, `quality` (ok, stale, unavailable, unknown, der
 der API, das BFF hält nur noch ein opakes Sitzungstoken, und die Rechte liegen in
 `dch_api/auth/rechte.py` statt im Proxy ([docs/ZUGANG.md](docs/ZUGANG.md))
 ([`docs/decisions/ADR-0002-identitaet-und-berechtigung.md`](docs/decisions/ADR-0002-identitaet-und-berechtigung.md)).
+**Vom Kiosk-Cookie ist nichts übrig:** die Gerätepaarung mit ihrem stehenden URL-Token ist am
+selben Tag ausgebaut worden (Nachtrag im ADR). Es gibt nur noch Personen mit Passkey - an
+beliebig vielen Geräten zugleich, je Gerät eine eigene Sitzung -, und der Proxy reicht nur noch
+deren Token weiter, nicht mehr das API-Token.
 **ADR-0003** beschreibt, wie eine Box im Kundenrollout ohne Home Assistant erreichbar wird - Beitritt,
 Verzeichnis, Relais und Flotte
 ([`docs/decisions/ADR-0003-erreichbarkeit-und-flotte.md`](docs/decisions/ADR-0003-erreichbarkeit-und-flotte.md)),

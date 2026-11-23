@@ -17,10 +17,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: NextRequest): Promise<Response> {
   const wer = await ausweis();
-  touch(
-    wer ? { name: wer.name, rolle: wer.rolle, person: wer.art === "person" } : null,
-    req.headers.get("user-agent"),
-  );
+  touch(wer ? { name: wer.name, rolle: wer.rolle } : null, req.headers.get("user-agent"));
   const darfStellen = wer !== null && (wer.rolle === "hausherr" || wer.rolle === "bewohner");
   return Response.json(
     {

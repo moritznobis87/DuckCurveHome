@@ -262,8 +262,10 @@ describe("Panel", () => {
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("/alfred/rechnung"), expect.anything());
   });
 
-  it("auf /locked gibt es Alfred nicht", () => {
-    pfad = "/locked";
+  // Auf der Anmeldeseite waere er nutzlos und auffaellig: er klopfte unangemeldet am Dienst an.
+  // (Fruher stand hier /locked - die Seite gibt es seit dem Ausbau der Geraetepaarung nicht mehr.)
+  it("auf der Anmeldeseite gibt es Alfred nicht", () => {
+    pfad = "/anmeldung";
     const { container } = render(<Alfred />);
     expect(container).toBeEmptyDOMElement();
   });

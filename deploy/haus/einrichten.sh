@@ -317,9 +317,10 @@ kiosk() {
 	id kiosk >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin kiosk
 	usermod -a -G video,render,input,audio kiosk
 
-	local token
-	token=$(sed -n 's/^DCH_KIOSK_TOKEN=//p' "$BASIS/.env" | tail -n1)
-	sed -e "s|@KOPPELN@|http://localhost:3000/pair?token=${token}\&name=${NAME}-anzeige|" \
+	# Seit dem 23.11.2026 gibt es keinen Pairing-Link mehr, mit dem sich das Display selbst
+	# anmelden koennte - er vergab Vollzugriff ueber einen stehenden Token. Die Ladeseite zeigt
+	# deshalb auf die Anwendung; wie sich das Display dort ausweist, ist OFFEN (siehe README).
+	sed -e "s|@KOPPELN@|http://localhost:3000/|" \
 		"$HIER/kiosk/laden.html" >"$BASIS/kiosk/laden.html"
 	install -m 0644 "$HIER/kiosk/ente.svg" "$BASIS/kiosk/ente.svg"
 	sed -e "s|@CHROMIUM@|$(command -v "$chromium")|" "$HIER/kiosk/start.sh" >"$BASIS/kiosk/start.sh"

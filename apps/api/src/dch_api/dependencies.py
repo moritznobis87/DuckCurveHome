@@ -5,7 +5,7 @@ Token, und wer es hatte, durfte alles (ADR-8). Jetzt gibt es drei Wege herein, u
 nebeneinander, weil sie drei verschiedene Dinge sind (ADR-0002):
 
     Person   ein angemeldeter Mensch mit Passkey; Sitzungstoken, widerrufbar, Rolle an der Person
-    Dienst   das API-Token: Bridge, Zeitplan, iOS-App, das BFF für Geräte- und Gastsitzungen
+    Dienst   das API-Token: Bridge, Zeitplan, iOS-App - Maschinen ohne Menschen davor
     offen    kein Token eingetragen - Entwicklung und Demo, wie bisher
 
 Das Ermitteln passiert einmal je Anfrage in der Middleware (`main.zugang_und_urheber`) und liegt
@@ -70,26 +70,24 @@ async def ausweis_ermitteln(request: Request) -> Ausweis | None:
 
 
 def _dienst_mit_kopfzeilen(request: Request) -> Ausweis:
-    """Der Ausweis für das API-Token, angereichert um das, was das BFF über das Gerät sagt.
+    """Der Ausweis für das API-Token, angereichert um das, was der Aufrufer über sich sagt.
+
+    Das betrifft seit dem 23.11.2026 nur noch Maschinen: die Bridge, Zeitpläne und die iOS-App,
+    die ihr Token im Schlüsselbund hält. Das Web-BFF kommt hier nicht mehr vorbei - es schickt
+    ausschließlich das Sitzungstoken einer angemeldeten Person.
 
     Geglaubt wird die Angabe, weil hinter derselben Tür das Token steht: wer es hat, könnte jeden
     Urheber behaupten - er könnte aber ohnehin alles. Eine Zuordnung, keine Beweisführung
-    (docs/URHEBER.md).
-
-    Die **Rolle** aus der Kopfzeile wird dagegen durchgesetzt: so bleibt der Gastlink ein
-    Gastlink, auch wenn eine Anfrage nicht über den Proxy des Dashboards kommt.
+    (docs/URHEBER.md). Darum ist auch die Rolle hier nicht mehr als eine Selbstauskunft; eine
+    unbekannte wird zu `hausherr`, weil das Token ohnehin alles darf.
     """
     kopf = urheber.aus_kopfzeilen(request.headers)
     if kopf is None:
         return DIENST
-    rolle = kopf.rolle if kopf.rolle in rechte.ROLLEN else ""
-    if kopf.rolle == "owner":
-        rolle = "hausherr"  # das alte Wort aus dem Kiosk-Cookie
-    elif kopf.rolle == "guest":
-        rolle = "gast"
+    rolle = kopf.rolle if kopf.rolle in rechte.ROLLEN else "hausherr"
     return Ausweis(
         art="gast" if rolle == "gast" else "geraet",
-        rolle=rolle or "hausherr",  # type: ignore[arg-type]
+        rolle=rolle,  # type: ignore[arg-type]
         name=kopf.name,
         geraet=kopf.geraet or kopf.name,
     )

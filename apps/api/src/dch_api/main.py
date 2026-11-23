@@ -119,6 +119,7 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
     from dch_api.auth.dienst import AuthDienst
 
     app.state.auth = AuthDienst(engine, settings)
+    await _ersten_hausherrn_anlegen(app.state.auth, settings)
     app.state.bridge_hub = hub
     app.state.runner = runtime
     app.state.push = push
@@ -127,6 +128,42 @@ async def _start_live(app: FastAPI, settings: Settings) -> None:
     # Erst nach dem Start: dort wird ein gespeicherter Konfigurationsstand angewandt, und die
     # Konfigurationsseite soll den zeigen und nicht den aus der Datei.
     app.state.hems = runtime.hems
+
+
+async def _ersten_hausherrn_anlegen(auth: object, settings: Settings) -> None:
+    """Beim allerersten Start den Zugang des Hausherrn anlegen und seinen Link protokollieren.
+
+    Der Ersatz fuer die Geraetepaarung, ueber die frueher der erste Zugang entstand. Ein offener
+    Endpunkt waere keiner: wer die Adresse zuerst faende, haette das Haus. Hier entscheidet, wer
+    die Umgebung des Dienstes setzen kann - und das ist dieselbe Person, die auch die Datenbank
+    haette.
+
+    Der Link steht **einmal** im Protokoll, als Warnung, damit er beim Hochfahren auffaellt. Er
+    gilt `DCH_ZUGANGSTOKEN_STUNDEN` und nur einmal; wer ihn verpasst, stellt sich spaeter unter
+    „Zugang" einen neuen aus - sofern dann schon jemand hereingekommen ist. Sonst: Variable
+    stehen lassen und neu starten, denn die Pruefung „ist wirklich noch niemand da" laeuft bei
+    jedem Start.
+    """
+    from dch_api.auth.dienst import AuthDienst, ZugangError
+
+    if not isinstance(auth, AuthDienst) or not settings.erste_person.strip():
+        return
+    if await auth.anzahl() > 0:
+        return
+    try:
+        angaben, klartext = await auth.person_anlegen(settings.erste_person, "", "hausherr")
+    except ZugangError as fehler:
+        start_log.error("erste person nicht angelegt", grund=str(fehler))
+        return
+    start_log.warning(
+        "erster hausherr angelegt",
+        email=angaben.email,
+        link=auth.link(klartext),
+        hinweis=(
+            "Diesen Link einmalig auf dem Geraet oeffnen, das kuenftig anmeldet. Er gilt "
+            f"{settings.zugangstoken_stunden} Stunden und nur einmal."
+        ),
+    )
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

@@ -17,6 +17,7 @@ export DCH_API_TOKEN=api-geheim
 export DCH_PASSKEY_RP_ID=localhost
 export DCH_PASSKEY_HERKUENFTE='["http://localhost:3000"]'
 export DCH_ANMELDE_URL=http://localhost:3000
+export DCH_ERSTE_PERSON=moritz@example.org
 export DCH_WEATHER_REFRESH_MIN=0
 export DCH_PRICE_REFRESH_MIN=0
 export DCH_ROLE=api
@@ -27,9 +28,6 @@ uv run uvicorn dch_api.main:app --port 8010 --log-level warning > "$RAUCH/api.lo
 API=$!
 
 export DCH_API_URL=http://localhost:8010
-export DCH_SESSION_SECRET=$(printf 'r%.0s' {1..40})
-export DCH_KIOSK_TOKEN=kiosk-geheim
-export DCH_GUEST_TOKEN=gast-geheim
 (cd apps/web && pnpm exec next dev --port 3000 > "$RAUCH/web.log" 2>&1 &
  echo $! > "$RAUCH/web.pid")
 
@@ -42,7 +40,12 @@ done
 echo "--- Dienste stehen ---"
 curl -s http://localhost:8010/api/v1/auth/zustand && echo
 
-BASIS=http://localhost:3000 KIOSK_TOKEN=kiosk-geheim BILD="${BILD:-$RAUCH/anmeldung.png}" \
+# Den Einladungslink des ersten Hausherrn aus dem Protokoll holen - so, wie ihn ein Betreiber
+# beim ersten Start aus den Logs von Railway oder des Hausgeraets fischt.
+EINLADUNG=$(sed -n 's/.*"link": "\([^"]*\)".*/\1/p' "$RAUCH/api.log" | tail -1)
+echo "Einladung: ${EINLADUNG:-(keine gefunden)}"
+
+BASIS=http://localhost:3000 EINLADUNG="$EINLADUNG" BILD="${BILD:-$RAUCH/anmeldung.png}" \
   node tools/rauchprobe-anmeldung.mjs
 ERG=$?
 

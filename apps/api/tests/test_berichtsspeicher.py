@@ -412,12 +412,12 @@ def test_der_schluessel_hat_keinen_platz_fuer_eine_person_und_braucht_keinen() -
     # ein Ausweis dazu, könnte die Antwort von ihr abhängen.
     assert list(inspect.signature(rechte.darf).parameters) == ["rolle", "methode", "pfad"]
     assert all(p.startswith("/") for p in rechte.AKTEN), "verglichen wird mit Pfaden"
-    # Der Proxy reicht nur noch durch: die Rolle eines gepaarten Geräts reist als Kopfzeile mit,
-    # als Inhaltsfilter wirkt sie nicht.
+    # Der Proxy entscheidet seit dem 23.11.2026 gar nichts mehr: er haengt das Sitzungstoken an
+    # und reicht durch. Weder eine Pfadliste noch eine Rolle in einer Kopfzeile.
     bff = Path(__file__).resolve().parents[3] / "apps/web/src/app/api/dch/[...path]/route.ts"
     text = bff.read_text(encoding="utf-8")
-    assert "x-dch-urheber-rolle" in text, "die Rolle reist als Kopf mit, nicht als Inhaltsfilter"
     assert "GUEST_FORBIDDEN" not in text, "die Rechte liegen im Dienst, nicht im Proxy"
+    assert "x-dch-urheber-rolle" not in text, "auch die Rolle entscheidet der Proxy nicht"
 
 
 # ---------------------------------------------------------------- An der Auswertung

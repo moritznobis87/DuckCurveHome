@@ -84,12 +84,13 @@ services:
     # Nur, was die Oberflaeche braucht; Datenbank und Anbieterschluessel sieht sie nicht.
     environment:
       DCH_API_URL: http://api:8000
-      DCH_API_TOKEN: ${DCH_API_TOKEN:?DCH_API_TOKEN fehlt in .env}
-      DCH_SESSION_SECRET: ${DCH_SESSION_SECRET:?DCH_SESSION_SECRET fehlt in .env}
-      DCH_KIOSK_TOKEN: ${DCH_KIOSK_TOKEN:-}
-      DCH_GUEST_TOKEN: ${DCH_GUEST_TOKEN:-}
-      DCH_GUEST_HOURS: ${DCH_GUEST_HOURS:-24}
-      DCH_PUBLIC_HOST: ${DCH_PUBLIC_HOST:-}
+      # DCH_API_TOKEN braucht die Oberflaeche seit dem 23.11.2026 nicht mehr: sie reicht nur noch
+      # das Sitzungstoken der angemeldeten Person weiter.
+      # Die Anmeldung ist an, solange nichts anderes dasteht. Die Variablen der Geraetepaarung
+      # (DCH_SESSION_SECRET, DCH_KIOSK_TOKEN, DCH_GUEST_TOKEN, DCH_GUEST_HOURS, DCH_PUBLIC_HOST)
+      # sind am 23.11.2026 entfallen: sie vergaben Zugang ueber einen stehenden URL-Token.
+      # OFFEN fuer das Display am Geraet selbst - siehe README, Abschnitt Kiosk.
+      DCH_ANMELDUNG: ${DCH_ANMELDUNG:-an}
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:

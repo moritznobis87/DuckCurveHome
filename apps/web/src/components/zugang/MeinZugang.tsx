@@ -28,6 +28,24 @@ function datum(wert: string | null | undefined): string {
   return new Date(wert).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
 }
 
+/**
+ * Aus dem User-Agent ein Wort machen, an dem man das Gerät wiedererkennt.
+ *
+ * Der rohe Wert ist eine Zeile wie „Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 …" und
+ * sagt in einer Liste nichts; abgelegt wird er trotzdem ganz, damit man im Zweifel nachsehen
+ * kann. Dieselbe Verkürzung wie in `lib/presence.ts`.
+ */
+function geraet(ua: string): string {
+  if (!ua) return "unbekanntes Gerät";
+  if (/iPad/i.test(ua)) return "iPad";
+  if (/iPhone/i.test(ua)) return "iPhone";
+  if (/Android/i.test(ua)) return "Android";
+  if (/Macintosh/i.test(ua)) return "Mac";
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Linux/i.test(ua)) return "Linux";
+  return "unbekanntes Gerät";
+}
+
 export function MeinZugang() {
   const [ich, setIch] = useState<Ich | null>();
   const [fehler, setFehler] = useState<string>();
@@ -92,7 +110,8 @@ export function MeinZugang() {
   return (
     <div className="flex flex-col gap-3">
       <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-        Angemeldet als <strong>{ich.ausweis.name}</strong> ({ich.ausweis.email}), Rolle{" "}
+        Angemeldet als <strong>{ich.ausweis.name}</strong>
+        {ich.ausweis.name !== ich.ausweis.email ? ` (${ich.ausweis.email})` : ""}, Rolle{" "}
         <span className="mono text-[13px]">{ich.ausweis.rolle}</span>. Noch{" "}
         {ich.codes_offen} Wiederherstellungscodes übrig.
       </p>
@@ -216,7 +235,7 @@ export function MeinZugang() {
             className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3"
           >
             <span className="flex items-baseline gap-3">
-              <span className="text-[14px] text-text-2">{s.herkunft || "unbekanntes Gerät"}</span>
+              <span className="text-[14px] text-text-2" title={s.herkunft}>{geraet(s.herkunft)}</span>
               {s.diese ? <span className="mono text-[12px] text-amber">dieses Gerät</span> : null}
             </span>
             <span className="flex items-baseline gap-3">

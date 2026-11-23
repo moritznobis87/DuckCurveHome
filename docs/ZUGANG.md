@@ -10,10 +10,15 @@ Seite beschreibt, was es heute gibt und wie man es bedient.
 - **Eine Person meldet sich mit einem Passkey an.** Kein Passwort, nichts zum Abtippen, kein
   zweiter Faktor daneben - ein Passkey mit verlangter Nutzerprüfung ist Besitz und Merkmal
   zugleich.
-- **Ein Gerät ist keine Person.** Die Wandanzeige im Flur wird einmal gepaart und bleibt gepaart.
-  Rückwirkend aus einem Gerät einen Menschen zu machen wäre eine Erfindung - am iPad im Flur kann
-  jeder gestanden haben ([URHEBER.md](URHEBER.md)).
-- **Ein Gast braucht kein Konto.** Für acht Stunden Zusehen genügt ein Link mit Frist.
+- **Es gibt keinen Link mehr, der Zugang vergibt.** Bis zum 23.11.2026 stellten zwei stehende
+  URL-Tokens Gerätesitzungen aus - einer für Vollzugriff, einer für Gäste. Sie standen im Klartext
+  auf dieser Seite, galten unbefristet, waren beliebig oft einlösbar und ließen sich nur für alle
+  zugleich widerrufen. Ausgebaut (ADR-0002, Nachtrag).
+- **Eine Person darf an beliebig vielen Geräten zugleich angemeldet sein:** je Gerät ein Passkey
+  und eine eigene Sitzung in `person_sitzungen`, einzeln zu beenden.
+- **Eine benutzte Sitzung läuft nicht ab.** Die Frist gleitet mit; nur eine liegengebliebene endet
+  nach `DCH_SITZUNG_TAGE`. Darauf beruht die Wandanzeige, die früher ein Gerätecookie mit einem
+  halben Jahr Frist hatte.
 - **Die Rechte liegen im Dienst**, nicht in der Anzeige: `apps/api/src/dch_api/auth/rechte.py`.
   Eine ausgeblendete Kachel hält niemanden auf, der die Adresse kennt - und die iOS-App spricht
   ohnehin direkt mit dem Dienst.
@@ -43,16 +48,31 @@ Bericht wird versehentlich sichtbar, ein neuer Schalter nicht versehentlich bedi
 
 ## Der erste Hausherr
 
-Es gibt mit Absicht keinen offenen Weg „ersten Zugang hier anlegen": wer die Adresse zuerst
-findet, hätte das Haus. Stattdessen:
+Es gibt mit Absicht keinen offenen Weg „ersten Zugang hier anlegen": wer die Adresse zuerst fände,
+hätte das Haus. Stattdessen entscheidet, wer die Umgebung des Dienstes setzen kann - dieselbe
+Person, die auch an die Datenbank käme:
 
-1. Den Pairing-Link des Geräts einmal öffnen: `https://…/pair?token=<DCH_KIOSK_TOKEN>&name=Laptop`.
-   Das ist kein neues Vertrauen - wer dieses Token hat, durfte immer schon alles.
-2. Unter **Technik › Zugang** die erste Person anlegen, Rolle `hausherr`.
-3. Den Einladungslink öffnen - auf dem Gerät, das künftig anmeldet - und einen Passkey anlegen.
-   Damit ist man angemeldet, und die zehn Wiederherstellungscodes erscheinen **einmal**.
+1. Auf dem **api**-Dienst `DCH_ERSTE_PERSON=<E-Mail>` setzen und neu starten.
+2. Ist die Personentabelle leer, legt der Dienst diesen Zugang als `hausherr` an und schreibt den
+   Einladungslink **einmal** ins Protokoll, als Warnung, damit er beim Hochfahren auffällt.
+3. Den Link auf dem Gerät öffnen, das künftig anmeldet, und dort einen Passkey anlegen. Damit ist
+   man angemeldet, und die zehn Wiederherstellungscodes erscheinen - auch nur einmal.
 
-Danach kann die Gerätepaarung bleiben (Wandanzeige) oder das Kiosk-Token gewechselt werden.
+Danach tut die Variable nichts mehr: bei jedem Start prüft sie, ob wirklich noch niemand da ist.
+Wer den Link im Protokoll verpasst, lässt sie stehen und startet neu, solange noch niemand
+hereingekommen ist; danach stellt der Hausherr unter **Technik › Zugang** neue Links aus.
+
+### Das Gerät an der Wand
+
+Es bekommt eine eigene Person. Gib ihr einen Namen, dem man ansieht, dass kein Mensch
+dahintersteht - „Wandanzeige Flur" - und die Rolle, die sie wirklich braucht; `gast` für eine reine
+Anzeige, `bewohner`, wenn am Display auch geschaltet werden soll. Der Passkey liegt dann auf dem
+iPad, und das Protokoll nennt diesen Namen.
+
+Das ist ein Zugeständnis und soll als solches dastehen: ein Passkey auf einem Gerät, das im Flur
+jeder anfassen kann, ist schwächer als einer im Schlüsselbund eines Menschen. Der Tausch war
+bewusst - der Pairing-Link davor war schwächer, weil er unbefristet Vollzugriff vergab und nicht
+einzeln widerrufbar war.
 
 ## Einladen
 
@@ -111,9 +131,10 @@ Drei Stufen, in dieser Reihenfolge:
 3. **Ein neuer Link des Hausherrn.** Er entwertet alle offenen Links und beendet alle Sitzungen
    der Person; danach legt sie einen neuen Passkey an.
 
-Für den Hausherrn selbst bleibt der Notweg über die Umgebung: das Kiosk-Token paart ein Gerät mit
-Vollzugriff. Das ist tragfähig, solange er an die Umgebungsvariablen kommt - auf einem Hausgerät
-beim Kunden wäre es keiner, und darum steht in ADR-0003 die Vollmacht aus der Zentrale.
+Für den Hausherrn selbst bleibt der Notweg über die Umgebung: `DCH_ERSTE_PERSON` wirkt wieder,
+sobald keine Person mehr da ist - und wer die Datenbank erreicht, kann eine Person abschalten.
+Das ist tragfähig, solange er an die Umgebungsvariablen kommt; auf einem Hausgerät beim Kunden
+wäre es keiner, und darum steht in ADR-0003 die Vollmacht aus der Zentrale.
 
 ## Was das Protokoll jetzt sagt
 
@@ -135,9 +156,11 @@ Auf dem **api**-Dienst (Railway); der web-Dienst braucht davon nichts:
 DCH_PASSKEY_RP_ID=home.duckcurve.de
 DCH_PASSKEY_HERKUENFTE=["https://home.duckcurve.de"]
 DCH_ANMELDE_URL=https://home.duckcurve.de
-DCH_SESSION_SECRET=<mind. 32 Zeichen>     # für die Gerätepaarung
-DCH_KIOSK_TOKEN=<openssl rand -hex 32>
+DCH_ERSTE_PERSON=<E-Mail>                 # nur beim allerersten Start
 ```
+
+Auf dem **web**-Dienst nichts: die Anmeldung ist an, solange `DCH_ANMELDUNG` nicht auf `aus`
+steht.
 
 In der Entwicklung:
 

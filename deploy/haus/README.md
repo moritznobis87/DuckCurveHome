@@ -95,7 +95,7 @@ Alfred. Danach:
 sudo dch neustart
 ```
 
-Die Zugangsdaten (`DCH_API_TOKEN`, `DCH_BRIDGE_TOKENS`, `DCH_SESSION_SECRET`, `DCH_KIOSK_TOKEN`)
+Die Zugangsdaten (`DCH_API_TOKEN`, `DCH_BRIDGE_TOKENS`)
 sind neu erzeugt und bleiben so; die alten von Railway braucht das Gerät nicht.
 
 ## 5. Die Daten von Railway übernehmen
@@ -139,8 +139,18 @@ Zwei Dinge danach:
 1. `http://duckcurve-home.local/zertifikat` öffnen und das Profil installieren. Auf dem iPad danach
    unter Einstellungen → Allgemein → Info → Zertifikatsvertrauenseinstellungen „Caddy Local
    Authority“ einschalten. Ohne das zeigt Safari eine Warnung, und die Anmeldung hält nicht.
-2. Den Pairing-Link öffnen (`https://duckcurve-home.local/pair?token=…&name=iPad-Flur`). Das Gerät
-   bleibt 180 Tage angemeldet.
+2. `https://duckcurve-home.local/anmeldung` öffnen und sich als Person anmelden. Einen Link, der
+   von sich aus Zugang vergibt, gibt es seit dem 23.11.2026 nicht mehr; den ersten Hausherrn legt
+   `DCH_ERSTE_PERSON` beim Start an (`dch protokoll api` zeigt seinen Einladungslink einmalig).
+   Die Sitzung läuft nicht ab, solange das Gerät benutzt wird.
+
+**Offen: das Display am Gerät selbst.** Der Kiosk öffnet `http://localhost:3000` und hatte seinen
+Zugang bisher über denselben Pairing-Link. Den gibt es nicht mehr, und ein Passkey lässt sich in
+einem Chromium ohne Plattform-Authenticator nicht anlegen. Drei Wege stehen zur Wahl und keiner
+ist entschieden: `DCH_ANMELDUNG=aus` auf dem Gerät (dann schützt nur noch, dass Port 3000 an
+127.0.0.1 gebunden ist und vor dem Fernzugriff Cloudflare Access steht), eine Ausnahme für die
+Loopback-Adresse in der Middleware, oder ein eigener Sitzungsschlüssel, der bei der Einrichtung
+gesetzt wird. Bis dahin zeigt der Kiosk die Anmeldeseite.
 
 ## 8. Zugang von unterwegs (optional)
 

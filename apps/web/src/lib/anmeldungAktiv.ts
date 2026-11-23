@@ -1,18 +1,19 @@
 /**
  * Ob die Oberfläche eine Anmeldung verlangt - **ohne Node-Bausteine**.
  *
- * Eigene Datei, weil die Middleware in der Edge-Laufzeit läuft: sie darf `node:crypto` nicht
- * sehen, und genau das importiert `lib/session.ts` für die Signatur des Gerätecookies. Ein
- * Import von dort hat den Bau zum Scheitern gebracht („Reading from node:crypto is not handled").
+ * Eigene Datei, weil die Middleware in der Edge-Laufzeit läuft und dort kein `node:`-Modul sehen
+ * darf.
  *
- * Zwei Schalter, weil es zwei Dinge sind: `DCH_SESSION_SECRET` macht die **Gerätepaarung**
- * möglich (Wandanzeige, Gastlink) und verlangt damit auch eine Anmeldung. Ein Hausgerät, das
- * keine Geräte paart, sondern nur Personen kennt, setzt stattdessen `DCH_ANMELDUNG=1`. Ohne
- * beides ist die Anmeldung aus - Entwicklung und Demo, wie bisher.
+ * **Die Vorgabe ist „an".** Seit die Gerätepaarung weg ist (23.11.2026) gibt es keinen Schalter
+ * mehr, der nebenbei die Anmeldung einschaltete - vorher war das `DCH_SESSION_SECRET`, das
+ * eigentlich nur das Gerätecookie signierte. Eine Instanz, die die Variable vergisst, soll **zu**
+ * sein und nicht offen; das ist die Richtung, in der ein Versehen harmlos bleibt.
+ *
+ * Ausgeschaltet wird ausdrücklich mit `DCH_ANMELDUNG=aus` - das tun `docker-compose.yml` und
+ * `tools/demo.sh`, denn der Demo-Modus läuft ohne Datenbank und hat damit keine Personen, als die
+ * sich jemand anmelden könnte.
  */
 export function anmeldungNoetig(): boolean {
   const schalter = (process.env.DCH_ANMELDUNG ?? "").trim().toLowerCase();
-  if (schalter === "0" || schalter === "aus" || schalter === "false") return false;
-  const geraetepaarung = (process.env.DCH_SESSION_SECRET ?? "").length >= 32;
-  return geraetepaarung || ["1", "an", "true"].includes(schalter);
+  return !["0", "aus", "false", "nein", "off"].includes(schalter);
 }

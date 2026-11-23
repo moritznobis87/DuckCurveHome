@@ -5,7 +5,7 @@ auch, *dass* es über dieses Werkzeug ging. Wer es war, stand nirgends - obwohl 
 längst weiß: Beim Paaren bekommt jedes Gerät einen Namen, und der steht signiert im Cookie.
 
 ```
-/pair?token=<DCH_KIOSK_TOKEN>&name=iPad-Flur
+/anmeldung (Passkey; frueher: /pair?token=…&name=iPad-Flur)
 ```
 
 Dieser Name reist jetzt bis in die Datenbank.

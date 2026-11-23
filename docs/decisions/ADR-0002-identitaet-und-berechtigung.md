@@ -122,7 +122,8 @@ Klasse `Sitzung`). `DCH_API_TOKEN` bleibt nur für Maschinen übrig und bekommt 
 `/system/zugang` erzeugt - die Seite macht das heute schon, sie vergibt künftig Personen statt
 Geräten.
 
-**Drei Zugangsarten bleiben nebeneinander,** weil sie drei verschiedene Dinge sind:
+**Drei Zugangsarten bleiben nebeneinander,** weil sie drei verschiedene Dinge sind (seit dem
+23.11.2026 überholt - siehe Nachtrag unten: es gibt nur noch Personen):
 
 | Art | Nachweis | Rolle | `urheber.art` |
 |---|---|---|---|
@@ -132,7 +133,9 @@ Geräten.
 
 Das Wand-iPad bekommt **keinen** Passkey. Ein Passkey behauptet eine Person, und am iPad im Flur kann
 jeder gestanden haben; rückwirkend aus einem Gerät einen Menschen zu machen wäre eine Erfindung
-(`urheber.py`). Und niemand soll für acht Stunden Zusehen ein Konto anlegen müssen.
+(`urheber.py`). Und niemand soll für acht Stunden Zusehen ein Konto anlegen müssen. - *Auch dieser
+Absatz ist mit dem Nachtrag hinfällig: der Mechanismus, der das Gerät von der Person trennte, taugte
+nicht, und das Wand-iPad bekommt jetzt doch eine eigene Person.*
 
 ## Konsequenzen
 
@@ -192,6 +195,41 @@ ohnehin dem Hausherrn vorbehalten.
 Nicht umgesetzt: die iOS-App meldet sich weiter mit dem Gerätetoken an. Passkeys brauchen dort
 `webcredentials:home.duckcurve.de` und eine `apple-app-site-association` auf
 `home.duckcurve.de` - seit der Änderung an Festlegung 1 eine Datei in diesem Repository.
+
+## Nachtrag 23.11.2026: die Gerätepaarung ist ausgebaut
+
+Dieses Papier hielt drei Zugangsarten nebeneinander - Person, Gerät, Gast - und begründete das
+damit, dass ein Gerät keine Person ist. Das Argument stimmt; der Mechanismus dahinter taugte
+nicht.
+
+**Was daran faul war.** Eine Gerätesitzung entstand aus einem **stehenden Token in einer Adresse**
+(`/pair?token=…`). Dieser Token stand im Klartext auf der Seite „Zugang" - also in jedem
+Screenshot davon -, galt unbefristet, war beliebig oft einlösbar, und widerrufen ließ er sich nur,
+indem man ihn für alle wechselte. Die Seite gab das selbst zu: „Der Ablauf begrenzt die Sitzung,
+nicht den Link." Damit war der schwächste Teil des Zugangs ausgerechnet der mit den meisten
+Rechten. Dazu kam ein Fehler, den die Form einlädt: Kiosk- und Gast-Token lassen sich auf denselben
+Wert setzen, und dann vergibt der Gastlink Vollzugriff, weil zuerst gegen den Kiosk-Token geprüft
+wird - genau das war am 23.11.2026 im Betrieb so eingestellt.
+
+**Was stattdessen gilt.** Nur noch Personen mit Passkey. Eine Person darf an beliebig vielen
+Geräten zugleich angemeldet sein - je Gerät ein Passkey und eine eigene Sitzungszeile, einzeln zu
+beenden -, und eine benutzte Sitzung läuft nicht mehr ab: die Frist gleitet mit. Das war die
+Aufgabe, für die es das Gerätecookie mit seinem halben Jahr gab.
+
+**Was das kostet.** Das Gerät an der Wand bekommt eine eigene Person, deren Passkey auf einem iPad
+im Flur liegt. Das ist schwächer als ein Passkey im Schlüsselbund eines Menschen und widerspricht
+dem Satz, dass ein Gerät keine Person ist - der Name „Wandanzeige Flur" behauptet immerhin keinen
+Menschen. Der Tausch ist trotzdem richtig: der Pairing-Link davor war schwächer. Und ein Gast
+braucht jetzt eine Einladung; für acht Stunden Zusehen genügt kein Link mehr.
+
+**Der erste Zugang** kam bisher über die Paarung. Ersatz ist `DCH_ERSTE_PERSON`: eine Umgebungs-
+variable, die beim allerersten Start eine Person anlegt und ihren Einladungslink einmal ins
+Protokoll schreibt. Ein offener Endpunkt wäre keiner.
+
+**Offen bleibt das Display am Hausgerät selbst** (`deploy/haus`): es öffnet `http://localhost:3000`
+und kam bisher über denselben Pairing-Link herein. Ein Passkey lässt sich in einem Chromium ohne
+Plattform-Authenticator nicht anlegen. Die drei Wege stehen in `deploy/haus/README.md`, Abschnitt
+„Zugang im Heimnetz"; entschieden ist keiner.
 
 ## Offene Punkte
 

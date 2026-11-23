@@ -23,6 +23,10 @@ services:
     image: duckcurve-web:local
     environment:
       DCH_API_URL: http://api:8000
+      # Der Demo-Modus laeuft ohne Datenbank und hat damit keine Personen, als die sich jemand
+      # anmelden koennte. Die Anmeldung ist deshalb ausdruecklich aus - ihre Vorgabe ist „an",
+      # damit eine echte Instanz, die die Variable vergisst, zu ist und nicht offen.
+      DCH_ANMELDUNG: aus
     ports:
       - "3000:3000"
     depends_on:

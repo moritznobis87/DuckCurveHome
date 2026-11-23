@@ -12,9 +12,9 @@ describe("Web-App-Manifest", () => {
   });
 
   describe("Zugangsschutz", () => {
-    const vorher = process.env.DCH_SESSION_SECRET;
-    beforeEach(() => { process.env.DCH_SESSION_SECRET = "x".repeat(32); });
-    afterEach(() => { process.env.DCH_SESSION_SECRET = vorher; });
+    const vorher = process.env.DCH_ANMELDUNG;
+    beforeEach(() => { delete process.env.DCH_ANMELDUNG; });  // Vorgabe ist „an"
+    afterEach(() => { if (vorher === undefined) delete process.env.DCH_ANMELDUNG; else process.env.DCH_ANMELDUNG = vorher; });
 
     const ohneCookie = (pfad: string) => middleware(new NextRequest(`https://home.example${pfad}`));
 
@@ -31,16 +31,28 @@ describe("Web-App-Manifest", () => {
       expect(ohneCookie(pfad).headers.get("location")).toBeNull();
     });
 
-    it("das Geraetecookie allein genuegt weiterhin", () => {
-      const req = new NextRequest("https://home.example/");
-      req.cookies.set("dch_session", "egal");
-      expect(middleware(req).headers.get("location")).toBeNull();
-    });
-
-    it("das Personencookie allein genuegt", () => {
+    it("mit Personencookie geht es durch", () => {
       const req = new NextRequest("https://home.example/");
       req.cookies.set("dch_person", "egal");
       expect(middleware(req).headers.get("location")).toBeNull();
+    });
+
+    // Das Geraetecookie gibt es seit dem 23.11.2026 nicht mehr - mit ihm ist der stehende
+    // URL-Token verschwunden, der Vollzugriff vergab. Ein alter Keks oeffnet nichts mehr.
+    it("das alte Geraetecookie oeffnet nichts mehr", () => {
+      const req = new NextRequest("https://home.example/");
+      req.cookies.set("dch_session", "ein alter Keks");
+      expect(middleware(req).headers.get("location")).toContain("/anmeldung");
+    });
+
+    // Die Vorgabe ist „an": eine Instanz, die die Variable vergisst, soll zu sein, nicht offen.
+    it("ohne jede Variable wird eine Anmeldung verlangt", () => {
+      expect(ohneCookie("/").headers.get("location")).toContain("/anmeldung");
+    });
+
+    it("DCH_ANMELDUNG=aus laesst alles durch (Demo)", () => {
+      process.env.DCH_ANMELDUNG = "aus";
+      expect(ohneCookie("/").headers.get("location")).toBeNull();
     });
   });
 });

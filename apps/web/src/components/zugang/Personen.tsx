@@ -91,7 +91,9 @@ export function Personen({ versand }: { versand: { aktiv: boolean; fehlt: string
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className="text-[15px] text-text-1">{p.anzeigename || p.email}</span>
-                  <span className="mono text-[12px] text-text-3">{p.email}</span>
+                  {p.anzeigename ? (
+                    <span className="mono text-[12px] text-text-3">{p.email}</span>
+                  ) : null}
                   {!p.aktiv ? (
                     <span className="mono text-[12px] uppercase tracking-[.1em] text-amber">abgeschaltet</span>
                   ) : null}

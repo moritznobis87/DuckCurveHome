@@ -20,14 +20,11 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_DEMO_START` | jetzt | Startzeitpunkt der Simulation (ISO 8601) |
 | `DCH_DEMO_WARMUP_HOURS` | `30` | Vorlauf beim Start, damit Chart und Historie gefüllt sind |
 | `DCH_DEMO_AUTOSTART` | `true` | `false` in Tests |
-| `DCH_GUEST_TOKEN` | - | Pairing-Token für Gäste: `/pair?token=…&hours=8` gibt eine Sitzung, die nur lesen darf. Gäste sehen alles inklusive Kosten und Schaltkacheln, können aber nichts schalten und keine Tibber-Rechnung öffnen. Leer lassen, solange niemand eingeladen ist |
 | `hems.tariff.feed_in_ct_kwh` (YAML) | `7.41` | Einspeisevergütung **netto** in ct/kWh. Bemisst den Einspeiseerlös, die entgangene Vergütung beim Eigenverbrauch und die PV-Abrechnung |
 | `hems.tariff.vat_rate` (YAML) | `0.19` | Umsatzsteuersatz auf Einspeisung und unentgeltliche Wertabgabe |
 | `hems.tariff.price_includes_vat` (YAML) | `true` | Tibber liefert Bruttopreise; der Eigenverbrauch wird daraus netto bewertet |
 | `hems.tariff.small_business` (YAML) | `false` | § 19 UStG: dann weist die PV-Abrechnung keine Umsatzsteuer aus |
 | `DCH_TIBBER_PRICE_RESOLUTION` | *(leer)* | Auflösung der Preishistorie. Leer = feinste laut Tibber-Schema (Viertelstunden, wo angeboten); `HOURLY` erzwingt Stundenpreise |
-| `DCH_PUBLIC_HOST` | `home.duckcurve.de` | Öffentliche Adresse für die Pairing-Links auf der Einstellungsseite. Ohne sie wird der Host der Anfrage genommen, sofern er nicht auf `.railway.app` endet |
-| `DCH_GUEST_HOURS` | `24` | Vorgabe-Gültigkeit einer Gast-Sitzung in Stunden; `hours` im Link übersteuert sie, höchstens 720 |
 | `DCH_ACTUATION_ENABLED` | `true` | Vom Bedienenden ausgelöstes Schalten (Lichter, Kaffeemaschine) |
 | `DCH_HEAT_PUMP_ACTUATION_ENABLED` | `true` | Selbsttätiges Stellen des WP-Kontakts K1 aus der Regelentscheidung. **Seit dem 09.11.2026 die Vorgabe**, vorher `false`. Auf `false` läuft die Regelung im Schatten: sie entscheidet und zeigt an, schaltet aber nicht. Wer `true` lässt, braucht im Haus die Wächter-Automation in Home Assistant (E1) und einen Auto-Off-Timer im schaltenden Relais (E0); für K1 sind das die einzigen Rückfallebenen, weil der Weg über Home Assistant keine Laufzeitbegrenzung überträgt. Der Zustand steht in `GET /live/state` unter `system.hp_actuation` und auf der Seite „System" |
 | `DCH_PLAN_REFRESH_MIN` | `15` | Neuplanung |
@@ -53,9 +50,8 @@ Zwei Ebenen: **Umgebungsvariablen** (`DCH_*`, pydantic-settings, `.env`) für Be
 | `DCH_ALFRED_VERLAUF_MAX` | `6` | Frühere Gesprächswechsel, die mitgehen; der Verlauf lebt nur im Browser |
 | `DCH_API_URL` (web) | `http://localhost:8000` | Ziel der BFF-Route `/api/dch/*` |
 | `DCH_API_TOKEN` (web) | - | wird als Bearer an die API weitergereicht |
-| `DCH_SESSION_SECRET` (web) | - | ≥ 32 Zeichen; signiert das Gerätecookie und macht damit die **Gerätepaarung** möglich. Es ist nicht das Geheimnis der Personensitzungen - die sind opake Token in der Datenbank und brauchen keinen Schlüssel |
-| `DCH_KIOSK_TOKEN` (web) | - | Pairing-Token für `/pair?token=…&name=…` |
-| `DCH_ANMELDUNG` (web) | - | `1` verlangt eine Anmeldung, auch wenn keine Gerätepaarung eingerichtet ist (`DCH_SESSION_SECRET` leer). `0` schaltet sie aus. Ohne beides gilt: Anmeldung nötig, sobald das Gerätecookie möglich ist |
+| `DCH_ANMELDUNG` (web) | `an` | Ob die Oberfläche eine Anmeldung verlangt. **Die Vorgabe ist „an"** - eine Instanz, die die Variable vergisst, ist zu und nicht offen. `aus` (oder `0`) nur dort, wo es keine Personen geben kann: im Demo-Modus ohne Datenbank, den `docker-compose.yml` und `tools/demo.sh` selbst so setzen |
+| `DCH_ERSTE_PERSON` | - | Der erste Hausherr. Ist die Personentabelle beim Start leer, legt der Dienst diesen Zugang an und schreibt seinen Einladungslink **einmal** ins Protokoll; danach tut die Variable nichts mehr. Der Ersatz für die Gerätepaarung, über die früher der erste Zugang entstand ([docs/ZUGANG.md](docs/ZUGANG.md)) |
 | `DCH_PASSKEY_RP_ID` | `home.duckcurve.de` | Die Domain, an die jeder Passkey gebunden wird. **Nicht mehr änderbar, ohne alle Passkeys zu entwerten.** Der eigene Host und nicht die registrierbare Domain `duckcurve.de`: sonst liegen die Passkeys von Duck Curve und Duck Curve Home im selben Bereich, der Browser bietet beide an, und der falsche wird abgewiesen (am 23.11.2026 so entschieden, Begründung in [ADR-0002](docs/decisions/ADR-0002-identitaet-und-berechtigung.md), Festlegung 1). Entwicklung: `localhost` |
 | `DCH_PASSKEY_HERKUENFTE` | `["https://home.duckcurve.de"]` | Seiten, von denen eine Antwort des Browsers angenommen wird - also die Adresse des **web**-Dienstes, nicht die der API. Beim Start geprüft: `https` (außer `localhost`) und der Host muss die RP-ID sein oder auf `.<RP-ID>` endigen. Stimmt es nicht, läuft der Dienst weiter und protokolliert es als Fehler - anmelden kann sich dann niemand |
 | `DCH_PASSKEY_RP_NAME` | `Duck Curve Home` | Was der Browser im Passkey-Dialog anzeigt |

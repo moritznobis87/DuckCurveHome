@@ -2,28 +2,24 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
+import { anmeldungNoetig } from "@/lib/anmeldungAktiv";
 import { dienstAnfrage } from "@/lib/dienst";
-import { SESSION_COOKIE, authRequired, verifySession, type Role } from "@/lib/session";
 
 /**
- * Wer gerade zusieht - Person oder Gerät.
+ * Wer gerade angemeldet ist.
  *
- * Es gibt zwei Cookies, und das ist Absicht (ADR-0002):
+ * **Ein Cookie, eine Wahrheit.** `dch_person` enthält das opake Sitzungstoken; was es bedeutet,
+ * weiß allein der Dienst. Bis zum 23.11.2026 stand daneben ein zweites, signiertes Cookie für
+ * gepaarte Geräte (`dch_session`) - das ist weg, samt den stehenden URL-Tokens, die es ausstellten
+ * (ADR-0002, Nachtrag „Die Gerätepaarung ist ausgebaut").
  *
- *   `dch_person`   das opake Sitzungstoken einer angemeldeten Person. Die Wahrheit steht in der
- *                  Datenbank des Dienstes; das Cookie ist nur der Schlüssel dazu, und eine
- *                  Sitzung lässt sich einzeln beenden.
- *   `dch_session`  die Paarung eines **Geräts** (Wandanzeige) oder ein Gastlink, signiert mit
- *                  `DCH_SESSION_SECRET` wie bisher. Das iPad im Flur soll sich nicht anmelden
- *                  müssen, und ein Gast soll für acht Stunden Zusehen kein Konto brauchen.
- *
- * Beides gilt nebeneinander. Gefragt wird in dieser Reihenfolge: eine angemeldete Person sticht
- * die Gerätepaarung, denn sie sagt mehr - einen Namen und eine Rolle, die im Protokoll steht.
+ * Eine Person kann an beliebig vielen Geräten zugleich angemeldet sein: je Gerät eine Zeile in
+ * `person_sitzungen`, einzeln zu beenden. Das Cookie ist nur der Schlüssel dazu.
  */
 
 export const PERSON_COOKIE = "dch_person";
-/** Ein halbes Jahr wie beim Gerät wäre zu lang; die Frist der Sitzung setzt der Dienst. */
-export const PERSON_MAX_AGE_S = 30 * 24 * 3600;
+/** Höchstalter des Cookies. Die eigentliche Frist der Sitzung setzt der Dienst. */
+export const PERSON_MAX_AGE_S = 180 * 24 * 3600;
 
 export type Rolle = "hausherr" | "bewohner" | "gast" | "service";
 export type Art = "person" | "geraet" | "gast" | "dienst";
@@ -50,17 +46,12 @@ export async function personToken(): Promise<string> {
   return store.get(PERSON_COOKIE)?.value ?? "";
 }
 
-/** Die alte Rolle eines gepaarten Geräts auf die neue Benennung bringen. */
-export function rolleAusGeraet(role: Role): Rolle {
-  return role === "owner" ? "hausherr" : "gast";
-}
-
 /**
  * Wer fragt. `null`, wenn niemand angemeldet ist.
  *
- * Für die Person kostet das eine Anfrage an den Dienst, und die ist der Preis dafür, dass eine
- * Sitzung sofort widerrufbar ist: ein abgeschalteter Zugang ist im nächsten Augenblick draußen
- * und nicht erst in dreißig Tagen.
+ * Das kostet eine Anfrage an den Dienst, und die ist der Preis dafür, dass eine Sitzung sofort
+ * widerrufbar ist: ein abgeschalteter Zugang ist im nächsten Augenblick draußen und nicht erst
+ * mit dem Ablauf.
  */
 export async function ausweis(): Promise<Ausweis | null> {
   const token = await personToken();
@@ -68,25 +59,18 @@ export async function ausweis(): Promise<Ausweis | null> {
     try {
       return await dienstAnfrage<Ausweis>("/auth/wer", { token });
     } catch {
-      // Abgelaufen, widerrufen oder Dienst nicht erreichbar: dann gilt nur noch das Gerät.
+      // Abgelaufen, widerrufen oder Dienst nicht erreichbar.
     }
   }
-  if (!authRequired()) {
+  if (!anmeldungNoetig()) {
+    // Demo und Entwicklung: ohne Datenbank gibt es keine Personen, und die Oberfläche soll
+    // trotzdem bedienbar sein.
     return { art: "dienst", rolle: "hausherr", person_id: "", name: "Entwicklung", email: "" };
   }
-  const store = await cookies();
-  const geraet = verifySession(store.get(SESSION_COOKIE)?.value);
-  if (!geraet) return null;
-  return {
-    art: geraet.role === "guest" ? "gast" : "geraet",
-    rolle: rolleAusGeraet(geraet.role),
-    person_id: "",
-    name: geraet.name,
-    email: "",
-  };
+  return null;
 }
 
-/** Ob überhaupt eine Anmeldung verlangt wird - und ob es schon Personen gibt. */
+/** Ob überhaupt eine Anmeldung möglich ist - und ob es schon Personen gibt. */
 export async function zustand(): Promise<{
   anmeldung: boolean;
   personen: number;

@@ -7,7 +7,7 @@ import type { Rolle } from "@/lib/zugang";
  * gerade zu?", nicht um ein Zugriffsprotokoll. Nach einem Neustart ist die Liste leer, und liefen mehrere
  * Instanzen des Web-Dienstes, sähe jede nur ihre eigenen Besucher.
  */
-export type Presence = { name: string; rolle: Rolle; person: boolean; lastSeen: number; agent: string };
+export type Presence = { name: string; rolle: Rolle; lastSeen: number; agent: string };
 
 const seen = new Map<string, Presence>();
 const MAX_ENTRIES = 200;
@@ -24,19 +24,13 @@ function shortAgent(ua: string): string {
 }
 
 export function touch(
-  wer: { name: string; rolle: Rolle; person?: boolean } | null,
+  wer: { name: string; rolle: Rolle } | null,
   userAgent: string | null,
 ): void {
   if (!wer) return;
   const agent = shortAgent(userAgent ?? "");
   const key = `${wer.rolle}:${wer.name}:${agent}`;
-  seen.set(key, {
-    name: wer.name,
-    rolle: wer.rolle,
-    person: wer.person ?? false,
-    lastSeen: Date.now(),
-    agent,
-  });
+  seen.set(key, { name: wer.name, rolle: wer.rolle, lastSeen: Date.now(), agent });
   if (seen.size > MAX_ENTRIES) {
     // Älteste zuerst entfernen, damit die Liste nicht unbegrenzt wächst
     const oldest = [...seen.entries()].sort((a, b) => a[1].lastSeen - b[1].lastSeen)[0];

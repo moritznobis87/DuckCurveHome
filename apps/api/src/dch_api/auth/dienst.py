@@ -167,6 +167,13 @@ class AuthDienst:
 
         Eine abgelaufene Sitzung wird gleich gelöscht: sie ist wertlos, und was nicht mehr da ist,
         kann nicht versehentlich wieder gelten.
+
+        **Die Frist gleitet mit.** Wird eine Sitzung benutzt, rückt `laeuft_ab_am` nach vorn. Eine
+        Wandanzeige, die den ganzen Tag dasselbe Haus zeigt, fiele sonst nach
+        `DCH_SITZUNG_TAGE` heraus und müsste von jemandem mit Fingerabdruck wieder angemeldet
+        werden - das war der Grund, warum es früher ein Gerätecookie mit einem halben Jahr Frist
+        gab. Eine liegengebliebene Sitzung läuft weiterhin ab; widerrufen wird ohnehin durch
+        Löschen der Zeile und nicht durch Warten.
         """
         if not klartext:
             return None
@@ -190,6 +197,7 @@ class AuthDienst:
             vermerk = sitzung.zuletzt_benutzt_am
             if vermerk is None or (jetzt() - bewusst(vermerk)).total_seconds() > VERMERK_S:
                 sitzung.zuletzt_benutzt_am = jetzt()
+                sitzung.laeuft_ab_am = jetzt() + timedelta(days=self.settings.sitzung_tage)
                 await s.commit()
             return self._ausweis(person, sitzung.id)
 

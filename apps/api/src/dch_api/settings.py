@@ -223,6 +223,18 @@ class Settings(BaseSettings):
     sitzung_tage: int = 30
     #: Wie lange ein Einladungs- oder Wiederherstellungslink gilt.
     zugangstoken_stunden: int = 72
+    #: Der erste Hausherr - nur beim allerersten Start.
+    #:
+    #: **Warum es das braucht.** Bis zum 23.11.2026 kam der erste Zugang ueber die
+    #: Geraetepaarung: einmal den Kiosk-Link oeffnen, dann die erste Person anlegen. Mit der
+    #: Paarung ist dieser Weg weg, und ein offener Endpunkt „erste Person anlegen" waere keiner:
+    #: wer die Adresse zuerst faende, haette das Haus.
+    #:
+    #: Steht hier eine Adresse und ist die Personentabelle leer, legt der Dienst beim Start diese
+    #: Person als `hausherr` an und schreibt ihren Einladungslink **einmal** ins Protokoll. Danach
+    #: tut die Variable nichts mehr - sie prueft jedes Mal, ob wirklich noch niemand da ist.
+    erste_person: str = ""
+
     #: Die Adresse, unter der die Oberflaeche erreichbar ist - fuer den Link in der Einladung.
     #: Leer heisst: die erste Herkunft aus `passkey_herkuenfte`.
     anmelde_url: str = ""

@@ -137,15 +137,16 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
         yield c
 
 
-#: Die Kopfzeilen, mit denen das BFF ein gepaartes Gerät mit Vollzugriff anmeldet - so kommt der
-#: erste Hausherr herein, bevor es eine Person gibt.
-KIOSK = {
+#: Eine Maschine mit dem API-Token: die Bridge, ein Zeitplan, die iOS-App. Seit dem 23.11.2026
+#: ist das der einzige Weg herein, der keine Person ist - die Gerätepaarung mit ihrem stehenden
+#: URL-Token ist ausgebaut.
+DIENST = {
     "authorization": "Bearer api-geheim",
     "x-dch-urheber-art": "geraet",
-    "x-dch-urheber-name": "iPad Flur",
-    "x-dch-urheber-rolle": "owner",
+    "x-dch-urheber-name": "iPhone von Moritz",
 }
-GAST = {**KIOSK, "x-dch-urheber-rolle": "guest", "x-dch-urheber-name": "gast"}
+#: Dieselbe Maschine, die von sich sagt, sie sei nur ein Gast. Die iOS-App kennt diese Rolle.
+DIENST_GAST = {**DIENST, "x-dch-urheber-rolle": "gast", "x-dch-urheber-name": "Besuch"}
 
 
 def person_anlegen(
@@ -155,7 +156,7 @@ def person_anlegen(
     antwort = client.post(
         f"{API}/auth/personen",
         json={"email": email, "anzeigename": "Moritz", "rolle": rolle, "einladen": False},
-        headers=KIOSK,
+        headers=DIENST,
     )
     assert antwort.status_code == 200, antwort.text
     link = antwort.json()["link"]
@@ -244,11 +245,11 @@ def test_einladungslink_gilt_nur_einmal(client: TestClient) -> None:
 
 def test_ein_neuer_link_entwertet_den_alten(client: TestClient) -> None:
     alt = person_anlegen(client)
-    personen = client.get(f"{API}/auth/personen", headers=KIOSK).json()
+    personen = client.get(f"{API}/auth/personen", headers=DIENST).json()
     neu = client.post(
         f"{API}/auth/personen/{personen[0]['id']}/einladen",
         json={"einladen": False},
-        headers=KIOSK,
+        headers=DIENST,
     )
     assert neu.status_code == 200
     assert client.get(f"{API}/auth/einladung", params={"token": alt}).status_code == 404
@@ -319,13 +320,13 @@ def test_abgeschaltete_person_kommt_nicht_herein(client: TestClient) -> None:
     einrichten(client, token, (geraet := Geraet()))
     # Ein zweiter Hausherr, damit der erste abgeschaltet werden darf.
     person_anlegen(client, email="zweiter@example.org", rolle="hausherr")
-    zweiter_token = client.get(f"{API}/auth/personen", headers=KIOSK).json()
+    zweiter_token = client.get(f"{API}/auth/personen", headers=DIENST).json()
     einrichten(client, person_anlegen(client, email="dritt@example.org"), Geraet())
     del zweiter_token
 
-    personen = client.get(f"{API}/auth/personen", headers=KIOSK).json()
+    personen = client.get(f"{API}/auth/personen", headers=DIENST).json()
     moritz = next(p for p in personen if p["email"] == "moritz@example.org")
-    aus = client.post(f"{API}/auth/personen/{moritz['id']}", json={"aktiv": False}, headers=KIOSK)
+    aus = client.post(f"{API}/auth/personen/{moritz['id']}", json={"aktiv": False}, headers=DIENST)
     assert aus.status_code == 200
     assert aus.json()["aktiv"] is False
 
@@ -342,8 +343,8 @@ def test_abgeschaltete_person_kommt_nicht_herein(client: TestClient) -> None:
 def test_abschalten_beendet_die_sitzungen_sofort(client: TestClient) -> None:
     sitzung = einrichten(client, person_anlegen(client, rolle="bewohner"), Geraet())["token"]
     assert client.get(f"{API}/auth/ich", headers=mit(sitzung)).status_code == 200
-    person = client.get(f"{API}/auth/personen", headers=KIOSK).json()[0]
-    client.post(f"{API}/auth/personen/{person['id']}", json={"aktiv": False}, headers=KIOSK)
+    person = client.get(f"{API}/auth/personen", headers=DIENST).json()[0]
+    client.post(f"{API}/auth/personen/{person['id']}", json={"aktiv": False}, headers=DIENST)
     assert client.get(f"{API}/auth/ich", headers=mit(sitzung)).status_code == 401
 
 
@@ -510,22 +511,27 @@ def test_ohne_token_kein_zugang(client: TestClient) -> None:
     assert client.get(f"{API}/auth/ich").status_code == 401
 
 
-def test_geraetecookie_mit_gastrolle_wird_durchgesetzt(client: TestClient) -> None:
-    """Die Rolle aus der Kopfzeile des BFF gilt auch am Dienst - nicht nur im Proxy."""
-    assert client.get(f"{API}/live/state", headers=GAST).status_code == 200
-    assert client.get(f"{API}/energy/pv", headers=GAST).status_code == 403
+def test_die_rolle_aus_der_kopfzeile_wird_durchgesetzt(client: TestClient) -> None:
+    """Eine Maschine, die sich als Gast ausgibt, wird daran auch gehalten.
+
+    Das betrifft die iOS-App: sie spricht direkt mit dem Dienst, und eine Beschränkung in ihrer
+    Anzeige wäre nur eine ausgeblendete Schaltfläche. Beweis ist die Angabe nicht - wer das Token
+    hat, könnte jede Rolle behaupten und dürfte ohnehin alles (docs/URHEBER.md).
+    """
+    assert client.get(f"{API}/live/state", headers=DIENST_GAST).status_code == 200
+    assert client.get(f"{API}/energy/pv", headers=DIENST_GAST).status_code == 403
     assert (
-        client.post(f"{API}/control/actuators/courtyard_light", json={"on": True}, headers=GAST).status_code
+        client.post(f"{API}/control/actuators/courtyard_light", json={"on": True}, headers=DIENST_GAST).status_code
         == 403
     )
 
 
-def test_gepaartes_geraet_darf_die_erste_person_anlegen(client: TestClient) -> None:
-    """So kommt der erste Hausherr herein, bevor es eine Person gibt (docs/ZUGANG.md)."""
+def test_ein_dienst_mit_dem_api_token_darf_personen_anlegen(client: TestClient) -> None:
+    """Wer das API-Token hat, darf alles - das ist unverändert und war immer so."""
     antwort = client.post(
         f"{API}/auth/personen",
         json={"email": "erster@example.org", "rolle": "hausherr", "einladen": False},
-        headers=KIOSK,
+        headers=DIENST,
     )
     assert antwort.status_code == 200
     assert client.get(f"{API}/auth/zustand").json()["personen"] == 1
@@ -534,15 +540,15 @@ def test_gepaartes_geraet_darf_die_erste_person_anlegen(client: TestClient) -> N
         client.post(
             f"{API}/auth/personen",
             json={"email": "wer@example.org", "rolle": "hausherr", "einladen": False},
-            headers=GAST,
+            headers=DIENST_GAST,
         ).status_code
         == 403
     )
 
 
-def test_ein_geraet_hat_keine_eigenen_passkeys(client: TestClient) -> None:
-    """`/auth/ich` gilt nur für Personen: eine Wandanzeige ist keine."""
-    assert client.get(f"{API}/auth/ich", headers=KIOSK).status_code == 403
+def test_ein_dienst_hat_keine_eigenen_passkeys(client: TestClient) -> None:
+    """`/auth/ich` gilt nur für Personen: eine Maschine ist keine."""
+    assert client.get(f"{API}/auth/ich", headers=DIENST).status_code == 403
 
 
 # ---------------------------------------------------------------------------
@@ -555,7 +561,7 @@ def test_doppelte_adresse_wird_abgelehnt(client: TestClient) -> None:
     antwort = client.post(
         f"{API}/auth/personen",
         json={"email": "moritz@example.org", "rolle": "bewohner", "einladen": False},
-        headers=KIOSK,
+        headers=DIENST,
     )
     assert antwort.status_code == 400
     assert "schon" in antwort.json()["error"]["message"]
@@ -564,17 +570,17 @@ def test_doppelte_adresse_wird_abgelehnt(client: TestClient) -> None:
 def test_der_letzte_hausherr_bleibt(client: TestClient) -> None:
     """Sonst sperrt sich das Haus selbst aus: niemand könnte mehr Personen verwalten."""
     person_anlegen(client)
-    person = client.get(f"{API}/auth/personen", headers=KIOSK).json()[0]
+    person = client.get(f"{API}/auth/personen", headers=DIENST).json()[0]
     for rumpf in ({"aktiv": False}, {"rolle": "bewohner"}):
-        antwort = client.post(f"{API}/auth/personen/{person['id']}", json=rumpf, headers=KIOSK)
+        antwort = client.post(f"{API}/auth/personen/{person['id']}", json=rumpf, headers=DIENST)
         assert antwort.status_code == 400
         assert "letzte aktive Hausherr" in antwort.json()["error"]["message"]
-    assert client.post(f"{API}/auth/personen/{person['id']}/loeschen", headers=KIOSK).status_code == 400
+    assert client.post(f"{API}/auth/personen/{person['id']}/loeschen", headers=DIENST).status_code == 400
 
     # Mit einem zweiten geht alles davon.
     person_anlegen(client, email="zweiter@example.org", rolle="hausherr")
     assert (
-        client.post(f"{API}/auth/personen/{person['id']}", json={"rolle": "bewohner"}, headers=KIOSK).status_code
+        client.post(f"{API}/auth/personen/{person['id']}", json={"rolle": "bewohner"}, headers=DIENST).status_code
         == 200
     )
 
@@ -585,9 +591,9 @@ def test_loeschen_nimmt_passkeys_und_sitzungen_mit(client: TestClient) -> None:
         client, person_anlegen(client, email="weg@example.org", rolle="bewohner"), (geraet := Geraet())
     )
     person = next(
-        p for p in client.get(f"{API}/auth/personen", headers=KIOSK).json() if p["email"] == "weg@example.org"
+        p for p in client.get(f"{API}/auth/personen", headers=DIENST).json() if p["email"] == "weg@example.org"
     )
-    assert client.post(f"{API}/auth/personen/{person['id']}/loeschen", headers=KIOSK).status_code == 200
+    assert client.post(f"{API}/auth/personen/{person['id']}/loeschen", headers=DIENST).status_code == 200
     # Die Sitzung ist weg.
     assert client.get(f"{API}/auth/ich", headers=mit(ergebnis["token"])).status_code == 401
     # Und der Passkey auch: die Anmeldung findet ihn nicht mehr.
@@ -605,7 +611,7 @@ def test_unbekannte_rolle_wird_abgelehnt(client: TestClient) -> None:
     antwort = client.post(
         f"{API}/auth/personen",
         json={"email": "x@example.org", "rolle": "chef", "einladen": False},
-        headers=KIOSK,
+        headers=DIENST,
     )
     assert antwort.status_code == 422  # pydantic lehnt schon das Schema ab
 
@@ -629,3 +635,62 @@ def test_ueberall_abmelden(client: TestClient) -> None:
     assert antwort.status_code == 200
     assert antwort.json()["beendet"] == 2
     assert client.get(f"{API}/auth/ich", headers=mit(ergebnis["token"])).status_code == 401
+
+
+def test_der_erste_hausherr_entsteht_beim_start(tmp_path: Path) -> None:
+    """Der Ersatz für die Gerätepaarung: eine Variable, ein Start, ein Link im Protokoll.
+
+    Ein offener Endpunkt „erste Person anlegen" wäre keiner - wer die Adresse zuerst fände, hätte
+    das Haus. Hier entscheidet, wer die Umgebung des Dienstes setzen kann, und das ist dieselbe
+    Person, die auch an die Datenbank käme.
+    """
+    einstellungen = Settings(
+        mode="live",
+        database_url=f"sqlite+aiosqlite:///{tmp_path / 'erst.sqlite'}",
+        db_create_all=True,
+        api_token="api-geheim",
+        passkey_rp_id=RP_ID,
+        passkey_herkuenfte=[HERKUNFT],
+        anmelde_url=HERKUNFT,
+        erste_person="moritz@example.org",
+        weather_refresh_min=0,
+        role="api",
+    )
+    with TestClient(create_app(einstellungen)) as erster:
+        personen = erster.get(f"{API}/auth/personen", headers=DIENST).json()
+        assert [(p["email"], p["rolle"], p["einladung_offen"]) for p in personen] == [
+            ("moritz@example.org", "hausherr", True)
+        ]
+        assert erster.get(f"{API}/auth/zustand").json()["personen"] == 1
+
+    # Beim zweiten Start passiert nichts mehr: die Variable prüft, ob wirklich noch niemand da ist.
+    with TestClient(create_app(einstellungen)) as zweiter:
+        assert zweiter.get(f"{API}/auth/zustand").json()["personen"] == 1
+        personen = zweiter.get(f"{API}/auth/personen", headers=DIENST).json()
+        assert len(personen) == 1
+
+
+def test_eine_benutzte_sitzung_laeuft_nicht_ab(client: TestClient) -> None:
+    """Die Frist gleitet mit - sonst fiele die Wandanzeige nach dreißig Tagen heraus.
+
+    Früher hielt dafür ein Gerätecookie ein halbes Jahr. Seit die Paarung weg ist, muss die
+    Sitzung einer Person das leisten: wer sie benutzt, behält sie.
+    """
+    from datetime import datetime
+
+    ergebnis = einrichten(client, person_anlegen(client), Geraet())
+    erste_frist = datetime.fromisoformat(ergebnis["laeuft_ab_am"])
+    kopf = mit(ergebnis["token"])
+
+    # Der Vermerk wird nur alle VERMERK_S geschrieben; für den Test den Abstand aufheben.
+    from dch_api.auth import dienst as auth_dienst
+
+    alt = auth_dienst.VERMERK_S
+    auth_dienst.VERMERK_S = -1
+    try:
+        assert client.get(f"{API}/auth/ich", headers=kopf).status_code == 200
+        sitzungen = client.get(f"{API}/auth/ich", headers=kopf).json()["sitzungen"]
+    finally:
+        auth_dienst.VERMERK_S = alt
+    neue_frist = datetime.fromisoformat(sitzungen[0]["laeuft_ab_am"])
+    assert neue_frist > erste_frist, "die Frist muss mitrücken"

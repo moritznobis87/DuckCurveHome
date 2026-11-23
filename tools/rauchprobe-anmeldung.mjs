@@ -23,7 +23,7 @@ try {
 }
 
 const BASIS = process.env.BASIS ?? "http://localhost:3000";
-const KIOSK = process.env.KIOSK_TOKEN ?? "kiosk-geheim";
+const EINLADUNG = process.env.EINLADUNG ?? "";
 const BILD = process.env.BILD ?? "/tmp/anmeldung.png";
 
 const schritte = [];
@@ -74,26 +74,15 @@ try {
   // 1 - ohne Cookie fuehrt alles auf die Anmeldung
   await seite.goto(`${BASIS}/`, { waitUntil: "domcontentloaded" });
   sagt(`ohne Cookie auf ${new URL(seite.url()).pathname}`, new URL(seite.url()).pathname === "/anmeldung");
-  const hinweis = await seite.textContent("body");
-  sagt("Anmeldeseite sagt, dass noch niemand einen Zugang hat", hinweis.includes("Noch hat niemand"));
 
-  // 2 - Geraet paaren (so kommt der erste Hausherr herein)
-  await seite.goto(`${BASIS}/pair?token=${KIOSK}&name=Rauchprobe`, { waitUntil: "domcontentloaded" });
-  sagt("gepaart, jetzt auf " + new URL(seite.url()).pathname, new URL(seite.url()).pathname === "/");
+  // 2 - der erste Hausherr kommt ueber DCH_ERSTE_PERSON und seinen Link aus dem Protokoll.
+  //     Einen Pairing-Link gibt es nicht mehr: er vergab Vollzugriff, stand im Klartext auf einer
+  //     Seite und liess sich nicht einzeln widerrufen (ADR-0002, Nachtrag vom 23.11.2026).
+  sagt("Einladung des ersten Hausherrn im Protokoll", EINLADUNG.includes("/anmeldung/einrichten?token="));
+  if (!EINLADUNG) throw new Error("kein Einladungslink im Protokoll");
+  const link = EINLADUNG;
 
-  // 3 - erste Person anlegen
-  await seite.goto(`${BASIS}/system/zugang`, { waitUntil: "domcontentloaded" });
-  await seite.waitForSelector('input[name="email"]', { timeout: 15000 });
-  await seite.fill('input[name="email"]', "moritz@example.org");
-  await seite.fill('input[name="name"]', "Moritz");
-  await seite.selectOption('form select[name="rolle"]', "hausherr");
-  await seite.click('button:has-text("Anlegen und Link erzeugen")');
-  const feld = seite.locator('code:has-text("einrichten?token=")').first();
-  await feld.waitFor({ timeout: 15000 });
-  const link = (await feld.textContent()).trim();
-  sagt("Einladungslink erzeugt", link.includes("/anmeldung/einrichten?token="));
-
-  // 4 - Passkey hinter dem Link anlegen
+  // 3 - Passkey hinter dem Link anlegen
   const pfad = new URL(link).pathname + new URL(link).search;
   await seite.goto(`${BASIS}${pfad}`, { waitUntil: "domcontentloaded" });
   sagt("Einrichtungsseite nennt die Adresse", (await seite.textContent("body")).includes("moritz@example.org"));
@@ -113,12 +102,21 @@ try {
   await seite.waitForURL(`${BASIS}/`, { timeout: 20000 });
   sagt("nach dem Einrichten angemeldet auf der Startseite");
 
-  // 5 - der Dienst kennt jetzt eine Person
+  // 4 - der Dienst kennt jetzt eine Person
   const sitzung = await seite.evaluate(() => fetch("/api/session").then((r) => r.json()));
   sagt(`Sitzung ist eine Person mit Rolle ${sitzung.rolle}`, sitzung.art === "person" && sitzung.rolle === "hausherr");
 
-  // 6 - abmelden und mit Passkey wieder herein
+  // 5 - abmelden und mit Passkey wieder herein
   await seite.goto(`${BASIS}/system/zugang`, { waitUntil: "domcontentloaded" });
+  // Die Personenliste holt eine Client-Komponente nach der Hydrierung; darauf muss man warten,
+  // sonst liest man den Rumpf, bevor er da ist.
+  const gezeigt = await seite
+    .waitForSelector("text=moritz@example.org", { timeout: 20000 })
+    .then(() => true)
+    .catch(() => false);
+  sagt("die Verwaltung zeigt die Person", gezeigt);
+  const liste = await seite.textContent("body");
+  sagt("kein Link mehr, der Zugang vergibt", !liste.includes("/pair?token="));
   // `text-is` und nicht `has-text`: sonst trifft der Selektor auch „Überall abmelden".
   await seite.waitForSelector('button:text-is("Abmelden")', { timeout: 20000 });
   for (let i = 0; i < 6; i++) {

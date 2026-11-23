@@ -811,7 +811,10 @@ iPad oder Handy im Heimnetz:
   1. Stammzertifikat holen:  http://${name}.local/zertifikat
      (iPad: Profil installieren, dann Einstellungen -> Allgemein -> Info ->
       Zertifikatsvertrauenseinstellungen -> fuer "Caddy Local Authority" einschalten)
-  2. Koppeln:               https://${name}.local/pair?token=$(wert DCH_KIOSK_TOKEN)&name=iPad-Flur
+  2. Anmelden:              https://${name}.local/anmeldung
+     Einen Zugang gibt es nur als Person mit Passkey; einen Link, der Zugang vergibt,
+     gibt es seit dem 23.11.2026 nicht mehr. Den ersten Hausherrn legt DCH_ERSTE_PERSON
+     beim Start an - sein Einladungslink steht einmalig im Protokoll (dch protokoll api).
 TEXT
 	;;
 
