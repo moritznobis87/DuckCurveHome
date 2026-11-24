@@ -560,9 +560,13 @@ public enum Bereiche {
     }
 
     /// Ob ein Weg dem Hausherrn vorbehalten ist.
+    ///
+    /// Eine Seite sagt es selbst. Die Uebersicht eines Bereichs ist keine Seite; sie ist dem
+    /// Hausherrn vorbehalten, wenn es der ganze Bereich ist (das System).
     public static func nurHausherr(_ weg: String) -> Bool {
         let bereich = bereichVon(weg)
-        return reiterVon(bereich, weg)?.nurHausherr ?? false
+        if let reiter = reiterVon(bereich, weg) { return reiter.nurHausherr }
+        return bereich.nurHausherr && istUebersicht(weg)
     }
 
     /// Fragezeichenteil weg, Schraegstriche am Ende weg, leer wird `/`.

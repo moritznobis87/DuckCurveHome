@@ -182,6 +182,11 @@ final class BereicheTests: XCTestCase {
         XCTAssertTrue(Bereiche.nurHausherr("/system/geraet"))
         XCTAssertFalse(Bereiche.nurHausherr("/strom"))
         XCTAssertFalse(Bereiche.nurHausherr("/waerme/anlage"))
+        // Die Uebersicht des Systems gehoert dem Hausherrn wie der ganze Bereich; die der Energie
+        // und der Anlage sieht jeder.
+        XCTAssertTrue(Bereiche.nurHausherr("/system/uebersicht"))
+        XCTAssertFalse(Bereiche.nurHausherr("/energie"))
+        XCTAssertFalse(Bereiche.nurHausherr("/anlage"))
     }
 }
 
