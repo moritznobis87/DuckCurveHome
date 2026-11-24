@@ -110,6 +110,25 @@
   .report-main, .home { padding: 10px 16px calc(86px + env(safe-area-inset-bottom)); }
   .report-main { gap: 14px; font-size: 15px; }
 
+  /* ------------------------------------------------------------------ Wer scrollt
+     **Nicht das Dokument, sondern die Seite.** Unter iOS 26 verschiebt WebKit Elemente mit
+     `position: fixed; bottom: 0`, während das Dokument scrollt, auch in einer Web-App vom
+     Home-Bildschirm (WebKit-Fehler 297779). Der Hausherr sah am 24.11.2026 die Bereichsleiste beim
+     Scrollen ständig nach oben springen. Steht das Dokument still und rollt nur die Seite in
+     ihrem eigenen Kasten, tritt der Fehler nicht auf, und die Leiste bleibt, wo sie ist.
+     Das gilt nur, wo eine Bereichsleiste steht: Anmeldung, Einladung und Wandanzeige rollen
+     weiter wie bisher. */
+  html:has(.fussleiste), body:has(.fussleiste) { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  .report-main:has(> .fussleiste), .home:has(> .fussleiste) {
+    height: 100dvh;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  /* In einem Kasten fester Höhe schrumpft eine Flex-Spalte ihre Kinder, sobald sie nicht mehr
+     hineinpassen; Karten mit `overflow: hidden` würden dabei abgeschnitten statt gerollt. */
+  .report-main:has(> .fussleiste) > * { flex-shrink: 0; }
+
   /* ------------------------------------------------------------------ Bereichsleiste unten */
   .fussleiste {
     display: grid;
