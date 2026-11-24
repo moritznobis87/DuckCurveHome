@@ -164,8 +164,9 @@ struct Raumprotokollblatt: View {
         Karte(kicker: "Was geschah") {
             if p.entries.isEmpty {
                 Leer(
-                    satz: "In diesem Zeitraum hat niemand den Sollwert verändert.",
-                    dazu: "Dann liegt die Ursache einer Abweichung nicht an der Regelung, sondern an der Vorlauftemperatur, an einem Fenster oder am Fühler."
+                    // Derselbe Wortlaut wie im Dashboard (`rooms/Protokoll.tsx`).
+                    satz: "Keine Einträge. Der Sollwert dieses Raums stand die ganze Zeit still.",
+                    dazu: "Wenn die Temperatur trotzdem gestiegen ist, liegt es nicht an der Regelung, sondern an Ventilstellung, Fenster, Sonne oder der Vorlauftemperatur."
                 )
             } else {
                 VStack(spacing: 0) {

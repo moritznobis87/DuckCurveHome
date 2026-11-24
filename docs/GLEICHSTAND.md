@@ -16,17 +16,24 @@ Satzes; „fehlt“ heißt, dass das Wort dort in keiner Zeichenkette vorkommt.
 | Regelkreis | Der Satz zu „Noch keine Übernahme“ mit den drei Bedingungen der Übernahme | `Regelkreis.tsx` | fehlt |
 | Regelkreis | Die Bildunterschrift zum Verlauf eines Parameters („Dünn: die laufende Schätzung …“) | `components/regelkreis/Anzeigen.tsx` | fehlt |
 | Regelkreis | Die Stichwortzeile über der Parametertabelle mit dem Hinweis auf den Klick | `components/regelkreis/Blatt.tsx` | fehlt |
-| Räume, Protokoll | „Keine Einträge. Der Sollwert dieses Raums stand die ganze Zeit still. …“ | `components/rooms/Protokoll.tsx` | fehlt |
 | Mitteilungen | Die Fehlermeldung, wenn der Browser kein Abonnement anlegen kann | `components/settings/Mitteilungen.tsx` | bauartbedingt anders: die App meldet sich bei Apple an, nicht bei einem Push-Dienst des Browsers |
-| Hausgerät | „Gerade keine Verbindung. Vielleicht startet die API neu; die Seite versucht es weiter.“ | `components/geraet/Geraet.tsx` | fehlt |
-| Alfred | Der Hinweis in der Rückfrage, dass die geprüften Felder gezeigt werden und nicht der Text der Antwort | `components/alfred/Alfred.tsx` | fehlt |
-| Berichte | „Nicht angemeldet. Bitte das Gerät koppeln.“ | `components/reports/useReport.ts`, `YearMap.tsx` | fehlt als Wortlaut; die App erkennt den abgelehnten Zugang über `ApiFehler.istAnmeldung`, was sie dazu schreibt, ist noch nicht verglichen |
+| Berichte | „Nicht angemeldet. Bitte das Gerät koppeln.“ | `components/reports/useReport.ts`, `YearMap.tsx` | bauartbedingt anders: die App schreibt „Das Token stimmt nicht mehr. Unter „Zugang“ neu einrichten.“ (`ApiFehler.rat`), weil sie über ein Token im Schlüsselbund angemeldet ist und nicht gekoppelt wird |
 | Zugang und Sicherung | Personen, Einladungslink, Passkeys und Ersatzcodes | `components/zugang/Personen.tsx`, `MeinZugang.tsx`, `app/system/zugang/page.tsx` | fehlt; die App beschreibt stattdessen ihr Token im Schlüsselbund (`Zugangsworte.swift`) |
 | Anmeldung | Die Seiten zum Anlegen und Benutzen eines Passkeys | `app/anmeldung/` | bauartbedingt nur im Browser |
 
 Zwei Stellen waren im Wortlaut verschieden und sind mit dieser Änderung angeglichen: die Zeile
 der nicht stetigen Kreise („hybrid und ganzzahlig, ohne Frequenzkennlinie“) und der Satz zum
 veralteten Bericht des Hausgeräts.
+
+Behoben am 24.11.2026, nach der ersten Fassung dieser Liste:
+
+- **Hausgerät:** Antwortet der Dienst nicht, während ein Bericht dasteht, sagt die App jetzt
+  denselben Satz wie das Dashboard („Gerade keine Verbindung. …“) und versucht es im kurzen
+  Takt weiter. Ihre allgemeine Störungszeile steht nur noch da, wenn es gar keinen Bericht gibt.
+- **Räume, Protokoll:** Der Text des leeren Protokolls lautete in der App anders als im
+  Dashboard. Jetzt steht in beiden der Wortlaut des Dashboards.
+- **Alfred:** Der „Hinweis in der Rückfrage“ stand in der ersten Fassung dieser Liste zu
+  Unrecht. Er ist im Dashboard ein Kommentar im Code und kein Text der Oberfläche.
 
 ## Form, die sich unterscheidet
 
