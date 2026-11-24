@@ -439,7 +439,7 @@ def optimize(
             )
             + (f" Komfortminimum um {miss:.1f} kWh unterschritten." if miss > 0.05 else "")
             + (
-                f" {unmet:.1f} kWh Wärmebedarf bleiben ungedeckt - die Anlage kann den Bedarf"
+                f" {unmet:.1f} kWh Wärmebedarf bleiben ungedeckt. Die Anlage kann den Bedarf"
                 " im Horizont nicht decken."
                 if unmet > 0.05
                 else ""

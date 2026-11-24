@@ -126,7 +126,7 @@ class DoorGate:
             # den Zutritt verweigert. Das schickt bei der Fehlersuche in die falsche Richtung.
             return DoorDecision(
                 False,
-                "Aus dem Ereignis war nichts zu lesen - weder Tür noch Person noch Verfahren.",
+                "Aus dem Ereignis war nichts zu lesen, weder Tür noch Person noch Verfahren.",
             )
         if not event.granted:
             return DoorDecision(False, "Die Konsole hat den Zutritt selbst abgelehnt.")
@@ -145,7 +145,7 @@ class DoorGate:
             return DoorDecision(False, f"Verfahren „{event.method}“ ist nicht freigegeben.")
         last = self.last_open.get(who)
         if last is not None and (now - last).total_seconds() < REPEAT_LOCK_S:
-            return DoorDecision(False, "Eben erst geöffnet - Wiederholung wird übergangen.")
+            return DoorDecision(False, "Eben erst geöffnet. Die Wiederholung wird übergangen.")
         return DoorDecision(True, f"{event.actor} an „{event.door}“ per {event.method}.")
 
     def note_open(self, actor: str, now: datetime) -> None:

@@ -2117,7 +2117,7 @@ class LiveRuntime:
             grund = (
                 self.shift_target.reason_de
                 if dabei
-                else "Dieser Raum macht nicht mehr mit - zurück auf deinen Wert."
+                else "Dieser Raum macht nicht mehr mit und geht zurück auf deinen Wert."
             )
             try:
                 await self._room_shift_one(rid, offset, grund, now)

@@ -176,7 +176,7 @@ def entscheide(
             return Zurueckziehen(
                 grund=(
                     f"Sollwert steht auf {_de(gemessen_c)} statt auf "
-                    f"{_de(zustand.written_setpoint_c)} - jemand hat von Hand gestellt. "
+                    f"{_de(zustand.written_setpoint_c)}. Jemand hat von Hand gestellt. "
                     "Die Automatik lässt diesen Raum in Ruhe."
                 ),
                 ruhe_bis=now + timedelta(hours=RUHE_NACH_EINGRIFF_H),

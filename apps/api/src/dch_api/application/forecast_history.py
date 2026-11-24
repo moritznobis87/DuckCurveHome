@@ -143,12 +143,12 @@ async def forecast_history(
 def _hinweise(cfg: HemsConfig, reihen: list[ReiheOut]) -> list[str]:
     h = [
         "Verglichen wird jeder abgelegte Lauf einzeln. Dasselbe Intervall kommt mehrfach vor, "
-        "einmal je Lauf, der es beschrieben hat - bewertet werden Läufe, nicht Viertelstunden.",
+        "einmal je Lauf, der es beschrieben hat. Bewertet werden Läufe, nicht Viertelstunden.",
         "Der Vorlauf ist der Abstand zwischen der Ausgabe eines Laufs und dem Intervall. "
         "Je kleiner, desto besser sollte die Prognose sein; ob sie das ist, steht in der Tabelle.",
         f"„Heizlast aus der Temperatur“ rechnet beide Seiten mit {cfg.heat_demand.heat_loss_kw_per_k:.2f}"
         " kW/K durch dasselbe Bedarfsmodell. Übrig bleibt der Fehler der Prognose; wie gut das "
-        "Modell selbst ist, sagt das nicht - dafür fehlt die Messung der Wärme.",
+        "Modell selbst ist, sagt das nicht, dafür fehlt die Messung der Wärme.",
         "Die Außentemperatur kommt stündlich, die PV-Prognose viertelstündlich. Die Messung wird "
         "auf das jeweilige Raster gemittelt.",
     ]

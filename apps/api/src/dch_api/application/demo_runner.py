@@ -458,7 +458,7 @@ class DemoRunner:
             update={
                 "hinweise_de": [
                     "Demobetrieb: die Läufe sind gerechnet, nicht abgelegt. Der Fehler wächst mit "
-                    "der Wurzel des Vorlaufs nach einer festen Formel - er zeigt die Seite und "
+                    "der Wurzel des Vorlaufs nach einer festen Formel. Er zeigt die Seite und "
                     "nicht die Güte einer Prognose.",
                     *out.hinweise_de,
                 ]

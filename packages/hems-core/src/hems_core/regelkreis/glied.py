@@ -276,7 +276,7 @@ _KATALOG: tuple[Glied, ...] = (
         art="sprung",
         kategorie="strecke",
         nichtlinear=False,
-        erkennen="Steigt sofort am steilsten und läuft in den Endwert - ohne Wendepunkt.",
+        erkennen="Steigt sofort am steilsten und läuft ohne Wendepunkt in den Endwert.",
         kurve=_k_pt1(),
     ),
     Glied(
@@ -332,7 +332,7 @@ _KATALOG: tuple[Glied, ...] = (
         art="sprung",
         kategorie="strecke",
         nichtlinear=False,
-        erkennen="Dieselbe Form, nur später. Phase geht verloren, Amplitude nicht - das macht es "
+        erkennen="Dieselbe Form, nur später. Phase geht verloren, Amplitude nicht. Das macht es "
         "für den Regler so unangenehm.",
         kurve=_k_tt(),
     ),

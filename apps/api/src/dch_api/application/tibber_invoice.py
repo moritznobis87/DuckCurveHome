@@ -576,7 +576,7 @@ def compare_with_measurement(
                         if cov and cov < 0.98
                         else ""
                     )
-                    + f", Rechnung {inv.kwh:.2f} kWh - Abweichung {deviation:.1f} %."
+                    + f", Rechnung {inv.kwh:.2f} kWh, Abweichung {deviation:.1f} %."
                 ),
                 expected=round(scaled, 2),
                 actual=inv.kwh,

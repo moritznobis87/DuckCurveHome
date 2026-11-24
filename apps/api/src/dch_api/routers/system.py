@@ -38,7 +38,7 @@ async def storage(runner: Annotated[Runtime, Depends(get_runner)]) -> StorageRep
     days = runner.settings.raw_retention_days
     note = (
         f"Rohwerte werden {days} Tage aufgehoben. Gebraucht werden sie nur, bis die Minute "
-        "verdichtet ist - das geschieht alle fünf Minuten. Alles darüber ist Vorrat."
+        "verdichtet ist, und das geschieht alle fünf Minuten. Alles darüber ist Vorrat."
         if tables
         else "Ohne PostgreSQL gibt es keine Größenangaben."
     )

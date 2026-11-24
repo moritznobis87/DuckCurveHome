@@ -64,7 +64,7 @@ _RANG: dict[Ampel, int] = {"aus": 0, "gut": 1, "warn": 2, "schlecht": 3}
 # `vcgencmd get_throttled`: Bits 0-3 gelten jetzt, 16-19 seit dem Start
 # (https://www.raspberrypi.com/documentation/computers/os.html#get_throttled).
 _DROSSEL_JETZT = {
-    0: "Die Spannung ist gerade zu niedrig - Netzteil oder PoE-Versorgung reicht nicht.",
+    0: "Die Spannung ist gerade zu niedrig. Netzteil oder PoE-Versorgung reichen nicht aus.",
     1: "Der Prozessor ist gerade heruntergetaktet.",
     2: "Der Prozessor wird gerade gedrosselt.",
     3: "Die Temperaturgrenze ist gerade erreicht.",
@@ -87,7 +87,7 @@ def _schlechteste(*ampeln: Ampel) -> Ampel:
 def bewerte_dienst(d: GeraetDienstOut) -> GeraetDienstOut:
     zustand, gesund = d.zustand, d.gesundheit
     if zustand == "fehlt":
-        d.ampel, d.text_de = "schlecht", "Nicht angelegt - der Dienst wurde nie gestartet."
+        d.ampel, d.text_de = "schlecht", "Nicht angelegt. Der Dienst wurde nie gestartet."
     elif zustand == "restarting":
         d.ampel, d.text_de = "schlecht", "Startet immer wieder neu."
     elif zustand == "exited":

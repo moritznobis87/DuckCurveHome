@@ -455,8 +455,8 @@ def _kreis_ansicht(
     if res.phasenreserve is not None and res.phasenreserve < 45.0:
         hinweis = (
             f"Phasenreserve {res.phasenreserve:.0f}° liegt unter 45°. Mit dieser Einstellung "
-            f"reagiert der Kreis auf eine Änderung der Strecke - einen kälteren Tag, einen "
-            f"anderen Volumenstrom - mit Überschwingen bis zur Dauerschwingung. λ vergrößern."
+            f"reagiert der Kreis auf eine Änderung der Strecke, etwa einen kälteren Tag oder einen "
+            f"anderen Volumenstrom, mit Überschwingen bis zur Dauerschwingung. λ vergrößern."
         )
     elif res.durchtritt is None:
         hinweis = (

@@ -100,7 +100,7 @@ def _text(anzeigename: str, link: str, zweck: str, stunden: int) -> str:
         f"{link}\n\n"
         f"Der Link gilt {stunden} Stunden und nur einmal. Ein Passkey ist kein Passwort: er bleibt "
         "auf Ihrem Gerät und wird mit Fingerabdruck, Gesicht oder Geräte-PIN freigegeben.\n\n"
-        "Nach dem Einrichten sehen Sie zehn Wiederherstellungscodes. Bewahren Sie sie auf - sie "
+        "Nach dem Einrichten sehen Sie zehn Wiederherstellungscodes. Bewahren Sie sie auf. Sie "
         "sind der Weg zurück, wenn Ihr Gerät verloren geht.\n\n"
         "Wenn Sie das nicht erwartet haben, ignorieren Sie diese Nachricht; ohne den Link "
         "geschieht nichts.\n\n"

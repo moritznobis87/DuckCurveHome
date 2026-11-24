@@ -133,7 +133,7 @@ def shift_target(
     spread = round(teuer.avg_ct_kwh - vorher, 1)
     if spread < policy.min_spread_ct:
         return _aus(
-            f"Abstand zum Preishoch ab {_uhr(teuer.start)} nur {_ct(spread)} ct - zu wenig.",
+            f"Der Abstand zum Preishoch ab {_uhr(teuer.start)} ist mit {_ct(spread)} ct zu klein.",
             teuer,
             spread,
         )
