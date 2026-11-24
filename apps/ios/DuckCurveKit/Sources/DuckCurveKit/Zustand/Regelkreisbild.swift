@@ -188,11 +188,11 @@ public struct Regelkreisbild: Sendable, Hashable {
             + "deutlich schneller ist als die, die sie führt: 15 Minuten oben, 60 Sekunden im "
             + "Raum, und dazwischen Zeitkonstanten von Stunden.",
         "Die Reglerparameter sind nicht geraten, sondern aus der Strecke gerechnet (SIMC). Wer "
-            + "eine Zeitkonstante übersteuert, verschiebt damit auch die Nachstellzeit - darum "
+            + "eine Zeitkonstante übersteuert, verschiebt damit auch die Nachstellzeit. Darum "
             + "bringt jede Änderung die ganze Karte neu zurück.",
         "Phasen- und Amplitudenreserve stehen für jeden stetigen Kreis. Faustregel: 45° und "
             + "Faktor 2,5. Der Zweipunktkreis und die ökonomische Führung haben keine "
-            + "Frequenzkennlinie - der eine ist unstetig, die andere wird in Euro beurteilt.",
+            + "Frequenzkennlinie, denn der eine ist unstetig, und die andere wird in Euro beurteilt.",
         "Gelernt wird nur, wo die Daten es tragen. Eine Schätzung ersetzt den geltenden Wert "
             + "erst, wenn sie genug Stützstellen hat, in den Plausibilitätsgrenzen liegt, "
             + "außerhalb ihrer eigenen Unsicherheit vom alten Wert abweicht und den Fehler des "
@@ -445,8 +445,8 @@ public struct Regelkreisbild: Sendable, Hashable {
         let phase = r?.phasenreserveGrad
         let amplitude = r?.amplitudenreserve
         let nichtStetig = k.art == .planung
-            ? "gleitender Horizont - in Euro beurteilt"
-            : "hybrid und ganzzahlig - keine Frequenzkennlinie"
+            ? "gleitender Horizont, in Euro beurteilt"
+            : "hybrid und ganzzahlig, ohne Frequenzkennlinie"
         return Kreiszeile(
             id: k.id,
             name: k.name,

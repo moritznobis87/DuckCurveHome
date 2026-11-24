@@ -298,7 +298,7 @@ export function Protokoll({ roomId, name, floor, onClose }: { roomId: number; na
               </ul>
             ) : (
               <p className="m-0 rounded-[6px] border border-line-1 p-3 text-[13px] text-text-3">
-                Keine Einträge. Der Sollwert dieses Raums stand die ganze Zeit still - wenn die
+                Keine Einträge. Der Sollwert dieses Raums stand die ganze Zeit still. Wenn die
                 Temperatur trotzdem gestiegen ist, liegt es nicht an der Regelung, sondern an
                 Ventilstellung, Fenster, Sonne oder der Vorlauftemperatur.
               </p>

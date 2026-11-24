@@ -139,7 +139,7 @@ def assess(s: CyclingStats, min_runtime_min: float) -> dict[str, object]:
     if s.covered_hours < 12:
         return {
             "verdict": "unknown",
-            "note_de": f"Nur {s.covered_hours:g} h bewertet - für eine Aussage zur Taktung zu wenig.",
+            "note_de": f"Nur {s.covered_hours:g} h bewertet, für eine Aussage zur Taktung ist das zu wenig.",
         }
     short = s.short_share or 0.0
     base = (
@@ -149,7 +149,7 @@ def assess(s: CyclingStats, min_runtime_min: float) -> dict[str, object]:
     if s.starts_per_day >= 24 or short >= 0.5:
         return {
             "verdict": "short_cycling",
-            "note_de": f"{base} Das ist auffällig häufig - Hysterese, Puffereinbindung und"
+            "note_de": f"{base} Das ist auffällig häufig. Hysterese, Puffereinbindung und"
             " Dimensionierung wären einen Blick wert.",
         }
     if s.starts_per_day >= 12 or short >= 0.25:

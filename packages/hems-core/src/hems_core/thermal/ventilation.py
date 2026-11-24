@@ -146,8 +146,8 @@ def ventilation_split(
             f"Geschätzt: {_de(summe_kwh)} kWh gingen in Räume mit offenem Fenster"
             + anteil_satz
             + ". Verteilt nach offenen Heizkreisen; Warmwasser lässt sich davon nicht trennen, "
-            "die Zahl ist deshalb eher zu hoch. Ein Teil dieser Wärme ist im Raum geblieben - "
-            "ein Lüftungsverlust ist sie nicht ganz."
+            "die Zahl ist deshalb eher zu hoch. Ein Teil dieser Wärme ist im Raum geblieben, "
+            "ein Lüftungsverlust ist sie also nicht ganz."
         )
     return VentResult(
         kwh=summe_kwh,

@@ -8,7 +8,7 @@ const REFRESH_MS = 5 * 60_000;
 export const ALL_PERIODS: Period[] = ["day", "week", "month", "year"];
 
 function describe(e: unknown): string {
-  if (e instanceof ApiError) return e.status === 401 || e.status === 403 ? "Nicht angemeldet - bitte Gerät koppeln." : e.message;
+  if (e instanceof ApiError) return e.status === 401 || e.status === 403 ? "Nicht angemeldet. Bitte das Gerät koppeln." : e.message;
   return "Daten konnten nicht geladen werden.";
 }
 

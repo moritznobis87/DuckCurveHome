@@ -6,7 +6,7 @@ import { Alfred } from "@/components/alfred/Alfred";
 
 export const metadata: Metadata = {
   title: "Duck Curve Home",
-  description: "Home Energy Management - Energieflüsse, Pufferspeicher, Strompreis und Wärmepumpen-Plan auf einen Blick.",
+  description: "Energieflüsse, Pufferspeicher, Strompreis und Wärmepumpen-Plan des Hauses auf einen Blick.",
   applicationName: "Duck Curve Home",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Duck Curve Home" },
   // Die Marken-Ente auf eigener Bühne: Petrol-Grund, Sonne, Flügel. Quelle ist favicon.svg; die

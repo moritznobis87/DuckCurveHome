@@ -297,7 +297,7 @@ _REGISTER: tuple[Parameter, ...] = (
         quelle="Ereignisstudie der Anforderungen (thermal.kontaktwirkung)",
         wirkt_auf=("Auslegung des Pufferkreises", "Taktbewertung"),
         warum="Von der Anforderung bis zum messbaren Leistungsanstieg. Begrenzt die erreichbare "
-        "Bandbreite des Pufferkreises unmittelbar - vor jeder Reglereinstellung.",
+        "Bandbreite des Pufferkreises unmittelbar, noch vor jeder Reglereinstellung.",
     ),
     Parameter(
         id="wp_t1",
@@ -375,7 +375,7 @@ _REGISTER: tuple[Parameter, ...] = (
         quelle="Wärmebilanz: Leistung minus Wasseranteil",
         wirkt_auf=("Einzelraumregelung des Aufstellraums",),
         warum="Der Anteil, der nicht ins Wasser geht. Für die Einzelraumregelung dieses Raums eine "
-        "Störgröße in der Größe seines ganzen Heizkreises - gestellt von der Ebene darüber.",
+        "Störgröße in der Größe seines ganzen Heizkreises, gestellt von der Ebene darüber.",
     ),
     # ---------------------------------------------------------------- Puffer
     Parameter(
@@ -390,7 +390,7 @@ _REGISTER: tuple[Parameter, ...] = (
         oben=4.0,
         quelle="Geometrie: Volumen mal Wärmekapazität des Wassers",
         wirkt_auf=("Verstärkung des Pufferkreises", "thermischer Ladestand"),
-        warum="Tausend Liter Wasser. Festgelegt, nicht geschätzt - hier gibt es nichts zu lernen.",
+        warum="Tausend Liter Wasser. Festgelegt, nicht geschätzt. Hier gibt es nichts zu lernen.",
     ),
     Parameter(
         id="puffer_ua",
@@ -583,7 +583,7 @@ _REGISTER: tuple[Parameter, ...] = (
         quelle="Auskühlung des Raums gegen die Außentemperatur",
         wirkt_auf=("Verstärkung des Raumkreises", "Plausibilitätsprüfung gegen H"),
         warum="Hülle und Lüftung dieses Raums. Die Summe über alle Räume muss zu H des Hauses "
-        "passen - eine laufende Prüfung, die Messfehler auffliegen lässt.",
+        "passen. Das ist eine laufende Prüfung, die Messfehler auffliegen lässt.",
     ),
     Parameter(
         id="raum_a_eff",
@@ -630,7 +630,7 @@ _REGISTER: tuple[Parameter, ...] = (
         quelle="Rohrabstand, Länge und Auslegungsspreizung",
         wirkt_auf=("Verstärkung des Raumkreises",),
         warum="Rohrabstand, Länge und Auslegungsspreizung des Kreises. Eine feste Größe des "
-        "Bauwerks, die nur eine Sanierung ändert - geschätzt wird sie deshalb nicht.",
+        "Bauwerks, die nur eine Sanierung ändert. Geschätzt wird sie deshalb nicht.",
     ),
     # ---------------------------------------------------------------- Prognose
     Parameter(

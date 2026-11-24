@@ -377,7 +377,7 @@ export function Blatt({ d, blockId, onWaehle, onStellen, onFreigeben, busy }: { 
       ) : null}
       {params.length ? (
         <>
-          <p className="kicker rk-abschnitt">Parameter — Zeile anklicken für Verlauf und Übersteuerung</p>
+          <p className="kicker rk-abschnitt">Parameter. Ein Klick auf eine Zeile zeigt Verlauf und Übersteuerung.</p>
           <table className="rk-tabelle rk-ptab">
             <thead>
               <tr>

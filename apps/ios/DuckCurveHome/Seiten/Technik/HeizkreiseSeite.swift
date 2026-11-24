@@ -285,9 +285,9 @@ struct HeizkreiseSeite: View {
         + "bestimmt die nötige Vorlauftemperatur für alle."
 
     private static let schlusssatzEnde: String =
-        " – Controme rechnet das in seiner eigenen Oberfläche vor und zeigt das Ergebnis als "
+        ". Controme rechnet das in seiner eigenen Oberfläche vor und zeigt das Ergebnis als "
         + "Zieltemperatur. Der Versatz ist dabei die Summe mehrerer benannter Anpassungen, "
-        + "nicht nur der Witterung. Die Antriebe am Verteiler sind auf oder zu – ein "
+        + "nicht nur der Witterung. Die Antriebe am Verteiler sind auf oder zu. Ein "
         + "Zwischenwert im Streifen heißt „ein Teil der Kreise“ oder „einen Teil des "
         + "Fensters“, nicht „halb offen“. Ein Tippen auf eine Kachel im Bereich Haus stellt "
         + "den Sollwert dieses Raums, dauerhaft und in halben Grad; die Ventile bleiben Sache "

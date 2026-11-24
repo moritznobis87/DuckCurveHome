@@ -77,7 +77,9 @@ export const C = {
   // Gerüst
   gridline: "rgba(255,255,255,.09)",
   axis: "rgba(255,255,255,.2)",
-  text: "rgba(255,255,255,.48)",
+  // Die Schrift an Achsen und Legenden: dieselbe Deckung wie `--text-3` in `tokens.css`. Mit 48 %
+  // lag sie auf der Kartenfläche unter 4,5:1; die Marke steht seit dem 24.11.2026 auf 58 %.
+  text: "rgba(255,255,255,.58)",
   deep: "#082431",
 } as const;
 

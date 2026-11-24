@@ -234,7 +234,7 @@ def _satz(code: Pruefcode, p: Parameter, **z: float) -> str:
         if z.get("gewinn", 0.0) <= 0.0:
             return (
                 f"Abweichung {_z(z['abstand'])}{einheit} über {_z(SIGMA_FAKTOR)} σ. Ein Gütevergleich "
-                f"lag noch nicht vor - der bisherige Wert war nie an Messdaten geprüft worden."
+                f"lag noch nicht vor, denn der bisherige Wert war nie an Messdaten geprüft worden."
             )
         return (
             f"Abweichung {_z(z['abstand'])}{einheit} über {_z(SIGMA_FAKTOR)} σ, Restfehler im "
@@ -262,7 +262,7 @@ def _satz(code: Pruefcode, p: Parameter, **z: float) -> str:
             f"Erkenntnis; der Wert wird abgelehnt und nicht beschnitten."
         )
     return (
-        f"Restfehler wäre {_z(z['rmse_neu'])} statt {_z(z['rmse_alt'])} - keine Verbesserung um "
+        f"Restfehler wäre {_z(z['rmse_neu'])} statt {_z(z['rmse_alt'])}. Das ist keine Verbesserung um "
         f"die nötigen {MINDEST_GEWINN * 100:.0f} %. Der bisherige Wert bleibt."
     )
 

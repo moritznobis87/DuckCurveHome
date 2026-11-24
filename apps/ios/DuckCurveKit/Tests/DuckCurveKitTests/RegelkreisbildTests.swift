@@ -356,7 +356,7 @@ final class RegelkreisbildTests: XCTestCase {
         XCTAssertNil(r4?.amplitudenAnteil)
         XCTAssertEqual(r4?.phasenreserve, "—")
         XCTAssertEqual(r4?.amplitudenreserve, "—")
-        XCTAssertEqual(r4?.hinweis, "gleitender Horizont - in Euro beurteilt")
+        XCTAssertEqual(r4?.hinweis, "gleitender Horizont, in Euro beurteilt")
         XCTAssertEqual(r4?.art, "Planung")
         XCTAssertEqual(r4?.takt, "15 min")
     }

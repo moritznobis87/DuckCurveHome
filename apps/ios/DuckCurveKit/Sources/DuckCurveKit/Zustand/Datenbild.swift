@@ -523,7 +523,7 @@ public enum Pruefworte {
     /// auf „ein Ziehen über das Bild wählt ein Zeitfenster", und genau das tut es seitdem
     /// nicht mehr.
     public static let flaeche =
-        "Die obere Fläche zeigt die Messreihen, wie sie gespeichert sind: auf einer gemeinsamen Kilowattachse, mit hervorgehobener Nulllinie. Über ihr ist Bezug, unter ihr Einspeisung. Ein Fahren über das Bild nennt die Werte der berührten Minute, jede Reihe in ihrer Farbe - daran vergleicht man die beiden Gegenproben. Die Strecke, um die es geht, ist oft nur eine Viertelstunde lang und über den ganzen Tag gezeichnet damit wenige Bildpunkte: die Knöpfe unter dem Bild legen darum ein Zeitfenster von einer, drei oder sechs Stunden um die berührte Stelle, und „Ganzer Tag“ kommt zurück. Die Kilowattachse geht mit, damit auch kleine Leistungen im Ausschnitt lesbar bleiben. Über den ganzen Tag wird jede fünfte Minute gezeichnet, im Ausschnitt jede."
+        "Die obere Fläche zeigt die Messreihen, wie sie gespeichert sind: auf einer gemeinsamen Kilowattachse, mit hervorgehobener Nulllinie. Über ihr ist Bezug, unter ihr Einspeisung. Ein Fahren über das Bild nennt die Werte der berührten Minute, jede Reihe in ihrer Farbe. Daran vergleicht man die beiden Gegenproben. Die Strecke, um die es geht, ist oft nur eine Viertelstunde lang und über den ganzen Tag gezeichnet damit wenige Bildpunkte: die Knöpfe unter dem Bild legen darum ein Zeitfenster von einer, drei oder sechs Stunden um die berührte Stelle, und „Ganzer Tag“ kommt zurück. Die Kilowattachse geht mit, damit auch kleine Leistungen im Ausschnitt lesbar bleiben. Über den ganzen Tag wird jede fünfte Minute gezeichnet, im Ausschnitt jede."
 
     /// Der Ladestand als Gegenprobe zur Ladeleistung.
     public static let ladestand =
@@ -531,7 +531,7 @@ public enum Pruefworte {
 
     /// Der amtliche Zähler, die Bilanz des Hauses und die Lücke in der Erzeugung.
     public static let zaehler =
-        "Die zweite gestrichelte Linie, in der Farbe des Netzbezugs, ist der amtliche Zähler. Er misst dieselbe Größe wie der Stromwandler und läuft vorerst nur mit: führend bleibt der Wandler. Wo die beiden Linien übereinanderliegen, sind sich die Geräte einig; wo nicht, ist erst zu prüfen, ob es eine echte Abweichung ist oder nur ein Versatz von Sekunden - dafür ist das Zeitfenster da. Der Hausverbrauch ist dabei keine eigene Messung, sondern folgt aus der Bilanz Haus = PV + Netz + Speicher. Läuft die PV und zeigt das Netz trotzdem Bezug, sieht man hier unmittelbar, ob der Hausverbrauch über der Erzeugung lag oder ob die Erzeugungsreihe selbst eine Lücke hat. Die Stundenbilanz darunter nimmt diese zweite Frage noch einmal auf: zwischen der ersten und der letzten Minute mit Erzeugung zählt sie die Minuten auf genau 0,00 kW und meldet es, wenn sich der Netzwert in derselben Strecke weiterbewegt. Dann liefert der Zähler, die Erzeugungsmessung aber nicht - und die ausgewiesene Netzladung ist eine Folge der Lücke, kein Verhalten des Speichers."
+        "Die zweite gestrichelte Linie, in der Farbe des Netzbezugs, ist der amtliche Zähler. Er misst dieselbe Größe wie der Stromwandler und läuft vorerst nur mit: führend bleibt der Wandler. Wo die beiden Linien übereinanderliegen, sind sich die Geräte einig; wo nicht, ist erst zu prüfen, ob es eine echte Abweichung ist oder nur ein Versatz von Sekunden. Dafür ist das Zeitfenster da. Der Hausverbrauch ist dabei keine eigene Messung, sondern folgt aus der Bilanz Haus = PV + Netz + Speicher. Läuft die PV und zeigt das Netz trotzdem Bezug, sieht man hier unmittelbar, ob der Hausverbrauch über der Erzeugung lag oder ob die Erzeugungsreihe selbst eine Lücke hat. Die Stundenbilanz darunter nimmt diese zweite Frage noch einmal auf: zwischen der ersten und der letzten Minute mit Erzeugung zählt sie die Minuten auf genau 0,00 kW und meldet es, wenn sich der Netzwert in derselben Strecke weiterbewegt. Dann liefert der Zähler, die Erzeugungsmessung aber nicht, und die ausgewiesene Netzladung ist eine Folge der Lücke, kein Verhalten des Speichers."
 
     /// Die drei Absätze in der Reihenfolge der Vorlage.
     public static let methode: [String] = [flaeche, ladestand, zaehler]
@@ -739,7 +739,7 @@ public struct Abdeckungsraster: Sendable, Hashable, Identifiable {
     public static let feinAb = 0.999
     /// Was unter der Karte steht, zusätzlich zu `note_de` (`CoverageMap.tsx:146-152`).
     public static let lesehilfe =
-        "Eine Zelle ohne Farbe heißt, dass für diese Stunde gar keine Minutenzeile existiert - dann stand der Dienst still, und der Ausfall ist unserer. Eine rote Zelle heißt, dass Minutenzeilen da sind und diese eine Reihe darin fehlt: dann hat das Gerät nichts geliefert."
+        "Eine Zelle ohne Farbe heißt, dass für diese Stunde gar keine Minutenzeile existiert. Dann stand der Dienst still, und der Ausfall ist unserer. Eine rote Zelle heißt, dass Minutenzeilen da sind und diese eine Reihe darin fehlt: dann hat das Gerät nichts geliefert."
     /// Der Satz, wenn die Abfrage scheitert (`CoverageMap.tsx:92`).
     public static let nichtAbrufbar = "Die Verfügbarkeit konnte nicht abgefragt werden."
 

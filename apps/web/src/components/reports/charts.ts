@@ -477,7 +477,7 @@ export function yearMap(
           year: "numeric",
         });
         const hour = String(p.data[1]).padStart(2, "0");
-        const klick = opts.klickHinweis ? `<div style="margin-top:5px;color:rgba(255,255,255,.48)">${opts.klickHinweis}</div>` : "";
+        const klick = opts.klickHinweis ? `<div style="margin-top:5px;color:rgba(255,255,255,.58)">${opts.klickHinweis}</div>` : "";
         return `<div style="color:rgba(255,255,255,.6)">${label}</div><div>${hour}:00 - ${hour}:59</div><div style="margin-top:3px">${de1(p.data[2], digits)} ${opts.unit}</div>${klick}`;
       },
     },

@@ -135,14 +135,13 @@ export function DataCheck() {
         Die zweite gestrichelte Linie, in der Farbe des Netzbezugs, ist der amtliche Zähler. Er misst
         dieselbe Größe wie der Stromwandler des Speichers und läuft vorerst nur mit: führend bleibt
         der Wandler. Wo die beiden Linien übereinanderliegen, sind sich die Geräte einig. Wo nicht,
-        ist erst zu prüfen, ob es eine echte Abweichung ist oder nur ein Versatz von Sekunden - dafür
-        ist das Zeitfenster da. Der Hausverbrauch ist dabei keine eigene Messung,
+        ist erst zu prüfen, ob es eine echte Abweichung ist oder nur ein Versatz von Sekunden. Dafür ist das Zeitfenster da. Der Hausverbrauch ist dabei keine eigene Messung,
         sondern folgt aus der Bilanz Haus = PV + Netz + Speicher. Läuft die PV und zeigt das Netz
         trotzdem Bezug, sieht man hier unmittelbar, ob der Hausverbrauch über der Erzeugung lag oder
         ob die Erzeugungsreihe selbst eine Lücke hat. Der Text darunter nimmt diese zweite Frage noch
         einmal auf: zwischen der ersten und der letzten Minute mit Erzeugung zählt er die Minuten auf
         genau 0,00 kW und meldet es, wenn sich der Netzwert in derselben Strecke weiterbewegt. Dann
-        liefert der Zähler, die Erzeugungsmessung aber nicht - und die ausgewiesene Netzladung ist
+        liefert der Zähler, die Erzeugungsmessung aber nicht, und die ausgewiesene Netzladung ist
         eine Folge der Lücke, kein Verhalten des Speichers.
       </Note>
     </ReportShell>

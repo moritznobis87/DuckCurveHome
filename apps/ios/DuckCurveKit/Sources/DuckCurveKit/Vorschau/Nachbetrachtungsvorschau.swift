@@ -106,7 +106,7 @@ extension Vorschau {
             Abstand(
                 key: "eingriff", nameDe: "Eingriff der Maschine", von: "letzter",
                 nach: "wirklich", eur: (eur("wirklich") ?? 0) - (eur("letzter") ?? 0),
-                satzDe: "Die Wärmepumpe lief am Morgen statt am Mittag - das kostete den "
+                satzDe: "Die Wärmepumpe lief am Morgen statt am Mittag. Das kostete den "
                     + "Unterschied zwischen zwei Preisen.",
                 mengeEur: 0.12, zeitEur: 1.84, ofenEur: 0.31),
             Abstand(
@@ -123,7 +123,7 @@ extension Vorschau {
             satzDe: "Der Tag kostete 2,27 € mehr als der Fahrplan versprach, und fast alles "
                 + "davon lag daran, dass die Wärmepumpe am Morgen lief statt am Mittag.",
             hinweiseDe: [
-                "Der Tag läuft noch – die Zahlen sind vorläufig.",
+                "Der Tag läuft noch, die Zahlen sind vorläufig.",
                 "Die letzten zwei Stunden sind nicht verglichen: dort fehlt die Messung.",
                 "Die Linie „versprochen“ fehlt: der erste Fahrplan wurde nicht aufbewahrt.",
             ],

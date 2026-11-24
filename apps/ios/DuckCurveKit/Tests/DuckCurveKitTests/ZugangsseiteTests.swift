@@ -107,7 +107,7 @@ final class ZugangsseiteTests: XCTestCase {
         let ganz = Zugangsworte.sichtbarkeit.map(\.wort).joined()
         XCTAssertEqual(
             ganz,
-            "Das Dashboard ist für Suchmaschinen gesperrt - über robots.txt, den noindex-Meta-Tag und den Header X-Robots-Tag. Ein Schutz vor unbefugtem Zugriff ist das nicht; dafür sorgt die Anmeldung."
+            "Das Dashboard ist für Suchmaschinen gesperrt, und zwar über robots.txt, den noindex-Meta-Tag und den Header X-Robots-Tag. Ein Schutz vor unbefugtem Zugriff ist das nicht; dafür sorgt die Anmeldung."
         )
         XCTAssertFalse(ganz.contains("  "))
     }

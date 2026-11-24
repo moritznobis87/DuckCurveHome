@@ -183,8 +183,8 @@ def schichtungsbefund(
             text_de=(
                 f"Die Puffersäule steht auf dem Kopf: {orte[unten]} ({_grad(werte[unten])}) ist "
                 f"{_kelvin(abstand)} wärmer als {orte[oben]} ({_grad(werte[oben])}). Eingespeist "
-                "und entnommen wird oben, also kann der Speicher das nicht von sich aus - "
-                "wahrscheinlich sind zwei Fühler vertauscht (die Reihenfolge der Fühler ist "
+                "und entnommen wird oben, also kann der Speicher das nicht von sich aus. "
+                "Wahrscheinlich sind zwei Fühler vertauscht (die Reihenfolge der Fühler ist "
                 "angenommen und am Speicher nie geprüft worden). Der Ladezustand rechnet die "
                 "Säule weiter, als wäre sie richtig herum."
             ),
@@ -224,7 +224,7 @@ def schichtungsbefund(
             "Die Puffersäule zeigt keine Schichtung: alle vier Fühler liegen innerhalb von "
             f"{_kelvin(spanne)}, und das ist nicht mehr als die Genauigkeit zweier Fühler "
             f"(±0,5 K). Dabei liefert die Oberkante mit {_grad(max(werte))} noch Komfortwärme, "
-            "der Speicher ist also in Betrieb - und eingespeist wie entnommen wird oben, es "
+            "der Speicher ist also in Betrieb, und eingespeist wie entnommen wird oben, es "
             "müsste eine Stufe zu sehen sein. Möglich ist dieses Bild, wenn zwei Fühler an "
             "derselben Stelle sitzen oder am selben Wert hängen; der Ladezustand daneben steht "
             "auf diesen vier Zahlen."

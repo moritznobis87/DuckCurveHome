@@ -18,7 +18,7 @@ import SwiftUI
 /// Literale -
 /// `rgba(255,255,255,.5)` für die Annahme und `rgba(255,255,255,.85)` für den einen Ausgleich
 /// ohne Vorlaufterm (`kennlinie.ts:162`, `:130`). In ``Marken`` liegt Weiß in vier Deckungen
-/// (0,92 / 0,72 / 0,48 / 0,055), und keine davon ist eine von diesen beiden: 0,5 ist leiser als
+/// (0,92 / 0,72 / 0,58 / 0,055), und keine davon ist eine von diesen beiden: 0,5 ist leiser als
 /// `text3` wäre, 0,85 lauter als `text2`. Die Datei ``Marken`` gehört allen Seiten und wird in
 /// dieser Runde nicht angefasst; der Wunsch nach zwei Marken ist gemeldet. Bis dahin steht hier,
 /// was die Vorlage schreibt, an einer Stelle und nicht in sechs Aufrufen.

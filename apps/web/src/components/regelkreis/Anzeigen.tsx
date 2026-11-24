@@ -381,7 +381,7 @@ export function Lernverlauf({
       </svg>
       <figcaption className="rk-bild-text">
         Dünn: die laufende Schätzung mit ihrem Band aus ±2σ. Dick: der Wert, mit dem die Regelung
-        arbeitet — er springt nur bei einer Übernahme. Gestrichelt: der Startwert.
+        arbeitet. Er springt nur bei einer Übernahme. Gestrichelt: der Startwert.
       </figcaption>
     </figure>
   );

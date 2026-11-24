@@ -15,7 +15,7 @@ import { BestaetigKnopf } from "./BestaetigKnopf";
  */
 
 const ROLLEN: { wert: Person["rolle"]; name: string; was: string }[] = [
-  { wert: "hausherr", name: "Hausherr", was: "alles - auch Rechnungen, Verwaltung und Export" },
+  { wert: "hausherr", name: "Hausherr", was: "alles, auch Rechnungen, Verwaltung und Export" },
   { wert: "bewohner", name: "Bewohner", was: "sehen und im Haus stellen; keine Akten" },
   { wert: "gast", name: "Gast", was: "nur zusehen; keine Akten" },
   { wert: "service", name: "Beratung", was: "zusehen und am Gerät arbeiten; nie die Akten" },
@@ -70,11 +70,11 @@ export function Personen({ versand }: { versand: { aktiv: boolean; fehlt: string
     <section className="flex max-w-[760px] flex-col gap-3">
       <h2 className="m-0 text-[18px] font-semibold">Personen</h2>
       <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-        Eine Person meldet sich mit einem Passkey an - kein Passwort, nichts zum Abtippen. Über den
+        Eine Person meldet sich mit einem Passkey an. Es gibt kein Passwort und nichts zum Abtippen. Über den
         Einladungslink legt sie ihn selbst an und ist damit angemeldet.
         {versand.aktiv
           ? " Die Einladung geht auf Wunsch gleich per E-Mail hinaus."
-          : ` E-Mail-Versand ist nicht eingerichtet (${versand.fehlt.join(", ") || "keine Angaben"}) - der Link bleibt hier zum Kopieren.`}
+          : ` E-Mail-Versand ist nicht eingerichtet (${versand.fehlt.join(", ") || "keine Angaben"}). Der Link bleibt hier zum Kopieren.`}
       </p>
 
       {fehler ? <p className="m-0 text-[14px] text-amber">{fehler}</p> : null}
@@ -163,7 +163,7 @@ export function Personen({ versand }: { versand: { aktiv: boolean; fehlt: string
           </span>
           <CopyField value={link.link} label="Einladungslink" />
           <span className="text-[13px] leading-[1.5] text-text-3">
-            Gilt bis {datum(link.laeuft_ab_am)} und nur einmal. Er steht nur jetzt hier - wer ihn
+            Gilt bis {datum(link.laeuft_ab_am)} und nur einmal. Er steht nur jetzt hier. Wer ihn
             verliert, bekommt einen neuen.
           </span>
         </div>

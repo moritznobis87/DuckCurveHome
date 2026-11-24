@@ -149,7 +149,7 @@ def effect(
         f" Die Arbeitszahl gilt für {de(outdoor_c)} °C draußen."
         if outdoor_measured
         else (
-            f" Die Arbeitszahl gilt für angenommene {de(outdoor_c)} °C draußen - eine aktuelle "
+            f" Die Arbeitszahl gilt für angenommene {de(outdoor_c)} °C draußen. Eine aktuelle "
             "Außentemperatur liegt nicht vor, und mit ihr würden die Stromzahlen anders ausfallen."
         )
     )

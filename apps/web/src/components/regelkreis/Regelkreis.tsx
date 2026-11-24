@@ -234,7 +234,7 @@ export function Regelkreis() {
             </ul>
           ) : (
             <p className="rk-text">
-              Noch keine Übernahme. Übernommen wird erst, was mehr als die eigene Unsicherheit abweicht, auf genug Stützstellen steht und den Restfehler über vierzehn Tage senkt - bis dahin gelten die Startwerte, und jeder Parameter sagt an seiner Zeile, woran es liegt.
+              Noch keine Übernahme. Übernommen wird erst, was mehr als die eigene Unsicherheit abweicht, auf genug Stützstellen steht und den Restfehler über vierzehn Tage senkt. Bis dahin gelten die Startwerte, und jeder Parameter sagt an seiner Zeile, woran es liegt.
             </p>
           )}
         </Card>
@@ -299,7 +299,7 @@ export function Regelkreis() {
                       </span>
                     ) : (
                       <span className="rk-klein">
-                        {kr.art === "planung" ? "gleitender Horizont — in Euro beurteilt" : "hybrid, ganzzahlig — keine Frequenzkennlinie"}
+                        {kr.art === "planung" ? "gleitender Horizont, in Euro beurteilt" : "hybrid und ganzzahlig, ohne Frequenzkennlinie"}
                       </span>
                     )}
                   </td>
@@ -335,7 +335,7 @@ export function Regelkreis() {
         <p className="rk-text">
           Jedes Kästchen der Karte trägt sein Kennbild: die Antwort auf einen Sprung am Eingang,
           bei statischen Gliedern stattdessen die Kennlinie. Wer die Form kennt, erkennt das Glied,
-          ohne die Formel zu lesen — und wer die Formel liest, prüft die Form.
+          ohne die Formel zu lesen, und wer die Formel liest, prüft die Form.
         </p>
         <div className="rk-katalog">
           {KATEGORIEN.map(([key, titel]) => {
@@ -367,16 +367,16 @@ export function Regelkreis() {
           <b>Die Struktur ist eine Aussage über das Haus</b> und steht im Kern, nicht in der Zeichnung: welcher Kreis welchem unterlagert ist, wo eine Störgröße angreift und ob sie aufgeschaltet oder nur ausgeregelt wird. Die Anzeige legt die Kästchen hin.
         </p>
         <p>
-          <b>Der Regler wird gerechnet, nicht eingestellt.</b> Aus den Streckenparametern folgt er nach der Regel von Skogestad (SIMC), mit der Ersatzzeitkonstante λ als einziger freier Zahl. Bei zwei Zeitkonstanten greift die Halbregel: die halbe kleinere geht in die große, die andere Hälfte in die Totzeit. Ändert die Lernebene einen Streckenparameter, ändert sich der Regler mit - ein indirekter selbsteinstellender Regler.
+          <b>Der Regler wird gerechnet, nicht eingestellt.</b> Aus den Streckenparametern folgt er nach der Regel von Skogestad (SIMC), mit der Ersatzzeitkonstante λ als einziger freier Zahl. Bei zwei Zeitkonstanten greift die Halbregel: die halbe kleinere geht in die große, die andere Hälfte in die Totzeit. Ändert die Lernebene einen Streckenparameter, ändert sich der Regler mit. Das ist ein indirekter selbsteinstellender Regler.
         </p>
         <p>
           <b>Übernommen wird nur, was fünf Hürden überspringt:</b> genug Stützstellen, innerhalb der Plausibilitätsgrenzen, größer als die eigene Unsicherheit, vierzehn Tage seit der letzten Übernahme, und ein kleinerer Restfehler im Vergleich. Damit kann das Modell nie schlechter werden als sein Startwert. Jede Ablehnung steht als Satz an ihrem Parameter.
         </p>
         <p>
-          <b>Woher die Zahlen kommen.</b> Die COP-Ebene aus der gemessenen Kennlinie (Ausgleich über Zehn-Minuten-Fenster im eingeschwungenen Heizbetrieb), Totzeit und Anlaufzeit der Wärmepumpe aus der Ereignisstudie über die Anforderungen an sie. Alles andere steht noch auf Startwerten aus Konfiguration und Datenblatt und ist als Annahme gekennzeichnet - die Reihen dafür liegen vor, die Schätzer sind noch nicht angeschlossen.
+          <b>Woher die Zahlen kommen.</b> Die COP-Ebene aus der gemessenen Kennlinie (Ausgleich über Zehn-Minuten-Fenster im eingeschwungenen Heizbetrieb), Totzeit und Anlaufzeit der Wärmepumpe aus der Ereignisstudie über die Anforderungen an sie. Alles andere steht noch auf Startwerten aus Konfiguration und Datenblatt und ist als Annahme gekennzeichnet. Die Reihen dafür liegen vor, die Schätzer sind noch nicht angeschlossen.
         </p>
         <p>
-          <b>Was die Reserven sagen.</b> Die Phasenreserve ist der Abstand zur Dauerschwingung: unter 45° reagiert der Kreis auf eine Änderung der Strecke - einen kälteren Tag, einen anderen Volumenstrom - mit Überschwingen. Für die Erzeugerwahl und den Fahrplan gibt es keine solche Zahl, weil ihre Stellgrößen ganzzahlig sind; sie werden am Umschaltpunkt und in Euro beurteilt.
+          <b>Was die Reserven sagen.</b> Die Phasenreserve ist der Abstand zur Dauerschwingung: unter 45° reagiert der Kreis auf eine Änderung der Strecke, etwa einen kälteren Tag oder einen anderen Volumenstrom, mit Überschwingen. Für die Erzeugerwahl und den Fahrplan gibt es keine solche Zahl, weil ihre Stellgrößen ganzzahlig sind; sie werden am Umschaltpunkt und in Euro beurteilt.
         </p>
       </Methode>
     </div>

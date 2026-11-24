@@ -94,7 +94,7 @@ public enum Rechnungspruefung {
 
     public static let ablegefeldZiehen = "Tibber-Rechnung hierher ziehen"
     public static let ablegefeldKlicken =
-        "oder klicken, um PDFs auszuwählen - mehrere auf einmal möglich"
+        "oder klicken, um ein oder mehrere PDFs auszuwählen"
     public static let ablegefeldLaeuft = "Rechnung wird geprüft …"
     public static let ablegefeldLaeuftDazu = "Positionen werden nachgerechnet"
     /// Was im Ablegefeld steht, wo nichts hineingezogen werden kann.
@@ -106,7 +106,7 @@ public enum Rechnungspruefung {
     /// das eine Entscheidung der App - und sie fällt für den Satz, der stimmt.
     public static let ablegefeldTippen = "Tibber-Rechnung auswählen"
     public static let ablegefeldTippenDazu =
-        "PDFs aus den Dateien wählen - mehrere auf einmal möglich"
+        "Ein oder mehrere PDFs aus den Dateien wählen"
 
     /// Die beiden Zeilen des Ablegefelds.
     public struct Ablegetext: Sendable, Hashable {
@@ -151,7 +151,7 @@ public enum Rechnungspruefung {
     /// einlesen konnte. Sie kann es jetzt, und damit ist der Leerzustand eine Einladung und keine
     /// Auskunft über ein fehlendes Werkzeug.
     public static let leerSatz = """
-        Noch keine Rechnung geprüft. Lade eine Tibber-Rechnung als PDF hoch - die Auswertung \
+        Noch keine Rechnung geprüft. Lade eine Tibber-Rechnung als PDF hoch. Die Auswertung \
         entsteht dann hier und wächst mit jeder weiteren Rechnung.
         """
 

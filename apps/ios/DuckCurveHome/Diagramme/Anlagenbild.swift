@@ -791,7 +791,7 @@ struct Anlagenbild: View {
 ///
 /// **Nicht ``Farbe/kicker``.** Der Kicker der App ist `mist` (#7FA3B3) - ein Blaugrau, das auf
 /// der Bühne genau die Farbe des Netzes trägt und damit wie eine Beschriftung des Netzstrangs
-/// aussieht. Die Vorlage setzt hier ausdrücklich `fill: var(--text-3)`, also weiß bei 0,48:
+/// aussieht. Die Vorlage setzt hier ausdrücklich `fill: var(--text-3)`, also weiß bei 0,58:
 /// eine Überschrift über der Zeichnung und kein Teil von ihr. Sperrung 0,12 em bei 11 Punkten
 /// sind 1,32.
 private struct Ueberschrift: ViewModifier {

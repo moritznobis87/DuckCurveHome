@@ -363,7 +363,7 @@ def coarse_note(totals: EnergyTotals) -> str:
     return (
         f" Für {hours} Stunden ({share:.0%}) liegen nur Stundenmittel aus dem Historienimport vor: "
         "Erzeugung, Verbrauch und Speicherfluss sind dort richtig, die Aufteilung auf PV und Netz "
-        "ist geschätzt - die Ladung wird zuerst der PV zugerechnet."
+        "ist geschätzt. Die Ladung wird zuerst der PV zugerechnet."
     )
 
 
@@ -420,8 +420,8 @@ def _price_quality(
         )
     elif advantage < -0.5:
         note = (
-            f"Der Wärmepumpenstrom war {-advantage:.2f} ct/kWh teurer als der Hausdurchschnitt -"
-            " sie lief überwiegend in den teuren Stunden."
+            f"Der Wärmepumpenstrom war {-advantage:.2f} ct/kWh teurer als der Hausdurchschnitt,"
+            " weil sie überwiegend in den teuren Stunden lief."
         )
     else:
         note = "Der Wärmepumpenstrom kostete etwa so viel wie der Hausdurchschnitt."
@@ -1431,7 +1431,7 @@ class EnergyAccounting:
                 estimated_note_de=(
                     "Quellen-Zuordnung je Minute: die Ladung des Speichers bekommt die PV zuerst, "
                     "der Hausverbrauch den Rest. Reichte die Erzeugung für die Ladeleistung, gilt die "
-                    "Ladung als Sonnenstrom, auch wenn der Zähler gleichzeitig Bezug meldete - dieser "
+                    "Ladung als Sonnenstrom, auch wenn der Zähler gleichzeitig Bezug meldete. Dieser "
                     "Bezug gehört dann zum Haus. Geprüft wird gegen ein Fünf-Minuten-Fenster, weil "
                     "Erzeugung und Speicher nicht im selben Moment melden. "
                     "Verbraucher erhalten die Quellen anteilig. Geld: Netzbezug × Tibber-Preis, PV- und "
@@ -1924,7 +1924,7 @@ class EnergyAccounting:
         if len(punkte) < 24:
             return bedarf, (
                 f"Erwarteter Wärmebedarf morgen: {_de(bedarf)} kWh, allerdings nur für "
-                f"{len(punkte)} von 24 Stunden - so weit reicht die Wetterprognose."
+                f"{len(punkte)} von 24 Stunden, denn so weit reicht die Wetterprognose."
             )
         return bedarf, (
             f"Erwarteter Wärmebedarf morgen: {_de(bedarf)} kWh thermisch, aus Heizgradstunden und "

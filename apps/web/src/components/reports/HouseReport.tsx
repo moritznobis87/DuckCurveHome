@@ -53,7 +53,7 @@ export function HouseReport() {
           value={eur(t?.import_cost_eur)}
           tone="ember"
           href={role === "owner" ? "/geld/rechnungen" : undefined}
-          ariaLabel={role === "owner" ? "Netzbezug - zur Rechnungsprüfung" : undefined}
+          ariaLabel={role === "owner" ? "Netzbezug, weiter zur Rechnungsprüfung" : undefined}
           hint={t ? `${de1(t.import_kwh)} kWh${role === "owner" ? " · Rechnungen prüfen" : ""}` : undefined}
         />
       </KpiGrid>

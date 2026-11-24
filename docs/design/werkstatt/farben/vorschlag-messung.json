@@ -1,0 +1,430 @@
+{
+ "heute Diagramm": {
+  "farben": {
+   "PV": "#f2a900",
+   "WP": "#e0966b",
+   "OFEN": "#b5651d",
+   "HAUS": "#cfd8dc",
+   "PREIS": "#7fa3b3",
+   "EIN": "#7b919a",
+   "NETZ": "#e0533d",
+   "SPEICHER": "#7fa3b3",
+   "WALLBOX": "#2f89b5"
+  },
+  "kontrast": {
+   "PV": 6.46,
+   "WP": 5.4,
+   "OFEN": 2.99,
+   "HAUS": 8.96,
+   "PREIS": 4.81,
+   "EIN": 3.93,
+   "NETZ": 3.38,
+   "SPEICHER": 4.81,
+   "WALLBOX": 3.32
+  },
+  "saetze": {
+   "Energiefluss": {
+    "normal": [
+     5.5,
+     "SPEICHER",
+     "EIN"
+    ],
+    "cvd": [
+     5.2,
+     "SPEICHER",
+     "EIN"
+    ]
+   },
+   "Woher kam der Strom": {
+    "normal": [
+     20.8,
+     "PV",
+     "NETZ"
+    ],
+    "cvd": [
+     15.1,
+     "SPEICHER",
+     "NETZ"
+    ]
+   },
+   "PV-Bericht": {
+    "normal": [
+     5.5,
+     "EIN",
+     "SPEICHER"
+    ],
+    "cvd": [
+     5.2,
+     "EIN",
+     "SPEICHER"
+    ]
+   },
+   "Wallbox-Bericht": {
+    "normal": [
+     20.8,
+     "PV",
+     "NETZ"
+    ],
+    "cvd": [
+     16.5,
+     "PV",
+     "NETZ"
+    ]
+   },
+   "Speicher-Bericht": {
+    "normal": [
+     18.5,
+     "SPEICHER",
+     "HAUS"
+    ],
+    "cvd": [
+     15.1,
+     "SPEICHER",
+     "NETZ"
+    ]
+   }
+  }
+ },
+ "heute Fluss": {
+  "farben": {
+   "PV": "#f2a900",
+   "WP": "#e0966b",
+   "OFEN": "#b5651d",
+   "HAUS": "#cfd8dc",
+   "PREIS": "#7fa3b3",
+   "EIN": "#ffd778",
+   "NETZ": "#7fa3b3",
+   "SPEICHER": "#4f7b88",
+   "WALLBOX": "#5c8fa3"
+  },
+  "kontrast": {
+   "PV": 6.46,
+   "WP": 5.4,
+   "OFEN": 2.99,
+   "HAUS": 8.96,
+   "PREIS": 4.81,
+   "EIN": 9.42,
+   "NETZ": 4.81,
+   "SPEICHER": 2.79,
+   "WALLBOX": 3.65
+  },
+  "saetze": {
+   "Energiefluss": {
+    "normal": [
+     6.7,
+     "SPEICHER",
+     "WALLBOX"
+    ],
+    "cvd": [
+     6.6,
+     "SPEICHER",
+     "WALLBOX"
+    ]
+   },
+   "Woher kam der Strom": {
+    "normal": [
+     13.9,
+     "SPEICHER",
+     "NETZ"
+    ],
+    "cvd": [
+     13.5,
+     "SPEICHER",
+     "NETZ"
+    ]
+   },
+   "PV-Bericht": {
+    "normal": [
+     11.9,
+     "PV",
+     "EIN"
+    ],
+    "cvd": [
+     11.3,
+     "PV",
+     "EIN"
+    ]
+   },
+   "Wallbox-Bericht": {
+    "normal": [
+     7.5,
+     "WALLBOX",
+     "NETZ"
+    ],
+    "cvd": [
+     6.8,
+     "WALLBOX",
+     "NETZ"
+    ]
+   },
+   "Speicher-Bericht": {
+    "normal": [
+     13.9,
+     "SPEICHER",
+     "NETZ"
+    ],
+    "cvd": [
+     13.5,
+     "SPEICHER",
+     "NETZ"
+    ]
+   }
+  }
+ },
+ "Vorschlag violett": {
+  "farben": {
+   "PV": "#f2a900",
+   "WP": "#e0966b",
+   "OFEN": "#b5651d",
+   "HAUS": "#cfd8dc",
+   "PREIS": "#7fa3b3",
+   "EIN": "#ffd778",
+   "NETZ": "#b48df4",
+   "SPEICHER": "#7fa3b3",
+   "WALLBOX": "#2f89b5"
+  },
+  "kontrast": {
+   "PV": 6.46,
+   "WP": 5.4,
+   "OFEN": 2.99,
+   "HAUS": 8.96,
+   "PREIS": 4.81,
+   "EIN": 9.42,
+   "NETZ": 4.98,
+   "SPEICHER": 4.81,
+   "WALLBOX": 3.32
+  },
+  "saetze": {
+   "Energiefluss": {
+    "normal": [
+     9.7,
+     "PV",
+     "WP"
+    ],
+    "cvd": [
+     9,
+     "PV",
+     "WP"
+    ]
+   },
+   "Woher kam der Strom": {
+    "normal": [
+     14.6,
+     "SPEICHER",
+     "NETZ"
+    ],
+    "cvd": [
+     9.4,
+     "SPEICHER",
+     "NETZ"
+    ]
+   },
+   "PV-Bericht": {
+    "normal": [
+     11.9,
+     "PV",
+     "EIN"
+    ],
+    "cvd": [
+     9.4,
+     "SPEICHER",
+     "NETZ"
+    ]
+   },
+   "Wallbox-Bericht": {
+    "normal": [
+     19,
+     "WALLBOX",
+     "NETZ"
+    ],
+    "cvd": [
+     10.4,
+     "WALLBOX",
+     "NETZ"
+    ]
+   },
+   "Speicher-Bericht": {
+    "normal": [
+     14.6,
+     "SPEICHER",
+     "NETZ"
+    ],
+    "cvd": [
+     9.4,
+     "SPEICHER",
+     "NETZ"
+    ]
+   }
+  }
+ },
+ "Vorschlag rot": {
+  "farben": {
+   "PV": "#f2a900",
+   "WP": "#e0966b",
+   "OFEN": "#b5651d",
+   "HAUS": "#cfd8dc",
+   "PREIS": "#7fa3b3",
+   "EIN": "#ffd778",
+   "NETZ": "#e0533d",
+   "SPEICHER": "#7fa3b3",
+   "WALLBOX": "#2f89b5"
+  },
+  "kontrast": {
+   "PV": 6.46,
+   "WP": 5.4,
+   "OFEN": 2.99,
+   "HAUS": 8.96,
+   "PREIS": 4.81,
+   "EIN": 9.42,
+   "NETZ": 3.38,
+   "SPEICHER": 4.81,
+   "WALLBOX": 3.32
+  },
+  "saetze": {
+   "Energiefluss": {
+    "normal": [
+     9.7,
+     "PV",
+     "WP"
+    ],
+    "cvd": [
+     9,
+     "PV",
+     "WP"
+    ]
+   },
+   "Woher kam der Strom": {
+    "normal": [
+     20.8,
+     "PV",
+     "NETZ"
+    ],
+    "cvd": [
+     15.1,
+     "SPEICHER",
+     "NETZ"
+    ]
+   },
+   "PV-Bericht": {
+    "normal": [
+     11.9,
+     "PV",
+     "EIN"
+    ],
+    "cvd": [
+     11.3,
+     "PV",
+     "EIN"
+    ]
+   },
+   "Wallbox-Bericht": {
+    "normal": [
+     20.8,
+     "PV",
+     "NETZ"
+    ],
+    "cvd": [
+     16.5,
+     "PV",
+     "NETZ"
+    ]
+   },
+   "Speicher-Bericht": {
+    "normal": [
+     18.5,
+     "SPEICHER",
+     "HAUS"
+    ],
+    "cvd": [
+     15.1,
+     "SPEICHER",
+     "NETZ"
+    ]
+   }
+  }
+ },
+ "zustaende": {
+  "kontrast": {
+   "GUT_HEUTE": 4.81,
+   "HINWEIS_HEUTE": 9.42,
+   "GUT": 7.82,
+   "HINWEIS": 9.71,
+   "STOERUNG": 3.38,
+   "AKZENT": 6.46,
+   "EIN": 9.42,
+   "NETZ_ROT": 3.38,
+   "NETZ_VIOLETT": 4.98,
+   "PUFFER": 6.08,
+   "WP": 5.4,
+   "PREIS": 4.81
+  },
+  "paare": [
+   {
+    "a": "GUT_HEUTE",
+    "b": "PREIS",
+    "normal": 0,
+    "cvd": 0
+   },
+   {
+    "a": "GUT",
+    "b": "GUT_HEUTE",
+    "normal": 17.6,
+    "cvd": 15.5
+   },
+   {
+    "a": "GUT",
+    "b": "HINWEIS",
+    "normal": 16.3,
+    "cvd": 10.8
+   },
+   {
+    "a": "GUT",
+    "b": "STOERUNG",
+    "normal": 33.5,
+    "cvd": 18.8
+   },
+   {
+    "a": "HINWEIS",
+    "b": "STOERUNG",
+    "normal": 33.4,
+    "cvd": 27.4
+   },
+   {
+    "a": "HINWEIS_HEUTE",
+    "b": "AKZENT",
+    "normal": 11.9,
+    "cvd": 11.3
+   },
+   {
+    "a": "HINWEIS",
+    "b": "AKZENT",
+    "normal": 13.1,
+    "cvd": 11.3
+   },
+   {
+    "a": "HINWEIS",
+    "b": "EIN",
+    "normal": 5.2,
+    "cvd": 3.9
+   },
+   {
+    "a": "STOERUNG",
+    "b": "NETZ_VIOLETT",
+    "normal": 25.5,
+    "cvd": 24.2
+   },
+   {
+    "a": "STOERUNG",
+    "b": "WP",
+    "normal": 14,
+    "cvd": 10.6
+   },
+   {
+    "a": "GUT",
+    "b": "PUFFER",
+    "normal": 8.5,
+    "cvd": 7.7
+   }
+  ]
+ }
+}

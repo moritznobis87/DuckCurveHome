@@ -46,7 +46,7 @@ public enum Zugangsworte {
     /// keinen (``Zugang``, Kopfkommentar). Der Satz nennt darum beides: was dieses Gerät hat,
     /// und wo die Links für die anderen stehen.
     public static let koppeln =
-        "Ein Browser wird einmal über einen Link gepaart und behält danach seine Sitzung. Diese App braucht den Umweg nicht: ihr Token liegt im Schlüsselbund dieses Geräts, durch die Gerätesperre geschützt, und verlässt es nur als Kopfzeile an die Adresse unten. Die Pairing-Links für die anderen Geräte - Wandanzeige und Gast - stehen im Dashboard auf dieser Seite. Sie tragen die echten Tokens und sind wie ein Haustürschlüssel zu behandeln: wer einen Screenshot davon bekommt, hat die Schlüssel zum Haus."
+        "Ein Browser wird einmal über einen Link gepaart und behält danach seine Sitzung. Diese App braucht den Umweg nicht: ihr Token liegt im Schlüsselbund dieses Geräts, durch die Gerätesperre geschützt, und verlässt es nur als Kopfzeile an die Adresse unten. Die Pairing-Links für die anderen Geräte, also Wandanzeige und Gast, stehen im Dashboard auf dieser Seite. Sie tragen die echten Tokens und sind wie ein Haustürschlüssel zu behandeln: wer einen Screenshot davon bekommt, hat die Schlüssel zum Haus."
 
     /// Was ein Vollzugriff darf (`page.tsx:73`).
     ///
@@ -72,7 +72,7 @@ public enum Zugangsworte {
     /// Sitzung und nicht den Link. Wer den Link aufhebt, paart sich erneut - ein abgelaufener
     /// Gast ist also kein ausgesperrter Gast.
     public static let sitzungsdauer =
-        "Der Ablauf begrenzt die Sitzung, nicht den Link: wer ihn aufhebt, kann sich erneut paaren. Um das zu unterbinden, ändert man DCH_GUEST_TOKEN im Web-Dienst - bestehende Gast-Sitzungen laufen dann regulär ab, neue entstehen nicht mehr."
+        "Der Ablauf begrenzt die Sitzung, nicht den Link: wer ihn aufhebt, kann sich erneut paaren. Um das zu unterbinden, ändert man DCH_GUEST_TOKEN im Web-Dienst. Bestehende Gast-Sitzungen laufen dann regulär ab, neue entstehen nicht mehr."
 
     // MARK: - Platzbedarf
 
@@ -84,7 +84,7 @@ public enum Zugangsworte {
 
     /// Der Absatz über den Jahreszeilen (`page.tsx:128-134`), wörtlich.
     public static let sicherung =
-        "Die Datenbank ist die einzige Kopie. Ein verwaltetes Volume bei einem Anbieter ist kein Archiv: es überlebt keinen gelöschten Zugang und keinen Anbieterwechsel. Einmal im Jahr herunterladen und woanders ablegen - die Dateien sind gzip-komprimiertes CSV und lassen sich ohne dieses Programm lesen."
+        "Die Datenbank ist die einzige Kopie. Ein verwaltetes Volume bei einem Anbieter ist kein Archiv: es überlebt keinen gelöschten Zugang und keinen Anbieterwechsel. Einmal im Jahr herunterladen und woanders ablegen. Die Dateien sind gzip-komprimiertes CSV und lassen sich ohne dieses Programm lesen."
 
     /// Was eine Jahresdatei wiegt (`page.tsx:145-147`), wörtlich.
     ///
@@ -106,7 +106,7 @@ public enum Zugangsworte {
 
     /// Der Schlussabsatz des Abschnitts (`page.tsx:150-155`), wörtlich.
     public static let sicherungsschluss =
-        "Die Stundenbilanz enthält auch die Grundlagen der PV-Abrechnung - Eigenverbrauch, Wiederbeschaffungswert und Umsatzsteuer. Sie gehört zu den Unterlagen, die aufzubewahren sind. Ein laufendes Jahr ist naturgemäß unvollständig; für den Abschluss im Januar erneut holen."
+        "Die Stundenbilanz enthält auch die Grundlagen der PV-Abrechnung, also Eigenverbrauch, Wiederbeschaffungswert und Umsatzsteuer. Sie gehört zu den Unterlagen, die aufzubewahren sind. Ein laufendes Jahr ist naturgemäß unvollständig; für den Abschluss im Januar erneut holen."
 
     /// Für welche Jahre eine Sicherung angeboten wird: das laufende und das davor
     /// (`page.tsx:135`: `[year, year - 1]`).
@@ -154,7 +154,7 @@ public enum Zugangsworte {
     /// `noindex`-Meta-Tag und den Header. Die Aussage des Abschnitts bleibt dieselbe und ist
     /// der Grund, warum er auf dieser Seite steht: das alles ist kein Zugriffsschutz.
     public static let sichtbarkeit: [Satzteil] = [
-        Satzteil("Das Dashboard ist für Suchmaschinen gesperrt - über "),
+        Satzteil("Das Dashboard ist für Suchmaschinen gesperrt, und zwar über "),
         Satzteil("robots.txt", mono: true),
         Satzteil(", den "),
         Satzteil("noindex", mono: true),
@@ -194,6 +194,6 @@ public enum Zugangsworte {
     public static let methode: [String] = [
         "Das Token liegt im Schlüsselbund dieses Geräts und ist durch die Gerätesperre geschützt. Es verlässt das Gerät nur als Authorization-Kopfzeile.",
         "Die Rolle „Gast“ blendet in dieser App aus, was nicht in fremde Hände gehört. Sie sperrt nichts am Dienst: wer das Token hat, darf dort alles. Für einen echten Gastzugang zeigt man die App auf das Dashboard und paart dort mit dem Gast-Token.",
-        "Jede Änderung, die von hier ausgeht, steht im Protokoll des Dienstes mit dem Namen dieses Geräts - nicht mit einem Menschen. Am iPad im Flur kann jeder gestanden haben.",
+        "Jede Änderung, die von hier ausgeht, steht im Protokoll des Dienstes mit dem Namen dieses Geräts und nicht mit dem eines Menschen. Am iPad im Flur kann jeder gestanden haben.",
     ]
 }

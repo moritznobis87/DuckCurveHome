@@ -20,7 +20,7 @@ const C = {
   ember: "#e0533d",
   grid: "rgba(255,255,255,.09)",
   axis: "rgba(255,255,255,.2)",
-  text: "rgba(255,255,255,.48)",
+  text: "rgba(255,255,255,.58)",
   deep: "#082431",
 };
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";

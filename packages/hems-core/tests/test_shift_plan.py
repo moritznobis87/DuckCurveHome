@@ -70,7 +70,7 @@ def test_ohne_abstand_bleibt_alles_wie_es_ist() -> None:
     flach = [22.0] * 24
     z = shift_target(TAG + timedelta(hours=15), preise(flach), [teuer(17, 20, ct=24.0)], POLICY)
     assert z.phase == "aus"
-    assert "zu wenig" in z.reason_de
+    assert "zu klein" in z.reason_de
     assert z.spread_ct == 2.0
 
 

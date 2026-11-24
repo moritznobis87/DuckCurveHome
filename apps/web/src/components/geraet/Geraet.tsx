@@ -459,9 +459,9 @@ export function Geraet() {
           <span className="text-[16px] font-semibold">{g.ampel === "gut" ? "Alles in Ordnung." : g.text_de}</span>
           <span className="text-[13px] text-text-3">
             {unerreichbar
-              ? "Gerade keine Verbindung - startet die API neu? Die Seite versucht es weiter."
+              ? "Gerade keine Verbindung. Vielleicht startet die API neu; die Seite versucht es weiter."
               : g.unterstuetzt
-                ? `Bericht des Geräts von ${uhr(g.bericht_am)}${g.bericht_alt ? " - veraltet: Der Zeitgeber auf dem Gerät läuft nicht" : ""}.`
+                ? `Bericht des Geräts von ${uhr(g.bericht_am)}${g.bericht_alt ? ". Er ist veraltet, weil der Zeitgeber auf dem Gerät nicht läuft" : ""}.`
                 : "Diese Installation läuft nicht auf dem Hausgerät; hier steht nur, was die API über sich selbst weiß."}
           </span>
         </span>

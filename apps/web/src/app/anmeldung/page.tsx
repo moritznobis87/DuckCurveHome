@@ -60,7 +60,7 @@ export default async function Page() {
         ) : null}
 
         <p className="m-0 text-[13px] leading-[1.6] text-text-3">
-          Eine Wandanzeige meldet sich nicht an - sie wird einmal gepaart und bleibt gepaart.
+          Eine Wandanzeige meldet sich nicht an. Sie wird einmal gepaart und bleibt gepaart.
           {stand.rp_id ? (
             <>
               {" "}

@@ -37,6 +37,40 @@ Zwei Auflagen aus der Messung. Das hellere Alarmrot liegt näher am Terrakotta d
 behalten `#e0533d`. Das Grün liegt ΔE 8,5 vom Grün des Puffers im Diagramm; es gehört an
 Zustandszeichen und nicht in ein Diagramm.
 
+## Farben: Vorschlag für Zustände und Reihen (24.11.2026)
+
+Dem Hausherrn als Seite mit Bildern von heute und danach vorgelegt; entschieden ist noch nichts.
+Die Messwerte liegen in `farben/vorschlag-messung.json`: je Satz die Farben, ihr Kontrast zur
+Kartenfläche `#123544` und das engste Paar je Diagramm, normal und bei Rot-Grün-Schwäche.
+
+**Zustände.** „In Ordnung“ bekommt das Grün `#79dd9f` (17,6 vom Nebelgrau, 33,5 vom Rot der
+Störung, bei Rot-Grün-Schwäche 18,8). Jeder Zustand bekommt dazu eine Form: Haken, Dreieck,
+Achteck, Ring für „keine Angabe“. Der Hinweis behält `#ffd778`. Ein eigenes Gelb `#fadf47` ist
+verworfen: 5,2 vom hellen Bernstein und 13,1 vom Akzent, es trennt nichts.
+
+**Reihen.** Sonne, Wärmepumpe, Ofen und Haus sind schon überall gleich. Vier Sachen haben zwei
+Farben. Der Satz der Diagramme hält seine Abstände, der Satz des Energieflusses nicht:
+
+| Diagramm | heute Diagramm | heute Fluss | Vorschlag, Netz violett | Vorschlag, Netz rot |
+|---|---|---|---|---|
+| Energiefluss | 5,5 | 6,7 | 9,7 | 9,7 |
+| Woher kam der Strom | 20,8 | 13,9 | 14,6 | 20,8 |
+| PV-Bericht | 5,5 | 11,9 | 11,9 | 11,9 |
+| Wallbox-Bericht | 20,8 | 7,5 | 19,0 | 20,8 |
+| Speicher-Bericht | 18,5 | 13,9 | 14,6 | 18,5 |
+
+Gezeigt ist das engste Paar (CIEDE2000, normales Farbsehen). Der Vorschlag: Der Fluss übernimmt
+Speicher `#7fa3b3` und Wallbox `#2f89b5` aus den Diagrammen, die Einspeisung wird überall
+`#ffd778`. Im Fluss stand der Speicher bisher 2,79:1 zur Fläche.
+
+**Netzbezug.** Im Diagramm ist er `#e0533d` und damit genau das Rot der Störung, im Fluss
+Nebelgrau. Eine Suche über den Farbkreis findet nur im Violett eine freie Stelle; vorgeschlagen
+ist `#b48df4` (4,98:1 zur Fläche, 25,5 von der Störung). Der Preis: bei Rot-Grün-Schwäche 9,4
+zum Speicher statt 15,1 mit Rot. Die Schwelle dort ist 8.
+
+Das engste Paar im Fluss bleibt Sonne und Wärmepumpe mit 9,7. Beide Farben sind unverändert;
+im Fluss trägt jeder Knoten Zeichen und Namen.
+
 ## Symbole: Bestand und drei Entwurfsrunden (23.11.2026)
 
 `zeichen/bestand.json` hält die 25 Zeichen aus `Icon.tsx`, `zeichen/messung-bestand.json` ihre

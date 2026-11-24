@@ -85,11 +85,11 @@ Kantenart = Literal["signal", "stoergroesse", "rueckfuehrung", "fuehrung", "para
 Behandlung = Literal["aufgeschaltet", "ausgeregelt", "beobachtet", "geplant", "erkannt"]
 
 BEHANDLUNG_TEXT: Mapping[Behandlung, str] = {
-    "aufgeschaltet": "aufgeschaltet - vor der Wirkung bekannt und verrechnet",
-    "ausgeregelt": "nur ausgeregelt - fällt erst als Regelabweichung auf",
-    "beobachtet": "beobachtet - nicht gemessen, aus der Bilanz geschätzt",
-    "geplant": "geplant - geht als Prognose in den Fahrplan ein",
-    "erkannt": "erkannt - der Regler ändert sein Verhalten, wenn sie auftritt",
+    "aufgeschaltet": "aufgeschaltet, also vor der Wirkung bekannt und verrechnet",
+    "ausgeregelt": "nur ausgeregelt, fällt also erst als Regelabweichung auf",
+    "beobachtet": "beobachtet, also nicht gemessen, sondern aus der Bilanz geschätzt",
+    "geplant": "geplant, geht also als Prognose in den Fahrplan ein",
+    "erkannt": "erkannt, und der Regler ändert sein Verhalten, wenn sie auftritt",
 }
 
 
@@ -180,12 +180,12 @@ _E4: tuple[Block, ...] = (
         quelle="Tibber, Viertelstundenpreise, 24 bis 36 Stunden voraus",
         erklaerung=(
             "Die einzige Störgröße, die man kennt, bevor sie wirkt. Deshalb wird sie nicht "
-            "ausgeregelt, sondern geplant - sie ist der Grund, warum über der Regelung überhaupt "
+            "ausgeregelt, sondern geplant. Sie ist der Grund, warum über der Regelung überhaupt "
             "eine rechnende Ebene sitzt.",
             "Der Preis, mit dem gerechnet wird, ist nicht der Tarifpreis. Bei PV-Überschuss ist "
             "es die entgangene Einspeisevergütung, bei freier Batterie die Opportunität der "
             "späteren Entnahme, erst bei Netzbezug der Tarif. Drei Zahlen für dieselbe "
-            "Kilowattstunde - und der Knick zwischen ihnen ist der Grund für ein MILP.",
+            "Kilowattstunde, und der Knick zwischen ihnen ist der Grund für ein MILP.",
             "Fehlen Preise länger als 30 Stunden, pausieren nur die Preisregeln. PV-Regel und "
             "Heizbetrieb laufen weiter; das ist eine Festlegung des Reglers und keine Notmaßnahme.",
         ),
@@ -206,7 +206,7 @@ _E4: tuple[Block, ...] = (
         erklaerung=(
             "Für die Regelung zählt nicht die Erzeugung, sondern der Überschuss: Einspeisung plus "
             "Batterieladung ab 80 % Ladestand plus die Leistung der laufenden Wärmepumpe. Der "
-            "letzte Summand ist der wichtige - ohne ihn nimmt sich die Wärmepumpe den Überschuss "
+            "letzte Summand ist der wichtige. Ohne ihn nimmt sich die Wärmepumpe den Überschuss "
             "selbst weg und schaltet sich ab.",
         ),
         gleichungen=("Psurplus = Pfeed + Pbat,chg|SOC>0,8 + PWP",),
@@ -269,7 +269,7 @@ _E4: tuple[Block, ...] = (
             "Verdampfungstemperatur, im Pufferverlust und direkt im Raum.",
             "Aufgeschaltet wird sie dort, wo sie vor der Wirkung bekannt ist: in der "
             "Heizkennlinie und im Fahrplan. Im Raum selbst bleibt ein Teil, der nur ausgeregelt "
-            "wird - der Wind, den keine Prognose je Raum kennt.",
+            "wird, nämlich der Wind, den keine Prognose je Raum kennt.",
         ),
     ),
     Block(
@@ -284,7 +284,7 @@ _E4: tuple[Block, ...] = (
             "Rechnet die thermischen Grenzkosten im aktuellen Betriebspunkt. Beide Faktoren sind "
             "beweglich: der effektive Strompreis springt zwischen drei Fällen, die Arbeitszahl "
             "läuft mit Außen- und Vorlauftemperatur. Genau deshalb gibt es keine Antwort auf die "
-            "Frage, ob die Wärmepumpe billiger ist als der Ofen - nur eine Antwort je Stunde.",
+            "Frage, ob die Wärmepumpe billiger ist als der Ofen. Es gibt nur eine Antwort je Stunde.",
         ),
         gleichungen=("cWP = pel,eff / COP(Ta, TVL)",),
     ),
@@ -296,7 +296,7 @@ _E4: tuple[Block, ...] = (
         name="Grenzkosten Pelletofen",
         kurz="cOf = ppell /(Hu·η)",
         erklaerung=(
-            "Fast konstant - und gerade das macht sie zur Vergleichslinie: sie sagt, ab welcher "
+            "Sie ist fast konstant, und gerade das macht sie zur Vergleichslinie: sie sagt, ab welcher "
             "Arbeitszahl sich die Wärmepumpe nicht mehr lohnt.",
             "Startkosten und Mindestlaufzeit stehen daneben und nicht darin: ein Ofenstart kostet "
             "zehn Cent und bindet zwei Stunden. Im Fahrplan ist das eine Ganzzahlbedingung und "
@@ -318,7 +318,7 @@ _E4: tuple[Block, ...] = (
             "Drei fremde Quellen und eine eigene Rechnung. Jede Quelle bekommt eine "
             "Bias-Korrektur je Sonnenstandsklasse und ein Gewicht aus ihrem inversen "
             "Fehlerquadrat der letzten vierzehn Tage.",
-            "Eine Quelle, die ausfällt oder null liefert, bekommt automatisch Gewicht null - sie "
+            "Eine Quelle, die ausfällt oder null liefert, bekommt automatisch Gewicht null. Sie "
             "wird nicht ausgeschlossen, damit sie zurückkommen kann, wenn sie wieder liefert.",
         ),
         gleichungen=(
@@ -339,7 +339,7 @@ _E4: tuple[Block, ...] = (
             "Keine der drei Größen ist gemessen. Deshalb steht neben jeder eine Unsicherheit, und "
             "deshalb prüft die Lernebene laufend, ob die Summe der Raumverluste zum "
             "Verlustkoeffizienten des Hauses passt. Wenn nicht, ist einer der Räume falsch "
-            "vermessen - und das ist eine nützliche Auskunft.",
+            "vermessen, und das ist eine nützliche Auskunft.",
         ),
         gleichungen=(
             "Q̇bedarf = H·(Ti − Ta) − Aeff·G − Q̇int + Q̇WW",
@@ -358,7 +358,7 @@ _E4: tuple[Block, ...] = (
             "Zeitprofil, Mindesttemperatur oben im Puffer für Warmwasser, Nachtruhe des Ofens, "
             "Taktzahlgrenzen.",
             "Komfort ist hier eine Nebenbedingung und kein Term in der Zielfunktion. Eine "
-            "Verletzung lässt sich nicht durch Ersparnis aufwiegen - sie macht den Fahrplan "
+            "Verletzung lässt sich nicht durch Ersparnis aufwiegen. Sie macht den Fahrplan "
             "unzulässig. Das ist eine Entscheidung und keine Technik: eine gewichtete Summe "
             "hätte irgendwann einen Preis genannt, für den es im Bad kalt werden darf.",
         ),
@@ -381,7 +381,7 @@ _E4: tuple[Block, ...] = (
             "keine Stellgröße, sondern eine Führungsgrößen-Trajektorie für den Pufferkreis und "
             "ein Fahrplan für den Ofen.",
             "Ganzzahlig muss es sein, weil der Ofen an oder aus ist, zwei Stunden mindestens "
-            "läuft und ein Start Geld kostet - und weil Bezug, Einspeisung und "
+            "läuft und ein Start Geld kostet, und weil Bezug, Einspeisung und "
             "Batterieopportunität drei verschiedene Preise für dieselbe Kilowattstunde sind. "
             "Beides sind Knicke, die kein stetiger Regler sauber abbildet.",
             "Alle fünfzehn Minuten wird neu gerechnet und nur das erste Intervall umgesetzt: "
@@ -413,7 +413,7 @@ _E3: tuple[Block, ...] = (
             "Die Verstärkung der Wärmepumpe, und damit die Verstärkung des ganzen Erzeugerpfads. "
             "Sie ist nicht konstant: zwischen einem milden und einem kalten Tag ändert sie sich "
             "um den Faktor zwei. Ein Regler mit fester Verstärkung wäre an einem der beiden Tage "
-            "falsch ausgelegt - deshalb wird hier die Verstärkung geplant und nicht gemittelt.",
+            "falsch ausgelegt. Deshalb wird hier die Verstärkung geplant und nicht gemittelt.",
             "Die Form ist eine Ebene, weil sich ihre drei Zahlen lesen lassen: b sagt, was ein "
             "Grad draußen bringt, c, was ein Grad Vorlauf kostet. Sie gilt nur im vermessenen "
             "Bereich; außerhalb wird eingefroren statt extrapoliert.",
@@ -436,7 +436,7 @@ _E3: tuple[Block, ...] = (
         quelle="erkannt am Vorlaufeinbruch bei laufendem Verdichter",
         erklaerung=(
             "Abtauzyklen entziehen dem Puffer Wärme und verfälschen jede COP-Messung. Die Minuten "
-            "fallen aus der Kennlinienschätzung heraus - sonst lernt das Modell Abtauen als "
+            "fallen aus der Kennlinienschätzung heraus, sonst lernt das Modell Abtauen als "
             "schlechten Wirkungsgrad und senkt die Arbeitszahl dauerhaft.",
         ),
     ),
@@ -485,11 +485,11 @@ _E3: tuple[Block, ...] = (
         kreis="R2",
         erklaerung=(
             "Der eigentliche Regelkreis der Wärmeerzeugung. Regelgröße ist der thermische "
-            "Ladestand, Stellgröße die Anforderung an die Wärmepumpe - ein Kontakt, also ein "
+            "Ladestand, Stellgröße die Anforderung an die Wärmepumpe. Das ist ein Kontakt, also ein "
             "Zweipunktglied.",
             "Entworfen wird dennoch stetig: der Puffer ist aus Sicht des Reglers ein Integrierer "
             "mit Totzeit, und für den gibt es eine geschlossene Einstellregel. Aus der stetigen "
-            "Auslegung folgt dann die Hysteresebreite - über die Taktzahlgrenze von acht Starts "
+            "Auslegung folgt dann die Hysteresebreite, und zwar über die Taktzahlgrenze von acht Starts "
             "am Tag. Die Breite wird also abgeleitet und nicht gewählt.",
             "Störgrößenaufschaltung: der prognostizierte Abfluss geht direkt auf die Stellgröße, "
             "damit der Integralanteil nicht erst nach dem Einbruch zu arbeiten beginnt.",
@@ -509,7 +509,7 @@ _E3: tuple[Block, ...] = (
         kurz="Split-Range nach cWP ⋚ cOfen",
         kreis="R3",
         erklaerung=(
-            "Zwei Erzeuger an einem Speicher, ein Sollwert - also eine Zuordnungsaufgabe. "
+            "Zwei Erzeuger an einem Speicher und ein Sollwert ergeben eine Zuordnungsaufgabe. "
             "Entschieden wird nach Grenzkosten je Kilowattstunde Wärme und nicht nach "
             "Reihenfolge: billiger deckt die Grundlast, teurer die Spitze.",
             "Weil beide Quellen Mindestlauf- und Mindestausschaltzeiten haben, liegt um den "
@@ -531,7 +531,7 @@ _E3: tuple[Block, ...] = (
         kurz="KWP e^(−Tt s)/(1+T1 s)",
         erklaerung=(
             "Das Stellglied ist nur ein potenzialfreier Kontakt: er sagt der Maschine, sie "
-            "solle mehr Wärme erzeugen. Er trennt sie nicht und hält sie nicht an - offen heißt, die "
+            "solle mehr Wärme erzeugen. Er trennt sie nicht und hält sie nicht an. Offen heißt, die "
             "Wärmepumpe regelt selbst weiter. Was die Anforderung in ihr anhebt, ist nicht "
             "dokumentiert und "
             "wird aus den Schaltereignissen gemessen.",
@@ -539,7 +539,7 @@ _E3: tuple[Block, ...] = (
             "Grenze: sie begrenzt die erreichbare Durchtrittsfrequenz des Pufferkreises "
             "unabhängig davon, wie gut der Regler eingestellt ist.",
             "Jeder Schaltbefehl trägt den Hardware-Abschalttimer des Shelly. Fällt die Software "
-            "aus, geht der Kontakt von selbst in den sicheren Zustand - ohne Mitwirkung der "
+            "aus, geht der Kontakt von selbst in den sicheren Zustand, ohne Mitwirkung der "
             "Software, und das ist der Punkt.",
         ),
         gleichungen=(
@@ -557,7 +557,7 @@ _E3: tuple[Block, ...] = (
         kurz="KOf e^(−Tt s)/(1+T1 s)",
         erklaerung=(
             "Die zweite Wärmequelle, in fünf Stufen stellbar, mit Zündvorgang. Die Zündung ist "
-            "eine Totzeit von einer Viertelstunde und kostet Pellets und Zündstrom - deshalb "
+            "eine Totzeit von einer Viertelstunde und kostet Pellets und Zündstrom. Deshalb "
             "gehört der Ofen in den Fahrplan und nicht in einen schnellen Kreis.",
             "Ein Fünftel seiner Leistung geht nicht ins Wasser, sondern direkt in den "
             "Aufstellraum. Dieser Anteil wird der Einzelraumregelung vorher mitgeteilt, statt "
@@ -581,12 +581,12 @@ _E3: tuple[Block, ...] = (
             "Er entkoppelt Erzeugung und Verbrauch zeitlich und macht aus einer "
             "Augenblicksentscheidung eine Energieentscheidung.",
             "Regelungstechnisch ist er zweierlei zugleich. Über die mittlere Temperatur ein "
-            "Integrierer - die Verlustzeitkonstante C/UA liegt bei rund zweihundert Stunden und "
+            "Integrierer, denn die Verlustzeitkonstante C/UA liegt bei rund zweihundert Stunden und "
             "ist gegen den Betrieb unendlich. Über die Schichtung eine Kette von vier Gliedern, "
             "die eine Temperaturfront mit Laufzeit durchwandert. Beides steht im Modell, weil der "
             "Regler die obere Schicht sieht, aber die Energie meint.",
             "Die Energie misst niemand. Sie wird aus vier Temperaturen rekonstruiert, und jeder "
-            "Fehler der Erzeugerseite landet im Rest der Bilanz - ausgewiesen als Restglied und "
+            "Fehler der Erzeugerseite landet im Rest der Bilanz, ausgewiesen als Restglied und "
             "nicht versteckt in einer negativen Entnahme.",
         ),
         gleichungen=(
@@ -635,11 +635,11 @@ _E1: tuple[Block, ...] = (
         erklaerung=(
             "Die klassische Störgrößenaufschaltung der Heiztechnik: sie setzt die "
             "Vorlauftemperatur aus der Außentemperatur, bevor der Raum etwas davon merkt. Eine "
-            "Vorsteuerung ohne Rückführung - sie kann nichts ausregeln, aber sie nimmt dem "
+            "Vorsteuerung ohne Rückführung kann nichts ausregeln, aber sie nimmt dem "
             "Raumkreis die halbe Arbeit ab.",
             "Zu steil eingestellt heißt: dauerhaft zu warmer Vorlauf, also jeden Tag ein "
             "kleinerer COP, obwohl die Räume stimmen. Das sieht man nicht an der Raumtemperatur, "
-            "sondern nur an den Ventilhüben - wenn alle Räume drosseln, ist die Kennlinie zu "
+            "sondern nur an den Ventilhüben. Wenn alle Räume drosseln, ist die Kennlinie zu "
             "hoch. Genau daraus wird die Steilheit zurückgerechnet.",
         ),
         gleichungen=(
@@ -678,8 +678,8 @@ _E1: tuple[Block, ...] = (
         kreis="R1",
         erklaerung=(
             "Der schnellste Kreis der Anlage: Mischer gegen Vorlauffühler, Zeitkonstanten in "
-            "Minuten. Er ist dem Pufferkreis unterlagert, und das ist der Zweck der Kaskade - "
-            "die schnelle Störung (Pufferschichtung, Pumpenstufe, Zapfung) wird hier ausgeregelt "
+            "Minuten. Er ist dem Pufferkreis unterlagert, und das ist der Zweck der Kaskade: "
+            "Die schnelle Störung (Pufferschichtung, Pumpenstufe, Zapfung) wird hier ausgeregelt "
             "und erreicht die langsamen Kreise nicht mehr.",
             "Weil er zehnmal schneller ist als der Kreis über ihm, darf er unabhängig ausgelegt "
             "werden. Die Faustregel der Kaskade, Faktor fünf zwischen den Ebenen, ist hier mit "
@@ -700,7 +700,7 @@ _E1: tuple[Block, ...] = (
         gibt_marke="TVL",
         erklaerung=(
             "Mischer, Pumpe, Verteiler und der Wasserinhalt der Leitungen. Die Verstärkung ist "
-            "über den Hub nichtlinear - ein Dreiwegeventil regelt in der Mitte anders als am "
+            "über den Hub nichtlinear, denn ein Dreiwegeventil regelt in der Mitte anders als am "
             "Rand; geschätzt wird die Steigung im Arbeitsbereich.",
             "Die Transportzeit vom Mischer zum Fühler ist reine Totzeit und setzt die Obergrenze "
             "der Kreisverstärkung: mehr als etwa sechzig Grad Phasenreserve lassen sich bei zwei "
@@ -762,7 +762,7 @@ _E0: tuple[Block, ...] = (
         erklaerung=(
             "Ein geöffnetes Fenster ist ein Sprung, keine Drift. Der Einzelraumregler darf darauf "
             "nicht mit dem Integralanteil antworten, sonst heizt er nach dem Schließen "
-            "stundenlang nach - bei einem Estrich von fünf Stunden Zeitkonstante wirklich "
+            "stundenlang nach, bei einem Estrich von fünf Stunden Zeitkonstante wirklich "
             "stundenlang.",
             "Erkannt wird es am Gradienten der Raumluft und am Fensterkontakt; der Integrator "
             "wird dann angehalten und der Hub eingefroren.",
@@ -784,7 +784,7 @@ _E0: tuple[Block, ...] = (
             "Das ist der langsamste Kreis des Hauses, und er muss langsam bleiben. Ein "
             "Raumregler, der auf eine halbe Stunde reagieren will, pumpt die Fußbodenheizung in "
             "Schwingungen, die zwei Stunden später ankommen. Die Nachstellzeit liegt deshalb bei "
-            "Stunden, nicht Minuten - und das ist kein Zugeständnis, sondern das Ergebnis der "
+            "Stunden, nicht Minuten, und das ist kein Zugeständnis, sondern das Ergebnis der "
             "Entwurfsregel.",
             "Zwei Besonderheiten: der Integrator wird bei erkanntem Lüften angehalten, und die "
             "erwartete Raumwärme des Ofens wird aufgeschaltet, statt sie nachträglich "
@@ -810,7 +810,7 @@ _E0: tuple[Block, ...] = (
             "Diese Kennlinie wird aus Hub und Rücklauftemperatur geschätzt und als "
             "Vorverzerrung herausgerechnet, damit der Raumregler eine lineare Strecke sieht. "
             "Ohne das wäre die Verstärkung des Kreises bei halbem Hub eine andere als bei "
-            "kleinem - und eine Reglereinstellung für beide gibt es nicht.",
+            "kleinem, und eine Reglereinstellung für beide gibt es nicht.",
         ),
         gleichungen=(
             "ṁ/ṁmax = h / √(av + (1−av)h²)",
@@ -833,7 +833,7 @@ _E0: tuple[Block, ...] = (
             "Hülle (Stunden), die Heizung auf den Estrich (viele Stunden). Ein einziger "
             "Zeitkonstanten-Begriff wäre hier falsch.",
             "Die Estrichtemperatur wird nicht gemessen. Zustand und Parameter werden deshalb "
-            "gemeinsam geschätzt - und die Summe der Raumverluste muss zum Verlustkoeffizienten "
+            "gemeinsam geschätzt, und die Summe der Raumverluste muss zum Verlustkoeffizienten "
             "des Hauses passen, was eine laufende Prüfung gegen Messfehler ist.",
         ),
         gleichungen=(
@@ -853,7 +853,7 @@ _E0: tuple[Block, ...] = (
         erklaerung=(
             "Die Platzierung ist Teil des Modells: ein Fühler in der Sonne misst die Sonne und "
             "nicht den Raum. Erkennbar ist das am Vergleich mit dem Estrichzustand des "
-            "Beobachters - weicht der Fühler systematisch nur bei Einstrahlung ab, ist nicht der "
+            "Beobachters. Weicht der Fühler systematisch nur bei Einstrahlung ab, ist nicht der "
             "Raum warm, sondern der Fühler beleuchtet.",
         ),
         gleichungen=("Plausibilität: |Ti − T̂i| > 1,5 K ∧ G > 300 W/m² → Fühler verdächtig",),
@@ -870,7 +870,7 @@ _E0: tuple[Block, ...] = (
             "Verlust und seine solare Apertur, also auch seine eigene Reglereinstellung.",
             "Die Lernebene schätzt sie getrennt, prüft aber eine Kopplung: die Summe der "
             "Raumverluste muss zum Verlustkoeffizienten des Hauses passen. Tut sie es nicht, ist "
-            "einer der Räume falsch vermessen - und das steht dann als Hinweis im Protokoll und "
+            "einer der Räume falsch vermessen, und das steht dann als Hinweis im Protokoll und "
             "nicht in einem stillen Mittelwert.",
         ),
         gleichungen=("Σi HRaum,i ≈ HHaus   (Prüfung, Toleranz 15 %)",),
@@ -1016,7 +1016,7 @@ KREISE: tuple[Kreis, ...] = (
         art="zweipunkt",
         erklaerung=(
             "Stetig entworfen, als Zweipunktregler ausgeführt. Die Hysteresebreite folgt aus der "
-            "Taktzahlgrenze und den gelernten Steigungen - sie wird gerechnet, nicht gewählt.",
+            "Taktzahlgrenze und den gelernten Steigungen. Sie wird gerechnet, nicht gewählt.",
         ),
     ),
     Kreis(

@@ -547,11 +547,10 @@ export function Raumteile({ anchor, kacheln, auswertung }: { anchor: string; kac
       ) : null}
 
       <Note>
-        Geregelt wird auf <strong>Sollwert plus Offset</strong> - Controme rechnet das in seiner
+        Geregelt wird auf <strong>Sollwert plus Offset</strong>. Controme rechnet das in seiner
         eigenen Oberfläche vor und zeigt das Ergebnis als Zieltemperatur. Der Offset ist dabei die
         Summe mehrerer benannter Anpassungen, nicht nur der Witterung; die beiden Zahlen stehen
-        deshalb einzeln unter dem Zielwert. Die Antriebe am Verteiler sind auf oder zu - ein
-        Zwischenwert im Streifen heißt „ein Teil der Kreise" oder „einen Teil des Fensters", nicht
+        deshalb einzeln unter dem Zielwert. Die Antriebe am Verteiler sind auf oder zu. Ein Zwischenwert im Streifen heißt „ein Teil der Kreise" oder „einen Teil des Fensters", nicht
         „halb offen". Ein Tippen auf eine Kachel stellt den Sollwert dieses Raums, dauerhaft und
         in halben Grad; die Ventile bleiben Sache des Reglers.
       </Note>
