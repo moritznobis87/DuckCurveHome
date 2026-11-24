@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { zahlUndEinheit } from "@/components/layout/Bereichsuebersicht";
-import { AREAS, EINZELSEITEN } from "./areas";
+import { AREAS, EINSTELLUNGEN, EINZELSEITEN, STUFEN, sucheEinstellungen } from "./areas";
 
 /**
  * Dashboard und App zeigen dieselben Seiten unter denselben Adressen. Das ist seit dem
@@ -72,6 +72,22 @@ describe("Seitenbaum", () => {
     expect(zahlUndEinheit("−80 %")).toEqual({ zahl: "−80", einheit: "%" });
     expect(zahlUndEinheit("0")).toEqual({ zahl: "0", einheit: "" });
     expect(zahlUndEinheit("1 234,5 kWh")).toEqual({ zahl: "1 234,5", einheit: "kWh" });
+  });
+
+  it("kennt dieselben Stufen und Einstellungen wie docs/seitenbaum.json", () => {
+    const datei = resolve(__dirname, "../../../../docs/seitenbaum.json");
+    const gemeinsam = JSON.parse(readFileSync(datei, "utf-8")) as { stufen: unknown; einstellungen: unknown };
+    expect(STUFEN).toEqual(gemeinsam.stufen);
+    expect(EINSTELLUNGEN).toEqual(gemeinsam.einstellungen);
+  });
+
+  it("findet eine Einstellung unter einem Stichwort und zeigt einem Bewohner keine Akte", () => {
+    expect(sucheEinstellungen("heizkurve", true).map((e) => e.name)).toEqual(["Regler der Wärmepumpe"]);
+    expect(sucheEinstellungen("  ", true)).toEqual([]);
+    // Die Mitteilungen liegen im System; das sieht nur der Hausherr.
+    expect(sucheEinstellungen("morgenbrief", true)).toHaveLength(1);
+    expect(sucheEinstellungen("morgenbrief", false)).toEqual([]);
+    expect(sucheEinstellungen("speicher", false).map((e) => e.weg)).toEqual(["/strom/speicher", "/strom/speicher"]);
   });
 
   it("kennt dieselben Seiten außerhalb der Bereiche wie docs/seitenbaum.json", () => {

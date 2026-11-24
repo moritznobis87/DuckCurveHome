@@ -346,13 +346,43 @@ final class KennlinienbildTests: XCTestCase {
 
     // MARK: - Der Punkt und die Tabelle
 
-    func testPunktzeilenSindFuenfMitDenStellenDerVorlage() {
+    func testPunktzeilenSindSechsMitDenStellenDerVorlage() {
         let z = Kennlinienbild.punktzeilen(
             punkt(aussenC: 4.52, vorlaufC: 38.4, cop: 3.456, waermeKw: 4.25, stromKw: 1.234))
-        XCTAssertEqual(z.map(\.wort), ["Arbeitszahl", "draußen", "Vorlauf", "Wärme", "Strom"])
+        XCTAssertEqual(
+            z.map(\.wort), ["Arbeitszahl", "draußen", "Vorlauf", "Hub", "Wärme", "Strom"])
         XCTAssertEqual(
             z.map(\.wert),
-            ["3,46", "4,5\(sp)°C", "38,4\(sp)°C", "4,3\(sp)kW", "1,23\(sp)kW"])
+            ["3,46", "4,5\(sp)°C", "38,4\(sp)°C", "33,9\(sp)K", "4,3\(sp)kW", "1,23\(sp)kW"])
+    }
+
+    // MARK: - Der Hub
+
+    func testDerHubIstVorlaufMinusDraussenUndDieGeradeLiegtNurUeberDerMessung() {
+        XCTAssertEqual(Kennlinienbild.hub(punkt(aussenC: -5, vorlaufC: 35)), 40)
+        let h = KennlinienHubOut(
+            art: .gerade, a: 7, bHub: -0.1, n: 12, rmse: 0.1, r2: 0.9, hubVonK: 20, hubBisK: 40,
+            guetegrad: 0.45, formelDe: "COP = 7,00 - 0,100 × Hub",
+            geltungDe: "Gemessen bei einem Hub zwischen 20,0 und 40,0 Kelvin.")
+        XCTAssertEqual(Kennlinienbild.copNachHub(h, hub: 30), 4, accuracy: 1e-9)
+        var k = antwort()
+        k.hub = h
+        let g = Kennlinienbild.hubgerade(k)
+        XCTAssertEqual(g.map(\.hub), [20, 40])
+        XCTAssertEqual(g[0].cop, 5, accuracy: 1e-9)
+        XCTAssertEqual(
+            Kennlinienbild.hubzeile(h),
+            "12 Punkte · mittlere Abweichung ±0,10 · erklärt 90\(sp)% der Streuung. "
+                + "Gemessen bei einem Hub zwischen 20,0 und 40,0 Kelvin.")
+        XCTAssertTrue(Kennlinienbild.hubgerade(antwort()).isEmpty)
+    }
+
+    func testDieSpalteUeberDemHubFindetDenNaechstenHub() {
+        let punkte = [
+            punkt(minuten: 0, aussenC: 5, vorlaufC: 35), punkt(minuten: 1, aussenC: 0, vorlaufC: 40),
+        ]
+        let s = Kennlinienbild.naechsteSpalte(punkte, bei: 38, nach: .hub)
+        XCTAssertEqual(s.map(\.aussenC), [0])
     }
 
     /// In der Zeit des Hauses und nicht in der des Zeitstempels: 19:00 UTC sind 20:00 in Berlin.

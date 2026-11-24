@@ -1458,6 +1458,28 @@ class KennlinienFitOut(BaseModel):
     geltung_de: str
 
 
+class KennlinienHubOut(BaseModel):
+    """COP = a + b_hub * Hub, mit Hub = Vorlauf minus Außentemperatur (`hems_core.thermal.kennlinie`).
+
+    `art` ist `gerade`, wenn der Hub genug streut, sonst `mittel`. Der Gütegrad ist der Anteil
+    an der Arbeitszahl eines idealen Kreisprozesses bei denselben Temperaturen.
+    """
+
+    art: Literal["gerade", "mittel"]
+    a: float
+    b_hub: float
+    n: int
+    rmse: float
+    r2: float | None = None
+    hub_von_k: float
+    hub_bis_k: float
+    guetegrad: float | None = None
+    formel_de: str
+    geltung_de: str
+    #: Der Gütegrad als Satz; leer, wenn es keinen gibt.
+    guete_de: str = ""
+
+
 class KennlinienAnnahmeOut(BaseModel):
     """Ein Punkt der Kennlinie, mit der der Fahrplan bisher rechnet."""
 
@@ -1504,6 +1526,8 @@ class KennlinieOut(BaseModel):
     tage: int
     punkte: list[KennlinienPunktOut] = Field(default_factory=list)
     fit: KennlinienFitOut | None = None
+    #: Die Arbeitszahl über dem Hub; fehlt bei zu wenigen Punkten.
+    hub: KennlinienHubOut | None = None
     #: Was dem Ausgleich noch fehlt, wenn es keinen gibt oder ein Term fehlt.
     fehlt_de: str | None = None
     #: Die Kennlinie des Fahrplans, gültig bei `annahme_vorlauf_c`.
@@ -2549,6 +2573,39 @@ class PasswortSetzenIn(BaseModel):
 
 class NameIn(BaseModel):
     name: str
+
+
+class HandeingriffOut(BaseModel):
+    """Etwas, das gerade von Hand gestellt ist und von der Automatik abweicht."""
+
+    #: Wovon der Eingriff handelt.
+    art: Literal["waermepumpe", "ofen", "speicher", "raum"]
+    #: Die Seite, auf der man ihn sieht und ändert (`docs/seitenbaum.json`).
+    weg: str
+    #: Was gestellt ist, als Satz.
+    satz_de: str
+    #: Bis wann er gilt. `None`, wenn er nicht von selbst endet.
+    bis: datetime | None = None
+    #: Ob „Alles zurück auf Automatik“ ihn beendet. Ein Raum, den jemand von Hand gestellt hat,
+    #: bleibt: sein Sollwert ist eine Vorgabe und kein Eingriff, und die Ruhe der Automatik
+    #: endet von selbst.
+    zuruecksetzbar: bool = False
+
+
+class HandeingriffeOut(BaseModel):
+    """Was gerade von Hand gestellt ist, oben auf der Seite „Einstellen“."""
+
+    eingriffe: list[HandeingriffOut] = Field(default_factory=list)
+
+
+class AutomatikZurueckOut(BaseModel):
+    """Das Ergebnis von „Alles zurück auf Automatik“."""
+
+    #: Ob alles zurückgestellt ist. Ein Gerät, das nicht antwortet, macht es `False`.
+    ok: bool
+    meldung_de: str
+    #: Die Liste danach, damit die Seite nicht noch einmal fragen muss.
+    handeingriffe: HandeingriffeOut
 
 
 class UebersichtBildOut(BaseModel):

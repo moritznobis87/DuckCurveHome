@@ -93,6 +93,7 @@ struct KennlinieSeite: View {
                 Vorlaufstreubild(kennlinie: k)
             }
         }
+        hubkarte(k)
         kennfeldkarte(k)
         vergleichskarte(k)
         if !k.punkte.isEmpty, let b = k.bilanz {
@@ -145,6 +146,30 @@ struct KennlinieSeite: View {
                     .font(Schrift.klein)
                     .foregroundStyle(Farbe.text3)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    // MARK: - Der Hub
+
+    /// Die Arbeitszahl über dem Hub, mit Formel, Geltung und Gütegrad darunter
+    /// (`Kennlinie.tsx`, Karte „Arbeitszahl über dem Hub“).
+    private func hubkarte(_ k: KennlinieOut) -> some View {
+        Karte(kicker: Kennlinienbild.hubtitel) {
+            VStack(alignment: .leading, spacing: 10) {
+                kleinersatz(Kennlinienbild.hubsatz)
+                Hubstreubild(kennlinie: k)
+                if let h = k.hub {
+                    Text(h.formelDe)
+                        .font(Schrift.mono(schmal ? 15 : 20, relativeTo: .body))
+                        .foregroundStyle(Farbe.text1)
+                        .fixedSize(horizontal: false, vertical: true)
+                    kleinersatz(Kennlinienbild.hubzeile(h))
+                    if let guete = h.gueteDe, !guete.isEmpty {
+                        kleinersatz(guete)
+                    }
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

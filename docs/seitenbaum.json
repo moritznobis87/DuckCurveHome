@@ -304,9 +304,9 @@
     },
     {
       "schluessel": "system",
-      "weg": "/system/uebersicht",
-      "name": "System",
-      "nurHausherr": true,
+      "weg": "/einstellen",
+      "name": "Einstellen",
+      "nurHausherr": false,
       "inLeiste": false,
       "gruppen": [],
       "reiter": [
@@ -373,6 +373,142 @@
       "weg": "/konto",
       "name": "Mein Zugang",
       "beschreibung": "Passkeys, Passwort und Sitzungen des eigenen Zugangs."
+    }
+  ],
+  "stufen": [
+    {
+      "schluessel": "eingreifen",
+      "name": "Eingreifen",
+      "wort": "jetzt und befristet",
+      "nurHausherr": false
+    },
+    {
+      "schluessel": "vorgeben",
+      "name": "Vorgeben",
+      "wort": "dauerhaft",
+      "nurHausherr": false
+    },
+    {
+      "schluessel": "abstimmen",
+      "name": "Abstimmen",
+      "wort": "womit die Regelung rechnet",
+      "nurHausherr": true
+    }
+  ],
+  "einstellungen": [
+    {
+      "name": "Wärmepumpe anfordern oder sperren",
+      "stufe": "eingreifen",
+      "weg": "/",
+      "stichworte": [
+        "Wärmepumpe",
+        "Kontakt",
+        "sperren",
+        "anfordern"
+      ]
+    },
+    {
+      "name": "Ofen an oder aus",
+      "stufe": "eingreifen",
+      "weg": "/",
+      "stichworte": [
+        "Ofen",
+        "Pelletofen",
+        "Pellets"
+      ]
+    },
+    {
+      "name": "Speicher anhalten oder freigeben",
+      "stufe": "eingreifen",
+      "weg": "/strom/speicher",
+      "stichworte": [
+        "Speicher",
+        "Batterie",
+        "Libbi"
+      ]
+    },
+    {
+      "name": "Alarmanlage scharf schalten",
+      "stufe": "eingreifen",
+      "weg": "/",
+      "stichworte": [
+        "Alarm",
+        "Alarmanlage",
+        "scharf"
+      ]
+    },
+    {
+      "name": "Solltemperatur eines Raums",
+      "stufe": "vorgeben",
+      "weg": "/haus",
+      "stichworte": [
+        "Raum",
+        "Temperatur",
+        "Sollwert",
+        "Heizung"
+      ]
+    },
+    {
+      "name": "Raum-Automatik",
+      "stufe": "vorgeben",
+      "weg": "/haus",
+      "stichworte": [
+        "Automatik",
+        "Räume",
+        "Vorheizen"
+      ]
+    },
+    {
+      "name": "Untergrenze des Speichers",
+      "stufe": "vorgeben",
+      "weg": "/strom/speicher",
+      "stichworte": [
+        "Speicher",
+        "Reserve",
+        "Untergrenze"
+      ]
+    },
+    {
+      "name": "Mitteilungen und Morgenbrief",
+      "stufe": "vorgeben",
+      "weg": "/system/mitteilungen",
+      "stichworte": [
+        "Mitteilungen",
+        "Push",
+        "Morgenbrief"
+      ]
+    },
+    {
+      "name": "Annahmen der Wärmerechnung",
+      "stufe": "abstimmen",
+      "weg": "/waerme/annahmen",
+      "stichworte": [
+        "Annahmen",
+        "Wärmebedarf",
+        "Haus",
+        "Modell"
+      ]
+    },
+    {
+      "name": "Parameter des Regelkreises",
+      "stufe": "abstimmen",
+      "weg": "/waerme/regelkreis",
+      "stichworte": [
+        "Regelkreis",
+        "Parameter",
+        "Übersteuern"
+      ]
+    },
+    {
+      "name": "Regler der Wärmepumpe",
+      "stufe": "abstimmen",
+      "weg": "/waerme/waermepumpe/regler",
+      "stichworte": [
+        "Regler",
+        "Heizkurve",
+        "Vorlauf",
+        "Wärmepumpe"
+      ]
     }
   ]
 }

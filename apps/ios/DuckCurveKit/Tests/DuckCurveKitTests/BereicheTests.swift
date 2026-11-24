@@ -10,7 +10,7 @@ import XCTest
 final class BereicheTests: XCTestCase {
     func testFuenfBereicheInDerLeisteUndDasSystemDahinter() {
         XCTAssertEqual(Bereiche.leiste.map(\.name), ["Jetzt", "Haus", "Energie", "Geld", "Anlage"])
-        XCTAssertEqual(Bereiche.alle.filter { !$0.inLeiste }.map(\.name), ["System"])
+        XCTAssertEqual(Bereiche.alle.filter { !$0.inLeiste }.map(\.name), ["Einstellen"])
     }
 
     func testOrdnetEinenWegSeinemBereichZu() {
@@ -49,8 +49,10 @@ final class BereicheTests: XCTestCase {
         XCTAssertEqual(Bereiche.bereichVon("/haus").reiter.map(\.name), ["Räume", "Über den Tag"])
     }
 
-    func testEinGastSiehtDieAnlageOhneRegelkreisUndAnnahmenUndDasSystemGarNicht() {
-        XCTAssertEqual(Bereiche.alle.filter(\.nurHausherr).map(\.schluessel), [.system])
+    func testEinGastSiehtDieAnlageOhneRegelkreisUndAnnahmenUndDieSystemseitenNicht() {
+        // Seit es „Einstellen“ gibt, ist kein ganzer Bereich dem Hausherrn vorbehalten: die
+        // Sammelseite sehen alle, die stellen dürfen, die Seiten des Systems nur der Hausherr.
+        XCTAssertEqual(Bereiche.alle.filter(\.nurHausherr).map(\.schluessel), [])
         let anlage = Bereiche.alle.first { $0.schluessel == .anlage }!
         XCTAssertEqual(
             anlage.reiter.filter { !$0.nurHausherr }.map(\.name),
@@ -110,13 +112,15 @@ final class BereicheTests: XCTestCase {
 
     func testEnergieAnlageUndSystemOeffnenAufIhrerUebersicht() {
         XCTAssertEqual(
-            Bereiche.alle.filter(\.hatUebersicht).map(\.weg), ["/energie", "/anlage", "/system/uebersicht"])
-        // `/system` selbst bleibt die Prognose im Bereich Energie; die Uebersicht des Systems
-        // liegt darunter und gehoert trotzdem zum System, weil die laengste Adresse gilt.
+            Bereiche.alle.filter(\.hatUebersicht).map(\.weg), ["/energie", "/anlage", "/einstellen"])
+        // `/system` selbst bleibt die Prognose im Bereich Energie. Die Übersicht des Systems ist
+        // seit dem 24.11.2026 „Einstellen“; die alte Adresse leitet dorthin weiter.
         XCTAssertEqual(Bereiche.bereichVon("/system").schluessel, .energie)
-        XCTAssertEqual(Bereiche.bereichVon("/system/uebersicht").schluessel, .system)
-        XCTAssertTrue(Bereiche.istUebersicht("/system/uebersicht"))
-        XCTAssertNil(Bereiche.reiterVon(Bereiche.bereichVon("/system/uebersicht"), "/system/uebersicht"))
+        XCTAssertEqual(Bereiche.bereichVon("/einstellen").schluessel, .system)
+        XCTAssertEqual(Bereiche.bereichVon("/system/zugang").schluessel, .system)
+        XCTAssertTrue(Bereiche.istUebersicht("/einstellen"))
+        XCTAssertNil(Bereiche.reiterVon(Bereiche.bereichVon("/einstellen"), "/einstellen"))
+        XCTAssertEqual(Bereiche.weiterleitung("/system/uebersicht"), "/einstellen")
         // Die Startseite hat keine Reiter und damit auch keine Uebersicht.
         XCTAssertFalse(Bereiche.alle.first { $0.schluessel == .jetzt }!.hatUebersicht)
         // Die Karte auf der Uebersicht braucht je Seite einen Satz.
@@ -184,9 +188,9 @@ final class BereicheTests: XCTestCase {
         XCTAssertTrue(Bereiche.nurHausherr("/system/geraet"))
         XCTAssertFalse(Bereiche.nurHausherr("/strom"))
         XCTAssertFalse(Bereiche.nurHausherr("/waerme/anlage"))
-        // Die Uebersicht des Systems gehoert dem Hausherrn wie der ganze Bereich; die der Energie
-        // und der Anlage sieht jeder.
-        XCTAssertTrue(Bereiche.nurHausherr("/system/uebersicht"))
+        // „Einstellen“ sieht jeder, der im Haus stellen darf; die Seiten des Systems bleiben dem
+        // Hausherrn. Die Übersichten der Energie und der Anlage sieht jeder.
+        XCTAssertFalse(Bereiche.nurHausherr("/einstellen"))
         XCTAssertFalse(Bereiche.nurHausherr("/energie"))
         XCTAssertFalse(Bereiche.nurHausherr("/anlage"))
     }
@@ -250,7 +254,7 @@ final class KickerTests: XCTestCase {
         // Die Uebersicht des Bereichs: kein Reiter, aber eine Zeile (`Bereichsuebersicht.tsx`).
         "/anlage": "Alle Seiten im Bereich Anlage",
         "/energie": "Alle Seiten im Bereich Energie",
-        "/system/uebersicht": "Alle Seiten im Bereich System",
+        "/einstellen": "was von Hand gestellt ist · eingreifen · vorgeben · abstimmen",
         "/waerme/anlage": "Strom · Speicher · vier Kreise",
         "/waerme/wiedergabe": "Ein Tag am Anlagenschema · zum Durchfahren",
         "/waerme/waermepumpe": "Außengerät · Innengerät · Speicher",

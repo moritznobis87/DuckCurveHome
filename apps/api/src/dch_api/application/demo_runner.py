@@ -1358,6 +1358,10 @@ class DemoRunner:
         """
         raise DchError("no_stove", "Im Demo-Modus gibt es keinen Ofen.", 404)
 
+    async def end_stove_override(self) -> StoveLiveOut:
+        """Ohne Ofen gibt es auch keinen Eingriff am Ofen, den man beenden könnte."""
+        raise DchError("no_stove", "Im Demo-Modus gibt es keinen Ofen.", 404)
+
     def demo_control(
         self,
         speed: float | None,

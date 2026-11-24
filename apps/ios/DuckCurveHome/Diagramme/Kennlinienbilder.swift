@@ -263,14 +263,25 @@ struct Kennlinienstreubild: View {
         }
     }
 
-    /// Das Verlaufsband unter dem Bild: von wo bis wo der gemessene Vorlauf reichte
-    /// (`Kennlinie.tsx:173-177`, `globals.css:904-906`).
-    ///
-    /// **Ein Band und keine fünf festen Kreise.** Die App zeigte Kreise bei 28/34/40/46/55 °C -
-    /// also Marken einer Skala, die es so nicht gibt. Das Band nennt die beiden Enden der
-    /// Messung und zeigt dazwischen die Farben, die wirklich vorkommen.
-    @ViewBuilder private var band: some View {
-        if let spanne = Kennlinienbild.vorlaufspanne(kennlinie.punkte) {
+    private var band: some View { Vorlaufband(punkte: kennlinie.punkte) }
+
+    private var gelesenePunkte: [KennlinienPunktOut] {
+        Kennlinienbild.naechsteSpalte(kennlinie.punkte, bei: gelesen, nach: .aussen)
+    }
+}
+
+/// Das Verlaufsband unter einem Streubild: von wo bis wo der gemessene Vorlauf reichte
+/// (`Kennlinie.tsx`, `Vorlaufskala`). Steht unter beiden Bildern, deren Punkte die Farbe ihres
+/// Vorlaufs tragen: über der Außentemperatur und über dem Hub.
+///
+/// **Ein Band und keine fünf festen Kreise.** Die App zeigte Kreise bei 28/34/40/46/55 °C -
+/// also Marken einer Skala, die es so nicht gibt. Das Band nennt die beiden Enden der
+/// Messung und zeigt dazwischen die Farben, die wirklich vorkommen.
+private struct Vorlaufband: View {
+    let punkte: [KennlinienPunktOut]
+
+    @ViewBuilder var body: some View {
+        if let spanne = Kennlinienbild.vorlaufspanne(punkte) {
             HStack(spacing: 10) {
                 Text("Vorlauf \(Formate.celsius(spanne.lowerBound))")
                     .font(Schrift.mono(12, relativeTo: .caption))
@@ -292,10 +303,6 @@ struct Kennlinienstreubild: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Kennlinienbild.bandbeschriftung(spanne))
         }
-    }
-
-    private var gelesenePunkte: [KennlinienPunktOut] {
-        Kennlinienbild.naechsteSpalte(kennlinie.punkte, bei: gelesen, nach: .aussen)
     }
 }
 
@@ -382,6 +389,88 @@ struct Vorlaufstreubild: View {
 
     private var gelesenePunkte: [KennlinienPunktOut] {
         Kennlinienbild.naechsteSpalte(kennlinie.punkte, bei: gelesen, nach: .vorlauf)
+    }
+}
+
+// MARK: - Arbeitszahl über dem Hub
+
+/// Das dritte Streubild: die Arbeitszahl über dem Hub, Vorlauf minus draußen
+/// (`kennlinie.ts`, `optionHub`; Wunsch des Hausherrn vom 24.11.2026).
+///
+/// Der Hub fasst beide Temperaturen in einer Zahl. Das Bild trägt deshalb auch dann, wenn der
+/// Vorlauf der Heizkurve folgt und die Ebene die zwei Einflüsse nicht trennen kann. Die Punkte
+/// tragen wie im ersten Bild die Farbe ihres Vorlaufs, das Band darunter erklärt sie.
+struct Hubstreubild: View {
+    let kennlinie: KennlinieOut
+
+    @Environment(\.horizontalSizeClass) private var breite
+    @State private var gelesen: Double?
+
+    private var schmal: Bool { breite == .compact }
+    private var hoehe: CGFloat { schmal ? 280 : 320 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Achsenwort(wort: Kennlinienbild.copachse)
+            diagramm
+            Achsenfuss(wort: Kennlinienbild.hubachse)
+            legende
+            Vorlaufband(punkte: kennlinie.punkte)
+            Punktauswahl(punkte: gelesenePunkte)
+        }
+    }
+
+    private var diagramm: some View {
+        Chart {
+            gerade
+            messpunkte
+        }
+        .chartYScale(domain: Kennlinienbild.copAchse(punkte: kennlinie.punkte, annahme: []))
+        .chartXSelection(value: $gelesen)
+        .chartLegend(.hidden)
+        .chartXAxis { Kennlinienachse.waagerecht() }
+        .chartYAxis { Kennlinienachse.senkrecht() }
+        .frame(height: hoehe)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Kennlinienbild.hubtitel)
+    }
+
+    @ChartContentBuilder private var gerade: some ChartContent {
+        ForEach(Array(Kennlinienbild.hubgerade(kennlinie).enumerated()), id: \.offset) { _, e in
+            LineMark(
+                x: .value("Hub", e.hub),
+                y: .value(Kennlinienbild.copachse, e.cop),
+                series: .value("Reihe", "ausgleich")
+            )
+            .foregroundStyle(Kennlinienfarben.ausgleich)
+            .lineStyle(StrokeStyle(lineWidth: 2))
+        }
+    }
+
+    @ChartContentBuilder private var messpunkte: some ChartContent {
+        ForEach(Array(kennlinie.punkte.enumerated()), id: \.offset) { _, p in
+            PointMark(
+                x: .value("Hub", Kennlinienbild.hub(p)),
+                y: .value(Kennlinienbild.copachse, p.cop)
+            )
+            .symbol { Punktzeichen(farbe: Color(Marken.wasserfarbe(p.vorlaufC))) }
+        }
+    }
+
+    private var legende: some View {
+        Umbruchzeile(abstand: 14, zeilenabstand: 5) {
+            Punktmarke(
+                wort: Kennlinienbild.messpunktwort, farbe: Color(Marken.wasserfarbe(40)))
+            if !Kennlinienbild.hubgerade(kennlinie).isEmpty {
+                Strichmarke(
+                    wort: Kennlinienbild.ausgleichswort,
+                    farbe: Kennlinienfarben.ausgleich, gestrichelt: false)
+            }
+        }
+    }
+
+    private var gelesenePunkte: [KennlinienPunktOut] {
+        Kennlinienbild.naechsteSpalte(kennlinie.punkte, bei: gelesen, nach: .hub)
     }
 }
 

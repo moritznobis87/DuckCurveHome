@@ -164,12 +164,15 @@ struct Reiterzeile: View {
     }
 }
 
-/// Das Zahnrad: der Weg zum System.
+/// Das Zahnrad: der Weg zu „Einstellen“ und von dort zum System (`AreaNav.tsx`, `Systemknopf`).
+///
+/// Seit dem 24.11.2026 öffnet es „Einstellen“ und steht für jeden da, der im Haus stellen darf.
+/// Die Systemseiten dahinter bleiben dem Hausherrn.
 ///
 /// Die Verwaltung (Mitteilungen, Haustür, Hausgerät, Zugang, Daten prüfen) stand bis zum
 /// 23.11.2026 als fünf Reiter zwischen den Seiten, die man täglich ansieht. Sie wird selten
-/// gebraucht und nur vom Hausherrn; darum liegt sie hinter einem Knopf im Kopf und belegt
-/// keinen Platz in der Leiste (`AreaNav.tsx`, `Systemknopf`). Ein Gast sieht den Knopf nicht.
+/// gebraucht; darum liegt sie hinter einem Knopf im Kopf und belegt keinen Platz in der Leiste.
+/// Ein Gast sieht den Knopf nicht.
 struct Systemknopf: View {
     @Environment(Hauszustand.self) private var haus
     let wegweiser: Wegweiser
@@ -177,7 +180,8 @@ struct Systemknopf: View {
     var groesse: CGFloat = 22
 
     var body: some View {
-        if haus.hatVollzugriff, let system = Bereiche.alle.first(where: { $0.schluessel == .system }) {
+        // Wer im Haus stellen darf, sieht das Zahnrad: dahinter liegt „Einstellen“ (24.11.2026).
+        if haus.darfSchalten, let system = Bereiche.alle.first(where: { $0.schluessel == .system }) {
             let istAktiv = wegweiser.bereich.schluessel == .system
             Button {
                 wegweiser.merkeReiter()

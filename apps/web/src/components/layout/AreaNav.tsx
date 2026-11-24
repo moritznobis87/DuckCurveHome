@@ -43,18 +43,23 @@ export function AreaIcons({ size = 20 }: { size?: number }) {
 }
 
 /**
- * Das Zahnrad: der Weg zum System.
+ * Das Zahnrad: der Weg zu „Einstellen“ und von dort zum System.
+ *
+ * Seit dem 24.11.2026 öffnet es „Einstellen“: was gerade von Hand gestellt ist, die
+ * Einstellungen in drei Stufen und zuletzt die Systemseiten. Es steht für jeden da, der im Haus
+ * stellen darf; ein Gast sieht es nicht.
  *
  * Die Verwaltung (Mitteilungen, Haustuer, Hausgeraet, Zugang, Daten pruefen) stand bis zum
  * 23.11.2026 als fuenf Reiter zwischen den Seiten, die man taeglich ansieht. Sie wird selten
  * gebraucht und nur vom Hausherrn; darum liegt sie hinter einem Knopf im Kopf der Seite und
- * belegt keinen Platz in der Leiste. Wer nicht Hausherr ist, sieht den Knopf nicht.
+ * belegt keinen Platz in der Leiste.
  */
 export function Systemknopf() {
   const pathname = usePathname();
-  const { hausherr } = useSitzung();
+  // Wer im Haus stellen darf, sieht das Zahnrad: dahinter liegt „Einstellen“ (24.11.2026).
+  const { role } = useSitzung();
   const system = AREAS.find((a) => a.key === "system");
-  if (!system || !hausherr) return null;
+  if (!system || role !== "owner") return null;
   const on = areaOf(pathname ?? "/").key === "system";
   return (
     <Link

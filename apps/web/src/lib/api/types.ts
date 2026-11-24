@@ -1949,6 +1949,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/control/handeingriffe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Was gerade von Hand gestellt ist
+         * @description Die Eingriffe, die gerade von der Automatik abweichen, je mit einem fertigen Satz.
+         *
+         *     Oben auf der Seite „Einstellen“. Welche davon „Alles zurück auf Automatik“ beendet, sagt
+         *     `zuruecksetzbar`.
+         */
+        get: operations["liste_handeingriffe_api_v1_control_handeingriffe_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/control/automatik": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Alles zurück auf Automatik
+         * @description Beendet alle befristeten Eingriffe: Wärmepumpe, Ofen und Speicher gehen dorthin, wohin
+         *     sie auch nach Ablauf ihrer Frist gingen. Räume und der Regelkreis bleiben.
+         *
+         *     Liegt unter `/control/` und darf damit auch von einem Bewohner gestellt werden
+         *     (`auth/rechte.py`): Wer im Haus von Hand stellen darf, darf es auch zurücknehmen.
+         */
+        post: operations["alles_zurueck_api_v1_control_automatik_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/config": {
         parameters: {
             query?: never;
@@ -2703,6 +2750,17 @@ export interface components {
          * @enum {string}
          */
         AutoProfile: "eco" | "pv" | "price" | "smart";
+        /**
+         * AutomatikZurueckOut
+         * @description Das Ergebnis von „Alles zurück auf Automatik“.
+         */
+        AutomatikZurueckOut: {
+            /** Ok */
+            ok: boolean;
+            /** Meldung De */
+            meldung_de: string;
+            handeingriffe: components["schemas"]["HandeingriffeOut"];
+        };
         /**
          * BackfillResultOut
          * @description Ergebnis eines manuell angestoßenen myenergi-Historienabrufs.
@@ -4876,6 +4934,36 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
+         * HandeingriffOut
+         * @description Etwas, das gerade von Hand gestellt ist und von der Automatik abweicht.
+         */
+        HandeingriffOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "waermepumpe" | "ofen" | "speicher" | "raum";
+            /** Weg */
+            weg: string;
+            /** Satz De */
+            satz_de: string;
+            /** Bis */
+            bis?: string | null;
+            /**
+             * Zuruecksetzbar
+             * @default false
+             */
+            zuruecksetzbar: boolean;
+        };
+        /**
+         * HandeingriffeOut
+         * @description Was gerade von Hand gestellt ist, oben auf der Seite „Einstellen“.
+         */
+        HandeingriffeOut: {
+            /** Eingriffe */
+            eingriffe?: components["schemas"]["HandeingriffOut"][];
+        };
+        /**
          * HeatBalanceOut
          * @description Die Wärmeseite eines Zeitraums: wer geliefert hat, was entnommen wurde, was verloren ging.
          */
@@ -6068,6 +6156,7 @@ export interface components {
             /** Punkte */
             punkte?: components["schemas"]["KennlinienPunktOut"][];
             fit?: components["schemas"]["KennlinienFitOut"] | null;
+            hub?: components["schemas"]["KennlinienHubOut"] | null;
             /** Fehlt De */
             fehlt_de?: string | null;
             /** Annahme */
@@ -6175,6 +6264,45 @@ export interface components {
             formel_de: string;
             /** Geltung De */
             geltung_de: string;
+        };
+        /**
+         * KennlinienHubOut
+         * @description COP = a + b_hub * Hub, mit Hub = Vorlauf minus Außentemperatur (`hems_core.thermal.kennlinie`).
+         *
+         *     `art` ist `gerade`, wenn der Hub genug streut, sonst `mittel`. Der Gütegrad ist der Anteil
+         *     an der Arbeitszahl eines idealen Kreisprozesses bei denselben Temperaturen.
+         */
+        KennlinienHubOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "gerade" | "mittel";
+            /** A */
+            a: number;
+            /** B Hub */
+            b_hub: number;
+            /** N */
+            n: number;
+            /** Rmse */
+            rmse: number;
+            /** R2 */
+            r2?: number | null;
+            /** Hub Von K */
+            hub_von_k: number;
+            /** Hub Bis K */
+            hub_bis_k: number;
+            /** Guetegrad */
+            guetegrad?: number | null;
+            /** Formel De */
+            formel_de: string;
+            /** Geltung De */
+            geltung_de: string;
+            /**
+             * Guete De
+             * @default
+             */
+            guete_de: string;
         };
         /**
          * KennlinienPunktOut
@@ -12186,6 +12314,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    liste_handeingriffe_api_v1_control_handeingriffe_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandeingriffeOut"];
+                };
+            };
+        };
+    };
+    alles_zurueck_api_v1_control_automatik_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomatikZurueckOut"];
                 };
             };
         };

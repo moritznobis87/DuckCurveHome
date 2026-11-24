@@ -1161,6 +1161,23 @@ class LiveRuntime:
         self._sende_zustand(erzwinge=True)
         return state
 
+    async def end_stove_override(self) -> StoveLiveOut:
+        """Einen befristeten Eingriff am Ofen beenden, wie es der Ablauf der Frist täte.
+
+        Es geht kein Befehl an die Bridge, und der Planer übernimmt nicht: Der Ofen bleibt, wie
+        er ist, und DCH lässt ihn danach in Ruhe (`stove_control.DEFAULT_MODE`).
+        """
+        now = self.now
+        before = self.stove.mode
+        self.stove.beenden()
+        if self.stove.mode != before:
+            await self.repos.add_event(
+                "info", "stove.mode", f"Ofen: {before} → {self.stove.mode}", {}
+            )
+        state = self._stove_state(now)
+        self._sende_zustand(erzwinge=True)
+        return state
+
     async def set_heat_pump_mode(
         self,
         system_mode: SystemMode,

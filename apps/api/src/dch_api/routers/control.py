@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
+from dch_api.application import handeingriffe
 from dch_api.application.runtime import Runtime
 from dch_api.dependencies import get_runner
 from dch_api.errors import DchError
@@ -12,8 +13,10 @@ from dch_api.schemas import (
     ActuatorCommandOut,
     AlarmArmIn,
     AlarmArmOut,
+    AutomatikZurueckOut,
     BatteryLiveOut,
     BatteryModeIn,
+    HandeingriffeOut,
     HeatPumpModeIn,
     StoveLiveOut,
     StoveModeIn,
@@ -125,3 +128,26 @@ async def decisions(
     runner: Annotated[Runtime, Depends(get_runner)], limit: int = 20
 ) -> list[Decision]:
     return await runner.recent_decisions(max(1, min(limit, 300)))
+
+
+@router.get(
+    "/handeingriffe", response_model=HandeingriffeOut, summary="Was gerade von Hand gestellt ist"
+)
+async def liste_handeingriffe(runner: Annotated[Runtime, Depends(get_runner)]) -> HandeingriffeOut:
+    """Die Eingriffe, die gerade von der Automatik abweichen, je mit einem fertigen Satz.
+
+    Oben auf der Seite „Einstellen“. Welche davon „Alles zurück auf Automatik“ beendet, sagt
+    `zuruecksetzbar`.
+    """
+    return await handeingriffe.aktuell(runner)
+
+
+@router.post("/automatik", response_model=AutomatikZurueckOut, summary="Alles zurück auf Automatik")
+async def alles_zurueck(runner: Annotated[Runtime, Depends(get_runner)]) -> AutomatikZurueckOut:
+    """Beendet alle befristeten Eingriffe: Wärmepumpe, Ofen und Speicher gehen dorthin, wohin
+    sie auch nach Ablauf ihrer Frist gingen. Räume und der Regelkreis bleiben.
+
+    Liegt unter `/control/` und darf damit auch von einem Bewohner gestellt werden
+    (`auth/rechte.py`): Wer im Haus von Hand stellen darf, darf es auch zurücknehmen.
+    """
+    return await handeingriffe.zuruecksetzen(runner)

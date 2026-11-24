@@ -69,6 +69,17 @@ class StoveController:
             self.mode, self.ends_at = DEFAULT_MODE, None
         return self.mode
 
+    def beenden(self) -> StoveMode:
+        """Einen laufenden Eingriff so beenden, wie ihn der Ablauf seiner Frist beendet.
+
+        Der Modus fällt auf die Vorgabe zurück, nicht auf `auto`, und es wird nichts geschaltet:
+        Wer „alles zurück“ drückt, soll den Ofen nicht dem Planer übergeben, sondern denselben
+        Zustand bekommen, den das Ende der Frist ohnehin hergestellt hätte.
+        """
+        if self.ends_at is not None:
+            self.mode, self.ends_at = DEFAULT_MODE, None
+        return self.mode
+
     def set(self, mode: StoveMode, duration_min: int, now: datetime) -> StoveMode:
         """Einen Modus setzen. `auto` hebt einen laufenden Eingriff auf, ohne selbst zu schalten."""
         if mode == "auto":

@@ -166,3 +166,15 @@ def test_passkey_einstellung_wird_geprueft() -> None:
         ).passkey_problem()
         or ""
     )
+
+
+def test_wer_im_haus_stellt_darf_auch_alles_zurueckstellen() -> None:
+    """„Alles zurück auf Automatik“ liegt unter `/control/`: Wer von Hand stellen darf, darf es
+    auch zurücknehmen. Ein Gast und der Beratungszugang dürfen beides nicht."""
+    assert rechte.darf("hausherr", "POST", "/control/automatik")
+    assert rechte.darf("bewohner", "POST", "/control/automatik")
+    assert not rechte.darf("gast", "POST", "/control/automatik")
+    assert not rechte.darf("service", "POST", "/control/automatik")
+    # Die Liste lesen darf jeder Angemeldete.
+    for rolle in ("hausherr", "bewohner", "gast", "service"):
+        assert rechte.darf(rolle, "GET", "/control/handeingriffe"), rolle
