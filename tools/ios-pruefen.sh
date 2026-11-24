@@ -37,7 +37,8 @@ gruen() { printf '\033[0;32m  %s\033[0m\n' "$*"; }
 blau "1/5  Erzeugte Dateien gegen ihre Quellen halten"
 python3 tools/gen-swift.py --pruefen
 python3 tools/gen-zeichen.py --pruefen
-gruen "Schema und Zeichen sind auf dem Stand von docs/openapi.json und Icon.tsx."
+python3 tools/gen-schaltbild.py --pruefen
+gruen "Schema, Zeichen und Schaltbild sind auf dem Stand von docs/openapi.json, Icon.tsx und docs/regelkreis-schaltbild.json."
 # Das Xcode-Projekt liegt eingecheckt im Repository, damit Xcode ohne XcodeGen aufgeht. Dafuer
 # muss es gegen project.yml bewacht werden - sonst wird eine neue Datei stumm nicht gebaut.
 python3 tools/xcodeproj-pruefen.py

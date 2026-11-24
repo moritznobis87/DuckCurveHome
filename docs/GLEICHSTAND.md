@@ -41,8 +41,17 @@ Behoben am 24.11.2026, nach der ersten Fassung dieser Liste:
 |---|---|---|---|
 | Regelkreis | Blockschaltbild mit vier Ebenen, darunter die Kreise | Liste der Kreise ohne Schaltbild | `components/regelkreis/Karte.tsx`, `RegelkreisSeite.swift` |
 
-Ob die App das Schaltbild bekommt oder das Dashboard die Liste, entscheidet der Hausherr; die
-Frage ist ihm gestellt.
+**Entschieden am 24.11.2026:** überall das Blockschaltbild, keine Liste. Die App bekommt das
+Schaltbild des Dashboards. Die Geometrie steht dafür einmal in
+`docs/regelkreis-schaltbild.json`; das Dashboard wird mit `layout.test.ts` dagegen gehalten, die
+App bekommt `Schaltbilddaten.swift` daraus erzeugt (`tools/gen-schaltbild.py`). Die Zeichnung in
+der App und die fehlenden Erklärtexte folgen.
+
+## Anmeldung
+
+**Entschieden am 24.11.2026:** In der App gilt dieselbe Anmeldelogik wie im Browser. Offen ist,
+ob dazu ein Passwort gehören soll: Das Dashboard kennt heute keines, nur Passkey und
+Ersatzcodes (`docs/ZUGANG.md`, ADR-0002). Die Frage ist dem Hausherrn gestellt.
 
 ## Was als Nächstes dran ist
 
