@@ -81,6 +81,35 @@ public struct Gruppe: Sendable, Hashable, Identifiable {
     }
 }
 
+/// Die Farbe, die eine Seite auf ihrer Kachel traegt: die der Sache, von der sie handelt,
+/// dieselbe wie im Energiefluss und in den Diagrammen (`areas.ts`, `Seitenfarbe`). `ruhig`
+/// heisst: die Seite handelt von keiner der gefaerbten Sachen. Den Farbwert setzt die
+/// Oberflaeche ein; der Kern kennt kein SwiftUI.
+public enum Seitenfarbe: String, Sendable, Hashable, CaseIterable {
+    case pv, haus, waermepumpe, speicher, wallbox, ruhig
+}
+
+/// Die Leitzahl einer Kachel, in Zahl und Einheit zerlegt: „19,1 kWh“ wird zu „19,1“ und „kWh“.
+///
+/// Der Dienst liefert sie als einen Text. Auf der Kachel steht die Zahl groß und die Einheit
+/// klein dahinter; das ist die ganze Zerlegung, gerechnet wird hier nichts. Dieselbe Regel wie
+/// im Dashboard (`Bereichsuebersicht.tsx`, `zahlUndEinheit`): geschnitten wird am letzten
+/// Leerzeichen, ein Text ohne Leerzeichen bleibt ganz die Zahl.
+public struct Leitzahl: Sendable, Hashable {
+    public let zahl: String
+    public let einheit: String
+
+    public init(_ text: String) {
+        if let schnitt = text.lastIndex(of: " ") {
+            zahl = String(text[..<schnitt])
+            einheit = String(text[text.index(after: schnitt)...])
+        } else {
+            zahl = text
+            einheit = ""
+        }
+    }
+}
+
 /// Ein Reiter innerhalb eines Bereichs.
 public struct Reiter: Sendable, Hashable, Identifiable {
     public var weg: String
@@ -125,16 +154,22 @@ public struct Reiter: Sendable, Hashable, Identifiable {
     /// Ein Satz fuer die Karte auf der Uebersicht des Bereichs: was die Seite beantwortet. Er
     /// steht im Seitenbaum, damit er im Dashboard und in der App derselbe ist.
     public var beschreibung: String?
+    /// Das Zeichen der Seite auf ihrer Kachel in der Uebersicht (`docs/seitenbaum.json`).
+    public var zeichen: Zeichenart
+    /// Die Farbe der Sache, von der die Seite handelt (`docs/seitenbaum.json`).
+    public var farbe: Seitenfarbe
 
     public var id: String { weg }
 
     public init(
-        weg: String, name: String, mitZeitraum: Bool = false,
+        weg: String, name: String, zeichen: Zeichenart, farbe: Seitenfarbe, mitZeitraum: Bool = false,
         spannen: [Spanne] = Spanne.allCases, nurHausherr: Bool = false, unter: [Ansicht] = [],
         kicker: String? = nil, gruppe: String? = nil, beschreibung: String? = nil
     ) {
         self.weg = weg
         self.name = name
+        self.zeichen = zeichen
+        self.farbe = farbe
         self.mitZeitraum = mitZeitraum
         self.spannen = spannen
         self.nurHausherr = nurHausherr
@@ -234,8 +269,8 @@ public enum Bereiche {
         Bereich(
             schluessel: .haus, weg: "/haus", zeichen: .haus, name: "Haus",
             reiter: [
-                Reiter(weg: "/haus", name: "Räume"),
-                Reiter(weg: "/waerme/raeume", name: "Über den Tag", mitZeitraum: true, spannen: [.tag],
+                Reiter(weg: "/haus", name: "Räume", zeichen: .haus, farbe: .ruhig),
+                Reiter(weg: "/waerme/raeume", name: "Über den Tag", zeichen: .thermometer, farbe: .ruhig, mitZeitraum: true, spannen: [.tag],
                     kicker: "Einzelraumregelung · Abweichung vom Ziel über den Tag"),  // `RoomsReport.tsx:600`
             ]
         ),
@@ -244,30 +279,30 @@ public enum Bereiche {
             // Die Seiten behalten ihre Adressen; neu ist nur `/energie`.
             schluessel: .energie, weg: "/energie", zeichen: .blitz, name: "Energie",
             reiter: [
-                Reiter(weg: "/strom", name: "Strom", mitZeitraum: true,
+                Reiter(weg: "/strom", name: "Strom", zeichen: .blitz, farbe: .haus, mitZeitraum: true,
                     kicker: Stromuebersicht.seitenkicker,  // `HouseReport.tsx:42`
                     beschreibung: "Woher der Strom kam und wer ihn verbraucht hat."),
-                Reiter(weg: "/waerme", name: "Wärme", mitZeitraum: true,
+                Reiter(weg: "/waerme", name: "Wärme", zeichen: .flamme, farbe: .waermepumpe, mitZeitraum: true,
                     kicker: "gerechnet, nicht gemessen",  // `HeatOverview.tsx:137`
                     beschreibung: "Was die Wärmepumpe gebraucht hat und woher die Wärme kam."),
-                Reiter(weg: "/strom/pv", name: "Photovoltaik", mitZeitraum: true,
+                Reiter(weg: "/strom/pv", name: "Photovoltaik", zeichen: .sonne, farbe: .pv, mitZeitraum: true,
                     kicker: "Erzeugung · Verwendung · Prognose",  // `PvReport.tsx:77`
                     beschreibung: "Was die Anlage erzeugt hat und wohin der Sonnenstrom ging."),
                 // Die Prognose der Photovoltaik gegen das, was wirklich kam. Sie steht neben ihr
                 // und nicht als Ansicht darunter, weil sie keinen Zeitraum kennt.
-                Reiter(weg: "/system", name: "Prognose", nurHausherr: true,
+                Reiter(weg: "/system", name: "Prognose", zeichen: .diagramm, farbe: .ruhig, nurHausherr: true,
                     kicker: "PV-Prognose gegen Ist · Korrekturfaktoren",  // `ForecastPage.tsx:245`
                     beschreibung: "Wie gut die Vorhersage des Sonnenertrags getroffen hat."),
                 // **Ohne Kicker, und nicht aus Versehen.** Die Vorlage rechnet ihn hier aus der
                 // Kapazität („13,8 kWh · Nutzung und Ersparnis“, `BatteryReport.tsx:103`), und
                 // die kennt erst die Antwort des Dienstes. Die Seite zeichnet ihn darum weiter
                 // selbst (``Speicherbild/seitenkicker(_:)``).
-                Reiter(weg: "/strom/speicher", name: "Speicher", mitZeitraum: true,
+                Reiter(weg: "/strom/speicher", name: "Speicher", zeichen: .batterie, farbe: .speicher, mitZeitraum: true,
                     beschreibung: "Wann der Speicher geladen und entladen hat."),
-                Reiter(weg: "/strom/wallbox", name: "Wallbox", mitZeitraum: true,
+                Reiter(weg: "/strom/wallbox", name: "Wallbox", zeichen: .auto, farbe: .wallbox, mitZeitraum: true,
                     kicker: "Ladungen · Herkunft · Kosten",  // `EvReport.tsx:36`
                     beschreibung: "Wann das Auto geladen hat und mit welchem Strom."),
-                Reiter(weg: "/strom/jahr", name: "Jahreskarte",
+                Reiter(weg: "/strom/jahr", name: "Jahreskarte", zeichen: .kalender, farbe: .ruhig,
                     kicker: Jahresraster.kicker,  // `YearMap.tsx:94`
                     beschreibung: "Jede Stunde eines Jahres als Bild."),
             ]
@@ -275,13 +310,13 @@ public enum Bereiche {
         Bereich(
             schluessel: .geld, weg: "/geld", zeichen: .euro, name: "Geld",
             reiter: [
-                Reiter(weg: "/geld", name: "Kosten", mitZeitraum: true,
+                Reiter(weg: "/geld", name: "Kosten", zeichen: .euro, farbe: .ruhig, mitZeitraum: true,
                     kicker: Gelduebersicht.seitenkicker),  // `CostReport.tsx:107`
                 Reiter(
-                    weg: "/geld/pv-abrechnung", name: "PV-Abrechnung", mitZeitraum: true,
+                    weg: "/geld/pv-abrechnung", name: "PV-Abrechnung", zeichen: .sonne, farbe: .pv, mitZeitraum: true,
                     spannen: [.monat, .jahr], nurHausherr: true,
                     kicker: "Einspeisung · Eigenverbrauch · Umsatzsteuer"),  // `PvAccounting.tsx:82`
-                Reiter(weg: "/geld/rechnungen", name: "Rechnungen", nurHausherr: true,
+                Reiter(weg: "/geld/rechnungen", name: "Rechnungen", zeichen: .tabelle, farbe: .ruhig, nurHausherr: true,
                     kicker: Rechnungspruefung.seitenkicker),  // `InvoiceCheck.tsx:205`
             ]
         ),
@@ -294,7 +329,7 @@ public enum Bereiche {
             ],
             reiter: [
                 Reiter(
-                    weg: "/waerme/anlage", name: "Anlage",
+                    weg: "/waerme/anlage", name: "Anlage", zeichen: .thermometer, farbe: .ruhig,
                     unter: [
                         // `waerme/anlage/page.tsx:9` und `waerme/wiedergabe/page.tsx:10`: zwei
                         // Seiten, zwei Kicker - der des Reiters bleibt deshalb leer.
@@ -307,7 +342,7 @@ public enum Bereiche {
                     beschreibung: "Speicher, Vorlauf und Heizkreise im Schema, im Augenblick und über einen Tag."
                 ),
                 Reiter(
-                    weg: "/waerme/waermepumpe", name: "Wärmepumpe",
+                    weg: "/waerme/waermepumpe", name: "Wärmepumpe", zeichen: .waermepumpe, farbe: .waermepumpe,
                     unter: [
                         Ansicht(weg: "/waerme/waermepumpe", name: "Jetzt",
                             kicker: "Außengerät · Innengerät · Speicher"),  // `waermepumpe/page.tsx:9`
@@ -320,7 +355,7 @@ public enum Bereiche {
                     beschreibung: "Der Zustand des Geräts, seine Läufe und die gemessene Arbeitszahl."
                 ),
                 Reiter(
-                    weg: "/waerme/fahrplan", name: "Fahrplan",
+                    weg: "/waerme/fahrplan", name: "Fahrplan", zeichen: .uhr, farbe: .waermepumpe,
                     unter: [
                         Ansicht(weg: "/waerme/fahrplan", name: "Voraus",
                             kicker: "Preis · PV · Wärmebedarf · Puffer · zwei Tage"),  // `fahrplan/page.tsx:9`
@@ -330,15 +365,15 @@ public enum Bereiche {
                     gruppe: "Regelung",
                     beschreibung: "Wann die Wärmepumpe laufen soll und was der Plan von gestern gehalten hat."
                 ),
-                Reiter(weg: "/waerme/wirkung", name: "Wirkung",
+                Reiter(weg: "/waerme/wirkung", name: "Wirkung", zeichen: .ziel, farbe: .ruhig,
                     kicker: "Folgt die Wärmepumpe der Anforderung? · gemessen, nicht angenommen",  // `wirkung/page.tsx:9`
                     gruppe: "Regelung",
                     beschreibung: "Ob die Wärmepumpe der Anforderung folgt, gemessen an ihren Läufen."),
-                Reiter(weg: "/waerme/regelkreis", name: "Regelkreis", nurHausherr: true,
+                Reiter(weg: "/waerme/regelkreis", name: "Regelkreis", zeichen: .kreis, farbe: .ruhig, nurHausherr: true,
                     kicker: Regelkreisbild.seitenkicker,  // `waerme/regelkreis/page.tsx:12`
                     gruppe: "Regelung",
                     beschreibung: "Die Regelung mit ihren Ebenen, Stellgrößen und Parametern."),
-                Reiter(weg: "/waerme/annahmen", name: "Annahmen", nurHausherr: true,
+                Reiter(weg: "/waerme/annahmen", name: "Annahmen", zeichen: .tabelle, farbe: .ruhig, nurHausherr: true,
                     kicker: Annahmenfelder.kicker,  // `waerme/annahmen/page.tsx:13`
                     gruppe: "Abstimmung",
                     beschreibung: "Die Werte, mit denen das Modell des Hauses rechnet."),
@@ -346,7 +381,7 @@ public enum Bereiche {
                 // Ansicht der Waermepumpe; als Stelle zum Einstellen gehoert er zur Abstimmung.
                 // Seine Adresse liegt weiter unter der der Waermepumpe: es gilt die laengste
                 // passende Adresse (``Bereiche/reiterVon(_:_:)``).
-                Reiter(weg: "/waerme/waermepumpe/regler", name: "Regler",
+                Reiter(weg: "/waerme/waermepumpe/regler", name: "Regler", zeichen: .schieber, farbe: .waermepumpe,
                     kicker: "Einstellungen · gelesen",  // `waermepumpe/regler/page.tsx:9`
                     gruppe: "Abstimmung",
                     beschreibung: "Die Einstellungen am Regler der Wärmepumpe, über den Bus gelesen."),
@@ -361,17 +396,17 @@ public enum Bereiche {
             schluessel: .system, weg: "/system/uebersicht", zeichen: .zahnrad, name: "System",
             nurHausherr: true, inLeiste: false,
             reiter: [
-                Reiter(weg: "/system/mitteilungen", name: "Mitteilungen", nurHausherr: true,
+                Reiter(weg: "/system/mitteilungen", name: "Mitteilungen", zeichen: .glocke, farbe: .ruhig, nurHausherr: true,
                     kicker: "Was aufs Handy kommt: Störungen und das Morning Briefing",  // `system/mitteilungen/page.tsx:12`
                     beschreibung: "Welche Geräte Mitteilungen bekommen und was im Morgenbrief steht."),
-                Reiter(weg: "/system/haustuer", name: "Haustür", nurHausherr: true,
+                Reiter(weg: "/system/haustuer", name: "Haustür", zeichen: .tuer, farbe: .ruhig, nurHausherr: true,
                     kicker: "Wer sich am Reader erkennen ließ, und was geschah",  // `system/haustuer/page.tsx:9`
                     beschreibung: "Wer sich wann an der Haustür erkannt hat."),
                 // Der Rechner im Haus: Dienste, Gesundheit, Neustarts, Protokolle, Updates.
-                Reiter(weg: "/system/geraet", name: "Hausgerät", nurHausherr: true,
+                Reiter(weg: "/system/geraet", name: "Hausgerät", zeichen: .anzeige, farbe: .ruhig, nurHausherr: true,
                     kicker: "Dienste, Gesundheit, Sicherung und Updates des Rechners im Haus",  // `system/geraet/page.tsx:9`
                     beschreibung: "Wie es dem Rechner im Haus und seinen Diensten geht."),
-                Reiter(weg: "/system/zugang", name: "Zugang und Sicherung", nurHausherr: true,
+                Reiter(weg: "/system/zugang", name: "Zugang und Sicherung", zeichen: .schild, farbe: .ruhig, nurHausherr: true,
                     kicker: "wer Zugang hat · wer zusieht · Daten sichern",  // `system/zugang/page.tsx`
                     beschreibung: "Wer Zugang hat, wie groß die Datenbank ist und wie man sie sichert."),
                 Reiter(
@@ -379,7 +414,8 @@ public enum Bereiche {
                     // ausdrücklich ab (`DataCheck.tsx:59-68`, `showPeriods={false}`), weil die
                     // Prüfansicht Minutenwerte zeigt: über eine Woche gelegt ergeben sie ein
                     // Bild, in dem nichts zu erkennen ist.
-                    weg: "/system/daten", name: "Daten prüfen", mitZeitraum: true,
+                    weg: "/system/daten", name: "Daten prüfen", zeichen: .tabelle, farbe: .ruhig,
+                    mitZeitraum: true,
                     spannen: [.tag], nurHausherr: true,
                     kicker: "Messreihen · Stundenbilanz · Rohdaten",  // `DataCheck.tsx:61`
                     beschreibung: "Ob die Messreihen lückenlos angekommen sind und zueinander passen."),

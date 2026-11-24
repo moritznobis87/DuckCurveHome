@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { zahlUndEinheit } from "@/components/layout/Bereichsuebersicht";
 import { AREAS, EINZELSEITEN } from "./areas";
 
 /**
@@ -17,6 +18,8 @@ type Unteransicht = { weg: string; name: string };
 type Reiter = {
   weg: string;
   name: string;
+  zeichen: string;
+  farbe: string;
   zeitraum: boolean;
   nurHausherr: boolean;
   gruppe: string | null;
@@ -46,6 +49,8 @@ function seitenbaumDesDashboards(): Bereich[] {
     reiter: bereich.tabs.map((reiter) => ({
       weg: reiter.href,
       name: reiter.label,
+      zeichen: reiter.icon,
+      farbe: reiter.farbe,
       zeitraum: reiter.dated === true,
       nurHausherr: reiter.ownerOnly === true,
       gruppe: reiter.gruppe ?? null,
@@ -60,6 +65,13 @@ describe("Seitenbaum", () => {
     const datei = resolve(__dirname, "../../../../docs/seitenbaum.json");
     const gemeinsam = JSON.parse(readFileSync(datei, "utf-8")) as { bereiche: Bereich[] };
     expect(seitenbaumDesDashboards()).toEqual(gemeinsam.bereiche);
+  });
+
+  it("zerlegt die Leitzahl einer Kachel am letzten Leerzeichen, wie die App", () => {
+    expect(zahlUndEinheit("19,1 kWh")).toEqual({ zahl: "19,1", einheit: "kWh" });
+    expect(zahlUndEinheit("−80 %")).toEqual({ zahl: "−80", einheit: "%" });
+    expect(zahlUndEinheit("0")).toEqual({ zahl: "0", einheit: "" });
+    expect(zahlUndEinheit("1 234,5 kWh")).toEqual({ zahl: "1 234,5", einheit: "kWh" });
   });
 
   it("kennt dieselben Seiten außerhalb der Bereiche wie docs/seitenbaum.json", () => {

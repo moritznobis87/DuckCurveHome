@@ -126,6 +126,7 @@ def swift_name(name: str) -> str:
         "chart": "diagramm", "table": "tabelle", "dashboard": "anzeige",
         # `person` heisst in beiden gleich und steht hier, damit die Tabelle vollstaendig ist.
         "person": "person",
+        "bell": "glocke", "sliders": "schieber", "target": "ziel", "loop": "kreis",
     }
     return tabelle.get(name, name)
 
@@ -144,7 +145,8 @@ def main() -> int:
         "// Erzeugt von tools/gen-zeichen.py aus apps/web/src/components/ui/Icon.tsx.",
         "// Nicht von Hand aendern - neu erzeugen mit `tools/gen-zeichen.py`.",
         "//",
-        "// Die Zeichen des Dashboards: 25 Strichzeichnungen auf einem 24-Punkt-Raster, 1,75 Punkt",
+        f"// Die Zeichen des Dashboards: {len({swift_name(n) for n in zeichen})} Strichzeichnungen"
+        " auf einem 24-Punkt-Raster, 1,75 Punkt",
         "// Strich, runde Enden, kein Emoji. Kreise und Rechtecke sind beim Uebernehmen zu",
         "// Pfadangaben gerechnet worden.",
         "",
@@ -182,6 +184,29 @@ def main() -> int:
             sauber = " ".join(d.split())
             zeilen.append(f'                (d: "{sauber}", gefuellt: {str(gefuellt).lower()}),')
         zeilen.append("            ]")
+    zeilen.append("        }")
+    zeilen.append("    }")
+    zeilen.append("")
+    # Der Name im Dashboard. `docs/seitenbaum.json` nennt das Zeichen einer Seite unter diesem
+    # Namen, damit Dashboard und App dieselbe Datei lesen; die App findet darueber ihr Zeichen.
+    # `home` und `house` sind dieselbe Zeichnung; zurueck gilt der zuletzt genannte Name.
+    vorlage: dict[str, str] = {}
+    for roh in zeichen:
+        vorlage[swift_name(roh)] = roh
+    zeilen.append("    /// Der Name dieses Zeichens im Dashboard (`Icon.tsx`).")
+    zeilen.append("    public var vorlage: String {")
+    zeilen.append("        switch self {")
+    for n in namen:
+        zeilen.append(f'        case .{n}: return "{vorlage[n]}"')
+    zeilen.append("        }")
+    zeilen.append("    }")
+    zeilen.append("")
+    zeilen.append("    /// Das Zeichen zu einem Namen des Dashboards, wie `docs/seitenbaum.json` ihn nennt.")
+    zeilen.append("    public init?(vorlage: String) {")
+    zeilen.append("        switch vorlage {")
+    for roh in sorted(zeichen):
+        zeilen.append(f'        case "{roh}": self = .{swift_name(roh)}')
+    zeilen.append("        default: return nil")
     zeilen.append("        }")
     zeilen.append("    }")
     zeilen.append("}")

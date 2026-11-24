@@ -190,6 +190,21 @@ public enum Farbe {
 /// Was eine Guete *bedeutet* - ob der Wert traegt, wie er heisst, wie alt er ist - steht im Kern
 /// (`Zustand/Guete.swift`), weil es eine Entscheidung ist und keine Formatierung. Hier bleibt nur
 /// die Farbe.
+extension Seitenfarbe {
+    /// Der Farbwert einer Seitenfarbe (`areas.ts`, `SEITENFARBE`): die Farbe der Sache, wie sie
+    /// im Energiefluss und in den Diagrammen steht.
+    public var farbe: Color {
+        switch self {
+        case .pv: return Farbe.pv
+        case .haus: return Farbe.text1
+        case .waermepumpe: return Farbe.waermepumpe
+        case .speicher: return Farbe.batterie
+        case .wallbox: return Farbe.wallbox
+        case .ruhig: return Farbe.mist
+        }
+    }
+}
+
 extension Quality {
     public var farbe: Color {
         switch stufe {

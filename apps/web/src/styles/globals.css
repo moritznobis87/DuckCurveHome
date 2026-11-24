@@ -759,37 +759,49 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 /* Das Zahnrad steht neben der Leiste, aber nicht in ihr: ein Strich Abstand genügt. */
 .kopfknoepfe { margin-left: -8px; }
 
-/* Die Übersicht eines Bereichs: je Gruppe eine Reihe Karten, jede Karte eine Seite. */
-/* Breit stehen die Gruppen nebeneinander, jede als Spalte ihrer Karten; schmal untereinander. */
-.uebersicht { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); align-items: start; gap: 30px 24px; padding-top: 6px; }
+/* Die Übersicht eines Bereichs: je Gruppe eine Reihe Kacheln, jede Kachel eine Seite.
+   Eine Kachel zeigt und erklärt nicht: Zeichen in der Farbe der Sache, Name, Leitzahl groß,
+   ein Wort dazu. Neu gestaltet am 24.11.2026, nachdem die Karten voller Sätze standen. */
+/* Breit stehen die Gruppen nebeneinander, jede mit zwei Kacheln je Zeile; ein Bereich ohne
+   Gruppen füllt die Zeile mit Kacheln. */
+.uebersicht { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); align-items: start; gap: 26px 28px; padding-top: 6px; }
+.uebersicht.uebersicht-flach { grid-template-columns: 1fr; }
 .uebersicht-gruppe { display: flex; flex-direction: column; gap: 12px; }
 .uebersicht-kopf { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .uebersicht-name { margin: 0; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-kicker); }
 .uebersicht-wort { font-size: 13px; color: var(--text-3); }
-.uebersicht-karten { display: flex; flex-direction: column; gap: 12px; }
-/* Ein Bereich ohne Gruppen: keine Spalten, sondern ein Raster über die ganze Breite. */
-.uebersicht.uebersicht-flach { grid-template-columns: 1fr; }
-.uebersicht-flach .uebersicht-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px 24px; }
-.uebersicht-karte { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 16px 18px 15px; border: 1px solid var(--line-1); border-radius: var(--radius-3); background: var(--surface-1); color: inherit; text-decoration: none; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
-.uebersicht-karte:hover { border-color: var(--line-2); background: var(--surface-2); }
+.uebersicht-karten { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.uebersicht-flach .uebersicht-karten { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.uebersicht-karte {
+  --kachelfarbe: var(--mist);
+  position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: 148px; padding: 14px 16px 15px;
+  border: 1px solid var(--line-1); border-radius: var(--radius-3); color: inherit; text-decoration: none; overflow: hidden;
+  /* Ein Hauch der Farbe der Sache aus der Ecke des Zeichens; die Fläche bleibt die der Karten. */
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--kachelfarbe) 13%, transparent), transparent 62%),
+    var(--surface-1);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.uebersicht-karte:hover { border-color: color-mix(in srgb, var(--kachelfarbe) 55%, var(--line-2)); }
 .uebersicht-karte:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-.uebersicht-titel { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-1); }
-/* Der Name links, die Ampel rechts auf seiner Höhe. */
-.uebersicht-kopfzeile { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.uebersicht-kopfzeile > .zustandszeichen { align-self: center; }
-/* Die Leitzahl führt die Karte, das Wort dazu steht klein dahinter auf derselben Grundlinie. */
-.uebersicht-zahl { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
-.uebersicht-leitzahl { font-size: 24px; line-height: 1.15; color: var(--text-1); font-variant-numeric: tabular-nums; }
-.uebersicht-dazu { font-size: 13px; color: var(--text-2); }
+/* Oben das Zeichen der Seite, rechts auf seiner Höhe der Zustand. */
+.uebersicht-kopfzeile { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.uebersicht-zeichen { display: flex; height: 36px; width: 36px; align-items: center; justify-content: center; border-radius: 10px; color: var(--kachelfarbe); background: color-mix(in srgb, var(--kachelfarbe) 14%, transparent); }
+.uebersicht-titel { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; color: var(--text-2); }
+/* Die Leitzahl führt die Kachel; die Einheit steht klein dahinter auf derselben Grundlinie. */
+.uebersicht-zahl { display: flex; align-items: baseline; gap: 5px; margin-top: 1px; white-space: nowrap; }
+.uebersicht-leitzahl { font-size: 28px; line-height: 1.1; letter-spacing: -0.02em; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.uebersicht-einheit { font-size: 14px; color: var(--text-2); }
+.uebersicht-dazu { margin-top: 2px; font-size: 12.5px; line-height: 1.35; color: var(--text-3); }
 /* Der Grund einer Ampel, die nicht gut ist. Der weiche Bernstein ist der Warnton der Oberfläche. */
-.uebersicht-grund { font-size: 13px; line-height: 1.45; color: var(--amber-soft); }
+.uebersicht-grund { margin-top: 2px; font-size: 12.5px; line-height: 1.35; color: var(--amber-soft); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .uebersicht-karte[data-ampel="schlecht"] .uebersicht-grund { color: var(--alert-text); }
 .uebersicht-karte[data-ampel="aus"] .uebersicht-grund { color: var(--text-3); }
-/* Eine Karte, die etwas zu sagen hat, hebt sich mit ihrem Rand ab. */
+/* Eine Kachel, die etwas zu sagen hat, hebt sich mit ihrem Rand ab. */
 .uebersicht-karte[data-ampel="warn"] { border-color: rgba(255, 215, 120, 0.45); }
 .uebersicht-karte[data-ampel="schlecht"] { border-color: rgba(224, 83, 61, 0.6); }
-.uebersicht-satz { font-size: 13.5px; line-height: 1.45; color: var(--text-2); }
-.uebersicht-ansichten { margin-top: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+/* Nur auf einer Kachel ohne Zahl: der Satz der Seite, damit sie nicht leer dasteht. */
+.uebersicht-satz { margin-top: 3px; font-size: 12.5px; line-height: 1.4; color: var(--text-3); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* Nur am Handy sichtbar: Leiste unten, Bereichsname im Kopf, kurze Datumsangabe. */
 .fussleiste, .bereichstitel, .report-anchor-kurz { display: none; }
