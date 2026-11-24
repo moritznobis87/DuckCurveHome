@@ -48,6 +48,16 @@ public struct Zugang: Sendable, Hashable, Codable {
     public var geraetename: String
     /// Was der Benutzer dieser App sehen darf. Blendet aus, sperrt nicht - siehe oben.
     public var rolle: Rolle
+    /// Die E-Mail-Adresse der angemeldeten Person. Leer, wenn die App mit dem API-Token
+    /// eingerichtet ist und damit als Gerät spricht.
+    ///
+    /// Seit dem 24.11.2026 meldet sich die App wie das Dashboard als Person an
+    /// (`docs/ZUGANG.md`, „Das Passwort“). Dann ist ``token`` das Sitzungstoken dieser Person,
+    /// und was sie darf, entscheidet der Dienst nach ihrer Rolle und nicht mehr diese App.
+    public var email: String
+
+    /// Ob hier eine Person angemeldet ist und nicht ein Gerät mit dem API-Token.
+    public var istPerson: Bool { !email.isEmpty }
 
     public enum Rolle: String, Sendable, Hashable, Codable {
         case hausherr
@@ -59,13 +69,38 @@ public struct Zugang: Sendable, Hashable, Codable {
         praefix: String = "/api/v1",
         token: String = "",
         geraetename: String = "iPhone",
-        rolle: Rolle = .hausherr
+        rolle: Rolle = .hausherr,
+        email: String = ""
     ) {
         self.grund = grund
         self.praefix = praefix
         self.token = token
         self.geraetename = geraetename
         self.rolle = rolle
+        self.email = email
+    }
+
+    /// Ein Zugang, der vor dem 24.11.2026 gespeichert wurde, kennt `email` nicht. Er ist ein
+    /// Gerät mit dem API-Token und wird so gelesen.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        grund = try c.decode(URL.self, forKey: .grund)
+        praefix = try c.decode(String.self, forKey: .praefix)
+        token = try c.decode(String.self, forKey: .token)
+        geraetename = try c.decode(String.self, forKey: .geraetename)
+        rolle = try c.decode(Rolle.self, forKey: .rolle)
+        email = try c.decodeIfPresent(String.self, forKey: .email) ?? ""
+    }
+
+    /// Die Rolle einer angemeldeten Person, wie diese App sie kennt.
+    ///
+    /// Der Dienst kennt vier Rollen (`auth/rechte.py`), die App bisher zwei. Nur der Hausherr
+    /// bekommt hier die Schalter und die Akten zu sehen; für Bewohner, Service und Gast blendet
+    /// die App beides aus. Das ist für den Bewohner enger als der Dienst es wäre: er dürfte im
+    /// Haus stellen. Es ist die Richtung, in der ein Versehen harmlos bleibt, und steht als
+    /// offener Punkt in `docs/GLEICHSTAND.md`.
+    public static func rolle(derPerson rolle: AusweisOutRolleWahl) -> Rolle {
+        rolle == .hausherr ? .hausherr : .gast
     }
 
     /// Die Kennung des Geraets im Protokoll: der Name, kleingeschrieben und entschaerft.

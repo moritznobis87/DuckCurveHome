@@ -518,6 +518,50 @@ public struct Api: Sendable {
         try await hole("/push/morgenbrief/senden", verfahren: "POST")
     }
 
+    // MARK: - Anmeldung und eigenes Passwort
+
+    /// Was die Anmeldung wissen muss, bevor jemand angemeldet ist: ob der Dienst Personen kennt
+    /// und wie lang ein Passwort mindestens sein muss. Öffentlich, also auch ohne Token.
+    public func zugangZustand() async throws -> ZugangZustandOut {
+        try await hole("/auth/zustand")
+    }
+
+    /// Mit E-Mail-Adresse und Passwort anmelden (`POST /auth/anmeldung/passwort`).
+    ///
+    /// Zurück kommt das Sitzungstoken, einmal und nur hier. Wer es bekommt, legt es in den
+    /// Schlüsselbund; von da an ist es das ``Zugang/token`` dieser App.
+    public func anmelden(email: String, passwort: String) async throws -> AngemeldetOut {
+        try await hole(
+            "/auth/anmeldung/passwort", verfahren: "POST",
+            rumpf: try rumpf(PasswortAnmeldenIn(email: email, passwort: passwort)))
+    }
+
+    /// Wer ich bin, und ob ich ein Passwort und Passkeys habe. Nur für eine angemeldete Person;
+    /// ein Gerät mit dem API-Token bekommt hier eine Absage.
+    public func ich() async throws -> IchOut {
+        try await hole("/auth/ich")
+    }
+
+    /// Das eigene Passwort vergeben oder wechseln. `bisher` bleibt leer, solange es keines gibt.
+    public func setzePasswort(neu: String, bisher: String) async throws {
+        let _: [String: Mischwert] = try await hole(
+            "/auth/passwort", verfahren: "POST",
+            rumpf: try rumpf(PasswortSetzenIn(neu: neu, bisher: bisher)))
+    }
+
+    /// Das eigene Passwort entfernen. Der Dienst verlangt dafür das bisherige und lehnt ab, wenn
+    /// kein Passkey bleibt.
+    public func entfernePasswort(bisher: String) async throws {
+        let _: [String: Mischwert] = try await hole(
+            "/auth/passwort/loeschen", verfahren: "POST",
+            rumpf: try rumpf(PasswortEntfernenIn(bisher: bisher)))
+    }
+
+    /// Die Sitzung beenden, mit der diese App angemeldet ist.
+    public func meldeAb() async throws {
+        let _: [String: Mischwert] = try await hole("/auth/abmelden", verfahren: "POST")
+    }
+
     // MARK: - Demo
 
     /// Die Demo steuern: Zeitraffer, Szenarien, Stoerungen. Nur im Demo-Betrieb vorhanden.

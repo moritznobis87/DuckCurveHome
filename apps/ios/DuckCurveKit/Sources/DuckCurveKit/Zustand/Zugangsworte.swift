@@ -25,54 +25,30 @@ public enum Zugangsworte {
     /// Die sechs `<h2>` der Vorlage in ihrer Reihenfolge (`page.tsx:60, 89, 117, 127, 159, 169`).
     ///
     /// **Sie stehen hier, weil die Reihenfolge eine Aussage ist.** Der Bereichskicker nennt drei
-    /// Dinge in genau dieser Folge - „Geräte koppeln · wer zusieht · Daten sichern“
+    /// Dinge in genau dieser Folge - „wer Zugang hat · wer zusieht · Daten sichern“
     /// (`Bereiche.swift:170`) -, und die Abschnitte beantworten sie der Reihe nach. Die App
     /// hatte bis zum Umbau keinen Abschnitt an der Stelle des gleichnamigen.
     public static let ueberschriften = [
-        "Zugang einrichten", "Gerade verbunden", "Platzbedarf", "Sicherung", "Sichtbarkeit",
+        "Wie man hereinkommt", "Gerade verbunden", "Platzbedarf", "Sicherung", "Sichtbarkeit",
         "Konfiguration",
     ]
 
-    // MARK: - Zugang einrichten
+    // MARK: - Wie man hereinkommt
 
-    /// Der erste Absatz (`page.tsx:62-68`), auf die App gezogen.
+    /// Die zwei Absätze des Abschnitts „Wie man hereinkommt“ (`page.tsx`), im Wortlaut des
+    /// Dashboards.
     ///
-    /// **Hier geht die App bewusst von der Vorlage ab.** Die Vorlage erklärt, dass die Links
-    /// unten die echten Tokens tragen und woher die Adresse kommt (`DCH_PUBLIC_HOST`, begründet
-    /// an `page.tsx:29-32`: „Railway antwortet weiterhin unter *.up.railway.app; ein von dort
-    /// kopierter Link führte Gäste an der eigenen Domain vorbei“). In der App stehen diese Links
-    /// nicht, weil es sie dort nicht gibt - und der Grund ist derselbe, aus dem die App
-    /// überhaupt direkt mit dem Dienst spricht: sie hat einen Schlüsselbund, ein Browser hat
-    /// keinen (``Zugang``, Kopfkommentar). Der Satz nennt darum beides: was dieses Gerät hat,
-    /// und wo die Links für die anderen stehen.
-    public static let koppeln =
-        "Ein Browser wird einmal über einen Link gepaart und behält danach seine Sitzung. Diese App braucht den Umweg nicht: ihr Token liegt im Schlüsselbund dieses Geräts, durch die Gerätesperre geschützt, und verlässt es nur als Kopfzeile an die Adresse unten. Die Pairing-Links für die anderen Geräte, also Wandanzeige und Gast, stehen im Dashboard auf dieser Seite. Sie tragen die echten Tokens und sind wie ein Haustürschlüssel zu behandeln: wer einen Screenshot davon bekommt, hat die Schlüssel zum Haus."
-
-    /// Was ein Vollzugriff darf (`page.tsx:73`).
+    /// **Eine Stelle weicht ab:** Das Dashboard schreibt „der Einladungslink oben“, weil dort
+    /// die Personenliste darübersteht. Die App hat diese Liste noch nicht
+    /// (`docs/GLEICHSTAND.md`) und nennt deshalb, wo der Link ausgestellt wird.
     ///
-    /// Das `name`-Feld der Vorlage ist ein Teil des Links; in der App ist es der Name dieses
-    /// Geräts (``Zugang/geraetename``), und deshalb steht hier „der Name“ und nicht die
-    /// Bezeichnung einer Frage, die auf diesem Gerät nicht vorkommt.
-    public static let vollzugriff =
-        "Darf schalten, sieht Kosten und Rechnungen. Die Sitzung hält ein halbes Jahr; der Name erscheint nur im Protokoll."
-
-    /// Was ein Gast sieht - und was ihm verschlossen bleibt (`page.tsx:78`).
-    ///
-    /// **Der Satz gilt für das Dashboard und nicht für diese App**, und das ist kein Versehen
-    /// der Übernahme: im BFF ist die Beschränkung eine Tür, in der App nur eine ausgeblendete
-    /// Schaltfläche (``Zugang``, Punkt 3 des Kopfkommentars). Die Methode der Seite sagt das
-    /// noch einmal ausdrücklich; hier steht, was ein Gastzugang *im Dashboard* bedeutet, weil
-    /// genau dort die Links für Gäste entstehen.
-    public static let gast =
-        "Sieht Jetzt, Strom, Wärme und Geld; PV-Abrechnung, Rechnungen und System bleiben verschlossen. Die Schalter bleiben sichtbar und sagen „nur Ansicht“. Ohne Angabe einer Dauer gilt DCH_GUEST_HOURS (Vorgabe 24), höchstens 720 Stunden."
-
-    /// Der Schlussabsatz des ersten Abschnitts (`page.tsx:80-84`).
-    ///
-    /// **Die Unterscheidung ist die Pointe des ganzen Abschnitts:** der Ablauf begrenzt die
-    /// Sitzung und nicht den Link. Wer den Link aufhebt, paart sich erneut - ein abgelaufener
-    /// Gast ist also kein ausgesperrter Gast.
-    public static let sitzungsdauer =
-        "Der Ablauf begrenzt die Sitzung, nicht den Link: wer ihn aufhebt, kann sich erneut paaren. Um das zu unterbinden, ändert man DCH_GUEST_TOKEN im Web-Dienst. Bestehende Gast-Sitzungen laufen dann regulär ab, neue entstehen nicht mehr."
+    /// Bis zum 24.11.2026 standen hier vier Texte über Kopplungslinks, Gast-Token und Sitzungen
+    /// von einem halben Jahr. Das alles gibt es seit dem 23.11.2026 nicht mehr; die App hat es
+    /// einen Tag lang weiter behauptet.
+    public static let hereinkommen: [String] = [
+        "Nur als Person, mit Passkey oder mit E-Mail-Adresse und Passwort. Es gibt keinen Link mehr, der Zugang vergibt: bis zum 23.11.2026 gab es zwei Adressen mit einem stehenden Token darin, die jeder einlösen konnte, der sie je gesehen hatte, und die sich nur für alle zugleich widerrufen ließen. Was es stattdessen gibt, ist der Einladungslink, den der Hausherr im Dashboard unter „Zugang und Sicherung“ ausstellt. Er gilt einmal, ist befristet und gehört zu genau einer Person.",
+        "Eine Person darf an beliebig vielen Geräten zugleich angemeldet sein: je Gerät eine eigene Sitzung, einzeln zu beenden. Auch das Gerät an der Wand bekommt deshalb eine eigene Person. Gib ihr einen Namen, dem man ansieht, dass kein Mensch dahintersteht („Wandanzeige Flur“), und die Rolle, die sie wirklich braucht.",
+    ]
 
     // MARK: - Platzbedarf
 
@@ -192,8 +168,8 @@ public enum Zugangsworte {
     /// auch in der Vorlage nicht im Fließtext der Seite steht, sondern in den Kommentaren des
     /// Codes: die drei Vorbehalte zum Token, zur Rolle und zum Protokoll.
     public static let methode: [String] = [
-        "Das Token liegt im Schlüsselbund dieses Geräts und ist durch die Gerätesperre geschützt. Es verlässt das Gerät nur als Authorization-Kopfzeile.",
-        "Die Rolle „Gast“ blendet in dieser App aus, was nicht in fremde Hände gehört. Sie sperrt nichts am Dienst: wer das Token hat, darf dort alles. Für einen echten Gastzugang zeigt man die App auf das Dashboard und paart dort mit dem Gast-Token.",
-        "Jede Änderung, die von hier ausgeht, steht im Protokoll des Dienstes mit dem Namen dieses Geräts und nicht mit dem eines Menschen. Am iPad im Flur kann jeder gestanden haben.",
+        "Was die App vom Dienst bekommt, liegt im Schlüsselbund dieses Geräts und ist durch die Gerätesperre geschützt: das Sitzungstoken einer angemeldeten Person oder das API-Token. Es verlässt das Gerät nur als Authorization-Kopfzeile.",
+        "Wer als Person angemeldet ist, darf, was seine Rolle im Haus erlaubt; das entscheidet der Dienst. Diese App zeigt Schalter und Akten bisher nur dem Hausherrn. Mit dem API-Token spricht die App als Gerät, und wer das Token hat, darf am Dienst alles; die Rolle „Gast“ blendet dann nur aus und sperrt nichts.",
+        "Eine Änderung, die eine angemeldete Person auslöst, steht im Protokoll des Dienstes mit ihrem Namen. Mit dem API-Token steht dort der Name dieses Geräts und nicht der eines Menschen: am iPad im Flur kann jeder gestanden haben.",
     ]
 }

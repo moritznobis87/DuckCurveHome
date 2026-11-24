@@ -86,6 +86,7 @@
 		AD1752C6B64DD9BD4FA5B72D /* Jahresflaeche.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92265FA3DF3AC4CE97195D9F /* Jahresflaeche.swift */; };
 		B5B0CB533E0FCE256C33E295 /* Waermepumpenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */; };
 		B74DFF3BE092C442D5C12ADC /* Alarmblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CD89A5D4C7BEBFA6799403 /* Alarmblatt.swift */; };
+		B83420A8360FD4AA99AB7BF5 /* MeinPasswortKarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F257425E5BA1598D79A707 /* MeinPasswortKarte.swift */; };
 		BA80D620296C3F558A781A8A /* Dock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442E48F860C3E272065F1773 /* Dock.swift */; };
 		BC39AFA258EB753F725AFA8B /* Pruefkurvenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BCE78C8EB2C5E42CFF9439 /* Pruefkurvenbild.swift */; };
 		BDB969FBDB5E1849EF0EF74D /* Tagesbandbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 969EAD73174365A9152E9DE5 /* Tagesbandbild.swift */; };
@@ -184,6 +185,7 @@
 		61DB91AB7C211CA4C9681DE3 /* WiedergabeSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiedergabeSeite.swift; sourceTree = "<group>"; };
 		6446BE3D6E34C1FCD8DA8BF7 /* ZugangSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZugangSeite.swift; sourceTree = "<group>"; };
 		6488CB1E8676677F62FE64F4 /* Kanalzug.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kanalzug.swift; sourceTree = "<group>"; };
+		65F257425E5BA1598D79A707 /* MeinPasswortKarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeinPasswortKarte.swift; sourceTree = "<group>"; };
 		6990FD9C3BB7F0E9A5390ADC /* Betragszeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Betragszeile.swift; sourceTree = "<group>"; };
 		6C052BD7A45994835EC22D32 /* Kennlinienbilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kennlinienbilder.swift; sourceTree = "<group>"; };
 		70D0DC76B4C835ABDEB44904 /* Vorschauen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vorschauen.swift; sourceTree = "<group>"; };
@@ -288,6 +290,7 @@
 				7DBF78711330C19ED82AC95D /* Ladebild.swift */,
 				11F4DB48A868B5F7EC0F9E24 /* Ladeente.swift */,
 				D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */,
+				65F257425E5BA1598D79A707 /* MeinPasswortKarte.swift */,
 				60D531BC992F24B251740574 /* Mitteilungshinweis.swift */,
 				857CBC9D8C59148A11B405B3 /* Plakette.swift */,
 				16EA06A79528967315F5A4EF /* Postenliste.swift */,
@@ -676,6 +679,7 @@
 				08BA2CE15442D3C33FD44C38 /* Ladebild.swift in Sources */,
 				528F3C17E297BD8A24DDA017 /* Ladeente.swift in Sources */,
 				05FB739969DE812D7DA39011 /* Leiste.swift in Sources */,
+				B83420A8360FD4AA99AB7BF5 /* MeinPasswortKarte.swift in Sources */,
 				99BBBD49F3FD5777A26147A2 /* Mitteilungen.swift in Sources */,
 				CF1E38EE14DAA9FB117D4E38 /* MitteilungenSeite.swift in Sources */,
 				22D2BC7A701FA3B894DF5333 /* Mitteilungshinweis.swift in Sources */,

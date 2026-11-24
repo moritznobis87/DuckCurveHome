@@ -76,10 +76,18 @@ export async function zustand(): Promise<{
   personen: number;
   rp_id: string;
   versand: { aktiv: boolean; weg: string; fehlt: string[] };
+  /** Wie lang ein Passwort mindestens sein muss; die Regel steht beim Dienst. */
+  passwort_mindestlaenge: number;
 }> {
   try {
     return await dienstAnfrage("/auth/zustand");
   } catch {
-    return { anmeldung: false, personen: 0, rp_id: "", versand: { aktiv: false, weg: "", fehlt: [] } };
+    return {
+      anmeldung: false,
+      personen: 0,
+      rp_id: "",
+      versand: { aktiv: false, weg: "", fehlt: [] },
+      passwort_mindestlaenge: 12,
+    };
   }
 }

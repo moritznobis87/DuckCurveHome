@@ -2383,7 +2383,8 @@ class AngemeldetOut(BaseModel):
     token: str
     laeuft_ab_am: datetime
     ausweis: AusweisOut
-    #: Nur beim ersten Passkey: die zehn Wiederherstellungscodes, einmalig im Klartext.
+    #: Nach dem Einlösen eines Einladungslinks, mit Passkey oder Passwort: die zehn
+    #: Wiederherstellungscodes, einmalig im Klartext.
     codes: list[str] = Field(default_factory=list)
 
 
@@ -2416,6 +2417,8 @@ class PersonOut(BaseModel):
     erstellt_am: datetime
     zuletzt_angemeldet_am: datetime | None = None
     passkeys: int = 0
+    #: Ob die Person ein Passwort hat.
+    passwort: bool = False
     codes_offen: int = 0
     einladung_offen: bool = False
 
@@ -2427,6 +2430,8 @@ class IchOut(BaseModel):
     passkeys: list[PasskeyOut] = Field(default_factory=list)
     sitzungen: list[SitzungOut] = Field(default_factory=list)
     codes_offen: int = 0
+    #: Ob ich ein Passwort habe. Entscheidet, ob die Seite „vergeben" oder „ändern" anbietet.
+    passwort: bool = False
 
 
 class VersandOut(BaseModel):
@@ -2448,6 +2453,9 @@ class ZugangZustandOut(BaseModel):
     personen: int = 0
     rp_id: str = ""
     versand: VersandOut = Field(default_factory=VersandOut)
+    #: Wie lang ein Passwort mindestens sein muss. Steht hier, damit die Anmeldeseite und die
+    #: Seite hinter dem Einladungslink die Regel nennen können, ohne sie selbst zu kennen.
+    passwort_mindestlaenge: int = 12
 
 
 class PersonAnlegenIn(BaseModel):
@@ -2481,12 +2489,13 @@ class EinladungOut(BaseModel):
 
 
 class EinladungPersonOut(BaseModel):
-    """Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist."""
+    """Für die Seite hinter dem Link: zu wem er gehört und welche Wege herein es schon gibt."""
 
     email: str
     anzeigename: str = ""
     rolle: Literal["hausherr", "bewohner", "gast", "service"]
     passkeys: int = 0
+    passwort: bool = False
 
 
 class PasskeyBeginnenIn(BaseModel):
@@ -2510,6 +2519,32 @@ class AnmeldenIn(BaseModel):
 class WiederherstellenIn(BaseModel):
     email: str
     code: str
+
+
+class PasswortAnmeldenIn(BaseModel):
+    email: str
+    passwort: str
+
+
+class PasswortUeberLinkIn(BaseModel):
+    """Das Passwort hinter dem Einladungslink vergeben."""
+
+    token: str
+    passwort: str
+
+
+class PasswortEntfernenIn(BaseModel):
+    """Das eigene Passwort entfernen. Verlangt das bisherige, wie das Wechseln."""
+
+    bisher: str
+
+
+class PasswortSetzenIn(BaseModel):
+    """Das eigene Passwort vergeben oder wechseln."""
+
+    neu: str
+    #: Das bisherige Passwort. Leer, solange die Person noch keines hat.
+    bisher: str = ""
 
 
 class NameIn(BaseModel):

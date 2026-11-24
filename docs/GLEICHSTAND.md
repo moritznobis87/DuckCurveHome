@@ -18,9 +18,8 @@ Satzes; „fehlt“ heißt, dass das Wort dort in keiner Zeichenkette vorkommt.
 | Regelkreis | Die Stichwortzeile über der Parametertabelle mit dem Hinweis auf den Klick | `components/regelkreis/Blatt.tsx` | fehlt |
 | Regelkreis | Die drei Leuchten im Kopf der Seite („Arbeitspunkt gemessen“, die Zahl der übersteuerten Parameter, „Reserven in Ordnung“ oder „Reserve zu klein“) | `Regelkreis.tsx` | fehlt; gefunden am 24.11.2026 beim Umstellen der Zustandsfarbe |
 | Mitteilungen | Die Fehlermeldung, wenn der Browser kein Abonnement anlegen kann | `components/settings/Mitteilungen.tsx` | bauartbedingt anders: die App meldet sich bei Apple an, nicht bei einem Push-Dienst des Browsers |
-| Berichte | „Nicht angemeldet. Bitte das Gerät koppeln.“ | `components/reports/useReport.ts`, `YearMap.tsx` | bauartbedingt anders: die App schreibt „Das Token stimmt nicht mehr. Unter „Zugang“ neu einrichten.“ (`ApiFehler.rat`), weil sie über ein Token im Schlüsselbund angemeldet ist und nicht gekoppelt wird |
-| Zugang und Sicherung | Personen, Einladungslink, Passkeys und Ersatzcodes | `components/zugang/Personen.tsx`, `MeinZugang.tsx`, `app/system/zugang/page.tsx` | fehlt; die App beschreibt stattdessen ihr Token im Schlüsselbund (`Zugangsworte.swift`) |
-| Anmeldung | Die Seiten zum Anlegen und Benutzen eines Passkeys | `app/anmeldung/` | bauartbedingt nur im Browser |
+| Berichte | „Die Anmeldung gilt nicht mehr. Bitte neu anmelden.“ | `components/reports/useReport.ts`, `YearMap.tsx` | bauartbedingt ein Halbsatz mehr: Die App nennt den Ort („Unter „Zugang und Sicherung“ neu anmelden“, `ApiFehler.rat`), weil sie keine eigene Anmeldeseite hat. |
+| Zugang und Sicherung | Personen, Einladungslink, Passkeys, Sitzungen | `components/zugang/Personen.tsx`, `MeinZugang.tsx`, `app/system/zugang/page.tsx` | zum Teil: siehe den Abschnitt „Anmeldung“ unten |
 
 Zwei Stellen waren im Wortlaut verschieden und sind mit dieser Änderung angeglichen: die Zeile
 der nicht stetigen Kreise („hybrid und ganzzahlig, ohne Frequenzkennlinie“) und der Satz zum
@@ -59,13 +58,37 @@ gegen `Blockansicht`); der Vergleich Feld für Feld steht noch aus.
 
 ## Anmeldung
 
-**Entschieden am 24.11.2026:** In der App gilt dieselbe Anmeldelogik wie im Browser. Offen ist,
-ob dazu ein Passwort gehören soll: Das Dashboard kennt heute keines, nur Passkey und
-Ersatzcodes (`docs/ZUGANG.md`, ADR-0002). Die Frage ist dem Hausherrn gestellt.
+**Entschieden am 24.11.2026:** In der App gilt dieselbe Anmeldelogik wie im Browser, und in
+beiden gibt es zwei Wege: Passkey oder E-Mail-Adresse und Passwort (ADR-0002, Nachtrag vom
+24.11.2026).
+
+**Gebaut am 24.11.2026:**
+
+- Der Dienst (`dch_api/auth/passwort.py`, vier Endpunkte unter `/auth`).
+- Im Dashboard: die Anmeldung mit E-Mail-Adresse und Passwort, die Wahl zwischen Passkey und
+  Passwort hinter dem Einladungslink, „Mein Passwort“ unter „Zugang und Sicherung“.
+- In der App: die Anmeldung mit E-Mail-Adresse und Passwort beim Einrichten (`Einrichten.swift`)
+  und die Karte „Mein Passwort“ (`MeinPasswortKarte.swift`), mit den Sätzen des Dashboards
+  (`Anmeldeworte.swift`). Die App spricht dann als Person und nicht mehr mit dem Token, das
+  alles darf. Das Token bleibt als zweiter Weg für den, der den Dienst betreibt.
+- Der Abschnitt „Wie man hereinkommt“ steht in der App jetzt im Wortlaut des Dashboards. Bis
+  dahin beschrieb die App Kopplungslinks und ein Gast-Token, die es seit dem 23.11.2026 nicht
+  mehr gibt.
+
+**Offen:**
+
+| Was | Dashboard | App | Fundstelle |
+|---|---|---|---|
+| Anmeldung mit Passkey | vorhanden | fehlt. Sie braucht die Team-ID des Apple-Entwicklerkontos und die Adresse des Dashboards (`apple-app-site-association`) und lässt sich nur am Gerät prüfen. | `app/anmeldung/passkey.tsx`, `Einrichten.swift` |
+| Einladungslink einlösen | Seite `/anmeldung/einrichten` | bauartbedingt im Browser: Der Link ist eine Adresse des Dashboards. | `app/anmeldung/einrichten/page.tsx` |
+| Personen verwalten und einladen | vorhanden | fehlt | `components/zugang/Personen.tsx` |
+| Eigene Passkeys und eigene Sitzungen | vorhanden | fehlt; die App zeigt nur das eigene Passwort | `components/zugang/MeinZugang.tsx`, `MeinPasswortKarte.swift` |
+| Der eigene Zugang für alle Rollen | Nur der Hausherr erreicht „Mein Zugang“, weil der Abschnitt auf der Seite „Zugang und Sicherung“ steht und der Bereich System ihm vorbehalten ist. Bewohner, Gast und Service können damit weder ihr Passwort wechseln noch ihre Passkeys pflegen noch sich abmelden. Das gilt für die Passkeys schon seit dem 23.11.2026. | ebenso: die Karte „Mein Passwort“ steht auf derselben Seite | `app/system/zugang/page.tsx` (`requireOwner`), `ZugangSeite.swift`; gefunden im Review von PR 31. Eine eigene Seite dafür ändert die Gliederung und braucht die Entscheidung des Hausherrn. |
+| Die vier Rollen | Der Dienst setzt sie durch, das Dashboard zeigt, was die Rolle darf. | Die App kennt zwei Stufen: Nur der Hausherr sieht Schalter und Akten. Ein Bewohner sieht in der App nur zu, obwohl der Dienst ihm das Stellen im Haus erlaubte. | `Zugang.rolle(derPerson:)`, `Hauszustand.darfSchalten` |
+| Sitzung in der Liste erkennen | Ein Browser steht dort mit seinem Gerät („iPhone“, „Mac“). | Eine Sitzung der App steht dort als „unbekanntes Gerät“, weil die App keinen sprechenden User-Agent schickt. | `MeinZugang.tsx` (`geraet`), `Zugang.kopfzeilen` |
 
 ## Was als Nächstes dran ist
 
 Die Zeilen mit „fehlt“ sind echte Lücken und werden Seite für Seite geschlossen, zusammen mit
-dem einheitlichen Seitenaufbau. Die Zeilen mit „bauartbedingt“ brauchen eine Entscheidung, ob
-die Regel dort eine Ausnahme kennt: Anmeldung über Passkey gibt es nur im Browser, das Token im
-Schlüsselbund nur in der App.
+dem einheitlichen Seitenaufbau. Die Zeilen mit „bauartbedingt“ bleiben, solange der Grund
+besteht, und stehen hier, damit sie niemand für ein Versehen hält.

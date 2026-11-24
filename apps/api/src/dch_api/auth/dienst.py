@@ -21,7 +21,7 @@ import structlog
 from sqlalchemy import CursorResult, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from dch_api.auth import drossel, passkeys, wiederherstellung
+from dch_api.auth import drossel, passkeys, passwort, wiederherstellung
 from dch_api.auth.ausweis import Ausweis
 from dch_api.auth.passkeys import bewusst
 from dch_api.auth.rechte import ROLLEN, Rolle
@@ -36,6 +36,7 @@ __all__ = [
     "Angemeldet",
     "AngemeldetError",
     "AuthDienst",
+    "LetzterWegError",
     "PersonAngaben",
     "SitzungAngaben",
     "ZugangError",
@@ -54,6 +55,10 @@ def jetzt() -> datetime:
 
 class ZugangError(Exception):
     """Der Link oder die Eingabe gilt nicht. Der Text ist für die Oberfläche."""
+
+
+class LetzterWegError(Exception):
+    """Der letzte Weg herein bleibt: das Passwort geht nur, solange ein Passkey da ist."""
 
 
 class AngemeldetError(Exception):
@@ -82,6 +87,8 @@ class PersonAngaben:
     erstellt_am: datetime
     zuletzt_angemeldet_am: datetime | None
     passkeys: int
+    #: Ob die Person ein Passwort hat. Nie das Passwort selbst und nie sein Hash.
+    passwort: bool
     #: Wie viele Wiederherstellungscodes noch ungenutzt sind.
     codes_offen: int
     #: Ob ein Einladungslink offen ist (ausgestellt, nicht eingelöst, nicht abgelaufen).
@@ -298,6 +305,7 @@ class AuthDienst:
                 bewusst(person.zuletzt_angemeldet_am) if person.zuletzt_angemeldet_am else None
             ),
             passkeys=int(anzahl_passkeys or 0),
+            passwort=bool(person.passwort_hash),
             codes_offen=len(person.wiederherstellungscodes or []),
             einladung_offen=bool(offen),
         )
@@ -624,9 +632,183 @@ class AuthDienst:
             await s.commit()
 
     async def passkey_loeschen(self, person_id: str, passkey_id: str) -> None:
+        """Löscht einen eigenen Passkey. Der letzte bleibt, außer die Person hat ein Passwort:
+        dann kommt sie auch ohne Passkey herein."""
         async with self.maker() as s:
-            await passkeys.loeschen(s, _kennung(person_id), passkey_id)
+            # Gesperrt gelesen, wie in `passwort_entfernen`: die beiden Wege herein werden nie
+            # gleichzeitig geprüft und entfernt.
+            person = await s.get(m.Person, _kennung(person_id), with_for_update=True)
+            await passkeys.loeschen(
+                s,
+                _kennung(person_id),
+                passkey_id,
+                letzter_darf_gehen=person is not None and bool(person.passwort_hash),
+            )
             await s.commit()
+
+    # ------------------------------------------------------------------ Passwort
+    async def anmelden_mit_passwort(
+        self, email: str, klartext: str, herkunft: str = ""
+    ) -> Angemeldet:
+        """Anmeldung mit E-Mail-Adresse und Passwort.
+
+        Gebremst je Adresse, mit derselben Zählung wie die Wiederherstellungscodes: wer rät,
+        bekommt nicht zehn Versuche für das Passwort und zehn weitere für die Codes. Gerechnet
+        wird auch dann, wenn es die Adresse nicht gibt oder sie kein Passwort hat, damit die
+        Antwortzeit nichts darüber verrät.
+        """
+        adresse = (email or "").strip().lower()
+        if not adresse or not klartext:
+            raise AngemeldetError(ABGELEHNT)
+        if drossel.gesperrt(adresse):
+            log.info("passwortanmeldung gesperrt", email=_verkuerzt(adresse))
+            raise AngemeldetError(ABGELEHNT)
+        async with self.maker() as s:
+            person = (
+                await s.execute(select(m.Person).where(m.Person.email == adresse))
+            ).scalar_one_or_none()
+            gespeichert = person.passwort_hash if person is not None and person.aktiv else None
+            kennung = person.id if person is not None else None
+        # Außerhalb der Datenbanksitzung: der Hash braucht einen Augenblick, und so lange soll
+        # keine Verbindung offen stehen.
+        if not await passwort.stimmt(gespeichert, klartext) or kennung is None:
+            drossel.fehlversuch(adresse)
+            log.info("passwortanmeldung abgelehnt", email=_verkuerzt(adresse))
+            raise AngemeldetError(ABGELEHNT)
+        neuer_hash = (
+            await passwort.verhaschen(klartext)
+            if gespeichert and passwort.veraltet(gespeichert)
+            else None
+        )
+        async with self.maker() as s:
+            person = await s.get(m.Person, kennung)
+            # Zwischen Lesen und Schreiben kann die Person abgeschaltet oder ihr Passwort
+            # gewechselt worden sein. Dann gilt die Prüfung von eben nicht mehr.
+            if person is None or not person.aktiv or person.passwort_hash != gespeichert:
+                drossel.fehlversuch(adresse)
+                raise AngemeldetError(ABGELEHNT)
+            if neuer_hash:
+                person.passwort_hash = neuer_hash
+            angemeldet = await self._sitzung_anlegen(s, person, herkunft)
+            await s.commit()
+        drossel.vergessen(adresse)
+        log.info("angemeldet", weg="passwort", person=angemeldet.ausweis.person_id)
+        return angemeldet
+
+    async def passwort_ueber_link(
+        self, zugangstoken: str, klartext: str, herkunft: str = ""
+    ) -> Angemeldet:
+        """Setzt das Passwort über einen Einladungslink, löst den Link ein und meldet an.
+
+        Derselbe Ablauf wie beim Passkey über den Link: alle offenen Links der Person
+        entfallen, und ihre alten Sitzungen enden, weil der Link bis zum Einlösen jemand anderem
+        gehört haben kann. Ein Passwort, das die Person schon hatte, wird ersetzt. Das ist der
+        Weg, wenn sie es vergessen hat.
+        """
+        async with self.maker() as s:
+            eingeladen = await self._person_fuer_registrierung(s, "", zugangstoken)
+            passwort.pruefen(klartext, eingeladen.email)
+        neuer_hash = await passwort.verhaschen(klartext)
+        async with self.maker() as s:
+            # Noch einmal und diesmal gesperrt gelesen: Prüfen und Einlösen bleiben zusammen.
+            eintrag = await self._zugangstoken(s, zugangstoken)
+            person = await s.get(m.Person, eintrag.person_id)
+            if person is None or not person.aktiv:
+                raise ZugangError("Der Link ist ungültig.")
+            adresse = person.email
+            person.passwort_hash = neuer_hash
+            person.passwort_gesetzt_am = jetzt()
+            eintrag.eingeloest_am = jetzt()
+            await s.execute(
+                delete(m.Zugangstoken).where(
+                    m.Zugangstoken.person_id == person.id,
+                    m.Zugangstoken.eingeloest_am.is_(None),
+                )
+            )
+            await s.execute(delete(m.PersonSitzung).where(m.PersonSitzung.person_id == person.id))
+            angemeldet = await self._sitzung_anlegen(s, person, herkunft)
+            await s.commit()
+        drossel.vergessen(adresse)
+        log.info("passwort gesetzt", weg="link", person=angemeldet.ausweis.person_id)
+        return angemeldet
+
+    async def passwort_setzen(
+        self, person_id: str, neu: str, bisher: str = "", sitzung_id: str | None = None
+    ) -> int:
+        """Setzt oder wechselt das Passwort der angemeldeten Person.
+
+        Wer schon eines hat, nennt das bisherige: eine Sitzung an einem liegengelassenen Gerät
+        soll nicht genügen, um den Besitzer auszusperren. Danach enden alle anderen Sitzungen
+        der Person; zurück kommt ihre Zahl.
+        """
+        kennung = _kennung(person_id)
+        async with self.maker() as s:
+            person = await s.get(m.Person, kennung)
+            if person is None or not person.aktiv:
+                raise ZugangError("Diese Person gibt es nicht.")
+            email, gespeichert = person.email, person.passwort_hash
+        if gespeichert:
+            if drossel.gesperrt(email):
+                raise passwort.PasswortError("Zu viele Versuche. Bitte in fünf Minuten erneut.")
+            if not await passwort.stimmt(gespeichert, bisher):
+                drossel.fehlversuch(email)
+                raise passwort.PasswortError("Das bisherige Passwort stimmt nicht.")
+        passwort.pruefen(neu, email)
+        neuer_hash = await passwort.verhaschen(neu)
+        async with self.maker() as s:
+            person = await s.get(m.Person, kennung)
+            if person is None or not person.aktiv or person.passwort_hash != gespeichert:
+                raise ZugangError("Das Passwort wurde inzwischen an anderer Stelle geändert.")
+            person.passwort_hash = neuer_hash
+            person.passwort_gesetzt_am = jetzt()
+            andere = delete(m.PersonSitzung).where(m.PersonSitzung.person_id == kennung)
+            if sitzung_id:
+                andere = andere.where(m.PersonSitzung.id != _kennung(sitzung_id))
+            ergebnis = cast(CursorResult[Any], await s.execute(andere))
+            await s.commit()
+        log.info("passwort gesetzt", weg="angemeldet", person=person_id)
+        return int(ergebnis.rowcount or 0)
+
+    async def passwort_entfernen(self, person_id: str, bisher: str) -> None:
+        """Nimmt das Passwort weg. Nur mit mindestens einem Passkey: sonst käme die Person nur
+        noch über einen Wiederherstellungscode oder einen Link des Hausherrn herein.
+
+        **Auch hier wird das bisherige Passwort verlangt.** Ohne das ließe sich die Prüfung beim
+        Wechseln umgehen: entfernen, dann ein neues vergeben, und der Besitzer wäre aus einer
+        liegengelassenen Sitzung heraus ausgesperrt (Fund im Review von PR 31).
+        """
+        kennung = _kennung(person_id)
+        async with self.maker() as s:
+            person = await s.get(m.Person, kennung)
+            if person is None or not person.aktiv:
+                raise ZugangError("Diese Person gibt es nicht.")
+            email, gespeichert = person.email, person.passwort_hash
+        if not gespeichert:
+            raise passwort.PasswortError("Es gibt kein Passwort, das sich entfernen ließe.")
+        if drossel.gesperrt(email):
+            raise passwort.PasswortError("Zu viele Versuche. Bitte in fünf Minuten erneut.")
+        if not await passwort.stimmt(gespeichert, bisher):
+            drossel.fehlversuch(email)
+            raise passwort.PasswortError("Das bisherige Passwort stimmt nicht.")
+        async with self.maker() as s:
+            # Die Zeile der Person gesperrt gelesen, wie in `passkey_loeschen`: zwei gleichzeitige
+            # Anfragen, die den letzten Passkey und das Passwort entfernen, sähen sonst jede noch
+            # den anderen Weg und ließen zusammen keinen übrig.
+            person = await s.get(m.Person, kennung, with_for_update=True)
+            if person is None or not person.aktiv or person.passwort_hash != gespeichert:
+                raise ZugangError("Das Passwort wurde inzwischen an anderer Stelle geändert.")
+            anzahl = await s.scalar(
+                select(func.count()).select_from(m.Passkey).where(m.Passkey.person_id == kennung)
+            )
+            if not anzahl:
+                raise LetzterWegError(
+                    "Das Passwort ist der einzige Weg herein. Erst einen Passkey anlegen, "
+                    "dann das Passwort entfernen."
+                )
+            person.passwort_hash = None
+            person.passwort_gesetzt_am = None
+            await s.commit()
+        log.info("passwort entfernt", person=person_id)
 
     # ------------------------------------------------------------------ Wiederherstellung
     async def codes_neu(self, person_id: str) -> list[str]:

@@ -29,6 +29,9 @@ dependencies = [
     # Passkeys (WebAuthn). Die Zeremonien stehen in dch_api/auth/passkeys.py; diese Bibliothek
     # prueft Signatur, Challenge, Herkunft und Zaehler - alles, was man nicht selbst schreiben will.
     "webauthn>=2.5",
+    # Der Hash für das Passwort, den zweiten Weg herein neben dem Passkey
+    # (dch_api/auth/passwort.py). Argon2id nach RFC 9106.
+    "argon2-cffi>=23.1",
 ]
 
 [project.scripts]

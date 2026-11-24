@@ -83,13 +83,13 @@ final class ZugangsseiteTests: XCTestCase {
     // MARK: - Die Reihenfolge und die Fugen
 
     /// Die sechs Abschnitte der Vorlage in ihrer Reihenfolge - der Bereichskicker
-    /// („Geräte koppeln · wer zusieht · Daten sichern“, `Bereiche.swift:170`) nennt die ersten
+    /// („wer Zugang hat · wer zusieht · Daten sichern“, `Bereiche.swift:170`) nennt die ersten
     /// drei in genau dieser Folge.
     func testUeberschriftenInDerReihenfolgeDerVorlage() {
         XCTAssertEqual(
             Zugangsworte.ueberschriften,
             [
-                "Zugang einrichten", "Gerade verbunden", "Platzbedarf", "Sicherung",
+                "Wie man hereinkommt", "Gerade verbunden", "Platzbedarf", "Sicherung",
                 "Sichtbarkeit", "Konfiguration",
             ])
     }
@@ -131,12 +131,12 @@ final class ZugangsseiteTests: XCTestCase {
     /// Umbau leer geblieben ist, fällt auf dem Gerät nur auf, wenn man die Seite ganz
     /// herunterrollt - und in der Vorschau steht sie gar nicht.
     func testJederAbsatzStehtDaUndIstEinSatz() {
-        let absaetze = [
-            Zugangsworte.koppeln, Zugangsworte.vollzugriff, Zugangsworte.gast,
-            Zugangsworte.sitzungsdauer, Zugangsworte.platzbedarf, Zugangsworte.sicherung,
-            Zugangsworte.jahresgroesse, Zugangsworte.herunterladen,
-            Zugangsworte.sicherungsschluss,
-        ]
+        let absaetze =
+            Zugangsworte.hereinkommen + [
+                Zugangsworte.platzbedarf, Zugangsworte.sicherung,
+                Zugangsworte.jahresgroesse, Zugangsworte.herunterladen,
+                Zugangsworte.sicherungsschluss,
+            ]
         for a in absaetze {
             XCTAssertGreaterThan(a.count, 40, "Zu kurz für einen Absatz: \(a)")
             XCTAssertFalse(a.hasPrefix(" "))
@@ -151,7 +151,7 @@ final class ZugangsseiteTests: XCTestCase {
     /// Gerät übersieht, und in dieser Datei stehen vier Zitate.
     func testAnfuehrungszeichenStehenPaarweise() {
         let alles =
-            ([Zugangsworte.koppeln, Zugangsworte.gast, Zugangsworte.herunterladen]
+            (Zugangsworte.hereinkommen + [Zugangsworte.herunterladen]
             + Zugangsworte.methode + Zugangsworte.sichtbarkeit.map(\.wort)).joined(separator: " ")
         XCTAssertEqual(
             alles.filter { $0 == "\u{201E}" }.count, alles.filter { $0 == "\u{201C}" }.count)

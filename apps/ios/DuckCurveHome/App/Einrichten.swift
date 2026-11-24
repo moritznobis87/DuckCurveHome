@@ -1,19 +1,36 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Die Einrichtung: Adresse, Token, Name des Geraets.
+/// Die Einrichtung: die Adresse des Hauses, dann die Anmeldung.
 ///
-/// **Das Token liegt im Schluesselbund und nicht in den Einstellungen.** Das ist der Grund,
-/// warum eine App hier den Umweg des Dashboards nicht braucht (siehe `Zugang`): ein Browser
-/// kann ein Token nicht verwahren, ein Geraet kann es.
+/// **Zwei Wege, wie im Dashboard einer von zweien.** Seit dem 24.11.2026 meldet sich die App als
+/// Person an, mit E-Mail-Adresse und Passwort (`docs/ZUGANG.md`). Der Dienst gibt dafür ein
+/// Sitzungstoken heraus, und was die Person darf, entscheidet er nach ihrer Rolle. Der zweite
+/// Weg ist der bisherige: das API-Token aus `DCH_API_TOKEN`, mit dem die App als Gerät spricht
+/// und am Dienst alles darf. Er bleibt für den, der den Dienst betreibt.
 ///
-/// **Es wird geprueft, bevor es gespeichert wird.** Ein Token, das nicht stimmt, soll hier
+/// Die Anmeldung mit Passkey fehlt hier noch. Sie braucht eine Verknüpfung der App mit der
+/// Adresse des Dashboards bei Apple und lässt sich nur am Gerät prüfen (`docs/GLEICHSTAND.md`).
+///
+/// **Was die App bekommt, liegt im Schluesselbund und nicht in den Einstellungen**, gleich ob
+/// Sitzungstoken oder API-Token. Das Passwort selbst wird nirgends abgelegt.
+///
+/// **Es wird geprueft, bevor es gespeichert wird.** Eine Anmeldung, die nicht stimmt, soll hier
 /// auffallen und nicht an der Wand - und die Pruefung ist eine einzige Anfrage an den
-/// Live-Zustand. Dass sie durchgeht, heisst: Adresse richtig, Netz da, Token gueltig.
+/// Live-Zustand. Dass sie durchgeht, heisst: Adresse richtig, Netz da, Anmeldung gueltig.
 struct Einrichten: View {
     @Environment(Hauszustand.self) private var haus
 
+    /// Womit sich die App anmeldet.
+    enum Weg: Hashable {
+        case passwort
+        case token
+    }
+
     @State private var adresse: String = ""
+    @State private var weg: Weg = .passwort
+    @State private var email: String = ""
+    @State private var passwort: String = ""
     @State private var token: String = ""
     @State private var geraetename: String = ""
     @State private var rolle: Zugang.Rolle = .hausherr
@@ -57,6 +74,9 @@ struct Einrichten: View {
                 geraetename = haus.zugang.geraetename
                 praefix = haus.zugang.praefix
                 rolle = haus.zugang.rolle
+                email = haus.zugang.email
+                // Wer mit dem API-Token eingerichtet war, findet diesen Weg wieder vor.
+                weg = haus.zugang.istPerson || haus.zugang.token.isEmpty ? .passwort : .token
             }
         }
     }
@@ -66,7 +86,7 @@ struct Einrichten: View {
             Marke(groesse: 28)
             Text(
                 "Die App spricht direkt mit dem Dienst im Haus. Dafür braucht sie seine Adresse "
-                    + "und das API-Token aus `DCH_API_TOKEN`."
+                    + "und eine Anmeldung."
             )
             .font(Schrift.klein)
             .foregroundStyle(Farbe.text2)
@@ -84,36 +104,66 @@ struct Einrichten: View {
                     .autocorrectionDisabled()
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("API-Token").font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                    SecureField("aus DCH_API_TOKEN", text: $token)
-                        .textFieldStyle(.plain)
-                        .font(Schrift.zahl)
-                        .padding(10)
-                        .background(Farbe.flaeche3)
-                        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+                    Text("Anmeldung").font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                    Picker("Anmeldung", selection: $weg) {
+                        Text("Mit Passwort").tag(Weg.passwort)
+                        Text("Mit API-Token").tag(Weg.token)
+                    }
+                    .pickerStyle(.segmented)
+                    Text(weg == .passwort ? Anmeldeworte.erklaerung : Anmeldeworte.tokenerklaerung)
+                        .font(Schrift.winzig)
+                        .foregroundStyle(Farbe.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if weg == .passwort {
+                    feld(Anmeldeworte.emailfeld, "name@beispiel.de", $email)
+                        .textContentType(.username)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    geheimfeld(Anmeldeworte.passwortfeld, "", $passwort)
+                        .textContentType(.password)
+                } else {
+                    geheimfeld("API-Token", "aus DCH_API_TOKEN", $token)
                 }
 
                 feld("Name dieses Geräts", "iPad Flur", $geraetename)
                     .textInputAutocapitalization(.words)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Zugang").font(Schrift.winzig).foregroundStyle(Farbe.text3)
-                    Picker("Zugang", selection: $rolle) {
-                        Text("Hausherr").tag(Zugang.Rolle.hausherr)
-                        Text("Gast").tag(Zugang.Rolle.gast)
+                if weg == .token {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Zugang").font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                        Picker("Zugang", selection: $rolle) {
+                            Text("Hausherr").tag(Zugang.Rolle.hausherr)
+                            Text("Gast").tag(Zugang.Rolle.gast)
+                        }
+                        .pickerStyle(.segmented)
+                        Text(
+                            rolle == .gast
+                                ? "Gast blendet aus, was nicht in fremde Hände gehört. Gesperrt wird dadurch nichts. "
+                                    + "Wer das Token hat, darf am Dienst alles."
+                                : "Voller Zugriff: schalten, stellen, Rechnungen."
+                        )
+                        .font(Schrift.winzig)
+                        .foregroundStyle(rolle == .gast ? Farbe.achtung : Farbe.text3)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
-                    .pickerStyle(.segmented)
-                    Text(
-                        rolle == .gast
-                            ? "Gast blendet aus, was nicht in fremde Hände gehört. Gesperrt wird dadurch nichts. "
-                                + "Wer das Token hat, darf am Dienst alles."
-                            : "Voller Zugriff: schalten, stellen, Rechnungen."
-                    )
-                    .font(Schrift.winzig)
-                    .foregroundStyle(rolle == .gast ? Farbe.achtung : Farbe.text3)
-                    .fixedSize(horizontal: false, vertical: true)
                 }
             }
+        }
+    }
+
+    private func geheimfeld(_ wort: String, _ platzhalter: String, _ wert: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(wort).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+            SecureField(platzhalter, text: wert)
+                .textFieldStyle(.plain)
+                .font(Schrift.zahl)
+                .padding(10)
+                .background(Farbe.flaeche3)
+                .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+                .accessibilityLabel(wort)
         }
     }
 
@@ -135,7 +185,7 @@ struct Einrichten: View {
         } label: {
             HStack(spacing: 8) {
                 if pruefe { ProgressView().controlSize(.small) }
-                Text(pruefe ? "Wird geprüft …" : "Verbinden")
+                Text(pruefe ? "Wird geprüft …" : (weg == .passwort ? Anmeldeworte.anmeldeknopf : "Verbinden"))
                     .font(Schrift.karte)
                     .foregroundStyle(Farbe.deep)
             }
@@ -145,8 +195,13 @@ struct Einrichten: View {
             .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(pruefe || adresse.isEmpty)
-        .opacity(adresse.isEmpty ? 0.5 : 1)
+        .disabled(pruefe || unvollstaendig)
+        .opacity(unvollstaendig ? 0.5 : 1)
+    }
+
+    /// Ob noch etwas fehlt, ohne das die Anfrage gar nicht erst hinausgehen muss.
+    private var unvollstaendig: Bool {
+        adresse.isEmpty || (weg == .passwort && (email.isEmpty || passwort.isEmpty))
     }
 
     private var hinweise: some View {
@@ -155,16 +210,16 @@ struct Einrichten: View {
                 .font(Schrift.winzig)
                 .foregroundStyle(Farbe.text3)
             Text(
-                "Das Token wird im Schlüsselbund dieses Geräts verwahrt und verlässt es nur als "
-                    + "Kopfzeile an die Adresse oben."
+                "Was die App vom Dienst bekommt, wird im Schlüsselbund dieses Geräts verwahrt und "
+                    + "verlässt es nur als Kopfzeile an die Adresse oben. Das Passwort selbst "
+                    + "wird nicht gespeichert."
             )
             .font(Schrift.winzig)
             .foregroundStyle(Farbe.text3)
             .fixedSize(horizontal: false, vertical: true)
             Text(
-                "Wer einen echten Gastzugang braucht, der auch am Dienst nichts darf, "
-                    + "trägt als Adresse das Dashboard ein und als Pfad „/api/dch“. Dann gelten "
-                    + "dessen Gastregeln."
+                "Wer nur zusehen soll, bekommt vom Hausherrn eine eigene Person mit der Rolle "
+                    + "Gast und meldet sich damit an. Dann sperrt der Dienst, und nicht nur diese App."
             )
             .font(Schrift.winzig)
             .foregroundStyle(Farbe.text3)
@@ -191,22 +246,41 @@ struct Einrichten: View {
             )
             return
         }
-        let neu = Zugang(
+        var neu = Zugang(
             grund: url,
             praefix: praefix.isEmpty ? "/api/v1" : praefix,
-            token: token,
+            token: weg == .token ? token : "",
             geraetename: geraetename.isEmpty ? Geraet.vorschlag : geraetename,
-            rolle: rolle
+            rolle: weg == .token ? rolle : .gast
         )
+        let adresseDerPerson = email.trimmingCharacters(in: .whitespaces)
+        let geheim = passwort
+        let mitPasswort = weg == .passwort
         pruefe = true
         Task {
             do {
-                // Eine Anfrage, die alles prueft: Adresse, Netz, Token, Schema.
+                if mitPasswort {
+                    // Die Anmeldung selbst: der Dienst gibt das Sitzungstoken einmal heraus.
+                    // Von hier an ist es das Token dieser App; das Passwort wird vergessen.
+                    let angemeldet: AngemeldetOut
+                    do {
+                        angemeldet = try await Api(zugang: neu).anmelden(email: adresseDerPerson, passwort: geheim)
+                    } catch let f as ApiFehler where f.istAnmeldung {
+                        // Der Satz des Dienstes. Der allgemeine Rat („neu anmelden“) wäre hier
+                        // im Kreis geredet.
+                        throw ApiFehler(code: "anmeldung", meldung: f.meldung, status: 400)
+                    }
+                    neu.token = angemeldet.token
+                    neu.email = angemeldet.ausweis.email ?? adresseDerPerson
+                    neu.rolle = Zugang.rolle(derPerson: angemeldet.ausweis.rolle)
+                }
+                // Eine Anfrage, die alles prueft: Adresse, Netz, Anmeldung, Schema.
                 let zustand = try await Api(zugang: neu).liveZustand()
                 geprueft =
                     "Verbunden: \(zustand.system.mode == "demo" ? "Demo" : "Live"), "
                     + "Fassung \(zustand.system.version)."
                 Schluesselbund.speichere(neu)
+                passwort = ""
                 haus.zugang = neu
                 haus.starte()
             } catch let f as ApiFehler {

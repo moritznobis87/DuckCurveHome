@@ -9,8 +9,9 @@ import { PERSON_COOKIE, personCookieOptions } from "@/lib/zugang";
  * Die Anmeldung als Server Actions - nicht über den BFF-Proxy.
  *
  * Der Proxy unter `/api/dch/*` verlangt eine Sitzung, und wer sich anmelden will, hat keine. Die
- * Zeremonie läuft darum so: der Browser holt hier die Optionen, lässt `navigator.credentials`
- * rechnen und reicht die Antwort hier wieder herein. Das **Sitzungstoken sieht der Browser nie** -
+ * Zeremonie des Passkeys läuft darum so: der Browser holt hier die Optionen, lässt `navigator.credentials`
+ * rechnen und reicht die Antwort hier wieder herein. Ein Passwort kommt als Formular herein und
+ * geht von hier an den Dienst. Das **Sitzungstoken sieht der Browser nie** -
  * es kommt vom Dienst zum Server und von dort in ein HttpOnly-Cookie.
  */
 
@@ -95,6 +96,23 @@ export async function wiederherstellen(_vorher: Ergebnis, daten: FormData): Prom
   }
 }
 
+/** Anmeldung mit E-Mail-Adresse und Passwort, der zweite Weg neben dem Passkey. */
+export async function passwortAnmelden(_vorher: Ergebnis, daten: FormData): Promise<Ergebnis> {
+  const email = String(daten.get("email") ?? "");
+  const passwort = String(daten.get("passwort") ?? "");
+  try {
+    const ergebnis = await dienstAnfrage<AngemeldetAntwort>("/auth/anmeldung/passwort", {
+      methode: "POST",
+      rumpf: { email, passwort },
+      browser: await browser(),
+    });
+    await sitzungSetzen(ergebnis);
+    return {};
+  } catch (e) {
+    return { fehler: meldung(e, ABGELEHNT) };
+  }
+}
+
 /** Die Optionen für einen neuen Passkey hinter dem Einladungslink. */
 export async function einrichtenOptionen(token: string): Promise<Zeremonie> {
   try {
@@ -129,6 +147,26 @@ export async function einrichtenAnlegen(
     return { codes: ergebnis.codes ?? [] };
   } catch (e) {
     return { fehler: meldung(e, "Der Passkey ließ sich nicht anlegen.") };
+  }
+}
+
+/**
+ * Das Passwort hinter dem Einladungslink vergeben, den Link einlösen, anmelden.
+ *
+ * Wie beim Passkey kommen die zehn Wiederherstellungscodes einmal zurück, und die Aktion leitet
+ * nicht weiter, damit die Seite sie zeigen kann.
+ */
+export async function einrichtenPasswort(token: string, passwort: string): Promise<Ergebnis> {
+  try {
+    const ergebnis = await dienstAnfrage<AngemeldetAntwort>("/auth/einladung/passwort", {
+      methode: "POST",
+      rumpf: { token, passwort },
+      browser: await browser(),
+    });
+    await sitzungSetzen(ergebnis);
+    return { codes: ergebnis.codes ?? [] };
+  } catch (e) {
+    return { fehler: meldung(e, "Das Passwort ließ sich nicht vergeben.") };
   }
 }
 

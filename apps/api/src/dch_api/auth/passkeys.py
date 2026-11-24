@@ -380,15 +380,21 @@ async def umbenennen(s: AsyncSession, person_id: UUID, passkey_id: str, name: st
     (await _eigener(s, person_id, passkey_id)).name = _name(name)
 
 
-async def loeschen(s: AsyncSession, person_id: UUID, passkey_id: str) -> None:
+async def loeschen(
+    s: AsyncSession, person_id: UUID, passkey_id: str, *, letzter_darf_gehen: bool = False
+) -> None:
     """Löscht einen eigenen Passkey - nicht den letzten: die Person käme sonst nur noch über
-    einen Wiederherstellungscode oder einen Link des Hausherrn herein."""
+    einen Wiederherstellungscode oder einen Link des Hausherrn herein.
+
+    `letzter_darf_gehen` hebt das auf. Der Dienst setzt es, wenn die Person ein Passwort hat.
+    """
     passkey = await _eigener(s, person_id, passkey_id)
     anzahl = await s.scalar(
         select(func.count()).select_from(m.Passkey).where(m.Passkey.person_id == person_id)
     )
-    if (anzahl or 0) <= 1:
+    if (anzahl or 0) <= 1 and not letzter_darf_gehen:
         raise LetzterPasskeyError(
-            "Das ist der letzte Passkey. Erst einen weiteren anlegen, dann diesen löschen."
+            "Das ist der letzte Passkey. Erst einen weiteren anlegen oder ein Passwort "
+            "vergeben, dann diesen löschen."
         )
     await s.delete(passkey)

@@ -1,31 +1,24 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Die Seite „Zugang und Sicherung“: wie Geräte hereinkommen, was die Datenbank wiegt, und wie
-/// man eine Kopie davon aus dem Haus bekommt.
+/// Die Seite „Zugang und Sicherung“: wie man hereinkommt, wie dieses Gerät hereingekommen ist,
+/// was die Datenbank wiegt, und wie man eine Kopie davon aus dem Haus bekommt.
 ///
-/// **Was hier umgebaut wurde, und warum.** Die Vorlage
-/// (`apps/web/src/app/system/zugang/page.tsx`) setzt sechs Abschnitte in dieser Folge: koppeln,
-/// wer zusieht, Platzbedarf, Sicherung, Sichtbarkeit, Konfiguration - genau die drei Dinge, die
-/// der Bereichskicker verspricht („Geräte koppeln · wer zusieht · Daten sichern“,
-/// `Bereiche.swift:170`). Die App hatte davon keinen einzigen: sie zeigte das Token *dieses*
-/// Geräts, den Zustand der Verbindung, die Geräte für Mitteilungen und einen Knopf. Vier von
-/// sechs Abschnitten fehlten ganz, und ein Fünftel des Textes stand zugeklappt in ``Methode`` -
-/// obwohl auf dieser Seite nichts gerechnet wird und dort die Bedienungsanleitung steht.
+/// **Die Vorlage** ist `apps/web/src/app/system/zugang/page.tsx`. Sie setzt ihre Abschnitte als
+/// `<section>` mit `<h2>` ohne Kasten; in der App steht jeder in einer ``Karte``, und wo die
+/// Vorlage zwei Abschnitte zusammenrückt, stehen hier „Sichtbarkeit“ und „Konfiguration“ in
+/// einer.
 ///
-/// **Die Vorlage hat keine Karten, die App hat nur Karten.** Sechs `<section>` mit `<h2>` ohne
-/// Kasten (`page.tsx:60`) wären in der App sechs ``Karte`` in Folge - und genau das nennt
-/// `handy.css:3-6` als den Fehler, den die Handy-Fassung abgestellt hat („viereinhalb
-/// Bildschirme gleich schwerer Kästen“). Die Minderung ist die, die die Vorlage selbst
-/// vorzeichnet: wo sie zwei Abschnitte mit `gap-2` statt `gap-3` zusammenrückt (`page.tsx:158,
-/// 168`), stehen hier „Sichtbarkeit“ und „Konfiguration“ in einer Karte.
+/// **Was der App gegenüber der Vorlage noch fehlt** (`docs/GLEICHSTAND.md`): die Liste der
+/// Personen mit dem Einladen, die eigenen Passkeys und die eigenen Sitzungen. „Gerade
+/// verbunden“ liest im Dashboard eine `Map` im Arbeitsspeicher von Next; im Dienst des Hauses
+/// gibt es dafür keinen Endpunkt, und eine erfundene Liste von Zuschauern wäre schlimmer als
+/// keine.
 ///
-/// **Zwei Abschnitte der Vorlage sind nicht nachgebaut, und das ist kein Rest.** Die zwei
-/// Pairing-Links tragen Umgebungsvariablen des Web-Dienstes (`page.tsx:51-52`), und „Gerade
-/// verbunden“ liest eine `Map` im Arbeitsspeicher von Next (`lib/presence.ts:38-41`); im Dienst
-/// des Hauses gibt es für beides keinen Endpunkt (nachgesehen in `docs/openapi.json`). Eine
-/// erfundene Liste von Zuschauern wäre schlimmer als keine. Was die App dazu sagen kann, sagt
-/// ``Zugangsworte/koppeln``: wo die Links stehen, und warum dieses Gerät sie nicht braucht.
+/// **Was seit dem 24.11.2026 da ist:** der Abschnitt „Wie man hereinkommt“ im Wortlaut des
+/// Dashboards und, für eine angemeldete Person, die Karte „Mein Passwort“
+/// (``MeinPasswortKarte``). Bis dahin beschrieb die Seite Kopplungslinks und Gast-Token, die es
+/// seit dem 23.11.2026 nicht mehr gibt.
 struct ZugangSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
@@ -47,8 +40,11 @@ struct ZugangSeite: View {
 
     var body: some View {
         Seite {
-            koppeln
+            hereinkommen
             diesesGeraet
+            if haus.zugang.istPerson {
+                MeinPasswortKarte()
+            }
             platzbedarf
             sicherung
             sichtbarkeitUndKonfiguration
@@ -62,69 +58,47 @@ struct ZugangSeite: View {
         .task { await ladeBestand() }
     }
 
-    // MARK: - 1. Zugang einrichten
+    // MARK: - 1. Wie man hereinkommt
 
-    /// Der erste Abschnitt der Vorlage (`page.tsx:60-86`), ohne die Links.
-    ///
-    /// Statt der zwei `Row` mit Kopierknopf stehen hier die zwei Noten, die in der Vorlage unter
-    /// den Links hängen (`page.tsx:73, 78`): was ein Vollzugriff darf und was ein Gast sieht.
-    /// Das ist die Aussage der beiden Kästen; der Link selbst ist nur ihr Träger, und den hat
-    /// die App nicht.
-    private var koppeln: some View {
+    /// Der Abschnitt „Wie man hereinkommt“ der Vorlage, im Wortlaut des Dashboards
+    /// (``Zugangsworte/hereinkommen``).
+    private var hereinkommen: some View {
         Karte(kicker: Zugangsworte.ueberschriften[0]) {
             VStack(alignment: .leading, spacing: 12) {
-                absatz(Zugangsworte.koppeln)
-                rollenkasten("Vollzugriff (Hausherr, Wandanzeige)", Zugangsworte.vollzugriff)
-                rollenkasten("Gast (nur ansehen)", Zugangsworte.gast)
-                hinweis(Zugangsworte.sitzungsdauer)
+                ForEach(Zugangsworte.hereinkommen, id: \.self) { absatz($0) }
             }
         }
     }
 
-    /// Ein Kasten wie `Row` in der Vorlage (`page.tsx:12-20`): Kicker, dann die Note.
-    ///
-    /// Die Maße sind die der Vorlage, übersetzt: `rounded-[3px]` ist ``Marken/radius2``
-    /// (3 Punkte, deckungsgleich mit `--radius-2`), `border-line-1` ist ``Farbe/linie1``,
-    /// `bg-surface-2` ist ``Farbe/flaeche2``, `p-4` sind 16 Punkte.
-    private func rollenkasten(_ wort: String, _ note: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Kicker(wort: wort)
-            Text(note)
-                .font(Schrift.sans(notenstufe, relativeTo: .footnote))
-                .foregroundStyle(Farbe.text3)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Farbe.flaeche2)
-        .overlay(
-            RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous)
-                .strokeBorder(Farbe.linie1, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous))
-    }
-
     // MARK: - 2. Dieses Gerät
 
-    /// Die Karte, die die App vorher an erster Stelle hatte - und die dort falsch stand.
+    /// Wie dieses Gerät hereingekommen ist: als Person oder mit dem API-Token.
     ///
-    /// Sie ist nicht das Gegenstück zu den Pairing-Links, sondern ihre Ergänzung: dort steht,
-    /// wie andere Geräte hereinkommen, hier, wie dieses hereingekommen ist. Darum steht sie
-    /// jetzt daneben und nicht an ihrer Stelle.
+    /// Die Karte hat im Dashboard kein Gegenstück, weil ein Browser weder eine Adresse des
+    /// Hauses noch einen Schlüsselbund hat. Sie ist das, was die App zusätzlich wissen muss.
     private var diesesGeraet: some View {
         Karte(kicker: "Dieses Gerät") {
             VStack(spacing: 0) {
+                if haus.zugang.istPerson {
+                    Zeile(wort: "Angemeldet als", wert: haus.zugang.email)
+                    Zeile(
+                        wort: "In dieser App",
+                        wert: haus.zugang.rolle == .hausherr ? "Vollzugriff" : "nur Ansicht",
+                        farbe: haus.zugang.rolle == .hausherr ? Farbe.text1 : Farbe.achtung
+                    )
+                } else {
+                    Zeile(
+                        wort: "Zugang",
+                        wert: haus.zugang.rolle == .hausherr ? "Gerät mit API-Token" : "Gerät mit API-Token, als Gast",
+                        farbe: haus.zugang.rolle == .hausherr ? Farbe.text1 : Farbe.achtung
+                    )
+                }
                 Zeile(wort: "Name im Protokoll", wert: haus.zugang.geraetename)
                 Zeile(wort: "Kennung", wert: haus.zugang.geraetekennung)
-                Zeile(
-                    wort: "Zugang",
-                    wert: haus.zugang.rolle == .hausherr ? "Hausherr" : "Gast",
-                    farbe: haus.zugang.rolle == .hausherr ? Farbe.text1 : Farbe.achtung
-                )
                 Zeile(wort: "Adresse", wert: haus.zugang.grund.absoluteString)
                 Zeile(wort: "Pfad", wert: haus.zugang.praefix)
                 Zeile(
-                    wort: "Token",
+                    wort: haus.zugang.istPerson ? "Sitzung" : "Token",
                     wert: haus.zugang.token.isEmpty
                         ? "keines (Demo)"
                         : "im Schlüsselbund · \(haus.zugang.token.count) Zeichen"
