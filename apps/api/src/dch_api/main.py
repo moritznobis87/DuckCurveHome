@@ -40,6 +40,7 @@ from dch_api.routers import (
     regelkreis,
     rooms,
     system,
+    uebersicht,
     update,
     waermepumpe,
 )
@@ -318,6 +319,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         control.router,
         config.router,
         system.router,
+        uebersicht.router,
         demo.router,
     ):
         app.include_router(r, prefix=API_PREFIX, dependencies=protected)
