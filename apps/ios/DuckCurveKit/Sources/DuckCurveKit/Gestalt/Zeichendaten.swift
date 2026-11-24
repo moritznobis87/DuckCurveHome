@@ -1,7 +1,7 @@
 // Erzeugt von tools/gen-zeichen.py aus apps/web/src/components/ui/Icon.tsx.
 // Nicht von Hand aendern - neu erzeugen mit `tools/gen-zeichen.py`.
 //
-// Die Zeichen des Dashboards: 29 Strichzeichnungen auf einem 24-Punkt-Raster, 1,75 Punkt
+// Die Zeichen des Dashboards: 33 Strichzeichnungen auf einem 24-Punkt-Raster, 1,75 Punkt
 // Strich, runde Enden, kein Emoji. Kreise und Rechtecke sind beim Uebernehmen zu
 // Pfadangaben gerechnet worden.
 
@@ -15,18 +15,22 @@ public enum Zeichenart: String, Sendable, Hashable, CaseIterable {
     case ente
     case euro
     case flamme
+    case geraet
     case glocke
     case haus
     case kaffee
     case kalender
     case kreis
     case lampe
+    case lupe
     case mond
     case netz
     case ofen
     case person
     case schieber
     case schild
+    case schloss
+    case schluessel
     case sonne
     case tabelle
     case thermometer
@@ -92,6 +96,11 @@ extension Zeichenart {
                 (d: "M12 2.5c.9 3.3 4.6 5 5.6 8.6 1.1 4-1.6 8.4-5.6 8.4s-6.7-4.4-5.6-8.4c.4-1.6 1.4-2.9 2.4-4.1.4 1.4 1.1 2.4 2.2 2.9C10.5 7.6 10.8 5 12 2.5z", gefuellt: false),
                 (d: "M12 19.5c-1.8 0-3-1.4-2.7-3 .2-1 .9-1.8 1.6-2.6.3.8.8 1.3 1.5 1.5.3-1 .5-1.8 1-2.6 1.1 1.1 1.9 2.4 1.6 3.8-.3 1.7-1.4 2.9-3 2.9z", gefuellt: false),
             ]
+        case .geraet:
+            return [
+                (d: "M 8.9 2.5 L 15.1 2.5 C 16.425483399593904 2.5 17.5 3.5745166004060955 17.5 4.9 L 17.5 19.1 C 17.5 20.425483399593904 16.425483399593904 21.5 15.1 21.5 L 8.9 21.5 C 7.5745166004060955 21.5 6.5 20.425483399593904 6.5 19.1 L 6.5 4.9 C 6.5 3.5745166004060955 7.5745166004060955 2.5 8.9 2.5 Z", gefuellt: false),
+                (d: "M10.8 18.4h2.4", gefuellt: false),
+            ]
         case .glocke:
             return [
                 (d: "M6.2 16.8h11.6c-1.1-1.2-1.6-2.9-1.6-4.9v-1.1a4.2 4.2 0 0 0-8.4 0v1.1c0 2-.5 3.7-1.6 4.9z", gefuellt: false),
@@ -132,6 +141,11 @@ extension Zeichenart {
                 (d: "M10.2 20.5h3.6", gefuellt: false),
                 (d: "M8.6 14.3a5.7 5.7 0 1 1 6.8 0c-.7.6-1.1 1.5-1.1 2.4H9.7c0-.9-.4-1.8-1.1-2.4z", gefuellt: false),
             ]
+        case .lupe:
+            return [
+                (d: "M 10.6 4.199999999999999 C 14.13462239891708 4.199999999999999 17.0 7.06537760108292 17.0 10.6 C 17.0 14.13462239891708 14.13462239891708 17.0 10.6 17.0 C 7.06537760108292 17.0 4.199999999999999 14.13462239891708 4.199999999999999 10.6 C 4.199999999999999 7.06537760108292 7.06537760108292 4.199999999999999 10.6 4.199999999999999 Z", gefuellt: false),
+                (d: "M15.3 15.3 20.5 20.5", gefuellt: false),
+            ]
         case .mond:
             return [
                 (d: "M20.3 14.2A8.4 8.4 0 1 1 9.8 3.7a6.7 6.7 0 0 0 10.5 10.5z", gefuellt: false),
@@ -166,6 +180,19 @@ extension Zeichenart {
             return [
                 (d: "M12 3 5 5.8v5.3c0 4.3 3 7.7 7 8.9 4-1.2 7-4.6 7-8.9V5.8z", gefuellt: false),
                 (d: "M9.2 12.2l2 2 3.8-4", gefuellt: false),
+            ]
+        case .schloss:
+            return [
+                (d: "M 6.7 10.5 L 17.3 10.5 C 18.515026449627747 10.5 19.5 11.484973550372253 19.5 12.7 L 19.5 18.8 C 19.5 20.015026449627747 18.515026449627747 21.0 17.3 21.0 L 6.7 21.0 C 5.4849735503722545 21.0 4.5 20.015026449627747 4.5 18.8 L 4.5 12.7 C 4.5 11.484973550372253 5.4849735503722545 10.5 6.7 10.5 Z", gefuellt: false),
+                (d: "M8 10.5V7.6a4 4 0 0 1 8 0v2.9", gefuellt: false),
+                (d: "M12 14.6v2.4", gefuellt: false),
+            ]
+        case .schluessel:
+            return [
+                (d: "M 7.8 11.899999999999999 C 10.174824424272412 11.899999999999999 12.1 13.825175575727588 12.1 16.2 C 12.1 18.57482442427241 10.174824424272412 20.5 7.8 20.5 C 5.425175575727588 20.5 3.5 18.57482442427241 3.5 16.2 C 3.5 13.825175575727588 5.425175575727588 11.899999999999999 7.8 11.899999999999999 Z", gefuellt: false),
+                (d: "M10.9 13.1 20 4", gefuellt: false),
+                (d: "M16.6 7.4l2.6 2.6", gefuellt: false),
+                (d: "M14 10l1.9 1.9", gefuellt: false),
             ]
         case .sonne:
             return [
@@ -235,18 +262,22 @@ extension Zeichenart {
         case .ente: return "duck"
         case .euro: return "euro"
         case .flamme: return "flame"
+        case .geraet: return "device"
         case .glocke: return "bell"
         case .haus: return "house"
         case .kaffee: return "coffee"
         case .kalender: return "calendar"
         case .kreis: return "loop"
         case .lampe: return "bulb"
+        case .lupe: return "search"
         case .mond: return "moon"
         case .netz: return "grid"
         case .ofen: return "stove"
         case .person: return "person"
         case .schieber: return "sliders"
         case .schild: return "shield"
+        case .schloss: return "lock"
+        case .schluessel: return "key"
         case .sonne: return "sun"
         case .tabelle: return "table"
         case .thermometer: return "thermo"
@@ -273,6 +304,7 @@ extension Zeichenart {
         case "clock": self = .uhr
         case "coffee": self = .kaffee
         case "dashboard": self = .anzeige
+        case "device": self = .geraet
         case "door": self = .tuer
         case "duck": self = .ente
         case "euro": self = .euro
@@ -281,10 +313,13 @@ extension Zeichenart {
         case "grid": self = .netz
         case "home": self = .haus
         case "house": self = .haus
+        case "key": self = .schluessel
+        case "lock": self = .schloss
         case "loop": self = .kreis
         case "moon": self = .mond
         case "person": self = .person
         case "pump": self = .waermepumpe
+        case "search": self = .lupe
         case "shield": self = .schild
         case "sliders": self = .schieber
         case "stove": self = .ofen

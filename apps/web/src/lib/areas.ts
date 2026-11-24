@@ -255,12 +255,15 @@ export interface Stufe {
   name: string;
   wort: string;
   nurHausherr: boolean;
+  /** Das Zeichen und die Farbe der Karte, in der die Stufe auf „Einstellen“ steht. */
+  zeichen: IconName;
+  farbe: Seitenfarbe;
 }
 
 export const STUFEN: Stufe[] = [
-  { schluessel: "eingreifen", name: "Eingreifen", wort: "jetzt und befristet", nurHausherr: false },
-  { schluessel: "vorgeben", name: "Vorgeben", wort: "dauerhaft", nurHausherr: false },
-  { schluessel: "abstimmen", name: "Abstimmen", wort: "womit die Regelung rechnet", nurHausherr: true },
+  { schluessel: "eingreifen", name: "Eingreifen", wort: "jetzt und befristet", nurHausherr: false, zeichen: "clock", farbe: "pv" },
+  { schluessel: "vorgeben", name: "Vorgeben", wort: "dauerhaft", nurHausherr: false, zeichen: "sliders", farbe: "speicher" },
+  { schluessel: "abstimmen", name: "Abstimmen", wort: "womit die Regelung rechnet", nurHausherr: true, zeichen: "target", farbe: "ruhig" },
 ];
 
 /**
@@ -271,21 +274,23 @@ export interface Einstellung {
   name: string;
   stufe: Stufe["schluessel"];
   weg: string;
+  /** Das Zeichen vor dem Namen. */
+  zeichen: IconName;
   stichworte: string[];
 }
 
 export const EINSTELLUNGEN: Einstellung[] = [
-  { name: "Wärmepumpe anfordern oder sperren", stufe: "eingreifen", weg: "/", stichworte: ["Wärmepumpe", "Kontakt", "sperren", "anfordern"] },
-  { name: "Ofen an oder aus", stufe: "eingreifen", weg: "/", stichworte: ["Ofen", "Pelletofen", "Pellets"] },
-  { name: "Speicher anhalten oder freigeben", stufe: "eingreifen", weg: "/strom/speicher", stichworte: ["Speicher", "Batterie", "Libbi"] },
-  { name: "Alarmanlage scharf schalten", stufe: "eingreifen", weg: "/", stichworte: ["Alarm", "Alarmanlage", "scharf"] },
-  { name: "Solltemperatur eines Raums", stufe: "vorgeben", weg: "/haus", stichworte: ["Raum", "Temperatur", "Sollwert", "Heizung"] },
-  { name: "Raum-Automatik", stufe: "vorgeben", weg: "/haus", stichworte: ["Automatik", "Räume", "Vorheizen"] },
-  { name: "Untergrenze des Speichers", stufe: "vorgeben", weg: "/strom/speicher", stichworte: ["Speicher", "Reserve", "Untergrenze"] },
-  { name: "Mitteilungen und Morgenbrief", stufe: "vorgeben", weg: "/system/mitteilungen", stichworte: ["Mitteilungen", "Push", "Morgenbrief"] },
-  { name: "Annahmen der Wärmerechnung", stufe: "abstimmen", weg: "/waerme/annahmen", stichworte: ["Annahmen", "Wärmebedarf", "Haus", "Modell"] },
-  { name: "Parameter des Regelkreises", stufe: "abstimmen", weg: "/waerme/regelkreis", stichworte: ["Regelkreis", "Parameter", "Übersteuern"] },
-  { name: "Regler der Wärmepumpe", stufe: "abstimmen", weg: "/waerme/waermepumpe/regler", stichworte: ["Regler", "Heizkurve", "Vorlauf", "Wärmepumpe"] },
+  { name: "Wärmepumpe anfordern oder sperren", stufe: "eingreifen", weg: "/", zeichen: "pump", stichworte: ["Wärmepumpe", "Kontakt", "sperren", "anfordern"] },
+  { name: "Ofen an oder aus", stufe: "eingreifen", weg: "/", zeichen: "stove", stichworte: ["Ofen", "Pelletofen", "Pellets"] },
+  { name: "Speicher anhalten oder freigeben", stufe: "eingreifen", weg: "/strom/speicher", zeichen: "battery", stichworte: ["Speicher", "Batterie", "Libbi"] },
+  { name: "Alarmanlage scharf schalten", stufe: "eingreifen", weg: "/", zeichen: "shield", stichworte: ["Alarm", "Alarmanlage", "scharf"] },
+  { name: "Solltemperatur eines Raums", stufe: "vorgeben", weg: "/haus", zeichen: "thermo", stichworte: ["Raum", "Temperatur", "Sollwert", "Heizung"] },
+  { name: "Raum-Automatik", stufe: "vorgeben", weg: "/haus", zeichen: "house", stichworte: ["Automatik", "Räume", "Vorheizen"] },
+  { name: "Untergrenze des Speichers", stufe: "vorgeben", weg: "/strom/speicher", zeichen: "battery", stichworte: ["Speicher", "Reserve", "Untergrenze"] },
+  { name: "Mitteilungen und Morgenbrief", stufe: "vorgeben", weg: "/system/mitteilungen", zeichen: "bell", stichworte: ["Mitteilungen", "Push", "Morgenbrief"] },
+  { name: "Annahmen der Wärmerechnung", stufe: "abstimmen", weg: "/waerme/annahmen", zeichen: "table", stichworte: ["Annahmen", "Wärmebedarf", "Haus", "Modell"] },
+  { name: "Parameter des Regelkreises", stufe: "abstimmen", weg: "/waerme/regelkreis", zeichen: "loop", stichworte: ["Regelkreis", "Parameter", "Übersteuern"] },
+  { name: "Regler der Wärmepumpe", stufe: "abstimmen", weg: "/waerme/waermepumpe/regler", zeichen: "dashboard", stichworte: ["Regler", "Heizkurve", "Vorlauf", "Wärmepumpe"] },
 ];
 
 /** Ob eine Adresse nur dem Hausherrn gehört: ihr Reiter ist es, oder ihr ganzer Bereich. */

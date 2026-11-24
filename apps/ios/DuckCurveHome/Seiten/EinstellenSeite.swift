@@ -11,6 +11,11 @@ import SwiftUI
 /// Das Gegenstück ist `apps/web/src/components/einstellen/Einstellen.tsx`, mit demselben Katalog
 /// (``Bereiche/einstellungen``) und denselben Sätzen (``Einstellworte``). Jeder, der im Haus
 /// stellen darf, sieht die Seite; „Abstimmen“ und die Systemseiten bleiben dem Hausherrn.
+///
+/// **Das Bild der Übersichten** (seit dem 24.11.2026): oben eine Zustandskarte, grün, wenn alles
+/// die Automatik regelt, bernsteinfarben mit den Eingriffen und dem Knopf, wenn etwas von Hand
+/// gestellt ist. Jede Stufe ist eine Karte mit eigenem Zeichen und eigener Farbe, jede
+/// Einstellung hat ihr Zeichen; beides steht im Seitenbaum, wie im Dashboard.
 struct EinstellenSeite: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
@@ -29,10 +34,10 @@ struct EinstellenSeite: View {
 
     var body: some View {
         Seite {
-            VStack(alignment: .leading, spacing: 26) {
+            VStack(alignment: .leading, spacing: 22) {
                 suchfeld
                 if !suche.trimmingCharacters(in: .whitespaces).isEmpty { treffer }
-                handeingriffe
+                zustandskarte
                 stufen
                 if hausherr, let system = Bereiche.alle.first(where: { $0.schluessel == .system }) {
                     abschnitt(Einstellworte.system, wort: Einstellworte.systemWort) {
@@ -50,7 +55,7 @@ struct EinstellenSeite: View {
                     }
                 }
             }
-            .frame(maxWidth: 980, alignment: .leading)
+            .frame(maxWidth: 1040, alignment: .leading)
         }
         .task {
             while !Task.isCancelled {
@@ -63,20 +68,22 @@ struct EinstellenSeite: View {
     // MARK: - Teile
 
     private var suchfeld: some View {
-        TextField(Einstellworte.suchfeld, text: $suche)
-            .textFieldStyle(.plain)
-            .font(Schrift.text)
-            .foregroundStyle(Farbe.text1)
-            .autocorrectionDisabled()
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(Farbe.flaeche1)
-            .overlay(
-                RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
-                    .strokeBorder(Farbe.linie1, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
-            .accessibilityLabel("Einstellung suchen")
+        HStack(spacing: 10) {
+            Zeichen(.lupe, groesse: 18, farbe: Farbe.text3)
+                .accessibilityHidden(true)
+            TextField(Einstellworte.suchfeld, text: $suche)
+                .textFieldStyle(.plain)
+                .font(Schrift.text)
+                .foregroundStyle(Farbe.text1)
+                .autocorrectionDisabled()
+                .accessibilityLabel("Einstellung suchen")
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 16)
+        .padding(.vertical, 13)
+        .background(Farbe.flaeche1)
+        .overlay(Capsule().strokeBorder(Farbe.linie1, lineWidth: 1))
+        .clipShape(Capsule())
     }
 
     @ViewBuilder private var treffer: some View {
@@ -84,30 +91,88 @@ struct EinstellenSeite: View {
         if gefunden.isEmpty {
             hinweis(Einstellworte.nichtsGefunden)
         } else {
-            liste(gefunden)
+            zeilen(gefunden)
+                .padding(6)
+                .background(Farbe.flaeche1)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
+                        .strokeBorder(Farbe.linie1, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
         }
     }
 
-    private var handeingriffe: some View {
+    // MARK: - Die Zustandskarte
+
+    /// Die Farbe des Zustands: grün auf Automatik, bernsteinfarben bei einem Eingriff, das
+    /// ruhige Grau, solange der Stand nicht da ist (`globals.css`, `.einstellen-status`).
+    private var zustandsfarbe: Color {
+        guard let stand else { return Seitenfarbe.ruhig.farbe }
+        return stand.eingriffe.isEmpty ? Farbe.gut : Farbe.amberWeich
+    }
+
+    private var zustandskarte: some View {
         let eingriffe = stand?.eingriffe ?? []
         let zurueck = eingriffe.filter { $0.zuruecksetzbar == true }
-        return abschnitt(Einstellworte.vonHand, wort: eingriffe.isEmpty ? nil : "\(eingriffe.count)") {
-            VStack(alignment: .leading, spacing: 8) {
-                if let fehler { hinweis(fehler) }
-                if stand != nil, eingriffe.isEmpty { hinweis(Einstellworte.leer) }
-                ForEach(Array(eingriffe.enumerated()), id: \.offset) { _, e in
-                    eingriffszeile(e)
-                }
-                if let meldung { hinweis(meldung) }
-                if haus.darfSchalten, !zurueck.isEmpty {
-                    if fragt {
-                        rueckfrage(zurueck, alle: eingriffe.count)
+        let text = Einstellworte.zustand(stand.map { $0.eingriffe.count })
+        let farbe = zustandsfarbe
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 14) {
+                Group {
+                    if !eingriffe.isEmpty {
+                        Zeichen(.schieber, groesse: 22, farbe: farbe)
                     } else {
-                        knopf(Einstellworte.allesZurueck, hervor: false) { fragt = true }
+                        Zustandszeichen(ampel: stand == nil ? .aus : .gut, gross: true)
                     }
+                }
+                .frame(width: 44, height: 44)
+                .background(farbe.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(text.titel)
+                        .font(Schrift.sansHalbfett(19, relativeTo: .title3))
+                        .foregroundStyle(Farbe.text1)
+                    Text(fehler ?? text.satz)
+                        .font(Schrift.sans(14, relativeTo: .footnote))
+                        .foregroundStyle(Farbe.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
+            }
+            ForEach(Array(eingriffe.enumerated()), id: \.offset) { _, e in
+                eingriffszeile(e)
+            }
+            if let meldung {
+                Text(meldung)
+                    .font(Schrift.sans(14, relativeTo: .footnote))
+                    .foregroundStyle(Farbe.text2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if haus.darfSchalten, !zurueck.isEmpty {
+                if fragt {
+                    rueckfrage(zurueck, alle: eingriffe.count)
+                } else {
+                    knopf(Einstellworte.allesZurueck, zeichen: .kreis, hervor: true) { fragt = true }
                 }
             }
         }
+        .padding(EdgeInsets(top: 18, leading: 18, bottom: 20, trailing: 18))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            ZStack {
+                Farbe.flaeche1
+                RadialGradient(
+                    colors: [farbe.opacity(0.16), .clear],
+                    center: .topLeading, startRadius: 0, endRadius: 320)
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
+                .strokeBorder(farbe.opacity(0.35), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
     }
 
     private func eingriffszeile(_ e: HandeingriffOut) -> some View {
@@ -117,24 +182,25 @@ struct EinstellenSeite: View {
         } label: {
             HStack(spacing: 12) {
                 Zeichen(zeichen(e.art), groesse: 18, farbe: Farbe.amberWeich)
-                    .frame(width: 30, height: 30)
-                    .background(Farbe.amberWeich.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .frame(width: 32, height: 32)
+                    .background(Farbe.amberWeich.opacity(0.13))
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                     .accessibilityHidden(true)
                 Text(e.satzDe)
                     .font(Schrift.sans(14.5, relativeTo: .subheadline))
                     .foregroundStyle(Farbe.text1)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
+                pfeil
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
-            .background(Farbe.flaeche1)
+            .background(Farbe.deep.opacity(0.45))
             .overlay(
-                RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
-                    .strokeBorder(Farbe.amberWeich.opacity(0.4), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Farbe.linie1, lineWidth: 1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -160,23 +226,71 @@ struct EinstellenSeite: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(Farbe.flaeche1)
+        .background(Farbe.deep.opacity(0.45))
         .overlay(
-            RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
-                .strokeBorder(Farbe.amber, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Farbe.amber.opacity(0.6), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
+    // MARK: - Die Stufen
+
+    /// Am iPad stehen die Stufen nebeneinander, am Telefon untereinander
+    /// (`globals.css`, `.einstellen-stufen`).
     private var stufen: some View {
-        VStack(alignment: .leading, spacing: 26) {
-            ForEach(Bereiche.stufen.filter { hausherr || !$0.nurHausherr }) { stufe in
+        let sichtbar = Bereiche.stufen.filter { hausherr || !$0.nurHausherr }
+        return LazyVGrid(
+            columns: Array(
+                repeating: GridItem(.flexible(), spacing: 14, alignment: .top),
+                count: schmal ? 1 : sichtbar.count),
+            alignment: .leading, spacing: 14
+        ) {
+            ForEach(sichtbar) { stufe in
                 let eintraege = Bereiche.einstellungen(derStufe: stufe.schluessel, hausherr: hausherr)
-                if !eintraege.isEmpty {
-                    abschnitt(stufe.name, wort: stufe.wort) { liste(eintraege) }
-                }
+                if !eintraege.isEmpty { stufenkarte(stufe, eintraege) }
             }
         }
+    }
+
+    private func stufenkarte(_ stufe: Stufe, _ eintraege: [Einstellung]) -> some View {
+        let farbe = stufe.farbe.farbe
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                Zeichen(stufe.zeichen, groesse: 20, farbe: farbe)
+                    .frame(width: 36, height: 36)
+                    .background(farbe.opacity(0.14))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(stufe.name)
+                        .font(Schrift.sansHalbfett(16, relativeTo: .headline))
+                        .foregroundStyle(Farbe.text1)
+                    Text(stufe.wort)
+                        .font(Schrift.sans(13, relativeTo: .footnote))
+                        .foregroundStyle(Farbe.text3)
+                }
+            }
+            .padding(EdgeInsets(top: 0, leading: 6, bottom: 8, trailing: 6))
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            zeilen(eintraege)
+        }
+        .padding(EdgeInsets(top: 16, leading: 12, bottom: 10, trailing: 12))
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background {
+            ZStack {
+                Farbe.flaeche1
+                RadialGradient(
+                    colors: [farbe.opacity(0.12), .clear],
+                    center: .topLeading, startRadius: 0, endRadius: 220)
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
+                .strokeBorder(Farbe.linie1, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
     }
 
     // MARK: - Bausteine
@@ -197,35 +311,39 @@ struct EinstellenSeite: View {
         }
     }
 
-    private func liste(_ eintraege: [Einstellung]) -> some View {
-        VStack(spacing: 0) {
-            ForEach(Array(eintraege.enumerated()), id: \.element.id) { i, e in
+    /// Die Zeilen einer Stufe: Zeichen, Name, Pfeil (`globals.css`, `.einstellen-zeile`).
+    private func zeilen(_ eintraege: [Einstellung]) -> some View {
+        VStack(spacing: 2) {
+            ForEach(eintraege) { e in
                 Button {
                     wegweiser.merkeReiter()
                     wegweiser.gehe(e.weg)
                 } label: {
-                    HStack {
-                        Text(e.name).font(Schrift.text).foregroundStyle(Farbe.text1)
-                        Spacer(minLength: 8)
-                        Text("›").font(Schrift.sans(18)).foregroundStyle(Farbe.text3)
+                    HStack(spacing: 12) {
+                        Zeichen(e.zeichen, groesse: 17, farbe: Farbe.text2)
+                            .frame(width: 32, height: 32)
+                            .background(Farbe.flaeche2)
+                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                             .accessibilityHidden(true)
+                        Text(e.name)
+                            .font(Schrift.text)
+                            .foregroundStyle(Farbe.text1)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 8)
+                        pfeil
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 13)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 9)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                if i < eintraege.count - 1 {
-                    Rectangle().fill(Farbe.linie1).frame(height: 1)
-                }
             }
         }
-        .background(Farbe.flaeche1)
-        .overlay(
-            RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
-                .strokeBorder(Farbe.linie1, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+    }
+
+    private var pfeil: some View {
+        Text("›").font(Schrift.sans(18)).foregroundStyle(Farbe.text3)
+            .accessibilityHidden(true)
     }
 
     private func hinweis(_ satz: String) -> some View {
@@ -235,19 +353,24 @@ struct EinstellenSeite: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func knopf(_ wort: String, hervor: Bool, aktion: @escaping () -> Void) -> some View {
+    private func knopf(
+        _ wort: String, zeichen: Zeichenart? = nil, hervor: Bool, aktion: @escaping () -> Void
+    ) -> some View {
         Button(action: aktion) {
-            Text(wort)
-                .font(hervor ? Schrift.sansHalbfett(14) : Schrift.sans(14))
-                .foregroundStyle(hervor ? Farbe.deep : Farbe.text1)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(hervor ? Farbe.amber : Color.clear)
-                .overlay(
-                    RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
-                        .strokeBorder(hervor ? Farbe.amber : Farbe.linie2, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+            HStack(spacing: 8) {
+                if let zeichen {
+                    Zeichen(zeichen, groesse: 17, farbe: hervor ? Farbe.deep : Farbe.text1)
+                        .accessibilityHidden(true)
+                }
+                Text(wort)
+                    .font(hervor ? Schrift.sansHalbfett(14) : Schrift.sans(14))
+                    .foregroundStyle(hervor ? Farbe.deep : Farbe.text1)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 11)
+            .background(hervor ? Farbe.amber : Color.clear)
+            .overlay(Capsule().strokeBorder(hervor ? Farbe.amber : Farbe.linie2, lineWidth: 1))
+            .clipShape(Capsule())
         }
         .buttonStyle(.plain)
     }

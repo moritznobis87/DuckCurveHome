@@ -1348,24 +1348,64 @@ button.ansicht { cursor: pointer; }
 
 /* „Einstellen“ hinter dem Zahnrad (24.11.2026): Suche, was von Hand gestellt ist, drei Stufen,
    die Seiten des Systems. Die Abschnitte tragen dieselben Köpfe wie die Gruppen der Übersichten. */
-.einstellen { display: flex; flex-direction: column; gap: 26px; max-width: 980px; padding-top: 6px; }
-.einstellen-suche input { width: 100%; padding: 12px 14px; border: 1px solid var(--line-1); border-radius: var(--radius-3); background: var(--surface-1); color: var(--text-1); font-size: 15px; }
+/* ---------- Einstellen: Zustandskarte, Stufen als Karten, jede Einstellung mit Zeichen ----------
+   Dieselbe Bildsprache wie die Übersichten (`.uebersicht-karte`): Fläche der Karten, ein Hauch
+   der Farbe der Sache aus der Ecke des Zeichens. Die Farbe der Zustandskarte sagt den Zustand:
+   grün, wenn alles die Automatik regelt, bernsteinfarben, wenn etwas von Hand gestellt ist. */
+.einstellen { display: flex; flex-direction: column; gap: 22px; max-width: 1040px; padding-top: 6px; }
+.einstellen-suche { position: relative; display: block; }
+.einstellen-suche-zeichen { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); display: flex; color: var(--text-3); pointer-events: none; }
+.einstellen-suche input { width: 100%; padding: 13px 16px 13px 44px; border: 1px solid var(--line-1); border-radius: 999px; background: var(--surface-1); color: var(--text-1); font-size: 15px; transition: border-color 0.15s; }
 .einstellen-suche input::placeholder { color: var(--text-3); }
-.einstellen-suche input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.einstellen-suche input:focus-visible { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent); }
 .einstellen-abschnitt { display: flex; flex-direction: column; gap: 12px; }
-.einstellen-stufen { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 26px 28px; align-items: start; }
-.einstellen-liste { display: flex; flex-direction: column; border: 1px solid var(--line-1); border-radius: var(--radius-3); background: var(--surface-1); overflow: hidden; }
-.einstellen-zeile { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; color: var(--text-1); font-size: 15px; text-decoration: none; border-top: 1px solid var(--line-1); }
-.einstellen-zeile:first-child { border-top: 0; }
-.einstellen-zeile:hover { background: var(--surface-2); }
-.einstellen-pfeil { color: var(--text-3); font-size: 18px; line-height: 1; }
 .einstellen-hinweis { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-3); }
 .einstellen-leise { font-size: 13px; color: var(--text-3); }
+
+.einstellen-status {
+  --zustandsfarbe: var(--ok);
+  display: flex; flex-direction: column; gap: 14px; padding: 18px 20px 20px;
+  border: 1px solid color-mix(in srgb, var(--zustandsfarbe) 35%, var(--line-1)); border-radius: var(--radius-3);
+  background:
+    radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--zustandsfarbe) 16%, transparent), transparent 60%),
+    var(--surface-1);
+}
+.einstellen-status[data-zustand="hand"] { --zustandsfarbe: var(--amber-soft); }
+.einstellen-status[data-zustand="offen"] { --zustandsfarbe: var(--mist); }
+.einstellen-status-kopf { display: flex; align-items: center; gap: 14px; }
+.einstellen-status-zeichen { display: flex; flex-shrink: 0; height: 44px; width: 44px; align-items: center; justify-content: center; border-radius: 12px; color: var(--zustandsfarbe); background: color-mix(in srgb, var(--zustandsfarbe) 15%, transparent); }
+.einstellen-status-zeichen .zustandszeichen { width: 24px; height: 24px; }
+.einstellen-status-titel { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-1); }
+.einstellen-status-satz { margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: var(--text-2); }
 .einstellen-eingriffe { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.einstellen-eingriff { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid rgba(255, 215, 120, 0.4); border-radius: var(--radius-3); background: var(--surface-1); color: var(--text-1); font-size: 14.5px; line-height: 1.4; text-decoration: none; }
-.einstellen-eingriff-zeichen { display: flex; flex-shrink: 0; height: 30px; width: 30px; align-items: center; justify-content: center; border-radius: 8px; color: var(--amber-soft); background: rgba(255, 215, 120, 0.12); }
-.einstellen-knopf { align-self: flex-start; padding: 10px 16px; border: 1px solid var(--line-2); border-radius: var(--radius-3); background: transparent; color: var(--text-1); font-size: 14px; }
+.einstellen-eingriff { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid var(--line-1); border-radius: 10px; background: color-mix(in srgb, var(--deep) 45%, transparent); color: var(--text-1); font-size: 14.5px; line-height: 1.4; text-decoration: none; transition: border-color 0.15s; }
+.einstellen-eingriff:hover { border-color: color-mix(in srgb, var(--amber-soft) 55%, var(--line-1)); }
+.einstellen-eingriff-zeichen { display: flex; flex-shrink: 0; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 9px; color: var(--amber-soft); background: rgba(255, 215, 120, 0.13); }
+.einstellen-knopf { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; padding: 11px 18px; border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--text-1); font-size: 14px; transition: filter 0.15s, border-color 0.15s; }
+.einstellen-knopf:hover { border-color: var(--text-3); }
 .einstellen-knopf-an { border-color: var(--amber); background: var(--amber); color: var(--deep); font-weight: 600; }
+.einstellen-knopf-an:hover { filter: brightness(1.06); border-color: var(--amber); }
 .einstellen-knopf:disabled { opacity: 0.5; }
-.einstellen-rueckfrage { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--amber); border-radius: var(--radius-3); background: var(--surface-1); font-size: 14px; color: var(--text-1); }
+.einstellen-rueckfrage { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--amber) 60%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--deep) 45%, transparent); font-size: 14px; color: var(--text-1); }
 .einstellen-rueckfrage ul { margin: 0; padding-left: 18px; color: var(--text-2); }
+
+.einstellen-stufen { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; align-items: start; }
+.einstellen-stufe {
+  --kachelfarbe: var(--mist);
+  display: flex; flex-direction: column; gap: 6px; padding: 16px 12px 10px; min-width: 0;
+  border: 1px solid var(--line-1); border-radius: var(--radius-3);
+  background:
+    radial-gradient(120% 70% at 0% 0%, color-mix(in srgb, var(--kachelfarbe) 12%, transparent), transparent 60%),
+    var(--surface-1);
+}
+.einstellen-stufe-kopf { display: flex; align-items: center; gap: 12px; padding: 0 6px 8px; }
+.einstellen-stufe-name { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; color: var(--text-1); }
+.einstellen-stufe-wort { margin: 1px 0 0; font-size: 13px; color: var(--text-3); }
+.einstellen-zeilen { display: flex; flex-direction: column; gap: 2px; }
+.einstellen-treffer { padding: 6px; border: 1px solid var(--line-1); border-radius: var(--radius-3); background: var(--surface-1); }
+.einstellen-zeile { display: flex; align-items: center; gap: 12px; padding: 9px 8px; border-radius: 10px; color: var(--text-1); font-size: 15px; text-decoration: none; transition: background-color 0.15s; }
+.einstellen-zeile:hover { background: var(--surface-2); }
+.einstellen-zeile:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
+.einstellen-zeile-zeichen { display: flex; flex-shrink: 0; height: 32px; width: 32px; align-items: center; justify-content: center; border-radius: 9px; color: var(--text-2); background: var(--surface-2); }
+.einstellen-zeile-name { flex: 1; min-width: 0; }
+.einstellen-pfeil { color: var(--text-3); font-size: 18px; line-height: 1; }

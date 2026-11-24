@@ -127,6 +127,7 @@ def swift_name(name: str) -> str:
         # `person` heisst in beiden gleich und steht hier, damit die Tabelle vollstaendig ist.
         "person": "person",
         "bell": "glocke", "sliders": "schieber", "target": "ziel", "loop": "kreis",
+        "search": "lupe", "key": "schluessel", "lock": "schloss", "device": "geraet",
     }
     return tabelle.get(name, name)
 
