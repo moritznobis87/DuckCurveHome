@@ -99,21 +99,13 @@ Abstimmen (`Hauszustand.hatVollzugriff`).
 | Eigene Passkeys, eigene Sitzungen, neue Wiederherstellungscodes | vorhanden auf „Mein Zugang“ | fehlt; die App zeigt dort das eigene Passwort und das Abmelden | `components/zugang/MeinZugang.tsx`, `KontoSeite.swift` |
 | Sitzung in der Liste erkennen | Ein Browser steht dort mit seinem Gerät („iPhone“, „Mac“). | Eine Sitzung der App steht dort als „unbekanntes Gerät“, weil die App keinen sprechenden User-Agent schickt. | `MeinZugang.tsx` (`geraet`), `Zugang.kopfzeilen` |
 
-## Übersichten: das kleine Bild der Kachel (Zwischenstand vom 24.11.2026)
+## Übersichten (24.11.2026)
 
-Rückmeldung des Hausherrn: Die Übersichten waren grafisch schwach und zu textlastig. Der erste
-Schritt (Kacheln mit Zeichen, Farbe und großer Zahl, zwei nebeneinander am Telefon) ist in
-Dashboard und App gebaut. Der zweite Schritt ist angefangen und **nicht fertig**:
-
-| Teil | Stand | Fundstelle |
-|---|---|---|
-| Dienst: Bilddaten je Karte (`bild`: Balken, Füllstand, Abweichung, Streifen) | gebaut und getestet | `application/uebersicht.py`, `schemas.py` (`UebersichtBildOut`), `tests/test_uebersicht.py` |
-| Dienst: Frist je Karte, damit eine langsame Quelle die Übersicht nicht aufhält | gebaut und getestet; am echten Dienst ungeprüft | `application/uebersicht.py` (`_karte`, `FRIST_S`) |
-| Dashboard: das Bild am Fuß der Kachel | gebaut, noch nicht im Browser angesehen, noch ohne Test für `balkenhoehen` und `laeufe` | `components/layout/Kachelbild.tsx` |
-| App: dasselbe Bild | **fehlt**. Die Rechnung (`balkenhoehen`, `laeufe`) gehört in den Kern, die Zeichnung in eine `Canvas` am Fuß der Kachel in `Bereichsuebersicht.swift`. | `Kachelbild.tsx` als Vorlage |
-
-Solange die App das Bild nicht zeichnet, darf dieser Schritt nicht nach `main`: Dashboard und
-App zeigten sonst Verschiedenes.
+Rückmeldung des Hausherrn: Die Übersichten waren grafisch schwach und zu textlastig. Beide
+zeigen jetzt Kacheln mit Zeichen, Farbe, großer Zahl und einem kleinen Bild (Tagesverlauf,
+Füllstand, Abweichung, Fahrplan). Die Bilddaten liefert der Dienst (`UebersichtBildOut`); die
+Rechnung davor steht im Dashboard in `Kachelbild.tsx` und in der App in `Kachelbild.swift`,
+von je einem Test mit denselben Fällen gehalten.
 
 ## Was als Nächstes dran ist
 

@@ -97,9 +97,17 @@ def _fuellung(anteil: float) -> UebersichtBildOut:
 def _balken(
     bilanz: EnergySummaryOut, wert: Callable[[EnergyTotalsOut], float]
 ) -> UebersichtBildOut:
-    """Der Verlauf des Tages in Stunden: je Stunde der Bilanz ein Wert in kWh, nie negativ."""
+    """Der Verlauf des Tages in Stunden: je Stunde der Bilanz ein Wert in kWh, nie negativ.
+
+    Die Bilanz liefert alle 24 Stunden, auch die, die noch nicht waren. Die fallen am Ende weg:
+    Eine Stunde ohne eine einzige gezählte Minute ist keine Stunde mit null Verbrauch, und die
+    Kachel zeichnet sie blasser als eine, in der wirklich nichts floss.
+    """
+    stunden = list(bilanz.buckets)
+    while stunden and stunden[-1].totals.minutes == 0:
+        stunden.pop()
     return UebersichtBildOut(
-        art="balken", werte=[round(max(0.0, wert(b.totals)), 3) for b in bilanz.buckets]
+        art="balken", werte=[round(max(0.0, wert(b.totals)), 3) for b in stunden]
     )
 
 

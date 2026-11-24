@@ -572,8 +572,8 @@ def test_die_energiekarten_tragen_den_verlauf_des_tages_in_stunden() -> None:
         pv_kwh=1.5,
         ev_kwh=0.0,
         stunden=[
-            {"house_kwh": 1.0, "pv_kwh": 0.0, "heat_pump_kwh": 0.4},
-            {"house_kwh": 2.0, "pv_kwh": 1.5, "heat_pump_kwh": 0.0},
+            {"house_kwh": 1.0, "pv_kwh": 0.0, "heat_pump_kwh": 0.4, "minutes": 60},
+            {"house_kwh": 2.0, "pv_kwh": 1.5, "heat_pump_kwh": 0.0, "minutes": 60},
         ],
     )
     strom = uebersicht.karte_strom(bilanz).bild
@@ -590,8 +590,29 @@ def test_die_energiekarten_tragen_den_verlauf_des_tages_in_stunden() -> None:
     assert waerme.werte == [0.4, 0.0]
 
 
+def test_stunden_die_noch_nicht_waren_fallen_am_ende_weg() -> None:
+    """Eine Stunde ohne gezählte Minute am Ende des Tages ist noch nicht gewesen. Eine Lücke
+    mitten am Tag bleibt dagegen stehen: dort fehlt eine Messung, und das soll man sehen."""
+    bilanz = _bilanz(
+        house_kwh=3.0,
+        stunden=[
+            {"house_kwh": 1.0, "minutes": 60},
+            {"house_kwh": 0.0, "minutes": 0},
+            {"house_kwh": 2.0, "minutes": 60},
+            {"house_kwh": 0.0, "minutes": 0},
+            {"house_kwh": 0.0, "minutes": 0},
+        ],
+    )
+    bild = uebersicht.karte_strom(bilanz).bild
+    assert bild is not None
+    assert bild.werte == [1.0, 0.0, 2.0]
+
+
 def test_ein_balken_wird_nie_negativ() -> None:
-    bilanz = _bilanz(house_kwh=1.0, stunden=[{"house_kwh": -0.2}, {"house_kwh": 1.2}])
+    bilanz = _bilanz(
+        house_kwh=1.0,
+        stunden=[{"house_kwh": -0.2, "minutes": 60}, {"house_kwh": 1.2, "minutes": 60}],
+    )
     bild = uebersicht.karte_strom(bilanz).bild
     assert bild is not None
     assert bild.werte == [0.0, 1.2]

@@ -8,8 +8,10 @@ import SwiftUI
 /// auf jeder Karte ein Satz darüber, wovon die Seite handelt, und darunter ihre Ansichten. Am
 /// Telefon waren das sechs Kästen voll Text, und der Hausherr hat es so genannt: grafisch
 /// schwach, viel zu viel Text. Jetzt trägt jede Kachel das Zeichen der Seite in der Farbe ihrer
-/// Sache, den Namen, die Leitzahl groß und ein Wort dazu. Der Satz steht weiter da, für die
-/// Vorlesehilfe, und sichtbar nur dort, wo eine Seite keine Zahl hat.
+/// Sache, den Namen, die Leitzahl groß, ein Wort dazu und am Fuß ein kleines Bild: den Verlauf
+/// des Tages, einen Füllstand, eine Abweichung oder den Horizont des Fahrplans
+/// (``Kachelbildzeichnung``). Der Satz steht weiter da, für die Vorlesehilfe, und sichtbar nur
+/// dort, wo eine Seite keine Zahl hat.
 ///
 /// **Am Telefon stehen zwei Kacheln nebeneinander** (`handy.css`, `.uebersicht-karten`): sechs
 /// Seiten passen auf einen Schirm, ohne zu rollen. Breit füllt das Raster die Zeile mit Kacheln
@@ -174,9 +176,14 @@ struct Bereichsuebersicht: View {
                 }
                 unterzeile(seite, stand: stand, ampel: ampel, hatZahl: leitzahl != nil)
                 Spacer(minLength: 0)
+                // Das kleine Bild am Fuß der Kachel, in der Farbe der Sache
+                // (`globals.css`, `.uebersicht-bild`).
+                if let bild = stand?.bild {
+                    Kachelbildzeichnung(bild: bild, farbe: farbe)
+                }
             }
             .padding(EdgeInsets(top: 13, leading: 14, bottom: 14, trailing: 14))
-            .frame(maxWidth: .infinity, minHeight: schmal ? 140 : 148, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: schmal ? 170 : 176, maxHeight: .infinity, alignment: .topLeading)
             .background {
                 // Ein Hauch der Farbe der Sache aus der Ecke des Zeichens; die Fläche bleibt die
                 // der Karten (`globals.css`, `.uebersicht-karte`).

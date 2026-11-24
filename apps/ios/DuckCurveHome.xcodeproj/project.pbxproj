@@ -89,6 +89,7 @@
 		B74DFF3BE092C442D5C12ADC /* Alarmblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CD89A5D4C7BEBFA6799403 /* Alarmblatt.swift */; };
 		B83420A8360FD4AA99AB7BF5 /* MeinPasswortKarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F257425E5BA1598D79A707 /* MeinPasswortKarte.swift */; };
 		BA80D620296C3F558A781A8A /* Dock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442E48F860C3E272065F1773 /* Dock.swift */; };
+		BB40171AF57A46D07D026F0C /* Kachelbildzeichnung.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1663840659D28E699B58FA38 /* Kachelbildzeichnung.swift */; };
 		BC39AFA258EB753F725AFA8B /* Pruefkurvenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BCE78C8EB2C5E42CFF9439 /* Pruefkurvenbild.swift */; };
 		BDB969FBDB5E1849EF0EF74D /* Tagesbandbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 969EAD73174365A9152E9DE5 /* Tagesbandbild.swift */; };
 		BF25DAE57629F583E2BC4442 /* Ambiente.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06738C7E03178A104B308ABA /* Ambiente.swift */; };
@@ -143,6 +144,7 @@
 		137F9DCA46B9045B284290A9 /* Geldbalken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geldbalken.swift; sourceTree = "<group>"; };
 		15663FB9ABB9A4FD8D1473F3 /* Anlagenbuehne.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenbuehne.swift; sourceTree = "<group>"; };
 		1569F6F6326D9C4B70474A60 /* Mitteilungen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mitteilungen.swift; sourceTree = "<group>"; };
+		1663840659D28E699B58FA38 /* Kachelbildzeichnung.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kachelbildzeichnung.swift; sourceTree = "<group>"; };
 		16EA06A79528967315F5A4EF /* Postenliste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Postenliste.swift; sourceTree = "<group>"; };
 		19D6E643E59B9205E637CF97 /* Seitenwahl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Seitenwahl.swift; sourceTree = "<group>"; };
 		1B67D80E0116B660F33FAFC6 /* Zeichen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Zeichen.swift; sourceTree = "<group>"; };
@@ -288,6 +290,7 @@
 				442E48F860C3E272065F1773 /* Dock.swift */,
 				8F3D8B5A242C08D8BEF8DE76 /* Energiefluss.swift */,
 				35511C5E90815784C780CCA1 /* Geldfarbe.swift */,
+				1663840659D28E699B58FA38 /* Kachelbildzeichnung.swift */,
 				6488CB1E8676677F62FE64F4 /* Kanalzug.swift */,
 				7DBF78711330C19ED82AC95D /* Ladebild.swift */,
 				11F4DB48A868B5F7EC0F9E24 /* Ladeente.swift */,
@@ -672,6 +675,7 @@
 				AD1752C6B64DD9BD4FA5B72D /* Jahresflaeche.swift in Sources */,
 				27D9FD29E3FD1BE4D14BFE6C /* JahreskarteSeite.swift in Sources */,
 				2C33C03FBC4DD1869C483351 /* JetztSeite.swift in Sources */,
+				BB40171AF57A46D07D026F0C /* Kachelbildzeichnung.swift in Sources */,
 				794E2772E9FA350C23B47393 /* Kanalzug.swift in Sources */,
 				F2315D70178CB51A033F71E7 /* Karte.swift in Sources */,
 				E26B292CEE7ED47EAE3A8894 /* KennlinieSeite.swift in Sources */,
