@@ -19489,6 +19489,44 @@
         "title": "Uebernahme",
         "description": "Ein Eintrag im Änderungsprotokoll. Was sich geändert hat, und warum."
       },
+      "UebersichtBildOut": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "balken",
+              "fuellung",
+              "abweichung",
+              "streifen"
+            ],
+            "title": "Art"
+          },
+          "werte": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Werte"
+          },
+          "anteil": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anteil"
+          }
+        },
+        "type": "object",
+        "required": [
+          "art"
+        ],
+        "title": "UebersichtBildOut",
+        "description": "Das kleine Bild einer Kachel: eine Form, die sich auf einen Blick lesen lässt.\n\nVier Arten, damit Dashboard und App dasselbe zeichnen und keine eine fünfte erfindet:\n\n- `balken`: der Verlauf des heutigen Tages in Stunden, `werte` in kWh je Stunde. Eine Stunde,\n  die noch nicht war, fehlt am Ende; die Kachel zeichnet immer 24 Plätze.\n- `fuellung`: ein Füllstand, `anteil` von 0 bis 1.\n- `abweichung`: eine Abweichung nach unten oder oben, `anteil` von -1 bis 1.\n- `streifen`: was im Horizont geplant ist, `werte` je Abschnitt 1 für „angefordert\", sonst 0.\n\nDas Bild ist Beigabe und trägt keine Zahl, die nicht auch als Leitzahl dasteht."
+      },
       "UebersichtKarteOut": {
         "properties": {
           "weg": {
@@ -19526,6 +19564,16 @@
             "type": "string",
             "title": "Grund De",
             "default": ""
+          },
+          "bild": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UebersichtBildOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

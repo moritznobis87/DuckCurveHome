@@ -99,6 +99,14 @@ Abstimmen (`Hauszustand.hatVollzugriff`).
 | Eigene Passkeys, eigene Sitzungen, neue Wiederherstellungscodes | vorhanden auf „Mein Zugang“ | fehlt; die App zeigt dort das eigene Passwort und das Abmelden | `components/zugang/MeinZugang.tsx`, `KontoSeite.swift` |
 | Sitzung in der Liste erkennen | Ein Browser steht dort mit seinem Gerät („iPhone“, „Mac“). | Eine Sitzung der App steht dort als „unbekanntes Gerät“, weil die App keinen sprechenden User-Agent schickt. | `MeinZugang.tsx` (`geraet`), `Zugang.kopfzeilen` |
 
+## Übersichten (24.11.2026)
+
+Rückmeldung des Hausherrn: Die Übersichten waren grafisch schwach und zu textlastig. Beide
+zeigen jetzt Kacheln mit Zeichen, Farbe, großer Zahl und einem kleinen Bild (Tagesverlauf,
+Füllstand, Abweichung, Fahrplan). Die Bilddaten liefert der Dienst (`UebersichtBildOut`); die
+Rechnung davor steht im Dashboard in `Kachelbild.tsx` und in der App in `Kachelbild.swift`,
+von je einem Test mit denselben Fällen gehalten.
+
 ## Was als Nächstes dran ist
 
 Die Zeilen mit „fehlt“ sind echte Lücken und werden Seite für Seite geschlossen, zusammen mit

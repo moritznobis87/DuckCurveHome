@@ -1116,6 +1116,21 @@ public enum SystemMode: String, Codable, Sendable, Hashable, CaseIterable {
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum UebersichtBildOutArtWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case balken = "balken"
+    case fuellung = "fuellung"
+    case abweichung = "abweichung"
+    case streifen = "streifen"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = UebersichtBildOutArtWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum UebersichtKarteOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case gut = "gut"
     case warn = "warn"
@@ -11132,6 +11147,36 @@ public struct Uebernahme: Codable, Sendable, Hashable {
     }
 }
 
+/// Das kleine Bild einer Kachel: eine Form, die sich auf einen Blick lesen lässt.
+///
+/// Vier Arten, damit Dashboard und App dasselbe zeichnen und keine eine fünfte erfindet:
+///
+/// - `balken`: der Verlauf des heutigen Tages in Stunden, `werte` in kWh je Stunde. Eine Stunde,
+///   die noch nicht war, fehlt am Ende; die Kachel zeichnet immer 24 Plätze.
+/// - `fuellung`: ein Füllstand, `anteil` von 0 bis 1.
+/// - `abweichung`: eine Abweichung nach unten oder oben, `anteil` von -1 bis 1.
+/// - `streifen`: was im Horizont geplant ist, `werte` je Abschnitt 1 für „angefordert", sonst 0.
+///
+/// Das Bild ist Beigabe und trägt keine Zahl, die nicht auch als Leitzahl dasteht.
+public struct UebersichtBildOut: Codable, Sendable, Hashable {
+    public var art: UebersichtBildOutArtWahl
+    public var werte: [Double]
+    public var anteil: Double?
+
+    public init(art: UebersichtBildOutArtWahl, werte: [Double] = [], anteil: Double? = nil) {
+        self.art = art
+        self.werte = werte
+        self.anteil = anteil
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.art = try c.decode(UebersichtBildOutArtWahl.self, forKey: .art)
+        self.werte = try c.decodeIfPresent([Double].self, forKey: .werte) ?? []
+        self.anteil = try c.decodeIfPresent(Double.self, forKey: .anteil)
+    }
+}
+
 /// Eine Karte der Bereichsübersicht: die wichtigste Zahl einer Seite und ihr Zustand.
 ///
 /// Der Dienst rechnet und formuliert, damit Dashboard und App nachweislich dasselbe zeigen. Die
@@ -11143,6 +11188,7 @@ public struct UebersichtKarteOut: Codable, Sendable, Hashable {
     public var dazuDe: String?
     public var ampel: UebersichtKarteOutAmpelWahl?
     public var grundDe: String?
+    public var bild: UebersichtBildOut?
 
     public enum CodingKeys: String, CodingKey {
         case weg
@@ -11150,14 +11196,16 @@ public struct UebersichtKarteOut: Codable, Sendable, Hashable {
         case dazuDe = "dazu_de"
         case ampel
         case grundDe = "grund_de"
+        case bild
     }
 
-    public init(weg: String, leitzahlDe: String? = nil, dazuDe: String? = nil, ampel: UebersichtKarteOutAmpelWahl? = nil, grundDe: String? = nil) {
+    public init(weg: String, leitzahlDe: String? = nil, dazuDe: String? = nil, ampel: UebersichtKarteOutAmpelWahl? = nil, grundDe: String? = nil, bild: UebersichtBildOut? = nil) {
         self.weg = weg
         self.leitzahlDe = leitzahlDe
         self.dazuDe = dazuDe
         self.ampel = ampel
         self.grundDe = grundDe
+        self.bild = bild
     }
 
     public init(from decoder: any Decoder) throws {
@@ -11167,6 +11215,7 @@ public struct UebersichtKarteOut: Codable, Sendable, Hashable {
         self.dazuDe = try c.decodeIfPresent(String.self, forKey: .dazuDe)
         self.ampel = try c.decodeIfPresent(UebersichtKarteOutAmpelWahl.self, forKey: .ampel)
         self.grundDe = try c.decodeIfPresent(String.self, forKey: .grundDe)
+        self.bild = try c.decodeIfPresent(UebersichtBildOut.self, forKey: .bild)
     }
 }
 

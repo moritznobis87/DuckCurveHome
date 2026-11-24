@@ -8840,6 +8840,31 @@ export interface components {
             grund: string;
         };
         /**
+         * UebersichtBildOut
+         * @description Das kleine Bild einer Kachel: eine Form, die sich auf einen Blick lesen lässt.
+         *
+         *     Vier Arten, damit Dashboard und App dasselbe zeichnen und keine eine fünfte erfindet:
+         *
+         *     - `balken`: der Verlauf des heutigen Tages in Stunden, `werte` in kWh je Stunde. Eine Stunde,
+         *       die noch nicht war, fehlt am Ende; die Kachel zeichnet immer 24 Plätze.
+         *     - `fuellung`: ein Füllstand, `anteil` von 0 bis 1.
+         *     - `abweichung`: eine Abweichung nach unten oder oben, `anteil` von -1 bis 1.
+         *     - `streifen`: was im Horizont geplant ist, `werte` je Abschnitt 1 für „angefordert", sonst 0.
+         *
+         *     Das Bild ist Beigabe und trägt keine Zahl, die nicht auch als Leitzahl dasteht.
+         */
+        UebersichtBildOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "balken" | "fuellung" | "abweichung" | "streifen";
+            /** Werte */
+            werte?: number[];
+            /** Anteil */
+            anteil?: number | null;
+        };
+        /**
          * UebersichtKarteOut
          * @description Eine Karte der Bereichsübersicht: die wichtigste Zahl einer Seite und ihr Zustand.
          *
@@ -8868,6 +8893,7 @@ export interface components {
              * @default
              */
             grund_de: string;
+            bild?: components["schemas"]["UebersichtBildOut"] | null;
         };
         /**
          * UebersichtOut

@@ -32,6 +32,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import date
+from time import monotonic
 
 from dch_api.application.kennlinie import de
 from dch_api.application.runtime import Runtime
@@ -41,6 +42,7 @@ from dch_api.schemas import (
     CoverageOut,
     DoorLogOut,
     EnergySummaryOut,
+    EnergyTotalsOut,
     ForecastEvaluationOut,
     GeraetOut,
     HeatReportOut,
@@ -51,6 +53,7 @@ from dch_api.schemas import (
     RegelkreisOut,
     ReglerEinstellungenOut,
     StorageReportOut,
+    UebersichtBildOut,
     UebersichtKarteOut,
     UebersichtOut,
     WaermepumpeOut,
@@ -85,6 +88,29 @@ def _ohne(weg: str, grund: str = KEINE_AUSKUNFT) -> UebersichtKarteOut:
     return UebersichtKarteOut(weg=weg, ampel="aus", grund_de=grund)
 
 
+def _fuellung(anteil: float) -> UebersichtBildOut:
+    """Ein Füllstand, auf 0 bis 1 beschnitten: ein Messwert knapp darüber soll nichts zeichnen,
+    was über den Rand ragt."""
+    return UebersichtBildOut(art="fuellung", anteil=min(1.0, max(0.0, anteil)))
+
+
+def _balken(
+    bilanz: EnergySummaryOut, wert: Callable[[EnergyTotalsOut], float]
+) -> UebersichtBildOut:
+    """Der Verlauf des Tages in Stunden: je Stunde der Bilanz ein Wert in kWh, nie negativ.
+
+    Die Bilanz liefert alle 24 Stunden, auch die, die noch nicht waren. Die fallen am Ende weg:
+    Eine Stunde ohne eine einzige gezählte Minute ist keine Stunde mit null Verbrauch, und die
+    Kachel zeichnet sie blasser als eine, in der wirklich nichts floss.
+    """
+    stunden = list(bilanz.buckets)
+    while stunden and stunden[-1].totals.minutes == 0:
+        stunden.pop()
+    return UebersichtBildOut(
+        art="balken", werte=[round(max(0.0, wert(b.totals)), 3) for b in stunden]
+    )
+
+
 def karte_anlage(a: AnlageOut) -> UebersichtKarteOut:
     """Die Anlage: der Ladestand des Puffers. Er ist die eine Zahl, an der die Wasserseite hängt."""
     weg = "/waerme/anlage"
@@ -95,6 +121,7 @@ def karte_anlage(a: AnlageOut) -> UebersichtKarteOut:
         leitzahl_de=f"{de(a.speicher.soc * 100, 0)} %",
         dazu_de="Ladestand des Puffers",
         ampel="gut",
+        bild=_fuellung(a.speicher.soc),
     )
 
 
@@ -132,7 +159,12 @@ def karte_fahrplan(plan: PlanOut | None) -> UebersichtKarteOut:
         leitzahl_de=f"{de(viertel / 4, 1)} h",
         dazu_de="Wärmepumpe angefordert im Horizont",
         ampel="warn" if plan.planner_warn_de else "gut",
-        grund_de=plan.planner_warn_de,
+        grund_de=plan.planner_warn_de or "",
+        # Der Horizont als Streifen: je Viertelstunde, ob die Wärmepumpe angefordert ist.
+        bild=UebersichtBildOut(
+            art="streifen",
+            werte=[1.0 if i.planned_hp_state == "release" else 0.0 for i in plan.intervals],
+        ),
     )
 
 
@@ -164,6 +196,7 @@ def karte_wirkung(k: KontaktwirkungOut) -> UebersichtKarteOut:
         dazu_de="Anlauf nach einer Anforderung",
         ampel=ampel,
         grund_de=grund,
+        bild=None if k.quote is None else _fuellung(k.quote),
     )
 
 
@@ -206,26 +239,35 @@ def karte_regler(e: ReglerEinstellungenOut) -> UebersichtKarteOut:
     )
 
 
-def _kwh(weg: str, bilanz: EnergySummaryOut, kwh: float, dazu: str) -> UebersichtKarteOut:
-    """Eine Karte mit einer Energiemenge des heutigen Tages aus der Tagesbilanz."""
+def _kwh(
+    weg: str, bilanz: EnergySummaryOut, wert: Callable[[EnergyTotalsOut], float], dazu: str
+) -> UebersichtKarteOut:
+    """Eine Karte mit einer Energiemenge des heutigen Tages aus der Tagesbilanz, mit ihrem
+    Verlauf über die Stunden als Bild."""
     if bilanz.totals.minutes == 0:
         return _ohne(weg, HEUTE_LEER)
-    return UebersichtKarteOut(weg=weg, leitzahl_de=f"{de(kwh, 1)} kWh", dazu_de=dazu, ampel="gut")
+    return UebersichtKarteOut(
+        weg=weg,
+        leitzahl_de=f"{de(wert(bilanz.totals), 1)} kWh",
+        dazu_de=dazu,
+        ampel="gut",
+        bild=_balken(bilanz, wert),
+    )
 
 
 def karte_strom(bilanz: EnergySummaryOut) -> UebersichtKarteOut:
     """Der Strom: was das Haus heute verbraucht hat, Wärmepumpe und Wallbox eingeschlossen."""
-    return _kwh("/strom", bilanz, bilanz.totals.house_kwh, "Verbrauch heute")
+    return _kwh("/strom", bilanz, lambda t: t.house_kwh, "Verbrauch heute")
 
 
 def karte_photovoltaik(bilanz: EnergySummaryOut) -> UebersichtKarteOut:
     """Die Photovoltaik: was die Anlage heute erzeugt hat."""
-    return _kwh("/strom/pv", bilanz, bilanz.totals.pv_kwh, "Ertrag heute")
+    return _kwh("/strom/pv", bilanz, lambda t: t.pv_kwh, "Ertrag heute")
 
 
 def karte_wallbox(bilanz: EnergySummaryOut) -> UebersichtKarteOut:
     """Die Wallbox: was heute ins Auto geladen wurde."""
-    return _kwh("/strom/wallbox", bilanz, bilanz.totals.ev_kwh, "heute geladen")
+    return _kwh("/strom/wallbox", bilanz, lambda t: t.ev_kwh, "heute geladen")
 
 
 def karte_waerme(bericht: HeatReportOut) -> UebersichtKarteOut:
@@ -239,6 +281,9 @@ def karte_waerme(bericht: HeatReportOut) -> UebersichtKarteOut:
         leitzahl_de=f"{de(bericht.thermal_kwh_est, 1)} kWh",
         dazu_de="Wärme heute, geschätzt",
         ampel="gut",
+        # Der Strom der Wärmepumpe je Stunde: Er zeigt, wann sie gelaufen ist. Die Wärme selbst
+        # gibt es nur als Schätzung für den ganzen Tag.
+        bild=_balken(bericht.summary, lambda t: t.heat_pump_kwh),
     )
 
 
@@ -256,6 +301,7 @@ def karte_prognose(auswertung: ForecastEvaluationOut) -> UebersichtKarteOut:
         leitzahl_de=f"{vorzeichen}{de(abs(fehler), 0)} %",
         dazu_de="Abweichung gestern",
         ampel="gut",
+        bild=UebersichtBildOut(art="abweichung", anteil=min(1.0, max(-1.0, fehler / 100))),
     )
 
 
@@ -266,7 +312,11 @@ def karte_speicher(zustand: LiveStateOut) -> UebersichtKarteOut:
     if stand.value is None or not stand.quality.usable:
         return _ohne(weg, "Vom Speicher liegt kein Ladestand vor.")
     return UebersichtKarteOut(
-        weg=weg, leitzahl_de=f"{de(stand.value * 100, 0)} %", dazu_de="Ladestand", ampel="gut"
+        weg=weg,
+        leitzahl_de=f"{de(stand.value * 100, 0)} %",
+        dazu_de="Ladestand",
+        ampel="gut",
+        bild=_fuellung(stand.value),
     )
 
 
@@ -351,17 +401,89 @@ def karte_daten(abdeckung: CoverageOut) -> UebersichtKarteOut:
         leitzahl_de=f"{de(schlechteste * 100, 1)} %",
         dazu_de=f"Abdeckung in {ABDECKUNG_TAGE} Tagen",
         ampel="gut",
+        bild=_fuellung(schlechteste),
     )
 
 
+#: So lange wartet die Übersicht auf die Quelle einer Karte. Danach steht die letzte bekannte
+#: Karte da, und die Quelle rechnet im Hintergrund zu Ende.
+FRIST_S = 4.0
+
+#: Wie lange eine gemerkte Karte noch gezeigt wird. Älter als das ist keine Auskunft mehr.
+MERK_S = 15 * 60.0
+
+BRAUCHT_LAENGER = "Die Auskunft braucht gerade länger."
+
+#: Die letzte gelungene Karte je Seite und Stand, mit der Zeit, zu der sie gebaut wurde.
+_GEMERKT: dict[tuple[str, str], tuple[float, UebersichtKarteOut]] = {}
+#: Quellen, die über die Frist hinaus rechnen. Gehalten, damit sie nicht eingesammelt werden,
+#: und damit eine langsame Quelle nicht bei jedem Aufruf ein zweites Mal startet.
+_LAUFEND: dict[tuple[str, str], asyncio.Task[None]] = {}
+
+
+def _merken(schluessel: tuple[str, str], karte: UebersichtKarteOut) -> None:
+    weg, stand = schluessel
+    # Ein neuer Stand löst den alten ab: die Karte von gestern hat heute nichts mehr zu sagen.
+    for alt in [k for k in _GEMERKT if k[0] == weg and k[1] != stand]:
+        _GEMERKT.pop(alt, None)
+    _GEMERKT[schluessel] = (monotonic(), karte)
+
+
+def _gemerkt(schluessel: tuple[str, str]) -> UebersichtKarteOut | None:
+    eintrag = _GEMERKT.get(schluessel)
+    if eintrag is None or monotonic() - eintrag[0] > MERK_S:
+        return None
+    return eintrag[1]
+
+
 async def _karte[T](
-    weg: str, quelle: Callable[[], Awaitable[T]], bauen: Callable[[T], UebersichtKarteOut]
+    weg: str,
+    quelle: Callable[[], Awaitable[T]],
+    bauen: Callable[[T], UebersichtKarteOut],
+    *,
+    stand: str = "",
 ) -> UebersichtKarteOut:
-    """Eine Karte aus ihrer Quelle. Wirft die Quelle, bleibt die Karte stehen und sagt es."""
-    try:
-        return bauen(await quelle())
-    except Exception:
+    """Eine Karte aus ihrer Quelle, mit einer Frist.
+
+    Wirft die Quelle, bleibt die Karte stehen und sagt es. **Braucht die Quelle länger als
+    `FRIST_S`, wartet die Übersicht nicht auf sie:** Sie zeigt die Karte vom letzten Mal, und
+    die Quelle rechnet im Hintergrund zu Ende und legt ihr Ergebnis für den nächsten Aufruf ab.
+    Vorher hielt die langsamste Quelle die ganze Übersicht auf. Am echten Dienst blieben die
+    Karten der Anlage so ohne Zahl, weil Wirkung und Regelkreis über Tage von Messwerten
+    rechnen und die Oberfläche das Warten aufgab (gemeldet vom Hausherrn am 24.11.2026).
+
+    **`stand` gehört zum Schlüssel.** Eine Karte, die „heute“ sagt, nennt hier den Tag, für den
+    sie rechnet. Sonst stünde kurz nach Mitternacht der Verbrauch von gestern als „Verbrauch
+    heute“ da, und eine Anfrage hängte sich an eine Rechnung für gestern (Fund im Review von
+    PR 35).
+    """
+    schluessel = (weg, stand)
+
+    async def rechnen() -> None:
+        try:
+            _merken(schluessel, bauen(await quelle()))
+        except Exception:
+            # Eine Quelle, die wirft, löscht nichts: die gemerkte Karte verfällt von selbst.
+            pass
+        finally:
+            if _LAUFEND.get(schluessel) is asyncio.current_task():
+                _LAUFEND.pop(schluessel, None)
+
+    davor = _GEMERKT.get(schluessel)
+    lauf = _LAUFEND.get(schluessel)
+    # Ein Lauf aus einer anderen Ereignisschleife (ein beendeter Dienst im selben Vorgang, wie
+    # in den Tests) lässt sich nicht abwarten und wird nie fertig. Er zählt nicht.
+    if lauf is None or lauf.get_loop() is not asyncio.get_running_loop():
+        lauf = asyncio.ensure_future(rechnen())
+        _LAUFEND[schluessel] = lauf
+    await asyncio.wait({lauf}, timeout=FRIST_S)
+    if lauf.done():
+        danach = _GEMERKT.get(schluessel)
+        # Hat dieser Lauf etwas Neues abgelegt, ist das die Karte. Sonst hat die Quelle geworfen.
+        if danach is not None and danach is not davor:
+            return danach[1]
         return _ohne(weg)
+    return _gemerkt(schluessel) or _ohne(weg, BRAUCHT_LAENGER)
 
 
 async def anlage(runner: Runtime) -> UebersichtOut:
@@ -406,12 +528,13 @@ async def energie(runner: Runtime) -> UebersichtOut:
         return runner.live_state()
 
     karten = await asyncio.gather(
-        _karte("/strom", tagesbilanz, karte_strom),
-        _karte("/waerme", lambda: runner.heat_report("day", heute), karte_waerme),
-        _karte("/strom/pv", tagesbilanz, karte_photovoltaik),
-        _karte("/system", runner.forecast_evaluation, karte_prognose),
+        # Die Karten des Tages tragen ihren Tag im Schlüssel der Frist (`_karte`, `stand`).
+        _karte("/strom", tagesbilanz, karte_strom, stand=str(heute)),
+        _karte("/waerme", lambda: runner.heat_report("day", heute), karte_waerme, stand=str(heute)),
+        _karte("/strom/pv", tagesbilanz, karte_photovoltaik, stand=str(heute)),
+        _karte("/system", runner.forecast_evaluation, karte_prognose, stand=str(heute)),
         _karte("/strom/speicher", augenblick, karte_speicher),
-        _karte("/strom/wallbox", tagesbilanz, karte_wallbox),
+        _karte("/strom/wallbox", tagesbilanz, karte_wallbox, stand=str(heute)),
     )
     return UebersichtOut(bereich="energie", karten=list(karten))
 
