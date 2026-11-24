@@ -42,3 +42,54 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # Der Bau allein beweist beim Web-Abbild nicht, dass es laeuft. Seine Ausgabe entsteht einmal
+      # auf amd64 und wird je Ziel nur noch zugeschnitten (apps/web/Dockerfile): gebaut hat am
+      # 24.11.2026 auch ein arm64-Abbild, in dem von `sharp` die x64-Fassung lag. Die naechsten
+      # Schritte pruefen deshalb, was der Bau nicht prueft. Das amd64-Abbild wird gestartet: der
+      # Server muss antworten, und `sharp` muss laden. Das arm64-Abbild wird nicht gestartet,
+      # sondern gelesen: es muss `server.js` und von `sharp` genau die arm64-Fassung enthalten.
+      # Gestartet wird es mit Absicht nicht, denn das liefe wieder unter dem Emulator, dessen
+      # Abstuerze der Grund fuer den Umbau waren.
+      - name: Web-Abbild fuer amd64 laden
+        if: matrix.name == 'web'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64
+          load: true
+          tags: dch-web-probe:amd64
+          cache-from: type=gha
+      - name: Web-Abbild fuer arm64 laden
+        if: matrix.name == 'web'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/arm64
+          load: true
+          tags: dch-web-probe:arm64
+          cache-from: type=gha
+      - name: Web-Abbild pruefen
+        if: matrix.name == 'web'
+        run: |
+          docker run --detach --name probe-amd64 --publish 3000:3000 dch-web-probe:amd64
+          code=000
+          for versuch in $(seq 1 30); do
+            code=$(curl --silent --output /dev/null --max-time 5 --write-out '%{http_code}' http://localhost:3000/api/health || true)
+            if [ "$code" != "000" ]; then break; fi
+            sleep 2
+          done
+          docker logs probe-amd64
+          echo "Antwort von /api/health: $code"
+          test "$code" != "000"
+          docker exec probe-amd64 node -e 'const s = require(require.resolve("sharp", { paths: [require.resolve("next/package.json")] })); console.log("sharp", s.versions.sharp, process.arch)'
+
+          docker create --name probe-arm64 --platform linux/arm64 dch-web-probe:arm64
+          docker export probe-arm64 | tar --list > inhalt-arm64.txt
+          grep --quiet '^app/server.js$' inhalt-arm64.txt
+          grep --quiet 'sharp-linuxmusl-arm64.*\.node$' inhalt-arm64.txt
+          if grep '\.node$' inhalt-arm64.txt | grep --invert-match 'sharp-linuxmusl-arm64'; then
+            echo "Im arm64-Abbild liegt eine Binaerdatei, die nicht fuer arm64 und musl gebaut ist."
+            exit 1
+          fi
