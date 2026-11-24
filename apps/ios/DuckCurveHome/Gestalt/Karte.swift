@@ -41,6 +41,10 @@ struct Karte<Inhalt: View>: View {
     /// nach der Leiste noch einmal zu schneiden. Ein Radius an zwei Stellen ist ein Radius, der
     /// auseinanderläuft.
     var akzent: Bool = false
+    /// Ein Rand in dieser Farbe, auch am Telefon, wo eine Karte sonst keinen hat. Die Übersicht
+    /// eines Bereichs hebt damit die Karte ab, die etwas zu sagen hat (`globals.css`,
+    /// `.uebersicht-karte[data-ampel]`).
+    var hervorhebung: Color? = nil
     @ViewBuilder var inhalt: () -> Inhalt
 
     @Environment(\.horizontalSizeClass) private var breite
@@ -187,7 +191,10 @@ struct Karte<Inhalt: View>: View {
     }
 
     @ViewBuilder private var rand: some View {
-        if schmal {
+        if let hervorhebung {
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .strokeBorder(hervorhebung, lineWidth: 1)
+        } else if schmal {
             EmptyView()
         } else {
             RoundedRectangle(cornerRadius: radius, style: .continuous)

@@ -1,9 +1,44 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Punkt } from "@/components/geraet/Geraet";
+import { api } from "@/lib/api/client";
+import type { Uebersichtskarte } from "@/lib/api/models";
 import { AREAS, tabsDerGruppe, type Area } from "@/lib/areas";
 import { useRole } from "@/lib/live/useRole";
 import { AreaShell } from "./AreaShell";
+
+/** Wie oft die Karten ihre Zahlen neu holen. Die Übersicht steht auch an der Wand. */
+const ERNEUERN_MS = 60_000;
+
+/**
+ * Die Karten des Dienstes zu einem Bereich, nach Adresse. Leer, solange nichts geladen ist oder
+ * der Dienst nicht antwortet: dann stehen die Karten ohne Zahl da, mit ihrem festen Satz.
+ */
+function useKarten(bereich: string): Record<string, Uebersichtskarte> {
+  const [karten, setKarten] = useState<Record<string, Uebersichtskarte>>({});
+  useEffect(() => {
+    let lebt = true;
+    const holen = () =>
+      api
+        .uebersicht(bereich)
+        .then((antwort) => {
+          if (lebt) setKarten(Object.fromEntries((antwort.karten ?? []).map((k) => [k.weg, k])));
+        })
+        .catch(() => {
+          // Die Übersicht bleibt benutzbar; alte Zahlen stehen zu lassen wäre schlechter als keine.
+          if (lebt) setKarten({});
+        });
+    void holen();
+    const takt = setInterval(holen, ERNEUERN_MS);
+    return () => {
+      lebt = false;
+      clearInterval(takt);
+    };
+  }, [bereich]);
+  return karten;
+}
 
 /**
  * Die Übersicht eines Bereichs mit Gruppen: je Gruppe eine Reihe Karten, jede Karte eine Seite.
@@ -15,10 +50,16 @@ import { AreaShell } from "./AreaShell";
  *
  * Was nur der Hausherr sieht, fehlt einem Gast hier wie in der Reiterzeile. Eine Gruppe, von
  * der danach nichts übrig ist, wird nicht gezeichnet.
+ *
+ * **Leitzahl und Ampel kommen vom Dienst** (`GET /uebersicht/{bereich}`): je Seite ihre
+ * wichtigste Zahl und ein Zustand, fertig formuliert, damit das Dashboard und die App dasselbe
+ * zeigen. Eine Ampel, die nicht gut ist, bringt ihren Grund als Satz mit; er steht auf der Karte.
+ * Eine Seite ohne Karte des Dienstes (die Annahmen) zeigt nur ihren festen Satz.
  */
 export function Bereichsuebersicht({ bereich }: { bereich: Area["key"] }) {
   const role = useRole();
   const area = AREAS.find((a) => a.key === bereich);
+  const karten = useKarten(bereich);
   if (!area?.gruppen) return null;
   return (
     <AreaShell kicker={`Alle Seiten im Bereich ${area.label}`}>
@@ -33,13 +74,26 @@ export function Bereichsuebersicht({ bereich }: { bereich: Area["key"] }) {
                 <span className="uebersicht-wort">{gruppe.wort}</span>
               </header>
               <div className="uebersicht-karten">
-                {seiten.map((seite) => (
-                  <Link key={seite.href} href={seite.href} className="uebersicht-karte">
-                    <span className="uebersicht-titel">{seite.label}</span>
-                    <span className="uebersicht-satz">{seite.beschreibung}</span>
-                    {seite.unter ? <span className="uebersicht-ansichten">{seite.unter.map((u) => u.label).join(" · ")}</span> : null}
-                  </Link>
-                ))}
+                {seiten.map((seite) => {
+                  const karte = karten[seite.href];
+                  return (
+                    <Link key={seite.href} href={seite.href} className="uebersicht-karte" data-ampel={karte?.ampel}>
+                      <span className="uebersicht-kopfzeile">
+                        <span className="uebersicht-titel">{seite.label}</span>
+                        {karte ? <Punkt ampel={karte.ampel ?? "aus"} /> : null}
+                      </span>
+                      {karte?.leitzahl_de ? (
+                        <span className="uebersicht-zahl">
+                          <span className="mono uebersicht-leitzahl">{karte.leitzahl_de}</span>
+                          <span className="uebersicht-dazu">{karte.dazu_de}</span>
+                        </span>
+                      ) : null}
+                      {karte?.grund_de ? <span className="uebersicht-grund">{karte.grund_de}</span> : null}
+                      <span className="uebersicht-satz">{seite.beschreibung}</span>
+                      {seite.unter ? <span className="uebersicht-ansichten">{seite.unter.map((u) => u.label).join(" · ")}</span> : null}
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           );

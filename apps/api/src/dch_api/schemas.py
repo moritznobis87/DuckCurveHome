@@ -2514,3 +2514,31 @@ class WiederherstellenIn(BaseModel):
 
 class NameIn(BaseModel):
     name: str
+
+
+class UebersichtKarteOut(BaseModel):
+    """Eine Karte der Bereichsübersicht: die wichtigste Zahl einer Seite und ihr Zustand.
+
+    Der Dienst rechnet und formuliert, damit Dashboard und App nachweislich dasselbe zeigen. Die
+    Karte selbst (Name der Seite, der feste Satz dazu) steht im Seitenbaum; hier steht nur, was
+    sich mit der Zeit ändert.
+    """
+
+    #: Die Adresse der Seite, wie sie in `docs/seitenbaum.json` steht.
+    weg: str
+    #: Die Leitzahl als fertiger Text mit Einheit. `None`, wenn es gerade keinen Wert gibt.
+    leitzahl_de: str | None = None
+    #: Wozu die Zahl gehört, als Wortgruppe unter ihr.
+    dazu_de: str = ""
+    #: `gut` heißt: nichts zu tun. `warn` heißt: ansehen. `schlecht` heißt: gestört. `aus` heißt:
+    #: gerade keine Auskunft.
+    ampel: Ampel = "aus"
+    #: Der Grund für eine Ampel, die nicht `gut` ist, als Satz. Sonst leer.
+    grund_de: str = ""
+
+
+class UebersichtOut(BaseModel):
+    """Die Karten eines Bereichs. Eine Seite ohne Karte hat nichts, was sich mit der Zeit ändert."""
+
+    bereich: str
+    karten: list[UebersichtKarteOut] = Field(default_factory=list)

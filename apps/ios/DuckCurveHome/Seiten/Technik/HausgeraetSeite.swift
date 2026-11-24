@@ -128,14 +128,7 @@ struct HausgeraetSeite: View {
             .accessibilityLabel(ampel.wort)
     }
 
-    private func farbe(_ a: Hausgeraet.Ampel) -> Color {
-        switch a {
-        case .gut: return Farbe.gut
-        case .warn: return Farbe.amberWeich
-        case .schlecht: return Farbe.alarm
-        case .aus: return Farbe.text3
-        }
-    }
+    private func farbe(_ a: Hausgeraet.Ampel) -> Color { a.farbe }
 
     private func zeile(_ ampel: Hausgeraet.Ampel?, _ titel: String, _ text: String? = nil, rechts: String? = nil) -> some View {
         HStack(alignment: .top, spacing: 10) {

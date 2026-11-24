@@ -2000,6 +2000,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/uebersicht/{bereich}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Die Karten der Übersicht eines Bereichs
+         * @description Je Seite des Bereichs die wichtigste Zahl und ein Zustand, fertig formuliert.
+         *
+         *     Der Schlüssel des Bereichs ist der aus `docs/seitenbaum.json`. Eine Übersicht gibt es für
+         *     Bereiche mit Gruppen; heute ist das die Anlage. Welche Karten ein Betrachter sieht,
+         *     entscheidet die Oberfläche wie bei den Seiten selbst.
+         */
+        get: operations["bereichsuebersicht_api_v1_uebersicht__bereich__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/demo": {
         parameters: {
             query?: never;
@@ -8670,6 +8694,46 @@ export interface components {
             /** Grund */
             grund: string;
         };
+        /**
+         * UebersichtKarteOut
+         * @description Eine Karte der Bereichsübersicht: die wichtigste Zahl einer Seite und ihr Zustand.
+         *
+         *     Der Dienst rechnet und formuliert, damit Dashboard und App nachweislich dasselbe zeigen. Die
+         *     Karte selbst (Name der Seite, der feste Satz dazu) steht im Seitenbaum; hier steht nur, was
+         *     sich mit der Zeit ändert.
+         */
+        UebersichtKarteOut: {
+            /** Weg */
+            weg: string;
+            /** Leitzahl De */
+            leitzahl_de?: string | null;
+            /**
+             * Dazu De
+             * @default
+             */
+            dazu_de: string;
+            /**
+             * Ampel
+             * @default aus
+             * @enum {string}
+             */
+            ampel: "gut" | "warn" | "schlecht" | "aus";
+            /**
+             * Grund De
+             * @default
+             */
+            grund_de: string;
+        };
+        /**
+         * UebersichtOut
+         * @description Die Karten eines Bereichs. Eine Seite ohne Karte hat nichts, was sich mit der Zeit ändert.
+         */
+        UebersichtOut: {
+            /** Bereich */
+            bereich: string;
+            /** Karten */
+            karten?: components["schemas"]["UebersichtKarteOut"][];
+        };
         /** UpdateAnfrageIn */
         UpdateAnfrageIn: {
             /**
@@ -11958,6 +12022,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DoorLogOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bereichsuebersicht_api_v1_uebersicht__bereich__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bereich: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UebersichtOut"];
                 };
             };
             /** @description Validation Error */
