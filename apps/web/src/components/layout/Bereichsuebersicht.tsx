@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { AREAS, SEITENFARBE, hatUebersicht, tabsDerGruppe, type Area } from "@/lib/areas";
 import { useSitzung } from "@/lib/live/useRole";
 import { AreaShell } from "./AreaShell";
+import { Kachelbild } from "./Kachelbild";
 
 /** Wie oft die Karten ihre Zahlen neu holen. Die Übersicht steht auch an der Wand. */
 const ERNEUERN_MS = 60_000;
@@ -127,6 +128,7 @@ export function Bereichsuebersicht({ bereich }: { bereich: Area["key"] }) {
                       ) : !leitzahl && seite.beschreibung ? (
                         <span className="uebersicht-satz">{seite.beschreibung}</span>
                       ) : null}
+                      {karte?.bild ? <Kachelbild bild={karte.bild} /> : null}
                     </Link>
                   );
                 })}

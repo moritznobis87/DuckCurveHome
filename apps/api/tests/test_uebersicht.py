@@ -15,6 +15,7 @@ from dch_api.schemas import (
     CoverageSeriesOut,
     DoorEntryOut,
     DoorLogOut,
+    EnergyBucketOut,
     EnergySummaryOut,
     EnergyTotalsOut,
     ForecastDayOut,
@@ -243,9 +244,16 @@ def test_jeder_bereich_mit_karten_ist_ueber_seinen_schluessel_erreichbar(
         assert antwort.json()["bereich"] == schluessel
 
 
-def _bilanz(minuten: int = 600, **mengen: float) -> EnergySummaryOut:
+def _bilanz(
+    minuten: int = 600, stunden: list[dict[str, float]] | None = None, **mengen: float
+) -> EnergySummaryOut:
+    """Eine Tagesbilanz mit ihren Summen und, wo ein Test sie braucht, ihren Stunden."""
     return EnergySummaryOut.model_construct(
-        totals=EnergyTotalsOut.model_construct(minutes=minuten, **mengen)
+        totals=EnergyTotalsOut.model_construct(minutes=minuten, **mengen),
+        buckets=[
+            EnergyBucketOut.model_construct(totals=EnergyTotalsOut(**stunde))
+            for stunde in stunden or []
+        ],
     )
 
 
@@ -550,3 +558,162 @@ def test_ohne_gezaehlte_minute_zeigt_daten_pruefen_keine_null() -> None:
         karte = uebersicht.karte_daten(abdeckung)
         assert (karte.leitzahl_de, karte.ampel) == (None, "aus")
         assert karte.grund_de
+
+
+# ---------------------------------------------------------------------------
+# Das kleine Bild der Kachel (24.11.2026)
+# ---------------------------------------------------------------------------
+
+
+def test_die_energiekarten_tragen_den_verlauf_des_tages_in_stunden() -> None:
+    """Je Stunde der Bilanz ein Balken, jede Karte mit ihrer eigenen Größe."""
+    bilanz = _bilanz(
+        house_kwh=3.0,
+        pv_kwh=1.5,
+        ev_kwh=0.0,
+        stunden=[
+            {"house_kwh": 1.0, "pv_kwh": 0.0, "heat_pump_kwh": 0.4},
+            {"house_kwh": 2.0, "pv_kwh": 1.5, "heat_pump_kwh": 0.0},
+        ],
+    )
+    strom = uebersicht.karte_strom(bilanz).bild
+    assert strom is not None
+    assert (strom.art, strom.werte) == ("balken", [1.0, 2.0])
+    sonne = uebersicht.karte_photovoltaik(bilanz).bild
+    assert sonne is not None
+    assert sonne.werte == [0.0, 1.5]
+    waerme = uebersicht.karte_waerme(
+        HeatReportOut.model_construct(summary=bilanz, thermal_kwh_est=1.2)
+    ).bild
+    # Die Wärme zeigt den Strom der Wärmepumpe: wann sie gelaufen ist.
+    assert waerme is not None
+    assert waerme.werte == [0.4, 0.0]
+
+
+def test_ein_balken_wird_nie_negativ() -> None:
+    bilanz = _bilanz(house_kwh=1.0, stunden=[{"house_kwh": -0.2}, {"house_kwh": 1.2}])
+    bild = uebersicht.karte_strom(bilanz).bild
+    assert bild is not None
+    assert bild.werte == [0.0, 1.2]
+
+
+def test_eine_karte_ohne_auskunft_hat_kein_bild() -> None:
+    leer = _bilanz(minuten=0)
+    assert uebersicht.karte_strom(leer).bild is None
+
+
+def test_fuellstaende_bleiben_zwischen_null_und_eins() -> None:
+    """Ein Messwert knapp über hundert Prozent zeichnet nichts, was über den Rand ragt."""
+    voll = uebersicht.karte_anlage(
+        AnlageOut.model_construct(speicher=AnlageSpeicherOut.model_construct(soc=1.04))
+    ).bild
+    assert voll is not None
+    assert (voll.art, voll.anteil) == ("fuellung", 1.0)
+    halb = uebersicht.karte_anlage(
+        AnlageOut.model_construct(speicher=AnlageSpeicherOut.model_construct(soc=0.52))
+    ).bild
+    assert halb is not None
+    assert halb.anteil == 0.52
+
+
+def test_die_prognose_zeigt_ihre_abweichung_mit_richtung() -> None:
+    zu_niedrig = uebersicht.karte_prognose(_auswertung(-80.0)).bild
+    assert zu_niedrig is not None
+    assert (zu_niedrig.art, zu_niedrig.anteil) == ("abweichung", -0.8)
+    weit_daneben = uebersicht.karte_prognose(_auswertung(250.0)).bild
+    assert weit_daneben is not None
+    assert weit_daneben.anteil == 1.0
+
+
+def test_der_fahrplan_zeigt_den_horizont_als_streifen() -> None:
+    plan = PlanOut.model_construct(
+        planner_warn_de=None,
+        intervals=[
+            PlanIntervalOut.model_construct(planned_hp_state=zustand)
+            for zustand in ("off", "release", "release", "free")
+        ],
+    )
+    karte = uebersicht.karte_fahrplan(plan)
+    assert karte.bild is not None
+    assert (karte.bild.art, karte.bild.werte) == ("streifen", [0.0, 1.0, 1.0, 0.0])
+    # Ohne Warnung des Planers bleibt der Grund leer und die Karte gut.
+    assert (karte.ampel, karte.grund_de) == ("gut", "")
+
+
+# ---------------------------------------------------------------------------
+# Die Frist: eine langsame Quelle hält die Übersicht nicht auf
+# ---------------------------------------------------------------------------
+
+
+def _karte_mit_zahl(weg: str, zahl: str) -> uebersicht.UebersichtKarteOut:
+    return uebersicht.UebersichtKarteOut(weg=weg, leitzahl_de=zahl, ampel="gut")
+
+
+async def test_eine_langsame_quelle_wird_nicht_abgewartet(monkeypatch) -> None:
+    """Nach der Frist steht die Karte ohne Auskunft da, und die Quelle rechnet weiter. Beim
+    nächsten Aufruf liegt ihr Ergebnis bereit."""
+    import asyncio
+
+    weg = "/test/langsam"
+    monkeypatch.setattr(uebersicht, "FRIST_S", 0.05)
+    uebersicht._GEMERKT.pop(weg, None)
+    uebersicht._LAUFEND.pop(weg, None)
+    fertig = asyncio.Event()
+    aufrufe = 0
+
+    async def quelle() -> str:
+        nonlocal aufrufe
+        aufrufe += 1
+        await fertig.wait()
+        return "7 kWh"
+
+    erste = await uebersicht._karte(weg, quelle, lambda zahl: _karte_mit_zahl(weg, zahl))
+    assert (erste.ampel, erste.grund_de) == ("aus", uebersicht.BRAUCHT_LAENGER)
+
+    # Ein zweiter Aufruf, während die Quelle noch rechnet, startet sie nicht noch einmal.
+    zweite = await uebersicht._karte(weg, quelle, lambda zahl: _karte_mit_zahl(weg, zahl))
+    assert zweite.grund_de == uebersicht.BRAUCHT_LAENGER
+    assert aufrufe == 1
+
+    fertig.set()
+    await asyncio.sleep(0.02)
+    dritte = await uebersicht._karte(weg, quelle, lambda zahl: _karte_mit_zahl(weg, zahl))
+    assert dritte.leitzahl_de == "7 kWh"
+
+
+async def test_nach_der_frist_steht_die_karte_vom_letzten_mal(monkeypatch) -> None:
+    import asyncio
+
+    weg = "/test/gemerkt"
+    monkeypatch.setattr(uebersicht, "FRIST_S", 0.05)
+    uebersicht._GEMERKT.pop(weg, None)
+    uebersicht._LAUFEND.pop(weg, None)
+
+    async def schnell() -> str:
+        return "3 kWh"
+
+    haengt = asyncio.Event()
+
+    async def langsam() -> str:
+        await haengt.wait()
+        return "9 kWh"
+
+    assert (
+        await uebersicht._karte(weg, schnell, lambda z: _karte_mit_zahl(weg, z))
+    ).leitzahl_de == ("3 kWh")
+    spaeter = await uebersicht._karte(weg, langsam, lambda z: _karte_mit_zahl(weg, z))
+    assert spaeter.leitzahl_de == "3 kWh"
+    haengt.set()
+    await asyncio.sleep(0.02)
+
+
+async def test_eine_quelle_die_wirft_laesst_die_karte_stehen() -> None:
+    weg = "/test/wirft"
+    uebersicht._GEMERKT.pop(weg, None)
+    uebersicht._LAUFEND.pop(weg, None)
+
+    async def wirft() -> str:
+        raise RuntimeError("Quelle nicht erreichbar")
+
+    karte = await uebersicht._karte(weg, wirft, lambda z: _karte_mit_zahl(weg, z))
+    assert (karte.ampel, karte.grund_de) == ("aus", uebersicht.KEINE_AUSKUNFT)

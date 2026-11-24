@@ -2551,6 +2551,25 @@ class NameIn(BaseModel):
     name: str
 
 
+class UebersichtBildOut(BaseModel):
+    """Das kleine Bild einer Kachel: eine Form, die sich auf einen Blick lesen lässt.
+
+    Vier Arten, damit Dashboard und App dasselbe zeichnen und keine eine fünfte erfindet:
+
+    - `balken`: der Verlauf des heutigen Tages in Stunden, `werte` in kWh je Stunde. Eine Stunde,
+      die noch nicht war, fehlt am Ende; die Kachel zeichnet immer 24 Plätze.
+    - `fuellung`: ein Füllstand, `anteil` von 0 bis 1.
+    - `abweichung`: eine Abweichung nach unten oder oben, `anteil` von -1 bis 1.
+    - `streifen`: was im Horizont geplant ist, `werte` je Abschnitt 1 für „angefordert", sonst 0.
+
+    Das Bild ist Beigabe und trägt keine Zahl, die nicht auch als Leitzahl dasteht.
+    """
+
+    art: Literal["balken", "fuellung", "abweichung", "streifen"]
+    werte: list[float] = Field(default_factory=list)
+    anteil: float | None = None
+
+
 class UebersichtKarteOut(BaseModel):
     """Eine Karte der Bereichsübersicht: die wichtigste Zahl einer Seite und ihr Zustand.
 
@@ -2570,6 +2589,8 @@ class UebersichtKarteOut(BaseModel):
     ampel: Ampel = "aus"
     #: Der Grund für eine Ampel, die nicht `gut` ist, als Satz. Sonst leer.
     grund_de: str = ""
+    #: Das kleine Bild der Kachel. `None`, wenn die Seite keines hat oder gerade keine Werte.
+    bild: UebersichtBildOut | None = None
 
 
 class UebersichtOut(BaseModel):

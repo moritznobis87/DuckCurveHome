@@ -774,7 +774,7 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 .uebersicht-flach .uebersicht-karten { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
 .uebersicht-karte {
   --kachelfarbe: var(--mist);
-  position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: 148px; padding: 14px 16px 15px;
+  position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: 176px; padding: 14px 16px 15px;
   border: 1px solid var(--line-1); border-radius: var(--radius-3); color: inherit; text-decoration: none; overflow: hidden;
   /* Ein Hauch der Farbe der Sache aus der Ecke des Zeichens; die Fläche bleibt die der Karten. */
   background:
@@ -800,6 +800,8 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 /* Eine Kachel, die etwas zu sagen hat, hebt sich mit ihrem Rand ab. */
 .uebersicht-karte[data-ampel="warn"] { border-color: rgba(255, 215, 120, 0.45); }
 .uebersicht-karte[data-ampel="schlecht"] { border-color: rgba(224, 83, 61, 0.6); }
+/* Das kleine Bild steht am Fuß der Kachel, über ihre ganze Breite, in der Farbe der Sache. */
+.uebersicht-bild { display: block; width: 100%; height: 28px; margin-top: auto; padding-top: 10px; box-sizing: content-box; }
 /* Nur auf einer Kachel ohne Zahl: der Satz der Seite, damit sie nicht leer dasteht. */
 .uebersicht-satz { margin-top: 3px; font-size: 12.5px; line-height: 1.4; color: var(--text-3); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 

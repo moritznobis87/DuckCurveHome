@@ -191,7 +191,7 @@
   /* Zwei Kacheln nebeneinander: sechs Seiten passen auf einen Schirm, ohne zu rollen. */
   .uebersicht, .uebersicht.uebersicht-flach { grid-template-columns: 1fr; gap: 20px; }
   .uebersicht-karten, .uebersicht-flach .uebersicht-karten { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .uebersicht-karte { min-height: 140px; padding: 13px 14px 14px; border-radius: 14px; }
+  .uebersicht-karte { min-height: 170px; padding: 13px 14px 14px; border-radius: 14px; }
   .uebersicht-leitzahl { font-size: 26px; }
 
   /* Ansichten eines Reiters: ein Schalter über die ganze Breite. */
