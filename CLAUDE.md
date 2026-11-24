@@ -40,6 +40,23 @@ keines ist nur Vorlage für das andere.
   Test dagegen gehalten (`seitenbaum.test.ts`, `SeitenbaumTests.swift`). Wer Gliederung, Namen
   oder Adressen ändert, ändert zuerst diese Datei und zieht dann beide nach.
 
+## Arbeit muss einen Abbruch überstehen
+
+Der Hausherr hat das am 24.11.2026 festgelegt. Am Tag davor brach eine Bestandsaufnahme mit neun
+parallelen Prüfern am Nutzungslimit ab; sie hatte rund 640 000 Tokens verbraucht und keinen
+einzigen Bericht hinterlassen.
+
+- **Nichts starten, das nur als Ganzes etwas wert ist.** Eine Arbeit wird so geschnitten, dass
+  jeder Teil für sich ein fertiges Ergebnis hinterlässt, das wichtigste zuerst. Fertig heißt:
+  bricht die Sitzung nach diesem Teil ab, ist er trotzdem zu gebrauchen.
+- **Zwischenstände laufend sichern.** Wer misst oder untersucht, schreibt jeden Fund sofort in
+  eine Datei und nicht erst am Ende in einen Bericht. Was Bestand haben soll, liegt im Repository
+  auf dem Arbeitszweig und ist gepusht. Im Scratchpad liegt nur, was verloren gehen darf.
+- **Erst das Billige, und mehrere Agenten nur auf Verlangen.** Vor jedem größeren Lauf selbst
+  nachsehen, was sich mit wenigen Aufrufen klären lässt. Ein Lauf mit mehreren Prüfern oder
+  Agenten startet nur, wenn der Hausherr ihn ausdrücklich verlangt, und dann in kleinen Losen:
+  höchstens zwei zugleich, jedes Los mit eigenem abgelegtem Ergebnis, bevor das nächste beginnt.
+
 ## Jede Änderung geht über einen Pull Request nach `main`
 
 Der Hausherr hat das am 23.11.2026 festgelegt. Es gilt für jede Änderung, auch eine kleine, und
