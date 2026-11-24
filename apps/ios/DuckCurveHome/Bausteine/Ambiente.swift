@@ -296,7 +296,7 @@ struct Ambiente: View {
 
     private var satzfarbe: Color {
         switch befund?.schwere {
-        case .alarm: return Farbe.alarm
+        case .alarm: return Farbe.alarmText
         case .warnung: return Farbe.amberWeich
         default: return Farbe.text1
         }

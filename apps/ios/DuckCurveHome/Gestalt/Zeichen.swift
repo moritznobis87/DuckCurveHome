@@ -4,7 +4,7 @@ import SwiftUI
 /// Eine Form aus dem Kern als SwiftUI-Pfad.
 ///
 /// Das ist die ganze Uebersetzung - zwanzig Zeilen. Das Lesen der Pfadangaben, die Zerlegung der
-/// Boegen und die Pruefung, dass alle 71 Formen der Zeichen lesbar sind, steht in
+/// Boegen und die Pruefung, dass alle Formen der Zeichen lesbar sind, steht in
 /// `DuckCurveKit/Gestalt/SvgPfad.swift` und ist dort getestet.
 extension Path {
     /// Pfadstuecke zeichnen, umgerechnet vom Raster der Vorlage auf eine Kantenlaenge.

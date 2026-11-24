@@ -53,7 +53,7 @@ struct Speichersteuerkarte: View {
                 griffe(s)
                 Text(sendet ? Speichersteuerung.sendetSatz : Speichersteuerung.zeile(s, fehler: fehler))
                     .font(Schrift.winzig)
-                    .foregroundStyle(fehler == nil ? Farbe.text3 : Farbe.alarm)
+                    .foregroundStyle(fehler == nil ? Farbe.text3 : Farbe.alarmText)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

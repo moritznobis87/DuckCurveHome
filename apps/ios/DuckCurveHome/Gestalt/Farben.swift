@@ -97,6 +97,7 @@ public enum Farbe {
     public static let gut = Color(Marken.gut)
     public static let achtung = Color(Marken.achtung)
     public static let alarm = Color(Marken.alarm)
+    public static let alarmText = Color(Marken.alarmText)
 
     // Thermisch
     public static let ventilOffen = Color(Marken.ventilOffen)

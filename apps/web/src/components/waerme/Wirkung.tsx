@@ -153,7 +153,7 @@ export function Wirkung() {
           {laden && d ? <span className="text-[12px] text-text-3">wird neu gerechnet</span> : null}
         </div>
 
-        {fehler ? <p className="m-0 text-[13px] text-alert">{fehler}</p> : null}
+        {fehler ? <p className="m-0 text-[13px] text-alert-text">{fehler}</p> : null}
         {laden && !d ? <p className="m-0 text-[13px] text-text-3">Die Anforderungen werden gesucht.</p> : null}
 
         {d ? (

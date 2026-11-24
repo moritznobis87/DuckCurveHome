@@ -31,8 +31,15 @@
   /* Text auf Dunkel */
   --text-1: rgba(255, 255, 255, 0.92);
   --text-2: rgba(255, 255, 255, 0.72);
-  --text-3: rgba(255, 255, 255, 0.48);
-  --text-kicker: var(--mist);
+  /* Die blasse Stufe traegt Beschriftungen in 10 bis 13 Punkten. Mit 48 % Deckung lag sie auf
+     den Karten unter 4,5:1 (4,41 auf Flaeche 1, 4,22 auf Flaeche 2, 3,88 auf Flaeche 3). Mit 58 %
+     sind es 5,76, 5,42 und 4,92; der Abstand zu --text-2 (7,48 auf Flaeche 2) bleibt lesbar.
+     Gemessen am 24.11.2026, docs/design/werkstatt/LIESMICH.md. */
+  --text-3: rgba(255, 255, 255, 0.58);
+  /* Die Stichwortzeile. Eine Stufe heller als --mist: das Nebelgrau selbst lag als Schrift auf
+     Flaeche 3 bei 4,18:1, dieses bei 4,96 (5,71 auf Flaeche 2). --mist bleibt die Farbe der
+     Reihen und Marken. */
+  --text-kicker: #8ab2c4;
 
   /* Energie-Semantik (Serienfarben, auf --surface-2 geprüft) */
   --pv: var(--amber);
@@ -62,6 +69,11 @@
   --ok: var(--mist);
   --warn: var(--amber);
   --alert: #e0533d;
+  /* Alarm als Schrift. --alert traegt Flaechen, Marken und grosse Zahlen; als kleine Schrift lag
+     es ueberall unter 4,5:1 (3,70 auf Flaeche 1, 3,38 auf Flaeche 2). Dieses hellere Rot liegt
+     bei 5,31 und 4,85. Es steht naeher am Terrakotta der Waermepumpe (ΔE 8,9) und ist deshalb
+     nur fuer Text gedacht, nie fuer eine Reihe oder eine Flaeche. */
+  --alert-text: #ff7266;
 
   /* Thermische Skala */
   /* Abweichung vom Raumsollwert, fünfstufig und zweiseitig. Null ist nicht farblos, sondern

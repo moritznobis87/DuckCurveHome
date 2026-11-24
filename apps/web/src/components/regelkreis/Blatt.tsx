@@ -173,7 +173,7 @@ function Entwurf({ k }: { k: RegelkreisKreis }) {
         </div>
         <div>
           <span>Phasenreserve</span>
-          <b style={{ color: r?.gut ? "var(--mist)" : "var(--alert)" }}>{r?.phasenreserve_grad !== null && r?.phasenreserve_grad !== undefined ? `${de(r.phasenreserve_grad, 0)}°` : "—"}</b>
+          <b style={{ color: r?.gut ? "var(--mist)" : "var(--alert-text)" }}>{r?.phasenreserve_grad !== null && r?.phasenreserve_grad !== undefined ? `${de(r.phasenreserve_grad, 0)}°` : "—"}</b>
           <small>Amplitudenreserve {r?.amplitudenreserve ? de(r.amplitudenreserve, 2) : "∞"}</small>
         </div>
         <div>

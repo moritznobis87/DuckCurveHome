@@ -113,7 +113,7 @@ function Blatt({ titel, status, text, modus, dauern, dauerWort, disabled, onSet,
         </div>
       ) : null}
       {disabled ? <p className="m-0 text-[12px] text-text-3">{busy ? "schalte …" : "Nur Ansicht: dieses Gerät sieht zu, schaltet aber nicht."}</p> : null}
-      {fehler ? <p className="m-0 text-[12px]" style={{ color: "var(--alert)" }}>{fehler}</p> : null}
+      {fehler ? <p className="m-0 text-[12px]" style={{ color: "var(--alert-text)" }}>{fehler}</p> : null}
     </div>
   );
 }
@@ -170,7 +170,7 @@ function AlarmBlatt({ alarm, disabled, onClose }: { alarm: NonNullable<LiveState
       </p>
       {disabled ? <p className="m-0 text-[12px] text-text-3">Nur Ansicht: dieses Gerät schaltet nichts.</p> : null}
       {!alarm.can_arm && !disabled ? <p className="m-0 text-[12px] text-text-3">Gerade nicht erreichbar.</p> : null}
-      {fehler ? <p className="m-0 text-[12px]" style={{ color: "var(--alert)" }}>{fehler}</p> : null}
+      {fehler ? <p className="m-0 text-[12px]" style={{ color: "var(--alert-text)" }}>{fehler}</p> : null}
       {fertig ? <p className="m-0 text-[12px]" style={{ color: "var(--pv)" }}>{fertig}</p> : null}
     </div>
   );

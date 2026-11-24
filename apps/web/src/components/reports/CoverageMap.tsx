@@ -68,7 +68,7 @@ function Headline({ s }: { s: CoverageSeries }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
       <span className="text-[14px] text-text-1">{s.label_de}</span>
-      <span className="mono text-[13px]" style={{ color: bad ? "var(--alert)" : "var(--amber)" }}>
+      <span className="mono text-[13px]" style={{ color: bad ? "var(--alert-text)" : "var(--amber)" }}>
         {pct} % Abdeckung
       </span>
       <span className="text-[13px] text-text-3">

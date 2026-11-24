@@ -174,7 +174,7 @@ export function Protokoll({ roomId, name, floor, onClose }: { roomId: number; na
           </span>
         </div>
 
-        {fehler ? <p className="m-0 text-[13px]" style={{ color: "var(--alert)" }}>{fehler}</p> : null}
+        {fehler ? <p className="m-0 text-[13px]" style={{ color: "var(--alert-text)" }}>{fehler}</p> : null}
         {!log && !fehler ? <p className="m-0 text-[13px] text-text-3">lädt …</p> : null}
 
         {log && s ? (

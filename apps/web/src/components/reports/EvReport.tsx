@@ -77,7 +77,7 @@ export function EvReport() {
                         <td className="py-1.5 pr-3 text-right text-text-3">{de1(s.avg_kw)} kW</td>
                         <td className="py-1.5 pr-3 text-right" style={{ color: "var(--amber)" }}>{pct(s.pv_share)}</td>
                         <td className="py-1.5 pr-3 text-right">{de1(s.grid_kwh)} kWh</td>
-                        <td className="py-1.5 text-right" style={{ color: s.cost_eur > 0.005 ? "var(--alert)" : "var(--text-3)" }}>{eur(s.cost_eur)}</td>
+                        <td className="py-1.5 text-right" style={{ color: s.cost_eur > 0.005 ? "var(--alert-text)" : "var(--text-3)" }}>{eur(s.cost_eur)}</td>
                       </tr>
                     );
                   })}

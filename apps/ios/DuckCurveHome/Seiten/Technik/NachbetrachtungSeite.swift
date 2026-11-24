@@ -189,7 +189,7 @@ struct NachbetrachtungSeite: View {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(fehler.rat)
                     .font(Schrift.klein)
-                    .foregroundStyle(Farbe.alarm)
+                    .foregroundStyle(Farbe.alarmText)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
                 Button("Erneut") { Task { await lade() } }

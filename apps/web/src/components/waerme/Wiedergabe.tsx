@@ -219,7 +219,7 @@ export function Wiedergabe() {
           ))}
         </div>
 
-        {fehler ? <p className="m-0 text-[13px] text-alert">{fehler}</p> : null}
+        {fehler ? <p className="m-0 text-[13px] text-alert-text">{fehler}</p> : null}
         {laden && !daten ? <p className="m-0 text-[13px] text-text-3">Der Tag wird geholt.</p> : null}
         {daten && anzahl === 0 && !laden ? <p className="m-0 text-[13px] text-text-3">{daten.hinweise_de?.[0]}</p> : null}
 

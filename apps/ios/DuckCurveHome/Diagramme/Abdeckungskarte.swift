@@ -176,7 +176,7 @@ struct Abdeckungskarte: View {
             // Unter 99 Prozent ist die Zahl die Nachricht, nicht die Beigabe.
             Text(k.abdeckung)
                 .font(Schrift.zahlKlein)
-                .foregroundStyle(k.dringend ? Farbe.alarm : Farbe.amber)
+                .foregroundStyle(k.dringend ? Farbe.alarmText : Farbe.amber)
             Text(k.satz)
                 .font(Schrift.klein)
                 .foregroundStyle(Farbe.text3)

@@ -67,7 +67,7 @@ struct Plakette: View {
         switch ton {
         case .neutral: return Farbe.text2
         case .amber: return Farbe.amber
-        case .alarm: return Farbe.alarm
+        case .alarm: return Farbe.alarmText
         }
     }
 

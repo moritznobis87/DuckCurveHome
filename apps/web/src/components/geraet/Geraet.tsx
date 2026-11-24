@@ -407,7 +407,7 @@ function ProtokollFenster({ titel, inhalt, onZu, onNeu }: { titel: string; inhal
       {inhalt === null ? (
         <span className="text-[14px] text-text-3">Das Gerät holt die letzten 300 Zeilen …</span>
       ) : typeof inhalt === "string" ? (
-        <span className="text-[14px] text-alert">{inhalt}</span>
+        <span className="text-[14px] text-alert-text">{inhalt}</span>
       ) : (
         <>
           <span className="text-[12px] text-text-3">
@@ -468,7 +468,7 @@ export function Geraet() {
       </div>
 
       {aktion || fehler ? (
-        <p className={`m-0 text-[14px] ${fehler || aktion?.ton === "fehler" ? "text-alert" : "text-text-2"}`} aria-live="polite">
+        <p className={`m-0 text-[14px] ${fehler || aktion?.ton === "fehler" ? "text-alert-text" : "text-text-2"}`} aria-live="polite">
           {fehler ?? aktion?.text}
         </p>
       ) : null}

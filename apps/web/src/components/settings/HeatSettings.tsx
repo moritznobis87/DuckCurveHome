@@ -197,7 +197,7 @@ export function HeatSettings() {
           {laeuft ? "wird übernommen …" : "Übernehmen"}
         </button>
         {meldung ? <span className="text-[13px] text-text-2">{meldung}</span> : null}
-        {fehler ? <span className="text-[13px]" style={{ color: "var(--alert)" }}>{fehler}</span> : null}
+        {fehler ? <span className="text-[13px]" style={{ color: "var(--alert-text)" }}>{fehler}</span> : null}
       </div>
     </div>
   );

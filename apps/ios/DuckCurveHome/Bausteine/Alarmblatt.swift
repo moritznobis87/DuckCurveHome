@@ -77,7 +77,7 @@ struct Alarmblatt: View {
                     Text(r).font(Schrift.klein).foregroundStyle(Farbe.pv)
                 }
                 if let f = fehler {
-                    Text(f).font(Schrift.klein).foregroundStyle(Farbe.alarm)
+                    Text(f).font(Schrift.klein).foregroundStyle(Farbe.alarmText)
                 }
             }
         }

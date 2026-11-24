@@ -4,7 +4,7 @@ import XCTest
 
 /// Der Leser fuer SVG-Pfadangaben.
 ///
-/// Der letzte Test ist der wichtigste: er schickt alle 79 Pfade der 25 Zeichen durch den Leser.
+/// Der letzte Test ist der wichtigste: er schickt alle Pfade der Zeichen durch den Leser.
 /// Damit ist nachgewiesen, dass die uebernommenen Zeichnungen des Dashboards in der App
 /// ueberhaupt gezeichnet werden koennen - und zwar auf dem Pruefrechner, lange bevor Xcode sie
 /// zu sehen bekommt.
@@ -255,10 +255,11 @@ final class SvgPfadTests: XCTestCase {
                 }
             }
         }
-        // 24 Zeichen mit zusammen 71 Formen. `home` und `house` sind in Icon.tsx dieselbe
-        // Zeichnung und heissen hier beide `haus`.
+        // 24 Zeichen mit zusammen 72 Formen. `home` und `house` sind in Icon.tsx dieselbe
+        // Zeichnung und heissen hier beide `haus`. Seit dem 24.11.2026 ist es eine Form mehr:
+        // die Waermepumpe als Aussengeraet hat neben Luefter und Fuessen die Lamellen.
         XCTAssertEqual(Zeichenart.allCases.count, 24)
-        XCTAssertEqual(formen, 71, "Es sollten 71 Formen aus Icon.tsx uebernommen sein.")
+        XCTAssertEqual(formen, 72, "Es sollten 72 Formen aus Icon.tsx uebernommen sein.")
     }
 
     /// Die Bereichsleiste braucht fuenf Zeichen, und die Marke ist eines davon.

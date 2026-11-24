@@ -190,7 +190,7 @@ struct ReglerSeite: View {
             ForEach(meldungen) { m in
                 Text("\(m.ok ? "✓" : "✗") \(m.text)")
                     .font(Schrift.klein)
-                    .foregroundStyle(m.ok ? Farbe.text1 : Farbe.alarm)
+                    .foregroundStyle(m.ok ? Farbe.text1 : Farbe.alarmText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Button("Ausblenden") { meldungen = [] }

@@ -316,7 +316,7 @@ private struct Kreiszeileansicht: View {
                         kante: 6)
                     Text(hinweis)
                         .font(Schrift.winzig)
-                        .foregroundStyle(kreis.bewertbar && !kreis.gut ? Farbe.alarm : Farbe.text3)
+                        .foregroundStyle(kreis.bewertbar && !kreis.gut ? Farbe.alarmText : Farbe.text3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -740,7 +740,7 @@ private struct Parameterblock: View {
             if let meldung {
                 Text(meldung)
                     .font(Schrift.winzig)
-                    .foregroundStyle(Farbe.alarm)
+                    .foregroundStyle(Farbe.alarmText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
