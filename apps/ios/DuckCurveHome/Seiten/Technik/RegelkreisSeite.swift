@@ -53,7 +53,7 @@ struct RegelkreisSeite: View {
                 kreiskarte(bild)
                 protokollkarte(bild)
                 Methode(
-                    [], kurz: "fünf Ebenen · SIMC-Entwurf · Übernahme nur mit Beleg",
+                    [], kurz: Regelkreisbild.methodeKurz,
                     titel: "Wie diese Karte zu lesen ist", punkte: Regelkreisbild.methode)
             }
         }
