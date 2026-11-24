@@ -269,6 +269,12 @@ public struct Api: Sendable {
         try await hole("/anlage/kontaktwirkung", fragen: ["days": String(tage)])
     }
 
+    /// Die Karten der Uebersicht eines Bereichs: je Seite ihre Leitzahl und eine Ampel, vom
+    /// Dienst formuliert. Der Schluessel ist der aus `docs/seitenbaum.json`.
+    public func uebersicht(_ bereich: String) async throws -> UebersichtOut {
+        try await hole("/uebersicht/\(bereich)")
+    }
+
     /// Die Technikseite der Waermepumpe: alle Messwerte des Augenblicks samt Abschaetzung.
     public func waermepumpe() async throws -> WaermepumpeOut {
         try await hole("/waermepumpe")
