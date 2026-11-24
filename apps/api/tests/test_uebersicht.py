@@ -677,8 +677,8 @@ async def test_eine_langsame_quelle_wird_nicht_abgewartet(monkeypatch) -> None:
 
     weg = "/test/langsam"
     monkeypatch.setattr(uebersicht, "FRIST_S", 0.05)
-    uebersicht._GEMERKT.pop(weg, None)
-    uebersicht._LAUFEND.pop(weg, None)
+    uebersicht._GEMERKT.pop((weg, ""), None)
+    uebersicht._LAUFEND.pop((weg, ""), None)
     fertig = asyncio.Event()
     aufrufe = 0
 
@@ -707,8 +707,8 @@ async def test_nach_der_frist_steht_die_karte_vom_letzten_mal(monkeypatch) -> No
 
     weg = "/test/gemerkt"
     monkeypatch.setattr(uebersicht, "FRIST_S", 0.05)
-    uebersicht._GEMERKT.pop(weg, None)
-    uebersicht._LAUFEND.pop(weg, None)
+    uebersicht._GEMERKT.pop((weg, ""), None)
+    uebersicht._LAUFEND.pop((weg, ""), None)
 
     async def schnell() -> str:
         return "3 kWh"
@@ -730,11 +730,49 @@ async def test_nach_der_frist_steht_die_karte_vom_letzten_mal(monkeypatch) -> No
 
 async def test_eine_quelle_die_wirft_laesst_die_karte_stehen() -> None:
     weg = "/test/wirft"
-    uebersicht._GEMERKT.pop(weg, None)
-    uebersicht._LAUFEND.pop(weg, None)
+    uebersicht._GEMERKT.pop((weg, ""), None)
+    uebersicht._LAUFEND.pop((weg, ""), None)
 
     async def wirft() -> str:
         raise RuntimeError("Quelle nicht erreichbar")
 
     karte = await uebersicht._karte(weg, wirft, lambda z: _karte_mit_zahl(weg, z))
     assert (karte.ampel, karte.grund_de) == ("aus", uebersicht.KEINE_AUSKUNFT)
+
+
+async def test_eine_karte_von_gestern_steht_heute_nicht_als_heute(monkeypatch) -> None:
+    """Kurz nach Mitternacht rechnet die Tageskarte für den neuen Tag. Braucht sie länger als
+    die Frist, darf nicht die Karte von gestern dastehen, die „heute“ sagt (Fund im Review
+    von PR 35)."""
+    import asyncio
+
+    weg = "/test/tag"
+    monkeypatch.setattr(uebersicht, "FRIST_S", 0.05)
+    for k in [k for k in uebersicht._GEMERKT if k[0] == weg]:
+        uebersicht._GEMERKT.pop(k, None)
+
+    async def gestern() -> str:
+        return "30 kWh"
+
+    karte = await uebersicht._karte(
+        weg, gestern, lambda z: _karte_mit_zahl(weg, z), stand="2026-11-24"
+    )
+    assert karte.leitzahl_de == "30 kWh"
+
+    haengt = asyncio.Event()
+
+    async def heute() -> str:
+        await haengt.wait()
+        return "0,4 kWh"
+
+    neu = await uebersicht._karte(weg, heute, lambda z: _karte_mit_zahl(weg, z), stand="2026-11-25")
+    assert (neu.leitzahl_de, neu.grund_de) == (None, uebersicht.BRAUCHT_LAENGER)
+
+    haengt.set()
+    await asyncio.sleep(0.02)
+    # Mit dem neuen Tag ist die Karte von gestern abgelöst.
+    assert (weg, "2026-11-24") not in uebersicht._GEMERKT
+    fertig = await uebersicht._karte(
+        weg, heute, lambda z: _karte_mit_zahl(weg, z), stand="2026-11-25"
+    )
+    assert fertig.leitzahl_de == "0,4 kWh"

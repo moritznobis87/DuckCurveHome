@@ -414,26 +414,34 @@ MERK_S = 15 * 60.0
 
 BRAUCHT_LAENGER = "Die Auskunft braucht gerade länger."
 
-#: Die letzte gelungene Karte je Seite, mit der Zeit, zu der sie gebaut wurde.
-_GEMERKT: dict[str, tuple[float, UebersichtKarteOut]] = {}
+#: Die letzte gelungene Karte je Seite und Stand, mit der Zeit, zu der sie gebaut wurde.
+_GEMERKT: dict[tuple[str, str], tuple[float, UebersichtKarteOut]] = {}
 #: Quellen, die über die Frist hinaus rechnen. Gehalten, damit sie nicht eingesammelt werden,
 #: und damit eine langsame Quelle nicht bei jedem Aufruf ein zweites Mal startet.
-_LAUFEND: dict[str, asyncio.Task[None]] = {}
+_LAUFEND: dict[tuple[str, str], asyncio.Task[None]] = {}
 
 
-def _merken(weg: str, karte: UebersichtKarteOut) -> None:
-    _GEMERKT[weg] = (monotonic(), karte)
+def _merken(schluessel: tuple[str, str], karte: UebersichtKarteOut) -> None:
+    weg, stand = schluessel
+    # Ein neuer Stand löst den alten ab: die Karte von gestern hat heute nichts mehr zu sagen.
+    for alt in [k for k in _GEMERKT if k[0] == weg and k[1] != stand]:
+        _GEMERKT.pop(alt, None)
+    _GEMERKT[schluessel] = (monotonic(), karte)
 
 
-def _gemerkt(weg: str) -> UebersichtKarteOut | None:
-    eintrag = _GEMERKT.get(weg)
+def _gemerkt(schluessel: tuple[str, str]) -> UebersichtKarteOut | None:
+    eintrag = _GEMERKT.get(schluessel)
     if eintrag is None or monotonic() - eintrag[0] > MERK_S:
         return None
     return eintrag[1]
 
 
 async def _karte[T](
-    weg: str, quelle: Callable[[], Awaitable[T]], bauen: Callable[[T], UebersichtKarteOut]
+    weg: str,
+    quelle: Callable[[], Awaitable[T]],
+    bauen: Callable[[T], UebersichtKarteOut],
+    *,
+    stand: str = "",
 ) -> UebersichtKarteOut:
     """Eine Karte aus ihrer Quelle, mit einer Frist.
 
@@ -443,33 +451,39 @@ async def _karte[T](
     Vorher hielt die langsamste Quelle die ganze Übersicht auf. Am echten Dienst blieben die
     Karten der Anlage so ohne Zahl, weil Wirkung und Regelkreis über Tage von Messwerten
     rechnen und die Oberfläche das Warten aufgab (gemeldet vom Hausherrn am 24.11.2026).
+
+    **`stand` gehört zum Schlüssel.** Eine Karte, die „heute“ sagt, nennt hier den Tag, für den
+    sie rechnet. Sonst stünde kurz nach Mitternacht der Verbrauch von gestern als „Verbrauch
+    heute“ da, und eine Anfrage hängte sich an eine Rechnung für gestern (Fund im Review von
+    PR 35).
     """
+    schluessel = (weg, stand)
 
     async def rechnen() -> None:
         try:
-            _merken(weg, bauen(await quelle()))
+            _merken(schluessel, bauen(await quelle()))
         except Exception:
             # Eine Quelle, die wirft, löscht nichts: die gemerkte Karte verfällt von selbst.
             pass
         finally:
-            if _LAUFEND.get(weg) is asyncio.current_task():
-                _LAUFEND.pop(weg, None)
+            if _LAUFEND.get(schluessel) is asyncio.current_task():
+                _LAUFEND.pop(schluessel, None)
 
-    davor = _GEMERKT.get(weg)
-    lauf = _LAUFEND.get(weg)
+    davor = _GEMERKT.get(schluessel)
+    lauf = _LAUFEND.get(schluessel)
     # Ein Lauf aus einer anderen Ereignisschleife (ein beendeter Dienst im selben Vorgang, wie
     # in den Tests) lässt sich nicht abwarten und wird nie fertig. Er zählt nicht.
     if lauf is None or lauf.get_loop() is not asyncio.get_running_loop():
         lauf = asyncio.ensure_future(rechnen())
-        _LAUFEND[weg] = lauf
+        _LAUFEND[schluessel] = lauf
     await asyncio.wait({lauf}, timeout=FRIST_S)
     if lauf.done():
-        danach = _GEMERKT.get(weg)
+        danach = _GEMERKT.get(schluessel)
         # Hat dieser Lauf etwas Neues abgelegt, ist das die Karte. Sonst hat die Quelle geworfen.
         if danach is not None and danach is not davor:
             return danach[1]
         return _ohne(weg)
-    return _gemerkt(weg) or _ohne(weg, BRAUCHT_LAENGER)
+    return _gemerkt(schluessel) or _ohne(weg, BRAUCHT_LAENGER)
 
 
 async def anlage(runner: Runtime) -> UebersichtOut:
@@ -514,12 +528,13 @@ async def energie(runner: Runtime) -> UebersichtOut:
         return runner.live_state()
 
     karten = await asyncio.gather(
-        _karte("/strom", tagesbilanz, karte_strom),
-        _karte("/waerme", lambda: runner.heat_report("day", heute), karte_waerme),
-        _karte("/strom/pv", tagesbilanz, karte_photovoltaik),
-        _karte("/system", runner.forecast_evaluation, karte_prognose),
+        # Die Karten des Tages tragen ihren Tag im Schlüssel der Frist (`_karte`, `stand`).
+        _karte("/strom", tagesbilanz, karte_strom, stand=str(heute)),
+        _karte("/waerme", lambda: runner.heat_report("day", heute), karte_waerme, stand=str(heute)),
+        _karte("/strom/pv", tagesbilanz, karte_photovoltaik, stand=str(heute)),
+        _karte("/system", runner.forecast_evaluation, karte_prognose, stand=str(heute)),
         _karte("/strom/speicher", augenblick, karte_speicher),
-        _karte("/strom/wallbox", tagesbilanz, karte_wallbox),
+        _karte("/strom/wallbox", tagesbilanz, karte_wallbox, stand=str(heute)),
     )
     return UebersichtOut(bereich="energie", karten=list(karten))
 
