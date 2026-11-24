@@ -568,6 +568,21 @@ public enum GliedAnsichtKategorieWahl: String, Codable, Sendable, Hashable, Case
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum HandeingriffOutArtWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case waermepumpe = "waermepumpe"
+    case ofen = "ofen"
+    case speicher = "speicher"
+    case raum = "raum"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = HandeingriffOutArtWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum HeatBalanceOutPeriodWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case day = "day"
     case week = "week"
@@ -2155,6 +2170,32 @@ public struct AusweisOut: Codable, Sendable, Hashable {
         self.personId = try c.decodeIfPresent(String.self, forKey: .personId)
         self.name = try c.decodeIfPresent(String.self, forKey: .name)
         self.email = try c.decodeIfPresent(String.self, forKey: .email)
+    }
+}
+
+/// Das Ergebnis von „Alles zurück auf Automatik“.
+public struct AutomatikZurueckOut: Codable, Sendable, Hashable {
+    public var ok: Bool
+    public var meldungDe: String
+    public var handeingriffe: HandeingriffeOut
+
+    public enum CodingKeys: String, CodingKey {
+        case ok
+        case meldungDe = "meldung_de"
+        case handeingriffe
+    }
+
+    public init(ok: Bool, meldungDe: String, handeingriffe: HandeingriffeOut) {
+        self.ok = ok
+        self.meldungDe = meldungDe
+        self.handeingriffe = handeingriffe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.ok = try c.decode(Bool.self, forKey: .ok)
+        self.meldungDe = try c.decode(String.self, forKey: .meldungDe)
+        self.handeingriffe = try c.decode(HandeingriffeOut.self, forKey: .handeingriffe)
     }
 }
 
@@ -5415,6 +5456,54 @@ public struct HTTPValidationError: Codable, Sendable, Hashable {
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.detail = try c.decodeIfPresent([ValidationError].self, forKey: .detail) ?? []
+    }
+}
+
+/// Etwas, das gerade von Hand gestellt ist und von der Automatik abweicht.
+public struct HandeingriffOut: Codable, Sendable, Hashable {
+    public var art: HandeingriffOutArtWahl
+    public var weg: String
+    public var satzDe: String
+    public var bis: String?
+    public var zuruecksetzbar: Bool?
+
+    public enum CodingKeys: String, CodingKey {
+        case art
+        case weg
+        case satzDe = "satz_de"
+        case bis
+        case zuruecksetzbar
+    }
+
+    public init(art: HandeingriffOutArtWahl, weg: String, satzDe: String, bis: String? = nil, zuruecksetzbar: Bool? = nil) {
+        self.art = art
+        self.weg = weg
+        self.satzDe = satzDe
+        self.bis = bis
+        self.zuruecksetzbar = zuruecksetzbar
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.art = try c.decode(HandeingriffOutArtWahl.self, forKey: .art)
+        self.weg = try c.decode(String.self, forKey: .weg)
+        self.satzDe = try c.decode(String.self, forKey: .satzDe)
+        self.bis = try c.decodeIfPresent(String.self, forKey: .bis)
+        self.zuruecksetzbar = try c.decodeIfPresent(Bool.self, forKey: .zuruecksetzbar)
+    }
+}
+
+/// Was gerade von Hand gestellt ist, oben auf der Seite „Einstellen“.
+public struct HandeingriffeOut: Codable, Sendable, Hashable {
+    public var eingriffe: [HandeingriffOut]
+
+    public init(eingriffe: [HandeingriffOut] = []) {
+        self.eingriffe = eingriffe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.eingriffe = try c.decodeIfPresent([HandeingriffOut].self, forKey: .eingriffe) ?? []
     }
 }
 

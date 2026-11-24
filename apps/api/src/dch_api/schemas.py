@@ -2551,6 +2551,39 @@ class NameIn(BaseModel):
     name: str
 
 
+class HandeingriffOut(BaseModel):
+    """Etwas, das gerade von Hand gestellt ist und von der Automatik abweicht."""
+
+    #: Wovon der Eingriff handelt.
+    art: Literal["waermepumpe", "ofen", "speicher", "raum"]
+    #: Die Seite, auf der man ihn sieht und ändert (`docs/seitenbaum.json`).
+    weg: str
+    #: Was gestellt ist, als Satz.
+    satz_de: str
+    #: Bis wann er gilt. `None`, wenn er nicht von selbst endet.
+    bis: datetime | None = None
+    #: Ob „Alles zurück auf Automatik“ ihn beendet. Ein Raum, den jemand von Hand gestellt hat,
+    #: bleibt: sein Sollwert ist eine Vorgabe und kein Eingriff, und die Ruhe der Automatik
+    #: endet von selbst.
+    zuruecksetzbar: bool = False
+
+
+class HandeingriffeOut(BaseModel):
+    """Was gerade von Hand gestellt ist, oben auf der Seite „Einstellen“."""
+
+    eingriffe: list[HandeingriffOut] = Field(default_factory=list)
+
+
+class AutomatikZurueckOut(BaseModel):
+    """Das Ergebnis von „Alles zurück auf Automatik“."""
+
+    #: Ob alles zurückgestellt ist. Ein Gerät, das nicht antwortet, macht es `False`.
+    ok: bool
+    meldung_de: str
+    #: Die Liste danach, damit die Seite nicht noch einmal fragen muss.
+    handeingriffe: HandeingriffeOut
+
+
 class UebersichtBildOut(BaseModel):
     """Das kleine Bild einer Kachel: eine Form, die sich auf einen Blick lesen lässt.
 

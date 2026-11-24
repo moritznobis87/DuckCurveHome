@@ -4177,6 +4177,50 @@
         }
       }
     },
+    "/api/v1/control/handeingriffe": {
+      "get": {
+        "tags": [
+          "Steuerung"
+        ],
+        "summary": "Was gerade von Hand gestellt ist",
+        "description": "Die Eingriffe, die gerade von der Automatik abweichen, je mit einem fertigen Satz.\n\nOben auf der Seite „Einstellen“. Welche davon „Alles zurück auf Automatik“ beendet, sagt\n`zuruecksetzbar`.",
+        "operationId": "liste_handeingriffe_api_v1_control_handeingriffe_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandeingriffeOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/control/automatik": {
+      "post": {
+        "tags": [
+          "Steuerung"
+        ],
+        "summary": "Alles zurück auf Automatik",
+        "description": "Beendet alle befristeten Eingriffe: Wärmepumpe, Ofen und Speicher gehen dorthin, wohin\nsie auch nach Ablauf ihrer Frist gingen. Räume und der Regelkreis bleiben.\n\nLiegt unter `/control/` und darf damit auch von einem Bewohner gestellt werden\n(`auth/rechte.py`): Wer im Haus von Hand stellen darf, darf es auch zurücknehmen.",
+        "operationId": "alles_zurueck_api_v1_control_automatik_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomatikZurueckOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/config": {
       "get": {
         "tags": [
@@ -5884,6 +5928,29 @@
           "smart"
         ],
         "title": "AutoProfile"
+      },
+      "AutomatikZurueckOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "meldung_de": {
+            "type": "string",
+            "title": "Meldung De"
+          },
+          "handeingriffe": {
+            "$ref": "#/components/schemas/HandeingriffeOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "meldung_de",
+          "handeingriffe"
+        ],
+        "title": "AutomatikZurueckOut",
+        "description": "Das Ergebnis von „Alles zurück auf Automatik“."
       },
       "BackfillResultOut": {
         "properties": {
@@ -11030,6 +11097,67 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HandeingriffOut": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "waermepumpe",
+              "ofen",
+              "speicher",
+              "raum"
+            ],
+            "title": "Art"
+          },
+          "weg": {
+            "type": "string",
+            "title": "Weg"
+          },
+          "satz_de": {
+            "type": "string",
+            "title": "Satz De"
+          },
+          "bis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bis"
+          },
+          "zuruecksetzbar": {
+            "type": "boolean",
+            "title": "Zuruecksetzbar",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "weg",
+          "satz_de"
+        ],
+        "title": "HandeingriffOut",
+        "description": "Etwas, das gerade von Hand gestellt ist und von der Automatik abweicht."
+      },
+      "HandeingriffeOut": {
+        "properties": {
+          "eingriffe": {
+            "items": {
+              "$ref": "#/components/schemas/HandeingriffOut"
+            },
+            "type": "array",
+            "title": "Eingriffe"
+          }
+        },
+        "type": "object",
+        "title": "HandeingriffeOut",
+        "description": "Was gerade von Hand gestellt ist, oben auf der Seite „Einstellen“."
       },
       "HeatBalanceOut": {
         "properties": {
