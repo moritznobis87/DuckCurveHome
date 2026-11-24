@@ -58,12 +58,18 @@ struct HausgeraetSeite: View {
     }
 
     private var eilig: Bool {
+        // Auch ohne Verbindung: die Seite versucht es dann im kurzen Takt weiter, wie das
+        // Dashboard (`useGeraet.ts`, `eilig || unerreichbar`).
         Hausgeraet.beschaeftigt(geraet) || Hausgeraet.updateLaeuft(update) || Date() < eiligBis
+            || fehler != nil
     }
 
     var body: some View {
         Seite {
-            if let fehler {
+            // Ohne einen Bericht steht die Störung allein da. Mit einem Bericht bleibt er stehen,
+            // und der Satz unter dem Urteil sagt, dass gerade keine Verbindung besteht
+            // (`Geraet.tsx`, `unerreichbar`).
+            if let fehler, geraet == nil {
                 Stoerung(fehler: fehler) { Task { await lade() } }
             }
             if let g = geraet {
@@ -172,7 +178,9 @@ struct HausgeraetSeite: View {
                         .font(Schrift.karte).foregroundStyle(Farbe.text1)
                         .fixedSize(horizontal: false, vertical: true)
                     Text(
-                        g.unterstuetzt
+                        fehler != nil
+                            ? "Gerade keine Verbindung. Vielleicht startet die API neu; die Seite versucht es weiter."
+                            : g.unterstuetzt
                             ? "Bericht des Geräts von \(Formate.hhmm(iso: g.berichtAm))"
                                 + (g.berichtAlt == true ? ". Er ist veraltet, weil der Zeitgeber auf dem Gerät nicht läuft." : ".")
                             : "Diese Installation läuft nicht auf dem Hausgerät; hier steht nur, was die API über sich selbst weiß."
