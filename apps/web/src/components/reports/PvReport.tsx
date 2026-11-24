@@ -12,7 +12,7 @@ import { C, pvForecastChart, stackedBars } from "./charts";
 import { ChartLegend, CoverageNote, de1, ErrorBanner, eur, KpiGrid, pct, ReportShell, usePeriod } from "./ReportShell";
 import { PeriodStrip } from "./PeriodStrip";
 import { isoToday, useMultiPeriod, useReport } from "./useReport";
-import { useRole } from "@/lib/live/useRole";
+import { useSitzung } from "@/lib/live/useRole";
 
 const SERIES = [
   { key: "pv_direct_kwh" as const, name: "Direkt genutzt", color: C.pv },
@@ -37,7 +37,8 @@ function forecastKwh(plan: Plan | null, dayStart: number): { today: number; tomo
 
 export function PvReport() {
   const { period, anchor, setPeriod, move, today } = usePeriod();
-  const role = useRole();
+  // Die Verweise führen zu Akten; die sieht nur, wer Vollzugriff hat, nicht jeder, der stellen darf.
+  const { hausherr } = useSitzung();
   const { data, error } = useReport<EnergySummary>(api.energySummary, period, anchor);
   const strip = useMultiPeriod<EnergySummary>(api.energySummary, anchor);
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -81,7 +82,7 @@ export function PvReport() {
       onMove={move}
       onToday={today}
       // Gästen wird der Weg gar nicht erst gezeigt: die Abrechnung ist ihnen verschlossen.
-      right={role === "owner" ? <Link href="/geld/pv-abrechnung" className="text-[12px] text-amber">Abrechnung →</Link> : undefined}
+      right={hausherr ? <Link href="/geld/pv-abrechnung" className="text-[12px] text-amber">Abrechnung →</Link> : undefined}
     >
       {error ? <ErrorBanner message={error} /> : null}
       <KpiGrid cols={6}>

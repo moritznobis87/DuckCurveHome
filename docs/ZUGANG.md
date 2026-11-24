@@ -122,6 +122,14 @@ Auf der Seite **System › Zugang und Sicherung** steht, was noch fehlt: ohne Ko
 schiefgeht - die Person ist angelegt, und der Link steht dort zum Kopieren. Der Versand ist eine
 Beigabe, kein Torwächter.
 
+## Mein Zugang
+
+Jede angemeldete Person hat eine eigene Seite, **Mein Zugang** (`/konto`), erreichbar über das
+Personenzeichen im Kopf jeder Seite, im Dashboard und in der App. Dort stehen die eigenen
+Passkeys, das eigene Passwort, die eigenen Sitzungen und das Abmelden. Die Seite gehört zu
+keinem der sechs Bereiche, damit auch Bewohner, Gast und Service sie erreichen; „Zugang und
+Sicherung“ im Bereich System bleibt dem Hausherrn und trägt die Personenverwaltung.
+
 ## Das Passwort
 
 Wer keinen Passkey verwenden möchte, vergibt hinter dem Einladungslink ein Passwort und meldet

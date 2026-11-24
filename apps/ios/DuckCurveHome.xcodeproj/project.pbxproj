@@ -28,6 +28,7 @@
 		36AF0B98DDE946010AE496B9 /* Regelkreisanzeigen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D20AB2C1E398977908BDF1F /* Regelkreisanzeigen.swift */; };
 		38A6A890454592845AC625EA /* Tagesuhrbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8536E9F8915751233BFA009D /* Tagesuhrbild.swift */; };
 		3971CFC7F6422B658ECCFDAB /* Plakette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857CBC9D8C59148A11B405B3 /* Plakette.swift */; };
+		3A19B1D3F731B7D7EFEDDE45 /* KontoSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 575EDA5EDA7F6BEF9D65D032 /* KontoSeite.swift */; };
 		3A9537F0B7B97C13AF8EB3FB /* PrognoseSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = E292E617571683B6796B6399 /* PrognoseSeite.swift */; };
 		3B16964D57955DDA37C9D346 /* SpeicherSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8656CF6F1E54DD7DC1160DEF /* SpeicherSeite.swift */; };
 		3E30EAB4C6F63E5AD9D2F86C /* DuckCurveHomeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0518C11F936494CF844C1F /* DuckCurveHomeApp.swift */; };
@@ -173,6 +174,7 @@
 		4FE935C11F91B3B4788FA2C8 /* Karte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Karte.swift; sourceTree = "<group>"; };
 		50CD89A5D4C7BEBFA6799403 /* Alarmblatt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alarmblatt.swift; sourceTree = "<group>"; };
 		54F332EF42172D779262A123 /* WirkungSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WirkungSeite.swift; sourceTree = "<group>"; };
+		575EDA5EDA7F6BEF9D65D032 /* KontoSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KontoSeite.swift; sourceTree = "<group>"; };
 		5A9EBBEFEC662E299C54E29E /* Rechnungsablage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rechnungsablage.swift; sourceTree = "<group>"; };
 		5B121AA23E50590AAD07F502 /* Anlagenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Anlagenbild.swift; sourceTree = "<group>"; };
 		5B29C3EC43CCE78805A8ED89 /* Einrichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Einrichten.swift; sourceTree = "<group>"; };
@@ -540,6 +542,7 @@
 				7E4EF8E069C777E57D778A83 /* Technik */,
 				7BEDAA067C7A50BF26BD8730 /* Bereichsuebersicht.swift */,
 				D30DAA240E8C7E2CE0D0D58B /* Bericht.swift */,
+				575EDA5EDA7F6BEF9D65D032 /* KontoSeite.swift */,
 			);
 			path = Seiten;
 			sourceTree = "<group>";
@@ -674,6 +677,7 @@
 				E26B292CEE7ED47EAE3A8894 /* KennlinieSeite.swift in Sources */,
 				3382A8C842A14E75F78BE43C /* Kennlinienbilder.swift in Sources */,
 				C57D7F4920028E07AB70536D /* Konsolenkurve.swift in Sources */,
+				3A19B1D3F731B7D7EFEDDE45 /* KontoSeite.swift in Sources */,
 				F57341AC4A36B0F7A09110EC /* KostenSeite.swift in Sources */,
 				D4F4491E3A060F093073E3B1 /* Kostentreppe.swift in Sources */,
 				08BA2CE15442D3C33FD44C38 /* Ladebild.swift in Sources */,

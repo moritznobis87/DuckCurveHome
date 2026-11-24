@@ -1,10 +1,11 @@
+import Link from "next/link";
+
 import { requireOwner } from "@/lib/guard";
 import { anmeldungNoetig } from "@/lib/anmeldungAktiv";
 import { active } from "@/lib/presence";
 import { zustand } from "@/lib/zugang";
 import { StorageReport } from "@/components/settings/StorageReport";
 import { AreaShell } from "@/components/layout/AreaShell";
-import { MeinZugang } from "@/components/zugang/MeinZugang";
 import { Personen } from "@/components/zugang/Personen";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +28,14 @@ export default async function Page() {
 
       <Personen versand={{ aktiv: stand.versand.aktiv, fehlt: stand.versand.fehlt }} />
 
-      <section className="flex max-w-[760px] flex-col gap-3">
+      <section className="flex max-w-[760px] flex-col gap-2">
         <h2 className="m-0 text-[18px] font-semibold">Mein Zugang</h2>
-        <MeinZugang mindestlaenge={stand.passwort_mindestlaenge} />
+        <p className="m-0 text-[15px] leading-[1.6] text-text-2">
+          Deine eigenen Passkeys, dein Passwort und deine Sitzungen stehen auf einer eigenen Seite,
+          die jede angemeldete Person erreicht:{" "}
+          <Link href="/konto" className="text-amber">Mein Zugang</Link>. Du findest sie auch über
+          das Personenzeichen im Kopf jeder Seite.
+        </p>
       </section>
 
       <section className="flex max-w-[760px] flex-col gap-2">

@@ -60,6 +60,30 @@ final class Hauszustand {
         }
     }
 
+    /// Ob sich hier jemand abgemeldet hat und die Anmeldung wieder ansteht
+    /// (``Schluesselbund/abgemeldet``). Dann zeigt die App das Einrichten statt der Seiten.
+    var abgemeldet = Schluesselbund.abgemeldet {
+        didSet { Schluesselbund.abgemeldet = abgemeldet }
+    }
+
+    /// Die angemeldete Person abmelden: die Sitzung beim Dienst beenden, das Sitzungstoken aus
+    /// dem Schlüsselbund nehmen, den Ereignisstrom schließen.
+    ///
+    /// Antwortet der Dienst nicht, geht das Token trotzdem weg: wer sich abmelden wollte, ist
+    /// an diesem Gerät abgemeldet, und die Sitzung läuft dann von selbst ab. Adresse und
+    /// Gerätename bleiben, damit die nächste Anmeldung sie vorfindet.
+    func meldeAb() async {
+        try? await api.meldeAb()
+        halte()
+        var ohne = zugang
+        ohne.token = ""
+        ohne.email = ""
+        ohne.rolle = .gast
+        Schluesselbund.speichere(ohne)
+        zugang = ohne
+        abgemeldet = true
+    }
+
     private(set) var api: Api
     private var strom: LiveStrom?
     private var horcher: Task<Void, Never>?

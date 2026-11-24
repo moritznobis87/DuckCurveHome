@@ -757,7 +757,7 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 .area-gruppe { padding-left: 24px; border-left: 1px solid var(--line-1); }
 .area-gruppenwort { font-size: 10px; color: var(--text-3); }
 /* Das Zahnrad steht neben der Leiste, aber nicht in ihr: ein Strich Abstand genügt. */
-.system-knopf { margin-left: -8px; }
+.kopfknoepfe { margin-left: -8px; }
 
 /* Die Übersicht eines Bereichs: je Gruppe eine Reihe Karten, jede Karte eine Seite. */
 /* Breit stehen die Gruppen nebeneinander, jede als Spalte ihrer Karten; schmal untereinander. */

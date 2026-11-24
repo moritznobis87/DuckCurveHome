@@ -59,7 +59,8 @@ export const SEITEN: Record<string, string> = {
   "/system/mitteilungen": "Mitteilungen stellt das Morning Briefing und die angemeldeten Geräte ein. Nur mit Vollzugriff.",
   "/system/haustuer": "Haustür zeigt die Zutritte an der Haustür. Nur mit Vollzugriff.",
   "/system/geraet": "Hausgerät zeigt, wie es dem Rechner im Haus und seinen Diensten geht, holt Protokolle, startet Dienste neu und installiert Updates. Nur mit Vollzugriff.",
-  "/system/zugang": "Zugang und Sicherung zeigt, wer Zugang hat, verwaltet Passkeys und Passwort und sichert die Daten. Nur mit Vollzugriff.",
+  "/system/zugang": "Zugang und Sicherung zeigt, wer Zugang hat, lädt Personen ein und sichert die Daten. Nur mit Vollzugriff.",
+  "/konto": "Mein Zugang zeigt die eigenen Passkeys, das eigene Passwort und die eigenen Sitzungen. Hier meldet man sich auch ab.",
 };
 
 /** Die Wegbeschreibung: Bereiche, ihre Reiter und deren Ansichten, aus `AREAS`. */

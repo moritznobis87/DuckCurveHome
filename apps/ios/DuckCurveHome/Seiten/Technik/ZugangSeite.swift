@@ -16,8 +16,8 @@ import SwiftUI
 /// keine.
 ///
 /// **Was seit dem 24.11.2026 da ist:** der Abschnitt „Wie man hereinkommt“ im Wortlaut des
-/// Dashboards und, für eine angemeldete Person, die Karte „Mein Passwort“
-/// (``MeinPasswortKarte``). Bis dahin beschrieb die Seite Kopplungslinks und Gast-Token, die es
+/// Dashboards und der Verweis auf „Mein Zugang“ (``KontoSeite``), die Seite für den eigenen
+/// Zugang, die jede angemeldete Person erreicht. Bis dahin beschrieb die Seite Kopplungslinks und Gast-Token, die es
 /// seit dem 23.11.2026 nicht mehr gibt.
 struct ZugangSeite: View {
     @Environment(Hauszustand.self) private var haus
@@ -42,9 +42,7 @@ struct ZugangSeite: View {
         Seite {
             hereinkommen
             diesesGeraet
-            if haus.zugang.istPerson {
-                MeinPasswortKarte()
-            }
+            meinZugang
             platzbedarf
             sicherung
             sichtbarkeitUndKonfiguration
@@ -66,6 +64,29 @@ struct ZugangSeite: View {
         Karte(kicker: Zugangsworte.ueberschriften[0]) {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(Zugangsworte.hereinkommen, id: \.self) { absatz($0) }
+            }
+        }
+    }
+
+    // MARK: - Mein Zugang, der Verweis
+
+    /// Der Absatz der Vorlage (`page.tsx`, „Mein Zugang“): Der eigene Zugang steht auf einer
+    /// eigenen Seite, die jede angemeldete Person erreicht. Hier bleibt der Weg dorthin.
+    private var meinZugang: some View {
+        Karte(kicker: Zugangsworte.meinZugangUeberschrift) {
+            VStack(alignment: .leading, spacing: 12) {
+                absatz(Zugangsworte.meinZugang)
+                if haus.zugang.istPerson {
+                    Button {
+                        wegweiser.merkeReiter()
+                        wegweiser.gehe(Bereiche.kontoweg)
+                    } label: {
+                        Text(Zugangsworte.meinZugangUeberschrift)
+                            .font(Schrift.klein)
+                            .foregroundStyle(Farbe.amber)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }

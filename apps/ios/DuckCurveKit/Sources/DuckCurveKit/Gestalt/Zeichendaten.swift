@@ -22,6 +22,7 @@ public enum Zeichenart: String, Sendable, Hashable, CaseIterable {
     case mond
     case netz
     case ofen
+    case person
     case schild
     case sonne
     case tabelle
@@ -130,6 +131,11 @@ extension Zeichenart {
                 (d: "M4 7.5h16", gefuellt: false),
                 (d: "M12 10.6c1.7 1.7 2.7 2.9 2.7 4.3a2.7 2.7 0 0 1-5.4 0c0-1.4 1-2.6 2.7-4.3z", gefuellt: false),
                 (d: "M7.5 20.4v1.4M16.5 20.4v1.4", gefuellt: false),
+            ]
+        case .person:
+            return [
+                (d: "M 12.0 4.1 C 14.153910524340095 4.1 15.9 5.846089475659905 15.9 8.0 C 15.9 10.153910524340095 14.153910524340095 11.9 12.0 11.9 C 9.846089475659905 11.9 8.1 10.153910524340095 8.1 8.0 C 8.1 5.846089475659905 9.846089475659905 4.1 12.0 4.1 Z", gefuellt: false),
+                (d: "M4.3 20.5c.7-3.9 3.8-6.4 7.7-6.4s7 2.5 7.7 6.4", gefuellt: false),
             ]
         case .schild:
             return [

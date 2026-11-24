@@ -126,6 +126,7 @@ extension Zeichen {
             case .euro: .euro
             case .waermepumpe: .waermepumpe
             case .zahnrad: .zahnrad
+            case .person: .person
             }
         self.init(art, groesse: groesse, farbe: farbe)
     }

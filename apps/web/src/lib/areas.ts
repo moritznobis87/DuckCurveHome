@@ -223,6 +223,32 @@ export const AREAS: Area[] = [
 export const LEISTE: Area[] = AREAS.filter((a) => a.leiste !== false);
 
 /**
+ * Eine Seite außerhalb der sechs Bereiche.
+ *
+ * Der Hausherr hat am 24.11.2026 entschieden, dass der eigene Zugang eine eigene Seite bekommt,
+ * die jede angemeldete Person erreicht. Vorher stand er auf „Zugang und Sicherung“ im Bereich
+ * System, den nur der Hausherr sieht: ein Bewohner konnte weder sein Passwort wechseln noch
+ * sich abmelden. Die Seite gehört zu keinem Bereich und steht deshalb nicht in `AREAS`; sie
+ * steht in `docs/seitenbaum.json` unter `einzelseiten`.
+ */
+export interface Einzelseite {
+  href: string;
+  label: string;
+  icon: string;
+  beschreibung: string;
+}
+
+export const EINZELSEITEN: Einzelseite[] = [
+  { href: "/konto", label: "Mein Zugang", icon: "person", beschreibung: "Passkeys, Passwort und Sitzungen des eigenen Zugangs." },
+];
+
+/** Die Einzelseite zu einem Pfad, wenn er auf einer steht. */
+export function einzelseiteOf(pathname: string): Einzelseite | undefined {
+  const clean = (pathname.split("?")[0] ?? "").replace(/\/+$/, "") || "/";
+  return EINZELSEITEN.find((s) => clean === s.href || clean.startsWith(`${s.href}/`));
+}
+
+/**
  * Ob ein Bereich eine Übersicht hat. Er hat eine, wenn seine eigene Adresse keine seiner Seiten
  * ist: dann steht dort die Übersicht, und die Reiterzeile führt zu ihr zurück. Ein eigenes Feld
  * braucht es dafür nicht, und der Seitenbaum sagt es so für Dashboard und App zugleich.

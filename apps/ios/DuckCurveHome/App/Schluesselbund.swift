@@ -23,6 +23,20 @@ enum Schluesselbund {
         static let rolle = "dch.rolle"
         /// Die E-Mail-Adresse der angemeldeten Person; fehlt bei einem Gerät mit API-Token.
         static let email = "dch.email"
+        /// Gesetzt, wenn sich die Person abgemeldet hat. Siehe ``abgemeldet``.
+        static let abgemeldet = "dch.abgemeldet"
+    }
+
+    /// Ob sich an diesem Gerät jemand abgemeldet hat und noch niemand neu angemeldet ist.
+    ///
+    /// Nach dem Abmelden bleiben Adresse und Gerätename stehen, damit man sie beim nächsten
+    /// Anmelden nicht neu tippt; nur das Sitzungstoken ist weg. Ohne dieses Merkzeichen sähe die
+    /// App danach aus wie eingerichtet und zeigte auf jeder Seite einen Fehler statt der
+    /// Anmeldung. Ein leeres Token allein sagt es nicht: ein Dienst ohne Token (Demo) hat auch
+    /// keines.
+    static var abgemeldet: Bool {
+        get { UserDefaults.standard.bool(forKey: Einstellung.abgemeldet) }
+        set { UserDefaults.standard.set(newValue, forKey: Einstellung.abgemeldet) }
     }
 
     /// Den gespeicherten Zugang holen. Ohne Adresse kommt einer zurueck, der nicht eingerichtet ist.
@@ -87,7 +101,7 @@ enum Schluesselbund {
         let einst = UserDefaults.standard
         for k in [
             Einstellung.adresse, Einstellung.praefix, Einstellung.geraetename, Einstellung.rolle,
-            Einstellung.email,
+            Einstellung.email, Einstellung.abgemeldet,
         ] {
             einst.removeObject(forKey: k)
         }

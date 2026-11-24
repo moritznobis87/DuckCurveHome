@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { AREAS, LEISTE, ansichtOf, areaOf, hatUebersicht, tabOf, tabsDerGruppe, type Tab } from "@/lib/areas";
+import { AREAS, EINZELSEITEN, LEISTE, ansichtOf, areaOf, einzelseiteOf, hatUebersicht, tabOf, tabsDerGruppe, type Tab } from "@/lib/areas";
 import { Icon } from "@/components/ui/Icon";
-import { useRole } from "@/lib/live/useRole";
+import { useSitzung } from "@/lib/live/useRole";
 
 /**
  * Die Bereichsleiste: fuenf Zeichen, kein Text.
@@ -17,12 +17,14 @@ import { useRole } from "@/lib/live/useRole";
  */
 export function AreaIcons({ size = 20 }: { size?: number }) {
   const pathname = usePathname();
-  const role = useRole();
+  const { hausherr } = useSitzung();
   const active = areaOf(pathname ?? "/");
+  // Auf einer Seite außerhalb der Bereiche ist keiner aktiv.
+  const ausserhalb = einzelseiteOf(pathname ?? "/") !== undefined;
   return (
     <nav className="flex items-center gap-1" aria-label="Bereiche">
-      {LEISTE.filter((a) => !a.ownerOnly || role === "owner").map((a) => {
-        const on = a.key === active.key;
+      {LEISTE.filter((a) => !a.ownerOnly || hausherr).map((a) => {
+        const on = !ausserhalb && a.key === active.key;
         return (
           <Link
             key={a.key}
@@ -46,13 +48,13 @@ export function AreaIcons({ size = 20 }: { size?: number }) {
  * Die Verwaltung (Mitteilungen, Haustuer, Hausgeraet, Zugang, Daten pruefen) stand bis zum
  * 23.11.2026 als fuenf Reiter zwischen den Seiten, die man taeglich ansieht. Sie wird selten
  * gebraucht und nur vom Hausherrn; darum liegt sie hinter einem Knopf im Kopf der Seite und
- * belegt keinen Platz in der Leiste. Ein Gast sieht den Knopf nicht.
+ * belegt keinen Platz in der Leiste. Wer nicht Hausherr ist, sieht den Knopf nicht.
  */
 export function Systemknopf() {
   const pathname = usePathname();
-  const role = useRole();
+  const { hausherr } = useSitzung();
   const system = AREAS.find((a) => a.key === "system");
-  if (!system || role !== "owner") return null;
+  if (!system || !hausherr) return null;
   const on = areaOf(pathname ?? "/").key === "system";
   return (
     <Link
@@ -63,6 +65,33 @@ export function Systemknopf() {
       className={`system-knopf area-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] transition-colors${on ? " area-icon-an" : ""}`}
     >
       <Icon name={system.icon} size={20} />
+    </Link>
+  );
+}
+
+/**
+ * Die Person: der Weg zum eigenen Zugang.
+ *
+ * Passkeys, Passwort, Sitzungen und das Abmelden gehören jeder angemeldeten Person und nicht nur
+ * dem Hausherrn. Bis zum 24.11.2026 standen sie auf „Zugang und Sicherung“ hinter dem Zahnrad,
+ * das ein Bewohner nicht hat. Der Knopf steht deshalb neben dem Zahnrad und nicht dahinter.
+ * Ohne angemeldete Person (Demo) erscheint er nicht: dort gibt es keinen eigenen Zugang.
+ */
+export function Kontoknopf() {
+  const pathname = usePathname();
+  const { person } = useSitzung();
+  const seite = EINZELSEITEN.find((s) => s.href === "/konto");
+  if (!seite || !person) return null;
+  const on = einzelseiteOf(pathname ?? "/")?.href === seite.href;
+  return (
+    <Link
+      href={seite.href}
+      aria-label={seite.label}
+      aria-current={on ? "page" : undefined}
+      title={seite.label}
+      className={`konto-knopf area-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] transition-colors${on ? " area-icon-an" : ""}`}
+    >
+      <Icon name={seite.icon} size={20} />
     </Link>
   );
 }
@@ -88,11 +117,11 @@ export function Brand() {
  */
 export function AreaTabs({ period, anchor, right }: { period?: string; anchor?: string; right?: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
-  const role = useRole();
+  const { hausherr } = useSitzung();
   const area = areaOf(pathname);
   const current = tabOf(area, pathname);
-  const tabs = area.tabs.filter((t) => !t.ownerOnly || role === "owner");
-  if (tabs.length === 0) return null;
+  const einzeln = einzelseiteOf(pathname);
+  const tabs = einzeln ? [] : area.tabs.filter((t) => !t.ownerOnly || hausherr);
   const query = period && anchor ? `?period=${period}&anchor=${anchor}` : "";
   // Am Handy ist die Reiterzeile eine rollbare Reihe. Der aktive Reiter soll darin zu sehen sein,
   // auch wenn er der fünfte ist: sonst steht man auf „Annahmen" und sieht „Übersicht".
@@ -120,6 +149,22 @@ export function AreaTabs({ period, anchor, right }: { period?: string; anchor?: 
   // stehen am Rechner alle Gruppen in der Zeile, je mit ihrem Namen davor. Am Handy bleibt nur
   // die Gruppe der Seite, auf der man steht; die anderen Gruppen erreicht man in der Übersicht.
   // So rollt die Zeile nicht mehr.
+  // Eine Seite außerhalb der Bereiche hat keine Reiter. An ihrer Stelle steht der Name der Seite,
+  // damit die Zeile unter dem Kopf auf jeder Seite dasselbe sagt: wo man ist.
+  if (einzeln) {
+    return (
+      // Am Handy steht der Name schon groß im Kopf; dort entfällt die Zeile wie auf einer Übersicht.
+      <div className="area-tabs area-tabs-uebersicht flex items-baseline justify-between gap-6 border-b border-line-1">
+        <div className="area-tabs-row flex gap-6">
+          <span aria-current="page" className="area-tab area-tab-an whitespace-nowrap pb-2.5 pt-2 text-[13px]">
+            {einzeln.label}
+          </span>
+        </div>
+        {right ? <div className="kicker hidden truncate pb-2.5 md:block" style={{ fontSize: 11 }}>{right}</div> : null}
+      </div>
+    );
+  }
+  if (tabs.length === 0) return null;
   const mitUebersicht = hatUebersicht(area);
   const aufUebersicht = mitUebersicht && current === undefined;
   return (
@@ -167,7 +212,7 @@ export function AreaTabs({ period, anchor, right }: { period?: string; anchor?: 
  */
 export function AreaAnsichten() {
   const pathname = usePathname() ?? "/";
-  const tab = tabOf(areaOf(pathname), pathname);
+  const tab = einzelseiteOf(pathname) ? undefined : tabOf(areaOf(pathname), pathname);
   const aktiv = ansichtOf(tab, pathname);
   if (!tab?.unter || tab.unter.length < 2) return null;
   return (
@@ -196,12 +241,13 @@ export function AreaAnsichten() {
  */
 export function Fussleiste() {
   const pathname = usePathname();
-  const role = useRole();
+  const { hausherr } = useSitzung();
   const active = areaOf(pathname ?? "/");
+  const ausserhalb = einzelseiteOf(pathname ?? "/") !== undefined;
   return (
     <nav className="fussleiste" aria-label="Bereiche">
-      {LEISTE.filter((a) => !a.ownerOnly || role === "owner").map((a) => {
-        const on = a.key === active.key;
+      {LEISTE.filter((a) => !a.ownerOnly || hausherr).map((a) => {
+        const on = !ausserhalb && a.key === active.key;
         return (
           <Link key={a.key} href={a.href} aria-current={on ? "page" : undefined} className={`fussleiste-punkt${on ? " fussleiste-an" : ""}`}>
             <span className="fussleiste-zeichen">
@@ -218,6 +264,7 @@ export function Fussleiste() {
 /** Der Name des Bereichs als Überschrift der Seite. Nur am Handy sichtbar; am Rechner sagt es die Leiste. */
 export function Bereichstitel() {
   const pathname = usePathname();
+  const einzeln = einzelseiteOf(pathname ?? "/");
   const area = areaOf(pathname ?? "/");
-  return <span className="bereichstitel">{area.label}</span>;
+  return <span className="bereichstitel">{einzeln?.label ?? area.label}</span>;
 }

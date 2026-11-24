@@ -147,6 +147,7 @@ struct Kopfzeile: View {
             bereichszeichen
             // Das Zahnrad zum System steht neben der Leiste, nicht in ihr.
             Systemknopf(wegweiser: wegweiser)
+            Kontoknopf(wegweiser: wegweiser)
             Spacer(minLength: 12)
             uhrzeit
         }
@@ -158,7 +159,7 @@ struct Kopfzeile: View {
     private var bereichszeichen: some View {
         HStack(spacing: 4) {
             ForEach(Bereiche.leiste) { b in
-                let istAktiv = wegweiser.bereich.schluessel == b.schluessel
+                let istAktiv = wegweiser.einzelseite == nil && wegweiser.bereich.schluessel == b.schluessel
                 Button {
                     wegweiser.merkeReiter()
                     wegweiser.geheZuBereich(b)
