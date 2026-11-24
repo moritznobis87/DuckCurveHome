@@ -414,6 +414,14 @@ final class Hauszustand {
     /// Läuft die Anwendung im Vorführbetrieb? Dann ist jede Zahl erfunden.
     var vorfuehrung: Bool { zustand?.system.mode == "demo" }
 
-    /// Ob dieser Zugang schalten darf. Blendet aus, sperrt nicht - siehe `Zugang`.
-    var darfSchalten: Bool { zugang.rolle == .hausherr }
+    /// Ob dieser Zugang im Haus stellen darf: Hausherr und Bewohner. Blendet aus, sperrt nicht -
+    /// gesperrt wird am Dienst (`rechte.py`).
+    var darfSchalten: Bool { zugang.rolle.darfStellen }
+
+    /// Ob dieser Zugang Vollzugriff hat: Akten, System und Abstimmen. Nur der Hausherr.
+    ///
+    /// **Zweierlei, und bis zum 24.11.2026 eines.** Die App fragte überall `darfSchalten`, für
+    /// den Schalter im Dock wie für den Reiter „Rechnungen“. Mit zwei Rollen war das dasselbe;
+    /// mit vieren darf ein Bewohner das eine und sieht das andere nicht.
+    var hatVollzugriff: Bool { zugang.rolle.hatVollzugriff }
 }

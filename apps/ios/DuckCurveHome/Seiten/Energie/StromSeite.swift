@@ -143,11 +143,11 @@ struct StromSeite: View {
     /// Wärmepumpenkachel zwei Plätze weiter links. Zwei Kacheln in derselben Farbe für
     /// Verschiedenes wären schlechter als diese eine Zeile hier.
     private func kacheln(_ b: EnergySummaryOut) -> [Kacheldaten] {
-        Stromuebersicht.kacheln(b, hausherr: haus.darfSchalten).map { k in
+        Stromuebersicht.kacheln(b, hausherr: haus.hatVollzugriff).map { k in
             var daten = Kacheldaten(k)
             if k.wort == Stromuebersicht.netzbezugswort {
                 daten.farbe = Farbe.alarm
-                daten.weg = Stromuebersicht.weg(k.wort, hausherr: haus.darfSchalten)
+                daten.weg = Stromuebersicht.weg(k.wort, hausherr: haus.hatVollzugriff)
             }
             return daten
         }
@@ -293,7 +293,7 @@ struct PvSeite: View {
         let tagesbeginn = Kalender.haus.startOfDay(for: jetzt)
         let prognose = Pvbild.prognose(haus.plan, tagesbeginn: tagesbeginn)
 
-        if haus.darfSchalten {
+        if haus.hatVollzugriff {
             abrechnungsverweis
         }
         // Ohne Ueberschrift: der aktive Reiter sagt, wo man ist (`ReportShell.tsx:99`).

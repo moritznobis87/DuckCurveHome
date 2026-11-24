@@ -49,7 +49,9 @@ enum Schluesselbund {
             praefix: einst.string(forKey: Einstellung.praefix) ?? "/api/v1",
             token: token() ?? "",
             geraetename: einst.string(forKey: Einstellung.geraetename) ?? Geraet.ersatz,
-            rolle: einst.string(forKey: Einstellung.rolle) == "gast" ? .gast : .hausherr,
+            // Ein Wert, den diese Fassung nicht kennt, oder gar keiner: wie bisher der Hausherr.
+            // Gesperrt wird am Dienst, hier wird nur ausgeblendet.
+            rolle: einst.string(forKey: Einstellung.rolle).flatMap(Zugang.Rolle.init(rawValue:)) ?? .hausherr,
             email: einst.string(forKey: Einstellung.email) ?? ""
         )
     }
@@ -59,7 +61,7 @@ enum Schluesselbund {
         einst.set(z.grund.absoluteString, forKey: Einstellung.adresse)
         einst.set(z.praefix, forKey: Einstellung.praefix)
         einst.set(z.geraetename, forKey: Einstellung.geraetename)
-        einst.set(z.rolle == .gast ? "gast" : "hausherr", forKey: Einstellung.rolle)
+        einst.set(z.rolle.rawValue, forKey: Einstellung.rolle)
         einst.set(z.email, forKey: Einstellung.email)
         setzeToken(z.token)
     }

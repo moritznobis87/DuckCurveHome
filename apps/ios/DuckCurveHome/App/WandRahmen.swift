@@ -60,7 +60,7 @@ struct WandRahmen: View {
                 Reiterzeile(
                     bereich: wegweiser.bereich,
                     aktiv: wegweiser.reiter,
-                    darfAlles: haus.darfSchalten,
+                    darfAlles: haus.hatVollzugriff,
                     zurUebersicht: {
                         beruehrt()
                         wegweiser.gehe(wegweiser.bereich.weg)

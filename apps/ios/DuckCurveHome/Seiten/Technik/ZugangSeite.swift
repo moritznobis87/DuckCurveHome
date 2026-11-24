@@ -104,8 +104,8 @@ struct ZugangSeite: View {
                     Zeile(wort: "Angemeldet als", wert: haus.zugang.email)
                     Zeile(
                         wort: "In dieser App",
-                        wert: haus.zugang.rolle == .hausherr ? "Vollzugriff" : "nur Ansicht",
-                        farbe: haus.zugang.rolle == .hausherr ? Farbe.text1 : Farbe.achtung
+                        wert: haus.zugang.rolle.wort,
+                        farbe: haus.zugang.rolle.darfStellen ? Farbe.text1 : Farbe.achtung
                     )
                 } else {
                     Zeile(

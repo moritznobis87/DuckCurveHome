@@ -250,7 +250,7 @@ struct AnnahmenSeite: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .modifier(Feldgrund(geaendert: geaendert, imFokus: fokus == feld.schluessel))
-            .disabled(!haus.darfSchalten)
+            .disabled(!haus.hatVollzugriff)
     }
 
     /// Die Kennlinie als eine Zeile, mit normalem Satz darüber.
@@ -282,7 +282,7 @@ struct AnnahmenSeite: View {
                 .padding(.vertical, 8)
                 .modifier(
                     Feldgrund(geaendert: geaendert, imFokus: fokus == Self.kennlinienfokus))
-                .disabled(!haus.darfSchalten)
+                .disabled(!haus.hatVollzugriff)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -326,14 +326,14 @@ struct AnnahmenSeite: View {
                 .clipShape(RoundedRectangle(cornerRadius: Marken.radius1, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(schickt || !haus.darfSchalten)
+        .disabled(schickt || !haus.hatVollzugriff)
         .opacity(knopfdeckung)
     }
 
     /// 0,6 beim Senden (`HeatSettings.tsx:195`), 0,4 ohne Recht zu schalten, sonst voll.
     private var knopfdeckung: Double {
         if schickt { return 0.6 }
-        return haus.darfSchalten ? 1 : 0.4
+        return haus.hatVollzugriff ? 1 : 0.4
     }
 
     /// Die rohen Werte bleiben erreichbar - sie sind mehr als die dreizehn Annahmen, und wer eine

@@ -83,6 +83,12 @@ Bewohner konnte weder sein Passwort wechseln noch sich abmelden (Fund im Review 
 Dabei behoben: Das Dashboard zeigte einem Bewohner das Zahnrad und die Seiten des Hausherrn,
 die ihn dann zurückwarfen, weil die Leiste „darf stellen“ mit „hat Vollzugriff“ gleichsetzte.
 
+**Behoben am 24.11.2026: die vier Rollen in der App.** Die App kannte zwei Stufen, und ein
+Bewohner sah in ihr nur zu, obwohl der Dienst ihm das Stellen im Haus erlaubt. Jetzt trägt sie
+die vier Rollen des Dienstes und fragt wie das Dashboard zweierlei: „darf stellen“ für die
+Schalter im Haus (`Hauszustand.darfSchalten`), „hat Vollzugriff“ für Akten, System und
+Abstimmen (`Hauszustand.hatVollzugriff`).
+
 **Offen:**
 
 | Was | Dashboard | App | Fundstelle |
@@ -91,7 +97,6 @@ die ihn dann zurückwarfen, weil die Leiste „darf stellen“ mit „hat Vollzu
 | Einladungslink einlösen | Seite `/anmeldung/einrichten` | bauartbedingt im Browser: Der Link ist eine Adresse des Dashboards. | `app/anmeldung/einrichten/page.tsx` |
 | Personen verwalten und einladen | vorhanden | fehlt | `components/zugang/Personen.tsx` |
 | Eigene Passkeys, eigene Sitzungen, neue Wiederherstellungscodes | vorhanden auf „Mein Zugang“ | fehlt; die App zeigt dort das eigene Passwort und das Abmelden | `components/zugang/MeinZugang.tsx`, `KontoSeite.swift` |
-| Die vier Rollen | Der Dienst setzt sie durch, das Dashboard zeigt, was die Rolle darf. | Die App kennt zwei Stufen: Nur der Hausherr sieht Schalter und Akten. Ein Bewohner sieht in der App nur zu, obwohl der Dienst ihm das Stellen im Haus erlaubte. | `Zugang.rolle(derPerson:)`, `Hauszustand.darfSchalten` |
 | Sitzung in der Liste erkennen | Ein Browser steht dort mit seinem Gerät („iPhone“, „Mac“). | Eine Sitzung der App steht dort als „unbekanntes Gerät“, weil die App keinen sprechenden User-Agent schickt. | `MeinZugang.tsx` (`geraet`), `Zugang.kopfzeilen` |
 
 ## Was als Nächstes dran ist

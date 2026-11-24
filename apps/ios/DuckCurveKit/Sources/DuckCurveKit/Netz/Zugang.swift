@@ -59,9 +59,38 @@ public struct Zugang: Sendable, Hashable, Codable {
     /// Ob hier eine Person angemeldet ist und nicht ein Gerät mit dem API-Token.
     public var istPerson: Bool { !email.isEmpty }
 
-    public enum Rolle: String, Sendable, Hashable, Codable {
+    /// Die vier Rollen des Dienstes (`auth/rechte.py`).
+    ///
+    /// Bis zum 24.11.2026 kannte die App zwei, Hausherr und Gast, und ein Bewohner sah in ihr
+    /// nur zu, obwohl der Dienst ihm das Stellen im Haus erlaubt. Jetzt trägt sie dieselben
+    /// vier und fragt an jeder Stelle eine von zwei Fragen: ``darfStellen`` für die Schalter
+    /// im Haus, ``hatVollzugriff`` für Akten, System und Abstimmen.
+    ///
+    /// Mit dem API-Token gibt es weiter nur Hausherr und Gast: dort blendet die Rolle aus und
+    /// sperrt nichts, und feiner als „alles“ und „nur ansehen“ lässt sich das nicht sagen.
+    public enum Rolle: String, Sendable, Hashable, Codable, CaseIterable {
         case hausherr
+        case bewohner
+        case service
         case gast
+
+        /// Darf im Haus stellen: Räume, Schalter, Wärmepumpe, Ofen, Speicher, Alarm
+        /// (`rechte.py`, `_HAUS`). Das Dashboard nennt dasselbe `role === "owner"`.
+        public var darfStellen: Bool { self == .hausherr || self == .bewohner }
+
+        /// Sieht die Akten und den Bereich System und darf abstimmen: Annahmen, Regelkreis,
+        /// Regler der Wärmepumpe.
+        public var hatVollzugriff: Bool { self == .hausherr }
+
+        /// Wie die Rolle auf „Mein Zugang“ und bei „Dieses Gerät“ heißt.
+        public var wort: String {
+            switch self {
+            case .hausherr: return "Vollzugriff"
+            case .bewohner: return "Bewohner: sehen und im Haus stellen"
+            case .service: return "Beratung: nur Ansicht in dieser App"
+            case .gast: return "Gast: nur Ansicht"
+            }
+        }
     }
 
     public init(
@@ -92,15 +121,18 @@ public struct Zugang: Sendable, Hashable, Codable {
         email = try c.decodeIfPresent(String.self, forKey: .email) ?? ""
     }
 
-    /// Die Rolle einer angemeldeten Person, wie diese App sie kennt.
+    /// Die Rolle einer angemeldeten Person, wie der Dienst sie im Ausweis nennt.
     ///
-    /// Der Dienst kennt vier Rollen (`auth/rechte.py`), die App bisher zwei. Nur der Hausherr
-    /// bekommt hier die Schalter und die Akten zu sehen; für Bewohner, Service und Gast blendet
-    /// die App beides aus. Das ist für den Bewohner enger als der Dienst es wäre: er dürfte im
-    /// Haus stellen. Es ist die Richtung, in der ein Versehen harmlos bleibt, und steht als
-    /// offener Punkt in `docs/GLEICHSTAND.md`.
+    /// Eine Rolle, die diese Fassung der App nicht kennt, wird zum Gast: Das ist die Richtung,
+    /// in der ein Versehen harmlos bleibt. Was die Person wirklich darf, entscheidet ohnehin
+    /// der Dienst.
     public static func rolle(derPerson rolle: AusweisOutRolleWahl) -> Rolle {
-        rolle == .hausherr ? .hausherr : .gast
+        switch rolle {
+        case .hausherr: return .hausherr
+        case .bewohner: return .bewohner
+        case .service: return .service
+        case .gast, .unbekannt: return .gast
+        }
     }
 
     /// Die Kennung des Geraets im Protokoll: der Name, kleingeschrieben und entschaerft.
@@ -162,6 +194,8 @@ public struct Zugang: Sendable, Hashable, Codable {
             k["x-dch-urheber-id"] = geraetekennung
             k["x-dch-urheber-name"] = geraetename
             k["x-dch-urheber-geraet"] = geraetename
+            // Zwei Werte, wie das BFF sie schickt. Für eine angemeldete Person zählt die Zeile
+            // nicht: ihre Rolle liest der Dienst aus der Sitzung.
             k["x-dch-urheber-rolle"] = rolle == .hausherr ? "owner" : "guest"
         }
         return k

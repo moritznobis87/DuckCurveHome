@@ -830,7 +830,7 @@ struct Updatehinweis: View {
     var body: some View {
         Group {
             if let s = status,
-               Hausgeraet.zeigeHinweis(s, weg: wegweiser.weg, hausherr: haus.darfSchalten,
+               Hausgeraet.zeigeHinweis(s, weg: wegweiser.weg, hausherr: haus.hatVollzugriff,
                                        weggeklickt: weggeklickt.isEmpty ? nil : weggeklickt) {
                 HStack(alignment: .center, spacing: 10) {
                     Text(Hausgeraet.hinweissatz(s))
@@ -857,10 +857,10 @@ struct Updatehinweis: View {
                 .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
             }
         }
-        .task(id: haus.darfSchalten) {
+        .task(id: haus.hatVollzugriff) {
             // Gäste fragen gar nicht erst. Im Ruhezustand alle fünf Minuten - das Gerät selbst
             // sieht nur alle sechs Stunden nach; während eines Updates alle fünf Sekunden.
-            guard haus.darfSchalten else { return }
+            guard haus.hatVollzugriff else { return }
             while !Task.isCancelled {
                 status = (try? await haus.api.update()) ?? status
                 try? await Task.sleep(for: .seconds(Hausgeraet.updateLaeuft(status) ? 5 : 300))

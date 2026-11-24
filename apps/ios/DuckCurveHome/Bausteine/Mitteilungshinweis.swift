@@ -44,7 +44,7 @@ struct Mitteilungshinweis: View {
 
     var body: some View {
         if Startseitenhinweis.zeigt(
-            lage: lage, istHausherr: haus.darfSchalten, weggetippt: weggetippt,
+            lage: lage, istHausherr: haus.hatVollzugriff, weggetippt: weggetippt,
             schmal: breite == .compact)
         {
             VStack(alignment: .leading, spacing: 10) {
