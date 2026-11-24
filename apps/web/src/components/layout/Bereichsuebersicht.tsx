@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Punkt } from "@/components/geraet/Geraet";
 import { api } from "@/lib/api/client";
 import type { Uebersichtskarte } from "@/lib/api/models";
-import { AREAS, tabsDerGruppe, type Area } from "@/lib/areas";
+import { AREAS, hatUebersicht, tabsDerGruppe, type Area } from "@/lib/areas";
 import { useRole } from "@/lib/live/useRole";
 import { AreaShell } from "./AreaShell";
 
@@ -41,7 +41,8 @@ function useKarten(bereich: string): Record<string, Uebersichtskarte> {
 }
 
 /**
- * Die Übersicht eines Bereichs mit Gruppen: je Gruppe eine Reihe Karten, jede Karte eine Seite.
+ * Die Übersicht eines Bereichs: jede Karte eine Seite. Hat der Bereich Gruppen, steht je Gruppe
+ * eine Spalte Karten unter ihrem Namen; hat er keine, stehen alle Karten in einem Raster.
  *
  * Sie ersetzt die lange Reiterzeile als Einstieg. Wer den Bereich öffnet, sieht zuerst, welche
  * Seiten es gibt und wovon jede handelt, und muss dafür keine Zeile durchrollen. Den Satz auf
@@ -54,25 +55,29 @@ function useKarten(bereich: string): Record<string, Uebersichtskarte> {
  * **Leitzahl und Ampel kommen vom Dienst** (`GET /uebersicht/{bereich}`): je Seite ihre
  * wichtigste Zahl und ein Zustand, fertig formuliert, damit das Dashboard und die App dasselbe
  * zeigen. Eine Ampel, die nicht gut ist, bringt ihren Grund als Satz mit; er steht auf der Karte.
- * Eine Seite ohne Karte des Dienstes (die Annahmen) zeigt nur ihren festen Satz.
+ * Eine Seite ohne Karte des Dienstes (die Annahmen, die Jahreskarte) zeigt nur ihren festen Satz.
  */
 export function Bereichsuebersicht({ bereich }: { bereich: Area["key"] }) {
   const role = useRole();
   const area = AREAS.find((a) => a.key === bereich);
   const karten = useKarten(bereich);
-  if (!area?.gruppen) return null;
+  if (!area || !hatUebersicht(area)) return null;
+  // Ein Bereich ohne Gruppen ist eine einzige Gruppe ohne Namen.
+  const gruppen = area.gruppen ?? [null];
   return (
     <AreaShell kicker={`Alle Seiten im Bereich ${area.label}`}>
-      <div className="uebersicht">
-        {area.gruppen.map((gruppe) => {
-          const seiten = tabsDerGruppe(area, gruppe.name).filter((t) => !t.ownerOnly || role === "owner");
+      <div className={`uebersicht${area.gruppen ? "" : " uebersicht-flach"}`}>
+        {gruppen.map((gruppe) => {
+          const seiten = (gruppe ? tabsDerGruppe(area, gruppe.name) : area.tabs).filter((t) => !t.ownerOnly || role === "owner");
           if (seiten.length === 0) return null;
           return (
-            <section key={gruppe.name} className="uebersicht-gruppe" aria-label={gruppe.name}>
-              <header className="uebersicht-kopf">
-                <h2 className="uebersicht-name">{gruppe.name}</h2>
-                <span className="uebersicht-wort">{gruppe.wort}</span>
-              </header>
+            <section key={gruppe?.name ?? area.key} className="uebersicht-gruppe" aria-label={gruppe?.name ?? `Seiten im Bereich ${area.label}`}>
+              {gruppe ? (
+                <header className="uebersicht-kopf">
+                  <h2 className="uebersicht-name">{gruppe.name}</h2>
+                  <span className="uebersicht-wort">{gruppe.wort}</span>
+                </header>
+              ) : null}
               <div className="uebersicht-karten">
                 {seiten.map((seite) => {
                   const karte = karten[seite.href];

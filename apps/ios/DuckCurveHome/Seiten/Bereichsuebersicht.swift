@@ -1,7 +1,8 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Die Übersicht eines Bereichs mit Gruppen: je Gruppe eine Reihe Karten, jede Karte eine Seite.
+/// Die Übersicht eines Bereichs: jede Karte eine Seite. Hat der Bereich Gruppen, steht je Gruppe
+/// eine Spalte Karten unter ihrem Namen; hat er keine, stehen alle Karten in einem Raster.
 ///
 /// Sie ersetzt die lange Reiterzeile als Einstieg (`Bereichsuebersicht.tsx`). Wer den Bereich
 /// öffnet, sieht zuerst, welche Seiten es gibt und wovon jede handelt, und muss dafür keine
@@ -17,7 +18,7 @@ import SwiftUI
 /// **Leitzahl und Ampel kommen vom Dienst** (`GET /uebersicht/{bereich}`): je Seite ihre
 /// wichtigste Zahl und ein Zustand, fertig formuliert, damit Dashboard und App dasselbe zeigen.
 /// Eine Ampel, die nicht gut ist, bringt ihren Grund als Satz mit; er steht auf der Karte. Eine
-/// Seite ohne Karte des Dienstes (die Annahmen) zeigt nur ihren festen Satz. Antwortet der Dienst
+/// Seite ohne Karte des Dienstes (die Annahmen, die Jahreskarte) zeigt nur ihren festen Satz. Antwortet der Dienst
 /// nicht, stehen die Karten ohne Zahl da: alte Zahlen stehen zu lassen wäre schlechter als keine.
 struct Bereichsuebersicht: View {
     @Environment(Hauszustand.self) private var haus
@@ -45,9 +46,16 @@ struct Bereichsuebersicht: View {
         bereich.gruppen.filter { !seiten($0).isEmpty }
     }
 
+    /// Die Seiten eines Bereichs ohne Gruppen, die dieser Betrachter sehen darf.
+    private var alleSeiten: [Reiter] {
+        bereich.reiter.filter { haus.darfSchalten || !$0.nurHausherr }
+    }
+
     var body: some View {
         Seite {
-            if schmal {
+            if bereich.gruppen.isEmpty {
+                raster
+            } else if schmal {
                 VStack(alignment: .leading, spacing: 22) {
                     ForEach(gruppen) { gruppe in
                         spalte(gruppe)
@@ -78,6 +86,19 @@ struct Bereichsuebersicht: View {
             karten = neu
         } catch {
             karten = [:]
+        }
+    }
+
+    /// Ein Bereich ohne Gruppen: alle Karten in einem Raster über die Breite, am Telefon
+    /// untereinander (`globals.css`, `.uebersicht-flach`: Spalten ab 260 Punkten).
+    private var raster: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 260), spacing: 24, alignment: .top)],
+            alignment: .leading, spacing: schmal ? 9 : 12
+        ) {
+            ForEach(alleSeiten) { seite in
+                karte(seite)
+            }
         }
     }
 
@@ -184,6 +205,18 @@ struct Bereichsuebersicht: View {
     #Preview("Übersicht Anlage · Hand") {
         Vorschaurahmen(weg: "/anlage") {
             Bereichsuebersicht(bereich: Bereiche.alle.first { $0.schluessel == .anlage }!)
+        }
+    }
+
+    #Preview("Übersicht Energie · Hand") {
+        Vorschaurahmen(weg: "/energie") {
+            Bereichsuebersicht(bereich: Bereiche.alle.first { $0.schluessel == .energie }!)
+        }
+    }
+
+    #Preview("Übersicht Energie · Wand") {
+        Vorschaurahmen(breit: true, weg: "/energie") {
+            Bereichsuebersicht(bereich: Bereiche.alle.first { $0.schluessel == .energie }!)
         }
     }
 

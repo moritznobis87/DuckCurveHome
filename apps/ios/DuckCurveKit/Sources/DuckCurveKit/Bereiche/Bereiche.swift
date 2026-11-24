@@ -55,6 +55,14 @@ public struct Bereich: Sendable, Hashable, Identifiable {
         self.reiter = reiter
     }
 
+    /// Ob der Bereich eine Uebersicht hat. Er hat eine, wenn seine eigene Adresse keine seiner
+    /// Seiten ist: dann steht dort die Uebersicht, und die Reiterzeile fuehrt zu ihr zurueck.
+    /// Dieselbe Regel wie im Dashboard (`areas.ts`, `hatUebersicht`); ein eigenes Feld im
+    /// Seitenbaum braucht es dafuer nicht.
+    public var hatUebersicht: Bool {
+        !reiter.isEmpty && !reiter.contains { $0.weg == weg }
+    }
+
     /// Die Reiter einer Gruppe, in der Reihenfolge des Bereichs.
     public func reiter(derGruppe gruppe: String) -> [Reiter] {
         reiter.filter { $0.gruppe == gruppe }
@@ -187,27 +195,36 @@ public enum Bereiche {
             ]
         ),
         Bereich(
-            schluessel: .energie, weg: "/strom", zeichen: .blitz, name: "Energie",
+            // Der Bereich geht auf seiner Uebersicht auf (Vorgabe des Hausherrn vom 24.11.2026).
+            // Die Seiten behalten ihre Adressen; neu ist nur `/energie`.
+            schluessel: .energie, weg: "/energie", zeichen: .blitz, name: "Energie",
             reiter: [
                 Reiter(weg: "/strom", name: "Strom", mitZeitraum: true,
-                    kicker: Stromuebersicht.seitenkicker),  // `HouseReport.tsx:42`
+                    kicker: Stromuebersicht.seitenkicker,  // `HouseReport.tsx:42`
+                    beschreibung: "Woher der Strom kam und wer ihn verbraucht hat."),
                 Reiter(weg: "/waerme", name: "Wärme", mitZeitraum: true,
-                    kicker: "gerechnet, nicht gemessen"),  // `HeatOverview.tsx:137`
+                    kicker: "gerechnet, nicht gemessen",  // `HeatOverview.tsx:137`
+                    beschreibung: "Was die Wärmepumpe gebraucht hat und woher die Wärme kam."),
                 Reiter(weg: "/strom/pv", name: "Photovoltaik", mitZeitraum: true,
-                    kicker: "Erzeugung · Verwendung · Prognose"),  // `PvReport.tsx:77`
+                    kicker: "Erzeugung · Verwendung · Prognose",  // `PvReport.tsx:77`
+                    beschreibung: "Was die Anlage erzeugt hat und wohin der Sonnenstrom ging."),
                 // Die Prognose der Photovoltaik gegen das, was wirklich kam. Sie steht neben ihr
                 // und nicht als Ansicht darunter, weil sie keinen Zeitraum kennt.
                 Reiter(weg: "/system", name: "Prognose", nurHausherr: true,
-                    kicker: "PV-Prognose gegen Ist · Korrekturfaktoren"),  // `ForecastPage.tsx:245`
+                    kicker: "PV-Prognose gegen Ist · Korrekturfaktoren",  // `ForecastPage.tsx:245`
+                    beschreibung: "Wie gut die Vorhersage des Sonnenertrags getroffen hat."),
                 // **Ohne Kicker, und nicht aus Versehen.** Die Vorlage rechnet ihn hier aus der
                 // Kapazität („13,8 kWh · Nutzung und Ersparnis“, `BatteryReport.tsx:103`), und
                 // die kennt erst die Antwort des Dienstes. Die Seite zeichnet ihn darum weiter
                 // selbst (``Speicherbild/seitenkicker(_:)``).
-                Reiter(weg: "/strom/speicher", name: "Speicher", mitZeitraum: true),
+                Reiter(weg: "/strom/speicher", name: "Speicher", mitZeitraum: true,
+                    beschreibung: "Wann der Speicher geladen und entladen hat."),
                 Reiter(weg: "/strom/wallbox", name: "Wallbox", mitZeitraum: true,
-                    kicker: "Ladungen · Herkunft · Kosten"),  // `EvReport.tsx:36`
+                    kicker: "Ladungen · Herkunft · Kosten",  // `EvReport.tsx:36`
+                    beschreibung: "Wann das Auto geladen hat und mit welchem Strom."),
                 Reiter(weg: "/strom/jahr", name: "Jahreskarte",
-                    kicker: Jahresraster.kicker),  // `YearMap.tsx:94`
+                    kicker: Jahresraster.kicker,  // `YearMap.tsx:94`
+                    beschreibung: "Jede Stunde eines Jahres als Bild."),
             ]
         ),
         Bereich(
@@ -293,18 +310,25 @@ public enum Bereiche {
         // Die Verwaltung: selten gebraucht und nur vom Hausherrn. Hinter dem Zahnrad, nicht in
         // der Leiste.
         Bereich(
-            schluessel: .system, weg: "/system/mitteilungen", zeichen: .zahnrad, name: "System",
+            // Auch das System geht auf seiner Uebersicht auf (Vorgabe des Hausherrn vom
+            // 24.11.2026). Sie steht unter `/system/uebersicht`, weil `/system` die Adresse der
+            // Prognose ist und bleibt.
+            schluessel: .system, weg: "/system/uebersicht", zeichen: .zahnrad, name: "System",
             nurHausherr: true, inLeiste: false,
             reiter: [
                 Reiter(weg: "/system/mitteilungen", name: "Mitteilungen", nurHausherr: true,
-                    kicker: "Was aufs Handy kommt: Störungen und das Morning Briefing"),  // `system/mitteilungen/page.tsx:12`
+                    kicker: "Was aufs Handy kommt: Störungen und das Morning Briefing",  // `system/mitteilungen/page.tsx:12`
+                    beschreibung: "Welche Geräte Mitteilungen bekommen und was im Morgenbrief steht."),
                 Reiter(weg: "/system/haustuer", name: "Haustür", nurHausherr: true,
-                    kicker: "Wer sich am Reader erkennen ließ, und was geschah"),  // `system/haustuer/page.tsx:9`
+                    kicker: "Wer sich am Reader erkennen ließ, und was geschah",  // `system/haustuer/page.tsx:9`
+                    beschreibung: "Wer sich wann an der Haustür erkannt hat."),
                 // Der Rechner im Haus: Dienste, Gesundheit, Neustarts, Protokolle, Updates.
                 Reiter(weg: "/system/geraet", name: "Hausgerät", nurHausherr: true,
-                    kicker: "Dienste, Gesundheit, Sicherung und Updates des Rechners im Haus"),  // `system/geraet/page.tsx:9`
+                    kicker: "Dienste, Gesundheit, Sicherung und Updates des Rechners im Haus",  // `system/geraet/page.tsx:9`
+                    beschreibung: "Wie es dem Rechner im Haus und seinen Diensten geht."),
                 Reiter(weg: "/system/zugang", name: "Zugang und Sicherung", nurHausherr: true,
-                    kicker: "Geräte koppeln · wer zusieht · Daten sichern"),  // `system/zugang/page.tsx:58`
+                    kicker: "Geräte koppeln · wer zusieht · Daten sichern",  // `system/zugang/page.tsx:58`
+                    beschreibung: "Wer Zugang hat, wie groß die Datenbank ist und wie man sie sichert."),
                 Reiter(
                     // **Nur Tage.** Die Vorlage schaltet die Spannenwahl auf dieser Seite
                     // ausdrücklich ab (`DataCheck.tsx:59-68`, `showPeriods={false}`), weil die
@@ -312,7 +336,8 @@ public enum Bereiche {
                     // Bild, in dem nichts zu erkennen ist.
                     weg: "/system/daten", name: "Daten prüfen", mitZeitraum: true,
                     spannen: [.tag], nurHausherr: true,
-                    kicker: "Messreihen · Stundenbilanz · Rohdaten"),  // `DataCheck.tsx:61`
+                    kicker: "Messreihen · Stundenbilanz · Rohdaten",  // `DataCheck.tsx:61`
+                    beschreibung: "Ob die Messreihen lückenlos angekommen sind und zueinander passen."),
             ]
         ),
     ]
@@ -344,20 +369,20 @@ public enum Bereiche {
     public static func kicker(fuer weg: String) -> String? {
         let bereich = bereichVon(weg)
         let reiter = reiterVon(bereich, weg)
-        // Die Uebersicht eines Bereichs mit Gruppen ist kein Reiter und hat trotzdem eine Zeile.
-        if reiter == nil, !bereich.gruppen.isEmpty, saeubere(weg) == bereich.weg {
+        // Die Uebersicht eines Bereichs ist kein Reiter und hat trotzdem eine Zeile.
+        if reiter == nil, bereich.hatUebersicht, saeubere(weg) == bereich.weg {
             return uebersichtskicker(bereich)
         }
         return ansichtVon(reiter, weg)?.kicker ?? reiter?.kicker
     }
 
-    /// Steht dieser Weg auf der Uebersicht eines Bereichs mit Gruppen?
+    /// Steht dieser Weg auf der Uebersicht eines Bereichs?
     ///
     /// Das Gerippe fragt danach: am Telefon sind dort die Karten die Navigation, und die
     /// Reiterzeile darueber waere dasselbe ein zweites Mal (`handy.css`, `.area-tabs-uebersicht`).
     public static func istUebersicht(_ weg: String) -> Bool {
         let bereich = bereichVon(weg)
-        return !bereich.gruppen.isEmpty && saeubere(weg) == bereich.weg
+        return bereich.hatUebersicht && saeubere(weg) == bereich.weg
     }
 
     /// Die Zeile ueber der Uebersicht eines Bereichs. Derselbe Wortlaut wie im Dashboard
@@ -535,9 +560,13 @@ public enum Bereiche {
     }
 
     /// Ob ein Weg dem Hausherrn vorbehalten ist.
+    ///
+    /// Eine Seite sagt es selbst. Die Uebersicht eines Bereichs ist keine Seite; sie ist dem
+    /// Hausherrn vorbehalten, wenn es der ganze Bereich ist (das System).
     public static func nurHausherr(_ weg: String) -> Bool {
         let bereich = bereichVon(weg)
-        return reiterVon(bereich, weg)?.nurHausherr ?? false
+        if let reiter = reiterVon(bereich, weg) { return reiter.nurHausherr }
+        return bereich.nurHausherr && istUebersicht(weg)
     }
 
     /// Fragezeichenteil weg, Schraegstriche am Ende weg, leer wird `/`.

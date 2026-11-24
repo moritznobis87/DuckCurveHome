@@ -46,6 +46,8 @@ AKTEN: tuple[str, ...] = (
     "/energy/pv",
     "/export/",
     "/system/door",
+    # Die Übersicht des Systems zählt die Zutritte an der Haustür und ist damit dieselbe Akte.
+    "/uebersicht/system",
     "/auth/personen",
     "/alfred/rechnung",
     "/alfred/zuordnung",

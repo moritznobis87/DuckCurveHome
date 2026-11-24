@@ -25,7 +25,7 @@ struct Reiterzeile: View {
     let bereich: Bereich
     let aktiv: Reiter?
     let darfAlles: Bool
-    /// Der Weg zur Übersicht eines Bereichs mit Gruppen. Bereiche ohne Gruppen rufen ihn nie.
+    /// Der Weg zur Übersicht eines Bereichs. Bereiche ohne Übersicht rufen ihn nie.
     var zurUebersicht: () -> Void = {}
     let waehle: (Reiter) -> Void
 
@@ -49,13 +49,17 @@ struct Reiterzeile: View {
         ScrollViewReader { leser in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
+                    // Vor den Reitern steht der Weg zur Übersicht, wenn der Bereich eine hat
+                    // (`AreaNav.tsx`, `mitUebersicht`). Gruppen ordnen danach nur, was folgt.
+                    if bereich.hatUebersicht {
+                        uebersichtsknopf
+                    }
                     if bereich.gruppen.isEmpty {
                         ForEach(sichtbar) { r in
                             knopf(r, gewaehlt: r.weg == aktiv?.weg)
                                 .id(r.weg)
                         }
                     } else {
-                        uebersichtsknopf
                         ForEach(gruppen) { gruppe in
                             if !schmal {
                                 Kicker(wort: gruppe.name, groesse: 10, farbe: Farbe.text3)

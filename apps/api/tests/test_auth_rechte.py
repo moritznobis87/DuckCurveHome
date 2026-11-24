@@ -20,6 +20,8 @@ AKTEN = [
     "/energy/pv",
     "/export/minutes",
     "/system/door",
+    # Die Übersicht des Systems zählt die Zutritte an der Haustür.
+    "/uebersicht/system",
     "/auth/personen",
     "/alfred/rechnung",
 ]
@@ -36,7 +38,18 @@ def test_akten_bleiben_dem_hausherrn(pfad: str) -> None:
 
 @pytest.mark.parametrize(
     "pfad",
-    ["/live/state", "/history", "/plan", "/haus", "/waerme", "/energy/strom", "/waermepumpe"],
+    [
+        "/live/state",
+        "/history",
+        "/plan",
+        "/haus",
+        "/waerme",
+        "/energy/strom",
+        "/waermepumpe",
+        # Die Übersichten von Anlage und Energie sind keine Akten, nur die des Systems ist eine.
+        "/uebersicht/anlage",
+        "/uebersicht/energie",
+    ],
 )
 def test_alle_duerfen_das_haus_sehen(pfad: str) -> None:
     for rolle in rechte.ROLLEN:

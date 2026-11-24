@@ -767,6 +767,9 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 .uebersicht-name { margin: 0; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-kicker); }
 .uebersicht-wort { font-size: 13px; color: var(--text-3); }
 .uebersicht-karten { display: flex; flex-direction: column; gap: 12px; }
+/* Ein Bereich ohne Gruppen: keine Spalten, sondern ein Raster über die ganze Breite. */
+.uebersicht.uebersicht-flach { grid-template-columns: 1fr; }
+.uebersicht-flach .uebersicht-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px 24px; }
 .uebersicht-karte { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 16px 18px 15px; border: 1px solid var(--line-1); border-radius: var(--radius-3); background: var(--surface-1); color: inherit; text-decoration: none; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
 .uebersicht-karte:hover { border-color: var(--line-2); background: var(--surface-2); }
 .uebersicht-karte:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }

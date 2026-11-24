@@ -29,6 +29,7 @@ public enum Alfred {
     public static let seiten: [String: String] = [
         "/": "Jetzt ist die Wandanzeige: der Energiefluss im Augenblick (Photovoltaik, Netz, Speicher, Haus, Wärmepumpe, Wallbox), der Pufferspeicher, der Strompreis und der Ausblick auf die nächsten 24 Stunden.",
         "/haus": "Haus zeigt die Räume, als Liste zum Stellen der Solltemperatur oder als Modell mit Temperaturen und Kontakten.",
+        "/energie": "Energie ist die Übersicht über Strom und Wärme des Hauses. Jede Karte ist eine Seite und zeigt ihre Zahl von heute.",
         "/strom": "Strom zeigt die Strombilanz des gewählten Zeitraums: Erzeugung, Netzbezug, Einspeisung, Speicher und Verbrauch.",
         "/waerme": "Wärme zeigt, was die Wärmepumpe an Strom gebraucht und gekostet hat, und die Wärmebilanz der Erzeuger.",
         "/strom/pv": "Photovoltaik zeigt Erzeugung, Eigenverbrauch und Einspeisung der Anlage im gewählten Zeitraum.",
@@ -53,6 +54,7 @@ public enum Alfred {
         "/system": "Prognose zeigt, wie gut PV- und Verbrauchsprognosen waren. Nur mit Vollzugriff.",
         "/system/daten": "Daten prüfen zeigt, wie vollständig die Messreihen sind. Nur mit Vollzugriff.",
         "/waerme/annahmen": "Annahmen zeigt die Wärmeannahmen des Modells und lässt sie ändern. Nur mit Vollzugriff.",
+        "/system/uebersicht": "System ist die Übersicht über das, was das Haus am Laufen hält: Mitteilungen, Haustür, Hausgerät, Zugang und die Prüfung der Daten. Nur mit Vollzugriff.",
         "/system/mitteilungen": "Mitteilungen stellt das Morning Briefing und die angemeldeten Geräte ein. Nur mit Vollzugriff.",
         "/system/haustuer": "Haustür zeigt die Zutritte an der Haustür. Nur mit Vollzugriff.",
         "/system/geraet": "Hausgerät zeigt, wie es dem Rechner im Haus und seinen Diensten geht, holt Protokolle, startet Dienste neu und installiert Updates. Nur mit Vollzugriff.",

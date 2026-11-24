@@ -56,8 +56,8 @@ struct Seitenwahl: View {
             return AnyView(RechnungenSeite())
 
         // ----------------------------------------------------------------- Anlage
-        case "/anlage":
-            // Die Übersicht des Bereichs: seine drei Gruppen, je Seite eine Karte.
+        case "/anlage", "/energie", "/system/uebersicht":
+            // Die Übersicht eines Bereichs: je Seite eine Karte, bei der Anlage in drei Gruppen.
             return AnyView(Bereichsuebersicht(bereich: Bereiche.bereichVon(sauber)))
         case "/waerme/anlage":
             return AnyView(AnlageSeite())
