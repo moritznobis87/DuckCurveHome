@@ -113,6 +113,39 @@ final class MarkenTests: XCTestCase {
         XCTAssertGreaterThan(Marken.text3.kontrast(zu: Marken.flaeche2), 2.4)
     }
 
+    /// **Kleine Schrift erreicht 4,5:1 auf den Karten.** Gemessen am 24.11.2026 lag die blasse
+    /// Stufe mit 48 % Deckung bei 4,41, 4,22 und 3,88 auf den Flaechen 1 bis 3, das Nebelgrau der
+    /// Stichwortzeilen auf Flaeche 3 bei 4,18 und Alarmrot als Schrift bei 3,70 und 3,38. Die
+    /// drei Marken sind danach gesetzt (`tokens.css`: `--text-3`, `--text-kicker`,
+    /// `--alert-text`); dieser Test haelt die Schwelle, damit sie nicht wieder darunter rutschen.
+    func testKleineSchriftErreichtVierKommaFuenfAufDenKarten() {
+        for flaeche in [Marken.flaeche1, Marken.flaeche2, Marken.flaeche3] {
+            // Die blasse Stufe ist Weiss mit Deckung; gemessen wird sie auf der Flaeche liegend.
+            let blass = flaeche.gemischt(mit: Marken.papier, anteil: Marken.text3.deckung)
+                .mitDeckung(1)
+            XCTAssertGreaterThanOrEqual(blass.kontrast(zu: flaeche), 4.5, "text3 auf \(flaeche.hex)")
+            XCTAssertGreaterThanOrEqual(
+                Marken.textKicker.kontrast(zu: flaeche), 4.5, "Kicker auf \(flaeche.hex)")
+        }
+        XCTAssertGreaterThanOrEqual(Marken.alarmText.kontrast(zu: Marken.flaeche1), 4.5)
+        XCTAssertGreaterThanOrEqual(Marken.alarmText.kontrast(zu: Marken.flaeche2), 4.5)
+        // Auf Flaeche 3 bleibt auch das hellere Rot darunter. Sie ist die Flaeche fuer den
+        // gedrueckten und ueberfahrenen Zustand, auf der keine Fehlermeldung steht; die Zahl ist
+        // festgehalten, damit niemand sie fuer erfuellt haelt.
+        XCTAssertEqual(Marken.alarmText.kontrast(zu: Marken.flaeche3), 4.21, accuracy: 0.03)
+        // Das Alarmrot der Flaechen und Marken bleibt, wo es war, und ist keine Schriftfarbe.
+        XCTAssertEqual(Marken.alarm.hex, "#E0533D")
+        XCTAssertLessThan(Marken.alarm.kontrast(zu: Marken.flaeche2), 4.5)
+    }
+
+    /// Die blasse Stufe bleibt von der mittleren zu unterscheiden: sonst waeren es zwei Namen
+    /// fuer dieselbe Schrift.
+    func testDieDreiTextstufenBleibenGetrennt() {
+        XCTAssertEqual(Marken.text1.deckung, 0.92, accuracy: 1e-9)
+        XCTAssertEqual(Marken.text2.deckung, 0.72, accuracy: 1e-9)
+        XCTAssertEqual(Marken.text3.deckung, 0.58, accuracy: 1e-9)
+    }
+
     /// Der Kontrast des Ofens zur Flaeche liegt knapp unter 3:1. Das ist der Grund fuer die
     /// Auflage in `tokens.css`, dass immer eine Beschriftung daneben gehoert - und diese Zahl
     /// stimmt dort.
