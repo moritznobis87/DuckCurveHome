@@ -37,9 +37,25 @@ Zwei Auflagen aus der Messung. Das hellere Alarmrot liegt näher am Terrakotta d
 behalten `#e0533d`. Das Grün liegt ΔE 8,5 vom Grün des Puffers im Diagramm; es gehört an
 Zustandszeichen und nicht in ein Diagramm.
 
-## Farben: Vorschlag für Zustände und Reihen (24.11.2026)
+## Farben: Zustände und Reihen (entschieden am 24.11.2026)
 
-Dem Hausherrn als Seite mit Bildern von heute und danach vorgelegt; entschieden ist noch nichts.
+Dem Hausherrn als Seite mit Bildern von heute und danach vorgelegt. Er hat am 24.11.2026
+entschieden, den Vorschlag genau so umzusetzen, mit dem violetten Netzbezug. Gebaut ist er in
+Dashboard und App:
+
+- Die Zustandszeichen zeichnen `apps/web/src/components/ui/Zustandszeichen.tsx` und
+  `apps/ios/DuckCurveHome/Bausteine/Zustandszeichen.swift` mit denselben Zahlen. Sie stehen auf
+  den Übersichten der Bereiche, auf der Seite des Hausgeräts und in der Quellenliste der
+  Datenprüfung. Das Grün trägt außerdem die Leuchte „Reserven in Ordnung“ des Regelkreises und
+  der Punkt der Wandanzeige, der die Verbindung anzeigt.
+- Die Reihenfarben stehen in `tokens.css`, `charts/palette.ts` und `Marken.swift`.
+
+Zwei Dinge sind mit Absicht geblieben. Das „gute“ Feld einer Anzeige im Regelkreis (Phasen- und
+Amplitudenreserve) bleibt nebelgrau, weil es eine Skala ist und kein Zustandszeichen. Die Summe
+„Bezahlt“ auf der Kostenseite und das Wort „gekostet“ bleiben rot: Sie enthalten auch die
+Pellets und sind damit Geld, das ausgegeben ist, und nicht der Netzbezug.
+
+Was folgt, ist der Vorschlag im Wortlaut, wie er vorgelegt wurde.
 Die Messwerte liegen in `farben/vorschlag-messung.json`: je Satz die Farben, ihr Kontrast zur
 Kartenfläche `#123544` und das engste Paar je Diagramm, normal und bei Rot-Grün-Schwäche.
 

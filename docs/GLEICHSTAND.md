@@ -16,6 +16,7 @@ Satzes; „fehlt“ heißt, dass das Wort dort in keiner Zeichenkette vorkommt.
 | Regelkreis | Der Satz zu „Noch keine Übernahme“ mit den drei Bedingungen der Übernahme | `Regelkreis.tsx` | fehlt |
 | Regelkreis | Die Bildunterschrift zum Verlauf eines Parameters („Dünn: die laufende Schätzung …“) | `components/regelkreis/Anzeigen.tsx` | fehlt |
 | Regelkreis | Die Stichwortzeile über der Parametertabelle mit dem Hinweis auf den Klick | `components/regelkreis/Blatt.tsx` | fehlt |
+| Regelkreis | Die drei Leuchten im Kopf der Seite („Arbeitspunkt gemessen“, die Zahl der übersteuerten Parameter, „Reserven in Ordnung“ oder „Reserve zu klein“) | `Regelkreis.tsx` | fehlt; gefunden am 24.11.2026 beim Umstellen der Zustandsfarbe |
 | Mitteilungen | Die Fehlermeldung, wenn der Browser kein Abonnement anlegen kann | `components/settings/Mitteilungen.tsx` | bauartbedingt anders: die App meldet sich bei Apple an, nicht bei einem Push-Dienst des Browsers |
 | Berichte | „Nicht angemeldet. Bitte das Gerät koppeln.“ | `components/reports/useReport.ts`, `YearMap.tsx` | bauartbedingt anders: die App schreibt „Das Token stimmt nicht mehr. Unter „Zugang“ neu einrichten.“ (`ApiFehler.rat`), weil sie über ein Token im Schlüsselbund angemeldet ist und nicht gekoppelt wird |
 | Zugang und Sicherung | Personen, Einladungslink, Passkeys und Ersatzcodes | `components/zugang/Personen.tsx`, `MeinZugang.tsx`, `app/system/zugang/page.tsx` | fehlt; die App beschreibt stattdessen ihr Token im Schlüsselbund (`Zugangsworte.swift`) |

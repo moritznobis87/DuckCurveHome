@@ -419,10 +419,8 @@ struct Quellenkarte: View {
     /// `<span class="flex items-center gap-2">`): beim Umbruch bleiben sie beieinander.
     private func kopf(_ z: Quellenstand.Quellenzeile) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Circle()
-                .fill(farbe(z.ton))
-                .frame(width: 8, height: 8)
-                .alignmentGuide(.firstTextBaseline) { _ in 7 }
+            Zustandszeichen(ampel: ampel(z.ton))
+                .alignmentGuide(.firstTextBaseline) { maße in maße.height - 3 }
             Text(z.name)
                 .font(Schrift.klein)
                 .foregroundStyle(Farbe.text1)
@@ -437,11 +435,14 @@ struct Quellenkarte: View {
             .frame(maxWidth: schmal ? .infinity : nil, alignment: .leading)
     }
 
-    private func farbe(_ ton: Quellenstand.Ton) -> Color {
+    /// Der Ton einer Zeile als Zustandszeichen, wie im Dashboard (`Sources.tsx`): Eine Quelle,
+    /// die antwortet, ist in Ordnung; eine, die schweigt, ist eine Störung; die Vollmacht, die
+    /// nicht erteilt ist, trägt den leeren Ring.
+    private func ampel(_ ton: Quellenstand.Ton) -> Hausgeraet.Ampel {
         switch ton {
-        case .ok: return Farbe.amber
-        case .alarm: return Farbe.alarm
-        case .still: return Farbe.text3
+        case .ok: return .gut
+        case .alarm: return .schlecht
+        case .still: return .aus
         }
     }
 }

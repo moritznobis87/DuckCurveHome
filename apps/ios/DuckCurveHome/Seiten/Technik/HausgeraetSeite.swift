@@ -133,19 +133,15 @@ struct HausgeraetSeite: View {
 
     // MARK: - Teile
 
+    /// Das Zeichen einer Ampel, ein wenig abgesetzt, damit es auf der ersten Zeile des Textes steht.
     private func punkt(_ ampel: Hausgeraet.Ampel, gross: Bool = false) -> some View {
-        Circle()
-            .fill(farbe(ampel))
-            .frame(width: gross ? 11 : 8, height: gross ? 11 : 8)
-            .padding(.top, gross ? 5 : 5)
-            .accessibilityLabel(ampel.wort)
+        Zustandszeichen(ampel: ampel, gross: gross)
+            .padding(.top, 1)
     }
-
-    private func farbe(_ a: Hausgeraet.Ampel) -> Color { a.farbe }
 
     private func zeile(_ ampel: Hausgeraet.Ampel?, _ titel: String, _ text: String? = nil, rechts: String? = nil) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            if let ampel { punkt(ampel) } else { Color.clear.frame(width: 8, height: 8) }
+            if let ampel { punkt(ampel) } else { Color.clear.frame(width: 16, height: 16) }
             VStack(alignment: .leading, spacing: 1) {
                 Text(titel).font(Schrift.klein).foregroundStyle(Farbe.text1)
                 if let text, !text.isEmpty {

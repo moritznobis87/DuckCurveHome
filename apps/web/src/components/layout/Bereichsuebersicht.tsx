@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Punkt } from "@/components/geraet/Geraet";
+import { Zustandszeichen } from "@/components/ui/Zustandszeichen";
 import { api } from "@/lib/api/client";
 import type { Uebersichtskarte } from "@/lib/api/models";
 import { AREAS, hatUebersicht, tabsDerGruppe, type Area } from "@/lib/areas";
@@ -85,7 +85,7 @@ export function Bereichsuebersicht({ bereich }: { bereich: Area["key"] }) {
                     <Link key={seite.href} href={seite.href} className="uebersicht-karte" data-ampel={karte?.ampel}>
                       <span className="uebersicht-kopfzeile">
                         <span className="uebersicht-titel">{seite.label}</span>
-                        {karte ? <Punkt ampel={karte.ampel ?? "aus"} /> : null}
+                        {karte ? <Zustandszeichen zustand={karte.ampel ?? "aus"} /> : null}
                       </span>
                       {karte?.leitzahl_de ? (
                         <span className="uebersicht-zahl">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
-import { Dot } from "@/components/ui/Dot";
+import { Zustandszeichen } from "@/components/ui/Zustandszeichen";
 import type { LiveState } from "@/lib/api/models";
 
 /**
@@ -55,7 +55,7 @@ export function Sources() {
           dieser Seite anders zu lesen ist, je nachdem wie sie ausfällt. */}
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">
         <span className="flex items-center gap-2">
-          <Dot tone={state.system.hp_actuation ? "ok" : "muted"} />
+          <Zustandszeichen zustand={state.system.hp_actuation ? "gut" : "aus"} />
           <span className="text-[14px] text-text-1">Anforderung an die Wärmepumpe</span>
         </span>
         <span className="mono w-full text-[13px] leading-[1.5] text-text-3 sm:w-auto">
@@ -71,7 +71,7 @@ export function Sources() {
           className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3"
         >
           <span className="flex items-center gap-2">
-            <Dot tone={s.online ? "ok" : "alert"} />
+            <Zustandszeichen zustand={s.online ? "gut" : "schlecht"} />
             <span className="text-[14px] text-text-1">{LABELS[s.name] ?? s.name}</span>
           </span>
           {/* Der Satz kommt fertig aus der API. Er kennt den Zähler, die Zahl der Abfragen und das

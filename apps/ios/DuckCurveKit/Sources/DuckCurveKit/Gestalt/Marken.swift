@@ -181,7 +181,11 @@ public enum Marken {
 
     // MARK: - Status
 
-    public static let gut = mist
+    /// „In Ordnung“ hat ein eigenes Grün (`tokens.css`, `--ok`; Entscheidung vom 24.11.2026).
+    /// Vorher war es ``mist``, also dieselbe Farbe wie Strompreis, Speicher und Stichwortzeile.
+    /// Abstand zu ``mist`` 17,6, zu ``alarm`` 33,5. Es steht nur an Zustandszeichen und nie in
+    /// einem Diagramm, weil es dem Grün des Puffers nahe ist (8,5).
+    public static let gut = Farbwert(0x79DD9F)
     public static let achtung = amber
     public static let alarm = Farbwert(0xE0533D)
     /// Alarm als Schrift (`tokens.css`, `--alert-text`). ``alarm`` traegt Flaechen, Marken und

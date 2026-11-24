@@ -136,10 +136,7 @@ struct Bereichsuebersicht: View {
                             .foregroundStyle(Farbe.text1)
                         Spacer(minLength: 8)
                         if let ampel {
-                            Circle()
-                                .fill(ampel.farbe)
-                                .frame(width: 9, height: 9)
-                                .accessibilityLabel(ampel.wort)
+                            Zustandszeichen(ampel: ampel)
                         }
                     }
                     if let zahl = stand?.leitzahlDe, !zahl.isEmpty {

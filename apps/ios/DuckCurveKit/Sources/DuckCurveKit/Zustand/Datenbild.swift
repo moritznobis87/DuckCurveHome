@@ -563,13 +563,13 @@ public enum Pruefworte {
 /// jede Zeile den Satz des Dienstes mit - er kennt das Alter des letzten Messwerts.
 public enum Quellenstand {
 
-    /// Wie eine Zeile dasteht. Die Ansicht setzt die Farbe ein (`Dot.tsx:1-4`).
+    /// Wie eine Zeile dasteht. Die Ansicht setzt das Zustandszeichen ein (`Sources.tsx`).
     public enum Ton: String, Sendable, Hashable {
-        /// Antwortet. In der Vorlage `ok`.
+        /// Antwortet. Im Dashboard das Zeichen für „in Ordnung“.
         case ok
-        /// Antwortet nicht. In der Vorlage `alert`.
+        /// Antwortet nicht. Im Dashboard das Zeichen für eine Störung.
         case alarm
-        /// Gibt es, tut aber nichts - die Vollmacht, die nicht erteilt ist. Vorlage `muted`.
+        /// Gibt es, tut aber nichts: die Vollmacht, die nicht erteilt ist. Im Dashboard der leere Ring.
         case still
     }
 

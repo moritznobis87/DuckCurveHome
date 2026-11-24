@@ -76,7 +76,11 @@
   --load: rgba(255, 255, 255, 0.62);
 
   /* Status */
-  --ok: var(--mist);
+  /* „In Ordnung“ hat ein eigenes Grün (Entscheidung vom 24.11.2026). Vorher war es --mist, also
+     dieselbe Farbe wie Strompreis, Speicher und Stichwortzeile. Abstand zu --mist 17,6, zu --alert
+     33,5. Es steht nur an Zustandszeichen und nie in einem Diagramm, weil es dem Grün des Puffers
+     nahe ist (8,5). Gemessen in docs/design/werkstatt/LIESMICH.md. */
+  --ok: #79dd9f;
   --warn: var(--amber);
   --alert: #e0533d;
   /* Alarm als Schrift. --alert traegt Flaechen, Marken und grosse Zahlen; als kleine Schrift lag
