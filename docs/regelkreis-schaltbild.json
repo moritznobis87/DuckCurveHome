@@ -1,0 +1,1511 @@
+{
+  "karte": {
+    "breite": 1400,
+    "hoehe": 1300
+  },
+  "sicht": [
+    {
+      "schluessel": "alles",
+      "name": "Alles",
+      "box": [
+        0,
+        0,
+        1400,
+        1300
+      ]
+    },
+    {
+      "schluessel": "e4",
+      "name": "E4 Ökonomie",
+      "box": [
+        0,
+        20,
+        1400,
+        340
+      ]
+    },
+    {
+      "schluessel": "e3",
+      "name": "E3+E2 Erzeuger",
+      "box": [
+        0,
+        330,
+        1400,
+        420
+      ]
+    },
+    {
+      "schluessel": "e1",
+      "name": "E1 Vorlauf",
+      "box": [
+        0,
+        700,
+        1400,
+        320
+      ]
+    },
+    {
+      "schluessel": "e0",
+      "name": "E0 Räume",
+      "box": [
+        0,
+        960,
+        1400,
+        340
+      ]
+    }
+  ],
+  "platz": [
+    {
+      "block": "preis",
+      "rect": {
+        "x": 28,
+        "y": 62,
+        "w": 118,
+        "h": 40
+      },
+      "wdh": []
+    },
+    {
+      "block": "pv_ist",
+      "rect": {
+        "x": 160,
+        "y": 62,
+        "w": 118,
+        "h": 40
+      },
+      "wdh": []
+    },
+    {
+      "block": "speicher",
+      "rect": {
+        "x": 292,
+        "y": 62,
+        "w": 118,
+        "h": 40
+      },
+      "wdh": []
+    },
+    {
+      "block": "pelletpreis",
+      "rect": {
+        "x": 424,
+        "y": 62,
+        "w": 118,
+        "h": 40
+      },
+      "wdh": []
+    },
+    {
+      "block": "strahlung",
+      "rect": {
+        "x": 556,
+        "y": 62,
+        "w": 118,
+        "h": 40
+      },
+      "wdh": [
+        {
+          "x": 594,
+          "y": 996,
+          "w": 112,
+          "h": 34
+        }
+      ]
+    },
+    {
+      "block": "aussen",
+      "rect": {
+        "x": 688,
+        "y": 62,
+        "w": 118,
+        "h": 40
+      },
+      "wdh": [
+        {
+          "x": 330,
+          "y": 366,
+          "w": 140,
+          "h": 34
+        },
+        {
+          "x": 28,
+          "y": 736,
+          "w": 118,
+          "h": 34
+        },
+        {
+          "x": 470,
+          "y": 996,
+          "w": 112,
+          "h": 34
+        }
+      ]
+    },
+    {
+      "block": "kosten_wp",
+      "rect": {
+        "x": 28,
+        "y": 150,
+        "w": 168,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "kosten_ofen",
+      "rect": {
+        "x": 216,
+        "y": 150,
+        "w": 160,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "pv",
+      "rect": {
+        "x": 396,
+        "y": 150,
+        "w": 150,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "bedarf",
+      "rect": {
+        "x": 566,
+        "y": 150,
+        "w": 170,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "komfort",
+      "rect": {
+        "x": 756,
+        "y": 150,
+        "w": 172,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "fahrplan",
+      "rect": {
+        "x": 1000,
+        "y": 150,
+        "w": 280,
+        "h": 170
+      },
+      "wdh": []
+    },
+    {
+      "block": "abtauung",
+      "rect": {
+        "x": 330,
+        "y": 408,
+        "w": 140,
+        "h": 34
+      },
+      "wdh": []
+    },
+    {
+      "block": "cop",
+      "rect": {
+        "x": 486,
+        "y": 360,
+        "w": 184,
+        "h": 100
+      },
+      "wdh": []
+    },
+    {
+      "block": "warmwasser",
+      "rect": {
+        "x": 700,
+        "y": 408,
+        "w": 150,
+        "h": 34
+      },
+      "wdh": []
+    },
+    {
+      "block": "aufstellraum",
+      "rect": {
+        "x": 872,
+        "y": 408,
+        "w": 132,
+        "h": 34
+      },
+      "wdh": []
+    },
+    {
+      "block": "summe_soc",
+      "rect": {
+        "x": 57,
+        "y": 511,
+        "w": 34,
+        "h": 34
+      },
+      "wdh": []
+    },
+    {
+      "block": "puffer_regler",
+      "rect": {
+        "x": 112,
+        "y": 486,
+        "w": 162,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "zuordnung",
+      "rect": {
+        "x": 302,
+        "y": 486,
+        "w": 160,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "wp",
+      "rect": {
+        "x": 486,
+        "y": 486,
+        "w": 184,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "ofen",
+      "rect": {
+        "x": 486,
+        "y": 612,
+        "w": 184,
+        "h": 84
+      },
+      "wdh": [
+        {
+          "x": 970,
+          "y": 996,
+          "w": 140,
+          "h": 34
+        }
+      ]
+    },
+    {
+      "block": "summe_waerme",
+      "rect": {
+        "x": 683,
+        "y": 511,
+        "w": 34,
+        "h": 34
+      },
+      "wdh": []
+    },
+    {
+      "block": "puffer",
+      "rect": {
+        "x": 752,
+        "y": 458,
+        "w": 196,
+        "h": 122
+      },
+      "wdh": []
+    },
+    {
+      "block": "beobachter",
+      "rect": {
+        "x": 988,
+        "y": 486,
+        "w": 184,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "kennlinie",
+      "rect": {
+        "x": 28,
+        "y": 796,
+        "w": 172,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "leitventil",
+      "rect": {
+        "x": 228,
+        "y": 796,
+        "w": 172,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "summe_vl",
+      "rect": {
+        "x": 421,
+        "y": 821,
+        "w": 34,
+        "h": 34
+      },
+      "wdh": []
+    },
+    {
+      "block": "vl_regler",
+      "rect": {
+        "x": 476,
+        "y": 796,
+        "w": 160,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "heizkreis",
+      "rect": {
+        "x": 664,
+        "y": 796,
+        "w": 190,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "vl_fuehler",
+      "rect": {
+        "x": 900,
+        "y": 872,
+        "w": 160,
+        "h": 44
+      },
+      "wdh": []
+    },
+    {
+      "block": "intern",
+      "rect": {
+        "x": 718,
+        "y": 996,
+        "w": 112,
+        "h": 34
+      },
+      "wdh": []
+    },
+    {
+      "block": "fenster",
+      "rect": {
+        "x": 842,
+        "y": 996,
+        "w": 112,
+        "h": 34
+      },
+      "wdh": []
+    },
+    {
+      "block": "summe_raum",
+      "rect": {
+        "x": 57,
+        "y": 1111,
+        "w": 34,
+        "h": 34
+      },
+      "wdh": []
+    },
+    {
+      "block": "raum_regler",
+      "rect": {
+        "x": 112,
+        "y": 1086,
+        "w": 170,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "ventil",
+      "rect": {
+        "x": 310,
+        "y": 1086,
+        "w": 160,
+        "h": 84
+      },
+      "wdh": []
+    },
+    {
+      "block": "raum",
+      "rect": {
+        "x": 560,
+        "y": 1068,
+        "w": 220,
+        "h": 120
+      },
+      "wdh": []
+    },
+    {
+      "block": "raum_fuehler",
+      "rect": {
+        "x": 560,
+        "y": 1216,
+        "w": 160,
+        "h": 44
+      },
+      "wdh": []
+    },
+    {
+      "block": "weitere_raeume",
+      "rect": {
+        "x": 900,
+        "y": 1086,
+        "w": 200,
+        "h": 120
+      },
+      "wdh": []
+    }
+  ],
+  "wege": [
+    {
+      "kante": "preis→kosten_wp",
+      "punkte": [
+        [
+          87,
+          102
+        ],
+        [
+          87,
+          122
+        ],
+        [
+          60,
+          122
+        ],
+        [
+          60,
+          150
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "pv_ist→kosten_wp",
+      "punkte": [
+        [
+          219,
+          102
+        ],
+        [
+          219,
+          130
+        ],
+        [
+          112,
+          130
+        ],
+        [
+          112,
+          150
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "speicher→kosten_wp",
+      "punkte": [
+        [
+          351,
+          102
+        ],
+        [
+          351,
+          138
+        ],
+        [
+          170,
+          138
+        ],
+        [
+          170,
+          150
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "pelletpreis→kosten_ofen",
+      "punkte": [
+        [
+          483,
+          102
+        ],
+        [
+          483,
+          114
+        ],
+        [
+          360,
+          114
+        ],
+        [
+          360,
+          150
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "strahlung→pv",
+      "punkte": [
+        [
+          615,
+          102
+        ],
+        [
+          615,
+          110
+        ],
+        [
+          430,
+          110
+        ],
+        [
+          430,
+          150
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "aussen→bedarf",
+      "punkte": [
+        [
+          747,
+          102
+        ],
+        [
+          747,
+          118
+        ],
+        [
+          700,
+          118
+        ],
+        [
+          700,
+          150
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "pv→bedarf",
+      "punkte": [
+        [
+          546,
+          192
+        ],
+        [
+          566,
+          192
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "kosten_wp→fahrplan",
+      "punkte": [
+        [
+          112,
+          234
+        ],
+        [
+          112,
+          294
+        ],
+        [
+          1000,
+          294
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "kosten_ofen→fahrplan",
+      "punkte": [
+        [
+          296,
+          234
+        ],
+        [
+          296,
+          282
+        ],
+        [
+          1000,
+          282
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "pv→fahrplan",
+      "punkte": [
+        [
+          471,
+          234
+        ],
+        [
+          471,
+          270
+        ],
+        [
+          1000,
+          270
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "bedarf→fahrplan",
+      "punkte": [
+        [
+          651,
+          234
+        ],
+        [
+          651,
+          258
+        ],
+        [
+          1000,
+          258
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "komfort→fahrplan",
+      "punkte": [
+        [
+          842,
+          234
+        ],
+        [
+          842,
+          246
+        ],
+        [
+          1000,
+          246
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "fahrplan→summe_soc",
+      "punkte": [
+        [
+          1140,
+          320
+        ],
+        [
+          1140,
+          338
+        ],
+        [
+          14,
+          338
+        ],
+        [
+          14,
+          528
+        ],
+        [
+          57,
+          528
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "fahrplan→kennlinie",
+      "punkte": [
+        [
+          14,
+          560
+        ],
+        [
+          14,
+          838
+        ],
+        [
+          28,
+          838
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "fahrplan→summe_raum",
+      "punkte": [
+        [
+          14,
+          860
+        ],
+        [
+          14,
+          1128
+        ],
+        [
+          57,
+          1128
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "fahrplan→zuordnung",
+      "punkte": [
+        [
+          320,
+          338
+        ],
+        [
+          320,
+          486
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "aussen→cop",
+      "punkte": [
+        [
+          470,
+          383
+        ],
+        [
+          486,
+          383
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "aussen→kennlinie",
+      "punkte": [
+        [
+          87,
+          770
+        ],
+        [
+          87,
+          796
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "aussen→raum",
+      "punkte": [
+        [
+          526,
+          1030
+        ],
+        [
+          526,
+          1040
+        ],
+        [
+          580,
+          1040
+        ],
+        [
+          580,
+          1068
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "strahlung→raum",
+      "punkte": [
+        [
+          650,
+          1030
+        ],
+        [
+          650,
+          1046
+        ],
+        [
+          620,
+          1046
+        ],
+        [
+          620,
+          1068
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "abtauung→wp",
+      "punkte": [
+        [
+          400,
+          442
+        ],
+        [
+          400,
+          468
+        ],
+        [
+          520,
+          468
+        ],
+        [
+          520,
+          486
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "cop→wp",
+      "punkte": [
+        [
+          600,
+          460
+        ],
+        [
+          600,
+          486
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "bedarf→puffer_regler",
+      "punkte": [
+        [
+          620,
+          234
+        ],
+        [
+          620,
+          330
+        ],
+        [
+          193,
+          330
+        ],
+        [
+          193,
+          486
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "summe_soc→puffer_regler",
+      "punkte": [
+        [
+          91,
+          528
+        ],
+        [
+          112,
+          528
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "puffer_regler→zuordnung",
+      "punkte": [
+        [
+          274,
+          528
+        ],
+        [
+          302,
+          528
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "zuordnung→wp",
+      "punkte": [
+        [
+          462,
+          528
+        ],
+        [
+          486,
+          528
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "zuordnung→ofen",
+      "punkte": [
+        [
+          462,
+          528
+        ],
+        [
+          474,
+          528
+        ],
+        [
+          474,
+          654
+        ],
+        [
+          486,
+          654
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "wp→summe_waerme",
+      "punkte": [
+        [
+          670,
+          528
+        ],
+        [
+          683,
+          528
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "ofen→summe_waerme",
+      "punkte": [
+        [
+          670,
+          654
+        ],
+        [
+          700,
+          654
+        ],
+        [
+          700,
+          545
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "summe_waerme→puffer",
+      "punkte": [
+        [
+          717,
+          528
+        ],
+        [
+          752,
+          528
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "warmwasser→puffer",
+      "punkte": [
+        [
+          765,
+          442
+        ],
+        [
+          765,
+          450
+        ],
+        [
+          800,
+          450
+        ],
+        [
+          800,
+          458
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "aufstellraum→puffer",
+      "punkte": [
+        [
+          938,
+          442
+        ],
+        [
+          938,
+          450
+        ],
+        [
+          920,
+          450
+        ],
+        [
+          920,
+          458
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "heizkreis→puffer",
+      "punkte": [
+        [
+          800,
+          796
+        ],
+        [
+          800,
+          580
+        ]
+      ],
+      "bogen": [
+        800,
+        716
+      ]
+    },
+    {
+      "kante": "puffer→beobachter",
+      "punkte": [
+        [
+          948,
+          528
+        ],
+        [
+          988,
+          528
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "beobachter→summe_soc",
+      "punkte": [
+        [
+          1172,
+          528
+        ],
+        [
+          1300,
+          528
+        ],
+        [
+          1300,
+          716
+        ],
+        [
+          74,
+          716
+        ],
+        [
+          74,
+          545
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "kennlinie→leitventil",
+      "punkte": [
+        [
+          200,
+          838
+        ],
+        [
+          228,
+          838
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "leitventil→summe_vl",
+      "punkte": [
+        [
+          400,
+          838
+        ],
+        [
+          421,
+          838
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "summe_vl→vl_regler",
+      "punkte": [
+        [
+          455,
+          838
+        ],
+        [
+          476,
+          838
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "vl_regler→heizkreis",
+      "punkte": [
+        [
+          636,
+          838
+        ],
+        [
+          664,
+          838
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "heizkreis→vl_fuehler",
+      "punkte": [
+        [
+          854,
+          838
+        ],
+        [
+          1090,
+          838
+        ],
+        [
+          1090,
+          950
+        ],
+        [
+          1060,
+          950
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "vl_fuehler→summe_vl",
+      "punkte": [
+        [
+          900,
+          950
+        ],
+        [
+          438,
+          950
+        ],
+        [
+          438,
+          855
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "heizkreis→ventil",
+      "punkte": [
+        [
+          854,
+          838
+        ],
+        [
+          884,
+          838
+        ],
+        [
+          884,
+          912
+        ],
+        [
+          420,
+          912
+        ],
+        [
+          420,
+          1086
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "heizkreis→weitere_raeume",
+      "punkte": [
+        [
+          884,
+          838
+        ],
+        [
+          955,
+          838
+        ],
+        [
+          955,
+          1086
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "heizkreis→cop",
+      "punkte": [],
+      "bogen": null
+    },
+    {
+      "kante": "cop→kosten_wp",
+      "punkte": [],
+      "bogen": null
+    },
+    {
+      "kante": "raum_regler→leitventil",
+      "punkte": [
+        [
+          296,
+          1128
+        ],
+        [
+          296,
+          880
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "weitere_raeume→leitventil",
+      "punkte": [
+        [
+          900,
+          1146
+        ],
+        [
+          840,
+          1146
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "summe_raum→raum_regler",
+      "punkte": [
+        [
+          91,
+          1128
+        ],
+        [
+          112,
+          1128
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "raum_regler→ventil",
+      "punkte": [
+        [
+          282,
+          1128
+        ],
+        [
+          310,
+          1128
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "ventil→raum",
+      "punkte": [
+        [
+          470,
+          1128
+        ],
+        [
+          560,
+          1128
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "intern→raum",
+      "punkte": [
+        [
+          774,
+          1030
+        ],
+        [
+          774,
+          1052
+        ],
+        [
+          660,
+          1052
+        ],
+        [
+          660,
+          1068
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "fenster→raum",
+      "punkte": [
+        [
+          898,
+          1030
+        ],
+        [
+          898,
+          1058
+        ],
+        [
+          700,
+          1058
+        ],
+        [
+          700,
+          1068
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "ofen→raum",
+      "punkte": [
+        [
+          1040,
+          1030
+        ],
+        [
+          1040,
+          1064
+        ],
+        [
+          740,
+          1064
+        ],
+        [
+          740,
+          1068
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "raum→raum_fuehler",
+      "punkte": [
+        [
+          700,
+          1188
+        ],
+        [
+          700,
+          1216
+        ]
+      ],
+      "bogen": null
+    },
+    {
+      "kante": "raum_fuehler→summe_raum",
+      "punkte": [
+        [
+          560,
+          1238
+        ],
+        [
+          74,
+          1238
+        ],
+        [
+          74,
+          1145
+        ]
+      ],
+      "bogen": null
+    }
+  ],
+  "beschriftung": [
+    {
+      "x": 520,
+      "y": 331,
+      "text": "Führungsgrößen: wSOC(t) · Fahrplan Ofen · Freigabefenster · wi",
+      "anker": "middle"
+    },
+    {
+      "x": 680,
+      "y": 710,
+      "text": "SOCth und Q̇ab als Rückführung des Beobachters",
+      "anker": "middle"
+    },
+    {
+      "x": 302,
+      "y": 1000,
+      "text": "hi aller Räume",
+      "anker": "start"
+    },
+    {
+      "x": 430,
+      "y": 906,
+      "text": "TVL in die Heizkreise",
+      "anker": "start"
+    },
+    {
+      "x": 806,
+      "y": 640,
+      "text": "Q̇HK (Entnahme)",
+      "anker": "start"
+    },
+    {
+      "x": 320,
+      "y": 1232,
+      "text": "Ti als Rückführung",
+      "anker": "middle"
+    }
+  ],
+  "ebenen": [
+    {
+      "x": 28,
+      "y": 44,
+      "text": "EBENE 4 · ÖKONOMISCHE FÜHRUNG · TAKT 15 MIN, HORIZONT 48 H"
+    },
+    {
+      "x": 28,
+      "y": 380,
+      "text": "EBENE 3 + 2 ·"
+    },
+    {
+      "x": 28,
+      "y": 394,
+      "text": "SPEICHER UND ERZEUGER"
+    },
+    {
+      "x": 28,
+      "y": 786,
+      "text": "EBENE 1 · VORLAUFTEMPERATUR UND VERTEILUNG"
+    },
+    {
+      "x": 28,
+      "y": 1062,
+      "text": "EBENE 0 · EINZELRAUMREGELUNG · 10 KREISE"
+    }
+  ]
+}

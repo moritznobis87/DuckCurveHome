@@ -2,13 +2,12 @@ import Foundation
 
 /// Die Regelkreis-Karte für die App: geordnet, benannt, und mit den Wörtern versehen.
 ///
-/// **Warum die App nicht dasselbe Bild zeigt wie das Dashboard.** Das Blockschaltbild ist 1400
-/// Punkte breit; am Telefon bliebe davon ein Ausschnitt, durch den man schiebt. Dieselbe
-/// Auskunft trägt hier eine Liste von außen nach innen: fünf Ebenen, je Block sein
-/// Übertragungsglied, seine Parameter mit ihrer Herkunft und seine Signale nach beiden Seiten.
-/// Die Summierstellen stehen mit darin, mit dem Vorzeichen an jedem Eingang - sie sind die
-/// Stelle, an der ein Regelkreis zum Regelkreis wird, und eine Liste, die sie weglässt, zeigt
-/// eine Kette.
+/// **Die Karte selbst zeichnet ``Schaltbild``** mit der Geometrie des Dashboards (Vorgabe des
+/// Hausherrn vom 24.11.2026: überall das Blockschaltbild, keine Liste). Dieser Typ trägt, was
+/// unter der Karte steht: zu jedem Block sein Blatt mit Übertragungsglied, Parametern samt
+/// Herkunft und Signalen nach beiden Seiten, geordnet nach den fünf Ebenen. Die Summierstellen
+/// stehen mit darin, mit dem Vorzeichen an jedem Eingang: sie sind die Stelle, an der ein
+/// Regelkreis zum Regelkreis wird.
 ///
 /// **Gerechnet wird hier nichts.** Die Reserven kommen fertig aus `/regelkreis`, die Kennbilder
 /// als Kurven, die Sätze aus dem Kern des Dienstes. Dieser Typ ordnet, gruppiert und schreibt
@@ -182,22 +181,38 @@ public struct Regelkreisbild: Sendable, Hashable {
     public static let seitenkicker = "Kaskade in fünf Ebenen · Herkunft jeder Zahl"
     public static let laedtSatz = "Die Karte wird geholt."
 
-    /// Was auf der Seite steht, wenn jemand den Methodendeckel aufmacht.
+    /// Was auf der Seite steht, wenn jemand den Methodendeckel aufmacht. Dieselben fünf Absätze
+    /// wie im Dashboard (`Regelkreis.tsx`, `Methode`), Wort für Wort; dort ist der erste Satz
+    /// jedes Absatzes fett gesetzt.
+    public static let methodeKurz =
+        "Struktur, Entwurf nach SIMC, und wann eine Schätzung den geltenden Wert ersetzt"
+
     public static let methode = [
-        "Die Kaskade hat fünf Ebenen, und sie ist nur deshalb zulässig, weil jede innere Ebene "
-            + "deutlich schneller ist als die, die sie führt: 15 Minuten oben, 60 Sekunden im "
-            + "Raum, und dazwischen Zeitkonstanten von Stunden.",
-        "Die Reglerparameter sind nicht geraten, sondern aus der Strecke gerechnet (SIMC). Wer "
-            + "eine Zeitkonstante übersteuert, verschiebt damit auch die Nachstellzeit. Darum "
-            + "bringt jede Änderung die ganze Karte neu zurück.",
-        "Phasen- und Amplitudenreserve stehen für jeden stetigen Kreis. Faustregel: 45° und "
-            + "Faktor 2,5. Der Zweipunktkreis und die ökonomische Führung haben keine "
-            + "Frequenzkennlinie, denn der eine ist unstetig, und die andere wird in Euro beurteilt.",
-        "Gelernt wird nur, wo die Daten es tragen. Eine Schätzung ersetzt den geltenden Wert "
-            + "erst, wenn sie genug Stützstellen hat, in den Plausibilitätsgrenzen liegt, "
-            + "außerhalb ihrer eigenen Unsicherheit vom alten Wert abweicht und den Fehler des "
-            + "Modells messbar verkleinert. Was abgelehnt wurde, steht am Parameter mit "
-            + "Begründung.",
+        "Die Struktur ist eine Aussage über das Haus und steht im Kern, nicht in der Zeichnung: "
+            + "welcher Kreis welchem unterlagert ist, wo eine Störgröße angreift und ob sie "
+            + "aufgeschaltet oder nur ausgeregelt wird. Die Anzeige legt die Kästchen hin.",
+        "Der Regler wird gerechnet, nicht eingestellt. Aus den Streckenparametern folgt er nach "
+            + "der Regel von Skogestad (SIMC), mit der Ersatzzeitkonstante λ als einziger freier "
+            + "Zahl. Bei zwei Zeitkonstanten greift die Halbregel: die halbe kleinere geht in die "
+            + "große, die andere Hälfte in die Totzeit. Ändert die Lernebene einen "
+            + "Streckenparameter, ändert sich der Regler mit. Das ist ein indirekter "
+            + "selbsteinstellender Regler.",
+        "Übernommen wird nur, was fünf Hürden überspringt: genug Stützstellen, innerhalb der "
+            + "Plausibilitätsgrenzen, größer als die eigene Unsicherheit, vierzehn Tage seit der "
+            + "letzten Übernahme, und ein kleinerer Restfehler im Vergleich. Damit kann das Modell "
+            + "nie schlechter werden als sein Startwert. Jede Ablehnung steht als Satz an ihrem "
+            + "Parameter.",
+        "Woher die Zahlen kommen. Die COP-Ebene aus der gemessenen Kennlinie (Ausgleich über "
+            + "Zehn-Minuten-Fenster im eingeschwungenen Heizbetrieb), Totzeit und Anlaufzeit der "
+            + "Wärmepumpe aus der Ereignisstudie über die Anforderungen an sie. Alles andere steht "
+            + "noch auf Startwerten aus Konfiguration und Datenblatt und ist als Annahme "
+            + "gekennzeichnet. Die Reihen dafür liegen vor, die Schätzer sind noch nicht "
+            + "angeschlossen.",
+        "Was die Reserven sagen. Die Phasenreserve ist der Abstand zur Dauerschwingung: unter "
+            + "45° reagiert der Kreis auf eine Änderung der Strecke, etwa einen kälteren Tag oder "
+            + "einen anderen Volumenstrom, mit Überschwingen. Für die Erzeugerwahl und den "
+            + "Fahrplan gibt es keine solche Zahl, weil ihre Stellgrößen ganzzahlig sind; sie "
+            + "werden am Umschaltpunkt und in Euro beurteilt.",
     ]
 
     /// Die Überschrift je Ebene. Von außen nach innen, und das ist zugleich von langsam nach

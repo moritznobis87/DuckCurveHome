@@ -6,6 +6,7 @@ on:
       - "apps/ios/**"
       - "tools/gen-swift.py"
       - "tools/gen-zeichen.py"
+      - "tools/gen-schaltbild.py"
       - "tools/gen-appicon.py"
       - "apps/web/public/favicon.svg"
       - "apps/web/public/favicon.ico"
@@ -19,12 +20,14 @@ on:
       - "tools/ios-ausliefern.sh"
       - "docs/openapi.json"
       - "docs/seitenbaum.json"
+      - "docs/regelkreis-schaltbild.json"
       - ".github/workflows/ios.yml"
   pull_request:
     paths:
       - "apps/ios/**"
       - "tools/gen-swift.py"
       - "tools/gen-zeichen.py"
+      - "tools/gen-schaltbild.py"
       - "tools/gen-appicon.py"
       - "apps/web/public/favicon.svg"
       - "apps/web/public/favicon.ico"
@@ -38,6 +41,7 @@ on:
       - "tools/ios-ausliefern.sh"
       - "docs/openapi.json"
       - "docs/seitenbaum.json"
+      - "docs/regelkreis-schaltbild.json"
       - ".github/workflows/ios.yml"
 
 # Ein Lauf je Zweig. Wer zweimal kurz hintereinander schiebt, bekam bisher zwei volle

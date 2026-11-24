@@ -12,7 +12,7 @@ Satzes; „fehlt“ heißt, dass das Wort dort in keiner Zeichenkette vorkommt.
 
 | Seite | Text im Dashboard | Fundstelle | Stand in der App |
 |---|---|---|---|
-| Regelkreis | Die drei Erklärabsätze „Der Regler wird gerechnet, nicht eingestellt“, „Woher die Zahlen kommen“ und „Was die Reserven sagen“ | `components/regelkreis/Regelkreis.tsx`, Abschnitt unter den Kreisen | fehlt; `Regelkreisbild.swift` trägt eine kürzere eigene Fassung |
+| Regelkreis | Die Karte „Die Glieder dieser Strecke“: der Katalog der Übertragungsglieder mit Kennbild, Kurzzeichen und Übertragungsfunktion | `components/regelkreis/Regelkreis.tsx` | fehlt; die App zeigt das Kennbild nur im Kästchen und im Blatt des Blocks |
 | Regelkreis | Der Satz zu „Noch keine Übernahme“ mit den drei Bedingungen der Übernahme | `Regelkreis.tsx` | fehlt |
 | Regelkreis | Die Bildunterschrift zum Verlauf eines Parameters („Dünn: die laufende Schätzung …“) | `components/regelkreis/Anzeigen.tsx` | fehlt |
 | Regelkreis | Die Stichwortzeile über der Parametertabelle mit dem Hinweis auf den Klick | `components/regelkreis/Blatt.tsx` | fehlt |
@@ -41,8 +41,26 @@ Behoben am 24.11.2026, nach der ersten Fassung dieser Liste:
 |---|---|---|---|
 | Regelkreis | Blockschaltbild mit vier Ebenen, darunter die Kreise | Liste der Kreise ohne Schaltbild | `components/regelkreis/Karte.tsx`, `RegelkreisSeite.swift` |
 
-Ob die App das Schaltbild bekommt oder das Dashboard die Liste, entscheidet der Hausherr; die
-Frage ist ihm gestellt.
+**Entschieden am 24.11.2026:** überall das Blockschaltbild, keine Liste. Die App zeigt seitdem
+das Schaltbild des Dashboards (`Regelkreiskarte.swift`). Die Geometrie steht einmal in
+`docs/regelkreis-schaltbild.json`; das Dashboard wird mit `layout.test.ts` dagegen gehalten, die
+App bekommt `Schaltbilddaten.swift` daraus erzeugt (`tools/gen-schaltbild.py`). Was im Kästchen
+steht und wie eine Leitung läuft, rechnet in der App derselbe Code wie im Dashboard, übersetzt
+und mit Tests festgehalten (`Schaltbildzeichnung.swift`). Die fünf Absätze der Methode stehen in
+der App jetzt im Wortlaut des Dashboards.
+
+Zwei Unterschiede bleiben in der Zeichnung und sind bauartbedingt: Die Formel im Kästchen steht
+im Browser kursiv und in der App gerade, weil die Schrift der App keinen kursiven Schnitt hat.
+Der gewählte Block hat im Browser einen Lichthof, in der App nur den bernsteinfarbenen Rand.
+
+Das Blatt des gewählten Blocks ist in der App anders aufgebaut als im Dashboard (`Blatt.tsx`
+gegen `Blockansicht`); der Vergleich Feld für Feld steht noch aus.
+
+## Anmeldung
+
+**Entschieden am 24.11.2026:** In der App gilt dieselbe Anmeldelogik wie im Browser. Offen ist,
+ob dazu ein Passwort gehören soll: Das Dashboard kennt heute keines, nur Passkey und
+Ersatzcodes (`docs/ZUGANG.md`, ADR-0002). Die Frage ist dem Hausherrn gestellt.
 
 ## Was als Nächstes dran ist
 
