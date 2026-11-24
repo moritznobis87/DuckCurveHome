@@ -242,3 +242,24 @@ def test_im_demo_modus_gibt_es_keinen_ofen() -> None:
         assert c.get("/api/v1/live/state").json()["stove"]["present"] is False
         r = c.post("/api/v1/control/stove/mode", json={"mode": "on"})
         assert r.status_code == 404
+
+
+# ------------------------------------------------------------------ Eingriff beenden
+
+
+def test_beenden_faellt_auf_die_vorgabe_zurueck_und_nicht_auf_auto() -> None:
+    """„Alles zurück auf Automatik“ soll den Ofen nicht dem Planer übergeben (Codex, PR #36)."""
+    c = controller()
+    c.set("on", 120, NOW)
+    assert c.beenden() == "off"
+    assert c.ends_at is None
+    # Derselbe Zustand, den das Ende der Frist hergestellt hätte.
+    d = controller()
+    d.set("on", 120, NOW)
+    assert d.effective_mode(NOW + timedelta(minutes=121)) == c.mode
+
+
+def test_beenden_laesst_die_automatik_stehen() -> None:
+    c = controller()
+    c.set("auto", 0, NOW)
+    assert c.beenden() == "auto"

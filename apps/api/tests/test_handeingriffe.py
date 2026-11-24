@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
@@ -116,3 +117,39 @@ def test_alles_zurueck_beendet_die_waermepumpe_von_hand(client: TestClient) -> N
 def test_ohne_eingriff_gibt_es_nichts_zurueckzustellen(client: TestClient) -> None:
     daten = client.post("/api/v1/control/automatik").json()
     assert (daten["ok"], daten["meldung_de"]) == (True, handeingriffe.NICHTS_ZURUECK)
+
+
+class _OfenRunner:
+    """Ein Dienst mit einem Ofen, den jemand von Hand angezündet hat."""
+
+    def __init__(self) -> None:
+        self.now = JETZT
+        self.aufrufe: list[str] = []
+        self.ofen = StoveLiveOut(present=True, mode="on", ends_at=JETZT + timedelta(hours=2))
+
+    def live_state(self) -> LiveStateOut:
+        return _zustand(ofen=self.ofen)
+
+    def battery_state(self) -> BatteryLiveOut:
+        return _speicher()
+
+    async def rooms_automatik(self) -> RoomShiftOut | None:
+        return None
+
+    async def set_stove_mode(self, mode: str, duration_min: int) -> StoveLiveOut:
+        self.aufrufe.append(f"set_stove_mode:{mode}")
+        return self.ofen
+
+    async def end_stove_override(self) -> StoveLiveOut:
+        self.aufrufe.append("end_stove_override")
+        self.ofen = StoveLiveOut(present=True, mode="off")
+        return self.ofen
+
+
+def test_alles_zurueck_beendet_den_ofen_wie_der_ablauf_der_frist() -> None:
+    """Nicht `auto`: das gäbe den Ofen dem Planer, der ihn danach anzünden könnte."""
+    runner = _OfenRunner()
+    antwort = asyncio.run(handeingriffe.zuruecksetzen(runner))  # type: ignore[arg-type]
+    assert runner.aufrufe == ["end_stove_override"]
+    assert antwort.ok is True
+    assert antwort.handeingriffe.eingriffe == []

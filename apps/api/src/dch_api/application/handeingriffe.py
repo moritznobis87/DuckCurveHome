@@ -141,7 +141,7 @@ async def zuruecksetzen(runner: Runtime) -> AutomatikZurueckOut:
                     SystemMode.AUTO, runner.live_state().operating_mode.auto_profile, None, 0
                 )
             elif e.art == "ofen":
-                await runner.set_stove_mode("auto", 0)
+                await runner.end_stove_override()
             elif e.art == "speicher":
                 await runner.set_battery_mode(SPEICHER_VORGABE, 0, None)
         except DchError as f:
