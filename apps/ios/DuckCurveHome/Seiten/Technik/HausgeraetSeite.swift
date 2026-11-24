@@ -174,7 +174,7 @@ struct HausgeraetSeite: View {
                     Text(
                         g.unterstuetzt
                             ? "Bericht des Geräts von \(Formate.hhmm(iso: g.berichtAm))"
-                                + (g.berichtAlt == true ? " - veraltet: Der Zeitgeber auf dem Gerät läuft nicht." : ".")
+                                + (g.berichtAlt == true ? ". Er ist veraltet, weil der Zeitgeber auf dem Gerät nicht läuft." : ".")
                             : "Diese Installation läuft nicht auf dem Hausgerät; hier steht nur, was die API über sich selbst weiß."
                     )
                     .font(Schrift.winzig).foregroundStyle(Farbe.text3)

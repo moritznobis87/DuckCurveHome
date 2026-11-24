@@ -223,7 +223,7 @@ extension Pruefworte {
         case .luecke:
             return "Zwischen \(von) und \(bis) steht die Erzeugung \(minuten) auf genau 0,00 kW, der Netzwert in derselben Strecke ebenfalls still. Das kann eine Wolke gewesen sein."
         case .lueckeMitNetzbewegung:
-            return "Zwischen \(von) und \(bis) steht die Erzeugung \(minuten) auf genau 0,00 kW, während sich der Netzwert weiterbewegt: dann liefert der Zähler, die Erzeugungsmessung aber nicht - und eine ausgewiesene Netzladung ist eine Folge der Lücke."
+            return "Zwischen \(von) und \(bis) steht die Erzeugung \(minuten) auf genau 0,00 kW, während sich der Netzwert weiterbewegt: dann liefert der Zähler, die Erzeugungsmessung aber nicht, und eine ausgewiesene Netzladung ist eine Folge der Lücke."
         }
     }
 

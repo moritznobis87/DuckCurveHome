@@ -123,8 +123,7 @@ export function CoverageMap({ anchor, days = 28 }: { anchor: string; days?: numb
         ))}
       </div>
       <Note>
-        {data.note_de} Eine Zelle ohne Farbe heißt, dass für diese Stunde gar keine Minutenzeile
-        existiert - dann stand der Dienst still, und der Ausfall ist unserer. Eine rote Zelle heißt,
+        {data.note_de} Eine Zelle ohne Farbe heißt, dass für diese Stunde gar keine Minutenzeile existiert. Dann stand der Dienst still, und der Ausfall ist unserer. Eine rote Zelle heißt,
         dass Minutenzeilen da sind und diese eine Reihe darin fehlt: dann hat das Gerät nichts
         geliefert.
       </Note>

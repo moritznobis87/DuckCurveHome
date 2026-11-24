@@ -661,8 +661,7 @@ export function Alfred() {
           ) : null}
 
           {/* Die letzte Schicht vor dem Schalten: ein Mensch liest, was genau passiert, und sagt ja.
-              Gezeigt werden die geprüften Felder des Vorschlags aus dem Dienst - nicht der Text der
-              Antwort, denn den hat das Modell formuliert und der darf etwas anderes behaupten.
+              Gezeigt werden die geprüften Felder des Vorschlags aus dem Dienst und nicht der Text der Antwort, denn den hat das Modell formuliert und der darf etwas anderes behaupten.
               „Abbrechen" hat den Fokus: Wer nur Enter drückt, hat nichts geschaltet. */}
           {bestaetigen ? (
             <div className="alfred-bestaetigung" role="alertdialog" aria-modal="true" aria-labelledby={`${feldKennung}-frage`} aria-describedby={`${feldKennung}-was`}>

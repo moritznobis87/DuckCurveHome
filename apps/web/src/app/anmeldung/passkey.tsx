@@ -218,7 +218,7 @@ export function Einrichten({
           onClick={() => router.replace("/")}
           className="self-start rounded-[3px] border border-line-1 bg-surface-2 px-5 py-3 text-[15px] text-text-1"
         >
-          Habe ich notiert - weiter
+          Notiert, weiter
         </button>
       </section>
     );
@@ -240,7 +240,7 @@ export function Einrichten({
       {hinweis ? <p className="m-0 text-[14px] text-text-3">{hinweis}</p> : null}
       <p className="m-0 text-[15px] leading-[1.6] text-text-2">
         Für <span className="mono">{email}</span>. Ein Passkey bleibt auf diesem Gerät und wird mit
-        Fingerabdruck, Gesicht oder Geräte-PIN freigegeben - es gibt kein Passwort.
+        Fingerabdruck, Gesicht oder Geräte-PIN freigegeben. Ein Passwort gibt es nicht.
       </p>
       {fehler ? <p className="m-0 text-[14px] text-amber">{fehler}</p> : null}
       <label className="flex flex-col gap-1.5 text-[14px] text-text-3">

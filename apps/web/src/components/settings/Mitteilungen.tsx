@@ -50,7 +50,7 @@ function schluesselBytes(b64: string): Uint8Array<ArrayBuffer> {
 function hinweis(e: unknown): string {
   const text = e instanceof Error ? e.message : String(e);
   if (/Registration failed/i.test(text)) {
-    return `Der Browser konnte kein Abonnement anlegen (${text}). Auf dem iPhone und iPad geht das nur in der zum Home-Bildschirm hinzugefügten App. Sonst war der Push-Dienst des Browsers nicht erreichbar - das sperren manche Netze.`;
+    return `Der Browser konnte kein Abonnement anlegen (${text}). Auf dem iPhone und iPad geht das nur in der zum Home-Bildschirm hinzugefügten App. Sonst war der Push-Dienst des Browsers nicht erreichbar. Manche Netze sperren ihn.`;
   }
   return `Das hat nicht geklappt: ${text}`;
 }

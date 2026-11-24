@@ -86,7 +86,7 @@ function DropZone({ onFiles, busy, compact }: { onFiles: (files: File[]) => void
       <input ref={input} type="file" accept="application/pdf,.pdf" multiple hidden onChange={(e) => take(e.target.files)} />
       <span className="text-[14px] text-text-1">{busy ? "Rechnung wird geprüft …" : "Tibber-Rechnung hierher ziehen"}</span>
       <span className="text-[12px] text-text-3">
-        {busy ? "Positionen werden nachgerechnet" : "oder klicken, um PDFs auszuwählen - mehrere auf einmal möglich"}
+        {busy ? "Positionen werden nachgerechnet" : "oder klicken, um ein oder mehrere PDFs auszuwählen"}
       </span>
     </div>
   );
@@ -331,7 +331,7 @@ export function InvoiceCheck() {
       ) : loaded && !busy ? (
         <Card style={{ padding: 24 }}>
           <Note>
-            Noch keine Rechnung geprüft. Lade eine Tibber-Rechnung als PDF hoch - die Auswertung entsteht dann
+            Noch keine Rechnung geprüft. Lade eine Tibber-Rechnung als PDF hoch. Die Auswertung entsteht dann
             hier und wächst mit jeder weiteren Rechnung.
           </Note>
         </Card>

@@ -646,7 +646,7 @@ final class RechnungspruefungTests: XCTestCase {
     func testAblegetextAmSchirmNenntDasZiehen() {
         let t = Rechnungspruefung.ablegetext(laeuft: false, ziehbar: true)
         XCTAssertEqual(t.satz, "Tibber-Rechnung hierher ziehen")
-        XCTAssertEqual(t.dazu, "oder klicken, um PDFs auszuwählen - mehrere auf einmal möglich")
+        XCTAssertEqual(t.dazu, "oder klicken, um ein oder mehrere PDFs auszuwählen")
     }
 
     /// **„Hierher ziehen“ ist an einem Telefon eine falsche Anweisung.** Dort steht der Satz,

@@ -159,20 +159,20 @@ export const WEGE: Record<string, { p: Punkt[]; bogen?: Punkt }> = {
 /** Beschriftungen, die nicht am Kästchen, sondern an der Leitung stehen. */
 export const BESCHRIFTUNG: { x: number; y: number; text: string; anker?: "start" | "middle" | "end" }[] = [
   { x: 520, y: 331, text: "Führungsgrößen: wSOC(t) · Fahrplan Ofen · Freigabefenster · wi", anker: "middle" },
-  { x: 680, y: 710, text: "SOCth, Q̇ab — Rückführung des Beobachters", anker: "middle" },
+  { x: 680, y: 710, text: "SOCth und Q̇ab als Rückführung des Beobachters", anker: "middle" },
   { x: 302, y: 1000, text: "hi aller Räume", anker: "start" },
   { x: 430, y: 906, text: "TVL in die Heizkreise", anker: "start" },
   { x: 806, y: 640, text: "Q̇HK (Entnahme)", anker: "start" },
-  { x: 320, y: 1232, text: "Ti — Rückführung", anker: "middle" },
+  { x: 320, y: 1232, text: "Ti als Rückführung", anker: "middle" },
 ];
 
 /** Die Ebenenaufschriften. */
 export const EBENEN: { x: number; y: number; text: string }[] = [
-  { x: 28, y: 44, text: "EBENE 4 · ÖKONOMISCHE FÜHRUNG — TAKT 15 MIN, HORIZONT 48 H" },
+  { x: 28, y: 44, text: "EBENE 4 · ÖKONOMISCHE FÜHRUNG · TAKT 15 MIN, HORIZONT 48 H" },
   { x: 28, y: 380, text: "EBENE 3 + 2 ·" },
   { x: 28, y: 394, text: "SPEICHER UND ERZEUGER" },
   { x: 28, y: 786, text: "EBENE 1 · VORLAUFTEMPERATUR UND VERTEILUNG" },
-  { x: 28, y: 1062, text: "EBENE 0 · EINZELRAUMREGELUNG — 10 KREISE" },
+  { x: 28, y: 1062, text: "EBENE 0 · EINZELRAUMREGELUNG · 10 KREISE" },
 ];
 
 /** Wo Blöcke landen, für die es keinen Platz gibt: eine Reihe unter der Karte. */

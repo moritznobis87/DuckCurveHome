@@ -85,7 +85,7 @@ public enum Gelduebersicht {
     public static let ersparnissatz = """
         Gerechnet gegen den Netzpreis der jeweiligen Stunde, abzüglich der Vergütung, die der \
         Strom eingespeist gebracht hätte. Was das Verschieben in Preistiefs gebracht hat, steht \
-        in der Karte darunter - gerechnet, nicht gemessen.
+        in der Karte darunter. Es ist gerechnet, nicht gemessen.
         """
 
     public static let verschiebungstitel = "Was das Verschieben gebracht hat"

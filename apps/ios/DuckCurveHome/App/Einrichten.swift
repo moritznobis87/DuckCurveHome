@@ -105,7 +105,7 @@ struct Einrichten: View {
                     .pickerStyle(.segmented)
                     Text(
                         rolle == .gast
-                            ? "Gast blendet aus, was nicht in fremde Hände gehört – es sperrt nichts. "
+                            ? "Gast blendet aus, was nicht in fremde Hände gehört. Gesperrt wird dadurch nichts. "
                                 + "Wer das Token hat, darf am Dienst alles."
                             : "Voller Zugriff: schalten, stellen, Rechnungen."
                     )
@@ -162,7 +162,7 @@ struct Einrichten: View {
             .foregroundStyle(Farbe.text3)
             .fixedSize(horizontal: false, vertical: true)
             Text(
-                "Wer einen echten Gastzugang braucht – einen, der auch am Dienst nichts darf –, "
+                "Wer einen echten Gastzugang braucht, der auch am Dienst nichts darf, "
                     + "trägt als Adresse das Dashboard ein und als Pfad „/api/dch“. Dann gelten "
                     + "dessen Gastregeln."
             )

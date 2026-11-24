@@ -97,7 +97,7 @@ export function MeinZugang() {
   if (ich === null) {
     return (
       <p className="m-0 text-[15px] leading-[1.6] text-text-3">
-        Dieses Gerät ist gepaart und nicht als Person angemeldet - es hat darum keine eigenen
+        Dieses Gerät ist gepaart und nicht als Person angemeldet. Es hat darum keine eigenen
         Passkeys. Wer einen eigenen Zugang möchte, lässt sich oben einladen.
       </p>
     );
@@ -217,7 +217,7 @@ export function MeinZugang() {
 
       {codes ? (
         <div className="flex flex-col gap-2 rounded-[3px] border border-amber/40 bg-surface-2 p-4">
-          <span className="kicker" style={{ fontSize: 11 }}>Zehn neue Codes - die alten gelten nicht mehr</span>
+          <span className="kicker" style={{ fontSize: 11 }}>Zehn neue Codes ersetzen die alten</span>
           <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0 sm:grid-cols-5">
             {codes.map((c) => (
               <li key={c} className="mono text-[14px] text-text-1">{c}</li>

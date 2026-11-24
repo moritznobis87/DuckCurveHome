@@ -80,7 +80,7 @@ struct MitteilungenSeite: View {
                     + "dieselben Mitteilungen.",
                 "Für den App-Weg braucht der Dienst einen Signierschlüssel aus einem "
                     + "Apple-Developer-Konto. Ohne ihn kann kein Dienst eine Mitteilung an eine "
-                    + "iOS-App schicken – das ist Apples Entwurf. Wie er eingetragen wird, steht "
+                    + "iOS-App schicken. Das ist Apples Entwurf. Wie er eingetragen wird, steht "
                     + "in apps/ios/README.md.",
                 "Was ohne ihn trotzdem geht: das Morning Briefing steht hier und lässt sich "
                     + "ansehen. Nur der Weg auf den Sperrbildschirm fehlt.",
@@ -797,7 +797,7 @@ struct Batterieblatt: View {
                 ForEach(
                     [
                         ("Automatik", BatteryModeInModeWahl.auto, "der Wechselrichter entscheidet"),
-                        ("Halten", .hold, "nicht entladen – für ein Preistief später"),
+                        ("Halten", .hold, "nicht entladen und für ein späteres Preistief aufsparen"),
                         ("Aus", .off, "weder laden noch entladen"),
                     ],
                     id: \.0

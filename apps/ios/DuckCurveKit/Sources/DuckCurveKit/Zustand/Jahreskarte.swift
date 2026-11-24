@@ -437,11 +437,11 @@ public enum Jahreskennzahl: String, CaseIterable, Sendable, Hashable {
     public var hinweis: String {
         switch self {
         case .netz:
-            return "Bezug (hell blau) gegen Einspeisung (bernstein) - die Entenkurve über ein ganzes Jahr"
+            return "Bezug (hell blau) gegen Einspeisung (bernstein) als Entenkurve über ein ganzes Jahr"
         case .erzeugung:
             return "Wann die Anlage lieferte: Tageslänge und Wetter, Tag für Tag"
         case .verbrauch:
-            return "Der Rhythmus des Hauses - Wochentage, Urlaube, Gewohnheiten"
+            return "Der Rhythmus des Hauses mit Wochentagen, Urlauben und Gewohnheiten"
         case .waermepumpe:
             return "Heizperiode, Warmwasserspitzen und die Taktung der Regelung"
         case .netzbezug:
@@ -449,7 +449,7 @@ public enum Jahreskennzahl: String, CaseIterable, Sendable, Hashable {
         case .einspeisung:
             return "Überschuss, der ins Netz ging"
         case .preis:
-            return "Der bezugsgewichtete Preis je Stunde - die Struktur, gegen die geplant wird"
+            return "Der bezugsgewichtete Preis je Stunde, also die Struktur, gegen die geplant wird"
         case .autarkie:
             return "Anteil des Verbrauchs, der nicht aus dem Netz kam (0-1)"
         }
