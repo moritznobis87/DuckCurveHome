@@ -31,6 +31,11 @@ public struct ApiFehler: Error, Sendable, Hashable {
     /// Ein Gast, der an etwas rührt, das ihm nicht gehoert.
     public var istVerboten: Bool { status == 403 || code == "forbidden" }
 
+    /// Antwortet der Dienst gerade nicht? Das Netz ist weg, oder der Dienst startet neu und sein
+    /// Vorbau meldet einen Fehler des Servers. Ein abgelehnter Zugang gehoert nicht dazu: dort
+    /// antwortet der Dienst sehr wohl, und Warten aendert nichts.
+    public var istOhneVerbindung: Bool { status == 0 || status >= 500 }
+
     /// Lohnt ein neuer Versuch? Bei 5xx und bei Netzfehlern ja, bei 4xx nicht - ein falsches
     /// Token wird beim zehnten Versuch nicht richtiger.
     public var lohntWiederholung: Bool {

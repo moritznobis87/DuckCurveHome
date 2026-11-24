@@ -61,15 +61,22 @@ struct HausgeraetSeite: View {
         // Auch ohne Verbindung: die Seite versucht es dann im kurzen Takt weiter, wie das
         // Dashboard (`useGeraet.ts`, `eilig || unerreichbar`).
         Hausgeraet.beschaeftigt(geraet) || Hausgeraet.updateLaeuft(update) || Date() < eiligBis
-            || fehler != nil
+            || ohneVerbindung
     }
+
+    /// Antwortet der Dienst gerade nicht, obwohl der Zugang stimmt? Nur dann gilt der Satz „Gerade
+    /// keine Verbindung“. Ein abgelehnter Zugang (Token widerrufen, Rolle reicht nicht) ist
+    /// etwas anderes: dort hilft Warten nicht, und die Störung muss sagen, was zu tun ist.
+    private var ohneVerbindung: Bool { fehler?.istOhneVerbindung ?? false }
 
     var body: some View {
         Seite {
             // Ohne einen Bericht steht die Störung allein da. Mit einem Bericht bleibt er stehen,
             // und der Satz unter dem Urteil sagt, dass gerade keine Verbindung besteht
-            // (`Geraet.tsx`, `unerreichbar`).
-            if let fehler, geraet == nil {
+            // (`Geraet.tsx`, `unerreichbar`). Das gilt nur für eine fehlende Verbindung: ein
+            // abgelehnter Zugang behält seine Störung mit dem Rat, was zu tun ist, auch über
+            // einem alten Bericht.
+            if let fehler, geraet == nil || !ohneVerbindung {
                 Stoerung(fehler: fehler) { Task { await lade() } }
             }
             if let g = geraet {
@@ -178,7 +185,7 @@ struct HausgeraetSeite: View {
                         .font(Schrift.karte).foregroundStyle(Farbe.text1)
                         .fixedSize(horizontal: false, vertical: true)
                     Text(
-                        fehler != nil
+                        ohneVerbindung
                             ? "Gerade keine Verbindung. Vielleicht startet die API neu; die Seite versucht es weiter."
                             : g.unterstuetzt
                             ? "Bericht des Geräts von \(Formate.hhmm(iso: g.berichtAm))"

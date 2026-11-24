@@ -204,6 +204,18 @@ final class ApiFehlerTests: XCTestCase {
         XCTAssertTrue(f.rat.contains("Zugang"))
     }
 
+    func testOhneVerbindungIstNurWasDasNetzOderDerServerVerschuldet() {
+        // Kein Netz, oder der Dienst startet neu und sein Vorbau meldet 502 oder 503.
+        XCTAssertTrue(ApiFehler.netz("Zeit abgelaufen").istOhneVerbindung)
+        XCTAssertTrue(ApiFehler(code: "http_error", meldung: "Bad Gateway", status: 502).istOhneVerbindung)
+        XCTAssertTrue(ApiFehler(code: "http_error", meldung: "Service Unavailable", status: 503).istOhneVerbindung)
+        // Ein abgelehnter Zugang ist eine Antwort des Dienstes. Die Seite des Hausgeraets darf
+        // dann nicht „Gerade keine Verbindung“ sagen, sondern muss den Rat zeigen.
+        XCTAssertFalse(ApiFehler(code: "unauthorized", meldung: "Kein gültiges API-Token.", status: 401).istOhneVerbindung)
+        XCTAssertFalse(ApiFehler(code: "forbidden", meldung: "Gastzugang: nur Ansicht.", status: 403).istOhneVerbindung)
+        XCTAssertFalse(ApiFehler(code: "not_found", meldung: "Unbekannt.", status: 404).istOhneVerbindung)
+    }
+
     func testEinGastBekommtEinenAnderenRat() {
         let f = ApiFehler(code: "forbidden", meldung: "Gastzugang: nur Ansicht.", status: 403)
         XCTAssertTrue(f.istVerboten)
