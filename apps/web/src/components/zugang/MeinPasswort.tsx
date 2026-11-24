@@ -16,7 +16,7 @@ import { api } from "@/lib/api/client";
  * Wechseln umgehen: entfernen, dann ein neues vergeben. Die Eingabe ist zugleich die Rückfrage.
  */
 
-const FELD = "min-w-[220px] rounded-[3px] border border-line-1 bg-surface-2 px-3 py-2 text-[14px] text-text-1";
+const FELD = "konto-feld";
 
 export function MeinPasswort({
   email,
@@ -76,8 +76,7 @@ export function MeinPasswort({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <span className="kicker" style={{ fontSize: 11 }}>Mein Passwort</span>
+    <div className="flex flex-col gap-3">
       <p className="m-0 text-[14px] leading-[1.6] text-text-2">
         {vorhanden
           ? "Du hast ein Passwort und kannst dich damit an jedem Gerät anmelden."
@@ -108,7 +107,7 @@ export function MeinPasswort({
             <button
               type="submit"
               disabled={laeuft}
-              className="rounded-[3px] border border-line-1 px-4 py-2 text-[14px] text-text-1 disabled:opacity-50"
+              className="zugang-knopf"
             >
               Passwort entfernen
             </button>
@@ -118,7 +117,7 @@ export function MeinPasswort({
                 leeren();
                 setOffen(false);
               }}
-              className="text-[13px] text-text-3 underline decoration-dotted"
+              className="zugang-knopf zugang-knopf-leise"
             >
               abbrechen
             </button>
@@ -173,7 +172,7 @@ export function MeinPasswort({
             <button
               type="submit"
               disabled={laeuft}
-              className="rounded-[3px] border border-line-1 px-4 py-2 text-[14px] text-text-1 disabled:opacity-50"
+              className="zugang-knopf"
             >
               {vorhanden ? "Passwort wechseln" : "Passwort vergeben"}
             </button>
@@ -183,7 +182,7 @@ export function MeinPasswort({
                 leeren();
                 setOffen(false);
               }}
-              className="text-[13px] text-text-3 underline decoration-dotted"
+              className="zugang-knopf zugang-knopf-leise"
             >
               abbrechen
             </button>
@@ -198,7 +197,7 @@ export function MeinPasswort({
               setHinweis(undefined);
               setOffen("setzen");
             }}
-            className="rounded-[3px] border border-line-1 px-4 py-2 text-[14px] text-text-1 disabled:opacity-50"
+            className="zugang-knopf"
           >
             {vorhanden ? "Passwort wechseln" : "Passwort vergeben"}
           </button>
@@ -210,7 +209,7 @@ export function MeinPasswort({
                 setHinweis(undefined);
                 setOffen("entfernen");
               }}
-              className="text-[13px] text-text-3 underline decoration-dotted disabled:opacity-40"
+              className="zugang-knopf zugang-knopf-leise"
             >
               {passkeys === 0 ? "Entfernen geht erst mit einem Passkey" : "Passwort entfernen"}
             </button>

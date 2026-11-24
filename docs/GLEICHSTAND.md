@@ -96,7 +96,7 @@ Abstimmen (`Hauszustand.hatVollzugriff`).
 | Anmeldung mit Passkey | vorhanden | fehlt. Sie braucht die Team-ID des Apple-Entwicklerkontos und die Adresse des Dashboards (`apple-app-site-association`) und lässt sich nur am Gerät prüfen. | `app/anmeldung/passkey.tsx`, `Einrichten.swift` |
 | Einladungslink einlösen | Seite `/anmeldung/einrichten` | bauartbedingt im Browser: Der Link ist eine Adresse des Dashboards. | `app/anmeldung/einrichten/page.tsx` |
 | Personen verwalten und einladen | vorhanden | fehlt | `components/zugang/Personen.tsx` |
-| Eigene Passkeys, eigene Sitzungen, neue Wiederherstellungscodes | vorhanden auf „Mein Zugang“ | fehlt; die App zeigt dort das eigene Passwort und das Abmelden | `components/zugang/MeinZugang.tsx`, `KontoSeite.swift` |
+| Eigene Passkeys, eigene Sitzungen, neue Wiederherstellungscodes | vorhanden auf „Mein Zugang“ | seit dem 24.11.2026 vorhanden: Passkeys umbenennen und löschen, neue Codes, Sitzungen beenden, überall abmelden, dazu dieselbe Kopfkarte. Es fehlt nur das Anlegen eines Passkeys; es braucht dieselbe Zuordnung wie die Anmeldung mit Passkey, und die Seite sagt, dass man ihn im Dashboard anlegt. | `components/zugang/MeinZugang.tsx`, `KontoSeite.swift` |
 | Sitzung in der Liste erkennen | Ein Browser steht dort mit seinem Gerät („iPhone“, „Mac“). | Eine Sitzung der App steht dort als „unbekanntes Gerät“, weil die App keinen sprechenden User-Agent schickt. | `MeinZugang.tsx` (`geraet`), `Zugang.kopfzeilen` |
 
 ## Übersichten (24.11.2026)

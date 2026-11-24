@@ -63,6 +63,7 @@
 		83979A335889D8B32195AD4F /* Geldfarbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35511C5E90815784C780CCA1 /* Geldfarbe.swift */; };
 		86081F4D7F554FABD4D7897D /* Abdeckungskarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E5135A3C960FF18F667327A /* Abdeckungskarte.swift */; };
 		8638A47733CD3ABDE1B1DE1A /* Betragszeile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6990FD9C3BB7F0E9A5390ADC /* Betragszeile.swift */; };
+		8DCEB6D26035229E00E271A5 /* Kontokarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA390538C24AC4A740CA56AE /* Kontokarte.swift */; };
 		8E02B3CE3A582E78FC2AD77A /* Alfredblatt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC43F90A8B6C44BD29E220D /* Alfredblatt.swift */; };
 		8FBB2C0204A565CC8FBADF61 /* DatenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3EE1FD082DC4983DE9FE984 /* DatenSeite.swift */; };
 		92BED5F9FA7987479E09055C /* AnlageSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201BD07AEDBDDA5B2E91E375 /* AnlageSeite.swift */; };
@@ -232,6 +233,7 @@
 		A45F43488CBC3E8169B9B8CD /* NachbetrachtungSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NachbetrachtungSeite.swift; sourceTree = "<group>"; };
 		A5D48D7AA0788028340C51B9 /* Umbruchzeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Umbruchzeile.swift; sourceTree = "<group>"; };
 		A9FB8CAE3A83E44740E4C3C4 /* Regelkreiskarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Regelkreiskarte.swift; sourceTree = "<group>"; };
+		AA390538C24AC4A740CA56AE /* Kontokarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kontokarte.swift; sourceTree = "<group>"; };
 		AAA38BD9FC62B1F89035ABAE /* GeldSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeldSeiten.swift; sourceTree = "<group>"; };
 		AC7469018CE630476024776F /* Unteransichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Unteransichten.swift; sourceTree = "<group>"; };
 		ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReglerSeite.swift; sourceTree = "<group>"; };
@@ -296,6 +298,7 @@
 				35511C5E90815784C780CCA1 /* Geldfarbe.swift */,
 				1663840659D28E699B58FA38 /* Kachelbildzeichnung.swift */,
 				6488CB1E8676677F62FE64F4 /* Kanalzug.swift */,
+				AA390538C24AC4A740CA56AE /* Kontokarte.swift */,
 				7DBF78711330C19ED82AC95D /* Ladebild.swift */,
 				11F4DB48A868B5F7EC0F9E24 /* Ladeente.swift */,
 				D4B9B4C446C5DD90F9A2B947 /* Leiste.swift */,
@@ -689,6 +692,7 @@
 				3382A8C842A14E75F78BE43C /* Kennlinienbilder.swift in Sources */,
 				C57D7F4920028E07AB70536D /* Konsolenkurve.swift in Sources */,
 				3A19B1D3F731B7D7EFEDDE45 /* KontoSeite.swift in Sources */,
+				8DCEB6D26035229E00E271A5 /* Kontokarte.swift in Sources */,
 				F57341AC4A36B0F7A09110EC /* KostenSeite.swift in Sources */,
 				D4F4491E3A060F093073E3B1 /* Kostentreppe.swift in Sources */,
 				08BA2CE15442D3C33FD44C38 /* Ladebild.swift in Sources */,

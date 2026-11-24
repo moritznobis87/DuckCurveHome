@@ -38,7 +38,7 @@ struct MeinPasswortKarte: View {
     private var passkeys: Int { ich?.passkeys.count ?? 0 }
 
     var body: some View {
-        Karte(kicker: Anmeldeworte.ueberschrift) {
+        Kontokarte(art: .passwort) {
             VStack(alignment: .leading, spacing: 12) {
                 if ich == nil, fehler == nil {
                     Ladeente(satz: "Lade den eigenen Zugang.")
@@ -143,16 +143,14 @@ struct MeinPasswortKarte: View {
         }
     }
 
+    /// Rund wie die Knöpfe im Dashboard (`globals.css`, `.zugang-knopf`).
     private func knopfbild(_ wort: String) -> some View {
         Text(wort)
-            .font(Schrift.klein)
+            .font(Schrift.sans(14))
             .foregroundStyle(Farbe.text1)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .overlay(
-                RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
-                    .strokeBorder(Farbe.linie2, lineWidth: 1)
-            )
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .overlay(Capsule().strokeBorder(Farbe.linie2, lineWidth: 1))
     }
 
     private func feld(_ wort: String, _ wert: Binding<String>, art: UITextContentType) -> some View {
