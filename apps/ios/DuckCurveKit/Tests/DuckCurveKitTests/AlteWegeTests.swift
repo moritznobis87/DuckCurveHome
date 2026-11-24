@@ -26,8 +26,9 @@ final class AlteWegeTests: XCTestCase {
         for alt in alteAusDerVorlage {
             XCTAssertNotNil(Bereiche.weiterleitungen[alt], "\(alt) fehlt in der Tabelle der alten Wege")
         }
-        // Elf Paare aus `next.config.ts:18-30` und eines aus der Weiterleitungsseite.
-        XCTAssertEqual(Bereiche.weiterleitungen.count, 12)
+        // Zwölf Paare aus `next.config.ts` und eines aus der Weiterleitungsseite.
+        XCTAssertEqual(Bereiche.weiterleitungen.count, 13)
+        XCTAssertEqual(Bereiche.weiterleitungen["/system/uebersicht"], "/einstellen")
     }
 
     /// `/haus` fehlt mit Absicht - die Vorlage sagt es im Kommentar (`next.config.ts:15-16`).

@@ -112,10 +112,12 @@
 		DDF398D3D35EB0582927AD6B /* IBMPlexSans-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7ADD7B3C58332C88E4C1E7F8 /* IBMPlexSans-SemiBold.otf */; };
 		E13E305715ECAA8F56FA9AA0 /* Sprachhoerer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6B45FF83ECE21C1CE755D2 /* Sprachhoerer.swift */; };
 		E1BA848EC03EE1BA5C793D0E /* WiedergabeSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DB91AB7C211CA4C9681DE3 /* WiedergabeSeite.swift */; };
+		E1ECC97F1D4880D6867C0A70 /* EinstellenSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BBF2D56C0BF2447E7391B4E /* EinstellenSeite.swift */; };
 		E26B292CEE7ED47EAE3A8894 /* KennlinieSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27DFE093B98D4839CAEC9644 /* KennlinieSeite.swift */; };
 		E482DDF65B14F096AC3D0EDD /* Betriebskurven.swift in Sources */ = {isa = PBXBuildFile; fileRef = 950F49693D463B5483196E46 /* Betriebskurven.swift */; };
 		EA238585B29B985B247A88EE /* Heizkurvenbild.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945FA48170730FFF4FAAEBF4 /* Heizkurvenbild.swift */; };
 		EB7278D68E6A4B5E3D2B4F5D /* Pufferspeicher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2CB1649CD728391A247327 /* Pufferspeicher.swift */; };
+		EE48CE2F69B6D5CBB98B06E9 /* Seitenkachel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D2F67128090A81F15F667DE /* Seitenkachel.swift */; };
 		F01A3D3524E63BA7DE6D02B7 /* Typografie.swift in Sources */ = {isa = PBXBuildFile; fileRef = 926698EEDAB57A85461E370A /* Typografie.swift */; };
 		F2315D70178CB51A033F71E7 /* Karte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE935C11F91B3B4788FA2C8 /* Karte.swift */; };
 		F523B5947273EEAB16435973 /* Anlagenbuehne.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15663FB9ABB9A4FD8D1473F3 /* Anlagenbuehne.swift */; };
@@ -137,6 +139,7 @@
 		00F3568AE522C488C204C262 /* Startbrett.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Startbrett.storyboard; sourceTree = "<group>"; };
 		06738C7E03178A104B308ABA /* Ambiente.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ambiente.swift; sourceTree = "<group>"; };
 		0D20AB2C1E398977908BDF1F /* Regelkreisanzeigen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Regelkreisanzeigen.swift; sourceTree = "<group>"; };
+		0D2F67128090A81F15F667DE /* Seitenkachel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Seitenkachel.swift; sourceTree = "<group>"; };
 		0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Waermepumpenbild.swift; sourceTree = "<group>"; };
 		0FCFC923537879FBA15B2A7B /* Reiterzeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reiterzeile.swift; sourceTree = "<group>"; };
 		11F4DB48A868B5F7EC0F9E24 /* Ladeente.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ladeente.swift; sourceTree = "<group>"; };
@@ -200,6 +203,7 @@
 		7679B32D01774CCA129F24A6 /* Ausblickkarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ausblickkarte.swift; sourceTree = "<group>"; };
 		7A347595B312F69C774E01EE /* Schluesselbund.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Schluesselbund.swift; sourceTree = "<group>"; };
 		7ADD7B3C58332C88E4C1E7F8 /* IBMPlexSans-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-SemiBold.otf"; sourceTree = "<group>"; };
+		7BBF2D56C0BF2447E7391B4E /* EinstellenSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EinstellenSeite.swift; sourceTree = "<group>"; };
 		7BEDAA067C7A50BF26BD8730 /* Bereichsuebersicht.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bereichsuebersicht.swift; sourceTree = "<group>"; };
 		7D0518C11F936494CF844C1F /* DuckCurveHomeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuckCurveHomeApp.swift; sourceTree = "<group>"; };
 		7DBF78711330C19ED82AC95D /* Ladebild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ladebild.swift; sourceTree = "<group>"; };
@@ -303,6 +307,7 @@
 				F43EA48A53776915ADD31F7C /* Pultkarte.swift */,
 				5A9EBBEFEC662E299C54E29E /* Rechnungsablage.swift */,
 				9AEE7ED84DB529D334544654 /* Schalterkarte.swift */,
+				0D2F67128090A81F15F667DE /* Seitenkachel.swift */,
 				F6688CD9D80CC8E2505C8770 /* Spaltenreihe.swift */,
 				E02C5C77DB64AB14812F14D2 /* Spannenstreifen.swift */,
 				E991E3B3F7D2D7BB3C05EE93 /* Speicherpruefkarte.swift */,
@@ -545,6 +550,7 @@
 				7E4EF8E069C777E57D778A83 /* Technik */,
 				7BEDAA067C7A50BF26BD8730 /* Bereichsuebersicht.swift */,
 				D30DAA240E8C7E2CE0D0D58B /* Bericht.swift */,
+				7BBF2D56C0BF2447E7391B4E /* EinstellenSeite.swift */,
 				575EDA5EDA7F6BEF9D65D032 /* KontoSeite.swift */,
 			);
 			path = Seiten;
@@ -655,6 +661,7 @@
 				BA80D620296C3F558A781A8A /* Dock.swift in Sources */,
 				3E30EAB4C6F63E5AD9D2F86C /* DuckCurveHomeApp.swift in Sources */,
 				C43C83AB55DE4450DB127E05 /* Einrichten.swift in Sources */,
+				E1ECC97F1D4880D6867C0A70 /* EinstellenSeite.swift in Sources */,
 				512F02FA33052F129D25DBD5 /* Energiefluss.swift in Sources */,
 				0DAA63F1E91CB9DBF73F8285 /* FahrplanSeite.swift in Sources */,
 				4E765D4786033C74B93D66B6 /* Fahrplanzeichnung.swift in Sources */,
@@ -714,6 +721,7 @@
 				1D59B9232C5BB1FFA8750A3A /* Reiterzeile.swift in Sources */,
 				BFC01C83721892608D7631E9 /* Schalterkarte.swift in Sources */,
 				11B372029B73A0C0A76B506E /* Schluesselbund.swift in Sources */,
+				EE48CE2F69B6D5CBB98B06E9 /* Seitenkachel.swift in Sources */,
 				FDC1EC6D16D2BB418720477D /* Seitenwahl.swift in Sources */,
 				3E972660B413B9444BFD044F /* Spaltenreihe.swift in Sources */,
 				258141E958D0A8A3F7E14DF0 /* Spannenstreifen.swift in Sources */,

@@ -239,6 +239,11 @@ public struct Einzelseite: Sendable, Hashable, Identifiable {
 }
 
 public enum Bereiche {
+    /// Die Adresse von „Einstellen“, hinter dem Zahnrad.
+    public static let einstellenweg = "/einstellen"
+    /// Die Zeile über „Einstellen“, derselbe Wortlaut wie im Dashboard.
+    public static let einstellenkicker = "was von Hand gestellt ist · eingreifen · vorgeben · abstimmen"
+
     /// Die Adresse des eigenen Zugangs.
     public static let kontoweg = "/konto"
 
@@ -387,14 +392,14 @@ public enum Bereiche {
                     beschreibung: "Die Einstellungen am Regler der Wärmepumpe, über den Bus gelesen."),
             ]
         ),
-        // Die Verwaltung: selten gebraucht und nur vom Hausherrn. Hinter dem Zahnrad, nicht in
-        // der Leiste.
+        // Einstellen und die Verwaltung: hinter dem Zahnrad, nicht in der Leiste.
         Bereich(
-            // Auch das System geht auf seiner Uebersicht auf (Vorgabe des Hausherrn vom
-            // 24.11.2026). Sie steht unter `/system/uebersicht`, weil `/system` die Adresse der
-            // Prognose ist und bleibt.
-            schluessel: .system, weg: "/system/uebersicht", zeichen: .zahnrad, name: "System",
-            nurHausherr: true, inLeiste: false,
+            // Das Zahnrad öffnet „Einstellen“ (Entscheidung des Hausherrn vom 24.11.2026): oben,
+            // was gerade von Hand gestellt ist, dann die Einstellungen in drei Stufen, zuletzt
+            // die Seiten des Systems. Der Bereich ist offen für jeden, der im Haus stellen darf;
+            // die Systemseiten bleiben dem Hausherrn. `/system/uebersicht` leitet hierher weiter.
+            schluessel: .system, weg: Bereiche.einstellenweg, zeichen: .zahnrad, name: "Einstellen",
+            nurHausherr: false, inLeiste: false,
             reiter: [
                 Reiter(weg: "/system/mitteilungen", name: "Mitteilungen", zeichen: .glocke, farbe: .ruhig, nurHausherr: true,
                     kicker: "Was aufs Handy kommt: Störungen und das Morning Briefing",  // `system/mitteilungen/page.tsx:12`
@@ -450,6 +455,9 @@ public enum Bereiche {
     public static func kicker(fuer weg: String) -> String? {
         // Eine Seite außerhalb der Bereiche trägt ihre Zeile selbst.
         if let einzeln = einzelseite(weg) { return einzeln.kicker }
+        // „Einstellen“ ist die Übersicht des Systems, aber keine Sammlung von Karten; sie trägt
+        // die Zeile ihrer Seite im Dashboard (`app/einstellen/page.tsx`).
+        if saeubere(weg) == einstellenweg { return einstellenkicker }
         let bereich = bereichVon(weg)
         let reiter = reiterVon(bereich, weg)
         // Die Uebersicht eines Bereichs ist kein Reiter und hat trotzdem eine Zeile.
@@ -605,6 +613,8 @@ public enum Bereiche {
         "/prognose": "/system",
         "/daten": "/system/daten",
         "/settings": "/system/zugang",
+        // Das Zahnrad öffnet seit dem 24.11.2026 „Einstellen“; die Systemseiten stehen dort.
+        "/system/uebersicht": Bereiche.einstellenweg,
         // Die Bilanz ist in der Wärmeübersicht aufgegangen (10.11.2026). Bis dahin standen
         // „Erzeuger“ und „Bilanz“ nebeneinander und nannten für denselben Tag verschiedene
         // Zahlen - 24,5 kWh Wärme und Arbeitszahl 2,90 auf der einen, 20,4 kWh und 2,41 auf der
@@ -663,5 +673,82 @@ public enum Bereiche {
         var s = weg.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? ""
         while s.count > 1, s.hasSuffix("/") { s.removeLast() }
         return s.isEmpty ? "/" : s
+    }
+}
+
+// =====================================================================================
+//  Einstellen: die drei Stufen und der Katalog
+// =====================================================================================
+
+/// Eine Stufe der Seite „Einstellen“, von leicht nach schwer (`docs/seitenbaum.json`, `stufen`).
+public struct Stufe: Sendable, Hashable, Identifiable {
+    public let schluessel: String
+    public let name: String
+    public let wort: String
+    public let nurHausherr: Bool
+    public var id: String { schluessel }
+
+    public init(schluessel: String, name: String, wort: String, nurHausherr: Bool) {
+        self.schluessel = schluessel
+        self.name = name
+        self.wort = wort
+        self.nurHausherr = nurHausherr
+    }
+}
+
+/// Eine Einstellung im Katalog der Seite „Einstellen“ (`docs/seitenbaum.json`,
+/// `einstellungen`). Sie bleibt bei ihrem Gegenstand; hier steht nur, wo man sie findet.
+public struct Einstellung: Sendable, Hashable, Identifiable {
+    public let name: String
+    public let stufe: String
+    public let weg: String
+    public let stichworte: [String]
+    public var id: String { name }
+
+    public init(name: String, stufe: String, weg: String, stichworte: [String]) {
+        self.name = name
+        self.stufe = stufe
+        self.weg = weg
+        self.stichworte = stichworte
+    }
+}
+
+extension Bereiche {
+    /// Die drei Stufen, wie im Dashboard (`areas.ts`, `STUFEN`).
+    public static let stufen: [Stufe] = [
+        Stufe(schluessel: "eingreifen", name: "Eingreifen", wort: "jetzt und befristet", nurHausherr: false),
+        Stufe(schluessel: "vorgeben", name: "Vorgeben", wort: "dauerhaft", nurHausherr: false),
+        Stufe(schluessel: "abstimmen", name: "Abstimmen", wort: "womit die Regelung rechnet", nurHausherr: true),
+    ]
+
+    /// Der Katalog, wie im Dashboard (`areas.ts`, `EINSTELLUNGEN`).
+    public static let einstellungen: [Einstellung] = [
+        Einstellung(name: "Wärmepumpe anfordern oder sperren", stufe: "eingreifen", weg: "/", stichworte: ["Wärmepumpe", "Kontakt", "sperren", "anfordern"]),
+        Einstellung(name: "Ofen an oder aus", stufe: "eingreifen", weg: "/", stichworte: ["Ofen", "Pelletofen", "Pellets"]),
+        Einstellung(name: "Speicher anhalten oder freigeben", stufe: "eingreifen", weg: "/strom/speicher", stichworte: ["Speicher", "Batterie", "Libbi"]),
+        Einstellung(name: "Alarmanlage scharf schalten", stufe: "eingreifen", weg: "/", stichworte: ["Alarm", "Alarmanlage", "scharf"]),
+        Einstellung(name: "Solltemperatur eines Raums", stufe: "vorgeben", weg: "/haus", stichworte: ["Raum", "Temperatur", "Sollwert", "Heizung"]),
+        Einstellung(name: "Raum-Automatik", stufe: "vorgeben", weg: "/haus", stichworte: ["Automatik", "Räume", "Vorheizen"]),
+        Einstellung(name: "Untergrenze des Speichers", stufe: "vorgeben", weg: "/strom/speicher", stichworte: ["Speicher", "Reserve", "Untergrenze"]),
+        Einstellung(name: "Mitteilungen und Morgenbrief", stufe: "vorgeben", weg: "/system/mitteilungen", stichworte: ["Mitteilungen", "Push", "Morgenbrief"]),
+        Einstellung(name: "Annahmen der Wärmerechnung", stufe: "abstimmen", weg: "/waerme/annahmen", stichworte: ["Annahmen", "Wärmebedarf", "Haus", "Modell"]),
+        Einstellung(name: "Parameter des Regelkreises", stufe: "abstimmen", weg: "/waerme/regelkreis", stichworte: ["Regelkreis", "Parameter", "Übersteuern"]),
+        Einstellung(name: "Regler der Wärmepumpe", stufe: "abstimmen", weg: "/waerme/waermepumpe/regler", stichworte: ["Regler", "Heizkurve", "Vorlauf", "Wärmepumpe"]),
+    ]
+
+    /// Die Einstellungen einer Stufe, die dieser Betrachter sehen darf.
+    public static func einstellungen(derStufe stufe: String, hausherr: Bool) -> [Einstellung] {
+        einstellungen.filter { $0.stufe == stufe && (hausherr || !nurHausherr($0.weg)) }
+    }
+
+    /// Die Einstellungen, die zu einer Suche passen: im Namen oder in einem Stichwort, ohne
+    /// Rücksicht auf Groß- und Kleinschreibung. Dieselbe Regel wie im Dashboard
+    /// (`areas.ts`, `sucheEinstellungen`).
+    public static func suche(_ text: String, hausherr: Bool) -> [Einstellung] {
+        let s = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !s.isEmpty else { return [] }
+        return einstellungen
+            .filter { hausherr || !nurHausherr($0.weg) }
+            .filter { e in ([e.name] + e.stichworte).contains { $0.lowercased().contains(s) } }
     }
 }

@@ -15,6 +15,22 @@ final class SeitenbaumTests: XCTestCase {
     private struct Datei: Decodable, Equatable {
         let bereiche: [Bereichszeile]
         let einzelseiten: [Einzelzeile]
+        let stufen: [Stufenzeile]
+        let einstellungen: [Einstellzeile]
+    }
+
+    private struct Stufenzeile: Decodable, Equatable {
+        let schluessel: String
+        let name: String
+        let wort: String
+        let nurHausherr: Bool
+    }
+
+    private struct Einstellzeile: Decodable, Equatable {
+        let name: String
+        let stufe: String
+        let weg: String
+        let stichworte: [String]
     }
 
     /// Eine Seite außerhalb der Bereiche, wie die gemeinsame Datei sie schreibt.
@@ -110,6 +126,35 @@ final class SeitenbaumTests: XCTestCase {
                 XCTAssertNotNil(Seitenfarbe(rawValue: reiter.farbe), "\(reiter.weg): \(reiter.farbe)")
             }
         }
+    }
+
+    /// „Einstellen“ kennt dieselben Stufen und denselben Katalog wie das Dashboard.
+    func testStufenUndEinstellungenStimmenMitDerGemeinsamenDateiUeberein() throws {
+        let datei = try gemeinsameDatei()
+        XCTAssertEqual(
+            Bereiche.stufen.map {
+                Stufenzeile(schluessel: $0.schluessel, name: $0.name, wort: $0.wort, nurHausherr: $0.nurHausherr)
+            },
+            datei.stufen)
+        XCTAssertEqual(
+            Bereiche.einstellungen.map {
+                Einstellzeile(name: $0.name, stufe: $0.stufe, weg: $0.weg, stichworte: $0.stichworte)
+            },
+            datei.einstellungen)
+        // Jede Einstellung führt auf eine Seite, die die App kennt.
+        for e in Bereiche.einstellungen {
+            XCTAssertTrue(Bereiche.alleWege.contains(e.weg), e.weg)
+        }
+    }
+
+    /// Die Suche wie im Dashboard (`seitenbaum.test.ts`): Stichwort, leere Eingabe, und keine
+    /// Akte für den Bewohner.
+    func testDieSucheFindetUnterEinemStichwort() {
+        XCTAssertEqual(Bereiche.suche("heizkurve", hausherr: true).map(\.name), ["Regler der Wärmepumpe"])
+        XCTAssertEqual(Bereiche.suche("  ", hausherr: true), [])
+        XCTAssertEqual(Bereiche.suche("morgenbrief", hausherr: true).count, 1)
+        XCTAssertEqual(Bereiche.suche("morgenbrief", hausherr: false), [])
+        XCTAssertEqual(Bereiche.suche("speicher", hausherr: false).map(\.weg), ["/strom/speicher", "/strom/speicher"])
     }
 
     /// Die Leitzahl zerfällt am letzten Leerzeichen in Zahl und Einheit, wie im Dashboard

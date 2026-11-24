@@ -4,7 +4,7 @@ import { AREAS, LEISTE, ansichtOf, areaOf, hatUebersicht, tabOf, tabsDerGruppe }
 describe("Bereiche", () => {
   it("hat fuenf Bereiche in der Leiste und das System dahinter", () => {
     expect(LEISTE.map((a) => a.label)).toEqual(["Jetzt", "Haus", "Energie", "Geld", "Anlage"]);
-    expect(AREAS.filter((a) => a.leiste === false).map((a) => a.label)).toEqual(["System"]);
+    expect(AREAS.filter((a) => a.leiste === false).map((a) => a.label)).toEqual(["Einstellen"]);
   });
 
   it("ordnet einen Pfad seinem Bereich zu, die Startseite ist Jetzt", () => {
@@ -43,8 +43,10 @@ describe("Bereiche", () => {
     expect(areaOf("/haus").tabs.map((t) => t.label)).toEqual(["Räume", "Über den Tag"]);
   });
 
-  it("zeigt einem Gast die Anlage ohne Regelkreis und Annahmen, und das System gar nicht", () => {
-    expect(AREAS.filter((a) => a.ownerOnly).map((a) => a.key)).toEqual(["system"]);
+  it("zeigt einem Gast die Anlage ohne Regelkreis und Annahmen, und keine Seite des Systems", () => {
+    // Seit dem 24.11.2026 ist kein ganzer Bereich mehr dem Hausherrn vorbehalten: „Einstellen“
+    // sieht jeder, der im Haus stellen darf. Die Seiten des Systems bleiben dem Hausherrn.
+    expect(AREAS.filter((a) => a.ownerOnly).map((a) => a.key)).toEqual([]);
     const anlage = AREAS.find((a) => a.key === "anlage")!;
     expect(anlage.tabs.filter((t) => !t.ownerOnly).map((t) => t.label)).toEqual(["Anlage", "Wärmepumpe", "Fahrplan", "Wirkung", "Regler"]);
     const system = AREAS.find((a) => a.key === "system")!;
@@ -109,13 +111,14 @@ describe("Bereiche", () => {
     expect(AREAS.filter(hatUebersicht).map((a) => [a.key, a.href])).toEqual([
       ["energie", "/energie"],
       ["anlage", "/anlage"],
-      ["system", "/system/uebersicht"],
+      ["system", "/einstellen"],
     ]);
-    // `/system` selbst bleibt die Prognose im Bereich Energie; die Uebersicht des Systems liegt
-    // darunter und gehoert trotzdem zum System, weil die laengste passende Adresse gilt.
+    // `/system` selbst bleibt die Prognose im Bereich Energie. Die Übersicht des Systems ist
+    // seit dem 24.11.2026 „Einstellen“; die Systemseiten gehören weiter zu diesem Bereich.
     expect(areaOf("/system").key).toBe("energie");
-    expect(areaOf("/system/uebersicht").key).toBe("system");
-    expect(tabOf(areaOf("/system/uebersicht"), "/system/uebersicht")).toBeUndefined();
+    expect(areaOf("/einstellen").key).toBe("system");
+    expect(areaOf("/system/zugang").key).toBe("system");
+    expect(tabOf(areaOf("/einstellen"), "/einstellen")).toBeUndefined();
     // Die Startseite hat keine Reiter und damit auch keine Uebersicht.
     expect(hatUebersicht(AREAS.find((a) => a.key === "jetzt")!)).toBe(false);
     // Die Karte auf der Uebersicht braucht je Seite einen Satz.

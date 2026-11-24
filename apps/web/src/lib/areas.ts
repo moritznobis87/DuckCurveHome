@@ -207,12 +207,13 @@ export const AREAS: Area[] = [
   },
   {
     key: "system",
-    // Auch das System geht auf seiner Übersicht auf (Vorgabe des Hausherrn vom 24.11.2026). Sie
-    // steht unter `/system/uebersicht`, weil `/system` die Adresse der Prognose ist und bleibt.
-    href: "/system/uebersicht",
+    // Das Zahnrad öffnet „Einstellen“ (Entscheidung des Hausherrn vom 24.11.2026): oben, was
+    // gerade von Hand gestellt ist, dann die Einstellungen in drei Stufen, zuletzt die Seiten des
+    // Systems. Der Bereich ist offen für jeden, der im Haus stellen darf; die Systemseiten selbst
+    // bleiben dem Hausherrn. Die alte Adresse `/system/uebersicht` leitet hierher weiter.
+    href: "/einstellen",
     icon: "gear",
-    label: "System",
-    ownerOnly: true,
+    label: "Einstellen",
     leiste: false,
     tabs: [
       { href: "/system/mitteilungen", label: "Mitteilungen", icon: "bell", farbe: "ruhig", ownerOnly: true, beschreibung: "Welche Geräte Mitteilungen bekommen und was im Morgenbrief steht." },
@@ -247,6 +248,63 @@ export interface Einzelseite {
 export const EINZELSEITEN: Einzelseite[] = [
   { href: "/konto", label: "Mein Zugang", icon: "person", beschreibung: "Passkeys, Passwort und Sitzungen des eigenen Zugangs." },
 ];
+
+/** Eine Stufe der Seite „Einstellen“: von leicht nach schwer (`docs/seitenbaum.json`, `stufen`). */
+export interface Stufe {
+  schluessel: "eingreifen" | "vorgeben" | "abstimmen";
+  name: string;
+  wort: string;
+  nurHausherr: boolean;
+}
+
+export const STUFEN: Stufe[] = [
+  { schluessel: "eingreifen", name: "Eingreifen", wort: "jetzt und befristet", nurHausherr: false },
+  { schluessel: "vorgeben", name: "Vorgeben", wort: "dauerhaft", nurHausherr: false },
+  { schluessel: "abstimmen", name: "Abstimmen", wort: "womit die Regelung rechnet", nurHausherr: true },
+];
+
+/**
+ * Eine Einstellung im Katalog der Seite „Einstellen“. Sie bleibt bei ihrem Gegenstand; hier
+ * steht nur, wo man sie findet, damit die Suche sie auch unter einem anderen Wort findet.
+ */
+export interface Einstellung {
+  name: string;
+  stufe: Stufe["schluessel"];
+  weg: string;
+  stichworte: string[];
+}
+
+export const EINSTELLUNGEN: Einstellung[] = [
+  { name: "Wärmepumpe anfordern oder sperren", stufe: "eingreifen", weg: "/", stichworte: ["Wärmepumpe", "Kontakt", "sperren", "anfordern"] },
+  { name: "Ofen an oder aus", stufe: "eingreifen", weg: "/", stichworte: ["Ofen", "Pelletofen", "Pellets"] },
+  { name: "Speicher anhalten oder freigeben", stufe: "eingreifen", weg: "/strom/speicher", stichworte: ["Speicher", "Batterie", "Libbi"] },
+  { name: "Alarmanlage scharf schalten", stufe: "eingreifen", weg: "/", stichworte: ["Alarm", "Alarmanlage", "scharf"] },
+  { name: "Solltemperatur eines Raums", stufe: "vorgeben", weg: "/haus", stichworte: ["Raum", "Temperatur", "Sollwert", "Heizung"] },
+  { name: "Raum-Automatik", stufe: "vorgeben", weg: "/haus", stichworte: ["Automatik", "Räume", "Vorheizen"] },
+  { name: "Untergrenze des Speichers", stufe: "vorgeben", weg: "/strom/speicher", stichworte: ["Speicher", "Reserve", "Untergrenze"] },
+  { name: "Mitteilungen und Morgenbrief", stufe: "vorgeben", weg: "/system/mitteilungen", stichworte: ["Mitteilungen", "Push", "Morgenbrief"] },
+  { name: "Annahmen der Wärmerechnung", stufe: "abstimmen", weg: "/waerme/annahmen", stichworte: ["Annahmen", "Wärmebedarf", "Haus", "Modell"] },
+  { name: "Parameter des Regelkreises", stufe: "abstimmen", weg: "/waerme/regelkreis", stichworte: ["Regelkreis", "Parameter", "Übersteuern"] },
+  { name: "Regler der Wärmepumpe", stufe: "abstimmen", weg: "/waerme/waermepumpe/regler", stichworte: ["Regler", "Heizkurve", "Vorlauf", "Wärmepumpe"] },
+];
+
+/** Ob eine Adresse nur dem Hausherrn gehört: ihr Reiter ist es, oder ihr ganzer Bereich. */
+export function nurHausherr(weg: string): boolean {
+  const area = areaOf(weg);
+  const tab = tabOf(area, weg);
+  return area.ownerOnly === true || tab?.ownerOnly === true;
+}
+
+/**
+ * Die Einstellungen, die zu einer Suche passen: im Namen oder in einem Stichwort, ohne Rücksicht
+ * auf Groß- und Kleinschreibung. Dieselbe Regel steht in der App (`Bereiche.suche`).
+ */
+export function sucheEinstellungen(text: string, hausherr: boolean): Einstellung[] {
+  const s = text.trim().toLocaleLowerCase("de-DE");
+  return EINSTELLUNGEN.filter((e) => hausherr || !nurHausherr(e.weg)).filter(
+    (e) => s.length > 0 && [e.name, ...e.stichworte].some((w) => w.toLocaleLowerCase("de-DE").includes(s)),
+  );
+}
 
 /** Die Einzelseite zu einem Pfad, wenn er auf einer steht. */
 export function einzelseiteOf(pathname: string): Einzelseite | undefined {

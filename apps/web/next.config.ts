@@ -27,6 +27,8 @@ const nextConfig: NextConfig = {
       ["/prognose", "/system"],
       ["/daten", "/system/daten"],
       ["/settings", "/system/zugang"],
+      // Das Zahnrad öffnet seit dem 24.11.2026 „Einstellen“; die Systemseiten stehen dort.
+      ["/system/uebersicht", "/einstellen"],
     ];
     return alt.map(([source, destination]) => ({ source, destination, permanent: true }));
   },

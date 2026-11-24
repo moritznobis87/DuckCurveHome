@@ -1,3 +1,4 @@
+import type { AutomatikZurueck, Handeingriffe } from "./models";
 import type { Ausweis, Einladung, Ich, Passkey, Person, PersonAendern, PersonAnlegen, Zeremonie,
   Regelkreis, ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung, Uebersicht,
   House, Betrieb, BetriebRoh, ReglerEinstellungen, ReglerStellen, ReglerStellenRoh, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
@@ -177,6 +178,10 @@ export const api = {
   // Nur schaerfen. Einen Weg zum Entschaerfen gibt es nicht, und das ist Absicht.
   armAlarm: (mode: "home" | "away") =>
     request<AlarmArmResult>("/control/alarm/arm", { method: "POST", body: JSON.stringify({ mode }) }),
+  /** Was gerade von Hand gestellt ist, für die Seite „Einstellen“. */
+  handeingriffe: () => request<Handeingriffe>("/control/handeingriffe"),
+  /** Alles zurück auf Automatik: beendet die befristeten Eingriffe. */
+  automatikZurueck: () => request<AutomatikZurueck>("/control/automatik", { method: "POST" }),
   setStoveMode: (cmd: StoveModeIn) =>
     request<StoveLive>("/control/stove/mode", { method: "POST", body: JSON.stringify(cmd) }),
   tibberInvoices: () => request<InvoiceSummary[]>("/import/tibber-invoices"),

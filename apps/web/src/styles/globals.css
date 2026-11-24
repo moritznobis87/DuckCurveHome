@@ -1345,3 +1345,27 @@ button.ansicht { cursor: pointer; }
 .rk-verlauf-start { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 4 3; }
 .rk-verlauf-punkt { fill: var(--amber); stroke: var(--surface-1); stroke-width: 1.2; }
 .rk-verlauf { margin-top: 10px; }
+
+/* „Einstellen“ hinter dem Zahnrad (24.11.2026): Suche, was von Hand gestellt ist, drei Stufen,
+   die Seiten des Systems. Die Abschnitte tragen dieselben Köpfe wie die Gruppen der Übersichten. */
+.einstellen { display: flex; flex-direction: column; gap: 26px; max-width: 980px; padding-top: 6px; }
+.einstellen-suche input { width: 100%; padding: 12px 14px; border: 1px solid var(--line-1); border-radius: var(--radius-3); background: var(--surface-1); color: var(--text-1); font-size: 15px; }
+.einstellen-suche input::placeholder { color: var(--text-3); }
+.einstellen-suche input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.einstellen-abschnitt { display: flex; flex-direction: column; gap: 12px; }
+.einstellen-stufen { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 26px 28px; align-items: start; }
+.einstellen-liste { display: flex; flex-direction: column; border: 1px solid var(--line-1); border-radius: var(--radius-3); background: var(--surface-1); overflow: hidden; }
+.einstellen-zeile { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; color: var(--text-1); font-size: 15px; text-decoration: none; border-top: 1px solid var(--line-1); }
+.einstellen-zeile:first-child { border-top: 0; }
+.einstellen-zeile:hover { background: var(--surface-2); }
+.einstellen-pfeil { color: var(--text-3); font-size: 18px; line-height: 1; }
+.einstellen-hinweis { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-3); }
+.einstellen-leise { font-size: 13px; color: var(--text-3); }
+.einstellen-eingriffe { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.einstellen-eingriff { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid rgba(255, 215, 120, 0.4); border-radius: var(--radius-3); background: var(--surface-1); color: var(--text-1); font-size: 14.5px; line-height: 1.4; text-decoration: none; }
+.einstellen-eingriff-zeichen { display: flex; flex-shrink: 0; height: 30px; width: 30px; align-items: center; justify-content: center; border-radius: 8px; color: var(--amber-soft); background: rgba(255, 215, 120, 0.12); }
+.einstellen-knopf { align-self: flex-start; padding: 10px 16px; border: 1px solid var(--line-2); border-radius: var(--radius-3); background: transparent; color: var(--text-1); font-size: 14px; }
+.einstellen-knopf-an { border-color: var(--amber); background: var(--amber); color: var(--deep); font-weight: 600; }
+.einstellen-knopf:disabled { opacity: 0.5; }
+.einstellen-rueckfrage { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--amber); border-radius: var(--radius-3); background: var(--surface-1); font-size: 14px; color: var(--text-1); }
+.einstellen-rueckfrage ul { margin: 0; padding-left: 18px; color: var(--text-2); }

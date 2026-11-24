@@ -12,6 +12,12 @@ export interface Sitzung {
   hausherr: boolean;
   /** Ist als Person angemeldet und hat damit einen eigenen Zugang (`/konto`). */
   person: boolean;
+  /**
+   * Die Antwort des Dienstes ist da. Vorher gilt der Hausherr (siehe unten); wer etwas nur dem
+   * Hausherrn *zeigt* und dafür Daten holt, wartet darauf, statt sie für einen Bewohner kurz
+   * aufzublenden.
+   */
+  bekannt: boolean;
 }
 
 /**
@@ -25,7 +31,12 @@ export interface Sitzung {
  * zeigte einem Bewohner das Zahnrad und die Seiten des Hausherrn, die ihn dann zurückwarfen.
  */
 export function useSitzung(): Sitzung {
-  const [sitzung, setSitzung] = useState<Sitzung>({ role: "owner", hausherr: true, person: false });
+  const [sitzung, setSitzung] = useState<Sitzung>({
+    role: "owner",
+    hausherr: true,
+    person: false,
+    bekannt: false,
+  });
   useEffect(() => {
     let cancelled = false;
     const ask = () => {
@@ -39,6 +50,7 @@ export function useSitzung(): Sitzung {
             // was `role` sagt.
             hausherr: d.art == null ? d.role === "owner" : d.rolle === "hausherr",
             person: d.art === "person",
+            bekannt: true,
           });
         })
         .catch(() => undefined);

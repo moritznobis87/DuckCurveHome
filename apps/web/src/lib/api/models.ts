@@ -196,3 +196,8 @@ export type Sitzung = S["SitzungOut"];
 export type Ich = S["IchOut"];
 export type ZugangZustand = S["ZugangZustandOut"];
 export type Zeremonie = S["ZeremonieOut"];
+
+/** Was gerade von Hand gestellt ist (Seite „Einstellen“). */
+export type Handeingriffe = S["HandeingriffeOut"];
+export type Handeingriff = S["HandeingriffOut"];
+export type AutomatikZurueck = S["AutomatikZurueckOut"];

@@ -518,6 +518,18 @@ public struct Api: Sendable {
         try await hole("/push/morgenbrief/senden", verfahren: "POST")
     }
 
+    // MARK: - Einstellen
+
+    /// Was gerade von Hand gestellt ist (`GET /control/handeingriffe`).
+    public func handeingriffe() async throws -> HandeingriffeOut {
+        try await hole("/control/handeingriffe")
+    }
+
+    /// Alles zurück auf Automatik (`POST /control/automatik`).
+    public func automatikZurueck() async throws -> AutomatikZurueckOut {
+        try await hole("/control/automatik", verfahren: "POST")
+    }
+
     // MARK: - Anmeldung und eigenes Passwort
 
     /// Was die Anmeldung wissen muss, bevor jemand angemeldet ist: ob der Dienst Personen kennt
