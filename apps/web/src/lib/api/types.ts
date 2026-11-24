@@ -110,6 +110,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/anmeldung/passwort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mit Passwort anmelden
+         * @description Der zweite Weg herein, für Leute ohne Passkey: E-Mail-Adresse und Passwort.
+         *
+         *     Abgelehnt wird immer mit demselben Text, gleich ob die Adresse unbekannt ist, das Passwort
+         *     nicht stimmt, die Person abgeschaltet ist oder die Bremse greift.
+         */
+        post: operations["anmeldung_passwort_api_v1_auth_anmeldung_passwort_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/wiederherstellung": {
         parameters: {
             query?: never;
@@ -188,6 +211,29 @@ export interface paths {
          *     **einmal** im Klartext hinaus, hier; danach liegen nur ihre Hashes.
          */
         post: operations["einladung_passkey_abschliessen_api_v1_auth_einladung_passkey_abschliessen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/einladung/passwort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passwort über den Link vergeben
+         * @description Vergibt das Passwort, löst den Link ein und meldet an.
+         *
+         *     Wie beim Passkey über den Link kommen zehn frische Wiederherstellungscodes zurück, einmal
+         *     im Klartext; die alten gelten nicht mehr.
+         */
+        post: operations["einladung_passwort_api_v1_auth_einladung_passwort_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -334,6 +380,48 @@ export interface paths {
          *     Link des Hausherrn herein.
          */
         post: operations["passkey_loeschen_api_v1_auth_passkeys__passkey_id__loeschen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passwort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passwort vergeben oder wechseln
+         * @description Vergibt das eigene Passwort oder wechselt es. Wer schon eines hat, nennt das bisherige.
+         *
+         *     Danach enden alle anderen Sitzungen dieser Person; die eigene bleibt.
+         */
+        post: operations["passwort_setzen_api_v1_auth_passwort_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/passwort/loeschen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passwort entfernen
+         * @description Nimmt das Passwort weg. Nur mit mindestens einem Passkey, sonst bliebe kein Weg herein.
+         */
+        post: operations["passwort_loeschen_api_v1_auth_passwort_loeschen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3649,7 +3737,7 @@ export interface components {
         };
         /**
          * EinladungPersonOut
-         * @description Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist.
+         * @description Für die Seite hinter dem Link: zu wem er gehört und welche Wege herein es schon gibt.
          */
         EinladungPersonOut: {
             /** Email */
@@ -3669,6 +3757,11 @@ export interface components {
              * @default 0
              */
             passkeys: number;
+            /**
+             * Passwort
+             * @default false
+             */
+            passwort: boolean;
         };
         /** EnergyBucketOut */
         EnergyBucketOut: {
@@ -5701,6 +5794,11 @@ export interface components {
              * @default 0
              */
             codes_offen: number;
+            /**
+             * Passwort
+             * @default false
+             */
+            passwort: boolean;
         };
         /** ImportResult */
         ImportResult: {
@@ -6718,6 +6816,36 @@ export interface components {
             /** Zuletzt Benutzt Am */
             zuletzt_benutzt_am?: string | null;
         };
+        /** PasswortAnmeldenIn */
+        PasswortAnmeldenIn: {
+            /** Email */
+            email: string;
+            /** Passwort */
+            passwort: string;
+        };
+        /**
+         * PasswortSetzenIn
+         * @description Das eigene Passwort vergeben oder wechseln.
+         */
+        PasswortSetzenIn: {
+            /** Neu */
+            neu: string;
+            /**
+             * Bisher
+             * @default
+             */
+            bisher: string;
+        };
+        /**
+         * PasswortUeberLinkIn
+         * @description Das Passwort hinter dem Einladungslink vergeben.
+         */
+        PasswortUeberLinkIn: {
+            /** Token */
+            token: string;
+            /** Passwort */
+            passwort: string;
+        };
         /** PersonAendernIn */
         PersonAendernIn: {
             /** Rolle */
@@ -6781,6 +6909,11 @@ export interface components {
              * @default 0
              */
             passkeys: number;
+            /**
+             * Passwort
+             * @default false
+             */
+            passwort: boolean;
             /**
              * Codes Offen
              * @default 0
@@ -9110,6 +9243,11 @@ export interface components {
              */
             rp_id: string;
             versand?: components["schemas"]["VersandOut"];
+            /**
+             * Passwort Mindestlaenge
+             * @default 12
+             */
+            passwort_mindestlaenge: number;
         };
         /** Zuordnungsergebnis */
         Zuordnungsergebnis: {
@@ -9261,6 +9399,39 @@ export interface operations {
             };
         };
     };
+    anmeldung_passwort_api_v1_auth_anmeldung_passwort_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswortAnmeldenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AngemeldetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wiederherstellung_api_v1_auth_wiederherstellung_post: {
         parameters: {
             query?: never;
@@ -9368,6 +9539,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PasskeyAbschliessenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AngemeldetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einladung_passwort_api_v1_auth_einladung_passwort_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswortUeberLinkIn"];
             };
         };
         responses: {
@@ -9607,6 +9811,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    passwort_setzen_api_v1_auth_passwort_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswortSetzenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    passwort_loeschen_api_v1_auth_passwort_loeschen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
                 };
             };
         };

@@ -535,13 +535,14 @@ class GeraetMesswert(Base):
 class Person(Base):
     """Ein Mensch mit Zugang zu diesem Haus.
 
-    **Kein Passwort.** Angemeldet wird mit Passkey; der Rückweg sind zehn
-    Wiederherstellungscodes (nur als Hash abgelegt) und ein Einladungslink des
-    Hausherrn. Damit entfällt alles, was ein Passwort nach sich zieht: Argon2id,
-    Mindestlängen, Wechselzwang, ein zweiter Faktor daneben. Ein Passkey mit
-    verlangter Nutzerprüfung ist Besitz und Merkmal zugleich.
+    **Passkey oder Passwort.** Der Passkey ist der empfohlene Weg: ein Passkey mit verlangter
+    Nutzerprüfung ist Besitz und Merkmal zugleich. Seit dem 24.11.2026 kann eine Person
+    stattdessen oder zusätzlich ein Passwort haben, für Leute, die keinen Passkey verwenden
+    möchten (ADR-0002, Nachtrag). Abgelegt ist davon nur ein Argon2id-Hash. Der Rückweg sind in
+    beiden Fällen zehn Wiederherstellungscodes (nur als Hash abgelegt) und ein Einladungslink
+    des Hausherrn.
 
-    `aktiv` schaltet ab, ohne zu löschen: die Passkeys bleiben liegen, nützen aber
+    `aktiv` schaltet ab, ohne zu löschen: Passkeys und Passwort bleiben liegen, nützen aber
     nichts, weil jede Anmeldung und jede Anfrage die Spalte prüft.
     """
 
@@ -555,6 +556,9 @@ class Person(Base):
     aktiv: Mapped[bool] = mapped_column(Boolean, default=True)
     #: SHA-256 der zehn Wiederherstellungscodes, je einer einmal gültig.
     wiederherstellungscodes: Mapped[list[str] | None] = mapped_column(JsonType)
+    #: Argon2id-Hash des Passworts (`dch_api/auth/passwort.py`); leer, wenn die Person keines hat.
+    passwort_hash: Mapped[str | None] = mapped_column(Text)
+    passwort_gesetzt_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     erstellt_am: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     zuletzt_angemeldet_am: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

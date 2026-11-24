@@ -1,12 +1,15 @@
-"""Die Bremse für die Anmeldung mit Wiederherstellungscode.
+"""Die Bremse für alles, was abgetippt wird: Wiederherstellungscode und Passwort.
 
-Gezählt wird im Vorgang, je E-Mail-Adresse. Das ist für ein Haus mit einer Handvoll Personen
-genau richtig: eine Tabelle in der Datenbank wäre ein Schreibvorgang je Fehlversuch, und ein
-Angreifer, der den Dienst neu startet, um die Zählung zu löschen, kann den Dienst auch einfach
-anhalten.
+Gezählt wird im Vorgang, je E-Mail-Adresse, und für beide Wege gemeinsam: wer rät, bekommt nicht
+zehn Versuche für das Passwort und zehn weitere für die Codes. Das ist für ein Haus mit einer
+Handvoll Personen genau richtig: eine Tabelle in der Datenbank wäre ein Schreibvorgang je
+Fehlversuch, und ein Angreifer, der den Dienst neu startet, um die Zählung zu löschen, kann den
+Dienst auch einfach anhalten.
 
 Für die Anmeldung mit Passkey braucht es die Bremse nicht - dort entscheidet eine Signatur, und
-die lässt sich nicht erraten. Nur der abgetippte Code braucht sie.
+die lässt sich nicht erraten. Wer eine Adresse kennt, kann ihre Anmeldung mit Passwort für fünf
+Minuten sperren, indem er zehnmal falsch rät; der Passkey derselben Person geht währenddessen
+weiter. Das ist der Preis einer Bremse je Adresse und hier der kleinere als gar keine.
 """
 
 from __future__ import annotations

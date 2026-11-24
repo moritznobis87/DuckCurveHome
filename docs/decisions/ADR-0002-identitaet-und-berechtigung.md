@@ -231,6 +231,39 @@ und kam bisher über denselben Pairing-Link herein. Ein Passkey lässt sich in e
 Plattform-Authenticator nicht anlegen. Die drei Wege stehen in `deploy/haus/README.md`, Abschnitt
 „Zugang im Heimnetz"; entschieden ist keiner.
 
+## Nachtrag 24.11.2026: das Passwort als zweiter Weg
+
+**Entscheidung des Hausherrn:** Neben dem Passkey muss ein Passwort vergeben werden können, für
+Leute, die keinen Passkey verwenden möchten. Es gibt beide Wege, im Dashboard und in der App.
+
+Dieses Papier hatte das Passwort ausgeschlossen, mit dem Argument, dass es alles nach sich
+zieht, was ein Passkey erspart: einen Hash, Regeln, eine Bremse, einen Rückweg. Das Argument
+stimmt weiter, und der Passkey bleibt der empfohlene Weg. Es wiegt aber weniger als ein Haus, in
+dem jemand nicht hereinkommt, weil er keinen Passkey will oder sein Gerät keinen kann.
+
+**Was dazugekommen ist** (`dch_api/auth/passwort.py`, Migration `e7b3c9a52f1c`):
+
+- **Der Hash.** Argon2id mit den Parametern der zweiten Empfehlung aus RFC 9106. Abgelegt ist
+  nur der Hash; das Passwort steht in keiner Antwort und in keinem Protokoll.
+- **Die Regeln.** Mindestens zwölf Zeichen, sonst keine Vorschrift. Das Passwort allein genügt,
+  ohne zweiten Faktor.
+- **Die Bremse.** Zehn Fehlversuche je Adresse in fünf Minuten, gemeinsam gezählt mit den
+  Wiederherstellungscodes (`drossel.py`). Die Anmeldung mit Passkey bleibt davon unberührt.
+- **Der Rückweg.** Ein neuer Link des Hausherrn ersetzt das Passwort, und die
+  Wiederherstellungscodes gelten wie bisher. Einen Versand „Passwort vergessen" gibt es nicht:
+  er wäre ein dritter Weg herein, der am Postfach hängt.
+- **Die Wege.** Hinter dem Einladungslink wählt die Person Passkey oder Passwort. Angemeldet
+  kann sie den jeweils anderen Weg ergänzen, das Passwort wechseln (mit dem bisherigen) oder es
+  entfernen, solange ein Passkey bleibt. Mit Passwort darf auch der letzte Passkey gehen.
+
+**Was sich damit verschlechtert und so dastehen soll:** Ein Lesezugriff auf die Datenbank
+erlaubte bisher keine Anmeldung. Ein Passworthash lässt sich dagegen offline durchprobieren;
+Argon2id und die Mindestlänge machen das teuer, nicht unmöglich. Und ein Passwort lässt sich
+abfischen, ein Passkey nicht.
+
+**Stand:** Gebaut ist der Dienst. Die Oberflächen in Dashboard und App folgen in einer eigenen
+Änderung; bis dahin ist der Weg nur über die Schnittstelle erreichbar.
+
 ## Offene Punkte
 
 - **Wie lange gilt eine Personensitzung?** Heute hält das Kiosk-Cookie ein halbes Jahr, damit die

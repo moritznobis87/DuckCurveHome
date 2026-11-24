@@ -1,15 +1,17 @@
 # Zugang: wer hereinkommt, womit, und was er darf
 
-Stand 23.11.2026. **Gebaut.** Die Entscheidungen dahinter stehen in
+Stand 24.11.2026. **Gebaut.** Die Entscheidungen dahinter stehen in
 [ADR-0002](decisions/ADR-0002-identitaet-und-berechtigung.md); das Zielbild für mehrere Häuser in
 [ZENTRALE.md](ZENTRALE.md) und [ADR-0003](decisions/ADR-0003-erreichbarkeit-und-flotte.md). Diese
 Seite beschreibt, was es heute gibt und wie man es bedient.
 
 ## Kurz gesagt
 
-- **Eine Person meldet sich mit einem Passkey an.** Kein Passwort, nichts zum Abtippen, kein
-  zweiter Faktor daneben - ein Passkey mit verlangter Nutzerprüfung ist Besitz und Merkmal
-  zugleich.
+- **Eine Person meldet sich mit einem Passkey an, oder mit E-Mail-Adresse und Passwort.** Der
+  Passkey ist der empfohlene Weg: nichts zum Abtippen, kein zweiter Faktor daneben, denn ein
+  Passkey mit verlangter Nutzerprüfung ist Besitz und Merkmal zugleich. Das Passwort gibt es
+  seit dem 24.11.2026 für Leute, die keinen Passkey verwenden möchten (ADR-0002, Nachtrag).
+  Gebaut ist dafür bisher der Dienst; die Seiten in Dashboard und App folgen.
 - **Es gibt keinen Link mehr, der Zugang vergibt.** Bis zum 23.11.2026 stellten zwei stehende
   URL-Tokens Gerätesitzungen aus - einer für Vollzugriff, einer für Gäste. Sie standen im Klartext
   auf dieser Seite, galten unbefristet, waren beliebig oft einlösbar und ließen sich nur für alle
@@ -119,6 +121,25 @@ Auf der Seite **System › Zugang und Sicherung** steht, was noch fehlt: ohne Ko
 schiefgeht - die Person ist angelegt, und der Link steht dort zum Kopieren. Der Versand ist eine
 Beigabe, kein Torwächter.
 
+## Das Passwort
+
+Wer keinen Passkey verwenden möchte, vergibt hinter dem Einladungslink ein Passwort und meldet
+sich danach mit E-Mail-Adresse und Passwort an.
+
+- **Regeln:** mindestens zwölf Zeichen, sonst keine Vorschrift. Ein Satz ist besser als ein
+  kurzes Wort mit Sonderzeichen.
+- **Abgelegt** ist nur ein Argon2id-Hash (`apps/api/src/dch_api/auth/passwort.py`).
+- **Zehn Fehlversuche** je Adresse sperren die Anmeldung mit Passwort und mit
+  Wiederherstellungscode für fünf Minuten. Der Passkey derselben Person geht währenddessen
+  weiter.
+- **Wechseln** kann die angemeldete Person ihr Passwort, wenn sie das bisherige nennt. Danach
+  enden ihre anderen Sitzungen.
+- **Beides zugleich** geht: Wer einen Passkey hat, kann ein Passwort dazu vergeben, und
+  umgekehrt. Einer der beiden Wege muss bleiben.
+
+Die Schnittstelle dazu: `POST /api/v1/auth/anmeldung/passwort`, `/auth/einladung/passwort`,
+`/auth/passwort` und `/auth/passwort/loeschen`.
+
 ## Der Rückweg
 
 Vier Stufen, in dieser Reihenfolge - und die ersten beiden sind die, die man vorbereitet haben
@@ -130,7 +151,8 @@ muss, bevor man sie braucht:
    Anmeldeseite unter „Alle Geräte verloren?" mit E-Mail-Adresse und Code anmelden - und dann
    gleich einen neuen Passkey anlegen und neue Codes holen.
 3. **Ein neuer Link des Hausherrn.** Er entwertet alle offenen Links und beendet alle Sitzungen
-   der Person; danach legt sie einen neuen Passkey an.
+   der Person; danach legt sie einen neuen Passkey an oder vergibt ein neues Passwort. Das ist
+   auch der Weg, wenn jemand sein Passwort vergessen hat.
 
 4. **Der Notzugang.** Fällt alles andere zugleich aus, setzt der Betreiber auf dem api-Dienst
    `DCH_NOTZUGANG=<E-Mail>` und startet neu: die Person wird wieder aktiv, wird `hausherr` und

@@ -1,8 +1,9 @@
-"""Anmeldung mit Passkey, Sitzungen und Personenverwaltung (ADR-0002).
+"""Anmeldung mit Passkey oder Passwort, Sitzungen und Personenverwaltung (ADR-0002).
 
     token.py              opake Token: erzeugen, hashen, vergleichen
     wiederherstellung.py  zehn Codes als Rückweg
-    drossel.py            die Bremse für den abgetippten Code
+    passwort.py           das Passwort als zweiter Weg: Regeln, Argon2id-Hash, Prüfung
+    drossel.py            die Bremse für alles Abgetippte: Code und Passwort
     rechte.py             welche Rolle was darf - die Matrix an einer Stelle
     ausweis.py            wer fragt; die Naht, hinter der später eine Zentrale stehen kann
     passkeys.py           die WebAuthn-Zeremonien

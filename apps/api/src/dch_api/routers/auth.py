@@ -1,11 +1,12 @@
-"""Anmeldung, eigene Passkeys, Sitzungen und die Personenverwaltung (ADR-0002).
+"""Anmeldung, eigene Passkeys, das eigene Passwort, Sitzungen und die Personenverwaltung (ADR-0002).
 
 **Dieser Router hängt nicht an der allgemeinen Tür.** Die anderen Router bekommen in `main.py`
 `Depends(require_zugang)` mitgegeben; hier wäre das ein Zirkel - wer sich anmelden will, ist noch
 nicht angemeldet. Darum steht an jedem Endpunkt, was er verlangt:
 
-    ohne           Anmeldung, Wiederherstellung, der Weg hinter dem Einladungslink, der Zustand
-    require_person die eigenen Sachen: Passkeys, Sitzungen, Codes, Abmelden
+    ohne           Anmeldung mit Passkey oder Passwort, Wiederherstellung, der Weg hinter dem
+                   Einladungslink, der Zustand
+    require_person die eigenen Sachen: Passkeys, Passwort, Sitzungen, Codes, Abmelden
     require_hausherr  die Personenverwaltung
 
 Jede Ablehnung einer Anmeldung hat denselben Text. Welcher Grund zutraf, steht im Protokoll des
@@ -21,7 +22,7 @@ from fastapi import APIRouter, Depends, Request
 
 from dch_api import post
 from dch_api.auth import dienst as auth_dienst
-from dch_api.auth import passkeys
+from dch_api.auth import passkeys, passwort
 from dch_api.auth.ausweis import Ausweis
 from dch_api.dependencies import (
     auth_oder_fehler,
@@ -43,6 +44,9 @@ from dch_api.schemas import (
     PasskeyAbschliessenIn,
     PasskeyBeginnenIn,
     PasskeyOut,
+    PasswortAnmeldenIn,
+    PasswortSetzenIn,
+    PasswortUeberLinkIn,
     PersonAendernIn,
     PersonAnlegenIn,
     PersonOut,
@@ -99,6 +103,7 @@ def _person_out(angaben: auth_dienst.PersonAngaben) -> PersonOut:
         erstellt_am=angaben.erstellt_am,
         zuletzt_angemeldet_am=angaben.zuletzt_angemeldet_am,
         passkeys=angaben.passkeys,
+        passwort=angaben.passwort,
         codes_offen=angaben.codes_offen,
         einladung_offen=angaben.einladung_offen,
     )
@@ -143,6 +148,7 @@ async def zustand(request: Request) -> ZugangZustandOut:
         personen=await auth.anzahl() if auth is not None else 0,
         rp_id=request.app.state.settings.passkey_rp_id,
         versand=_versand_out(request),
+        passwort_mindestlaenge=passwort.MINDESTLAENGE,
     )
 
 
@@ -184,6 +190,23 @@ async def anmeldung_abschliessen(request: Request, daten: AnmeldenIn) -> Angemel
     return _angemeldet_out(angemeldet, [])
 
 
+@router.post("/anmeldung/passwort", response_model=AngemeldetOut, summary="Mit Passwort anmelden")
+async def anmeldung_passwort(request: Request, daten: PasswortAnmeldenIn) -> AngemeldetOut:
+    """Der zweite Weg herein, für Leute ohne Passkey: E-Mail-Adresse und Passwort.
+
+    Abgelehnt wird immer mit demselben Text, gleich ob die Adresse unbekannt ist, das Passwort
+    nicht stimmt, die Person abgeschaltet ist oder die Bremse greift.
+    """
+    auth = await auth_oder_fehler(request)
+    try:
+        angemeldet = await auth.anmelden_mit_passwort(
+            daten.email, daten.passwort, _herkunft(request)
+        )
+    except auth_dienst.AngemeldetError as fehler:
+        raise DchError("unauthorized", str(fehler), 401) from fehler
+    return _angemeldet_out(angemeldet, [])
+
+
 @router.post(
     "/wiederherstellung",
     response_model=AngemeldetOut,
@@ -220,6 +243,7 @@ async def einladung(request: Request, token: str = "") -> EinladungPersonOut:
         anzeigename=angaben.anzeigename,
         rolle=angaben.rolle,
         passkeys=angaben.passkeys,
+        passwort=angaben.passwort,
     )
 
 
@@ -271,6 +295,28 @@ async def einladung_passkey_abschliessen(
     return _angemeldet_out(ergebnis, codes)
 
 
+@router.post(
+    "/einladung/passwort",
+    response_model=AngemeldetOut,
+    summary="Passwort über den Link vergeben",
+)
+async def einladung_passwort(request: Request, daten: PasswortUeberLinkIn) -> AngemeldetOut:
+    """Vergibt das Passwort, löst den Link ein und meldet an.
+
+    Wie beim Passkey über den Link kommen zehn frische Wiederherstellungscodes zurück, einmal
+    im Klartext; die alten gelten nicht mehr.
+    """
+    auth = await auth_oder_fehler(request)
+    try:
+        ergebnis = await auth.passwort_ueber_link(daten.token, daten.passwort, _herkunft(request))
+    except auth_dienst.ZugangError as fehler:
+        raise DchError("invalid_token", str(fehler), 404) from fehler
+    except passwort.PasswortError as fehler:
+        raise DchError("passwort", str(fehler), 400) from fehler
+    codes = await auth.codes_neu(ergebnis.ausweis.person_id)
+    return _angemeldet_out(ergebnis, codes)
+
+
 # ---------------------------------------------------------------------------
 # Angemeldet: die eigenen Sachen
 # ---------------------------------------------------------------------------
@@ -295,6 +341,7 @@ async def ich(request: Request, ausweis: AngemeldetePerson) -> IchOut:
             for s in await auth.sitzungen(ausweis.person_id, ausweis.sitzung_id)
         ],
         codes_offen=angaben.codes_offen,
+        passwort=angaben.passwort,
     )
 
 
@@ -376,6 +423,39 @@ async def passkey_loeschen(
         raise DchError("letzter_passkey", str(fehler), 409) from fehler
     except passkeys.PasskeyError as fehler:
         raise DchError("passkey", str(fehler), 404) from fehler
+    return {"ok": True}
+
+
+@router.post("/passwort", summary="Passwort vergeben oder wechseln")
+async def passwort_setzen(
+    request: Request, daten: PasswortSetzenIn, ausweis: AngemeldetePerson
+) -> dict[str, object]:
+    """Vergibt das eigene Passwort oder wechselt es. Wer schon eines hat, nennt das bisherige.
+
+    Danach enden alle anderen Sitzungen dieser Person; die eigene bleibt.
+    """
+    auth = await auth_oder_fehler(request)
+    try:
+        beendet = await auth.passwort_setzen(
+            ausweis.person_id, daten.neu, daten.bisher, ausweis.sitzung_id
+        )
+    except passwort.PasswortError as fehler:
+        raise DchError("passwort", str(fehler), 400) from fehler
+    except auth_dienst.ZugangError as fehler:
+        raise DchError("conflict", str(fehler), 409) from fehler
+    return {"ok": True, "beendet": beendet}
+
+
+@router.post("/passwort/loeschen", summary="Passwort entfernen")
+async def passwort_loeschen(request: Request, ausweis: AngemeldetePerson) -> dict[str, bool]:
+    """Nimmt das Passwort weg. Nur mit mindestens einem Passkey, sonst bliebe kein Weg herein."""
+    auth = await auth_oder_fehler(request)
+    try:
+        await auth.passwort_entfernen(ausweis.person_id)
+    except passwort.PasswortError as fehler:
+        raise DchError("letztes_passwort", str(fehler), 409) from fehler
+    except auth_dienst.ZugangError as fehler:
+        raise DchError("not_found", str(fehler), 404) from fehler
     return {"ok": True}
 
 

@@ -59,9 +59,20 @@ gegen `Blockansicht`); der Vergleich Feld für Feld steht noch aus.
 
 ## Anmeldung
 
-**Entschieden am 24.11.2026:** In der App gilt dieselbe Anmeldelogik wie im Browser. Offen ist,
-ob dazu ein Passwort gehören soll: Das Dashboard kennt heute keines, nur Passkey und
-Ersatzcodes (`docs/ZUGANG.md`, ADR-0002). Die Frage ist dem Hausherrn gestellt.
+**Entschieden am 24.11.2026:** In der App gilt dieselbe Anmeldelogik wie im Browser, und in
+beiden gibt es zwei Wege: Passkey oder E-Mail-Adresse und Passwort (ADR-0002, Nachtrag vom
+24.11.2026).
+
+Gebaut ist der Dienst (`dch_api/auth/passwort.py`, vier Endpunkte unter `/auth`). Offen sind die
+Oberflächen, in dieser Reihenfolge:
+
+1. Dashboard und App: die Anmeldung mit E-Mail-Adresse und Passwort, die Wahl zwischen Passkey
+   und Passwort hinter dem Einladungslink, und das Vergeben, Wechseln und Entfernen des
+   Passworts unter „Zugang und Sicherung“.
+2. App: die Anmeldung als Person statt mit dem Token, das alles darf. Das Token bleibt als
+   Rückweg, bis die Anmeldung auf einem Gerät funktioniert hat.
+3. App: die Anmeldung mit Passkey. Dafür fehlen die Team-ID des Apple-Entwicklerkontos und die
+   Adresse des Dashboards (`apple-app-site-association`); prüfen lässt sie sich nur am Gerät.
 
 ## Was als Nächstes dran ist
 

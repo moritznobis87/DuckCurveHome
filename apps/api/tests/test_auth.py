@@ -795,3 +795,239 @@ def client_token(client: TestClient, email: str) -> str:
     )
     assert antwort.status_code == 200, antwort.text
     return antwort.json()["link"].split("token=")[1]
+
+
+# ---------------------------------------------------------------------------
+# Das Passwort als zweiter Weg (Entscheidung vom 24.11.2026)
+# ---------------------------------------------------------------------------
+
+PASSWORT = "ein langes Passwort mit Ümlaut"
+
+
+def passwort_einrichten(client: TestClient, token: str, passwort: str = PASSWORT) -> dict:
+    """Den Weg hinter dem Einladungslink gehen, aber mit Passwort statt Passkey."""
+    antwort = client.post(
+        f"{API}/auth/einladung/passwort", json={"token": token, "passwort": passwort}
+    )
+    assert antwort.status_code == 200, antwort.text
+    return antwort.json()
+
+
+def passwort_anmelden(client: TestClient, passwort: str, email: str = "moritz@example.org"):
+    return client.post(
+        f"{API}/auth/anmeldung/passwort", json={"email": email, "passwort": passwort}
+    )
+
+
+@pytest.fixture(autouse=True)
+def _bremse_leeren() -> Iterator[None]:
+    """Die Bremse zählt im Vorgang und über Tests hinweg; jeder Test beginnt bei null."""
+    from dch_api.auth import drossel
+
+    drossel._VERSUCHE.clear()
+    yield
+    drossel._VERSUCHE.clear()
+
+
+def test_ganzer_weg_einladung_passwort_anmeldung(client: TestClient) -> None:
+    """Einladen, Passwort vergeben, abmelden, mit Passwort wieder herein - ganz ohne Passkey."""
+    ergebnis = passwort_einrichten(client, person_anlegen(client))
+    assert ergebnis["ausweis"]["art"] == "person"
+    assert ergebnis["ausweis"]["rolle"] == "hausherr"
+    assert len(ergebnis["codes"]) == 10
+
+    ich = client.get(f"{API}/auth/ich", headers=mit(ergebnis["token"])).json()
+    assert ich["passwort"] is True
+    assert ich["passkeys"] == []
+
+    assert client.post(f"{API}/auth/abmelden", headers=mit(ergebnis["token"])).status_code == 200
+    neu = passwort_anmelden(client, PASSWORT)
+    assert neu.status_code == 200, neu.text
+    assert neu.json()["ausweis"]["email"] == "moritz@example.org"
+    assert neu.json()["codes"] == []
+    # Die Adresse wird ohne Rücksicht auf Groß- und Kleinschreibung gelesen.
+    assert passwort_anmelden(client, PASSWORT, email=" Moritz@Example.org ").status_code == 200
+
+
+def test_der_link_gilt_auch_mit_passwort_nur_einmal(client: TestClient) -> None:
+    token = person_anlegen(client)
+    passwort_einrichten(client, token)
+    zweite = client.post(
+        f"{API}/auth/einladung/passwort", json={"token": token, "passwort": PASSWORT}
+    )
+    assert zweite.status_code == 404
+
+
+def test_die_seite_hinter_dem_link_weiss_vom_passwort(client: TestClient) -> None:
+    passwort_einrichten(client, person_anlegen(client))
+    # Der Hausherr stellt einen neuen Link aus, weil das Passwort vergessen ist.
+    person = client.get(f"{API}/auth/personen", headers=DIENST).json()[0]
+    assert person["passwort"] is True
+    link = client.post(f"{API}/auth/personen/{person['id']}/einladen", headers=DIENST)
+    assert link.status_code == 200, link.text
+    token = link.json()["link"].split("token=")[1]
+    seite = client.get(f"{API}/auth/einladung", params={"token": token})
+    assert seite.status_code == 200
+    assert seite.json()["passwort"] is True
+    # Über den Link wird das Passwort ersetzt; das alte gilt danach nicht mehr.
+    passwort_einrichten(client, token, "ein ganz anderes Passwort")
+    assert passwort_anmelden(client, PASSWORT).status_code == 401
+    assert passwort_anmelden(client, "ein ganz anderes Passwort").status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("passwort", "wort"),
+    [
+        ("zu kurz", "mindestens 12"),
+        ("x" * 201, "höchstens 200"),
+        ("moritz@example.org", "E-Mail-Adresse"),
+    ],
+)
+def test_ein_passwort_gegen_die_regeln_wird_abgelehnt(
+    client: TestClient, passwort: str, wort: str
+) -> None:
+    token = person_anlegen(client)
+    antwort = client.post(
+        f"{API}/auth/einladung/passwort", json={"token": token, "passwort": passwort}
+    )
+    assert antwort.status_code == 400
+    assert wort in antwort.json()["error"]["message"]
+    # Der Link ist nicht verbraucht: ein zweiter Versuch mit einem guten Passwort gelingt.
+    assert passwort_einrichten(client, token)["ausweis"]["art"] == "person"
+
+
+def test_jede_ablehnung_der_passwortanmeldung_klingt_gleich(client: TestClient) -> None:
+    """Unbekannte Adresse, falsches Passwort, Person nur mit Passkey: derselbe Satz."""
+    passwort_einrichten(client, person_anlegen(client))
+    einrichten(client, person_anlegen(client, "anna@example.org", "bewohner"), Geraet())
+    antworten = [
+        passwort_anmelden(client, "ein falsches Passwort"),
+        passwort_anmelden(client, PASSWORT, email="niemand@example.org"),
+        passwort_anmelden(client, PASSWORT, email="anna@example.org"),
+        passwort_anmelden(client, "", email="moritz@example.org"),
+    ]
+    assert [a.status_code for a in antworten] == [401, 401, 401, 401]
+    assert len({a.json()["error"]["message"] for a in antworten}) == 1
+
+
+def test_die_bremse_greift_nach_zehn_fehlversuchen(client: TestClient) -> None:
+    passwort_einrichten(client, person_anlegen(client))
+    for _ in range(10):
+        assert passwort_anmelden(client, "ein falsches Passwort").status_code == 401
+    # Jetzt hilft auch das richtige Passwort nicht, und auch kein Wiederherstellungscode:
+    # beide Wege teilen sich die Zählung.
+    assert passwort_anmelden(client, PASSWORT).status_code == 401
+    code = client.post(
+        f"{API}/auth/wiederherstellung", json={"email": "moritz@example.org", "code": "aaaaa-bbbbb"}
+    )
+    assert code.status_code == 401
+
+
+def test_abgeschaltete_person_kommt_auch_mit_passwort_nicht_herein(client: TestClient) -> None:
+    passwort_einrichten(client, person_anlegen(client))
+    passwort_einrichten(
+        client, person_anlegen(client, "anna@example.org", "bewohner"), "annas Passwort"
+    )
+    anna = next(
+        p
+        for p in client.get(f"{API}/auth/personen", headers=DIENST).json()
+        if p["email"] == "anna@example.org"
+    )
+    aus = client.post(f"{API}/auth/personen/{anna['id']}", json={"aktiv": False}, headers=DIENST)
+    assert aus.status_code == 200, aus.text
+    assert passwort_anmelden(client, "annas Passwort", email="anna@example.org").status_code == 401
+
+
+def test_passwort_wechseln_verlangt_das_bisherige(client: TestClient) -> None:
+    ergebnis = passwort_einrichten(client, person_anlegen(client))
+    zweite = passwort_anmelden(client, PASSWORT).json()["token"]
+
+    ohne = client.post(
+        f"{API}/auth/passwort",
+        json={"neu": "das neue lange Passwort"},
+        headers=mit(ergebnis["token"]),
+    )
+    assert ohne.status_code == 400
+    assert "bisherige" in ohne.json()["error"]["message"]
+
+    wechsel = client.post(
+        f"{API}/auth/passwort",
+        json={"neu": "das neue lange Passwort", "bisher": PASSWORT},
+        headers=mit(ergebnis["token"]),
+    )
+    assert wechsel.status_code == 200, wechsel.text
+    # Die andere Sitzung ist beendet, die eigene bleibt.
+    assert wechsel.json()["beendet"] == 1
+    assert client.get(f"{API}/auth/ich", headers=mit(zweite)).status_code == 401
+    assert client.get(f"{API}/auth/ich", headers=mit(ergebnis["token"])).status_code == 200
+    assert passwort_anmelden(client, PASSWORT).status_code == 401
+    assert passwort_anmelden(client, "das neue lange Passwort").status_code == 200
+
+
+def test_wer_mit_passkey_angemeldet_ist_vergibt_ein_passwort_dazu(client: TestClient) -> None:
+    ergebnis = einrichten(client, person_anlegen(client), Geraet())
+    assert client.get(f"{API}/auth/ich", headers=mit(ergebnis["token"])).json()["passwort"] is False
+    dazu = client.post(
+        f"{API}/auth/passwort", json={"neu": PASSWORT}, headers=mit(ergebnis["token"])
+    )
+    assert dazu.status_code == 200, dazu.text
+    assert passwort_anmelden(client, PASSWORT).status_code == 200
+
+
+def test_mit_passwort_darf_der_letzte_passkey_gehen(client: TestClient) -> None:
+    ergebnis = einrichten(client, person_anlegen(client), Geraet())
+    kopf = mit(ergebnis["token"])
+    passkey = client.get(f"{API}/auth/ich", headers=kopf).json()["passkeys"][0]["id"]
+    # Ohne Passwort bleibt der letzte Passkey.
+    assert client.post(f"{API}/auth/passkeys/{passkey}/loeschen", headers=kopf).status_code == 409
+    assert (
+        client.post(f"{API}/auth/passwort", json={"neu": PASSWORT}, headers=kopf).status_code == 200
+    )
+    assert client.post(f"{API}/auth/passkeys/{passkey}/loeschen", headers=kopf).status_code == 200
+    assert client.get(f"{API}/auth/ich", headers=kopf).json()["passkeys"] == []
+
+
+def test_das_passwort_geht_nur_wenn_ein_passkey_bleibt(client: TestClient) -> None:
+    nur_passwort = passwort_einrichten(client, person_anlegen(client))
+    bleibt = client.post(f"{API}/auth/passwort/loeschen", headers=mit(nur_passwort["token"]))
+    assert bleibt.status_code == 409
+    assert "einzige Weg" in bleibt.json()["error"]["message"]
+
+    beide = einrichten(client, person_anlegen(client, "anna@example.org", "bewohner"), Geraet())
+    kopf = mit(beide["token"])
+    assert (
+        client.post(f"{API}/auth/passwort", json={"neu": PASSWORT}, headers=kopf).status_code == 200
+    )
+    assert client.post(f"{API}/auth/passwort/loeschen", headers=kopf).status_code == 200
+    assert client.get(f"{API}/auth/ich", headers=kopf).json()["passwort"] is False
+    assert passwort_anmelden(client, PASSWORT, email="anna@example.org").status_code == 401
+
+
+def test_ein_dienst_hat_kein_eigenes_passwort(client: TestClient) -> None:
+    antwort = client.post(f"{API}/auth/passwort", json={"neu": PASSWORT}, headers=DIENST)
+    assert antwort.status_code == 403
+
+
+def test_der_zustand_nennt_die_mindestlaenge(client: TestClient) -> None:
+    assert client.get(f"{API}/auth/zustand").json()["passwort_mindestlaenge"] == 12
+
+
+def test_das_passwort_liegt_nur_als_argon2id_hash(client: TestClient) -> None:
+    """Weder die Antworten noch die Datenbank enthalten das Passwort im Klartext."""
+    import asyncio
+
+    from sqlalchemy import select
+
+    from dch_api.infrastructure.db import models as m
+
+    ergebnis = passwort_einrichten(client, person_anlegen(client))
+    assert PASSWORT not in json.dumps(ergebnis)
+    auth = client.app.state.auth  # type: ignore[attr-defined]
+
+    async def lesen() -> str:
+        async with auth.maker() as s:
+            return (await s.execute(select(m.Person.passwort_hash))).scalar_one()
+
+    gespeichert = asyncio.run(lesen())
+    assert gespeichert.startswith("$argon2id$")
+    assert PASSWORT not in gespeichert

@@ -3660,18 +3660,20 @@ public struct EinladungOut: Codable, Sendable, Hashable {
     }
 }
 
-/// Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist.
+/// Für die Seite hinter dem Link: zu wem er gehört und welche Wege herein es schon gibt.
 public struct EinladungPersonOut: Codable, Sendable, Hashable {
     public var email: String
     public var anzeigename: String?
     public var rolle: EinladungPersonOutRolleWahl
     public var passkeys: Int?
+    public var passwort: Bool?
 
-    public init(email: String, anzeigename: String? = nil, rolle: EinladungPersonOutRolleWahl, passkeys: Int? = nil) {
+    public init(email: String, anzeigename: String? = nil, rolle: EinladungPersonOutRolleWahl, passkeys: Int? = nil, passwort: Bool? = nil) {
         self.email = email
         self.anzeigename = anzeigename
         self.rolle = rolle
         self.passkeys = passkeys
+        self.passwort = passwort
     }
 
     public init(from decoder: any Decoder) throws {
@@ -3680,6 +3682,7 @@ public struct EinladungPersonOut: Codable, Sendable, Hashable {
         self.anzeigename = try c.decodeIfPresent(String.self, forKey: .anzeigename)
         self.rolle = try c.decode(EinladungPersonOutRolleWahl.self, forKey: .rolle)
         self.passkeys = try c.decodeIfPresent(Int.self, forKey: .passkeys)
+        self.passwort = try c.decodeIfPresent(Bool.self, forKey: .passwort)
     }
 }
 
@@ -6372,19 +6375,22 @@ public struct IchOut: Codable, Sendable, Hashable {
     public var passkeys: [PasskeyOut]
     public var sitzungen: [SitzungOut]
     public var codesOffen: Int?
+    public var passwort: Bool?
 
     public enum CodingKeys: String, CodingKey {
         case ausweis
         case passkeys
         case sitzungen
         case codesOffen = "codes_offen"
+        case passwort
     }
 
-    public init(ausweis: AusweisOut, passkeys: [PasskeyOut] = [], sitzungen: [SitzungOut] = [], codesOffen: Int? = nil) {
+    public init(ausweis: AusweisOut, passkeys: [PasskeyOut] = [], sitzungen: [SitzungOut] = [], codesOffen: Int? = nil, passwort: Bool? = nil) {
         self.ausweis = ausweis
         self.passkeys = passkeys
         self.sitzungen = sitzungen
         self.codesOffen = codesOffen
+        self.passwort = passwort
     }
 
     public init(from decoder: any Decoder) throws {
@@ -6393,6 +6399,7 @@ public struct IchOut: Codable, Sendable, Hashable {
         self.passkeys = try c.decodeIfPresent([PasskeyOut].self, forKey: .passkeys) ?? []
         self.sitzungen = try c.decodeIfPresent([SitzungOut].self, forKey: .sitzungen) ?? []
         self.codesOffen = try c.decodeIfPresent(Int.self, forKey: .codesOffen)
+        self.passwort = try c.decodeIfPresent(Bool.self, forKey: .passwort)
     }
 }
 
@@ -8085,6 +8092,56 @@ public struct PasskeyOut: Codable, Sendable, Hashable {
     }
 }
 
+public struct PasswortAnmeldenIn: Codable, Sendable, Hashable {
+    public var email: String
+    public var passwort: String
+
+    public init(email: String, passwort: String) {
+        self.email = email
+        self.passwort = passwort
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.email = try c.decode(String.self, forKey: .email)
+        self.passwort = try c.decode(String.self, forKey: .passwort)
+    }
+}
+
+/// Das eigene Passwort vergeben oder wechseln.
+public struct PasswortSetzenIn: Codable, Sendable, Hashable {
+    public var neu: String
+    public var bisher: String?
+
+    public init(neu: String, bisher: String? = nil) {
+        self.neu = neu
+        self.bisher = bisher
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.neu = try c.decode(String.self, forKey: .neu)
+        self.bisher = try c.decodeIfPresent(String.self, forKey: .bisher)
+    }
+}
+
+/// Das Passwort hinter dem Einladungslink vergeben.
+public struct PasswortUeberLinkIn: Codable, Sendable, Hashable {
+    public var token: String
+    public var passwort: String
+
+    public init(token: String, passwort: String) {
+        self.token = token
+        self.passwort = passwort
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.token = try c.decode(String.self, forKey: .token)
+        self.passwort = try c.decode(String.self, forKey: .passwort)
+    }
+}
+
 public struct PersonAendernIn: Codable, Sendable, Hashable {
     public var rolle: PersonAendernInRolleWahl?
     public var aktiv: Bool?
@@ -8135,6 +8192,7 @@ public struct PersonOut: Codable, Sendable, Hashable {
     public var erstelltAm: String
     public var zuletztAngemeldetAm: String?
     public var passkeys: Int?
+    public var passwort: Bool?
     public var codesOffen: Int?
     public var einladungOffen: Bool?
 
@@ -8147,11 +8205,12 @@ public struct PersonOut: Codable, Sendable, Hashable {
         case erstelltAm = "erstellt_am"
         case zuletztAngemeldetAm = "zuletzt_angemeldet_am"
         case passkeys
+        case passwort
         case codesOffen = "codes_offen"
         case einladungOffen = "einladung_offen"
     }
 
-    public init(id: String, email: String, anzeigename: String? = nil, rolle: PersonOutRolleWahl, aktiv: Bool? = nil, erstelltAm: String, zuletztAngemeldetAm: String? = nil, passkeys: Int? = nil, codesOffen: Int? = nil, einladungOffen: Bool? = nil) {
+    public init(id: String, email: String, anzeigename: String? = nil, rolle: PersonOutRolleWahl, aktiv: Bool? = nil, erstelltAm: String, zuletztAngemeldetAm: String? = nil, passkeys: Int? = nil, passwort: Bool? = nil, codesOffen: Int? = nil, einladungOffen: Bool? = nil) {
         self.id = id
         self.email = email
         self.anzeigename = anzeigename
@@ -8160,6 +8219,7 @@ public struct PersonOut: Codable, Sendable, Hashable {
         self.erstelltAm = erstelltAm
         self.zuletztAngemeldetAm = zuletztAngemeldetAm
         self.passkeys = passkeys
+        self.passwort = passwort
         self.codesOffen = codesOffen
         self.einladungOffen = einladungOffen
     }
@@ -8174,6 +8234,7 @@ public struct PersonOut: Codable, Sendable, Hashable {
         self.erstelltAm = try c.decode(String.self, forKey: .erstelltAm)
         self.zuletztAngemeldetAm = try c.decodeIfPresent(String.self, forKey: .zuletztAngemeldetAm)
         self.passkeys = try c.decodeIfPresent(Int.self, forKey: .passkeys)
+        self.passwort = try c.decodeIfPresent(Bool.self, forKey: .passwort)
         self.codesOffen = try c.decodeIfPresent(Int.self, forKey: .codesOffen)
         self.einladungOffen = try c.decodeIfPresent(Bool.self, forKey: .einladungOffen)
     }
@@ -11759,19 +11820,22 @@ public struct ZugangZustandOut: Codable, Sendable, Hashable {
     public var personen: Int?
     public var rpId: String?
     public var versand: VersandOut?
+    public var passwortMindestlaenge: Int?
 
     public enum CodingKeys: String, CodingKey {
         case anmeldung
         case personen
         case rpId = "rp_id"
         case versand
+        case passwortMindestlaenge = "passwort_mindestlaenge"
     }
 
-    public init(anmeldung: Bool? = nil, personen: Int? = nil, rpId: String? = nil, versand: VersandOut? = nil) {
+    public init(anmeldung: Bool? = nil, personen: Int? = nil, rpId: String? = nil, versand: VersandOut? = nil, passwortMindestlaenge: Int? = nil) {
         self.anmeldung = anmeldung
         self.personen = personen
         self.rpId = rpId
         self.versand = versand
+        self.passwortMindestlaenge = passwortMindestlaenge
     }
 
     public init(from decoder: any Decoder) throws {
@@ -11780,6 +11844,7 @@ public struct ZugangZustandOut: Codable, Sendable, Hashable {
         self.personen = try c.decodeIfPresent(Int.self, forKey: .personen)
         self.rpId = try c.decodeIfPresent(String.self, forKey: .rpId)
         self.versand = try c.decodeIfPresent(VersandOut.self, forKey: .versand)
+        self.passwortMindestlaenge = try c.decodeIfPresent(Int.self, forKey: .passwortMindestlaenge)
     }
 }
 

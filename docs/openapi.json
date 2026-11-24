@@ -136,6 +136,48 @@
         }
       }
     },
+    "/api/v1/auth/anmeldung/passwort": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Mit Passwort anmelden",
+        "description": "Der zweite Weg herein, für Leute ohne Passkey: E-Mail-Adresse und Passwort.\n\nAbgelehnt wird immer mit demselben Text, gleich ob die Adresse unbekannt ist, das Passwort\nnicht stimmt, die Person abgeschaltet ist oder die Bremse greift.",
+        "operationId": "anmeldung_passwort_api_v1_auth_anmeldung_passwort_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswortAnmeldenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AngemeldetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/wiederherstellung": {
       "post": {
         "tags": [
@@ -276,6 +318,48 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/PasskeyAbschliessenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AngemeldetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/einladung/passwort": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passwort über den Link vergeben",
+        "description": "Vergibt das Passwort, löst den Link ein und meldet an.\n\nWie beim Passkey über den Link kommen zehn frische Wiederherstellungscodes zurück, einmal\nim Klartext; die alten gelten nicht mehr.",
+        "operationId": "einladung_passwort_api_v1_auth_einladung_passwort_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswortUeberLinkIn"
               }
             }
           },
@@ -582,6 +666,76 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passwort": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passwort vergeben oder wechseln",
+        "description": "Vergibt das eigene Passwort oder wechselt es. Wer schon eines hat, nennt das bisherige.\n\nDanach enden alle anderen Sitzungen dieser Person; die eigene bleibt.",
+        "operationId": "passwort_setzen_api_v1_auth_passwort_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswortSetzenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Passwort Setzen Api V1 Auth Passwort Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passwort/loeschen": {
+      "post": {
+        "tags": [
+          "Zugang"
+        ],
+        "summary": "Passwort entfernen",
+        "description": "Nimmt das Passwort weg. Nur mit mindestens einem Passkey, sonst bliebe kein Weg herein.",
+        "operationId": "passwort_loeschen_api_v1_auth_passwort_loeschen_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object",
+                  "title": "Response Passwort Loeschen Api V1 Auth Passwort Loeschen Post"
                 }
               }
             }
@@ -8054,6 +8208,11 @@
             "type": "integer",
             "title": "Passkeys",
             "default": 0
+          },
+          "passwort": {
+            "type": "boolean",
+            "title": "Passwort",
+            "default": false
           }
         },
         "type": "object",
@@ -8062,7 +8221,7 @@
           "rolle"
         ],
         "title": "EinladungPersonOut",
-        "description": "Für die Seite hinter dem Link: zu wem er gehört und ob schon ein Passkey da ist."
+        "description": "Für die Seite hinter dem Link: zu wem er gehört und welche Wege herein es schon gibt."
       },
       "EnergyBucketOut": {
         "properties": {
@@ -12377,6 +12536,11 @@
             "type": "integer",
             "title": "Codes Offen",
             "default": 0
+          },
+          "passwort": {
+            "type": "boolean",
+            "title": "Passwort",
+            "default": false
           }
         },
         "type": "object",
@@ -15032,6 +15196,62 @@
         ],
         "title": "PasskeyOut"
       },
+      "PasswortAnmeldenIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "passwort": {
+            "type": "string",
+            "title": "Passwort"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "passwort"
+        ],
+        "title": "PasswortAnmeldenIn"
+      },
+      "PasswortSetzenIn": {
+        "properties": {
+          "neu": {
+            "type": "string",
+            "title": "Neu"
+          },
+          "bisher": {
+            "type": "string",
+            "title": "Bisher",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "neu"
+        ],
+        "title": "PasswortSetzenIn",
+        "description": "Das eigene Passwort vergeben oder wechseln."
+      },
+      "PasswortUeberLinkIn": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "passwort": {
+            "type": "string",
+            "title": "Passwort"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "passwort"
+        ],
+        "title": "PasswortUeberLinkIn",
+        "description": "Das Passwort hinter dem Einladungslink vergeben."
+      },
       "PersonAendernIn": {
         "properties": {
           "rolle": {
@@ -15162,6 +15382,11 @@
             "type": "integer",
             "title": "Passkeys",
             "default": 0
+          },
+          "passwort": {
+            "type": "boolean",
+            "title": "Passwort",
+            "default": false
           },
           "codes_offen": {
             "type": "integer",
@@ -20253,6 +20478,11 @@
           },
           "versand": {
             "$ref": "#/components/schemas/VersandOut"
+          },
+          "passwort_mindestlaenge": {
+            "type": "integer",
+            "title": "Passwort Mindestlaenge",
+            "default": 12
           }
         },
         "type": "object",
