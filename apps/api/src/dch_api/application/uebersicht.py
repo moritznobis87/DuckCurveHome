@@ -13,20 +13,30 @@ Schwelle legt sie nirgends fest: wo die Seite selbst kein Urteil hat, bleibt die
 und App sind dasselbe“). Eine Zahl, die jede Oberfläche selbst zusammensetzte, liefe auseinander.
 
 **Eine Quelle, die ausfällt, nimmt nur ihre Karte mit.** Die Karten werden einzeln gebaut; wirft
-eine Rechnung, steht dort „Gerade keine Auskunft.“, und die anderen sechs bleiben.
+eine Rechnung, steht dort „Gerade keine Auskunft.“, und die anderen bleiben.
+
+**Die Energie zeigt den heutigen Tag.** Ihre Seiten sind Berichte über einen Zeitraum; die
+Übersicht hat keinen Zeitraumwähler und nimmt deshalb den Tag, der läuft. Strom, Photovoltaik
+und Wallbox lesen aus derselben Tagesbilanz, die auch ihre Seiten zeigen, und die wird für alle
+drei nur einmal gerechnet.
 """
 
 from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from datetime import date
 
 from dch_api.application.kennlinie import de
 from dch_api.application.runtime import Runtime
 from dch_api.schemas import (
     Ampel,
     AnlageOut,
+    EnergySummaryOut,
+    ForecastEvaluationOut,
+    HeatReportOut,
     KontaktwirkungOut,
+    LiveStateOut,
     PlanOut,
     RegelkreisOut,
     ReglerEinstellungenOut,
@@ -34,6 +44,7 @@ from dch_api.schemas import (
     UebersichtOut,
     WaermepumpeOut,
 )
+from hems_core.simulation import BERLIN
 
 #: Über wie viele Tage die Karte der Wirkung urteilt. Der kürzeste Zeitraum, den die Seite
 #: anbietet: die Karte soll sagen, wie es zuletzt war.
@@ -44,6 +55,12 @@ KEINE_AUSKUNFT = "Gerade keine Auskunft."
 
 #: Was auf der Karte der Wirkung steht, solange die Ereignisstudie kein Urteil fällt.
 WIRKUNG_OFFEN = "Für ein Urteil gibt es noch zu wenige Ereignisse."
+
+#: Was auf einer Karte der Energie steht, solange der Tag noch keine bewertete Minute hat.
+HEUTE_LEER = "Für heute liegen noch keine Messwerte vor."
+
+#: Die Bereiche, für die es Karten gibt, mit ihrem Schlüssel aus `docs/seitenbaum.json`.
+BEREICHE = ("anlage", "energie")
 
 
 def _ohne(weg: str, grund: str = KEINE_AUSKUNFT) -> UebersichtKarteOut:
@@ -171,6 +188,70 @@ def karte_regler(e: ReglerEinstellungenOut) -> UebersichtKarteOut:
     )
 
 
+def _kwh(weg: str, bilanz: EnergySummaryOut, kwh: float, dazu: str) -> UebersichtKarteOut:
+    """Eine Karte mit einer Energiemenge des heutigen Tages aus der Tagesbilanz."""
+    if bilanz.totals.minutes == 0:
+        return _ohne(weg, HEUTE_LEER)
+    return UebersichtKarteOut(weg=weg, leitzahl_de=f"{de(kwh, 1)} kWh", dazu_de=dazu, ampel="gut")
+
+
+def karte_strom(bilanz: EnergySummaryOut) -> UebersichtKarteOut:
+    """Der Strom: was das Haus heute verbraucht hat, Wärmepumpe und Wallbox eingeschlossen."""
+    return _kwh("/strom", bilanz, bilanz.totals.house_kwh, "Verbrauch heute")
+
+
+def karte_photovoltaik(bilanz: EnergySummaryOut) -> UebersichtKarteOut:
+    """Die Photovoltaik: was die Anlage heute erzeugt hat."""
+    return _kwh("/strom/pv", bilanz, bilanz.totals.pv_kwh, "Ertrag heute")
+
+
+def karte_wallbox(bilanz: EnergySummaryOut) -> UebersichtKarteOut:
+    """Die Wallbox: was heute ins Auto geladen wurde."""
+    return _kwh("/strom/wallbox", bilanz, bilanz.totals.ev_kwh, "heute geladen")
+
+
+def karte_waerme(bericht: HeatReportOut) -> UebersichtKarteOut:
+    """Die Wärme: was die Wärmepumpe heute geliefert hat. Geschätzt aus Strom und Arbeitszahl,
+    wie auf ihrer Seite, und deshalb auch hier so genannt."""
+    weg = "/waerme"
+    if bericht.summary.totals.minutes == 0:
+        return _ohne(weg, HEUTE_LEER)
+    return UebersichtKarteOut(
+        weg=weg,
+        leitzahl_de=f"{de(bericht.thermal_kwh_est, 1)} kWh",
+        dazu_de="Wärme heute, geschätzt",
+        ampel="gut",
+    )
+
+
+def karte_prognose(auswertung: ForecastEvaluationOut) -> UebersichtKarteOut:
+    """Die Prognose: um wie viel sie gestern neben dem Ertrag lag. Das Vorzeichen steht dabei,
+    weil es die Richtung sagt: Plus heißt, die Prognose war zu hoch."""
+    weg = "/system"
+    wertung = auswertung.yesterday.score
+    if wertung is None or wertung.energy_error_pct is None:
+        return _ohne(weg, "Für gestern gibt es noch keinen Vergleich mit dem Ertrag.")
+    fehler = wertung.energy_error_pct
+    vorzeichen = "+" if fehler > 0 else "−" if fehler < 0 else ""
+    return UebersichtKarteOut(
+        weg=weg,
+        leitzahl_de=f"{vorzeichen}{de(abs(fehler), 0)} %",
+        dazu_de="Abweichung gestern",
+        ampel="gut",
+    )
+
+
+def karte_speicher(zustand: LiveStateOut) -> UebersichtKarteOut:
+    """Der Speicher: sein Ladestand im Augenblick."""
+    weg = "/strom/speicher"
+    stand = zustand.snapshot.battery_soc
+    if stand.value is None or not stand.quality.usable:
+        return _ohne(weg, "Vom Speicher liegt kein Ladestand vor.")
+    return UebersichtKarteOut(
+        weg=weg, leitzahl_de=f"{de(stand.value * 100, 0)} %", dazu_de="Ladestand", ampel="gut"
+    )
+
+
 async def _karte[T](
     weg: str, quelle: Callable[[], Awaitable[T]], bauen: Callable[[T], UebersichtKarteOut]
 ) -> UebersichtKarteOut:
@@ -199,3 +280,44 @@ async def anlage(runner: Runtime) -> UebersichtOut:
         _karte("/waerme/waermepumpe/regler", runner.regler_einstellungen, karte_regler),
     )
     return UebersichtOut(bereich="anlage", karten=list(karten))
+
+
+def _heute(runner: Runtime) -> date:
+    """Der Tag, der im Haus läuft. Dieselbe Rechnung wie in den Berichten (`routers/energy.py`)."""
+    return runner.now.astimezone(BERLIN).date()
+
+
+async def energie(runner: Runtime) -> UebersichtOut:
+    """Die Karten des Bereichs Energie, in der Reihenfolge des Seitenbaums.
+
+    Die Jahreskarte hat keine Karte: sie ist ein Bild über ein Jahr und hat keine Zahl des Tages.
+    """
+    heute = _heute(runner)
+    bilanz: asyncio.Task[EnergySummaryOut] = asyncio.ensure_future(
+        runner.energy_summary("day", heute)
+    )
+
+    async def tagesbilanz() -> EnergySummaryOut:
+        return await asyncio.shield(bilanz)
+
+    async def augenblick() -> LiveStateOut:
+        return runner.live_state()
+
+    karten = await asyncio.gather(
+        _karte("/strom", tagesbilanz, karte_strom),
+        _karte("/waerme", lambda: runner.heat_report("day", heute), karte_waerme),
+        _karte("/strom/pv", tagesbilanz, karte_photovoltaik),
+        _karte("/system", runner.forecast_evaluation, karte_prognose),
+        _karte("/strom/speicher", augenblick, karte_speicher),
+        _karte("/strom/wallbox", tagesbilanz, karte_wallbox),
+    )
+    return UebersichtOut(bereich="energie", karten=list(karten))
+
+
+async def bereich(schluessel: str, runner: Runtime) -> UebersichtOut | None:
+    """Die Karten eines Bereichs, oder `None`, wenn es für ihn keine Übersicht gibt."""
+    if schluessel == "anlage":
+        return await anlage(runner)
+    if schluessel == "energie":
+        return await energie(runner)
+    return None

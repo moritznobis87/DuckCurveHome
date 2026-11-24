@@ -4230,7 +4230,7 @@
           "Übersicht"
         ],
         "summary": "Die Karten der Übersicht eines Bereichs",
-        "description": "Je Seite des Bereichs die wichtigste Zahl und ein Zustand, fertig formuliert.\n\nDer Schlüssel des Bereichs ist der aus `docs/seitenbaum.json`. Eine Übersicht gibt es für\nBereiche mit Gruppen; heute ist das die Anlage. Welche Karten ein Betrachter sieht,\nentscheidet die Oberfläche wie bei den Seiten selbst.",
+        "description": "Je Seite des Bereichs die wichtigste Zahl und ein Zustand, fertig formuliert.\n\nDer Schlüssel des Bereichs ist der aus `docs/seitenbaum.json`. Eine Übersicht gibt es für\ndie Bereiche in `uebersicht.BEREICHE`. Welche Karten ein Betrachter sieht, entscheidet die\nOberfläche wie bei den Seiten selbst.",
         "operationId": "bereichsuebersicht_api_v1_uebersicht__bereich__get",
         "parameters": [
           {

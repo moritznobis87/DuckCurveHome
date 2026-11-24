@@ -10,14 +10,21 @@ from dch_api.application import uebersicht
 from dch_api.schemas import (
     AnlageOut,
     AnlageSpeicherOut,
+    EnergySummaryOut,
+    EnergyTotalsOut,
+    ForecastDayOut,
+    ForecastEvaluationOut,
+    HeatReportOut,
     KontaktwirkungOut,
+    LiveStateOut,
     PlanIntervalOut,
     PlanOut,
     RegelkreisOut,
     ReglerEinstellungenOut,
     WaermepumpeOut,
 )
-from hems_core.domain import Measurement, Quality
+from hems_core.domain import EnergySnapshot, Measurement, Quality
+from hems_core.forecasting.evaluation import ForecastScore
 from hems_core.regelkreis.karte import KreisAnsicht, ReservenAnsicht
 
 JETZT = datetime(2026, 11, 24, 12, 0, tzinfo=UTC)
@@ -195,3 +202,149 @@ async def test_eine_quelle_die_wirft_nimmt_nur_ihre_karte_mit() -> None:
         "aus",
         uebersicht.KEINE_AUSKUNFT,
     )
+
+
+def test_der_bereich_energie_liefert_sechs_karten_in_der_reihenfolge_des_seitenbaums(
+    client: TestClient,
+) -> None:
+    antwort = client.get("/api/v1/uebersicht/energie")
+    assert antwort.status_code == 200
+    daten = antwort.json()
+    assert daten["bereich"] == "energie"
+    # Die Jahreskarte fehlt mit Absicht: sie hat keine Zahl des Tages.
+    assert [k["weg"] for k in daten["karten"]] == [
+        "/strom",
+        "/waerme",
+        "/strom/pv",
+        "/system",
+        "/strom/speicher",
+        "/strom/wallbox",
+    ]
+    for karte in daten["karten"]:
+        assert bool(karte["grund_de"]) == (karte["ampel"] != "gut"), karte
+
+
+def test_jeder_bereich_mit_karten_ist_ueber_seinen_schluessel_erreichbar(
+    client: TestClient,
+) -> None:
+    for schluessel in uebersicht.BEREICHE:
+        antwort = client.get(f"/api/v1/uebersicht/{schluessel}")
+        assert antwort.status_code == 200, schluessel
+        assert antwort.json()["bereich"] == schluessel
+
+
+def _bilanz(minuten: int = 600, **mengen: float) -> EnergySummaryOut:
+    return EnergySummaryOut.model_construct(
+        totals=EnergyTotalsOut.model_construct(minutes=minuten, **mengen)
+    )
+
+
+def test_strom_photovoltaik_und_wallbox_lesen_dieselbe_tagesbilanz() -> None:
+    bilanz = _bilanz(house_kwh=13.94, pv_kwh=0.61, ev_kwh=7.0)
+    strom = uebersicht.karte_strom(bilanz)
+    assert (strom.weg, strom.leitzahl_de, strom.dazu_de, strom.ampel) == (
+        "/strom",
+        "13,9 kWh",
+        "Verbrauch heute",
+        "gut",
+    )
+    sonne = uebersicht.karte_photovoltaik(bilanz)
+    assert (sonne.weg, sonne.leitzahl_de, sonne.dazu_de) == ("/strom/pv", "0,6 kWh", "Ertrag heute")
+    auto = uebersicht.karte_wallbox(bilanz)
+    assert (auto.weg, auto.leitzahl_de, auto.dazu_de) == (
+        "/strom/wallbox",
+        "7,0 kWh",
+        "heute geladen",
+    )
+
+
+def test_ein_tag_ohne_bewertete_minute_zeigt_keine_null() -> None:
+    # Kurz nach Mitternacht oder nach einem Ausfall: 0,0 kWh waere eine Behauptung.
+    leer = _bilanz(minuten=0)
+    for karte in (
+        uebersicht.karte_strom(leer),
+        uebersicht.karte_photovoltaik(leer),
+        uebersicht.karte_wallbox(leer),
+        uebersicht.karte_waerme(HeatReportOut.model_construct(summary=leer, thermal_kwh_est=0.0)),
+    ):
+        assert (karte.leitzahl_de, karte.ampel, karte.grund_de) == (
+            None,
+            "aus",
+            uebersicht.HEUTE_LEER,
+        )
+
+
+def test_die_waerme_nennt_ihre_zahl_eine_schaetzung() -> None:
+    karte = uebersicht.karte_waerme(
+        HeatReportOut.model_construct(summary=_bilanz(), thermal_kwh_est=24.68)
+    )
+    assert (karte.weg, karte.leitzahl_de, karte.dazu_de, karte.ampel) == (
+        "/waerme",
+        "24,7 kWh",
+        "Wärme heute, geschätzt",
+        "gut",
+    )
+
+
+def _auswertung(fehler: float | None, mit_wertung: bool = True) -> ForecastEvaluationOut:
+    wertung = (
+        ForecastScore(
+            n=40,
+            mae_kw=0.3,
+            bias_kw=0.1,
+            rmse_kw=0.4,
+            energy_forecast_kwh=10.0,
+            energy_actual_kwh=12.0,
+            energy_error_pct=fehler,
+        )
+        if mit_wertung
+        else None
+    )
+    return ForecastEvaluationOut.model_construct(
+        yesterday=ForecastDayOut.model_construct(score=wertung)
+    )
+
+
+def test_die_prognose_zeigt_die_abweichung_von_gestern_mit_vorzeichen() -> None:
+    zu_tief = uebersicht.karte_prognose(_auswertung(-17.6))
+    assert (zu_tief.weg, zu_tief.leitzahl_de, zu_tief.dazu_de, zu_tief.ampel) == (
+        "/system",
+        "−18 %",
+        "Abweichung gestern",
+        "gut",
+    )
+    assert uebersicht.karte_prognose(_auswertung(4.2)).leitzahl_de == "+4 %"
+    assert uebersicht.karte_prognose(_auswertung(0.0)).leitzahl_de == "0 %"
+
+
+def test_ohne_vergleich_von_gestern_hat_die_prognose_keine_zahl() -> None:
+    for auswertung in (_auswertung(None), _auswertung(0.0, mit_wertung=False)):
+        karte = uebersicht.karte_prognose(auswertung)
+        assert (karte.leitzahl_de, karte.ampel) == (None, "aus")
+        assert "gestern" in karte.grund_de
+
+
+def _augenblick(stand: Measurement) -> LiveStateOut:
+    return LiveStateOut.model_construct(snapshot=EnergySnapshot.model_construct(battery_soc=stand))
+
+
+def test_der_speicher_zeigt_seinen_ladestand_in_prozent() -> None:
+    karte = uebersicht.karte_speicher(
+        _augenblick(Measurement(value=0.636, observed_at=JETZT, quality=Quality.OK, source="t"))
+    )
+    assert (karte.weg, karte.leitzahl_de, karte.dazu_de, karte.ampel) == (
+        "/strom/speicher",
+        "64 %",
+        "Ladestand",
+        "gut",
+    )
+
+
+def test_ein_speicher_ohne_brauchbaren_ladestand_zeigt_keine_zahl() -> None:
+    for stand in (
+        Measurement(value=None, observed_at=JETZT, quality=Quality.UNAVAILABLE, source="t"),
+        Measurement(value=0.5, observed_at=JETZT, quality=Quality.UNAVAILABLE, source="t"),
+    ):
+        karte = uebersicht.karte_speicher(_augenblick(stand))
+        assert (karte.leitzahl_de, karte.ampel) == (None, "aus")
+        assert karte.grund_de

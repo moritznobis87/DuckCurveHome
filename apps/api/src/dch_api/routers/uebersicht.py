@@ -26,9 +26,10 @@ async def bereichsuebersicht(
     """Je Seite des Bereichs die wichtigste Zahl und ein Zustand, fertig formuliert.
 
     Der Schlüssel des Bereichs ist der aus `docs/seitenbaum.json`. Eine Übersicht gibt es für
-    Bereiche mit Gruppen; heute ist das die Anlage. Welche Karten ein Betrachter sieht,
-    entscheidet die Oberfläche wie bei den Seiten selbst.
+    die Bereiche in `uebersicht.BEREICHE`. Welche Karten ein Betrachter sieht, entscheidet die
+    Oberfläche wie bei den Seiten selbst.
     """
-    if bereich != "anlage":
+    karten = await uebersicht.bereich(bereich, runner)
+    if karten is None:
         raise DchError("unknown_area", f"Für den Bereich {bereich} gibt es keine Übersicht.", 404)
-    return await uebersicht.anlage(runner)
+    return karten
