@@ -42,6 +42,9 @@ WIRKUNG_TAGE = 7
 #: Was auf einer Karte steht, deren Quelle gerade nicht antwortet.
 KEINE_AUSKUNFT = "Gerade keine Auskunft."
 
+#: Was auf der Karte der Wirkung steht, solange die Ereignisstudie kein Urteil fällt.
+WIRKUNG_OFFEN = "Für ein Urteil gibt es noch zu wenige Ereignisse."
+
 
 def _ohne(weg: str, grund: str = KEINE_AUSKUNFT) -> UebersichtKarteOut:
     return UebersichtKarteOut(weg=weg, ampel="aus", grund_de=grund)
@@ -112,12 +115,20 @@ def karte_wirkung(k: KontaktwirkungOut) -> UebersichtKarteOut:
     """Die Wirkung: in welchem Anteil der Fälle die Maschine nach einer Anforderung anläuft."""
     weg = "/waerme/wirkung"
     ampel: Ampel = _WIRKUNG_AMPEL.get(k.urteil, "aus")
+    if ampel == "gut":
+        grund = ""
+    elif k.urteil == "offen":
+        # Der Satz der Seite erklärt hier über vier Zeilen, was fehlt. Auf der Karte genügt, dass
+        # es noch kein Urteil gibt; das Warum steht auf der Seite.
+        grund = WIRKUNG_OFFEN
+    else:
+        grund = k.urteil_de or KEINE_AUSKUNFT
     return UebersichtKarteOut(
         weg=weg,
         leitzahl_de=None if k.quote is None else f"{de(k.quote * 100, 0)} %",
         dazu_de="Anlauf nach einer Anforderung",
         ampel=ampel,
-        grund_de="" if ampel == "gut" else k.urteil_de,
+        grund_de=grund,
     )
 
 

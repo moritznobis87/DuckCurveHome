@@ -134,6 +134,9 @@ export type HouseContact = S["HouseContactOut"];
 export type Anlage = S["AnlageOut"];
 export type AnlageReplay = S["AnlageReplayOut"];
 export type Kontaktwirkung = S["KontaktwirkungOut"];
+/** Die Karten der Übersicht eines Bereichs: je Seite Leitzahl und Ampel, vom Dienst formuliert. */
+export type Uebersicht = S["UebersichtOut"];
+export type Uebersichtskarte = S["UebersichtKarteOut"];
 export type Nachbetrachtung = S["NachbetrachtungOut"];
 export type AnlageStrom = S["AnlageStromOut"];
 export type AnlageSpeicher = S["AnlageSpeicherOut"];

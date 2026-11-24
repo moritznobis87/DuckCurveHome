@@ -1,5 +1,5 @@
 import type { Ausweis, Einladung, Ich, Passkey, Person, PersonAendern, PersonAnlegen, Zeremonie,
-  Regelkreis, ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung,
+  Regelkreis, ActuatorCommandOut, Anlage, AnlageReplay, Kontaktwirkung, Morgenbrief, Nachbetrachtung, Uebersicht,
   House, Betrieb, BetriebRoh, ReglerEinstellungen, ReglerStellen, ReglerStellenRoh, Kennlinie, KennlinieRoh, ReglerKennzahlen, PushGeraete, PushKey, PushResult, Waermepumpe, PushSubscribeBody, RoomShift, RoomShiftPatch, ShiftReport, AlarmArmResult, BatteryLive, BatteryModeIn, Coverage, DoorLog, EnergySummary, HeatBalance, HeatConfigIn, HemsConfig, InvoiceReport, InvoiceSummary, EvReport, ForecastEvaluation, ForecastHistory, HeatPumpModeIn, HeatReport, History, LiveState, OperatingMode, Period, Plan, PvTaxReport, RoomEffect, RoomHistory, RoomLog, RoomSetpointResult, RoomsLive, StoveLive, StorageReport, StoveModeIn, YearMap } from "./models";
 
 export class ApiError extends Error {
@@ -128,6 +128,8 @@ export const api = {
     request<AnlageReplay>(`/anlage/wiedergabe?day=${day}&step_min=${stepMin}`),
   /** Was K1 auslöst: die Ereignisstudie über 7, 30 oder 90 Tage. */
   kontaktwirkung: (days = 30) => request<Kontaktwirkung>(`/anlage/kontaktwirkung?days=${days}`),
+  /** Die Karten der Übersicht eines Bereichs; der Schlüssel ist der aus `docs/seitenbaum.json`. */
+  uebersicht: (bereich: string) => request<Uebersicht>(`/uebersicht/${bereich}`),
   // Die Regelkreis-Karte. Ein Aufruf liefert Struktur, Parameter, Entwurf und Lernstand; die
   // Seite zeichnet daraus und rechnet nichts nach.
   regelkreis: async (): Promise<Regelkreis> => regelkreisVoll(await request<RegelkreisRoh>("/regelkreis")),

@@ -131,8 +131,11 @@ def test_die_ampel_der_wirkung_folgt_dem_urteil_der_seite() -> None:
 def test_die_wirkung_nennt_die_quote_und_bei_gutem_urteil_keinen_grund() -> None:
     gut = uebersicht.karte_wirkung(_wirkung("wirkt", 0.874))
     assert (gut.leitzahl_de, gut.grund_de) == ("87 %", "")
+    # Der lange Satz der Seite gehört nicht auf die Karte: dort steht nur, dass ein Urteil fehlt.
     offen = uebersicht.karte_wirkung(_wirkung("offen", None))
-    assert (offen.leitzahl_de, offen.grund_de) == (None, "Der Satz der Seite.")
+    assert (offen.leitzahl_de, offen.grund_de) == (None, uebersicht.WIRKUNG_OFFEN)
+    # Ein Urteil, das etwas zu sagen hat, bringt den Satz der Seite mit.
+    assert uebersicht.karte_wirkung(_wirkung("seltener")).grund_de == "Der Satz der Seite."
 
 
 def test_der_regler_zeigt_wie_viele_einstellungen_gelesen_sind() -> None:

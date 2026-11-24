@@ -771,6 +771,20 @@ a.wk-zeile:hover .wk-ergebnis, a.wk-zeile:focus-visible .wk-ergebnis { color: va
 .uebersicht-karte:hover { border-color: var(--line-2); background: var(--surface-2); }
 .uebersicht-karte:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .uebersicht-titel { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-1); }
+/* Der Name links, die Ampel rechts auf seiner Höhe. */
+.uebersicht-kopfzeile { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.uebersicht-kopfzeile > [role="img"] { margin-top: 0 !important; align-self: center; }
+/* Die Leitzahl führt die Karte, das Wort dazu steht klein dahinter auf derselben Grundlinie. */
+.uebersicht-zahl { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.uebersicht-leitzahl { font-size: 24px; line-height: 1.15; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.uebersicht-dazu { font-size: 13px; color: var(--text-2); }
+/* Der Grund einer Ampel, die nicht gut ist. Der weiche Bernstein ist der Warnton der Oberfläche. */
+.uebersicht-grund { font-size: 13px; line-height: 1.45; color: var(--amber-soft); }
+.uebersicht-karte[data-ampel="schlecht"] .uebersicht-grund { color: var(--alert-text); }
+.uebersicht-karte[data-ampel="aus"] .uebersicht-grund { color: var(--text-3); }
+/* Eine Karte, die etwas zu sagen hat, hebt sich mit ihrem Rand ab. */
+.uebersicht-karte[data-ampel="warn"] { border-color: rgba(255, 215, 120, 0.45); }
+.uebersicht-karte[data-ampel="schlecht"] { border-color: rgba(224, 83, 61, 0.6); }
 .uebersicht-satz { font-size: 13.5px; line-height: 1.45; color: var(--text-2); }
 .uebersicht-ansichten { margin-top: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
 
