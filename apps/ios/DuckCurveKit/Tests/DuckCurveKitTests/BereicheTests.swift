@@ -167,7 +167,9 @@ final class BereicheTests: XCTestCase {
     /// Jeder Weg, den die App kennt, muss sich einem Bereich zuordnen lassen. Sonst landet eine
     /// Mitteilung mit diesem Ziel auf der Startseite statt auf der gemeinten Seite.
     func testJederWegFindetSeinenBereich() {
-        for weg in Bereiche.alleWege where weg != "/" {
+        // Die Seiten außerhalb der Bereiche gehören mit Absicht zu keinem; sie finden sich über
+        // `einzelseite` (`SeitenbaumTests`).
+        for weg in Bereiche.alleWege where weg != "/" && Bereiche.einzelseite(weg) == nil {
             let b = Bereiche.bereichVon(weg)
             XCTAssertTrue(
                 b.weg == weg || b.reiter.contains { $0.weg == weg || $0.unter.contains { $0.weg == weg } },
@@ -275,6 +277,8 @@ final class KickerTests: XCTestCase {
         "/system/haustuer": "Wer sich am Reader erkennen ließ, und was geschah",
         "/system/geraet": "Dienste, Gesundheit, Sicherung und Updates des Rechners im Haus",
         "/system/zugang": "wer Zugang hat · wer zusieht · Daten sichern",
+        // Außerhalb der Bereiche: der eigene Zugang (`konto/page.tsx`).
+        "/konto": "Passkeys · Passwort · Sitzungen",
     ]
 
     /// Die drei Routen, die keinen bekommen - jede mit einem Grund in der Vorlage.

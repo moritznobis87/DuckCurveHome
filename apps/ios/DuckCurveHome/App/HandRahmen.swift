@@ -89,7 +89,7 @@ struct HandRahmen: View {
                     // (`handy.css:140-141`: `.brand-name` verschwindet, `.bereichstitel`
                     // erscheint in 26 Punkten). Die Marke steht auf der Startseite; auf
                     // „Energie" will man lesen, dass man in der Energie ist.
-                    Text(aufStartseite ? "Duck Curve" : wegweiser.bereich.name)
+                    Text(aufStartseite ? "Duck Curve" : seitenname)
                         .font(aufStartseite ? Schrift.marke : Schrift.sans(26, relativeTo: .title))
                         .fontWeight(aufStartseite ? .regular : .semibold)
                         .kerning(aufStartseite ? 0 : -0.65)
@@ -101,7 +101,7 @@ struct HandRahmen: View {
             .accessibilityLabel(
                 aufStartseite
                     ? "Duck Curve Home, zur Startseite"
-                    : "\(wegweiser.bereich.name), zur Startseite")
+                    : "\(seitenname), zur Startseite")
 
             Spacer(minLength: 8)
 
@@ -133,6 +133,9 @@ struct HandRahmen: View {
             // auf der Höhe der Großbuchstaben, sonst stünde er unter der Zeile.
             Systemknopf(wegweiser: wegweiser, groesse: 20)
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 9 }
+            // Daneben die Person: der Weg zum eigenen Zugang, für jede angemeldete Person.
+            Kontoknopf(wegweiser: wegweiser, groesse: 20)
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 9 }
         }
         .padding(.horizontal, 16)
         .padding(.top, 2)
@@ -140,7 +143,13 @@ struct HandRahmen: View {
     }
 
     private var aufStartseite: Bool {
-        wegweiser.bereich.schluessel == .jetzt
+        wegweiser.bereich.schluessel == .jetzt && wegweiser.einzelseite == nil
+    }
+
+    /// Was im Kopf steht: der Bereich, oder der Name einer Seite außerhalb der Bereiche
+    /// (`AreaNav.tsx`, `Bereichstitel`).
+    private var seitenname: String {
+        wegweiser.einzelseite?.name ?? wegweiser.bereich.name
     }
 
     /// Der Messwert aus dem Haus, und wenn der alt ist, der des Wetterdienstes - das
@@ -174,7 +183,7 @@ struct Bereichsleiste: View {
     }
 
     private func knopf(_ b: Bereich) -> some View {
-        let istAktiv = wegweiser.bereich.schluessel == b.schluessel
+        let istAktiv = wegweiser.einzelseite == nil && wegweiser.bereich.schluessel == b.schluessel
         return Button {
             wegweiser.merkeReiter()
             wegweiser.geheZuBereich(b)

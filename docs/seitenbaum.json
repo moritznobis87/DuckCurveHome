@@ -319,5 +319,12 @@
         }
       ]
     }
+  ],
+  "einzelseiten": [
+    {
+      "weg": "/konto",
+      "name": "Mein Zugang",
+      "beschreibung": "Passkeys, Passwort und Sitzungen des eigenen Zugangs."
+    }
   ]
 }

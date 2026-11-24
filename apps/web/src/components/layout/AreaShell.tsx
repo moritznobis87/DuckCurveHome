@@ -1,10 +1,11 @@
 "use client";
 
-import { AreaAnsichten, AreaIcons, AreaTabs, Bereichstitel, Brand, Fussleiste, Systemknopf } from "./AreaNav";
+import { AreaAnsichten, AreaIcons, AreaTabs, Bereichstitel, Brand, Fussleiste, Kontoknopf, Systemknopf } from "./AreaNav";
 import { UpdateHinweis } from "@/components/update/UpdateHinweis";
 
 /**
- * Die Huelle jeder Unterseite: Marke, Bereichsleiste und das Zahnrad zum System, rechts die
+ * Die Huelle jeder Unterseite: Marke, Bereichsleiste, das Zahnrad zum System und die Person zum
+ * eigenen Zugang, rechts die
  * Werkzeuge der Seite (meist die Zeitraumwahl), darunter die Reiter des Bereichs.
  *
  * Eine Huelle fuer alle, damit die Seiten sich nicht in Kleinigkeiten unterscheiden: vorher hatten
@@ -19,7 +20,10 @@ export function AreaShell({ right, kicker, period, anchor, children }: { right?:
           <Brand />
           <Bereichstitel />
           <AreaIcons />
-          <Systemknopf />
+          <span className="kopfknoepfe flex items-center gap-1">
+            <Systemknopf />
+            <Kontoknopf />
+          </span>
         </div>
         {right ? <div className="report-header-right flex shrink-0 items-center gap-3">{right}</div> : null}
       </header>

@@ -104,7 +104,7 @@ export function MeinZugang({ mindestlaenge }: { mindestlaenge: number }) {
     return (
       <p className="m-0 text-[15px] leading-[1.6] text-text-3">
         Hier ist keine Person angemeldet. Darum gibt es an dieser Stelle weder eigene Passkeys
-        noch ein eigenes Passwort. Wer einen eigenen Zugang möchte, lässt sich oben einladen.
+        noch ein eigenes Passwort. Wer einen eigenen Zugang möchte, lässt sich vom Hausherrn einladen.
       </p>
     );
   }

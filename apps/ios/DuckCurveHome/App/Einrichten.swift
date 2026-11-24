@@ -282,6 +282,7 @@ struct Einrichten: View {
                 Schluesselbund.speichere(neu)
                 passwort = ""
                 haus.zugang = neu
+                haus.abgemeldet = false
                 haus.starte()
             } catch let f as ApiFehler {
                 fehler = f

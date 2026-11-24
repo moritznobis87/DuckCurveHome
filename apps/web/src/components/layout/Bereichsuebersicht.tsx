@@ -6,7 +6,7 @@ import { Zustandszeichen } from "@/components/ui/Zustandszeichen";
 import { api } from "@/lib/api/client";
 import type { Uebersichtskarte } from "@/lib/api/models";
 import { AREAS, hatUebersicht, tabsDerGruppe, type Area } from "@/lib/areas";
-import { useRole } from "@/lib/live/useRole";
+import { useSitzung } from "@/lib/live/useRole";
 import { AreaShell } from "./AreaShell";
 
 /** Wie oft die Karten ihre Zahlen neu holen. Die Übersicht steht auch an der Wand. */
@@ -58,7 +58,7 @@ function useKarten(bereich: string): Record<string, Uebersichtskarte> {
  * Eine Seite ohne Karte des Dienstes (die Annahmen, die Jahreskarte) zeigt nur ihren festen Satz.
  */
 export function Bereichsuebersicht({ bereich }: { bereich: Area["key"] }) {
-  const role = useRole();
+  const { hausherr } = useSitzung();
   const area = AREAS.find((a) => a.key === bereich);
   const karten = useKarten(bereich);
   if (!area || !hatUebersicht(area)) return null;
@@ -68,7 +68,7 @@ export function Bereichsuebersicht({ bereich }: { bereich: Area["key"] }) {
     <AreaShell kicker={`Alle Seiten im Bereich ${area.label}`}>
       <div className={`uebersicht${area.gruppen ? "" : " uebersicht-flach"}`}>
         {gruppen.map((gruppe) => {
-          const seiten = (gruppe ? tabsDerGruppe(area, gruppe.name) : area.tabs).filter((t) => !t.ownerOnly || role === "owner");
+          const seiten = (gruppe ? tabsDerGruppe(area, gruppe.name) : area.tabs).filter((t) => !t.ownerOnly || hausherr);
           if (seiten.length === 0) return null;
           return (
             <section key={gruppe?.name ?? area.key} className="uebersicht-gruppe" aria-label={gruppe?.name ?? `Seiten im Bereich ${area.label}`}>

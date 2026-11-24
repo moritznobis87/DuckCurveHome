@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AREAS } from "@/lib/areas";
+import { AREAS, EINZELSEITEN } from "@/lib/areas";
 import { Alfred, HALTEN_MS, NACHLAUF_MS, WACHE_MS, rechnungZusammenfassung, technikZeile, tibberZusammenfassung } from "./Alfred";
 import { SEITEN, TEXTE, ortBestimmen, wegweiser, wissen } from "./hilfetexte";
 import { schrittText, stromLesen, verlaufFuerServer, vorschlagAenderung, vorschlagAufruf, vorschlagText } from "./strom";
@@ -35,10 +35,15 @@ describe("Hilfetexte", () => {
         for (const u of t.unter ?? []) expect(SEITEN[u.href], u.href).toBeTruthy();
       }
     }
+    // Auch die Seiten außerhalb der Bereiche, etwa „Mein Zugang“.
+    for (const s of EINZELSEITEN) expect(SEITEN[s.href], s.href).toBeTruthy();
   });
 
   it("es gibt keinen Seitentext für eine Adresse, die es nicht gibt", () => {
-    const adressen = new Set(AREAS.flatMap((a) => [a.href, ...a.tabs.flatMap((t) => [t.href, ...(t.unter ?? []).map((u) => u.href)])]));
+    const adressen = new Set([
+      ...AREAS.flatMap((a) => [a.href, ...a.tabs.flatMap((t) => [t.href, ...(t.unter ?? []).map((u) => u.href)])]),
+      ...EINZELSEITEN.map((s) => s.href),
+    ]);
     for (const href of Object.keys(SEITEN)) expect(adressen.has(href), href).toBe(true);
   });
 

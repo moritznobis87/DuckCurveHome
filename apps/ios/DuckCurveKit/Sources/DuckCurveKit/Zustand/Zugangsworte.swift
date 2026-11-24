@@ -50,6 +50,26 @@ public enum Zugangsworte {
         "Eine Person darf an beliebig vielen Geräten zugleich angemeldet sein: je Gerät eine eigene Sitzung, einzeln zu beenden. Auch das Gerät an der Wand bekommt deshalb eine eigene Person. Gib ihr einen Namen, dem man ansieht, dass kein Mensch dahintersteht („Wandanzeige Flur“), und die Rolle, die sie wirklich braucht.",
     ]
 
+    // MARK: - Mein Zugang
+
+    public static let meinZugangUeberschrift = "Mein Zugang"
+
+    /// Der Absatz auf „Zugang und Sicherung“, der auf die eigene Seite zeigt (`page.tsx`), im
+    /// Wortlaut des Dashboards.
+    public static let meinZugang =
+        "Deine eigenen Passkeys, dein Passwort und deine Sitzungen stehen auf einer eigenen Seite, die jede angemeldete Person erreicht: Mein Zugang. Du findest sie auch über das Personenzeichen im Kopf jeder Seite."
+
+    /// Was auf „Mein Zugang“ steht, wenn keine Person angemeldet ist (`MeinZugang.tsx`).
+    public static let keinePerson =
+        "Hier ist keine Person angemeldet. Darum gibt es an dieser Stelle weder eigene Passkeys noch ein eigenes Passwort. Wer einen eigenen Zugang möchte, lässt sich vom Hausherrn einladen."
+
+    /// Die Zeile über dem eigenen Zugang (`MeinZugang.tsx`): wer angemeldet ist.
+    public static func angemeldetAls(_ email: String) -> String {
+        "Angemeldet als \(email)."
+    }
+
+    public static let abmelden = "Abmelden"
+
     // MARK: - Platzbedarf
 
     /// Der Absatz über der Tabelle (`page.tsx:118-122`), wörtlich.

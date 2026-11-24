@@ -124,6 +124,8 @@ def swift_name(name: str) -> str:
         "thermo": "thermometer", "bulb": "lampe", "coffee": "kaffee", "door": "tuer",
         "shield": "schild", "alert": "warnung", "clock": "uhr", "calendar": "kalender",
         "chart": "diagramm", "table": "tabelle", "dashboard": "anzeige",
+        # `person` heisst in beiden gleich und steht hier, damit die Tabelle vollstaendig ist.
+        "person": "person",
     }
     return tabelle.get(name, name)
 

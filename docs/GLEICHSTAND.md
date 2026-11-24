@@ -75,6 +75,14 @@ beiden gibt es zwei Wege: Passkey oder E-Mail-Adresse und Passwort (ADR-0002, Na
   dahin beschrieb die App Kopplungslinks und ein Gast-Token, die es seit dem 23.11.2026 nicht
   mehr gibt.
 
+**Entschieden und gebaut am 24.11.2026: die Seite „Mein Zugang“.** Der eigene Zugang steht
+auf einer eigenen Seite außerhalb der sechs Bereiche (`/konto`, in `docs/seitenbaum.json` unter
+`einzelseiten`), erreichbar über das Personenzeichen im Kopf, für jede angemeldete Person. Bis
+dahin stand er auf „Zugang und Sicherung“ im Bereich System, den nur der Hausherr sieht: ein
+Bewohner konnte weder sein Passwort wechseln noch sich abmelden (Fund im Review von PR 31).
+Dabei behoben: Das Dashboard zeigte einem Bewohner das Zahnrad und die Seiten des Hausherrn,
+die ihn dann zurückwarfen, weil die Leiste „darf stellen“ mit „hat Vollzugriff“ gleichsetzte.
+
 **Offen:**
 
 | Was | Dashboard | App | Fundstelle |
@@ -82,8 +90,7 @@ beiden gibt es zwei Wege: Passkey oder E-Mail-Adresse und Passwort (ADR-0002, Na
 | Anmeldung mit Passkey | vorhanden | fehlt. Sie braucht die Team-ID des Apple-Entwicklerkontos und die Adresse des Dashboards (`apple-app-site-association`) und lässt sich nur am Gerät prüfen. | `app/anmeldung/passkey.tsx`, `Einrichten.swift` |
 | Einladungslink einlösen | Seite `/anmeldung/einrichten` | bauartbedingt im Browser: Der Link ist eine Adresse des Dashboards. | `app/anmeldung/einrichten/page.tsx` |
 | Personen verwalten und einladen | vorhanden | fehlt | `components/zugang/Personen.tsx` |
-| Eigene Passkeys und eigene Sitzungen | vorhanden | fehlt; die App zeigt nur das eigene Passwort | `components/zugang/MeinZugang.tsx`, `MeinPasswortKarte.swift` |
-| Der eigene Zugang für alle Rollen | Nur der Hausherr erreicht „Mein Zugang“, weil der Abschnitt auf der Seite „Zugang und Sicherung“ steht und der Bereich System ihm vorbehalten ist. Bewohner, Gast und Service können damit weder ihr Passwort wechseln noch ihre Passkeys pflegen noch sich abmelden. Das gilt für die Passkeys schon seit dem 23.11.2026. | ebenso: die Karte „Mein Passwort“ steht auf derselben Seite | `app/system/zugang/page.tsx` (`requireOwner`), `ZugangSeite.swift`; gefunden im Review von PR 31. Eine eigene Seite dafür ändert die Gliederung und braucht die Entscheidung des Hausherrn. |
+| Eigene Passkeys, eigene Sitzungen, neue Wiederherstellungscodes | vorhanden auf „Mein Zugang“ | fehlt; die App zeigt dort das eigene Passwort und das Abmelden | `components/zugang/MeinZugang.tsx`, `KontoSeite.swift` |
 | Die vier Rollen | Der Dienst setzt sie durch, das Dashboard zeigt, was die Rolle darf. | Die App kennt zwei Stufen: Nur der Hausherr sieht Schalter und Akten. Ein Bewohner sieht in der App nur zu, obwohl der Dienst ihm das Stellen im Haus erlaubte. | `Zugang.rolle(derPerson:)`, `Hauszustand.darfSchalten` |
 | Sitzung in der Liste erkennen | Ein Browser steht dort mit seinem Gerät („iPhone“, „Mac“). | Eine Sitzung der App steht dort als „unbekanntes Gerät“, weil die App keinen sprechenden User-Agent schickt. | `MeinZugang.tsx` (`geraet`), `Zugang.kopfzeilen` |
 

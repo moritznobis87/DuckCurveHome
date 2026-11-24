@@ -36,6 +36,9 @@ final class Wegweiser {
     var kurventag: Kurventag = .heute
 
     var bereich: Bereich { Bereiche.bereichVon(weg) }
+    /// Die Seite außerhalb der Bereiche, auf der man steht, etwa „Mein Zugang“. Dann ist kein
+    /// Bereich aktiv, obwohl ``bereich`` mangels Treffer auf „Jetzt“ zurückfällt.
+    var einzelseite: Einzelseite? { Bereiche.einzelseite(weg) }
     var reiter: Reiter? { Bereiche.reiterVon(bereich, weg) }
     var ansicht: Ansicht? { Bereiche.ansichtVon(reiter, weg) }
 
@@ -62,6 +65,9 @@ final class Wegweiser {
     }
 
     func merkeReiter() {
+        // Eine Einzelseite gehört zu keinem Bereich. Ohne diese Prüfung merkte sich „Jetzt“ den
+        // Weg `/konto`, und die Ente in der Leiste führte danach zum eigenen Zugang.
+        guard einzelseite == nil else { return }
         letzterReiter[bereich.schluessel] = weg
     }
 
@@ -177,7 +183,7 @@ struct Wurzel: View {
     var body: some View {
         ZStack {
             Group {
-                if !haus.zugang.istEingerichtet {
+                if !haus.zugang.istEingerichtet || haus.abgemeldet {
                     Einrichten()
                 } else if breite == .compact {
                     HandRahmen(wegweiser: wegweiser)

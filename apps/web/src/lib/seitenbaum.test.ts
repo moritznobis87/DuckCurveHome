@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { AREAS } from "./areas";
+import { AREAS, EINZELSEITEN } from "./areas";
 
 /**
  * Dashboard und App zeigen dieselben Seiten unter denselben Adressen. Das ist seit dem
@@ -60,5 +60,15 @@ describe("Seitenbaum", () => {
     const datei = resolve(__dirname, "../../../../docs/seitenbaum.json");
     const gemeinsam = JSON.parse(readFileSync(datei, "utf-8")) as { bereiche: Bereich[] };
     expect(seitenbaumDesDashboards()).toEqual(gemeinsam.bereiche);
+  });
+
+  it("kennt dieselben Seiten außerhalb der Bereiche wie docs/seitenbaum.json", () => {
+    const datei = resolve(__dirname, "../../../../docs/seitenbaum.json");
+    const gemeinsam = JSON.parse(readFileSync(datei, "utf-8")) as {
+      einzelseiten: { weg: string; name: string; beschreibung: string }[];
+    };
+    expect(EINZELSEITEN.map((s) => ({ weg: s.href, name: s.label, beschreibung: s.beschreibung }))).toEqual(
+      gemeinsam.einzelseiten,
+    );
   });
 });

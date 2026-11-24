@@ -14,6 +14,14 @@ import XCTest
 final class SeitenbaumTests: XCTestCase {
     private struct Datei: Decodable, Equatable {
         let bereiche: [Bereichszeile]
+        let einzelseiten: [Einzelzeile]
+    }
+
+    /// Eine Seite außerhalb der Bereiche, wie die gemeinsame Datei sie schreibt.
+    private struct Einzelzeile: Decodable, Equatable {
+        let weg: String
+        let name: String
+        let beschreibung: String
     }
 
     private struct Bereichszeile: Decodable, Equatable {
@@ -87,5 +95,25 @@ final class SeitenbaumTests: XCTestCase {
         for (eigen, soll) in zip(app, gemeinsam) {
             XCTAssertEqual(eigen, soll, "Der Bereich \(soll.name) weicht vom Dashboard ab")
         }
+    }
+
+    /// Die Seiten außerhalb der Bereiche sind in der App dieselben wie im Dashboard: gleiche
+    /// Adresse, gleicher Name, gleicher Satz.
+    func testEinzelseitenStimmenMitDerGemeinsamenDateiUeberein() throws {
+        let gemeinsam = try gemeinsameDatei().einzelseiten
+        let app = Bereiche.einzelseiten.map {
+            Einzelzeile(weg: $0.weg, name: $0.name, beschreibung: $0.beschreibung)
+        }
+        XCTAssertEqual(app, gemeinsam)
+    }
+
+    /// Eine Einzelseite gehört zu keinem Bereich, wird aber als Weg gefunden, auch mit
+    /// Fragezeichenteil und Schrägstrich am Ende.
+    func testEinzelseiteWirdAmWegErkannt() {
+        XCTAssertEqual(Bereiche.einzelseite("/konto")?.name, "Mein Zugang")
+        XCTAssertEqual(Bereiche.einzelseite("/konto/")?.weg, "/konto")
+        XCTAssertNil(Bereiche.einzelseite("/kontor"))
+        XCTAssertNil(Bereiche.einzelseite("/system/zugang"))
+        XCTAssertTrue(Bereiche.alleWege.contains("/konto"))
     }
 }

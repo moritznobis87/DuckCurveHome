@@ -255,11 +255,12 @@ final class SvgPfadTests: XCTestCase {
                 }
             }
         }
-        // 24 Zeichen mit zusammen 72 Formen. `home` und `house` sind in Icon.tsx dieselbe
+        // 25 Zeichen mit zusammen 74 Formen. `home` und `house` sind in Icon.tsx dieselbe
         // Zeichnung und heissen hier beide `haus`. Seit dem 24.11.2026 ist es eine Form mehr:
-        // die Waermepumpe als Aussengeraet hat neben Luefter und Fuessen die Lamellen.
-        XCTAssertEqual(Zeichenart.allCases.count, 24)
-        XCTAssertEqual(formen, 72, "Es sollten 72 Formen aus Icon.tsx uebernommen sein.")
+        // die Waermepumpe als Aussengeraet hat neben Luefter und Fuessen die Lamellen. Dazu kam am
+        // selben Tag die Person mit zwei Formen, Kopf und Schultern: der Weg zum eigenen Zugang.
+        XCTAssertEqual(Zeichenart.allCases.count, 25)
+        XCTAssertEqual(formen, 74, "Es sollten 74 Formen aus Icon.tsx uebernommen sein.")
     }
 
     /// Die Bereichsleiste braucht fuenf Zeichen, und die Marke ist eines davon.

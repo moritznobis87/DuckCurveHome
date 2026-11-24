@@ -173,9 +173,54 @@ public struct Ansicht: Sendable, Hashable, Identifiable {
 /// zwei Typen dieses Namens in einem Modulraum sind nicht mehr eindeutig zu nennen.
 public enum Bereichszeichen: String, Sendable, Hashable {
     case ente, haus, blitz, euro, waermepumpe, zahnrad
+    /// Kopf und Schultern: der Weg zum eigenen Zugang (``Bereiche/einzelseiten``).
+    case person
+}
+
+/// Eine Seite außerhalb der sechs Bereiche.
+///
+/// Der Hausherr hat am 24.11.2026 entschieden, dass der eigene Zugang eine eigene Seite bekommt,
+/// die jede angemeldete Person erreicht. Vorher stand er auf „Zugang und Sicherung“ im Bereich
+/// System, den nur der Hausherr sieht: ein Bewohner konnte weder sein Passwort wechseln noch
+/// sich abmelden. Die Seite gehört zu keinem Bereich und steht deshalb nicht in
+/// ``Bereiche/alle``; sie steht in `docs/seitenbaum.json` unter `einzelseiten`, und
+/// `SeitenbaumTests` hält sie dagegen wie `seitenbaum.test.ts` das Dashboard.
+public struct Einzelseite: Sendable, Hashable, Identifiable {
+    public let weg: String
+    public let name: String
+    public let zeichen: Bereichszeichen
+    public let beschreibung: String
+    /// Die Stichwortzeile der Seite, wie das Dashboard sie in den Kopf setzt (`konto/page.tsx`).
+    public let kicker: String
+    public var id: String { weg }
+
+    public init(weg: String, name: String, zeichen: Bereichszeichen, beschreibung: String, kicker: String) {
+        self.weg = weg
+        self.name = name
+        self.zeichen = zeichen
+        self.beschreibung = beschreibung
+        self.kicker = kicker
+    }
 }
 
 public enum Bereiche {
+    /// Die Adresse des eigenen Zugangs.
+    public static let kontoweg = "/konto"
+
+    /// Die Seiten außerhalb der Bereiche (`areas.ts`, `EINZELSEITEN`).
+    public static let einzelseiten: [Einzelseite] = [
+        Einzelseite(
+            weg: kontoweg, name: "Mein Zugang", zeichen: .person,
+            beschreibung: "Passkeys, Passwort und Sitzungen des eigenen Zugangs.",
+            kicker: "Passkeys · Passwort · Sitzungen")
+    ]
+
+    /// Die Einzelseite zu einem Weg, wenn er auf einer steht (`areas.ts`, `einzelseiteOf`).
+    public static func einzelseite(_ weg: String) -> Einzelseite? {
+        let sauber = saeubere(weg)
+        return einzelseiten.first { sauber == $0.weg || sauber.hasPrefix($0.weg + "/") }
+    }
+
     /// Alle Bereiche in der Reihenfolge der Leiste.
     public static let alle: [Bereich] = [
         // **Die beiden Bereiche ohne Reiter tragen auch keinen Kicker**, und das ist die Vorlage
@@ -367,6 +412,8 @@ public enum Bereiche {
     /// in der Seite, müsste er von unten nach oben gereicht werden; so steht er einmal und wird
     /// von derselben Stelle gelesen.
     public static func kicker(fuer weg: String) -> String? {
+        // Eine Seite außerhalb der Bereiche trägt ihre Zeile selbst.
+        if let einzeln = einzelseite(weg) { return einzeln.kicker }
         let bereich = bereichVon(weg)
         let reiter = reiterVon(bereich, weg)
         // Die Uebersicht eines Bereichs ist kein Reiter und hat trotzdem eine Zeile.
@@ -455,6 +502,7 @@ public enum Bereiche {
                 for u in r.unter { aus.append(u.weg) }
             }
         }
+        aus.append(contentsOf: einzelseiten.map(\.weg))
         return aus
     }
 

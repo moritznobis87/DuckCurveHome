@@ -186,8 +186,8 @@
   .area-zurueck-wort { display: none; }
   /* Auf der Übersicht selbst sind die Karten die Navigation; die Zeile darüber wäre doppelt. */
   .area-tabs-uebersicht { display: none; }
-  /* Das Zahnrad steht rechts neben dem Bereichsnamen. */
-  .system-knopf { margin-left: auto; }
+  /* Zahnrad und Person stehen rechts neben dem Bereichsnamen. */
+  .kopfknoepfe { margin-left: auto; }
   .uebersicht { grid-template-columns: 1fr; gap: 22px; }
   .uebersicht-karten { gap: 9px; }
   .uebersicht-karte { padding: 14px 15px 13px; border-radius: 12px; }
