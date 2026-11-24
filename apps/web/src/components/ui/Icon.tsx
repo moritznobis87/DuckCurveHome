@@ -27,7 +27,11 @@ const PATHS: Record<string, string> = {
   // auch bei 18 px als Ladung zu lesen ist.
   battery: '<rect x="2.5" y="7" width="16.5" height="10" rx="2.2"/><path d="M21.5 10.4v3.2"/><rect x="5.1" y="9.6" width="6.4" height="4.8" rx="1" fill="currentColor" stroke="none"/>',
   // Ausseneinheit mit Luefterrad.
-  pump: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><circle cx="12" cy="12" r="4.2"/><path d="M12 12 9.3 9.4M12 12l3.5-1.3M12 12l-.7 3.8"/><path d="M6 19v1.8M18 19v1.8"/>',
+  // Die Wärmepumpe als Außengerät: der Lüfter sitzt links, rechts die Lamellen des Auslasses.
+  // Bis zum 24.11.2026 saß der Lüfter mittig in einem Kasten, und das Zeichen las sich als
+  // Waschmaschine. Vier Fassungen sind gezeichnet und bei 16 bis 48 Punkten verglichen
+  // (docs/design/werkstatt/zeichen/runde3.json, dort wp_f); diese bleibt bei 20 Punkten lesbar.
+  pump: '<rect x="3" y="4.5" width="18" height="13" rx="2.5"/><path d="M7 17.5v2M17 17.5v2"/><circle cx="9.25" cy="11" r="3.5"/><path d="M9.25 11L6.78 8.53M9.25 11L12.63 10.09M9.25 11L8.34 14.38"/><path d="M16 9h1.75M16 13h1.75"/>',
   // Auto von der Seite, mit Raedern. Das vorige Symbol zeigte die Wallbox selbst und war
   // als Geraet eindeutig, aber niemand erkennt eine Wallbox auf 18 px; ein Auto erkennt jeder.
   car: '<path d="M3.5 14.3 5.1 9.9a2 2 0 0 1 1.9-1.4h8.6a2 2 0 0 1 1.7 1l2.5 4.8"/><path d="M3.5 14.3h17v3.4a1 1 0 0 1-1 1h-1.4M3.5 14.3v3.4a1 1 0 0 0 1 1h1.4"/><circle cx="8.1" cy="18.4" r="1.9"/><circle cx="15.9" cy="18.4" r="1.9"/><path d="M10 18.7h4"/>',

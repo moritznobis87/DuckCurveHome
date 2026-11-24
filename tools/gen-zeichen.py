@@ -26,7 +26,7 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parent.parent
 QUELLE = WURZEL / "apps" / "web" / "src" / "components" / "ui" / "Icon.tsx"
 # Die Zeichendaten liegen im Kern und nicht in der App: es sind Zeichenketten, kein SwiftUI, und
-# so laesst sich auf dem Pruefrechner nachweisen, dass alle 79 Pfade vom Leser verstanden werden.
+# so laesst sich auf dem Pruefrechner nachweisen, dass alle Pfade vom Leser verstanden werden.
 ZIEL = (
     WURZEL / "apps" / "ios" / "DuckCurveKit" / "Sources" / "DuckCurveKit"
     / "Gestalt" / "Zeichendaten.swift"
