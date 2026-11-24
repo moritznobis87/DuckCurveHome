@@ -569,6 +569,42 @@ public struct Api: Sendable {
             rumpf: try rumpf(PasswortEntfernenIn(bisher: bisher)))
     }
 
+    /// Ein anderes Gerät abmelden (`POST /auth/sitzungen/{id}/beenden`).
+    public func beendeSitzung(_ id: String) async throws {
+        let _: [String: Mischwert] = try await hole(
+            "/auth/sitzungen/\(teil(id))/beenden", verfahren: "POST")
+    }
+
+    /// Überall abmelden, auch hier (`POST /auth/sitzungen/beenden-alle`).
+    public func beendeAlleSitzungen() async throws {
+        let _: [String: Mischwert] = try await hole("/auth/sitzungen/beenden-alle", verfahren: "POST")
+    }
+
+    /// Einen Passkey umbenennen (`POST /auth/passkeys/{id}/name`).
+    public func benennePasskey(_ id: String, name: String) async throws {
+        let _: [String: Mischwert] = try await hole(
+            "/auth/passkeys/\(teil(id))/name", verfahren: "POST", rumpf: try rumpf(NameIn(name: name)))
+    }
+
+    /// Einen Passkey löschen (`POST /auth/passkeys/{id}/loeschen`). Der Dienst lehnt ab, wenn
+    /// sonst kein Weg herein bliebe.
+    public func loeschePasskey(_ id: String) async throws {
+        let _: [String: Mischwert] = try await hole(
+            "/auth/passkeys/\(teil(id))/loeschen", verfahren: "POST")
+    }
+
+    /// Zehn neue Wiederherstellungscodes; die alten gelten nicht mehr (`POST /auth/codes`).
+    public func neueCodes() async throws -> [String] {
+        let antwort: [String: Mischwert] = try await hole("/auth/codes", verfahren: "POST")
+        guard case .liste(let werte)? = antwort["codes"] else { return [] }
+        return werte.compactMap { if case .text(let t) = $0 { return t } else { return nil } }
+    }
+
+    /// Ein Stück eines Pfads, für Kennungen, die der Dienst vergibt.
+    private func teil(_ wert: String) -> String {
+        wert.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? wert
+    }
+
     /// Die Sitzung beenden, mit der diese App angemeldet ist.
     public func meldeAb() async throws {
         let _: [String: Mischwert] = try await hole("/auth/abmelden", verfahren: "POST")

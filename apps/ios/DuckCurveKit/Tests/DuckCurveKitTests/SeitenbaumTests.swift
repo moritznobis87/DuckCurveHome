@@ -24,12 +24,15 @@ final class SeitenbaumTests: XCTestCase {
         let name: String
         let wort: String
         let nurHausherr: Bool
+        let zeichen: String
+        let farbe: String
     }
 
     private struct Einstellzeile: Decodable, Equatable {
         let name: String
         let stufe: String
         let weg: String
+        let zeichen: String
         let stichworte: [String]
     }
 
@@ -133,18 +136,32 @@ final class SeitenbaumTests: XCTestCase {
         let datei = try gemeinsameDatei()
         XCTAssertEqual(
             Bereiche.stufen.map {
-                Stufenzeile(schluessel: $0.schluessel, name: $0.name, wort: $0.wort, nurHausherr: $0.nurHausherr)
+                Stufenzeile(
+                    schluessel: $0.schluessel, name: $0.name, wort: $0.wort,
+                    nurHausherr: $0.nurHausherr, zeichen: $0.zeichen.vorlage, farbe: $0.farbe.rawValue)
             },
             datei.stufen)
         XCTAssertEqual(
             Bereiche.einstellungen.map {
-                Einstellzeile(name: $0.name, stufe: $0.stufe, weg: $0.weg, stichworte: $0.stichworte)
+                Einstellzeile(
+                    name: $0.name, stufe: $0.stufe, weg: $0.weg, zeichen: $0.zeichen.vorlage,
+                    stichworte: $0.stichworte)
             },
             datei.einstellungen)
         // Jede Einstellung führt auf eine Seite, die die App kennt.
         for e in Bereiche.einstellungen {
             XCTAssertTrue(Bereiche.alleWege.contains(e.weg), e.weg)
         }
+    }
+
+    /// Die Zustandskarte sagt dasselbe wie im Dashboard (`seitenbaum.test.ts`).
+    func testDieZustandskarteZaehltDieEingriffe() {
+        XCTAssertEqual(Einstellworte.zustand(nil).titel, "Automatik")
+        XCTAssertEqual(Einstellworte.zustand(0).titel, "Alles auf Automatik")
+        XCTAssertEqual(Einstellworte.zustand(0).satz, "Nichts ist gerade von Hand gestellt.")
+        XCTAssertEqual(Einstellworte.zustand(1).titel, "1 Eingriff von Hand")
+        XCTAssertEqual(Einstellworte.zustand(3).titel, "3 Eingriffe von Hand")
+        XCTAssertEqual(Einstellworte.zustand(3).satz, "Jeder endet von selbst, wenn seine Frist abläuft.")
     }
 
     /// Die Suche wie im Dashboard (`seitenbaum.test.ts`): Stichwort, leere Eingabe, und keine

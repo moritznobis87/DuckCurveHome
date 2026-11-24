@@ -8,9 +8,11 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { abmelden } from "@/app/anmeldung/aktionen";
+import { Icon } from "@/components/ui/Icon";
 import { api, ApiError } from "@/lib/api/client";
 import type { Ich } from "@/lib/api/models";
 import { BestaetigKnopf } from "./BestaetigKnopf";
+import { KARTEN, ROLLE, loeschfrage } from "./kontoworte";
 import { MeinPasswort } from "./MeinPasswort";
 
 /**
@@ -24,7 +26,30 @@ import { MeinPasswort } from "./MeinPasswort";
  *
  * Für einen Dienst mit dem API-Token erscheint der Abschnitt gar nicht: er ist keine Person und
  * hat weder Passkeys noch ein Passwort.
+ *
+ * **Das Bild** (seit dem 24.11.2026, auf Wunsch des Hausherrn): oben eine Kopfkarte mit dem
+ * Anfangsbuchstaben, der Rolle als Marke und drei Zahlen; darunter je eine Karte für Passkeys,
+ * Passwort und Sitzungen, jede mit ihrem Zeichen wie die Kacheln der Übersichten. Dieselben Worte
+ * stehen in der App (`Kontoworte.swift`).
  */
+
+function Karte({ art, children }: { art: keyof typeof KARTEN; children: React.ReactNode }) {
+  const k = KARTEN[art];
+  return (
+    <section className="konto-karte" aria-label={k.titel}>
+      <header className="konto-karte-kopf">
+        <span className="konto-zeichen" aria-hidden="true">
+          <Icon name={k.zeichen} size={20} />
+        </span>
+        <div className="min-w-0">
+          <h2 className="konto-karte-titel">{k.titel}</h2>
+          <p className="konto-karte-satz">{k.satz}</p>
+        </div>
+      </header>
+      {children}
+    </section>
+  );
+}
 
 function datum(wert: string | null | undefined): string {
   if (!wert) return "nie";
@@ -116,165 +141,168 @@ export function MeinZugang({ mindestlaenge }: { mindestlaenge: number }) {
   // Ohne Passwort bleibt der letzte Passkey, denn sonst gäbe es keinen Weg herein.
   const letzterBleibt = meine.length <= 1 && !hatPasswort;
 
+  const rolle = ROLLE[ich.ausweis.rolle] ?? { name: ich.ausweis.rolle, satz: "" };
+  const name = ich.ausweis.name || ich.ausweis.email || "";
+
   return (
-    <div className="flex flex-col gap-3">
-      <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-        Angemeldet als <strong>{ich.ausweis.name}</strong>
-        {ich.ausweis.name !== ich.ausweis.email ? ` (${ich.ausweis.email})` : ""}, Rolle{" "}
-        <span className="mono text-[13px]">{ich.ausweis.rolle}</span>. Noch{" "}
-        {ich.codes_offen} Wiederherstellungscodes übrig.
-      </p>
-      {fehler ? <p className="m-0 text-[14px] text-amber">{fehler}</p> : null}
+    <div className="konto">
+      <section className="konto-kopf" aria-label="Angemeldet">
+        <div className="konto-person">
+          <span className="konto-anfang" aria-hidden="true">{name.trim().charAt(0).toLocaleUpperCase("de-DE") || "?"}</span>
+          <div className="min-w-0">
+            <p className="konto-name">{name}</p>
+            {ich.ausweis.email && ich.ausweis.email !== name ? <p className="konto-adresse">{ich.ausweis.email}</p> : null}
+            <p className="konto-rolle">
+              <span className="konto-marke">{rolle.name}</span>
+              <span>{rolle.satz}</span>
+            </p>
+          </div>
+        </div>
+        <dl className="konto-zahlen">
+          <div><dt>Passkeys</dt><dd>{meine.length}</dd></div>
+          <div><dt>Sitzungen</dt><dd>{sitzungen.length}</dd></div>
+          <div><dt>Codes übrig</dt><dd>{ich.codes_offen}</dd></div>
+        </dl>
+      </section>
+      {fehler ? <p className="konto-fehler" role="alert">{fehler}</p> : null}
 
-      <span className="kicker" style={{ fontSize: 11 }}>Meine Passkeys</span>
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
-        {meine.map((p) => (
-          <li
-            key={p.id}
-            className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3"
-          >
-            <span className="flex items-baseline gap-3">
-              <span className="text-[15px] text-text-1">{p.name}</span>
-              {p.gesichert ? (
-                <span className="mono text-[12px] text-text-3">in der Wolke gesichert</span>
-              ) : (
-                <span className="mono text-[12px] text-text-3">nur auf diesem Gerät</span>
-              )}
-            </span>
-            <span className="flex items-baseline gap-3">
-              <span className="mono text-[12px] text-text-3">zuletzt {datum(p.zuletzt_benutzt_am)}</span>
-              <button
-                type="button"
-                disabled={laeuft}
-                onClick={() => setUmbenennen({ id: p.id, name: p.name })}
-                className="text-[13px] text-text-3 underline decoration-dotted"
-              >
-                umbenennen
-              </button>
-              <BestaetigKnopf
-                frage="wirklich?"
-                disabled={laeuft || letzterBleibt}
-                onBestaetigt={() => void fuehre(() => api.passkeyLoeschen(p.id))}
-                className="text-[13px] text-text-3 underline decoration-dotted disabled:opacity-40"
-              >
-                {letzterBleibt ? "der letzte bleibt" : "löschen"}
-              </BestaetigKnopf>
-            </span>
-            {umbenennen?.id === p.id ? (
-              <form
-                className="flex w-full flex-wrap items-center gap-2"
-                action={() => {
-                  const name = umbenennen.name.trim();
-                  setUmbenennen(undefined);
-                  if (name) void fuehre(() => api.passkeyUmbenennen(p.id, name));
-                }}
-              >
-                <input
-                  type="text"
-                  value={umbenennen.name}
-                  autoFocus
-                  maxLength={80}
-                  onChange={(e) => setUmbenennen({ id: p.id, name: e.target.value })}
-                  className="min-w-[160px] flex-1 rounded-[3px] border border-line-1 bg-surface-1 px-2 py-1 text-[14px] text-text-1"
-                />
-                <button type="submit" className="text-[13px] text-amber underline decoration-dotted">
-                  übernehmen
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUmbenennen(undefined)}
-                  className="text-[13px] text-text-3 underline decoration-dotted"
-                >
-                  abbrechen
-                </button>
-              </form>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="text"
-          value={neuerName}
-          onChange={(e) => setNeuerName(e.target.value)}
-          placeholder="Name des neuen Geräts"
-          maxLength={80}
-          autoComplete="off"
-          className="min-w-[200px] rounded-[3px] border border-line-1 bg-surface-2 px-3 py-2 text-[14px] text-text-1"
-        />
-        <button
-          type="button"
-          disabled={laeuft}
-          onClick={() => void passkeyAnlegen()}
-          className="rounded-[3px] border border-line-1 px-4 py-2 text-[14px] text-text-1 disabled:opacity-50"
-        >
-          {meine.length === 0 ? "Passkey anlegen" : "Weiteren Passkey anlegen"}
-        </button>
-        <button
-          type="button"
-          disabled={laeuft}
-          onClick={() => void fuehre(async () => setCodes((await api.codesNeu()).codes))}
-          className="rounded-[3px] border border-line-1 px-4 py-2 text-[14px] text-text-2 disabled:opacity-50"
-        >
-          Neue Wiederherstellungscodes
-        </button>
-      </div>
-      <p className="m-0 text-[13px] leading-[1.5] text-text-3">
-        Zwei Passkeys auf zwei Geräten sind der beste Rückweg. Ein in der Wolke gesicherter Passkey
-        (iCloud-Schlüsselbund, Google-Passwortmanager) liegt ohnehin auf mehreren.
-      </p>
-
-      <MeinPasswort
-        email={ich.ausweis.email ?? ""}
-        vorhanden={hatPasswort}
-        passkeys={meine.length}
-        mindestlaenge={mindestlaenge}
-        laeuft={laeuft}
-        fuehre={fuehre}
-      />
-
-      {codes ? (
-        <div className="flex flex-col gap-2 rounded-[3px] border border-amber/40 bg-surface-2 p-4">
-          <span className="kicker" style={{ fontSize: 11 }}>Zehn neue Codes ersetzen die alten</span>
-          <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0 sm:grid-cols-5">
-            {codes.map((c) => (
-              <li key={c} className="mono text-[14px] text-text-1">{c}</li>
+      <Karte art="passkeys">
+        {meine.length > 0 ? (
+          <ul className="konto-liste">
+            {meine.map((p) => (
+              <li key={p.id} className="konto-zeile">
+                <span className="konto-zeile-zeichen" aria-hidden="true">
+                  <Icon name="key" size={17} />
+                </span>
+                <div className="konto-zeile-text">
+                  <span className="konto-zeile-name">{p.name}</span>
+                  <span className="konto-zeile-dazu">
+                    {p.gesichert ? "in der Wolke gesichert" : "nur auf diesem Gerät"} · zuletzt {datum(p.zuletzt_benutzt_am)}
+                  </span>
+                </div>
+                <span className="konto-zeile-tun">
+                  <button type="button" disabled={laeuft} onClick={() => setUmbenennen({ id: p.id, name: p.name })} className="zugang-knopf zugang-knopf-klein">
+                    umbenennen
+                  </button>
+                  <BestaetigKnopf
+                    frage={loeschfrage(p.name)}
+                    disabled={laeuft || letzterBleibt}
+                    onBestaetigt={() => void fuehre(() => api.passkeyLoeschen(p.id))}
+                    className="zugang-knopf zugang-knopf-klein"
+                  >
+                    {letzterBleibt ? "der letzte bleibt" : "löschen"}
+                  </BestaetigKnopf>
+                </span>
+                {umbenennen?.id === p.id ? (
+                  <form
+                    className="konto-umbenennen"
+                    action={() => {
+                      const neu = umbenennen.name.trim();
+                      setUmbenennen(undefined);
+                      if (neu) void fuehre(() => api.passkeyUmbenennen(p.id, neu));
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={umbenennen.name}
+                      autoFocus
+                      maxLength={80}
+                      onChange={(e) => setUmbenennen({ id: p.id, name: e.target.value })}
+                      className="konto-feld"
+                    />
+                    <button type="submit" className="zugang-knopf zugang-knopf-an zugang-knopf-klein">
+                      übernehmen
+                    </button>
+                    <button type="button" onClick={() => setUmbenennen(undefined)} className="zugang-knopf zugang-knopf-klein">
+                      abbrechen
+                    </button>
+                  </form>
+                ) : null}
+              </li>
             ))}
           </ul>
-          <span className="text-[13px] text-text-3">Sie stehen nur jetzt hier.</span>
+        ) : null}
+        <div className="konto-reihe">
+          <input
+            type="text"
+            value={neuerName}
+            onChange={(e) => setNeuerName(e.target.value)}
+            placeholder="Name des neuen Geräts"
+            maxLength={80}
+            autoComplete="off"
+            className="konto-feld"
+          />
+          <button type="button" disabled={laeuft} onClick={() => void passkeyAnlegen()} className="zugang-knopf zugang-knopf-an">
+            {meine.length === 0 ? "Passkey anlegen" : "Weiteren Passkey anlegen"}
+          </button>
         </div>
-      ) : null}
-
-      <span className="kicker" style={{ fontSize: 11 }}>Meine Sitzungen</span>
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
-        {sitzungen.map((s) => (
-          <li
-            key={s.id}
-            className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3"
+        <p className="konto-leise">
+          Zwei Passkeys auf zwei Geräten sind der beste Rückweg. Ein in der Wolke gesicherter Passkey
+          (iCloud-Schlüsselbund, Google-Passwortmanager) liegt ohnehin auf mehreren.
+        </p>
+        <div className="konto-reihe">
+          <button
+            type="button"
+            disabled={laeuft}
+            onClick={() => void fuehre(async () => setCodes((await api.codesNeu()).codes))}
+            className="zugang-knopf"
           >
-            <span className="flex items-baseline gap-3">
-              <span className="text-[14px] text-text-2" title={s.herkunft}>{geraet(s.herkunft)}</span>
-              {s.diese ? <span className="mono text-[12px] text-amber">dieses Gerät</span> : null}
-            </span>
-            <span className="flex items-baseline gap-3">
-              <span className="mono text-[12px] text-text-3">
-                seit {datum(s.erstellt_am)} · zuletzt {datum(s.zuletzt_benutzt_am)}
+            Neue Wiederherstellungscodes
+          </button>
+        </div>
+        {codes ? (
+          <div className="konto-codes">
+            <span className="kicker" style={{ fontSize: 11 }}>Zehn neue Codes ersetzen die alten</span>
+            <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0 sm:grid-cols-5">
+              {codes.map((c) => (
+                <li key={c} className="mono text-[14px] text-text-1">{c}</li>
+              ))}
+            </ul>
+            <span className="text-[13px] text-text-3">Sie stehen nur jetzt hier.</span>
+          </div>
+        ) : null}
+      </Karte>
+
+      <Karte art="passwort">
+        <MeinPasswort
+          email={ich.ausweis.email ?? ""}
+          vorhanden={hatPasswort}
+          passkeys={meine.length}
+          mindestlaenge={mindestlaenge}
+          laeuft={laeuft}
+          fuehre={fuehre}
+        />
+      </Karte>
+
+      <Karte art="sitzungen">
+        <ul className="konto-liste">
+          {sitzungen.map((s) => (
+            <li key={s.id} className="konto-zeile" data-diese={s.diese ? "" : undefined}>
+              <span className="konto-zeile-zeichen" aria-hidden="true">
+                <Icon name="device" size={17} />
               </span>
+              <div className="konto-zeile-text">
+                <span className="konto-zeile-name" title={s.herkunft}>
+                  {geraet(s.herkunft)}
+                  {s.diese ? <span className="konto-marke konto-marke-hier">dieses Gerät</span> : null}
+                </span>
+                <span className="konto-zeile-dazu">
+                  seit {datum(s.erstellt_am)} · zuletzt {datum(s.zuletzt_benutzt_am)}
+                </span>
+              </div>
               {!s.diese ? (
-                <button
-                  type="button"
-                  disabled={laeuft}
-                  onClick={() => void fuehre(() => api.sitzungBeenden(s.id))}
-                  className="text-[13px] text-text-3 underline decoration-dotted"
-                >
-                  beenden
-                </button>
+                <span className="konto-zeile-tun">
+                  <button type="button" disabled={laeuft} onClick={() => void fuehre(() => api.sitzungBeenden(s.id))} className="zugang-knopf zugang-knopf-klein">
+                    beenden
+                  </button>
+                </span>
               ) : null}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <div className="flex flex-wrap gap-4">
+            </li>
+          ))}
+        </ul>
+      </Karte>
+
+      <div className="konto-reihe">
         <button
           type="button"
           disabled={laeuft}
@@ -284,23 +312,23 @@ export function MeinZugang({ mindestlaenge }: { mindestlaenge: number }) {
               window.location.href = "/anmeldung";
             })()
           }
-          className="text-[13px] text-text-2 underline decoration-dotted"
+          className="zugang-knopf"
         >
           Abmelden
         </button>
-      <BestaetigKnopf
-        frage="Überall abmelden, auch hier?"
-        disabled={laeuft}
-        onBestaetigt={() =>
-          void fuehre(async () => {
-            await api.alleSitzungenBeenden();
-            window.location.href = "/anmeldung";
-          })
-        }
-        className="text-[13px] text-text-3 underline decoration-dotted"
-      >
-        Überall abmelden
-      </BestaetigKnopf>
+        <BestaetigKnopf
+          frage="Überall abmelden, auch hier?"
+          disabled={laeuft}
+          onBestaetigt={() =>
+            void fuehre(async () => {
+              await api.alleSitzungenBeenden();
+              window.location.href = "/anmeldung";
+            })
+          }
+          className="zugang-knopf zugang-knopf-leise"
+        >
+          Überall abmelden
+        </BestaetigKnopf>
       </div>
     </div>
   );

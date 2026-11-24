@@ -686,13 +686,21 @@ public struct Stufe: Sendable, Hashable, Identifiable {
     public let name: String
     public let wort: String
     public let nurHausherr: Bool
+    /// Das Zeichen und die Farbe der Karte, in der die Stufe auf „Einstellen“ steht.
+    public let zeichen: Zeichenart
+    public let farbe: Seitenfarbe
     public var id: String { schluessel }
 
-    public init(schluessel: String, name: String, wort: String, nurHausherr: Bool) {
+    public init(
+        schluessel: String, name: String, wort: String, nurHausherr: Bool, zeichen: Zeichenart,
+        farbe: Seitenfarbe
+    ) {
         self.schluessel = schluessel
         self.name = name
         self.wort = wort
         self.nurHausherr = nurHausherr
+        self.zeichen = zeichen
+        self.farbe = farbe
     }
 }
 
@@ -702,13 +710,16 @@ public struct Einstellung: Sendable, Hashable, Identifiable {
     public let name: String
     public let stufe: String
     public let weg: String
+    /// Das Zeichen vor dem Namen.
+    public let zeichen: Zeichenart
     public let stichworte: [String]
     public var id: String { name }
 
-    public init(name: String, stufe: String, weg: String, stichworte: [String]) {
+    public init(name: String, stufe: String, weg: String, zeichen: Zeichenart, stichworte: [String]) {
         self.name = name
         self.stufe = stufe
         self.weg = weg
+        self.zeichen = zeichen
         self.stichworte = stichworte
     }
 }
@@ -716,24 +727,24 @@ public struct Einstellung: Sendable, Hashable, Identifiable {
 extension Bereiche {
     /// Die drei Stufen, wie im Dashboard (`areas.ts`, `STUFEN`).
     public static let stufen: [Stufe] = [
-        Stufe(schluessel: "eingreifen", name: "Eingreifen", wort: "jetzt und befristet", nurHausherr: false),
-        Stufe(schluessel: "vorgeben", name: "Vorgeben", wort: "dauerhaft", nurHausherr: false),
-        Stufe(schluessel: "abstimmen", name: "Abstimmen", wort: "womit die Regelung rechnet", nurHausherr: true),
+        Stufe(schluessel: "eingreifen", name: "Eingreifen", wort: "jetzt und befristet", nurHausherr: false, zeichen: .uhr, farbe: .pv),
+        Stufe(schluessel: "vorgeben", name: "Vorgeben", wort: "dauerhaft", nurHausherr: false, zeichen: .schieber, farbe: .speicher),
+        Stufe(schluessel: "abstimmen", name: "Abstimmen", wort: "womit die Regelung rechnet", nurHausherr: true, zeichen: .ziel, farbe: .ruhig),
     ]
 
     /// Der Katalog, wie im Dashboard (`areas.ts`, `EINSTELLUNGEN`).
     public static let einstellungen: [Einstellung] = [
-        Einstellung(name: "Wärmepumpe anfordern oder sperren", stufe: "eingreifen", weg: "/", stichworte: ["Wärmepumpe", "Kontakt", "sperren", "anfordern"]),
-        Einstellung(name: "Ofen an oder aus", stufe: "eingreifen", weg: "/", stichworte: ["Ofen", "Pelletofen", "Pellets"]),
-        Einstellung(name: "Speicher anhalten oder freigeben", stufe: "eingreifen", weg: "/strom/speicher", stichworte: ["Speicher", "Batterie", "Libbi"]),
-        Einstellung(name: "Alarmanlage scharf schalten", stufe: "eingreifen", weg: "/", stichworte: ["Alarm", "Alarmanlage", "scharf"]),
-        Einstellung(name: "Solltemperatur eines Raums", stufe: "vorgeben", weg: "/haus", stichworte: ["Raum", "Temperatur", "Sollwert", "Heizung"]),
-        Einstellung(name: "Raum-Automatik", stufe: "vorgeben", weg: "/haus", stichworte: ["Automatik", "Räume", "Vorheizen"]),
-        Einstellung(name: "Untergrenze des Speichers", stufe: "vorgeben", weg: "/strom/speicher", stichworte: ["Speicher", "Reserve", "Untergrenze"]),
-        Einstellung(name: "Mitteilungen und Morgenbrief", stufe: "vorgeben", weg: "/system/mitteilungen", stichworte: ["Mitteilungen", "Push", "Morgenbrief"]),
-        Einstellung(name: "Annahmen der Wärmerechnung", stufe: "abstimmen", weg: "/waerme/annahmen", stichworte: ["Annahmen", "Wärmebedarf", "Haus", "Modell"]),
-        Einstellung(name: "Parameter des Regelkreises", stufe: "abstimmen", weg: "/waerme/regelkreis", stichworte: ["Regelkreis", "Parameter", "Übersteuern"]),
-        Einstellung(name: "Regler der Wärmepumpe", stufe: "abstimmen", weg: "/waerme/waermepumpe/regler", stichworte: ["Regler", "Heizkurve", "Vorlauf", "Wärmepumpe"]),
+        Einstellung(name: "Wärmepumpe anfordern oder sperren", stufe: "eingreifen", weg: "/", zeichen: .waermepumpe, stichworte: ["Wärmepumpe", "Kontakt", "sperren", "anfordern"]),
+        Einstellung(name: "Ofen an oder aus", stufe: "eingreifen", weg: "/", zeichen: .ofen, stichworte: ["Ofen", "Pelletofen", "Pellets"]),
+        Einstellung(name: "Speicher anhalten oder freigeben", stufe: "eingreifen", weg: "/strom/speicher", zeichen: .batterie, stichworte: ["Speicher", "Batterie", "Libbi"]),
+        Einstellung(name: "Alarmanlage scharf schalten", stufe: "eingreifen", weg: "/", zeichen: .schild, stichworte: ["Alarm", "Alarmanlage", "scharf"]),
+        Einstellung(name: "Solltemperatur eines Raums", stufe: "vorgeben", weg: "/haus", zeichen: .thermometer, stichworte: ["Raum", "Temperatur", "Sollwert", "Heizung"]),
+        Einstellung(name: "Raum-Automatik", stufe: "vorgeben", weg: "/haus", zeichen: .haus, stichworte: ["Automatik", "Räume", "Vorheizen"]),
+        Einstellung(name: "Untergrenze des Speichers", stufe: "vorgeben", weg: "/strom/speicher", zeichen: .batterie, stichworte: ["Speicher", "Reserve", "Untergrenze"]),
+        Einstellung(name: "Mitteilungen und Morgenbrief", stufe: "vorgeben", weg: "/system/mitteilungen", zeichen: .glocke, stichworte: ["Mitteilungen", "Push", "Morgenbrief"]),
+        Einstellung(name: "Annahmen der Wärmerechnung", stufe: "abstimmen", weg: "/waerme/annahmen", zeichen: .tabelle, stichworte: ["Annahmen", "Wärmebedarf", "Haus", "Modell"]),
+        Einstellung(name: "Parameter des Regelkreises", stufe: "abstimmen", weg: "/waerme/regelkreis", zeichen: .kreis, stichworte: ["Regelkreis", "Parameter", "Übersteuern"]),
+        Einstellung(name: "Regler der Wärmepumpe", stufe: "abstimmen", weg: "/waerme/waermepumpe/regler", zeichen: .anzeige, stichworte: ["Regler", "Heizkurve", "Vorlauf", "Wärmepumpe"]),
     ]
 
     /// Die Einstellungen einer Stufe, die dieser Betrachter sehen darf.

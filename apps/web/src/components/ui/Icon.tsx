@@ -63,6 +63,15 @@ const PATHS: Record<string, string> = {
   loop: '<path d="M3 8h5"/><rect x="8" y="5" width="8" height="6" rx="1.4"/><path d="M16 8h5"/><path d="M18.5 8v9.5h-13v-6.9"/><path d="M3.6 12.4l1.9-1.9 1.9 1.9"/>',
   // Eine Person: Kopf und Schultern. Der Weg zum eigenen Zugang (`/konto`).
   person: '<circle cx="12" cy="8" r="3.9"/><path d="M4.3 20.5c.7-3.9 3.8-6.4 7.7-6.4s7 2.5 7.7 6.4"/>',
+  // ---- Einstellen und der eigene Zugang (24.11.2026)
+  // Die Lupe der Suche: Glas und Griff, der Griff nach rechts unten.
+  search: '<circle cx="10.6" cy="10.6" r="6.4"/><path d="M15.3 15.3 20.5 20.5"/>',
+  // Der Schlüssel des Passkeys: Ring links unten, Bart nach rechts oben.
+  key: '<circle cx="7.8" cy="16.2" r="4.3"/><path d="M10.9 13.1 20 4"/><path d="M16.6 7.4l2.6 2.6"/><path d="M14 10l1.9 1.9"/>',
+  // Das Schloss des Passworts: Bügel über dem Körper, ein Schlüsselloch in der Mitte.
+  lock: '<rect x="4.5" y="10.5" width="15" height="10.5" rx="2.2"/><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"/><path d="M12 14.6v2.4"/>',
+  // Ein Gerät, auf dem jemand angemeldet ist: ein Telefon mit Lautsprecherschlitz.
+  device: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.4"/><path d="M10.8 18.4h2.4"/>',
 };
 
 export type IconName = keyof typeof PATHS;

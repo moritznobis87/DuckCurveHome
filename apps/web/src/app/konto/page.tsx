@@ -26,7 +26,7 @@ export default async function Page() {
   return (
     <AreaShell kicker="Passkeys · Passwort · Sitzungen">
       {/* Ohne eigene Überschrift: der Name der Seite steht schon im Kopf und in der Zeile darunter. */}
-      <section className="flex max-w-[760px] flex-col gap-3" aria-label="Mein Zugang">
+      <section className="max-w-[820px]" aria-label="Mein Zugang">
         <MeinZugang mindestlaenge={stand.passwort_mindestlaenge} />
       </section>
     </AreaShell>

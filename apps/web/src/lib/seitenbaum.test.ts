@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { zahlUndEinheit } from "@/components/layout/Bereichsuebersicht";
 import { AREAS, EINSTELLUNGEN, EINZELSEITEN, STUFEN, sucheEinstellungen } from "./areas";
+import { zustandssatz } from "@/components/einstellen/Einstellen";
 
 /**
  * Dashboard und App zeigen dieselben Seiten unter denselben Adressen. Das ist seit dem
@@ -98,5 +99,12 @@ describe("Seitenbaum", () => {
     expect(EINZELSEITEN.map((s) => ({ weg: s.href, name: s.label, beschreibung: s.beschreibung }))).toEqual(
       gemeinsam.einzelseiten,
     );
+  });
+
+  it("lässt die Zustandskarte von „Einstellen“ dasselbe sagen wie die App", () => {
+    expect(zustandssatz(null).titel).toBe("Automatik");
+    expect(zustandssatz(0)).toEqual({ titel: "Alles auf Automatik", satz: "Nichts ist gerade von Hand gestellt." });
+    expect(zustandssatz(1).titel).toBe("1 Eingriff von Hand");
+    expect(zustandssatz(3)).toEqual({ titel: "3 Eingriffe von Hand", satz: "Jeder endet von selbst, wenn seine Frist abläuft." });
   });
 });
